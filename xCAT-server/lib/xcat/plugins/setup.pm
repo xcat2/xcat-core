@@ -656,10 +656,10 @@ sub writechildren2 {
             $sidehash{$myip}->{side} = 'A-0';
             push @ipgroup, $myip;
             $myip = $vlan1 . '.' . $ii . '.0.2';
-            $sidehash{$myip}->{side} = 'A-1';  
+            $sidehash{$myip}->{side} = 'B-0';  
             push @ipgroup, $myip;
             $myip = $vlan2 . '.' . $ii . '.0.1';
-            $sidehash{$myip}->{side} = 'B-0';
+            $sidehash{$myip}->{side} = 'A-1';
             push @ipgroup, $myip;
             $myip = $vlan2 . '.' . $ii . '.0.2';
             $sidehash{$myip}->{side} = 'B-1';   
