@@ -897,6 +897,12 @@ sub nimnodeset
             {
                 if ($resname)
                 {
+					# don't add resolv.conf here!!
+					#   - it is done below
+					if ($restype eq 'resolv_conf')
+					{
+						next;
+					}
 
                     # handle multiple script & installp_bundles
                     if ($restype eq 'script')
@@ -7580,16 +7586,6 @@ sub prenimnodeset
           "Could not copy NIM resources to the xCAT service nodes.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return (1);
-    }
-    else
-    {
-        if ($::VERBOSE)
-        {
-            my $rsp;
-            push @{$rsp->{data}},
-              "NIM resources are copied to the xCAT service nodes successfully.\n";
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-        }
     }
 
     # pass this along to the process_request routine
