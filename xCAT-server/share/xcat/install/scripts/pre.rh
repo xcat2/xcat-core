@@ -122,6 +122,8 @@ chmod 755 /tmp/foo.py
 
 /tmp/foo.py >/foo.log 2>&1 &
 #time to ascertain fstype and PReP/UEFI/legacy
+modprobe ext4 >& /dev/null
+modprobe ext4dev >& /dev/null
 if grep ext4dev /proc/filesystems > /dev/null; then
 	FSTYPE=ext3
 elif grep ext4 /proc/filesystems > /dev/null; then
