@@ -33,8 +33,9 @@ key --skip
 #No RAID
 #/boot really significant for this sort of setup nowadays?
 #part /boot --size 50 --fstype ext3
-part swap --size 1024 
-part / --size 1 --grow --fstype ext4
+%include /tmp/partitioning
+#part swap --size 1024 
+#part / --size 1 --grow --fstype ext4
 
 #RAID 0 /scr for performance
 #part / --size 1024 --ondisk sda

@@ -121,3 +121,21 @@ EOF
 chmod 755 /tmp/foo.py
 
 /tmp/foo.py >/foo.log 2>&1 &
+#time to ascertain fstype and PReP/UEFI/legacy
+if grep ext4dev /proc/filesystems > /dev/null; then
+	FSTYPE=ext3
+elif grep ext4 /proc/filesystems > /dev/null; then
+	FSTYPE=ext4
+else
+	FSTYPE=ext3
+fi
+if [ `uname -m` = "ppc64" ]; then
+	echo 'part None --fstype "PPC PReP Boot" --size 8' >> /tmp/partitioning 
+fi
+if [ -d /sys/firmware/efi ]; then 
+	echo 'part /boot/efi --size 50 --fstype vfat' >> /tmp/partitioning
+fi
+#TODO: ondisk detection, /dev/disk/by-id/edd-int13_dev80 for legacy maybe, and no idea about efi.  at least maybe blacklist SAN if mptsas/mpt2sas/megaraid_sas seen...
+echo "part swap --size 1024" >> /tmp/partitioning
+echo "part / --size 1 --grow --fstype $FSTYPE" >> /tmp/partitioning
+	
