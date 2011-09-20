@@ -1,0 +1,25 @@
+start:psh_h
+cmd:psh -h
+check:rc==0
+check:output=~Usage
+cmd:psh --help
+check:rc==0
+check:output=~Usage
+end
+
+start:psh_v
+cmd:psh -v
+check:rc==0
+end
+
+start:psh_i
+cmd:psh -i __GETNODEATTR($$CN,mgtifname)__  $$CN 'uptime'
+check:rc==0
+end
+
+start:psh_node_cmd
+cmd:psh $$CN 'pwd' 
+check:rc==0
+check:output=~$$CN
+check:output=~/root
+end
