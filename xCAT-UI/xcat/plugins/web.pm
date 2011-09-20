@@ -1186,6 +1186,8 @@ sub web_createimage {
 				web_peConfigure( $ostype, $profile, $osarch, $installdir );
 			} elsif ( 'essl' eq $soft ) {
 				web_esslConfigure( $ostype, $profile, $osarch, $installdir );
+			} elsif ( 'ganglia' eq $soft) {
+				web_gangliaConfig( $ostype, $profile, $osarch, 'netboot', $installdir);
 			}
 		}
 

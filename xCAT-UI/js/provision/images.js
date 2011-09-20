@@ -13,6 +13,7 @@ var softwareList = {
 	"essl" : ["essl.3232.rte", "essl.3264.rte", "essl.6464.rte", "essl.common", "essl.license", "essl.man", "essl.msg", "essl.rte", "ibm-java2", "pessl.common", "pessl.license", "pessl.man",
 			"pessl.msg", "pessl.rte.ppe"],
 	"loadl" : ["IBMJava2", "LoadL-full-license-RH6", "LoadL-resmgr-full-RH6", "LoadL-scheduler-full-RH6"],
+	"ganglia" : ["rrdtool", "ganglia", "ganglia-gmetad", "ganglia-gmond"],
 	"base" : ["createrepo"]
 };
 
@@ -394,10 +395,13 @@ function createHpcSelect(container) {
 	hpcFieldset.append(createInfoBar(str));
 	
 	// Advanced software when select the compute profile
-	str = '<ul><li id="gpfsli"><input type="checkbox" onclick="softwareCheck(this)" name="gpfs">GPFS</li>'
-		+ '<li id="rsctli"><input type="checkbox" onclick="softwareCheck(this)" name="rsct">RSCT</li>' + '<li id="peli"><input type="checkbox" onclick="softwareCheck(this)" name="pe">PE</li>'
-		+ '<li id="esslli"><input type="checkbox" onclick="esslCheck(this)" name="essl">ESSl&PESSL</li>' 
-	+ '</ul>';
+	str = '<div id="partlysupport"><ul><li id="gpfsli"><input type="checkbox" onclick="softwareCheck(this)" name="gpfs">GPFS</li>' +
+		'<li id="rsctli"><input type="checkbox" onclick="softwareCheck(this)" name="rsct">RSCT</li>' + 
+		'<li id="peli"><input type="checkbox" onclick="softwareCheck(this)" name="pe">PE</li>' + 
+		'<li id="esslli"><input type="checkbox" onclick="esslCheck(this)" name="essl">ESSl&PESSL</li>' + 
+		'</ul></div>' +
+		'<div><ul><li id="gangliali"><input type="checkbox" onclick="softwareCheck(this)" name="ganglia">Ganglia</li>' +
+		'</ul></div>';
 	hpcFieldset.append(str);
 
 	container.append($('<div></div>').append(hpcFieldset));
@@ -595,9 +599,9 @@ function hpcShow() {
 	// The current UI only supports RHELS 6
 	// If you want to support all, delete the subcheck
 	if ($('#createImageTab #osvers').attr('value') != "rhels6" || $('#createImageTab #osarch').attr('value') != "ppc64" || $('#createImageTab #profile').attr('value') != "compute") {
-		$('#createImageTab #hpcsoft').hide();
+		$('#createImageTab #partlysupport').hide();
 	} else {
-		$('#createImageTab #hpcsoft').show();
+		$('#createImageTab #partlysupport').show();
 	}
 }
 
