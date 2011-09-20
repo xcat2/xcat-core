@@ -142,6 +142,9 @@ my %usage = (
        rspconfig <noderange> [cec_off_policy]
        rspconfig <noderange> [cec_off_policy=<poweroff|stayon>]
        rspconfig <noderange> [BSR]
+       rspconfig <noderange> [setup_failover]
+       rspconfig <noderange> [setup_failover=<enable|disable>]
+       rspconfig <noderange> [force_failover]
        rspconfig <noderange> --resetnet
    BPA/Frame (using Direct FSP Management)specific:
        rspconfig <noderange> HMC_passwd=<currentpasswd,newpasswd>

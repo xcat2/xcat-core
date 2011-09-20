@@ -75,7 +75,9 @@ sub parse_args {
         "resetnet",
         "sysname",
         "pending_power_on_side",
-        "BSR"
+        "BSR",
+        "setup_failover",
+        "force_failover"
     );
     my @frame = (
 	"frame",
@@ -234,7 +236,8 @@ sub parse_args {
         $request->{method} = "resetnet";
         return( \%opt );
     }
-    if(exists($cmds{sysname}) or exists($cmds{pending_power_on_side}) or exists($cmds{BSR})) {
+    if(exists($cmds{sysname}) or exists($cmds{pending_power_on_side}) or exists($cmds{BSR})
+            or exists($cmds{setup_failover}) or exists($cmds{force_failover})) {
         $request->{hcp} = $request->{hwtype} eq 'frame' ? "bpa":"fsp";
         $request->{method} = "do_fspapi_function";
         return (\%opt);
@@ -309,7 +312,12 @@ sub parse_option {
             return ("Invalid pending_power_on_side param '$value'");
         }
     }
-    if ($command eq 'BSR') {
+    if ($command eq 'setup_failover') {
+        if ($value !~ /^(enable|disable)$/) {
+            return ("Invalid setup_failover param '$value'");
+        }
+    }
+    if ($command =~ /^(BSR|force_failover)$/ ) {
         return ("BSR value can not be set");
     }
     return undef;
@@ -353,6 +361,19 @@ my %fspapi_action = (
             query => {
                 cec => "get_cec_bsr"
             }    
+        },
+        setup_failover => {
+            query => {
+                cec => "cec_setup_failover"
+            },
+            set => {
+                cec => "cec_setup_failover"
+            }
+        },
+        force_failover => {
+            query => {
+                cec => "cec_force_failover"
+            }
         }
 );
 sub do_process_query_res {
@@ -381,6 +402,8 @@ sub do_process_query_res {
         foreach my $v (@values) {
             push @$result, [$name, $v, '0'];
         }
+    } else {
+        push @$result, $res;
     }
     return undef;
 }
@@ -410,6 +433,8 @@ sub do_set_get_para {
         return (($value eq '*') ? $node_name : $value);
     } elsif ($cmd =~ /^pending_power_on_side$/){
         return ($value =~ /^perm$/) ? '0' : '1';
+    } elsif ($cmd =~ /^setup_failover$/) {
+        return ($value =~ /^enable$/) ? '1' : '0';
     }
 }
 
@@ -453,7 +478,7 @@ sub do_fspapi_function {
     my @ret = ();
     my $res;
     my $args = $request->{arg};
-    my @fspapi_array = qw/sysname pending_power_on_side BSR/;
+    my @fspapi_array = qw/sysname pending_power_on_side BSR setup_failover force_failover/;
     my $invalid_node = &check_node_info($hash);
     if (defined($invalid_node)) {
         return ([[$invalid_node, "Node must be CEC or Frame", '1']]);

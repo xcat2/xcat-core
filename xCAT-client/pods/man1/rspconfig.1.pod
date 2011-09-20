@@ -140,6 +140,12 @@ B<rspconfig> I<noderange> B<cec_off_policy>={B<poweroff>|B<stayon>}
 
 B<rspconfig> I<noderange> {B<BSR>}
 
+B<rspconfig> I<noderange> {B<setup_failover>}
+
+B<rspconfig> I<noderange> B<setup_failover>={B<enable>|B<disable>}
+
+B<rspconfig> I<noderange> {B<force_failover>}
+
 B<rspconfig> I<noderange> B<--resetnet>
 
 =head2 BPA/Frame (using Direct FSP Management) Specific:
@@ -253,6 +259,14 @@ Display the CEC/BPA system names.
 =item B<BSR>
 
 Get Barrier Synchronization Register (BSR) allocation for a CEC. 
+
+=item B<setup_failover>={I<enable>|I<disable>}
+
+Enable or disable the service processor failover function of a CEC or display status of this function. 
+
+=item B<force_failover>
+
+Force a service processor failover from the primary service processor to the secondary service processor.
 
 =item B<hostname>={I<*|name>}
 
@@ -612,6 +626,46 @@ B<rspconfig> I<cec01 BSR>
  cec01: lpar06        : 32
  cec01: lpar07        : 32
  cec01: lpar08        : 32
+
+=item *
+
+To disable service processor failover for cec01, in order to complete this command, the user should power off cec01 first:
+
+B<rspconfig> I<cec01 setup_failover>
+
+ cec01: Failover status: Enabled
+
+B<rpower> I<cec01 off>
+
+B<rspconfig> I<cec01 setup_failover=disable>
+
+ cec01: Success
+
+B<rspconfig> I<cec01 setup_failover>
+
+ cec01: Failover status: Disabled
+
+=item *
+
+To force service processor failover for cec01:
+
+B<lshwconn> I<cec01>
+
+ cec01: 192.168.1.1: LINE DOWN
+ cec01: 192.168.2.1: sp=primary,ipadd=192.168.2.1,alt_ipadd=unavailable,state=LINE UP
+ cec01: 192.168.1.2: sp=secondary,ipadd=192.168.1.2,alt_ipadd=unavailable,state=LINE UP
+ cec01: 192.168.2.2: LINE DOWN
+ 
+B<rspconfig> I<cec01 force_failover>
+
+ cec01: Success.
+ 
+B<lshwconn> I<cec01>                
+
+ cec01: 192.168.1.1: sp=secondary,ipadd=192.168.1.1,alt_ipadd=unavailable,state=LINE UP
+ cec01: 192.168.2.1: LINE DOWN
+ cec01: 192.168.1.2: LINE DOWN
+ cec01: 192.168.2.2: sp=primary,ipadd=192.168.2.2,alt_ipadd=unavailable,state=LINE UP
 
 =item *
 
