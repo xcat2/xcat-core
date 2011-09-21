@@ -22,6 +22,7 @@ Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 
 my $dracutmode; #Indicate whether this is a dracut style initrd
+my $dracutdir = "dracut";  # The default directory name of dracut
 my $prinic; #TODO be flexible on node primary nic
 my $othernics; #TODO be flexible on node primary nic
 my $netdriver;
@@ -438,6 +439,16 @@ close($moddeps);
 unlink "/tmp/genimage.$$.yum.conf";
 if (-d "$rootimg_dir/usr/share/dracut") {
     $dracutmode = 1;
+    # get dracut version
+    my $dracutver = `rpm -R $rootimg_dir -qi dracut | grep Version | awk -F' ' '{print \$3}'`;
+    if ($dracutver =~ /^\d\d\d$/) {
+        if ($dracutver >= "009") {
+            $dracutdir = "dracut_009";
+        } else {
+            $dracutdir = "dracut";  # The default directory
+        }
+    }
+    print "Enter the dracut mode. Dracut version: $dracutver. Dracut directory: $dracutdir.\n";
 }
 
 #-- run postinstall script
@@ -546,13 +557,13 @@ unless ($dracutmode) { #in dracut mode, we delegate all this activity
 }
 
 if ($dracutmode) {
-    # backup etc/rc.sysinit file before modifing it
-    system("cp -a $rootimg_dir/etc/rc.sysinit $rootimg_dir/etc/rc.sysinit.backup");
     # modify etc/rc.sysinit, prevent remounting
     # TODO: need to find one way to prevent remounting
     my $SYSINITFILE;
     my $TMPSYSINITFILE;
     if (-f "$rootimg_dir/etc/rc.sysinit") {
+        # backup etc/rc.sysinit file before modifing it
+        system("cp -a $rootimg_dir/etc/rc.sysinit $rootimg_dir/etc/rc.sysinit.backup");
         open($SYSINITFILE, "$rootimg_dir/etc/rc.sysinit");
         open($TMPSYSINITFILE, '>', "/tmp/rc.sysinit.tmp");
         # find the following lines,
@@ -614,8 +625,8 @@ sub mkinitrd_dracut {
     my $dracutmpath = "$rootimg_dir/usr/share/dracut/modules.d/97xcat";
     mkpath($dracutmpath);
 
-    my $perm = (stat("$fullpath/dracut/check"))[2];
-    cp("$fullpath/dracut/check", $dracutmpath);
+    my $perm = (stat("$fullpath/$dracutdir/check"))[2];
+    cp("$fullpath/$dracutdir/check", $dracutmpath);
     chmod($perm&07777, "$dracutmpath/check");
 
     foreach (@ndrivers) { s/\.ko$//; }
@@ -625,12 +636,12 @@ sub mkinitrd_dracut {
 
     if ($mode eq "statelite") {
         # for statelite
-        cp("$fullpath/dracut/install.statelite","$dracutmpath/install");
-        $perm = (stat("$fullpath/dracut/install.statelite"))[2];
+        cp("$fullpath/$dracutdir/install.statelite","$dracutmpath/install");
+        $perm = (stat("$fullpath/$dracutdir/install.statelite"))[2];
         chmod($perm&07777, "$dracutmpath/install");
 
-        cp("$fullpath/dracut/xcat-prepivot.sh",$dracutmpath);
-        $perm = (stat("$fullpath/dracut/xcat-prepivot.sh"))[2];
+        cp("$fullpath/$dracutdir/xcat-prepivot.sh",$dracutmpath);
+        $perm = (stat("$fullpath/$dracutdir/xcat-prepivot.sh"))[2];
         chmod($perm&07777, "$dracutmpath/xcat-prepivot.sh");
 
         # update etc/dracut.conf
@@ -640,12 +651,12 @@ sub mkinitrd_dracut {
         print $DRACUTCONF qq{filesystems+="nfs"\n};
         close $DRACUTCONF;
     } elsif ($mode eq "stateless") {
-        cp("$fullpath/dracut/install.netboot","$dracutmpath/install");
-        $perm = (stat("$fullpath/dracut/install.netboot"))[2];
+        cp("$fullpath/$dracutdir/install.netboot","$dracutmpath/install");
+        $perm = (stat("$fullpath/$dracutdir/install.netboot"))[2];
         chmod($perm&07777, "$dracutmpath/install");
 
-        cp("$fullpath/dracut/xcat-cmdline.sh","$dracutmpath/");
-        $perm = (stat("$fullpath/dracut/xcat-cmdline.sh"))[2];
+        cp("$fullpath/$dracutdir/xcat-cmdline.sh","$dracutmpath/");
+        $perm = (stat("$fullpath/$dracutdir/xcat-cmdline.sh"))[2];
         chmod($perm&07777, "$dracutmpath/xcat-cmdline.sh");
 
         if ($prinic) {
@@ -655,12 +666,12 @@ sub mkinitrd_dracut {
             close $optspec;
         }
 
-        cp("$fullpath/dracut/xcatroot","$dracutmpath/");
-        $perm = (stat("$fullpath/dracut/xcatroot"))[2];
+        cp("$fullpath/$dracutdir/xcatroot","$dracutmpath/");
+        $perm = (stat("$fullpath/$dracutdir/xcatroot"))[2];
         chmod($perm&07777, "$dracutmpath/xcatroot");
 
-        cp("$fullpath/dracut/installkernel", "$dracutmpath/");
-        $perm = (stat("$fullpath/dracut/installkernel"))[2];
+        cp("$fullpath/$dracutdir/installkernel", "$dracutmpath/");
+        $perm = (stat("$fullpath/$dracutdir/installkernel"))[2];
         chmod($perm&07777, "$dracutmpath/installkernel");
 
         # update etc/dracut.conf
@@ -1296,6 +1307,19 @@ sub postscripts {
    chmod '0755', "$rootimg_dir/opt/xcat/xcatdsklspost";
 }
 
+
+sub using_systemd {
+    my $os = shift;
+    if ($os =~ /fedora(\d+)/) {
+        if ($1 >= 15) {
+          return 1;
+        }
+    }
+
+    return 0;
+}
+
+
 sub generic_post { #This function is meant to leave the image in a state approximating a normal install
    my $cfgfile;
    unlink("$rootimg_dir/dev/null");
@@ -1306,12 +1330,14 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    print $cfgfile "proc    /proc    proc     defaults       0 0\n";
    print $cfgfile "sysfs   /sys     sysfs    defaults       0 0\n";
 
-   if ($tmplimit) {
-      print $cfgfile "tmpfs   /tmp     tmpfs    defaults,size=$tmplimit       0 2\n";
-      print $cfgfile "tmpfs   /var/tmp     tmpfs    defaults,size=$tmplimit       0 2\n";
-   } else {
-      print $cfgfile "tmpfs   /tmp     tmpfs    defaults,size=10m             0 2\n";
-      print $cfgfile "tmpfs   /var/tmp     tmpfs    defaults,size=10m       0 2\n";
+   if (!&using_systemd($osver)) {
+      if ($tmplimit) {
+         print $cfgfile "tmpfs   /tmp     tmpfs    defaults,size=$tmplimit       0 2\n";
+         print $cfgfile "tmpfs   /var/tmp     tmpfs    defaults,size=$tmplimit       0 2\n";
+      } else {
+         print $cfgfile "tmpfs   /tmp     tmpfs    defaults,size=10m             0 2\n";
+         print $cfgfile "tmpfs   /var/tmp     tmpfs    defaults,size=10m       0 2\n";
+      }
    }
 
    my $rootfs_name=$profile."_".$arch;
@@ -1339,13 +1365,13 @@ sub generic_post { #This function is meant to leave the image in a state approxi
       close($cfgfile);
    }
    
-	# securetty not needed on s390x
-	if ($arch ne "s390x") {
-		open($cfgfile,">>","$rootimg_dir/etc/securetty");
-		print $cfgfile "ttyS0\n";
-		print $cfgfile "ttyS1\n";
-		close($cfgfile);
-	}
+   # securetty not needed on s390x
+   if ($arch ne "s390x") {
+      open($cfgfile,">>","$rootimg_dir/etc/securetty");
+      print $cfgfile "ttyS0\n";
+      print $cfgfile "ttyS1\n";
+      close($cfgfile);
+   }
 	
    my @passwd;
    open($cfgfile,"<","$rootimg_dir/etc/passwd");
@@ -1369,38 +1395,39 @@ sub generic_post { #This function is meant to leave the image in a state approxi
        symlink  "/etc/init.d/network","$rootimg_dir/etc/rc3.d/S10network";
    }
    
-	# gettyset is not found on s390x
-	if ($arch ne "s390x") {
-		open($cfgfile,">","$rootimg_dir/etc/init.d/gettyset");
-		print $cfgfile "#!/bin/bash\n"; 
-		print $cfgfile "for i in `cat /proc/cmdline`; do\n"; 
-		print $cfgfile '  KEY=`echo $i|cut -d= -f 1`'."\n";
-		print $cfgfile "  if [ \"\$KEY\" == \"console\" -a \"\$i\" != \"console=tty0\" ]; then\n";
-		print $cfgfile "    VALUE=`echo \$i | cut -d= -f 2`\n"; 
-		print $cfgfile "     COTTY=`echo \$VALUE|cut -d, -f 1`\n";
-		print $cfgfile "     COSPEED=`echo \$VALUE|cut -d, -f 2|cut -dn -f 1`\n";
-		print $cfgfile "     if echo \$VALUE | grep n8r; then\n";
-		print $cfgfile "        FLOWFLAG=\"-h\"\n";
-		print $cfgfile "     fi\n";
-		print $cfgfile "     if [ -x /sbin/initctl ]; then\n";	# Upstart style
-		print $cfgfile "        initctl emit --no-wait fedora.serial-console-available \$COTTY \$COSPEED\n";
-		print $cfgfile "     else\n";
-		print $cfgfile "       echo xco:2345:respawn:/sbin/agetty \$FLOWFLAG \$COTTY \$COSPEED xterm >> /etc/inittab\n";
-		print $cfgfile "        init q\n";
-		print $cfgfile "     fi\n";
-		print $cfgfile "  fi\n";
-		print $cfgfile "done\n";
+   # gettyset is not found on s390x
+   if ($arch ne "s390x") {
+      if (!&using_systemd($osver)) {
+         open($cfgfile,">","$rootimg_dir/etc/init.d/gettyset");
+         print $cfgfile "#!/bin/bash\n"; 
+         print $cfgfile "for i in `cat /proc/cmdline`; do\n"; 
+         print $cfgfile '  KEY=`echo $i|cut -d= -f 1`'."\n";
+         print $cfgfile "  if [ \"\$KEY\" == \"console\" -a \"\$i\" != \"console=tty0\" ]; then\n";
+         print $cfgfile "    VALUE=`echo \$i | cut -d= -f 2`\n"; 
+         print $cfgfile "     COTTY=`echo \$VALUE|cut -d, -f 1`\n";
+         print $cfgfile "     COSPEED=`echo \$VALUE|cut -d, -f 2|cut -dn -f 1`\n";
+         print $cfgfile "     if echo \$VALUE | grep n8r; then\n";
+         print $cfgfile "        FLOWFLAG=\"-h\"\n";
+         print $cfgfile "     fi\n";
+         print $cfgfile "     if [ -x /sbin/initctl ]; then\n";	# Upstart style
+         print $cfgfile "        initctl emit --no-wait fedora.serial-console-available \$COTTY \$COSPEED\n";
+         print $cfgfile "     else\n";
+         print $cfgfile "       echo xco:2345:respawn:/sbin/agetty \$FLOWFLAG \$COTTY \$COSPEED xterm >> /etc/inittab\n";
+         print $cfgfile "        init q\n";
+         print $cfgfile "     fi\n";
+         print $cfgfile "  fi\n";
+         print $cfgfile "done\n";
 
-        close($cfgfile);
+         close($cfgfile);
 
-		chmod(0755,"$rootimg_dir/etc/init.d/gettyset");
-        system("cd $rootimg_dir/etc/rc3.d; ln -sf ../init.d/gettyset S60gettyset");
+         chmod(0755,"$rootimg_dir/etc/init.d/gettyset");
+         system("cd $rootimg_dir/etc/rc3.d; ln -sf ../init.d/gettyset S60gettyset");
+      }
 		
-        copy("$installroot/postscripts/xcatpostinit", "$rootimg_dir/etc/init.d/xcatpostinit");
-        chmod(0755, "$rootimg_dir/etc/init.d/xcatpostinit");
-        system("cd $rootimg_dir/etc/rc3.d; ln -sf ../init.d/xcatpostinit S61xcatpostinit");
-	}
-   
+      copy("$installroot/postscripts/xcatpostinit", "$rootimg_dir/etc/init.d/xcatpostinit");
+      chmod(0755, "$rootimg_dir/etc/init.d/xcatpostinit");
+      system("cd $rootimg_dir/etc/rc3.d; ln -sf ../init.d/xcatpostinit S61xcatpostinit");
+   }
 } 
 
 
