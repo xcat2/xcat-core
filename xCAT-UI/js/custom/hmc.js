@@ -357,7 +357,7 @@ function addHmcNode(){
         data : {
             cmd : 'webrun',
             tgt : '',
-            args : 'addpnode;hmc;' + args,
+            args : 'addnode;hmc;' + args,
             msg : ''
         },
         success : function(data){
@@ -401,7 +401,7 @@ function addPNode(){
         data : {
             cmd : 'webrun',
             tgt : '',
-            args : 'addpnode;node;' + hmcname + ',' + nodename,
+            args : 'addnode;node;' + hmcname + ',' + nodename,
             msg : ''
         },
         success : function(data) {
