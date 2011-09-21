@@ -731,7 +731,7 @@ function openSettings() {
 	oList.append($('<li><input type="radio" name="theme" value="cupertino">Cupertino</li>'));
 	oList.append($('<li><input type="radio" name="theme" value="dark_hive">Dark Hive</li>'));
 	oList.append($('<li><input type="radio" name="theme" value="redmond">Redmond</li>'));
-	oList.append($('<li><input type="radio" name="theme" value="start">Start</li>'));
+	oList.append($('<li><input type="radio" name="theme" value="start">Start (default)</li>'));
 	oList.append($('<li><input type="radio" name="theme" value="sunny">Sunny</li>'));
 	oList.append($('<li><input type="radio" name="theme" value="ui_dark">UI Darkness</li>'));
 	themeFS.append(oList);
