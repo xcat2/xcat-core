@@ -452,13 +452,45 @@ function createMenu(items) {
  * 
  * @return Nothing
  */
-function initPage() {
+function initPage() {	
+	// Load theme
+	var theme = $.cookie('xcat_theme');
+	if (theme) {
+		switch (theme) {
+			case 'cupertino':
+				includeCss("css/jquery-ui-cupertino.css");
+				break;
+			case 'dark_hive':
+				includeCss("css/jquery-ui-dark_hive.css");
+				break;
+			case 'redmond':
+				includeCss("css/jquery-ui-redmond.css");
+				break;
+			case 'start':
+				includeCss("css/jquery-ui-start.css");
+				break;
+			case 'sunny':
+				includeCss("css/jquery-ui-sunny.css");
+				break;
+			case 'ui_dark':
+				includeCss("css/jquery-ui-ui_darkness.css");
+				break;
+			default:
+				includeCss("css/jquery-ui-start.css");
+		}				
+	}
+
+	includeCss("css/query.dataTables.css");
+	includeCss("css/superfish.css");
+	includeCss("css/jstree.css");
+	includeCss("css/jquery.jqplot.css");
+	includeCss("css/style.css");	
+	
 	// JQuery plugins
 	includeJs("js/jquery/jquery.dataTables.min.js");
 	includeJs("js/jquery/jquery.form.min.js");
 	includeJs("js/jquery/jquery.jeditable.min.js");
 	includeJs("js/jquery/jquery.contextmenu.min.js");
-	includeJs("js/jquery/jquery.cookie.min.js");
 	includeJs("js/jquery/superfish.min.js");
 	includeJs("js/jquery/hoverIntent.min.js");
 	includeJs("js/jquery/jquery.jstree.min.js");
@@ -481,12 +513,16 @@ function initPage() {
 	includeJs("js/custom/hmc.js");
 	includeJs("js/custom/customUtils.js");
 
+	// Enable settings link 	
+	$('#xcat_settings').click(function() {
+		openSettings();
+	});
+
 	// Get the page being loaded
 	var url = window.location.pathname;
 	var page = url.replace('/xcat/', '');
-
 	var headers = $('#header ul li a');
-
+	
 	// Show the page
 	$("#content").children().remove();
 	if (page == 'configure.php') {
@@ -541,6 +577,30 @@ function includeJs(file) {
 		});
 
 		$('head').append(script);
+	}
+}
+
+/**
+ * Include CSS link in <head>
+ * 
+ * @param file
+ *            File to include
+ * @return Nothing
+ */
+function includeCss(file) {
+	var link = $("head link[href='" + file + "']");
+
+	// If <head> does not contain the link
+	if (!link.length) {
+		// Append the CSS link to <head>
+		var link = $('<link>');
+		link.attr( {
+			type : 'text/css',
+			rel : 'stylesheet',
+			href : file
+		});
+
+		$('head').append(link);
 	}
 }
 
@@ -648,4 +708,65 @@ function createIFrame(src) {
 	infoBar.append(close);
 	
 	return infoBar;
+}
+
+
+/**
+ * Open dialog to set xCAT UI settings
+ * 
+ * @return Nothing
+ */
+function openSettings() {
+	// Create form to add node range
+	var settingsForm = $('<div class="form"></div>');
+	var info = createInfoBar('Select the settings you desire');
+	settingsForm.append(info);
+	
+	// Create select drop down for themes
+	var themeFS = $('<fieldset></fieldset>');
+	settingsForm.append(themeFS);
+	var legend = $('<legend>Theme</legend>');
+	themeFS.append(legend);
+	var oList = $('<ol></ol>');
+	oList.append($('<li><input type="radio" name="theme" value="cupertino">Cupertino</li>'));
+	oList.append($('<li><input type="radio" name="theme" value="dark_hive">Dark Hive</li>'));
+	oList.append($('<li><input type="radio" name="theme" value="redmond">Redmond</li>'));
+	oList.append($('<li><input type="radio" name="theme" value="start">Start</li>'));
+	oList.append($('<li><input type="radio" name="theme" value="sunny">Sunny</li>'));
+	oList.append($('<li><input type="radio" name="theme" value="ui_dark">UI Darkness</li>'));
+	themeFS.append(oList);
+	
+	if ($.cookie('xcat_theme')) {
+		// Select theme
+		oList.find('input[value="' + $.cookie('xcat_theme') + '"]').attr('checked', true);
+	}
+
+	// Open form as a dialog
+	settingsForm.dialog({
+		modal: true,
+		title: 'Settings',
+		width: 400,
+		buttons: {
+        	"Ok": function(){
+        		// Save selected theme
+        		var theme = $(this).find('input[name="theme"]:checked').val();
+        		$.cookie('xcat_theme', theme);
+        		
+        		// Show instructions to apply theme
+        		$(this).empty();
+        		var info = createInfoBar('You will need to reload this page in order for changes to take effect');
+        		$(this).append(info);
+        		
+        		// Only show close button
+        		$(this).dialog("option", "buttons", {
+        			"Close" : function() {
+        				$(this).dialog( "close" );
+        			}
+        		});
+        	},
+        	"Cancel": function(){
+        		$(this).dialog( "close" );
+        	}
+		}
+	});
 }
