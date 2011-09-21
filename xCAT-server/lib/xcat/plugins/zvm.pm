@@ -3467,8 +3467,10 @@ sub nodeSet {
 				if ( $_ =~ m/ramdisk_size/i ) {
 					$parmHeader = xCAT::zvmUtils->trimStr($_);
 					
-					# Remove last parameter on RHEL6
-					$parmHeader =~ s/cio_ignore=all,!0.0.0009//g;
+					# RHEL 6.1 needs cio_ignore in order to install
+					if ( !($os =~ m/rhel6.1/i) ) {
+						$parmHeader =~ s/cio_ignore=all,!0.0.0009//g;
+					}
 				}
 			}
 
