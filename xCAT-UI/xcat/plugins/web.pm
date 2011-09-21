@@ -56,7 +56,7 @@ sub process_request {
 	    'gangliashow'   => \&web_gangliaShow,
 	    'gangliacurrent' => \&web_gangliaLatest,
 	    'rinstall'	    => \&web_rinstall,
-        'addpnode'      => \&web_addpnode
+        'addnode'      => \&web_addnode
 	);
 
 	#check whether the request is authorized or not
@@ -1111,7 +1111,7 @@ sub web_createimage {
 	my $netdriver  = '';
 	my $installdir = xCAT::Utils->getInstallDir();
 	my $tempos     = $ostype;
-	$tempos =~ s/[0-9]//;
+	$tempos =~ s/[0-9\.]//g;
 	my $CONFILE;
 	my $archFlag = 0;
 	my $ret      = '';
@@ -1119,18 +1119,6 @@ sub web_createimage {
 
 	if ( $request->{arg}->[6] ) {
 		@softArray = split( ',', $request->{arg}->[6] );
-
-		#check the arch
-		if ( 'ppc64' ne $osarch ) {
-			$callback->( { data => 'Error: only support PPC64!' } );
-			return;
-		}
-
-		#check the osver
-		unless ( -e "/opt/xcat/share/xcat/IBMhpc/IBMhpc.$ostype.ppc64.pkglist" ) {
-			$callback->( { data => 'Error: only support rhels6 and sles11!' } );
-			return;
-		}
 
 		#check the custom package, if the path is not exist, must create the dir first
 		if ( -e "$installdir/custom/netboot/$ostype/" ) {
@@ -1393,20 +1381,20 @@ sub web_esslConfigure {
 	#pkglist
 	open( $CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.pkglist" );
 	if ( $ostype =~ /rh/i ) {
-		print $CONFILE,
+		print $CONFILE
 		  "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/compilers/compilers.rhels6.pkglist#\n";
 	} else {
-		print $CONFILE, "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/essl.pkglist#\n";
+		print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/essl.pkglist#\n";
 	}
 
 	#otherpkgs
 	open( $CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.otherpkgs.pkglist" );
-	print $CONFILE, "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/essl.otherpkgs.pkglist#\n";
+	print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/essl.otherpkgs.pkglist#\n";
 	close($CONFILE);
 
 	#exlist
 	open( $CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.exlist" );
-	print $CONFILE, "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/essl.exlist#\n";
+	print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/essl.exlist#\n";
 	close($CONFILE);
 
 	#postinstall
@@ -1424,11 +1412,11 @@ sub web_gangliaConfig{
 
 	#pkglist
 	open ( $CONFILE, ">>$installdir/custom/$provtype/$ostype/$profile.otherpkgs.pkglist" );
-	print( $CONFILE, "#created by xCAT Web Gui.\n");
-	print( $CONFILE, "ganglia/ganglia\n");
-	print( $CONFILE, "ganglia/ganglia-gmond\n");
-	print( $CONFILE, "ganglia/ganglia-gmetad\n");
-	print( $CONFILE, "ganglia/rrdtool\n");
+	print $CONFILE "#created by xCAT Web Gui.\n";
+	print $CONFILE "ganglia/ganglia\n";
+	print $CONFILE "ganglia/ganglia-gmond\n";
+	print $CONFILE "ganglia/ganglia-gmetad\n";
+	print $CONFILE "ganglia/rrdtool\n";
 	close($CONFILE);
 }
 #check ganglia install needed rpm are put in the right directory
@@ -1893,24 +1881,28 @@ sub web_rinstall {
 	$callback->( { data => $out } );
 }
 
-sub web_addpnode{
+sub web_addnode{
 	my ( $request, $callback, $sub_req ) = @_;
 	my $nodetype = $request->{arg}->[1];
 	my @tempArray = split(',', $request->{arg}->[2]);
 
-	my $hmcname = shift(@tempArray);
-	if ('hmc' eq $nodetype){
+	my $hcpname = shift(@tempArray);
+	if ('node' ne $nodetype){
 		my $username = $tempArray[0];
 		my $passwd = $tempArray[1];
 		my $ip = $tempArray[2];
-		`/bin/grep '$hmcname' /etc/hosts`;
+		`/bin/grep '$hcpname' /etc/hosts`;
 		if ($?){
 			open(OUTPUTFILE, '>>/etc/hosts');
-			print OUTPUTFILE "$ip  $hmcname\n";
+			print OUTPUTFILE "$ip  $hcpname\n";
 			close(OUTPUTFILE);
 		}
-
-		`chdef -t node -o $hmcname username=$username password=$passwd mgt=hmc nodetype=hmc groups=all`;
+		if ('hmc' eq $nodetype){
+			`chdef -t node -o $hcpname username=$username password=$passwd mgt=hmc nodetype=$nodetype groups=all`
+		}
+		else{
+			`chdef -t node -o $hcpname username=$username password=$passwd mgt=blade mpa=$hcpname nodetype=$nodetype id=0 groups=mm,all`
+		}
 		return;
 	}
 
@@ -1921,7 +1913,7 @@ sub web_addpnode{
 	foreach(@tempArray) {
 		$temphash{$_} = 1;
 	}
-	`rscan $hmcname -z > /tmp/rscanall.tmp`;
+	`rscan $hcpname -z > /tmp/rscanall.tmp`;
 	#if can not create the rscan result file, error
 	unless(-e '/tmp/rscanall.tmp'){
 		return;
