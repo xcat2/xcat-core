@@ -329,6 +329,16 @@ sub mkinstall
                          0
                          );
         }
+        if (-r "$tmplfile.uefi")
+        {
+            $tmperr =
+              xCAT::Template->subvars(
+                         $tmplfile.".uefi",
+                         "$installroot/autoinst/$node.uefi",
+                         $node,
+                         0
+                         );
+        }
         
         if ($tmperr)
         {
@@ -390,12 +400,22 @@ sub mkinstall
         }
 
 
+	if (-f "$::XCATROOT/share/xcat/netboot/efidetect.exe" and not -f "$installroot/utils/efidetect.exe") {
+		mkpath("$installroot/utils/");
+		copy("$::XCATROOT/share/xcat/netboot/efidetect.exe","$installroot/utils/efidetect.exe");
+	}
+	print $shandle "set UNATTEND=$node\r\n";
+	if (-f "$installroot/utils/efidetect.exe") {
+		print $shandle "i:\\efidetect.exe\r\n";
+		print $shandle "if %ERRORLEVEL% equ 0 set UNATTEND=$node.uefi\r\n";
+	}
+		
         open($shandle,">","$installroot/autoinst/$node.cmd");
         if ($sspeed) {
             $sport++;
-            print $shandle "i:\\$os\\$arch\\setup /unattend:i:\\autoinst\\$node /emsport:COM$sport /emsbaudrate:$sspeed /noreboot\r\n";
+            print $shandle "i:\\$os\\$arch\\setup /unattend:i:\\autoinst\\%UNATTEND% /emsport:COM$sport /emsbaudrate:$sspeed /noreboot\r\n";
         } else {
-            print $shandle "i:\\$os\\$arch\\setup /unattend:i:\\autoinst\\$node /noreboot\r\n";
+            print $shandle "i:\\$os\\$arch\\setup /unattend:i:\\autoinst\\%UNATTEND% /noreboot\r\n";
         }
         #print $shandle "i:\\postscripts\
         print $shandle 'reg load HKLM\csystem c:\windows\system32\config\system'."\r\n"; #copy installer DUID to system before boot
