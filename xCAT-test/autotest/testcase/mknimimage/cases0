@@ -1,0 +1,113 @@
+start:mknimimage_h
+description:mknimimage -h and --help
+os:AIX
+cmd:mknimimage -h
+check:output=~Usage|usage
+cmd:mknimimage --help
+check:output=~Usage|usage
+end
+
+start:mknimimage_s
+description:mknimimage -s source imagename
+os:AIX
+cmd:mknimimage -s $$SOURCE testimage
+check:rc==0
+check:output=~lpp_source=testimage_lpp_source
+check:output=~bosinst_data=testimage_bosinst_data
+check:output=~testimage
+cmd:lsnim |grep testimage
+check:rc==0
+check:output=~testimage
+check:output=~testimage_lpp_source
+check:output=~testimage_bosinst_data
+cmd:nim -o remove testimage
+cmd:nim -o remove testimage_lpp_source
+cmd:nim -o remove testimage_bosinst_data
+cmd:chtab -d imagename=testimage osimage
+cmd:rm -rf /install/nim/lpp_source/testimage_lpp_source
+cmd:rm -rf /install/nim/bosinst_data/testimage_bosinst_data
+cmd:rm -rf /install/nim/spot/testimage
+end
+
+start:mknimimage_s_iamgename_attr
+description:mknimimage -s source imagename attr=val
+os:AIX
+cmd:mknimimage -s $$SOURCE testimage installp_bundle=mybndlres
+check:rc==0
+check:output=~installp_bundle=mybndlres
+check:output=~lpp_source=testimage_lpp_source
+check:output=~bosinst_data=testimage_bosinst_data
+check:output=~testimage
+cmd:lsnim |grep testimage
+check:rc==0
+check:output=~testimage
+check:output=~testimage_lpp_source
+check:output=~testimage_bosinst_data
+cmd:nim -o remove testimage
+cmd:nim -o remove testimage_lpp_source
+cmd:nim -o remove testimage_bosinst_data
+cmd:chtab -d imagename=testimage osimage
+cmd:rm -rf /install/nim/lpp_source/testimage_lpp_source
+cmd:rm -rf /install/nim/bosinst_data/testimage_bosinst_data
+cmd:rm -rf /install/nim/spot/testimage
+end
+
+start:mknimimage_t_s
+description:mknimimage -t diskless -s source imagename
+os:AIX
+cmd:mknimimage -t diskless -s $$SOURCE testimage 
+check:rc==0
+check:output=~lpp_source=testimage_lpp_source
+check:ouput=~nimtype=diskless
+check:output=~testimage
+cmd:lsnim |grep testimage
+check:rc==0
+check:output=~testimage
+check:output=~testimage_lpp_source
+cmd:nim -o remove testimage
+cmd:nim -o remove testimage_lpp_source
+cmd:nim -o remove testimage_bosinst_data
+cmd:nim -o remove testimage_paging 
+cmd:chtab -d imagename=testimage osimage
+cmd:rm -rf /install/nim/lpp_source/testimage_lpp_source
+cmd:rm -rf /install/nim/paging/testimage_paging
+cmd:rm -rf /install/nim/spot/testimage
+end
+
+
+start:mknimimage_t_i
+description:mknimimage -t diskless -i imagename imagename
+os:AIX
+cmd:mknimimage -s $$SOURCE testimage
+check:rc==0
+check:output=~lpp_source=testimage_lpp_source
+check:output=~bosinst_data=testimage_bosinst_data
+check:output=~testimage
+cmd:mknimimage -t diskless -i testimage testimage_updt
+check:rc==0
+check:output=~spot=testimage_updt
+check:output=~root=testimage_updt_root
+check:output=~testimage_updt
+cmd:lsnim |grep testimage_updt
+ckeck:rc==0
+check:output=~testimage_updt
+check:output=~testimage_updt_root
+cmd:nim -o remove testimage
+cmd:nim -o remove testimage_lpp_source
+cmd:nim -o remove testimage_bosinst_data
+cmd:nim -o remove testimage_updt
+cmd:nim -o remove testimage_root
+cmd:nim -o remove testimage_updt_root
+cmd:chtab -d imagename=testimage osimage
+cmd:chtab -d imagename=testimage_updt osimage 
+cmd:rm -rf /install/nim/lpp_source/testimage_lpp_source
+cmd:rm -rf /install/nim/paging/testimage_paging
+cmd:rm -rf /install/nim/spot/testimage
+cmd:rm -rf /install/nim/lpp_source/testimage_updt_lpp_source
+cmd:rm -rf /install/nim/paging/testimage_updt_paging
+cmd:rm -rf /install/nim/spot/testimage_updt
+cmd:rm -rf /install/nim/bosinst_data/testimage_bosinst_data
+end
+
+
+
