@@ -198,6 +198,9 @@ sub process_request {
     my $forcenic=0; #-1 is force skip, 0 is use default behavior, 1 is force to be declared even if hosttag is skipped to do so
     foreach (@{$request->{mac}}) {
       @ifinfo = split /\|/;
+      if ($ifinfo[1] eq 'usb0') { #skip usb nic
+	next;
+      }
       $bydriverindex{$ifinfo[0]} += 1;
       if (scalar @discoverynics) {
           $forcenic=-1; #$forcenic defaults to explicitly skip nic
