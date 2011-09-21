@@ -28,7 +28,7 @@ check:rc!=0
 check:output!~$$CN
 end
 
-start:makeknownhosts_node_r
+start:makeknownhosts_node_v
 description:verbose
 cmd:makeknownhosts $$CN -V
 check:rc==0
