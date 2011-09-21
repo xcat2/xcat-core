@@ -1,0 +1,164 @@
+      <post-scripts config:type="list">
+        <script>
+          <filename>xcat.sh</filename>
+          <interpreter>shell</interpreter>
+          <source>
+
+<![CDATA[
+#!/bin/sh
+
+cd /etc/sysconfig/network
+rm -f ifcfg-eth-id*
+rm -f ifcfg-myri*
+cat >ifcfg-eth0 <<EOF
+DEVICE=eth0
+BOOTPROTO=dhcp
+STARTMODE=onboot
+EOF
+
+. /tmp/prinicsetting
+rm /tmp/prinicsetting
+if [ "$PRINIC" != "eth0" ]
+then
+	cd /etc/sysconfig/network
+	if [ ! -r ifcfg-$PRINIC ]
+	then
+#		cp -f ifcfg-eth0 ifcfg-$PRINIC
+		mv -f ifcfg-eth0 ifcfg-$PRINIC
+		perl -pi -e "s/eth0/$PRINIC/" ifcfg-$PRINIC
+#		echo "DHCLIENT_PRIMARY_DEVICE=yes" >> ifcfg-$PRINIC
+	fi
+fi
+echo "DHCLIENT_PRIMARY_DEVICE=yes" >> ifcfg-$PRINIC
+perl -pi -e 's/^FIREWALL="yes"/FIREWALL="no"/' /etc/sysconfig/network/config
+/etc/init.d/network restart
+
+RAND=$(perl -e 'print int(rand(50)). "\n"')
+sleep $RAND
+jsi=0
+while [ $(hostname) == 'linux' ]
+do
+	if [ $jsi -gt 10 ]; then
+		logger "Slept too long!"
+		exit
+	fi
+	let jsi=jsi+1
+	sleep 1
+done
+echo "Slept $jsi seconds before hostname made sense."
+
+HOSTNAME=$(hostname -s)
+echo $HOSTNAME
+
+/sbin/portmap
+export MASTER_IP=#XCATVAR:XCATMASTER#
+export MASTER_IPS=#XCATVAR:XCATMASTER#
+export MASTER="#XCATVAR:XCATMASTER#"
+
+#
+#  This script has not yet been updated to work with service nodes
+#
+for i in $(seq 1 20)
+do
+    GOTIT=0
+    for i in $MASTER_IPS
+    do
+        #mount -r $i:/install/postscripts /xcatpost
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -t 0 -T 60 ftp://$i/postscripts
+        if [ "$?" = "0" ]
+        then
+            if [ -x  /usr/bin/openssl ]; then
+                XCATSERVER=$i:3001
+                export XCATSERVER
+     		USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
+     		export USEOPENSSLFORXCAT
+            else
+                exit 1
+            fi
+             mv $i/postscripts /xcatpost
+             rm -rf $i
+             chmod +x /xcatpost/*
+             /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
+             MYCONT=`grep MASTER /tmp/mypostscript`
+             MAX_RETRIES=10
+             RETRY=0
+             while [ -z "$MYCONT" ]; do
+                RETRY=$(($RETRY+1))
+                if [ $RETRY -eq $MAX_RETRIES ]
+                then
+                    break
+                fi
+
+                let SLI=$RANDOM%10+10
+                sleep $SLI
+                /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
+                MYCONT=`grep MASTER /tmp/mypostscript`
+             done
+             chmod +x /tmp/mypostscript
+             GOTIT=1
+             break
+        fi
+    done
+    if [ "$GOTIT" = "1" ]
+    then
+        #save the master to /opt/xcat/xcatinfo file
+        if [ ! -f /opt/xcat/xcatinfo ]; then
+            mkdir -p /opt/xcat
+            touch /opt/xcat/xcatinfo
+        fi
+        echo "XCATSERVER=$i" > /opt/xcat/xcatinfo
+        break
+    fi
+    RAND=$(perl -e 'print int(rand(5)). "\n"')
+    sleep $RAND
+done
+PATH=/xcatpost:$PATH
+export PATH
+
+# Set the second disk to be bootable for RAID1 setup
+parted -s /dev/sdb mkfs 1 fat16
+parted /dev/sdb set 1 type 6
+parted /dev/sdb set 1 boot on
+dd if=/dev/sda1 of=/dev/sdb1
+bootlist -m normal sda sdb
+
+#save the postboot scripts to /tmp/mypostscript.post
+TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /tmp/mypostscript`
+echo "$TMP" > /tmp/mypostscript.post
+chmod 755 /tmp/mypostscript.post
+
+#create the post init 
+cat >/etc/init.d/xcatpostinit1 << 'EOF'
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatpostinit1#
+EOF
+chmod 755 /etc/init.d/xcatpostinit1
+ln -s /etc/init.d/xcatpostinit1 /etc/init.d/rc3.d/S84xcatpostinit1
+ln -s /etc/init.d/xcatpostinit1 /etc/init.d/rc4.d/S84xcatpostinit1
+ln -s /etc/init.d/xcatpostinit1 /etc/init.d/rc5.d/S84xcatpostinit1
+mkdir -p /opt/xcat
+cat >/opt/xcat/xcatinstallpost << 'EOF'
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatinstallpost#
+chkconfig xcatpostinit1 off
+EOF
+chmod 755 /opt/xcat/xcatinstallpost
+
+chkconfig --add xcatpostinit1
+
+#only run the prebooot scripts here
+TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /tmp/mypostscript`
+echo "$TMP" > /tmp/mypostscript
+
+/tmp/mypostscript
+
+updateflag.awk $MASTER 3002
+cd /
+/xcatpost/#TABLE:nodelist:$NODE:node#
+#rm -Rf /xcatpost
+#rm -f /tmp/mypostscript
+#rmdir /xcatpost
+]]>
+
+          </source>
+        </script>
+      </post-scripts>
+
