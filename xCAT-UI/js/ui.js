@@ -478,6 +478,8 @@ function initPage() {
 			default:
 				includeCss("css/jquery-ui-start.css");
 		}				
+	} else {
+		includeCss("css/jquery-ui-start.css");
 	}
 
 	includeCss("css/query.dataTables.css");
