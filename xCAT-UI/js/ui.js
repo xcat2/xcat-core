@@ -458,34 +458,37 @@ function initPage() {
 	if (theme) {
 		switch (theme) {
 			case 'cupertino':
-				includeCss("css/jquery-ui-cupertino.css");
+				includeCss("css/themes/jquery-ui-cupertino.css");
 				break;
 			case 'dark_hive':
-				includeCss("css/jquery-ui-dark_hive.css");
+				includeCss("css/themes/jquery-ui-dark_hive.css");
 				break;
 			case 'redmond':
-				includeCss("css/jquery-ui-redmond.css");
+				includeCss("css/themes/jquery-ui-redmond.css");
 				break;
 			case 'start':
-				includeCss("css/jquery-ui-start.css");
+				includeCss("css/themes/jquery-ui-start.css");
 				break;
 			case 'sunny':
-				includeCss("css/jquery-ui-sunny.css");
+				includeCss("css/themes/jquery-ui-sunny.css");
 				break;
 			case 'ui_dark':
-				includeCss("css/jquery-ui-ui_darkness.css");
+				includeCss("css/themes/jquery-ui-ui_darkness.css");
 				break;
 			default:
-				includeCss("css/jquery-ui-start.css");
+				includeCss("css/themes/jquery-ui-start.css");
 		}				
 	} else {
-		includeCss("css/jquery-ui-start.css");
+		includeCss("css/themes/jquery-ui-start.css");
 	}
 
+	// Load jQuery stylesheets
 	includeCss("css/query.dataTables.css");
 	includeCss("css/superfish.css");
 	includeCss("css/jstree.css");
 	includeCss("css/jquery.jqplot.css");
+	
+	// Load custom stylesheet
 	includeCss("css/style.css");	
 	
 	// JQuery plugins
