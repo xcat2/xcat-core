@@ -404,13 +404,13 @@ sub mkinstall
 		mkpath("$installroot/utils/");
 		copy("$::XCATROOT/share/xcat/netboot/efidetect.exe","$installroot/utils/efidetect.exe");
 	}
+        open($shandle,">","$installroot/autoinst/$node.cmd");
 	print $shandle "set UNATTEND=$node\r\n";
 	if (-f "$installroot/utils/efidetect.exe") {
 		print $shandle "i:\\efidetect.exe\r\n";
 		print $shandle "if %ERRORLEVEL% equ 0 set UNATTEND=$node.uefi\r\n";
 	}
 		
-        open($shandle,">","$installroot/autoinst/$node.cmd");
         if ($sspeed) {
             $sport++;
             print $shandle "i:\\$os\\$arch\\setup /unattend:i:\\autoinst\\%UNATTEND% /emsport:COM$sport /emsbaudrate:$sspeed /noreboot\r\n";
