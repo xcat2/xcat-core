@@ -6,7 +6,7 @@ $(document).ready(function() {
     $('#content').remove();
     
     var winHeight = document.body.clientHeight;
-    var diagHeight = $('#logdialog').css('height');
+    var diagHeight = $('#login').css('height');
     diagHeight = diagHeight.substr(0, diagHeight.length - 2);
     diagHeight = Number(diagHeight);
     
@@ -18,31 +18,31 @@ $(document).ready(function() {
     	tmpHeight = parseInt((winHeight - diagHeight - 50) / 2); 
     }
     
-    $('#logdialog').css('margin', tmpHeight + 'px auto');
+    $('#login').css('margin', tmpHeight + 'px auto');
     $('button').bind('click', function(){
     	authenticate();
     }).button();
     
 	if (document.location.protocol == 'http:') {
-		$('#logstatus').html('You are using an unencrypted session!');
-		$('#logstatus').css('color', 'red');
+		$('#login_status').html('You are using an unencrypted session!');
+		$('#login_status').css('color', 'red');
 	}
 	
-	if (!$('#username').val()) {
-		$('#username').focus();
+	if (!$("#login input[name='username']").val()) {
+		$("#login input[name='username']").focus();
 	} else {
-		$('#password').focus();
+		$("#login input[name='password']").focus();
 	}
 
 	// When enter is hit while in username, advance to password
-	$('#username').keydown(function(event) {
+	$("#login input[name='username']").keydown(function(event) {
 		if (event.keyCode == 13) {
-			$('#password').focus();
+			$("#login input[name='password']").focus();
 		}
 	});
 
 	// Submit authentication if enter is pressed in password field
-	$('#password').keydown(function(event) {
+	$("#login input[name='password']").keydown(function(event) {
 		if (event.keyCode == 13) {
 			authenticate();
 		}
@@ -59,10 +59,10 @@ $(document).ready(function() {
  */
 function onlogin(data, txtStatus) {
 	// Clear password field regardless of what happens
-	var usrName = $('#username').val();
-	$('#password').val('');
+	var usrName = $("#login input[name='username']").val();
+	$("#login input[name='password']").val('');
 	if (data.authenticated == 'yes') {
-		$('#logstatus').text('Login successful');
+		$('#login_status').text('Login successful');
 		window.location = 'service.php';
 		
 		// Set user name cookie		
@@ -70,8 +70,8 @@ function onlogin(data, txtStatus) {
 		exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
 		$.cookie('srv_usrname', usrName, { expires: exDate });
 	} else {
-		$('#logstatus').text('Authentication failure');
-		$('#logstatus').css('color', '#FF0000');
+		$('#login_status').text('Authentication failure');
+		$('#login_status').css('color', '#FF0000');
 	}
 }
 
@@ -79,12 +79,12 @@ function onlogin(data, txtStatus) {
  * Authenticate user for new session
  */
 function authenticate() {
-	$('#logstatus').css('color', '#000000');
-	$('#logstatus').html('Authenticating...');
+	$('#login_status').css('color', '#000000');
+	$('#login_status').html('Authenticating...');
 	
-	var passwd = $('#password').val();
+	var passwd = $("#login input[name='password']").val();
 	$.post('lib/srv_log.php', {
-		username : $('#username').val(),
+		username : $("#login input[name='username']").val(),
 		password : passwd
 	}, onlogin, 'json');
 }

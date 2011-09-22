@@ -11,6 +11,44 @@ var gangliaTimer;
  * Initialize service page
  */
 function initServicePage() {
+	// Load theme
+	var theme = $.cookie('xcat_theme');
+	if (theme) {
+		switch (theme) {
+			case 'cupertino':
+				includeCss("css/themes/jquery-ui-cupertino.css");
+				break;
+			case 'dark_hive':
+				includeCss("css/themes/jquery-ui-dark_hive.css");
+				break;
+			case 'redmond':
+				includeCss("css/themes/jquery-ui-redmond.css");
+				break;
+			case 'start':
+				includeCss("css/themes/jquery-ui-start.css");
+				break;
+			case 'sunny':
+				includeCss("css/themes/jquery-ui-sunny.css");
+				break;
+			case 'ui_dark':
+				includeCss("css/themes/jquery-ui-ui_darkness.css");
+				break;
+			default:
+				includeCss("css/themes/jquery-ui-start.css");
+		}				
+	} else {
+		includeCss("css/themes/jquery-ui-start.css");
+	}
+
+	// Load jQuery stylesheets
+	includeCss("css/query.dataTables.css");
+	includeCss("css/superfish.css");
+	includeCss("css/jstree.css");
+	includeCss("css/jquery.jqplot.css");
+	
+	// Load custom stylesheet
+	includeCss("css/service.css");	
+		
 	// Reuqired JQuery plugins
 	includeJs("js/jquery/jquery.dataTables.min.js");
 	includeJs("js/jquery/jquery.cookie.min.js");
