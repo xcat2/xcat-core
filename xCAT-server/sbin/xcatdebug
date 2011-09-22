@@ -1,0 +1,23 @@
+#!/bin/sh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+#-------------------------------------------------------------------------------
+#=head1  xcatdebug 
+#      To run:   xcatdebug 0   where 0 is the number of the tracelevel (0,1)
+#=head2  xcatdebug provides a debug trace of the xcatd daemon.
+#        Perl Debug::Trace must be installed from the xcat deps package 
+#        Shutdown xcatd
+#        Link  /opt/xcat/share/xcat/tools/tracelevel to the traceleve* file you
+#        wish to use
+#        run xcatdebug > /mydir/myoutput file  or just to STDOUT 
+#        To stop ctl-C, you may have to kill processes after
+#        ps -ef |grep xcatd,  kill the listener process, it should stop the
+#        other xcatd processes
+#         7405808  8454216   0 10:04:37  pts/1  0:03 xcatd: SSL listener
+#        You may also have to kill the xcatdebug process, check for it. 
+#     
+#=cut
+#-------------------------------------------------------------------------------
+export PERL5DEBUGTRACE=":warn:indent(2):nomaxdepth:quotekeys"
+print "running:perl -MDebug::Trace=`cat /opt/xcat/share/xcat/tools/tracelevel$1` /opt/xcat/sbin/xcatd -f"
+perl -MDebug::Trace=`cat /opt/xcat/share/xcat/tools/tracelevel$1` /opt/xcat/sbin/xcatd -f
