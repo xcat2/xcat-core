@@ -47,7 +47,7 @@ function initServicePage() {
 	includeCss("css/jquery.jqplot.css");
 	
 	// Load custom stylesheet
-	includeCss("css/service.css");	
+	includeCss("css/style.css");	
 		
 	// Reuqired JQuery plugins
 	includeJs("js/jquery/jquery.dataTables.min.js");
