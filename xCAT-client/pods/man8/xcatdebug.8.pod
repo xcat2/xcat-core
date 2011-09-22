@@ -1,0 +1,48 @@
+=head1 NAME
+
+B<xcatdebug> - Starts the xCAT daemon (xcatd) in trace mode.
+
+B<xcatdebug> {B<levelnumber>}
+
+=head1 DESCRIPTION
+
+The xcatdebug command starts the xcatd daemon in Perl Debug Trace mode. It is to be used for diagnosing xCAT problems. The trace outputs the paramters passed into the xcatd subroutines, listed in the tracefiles. The tracefiles are located in /opt/xcat/share/xcat/tools/tracelevel<levelnumber>.  The amount of trace data collected varies with the levelnumber. levelnumber 0 being the least amount of trace and increasing with the number.
+
+You must have perl-Debug-Trace installed. 
+
+Before running this command, you should stop xcatd on your system.
+After running the command, you will have to kill all the xcatd processes and possibly the xcatdebug process.
+Run ps -ef | grep xcatd and kill any processes
+Run ps -ef | grep xcatdebug
+
+
+=head1 OPTIONS
+
+=over 6
+
+=item B<levelnumber>
+
+The levelnumber that will be run. This determines the filename of trace input
+ from /opt/xcat/share/xcat/tools/tracelevel<levelnumber>
+
+=back
+
+=head1 ENVIRONMENT VARIABLES
+
+=head1 EXAMPLES
+
+=over 2
+
+=item *
+
+Run the xcatdebug routine with /opt/xcat/share/xcat/tools/tracelevel0 and output to the screen:
+
+B<xcatdebug>  I<0>
+
+=item *
+
+Run the xcatdebug routine with /opt/xcat/share/xcat/tools/tracelevel1 and output to /tmp/traceoutput:
+
+B<xcatdebug>  I<1> > /tmp/traceoutput 2>&1
+
+=back
