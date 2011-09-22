@@ -187,6 +187,11 @@ sub mkhwconn_parse_args
         return( usage('Wrong value of  --port option. The value can be 0 or 1, and the default value is 0.'));
     }
     $request->{method} = 'mkhwconn';
+    
+    if ( scalar( @ARGV)) {
+        return(usage( "No additional flag is support by this command" ));
+    }
+
     return( \%opt);
 }
 
