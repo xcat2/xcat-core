@@ -400,15 +400,15 @@ sub mkinstall
         }
 
 
-	if (-f "$::XCATROOT/share/xcat/netboot/efidetect.exe" and not -f "$installroot/utils/efidetect.exe") {
+	if (-f "$::XCATROOT/share/xcat/netboot/detectefi.exe" and not -f "$installroot/utils/detectefi.exe") {
 		mkpath("$installroot/utils/");
-		copy("$::XCATROOT/share/xcat/netboot/efidetect.exe","$installroot/utils/efidetect.exe");
+		copy("$::XCATROOT/share/xcat/netboot/detectefi.exe","$installroot/utils/detectefi.exe");
 	}
         open($shandle,">","$installroot/autoinst/$node.cmd");
 	print $shandle "set UNATTEND=$node\r\n";
-	if (-f "$installroot/utils/efidetect.exe") {
-		print $shandle "i:\\efidetect.exe\r\n";
-		print $shandle "if %ERRORLEVEL% equ 0 set UNATTEND=$node.uefi\r\n";
+	if (-f "$installroot/utils/detectefi.exe") {
+		print $shandle "i:\\utils\\detectefi.exe\r\n";
+		print $shandle "if NOT ERRORLEVEL 1 set UNATTEND=$node.uefi\r\n";
 	}
 		
         if ($sspeed) {
