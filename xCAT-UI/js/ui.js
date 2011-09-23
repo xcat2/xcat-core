@@ -755,7 +755,7 @@ function openSettings() {
         	"Ok": function(){
         		// Save selected theme
         		var theme = $(this).find('input[name="theme"]:checked').val();
-        		$.cookie('xcat_theme', theme);
+        		$.cookie('xcat_theme', theme, { expires: 30 });
         		
         		// Show instructions to apply theme
         		$(this).empty();

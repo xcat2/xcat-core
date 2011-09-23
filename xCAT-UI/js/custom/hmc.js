@@ -311,7 +311,12 @@ function drawRscanResult(rscanresult){
 		for(var j = 0; j < colnum; j++) {
 			temprow += '<td>';
 			if (fields[j]) {
-				temprow += fields[j];
+				if (j == 1){
+					temprow += '<input value="' + fields[j] + '">';
+				}
+				else{
+					temprow += fields[j];
+				}
 			}
 			temprow += '</td>';
 		}
@@ -381,6 +386,7 @@ function addPNode(){
 	$('#pnodeeditarea :checked').each(function() {
 		if ($(this).attr('name')) {
 			nodename += $(this).attr('name') + ',';
+			nodename += $(this).parents('tr').find('input').eq(1).val() + ',';
 		}
 	});
 	
