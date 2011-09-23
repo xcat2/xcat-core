@@ -6,7 +6,7 @@ B<xcatdebug> {B<levelnumber>}
 
 =head1 DESCRIPTION
 
-The xcatdebug command starts the xcatd daemon in Perl Debug Trace mode. It is to be used for diagnosing xCAT problems. The trace outputs the paramters passed into the xcatd subroutines, listed in the tracefiles. The tracefiles are located in /opt/xcat/share/xcat/tools/tracelevel<levelnumber>.  The amount of trace data collected varies with the levelnumber. levelnumber 0 being the least amount of trace and increasing with the number.
+The xcatdebug command starts the xcatd daemon in Perl Debug Trace mode. It is to be used for diagnosing xCAT problems. The trace outputs the paramters passed into the xcatd subroutines, listed in the tracefiles. The tracefiles are located in /opt/xcat/share/xcat/tools/tracelevel<levelnumber>.  The amount of trace data collected varies with the levelnumber. levelnumber 0 being the least amount of trace and increasing with the number. Additional tracelevel files can be created to suit the problem being debugged. 
 
 You must have perl-Debug-Trace installed. 
 
