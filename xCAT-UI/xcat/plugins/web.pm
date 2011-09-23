@@ -1913,6 +1913,9 @@ sub web_addnode{
 	foreach(@tempArray) {
 		$temphash{$_} = 1;
 	}
+	for (my $i = 0; $i < scalar(@tempArray); $i = $i + 2){
+		$temphash{$tempArray[$i]} = $tempArray[$i + 1];
+	}
 	`rscan $hcpname -z > /tmp/rscanall.tmp`;
 	#if can not create the rscan result file, error
 	unless(-e '/tmp/rscanall.tmp'){
@@ -1925,7 +1928,7 @@ sub web_addnode{
 		if ($line =~ /(\S+):$/){
 			if ($temphash{$1}){
 				$writeflag = 1;
-				print OUTPUTFILE $line;
+				print OUTPUTFILE $temphash{$1} . ":\n";
 			}
 			else{
 				$writeflag = 0;
