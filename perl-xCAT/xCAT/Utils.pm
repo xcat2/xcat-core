@@ -3718,7 +3718,9 @@ sub get_ServiceNode
                 else
                 {    
 					if ( ($oshash->{$node}->[0]->{os}) && ($oshash->{$node}->[0]->{os} eq "AIX")) {
+                      if ($nimprime) {
 						push @{$snhash{$nimprime}}, $node;
+					  }
 					} else {
 						push @{$snhash{$master}}, $node;
 					}
