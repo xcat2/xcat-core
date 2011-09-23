@@ -4,6 +4,13 @@ CREDPID=$!
 if [ -z "$XCATDEST" ]; then
 	XCATDEST=$1
 fi
+if [ -z "$XCATDEST" ]; then
+	for parm in `cat /proc/cmdline` ; do
+		if echo $parm |grep xcatd= > /dev/null; then
+			XCATDEST=`echo $parm |awk -F= '{print $2}'`
+		fi
+	done
+fi
 for LANCHAN in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do 
    if ipmitool channel info $LANCHAN 2> /dev/null | grep 802.3 > /dev/null 2>&1 && ipmitool raw 0xc 2 $LANCHAN 5 0 0 > /dev/null 2>&1; 
      then break; 
