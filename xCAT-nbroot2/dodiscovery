@@ -84,7 +84,7 @@ CPUTYPE=`cat /tmp/cpumod|awk -F':' '{print $2}'|sed -e 's/^ //'`
 echo '<xcatrequest>' > /tmp/discopacket
 echo "<command>findme</command>" >> /tmp/discopacket
 echo "<arch>$ARCH</arch>" >> /tmp/discopacket
-if [ "$IAMAVM"=1 ]; then
+if [ "$IAMAVM" = 1 ]; then
 	echo "<nodetype>virtual</nodetype>" >> /tmp/discopacket
 fi
 echo "<cpucount>$CPUCOUNT</cpucount>" >> /tmp/discopacket
