@@ -19,5 +19,6 @@
 #=cut
 #-------------------------------------------------------------------------------
 export PERL5DEBUGTRACE=":warn:indent(2):nomaxdepth:quotekeys"
-print "running:perl -MDebug::Trace=`cat /opt/xcat/share/xcat/tools/tracelevel$1` /opt/xcat/sbin/xcatd -f"
+echo "running:perl -MDebug::Trace=`cat /opt/xcat/share/xcat/tools/tracelevel$1` /opt/xcat/sbin/xcatd -f"
 perl -MDebug::Trace=`cat /opt/xcat/share/xcat/tools/tracelevel$1` /opt/xcat/sbin/xcatd -f
+exit 0
