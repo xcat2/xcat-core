@@ -832,6 +832,7 @@ site => {
    "               In a hierarchical cluster, you can also set this attribute to \"<xcatmaster>\"\n".
    "               to mean the DNS server for each node should be the node that is managing it\n".
    "               (either its service node or the management node).\n\n".
+   " NIMprime :   The name of NIM server, if not set default is the management node.\n\n".
    " nodestatus:  If set to 'n', the nodelist.status column will not be updated during\n".
    "              the node deployment, node discovery and power operations.\n\n".
    " ntpservers:  A comma delimited list of NTP servers for the cluster - often the\n".
