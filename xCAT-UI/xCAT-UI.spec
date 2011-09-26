@@ -80,16 +80,6 @@ cp -r * $RPM_BUILD_ROOT%{prefix}/ui
 chmod 755 $RPM_BUILD_ROOT%{prefix}/ui/*
 set -x
 
-%ifos linux
-	# Copy xCAT plugins to /opt/xcat/lib/perl/xCAT_plugin
-	cp ui/xcat/plugins/web.pm $RPM_BUILD_ROOT%{prefix}/lib/perl/xCAT_plugin/
-	cp ui/xcat/plugins/webportal.pm $RPM_BUILD_ROOT%{prefix}/lib/perl/xCAT_plugin/
-	/bin/ln -s bin/xcatclientnnr $RPM_BUILD_ROOT%{prefix}/bin/webportal
-	/etc/init.d/xcatd restart
-%else   # AIX
-	# TBD
-%endif
-
 %files
 %defattr(-,root,root)
 %{prefix}/ui
@@ -148,7 +138,13 @@ set -x
 	fi
 	
 	if [ "$1" = 1 ] || [ "$1" = 2 ]		# Install or upgrade
-	then		
+	then
+		# Copy xCAT plugins to /opt/xcat/lib/perl/xCAT_plugin
+		cp %{prefix}/ui/xcat/plugins/web.pm /opt/xcat/lib/perl/xCAT_plugin/
+		cp %{prefix}/ui/xcat/plugins/webportal.pm /opt/xcat/lib/perl/xCAT_plugin/
+		/bin/ln -s /opt/xcat/bin/xcatclientnnr /opt/xcat/bin/webportal
+		/etc/init.d/xcatd restart
+		
 		# Copy php.ini file into /opt/xcat/ui and turn off output_buffering
 		if [ -e "/etc/redhat-release" ]; then
 			/bin/sed /etc/php.ini -e 's/output_buffering = 4096/output_buffering = Off/g' > %{prefix}/ui/php.ini
@@ -157,7 +153,7 @@ set -x
 	  	fi
 	  	
 		# Restart Apache Web Server
-		/etc/init.d/$apachedaemon reload
+		/etc/init.d/$apachedaemon restart
 		true
 	fi
 %else	# AIX
@@ -180,7 +176,7 @@ set -x
 	if [ "$1" = 1 ] || [ "$1" = 2 ]      # Install or upgrade
 	then
 	    # Uncomment this if we change xcat-ui.conf again
-	    # /etc/init.d/$apachedaemon reload
+	    # /etc/init.d/$apachedaemon restart
 	    true
 	fi
 %endif
