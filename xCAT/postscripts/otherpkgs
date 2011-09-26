@@ -213,16 +213,39 @@ logger -t xcat "OTHERPKGDIR=$OTHERPKGDIR"
 #    dhcpcd -n $PRIMARYNIC
 #fi
 
-#check if the node has yum or zypper installed, it will try yum first, then zypper and last rpm
+#check if the node has yum or zypper installed, it will try yum first, then zypper and last rpm 
+# for rpm based machines, or check if apt is installed, then it will use apt then dpkg 
+
+hasrpm=0
 hasyum=0  
 haszypper=0        
-result=`rpm -q yum`
-if [ $? -eq 0 ]; then 
-    hasyum=1
+hasapt=0
+hasdpkg=0
+supdatecommand="rpm -Uvh --replacepkgs"
+sremovecommand="rpm -ev"
+
+result=`which rpm`
+if [ $? -eq 0 ]; then
+    hasrpm=1
+    result=`rpm -q yum`
+    if [ $? -eq 0 ]; then 
+        hasyum=1
+    else
+        result=`rpm -q zypper`
+        if [ "$?" = "0" ]; then 
+	    haszypper=1
+        fi
+    fi 
 else
-    result=`rpm -q zypper`
-    if [ "$?" = "0" ]; then 
-	haszypper=1
+    result=`which dpkg`
+    if [ $? -eq 0 ]; then
+        hasdpkg=1
+	supdatecommand="dpkg -i"
+	sremovecommand="dpkg -r"
+	result=`dpkg -l apt`
+	if [ $? -eq 0 ]; then
+	    hasapt=1
+	fi
     fi
 fi
 
@@ -251,6 +274,11 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         done
 	zypper --non-interactive refresh
         repo_base="/tmp"
+    elif [ $hasapt -eq 1 ] ; then
+        mkdir -p /etc/apt/sources.list.d
+	result=`rm /etc/apt/sources.list.d/xCAT-otherpkgs*.list 2>&1`
+	result=`apt-get -y update`
+	repo_base="/etc/apt/sources.list.d"
     fi
 
     array_empty repo_path
@@ -279,7 +307,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	    fi
         fi
 	    
-        if [ $hasyum -eq 0 ] && [ $haszypper -eq 0 ]; then
+        if [ $hasyum -eq 0 ] && [ $haszypper -eq 0 ] && [ $hasapt -eq 0 ]; then
 	    if [  $string_type -eq -1 ]; then
 	        plain_pkgs_preremove="$plain_pkgs_preremove $x"
             elif [  $string_type -eq 1 ]; then
@@ -324,17 +352,28 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
             #try to add the path to the repo
 	    if [ $try_repo -eq 1 ]; then
 	        index=$(array_get_size repo_path)
-	        REPOFILE="$repo_base/xCAT-otherpkgs$index.repo"
-	        echo "[xcat-otherpkgs$index]" > $REPOFILE
-	        echo "name=xcat-otherpkgs$index" >> $REPOFILE
-	        if [ $mounted -eq 0 ]; then
-		    echo "baseurl=ftp://$whole_path" >> $REPOFILE
-	        else
-		    echo "baseurl=file://$whole_path" >> $REPOFILE
-	        fi
-	        echo "enabled=1" >> $REPOFILE
-	        echo "gpgcheck=0" >> $REPOFILE
-	    
+		if [ $hasyum -eq 1 ] || [ $haszypper -eq 1 ] ; then
+	            REPOFILE="$repo_base/xCAT-otherpkgs$index.repo"
+	            echo "[xcat-otherpkgs$index]" > $REPOFILE
+	            echo "name=xcat-otherpkgs$index" >> $REPOFILE
+	            if [ $mounted -eq 0 ]; then
+		        echo "baseurl=ftp://$whole_path" >> $REPOFILE
+	            else
+		        echo "baseurl=file://$whole_path" >> $REPOFILE
+	            fi
+	            echo "enabled=1" >> $REPOFILE
+	            echo "gpgcheck=0" >> $REPOFILE
+		elif [ $hasapt -eq 1 ] ; then
+		    REPOFILE="$repo_base/xCAT-otherpkgs$index.list"
+		    
+	            if [ $mounted -eq 0 ]; then
+		        type=ftp
+	            else
+		        type=file
+	            fi
+
+		    echo "deb http://$MASTER$INSTALLDIR/post/otherpkgs/$OSVER/$ARCH/$path /"  >> $REPOFILE
+		fi 
 	        if [ $hasyum -eq 1 ]; then 
 	            #use yum
 		    result=`yum list $fn 2>&1`
@@ -359,6 +398,16 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 		    else
 		        result=`zypper sd xcat-otherpkgs$index`
 		    fi
+		elif [ $hasapt -eq 1 ]; then 
+		    #use apt
+                    result=`apt-cache search $fn 2>&1`
+		    if [ $? -eq 0 ]; then  
+		        rc=0
+		        array_set_element repo_path $(array_get_size repo_path) $path
+		    else
+		        rm $REPOFILE
+		    fi
+
 	        fi
 	    fi
 	
@@ -417,8 +466,8 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     fi 
 
     if [ "$plain_pkgs_preremove" != "" ]; then 
-        echo "rpm -ev $plain_pkgs_preremove" 
-        result=`rpm -ev $plain_pkgs_preremove 2>&1`
+        echo "$sremovecommand $plain_pkgs_preremove" 
+        result=`$sremovecommand $plain_pkgs_preremove 2>&1`
         logger -t xcat "$result"
         if [ $? -ne 0 ]; then 
 	    logger -t xcat "otherpkgs $result"
@@ -451,6 +500,15 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
             #do
             #    result=`zypper sd $x`
             #done
+	elif [ $hasapt -eq 1 ]; then
+		result=`apt-get -y update 2>&1`
+	    echo "apt-get -q -y --force-yes install $repo_pkgs"
+	    result=`apt-get -q -y --force-yes install $repo_pkgs 2>&1`
+	    logger -t xcat "$result"
+	    if [ $? -ne 0 ]; then 
+            logger -t xcat "otherpkgs: $result"
+	    fi
+            echo "$result"
         fi
     fi 
 
@@ -476,9 +534,8 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
             cd $OTHERPKGDIR
         fi
 
-        echo "rpm -Uvh --replacepkgs $plain_pkgs" 
-        result=`rpm -Uvh --replacepkgs $plain_pkgs 2>&1`
-        #result=`rpm -Fvh $plain_pkgs 2>&1`
+        echo "$supdatecommand $plain_pkgs" 
+        result=`$supdatecommand $plain_pkgs 2>&1`
         logger -t xcat "$result"
         if [ $? -ne 0 ]; then 
 	    logger -t xcat "otherpkgs $result"
@@ -496,7 +553,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     #remove more rpms if specified with --
     if [ "$repo_pkgs_postremove" != "" ]; then
         if [ $hasyum -eq 1 ]; then 
-            echo "yum -y removel $repo_pkgs_postremove"
+            echo "yum -y remove $repo_pkgs_postremove"
             result=`yum -y remove $repo_pkgs_postremove 2>&1`
             logger -t xcat "$result"
             if [ $? -ne 0 ]; then 
@@ -511,12 +568,20 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
                 logger -t xcat "otherpkgs: $result"
     	    fi
             echo "$result"
+        elif [ $hasapt -eq 1 ]; then 
+            echo "apt-get -y remove $repo_pkgs_postremove"
+            result=`apt-get -y remove $repo_pkgs_postremove 2>&1`
+            logger -t xcat "$result"
+            if [ $? -ne 0 ]; then 
+                logger -t xcat "otherpkgs: $result"
+            fi
+            echo "$result"
         fi
     fi 
 
     if [ "$plain_pkgs_postremove" != "" ]; then 
-        echo "rpm -ev $plain_pkgs_postremove" 
-        result=`rpm -ev $plain_pkgs_postremove 2>&1`
+        echo "$sremovecommand $plain_pkgs_postremove" 
+        result=`$sremovecommand $plain_pkgs_postremove 2>&1`
         logger -t xcat "$result"
         if [ $? -ne 0 ]; then 
        	    logger -t xcat "otherpkgs $result"
