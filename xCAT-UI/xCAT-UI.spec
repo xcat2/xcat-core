@@ -82,8 +82,8 @@ set -x
 
 %ifos linux
 	# Copy xCAT plugins to /opt/xcat/lib/perl/xCAT_plugin
-	cp %{prefix}/ui/xcat/plugins/web.pm /opt/xcat/lib/perl/xCAT_plugin/
-	cp %{prefix}/ui/xcat/plugins/webportal.pm /opt/xcat/lib/perl/xCAT_plugin/
+	cp ui/xcat/plugins/web.pm $RPM_BUILD_ROOT%{prefix}/lib/perl/xCAT_plugin/
+	cp ui/xcat/plugins/webportal.pm $RPM_BUILD_ROOT%{prefix}/lib/perl/xCAT_plugin/
 	/bin/ln -s /opt/xcat/bin/xcatclientnnr /opt/xcat/bin/webportal
 	/etc/init.d/xcatd restart
 %else   # AIX
