@@ -831,6 +831,23 @@ sub genSSHNodeHostKey
     }
 }
 
+# on Ubuntu need to painstakingly compare /etc/localtime with files under
+# /usr/share/zoneinfo since /etc/localtime # isn't always a symbolic link
+sub discover_timezone_ubuntu
+{
+	my $localtime = "/etc/localtime";
+	my $zoneinfo = "/usr/share/zoneinfo";
+
+	my $zone_result = `find $zoneinfo -type f -exec cmp -s $localtime {} \\; -print | grep -v posix | grep -v SystemV`;
+
+	my @zones = split /\n/, $zone_result;
+
+	$zones[0] =~ s/$zoneinfo\///;
+	$zones[0] =~ s/\//_/g;
+
+	return $zones[0];
+}
+
 #-----------------------------------------------------------------------------
 
 =head3    initDB 
@@ -925,6 +942,10 @@ sub initDB
             # on Redhat look for "ZONE"
             $tz =
               `grep ^ZONE /etc/sysconfig/clock|cut -d= -f 2|sed -e 's/"//g'`;
+        }
+        elsif (-f "/etc/lsb-release")
+        {
+            $tz = discover_timezone_ubuntu;
         }
         else
         {

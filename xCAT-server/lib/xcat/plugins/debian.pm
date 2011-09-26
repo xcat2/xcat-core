@@ -400,6 +400,7 @@ sub mkinstall
         my $profile;
         my $tmplfile;
         my $pkgdir;
+	my $pkglistfile;
 	my $imagename;
 	my $platform;
 
@@ -421,13 +422,16 @@ sub mkinstall
 		    if (!$linuximagetab) {
 			$linuximagetab=xCAT::Table->new('linuximage', -create=>1);
 		    }
-		    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkgdir');
+		    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkgdir', 'pkglist');
 		    if ($ref1) {
 			if ($ref1->{'template'}) {
 			    $img_hash{$imagename}->{template}=$ref1->{'template'};
 			}
 			if ($ref1->{'pkgdir'}) {
 			    $img_hash{$imagename}->{pkgdir}=$ref1->{'pkgdir'};
+			}
+			if ($ref1->{'pkglist'}) {
+			    $img_hash{$imagename}->{pkglist}=$ref1->{'pkglist'};
 			}
 		    }
 		    # if the install template wasn't found, then lets look for it in the default locations.
@@ -443,6 +447,19 @@ sub mkinstall
 			    $img_hash{$imagename}->{template}=$tmplfile;
 			}
 		    }
+                    #if the install pkglist wasn't found, then lets look for it in the default locations
+			unless($img_hash{$imagename}->{pkglist}){
+					my $pltfrm=xCAT_plugin::anaconda::getplatform($ref->{'osvers'});
+				my $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$installroot/custom/install/$pltfrm", 
+					$ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
+				if (! $pkglistfile) { $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$::XCATROOT/share/xcat/install/$pltfrm", 
+					$ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
+					 }	   
+			# if we managed to find it, put it in the hash:
+			if($pkglistfile){
+				$img_hash{$imagename}->{pkglist}=$pkglistfile;
+			}	   
+			}
 		} else {
 		    $callback->(
 			{error     => ["The os image $imagename does not exists on the osimage table for $node"],
@@ -461,6 +478,7 @@ sub mkinstall
 	    if (!$pkgdir) {
 		$pkgdir="$installroot/$os/$arch";
 	    }
+		$pkglistfile=$ph->{pkglist};
 	}
 	else {
 	    $os = $ent->{os};
@@ -472,6 +490,9 @@ sub mkinstall
 	    
 	    $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/$platform", $profile, $os, $arch, $genos);
 	    if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/$platform", $profile, $os, $arch, $genos); }
+
+		$pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$installroot/custom/install/$platform", $profile, $os, $arch, $genos);
+		if (! $pkglistfile) { $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$::XCATROOT/share/xcat/install/$platform", $profile, $os, $arch, $genos); }
 
 	    $pkgdir="$installroot/$os/$arch";
 	}
@@ -538,7 +559,10 @@ sub mkinstall
               xCAT::Template->subvars(
                     $tmplfile,
                     "$installroot/autoinst/" . $node,
-                    $node
+                    $node,
+			$pkglistfile,
+			"",
+			$platform
                     );
         }
 

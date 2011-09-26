@@ -1,10 +1,11 @@
 
 ### Localization
-d-i debian-installer/locale string en_GB
+d-i debian-installer/locale string en_US
+d-i localechooser/supported-locales multiselect en_US.UTF-8
 
 # Keyboard Selection
 d-i console-setup/ask_detect boolean false
-d-i console-setup/layoutcode string uk
+d-i console-setup/layoutcode string en
 
 ### Network Configuration
 d-i netcfg/choose_interface select #TABLE:noderes:$NODE:primarynic#
@@ -26,7 +27,7 @@ d-i mirror/http/proxy string
 #d-i mirror/suite string testing
 # Suite to use for loading installer components (optional).
 #d-i mirror/udeb/suite string testing
-#d-i mirror/suite string feisty
+d-i mirror/suite string maverick
  
 
 ### Partitioning
@@ -97,7 +98,7 @@ tasksel tasksel/first multiselect standard
 # gawk required for the xCAT scripts to work
 # Otherwise it installs mawk, which doesn't work
 
-d-i pkgsel/include string openssh-server ntp gawk
+d-i pkgsel/include string openssh-server ntp gawk #INCLUDE_DEFAULT_PKGLIST_PRESEED#
 
 d-i debian-installer/allow_unauthenticated string true
 d-i pkgsel/update-policy select none
@@ -123,5 +124,9 @@ d-i preseed/early_command string wget http://#TABLE:noderes:$NODE:nfsserver#/ins
 d-i preseed/late_command string wget http://#TABLE:noderes:$NODE:nfsserver#/install/autoinst/#TABLE:nodelist:THISNODE:node#.post; \
      chmod u+x #TABLE:nodelist:THISNODE:node#.post; \
      cp ./#TABLE:nodelist:THISNODE:node#.post /target/root/post.script; \
+     mount -o bind /proc /target/proc -t proc; \
+     mount -o bind /dev /target/dev; \
+     mount -o bind /dev/pts /target/dev/pts -t devpts; \
+     mount -o bind /sys /target/sys; \
      chroot /target /root/post.script
 

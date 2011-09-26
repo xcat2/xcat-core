@@ -30,6 +30,7 @@ sub subvars {
   $node = shift;
   my $pkglistfile=shift;
   my $media_dir = shift;
+  my $platform=shift;
 
   my $outh;
   my $inh;
@@ -78,6 +79,36 @@ sub subvars {
       $inc =~ s/#INCLUDE_DEFAULT_PKGLIST_S#/#INCLUDE_PKGLIST:$pkglistfile#/g;
       $inc =~ s/#INCLUDE_DEFAULT_PTRNLIST_S#/#INCLUDE_PTRNLIST:$pkglistfile#/g;
       $inc =~ s/#INCLUDE_DEFAULT_RMPKGLIST_S#/#INCLUDE_RMPKGLIST:$pkglistfile#/g;
+  }
+
+  if (("ubuntu" eq $platform) || ("debian" eq $platform)) {
+    # since debian/ubuntu uses a preseed file instead of a kickstart file, pkglist
+    # must be included via simple string replacement instead of using includefile()
+
+    # the first line of $pkglistfile is the space-delimited package list
+    # the additional lines are considered preseed directives and included as is
+
+    if ($pkglistfile) {
+      # handle empty and non-empty $pkglistfile's
+
+      if (open PKGLISTFILE, "<$pkglistfile") {
+        my $pkglist = <PKGLISTFILE>;
+        chomp $pkglist;
+
+        # substitute space-delimited package list
+        $inc =~ s/#INCLUDE_DEFAULT_PKGLIST_PRESEED#/$pkglist/g;
+
+        # append preseed directive lines
+        while (<PKGLISTFILE>) {
+          $inc .= $_;
+        }
+
+        close PKGLISTFILE;
+      }
+    } else {
+      # handle no $pkglistfile
+      $inc =~ s/#INCLUDE_DEFAULT_PKGLIST_PRESEED#//g;
+    }
   }
 
   #do *all* includes, recursive and all
