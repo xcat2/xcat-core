@@ -21,30 +21,44 @@
 #   
 #=cut
 #-------------------------------------------------------------------------------
+
+# pmatch determines if 1st argument string is matched by 2nd argument pattern
+
+pmatch ()
+{
+  case $1 in
+    $2) return 0;;  # zero return code means string matched by pattern
+  esac
+
+  return 1          # non-zero return code means string not matched by pattern
+}
+
 debug=0
 
-if [[ $OSTYPE != linux* ]]; then
+OS_TYPE=`uname -s`
+
+if [ "$OS_TYPE" != "Linux" ]; then
     #not supported on AIX
     echo "ospkgs script only runs on Linux."
     exit 0
 fi
 
 # This command only runs by updatenode command
-if [[ $UPDATENODE -ne 1 ]]; then
+if [ "$UPDATENODE" -ne 1 ]; then
     echo "  Did not install any extra rpms."
     exit 0
 fi 
 
-if [[ -z "$OSPKGS" ]]; then 
+if [ -z "$OSPKGS" ]; then 
   echo "$0: no extra rpms to install"
   exit 0
 fi
 
-if [[ -z "$NFSSERVER" ]]; then
+if [ -z "$NFSSERVER" ]; then
     NFSSERVER=$MASTER
 fi
 
-if [[ -z "$INSTALLDIR" ]]; then
+if [ -z "$INSTALLDIR" ]; then
     INSTALLDIR="/install"
 fi
 
@@ -56,19 +70,23 @@ if [ $? -eq 0 ]; then
     mounted=1 
 fi
 
-if [[ -z "$OSPKGDIR" ]]; then
+if [ -z "$OSPKGDIR" ]; then
     OSPKGDIR="$NFSSERVER/$OSVER/$ARCH"
-    if [[ $OSVER = sles* ]]; then
+    if ( pmatch "$OSVER" "sles*" ); then
 	    OSPKGDIR="$OSPKGDIR/1"
-    elif [[ $OSVER = rhel* ]]; then
+    elif ( pmatch "$OSVER" "rhel*" ); then
         OSPKGDIR="$OSPKGDIR/Server"
-    elif [[ $OSVER = SL* ]]; then
+    elif ( pmatch "$OSVER" "SL*" ); then
         OSPKGDIR="$OSPKGDIR/SL"
     fi
 fi
 
 if [ $mounted -eq 0 ]; then
-    OSPKGDIR=${OSPKGDIR/#$INSTALLDIR/$NFSSERVER/}
+    OSPKGDIR_NO_PREFIX=${OSPKGDIR#$INSTALLDIR}
+
+    if [ "$OSPKGDIR" != "$OSPKGDIR_NO_PREFIX" ]; then
+        OSPKGDIR="$NFSSERVER/$OSPKGDIR_NO_PREFIX"
+    fi
 fi
 
 logger -t xcat "NFSSERVER=$NFSSERVER"
@@ -86,7 +104,7 @@ groups=''   #groups
 pkgs_d=''   #packages to remove
 
 OIFS=$IFS
-IFS=$'\n'
+IFS=$(printf '\n')
 for x in `echo "$OSPKGS" | tr "," "\n"`
 do
     #remove leading and trailing spaces
@@ -122,7 +140,7 @@ if [ $debug -ne 0 ]; then
     echo "remove pkgs=$pkgs_d"
 fi
 
-if [[ $OSVER = sles10* ]]; then
+if ( pmatch "$OSVER" "sles10*" ); then
     #check if rug is installed
     result=`rpm -q rug`
     if [ $? -ne 0 ]; then 
@@ -151,12 +169,14 @@ if [[ $OSVER = sles10* ]]; then
     result=`rug sa $path $OSVER`
     if [ $? -ne 0 ]; then 
 	logger -t xcat "ospkgs: rug sa $path $OSVER\n    $result"
-	echo "ospkgs: rug sa $path $OSVER\n    $result"
+	echo "ospkgs: rug sa $path $OSVER"
+	echo "    $result"
     fi
     result=`rug sub $OSVER`
     if [ $? -ne 0 ]; then 
 	logger -t xcat "ospkgs: rug sub $OSVER\n    $result"
-	echo "ospkgs: rug sub $OSVER\n    $result"
+	echo "ospkgs: rug sub $OSVER"
+	echo "    $result"
     fi
     result=`rug refresh 2>&1` 
     if [ $debug -ne 0 ]; then
@@ -167,7 +187,8 @@ if [[ $OSVER = sles10* ]]; then
     result=`rug update -y --agree-to-third-party-licences`
     if [ $? -ne 0 ]; then 
 	logger -t xcat "rug update -y --agree-to-third-party-licences\n    $result"
-        echo "ospkgs: rug update -y --agree-to-third-party-licences\n    $result"
+        echo "ospkgs: rug update -y --agree-to-third-party-licences"
+		echo "    $result"
     else
 	if [ $debug -ne 0 ]; then
 	    echo "rug update -y --agree-to-third-party-licences"
@@ -223,7 +244,7 @@ if [[ $OSVER = sles10* ]]; then
 	    fi
 	fi
     fi
-elif [[ $OSVER = sles11* ]]; then
+elif ( pmatch "$OSVER" "sles11*" ); then
     #check if zypper is installed
     result=`rpm -q zypper`
     if [ $? -ne 0 ]; then 
@@ -249,7 +270,8 @@ elif [[ $OSVER = sles11* ]]; then
     result=`zypper ar $path $OSVER`
     if [ $? -ne 0 ]; then 
 	logger -t xcat "ospkgs: zypper ar $path $OSVER\n    $result"
-	echo "ospkgs: zypper ar $path $OSVER\n    $result"
+	echo "ospkgs: zypper ar $path $OSVER"
+	echo "    $result"
     fi
     
     result=`zypper --non-interactive refresh 2>&1` 
@@ -262,7 +284,8 @@ elif [[ $OSVER = sles11* ]]; then
     result=`zypper --non-interactive update --auto-agree-with-licenses`
     if [ $? -ne 0 ]; then 
 	logger -t xcat "ospkgs: zypper --non-interactive update --auto-agree-with-licenses\n    $result"
-	echo "ospkgs: zypper --non-interactive update --auto-agree-with-licenses\n    $result"
+	echo "ospkgs: zypper --non-interactive update --auto-agree-with-licenses"
+	echo "    $result"
     else
 	if [ $debug -ne 0 ]; then
 	    echo "ospkgs: zypper --non-interactive update --auto-agree-with-licenses"
@@ -317,6 +340,52 @@ elif [[ $OSVER = sles11* ]]; then
 	    fi
 	fi
     fi
+elif ( pmatch "$OSVER" "ubuntu*" ); then
+	# verify dpkg is installed
+	result=`which dpkg`
+	if [ $? -ne 0 ]; then
+		echo "Please install dpkg on $NODE."
+		exit 1
+	fi
+
+	# verify apt is installed
+	result=`dpkg -l apt`
+	if [ $? -ne 0 ]; then
+		echo "Please install apt on $NODE."
+		exit 1
+	fi
+
+	# No need to setup a /etc/apt/sources.list.d/ file because installation
+	# should already lead to /etc/apt/sources.list including the xcat install
+	# media repository.
+
+	# upgrade existing packages
+	command="apt-get -y upgrade"
+	echo "=== $command"
+	$command
+
+	# install groups (NOTE: It's not clear rpm-like "groups" are supported by dpkg/apt,
+	# but keeping this here doesn't really hurt. Anything that looks like a group will
+	# be installed as though it were a package.)
+	if [ -n "$groups" ]; then
+		command="apt-get -q -y --force-yes install $groups"
+		echo "=== $command"
+		$command
+	fi
+
+	# install packages
+	if [ -n "$pkgs" ]; then
+		command="apt-get -q -y --force-yes install $pkgs"
+		echo "=== $command"
+		$command
+	fi
+
+	# remove packages
+	if [ -n "$pkgs_d" ]; then
+		command="apt-get -y remove $pkgs_d"
+		echo "=== $command"
+		$command
+	fi
 else 
     #check if yum is installed
     result=`rpm -q yum`
@@ -354,7 +423,8 @@ else
     result=`yum -y upgrade 2>&1`
     if [ $? -ne 0 ]; then 
 	logger -t xcat "ospkgs: yum -y upgrade\n    $result"
-	echo "ospkgs: yum -y upgrade\n    $result"
+	echo "ospkgs: yum -y upgrade"
+	echo "    $result"
     else
 	if [ $debug -ne 0 ]; then
 	    echo "ospkgs: yum -y upgrade"
