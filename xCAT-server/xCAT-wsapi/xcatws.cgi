@@ -481,16 +481,13 @@ sub monitorsHandler{
   }
   elsif(isPost()){
     $request->{command} = 'monadd';
-    push @args, $q->param('name');
     if($q->param('nodeStatMon')){
       push @args, '-n';
     }
     #get the plug-in specific settings array
-    for ($q->param){
-      if($_ ne /name/ && $_ ne /nodeStatMon/){
-        push @args, '-s';
-        push @args, "$_=".$q->param($_);
-      }
+    foreach ($q->param('pluginSetting')){
+      push @args, '-s';
+      push @args, $_;
     }
   }
   elsif(isDelete()){
@@ -654,6 +651,15 @@ sub nodesHandler{
     elsif($subResource =~ "location"){
       $request->{command} = 'nodels';
       push @args, 'nodepos';
+    }
+    elsif($subResource =~ "vitals"){
+      $request->{command} = 'rvitals';
+      if(defined $q->param('field')){
+        push @args, $q->param('field');
+      }
+      else{
+        push @args, 'all';
+      }
     }
     else{
       $request->{command} = 'nodels';
