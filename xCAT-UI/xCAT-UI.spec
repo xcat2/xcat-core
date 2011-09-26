@@ -84,7 +84,7 @@ set -x
 	# Copy xCAT plugins to /opt/xcat/lib/perl/xCAT_plugin
 	cp ui/xcat/plugins/web.pm $RPM_BUILD_ROOT%{prefix}/lib/perl/xCAT_plugin/
 	cp ui/xcat/plugins/webportal.pm $RPM_BUILD_ROOT%{prefix}/lib/perl/xCAT_plugin/
-	/bin/ln -s /opt/xcat/bin/xcatclientnnr /opt/xcat/bin/webportal
+	/bin/ln -s bin/xcatclientnnr $RPM_BUILD_ROOT%{prefix}/bin/webportal
 	/etc/init.d/xcatd restart
 %else   # AIX
 	# TBD
