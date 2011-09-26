@@ -235,17 +235,17 @@ unless ($onlyinitrd) {
        if(-e "$rootimg_dir/etc/zypp/repos.d/$osver.repo") {
 	   system("rm -rf $rootimg_dir/etc/zypp/repos.d/$osver.repo");
        }
-       system("zypper -R $rootimg_dir --gpg-auto-import-keys  ar file:$srcdir $osver");
+       system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks ar file:$srcdir $osver");
        if(-e "$rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo") {
            system("rm -rf $rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo");
        }
        my $srcdir_sdk  = "$installroot/$osver/$arch/sdk1";
        if ( -e "$srcdir_sdk") {
-           system("zypper -R $rootimg_dir  --gpg-auto-import-keys ar file:$srcdir_sdk ${osver}sdk");
+           system("zypper -R $rootimg_dir  --non-interactive --no-gpg-checks ar file:$srcdir_sdk ${osver}sdk");
        }
 
    }else {
-	   system("zypper -R $rootimg_dir --non-interactive sa file:$srcdir");
+	   system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks sa file:$srcdir");
    }
 
    # Add the rep for kernel packages
@@ -258,15 +258,15 @@ unless ($onlyinitrd) {
          if (-e "$rootimg_dir/etc/zypp/repos.d/$kernelver.repo") {
             system("rm -rf $rootimg_dir/etc/zypp/repos.d/$kernelver.repo");
          }
-         system("zypper -R $rootimg_dir --gpg-auto-import-keys ar file:$kerneldir $kernelver");
+         system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks ar file:$kerneldir $kernelver");
       } else {
-         system("zypper -R $rootimg_dir --non-interactive sa file:$kerneldir");
+         system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks sa file:$kerneldir");
       }
    }
    #remove the old repository for extra packages
-   my $result=`zypper -R $rootimg_dir --non-interactive sl |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
+   my $result=`zypper -R $rootimg_dir --non-interactive --no-gpg-checks sl |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
    if ($result =~ /\S/) {
-       system("zypper -R $rootimg_dir --non-interactive sd $result");
+       system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks sd $result");
    }
 
    #add the new repository for extra packages
@@ -284,15 +284,15 @@ unless ($onlyinitrd) {
        my $whole_path="$srcdir_otherpkgs/$_";
        if (-r "$srcdir_otherpkgs/$_/repodata/repomd.xml") {
 	   if($osver_host == 11) { 
-	       system("zypper -R $rootimg_dir --gpg-auto-import-keys ar file:$srcdir_otherpkgs/$_  otherpkg$index");
+	       system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks ar file:$srcdir_otherpkgs/$_  otherpkg$index");
 	   }else {
-	       system("zypper -R $rootimg_dir --non-interactive sa file:$srcdir_otherpkgs/$_");
+	       system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks sa file:$srcdir_otherpkgs/$_");
 	   }
        } else {
 	   if($osver_host == 11) { 
-	       system("zypper -R $rootimg_dir --gpg-auto-import-keys ar -t Plaindir file:$srcdir_otherpkgs/$_  otherpkg$index");
+	       system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks  ar -t Plaindir file:$srcdir_otherpkgs/$_  otherpkg$index");
 	   }else {
-	       system("zypper -R $rootimg_dir --non-interactive sa -t Plaindir file:$srcdir_otherpkgs/$_");
+	       system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks sa -t Plaindir file:$srcdir_otherpkgs/$_");
 	   }
        }
        $index++;
@@ -318,21 +318,21 @@ unless ($onlyinitrd) {
        chomp;
        next if /^\s*#/;
        my ($repotype,$repourl,$repoalias) = split m/\|/;
-       system("zypper -R $rootimg_dir --gpg-auto-import-keys ar $repourl $repoalias");
+       system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks ar $repourl $repoalias");
      }
    }
 
    # Refresh the zypper cache in case there is still old data out there
-   system("zypper -R $rootimg_dir  --gpg-auto-import-keys refresh");
+   system("zypper -R $rootimg_dir  --non-interactive --no-gpg-checks refresh");
 
    #my $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir --disablerepo=* ";
    #$yumcmd .= "install ";
    #mkpath("$rootimg_dir/var/lib/yum");
    my $yumcmd;
    if($osver =~ /sles11/ && $osver_host == 11) {
-       $yumcmd = "zypper -R $rootimg_dir --non-interactive install -l "; #add -l for SLES11
+       $yumcmd = "zypper -R $rootimg_dir --non-interactive --no-gpg-checks install -l "; #add -l for SLES11
    }else {
-        $yumcmd = "zypper -R $rootimg_dir --non-interactive install ";
+        $yumcmd = "zypper -R $rootimg_dir --non-interactive --no-gpg-checks install ";
    }
 
    #install packages from pkglist file
@@ -424,7 +424,7 @@ unless ($onlyinitrd) {
 
    foreach $pass (sort (keys(%extra_hash))) {
        #remove the packages that are specified in the otherpkgs.list files with leading '-'
-       my $yumcmd_remove= "zypper -R $rootimg_dir --non-interactive remove "; 
+       my $yumcmd_remove= "zypper -R $rootimg_dir --non-interactive  --no-gpg-checks remove "; 
        if (exists ($extra_hash{$pass}{'PRE_REMOVE'})) {
            my $pa=$extra_hash{$pass}{'PRE_REMOVE'};
            my $rm_packges= join(' ', @$pa);
@@ -457,7 +457,7 @@ unless ($onlyinitrd) {
 
    # run zypper update to update any installed rpms
    # needed when running genimage again after updating software in repositories
-   my $yumcmd_update = "zypper -R $rootimg_dir --non-interactive update  "; 
+   my $yumcmd_update = "zypper -R $rootimg_dir --non-interactive --no-gpg-checks update  "; 
    $rc = system("$yumcmd_update");
    # ignore any return code
 
