@@ -41,7 +41,7 @@ function initServicePage() {
 	}
 
 	// Load jQuery stylesheets
-	includeCss("css/query.dataTables.css");
+	includeCss("css/jquery.dataTables.css");
 	includeCss("css/superfish.css");
 	includeCss("css/jstree.css");
 	includeCss("css/jquery.jqplot.css");
@@ -57,9 +57,13 @@ function initServicePage() {
 	includeJs("js/jquery/jquery.jqplot.min.js");
     includeJs("js/jquery/jqplot.dateAxisRenderer.min.js");
 	    
+	// Enable settings link 	
+	$('#xcat_settings').click(function() {
+		openSettings();
+	});
+	
 	// Show service page
 	$("#content").children().remove();
-	includeJs("js/service/service.js");
 	includeJs("js/service/utils.js");
 	loadServicePage();
 }

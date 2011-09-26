@@ -34,7 +34,7 @@ echo
 if (isset($_SESSION['srv_username'])){
 	echo 
 		"<div>
-			<span style='padding: 0 6px; color: white; font-weight: bold;'>{$_SESSION['srv_username']}</span> | <a id='xcat_settings'>Settings</a> | <a href='lib/logout.php'>Log out</a>
+			<span style='padding: 0 6px; color: white; font-weight: bold;'>{$_SESSION['srv_username']}</span> | <a id='xcat_settings'>Settings</a> | <a href='lib/srv_logout.php'>Log out</a>
 		</div>";
 }
 

@@ -83,6 +83,7 @@
 	color: #0000FF;
 	text-decoration: none;
 	cursor: pointer;
+	font-weight: normal;
 }
 
 #header div a:hover {

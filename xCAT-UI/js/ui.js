@@ -483,7 +483,7 @@ function initPage() {
 	}
 
 	// Load jQuery stylesheets
-	includeCss("css/query.dataTables.css");
+	includeCss("css/jquery.dataTables.css");
 	includeCss("css/superfish.css");
 	includeCss("css/jstree.css");
 	includeCss("css/jquery.jqplot.css");
@@ -755,7 +755,7 @@ function openSettings() {
         	"Ok": function(){
         		// Save selected theme
         		var theme = $(this).find('input[name="theme"]:checked').val();
-        		$.cookie('xcat_theme', theme, { expires: 30 });
+        		$.cookie('xcat_theme', theme);	// Do not expire cookie, keep it as long as possible
         		
         		// Show instructions to apply theme
         		$(this).empty();
