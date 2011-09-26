@@ -843,7 +843,6 @@ sub discover_timezone_ubuntu
 	my @zones = split /\n/, $zone_result;
 
 	$zones[0] =~ s/$zoneinfo\///;
-	$zones[0] =~ s/\//_/g;
 
 	return $zones[0];
 }
