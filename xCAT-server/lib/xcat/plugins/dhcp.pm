@@ -2055,6 +2055,8 @@ sub writeout
 		}
 	}
     close($targ);
+    $dhcpconf=(); #dispose of the file contents in memory, no longer needed
+    $aixcfg=();
 
 
     if (@dhcp6conf) {
@@ -2071,6 +2073,7 @@ sub writeout
         print $targ $dhcp6conf[$idx];
     }
     close($targ);
+    @dhcp6conf=();
     }
 }
 
