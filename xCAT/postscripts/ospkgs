@@ -44,7 +44,7 @@ if [ "$OS_TYPE" != "Linux" ]; then
 fi
 
 # This command only runs by updatenode command
-if [ "$UPDATENODE" -ne 1 ]; then
+if [ -z "$UPDATENODE" ] || [ $UPDATENODE -ne 1 ]; then
     echo "  Did not install any extra rpms."
     exit 0
 fi 
