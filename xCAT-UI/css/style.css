@@ -115,11 +115,6 @@ body {
 	overflow: auto;
 }
 
-#content .ui-widget-header {
-	border-color: transparent transparent #6eac2c;
-	border-width: 1px 1px 4px;
-}
-
 /*--------------- Groups ---------------*/
 #groups {
 	width: 150px;

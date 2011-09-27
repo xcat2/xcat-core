@@ -235,7 +235,7 @@ function loadNodesTable(data) {
 	// Hash of node attributes
 	var attrs = new Object();
 	// Node attributes
-	var headers = new Object();	
+	var headers = new Object();
 	var node, args;
 	// Create hash of node attributes
 	for (var i in data.rsp) {
@@ -378,7 +378,7 @@ function loadNodesTable(data) {
 	});
 	
 	// Set datatable header class to add color
-	$('.datatable thead').attr('class', 'ui-widget-header');
+	// $('.datatable thead').attr('class', 'ui-widget-header');
 	
 	// Do not sort ping, power, and comment column
 	var cols = $('#' + nodesDTId + ' thead tr th').click(function() {		
@@ -462,16 +462,22 @@ function loadNodesTable(data) {
 		}
 	});
 	
+	// Create action bar
+	var actionBar = $('<div class="actionBar"></div>');
+	
 	// Prepend menu to datatable
 	var actionsLnk = '<a>Actions</a>';
 	var actionMenu = createMenu([deleteLnk, powerOnLnk, powerOffLnk, monitorOnLnk, monitorOffLnk, unlockLnk]);
 	var menu = createMenu([[actionsLnk, actionMenu]]);
 	menu.superfish();
-	$('#' + nodesDTId + '_filter').css('display', 'inline-block');
-	$('#' + nodesDTId + '_wrapper').prepend(menu);
-	
-	$('.sf-menu li:hover, .sf-menu li.sfHover').attr('class', 'ui-widget-header');
-	
+	actionBar.append(menu);
+		
+	// Create a division to hold actions menu
+	var menuDiv = $('<div id="' + nodesDTId + '_menuDiv" class="menuDiv"></div>');
+	$('#' + nodesDTId + '_wrapper').prepend(menuDiv);
+	menuDiv.append(actionBar);	
+	$('#' + nodesDTId + '_filter').appendTo(menuDiv);
+		
 	// Get power and monitor status
 	var nodes = getNodesShown(nodesDTId);
 	refreshPowerStatus(nodes);
@@ -1167,9 +1173,10 @@ function loadzVMs() {
 			'max-width': '200px',
 			'margin': '5px auto',
 			'padding': '5px',
-			'display': 'inline-block', 
+			'display': 'block', 
 			'vertical-align': 'middle',
-			'cursor': 'pointer'
+			'cursor': 'pointer',
+			'white-space': 'normal'
 		}).click(function(){
 			$(this).children('input:radio').attr('checked', 'checked');
 			$(this).parents('td').find('div').attr('class', 'ui-state-default');
@@ -1179,7 +1186,8 @@ function loadzVMs() {
 		zvmBlock.append(radio, $('<span><b>Name: </b>' + zvm + '</span>'), $('<span><b>zHCP: </b>' + hcp + '</span>'));
 		zvmBlock.children('span').css({
 			'display': 'block',
-			'margin': '5px'
+			'margin': '5px',
+			'text-align': 'left'
 		});
 		zvmCol.append(zvmBlock);
 	}
@@ -1207,9 +1215,10 @@ function loadGroups() {
 			'max-width': '200px',
 			'margin': '5px auto',
 			'padding': '5px',
-			'display': 'inline-block', 
+			'display': 'block', 
 			'vertical-align': 'middle',
-			'cursor': 'pointer'
+			'cursor': 'pointer',
+			'white-space': 'normal'
 		}).click(function(){
 			$(this).children('input:radio').attr('checked', 'checked');
 			$(this).parents('td').find('div').attr('class', 'ui-state-default');
@@ -1219,7 +1228,8 @@ function loadGroups() {
 		groupBlock.append(radio, $('<span><b>Name: </b>' + name + '</span>'), $('<span><b>Description: </b>' + desc + '</span>'));
 		groupBlock.children('span').css({
 			'display': 'block',
-			'margin': '5px'
+			'margin': '5px',
+			'text-align': 'left'
 		});
 		groupCol.append(groupBlock);
 	}
@@ -1245,9 +1255,10 @@ function loadOSImages() {
 			'max-width': '200px',
 			'margin': '5px auto',
 			'padding': '5px',
-			'display': 'inline-block', 
+			'display': 'block', 
 			'vertical-align': 'middle',
-			'cursor': 'pointer'
+			'cursor': 'pointer',
+			'white-space': 'normal'
 		}).click(function(){
 			$(this).children('input:radio').attr('checked', 'checked');
 			$(this).parents('td').find('div').attr('class', 'ui-state-default');
@@ -1257,7 +1268,8 @@ function loadOSImages() {
 		imgBlock.append(radio, $('<span><b>Name: </b>' + name + '</span>'), $('<span><b>Description: </b>' + desc + '</span>'));
 		imgBlock.children('span').css({
 			'display': 'block',
-			'margin': '5px'
+			'margin': '5px',
+			'text-align': 'left'
 		});
 		imgCol.append(imgBlock);
 	}
