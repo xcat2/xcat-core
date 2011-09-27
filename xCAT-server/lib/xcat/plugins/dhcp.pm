@@ -883,6 +883,7 @@ sub process_request
     }
 
     @dhcpconf = ();
+    @dhcp6conf = ();
     
    my $dhcplockfd;
    open($dhcplockfd,">","/tmp/xcat/dhcplock");
