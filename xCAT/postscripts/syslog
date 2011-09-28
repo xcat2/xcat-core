@@ -204,6 +204,16 @@ else
           echo "*.debug   /var/log/messages  rotate 1024K files 5" >> $conf_file
       fi
     fi
+    
+    #Ubuntu doesn't have sysconfig 
+    # so configuring the MN to receive UDP connections here.
+    if ( pmatch $OSVER "ubuntu*" ); then
+      egrep \('^\$UDPServerRun 514'\|'^\$ModLoad imudp'\) $conf_file > /dev/null 2>&1;
+      if [ $? -eq 1 ]; then
+        echo "\$ModLoad imudp" >> $conf_file;
+        echo "\$UDPServerRun 514" >> $conf_file;
+      fi
+    fi 
   else 
     #now make the syslogd fowarding the messages to the the master
     if [ $ng -eq 1 ]; then
@@ -228,7 +238,12 @@ else
       if [ $isLinux -eq 0 ]; then
         echo "*.debug @$master" >> $conf_file
       else
-        echo "*.* @$master" >> $conf_file
+        if ( pmatch $OSVER "ubuntu*" ); then
+          echo "\$ModLoad imuxsock" >> $conf_file
+          echo "*.* @$master" >> $conf_file
+        else
+          echo "*.* @$master" >> $conf_file
+        fi 
       fi
     fi
   fi
