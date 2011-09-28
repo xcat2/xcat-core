@@ -816,6 +816,27 @@ function openSettings() {
 }
 
 /**
+ * Adjust datatable column size
+ * 
+ * @param tableId
+ * 			Table ID
+ * @return Nothing
+ */
+function adjustColumnSize(tableId) {
+	var cols = $('#' + tableId).find('tbody tr:eq(0) td');
+	
+	// If the column size is zero, wait until table is initialized
+	if (!cols.eq(1).outerWidth()) {
+		adjustColumnSize(tableId);
+	} else {
+		for (var i in cols) {
+			var headers = $('#' + tableId + '_wrapper .dataTables_scrollHead .datatable thead tr th').eq(i);
+			headers.css('width', cols.eq(i).outerWidth());
+		}		
+	}	
+}
+
+/**
  * Set menu theme
  * 
  * @param menu

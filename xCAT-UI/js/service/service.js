@@ -550,7 +550,7 @@ function loadNodePing(data) {
 	// Hide status loader
 	var pingCol = $('#' + nodesDTId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(2)');
 	pingCol.find('img').hide();
-	datatable.fnDraw();
+	adjustColumnSize(nodesDTId);
 }
 
 /**
@@ -610,7 +610,7 @@ function loadPowerStatus(data) {
 	// Hide power loader
 	var powerCol = $('#' + nodesDTId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
 	powerCol.find('img').hide();
-	datatable.fnDraw();
+	adjustColumnSize(nodesDTId);
 }
 
 /**
@@ -670,7 +670,7 @@ function loadGangliaStatus(data) {
 	// Hide Ganglia loader
 	var gangliaCol = $('#' + nodesDTId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(4)');
 	gangliaCol.find('img').hide();
-	datatable.fnDraw();
+	adjustColumnSize(nodesDTId);
 }
 
 /**
