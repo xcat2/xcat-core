@@ -56,7 +56,8 @@ sub process_request {
 	    'gangliashow'   => \&web_gangliaShow,
 	    'gangliacurrent' => \&web_gangliaLatest,
 	    'rinstall'	    => \&web_rinstall,
-        'addnode'      => \&web_addnode
+        'addnode'      => \&web_addnode,
+		'graph'		    => \&web_graphinfo
 	);
 
 	#check whether the request is authorized or not
@@ -1947,5 +1948,180 @@ sub web_addnode{
 
 	`cat /tmp/webrscan.tmp | chdef -z`;
 	unlink('/tmp/webrscan.tmp');
+}
+
+sub web_graphinfo{
+	my ( $request, $callback, $sub_req ) = @_;
+	my $nodetypeTab;
+	my @nodes;
+	my @parray;
+	my @bladearray;
+	my @xarray;
+	my %phash;
+	my %bladehash;
+	my %xhash;
+	my @unsupportarray;
+	my @missinfoarray;
+	my $result;
+	my $pretstr = '';
+	my $bladeretstr = '';
+	my $xretstr = '';
+	my $unsupretstr = '';
+	my $missretstr = '';
+
+	@nodes = xCAT::DBobjUtils->getObjectsOfType('node');
+
+	$nodetypeTab = xCAT::Table->new('nodetype');
+    unless($nodetypeTab){
+        return;
+    }
+
+	#get all nodes type to seperate nodes into different group
+	$result = $nodetypeTab->getNodesAttribs(\@nodes,['nodetype']);
+	while(my ($key, $value) = each(%$result)){
+		my $temptype = $value->[0]->{'nodetype'};
+		if ($temptype =~ /(ppc|lpar|cec|frame)/i){
+			push(@parray, $key);
+		}
+		elsif ($temptype =~ /blade/i){
+			push(@bladearray, $key);
+		}
+		elsif ($temptype =~ /osi/i){
+			push(@xarray, $key);
+		}
+		else{
+			push(@unsupportarray, $key);
+		}
+	}
+	$nodetypeTab->close();
+
+	#get all infomations for system p node
+	if (scalar(@parray) > 0){
+		my $ppctab = xCAT::Table->new('ppc');
+		#nodetype, parent
+		$result = $ppctab->getNodesAttribs(\@parray, ['parent']);
+		foreach(@parray){
+			my $value = $result->{$_};
+			if ($value->[0]){
+				$phash{$_} = xCAT::DBobjUtils->getnodetype($_) . ':' . $value->[0]->{'parent'} . ':';
+			}
+			else{
+				push(@missinfoarray, $_);
+			}
+		}
+		$ppctab->close();
+
+		undef @parray;
+		@parray = keys %phash;
+	}
+	if (scalar(@parray) > 0){
+		#mtm
+		my $vpdtab = xCAT::Table->new('vpd');
+		$result = $vpdtab->getNodesAttribs(\@parray, ['mtm']);
+		foreach(@parray){
+			my $value = $result->{$_};
+			$phash{$_} = $phash{$_} . $value->[0]->{'mtm'} . ':';
+		}
+		$vpdtab->close();
+		
+		#status
+		my $nodelisttab = xCAT::Table->new('nodelist');
+		$result = $nodelisttab->getNodesAttribs(\@parray, ['status']);
+		foreach(@parray){
+			my $value = $result->{$_};
+			$phash{$_} = $phash{$_} . $value->[0]->{'status'};
+		}
+		$nodelisttab->close();
+
+		while(my ($key, $value) = each(%phash)){
+			$pretstr = $pretstr . $key . ':' . $value . ';';
+		}
+	}
+
+	#get all information for blade node
+	if (scalar(@bladearray) > 0){
+		#mpa, id
+		my $mptab = xCAT::Table->new('mp');
+		$result = $mptab->getNodesAttribs(\@bladearray, ['mpa', 'id']);
+		foreach(@bladearray){
+			my $value = $result->{$_};
+			if ($value->[0]->{'mpa'}){
+				$bladehash{$_} = 'blade:' . $value->[0]->{'mpa'} . ':' . $value->[0]->{'id'} . ':';
+			}
+			else{
+				push(@missinfoarray, $_);
+			}
+		}
+		$mptab->close();
+
+		undef @bladearray;
+		@bladearray = keys %bladehash;
+	}
+	if (scalar(@bladearray) > 0){
+		#status
+		my $nodelisttab = xCAT::Table->new('nodelist');
+		$result = $nodelisttab->getNodesAttribs(\@bladearray, ['status']);
+		foreach(@bladearray){
+			my $value = $result->{$_};
+			$bladehash{$_} = $bladehash{$_} . $value->[0]->{'status'};
+		}
+		$nodelisttab->close();
+		while(my ($key, $value) = each(%bladehash)){
+			$bladeretstr = $bladeretstr . $key . ':' . $value . ';';
+		}
+	}
+
+	#get all information for system x node
+	if (scalar(@xarray) > 0){
+		#rack, unit
+		my $nodepostab = xCAT::Table->new('nodepos');
+		$result = $nodepostab->getNodesAttribs(\@xarray, ['rack', 'u']);
+		foreach(@xarray){
+			my $value = $result->{$_};
+			if ($value->[0]->{'rack'}){
+				$xhash{$_} = 'systemx:' . $value->[0]->{'rack'} . ':' . $value->[0]->{'u'} . ':';
+			}
+			else{
+				push(@missinfoarray, $_);
+			}
+		}
+		$nodepostab->close();
+
+		undef @xarray;
+		@xarray = keys %xhash;
+	}
+	if (scalar(@xarray) > 0){
+		#mtm
+		my $vpdtab = xCAT::Table->new('vpd');
+		$result = $vpdtab->getNodesAttribs(\@xarray, ['mtm']);
+		foreach(@xarray){
+			my $value = $result->{$_};
+			$xhash{$_} = $xhash{$_} . $value->[0]->{'mtm'} . ':';
+		}
+		$vpdtab->close();
+
+		#status
+		my $nodelisttab = xCAT::Table->new('nodelist');
+		$result = $nodelisttab->getNodesAttribs(\@xarray, ['status']);
+		foreach(@xarray){
+			my $value = $result->{$_};
+			$xhash{$_} = $xhash{$_} . $value->[0]->{'status'};
+		}
+		while(my ($key, $value) = each(%xhash)){
+			$xretstr = $xretstr . $key . ':' . $value . ';';
+		}
+	}
+
+	foreach(@missinfoarray){
+		$missretstr = $missretstr . $_ . ':miss;'; 
+	}
+
+	#combine all information into a string
+	my $retstr = $pretstr . $bladeretstr . $xretstr . $missretstr;
+	if ($retstr){
+		$retstr = substr($retstr, 0, -1);
+	}
+
+	$callback->({data => $retstr});
 }
 1;

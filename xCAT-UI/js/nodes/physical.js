@@ -3,8 +3,6 @@ var fspList;
 var lparList;
 var graphicalNodeList;
 var selectNode;
-var graphicalDataType = ['ppc.nodetype', 'nodetype.nodetype', 'ppc.parent', 'nodelist.status', 'vpd.mtm'];
-var gettingDataFlag = false;
 
 /**
  * get all nodes useful attributes from remote server.
@@ -14,61 +12,23 @@ var gettingDataFlag = false;
  *
  * @return null
  */
-function initGraphicalData(dataTypeIndex, attrNullNode){
-	gettingDataFlag = true;
-	var tempTgt = 'all';
-	if (undefined == dataTypeIndex){
-		dataTypeIndex = 0;
-	}
-
-	if ((dataTypeIndex < 0) || (dataTypeIndex > 4)){
-		return;
-	}
-	
-	//there two nodetype field in database in table ppc and nodetype. we should query ppc.nodetype first,
-	//if the ppc.nodetype is NULL, then query the nodetype.nodetype.
-	if (1 == dataTypeIndex){
-		if (!attrNullNode){
-			initGraphicalData(2);
-			return;
-		}
-		else{
-			tempTgt = attrNullNode;
-		}
-	}
-	
-	var typeName = graphicalDataType[dataTypeIndex];
-	$('#graphTab img').remove();
-	$('#graphTab').append('<br/>Getting ' + typeName).append(createLoader());
+function initGraphicalData(){
+	$('#graphTab').append(createLoader());
 	$.ajax( {
 		url : 'lib/cmd.php',
 		dataType : 'json',
 		data : {
-			cmd : 'nodels',
-			tgt : tempTgt,
-			args : typeName,
-			msg : 'index' + dataTypeIndex.toString()
+			cmd : 'webrun',
+			tgt : '',
+			args : 'graph',
+			msg : ''
 		},
-
-		success : function(data){
-			var tempIndex = Number(data.msg.substr(5, 1));
-			var tempNodeList = extractGraphicalData(data);
-			if (tempIndex < graphicalDataType.length - 1){
-				tempIndex ++;
-				initGraphicalData(tempIndex, tempNodeList);
+		success: function(data){
+			if(!data.rsp[0]){
+				return;
 			}
-			else{
-				gettingDataFlag = false;
-				$('#graphTab').empty();
-				for (var temp in nodesList){
-					var nodeName = nodesList[temp];
-					if ('' == nodeName){
-						continue;
-					}
-					fillList(nodeName);
-				}
-				createGraphical(bpaList, fspList, $('#graphTab'));
-			}
+			extractGraphicalData(data.rsp[0]);
+			getNodesAndDraw();
 		}
 	});
 }
@@ -80,64 +40,48 @@ function initGraphicalData(dataTypeIndex, attrNullNode){
  * @return nodes list for next time query
  */
 function extractGraphicalData(data){
-	var nodes = data.rsp;
-	var tempNullNodes ='';
+	var nodes = data.split(';');
+	var attrs;
+	var nodename;
 	//extract useful info into tempList
 	for (var i = 0; i < nodes.length; i++){
-		var nodeName = nodes[i][0];
-		if (undefined == graphicalNodeList[nodeName]){
-			graphicalNodeList[nodeName] = new Object();
+		attrs = nodes[i].split(':');
+		nodename = attrs[0];
+		if (undefined == graphicalNodeList[nodename]){
+			graphicalNodeList[nodename] = new Object();
 		}
-		
-		if('' == nodeName){
-		    tempNullNodes = 'all,';
-		    break;
-		}
-		
-		switch (data.msg.substr(5, 1)){
-			case '0': 
-			case '1':{
-				if (!nodes[i][1]){
-					tempNullNodes += nodeName + ',';
-					break;
-				}
-				graphicalNodeList[nodeName]['type'] = nodes[i][1];
-			}
-			break;
-			case '2' : {
-				graphicalNodeList[nodeName]['parent'] = nodes[i][1];
-			}
-			break;
-			case '3': {
-				graphicalNodeList[nodeName]['status'] = nodes[i][1];
-			}
-			break;
-			case '4': {
-				graphicalNodeList[nodeName]['mtm'] = nodes[i][1];
-			}
-			break;
-			default :
+		switch(attrs[1].toLowerCase()){
+			case 'cec':
+			case 'frame':
+			case 'lpar':
+			case 'lpar,osi':
+			case 'osi,lpar':
+				graphicalNodeList[nodename]['type'] = attrs[1];
+				graphicalNodeList[nodename]['parent'] = attrs[2];
+				graphicalNodeList[nodename]['mtm'] = attrs[3];
+				graphicalNodeList[nodename]['status'] = attrs[4];
+				break;
+			case 'blade':
+				graphicalNodeList[nodename]['type'] = attrs[1];
+				graphicalNodeList[nodename]['mpa'] = attrs[2];
+				graphicalNodeList[nodename]['unit'] = attrs[3];
+				graphicalNodeList[nodename]['status'] = attrs[4];
+				break;
+			case 'systemx':
+				graphicalNodeList[nodename]['type'] = attrs[1];
+				graphicalNodeList[nodename]['rack'] = attrs[2];
+				graphicalNodeList[nodename]['unit'] = attrs[3];
+				graphicalNodeList[nodename]['mtm'] = attrs[4];
+				graphicalNodeList[nodename]['status'] = attrs[5];
+				break;
+			default:
 				break;
 		}
 	}
-	if ('' != tempNullNodes){
-		tempNullNodes = tempNullNodes.substr(0, tempNullNodes.length - 1);
-	}
-	return tempNullNodes;
 }
 
 function createPhysicalLayout(nodeList){
 	var flag = false;
-	
-	//no nodes are selected.
-	if (!nodeList){
-		return;
-	}
-	
-	//it is getting data,so we had to wait now.
-	if (gettingDataFlag){
-		return;
-	}
 	
 	//when the graphical layout is shown, do not need to redraw
 	if (1 < $('#graphTab').children().length){
@@ -160,19 +104,36 @@ function createPhysicalLayout(nodeList){
 	//there is not graphical data, get the info now
 	if (!flag){
 		graphicalNodeList = new Object();
-		initGraphicalData(0);
+		initGraphicalData();
 	}
 	else{
-		$('#graphTab').empty();
-		for (var temp in nodeList){
-			var nodeName = nodeList[temp];
-			if ('' == nodeName){
-				continue;
-			}
-			fillList(nodeName);
-		}
-		createGraphical(bpaList, fspList, $('#graphTab'));
+		getNodesAndDraw();
 	}
+}
+
+function getNodesAndDraw(){
+	var groupname = $.cookie('selectgrouponnodes');
+	$.ajax({
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'nodels',
+			tgt : groupname,
+			args : '',
+			msg : ''
+		},
+		success : function(data){
+			for (var temp in data.rsp){
+				var nodeName = data.rsp[temp][0];
+				if ('' == nodeName){
+					continue;
+				}
+				fillList(nodeName);
+			}
+			$('#graphTab').empty();
+			createGraphical(bpaList, fspList, $('#graphTab'));
+		}
+	});
 }
 
 function fillList(nodeName, defaultnodetype){

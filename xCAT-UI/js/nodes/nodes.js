@@ -190,43 +190,6 @@ function drawPieSummary(index, valuePair){
                     location: 'e'
                 }
             });
-	
-//	container.bind('jqplotDataClick',loadSummaryDetail);
-//	container.bind('jqplotDataHighlight',function(){this.style.cursor='pointer';});
-//	container.bind('jqplotDataUnhighlight',function(){this.style.cursor='';});
-}
-
-/**
- * Load node summary details
- * 
- * @param ev
- * @param seriesIndex
- * @param pointIndex
- * @param data
- * @return Nothing
- */
-function loadSummaryDetail(ev, seriesIndex, pointIndex, data){
-	var temp = $(this).attr('id');
-	temp = temp.replace('pie', '');
-	var table = '';
-	switch (temp) {
-	    case 'os':
-	    case 'arch':
-	    case 'provmethod':
-	    case 'nodetype':
-	        table = 'nodetype';
-	        break;
-	    case 'status':
-	        table = 'nodelist';
-	        break;
-	}
-
-	var args = table + '.' + temp + '==';
-	if (data[0] != 'unknown') {
-	    args += data[0];
-	}
-
-	drawNodesArea('', args, '');
 }
 
 /**
