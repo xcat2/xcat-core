@@ -36,7 +36,7 @@ function loadPage() {
 	if (isset($_SESSION['username'])){
 		echo 
 			"<div>
-				<span style='padding: 0 6px; color: white; font-weight: bold;'>{$_SESSION['username']}</span> | <a id='xcat_settings'>Settings</a> | <a href='lib/logout.php'>Log out</a>
+				<span id='login_user' style='padding: 0 6px; font-weight: bold;'>{$_SESSION['username']}</span> | <a id='xcat_settings'>Settings</a> | <a href='lib/logout.php'>Log out</a>
 			</div>";
 	}
 

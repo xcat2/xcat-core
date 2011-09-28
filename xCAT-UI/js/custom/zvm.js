@@ -494,7 +494,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			var procFooter = $('<tfoot></tfoot>');
 
 			// Table columns - Type, Address, ID, Base, Dedicated, and Affinity
-			var procTabRow = $('<thead> <th>Type</th> <th>Address</th> <th>ID</th> <th>Base</th> <th>Dedicated</th> <th>Affinity</th> </thead>');
+			var procTabRow = $('<thead class="ui-widget-header"> <th>Type</th> <th>Address</th> <th>ID</th> <th>Base</th> <th>Dedicated</th> <th>Affinity</th> </thead>');
 			procTable.append(procTabRow);
 			var procType, procAddr, procId, procAff;
 
@@ -631,7 +631,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			}];
 
 			// Table columns - Virtual Device, Type, VolID, Type of Access, and Size
-			var dasdTabRow = $('<thead> <th>Virtual Device #</th> <th>Type</th> <th>VolID</th> <th>Type of Access</th> <th>Size</th> </thead>');
+			var dasdTabRow = $('<thead class="ui-widget-header"> <th>Virtual Device #</th> <th>Type</th> <th>VolID</th> <th>Type of Access</th> <th>Size</th> </thead>');
 			dasdTable.append(dasdTabRow);
 			var dasdVDev, dasdType, dasdVolId, dasdAccess, dasdSize;
 
@@ -721,7 +721,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			} ];
 
 			// Table columns - Virtual device, Adapter Type, Port Name, # of Devices, MAC Address, and LAN Name
-			var nicTabRow = $('<th>Virtual Device #</th> <th>Adapter Type</th> <th>Port Name</th> <th># of Devices</th> <th>LAN Name</th>');
+			var nicTabRow = $('<thead class="ui-widget-header"> <th>Virtual Device #</th> <th>Adapter Type</th> <th>Port Name</th> <th># of Devices</th> <th>LAN Name</th></thead>');
 			nicTable.append(nicTabRow);
 			var nicVDev, nicType, nicPortName, nicNumOfDevs, nicMacAddr, nicLanName;
 

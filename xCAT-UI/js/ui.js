@@ -149,7 +149,7 @@ var Table = function(tableId) {
 Table.prototype.init = function(headers) {
 	// Create a table
 	this.table = $('<table id="' + this.tableId + '"></table>');
-	var thead = $('<thead></thead>');
+	var thead = $('<thead class="ui-widget-header"></thead>');
 	var headRow = $('<tr></tr>');
 
 	// Append headers
@@ -247,7 +247,7 @@ var DataTable = function(tableId) {
 DataTable.prototype.init = function(headers) {
 	// Create a table
 	this.dataTable = $('<table class="datatable" id="' + this.dataTableId + '"></table>');
-	var thead = $('<thead></thead>');
+	var thead = $('<thead class="ui-widget-header"></thead>');
 	var headRow = $('<tr></tr>');
 
 	// Append headers
@@ -418,7 +418,7 @@ function createButton(name) {
  * @return A division containing the menu
  */
 function createMenu(items) {
-	var menu = $('<ul class="sf-menu"></ul>');
+	var menu = $('<ul class="sf-menu ui-state-default"></ul>');
 
 	// Loop through each item
 	for ( var i in items) {
@@ -434,16 +434,10 @@ function createMenu(items) {
 		} else {
 			item.append(items[i]);
 		}
-
-		// Do not add border for 1st item
-		if (i > 0) {
-			item.css( {
-				'border-left' : '1px solid #BDBDBD'
-			});
-		}
+				
 		menu.append(item);
 	}
-
+	
 	return menu;
 }
 
@@ -522,32 +516,77 @@ function initPage() {
 	$('#xcat_settings').click(function() {
 		openSettings();
 	});
+	
+	// Set header to theme
+	var background = '', color = '';
+	var theme = $.cookie('xcat_theme');
+	if (theme) {
+		switch (theme) {
+			case 'cupertino':
+				background = '#3BAAE3';
+				color = 'white';
+				break;
+			case 'dark_hive':
+				background = '#0972A5';
+				break;
+			case 'redmond':
+				background = '#F5F8F9';
+				color = '#E17009';
+				break;
+			case 'start':
+				background = '#6EAC2C';
+				break;
+			case 'sunny':
+				background = 'white';
+				color = '#0074C7';
+				break;
+			case 'ui_dark':
+				background = '#F58400';
+				break;
+			default:
+				background = '#6EAC2C';
+		}				
+	} else {
+		background = '#6EAC2C';
+	}
+	
+	$('#header').addClass('ui-state-default');
+	$('#header').css('border', '0px');
+	
+	// Set theme to user span
+	$('#login_user').css('color', color);
+	
+	// Style for selected page
+	var style = {
+		'background-color': background,
+		'color': color
+	};
 
 	// Get the page being loaded
 	var url = window.location.pathname;
 	var page = url.replace('/xcat/', '');
 	var headers = $('#header ul li a');
-	
+		
 	// Show the page
 	$("#content").children().remove();
 	if (page == 'configure.php') {
 		includeJs("js/configure/update.js");
 		includeJs("js/configure/discover.js");
-		headers.eq(1).css('background-color', '#A9D0F5');
+		headers.eq(1).css(style);
 		loadConfigPage();
 	} else if (page == 'provision.php') {
 		includeJs("js/provision/images.js");
-		headers.eq(2).css('background-color', '#A9D0F5');
+		headers.eq(2).css(style);
 		loadProvisionPage();
 	} else if (page == 'monitor.php') {
 		includeJs("js/monitor/xcatmon.js");
 		includeJs("js/monitor/rmcmon.js");
 		includeJs("js/monitor/gangliamon.js");
-		headers.eq(3).css('background-color', '#A9D0F5');
+		headers.eq(3).css(style);
 		loadMonitorPage();
 	} else if (page == 'guide.php') {
 	    includeJs("js/guide/guide.js");
-	    headers.eq(4).css('background-color', '#A9D0F5');
+	    headers.eq(4).css(style);
         loadGuidePage();
 	} else {
 		// Load nodes page by default
@@ -557,7 +596,7 @@ function initPage() {
         includeJs("js/nodes/updatenode.js");
         includeJs("js/nodes/physical.js");
         includeJs("js/nodes/mtm.js");
-		headers.eq(0).css('background-color', '#A9D0F5');
+		headers.eq(0).css(style);
 		loadNodesPage();
 	}
 }

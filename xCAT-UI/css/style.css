@@ -36,7 +36,6 @@
 	height: 39px;
 	width: 1000px;
 	margin: 0px auto;
-	background: url(../images/jquery/default/ui-bg_highlight-soft_75_2191c0_1x100.png) 50% 50% repeat-x;
 	-moz-border-radius: .3em;
 	-webkit-border-radius: .3em;
 	border-radius: .3em;
@@ -63,13 +62,8 @@
 	float: left;
 	font: 14px verdana, arial, helvetica, sans-serif;
 	font-weight: bold;
-	color: white;
 	padding: 11px 30px;
 	cursor: pointer;
-}
-
-#header ul a:hover {
-	background-color: #A9D0F5;
 }
 
 /* User name and log out */
@@ -113,6 +107,11 @@ body {
 	margin: 10px auto;
 	background-color: white;
 	overflow: auto;
+}
+
+.ui-widget-content {
+	background: white;
+	color: inherit;
 }
 
 /*--------------- Groups ---------------*/
@@ -229,7 +228,6 @@ span.ui-icon-info {
 
 .tab a {
 	cursor: pointer;
-	color: #0000FF;
 }
 
 .tab .ui-icon-close {
@@ -249,19 +247,15 @@ span.ui-icon-info {
 
 .tab th {
 	font: 12px verdana, arial, helvetica, sans-serif;
-	color: #424242;
 	padding: 10px;
-	background-color: #A9D0F5;
 	border-width: 1px;
 	border-style: solid;
-	border-color: #BDBDBD;
 	vertical-align: middle;
 	text-align: center;
 }
 
 .tab td {
 	font: 12px verdana, arial, helvetica, sans-serif;
-	color: #424242;
 	padding: 5px 15px;
 	border-width: 1px;
 	border-style: solid;
@@ -318,16 +312,27 @@ legend {
 
 /*--------------- menu Div Actions bar ---------------*/
 .menuDiv {
-	background:none repeat scroll 0 0 #79B7E7;
 	padding: 0.5em;
 	height: 30px;
 }
 
 .sf-menu {
-	background : none repeat scroll 0 0 #79B7E7;
-	border :1px solid #f5f5f5;
 	border-radius :0.3em 0.3em 0.3em 0.3em;
 	margin-bottom: 0;
+	background: none;
+	border: 0px solid;
+}
+
+.sf-menu ul li {
+	width: 99%;	
+}
+
+.sf-menu .sf-menu {
+	border: 0px solid;
+}
+
+.sf-menu li:hover,.sf-menu li.sfHover {
+	background: none;
 }
 
 .sf-sub-indicator{
@@ -336,7 +341,7 @@ legend {
 
 .actionBar {
 	display: inline-table;
-	width:50%;
+	width: 50%;
 }
 
 .actionBar div {
@@ -344,12 +349,7 @@ legend {
 }
 
 .actionBar a {
-	color: #FFFFFF;
 	font-weight: bold;
-}
-
-.actionBar a:hover {
-	color: #026890;
 }
 
 .actionBar li {
@@ -409,7 +409,6 @@ legend {
 /*** Table ***/
 .datatable {
 	width: 100%;
-	border: solid 1px #BDBDBD;
 	border-spacing: 0px;
 	border-collapse: collapse;
 	display: inline-table;
@@ -419,7 +418,6 @@ legend {
 	font: 12px verdana, arial, helvetica, sans-serif;
 	padding: 5px 0px;
 	white-space: nowrap; /* Do not use word wrap */
-	border: solid 1px #BDBDBD;
 	vertical-align: middle;
 	text-align: center;
 	min-width: 30px;
@@ -427,7 +425,6 @@ legend {
 
 .datatable th {
 	font: bold 12px verdana, arial, helvetica, sans-serif;
-	background-color: #F2F2F2;
 	border-width: 0px;
 }
 

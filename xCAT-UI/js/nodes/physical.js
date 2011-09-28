@@ -542,6 +542,49 @@ function createActionMenu(){
 	actionBar.append(actionsMenu);
 	actionBar.css('margin-top', '10px');
 	
+	// Set correct theme for action menu
+	actionsMenu.find('li').hover(function() {
+		// On hover
+		var background = '', color = '';
+		var theme = $.cookie('xcat_theme');
+		if (theme) {
+			switch (theme) {
+				case 'cupertino':
+					background = '#3BAAE3';
+					color = 'white';
+					break;
+				case 'dark_hive':
+					background = '#0972A5';
+					break;
+				case 'redmond':
+					background = '#F5F8F9';
+					color = '#E17009';
+					break;
+				case 'start':
+					background = '#6EAC2C';
+					break;
+				case 'sunny':
+					background = 'white';
+					color = '#0074C7';
+					break;
+				case 'ui_dark':
+					background = '#F58400';
+					break;
+				default:
+					background = '#6EAC2C';
+			}				
+		} else {
+			background = '#6EAC2C';
+		}
+		
+		$(this).css('background', background);
+		$(this).find('a:eq(0)').css('color', color);
+	}, function() {
+		// Change back to normal
+		$(this).css('background', '');
+		$(this).find('a:eq(0)').css('color', '');
+	});
+	
 	return actionBar;
 }
 
