@@ -171,7 +171,7 @@ ipmiPlugin.prototype.loadResources = function() {
  * @return Nothing
  */
 ipmiPlugin.prototype.addNode = function() {
-    var diag = $('<div id="addIdplx" class="form" title="Add iDataPlex"></div>');
+    var diag = $('<div id="addIdplx" class="form"></div>');
     var info = createInfoBar('Add a node range');
     diag.append(info);
     
@@ -199,6 +199,7 @@ ipmiPlugin.prototype.addNode = function() {
 	 bmcFieldSet.append(bmcInputs);
 
     diag.dialog({
+    	title: 'Add node',
         modal: true,
         width: 400,
         close: function(){$(this).remove();},

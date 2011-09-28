@@ -170,7 +170,7 @@ hmcPlugin.prototype.addNode = function() {
 	diaDiv.dialog({
         modal : true,
         width : 400,
-        title : 'Add System p Node',
+        title : 'Add node',
         close : function(){$('#addpnodeDiv').remove();}
 	});
 	

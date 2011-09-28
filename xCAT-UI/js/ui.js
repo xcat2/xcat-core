@@ -814,3 +814,61 @@ function openSettings() {
 		}
 	});
 }
+
+/**
+ * Set menu theme
+ * 
+ * @param menu
+ * 			Menu object
+ * @return Nothing
+ */
+function setMenu2Theme(menu) {
+	// On hover
+	var background = '', color = '';
+	var theme = $.cookie('xcat_theme');
+	if (theme) {
+		switch (theme) {
+			case 'cupertino':
+				background = '#3BAAE3';
+				color = 'white';
+				break;
+			case 'dark_hive':
+				background = '#0972A5';
+				break;
+			case 'redmond':
+				background = '#F5F8F9';
+				color = '#E17009';
+				break;
+			case 'start':
+				background = '#6EAC2C';
+				break;
+			case 'sunny':
+				background = 'white';
+				color = '#0074C7';
+				break;
+			case 'ui_dark':
+				background = '#F58400';
+				break;
+			default:
+				background = '#6EAC2C';
+		}				
+	} else {
+		background = '#6EAC2C';
+	}
+	
+	menu.css('background', background);
+	menu.find('a:eq(0)').css('color', color);
+}
+
+/**
+ * Set menu back to normal before applying theme
+ * 
+ * @param menu
+ * 			Menu object
+ * @return Nothing
+ */
+function setMenu2Normal(menu) {
+	// Change back to normal
+	menu.css('background', '');
+	menu.find('a:eq(0)').css('color', '');
+}

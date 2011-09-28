@@ -126,7 +126,7 @@ function showRpmInfo(data) {
 	$('#rpm fieldset').children().remove();
 	$('#rpm fieldset').append("<legend>xCAT RPMs</legend>");
 	show = "<table id=rpmtable >";
-	show += "<thead><tr>";
+	show += "<thead class='ui-widget-header'><tr>";
 	show += "<th><input type='checkbox' id='selectall' value='' onclick='updateSelectAll()'></th>";
 	show += "<th><b>Package Name</b></th><th><b>Version</b></th>";
 	show += "</tr></thead>";

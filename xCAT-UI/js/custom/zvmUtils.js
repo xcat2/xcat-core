@@ -2276,7 +2276,7 @@ function createZProvisionNew(inst) {
 	var diskDiv = $('<div class="provision"></div>');
 	var diskLabel = $('<label>Disks:</label>');
 	var diskTable = $('<table></table>');
-	var diskHeader = $('<thead> <th></th> <th>Type</th> <th>Address</th> <th>Size</th> <th>Mode</th> <th>Pool</th> <th>Password</th> </thead>');
+	var diskHeader = $('<thead class="ui-widget-header"> <th></th> <th>Type</th> <th>Address</th> <th>Size</th> <th>Mode</th> <th>Pool</th> <th>Password</th> </thead>');
 	// Adjust header width
 	diskHeader.find('th').css( {
 		'width' : '80px'

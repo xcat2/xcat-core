@@ -279,7 +279,7 @@ bladePlugin.prototype.addNode = function() {
     nodeTypeSelectDia.dialog( {
         modal : true,
         width : 400,
-        title : 'Select Node Type',
+        title : 'Add node',
         open : function(event, ui) {
             $(".ui-dialog-titlebar-close").hide();
         },

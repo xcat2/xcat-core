@@ -109,24 +109,24 @@ function loadProvisionPage() {
 	    else{
 	        var tabtitle = '';
 	        
-	     // Create an instance of the plugin
+	        // Create an instance of the plugin
 	        var plugin;
 	        switch (hw) {
 	        case "blade":
 	            plugin = new bladePlugin();
-	            tabtitle = 'Blade';
+	            tabtitle = 'BladeCenter';
 	            break;
 	        case "hmc":
 	            plugin = new hmcPlugin();
-	            tabtitle = 'System P';
+	            tabtitle = 'System p';
 	            break;
 	        case "ipmi":
 	            plugin = new ipmiPlugin();
-	            tabtitle = 'System X';
+	            tabtitle = 'iDataPlex';
 	            break;
 	        case "zvm":
 	            plugin = new zvmPlugin();
-	            tabtitle = 'zVM';
+	            tabtitle = 'System z';
 	            break;
 	        }
 

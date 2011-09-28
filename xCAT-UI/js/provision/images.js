@@ -188,6 +188,13 @@ function loadImages(data) {
 	actionsMenu.css('display', 'inline-block');
 	actionBar.append(actionsMenu);
 	
+	// Set correct theme for action menu
+	actionsMenu.find('li').hover(function() {
+		setMenu2Theme($(this));
+	}, function() {
+		setMenu2Normal($(this));
+	});
+	
 	// Create a division to hold actions menu
 	var menuDiv = $('<div id="' + imgTableId + '_menuDiv" class="menuDiv"></div>');
 	$('#' + imgTableId + '_wrapper').prepend(menuDiv);

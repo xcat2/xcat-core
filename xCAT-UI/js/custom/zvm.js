@@ -343,7 +343,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 	 * Show user entry
 	 */
 	var toggleLinkId = node + 'ToggleLink';
-	var toggleLink = $('<a id="' + toggleLinkId + '">Show directory entry</a>');
+	var toggleLink = $('<a style="color: blue;" id="' + toggleLinkId + '">Show directory entry</a>');
 	toggleLink.one('click', function(event) {
 		// Toggle inventory division
 		$('#' + invDivId).toggle();
@@ -928,6 +928,7 @@ zvmPlugin.prototype.addNode = function() {
 	
 	// Open form as a dialog
 	addNodeForm.dialog({
+		title: 'Add node',
 		modal: true,
 		width: 400,
 		buttons: {

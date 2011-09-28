@@ -246,7 +246,7 @@ span.ui-icon-info {
 }
 
 .tab th {
-	font: 12px verdana, arial, helvetica, sans-serif;
+	font: bold 12px verdana, arial, helvetica, sans-serif;
 	padding: 10px;
 	border-width: 1px;
 	border-style: solid;
@@ -261,6 +261,10 @@ span.ui-icon-info {
 	border-style: solid;
 	border-color: #BDBDBD;
 	vertical-align: middle;
+}
+
+.tab table a {
+	color: blue;
 }
 
 .tab span a,.tab li a {
@@ -448,7 +452,7 @@ legend {
 
 .datatable a {
 	text-decoration: none;
-	color: #000FF;
+	color: blue;
 	cursor: pointer;
 }
 

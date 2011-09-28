@@ -126,7 +126,7 @@ function loadTableNames(data) {
 	for ( var i = 0; i < tables.length; i++) {
 		// Create a link for each table
 		var args = tables[i].split(':');
-		var link = $('<a id="' + args[0] + '">' + args[0] + '</a>');
+		var link = $('<a style="color: blue;" id="' + args[0] + '">' + args[0] + '</a>');
 
 		// Open table on click
 		link.bind('click', function(e) {
@@ -437,6 +437,13 @@ function loadTable(data) {
 	actionsMenu.superfish();
 	actionsMenu.css('display', 'inline-block');
 	actionBar.append(actionsMenu);
+	
+	// Set correct theme for action menu
+	actionsMenu.find('li').hover(function() {
+		setMenu2Theme($(this));
+	}, function() {
+		setMenu2Normal($(this));
+	});
 	
 	// Create a division to hold actions menu
 	var menuDiv = $('<div id="' + id + 'Datatable_menuDiv" class="menuDiv"></div>');

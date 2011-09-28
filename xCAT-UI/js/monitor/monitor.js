@@ -118,9 +118,9 @@ function loadMonitorPage() {
 				// Turn on or off monitoring tool when clicked
 				statusButton.find('input["' + name + '"]:radio').change(toggleMonitor);
 			}
-						
+			
 			var monTable = $('<table></table>');
-			monTable.append($('<thead><tr><th><b>Tool</b></th><th><b>Status</b></th><th><b>Description</b></th></tr></thead>'));
+			monTable.append($('<thead class="ui-widget-header"><tr><th><b>Tool</b></th><th><b>Status</b></th><th><b>Description</b></th></tr></thead>'));
 			
 			var monTableBody = $('<tbody></tbody>');
 			monTable.append(monTableBody);			
