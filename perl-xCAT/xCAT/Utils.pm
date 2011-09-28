@@ -1058,58 +1058,30 @@ sub runcmd
 	}
 
     my $outref = [];
-    if (!defined($stream) || (length($exitcode) == 0)) { # do not stream
+    if (!defined($stream) || (length($stream) == 0)) { # do not stream
       @$outref = `$cmd`;
     } else {  # streaming mode
       my @cmd;
       push @cmd,$cmd;
-      my $outreferr = [];
-      my $cmdin;
-      my $cmdout;
-      my $cmderr = gensym;
-      my $cmdpid = open3($cmdin,$cmdout,$cmderr,@cmd);
-      my $cmdsel = IO::Select->new($cmdout,$cmderr);
-      close($cmdin);
-      my @handles;
       my $rsp    = {};
       my $output;
       my $errout;
-      while ($cmdsel->count()) {
-        @handles = $cmdsel->can_read();
-        foreach (@handles) {
-           my $line;
-           my $done = sysread $_,$line,180;
-            if ($done) {
-                if ($_ eq $cmdout) {
-		  if ($::CALLBACK){
-                    $rsp->{data}->[0] = $line;
-                    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 0);
-                  } else {
-	   	     xCAT::MsgUtils->message("I", "$line\n");
-                  }
-                   $output .= $line;
-                } else {
-		  if ($::CALLBACK){
-                    $rsp->{data}->[0] = $line;
-                    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 0);
-                  } else {
-	   	     xCAT::MsgUtils->message("I", "$line\n");
-                  }
-                   $errout .= $line;
-                }
-            } else {
-                $cmdsel->remove($_);
-                close($_);
-            }
+      open (PIPE, "$cmd |");
+      while (<PIPE>) {
+        if ($::CALLBACK){
+           $rsp->{data}->[0] = $_;
+           $::CALLBACK->($rsp);
+        } else {
+          xCAT::MsgUtils->message("D", "$_");
         }
+        $output .= $_;
       }
-      waitpid($cmdpid,0);
       # store the return string
       push  @$outref,$output;   
     }
 
-    # now whether streaming or not process
-    if ($?)
+    # now if not streaming process errors 
+    if (($?) && (!defined($stream)))
     {
         $::RUNCMD_RC = $? >> 8;
         my $displayerror = 1;
