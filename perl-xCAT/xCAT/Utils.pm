@@ -3649,7 +3649,7 @@ sub get_ServiceNode
       xCAT::Utils->get_site_Master();    # read the site table, master attrib
 
    # need better logic here for MIXED CLUSTERS
-	# the NIM primary will be either the site.NIMprime attr
+	# the NIM primary will be either the site.nimprime attr
 	#	or, if not set, the site.master attr
 	my $nimprime;
 	$nimprime = xCAT::InstUtils->getnimprime();
