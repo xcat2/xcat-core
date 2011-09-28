@@ -69,7 +69,14 @@ foreach my $file (@dir) {
 	#print "$cmd\n";
 	runh2p($cmd);
 }
-
+# tar and compress
+chdir($destdir);
+my $date=`date +%Y%m%d%H%M`;
+chop $date;
+my $docname="xcat-docs-snap$date.tar";
+`tar cvfj $docname html pdf`;
+`gzip $docname`;
+exit 0;
 # Run the wget cmd and filter out some of the silly output
 sub runwget {
 	my $cmd = shift;
