@@ -3648,13 +3648,12 @@ sub get_ServiceNode
     my $master =
       xCAT::Utils->get_site_Master();    # read the site table, master attrib
 
+   # need better logic here for MIXED CLUSTERS
+	# the NIM primary will be either the site.NIMprime attr
+	#	or, if not set, the site.master attr
 	my $nimprime;
-	if (xCAT::Utils->isAIX()) {
-		# for AIX nodes the NIM primary will be either the site.NIMprime attr
-		#	or, if not set, the site.master attr
-		$nimprime = xCAT::InstUtils->getnimprime();
-    	chomp $nimprime;
-	}
+	$nimprime = xCAT::InstUtils->getnimprime();
+  	chomp $nimprime;
 
 	# $master and $nimprime is possible to be the same (MN)
 	# but $master is IP addr, $nimprime is short hostname
