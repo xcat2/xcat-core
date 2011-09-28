@@ -186,7 +186,7 @@ if (-e ("/etc/xcat/cfgloc"))    # check to see if xcat is using mysql
         if ($::INIT)
         {
             my $message =
-              "The /opt/xcat/cfgloc file is already configured for MySQL. xcat database initialization will not take place.";
+              "The /etc/xcat/cfgloc file is already configured for MySQL. xcat database initialization will not take place.";
             xCAT::MsgUtils->message("I", "$message");
         }
         $::xcatrunningmysql = 1;
