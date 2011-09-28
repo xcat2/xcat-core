@@ -1376,11 +1376,13 @@ function loadGangliaStatus(data) {
 		node = jQuery.trim(ganglia[i][0]);
 		status = jQuery.trim(ganglia[i][1]);
 
-		// Get the row containing the node
-		rowNum = findRow(node, '#' + nodesTableId, 1);
-
-		// Update the power status column
-		datatable.fnUpdate(status, rowNum, 4);
+		if (node) {
+			// Get the row containing the node
+			rowNum = findRow(node, '#' + nodesTableId, 1);
+	
+			// Update the power status column
+			datatable.fnUpdate(status, rowNum, 4);
+		}
 	}
 
 	// Hide Ganglia loader
