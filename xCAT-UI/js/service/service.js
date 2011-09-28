@@ -363,7 +363,7 @@ function loadNodesTable(data) {
 	}
 	
 	// Create info bar
-	var infoBar = createInfoBar('Manage and monitor your Linux virtual machines on System z.');
+	var infoBar = createInfoBar('Manage and monitor your virtual machines.');
 	$('#manageTab').append(infoBar);
 	
 	// Insert action bar and nodes datatable
@@ -471,6 +471,13 @@ function loadNodesTable(data) {
 	var menu = createMenu([[actionsLnk, actionMenu]]);
 	menu.superfish();
 	actionBar.append(menu);
+	
+	// Set correct theme for action menu
+	actionMenu.find('li').hover(function() {
+		setMenu2Theme($(this));
+	}, function() {
+		setMenu2Normal($(this));
+	});
 		
 	// Create a division to hold actions menu
 	var menuDiv = $('<div id="' + nodesDTId + '_menuDiv" class="menuDiv"></div>');
