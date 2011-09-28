@@ -21,7 +21,8 @@ export USEOPENSSLFORXCAT
      cat /tmp/xcat_client_cred | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.xcat/client-cred.pem
      CONT=`cat /root/.xcat/client-cred.pem`
      while [ -z "$CONT" ]; do
-      let SLI=$RANDOM%10+10
+      SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
+      SLI=$((10 + $SLI))
       sleep $SLI
       getcredentials.awk xcat_client_cred | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.xcat/client-cred.pem
        CONT=`cat /root/.xcat/client-cred.pem`
