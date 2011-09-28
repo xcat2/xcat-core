@@ -43,7 +43,7 @@ if ($^O =~ /^aix/i) { die "Error: this command is not yet supported on AIX.\n"; 
 
 my $destdir = scalar(@ARGV) ? $ARGV[0] : '.';
 chdir($destdir);
-
+my $docdir = $ENV{'PWD'};
 # Download the HTML
 mkdir('html');
 chdir('html');
@@ -70,7 +70,7 @@ foreach my $file (@dir) {
 	runh2p($cmd);
 }
 # tar and compress
-chdir($destdir);
+chdir($docdir);
 my $date=`date +%Y%m%d%H%M`;
 chop $date;
 my $docname="xcat-docs-snap$date.tar";
