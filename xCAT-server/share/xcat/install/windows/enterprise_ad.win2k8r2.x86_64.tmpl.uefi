@@ -91,7 +91,7 @@
                         <Group>Administrators</Group>
                         <Name>Domain Admins</Name>
                     </DomainAccount>
-                    <Domain>#Table:site:key=domain:value#</Domain>
+                    <Domain>#TABLE:site:key=domain:value#</Domain>
                     </DomainAccountList>
                 </DomainAccounts>
             </UserAccounts>
