@@ -798,7 +798,12 @@ sub pick_target {
 
 sub migrate {
     $node = shift();
-    my $targ = shift();
+    my @args=@_;
+    my $targ;
+    foreach (@args) {
+	if (/^-/) { next; }
+	$targ = $_;
+    }
     if ($offlinevms{$node}) {
         return power("on");
     }
@@ -851,7 +856,13 @@ sub migrate {
         }
     }
     unless ($srchypconn) {
-        return (1,"Unable to reach $prevhyp to perform operation of $node, use nodech to change vm.host if certain of no split-brain possibility exists");
+        if (grep { $_ eq '-f' } @args) {
+      		unless ($vmtab) { $vmtab = new xCAT::Table('vm',-create=>1); }
+	        $vmtab->setNodeAttribs($node,{host=>$targ});
+	        return (0,"migrated to $targ");
+        } else {
+	        return (1,"Unable to reach $prevhyp to perform operation of $node, use nodech to change vm.host if certain of no split-brain possibility exists (or use -f on rmigrate)");
+	}
     }
     unless ($offlinehyps{$targ} or nodesockopen($targ,22)) {
         $offlinehyps{$targ}=1;
@@ -904,7 +915,11 @@ sub migrate {
         $nomadomain = $srchypconn->get_domain_by_name($node);
     };
     unless ($nomadomain) {
-        return (1,"Unable to find $node on $prevhyp, vm.host may be incorrect or a split-brain condition, such as libvirt forgetting a guest due to restart or bug.");
+      	unless ($vmtab) { $vmtab = new xCAT::Table('vm',-create=>1); }
+        $vmtab->setNodeAttribs($node,{host=>$targ});
+        return (0,"migrated to $targ");
+        #return (1,"Unable to find $node on $prevhyp, vm.host may be incorrect or a split-brain condition, such as libvirt forgetting a guest due to restart or bug.");
+	
     }
     my $newdom;
     my $errstr;
@@ -2796,7 +2811,16 @@ sub dohyp {
      print $out "\nENDOFFREEZE6sK4ci\n";
      yield();
      waitforack($out);
-     return 1,"General error establishing libvirt communication";
+     %err=(node=>[]);
+     if ($command eq 'rmigrate' and grep { $_ eq '-f'  } @$args) {
+     foreach (keys %{$hyphash{$hyp}->{nodes}}) {
+        push (@{$err{node}},{name=>[$_],error=>["Forcibly relocating VM from $hyp"],errorcode=>[1]});
+     }
+     	print $out freeze([\%err]);
+     	print $out "\nENDOFFREEZE6sK4ci\n";
+     } else {
+     	return 1,"General error establishing libvirt communication";
+     }
   }
   foreach $node (sort (keys %{$hyphash{$hyp}->{nodes}})) {
     my ($rc,@output) = guestcmd($hyp,$node,$command,@$args); 
