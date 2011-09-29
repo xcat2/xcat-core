@@ -129,21 +129,11 @@ sub setstate {
 
     }
   }
+  my $elilokcmdline = $kern->{kcmdline}; #track it separate, since vars differ
   if ($kern->{kcmdline} =~ /!myipfn!/) {
       my $ipfn = '${next-server}';#xCAT::Utils->my_ip_facing($node);
-      unless ($ipfn) {
-        my @myself = xCAT::Utils->determinehostname();
-        my $myname = $myself[(scalar @myself)-1];
-         $callback->(
-                {
-                 error => [
-                     "$myname: Unable to determine or reasonably guess the image server for $node"
-                 ],
-                 errorcode => [1]
-                }
-                );
-      }
       $kern->{kcmdline} =~ s/!myipfn!/$ipfn/g;
+      $elilokcmdline =~ s/!myipfn!/%N/;
   }
   my $pcfg;
   unlink($tftpdir."/xcat/xnba/nodes/".$node.".pxelinux");
@@ -233,7 +223,7 @@ sub setstate {
 	       print $ucfg "image=/tftpboot/".$kern->{kernel}."\n";
 	       print $ucfg "   label=\"xCAT\"\n";
 	       print $ucfg "   initrd=/tftpboot/".$kern->{initrd}."\n";
-	       print $ucfg "   append=\"".$kern->{kcmdline}.' BOOTIF=%B"'."\n";
+	       print $ucfg "   append=\"".$elilokcmdline.' BOOTIF=%B"'."\n";
 	       close($ucfg);
 	    }
         }
