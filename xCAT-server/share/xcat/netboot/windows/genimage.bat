@@ -38,6 +38,7 @@ if [%ARCH%] EQU [amd64]  copy c:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX% c:\WinPE_%
 
 dism /mount-wim /wimfile:c:\WinPE_%SUFFIX%\pxe\Boot\winpe_%SUFFIX%.wim /index:1 /mountdir:c:\WinPE_%SUFFIX%\rootfs
 copy startnet.cmd c:\WinPE_%SUFFIX%\rootfs\Windows\system32
+copy getnextserver.exe c:\WinPE_%SUFFIX%\rootfs\Windows\system32
 copy "C:\Program Files\Windows AIK\Tools\%ARCH%\imagex.exe" c:\WinPE_%SUFFIX%\rootfs\Windows\system32
 dism /Image:c:\WinPE_%SUFFIX%\rootfs /add-package /packagepath:"C:\Program Files\Windows AIK\Tools\PETools\%ARCH%\WinPE_FPs\winpe-wmi.cab"
 dism /Image:c:\WinPE_%SUFFIX%\rootfs /add-package /packagepath:"C:\Program Files\Windows AIK\Tools\PETools\%ARCH%\WinPE_FPs\winpe-scripting.cab"
@@ -46,7 +47,7 @@ copy c:\WinPE_%SUFFIX%\rootfs\Windows\Boot\PXE\wdsmgfw.efi c:\WinPE_%SUFFIX%\pxe
 copy c:\WinPE_%SUFFIX%\rootfs\Windows\Boot\EFI\bootmgfw.efi c:\WinPE_%SUFFIX%\pxe\Boot\bootmgfw.efi
 copy c:\WinPE_%SUFFIX%\rootfs\Windows\Boot\EFI\bootmgr.efi c:\WinPE_%SUFFIX%\pxe\Boot\bootmgr.efi
 copy c:\WinPE_%SUFFIX%\rootfs\Windows\Boot\PXE\bootmgr.exe c:\WinPE_%SUFFIX%\pxe\
-for /r c:\drivers %%d in (*.inf) do dism /image c:\WinPE_%SUFFIX%\rootfs /add-driver /driver:%%d 
+for /r c:\drivers %%d in (*.inf) do dism /image:c:\WinPE_%SUFFIX%\rootfs /add-driver /driver:%%d 
 dism /Unmount-Wim /commit /mountdir:c:\WinPE_%SUFFIX%\rootfs
 
 echo Upload c:\WinPE_%SUFFIX%\pxe to somewhere

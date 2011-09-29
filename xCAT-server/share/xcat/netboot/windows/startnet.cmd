@@ -9,11 +9,16 @@ echo "Dhcpv6DUID"=hex:00,04,%guid:~0,2%,%guid:~2,2%,%guid:~4,2%,%guid:~6,2%,%gui
 echo. >> duiduuid.reg
 regedit /s duiduuid.reg
 wpeinit
-ping -n 60 127.0.0.1 > NUL 2>&1
+start /min cmd
+for /f %%A IN ('getnextserver.exe') DO SET XCATD=%%A
+echo Waiting for xCAT server %XCATD% to become reachable (check WinPE network drivers if this does not proceeed)
+:noping
+ping -n 1 %XCATD% 2> NUL | find "TTL=" > NUL || goto :noping
 md \xcat
-for /f "delims=: tokens=2" %%c in ('ipconfig /all ^|find "DHCP Server"') do set XCATD=%%c
-for /f %%c in ('echo %XCATD%') do set XCATD=%%c
-net use i: \\%XCATD%\install
+echo Waiting for successful mount of \\%XCATD%\install (if this hangs, check that samba is running)
+:nomount
+net use i: \\%XCATD%\install || goto :nomount
+echo Successfully mounted \\%XCATD%\install, moving on to execute remote script
 for /f "delims=: tokens=2" %%c in ('ipconfig ^|find "IPv4 Address. . ."') do set NODEIP=%%c
 for /f %%c in ('echo %NODEIP%') do set NODEIP=%%c
 if exist  i:\autoinst\%NODEIP%.cmd copy i:\autoinst\%NODEIP%.cmd x:\xcat\autoscript.cmd
