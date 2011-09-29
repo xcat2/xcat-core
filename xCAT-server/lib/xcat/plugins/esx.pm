@@ -3666,6 +3666,10 @@ sub validate_datastore_prereqs_inlock {
                     my $uri = "vmfs://$name";
                     # check and see if this vmfs is on the node.
                     unless ($hyphash{$hyp}->{datastoremap}->{$uri}) { #If not already there, try creating it.
+						unless ($datastoreautomount) {
+                    		xCAT::SvrUtils::sendmsg([1,": $uri is not currently accessible at the given location and automount is disabled in site table"], $output_handler,$node);
+							return 0;
+						}
                         $refresh_names=1;
                         ($hyphash{$hyp}->{datastoremap}->{$uri},$hyphash{$hyp}->{datastorerefmap}->{$uri})=create_vmfs_datastore($hostview,$name,$hyp);
                         unless($hyphash{hyp}->{datastoremap}->{$uri}){ return 0; }
@@ -3721,6 +3725,10 @@ sub validate_datastore_prereqs_inlock {
                     $name =~ s/:$//; #remove a : if someone put it in for some reason.  
                     my $uri = "vmfs://$name";
                     unless ($hyphash{$hyp}->{datastoremap}->{$uri}) { #If not already there, it should be!
+						unless ($datastoreautomount) {
+                    		xCAT::SvrUtils::sendmsg([1,": $uri is not currently accessible at the given location and automount is disabled in site table"], $output_handler,$node);
+							return 0;
+						}
                         $refresh_names=1;
                         ($hyphash{$hyp}->{datastoremap}->{$uri},$hyphash{$hyp}->{datastorerefmap}->{$uri})=create_vmfs_datastore($hostview,$name,$hyp);
                         unless($hyphash{hyp}->{datastoremap}->{$uri}){ return 0; }
@@ -3825,6 +3833,9 @@ sub create_vmfs_datastore {
     my $hostview = shift; # VM object
     my $name = shift; # name of storage we wish to create.
     my $hyp = shift;
+	unless ($datastoreautomount) {
+		die "automount of VMware datastores is disabled in site configuration, not continuing";
+	}
     # call some VMware API here to create
     my $hdss = $hostview->{vim}->get_view(mo_ref=>$hostview->configManager->datastoreSystem);
 
