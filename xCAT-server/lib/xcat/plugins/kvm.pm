@@ -328,8 +328,25 @@ sub reconfigvm {
     my $xml = shift;
     my $domdesc = $parser->parse_string($xml);
     my @bootdevs = $domdesc->findnodes("/domain/os/boot");
-    my @oldbootdevs;
+    my $curroffset = $domdesc->findnodes("/domain/clock")->[0]->getAttribute("offset");
+    my $newoffset;
     my $needfixin=0;
+    if (defined ($confdata->{vm}->{$node}->[0]->{clockoffset})) {
+        #If user requested a specific behavior, give it
+	$newoffset = $confdata->{vm}->{$node}->[0]->{clockoffset};
+    } else {
+        #Otherwise, only do local time for things that look MS
+        if (defined ($confdata->{nodetype}->{$node}->[0]->{os}) and $confdata->{nodetype}->{$node}->[0]->{os} =~ /win.*/) {
+	    $newoffset = 'localtime';
+        } else { #For everyone else, utc is preferred generally
+	    $newoffset = 'utc';
+        }
+    }
+    if ($curroffset ne $newoffset) {
+	$needfixin=1;
+	$domdesc->findnodes("/domain/clock")->[0]->setAttribute("offset",$newoffset);
+    }
+    my @oldbootdevs;
     if (defined $confdata->{vm}->{$node}->[0]->{memory}) {
 	$needfixin=1;
 	$domdesc->findnodes("/domain/memory/text()")->[0]->setData(getUnits($confdata->{vm}->{$node}->[0]->{memory},"M",1024));
