@@ -1653,7 +1653,12 @@ sub setupSSH
     print FILE "#!/bin/sh
 umask 0077
 home=`egrep \"^$to_userid:\" /etc/passwd | cut -f6 -d :`
-dest_dir=\"\$home/.ssh\"
+if [ $home ]; then
+  dest_dir=\"\$home/.ssh\"
+else
+  home=`su - root -c pwd`
+  dest_dir=\"\$home/.ssh\"
+fi
 mkdir -p \$dest_dir
 cat /tmp/$to_userid/.ssh/authorized_keys >> \$home/.ssh/authorized_keys 2>&1
 cp /tmp/$to_userid/.ssh/id_rsa  \$home/.ssh/id_rsa 2>&1
@@ -1935,6 +1940,11 @@ sub bldnonrootSSHFiles
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     }
     my $home     = xCAT::Utils->getHomeDir($from_userid);
+    # Handle non-root userid may not be in /etc/passwd maybe LDAP
+    if (!$home) { 
+      $home=`su - $from_userid -c pwd`;
+      chop $home;
+    }
     my $roothome = xCAT::Utils->getHomeDir("root");
     if (xCAT::Utils->isMN()) {    # if on Management Node
       if (!(-e "$home/.ssh/id_rsa.pub"))
