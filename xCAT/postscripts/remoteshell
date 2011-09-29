@@ -145,6 +145,20 @@ fi
 
 # start up the sshd for syncfiles postscript to do the sync work
 logger -t xCAT "start up sshd"
-service sshd start
+
+DISTRO=`lsb_release -si`
+if [ $DISTRO = "Ubuntu" ]
+then
+    if [ ! -d /var/run/sshd ]
+    then
+	mkdir /var/run/sshd
+	chmod 0755 /var/run/sshd
+	/usr/sbin/sshd -f /etc/ssh/sshd_config
+    else
+	service ssh restart
+    fi
+else
+    service sshd start
+fi
 
 kill -9 $CREDPID
