@@ -238,42 +238,6 @@ sub setstate {
     print $pcfg "LOCALBOOT 0\n";
     close($pcfg);
   }
-  my $mactab = xCAT::Table->new('mac'); #to get all the hostnames
-  my %ipaddrs;
-  unless (inet_aton($node)) {
-    syslog("local1|err","xCAT unable to resolve IP in pxe plugin");
-    return;
-  }
-  my $ip = inet_ntoa(inet_aton($node));;
-  unless ($ip) {
-    syslog("local1|err","xCAT unable to resolve IP in pxe plugin");
-    return;
-  }
-  $ipaddrs{$ip} = 1;
-  if ($mactab) {
-     my $ment = $machash{$node}->[0]; #$mactab->getNodeAttribs($node,['mac']);
-     if ($ment and $ment->{mac}) {
-         my @macs = split(/\|/,$ment->{mac});
-         foreach (@macs) {
-            if (/!(.*)/) {
-               if (inet_aton($1)) {
-                  $ipaddrs{inet_ntoa(inet_aton($1))} = 1;
-               }
-            }
-         }
-     }
-  }
-  my $hassymlink = eval { symlink("",""); 1 };
-  foreach $ip (keys %ipaddrs) {
-   my @ipa=split(/\./,$ip);
-   my $pname = sprintf("%02X%02X%02X%02X",@ipa);
-   unlink($tftpdir."/pxelinux.cfg/".$pname);
-   if ($hassymlink) { 
-    symlink($node,$tftpdir."/pxelinux.cfg/".$pname);
-   } else {
-    link($tftpdir."/pxelinux.cfg/".$node,$tftpdir."/pxelinux.cfg/".$pname);
-   }
-  }
 }
   
 
