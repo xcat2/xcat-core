@@ -56,6 +56,12 @@ function initServicePage() {
 	includeJs("js/jquery/superfish.min.js");
 	includeJs("js/jquery/jquery.jqplot.min.js");
     includeJs("js/jquery/jqplot.dateAxisRenderer.min.js");
+    
+    // Custom plugins
+	includeJs("js/custom/blade.js");
+	includeJs("js/custom/ipmi.js");
+	includeJs("js/custom/zvm.js");
+	includeJs("js/custom/hmc.js");
 	    
 	// Enable settings link 	
 	$('#xcat_settings').click(function() {
@@ -89,30 +95,9 @@ function loadServicePage() {
 	
 	var provTabId = 'provisionTab';
 	serviceTabs.add(provTabId, 'Provision', '', false);
-	loadzProvisionPage(provTabId);
+	loadServiceProvisionPage(provTabId);
 
 	serviceTabs.select(manageTabId);
-	
-	// Get zVM host names
-	if (!$.cookie('srv_zvm')){
-		$.ajax( {
-			url : 'lib/srv_cmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'webportal',
-				tgt : '',
-				args : 'lszvm',
-				msg : ''
-			},
-
-			success : function(data) {
-				setzVMCookies(data);
-				loadzVMs();
-			}
-		});
-	} else {
-		loadzVMs();
-	}
 	
 	// Get OS image names
 	if (!$.cookie('srv_imagenames')){
@@ -128,11 +113,8 @@ function loadServicePage() {
 
 			success : function(data) {
 				setOSImageCookies(data);
-				loadOSImages();
 			}
 		});
-	} else {
-		loadOSImages();
 	}
 	
 	// Get contents of hosts table
@@ -148,12 +130,9 @@ function loadServicePage() {
 			},
 
 			success : function(data) {
-				setGroupCookies(data);
-				loadGroups();				
+				setGroupCookies(data);		
 			}
 		});
-	} else {
-		loadGroups();
 	}
 	
 	// Get nodes owned by user
@@ -172,9 +151,99 @@ function loadServicePage() {
 			getUserNodesDef();
 			getNodesCurrentLoad();
 		}
+	});	
+}
+
+/**
+ * Load the service portal's provision page
+ * 
+ * @param tabId
+ * 			Tab ID where page will reside
+ * @return Nothing
+ */
+function loadServiceProvisionPage(tabId) {
+	// Create info bar
+	var infoBar = createInfoBar('Select a platform to provision a node on, then click Ok.');
+	
+	// Create provision page
+	var provPg = $('<div class="form"></div>');
+	$('#' + tabId).append(infoBar, provPg);
+
+	// Create radio buttons for platforms
+	var hwList = $('<ol>Platforms available:</ol>');
+	var ipmi = $('<li><input type="radio" name="hw" value="ipmi" checked/>iDataPlex</li>');
+	var blade = $('<li><input type="radio" name="hw" value="blade"/>BladeCenter</li>');
+	var hmc = $('<li><input type="radio" name="hw" value="hmc"/>System p</li>');
+	var zvm = $('<li><input type="radio" name="hw" value="zvm"/>System z</li>');
+
+	hwList.append(ipmi);
+	hwList.append(blade);
+	hwList.append(hmc);
+	hwList.append(zvm);
+	provPg.append(hwList);
+
+	/**
+	 * Ok
+	 */
+	var okBtn = createButton('Ok');
+	okBtn.bind('click', function(event) {
+		// Get hardware that was selected
+		var hw = $(this).parent().find('input[name="hw"]:checked').val();
+	    var newTabId = hw + 'ProvisionTab';
+
+	    if ($('#' + newTabId).size() > 0){
+	    	serviceTabs.select(newTabId);
+	    } else {
+	        var title = '';
+	        
+	        // Create an instance of the plugin
+	        var plugin;
+	        switch (hw) {
+	        case "blade":
+	            plugin = new bladePlugin();
+	            title = 'BladeCenter';
+	            break;
+	        case "hmc":
+	            plugin = new hmcPlugin();
+	            title = 'System p';
+	            break;
+	        case "ipmi":
+	            plugin = new ipmiPlugin();
+	            title = 'iDataPlex';
+	            break;
+	        case "zvm":
+	            plugin = new zvmPlugin();
+	            title = 'System z';
+	            
+	            // Get zVM host names
+	        	if (!$.cookie('srv_zvm')){
+	        		$.ajax( {
+	        			url : 'lib/srv_cmd.php',
+	        			dataType : 'json',
+	        			data : {
+	        				cmd : 'webportal',
+	        				tgt : '',
+	        				args : 'lszvm',
+	        				msg : ''
+	        			},
+
+	        			success : function(data) {
+	        				setzVMCookies(data);
+	        			}
+	        		});
+	        	} else {
+	        		loadzVMs();
+	        	}
+	            break;
+	        }
+
+	        // Select tab
+	        serviceTabs.add(newTabId, title, '', true);
+	        serviceTabs.select(newTabId);
+	        plugin.loadServiceProvisionPage(newTabId);
+	    }
 	});
-	
-	
+	provPg.append(okBtn);
 }
 
 /**
@@ -214,7 +283,9 @@ function getUserNodesDef() {
 	        success : loadNodesTable
 	    });
 	} else {
-		prompt('Warning', $('<p>Your session has expired! Please log out and back in.</p>'));
+		// Clear the tab before inserting the table
+		$('#manageTab').children().remove();
+		$('#manageTab').append(createWarnBar('You are not managing any node.  Try to provision a node.'));
 	}
 }
 
@@ -262,7 +333,7 @@ function loadNodesTable(data) {
 	// Sort headers
 	var sorted = new Array();
 	var attrs2hide = new Array('status', 'statustime', 'appstatus', 'appstatustime', 'usercomment');
-	var attrs2show = new Array('arch', 'groups', 'hcp', 'hostnames', 'ip', 'os', 'userid');
+	var attrs2show = new Array('arch', 'groups', 'hcp', 'hostnames', 'ip', 'os', 'userid', 'mgt');
 	for (var key in headers) {
 		// Show node attributes
 		if (jQuery.inArray(key, attrs2show) > -1) {
@@ -711,598 +782,40 @@ function loadNode(e) {
 				msg : msg
 			},
 
-			success : showInventory
+			success : function(data) {
+				var args = data.msg.split(',');
+
+				// Get node
+				var node = args[1].replace('node=', '');
+				
+				// Get the management plugin
+				var mgt = getNodeAttr(node, 'mgt');
+				
+				// Create an instance of the plugin
+		        var plugin;
+		        switch (mgt) {
+		        case "blade":
+		            plugin = new bladePlugin();
+		            break;
+		        case "hmc":
+		            plugin = new hmcPlugin();
+		            break;
+		        case "ipmi":
+		            plugin = new ipmiPlugin();
+		            break;
+		        case "zvm":
+		            plugin = new zvmPlugin();
+		            break;
+		        }
+
+		        // Select tab
+		        plugin.loadServiceInventory(data);
+			}
 		});
 	}	
 
 	// Select new tab
 	serviceTabs.select(tabId);
-}
-
-/**
- * Show node inventory
- * 
- * @param data
- *            Data from HTTP request
- * @return Nothing
- */
-function showInventory(data) {
-	var args = data.msg.split(',');
-
-	// Get tab ID
-	var tabId = args[0].replace('out=', '');
-	// Get node
-	var node = args[1].replace('node=', '');
-	// Get node inventory
-	var inv = data.rsp[0].split(node + ':');
-
-	// Remove loader
-	$('#' + tabId).find('img').remove();
-
-	// Create array of property keys
-	var keys = new Array('userId', 'host', 'os', 'arch', 'hcp', 'priv', 'memory', 'proc', 'disk', 'nic');
-
-	// Create hash table for property names
-	var attrNames = new Object();
-	attrNames['userId'] = 'z/VM UserID:';
-	attrNames['host'] = 'z/VM Host:';
-	attrNames['os'] = 'Operating System:';
-	attrNames['arch'] = 'Architecture:';
-	attrNames['hcp'] = 'HCP:';
-	attrNames['priv'] = 'Privileges:';
-	attrNames['memory'] = 'Total Memory:';
-	attrNames['proc'] = 'Processors:';
-	attrNames['disk'] = 'Disks:';
-	attrNames['nic'] = 'NICs:';
-
-	// Create hash table for node attributes
-	var attrs = getAttrs(keys, attrNames, inv);
-
-	// Create division to hold inventory
-	var invDivId = node + 'Inventory';
-	var invDiv = $('<div class="inventory" id="' + invDivId + '"></div>');
-	
-	var infoBar = createInfoBar('Below is the inventory for the virtual machine you selected.');
-	invDiv.append(infoBar);
-
-	/**
-	 * General info section
-	 */
-	var fieldSet = $('<fieldset></fieldset>');
-	var legend = $('<legend>General</legend>');
-	fieldSet.append(legend);
-	var oList = $('<ol></ol>');
-	var item, label, args;
-
-	// Loop through each property
-	for ( var k = 0; k < 5; k++) {
-		// Create a list item for each property
-		item = $('<li></li>');
-
-		// Create a label - Property name
-		label = $('<label>' + attrNames[keys[k]] + '</label>');
-		item.append(label);
-
-		for ( var l = 0; l < attrs[keys[k]].length; l++) {
-			// Create a input - Property value(s)
-			// Handle each property uniquely
-			item.append(attrs[keys[k]][l]);
-		}
-
-		oList.append(item);
-	}
-	// Append to inventory form
-	fieldSet.append(oList);
-	invDiv.append(fieldSet);
-	
-	/**
-	 * Monitoring section
-	 */
-	fieldSet = $('<fieldset id="' + node + '_monitor"></fieldset>');
-	legend = $('<legend>Monitoring</legend>');
-	fieldSet.append(legend);
-	getMonitorMetrics(node);
-	
-	// Append to inventory form
-	invDiv.append(fieldSet);
-
-	/**
-	 * Hardware info section
-	 */
-	var hwList, hwItem;
-	fieldSet = $('<fieldset></fieldset>');
-	legend = $('<legend>Hardware</legent>');
-	fieldSet.append(legend);
-	oList = $('<ol></ol>');
-
-	// Loop through each property
-	var label;
-	for (k = 5; k < keys.length; k++) {
-		// Create a list item
-		item = $('<li></li>');
-
-		// Create a list to hold the property value(s)
-		hwList = $('<ul></ul>');
-		hwItem = $('<li></li>');
-
-		/**
-		 * Privilege section
-		 */
-		if (keys[k] == 'priv') {
-			// Create a label - Property name
-			label = $('<label>' + attrNames[keys[k]].replace(':', '') + '</label>');
-			item.append(label);
-
-			// Loop through each line
-			for (l = 0; l < attrs[keys[k]].length; l++) {
-				// Create a new list item for each line
-				hwItem = $('<li></li>');
-
-				// Determine privilege
-				args = attrs[keys[k]][l].split(' ');
-				if (args[0] == 'Directory:') {
-					label = $('<label>' + args[0] + '</label>');
-					hwItem.append(label);
-					hwItem.append(args[1]);
-				} else if (args[0] == 'Currently:') {
-					label = $('<label>' + args[0] + '</label>');
-					hwItem.append(label);
-					hwItem.append(args[1]);
-				}
-
-				hwList.append(hwItem);
-			}
-
-			item.append(hwList);
-		}
-
-		/**
-		 * Memory section
-		 */
-		else if (keys[k] == 'memory') {
-			// Create a label - Property name
-			label = $('<label>' + attrNames[keys[k]].replace(':', '') + '</label>');
-			item.append(label);
-
-			// Loop through each value line
-			for (l = 0; l < attrs[keys[k]].length; l++) {
-				// Create a new list item for each line
-				hwItem = $('<li></li>');
-				hwItem.append(attrs[keys[k]][l]);
-				hwList.append(hwItem);
-			}
-
-			item.append(hwList);
-		}
-
-		/**
-		 * Processor section
-		 */
-		else if (keys[k] == 'proc') {
-			// Create a label - Property name
-			label = $('<label><b>' + attrNames[keys[k]].replace(':', '') + '</b></label>');
-			item.append(label);
-
-			// Create a table to hold processor data
-			var procTable = $('<table></table>');
-			var procBody = $('<tbody></tbody>');
-
-			// Table columns - Type, Address, ID, Base, Dedicated, and Affinity
-			var procTabRow = $('<thead class="ui-widget-header"> <th>Type</th> <th>Address</th> <th>ID</th> <th>Base</th> <th>Dedicated</th> <th>Affinity</th> </thead>');
-			procTable.append(procTabRow);
-			var procType, procAddr, procId, procAff;
-
-			// Loop through each processor
-			var n, temp;
-			for (l = 0; l < attrs[keys[k]].length; l++) {
-				if (attrs[keys[k]][l]) {			
-    				args = attrs[keys[k]][l].split(' ');
-    				
-    				// Get processor type, address, ID, and affinity
-    				n = 3;
-    				temp = args[args.length - n];
-    				while (!jQuery.trim(temp)) {
-    					n = n + 1;
-    					temp = args[args.length - n];
-    				}
-    				procType = $('<td>' + temp + '</td>');
-    				procAddr = $('<td>' + args[1] + '</td>');
-    				procId = $('<td>' + args[5] + '</td>');
-    				procAff = $('<td>' + args[args.length - 1] + '</td>');
-    
-    				// Base processor
-    				if (args[6] == '(BASE)') {
-    					baseProc = $('<td>' + true + '</td>');
-    				} else {
-    					baseProc = $('<td>' + false + '</td>');
-    				}
-    
-    				// Dedicated processor
-    				if (args[args.length - 3] == 'DEDICATED') {
-    					dedicatedProc = $('<td>' + true + '</td>');
-    				} else {
-    					dedicatedProc = $('<td>' + false + '</td>');
-    				}
-    
-    				// Create a new row for each processor
-    				procTabRow = $('<tr></tr>');
-    				procTabRow.append(procType);
-    				procTabRow.append(procAddr);
-    				procTabRow.append(procId);
-    				procTabRow.append(baseProc);
-    				procTabRow.append(dedicatedProc);
-    				procTabRow.append(procAff);
-    				procBody.append(procTabRow);
-				}
-			}
-			
-			procTable.append(procBody);
-			item.append(procTable);
-		}
-
-		/**
-		 * Disk section
-		 */
-		else if (keys[k] == 'disk') {
-			// Create a label - Property name
-			label = $('<label><b>' + attrNames[keys[k]].replace(':', '') + '</b></label>');
-			item.append(label);
-
-			// Create a table to hold disk (DASD) data
-			var dasdTable = $('<table></table>');
-			var dasdBody = $('<tbody></tbody>');
-
-			// Table columns - Virtual Device, Type, VolID, Type of Access, and Size
-			var dasdTabRow = $('<thead class="ui-widget-header"> <th>Virtual Device #</th> <th>Type</th> <th>VolID</th> <th>Type of Access</th> <th>Size</th> </thead>');
-			dasdTable.append(dasdTabRow);
-			var dasdVDev, dasdType, dasdVolId, dasdAccess, dasdSize;
-
-			// Loop through each DASD
-			for (l = 0; l < attrs[keys[k]].length; l++) {
-				if (attrs[keys[k]][l]) {
-    				args = attrs[keys[k]][l].split(' ');
-
-    				// Get DASD virtual device, type, volume ID, access, and size
-    				dasdVDev = $('<td>' + args[1] + '</td>');    
-    				dasdType = $('<td>' + args[2] + '</td>');
-    				dasdVolId = $('<td>' + args[3] + '</td>');
-    				dasdAccess = $('<td>' + args[4] + '</td>');
-    				dasdSize = $('<td>' + args[args.length - 9] + ' ' + args[args.length - 8] + '</td>');
-    
-    				// Create a new row for each DASD
-    				dasdTabRow = $('<tr></tr>');
-    				dasdTabRow.append(dasdVDev);
-    				dasdTabRow.append(dasdType);
-    				dasdTabRow.append(dasdVolId);
-    				dasdTabRow.append(dasdAccess);
-    				dasdTabRow.append(dasdSize);
-    				dasdBody.append(dasdTabRow);
-				}
-			}
-
-			dasdTable.append(dasdBody);
-			item.append(dasdTable);
-		}
-
-		/**
-		 * NIC section
-		 */
-		else if (keys[k] == 'nic') {
-			// Create a label - Property name
-			label = $('<label><b>' + attrNames[keys[k]].replace(':', '') + '</b></label>');
-			item.append(label);
-
-			// Create a table to hold NIC data
-			var nicTable = $('<table></table>');
-			var nicBody = $('<tbody></tbody>');
-
-			// Table columns - Virtual device, Adapter Type, Port Name, # of Devices, MAC Address, and LAN Name
-			var nicTabRow = $('<thead class="ui-widget-header"><th>Virtual Device #</th> <th>Adapter Type</th> <th>Port Name</th> <th># of Devices</th> <th>LAN Name</th></thead>');
-			nicTable.append(nicTabRow);
-			var nicVDev, nicType, nicPortName, nicNumOfDevs, nicLanName;
-
-			// Loop through each NIC (Data contained in 2 lines)
-			for (l = 0; l < attrs[keys[k]].length; l = l + 2) {
-				if (attrs[keys[k]][l]) {
-    				args = attrs[keys[k]][l].split(' ');
-    
-    				// Get NIC virtual device, type, port name, and number of devices
-    				nicVDev = $('<td>' + args[1] + '</td>');
-    				nicType = $('<td>' + args[3] + '</td>');
-    				nicPortName = $('<td>' + args[10] + '</td>');
-    				nicNumOfDevs = $('<td>' + args[args.length - 1] + '</td>');
-    
-    				args = attrs[keys[k]][l + 1].split(' ');
-    				nicLanName = $('<td>' + args[args.length - 2] + ' ' + args[args.length - 1] + '</td>');
-    
-    				// Create a new row for each DASD
-    				nicTabRow = $('<tr></tr>');
-    				nicTabRow.append(nicVDev);
-    				nicTabRow.append(nicType);
-    				nicTabRow.append(nicPortName);
-    				nicTabRow.append(nicNumOfDevs);
-    				nicTabRow.append(nicLanName);
-    
-    				nicBody.append(nicTabRow);
-				}
-			}
-
-			nicTable.append(nicBody);
-			item.append(nicTable);
-		}
-
-		oList.append(item);
-	}
-
-	// Append inventory to division
-	fieldSet.append(oList);
-	invDiv.append(fieldSet);
-	invDiv.find('th').css({
-		'padding': '5px 10px',
-		'font-weight': 'bold'
-	});
-
-	// Append to tab
-	$('#' + tabId).append(invDiv);
-}
-
-/**
- * Load provision page (z)
- * 
- * @param tabId
- * 			Tab ID where page will reside
- * @return Nothing
- */
-function loadzProvisionPage(tabId) {	
-	// Create provision form
-	var provForm = $('<div></div>');
-
-	// Create info bar
-	var infoBar = createInfoBar('Provision a Linux virtual machine on System z by selecting the appropriate choices below.  Once you are ready, click on Provision to provision the virtual machine.');
-	provForm.append(infoBar);
-
-	// Append to provision tab
-	$('#' + tabId).append(provForm);
-	
-	// Create provision table
-	var provTable = $('<table id="select-table" style="margin: 10px;"></table');
-	var provHeader = $('<thead class="ui-widget-header"> <th>zVM</th> <th>Group</th> <th>Image</th></thead>');
-	var provBody = $('<tbody></tbody>');
-	var provFooter = $('<tfoot></tfoot>');
-	provTable.append(provHeader, provBody, provFooter);
-	provForm.append(provTable);
-	
-	provHeader.children('th').css({
-		'font': 'bold 12px verdana, arial, helvetica, sans-serif'
-	});
-	
-	// Create row to contain selections
-	var provRow = $('<tr></tr>');
-	provBody.append(provRow);
-	// Create columns for zVM, group, and image
-	var zvmCol = $('<td style="vertical-align: top;"></td>');
-	provRow.append(zvmCol);
-	var groupCol = $('<td style="vertical-align: top;"></td>');
-	provRow.append(groupCol);
-	var imageCol = $('<td style="vertical-align: top;"></td>');
-	provRow.append(imageCol);
-	
-	provRow.children('td').css({
-		'min-width': '250px'
-	});
-	
-	/**
-	 * Provision VM
-	 */
-	var provisionBtn = createButton('Provision');
-	provisionBtn.bind('click', function(event) {
-		var hcp = $('#select-table tbody tr:eq(0) td:eq(0) input[name="hcp"]:checked').val();
-		var group = $('#select-table tbody tr:eq(0) td:eq(1) input[name="group"]:checked').val();
-		var img = $('#select-table tbody tr:eq(0) td:eq(2) input[name="image"]:checked').val();
-		var owner = $.cookie('srv_usrname');;
-		
-		// Begin by creating VM
-		createVM(tabId, group, hcp, img, owner);
-	});
-	provForm.append(provisionBtn);
-}
-
-/**
- * Create virtual machine
- * 
- * @param tabId
- * 			Tab ID
- * @param group
- * 			Group
- * @param hcp
- * 			Hardware control point
- * @param img
- * 			OS image
- * @return Nothing
- */
-function createVM(tabId, group, hcp, img, owner) {
-	var statBar = createStatusBar('provsionStatBar');
-	var loader = createLoader('provisionLoader');
-	statBar.find('div').append(loader);
-	statBar.prependTo($('#provisionTab'));
-	
-	// Submit request to create VM
-	// webportal provzlinux [group] [hcp] [image] [owner]
-	$.ajax({
-        url : 'lib/srv_cmd.php',
-        dataType : 'json',
-        data : {
-            cmd : 'webportal',
-            tgt : '',
-            args : 'provzlinux;' + group + ';' + hcp + ';' + img + ';' + owner,
-            msg : '' 
-        },
-        success:function(data){
-        	$('#provisionLoader').remove();
-             for(var i in data.rsp){
-                 $('#provsionStatBar').find('div').append('<pre>' + data.rsp[i] + '</pre>');
-             }
-             
-             // Refresh nodes table
-             $.ajax( {
-         		url : 'lib/srv_cmd.php',
-         		dataType : 'json',
-         		data : {
-         			cmd : 'tabdump',
-         			tgt : '',
-         			args : 'nodetype',
-         			msg : ''
-         		},
-
-         		success : function(data) {
-         			setUserNodes(data);
-         		}
-         	});
-        }
-    });
-}
-
-/**
- * Load zVMs into column
- */
-function loadzVMs() {
-	var zvmCol = $('#select-table tbody tr:eq(0) td:eq(0)');
-	
-	// Get group names and description and append to group column
-	var groupNames = $.cookie('srv_zvms').split(',');
-	var radio, zvmBlock, args, zvm, hcp;
-	for (var i in groupNames) {
-		args = groupNames[i].split(':');
-		zvm = args[0];
-		hcp = args[1];
-		
-		// Create block for each group
-		zvmBlock = $('<div class="ui-state-default"></div>').css({
-			'border': '1px solid',
-			'max-width': '200px',
-			'margin': '5px auto',
-			'padding': '5px',
-			'display': 'block', 
-			'vertical-align': 'middle',
-			'cursor': 'pointer',
-			'white-space': 'normal'
-		}).click(function(){
-			$(this).children('input:radio').attr('checked', 'checked');
-			$(this).parents('td').find('div').attr('class', 'ui-state-default');
-			$(this).attr('class', 'ui-state-active');
-		});
-		radio = $('<input type="radio" name="hcp" value="' + hcp + '"/>').css('display', 'none');
-		zvmBlock.append(radio, $('<span><b>Name: </b>' + zvm + '</span>'), $('<span><b>zHCP: </b>' + hcp + '</span>'));
-		zvmBlock.children('span').css({
-			'display': 'block',
-			'margin': '5px',
-			'text-align': 'left'
-		});
-		zvmCol.append(zvmBlock);
-	}
-}
-
-/**
- * Load groups into column
- */
-function loadGroups() {
-	var groupCol = $('#select-table tbody tr:eq(0) td:eq(1)');
-	
-	// Get group names and description and append to group column
-	var groupNames = $.cookie('srv_groups').split(',');
-	var groupBlock, radio, args, name, ip, hostname, desc;
-	for (var i in groupNames) {
-		args = groupNames[i].split(':');
-		name = args[0];
-		ip = args[1];
-		hostname = args[2];
-		desc = args[3];
-		
-		// Create block for each group
-		groupBlock = $('<div class="ui-state-default"></div>').css({
-			'border': '1px solid',
-			'max-width': '200px',
-			'margin': '5px auto',
-			'padding': '5px',
-			'display': 'block', 
-			'vertical-align': 'middle',
-			'cursor': 'pointer',
-			'white-space': 'normal'
-		}).click(function(){
-			$(this).children('input:radio').attr('checked', 'checked');
-			$(this).parents('td').find('div').attr('class', 'ui-state-default');
-			$(this).attr('class', 'ui-state-active');
-		});
-		radio = $('<input type="radio" name="group" value="' + name + '"/>').css('display', 'none');
-		groupBlock.append(radio, $('<span><b>Name: </b>' + name + '</span>'), $('<span><b>Description: </b>' + desc + '</span>'));
-		groupBlock.children('span').css({
-			'display': 'block',
-			'margin': '5px',
-			'text-align': 'left'
-		});
-		groupCol.append(groupBlock);
-	}
-}
-
-/**
- * Load OS images into column
- */
-function loadOSImages() {
-	var imgCol = $('#select-table tbody tr:eq(0) td:eq(2)');
-	
-	// Get group names and description and append to group column
-	var imgNames = $.cookie('srv_imagenames').split(',');
-	var imgBlock, radio, args, name, desc;
-	for (var i in imgNames) {
-		args = imgNames[i].split(':');
-		name = args[0];
-		desc = args[1];
-		
-		// Create block for each image
-		imgBlock = $('<div class="ui-state-default"></div>').css({
-			'border': '1px solid',
-			'max-width': '200px',
-			'margin': '5px auto',
-			'padding': '5px',
-			'display': 'block', 
-			'vertical-align': 'middle',
-			'cursor': 'pointer',
-			'white-space': 'normal'
-		}).click(function(){
-			$(this).children('input:radio').attr('checked', 'checked');
-			$(this).parents('td').find('div').attr('class', 'ui-state-default');
-			$(this).attr('class', 'ui-state-active');
-		});
-		radio = $('<input type="radio" name="image" value="' + name + '"/>').css('display', 'none');
-		imgBlock.append(radio, $('<span><b>Name: </b>' + name + '</span>'), $('<span><b>Description: </b>' + desc + '</span>'));
-		imgBlock.children('span').css({
-			'display': 'block',
-			'margin': '5px',
-			'text-align': 'left'
-		});
-		imgCol.append(imgBlock);
-	}
-}
-
-/**
- * Set a cookie for zVM host names
- * 
- * @param data
- *            Data from HTTP request
- * @return Nothing
- */
-function setzVMCookies(data) {
-	if (data.rsp) {
-		var zvms = new Array();
-		for ( var i = 0; i < data.rsp.length; i++) {
-			zvms.push(data.rsp[i]);
-		}
-		
-		// Set cookie to expire in 60 minutes
-		var exDate = new Date();
-		exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
-		$.cookie('srv_zvms', zvms, { expires: exDate });
-	}
 }
 
 /**
@@ -1445,27 +958,7 @@ function setOSImageCookies(data) {
 	$.cookie('srv_osarchs', tmp);
 }
 
-/**
- * Set a cookie for disk pool names of a given node
- * 
- * @param data
- *            Data from HTTP request
- * @return Nothing
- */
-function setDiskPoolCookies(data) {
-	if (data.rsp) {
-		var node = data.msg;
-		var pools = data.rsp[0].split(node + ': ');
-		for (var i in pools) {
-			pools[i] = jQuery.trim(pools[i]);
-		}
-		
-		// Set cookie to expire in 60 minutes
-		var exDate = new Date();
-		exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
-		$.cookie(node + 'diskpools', pools, { expires: exDate });
-	}
-}
+
 
 /**
  * Set a cookie for user nodes
@@ -2410,4 +1903,43 @@ function drawNetworkFlot(node, inPair, outPair) {
 			showMarker : false
 		}
 	});
+}
+
+/**
+ * Get an attribute of a given node
+ * 
+ * @param node
+ *            The node
+ * @param attrName
+ *            The attribute
+ * @return The attribute of the node
+ */
+function getNodeAttr(node, attrName) {
+	// Get the row
+	var row = $('[id=' + node + ']').parents('tr');
+
+	// Search for the column containing the attribute
+	var attrCol;
+	
+	var cols = row.parents('.dataTables_scroll').find('.dataTables_scrollHead thead tr:eq(0) th');
+	// Loop through each column
+	for (var i in cols) {
+		// Find column that matches the attribute
+		if (cols.eq(i).html() == attrName) {
+			attrCol = cols.eq(i);
+			break;
+		}
+	}
+	
+	// If the column containing the attribute is found
+	if (attrCol) {
+		// Get the attribute column index
+		var attrIndex = attrCol.index();
+
+		// Get the attribute for the given node
+		var attr = row.find('td:eq(' + attrIndex + ')');
+		return attr.text();
+	} else {
+		return '';
+	}
 }

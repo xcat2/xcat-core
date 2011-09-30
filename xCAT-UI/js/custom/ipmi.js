@@ -15,6 +15,28 @@ var ipmiPlugin = function() {
 };
 
 /**
+ * Load provision page (service page)
+ * 
+ * @param tabId
+ * 			Tab ID where page will reside
+ * @return Nothing
+ */
+ipmiPlugin.prototype.loadServiceProvisionPage = function(tabId) {
+	
+};
+
+/**
+ * Show node inventory (service page)
+ * 
+ * @param data
+ *            Data from HTTP request
+ * @return Nothing
+ */
+ipmiPlugin.prototype.loadServiceInventory = function(data) {
+	
+};
+
+/**
  * Load node inventory
  * 
  * @param data

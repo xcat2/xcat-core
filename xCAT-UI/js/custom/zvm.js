@@ -16,6 +16,399 @@ var zvmPlugin = function() {
 };
 
 /**
+ * Load provision page (service page)
+ * 
+ * @param tabId
+ * 			Tab ID where page will reside
+ * @return Nothing
+ */
+zvmPlugin.prototype.loadServiceProvisionPage = function(tabId) {
+	// Create provision form
+	var provForm = $('<div></div>');
+
+	// Create info bar
+	var infoBar = createInfoBar('Provision a Linux virtual machine on System z by selecting the appropriate choices below.  Once you are ready, click on Provision to provision the virtual machine.');
+	provForm.append(infoBar);
+
+	// Append to provision tab
+	$('#' + tabId).append(provForm);
+	
+	// Create provision table
+	var provTable = $('<table id="select-table" style="margin: 10px;"></table');
+	var provHeader = $('<thead class="ui-widget-header"> <th>zVM</th> <th>Group</th> <th>Image</th></thead>');
+	var provBody = $('<tbody></tbody>');
+	var provFooter = $('<tfoot></tfoot>');
+	provTable.append(provHeader, provBody, provFooter);
+	provForm.append(provTable);
+	
+	provHeader.children('th').css({
+		'font': 'bold 12px verdana, arial, helvetica, sans-serif'
+	});
+	
+	// Create row to contain selections
+	var provRow = $('<tr></tr>');
+	provBody.append(provRow);
+	// Create columns for zVM, group, and image
+	var zvmCol = $('<td style="vertical-align: top;"></td>');
+	provRow.append(zvmCol);
+	var groupCol = $('<td style="vertical-align: top;"></td>');
+	provRow.append(groupCol);
+	var imageCol = $('<td style="vertical-align: top;"></td>');
+	provRow.append(imageCol);
+	
+	// Load zVMs, groups, and images into their respective columns
+	loadzVMs(zvmCol);
+	loadGroups(groupCol);
+	loadOSImages(imageCol);
+	
+	provRow.children('td').css({
+		'min-width': '250px'
+	});
+	
+	/**
+	 * Provision VM
+	 */
+	var provisionBtn = createButton('Provision');
+	provisionBtn.bind('click', function(event) {
+		var hcp = $('#select-table tbody tr:eq(0) td:eq(0) input[name="hcp"]:checked').val();
+		var group = $('#select-table tbody tr:eq(0) td:eq(1) input[name="group"]:checked').val();
+		var img = $('#select-table tbody tr:eq(0) td:eq(2) input[name="image"]:checked').val();
+		var owner = $.cookie('srv_usrname');;
+		
+		// Begin by creating VM
+		createzVM(tabId, group, hcp, img, owner);
+	});
+	provForm.append(provisionBtn);
+};
+
+/**
+ * Show node inventory (service page)
+ * 
+ * @param data
+ *            Data from HTTP request
+ * @return Nothing
+ */
+zvmPlugin.prototype.loadServiceInventory = function(data) {
+	var args = data.msg.split(',');
+
+	// Get tab ID
+	var tabId = args[0].replace('out=', '');
+	// Get node
+	var node = args[1].replace('node=', '');
+	// Get node inventory
+	var inv = data.rsp[0].split(node + ':');
+
+	// Remove loader
+	$('#' + tabId).find('img').remove();
+
+	// Create array of property keys
+	var keys = new Array('userId', 'host', 'os', 'arch', 'hcp', 'priv', 'memory', 'proc', 'disk', 'nic');
+
+	// Create hash table for property names
+	var attrNames = new Object();
+	attrNames['userId'] = 'z/VM UserID:';
+	attrNames['host'] = 'z/VM Host:';
+	attrNames['os'] = 'Operating System:';
+	attrNames['arch'] = 'Architecture:';
+	attrNames['hcp'] = 'HCP:';
+	attrNames['priv'] = 'Privileges:';
+	attrNames['memory'] = 'Total Memory:';
+	attrNames['proc'] = 'Processors:';
+	attrNames['disk'] = 'Disks:';
+	attrNames['nic'] = 'NICs:';
+
+	// Create hash table for node attributes
+	var attrs = getAttrs(keys, attrNames, inv);
+
+	// Create division to hold inventory
+	var invDivId = node + 'Inventory';
+	var invDiv = $('<div class="inventory" id="' + invDivId + '"></div>');
+	
+	var infoBar = createInfoBar('Below is the inventory for the virtual machine you selected.');
+	invDiv.append(infoBar);
+
+	/**
+	 * General info section
+	 */
+	var fieldSet = $('<fieldset></fieldset>');
+	var legend = $('<legend>General</legend>');
+	fieldSet.append(legend);
+	var oList = $('<ol></ol>');
+	var item, label, args;
+
+	// Loop through each property
+	for ( var k = 0; k < 5; k++) {
+		// Create a list item for each property
+		item = $('<li></li>');
+
+		// Create a label - Property name
+		label = $('<label>' + attrNames[keys[k]] + '</label>');
+		item.append(label);
+
+		for ( var l = 0; l < attrs[keys[k]].length; l++) {
+			// Create a input - Property value(s)
+			// Handle each property uniquely
+			item.append(attrs[keys[k]][l]);
+		}
+
+		oList.append(item);
+	}
+	// Append to inventory form
+	fieldSet.append(oList);
+	invDiv.append(fieldSet);
+	
+	/**
+	 * Monitoring section
+	 */
+	fieldSet = $('<fieldset id="' + node + '_monitor"></fieldset>');
+	legend = $('<legend>Monitoring</legend>');
+	fieldSet.append(legend);
+	getMonitorMetrics(node);
+	
+	// Append to inventory form
+	invDiv.append(fieldSet);
+
+	/**
+	 * Hardware info section
+	 */
+	var hwList, hwItem;
+	fieldSet = $('<fieldset></fieldset>');
+	legend = $('<legend>Hardware</legent>');
+	fieldSet.append(legend);
+	oList = $('<ol></ol>');
+
+	// Loop through each property
+	var label;
+	for (k = 5; k < keys.length; k++) {
+		// Create a list item
+		item = $('<li></li>');
+
+		// Create a list to hold the property value(s)
+		hwList = $('<ul></ul>');
+		hwItem = $('<li></li>');
+
+		/**
+		 * Privilege section
+		 */
+		if (keys[k] == 'priv') {
+			// Create a label - Property name
+			label = $('<label>' + attrNames[keys[k]].replace(':', '') + '</label>');
+			item.append(label);
+
+			// Loop through each line
+			for (l = 0; l < attrs[keys[k]].length; l++) {
+				// Create a new list item for each line
+				hwItem = $('<li></li>');
+
+				// Determine privilege
+				args = attrs[keys[k]][l].split(' ');
+				if (args[0] == 'Directory:') {
+					label = $('<label>' + args[0] + '</label>');
+					hwItem.append(label);
+					hwItem.append(args[1]);
+				} else if (args[0] == 'Currently:') {
+					label = $('<label>' + args[0] + '</label>');
+					hwItem.append(label);
+					hwItem.append(args[1]);
+				}
+
+				hwList.append(hwItem);
+			}
+
+			item.append(hwList);
+		}
+
+		/**
+		 * Memory section
+		 */
+		else if (keys[k] == 'memory') {
+			// Create a label - Property name
+			label = $('<label>' + attrNames[keys[k]].replace(':', '') + '</label>');
+			item.append(label);
+
+			// Loop through each value line
+			for (l = 0; l < attrs[keys[k]].length; l++) {
+				// Create a new list item for each line
+				hwItem = $('<li></li>');
+				hwItem.append(attrs[keys[k]][l]);
+				hwList.append(hwItem);
+			}
+
+			item.append(hwList);
+		}
+
+		/**
+		 * Processor section
+		 */
+		else if (keys[k] == 'proc') {
+			// Create a label - Property name
+			label = $('<label><b>' + attrNames[keys[k]].replace(':', '') + '</b></label>');
+			item.append(label);
+
+			// Create a table to hold processor data
+			var procTable = $('<table></table>');
+			var procBody = $('<tbody></tbody>');
+
+			// Table columns - Type, Address, ID, Base, Dedicated, and Affinity
+			var procTabRow = $('<thead class="ui-widget-header"> <th>Type</th> <th>Address</th> <th>ID</th> <th>Base</th> <th>Dedicated</th> <th>Affinity</th> </thead>');
+			procTable.append(procTabRow);
+			var procType, procAddr, procId, procAff;
+
+			// Loop through each processor
+			var n, temp;
+			for (l = 0; l < attrs[keys[k]].length; l++) {
+				if (attrs[keys[k]][l]) {			
+    				args = attrs[keys[k]][l].split(' ');
+    				
+    				// Get processor type, address, ID, and affinity
+    				n = 3;
+    				temp = args[args.length - n];
+    				while (!jQuery.trim(temp)) {
+    					n = n + 1;
+    					temp = args[args.length - n];
+    				}
+    				procType = $('<td>' + temp + '</td>');
+    				procAddr = $('<td>' + args[1] + '</td>');
+    				procId = $('<td>' + args[5] + '</td>');
+    				procAff = $('<td>' + args[args.length - 1] + '</td>');
+    
+    				// Base processor
+    				if (args[6] == '(BASE)') {
+    					baseProc = $('<td>' + true + '</td>');
+    				} else {
+    					baseProc = $('<td>' + false + '</td>');
+    				}
+    
+    				// Dedicated processor
+    				if (args[args.length - 3] == 'DEDICATED') {
+    					dedicatedProc = $('<td>' + true + '</td>');
+    				} else {
+    					dedicatedProc = $('<td>' + false + '</td>');
+    				}
+    
+    				// Create a new row for each processor
+    				procTabRow = $('<tr></tr>');
+    				procTabRow.append(procType);
+    				procTabRow.append(procAddr);
+    				procTabRow.append(procId);
+    				procTabRow.append(baseProc);
+    				procTabRow.append(dedicatedProc);
+    				procTabRow.append(procAff);
+    				procBody.append(procTabRow);
+				}
+			}
+			
+			procTable.append(procBody);
+			item.append(procTable);
+		}
+
+		/**
+		 * Disk section
+		 */
+		else if (keys[k] == 'disk') {
+			// Create a label - Property name
+			label = $('<label><b>' + attrNames[keys[k]].replace(':', '') + '</b></label>');
+			item.append(label);
+
+			// Create a table to hold disk (DASD) data
+			var dasdTable = $('<table></table>');
+			var dasdBody = $('<tbody></tbody>');
+
+			// Table columns - Virtual Device, Type, VolID, Type of Access, and Size
+			var dasdTabRow = $('<thead class="ui-widget-header"> <th>Virtual Device #</th> <th>Type</th> <th>VolID</th> <th>Type of Access</th> <th>Size</th> </thead>');
+			dasdTable.append(dasdTabRow);
+			var dasdVDev, dasdType, dasdVolId, dasdAccess, dasdSize;
+
+			// Loop through each DASD
+			for (l = 0; l < attrs[keys[k]].length; l++) {
+				if (attrs[keys[k]][l]) {
+    				args = attrs[keys[k]][l].split(' ');
+
+    				// Get DASD virtual device, type, volume ID, access, and size
+    				dasdVDev = $('<td>' + args[1] + '</td>');    
+    				dasdType = $('<td>' + args[2] + '</td>');
+    				dasdVolId = $('<td>' + args[3] + '</td>');
+    				dasdAccess = $('<td>' + args[4] + '</td>');
+    				dasdSize = $('<td>' + args[args.length - 9] + ' ' + args[args.length - 8] + '</td>');
+    
+    				// Create a new row for each DASD
+    				dasdTabRow = $('<tr></tr>');
+    				dasdTabRow.append(dasdVDev);
+    				dasdTabRow.append(dasdType);
+    				dasdTabRow.append(dasdVolId);
+    				dasdTabRow.append(dasdAccess);
+    				dasdTabRow.append(dasdSize);
+    				dasdBody.append(dasdTabRow);
+				}
+			}
+
+			dasdTable.append(dasdBody);
+			item.append(dasdTable);
+		}
+
+		/**
+		 * NIC section
+		 */
+		else if (keys[k] == 'nic') {
+			// Create a label - Property name
+			label = $('<label><b>' + attrNames[keys[k]].replace(':', '') + '</b></label>');
+			item.append(label);
+
+			// Create a table to hold NIC data
+			var nicTable = $('<table></table>');
+			var nicBody = $('<tbody></tbody>');
+
+			// Table columns - Virtual device, Adapter Type, Port Name, # of Devices, MAC Address, and LAN Name
+			var nicTabRow = $('<thead class="ui-widget-header"><th>Virtual Device #</th> <th>Adapter Type</th> <th>Port Name</th> <th># of Devices</th> <th>LAN Name</th></thead>');
+			nicTable.append(nicTabRow);
+			var nicVDev, nicType, nicPortName, nicNumOfDevs, nicLanName;
+
+			// Loop through each NIC (Data contained in 2 lines)
+			for (l = 0; l < attrs[keys[k]].length; l = l + 2) {
+				if (attrs[keys[k]][l]) {
+    				args = attrs[keys[k]][l].split(' ');
+    
+    				// Get NIC virtual device, type, port name, and number of devices
+    				nicVDev = $('<td>' + args[1] + '</td>');
+    				nicType = $('<td>' + args[3] + '</td>');
+    				nicPortName = $('<td>' + args[10] + '</td>');
+    				nicNumOfDevs = $('<td>' + args[args.length - 1] + '</td>');
+    
+    				args = attrs[keys[k]][l + 1].split(' ');
+    				nicLanName = $('<td>' + args[args.length - 2] + ' ' + args[args.length - 1] + '</td>');
+    
+    				// Create a new row for each DASD
+    				nicTabRow = $('<tr></tr>');
+    				nicTabRow.append(nicVDev);
+    				nicTabRow.append(nicType);
+    				nicTabRow.append(nicPortName);
+    				nicTabRow.append(nicNumOfDevs);
+    				nicTabRow.append(nicLanName);
+    
+    				nicBody.append(nicTabRow);
+				}
+			}
+
+			nicTable.append(nicBody);
+			item.append(nicTable);
+		}
+
+		oList.append(item);
+	}
+
+	// Append inventory to division
+	fieldSet.append(oList);
+	invDiv.append(fieldSet);
+	invDiv.find('th').css({
+		'padding': '5px 10px',
+		'font-weight': 'bold'
+	});
+
+	// Append to tab
+	$('#' + tabId).append(invDiv);
+};
+
+/**
  * Load clone page
  * 
  * @param node

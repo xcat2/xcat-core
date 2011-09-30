@@ -105,33 +105,32 @@ function loadProvisionPage() {
 
 	    if ($('#' + newTabId).size() > 0){
 	        tab.select(newTabId);
-	    }
-	    else{
-	        var tabtitle = '';
+	    } else {
+	        var title = '';
 	        
 	        // Create an instance of the plugin
 	        var plugin;
 	        switch (hw) {
 	        case "blade":
 	            plugin = new bladePlugin();
-	            tabtitle = 'BladeCenter';
+	            title = 'BladeCenter';
 	            break;
 	        case "hmc":
 	            plugin = new hmcPlugin();
-	            tabtitle = 'System p';
+	            title = 'System p';
 	            break;
 	        case "ipmi":
 	            plugin = new ipmiPlugin();
-	            tabtitle = 'iDataPlex';
+	            title = 'iDataPlex';
 	            break;
 	        case "zvm":
 	            plugin = new zvmPlugin();
-	            tabtitle = 'System z';
+	            title = 'System z';
 	            break;
 	        }
 
 	        // Select tab
-	        tab.add(newTabId, tabtitle, '', true);
+	        tab.add(newTabId, title, '', true);
 	        tab.select(newTabId);
 	        plugin.loadProvisionPage(newTabId);
 	    }

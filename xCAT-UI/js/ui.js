@@ -348,7 +348,7 @@ function createStatusBar(barId) {
  * @return Info bar
  */
 function createInfoBar(msg) {
-	var infoBar = $('<div class="ui-state-highlight ui-corner-all"></div>');
+	var infoBar = $('<div class="ui-state-highlight ui-corner-all"></div>').css('margin', '5px 0px');
 	var icon = $('<span class="ui-icon ui-icon-info"></span>').css({
 		'display': 'inline-block',
 		'margin': '10px 5px'

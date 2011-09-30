@@ -193,38 +193,42 @@ sub provzlinux {
 	#	pool = POOL3
 	#	eckd_size = 10016
 
-	# Create XML object
-	my $xml = new XML::Simple;
-
-	# Read XML file
-	my $data = $xml->XMLin($tmpl);
-
-	my $type;
-	my $virt_addr;
-	my $devices = $data->{'dasd'}->{'devices'}->{'listentry'};
-	foreach (@$devices) {
-
-		# Get disk virtual address and disk type
-		$type = $_->{'drivers'}->{'listentry'}->{'modules'}->{'module_entry'}->{'listentry'};
-		$virt_addr = $_->{'sysfs_bus_id'};
-		$virt_addr =~ s/0\.0\.//g;
-		foreach (@$type) {
-			# Add ECKD disk
-			if ( $_ =~ m/dasd_eckd_mod/i ) {
-				$out = `chvm $node --add3390 $disk_pool $virt_addr $eckd_size MR`;
-				println( $callback, "$out" );
-				if ( $out =~ m/Error/i ) {
-					return;
+	if ( $os =~ m/sles/i ) {
+		# Create XML object
+		my $xml = new XML::Simple;
+	
+		# Read XML file
+		my $data = $xml->XMLin($tmpl);
+	
+		my $type;
+		my $virt_addr;
+		my $devices = $data->{'dasd'}->{'devices'}->{'listentry'};
+		foreach (@$devices) {
+	
+			# Get disk virtual address and disk type
+			$type = $_->{'drivers'}->{'listentry'}->{'modules'}->{'module_entry'}->{'listentry'};
+			$virt_addr = $_->{'sysfs_bus_id'};
+			$virt_addr =~ s/0\.0\.//g;
+			foreach (@$type) {
+				# Add ECKD disk
+				if ( $_ =~ m/dasd_eckd_mod/i ) {
+					$out = `chvm $node --add3390 $disk_pool $virt_addr $eckd_size MR`;
+					println( $callback, "$out" );
+					if ( $out =~ m/Error/i ) {
+						return;
+					}
+				}
+	
+				# Add FBA disk
+				elsif ( $_ =~ m/dasd_fba_mod/i ) {
+					# To be continued
+					# $out = `chvm $node --add9336 $disk_pool $virt_addr $fba_size MR`;
 				}
 			}
-
-			# Add FBA disk
-			elsif ( $_ =~ m/dasd_fba_mod/i ) {
-				# To be continued
-				# $out = `chvm $node --add9336 $disk_pool $virt_addr $fba_size MR`;
-			}
-		}
-	}    # End of foreach
+		}    # End of foreach
+	} elsif ( $os =~ m/rhel/i ) {
+		# TBD	
+	}
 
 	# Update DHCP
 	`makedhcp -a`;

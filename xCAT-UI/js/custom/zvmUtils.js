@@ -1677,25 +1677,6 @@ function removeNic(node, nic) {
 }
 
 /**
- * Set a cookie for disk pool names of a given node
- * 
- * @param data
- *            Data from HTTP request
- * @return Nothing
- */
-function setDiskPoolCookies(data) {
-	if (data.rsp) {
-		var node = data.msg;
-		var pools = data.rsp[0].split(node + ': ');
-		
-		// Set cookie to expire in 60 minutes
-		var exDate = new Date();
-		exDate.setTime(exDate.getTime() + (60 * 60 * 1000));
-		$.cookie(node + 'diskpools', pools, { expires: exDate });
-	}
-}
-
-/**
  * Set a cookie for the network names of a given node
  * 
  * @param data
@@ -2635,4 +2616,230 @@ function createZProvisionNew(inst) {
 	provNew.append(provisionBtn);
 	
 	return provNew;
+}
+
+/**
+ * Load zVMs into column (service page)
+ * 
+ * @param col
+ * 			Table column where OS images will be placed
+ * @return Nothing
+ */
+function loadzVMs(col) {
+	// Get group names and description and append to group column
+	var groupNames = $.cookie('srv_zvms').split(',');
+	var radio, zvmBlock, args, zvm, hcp;
+	for (var i in groupNames) {
+		args = groupNames[i].split(':');
+		zvm = args[0];
+		hcp = args[1];
+		
+		// Create block for each group
+		zvmBlock = $('<div class="ui-state-default"></div>').css({
+			'border': '1px solid',
+			'max-width': '200px',
+			'margin': '5px auto',
+			'padding': '5px',
+			'display': 'block', 
+			'vertical-align': 'middle',
+			'cursor': 'pointer',
+			'white-space': 'normal'
+		}).click(function(){
+			$(this).children('input:radio').attr('checked', 'checked');
+			$(this).parents('td').find('div').attr('class', 'ui-state-default');
+			$(this).attr('class', 'ui-state-active');
+		});
+		radio = $('<input type="radio" name="hcp" value="' + hcp + '"/>').css('display', 'none');
+		zvmBlock.append(radio, $('<span><b>Name: </b>' + zvm + '</span>'), $('<span><b>zHCP: </b>' + hcp + '</span>'));
+		zvmBlock.children('span').css({
+			'display': 'block',
+			'margin': '5px',
+			'text-align': 'left'
+		});
+		col.append(zvmBlock);
+	}
+}
+
+/**
+ * Load groups into column
+ * 
+ * @param col
+ * 			Table column where OS images will be placed
+ * @return Nothing
+ */
+function loadGroups(col) {
+	// Get group names and description and append to group column
+	var groupNames = $.cookie('srv_groups').split(',');
+	var groupBlock, radio, args, name, ip, hostname, desc;
+	for (var i in groupNames) {
+		args = groupNames[i].split(':');
+		name = args[0];
+		ip = args[1];
+		hostname = args[2];
+		desc = args[3];
+		
+		// Create block for each group
+		groupBlock = $('<div class="ui-state-default"></div>').css({
+			'border': '1px solid',
+			'max-width': '200px',
+			'margin': '5px auto',
+			'padding': '5px',
+			'display': 'block', 
+			'vertical-align': 'middle',
+			'cursor': 'pointer',
+			'white-space': 'normal'
+		}).click(function(){
+			$(this).children('input:radio').attr('checked', 'checked');
+			$(this).parents('td').find('div').attr('class', 'ui-state-default');
+			$(this).attr('class', 'ui-state-active');
+		});
+		radio = $('<input type="radio" name="group" value="' + name + '"/>').css('display', 'none');
+		groupBlock.append(radio, $('<span><b>Name: </b>' + name + '</span>'), $('<span><b>Description: </b>' + desc + '</span>'));
+		groupBlock.children('span').css({
+			'display': 'block',
+			'margin': '5px',
+			'text-align': 'left'
+		});
+		col.append(groupBlock);
+	}
+}
+
+/**
+ * Load OS images into column
+ * 
+ * @param col
+ * 			Table column where OS images will be placed
+ * @return Nothing
+ */
+function loadOSImages(col) {
+	// Get group names and description and append to group column
+	var imgNames = $.cookie('srv_imagenames').split(',');
+	var imgBlock, radio, args, name, desc;
+	for (var i in imgNames) {
+		args = imgNames[i].split(':');
+		name = args[0];
+		desc = args[1];
+		
+		// Create block for each image
+		imgBlock = $('<div class="ui-state-default"></div>').css({
+			'border': '1px solid',
+			'max-width': '200px',
+			'margin': '5px auto',
+			'padding': '5px',
+			'display': 'block', 
+			'vertical-align': 'middle',
+			'cursor': 'pointer',
+			'white-space': 'normal'
+		}).click(function(){
+			$(this).children('input:radio').attr('checked', 'checked');
+			$(this).parents('td').find('div').attr('class', 'ui-state-default');
+			$(this).attr('class', 'ui-state-active');
+		});
+		radio = $('<input type="radio" name="image" value="' + name + '"/>').css('display', 'none');
+		imgBlock.append(radio, $('<span><b>Name: </b>' + name + '</span>'), $('<span><b>Description: </b>' + desc + '</span>'));
+		imgBlock.children('span').css({
+			'display': 'block',
+			'margin': '5px',
+			'text-align': 'left'
+		});
+		col.append(imgBlock);
+	}
+}
+
+/**
+ * Set a cookie for zVM host names (service page)
+ * 
+ * @param data
+ *            Data from HTTP request
+ * @return Nothing
+ */
+function setzVMCookies(data) {
+	if (data.rsp) {
+		var zvms = new Array();
+		for ( var i = 0; i < data.rsp.length; i++) {
+			zvms.push(data.rsp[i]);
+		}
+		
+		// Set cookie to expire in 60 minutes
+		var exDate = new Date();
+		exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
+		$.cookie('srv_zvms', zvms, { expires: exDate });
+	}
+}
+
+/**
+ * Set a cookie for disk pool names of a given node (service page)
+ * 
+ * @param data
+ *            Data from HTTP request
+ * @return Nothing
+ */
+function setDiskPoolCookies(data) {
+	if (data.rsp) {
+		var node = data.msg;
+		var pools = data.rsp[0].split(node + ': ');
+		for (var i in pools) {
+			pools[i] = jQuery.trim(pools[i]);
+		}
+		
+		// Set cookie to expire in 60 minutes
+		var exDate = new Date();
+		exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
+		$.cookie(node + 'diskpools', pools, { expires: exDate });
+	}
+}
+
+/**
+ * Create virtual machine (service page)
+ * 
+ * @param tabId
+ * 			Tab ID
+ * @param group
+ * 			Group
+ * @param hcp
+ * 			Hardware control point
+ * @param img
+ * 			OS image
+ * @return Nothing
+ */
+function createzVM(tabId, group, hcp, img, owner) {
+	var statBar = createStatusBar('zvmProvsionStatBar');
+	var loader = createLoader('zvmProvisionLoader');
+	statBar.find('div').append(loader);
+	statBar.prependTo($('#' + tabId));
+		
+	// Submit request to create VM
+	// webportal provzlinux [group] [hcp] [image] [owner]
+	$.ajax({
+        url : 'lib/srv_cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'webportal',
+            tgt : '',
+            args : 'provzlinux;' + group + ';' + hcp + ';' + img + ';' + owner,
+            msg : '' 
+        },
+        success:function(data){
+        	$('#zvmProvisionLoader').remove();
+             for(var i in data.rsp){
+                 $('#zvmProvsionStatBar').find('div').append('<pre>' + data.rsp[i] + '</pre>');
+             }
+             
+             // Refresh nodes table
+             $.ajax( {
+         		url : 'lib/srv_cmd.php',
+         		dataType : 'json',
+         		data : {
+         			cmd : 'tabdump',
+         			tgt : '',
+         			args : 'nodetype',
+         			msg : ''
+         		},
+
+         		success : function(data) {
+         			setUserNodes(data);
+         		}
+         	});
+        }
+    });
 }
