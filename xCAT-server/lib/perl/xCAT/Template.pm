@@ -21,6 +21,7 @@ my $field;
 my $idir;
 my $node;
 my %loggedrealms;
+my $lastmachinepass;
 
 sub subvars { 
   my $self = shift;
@@ -31,6 +32,10 @@ sub subvars {
   my $pkglistfile=shift;
   my $media_dir = shift;
   my $platform=shift;
+  my %namedargs = @_; #further expansion of this function will be named arguments, should have happened sooner.
+  unless ($namedargs{reusemachinepass}) {
+	$lastmachinepass="";
+  }
 
   my $outh;
   my $inh;
@@ -162,6 +167,12 @@ sub subvars {
   return 0;
 }
 sub machinepassword {
+    if ($lastmachinepass) { #note, this should only happen after another call
+			    #to subvars that does *not* request reuse
+			    #the issue being avoiding reuse in the installmonitor case
+			    #subvars function clears this if appropriate
+	return $lastmachinepass;
+    }
     my $domaintab = xCAT::Table->new('domain');
     $ENV{HOME}='/etc/xcat';
     $ENV{LDAPRC}='ad.ldaprc';
@@ -231,6 +242,7 @@ sub machinepassword {
     if ($data->{error}) { 
         return "ERROR: ".$data->{error};
     } else {
+	$lastmachinepass=$data->{password};
         return $data->{password};
     }
 }

@@ -336,7 +336,7 @@ sub mkinstall
                          $tmplfile.".uefi",
                          "$installroot/autoinst/$node.uefi",
                          $node,
-                         0
+                         0, undef,undef,reusemachinepass=>1,
                          );
         }
         
