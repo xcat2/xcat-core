@@ -73,7 +73,7 @@ sub getnimprime
 
     my $nimprime = xCAT::Utils->get_site_Master();
     my $sitetab  = xCAT::Table->new('site');
-    (my $et) = $sitetab->getAttribs({key => "NIMprime"}, 'value');
+    (my $et) = $sitetab->getAttribs({key => "nimprime"}, 'value');
     if ($et and $et->{value})
     {
         $nimprime = $et->{value};
