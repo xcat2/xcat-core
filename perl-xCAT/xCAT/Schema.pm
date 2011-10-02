@@ -827,12 +827,13 @@ site => {
    " nameservers:  A comma delimited list of DNS servers that each node in the cluster\n".
    "               should use. This value will end up in the nameserver settings of the\n".
    "               /etc/resolv.conf on each node. It is common (but not required) to set\n".
-   "               this attribute value to the IP address of the xCAT management node, if you have\n".
+   "               this attribute value to the IP addr of the xCAT management node, if you have\n".
    "               set up the DNS on the management node by running makedns.\n".
    "               In a hierarchical cluster, you can also set this attribute to \"<xcatmaster>\"\n".
    "               to mean the DNS server for each node should be the node that is managing it\n".
    "               (either its service node or the management node).\n\n".
-   " nimprime :   The name of NIM server, if not set default is the management node.\n\n".
+   " nimprime :   The name of NIM server, if not set default is the AIX MN.
+              If Linux MN, then must be set for support of mixed cluster (TBD).\n\n".
    " nodestatus:  If set to 'n', the nodelist.status column will not be updated during\n".
    "              the node deployment, node discovery and power operations.\n\n".
    " ntpservers:  A comma delimited list of NTP servers for the cluster - often the\n".
