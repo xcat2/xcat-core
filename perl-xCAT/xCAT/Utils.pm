@@ -1058,58 +1058,30 @@ sub runcmd
 	}
 
     my $outref = [];
-    if (!defined($stream) || (length($exitcode) == 0)) { # do not stream
+    if (!defined($stream) || (length($stream) == 0)) { # do not stream
       @$outref = `$cmd`;
     } else {  # streaming mode
       my @cmd;
       push @cmd,$cmd;
-      my $outreferr = [];
-      my $cmdin;
-      my $cmdout;
-      my $cmderr = gensym;
-      my $cmdpid = open3($cmdin,$cmdout,$cmderr,@cmd);
-      my $cmdsel = IO::Select->new($cmdout,$cmderr);
-      close($cmdin);
-      my @handles;
       my $rsp    = {};
       my $output;
       my $errout;
-      while ($cmdsel->count()) {
-        @handles = $cmdsel->can_read();
-        foreach (@handles) {
-           my $line;
-           my $done = sysread $_,$line,180;
-            if ($done) {
-                if ($_ eq $cmdout) {
-		  if ($::CALLBACK){
-                    $rsp->{data}->[0] = $line;
-                    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 0);
-                  } else {
-	   	     xCAT::MsgUtils->message("I", "$line\n");
-                  }
-                   $output .= $line;
-                } else {
-		  if ($::CALLBACK){
-                    $rsp->{data}->[0] = $line;
-                    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 0);
-                  } else {
-	   	     xCAT::MsgUtils->message("I", "$line\n");
-                  }
-                   $errout .= $line;
-                }
-            } else {
-                $cmdsel->remove($_);
-                close($_);
-            }
+      open (PIPE, "$cmd |");
+      while (<PIPE>) {
+        if ($::CALLBACK){
+           $rsp->{data}->[0] = $_;
+           $::CALLBACK->($rsp);
+        } else {
+          xCAT::MsgUtils->message("D", "$_");
         }
+        $output .= $_;
       }
-      waitpid($cmdpid,0);
       # store the return string
       push  @$outref,$output;   
     }
 
-    # now whether streaming or not process
-    if ($?)
+    # now if not streaming process errors 
+    if (($?) && (!defined($stream)))
     {
         $::RUNCMD_RC = $? >> 8;
         my $displayerror = 1;
@@ -1681,7 +1653,12 @@ sub setupSSH
     print FILE "#!/bin/sh
 umask 0077
 home=`egrep \"^$to_userid:\" /etc/passwd | cut -f6 -d :`
-dest_dir=\"\$home/.ssh\"
+if [ $home ]; then
+  dest_dir=\"\$home/.ssh\"
+else
+  home=`su - root -c pwd`
+  dest_dir=\"\$home/.ssh\"
+fi
 mkdir -p \$dest_dir
 cat /tmp/$to_userid/.ssh/authorized_keys >> \$home/.ssh/authorized_keys 2>&1
 cp /tmp/$to_userid/.ssh/id_rsa  \$home/.ssh/id_rsa 2>&1
@@ -1963,6 +1940,11 @@ sub bldnonrootSSHFiles
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     }
     my $home     = xCAT::Utils->getHomeDir($from_userid);
+    # Handle non-root userid may not be in /etc/passwd maybe LDAP
+    if (!$home) { 
+      $home=`su - $from_userid -c pwd`;
+      chop $home;
+    }
     my $roothome = xCAT::Utils->getHomeDir("root");
     if (xCAT::Utils->isMN()) {    # if on Management Node
       if (!(-e "$home/.ssh/id_rsa.pub"))
@@ -3587,7 +3569,10 @@ sub get_site_Master
 =head3 get_ServiceNode
 
      Will get the Service node ( name or ipaddress) as known by the Management
-	 Server or Node for the input nodename or ipadress of the node
+	 Node  or Node for the input nodename or ipadress of the node 
+         which can be a Service Node.
+         If the input node is a Service Node then it's Service node
+         is always the Management Node.
 
      input: list of nodenames and/or node ipaddresses (array ref)
 			service name
@@ -3629,8 +3614,8 @@ sub get_ServiceNode
     my $nodehmtab;
     my $noderestab;
     my $snattribute;
-	my $oshash;
-	my $nodetab;
+    my $oshash;
+    my $nodetab;
     $::ERROR_RC = 0;
 
     # determine if the request is for the service node as known by the MN
@@ -3644,28 +3629,9 @@ sub get_ServiceNode
     {
         $snattribute = "xcatmaster";
     }
-
-    my $master =
-      xCAT::Utils->get_site_Master();    # read the site table, master attrib
-
-	my $nimprime;
-	if (xCAT::Utils->isAIX()) {
-		# for AIX nodes the NIM primary will be either the site.NIMprime attr
-		#	or, if not set, the site.master attr
-		$nimprime = xCAT::InstUtils->getnimprime();
-    	chomp $nimprime;
-	}
-
-	# $master and $nimprime is possible to be the same (MN)
-	# but $master is IP addr, $nimprime is short hostname
-	# this results in %snhash may have two keys duplicated.
-	# so use ip for nimprime.
-
-	my $nimprimeip = xCAT::NetworkUtils->getipaddr($nimprime);
-    $nimprime = $nimprimeip;
-
+    # get site.master this will be the default
+    my $master = xCAT::Utils->get_site_Master();  
     $noderestab = xCAT::Table->new('noderes');
-	$nodetab = xCAT::Table->new('nodetype');
 
     unless ($noderestab)    # no noderes table, use default site.master
     {
@@ -3674,17 +3640,10 @@ sub get_ServiceNode
 
         if ($master)        # use site Master value
         {
-			if ($nodetab) {
-				$oshash = $nodetab->getNodesAttribs(\@node_list, ["os"]);
-			}
 				
             foreach my $node (@node_list)
             {               
-				if ( ($oshash->{$node}->[0]->{os}) && ($oshash->{$node}->[0]->{os} eq "AIX"))  {
-					push @{$snhash{$nimprime}}, $node;
-				} else {
 					push @{$snhash{$master}}, $node;
-				}
             }
         }
         else
@@ -3693,9 +3652,6 @@ sub get_ServiceNode
             $::ERROR_RC = 1;
         }
 
-		if ($nodetab) {
-			$nodetab->close;
-		}
         return \%snhash;
     }
 
@@ -3704,32 +3660,24 @@ sub get_ServiceNode
 
         $nodehash = $noderestab->getNodesAttribs(\@node_list, [$snattribute]);
 
-		$oshash = $nodetab->getNodesAttribs(\@node_list, ["os"]);
 
         foreach my $node (@node_list)
         {
             foreach my $rec (@{$nodehash->{$node}})
             {
-                if ($rec and $rec->{$snattribute})
+                if ($rec and $rec->{$snattribute}) # use noderes.servicenode
                 {
                     my $key = $rec->{$snattribute};
                     push @{$snhash{$key}}, $node;
                 }
-                else
+                else  # use site.master
                 {    
-					if ( ($oshash->{$node}->[0]->{os}) && ($oshash->{$node}->[0]->{os} eq "AIX")) {
-                      if ($nimprime) {
-						push @{$snhash{$nimprime}}, $node;
-					  }
-					} else {
-						push @{$snhash{$master}}, $node;
-					}
+  		  push @{$snhash{$master}}, $node;
                 }
             }
         }
 
         $noderestab->close;
-		$nodetab->close;
         return \%snhash;
 
     }
