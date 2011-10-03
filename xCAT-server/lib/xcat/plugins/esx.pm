@@ -4105,6 +4105,9 @@ sub copycd {
 	      print $bootcfg $_;
 	    }
 	    close($bootcfg);
+	 	if (grep /LSIProvi.v00/,@bootcfg and ! -r "$installroot/$distname/$arch/LSIProvi.v00" and -r "$installroot/$distname/$arch/lsiprovi.v00") { #there is media with LSIProv.v00 expected, but the install media was mal-constructed, fix it
+			move("$installroot/$distname/$arch/lsiprovi.v00","$installroot/$distname/$arch/LSIProvi.v00");
+	    }
 	  }
 	}
 	
