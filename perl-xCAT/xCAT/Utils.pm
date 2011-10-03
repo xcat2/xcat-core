@@ -1495,7 +1495,8 @@ sub getTftpDir
 =head3    getHomeDir
 
         Get the path the  user home directory from /etc/passwd.
-
+        If /etc/passwd returns nothing ( id maybe in LDAP) then
+        su - userid -c  pwd to figure out where home is
         Arguments:
                 none
         Returns:
@@ -1506,6 +1507,7 @@ sub getTftpDir
                 none
         Example:
                 $myHome = xCAT::Utils->getHomeDir();
+                $myHome = xCAT::Utils->getHomeDir($userid);
         Comments:
                 none
 
@@ -1517,6 +1519,7 @@ sub getHomeDir
 {
     my ($class, $username) = @_;
     my @user;
+    my $homedir;
     if ($username)
     {
         @user = getpwnam($username);
@@ -1524,8 +1527,16 @@ sub getHomeDir
     else
     {
         @user = getpwuid($>);
+        $username=$user[0];
     }
-    return $user[7];
+    
+    if ($user[7]) { #  if homedir 
+      $homedir= $user[7];
+    } else { # no home
+      $homedir=`su - $username -c  pwd`;
+      chop $homedir; 
+    }
+    return $homedir;
 }
 
 #--------------------------------------------------------------------------------
