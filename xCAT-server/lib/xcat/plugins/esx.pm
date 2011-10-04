@@ -92,6 +92,7 @@ sub handled_commands{
 	return {
 		copycd => 'esx',
 		mknetboot => "nodetype:os=(esxi.*)",
+		mkinstall => "nodetype:os=(esxi5.*)",
 		rpower => 'nodehm:power,mgt',
 		rsetboot => 'nodehm:power,mgt',
 		rmigrate => 'nodehm:power,mgt',
@@ -125,7 +126,8 @@ sub preprocess_request {
 	if ($request->{command}->[0] eq 'copycd')
 	{    #don't farm out copycd
 		return [$request];
-	}elsif($request->{command}->[0] eq 'mknetboot'){
+	}elsif($request->{command}->[0] eq 'mknetboot'
+	      or $request->{command}->[0] eq 'mkinstall'){
 		return [$request];
 	}
     xCAT::Common::usage_noderange($request,$callback);
@@ -286,6 +288,8 @@ sub process_request {
     #a hypervisor provisioning plugin (akin to anaconda, windows, sles plugins)
 	if($command eq 'copycd'){
 		return copycd($request,$executerequest);
+	}elsif($command eq 'mkinstall'){
+		return mkinstall($request,$executerequest);
 	}elsif($command eq 'mknetboot'){
 		return mknetboot($request,$executerequest);
 	}
@@ -4211,7 +4215,41 @@ sub  makecustomizedmod {
     rmtree($tempdir);
     return 1;
 }
+sub getplatform {
+	my $os = shift;
+	if ($os =~ /esxi/) {
+		return "esxi";
+	}
+	return $os;
+}
+sub	esxi_kickstart_from_template {
+	my %args=@_;
+	my $installdir = "/install";
+	if ($::XCATSITEVALS{installdir}) { $installdir = $::XCATSITEVALS{installdir}; }
+	my $plat = getplatform($args{os});
+	my $template = xCAT::SvrUtils::get_tmpl_file_name("$installdir/custom/install/$plat",$args{profile},$args{os},$args{arch},$args{os});
+	unless ($template) {
+	   $template = xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/$plat",$args{profile},$args{os},$args{arch},$args{os});
+	}
+	my $tmperr;
+	if (-r "$template") {
+		$tmperr=xCAT::Template->subvars($template,"$installdir/autoinst/".$args{node},$args{node},undef);
+	} else {
+		 $tmperr="Unable to find template in /install/custom/install/$plat or $::XCATROOT/share/xcat/install/$plat (for $args{profile}/$args{os}/$args{arch} combination)";
+	}
+	if ($tmperr) {
+			xCAT::SvrUtils::sendmsg([1,$tmperr], $output_handler,$args{node});
+	}
+
+}
+sub mkinstall {
+	return mkcommonboot("install",@_);
+}
 sub mknetboot {
+	return mkcommonboot("stateless",@_);
+}
+sub mkcommonboot {
+    my $bootmode = shift;
 	my $req      = shift;
 	my $doreq    = shift;
 	my $tftpdir  = "/tftpboot";
@@ -4300,7 +4338,7 @@ sub mknetboot {
 		unless($donetftp{$osver,$arch}) {
 			my $srcdir = "$installroot/$osver/$arch";
 			my $dest = "$tftpdir/xcat/netboot/$osver/$arch/$shortprofname";
-			cpNetbootImages($osver,$srcdir,$dest,$custprofpath,\%mods);
+			cpNetbootImages($osver,$srcdir,$dest,$custprofpath,\%mods,bootmode=>$bootmode);
             if (makecustomizedmod($osver,$dest)) {
                 push @reqmods,"mod.tgz";
                 $mods{"mod.tgz"}=1;
@@ -4370,7 +4408,11 @@ sub mknetboot {
 	}
 	elsif ($osver =~ /esxi5/) { #do a more straightforward thing..
 	  $kernel = "$tp/mboot.c32";
-	  $append = "-c $tp/boot.cfg.stateless";
+	  $append = "-c $tp/boot.cfg.$bootmode";
+	  if ($bootmode eq "install") {
+	  	$append .= " ks=http://!myipfn!/install/autoinst/$node";
+		esxi_kickstart_from_template(node=>$node,os=>$osver,arch=>$arch,profile=>$profile);
+	  }
 	  if ($serialconfig->{$node}) {
 		my $comport = 1;
 		if (defined $serialconfig->{$node}->[0]->{serialport}) {
@@ -4404,6 +4446,9 @@ sub cpNetbootImages {
 	my $destDir = shift;	
     my $overridedir = shift;
     my $modulestoadd = shift;
+	my %parmargs = @_;
+	my $bootmode="stateless";
+	if ($parmargs{bootmode}) { $bootmode = $parmargs{bootmode} }
 	my $tmpDir = "/tmp/xcat.$$";
 	if($osver =~ /esxi4/){
 		# we don't want to go through this all the time, so if its already
@@ -4497,18 +4542,18 @@ sub cpNetbootImages {
         }
 
 	}elsif ($osver =~ /esxi5/) { #we need boot.cfg.stateles
-	  if (! -r "$srcDir/boot.cfg.stateless" and ! -r "$overridedir/boot.cfg.stateless") {
-	    xCAT::SvrUtils::sendmsg([1,"$srcDir is missing boot.cfg.stateless file required for stateless boot"], $output_handler);
+	  if (! -r "$srcDir/boot.cfg.$bootmode" and ! -r "$overridedir/boot.cfg.$bootmode") {
+	    xCAT::SvrUtils::sendmsg([1,"$srcDir is missing boot.cfg.$bootmode file required for $bootmode boot"], $output_handler);
 	    return;
 	  }
 	  my $statelesscfg;
-	  my @filestocopy = ("boot.cfg.stateless");
-	  if (-r "$overridedir/boot.cfg.stateless") {
-	    open ($statelesscfg,"<","$overridedir/boot.cfg.stateless");
-	  } elsif (-r "$srcDir/boot.cfg.stateless") {
-	    open ($statelesscfg,"<","$srcDir/boot.cfg.stateless");
+	  my @filestocopy = ("boot.cfg.$bootmode");
+	  if (-r "$overridedir/boot.cfg.$bootmode") {
+	    open ($statelesscfg,"<","$overridedir/boot.cfg.$bootmode");
+	  } elsif (-r "$srcDir/boot.cfg.$bootmode") {
+	    open ($statelesscfg,"<","$srcDir/boot.cfg.$bootmode");
 	  } else {
-	    die "boot.cfg.stateless was missing from $srcDir???";
+	    die "boot.cfg.$bootmode was missing from $srcDir???";
 	  }
 	  my @statelesscfg=<$statelesscfg>;
 	  
