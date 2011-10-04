@@ -193,15 +193,15 @@ sub provzlinux {
 	#	pool = POOL3
 	#	eckd_size = 10016
 
+	my $type;
+	my $virt_addr;
 	if ( $os =~ m/sles/i ) {
 		# Create XML object
 		my $xml = new XML::Simple;
 	
 		# Read XML file
 		my $data = $xml->XMLin($tmpl);
-	
-		my $type;
-		my $virt_addr;
+		
 		my $devices = $data->{'dasd'}->{'devices'}->{'listentry'};
 		foreach (@$devices) {
 	
@@ -227,7 +227,31 @@ sub provzlinux {
 			}
 		}    # End of foreach
 	} elsif ( $os =~ m/rhel/i ) {
-		# TBD	
+		my %devices;
+		my $dev;
+		$virt_addr = 100;
+		
+		# Read in kickstart file
+		$out = `cat $tmpl | egrep "part /"`;
+		@tmp = split( /\n/, $out );
+		foreach (@tmp) {
+			$out = substr( $out, index( $out, '--ondisk=' )+9 );	
+			$out =~ s/\s*$//;	# Trim right
+			$out =~ s/^\s*//;	# Trim left
+			$devices{$out} = 1;
+		}
+		
+		# Add ECKD disk for each device found
+		for $dev ( keys %devices ) {
+			$out = `chvm $node --add3390 $disk_pool $virt_addr $eckd_size MR`;
+			println( $callback, "$out" );
+			if ( $out =~ m/Error/i ) {
+				return;
+			}
+			
+			# Increment virtual address
+			$virt_addr = $virt_addr + 1;
+		}
 	}
 
 	# Update DHCP
