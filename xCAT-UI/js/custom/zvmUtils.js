@@ -2667,7 +2667,7 @@ function loadzVMs(col) {
  * 			Table column where OS images will be placed
  * @return Nothing
  */
-function loadGroups(col) {
+function loadSrvGroups(col) {
 	// Get group names and description and append to group column
 	var groupNames = $.cookie('srv_groups').split(',');
 	var groupBlock, radio, args, name, ip, hostname, desc;

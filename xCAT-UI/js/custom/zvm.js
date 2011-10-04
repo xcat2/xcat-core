@@ -58,7 +58,7 @@ zvmPlugin.prototype.loadServiceProvisionPage = function(tabId) {
 	
 	// Load zVMs, groups, and images into their respective columns
 	loadzVMs(zvmCol);
-	loadGroups(groupCol);
+	loadSrvGroups(groupCol);
 	loadOSImages(imageCol);
 	
 	provRow.children('td').css({
