@@ -2475,6 +2475,8 @@ sub my_ip_facing
         $peer = shift;
     }
     return my_ip_facing_aix( $peer) if ( $^O eq 'aix');
+    my $peernumber = inet_aton($peer); #TODO: IPv6 support
+    unless ($peernumber) { return undef; }
     my $noden = unpack("N", inet_aton($peer));
     my @nets = split /\n/, `/sbin/ip addr`;
     foreach (@nets)
