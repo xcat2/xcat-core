@@ -41,7 +41,7 @@ if [ -r /rootimg.sfs ]; then
   mount --move /rw $NEWROOT/rw
 elif [ -r /rootimg.gz ]; then
   echo Setting up RAM-root tmpfs.
-  mount -t tmpfs rootfs $NEWROOT
+  mount -t tmpfs -o mode=755 rootfs $NEWROOT
   cd $NEWROOT
   echo -n "Extracting root filesystem:"
   if [ -x /bin/cpio ]; then
@@ -52,7 +52,7 @@ elif [ -r /rootimg.gz ]; then
   echo Done
 elif [ -r /rootimg-statelite.gz ]; then
   echo Setting up RAM-root tmpfs for statelite mode.
-  mount -t tmpfs rootfs $NEWROOT
+  mount -t tmpfs -o mode=755 rootfs $NEWROOT
   cd $NEWROOT
   echo -n "Extracting root filesystem:"
   if [ -x /bin/cpio ]; then
