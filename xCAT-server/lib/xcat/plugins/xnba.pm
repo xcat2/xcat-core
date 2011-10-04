@@ -130,10 +130,16 @@ sub setstate {
     }
   }
   my $elilokcmdline = $kern->{kcmdline}; #track it separate, since vars differ
+  my $pxelinuxkcmdline = $kern->{kcmdline}; #track it separate, since vars differ
   if ($kern->{kcmdline} =~ /!myipfn!/) {
       my $ipfn = '${next-server}';#xCAT::Utils->my_ip_facing($node);
       $kern->{kcmdline} =~ s/!myipfn!/$ipfn/g;
-      $elilokcmdline =~ s/!myipfn!/%N/;
+      $elilokmdline =~ s/!myipfn!/%N/;
+      $ipfn = xCAT::Utils->my_ip_facing($node);
+      unless ($ipfn) { $ipfn = $::XCATSITEVALS{master}; }
+      if ($ipfn) {
+      	$pxelinuxkcmdline =~ s/!myipfn!/$ipfn/;
+      }
   }
   my $pcfg;
   unlink($tftpdir."/xcat/xnba/nodes/".$node.".pxelinux");
@@ -164,7 +170,7 @@ sub setstate {
         close($pcfg);
         open($pcfg,'>',$tftpdir."/xcat/xnba/nodes/".$node.".pxelinux");
         print $pcfg "DEFAULT xCAT\nLABEL xCAT\n   KERNEL mboot.c32\n";
-	    print $pcfg " APPEND $hypervisor --- $kernel ".$kern->{kcmdline}." --- ".$kern->{initrd}."\n";
+	    print $pcfg " APPEND $hypervisor --- $kernel ".$pxelinuxkcmdline." --- ".$kern->{initrd}."\n";
     } else {
         if ($kern->{kernel} =~ /\.c32\z/ or $kern->{kernel} =~ /memdisk\z/) { #gPXE comboot support seems insufficient, chain pxelinux instead
         	print $pcfg " set 209:string xcat/xnba/nodes/$node.pxelinux\n";
@@ -184,7 +190,7 @@ sub setstate {
               print $pcfg "initrd=".$kern->{initrd}." ";
             }
             if ($kern and $kern->{kcmdline}) {
-              print $pcfg $kern->{kcmdline}."\n";
+              print $pcfg $pxelinuxkcmdline."\n";
             } else {
               print $pcfg "\n";
             }
