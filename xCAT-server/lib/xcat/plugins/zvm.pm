@@ -1253,6 +1253,15 @@ sub powerVM {
 		$out = `ssh $hcp "$::DIR/stopvs $userId"`;
 		xCAT::zvmUtils->printLn( $callback, "$node: $out" );
 	}
+	
+	# Power off virtual server (gracefully)
+	elsif ( $args->[0] eq 'softoff' ) {
+		$out = `ssh -o ConnectTimeout=10 $node "shutdown -h now"`;
+		sleep(25);
+		
+		$out = `ssh $hcp "$::DIR/stopvs $userId"`;
+		xCAT::zvmUtils->printLn( $callback, "$node: $out" );
+	}
 
 	# Get the status (on|off)
 	elsif ( $args->[0] eq 'stat' ) {
