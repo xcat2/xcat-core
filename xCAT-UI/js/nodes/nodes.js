@@ -257,10 +257,16 @@ function drawNodesArea(targetgroup, cmdargs, message){
     tab.add('summaryTab', 'Summary', '', false);
     tab.add('nodesTab', 'Nodes', '', false);
     tab.add('graphTab', 'Graphic', '', false);
-       
+           
     // Load nodes table when tab is selected
-    $('#nodesPageTabs').bind('tabsselect', function(event, ui){    	
-        if (!$('#nodesTab').children().length && ui.index == 1) {
+    $('#nodesPageTabs').bind('tabsselect', function(event, ui) {
+    	// Load summary when tab is selected
+    	if (!$('#summaryTab').children().length && ui.index == 0) {
+            loadPieSummary(targetgroup);
+        }
+    	
+    	// Load nodes table when tab is selected
+    	else if (!$('#nodesTab').children().length && ui.index == 1) {
         	// Create loader
         	$('#nodesTab').append($('<center></center>').append(createLoader()));
         			
@@ -328,18 +334,29 @@ function drawNodesArea(targetgroup, cmdargs, message){
                 }
             });
         }
-    });
-    
-    // Load graphical layout when tab is selected
-    $('#nodesPageTabs').bind('tabsselect', function(event, ui){
-        // For the graphical tab, check the graphical data first
-        if (!$('#graphTab').children().length && ui.index == 2) {
+        
+        // Load graphical layout when tab is selected
+    	else if (!$('#graphTab').children().length && ui.index == 2) {
+        	// For the graphical tab, check the graphical data first
             createPhysicalLayout(nodesList);
         }
     });
-    
-    // Load group's summary pie charts (default)
-    loadPieSummary(targetgroup);
+        
+    // Get last view (if any)
+    // This can be summary, nodes, or graphic
+    var order = $.cookie('tabindex_history').split(',');
+    order[0] = parseInt(order[0]);
+    order[1] = parseInt(order[1]);
+    if (order[0] == 0 || order[1] == 0) {
+    	// For some reason, you cannot trigger a select of index 0
+    	loadPieSummary(targetgroup);
+    } else if (order[0] == 1 || order[0] == 2) {
+    	$('#nodesPageTabs').tabs('select', order[0]);
+    } else if (order[1] == 1 || order[1] == 2) {
+    	$('#nodesPageTabs').tabs('select', order[1]);
+    } else {
+    	loadPieSummary(targetgroup);
+    }    
 }
 
 /**
