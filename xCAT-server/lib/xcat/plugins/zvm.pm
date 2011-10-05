@@ -1257,7 +1257,7 @@ sub powerVM {
 	# Power off virtual server (gracefully)
 	elsif ( $args->[0] eq 'softoff' ) {
 		$out = `ssh -o ConnectTimeout=10 $node "shutdown -h now"`;
-		sleep(25);
+		sleep(90);	# Wait 1.5 minutes before logging user off
 		
 		$out = `ssh $hcp "$::DIR/stopvs $userId"`;
 		xCAT::zvmUtils->printLn( $callback, "$node: $out" );
