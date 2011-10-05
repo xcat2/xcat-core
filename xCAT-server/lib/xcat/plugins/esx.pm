@@ -3573,7 +3573,7 @@ sub refreshclusterdatastoremap {
                 my $name = $dsv->info->vmfs->name;
                 $clusterhash{$cluster}->{datastoremap}->{"vmfs://".$name} = $dsv->info->name;     
 				$clusterhash{$cluster}->{datastoreurlmap}->{$dsv->info->name} = "vmfs://".$name;
-                $clusterhash{$cluster}->{datasotrerefmap}->{"vmfs://".$name} = $_;
+                $clusterhash{$cluster}->{datastorerefmap}->{"vmfs://".$name} = $_;
             }
         }
     }
