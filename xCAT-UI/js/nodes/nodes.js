@@ -344,19 +344,23 @@ function drawNodesArea(targetgroup, cmdargs, message){
         
     // Get last view (if any)
     // This can be summary, nodes, or graphic
-    var order = $.cookie('tabindex_history').split(',');
-    order[0] = parseInt(order[0]);
-    order[1] = parseInt(order[1]);
-    if (order[0] == 0 || order[1] == 0) {
-    	// For some reason, you cannot trigger a select of index 0
-    	loadPieSummary(targetgroup);
-    } else if (order[0] == 1 || order[0] == 2) {
-    	$('#nodesPageTabs').tabs('select', order[0]);
-    } else if (order[1] == 1 || order[1] == 2) {
-    	$('#nodesPageTabs').tabs('select', order[1]);
+    if ($.cookie('tabindex_history')) {
+	    var order = $.cookie('tabindex_history').split(',');
+	    order[0] = parseInt(order[0]);
+	    order[1] = parseInt(order[1]);
+	    if (order[0] == 0 || order[1] == 0) {
+	    	// For some reason, you cannot trigger a select of index 0
+	    	loadPieSummary(targetgroup);
+	    } else if (order[0] == 1 || order[0] == 2) {
+	    	$('#nodesPageTabs').tabs('select', order[0]);
+	    } else if (order[1] == 1 || order[1] == 2) {
+	    	$('#nodesPageTabs').tabs('select', order[1]);
+	    } else {
+	    	loadPieSummary(targetgroup);
+	    }
     } else {
     	loadPieSummary(targetgroup);
-    }    
+    }
 }
 
 /**

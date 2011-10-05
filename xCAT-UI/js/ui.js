@@ -42,6 +42,7 @@ Tab.prototype.init = function() {
 			// Create an array to track the tab selected
 			order = new Array;
 			order[0] = ui.index;
+			order[1] = ui.index;
 		}
 		
 		$.cookie('tabindex_history', order);
