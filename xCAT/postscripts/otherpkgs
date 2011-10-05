@@ -160,6 +160,41 @@ array_get_element ()
 ##  End of set routines.
 ##
 
+##
+## Begin the means to update apt's view of Ubuntu repo's if necessary.
+##
+
+# *** IMPORTANT *** IMPORTANT *** IMPORTANT *** IMPORTANT *** IMPORTANT ***
+# Call apt_get_update_if_repos_changed before ALL apt-* calls. Examples:
+#
+# apt_get_update_if_repos_changed $REPOFILE
+# apt-get install $PACKAGES
+#
+# apt_get_update_if_repos_changed $REPOFILE
+# apt-get -y remove $repo_pkgs_postremove
+# *** IMPORTANT *** IMPORTANT *** IMPORTANT *** IMPORTANT *** IMPORTANT ***
+
+prev_ubuntu_repo_lastmod=
+
+# required argument: REPOFILE
+apt_get_update_if_repos_changed()
+{
+	# Obtain file last modification timestamp. Ignore stderr because file
+	# non-existence is not an error, but just another indication of modification.
+	# It's okay if REPOFILE isn't set because that is interpreted as acceptable
+	# file non-existence.
+	curr_ubuntu_repo_lastmod=`stat -c "%y" $1 2>/dev/null`
+
+	if [ "$prev_ubuntu_repo_lastmod" != "$curr_ubuntu_repo_lastmod" ];then
+		apt-get -y update 1>/dev/null 2>/dev/null
+		prev_ubuntu_repo_lastmod=$curr_ubuntu_repo_lastmod
+	fi
+}
+
+##
+## End the means to update apt's view of Ubuntu repo's if necessary.
+##
+
 # do nothing for diskless deployment case because it is done in the image already
 if [ -z "$UPDATENODE" ] || [ $UPDATENODE -ne 1 ]; then
   if [ "$NODESETSTATE" = "netboot" -o \
@@ -277,7 +312,6 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     elif [ $hasapt -eq 1 ] ; then
         mkdir -p /etc/apt/sources.list.d
 	result=`rm /etc/apt/sources.list.d/xCAT-otherpkgs*.list 2>&1`
-	result=`apt-get -y update`
 	repo_base="/etc/apt/sources.list.d"
     fi
 
@@ -372,7 +406,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 		        type=file
 	            fi
 
-		    echo "deb http://$MASTER$INSTALLDIR/post/otherpkgs/$OSVER/$ARCH/$path /"  >> $REPOFILE
+			echo "deb $type://$whole_path /"  > $REPOFILE
 		fi 
 	        if [ $hasyum -eq 1 ]; then 
 	            #use yum
@@ -400,10 +434,12 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 		    fi
 		elif [ $hasapt -eq 1 ]; then 
 		    #use apt
-                    result=`apt-cache search $fn 2>&1`
+			apt_get_update_if_repos_changed $REPOFILE
+			result=`apt-cache show $fn 2>&1`
+
 		    if [ $? -eq 0 ]; then  
 		        rc=0
-		        array_set_element repo_path $(array_get_size repo_path) $path
+				array_set_element repo_path $index $path
 		    else
 		        rm $REPOFILE
 		    fi
@@ -438,6 +474,15 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
             logger -t xcat "otherpkgs: $result"
 	fi
         echo "$result"
+	elif [ $hasapt -eq 1 ]; then
+		apt_get_update_if_repos_changed $REPOFILE
+		echo "apt-get -y upgrade"
+		result=`apt-get -y upgrade 2>&1`
+		logger -t xcat "$result"
+		if [ $? -ne 0 ]; then 
+			logger -t xcat "otherpkgs: $result"
+		fi
+		echo "$result"
     fi     
 
     #echo "repo_pkgs=$repo_pkgs,\nrepo_pkgs_preremove=$repo_pkgs_preremove,\nrepo_pkgs_postremove=$repo_pkgs_postremove"
@@ -462,6 +507,15 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
                 logger -t xcat "otherpkgs: $result"
 	    fi
             echo "$result"
+		elif [ $hasapt -eq 1 ]; then
+			apt_get_update_if_repos_changed $REPOFILE
+			echo "apt-get -y remove $repo_pkgs_preremove"
+			result=`apt-get -y remove $repo_pkgs_preremove 2>&1`
+			logger -t xcat "$result"
+			if [ $? -ne 0 ]; then 
+				logger -t xcat "otherpkgs: $result"
+			fi
+			echo "$result"
         fi
     fi 
 
@@ -501,7 +555,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
             #    result=`zypper sd $x`
             #done
 	elif [ $hasapt -eq 1 ]; then
-		result=`apt-get -y update 2>&1`
+		apt_get_update_if_repos_changed $REPOFILE
 	    echo "apt-get -q -y --force-yes install $repo_pkgs"
 	    result=`apt-get -q -y --force-yes install $repo_pkgs 2>&1`
 	    logger -t xcat "$result"
@@ -569,6 +623,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     	    fi
             echo "$result"
         elif [ $hasapt -eq 1 ]; then 
+			apt_get_update_if_repos_changed $REPOFILE
             echo "apt-get -y remove $repo_pkgs_postremove"
             result=`apt-get -y remove $repo_pkgs_postremove 2>&1`
             logger -t xcat "$result"
