@@ -31,6 +31,22 @@ Tab.prototype.init = function() {
 	// Create a template with close button
 	var tabs = this.tab.tabs();
 
+	tabs.bind('tabsselect', function(event, ui){
+		// Save the order tabs were selected
+		var order;
+		if ($.cookie('tabindex_history')) {
+			order = $.cookie('tabindex_history').split(',');
+			order[1] = order[0];	// Set index 1 to last selected tab
+			order[0] = ui.index;	// Set index 0 to currently selected tab		
+		} else {
+			// Create an array to track the tab selected
+			order = new Array;
+			order[0] = ui.index;
+		}
+		
+		$.cookie('tabindex_history', order);
+	});
+
 	// Remove dummy tab
 	this.tab.tabs("remove", 0);
 
@@ -88,7 +104,17 @@ Tab.prototype.add = function(tabId, tabName, tabCont, closeable) {
 			
 			// Do not remove first tab
 			if (tabIndex != 0) {
-				tabs.tabs('select', 0);
+				// Go back to last tab if user is trying to close currently selected tab
+				if (tabs.tabs('option', 'selected') == tabIndex) {
+					// Get last selected tab from history
+					var order = $.cookie('tabindex_history').split(',');
+					if (order[1]) {
+						tabs.tabs('select', parseInt(order[1]));
+					} else {
+						tabs.tabs('select', 0);
+					}	
+				}							
+				
 				tabs.tabs('remove', tabIndex);
 			}
 		});
