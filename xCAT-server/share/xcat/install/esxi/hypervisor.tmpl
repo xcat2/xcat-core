@@ -1,0 +1,44 @@
+# Accept the VMware End User License Agreement
+vmaccepteula
+
+# Set the root password for the DCUI and Tech Support Mode
+rootpw --iscrypted #CRYPT:passwd:key=vmware,username=root:password#
+
+# clear all partitions.
+#clearpart --alldrives --overwritevmfs 
+# Choose the first disk (in channel/target/lun order) to install onto
+install --firstdisk --overwritevmfs
+
+# Set the network to DHCP on the first network adapter
+#network --bootproto=dhcp --device=vmnic0
+network --bootproto=dhcp
+
+# reboot automatically when we're done.
+reboot
+
+%pre --interpreter=busybox
+# in post section, resolv.conf is blown away, back it up  for now
+while ! grep nameserver /etc/resolv.conf; do
+        sleep 1
+done
+cp /etc/resolv.conf /etc/resolv.conf.xcat
+
+%post --interpreter=busybox --ignorefailure=true
+
+# tell xCAT management server we are done installing
+# have to put in the IP address instead of the hostname because VMware
+# ESXi 4.1 can not resolve IP addresses...
+cp /etc/resolv.conf.xcat /etc/resolv.conf
+localcli network firewall unload
+for param in `vsish -e cat /system/bootCmdLine|grep weasel`; do
+	if [ ${param%=*} = "ks" ]; then
+		param=${param#*//}
+		param=${param%%/*}
+		xcatd=$param
+	fi
+done
+echo -e "<xcatrequest>\n<command>nextdestiny</command>\n</xcatrequest>" | /bin/openssl s_client -quiet -connect $xcatd:3001 2>&1 | tee /tmp/foo.log
+
+%firstboot --interpreter=busybox
+# enable SSH on next boot....
+
