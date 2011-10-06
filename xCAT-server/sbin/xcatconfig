@@ -831,6 +831,31 @@ sub genSSHNodeHostKey
     }
 }
 
+# is_lsb_ubuntu return value indicates whether system appears to be Ubuntu.
+# Using required /etc/lsb-release file, instead of optional lsb_release command.
+
+sub is_lsb_ubuntu
+{
+    if (open(my $relfile, "<", "/etc/lsb-release")) {
+        my @text = <$relfile>;
+        close($relfile);
+        chomp(@text);
+        my $distrib_id = '';
+
+        foreach (@text) {
+            if ( $_ =~ /^\s*DISTRIB_ID=(.*)$/ ) {
+                $distrib_id = $1;                   # last DISTRIB_ID value in file used
+            }
+        }
+
+        if ( $distrib_id =~ /^(Ubuntu|"Ubuntu")\s*$/ ) {
+            return 1;                               # return "true"
+        }
+    }
+
+    return 0;                   # return "false"
+}
+
 # on Ubuntu need to painstakingly compare /etc/localtime with files under
 # /usr/share/zoneinfo since /etc/localtime # isn't always a symbolic link
 sub discover_timezone_ubuntu
@@ -942,7 +967,7 @@ sub initDB
             $tz =
               `grep ^ZONE /etc/sysconfig/clock|cut -d= -f 2|sed -e 's/"//g'`;
         }
-        elsif (-f "/etc/lsb-release")
+        elsif ( is_lsb_ubuntu() )
         {
             $tz = discover_timezone_ubuntu;
         }

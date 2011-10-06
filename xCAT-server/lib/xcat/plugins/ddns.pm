@@ -19,8 +19,8 @@ my $distro = xCAT::Utils->osver();
 
 my $service="named";
 # is this ubuntu ?
-if ( $distro =~ /ubuntu*/ ){
-	$service = "bind9";	
+if ( $distro =~ /ubuntu.*/ ){
+    $service = "bind9";	
 }
 
 sub handled_commands
@@ -547,11 +547,11 @@ sub get_zonesdir {
 
 sub get_conf {
     my $conf="/etc/named.conf";
-	# is this ubuntu ?
-	if ( $distro =~ /ubuntu*/ ){
-		$conf="/etc/bind/named.conf";
-	}
-	
+    # is this ubuntu ?
+    if ( $distro =~ /ubuntu.*/ ){
+        $conf="/etc/bind/named.conf";
+    }
+
     my $sitetab = xCAT::Table->new('site');
 
     unless ($sitetab)

@@ -35,6 +35,33 @@ pmatch ()
   return 1          # non-zero return code means string not matched by pattern
 }
 
+# is_lsb_ubuntu exit status indicates whether system appears to be Ubuntu.
+# Using required /etc/lsb-release file, instead of optional lsb_release command.
+
+is_lsb_ubuntu ()
+{
+    awk '
+        (match($0, "^[ \t]*DISTRIB_ID=") == 1) {    # A DISTRIB_ID line
+            id = substr($0, RLENGTH + 1)            # Save its value
+        }
+
+        END {
+            # Examine last DISTRIB_ID value to see if Ubuntu indicated
+
+            if (match(id, "^(Ubuntu|\"Ubuntu\")[ \t]*$") == 1) {
+                exit 0    # Ubuntu
+            }
+            exit 1        # Not Ubuntu
+        }
+
+    ' /etc/lsb-release >/dev/null 2>&1
+
+    # Routine exit status is exit status of the last command -- the awk script.
+    #
+    #   Note: if /etc/lsb-release does not exist, the exit status indicates
+    #         failure (not Ubuntu), which is the correct outcome.
+}
+
 config_Rsyslog_C3()
 {
   isReceiving=0
@@ -85,7 +112,7 @@ if [ $NTYPE = service ]; then
 fi
 
 if [ "$(uname -s)" = "Linux" ]; then
-  if ( pmatch $OSVER "fedora*" ) || ( pmatch $OSVER "rhels5*" ) || ( pmatch $OSVER "rhel6*" ) || ( pmatch $OSVER "rhels6*" ) || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ] || ( pmatch $OSVER "ubuntu*" ); then
+  if ( pmatch $OSVER "fedora*" ) || ( pmatch $OSVER "rhels5*" ) || ( pmatch $OSVER "rhel6*" ) || ( pmatch $OSVER "rhels6*" ) || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ] || ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ); then
     if [ -e /etc/rsyslog.conf ]; then
       conf_file="/etc/rsyslog.conf"
       sysconfig="/etc/sysconfig/rsyslog"
@@ -207,7 +234,7 @@ else
     
     #Ubuntu doesn't have sysconfig 
     # so configuring the MN to receive UDP connections here.
-    if ( pmatch $OSVER "ubuntu*" ); then
+    if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ); then
       egrep \('^\$UDPServerRun 514'\|'^\$ModLoad imudp'\) $conf_file > /dev/null 2>&1;
       if [ $? -eq 1 ]; then
         echo "\$ModLoad imudp" >> $conf_file;
@@ -238,7 +265,7 @@ else
       if [ $isLinux -eq 0 ]; then
         echo "*.debug @$master" >> $conf_file
       else
-        if ( pmatch $OSVER "ubuntu*" ); then
+        if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ); then
           echo "\$ModLoad imuxsock" >> $conf_file
           echo "*.* @$master" >> $conf_file
         else

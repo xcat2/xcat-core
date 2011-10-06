@@ -62,8 +62,8 @@ if ( $^O ne 'aix' and -d "/etc/dhcp" ) {
 my $usingipv6;
 
 # is this ubuntu ?
-if ( $distro =~ /ubuntu*/ ){
-	$dhcpconffile = '/etc/dhcp3/dhcpd.conf';	
+if ( $distro =~ /ubuntu.*/ ){
+    $dhcpconffile = '/etc/dhcp3/dhcpd.conf';	
 }
 
 sub check_uefi_support {
@@ -1402,9 +1402,9 @@ sub process_request
         {
             restart_dhcpd_aix();
         }
-        elsif ( $distro =~ /ubuntu*/)
+        elsif ( $distro =~ /ubuntu.*/)
         {
-        	#ubuntu config
+            #ubuntu config
             system("chmod a+r /etc/dhcp3/dhcpd.conf");
             system("/etc/init.d/dhcp3-server restart");
         }

@@ -4925,17 +4925,35 @@ sub osver
         $ver =~ tr/\.//;
         $ver =~ s/[^0-9]*([0-9]+).*/$1/;
     }
-    elsif (-f "/etc/lsb-release")#ubuntu
+    elsif (-f "/etc/lsb-release")   # Possibly Ubuntu
     {
 
-        $os = "ubuntu";
-        open($relfile,"<","/etc/lsb-release");
-        my @text = <$relfile>;
-        close($relfile);
-        foreach (@text){
-        	if ( $_ =~ /DISTRIB_RELEASE=(\S+)/ ) {
-        		$ver = $1;
-        	}
+        if (open($relfile,"<","/etc/lsb-release")) {
+            my @text = <$relfile>;
+            close($relfile);
+            chomp(@text);
+            my $distrib_id = '';
+            my $distrib_rel = '';
+
+            foreach (@text) {
+                if ( $_ =~ /^\s*DISTRIB_ID=(.*)$/ ) {
+                    $distrib_id = $1;                   # last DISTRIB_ID value in file used
+                } elsif ( $_ =~ /^\s*DISTRIB_RELEASE=(.*)$/ ) {
+                    $distrib_rel = $1;                  # last DISTRIB_RELEASE value in file used
+                }
+            }
+
+            if ( $distrib_id =~ /^(Ubuntu|"Ubuntu")\s*$/ ) {
+                $os = "ubuntu";
+
+                if ( $distrib_rel =~ /^(.*?)\s*$/ ) {       # eliminate trailing blanks, if any
+                    $distrib_rel = $1;
+                }
+                if ( $distrib_rel =~ /^"(.*?)"$/ ) {        # eliminate enclosing quotes, if any
+                    $distrib_rel = $1;
+                }
+                $ver = $distrib_rel;
+            }
         }
     }
     $os = "$os" . "$ver";

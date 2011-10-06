@@ -23,6 +23,33 @@ pmatch ()
   return 1          # non-zero return code means string not matched by pattern
 }
 
+# is_lsb_ubuntu exit status indicates whether system appears to be Ubuntu.
+# Using required /etc/lsb-release file, instead of optional lsb_release command.
+
+is_lsb_ubuntu ()
+{
+    awk '
+        (match($0, "^[ \t]*DISTRIB_ID=") == 1) {    # A DISTRIB_ID line
+            id = substr($0, RLENGTH + 1)            # Save its value
+        }
+
+        END {
+            # Examine last DISTRIB_ID value to see if Ubuntu indicated
+
+            if (match(id, "^(Ubuntu|\"Ubuntu\")[ \t]*$") == 1) {
+                exit 0    # Ubuntu
+            }
+            exit 1        # Not Ubuntu
+        }
+
+    ' /etc/lsb-release >/dev/null 2>&1
+
+    # Routine exit status is exit status of the last command -- the awk script.
+    #
+    #   Note: if /etc/lsb-release does not exist, the exit status indicates
+    #         failure (not Ubuntu), which is the correct outcome.
+}
+
 logger -t xcat "Install: Setup NTP"
 # if master is the sitemaster, then use the ntpservers defined in the site
 # table, if they exist. If they don't exist, do not setup ntp
@@ -73,7 +100,7 @@ restrict 127.0.0.1" >>$conf_file
 # default service for redhat/fedora
 SERVICE=ntpd
 echo $SERVICE
-if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ] || ( pmatch $OSVER "ubuntu*" ); then
+if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ] || ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ); then
   SERVICE=ntp
 fi
 

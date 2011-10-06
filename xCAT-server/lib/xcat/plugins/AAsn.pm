@@ -654,12 +654,12 @@ sub setup_DHCP
     ${"xCAT_plugin::" . $modname . "::"}{process_request}
       ->($cmdref, \&xCAT::Client::handle_response);
 
+    my $distro = xCAT::Utils->osver();
+    my $serv = "dhcpd";
+    if ( $distro =~ /ubuntu.*/ ){
+        $serv = "dhcp3-server";	
+    }
 
-	my $distro = xCAT::Utils->osver();
-	my $serv = "dhcpd";
-	if ( $distro =~ /ubuntu*/ ){
-		$serv = "dhcp3-server";	
-	}
     my $rc = xCAT::Utils->startService($serv);
     if ($rc != 0)
     {
@@ -781,13 +781,13 @@ sub setup_DNS
     system("$XCATROOT/sbin/makenamed.conf");
 
     # turn DNS on
-	
-	my $distro = xCAT::Utils->osver();
-	my $serv = "named";
-	if ( $distro =~ /ubuntu*/ ){
-		$serv = "bind9";	
-	}
-	
+
+    my $distro = xCAT::Utils->osver();
+    my $serv = "named";
+    if ( $distro =~ /ubuntu.*/ ){
+        $serv = "bind9";
+    }
+
     my $rc = xCAT::Utils->startService($serv);
     if ($rc != 0)
     {

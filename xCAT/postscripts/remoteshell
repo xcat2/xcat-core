@@ -146,8 +146,7 @@ fi
 # start up the sshd for syncfiles postscript to do the sync work
 logger -t xCAT "start up sshd"
 
-DISTRO=`lsb_release -si`
-if [ $DISTRO = "Ubuntu" ]
+if [[ $OSVER == ubuntu* ]]
 then
     if [ ! -d /var/run/sshd ]
     then
