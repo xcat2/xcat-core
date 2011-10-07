@@ -263,11 +263,11 @@ sub confGmond
 	{
 		if ($callback){
 			my $resp={};
-			$resp->{data}->[0]="gangliamon: Please install the Ganglia.";
+			$resp->{data}->[0]="gangliamon: Please install Ganglia.";
 			$callback->($resp);	
 		}
 		else{
-			xCAT::MsgUtils->message('E', "gangliamon: Please install the Ganglia. \n");
+			xCAT::MsgUtils->message('E', "gangliamon: Please install Ganglia. \n");
 		}
 		return;
 	}
@@ -292,21 +292,23 @@ sub confGmond
     if (!$isSV) { $iphash{'noservicenode'}=1;}
 
     #check the configure file
-	`/bin/grep "xCAT gmond settings done" $configure_file`;
-	if($?) { #openinf if ?
+    my $tmp = `/bin/grep "xCAT gmond settings done" $configure_file`;
+	if ($tmp) { #openinf if ?
 	    if($callback) {
 			my $resp={};
-			$resp->{data}->[0]="$localhost: $?";
+			$resp->{data}->[0]="$localhost: $tmp";
 			$callback->($resp);
 		}
 		else {
-			xCAT::MsgUtils->message('S', "Gmond not configured $? \n"); 
+			xCAT::MsgUtils->message('S', "Gmond not configured $tmp\n"); 
 		}
 	    
         #backup the original file
 	    `/bin/cp -f $configure_file $configure_file.orig`;
-	    open(FILE, "+>$configure_file.tmp");
-	    my $fname = $configure_file;
+	    `/bin/rm -f $configure_file`;
+	    `/bin/touch $configure_file`;
+	    open(FILE, "+>>$configure_file");
+	    my $fname = "$configure_file.orig";
 	    unless ( open( CONF, $fname ))
 	    {
 	        return(0);
@@ -316,7 +318,9 @@ sub confGmond
 	    close( CONF );
 	    my $str = join('', @raw_data);
 	    $str =~ s/setuid = yes/setuid = no/;
-	    $str =~ s/bind/#bind/;
+	    if ( !($str =~ m/#bind/) ) {
+	    	$str =~ s/bind/#bind/;	# Comment out bind
+	    }
 	    $str =~ s/mcast_join = .*/host = $hostname/;
 
 	    # my @children;
@@ -335,12 +339,14 @@ sub confGmond
 	    } #closing for each
 	    
 	    $str =~ s/name = "unspecified"/name="$hostname"/;
-	    $str =~ s/mcast_join/# mcast_join/;
-	    print FILE $str;
-	    print FILE "# xCAT gmond settings done \n";
-	    close(FILE);
-	    `/bin/cp -f $configure_file.tmp $configure_file`;
 	    
+	    if ( !($str =~ m/#mcast_join/) ) {
+	    	$str =~ s/mcast_join/#mcast_join/;	# Comment out mcast_join
+	    }
+	    $str =~ s/# xCAT gmond settings done//;	# Remove old message
+	    print FILE $str;
+	    print FILE "# xCAT gmond settings done\n";
+	    close(FILE);	    
 	} #closing if ?
  
     if ($scope)
@@ -444,36 +450,25 @@ sub confGmetad
 		return;
 	}
 	
-	`/bin/grep "xCAT gmetad settings done" $configure_file`;
-
-	if($?)
+	my $tmp = `/bin/grep "xCAT gmetad settings done" $configure_file`;
+	if ($tmp)
 	{ #openinf if ?
 		if($callback) {
 			my $resp={};
-			$resp->{data}->[0]="$localhost: $?";
+			$resp->{data}->[0]="$localhost: $tmp";
 			$callback->($resp);
 		} 
 		else {   
-			xCAT::MsgUtils->message('S', "Gmetad not configured $? \n"); 
+			xCAT::MsgUtils->message('S', "Gmetad not configured $tmp\n"); 
 		}
 		
-		# backup the original file
+		# Backup the original file
 		`/bin/cp -f $configure_file $configure_file.orig`;
 
-		open(FILE1, "<$configure_file");
-		open(FILE, "+>$configure_file.tmp");
-
-		while (readline(FILE1))
-		{
-			# print STDERR "READ = $_\n";
-			s/data_source/#data_source/g;
-			# print STDERR "POST-READ = $_\n";
-			print FILE $_;
-		}
-		close(FILE1);
-		close(FILE);
-		`/bin/cp -f $configure_file.tmp $configure_file`;
-
+		# Create new file from scratch
+		`/bin/rm -f $configure_file`;
+		`/bin/touch $configure_file`;
+		
 		open(OUTFILE,"+>>$configure_file")
 		or die ("Cannot open file \n"); 
 		print(OUTFILE "# Setting up GMETAD configuration file \n");
