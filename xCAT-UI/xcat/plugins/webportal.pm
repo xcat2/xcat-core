@@ -169,7 +169,7 @@ sub provzlinux {
 	println( $callback, "$out" );
 
 	# Set nodetype definitions
-	$out = `chtab node=$node noderes.netboot=zvm nodetype.os=$os nodetype.arch=$arch nodetype.profile=$profile nodetype.comments="owner:$owner"`;
+	$out = `chtab node=$node noderes.netboot=zvm nodetype.nodetype=osi nodetype.provmethod=install nodetype.os=$os nodetype.arch=$arch nodetype.profile=$profile nodetype.comments="owner:$owner"`;
 
 	# Update hosts table and DNS
 	`makehosts`;
@@ -275,10 +275,13 @@ sub provzlinux {
 		return;
 	}
 	
+	# Configure Ganglia monitoring
+	$out = `moncfg gangliamon $node -r`;
+	
 	# Show node information, e.g. IP, hostname, and root password
 	$out = `lsdef $node | egrep "ip=|hostnames="`;
 	my $rootpw = getsysrootpw();
-	println( $callback, "Your virtual machine is ready. It may take a few minutes before you can logon using VNC. Below is your VM attributes." );
+	println( $callback, "Your virtual machine is ready. It may take a few minutes before you can logon using VNC ($node:1). Below is your VM attributes." );
 	println( $callback, "$out" );
 	println( $callback, "    rootpw = $rootpw" );
 }
