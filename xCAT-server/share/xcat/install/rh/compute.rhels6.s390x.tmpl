@@ -23,7 +23,6 @@ part / --fstype ext3 --size=100 --grow --ondisk=dasda
 part swap --size=512 --ondisk=dasda
 
 %packages
-@base
-@core
+replace_software_packages
 
 %post

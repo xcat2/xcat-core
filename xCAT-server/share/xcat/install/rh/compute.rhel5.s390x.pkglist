@@ -4,3 +4,4 @@
 fipscheck
 device-mapper-multipath
 sgpio
+apr

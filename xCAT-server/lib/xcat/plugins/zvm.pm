@@ -3307,6 +3307,9 @@ sub nodeSet {
 
 		# SUSE installation
 		my $customTmpl;
+		my $pkglist;
+		my $patterns = '';
+		my $packages = '';
 		if ( $os =~ m/sles/i ) {
 
 			# Create directory in FTP root (/install) to hold template
@@ -3321,7 +3324,37 @@ sub nodeSet {
 				xCAT::zvmUtils->printLn( $callback, "$node: (Error) An autoyast template does not exist for $os in $installDir/custom/install/sles/" );
 				return;
 			}
-
+			
+			# Get pkglist from /install/custom/install/sles/compute.sles11.s390x.otherpkgs.pkglist
+			# Original one is in /opt/xcat/share/xcat/install/sles/compute.sles11.s390x.otherpkgs.pkglist
+			$pkglist = "/install/custom/install/sles/" . $profile . "." . $osBase . "." . $arch . ".pkglist";
+			if ( !(-e $pkglist) ) {
+				xCAT::zvmUtils->printLn( $callback, "$node: Missing package list for $os in /install/custom/install/sles/" );
+				return;
+			}
+			
+			# Read in each software pattern or package
+			open (FILE, $pkglist);
+			while (<FILE>) { 
+				chomp;
+				
+				# Create <xml> tags, e.g.
+				# 	<package>apache</package>
+				#	<pattern>directory_server</pattern>
+				$_ = xCAT::zvmUtils->trimStr($_);
+				if ($_ && $_ =~ /@/) {
+					$_ =~ s/@//g;
+					$patterns .= "<pattern>$_</pattern>";
+				} elsif ($_) {
+					$packages .= "<package>$_</package>";
+				}
+				
+			}
+			close (FILE);
+			
+			# Add appropriate software packages or patterns
+			$out = `sed --in-place -e "s,replace_software_packages,$packages,g" \ -e "s,replace_software_patterns,$patterns,g" $customTmpl`;
+						
 			# Copy postscript into template
 			$out = `sed --in-place -e "/<scripts>/r $postScript" $customTmpl`;
 
@@ -3332,9 +3365,7 @@ sub nodeSet {
 			# SLES 11
 			if ( $os =~ m/sles11/i ) {
 				$device = "eth0";
-			}
-			else {
-
+			} else {
 				# SLES 10
 				$device = "qeth-bus-ccw-$readChannel";
 			}
@@ -3457,6 +3488,26 @@ sub nodeSet {
 				return;
 			}
 
+			# Get pkglist from /install/custom/install/sles/compute.sles11.s390x.otherpkgs.pkglist
+			# Original one is in /opt/xcat/share/xcat/install/sles/compute.sles11.s390x.otherpkgs.pkglist
+			$pkglist = "/install/custom/install/rh/" . $profile . "." . $osBase . "." . $arch . ".pkglist";
+			if ( !(-e $pkglist) ) {
+				xCAT::zvmUtils->printLn( $callback, "$node: Missing package list for $os in /install/custom/install/rh/" );
+				return;
+			}
+			
+			# Read in each software pattern or package
+			open (FILE, $pkglist);
+			while (<FILE>) { 
+				chomp;
+				$_ = xCAT::zvmUtils->trimStr($_);
+				$packages .= "$_\\n";
+			}
+			close (FILE);
+			
+			# Add appropriate software packages or patterns
+			$out = `sed --in-place -e "s,replace_software_packages,$packages,g"  $customTmpl`;
+														
 			# Copy postscript into template
 			$out = `sed --in-place -e "/%post/r $postScript" $customTmpl`;
 
