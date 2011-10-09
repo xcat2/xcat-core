@@ -642,24 +642,27 @@ sub writechildren2 {
     my %sidehash;
     my $myip;
 
-	my $framehash = parsenoderange($STANZAS{'xcat-frames'}->{'hostname-range'});
-	my $framebase = $$framehash{'primary-base'};
+    my $framehash = parsenoderange($STANZAS{'xcat-frames'}->{'hostname-range'});
+    my $framebase = $$framehash{'primary-base'};
     my $attached = $$framehash{'attach'};
     if (!$framebase) { errormsg("when using vlanid, you must also use frame names like frame1",7); return 0; }
     my $framestart = $$framehash{'primary-start'};   
     my $frameend = $$framehash{'primary-end'};
+    my $cechash;
     my $cecprimbase;
     my $cecsecbase;
+    my $cecstart;
+    my $cecend;
     if ($ntype =~ /bpa/) {
         for (my $ii = $framestart; $ii <= $frameend; $ii++) {
             $myip = $vlan1 . '.' . $ii . '.0.1';
             $sidehash{$myip}->{side} = 'A-0';
             push @ipgroup, $myip;
             $myip = $vlan1 . '.' . $ii . '.0.2';
-            $sidehash{$myip}->{side} = 'A-1';  
+            $sidehash{$myip}->{side} = 'B-0';  
             push @ipgroup, $myip;
             $myip = $vlan2 . '.' . $ii . '.0.1';
-            $sidehash{$myip}->{side} = 'B-0';
+            $sidehash{$myip}->{side} = 'A-1';
             push @ipgroup, $myip;
             $myip = $vlan2 . '.' . $ii . '.0.2';
             $sidehash{$myip}->{side} = 'B-1';   
@@ -667,23 +670,23 @@ sub writechildren2 {
         }    
     }    
     if ($ntype =~ /fsp/) {
-	    my $cechash = parsenoderange($STANZAS{'xcat-cecs'}->{'hostname-range'});
+        $cechash = parsenoderange($STANZAS{'xcat-cecs'}->{'hostname-range'});
         $cecprimbase = $$cechash{'primary-base'};
-	    $cecsecbase = $$cechash{'secondary-base'};
-        my $attached = $$cechash{'attach'};
-	    if (!$cecsecbase) { errormsg("when using vlanid, you must also use CEC names like f1c1",7); return 0; }
-        my $cecstart = $$cechash{'primary-start'};
-	    my $cecend = $$cechash{'secondary-end'};
+        $cecsecbase = $$cechash{'secondary-base'};
+        $attached = $$cechash{'attach'};
+        if (!$cecsecbase) { errormsg("when using vlanid, you must also use CEC names like f1c1",7); return 0; }
+        $cecstart = $$cechash{'primary-start'};
+        $cecend = $$cechash{'secondary-end'};
         for (my $ii = $framestart; $ii <= $frameend; $ii++) {
             for (my $jj = $cecstart; $jj <= $cecend; $jj++) {
                 $myip = $vlan1 . '.' . $ii . '.' . $jj . '.1';
                 $sidehash{$myip}->{side} = 'A-0';
                 push @ipgroup, $myip; 
                 $myip = $vlan1 . '.' . $ii . '.' . $jj . '.2';
-                $sidehash{$myip}->{side} = 'A-1';
+                $sidehash{$myip}->{side} = 'B-0';
                 push @ipgroup, $myip; 
                 $myip = $vlan2 . '.' . $ii . '.' . $jj . '.1';
-                $sidehash{$myip}->{side} = 'B-0';
+                $sidehash{$myip}->{side} = 'A-1';
                 push @ipgroup, $myip; 
                 $myip = $vlan2 . '.' . $ii . '.' . $jj . '.2';
                 $sidehash{$myip}->{side} = 'B-1';
@@ -725,10 +728,13 @@ sub writechildren2 {
     $tables{'vpd'}->setNodesAttribs(\%sidehash);
     my $parentregex;
     if ($ntype =~ /bpa/) {
-        $parentregex = '|^\d+\.(\d+)\.\d+\.\d+$|'.$framebase.$1.$attached.'|';
+        my $tlength = length($$framehash{'primary-start'});
+        $parentregex = '|^\d+\.(\d+)\.\d+\.\d+$|'.$framebase.'(\'0\'x('.$tlength.'-length($1)))($1)'.$attached.'|';
     }
-    if ($ntype =~ /bpa/) {
-        $parentregex = '|^\d+\.(\d+)\.\d+\.\d+$|'.$cecprimbase.$1.$cecsecbase.$2.$attached.'|';
+    if ($ntype =~ /fsp/) {
+        my $tlength1 = length($$cechash{'primary-start'});
+        my $tlength2 = length($$cechash{'secondary-start'});
+        $parentregex = '|^\d+\.(\d+)\.(\d+)\.\d+$|'.$cecprimbase.'(\'0\'x('.$tlength1.'-length($1)))($1)'.$cecsecbase.'(\'0\'x('.$tlength2.'-length($2)))($2)'.$attached.'|';
     }
     $hash{parent} = $parentregex;
     $tables{'ppc'}->setNodeAttribs($ntype, \%hash);   
