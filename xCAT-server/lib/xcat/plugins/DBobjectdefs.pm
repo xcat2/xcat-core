@@ -1472,8 +1472,9 @@ sub defmk
         else
         {
             my $rsp;
+            my $nodenum = scalar(keys %::FINALATTRS);
             $rsp->{data}->[0] =
-              "Object definitions have been created or modified.";
+              "$nodenum object definitions have been created or modified.";
             xCAT::MsgUtils->message("I", $rsp, $::callback);
         }
         return 0;
@@ -2260,8 +2261,9 @@ sub defch
         else
         {
             my $rsp;
+            my $nodenum = scalar(keys %::FINALATTRS);
             $rsp->{data}->[0] =
-              "Object definitions have been created or modified.";
+              "$nodenum object definitions have been created or modified.";
             xCAT::MsgUtils->message("I", $rsp, $::callback);
             if (scalar(keys %newobjects) > 0)
             {
@@ -3448,7 +3450,8 @@ sub defrm
             else
             {
                 my $rsp;
-                $rsp->{data}->[0] = "Object definitions have been removed.";
+                my $nodenum = scalar(keys %objhash);
+                $rsp->{data}->[0] = "$nodenum object definitions have been removed.";
                 xCAT::MsgUtils->message("I", $rsp, $::callback);
             }
             # Give a warning message to the user to remove the children of the node.
