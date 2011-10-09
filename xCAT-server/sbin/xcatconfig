@@ -239,7 +239,7 @@ if ($::INITIALINSTALL)
 
             # add xCAT paths
             my $eccmd =
-              qq~echo '# xCAT setup\nXCATROOT=$::XCATROOT\nPATH=\$PATH:\$XCATROOT/bin:\$XCATROOT/sbin\nMANPATH=\$MANPATH:\$XCATROOT/share/man\nexport XCATROOT PATH MANPATH' >>$profname~;
+              qq~echo '# xCAT setup\nXCATROOT=$::XCATROOT\nPATH=\$XCATROOT/bin:\$XCATROOT/sbin:\$PATH\nMANPATH=\$XCATROOT/share/man:\$MANPATH\nexport XCATROOT PATH MANPATH' >>$profname~;
             $outref = xCAT::Utils->runcmd("$eccmd", 0);
             if ($::RUNCMD_RC != 0)
             {
