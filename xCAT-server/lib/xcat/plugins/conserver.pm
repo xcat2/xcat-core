@@ -229,6 +229,23 @@ sub docfheaders {
   push @newheaders,"  trusted 127.0.0.1;\n";
   my $master=xCAT::Utils->get_site_Master();
   push @newheaders, "  trusted $master;\n";
+  # trust all the ip addresses configured on this node
+  my @allips = xCAT::Utils->gethost_ips();
+  my @ips = ();
+  #remove $xcatmaster and duplicate entries
+  foreach my $ip (@allips) {
+      if (($ip eq "127.0.0.1") || ($ip eq $master)) {
+          next;
+      }
+      if(!grep(/^$ip$/, @ips)) {
+          push @ips,$ip;
+      }
+  }
+  if(scalar(@ips) > 0) {
+      my $ipstr = join(',', @ips);
+      push @newheaders, "  trusted $ipstr;\n";
+  }
+
   push @newheaders,"}\n";
   #push @$content,"#xCAT END ACCESS\n";
 
