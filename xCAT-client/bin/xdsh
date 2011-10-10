@@ -340,12 +340,21 @@ sub parse_args_xdsh
     }
     $ENV{DSH_TO_USERID} = $to_userid;
 
+    # if devicetype=Mellanox,  xdsh does not setup ssh,  rspconfig does
+    my $devicepath = $options{'devicetype'};
+    $devicepath =~ s/::/\//g;
+    if (($options{'ssh-setup'}) && ($devicepath =~ /Mellanox/i)) {
+        my $msg =
+          "You do not use xdsh -K to setup the Mellanox switch ssh keys. Use rspconfig. See man page for rspconfig option sshcfg={enable|disable}.";
+        xCAT::MsgUtils->message("E", $msg);
+        exit 2;
+    }
     # only allow -K with -l if --devicetype defined
     if (   (($options{'user'}) && ($options{'ssh-setup'}))
         && (!($options{'devicetype'})))
     {
         my $msg =
-          "The -K and -l flag may only be used if --devicetype is specified\n.";
+          "The -K and -l flag may only be used if --devicetype is specified.";
         xCAT::MsgUtils->message("E", $msg);
         exit 2;
     }
