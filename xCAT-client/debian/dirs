@@ -1,7 +1,15 @@
 opt/xcat/bin
 opt/xcat/sbin
+opt/xcat/share/xcat/scripts
+opt/xcat/share/xcat/tools
 opt/xcat/share/man/man1
 opt/xcat/share/man/man3
 opt/xcat/share/man/man5
 opt/xcat/share/man/man8
+opt/xcat/share/doc/packages/xCAT-client
+opt/xcat/share/doc/man1
+opt/xcat/share/doc/man3
+opt/xcat/share/doc/man5
+opt/xcat/share/doc/man8
 opt/xcat/share/doc
+opt/xcat/share/xcat/rvid
