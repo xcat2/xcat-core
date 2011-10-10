@@ -280,7 +280,7 @@ unless ($onlyinitrd) {
    my $pass;
    foreach $pass (sort (keys(%extra_hash))) {
      foreach (keys(%{$extra_hash{$pass}})) {
-       if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
+       if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
        my $whole_path="$srcdir_otherpkgs/$_";
        if (-r "$srcdir_otherpkgs/$_/repodata/repomd.xml") {
 	   if($osver_host == 11) { 
@@ -355,7 +355,7 @@ unless ($onlyinitrd) {
        $pkgnames = "";
        $group_pkgnames = "";
        foreach (keys(%{$pkg_hash{$pass}})) {
-           if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
+           if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
            my $pa=$pkg_hash{$pass}{$_};
            # replace the kernel package with the name has the specific version
            my @npa = ();
@@ -400,10 +400,16 @@ unless ($onlyinitrd) {
            $pkgnames .= " " . join(' ', @npa);
 	   $group_pkgnames .= " " . join(' ', @npa_group);
        }
+
+        my $envlist;
+        if(exists $pkg_hash{$pass}{ENVLIST}){
+            $envlist = join(' ', @{$pkg_hash{$pass}{ENVLIST}});
+        }
+
        if($pkgnames ne ' ')
        {
-	   print "$yumcmd $pkgnames\n";
-	   my $rc = system("$yumcmd $pkgnames");
+	   print "$envlist $yumcmd $pkgnames\n";
+	   my $rc = system("$envlist $yumcmd $pkgnames");
 	   $rc = $rc >> 8;
 	   if (($rc) && ($rc != '104')) { 
 	       print "zypper invocation failed with rc: $rc\n";
@@ -412,8 +418,8 @@ unless ($onlyinitrd) {
        }
        if($group_pkgnames ne ' ')
        {
-	   print "$yumcmd -t pattern $group_pkgnames\n";
-	   $rc = system("$yumcmd -t pattern $group_pkgnames");
+	   print "$envlist $yumcmd -t pattern $group_pkgnames\n";
+	   $rc = system("$envlist $yumcmd -t pattern $group_pkgnames");
 	   $rc = $rc >> 8;
 	   if (($rc) && ($rc != '104')) { 
 	       print "zypper invocation failed with rc: $rc\n";
@@ -424,20 +430,26 @@ unless ($onlyinitrd) {
 
    foreach $pass (sort (keys(%extra_hash))) {
        #remove the packages that are specified in the otherpkgs.list files with leading '-'
+       my $envlist;
+       if(exists $extra_hash{$pass}{ENVLIST}){
+           $envlist = join(' ', @{$extra_hash{$pass}{ENVLIST}});
+       }
+
        my $yumcmd_remove= "zypper -R $rootimg_dir --non-interactive  --no-gpg-checks remove "; 
        if (exists ($extra_hash{$pass}{'PRE_REMOVE'})) {
            my $pa=$extra_hash{$pass}{'PRE_REMOVE'};
            my $rm_packges= join(' ', @$pa);
            if ($rm_packges) {
-               $rc = system("$yumcmd_remove $rm_packges");
+               print "$envlist $yumcmd_remove $rm_packges";
+               $rc = system("$envlist $yumcmd_remove $rm_packges");
            }
        }
    
 
        #add extra packages in the list
        if ($extrapkgnames{$pass}) {
-           print "$yumcmd $extrapkgnames{$pass}\n";
-           $rc = system("$yumcmd $extrapkgnames{$pass}");
+           print "$envlist yumcmd $extrapkgnames{$pass}\n";
+           $rc = system("$envlist $yumcmd $extrapkgnames{$pass}");
            $rc = $rc >> 8;
            if (($rc) && ($rc != '104')) { 
                print "zypper invocation failed with rc: $rc\n";
@@ -450,7 +462,8 @@ unless ($onlyinitrd) {
            my $pa=$extra_hash{$pass}{'POST_REMOVE'};
            my $rm_packges= join(' ', @$pa);
            if ($rm_packges) {
-               $rc = system("$yumcmd_remove $rm_packges");
+               print "$envlist $yumcmd_remove $rm_packges";
+               $rc = system("$envlist $yumcmd_remove $rm_packges");
            }
        }
    }

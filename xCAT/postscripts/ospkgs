@@ -199,8 +199,8 @@ if ( pmatch "$OSVER" "sles10*" ); then
 
     #install the new patterns if any
     if [ -n "$groups" ]; then
-	cmd="rug install -y --agree-to-third-party-licences -t pattern $groups"
-	result=`$cmd 2>&1`
+	cmd="$ENVLIST rug install -y --agree-to-third-party-licences -t pattern $groups"
+	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
 	    logger -t xcat "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
@@ -215,8 +215,8 @@ if ( pmatch "$OSVER" "sles10*" ); then
 
     #install new rpms if any
     if [ -n "$pkgs" ]; then
-	cmd="rug install -y --agree-to-third-party-licences $pkgs"
-	result=`$cmd 2>&1`
+	cmd="$ENVLIST rug install -y --agree-to-third-party-licences $pkgs"
+	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
 	    logger -t xcat "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
@@ -231,8 +231,8 @@ if ( pmatch "$OSVER" "sles10*" ); then
 
     #remove some packages if specified
     if [ -n "$pkgs_d" ]; then
-	cmd="rug remove -y $pkgs_d"
-	result=`$cmd 2>&1`
+	cmd="$ENVLIST rug remove -y $pkgs_d"
+	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
 	    logger -t xcat "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
@@ -295,8 +295,8 @@ elif ( pmatch "$OSVER" "sles11*" ); then
 
     #install the new patterns if any
     if [ -n "$groups" ]; then
-	cmd="zypper install -y --auto-agree-with-licenses -t pattern $groups"
-	result=`$cmd 2>&1`
+	cmd="$ENVLIST zypper install -y --auto-agree-with-licenses -t pattern $groups"
+	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
 	    logger -t xcat "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
@@ -311,8 +311,8 @@ elif ( pmatch "$OSVER" "sles11*" ); then
 
     #install new rpms if any
     if [ -n "$pkgs" ]; then
-	cmd="zypper install -y --auto-agree-with-licenses $pkgs"
-	result=`$cmd 2>&1`
+	cmd="$ENVLIST zypper install -y --auto-agree-with-licenses $pkgs"
+	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
 	    logger -t xcat "ospkgs: $cmd    $result"
 	    echo "ospkgs: $cmd"
@@ -327,8 +327,8 @@ elif ( pmatch "$OSVER" "sles11*" ); then
 
     #remove some packages if specified
     if [ -n "$pkgs_d" ]; then
-	cmd="zypper remove -y $pkgs_d"
-	result=`$cmd 2>&1`
+	cmd="$ENVLIST zypper remove -y $pkgs_d"
+	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
 	    logger -t xcat "ospkgs: $cmd    $result"
 	    echo "ospkgs: $cmd"
@@ -368,23 +368,23 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
 	# but keeping this here doesn't really hurt. Anything that looks like a group will
 	# be installed as though it were a package.)
 	if [ -n "$groups" ]; then
-		command="apt-get -q -y --force-yes install $groups"
+		command="$ENVLIST apt-get -q -y --force-yes install $groups"
 		echo "=== $command"
-		$command
+		eval $command
 	fi
 
 	# install packages
 	if [ -n "$pkgs" ]; then
-		command="apt-get -q -y --force-yes install $pkgs"
+		command="$ENVLIST apt-get -q -y --force-yes install $pkgs"
 		echo "=== $command"
-		$command
+		eval $command
 	fi
 
 	# remove packages
 	if [ -n "$pkgs_d" ]; then
-		command="apt-get -y remove $pkgs_d"
+		command="$ENVLIST apt-get -y remove $pkgs_d"
 		echo "=== $command"
-		$command
+		eval $command
 	fi
 else 
     #check if yum is installed
@@ -434,8 +434,8 @@ else
 
     #install new groups if any
     if [ -n "$groups" ]; then
-	cmd="echo $groups| xargs yum -y groupinstall"
-	result=`echo $groups | xargs yum -y groupinstall 2>&1`
+	cmd="echo $groups| $ENVLIST xargs yum -y groupinstall"
+	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
 	    logger -t xcat "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
@@ -450,8 +450,8 @@ else
 
     #install new rpms if any
     if [ -n "$pkgs" ]; then
-	cmd="yum -y install $pkgs"
-	result=`$cmd 2>&1`
+	cmd="$ENVLIST yum -y install $pkgs"
+	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
 	    logger -t xcat "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
@@ -466,8 +466,8 @@ else
 
     #remove some rpms if specified
     if [ -n "$pkgs_d" ]; then
-	cmd="yum -y remove $pkgs_d"
-	result=`$cmd 2>&1`
+	cmd="$ENVLIST yum -y remove $pkgs_d"
+	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
 	    logger -t xcat "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
