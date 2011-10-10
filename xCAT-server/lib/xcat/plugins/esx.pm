@@ -4429,7 +4429,7 @@ sub mkcommonboot {
 	  	$append .= " ks=http://!myipfn!/install/autoinst/$node";
 		esxi_kickstart_from_template(node=>$node,os=>$osver,arch=>$arch,profile=>$profile);
 	  }
-	  if ($serialconfig->{$node}) {
+	  if ($bootmode ne "install" and $serialconfig->{$node}) { #don't do it for install, installer croaks currently
 		my $comport = 1;
 		if (defined $serialconfig->{$node}->[0]->{serialport}) {
 			 $comport = $serialconfig->{$node}->[0]->{serialport}+1;
