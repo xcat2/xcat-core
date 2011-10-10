@@ -25,6 +25,14 @@ cp /etc/resolv.conf /etc/resolv.conf.xcat
 
 %post --interpreter=busybox --ignorefailure=true
 
+for dir in /vmfs/volumes/*; do
+	if [ -e $dir/boot.cfg -a $dir/s.v00 ]; then
+		cd /
+		tar zcvf  $dir/xcatmod.tgz etc/ssh/keys-root/authorized_keys
+		sed -i 's/onetime.tgz/xcatmod.tgz --- onetime.tgz/' $dir/boot.cfg
+	fi
+done
+		
 # tell xCAT management server we are done installing
 # have to put in the IP address instead of the hostname because VMware
 # ESXi 4.1 can not resolve IP addresses...
