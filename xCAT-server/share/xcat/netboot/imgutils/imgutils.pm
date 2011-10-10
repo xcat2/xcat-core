@@ -117,7 +117,7 @@ sub get_package_names {
             } elsif  (/^#NEW_INSTALL_LIST#/) {
                 $pass++;
                 next;
-            } elsif (/#ENV:([^#^\n]+)#/) {
+            } elsif (/^#ENV:([^#^\n]+)#/) {
                 my $pa=$pkgnames{$pass}{ENVLIST};
                 my $env = $1;
                 if (exists($pkgnames{$pass}{ENVLIST})){
