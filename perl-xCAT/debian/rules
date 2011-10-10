@@ -41,6 +41,14 @@ binary-arch: build install
 	dh_installdocs
 #	dh_installexamples
 	dh_install
+	chmod 644 `pwd`/debian/perl-xcat/opt/xcat/lib/perl/xCAT/*
+	chmod 755 `pwd`/debian/perl-xcat/opt/xcat/lib/perl/xCAT/data
+	chmod 644 `pwd`/debian/perl-xcat/opt/xcat/share/doc/packages/perl-xCAT/*
+	chmod 644 `pwd`/debian/perl-xcat/opt/xcat/README
+	chmod 644 `pwd`/debian/perl-xcat/opt/xcat/share/man/man5/*
+	chmod 644 `pwd`/debian/perl-xcat/opt/xcat/share/doc/man5/*
+	chmod 644 `pwd`/debian/perl-xcat/opt/xcat/share/man/man7/*
+	chmod 644 `pwd`/debian/perl-xcat/opt/xcat/share/doc/man7/*
 #	dh_installmenu
 #	dh_installdebconf	
 #	dh_installlogrotate
