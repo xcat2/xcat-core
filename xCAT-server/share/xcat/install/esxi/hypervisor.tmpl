@@ -41,4 +41,11 @@ echo -e "<xcatrequest>\n<command>nextdestiny</command>\n</xcatrequest>" | /bin/o
 
 %firstboot --interpreter=busybox
 # enable SSH on next boot....
-
+chkconfig SSH on
+chkconfig ESXShell on
+esxcli system settings advanced set --int-value 0 --option /VMFS3/EnableBlockDelete
+esxcli network ip set -e y
+esxcli network firewall ruleset set -r DHCPv6 -e y
+esxcli network firewall ruleset set -r sshServer -e y
+esxcli network ip interface ipv6 set -i vmk0  -d y
+#reboot

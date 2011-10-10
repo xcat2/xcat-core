@@ -4088,6 +4088,10 @@ sub copycd {
 	    }
 	    open($bootcfg,">","$installroot/$distname/$arch/boot.cfg.install");
 	    foreach (@bootcfg) {
+	      if (/^modules=/ and $_ !~ /xcatmod.tgz/) {
+			chomp();
+			s! *\z! --- xcatmod.tgz\n!;
+	      }
 	      print $bootcfg $_;
 	    }
 	    close($bootcfg);
@@ -4174,9 +4178,21 @@ sub  makecustomizedmod {
     if ($osver =~ /esxi4/ and -e "$::XCATROOT/share/xcat/netboot/esxi/38.xcat-enableipv6") {
         mkpath($tempdir."/etc/vmware/init/init.d");
         copy( "$::XCATROOT/share/xcat/netboot/esxi/38.xcat-enableipv6",$tempdir."/etc/vmware/init/init.d/38.xcat-enableipv6");
+    } elsif ($osver =~ /esxi5/ and -e "$::XCATROOT/share/xcat/netboot/esxi/xcat-ipv6.json") {
+        mkpath($tempdir."/usr/libexec/jumpstart/plugins/");
+        copy( "$::XCATROOT/share/xcat/netboot/esxi/xcat-ipv6.json",$tempdir."/usr/libexec/jumpstart/plugins/xcat-ipv6.json");
     }
     if ($osver =~ /esxi4/ and -e "$::XCATROOT/share/xcat/netboot/esxi/47.xcat-networking") {
         copy( "$::XCATROOT/share/xcat/netboot/esxi/47.xcat-networking",$tempdir."/etc/vmware/init/init.d/47.xcat-networking");
+    } elsif ($osver =~ /esxi5/ and -e "$::XCATROOT/share/xcat/netboot/esxi/39.ipv6fixup") {
+        mkpath($tempdir."/etc/init.d");
+        copy( "$::XCATROOT/share/xcat/netboot/esxi/39.ipv6fixup",$tempdir."/etc/init.d/39.ipv6fixup");
+		chmod(0755,"$tempdir/etc/init.d/39.ipv6fixup");
+    }
+    if ($osver =~ /esxi5/ and -e "$::XCATROOT/share/xcat/netboot/esxi/48.esxifixup") {
+        mkpath($tempdir."/etc/init.d");
+        copy( "$::XCATROOT/share/xcat/netboot/esxi/48.esxifixup",$tempdir."/etc/init.d/48.esxifixup");
+		chmod(0755,"$tempdir/etc/init.d/48.esxifixup");
     }
     if (-e "$::XCATROOT/share/xcat/netboot/esxi/xcatsplash") {
       mkpath($tempdir."/etc/vmware/");

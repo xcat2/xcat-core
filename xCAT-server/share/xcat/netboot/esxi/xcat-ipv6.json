@@ -1,0 +1,17 @@
+{
+   "operations" :
+   {
+      "start" :
+      [
+         "network ip set -e y",
+      ]
+   }
+   ,
+   "metadata" :
+   {
+      "version"  : 1,
+      "requires" : ["random", "system uuid"],
+      "provides" : ["vmw-forced-legacy-34"]
+   }
+}
+
