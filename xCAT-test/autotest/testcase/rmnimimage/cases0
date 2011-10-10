@@ -1,0 +1,59 @@
+start:rmnimimage_imagename
+description:rmnimimage testimage
+os:AIX
+cmd:mknimimage -s $$SOURCE testimage
+check:rc==0
+check:output=~lpp_source=testimage_lpp_source
+check:output=~bosinst_data=testimage_bosinst_data
+check:output=~testimage
+cmd:rmnimimage testimage
+check:rc==0
+cmd:lsnim 
+check:output!~testimage_bosinst_data
+check:output=~testimage_lpp_source
+cmd:rmdef -t osimage -o testimage
+end
+
+start:rmnimimage_d_imagename
+description:rmnimimage -d imagename
+os:AIX
+cmd:mknimimage -s $$SOURCE testimage
+check:rc==0
+check:output=~lpp_source=testimage_lpp_source
+check:output=~bosinst_data=testimage_bosinst_data
+check:output=~testimage
+cmd:rmnimimage -d testimage
+check:rc==0
+cmd:lsnim
+check:output!~testimage
+cmd:tabdump osimage
+check:output=~testimage
+cmd:rmdef -t osimage -o testimage
+end
+
+start:rmnimimage_x_imagename
+os:AIX
+cmd:mknimimage -s $$SOURCE testimage
+check:rc==0
+check:output=~lpp_source=testimage_lpp_source
+check:output=~bosinst_data=testimage_bosinst_data
+check:output=~testimage
+cmd:rmnimimage testimage
+check:rc==0
+cmd:tabdump osimage
+check:output=~testimage
+cmd:rmnimimage -x testimage
+ckeck:rc==0
+cmd:tabdump osimage
+ckeck:output!~testimage
+end
+
+start:rmnimimage_h
+description:rmnimimage -h and --help
+os:AIX
+cmd:rmnimimage -h
+check:output=~usage|Usage
+cmd:rmnimimage --help
+check:output=~usage|Usage
+end
+
