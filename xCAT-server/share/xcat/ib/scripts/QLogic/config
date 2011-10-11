@@ -1,0 +1,5 @@
+[main]
+ssh-setup-command=sshKey add
+[xdsh]
+pre-command=NULL
+post-command=showLastRetcode -brief
