@@ -1,0 +1,27 @@
+start:xdshbak_h
+cmd:xdshbak -h
+check:rc==0
+check:output=~Usage
+end
+
+start:xdshbak_display
+cmd:xdsh $$CN cat /etc/hosts | xdshbak
+check:rc==0
+check:output=~HOST:$$CN
+end
+
+start:xdshbak_c
+cmd:xdsh $$CN pwd |xdshbak -c
+check:rc==0
+end
+
+start:xdshbak_q
+cmd:xdsh $$CN ls / |xdshbak -q
+check:rc==0
+end
+
+start:xdshbak_x
+cmd:xdsh $$CN cat /etc/passwd|xdshbak -c
+check:rc==0
+end
+
