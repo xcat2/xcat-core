@@ -208,6 +208,7 @@ correspond to a valid device configuration file under the /var/opt/xcat/
 directory.
 For example, /var/opt/xcat/IBSwitch/Qlogic/config is the configuration
 file location if devicetype is specified as IBSwitch::Qlogic
+/var/opt/xcat/IBSwitch/Mellanox/config is the configuration file location if the devicetype is specified as IBSwitch::Mellanox.
 
 =item B<-f>|B<--fanout> I<fanout_value>
 
@@ -458,15 +459,6 @@ The dsh command exit code is 0 if the command executed without errors and all re
 
 =over 3
 
-=item *
-
-To define the IB switch as a node and to set up the SSH keys for IB switch 
-B<qswitch> with device configuration file
-B</var/opt/xcat/IBSwitch/Qlogic/config> and user name B<username>, Enter
-
-B<chdef> I<-t node -o qswitch groups=all nodetype=switch>
-B<xdsh> I<qswitch -K -l username --devicetype IBSwitch::Qlogic>
-
 
 =item *
 
@@ -521,6 +513,27 @@ To cleanup the servicenode directory that stages the copy of files to the
 nodes, enter:  
 
 B<xdsh> I<servicenoderange -c >  
+
+=item *
+
+To define the IB switch as a node and to set up the SSH keys for IB switch 
+B<qswitch> with device configuration file
+B</var/opt/xcat/IBSwitch/Qlogic/config> and user name B<username>, Enter
+
+B<chdef> I<-t node -o qswitch groups=all nodetype=switch>
+
+B<xdsh> I<qswitch -K -l username --devicetype IBSwitch::Qlogic>
+
+=item *
+
+To define the Mellanox switch as a node and run a command to show the ssh keys. 
+B<mswitch> with device configuration file
+
+B</var/opt/xcat/IBSwitch/Mellanox/config> and user name B<username>, Enter
+
+B<chdef> I<-t node -o mswitch groups=all nodetype=switch>
+
+B<xdsh> I<mswitch -l admin --devicetype IBSwitch::Mellanox  'enable;configure terminal;show ssh server host-keys'>
 
 =back
 
