@@ -15,10 +15,13 @@ if (!$ENV{'NFSSERVER'})
 }
 
 my $nfsserver = $ENV{'NFSSERVER'};
+my @ps = ();
+my @nfsserverps = ();
 
 my $cmd = "lsps -t nfs -c";
 &runcmd($cmd);
 
+# Remove any inactive paging space from external nfs server first
 foreach my $line (@::outref)
 {
     chomp($line);
@@ -29,18 +32,43 @@ foreach my $line (@::outref)
     my ($psname, $pshost, $psfile, $pssize, $psused, $psactive, $psauto, $pstype, $pschksum) = split(/:/, $line);
     if ($pshost eq $nfsserver)
     {
+        if ($psactive eq 'n')
+        {
+            # Inactive paging space, remove it
+            $cmd = "rmps $psname";
+            &runcmd($cmd);
+        }
+        else
+        {
+            push @nfsserverps, $psfile
+        }
+    }
+    else
+    {
+        push @ps, $line;
+    }
+}
+
+foreach my $psline (@ps)
+{
+    my ($psname, $pshost, $psfile, $pssize, $psused, $psactive, $psauto, $pstype, $pschksum) = split(/:/, $psline);
+    if ($pshost eq $nfsserver)
+    {
         next;
     }
-    my $cmd = "mkps -a -n -t nfs $nfsserver $psfile";
-    &runcmd($cmd);
 
+    if (!grep(/^$psfile$/, @nfsserverps))
+    {
+        my $cmd = "mkps -a -n -t nfs $nfsserver $psfile";
+        &runcmd($cmd);
+    }
     $cmd = "swapoff /dev/$psname";
     &runcmd($cmd);
 
     $cmd = "rmps $psname";
     &runcmd($cmd);
-     
 }
+     
 sub runcmd
 {
     my ($cmd) = @_;
