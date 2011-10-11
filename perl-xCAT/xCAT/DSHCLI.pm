@@ -604,9 +604,8 @@ sub _execute_dsh
                       if !$signal_interrupt_flag;
                 }
 
-                elsif (!defined($target_rc) && !$dsh_cmd_background)
+                elsif (!defined($target_rc) && !$dsh_cmd_background && ($::DSH_MELLANOX_SWITCH==0))
                 {
-
                     $rsp->{data}->[0] =
                       " A return code for the command run on the host $user_target was not received.";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
@@ -1702,7 +1701,7 @@ sub stream_error
                         push @$targets_failed, $user_target;
                     }
 
-                    elsif (!defined($target_rc))
+                    elsif (!defined($target_rc) && ($::DSH_MELLANOX_SWITCH==0))
                     {
 
                         $rsp->{data}->[0] =
@@ -3715,6 +3714,7 @@ sub parse_and_run_dsh
     #    ' "enable" "configure terminal" "show ssh server host-keys" '
     my @melcmds;
     if ($switchtype =~ /Mellanox/i) {
+      $::DSH_MELLANOX_SWITCH=1;
       @melcmds = split (/;/, $options{'command'});
       my $newcmd;
       foreach my $cmd (@melcmds) {
@@ -3723,6 +3723,8 @@ sub parse_and_run_dsh
        $newcmd .= "\" ";
       }
       $options{'command'} = $newcmd;  
+    } else {
+      $::DSH_MELLANOX_SWITCH=0;
     }
     #
     # -K option just sets up the ssh keys on the nodes and exits
