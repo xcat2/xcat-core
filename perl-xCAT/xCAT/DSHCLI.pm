@@ -2027,7 +2027,7 @@ sub config_dsh
     $dsh_trace
       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
-    # Check devicetype attr and try to load device configuration
+    # Check devicetype attr and build command based on type 
     $$options{'devicetype'} = $$options{'devicetype'}
       || $ENV{'DEVICETYPE'}
       || undef;
@@ -2036,29 +2036,36 @@ sub config_dsh
         $ENV{'DEVICETYPE'} = $$options{'devicetype'};
         my $devicepath = $$options{'devicetype'};
         $devicepath =~ s/::/\//g;
-        $devicepath = "/var/opt/xcat/" . $devicepath . "/config";
 
-        # Get configuration from $::XCATDEVCFGDIR
-        if (-e $devicepath)
-        {
-            my $deviceconf = get_config($devicepath);
+        $rsp->{data}->[0] = "Processing $devicepath device type";
+        $dsh_trace && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
-            # Get all dsh section configuration
-            foreach my $entry (keys %{$$deviceconf{'xdsh'}})
-            {
+        # process the config file 
+          
+          $devicepath = "/var/opt/xcat/" . $devicepath . "/config";
+
+          # Get configuration from $::XCATDEVCFGDIR
+          # used for QLogic and Mellanox
+          if (-e $devicepath)
+          {
+             my $deviceconf = get_config($devicepath);
+
+             # Get all dsh section configuration
+             foreach my $entry (keys %{$$deviceconf{'xdsh'}})
+             {
                 my $value = $$deviceconf{'xdsh'}{$entry};
                 if ($value)
                 {
                     $$options{$entry} = $value;
                 }
 
-            }
-        }
-        else
-        {
+             }
+         }
+         else
+         {
             $rsp->{data}->[0] = "EMsgMISSING_DEV_CFG";
             xCAT::MsgUtils->message('E', $rsp, $::CALLBACK);
-        }
+         }
     }
 
     !$$options{'node-rsh'}
@@ -2161,6 +2168,7 @@ sub config_dsh
       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
     # Check if $$options{'pre-command'} has been overwritten
+    # Mellanox uses pre-command = cli
     if (!$$options{'pre-command'})
     {
 
@@ -2208,7 +2216,12 @@ sub config_dsh
     }
     else
     {
-        $$options{'pre-command'} = '';
+       # if entry NULL then remove
+       if ($$options{'pre-command'} =~ /NULL/i) {
+          $$options{'pre-command'} = '';
+       } else {   #add space between pre-command and command
+          $$options{'pre-command'} .=" ";
+       } 
     }
 
     # Check if $$options{'post-command'} has been overwritten.
@@ -2235,13 +2248,13 @@ sub config_dsh
 
         # post-command is overwritten by user , set env $::USER_POST_CMD
         $::USER_POST_CMD = 1;
-        if ($$options{'post-command'} =~ /NULL/)
+        if ($$options{'post-command'} =~ /NULL/i)
         {
             $$options{'post-command'} = '';
         }
         else
         {
-
+            #  Build the user post command, for example for QLogic
             # $::DSH_EXIT_STATUS ony can be used in DSHCore::pipe_handler_buffer
             # and DSHCore::pipe_handler
             $$options{'exit-status'}
@@ -3637,6 +3650,9 @@ sub parse_and_run_dsh
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return;
     }
+    # Determine switch type, processing Mellanox not the same as QLogic
+    my $switchtype = $options{'devicetype'};
+    $switchtype =~ s/::/\//g;
 
     #
     # build list of nodes
@@ -3685,15 +3701,43 @@ sub parse_and_run_dsh
     #printf " node list is $options{'nodes'}";
     # build arguments
 
-    # get the command from the argument list
+    # get the actual xdsh command from the argument list
     $options{'command'} = join ' ', @ARGV;
+    
 
+    # if a Mellanox switch command we have to build
+    # the command xdsh will send special 
+    # input will look something like this
+    # xdsh mswitch -l admin --devicetype IBSwitch::Mellanox
+    #  enable;configure terminal;show ssh server host-keys
+    # We will build
+    #  ssh admin@mswitch cli
+    #    ' "enable" "configure terminal" "show ssh server host-keys" '
+    my @melcmds;
+    if ($switchtype =~ /Mellanox/i) {
+      @melcmds = split (/;/, $options{'command'});
+      my $newcmd;
+      foreach my $cmd (@melcmds) {
+       $newcmd .= "\"";
+       $newcmd .= $cmd;
+       $newcmd .= "\" ";
+      }
+      $options{'command'} = $newcmd;  
+    }
     #
     # -K option just sets up the ssh keys on the nodes and exits
     #
 
     if (defined $options{'ssh-setup'})
     {
+        # if devicetype=Mellanox,  xdsh does not setup ssh,  rspconfig does
+        if ($switchtype =~ /Mellanox/i) {
+           my $rsp = ();
+           $rsp->{data}->[0] = 
+            "You do not use xdsh -K to setup the Mellanox switch ssh keys. Use rspconfig. See man page for rspconfig option sshcfg={enable|disable}.";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            return;
+        }
 
         if (defined $options{'rootimg'})
         {
