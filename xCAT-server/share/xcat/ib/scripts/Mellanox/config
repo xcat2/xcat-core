@@ -1,0 +1,5 @@
+[main]
+[xdsh]
+pre-command=cli
+#post-command=showLastRetcode -brief
+post-command=NULL
