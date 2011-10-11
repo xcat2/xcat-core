@@ -3806,7 +3806,7 @@ sub writeAllEntries
         $rc=output_table($self->{tabname},$fh,$self,$data);
     }
     $query->finish();
-    close $fh;
+    CORE::close $fh; 
     return $rc;
 }
 
@@ -3892,7 +3892,7 @@ sub writeAllAttribsWhere
        $rc=output_table($self->{tabname},$fh,$self,$data);
     }
     $query->finish();
-    close $fh;
+    CORE::close $fh; 
     return $rc ;
 }
 #--------------------------------------------------------------------------
