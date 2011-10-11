@@ -56,7 +56,7 @@ end
 start:makedhcp_a_linux
 description:Define all nodes to the DHCP server. (Will only add nodes that can be reached, network-wise, by this DHCP server.) The dhcp daemon does not have to be restarted after this.
 os:Linux
-cmd:mkdef -t node -o testnode1 groups=compute mac=11:22:33:55:66:88 arch=ppc64
+cmd:chdef -t node -o testnode1 groups=compute mac=11:22:33:55:66:88 arch=ppc64
 cmd:chdef -t node -o testnode1 netboot=yaboot tftpserver=192.16.10.0 nfsserver=192.16.10.0 monserver=192.16.10.0 xcatmaster=192.16.10.0 installnic="mac" primarynic="mac"
 cmd:lsdef -l testnode1 -z > /tmp/CN.stanza
 cmd:chdef -t node -o testnode1 mac=11:22:33:44:55:66
@@ -134,15 +134,6 @@ end
 start:makedhcp_a_d
 os:Linux
 cmd:makedhcp -a -d
-check:rc==0
-cmd:cat /var/lib/dhcpd/dhcpd.leases | grep $$CN
-check:output!~$$CN
-cmd:makedhcp -a
-end
-
-start:makedhcp_d
-os:Linux
-cmd:makedhcp -d $$CN
 check:rc==0
 cmd:cat /var/lib/dhcpd/dhcpd.leases | grep $$CN
 check:output!~$$CN
