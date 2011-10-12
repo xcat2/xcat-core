@@ -4,6 +4,7 @@ opt/xcat/sbin
 opt/xcat/share
 opt/xcat/share/xcat
 opt/xcat/share/xcat/install
+opt/xcat/share/xcat/netboot
 opt/xcat/share/xcat/ca
 opt/xcat/share/xcat/scripts
 opt/xcat/share/xcat/tools
@@ -21,6 +22,10 @@ opt/xcat/lib/perl/xCAT
 opt/xcat/lib/perl/xCAT_plugin
 opt/xcat/lib/perl/xCAT_schema
 opt/xcat/lib/perl/xCAT_monitoring
-opt/xcat/dsh
+opt/xcat/lib/perl/xCAT_monitoring/samples
+opt/xcat/lib/perl/xCAT_monitoring/pcp
+opt/xcat/xdsh
+opt/xcat/xdsh/Context
 etc/init.d
 etc/xcat
+opt/xcat/share/doc/packages/xCAT-server

@@ -20,9 +20,16 @@ set -e
 
 case "$1" in
     configure)
-        xcatconfig -i
-    	update-rc.d xcatd enable
-	/etc/init.d/xcatd reload
+	. /etc/profile.d/xcat.sh
+	xcatconfig -i -d
+	update-rc.d xcatd enable
+	if [ -f /tmp/xCAT-server_upgrade.tmp ]; then
+	    if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
+		/etc/init.d/xcatd reload
+	    fi
+	fi
+	ln -sf /opt/xcat/sbin/xcatd /usr/sbin/xcatd
+	
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

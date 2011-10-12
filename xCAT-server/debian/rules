@@ -61,6 +61,7 @@ binary-arch:
 	chmod 644 `pwd`/debian/xcat-server/opt/xcat/lib/perl/xCAT_schema/*
 	chmod 755 `pwd`/debian/xcat-server/opt/xcat/lib/perl/xCAT_schema/samples
 	chmod 644 `pwd`/debian/xcat-server/opt/xcat/lib/perl/xCAT_schema/samples/*
+	chmod 644 `pwd`/debian/xcat-server/opt/xcat/lib/shfunctions
 	chmod 644 `pwd`/debian/xcat-server/opt/xcat/share/doc/packages/xCAT-server/*
 #	dh_installmenu
 #	dh_installdebconf	
