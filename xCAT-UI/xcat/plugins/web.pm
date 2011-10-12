@@ -41,6 +41,7 @@ sub process_request {
 		'unlock'        => \&web_unlock,
 		'rmcstart'      => \&web_rmcmonStart,
 		'rmcshow'       => \&web_rmcmonShow,
+		'gangliaconf'   => \&web_gangliaconf,
 		'gangliastart'  => \&web_gangliastart,
 		'gangliastop'   => \&web_gangliastop,
 		'gangliastatus' => \&web_gangliastatus,
@@ -421,20 +422,30 @@ sub web_gangliastatus {
 	}
 }
 
-sub web_gangliastart() {
+sub web_gangliaconf() {
 	my ( $request, $callback, $sub_req ) = @_;
 
 	# Get node range
 	my $nr = $request->{arg}->[1];
-	if ( !$nr ) {
-
+	
+	my $info;
+	my $output;
+	
+	# Add gangliamon to the monitoring table (if not already)
+	$output = `monadd gangliamon`;
+	
+	# Run the ganglia configuration script on node
+	if ($nr) {
+		$output = `moncfg gangliamon $nr -r`;	
+	} else {
 		# If no node range is given, then assume all nodes
-		$nr = '';
+			
+		# Handle localhost (this needs to be 1st)
+		$output = `moncfg gangliamon`;
+		# Handle remote nodes
+		$output .= `moncfg gangliamon -r`;
 	}
 
-	# Add gangliamon to the monitoring table
-	my $info;
-	my $output = `monadd gangliamon`;
 	my @lines = split( '\n', $output );
 	foreach (@lines) {
 		if ($_) {
@@ -442,18 +453,32 @@ sub web_gangliastart() {
 		}
 	}
 
-	# Run the ganglia configuration script on node
-	$output = `moncfg gangliamon $nr -r`;
-	@lines = split( '\n', $output );
-	foreach (@lines) {
-		if ($_) {
-			$info .= ( $_ . "\n" );
-		}
-	}
+	$callback->( { info => $info } );
+	return;
+}
 
+sub web_gangliastart() {
+	my ( $request, $callback, $sub_req ) = @_;
+
+	# Get node range
+	my $nr = $request->{arg}->[1];
+
+	my $info;
+	my $output;
+	
 	# Start the gmond daemon on node
-	$output = `monstart gangliamon $nr -r`;
-	@lines = split( '\n', $output );
+	if ($nr) {
+		$output = `monstart gangliamon $nr -r`;	
+	} else {
+		# If no node range is given, then assume all nodes
+			
+		# Handle localhost (this needs to be 1st)
+		$output = `monstart gangliamon`;
+		# Handle remote nodes
+		$output .= `monstart gangliamon -r`;
+	}
+				
+	my @lines = split( '\n', $output );
 	foreach (@lines) {
 		if ($_) {
 			$info .= ( $_ . "\n" );
@@ -469,13 +494,22 @@ sub web_gangliastop() {
 
 	# Get node range
 	my $nr = $request->{arg}->[1];
-	if ( !$nr ) {
-		$nr = '';
-	}
-
-	# Start the gmond daemon on node
+	
 	my $info;
-	my $output = `monstop gangliamon $nr -r`;
+	my $output;
+	
+	# Stop the gmond daemon on node
+	if ($nr) {
+		$output = `monstop gangliamon $nr -r`;	
+	} else {
+		# If no node range is given, then assume all nodes
+		
+		# Handle localhost (this needs to be 1st)
+		$output = `monstop gangliamon`;
+		# Handle remote nodes
+		$output .= `monstop gangliamon -r`;
+	}
+		
 	my @lines = split( '\n', $output );
 	foreach (@lines) {
 		if ($_) {
