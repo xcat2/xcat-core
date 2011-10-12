@@ -819,17 +819,19 @@ sub stop {
 	my $callback  = shift;
 	my $localhost = hostname();
 	my $OS        = `uname`;
-	my $res_gmond;
-	if ( $OS =~ /AIX/ ) {
-		$res_gmond = `/etc/rc.d/init.d/gmond stop 2>&1`;
-	}
-	else {
-		$res_gmond = `/etc/init.d/gmond stop 2>&1`;
-	}
+
 
 	if (!$scope) {
 		# Handle stopping monitoring on localhost
 		# monstop gangliamon
+		
+		my $res_gmond;
+		if ( $OS =~ /AIX/ ) {
+			$res_gmond = `/etc/rc.d/init.d/gmond stop 2>&1`;
+		}
+		else {
+			$res_gmond = `/etc/init.d/gmond stop 2>&1`;
+		}
 		if ($?) {
 			if ($callback) {
 				my $resp = {};
