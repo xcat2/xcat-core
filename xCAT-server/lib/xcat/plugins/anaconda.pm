@@ -1109,7 +1109,7 @@ sub mkinstall
                 next;
             }
             my $kcmdline =
-                "nofb utf8 ks=http://"
+                "cmdline utf8 ks=http://"
               . $ent->{nfsserver}
               . "/install/autoinst/"
               . $node;
