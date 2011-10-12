@@ -436,7 +436,7 @@ sub web_gangliaconf() {
 	
 	# Run the ganglia configuration script on node
 	if ($nr) {
-		$output = `moncfg gangliamon $nr -r`;	
+		$output = `moncfg gangliamon $nr -r`;
 	} else {
 		# If no node range is given, then assume all nodes
 			
@@ -466,14 +466,23 @@ sub web_gangliastart() {
 	my $info;
 	my $output;
 	
+	# Add gangliamon to the monitoring table (if not already)
+	$output = `monadd gangliamon`;
+	
 	# Start the gmond daemon on node
 	if ($nr) {
-		$output = `monstart gangliamon $nr -r`;	
+		$output = `moncfg gangliamon $nr -r`;
+		$output .= `monstart gangliamon $nr -r`;	
 	} else {
 		# If no node range is given, then assume all nodes
-			
+		
 		# Handle localhost (this needs to be 1st)
-		$output = `monstart gangliamon`;
+		$output = `moncfg gangliamon`;
+		# Handle remote nodes
+		$output .= `moncfg gangliamon -r`;
+		
+		# Handle localhost (this needs to be 1st)
+		$output .= `monstart gangliamon`;
 		# Handle remote nodes
 		$output .= `monstart gangliamon -r`;
 	}
