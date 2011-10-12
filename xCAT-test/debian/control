@@ -1,0 +1,11 @@
+Source: xcat-test
+Section: admin
+Priority: extra
+Maintainer: Leonardo Tonetto <tonetto@linux.vnet.ibm.com>
+Build-Depends: debhelper (>= 5)
+Standards-Version: 3.7.2
+
+Package: xcat-test
+Architecture: all
+Depends: ${perl:Depends}
+Description: Provides automated test tool and buckets to help test xCAT commands automatically
