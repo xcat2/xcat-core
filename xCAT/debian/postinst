@@ -1,5 +1,5 @@
 #!/bin/sh
-# postinst script for openmpi
+# postinst script for xCAT
 #
 # see: dh_installdeb(1)
 
@@ -20,8 +20,15 @@ set -e
 
 case "$1" in
     configure)
-        #. /etc/profile.d/xcat.sh
-	#xcatconfig -i
+	. /etc/profile.d/xcat.sh
+	if [ -f /tmp/xCAT_upgrade ]
+	then
+	    xcatconfig -u
+	    rm /tmp/xCAT_upgrade
+	else
+	    xcatconfig -i -d -s
+	fi
+	/etc/init.d/apache2 restart
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

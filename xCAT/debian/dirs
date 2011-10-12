@@ -1,6 +1,8 @@
+install
 install/postscripts
+install/postscripts/hostkeys
 install/prescripts
+install/kdump
 opt/xcat/share/xcat
 etc/apache2/conf.d
 opt/xcat/share/doc/packages/xCAT
-etc

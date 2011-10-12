@@ -7,6 +7,7 @@ Standards-Version: 3.7.2
 
 Package: xcat
 Architecture: all
-Depends: ${perl:Depends}, xcat-server, xcat-client, libdbd-sqlite3-perl, dhcp3-server, apache2, expect, nfs-kernel-server, nmap, fping, bind9, vsftpd, libxml-parser-perl, atftp-xcat, conserver, yaboot-xcat, libnet-telnet-perl, ipmitool (>=1.8.9), xnba-undi, syslinux-xcat, xcat-nbroot-oss-x86, xcat-nbroot-core-x86, xcat-nbkernel-x86, xcat-nbroot-oss-amd64, xcat-nbroot-core-amd64, xcat-nbkernel-amd64, xcat-nbroot-oss-ppc64, xcat-nbroot-core-ppc64, xcat-nbkernel-ppc64, syslinux
+Depends: ${perl:Depends}, xcat-server, xcat-client, libdbd-sqlite3-perl, dhcp3-server, apache2, expect, nfs-kernel-server, nmap, fping, bind9, vsftpd, libxml-parser-perl, xinetd, tftpd-hpa, tftp-hpa, conserver, libnet-telnet-perl, ipmitool (>=1.8.9),  syslinux, libsys-virt-perl
+Recommends: xnba-undi, yaboot-xcat
 Description: Server and configuration utilities of the xCAT management project
  xcat-server provides the core server and configuration management components of xCAT.  This package should be installed on your management server
