@@ -820,7 +820,6 @@ sub stop {
 	my $localhost = hostname();
 	my $OS        = `uname`;
 
-
 	if (!$scope) {
 		# Handle stopping monitoring on localhost
 		# monstop gangliamon
