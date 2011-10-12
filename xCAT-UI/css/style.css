@@ -114,6 +114,10 @@ body {
 	color: inherit;
 }
 
+pre {
+	font-size: 10px;	
+}
+
 /*--------------- Groups ---------------*/
 #groups {
 	width: 150px;

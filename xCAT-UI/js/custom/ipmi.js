@@ -15,6 +15,17 @@ var ipmiPlugin = function() {
 };
 
 /**
+ * Clone node (service page)
+ * 
+ * @param node
+ * 			Node to clone
+ * @return Nothing
+ */
+ipmiPlugin.prototype.serviceClone = function(node) {
+
+};
+
+/**
  * Load provision page (service page)
  * 
  * @param tabId

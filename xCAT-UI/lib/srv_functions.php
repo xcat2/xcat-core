@@ -111,7 +111,7 @@ function submit_request($req, $skipVerify, $opts_array){
 							format_TBD($tmp);
 						} else {
 							// Print out output by default
-							echo '<pre>' . $tmp . '</pre>';
+							echo '<pre style="font-size: 10px;">' . $tmp . '</pre>';
 							ob_flush();
 							flush();
 						}

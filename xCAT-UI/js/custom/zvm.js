@@ -16,6 +16,44 @@ var zvmPlugin = function() {
 };
 
 /**
+ * Clone node (service page)
+ * 
+ * @param node
+ * 			Node to clone
+ * @return Nothing
+ */
+zvmPlugin.prototype.serviceClone = function(node) {
+	var statBar = createStatusBar(node + 'CloneStat');
+	var loader = createLoader('');
+	statBar.find('div').append(loader);	
+	statBar.prependTo($('#manageTab'));
+	
+	var owner = $.cookie('srv_usrname');
+	var group = getUserNodeAttr(node, 'groups');
+	
+	// Submit request to clone VM
+	// webportal clonezlinux [src node] [group] [owner]
+	$.ajax({
+        url : 'lib/srv_cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'webportal',
+            tgt : '',
+            args : 'clonezlinux;' + node + ';' + group + ';' + owner,
+            msg : ''
+        },
+        success:function(data) {
+        	// Remove loader
+        	statBar.find('img').remove();
+        	// Append output to status bar
+        	for (var i in data.rsp) {
+        		statBar.find('div').append($('<pre></pre>').append(data.rsp[i]));
+        	}
+        }
+    });
+};
+
+/**
  * Load provision page (service page)
  * 
  * @param tabId
@@ -68,7 +106,7 @@ zvmPlugin.prototype.loadServiceProvisionPage = function(tabId) {
 		var hcp = $('#select-table tbody tr:eq(0) td:eq(0) input[name="hcp"]:checked').val();
 		var group = $('#select-table tbody tr:eq(0) td:eq(1) input[name="group"]:checked').val();
 		var img = $('#select-table tbody tr:eq(0) td:eq(2) input[name="image"]:checked').val();
-		var owner = $.cookie('srv_usrname');;
+		var owner = $.cookie('srv_usrname');
 		
 		// Begin by creating VM
 		createzVM(tabId, group, hcp, img, owner);
@@ -79,7 +117,7 @@ zvmPlugin.prototype.loadServiceProvisionPage = function(tabId) {
 	loadSrvGroups(groupCol);
 	loadOSImages(imageCol);
 	
-	 // Get zVM host names
+	// Get zVM host names
 	if (!$.cookie('srv_zvm')){
 		$.ajax( {
 			url : 'lib/srv_cmd.php',

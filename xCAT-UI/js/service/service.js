@@ -517,6 +517,15 @@ function loadNodesTable(data) {
 		}
 	});
 	
+	// Clone
+	var cloneLnk = $('<a>Clone</a>');
+	cloneLnk.click(function() {
+		var tgtNodes = getNodesChecked(nodesDTId);
+		if (tgtNodes) {
+			cloneNode(tgtNodes);
+		}
+	});
+	
 	// Delete
 	var deleteLnk = $('<a>Delete</a>');
 	deleteLnk.click(function() {
@@ -540,7 +549,7 @@ function loadNodesTable(data) {
 	
 	// Prepend menu to datatable
 	var actionsLnk = '<a>Actions</a>';
-	var actionMenu = createMenu([deleteLnk, powerOnLnk, powerOffLnk, monitorOnLnk, monitorOffLnk, unlockLnk]);
+	var actionMenu = createMenu([cloneLnk, deleteLnk, monitorOnLnk, monitorOffLnk, powerOnLnk, powerOffLnk, unlockLnk]);
 	var menu = createMenu([[actionsLnk, actionMenu]]);
 	menu.superfish();
 	actionBar.append(menu);
@@ -1170,6 +1179,43 @@ function monitorNode(node, monitor) {
 		}
 	}
 }
+
+/**
+ * Open a dialog to clone node
+ * 
+ * @param tgtNodes
+ *            Nodes to clone
+ * @return Nothing
+ */
+function cloneNode(tgtNodes) {	
+	var nodes = tgtNodes.split(',');
+	
+	for (var n in nodes) {
+		// Get hardware that was selected
+		var hw = getUserNodeAttr(nodes[n], 'mgt');
+		
+		// Create an instance of the plugin
+        var plugin;
+        switch (hw) {
+        case "blade":
+            plugin = new bladePlugin();
+            break;
+        case "hmc":
+            plugin = new hmcPlugin();
+            break;
+        case "ipmi":
+            plugin = new ipmiPlugin();
+            break;
+        case "zvm":
+            plugin = new zvmPlugin();	        	
+            break;
+        }
+
+        // Clone node
+        plugin.serviceClone(nodes[n]);				
+	}
+}
+	
 
 /**
  * Open a dialog to delete node

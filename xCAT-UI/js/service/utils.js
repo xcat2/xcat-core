@@ -319,3 +319,42 @@ function showChdefOutput(data) {
 	
 	info.append(prg);
 }
+
+/**
+ * Get an attribute of a given node
+ * 
+ * @param node
+ *            The node
+ * @param attrName
+ *            The attribute
+ * @return The attribute of the node
+ */
+function getUserNodeAttr(node, attrName) {
+	// Get the row
+	var row = $('[id=' + node + ']').parents('tr');
+
+	// Search for the column containing the attribute
+	var attrCol;
+	
+	var cols = row.parents('.dataTables_scroll').find('.dataTables_scrollHead thead tr:eq(0) th');
+	// Loop through each column
+	for (var i in cols) {
+		// Find column that matches the attribute
+		if (cols.eq(i).html() == attrName) {
+			attrCol = cols.eq(i);
+			break;
+		}
+	}
+	
+	// If the column containing the attribute is found
+	if (attrCol) {
+		// Get the attribute column index
+		var attrIndex = attrCol.index();
+
+		// Get the attribute for the given node
+		var attr = row.find('td:eq(' + attrIndex + ')');
+		return attr.text();
+	} else {
+		return '';
+	}
+}

@@ -15,6 +15,17 @@ var hmcPlugin = function() {
 };
 
 /**
+ * Clone node (service page)
+ * 
+ * @param node
+ * 			Node to clone
+ * @return Nothing
+ */
+hmcPlugin.prototype.serviceClone = function(node) {
+
+};
+
+/**
  * Load provision page (service page)
  * 
  * @param tabId

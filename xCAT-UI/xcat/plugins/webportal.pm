@@ -34,8 +34,9 @@ sub process_request {
 	my $callback        = shift;
 	my $sub_req         = shift;
 	my %authorized_cmds = (
-		'lszvm'      => \&lszvm,
-		'provzlinux' => \&provzlinux
+		'lszvm'       => \&lszvm,
+		'provzlinux'  => \&provzlinux,
+		'clonezlinux' => \&clonezlinux
 	);
 
 	# Check if the request is authorized
@@ -369,5 +370,127 @@ sub gennodename {
 	}
 	 
 	return ($hostname, $base_digit);
+}
+
+sub clonezlinux {
+	my ( $request, $callback, $sub_req ) = @_;
+
+	# webportal clonezlinux [src node] [group] [owner]
+	my $src_node = $request->{arg}->[1];
+	my $group = $request->{arg}->[2];
+	my $owner = $request->{arg}->[3];
+	
+	# Get source node's HCP
+	my $props = xCAT::zvmUtils->getNodeProps( 'zvm', $src_node, ('hcp') );
+	my $hcp = $props->{'hcp'};
+
+	# Read in default disk pool and disk size /opt/zhcp/conf/default.conf on zHCP
+	#	pool = POOL3
+	#	eckd_size = 10016
+	my $disk_pool;
+	my $eckd_size;
+	my $fba_size;
+	my $default_conf   = '/opt/zhcp/conf/default.conf';
+	my $default_direct = '/opt/zhcp/conf/default.direct';
+
+	# Exit if default.conf does not exist
+	if ( !(`ssh $hcp "test -e $default_conf && echo Exists"`) ) {
+		println( $callback, '(Error) $default_conf does not exists' );
+		return;
+	}
+
+	# Exit if default.direct does not exist
+	if ( !(`ssh $hcp "test -e $default_direct && echo Exists"`) ) {
+		println( $callback, '(Error) $default_direct does not exists' );
+		return;
+	}
+
+	my $out = `ssh $hcp "cat $default_conf"`;
+	my @tmp = split( /\n/, $out );
+	foreach (@tmp) {
+		# Get disk pool
+		if ( $_ =~ m/pool =/i ) {
+			$disk_pool = $_;
+			$disk_pool =~ s/pool =//g;
+		}
+
+		# Get disk size
+		elsif ( $_ =~ m/eckd_size =/i ) {
+			$eckd_size = $_;
+			$eckd_size =~ s/eckd_size =//g;
+		}
+		elsif ( $_ =~ m/fba_size = /i ) {
+			$fba_size = $_;
+			$fba_size =~ s/fba_size = //g;
+		}
+	}
+	
+	println( $callback, "Your virtual machine is ready. It may take a few minutes before you can logon." );
+	println( $callback, "Done!" );
+	
+	return;
+
+
+
+
+#	# Create VM
+#	# e.g. webportal provzlinux [group] [hcp] [image]
+#	my ($node, $base_digit) = gennodename( $callback, $group );
+#	my $userid = 'XCAT' . $base_digit;
+#
+#	# Set node definitions
+#	$out = `mkdef -t node -o $node userid=$userid hcp=$hcp mgt=zvm groups=$group`;
+#	println( $callback, "$out" );
+#
+#	# Set nodetype definitions
+#	$out = `chtab node=$node noderes.netboot=zvm nodetype.nodetype=osi nodetype.provmethod=install nodetype.os=$os nodetype.arch=$arch nodetype.profile=$profile nodetype.comments="owner:$owner"`;
+#
+#	# Update hosts table and DNS
+#	`makehosts`;
+#	`makedns`;
+#
+#	# Create user directory entry replacing LXUSR with user ID
+#	# Use /opt/zhcp/conf/default.direct on zHCP as the template
+#	#	USER LXUSR PSWD 512M 1G G
+#	#	INCLUDE LNXDFLT
+#	#	COMMAND SET VSWITCH VSW2 GRANT LXUSR
+#	$out = `ssh $hcp "sed $default_direct -e s/LXUSR/$userid/g" > /tmp/$node-direct.txt`;
+#	$out = `mkvm $node /tmp/$node-direct.txt`;
+#	`rm -rf /tmp/$node-direct.txt`;
+#	println( $callback, "$out" );
+#	if ( $out =~ m/Error/i ) {
+#		return;
+#	}
+#
+#	# Update DHCP
+#	`makedhcp -a`;
+#
+#	# Toggle node power so COMMAND SET will get executed
+#	`rpower $node on`;
+#	`rpower $node off`;
+#
+#	# Punch kernel, initrd, and ramdisk to node reader
+#	$out = `nodeset $node install`;
+#	println( $callback, "$out" );
+#	if ( $out =~ m/Error/i ) {
+#		return;
+#	}
+#
+#	# IPL reader and begin installation
+#	$out = `rnetboot $node ipl=00C`;
+#	println( $callback, "$out" );
+#	if ( $out =~ m/Error/i ) {
+#		return;
+#	}
+#	
+#	# Configure Ganglia monitoring
+#	$out = `moncfg gangliamon $node -r`;
+#	
+#	# Show node information, e.g. IP, hostname, and root password
+#	$out = `lsdef $node | egrep "ip=|hostnames="`;
+#	my $rootpw = getsysrootpw();
+#	println( $callback, "Your virtual machine is ready. It may take a few minutes before you can logon using VNC ($node:1). Below is your VM attributes." );
+#	println( $callback, "$out" );
+#	println( $callback, "    rootpw = $rootpw" );
 }
 1;

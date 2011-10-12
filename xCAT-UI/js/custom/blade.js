@@ -15,6 +15,17 @@ var bladePlugin = function() {
 };
 
 /**
+ * Clone node (service page)
+ * 
+ * @param node
+ * 			Node to clone
+ * @return Nothing
+ */
+bladePlugin.prototype.serviceClone = function(node) {
+
+};
+
+/**
  * Load provision page (service page)
  * 
  * @param tabId
