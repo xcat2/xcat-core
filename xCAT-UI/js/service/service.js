@@ -72,6 +72,9 @@ function initServicePage() {
 	$("#content").children().remove();
 	includeJs("js/service/utils.js");
 	loadServicePage();
+	
+	// Initialize tab index history
+	$.cookie('tabindex_history', '0,0');
 }
 
 /**
@@ -231,9 +234,8 @@ function loadServiceProvisionPage(tabId) {
 	        				setzVMCookies(data);
 	        			}
 	        		});
-	        	} else {
-	        		loadzVMs();
 	        	}
+	        	
 	            break;
 	        }
 
@@ -1004,6 +1006,11 @@ function setUserNodes(data) {
  * @return Nothing
  */
 function powerNode(node, power2) {
+	// Show power loader
+	var nodesDTId = 'userNodesDT';
+	var powerCol = $('#' + nodesDTId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
+	powerCol.find('img').show();
+	
 	$.ajax({
 		url : 'lib/srv_cmd.php',
 		dataType : 'json',
@@ -1070,14 +1077,12 @@ function updatePowerStatus(data) {
  * @return Nothing
  */
 function monitorNode(node, monitor) {
+	// Show ganglia loader
+	var nodesDTId = 'userNodesDT';
+	var gangliaCol = $('#' + nodesDTId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(4)');
+	gangliaCol.find('img').show();
+	
 	if (monitor == 'on') {
-		// Append loader to warning bar
-		var gangliaLoader = createLoader('');
-		var warningBar = $('#nodesTab').find('.ui-state-error p');
-		if (warningBar.length) {
-			warningBar.append(gangliaLoader);
-		}
-
 		if (node) {
 			// Check if ganglia RPMs are installed
 			$.ajax( {
@@ -1494,21 +1499,52 @@ function saveNodeLoad(status){
  * @return Nothing
  */
 function getMonitorMetrics(node) {
+	// Inventory tab should have this fieldset already created
+	// e.g. <fieldset id="gpok123_monitor"></fieldset>
 	$('#' + node + '_monitor').children().remove();
 	
-	// Get monitoring metrics
+	// Before trying to get the metrics, check if Ganglia is running
 	$.ajax({
         url : 'lib/srv_cmd.php',
         dataType : 'json',
         data : {
             cmd : 'webrun',
             tgt : '',
-            args : 'gangliashow;' + nodePath[node] + ';hour;_summary_',
-            msg : node
+            args : 'gangliastatus;' + node,
+            msg : ''
         },
         
-        success: drawMonitoringCharts
-    });
+        success: function(data) {
+        	var ganglia = data.rsp;
+        	var node, status;
+
+        	// Get the ganglia status
+        	for ( var i in ganglia) {
+        		// ganglia[0] = nodeName and ganglia[1] = state
+        		node = jQuery.trim(ganglia[i][0]);
+        		status = jQuery.trim(ganglia[i][1]);
+        		
+        		if (node && status == 'on') {
+        			// Get monitoring metrics
+                	$.ajax({
+                        url : 'lib/srv_cmd.php',
+                        dataType : 'json',
+                        data : {
+                            cmd : 'webrun',
+                            tgt : '',
+                            args : 'gangliashow;' + nodePath[node] + ';hour;_summary_',
+                            msg : node
+                        },
+                        
+                        success: drawMonitoringCharts
+                    });
+        		} else if (node && status == 'off') {
+        			var info = createInfoBar('Ganglia monitoring is disabled for this node');
+        			$('#' + node + '_monitor').append(info.css('width', '300px'));
+        		}
+        	} // End of for
+        } // End of function
+    });	
 }
 
 /**

@@ -55,12 +55,7 @@ zvmPlugin.prototype.loadServiceProvisionPage = function(tabId) {
 	provRow.append(groupCol);
 	var imageCol = $('<td style="vertical-align: top;"></td>');
 	provRow.append(imageCol);
-	
-	// Load zVMs, groups, and images into their respective columns
-	loadzVMs(zvmCol);
-	loadSrvGroups(groupCol);
-	loadOSImages(imageCol);
-	
+		
 	provRow.children('td').css({
 		'min-width': '250px'
 	});
@@ -79,6 +74,31 @@ zvmPlugin.prototype.loadServiceProvisionPage = function(tabId) {
 		createzVM(tabId, group, hcp, img, owner);
 	});
 	provForm.append(provisionBtn);
+	
+	// Load zVMs, groups, and images into their respective columns
+	loadSrvGroups(groupCol);
+	loadOSImages(imageCol);
+	
+	 // Get zVM host names
+	if (!$.cookie('srv_zvm')){
+		$.ajax( {
+			url : 'lib/srv_cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'webportal',
+				tgt : '',
+				args : 'lszvm',
+				msg : ''
+			},
+
+			success : function(data) {
+				setzVMCookies(data);
+				loadzVMs(zvmCol);
+			}
+		});
+	} else {
+		loadzVMs(zvmCol);
+	}
 };
 
 /**
