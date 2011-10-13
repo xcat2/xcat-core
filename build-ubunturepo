@@ -1,0 +1,215 @@
+#!/bin/sh
+# Update GSA Ubuntu Repositories or create a local repository
+#
+# Author: Leonardo Tonetto (tonetto@linux.vnet.ibm.com)
+#
+# After running this script, add the following line to
+# /etc/apt/sources.list for local repository
+# deb file://<core_repo_path>/xcat-core/ maverick main
+# 
+
+a_flag=            # automatic flag - only update if repo was updated
+c_flag=            # xcat-core (trunk-delvel) path
+d_flag=            # xcat-dep (trunk) path
+u_flag=            # gsa user-id
+p_flag=            # gsa passwd
+local_flag=        # build the repository localy
+
+while getopts 'c:d:u:p:l:a' OPTION
+do
+    case $OPTION in
+	c)    c_flag=1
+	        xcat_core_path="$OPTARG"
+	        ;;
+	d)    d_flag=1
+	        xcat_dep_path="$OPTARG"
+	        ;;
+	u)    u_flag=1
+	        gsa_id="$OPTARG"
+	        ;;
+	p)    p_flag=1
+	        gsa_passwd="$OPTARG"
+	        ;;
+	l)    local_flag=1
+	        local_repo_path="$OPTARG"
+	        ;;
+	a)    a_flag=1
+	        ;;
+
+	?) printf "Usage: %s -c <core_trunk_path> [-d <dep_trunk_path>] { -l <local-repo_path> | [-u <gsa_id> -p <gsa_passwd>] } [-a]\n" $(basename $0) >&2
+	    echo "-a        Automatic: update only if there's any update on repo"
+	    exit 2
+	    ;;
+    esac
+done
+shift $(($OPTIND - 1))
+
+if [ -z "$c_flag" ]
+then
+    printf "Usage: %s -c <core_trunk_path> [-d <dep_trunk_path>] { -l <local-repo_path> | [-u <gsa_id> -p <gsa_passwd>] } [-a]\n" $(basename $0) >&2
+    echo "-a        Automatic: update only if there's any update on repo"
+    exit 2
+fi
+if [ ! -d $xcat_core_path ]
+then
+    printf "%s: No such directory\n" "$xcat_core_path" >&2
+    exit 2
+fi
+
+if [ "$d_flag" ]
+then
+    if [ ! -d $xcat_dep_path ]
+    then
+	printf "%s: No such directory\n" "$xcat_dep_path" >&2
+	exit 2
+    fi
+fi
+
+if [ "$local_flag" ]
+then
+    repo_xcat_core_path=$local_repo_path"/xcat-core"
+    repo_xcat_dep_path=$local_repo_path"/xcat-dep"
+else
+    if [ -z "$u_flag" ]
+    then
+	if [ "$p_flag" ]
+	then
+	    printf "Usage: %s -c <core_trunk_path> [-d <dep_trunk_path>] { -l <local-repo_path> | [-u <gsa_id> -p <gsa_passwd>] } [-a]\n" $(basename $0) >&2
+	    echo "-a        Automatic: update only if there's any update on repo"
+	    exit 2
+	fi
+	echo -n "GSA id: "
+	read gsa_id
+	echo -n "GSA password: "
+	stty -echo; read gsa_passwd; stty echo;
+	echo ""; echo "";
+    fi
+
+    repo_xcat_core_path="`pwd`/gsa-repo_temp/xcat-core"
+    repo_xcat_dep_path="`pwd`/gsa-repo_temp/xcat-dep"
+fi
+
+if [ "$a_flag" ]
+then
+    touch svcupdate.trace
+    SVCUP='svcupdate.trace'
+    svn update $xcat_core_path 1> $SVCUP 2>&1
+    if ! grep 'Tree is up to date' $SVCUP
+    then
+	update_core=1
+    else
+	update_core=
+    fi
+    rm -f $SVCUP
+else
+    update_core=1
+fi
+if [ "$update_core" ]
+then
+    echo "###############################"
+    echo "# Building xcat-core packages #"
+    echo "###############################"
+
+    CMD_PATH=`pwd`
+    cd $xcat_core_path
+    ./build-debs-all "snap" "Nightly_Builds"
+
+    echo "#################################"
+    echo "# Creating xcat-core repository #"
+    echo "#################################"
+
+    if [ -d $repo_xcat_core_path ]; then
+    	rm -rdf $repo_xcat_core_path
+    fi
+    mkdir -p $repo_xcat_core_path/conf
+
+    find . -iname '*.deb' -exec mv {} $repo_xcat_core_path \;
+
+    rm -rdf debs/
+    cd $CMD_PATH
+
+    cat << __EOF__ > $repo_xcat_core_path/conf/distributions
+Origin: xCAT internal repository
+Label: xcat-core bazaar repository
+Codename: maverick
+Architectures: i386 amd64 
+Components: main
+Description: Repository automatically genereted conf 
+__EOF__
+
+    cat << __EOF__ > $repo_xcat_core_path/conf/options
+verbose
+basedir .
+__EOF__
+
+    for file in `ls $repo_xcat_core_path/*.deb`; do
+	reprepro -b $repo_xcat_core_path includedeb maverick $file;
+    done
+
+    mv $xcat_core_path/latest_version $repo_xcat_core_path/xcat-core_latest-build
+
+    if [ -z "$local_flag" ]
+    then
+	echo "###############################"
+	echo "# Updating GSA xcat-core repo #"
+	echo "###############################"
+	lftp -e "mirror -R --delete-first $repo_xcat_core_path /projects/i/ipl-xcat/ubuntu/; exit;" -u $gsa_id,$gsa_passwd -p 22 sftp://ausgsa.ibm.com
+    fi   ### if [ -z "$local_flag" ]
+fi    ### if [ "$a_flag" ]
+
+if [ "$a_flag" -a "$d_flag" ]
+then
+    touch svcupdate.trace
+    SVCUP='svcupdate.trace'
+    svn update $xcat_dep_path 1> $SVCUP 2>&1
+    if ! grep 'Tree is up to date' $SVCUP
+    then
+	update_dep=1
+    else
+	update_dep=
+    fi
+    rm -f $SVCUP
+else
+    update_dep=1
+fi
+if [ "$d_flag" -a "$update_dep" ]
+then
+    echo "################################"
+    echo "# Creating xcat-dep repository #"
+    echo "################################"
+    rm -rdf $repo_xcat_dep_path
+    mkdir -p $repo_xcat_dep_path/conf
+    find $xcat_dep_path -iname '*.deb' -exec cp {} $repo_xcat_dep_path \;
+    cat << __EOF__ > $repo_xcat_dep_path/conf/distributions
+Origin: xCAT internal repository
+Label: xcat-dep bazaar repository
+Codename: maverick
+Architectures: i386 amd64 
+Components: main
+Description: Repository automatically genereted conf 
+__EOF__
+
+    cat << __EOF__ > $repo_xcat_dep_path/conf/options
+verbose
+basedir .
+__EOF__
+
+    for file in `ls $repo_xcat_dep_path/*.deb`; do
+	reprepro -b $repo_xcat_dep_path includedeb maverick $file;
+    done
+
+    if [ -z "$local_flag" ]
+    then
+	echo "##############################"
+	echo "# Updating GSA xcat-dep repo #"
+	echo "##############################"
+	lftp -e "mirror -R --delete-first $repo_xcat_dep_path /projects/i/ipl-xcat/ubuntu/; exit;" -u $gsa_id,$gsa_passwd -p 22 sftp://ausgsa.ibm.com
+    fi   ### if [ -z "$local_flag" ]
+fi   ### if [ "$d_flag" -a "$a_flag"]
+
+if [ -z "$local_flag" ]                 # delete the temp repo after upload is done
+then
+    rm -rdf ./gsa-repo_temp
+fi
+
+exit 0
