@@ -103,13 +103,22 @@ zvmPlugin.prototype.loadServiceProvisionPage = function(tabId) {
 	 */
 	var provisionBtn = createButton('Provision');
 	provisionBtn.bind('click', function(event) {
+		// Remove any warning messages
+		$(this).parent().find('.ui-state-error').remove();
+		
 		var hcp = $('#select-table tbody tr:eq(0) td:eq(0) input[name="hcp"]:checked').val();
 		var group = $('#select-table tbody tr:eq(0) td:eq(1) input[name="group"]:checked').val();
 		var img = $('#select-table tbody tr:eq(0) td:eq(2) input[name="image"]:checked').val();
 		var owner = $.cookie('srv_usrname');
 		
-		// Begin by creating VM
-		createzVM(tabId, group, hcp, img, owner);
+		if(!hcp || !group || !img) {
+			// Show warning message
+			var warn = createWarnBar('You need to select an option for each column');
+			warn.prependTo($(this).parent());
+		} else {
+			// Begin by creating VM
+			createzVM(tabId, group, hcp, img, owner);
+		}		
 	});
 	provForm.append(provisionBtn);
 	
