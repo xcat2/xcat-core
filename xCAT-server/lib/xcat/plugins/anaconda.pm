@@ -71,6 +71,7 @@ my %distnames = (
                  "1257725234.740991" => "fedora12", #x86_64 DVD ISO
                  "1273712675.937554" => "fedora13", #x86_64 DVD ISO
                  "1287685820.403779" => "fedora14", #x86_64 DVD ISO
+                 "1305315870.828212" => "fedora15", #x86_64 DVD ISO
 
                  "1194512200.047708" => "rhas4.6",
                  "1194512327.501046" => "rhas4.6",
@@ -177,6 +178,27 @@ sub process_request
     {
         return mknetboot($request, $callback, $doreq);
     }
+}
+
+# Check whether the dracut is supported by this os 
+sub using_dracut
+{
+    my $os = shift;
+    if ($os =~ /(rhels|rhel)(\d+)/) {
+        if ($2 >= 6) {
+          return 1;
+        }
+    } elsif ($os =~ /fedora(\d+)/) {
+        if ($1 >= 12) {
+          return 1;
+        }
+    } elsif ($os =~ /SL(\d+)/) {
+        if ($1 >= 6) {
+          return 1;
+        }
+    }
+
+    return 0;
 }
 
 sub mknetboot
@@ -341,7 +363,6 @@ sub mknetboot
                 );
             }
 
-
             if ( ! $linuximagetab ) {
                 $linuximagetab = xCAT::Table->new('linuximage');
             }
@@ -360,7 +381,6 @@ sub mknetboot
                 );
             }
         }
-
         #print"osvr=$osver, arch=$arch, profile=$profile, imgdir=$rootimgdir\n";
         unless ($osver and $arch and $profile)
         {
@@ -456,7 +476,6 @@ sub mknetboot
             }
             $donetftp{$osver,$arch,$profile} = 1;
         }
-
 
         if ($statelite) {
             my $initrdloc = "/$tftpdir/xcat/netboot/$osver/$arch/$profile/";
@@ -566,9 +585,7 @@ sub mknetboot
 		        }
 
                 # special case for redhat6, fedora12/13/14
-                if ($osver =~ m/rhel6/ || $osver =~ m/rhels6/
-                    || $osver =~ m/fedora12/ || $osver =~ m/fedora13/ 
-                    || $osver =~ m/fedora14/ || $osver =~ m/SL6/) {
+                if (&using_dracut($osver)) {
                     $kcmdline = "root=nfs:$nfssrv:$nfsdir/rootimg:ro STATEMNT=";
                 } else {
                     $kcmdline = "NFSROOT=$nfssrv:$nfsdir STATEMNT=";	
@@ -742,9 +759,7 @@ sub mknetboot
         my $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-stateless.gz";
         $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-statelite.gz" if ($statelite);
         # special case for the dracut-enabled OSes
-        if ($osver =~ m/rhels6/ || $osver =~ m/rhel6/ 
-            || $osver =~ m/fedora12/ || $osver =~ m/fedora13/
-            || $osver =~ m/fedora14/ || $osver =~ m/SL6/) {
+        if (&using_dracut($osver)) {
             if($statelite and $rootfstype eq "ramdisk") {
                 $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-stateless.gz";
             }
