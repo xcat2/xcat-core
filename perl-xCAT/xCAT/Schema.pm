@@ -550,7 +550,7 @@ noderes => {
  },
   },
     switches => {
-        cols => [qw(switch snmpversion username password privacy auth linkports comments disable)],
+        cols => [qw(switch snmpversion username password privacy auth linkports sshusername sshpassword switchtype comments disable)],
         keys => [qw(switch)],
         nodecol => "switch",
         table_desc => 'Parameters to use when interrogating switches',
@@ -562,7 +562,10 @@ noderes => {
          privacy => 'The privacy protocol to use for v3.  DES is assumed if v3 enabled, as it is the most readily available.',
          auth => 'The authentication protocol to use for SNMPv3.  SHA is assumed if v3 enabled and this is unspecified',
          linkports => 'The ports that connect to other switches. Currently, this column is only used by vlan configuration. The format is: "port_number:switch,port_number:switch...". Please refer to the switch table for details on how to specify the port numbers.',
-        },
+        sshusername => 'The user name for ssh.',
+        sshpassword => 'The password for ssh.',
+        switchtype => 'The type of switch. It is used to identify the file name that implements the functions for this swithc. The valid values are: MellanoxIB etc.',
+	},
     },
 nodetype => {
     cols => [qw(node os arch profile provmethod supportedarchs nodetype comments disable)],
@@ -647,7 +650,7 @@ passwd => {
     keys => [qw(key username)],
     table_desc => 'Contains default userids and passwords for xCAT to access cluster components.  In most cases, xCAT will also actually set the userid/password in the relevant component when it is being configured or installed.  Userids/passwords for specific cluster components can be overidden in other tables, e.g. mpa, ipmi, ppchcp, etc.',
  descriptions => {
-  key => 'The type of component this user/pw is for.  Valid values: blade (management module), ipmi (BMC), system (nodes), omapi (DHCP), hmc, ivm, cec, frame.',
+  key => 'The type of component this user/pw is for.  Valid values: blade (management module), ipmi (BMC), system (nodes), omapi (DHCP), hmc, ivm, cec, frame, switch.',
   username => 'The default userid for this type of component',
   password => 'The default password for this type of component',
   cryptmethod => 'Indicates the method that was used to encrypt the password attribute.  On AIX systems, if a value is provided for this attribute it indicates that the passwword attribute is encrypted.  If the cryptmethod value is not set it indicates the password is a simple string value. On Linux systems, the cryyptmethod is not supported however the code attempts to auto-discover MD5 encrypted passowrds.',
