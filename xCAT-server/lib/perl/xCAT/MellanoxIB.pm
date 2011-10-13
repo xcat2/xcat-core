@@ -76,6 +76,8 @@ sub getConfig {
 	
 	if (($subcommand eq "alert") || ($subcommand eq "snmpcfg") || ($subcommand eq "community") || ($subcommand eq "snmpdest"))  {
 	    $cmd='show snmp';
+	} elsif ($subcommand eq "logdest")  {
+	    $cmd='show logging';
 	}
 	else {
 	    my $rsp = {};
@@ -107,58 +109,108 @@ sub parseOutput {
 
     my $output;
     if ($subcommand eq "alert") {
-	foreach my $tmpstr (@$input) {
-	    if ($tmpstr =~ /Traps enabled:/) {
-		if ($tmpstr =~ /yes/) {
-		    $output=["$node: Switch Alerting enabled"];
-		} else {
-		    $output=["$node: Switch Alerting disabled"];
+	my $done=0;
+	foreach my $tmpstr1 (@$input) {
+            my @b=split("\n", $tmpstr1);
+	    foreach my $tmpstr (@b) {
+		if ($tmpstr =~ /Traps enabled:/) {
+		    if ($tmpstr =~ /yes/) {
+			$output=["$node: Switch Alerting enabled"];
+		    } else {
+			$output=["$node: Switch Alerting disabled"];
+		    }
+		    $done=1;
+		    last;
 		}
 	    }
+	   if ($done) { last;} 
 	}
 	if ($output) { return $output; }
     } elsif ($subcommand eq "snmpcfg") {
-	foreach my $tmpstr (@$input) {
-	    if ($tmpstr =~ /SNMP enabled:/) {
-		if ($tmpstr =~ /yes/) {
-		    $output=["$node: SNMP enabled"];
-		} else {
-		    $output=["$node: SNMP disabled"];
+	my $done=0;
+	foreach my $tmpstr1 (@$input) {
+            my @b=split("\n", $tmpstr1);
+	    foreach my $tmpstr (@b) {
+		if ($tmpstr =~ /SNMP enabled:/) {
+		    if ($tmpstr =~ /yes/) {
+			$output=["$node: SNMP enabled"];
+		    } else {
+			$output=["$node: SNMP disabled"];
+		    }
+		    $done=1;
+		    last;
 		}
 	    }
+	   if ($done) { last;} 
 	}
 	if ($output) { return $output; }
     } elsif ($subcommand eq "snmpdest") {
         my $found=0;
 	my $j=0;
-	foreach my $tmpstr (@$input) {
-	    if ((!$found) && ($tmpstr =~ /Trap sinks:/)) {
-		$found=1;
-		$output->[0]="$node: SNMP Destination:";
-	    }
-
-	    if ($tmpstr =~ /Events for which/) {
-		if (!$found) {
+	my $done=0;
+	foreach my $tmpstr1 (@$input) {
+            my @b=split("\n", $tmpstr1);
+	    foreach my $tmpstr (@b) {
+		if ((!$found) && ($tmpstr =~ /Trap sinks:/)) {
+		    $found=1;
+		    $output->[0]="$node: SNMP Destination:";
 		    next;
-		} else {
-		    last;
 		}
-	    }
-	    if ($found) {
-		$tmpstr =~ s/$node: //g;
-		$output->[++$j]=$tmpstr;
-	    }              
+
+		if ($tmpstr =~ /Events for which/) {
+		    if (!$found) {
+			next;
+		    } else {
+			$done=1;
+			last;
+		    }
+		}
+		if ($found) {
+		    $tmpstr =~ s/$node: //g;
+		    $output->[++$j]=$tmpstr;
+		}     
+	    }         
+	    if ($done) { last;} 
 	}
 	if ($output) { return $output; }
     }  elsif ($subcommand eq "community") {
-	foreach my $tmpstr (@$input) {
-	    if ($tmpstr =~ /Read-only community:/) {
-		my @a=split(':', $tmpstr);
-		my $c_str;
-		if (@a > 2) {
-		    $c_str=$a[2];
+	my $done=0;
+	foreach my $tmpstr1 (@$input) {
+            my @b=split("\n", $tmpstr1);
+	    foreach my $tmpstr (@b) {
+		if ($tmpstr =~ /Read-only community:/) {
+		    my @a=split(':', $tmpstr);
+		    my $c_str;
+		    if (@a > 2) {
+			$c_str=$a[2];
+		    }
+		    $output=["$node: SNMP Community: $c_str"];
+		    $done=1;
+		    last;
 		}
-		$output=["$node: SNMP Community: $c_str"];
+	    }
+	    if ($done) { last;} 
+	}
+	if ($output) { return $output; }
+    }  elsif ($subcommand eq "logdest") {
+	foreach my $tmpstr1 (@$input) {
+            my @b=split("\n", $tmpstr1);
+	    foreach my $tmpstr (@b) {
+		if ($tmpstr =~ /Remote syslog receiver:/) {
+		    my @a=split(':', $tmpstr);
+		    my $c_str;
+		    if (@a > 2) {
+			for my $i (2..$#a) {
+			    $c_str.= $a[$i]. ':';
+			}
+			chop($c_str);
+		    }
+		    if ($output) {
+			push(@$output, "  $c_str");
+		    } else {
+			$output=["$node: Logging destination:\n  $c_str"];
+		    }
+		}
 	    }
 	}
 	if ($output) { return $output; }
@@ -230,13 +282,10 @@ sub setConfig {
 
 	if ($subcommand eq "alert") {
 	    if($argument eq "on" or $argument =~ /^en/ or $argument =~ /^enable/) {
-		my $ip="9.114.154.69";
 		$cfgcmds[0]="snmp-server enable traps";
-		$cfgcmds[1]="snmp-server host$ip traps version 2c public";
 	    }
 	    elsif ($argument eq "off" or $argument =~ /^dis/ or $argument =~ /^disable/) {
-		my $ip="9.114.154.69";
-		$cfgcmds[0]="snmp-server host $ip disable";
+		$cfgcmds[0]="no snmp-server enable traps";
 	    } else {
 		my $rsp = {};
 		$rsp->{error}->[0] = "Unsupported argument for $subcommand: $argument";
@@ -261,7 +310,59 @@ sub setConfig {
 	    $cfgcmds[0]="snmp-server community $argument";
 	} 
 	elsif ($subcommand eq "snmpdest") { 
-	    $cfgcmds[0]="snmp-server host $argument traps version 2c public";
+	    my @a=split(' ', $argument);
+	    if (@a>1) {
+		if ($a[1] eq 'remove') {
+		    $cfgcmds[0]="no snmp-server host $a[0]";
+		} else {
+		    my $rsp = {};
+		    $rsp->{error}->[0] = "Unsupported action for $subcommand: $a[1]\nThe valide action is: remove.";
+		    $callback->($rsp);
+		    return;
+		}
+	    } else {
+		$cfgcmds[0]="snmp-server host $a[0] traps version 2c public";
+	    }
+	} 
+	elsif ($subcommand eq "logdest") {
+            #one can run rspconfig <switch> logdest=<ip> level
+            # where level can be:
+            #    remove           Remove this ip from receiving logging
+            #    none             Disable logging
+            #    emerg            Emergency: system is unusable
+            #    alert            Action must be taken immediately
+            #    crit             Critical conditions
+            #    err              Error conditions
+            #    warning          Warning conditions
+            #    notice           Normal but significant condition
+            #    info             Informational messages
+            #    debug            Debug-level messages
+ 
+	    my @a=split(' ', $argument);
+	    if ((@a>1) && ($a[1] eq 'remove')) {
+		$cfgcmds[0]="no logging $a[0]";
+	    } else { 
+		if (@a>1) { 
+		    if ($a[1] eq "none" || 
+			$a[1] eq "emerg" ||
+			$a[1] eq "alert" ||
+			$a[1] eq "crit" ||
+			$a[1] eq "err" ||
+			$a[1] eq "warning" || 
+			$a[1] eq "notice" ||
+			$a[1] eq "info" ||
+			$a[1] eq "debug") {
+			$cfgcmds[0]="logging $a[0] trap $a[1]";
+		    } else {
+			my $rsp = {};
+			$rsp->{error}->[0] = "Unsupported loging level for $subcommand: $a[1].\nThe valid levels are: emerg, alert, crit, err, warning, notice, info, debug, none, remove";
+			$callback->($rsp);
+			return;
+		    }
+		} else {
+		    $cfgcmds[0]="logging $a[0]";
+		}
+	    }
 	} 
 	else {
 	    my $rsp = {};
