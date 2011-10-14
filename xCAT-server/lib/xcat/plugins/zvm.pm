@@ -2192,6 +2192,9 @@ sub cloneVM {
 	if ( $out =~ m/USER $sourceId/i ) {
 
 		# Turn off source node
+		$out = `ssh -o ConnectTimeout=10 $sourceNode "shutdown -h now"`;
+		sleep(90);	# Wait 1.5 minutes before logging user off
+		
 		$out = `ssh $srcHcp "$::DIR/stopvs $sourceId"`;
 		foreach (@nodes) {
 			xCAT::zvmUtils->printLn( $callback, "$_: $out" );
