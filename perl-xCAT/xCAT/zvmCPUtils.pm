@@ -302,7 +302,7 @@ sub getVswitchId {
 	my ( $class, $node ) = @_;
 
 	# Get VSwitch
-	my $out = `ssh -o ConnectTimeout=5 $node "vmcp q nic" | grep "VSWITCH"`;
+	my $out = `ssh -o ConnectTimeout=5 $node "vmcp q v nic" | grep "VSWITCH"`;
 	my @lines = split( '\n', $out );
 	my @parms;
 	my @vswitch;
