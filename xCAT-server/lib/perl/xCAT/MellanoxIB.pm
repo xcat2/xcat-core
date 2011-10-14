@@ -48,7 +48,7 @@ sub getConfig {
     
     #handle sshcfg with expect script
     if ($subcommand eq "sshcfg") {
-	return querySSHcfg($noderange,$callback);
+	return querySSHcfg($noderange,$callback,$subreq);
     }
 
     #get the username and the password 
@@ -245,10 +245,10 @@ sub setConfig {
     #handle sshcfg with expect script
     if ($subcommand eq "sshcfg") {
 	if($argument eq "on" or $argument =~ /^en/ or $argument =~ /^enable/) {
-	    return setSSHcfg($noderange, $callback, 1);
+	    return setSSHcfg($noderange, $callback, $subreq, 1);
 	}
 	elsif ($argument eq "off" or $argument =~ /^dis/ or $argument =~ /^disable/) {
-	    return setSSHcfg($noderange, $callback, 0);
+	    return setSSHcfg($noderange, $callback, $subreq, 0);
 	} else {
 	    my $rsp = {};
 	    $rsp->{error}->[0] = "Unsupported argument for sshcfg: $argument";
@@ -409,162 +409,124 @@ sub setConfig {
         none 0 --- unsuccessful.
 =cut
 #--------------------------------------------------------------------------------
-sub querySSHcfg {
+sub querySSHcfg {    
+
     my $noderange=shift;
     if ($noderange =~ /xCAT::MellanoxIB/) {
 	$noderange=shift;
     }
     my $callback=shift;
-
-    my $mysw;
-    my $enable_cmd="enable\r";
-    my $exit_cmd="exit\r";
-
-    my $pwd_prompt   = "Password: ";
-    my $sw_prompt = "^.*\] > ";
-    my $enable_prompt="^.*\] \#";
-    my $expstr="SSH authorized keys:";
-
-
-    my $debug        = 0;
-    if ($::VERBOSE)
-    {
-        $debug = 1;
-    }
-
-
+    my $subreq=shift;
+    
     #get the username and the password 
     my $swstab=xCAT::Table->new('switches',-create=>1);
-    my $sws_hash = $swstab->getNodesAttribs($noderange,['sshusername','sshpassword']);
+    my $sws_hash = $swstab->getNodesAttribs($noderange,['sshusername']);
+    
     my $passtab = xCAT::Table->new('passwd');
     my $ent;
-    ($ent) = $passtab->getAttribs({key => "switch"}, qw(username password));
+    ($ent) = $passtab->getAttribs({key => "switch"}, qw(username));
 
-
-   #get the ssh public key from this host
-   my $fname = ((xCAT::Utils::isAIX()) ? "/.ssh/":"/root/.ssh/")."id_rsa.pub";
+    #get the ssh public key from this host
+    my $fname = ((xCAT::Utils::isAIX()) ? "/.ssh/":"/root/.ssh/")."id_rsa.pub";
     unless ( open(FH,"<$fname") ) {
 	$callback->({error=>["Error opening file $fname."],errorcode=>[1]});
 	return 1;
     }
     my ($sshkey) = <FH>;
     close(FH);
-    #remove the userid@host part
-    my @tmpa=split(' ', $sshkey);
-    if (@tmpa > 2) {
-	$sshkey=$tmpa[0] . ' ' . $tmpa[1];
-    }
+    chomp($sshkey);
 
-    
+    my $cmd="enable;show ssh client";
     foreach my $node (@$noderange) {
 	my $username;
-	my $passwd;
 	if ($sws_hash->{$node}->[0]) {
-	    #print "got to switches table\n";
 	    $username=$sws_hash->{$node}->[0]->{sshusername};
-	    $passwd=$sws_hash->{$node}->[0]->{sshpassword};
 	}
 	if (!$username) {
-	    #print "got to passwd table\n";
 	    if ($ent) {
 	       $username=$ent->{username};
-	       $passwd=$ent->{password};
 	    }
 	}
-	
-	unless ($username) {
-	    $callback->({error=>["Unable to get the username and the password for node $node. Please fill the switches table or the password table."],errorcode=>[1]});
-	    next;
+	if (!$username) {
+	    $username="xcat";
 	} 
+	
 
-	#print "username=$username, password=$passwd\n";
-
-	$mysw = new Expect;
-	$mysw->exp_internal($debug);
-	#
-	# log_stdout(0) prevent the program's output from being shown.
-	#  turn on if debugging error
-	$mysw->log_stdout($debug);
-
-	my @cfgcmds=();
-	$cfgcmds[0]="show ssh client\r";
-	my $login_cmd = "ssh -l $username $node\r";
-	my $passwd_cmd="$passwd\r";
-	unless ($mysw->spawn($login_cmd))
-	{
-	    $mysw->soft_close();
-            my $rsp;
-            $rsp->{data}->[0]="Unable to run $login_cmd.";
-	    xCAT::MsgUtils->message("I", $rsp, $callback);
-	    next;
+	#now goto the switch and get the output
+	my  $output = xCAT::Utils->runxcmd({command => ["xdsh"], node =>[$node], arg => ["--devicetype", "IBSwitch::Mellanox", "$cmd"], env=>["DSH_TO_USERID=$username"]}, $subreq, -1, 1);
+	if ($output) {
+	    my $keys=getMatchingKeys($node, $username, $output, $sshkey); 
+	    my $rsp = {};
+	    if (@$keys > 0) {
+		$rsp->{data}->[0] = "$node: SSH enabled"; 
+	    } else {
+		$rsp->{data}->[0] = "$node: SSH disabled"; 
+	    }
+	    $callback->($rsp);
 	}
-
-	my @result = $mysw->expect(
-	    5,
-	    [
-	     $pwd_prompt,
-	     sub {
-		 $mysw->clear_accum();
-		 $mysw->send($passwd_cmd);
-                 print "$node: password sent\n";
-		 $mysw->exp_continue();
-	     }
-	    ],
-	    [
-	     "-re", $sw_prompt,
-	     sub {
-		 print "$node: sending command: $enable_cmd\n";
-		 $mysw->clear_accum();
-		 $mysw->send($enable_cmd);
-		 $mysw->exp_continue();
-	     }
-	    ],
-	    [
-	     "-re", $enable_prompt,
-	     sub {
-		 print "$node: sending command: $cfgcmds[0]\n";
-		 $mysw->clear_accum();
-		 $mysw->send($cfgcmds[0]);
-		 $mysw->send(" ");
-                 sleep 1;
-		 $mysw->exp_continue();
-	     }
-	    ],
-	    [
-	     $expstr,
-	     sub {
-                 print "got here\n";
-		 my $tmp=$mysw->after();
-		 my $tmp1=`echo "$tmp" \|col`;
-                 my @a=split('\n', $tmp1);
-		 my $line=0;
-		 foreach (@a) {
-		     $line++;
-		     print "$line ::: $_\n";
-		 }
-
-		 #$rsp->{data}->[0]="$node: $outstr";
-		 #$callback->($rsp);
-		 $mysw->clear_accum();
-	    	 $mysw->send($exit_cmd);
-	     }
-	    ]
-
-	    );
-
-	if (defined($result[1]))
-	{
-	    my $errmsg = $result[1];
-	    $mysw->soft_close();
-            my $rsp;
-	    $rsp->{data}->[0]="$node: command error: $result[1]";	
-	    xCAT::MsgUtils->message("I",$rsp, $callback);
-	    next;
-	    
-	}
-	$mysw->soft_close();
-    }
+    } #end foreach node
 }
+
+
+#--------------------------------------------------------------------------------
+=head3   getMatchingKeys
+      It checks if the given outout contians the given ssh key for the given user.
+
+    Returns:
+        An array pointer to the matching keys.
+=cut
+#--------------------------------------------------------------------------------
+sub getMatchingKeys {
+    my $node=shift;
+    my $username=shift;
+    my $output=shift;
+    my $sshkey=shift;
+
+    my @keys=();
+    my $user_found=0;
+    my $start=0;
+    my $end=0;
+    foreach my $tmpstr1 (@$output) {
+	my @b=split("\n", $tmpstr1);
+	foreach my $o (@b) {
+	    #print "o=$o\n";
+	    $o =~ s/$node: //g;
+	    if ($o =~ /SSH authorized keys:/) {
+		$start=1;
+		next;
+	    }
+	    if ($start) {
+		if ($o =~ /User $username:/) {
+		    $user_found=1;
+		    next;
+		} 
+		
+		if ($user_found) {
+		    if ($o =~ /Key (\d+): (.*)$/) {
+			my $key=$1;
+			my $key_value=$2;
+			#print "key=$key\n";
+			#print "key_value=$key_value\n";
+			chomp($key_value);
+			if ("$sshkey" eq "$key_value") {
+			    push(@keys, $key);
+			}
+			next;
+		    } elsif ($o =~ /^(\s*)$/) { 
+			next;
+		    }
+		    else { 
+			$end=1; 
+		    }
+		}
+	    }
+	}
+	if ($end) { last; }
+    }
+
+    return \@keys;
+}
+
 
 #--------------------------------------------------------------------------------
 =head3    setSSHcfg
@@ -583,6 +545,7 @@ sub setSSHcfg {
 	$noderange=shift;
     }
     my $callback=shift;
+    my $subreq=shift;
     my $enable=shift;
 
     my $mysw;
@@ -596,7 +559,7 @@ sub setSSHcfg {
     my $config_prompt="^.*\\\(config\\\) \#";
 
 
-    my $debug        = 0;
+    my $debug  = 0;
     if ($::VERBOSE)
     {
         $debug = 1;
@@ -610,8 +573,8 @@ sub setSSHcfg {
     my $ent;
     ($ent) = $passtab->getAttribs({key => "switch"}, qw(username password));
 
-   #get the ssh public key from this host
-   my $fname = ((xCAT::Utils::isAIX()) ? "/.ssh/":"/root/.ssh/")."id_rsa.pub";
+    #get the ssh public key from this host
+    my $fname = ((xCAT::Utils::isAIX()) ? "/.ssh/":"/root/.ssh/")."id_rsa.pub";
     unless ( open(FH,"<$fname") ) {
 	$callback->({error=>["Error opening file $fname."],errorcode=>[1]});
 	return 1;
@@ -645,79 +608,101 @@ sub setSSHcfg {
 	    next;
 	} 
 
-	print "username=$username, password=$passwd\n";
-	$mysw = new Expect;
-	$mysw->exp_internal($debug);
-	#
-	# log_stdout(0) prevent the program's output from being shown.
-	#  turn on if debugging error
-	$mysw->log_stdout($debug);
 
-	my @cfgcmds=();
-	$cfgcmds[0]="ssh client user $username authorized-key sshv2 \"$sshkey\"\r";
-    	my $login_cmd = "ssh -l $username $node\r";
-	my $passwd_cmd="$passwd\r";
-	unless ($mysw->spawn($login_cmd))
-	{
-	    $mysw->soft_close();
-            my $rsp;
-            $rsp->{data}->[0]="Unable to run $login_cmd.";
-	    xCAT::MsgUtils->message("I", $rsp, $callback);
-	    next;
-	}
-
-	my @result = $mysw->expect(
-	    5,
-	    [
-	     $pwd_prompt,
-	     sub {
-		 $mysw->clear_accum();
-		 $mysw->send($passwd_cmd);
-                 print "$node: password sent\n";
-		 $mysw->exp_continue();
-	     }
-	    ],
-	    [
-	     "-re", $sw_prompt,
-	     sub {
-		 print "$node: sending command: $enable_cmd\n";
-		 $mysw->clear_accum();
-		 $mysw->send($enable_cmd);
-		 $mysw->exp_continue();
-	     }
-	    ],
-	    [
-	     "-re", $enable_prompt,
-	     sub {
-		 print "$node: sending command: $config_cmd\n";
-		 $mysw->clear_accum();
-		 $mysw->send($config_cmd);
-		 $mysw->exp_continue();
-	     }
-	    ],
-	    [
-	     "-re", $config_prompt,
-	     sub {
-		 print "$node: sending command: $cfgcmds[0]\n";
-		 $mysw->clear_accum();
-		 $mysw->send($cfgcmds[0]);
-                 sleep 1;
-		 $mysw->send($exit_cmd);
-	     }
-	    ],
-	    );
-
-	if (defined($result[1]))
-	{
-	    my $errmsg = $result[1];
-	    $mysw->soft_close();
-            my $rsp;
-	    $rsp->{data}->[0]="$node: command error: $result[1]";	
-	    xCAT::MsgUtils->message("I",$rsp, $callback);
-	    next;
+	   
+	#print "username=$username, password=$passwd\n";
+	
+	if($enable > 0) {	
+	    $mysw = new Expect;
+	    $mysw->exp_internal($debug);
+	    #
+	    # log_stdout(0) prevent the program's output from being shown.
+	    #  turn on if debugging error
+	    $mysw->log_stdout($debug);
 	    
+	    my @cfgcmds=();
+	    $cfgcmds[0]="ssh client user $username authorized-key sshv2 \"$sshkey\"\r";
+	    my $login_cmd = "ssh -l $username $node\r";
+	    my $passwd_cmd="$passwd\r";
+	    unless ($mysw->spawn($login_cmd))
+	    {
+		$mysw->soft_close();
+		my $rsp;
+		$rsp->{data}->[0]="Unable to run $login_cmd.";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+		next;
+	    }
+	    
+	    my @result = $mysw->expect(
+		5,
+		[
+		 $pwd_prompt,
+		 sub {
+		     $mysw->clear_accum();
+		     $mysw->send($passwd_cmd);
+		     #print "$node: password sent\n";
+		     $mysw->exp_continue();
+		 }
+		],
+		[
+		 "-re", $sw_prompt,
+		 sub {
+		     #print "$node: sending command: $enable_cmd\n";
+		     $mysw->clear_accum();
+		     $mysw->send($enable_cmd);
+		     $mysw->exp_continue();
+		 }
+		],
+		[
+		 "-re", $enable_prompt,
+		 sub {
+		     #print "$node: sending command: $config_cmd\n";
+		     $mysw->clear_accum();
+		     $mysw->send($config_cmd);
+		     $mysw->exp_continue();
+		 }
+		],
+		[
+		 "-re", $config_prompt,
+		 sub {
+		     #print "$node: sending command: $cfgcmds[0]\n";
+		     $mysw->clear_accum();
+		     $mysw->send($cfgcmds[0]);
+		     sleep 1;
+		     $mysw->send($exit_cmd);
+		 }
+		],
+		);
+	    
+	    if (defined($result[1]))
+	    {
+		my $errmsg = $result[1];
+		$mysw->soft_close();
+		my $rsp;
+		$rsp->{data}->[0]="$node: command error: $result[1]";	
+		$callback->($rsp);
+		next;
+		
+	    }
+	    $mysw->soft_close();
+	} else {
+	    #now goto the switch and get the matching keys
+	    my  $output = xCAT::Utils->runxcmd({command => ["xdsh"], node =>[$node], arg => ["--devicetype", "IBSwitch::Mellanox", "enable;show ssh client"], env=>["DSH_TO_USERID=$username"]}, $subreq, -1, 1);
+	    if ($output) {
+		chomp($sshkey);
+		my $keys=getMatchingKeys($node, $username, $output, $sshkey);
+		if (@$keys > 0) {
+		    my $cmd="enable;configure terminal";
+		    foreach my $key (@$keys) {
+			$cmd .= ";no ssh client user admin authorized-key sshv2 $key";
+		    }
+		    #now remove the keys
+		    $output = xCAT::Utils->runxcmd({command => ["xdsh"], node =>[$node], arg => ["--devicetype", "IBSwitch::Mellanox", $cmd], env=>["DSH_TO_USERID=$username"]}, $subreq, -1, 1);
+		}
+	    }
 	}
-	$mysw->soft_close();
+	#now query again
+	querySSHcfg( [$node], $callback, $subreq);
     }
 }
 
