@@ -538,6 +538,11 @@ sub makescript
     if ($ospkglist)
     {
         my $pkgtext = get_pkglist_tex($ospkglist);
+        my ($envlist,$pkgtext) = get_envlist($pkgtext);
+        if ($envlist) {
+            push @scriptd, "ENVLIST='".$envlist."'\n";
+            push @scriptd, "export ENVLIST\n";
+        }
         if ($pkgtext)
         {
             push @scriptd, "OSPKGS='".$pkgtext."'\n";
@@ -555,7 +560,13 @@ sub makescript
             foreach (@sublists)
             {
                 $sl_index++;
-                push @scriptd, "OTHERPKGS$sl_index='".$_."'\n";
+                my $tmp = $_;
+                my ($envlist, $tmp) = get_envlist($tmp);
+                if ($envlist) {
+                    push @scriptd, "ENVLIST$sl_index='".$envlist."'\n";
+                    push @scriptd, "export ENVLIST$sl_index\n";
+                }
+                push @scriptd, "OTHERPKGS$sl_index='".$tmp."'\n";
                 push @scriptd, "export OTHERPKGS$sl_index\n";
             }
             if ($sl_index > 0)
@@ -788,6 +799,22 @@ sub makescript
 
 #----------------------------------------------------------------------------
 
+=head3   get_envlist
+
+        extract environment variables list from pkglist text.
+=cut
+
+#-----------------------------------------------------------------------------
+sub get_envlist
+{
+    my $envlist;
+    my $pkgtext = shift;
+    $envlist = join ' ', ($pkgtext =~ /#ENV:([^#^\n]+)#/g);
+    $pkgtext =~ s/#ENV:[^#^\n]+#,?//g;
+    return ($envlist, $pkgtext);
+}
+#----------------------------------------------------------------------------
+
 =head3   get_pkglist_text
 
         read the pkglist file, expand it and return the content.
@@ -810,7 +837,8 @@ sub get_pkglist_tex
             next
               if (   /^\s*#/
                   && !/^\s*#INCLUDE:[^#^\n]+#/
-                  && !/^\s*#NEW_INSTALL_LIST#/);    #-- skip comments
+                  && !/^\s*#NEW_INSTALL_LIST#/
+                  && !/^\s*#ENV:[^#^\n]+#/);    #-- skip comments
             if (/^@(.*)/)
             {    #for groups that has space in name
                 my $save = $1;

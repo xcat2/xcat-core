@@ -96,6 +96,7 @@ op_index=1
 #echo "OTHERPKGS_INDEX = $OTHERPKGS_INDEX"
 while [ $op_index -le $OTHERPKGS_INDEX ]; do 
     eval pkglist=\$OTHERPKGS$op_index
+    eval envlist=\$ENVLIST$op_index
     #echo "pkglist = $pkglist"
     if [ $hasyum -eq 1 ]; then 
         mkdir -p /etc/yum.repos.d
@@ -258,16 +259,16 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     #Now we have parsed the input, let's remove rpms if is specified with -
     if [ "$repo_pkgs_preremove" != "" ]; then
         if [ $hasyum -eq 1 ]; then 
-            echo "yum -y remove $repo_pkgs_preremove"
-            result=`yum -y remove $repo_pkgs_preremove 2>&1`
+            echo "$envlist yum -y remove $repo_pkgs_preremove"
+            result=`eval $envlist yum -y remove $repo_pkgs_preremove 2>&1`
             logger -t xcat "$result"
             if [ $? -ne 0 ]; then 
 	        logger -t xcat "otherpkgs: $result"
             fi
             echo "$result"
         elif [ $haszypper -eq 1 ]; then
-            echo "zypper remove -y $repo_pkgs_preremove"
-	    result=`zypper remove -y $repo_pkgs_preremove 2>&1`
+            echo "$envlist zypper remove -y $repo_pkgs_preremove"
+	    result=`eval $envlist zypper remove -y $repo_pkgs_preremove 2>&1`
             logger -t xcat "$result"
 	    if [ $? -ne 0 ]; then 
                 logger -t xcat "otherpkgs: $result"
@@ -277,8 +278,8 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     fi 
 
     if [ "$plain_pkgs_preremove" != "" ]; then 
-        echo "rpm -ev $plain_pkgs_preremove" 
-        result=`rpm -ev $plain_pkgs_preremove 2>&1`
+        echo "$envlist rpm -ev $plain_pkgs_preremove" 
+        result=`eval $envlist rpm -ev $plain_pkgs_preremove 2>&1`
         logger -t xcat "$result"
         if [ $? -ne 0 ]; then 
 	    logger -t xcat "otherpkgs $result"
@@ -290,16 +291,16 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     #installation using yum or zypper     
     if [ "$repo_pkgs" != "" ]; then
         if [ $hasyum -eq 1 ]; then 
-            echo "yum -y install $repo_pkgs"
-            result=`yum -y install $repo_pkgs 2>&1`
+            echo "$envlist yum -y install $repo_pkgs"
+            result=`eval $envlist yum -y install $repo_pkgs 2>&1`
 	    logger -t xcat "$result"
             if [ $? -ne 0 ]; then 
                 logger -t xcat "otherpkgs: $result"
             fi
             echo "$result"
         elif [ $haszypper -eq 1 ]; then
-            echo "zypper install -y $repo_pkgs"
-	    result=`zypper install -y $repo_pkgs 2>&1`
+            echo "$envlist zypper install -y $repo_pkgs"
+	    result=`eval $envlist zypper install -y $repo_pkgs 2>&1`
             logger -t xcat "$result"
 	    if [ $? -ne 0 ]; then 
                 logger -t xcat "otherpkgs: $result"
@@ -336,8 +337,8 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
             cd $OTHERPKGDIR
         fi
 
-        echo "rpm -Uvh --replacepkgs $plain_pkgs" 
-        result=`rpm -Uvh --replacepkgs $plain_pkgs 2>&1`
+        echo "$envlist rpm -Uvh --replacepkgs $plain_pkgs" 
+        result=`eval $envlist rpm -Uvh --replacepkgs $plain_pkgs 2>&1`
         #result=`rpm -Fvh $plain_pkgs 2>&1`
         logger -t xcat "$result"
         if [ $? -ne 0 ]; then 
@@ -356,16 +357,16 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     #remove more rpms if specified with --
     if [ "$repo_pkgs_postremove" != "" ]; then
         if [ $hasyum -eq 1 ]; then 
-            echo "yum -y removel $repo_pkgs_postremove"
-            result=`yum -y remove $repo_pkgs_postremove 2>&1`
+            echo "$envlist yum -y removel $repo_pkgs_postremove"
+            result=`eval $envlist yum -y remove $repo_pkgs_postremove 2>&1`
             logger -t xcat "$result"
             if [ $? -ne 0 ]; then 
                 logger -t xcat "otherpkgs: $result"
             fi
             echo "$result"
         elif [ $haszypper -eq 1 ]; then
-            echo "zypper remove -y $repo_pkgs_postremove"
-	    result=`zypper remove -y $repo_pkgs_postremove 2>&1`
+            echo "$envlist zypper remove -y $repo_pkgs_postremove"
+	    result=`eval $envlist zypper remove -y $repo_pkgs_postremove 2>&1`
             logger -t xcat "$result"
 	    if [ $? -ne 0 ]; then 
                 logger -t xcat "otherpkgs: $result"
@@ -375,8 +376,8 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     fi 
 
     if [ "$plain_pkgs_postremove" != "" ]; then 
-        echo "rpm -ev $plain_pkgs_postremove" 
-        result=`rpm -ev $plain_pkgs_postremove 2>&1`
+        echo "$envlist rpm -ev $plain_pkgs_postremove" 
+        result=`eval $envlist rpm -ev $plain_pkgs_postremove 2>&1`
         logger -t xcat "$result"
         if [ $? -ne 0 ]; then 
        	    logger -t xcat "otherpkgs $result"

@@ -178,8 +178,8 @@ if [[ $OSVER = sles10* ]]; then
 
     #install the new patterns if any
     if [ -n "$groups" ]; then
-	cmd="rug install -y --agree-to-third-party-licences -t pattern $groups"
-	result=`$cmd 2>&1`
+	cmd="$ENVLIST rug install -y --agree-to-third-party-licences -t pattern $groups"
+	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
 	    logger -t xcat "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
@@ -194,8 +194,8 @@ if [[ $OSVER = sles10* ]]; then
 
     #install new rpms if any
     if [ -n "$pkgs" ]; then
-	cmd="rug install -y --agree-to-third-party-licences $pkgs"
-	result=`$cmd 2>&1`
+	cmd="$ENVLIST rug install -y --agree-to-third-party-licences $pkgs"
+	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
 	    logger -t xcat "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
@@ -210,8 +210,8 @@ if [[ $OSVER = sles10* ]]; then
 
     #remove some packages if specified
     if [ -n "$pkgs_d" ]; then
-	cmd="rug remove -y $pkgs_d"
-	result=`$cmd 2>&1`
+	cmd="$ENVLIST rug remove -y $pkgs_d"
+	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
 	    logger -t xcat "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
@@ -272,8 +272,8 @@ elif [[ $OSVER = sles11* ]]; then
 
     #install the new patterns if any
     if [ -n "$groups" ]; then
-	cmd="zypper install -y --auto-agree-with-licenses -t pattern $groups"
-	result=`$cmd 2>&1`
+	cmd="$ENVLIST zypper install -y --auto-agree-with-licenses -t pattern $groups"
+	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
 	    logger -t xcat "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
@@ -288,8 +288,8 @@ elif [[ $OSVER = sles11* ]]; then
 
     #install new rpms if any
     if [ -n "$pkgs" ]; then
-	cmd="zypper install -y --auto-agree-with-licenses $pkgs"
-	result=`$cmd 2>&1`
+	cmd="$ENVLIST zypper install -y --auto-agree-with-licenses $pkgs"
+	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
 	    logger -t xcat "ospkgs: $cmd    $result"
 	    echo "ospkgs: $cmd"
@@ -304,8 +304,8 @@ elif [[ $OSVER = sles11* ]]; then
 
     #remove some packages if specified
     if [ -n "$pkgs_d" ]; then
-	cmd="zypper remove -y $pkgs_d"
-	result=`$cmd 2>&1`
+	cmd="$ENVLIST zypper remove -y $pkgs_d"
+	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
 	    logger -t xcat "ospkgs: $cmd    $result"
 	    echo "ospkgs: $cmd"
@@ -364,8 +364,8 @@ else
 
     #install new groups if any
     if [ -n "$groups" ]; then
-	cmd="echo $groups| xargs yum -y groupinstall"
-	result=`echo $groups | xargs yum -y groupinstall 2>&1`
+	cmd="echo $groups| $ENVLIST xargs yum -y groupinstall"
+	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
 	    logger -t xcat "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
@@ -380,8 +380,8 @@ else
 
     #install new rpms if any
     if [ -n "$pkgs" ]; then
-	cmd="yum -y install $pkgs"
-	result=`$cmd 2>&1`
+	cmd="$ENVLIST yum -y install $pkgs"
+	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
 	    logger -t xcat "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
@@ -396,8 +396,8 @@ else
 
     #remove some rpms if specified
     if [ -n "$pkgs_d" ]; then
-	cmd="yum -y remove $pkgs_d"
-	result=`$cmd 2>&1`
+	cmd="$ENVLIST yum -y remove $pkgs_d"
+	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
 	    logger -t xcat "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"

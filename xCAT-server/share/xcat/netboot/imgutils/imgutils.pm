@@ -92,7 +92,6 @@ sub get_package_names {
 
      if ( @tmp_array > 0) {
         my $pkgtext=join(',',@tmp_array);
-      
         #handle the #INLCUDE# tag recursively
         my $idir = dirname($plist_file_name);
         my $doneincludes=0;
@@ -117,6 +116,15 @@ sub get_package_names {
 		s/^-//;
             } elsif  (/^#NEW_INSTALL_LIST#/) {
                 $pass++;
+                next;
+            } elsif (/^#ENV:([^#^\n]+)#/) {
+                my $pa=$pkgnames{$pass}{ENVLIST};
+                my $env = $1;
+                if (exists($pkgnames{$pass}{ENVLIST})){
+                    push(@$pa,$env);
+                } else {
+                    $pkgnames{$pass}{ENVLIST} = [$env];
+                }
                 next;
             } elsif  (/^#/) {
                 # ignore all other comment lines

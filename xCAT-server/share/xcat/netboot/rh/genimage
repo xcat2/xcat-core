@@ -234,7 +234,7 @@ unless ($onlyinitrd) {
     foreach $pass (sort (keys(%pkg_hash))) {
         my $pkgnames = "";
         foreach (keys(%{$pkg_hash{$pass}})) {
-            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
+            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
             my $pa=$pkg_hash{$pass}{$_};
             my @npa = ();
             # replace the kernel package with the name has the specific version
@@ -269,9 +269,13 @@ unless ($onlyinitrd) {
             }
             $pkgnames .= " " . join(' ', @npa);
         }
+        my $envlist;
+        if(exists $pkg_hash{$pass}{ENVLIST}){
+            $envlist = join(' ', @{$pkg_hash{$pass}{ENVLIST}});
+        }
 
-        print "$yumcmd install $pkgnames\n";
-        my $rc = system("$yumcmd install $pkgnames");
+        print "$envlist $yumcmd install $pkgnames\n";
+        my $rc = system("$envlist $yumcmd install $pkgnames");
         if ($rc) { 
             print "yum invocation failed\n";
             exit 1;
@@ -295,7 +299,7 @@ unless ($onlyinitrd) {
       my $index=1;
       foreach $pass (sort (keys(%extra_hash))) {
         foreach (keys(%{$extra_hash{$pass}})) {
-            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
+            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
             print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs/$_\ngpgpcheck=0\n\n";
             $index++;
             my $pa=$extra_hash{$pass}{$_};
@@ -313,14 +317,18 @@ unless ($onlyinitrd) {
       } 
 
       foreach $pass (sort (keys(%extra_hash))) {
+          my $envlist;
+          if(exists($extra_hash{$pass}{ENVLIST})){
+              $envlist = join(' ', @{$extra_hash{$pass}{ENVLIST}});
+          }
           # remove the packages that are specified in the otherpkgs.list files with leading '-'
           my $yumcmd_remove= "$yumcmd erase ";
           if (exists ($extra_hash{$pass}{'PRE_REMOVE'})) {
               my $pa=$extra_hash{$pass}{'PRE_REMOVE'};
               my $rm_packges= join(' ', @$pa);
               if ($rm_packges) {
-                  print "$yumcmd_remove $rm_packges\n";
-                  $rc = system("$yumcmd_remove $rm_packges");
+                  print "$envlist $yumcmd_remove $rm_packges\n";
+                  $rc = system("$envlist $yumcmd_remove $rm_packges");
               }
           }
 
@@ -338,8 +346,9 @@ unless ($onlyinitrd) {
           #print "yumcmd=$yumcmd\n";
           #my $repo=`cat /tmp/genimage.$$.yum.conf`;
           #print "repo=$repo";
-      
-          my $rc = system($yumcmd);
+     
+          print "$envlist $yumcmd\n"; 
+          my $rc = system("$envlist $yumcmd");
           if ($rc) { 
               print "yum invocation failed\n";
               exit 1;
@@ -350,10 +359,11 @@ unless ($onlyinitrd) {
               my $pa=$extra_hash{$pass}{'POST_REMOVE'};
               my $rm_packges= join(' ', @$pa);
               if ($rm_packges) {
-                  print "$yumcmd_remove $rm_packges\n";
-                  $rc = system("$yumcmd_remove $rm_packges");
+                  print "$envlist $yumcmd_remove $rm_packges\n";
+                  $rc = system("$envlist $yumcmd_remove $rm_packges");
               }
           }
+          $yumcmd = $yumcmd_base;
       }
    }
 
