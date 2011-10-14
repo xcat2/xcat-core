@@ -3618,7 +3618,7 @@ sub get_site_Master
 sub get_ServiceNode
 {
     require xCAT::Table;
-    my ($class, $node, $service, $request) = @_;
+    my ($class, $node, $service, $request, $onlymaster) = @_;
     my @node_list = @$node;
     my $cmd;
     my %snhash;
@@ -3636,7 +3636,13 @@ sub get_ServiceNode
 
     if ($request eq "MN")
     {
-        $snattribute = "servicenode";
+       if( $onlymaster == 1) {
+            $snattribute = "xcatmaster";
+	    } else {
+	        $snattribute = "servicenode";
+	    }
+
+
     }
     else    # Node
     {
