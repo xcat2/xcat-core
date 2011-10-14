@@ -662,17 +662,13 @@ function updateZProvisionNewStatus(data) {
 
 				success : updateZProvisionNewStatus
 			});
-		}		
+		}
 	}
 
 	/**
 	 * (8) Prepare node for boot
 	 */
-	else if (cmd == 'makedhcp') {
-		// Write ajax response to status bar
-		var prg = writeRsp(rsp, '');	
-		$('#' + statBarId).find('div').append(prg);
-		
+	else if (cmd == 'makedhcp') {		
 		// Prepare node for boot
 		$.ajax( {
 			url : 'lib/cmd.php',
