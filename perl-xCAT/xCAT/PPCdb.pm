@@ -152,7 +152,7 @@ sub add_ppc {
         ###############################
         # Update ppc table
         ###############################
-        if ( $type =~ /^(fsp|bpa|lpar|frame|cec)$/ ) {
+        if ( $type =~ /^(fsp|bpa|lpar|frame|cec|hmc)$/ ) {
             $db{ppc}->setNodeAttribs( $name,
                { hcp=>$server,
                  id=>$id,
