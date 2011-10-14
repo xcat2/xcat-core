@@ -100,7 +100,19 @@ sub provzlinux {
 	my $eckd_size;
 	my $fba_size;
 	my $default_conf   = '/opt/zhcp/conf/default.conf';
-	my $default_direct = '/opt/zhcp/conf/default.direct';
+	my $default_direct = "/opt/zhcp/conf/$group.direct";
+
+	# Check if a group based directory entry exists, else use default one
+	if ( !(`ssh $hcp "test -e /opt/zhcp/conf/$group.direct && echo Exists"`) ) {
+		$default_direct = '/opt/zhcp/conf/default.direct';
+		println( $callback, "$group.direct does not exist.  Using default.direct to generate directory entry." );
+		
+		# Exit if default.direct does not exist
+		if ( !(`ssh $hcp "test -e /opt/zhcp/conf/default.direct && echo Exists"`) ) {
+			println( $callback, '(Error) $default_direct does not exists' );
+			return;
+		}
+	}
 
 	# Exit if default.conf does not exist
 	if ( !(`ssh $hcp "test -e $default_conf && echo Exists"`) ) {
@@ -439,6 +451,7 @@ sub clonezlinux {
 
 	# Update DHCP
 	`makedhcp -a`;
+	println( $callback, "hosts table, DHCP, and DNS updated" );
 
 	# Clone virtual machine	
 	$out = `mkvm $node $src_node pool=$disk_pool`;

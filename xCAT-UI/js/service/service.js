@@ -94,7 +94,25 @@ function loadServicePage() {
 	
 	var manageTabId = 'manageTab';
 	serviceTabs.add(manageTabId, 'Manage', '', false);
-	loadManagePage(manageTabId);
+	
+	// Get nodes owned by user
+	$.ajax( {
+		url : 'lib/srv_cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'tabdump',
+			tgt : '',
+			args : 'nodetype',
+			msg : ''
+		},
+
+		success : function(data) {
+			setUserNodes(data);
+			getUserNodesDef();
+			getNodesCurrentLoad();
+			loadManagePage(manageTabId);
+		}
+	});	
 	
 	var provTabId = 'provisionTab';
 	serviceTabs.add(provTabId, 'Provision', '', false);
@@ -137,24 +155,6 @@ function loadServicePage() {
 			}
 		});
 	}
-	
-	// Get nodes owned by user
-	$.ajax( {
-		url : 'lib/srv_cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'tabdump',
-			tgt : '',
-			args : 'nodetype',
-			msg : ''
-		},
-
-		success : function(data) {
-			setUserNodes(data);
-			getUserNodesDef();
-			getNodesCurrentLoad();
-		}
-	});	
 }
 
 /**

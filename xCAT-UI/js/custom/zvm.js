@@ -22,35 +22,14 @@ var zvmPlugin = function() {
  * 			Node to clone
  * @return Nothing
  */
-zvmPlugin.prototype.serviceClone = function(node) {
-	var statBar = createStatusBar(node + 'CloneStat');
-	var loader = createLoader('');
-	statBar.find('div').append(loader);	
-	statBar.prependTo($('#manageTab'));
-	
+zvmPlugin.prototype.serviceClone = function(node) {	
 	var owner = $.cookie('srv_usrname');
 	var group = getUserNodeAttr(node, 'groups');
 	
 	// Submit request to clone VM
 	// webportal clonezlinux [src node] [group] [owner]
-	$.ajax({
-        url : 'lib/srv_cmd.php',
-        dataType : 'json',
-        data : {
-            cmd : 'webportal',
-            tgt : '',
-            args : 'clonezlinux;' + node + ';' + group + ';' + owner,
-            msg : ''
-        },
-        success:function(data) {
-        	// Remove loader
-        	statBar.find('img').remove();
-        	// Append output to status bar
-        	for (var i in data.rsp) {
-        		statBar.find('div').append($('<pre></pre>').append(data.rsp[i]));
-        	}
-        }
-    });
+	var iframe = createIFrame('lib/srv_cmd.php?cmd=webportal&tgt=&args=clonezlinux;' + node + ';' + group + ';' + owner + '&msg=&opts=flush');
+	iframe.prependTo($('#manageTab'));
 };
 
 /**

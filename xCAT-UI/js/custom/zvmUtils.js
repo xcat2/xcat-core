@@ -2803,43 +2803,8 @@ function setDiskPoolCookies(data) {
  * @return Nothing
  */
 function createzVM(tabId, group, hcp, img, owner) {
-	var statBar = createStatusBar('zvmProvsionStatBar');
-	var loader = createLoader('zvmProvisionLoader');
-	statBar.find('div').append(loader);
-	statBar.prependTo($('#' + tabId));
-		
 	// Submit request to create VM
 	// webportal provzlinux [group] [hcp] [image] [owner]
-	$.ajax({
-        url : 'lib/srv_cmd.php',
-        dataType : 'json',
-        data : {
-            cmd : 'webportal',
-            tgt : '',
-            args : 'provzlinux;' + group + ';' + hcp + ';' + img + ';' + owner,
-            msg : '' 
-        },
-        success:function(data){
-        	$('#zvmProvisionLoader').remove();
-             for(var i in data.rsp){
-                 $('#zvmProvsionStatBar').find('div').append('<pre>' + data.rsp[i] + '</pre>');
-             }
-             
-             // Refresh nodes table
-             $.ajax( {
-         		url : 'lib/srv_cmd.php',
-         		dataType : 'json',
-         		data : {
-         			cmd : 'tabdump',
-         			tgt : '',
-         			args : 'nodetype',
-         			msg : ''
-         		},
-
-         		success : function(data) {
-         			setUserNodes(data);
-         		}
-         	});
-        }
-    });
+	var iframe = createIFrame('lib/srv_cmd.php?cmd=webportal&tgt=&args=provzlinux;' + group + ';' + hcp + ';' + img + ';' + owner + '&msg=&opts=flush');
+	iframe.prependTo($('#' + tabId));
 }
