@@ -1849,7 +1849,7 @@ sub preprocess_request {
 
        	#When run mkhwconn/lshwconn/rmhwconn with -T fnm for CNM, it will send the command to CEC/Frame direclty, 
      	#not through the service node if specified.
-        my $onlybymaster = 1; 
+        my $onlybymaster = 0;  
         if ((($req->{command}->[0] eq "mkhwconn") || ($req->{command}->[0] eq "lshwconn" ) || ($req->{command}->[0] eq "rmhwconn" ))
 	    && ( $req->{opt}->{T} == 1) )  {
 	    #for fnm
@@ -1861,7 +1861,7 @@ sub preprocess_request {
         my $service  = "xcat";
         my @hcps=keys(%hcp_hash);
         my $sn = xCAT::Utils->get_ServiceNode(\@hcps, $service, "MN", $onlybymaster);
-    
+        
         # build each request for each service node
         foreach my $snkey (keys %$sn)
         {
