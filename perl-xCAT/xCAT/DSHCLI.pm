@@ -3711,7 +3711,7 @@ sub parse_and_run_dsh
     #  enable;configure terminal;show ssh server host-keys
     # We will build
     #  ssh admin@mswitch cli
-    #    ' "enable" "configure terminal" "show ssh server host-keys" '
+    #     "enable" "configure terminal" "show ssh server host-keys" 
     my @melcmds;
     if ($switchtype =~ /Mellanox/i) {
       $::DSH_MELLANOX_SWITCH=1;
