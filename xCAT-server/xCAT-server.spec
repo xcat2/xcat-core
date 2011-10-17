@@ -50,6 +50,8 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/installp_bundles
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/image_data
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/scripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/netboot/sles
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/scripts/Mellanox
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/scripts/QLogic
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/xdsh/Context
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/samples
@@ -90,7 +92,7 @@ cp share/xcat/rollupdate/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/rollupdate
 cp share/xcat/installp_bundles/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/installp_bundles
 cp share/xcat/image_data/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/image_data
 cp share/xcat/cons/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
-cp share/xcat/ib/scripts/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/scripts
+cp -r share/xcat/ib/scripts/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/scripts
 cp share/xcat/ib/netboot/sles/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/netboot/sles
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/*
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/scripts/*
