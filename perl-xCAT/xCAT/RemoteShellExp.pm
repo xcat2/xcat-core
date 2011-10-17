@@ -37,7 +37,7 @@ package xCAT::RemoteShellExp;
    DSH_ENABLE_SSH - Node to node root passwordless ssh will be setup.
  
 
- Usage: remoteshell.expect
+ Usage: remoteshellexp
    [-t node list]  test ssh connection to the node 
    [-k] Generates the ssh keys needed , for the user on the MN. 
    [-s node list]  copies the ssh keys to the nodes 
