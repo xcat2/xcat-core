@@ -10,6 +10,7 @@ use strict;
 use IO::File;
 use xCAT::Utils;
 use xCAT::MsgUtils;
+use xCAT::NodeRange;
 use xCAT_monitoring::monitorctrl;
 use Sys::Hostname;
 
@@ -74,21 +75,24 @@ sub start {
 
   if ($scope) {
     #enable alerts on the nodes
-    #enable bmcs if any
     if ($callback) {
       my $rsp={};
-      $rsp->{data}->[0]="$localhostname: enabling SNMP alert on BMCs and MMs...";
+      $rsp->{data}->[0]="$localhostname: enabling SNMP alert...";
       $callback->($rsp);
     }
+    #enable bmcs if any
     configBMC(1, $noderef, $callback);
 
     #enable MMAs if any
     configMPA(1, $noderef, $callback);
+
+    #enable MMAs if any
+    configSwitch(1, $noderef, $callback);
   }
   
   if ($callback) {
     my $rsp={};
-    $rsp->{data}->[0]="$localhostname: started.";
+    $rsp->{data}->[0]="$localhostname: done.";
     $callback->($rsp);
   }
   
@@ -125,7 +129,7 @@ sub stop {
   if ($scope) {
     if ($callback) {
       my $rsp={};
-      $rsp->{data}->[0]="$localhostname: disabling SNMP alert on BMCs and MMs...";
+      $rsp->{data}->[0]="$localhostname: disabling SNMP alert...";
       $callback->($rsp);
     }
     #disable MMAs if any
@@ -133,6 +137,9 @@ sub stop {
 
     #disable BMC so that it stop senging alerts (PETs) to this node
     configBMC(0, $noderef, $callback);
+
+    #disable switches so that it stop senging alerts (PETs) to this node
+    configSwitch(0, $noderef, $callback);
   }
  
 
@@ -147,7 +154,7 @@ sub stop {
 
   if ($callback) {
     my $rsp={};
-    $rsp->{data}->[0]="$localhostname: stopped.";
+    $rsp->{data}->[0]="$localhostname: done.";
     $callback->($rsp);
   }
 
@@ -269,7 +276,7 @@ sub config {
   if ($scope) {
     if ($callback) {
       my $rsp={};
-      $rsp->{data}->[0]="$localhostname: setting up SNMP alert destination for BMCs and MMs ....";
+      $rsp->{data}->[0]="$localhostname: setting up SNMP alert destination....";
       $callback->($rsp);
     }
     #enable bmcs if any
@@ -277,6 +284,9 @@ sub config {
 
     #enable MMAs if any
     configMPA(2, $noderef, $callback);
+
+    #enable switches if any
+    configSwitch(2, $noderef, $callback);
   }
 
   if ($callback) {
@@ -327,6 +337,16 @@ sub deconfig {
       # move it back to the snmptrapd.conf file.                     
       `mv -f /usr/share/snmp/snmptrapd.conf.unconfig /usr/share/snmp/snmptrapd.conf`; 
     }
+  }
+
+  if ($scope) {
+    if ($callback) {
+      my $rsp={};
+      $rsp->{data}->[0]="$localhostname: removing SNMP destination....";
+      $callback->($rsp);
+    }
+    #remove snmp destination for switches
+    configSwitch(3, $noderef, $callback);
   }
 
   if ($callback) {
@@ -426,15 +446,17 @@ sub configBMC {
     print "XCATBYPASS=Y rspconfig $noderange alert=dis\n";
     my $result = `XCATBYPASS=Y rspconfig $noderange alert=dis 2>&1`;
     if ($?) {
-       xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n");
-       $ret_text .= "Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n";
+	$ret_val=1;
+	xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n");
+	$ret_text .= "Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n";
     } 
   } elsif ($action==1) {
     print "XCATBYPASS=Y rspconfig $noderange alert=en\n";
     my $result = `XCATBYPASS=Y rspconfig $noderange alert=en 2>&1`;
     if ($?) {
-       xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n");
-       $ret_text .= "Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n";
+	$ret_val=1;
+	xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n");
+	$ret_text .= "Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n";
     } 
   } else {
     #setup the snmp destination
@@ -452,8 +474,9 @@ sub configBMC {
         print "XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1]\n";
         my $result2 = `XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1] 2>&1`;
         if ($?) {
-          xCAT::MsgUtils->message('S', "[mon]: Changing SNMP destination for IPMI nodes $nr2:\n  $result2\n");
-	  $ret_text .= "Changing SNMP destination for IPMI nodes $nr2:\n  $result2\n";
+	    $ret_val=1;
+	    xCAT::MsgUtils->message('S', "[mon]: Changing SNMP destination for IPMI nodes $nr2:\n  $result2\n");
+	    $ret_text .= "Changing SNMP destination for IPMI nodes $nr2:\n  $result2\n";
         }
       }
     }
@@ -570,15 +593,17 @@ sub configMPA {
     print "XCATBYPASS=Y rspconfig $noderange alert=dis\n";
     my $result = `XCATBYPASS=Y rspconfig $noderange alert=dis 2>&1`;
     if ($?) {
-       xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n");
-       $ret_text .= "Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n";
+	$ret_val=1;
+	xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n");
+	$ret_text .= "Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n";
     }
   } elsif ($action==1)  {
     print "XCATBYPASS=Y rspconfig $noderange alert=en\n";
     my $result = `XCATBYPASS=Y rspconfig $noderange alert=en 2>&1`;
     if ($?) {
-       xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n");
-       $ret_text .= "Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n";
+	$ret_val=1;
+	xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n");
+	$ret_text .= "Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n";
     }
   } else {
     #setup the snmp destination
@@ -596,8 +621,9 @@ sub configMPA {
         print "XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1]\n";
         my $result2 = `XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1] 2>&1`;
         if ($?) {
-          xCAT::MsgUtils->message('S', "[mon]: Changing SNMP destination for Blade Center MM $nr2:\n  $result2\n");
-          $ret_text .= "Changing SNMP destination for Blade Center MM $nr2:\n  $result2\n";  
+	    $ret_val=1;
+	    xCAT::MsgUtils->message('S', "[mon]: Changing SNMP destination for Blade Center MM $nr2:\n  $result2\n");
+	    $ret_text .= "Changing SNMP destination for Blade Center MM $nr2:\n  $result2\n";  
         }
       }
     }
@@ -616,6 +642,191 @@ sub configMPA {
 
 
 #--------------------------------------------------------------------------------
+=head3    configSwitch
+      This function configures switches to setup the snmp destination, enable/disable
+    alerts. 
+    Arguments:
+      actioon -- 0 disable alert (called mon monstop). 
+                 1 enable alert. (called by monstart)
+                 2 setup snmp destination (called by moncfg)
+                 3 remove the snmp destination (called by mondecfg)
+    p_nodes -- a pointer to an arrays of nodes to be monitored. null means all.
+      callback -- the callback pointer for error and status displaying. It can be null.
+    Returns:
+      (return code, message)      
+=cut
+#--------------------------------------------------------------------------------
+sub configSwitch {
+  my $action=shift;
+  my $noderef=shift;
+  my $callback=shift;
+
+  my $ret_text="";
+  my $ret_val=0;
+
+  #the identification of this node
+  my @hostinfo=xCAT::Utils->determinehostname();
+  my $isSV=xCAT::Utils->isServiceNode();
+  my  %iphash=();
+  foreach(@hostinfo) {$iphash{$_}=1;}
+  if (!$isSV) { $iphash{'noservicenode'}=1;}
+ 
+  my $pPairHash=xCAT_monitoring::monitorctrl->getNodeMonServerPair($noderef, 0);
+  if (ref($pPairHash) eq 'ARRAY') { 
+      if ($callback) {
+	  my $rsp={};
+	  if ($ret_val) {
+	      $rsp->{data}->[0]=$pPairHash->[1];
+	  } 
+	  $callback->($rsp);
+      } else {
+	  xCAT::MsgUtils->message('S', "[mon]: " . $pPairHash->[1]);
+      } 
+      return (0, "");
+  }
+
+    
+  my @node_a=();
+  my $table=xCAT::Table->new('switches',-create=>0);
+  if ($table) {
+      my @tmp1=$table->getAllAttribs(('switch'));
+      if (defined(@tmp1) && (@tmp1 > 0)) {
+	  foreach(@tmp1) {
+	      my @switches_tmp=noderange($_->{switch});
+	      if (@switches_tmp==0) { push @switches_tmp, $_->{switch}; } 
+	      foreach my $node (@switches_tmp) {
+		  if (! exists($pPairHash->{$node})) {next;}
+		  my $pairs=$pPairHash->{$node};
+		  my @a_temp=split(':',$pairs); 
+		  my $monserver=$a_temp[0];
+		  my $master=$a_temp[1];
+		  
+		  if ($monserver) { 
+		      if (!$iphash{$monserver}) { next;} #skip if has sn but not localhost
+		  } else { 
+		      if ($isSV) { next; } #skip if does not have sn but localhost is a sn
+		  }
+		  
+		  push(@node_a, $node);
+	      } #foreach
+	  }
+	  $table->close();
+      }
+  }
+
+  if (@node_a==0){ return ($ret_val, $ret_text);} #nothing to handle
+  print "configSwitch: node_a=@node_a\n";
+
+  #now doing the real thing: enable PEF alert policy table
+  foreach my $noderange (@node_a) {
+      $ret_val=0;
+      $ret_text = "";
+      if ($action==0) {
+	  print "XCATBYPASS=Y rspconfig $noderange alert=dis\n";
+	  my $result = `XCATBYPASS=Y rspconfig $noderange alert=dis 2>&1`;
+	  if (($result =~ /Error:/) || ($?)) {
+	      $ret_val=1;
+	      xCAT::MsgUtils->message('S', "[mon]: Disabling SNMP alert for switches $noderange:\n  $result\n");
+	      $ret_text .= "Disabling SNMP alert.\n  $result\n";
+	  } 
+      } elsif ($action==1) {
+	  print "XCATBYPASS=Y rspconfig $noderange alert=en\n";
+	  my $result = `XCATBYPASS=Y rspconfig $noderange alert=en 2>&1`;
+	  if (($result =~ /Error:/) || ($?)) {
+	      $ret_val=1;
+	      xCAT::MsgUtils->message('S', "[mon]: Enabling SNMP alert for switches $noderange:\n  $result\n");
+	      $ret_text .= "Enabling SNMP alert.\n  $result\n";
+	  } 
+      } elsif ($action==2) {
+	  print "XCATBYPASS=Y rspconfig $noderange sshcfg\n";
+	  my $result = `XCATBYPASS=Y rspconfig $noderange sshcfg 2>&1`;
+	  if ($result !~ /enabled/) {
+	      print "XCATBYPASS=Y rspconfig $noderange sshcfg=en\n";
+	      my $result = `XCATBYPASS=Y rspconfig $noderange sshcfg=en 2>&1`;
+	      if (($result =~ /Error:/) || ($?)) {
+		  $ret_val=1;
+		  xCAT::MsgUtils->message('S', "[mon]: Setting up SSH for switches $noderange:\n  $result\n");
+		  $ret_text .= "Setting up SSH.\n  $result\n";
+	      }
+	  } else {
+	      print "XCATBYPASS=Y rspconfig $noderange snmpcfg\n";
+	      my $result = `XCATBYPASS=Y rspconfig $noderange snmpcfg 2>&1`;
+	      if ($result !~ /enabled/) {
+		  print "XCATBYPASS=Y rspconfig $noderange snmpcfg=en\n";
+		  my $result = `XCATBYPASS=Y rspconfig $noderange snmpcfg=en 2>&1`;
+		  if (($result =~ /Error:/) || ($?)) {
+		      $ret_val=1;
+		      xCAT::MsgUtils->message('S', "[mon]: Enabling SNMP for switches $noderange:\n  $result\n");
+		      $ret_text .= "Enabling SNMP.\n  $result\n";
+		  }
+	      } else {
+		  #setup the snmp destination
+		  my $pairs=$pPairHash->{$noderange};
+		  my @a_temp=split(':',$pairs); 
+		  my $monserver=$a_temp[0];
+		  my $master=$a_temp[1];
+		  my @tmp_a=xCAT::Utils::toIP($master);
+		  my $ptmp=$tmp_a[0];
+		  if ($ptmp->[0]>0) {
+		      xCAT::MsgUtils->message('S', "[mon]: Converting to IP: $ptmp->[1]\n"); 
+		      $ret_val=1;
+		      $ret_text .= "Converting to IP: $ptmp->[1]\n";
+		  } else {
+		      print "XCATBYPASS=Y rspconfig $noderange snmpdest=$ptmp->[1]\n";
+		      my $result = `XCATBYPASS=Y rspconfig $noderange snmpdest=$ptmp->[1] 2>&1`;
+		      if (($result =~ /Error:/) || ($?)) {
+			  $ret_val=1;
+			  xCAT::MsgUtils->message('S', "[mon]: Changing SNMP destination for switches $noderange:\n  $result\n");
+			  $ret_text .= "Changing SNMP destination\n  $result\n";
+		      }
+		  }
+	      }
+	  }
+	  
+      } elsif ($action==3) {
+	  #remove the snmp destination
+	  my $pairs=$pPairHash->{$noderange};
+	  my @a_temp=split(':',$pairs); 
+	  my $monserver=$a_temp[0];
+	  my $master=$a_temp[1];
+	  my @tmp_a=xCAT::Utils::toIP($master);
+	  my $ptmp=$tmp_a[0];
+	  if ($ptmp->[0]>0) {
+	      xCAT::MsgUtils->message('S', "[mon]: Converting to IP: $ptmp->[1]\n"); 
+	      $ret_val=1;
+	      $ret_text .= "Converting to IP: $ptmp->[1]\n";
+	  } else {
+	      print "XCATBYPASS=Y rspconfig $noderange snmpdest=$ptmp->[1] remove\n";
+	      my $result = `XCATBYPASS=Y rspconfig $noderange snmpdest=$ptmp->[1] remove 2>&1`;
+	      if (($result =~ /Error:/) || ($?)) {
+		  $ret_val=1;
+		  xCAT::MsgUtils->message('S', "[mon]: Removing SNMP destination for switches $noderange:\n  $result\n");
+		  $ret_text .= "Removing SNMP destination\n  $result\n";
+	      }
+	  }
+      }      
+
+      if ($callback) {
+	  my $rsp={};
+	  if ($ret_val) {
+	      $rsp->{data}->[0]="$noderange: $ret_text";
+	  } else {
+	      $rsp->{data}->[0]="$noderange: done.\n $ret_text" 
+	  }
+	  $callback->($rsp);
+      } 
+  }
+
+ 
+
+  return ($ret_val, $ret_text);
+  
+}
+
+
+
+
+#--------------------------------------------------------------------------------
 =head3    configSNMP
       This function puts xcat_traphanlder into the snmptrapd.conf file and
       restarts the snmptrapd with the new configuration.
@@ -626,6 +837,7 @@ sub configMPA {
 =cut
 #--------------------------------------------------------------------------------
 sub configSNMP {
+    print "configSNMP called \n";
   my $isSN=xCAT::Utils->isServiceNode();
   my $master=xCAT::Utils->get_site_Master();
   my $cmd;
@@ -908,6 +1120,32 @@ sub getNodesMonServers
     }
     $table->close();
   }
+
+  #check swithes
+  my $table=xCAT::Table->new('switches',-create=>0);
+  if ($table) {
+      my @tmp1=$table->getAllAttribs(('switch'));
+      if (defined(@tmp1) && (@tmp1 > 0)) {
+	  foreach(@tmp1) {
+	      my @switches_tmp=noderange($_->{switch});
+	      if (@switches_tmp==0) { push @switches_tmp, $_->{switch}; } 
+	      foreach my $node (@switches_tmp) {
+		  if (! exists($pPairHash->{$node})) {next;}
+		  my $pairs=$pPairHash->{$node};
+		  
+		  if (exists($ret->{$pairs})) {
+		      my $pa=$ret->{$pairs};
+		      push(@$pa, $node);
+		  }
+		  else {
+		      $ret->{$pairs}=[$node];
+		  }
+	      }
+	  }
+      }
+      $table->close();
+  }
+
 
   return $ret;
 }
