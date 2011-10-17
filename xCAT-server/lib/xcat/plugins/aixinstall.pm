@@ -751,9 +751,160 @@ sub nimnodeset
     foreach my $node (@nodelist)
     {
 
+        # set the NIM machine type
+        my $type = "standalone";
+        if ($imagehash{$image_name}{nimtype})
+        {
+            $type = $imagehash{$image_name}{nimtype};
+        }
+        chomp $type;
+
         # get the image name to use for this node
         my $image_name = $nodeosi{$node};
         chomp $image_name;
+
+
+        # define the node if it doesn't exist
+        if (!grep(/^$node$/, @machines))
+        {
+
+            # get, check the node IP
+            # TODO - need IPv6 update
+            #my $IP = inet_ntoa(inet_aton($node));
+            my $IP = xCAT::NetworkUtils->getipaddr($node);
+            chomp $IP;
+
+            unless (($IP =~ /\d+\.\d+\.\d+\.\d+/) || ($IP =~ /:/))
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "$Sname: Could not get valid IP address for node $node.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                $error++;
+                push(@nodesfailed, $node);
+                next;
+            }
+
+            # could be diskful
+            # mask, gateway, cosi, root, dump, paging
+            # TODO - need to fix this check for shared_root
+            if (   !$nethash{$node}{'mask'}
+                || !$nethash{$node}{'gateway'}
+                || !$imagehash{$image_name}{spot})
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "$Sname: Missing required information for node \'$node\'.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                $error++;
+                push(@nodesfailed, $node);
+                next;
+            }
+
+            # set some default values
+            # overwrite with cmd line values - if any
+            my $speed  = "100";
+            my $duplex = "full";
+            if ($attrs{duplex})
+            {
+                $duplex = $attrs{duplex};
+            }
+            if ($attrs{speed})
+            {
+                $speed = $attrs{speed};
+            }
+
+            # define the node
+            my $mac_or_local_link_addr;
+            my $adaptertype;
+            my $netmask;
+            my $if = 1;
+            my $netname;
+
+            # need a short hostname to define in NIM
+            my $nodeshorthost;
+            ($nodeshorthost = $node) =~ s/\..*$//;
+            chomp $nodeshorthost;
+
+            my $nim_name = $nodeshorthost;
+
+            # Use -F to workaround ping time during diskless node defined in nim
+            my $defcmd = "/usr/sbin/nim -Fo define -t $type ";
+
+            $objhash{$node}{'mac'} =~ s/://g;    # strip out colons if any
+            my @macs = split /\|/, $objhash{$node}{'mac'};
+            foreach my $mac (@macs)
+            {
+
+                if (xCAT::NetworkUtils->getipaddr($nodeshorthost) =~ /:/) #ipv6 node
+                {
+                    $mac_or_local_link_addr = xCAT::NetworkUtils->linklocaladdr($mac);
+                    $adaptertype = "ent6";
+                    $netmask = xCAT::NetworkUtils->prefixtomask($nethash{$node}{'mask'});
+                } else {
+                    $mac_or_local_link_addr = $mac;
+                    # only support Ethernet for management interfaces
+                    if ($nethash{$node}{'mgtifname'} =~ /hf/)
+                    {
+                        $adaptertype = "hfi0";
+                    } else {
+                        $adaptertype = "ent";
+                    }
+                    $netmask = $nethash{$node}{'mask'};
+                }
+
+                $netname = $nethash{$node}{'netname'};
+
+                if ($::NEWNAME)
+                {
+                    $defcmd .= "-a if$if='find_net $nodeshorthost 0' ";
+                } else
+                {
+                    $defcmd .=
+                          "-a if$if='find_net $nodeshorthost $mac_or_local_link_addr $adaptertype' ";
+                }
+
+                $defcmd .= "-a cable_type$if=N/A ";
+                $if = $if + 1;
+            }
+
+            $defcmd .= "-a netboot_kernel=mp ";
+
+            if ($nethash{$node}{'mgtifname'} !~ /hf/)
+            {
+                $defcmd .=
+                    "-a net_definition='$adaptertype $netmask $nethash{$node}{'gateway'}' ";
+                $defcmd .= "-a net_settings1='$speed $duplex' ";
+            }
+
+            $defcmd .= "$nim_name  2>&1";
+            if ($::VERBOSE)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "$Sname: Creating NIM node definition.\n";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            } else {
+                               my $rsp;
+                               push @{$rsp->{data}}, "$Sname: Creating NIM client definition \'$nim_name.\'\n";
+                               xCAT::MsgUtils->message("I", $rsp, $callback);
+                       }
+            my $output = xCAT::Utils->runcmd("$defcmd", -1);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "$Sname: Could not create a NIM definition for \'$nim_name\'.\n";
+                if ($::VERBOSE)
+                {
+                    push @{$rsp->{data}}, "$output";
+                }
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                $error++;
+                push(@nodesfailed, $node);
+                next;
+            }
+        }
+
 
         # check if node is in ready state
         my $shorthost;
@@ -809,14 +960,6 @@ sub nimnodeset
             }
         }
 
-        # set the NIM machine type
-        my $type = "standalone";
-        if ($imagehash{$image_name}{nimtype})
-        {
-            $type = $imagehash{$image_name}{nimtype};
-        }
-        chomp $type;
-
         if (!($type =~ /standalone/))
         {
 
@@ -843,7 +986,13 @@ sub nimnodeset
         my $nim_name;
         ($nim_name = $node) =~ s/\..*$//;
         chomp $nim_name;
-        if (!grep(/^$nim_name$/, @machines))
+
+        # read machines again to make sure they have been defined 
+        my $cmd =
+          qq~/usr/sbin/lsnim -c machines | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
+        my @updatedmachines = xCAT::Utils->runcmd("$cmd", -1);
+
+        if (!grep(/^$nim_name$/, @updatedmachines))
         {
             my $rsp;
             push @{$rsp->{data}},
@@ -865,7 +1014,6 @@ sub nimnodeset
 
         foreach my $restype (sort(keys %{$imagehash{$image_name}}))
         {
-
             # restype is res type (spot, script etc.)
             # resname is the name of the resource (61spot etc.)
             my $resname = $imagehash{$image_name}{$restype};
@@ -1518,12 +1666,12 @@ sub spot_updates
             }
 
 
-	    if ( $SRname ) {
 			# if there is a shared_root then remove that also
 			#   - see if the shared_root exist and if it is allocated
-			my $alloc_count = xCAT::InstUtils->get_nim_attr_val($SRname, "alloc_count", $callback, $sn, $subreq);
+            if ( $SRname ) {
+	        my $alloc_count = xCAT::InstUtils->get_nim_attr_val($SRname, "alloc_count", $callback, $sn, $subreq);
 
-			if (defined($alloc_count)) {  # then the res exists
+		if (defined($alloc_count)) {  # then the res exists
  				if ($alloc_count != 0) {
                 	my $rsp;
                 	push @{$rsp->{data}}, "The resource named \'$SRname\' is currently allocated on service node \'$sn\' and cannot be removed.\n";
@@ -1534,7 +1682,7 @@ sub spot_updates
 
                 	# shared_root  exists and is not allocated
                 	#  so it can be removed 
-					if ($::VERBOSE)
+	            if ($::VERBOSE)
             		{
                 		my $rsp;
                 		$rsp->{data}->[0] =
@@ -1550,7 +1698,7 @@ sub spot_updates
                			push @{$rsp->{data}}, "Could not remove \'$SRname\' from service node $sn.\n";
                 		xCAT::MsgUtils->message("E", $rsp, $callback);
             		}
-				}
+                    }
 		}
             }
         }
