@@ -1518,6 +1518,7 @@ sub spot_updates
             }
 
 
+	    if ( $SRname ) {
 			# if there is a shared_root then remove that also
 			#   - see if the shared_root exist and if it is allocated
 			my $alloc_count = xCAT::InstUtils->get_nim_attr_val($SRname, "alloc_count", $callback, $sn, $subreq);
@@ -1550,6 +1551,7 @@ sub spot_updates
                 		xCAT::MsgUtils->message("E", $rsp, $callback);
             		}
 				}
+		}
             }
         }
     } # end UPDATE
@@ -2562,15 +2564,15 @@ sub mknimimage
     {
 
         # don't update spot unlees it is for diskless/dataless
-        if ($imagedef{$::image_name}{nimtype} eq "standalone")
-        {
-            my $rsp;
-            push @{$rsp->{data}},
-              "The \'-u\' option is only valid for diskless and dataless nodes.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            &mknimimage_usage($callback);
-            return 1;
-        }
+#        if ($imagedef{$::image_name}{nimtype} eq "standalone")
+#        {
+#            my $rsp;
+#            push @{$rsp->{data}},
+#              "The \'-u\' option is only valid for diskless and dataless nodes.\n";
+#            xCAT::MsgUtils->message("E", $rsp, $callback);
+#            &mknimimage_usage($callback);
+#            return 1;
+#        }
 
         # if it doesn't exist we can't update it!
         if (!$is_defined)
