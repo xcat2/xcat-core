@@ -3,3 +3,4 @@ LICENSE.html opt/xcat/share/doc/packages/xCAT
 postscripts/* install/postscripts/
 prescripts/* install/prescripts/
 templates/* opt/xcat/share/xcat/templates/
+xCATMN etc/

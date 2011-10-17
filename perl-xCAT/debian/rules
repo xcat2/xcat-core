@@ -14,7 +14,7 @@ export DH_COMPAT=5
 
 build:
 	dh_testdir
-	./modifyUtils 2.5.0
+	./modifyUtils `cat ../Version`
 	./db2man
 
 clean:
