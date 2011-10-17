@@ -679,20 +679,6 @@ sub nimnodeset
     # don't fail - maybe just don't have any defined!
 
     #
-    #  Get a list of all nim resource types
-    #
-    $cmd =
-      qq~/usr/sbin/lsnim -P -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
-    @nimrestypes = xCAT::Utils->runcmd("$cmd", -1);
-    if ($::RUNCMD_RC != 0)
-    {
-        my $rsp;
-        push @{$rsp->{data}}, "$Sname: Could not get NIM resource types.";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return 1;
-    }
-
-    #
     # get all the image names needed and make sure they are defined on the
     # local server
     #
@@ -767,6 +753,20 @@ sub nimnodeset
         xCAT::MsgUtils->message("E", $rsp, $callback);
     }
     my %resolv_conf_hash = %{$RChash};
+
+    #
+    #  Get a list of all nim resource types
+    #
+    $cmd =
+      qq~/usr/sbin/lsnim -P -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
+    @nimrestypes = xCAT::Utils->runcmd("$cmd", -1);
+    if ($::RUNCMD_RC != 0)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "$Sname: Could not get NIM resource types.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
 
     $error = 0;
     foreach my $node (@nodelist)
