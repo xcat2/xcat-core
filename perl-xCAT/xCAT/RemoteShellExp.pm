@@ -195,7 +195,7 @@ sub remoteshellexp
     if ($ssh_setup_cmd) { # setup ssh on devices
      $rc=xCAT::RemoteShellExp->senddeviceskeys($remoteshell,$remotecopy,$to_userid,$to_user_password,$home,$ssh_setup_cmd,$nodes);
     } else {  #setup ssh on nodes
-     $rc=xCAT::RemoteShellExp->sendnodeskeys($remoteshell,$remotecopy,$to_userid,$to_user_password,$home,$ssh_setup_cmd,$nodes);
+     $rc=xCAT::RemoteShellExp->sendnodeskeys($remoteshell,$remotecopy,$to_userid,$to_user_password,$home,$nodes);
     } 
   }
   # test ssh setup on the node

@@ -27,6 +27,7 @@ use Symbol;
 use Digest::SHA1 qw/sha1/;
 use IPC::Open3;
 use IO::Select;
+use xCAT::RemoteShellExp;
 use warnings "all";
 require xCAT::InstUtils;
 require xCAT::NetworkUtils;
@@ -1617,21 +1618,21 @@ sub setupSSH
         $to_userid = $ENV{'DSH_TO_USERID'};
     }
 
-    if ($::XCATROOT)
-    {
-        $::REMOTESHELL_EXPECT = "$::XCATROOT/sbin/remoteshell.expect";
-    }
-    else
-    {
-        $::REMOTESHELL_EXPECT = "/opt/xcat/sbin/remoteshell.expect";
-    }
-    $::REMOTE_SHELL = "/usr/bin/ssh";
+    #if ($::XCATROOT)
+    #{
+    #    $::REMOTESHELL_EXPECT = "$::XCATROOT/sbin/remoteshell.expect";
+    #}
+    #else
+    #{
+    #    $::REMOTESHELL_EXPECT = "/opt/xcat/sbin/remoteshell.expect";
+    #}
 
     #
     # if we are running as root
     # for non-root users, keys were generated in the xdsh client code
     #
 
+    $::REMOTE_SHELL = "/usr/bin/ssh";
     my $rsp = {};
 
     # Get the home directory
@@ -1648,13 +1649,12 @@ sub setupSSH
         }
 
         # generates new keys for root, if they do not already exist
-        xCAT::Utils->runcmd("$::REMOTESHELL_EXPECT -k", 0);
-        if ($::RUNCMD_RC != 0)
-        {    # error
+        my $rc=
+     xCAT::RemoteShellExp->remoteshellexp("k",$::CALLBACK,$::REMOTE_SHELL);
+       if ($rc != 0) {
             $rsp->{data}->[0] = "remoteshell.expect failed generating keys.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-
-        }
+       }
     }
     
     # build the shell copy script, needed Perl not always there
@@ -1742,9 +1742,8 @@ rmdir \"/tmp/$to_userid\"";
       if ($enablenodes) {  # node on list to setup nodetonodessh
          chop $enablenodes;  # remove last comma
          $ENV{'DSH_ENABLE_SSH'} = "YES";
-         $cmd = "$::REMOTESHELL_EXPECT -s $enablenodes";
-         my $rc  = system("$cmd") >> 8;
-         if ($rc)
+         my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$::CALLBACK,"/usr/bin/ssh",$enablenodes);
+         if ($rc != 0)
          {
           $rsp->{data}->[0] = "remoteshell.expect failed sending keys to enablenodes.";
           xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -1753,9 +1752,8 @@ rmdir \"/tmp/$to_userid\"";
       }
       if ($disablenodes) {  # node on list to setup nodetonodessh
          chop $disablenodes;  # remove last comma
-         $cmd = "$::REMOTESHELL_EXPECT -s $disablenodes";
-         my $rc  = system("$cmd") >> 8;
-         if ($rc)
+         my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$::CALLBACK,"/usr/bin/ssh",$disablenodes);
+         if ($rc != 0)
          {
           $rsp->{data}->[0] = "remoteshell.expect failed sending keys to disablenodes.";
           xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -1764,9 +1762,8 @@ rmdir \"/tmp/$to_userid\"";
       }
     } else { # from user is not root or it is a device , always send private key
        $ENV{'DSH_ENABLE_SSH'} = "YES";
-       my $cmd = "$::REMOTESHELL_EXPECT -s $n_str";
-       my $rc  = system("$cmd") >> 8;
-       if ($rc)
+       my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$::CALLBACK,"/usr/bin/ssh",$n_str);
+       if ($rc != 0)
        {
            $rsp->{data}->[0] = "remoteshell.expect failed sending keys.";
            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -1778,11 +1775,9 @@ rmdir \"/tmp/$to_userid\"";
     my @testnodes=  split(",", $nodes[0]);
     foreach my $n (@testnodes)
     {
-        my $cmd    = "$::REMOTESHELL_EXPECT -t $::REMOTE_SHELL $n ";
-        my @cmdout = `$cmd 2>&1`;
-        chomp(@cmdout);    # take the newline off
-        my $rc = $? >> 8;
-        if ($rc)
+       my $rc=
+     xCAT::RemoteShellExp->remoteshellexp("t",$::CALLBACK,"/usr/bin/ssh",$n);
+        if ($rc != 0)
         {
             push @badnodes, $n;
         }
@@ -3636,12 +3631,7 @@ sub get_ServiceNode
 
     if ($request eq "MN")
     {
-       if( $onlymaster == 1) {
-            $snattribute = "xcatmaster";
-	    } else {
-	        $snattribute = "servicenode";
-	    }
-
+       $snattribute = "servicenode";
 
     }
     else    # Node
