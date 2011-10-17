@@ -48,6 +48,7 @@ my %modules = (
         rscan     => { hmc    => "xCAT::PPCscan",
                        fsp    => "xCAT::FSPscan",
                        cec    => "xCAT::FSPscan",
+		        ivm    => "xCAT::PPCscan",
                        },
         mkvm      => { hmc    => "xCAT::PPCvm",
                        fsp    => "xCAT::FSPvm",
