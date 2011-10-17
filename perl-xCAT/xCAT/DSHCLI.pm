@@ -3755,7 +3755,7 @@ sub parse_and_run_dsh
         #  This is checked for in the client code.
         #  DSH_REMOTE_PASSWORD env variable must be set to the correct
         #  password for the key update.  This was setup in xdsh client
-        #  frontend.  remoteshell.expect depends on this
+        #  frontend.  
 
         if (!($ENV{'DSH_REMOTE_PASSWORD'}))
         {

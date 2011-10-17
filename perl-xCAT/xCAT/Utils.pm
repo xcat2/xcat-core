@@ -1618,14 +1618,6 @@ sub setupSSH
         $to_userid = $ENV{'DSH_TO_USERID'};
     }
 
-    #if ($::XCATROOT)
-    #{
-    #    $::REMOTESHELL_EXPECT = "$::XCATROOT/sbin/remoteshell.expect";
-    #}
-    #else
-    #{
-    #    $::REMOTESHELL_EXPECT = "/opt/xcat/sbin/remoteshell.expect";
-    #}
 
     #
     # if we are running as root
@@ -1652,7 +1644,7 @@ sub setupSSH
         my $rc=
      xCAT::RemoteShellExp->remoteshellexp("k",$::CALLBACK,$::REMOTE_SHELL);
        if ($rc != 0) {
-            $rsp->{data}->[0] = "remoteshell.expect failed generating keys.";
+            $rsp->{data}->[0] = "remoteshellexp failed generating keys.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
        }
     }
@@ -1745,7 +1737,7 @@ rmdir \"/tmp/$to_userid\"";
          my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$::CALLBACK,"/usr/bin/ssh",$enablenodes);
          if ($rc != 0)
          {
-          $rsp->{data}->[0] = "remoteshell.expect failed sending keys to enablenodes.";
+          $rsp->{data}->[0] = "remoteshellexp failed sending keys to enablenodes.";
           xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
           }
@@ -1755,7 +1747,7 @@ rmdir \"/tmp/$to_userid\"";
          my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$::CALLBACK,"/usr/bin/ssh",$disablenodes);
          if ($rc != 0)
          {
-          $rsp->{data}->[0] = "remoteshell.expect failed sending keys to disablenodes.";
+          $rsp->{data}->[0] = "remoteshellexp failed sending keys to disablenodes.";
           xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
          }
@@ -1765,7 +1757,7 @@ rmdir \"/tmp/$to_userid\"";
        my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$::CALLBACK,"/usr/bin/ssh",$n_str);
        if ($rc != 0)
        {
-           $rsp->{data}->[0] = "remoteshell.expect failed sending keys.";
+           $rsp->{data}->[0] = "remoteshellexp failed sending keys.";
            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
        }
