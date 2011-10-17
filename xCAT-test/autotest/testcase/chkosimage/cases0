@@ -1,0 +1,44 @@
+start:chkosimage_h
+description:chkosimage -h and --help
+os:AIX
+cmd:chkosimage -h
+check:output=~usage|Usage
+cmd:chkosimage --help
+check:output=~usage|Usage
+end
+
+
+start:chkosimage_imagename
+description: chkosimage autotest
+os:AIX
+cmd:mknimimage -V -s $$SOURCE autotest
+check:rc==0
+cmd:lsnim | grep autotest
+check:rc==0
+check:output=~lpp_source
+check:output=~spot
+check:output=~bosinst_data
+cmd:nim -o update -a packages=all -a source=$$SSHPKG autotest_lpp_source
+check:rc==0
+cmd:mkdir -p /install/nim/installp_bundle
+cmd:cp $$SSHPKG/xCATaixCN71.bnd /install/nim/installp_bundle/
+check:rc==0
+cmd:nim -o define -t installp_bundle -a server=master -a location=/install/nim/installp_bundle/xCATaixCN71.bnd xCATaixCN71
+cmd:chdef -t osimage -o autotest installp_bundle="xCATaixCN71"
+check:rc==0
+cmd:chkosimage autotest
+check:rc==0
+end
+
+start:chkosimage_V_c_imagename
+description:chkosimage -V -c autotest
+os:AIX
+cmd:lsnim | grep autotest
+check:rc==0
+check:output=~lpp_source
+check:output=~spot
+check:output=~bosinst_data
+cmd:chkosimage -V -c autotest
+check:rc==0
+end
+

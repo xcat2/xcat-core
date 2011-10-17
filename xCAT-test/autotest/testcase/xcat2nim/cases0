@@ -1,0 +1,48 @@
+start:xcat2nim_h
+description:xcat2nim -h and --help
+os:AIX
+cmd:xcat2nim -h 
+check:output=~usage|Usage
+cmd:xcat2nim --help
+check:output=~usage|Usage
+end
+
+
+start:xcat2nim_t_f_o_V_att
+description:xcat2nim -f -t node -o CN -V att=
+os:AIX
+cmd:xcat2nim -t node -f -o $$CN -V netboot_kernel=mp
+check:rc==0
+cmd:lsnim -l $$CN
+check:output=~netboot_kernel = mp
+cmd:xcat2nim -t node -f -o $$CN -V 
+end
+
+
+start:xcat2nim_l
+description:xcat2nim -l CN
+os:AIX
+cmd:xcat2nim -l $$CN
+check:rc==0
+check:output=~$$CN:
+end
+
+start:xcat2nim_r
+description:xcat2nim -r CN
+os:AIX
+cmd:xcat2nim -r $$CN
+check:rc==0
+cmd:lsnim
+check:output!~$$CN
+cmd:xcat2nim -t node -o $$CN
+end
+
+start:xcat2nim_u
+description:xcat2nim -u CN
+os:AIX
+cmd:lsnim
+check:output=~$$CN
+cmd:xcat2nim -u $$CN
+check:rc==0
+end
+
