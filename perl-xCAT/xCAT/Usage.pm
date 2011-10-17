@@ -69,7 +69,8 @@ my %usage = (
     PPC specific(with HMC):
        rinv <noderange> [bus|config|serial|model|firm|all]
     PPC specific(using Direct FSP Management):
-       rinv <noderange> [firm|deconfig]
+       rinv <noderange> [firm]
+       rinv <noderange> [deconfig [-x]]
     Blade specific:
        rinv <noderange> [mtm|serial|mac|bios|diag|mprom|mparom|firm|all]
     VMware specific:
@@ -140,6 +141,10 @@ my %usage = (
        rspconfig <noderange> [pending_power_on_side=<temp|perm>]
        rspconfig <noderange> [cec_off_policy]
        rspconfig <noderange> [cec_off_policy=<poweroff|stayon>]
+       rspconfig <noderange> [BSR]
+       rspconfig <noderange> [setup_failover]
+       rspconfig <noderange> [setup_failover=<enable|disable>]
+       rspconfig <noderange> [force_failover]
        rspconfig <noderange> --resetnet
    BPA/Frame (using Direct FSP Management)specific:
        rspconfig <noderange> HMC_passwd=<currentpasswd,newpasswd>
