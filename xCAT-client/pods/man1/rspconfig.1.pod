@@ -181,12 +181,31 @@ B<rspconfig> I<noderange> B<sshcfg>={B<enable>|B<disable>}
 
 B<rspconfig> I<noderange> B<--resetnet>
 
+=head2 Switch specific:
+
+(only Mellanox IB switch is supported for this command now)
+
+B<rspconfig> I<noderange> {B<sshcfg>|B<alert>|B<snmpcfg>|B<snmpdest>|B<community>|B<logdest>}
+
+B<rspconfig> I<noderange> B<sshcfg>={B<enable>|B<disable>}
+
+B<rspconfig> I<noderange> B<alert>={B<on>|B<enable>|B<off>|B<disable>}
+
+B<rspconfig> I<noderange> B<snmpcfg>={B<on>|B<enable>|B<off>|B<disable>} 
+
+B<rspconfig> I<noderange> B<snmpdest>=I<IP> [B<remove>]
+
+B<rspconfig> I<noderange> B<community>={B<public>|I<string>}
+
+B<rspconfig> I<noderange> B<logdest>=I<IP> [B<emerg>|B<alert>|B<crit>|B<err>|B<warning>|B<notice>|B<info>|B<debug>|B<none>|B<remove>]
+
 =head1 DESCRIPTION
 
 B<rspconfig> configures various settings in the nodes' service processors.  If only a keyword is
 specified, without the B<=>, it displays the current value.
 
-For options B<autopower>|B<iocap>|B<dev>|B<celogin1>|B<decfg>|B<memdecfg>|B<procdecfg>|B<time>|B<date>|B<spdump>|B<sysdump>|B<network>, user need to use I<chdef -t site enableASMI=yes> to enable ASMI first. For options B<dev>|B<celogin1>, user also need to access I<http://w3.pok.ibm.com/organization/prodeng/pw/> to get the dynamic password for 'celogin' and put it in passwd table. After completed the command, user should use I<chdef -t site enableASMI=no> to disable ASMI.
+For options B<autopower>|B<iocap>|B<dev>|B<celogin1>|B<decfg>|B<memdecfg>|B<procdecfg>|B<time>|B<date>|B<spdump>|B<sysdump>|B<network>, user needs to use I<chdef -t site enableASMI=yes> to enable ASMI first. For options B<dev>|B<celogin1>, user also need to access I<http://w3.pok.ibm.com/organization/prodeng/pw/> to get the dynamic password for 'celogin' and put it in passwd table. After completed the command, user should use I<chdef -t site enableASMI=no> to disable ASMI.
+ 
 
 =head1 OPTIONS
 
