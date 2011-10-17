@@ -18,6 +18,7 @@ use Getopt::Long;
 require xCAT::MsgUtils;
 require xCAT::DSHCLI;
 use xCAT::Utils;
+use xCAT::RemoteShellExp;
 require xCAT::Client;
 my $bname = basename($0);
 
@@ -426,25 +427,16 @@ sub parse_args_xdsh
         #
         if ($current_userid ne "root")
         {
-            if ($::XCATROOT)
-            {
-                $::REMOTESHELL_EXPECT = "$::XCATROOT/sbin/remoteshell.expect";
-            }
-            else
-            {
-                $::REMOTESHELL_EXPECT = "/opt/xcat/sbin/remoteshell.expect";
-            }
-            $::REMOTE_SHELL = "/usr/bin/ssh";
+             $::REMOTE_SHELL = "/usr/bin/ssh";
+             my $callback = \&xCAT::Client::handle_response;
+             # generates new keys for non-root id, if they do not already exist
+             my $rc=
+             xCAT::RemoteShellExp->remoteshellexp("k",$callback,$::REMOTE_SHELL);
+             if ($rc != 0) {
+               $msg = "remoteshellexp failed generating keys.";
+               xCAT::MsgUtils->message("E", $msg);
+             }
 
-            # generates new keys, if they do not already exist
-            xCAT::Utils->runcmd("$::REMOTESHELL_EXPECT -k", 0);
-            if ($::RUNCMD_RC != 0)
-            {    # error
-                $msg = "remoteshell.expect failed generating keys.";
-                xCAT::MsgUtils->message("E", $msg);
-                exit 2;
-
-            }
 
         }
     }    # end setup of ssh
