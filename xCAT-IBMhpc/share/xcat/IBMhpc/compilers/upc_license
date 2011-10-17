@@ -1,0 +1,46 @@
+#!/bin/sh
+
+# 
+# Sample script to accept licenses for the IBM upc compilers
+# For AIX:
+#    do nothing, license accepted with installp -Y flag
+# For Linux:
+#    Assumes all compiler software has been installed
+
+
+OS=`uname`
+if [ $OS != "AIX" ]; then
+    cd $installroot/
+    upc_script=`find opt/ibmcmp/upc -name new_install -print`
+
+    if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
+    #  Being run from a stateful install postscript
+       if [ -n "$upc_script" ] ; then
+           # UPC prompts for a minimum of three questions 
+           # on compute nodes and four on login nodes.
+           # You may need modify here accordingly.
+           (echo yes
+            sleep 5
+            echo 1
+            sleep 5
+            echo yes) | $upc_script
+       fi
+    fi
+
+    if [ $NODESETSTATE == "genimage" ]; then
+    # Being called from <image>.postinstall script
+    # Assume we are on the same machine
+       if [ -n "$upc_script" ] ; then
+           # UPC prompts for a minimum of three questions 
+           # on compute nodes and four on login nodes.
+           # You may need modify here accordingly.
+           (echo yes
+            sleep 5
+            echo 1
+            sleep 5
+            echo yes) | chroot $installroot /$upc_script
+       fi
+    fi
+fi  
+
+
