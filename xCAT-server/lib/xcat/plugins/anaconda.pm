@@ -1109,7 +1109,7 @@ sub mkinstall
                 next;
             }
             my $kcmdline =
-                "cmdline utf8 ks=http://"
+                "ks=http://"
               . $ent->{nfsserver}
               . "/install/autoinst/"
               . $node;
@@ -1176,8 +1176,9 @@ sub mkinstall
                         );
                     next;
                 }
+		#go cmdline if serial console is requested, the shiny ansi is just impractical
                 $kcmdline .=
-                    " console=tty0 console=ttyS"
+                    "cmdline console=tty0 console=ttyS"
                   . $sent->{serialport} . ","
                   . $sent->{serialspeed};
                 if ($sent->{serialflow} =~ /(hard|cts|ctsrts)/)
