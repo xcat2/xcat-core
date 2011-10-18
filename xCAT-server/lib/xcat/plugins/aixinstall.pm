@@ -9555,6 +9555,11 @@ sub checkNIMnetworks
                 return 1;
             }
 
+            # add new network to our list - so we don't try to recreate
+			push (@networks, $nethash{$node}{netname});
+			$NIMnets{$nethash{$node}{netname}}{'net_addr'}=$nethash{$node}{net};
+			$NIMnets{$nethash{$node}{netname}}{'snm'}=$nethash{$node}{mask};
+
             #
             # create an interface def (if*) for the master
             #
