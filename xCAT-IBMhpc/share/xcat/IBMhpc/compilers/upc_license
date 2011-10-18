@@ -16,14 +16,7 @@ if [ $OS != "AIX" ]; then
     if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
     #  Being run from a stateful install postscript
        if [ -n "$upc_script" ] ; then
-           # UPC prompts for a minimum of three questions 
-           # on compute nodes and four on login nodes.
-           # You may need modify here accordingly.
-           (echo yes
-            sleep 5
-            echo 1
-            sleep 5
-            echo yes) | $upc_script
+           echo 1 | $upc_script
        fi
     fi
 
@@ -31,14 +24,7 @@ if [ $OS != "AIX" ]; then
     # Being called from <image>.postinstall script
     # Assume we are on the same machine
        if [ -n "$upc_script" ] ; then
-           # UPC prompts for a minimum of three questions 
-           # on compute nodes and four on login nodes.
-           # You may need modify here accordingly.
-           (echo yes
-            sleep 5
-            echo 1
-            sleep 5
-            echo yes) | chroot $installroot /$upc_script
+           echo 1 | chroot $installroot /$upc_script
        fi
     fi
 fi  
