@@ -137,6 +137,7 @@ sub preprocess_request
     my $imagehash;
     my $attrs;
     my $locs;
+    $::MOUNT = "mount";
 
     # get this systems name as known by xCAT management node
     my $Sname = xCAT::InstUtils->myxCATname();
@@ -159,6 +160,7 @@ sub preprocess_request
         if ($nfsv4entry->{value}  =~ /1|Yes|yes|YES|Y|y/)
         { 
             $::NFSv4 = 1;
+            $::MOUNT = "mount -o vers=4";
         }
     }
     $sitetab->close;
@@ -6654,7 +6656,7 @@ sub update_dd_boot
 			# statelite directory to mount
 			SLDIR=`echo \$SLLINE | /usr/bin/awk -F'|' '{print \$3}'`
 
-			mount \${SLSERV}:\${SLDIR} /tmp
+			$::MOUNT \${SLSERV}:\${SLDIR} /tmp
 
 			# - get the persistent version of basecust from the server
 			if [ -f /tmp/\${NIM_NAME}/etc/basecust  ]; then
@@ -6675,7 +6677,7 @@ sub update_dd_boot
 		if [ -n "\${SLDIR}" ]
 		then
 			# need to mount persistent basecust over the one in RAM FS
-			mount -o rw \${SLSERV}:\${SLDIR} /tmp
+			$::MOUNT -o rw \${SLSERV}:\${SLDIR} /tmp
 			/usr/bin/touch /etc/basecust
 			mount /tmp/\${NIM_NAME}/etc/basecust /etc/basecust
 		fi
