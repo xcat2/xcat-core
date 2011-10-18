@@ -2646,7 +2646,7 @@ function loadzVMs(col) {
 			$(this).attr('class', 'ui-state-active');
 		});
 		radio = $('<input type="radio" name="hcp" value="' + hcp + '"/>').css('display', 'none');
-		zvmBlock.append(radio, $('<span><b>Name: </b>' + zvm + '</span>'), $('<span><b>zHCP: </b>' + hcp + '</span>'));
+		zvmBlock.append(radio, $('<span style="font-weight: normal;"><b>' + zvm + '</b> managed by ' + hcp + '</span>'));
 		zvmBlock.children('span').css({
 			'display': 'block',
 			'margin': '5px',
@@ -2690,7 +2690,7 @@ function loadSrvGroups(col) {
 			$(this).attr('class', 'ui-state-active');
 		});
 		radio = $('<input type="radio" name="group" value="' + name + '"/>').css('display', 'none');
-		groupBlock.append(radio, $('<span><b>Name: </b>' + name + '</span>'), $('<span><b>Description: </b>' + desc + '</span>'));
+		groupBlock.append(radio, $('<span style="font-weight: normal;"><b>' + name + '</b>: ' + desc + '</span>'));
 		groupBlock.children('span').css({
 			'display': 'block',
 			'margin': '5px',
@@ -2732,7 +2732,7 @@ function loadOSImages(col) {
 			$(this).attr('class', 'ui-state-active');
 		});
 		radio = $('<input type="radio" name="image" value="' + name + '"/>').css('display', 'none');
-		imgBlock.append(radio, $('<span><b>Name: </b>' + name + '</span>'), $('<span><b>Description: </b>' + desc + '</span>'));
+		imgBlock.append(radio, $('<span style="font-weight: normal;"><b>' + name + '</b>: ' + desc + '</span>'));
 		imgBlock.children('span').css({
 			'display': 'block',
 			'margin': '5px',
