@@ -1150,6 +1150,18 @@ sub addNodes {
 	  }
         }
 
+        #check if hmc node added to management domain successfully
+        my $n = 6;
+        while($n > 0){
+           $result = `/usr/sbin/rsct/bin/rmcdomainstatus -s ctrmc | grep $node`;
+           if ($result =~ /\s$node\s/){
+               last;
+           } else {
+               sleep 10;
+               $n = $n - 1;
+           }
+        }
+
         #define AllServiceableEvents_B condition on the HMC
 	$result=`CT_MANAGEMENT_SCOPE=3 /usr/bin/mkrsrc-api IBM.Condition::Name::"AllServiceableEvents_B"::ResourceClass::"IBM.Sensor"::EventExpression::"String=?\\\"LSSVCEVENTS_ALL%\\\""::SelectionString::"Name=\\\"CSMServiceableEventSensor\\\""::NodeNameList::{\\\"$node\\\"}::EventBatchingInterval::1::BatchedEventRetentionPeriod::72 2>&1`;
 	if (($?) && ($result !~ /2618-201|2618-008|2636-050/)){ 
