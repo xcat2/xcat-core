@@ -3635,7 +3635,11 @@ sub get_ServiceNode
 
     if ($request eq "MN")
     {
-        if( $onlymaster == 1) {
+        #When run mkhwconn/lshwconn/rmhwconn with -T fnm for CNM, it will send the
+        #command from the MN to CEC/Frame direclty, not through the service node if specified.
+        #The $onlymaster is set in preprocess_request() in PPC.pm
+        #It will not affect the others
+        if( defined($onlymaster) && $onlymaster == 1) {
             $snattribute = "xcatmaster";
 	    } else {
 	        $snattribute = "servicenode";
