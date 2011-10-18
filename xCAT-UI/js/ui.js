@@ -770,13 +770,24 @@ function createIFrame(src) {
 	var iframe = $('<iframe></iframe>').attr('src', src).css({
 		'display': 'inline-block',
 		'border': '0px',
-		'margin': '10px 0px',
-		'width': '90%'
+		'margin': '10px 20px',
+		'width': '95%'
 	});
 	
+	var loader = createLoader('iLoader').css({
+		'display': 'inline-block',
+		'margin': '10px 0px'
+	});
+		
 	infoBar.append(icon);
+	infoBar.append(loader);
 	infoBar.append(iframe);
 	infoBar.append(close);
+	
+	// Remove loader when done
+	iframe.load(function() {
+		loader.remove();
+	});
 	
 	return infoBar;
 }
