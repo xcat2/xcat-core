@@ -221,8 +221,8 @@ rm -rf $RPM_BUILD_ROOT
 %ifos linux
 cat << EOF > /etc/profile.d/xcat.sh
 XCATROOT=$RPM_INSTALL_PREFIX0
-PATH=\$PATH:\$XCATROOT/bin:\$XCATROOT/sbin
-MANPATH=\$MANPATH:\$XCATROOT/share/man:
+PATH=\$XCATROOT/bin:\$XCATROOT/sbin:\$PATH
+MANPATH=\$XCATROOT/share/man:\$MANPATH
 export XCATROOT PATH MANPATH
 export PERL_BADLANG=0
 EOF
