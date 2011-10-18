@@ -229,11 +229,11 @@ EOF
 
 cat << EOF > /etc/profile.d/xcat.csh
 setenv XCATROOT "$RPM_INSTALL_PREFIX0"
-setenv PATH \${PATH}:\${XCATROOT}/bin:\${XCATROOT}/sbin
+setenv PATH \${XCATROOT}/bin:\${XCATROOT}/sbin:\${PATH}
 if !(\$?MANPATH) then
      setenv MANPATH \${XCATROOT}/share/man:
 else
-     setenv MANPATH \${MANPATH}:\${XCATROOT}/share/man:
+     setenv MANPATH \${XCATROOT}/share/man:\${MANPATH}
 endif
 setenv PERL_BADLANG 0
 EOF
@@ -250,8 +250,8 @@ if ! egrep XCATROOT /etc/profile  > /dev/null 2>&1 ; then
 echo "
 # xCAT setup
 XCATROOT=$RPM_INSTALL_PREFIX0
-PATH=\$PATH:\$XCATROOT/bin:\$XCATROOT/sbin
-MANPATH=\$MANPATH:\$XCATROOT/share/man:
+PATH=\$XCATROOT/bin:\$XCATROOT/sbin:$PATH
+MANPATH=\$XCATROOT/share/man:\$MANPATH
 export XCATROOT PATH MANPATH
 " >>/etc/profile
 fi
