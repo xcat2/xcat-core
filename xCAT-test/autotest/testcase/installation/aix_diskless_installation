@@ -11,17 +11,19 @@ check:output=~shared_root
 cmd:nim -o update -a packages=all -a source=$$SSHPKG autotestcosi_lpp_source
 check:rc==0
 cmd:mkdir -p /install/nim/installp_bundle
-cmd:cp $$SSHPKG/xCATaixCN.bnd /install/nim/installp_bundle/
+cmd:cp $$SSHPKG/xCATaixCN71.bnd /install/nim/installp_bundle/
 check:rc==0
-cmd:nim -o define -t installp_bundle -a server=master -a location=/install/nim/installp_bundle/xCATaixCN.bnd xCATaixCN
-cmd:chdef -t osimage -o autotestcosi installp_bundle="xCATaixCN"
+cmd:nim -o define -t installp_bundle -a server=master -a location=/install/nim/installp_bundle/xCATaixCN71.bnd xCATaixCN71
+cmd:chdef -t osimage -o autotestcosi installp_bundle="xCATaixCN71"
 check:rc==0
 cmd:xcatchroot -i autotestcosi "/usr/bin/echo root:cluster|/usr/bin/chpasswd -c"
 check:rc==0
 cmd:mknimimage -u autotestcosi
 check:rc==0
-cmd:rscan __GETNODEATTR($$CN, hcp)__ -w
+cmd:rscan __GETNODEATTR($$CN, hcp)__ -z > test.node
 check:rc==0
+cmd:sleep 60
+cmd:cat test.node|mkdef -z
 cmd:makeconservercf $$CN
 check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
@@ -29,7 +31,7 @@ check:output=~$$CN
 cmd:sleep 60
 cmd:getmacs $$CN -f -D
 check:rc==0
-cmd:mkdsklsnode -i autotestcosi $$CN
+cmd:mkdsklsnode -i autotestcosi $$CN -f
 check:rc==0
 cmd:lsnim | grep $$CN
 check:output=~machines
