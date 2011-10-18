@@ -27,7 +27,7 @@ use Symbol;
 use Digest::SHA1 qw/sha1/;
 use IPC::Open3;
 use IO::Select;
-use xCAT::RemoteShellExp;
+require xCAT::RemoteShellExp;
 use warnings "all";
 require xCAT::InstUtils;
 require xCAT::NetworkUtils;
@@ -3627,11 +3627,11 @@ sub get_ServiceNode
        # command from the MN to CEC/Frame direclty, not through the service node if specified.
        # The $onlymaster is set in preprocess_request() in PPC.pm
        # It will not affect the others
-       if(  defined($onlymaster) && $onlymaster == 1) {
+       if (defined($onlymaster) && $onlymaster == 1) {
             $snattribute = "xcatmaster";
-	    } else {
+       } else {
 	        $snattribute = "servicenode";
-	    }
+       }
 
     }
     else    # Node
