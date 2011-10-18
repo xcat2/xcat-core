@@ -522,6 +522,24 @@ sub ip_forwarding_enabled
     }
     return $enabled;
 }
+#-------------------------------------------------------------------------------
+
+=head3  get_nic_ip
+    Get the ip address for the node nics
+
+    Arguments:
+    Returns:
+        Hash of the mapping of the nic and the ip addresses
+    Globals:
+    Error:
+        none
+    Example:
+        xCAT::NetworkUtils->get_nic_ip()
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
 
 sub get_nic_ip
 {
