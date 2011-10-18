@@ -102,6 +102,9 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/*
 
 cp lib/perl/xCAT/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/*
+
+chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/sles/*.postinstall
+
 set -x
 
 # For now, don't ship these plugins - to avoid AIX dependency.
