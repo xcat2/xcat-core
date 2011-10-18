@@ -2134,6 +2134,8 @@ sub parse_responses {
     my %fid1;
     my %fid2;
     my %cid;
+    my %pmtm;
+    my %psn;
     my @matchnodes;
     trace( $request, "Now I will explain how the lsslp parse its response: " , 1);
     foreach my $rsp ( @$values ) {
@@ -2230,19 +2232,26 @@ sub parse_responses {
             my (@severnode1, @severnode2);
             my @ips = split/,/, $result[4];
 
-            foreach (@result) {
-                push @severnode1, $_;
-            }
-
             #keep cage id for the secondary fsp definition
             #the cash hash is like $fid{mtm*sn}=cageid
-            if ($type eq SERVICE_FSP and $severnode1[3] eq "A")
-            {
-                $fid1{$severnode1[1]."*".$severnode1[2]} = $severnode1[8];
+            #if ($type eq SERVICE_FSP and $severnode1[3] eq "A")
+            #{
+            #    $fid1{$severnode1[1]."*".$severnode1[2]} = $severnode1[8];
+            #}
+            #if ($type eq SERVICE_FSP and $severnode1[3] eq "B")
+            #{
+            #    $fid2{$severnode1[1]."*".$severnode1[2]} = $severnode1[8];
+            #}
+            if (!exists($cid{$result[1]."*".$result[2]} ) || ($result[8] > 0)) {
+                $cid{$result[1]."*".$result[2]} = $result[8];
             }
-            if ($type eq SERVICE_FSP and $severnode1[3] eq "B")
-            {
-                $fid2{$severnode1[1]."*".$severnode1[2]} = $severnode1[8];
+            if (!exists($pmtm{$result[1]."*".$result[2]}) || ($result[5] > 0)) {
+                $pmtm{$result[1]."*".$result[2]} = $result[5];
+                $psn{$result[1]."*".$result[2]} = $result[6];
+            }
+
+            foreach (@result) {
+                push @severnode1, $_;
             }
 
             $severnode1[3] = $severnode1[3].'-0';
@@ -2390,26 +2399,26 @@ sub parse_responses {
     ############################################################
     # find out the cageid for the cec
     ############################################################
-    trace( $request, "\n\nThe cageid need to be adjust,because some secondary fsp return wrong side value ( always 0)", 1);
-    foreach my $idtmp( keys(%fid1) )
-    {
-        if ($fid1{$idtmp} > 0)
-        {
-            $cid{$idtmp} = $fid1{$idtmp};
-        } elsif ($fid2{$idtmp} > 0)
-        {
-            $cid{$idtmp} = $fid2{$idtmp};
-        } else {
-            $cid{$idtmp} = 0;
-        }
-    }
-    foreach ( keys(%fid2) )
-    {
-        if (!defined($cid{$_}))
-        {
-            $cid{$_} = $fid2{$_};
-        }
-    }
+    #trace( $request, "\n\nThe cageid need to be adjust,because some secondary fsp return wrong side value ( always 0)", 1);
+    #foreach my $idtmp( keys(%fid1) )
+    #{
+    #    if ($fid1{$idtmp} > 0)
+    #    {
+    #        $cid{$idtmp} = $fid1{$idtmp};
+    #    } elsif ($fid2{$idtmp} > 0)
+    #    {
+    #        $cid{$idtmp} = $fid2{$idtmp};
+    #    } else {
+    #        $cid{$idtmp} = 0;
+    #    }
+    #}
+    #foreach ( keys(%fid2) )
+    #{
+    #    if (!defined($cid{$_}))
+    #    {
+    #        $cid{$_} = $fid2{$_};
+    #    }
+    #}
 
     ############################################################
     # -n flag to skip the existing node
@@ -2452,7 +2461,13 @@ sub parse_responses {
         # find cageid for the secondary fsp node
         if ( $type =~ /^FSP$/ || $type =~ /^CEC$/) {
             @$data[8] = $cid{$mtm."*".$sn};
-            trace ( $request, "            Adjust cageid to @$data[8]", 1); 
+            @$data[5] = $pmtm{$mtm."*".$sn};
+            @$data[6] = $psn{$mtm."*".$sn};
+            $bpamtm  = @$data[5];
+            $bpasn   = @$data[6];
+            $cagenum = @$data[8];
+
+            trace ( $request, "            Adjust cageid to @$data[8], bpamtm to @$data[5], bpasn to @$data[6]", 1);
         }
 
         # if there is a -n flag, skip the existed nodes
