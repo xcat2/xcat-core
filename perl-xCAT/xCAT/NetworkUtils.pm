@@ -522,5 +522,102 @@ sub ip_forwarding_enabled
     }
     return $enabled;
 }
+#-------------------------------------------------------------------------------
 
+=head3  get_nic_ip
+    Get the ip address for the node nics
+
+    Arguments:
+    Returns:
+        Hash of the mapping of the nic and the ip addresses
+    Globals:
+    Error:
+        none
+    Example:
+        xCAT::NetworkUtils->get_nic_ip()
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub get_nic_ip
+{
+    my $nic;
+    my %iphash;
+    my $cmd     = "ifconfig -a";
+    my $result  = `$cmd`;
+    my $mode    = "MULTICAST";
+
+    #############################################
+    # Error running command
+    #############################################
+    if ( !$result ) {
+        return undef;
+    }
+
+    if (xCAT::Utils->isAIX()) {
+        ##############################################################
+        # Should look like this for AIX:
+        # en0: flags=4e080863,80<UP,BROADCAST,NOTRAILERS,RUNNING,
+        #      SIMPLEX,MULTICAST,GROUPRT,64BIT,PSEG,CHAIN>
+        #      inet 30.0.0.1    netmask 0xffffff00 broadcast 30.0.0.255
+        #      inet 192.168.2.1 netmask 0xffffff00 broadcast 192.168.2.255
+        # en1: ...
+        #
+        ##############################################################
+        my @adapter = split /\w+\d+:\s+flags=/, $result;
+        foreach ( @adapter ) {
+            if ( !($_ =~ /LOOPBACK/ ) and
+                   $_ =~ /UP(,|>)/ and
+                   $_ =~ /$mode/ ) {
+                my @ip = split /\n/;
+                for my $ent ( @ip ) {
+                    if ($ent =~ /^(en\d)\s+/) {
+                        $nic = $1;
+                    } 
+                    if ( $ent =~ /^\s*inet\s+(\d+\.\d+\.\d+\.\d+)/  ) {
+                        $iphash{$nic} = $1; 
+                        next;
+                    }
+                }
+            }
+        }
+    }
+    else {
+        ##############################################################
+        # Should look like this for Linux:
+        # eth0 Link encap:Ethernet  HWaddr 00:02:55:7B:06:30
+        #      inet addr:9.114.154.193  Bcast:9.114.154.223
+        #      inet6 addr: fe80::202:55ff:fe7b:630/64 Scope:Link
+        #      UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+        #      RX packets:1280982 errors:0 dropped:0 overruns:0 frame:0
+        #      TX packets:3535776 errors:0 dropped:0 overruns:0 carrier:0
+        #      collisions:0 txqueuelen:1000
+        #      RX bytes:343489371 (327.5 MiB)  TX bytes:870969610 (830.6 MiB)
+        #      Base address:0x2600 Memory:fbfe0000-fc0000080
+        #
+        # eth1 ...
+        #
+        ##############################################################
+        my @adapter= split /\n{2,}/, $result;
+        foreach ( @adapter ) {
+            if ( !($_ =~ /LOOPBACK / ) and
+                   $_ =~ /UP / and
+                   $_ =~ /$mode / ) {
+                my @ip = split /\n/;
+                for my $ent ( @ip ) {
+                    if ($ent =~ /^(eth\d)\s+/) {
+                        $nic = $1;
+                    }    
+                    if ( $ent =~ /^\s*inet addr:\s*(\d+\.\d+\.\d+\.\d+)/ ) {
+                        $iphash{$nic} = $1; 
+                        next;
+                    }
+                }
+            }
+        }
+    }
+    return \%iphash;
+}
 1;
