@@ -3605,7 +3605,7 @@ sub get_site_Master
 sub get_ServiceNode
 {
     require xCAT::Table;
-    my ($class, $node, $service, $request, $onlymaster) = @_;
+    my ($class, $node, $service, $request) = @_;
     my @node_list = @$node;
     my $cmd;
     my %snhash;
@@ -3623,15 +3623,7 @@ sub get_ServiceNode
 
     if ($request eq "MN")
     {
-       # When run mkhwconn/lshwconn/rmhwconn with -T fnm for CNM, it will send the 
-       # command from the MN to CEC/Frame direclty, not through the service node if specified.
-       # The $onlymaster is set in preprocess_request() in PPC.pm
-       # It will not affect the others
-       if (defined($onlymaster) && $onlymaster == 1) {
-            $snattribute = "xcatmaster";
-       } else {
-	        $snattribute = "servicenode";
-       }
+        $snattribute = "servicenode";
 
     }
     else    # Node
