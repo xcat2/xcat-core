@@ -2363,11 +2363,15 @@ sub parse_responses {
                         $matchhmc = 1; 
                         $result[4] = $ii;
                     } elsif (exists($opt{i})){
-                        my $subnet = $addr{$opt{i}}{subnet};
-                        my $netmask = $addr{$opt{i}}{netmask};
-                        if(xCAT::NetworkUtils->ishostinsubnet($ii, $netmask, $subnet)) {
-                            $matchhmc = 1;
-                            $result[4] = $ii;
+                        my @userip = split /,/, $opt{i};
+                        foreach my $uip (@userip) {
+                            my $subnet = $addr{$uip}{subnet};
+                            my $netmask = $addr{$uip}{netmask};
+                            if(xCAT::NetworkUtils->ishostinsubnet($ii, $netmask, $subnet)) {
+                                $matchhmc = 1;
+                                $result[4] = $ii;
+                                next;
+                            }
                         }
                     }
                     push @iptmp2,$ii;
