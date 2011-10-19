@@ -566,16 +566,17 @@ sub get_nic_ip
         # en1: ...
         #
         ##############################################################
-        my @adapter = split /\w+\d+:\s+flags=/, $result;
+        my @adapter = split /(\w+\d+):\s+flags=/, $result;
         foreach ( @adapter ) {
+            if ($_ =~ /^(en\d)/) {
+               $nic = $1;
+               next;
+            }
             if ( !($_ =~ /LOOPBACK/ ) and
                    $_ =~ /UP(,|>)/ and
                    $_ =~ /$mode/ ) {
                 my @ip = split /\n/;
                 for my $ent ( @ip ) {
-                    if ($ent =~ /^(en\d)\s+/) {
-                        $nic = $1;
-                    } 
                     if ( $ent =~ /^\s*inet\s+(\d+\.\d+\.\d+\.\d+)/  ) {
                         $iphash{$nic} = $1; 
                         next;
