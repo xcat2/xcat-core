@@ -3598,7 +3598,9 @@ sub get_site_Master
 
 	 example: $sn =xCAT::Utils->get_ServiceNode(\@nodes,$service,"MN");
 	  $sn =xCAT::Utils->get_ServiceNode(\@nodes,$service,"Node");
-
+        Note: this rountine is important to hierarchical support in xCAT
+              and used in many places.  Any changes to the logic should be
+              reviewed by xCAT architecture
 =cut
 
 #-----------------------------------------------------------------------------
