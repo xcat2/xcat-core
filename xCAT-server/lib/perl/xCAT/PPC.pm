@@ -48,6 +48,7 @@ my %modules = (
         rscan     => { hmc    => "xCAT::PPCscan",
                        fsp    => "xCAT::FSPscan",
                        cec    => "xCAT::FSPscan",
+                       ivm    => "xCAT::PPCscan",
                        },
         mkvm      => { hmc    => "xCAT::PPCvm",
                        fsp    => "xCAT::FSPvm",
@@ -1849,22 +1850,30 @@ sub preprocess_request {
 
        	#When run mkhwconn/lshwconn/rmhwconn with -T fnm for CNM, it will send the command to CEC/Frame direclty, 
      	#not through the service node if specified.
-        my $onlybymaster = 0;  
         if ((($req->{command}->[0] eq "mkhwconn") || ($req->{command}->[0] eq "lshwconn" ) || ($req->{command}->[0] eq "rmhwconn" ))
-	    && ( $req->{opt}->{T} == 1) )  {
-	    #for fnm
-            $onlybymaster = 1; 
-        }  
+	        && ( $req->{opt}->{T} == 1) )  {
+	        #for fnm
+            my $reqcopy = {%$req};
+            my @masters = xCAT::Utils->get_site_attribute("master");
+            if( $masters[0] ) {
+                $reqcopy->{'_xcatdest'} = $masters[0];
+                push @requests,$reqcopy;
+            } else {
+                $callback->({data=>["The value of the attribute master in the site table is NOT set"]});
+                $req = {};
+                return;
+            }
+        } else { 
 
         # find service nodes for the HCPs
         # build an individual request for each service node
         my $service  = "xcat";
         my @hcps=keys(%hcp_hash);
-        my $sn = xCAT::Utils->get_ServiceNode(\@hcps, $service, "MN", $onlybymaster);
+        my $sn = xCAT::Utils->get_ServiceNode(\@hcps, $service, "MN");
         
         # build each request for each service node
-        foreach my $snkey (keys %$sn)
-        {
+          foreach my $snkey (keys %$sn)
+          {
             #$callback->({data=>["The service node $snkey "]});
             my $reqcopy = {%$req};
             $reqcopy->{'_xcatdest'} = $snkey;
@@ -1880,8 +1889,8 @@ sub preprocess_request {
             $reqcopy->{node} = \@nodes;
             #print "nodes=@nodes\n";
             push @requests, $reqcopy;
+          }
         }
-    
         # No dependency, use the original logic
         if (scalar(@{$nodeseq}) == 1) {
             return \@requests;
