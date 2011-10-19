@@ -12,7 +12,7 @@ vim
 sysconfig
 syslog-ng
 klogd
-dbus
+dbus-1
 dbus-1-64bit
 hal
 hal-64bit
