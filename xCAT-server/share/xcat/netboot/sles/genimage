@@ -263,10 +263,18 @@ unless ($onlyinitrd) {
          system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks sa file:$kerneldir");
       }
    }
+
    #remove the old repository for extra packages
-   my $result=`zypper -R $rootimg_dir --non-interactive --no-gpg-checks sl |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
-   if ($result =~ /\S/) {
-       system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks sd $result");
+   if ($osver_host == 11) {
+       my $result=`zypper -R $rootimg_dir --non-interactive --no-gpg-checks lr |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
+       if ($result =~ /\S/) {
+           system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks rr $result");
+       }
+   } else {
+       my $result=`zypper -R $rootimg_dir --non-interactive --no-gpg-checks sl |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
+       if ($result =~ /\S/) {
+           system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks sd $result");
+       }
    }
 
    #add the new repository for extra packages
@@ -290,7 +298,7 @@ unless ($onlyinitrd) {
 	   }
        } else {
 	   if($osver_host == 11) { 
-	       system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks  ar -t Plaindir file:$srcdir_otherpkgs/$_  otherpkg$index");
+	       system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks ar -t Plaindir file:$srcdir_otherpkgs/$_  otherpkg$index");
 	   }else {
 	       system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks sa -t Plaindir file:$srcdir_otherpkgs/$_");
 	   }
@@ -318,12 +326,16 @@ unless ($onlyinitrd) {
        chomp;
        next if /^\s*#/;
        my ($repotype,$repourl,$repoalias) = split m/\|/;
-       system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks ar $repourl $repoalias");
+       if($osver_host == 11) {
+         system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks ar $repourl $repoalias");
+       }else {
+         system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks sa $repourl $repoalias");
+       }
      }
    }
 
    # Refresh the zypper cache in case there is still old data out there
-   system("zypper -R $rootimg_dir  --non-interactive --no-gpg-checks refresh");
+   system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks refresh");
 
    #my $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir --disablerepo=* ";
    #$yumcmd .= "install ";
@@ -332,7 +344,7 @@ unless ($onlyinitrd) {
    if($osver =~ /sles11/ && $osver_host == 11) {
        $yumcmd = "zypper -R $rootimg_dir --non-interactive --no-gpg-checks install -l "; #add -l for SLES11
    }else {
-        $yumcmd = "zypper -R $rootimg_dir --non-interactive --no-gpg-checks install ";
+       $yumcmd = "zypper -R $rootimg_dir --non-interactive --no-gpg-checks install ";
    }
 
    #install packages from pkglist file
@@ -402,8 +414,8 @@ unless ($onlyinitrd) {
        }
        if($pkgnames ne ' ')
        {
-	   print "$yumcmd $pkgnames\n";
-	   my $rc = system("$yumcmd $pkgnames");
+           print "$yumcmd $pkgnames\n";
+           my $rc = system("$yumcmd $pkgnames");
 	   $rc = $rc >> 8;
 	   if (($rc) && ($rc != '104')) { 
 	       print "zypper invocation failed with rc: $rc\n";
@@ -412,8 +424,8 @@ unless ($onlyinitrd) {
        }
        if($group_pkgnames ne ' ')
        {
-	   print "$yumcmd -t pattern $group_pkgnames\n";
-	   $rc = system("$yumcmd -t pattern $group_pkgnames");
+           print "$yumcmd -t pattern $group_pkgnames\n";
+           $rc = system("$yumcmd -t pattern $group_pkgnames");
 	   $rc = $rc >> 8;
 	   if (($rc) && ($rc != '104')) { 
 	       print "zypper invocation failed with rc: $rc\n";
@@ -424,7 +436,7 @@ unless ($onlyinitrd) {
 
    foreach $pass (sort (keys(%extra_hash))) {
        #remove the packages that are specified in the otherpkgs.list files with leading '-'
-       my $yumcmd_remove= "zypper -R $rootimg_dir --non-interactive  --no-gpg-checks remove "; 
+       my $yumcmd_remove= "zypper -R $rootimg_dir --non-interactive  --no-gpg-checks remove ";
        if (exists ($extra_hash{$pass}{'PRE_REMOVE'})) {
            my $pa=$extra_hash{$pass}{'PRE_REMOVE'};
            my $rm_packges= join(' ', @$pa);
@@ -457,7 +469,12 @@ unless ($onlyinitrd) {
 
    # run zypper update to update any installed rpms
    # needed when running genimage again after updating software in repositories
-   my $yumcmd_update = "zypper -R $rootimg_dir --non-interactive --no-gpg-checks update  "; 
+   my $yumcmd_update;
+   if ($osver_host == 11) {
+     $yumcmd_update = "zypper -R $rootimg_dir --non-interactive --no-gpg-checks update ";
+   } else {
+     $yumcmd_update = "zypper -R $rootimg_dir --non-interactive --no-gpg-checks update  ";
+   }
    $rc = system("$yumcmd_update");
    # ignore any return code
 
@@ -853,8 +870,11 @@ EOS1
 # This script can be found in /lib/mkinitrd
 echo "Creating device nodes with udev"
 /sbin/udevd --daemon
-/sbin/udevadm trigger
-/sbin/udevadm settle --timeout=10
+if [ -f "/sbin/udevadm" ]
+then
+    /sbin/udevadm trigger
+    /sbin/udevadm settle --timeout=10
+fi
 EOMS
 
    foreach (@ndrivers) {
@@ -907,6 +927,8 @@ if [ -z "\$IFACE" ]; then
 fi
 
 export IFACE=\$IFACE
+
+/usr/bin/touch /var/lib/dhcpcd/dhcpcd-$IFACE.info
 
 netstart \$IFACE
 while ! ifconfig | grep inet; do
@@ -1191,17 +1213,28 @@ END
      }
    }
     if($mode eq "statelite") {
-        foreach ("sbin/ifconfig", "usr/bin/clear", "sbin/mount.nfs","sbin/umount.nfs","bin/hostname","usr/bin/egrep","bin/ln","bin/ls","usr/bin/dirname","usr/bin/expr","usr/bin/chroot","usr/bin/grep","bin/cpio","bin/sleep","bin/mount","bin/umount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed","usr/bin/wc", "bin/sed","sbin/udevd", "sbin/udevadm", "usr/bin/readlink") {
+        foreach ("sbin/ifconfig", "usr/bin/clear","usr/bin/touch","bin/hostname","usr/bin/egrep","bin/ln","bin/ls","usr/bin/dirname","usr/bin/expr","usr/bin/chroot","usr/bin/grep","bin/cpio","bin/sleep","bin/mount","bin/umount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed","usr/bin/wc", "bin/sed","sbin/udevd", "usr/bin/readlink") {
             getlibs($_); 
             push @filestoadd,$_;
         } 
+        if($osver_host == 11) {
+            foreach ("sbin/mount.nfs", "sbin/umount.nfs", "sbin/udevadm") {
+                getlibs($_);
+                push @filestoadd,$_;
+            }
+        }
         
     }else {
-        foreach ("sbin/ifconfig","usr/bin/clear", "usr/bin/grep","bin/cpio","bin/sleep","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed","sbin/udevd", "sbin/udevadm", "usr/bin/readlink") {
+        foreach ("sbin/ifconfig","usr/bin/clear","usr/bin/touch","usr/bin/grep","bin/cpio","bin/sleep","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed","sbin/udevd", "usr/bin/readlink") {
             getlibs($_); 
             push @filestoadd,$_;
         }
+        if($osver_host == 11) {
+            getlibs("sbin/udevadm");
+            push @filestoadd,"sbin/udevadm";
+        }
     }
+
    if ($arch =~ /x86_64/) {
       push @filestoadd,"lib64/libnss_dns.so.2";
    }
@@ -1248,7 +1281,9 @@ END
 	system("mkdir -p /tmp/xcatinitrd.$$/lib/firmware");
 	system("cp -r $rootimg_dir/etc/udev/* /tmp/xcatinitrd.$$/etc/udev");
 	system("cp -r $rootimg_dir/bin/uname /tmp/xcatinitrd.$$/bin/");
-	system("cp -r $rootimg_dir/lib/firmware/* /tmp/xcatinitrd.$$/lib/firmware");
+        if ( -d "$rootimg_dir/lib/firmware/" ) {
+    	    system("cp -r $rootimg_dir/lib/firmware/* /tmp/xcatinitrd.$$/lib/firmware");
+        }
 	system("cp -r $rootimg_dir/usr/bin/killall /tmp/xcatinitrd.$$/usr/bin");
 	
 	# Copy rules for network adapter
@@ -1257,8 +1292,13 @@ END
 	if ($name =~ m/(\d+\.\d+\.\d+)/g) {
 		$nic = $&;
 	}
-	system("cp -r /etc/udev/rules.d/*$nic.rules /tmp/xcatinitrd.$$/etc/udev/rules.d");
-	system("cp -r /etc/udev/rules.d/*persistent-net.rules /tmp/xcatinitrd.$$/etc/udev/rules.d");
+
+        if ( -f "/etc/udev/rules.d/*$nic.rules" ) {
+            system("cp -r /etc/udev/rules.d/*$nic.rules /tmp/xcatinitrd.$$/etc/udev/rules.d");
+        }
+        if ( -f "/etc/udev/rules.d/*persistent-net.rules" ) {
+	    system("cp -r /etc/udev/rules.d/*persistent-net.rules /tmp/xcatinitrd.$$/etc/udev/rules.d");
+        }
 	
 	system("mkdir -p /tmp/xcatinitrd.$$/lib/udev");
 	system("cp -r $rootimg_dir/lib/udev/* /tmp/xcatinitrd.$$/lib/udev");
@@ -1412,20 +1452,25 @@ sub generic_post { # This function is meant to leave the image in a state approx
 		chmod( 0755, "$rootimg_dir/etc/init.d/gettyset" );
 	}
 
-    copy("$installroot/postscripts/xcatpostinit", "$rootimg_dir/etc/init.d/xcatpostinit");
-    chmod(0755, "$rootimg_dir/etc/init.d/xcatpostinit");
-    system("chroot $rootimg_dir insserv gettyset xcatpostinit");
-	
-    my $rc = system("grep sshd $rootimg_dir/etc/init.d/.depend.start");
+    my $rc = system("grep sshd $rootimg_dir/etc/init.d/.depend.start | grep TARGETS");
     if ($rc) {
         system("sed -i '".'s/^\(TARGETS = .*\)$/\1 sshd/'."' $rootimg_dir/etc/init.d/.depend.start");
         system("ln -s ../sshd $rootimg_dir/etc/init.d/rc3.d/S20sshd");
     }
-    my $rc = system("grep gettyset $rootimg_dir/etc/init.d/.depend.start");
+    my $rc = system("grep gettyset $rootimg_dir/etc/init.d/.depend.start | grep TARGETS");
     if ($rc) {
         system("sed -i '".'s/^\(TARGETS = .*\)$/\1 gettyset/'."' $rootimg_dir/etc/init.d/.depend.start");
         system("ln -s ../gettyset $rootimg_dir/etc/init.d/rc3.d/S60gettyset");
     }
+
+    my $rc = system("grep gettyset: $rootimg_dir/etc/init.d/.depend.start");
+    if ($rc) {
+        system("echo 'gettyset: sshd' >> $rootimg_dir/etc/init.d/.depend.start");
+    }
+
+    copy("$installroot/postscripts/xcatpostinit", "$rootimg_dir/etc/init.d/xcatpostinit");
+    chmod(0755, "$rootimg_dir/etc/init.d/xcatpostinit");
+    system("chroot $rootimg_dir insserv gettyset xcatpostinit");
 }
 
 
