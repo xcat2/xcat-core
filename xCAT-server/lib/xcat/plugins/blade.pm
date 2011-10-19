@@ -1333,7 +1333,7 @@ sub rscan {
   if (!exists( $opt{w})) {
     return(0,$result);
   }
-  my @tabs = qw(mp nodehm nodelist);
+  my @tabs = qw(mp nodehm nodelist nodetype vpd);
   my %db   = ();
 
   foreach (@tabs) {
@@ -1368,6 +1368,21 @@ sub rscan {
     $u3->{groups} = "blade,all";
     $db{nodelist}->setAttribs($k3,$u3);
     $db{nodelist}{commit} = 1;
+
+    my ($k4, $u4);
+    $k4->{node} = $name;
+    if ($type eq "blade"){
+      $u4->{nodetype} = "blade";
+      $db{nodetype}->setAttribs($k4,$u4);
+      $db{nodetype}{commit} = 1;
+    }
+
+    my ($k5, $u5);
+    $k5->{node} = $name;
+    $u5->{mtm} = $data[3];
+    $u5->{serial} = $data[4];
+    $db{vpd}->setAttribs($k5,$u5);
+    $db{vpd}{commit} = 1;
   }
   foreach ( @tabs ) {
     if ( exists( $db{$_}{commit} )) {
