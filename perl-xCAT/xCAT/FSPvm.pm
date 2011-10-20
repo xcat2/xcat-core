@@ -827,13 +827,23 @@ sub enumerate {
 sub get_cec_lpar_info {
     my $name = shift;
     my $attr = shift;
-    my $lparid = shift;
     my $values = xCAT::FSPUtils::fsp_api_action($name, $attr, "get_lpar_info");
     if (@$values[1] && ((@$values[1] =~ /Error/i) && @$values[2] ne '0')) {
         return ([[$name, @$values[1], '1']]);
     }
     return @$values[1];
 }
+sub get_cec_bsr_info {
+    my $name = shift;
+    my $attr = shift;
+    my $values = xCAT::FSPUtils::fsp_api_action($name, $attr, "get_cec_bsr");
+    if (@$values[1] && ((@$values[1] =~ /Error/i) && @$values[2] ne '0')) {
+        return ([[$name, @$values[1], '1']]);
+    }
+    return @$values[1];
+}
+
+
 sub get_cec_lpar_name {
     my $name = shift;
     my $lpar_info = shift;
@@ -847,7 +857,47 @@ sub get_cec_lpar_name {
         }
     }
     return ([[$name, "can not get lparname for lpar id $lparid", '1']]);
-
+}
+sub get_cec_lpar_bsr {
+    my $name = shift;
+    my $lpar_info = shift;
+    my $lparid = shift;
+    my $lparname = shift;
+    my @value = split(/\n/, $lpar_info);
+    foreach my $v (@value) {
+        if($v =~ /\s*([^\s]+)\s*:\s*([\d]+)/) {
+	    my $tmp_name = $1;
+	    my $tmp_num = $2;
+            if($tmp_name =~ /^$lparname$/) {
+                return $tmp_num;
+            }
+        }
+    }
+    return ([[$name, "can not get BSR info for lpar id $lparid", '1']]);
+}
+sub get_cec_cec_bsr {
+    my $name = shift;
+    my $lpar_info = shift;
+    my $index = 0;
+    my @value = split(/\n/, $lpar_info);
+    my $cec_bsr = "";
+    foreach my $v (@value) {
+	    if ($v =~ /(Number of BSR arrays:)\s*(\d+)/i) {
+	        $cec_bsr .= "$1 $2,";
+	        $index++; 
+	    } elsif ($v =~ /(Bytes per BSR array:)\s*(\d+)/i) {
+	        $cec_bsr .= "$1 $2,";
+	        $index++;
+	    } elsif ($v =~ /(Available BSR array:)\s*(\d+)/i) {
+	        $cec_bsr .= "$1 $2;\n";
+	        $index++;
+	    }
+    }
+    if ($index != 3) {
+	    return undef;
+    } else {
+	    return $cec_bsr;
+    }
 }
 sub get_lpar_lpar_name {
     my $name = shift;
@@ -865,7 +915,6 @@ sub get_lpar_lpar_name {
 # Lists logical partitions
 ##########################################################################
 sub list {
-
     my $request = shift;
     my $hash    = shift;
     my $args    = $request->{opt};
@@ -875,11 +924,13 @@ sub list {
     my $d;
     my @result;
     my $lpar_infos;
+    my $bsr_infos;
+    my $l_string;
     #print Dumper($hash);    
     while (my ($mtms,$h) = each(%$hash) ) {
-	my $info = enumerate( $h, $mtms );
-	my $Rc = shift(@$info);
-	my $data = @$info[0];
+	    my $info = enumerate( $h, $mtms );
+    	my $Rc = shift(@$info);
+	    my $data = @$info[0];
          	
         while (($node_name,$d) = each(%$h) ) {
             my $cec   = @$d[3];
@@ -887,10 +938,10 @@ sub list {
             
             my $id = @$d[0];
             
-	    if ( $Rc != SUCCESS ) {
-	        push @result, [$node_name, $data,$Rc]; 
-		next;
-	    }
+	        if ( $Rc != SUCCESS ) {
+	            push @result, [$node_name, $data,$Rc]; 
+		        next;
+	        }
             my $values = $data->{0};
             my $msg = $data->{1};
 	   
@@ -908,16 +959,26 @@ sub list {
                     if (ref($lpar_infos) eq 'ARRAY') {
                         return $lpar_infos;
                     }
+		            $bsr_infos = get_cec_bsr_info($node_name, $d); 
+		            if (ref($bsr_infos) eq 'ARRAY') {
+			            return $bsr_infos;
+		            }
                 }
                 my $v;
                 my @t; 
                 my @value = split(/\n/, $values);
                 foreach my $v (@value) {
                     my ($lparid, @t ) = split (/,/, $v);  
-                    my $lparname = undef;
+		            my $ios = join('/', @t);
                     if ($request->{opt}->{l}) {
+                    	my $lparname = undef;
                         if ($type =~ /^(fsp|cec)$/) {
                             $lparname = get_cec_lpar_name($node_name, $lpar_infos, $lparid);
+   			                my $lpar_bsr = get_cec_lpar_bsr($node_name, $bsr_infos, $lparid, $lparname);
+			                if (ref($lpar_bsr) eq 'ARRAY') {
+			                    return $lpar_bsr;
+			                }
+			                $ios .= ": ".$lpar_bsr;
                         } else {
                             $lparname = get_lpar_lpar_name($node_name, $d);
                         }
@@ -926,14 +987,14 @@ sub list {
                         } else {
                             $lparname = "$lparname: $lparid";
                         }
+			            $l_string .= "$lparname: ".$ios."\n";
                     } else {
-                        $lparname = $lparid;
-                    }
-                    if ($type=~/^(fsp|cec)$/) {
-                        push @result,[$lparname, join('/', @t), $Rc];
-                    } else {
-                        if( $lparid eq $id) {
-                            push @result,[$lparname, join('/', @t), $Rc];
+			            if ($type=~/^(fsp|cec)$/) {
+                            push @result,[$lparid, $ios, $Rc];
+                        } else {
+                            if( $lparid eq $id) {
+                                push @result,[$lparid, $ios, $Rc];
+                            }
                         }
                     }
                 } 
@@ -942,11 +1003,16 @@ sub list {
             # get the octant configuration value    
             if ($type=~/^(fsp|cec)$/) {
                 my $value = $data->{$cec};
-	        push @result,[$node_name, $value, $Rc];
+		        if ($request->{opt}->{l}) {
+		            my $cec_bsr = get_cec_cec_bsr($node_name, $bsr_infos);
+		            $l_string = "\n".$l_string.$value.$cec_bsr;
+		        } else {
+                    $l_string = $value;
+	 	        }
             } 
-            
-	    
-	} # end of while
+		    push @result, [$node_name, $l_string, $Rc];
+		    $l_string = "";
+	    } # end of while
     }# end of while
     return( \@result );
 }
