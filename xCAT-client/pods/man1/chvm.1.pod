@@ -90,7 +90,7 @@ Starting numeric id of the newly created partitions. For Power 775 using Direct 
 
 =item B<-m>              
 
-memory interleaving. The setting value only could be B<1> or B<2>. B<2> means the memory cannot be shared across the processors in an octant, B<non-interleaved> mode. B<1> means the memory can be shared, B<interleaved> mode. The default value is B<2> .
+memory interleaving. The setting value only could be B<1> or B<2>. B<2> means B<non-interleaved> mode, the memory cannot be shared across the processors in an octant. B<1> means B<interleaved> mode, the memory can be shared. The default value is B<2> .
 
 =item B<-r>              
 
