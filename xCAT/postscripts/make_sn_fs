@@ -34,7 +34,7 @@
 /usr/sbin/mount /sn_local
 
 # add entries to the /etc/exports file
-/usr/bin/echo "/sn_local-rw,anon=0" >> /etc/exports
+/usr/bin/echo "/sn_local -rw,anon=0" >> /etc/exports
 /usr/bin/echo "/nodedata -rw,anon=0" >> /etc/exports
 
 # export the file systems
