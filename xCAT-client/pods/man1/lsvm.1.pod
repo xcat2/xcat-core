@@ -18,11 +18,23 @@ B<lsvm> [B<-l>| B<--long>] I<noderange>
 
 =head1 DESCRIPTION
 
- The lsvm command lists all partition profiles defined for the partitions specified in noderange. If noderange is a CEC, all the partitions associated with that CEC are displayed.
+The lsvm command lists all partition profiles defined for the partitions specified in noderange. If noderange is a CEC, all the partitions associated with that CEC are displayed.
 
 =head2 For PPC (using Direct FSP Management):
 
- For Power 775, lsvm lists all partition I/O slots information for the partitions specified in noderange. If noderange is a CEC, it gets the CEC's pump mode value, octant's memory interleaving value, the all the octants configure value, and all the I/O slots information
+For Power 775, lsvm lists all partition I/O slots information for the partitions specified in noderange. If noderange is a CEC, it gets the CEC's pump mode value, octant's memory interleaving value, the all the octants configure value, and all the I/O slots information.
+
+The pump mode value has the valid options:
+  1 - Node Pump Mode
+  2 - Chip Pump Mode
+
+The Memory Interleaving Mode has 3 valid options: 
+  0 - not Applicable
+  1 - interleaved
+  2 - non-interleaved
+
+More information about this part, refer to the section Using the *vm commands to define partitions in xCAT DFM  in the link below. 
+  https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Power_775_Hardware_Management
 
 =head1 OPTIONS
 
@@ -115,7 +127,15 @@ Output is similar to:
  5: 520/U78A9.001.0123456-P1-C14/0x21010208/2/5
  9: 529/U78A9.001.0123456-P1-C11/0x21010211/2/9
  9: 528/U78A9.001.0123456-P1-C12/0x21010210/2/9
- cec1: PendingPumpMode=1,CurrentPumpMode=1,OctantCount=8:OctantID=0,PendingOctCfg=5,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=1,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=2,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=3,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=4,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=5,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=6,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=7,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+ cec1: PendingPumpMode=1,CurrentPumpMode=1,OctantCount=8:
+ OctantID=0,PendingOctCfg=5,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+ OctantID=1,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+ OctantID=2,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+ OctantID=3,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+ OctantID=4,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+ OctantID=5,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+ OctantID=6,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+ OctantID=7,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
 
 To list the lparname of lpars, enter:
 
@@ -140,7 +160,15 @@ Output is similar to:
  lpar5: 5: 520/U78A9.001.0123456-P1-C14/0x21010208/2/5
  lpar9: 9: 529/U78A9.001.0123456-P1-C11/0x21010211/2/9
  lpar9: 9: 528/U78A9.001.0123456-P1-C12/0x21010210/2/9
- cec1: PendingPumpMode=1,CurrentPumpMode=1,OctantCount=8:OctantID=0,PendingOctCfg=5,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=1,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=2,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=3,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=4,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=5,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=6,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=7,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+ cec1: PendingPumpMode=1,CurrentPumpMode=1,OctantCount=8:
+ OctantID=0,PendingOctCfg=5,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+ OctantID=1,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+ OctantID=2,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+ OctantID=3,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+ OctantID=4,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+ OctantID=5,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+ OctantID=6,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+ OctantID=7,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
 
 =head1 FILES
 
