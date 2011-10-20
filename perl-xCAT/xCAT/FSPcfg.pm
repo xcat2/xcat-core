@@ -44,6 +44,23 @@ sub array_to_string {
     }
     return $string;
 }
+
+sub check_command {
+    my $cmd = shift;
+    my $rsp = shift;
+    my @type = ();
+    foreach my $tmp_type (keys %$rsp) {
+	if (grep (/^$cmd$/, @{$rsp->{$tmp_type}})) {
+            push @type, $tmp_type;
+	}
+    }
+    if (!scalar(@type)) {
+        return undef;
+    } else {
+	return &array_to_string(\@type);	
+    }
+}
+
 sub parse_args {
 
     my $request = shift;
@@ -172,7 +189,12 @@ sub parse_args {
             $request->{arg} = [$arg];
             my $res = xCAT::PPCcfg::parse_args($request, @_);
             if (ref($res) eq 'ARRAY') {
-                return $res;
+		my $check_cmd = &check_command($command, \%rsp);
+		if (!defined($check_cmd)) {
+                    return $res;
+		} else {
+		    return ([$_[0], "'$command' is only supported by type $check_cmd."]);
+                }
             } else {
                 push @ppc_cmds, $command;
             } 
