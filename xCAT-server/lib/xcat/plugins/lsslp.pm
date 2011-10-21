@@ -2497,8 +2497,8 @@ sub parse_responses {
             my $type1 = @$data1[0];
             my $mtm1  = @$data1[1];
             my $sn1   = @$data1[2];
-            if ($mtm1 eq $bpamtm and $sn1 eq $bpasn) {
-                $parent = $h1;       # FSP's parent is CEC
+            if ($mtm1 eq $bpamtm and $sn1 eq $bpasn and $type1 eq "frame") {
+                $parent = $h1;       # CEC's parent is Frame
                 last;
             } else {
                 $parent = undef;   # Frame and HMC have no parent
