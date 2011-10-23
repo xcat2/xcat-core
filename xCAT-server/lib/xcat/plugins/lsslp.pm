@@ -4094,7 +4094,7 @@ sub match_hosts_defined_by_xcatsetup {
         my $unmatched = @{$::OLD_DATA_CACHE{$oldnode}}[7];
         if ($type eq TYPE_FRAME)
         {
-            if ($tmpmtm eq $mtm and $tmpsn eq $sn) {
+            if ($tmpmtm eq $mtm and $tmpsn eq $sn and $type eq $tmptype) {
                 $$flagref = 1;
                 print "20 got old name $oldnode\n" if($DEBUG_MATCH eq 1);
                 return $oldnode;
@@ -4102,7 +4102,7 @@ sub match_hosts_defined_by_xcatsetup {
         }
         if ($type eq TYPE_CEC)
         {
-            if ($pname eq $tmpparent and $cage_number eq $tmpid) {
+            if ($pname eq $tmpparent and $cage_number eq $tmpid  and $type eq $tmptype) {
                 $$flagref = 1;
                 print "21 got old name $oldnode\n" if($DEBUG_MATCH eq 1);
                 return $oldnode;
@@ -4110,7 +4110,7 @@ sub match_hosts_defined_by_xcatsetup {
         }
         if ($type eq TYPE_BPA or $type eq TYPE_FSP)
         {
-            if ($pname eq $tmpparent and $side eq $tmpside) {
+            if ($pname eq $tmpparent and $side eq $tmpside and $type eq $tmptype) {
                 $$flagref = 1;
                 print "22 got old name $oldnode\n" if($DEBUG_MATCH eq 1);
                 return $oldnode;
@@ -4118,7 +4118,7 @@ sub match_hosts_defined_by_xcatsetup {
         }
         if ($type eq TYPE_BPA or $type eq TYPE_FSP)
         {
-            if ($pname eq $tmpparent and $side eq $tmpside) {
+            if ($pname eq $tmpparent and $side eq $tmpside and $type eq $tmptype) {
                 $$flagref = 1;
                 print "23 got old name $oldnode\n" if($DEBUG_MATCH eq 1);
                 return $oldnode;
