@@ -9208,6 +9208,33 @@ sub mkdsklsnode
         }
     }    # end - for each node
 
+	#
+	# need to replace <shared_root>/etc/.client_data/hosts.<node>
+	#   with the contents of the hosts file in <shared_root>/etc
+	#   - which is the one from the SPOT
+	#
+	# doesn't hurt to create new file for all nodes passed in
+	my @imgsdone;
+	foreach my $n (@nodelist) {
+		my $img = $nodeosi{$n};
+		if (grep(/^$img$/, @imgsdone )) {
+			next;
+		}
+		push(@imgsdone, $img);
+		# Only when using a shared_root resource
+		if ($imagehash{$img}{shared_root}) {
+			my $SRdir = xCAT::InstUtils->get_nim_attr_val( $imagehash{$img}{'shared_root'}, "location", $callback, $Sname, $subreq);
+			my $cpcmd = qq~/usr/bin/cp $SRdir/etc/hosts $SRdir/etc/.client_data/hosts.$n 2>/dev/null~;
+			my $output = xCAT::Utils->runcmd("$cpcmd", -1);
+			if ($::RUNCMD_RC != 0)
+			{
+				my $rsp;
+				push @{$rsp->{data}}, "Could not copy $SRdir/etc/hosts to $SRdir/etc/.client_data/hosts.$n.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+			}
+		}
+	}
+
     #
     # External NFS support:
     #   For shared_root:
