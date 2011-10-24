@@ -91,7 +91,7 @@ if (!$installdir) {
 # IPv6, should only use NFS version 4 mount
 my $mcmd;
 my $snipcmd = "host $servnode";
-if ((&runcmd($snipcmd) == 0) && ($::outref =~ /:/))
+if (((&runcmd($snipcmd) == 0) && ($::outref =~ /:/)) || ($ENV{'USENFSV4ONAIX'} && ($ENV{'USENFSV4ONAIX'} =~ /1|Yes|yes|YES|Y|y/)))
 {
     $mcmd = "mkdir -p /xcatmnt; mount -o nolock -o vers=4 $servnode:$installdir/postscripts /xcatmnt";
 } else {

@@ -179,7 +179,13 @@ if ( !(-f "/xcatpost/xcataixpost") || $::opt_c ) {
 
 	# get the contents of the /install/postscripts dir on the server
 	#   - mount dir from server and copy files
-	my $mcmd = "mkdir -p /xcatmnt; mount $servnode:$installdir/postscripts /xcatmnt";
+        my $mcmd;
+        if ($ENV{'USENFSV4ONAIX'} && ($ENV{'USENFSV4ONAIX'} =~ /1|Yes|yes|YES|Y|y/))
+        {
+	    $mcmd = "mkdir -p /xcatmnt; mount -o vers=4 $servnode:$installdir/postscripts /xcatmnt";
+        } else {
+	    $mcmd = "mkdir -p /xcatmnt; mount $servnode:$installdir/postscripts /xcatmnt";
+        }
 	if (&runcmd($mcmd) != 0) {
     	print "$::sdate xcataixpost: Could not mount $installdir/postscripts from $servnode.\n";
     	print $::LOG_FILE "$::sdate xcataixpost: Could not mount $installdir/postscripts from $servnode.\n";
