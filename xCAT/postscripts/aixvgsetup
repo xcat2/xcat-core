@@ -1,0 +1,59 @@
+#!/bin/sh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#
+#---------------------------------------------------------------------------
+#
+#	aixvgsetup
+#
+#   This sample script may be used to setup up disk mirroring on an
+#	AIX diskfull node. 
+#
+#	It assumes that rootvg is currently on hdisk0 and that the mirror will
+#	be stored on hdisk1.  You can change the disk names to suit your 
+#	environment.
+#
+#	Add this script as a postscript to be run during the initial installation 
+#	of an AIX diskfull (standalone) installation. 
+#---------------------------------------------------------------------------
+
+# extend the root volume group with the new disk(s)
+cmd="/usr/sbin/extendvg -f rootvg hdisk1"
+result=`$cmd 2>/dev/null` 
+rc=$?
+if [ $rc -ne 0 ]; then
+	logger -t xCAT  "Could not run $cmd, error = $rc"
+	echo "Could not run $cmd, error = $rc"
+	exit 1
+fi
+
+# create the mirror
+cmd="/usr/sbin/mirrorvg -S rootvg  hdisk1"
+result=`$cmd 2>/dev/null`
+rc=$?
+if [ $rc -ne 0 ]; then
+    logger -t xCAT  "Could not run $cmd, error = $rc"
+    echo "Could not run $cmd, error = $rc"
+    exit 1
+fi
+
+# create a boot image
+cmd="/usr/sbin/bosboot -ad /dev/hdisk1"
+result=`$cmd 2>/dev/null`
+rc=$?
+if [ $rc -ne 0 ]; then
+    logger -t xCAT  "Could not run $cmd, error = $rc"
+    echo "Could not run $cmd, error = $rc"
+    exit 1
+fi
+
+# set the bootlist
+cmd="/usr/bin/bootlist -m normal hdisk0 hdisk1" 
+result=`$cmd 2>/dev/null`
+rc=$?
+if [ $rc -ne 0 ]; then
+    logger -t xCAT  "Could not run $cmd, error = $rc"
+    echo "Could not run $cmd, error = $rc"
+    exit 1
+fi
+
+exit 0
