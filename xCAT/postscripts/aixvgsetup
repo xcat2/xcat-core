@@ -17,7 +17,7 @@
 #---------------------------------------------------------------------------
 
 # extend the root volume group with the new disk(s)
-cmd="/usr/sbin/extendvg rootvg hdisk1"
+cmd="/usr/sbin/extendvg -f rootvg hdisk1"
 result=`$cmd 2>/dev/null` 
 rc=$?
 if [ $rc -ne 0 ]; then
@@ -27,7 +27,7 @@ if [ $rc -ne 0 ]; then
 fi
 
 # create the mirror
-cmd="/usr/sbin/mirrorvg  rootvg  hdisk1"
+cmd="/usr/sbin/mirrorvg -S rootvg  hdisk1"
 result=`$cmd 2>/dev/null`
 rc=$?
 if [ $rc -ne 0 ]; then
