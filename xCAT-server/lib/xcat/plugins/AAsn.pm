@@ -413,7 +413,15 @@ sub setupInstallloc
             {                         # not mounted
 
                 # need to  mount the directory
-                my $cmd = "mount -o rw,nolock $master:$installloc $installdir";
+                my $cmd;
+                my @nfsv4 = xCAT::Utils->get_site_attribute("useNFSv4onAIX");
+                if ($nfsv4[0] && ($nfsv4[0] =~ /1|Yes|yes|YES|Y|y/))
+                {
+                    $cmd = "mount -o vers=4,rw,nolock $master:$installloc $installdir";
+                }
+                else
+                {
+                   $cmd = "mount -o rw,nolock $master:$installloc $installdir";
                 system $cmd;
                 if ($? > 0)
                 {                     # error
@@ -1181,7 +1189,16 @@ sub setup_TFTP
         {
 
             # need to  mount the directory
-            my $cmd = " mount -o rw,nolock $tftphost:$tftpdir $tftpdir";
+            my $cmd;
+            my @nfsv4 = xCAT::Utils->get_site_attribute("useNFSv4onAIX");
+            if ($nfsv4[0] && ($nfsv4[0] =~ /1|Yes|yes|YES|Y|y/))
+            {
+                $cmd = " mount -o vers=4,rw,nolock $tftphost:$tftpdir $tftpdir";
+            }
+            else
+            {
+                $cmd = " mount -o rw,nolock $tftphost:$tftpdir $tftpdir";
+            }
             system $cmd;
             if ($? > 0)
             {                 # error
