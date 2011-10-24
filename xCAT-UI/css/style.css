@@ -214,11 +214,6 @@ span.ui-icon-info {
 	text-align: center
 }
 
-.ui-button:hover {
-	background: url(../images/jquery/ui-bg_inset-hard_100_fcfdfd_1x100.png)
-		50% 50% repeat-x;
-}
-
 /*--------------- jQuery tabs ---------------*/
 .tab {
 	font: 12px verdana, arial, helvetica, sans-serif;
