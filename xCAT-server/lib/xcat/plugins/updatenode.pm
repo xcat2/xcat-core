@@ -2028,7 +2028,16 @@ sub updateAIXsoftware
 					}
 
                 	# mount source dir to node
-                	my $mcmd   = qq~mkdir -m 644 -p /xcatmnt; mount $serv:$pkgdir /xcatmnt~;
+                        my $mcmd;
+                        my @nfsv4 = xCAT::Utils->get_site_attribute("useNFSv4onAIX");
+                        if ($nfsv4[0] && ($nfsv4[0] =~ /1|Yes|yes|YES|Y|y/))
+                        {
+                	    $mcmd   = qq~mkdir -m 644 -p /xcatmnt; mount -o vers=4 $serv:$pkgdir /xcatmnt~;
+                        }
+                        else
+                        {
+                	    $mcmd   = qq~mkdir -m 644 -p /xcatmnt; mount $serv:$pkgdir /xcatmnt~;
+                        }
 
 					if ($::VERBOSE)
                 	{
