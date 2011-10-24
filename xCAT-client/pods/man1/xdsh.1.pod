@@ -21,7 +21,7 @@ B<xdsh> [B<-h> | B<-V> | B<-q>]
 
 =head1 B<DESCRIPTION>
 
-The B<xdsh> command runs commands in parallel on remote  nodes.  The B<xdsh> command issues  a
+The B<xdsh> command runs commands in parallel on remote nodes.  The B<xdsh> command issues  a
 remote  shell command for each target specified, and returns the output
 from all targets,
 formatted so that command results  from  all  nodes  can  be  managed.
