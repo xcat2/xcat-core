@@ -3,7 +3,7 @@
  * Upload a given file into /var/tmp
  */
 $type = $_FILES["file"]["type"];
-if ($type == "text/plain" || $type == "application/octet-stream") {
+if ($type == "text/plain" || $type == "application/octet-stream" || $type == "application/x-shellscript") {
 	$error = $_FILES["file"]["error"];
 	if ($error) {
 		echo "Return Code: " . $error;
@@ -24,6 +24,6 @@ if ($type == "text/plain" || $type == "application/octet-stream") {
 		unlink($path);
 	}
 } else {
-	echo "(Error) File type not supported";
+	echo "(Error) File type $type not supported";
 }
 ?>
