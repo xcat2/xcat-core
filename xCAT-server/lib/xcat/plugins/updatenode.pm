@@ -1980,7 +1980,16 @@ sub updateAIXsoftware
 
 			# make sure pkg dir is exported
             if (scalar(@pkglist)) {
-                my $ecmd = qq~exportfs -i $pkgdir~;
+                my $ecmd;
+                my @nfsv4 = xCAT::Utils->get_site_attribute("useNFSv4onAIX");
+                if ($nfsv4[0] && ($nfsv4[0] =~ /1|Yes|yes|YES|Y|y/))
+                {
+                    $ecmd = qq~exportfs -i -o vers=4 $pkgdir~;
+                }
+                else
+                {
+                    $ecmd = qq~exportfs -i $pkgdir~;
+                }
                 my $output = xCAT::Utils->runcmd("$ecmd", -1);
                 if ($::RUNCMD_RC != 0)
                 {
