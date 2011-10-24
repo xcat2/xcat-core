@@ -8,8 +8,7 @@
 # configiba.2ports assume two ports are both available for one IB adapter.
 
 PLTFRM=`uname`
-
-if [ "$OSVER" == rhels5* ]
+if [[ $OSVER == rhels5*  || "$OSVER" == rhels6* ]]
 then
     ib_driver="rdma"
 else
@@ -45,7 +44,6 @@ for num in 0 1
 do
     # Take primary node name, add -ib$num and then reverse resolve to get what ip should be
     nic="ib$num"   
-    
     # Get hostname from system in case postscript environment is not ready
     if [ $NODE ]
     then
@@ -64,6 +62,9 @@ do
     if [ $ip ]
     then
         netmask="255.255.255.0"
+        # in rhels6.1 , currently it supports PREFIX=24 instead of NETMASK=255.255.255.0 ,
+        # and NETWORK=.....
+        prefix=24
         first=`echo $ip | awk -F. '{print $1}'`
         second=`echo $ip | awk -F. '{print $2}'`
         gateway="$first.$second.255.254"
@@ -102,6 +103,14 @@ BOOTPROTO=static
 IPADDR=$ip
 NETMASK=$netmask
 GATEWAY=$gateway" > $dir/ifcfg-$nic
+            if [[ "$OSVER" == rhels6* ]]
+            then 
+                echo "DEVICE=$nic
+BOOTPROTO=static
+IPADDR=$ip
+PREFIX=$prefix
+GATEWAY=$gateway" > $dir/ifcfg-$nic
+            fi
             if [ $OS_name == 'redhat' ]
             then
                 echo "ONBOOT=yes" >> $dir/ifcfg-$nic
@@ -148,8 +157,13 @@ then
     for num in 0 1
     do
         sleep 5
-        ifup ib$num
-
+             
+        if [[ "$OSVER" == rhels6* ]]
+        then
+            ip link set dev ib$num up
+        else 
+            ifup ib$num      
+        fi
     done
 fi
 
