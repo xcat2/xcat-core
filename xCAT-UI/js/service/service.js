@@ -1008,26 +1008,48 @@ function setUserNodes(data) {
 /**
  * Power on a given node
  * 
- * @param node
+ * @param tgtNodes
  *            Node to power on or off
  * @param power2
  *            Power node to given state
  * @return Nothing
  */
-function powerNode(node, power2) {
+function powerNode(tgtNodes, power2) {
 	// Show power loader
 	var nodesDTId = 'userNodesDT';
 	var powerCol = $('#' + nodesDTId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
 	powerCol.find('img').show();
+	
+	var nodes = tgtNodes.split(',');
+	for (var n in nodes) {
+		// Get hardware that was selected
+		var hw = getUserNodeAttr(nodes[n], 'mgt');
+		
+		// Change to power softoff (to gracefully shutdown)
+        switch (hw) {
+        case "blade":
+            break;
+        case "hmc":
+            break;
+        case "ipmi":
+            break;
+        case "zvm":
+        	if (power2 == 'off') {
+        		power2 = 'softoff';
+        	}
+        	
+            break;
+        }
+	}
 	
 	$.ajax({
 		url : 'lib/srv_cmd.php',
 		dataType : 'json',
 		data : {
 			cmd : 'rpower',
-			tgt : node,
+			tgt : tgtNodes,
 			args : power2,
-			msg : node
+			msg : tgtNodes
 		},
 
 		success : updatePowerStatus
@@ -1074,6 +1096,10 @@ function updatePowerStatus(data) {
 			alert(rsp[i]);
 		}
 	}
+	
+	var powerCol = $('#' + nodesDTId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
+	powerCol.find('img').hide();
+	adjustColumnSize(nodesDTId);
 }
 
 /**
