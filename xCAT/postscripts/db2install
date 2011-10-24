@@ -347,7 +347,15 @@ sub mountdb2code
     {    # not mounted
 
         # need to  mount the directory
-        my $cmd = "mount  $server:$::installloc $::installloc";
+        my $cmd;
+        if ($ENV{'USENFSV4ONAIX'} && ($ENV{'USENFSV4ONAIX'} =~ /1|Yes|yes|YES|Y|y/))
+        {
+            $cmd = "mount -o vers=4 $server:$::installloc $::installloc";
+        }
+        else
+        {
+            $cmd = "mount  $server:$::installloc $::installloc";
+        }
         $rc = &runcmd($cmd);
     }
 
