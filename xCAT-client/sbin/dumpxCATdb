@@ -24,7 +24,7 @@ use strict;
 
 
  dumpxCATdb  -p <directory to place database dump> 
-
+ See man page.
 
 =cut
 
@@ -40,11 +40,17 @@ if ($::RUNCMD_RC != 0)
                             "Error running tabdump to get list of tables");
     exit 1;
 }
-# read tables to skip during dump from site.skiptables attribute
-my @output2=xCAT::Utils->get_site_attribute('skiptables');
+# Determine which table to skip
+my @output2;
+if ($ENV{'XCAT_SKIPTABLES'}) {
+  @output2=$ENV{'XCAT_SKIPTABLES'};
+} else {
+  # read tables to skip  from site.skiptables attribute
+  @output2=xCAT::Utils->get_site_attribute('skiptables');
+}
 my @skiptbls;
 if (@output2) {
-  @skiptbls = split (/\,/,$output2[0]);
+   @skiptbls = split (/\,/,$output2[0]);
 }
 foreach my $table (@output)
 {
