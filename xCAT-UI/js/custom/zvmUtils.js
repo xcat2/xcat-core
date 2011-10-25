@@ -2246,7 +2246,68 @@ function createZProvisionNew(inst) {
 	provNew.append(os);
 
 	// Create user entry input
-	var userEntry = $('<div><label for="userEntry">Directory entry:</label><textarea/></textarea>');
+	var defaultChkbox = $('<input type="checkbox" name="userEntry" value="default"/>').click(function() {
+		// Remove any warning messages
+		$(this).parents('.form').find('.ui-state-error').remove();
+		
+		// Get tab ID
+		var thisTabId = $(this).parents('.ui-tabs-panel').attr('id');
+		
+		// Get objects for HCP, user ID, and group
+		var hcp = $('#' + thisTabId + ' input[name=hcp]');
+		var userId = $('#' + thisTabId + ' input[name=userId]');
+		var group = $('#' + thisTabId + ' input[name=group]');
+		
+		// Get default user entry when clicked
+		if ($(this).attr('checked')) {									
+			if (!hcp.val() || !group.val() || !userId.val()) {
+				// Show warning message
+				var warn = createWarnBar('Please specify the hardware control point, group, and user ID before checking this box');
+				warn.prependTo($(this).parents('.form'));
+				
+				// Highlight empty fields
+				jQuery.each([hcp, group, userId], function() {
+					if (!$(this).val()) {
+						$(this).css('border', 'solid #FF0000 1px');
+					}					
+				});
+			} else {
+				// Un-highlight empty fields
+				jQuery.each([hcp, group, userId], function() {
+					$(this).css('border', 'solid #BDBDBD 1px');
+				});
+				
+				$.ajax({
+			        url : 'lib/cmd.php',
+			        dataType : 'json',
+			        data : {
+			            cmd : 'webrun',
+			            tgt : '',
+			            args : 'getdefaultuserentry;' + hcp.val() + ';' + group.val(),
+			            msg : thisTabId
+			        },
+			        
+			        success:function(data) {
+			        	// Populate user entry
+			            var tabId = data.msg;
+			            var entry = new String(data.rsp);
+			            var userId = $('#' + tabId + ' input[name=userId]').val();
+			            entry = entry.replace(new RegExp('LXUSR', 'g'), userId);
+			            $('#' + tabId + ' textarea:visible').val(entry);
+			        }
+			    });
+			} 
+		} else {
+			$('#' + thisTabId + ' textarea:visible').val('');
+			
+			// Un-highlight empty fields
+			jQuery.each([hcp, group, userId], function() {
+				$(this).css('border', 'solid #BDBDBD 1px');
+			});
+		}
+	});
+	var userEntry = $('<div><label for="userEntry">Directory entry:</label><textarea/></textarea></div>');
+	userEntry.append($('<span></span>').append(defaultChkbox, 'Use default'));
 	provNew.append(userEntry);
 
 	// Create disk table
@@ -2388,7 +2449,7 @@ function createZProvisionNew(inst) {
 		var errMsg = '';
 
 		// Get tab ID
-		var thisTabId = $(this).parent().parent().parent().attr('id');
+		var thisTabId = $(this).parents('.ui-tabs-panel').attr('id');
 		// Get provision tab instance
 		var inst = thisTabId.replace('zvmProvisionTab', '');
 
