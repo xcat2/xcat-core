@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh 
 # IBM(c) 2008 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 # Sample xCAT post script for configuring secondary adatper based on eth0
@@ -9,12 +9,38 @@
 
 PLTFRM=`uname`
 
-if [ "$OSVER" == rhels5* ]
+if [[ $OSVER == rhels5*  || "$OSVER" == rhels6* ]]
 then
     ib_driver="rdma"
 else
     ib_driver="openibd"
 fi
+
+# Bringup all the ib interfaces
+if [ $PLTFRM == "Linux" ]
+then
+    if [ -f "/etc/rdma/rdma.conf" ]
+    then
+        sed -i "s/SDP_LOAD=yes/SDP_LOAD=no/g" /etc/rdma/rdma.conf
+    elif [ -f "/etc/infiniband/openib.conf" ]
+    then
+        sed -i "s/SDP_LOAD=yes/SDP_LOAD=no/g" /etc/infiniband/openib.conf
+    fi
+
+    if [ $OS_name == "suse" ]
+    then
+        sed -i "/options ib_ehca nr_ports/d" /etc/modprobe.conf
+        sed -i "/options ib_ehca lock_hcalls/d" /etc/modprobe.conf
+        echo 'options ib_ehca nr_ports=1' >> /etc/modprobe.conf
+        echo 'options ib_ehca lock_hcalls=0' >> /etc/modprobe.conf 
+    fi
+    /sbin/chkconfig --level 2345 $ib_driver on
+    /sbin/service $ib_driver restart
+    sysctl -p
+
+fi
+
+
 
 HOST=`hostname -s`
 
@@ -41,6 +67,9 @@ do
     if [ $ip ]
     then
         netmask="255.255.255.0"
+        # in rhels6.1 , currently it supports PREFIX=24 instead of NETMASK=255.255.255.0 ,
+        # and NETWORK=.....
+        prefix=24
         first=`echo $ip | awk -F. '{print $1}'`
         second=`echo $ip | awk -F. '{print $2}'`
         gateway="$first.$second.255.254"
@@ -79,6 +108,15 @@ BOOTPROTO=static
 IPADDR=$ip
 NETMASK=$netmask
 GATEWAY=$gateway" > $dir/ifcfg-$nic
+            if [[ "$OSVER" == rhels6* ]]
+            then 
+                echo "DEVICE=$nic
+BOOTPROTO=static
+IPADDR=$ip
+PREFIX=$prefix
+GATEWAY=$gateway" > $dir/ifcfg-$nic
+            fi
+
             if [ $OS_name == 'redhat' ]
             then
                 echo "ONBOOT=yes" >> $dir/ifcfg-$nic
@@ -113,31 +151,37 @@ done
 # Bringup all the ib interfaces
 if [ $PLTFRM == "Linux" ]
 then
-    if [ -f "/etc/rdma/rdma.conf" ]
-    then
-        sed -i "s/SDP_LOAD=yes/SDP_LOAD=no/g" /etc/rdma/rdma.conf
-    elif [ -f "/etc/infiniband/openib.conf" ]
-    then
-        sed -i "s/SDP_LOAD=yes/SDP_LOAD=no/g" /etc/infiniband/openib.conf
-    fi
+#    if [ -f "/etc/rdma/rdma.conf" ]
+#    then
+#        sed -i "s/SDP_LOAD=yes/SDP_LOAD=no/g" /etc/rdma/rdma.conf
+#    elif [ -f "/etc/infiniband/openib.conf" ]
+#    then
+#        sed -i "s/SDP_LOAD=yes/SDP_LOAD=no/g" /etc/infiniband/openib.conf
+#    fi
 
-    if [ $OS_name == "suse" ]
-    then
-        sed -i "/options ib_ehca nr_ports/d" /etc/modprobe.conf
-        sed -i "/options ib_ehca lock_hcalls/d" /etc/modprobe.conf
-        echo 'options ib_ehca nr_ports=1' >> /etc/modprobe.conf
-        echo 'options ib_ehca lock_hcalls=0' >> /etc/modprobe.conf 
-    fi
-    /sbin/chkconfig --level 2345 $ib_driver on
+#    if [ $OS_name == "suse" ]
+#    then
+#        sed -i "/options ib_ehca nr_ports/d" /etc/modprobe.conf
+#        sed -i "/options ib_ehca lock_hcalls/d" /etc/modprobe.conf
+#        echo 'options ib_ehca nr_ports=1' >> /etc/modprobe.conf
+#        echo 'options ib_ehca lock_hcalls=0' >> /etc/modprobe.conf 
+#    fi
+#    /sbin/chkconfig --level 2345 $ib_driver on
     /sbin/service $ib_driver restart
-    sysctl -p
+#    sysctl -p
 
     sleep 10
 
     for num in 0 1
     do
         sleep 5
-        ifup ib$num
+        #ifup ib$num
+        if [[ "$OSVER" == rhels6* ]]
+        then
+            ip link set dev ib$num up
+        else 
+            ifup ib$num      
+        fi
 
     done
 fi
