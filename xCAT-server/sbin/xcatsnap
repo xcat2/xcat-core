@@ -42,6 +42,7 @@
 
 use File::Spec;
 use Getopt::Long;
+use strict;
 my $OSname;
 my @Commands_array;
 my $Command_name;
@@ -113,18 +114,18 @@ sub run_cmd {
 ######################## Tar it: Tars files and folders #############################
 
 sub Tar_it {
-
+    my $file= shift;
     print "\n Processing $file ..\n";
-    $last = substr $file, -1, 1;
+    my $last = substr $file, -1, 1;
     if ( $last eq "*" ) {
         @file_list = `ls $file 2>/dev/null`;
-        foreach $i (@file_list) {
+        foreach my $i (@file_list) {
             print "\tProcessing $i";
         }
     }
     if ( -l $file ) {
 
-        check_symbolic_link();    # Checking Symbolic links
+        check_symbolic_link($file);    # Checking Symbolic links
     }
     if ( $circular != 1 ) {
         if ( -e $TarFile ) {
@@ -142,6 +143,7 @@ sub Tar_it {
 
 sub check_symbolic_link {
 
+    my $file= shift;
     my $max_link_count = 32;
     my $i              = 0;
     while ( defined( my $link = readlink $file ) && $i <= $max_link_count ) {
@@ -199,14 +201,17 @@ sub snap_it {
             "/etc/nsswitch.conf",          "/var/log/messages");
         print("@files_array \n");
     }
-            foreach $item (@files_array) {
-            $file = $item;
-            Tar_it();
+            foreach my $item (@files_array) {
+            my $file = $item;
+            Tar_it($file);
         }
     print "Done collecting files ...\n\n";
     print "Gathering system configuration...\n\n";
     $output_dir = "$logDirectory/commands_output/";
     my $xcatroot=$ENV{'XCATROOT'};
+    my $installdir;
+    chop( $installdir =
+          `tabdump site | grep installdir | cut -f2 -d ,` );
     make_output_dir();
     if ( $OSname eq "AIX" ) {
         @Commands_array = (
@@ -227,7 +232,7 @@ sub snap_it {
             "arp -a","ps -edlf","ps -aux","ulimit -a","df -k",
             "cat /etc/issue");
     }
-    foreach $item (@Commands_array) {
+    foreach my $item (@Commands_array) {
         $Command = $item;
         run_cmd;
     }
@@ -241,7 +246,7 @@ sub snap_it {
             "nodels","lsdef -t node -l","rpower all stat","nodestat all",
             "nodels all groups","monls -a","lsvm all","rinv all all",
             "rvitals all all");
-        foreach $item (@Commands_array) {
+        foreach my $item (@Commands_array) {
             $Command = $item;
             run_cmd;
         }
@@ -310,14 +315,14 @@ unless ( -d $logDirectory ) {   #Create the output directory if it doesn't exist
   
     valid_dir();
 }
-
+my $hostname;
 chop( $OSname   = `uname` );
 chop( $hostname = `hostname -s` );
-( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst ) =
+my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst ) =
   localtime(time);
 $mon = $mon + 1;
 my @date_array = ( $mon, $mday, $hour, $min );
-foreach $item (@date_array) {
+foreach my $item (@date_array) {
     $item =
       sprintf( "%2d", $item );    #Formatting the date for dispaly in file name
     $item =~ tr/ /0/;
