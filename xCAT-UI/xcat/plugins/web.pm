@@ -58,7 +58,8 @@ sub process_request {
 	    'gangliacurrent' => \&web_gangliaLatest,
 	    'rinstall'	    => \&web_rinstall,
         'addnode'      => \&web_addnode,
-		'graph'		    => \&web_graphinfo
+		'graph'		    => \&web_graphinfo,
+		'getdefaultuserentry' => \&web_getdefaultuserentry
 	);
 
 	#check whether the request is authorized or not
@@ -2166,5 +2167,21 @@ sub web_graphinfo{
 	}
 
 	$callback->({data => $retstr});
+}
+
+sub web_getdefaultuserentry {
+	# Get default user entry
+	my ( $request, $callback, $sub_req ) = @_;
+	
+	# Get hardware control point
+	my $hcp = $request->{arg}->[1];
+	my $group = $request->{arg}->[2];
+	
+	if (!$group) {
+		$group = 'default';
+	}
+	
+	my $entry = `ssh $hcp "cat /opt/zhcp/conf/$group.direct"`;
+	$callback->( { data => $entry } );
 }
 1;
