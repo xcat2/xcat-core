@@ -12,6 +12,7 @@ B<dumpxCATdb> [B<-h>|B<--help>] [B<-v>|B<--version>]
 =head1 DESCRIPTION
 
 The dumpxCATdb command creates .csv files for xCAT database tables and puts them in the directory given by the -p flag. These files can be used by the restorexCATdb command to restore the database. The command will read the list of tables in the site.skiptables attribute and not backup those tables.
+Supports using XCAT_SKIPTABLES env variable to provide a list of skip tables.
 
 =head1 OPTIONS
 
