@@ -254,7 +254,11 @@ sub snap_it {
         print "Retrieving xCAT database...\n";
         $output_dir = "$logDirectory/xcat-database/";
         make_output_dir();
-        `dumpxCATdb -p $output_dir`;
+        # do not snap the ISNM tables, too big
+        my $cmd;
+        $cmd="XCAT_SKIPTABLES=isnm_perf,isnm_perf_dlink,isnm_perf_dlink_sum,isnm_perf_hfi,isnm_perf_hfi_sum,isnm_perf_isr,isnm_perf_isr_sum,isnm_perf_lllink,isnm_perf_lllink_sum,isnm_perf_lrlink,isnm_perf_lrlink_sum,isnm_perf_sum";
+         $cmd .= " dumpxCATdb -p $output_dir";
+        `$cmd`;
         print "xCAT database retrieved.\n";
     }
     `rm /tftpboot/tftpboot.list`;  # remove temp list
