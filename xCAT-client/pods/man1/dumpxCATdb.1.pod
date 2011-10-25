@@ -48,6 +48,14 @@ B<dumpxCATdb -a -p /tmp/db>
 
 B<chtab key=skiptables site.value="hosts,passwd">
 
+B<dumpxCATdb  -p /tmp/db>
+
+2. To have dumpxCATdb not backup the hosts or passwd table:
+
+B<export XCAT_SKIPTABLES="hosts,passwd">
+
+B<dumpxCATdb  -p /tmp/db>
+
 =head1 FILES
 
 /opt/xcat/sbin/dumpxCATdb
