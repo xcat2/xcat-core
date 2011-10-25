@@ -189,11 +189,11 @@ sub parse_args {
             $request->{arg} = [$arg];
             my $res = xCAT::PPCcfg::parse_args($request, @_);
             if (ref($res) eq 'ARRAY') {
-		        my $check_cmd = &check_command($command, \%rsp);
-		        if (!defined($check_cmd)) {
+		my $check_cmd = &check_command($command, \%rsp);
+		if (!defined($check_cmd)) {
                     return $res;
-		        } else {
-		            return ([$_[0], "'$command' is only supported by nodetype $check_cmd."]);
+		} else {
+		    return ([$_[0], "'$command' is only supported by type $check_cmd."]);
                 }
             } else {
                 push @ppc_cmds, $command;
@@ -652,8 +652,8 @@ sub frame {
                     #################################
                     # Return error
                     #################################
-                    if ( $Rc != 0 ) {
-                        return( [[$node,@$data[1],$Rc]] );
+                    if ( $Rc != 0 || @$data[1] =~ /Error/ ) {
+                        return( [[$node,"@$data[1]. If just set the frame number, please wait for 5-10 minutes. Otherwise, maybe other problems cause this failure.",$Rc]] );
                     }
 
                     push @$result, [$node,@$data[1], 0];
@@ -688,7 +688,7 @@ sub frame {
                     }
 
                     push @$result, [$node,@$data[1], 0];
-                    push @$result, [$node,"It will take several minutes to complete. So please wait for several minutes, then the other operations could be done. Otherwise, the other operation will fail.", 0];
+                    push @$result, [$node,"It will take several minutes to complete. So please wait for 5-10 minutes, then the other operations could be done. Otherwise, the other operation will fail.", 0];
 
                 } else {
                     #################################
