@@ -768,20 +768,19 @@ function createIFrame(src) {
 	});
 		
 	var iframe = $('<iframe></iframe>').attr('src', src).css({
-		'display': 'inline-block',
+		'display': 'block',
 		'border': '0px',
 		'margin': '10px',
-		'width': '90%'
+		'width': '100%'
 	});
 	
 	var loader = createLoader('iLoader').css({
-		'display': 'inline-block',
+		'display': 'block',
 		'margin': '10px 0px'
 	});
 		
 	infoBar.append(icon);
-	infoBar.append(loader);
-	infoBar.append(iframe);
+	infoBar.append($('<div style="display: inline-block; width: 90%;"></div>').append(loader, iframe));
 	infoBar.append(close);
 	
 	// Remove loader when done
