@@ -770,8 +770,8 @@ function createIFrame(src) {
 	var iframe = $('<iframe></iframe>').attr('src', src).css({
 		'display': 'inline-block',
 		'border': '0px',
-		'margin': '10px 20px',
-		'width': '95%'
+		'margin': '10px',
+		'width': '90%'
 	});
 	
 	var loader = createLoader('iLoader').css({

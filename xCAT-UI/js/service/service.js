@@ -548,9 +548,34 @@ function loadNodesTable(data) {
 	var actionBar = $('<div class="actionBar"></div>');
 	
 	// Prepend menu to datatable
-	var actionsLnk = '<a>Actions</a>';
+	var actionsLnk = $('<a>Actions</a>');
+	var refreshLnk = $('<a>Refresh</a>');
+	refreshLnk.click(function() {
+		var userName = $.cookie('srv_usrname');
+		var userNodes = $.cookie(userName + '_usrnodes');
+		if (userNodes) {	
+			 // Get nodes definitions
+		    $.ajax( {
+		        url : 'lib/srv_cmd.php',
+		        dataType : 'json',
+		        data : {
+		            cmd : 'lsdef',
+		            tgt : '',
+		            args : userNodes,
+		            msg : ''
+		        },
+		
+		        success : loadNodesTable
+		    });
+		} else {
+			// Clear the tab before inserting the table
+			$('#manageTab').children().remove();
+			$('#manageTab').append(createWarnBar('You are not managing any node.  Try to provision a node.'));
+		}
+	});
+	
 	var actionMenu = createMenu([cloneLnk, deleteLnk, monitorOnLnk, monitorOffLnk, powerOnLnk, powerOffLnk, unlockLnk]);
-	var menu = createMenu([[actionsLnk, actionMenu]]);
+	var menu = createMenu([[actionsLnk, actionMenu], refreshLnk]);
 	menu.superfish();
 	actionBar.append(menu);
 	
@@ -771,7 +796,7 @@ function loadNode(e) {
 	
 	// Get node that was clicked
 	var node = (e.target) ? e.target.id : e.srcElement.id;
-	
+
 	// Create a new tab to show inventory
 	var tabId = node + '_inventory';
 
@@ -1573,7 +1598,7 @@ function saveNodeLoad(status){
 function getMonitorMetrics(node) {
 	// Inventory tab should have this fieldset already created
 	// e.g. <fieldset id="gpok123_monitor"></fieldset>
-	$('#' + node + '_monitor').children().remove();
+	$('#' + node + '_monitor').children('div').remove();
 	
 	// Before trying to get the metrics, check if Ganglia is running
 	$.ajax({

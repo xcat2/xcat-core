@@ -207,9 +207,14 @@ zvmPlugin.prototype.loadServiceInventory = function(data) {
 	 * Monitoring section
 	 */
 	fieldSet = $('<fieldset id="' + node + '_monitor"></fieldset>');
-	legend = $('<legend>Monitoring</legend>');
+	legend = $('<legend>Monitoring [<a style="font-weight: normal; color: blue; text-decoration: none;">Refresh</a>]</legend>');	
 	fieldSet.append(legend);
 	getMonitorMetrics(node);
+	
+	// Refresh monitoring charts on-click
+	legend.find('a').click(function() {
+		getMonitorMetrics(node);
+	});
 	
 	// Append to inventory form
 	invDiv.append(fieldSet);
