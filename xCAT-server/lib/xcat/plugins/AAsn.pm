@@ -422,6 +422,7 @@ sub setupInstallloc
                 else
                 {
                    $cmd = "mount -o rw,nolock $master:$installloc $installdir";
+                }
                 system $cmd;
                 if ($? > 0)
                 {                     # error
