@@ -259,6 +259,27 @@ sub snap_it {
         $cmd="XCAT_SKIPTABLES=isnm_perf,isnm_perf_dlink,isnm_perf_dlink_sum,isnm_perf_hfi,isnm_perf_hfi_sum,isnm_perf_isr,isnm_perf_isr_sum,isnm_perf_lllink,isnm_perf_lllink_sum,isnm_perf_lrlink,isnm_perf_lrlink_sum,isnm_perf_sum";
          $cmd .= " dumpxCATdb -p $output_dir";
         `$cmd`;
+        # now get auditlog and eventlog, last two days
+         # get number of seconds in the day count
+         my $numberdays=2;
+         my $numbersecs=($numberdays * 86400);
+        # get time now
+        my $timenow=time;
+        my $secsdaysago=$timenow - $numbersecs;
+         # Format like the database table timestamp record
+        my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) =
+              localtime($secsdaysago);
+         my $daysago = sprintf("%04d-%02d-%02d %02d:%02d:%02d",
+                                        $year + 1900, $mon + 1, $mday,
+                                        $hour, $min, $sec);
+        # now tabdump days gt 2 days ago
+        $cmd = "tabdump -w \"audittime>$daysago\" auditlog > $output_dir/auditlog.csv";
+
+        `$cmd`;
+        $cmd = "tabdump -w \"eventtime>$daysago\" eventlog > $output_dir/eventlog.csv";
+
+        `$cmd`;
+ 
         print "xCAT database retrieved.\n";
     }
     `rm /tftpboot/tftpboot.list`;  # remove temp list
