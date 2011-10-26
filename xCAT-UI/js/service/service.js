@@ -551,27 +551,45 @@ function loadNodesTable(data) {
 	var actionsLnk = $('<a>Actions</a>');
 	var refreshLnk = $('<a>Refresh</a>');
 	refreshLnk.click(function() {
-		var userName = $.cookie('srv_usrname');
-		var userNodes = $.cookie(userName + '_usrnodes');
-		if (userNodes) {	
-			 // Get nodes definitions
-		    $.ajax( {
-		        url : 'lib/srv_cmd.php',
-		        dataType : 'json',
-		        data : {
-		            cmd : 'lsdef',
-		            tgt : '',
-		            args : userNodes,
-		            msg : ''
-		        },
-		
-		        success : loadNodesTable
-		    });
-		} else {
-			// Clear the tab before inserting the table
-			$('#manageTab').children().remove();
-			$('#manageTab').append(createWarnBar('You are not managing any node.  Try to provision a node.'));
-		}
+		// Get nodes owned by user
+		$.ajax( {
+			url : 'lib/srv_cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'tabdump',
+				tgt : '',
+				args : 'nodetype',
+				msg : ''
+			},
+
+			success : function(data) {
+				// Save nodes owned by user
+				setUserNodes(data);
+				
+				// Refresh nodes table
+				var userName = $.cookie('srv_usrname');
+				var userNodes = $.cookie(userName + '_usrnodes');
+				if (userNodes) {	
+					 // Get nodes definitions
+				    $.ajax( {
+				        url : 'lib/srv_cmd.php',
+				        dataType : 'json',
+				        data : {
+				            cmd : 'lsdef',
+				            tgt : '',
+				            args : userNodes,
+				            msg : ''
+				        },
+				
+				        success : loadNodesTable
+				    });
+				} else {
+					// Clear the tab before inserting the table
+					$('#manageTab').children().remove();
+					$('#manageTab').append(createWarnBar('You are not managing any node.  Try to provision a node.'));
+				}
+			}
+		});	
 	});
 	
 	var actionMenu = createMenu([cloneLnk, deleteLnk, monitorOnLnk, monitorOffLnk, powerOnLnk, powerOffLnk, unlockLnk]);
