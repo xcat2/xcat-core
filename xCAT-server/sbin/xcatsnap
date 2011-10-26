@@ -221,7 +221,7 @@ sub snap_it {
             "find /tftpboot -size -32k","ls -lR $xcatroot",
             "arp -a","ps -edlf","ps -aux","ulimit -a","df -k","oslevel",
             "netstat -A","errpt -a","/usr/sbin/instfix -i",
-            "/usr/sbin/lsnim -l","lssrc -l -s dhcpsd","lslpp -hac");
+            "/usr/sbin/lsnim -l","lssrc -l -s dhcpsd","lslpp -hac","lsxcatd -a");
     }
     elsif ( $OSname eq "Linux" ) {
         @Commands_array = (
@@ -230,7 +230,7 @@ sub snap_it {
             "ls $installdir",
             "find /tftpboot -size -32k","ls -lR $xcatroot",
             "arp -a","ps -edlf","ps -aux","ulimit -a","df -k",
-            "cat /etc/issue");
+            "cat /etc/issue","lsxcatd -a");
     }
     foreach my $item (@Commands_array) {
         $Command = $item;
