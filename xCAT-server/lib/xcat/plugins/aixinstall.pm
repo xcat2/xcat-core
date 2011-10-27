@@ -2710,7 +2710,7 @@ sub mknimimage
     }
 
 
-    if ($::NFSv4)
+    if ($::NFSv4 || ($::UPDATE && ($::attrres{'nfs_vers'} == 4)))
     {
         my $nimcmd = qq~chnfsdom~;
         my $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
@@ -2824,6 +2824,77 @@ sub mknimimage
 #            return 1;
 #        }
 
+
+        # mknimimage -u imagename nfs_vers=4 to update the osimage to be NFSv4 capable 
+        if(($::attrres{'nfs_vers'} == 4) && $is_defined)
+        {
+            # Check site.useNFSv4onAIX
+            if(!$::NFSv4)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                "Setting site.useNFSv4onAIX to yes.\n";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+                my $cmd = "$::XCATROOT/sbin/chtab key=useNFSv4onAIX site.value=yes";
+                my $out = xCAT::Utils->runcmd("$cmd", -1);
+		if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Unable to set site.useNFSv4onAIX.";
+                    push @{$rsp->{data}}, "$out\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+		}
+                $::NFSv4 = 1;
+            }
+            # For standalone image:
+            #        lpp_source, spot
+            # For non-shared_root image:
+            #        lpp_source, spot
+            # For shared_root image:
+            #        lpp_source, spot
+            my @nimrestoupdate = ();
+            my @nimresupdated = ();
+            if ($imagedef{$::image_name}{nimtype} eq "standalone")
+            {
+                @nimrestoupdate = ("lpp_source", "spot", "bosinst_data", "installp_bundle");
+            } 
+            if (($imagedef{$::image_name}{nimtype} eq "diskless") && $imagedef{$::image_name}{root})
+            {
+                @nimrestoupdate = ("lpp_source", "spot", "installp_bundle", "root", "paging");
+            }
+            if (($imagedef{$::image_name}{nimtype} eq "diskless") && $imagedef{$::image_name}{shared_root})
+            {
+                @nimrestoupdate = ("lpp_source", "spot", "installp_bundle", "shared_root", "paging");
+            }
+
+            foreach my $nimres (@nimrestoupdate)
+            {
+                my $ninresname = $imagedef{$::image_name}{$nimres};
+                push @nimresupdated, $ninresname;
+                my $nimcmd = qq~nim -o change -a nfs_vers=4 $ninresname~;
+                my $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Could not set nfs_vers=4 for resource $ninresname.\n";
+                    if ($::VERBOSE)
+                    {
+                        push @{$rsp->{data}}, "$nimout";
+                    }
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return 1;
+                }
+            }
+            if ($::VERBOSE)
+            {
+                my $strnimresupdated = join(',', @nimresupdated);
+                my $rsp;
+                push @{$rsp->{data}},
+                  "Updated the NIM resources $strnimresupdated with nfs_vers=4.\n";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            }
+            return 0;
+        }
         # if it doesn't exist we can't update it!
         if (!$is_defined)
         {
@@ -4873,8 +4944,51 @@ sub chk_resolv_conf
 				my $rsp;
 				push @{$rsp->{data}}, "Created a new resolv_conf resource called \'$resolv_conf_name\'.\n";
 				xCAT::MsgUtils->message("I", $rsp, $callback);
-			}
-		}
+		} else {
+                    if ($::NFSv4) {
+                        my $cmd = qq~/usr/sbin/lsnim -Z -a nfs_vers $resolv_conf_name 2>/dev/null~;
+                        my @result = xCAT::Utils->runcmd("$cmd", -1);
+                        if ($::RUNCMD_RC != 0)
+                        {
+                            my $rsp;
+                            push @{$rsp->{data}}, "Could not run lsnim command: \'$cmd\'.\n";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            return 1;
+                        }
+                        my $nfsvers;
+                        my $nimname;
+                        foreach my $l (@result)
+                        {
+
+                            # skip comment lines
+                            next if ($l =~ /^\s*#/);
+
+                            ($nimname, $nfsvers) = split(':', $l);
+                            if ($nfsvers) {
+                                last;
+                            }
+                         }
+                         if (!$nfsvers || ($nfsvers eq 3))
+                         {
+                             my $ecmd = qq~/usr/sbin/rmnfsexp -d $install_dir/nim/resolv_conf/$resolv_conf_name/resolv.conf -B 2>/dev/null~;
+                             xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $ecmd,0);
+                             my $nimcmd = qq~nim -o change -a nfs_vers=4 $resolv_conf_name~;
+                             my $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
+                             if ($::RUNCMD_RC != 0)
+                             {
+                                 my $rsp;
+                                 push @{$rsp->{data}}, "Could not set nfs_vers=4 for resource $resolv_conf_name.\n";
+                                 if ($::VERBOSE)
+                                 {
+                                     push @{$rsp->{data}}, "$nimout";
+                                 }
+                                 xCAT::MsgUtils->message("E", $rsp, $callback);
+                                 return 1;
+                             }
+                         }
+                    } #end if $::NFSv4
+                } # end else
+            } # end if $create_res
 	} # end foreach node
 
 	return \%resolv_conf_hash;
@@ -7641,6 +7755,51 @@ sub prenimnodeset
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 return (1);
             }
+        } else {
+                if ($::NFSv4) {
+                    my $cmd = qq~/usr/sbin/lsnim -Z -a nfs_vers xcataixscript 2>/dev/null~;
+                        my @result = xCAT::Utils->runcmd("$cmd", -1);
+                        if ($::RUNCMD_RC != 0)
+                        {
+                            my $rsp;
+                            push @{$rsp->{data}}, "Could not run lsnim command: \'$cmd\'.\n";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            return 1;
+                        }
+                        my $nfsvers;
+                        my $nimname;
+                        foreach my $l (@result)
+                        {
+
+                            # skip comment lines
+                            next if ($l =~ /^\s*#/);
+
+                            ($nimname, $nfsvers) = split(':', $l);
+                            if ($nfsvers) {
+                                last;
+                            }
+                         }
+                         if (!$nfsvers || ($nfsvers eq 3))
+                         {
+                             # make sure we clean up the /etc/exports file of NFSv3 exports
+                             my $ecmd = qq~/usr/sbin/rmnfsexp -d $install_dir/nim/scripts/xcataixscript -B 2>/dev/null~;
+                             xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $ecmd,0);
+                             my $nimcmd = qq~nim -o change -a nfs_vers=4 xcataixscript~;
+                             my $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
+                             if ($::RUNCMD_RC != 0)
+                             {
+                                 my $rsp;
+                                 push @{$rsp->{data}}, "Could not set nfs_vers=4 for resource xcataixscript.\n";
+                                 if ($::VERBOSE)
+                                 {
+                                     push @{$rsp->{data}}, "$nimout";
+                                 }
+                                 xCAT::MsgUtils->message("E", $rsp, $callback);
+                                 return 1;
+                             }
+                         }
+                    } #end if $::NFSv4
+
         }
 
         # make sure we clean up the /etc/exports file of old post script
