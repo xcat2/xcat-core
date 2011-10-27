@@ -161,7 +161,7 @@ The alternate flags to be passed along to the AIX emgr command. (There is no def
 
 =item B<dumpsize>
 
-The maximum size for a single dump image the dump resource will accept. Space is not allocated until a client starts to dump. The default size is 50GB. The dump resource should be large enough to hold the expected AIX dump and snap data.  
+The maximum size for a single dump image the dump resource will accept. Space is not allocated until a client starts to dump. The default size is 50GB. The dump resource should be large enough to hold the expected AIX dump and snap data. 
 
 =item B<max_dumps>
 
@@ -241,7 +241,7 @@ Used to specify the NIM machine type. The possible values are "standalone", "dis
 
 =item B<-u>
 
-Used to update an AIX/NIM SPOT resource with additional software and configuration files.  This option is only valid for xCAT diskless osimage objects. The SPOT resource associated with the xCAT osimage definition will be updated.
+Used to update an AIX/NIM SPOT resource with additional software and configuration files.  This option is only valid for xCAT diskless osimage objects. The SPOT resource associated with the xCAT osimage definition will be updated. This option can also be used to update the nfs_vers attribute for the NIM resources associated with diskful or diskless image.
 
 =item B<-V |--verbose>
 
@@ -330,6 +330,10 @@ B<mknimimage -V -u 61dskls>
 B<mknimimage -u 61dskls installp_bundle=bndres1,bndres2 installp_flags="-agcQX">
 
 Note that when "installp_bundle", "otherpkgs", or "synclists" values are specified with the "-u" option then the xCAT osimage definiton is not used or updated.
+
+13) Update an existing image to support NFSv4. Also specify verbose messages.  
+
+B<mknimimage -V -u 61dskls nfs_vers=4>
 
 =head1 FILES
 
