@@ -191,7 +191,7 @@ function loadTable(data) {
 	$('#' + tabId).find('img').remove();
 
 	// Create info bar
-	var infoBar = createInfoBar('Click on a cell to edit. ddClick outside the table to write to the cell. Once you are satisfied with how the table looks, click on Save.');
+	var infoBar = createInfoBar('Click on a cell to edit. Click outside the table to write to the cell. Once you are satisfied with how the table looks, click on Save.');
 	$('#' + tabId).append(infoBar);
 
 	// Create action bar
