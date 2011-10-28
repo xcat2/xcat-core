@@ -5,6 +5,7 @@
 key=system
 username=root
 password=cluster
+
 #add object definition to xCAT database
 #[Object_objecttype] 
 #Name=object name
@@ -14,6 +15,7 @@ Name=autotest_ent
 net=192.168.10.0
 mask=255.255.255.0
 gateway=192.168.10.2
+
 [Object_node]
 Name=w1v3hmc05.ppd.pok.ibm.com
 groups=all
@@ -21,17 +23,23 @@ nodetype=hmc
 mgt=hmc
 username=hscroot
 password=abc123
+
 [Object_node]
 Name=lpar6
 hcp=w1v3hmc05.ppd.pok.ibm.com
+
 #script to run before test
 [Script_Prev]
+
 #scripts to run after test
 [Script_Post]
+
 #varible can be referenced in command and output check string in the test case by $$VARIABLE
 #system VARIABLE,xCAT automated test predefined variable
+
 [System]
 CN=lpar6  #computenode name
+MN=lpar5
 SOURCE=/61L    #the source used by mknimimage
 SSHPKG=/tmp/xcat/ssh    #put additional package and bundle here
 MaxLparID=32		#Max LPAR ID on target CEC, used by cases for mkvm,chvm,lsvm,rmvm
