@@ -1,0 +1,71 @@
+start:aix_statelite_installation_flat
+os:AIX
+cmd:mkdir -p /nodedata
+cmd:chmod 755 /etc/exports
+cmd:cat /etc/exports|grep nodedata; if [ "$?" -ne "0" ]; then echo "/nodedata -sec=sys:none,anon=0,rw " >> /etc/exports; fi
+check:rc==0
+cmd:exportfs -a
+check:rc==0
+cmd:chtab node=$$CN statelite.statemnt="$$MN:/nodedata"
+check:rc==0
+cmd:chtab litefile.image="ALL" litefile.file="/logs/" litefile.options="persistent"
+check:rc==0
+cmd:mknimimage -u autotestcosi -V
+check:rc==0
+check:output=~Installing installp filesets in SPOT $$CN
+check:output=~Installing RPM packages in SPOT $$CN
+check:output=~Completed Installing RPM packages in SPOT $$CN
+check:output=~Updated software in the NIM SPOT called
+cmd:lsnim | grep autotestcosi
+check:rc==0
+check:output=~lpp_source
+check:output=~spot
+check:output=~paging
+check:output=~shared_root
+cmd:nim -o update -a packages=all -a source=$$SSHPKG autotestcosi_lpp_source
+check:rc==0
+cmd:mkdir -p /install/nim/installp_bundle
+cmd:cp $$SSHPKG/xCATaixCN71.bnd /install/nim/installp_bundle/
+check:rc==0
+cmd:nim -o define -t installp_bundle -a server=master -a location=/install/nim/installp_bundle/xCATaixCN71.bnd xCATaixCN71
+cmd:chdef -t osimage -o autotestcosi installp_bundle="xCATaixCN71"
+check:rc==0
+cmd:xcatchroot -i autotestcosi "/usr/bin/echo root:cluster|/usr/bin/chpasswd -c"
+check:rc==0
+cmd:mknimimage -u autotestcosi
+check:rc==0
+cmd:rscan __GETNODEATTR($$CN, hcp)__ -z > test.node
+check:rc==0
+cmd:sleep 60
+cmd:cat test.node|mkdef -z
+cmd:makeconservercf $$CN
+check:rc==0
+cmd:sleep 60
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:getmacs $$CN -f -D
+check:rc==0
+cmd:mkdsklsnode -i autotestcosi $$CN -f
+check:rc==0
+cmd:lsnim | grep $$CN
+check:output=~machines
+cmd:lsnim -l $$CN
+check:output=~diskless or dataless boot is enabled
+cmd:cat /etc/bootptab | grep $$CN
+check:output=~__GETNODEATTR($$CN, mac)__
+cmd:ls -l /tftpboot/$$CN*
+check:output=~$$CN
+cmd:cat /etc/exports | grep $$CN
+check:output=~autotestcosi_shared_root
+check:output=~spot/autotestcosi/usr
+check:output=~autotestcosi_paging
+cmd:rnetboot $$CN
+check:rc==0
+cmd:sleep 300
+cmd:lsdef -l $$CN| grep status
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+end
+
