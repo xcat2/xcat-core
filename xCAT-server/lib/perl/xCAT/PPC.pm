@@ -1848,13 +1848,14 @@ sub preprocess_request {
             }
         }
 
+        my @masters = xCAT::Utils->get_site_attribute("master");
        	#When run mkhwconn/lshwconn/rmhwconn with -T fnm for CNM, it will send the command to CEC/Frame direclty, 
      	#not through the service node if specified.
         if ((($req->{command}->[0] eq "mkhwconn") || ($req->{command}->[0] eq "lshwconn" ) || ($req->{command}->[0] eq "rmhwconn" ))
 	        && ( $req->{opt}->{T} == 1) )  {
 	        #for fnm
             my $reqcopy = {%$req};
-            my @masters = xCAT::Utils->get_site_attribute("master");
+            #my @masters = xCAT::Utils->get_site_attribute("master");
             if( $masters[0] ) {
                 $reqcopy->{'_xcatdest'} = $masters[0];
                 push @requests,$reqcopy;
@@ -1889,6 +1890,20 @@ sub preprocess_request {
             $reqcopy->{node} = \@nodes;
             #print "nodes=@nodes\n";
             push @requests, $reqcopy;
+             
+            if(($req->{command}->[0] eq "rflash") && ( exists( $req->{opt}->{activate} ) ) && xCAT::Utils->isAIX() ) {
+                if ( $masters[0] ne $snkey ) {
+                    my $install_dir = xCAT::Utils->getInstallDir();
+                    my $cmd = "$::XCATROOT/bin/xdcp $snkey -P -R  $install_dir/packages_fw $install_dir/";
+                    my $result = xCAT::Utils->runcmd("$cmd", -1); 
+                    if ($::RUNCMD_RC != 0) {
+                        $callback->({data=>["Could not copy rpms in the $install_dir/packages_fw  to $snkey.\n"]});
+                        $req = {};
+                        return;
+                    }
+                }
+                    
+            }
           }
         }
         # No dependency, use the original logic
