@@ -107,20 +107,26 @@ if (-f "/etc/xcatinfo") {
 if (!$foundxcatinfo) {
 	# get the name of my service node (NIM master) from the /etc/niminfo file
 	if (-f "/etc/niminfo") {
-    	$cmd = "cat /etc/niminfo | grep 'NIM_MASTER_HOSTNAME'";
-    	&runcmd($cmd);
-    	my $SNline = $::outref;
+		$cmd = "cat /etc/niminfo | grep 'NIM_NAME'";
+		&runcmd($cmd);
+		my $line = $::outref;
 		my $junk;
-    	($junk, $servnode) =  split(/=/, $SNline);
-
-		if ($servnode) {
-			chomp $servnode;
-			$servnode =~ s/^\s*//;
-			# save the servnode from niminfo in xcatinfo
-			my $xcatinfo="/etc/xcatinfo";
-			open(XCATINFO,">",$xcatinfo);
-			print XCATINFO "XCATSERVER=$servnode\n";
-			close(XCATINFO);
+		($junk, $myname) =  split(/=/, $line);
+		chomp $myname;
+		if ($myname ne "master") {
+			$cmd = "cat /etc/niminfo | grep 'NIM_MASTER_HOSTNAME'";
+			&runcmd($cmd);
+			my $SNline = $::outref;
+			($junk, $servnode) =  split(/=/, $SNline);
+			if ($servnode) {
+				chomp $servnode;
+				$servnode =~ s/^\s*//;
+				# save the servnode from niminfo in xcatinfo
+				my $xcatinfo="/etc/xcatinfo";
+				open(XCATINFO,">",$xcatinfo);
+				print XCATINFO "XCATSERVER=$servnode\n";
+				close(XCATINFO);
+			}
 		}
 	} else {
 		print "$::sdate  xcataixpost: Could not find /etc/niminfo file.\n";
@@ -129,13 +135,15 @@ if (!$foundxcatinfo) {
 }
 
 # do ping test on server and use -m value if provides
-my $pcmd = "ping -c 2 -w 2 $servnode";
-if (&runcmd($pcmd) != 0) {
-	$servnode = "";
-	if ($::opt_m) {
-		chomp $::opt_m;
-		$servnode = $::opt_m;
-	} 
+if ($servnode) {
+	my $pcmd = "ping -c 2 -w 2 $servnode";
+	if (&runcmd($pcmd) != 0) {
+		$servnode = "";
+		if ($::opt_m) {
+			chomp $::opt_m;
+			$servnode = $::opt_m;
+		} 
+	}
 }
 
 unless ($servnode) {
