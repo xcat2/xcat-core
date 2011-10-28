@@ -54,7 +54,9 @@ cmd:makenetworks
 check:rc==0
 cmd:tabdump networks
 check:rc==0
-check:output=~$$autotestnet
-check:output=~$$autotestgateway
+cmd:lsdef -t network |cut -d" " -f1 > test1
+cmd:diff test test1
+check:rc==0
 cmd:rm -f test
+cmd:rm -f test1
 end
