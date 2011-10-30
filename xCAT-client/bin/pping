@@ -118,7 +118,13 @@ foreach my $interf (@interfaces) {
 	if ($interf) {
 		# make a copy of the node list and add the interface on
 		$noderef = [ @nodes ];
-		foreach (@$noderef) { s/$/-$interf/; }
+		foreach (@$noderef) {
+                    if ($interf =~ /hf\d$/ && /-hf\d$/) {
+                        s/-hf\d$/-$interf/;
+                    } else {
+                        s/$/-$interf/;
+                    }
+               }
 	}
 	else {
 		$noderef = \@nodes;		# use the original node list
