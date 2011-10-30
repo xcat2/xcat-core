@@ -125,12 +125,19 @@ sub powercmd_boot {
            push @output, [$node_name,$data,$Rc];
            next;
        }
-       
+ 
        ##################################
        # Convert state to on/off
        ##################################
        my $state = power_status($data);
        #print "boot:state:$state\n";
+
+       # Attribute powerinterval in site table,
+       # to control the rpower speed
+       if( defined($request->{'powerinterval'}) ) {
+           Time::HiRes::sleep($request->{'powerinterval'});
+       }
+
        my $op    = ($state =~ /^off$/) ? "on" : "reset";
        $res = xCAT::FSPUtils::fsp_api_action ($node_name, $d, $op);
 	
@@ -209,6 +216,16 @@ sub powercmd {
                  next;
 	     }
         }		
+
+        # Attribute powerinterval in site table,
+        # to control the rpower speed
+        if (($action ne 'enter_rack_standby') && ($action ne 'exit_rack_standby') && ($action ne 'stat') && ($action ne 'status')
+           && ($action ne 'state') && ($action ne 'off') && ($action ne 'softoff')) {
+            if( defined($request->{'powerinterval'}) ) {
+                Time::HiRes::sleep($request->{'powerinterval'});
+            }
+        }
+
         my $res = xCAT::FSPUtils::fsp_api_action($node_name, $d, $action );
 	#    print "In boot, state\n";
 	#    print Dumper($res);
