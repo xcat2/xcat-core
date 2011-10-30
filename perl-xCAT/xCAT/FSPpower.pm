@@ -135,7 +135,7 @@ sub powercmd_boot {
 
        # Attribute powerinterval in site table,
        # to control the rpower speed
-       if(defined($request->{'powerinterval'}) && ($request->{'powerinterval'} ne '')) {
+       if( defined($request->{'powerinterval'}) ) {
            Time::HiRes::sleep($request->{'powerinterval'});
        }
 
@@ -222,7 +222,7 @@ sub powercmd {
         # to control the rpower speed
         if (($action ne 'enter_rack_standby') && ($action ne 'exit_rack_standby') && ($action ne 'stat') && ($action ne 'status')
            && ($action ne 'state') && ($action ne 'off') && ($action ne 'softoff')) {
-            if(defined($request->{'powerinterval'}) && ($request->{'powerinterval'} ne '')) {
+            if( defined($request->{'powerinterval'}) ) {
                 Time::HiRes::sleep($request->{'powerinterval'});
             }
         }
