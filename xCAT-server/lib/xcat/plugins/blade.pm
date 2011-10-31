@@ -213,6 +213,8 @@ my $activemm;
 my %mpahash;
 my $currnode;
 my $mpa;
+my $mpauser;
+my $mpapass;
 my $allinchassis=0;
 my $curn;
 my @cfgtext;
@@ -940,6 +942,18 @@ sub vitals {
     my %ledresults=();
     my $ledstring="";
     if (grep /led/,@vitems) {
+ 	$session = new SNMP::Session(
+                   DestHost => $mpa,
+                   Version => '3',
+                   SecName => $mpauser,
+                   AuthProto => 'SHA',
+                   AuthPass => $mpapass,
+                   PrivProto => 'DES',
+                   SecLevel => 'authPriv',
+                   UseNumeric => 1,
+                   Retries => 1, # Give up sooner to make commands go smoother
+                   Timeout=>300000000, #Beacon, for one, takes a bit over a second to return
+                   PrivPass => $mpapass);
         my @bindset = (
             [$erroroid,$slot],
             [$beaconoid,$slot],
@@ -1811,6 +1825,18 @@ sub beacon {
   } else {
     return (1,"$subcommand unsupported");
   }
+  	$session = new SNMP::Session(
+                    DestHost => $mpa,
+                    Version => '3',
+                    SecName => $mpauser,
+                    AuthProto => 'SHA',
+                    AuthPass => $mpapass,
+                    PrivProto => 'DES',
+                    SecLevel => 'authPriv',
+                    UseNumeric => 1,
+                    Retries => 1, # Give up sooner to make commands go smoother
+                    Timeout=>300000000, #Beacon, for one, takes a bit over a second to return
+                    PrivPass => $mpapass);
   my $stat = $session->get([$beaconoid.".".$slot]);
   if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
   if ($stat==0) {
@@ -4181,18 +4207,20 @@ sub dompa {
     }
   }
 
+  $mpauser= $mpahash->{$mpa}->{username};
+  $mpapass = $mpahash->{$mpa}->{password};
   $session = new SNMP::Session(
                     DestHost => $mpa,
                     Version => '3',
-                    SecName => $mpahash->{$mpa}->{username},
+                    SecName => $mpauser,
                     AuthProto => 'SHA',
-                    AuthPass => $mpahash->{$mpa}->{password},
+                    AuthPass => $mpapass,
                     PrivProto => 'DES',
                     SecLevel => 'authPriv',
                     UseNumeric => 1,
-                    Retries => 4, # Give up sooner to make commands go smoother
-                    Timeout=>1500000, #Beacon, for one, takes a bit over a second to return
-                    PrivPass => $mpahash->{$mpa}->{password});
+                    Retries => 1, # Give up sooner to make commands go smoother
+                    Timeout=>3000000, #Beacon, for one, takes a bit over a second to return
+                    PrivPass => $mpapass);
   if ($session->{ErrorStr}) {return 1,$session->{ErrorStr}; }
   unless ($session and keys %$session) {
      my %err=(node=>[]);
