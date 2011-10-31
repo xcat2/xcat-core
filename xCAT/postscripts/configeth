@@ -2,7 +2,16 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 # Sample xCAT post script for configuring eth1 based on eth0 settings and
-# some conventions.  This scripts works for both diskfull installs and diskless boots.
+# some conventions. 
+# This scripts works for both diskfull installs, diskless boots on AIX or Linux.
+# To use:
+# On Linux:
+#    Modify $nic in the script to desired nic value
+# On AIX:
+#    Modify my $nic_num = 0;   change 0 to new nic value
+# For both Linux and AIX
+#    Modify $gateway to correct value  throughout script
+#
 
 use Socket;
 
@@ -145,6 +154,8 @@ sub runcmd {
 	my $rc = $? >> 8;
 	if ($rc) {
 		system("logger -t xcat 'configeth: command $cmd failed with rc $rc: " . join('',@output) . "'");
+		my $errout= "configeth: command $cmd failed with rc $rc.";
+                echo $errout;
 		exit $rc;
 	}
 }
