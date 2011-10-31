@@ -107,12 +107,13 @@ if [ -n $CLIENT_IP ]
 then
     #Check whether the mlt0 is available
     `lsdev -C | grep mlt0 | grep Available 2>&1 >/dev/null`
-    if [ $? ]
-    then
-        /usr/ml/aix71/rc.ml
-    fi
 
     chdev -l ml0 -a state=detach
+
+    # Reconfig ml0 since HFx are configured after ml0 is available 
+    rmdev -l mlt0
+    mkdev -l mlt0
+
     chdev -l ml0 -a netaddr=$CLIENT_IP -a netmask=$NETMASK -a state=up
 fi
 
