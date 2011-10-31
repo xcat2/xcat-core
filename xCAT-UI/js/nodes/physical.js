@@ -1,6 +1,7 @@
 var bpaList;
 var fspList;
 var lparList;
+var bladeList;
 var graphicalNodeList;
 var selectNode;
 
@@ -50,25 +51,23 @@ function extractGraphicalData(data){
 		if (undefined == graphicalNodeList[nodename]){
 			graphicalNodeList[nodename] = new Object();
 		}
+		graphicalNodeList[nodename]['type'] = attrs[1].toLowerCase();
 		switch(attrs[1].toLowerCase()){
 			case 'cec':
 			case 'frame':
 			case 'lpar':
 			case 'lpar,osi':
 			case 'osi,lpar':
-				graphicalNodeList[nodename]['type'] = attrs[1];
 				graphicalNodeList[nodename]['parent'] = attrs[2];
 				graphicalNodeList[nodename]['mtm'] = attrs[3];
 				graphicalNodeList[nodename]['status'] = attrs[4];
 				break;
 			case 'blade':
-				graphicalNodeList[nodename]['type'] = attrs[1];
 				graphicalNodeList[nodename]['mpa'] = attrs[2];
 				graphicalNodeList[nodename]['unit'] = attrs[3];
 				graphicalNodeList[nodename]['status'] = attrs[4];
 				break;
 			case 'systemx':
-				graphicalNodeList[nodename]['type'] = attrs[1];
 				graphicalNodeList[nodename]['rack'] = attrs[2];
 				graphicalNodeList[nodename]['unit'] = attrs[3];
 				graphicalNodeList[nodename]['mtm'] = attrs[4];
@@ -99,6 +98,7 @@ function createPhysicalLayout(nodeList){
     bpaList = new Object();
     fspList = new Object();
     lparList = new Object();
+    bladeList = new Object();
     selectNode = new Object();
     
 	//there is not graphical data, get the info now
@@ -131,7 +131,7 @@ function getNodesAndDraw(){
 				fillList(nodeName);
 			}
 			$('#graphTab').empty();
-			createGraphical(bpaList, fspList, $('#graphTab'));
+			createGraphical();
 		}
 	});
 }
@@ -141,6 +141,8 @@ function fillList(nodeName, defaultnodetype){
     var mtm = '';
     var status = '';
     var nodetype = '';
+    var mpa = '';
+    var unit = '';
     if (!graphicalNodeList[nodeName]){
         parentName = '';
         mtm = '';
@@ -148,10 +150,27 @@ function fillList(nodeName, defaultnodetype){
         nodetype = defaultnodetype;
     }
     else{
-        parentName = graphicalNodeList[nodeName]['parent'];
-        mtm = graphicalNodeList[nodeName]['mtm'];
-        status = graphicalNodeList[nodeName]['status']; 
+    	status = graphicalNodeList[nodeName]['status']; 
         nodetype = graphicalNodeList[nodeName]['type'];
+    	switch (nodetype){
+	    	case 'frame':
+	    	case 'lpar,osi': 
+			case 'lpar':
+			case 'osi':
+			case 'cec':{
+				parentName = graphicalNodeList[nodeName]['parent'];
+		        mtm = graphicalNodeList[nodeName]['mtm'];
+			}
+			break;
+			case 'blade':{
+				mpa = graphicalNodeList[nodeName]['mpa'];
+				unit = graphicalNodeList[nodeName]['unit'];
+			}
+			break;
+			default:
+				break;
+    	}
+        
     }
     
 	if ('' == status){
@@ -185,7 +204,7 @@ function fillList(nodeName, defaultnodetype){
 				break;
 			}
 			
-			fspList[nodeName] = new Array();
+			fspList[nodeName] = new Object();
 			fspList[nodeName]['children'] = new Array();
 			fspList[nodeName]['mtm'] = mtm;
 			
@@ -200,13 +219,44 @@ function fillList(nodeName, defaultnodetype){
 			bpaList[parentName].push(nodeName);
 		}
 		break;
+		case 'blade': {
+			if (undefined == bladeList[mpa]){
+				bladeList[mpa] = new Array();
+			}
+			bladeList[mpa].push(nodeName + ',' + unit);
+		}
 		default:
 			break;
 	}
 }
 
+function createGraphical(){
+	var tabarea = $('#graphTab');
+	var selectNodeDiv = $('<div id="selectNodeDiv" style="margin: 20px;">Nodes:</div>');
+	var temp = 0;
+	for (var i in selectNode){
+		temp ++;
+		break;
+	}
+	
+	//there is not selected lpars, show the info bar
+	if (0 == temp){
+		tabarea.append(createInfoBar('Hover over a CEC and select the LPARs to do operations against.'));
+	}
+	//show selected lpars
+	else{
+		updateSelectNodeDiv();
+	}
+	
+	//add buttons
+	tabarea.append(createActionMenu());
+	tabarea.append(selectNodeDiv);
+	tabarea.append('<table id="graphTable" style="border-color: transparent;"></table>');
+	createSystempGraphical(bpaList, fspList, tabarea);
+	createBladeGraphical(bladeList, tabarea);
+}
 /**
- * create the physical graphical layout 
+ * create the physical graphical layout for system p machines
  * 
  * @param bpa : all bpa and there related  fsps
  *        fsp : all fsp and there related lpars
@@ -214,9 +264,9 @@ function fillList(nodeName, defaultnodetype){
  *        area: the element to append graphical layout
  * @return
  */
-function createGraphical(bpa, fsp, area){
+function createSystempGraphical(bpa, fsp, area){
 	var usedFsp = new Object();
-	var graphTable = $('<table id="graphTable" style="border-color: transparent;"><tbody></tbody></table>');
+	var graphTable = $('#graphTable');
 	var elementNum = 0;
 	var row;
 	for (var bpaName in bpa){
@@ -295,25 +345,6 @@ function createGraphical(bpa, fsp, area){
 		row.append(td);
 	}
 	
-	var selectNodeDiv = $('<div id="selectNodeDiv" style="margin: 20px;">Nodes:</div>');
-	var temp = 0;
-	for (var i in selectNode){
-		temp ++;
-		break;
-	}
-	
-	//there is not selected lpars, show the info bar
-	if (0 == temp){
-		area.append(createInfoBar('Hover over a CEC and select the LPARs to do operations against.'));
-	}
-	//show selected lpars
-	else{
-		updateSelectNodeDiv();
-	}
-	
-	//add buttons
-	area.append(createActionMenu());
-	area.append(selectNodeDiv);
 	area.append(graphTable);
 	
 	$('.tooltip input[type = checkbox]').bind('click', function(){
@@ -387,6 +418,53 @@ function createGraphical(bpa, fsp, area){
 	});
 }
 
+function createBladeGraphical(blades, area){
+	var graphTable = $('#graphTable');
+	var mpa = '';
+	var bladename = '';
+	var index = 0;
+	var mpaNumber = 0;
+	var row;
+	
+	for (mpa in blades){
+		var tempArray = new Array(14);
+		var bladeInfo = new Array();
+		var unit = 0;
+		if (0 == mpaNumber % 3){
+			row = $('<tr></tr>');
+			graphTable.append(row);
+		}
+		
+		mpaNumber ++;
+		
+		var td = $('<td style="padding:0;border-color: transparent;"></td>');
+		var chasisDiv = $('<div class="chasisDiv" title=' + mpa + '></div></div>');
+		
+		
+		//fill the array with blade information, to create the empty slot
+		for (var index in blades[mpa]){
+			bladeInfo = blades[mpa][index].split(',');
+			unit = parseInt(bladeInfo[1]);
+			tempArray[unit - 1] = bladeInfo[0];
+			
+		}
+		
+		//draw the blades and empty slot in chasis
+		for (var index = 0; index < 14; index++){
+			if (tempArray[index]){
+				bladename = tempArray[index];
+				chasisDiv.append('<div id="' + bladename + '" class="bladeDiv bladeInsertDiv" title="' + bladename + '"></div>');
+			}
+			else{
+				chasisDiv.append('<div class="bladeDiv"></div>');
+			}
+		}
+		
+		td.append(chasisDiv);
+		row.append(td);
+	}
+	
+}
 /**
  * update the lpars' background in cec, lpars area and  selectNode
  * 

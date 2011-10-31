@@ -190,6 +190,8 @@ pre {
 #summaryTab td{
 	border: 0px;
 	padding: 0px;
+	text-align: left;
+	line-height: 1;
 }
 /*--------------- Info/warning bar ---------------*/
 span.ui-icon-info {
@@ -753,6 +755,28 @@ table a:hover {
 	margin: 3px 3px 1px 3px;
 }
 
+.chasisDiv{
+	width: 172px;
+	height: 108px;
+	font-size: 10px;
+	background: url(../images/nodes/chasis.jpg);
+	border-width: 2px;
+	text-align: left;
+	white-space: normal;
+	padding: 11px 0px 0px 11px;
+}
+
+.bladeDiv{
+	float:left;
+	width: 11px;
+	height: 89px;
+	text-align: left;
+	white-space: normal;
+}
+
+.bladeInsertDiv{
+	background: url(../images/nodes/blade.jpg);
+}
 /*--------------- Discovery section ---------------*/
 .discoverstep {
 	width: 960px;

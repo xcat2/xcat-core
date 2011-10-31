@@ -223,10 +223,10 @@ function loadGroups(data) {
 	    $('#groups .groupdiv div').removeClass('selectgroup');
 	    $(this).addClass('selectgroup');
 	    
-	    drawNodesArea(thisGroup,'',thisGroup);
-	    
 	    // Save selected group into cookie
 	    $.cookie('selectgrouponnodes', thisGroup, { expires: 7 });
+	    
+	    drawNodesArea(thisGroup,'',thisGroup);
 	});
 	
 	// Make a link to add nodes
