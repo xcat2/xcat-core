@@ -36,15 +36,9 @@ fi
 
 nodes=`echo $1 |sed "s/,/ /g"`
 if [ -n "$ETH" ];  then
-    if echo $ETH | grep hf
-    then
-        nodes=`echo $nodes |sed "s/-hf[0-9]//g"`
-        nodes=`echo $nodes |sed "s/ /-$ETH /g"`
-        nodes="$nodes-$ETH"
-    else
-        nodes=`echo $nodes |sed "s/ /-$ETH /g"`
-        nodes="$nodes-$ETH"
-    fi
+    nodes=`echo $nodes |sed "s/-hf[0-9]//g"`
+    nodes=`echo $nodes |sed "s/ /-$ETH /g"`
+    nodes="$nodes-$ETH"
 fi
 
 which fping >/dev/null 2>&1

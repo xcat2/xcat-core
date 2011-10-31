@@ -119,11 +119,8 @@ foreach my $interf (@interfaces) {
 		# make a copy of the node list and add the interface on
 		$noderef = [ @nodes ];
 		foreach (@$noderef) {
-                    if ($interf =~ /hf\d$/ && /-hf\d$/) {
-                        s/-hf\d$/-$interf/;
-                    } else {
-                        s/$/-$interf/;
-                    }
+                     s/-hf\d$//;
+                     s/$/-$interf/;
                }
 	}
 	else {
