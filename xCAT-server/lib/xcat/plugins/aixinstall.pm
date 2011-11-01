@@ -10621,6 +10621,72 @@ sub make_SN_resource
             return 1;
         }
     }
+    # Check NFSv4 settings
+    if ($::NFSv4)
+    {
+        my $scmd = "chnfsdom";
+        my $nimout = xCAT::Utils->runcmd("$scmd", -1);
+        if ($::RUNCMD_RC != 0)
+        {
+            my $rsp;
+            push @{$rsp->{data}}, "Could not get NFSv4 domain setting.\n";
+            if ($::VERBOSE)
+            {
+                push @{$rsp->{data}}, "$nimout";
+            }
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+        # NFSv4 domain is not set yet
+        if ($nimout =~ /N\/A/)
+        {
+            my $sitetab = xCAT::Table->new('site');
+            my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
+            my $domain = $tmp->{value};
+            $sitetab->close;
+            if (!$domain)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Can not determine domain name, check site table.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+            $scmd = "chnfsdom $domain";
+            $nimout = xCAT::Utils->runcmd("$scmd", -1);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not change NFSv4 domain to $domain.\n";
+                if ($::VERBOSE)
+                {
+                    push @{$rsp->{data}}, "$nimout";
+                }
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+
+            $scmd = "stopsrc -g nfs";
+            $nimout = xCAT::Utils->runcmd("$scmd", -1);
+            sleep 2;
+            $scmd = qq~startsrc -g nfs~;
+            $nimout = xCAT::Utils->runcmd("$scmd", -1);
+
+            #nim -o change -a nfs_domain=$nfsdom master
+            $scmd = "nim -o change -a nfs_domain=$domain master";
+            $nimout = xCAT::Utils->runcmd("$scmd", -1);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not set NFSv4 domain with nim master.\n";
+                if ($::VERBOSE)
+                {
+                    push @{$rsp->{data}}, "$nimout";
+                }
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+        } #end if $domain eq N/A
+    } # end if $::NFSv4
 
     # make sure we have the NIM networks defs etc we need for these nodes
     if (&checkNIMnetworks($callback, \@nodelist, \%nethash) != 0)
