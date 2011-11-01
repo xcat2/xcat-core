@@ -6895,7 +6895,18 @@ sub update_dd_boot
 					    # add basecuse removal for swapdev
 					    print DDBOOT $basecustrm;
 					}
-                    print DDBOOT $l;
+                    if ($l =~ /odmadd \/tmp\/swapnfs/)
+                    {
+                        $l =~ s/tmp\/swapnfs/swapnfs/g;
+                        print DDBOOT $l;
+                        print DDBOOT "\n                        rm -f /swapnfs\n";
+                    } else {
+                        if ($l =~ /tmp\/swapnfs/)
+                        {
+                           $l =~ s/tmp\/swapnfs/swapnfs/g;
+                        }
+                        print DDBOOT $l;
+                    }
                 }
                 close(DDBOOT);
             }
