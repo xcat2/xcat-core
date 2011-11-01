@@ -34,9 +34,9 @@ sub parse_args {
     # Process command-line arguments
     #############################################
     if ( !defined( $args )) {
-        $request->{method} = $cmd;
-        return( \%opt );
+        return(usage( "Missing command with rbootseq in DFM, net or hfi ?" ));
     }
+
     #############################################
     # Checks case in GetOptions, allows opts
     # to be grouped (e.g. -vx), and terminates
