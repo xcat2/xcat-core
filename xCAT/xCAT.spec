@@ -128,6 +128,7 @@ cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 %ifnos linux
 . /etc/profile
 %else
+cp -f $RPM_INSTALL_PREFIX0/share/xcat/scripts/xHRM /install/postscripts/
 . /etc/profile.d/xcat.sh
 %endif
 if [ "$1" = "1" ]; then #Only if installing for the first time..
