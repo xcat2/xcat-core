@@ -4,27 +4,30 @@
 # Sample xCAT post script for configuring eth1 based on eth0 settings and
 # some conventions. 
 # This scripts works for both diskfull installs, diskless boots on AIX or Linux.
-# To use:
-# On Linux:
-#    Modify $nic in the script to desired nic value
-# On AIX:
-#    Modify my $nic_num = 0;   change 0 to new nic value
-# For both Linux and AIX
-#    Modify $gateway to correct value  throughout script
-#
+# To use, change the settings of the following variables at the top of this script:
+#    $nic_num - set this to the interface number, e.g. 1 for eth1 or en1
+#    $netmask - the netmask that should be used when ifconfig'ing this NIC
 
+use strict;
 use Socket;
+
+# Set these 2 variables appropriately for your cluster
+my $nic_num = 1;
+my $netmask = '255.255.255.0';
+
+my $nic;
+if ($^O =~ /^aix/i) {
+    $nic = "en$nic_num";
+} else {
+    $nic = "eth$nic_num";
+}
+
+# Usually do not have to set this...
+my $gateway;
+#$gateway = '1.2.3.254';
 
 # Take primary node name, add "-eth1" for linux and "-en1" for AIX  and 
 #	then reverse resolve to get what ip should be
-my $nic;
-my $nic_num = 0;
-if ($^O =~ /^aix/i) {
-    $nic = 'en$nic_num';
-} else {
-    $nic = 'eth1';
-}
-
 sub getipaddr()
 {
     my ($iporhost) = @_;
@@ -57,12 +60,6 @@ chomp($host);
 my $hostname = "$host-$nic";
 my $ip = &getipaddr($hostname);
 if (!$ip) { system("logger -t xcat 'configeth: cannot resolve $hostname.'"); exit 1; }
-
-#TODO: should contact xcatd on the service node to get the netmask and gateway from the networks table
-my $netmask = "255.0.0.0";
-#my ($first, $second, $rest) = split(/\./, $ip);
-#my $gateway = "$first.$second.255.254";
-
 
 if ($^O =~ /^aix/i) { 
         if ($ip =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/) {
@@ -101,11 +98,6 @@ elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /sles|suse/i)) || (-f "/etc/SuSE-release"
 	    my $ip = &getipaddr($hostname);
 	    if (!$ip) { system("logger -t xcat 'configeth: cannot resolve $hostname.'"); exit 1; }
 	    
-            #TODO: should contact xcatd on the service node to get the netmask and gateway from the networks table
-	    my $netmask = "255.255.0.0";
-	    my ($first, $second, $rest) = split(/\./, $ip);
-	    my $gateway = "$first.$second.255.254";
-	    
 	    # Write the info to the ifcfg file
 	    my $dir = "/etc/sysconfig/network";
 	    if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat 'configeth: cannot open $dir/ifcfg-$nic.'"); exit 1; }
@@ -137,7 +129,7 @@ else {
 	print FILE "BOOTPROTO=none\n";
 	print FILE "IPADDR=$ip\n";
 	print FILE "NETMASK=$netmask\n";
-	print FILE "GATEWAY=$gateway\n";
+	if (defined($gateway)) { print FILE "GATEWAY=$gateway\n"; }
 	print FILE "ONBOOT=yes\n";
 	close FILE;
 
