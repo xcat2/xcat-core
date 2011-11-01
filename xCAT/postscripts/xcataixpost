@@ -169,6 +169,7 @@ if (&getmypost != 0) {
 
 # get the installdir to use
 my $installdir;
+my $usenfsv4;
 if (-f $scriptname) {
     # set the timezone
     my $cmd = "cat $scriptname | grep 'INSTALLDIR='";
@@ -177,6 +178,11 @@ if (-f $scriptname) {
     my ($junk, $installdir) =  split(/=/, $dline);
 	chomp $installdir;
 	$installdir =~ s/^(\'|\")(.*)(\"|\')$/$2/; # remove any surrounding quotes
+    $cmd = "cat $scriptname | grep 'USENFSV4ONAIX='";
+    &runcmd($cmd);
+    $dline = $::outref;
+    ($junk, $usenfsv4) =  split(/=/, $dline);
+    chomp $usenfsv4;
 }
 if (!$installdir) {
 	$installdir = "/install";
@@ -189,7 +195,7 @@ if ( !(-f "/xcatpost/xcataixpost") || $::opt_c ) {
 	# get the contents of the /install/postscripts dir on the server
 	#   - mount dir from server and copy files
         my $mcmd;
-        if ($ENV{'USENFSV4ONAIX'} && ($ENV{'USENFSV4ONAIX'} =~ /1|Yes|yes|YES|Y|y/))
+        if ($usenfsv4 && ($usenfsv4 =~ /1|Yes|yes|YES|Y|y/))
         {
 	    $mcmd = "mkdir -p /xcatmnt; mount -o vers=4 $servnode:$installdir/postscripts /xcatmnt";
         } else {
