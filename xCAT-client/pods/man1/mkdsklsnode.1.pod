@@ -6,7 +6,7 @@ B<mkdsklsnode> - Use this xCAT command to define and initialize AIX/NIM diskless
 
 B<mkdsklsnode [-h|--help ]>
 
-B<mkdsklsnode [-V|--verbose] [-f|--force] [-n|--newname] [-i osimage_name] [-l location] [-p|--primarySN] [-b|--backupSN] noderange [attr=val [attr=val ...]]>
+B<mkdsklsnode [-V|--verbose] [-f|--force] [-n|--newname] [-i osimage_name] [-l location] [-p|--primarySN] [-b|--backupSN] [-S|--setuphanfs] noderange [attr=val [attr=val ...]]>
 
 =head1 DESCRIPTION
 
@@ -109,6 +109,10 @@ Create a new NIM machine object name for the xCAT node. Use the naming conventio
 =item B<-p|--primarySN>
 
 When using backup service nodes only update the primary.  The default is to update both the primary and backup service nodes.
+
+=item B<-S|--setuphanfs>
+
+Setup NFSv4 replication between the primary service nodes and backup service nodes to provide high availability NFS for the compute nodes. This option only exports the /install directory with NFSv4 replication settings, the data synchronization between the primary service nodes and backup service nodes needs to be taken care of through some mechanism.
 
 =item B<noderange>
 
