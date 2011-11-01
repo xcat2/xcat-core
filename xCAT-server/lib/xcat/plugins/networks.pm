@@ -426,7 +426,9 @@ sub donets
                    push @{$rsp->{data}}, "    mgtifname=$dev";
 			} else {
 				unless ($netexiss) {
-					$nettab->setAttribs({'net' => $net, 'mask' => ''}, {'netname' => $net, 'mgtifname' => $dev});
+				    	my $tmpmask = $net;
+			            	$tmpmask =~ s!^.*/!/!;
+					$nettab->setAttribs({'net' => $net, 'mask' => $tmpmask}, {'netname' => $net, 'mgtifname' => $dev});
 				}
 			}
             
