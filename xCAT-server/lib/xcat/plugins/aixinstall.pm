@@ -7409,6 +7409,7 @@ sub prenimnodeset
 					'l=s'       => \$::opt_l,
                     'n|new'     => \$::NEWNAME,
 					'p|primarySN' => \$::PRIMARY,
+                    'S|setuphanfs' => \$::SETUPHANFS,
                     'verbose|V' => \$::VERBOSE,
                     'v|version' => \$::VERSION,
         )
@@ -9008,13 +9009,14 @@ sub mkdsklsnode
     # parse the options
     if (
         !GetOptions(
-					'b|backup'  => \$::BACKUP,
+                    'b|backup'  => \$::BACKUP,
                     'f|force'   => \$::FORCE,
                     'h|help'    => \$::HELP,
                     'i=s'       => \$::OSIMAGE,
-					'l=s'       => \$::opt_l,
+                    'l=s'       => \$::opt_l,
                     'n|new'     => \$::NEWNAME,
-					'p|primary' => \$::PRIMARY,
+                    'p|primary' => \$::PRIMARY,
+                    'S|setuphanfs' => \$::SETUPHANFS,
                     'verbose|V' => \$::VERBOSE,
                     'v|version' => \$::VERSION,
         )
@@ -10069,6 +10071,134 @@ sub mkdsklsnode
         xCAT::MsgUtils->message("E", $rsp, $callback);
         $error++;
     }
+
+    if ($::SETUPHANFS)
+    {
+        # Determine the service nodes pair
+        my %snhash = ();
+        foreach my $tnode (@nodelist)
+        {
+            # Use hash for performance consideration
+            my $sns = $objhash{$tnode}{'servicenode'};
+            my @snarray = split(/,/, $sns);
+            foreach my $sn (@snarray)
+            {
+                $snhash{$sn} = 1;
+            }
+        }
+        if (scalar(keys %snhash) ne 2)
+        {
+            my $rsp;
+            my $snstr = join(',', keys %snhash);
+            push @{$rsp->{data}}, "Could not determine the service nodes pair, the service nodes are $snstr.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+        }
+        else
+        {
+            # Who am I?
+            my $ipmatch;
+            my $myip;
+            my $remoteip;
+            my @snips = ();
+            foreach my $snhost (keys %snhash)
+            {
+                my $snip = xCAT::NetworkUtils->getipaddr($snhost); 
+                push(@snips, $snip);
+            }
+            my @allips = xCAT::Utils->gethost_ips();
+            foreach my $localip (@allips)
+            {
+                if (($localip ne $snips[0]) && ($localip ne $snips[1]))
+                {
+                    next;
+                }
+                $ipmatch = 1;
+                if ($localip eq $snips[0])
+                {
+                    $myip = $snips[0];
+                    $remoteip = $snips[1];
+                }
+                if ($localip eq $snips[1])
+                {
+                    $myip = $snips[1];
+                    $remoteip = $snips[0];
+                }
+            }
+            if(!$ipmatch)
+            {
+                my $rsp;
+                my $localipstr = join(',', @allips);
+                my $snipstr = join(',', @snips);
+                push @{$rsp->{data}}, "The local ip address is not listed as service node, local ip addresses are $localipstr, the service nodes ip addresses are $snipstr.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+            }
+            else
+            {
+                # Setup NFSv4 replication
+                if ($::VERBOSE)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Setting up NFSv4 replication on $Sname.\n";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
+
+                my $scmd = "chnfs -R on";
+                my $output = xCAT::Utils->runcmd("$scmd", -1);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Could not enable NFSv4 replication on $Sname.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    $error++;
+                }
+                my $install_dir = xCAT::Utils->getInstallDir();
+                $scmd = "lsnfsexp -c";
+                my @output = xCAT::Utils->runcmd("$scmd", -1);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Could not list nfs exports on $Sname.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    $error++;
+                }
+                my $needexport = 1;
+                foreach my $line (@output)
+                {
+                    next if ($line =~ /^#/);
+                    my ($directory,$anonuid,$public,$versions,$exname,$refer,$replica,$allother) = split(':', $line);
+                    if (($directory eq $install_dir) && ($replica))
+                    {
+                        $needexport = 0;
+                        last;
+                    }
+                    if ($directory =~ /^$install_dir/)
+                    {
+                        my $scmd = "rmnfsexp -d $directory";
+                        my $output = xCAT::Utils->runcmd("$scmd", -1);
+                        if ($::RUNCMD_RC != 0)
+                        {
+                            my $rsp;
+                            push @{$rsp->{data}}, "Could not unexport NFS directory $directory on $Sname.\n";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            $error++;
+                        }
+                    }
+                }
+                if ($needexport)
+                {
+                    my $scmd = "mknfsexp -d $install_dir -B -v 4 -g $install_dir\@$myip:$install_dir\@$remoteip -t rw -r '*'";
+                    my $output = xCAT::Utils->runcmd("$scmd", -1);
+                    if ($::RUNCMD_RC != 0)
+                    {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Could not export directory $install_dir with NFSv4 replication settings on $Sname.\n";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        $error++;
+                    }
+                } # end if $needexport
+            } # end else
+        } # end else
+    } # end if $::SETUPHANFS
 
     #
     # process any errors
