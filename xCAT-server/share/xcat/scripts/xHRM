@@ -54,14 +54,30 @@ if [ "storageprereq" = "$1"  ]; then
     mount $MOUNTPATH /var/lib/xcat/vmnt/$DIRNAME
 elif [ "bridgeprereq" = "$1" ]; then
     NETDESC="$2"
+    # get the port for installation
+    if [ -n "$INSTALLNIC" ]; then
+        if [[ "$INSTALLNIC" = mac ]] || [[ "$INSTALLNIC" = MAC ]]; then
+            INSPORT=`ifconfig -a|grep -v inet6| grep -i 'HWaddr '$MACADDRESS|head -n 1|awk '{print $1}'`
+        else
+            INSPORT=$INSTALLNIC
+        fi
+    fi
+
     if [ -z "$NETDESC" ]; then
-	echo "Incorrect usage"
-	exit 1
+        if [ -n "$INSTALLNIC" ]; then
+          NETDESC=$INSPORT:default
+        else
+	  echo "Incorrect usage"
+	  exit 1
+        fi
     fi
     if echo "$NETDESC"|grep ':'> /dev/null; then
 	PORTS=`echo "$NETDESC"|cut -d: -f 1`
 	BNAME=`echo "$NETDESC"|cut -d: -f 2`
     else 
+        if [ -n "$INSTALLNIC" ]; then
+            PORTS=$INSPORT
+        fi
 	BNAME=$NETDESC
     fi
     if brctl showstp "$BNAME" > /dev/null; then
