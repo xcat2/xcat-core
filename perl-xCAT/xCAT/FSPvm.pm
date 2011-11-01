@@ -201,7 +201,7 @@ sub chvm_parse_args {
             return(usage( "Invalid entry: $opt{m}.\n For Power 775, the pending memory interleaving mode only could be interleaved(or 1), or non-interleaved(or 2)." ));
 	}
     } else {
-        $opt{m} = 2 ;# non-interleaved, which is the default    
+        $opt{m} = 1 ;# interleaved, which is the default    
     }
    
     my @ratio = (1, 2, 3, 4, 5);
