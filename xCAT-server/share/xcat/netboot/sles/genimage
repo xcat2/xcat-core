@@ -418,8 +418,8 @@ unless ($onlyinitrd) {
         }
        if($pkgnames ne ' ')
        {
-           print "$envlist $yumcmd -t pattern $group_pkgnames\n";
-           $rc = system("$envlist $yumcmd -t pattern $group_pkgnames");
+           print "$envlist $yumcmd -t pattern $pkgnames\n";
+           $rc = system("$envlist $yumcmd -t pattern $pkgnames");
 	   $rc = $rc >> 8;
 	   if (($rc) && ($rc != '104')) { 
 	       print "zypper invocation failed with rc: $rc\n";
