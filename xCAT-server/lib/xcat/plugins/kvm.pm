@@ -545,8 +545,6 @@ sub build_nicstruct {
     my @nics=();
     if ($confdata->{vm}->{$node}->[0]->{nics}) {
         @nics = split /,/,$confdata->{vm}->{$node}->[0]->{nics};
-    } else {
-        @nics = ('virbr0');
     }
     my @macs=xCAT::VMCommon::getMacAddresses($confdata,$node,scalar @nics);
     my @rethashes;
@@ -2046,8 +2044,6 @@ sub fixup_clone_network {
     my @nics;
     if ($confdata->{vm}->{$node}->[0]->{nics}) { #could still be empty if it came from master that way
         @nics = split /,/,$confdata->{vm}->{$node}->[0]->{nics};
-    } else {
-        @nics = ('virbr0');
     }
     my @nicsinmaster = $newnodexml->findnodes("/domain/devices/interface");
     if (scalar @nicsinmaster > scalar @nics) { #we don't have enough places to attach nics to..
