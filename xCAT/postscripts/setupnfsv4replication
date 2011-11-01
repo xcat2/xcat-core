@@ -1,0 +1,71 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#####################################################
+#
+#   xCAT post script for diskless nodes 
+#   to setup tunable parameters for NFSv4 replication failover
+#   It only works on AIX for now
+#
+#####################################################
+
+# Change these two parameters according to your requirements
+$::NFSRETRIES = 3;
+$::NFSTIMEO = 1;
+
+# Candidate commands: mount, df, lsfs, nfs4cl showfs
+# Only the mount command could list all file systems
+# Even the file system is not in /etc/filesystems
+my $cmd = "mount";
+&runcmd($cmd);
+my @nfs4fs;
+
+foreach my $line (@::outref)
+{
+    chomp($line);
+
+    #header line
+    if ($line =~ /node\s+mounted\s+mounted over/)
+    {
+        next;
+    }
+
+    if ($line =~ /^-------/)
+    {
+        next;
+    }
+    my ($node, $mounted, $mountedover, $vfs, $dummy) = split(/\s+/, $line, 5);
+    if ($vfs eq "nfs4")
+    {
+        push @nfs4fs, $mountedover;
+    }
+}
+     
+foreach my $nfs4mnt (@nfs4fs)
+{
+    my $nfscmd = "nfs4cl setfsoptions $nfs4mnt timeo=$::NFSTIMEO; nfs4cl setfsoptions $nfs4mnt retrans=$::NFSRETRIES";
+    &runcmd($nfscmd);
+}
+
+sub runcmd
+{
+    my ($cmd) = @_;
+    my $rc=0;
+    $cmd .= ' 2>&1' ;
+    @::outref = `$cmd`;
+    if ($?)
+    {
+        $rc = $? >> 8;
+        if ($rc > 0)
+        {
+            `logger -t xcat "runcmd $cmd failed, error message is:"`;
+            my $errmsg;
+            foreach my $err (@::outref)
+            {
+                $errmsg .= $err;
+            }
+            `logger -t xcat "$errmsg"`;
+             exit;
+        }
+    }
+    return $rc;
+}
