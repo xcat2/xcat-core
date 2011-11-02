@@ -20,7 +20,7 @@ AutoReqProv: no
 # also need to fix Requires for AIX
 %ifos linux
 BuildArch: noarch
-Requires: perl-IO-Socket-SSL perl-XML-Simple perl-IO-Tty perl-Crypt-SSLeay  make
+Requires: perl-IO-Socket-SSL perl-XML-Simple perl-IO-Tty perl-Crypt-SSLeay mod_ssl make
 %endif
 
 Requires: perl-xCAT >= %{epoch}:%(cat Version|cut -d. -f 1,2)
@@ -157,6 +157,13 @@ cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server/*
 #echo $RPM_BUILD_ROOT %{prefix}
 
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/ws
+cp xCAT-wsapi/* $RPM_BUILD_ROOT/%{prefix}/ws
+echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" > $RPM_BUILD_ROOT/wstemp.txt
+cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf >> $RPM_BUILD_ROOT/wstemp.txt
+mv $RPM_BUILD_ROOT/wstemp.txt $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf
+
+
 %clean
 rm -rf $RPM_BUILD_ROOT
 
@@ -211,6 +218,26 @@ if [ "$1" -gt "1" ]; then #only on upgrade for AIX...
   fi     
 fi  
 %endif
+
+#Web Service
+%ifos linux
+	if [ -e "/etc/redhat-release" ]; then
+		apachedaemon='httpd'
+		#apacheuser='apache'
+	else	#SUSE
+		apachedaemon='apache2'
+		#apacheuser='wwwrun'
+	fi
+
+	/bin/rm -f /etc/$apachedaemon/conf.d/xcat-ws.conf
+        mkdir -p /etc/$apachedaemon/conf.d/
+	/bin/ln -s %{prefix}/ws/xcat-ws.conf /etc/$apachedaemon/conf.d/
+
+	# Restart Apache Web Server
+	#/etc/init.d/$apachedaemon reload
+
+%endif
+
 exit 0
 
 %preun
@@ -226,6 +253,17 @@ if [ $1 == 0 ]; then  #This means only on -e
   fi
   rm -f /usr/sbin/xcatd  #remove the symbolic
 fi
+%endif
+%ifos linux
+        if [ -e "/etc/redhat-release" ]; then
+                apachedaemon='httpd'
+                #apacheuser='apache'
+        else    #SUSE
+                apachedaemon='apache2'
+                #apacheuser='wwwrun'
+        fi
+
+        /bin/rm -f /etc/$apachedaemon/conf.d/xcat-ws.conf
 %endif
 
 
