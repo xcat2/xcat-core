@@ -182,7 +182,10 @@ if (-f $scriptname) {
     &runcmd($cmd);
     $dline = $::outref;
     ($junk, $usenfsv4) =  split(/=/, $dline);
-    chomp $usenfsv4;
+    if ($usenfsv4)
+    {
+        chomp $usenfsv4;
+    }
 }
 if (!$installdir) {
 	$installdir = "/install";
