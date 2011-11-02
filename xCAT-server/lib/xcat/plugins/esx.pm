@@ -57,6 +57,24 @@ my $vmwaresdkdetect = eval {
 };
 my %lockhandles;
 
+sub recursion_copy {
+        my $source = shift;
+        my $destination = shift;
+        my $dirhandle;
+        opendir($dirhandle,$source);
+        my $entry;
+        foreach $entry (readdir($dirhandle)) {
+                if ($entry eq '.' or $entry eq '..') { next; }
+                my $tempsource = "$source/$entry";
+                my $tempdestination = "$destination/$entry";
+                if ( -d $tempsource ) {
+                        unless (-d $tempdestination) { mkdir $tempdestination or die "failure creating directory $tempdestination, $!"; }
+                        recursion_copy($tempsource,$tempdestination);
+                } else {
+                        copy($tempsource,$tempdestination) or die "failed copy from $tempsource to $tempdestination, $!";
+                }
+        } 
+}       
 sub lockbyname {
 	my $name = shift;
 	my $lckh;
@@ -4363,6 +4381,12 @@ sub mkcommonboot {
 			    copy("$::XCATROOT/share/xcat/netboot/syslinux/mboot.c32", $dest);
             } else {
 			    copy("$srcdir/mboot.c32", $dest);
+            }
+            if (-f "$srcdir/efiboot.img") {
+				copy("$srcdir/efiboot.img",$dest);
+				print("$srcdir/efi");
+                mkpath("$dest/efi");
+				recursion_copy("$srcdir/efi","$dest/efi");
             }
 			$donetftp{$osver,$arch,$profile} = 1;
 		}
