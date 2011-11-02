@@ -20,7 +20,7 @@ if ($^O =~ /^aix/i) {
         use lib "/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi";
         use lib "/usr/opt/perl5/lib/site_perl/5.8.2";
 }
-
+use strict;
 use File::Path;
 use IO::Socket;
 my $useSocketSSL=eval { require IO::Socket::SSL; };
@@ -31,7 +31,7 @@ sleep int(rand(10));
 
 # since we don't have syslog set up yet we'll
 # just save msgs in a local log file
-$logdir = "/var/log/xcat";
+my $logdir = "/var/log/xcat";
 
 if (!-d $logdir) {
 	mkpath($logdir);
@@ -108,10 +108,11 @@ if (!$foundxcatinfo) {
 	# get the name of my service node (NIM master) from the /etc/niminfo file
 	if (-f "/etc/niminfo") {
 
-		$cmd = "cat /etc/niminfo | grep 'NIM_NAME'";
+		my $cmd = "cat /etc/niminfo | grep 'NIM_NAME'";
 		&runcmd($cmd);
 		my $line = $::outref;
 		my $junk;
+                my $myname;
 		($junk, $myname) =  split(/=/, $line);
 		chomp $myname;
 		if ($myname ne "master") {
@@ -249,7 +250,7 @@ if (-f $scriptname) {
 		chomp $tz;	
         my $tzcmd = qq~/usr/bin/chtz $tz >/dev/null 2>&1~;
         if (&runcmd($tzcmd) != 0) {
-            $msg = "$::sdate xcataixpost: Could not set timezone.\n";
+            my $msg = "$::sdate xcataixpost: Could not set timezone.\n";
             `logger -t xcat $msg`;
         } else {
 			&runcmd("export TZ=$tz");
@@ -265,10 +266,10 @@ if (-f $scriptname)
     # modify the UPDATENODE flag to 1
     if (@ARGV > 0) {
       if ($ARGV[0] == 1 || $ARGV[0] == 2) {
-        $TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1/g' $scriptname`;
+        my $TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1/g' $scriptname`;
         `echo "$TMP" > $scriptname`;
       } elsif ($ARGV[0] == 5) {
-        $TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1\\\nUPDATESECURITY=1\\\nexport UPDATESECURITY/g' $scriptname`;
+        my $TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1\\\nUPDATESECURITY=1\\\nexport UPDATESECURITY/g' $scriptname`;
         `echo "$TMP" > $scriptname`;
       }
     }
@@ -355,7 +356,7 @@ if (-f $scriptname) {
 			$pwcmd = qq~echo "root:$::ROOTPW" | /bin/chpasswd -c >/dev/null 2>&1~;
 		}
 		if (&runcmd($pwcmd) != 0) {
-			$msg = "$::sdate xcataixpost: Could not set root password.\n";
+			my $msg = "$::sdate xcataixpost: Could not set root password.\n";
 			`logger -t xcat $msg`;
 		}
 	}
@@ -404,7 +405,7 @@ if ($nodesetstat eq 'diskless') {
     }    
 }
 
-$cleanupxcatpost = `grep "CLEANUPXCATPOST=" $scriptname|awk -F \= '{print \$2}'`;
+my $cleanupxcatpost = `grep "CLEANUPXCATPOST=" $scriptname|awk -F \= '{print \$2}'`;
 if ((!$?) && ($cleanupxcatpost =~ /\'1\'|\'yes\'/i)) {
     &runcmd("cd /; rm -rf /xcatpost/*");
 }
