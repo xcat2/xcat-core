@@ -495,11 +495,12 @@ sub process_request {
       $callback->(\%response);
     } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
       ($rc,$errstr) = setstate($_,\%bphash,\%chainhash,\%machash,\%iscsihash);
-      if ($rc) {
-        $response{node}->[0]->{errorcode}->[0]= $rc;
-        $response{node}->[0]->{errorc}->[0]= $errstr;
-        $callback->(\%response);
-      }
+      #currently, it seems setstate doesn't return error codes...
+      #if ($rc) {
+      #  $response{node}->[0]->{errorcode}->[0]= $rc;
+      #  $response{node}->[0]->{errorc}->[0]= $errstr;
+      #  $callback->(\%response);
+      #}
       if($args[0] eq 'offline') {
         unlink($tftpdir."/xcat/xnba/nodes/".$_);
         unlink($tftpdir."/xcat/xnba/nodes/".$_.".pxelinux");
