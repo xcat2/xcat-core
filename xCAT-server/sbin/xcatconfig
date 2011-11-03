@@ -285,19 +285,23 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
         use strict;
 
 		#
-		# for AIX systems add xcatd to the /etc/inittab file
+      # If not UPDATE
+		#  for AIX systems add xcatd to the /etc/inittab file
+      #  This is to support HAEMS, if removed must not put back
 		#
 
-		# add xcatd entry if one does not exist
-		my $rcmd = "/bin/cat /etc/inittab | grep 'xcatd'";
-		my $outref = xCAT::Utils->runcmd("$rcmd", -1);
-		if ($::RUNCMD_RC != 0) {
-                   my $mkitab_cmd =
-                  "mkitab \"xcatd:2:once:$::XCATROOT/sbin/restartxcatd > /dev/console 2>&1\" > /dev/null 2>&1";
-		   xCAT::Utils->runcmd("$mkitab_cmd", 0);
-		   if ($::RUNCMD_RC != 0) {
-                    xCAT::MsgUtils->message('E', "Could not set up inittab.");
-		   }
+      if (! $::UPDATEINSTALL) {
+  		  # add xcatd entry if one does not exist
+		  my $rcmd = "/bin/cat /etc/inittab | grep 'xcatd'";
+		  my $outref = xCAT::Utils->runcmd("$rcmd", -1);
+		  if ($::RUNCMD_RC != 0) {
+           my $mkitab_cmd =
+          "mkitab \"xcatd:2:once:$::XCATROOT/sbin/restartxcatd > /dev/console 2>&1\" > /dev/null 2>&1";
+		     xCAT::Utils->runcmd("$mkitab_cmd", 0);
+		    if ($::RUNCMD_RC != 0) {
+             xCAT::MsgUtils->message('E', "Could not set up inittab.");
+		    }
+		  }
 		}
 
         # add AIX needed exports
