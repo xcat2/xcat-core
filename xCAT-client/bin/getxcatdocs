@@ -6,6 +6,9 @@
 # that has internet access to run it.  Before running this command, you must have
 # wget, python, and pisa installed.  See: https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Editing_xCAT_Documentation_Pages#Converting_Wiki_Pages_to_HTML_and_PDFs .
 
+# Note: do not use the --upload option, unless your machine has authority to write to http://xcat.sourceforge.net/doc/ .
+#       You also need to set $UPLOADUSER to your sourceforge user.
+
 #BEGIN
 #{
 #    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
@@ -18,10 +21,11 @@ use Getopt::Long;
 
 #my $VERSION;
 my $HELP;
+my $UPLOAD;
  
 my $usage = sub {
    	my $exitcode = shift @_;
-   	print "Usage: getxcatdocs [-?|-h|--help] [<destination-dir>]\n";
+   	print "Usage: getxcatdocs [-?|-h|--help] [-u|--upload] [<destination-dir>]\n";
 	exit $exitcode;
 };
 
@@ -29,7 +33,7 @@ my $usage = sub {
 Getopt::Long::Configure("bundling");
 #Getopt::Long::Configure("pass_through");
 Getopt::Long::Configure("no_pass_through");
-if (!GetOptions('h|?|help'  => \$HELP )) { $usage->(1); }
+if (!GetOptions('h|?|help'  => \$HELP, 'u|upload' => \$UPLOAD )) { $usage->(1); }
 
 if ($HELP) { $usage->(0); }
 
@@ -38,7 +42,6 @@ if ($HELP) { $usage->(0); }
 #    exit;
 #}
 
-#if (xCAT::Utils->isAIX()) { die "Error: this command is not yet supported on AIX.\n"; }
 if ($^O =~ /^aix/i) { die "Error: this command is not yet supported on AIX.\n"; }
 
 my $destdir = scalar(@ARGV) ? $ARGV[0] : '.';
@@ -69,14 +72,23 @@ foreach my $file (@dir) {
 	#print "$cmd\n";
 	runh2p($cmd);
 }
-# tar and compress
+
+# tar/compress
 chdir($docdir);
 my $date=`date +%Y%m%d%H%M`;
 chop $date;
-my $docname="xcat-docs-snap$date.tar";
-`tar cvfj $docname html pdf`;
-`gzip $docname`;
+my $docname="xcat-docs-snap$date.tar.gz";
+system("tar -zcfz $docname html pdf 2>&1");
+
+# Optionally upload the tarball to sourceforge
+if ($UPLOAD) {
+	my $UPLOADUSER = 'bp-sawyers';
+	my $count = 1;
+	while ($count<=5 && system("rsync -v $docname $UPLOADUSER," . 'xcat@web.sourceforge.net:htdocs/doc/ 2>&1')) { $count++; }
+}
 exit 0;
+
+
 # Run the wget cmd and filter out some of the silly output
 sub runwget {
 	my $cmd = shift;
