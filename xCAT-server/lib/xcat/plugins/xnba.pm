@@ -235,11 +235,6 @@ sub setstate {
         }
     }
     close($pcfg);
-    my $inetn = inet_aton($node);
-    unless ($inetn) {
-     syslog("local1|err","xCAT unable to resolve IP for $node in pxe plugin");
-     return;
-    }
   } else { #TODO: actually, should possibly default to xCAT image?
     print $pcfg "LOCALBOOT 0\n";
     close($pcfg);
