@@ -83,11 +83,15 @@ function loadProvisionPage() {
 
 	// Create radio buttons for platforms
 	var hwList = $('<ol>Platforms available:</ol>');
+	var esx = $('<li><input type="radio" name="hw" value="esx"/>ESX</li>');
+	var kvm = $('<li><input type="radio" name="hw" value="kvm"/>KVM</li>');
 	var ipmi = $('<li><input type="radio" name="hw" value="ipmi" checked/>iDataPlex</li>');
 	var blade = $('<li><input type="radio" name="hw" value="blade"/>BladeCenter</li>');
 	var hmc = $('<li><input type="radio" name="hw" value="hmc"/>System p</li>');
 	var zvm = $('<li><input type="radio" name="hw" value="zvm"/>System z</li>');
 
+	hwList.append(esx);
+	hwList.append(kvm);
 	hwList.append(ipmi);
 	hwList.append(blade);
 	hwList.append(hmc);
@@ -111,22 +115,30 @@ function loadProvisionPage() {
 	        // Create an instance of the plugin
 	        var plugin;
 	        switch (hw) {
-	        case "blade":
-	            plugin = new bladePlugin();
-	            title = 'BladeCenter';
-	            break;
-	        case "hmc":
-	            plugin = new hmcPlugin();
-	            title = 'System p';
-	            break;
-	        case "ipmi":
-	            plugin = new ipmiPlugin();
-	            title = 'iDataPlex';
-	            break;
-	        case "zvm":
-	            plugin = new zvmPlugin();
-	            title = 'System z';
-	            break;
+		        case "kvm":
+		            plugin = new kvmPlugin();
+		            title = 'KVM';
+		            break;
+		        case "esx":
+		            plugin = new esxPlugin();
+		            title = 'ESX';
+		            break;
+		        case "blade":
+		            plugin = new bladePlugin();
+		            title = 'BladeCenter';
+		            break;
+		        case "hmc":
+		            plugin = new hmcPlugin();
+		            title = 'System p';
+		            break;
+		        case "ipmi":
+		            plugin = new ipmiPlugin();
+		            title = 'iDataPlex';
+		            break;
+		        case "zvm":
+		            plugin = new zvmPlugin();
+		            title = 'System z';
+		            break;
 	        }
 
 	        // Select tab

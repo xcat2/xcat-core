@@ -10,7 +10,7 @@ $(document).ready(function() {
  * 
  * @return Nothing
  */
-var ipmiPlugin = function() {
+var kvmPlugin = function() {
 
 };
 
@@ -21,7 +21,7 @@ var ipmiPlugin = function() {
  * 			Node to clone
  * @return Nothing
  */
-ipmiPlugin.prototype.serviceClone = function(node) {
+kvmPlugin.prototype.serviceClone = function(node) {
 
 };
 
@@ -32,7 +32,7 @@ ipmiPlugin.prototype.serviceClone = function(node) {
  * 			Tab ID where page will reside
  * @return Nothing
  */
-ipmiPlugin.prototype.loadServiceProvisionPage = function(tabId) {
+kvmPlugin.prototype.loadServiceProvisionPage = function(tabId) {
 	
 };
 
@@ -43,7 +43,7 @@ ipmiPlugin.prototype.loadServiceProvisionPage = function(tabId) {
  *            Data from HTTP request
  * @return Nothing
  */
-ipmiPlugin.prototype.loadServiceInventory = function(data) {
+kvmPlugin.prototype.loadServiceInventory = function(data) {
 	
 };
 
@@ -54,7 +54,7 @@ ipmiPlugin.prototype.loadServiceInventory = function(data) {
  *            Data from HTTP request
  * @return Nothing
  */
-ipmiPlugin.prototype.loadInventory = function(data) {
+kvmPlugin.prototype.loadInventory = function(data) {
 	var args = data.msg.split(',');
 	var tabId = args[0].replace('out=', '');
 	var node = args[1].replace('node=', '');
@@ -102,7 +102,7 @@ ipmiPlugin.prototype.loadInventory = function(data) {
  *            Source node to clone
  * @return Nothing
  */
-ipmiPlugin.prototype.loadClonePage = function(node) {
+kvmPlugin.prototype.loadClonePage = function(node) {
 	// Get nodes tab
 	var tab = getNodesTab();
 	var newTabId = node + 'CloneTab';
@@ -130,7 +130,7 @@ ipmiPlugin.prototype.loadClonePage = function(node) {
  *            The provision tab ID
  * @return Nothing
  */
-ipmiPlugin.prototype.loadProvisionPage = function(tabId) {
+kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	// Get OS image names
 	$.ajax( {
 		url : 'lib/cmd.php',
@@ -160,21 +160,227 @@ ipmiPlugin.prototype.loadProvisionPage = function(tabId) {
 	});
 
 	// Get provision tab instance
-	var inst = tabId.replace('ipmiProvisionTab', '');
+	var inst = tabId.replace('kvmProvisionTab', '');
 
 	// Create provision form
 	var provForm = $('<div class="form"></div>');
 
 	// Create info bar
-	var infoBar = createInfoBar('Provision an iDataPlex. This will install an operating system onto the iDataPlex.');
+	var infoBar = createInfoBar('Provision an KVM virtual machine.');
 	provForm.append(infoBar);
 
 	// Append to provision tab
 	$('#' + tabId).append(provForm);
+	
+	var vmFS = $('<fieldset></fieldset>');
+	var vmLegend = $('<legend>Virtual Machine</legend>');
+	vmFS.append(vmLegend);
+	
+	var hwFS = $('<fieldset></fieldset>');
+	var hwLegend = $('<legend>Hardware</legend>');
+	hwFS.append(hwLegend);
+	
+	var imgFS = $('<fieldset></fieldset>');
+	var imgLegend = $('<legend>Image</legend>');
+	imgFS.append(imgLegend);
+	
+	provForm.append(vmFS, hwFS, imgFS);
+	
+	// Create hypervisor input
+	var hypervisor = $('<div></div>');
+	var hypervisorLabel = $('<label>Hypervisor:</label>');
+	hypervisor.append(hypervisorLabel);
 
-	// Create provision existing node division
-	var provExisting = createIpmiProvisionExisting(inst);
-	provForm.append(provExisting);
+	// Turn on auto complete for group
+	var hypervisorNames = $.cookie('');
+	if (hypervisorNames) {
+		// Split group names into an array
+		var tmp = groupNames.split(',');
+
+		// Create drop down for groups
+		var hypervisorSelect = $('<select></select>');
+		hypervisorSelect.append('<option></option>');
+		for ( var i in tmp) {
+			// Add group into drop down
+			var opt = $('<option value="' + tmp[i] + '">' + tmp[i] + '</option>');
+			hypervisorSelect.append(opt);
+		}
+		hypervisor.append(groupSelect);
+	} else {
+		// If no groups are cookied
+		var hypervisorInput = $('<input type="text" name="group"/>');
+		hypervisor.append(hypervisorInput);
+	}
+	vmFS.append(hypervisor);
+	
+	// Create group input
+	var group = $('<div></div>');
+	var groupLabel = $('<label>Group:</label>');
+	group.append(groupLabel);
+
+	// Turn on auto complete for group
+	var groupNames = $.cookie('groups');
+	if (groupNames) {
+		// Split group names into an array
+		var tmp = groupNames.split(',');
+
+		// Create drop down for groups
+		var groupSelect = $('<select></select>');
+		groupSelect.append('<option></option>');
+		for ( var i in tmp) {
+			// Add group into drop down
+			var opt = $('<option value="' + tmp[i] + '">' + tmp[i] + '</option>');
+			groupSelect.append(opt);
+		}
+		group.append(groupSelect);
+	} else {
+		// If no groups are cookied
+		var groupInput = $('<input type="text" name="group"/>');
+		group.append(groupInput);
+	}
+	vmFS.append(group);
+
+	// Create node input
+	var node = $('<div></div>');
+	var nodeLabel = $('<label>VM name:</label>');
+	var nodeInput = $('<input type="text" name="node"/>');
+	node.append(nodeLabel);
+	node.append(nodeInput);
+	vmFS.append(node);
+
+	// Create memory input
+	var memory = $('<div></div>');
+	var memoryLabel = $('<label>Memory:</label>');
+	var memoryInput = $('<input type="text" name="memory"/>');
+	memory.append(memoryLabel);
+	memory.append(memoryInput);
+	hwFS.append(memory);
+	
+	// Create processor dropdown
+	var cpu = $('<div></div>');
+	var cpuLabel = $('<label>Processor:</label>');
+	var cpuSelect = $('<select name="cpu"></select>');
+	cpuSelect.append('<option value="1">1</option>'
+		+ '<option value="2">2</option>'
+		+ '<option value="3">3</option>'
+		+ '<option value="4">4</option>'
+		+ '<option value="5">5</option>'
+		+ '<option value="6">6</option>'
+		+ '<option value="7">7</option>'
+		+ '<option value="8">8</option>'
+	);
+	cpu.append(cpuLabel);
+	cpu.append(cpuSelect);
+	hwFS.append(cpu);
+	
+	// Create NIC dropdown
+	var nic = $('<div></div>');
+	var nicLabel = $('<label>NIC:</label>');
+	var nicSelect = $('<select name="nic"></select>');
+	nicSelect.append('<option value="1">1</option>'
+		+ '<option value="2">2</option>'
+		+ '<option value="3">3</option>'
+		+ '<option value="4">4</option>'
+		+ '<option value="5">5</option>'
+		+ '<option value="6">6</option>'
+		+ '<option value="7">7</option>'
+		+ '<option value="8">8</option>'
+	);
+	nic.append(nicLabel);
+	nic.append(nicSelect);
+	hwFS.append(nic);
+	
+	// Create disk input
+	var disk = $('<div></div>');
+	var diskLabel = $('<label>Disk size:</label>');
+	var diskInput = $('<input type="text" name="disk"/>');
+	var diskSizeSelect = $('<select name="nic"></select>');
+	diskSizeSelect.append('<option value="MB">MB</option>'
+		+ '<option value="GB">GB</option>'
+	);
+	disk.append(diskLabel, diskInput, diskSizeSelect);
+	hwFS.append(disk);
+	
+	// Create operating system input
+	var os = $('<div></div>');
+	var osLabel = $('<label for="os">Operating system:</label>');
+	var osInput = $('<input type="text" name="os"/>');
+	osInput.one('focus', function() {
+		var tmp = $.cookie('osvers');		
+		if (tmp) {
+			// Turn on auto complete
+			$(this).autocomplete({
+				source: tmp.split(',')
+			});
+		}
+	});
+	os.append(osLabel);
+	os.append(osInput);
+	imgFS.append(os);
+	
+	// Create architecture input
+	var arch = $('<div></div>');
+	var archLabel = $('<label for="arch">Architecture:</label>');
+	var archInput = $('<input type="text" name="arch"/>');
+	archInput.one('focus', function() {
+		var tmp = $.cookie('osarchs');
+		if (tmp) {
+			// Turn on auto complete
+			$(this).autocomplete({
+				source: tmp.split(',')
+			});
+		}
+	});
+	arch.append(archLabel);
+	arch.append(archInput);
+	imgFS.append(arch);
+	
+	// Create profile input
+	var profile = $('<div></div>');
+	var profileLabel = $('<label for="profile">Profile:</label>');
+	var profileInput = $('<input type="text" name="profile"/>');
+	profileInput.one('focus', function() {
+		var tmp = $.cookie('profiles');
+		if (tmp) {
+			// Turn on auto complete
+			$(this).autocomplete({
+				source: tmp.split(',')
+			});
+		}
+	});
+	profile.append(profileLabel);
+	profile.append(profileInput);
+	imgFS.append(profile);
+	
+	// Create boot method dropdown
+	var method = $('<div></div>');
+	var methodLabel = $('<label for="method">Boot method:</label>');
+	var methodSelect = $('<select id="bootMethod" name="bootMethod"></select>');
+	methodSelect.append('<option value=""></option>'
+		+ '<option value="boot">boot</option>'
+		+ '<option value="install">install</option>'
+		+ '<option value="iscsiboot">iscsiboot</option>'
+		+ '<option value="netboot">netboot</option>'
+		+ '<option value="statelite">statelite</option>'
+	);
+	method.append(methodLabel);
+	method.append(methodSelect);
+	imgFS.append(method);
+
+	/**
+	 * Provision existing
+	 */
+	var provisionBtn = createButton('Provision');
+	provisionBtn.bind('click', function(event) {
+		// Remove any warning messages
+		$(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
+		var ready = true;
+		var errorMessage = '';
+
+		// Get provision tab ID
+		var thisTabId = 'kvmProvisionTab' + inst;
+	});
+	provForm.append(provisionBtn);
 };
 
 /**
@@ -182,9 +388,9 @@ ipmiPlugin.prototype.loadProvisionPage = function(tabId) {
  * 
  * @return Nothing
  */
-ipmiPlugin.prototype.loadResources = function() {
+kvmPlugin.prototype.loadResources = function() {
 	// Get resource tab ID
-	var tabId = 'ipmiResourceTab';
+	var tabId = 'kvmResourceTab';
 	// Remove loader
 	$('#' + tabId).find('img').remove();
 	
@@ -203,7 +409,7 @@ ipmiPlugin.prototype.loadResources = function() {
  * 
  * @return Nothing
  */
-ipmiPlugin.prototype.addNode = function() {
+kvmPlugin.prototype.addNode = function() {
     var diag = $('<div id="addIdplx" class="form"></div>');
     var info = createInfoBar('Add a node range');
     diag.append(info);
@@ -285,7 +491,7 @@ function addIdataplex(){
     
     // Generate chdef arguments
     args = '-t;node;-o;' + tempArray[0] + ';mac=' + tempArray[1] + ';ip=' + tempArray[2] + ';groups=' + 
-          tempArray[3] + ';mgt=ipmi;chain="runcmd=bmcsetup";netboot=xnba;nodetype=osi;profile=compute;' +
+          tempArray[3] + ';mgt=kvm;chain="runcmd=bmcsetup";netboot=xnba;nodetype=osi;profile=compute;' +
           'bmc=' + tempArray[4];
     $.ajax({
         url : 'lib/cmd.php',
@@ -324,241 +530,13 @@ function addIdataplex(){
 }
 
 /**
- * Create provision existing node division
- * 
- * @param inst
- *            Provision tab instance
- * @return Provision existing node division
- */
-function createIpmiProvisionExisting(inst) {
-	// Create provision existing division
-	var provExisting = $('<div></div>');
-
-	// Create group input
-	var group = $('<div></div>');
-	var groupLabel = $('<label for="provType">Group:</label>');
-	group.append(groupLabel);
-
-	// Turn on auto complete for group
-	var dTableDivId = 'ipmiNodesDatatableDIV' + inst;	// Division ID where nodes datatable will be appended
-	var groupNames = $.cookie('groups');
-	if (groupNames) {
-		// Split group names into an array
-		var tmp = groupNames.split(',');
-
-		// Create drop down for groups
-		var groupSelect = $('<select></select>');
-		groupSelect.append('<option></option>');
-		for ( var i in tmp) {
-			// Add group into drop down
-			var opt = $('<option value="' + tmp[i] + '">' + tmp[i] + '</option>');
-			groupSelect.append(opt);
-		}
-		group.append(groupSelect);
-
-		// Create node datatable
-		groupSelect.change(function() {
-			// Get group selected
-			var thisGroup = $(this).val();
-			// If a valid group is selected
-			if (thisGroup) {
-				createNodesDatatable(thisGroup, dTableDivId);
-			} // End of if (thisGroup)
-		});
-	} else {
-		// If no groups are cookied
-		var groupInput = $('<input type="text" name="group"/>');
-		group.append(groupInput);
-	}
-	provExisting.append(group);
-
-	// Create node input
-	var node = $('<div></div>');
-	var nodeLabel = $('<label for="nodeName">Nodes:</label>');
-	var nodeDatatable = $('<div id="' + dTableDivId + '" style="display: inline-block; max-width: 800px;"><p>Select a group to view its nodes</p></div>');
-	node.append(nodeLabel);
-	node.append(nodeDatatable);
-	provExisting.append(node);
-
-	// Create boot method drop down
-	var method = $('<div></div>');
-	var methodLabel = $('<label for="method">Boot method:</label>');
-	var methodSelect = $('<select id="bootMethod" name="bootMethod"></select>');
-	methodSelect.append('<option value=""></option>'
-		+ '<option value="boot">boot</option>'
-		+ '<option value="install">install</option>'
-		+ '<option value="iscsiboot">iscsiboot</option>'
-		+ '<option value="netboot">netboot</option>'
-		+ '<option value="statelite">statelite</option>'
-	);
-	method.append(methodLabel);
-	method.append(methodSelect);
-	provExisting.append(method);
-	
-	// Create operating system input
-	var os = $('<div></div>');
-	var osLabel = $('<label for="os">Operating system:</label>');
-	var osInput = $('<input type="text" name="os"/>');
-	osInput.one('focus', function() {
-		var tmp = $.cookie('osvers');		
-		if (tmp) {
-			// Turn on auto complete
-			$(this).autocomplete({
-				source: tmp.split(',')
-			});
-		}
-	});
-	os.append(osLabel);
-	os.append(osInput);
-	provExisting.append(os);
-
-	// Create architecture input
-	var arch = $('<div></div>');
-	var archLabel = $('<label for="arch">Architecture:</label>');
-	var archInput = $('<input type="text" name="arch"/>');
-	archInput.one('focus', function() {
-		var tmp = $.cookie('osarchs');
-		if (tmp) {
-			// Turn on auto complete
-			$(this).autocomplete({
-				source: tmp.split(',')
-			});
-		}
-	});
-	arch.append(archLabel);
-	arch.append(archInput);
-	provExisting.append(arch);
-
-	// Create profile input
-	var profile = $('<div></div>');
-	var profileLabel = $('<label for="profile">Profile:</label>');
-	var profileInput = $('<input type="text" name="profile"/>');
-	profileInput.one('focus', function() {
-		var tmp = $.cookie('profiles');
-		if (tmp) {
-			// Turn on auto complete
-			$(this).autocomplete({
-				source: tmp.split(',')
-			});
-		}
-	});
-	profile.append(profileLabel);
-	profile.append(profileInput);
-	provExisting.append(profile);
-
-	/**
-	 * Provision existing
-	 */
-	var provisionBtn = createButton('Provision');
-	provisionBtn.bind('click', function(event) {
-		// Remove any warning messages
-		$(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
-		var ready = true;
-		var errorMessage = '';
-
-		// Get provision tab ID
-		var thisTabId = 'ipmiProvisionTab' + inst;
-		
-		// Get nodes that were checked
-		var dTableId = 'ipmiNodesDatatable' + inst;
-		var tgts = getNodesChecked(dTableId);
-		if (!tgts) {
-			errorMessage += 'You need to select a node. ';
-			ready = false;
-		}
-		
-		// Check booth method
-		var boot = $('#' + thisTabId + ' select[name=bootMethod]');
-		if (!boot.val()) {
-			errorMessage += 'You need to select a boot method. ';
-			boot.css('border', 'solid #FF0000 1px');
-			ready = false;
-		} else {
-			boot.css('border', 'solid #BDBDBD 1px');
-		}
-		
-		// Check operating system image
-		var os = $('#' + thisTabId + ' input[name=os]');
-		if (!os.val()) {
-			errorMessage += 'You need to select a operating system image. ';
-			os.css('border', 'solid #FF0000 1px');
-			ready = false;
-		} else {
-			os.css('border', 'solid #BDBDBD 1px');
-		}
-		
-		// Check architecture
-		var arch = $('#' + thisTabId + ' input[name=arch]');
-		if (!arch.val()) {
-			errorMessage += 'You need to select an architecture. ';
-			arch.css('border', 'solid #FF0000 1px');
-			ready = false;
-		} else {
-			arch.css('border', 'solid #BDBDBD 1px');
-		}
-		
-		// Check profile
-		var profile = $('#' + thisTabId + ' input[name=profile]');
-		if (!profile.val()) {
-			errorMessage += 'You need to select a profile. ';
-			profile.css('border', 'solid #FF0000 1px');
-			ready = false;
-		} else {
-			profile.css('border', 'solid #BDBDBD 1px');
-		}
-		
-		// If all inputs are valid, ready to provision
-		if (ready) {			
-			// Disable provision button
-			$(this).attr('disabled', 'true');
-			
-			// Prepend status bar
-			var statBar = createStatusBar('ipmiProvisionStatBar' + inst);
-			statBar.append(createLoader(''));
-			statBar.prependTo($('#' + thisTabId));
-
-			// Disable all inputs
-			var inputs = $('#' + thisTabId + ' input');
-			inputs.attr('disabled', 'disabled');
-						
-			// Disable all selects
-			var selects = $('#' + thisTabId + ' select');
-			selects.attr('disabled', 'disabled');
-															
-			/**
-			 * (1) Set operating system
-			 */
-			$.ajax( {
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'nodeadd',
-					tgt : '',
-					args : tgts + ';noderes.netboot=xnba;nodetype.os=' + os.val() + ';nodetype.arch=' + arch.val() + ';nodetype.profile=' + profile.val() + ';nodetype.provmethod=' + boot.val(),
-					msg : 'cmd=nodeadd;out=' + inst
-				},
-
-				success : updateIpmiProvisionExistingStatus
-			});
-		} else {
-			// Show warning message
-			var warn = createWarnBar(errorMessage);
-			warn.prependTo($(this).parent().parent());
-		}
-	});
-	provExisting.append(provisionBtn);
-
-	return provExisting;
-}
-
-/**
- * Update the provision existing node status
+ * Update the provision node status
  * 
  * @param data
  *            Data returned from HTTP request
  * @return Nothing
  */
-function updateIpmiProvisionExistingStatus(data) {
+function updateKVMProvisionStatus(data) {
 	// Get ajax response
 	var rsp = data.rsp;
 	var args = data.msg.split(';');
@@ -569,8 +547,8 @@ function updateIpmiProvisionExistingStatus(data) {
 	var inst = args[1].replace('out=', '');
 	
 	// Get provision tab and status bar ID
-	var statBarId = 'ipmiProvisionStatBar' + inst;
-	var tabId = 'ipmiProvisionTab' + inst;
+	var statBarId = 'kvmProvisionStatBar' + inst;
+	var tabId = 'kvmProvisionTab' + inst;
 	
 	/**
 	 * (2) Remote install
@@ -586,7 +564,7 @@ function updateIpmiProvisionExistingStatus(data) {
 		var arch = $('#' + tabId + ' input[name="arch"]').val();
 		
 		// Get nodes that were checked
-		var dTableId = 'ipmiNodesDatatable' + inst;
+		var dTableId = 'kvmNodesDatatable' + inst;
 		var tgts = getNodesChecked(dTableId);
 		
 		// Begin installation
@@ -600,7 +578,7 @@ function updateIpmiProvisionExistingStatus(data) {
 				msg : 'cmd=rinstall;out=' + inst
 			},
 
-			success : updateIpmiProvisionExistingStatus
+			success : updateKVMProvisionStatus
 		});
 	} 
 	

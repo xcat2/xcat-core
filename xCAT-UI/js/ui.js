@@ -533,6 +533,8 @@ function initPage() {
 	includeJs("js/provision/provision.js");
 	
 	// Custom plugins
+	includeJs("js/custom/esx.js");
+	includeJs("js/custom/kvm.js");
 	includeJs("js/custom/blade.js");
 	includeJs("js/custom/ipmi.js");
 	includeJs("js/custom/zvm.js");
