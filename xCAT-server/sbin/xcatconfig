@@ -284,8 +284,9 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
         system($mkssys_cmd);
         use strict;
 
-           # if not Update,  add to inittab, breaks HAMS to add
-            if (! $::UPDATEINSTALL) {
+        # if not Update,  add to inittab
+        #  breaks HAMS to add on update
+        if (! $::UPDATEINSTALL) {
 		# for AIX systems add xcatd to the /etc/inittab file
 		# add xcatd entry if one does not exist
 		my $rcmd = "/bin/cat /etc/inittab | grep 'xcatd'";
@@ -298,7 +299,7 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
                     xCAT::MsgUtils->message('E', "Could not set up inittab.");
 		   }
 		}
-	     }
+         }
 
         # add AIX needed exports
         &setupAIXexports;
