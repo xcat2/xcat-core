@@ -2754,9 +2754,11 @@ sub nodeonmynet
         } else {
             my @v6routes = split /\n/,`ip -6 route`;
             foreach (@v6routes) {
-                if (/via/ or /^unreachable/ or /^fe80::\/64/) {  #only count local ones, remote ones can be caught in next loop
-                                                                 #also, link-local would be a pitfall, since more context than address is
-                                                                 #needed to determine locality
+                if (/via/ or /^unreachable/ or /^fe80::\/64/) {
+                  #only count local ones, remote ones can be caught in next loop
+                   #also, link-local would be a pitfall, 
+                    #since more context than address is
+                     #needed to determine locality
                     next;
                 }
                 s/ .*//; #remove all after the space
@@ -2840,6 +2842,14 @@ sub nodeonmynet
 #-------------------------------------------------------------------------------
 
 =head3   getNodeIPaddress
+    Arguments:
+       Node name  only one at a time 
+    Returns: ip address(s) 
+    Globals:
+        none
+    Error:
+        none
+    Example:   my $c1 = xCAT::Utils::getNodeIPaddress($nodetocheck);
 
 =cut
 
@@ -2871,8 +2881,24 @@ sub getNodeIPaddress
         my $type = xCAT::DBobjUtils->getnodetype($nodetocheck);
         if ($type) {
             if ($type eq "frame" or $type eq "cec")  {
-            	$c1 = xCAT::DBobjUtils->getchildren($nodetocheck); 
-   
+              # Read the ppc table for any entry that
+              # has parent=nodename and nodetype fsp or bpa  
+              my $ppctab  = xCAT::Table->new( 'ppc' );
+              my @ps = $ppctab->getAllNodeAttribs(['node','parent','nodetype']);
+              my $parent;
+              my $node;
+              my $type;
+              #search for addresses
+              for my $entry ( @ps ) {
+                 $parent = $entry->{parent};
+                 $node = $entry->{node};
+                 $type = $entry->{nodetype};
+                 if (defined($parent)  and $parent eq $nodetocheck ) {
+                   if ( defined($type) and $type eq 'fsp' or $type eq 'bpa'){
+                        push @$c1,$node;
+                   } 
+                 }
+              }  
                 #if $port exists, only for mkhwconn ... CEC/Frame 
                 if ( defined($port) ) {
                     my @fsp_bpa = @$c1;
