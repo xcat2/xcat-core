@@ -32,9 +32,6 @@ rm -rf $RPM_BUILD_ROOT
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/rmc
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/sbin/rmcmon
-mkdir -p $RPM_BUILD_ROOT/install/postscripts
-mkdir -p $RPM_BUILD_ROOT/install/postscripts/rmcmon/resources/node
-mkdir -p $RPM_BUILD_ROOT/install/postscripts/rmcmon/scripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/TEAL
 
 set +x
@@ -45,22 +42,7 @@ cp scripts/* $RPM_BUILD_ROOT/%{prefix}/sbin/rmcmon
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/rmcmon/*
 
 cp lib/perl/TEAL/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/TEAL
-
 set -x
-
-cp scripts/configrmcnode $RPM_BUILD_ROOT/install/postscripts
-chmod 755 $RPM_BUILD_ROOT/install/postscripts/configrmcnode
-
-FILES_TO_COPY=`cat scripts/scripts_to_node|tr '\n' ' '` 
-echo "files=$FILES_TO_COPY"
-for file in $FILES_TO_COPY
-do
-   echo "file=$file"
-   cp scripts/$file $RPM_BUILD_ROOT/install/postscripts/rmcmon/scripts
-done
-chmod 755 $RPM_BUILD_ROOT/install/postscripts/rmcmon/scripts/*
-
-cp -r resources/node/* $RPM_BUILD_ROOT/install/postscripts/rmcmon/resources/node 
 
 
 %clean
@@ -71,11 +53,46 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-, root, root)
 %{prefix}
-/install/postscripts
 
 %changelog
 
 %post
+needCopyFiles=0
+if [ -f /etc/xCATMN ]; then
+    #on MN
+    needCopyFiles=1;
+else
+    #om SN
+    mounted=0
+    result=`mount |grep /install`
+    if [ $? -eq 0 ]; then
+	mounted=1
+    fi
+    if [ $mounted -eq 0 ]; then
+	 needCopyFiles=1;
+    fi
+fi
+    
+if [ $needCopyFiles -eq 1 ]; then
+    echo "Copying files to /install/postscripts directory..."
+    mkdir -p /install/postscripts
+    mkdir -p /install/postscripts/rmcmon/resources/node
+    mkdir -p /install/postscripts/rmcmon/scripts
+    cp $RPM_INSTALL_PREFIX0/sbin/rmcmon/configrmcnode /install/postscripts
+    chmod 755 /install/postscripts/configrmcnode
+    
+    FILES_TO_COPY=`cat $RPM_INSTALL_PREFIX0/sbin/rmcmon/scripts_to_node|tr '\n' ' '` 
+    for file in $FILES_TO_COPY
+    do
+	#echo "file=$file"
+	cp $RPM_INSTALL_PREFIX0/sbin/rmcmon/$file /install/postscripts/rmcmon/scripts
+    done
+    chmod 755 /install/postscripts/rmcmon/scripts/*
+    
+    cp -r $RPM_INSTALL_PREFIX0/lib/perl/xCAT_monitoring/rmc/resources/node/* /install/postscripts/rmcmon/resources/node
+fi  
+    
+
 %ifos linux
   if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
     if [ -f $RPM_INSTALL_PREFIX0/sbin/xcatd  ]; then
