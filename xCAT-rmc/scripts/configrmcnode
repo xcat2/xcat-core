@@ -219,8 +219,10 @@ if [ $ADD -eq 1 ]; then
       umount /xcatmnt
       rmdir /xcatmnt
   fi
-  chmod 755 /var/xcat/rmcmon/scripts/*
-  /var/xcat/rmcmon/scripts/mkrmcresources /var/xcat/rmcmon/resources/$nodetype
+  chmod 755 /var/xcat/rmcmon/scripts/* 
+  if [ -d /var/xcat/rmcmon/resources/$nodetype ]; then
+      /var/xcat/rmcmon/scripts/mkrmcresources /var/xcat/rmcmon/resources/$nodetype
+  fi
 else
   #check if the resource is defined
   result=`/usr/bin/lsrsrc-api -s IBM.MCP::"NodeID=0x$MS_NODEID"::MNName 2>&1`
