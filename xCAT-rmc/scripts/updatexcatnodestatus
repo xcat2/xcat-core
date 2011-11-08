@@ -17,6 +17,7 @@ my $respname=$ENV{ERRM_ER_NAME};
 my $cond_name=$ENV{ERRM_COND_NAME};
 my $batch=0;
 if (exists($ENV{ERRM_COND_BATCH})) { $batch=$ENV{ERRM_COND_BATCH}; }
+my $currtime;
 
 if (!$batch) {
     my $node;
@@ -68,7 +69,17 @@ if (!$batch) {
     if ($status == 1) { $status_string="alive"; }
     else { $status_string="unreachable"; }
     
-    my $result=`$::XCATROOT/sbin/chtab node=$node nodelist.status=$status_string 2>&1`;
+    if (!$currtime) {
+	my (
+	    $sec,  $min,  $hour, $mday, $mon,
+	    $year, $wday, $yday, $isdst
+	    )
+	    = localtime(time);
+	$currtime = sprintf("%02d-%02d-%04d %02d:%02d:%02d",
+			    $mon + 1, $mday, $year + 1900,
+			    $hour, $min, $sec);
+    }
+    my $result=`$::XCATROOT/sbin/chtab node=$node nodelist.status=$status_string nodelist.statustime="$currtime" 2>&1`;
     my $code=$?;
     if ($code) {
 	`logger xCAT "[mon]: Error saving node status ($node,$status_string) to xCAT:$result"`;
@@ -131,18 +142,37 @@ if (!$batch) {
             else {  push(@inactive, $node);}
 	} #end foreach
 
-
-        if (@active > 0) {
+        if (@active > 0) { 
+	    if (!$currtime) {
+		my (
+		    $sec,  $min,  $hour, $mday, $mon,
+		    $year, $wday, $yday, $isdst
+		    )
+		    = localtime(time);
+		$currtime = sprintf("%02d-%02d-%04d %02d:%02d:%02d",
+			       $mon + 1, $mday, $year + 1900,
+			       $hour, $min, $sec);
+	    }
             my $node_string=join(',',@active);
-	    my $result=`XCATBYPASS=Y $::XCATROOT/bin/nodech $node_string nodelist.status=active 2>&1`;
+	    my $result=`XCATBYPASS=Y $::XCATROOT/bin/nodech $node_string nodelist.status=active nodelist.statustime="$currtime" 2>&1`;
 	    my $code=$?;
 	    if ($code) {
 		`logger xCAT "[mon]: Error saving node status ($node_string,active) to xCAT:$result"`;
 	    }
 	}
         if (@inactive > 0) {
+	    if (!$currtime) {
+		my (
+		    $sec,  $min,  $hour, $mday, $mon,
+		    $year, $wday, $yday, $isdst
+		    )
+		    = localtime(time);
+		$currtime = sprintf("%02d-%02d-%04d %02d:%02d:%02d",
+			       $mon + 1, $mday, $year + 1900,
+			       $hour, $min, $sec);
+	    }
             my $node_string=join(',',@inactive);
-	    my $result=`XCATBYPASS=Y $::XCATROOT/bin/nodech $node_string nodelist.status=inactive 2>&1`;
+	    my $result=`XCATBYPASS=Y $::XCATROOT/bin/nodech $node_string nodelist.status=inactive nodelist.statustime="$currtime" 2>&1`;
 
 	    my $code=$?;
 	    if ($code) {
