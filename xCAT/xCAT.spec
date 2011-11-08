@@ -43,7 +43,7 @@ Requires: openslp-xcat
 # All versions of the nb rpms are pulled in so an x86 MN can manage nodes of any arch.
 # The nb rpms are used for dhcp-based discovery, and flashing, so for now we do not need them on a ppc MN.
 Requires: xCAT-nbroot-oss-x86 xCAT-nbroot-core-x86 xCAT-nbkernel-x86 xCAT-nbroot-oss-x86_64 xCAT-nbroot-core-x86_64 xCAT-nbkernel-x86_64 xCAT-nbroot-oss-ppc64 xCAT-nbroot-core-ppc64 xCAT-nbkernel-ppc64 syslinux
-Requires: ipmitool >= 1.8.9
+Requires: ipmitool-xcat >= 1.8.9
 Requires: xnba-undi syslinux-xcat
 %endif
 
