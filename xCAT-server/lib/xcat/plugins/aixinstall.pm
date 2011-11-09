@@ -6603,8 +6603,8 @@ sub update_dd_boot
         # This change will finally go into AIX NIM support
         [ -n "\${BASECUST_REMOVAL}" ] && {
             cp /SPOT/usr/sbin/rmdev /usr/sbin
-            odmdelete -o CuDv -q name=\${BASECUST_REMOVAL}
             rmdev -l \${BASECUST_REMOVAL} -d
+            odmdelete -o CuDv -q name=\${BASECUST_REMOVAL}
             rm -f /usr/sbin/rmdev
         }    
     \n\n~;
