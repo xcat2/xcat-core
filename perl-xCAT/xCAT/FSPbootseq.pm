@@ -156,11 +156,12 @@ sub rbootseq {
 	    my $m;
 	    my $m_t;
 	    foreach $m (@mac_t) {
-	        if($m =~ /([\w:]{14})!$node_name/) {
+	        if(($m =~ /([\w:]{12})!$node_name/) || ($m =~ /([\w:]{17})!$node_name/)) {
 	            $m_t = $1;
 		    last;
-		 }
-            } 
+		 } 
+
+            }
 
 	    if( !defined($m_t)) {
 	        $mac = $mac_t[0];
@@ -168,12 +169,18 @@ sub rbootseq {
 	        $mac = $m_t;
 	     }
 	 }
+         
+         if( $mac =~ /\:/) {
+             $mac =~ s/\://g;
+         }
 
-     if( $mac =~ /\:/) {
-         $mac =~ s/\://g;
-      }
-         $parameter = "mac=$mac:speed=auto,duplex=auto,$o->{server},,$o->{client},$o->{gateway},$bootp_retries,$tftp_retries,$o->{netmask},$blksize";	      
-	    
+         if($mac =~/^(\w{12})$/) {
+ 
+               $parameter = "mac=$mac:speed=auto,duplex=auto,$o->{server},,$o->{client},$o->{gateway},$bootp_retries,$tftp_retries,$o->{netmask},$blksize";	      
+         } else {
+	        push @output, [$node_name, "The mac address in mac table could NOT be used for rbootseq with -net. HFI mac , or other wrong format?", -1 ];	
+                return( \@output );
+         }	    
        }
 
        if( $opt->{hfi}) {
@@ -193,9 +200,9 @@ sub rbootseq {
        ##################################
        if ( $Rc != SUCCESS ) {
 	       push @output, [$node_name,$data,$Rc];
-	       next;
-	   }
+	} else { 
 	   push @output,[$node_name, "Success", 0];	  
+        }
 
         return( \@output );
 
