@@ -6603,6 +6603,7 @@ sub update_dd_boot
         # This change will finally go into AIX NIM support
         [ -n "\${BASECUST_REMOVAL}" ] && {
             cp /SPOT/usr/sbin/rmdev /usr/sbin
+            odmdelete -o CuDv -q name=\${BASECUST_REMOVAL}
             rmdev -l \${BASECUST_REMOVAL} -d
             rm -f /usr/sbin/rmdev
         }    
@@ -6678,6 +6679,16 @@ sub update_dd_boot
 					    # add basecuse removal for swapdev
 					    print DDBOOT $basecustrm;
 					}
+
+                    if ($l =~ /odmadd.*swapnfs/)
+                    {
+                         print DDBOOT "echo \"CuDv:\" > /swapnfs";
+                         print DDBOOT "echo \"name = \$SWAPDEV\" >> /swapnfs";
+                         print DDBOOT "echo \"status = 0\" >> /swapnfs";
+                         print DDBOOT "echo \"chgstatus = 1\" >> /swapnfs";
+                         print DDBOOT "echo \"PdDvLn = swap/nfs/paging\" >> /swapnfs";
+                    }
+
                     if ($l =~ /odmadd \/tmp\/swapnfs/)
                     {
                         $l =~ s/tmp\/swapnfs/swapnfs/g;
