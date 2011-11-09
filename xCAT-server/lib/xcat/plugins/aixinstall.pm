@@ -6641,8 +6641,14 @@ sub update_dd_boot
             my $dontupdt1 = 0;
             my $dontupdt2 = 0;
             my $dontupdt3 = 0;
+            my $dontupdt4 = 0;
+            my $dontupdt5 = 0;
             if (open(DDBOOT, ">$dd_boot_file_mn"))
             {
+                if (grep(/Remove ODM object definition/, @lines))
+                {
+                    $dontupdt5 = 1;
+                }
                 foreach my $l (@lines)
                 {
                     if ($l =~ /xCAT basecust support/)
@@ -6656,6 +6662,10 @@ sub update_dd_boot
                     if ($l =~ /xCAT basecust removal support/)
                     {
                         $dontupdt3 = 1;
+                    }
+                    if ($l =~ /Write tmp file to create remote paging device/)
+                    {
+                        $dontupdt4 = 1;
                     }
 					if (($l =~ /network boot phase 1/) && (!$dontupdt1)) {
 						# add /etc/basecust to restore
@@ -6680,13 +6690,18 @@ sub update_dd_boot
 					    print DDBOOT $basecustrm;
 					}
 
-                    if ($l =~ /odmadd.*swapnfs/)
+
+                    if (($l =~ /odmadd \/tmp\/swapnfs/) || ($l =~ /odmadd \/swapnfs/))
                     {
-                         print DDBOOT "echo \"CuDv:\" > /swapnfs";
-                         print DDBOOT "echo \"name = \$SWAPDEV\" >> /swapnfs";
-                         print DDBOOT "echo \"status = 0\" >> /swapnfs";
-                         print DDBOOT "echo \"chgstatus = 1\" >> /swapnfs";
-                         print DDBOOT "echo \"PdDvLn = swap/nfs/paging\" >> /swapnfs";
+                        if (!$dontupdt4)
+                        {
+                            print DDBOOT "#Write tmp file to create remote paging device\n";
+                            print DDBOOT "echo \"CuDv:\" >> /swapnfs\n";
+                            print DDBOOT "echo \"name = \$SWAPDEV\" >> /swapnfs\n";
+                            print DDBOOT "echo \"status = 0\" >> /swapnfs\n";
+                            print DDBOOT "echo \"chgstatus = 1\" >> /swapnfs\n";
+                            print DDBOOT "echo \"PdDvLn = swap/nfs/paging\" >> /swapnfs\n\n";
+                        }
                     }
 
                     if ($l =~ /odmadd \/tmp\/swapnfs/)
@@ -6700,6 +6715,11 @@ sub update_dd_boot
                            $l =~ s/tmp\/swapnfs/swapnfs/g;
                         }
                         print DDBOOT $l;
+                    }
+                    if ($l =~ /rmdev -l \${BASECUST_REMOVAL}/ && !$dontupdt5)
+                    {
+                        print DDBOOT "            #Remove ODM object definition\n";
+                        print DDBOOT "            odmdelete -o CuDv -q name=\${BASECUST_REMOVAL}\n";
                     }
                 }
                 close(DDBOOT);
