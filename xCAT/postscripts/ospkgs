@@ -71,7 +71,7 @@ if [ $? -eq 0 ]; then
 fi
 
 if [ -z "$OSPKGDIR" ]; then
-    OSPKGDIR="$NFSSERVER/$OSVER/$ARCH"
+    OSPKGDIR="$NFSSERVER$INSTALLDIR/$OSVER/$ARCH"
     if ( pmatch "$OSVER" "sles*" ); then
 	    OSPKGDIR="$OSPKGDIR/1"
     elif ( pmatch "$OSVER" "rhel*" ); then
@@ -162,7 +162,7 @@ if ( pmatch "$OSVER" "sles10*" ); then
 
     #add new repo
     if [ $mounted -eq 0 ]; then
-	path="ftp://$OSPKGDIR"
+	path="http://$OSPKGDIR"
     else
         path="dir://$OSPKGDIR"
     fi
@@ -263,7 +263,7 @@ elif ( pmatch "$OSVER" "sles11*" ); then
     fi
 
     if [ $mounted -eq 0 ]; then
-	path="ftp://$OSPKGDIR"
+	path="http://$OSPKGDIR"
     else
         path="file://$OSPKGDIR"
     fi
@@ -404,7 +404,7 @@ else
     echo "[$OSVER]" > $REPOFILE
     echo "name=$OSVER" >> $REPOFILE
     if [ $mounted -eq 0 ]; then
-	echo "baseurl=ftp://$OSPKGDIR" >> $REPOFILE
+	echo "baseurl=http://$OSPKGDIR" >> $REPOFILE
     else
 	echo "baseurl=file://$OSPKGDIR" >> $REPOFILE
     fi

@@ -82,7 +82,8 @@ do
 	for i in $MASTER_IPS
 	do
 		#mount -r $i:/install/postscripts /xcatpost
-      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -t 0 -T 60 ftp://$i/postscripts
+      #wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -t 0 -T 60 ftp://$i/postscripts
+      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -nH --cut-dirs=2 --reject "index.html*" --no-parent -t 0 -T 60 http://$i$INSTALLDIR/postscripts/ -P /xcatpost
 		if [ "$?" = "0" ]
 		then
          if [ ! -x /usr/bin/openssl ]; then #Stop if no openssl to help the next bit

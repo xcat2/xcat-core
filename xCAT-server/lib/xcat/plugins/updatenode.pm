@@ -2462,10 +2462,10 @@ sub updateOS {
 	# Get install directory
 	my $installDIR = xCAT::Utils->getInstallDir();
 		
-	# Get FTP server
-	my $ftp = xCAT::Utils->my_ip_facing($node);
-	if ( !$ftp ) {
-		push @{$rsp->{data}}, "$node: (Error) Missing FTP server";
+	# Get HTTP server
+	my $http = xCAT::Utils->my_ip_facing($node);
+	if ( !$htp ) {
+		push @{$rsp->{data}}, "$node: (Error) Missing HTTP server";
 		xCAT::MsgUtils->message("I", $rsp, $callback);
 		return;
 	}
@@ -2516,8 +2516,8 @@ sub updateOS {
 	my $path;
 	my $out;
 	if ( "$installOS$version" =~ m/sles10/i ) {		
-		# SUSE repository path - ftp://10.1.100.1/sles10.3/s390x/1/
-		$path = "ftp://$ftp/$os/$arch/1/";
+		# SUSE repository path - http://10.1.100.1/install/sles10.3/s390x/1/
+		$path = "http://$http$installDIR/$os/$arch/1/";
 		if (!(-e "$installDIR/$os/$arch/1/")) {
 			push @{$rsp->{data}}, "$node: (Error) Missing install directory $installDIR/$os/$arch/1/";
 			xCAT::MsgUtils->message("I", $rsp, $callback);
@@ -2546,8 +2546,8 @@ sub updateOS {
 	}
 	
 	elsif ( "$installOS$version" =~ m/sles11/i ) {		
-		# SUSE repository path - ftp://10.1.100.1/sles10.3/s390x/1/
-		$path = "ftp://$ftp/$os/$arch/1/";
+		# SUSE repository path - http://10.1.100.1/install/sles10.3/s390x/1/
+		$path = "http://$http$installDIR/$os/$arch/1/";
 		if (!(-e "$installDIR/$os/$arch/1/")) {
 			push @{$rsp->{data}}, "$node: (Error) Missing install directory $installDIR/$os/$arch/1/";
 			xCAT::MsgUtils->message("I", $rsp, $callback);
@@ -2571,8 +2571,8 @@ sub updateOS {
 	}
 	
 	elsif ( "$installOS$version" =~ m/rh/i ) {		
-		# Red Hat repository path - ftp://10.0.0.1/rhel5.4/s390x/Server/
-		$path = "ftp://$ftp/$os/$arch/Server/";
+		# Red Hat repository path - http://10.0.0.1/install/rhel5.4/s390x/Server/
+		$path = "http://$http$installDIR/$os/$arch/Server/";
 		if (!(-e "$installDIR/$os/$arch/Server/")) {
 			push @{$rsp->{data}}, "$node: (Error) Missing install directory $installDIR/$os/$arch/Server/";
 			xCAT::MsgUtils->message("I", $rsp, $callback);

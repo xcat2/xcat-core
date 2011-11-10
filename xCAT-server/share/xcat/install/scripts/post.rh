@@ -39,6 +39,10 @@ hostname $HOSTNAME
 export MASTER_IP="#XCATVAR:XCATMASTER#"
 export MASTER_IPS="#XCATVAR:XCATMASTER#"
 export MASTER="#XCATVAR:XCATMASTER#"
+export INSTALLDIR=#TABLE:site:key=installdir:value#
+if [ -z "$INSTALLDIR" ]; then
+    INSTALLDIR="/install"
+fi
 cd /tmp
 RAND=$(perl -e 'print int(rand(50)). "\n"')
 sleep $RAND
@@ -47,8 +51,8 @@ do
 	GOTIT=0
 	for i in $MASTER_IPS
 	do
-      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -t 0 -T 60 ftp://$i/postscripts
-		#wget --wait=10 --random-wait --waitretry=10 --retry-connrefused -t 0 -T 60 http://$i/install/autoinst/xcatpost.tar.gz
+      #wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -t 0 -T 60 ftp://$i/postscripts
+      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -nH --cut-dirs=2 --reject "index.html*" --no-parent -t 0 -T 60 http://$i$INSTALLDIR/postscripts/ -P /xcatpost
 		if [ "$?" = "0" ]
 		then
          if [ ! -x /usr/bin/openssl ]; then #Stop if no openssl to help the next bit
@@ -97,6 +101,7 @@ do
 	RAND=$(perl -e 'print int(rand(5)). "\n"')
 	sleep $RAND
 done
+echo "INSTALLDIR=$INSTALLDIR" >> /opt/xcat/xcatinfo
 cd /xcatpost
 #gunzip xcatpost.tar.gz
 #tar -xvf xcatpost.tar

@@ -31,11 +31,15 @@ download_postscripts()
 	return 1;
     fi
 
+    INSTALLDIR=`grep 'INSTALLDIR' /opt/xcat/xcatinfo |cut -d= -f2`
+    if [ -z "$INSTALLDIR" ]; then
+    INSTALLDIR="/install"
+    fi
     max_retries=5
     retry=0
     rc=1 
     while [ 0 -eq 0 ]; do
-	wget -l inf -nH -N -r --waitretry=10 --random-wait -T 60 ftp://$server/postscripts -P /xcatpost --cut-dirs=1 2> /tmp/wget.log
+	wget -l inf -nH -N -r --waitretry=10 --random-wait -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$server$INSTALLDIR/postscripts/ -P /xcatpost 2> /tmp/wget.log
         rc=$?
         
 	if [ $rc -eq 0 ]; then
