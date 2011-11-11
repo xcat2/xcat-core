@@ -2073,23 +2073,28 @@ sub parse_access_tabentry()
 #-------------------------------------------------------------------------------
 
 =head3   getchildren
-    returns fsp(or bpa) of the specified cec(or frame),
-            if specified port, it will just return nodes within the port.
     Arguments:
-        none
+        single hostname
+        optional port number
     Returns:
-        refrence of fsp/bpa hostnames (IPs)
+       array of fsp/bpa hostnames (IPs)
+       if specified port, it will just return nodes within the port.
     Globals:
-        %PARENT_CHILDREN
+        %PPCHASH - HASH of nodename -> array of ip addresses
+                     where the nodetype is fsp or bpa 
     Error:
-        none
+       $::RUNCMD_RC = 1; 
+       Writes error to syslog
     Example:
          $c1 = getchildren($nodetocheck);
+         $c1 = getchildren($nodetocheck,$port);
     Comments:
         none
 =cut
 
 #-------------------------------------------------------------------------------
+
+my %PPCHASH;
 sub getchildren
 {
     my $parent = shift;
@@ -2097,57 +2102,81 @@ sub getchildren
     {
         $parent = shift;
     }
+    $::RUNCMD_RC = 0;
     my $port   = shift;
     my @children = ();
-    my @children_prot = ();
-    if (!%::PARENT_CHILDREN) {
+    my @children_port = ();
+    if (!%PPCHASH) {
         my $ppctab  = xCAT::Table->new( 'ppc' );
-        my @ps = $ppctab->getAllNodeAttribs(['node','parent']);
-        for my $entry ( @ps ) {
+        unless ($ppctab) {   # cannot open  the table return with error
+          xCAT::MsgUtils->message('S', "getchildren:Unable to open ppc table.\n");
+          $::RUNCMD_RC = 1; 
+          return undef; 
+        }
+        my @ps = $ppctab->getAllNodeAttribs(['node','parent','nodetype']);
+        foreach my $entry ( @ps ) {
             my $p = $entry->{parent};
             my $c = $entry->{node};
-            if ( $p and $c) {
-                #my $type = $ppctab->getNodeAttribs($c, ["nodetype"]);
-                my $type = getnodetype($c);
-                #if ( $type and ($type->{nodetype} eq 'fsp') or ($type->{nodetype} eq 'bpa'))
-                if ( $type eq 'fsp' or $type eq 'bpa')
-                {
-                    push @{$::PARENT_CHILDREN{$p}}, $c;
+            my $t = $entry->{nodetype};
+            if ($t)  {  # the nodetype exists in the ppc table, use it
+                if ( $t eq 'fsp' or $t eq 'bpa') {
+                    # build hash of ppc.parent -> ppc.node 
+                    push @{$PPCHASH{$p}}, $c;
+                }   
+            } else { # go look in the nodetype table to find nodetype 
+               if ( $p and $c) {
+                   my $type = getnodetype($c);
+                   if ( $type eq 'fsp' or $type eq 'bpa')
+                   {
+                     # build hash of ppc.parent -> ppc.node 
+                      push @{$PPCHASH{$p}}, $c;
+                   }
                 }
             }
         }
-        foreach (@{$::PARENT_CHILDREN{$parent}}) {
+        # Find parent in the hash and build return values 
+        foreach (@{$PPCHASH{$parent}}) {
             push @children, $_;
         }
     } else {
-        if (exists($::PARENT_CHILDREN{$parent})) {
-            foreach (@{$::PARENT_CHILDREN{$parent}}) {
+        if (exists($PPCHASH{$parent})) {
+            foreach (@{$PPCHASH{$parent}}) {
                 push @children, $_;
             }
         }
     }
+    # if port not input
     if ( !defined($port ))
     {
         return \@children;
-    } else
-    {
-        my $vpdtab = xCAT::Table->new( 'vpd' );
-        my $sides = $vpdtab->getNodesAttribs(\@children, ['side']);
-        if(!$sides)
-        {
+    } else {
+     if (@children) { 
+       my $vpdtab = xCAT::Table->new( 'vpd' );
+       unless ($vpdtab) {   # cannot open  the table return with error
+       xCAT::MsgUtils->message('S', "getchildren:Unable to open vpd table.\n");
+          $::RUNCMD_RC = 1; 
+          return undef; 
+       }
+       my $sides = $vpdtab->getNodesAttribs(\@children, ['side']);
+       if(!$sides)
+       {
            return undef;
-        }
-        for my $n (@children)
-        {
+       }
+       for my $n (@children)
+       {
             my $nside = $sides->{$n}->[0];
             if ($nside->{side} =~ /$port/)
             {
-                push @children_prot, $n;
+                push @children_port, $n;
             }
         }
-        return \@children_prot;
+        return \@children_port;
+     } else {  # no children 
+         return undef;
+     }
     }
 }
+
 #-------------------------------------------------------------------------------
 
 =head3   getnodetype
