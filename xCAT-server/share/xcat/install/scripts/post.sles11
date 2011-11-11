@@ -54,6 +54,10 @@ echo $HOSTNAME
 export MASTER_IP=#XCATVAR:XCATMASTER#
 export MASTER_IPS=#XCATVAR:XCATMASTER#
 export MASTER="#XCATVAR:XCATMASTER#"
+export INSTALLDIR=#TABLE:site:key=installdir:value#
+if [ -z "$INSTALLDIR" ]; then
+    INSTALLDIR="/install"
+fi
 
 #
 #  This script has not yet been updated to work with service nodes
@@ -113,6 +117,7 @@ do
     RAND=$(perl -e 'print int(rand(5)). "\n"')
     sleep $RAND
 done
+echo "INSTALLDIR=$INSTALLDIR" >> /opt/xcat/xcatinfo
 PATH=/xcatpost:$PATH
 export PATH
 
