@@ -2119,10 +2119,12 @@ sub getchildren
             my $c = $entry->{node};
             my $t = $entry->{nodetype};
             if ($t)  {  # the nodetype exists in the ppc table, use it
+               if ( $p and $c) {
                 if ( $t eq 'fsp' or $t eq 'bpa') {
                     # build hash of ppc.parent -> ppc.node 
                     push @{$PPCHASH{$p}}, $c;
                 }   
+               }   
             } else { # go look in the nodetype table to find nodetype 
                if ( $p and $c) {
                    my $type = getnodetype($c);
