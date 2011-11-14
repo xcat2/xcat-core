@@ -1241,7 +1241,7 @@ sub copycd
     my $request  = shift;
     my $callback = shift;
     my $doreq    = shift;
-    my $installroot;
+    my $installroot = "/install";
     my $sitetab = xCAT::Table->new('site');
     if ($sitetab)
     {
