@@ -10,17 +10,16 @@
 #####################################################
 package xCAT::DBobjUtils;
 
-use xCAT::NodeRange;
-use xCAT::Schema;
-use xCAT::Table;
-use xCAT::Utils;
-use xCAT::MsgUtils;
-use xCAT::NetworkUtils;
+require xCAT::NodeRange;
+require xCAT::Schema;
+require xCAT::Table;
+require xCAT::Utils;
+require xCAT::MsgUtils;
+require xCAT::NetworkUtils;
 use strict;
 
 #  IPv6 not yet implemented - need Socket6
 use Socket;
-my @tabletype = qw(ppc zvm);
 
 #----------------------------------------------------------------------------
 
@@ -2105,6 +2104,7 @@ sub getchildren
     }
     $::RUNCMD_RC = 0;
     my $port   = shift;
+    my @tabletype = qw(ppc zvm);
     my @children = ();
     my @children_port = ();
     if (!%PPCHASH) {
@@ -2165,7 +2165,7 @@ sub getchildren
        {
            return undef;
        }
-       for my $n (@children)
+       foreach my $n (@children)
        {
             my $nside = $sides->{$n}->[0];
             if ($nside->{side} =~ /$port/)
@@ -2179,23 +2179,19 @@ sub getchildren
      }
     }
 }
-
 #-------------------------------------------------------------------------------
 
 =head3   getnodetype
-    returns nodetype,
-    first requery ppc table, if not exist, requery nodetypetable
-    if the input is a array it will return a refrence,
-    if the input is a simple node,it will return its type value
-    if the value in the talbe is null, it will be undef but not ''
+    Query ppc table, if no type found query nodetype table
     Arguments:
-        none
+       An array of nodenames or 1 nodename 
     Returns:
         type of node
     Globals:
-        %::GLOBLE_NODE_TYPE
+        %NODETYPEHASH
     Error:
-        none
+        $::RUNCMD_RC = 1; 
+        Errors written to syslog
     Example:
          $type = getnodetype($node);
          $typerefer = getnodetype(\@nodes);
@@ -2204,6 +2200,7 @@ sub getchildren
 =cut
 
 #-------------------------------------------------------------------------------
+my %NODETYPEHASH;
 sub getnodetype
 {
     my $nodes = shift;
@@ -2212,60 +2209,64 @@ sub getnodetype
         $nodes = shift;
     }
     my $rsp;
+    my @tabletype = qw(ppc zvm);
+    $::RUNCMD_RC = 0; 
 
     my $nodetypetab = xCAT::Table->new( 'nodetype' );
-    if ( !$nodetypetab )
-    {
-        $rsp->{data}->[0] = "Could not open the nodetype table.";
-        xCAT::MsgUtils->message("E", $rsp, $::callback);
-
+    unless ($nodetypetab) {   # cannot open  the table return with error
+     xCAT::MsgUtils->
+          message('S', "getnodetype:Unable to open nodetype table.\n");
+          $::RUNCMD_RC = 1; 
+          return undef; 
     }
     
     my @types = ();
     my $typep;
     my $type;
-    my %typehash;
     if ( $nodes =~ /^ARRAY/) {
-        my @nodetypes = $nodetypetab->getAllAttribs('node','nodetype');
-        for my $tn( @nodetypes ) {
-            $typehash{ $tn->{'node'} } = $tn->{'nodetype'};
-        }    
-        for my $nn (@$nodes) {
-            $type = $typehash{$nn};
-            if ($type) {
-                my $flag = 0;
-                my @tablename;
-                for my $tt ( split /,/, $type ) {
-                    if ( grep(/$tt/, @tabletype)) {
-                        @tablename = grep(/$tt/, @tabletype);
-                        $flag = 1;
-                        next;
-                    }    
+      if (!%NODETYPEHASH) { 
+         my @nodetypes = $nodetypetab->getAllAttribs('node','nodetype');
+         foreach my $tn (@nodetypes) {
+             $NODETYPEHASH{ $tn->{'node'} } = $tn->{'nodetype'};
+         }    
+      }    
+      foreach my $nn (@$nodes) {
+         $type = $NODETYPEHASH{$nn};
+         if ($type) {
+           my $flag = 0;
+           my @tablename;
+           foreach my $tt (split /,/, $type) {
+             if (grep(/$tt/, @tabletype)) {
+                 @tablename = grep(/$tt/, @tabletype);
+                 $flag = 1;
+                 next;
+             }    
+            }
+            unless ($flag) { # find type in nodetype table
+              push (@types, $type);
+            } else {  # use table (ppc or zvm) from attribute 
+                my $tablehandler = xCAT::Table->new( $tablename[0] );
+                unless ($tablehandler) {   # cannot open 
+                  xCAT::MsgUtils->
+                  message('S', "getnodetype:Unable to open $tablename[0] table.\n");
+                  $::RUNCMD_RC = 1; 
+                  return undef; 
                 }
-                unless ($flag) { # find type in nodetype table
-                    push (@types, $type);
+                # read the table
+                $typep = $tablehandler->getNodeAttribs($nn, ["nodetype"]);
+                if ($typep and $typep->{nodetype}) {
+                  $type = $typep->{nodetype};
+                  push (@types, $type);
                 } else {
-                    my $tablehandler = xCAT::Table->new( $tablename[0] );
-                    if ( !$tablehandler ) {
-                        $rsp->{data}->[0] = "Could not open the $tablename[0] table.";
-                        xCAT::MsgUtils->message("E", $rsp, $::callback);
-                        push (@types, undef);
-                    next;
-                    }
-                    $typep = $tablehandler->getNodeAttribs($nn, ["nodetype"]);  # find type in ppc table
-                    if ($typep and $typep->{nodetype}) {
-                        $type = $typep->{nodetype};
-                        push (@types, $type);
-                    } else {
-                        push (@types, undef);
-                    }
-                }    
-            } else {
-                push (@types, undef);
-            }    
+                   push (@types, undef);
+                }
+           } # end of processing PPC    
+         } else {
+             push (@types, undef);
+         }    
         }
         return \@types;
-    } else {
+    } else {   # for one node
         $typep  = $nodetypetab->getNodeAttribs($nodes, ["nodetype"]);
         if ( $typep and $typep->{nodetype} ) {  
             $type = $typep->{nodetype};
@@ -2283,9 +2284,9 @@ sub getnodetype
             } else {    # find type in ppc table
                 my $tablehandler = xCAT::Table->new( $tablename[0] );
                 if ( !$tablehandler ) {
-                    $rsp->{data}->[0] = "Could not open the $tablename[0] table.";
-                    xCAT::MsgUtils->message("E", $rsp, $::callback);
-                    return undef;
+                      xCAT::MsgUtils->message('S', "getnodetype:Unable to open $tablename[0] table.\n");
+                        $::RUNCMD_RC = 1; 
+                        return undef; 
                 }
                 $typep = $tablehandler->getNodeAttribs($nodes, ["nodetype"]);
                 if ( $typep and $typep->{nodetype} ) {  
