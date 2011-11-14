@@ -25,6 +25,12 @@ if ( $distro =~ /ubuntu.*/ ){
 
 sub handled_commands
 {
+    my $sitetab = xCAT::Table->new('site');
+    my $stab = $sitetab->getAttribs({key=>'dnshandler'},['value']);
+    unless ($stab and $stab->{value}) {
+        return {"makedns" => "ddns"};
+    }
+
     return {"makedns" => "site:dnshandler"};
 }
 sub getzonesfornet {
