@@ -2119,23 +2119,21 @@ sub getchildren
             my $p = $entry->{parent};
             my $c = $entry->{node};
             my $t = $entry->{nodetype};
-            if ($t)  {  # the nodetype exists in the ppc table, use it
-               if ( $p and $c) {
+            if ( $p and $c) {
+              if ($t)  {  # the nodetype exists in the ppc table, use it
                 if ( $t eq 'fsp' or $t eq 'bpa') {
                     # build hash of ppc.parent -> ppc.node 
                     push @{$PPCHASH{$p}}, $c;
                 }   
-               }   
-            } else { # go look in the nodetype table to find nodetype 
-               if ( $p and $c) {
-                   my $type = getnodetype($c);
-                   if ( $type eq 'fsp' or $type eq 'bpa')
-                   {
+              } else { # go look in the nodetype table to find nodetype 
+                 my $type = getnodetype($c);
+                 if ( $type eq 'fsp' or $type eq 'bpa')
+                 {
                      # build hash of ppc.parent -> ppc.node 
                       push @{$PPCHASH{$p}}, $c;
-                   }
-                }
-            }
+                 }
+              }
+            }  # not $p and $c
         }
         # Find parent in the hash and build return values 
         foreach (@{$PPCHASH{$parent}}) {
@@ -2308,18 +2306,19 @@ sub getnodetype
     Arguments:
         frame name
     Returns:
-        refrence of cec hostnames
+        Array of cec hostnames
     Globals:
-        $::PARENT_CHILDREN_CEC
+        %PARENT_CHILDREN_CEC 
     Error:
         none
     Example:
-         $c1 = getcecchildren($nodetocheck);
+         @frame_members = getcecchildren($frame);
     Comments:
         none
 =cut
 
 #-------------------------------------------------------------------------------
+my %PARENT_CHILDREN_CEC;
 sub getcecchildren
 {
     my $parent = shift;
@@ -2328,33 +2327,46 @@ sub getcecchildren
         $parent = shift;
     }
     my @children = ();
-    if (!%::PARENT_CHILDREN_CEC) {
+    if (!%PARENT_CHILDREN_CEC) {
         my $ppctab  = xCAT::Table->new( 'ppc' );
+        unless ($ppctab) {   # cannot open  the table return with error
+          xCAT::MsgUtils->message('S', "getcecchildren:Unable to open ppc table.\n");
+          $::RUNCMD_RC = 1; 
+          return undef; 
+        }
         if ($ppctab)
         {
-            my @ps = $ppctab->getAllNodeAttribs(['node','parent']);
-            for my $entry ( @ps ) {
+            my @ps = $ppctab->getAllNodeAttribs(['node','parent','nodetype']);
+            foreach my $entry ( @ps ) {
                 my $p = $entry->{parent};
                 my $c = $entry->{node};
+                my $t = $entry->{nodetype};
                 if ( $p and $c) {
-                    #my $type = $ppctab->getNodeAttribs($c, ["nodetype"]);
-                    my $type = getnodetype($c);
-                    if ( $type eq 'cec') {
-                        push @{$::PARENT_CHILDREN_CEC{$p}}, $c;
-                    }
+                   if ($t)  {  # the nodetype exists in the ppc table, use it
+                     if ( $t eq 'cec') {
+                       # build hash of ppc.parent -> ppc.node 
+                       push @{$PARENT_CHILDREN_CEC{$p}}, $c;
+                     }   
+                   } else { # go look in the nodetype table to find nodetype 
+                     my $type = getnodetype($c);
+                     if ( $type eq 'cec') {
+                        push @{$PARENT_CHILDREN_CEC{$p}}, $c;
+                     }
+                   }
                 }
-            }        
-            foreach (@{$::PARENT_CHILDREN_CEC{$parent}}) {
+            }
+            # find a match for the parent and build the return array        
+            foreach (@{$PARENT_CHILDREN_CEC{$parent}}) {
                 push @children, $_;        
             }
-			return \@children;
+  	    return \@children;
         }	
-    } else {
-        if (exists($::PARENT_CHILDREN_CEC{$parent})) {
-            foreach (@{$::PARENT_CHILDREN_CEC{$parent}}) {
+    } else {  # already built the HASH
+        if (exists($PARENT_CHILDREN_CEC{$parent})) {
+            foreach (@{$PARENT_CHILDREN_CEC{$parent}}) {
                 push @children, $_;
             }
-		    return \@children;			
+	    return \@children;			
         }
     }
     return undef;
