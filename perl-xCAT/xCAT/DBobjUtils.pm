@@ -1039,7 +1039,8 @@ sub setobjdefs
                 #
                 # get the actual attr name to use in the table
                 #    - may be different then the attr name used for the object.
-                ($::tab, $::tabattr) = split('\.', $this_attr->{tabentry});
+                my $ntab;
+                ($ntab, $::tabattr) = split('\.', $this_attr->{tabentry});
 
                 my $rc = xCAT::DBobjUtils->parse_access_tabentry($objname, 
                                                                 $this_attr->{access_tabentry}, \%tabentry);
