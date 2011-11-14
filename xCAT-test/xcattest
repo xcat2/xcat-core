@@ -5,6 +5,7 @@ use warnings;
 use Getopt::Long;
 use Data::Dumper;
 use Term::ANSIColor;
+use Time::Local;
 
 BEGIN
 {
@@ -101,6 +102,9 @@ if($restore){
 &log_this("Please check results in the $resultdir, \nand see $resultdir/failedcases.$timestamp file for failed cases.");
 close(LOG);
 close(LOG_ERR);
+my $reportfile="$resultdir/xcattest.report.$timestamp";
+my $tmpreport="$resultdir/xcattest.log.$timestamp";
+&getreport($tmpreport,$reportfile);
 exit 0;
 
 # end main
@@ -642,8 +646,10 @@ sub runcase
         $failed = 0;
         $j = 0;
         $total = $total + 1;
-        log_this("------START:$$case{name}------");
-        push @record, "------START:$$case{name}------";
+        my $now1=timelocal(localtime());
+        my $time1=gmtime $now1;
+        log_this("------START:$$case{name}::Time:$time1------");
+        push @record, "------START:$$case{name}::Time:$time1------";
 	push @record, "FILENAME:$$case{filename}";
         foreach my $cmd (@{$$case{cmd}}){
 	    $cmd = getfunc($cmd);
@@ -731,8 +737,16 @@ sub runcase
             }
             $j = $j + 1;
         }
-        log_this("------END:$$case{name}------");
-        push (@record,"------END:$$case{name}------");
+        my $now2=timelocal(localtime());
+        my $time2=gmtime $now2;
+        my $diff=$now2-$now1;
+        if($failed){
+            log_this("------END::$$case{name}::Failed::Time:$time2 ::Duration::$diff sec------");
+            push (@record,"------END::$$case{name}::Failed::Time:$time2 ::Duration::$diff sec------");
+        } else {
+              log_this("------END::$$case{name}::Passed::Time:$time2 ::Duration::$diff sec------");
+              push (@record,"------END::$$case{name}::Passed::Time:$time2 ::Duration::$diff sec------");
+        }
         if($failed){
             $failnum = $failnum + 1;
             log_error(@record);
@@ -769,3 +783,29 @@ sub usage
     return;
 }
 
+sub getreport
+{
+    my ($name,$result,$test1,$uid,$time);
+    open (INDOC, ">$_[1]") || die ("open STDOUT failed");
+    print INDOC "Testcase                                      result            Duration\n";
+    print INDOC "------------------------------------------------------------------------------\n";
+    close(INDOC);
+    open (STDOUT, ">>$_[1]") || die ("open STDOUT failed");
+    open FD,"<$_[0]" or die "$?";
+    while(<FD>){
+        if(/Duration::/){
+             s/------//g;
+             s/END:://g;            
+             ($name,$result,$test1,$uid,$time) = split ("::",$_);            
+             $~ = 'STDOUT';
+             write;
+        }
+      }
+
+format STDOUT =
+@<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< @||||||| @>>>>>>>>>>>>>>>>>>
+$name,               $result,  $time
+.
+close(FD);
+close(STDOUT);
+}
