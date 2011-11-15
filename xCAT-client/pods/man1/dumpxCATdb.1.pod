@@ -14,6 +14,8 @@ B<dumpxCATdb> [B<-h>|B<--help>] [B<-v>|B<--version>]
 The dumpxCATdb command creates .csv files for xCAT database tables and puts them in the directory given by the -p flag. These files can be used by the restorexCATdb command to restore the database. The command will read the list of tables in the site.skiptables attribute and not backup those tables.
 Supports using XCAT_SKIPTABLES env variable to provide a list of skip tables.
 
+The command will never backup TEAL or ISNM tables, except isnm_config.  To dump TEAL tables use the documented process for TEAL.  For ISNM use tabdump, after using tabprune to get to prune unnecessary records. 
+
 =head1 OPTIONS
 
 
@@ -47,6 +49,14 @@ B<dumpxCATdb -a -p /tmp/db>
 2. To have dumpxCATdb not backup the hosts or passwd table:
 
 B<chtab key=skiptables site.value="hosts,passwd">
+
+B<dumpxCATdb  -p /tmp/db>
+
+2. To have dumpxCATdb not backup the hosts or passwd table:
+
+B<export XCAT_SKIPTABLES="hosts,passwd">
+
+B<dumpxCATdb  -p /tmp/db>
 
 =head1 FILES
 

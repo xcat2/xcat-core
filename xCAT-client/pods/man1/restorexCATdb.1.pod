@@ -11,7 +11,7 @@ B<restorexCATdb> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
 =head1 DESCRIPTION
 
-The restorexCATdb command restores the xCAT database tables from the directory given by the -p flag. The site table skiptables attribute can be set to a list of tables not to restore.  See man dumpxCATdb.
+The restorexCATdb command restores the xCAT database tables from the directory given by the -p flag. The site table skiptables attribute can be set to a list of tables not to restore.  It will not restore isnm_perf* tables. See man dumpxCATdb.
 
 =head1 OPTIONS
 
