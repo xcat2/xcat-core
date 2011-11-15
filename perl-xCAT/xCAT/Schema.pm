@@ -746,7 +746,7 @@ servicenode => {
   monserver => 'Is this a monitoring event collection point? Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.',
   ldapserver => 'Do we set up ldap caching proxy on this service node? Not supported on AIX.  Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.',
   ntpserver => 'Not used. Use setupntp postscript to setup a ntp server on this service node? Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.',
-  ftpserver => 'Do we set up a ftp server on this service node? Not supported on AIX Valid values:yes or 1, no or 0. If yes, configure and start vsftpd. If no or 0, it does not change the current state of the service.',
+  ftpserver => 'Do we set up a ftp server on this service node? Not supported on AIX Valid values:yes or 1, no or 0. If yes, configure and start vsftpd. If no or 0, it does not change the current state of the service. xCAT is not using ftp for compute nodes provisioning or any other xCAT features, so this attribute can be set to 0 if the ftp service will not be used for other purposes',
   nimserver => 'Not used. Do we set up a NIM server on this service node? Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.',
   ipforward => 'Do we set up ip forwarding on this service node? Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.',
 
@@ -884,9 +884,9 @@ site => {
    "                   will not interfere.\n\n".
    " vmwarereconfigonpower:  When set to no, the VMWare plugin will make no effort to\n".
    "                         push vm.cpus/vm.memory updates from xCAT to VMWare.\n\n".
-   " vsftp:       Default is 'y'. If set to 'n', the xcatd on the mn will not automatically \n".
+   " vsftp:       Default is 'n'. If set to 'y', the xcatd on the mn will automatically \n".
    "              bring up the vsftpd. This setting does not apply to the sn, for sn\n".
-   "              you need to set servicenode.ftpserver=0 if you do not want the xcatd\n".
+   "              you need to set servicenode.ftpserver=1 if you want the xcatd to\n".
    "              bring up vsftpd.\n\n".
    " xcatconfdir:  Where xCAT config data is (default /etc/xcat).\n\n".
    " xcatdport:  The port used by the xcatd daemon for client/server communication.\n\n".
