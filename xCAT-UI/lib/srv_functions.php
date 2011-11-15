@@ -5,6 +5,7 @@
 
 // Retain session variables across page requests
 session_start();
+session_write_close();	// Do not block HTTP requests
 
 // The settings below display error on the screen,
 // instead of giving blank pages.
@@ -319,6 +320,5 @@ function logout() {
 
 	// Clear server store of data
 	$_SESSION=array();
-	session_destroy();
 }
 ?>
