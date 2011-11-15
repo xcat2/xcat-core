@@ -1098,19 +1098,13 @@ sub mkinstall
 #                                      'serialport', 'serialspeed', 'serialflow'
 #                                     ]
 #                                     );
-            unless ($ent and $ent->{nfsserver})
-            {
-                $callback->(
-                        {
-                         error => ["No noderes.nfsserver defined for " . $node],
-                         errorcode => [1]
-                        }
-                        );
-                next;
-            }
+            my $instserver='!myipfn!'; #default to autodetect from boot server
+            if ($ent and $ent->{nfsserver}) {
+	    	$instserver=$ent->{nfsserver};
+	    }
             my $kcmdline =
-                "ks=http://"
-              . $ent->{nfsserver}
+                "instserver=$instserver ks=http://"
+              . $instserver
               . "/install/autoinst/"
               . $node;
             if ($maxmem) {
