@@ -1,11 +1,11 @@
 start:lsdef_null
 description: lsdef without any flag
-cmd:mkdef -t node -o testnode groups=all
+cmd:mkdef -t node -o testnodell groups=all
 check:rc==0
 cmd:lsdef
 check:rc==0
-check:output=~testnode\s*\(node\)
-cmd:rmdef testnode
+check:output=~testnodell\s*\(node\)
+cmd:rmdef testnodell
 check:rc==0
 end
 
@@ -107,29 +107,32 @@ cmd:rmdef -t network testnetwork
 end
 
 start:lsdef_t_w
-cmd:mkdef -t node -o testnode1-testnode2 cons=hmc groups=all
+cmd:mkdef -t node -o testnode11-testnode21 cons=hmc groups=all
 check:rc==0
-cmd:mkdef -t node -o testnode3-testnode4 cons=ipmi groups=linux
+cmd:mkdef -t node -o testnode31-testnode41 cons=ipmi groups=linux
 check:rc==0
 cmd:lsdef -t node -w cons==ipmi
 check:rc==0
-check:output=~testnode3
-check:output=~testnode4
-check:output!=testnode1
-check:output!=testnode2
+check:output=~testnode31
+check:output=~testnode41
+check:output!=testnode11
+check:output!=testnode21
 cmd:lsdef -t node -w cons!~hmc
 check:rc==0
-check:output=~testnode3
-check:output=~testnode4
-check:output!=testnode1
-check:output!=testnode2
+check:output=~testnode31
+check:output=~testnode41
+check:output!=testnode11
+check:output!=testnode21
 cmd:lsdef -t node -w cons==ipmi -w groups==linux
 check:rc==0
-check:output=~testnode3
-check:output=~testnode4
-check:output!=testnode1
-check:output!=testnode2
-cmd:rmdef -t node testnode1-testnode4
+check:output=~testnode31
+check:output=~testnode41
+check:output!=testnode11
+check:output!=testnode21
+cmd:rmdef -t node testnode11
+cmd:rmdef -t node testnode21
+cmd:rmdef -t node testnode31
+cmd:rmdef -t node testnode41
 end
 
 start:lsdef_s
