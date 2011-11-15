@@ -99,10 +99,10 @@ if($restore){
     &uninit;
 }
 &log_this("\nxCAT automated test finished at " . scalar(localtime()));
-&log_this("Please check results in the $resultdir, \nand see $resultdir/failedcases.$timestamp file for failed cases.");
+&log_this("Please check results in the $resultdir, \nand see $resultdir/failedcases.$timestamp file for failed cases.\nsee $resultdir/performace.report.$timestamp file for time consumption");
 close(LOG);
 close(LOG_ERR);
-my $reportfile="$resultdir/xcattest.report.$timestamp";
+my $reportfile="$resultdir/performace.report.$timestamp";
 my $tmpreport="$resultdir/xcattest.log.$timestamp";
 &getreport($tmpreport,$reportfile);
 exit 0;
@@ -653,12 +653,23 @@ sub runcase
 	push @record, "FILENAME:$$case{filename}";
         foreach my $cmd (@{$$case{cmd}}){
 	    $cmd = getfunc($cmd);
+
+#by
+            my $runstart=timelocal(localtime());
             log_this("\nRUN:$cmd");
             push(@record, "\nRUN:$cmd");
             @output = &runcmd($cmd);
             $rc = $::RUNCMD_RC;
+#by
+            my $runstop=timelocal(localtime());
+            my $diffduration=$runstop-$runstart;
+            log_this("\n[$cmd] Running Time:$diffduration sec");
+            push(@record,("\n[$cmd] Running Time:$diffduration sec"));
+         
             log_this("RETURN: rc = $rc","OUTPUT:",@output);
             push(@record,("RETURN rc = $rc","OUTPUT:",@output));
+            
+
             foreach my $check (@{$$case{check}->[$j]}){
                 if($failed){
                     last;
@@ -785,27 +796,20 @@ sub usage
 
 sub getreport
 {
-    my ($name,$result,$test1,$uid,$time);
     open (INDOC, ">$_[1]") || die ("open STDOUT failed");
-    print INDOC "Testcase                                      result            Duration\n";
+    print INDOC "Testcase                                                  Duration\n";
     print INDOC "------------------------------------------------------------------------------\n";
     close(INDOC);
     open (STDOUT, ">>$_[1]") || die ("open STDOUT failed");
     open FD,"<$_[0]" or die "$?";
     while(<FD>){
-        if(/Duration::/){
+        if(/Time/){
              s/------//g;
-             s/END:://g;            
-             ($name,$result,$test1,$uid,$time) = split ("::",$_);            
-             $~ = 'STDOUT';
-             write;
+             $_ .= "\n" if /END/;
+             print STDOUT $_;
         }
       }
 
-format STDOUT =
-@<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< @||||||| @>>>>>>>>>>>>>>>>>>
-$name,               $result,  $time
-.
 close(FD);
 close(STDOUT);
 }
