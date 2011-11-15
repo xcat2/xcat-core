@@ -16,8 +16,6 @@ chtab_err_table
 chtab_h
 chtab_v
 chvm_null
-chvm_p
-chvm_attr
 chvm_node
 chvm_err_node
 copycds_iso
@@ -57,7 +55,6 @@ mkdef_t_o_attr
 mkdef_f_t_o_attr
 mkdef_z
 mkdef_t_o_error
-mkvm_i_l
 nodeadd_noderange
 nodeadd_err_symbol
 nodeadd_null
@@ -134,7 +131,6 @@ rmdef_null
 rmdef_t_o_attr
 rmdef_f_all
 rmdef_t_err
-rmvm_noderange
 rpower_off
 rpower_stat
 rpower_boot
@@ -149,12 +145,9 @@ rscan_z
 rscan_w
 rscan_x_w
 rscan_z_w
-rvitals_temp
-rvitals_voltage
 rvitals_power
 rvitals_state
 rvitals_lcds
-rvitals_all
 rvitals_noderange_err
 sinv_c_p_t_r_o
 sinv_c_s_p_t_o
