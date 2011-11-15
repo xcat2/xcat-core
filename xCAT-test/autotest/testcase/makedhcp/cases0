@@ -135,6 +135,7 @@ start:makedhcp_a_d
 os:Linux
 cmd:makedhcp -a -d
 check:rc==0
+cmd:service dhcpd restart
 cmd:cat /var/lib/dhcpd/dhcpd.leases | grep $$CN
 check:output!~$$CN
 cmd:makedhcp -a
@@ -144,6 +145,7 @@ start:makedhcp_d
 os:Linux
 cmd:makedhcp -d $$CN
 check:rc==0
+cmd:service dhcpd restart
 cmd:cat /var/lib/dhcpd/dhcpd.leases | grep $$CN
 check:output!~$$CN
 cmd:makedhcp -a
