@@ -8,6 +8,7 @@ check:output=~Media copy operation successful
 cmd:ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/.treeinfo
 check:rc==0
 end
+
 start:copycds_n
 os:Linux
 cmd:umount /mnt/xcat
@@ -18,6 +19,7 @@ check:output=~Media copy operation successful
 cmd:ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/.treeinfo
 check:rc==0
 end
+
 start:copycds_a
 os:Linux
 cmd:umount /mnt/xcat
@@ -28,6 +30,7 @@ check:output=~Media copy operation successful
 cmd:ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/.treeinfo
 check:rc==0
 end
+
 start:copycds_n_a
 os:Linux
 cmd:umount /mnt/xcat
@@ -38,13 +41,14 @@ check:output=~Media copy operation successful
 cmd:ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/.treeinfo
 check:rc==0
 end
+
 start:copycds_a_err
 os:Linux
 cmd:umount /mnt/xcat
 cmd:copycds  -a 386 $$ISO
-check:rc!=0
 check:output=~Error
 end
+
 start:copycds_n_err
 os:Linux
 cmd:umount /mnt/xcat
