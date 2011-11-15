@@ -71,6 +71,14 @@ foreach my $table (@files)
            }
            next;
         }
+        # skip ISNM tables except isnm_config
+        if ( $table =~ /^isnm_perf/ ) {
+          if ($::DUMPVERBOSE) {
+            xCAT::MsgUtils->message("I", "Skipping $table\n");
+          }
+          next;
+        }
+
         # skip and table in the site.skiptables attribute
         if (@skiptbls) {
           my ($tmptable,$suffix) = split(/\./,$table);
