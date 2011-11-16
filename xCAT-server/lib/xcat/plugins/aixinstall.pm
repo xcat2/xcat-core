@@ -3827,6 +3827,7 @@ sub mk_lpp_source
     }
     else
     {
+
         my $rsp;
         push @{$rsp->{data}},
           "Could not get an lpp_source resource for this diskless image.\n";
@@ -4523,7 +4524,6 @@ sub chk_resolv_conf
 				# -  service node/network  oriented
 
 				# then use xcatmaster value of node def
-#ndebug
 				# with statelite we need to set up both primary and backup SNs
 				# see which one we are and set the correct server
 				my $xmast;
@@ -4586,8 +4586,6 @@ sub chk_resolv_conf
 				# service node oriented
 
 				# then use xcatmaster value of node def
-
-#ndebug
 				# with statelite we need to set up both primary and backup SNs
                 # see which one we are and set the correct server
                 my $xmast;
@@ -4621,13 +4619,25 @@ sub chk_resolv_conf
                     $server=$nimprime;
                 }
 
-                my $n = xCAT::NetworkUtils->getipaddr($server);
-                chomp $n;
-                push(@nservers, $n);
+				# make sure to use the short host name or
+				#		NIM will be unhappy !
+				my ($host, $ip) = xCAT::NetworkUtils->gethostnameandip($server);
+                chomp $host;
+				chomp $ip;
+
+				if (!$host || !$ip)
+				{
+					my $rsp = {};
+					$rsp->{data}->[0] = "Can not resolve the node $node";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					next;
+				}
+                push(@nservers, $ip);
 
 				# use convention for res name "<SN>_resolv_conf"
-				$resolv_conf_name = $server . "_resolv_conf";
+				$resolv_conf_name = $host . "_resolv_conf";
 				$resolv_conf_hash{$node} = $resolv_conf_name;
+
 
 			} else {
 
@@ -7007,6 +7017,7 @@ sub prenimnodecust
 
         Processing for the nimnodecust command.
 
+
 		Does AIX node customization.
 
         Arguments:
@@ -9120,6 +9131,155 @@ sub mkdsklsnode
 
         }
 
+		#
+		# If NEWNAME is specified we need to update either the /etc/bootptab
+		#	file or the /etc/dhcpsd.cnf
+		#	- the NIM alt def has to be created with no mac included - 
+		#	- once the dkls_init is done we can then add the mac back
+		#	- the the bootptab and or dhcpsd.cnf file
+		#  This is only an issue if the "-n" (NEWNAME) option was specified
+		#
+
+		if ($::NEWNAME) {
+
+			#  Only need to update this file if we are using dhcpsd daemon
+
+			#Check if dhcpd is running
+			my @res = xCAT::Utils->runcmd('lssrc -s dhcpsd',0);
+			if ( $::RUNCMD_RC != 0)
+			{
+				my $rsp;
+				push @{$rsp->{data}}, "Failed to check dhcpsd status.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+			}
+			if ( grep /\sactive/, @res)
+			{
+				# if dhcpsd is active then assume we need to update
+				#	/etc/dhcpsd.cnf
+
+				# read the dhcpsd.cnf file into an array
+				my $dhcpfile = "/etc/dhcpsd.cnf";
+				open(DHCPFILE, "<$dhcpfile");
+				my @lines = <DHCPFILE>;
+				close DHCPFILE;
+
+				# copy file to backup
+				my $cpcmd = qq~/usr/bin/cp $dhcpfile $dhcpfile.bak~;
+				my $output = xCAT::Utils->runcmd("$cpcmd", -1);
+				if ($::RUNCMD_RC != 0)
+				{
+					my $rsp;
+					push @{$rsp->{data}}, "Could not copy $dhcpfile to $dhcpfile.bak.\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+				}
+
+				foreach my $nd (@nodelist) {
+					# short hostname for node
+					$nd =~ s/\..*$//;
+
+					# get the IP for the node
+					my $ndIP = xCAT::NetworkUtils->getipaddr($nd);
+					chomp $ndIP;
+
+					# get mac for node
+					my $mac=$objhash{$nd}{'mac'};
+
+					# foreach line in file
+					foreach my $l (@lines) {
+
+						if (( $l =~ /client/) && ($l =~ /$ndIP/)  ) {
+
+							# replace the "0" with the mac
+							$l =~ s/ 0 / $mac /;
+						} 
+					} # end - foreach line
+
+				} # end - foreach node
+
+				# update the file
+				unless (open(DHCPFILE, ">$dhcpfile")) {
+					my $rsp;
+					push @{$rsp->{data}}, "Could not open $dhcpfile.\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+				}
+				foreach (@lines)
+				{
+					#print DHCPFILE $_ . "\n";
+					print DHCPFILE $_;
+				}
+				close DHCPFILE;
+
+				# refresh the dhcpsd daemon
+				# my $dcmd=qq~/usr/bin/refresh -s dhcpsd~;
+				my $out = xCAT::Utils->runcmd('/usr/bin/refresh -s dhcpsd',0);
+				if ($::RUNCMD_RC != 0)
+				{
+					my $rsp;
+					push @{$rsp->{data}}, "Failed to refresh dhcpsd configuration\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+				}
+
+			} # end - dhcpsd.cnf file
+
+			# assume we always need to update the /etc/bootptab file.
+
+			# read the bootptab file into an array
+			my $bpfile = "/etc/bootptab";
+			open(BPFILE, "<$bpfile");
+			my @lines = <BPFILE>;
+			close BPFILE;
+
+			# copy file to backup
+			my $cpcmd = qq~/usr/bin/cp $bpfile $bpfile.bak~;
+			my $output = xCAT::Utils->runcmd("$cpcmd", -1);
+			if ($::RUNCMD_RC != 0)
+			{
+				my $rsp;
+				push @{$rsp->{data}}, "Could not copy $bpfile to $bpfile.bak.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+			}
+
+			foreach my $nd (@nodelist) {
+				# get short hostname for node
+				$nd =~ s/\..*$//;
+
+				# get mac for node
+				my $mac=$objhash{$nd}{'mac'};
+
+				# foreach line in file
+				foreach my $l (@lines) {
+
+					# split line
+					my ($hn, $rest) = split(/:/, $l);
+
+					# if this is the line for this hostname
+					$hn =~ s/\..*$//;
+					if ($hn eq $nd) {
+						# if it doesn't have ha then add it
+						if (!($l =~ /:ha=/)) {
+							$l =~ s/:sa/:ha=$mac:sa/;
+						}
+					}
+				} # end - foreach line
+
+			} # end - foreach node
+
+			# update the file
+			unless (open(BPFILE, ">$bpfile")) {
+				my $rsp;
+				push @{$rsp->{data}}, "Could not open $bpfile.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+			}
+			foreach (@lines)
+			{
+				print BPFILE $_ ;
+			}
+			close BPFILE;
+
+
+		} # end - if NEWNAME
+
+
         # Update /etc/bootptab for HFI mac address failover
         my $if = 1;
         my $firstmac;
@@ -9159,21 +9319,34 @@ sub mkdsklsnode
 	#
 	# doesn't hurt to create new file for all nodes passed in
 	my @imgsdone;
+
 	foreach my $n (@nodelist) {
 		my $img = $nodeosi{$n};
 		if (grep(/^$img$/, @imgsdone )) {
 			next;
 		}
+		$n =~ s/\..*$//; # make sure we have the short hostname
+		my $node;
+		if ($::NEWNAME)
+		{
+			# need to use a new name for the node name
+			#	- not node hostname
+			# "<xcat_node_name>_<image_name>"
+			$node = $n . "_" . $img;
+		} else {
+			$node = $n;
+		}
+
 		push(@imgsdone, $img);
 		# Only when using a shared_root resource
 		if ($imagehash{$img}{shared_root}) {
 			my $SRdir = xCAT::InstUtils->get_nim_attr_val( $imagehash{$img}{'shared_root'}, "location", $callback, $Sname, $subreq);
-			my $cpcmd = qq~/usr/bin/cp $SRdir/etc/hosts $SRdir/etc/.client_data/hosts.$n 2>/dev/null~;
+			my $cpcmd = qq~/usr/bin/cp $SRdir/etc/hosts $SRdir/etc/.client_data/hosts.$node 2>/dev/null~;
 			my $output = xCAT::Utils->runcmd("$cpcmd", -1);
 			if ($::RUNCMD_RC != 0)
 			{
 				my $rsp;
-				push @{$rsp->{data}}, "Could not copy $SRdir/etc/hosts to $SRdir/etc/.client_data/hosts.$n.\n";
+				push @{$rsp->{data}}, "Could not copy $SRdir/etc/hosts to $SRdir/etc/.client_data/hosts.$node.\n";
 				xCAT::MsgUtils->message("E", $rsp, $callback);
 			}
 		}
@@ -9188,6 +9361,9 @@ sub mkdsklsnode
     #       Update root/<nodename>/etc/hosts
     #       Update root/<nodename>/etc/filesystems
     #
+	# Note: if "-n" option then we need a NIM name and not the nodename
+	#   in some cases - ex. file and dir names
+	#   - if NEWNAME then nim name = <nodename>_<osimage name>
 
     # convert the @nodesfailed to hash for search performance considerations
     my %fnhash = ();
@@ -9216,6 +9392,19 @@ sub mkdsklsnode
         }
         foreach my $snd (@snode)
         {
+			my $nimname;
+			if ($::NEWNAME)
+			{
+			 	# need to use a new name for the node name
+				#   - not node hostname
+				# used for filenames and dirs in shared_root
+				# "<xcat_node_name>_<image_name>"
+				$snd =~ s/\..*$//; # make sure we have the short hostname
+				$nimname = $snd . "_" . $nodeosi{$snd};
+			} else {
+				$nimname = $snd;
+			}
+
             # nfsserver defined for this node
             if($nfshash->{$snd}->[0]->{'nfsserver'})
             {
@@ -9239,16 +9428,16 @@ sub mkdsklsnode
                         my $imgsrdir = xCAT::InstUtils->get_nim_attr_val(
                                                         $imagehash{$osimg}{'shared_root'}, 
                                                         "location", $callback, $Sname, $subreq);
-                        $hostfile = "$imgsrdir/etc/.client_data/hosts.$snd";
-                        $filesystemsfile = "$imgsrdir/etc/.client_data/filesystems.$snd";
+                        $hostfile = "$imgsrdir/etc/.client_data/hosts.$nimname";
+                        $filesystemsfile = "$imgsrdir/etc/.client_data/filesystems.$nimname";
                     }
                     else # non-shared_root configuration
                     {
                         my $imgrootdir = xCAT::InstUtils->get_nim_attr_val(
                                                           $imagehash{$osimg}{'root'},
                                                           "location", $callback, $Sname, $subreq);
-                        $hostfile = "$imgrootdir/$snd/etc/hosts";
-                        $filesystemsfile = "$imgrootdir/$snd/etc/filesystems";
+                        $hostfile = "$imgrootdir/$nimname/etc/hosts";
+                        $filesystemsfile = "$imgrootdir/$nimname/etc/filesystems";
                         my ($nodehost, $nodeip) = xCAT::NetworkUtils->gethostnameandip($snd);
                         if (!$nodehost || !$nodeip)
                         {
@@ -9357,14 +9546,14 @@ sub mkdsklsnode
                 my $imgsrdir = xCAT::InstUtils->get_nim_attr_val(
                                                 $imagehash{$osimg}{'shared_root'},
                                                  "location", $callback, $Sname, $subreq);
-                $filesystemsfile = "$imgsrdir/etc/.client_data/filesystems.$snd";
+                $filesystemsfile = "$imgsrdir/etc/.client_data/filesystems.$nimname";
             }
             else # non-shared_root configuration
             {
                 my $imgrootdir = xCAT::InstUtils->get_nim_attr_val(
                                                   $imagehash{$osimg}{'root'},
                                                   "location", $callback, $Sname, $subreq);
-                $filesystemsfile = "$imgrootdir/$snd/etc/filesystems";
+                $filesystemsfile = "$imgrootdir/$nimname/etc/filesystems";
             }
 
             my $fscontent;
@@ -10576,6 +10765,38 @@ sub rmdsklsnode
 	    return 1; 
 	}
 
+	# save the existing bootptab file so it can be restored
+	# this is needed when using alternate NIM clients (ex. mkdsklsnode -n)
+	# NIM will remove files and entries but we may still need them for the 
+	#	nodes since they may be booted using alternate NIM client defs
+	# leaving the files and entries in place should not cause any issues
+	# since they will be replaced the next time mkdsklsnode is run
+	my $bootptabfile = "/etc/bootptab";
+	my $bootptabback = "/etc/bootptab.bak";
+	my $cpcmd = qq~/usr/bin/cp -p $bootptabfile $bootptabback~;
+	my $output = xCAT::Utils->runcmd("$cpcmd", -1);
+	if ($::RUNCMD_RC != 0)
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "Could not copy $bootptabfile to $bootptabback.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+	}
+
+	# back up /tftpboot files so they can be restored
+	# this is needed when using alternate NIM clients (ex. mkdsklsnode -n)
+	my $tftploc = "/tftpboot";
+	my $tftpbak = "/tftpboot/bak";
+
+	# make sure to preserve links etc.
+	my $cpcmd2 = qq~mkdir -m 644 -p $tftpbak; /usr/bin/cp -h -p $tftploc/* $tftpbak~;
+	$output = xCAT::Utils->runcmd("$cpcmd2", -1);
+	if ($::RUNCMD_RC != 0)
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "Could not copy $tftploc to $tftpbak.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+	}
+
     # for each node
     my @nodesfailed;
     my $error;
@@ -10706,8 +10927,28 @@ sub rmdsklsnode
             push(@nodesfailed, $nodename);
             next;
         }
-
     }    # end - for each node
+
+	#   restore tftpboot and bootptab files
+	$cpcmd = qq~/usr/bin/cp -p $bootptabback $bootptabfile; /usr/bin/rm $bootptabback~;
+	$output = xCAT::Utils->runcmd("$cpcmd", -1);
+	if ($::RUNCMD_RC != 0)
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "Could not copy $bootptabback to $bootptabfile.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+	}
+
+	# make sure to preserve links etc.
+	$cpcmd2 = qq~/usr/bin/cp -h -p $tftpbak/* $tftploc; /usr/bin/rm -R $tftpbak 2>/dev/null~;
+	$output = xCAT::Utils->runcmd("$cpcmd2", -1);
+	if ($::RUNCMD_RC != 0)
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "Could not copy $tftpbak to $tftploc.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+	}
+
 	my  $retcode=0;
     if ($error)
     {
