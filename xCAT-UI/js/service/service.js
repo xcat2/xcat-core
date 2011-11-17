@@ -108,6 +108,7 @@ function loadServicePage() {
 
 		success : function(data) {
 			setUserNodes(data);
+			setMaxVM();
 			getUserNodesDef();
 			getNodesCurrentLoad();
 			loadManagePage(manageTabId);
@@ -190,6 +191,18 @@ function loadServiceProvisionPage(tabId) {
 	 */
 	var okBtn = createButton('Ok');
 	okBtn.bind('click', function(event) {
+		var userName = $.cookie('srv_usrname');
+		var tmp = $.cookie(userName + '_usrnodes');
+		var nodes = tmp.split(',');
+		var maxVM = parseInt($.cookie(userName + '_maxvm'));
+		
+		// Do not allow user to clone if the maximum number of VMs is reached
+		if (nodes.length >= maxVM) {
+			var warn = createWarnBar('You have reached the maximum number of VMs allowed.  Please de-allocate some existing VMs to free up space or contact your system administrator request more VMs.');
+			warn.prependTo($('#' + tabId));
+			return;
+		}
+		
 		// Get hardware that was selected
 		var hw = $(this).parent().find('input[name="hw"]:checked').val();
 	    var newTabId = hw + 'ProvisionTab';
@@ -287,7 +300,7 @@ function getUserNodesDef() {
 	} else {
 		// Clear the tab before inserting the table
 		$('#manageTab').children().remove();
-		$('#manageTab').append(createWarnBar('You are not managing any node.  Try to provision a node.'));
+		$('#manageTab').append(createWarnBar('Could not find any nodes that belong to you. Do you have any? Or did your session expire?'));
 	}
 }
 
@@ -446,8 +459,7 @@ function loadNodesTable(data) {
 	$('#' + nodesDTId).dataTable({
 		'iDisplayLength': 50,
 		'bLengthChange': false,
-		"sScrollX": "100%",
-		"sScrollXInner": "110%"
+		"sScrollX": "100%"
 	});
 	
 	// Set datatable header class to add color
@@ -565,12 +577,13 @@ function loadNodesTable(data) {
 			success : function(data) {
 				// Save nodes owned by user
 				setUserNodes(data);
+				getNodesCurrentLoad();
 				
 				// Refresh nodes table
 				var userName = $.cookie('srv_usrname');
 				var userNodes = $.cookie(userName + '_usrnodes');
-				if (userNodes) {	
-					 // Get nodes definitions
+				if (userNodes) {
+					// Get nodes definitions
 				    $.ajax( {
 				        url : 'lib/srv_cmd.php',
 				        dataType : 'json',
@@ -1257,7 +1270,19 @@ function monitorNode(node, monitor) {
  * @return Nothing
  */
 function cloneNode(tgtNodes) {	
+	var userName = $.cookie('srv_usrname');	
 	var nodes = tgtNodes.split(',');
+	var tmp = $.cookie(userName + '_usrnodes');
+	var usrNodes = tmp.split(',');
+	
+	var maxVM = parseInt($.cookie(userName + '_maxvm'));
+	
+	// Do not allow user to clone if the maximum number of VMs is reached
+	if (usrNodes.length >= maxVM) {
+		var warn = createWarnBar('You have reached the maximum number of VMs allowed.  Please de-allocate some existing VMs to free up space or contact your system administrator request more VMs.');
+		warn.prependTo($('#manageTab'));
+		return;
+	}
 	
 	for (var n in nodes) {
 		// Get hardware that was selected
@@ -2093,4 +2118,33 @@ function getNodeAttr(node, attrName) {
 	} else {
 		return '';
 	}
+}
+
+/**
+ * Set the maximum number of VMs a user could have
+ */
+function setMaxVM() {
+	var userName = $.cookie('srv_usrname');
+	
+	$.ajax( {
+		url : 'lib/srv_cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'webportal',
+			tgt : '',
+			args : 'getmaxvm;' + userName,
+			msg : ''
+		},
+
+		success : function(data) {
+			// Get response
+			var rsp = jQuery.trim(data.rsp);
+			rsp = rsp.replace('Max allowed:', '');
+			
+			// Set cookie to expire in 60 minutes
+			var exDate = new Date();
+			exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
+			$.cookie(userName + '_maxvm', rsp, { expires: exDate });
+		}
+	});
 }

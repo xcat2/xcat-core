@@ -36,7 +36,9 @@ sub process_request {
 	my %authorized_cmds = (
 		'lszvm'       => \&lszvm,
 		'provzlinux'  => \&provzlinux,
-		'clonezlinux' => \&clonezlinux
+		'clonezlinux' => \&clonezlinux,
+		'genhostip'   => \&genhostip,
+		'getmaxvm'    => \&getmaxvm
 	);
 
 	# Check if the request is authorized
@@ -469,5 +471,41 @@ sub clonezlinux {
 	println( $callback, "Your virtual machine is ready. It may take a few minutes before you can logon. Below is your VM attributes." );
 	println( $callback, "$out" );
 	println( $callback, "    rootpw = Same as source node" );
+}
+
+sub genhostip {
+	my ( $request, $callback, $sub_req ) = @_;
+	my $group = $request->{arg}->[1];
+	
+	my ($node, $base_digit) = gennodename( $callback, $group );
+	println( $callback, "$node" );
+}
+
+sub getmaxvm {
+	my ( $request, $callback, $sub_req ) = @_;
+	my $user = $request->{arg}->[1];
+	
+	my @args;
+	my $max;
+	
+	# Look in 'policy' table
+	my $tab = xCAT::Table->new( 'policy', -create => 1, -autocommit => 0 );
+	my @results = $tab->getAllAttribsWhere( "name='" . $user . "'", 'comments' );
+	foreach (@results) {
+		if ( $_->{'comments'} ) {
+			@args = split( ';', $_->{'comments'} );
+			
+			# Extract max VM
+			foreach (@args) {
+				if ($_ =~ m/max-vm:/i) {
+					$_ =~ s/max-vm://g;
+					$max = $_;
+					last;
+				}
+			}
+		}
+	}
+	
+	$callback->( { data => "Max allowed: $max" } );
 }
 1;
