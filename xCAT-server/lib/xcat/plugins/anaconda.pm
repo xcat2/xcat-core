@@ -1103,7 +1103,7 @@ sub mkinstall
 	    	$instserver=$ent->{nfsserver};
 	    }
             my $kcmdline =
-                "instserver=$instserver ks=http://"
+                "repo=http://$instserver/install/$os/$arch/ ks=http://"
               . $instserver
               . "/install/autoinst/"
               . $node;
@@ -1180,7 +1180,7 @@ sub mkinstall
                     $kcmdline .= "n8r";
                 }
             }
-            $kcmdline .= " noipv6";
+            #$kcmdline .= " noipv6";
             # add the addkcmdline attribute  to the end
             # of the command, if it exists
             #my $addkcmd   = $addkcmdhash->{$node}->[0];

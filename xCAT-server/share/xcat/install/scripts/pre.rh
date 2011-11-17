@@ -137,6 +137,9 @@ fi
 if [ -d /sys/firmware/efi ]; then 
 	echo 'part /boot/efi --size 50 --fstype vfat' >> /tmp/partitioning
 fi
+INSTSERVER=`sed -e 's/.*instserver=.*//' -e 's/ .*//' /proc/cmdline`
+echo "url --url http://$INSTSERVER/"'install/#TABLE:nodetype:$NODE:os#/#TABLE:nodetype:$NODE:arch#' > /tmp/installurl
+
 #TODO: ondisk detection, /dev/disk/by-id/edd-int13_dev80 for legacy maybe, and no idea about efi.  at least maybe blacklist SAN if mptsas/mpt2sas/megaraid_sas seen...
 echo "part swap --size 1024" >> /tmp/partitioning
 echo "part / --size 1 --grow --fstype $FSTYPE" >> /tmp/partitioning

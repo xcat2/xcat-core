@@ -8,7 +8,7 @@ lang en_US
 # nfs --server hostname.of.server or IP --dir /path/to/RH/CD/image
 #
 #nfs --server #XCATVAR:INSTALL_NFS# --dir #XCATVAR:INSTALL_SRC_DIR#
-url --url http://#TABLE:noderes:$NODE:nfsserver#/install/#TABLE:nodetype:$NODE:os#/#TABLE:nodetype:$NODE:arch#
+%include /tmp/installurl
 
 #device ethernet e100
 keyboard "us"
