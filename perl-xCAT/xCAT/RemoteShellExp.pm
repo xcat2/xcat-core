@@ -523,10 +523,9 @@ sub sendnodeskeys
       {
         my $rsp = {};
         $rsp->{data}->[0] = 
-         "Unable to run $spawnmkdir.";
+         "Unable to run $spawnmkdir on $node";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-        next; # go to next node
-
+        next;
       }
 
       #
@@ -555,8 +554,7 @@ sub sendnodeskeys
          $prompt3,  # Permission denied
          sub {
              $rc= 1; 
-             $sendkeys->soft_close(); 
-             next; # go to next node
+             $sendkeys->hard_close(); 
            }
         ],
         );   # end prompts
@@ -566,14 +564,17 @@ sub sendnodeskeys
         if (defined($result[1]))
         {
             my $msg = $result[1];
-            if ($msg =~ /status 0/i) { # no error
+           if ($msg =~ /status 0/i) { # no error
               $rc=0;
             } else {
-              my $rsp = {};
-              $rsp->{data}->[0] =  "$node has error,$msg";
-              xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-              $rc=1;
-              next; # go to next node
+               if ($msg =~ /2:EOF/i) { # no error
+                  $rc=0;
+               } else {
+                 my $rsp = {};
+                 $rsp->{data}->[0] =  "mkdir:$node has error,$msg";
+                 xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                 $rc=1;
+               }
             }
         }
       $sendkeys->soft_close(); 
@@ -612,10 +613,9 @@ sub sendnodeskeys
       {
         my $rsp = {};
         $rsp->{data}->[0] = 
-         "Unable to run $spawncopyfiles.";
+         "Unable to run $spawncopyfiles on $node.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-        next; # go to next node
-
+        next; 
       }
 
       my @result = $sendkeys->expect(
@@ -640,8 +640,7 @@ sub sendnodeskeys
          $prompt3,  # Permission denied
          sub {
              $rc= 1; 
-             $sendkeys->soft_close(); 
-             next; # go to next node
+             $sendkeys->hard_close(); 
              
            }
         ],
@@ -655,11 +654,14 @@ sub sendnodeskeys
             if ($msg =~ /status 0/i) { # no error
               $rc=0;
             } else {
-              my $rsp = {};
-              $rsp->{data}->[0] =  "$node has error,$msg";
-              xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-              $rc=1;
-              next; # go to next node
+               if ($msg =~ /2:EOF/i) { # no error
+                  $rc=0;
+               } else {
+                my $rsp = {};
+                $rsp->{data}->[0] =  "copykeys:$node has error,$msg";
+                xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                $rc=1;
+              }
             }
         }
         $sendkeys->soft_close();
@@ -724,8 +726,7 @@ sub sendnodeskeys
          $prompt3,  # Permission denied
          sub {
              $rc= 1; 
-             $sendkeys->soft_close(); 
-             next; # go to next node
+             $sendkeys->hard_close(); 
            }
         ],
         );   # end prompts
@@ -738,11 +739,14 @@ sub sendnodeskeys
             if ($msg =~ /status 0/i) { # no error
               $rc=0;
             } else {
-              my $rsp = {};
-              $rsp->{data}->[0] =  "$node has error,$msg";
-              xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-              $rc=1;
-              next; # go to next node
+               if ($msg =~ /2:EOF/i) { # no error
+                  $rc=0;
+               } else {
+                 my $rsp = {};
+                 $rsp->{data}->[0] =  "copy.sh:$node has error,$msg";
+                 xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                 $rc=1;
+              }
             }
         }
       $sendkeys->soft_close(); 

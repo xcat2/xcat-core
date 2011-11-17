@@ -1668,7 +1668,7 @@ cp /tmp/$to_userid/.ssh/id_rsa  \$home/.ssh/id_rsa 2>&1
 chmod 0600 \$home/.ssh/id_* 2>&1
 rm -f /tmp/$to_userid/.ssh/* 2>&1
 rmdir \"/tmp/$to_userid/.ssh\"
-rmdir \"/tmp/$to_userid\"";
+rmdir \"/tmp/$to_userid\" \n";
 
     close FILE;
     chmod 0777,"$home/.ssh/copy.sh";
