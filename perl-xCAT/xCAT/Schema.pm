@@ -821,7 +821,10 @@ site => {
    " ipmitimeout:  The timeout to use when communicating with BMCs.\n\n".
    " iscsidir:  The path to put the iscsi disks in on the mgmt node.\n\n".
    " master:  The hostname of the xCAT management node, as known by the nodes.\n\n".
-   " maxssh:  The max # of SSH connections at any one time to the hw ctrl point for PPC\n\n".
+   " maxssh:  The max # of SSH connections at any one time to the hw ctrl point for PPC.\n".
+   "          This parameter doesn't take effect on the rpower command.\n".
+   "          It takes effects on other PPC hardware control command  getmacs/rnetboot/rbootseq and so on.\n".
+   "          Default is 8.\n\n".
    " mnroutenames:  The name of the routes to be setup on the management node.\n\n".
    "            It is a comma separated list of route names that are defined in the routes table.\n\n".
    " nameservers:  A comma delimited list of DNS servers that each node in the cluster\n".
@@ -839,8 +842,11 @@ site => {
    " powerinterval:  The time of seconds that rpower command will wait between\n".
    "                 performing action on each target object.\n".
    "                 It is used for controlling the cluster boot up speed\n".
-   "                 in large clusters. Default is 0.\n\n".
-   " ppcmaxp:  The max # of processes for PPC hw ctrl.\n\n".
+   "                 in large clusters. Default is 0.\n".
+   "                 And it's used to control the time for the power command on each lpar by each hcp.\n\n".
+   " ppcmaxp:  The max # of processes for PPC hw ctrl. If there are more than ppcmaxp hcps,\n".
+   "           this parameter will take effect. It will control the max number of processes  \n".
+   "           for PPC hardware control commands. Default is 64.\n\n".
    " ppcretry:  The max # of PPC hw connection attempts before failing.\n\n".
    " ppctimeout:  The timeout, in milliseconds, to use when communicating with PPC hw.\n\n".
    " pruneservices:  Whether to enable service pruning when noderm is run (i.e.\n".
