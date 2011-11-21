@@ -17,7 +17,6 @@ dbus-1-glib
 hal
 pam
 pam-modules
-resmgr
 rsync
 bc
 timezone
