@@ -757,23 +757,18 @@ sub mkinstall
                                       );
             my $sent =
               $hmtab->getNodeAttribs($node, ['serialport', 'serialspeed', 'serialflow']);
-            unless ($ent and $ent->{nfsserver})
+	    my $netserver = '!myipfn!';
+            if ($ent and $ent->{nfsserver})
             {
-                $callback->(
-                           {
-                            error => ["No noderes.nfsserver for $node defined"],
-                            errorcode => [1]
-                           }
-                           );
-                next;
+		$netserver = $ent->{nfsserver};
             }
             my $kcmdline =
                 "autoyast=http://"
-              . $ent->{nfsserver}
+              . $netserver
               . "$installroot/autoinst/"
               . $node
               . " install=http://"
-              . $ent->{nfsserver}
+              . $netserver
               . "$pkgdir/1";
 
             my $netdev = "";
