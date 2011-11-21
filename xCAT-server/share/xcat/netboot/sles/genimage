@@ -875,8 +875,14 @@ EOS1
    print $inifile "mknod /dev/ttyS2 c 4 66\n";
    print $inifile "mknod /dev/ttyS3 c 4 67\n";
 
+    # Install modules before starting udev 
+    # because networking modules (qeth/qeth_l2/qeth_l3) are needed
+    foreach (@ndrivers) {
+        print $inifile "insmod /lib/$_\n";
+    }
+
     # Start udev
-	    print $inifile <<EOMS;
+	print $inifile <<EOMS;
 # Start udev to find devices attached to node
 # This script can be found in /lib/mkinitrd
 echo "Creating device nodes with udev"
@@ -887,17 +893,17 @@ then
     /sbin/udevadm settle --timeout=10
 fi
 EOMS
-
-   foreach (@ndrivers) {
-      print $inifile "insmod /lib/$_\n";
-   }
-    print $inifile "killall -9 udevd\n";
+    
+    # udevd needed by s390x for networking
+    if ($arch ne "s390x") {
+        print $inifile "killall -9 udevd\n";
+    }
+    
     if($mode eq "statelite") {
         print $inifile "echo debug: before netstart\n";
         print $inifile "# check and see if debug is specified on command line\n";
         print $inifile "grep '\(debug\)' /proc/cmdline > /dev/null && export DEBUG=1\n";
     }
-
 
    print $inifile <<EOMS;
 # check the kernel parameters firstly
@@ -1304,12 +1310,13 @@ END
 		$nic = $&;
 	}
 
-        if ( -f "/etc/udev/rules.d/*$nic.rules" ) {
-            system("cp -r /etc/udev/rules.d/*$nic.rules /tmp/xcatinitrd.$$/etc/udev/rules.d");
-        }
-        if ( -f "/etc/udev/rules.d/*persistent-net.rules" ) {
+    # Somehow checking for *$nic.rules does not work
+    #if ( -f "/etc/udev/rules.d/*$nic.rules" ) {
+        system("cp -r /etc/udev/rules.d/*$nic.rules /tmp/xcatinitrd.$$/etc/udev/rules.d");
+    #}
+    #if ( -f "/etc/udev/rules.d/*persistent-net.rules" ) {
 	    system("cp -r /etc/udev/rules.d/*persistent-net.rules /tmp/xcatinitrd.$$/etc/udev/rules.d");
-        }
+    #}
 	
 	system("mkdir -p /tmp/xcatinitrd.$$/lib/udev");
 	system("cp -r $rootimg_dir/lib/udev/* /tmp/xcatinitrd.$$/lib/udev");
