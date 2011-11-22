@@ -189,6 +189,13 @@ if [ "$CURRPRIV" != "ADMINISTRATOR" ]; then
     done
     TRIES=0
 fi
+TRIES=0
+while ! ipmitool -d $idev channel setaccess $LANCHAN $USERSLOT link=on; do
+    sleep 1
+    let TRIES=TRIES+1
+    if [ $TRIES -gt $TIMEOUT ]; then break; fi
+done
+TRIES=0
 if [ "$CURRENTUSER" != "$bmcu" ]; then
     while ! ipmitool -d $idev user set name $USERSLOT $bmcu; do
         sleep 1
