@@ -65,6 +65,7 @@ BEGIN {
 		}
 
 		if(\$1 == "stat") {
+		    if( system( "[ -f /mnt/var/log/YaST2/y2logRPM ]" )  == 0 ) {		
 			while((getline < "/mnt/var/log/YaST2/y2logRPM") > 0) {
 				line = \$0
 			}
@@ -79,9 +80,30 @@ BEGIN {
 			}
 
 			print ("installing " line) |& ns
-		}
+		    }
+         	    else {
+			# The format of /var/log/zypp/history is documented at
+			#     http://en.opensuse.org/Libzypp/Package_History
 
-		close(ns)
+			lastrpm = "prep"
+
+			oldFS = FS
+			FS="|"
+
+			while((getline < "/mnt/var/log/zypp/history") > 0) {
+				if (\$0 !~ /#/ && \$2 == "install") {
+					lastrpm = (\$3 "-" \$4)
+				}
+			}
+			close("/mnt/var/log/zypp/history")
+
+			FS = oldFS
+
+			print ("installing " lastrpm) |& ns
+                   }
+               }
+
+	       close(ns)
 	}
 }
 EOF
