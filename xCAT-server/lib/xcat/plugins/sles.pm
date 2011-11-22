@@ -428,7 +428,7 @@ sub mknetboot
             $kcmdline =
               "imgurl=http://$imgsrv/$rootimgdir/rootimg.$suffix ";
         }
-        $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
+        $kcmdline .= "XCAT=$xcatmaster:$xcatdport quiet ";
 
         # add the kernel-booting parameter: netdev=<eth0>, or BOOTIF=<mac>
         my $netdev = "";
@@ -763,7 +763,7 @@ sub mkinstall
 		$netserver = $ent->{nfsserver};
             }
             my $kcmdline =
-                "autoyast=http://"
+                "quiet autoyast=http://"
               . $netserver
               . "$installroot/autoinst/"
               . $node
