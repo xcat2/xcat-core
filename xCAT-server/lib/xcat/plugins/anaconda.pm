@@ -1103,7 +1103,7 @@ sub mkinstall
 	    	$instserver=$ent->{nfsserver};
 	    }
             my $kcmdline =
-                "repo=http://$instserver/install/$os/$arch/ ks=http://"
+                "quiet repo=http://$instserver/install/$os/$arch/ ks=http://"
               . $instserver
               . "/install/autoinst/"
               . $node;
