@@ -376,9 +376,30 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 		$(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
 		var ready = true;
 		var errorMessage = '';
-
-		// Get provision tab ID
-		var thisTabId = 'kvmProvisionTab' + inst;
+		
+		// Get tab ID
+		var thisTabId = $(this).parents('.ui-tabs-panel').attr('id');
+		
+		// Check if fields are properly filled in
+		var inputs = $('#' + thisTabId + ' input:visible');
+		for ( var i = 0; i < inputs.length; i++) {
+			if (!inputs.eq(i).val()) {
+				inputs.eq(i).css('border', 'solid #FF0000 1px');
+				ready = false;
+			} else {
+				inputs.eq(i).css('border', 'solid #BDBDBD 1px');
+			}
+		}
+		
+		var selects = $('#' + thisTabId + ' select:visible');
+		for ( var i = 0; i < selects.length; i++) {
+			if (!selects.eq(i).val()) {
+				selects.eq(i).css('border', 'solid #FF0000 1px');
+				ready = false;
+			} else {
+				selects.eq(i).css('border', 'solid #BDBDBD 1px');
+			}
+		}
 	});
 	provForm.append(provisionBtn);
 };

@@ -647,7 +647,7 @@ function loadNodes(data) {
 	$('#nodesTab').children().remove();
 	
 	// Create info bar for nodes tab
-	var info = createInfoBar('Double-click on a cell to edit.  Click outside the table to save changes.  Hit the Escape key to ignore changes.');
+	var info = createInfoBar('Double-click on a cell to edit a node\'s properties.  Click outside the table to save changes.  Hit the Escape key to ignore changes.');
 	$('#nodesTab').append(info);
 
 	// Create action bar

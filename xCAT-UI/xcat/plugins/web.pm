@@ -2181,7 +2181,13 @@ sub web_getdefaultuserentry {
 		$group = 'default';
 	}
 	
-	my $entry = `ssh $hcp "cat /opt/zhcp/conf/$group.direct"`;
+	my $entry;
+	if (!(`ssh $hcp "test -e /opt/zhcp/conf/$group.direct && echo 'File exists'"`)) {
+		$entry = `ssh $hcp "cat /opt/zhcp/conf/default.direct"`;
+	} else {
+		$entry = `ssh $hcp "cat /opt/zhcp/conf/$group.direct"`;	
+	}
+	
 	$callback->( { data => $entry } );
 }
 1;

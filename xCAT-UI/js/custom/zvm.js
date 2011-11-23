@@ -1294,9 +1294,14 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	// Append to provision tab
 	$('#' + tabId).append(provForm);
 
+	var typeFS = $('<fieldset></fieldset>');
+	var typeLegend = $('<legend>Type</legend>');
+	typeFS.append(typeLegend);
+	provForm.append(typeFS);
+	
 	// Create provision type drop down
 	var provType = $('<div></div>');
-	var typeLabel = $('<label>Provision:</label>');
+	var typeLabel = $('<label>Type:</label>');
 	var typeSelect = $('<select></select>');
 	var provNewNode = $('<option value="new">New node</option>');
 	var provExistNode = $('<option value="existing">Existing node</option>');
@@ -1304,7 +1309,7 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	typeSelect.append(provExistNode);
 	provType.append(typeLabel);
 	provType.append(typeSelect);
-	provForm.append(provType);
+	typeFS.append(provType);
 	
 	/**
 	 * Create provision new node division

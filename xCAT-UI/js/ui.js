@@ -613,10 +613,10 @@ function initPage() {
 		includeJs("js/monitor/gangliamon.js");
 		headers.eq(3).css(style);
 		loadMonitorPage();
-	} else if (page == 'guide.php') {
-	    includeJs("js/guide/guide.js");
+	} else if (page == 'help.php') {
+	    includeJs("js/help/help.js");
 	    headers.eq(4).css(style);
-        loadGuidePage();
+        loadHelpPage();
 	} else {
 		// Load nodes page by default
 	    includeJs("js/jquery/jquery.topzindex.min.js");
@@ -822,6 +822,8 @@ function openSettings() {
 	if ($.cookie('xcat_theme')) {
 		// Select theme
 		oList.find('input[value="' + $.cookie('xcat_theme') + '"]').attr('checked', true);
+	} else {
+		oList.find('input[value="start"]').attr('checked', true);
 	}
 
 	// Open form as a dialog

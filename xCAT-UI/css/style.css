@@ -277,7 +277,7 @@ fieldset {
 	margin-bottom: 5px;
 	border-width: 1px 0 0 0;
 	border-style: solid none none none;
-	border-color: #D8D8D8;
+	border-color: gray;
 }
 
 .tab label {

@@ -1817,7 +1817,7 @@ function loadDiskPoolTable(data) {
 		var tableID = 'zDiskDataTable';
 		var table = new DataTable(tableID);
 		// Resource headers: volume ID, device type, start address, and size
-		table.init( [ 'Hardware control point', 'Pool', 'Status', 'Volume ID', 'Device type', 'Start address', 'Size' ]);
+		table.init( [ 'HCP', 'Pool', 'Status', 'Volume ID', 'Device type', 'Start address', 'Size' ]);
 
 		// Append datatable to tab
 		fieldSet.append(table.object());
@@ -1877,7 +1877,7 @@ function loadNetworkTable(data) {
 		// Create table
 		var tableId = 'zNetworkDataTable';
 		var table = new DataTable(tableId);
-		table.init( [ 'Hardware control point', 'Type', 'Name', 'Details' ]);
+		table.init( [ 'HCP', 'Type', 'Name', 'Details' ]);
 
 		// Append datatable to tab
 		fieldSet.append(table.object());
@@ -1892,14 +1892,16 @@ function loadNetworkTable(data) {
 		cols.eq(0).css('width', '20px'); // HCP column
 		cols.eq(1).css('width', '20px'); // Type column
 		cols.eq(2).css('width', '20px'); // Name column
-		cols.eq(3).css('width', '600px'); // Details column
+		cols.eq(3).css({'width': '600px'}); // Details column
 	}
 
 	// Skip index 0 because it contains nothing
-	var details = '';
+	var details = '<pre style="text-align: left;">';
 	for ( var i = 1; i < tmp.length; i++) {
-		details += tmp[i] + '<br>';
+		details += tmp[i];
 	}
+	details += '</pre>';
+	
 	dTable.fnAddData( [ hcp, type, name, details ]);
 }
 
@@ -1981,6 +1983,16 @@ function connect2VSwitch(data) {
 function createZProvisionExisting(inst) {
 	// Create provision existing and hide it
 	var provExisting = $('<div></div>').hide();
+	
+	var vmFS = $('<fieldset></fieldset>');
+	var vmLegend = $('<legend>Virtual Machine</legend>');
+	vmFS.append(vmLegend);
+	provExisting.append(vmFS);
+		
+	var osFS = $('<fieldset></fieldset>');
+	var osLegend = $('<legend>Operating System</legend>');
+	osFS.append(osLegend);
+	provExisting.append(osFS);
 		
 	// Create group input
 	var group = $('<div></div>');
@@ -2017,7 +2029,7 @@ function createZProvisionExisting(inst) {
 		var groupInput = $('<input type="text" name="group"/>');
 		group.append(groupInput);
 	}
-	provExisting.append(group);
+	vmFS.append(group);
 
 	// Create node input
 	var node = $('<div></div>');
@@ -2025,7 +2037,7 @@ function createZProvisionExisting(inst) {
 	var nodeDatatable = $('<div class="indent" id="zNodesDatatableDIV' + inst + '"><p>Select a group to view its nodes</p></div>');
 	node.append(nodeLabel);
 	node.append(nodeDatatable);
-	provExisting.append(node);
+	vmFS.append(node);
 
 	// Create operating system image input
 	var os = $('<div></div>');
@@ -2043,7 +2055,7 @@ function createZProvisionExisting(inst) {
 	});
 	os.append(osLabel);
 	os.append(osInput);
-	provExisting.append(os);
+	osFS.append(os);
 	
 	// Create boot method drop down
 	var bootMethod = $('<div></div>');
@@ -2057,7 +2069,7 @@ function createZProvisionExisting(inst) {
 	);
 	bootMethod.append(methoddLabel);
 	bootMethod.append(methodSelect);
-	provExisting.append(bootMethod);
+	osFS.append(bootMethod);
 	
 	// Generate tooltips
 	provExisting.find('div input[title]').tooltip({
@@ -2168,6 +2180,21 @@ function createZProvisionExisting(inst) {
 function createZProvisionNew(inst) {
 	// Create provision new node division
 	var provNew = $('<div></div>');
+		
+	var vmFS = $('<fieldset></fieldset>');
+	var vmLegend = $('<legend>Virtual Machine</legend>');
+	vmFS.append(vmLegend);
+	provNew.append(vmFS);
+	
+	var hwFS = $('<fieldset></fieldset>');
+	var hwLegend = $('<legend>Hardware</legend>');
+	hwFS.append(hwLegend);
+	provNew.append(hwFS);
+	
+	var osFS = $('<fieldset></fieldset>');
+	var osLegend = $('<legend>Operating System</legend>');
+	osFS.append(osLegend);
+	provNew.append(osFS);
 	
 	// Create group input
 	var group = $('<div></div>');
@@ -2185,7 +2212,7 @@ function createZProvisionNew(inst) {
 	});
 	group.append(groupLabel);
 	group.append(groupInput);
-	provNew.append(group);
+	vmFS.append(group);
 		
 	// Create node input
 	var nodeName = $('<div></div>');
@@ -2193,11 +2220,11 @@ function createZProvisionNew(inst) {
 	var nodeInput = $('<input type="text" name="nodeName" title="You must give a node or a node range. A node range must be given as: node1-node9 or node[1-9]."/>');
 	nodeName.append(nodeLabel);
 	nodeName.append(nodeInput);
-	provNew.append(nodeName);
+	vmFS.append(nodeName);
 
 	// Create user ID input
 	var userId = $('<div><label>User ID:</label><input type="text" name="userId" title="You must give a user ID or a user ID range. A user ID range must be given as: user1-user9 or user[1-9]."/></div>');
-	provNew.append(userId);
+	vmFS.append(userId);
 
 	// Create hardware control point input
 	var hcpDiv = $('<div></div>');
@@ -2225,7 +2252,7 @@ function createZProvisionNew(inst) {
 	});
 	hcpDiv.append(hcpLabel);
 	hcpDiv.append(hcpInput);
-	provNew.append(hcpDiv);
+	vmFS.append(hcpDiv);
 	
 	// Create operating system image input
 	var os = $('<div></div>');
@@ -2243,7 +2270,7 @@ function createZProvisionNew(inst) {
 	});
 	os.append(osLabel);
 	os.append(osInput);
-	provNew.append(os);
+	osFS.append(os);
 
 	// Create user entry input
 	var defaultChkbox = $('<input type="checkbox" name="userEntry" value="default"/>').click(function() {
@@ -2308,7 +2335,7 @@ function createZProvisionNew(inst) {
 	});
 	var userEntry = $('<div><label for="userEntry">Directory entry:</label><textarea/></textarea></div>');
 	userEntry.append($('<span></span>').append(defaultChkbox, 'Use default'));
-	provNew.append(userEntry);
+	hwFS.append(userEntry);
 
 	// Create disk table
 	var diskDiv = $('<div class="provision"></div>');
@@ -2373,7 +2400,7 @@ function createZProvisionNew(inst) {
 		diskRow.append(diskMode);
 
 		// Get list of disk pools
-		var thisTabId = $(this).parent().parent().parent().parent().parent().parent().attr('id');
+		var thisTabId = $(this).parents('.tab').attr('id');
 		var thisHcp = $('#' + thisTabId + ' input[name=hcp]').val();
 		var definedPools;
 		if (thisHcp) {
@@ -2420,7 +2447,7 @@ function createZProvisionNew(inst) {
 	
 	diskDiv.append(diskLabel);
 	diskDiv.append(diskTable);
-	provNew.append(diskDiv);
+	hwFS.append(diskDiv);
 	
 	// Generate tooltips
 	provNew.find('div input[title]').tooltip({
