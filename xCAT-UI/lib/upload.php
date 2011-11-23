@@ -3,7 +3,7 @@
  * Upload a given file into /var/tmp
  */
 $type = $_FILES["file"]["type"];
-if ($type == "text/plain" || $type == "application/octet-stream" || $type == "application/x-shellscript") {
+if ($type == "text/plain" || $type == "application/octet-stream" || $type == "application/x-shellscript" || $type == "application/x-sh") {
 	$error = $_FILES["file"]["error"];
 	if ($error) {
 		echo "Return Code: " . $error;
