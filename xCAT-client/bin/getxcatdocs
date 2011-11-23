@@ -105,7 +105,8 @@ system("tar -zcf $docname html pdf 2>&1");
 if ($UPLOAD || $UPLOADONLY) {
 	my $UPLOADUSER = 'bp-sawyers';
 	my $count = 1;
-	my $cmd = "rsync -v $docname $UPLOADUSER," . 'xcat@web.sourceforge.net:htdocs/doc/';
+	#my $cmd = "rsync -v $docname $UPLOADUSER," . 'xcat@web.sourceforge.net:htdocs/doc/';
+	my $cmd = "rsync -v $docname $UPLOADUSER," . 'xcat@web.sourceforge.net:/home/frs/project/x/xc/xcat/doc/';
 	print "$cmd\n";
 	while ($count<=5 && system("$cmd 2>&1")) { $count++; }
 }
