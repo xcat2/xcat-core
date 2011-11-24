@@ -5,6 +5,7 @@ use warnings;
 use Getopt::Long;
 use Data::Dumper;
 use Term::ANSIColor;
+use Time::Local;
 
 BEGIN
 {
@@ -98,9 +99,12 @@ if($restore){
     &uninit;
 }
 &log_this("\nxCAT automated test finished at " . scalar(localtime()));
-&log_this("Please check results in the $resultdir, \nand see $resultdir/failedcases.$timestamp file for failed cases.");
+&log_this("Please check results in the $resultdir, \nand see $resultdir/failedcases.$timestamp file for failed cases.\nsee $resultdir/performace.report.$timestamp file for time consumption");
 close(LOG);
 close(LOG_ERR);
+my $reportfile="$resultdir/performace.report.$timestamp";
+my $tmpreport="$resultdir/xcattest.log.$timestamp";
+&getreport($tmpreport,$reportfile);
 exit 0;
 
 # end main
@@ -642,17 +646,30 @@ sub runcase
         $failed = 0;
         $j = 0;
         $total = $total + 1;
-        log_this("------START:$$case{name}------");
-        push @record, "------START:$$case{name}------";
+        my $now1=timelocal(localtime());
+        my $time1=gmtime $now1;
+        log_this("------START:$$case{name}::Time:$time1------");
+        push @record, "------START:$$case{name}::Time:$time1------";
 	push @record, "FILENAME:$$case{filename}";
         foreach my $cmd (@{$$case{cmd}}){
 	    $cmd = getfunc($cmd);
+
+#by
+            my $runstart=timelocal(localtime());
             log_this("\nRUN:$cmd");
             push(@record, "\nRUN:$cmd");
             @output = &runcmd($cmd);
             $rc = $::RUNCMD_RC;
+#by
+            my $runstop=timelocal(localtime());
+            my $diffduration=$runstop-$runstart;
+            log_this("\n[$cmd] Running Time:$diffduration sec");
+            push(@record,("\n[$cmd] Running Time:$diffduration sec"));
+         
             log_this("RETURN: rc = $rc","OUTPUT:",@output);
             push(@record,("RETURN rc = $rc","OUTPUT:",@output));
+            
+
             foreach my $check (@{$$case{check}->[$j]}){
                 if($failed){
                     last;
@@ -731,8 +748,16 @@ sub runcase
             }
             $j = $j + 1;
         }
-        log_this("------END:$$case{name}------");
-        push (@record,"------END:$$case{name}------");
+        my $now2=timelocal(localtime());
+        my $time2=gmtime $now2;
+        my $diff=$now2-$now1;
+        if($failed){
+            log_this("------END::$$case{name}::Failed::Time:$time2 ::Duration::$diff sec------");
+            push (@record,"------END::$$case{name}::Failed::Time:$time2 ::Duration::$diff sec------");
+        } else {
+              log_this("------END::$$case{name}::Passed::Time:$time2 ::Duration::$diff sec------");
+              push (@record,"------END::$$case{name}::Passed::Time:$time2 ::Duration::$diff sec------");
+        }
         if($failed){
             $failnum = $failnum + 1;
             log_error(@record);
@@ -769,3 +794,22 @@ sub usage
     return;
 }
 
+sub getreport
+{
+    open (INDOC, ">$_[1]") || die ("open STDOUT failed");
+    print INDOC "Testcase                                                  Duration\n";
+    print INDOC "------------------------------------------------------------------------------\n";
+    close(INDOC);
+    open (STDOUT, ">>$_[1]") || die ("open STDOUT failed");
+    open FD,"<$_[0]" or die "$?";
+    while(<FD>){
+        if(/Time/){
+             s/------//g;
+             $_ .= "\n" if /END/;
+             print STDOUT $_;
+        }
+      }
+
+close(FD);
+close(STDOUT);
+}
