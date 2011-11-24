@@ -1,7 +1,7 @@
 /*--- Body and content ---*/
 body {
 	background: #1C1C1C;
-	font: 12px verdana, arial, helvetica, sans-serif;
+	font: 12px sans-serif;
 }
 
 /*--- Login dialog ---*/
@@ -24,22 +24,22 @@ body {
 }
 
 #login input {
-	font: 12px verdana, arial, helvetica, sans-serif;
+	font: 12px sans-serif;
 	width: 200px;
 	border: solid 1px #0078AE;
 	padding: 5px;
 }
 
 #login label{
-	font: bold 12px verdana, arial, helvetica, sans-serif;
+	font: bold 12px sans-serif;
 }
 
 #login_status {
-	font: bold 12px verdana, arial, helvetica, sans-serif;
+	font: bold 12px sans-serif;
 }
 
 #login button {
-	font: bold 12px verdana, arial, helvetica, sans-serif;
+	font: bold 12px sans-serif;
 	width: 90px;
 	float: right;
 }

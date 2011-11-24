@@ -1,15 +1,15 @@
 /*--------------- Dialogs ---------------*/
 .ui-dialog input {
 	border: solid 1px #BDBDBD;
-	font: 12px verdana, arial, helvetica, sans-serif;
+	font: 12px sans-serif;
 }
 
 .ui-dialog label,.ui-dialog input,.ui-dialog p,.ui-dialog button,.ui-dialog td {
-	font: 12px verdana, arial, helvetica, sans-serif;
+	font: 12px sans-serif;
 }
 
 .ui-widget {
-	font: 12px verdana, arial, helvetica, sans-serif;
+	font: 12px sans-serif;
 }
 
 /*--------------- Tooltip ---------------*/
@@ -60,7 +60,7 @@
 	text-decoration: none;
 	cursor: pointer;
 	float: left;
-	font: 14px verdana, arial, helvetica, sans-serif;
+	font: 14px sans-serif;
 	font-weight: bold;
 	padding: 11px 30px;
 	cursor: pointer;
@@ -95,7 +95,7 @@
 /*--------------- Body and content ---------------*/
 body {
 	background: #1C1C1C;
-	font: 12px verdana, arial, helvetica, sans-serif;
+	font: 12px sans-serif;
 }
 
 .content {
@@ -218,7 +218,7 @@ span.ui-icon-info {
 
 /*--------------- jQuery tabs ---------------*/
 .tab {
-	font: 12px verdana, arial, helvetica, sans-serif;
+	font: 12px sans-serif;
 	border-style: none;
 	overflow: visible;
 }
@@ -247,7 +247,7 @@ span.ui-icon-info {
 }
 
 .tab th {
-	font: bold 12px verdana, arial, helvetica, sans-serif;
+	font: bold 12px sans-serif;
 	padding: 10px;
 	border-width: 1px;
 	border-style: solid;
@@ -256,7 +256,7 @@ span.ui-icon-info {
 }
 
 .tab td {
-	font: 12px verdana, arial, helvetica, sans-serif;
+	font: 12px sans-serif;
 	padding: 5px 15px;
 	border-width: 1px;
 	border-style: solid;
@@ -289,7 +289,7 @@ fieldset {
 }
 
 legend {
-	font: 12px verdana, arial, helvetica, sans-serif;
+	font: 12px sans-serif;
 	color: #424242;
 	font-weight: bold;
 	padding: 10px 5px;
@@ -307,7 +307,7 @@ legend {
 }
 
 .tab textarea {
-	font: 12px verdana, arial, helvetica, sans-serif;
+	font: 12px sans-serif;
 	border: solid 0px #BDBDBD;
 	padding: 5px;
 	display: inline-table;
@@ -390,7 +390,7 @@ legend {
 }
 
 .tab input,select {
-	font: 12px verdana, arial, helvetica, sans-serif;
+	font: 12px sans-serif;
 	border: solid 1px #BDBDBD;
 	padding: 4px;
 }
@@ -420,7 +420,7 @@ legend {
 }
 
 .datatable th,td {
-	font: 12px verdana, arial, helvetica, sans-serif;
+	font: 12px sans-serif;
 	padding: 5px 0px;
 	white-space: nowrap; /* Do not use word wrap */
 	vertical-align: middle;
@@ -429,7 +429,7 @@ legend {
 }
 
 .datatable th {
-	font: bold 12px verdana, arial, helvetica, sans-serif;
+	font: bold 12px sans-serif;
 	border-width: 0px;
 }
 
@@ -463,7 +463,7 @@ legend {
 
 /*--------------- Editable column ---------------*/
 .tab .datatable textarea {
-	font: 12px verdana, arial, helvetica, sans-serif;
+	font: 12px sans-serif;
 	border: solid 1px #BDBDBD;
 	overflow: hidden;
 }
@@ -565,7 +565,7 @@ legend {
 }
 
 .form input,.form textarea,.form select {
-	font: 12px verdana, arial, helvetica, sans-serif;
+	font: 12px sans-serif;
 	border: solid 1px #BDBDBD;
 	padding: 5px;
 	display: inline-table;
@@ -577,7 +577,7 @@ legend {
 }
 
 table a {
-	font: 12px verdana, arial, helvetica, sans-serif;
+	font: 12px sans-serif;
 	text-decoration: none;
 	color: #0000FF;
 	cursor: pointer;
@@ -612,7 +612,7 @@ table a:hover {
 }
 
 .provision input {
-	font: 12px verdana, arial, helvetica, sans-serif;
+	font: 12px sans-serif;
 	border: solid 1px #BDBDBD;
 	padding: 3px;
 	width: 60px;
@@ -629,7 +629,7 @@ table a:hover {
 }
 
 .special input {
-	font: 12px verdana, arial, helvetica, sans-serif;
+	font: 12px sans-serif;
 	border: solid 1px #BDBDBD;
 	padding: 3px;
 }
@@ -684,7 +684,7 @@ table a:hover {
 }
 
 .provision textarea,.monitor textarea {
-	font: 12px verdana, arial, helvetica, sans-serif;
+	font: 12px sans-serif;
 	border: solid 1px #BDBDBD;
 	padding: 5px;
 	display: inline-table;
@@ -790,7 +790,7 @@ table a:hover {
 
 .discovercurrentstep{
 	background-color: yellow;
-	font: normal bold 12px/ 35px verdana, arial, helvetica, sans-serif;
+	font: normal bold 12px/ 35px sans-serif;
 	padding: 5px;
 }
 
@@ -809,7 +809,7 @@ table a:hover {
 }
 
 .discovercontent th {
-	font: normal bold 15px verdana, arial, helvetica, sans-serif;
+	font: normal bold 15px sans-serif;
 	text-align: center;
 	border: none;
 }
