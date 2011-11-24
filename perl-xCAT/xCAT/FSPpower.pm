@@ -206,17 +206,19 @@ sub powercmd {
 	        #return (\@output);
 	        next;
 	    }		    
+    } else {
+        if ( $action =~ /^rackstandby$/) {
+            $action = "enter_rack_standby";
+        } elsif ( $action=~/^exit_rackstandby$/) {
+            $action = "exit_rack_standby";
+        } elsif ( $action =~ /^resetsp$/) {
+            $action = "reboot_service_processor";
         } else {
-	     if ( $action =~ /^rackstandby$/) {
-	         $action = "enter_rack_standby";
-	     } elsif ( $action=~/^exit_rackstandby$/) {
-	         $action = "exit_rack_standby";
-	     } else {
-	         push @output, [$node_name, "$node_name\'s type isn't fsp or lpar. Not allow doing this operation", -1 ];
-		 #return (\@output);
-                 next;
-	     }
-        }		
+            push @output, [$node_name, "$node_name\'s type isn't fsp or lpar. Not allow doing this operation", -1 ];
+#return (\@output);
+            next;
+        }
+    }		
 
         # Attribute powerinterval in site table,
         # to control the rpower speed

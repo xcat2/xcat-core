@@ -141,6 +141,8 @@ my %usage = (
        rspconfig <noderange> [pending_power_on_side=<temp|perm>]
        rspconfig <noderange> [cec_off_policy]
        rspconfig <noderange> [cec_off_policy=<poweroff|stayon>]
+       rspconfig <noderange> [huge_page]
+       rspconfig <noderange> [huge_page=<NUM>]
        rspconfig <noderange> [BSR]
        rspconfig <noderange> [setup_failover]
        rspconfig <noderange> [setup_failover=<enable|disable>]
