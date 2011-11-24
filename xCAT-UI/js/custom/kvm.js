@@ -159,9 +159,6 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 		success : setGroupsCookies
 	});
 
-	// Get provision tab instance
-	var inst = tabId.replace('kvmProvisionTab', '');
-
 	// Create provision form
 	var provForm = $('<div class="form"></div>');
 
@@ -187,31 +184,12 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	provForm.append(vmFS, hwFS, imgFS);
 	
 	// Create hypervisor input
-	var hypervisor = $('<div></div>');
-	var hypervisorLabel = $('<label>Hypervisor:</label>');
-	hypervisor.append(hypervisorLabel);
-
-	// Turn on auto complete for group
-	var hypervisorNames = $.cookie('');
-	if (hypervisorNames) {
-		// Split group names into an array
-		var tmp = groupNames.split(',');
-
-		// Create drop down for groups
-		var hypervisorSelect = $('<select></select>');
-		hypervisorSelect.append('<option></option>');
-		for ( var i in tmp) {
-			// Add group into drop down
-			var opt = $('<option value="' + tmp[i] + '">' + tmp[i] + '</option>');
-			hypervisorSelect.append(opt);
-		}
-		hypervisor.append(groupSelect);
-	} else {
-		// If no groups are cookied
-		var hypervisorInput = $('<input type="text" name="group"/>');
-		hypervisor.append(hypervisorInput);
-	}
-	vmFS.append(hypervisor);
+	var host = $('<div></div>');
+	var hostLabel = $('<label>Host:</label>');
+	host.append(hostLabel);
+	var hostInput = $('<input type="text" name="host"/>');
+	host.append(hostInput);
+	vmFS.append(host);
 	
 	// Create group input
 	var group = $('<div></div>');
@@ -225,7 +203,7 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 		var tmp = groupNames.split(',');
 
 		// Create drop down for groups
-		var groupSelect = $('<select></select>');
+		var groupSelect = $('<select name="group"></select>');
 		groupSelect.append('<option></option>');
 		for ( var i in tmp) {
 			// Add group into drop down
@@ -251,7 +229,7 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	// Create memory input
 	var memory = $('<div></div>');
 	var memoryLabel = $('<label>Memory:</label>');
-	var memoryInput = $('<input type="text" name="memory"/>');
+	var memoryInput = $('<input type="text" name="memory" size="5"/>');
 	memory.append(memoryLabel);
 	memory.append(memoryInput);
 	hwFS.append(memory);
@@ -276,34 +254,33 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	// Create NIC dropdown
 	var nic = $('<div></div>');
 	var nicLabel = $('<label>NIC:</label>');
-	var nicSelect = $('<select name="nic"></select>');
-	nicSelect.append('<option value="1">1</option>'
-		+ '<option value="2">2</option>'
-		+ '<option value="3">3</option>'
-		+ '<option value="4">4</option>'
-		+ '<option value="5">5</option>'
-		+ '<option value="6">6</option>'
-		+ '<option value="7">7</option>'
-		+ '<option value="8">8</option>'
-	);
+	var nicInput = $('<input type="text" name="nic"/>');
 	nic.append(nicLabel);
-	nic.append(nicSelect);
+	nic.append(nicInput);
 	hwFS.append(nic);
 	
 	// Create disk input
 	var disk = $('<div></div>');
 	var diskLabel = $('<label>Disk size:</label>');
-	var diskInput = $('<input type="text" name="disk"/>');
-	var diskSizeSelect = $('<select name="nic"></select>');
-	diskSizeSelect.append('<option value="MB">MB</option>'
-		+ '<option value="GB">GB</option>'
+	var diskInput = $('<input type="text" name="disk" size="5"/>');
+	var diskSizeSelect = $('<select name="diskUnit"></select>');
+	diskSizeSelect.append('<option value="G">GB</option>' +
+		'<option value="M">MB</option>'
 	);
 	disk.append(diskLabel, diskInput, diskSizeSelect);
 	hwFS.append(disk);
 	
+	// Create disk storage input
+	var storage = $('<div></div>');
+	var storageLabel = $('<label>Storage:</label>');
+	var storageInput = $('<input type="text" name="storage"/>');
+	storage.append(storageLabel);
+	storage.append(storageInput);
+	hwFS.append(storage);
+	
 	// Create operating system input
 	var os = $('<div></div>');
-	var osLabel = $('<label for="os">Operating system:</label>');
+	var osLabel = $('<label>Operating system:</label>');
 	var osInput = $('<input type="text" name="os"/>');
 	osInput.one('focus', function() {
 		var tmp = $.cookie('osvers');		
@@ -320,7 +297,7 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	
 	// Create architecture input
 	var arch = $('<div></div>');
-	var archLabel = $('<label for="arch">Architecture:</label>');
+	var archLabel = $('<label>Architecture:</label>');
 	var archInput = $('<input type="text" name="arch"/>');
 	archInput.one('focus', function() {
 		var tmp = $.cookie('osarchs');
@@ -337,7 +314,7 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	
 	// Create profile input
 	var profile = $('<div></div>');
-	var profileLabel = $('<label for="profile">Profile:</label>');
+	var profileLabel = $('<label>Profile:</label>');
 	var profileInput = $('<input type="text" name="profile"/>');
 	profileInput.one('focus', function() {
 		var tmp = $.cookie('profiles');
@@ -354,7 +331,7 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	
 	// Create boot method dropdown
 	var method = $('<div></div>');
-	var methodLabel = $('<label for="method">Boot method:</label>');
+	var methodLabel = $('<label>Boot method:</label>');
 	var methodSelect = $('<select id="bootMethod" name="bootMethod"></select>');
 	methodSelect.append('<option value=""></option>'
 		+ '<option value="boot">boot</option>'
@@ -375,15 +352,14 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 		// Remove any warning messages
 		$(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
 		var ready = true;
-		var errorMessage = '';
 		
 		// Get tab ID
-		var thisTabId = $(this).parents('.ui-tabs-panel').attr('id');
-		
+		var tabId = $(this).parents('.ui-tabs-panel').attr('id');
+				
 		// Check if fields are properly filled in
-		var inputs = $('#' + thisTabId + ' input:visible');
+		var inputs = $('#' + tabId + ' input:visible');
 		for ( var i = 0; i < inputs.length; i++) {
-			if (!inputs.eq(i).val()) {
+			if (!inputs.eq(i).val() && inputs.eq(i).attr('name') != 'storage') {
 				inputs.eq(i).css('border', 'solid #FF0000 1px');
 				ready = false;
 			} else {
@@ -391,7 +367,7 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 			}
 		}
 		
-		var selects = $('#' + thisTabId + ' select:visible');
+		var selects = $('#' + tabId + ' select:visible');
 		for ( var i = 0; i < selects.length; i++) {
 			if (!selects.eq(i).val()) {
 				selects.eq(i).css('border', 'solid #FF0000 1px');
@@ -399,6 +375,65 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 			} else {
 				selects.eq(i).css('border', 'solid #BDBDBD 1px');
 			}
+		}
+		
+		if (ready) {
+			var inst = tabId.replace('kvmProvisionTab', '');
+			
+			// Prepend status bar
+			var statBar = createStatusBar('kvmProvisionStatBar' + inst);
+			statBar.append(createLoader(''));
+			statBar.prependTo($('#' + tabId));
+						
+			var host = $('#' + tabId + ' input[name=host]').val();
+			var group = $('#' + tabId + ' select[name=group]').val();
+			var node = $('#' + tabId + ' input[name=node]').val();
+			
+			var memory = $('#' + tabId + ' input[name=memory]').val();
+			var cpu = $('#' + tabId + ' select[name=cpu]').val();
+			var nic = $('#' + tabId + ' input[name=nic]').val();
+			var disk = $('#' + tabId + ' input[name=disk]').val() + $('#' + tabId + ' select[name=diskUnit]').val();
+			var storage = $('#' + tabId + ' input[name=storage]').val();
+			
+			var os = $('#' + tabId + ' input[name=os]').val();
+			var arch = $('#' + tabId + ' input[name=arch]').val();
+			var profile = $('#' + tabId + ' input[name=profile]').val();
+			var boot = $('#' + tabId + ' select[name=bootMethod]').val();
+			
+			/**
+			 * (1) Define node
+			 */
+			var args = '-t;node;-o;' + node +
+				';vmhost=' + host +
+				';groups=' + group +
+				';vmmemory=' + memory +
+				';vmcpus=' + cpu +
+				';vmnics=' + nic +
+				';vmstorage=' + storage +
+				';os=' + os +
+				';arch=' + arch +
+				';profile=' + profile +
+				';netboot=xnba' +
+				';nodetype=osi' +
+				';serialport=0' +
+				';serialspeed=115200' +
+				';mgt=kvm';
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'chdef',
+        			tgt : '',
+        			args : args,
+        			msg : 'cmd=chdef;out=' + inst
+				},
+
+				success : updateKVMProvisionStatus
+			});
+		} else {
+			// Show warning message
+			var warn = createWarnBar('Please provide a value for each missing field.');
+			warn.prependTo($(this).parent().parent());
 		}
 	});
 	provForm.append(provisionBtn);
@@ -571,32 +606,28 @@ function updateKVMProvisionStatus(data) {
 	var statBarId = 'kvmProvisionStatBar' + inst;
 	var tabId = 'kvmProvisionTab' + inst;
 	
+	var node = $('#' + tabId + ' input[name=node]').val();
+	
 	/**
-	 * (2) Remote install
+	 * (2) Create virtual machine
 	 */
-	if (cmd == 'nodeadd') {
+	if (cmd == 'chdef') {
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
 		$('#' + statBarId).find('div').append(prg);
 
 		// Get parameters
-		var os = $('#' + tabId + ' input[name="os"]').val();
-		var profile = $('#' + tabId + ' input[name="profile"]').val();
-		var arch = $('#' + tabId + ' input[name="arch"]').val();
-		
-		// Get nodes that were checked
-		var dTableId = 'kvmNodesDatatable' + inst;
-		var tgts = getNodesChecked(dTableId);
+		var disk = $('#' + tabId + ' input[name=disk]').val() + $('#' + tabId + ' select[name=diskUnit]').val();
 		
 		// Begin installation
 		$.ajax( {
 			url : 'lib/cmd.php',
 			dataType : 'json',
 			data : {
-				cmd : 'webrun',
+				cmd : 'mkvm',
 				tgt : '',
-				args : 'rinstall;' + os + ';' + profile + ';' + arch + ';' + tgts,
-				msg : 'cmd=rinstall;out=' + inst
+				args : node + ';-s;' + disk,
+				msg : 'cmd=mkvm;out=' + inst
 			},
 
 			success : updateKVMProvisionStatus
@@ -604,9 +635,57 @@ function updateKVMProvisionStatus(data) {
 	} 
 	
 	/**
-	 * (3) Done
+	 * (3) Prepare node for boot
 	 */
-	else if (cmd == 'rinstall') {
+	if (cmd == 'mkvm') {
+		// Write ajax response to status bar
+		var prg = writeRsp(rsp, '');	
+		$('#' + statBarId).find('div').append(prg);
+		
+		// Get provision method
+		var boot = $('#' + tabId + ' select[name=bootMethod]').val();
+		
+		// Prepare node for boot
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'nodeset',
+				tgt : node,
+				args : boot,
+				msg : 'cmd=nodeset;out=' + inst
+			},
+
+			success : updateKVMProvisionStatus
+		});
+	}
+	
+	/**
+	 * (4) Power on node
+	 */
+	if (cmd == 'nodeset') {
+		var prg = writeRsp(rsp, '');	
+		$('#' + statBarId).find('div').append(prg);
+		
+		// Prepare node for boot
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'rpower',
+				tgt : node,
+				args : 'on',
+				msg : 'cmd=rpower;out=' + inst
+			},
+
+			success : updateKVMProvisionStatus
+		});
+	}
+	
+	/**
+	 * (5) Done
+	 */
+	else if (cmd == 'rpower') {
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
 		$('#' + statBarId).find('div').append(prg);
@@ -614,7 +693,7 @@ function updateKVMProvisionStatus(data) {
 		
 		// If installation was successful
 		if (prg.html().indexOf('Error') == -1) {
-			$('#' + statBarId).find('div').append('<pre>It will take several minutes before the nodes are up and ready. Use nodestat to check the status of the install.</pre>');
+			$('#' + statBarId).find('div').append('<pre>It will take several minutes before the nodes are up and ready. Use rcons to monitor the status of the install.</pre>');
 		}
 	}
 }

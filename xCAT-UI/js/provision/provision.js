@@ -83,9 +83,9 @@ function loadProvisionPage() {
 
 	// Create radio buttons for platforms
 	var hwList = $('<ol>Platforms available:</ol>');
-	var esx = $('<li><input type="radio" name="hw" value="esx"/>ESX</li>');
+	var esx = $('<li><input type="radio" name="hw" value="esx" checked/>ESX</li>');
 	var kvm = $('<li><input type="radio" name="hw" value="kvm"/>KVM</li>');
-	var ipmi = $('<li><input type="radio" name="hw" value="ipmi" checked/>iDataPlex</li>');
+	var ipmi = $('<li><input type="radio" name="hw" value="ipmi"/>iDataPlex</li>');
 	var blade = $('<li><input type="radio" name="hw" value="blade"/>BladeCenter</li>');
 	var hmc = $('<li><input type="radio" name="hw" value="hmc"/>System p</li>');
 	var zvm = $('<li><input type="radio" name="hw" value="zvm"/>System z</li>');
@@ -105,47 +105,49 @@ function loadProvisionPage() {
 	okBtn.bind('click', function(event) {
 		// Get hardware that was selected
 		var hw = $(this).parent().find('input[name="hw"]:checked').val();
-	    var newTabId = hw + 'ProvisionTab';
+	    
+	    var inst = 0;
+	    var newTabId = hw + 'ProvisionTab' + inst;
+		while ($('#' + newTabId).length) {
+			// If one already exists, generate another one
+			inst = inst + 1;
+			newTabId = hw + 'ProvisionTab' + inst;
+		}
+		
+        // Create an instance of the plugin
+		var title = '';
+        var plugin;
+        switch (hw) {
+	        case "kvm":
+	            plugin = new kvmPlugin();
+	            title = 'KVM';
+	            break;
+	        case "esx":
+	            plugin = new esxPlugin();
+	            title = 'ESX';
+	            break;
+	        case "blade":
+	            plugin = new bladePlugin();
+	            title = 'BladeCenter';
+	            break;
+	        case "hmc":
+	            plugin = new hmcPlugin();
+	            title = 'System p';
+	            break;
+	        case "ipmi":
+	            plugin = new ipmiPlugin();
+	            title = 'iDataPlex';
+	            break;
+	        case "zvm":
+	            plugin = new zvmPlugin();
+	            title = 'System z';
+	            break;
+        }
 
-	    if ($('#' + newTabId).size() > 0){
-	        tab.select(newTabId);
-	    } else {
-	        var title = '';
-	        
-	        // Create an instance of the plugin
-	        var plugin;
-	        switch (hw) {
-		        case "kvm":
-		            plugin = new kvmPlugin();
-		            title = 'KVM';
-		            break;
-		        case "esx":
-		            plugin = new esxPlugin();
-		            title = 'ESX';
-		            break;
-		        case "blade":
-		            plugin = new bladePlugin();
-		            title = 'BladeCenter';
-		            break;
-		        case "hmc":
-		            plugin = new hmcPlugin();
-		            title = 'System p';
-		            break;
-		        case "ipmi":
-		            plugin = new ipmiPlugin();
-		            title = 'iDataPlex';
-		            break;
-		        case "zvm":
-		            plugin = new zvmPlugin();
-		            title = 'System z';
-		            break;
-	        }
-
-	        // Select tab
-	        tab.add(newTabId, title, '', true);
-	        tab.select(newTabId);
-	        plugin.loadProvisionPage(newTabId);
-	    }
+        // Select tab
+        tab.add(newTabId, title, '', true);
+        tab.select(newTabId);
+        plugin.loadProvisionPage(newTabId);
 	});
 	provPg.append(okBtn);
 
