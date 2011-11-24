@@ -12,6 +12,10 @@
 	font: 12px sans-serif;
 }
 
+.ui-widget input, .ui-widget select, .ui-widget textarea, .ui-widget button {
+	font: 12px sans-serif;
+}
+
 /*--------------- Tooltip ---------------*/
 .tooltip {
 	background-color: #000;
