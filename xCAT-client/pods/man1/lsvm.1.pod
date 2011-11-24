@@ -143,23 +143,23 @@ To list the lparname of lpars, enter:
  
 Output is similar to:
 
- lpar1: 1: 514/U78A9.001.0123456-P1-C17/0x21010202/2/1
- lpar1: 1: 513/U78A9.001.0123456-P1-C15/0x21010201/2/1
- lpar1: 1: 512/U78A9.001.0123456-P1-C16/0x21010200/2/1
- lpar13: 13: 537/U78A9.001.0123456-P1-C9/0x21010219/2/13
- lpar13: 13: 536/U78A9.001.0123456-P1-C10/0x21010218/2/13
- lpar17: 17: 545/U78A9.001.0123456-P1-C7/0x21010221/2/17
- lpar17: 17: 544/U78A9.001.0123456-P1-C8/0x21010220/2/17
- lpar21: 21: 553/U78A9.001.0123456-P1-C5/0x21010229/2/21
- lpar21: 21: 552/U78A9.001.0123456-P1-C6/0x21010228/2/21
- lpar24: 25: 569/U78A9.001.0123456-P1-C1/0x21010239/2/25
- lpar25: 25: 561/U78A9.001.0123456-P1-C3/0x21010231/2/25
- lpar25: 25: 560/U78A9.001.0123456-P1-C4/0x21010230/2/25
- lpar29: 29: 568/U78A9.001.0123456-P1-C2/0x21010238/2/29
- lpar5: 5: 521/U78A9.001.0123456-P1-C13/0x21010209/2/5
- lpar5: 5: 520/U78A9.001.0123456-P1-C14/0x21010208/2/5
- lpar9: 9: 529/U78A9.001.0123456-P1-C11/0x21010211/2/9
- lpar9: 9: 528/U78A9.001.0123456-P1-C12/0x21010210/2/9
+ lpar1: 1: 514/U78A9.001.0123456-P1-C17/0x21010202/2/1: 32: 0/3/3
+ lpar1: 1: 513/U78A9.001.0123456-P1-C15/0x21010201/2/1: 32: 0/3/3
+ lpar1: 1: 512/U78A9.001.0123456-P1-C16/0x21010200/2/1: 32: 0/3/3
+ lpar13: 13: 537/U78A9.001.0123456-P1-C9/0x21010219/2/13: 32: 0/3/3
+ lpar13: 13: 536/U78A9.001.0123456-P1-C10/0x21010218/2/13: 32: 0/3/3
+ lpar17: 17: 545/U78A9.001.0123456-P1-C7/0x21010221/2/17: 32: 0/0/0
+ lpar17: 17: 544/U78A9.001.0123456-P1-C8/0x21010220/2/17: 32: 0/0/0
+ lpar21: 21: 553/U78A9.001.0123456-P1-C5/0x21010229/2/21: 32: 0/0/0
+ lpar21: 21: 552/U78A9.001.0123456-P1-C6/0x21010228/2/21: 32: 0/0/0
+ lpar24: 25: 569/U78A9.001.0123456-P1-C1/0x21010239/2/25: 32: 0/0/0
+ lpar25: 25: 561/U78A9.001.0123456-P1-C3/0x21010231/2/25: 32: 0/0/0
+ lpar25: 25: 560/U78A9.001.0123456-P1-C4/0x21010230/2/25: 32: 0/0/0
+ lpar29: 29: 568/U78A9.001.0123456-P1-C2/0x21010238/2/29: 32: 0/0/0
+ lpar5: 5: 521/U78A9.001.0123456-P1-C13/0x21010209/2/5: 32: 0/3/3
+ lpar5: 5: 520/U78A9.001.0123456-P1-C14/0x21010208/2/5: 32: 0/3/3
+ lpar9: 9: 529/U78A9.001.0123456-P1-C11/0x21010211/2/9: 32: 0/3/3
+ lpar9: 9: 528/U78A9.001.0123456-P1-C12/0x21010210/2/9: 32: 0/3/3
  cec1: PendingPumpMode=1,CurrentPumpMode=1,OctantCount=8:
  OctantID=0,PendingOctCfg=5,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
  OctantID=1,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
@@ -169,6 +169,12 @@ Output is similar to:
  OctantID=5,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
  OctantID=6,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
  OctantID=7,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+ Number of BSR arrays: 256,Bytes per BSR array: 4096,Available BSR array: 0;
+ Available huge page memory(in pages):     0
+ Configurable huge page memory(in pages):  12
+ Page Size(in GB):                         16
+ Maximum huge page memory(in pages):       24
+ Requested huge page memory(in pages):     15
 
 =head1 FILES
 

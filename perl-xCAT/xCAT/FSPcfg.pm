@@ -94,7 +94,8 @@ sub parse_args {
         "pending_power_on_side",
         "BSR",
         "setup_failover",
-        "force_failover"
+        "force_failover",
+        "huge_page"
     );
     my @frame = (
 	"frame",
@@ -259,7 +260,7 @@ sub parse_args {
         return( \%opt );
     }
     if(exists($cmds{sysname}) or exists($cmds{pending_power_on_side}) or exists($cmds{BSR})
-            or exists($cmds{setup_failover}) or exists($cmds{force_failover})) {
+            or exists($cmds{setup_failover}) or exists($cmds{force_failover}) or exists ($cmds{huge_page})) {
         $request->{hcp} = $request->{hwtype} eq 'frame' ? "bpa":"fsp";
         $request->{method} = "do_fspapi_function";
         return (\%opt);
@@ -342,6 +343,11 @@ sub parse_option {
     if ($command =~ /^(BSR|force_failover)$/ ) {
         return ("BSR value can not be set");
     }
+    if ($command =~ /^huge_page$/) {
+	    if ($value !~ /^[0-9]+$/) {
+		    return ("Invalid huge page param '$value'");
+	    }
+    }
     return undef;
 }
 sub check_node_info {
@@ -396,6 +402,14 @@ my %fspapi_action = (
             query => {
                 cec => "cec_force_failover"
             }
+        },
+        huge_page => {
+		    query => {
+		        cec => "get_huge_page"
+		    },
+		    set => {
+		        cec => "set_huge_page"
+		    }
         }
 );
 sub do_process_query_res {
@@ -419,7 +433,7 @@ sub do_process_query_res {
                 return "Error";
             }
         }
-    } elsif ($cmd =~ /^BSR$/) {
+    } elsif ($cmd =~ /^(BSR|huge_page)$/) {
         my @values = split(/\n/, @$res[1]);
         foreach my $v (@values) {
             push @$result, [$name, $v, '0'];
@@ -457,6 +471,8 @@ sub do_set_get_para {
         return ($value =~ /^perm$/) ? '0' : '1';
     } elsif ($cmd =~ /^setup_failover$/) {
         return ($value =~ /^enable$/) ? '1' : '0';
+    } else {
+		return $value;
     }
 }
 
@@ -500,7 +516,7 @@ sub do_fspapi_function {
     my @ret = ();
     my $res;
     my $args = $request->{arg};
-    my @fspapi_array = qw/sysname pending_power_on_side BSR setup_failover force_failover/;
+    my @fspapi_array = qw/sysname pending_power_on_side BSR setup_failover force_failover huge_page/;
     my $invalid_node = &check_node_info($hash);
     if (defined($invalid_node)) {
         return ([[$invalid_node, "Node must be CEC or Frame", '1']]);

@@ -140,6 +140,10 @@ B<rspconfig> I<noderange> B<cec_off_policy>={B<poweroff>|B<stayon>}
 
 B<rspconfig> I<noderange> {B<BSR>}
 
+B<rspconfig> I<noderange> {B<huge_page>}
+
+B<rspconfig> I<noderange> B<huge_page>={B<NUM>}
+
 B<rspconfig> I<noderange> {B<setup_failover>}
 
 B<rspconfig> I<noderange> B<setup_failover>={B<enable>|B<disable>}
@@ -259,6 +263,10 @@ Display the CEC/BPA system names.
 =item B<BSR>
 
 Get Barrier Synchronization Register (BSR) allocation for a CEC. 
+
+=item B<huge_page>
+
+Query huge page information or request NUM of huge pages for CEC. If no value specified, it means query huge page information for the specified CECs, if a CEC is specified, the specified huge_page value NUM will be used as the requested number of huge pages for the CEC, if CECs are specified, it means to request the same NUM huge pages for all the specified CECs.
 
 =item B<setup_failover>={I<enable>|I<disable>}
 
@@ -626,6 +634,36 @@ B<rspconfig> I<cec01 BSR>
  cec01: lpar06        : 32
  cec01: lpar07        : 32
  cec01: lpar08        : 32
+
+=item *
+
+To query the huge page information for CEC1, enter:
+
+B<rspconfig> I<CEC1 huge_page>
+
+ CEC1: Huge Page Memory
+ CEC1: Available huge page memory(in pages):    0
+ CEC1: Configurable huge page memory(in pages): 12
+ CEC1: Page Size (in GB):                       16
+ CEC1: Maximum huge page memory(in pages):      24
+ CEC1: Requested huge page memory(in pages):    15
+ CEC1: Partition name: Huge pages
+ CEC1: lpar1         : 3
+ CEC1: lpar5         : 3
+ CEC1: lpar9         : 3
+ CEC1: lpar13        : 3
+ CEC1: lpar17        : 0
+ CEC1: lpar21        : 0
+ CEC1: lpar25        : 0
+ CEC1: lpar29        : 0
+
+=item *
+
+To request 10 huge pages for CEC1, enter:
+
+B<rspconfig> I<CEC1 huge_page=10>
+
+ CEC1: Success
 
 =item *
 
