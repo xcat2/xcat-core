@@ -1,10 +1,10 @@
 function loadHelpPage(){
-	//create help tab
+	// Create help tab
     var tab = new Tab();
     tab.init();
     $('#content').append(tab.object());
     
-	//add the help content
+	// Add help content
     var helpForm = $('<div class="form"></div>');
     helpForm.append(
     	'<fieldset>' + 
@@ -12,8 +12,9 @@ function loadHelpPage(){
     		'<ol>' +
             	'<li><a href="configure.php" style="color: blue;">1. Discover hardware</a><br/>Discover all hardware in the cluster. Define them in the xCAT database. Initialize your cluster.</li>' +
             	'<li><a href="index.php" style="color: blue;">2. Verify defined nodes</a><br/>View nodes definition by groups in a table or graphical style.</li>' +
-            	'<li><a href="#" onclick="showProvisionHelp()" style="color: blue;">3. Install compute nodes</a><br/>Copy useful files from DVD into harddisk. Create Linux image. Install compute nodes in stateful, stateless and statelite style.</li>' +
-            	'<li><a href="monitor.php" style="color: blue;">4. Monitor Cluster</a><br/>Monitor your xCAT cluster using one or more third party monitoring software such as Ganglia, RMC, etc. </li>' + 
+            	'<li><a href="configure.php" style="color: blue;">3. Install compute nodes</a><br/>Copy useful files from DVD onto harddisk. Create Linux images. Install compute nodes in stateful, stateless, and statelite style.</li>' +
+            	'<li><a href="provision.php" style="color: blue;">4. Provision nodes</a><br/>Create stateful, stateless, or statelite virtual machines. Install an operating system on a physical machine.</li>' +
+            	'<li><a href="monitor.php" style="color: blue;">5. Monitor Cluster</a><br/>Monitor your xCAT cluster using one or more third party monitoring software such as Ganglia, RMC, etc. </li>' +
             '</ol>' +
         '</fieldset>' +
     	'<fieldset>' +
