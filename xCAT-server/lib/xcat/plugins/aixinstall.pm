@@ -6857,8 +6857,14 @@ sub update_dd_boot
             my $dontupdt1 = 0;
             my $dontupdt2 = 0;
             my $dontupdt3 = 0;
+            my $dontupdt4 = 0;
+            my $dontupdt5 = 0;
             if (open(DDBOOT, ">$dd_boot_file_mn"))
             {
+                if (grep(/Remove ODM object definition/, @lines))
+                {
+                    $dontupdt5 = 1;
+                }
                 foreach my $l (@lines)
                 {
                     if ($l =~ /xCAT basecust support/)
@@ -6873,28 +6879,46 @@ sub update_dd_boot
                     {
                         $dontupdt3 = 1;
                     }
-					if (($l =~ /network boot phase 1/) && (!$dontupdt1)) {
-						# add /etc/basecust to restore
-						print DDBOOT $odmrestore;
-					}
-					if (($l =~ /configure paging - local or NFS network/) && (!$dontupdt1)) {
-						# make basecust persistent
-						print DDBOOT $mntbase;
-					}
+                    if ($l =~ /Write tmp file to create remote paging device/)
+                    {
+                        $dontupdt4 = 1;
+                    }
+                                        if (($l =~ /network boot phase 1/) && (!$dontupdt1)) {
+                                                # add /etc/basecust to restore
+                                                print DDBOOT $odmrestore;
+                                        }
+                                        if (($l =~ /configure paging - local or NFS network/) && (!$dontupdt1)) {
+                                                # make basecust persistent
+                                                print DDBOOT $mntbase;
+                                        }
                     if (($l =~ /0x620/) && (!$dontupdt2))
                     {
-                        # add the patch to set the console 
+                        # add the patch to set the console
                         print DDBOOT $patch;
                     }
-					if (($l =~ /Copy the local_domain file to/) && (!$dontupdt2)) {
-						# add the aixlitesetup hook for xCAT statelite support
-						print DDBOOT $scripthook;
-					}
-					if (($l =~ /Start NFS remote paging/) && (!$dontupdt3))
-					{
-					    # add basecuse removal for swapdev
-					    print DDBOOT $basecustrm;
-					}
+                                        if (($l =~ /Copy the local_domain file to/) && (!$dontupdt2)) {
+                                                # add the aixlitesetup hook for xCAT statelite support
+                                                print DDBOOT $scripthook;
+                                        }
+                                        if (($l =~ /Start NFS remote paging/) && (!$dontupdt3))
+                                        {
+                                            # add basecuse removal for swapdev
+                                            print DDBOOT $basecustrm;
+                                        }
+
+                    if (($l =~ /odmadd \/tmp\/swapnfs/) || ($l =~ /odmadd \/swapnfs/))
+                    {
+                        if (!$dontupdt4)
+                        {
+                            print DDBOOT "#Write tmp file to create remote paging device\n";
+                            print DDBOOT "echo \"CuDv:\" > /swapnfs\n";
+                            print DDBOOT "echo \"name = \$SWAPDEV\" >> /swapnfs\n";
+                            print DDBOOT "echo \"status = 0\" >> /swapnfs\n";
+                            print DDBOOT "echo \"chgstatus = 1\" >> /swapnfs\n";
+                            print DDBOOT "echo \"PdDvLn = swap/nfs/paging\" >> /swapnfs\n\n";
+                        }
+                    }
+
                     if ($l =~ /odmadd \/tmp\/swapnfs/)
                     {
                         $l =~ s/tmp\/swapnfs/swapnfs/g;
@@ -6906,6 +6930,11 @@ sub update_dd_boot
                            $l =~ s/tmp\/swapnfs/swapnfs/g;
                         }
                         print DDBOOT $l;
+                    }
+                    if ($l =~ /rmdev -l \${BASECUST_REMOVAL}/ && !$dontupdt5)
+                    {
+                        print DDBOOT "            #Remove ODM object definition\n";
+                        print DDBOOT "            odmdelete -o CuDv -q name=\${BASECUST_REMOVAL}\n";
                     }
                 }
                 close(DDBOOT);
