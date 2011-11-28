@@ -2,6 +2,7 @@
 
 package xCAT::FSPflash;
 use strict;
+use lib "/opt/xcat/lib/perl";
 use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
@@ -13,15 +14,10 @@ use File::Spec;
 use xCAT::PPCrflash;
 #use Data::Dumper;
 use xCAT::FSPUtils;
-use xCAT::FSPinv;
-use POSIX "WNOHANG";
-use Storable qw(freeze thaw);
-use Thread qw(yield);
 
 my $packages_dir= ();
 my $activate	= ();
 my $verbose	= 0;
-$::POWER_DEST_DIR               = "/tmp";
 my $release_level;
 my $active_level;
 my @dirlist;
@@ -172,180 +168,6 @@ sub get_lic_filenames {
 }
 
 
-sub get_one_mtms {
-	my $exp = shift;
-        my $bpa = shift;
-        my $cmd = "lssyscfg -r cage -e $bpa";
-        my $mtms;
-        my $msg;
-
-        my $values = xCAT::PPCcli::send_cmd( $exp, $cmd );
-        my $Rc = shift(@$values);
-
-        #####################################
-        # Return error
-        #####################################
-        if ( $Rc != SUCCESS ) {
-                $msg = "ERROR: Failed to find a CEC managed by $bpa on the HMC";
-                return ("", $msg);
-        }
-
-        foreach (@$values) {
-                if( $_ =~ /cage_num=(\w*),contents=sys,type_model_serial_num=(\w+)-(\w+)\*(\w+),loc_code=(\w+).(\w+).(\w+)/) {
-                        $mtms = "$2-$3*$4";
-                        last;
-                }
-        }
-
-	
-	#print "the managed system is $mtms!\n";
-	return ($mtms, $msg);	
-}
-
-sub process_node {
-	my $req = shift;
-	my $node    = shift;
-
-	my $tab = xCAT::Table->new("vpd");
-	my $msg;
-	unless ($tab) {
-		$msg = "ERROR: Unable to open basic ppc table for configuration";
-		return ("", $msg);
-	}
-       
-	print "in process_node1, node $node\n";
-    #print Dumper($node);
-	my $ent = $tab->getNodeAttribs($node, ['serial', 'mtm']);	
-	#print "in process_node\n";
-    #print Dumper($ent);
-
-	my $serial = $ent->{'serial'};
-	my $mtm	   = $ent->{'mtm'};
-	#################################
-	#Get node
-	#################################
-    #print "in get_related_fsp_bpa(), serial = $serial, mtm= $mtm\n";
-	my @ents = $tab->getAllAttribsWhere("serial=\"$serial\" and mtm=\"$mtm\"", 'node');
-	if (@ents < 0) {
-		$msg = "failed to get the FSPs or BPAs whose mtm is $mtm, serial is $serial!";
-		return ("", $msg);
-	}
-	my $e;
-	#print Dumper(@ents);
-	foreach $e (@ents) {
-		if($e->{node} ne $node) {
-#			push @{$req->{node}},$e->{node};
-			push @{$req->{noderange}},$e->{node};
-		}
-	}
-}
-
-sub get_related_fsp_bpa {
-	my $mtm    = shift;
-	my $serial = shift;
-	my $tab = xCAT::Table->new("vpd");
-	my $msg;
-	unless ($tab) {
-		$msg = "ERROR: Unable to open basic ppc table for configuration";
-		return ("", $msg);
-	}
-	#################################
-	#Get node
-	#################################
-	print "in get_related_fsp_bpa(), serial = $serial, mtm= $mtm\n";
-	my @ent = $tab->getAllAttribsWhere("\"serial\" like '%".$serial."%' and  \"mtm\" like '%".$mtm."%'", 'node');
-	if (@ent < 0) {
-		$msg = "failed to get the FSPs or BPAs whose mtm is $mtm, serial is $serial!";
-		return ("", $msg);
-	}
-	return(\@ent);
-
-}
-
-sub get_hcp_id {
-	my $node = shift;
-	
-	my $tab = xCAT::Table->new("ppc");
-	my $msg;
-	unless ($tab) {
-		$msg = "ERROR: Unable to open basic ppc table for configuration";
-		return ("", $msg);
-	}
-	#################################
-	#Get node
-	#################################
-	my @ent = $tab->getNodeAttribs($node, ['hcp', 'id']);	
-	if (@ent < 0) {
-		$msg = "failed to get the hcp and id of $node!";
-		return ("", $msg);
-	}
-	return($ent[0]->{hcp}, $ent[0]->{id});
-
-}
-
-
-
-
-
-##########################################################################
-# Forks a process to run the action command
-##########################################################################
-sub fork_cmd {
-
-    my $node_name    = shift;
-    my $attrs  	     = shift;
-    my $action       = shift;
-    my $pipe ;
-    
-    #######################################
-    # Pipe childs output back to parent
-    #######################################
-    my $parent;
-    my $child;
-    pipe $parent, $child;
-    my $pid = xCAT::Utils->xfork;
-    my $res;
-
-    if ( !defined($pid) ) {
-        ###################################
-        # Fork error
-        ###################################
-        print "Fork error:!";
-        return undef;
-    }
-    elsif ( $pid == 0 ) {
-        ###################################
-        # Child process
-        ###################################
-        close( $parent );
-        $pipe = $child;
-
-        $res = xCAT::FSPUtils::fsp_api_action( $node_name, $attrs, $action );
-        #print "res\n";
-    #print Dumper($res);
-	my %output;
-	$output{node} = $node_name;
-	$output{ret} = @$res[2];
-	$output{contents} = @$res[1];
-#	print $pipe %output;
-#	print $pipe freeze(\%output);
-	my @outhash;
-	push @outhash,\%output;
-	print $pipe freeze([@outhash]);
-#	print $pipe "good";	
-	print $pipe "\nENDOFFREEZE6sK4ci\n";
-	exit(0);
-    }
-    else {
-        ###################################
-        # Parent process
-        ###################################
-        close( $child );
-        return( $parent, $pid );
-    }
-    return(0);
-}
-
 
 ##########################
 #Performs Licensed Internal Code (LIC) update support for HMC-attached POWER5 and POWER6 Systems
@@ -423,150 +245,116 @@ sub rflash {
 	    if($flag2 > 1) {
 	        last;	
  	    }
-            my $values  = xCAT::FSPUtils::fsp_api_action( $name, $d, "list_firmware_level"); 
-	    # my $level = xCAT::PPCcli::lslic( $exp, $d, $timeout );
-            my $Rc = @$values[2];
-	    my $level = @$values[1];
-	    #####################################
-	    # Return error
-      	    #####################################
-           if ( $Rc != SUCCESS ) {
-                push @value, [$name,$level,$Rc];
-                next;
-           }
+
+            if( !defined($housekeeping) && ($$d[4] =~ /^fsp$/ || $$d[4] =~ /^lpar$/ || $$d[4] =~ /^cec$/)) {
+                $action  =  "get_compatible_version_from_rpm";
+	        my $values = xCAT::FSPUtils::fsp_api_action( $name, $d, $action, 0, $request->{opt}->{d} );
+		my $Rc =  @$values[2];
+		my $v = @$values[1];
+		if ($Rc != 0) {
+                    push @value, [$name, $v, -1];
+		    return (\@value);
+		}
+                            
+                #if( $v !~ "nocheckversion") {
+		my @levels = split(/,/, $v);
+	       	
+	        my $frame = $$d[5];
+                if ( $frame ne $name ) {
+                    
+                    my @frame_d = (0, 0, 0, $frame, "frame", 0);
+	            $action = "list_firmware_level";
+	            $values = xCAT::FSPUtils::fsp_api_action( $frame, \@frame_d, $action );	
+	            $Rc =  @$values[2];
+	            my $frame_firmware_level = @$values[1];
+		    if ($Rc != 0) {
+                        push @value, [$frame, $frame_firmware_level, -1];
+		        return (\@value);
+		    }
+                
+	            my $level_a;
+		    my $level_b;
+		    if( $frame_firmware_level =~ /curr_level_a=(\d{3}),curr_ecnumber_a=02(\w{5})/) {
+		        $level_a = "$2_$1";
+		    }
+	
+                   if( $frame_firmware_level =~ /curr_level_b=(\d{3}),curr_ecnumber_b=02(\w{5})/) {
+   		       $level_b = "$2_$1";
+		   }
+		   
+                   #print "frame_firmware_level=$frame_firmware_level,level_a=$level_a,level_b=$level_b\n";
+	           foreach my $l (@levels) {
+	                #print "rpm requires: $l\n"	;
+	                if( (defined($level_a) && (  $l gt $level_a )) ||  (defined($level_b) && (  $l gt $level_b )) ) {
+		            my $res = "New Managed System level for $name is not compatible with current Power Subsystem level 02$level_a on $frame.\nPower Subsystem level 02$l or later is required.";
+		       	
+                            push @value, [$name, $res, -1];
+		            return (\@value);
+		        }	
+		
+		   }
+                 }
+               #} 
+	    
+            }
+
+	   if(!defined($housekeeping)) {	   
+               my $values  = xCAT::FSPUtils::fsp_api_action( $name, $d, "list_firmware_level"); 
+               my $Rc = @$values[2];
+	       my $level = @$values[1];
+	       #####################################
+	       # Return error
+      	       #####################################
+               if ( $Rc != SUCCESS ) {
+                   push @value, [$name,$level,$Rc];
+                   next;
+               }
             
-	   if (( $level =~ /curr_level_primary/ ) || ( $level =~ /curr_level_a/ )) {
-                $role = 0x01;
-	   } else {
-	  	$role = 0x02; 
-	   }
-	   	   
-	   if ( $level =~ /ecnumber=(\w+)/ ) {
-                $release_level = $1;
-                &dpush( \@value, [$name,"$mtms :release level:$1"]);
-	   }
+	       if ( $level =~ /ecnumber=(\w+)/ ) {
+                   $release_level = $1;
+                   &dpush( \@value, [$name,"$mtms :release level:$1"]);
+	       }
 				
-	   if ( $level =~ /activated_level=(\w+)/ ) {
-                $active_level = $1;
-                &dpush( \@value, [$name,"$mtms :activated level:$1"]);
-	   }	
-	  
-       if($housekeeping =~ /^commit$/) { $action = "code_commit"}
-       if($housekeeping =~ /^recover$/) { $action = "code_reject"}
-       if($activate =~ /^disruptive$/) { $action = "code_update"}
-       if($activate =~ /^concurrent$/) {
-           my $res = "\'concurrent\' option not supported in FSPflash.Please use disruptive mode";
-           push @value, [$name, $res, -1];
+               if ( $level =~ /activated_level=(\w+)/ ) {
+                   $active_level = $1;
+                   &dpush( \@value, [$name,"$mtms :activated level:$1"]);
+	        }	
+
+	   } 
+	    
+	    
+    	  
+           if($housekeeping =~ /^commit$/) { $action = "code_commit"}
+           if($housekeeping =~ /^recover$/) { $action = "code_reject"}
+           if($activate =~ /^disruptive$/) { 
+               $action = "code_update";
+           }
+           if($activate =~ /^concurrent$/) {
+               my $res = "\'concurrent\' option not supported in FSPflash.Please use disruptive mode";
+               push @value, [$name, $res, -1];
 	       next;
-       }
+          }
 	   
 	   my $msg;	
 	   if(!defined($housekeeping)) {	   
-	   my $flag = 0;	
-	   ($rpm_file, $xml_file, $upgrade_required,$msg, $flag) = &get_lic_filenames($mtms);
-	   if( $flag == -1) {
-		push (@value, [$name,"$mtms: $msg"]);
-	        push (@value, [$name,"Failed to upgrade the firmware of $name"]);
-		return (\@value);
-	   }
-	   dpush ( \@value, [$name, $msg]);
-	   }
-
-       my $res = xCAT::FSPUtils::fsp_api_action( $name, $d, $action, 0, $request->{opt}->{d} );
-       push(@value,[$name, @$res[1], @$res[2]]);
-       return (\@value);
-
-	   my $nodes = get_related_fsp_bpa( $mtm, $serial);
-       #print Dumper($nodes); 
-	   my $i     = 0;
-	   my $flag  = 0;
-	   my $c = @$nodes;
-	   my $name2 = undef;
-       my @dt;
-       if ($c == 1 && $role == 0x01 ) {
-			
-	   }
-	   if ($c == 1 && $role == 0x02 ) {
-	   
-                push(@result,[$name, "$name\'s role is  Backup FSP or BPC side B). Please configure the Primary FSP or BPC side A.", -1]); 
-	   }
-	   if($c == 2 && $role == 0x01 ) {
-	   	if($$nodes[0]->{node} eq $name) {
-			$i = 0;
-			$name2 = $$nodes[1]->{node};  #Secondary FSP or BPC side B.
-		} else {
-            #$name2 = $name;          #Secondary FSP or BPC side B.
-			$name2  = $$nodes[0]->{node}; #the Primary FSP or BPC side A.
-		}
-        my($hcp, $id) = get_hcp_id($name2);
-        @dt = ($id, @$d[1], $mtms, $hcp, @$d[4], 0);
-	   }
-
-	   if($c ==2 && $role == 0x02) {
-	  	if($$nodes[0]->{node} eq $name) {
-			$name2 = $name; # Secondary FSP or BPC side B.
-			$name  = $$nodes[1]->{node};#the Primary FSP or BPC side A.
-		} else {
-            $name2 = $name; # Secondary FSP or BPC side B.
-			$name = $$nodes[0]->{node};  #primary FSP or BPC side B.
-		}
-        @dt = (@$d[0], @$d[1], @$d[2], @$d[3], @$d[4],  @$d[5]);
-        my($hcp, $id) = get_hcp_id($name);
-        @$d = ($id, $dt[1], $mtms, $hcp, $dt[4], 0);
-	   }
-	   print "name: $name, name2: $name2\n";
-	  
-	   my $children = 0; 
-	   $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) {print "child exit\n";$children--;} }; 
-	   my $fds = new IO::Select;
- 	   my $pipe;
-	   if(defined($name2) ) {
-	   #my($hcp, $id) = get_hcp_id($name2);
-	   #my @dt = ($id, @$d[1], $mtms, $hcp, @$d[4], 0);
-	   
-                ($pipe) = fork_cmd( $name2, \@dt, $action );
-	       	
-                if ( $pipe ) {
-	            $fds->add( $pipe );
-		    $children++;
+	       my $flag = 0;	
+	       ($rpm_file, $xml_file, $upgrade_required,$msg, $flag) = &get_lic_filenames($mtms);
+	        if( $flag == -1) {
+		    push (@value, [$name,"$mtms: $msg"]);
+	            push (@value, [$name,"Failed to upgrade the firmware of $name"]);
+		    return (\@value);
 	        }
-	        sleep(5); 
-           }
-	   $pipe = undef;  
-	   ($pipe) = fork_cmd( $name, $d, $action );
-	       	
-           if ( $pipe ) {
-	        $fds->add( $pipe );
-		$children++;
+	       dpush ( \@value, [$name, $msg]);
 	   }
-	   print "count:\n";
-	   print $fds->count;
-	   print "children:$children\n";
-	   while ( $fds->count > 0 or $children > 0 ) {
-	        my @ready_fds = $fds->can_read(1);
-		foreach my $rfh (@ready_fds) {
-		     my $val = <$rfh>;
-		     if( defined($val)) {
-		         while($val !~ /ENDOFFREEZE6sK4ci/) {
-		             $val .=  <$rfh>;
-			 } 
-			 my $resp = thaw($val);
-			 foreach my $t( @$resp ) {
-                #print Dumper($t);
-			    push @result, [$t->{node}, $t->{contents}, $t->{ret}];
-		         }
-			 next;
-		    }
-		    $fds->remove($rfh);
-		    close($rfh);
-	        }
-       	   }		   
+
+           my $res = xCAT::FSPUtils::fsp_api_action( $name, $d, $action, 0, $request->{opt}->{d} );
+           push(@value,[$name, @$res[1], @$res[2]]);
+           return (\@value);
 	         
         }
     }
     push(@value, @result);
     return (\@value);	
-
 
 
 }
