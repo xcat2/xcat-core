@@ -232,7 +232,11 @@ sub mkhwconn_parse_args
     $ppctab->close();
     #$nodetypetab->close();
     $vpdtab->close();
-    
+
+    if ( scalar( @ARGV)) {
+        return(usage( "No additional flag is support by this command" ));
+    }
+
     $request->{method} = 'mkhwconn';
     return( \%opt);
 }
