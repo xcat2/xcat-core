@@ -2223,7 +2223,7 @@ sub getnodetype
     my $type;
     if ( $nodes =~ /^ARRAY/) {
       if (!%NODETYPEHASH) { 
-         my @nodetypes = $nodetypetab->getAllAttribs('node','nodetype');
+         my @nodetypes = $nodetypetab->getAllNodeAttribs(['node','nodetype']);
          foreach my $tn (@nodetypes) {
              $NODETYPEHASH{ $tn->{'node'} } = $tn->{'nodetype'};
          }    
