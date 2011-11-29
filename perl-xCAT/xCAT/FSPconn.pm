@@ -616,7 +616,7 @@ sub lshwconn
            my @data_a = split("\n", $values);         
            foreach my $data(@data_a) {
 	           if( $data =~ /state/) { 
-	               $data =~ /state=([\w\s\,]+), type=([\w-]+), MTMS=([\w-\*]+), ([\w=]+), slot=([\w]+), ipadd=([\w.]+), alt_ipadd=([\w.]+)/ ;
+	               $data =~ /state=([\w\s\,]+), type=([\w-]+), MTMS=([\w-\*\#]+), ([\w=]+), slot=([\w]+), ipadd=([\w.]+), alt_ipadd=([\w.]+)/ ;
 	               #$data =~ /state=([\w\s]+),\(type=([\w-]+)\),\(serial-number=([\w]+)\),\(machinetype-model=([\w-]+)\),sp=([\w]+),\(ip-address=([\w.]+),([\w.]+)\)/ ;
 	               print "parsing: $1,$2,$3,$4,$5,$6,$7\n";
 	               my $state      = $1;
