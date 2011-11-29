@@ -207,8 +207,12 @@ sub parse_args {
     if(noderange_validate($request) == -1) {
         return(usage());
     }
-  
-   $request->{callback}->({data =>[ "It may take considerable time to complete, depending on the number of systems being updated.  In particular, power subsystem updates may take an hour or more if there are many attached managed systems. Please waiting. If you use Direct FSP/BPA management(DFM) to do the firmware update, You can find the log files in the /var/log/xcatd/dfm/rflash/."]});
+   
+    $request->{callback}->({data =>[ "It may take considerable time to complete, depending on the number of systems being updated.  In particular, power subsystem updates may take an hour or more if there are many attached managed systems. Please waiting. "]});
+
+    if( $request->{hwtype} =~ /^fsp$/ && $opt{activate} =~ /^disruptive$/ ) {
+        $request->{callback}->({data =>[ "You can find the log files in the /var/log/xcatd/dfm/rflash/."]});
+    }
 
     ####################################
     # No operands - add command name 
