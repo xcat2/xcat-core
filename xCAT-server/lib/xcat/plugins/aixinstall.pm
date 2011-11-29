@@ -10790,12 +10790,6 @@ sub rmdsklsnode
 	# make sure to preserve links etc.
 	my $cpcmd2 = qq~mkdir -m 644 -p $tftpbak; /usr/bin/cp -h -p $tftploc/* $tftpbak~;
 	$output = xCAT::Utils->runcmd("$cpcmd2", -1);
-	if ($::RUNCMD_RC != 0)
-	{
-		my $rsp;
-		push @{$rsp->{data}}, "Could not copy $tftploc to $tftpbak.\n";
-		xCAT::MsgUtils->message("E", $rsp, $callback);
-	}
 
     # for each node
     my @nodesfailed;
