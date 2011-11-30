@@ -5165,7 +5165,7 @@ sub hexadump {
 	foreach(@$data) {
 		printf("%02x ",$_);
 		$alpha[$c] = sprintf("%c",$_);
-		if($alpha[$c] !~ /\w/) {
+		if($_ < 0x20 or $_ > 0x7e) {
 			$alpha[$c] = ".";
 		}
 		$c++;
