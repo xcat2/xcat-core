@@ -3004,8 +3004,124 @@ sub getNodeIPaddress
         return undef;
     }
 }
-        
-    
+
+#-------------------------------------------------------------------------------
+
+=head3   getIPaddress - Used by DFM related functions to support service vlan redundancy.
+
+ Arguments:
+       Node name  only one at a time
+    Returns: ip address(s)
+    Globals:
+        none
+    Error:
+        none
+    Example:   my $c1 = xCAT::Utils::getIPaddress($nodetocheck);
+
+=cut
+
+#-------------------------------------------------------------------------------
+       
+sub getIPaddress 
+{
+    require xCAT::Table;
+    my $nodetocheck = shift;
+    my $port        = shift;
+    my $side = "[A|B]";
+    if (!defined($port)) {
+        $port = "[0|1]";
+    }
+
+# only need to parse IP addresses for Frame/CEC/BPA/FSP
+
+    my $type = xCAT::DBobjUtils->getnodetype($nodetocheck);
+    if ($type) {
+        my @children;
+        my %node_side_pairs = ();
+        my $children_num = 0;
+        my $parent;
+        my $ppctab  = xCAT::Table->new( 'ppc' );
+        my $vpdtab = xCAT::Table->new( 'vpd' );
+        if ($type eq "bpa" or $type eq "fsp") {
+            my $tmp_p = $ppctab->getNodeAttribs($nodetocheck, ['parent']);
+            if ($tmp_p and $tmp_p->{parent}) {
+                $parent = $tmp_p->{parent};
+            } else {
+                return undef;
+            }
+            my $tmp_s = $vpdtab->getNodeAttribs($nodetocheck, ['side']);
+            if ($tmp_s->{side} and ($tmp_s->{side} =~ /(A|B)-\d/i)) {
+                $side = $1; # get side for the fsp, in order to get its brothers
+            } else {
+                return -3;
+            }
+        } elsif ($type eq "frame" or $type eq "cec") {
+            $parent = $nodetocheck;
+        } else {
+            return undef;
+        }
+        my @ps = $ppctab->getAllNodeAttribs(['node','parent','nodetype']);
+        my $tmp_parent;
+        my $tmp_node;
+        my $tmp_type;
+#search for $nodetocheck's children or brothers
+        for my $entry ( @ps ) {
+            $tmp_parent = $entry->{parent};
+            $tmp_node = $entry->{node};
+            $tmp_type = $entry->{nodetype};
+            if ($tmp_parent  and ($tmp_parent eq $parent) ) {
+                if (!defined($tmp_type)) {
+                    $tmp_type = xCAT::DBobjUtils->getnodetype($tmp_node);
+                }
+                if ($tmp_type and ($tmp_type eq 'fsp' or $tmp_type eq 'bpa')) {
+                    push @children, $tmp_node;
+                }
+            }
+        } 
+        foreach my $tmp_n( @children) {
+            my $ent = $vpdtab->getNodeAttribs($tmp_n, ['side']);
+            if ($ent->{side} and $ent->{side} =~ /^$side-$port$/i) {
+                my $tmp_s = $ent->{side};
+                $tmp_s =~ s/a/A/;
+                $tmp_s =~ s/b/B/;
+                if (isIpaddr($tmp_n)) {
+                    $node_side_pairs{$tmp_s} = $tmp_n;           
+                    $children_num++;
+                } else {
+                    my $tmpip = xCAT::NetworkUtils->getipaddr($tmp_n);
+                    if (!$tmpip) {
+                        my $hoststab = xCAT::Table->new( 'hosts' );
+                        my $tmp = $hoststab->getNodeAttribs($tmp_n, ['ip']);
+                        if ($tmp->{ip}) {
+                            $tmpip = $tmp->{ip};
+                        }
+                    }
+                    if ($tmpip) {
+                        $node_side_pairs{$tmp_s} = $tmpip;
+                        $children_num++;
+                    }
+                } # end of parse IP address for a fsp/bpa
+            } # end of parse a child's side
+        } #end of loop for children
+        if ($children_num == 0) {
+            return undef; #no children or brothers for this node.
+        }
+        my @keys = qw(A-0 A-1 B-0 B-1);
+        my $out_strings = undef;
+        foreach my $tmp (@keys) {
+            if (!$node_side_pairs{$tmp}) {
+                $node_side_pairs{$tmp} = '';
+            }
+        }
+
+        $out_strings = $node_side_pairs{"A-0"}.','.$node_side_pairs{"A-1"}.','.$node_side_pairs{"B-0"}.','.$node_side_pairs{"B-1"};
+
+        return $out_strings;
+    } else {
+        return undef;
+    }
+}
+   
     
 #-------------------------------------------------------------------------------
 

@@ -1,6 +1,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT::FSPcfg;
+
 use strict;
 use Getopt::Long;
 use xCAT::Usage;
@@ -847,8 +848,9 @@ sub fsp_api_passwd {
     # Get IP address
     ############################
     #$fsp_ip = xCAT::Utils::get_hdwr_ip($fsp_name);
-    $fsp_ip = xCAT::Utils::getNodeIPaddress($fsp_name);
-    if($fsp_ip == -1) {
+    #$fsp_ip = xCAT::Utils::getNodeIPaddress($fsp_name);
+    $fsp_ip = xCAT::Utils::getIPaddress($fsp_name);
+    if(!defined($fsp_ip) or ($fsp_ip == -3)) {
         $res = "Failed to get the $fsp_name\'s ip";
         return ([$node_name, $res, -1]);
     }

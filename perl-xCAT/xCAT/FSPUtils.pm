@@ -98,10 +98,12 @@ sub fsp_api_action {
         ############################
         # Get IP address
         ############################
-        $fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name, $parameter );
+        #$fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name, $parameter );
+        $fsp_ip = xCAT::Utils::getIPaddress( $fsp_name, $parameter );
 	    undef($parameter);
     } else {
-        $fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name );
+        #$fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name );
+        $fsp_ip = xCAT::Utils::getIPaddress( $fsp_name );
     }
 
     if(!defined($fsp_ip)) {
@@ -234,8 +236,9 @@ sub fsp_state_action {
     ############################
     # Get IP address
     ############################
-    $fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name );
-    if(!defined($fsp_ip)) {
+    #$fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name );
+    $fsp_ip = xCAT::Utils::getIPaddress( $fsp_name );
+    if(!defined($fsp_ip) or ($fsp_ip == -3)) {
         $res[0] = ["Failed to get the $fsp_name\'s ip"];
         return ([-1, @res]);	
     }
@@ -351,8 +354,9 @@ sub fsp_api_create_parttion {
     ############################
     # Get IP address
     ############################
-    $fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name );
-    if(!defined($fsp_ip)) {
+    #$fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name );
+    $fsp_ip = xCAT::Utils::getIPaddress( $fsp_name );
+    if(!defined($fsp_ip) or ($fsp_ip == -3)) {
         $res = "Failed to get the $fsp_name\'s ip";
         return ([$fsp_name, $res, -1]);	
     }

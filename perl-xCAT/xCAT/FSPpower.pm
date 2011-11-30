@@ -227,7 +227,9 @@ sub powercmd {
 	         $action = "enter_rack_standby";
 	     } elsif ( $action=~/^exit_rackstandby$/) {
 	         $action = "exit_rack_standby";
-	     } else {
+         } elsif ($action =~ /^resetsp$/) {
+             $action = "reboot_service_processor";
+         } else {
 	         push @output, [$node_name, "$node_name\'s type isn't fsp or lpar. Not allow doing this operation", -1 ];
 		 #return (\@output);
                  next;
