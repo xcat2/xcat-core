@@ -844,7 +844,10 @@ site => {
    "              the node deployment, node discovery and power operations.\n\n".
    " ntpservers:  A comma delimited list of NTP servers for the cluster - often the\n".
    "              xCAT management node.\n\n".
-   " powerinterval:  The time of seconds that rpower command will wait between\n".
+   " syspowerinterval:  The time of seconds that rpower command on CECs will wait between.\n".
+   "                 The CECs should be in the same frame. It is used for controlling the\n".
+   "                 CECs boot up speed. Default is 0.\n\n".
+   " powerinterval:  The time of seconds that rpower command on lpars will wait between\n".
    "                 performing action on each target object.\n".
    "                 It is used for controlling the cluster boot up speed\n".
    "                 in large clusters. Default is 0.\n\n".
