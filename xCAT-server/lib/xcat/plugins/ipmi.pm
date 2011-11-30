@@ -2169,8 +2169,20 @@ sub add_fruhash {
             my $err;
             ($err,$fruhash) = parsefru($sessdata->{currfrudata});
             if ($err) {
-                xCAT::SvrUtils::sendmsg([1,":Error reading fru area ".$sessdata->{currfruid}.": $err"],$callback);
-                return;
+		my $fru = FRU->new();
+        if ($sessdata->{currfrutype} and $sessdata->{currfrutype} eq 'dimm') {
+            $fru->rec_type("dimm,hw");
+        } else {
+             $fru->rec_type("hw");
+        }
+        $fru->value($err);
+        $fru->desc($sessdata->{currfrusdr}->id_string);
+        $sessdata->{fru_hash}->{$sessdata->{frudex}} = $fru;
+        $sessdata->{frudex} += 1;
+        undef $sessdata->{currfrudata}; #skip useless calls to add more frus when parsing failed miserably anyway
+
+                #xCAT::SvrUtils::sendmsg([1,":Error reading fru area ".$sessdata->{currfruid}.": $err"],$callback);
+                #return;
             }
     }
     if ($sessdata->{currfruid} == 0) {
@@ -2257,7 +2269,7 @@ sub parsefru {
         if ($bytes->[0]==0 or $bytes->[0]==0xff) { #not in spec, but probably unitialized, xCAT probably will rewrite fresh
             return "clear",undef;
         } else { #some meaning suggested, but not parsable, xCAT shouldn't meddle
-            return "unknown",undef;
+            return "Unrecognized FRU format",undef;
         }
     }
     if ($bytes->[1]) { #The FRU spec, unfortunately, gave no easy way to tell the size of internal area
