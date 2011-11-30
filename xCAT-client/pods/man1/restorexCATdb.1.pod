@@ -6,12 +6,19 @@ B<restorexCATdb> - restores the xCAT db tables .
 
 B<restorexCATdb> [B<-a>] [B<-V>] [{B<-p>|B<--path>} I<path>]
 
+B<restorexCATdb> [B<-b>] [B<-V>] [{B<-t>|B<--timestamp>} I<timestamp>] [{B<-p>|B<--path>} I<path>]
+
 B<restorexCATdb> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
 
 =head1 DESCRIPTION
 
+
+
 The restorexCATdb command restores the xCAT database tables from the directory given by the -p flag. The site table skiptables attribute can be set to a list of tables not to restore.  It will not restore isnm_perf* tables. See man dumpxCATdb.
+If using the binary restore option for DB2,  the entire database is restored from the binary backup made with dumpxCATdb.  The database will be restored using DB2 Utilities.  The timestamp of the correct DB2 backup file (-t)  must be provided.
+All applications accessing the DB2 database must be stopped before you can use the binary restore options.  See https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Setting_Up_DB2_as_the_xCAT_DB#Backup.2FRestore_the_database_with_DB2_Commands for more information.
+
 
 =head1 OPTIONS
 
@@ -23,10 +30,13 @@ B<-v>          Command Version.
 B<-V>          Verbose.
 
 B<-a>          All,without this flag the eventlog and auditlog will be skipped. 
-These tables are skipped by default because restoring will generate new indexes.  
+These tables are skipped by default because restoring will generate new indexes
 
+B<-b>          Restore from the binary image. 
+ 
 B<-p>          Path to the directory containing the database restore files.
-
+ 
+B<-t>          Use with the -b flag to designate the timestamp of the binary image to use to restore.
 
 =head1 RETURN VALUE
 
@@ -36,13 +46,17 @@ B<-p>          Path to the directory containing the database restore files.
 
 =head1 EXAMPLES
 
-1. To restore the xCAT database from the /tmp/db directory, enter:
+1. To restore the xCAT database from the /dbbackup/db directory, enter:
 
-B<restorexCATdb -p /tmp/db>
+B<restorexCATdb -p /dbbackup/db>
 
-2. To restore the xCAT database including auditlog and eventlog from the /tmp/db directory, enter:
+2. To restore the xCAT database including auditlog and eventlog from the /dbbackup/db directory, enter:
 
-B<restorexCATdb -a -p /tmp/db>
+B<restorexCATdb -a -p /dbbackup/db>
+
+3. To restore the xCAT database from the binary image with timestamp 20111130130239 enter:
+
+B<restorexCATdb -b -t 20111130130239 -p /dbbackup/db>
 
 
 =head1 FILES
