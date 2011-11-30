@@ -976,6 +976,8 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=ppcmaxp site.value=64;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=ppcretry site.value=3;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=ppctimeout site.value=0;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=powerinterval site.value=0;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=syspowerinterval site.value=0;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=sharedtftp site.value=1;";
         $chtabcmds .=
           "$::XCATROOT/sbin/chtab key=SNsyncfiledir site.value=$syncdir;";
