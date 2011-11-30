@@ -182,9 +182,9 @@ sub parse_args
 
 #-----------------------------------------------------------------------------
 
-=head3 DB_bindump 
+=head3 DB2_bindump 
   
-    Uses the DB2 Database supplied dump utility to backup the database
+    Uses the DB2 Database supplied backup utility to backup the database
 
 =cut
 
