@@ -2180,9 +2180,9 @@ sub add_fruhash {
         if ($sessdata->{currfrutype} and $sessdata->{currfrutype} eq 'dimm') {
             add_textual_frus($fruhash,$sessdata->{currfrusdr}->id_string,"","product","dimm,hw",$sessdata);
         } else {
-            add_textual_frus($fruhash,$sessdata->{currfrusdr}->id_string,"Board","board",undef,$sessdata);
-            add_textual_frus($fruhash,$sessdata->{currfrusdr}->id_string,"Product","product",undef,$sessdata);
-            add_textual_frus($fruhash,$sessdata->{currfrusdr}->id_string,"Chassis","chassis",undef,$sessdata);
+            add_textual_frus($fruhash,$sessdata->{currfrusdr}->id_string,"Board ","board",undef,$sessdata);
+            add_textual_frus($fruhash,$sessdata->{currfrusdr}->id_string,"Product ","product",undef,$sessdata);
+            add_textual_frus($fruhash,$sessdata->{currfrusdr}->id_string,"Chassis ","chassis",undef,$sessdata);
         }
     }
     if (scalar @{$sessdata->{dimmfru}}) {
@@ -4512,6 +4512,34 @@ sub sensor_was_read {
             }
             if ($exdata1 & 1<<3) {
                 push @exparts,"Power Cycle";
+            }
+        } elsif ($sdr->sensor_type == 0xd) {
+            if ($exdata1 & 1) {
+                push @exparts,"Present";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"Fault";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"Failure Predicted";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"Hot Spare";
+            }
+            if ($exdata1 & 1<<4) {
+                push @exparts,"Consistency Check";
+            }
+            if ($exdata1 & 1<<5) {
+                push @exparts,"Critical Array";
+            }
+            if ($exdata1 & 1<<6) {
+                push @exparts,"Failed Array";
+            }
+            if ($exdata1 & 1<<7) {
+                push @exparts,"Rebuilding";
+            }
+            if ($exdata1 & 1<<8) {
+                push @exparts,"Rebuild aborted";
             }
         } else {
             $extext = "xCAT needs to add support for ".$sdr->sensor_type;
