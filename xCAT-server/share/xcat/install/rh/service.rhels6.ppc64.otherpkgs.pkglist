@@ -1,7 +1,5 @@
 -OpenIPMI-tools
--tftp-server
 xcat/xcat-core/xCATsn
 xcat/xcat-dep/rh6/ppc64/conserver
 xcat/xcat-dep/rh6/ppc64/perl-Net-Telnet
 xcat/xcat-dep/rh6/ppc64/perl-Expect
-xcat/xcat-dep/rh6/ppc64/atftp-xcat
