@@ -14,10 +14,10 @@ B<restorexCATdb> [B<-h>|B<--help>] [B<-v>|B<--version>]
 =head1 DESCRIPTION
 
 
+If not using binary restore(-b), the restorexCATdb command restores the xCAT database tables from the *.csv files in directory given by the -p flag. The site table skiptables attribute can be set to a list of tables not to restore.  It will not restore isnm_perf* tables. See man dumpxCATdb.
 
-The restorexCATdb command restores the xCAT database tables from the directory given by the -p flag. The site table skiptables attribute can be set to a list of tables not to restore.  It will not restore isnm_perf* tables. See man dumpxCATdb.
 If using the binary restore option for DB2,  the entire database is restored from the binary backup made with dumpxCATdb.  The database will be restored using DB2 Utilities.  The timestamp of the correct DB2 backup file (-t)  must be provided.
-All applications accessing the DB2 database must be stopped before you can use the binary restore options.  See https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Setting_Up_DB2_as_the_xCAT_DB#Backup.2FRestore_the_database_with_DB2_Commands for more information.
+All applications accessing the DB2 database must be stopped before you can use the binary restore options.  See the xCAT DB2 document for more information.
 
 
 =head1 OPTIONS
