@@ -276,6 +276,8 @@ sub init_plugin
 		    if ((!$tmp[0]) || ($tmp[0] !~ /0|NO|No|no|N|n/ )) {         
                 $rc = &setup_FTP();    # setup FTP
             }
+            #enable the tftp-hpa for MN
+            enable_TFTPhpa();
         }
     }
     return $rc;
@@ -1138,7 +1140,7 @@ sub setup_TFTP
         return 1;
     }
 
-    # check to see if atftp is installed
+    # check to see if tftp is installed
     $cmd = "/usr/sbin/in.tftpd -V";
     my @output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)
@@ -1262,13 +1264,8 @@ sub setup_TFTP
         }
     }
 
-    # start atftp
-    my $rc = xCAT::Utils->startService("tftpd");
-    if ($rc != 0)
-    {
-        xCAT::MsgUtils->message("S", " Failed to start tftpd.");
-        return 1;
-    }
+    # enable the tftp-hpa
+    enable_TFTPhpa();
 
     if ($rc == 0)
     {
@@ -1319,6 +1316,104 @@ sub setup_HTTP
         }
     }
     return $rc;
+}
+
+#-----------------------------------------------------------------------------
+#
+#=head3 enable_TFTPhpa
+#
+#    Configure and enable the tftp-hpa in the xinetd.
+#
+#=cut
+#
+#-----------------------------------------------------------------------------
+sub enable_TFTPhpa
+{
+  # Check whether the tftp-hpa has been installed
+  if (! -e "/etc/xinetd.d/tftp") {
+    xCAT::MsgUtils->message("S", "ERROR: The tftpd was not installed, enable the tftp failed.");
+    return 1;
+  }
+
+  # read tftpdir directory from database
+  my $tftpdir = xCAT::Utils->getTftpDir();
+  if (!(-e $tftpdir)) {
+    mkdir($tftpdir);
+  }
+
+  if (! open (FILE, "</etc/xinetd.d/tftp")) {
+    xCAT::MsgUtils->message("S", "ERROR: Cannot open /etc/xinetd.d/tftp.");
+    return 1;
+  }
+
+  # The location of tftp mapfile
+  my $mapfile = "/etc/tftpmapfile4xcat.conf";
+  my $recfg = 0;
+  my @newcfgfile;
+  # Check whether need to reconfigure the /etc/xinetd.d/tftp
+  while (<FILE>) {
+    if (/^\s*server_args\s*=(.*)$/) {
+      my $cfg_args = $1;
+      if ($cfg_args =~ /-s\s+([^\s]*)/) {
+        my $cfgdir = $1;
+        $cfgdir =~ s/\$//;
+        $tftpdir =~ s/\$//;
+        if ($cfgdir ne $tftpdir) {
+          $recfg = 1;
+        }
+      }
+      if ($cfg_args !~ /-m\s+([^\s]*)/) {
+        $recfg = 1;
+      }
+      if ($recfg) {
+        my $newcfg = $_;
+        $newcfg =~ s/=.*$/= -s $tftpdir -m $mapfile/;
+        push @newcfgfile, $newcfg;
+      } else {
+        push @newcfgfile, $_;
+      }
+    } elsif (/^\s*disable\s*=/ && !/^\s*disable\s*=\s*no/) {
+      my $newcfg = $_;
+      $newcfg =~ s/=.*$/= no/;
+      push @newcfgfile, $newcfg;
+      $recfg = 1;
+    } else {
+      push @newcfgfile, $_;
+    }
+  }
+  close (FILE);
+
+  # recreate the mapfile
+  if (! -e "$mapfile") {
+    if (! open (MAPFILE, ">$mapfile")) {
+      xCAT::MsgUtils->message("S", "ERROR: Cannot open $mapfile.");
+      return 1;
+    }
+    # replace the \ with /
+    print MAPFILE 'rg (\\\) \/';
+    close (MAPFILE);
+  }
+
+  # reconfigure the /etc/xinetd.d/tftp
+  if ($recfg) {
+    if (! open (FILE, ">/etc/xinetd.d/tftp")) {
+      xCAT::MsgUtils->message("S", "ERROR: Cannot open /etc/xinetd.d/tftp");
+      return 1;
+    }
+    print FILE @newcfgfile;
+    close (FILE);
+
+    # start xinetd
+    my $rc = xCAT::Utils->startService("xinetd");
+    if ($rc != 0)
+    {
+      xCAT::MsgUtils->message("S", " Failed to start xinetd.");
+      return 1;
+    }
+    xCAT::MsgUtils->message("S", " The tftp-hpa has been reconfigured.");
+  }
+
+  return 0;
 }
 
 
