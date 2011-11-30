@@ -2310,12 +2310,15 @@ sub parsefru {
         my $last=0;
         $curridx=$bytes->[5]*8;
         my $currsize;
-        while (not $last) {
-            if ($bytes->[$curridx+1] & 128) {
-                $last=1;
-            }
-            $currsize=$bytes->[$curridx+2];
-            push @{$fruhash->{extra}},$bytes->[$curridx..$curridx+4+$currsize-1];
+	if ($bytes->[$curridx] <= 5) { #don't even try to parse unknown stuff
+			#some records don't comply to any SPEC
+	        while (not $last) {
+	            if ($bytes->[$curridx+1] & 128) {
+	                $last=1;
+	            }
+	            $currsize=$bytes->[$curridx+2];
+	            push @{$fruhash->{extra}},$bytes->[$curridx..$curridx+4+$currsize-1];
+        	}
         }
     }
     return 0,$fruhash;
