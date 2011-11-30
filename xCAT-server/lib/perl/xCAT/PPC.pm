@@ -171,7 +171,7 @@ sub process_command {
     my %nodes    = ();
     my $callback = $request->{callback};
     my $sitetab  = xCAT::Table->new( 'site' );
-    my @site     = qw(ppcmaxp ppctimeout maxssh ppcretry fsptimeout powerinterval); 
+    my @site     = qw(ppcmaxp ppctimeout maxssh ppcretry fsptimeout powerinterval syspowerinterval); 
     my $start;
     my $verbose = $request->{verbose};
 
@@ -183,6 +183,8 @@ sub process_command {
     $request->{fsptimeout} = 0;
     $request->{ppcretry}   = 3;
     $request->{maxssh}     = 8;
+    $request->{powerinterval}     = 0;
+    $request->{syspowerinterval}     = 0;
 
     #######################################
     # Get site table attributes 
@@ -405,6 +407,7 @@ sub process_command {
         my $sessions;
         my $pid_owner;
         my $remain_node = $nodes;
+        my $num = 0;        
 
         while ( scalar($remain_node) ) {
             $remain_node = ();
@@ -441,8 +444,22 @@ sub process_command {
                     push( @$remain_node, [@$hash[0], @$hash[1]] );
                     next;
                 }
+        
+                if( $num > 0 && $request->{op} =~ /^on$/ && $request->{fsp_api} == 1) {
+		    my $t_hash = @$hash[1];
+                    my $one_key_in_thash = (keys %$t_hash)[0];
+                    my $one_d = $t_hash->{$one_key_in_thash};
+                    #print Dumper($one_d);
+                    if($$one_d[4]  =~ /^fsp$/ ||  $$one_d[4] =~ /^cec$/) {
+                        if( $request->{syspowerinterval} > 0) {
+			    Time::HiRes::sleep($request->{syspowerinterval});
+                        }
+                    }
+                }
 
                 my ($pipe,$pid) = fork_cmd( @$hash[0], @$hash[1], $request );
+
+                $num++;
 
                 if ($pid) {
                     $pid_owner->{$pid} = @$hash[0];
