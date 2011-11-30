@@ -7,6 +7,7 @@ use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::PPCpower;
 use xCAT::FSPUtils;
 #use Data::Dumper;
+
 ##########################################################################
 # Parse the command line for options and operands
 ##########################################################################
@@ -125,12 +126,13 @@ sub powercmd_boot {
            push @output, [$node_name,$data,$Rc];
            next;
        }
- 
+       
        ##################################
        # Convert state to on/off
        ##################################
        my $state = power_status($data);
        #print "boot:state:$state\n";
+       my $op    = ($state =~ /^off$/) ? "on" : "reset";
 
        # Attribute powerinterval in site table,
        # to control the rpower speed
@@ -138,7 +140,7 @@ sub powercmd_boot {
            Time::HiRes::sleep($request->{'powerinterval'});
        }
 
-       my $op    = ($state =~ /^off$/) ? "on" : "reset";
+
        $res = xCAT::FSPUtils::fsp_api_action ($node_name, $d, $op);
 	
        # @output  ...	
@@ -165,7 +167,14 @@ sub powercmd {
     my $hash    = shift;
     my @result  = ();
     my @output;
-    my $action  =  $request->{'op'}; 
+    my $action;
+    my $node_name;
+    my $newids;
+    my $newnames;
+    my $newd;
+    my $lpar_flag = 0;
+    my $cec_flag = 0;
+    my $frame_flag = 0;
     
     #print "++++in powercmd++++\n";   
     #print Dumper($hash);
@@ -187,14 +196,19 @@ sub powercmd {
     #				  ]
     # };
 																						      
-    foreach my $node_name ( keys %$hash)
+    foreach $node_name ( keys %$hash)
     {
+	$action  =  $request->{'op'};
         my $d = $hash->{$node_name};
 	if ($$d[4] =~ /^lpar$/) {
 	    if( !($action =~ /^(on|off|of|reset|sms)$/)) {
 	        push @output, [$node_name, "\'$action\' command not supported for LPAR", -1 ];
 	        return (\@output);
 	    }
+	    $newids  .= "$$d[0],";
+	    $newnames .="$node_name,";
+	    $newd = $d;
+	    $lpar_flag = 1;
 	} elsif ($$d[4] =~ /^(fsp|cec)$/) {
 	    if($action =~ /^on$/) { $action = "cec_on_autostart"; }
 	    if($action =~ /^off$/) { $action = "cec_off"; }
@@ -202,9 +216,12 @@ sub powercmd {
 	    if($action =~ /^lowpower$/) { $action = "cec_on_low_power"; }
 	    if($action !~ /^cec_on_autostart$/ && $action !~ /^cec_off$/ &&  $action !~ /^cec_on_low_power$/ && $action !~ /^onstandby$/ && $action !~ /^reboot_service_processor$/ ) {
 	        push @output, [$node_name, "\'$action\' command not supported for CEC", -1 ];
-	        #return (\@output);
-	        next;
-	    }		    
+		next;
+	    }	
+            $newids = $$d[0];	    
+            $newnames = $node_name;
+            $newd = $d;	    
+	    $cec_flag = 1;  
         } else {
 	     if ( $action =~ /^rackstandby$/) {
 	         $action = "enter_rack_standby";
@@ -215,35 +232,54 @@ sub powercmd {
 		 #return (\@output);
                  next;
 	     }
+             $newids = $$d[0];	    
+             $newnames = $node_name;
+             $newd = $d;	    
+	     $frame_flag = 1;
         }		
 
-        # Attribute powerinterval in site table,
-        # to control the rpower speed
-        if (($action ne 'enter_rack_standby') && ($action ne 'exit_rack_standby') && ($action ne 'stat') && ($action ne 'status')
-           && ($action ne 'state') && ($action ne 'off') && ($action ne 'softoff')) {
-            if( defined($request->{'powerinterval'}) ) {
-                Time::HiRes::sleep($request->{'powerinterval'});
-            }
-        }
-
-        my $res = xCAT::FSPUtils::fsp_api_action($node_name, $d, $action );
-	#    print "In boot, state\n";
-	#    print Dumper($res);
-    	my $Rc = @$res[2];
-    	my $data = @$res[1];
-	#my $type = @$d[4];
-	#my $id   = ($type=~/^(fsp|bpa)$/) ? $type : @$d[0];
-        
-	##################################
-        # Output error
-        ##################################
-        if ( $Rc != SUCCESS ) {
-            push @output, [$node_name,$data,$Rc];
-	    #    next;
-        } else {
-	    push @output, [$node_name,"Success",$Rc];
+	if( $lpar_flag && $cec_flag) {
+	    push @output, [$node_name," $node_name\'s type is different from the last name. The noderange of power control operation could NOT be lpar/cec mixed" , -1 ];
+	    return (\@output);
+	    
 	}
+
+	if( $lpar_flag && $frame_flag) {
+	    push @output, [$node_name," $node_name\'s type is different from the last name. The noderange of power control operation could NOT be lpar/frame mixed" , -1 ];
+	    return (\@output);
+	    
+	}
+
+	if( $cec_flag && $frame_flag) {
+	    push @output, [$node_name," $node_name\'s type is different from the last name. The noderange of power control operation could NOT be cec/frame mixed" , -1 ];
+	    return (\@output);
+	    
+	}
+
     }
+
+    $$newd[0] = $newids;
+   
+    #print Dumper($newd);
+    
+    my $res = xCAT::FSPUtils::fsp_api_action($newnames, $newd, $action );
+    #    print "In boot, state\n";
+    #    print Dumper($res);
+    my $Rc = @$res[2];
+    my $data = @$res[1];
+
+    foreach $node_name ( keys %$hash)
+    {
+        my $d = $hash->{$node_name};
+        
+        if( $data =~ /Error/) {
+	    push @output, [$node_name, $data, -1];
+        } else {
+	    push @output, [$node_name,"Success", 0];
+        }
+               
+        
+    } 
 
     return( \@output );
 
