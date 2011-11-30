@@ -15,7 +15,6 @@ chtab_err_symble
 chtab_err_table
 chtab_h
 chtab_v
-chvm_null
 chvm_node
 chvm_err_node
 copycds_iso
@@ -145,9 +144,9 @@ rscan_z
 rscan_w
 rscan_x_w
 rscan_z_w
-rvitals_power
-rvitals_state
+mvitals_state
 rvitals_lcds
+rvitals_all
 rvitals_noderange_err
 sinv_c_p_t_r_o
 sinv_c_s_p_t_o
@@ -209,11 +208,6 @@ lsxcatd_null
 lsxcatd_h
 lsxcatd_d
 lsxcatd_a
-makenetworks_h
-makenetworks_help
-makenetworks_v
-makenetworks_d
-makenetworks_d_V
 makehosts_h
 makehosts_help
 makehosts_null
