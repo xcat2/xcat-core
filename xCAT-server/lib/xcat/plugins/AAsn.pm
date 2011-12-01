@@ -277,7 +277,7 @@ sub init_plugin
                 $rc = &setup_FTP();    # setup FTP
             }
             #enable the tftp-hpa for MN
-            enable_TFTPhpa();
+            $rc = enable_TFTPhpa();
         }
     }
     return $rc;
@@ -1265,7 +1265,7 @@ sub setup_TFTP
     }
 
     # enable the tftp-hpa
-    enable_TFTPhpa();
+    $rc = enable_TFTPhpa();
 
     if ($rc == 0)
     {
@@ -1352,20 +1352,25 @@ sub enable_TFTPhpa
   my @newcfgfile;
   # Check whether need to reconfigure the /etc/xinetd.d/tftp
   while (<FILE>) {
+    # check the configuration of 'server_args = -s /xx -m xx'  entry
     if (/^\s*server_args\s*=(.*)$/) {
       my $cfg_args = $1;
+      # handle the -s option for the location of tftp root dir
       if ($cfg_args =~ /-s\s+([^\s]*)/) {
         my $cfgdir = $1;
         $cfgdir =~ s/\$//;
         $tftpdir =~ s/\$//;
+        # make sure the tftp dir should comes from the site.tftpdir
         if ($cfgdir ne $tftpdir) {
           $recfg = 1;
         }
       }
+      # handle the -m option for the mapfile
       if ($cfg_args !~ /-m\s+([^\s]*)/) {
         $recfg = 1;
       }
       if ($recfg) {
+        # regenerate the entry for server_args
         my $newcfg = $_;
         $newcfg =~ s/=.*$/= -s $tftpdir -m $mapfile/;
         push @newcfgfile, $newcfg;
@@ -1373,6 +1378,7 @@ sub enable_TFTPhpa
         push @newcfgfile, $_;
       }
     } elsif (/^\s*disable\s*=/ && !/^\s*disable\s*=\s*no/) {
+      # enable the tftp by handling the entry 'disable = xx'
       my $newcfg = $_;
       $newcfg =~ s/=.*$/= no/;
       push @newcfgfile, $newcfg;
