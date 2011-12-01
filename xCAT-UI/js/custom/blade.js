@@ -203,50 +203,68 @@ bladePlugin.prototype.loadResources = function() {
  * @return Nothing
  */
 bladePlugin.prototype.addNode = function() {
-    var nodeTypeSelectDia = $('<div id="nodeTypeSelectDia" class="form"></div>');
-    nodeTypeSelectDia.append('<div><label for="mgt">Node Type :</label><select id="nodeTypeSelect">' +
-            '<option value="mm">AMM Node</option><option value="blade">Blade Node</option>' +
-            '<option value="scanmm">Blade Node by scan</option></select></div>' + 
-            '<div id="bladeDiaInputDiv"></div>');
+    var addNodeForm = $('<div id="addBladeCenter" class="form"></div>');
+    var info = createInfoBar('Add a BladeCenter node');
+	addNodeForm.append(info);
     
-    nodeTypeSelectDia.find('#nodeTypeSelect').bind('change', function(){
-    	$('#nodeTypeSelectDia .ui-state-error').remove();
-        var addmethod = $(this).val();
-        var showstr = '';
-        switch(addmethod){
+    var typeFS = $('<fieldset></fieldset>');
+	var typeLegend = $('<legend>Type</legend>');
+	typeFS.append(typeLegend);
+	addNodeForm.append(typeFS);
+	
+	var nodeFS = $('<fieldset id="nodeAttrs"></fieldset>');
+	var nodeLegend = $('<legend>Node</legend>');
+	nodeFS.append(nodeLegend);
+	addNodeForm.append(nodeFS);
+	
+	typeFS.append('<div>' + 
+			'<label>Node type:</label>' +
+    		'<select id="typeSelect">' +
+            	'<option value="mm">AMM</option>' +
+            	'<option value="blade">Blade</option>' +
+            	'<option value="scanmm">Blade by scan</option>' +
+            '</select>' +
+	'</div>');
+    
+	typeFS.find('#typeSelect').bind('change', function(){
+		// Remove any existing warnings
+    	$('#addBladeCenter .ui-state-error').remove();
+    	nodeFS.find('div').remove();
+    	
+        var addMethod = $(this).val();
+        switch(addMethod){
         	case 'mm':
-        		showstr = '<label>AMM Name: </label><input id="ammName" type="text"></input><br/><br/>' +
-        			'<label>Username: </label><input value="USERID"><br/><br/>' +
-        			'<label>Password: </label><input value="PASSW0RD"><br/><br/>' +
-                	'<label>AMM IP: </label><input id="ammIp" type="text"></input>';
+        		nodeFS.append('<div><label>AMM name: </label><input id="ammName" type="text"/></div>');
+        		nodeFS.append('<div><label>Username: </label><input type="text"></div>');
+        		nodeFS.append('<div><label>Password: </label><input type="text"></div>');
+        		nodeFS.append('<div><label>AMM IP: </label><input id="ammIp" type="text"/></div>');
         		break;
         	case 'blade':
-        		showstr = '<label>Blade Name: </label><input id="bladeName" type="text"></input><br/><br/>' +
-	                '<label>Blade Group: </label><input id="bladeGroup" type="text"></input><br/><br/>' +
-	                '<label>Blade ID: </label><input id="bladeId" type="text"></input><br/><br/>' +
-	                '<label>Blade Series: </label><input type="radio" name="series" value="js"/>JS<input type="radio" name="series" value="ls"/>LS<br/><br/>' +
-	                '<label>Blade MPA: </label><select id="mpaSelect"></select>';
+        		nodeFS.append('<div><label>Blade name: </label><input id="bladeName" type="text"/></input></div>');
+        		nodeFS.append('<div><label>Blade group: </label><input id="bladeGroup" type="text"/></input></div>');
+        		nodeFS.append('<div><label>Blade ID: </label><input id="bladeId" type="text"/t></div>');
+        		nodeFS.append('<div><label>Blade series: </label>JS <input type="radio" name="series" value="js"/> LS<input type="radio" name="series" value="ls"/></div>');
+        		nodeFS.append('<div><label style="vertical-align: middle;">Blade MPA: </label><select id="mpaSelect"></select><div>');
         		break;
         	case 'scanmm':
-        		showstr = '<label>Blade MPA: </label><select id="mpaSelect"></select>';
+        		nodeFS.append('<div><label style="vertical-align: middle;">Blade MPA: </label><select id="mpaSelect"></select></div>');
         		break;
         }
         
-        $('#bladeDiaInputDiv').html(showstr);
-        //change the dialog width
+        // Change dialog width
 		if ($(this).val() == 'scanmm'){
-			$('#nodeTypeSelectDia').dialog('option', 'width', '650');
+			$('#addBladeCenter').dialog('option', 'width', '650');
 		}else{
-			$('#nodeTypeSelectDia').dialog('option', 'width', '400');
+			$('#addBladeCenter').dialog('option', 'width', '400');
 		}
 		
-		//add mm node can return directly
+		// If MM node, return directly
 		if ($(this).val() == 'mm'){
 			return;
 		}
 		
-		//get all mm nodes from the server side
-		$('#bladeDiaInputDiv').append(createLoader());
+		// Get all MM nodes from server side
+		nodeFS.find('select:eq(0)').after(createLoader());
        
 		$.ajax({
 			url : 'lib/cmd.php',
@@ -255,22 +273,23 @@ bladePlugin.prototype.addNode = function() {
                	cmd : 'lsdef',
                	tgt : '',
                	args : '-t;node;-w;mgt==blade;-w;id==0',
-               	msg : addmethod
+               	msg : addMethod
            	},
            	success : function(data){
            		var position = 0;
            		var tempStr = '';
            		var options = '';
-           		//remove the loading image
-           		$('#bladeDiaInputDiv img').remove();
+           		
+           		// Remove the loading image
+           		nodeFS.find('img').remove();
                
-           		//check return result
-           		if (1 > data.rsp.length){
-           			$('#nodeTypeSelectDia').prepend(createWarnBar('Please define MM node first!'));
+           		// Check return result
+           		if (data.rsp.length < 1) {
+           			$('#addBladeCenter').prepend(createWarnBar('Please define MM node first!'));
            			return;
            		}
                
-           		//add all mm nodes to select
+           		// Add all MM nodes to select
            		for (var i in data.rsp){
            			tempStr = data.rsp[i];
            			position = tempStr.indexOf(' ');
@@ -278,23 +297,24 @@ bladePlugin.prototype.addNode = function() {
            			options += '<option value="' + tempStr + '">' + tempStr + '</option>';
            		}
                
-           		$('#bladeDiaInputDiv select').append(options);
+           		nodeFS.find('select:eq(0)').append(options);
            		
-           		//if add node by rscan, we should add the scan button
-           		if (data.msg != 'scanmm'){
+           		// If adding node by rscan, we should add the scan button
+           		if (data.msg != 'scanmm') {
            			return;
            		}
-           		var scanbutton = createButton('Scan');
-       			scanbutton.bind('click', function(){
-       				var mmname = $('#bladeDiaInputDiv select').val();
-       				$('#bladeDiaInputDiv').append(createLoader());
-       				$('#bladeDiaInputDiv button').attr('disabled', 'disabled');
+           		
+           		var scan = createButton('Scan');
+       			scan.bind('click', function(){
+       				var mmName = nodeFS.find('select:eq(0)').val();
+       				nodeFS.prepend(createLoader());
+       				$('#nodeAttrs button').attr('disabled', 'disabled');
        				$.ajax({
        					url : 'lib/cmd.php',
        			        dataType : 'json',
        			        data : {
        			            cmd : 'rscan',
-       			            tgt : mmname,
+       			            tgt : mmName,
        			            args : '',
        			            msg : ''
        			        },
@@ -304,32 +324,33 @@ bladePlugin.prototype.addNode = function() {
        			        }
        				});
        			});
-       			$('#bladeDiaInputDiv').append(scanbutton);
+       			
+       			nodeFS.find('select:eq(0)').after(scan);
            	}
 		});
     });
     
-    nodeTypeSelectDia.dialog( {
+    addNodeForm.dialog( {
         modal : true,
         width : 400,
         title : 'Add node',
         open : function(event, ui) {
             $(".ui-dialog-titlebar-close").hide();
         },
-        close : function(){$(this).remove();},
+        close : function(){
+        	$(this).remove();
+        },
         buttons : {
             'Ok' : function() {
-                //remove all error bar
-                $('#nodeTypeSelectDia .ui-state-error').remove();
-                var addMethod = $('#nodeTypeSelect').val();
+                // Remove any existing warnings
+                $('#addBladeCenter .ui-state-error').remove();
+                var addMethod = $('#typeSelect').val();
                 
                 if (addMethod == "mm") {
                     addMmNode();
-                }
-                else if(addMethod == "blade") {
+                } else if(addMethod == "blade") {
                     addBladeNode();
-                }
-                else{
+                } else{
                 	addMmScanNode();
                 }
             },
@@ -339,7 +360,7 @@ bladePlugin.prototype.addNode = function() {
         }
     });
     
-    nodeTypeSelectDia.find('#nodeTypeSelect').trigger('change');
+    addNodeForm.find('#typeSelect').trigger('change');
 };
 
 
@@ -350,24 +371,26 @@ bladePlugin.prototype.addNode = function() {
  */
 function addMmNode(){
 	var argsTmp = '';
-	var errorinfo = '';
+	var errorMsg = '';
     
-	$('#nodeTypeSelectDia input').each(function(){
-		if (!$(this).val()){
-			errorinfo = 'You are missing inputs.';
+	$('#addBladeCenter input').each(function(){
+		if (!$(this).val()) {
+			errorMsg = 'Please provide a value for each missing field.';
 		}
+		
 		argsTmp += $(this).val() + ',';
 	});
 	
-	if (errorinfo){
-		//add warning message
-		$('#nodeTypeSelectDia').prepend(createWarnBar(errorinfo));
+	if (errorMsg) {
+		// Add warning message
+		$('#addBladeCenter').prepend(createWarnBar(errorMsg));
 		return;
 	}
 
 	argsTmp = argsTmp.substring(0, argsTmp.length - 1);
-    //add the loader
-    $('#nodeTypeSelectDia').prepend(createLoader());
+    
+	// Add the loader
+    $('#addBladeCenter').prepend(createLoader());
     $('.ui-dialog-buttonpane .ui-button').attr('disabled', true);
     $.ajax( {
         url : 'lib/cmd.php',
@@ -379,12 +402,12 @@ function addMmNode(){
             msg : ''
         },
         success : function(data) {
-            $('#nodeTypeSelectDia').find('img').remove();
-            var info = createInfoBar('Add MM Node successful.');
-            $('#nodeTypeSelectDia').prepend(info);
-            $('#nodeTypeSelectDia').dialog("option", "buttons", {
-                "close" : function() {
-                    $('#nodeTypeSelectDia').dialog('close');
+            $('#addBladeCenter').find('img').remove();
+            var info = createInfoBar('Successfully added MM node.');
+            $('#addBladeCenter').prepend(info);
+            $('#addBladeCenter').dialog("option", "buttons", {
+                "Close" : function() {
+                    $('#addBladeCenter').dialog('close');
                     $('.selectgroup').trigger('click');
                 }
             });
@@ -398,11 +421,11 @@ function addMmNode(){
  * @return Nothing
  */
 function addBladeNode(){
-    var name = $('#nodeTypeSelectDia #bladeName').val();
-    var group = $('#nodeTypeSelectDia #bladeGroup').val();
-    var id = $('#nodeTypeSelectDia #bladeId').val();
-    var series = $("#nodeTypeSelectDia #bladeNode :checked").val();
-    var mpa = $('#nodeTypeSelectDia #mpaSelect').val();
+    var name = $('#addBladeCenter #bladeName').val();
+    var group = $('#addBladeCenter #bladeGroup').val();
+    var id = $('#addBladeCenter #bladeId').val();
+    var series = $("#addBladeCenter #bladeNode :checked").val();
+    var mpa = $('#addBladeCenter #mpaSelect').val();
 
     var argsTmp = '-t;node;-o;' + name + ';id=' + id + 
             ';nodetype=osi;groups=' + group + ';mgt=blade;mpa=' + mpa + ';serialflow=hard';
@@ -411,12 +434,12 @@ function addBladeNode(){
     }
     
     if ((!name) || (!group) || (!id) || (!mpa)){
-        $('#nodeTypeSelectDia').prepend(createWarnBar("Please provide a value for each missing field."));
+        $('#addBladeCenter').prepend(createWarnBar("Please provide a value for each missing field."));
         return;
     }
 
-    //add loader and disable buttons
-    $('#nodeTypeSelectDia').prepend(createLoader());
+    // Add loader and disable buttons
+    $('#addBladeCenter').prepend(createLoader());
     $('.ui-dialog-buttonpane .ui-button').attr('disabled', true);
     $.ajax( {
         url : 'lib/cmd.php',
@@ -428,126 +451,136 @@ function addBladeNode(){
             msg : ''
         },
         success : function(data) {
-            $('#nodeTypeSelectDia').find('img').remove();
+            $('#addBladeCenter').find('img').remove();
             var messages = data.rsp;
             var notes = "";
-            for ( var i = 0; i < messages.length; i++) {
-                notes += messages[i];
+            for (var i = 0; i < messages.length; i++) {
+                notes += messages[i] + " ";
             }
 
-            $('#nodeTypeSelectDia').prepend(createInfoBar(notes));
-            $('#nodeTypeSelectDia').dialog("option", "buttons", {
-                "close" : function() {
-                    $('#nodeTypeSelectDia').remove();
+            $('#addBladeCenter').prepend(createInfoBar(notes));
+            $('#addBladeCenter').dialog("option", "buttons", {
+                "Close" : function() {
+                    $('#addBladeCenter').remove();
                 }
             });
         }
     });
 }
 
-function showScanMmResult(rscanresult){
-	var resultDiv = $('<div class="tab" style="height:300px;overflow:auto;" id="scanresult"></div>');
-	var rscantable = $('<table></table>');
-	var tempreg = /\S+/g;
+/**
+ * Show rscan results
+ * 
+ * @param rscanResults
+ *            Results from rscan of blade MPA
+ * @return Nothing
+ */
+function showScanMmResult(rscanResults){
+	var results = $('<div style="height: 300px; overflow: auto;" id="scan_results"></div>');
+	var rscanTable = $('<table></table>');
+	var regex = /\S+/g;
 	var line = '';
-	var fields;
-	var colnum = 0;
+	var column = 0;
 	
-	$('#bladeDiaInputDiv #scanresult').remove();
-	$('#bladeDiaInputDiv img').remove();
-	$('#bladeDiaInputDiv button').attr('disabled', '');
-	if (!rscanresult){
+	$('#nodeAttrs #scan_results').remove();
+	$('#nodeAttrs img').remove();
+	$('#nodeAttrs button').attr('disabled', '');
+	if (!rscanResults){
 		return;
 	}
 	
-	var rows = rscanresult.split("\n");
+	var rows = rscanResults.split("\n");
 	if (rows.length < 2){
-		resultDiv.append(createWarnBar(rows[0]));
-		$('#bladeDiaInputDiv').append(resultDiv);
+		results.append(createWarnBar(rows[0]));
+		$('#nodeAttrs').append(results);
 		return;
 	}
 	
-	//add the table header
-	fields = rows[0].match(tempreg);
-	colnum = fields.length;
-	temprow = '<tr><td><input type="checkbox" onclick="selectAllRscanNode(this)"></td>';
+	// Add the table header
+	var fields = rows[0].match(regex);
+	column = fields.length;
+	row = '<tr><td><input type="checkbox" onclick="selectAllRscanNode(this)"></td>';
 	for(var i in fields){
-		temprow += '<td>' + fields[i] + '</td>';
+		row += '<td>' + fields[i] + '</td>';
 	}
-	rscantable.append(temprow);
+	rscanTable.append(row);
 	
-	//add the tbody
-	for (var i = 1; i < rows.length; i++){
+	// Add the tbody
+	for (var i=1; i<rows.length; i++) {
 		line = rows[i];
-		if (!line){
+		
+		if (!line) {
 			continue;
 		}
-		var fields = line.match(tempreg);
+		
+		var fields = line.match(regex);
 		if ('mm' == fields[0]){
 			continue;
 		}
 		
-		temprow = '<tr><td><input type="checkbox" name="' + fields[1] + '"></td>';
+		row = '<tr><td><input type="checkbox" name="' + fields[1] + '"></td>';
 		
-		for(var j = 0; j < colnum; j++){
-			temprow += '<td>';
-			if (fields[j]){
-				if (j == 1){
-					temprow += '<input value="' + fields[j] + '">';
-				}
-				else{
-					temprow += fields[j];
+		for (var j=0; j<column; j++){
+			row += '<td>';
+			if (fields[j]) {
+				if (j == 1) {
+					row += '<input value="' + fields[j] + '">';
+				} else {
+					row += fields[j];
 				}
 			}
-			temprow += '</td>';
+			
+			row += '</td>';
 		}
-		temprow += '</tr>';
-		rscantable.append(temprow);
+		row += '</tr>';
+		rscanTable.append(row);
 	}
 	
-	resultDiv.append(rscantable);
-	
-	$('#bladeDiaInputDiv').append(resultDiv);
+	results.append(rscanTable);
+	$('#nodeAttrs').prepend(results);
 }
 
 function addMmScanNode(){
-	//get the mm name
-	var mmname = $('#bladeDiaInputDiv select').val();
-	var nodename = '';
-	//get all need added node
-	$('#bladeDiaInputDiv :checked').each(function(){
-		if ($(this).attr('name')){
-			nodename += $(this).attr('name') + ',';
-			nodename += $(this).parents('tr').find('input').eq(1).val() + ',';
+	// Get the MM name
+	var mmName = $('#nodeAttrs select').val();
+	var nodeName = '';
+	
+	$('#nodeAttrs :checked').each(function() {
+		if ($(this).attr('name')) {
+			nodeName += $(this).attr('name') + ',';
+			nodeName += $(this).parents('tr').find('input').eq(1).val() + ',';
 		}
 	});
 	
-	if (!nodename){
+	if (!nodeName) {
 		alert('You should select nodes first!');
 		return;
 	}
-	//disabled the button
+	
+	// Disabled the button
 	$('.ui-dialog-buttonpane button').attr('disabled', 'disabled');
 	
-	nodename = nodename.substr(0, nodename.length - 1);
-	$('#bladeDiaInputDiv').append(createLoader());
-	//send the add request
+	nodeName = nodeName.substr(0, nodeName.length - 1);
+	$('#nodeAttrs').append(createLoader());
+	
+	// Send the add request
 	$.ajax({
 		url : 'lib/cmd.php',
         dataType : 'json',
         data : {
             cmd : 'webrun',
             tgt : '',
-            args : 'addnode;node;' + mmname + ',' + nodename,
+            args : 'addnode;node;' + mmName + ',' + nodeName,
             msg : ''
         },
         success : function(data){
-        	//refresh the area on the right side
-        	$('#nodeTypeSelectDia').dialog('close');
+        	// Refresh the area on the right side
+        	$('#addBladeCenter').dialog('close');
         	$('.selectgroup').trigger('click');
         }
 	});
 }
+
 /**
  * Create provision existing node division
  * 
