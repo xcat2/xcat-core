@@ -166,7 +166,7 @@ pre {
 }
 
 #groups .selectgroup {
-    background: #E6E6F2;
+    background: #E5E5E5;
     font-weight: bold;
 }
 
@@ -183,7 +183,7 @@ pre {
 	margin: 10px 0px 0px 0px;
 	padding: 0px 0px 0px 5px;
 	display: inline-block;
-	border-left: medium solid #E6E6F2;
+	border-left: medium solid #E5E5E5;
 }
 
 .summarypie {
