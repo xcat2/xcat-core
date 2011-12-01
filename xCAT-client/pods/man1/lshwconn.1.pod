@@ -57,8 +57,11 @@ To display connection status for all CEC nodes in node group CEC:
 
 Output is similar to:
 
- cec1: ipaddr=192.168.200.245,alt_ipaddr=unavailable,state=Connected
- cec2: Connection not found
+ cec1: sp=primary,ipadd=40.17.1.1,alt_ipadd=41.17.1.1,state=LINE UP
+ cec1: sp=secondary,ipadd=40.17.1.2,alt_ipadd=41.17.1.2,state=LINE UP
+ cec2: sp=primary,ipadd=40.17.2.1,alt_ipadd=41.17.2.1,state=LINE UP
+ cec2: 40.17.2.2: No connection information found for hardware control point "40.17.2.2", please create the connection for this hardware control point firstly.
+ cec2: 41.17.2.2: No connection information found for hardware control point "41.17.2.2", please create the connection for this hardware control point firstly.
 
 =item 2.
 
@@ -68,8 +71,8 @@ To display connection status for Frame node frame1:
 
 Output is similar to:
 
- frame1: side=a,ipaddr=192.168.200.247,alt_ipaddr=unavailable,state=Connected
- frame1: side=b,ipaddr=192.168.200.248,alt_ipaddr=unavailable,state=Connected
+ frame1: sp=primary,ipadd=192.168.200.1,alt_ipadd=192.168.201.1,state=LINE UP 
+ frame1: sp=secondary,ipadd=192.168.200.2,alt_ipadd=192.168.201.2,state=LINE UP 
 
 =item 3.
 

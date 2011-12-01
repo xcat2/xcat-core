@@ -175,7 +175,7 @@ sub fsp_api_action {
     #################
     #$outhash{ $node_name } = $res;
     if(defined($res)) {
-        $res =~ s/$node_name: //;
+        $res =~ s/$node_name: //g;
     }
     return( [$node_name,$res, $Rc] ); 
 }

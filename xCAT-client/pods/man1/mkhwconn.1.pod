@@ -72,7 +72,7 @@ The tooltype is used to communicate to the CEC/Frame. The value could be B<lpar>
 
 =item B<--port>
 
-The port value specify which side will be used to create the connection to the CEC/Frame. The value could be "B<0>" or "B<1>". If this port value is not specfied in the command, it will use the default value "B<0>". If the port value is "B<0>", in the vpd table, the side column should be B<A-0> and B<B-0>; If the port value is "B<1>", the side column should be B<A-1> and B<B-1>. When making hardware connection between CEC/Frame and HMC, the port is used to specify the fsp/bpa port of the cec/frame.
+The port value specify which side will be used to create the connection to the CEC/Frame. The value could only be specified as "B<0>" or "B<1>". If this port value is not specfied, it will use all ports to create the connection. If the port value is specified as "B<0>", in the vpd table, the side column should be B<A-0> and B<B-0>; If the port value is specified as "B<1>", the side column should be B<A-1> and B<B-1>. When making hardware connection between CEC/Frame and HMC, the value is used to specify the fsp/bpa port of the cec/frame and will be organized in order of "B<A-0,A-1,B-0,B-1>". If any side was not exist, the side would simply be ignored. Generally, only one port of a fsp/bap can be connected while another port be used as backup.
 
 =item B<-s>
 
