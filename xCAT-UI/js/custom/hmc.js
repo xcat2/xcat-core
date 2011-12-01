@@ -371,7 +371,7 @@ function addHmcNode(){
 	var args = '';
 	$('#pnodeeditarea input').each(function(){
 		if (!$(this).val()){
-			errorinfo = 'You are missing some inputs!';
+			errorinfo = 'Please provide a value for each missing field!';
 		}
 		args += $(this).val() + ',';
 	});

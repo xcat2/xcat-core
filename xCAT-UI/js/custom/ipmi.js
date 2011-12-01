@@ -263,7 +263,7 @@ function addIdataplex(){
         if (attr) {
             tempArray.push($(this).val());
         } else {
-            errorMessage = "You are missing some inputs!";
+            errorMessage = "Please provide a value for each missing field!";
             return false;
         }
     });

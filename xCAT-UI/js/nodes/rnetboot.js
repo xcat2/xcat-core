@@ -188,7 +188,7 @@ function loadNetbootPage(tgtNodes) {
 			statusBar.show();
 		} else {
 			// Show warning message
-			var warn = createWarnBar('You are missing some inputs.');
+			var warn = createWarnBar('Please provide a value for each missing field.');
 			warn.prependTo($(this).parent().parent());
 		}
 	});

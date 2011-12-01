@@ -108,6 +108,7 @@ function loadHcpInfo(data) {
 				
 		// Open dialog
 		warnDialog.dialog({
+			title:'Warning',
 			modal: true,
 			width: 400,
 			buttons: {
@@ -1144,6 +1145,7 @@ function openAddProcDialog(node) {
 	
 	// Open dialog to add processor
 	addProcForm.dialog({
+		title:'Add processor',
 		modal: true,
 		width: 400,
 		buttons: {
@@ -1248,6 +1250,7 @@ function openAddDiskDialog(node, hcp) {
 
 	// Open dialog to add disk
 	addDiskForm.dialog({
+		title:'Add disk',
 		modal: true,
 		width: 400,
 		buttons: {
@@ -1478,6 +1481,7 @@ function openAddNicDialog(node, hcp) {
 	
 	// Open dialog to add NIC
 	addNicForm.dialog({
+		title:'Add NIC',
 		modal: true,
 		width: 400,
 		buttons: {
@@ -2555,6 +2559,7 @@ function createZProvisionNew(inst) {
 				// Open dialog to confirm
 				var confirmDialog = $('<div><p>' + msg + '</p></div>');   				
 				confirmDialog.dialog({
+					title:'Confirm',
 					modal: true,
 					width: 400,
 					buttons: {

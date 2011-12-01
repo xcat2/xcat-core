@@ -411,7 +411,7 @@ function addBladeNode(){
     }
     
     if ((!name) || (!group) || (!id) || (!mpa)){
-        $('#nodeTypeSelectDia').prepend(createWarnBar("You miss some inputs."));
+        $('#nodeTypeSelectDia').prepend(createWarnBar("Please provide a value for each missing field."));
         return;
     }
 

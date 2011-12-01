@@ -581,7 +581,7 @@ function quickProvision(plugin){
     
     $('#' + containerId + ' input[type!="checkbox"]').each(function() {
         if (!$(this).val()) {
-            errorMessage = 'You are missing some inputs!';
+            errorMessage = 'Please provide a value for each missing field!';
             return false;
         } else {
             argsArray.push($(this).val());
