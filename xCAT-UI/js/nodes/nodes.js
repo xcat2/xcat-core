@@ -2927,6 +2927,7 @@ function openSetAttrsDialog() {
 		
 	// Open form as a dialog
 	setPropsForm.dialog({
+		title: 'Set attributes',
 		modal: true,
 		height: 400,
 		width: 700,
