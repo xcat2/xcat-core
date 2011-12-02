@@ -41,7 +41,7 @@ Note: If a CEC belongs to a frame, which has a BPA installed, this CEC should no
 
 For PPC (using Direct FSP Management) specific:
 
-It is used to set up connections for CEC and Frame node to Hardware Server on management node (or service node ). It only could be done according to the node definition in xCAT DB. And this command will try to read the user/password from the ppcdirect table firstly. If fails, then read them from passwd table. Commonly , the username is B<HMC>. If using the B<ppcdirect> table,  each CEC/Frame and user/password should be  stored in B<ppcdirect> table. If using the B<passwd> table, the key should be "B<cec>" or "B<frame>", and the related user/password are stored in B<passwd> table.
+It is used to set up connections for CEC and Frame node to Hardware Server on management node (or service node ). It only could be done according to the node definition in xCAT DB. And this command will try to read the user/password from the ppcdirect table first. If fails, then read them from passwd table. Commonly , the username is B<HMC>. If using the B<ppcdirect> table,  each CEC/Frame and user/password should be  stored in B<ppcdirect> table. If using the B<passwd> table, the key should be "B<cec>" or "B<frame>", and the related user/password are stored in B<passwd> table.
 
 When B<--port> is specified, this command will create the connections for CECs/Frames whose side in B<vpd> table is equal to port value.
 
@@ -72,7 +72,7 @@ The tooltype is used to communicate to the CEC/Frame. The value could be B<lpar>
 
 =item B<--port>
 
-The port value specify which side will be used to create the connection to the CEC/Frame. The value could only be specified as "B<0>" or "B<1>". If this port value is not specfied, it will use all ports to create the connection. If the port value is specified as "B<0>", in the vpd table, the side column should be B<A-0> and B<B-0>; If the port value is specified as "B<1>", the side column should be B<A-1> and B<B-1>. When making hardware connection between CEC/Frame and HMC, the value is used to specify the fsp/bpa port of the cec/frame and will be organized in order of "B<A-0,A-1,B-0,B-1>". If any side was not exist, the side would simply be ignored. Generally, only one port of a fsp/bap can be connected while another port be used as backup.
+The port value specifies which side will be used to create the connection to the CEC/Frame. The value could only be specified as "B<0>" or "B<1>". If this port value is not specfied, it will use all ports to create the connection. If the port value is specified as "B<0>", in the vpd table, the side column should be B<A-0> and B<B-0>; If the port value is specified as "B<1>", the side column should be B<A-1> and B<B-1>. When making hardware connection between CEC/Frame and HMC, the value is used to specify the fsp/bpa port of the cec/frame and will be organized in order of "B<A-0,A-1,B-0,B-1>". If any side does not exist, the side would simply be ignored. Generally, only one port of a fsp/bap can be connected while another port be used as backup.
 
 =item B<-s>
 
