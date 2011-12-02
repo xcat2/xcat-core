@@ -17,9 +17,19 @@ cmd:psh -i __GETNODEATTR($$CN,mgtifname)__  $$CN 'uptime'
 check:rc==0
 end
 
-start:psh_node_cmd
-cmd:psh $$CN 'pwd' 
+start:psh_node_cmd_linux
+os:Aix
+cmd:psh $$CN 'pwd'
+check:rc==0
+check:output=~$$CN
+check:output=~/
+end
+
+start:psh_node_cmd_aix
+os:Linux
+cmd:psh $$CN 'pwd'
 check:rc==0
 check:output=~$$CN
 check:output=~/root
 end
+
