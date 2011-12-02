@@ -15,16 +15,12 @@ chtab_err_symble
 chtab_err_table
 chtab_h
 chtab_v
-chvm_null
-chvm_node
-chvm_err_node
 copycds_iso
 copycds_n
 copycds_a
 copycds_n_a
 copycds_a_err
 copycds_n_err
-geninitrd_i_n_o_p
 getmacs_noderange
 getmacs_d
 getmacs_f_D
