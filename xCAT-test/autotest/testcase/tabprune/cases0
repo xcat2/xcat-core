@@ -51,11 +51,11 @@ description:tabprune auditlog -V -n 3
 cmd:lsdef -t site
 cmd:lsdef -t site
 cmd:lsdef -t site
-cmd:tabprune auditlog -V -n 3|tee result|wc -l
+cmd:tabprune auditlog -V -n 3|tee /tmp/result.tmp|wc -l
 check:rc=0
 check:output=~4
-cmd:cat result
+cmd:cat /tmp/result.tmp
 check:output=~recid,audittime
-cmd:rm result
+cmd:rm /tmp/result.tmp
 end
 
