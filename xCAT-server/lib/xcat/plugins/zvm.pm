@@ -44,7 +44,7 @@ sub handled_commands {
 		nodeset  => 'noderes:netboot',
 		getmacs  => 'nodehm:getmac,mgt',
 		rnetboot => 'nodehm:mgt',
-		lstree  => 'nodehm:mgt',
+		lshwtree  => 'nodehm:mgt',
 	};
 }
 
@@ -480,7 +480,7 @@ sub process_request {
 	}    # End of case
 	
 	#*** Show nodes hierarchy tree ***
-	elsif ( $command eq "lstree" ) {
+	elsif ( $command eq "lshwtree" ) {
 		listTree( $callback, \@nodes, $args );
 	}    # End of case
 
