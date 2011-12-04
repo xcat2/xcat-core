@@ -616,6 +616,8 @@ sub start_logging
     $::LOG_FILE_HANDLE = \*LOGFILE;
     $::LOG_FILE_NAME   = $logfile;
 
+    # Make the file to be unbuffered
+    binmode( $::LOG_FILE_HANDLE, ":unix" );
     # Print the program name and date to the top of the logfile
     my $sdate = `/bin/date`;
     chomp $sdate;

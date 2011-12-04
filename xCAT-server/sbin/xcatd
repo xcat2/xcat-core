@@ -9,6 +9,13 @@ BEGIN
      # Required when using DB2 as the xCAT database:
      $ENV{'DB2INSTANCE'} = 'xcatdb';
      $ENV{'EXTSHM'} = 'ON';
+
+    if (defined $ENV{ENABLE_TRACE_CODE}) {
+      use lib "$ENV{'XCATROOT'}/lib/perl";
+      use lib "/opt/xcat/lib/perl";
+      use xCAT::Enabletrace qw(loadtrace filter);
+      loadtrace();
+    }
 }
 
 # if AIX - make sure we include perl 5.8.2 in INC path.
@@ -72,7 +79,7 @@ $XML::Simple::PREFERRED_PARSER='XML::Parser';
 use xCAT::Table;
 my $dbmaster;
 use xCAT::ExtTab;
-#use Data::Dumper;
+use Data::Dumper;
 use Getopt::Long;
 use Sys::Syslog qw(:DEFAULT setlogsock);
 openlog("xcatd",,"local4");
@@ -699,6 +706,10 @@ unless ($pid_MON) {
   xexit(0);
 }
 $$progname="xcatd: SSL listener";
+
+# Enable the signals for the subroutine calling trace
+$SIG{NUM50} = \&enable_callingtrace;
+$SIG{NUM51} = \&disable_callingtrace;
 
 #setup signal in NotifHandler so that the cache can be updated
 xCAT::NotifHandler::setup($$, $dbmaster);
@@ -1999,4 +2010,211 @@ sub validate {
    xCAT::MsgUtils->message("S","Request matched no policy rule: peername=$peername, peerhost=$peerhost  ".$request->{command}->[0]);
   return 0;
 }
+
+
+# Enable the trace of subroutine calling. 
+# Replace the original subroutine with a trace added subroutine to output more debug trace
+sub enable_callingtrace{
+  my $enableall = 0;  # if $enableall=1, enable trace for all the functions of xcat
+  my @pluginfuncs = (); # function list that will be enabled for plugins
+  my @xcatdfuncs = (); # function list that will be enabled for xcatd
+
+
+  # Backup the trace log
+  my ($sec,$min,$hour,$mday,$mon,$year) = localtime();
+  $year -= 100;
+  $mon += 1;
+  my $time = sprintf "%02s%02s%02s%02s%02s%02s", $year, $mon, $mday, $hour, $min, $sec;
+  if (-e "/var/log/xcat/subcallingtrace") {
+    system("mv /var/log/xcat/subcallingtrace /var/log/xcat/subcallingtrace$time");
+  }
+  
+  # Start the trace log
+  xCAT::MsgUtils->start_logging("subcallingtrace");
+  
+  # Read the subroutine list from the configuration file
+  if (-f "/tmp/xcatcallingtrace.cfg") {
+    if (! open (FUNLIST, "</tmp/xcatcallingtrace.cfg")) {
+      xCAT::MsgUtils->message("SL", "Enable subroutine calling trace failed: cannot open /tmp/xcatcallingtrace.cfg");
+      xCAT::MsgUtils->stop_logging();
+      return 1;
+    }
+    my $cfg = <FUNLIST>;
+    chomp($cfg);
+    my @funlist;
+    if (-f $cfg) { # Specified a configuration file
+      if (! open (CFG, "<$cfg")) {
+        xCAT::MsgUtils->message("SL", "Enable subroutine calling trace failed: cannot open $cfg");
+        xCAT::MsgUtils->stop_logging();
+        return 1;
+      } else { # read the configuration file
+        while (<CFG>) {
+          push @funlist, $_;
+        }
+        close (CFG);
+      }
+    } else {
+      # Specified the function list
+      # The format of the function list should be package(func1,func2,...),package(func1,func2,...)
+      push @funlist, split /\|/, $cfg;
+    }
+
+    # Parse the function list
+    foreach (@funlist) {
+      if (/(.*::.*)\((.*)\)/) {  # if the format is xCAT::plugin(f1,f2)
+        my $pkg = $1;
+        my @funcs = split /,/, $2;
+        foreach (@funcs) {
+          chomp;
+          s/^\s*//;
+          push @pluginfuncs, "\*".$pkg."::".$_;
+        }
+      } else { # if the format is f1,f2, only for the functions in the xcatd
+        s/^\s*\(//;
+        s/\)\s*$//;
+        my @funcs = split /,/;
+        foreach (@funcs) {
+          chomp;
+          s/^\s*//;
+          push @xcatdfuncs, "\*main::".$_;
+        }
+      }
+    }
+    close (FUNLIST);
+  } else {
+    $enableall = 1;
+  }
+
+  no strict 'refs';
+  
+  my @debugfuns = ();
+  # Get the functions of xcatd
+  my $xcatdpath = $::XCATROOT."/sbin/xcatd";
+  if (! open (XCATDLINES, "<$xcatdpath")) {
+    xCAT::MsgUtils->message("SL", "Enable subroutine calling trace failed: cannot open $xcatdpath");
+  } else {
+    my @sub_in_xcatd;
+    # Get all the name of subroutines except the xxx_callingtrace
+    while (<XCATDLINES>) {
+      if (/^\s*sub\s+([^\s]*)/) {
+        if (! /enable_callingtrace|disable_callingtrace|add_callingtrace/) {
+          push @sub_in_xcatd, $1;
+        }
+      }
+    }
+    close(XCATDLINES);
+    # Get all the symbols from the %main:: space
+    foreach my $fun (keys %main::) {
+      my $symfun = $main::{$fun};
+      if (($symfun =~ /^\*/)  # must be a symbol
+          && *{$symfun}{CODE} # must be a subroutine
+          && grep (/\Q$fun\E/, @sub_in_xcatd) # must be defined in the xcatd
+          && ($enableall || grep (/\Q$symfun\E/, @xcatdfuncs))) { # all or configured in the configuration file
+        push @debugfuns, $symfun;
+      }
+    }
+  }
+  
+  # Get the functions of xCAT plugins
+  foreach my $plugin (\%xCAT::, \%xCAT_plugin::) {
+    # Get the path of the plugins
+    my $path = "";
+    foreach (keys %$plugin) {
+      my $glob = $plugin->{$_};
+      if ($glob =~ /\*([^:]*)::/) {
+        $path = $::XCATROOT."/lib/perl/$1/";
+        last;
+      }
+    }
+    # For each plugin moduel, search the matched functions
+    foreach my $xcatplugin (keys %$plugin) {
+      if ($xcatplugin =~ /[^\*].*::$/) {
+        # get the subroutines in the plugin file
+        my $pluginfile = $xcatplugin;
+        $pluginfile =~ s/:://;
+        # Ignore to enable the trace for the subroutines in the MsgUtils
+        if ($pluginfile eq "MsgUtils") {
+          next;
+        }
+        my $module_file = $path.$pluginfile.".pm";
+        my @sub_in_pm = ();
+        if (-r $module_file) {
+          open (LINES, "<$module_file") or last;
+          while (<LINES>) {
+            if (/^\s*sub\s+([^\s]*)/) {
+              push @sub_in_pm, $1;
+            }
+          }
+          close (LINES);
+        }
+        # Search the symbol from the space of plugin
+        foreach my $fun (keys %{$plugin->{$xcatplugin}}) {
+          my $symfun = $plugin->{$xcatplugin}{$fun};
+          if ($symfun =~ /^\*/   # must be a symbol
+              && *{$symfun}{CODE}  # must be a subroutine
+              && grep (/\Q$fun\E/, @sub_in_pm) # must be defined in the plugin modules
+              && ($enableall || grep (/\Q$symfun\E/, @pluginfuncs))) { # all or configured in the configuration file
+            push @debugfuns, $symfun;
+          }
+        }
+      }
+    }
+  }
+
+  # return a new subroutine with some debug code to output the trace log 
+  # and calling the original subroutine at the last
+  sub add_callingtrace {
+    my ($funname, $orig) = @_;
+    sub {
+      my $args = Dumper(@_);
+      #$args =~ s{\A\$VAR\d+\s*=\s*}{};
+      my $callstack = Carp::longmess;
+
+      # write the trace log to the trace file
+      print $::LOG_FILE_HANDLE "\n***************Calling of subroutine $funname***************\n";
+      print $::LOG_FILE_HANDLE localtime()."\n";
+      print $::LOG_FILE_HANDLE "Arguments: \n$args\n";
+      print $::LOG_FILE_HANDLE "Calling stack: \n       $callstack\n";
+      &$orig;
+    };
+  }
+
+  # Replace the original subroutine with a trace log added one
+  print $::LOG_FILE_HANDLE "##########Enabled the calling trace for: ###########\n";
+  foreach my $debugfun (@debugfuns) {
+    print $::LOG_FILE_HANDLE "    $debugfun\n";
+    if (defined ($::DEBUG_FUN{"$debugfun"}{'debug'})) {
+      # if the trace added subroutine has been defined
+      *{"$debugfun"} = $::DEBUG_FUN{"$debugfun"}{'debug'};
+      #print "  => $::DEBUG_FUN{$debugfun}{debug}\n";
+    } else {
+      my $oldfun = *{$debugfun}{CODE};
+      # Bakcup the original subroutine 
+      $::DEBUG_FUN{"$debugfun"}{'orig'} = $oldfun;
+      #print "$debugfun".":  $::DEBUG_FUN{$debugfun}{orig}";
+      # otherise creating a trace added subroutine from scratch
+      *{"$debugfun"} = add_callingtrace($debugfun, $oldfun);
+      $::DEBUG_FUN{"$debugfun"}{'debug'} = *{"$debugfun"}{CODE};
+      #print "  => $::DEBUG_FUN{$debugfun}{debug}\n";
+    }
+  }
+  print $::LOG_FILE_HANDLE "####################################################\n";
+}
+
+# Go through all the trace log added subroutines, replace it with the original one
+sub disable_callingtrace {
+  no strict 'refs';
+  print $::LOG_FILE_HANDLE "##########Disabled the calling trace for: ##########\n" if ($::LOG_FILE_HANDLE);
+  foreach my $glob (keys %::DEBUG_FUN) {
+    if (defined $::DEBUG_FUN{$glob}{'orig'}) {
+      *{"$glob"} = $::DEBUG_FUN{$glob}{'orig'};
+      print $::LOG_FILE_HANDLE "$glob\n";
+      #print "$glob".":  => $::DEBUG_FUN{$glob}{orig}\n";
+    }
+  }
+  print $::LOG_FILE_HANDLE "####################################################\n" if ($::LOG_FILE_HANDLE);
+  xCAT::MsgUtils->stop_logging();
+}
+
+
 

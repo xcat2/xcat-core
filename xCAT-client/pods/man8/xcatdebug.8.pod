@@ -1,48 +1,152 @@
 =head1 NAME
 
-B<xcatdebug> - Starts the xCAT daemon (xcatd) in trace mode.
+B<xcatdebug> - Enable or disable the trace facilities for xCAT.
 
-B<xcatdebug> {B<levelnumber>}
+B<xcatdebug> { [B<-f enable|disable> [B<-c configuration file | subroutine list>]] | [ B<-d enable |disable>]}
 
 =head1 DESCRIPTION
 
-The xcatdebug command starts the xcatd daemon in Perl Debug Trace mode. It is to be used for diagnosing xCAT problems. The trace outputs the paramters passed into the xcatd subroutines, listed in the tracefiles. The tracefiles are located in /opt/xcat/share/xcat/tools/tracelevel<levelnumber>.  The amount of trace data collected varies with the levelnumber. levelnumber 0 being the least amount of trace and increasing with the number. You can add more tracelevel files to suit the problem being debugged.
+xCAT offers two trace facilities to debug the xCAT:
 
-You must have perl-Debug-Trace installed. 
+=over 3
 
-Before running this command, you should stop xcatd on your system.
-After running the command, you will have to kill all the xcatd processes and possibly the xcatdebug process.
-Run ps -ef | grep xcatd and kill any processes
-Run ps -ef | grep xcatdebug
+=item *
+
+B<Subroutine calling trace>
+
+Display the calling trace for subroutine when it is called. 
+
+The trace message includes: The name of the called subroutine; The arguments which passed to the called subroutine; The calling stack of the subroutine. By default, the trace will be enabled to all the subroutines in the xcatd and plugin modules. The target subroutine can be configured by configuration file or through xcatdebug command line.
+
+The flag B<-c> is used to specify the subroutine list for B<subroutine calling trace>, it can only work with B<-f>. The value of B<-c> can be a configuration file or a subroutine list.
+  B<configuration file>: a file contains multiple lines of B<SUBROUTINE_DEFINITION>
+  B<subroutine list>:    B<SUBROUTINE_DEFINITION>|B<SUBROUTINE_DEFINITION>|...
+
+B<SUBROUTINE_DEFINITION>: is the element for the B<-c> to specify the subroutine list.
+
+The format of B<SUBROUTINE_DEFINITION>: [plugin](subroutine1,subroutine2,...)
+
+If ignoring the [plugin], the subroutines in the () should be defined in the xcatd.
+    e.g. (daemonize,do_installm_service,do_udp_service)
+
+Otherwise, the package name of the plugin should be specified.
+    e.g. xCAT::Utils(isMN,Version)
+    e.g. xCAT_plugin::DBobjectdefs(defls,process_request)
+
+The trace log will be written to /var/log/xcat/subcallingtrace. The log file subcallingtrace will be backed up for each running of the B<xcatdebug -f enable>.
+
+
+=item *
+
+B<Commented trace log>
+
+The trace log code is presented as comments in the code of xCAT. In general mode, it will be kept as comments. But in debug mode, it will be commented back as common code to display the trace log.
+
+NOTE: This facility can be enabled by pass the B<ENABLE_TRACE_CODE=1> global variable when running the xcatd. e.g. ENABLE_TRACE_CODE=1 xcatd -f
+
+This facility offers two formats for the trace log code:
+
+=over 2
+
+=item *
+
+Trace section
+    ## TRACE_BEGIN
+    # print "In the debug\n";
+    ## TRACE_END
+
+=item *
+
+Trace in a single line
+    ## TRACE_LINE print "In the trace line\n";
+
+=back
+
+The B<commented trace log> can be added in xcatd and plugin modules. But following section has been added into the BEGIN {} section of the target plugin module to enable the facility.
+
+   if (defined $ENV{ENABLE_TRACE_CODE}) {
+     use xCAT::Enabletrace qw(loadtrace filter);
+     loadtrace();
+   }
+
+=back
 
 
 =head1 OPTIONS
 
 =over 6
 
-=item B<levelnumber>
+=item B<-f>
 
-The levelnumber that will be run. This determines the filename of trace input
- from /opt/xcat/share/xcat/tools/tracelevel<levelnumber>
+Enable or disable the B<subroutine calling trace>. 
 
-=back
+For B<enable>, if ignoring the B<-c> flag, all the subroutines in the xcatd and plugin modules will be enabled.
 
-=head1 ENVIRONMENT VARIABLES
+For B<disable>, all the subroutines which has been enabled by B<-f enable> will be disabled. B<-c> will be ignored.
 
-=head1 EXAMPLES
+=item B<-c>
+
+Specify the configuration file or subroutine list.
 
 =over 2
 
 =item *
 
-Run the xcatdebug routine with /opt/xcat/share/xcat/tools/tracelevel0 and output to the screen:
+B<configuration file>: a file contains multiple lines of B<SUBROUTINE_DEFINITION>
+  e.g.
+    (plugin_command)
+    xCAT_plugin::DBobjectdefs(defls,process_request)
+    xCAT::DBobjUtils(getobjdefs)
 
-B<xcatdebug>  I<0>
+=item *  
+B<subroutine list>: a string like  B<SUBROUTINE_DEFINITION>|B<SUBROUTINE_DEFINITION>|...
+  e.g.
+    "(plugin_command)|xCAT_plugin::DBobjectdefs(defls,process_request)|xCAT::DBobjUtils(getobjdefs)"
 
-=item *
+=back
 
-Run the xcatdebug routine with /opt/xcat/share/xcat/tools/tracelevel1 and output to /tmp/traceoutput:
+=item B<-d>
 
-B<xcatdebug>  I<1> > /tmp/traceoutput 2>&1
+Enable or disable the B<commented trace log>.
+
+Note: The xcatd will be restarted for the performing of B<-d>. 
+
+=back
+
+
+=head1 EXAMPLES
+
+=over 4
+
+=item 1
+
+Enable the B<subroutine calling trace> for all the subroutines in the xcatd and plugin modules.
+  B<xcatdebug> -f enable
+
+=item 2
+
+Enable the B<subroutine calling trace> for the subroutines configured in the /opt/xcat/share/xcat/tools/tracelevel0
+  B<xcatdebug> -f enable -c /opt/xcat/share/xcat/tools/tracelevel0
+
+=item 3
+
+Enable the B<subroutine calling trace> for the plugin_command in xcatd and defls,process_request in the xCAT_plugin::DBobjectdefs module.
+  B<xcatdebug> -f enable -c "xCAT_plugin::DBobjectdefs(defls,process_request)|(plugin_command)"
+
+=item 4
+
+Disable the B<subroutine calling trace> for all the subroutines which have been enabled by B<xcatdebug -f enable>.
+  B<xcatdebug> -f disable
+
+=item 5
+
+Enable the B<commented trace log>
+  B<xcatdebug> -d enable
+
+=item 6
+
+Enable both the B<subroutine calling trace> and B<commented trace log>
+  B<xcatdebug> -f enable -c /opt/xcat/share/xcat/tools/tracelevel0 -d enable
+
 
 =back
