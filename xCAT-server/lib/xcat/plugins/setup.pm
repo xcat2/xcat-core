@@ -1156,9 +1156,11 @@ sub writelpar {
 	#my $cecsperbb = $STANZAS{'xcat-building-blocks'}->{'num-cecs-per-bb'};
 	#if ($cecsperbb !~ /^\d+$/) { errormsg("invalid non-integer value for num-cecs-per-bb: $cecsperbb", 7); return 0; }
 	for (my $b=1; $b<=$numbbs; $b++) {
-		my $framebase = ($b-1) * $framesperbb + 1;
-		findSNsinBB('service', $b, $framebase, $rangeparts, \%servicenodes, \%lpars) or return 0;
-		findSNsinBB('storage', $b, $framebase, $rangeparts, \%storagenodes) or return 0;
+		#my $framebase = ($b-1) * $framesperbb + 1;
+		#findSNsinBB('service', $b, $framebase, $rangeparts, \%servicenodes, \%lpars) or return 0;
+		#findSNsinBB('storage', $b, $framebase, $rangeparts, \%storagenodes) or return 0;
+            findSNsinBB('service', $b, $rangeparts, \%servicenodes, \%lpars) or return 0;
+            findSNsinBB('storage', $b, $rangeparts, \%storagenodes) or return 0;
 	}
 	if (scalar(keys(%servicenodes))) {
 		$tables{'nodelist'}->setNodesAttribs(\%servicenodes);
@@ -1181,7 +1183,8 @@ sub writelpar {
 # Find either service nodes or storage nodes in a BB.  Adds the nodenames of the lpars to the snodes hash,
 # and defines the groups in the hash, and assigns the other lpars to the correct service node.
 sub findSNsinBB {
-	my ($sntext, $bb, $framebase, $rangeparts, $snodes, $lpars) = @_;
+	#my ($sntext, $bb, $framebase, $rangeparts, $snodes, $lpars) = @_;
+        my ($sntext, $bb, $rangeparts, $snodes, $lpars) = @_;
 	my $primbase = $$rangeparts{'primary-base'};
 	my $primlen = length($$rangeparts{'primary-start'});
 	my $secbase = $$rangeparts{'secondary-base'};
@@ -1197,9 +1200,15 @@ sub findSNsinBB {
 	if (scalar(@snpositions) != $snsperbb) { errormsg("invalid number of positions specified for xcat-$sntext-nodes:cec-positions-in-bb.", 3); return 0; }
 	my $cecsperframe = $STANZAS{'xcat-cecs'}->{'num-cecs-per-frame'};	# they may have specified this instead of a supernode-list, which would fill in NUMCECSINFRAME
 	my @snsinbb;
+        my $framerange = $STANZAS{'xcat-frames'}->{'hostname-range'};
+        my $framename = parsenoderange($framerange);
+	my $framebase = $$framename{'primary-start'};
 	foreach my $p (@snpositions) {
 		my $cecbase = 0;
-		my $frame = $framebase;
+        my $framehash = parsenoderange($STANZAS{'xcat-frames'});
+        my $frame1 = $$framehash{'primary-start'};
+        my $frame = $frame1;
+		#my $frame = $framebase;
 		while ($p > ($cecbase + ($NUMCECSINFRAME{$frame}||$cecsperframe))) {
 			# p is not in this frame, go on to the next
 			$cecbase += $NUMCECSINFRAME{$frame} || $cecsperframe;
