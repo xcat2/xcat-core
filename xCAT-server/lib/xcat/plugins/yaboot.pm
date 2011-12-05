@@ -392,6 +392,10 @@ sub process_request {
    foreach (@rnodes) {
      if (xCAT::Utils->nodeonmynet($_)) {
         push @nodes,$_;
+     } else {
+        my $rsp;
+        $rsp->{data}->[0]="$_: stop configuration because of none sharedtftp and not on same network with its xcatmaster";
+        $callback->($rsp);
      }
    }
   } else {
