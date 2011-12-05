@@ -1118,7 +1118,7 @@ sub writelpar {
 	my %ppchash;
 	my %nodeposhash;
     #$ppchash{id} = '|^\D+\d+\D+\d+\D+(\d+)\D*$|(($1-1)*4+1)|';              #todo: this is p7 ih specific
-    $ppchash{id} = '|^\D+\d+\D+\d+\D+(\d+)\D*$|($1+0)|';   
+    #$ppchash{id} = '|^\D+\d+\D+\d+\D+(\d+)\D*$|($1+0)|';   
 	# convert between the lpar name and the cec name.  Assume that numbers are the same, but the base can be different
     my $regex = '|^\D+(\d+)\D+(\d+)\D+\d+\D*$|' . "$cecprimbase" . '($1)' . "$cecsecbase" .'($2)' . $cecattach . '|';
 	$ppchash{hcp} = $regex;
@@ -1126,6 +1126,20 @@ sub writelpar {
 	$ppchash{nodetype} = 'lpar';
 	#print Dumper($CECPOSITIONS);
 	$tables{'ppc'}->setNodeAttribs('lpar', \%ppchash);
+    #adjust the node id for the p7ih node
+    my $numpercec = $STANZAS{'xcat-lpars'}->{'num-lpars-per-cec'};
+    unless ($numpercec) {
+        errormsg("Please specify num-lpars-cec", 5);
+        return 1;
+    }
+    my %idhash;
+    my $j = 0;
+    foreach my $nn (@$nodes) {
+        my $id = ($j % $numpercec) * 4 + 1;
+        $j++;
+        $idhash{$nn}->{id} = $id; 
+    }
+	$tables{'ppc'}->setNodesAttribs(\%idhash);
 	
 	#todo: for now, let the nodepos attrs for the cec be good enough
 	#$nodeposhash{rack} = {rack => $CECPOSITIONS->{$cecname}->[0]->{rack}, u => $CECPOSITIONS->{$cecname}->[0]->{u}};
