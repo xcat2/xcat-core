@@ -2049,6 +2049,11 @@ sub cloneVM {
 		$type       = $words[2];
 		$srcMultiPw = $words[9];
 
+		# Add 0 in front if address length is less than 4
+		while (length($addr) < 4) {
+			$addr = '0' . $addr;
+		}
+		
 		# Get disk type
 		$srcDiskType{$addr} = $type;
 
@@ -2547,6 +2552,11 @@ sub clone {
 		$type       = $words[2];
 		$mode       = $words[6];
 		$srcMultiPw = $words[9];
+		
+		# Add 0 in front if address length is less than 4
+		while (length($addr) < 4) {
+			$addr = '0' . $addr;
+		}
 
 		# Add ECKD disk
 		if ( $type eq '3390' ) {
@@ -2673,7 +2683,12 @@ sub clone {
 		#*** Link target disk ***
 		$try = 10;
 		while ( $try > 0 ) {
-
+			
+			# Add 0 in front if address length is less than 4
+			while (length($_) < 4) {
+				$_ = '0' . $_;
+			}
+			
 			# New disk address
 			$srcAddr = $srcLinkAddr{$_};
 			$tgtAddr = $_ + 2000;
@@ -2722,6 +2737,7 @@ sub clone {
 		
 		#*** Use flashcopy ***
 		# Flashcopy only supports ECKD volumes
+		my $ddCopy = 0;
 		$out = `ssh $hcp "vmcp flashcopy"`;
 		if ( ($out =~ m/HCPNFC026E/i) && ($tgtDiskType eq '3390')) {
 
@@ -2757,12 +2773,8 @@ sub clone {
 				if ( $rc == -1 ) {
 					xCAT::zvmUtils->printLn( $callback, "$tgtNode: $out" );
 
-					# Detatch disks from HCP
-					$out = `ssh $hcp "vmcp det $tgtAddr"`;
-
-					# Remove lock
-					$out = `ssh $hcp "rm -f /tmp/.flashcopy_lock"`;
-					return;
+					# Try Linux dd
+					$ddCopy = 1;
 				}
 
 				# Wait a while for flashcopy to completely finish
@@ -2771,13 +2783,15 @@ sub clone {
 				# Remove lock
 				$out = `ssh $hcp "rm -f /tmp/.flashcopy_lock"`;
 			}
+		} else {
+			$ddCopy = 1;
 		}
-		else {
-
-			# Flashcopy not supported
+		
+		# Flashcopy not supported, use Linux dd
+		if ($ddCopy) {			
 
 			#*** Use Linux dd to copy ***
-			xCAT::zvmUtils->printLn( $callback, "$tgtNode: FLASHCOPY not supported.  Using Linux DD" );
+			xCAT::zvmUtils->printLn( $callback, "$tgtNode: FLASHCOPY not working.  Using Linux DD" );
 
 			# Enable target disk
 			$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", $tgtAddr );
