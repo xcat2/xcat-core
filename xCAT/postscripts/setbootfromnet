@@ -52,7 +52,7 @@ if [ ! -z $NODE_NAME ]; then
    else ## for AIX
       CLIENT_IP=`ping -c 3 $NODE_NAME | grep "icmp_seq" | sed 's/.*from \([0-9.]*\):.*/\1/' | uniq 2>&1`
       RET=`echo $?`
-      NIC=`netstat -rni | grep  "$CLIENT_IP" | awk '{print $1}' | sed 's/en/ent/g' | uniq 2>&1`
+      NIC=`netstat -rni | grep  "$CLIENT_IP" | awk '{print $1}' | sed 's/en/ent/g;s/hf/hfi/g' | uniq 2>&1`
       NRET=`echo $?`
    fi
 else
