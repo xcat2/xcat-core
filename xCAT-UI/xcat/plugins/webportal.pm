@@ -176,11 +176,17 @@ sub provzlinux {
 
 	# Create VM
 	# e.g. webportal provzlinux [group] [hcp] [image]
-	my ($node, $base_digit) = gennodename( $callback, $group );
+	my ($node, $ip, $base_digit) = gennodename( $callback, $group );
+	if (!$base_digit) {
+		println( $callback, "(Error) Failed to generate node name" );
+		return;
+	}
+	
 	my $userid = 'XCAT' . $base_digit;
 
 	# Set node definitions
-	$out = `mkdef -t node -o $node userid=$userid hcp=$hcp mgt=zvm groups=$group`;
+	# Also put node into all group
+	$out = `mkdef -t node -o $node userid=$userid hcp=$hcp mgt=zvm groups=$group,all`;
 	println( $callback, "$out" );
 
 	# Set nodetype definitions
@@ -341,9 +347,17 @@ sub gennodename {
 	# Generate node name based on given group
 	my ( $callback, $group ) = @_;
 
+	my $hostname_regex;
+	my $ipaddr_regex;
+	
 	my $base_digit = 0;
 	my $base_hostname;
+	my $base_ipaddr;
+	
 	my $hostname;
+	my $ipaddr;
+	my $tmp;
+	
 	my @args;
 
 	# Get regular expression for hostname in 'hosts' table
@@ -351,16 +365,27 @@ sub gennodename {
 	my @results = $tab->getAllAttribsWhere( "node='" . $group . "'", 'ip' );
 	foreach (@results) {
 
-		# It should return: |gpok(\d+)|10.1.100.($1+0)|
+		# It should return: |gpok(\d+)|10.1.100.($1+0)|		
 		@args = split( /\|/, $_->{'ip'} );
-		$base_hostname = $args[1];
+		$hostname_regex = $args[1];
+		$ipaddr_regex = $args[2];
+		
+		$base_hostname = $args[1];		
+		$base_hostname =~ s/\(\S*\)/#/g;
+		
+		# Get the 10.1.100.
+		$base_ipaddr = $args[2];
+		$base_ipaddr =~ s/\(\S*\)//g;
+		
+		# Get the ($1+0)
+		$ipaddr_regex =~ s/$base_ipaddr//g;
 	}
-
+	
 	# Are there nodes in this group already?
 	my $out = `nodels $group`;
 	@args = split( /\n/, $out );
 	foreach (@args) {
-		$_ =~ s/$base_hostname/$1/g;
+		$_ =~ s/$hostname_regex/$1/g;
 
 		# Take the greatest digit
 		if ( int($_) > $base_digit ) {
@@ -373,17 +398,37 @@ sub gennodename {
 	
 	# Generate hostname
 	$hostname = $base_hostname;
-	$base_hostname =  substr( $hostname, 0, index( $hostname, '(\d+)' ) );
-	$hostname = substr( $hostname, 0, index( $hostname, '(\d+)' ) ) . $base_digit;
-	 
-	# Check if hostname is already used
-	while (`nodels $hostname`) {		
+	$hostname =~ s/#/$base_digit/g;
+	
+	# Generate IP address
+	$ipaddr = $hostname;
+	$ipaddr =~ s/$hostname_regex/$ipaddr_regex/gee;
+	$ipaddr = $base_ipaddr . $ipaddr;
+	
+	# Check xCAT tables, /etc/hosts, and ping to see if hostname is already used
+	while (`nodels $hostname` || `cat /etc/hosts | grep "$ipaddr "` || !(`ping -c 4 $ipaddr` =~ m/Destination Host Unreachable/)) {		
+		# Base digit invalid if over 254
+		if ($base_digit > 254) {
+			last;
+		}
+		
 		# +1 to base digit to obtain next hostname
 		$base_digit = $base_digit + 1;
-		$hostname = $base_hostname . $base_digit;
+		
+		$hostname = $base_hostname;
+		$hostname =~ s/#/$base_digit/g;
+		
+		$ipaddr = $hostname;
+		$ipaddr =~ s/$hostname_regex/$ipaddr_regex/gee;
+		$ipaddr = $base_ipaddr . $ipaddr;
 	}
-	 
-	return ($hostname, $base_digit);
+		
+	# Range must be between 1-255
+	if ($base_digit > 254) {
+		return;
+	} else {
+		return ($hostname, $ipaddr, $base_digit);
+	}	
 }
 
 sub clonezlinux {
@@ -477,8 +522,8 @@ sub genhostip {
 	my ( $request, $callback, $sub_req ) = @_;
 	my $group = $request->{arg}->[1];
 	
-	my ($node, $base_digit) = gennodename( $callback, $group );
-	println( $callback, "$node" );
+	my ($node, $ip, $base_digit) = gennodename( $callback, $group );
+	println( $callback, "$node: $ip" );
 }
 
 sub getmaxvm {
