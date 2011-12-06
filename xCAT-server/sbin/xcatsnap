@@ -179,7 +179,7 @@ sub snap_it {
     if ( $OSname eq "AIX" ) {
         
         @files_array = (
-            "/etc/xcat/*",               "$INSTALLDIR/autoinst/*",
+            "/etc/xcat/*","$::ROOTHOME/.xcat/*", "$INSTALLDIR/autoinst/*",
             "$INSTALLDIR/postscripts/*", "$INSTALLDIR/prescripts/*",
             "/tftpboot/*",               "/var/log/consoles/*",
             "/tmp/spot.out.*",           "/var/lib/dhcpd/dhcpd.leases",
@@ -192,7 +192,7 @@ sub snap_it {
     elsif ( $OSname eq "Linux" ) {
         
         @files_array = (
-            "/etc/xcat/*",                 "$INSTALLDIR/autoinst/*",
+            "/etc/xcat/*","$::ROOTHOME/.xcat/*", "$INSTALLDIR/autoinst/*",
             "$INSTALLDIR/postscripts/*",   "$INSTALLDIR/prescripts/*",
             "/tftpboot/*",                 "/var/log/consoles/*",
             "/etc/*-release",              "/etc/dhcpd.conf",
@@ -284,7 +284,25 @@ sub snap_it {
     }
     `rm /tftpboot/tftpboot.list`;  # remove temp list
 }    
+##################### getHomeDirectory ###########################
+#  input userid output homedir
+#####################################################################
+sub getHomeDir
+{
+  my @user;
+  my $homedir;
+  @user = getpwuid($>);
+  my $username=$user[0];
 
+  if ($user[7]) { #  if homedir
+      $homedir= $user[7];
+  } else { # no home
+      $homedir=`su - $username -c  pwd`;
+      chop $homedir;
+  }
+  return $homedir;
+
+}
 ############################# Main Section ####################################
 
 my $userid = `id -ru`;    #Checking if the user is root
@@ -360,6 +378,7 @@ open( STDOUT, "| tee  $LogFile" );
 print "Time Stamp:" . `date`;
 print "Log Directory: $logDirectory \n";
 print "Preparation Complete...\n";
+$::ROOTHOME = &getHomeDir();
 snap_it(); # Calling the main function that gathers files,command output and MN database
 print "Compiling Information...\n";
 `cd $logDirectory;tar -uf $TarFile "./commands_output" 2>/dev/null`;
