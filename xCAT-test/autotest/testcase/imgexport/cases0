@@ -1,0 +1,62 @@
+start:imagexport_imagename_destination
+os:Linux
+description:imgexport __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute foo.tgz
+cmd:copycds $$ISO
+cmd:$$NETBOOTDIR/genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+check:rc==0
+cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
+check:rc==0
+cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__ 
+check:rc==0
+cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.gz
+check:rc==0
+cmd:imgexport __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute foo.tgz
+check:rc==0
+check:output=~Done!
+cmd:ls foo.tgz
+check:rc==0
+cmd:rm -rf foo.tgz
+end
+
+start:imgexport_imagename_destination_p_e
+os:Linux
+description:imgexport __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute foo.tgz -p $$CN -e /install/postscripts/testscript1
+cmd:copycds $$ISO
+cmd:$$NETBOOTDIR/genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+check:rc==0
+cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
+check:rc==0
+cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__
+check:rc==0
+cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.gz
+check:rc==0
+cmd:echo testscrpit >> /install/postscripts/testscript1
+cmd:imgexport __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute foo.tgz -p $$CN -e /install/postscripts/testscript1
+check:rc==0
+check:output=~Done!
+cmd:ls foo.tgz
+check:rc==0
+cmd:rm -rf foo.tgz
+cmd:rm -rf /install/postscripts/testscript1
+end
+
+
+
+
+start:imgexport_h
+os:Linux
+description:
+cmd:imgexport -h
+check:output=~Usage|usage
+cmd:imgexport --help
+check:output=~Usage|usage
+end
+
+
+start:imgexport_v
+os:Linux
+cmd:imgexport -v
+check:output=~version|Version
+cmd:imgexport --version
+check:output=~version|Version
+edn
