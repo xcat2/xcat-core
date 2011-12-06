@@ -737,10 +737,10 @@ sub preprocess_request
             my $ntable = xCAT::Table->new('nodetype');
             if ($ntable) {
                 my $mytype = $ntable->getNodeAttribs($n,['nodetype']);
-			    if ($mytype =~ /osi/) {
+			    if ($mytype->{nodetype} =~ /osi/) {
 				$Imsg++;
 			    }
-			    unless ($mytype =~ /osi/) {
+			    unless ($mytype->{nodetype} =~ /osi/) {
 				    push @tmplist, $n;
 			    }
             }
@@ -787,20 +787,23 @@ sub preprocess_request
 	    }
 	}
     } else { #send the request to every dhservers
-	@requests = ({%$req});    #Start with a straight copy to reflect local instance
-	unless ($localonly) {
-	    my @sn = xCAT::Utils->getSNList('dhcpserver');
-	    if (@sn > 0) { $hasHierarchy=1; }
+        if (@nodes > 0) {
+            $req->{'node'}=\@nodes;
+       	    @requests = ({%$req});    #Start with a straight copy to reflect local instance
+	    unless ($localonly) {
+	        my @sn = xCAT::Utils->getSNList('dhcpserver');
+	        if (@sn > 0) { $hasHierarchy=1; }
 
-	    foreach my $s (@sn)
-	    {
-		if (scalar @nodes == 1 and $nodes[0] eq $s) { next; }
-		my $reqcopy = {%$req};
-		$reqcopy->{'_xcatdest'} = $s;
-		$reqcopy->{_xcatpreprocessed}->[0] = 1;
-		push @requests, $reqcopy;
+	        foreach my $s (@sn)
+	        {
+		    if (scalar @nodes == 1 and $nodes[0] eq $s) { next; }
+		    my $reqcopy = {%$req};
+		    $reqcopy->{'_xcatdest'} = $s;
+		    $reqcopy->{_xcatpreprocessed}->[0] = 1;
+		    push @requests, $reqcopy;
+	        }
 	    }
-	}
+        }
     }
 
     if ( $hasHierarchy)
@@ -1240,7 +1243,7 @@ sub process_request
                         my $ntype = $ntable->getNodeAttribs($n,['nodetype']);
 
 					    # don't add if it is type "osi"
-					    unless ($ntype =~ /osi/) {
+					    unless ($ntype->{nodetype} =~ /osi/) {
 						push @tmplist, $n;
 					    }
                     }    
