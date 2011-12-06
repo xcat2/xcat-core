@@ -31,7 +31,7 @@ cmd:nodeset $$CN netboot
 check:rc==0
 cmd:rnetboot $$CN
 check:rc==0
-cmd:sleep 600
+cmd:sleep 300 
 cmd:lsdef -l $$CN | grep status
 check:output=~booted
 cmd:xdsh $$CN date
