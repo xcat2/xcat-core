@@ -1,0 +1,98 @@
+start:imgimport_h
+os:Linux
+description:imgimport -h and --help
+cmd:imgimport -h
+check:output=~usage|Usage
+cmd:imgimport --help
+check:output=~usage|Usage
+end
+
+
+start:imgimport_v
+os:Linux
+description:imgimport -v and --version
+cmd:imgimport -v
+check:output=~version|Version
+cmd:imgimport --version
+check:output=~version|Version
+end
+
+
+start:imgimport_bundlefile
+os:Linux
+description:imgimport foo.tgz
+cmd:copycds $$ISO
+cmd:$$NETBOOTDIR/genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+check:rc==0
+cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
+check:rc==0
+cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__
+check:rc==0
+cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.gz
+check:rc==0
+cmd:imgexport __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute foo.tgz
+check:rc==0
+check:output=~Done!
+cmd:ls foo.tgz
+check:rc==0
+cmd:imgimport foo.tgz
+check:rc==0
+check:output=~Successfully imported the image.
+cmd:rm -rf foo.tgz
+end
+
+
+start:imgimport_bundlefile_p
+os:Linux
+description:imgimport foo.tgz -p $$CN
+cmd:copycds $$ISO
+cmd:$$NETBOOTDIR/genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+check:rc==0
+cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
+check:rc==0
+cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__
+check:rc==0
+cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.gz
+check:rc==0
+cmd:imgexport __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute foo.tgz 
+check:rc==0
+check:output=~Done!
+cmd:ls foo.tgz
+check:rc==0
+cmd:imgimport foo.tgz -p $$CN
+check:rc==0
+check:output=~Successfully imported the image.
+cmd:rm -rf foo.tgz
+end
+
+
+start:imgimport_bundlefile_f
+os:Linux
+description:imgimport foo.tgz -f compute_test
+cmd:copycds $$ISO
+cmd:$$NETBOOTDIR/genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+check:rc==0
+cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
+check:rc==0
+cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__
+check:rc==0
+cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.gz
+check:rc==0
+cmd:imgexport __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute foo.tgz
+check:rc==0
+check:output=~Done!
+cmd:ls foo.tgz
+check:rc==0
+cmd:imgimport foo.tgz -f compute_test 
+check:rc==0
+check:output=~Successfully imported the image.
+cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute_test
+check:rc==0
+cmd:ls /install/custom/netboot/rh/compute_test.*
+check:rc==0
+cmd:rm -rf foo.tgz
+cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute_test
+cmd:rm -rf /install/custom/netboot/rh/compute_test.*
+end
+
+
