@@ -347,6 +347,12 @@ sub gennodename {
 	# Generate node name based on given group
 	my ( $callback, $group ) = @_;
 
+	# Only use the 1st group
+	if ($group =~ m/,/) {
+		my @groups = split(',', $group);
+		$group = @groups[0];
+	}	
+	
 	my $hostname_regex;
 	my $ipaddr_regex;
 	
@@ -438,7 +444,7 @@ sub clonezlinux {
 	my $src_node = $request->{arg}->[1];
 	my $group = $request->{arg}->[2];
 	my $owner = $request->{arg}->[3];
-	
+
 	# Get source node's HCP
 	my $props = xCAT::zvmUtils->getNodeProps( 'zvm', $src_node, ('hcp') );
 	my $hcp = $props->{'hcp'};
@@ -482,9 +488,9 @@ sub clonezlinux {
 		
 	# Create VM
 	# e.g. webportal provzlinux [group] [hcp] [image]
-	my ($node, $base_digit) = gennodename( $callback, $group );
+	my ($node, $ip, $base_digit) = gennodename( $callback, $group );
 	my $userid = 'XCAT' . $base_digit;
-	
+		
 	# Set node definitions
 	$out = `mkdef -t node -o $node userid=$userid hcp=$hcp mgt=zvm groups=$group`;
 	println( $callback, "$out" );
