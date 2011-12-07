@@ -682,6 +682,11 @@ table a:hover {
 	margin: 0px 0px 15px 0px;
 }
 
+.monitorzoomlink{
+	cursor: pointer;
+	color : blue;
+}
+
 .provision div,.monitor div {
 	margin: 10px 0;
 	display: block;
