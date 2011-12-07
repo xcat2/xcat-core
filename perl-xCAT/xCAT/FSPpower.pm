@@ -175,7 +175,7 @@ sub powercmd {
     my $lpar_flag = 0;
     my $cec_flag = 0;
     my $frame_flag = 0;
-    
+
     #print "++++in powercmd++++\n";   
     #print Dumper($hash);
     
@@ -198,7 +198,7 @@ sub powercmd {
 																						      
     foreach $node_name ( keys %$hash)
     {
-	$action  =  $request->{'op'};
+	    $action  =  $request->{'op'};
         my $d = $hash->{$node_name};
 	if ($$d[4] =~ /^lpar$/) {
 	    if( !($action =~ /^(on|off|of|reset|sms)$/)) {
@@ -227,7 +227,9 @@ sub powercmd {
 	         $action = "enter_rack_standby";
 	     } elsif ( $action=~/^exit_rackstandby$/) {
 	         $action = "exit_rack_standby";
-	     } else {
+         } elsif ($action =~ /^resetsp$/) {
+             $action = "reboot_service_processor";
+         } else {
 	         push @output, [$node_name, "$node_name\'s type isn't fsp or lpar. Not allow doing this operation", -1 ];
 		 #return (\@output);
                  next;
@@ -239,19 +241,19 @@ sub powercmd {
         }		
 
 	if( $lpar_flag && $cec_flag) {
-	    push @output, [$node_name," $node_name\'s type is different from the last name. The noderange of power control operation could NOT be lpar/cec mixed" , -1 ];
+	    push @output, [$node_name," $node_name\'s type is different from the last node. The noderange of power control operation could NOT be lpar/cec mixed" , -1 ];
 	    return (\@output);
 	    
 	}
 
 	if( $lpar_flag && $frame_flag) {
-	    push @output, [$node_name," $node_name\'s type is different from the last name. The noderange of power control operation could NOT be lpar/frame mixed" , -1 ];
+	    push @output, [$node_name," $node_name\'s type is different from the last node. The noderange of power control operation could NOT be lpar/frame mixed" , -1 ];
 	    return (\@output);
 	    
 	}
 
 	if( $cec_flag && $frame_flag) {
-	    push @output, [$node_name," $node_name\'s type is different from the last name. The noderange of power control operation could NOT be cec/frame mixed" , -1 ];
+	    push @output, [$node_name," $node_name\'s type is different from the last node. The noderange of power control operation could NOT be cec/frame mixed" , -1 ];
 	    return (\@output);
 	    
 	}
@@ -261,8 +263,8 @@ sub powercmd {
     $$newd[0] = $newids;
    
     #print Dumper($newd);
-    
-    my $res = xCAT::FSPUtils::fsp_api_action($newnames, $newd, $action );
+
+    my $res = xCAT::FSPUtils::fsp_api_action($newnames, $newd, $action, 0, $request->{'powerinterval'} );
     #    print "In boot, state\n";
     #    print Dumper($res);
     my $Rc = @$res[2];
