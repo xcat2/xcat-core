@@ -1,0 +1,58 @@
+start:packimage_o_p_a_m
+os:Linux
+description:
+cmd:copycds $$ISO
+cmd:genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+check:rc==0
+cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
+check:rc==0
+cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__ -m cpio
+check:rc==0
+cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.gz
+check:rc==0
+end
+
+start:packimage_p_a_o
+os:Linux
+cmd:genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+check:rc==0
+cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
+check:rc==0
+cmd:packimage -p compute -a __GETNODEATTR($$CN,arch)__ -o __GETNODEATTR($$CN,os)__
+check:rc==0
+cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.gz
+check:rc==0
+end
+
+
+
+start:packimage_imagename
+os:Linux
+description:
+cmd:genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+check:rc==0
+cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
+check:rc==0
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.gz
+check:rc==0
+cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.gz
+end
+
+
+start:packimage_h
+os:Linux
+description:packimage -h
+cmd:packimage -h
+check:rc==0
+end
+
+
+start:packimage_v
+os:Linux
+description:packimage -v
+cmd:packimage -v
+check:output=~version|Version
+end
+
