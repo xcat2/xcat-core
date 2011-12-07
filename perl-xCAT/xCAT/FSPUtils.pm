@@ -156,6 +156,9 @@ sub fsp_api_action {
         if( defined($parameter) ) {
             if ($action =~ /^set_(frame|cec|lpar)_name$/) {
                 $cmd = "$fsp_api -a $action -n $parameter -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
+            } elsif( $parameter !=0 && $action =~ /^(on|reset)$/ ) {
+                #powerinterval for lpars power on
+                $cmd = "$fsp_api -a $action -i $parameter -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
             } else {
                 $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:$parameter";
             }
