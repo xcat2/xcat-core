@@ -48,6 +48,9 @@ lsdef_t_err
 lsvm_null
 lsvm_node
 lsvm_err_node
+lslite_i
+lslite_noderange
+lslite_h
 makeconservercf_null
 makeconservercf_noderange
 makeconservercf_d
