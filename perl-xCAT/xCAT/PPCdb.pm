@@ -602,10 +602,10 @@ sub add_ppchcp {
 
     my $hwtype = shift;
     my $values = shift;
-    my @tabs   = qw(ppchcp nodehm nodelist nodetype mac ppc);
+    my @tabs   = qw(ppchcp nodehm nodelist nodetype mac ppc vpd);
     my %db     = ();
 
-    my ($name, $mac) = split ',', $values;
+    my ($name, $mac, $mtm, $sn, $ip) = split ',', $values;
 
     ###################################
     # Open database needed
@@ -641,6 +641,11 @@ sub add_ppchcp {
     # Update mac table
     ###################################
      $db{mac}->setNodeAttribs( $name, {mac=>$mac});
+    ###################################
+    # Update vpd table
+    ###################################
+     $db{vpd}->setNodeAttribs( $name, {mtm=>$mtm});
+     $db{vpd}->setNodeAttribs( $name, {serial=>$sn});
 
     ###################################
     # Update nodelist table
