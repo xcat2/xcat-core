@@ -3,6 +3,21 @@
 #egan@us.ibm.com
 #(C)IBM Corp
 #
+# This routine transfers the client credentials from ~/.xcat on the MN
+# to the SN for Linux.
+# It only does something, if called with the -d flag. 
+# The -d flag was implemented when the call to the routine was moved
+# from the postscript table into the servicenode postscript. 
+#
+if [ ! $1 ]; then
+   logger -t xcat "xcatclient call without -d, doing nothing."
+   exit 0
+fi
+if [ $1 != "-d" ]; then
+   logger -t xcat "xcatclient call without -d, doing nothing."
+   exit 0
+fi
+logger -t xcat "xcatclient call with -d. getting credentials and cfgloc "
 
 if [ ! -x /usr/bin/openssl ]; then #Unless we have openssl stup
    logger -t xcat "$0: /usr/bin/openssl is not executable"

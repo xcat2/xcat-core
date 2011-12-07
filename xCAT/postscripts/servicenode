@@ -8,10 +8,25 @@
 
 =head1   servicenode 
 
+ On AIX and Linux :
  This updates the service node with files necessary to access the 
  database on the MasterNode and restarts the xcat daemon
-
- On AIX systems this does the service node configuration.
+ If uses multiple environment variables setup  by postage.pm from 
+ the site table.
+ For Linux:
+   It calls xcatserver and xcatclient script to get the ssh keys, ssl
+   redentials and cfgloc file and transfer from the MN to the SN 
+   to be able to access the 
+   database,  setup ssh keys on the nodes and have daemon to daemon
+   commmunication between the SN and MN and have the SN access the DB.
+ For AIX:
+   The same function in xcatserver and xcatclient is in this script for 
+   AIX and thus it does not call xcatserver and xcatclient.
+   We get the ssh keys, ssl 
+   credentials and cfgloc file for the SN to be able to access the 
+   database,  setup ssh keys on the nodes and have daemon to daemon
+   commmunication between the SN and MN and have the SN access the DB.
+ 
 
 =cut
 
@@ -64,6 +79,8 @@ chomp $installdir;
 $installdir =~ s/^(\'|\")(.*)(\"|\')$/$2/; # remove any surrounding quotes
 
 # update security certificates keys for service node
+# This section is used for the updatenode -k function, which sets the
+# UPDATESECURITY env variable
 if ($ENV{UPDATESECURITY} && $ENV{UPDATESECURITY} eq "1") {
     $::servnode = $ENV{'MASTER'};
 
@@ -82,8 +99,13 @@ if ($ENV{UPDATESECURITY} && $ENV{UPDATESECURITY} eq "1") {
       &copycerts;
     if ($::osname eq 'AIX') {
         # get the xCAT credentials from the server
-        # the credenticals and certificates copy will be done in xcatclient and xcatserver postscripts
         &getcreds;
+    } else {   # Linux
+      # call xcatserver,xcatclient to transfer the SSL credentials and cfgloc
+       `logger -t $::sdate servicenode:  running xcatserver -d`;
+	&runcmd("xcatserver -d");
+       `logger -t $::sdate servicenode: running xcatclient -d`;
+	&runcmd("xcatclient -d");
     }
     
     exit 0;
@@ -113,9 +135,14 @@ else
 	&runcmd("rpm -e tftp-server");
 
          &copycerts;
+        
+       `logger -t $::sdate servicenode:  runing xcatserver -d`;
+	&runcmd("xcatserver -d");
+       `logger -t $::sdate servicenode: runing xcatclient -d`;
+	&runcmd("xcatclient -d");
 }
 
-`logger -t xcat rc=$rc`;
+`logger -t $::sdate servicenode:  rc=$rc`;
 exit $rc;
 
 #
@@ -140,7 +167,7 @@ sub runcmd
         $rc = $? >> 8;
         if ($rc > 0)
         {
-            my $msg="$cmd returned rc=$rc $::outref\n";
+            my $msg="$::sdate servicenode: $cmd returned rc=$rc $::outref\n";
             `logger -t xcat $msg`;
 			return 1;
         }
@@ -282,8 +309,9 @@ sub setupAIXsn
 
 #####################################################
 #
-#  getcreds
-#		Get xCAT credentials and DB cfgloc file
+#  getcreds ( For AIX)  . 
+# Same function in xcatserver,xcatclient for Linux
+#   Get xCAT SSL credentials and DB cfgloc file
 #
 #####################################################
 sub getcreds
@@ -327,16 +355,16 @@ sub getcreds
 
 	$response=&getresponse("xcat_cfgloc");
 	if (defined ($response) ) {
-		# need to change entry to use the name of the server as
-		#       know by this node
+	# need to change entry to use the name of the server as
+	#       know by this node
         # except for db2 which has a different format, no host
         my $newstr;
         if ($response =~ /^DB2:/){ 
            $newstr = $response;
         } else {
-		  my ($begin, $tmp) = split(';', $response);
-		  my ($tmp2, $end, $end2) = split('\|', $tmp);
-		  my ($tmp3, $oldserv) = split('=', $tmp2);
+	      my ($begin, $tmp) = split(';', $response);
+              my ($tmp2, $end, $end2) = split('\|', $tmp);
+              my ($tmp3, $oldserv) = split('=', $tmp2);
 	      $newstr = "$begin;$tmp3=$::servnode|$end|$end2";
         }
 		my $fd;
@@ -400,7 +428,7 @@ sub getresponse
 	}
 
 	unless ($sock) {
-		my $msg = "servicenode: Cannot connect to host \'$::servnode\'\n";
+		my $msg = "$::sdate servicenode:  Cannot connect to host \'$::servnode\'\n";
 		`logger -t xcat $msg`;
 		print $msg;
 		return undef;
@@ -453,7 +481,7 @@ sub openlistener
 	my $pid = xCAT::Utils->xfork;
 	unless (defined $pid) {
 		# fork failed
-		$msg = "servicenode: Could not fork process.\n";
+		$msg = "$::sdate servicenode:  Could not fork process.\n";
 		`logger -t xcat $msg`;
 		#print $msg;
 		return undef;
@@ -472,7 +500,7 @@ sub openlistener
 	);
 
 	unless ($listener) {
-       	my $msg = "servicenode: Cannot open socket on \'$node\'\n";
+       	my $msg = "$::sdate servicenode:  Cannot open socket on \'$node\'\n";
    		`logger -t xcat $msg`;
 		print $msg;
        	exit 1;
@@ -501,14 +529,9 @@ sub openlistener
 #####################################################
 #
 # copycerts 
-#Copy from the mounted /xcatpost/ directory to the MS /install/postscripts
-# directory the /install/postscripts/ca  install/postscripts/cert and
-# /install/postscripts/_xcat into the local file system.  These certificate are
-# needed for the postresql and mysql db setup for the service node
-# to be able to access
-# the DB from the service node.
-#
-#
+# Setup the /etc/xcat/ca, /etc/xcat/cert, ~/.xcat directories with
+# SSL certificates from the /xcatpost/_xcat directory
+# These certificate are needed to access the Databases from the SN
 #####################################################
 
 sub copycerts
@@ -530,7 +553,7 @@ sub copycerts
     }
     else
     {
-        $msg = "/xcatpost/_xcat directory does not exist\n";
+        $msg = "$::sdate servicenode: /xcatpost/_xcat directory does not exist\n";
         `logger -t xcat $msg`;
 
     }
@@ -549,10 +572,11 @@ sub copycerts
     }
     else
     {
-        $msg = "/xcatpost/ca directory does not exist\n";
+        $msg = "$::sdate servicenode: /xcatpost/ca directory does not exist\n";
         `logger -t xcat $msg`;
 
     }
+    # if AIX, only need for AIX because xcatserver script does it for Linux
     if ($^O =~ /^aix/i)  {
       if (-d "/xcatpost/_xcat")
       {
@@ -569,7 +593,7 @@ sub copycerts
       }
       else
       {
-        $msg = "/xcatpost/_xcat directory does not exist\n";
+        $msg = "$::sdate servicenode: /xcatpost/_xcat directory does not exist\n";
         `logger -t xcat $msg`;
       }
     }

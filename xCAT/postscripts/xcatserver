@@ -2,7 +2,27 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #egan@us.ibm.com
 #(C)IBM Corp
+# This scripts transfers the cfgloc files and the xCAT credentials from
+# the Management Node to the Service Node on Linux.
+# It only does something, if called with the -d flag. 
+# The -d flag was implemented when the call to the routine was moved
+# from the postscript table into the servicenode postscript. 
 #
+if [ ! $1 ]; then
+   logger -t xcat "xcatserver call without -d, doing nothing."
+   #echo "xcatserver call without -d, doing nothing."
+   #echo $1
+   exit 0
+fi
+if [ $1 != "-d" ]; then
+   logger -t xcat "xcatserver call without -d, doing nothing."
+   #echo "xcatserver call without -d, doing nothing."
+   #echo $1
+   exit 0
+fi
+logger -t xcat "xcatserver call with -d. getting credentials and cfgloc "
+#echo "xcatserver call with -d, getting credentials and cfgloc."
+#echo $1
 
 if [ ! -x /usr/bin/openssl ]; then
    logger -t xcat "$0: /usr/bin/openssl is not executable"
