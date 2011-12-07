@@ -51,7 +51,7 @@ B<-m>          Multicast mode (defaults to broadcast).
 B<--makedhcp>  Issue xCAT command makedhcp internally.
 
 B<-M>          Matching mode, match the pre-defined node names from vpd table or switch table.
-            Default is using factory name if no -M specified.
+             Matching vpd table is the default setting whether the flag is specified. And matching switch table is not yet supported.
 
 B<-n>          Only display and write the newly discovered hardwares.
 
