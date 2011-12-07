@@ -779,12 +779,14 @@ sub web_gangliaLatest{
 	}
 
 	print $connect $telnetcmd;
+	open(TEMPFILE, '>/tmp/gangliadata');
 	while(<$connect>){
-		$xmloutput .= $_;
+		print TEMPFILE $_;
 	}
 	close($connect);
+	close(TEMPFILE);
 
-	$xmlparser->parse($xmloutput);
+	$xmlparser->parsefile('/tmp/gangliadata');
 
 	if ('grid' eq $type){
 		web_gangliaGridLatest($callback);
