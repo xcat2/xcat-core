@@ -1066,7 +1066,7 @@ function addZoomDiv(obj){
 	var type = $(obj).attr('name');
 	
 	var lastzoomobj = $('#zoomDiv span:last');
-	lastzoomobj.addClass('monitorzoomlinkli');
+	lastzoomobj.addClass('monitorzoomlink');
 	lastzoomobj.bind('click', function(){
 		updateZoom(this);
 	});
