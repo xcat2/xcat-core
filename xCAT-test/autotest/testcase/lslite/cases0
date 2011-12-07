@@ -1,0 +1,51 @@
+start:lslite_i 
+description:lslite -i
+os:Linux
+cmd:genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+check:rc==0
+cmd:chtab litefile.image="ALL" litefile.file="/xcatpost" litefile.options="tmpfs"
+check:rc==0
+cmd:tabdump litefile
+check:rc==0
+cmd:liteimg -p compute -a __GETNODEATTR($$CN,arch)__ -o __GETNODEATTR($$CN,os)__
+check:rc==0
+cmd:lslite -i __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
+check:rc==0
+check:output=~/xcatpost
+check:output=~/etc/mtab
+check:output!~Error
+cmd:chtab -d file="/xcatpost" litefile
+end
+
+
+start:lslite_noderange
+description:lslite noderange
+os:Linux
+cmd:genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+check:rc==0
+cmd:chtab litefile.image="ALL" litefile.file="/xcatpost" litefile.options="tmpfs"
+check:rc==0
+cmd:chtab node=$$CN statelite.statemnt="$$MN:/nodedata"
+check:rc==0
+cmd:chtab litetree.priority=2 litetree.directory="test.server:/statelite/test"
+cmd:liteimg __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
+check:rc==0
+cmd:lslite $$CN
+check:rc==0
+check:output!~Error
+cmd:chtab -d file="/xcatpost" litefile
+cmd:chtab -d node=$$CN statelite
+cmd:chtab -d priority=2 litetree
+end
+
+
+start:lslite_h
+os:Linux
+description:lslite -h and --help
+cmd:lslite -h
+check:output=~usage|Usage
+cmd:lslite --help
+check:output=~usage|Usage
+end
+
+
