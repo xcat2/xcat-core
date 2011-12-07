@@ -361,7 +361,7 @@ sub preprocess_updatenode
             $postscripts = $::RERUNPS;
             my @posts = ();
             if ($postscripts eq "allkeys44444444security") {
-                @posts = ("remoteshell", "aixremoteshell", "servicenode", "xcatserver", "xcatclient");
+                @posts = ("remoteshell", "aixremoteshell", "servicenode");
             } else {
                 @posts = split(',', $postscripts);
             }
@@ -493,7 +493,7 @@ sub preprocess_updatenode
 
         updatenode($req_sshkey, \&updatenode_cb, $subreq);
 
-        # run the postscripts: remoteshell, servicenode, xcatserver, xcatclient
+        # run the postscripts: remoteshell, servicenode
         if ($postscripts eq "allkeys44444444security") {
             my ($rc, $AIXnodes, $Linuxnodes) = xCAT::InstUtils->getOSnodes(\@sns);
 
@@ -511,9 +511,9 @@ sub preprocess_updatenode
             if (scalar(@{$Linuxnodes})) {
                 my $DBname = xCAT::Utils->get_DBName;
                 if ($DBname eq "DB2") {
-                  $ps = "remoteshell,servicenode,xcatserver,xcatclient,db2install";
+                  $ps = "remoteshell,servicenode,db2install";
                 } else {
-                  $ps = "remoteshell,servicenode,xcatserver,xcatclient";
+                  $ps = "remoteshell,servicenode";
                 }
                 $req_rs->{rerunps}->[0] = "yes";
                 $req_rs->{rerunps4security}->[0] = "yes";
@@ -1045,9 +1045,9 @@ $AIXnodes_nd, $subreq  ) != 0 ) {
            my $DBname = xCAT::Utils->get_DBName;
            if ($orig_postscripts eq "allkeys44444444security") {
               if ($DBname eq "DB2") {   
-                $postscripts = "remoteshell,servicenode,xcatserver,xcatclient,db2install";
+                $postscripts = "remoteshell,servicenode,db2install";
               } else {
-                $postscripts = "remoteshell,servicenode,xcatserver,xcatclient";
+                $postscripts = "remoteshell,servicenode";
               }
            } else {
                $postscripts = $orig_postscripts;
