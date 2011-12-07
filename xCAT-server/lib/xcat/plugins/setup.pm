@@ -675,7 +675,7 @@ sub writechildren2 {
         $cecsecbase = $$cechash{'secondary-base'};
         $attached = $$cechash{'attach'};
         if (!$cecsecbase) { errormsg("when using vlanid, you must also use CEC names like f1c1",7); return 0; }
-        $cecstart = $$cechash{'primary-start'};
+        $cecstart = $$cechash{'secondary-start'};
         $cecend = $$cechash{'secondary-end'};
         for (my $ii = $framestart; $ii <= $frameend; $ii++) {
             for (my $jj = $cecstart; $jj <= $cecend; $jj++) {
