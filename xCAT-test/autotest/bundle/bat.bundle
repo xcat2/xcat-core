@@ -21,6 +21,11 @@ copycds_a
 copycds_n_a
 copycds_a_err
 copycds_n_err
+packimage_o_p_a_m
+packimage_p_a_o
+packimage_imagename
+packimage_h
+packimage_v
 getmacs_noderange
 getmacs_d
 getmacs_f_D
