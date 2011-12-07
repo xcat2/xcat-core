@@ -5121,7 +5121,7 @@ sub getascii {
                 } else {
                     $alpha[$c]=" ";
                 }
-                if($alpha[$c] !~ /[\/\w\-:\[\.\]]/) {
+                if($alpha[$c] !~ /[\S]/) {
         			if ($alpha[($c-1)] !~ /\s/) {
                     	    $alpha[$c] = " ";
 	          		} else {
