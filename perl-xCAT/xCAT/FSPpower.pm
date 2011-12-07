@@ -275,6 +275,9 @@ sub powercmd {
         my $d = $hash->{$node_name};
         
         if( $data =~ /Error/) {
+            if( $data =~ /Power interval/) {
+                $data = "Error: Invalid powerinterval value in the site table. The valid powerinerval value could be 0 to 300 .";
+            }
 	    push @output, [$node_name, $data, -1];
         } else {
 	    push @output, [$node_name,"Success", 0];
