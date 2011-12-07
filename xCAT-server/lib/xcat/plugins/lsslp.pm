@@ -2521,6 +2521,7 @@ sub parse_responses {
         push @$data, undef;   #This is for $data[9], which is mac address;
         trace ( $request, "            $h find the parent $parent.", 1);
 
+        ##########################################################        
         #find the mac address
         ##########################################################
         $newhostname = match_hosts_defined_by_xcatsetup($h, $type, $mtm, $sn, $side, $ip0, $cagenum, $bpamtm, $bpasn, $parent, \$matchflag);
@@ -2559,49 +2560,56 @@ sub parse_responses {
         ##########################################################
         # begin to find fsp/bpa's parent
         ##########################################################
-        next unless ( $type eq TYPE_BPA or $type eq TYPE_FSP );
-        foreach my $h1 ( keys %hash ) {
-            my $data1 = $hash{$h1};
-            my $type1 = @$data1[0];
-            my $mtm1  = @$data1[1];
-            my $sn1   = @$data1[2];
-            if ((( $type1 eq TYPE_FRAME and $type eq TYPE_BPA) or ($type1 eq TYPE_CEC and $type eq TYPE_FSP)) and ($mtm1 eq $mtm and $sn1 eq $sn) ) {
-                $parent = $h1;       # FSP's parent is CEC
-                last;
-            } else {
-                $parent = undef;   # Frame and HMC have no parent
+        if ( $type eq TYPE_BPA or $type eq TYPE_FSP) {
+            foreach my $h1 ( keys %hash ) {
+                my $data1 = $hash{$h1};
+                my $type1 = @$data1[0];
+                my $mtm1  = @$data1[1];
+                my $sn1   = @$data1[2];
+                if ((( $type1 eq TYPE_FRAME and $type eq TYPE_BPA) or ($type1 eq TYPE_CEC and $type eq TYPE_FSP)) and ($mtm1 eq $mtm and $sn1 eq $sn) ) {
+                    $parent = $h1;       # FSP's parent is CEC
+                    last;
+                } else {
+                    $parent = undef;   # HMC have no parent
+                }
             }
+            push @$data, $parent; #This is for $data[8];
+            trace ( $request, "            Find the $h parent $parent.", 1);
+        } else {
+            push @$data, undef;
         }
-        push @$data, $parent; #This is for $data[8];
-        trace ( $request, "            Find the $h parent $parent.", 1);
-
         ##########################################################
         # match fsp/bpa nodes with the definition made by xcatsetup
         # keep the otherinterfaces for the nodes.
         ##########################################################
-        $newhostname = match_hosts_defined_by_xcatsetup($h, $type, $mtm, $sn, $side, $ip0, $cagenum, $bpamtm, $bpasn, $parent);
-        if ($newhostname) {
-            trace ( $request, "            Find the new hostname $newhostname.", 1);
-            $hash{$newhostname} = $data;
-            push @matchnodes, $newhostname;
-            $otherinterfacehash{$newhostname}{otherinterfaces} = $ip0;
-            trace( $request, "            Keep the node ip $ip0 in $newhostname otherinterfaces" , 1);
-        } else {
-            $hash{$h} = $data;
-            $otherinterfacehash{$h}{otherinterfaces} = $ip0;
-            trace( $request, "            Keep the node ip $ip0 in $h otherinterfaces" , 1);
+        if ( $type eq TYPE_BPA or $type eq TYPE_FSP) {
+            $newhostname = match_hosts_defined_by_xcatsetup($h, $type, $mtm, $sn, $side, $ip0, $cagenum, $bpamtm, $bpasn, $parent);
+            if ($newhostname) {
+                trace ( $request, "            Find the new hostname $newhostname.", 1);
+                $hash{$newhostname} = $data;
+                push @matchnodes, $newhostname;
+                $otherinterfacehash{$newhostname}{otherinterfaces} = $ip0;
+                trace( $request, "            Keep the node ip $ip0 in $newhostname otherinterfaces" , 1);
+            } else {
+                $hash{$h} = $data;
+                $otherinterfacehash{$h}{otherinterfaces} = $ip0;
+                trace( $request, "            Keep the node ip $ip0 in $h otherinterfaces" , 1);
+            }
         }
 
         ##########################################################
-        # find the mac address for the fsp/bpa nodes.
+        # find the mac address for the fsp/bpa/hmc nodes.
         ##########################################################
-        $mac = match_ip_mac( $ip0 );
-        # This is originally used to check the invalid mac address in AIX, but failed to do it.
-        #unless ( $mac =~ /\w+\:\w+\:\w+\:\w+\:\w+\:\w+/ ) { $mac = undef;}
-        push @$data, $mac;  #This is for $data[9], which is mac address;
-        trace ( $request, "            Find the $h mac $mac.", 1);
+        if ( $type eq TYPE_BPA or $type eq TYPE_FSP or $type eq TYPE_HMC) {
+            $mac = match_ip_mac( $ip0 );
+            # This is originally used to check the invalid mac address in AIX, but failed to do it.
+            #unless ( $mac =~ /\w+\:\w+\:\w+\:\w+\:\w+\:\w+/ ) { $mac = undef;}
+            push @$data, $mac;  #This is for $data[9], which is mac address;
+            trace ( $request, "            Find the $h mac $mac.", 1);
+        } else {
+            push @$data, undef;
+        }
     }
-
     ##########################################################
     # If there is -n flag, skip the matched nodes
     ##########################################################
@@ -2713,7 +2721,7 @@ sub xCATdB {
             ########################################
             # HMC: name=hostname, ip=ip, mac=mac
             ########################################
-            xCAT::PPCdb::add_ppchcp( lc($type), "$name,$mac,$ip",1 );
+            xCAT::PPCdb::add_ppchcp( lc($type), "$name,$mac,$model,$serial,$ip",1 );
         }
         elsif ( $type =~ /^FSP$/ ) {
             ########################################
@@ -4116,15 +4124,8 @@ sub match_hosts_defined_by_xcatsetup {
                 return $oldnode;
             }
         }
-        if ($type eq TYPE_BPA or $type eq TYPE_FSP)
-        {
-            if ($pname eq $tmpparent and $side eq $tmpside and $type eq $tmptype) {
-                $$flagref = 1;
-                print "23 got old name $oldnode\n" if($DEBUG_MATCH eq 1);
-                return $oldnode;
-            }
-        }
     }
+
     return undef;
 }
 ##########################################################################
