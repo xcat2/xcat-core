@@ -60,6 +60,8 @@ my %distnames = (
                  "1285192093.430930" => "rhels6", #ppc64
                  "1305068199.328169" => "rhels6.1", #x86_64
                  "1305067911.467189" => "rhels6.1", #ppc64
+                 "1321546114.510099" => "rhels6.2", #x86_64
+                 "1321546739.676170" => "rhels6.2", #ppc64
                  "1285193176.593806" => "rhelhpc6",
                  "1194015916.783841" => "fedora8",
                  "1194015385.299901" => "fedora8",
@@ -1068,8 +1070,10 @@ sub mkinstall
             ) or (    $arch =~ /ppc/
                 and -r "$pkgdir/ppc/ppc64/vmlinuz"
                 and $kernpath = "$pkgdir/ppc/ppc64/vmlinuz"
-                and -r "$pkgdir/ppc/ppc64/ramdisk.image.gz"
+                and ((-r "$pkgdir/ppc/ppc64/ramdisk.image.gz"
                 and $initrdpath = "$pkgdir/ppc/ppc64/ramdisk.image.gz")
+                or (-r "$pkgdir/ppc/ppc64/initrd.img"
+                and $initrdpath = "$pkgdir/ppc/ppc64/initrd.img")))
           )
         {
 
