@@ -1343,7 +1343,7 @@ sub handle_find_hw_children {
     if (!defined($vpdtab) or !defined($child_type)) {
         return undef;
     }
-    my $mtms = $vpdtab->getAttribs({node=>$host}, qw(serial mtm));
+    my $mtms = $vpdtab->getNodeAttribs($host, qw(serial mtm));
     if (!defined($mtms))  {
         return undef;
     }
@@ -1826,7 +1826,7 @@ sub preprocess_request {
         my %hcp_hash=();
         my @missednodes=();
         foreach ( @$noderange ) {
-            my ($ent) = $hcptab->getAttribs( {hcp=>$_},"hcp" );
+            my ($ent) = $hcptab->getNodeAttribs( $_,"hcp" );
             if ( !defined( $ent )) {
                 push @missednodes, $_;
                 next;
@@ -1843,7 +1843,7 @@ sub preprocess_request {
                 return;
             }
             foreach my $node (@missednodes) {
-                my ($ent) = $ppctab->getAttribs({hcp=>$node}, "hcp");
+                my ($ent) = $ppctab->getNodeAttribs( $node, "hcp");
                 if (defined($ent)) {
                     push @{$hcp_hash{$node}{nodes}}, $node; 
                     next;
