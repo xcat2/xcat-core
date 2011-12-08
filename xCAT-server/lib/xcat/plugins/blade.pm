@@ -3742,7 +3742,7 @@ sub network {
 
       my $hosttab = xCAT::Table->new( 'hosts' );
       if ($hosttab) {
-        my ($ent) = $hosttab->getAttribs({node=>$mpa},'ip');
+        my ($ent) = $hosttab->getNodeAttribs($mpa,['ip']);
         if (defined($ent)) {
           $ip = $ent->{ip};
         }
