@@ -4,11 +4,11 @@ B<snmove> - Change xCAT compute nodes to use a different xCAT service node.
 
 =head1 SYNOPSIS
 
-B<snmove> I<noderange> [B<-d>|B<--dest> I<sn2>] [B<-D>|B<--destn> I<sn2n>] [B<-i>|B<--ignorenodes>] [B<-P>|B<--postscripts> I<script1,script2...>|I<all>]
+B<mkdsklsnode> [B<-h>|B<--help>]
 
-B<snmove> B<-s>|B<--source> I<sn1> [B<-S>|B<--sourcen> I<sn1n>] [B<-d>|B<--dest> I<sn2>] [B<-D>|B<--destn> I<sn2n>] [B<-i>|B<--ignorenodes>] [B<-P>|B<--postscripts> I<script1,script2...>|I<all>]
+B<snmove> I<noderange> [B<-V>] [B<-l>|B<--liteonly>] [[B<-d>|B<--dest>]  I<sn2> ] [[B<-D>|B<--destn>] I<sn2n>] [B<-i>|B<--ignorenodes>] [[B<-P>|B<--postscripts>] I<script1,script2...>|I<all> ]
 
-B<snmove> [B<-h>|B<--help>|B<-v>|B<--version>]
+B<snmove> [B<-V>] [B<-l>|B<--liteonly>] B<-s>|B<--source> I<sn1> [[B<-S>|B<--sourcen>] I<sn1n>] [[B<-d>|B<--dest>] I<sn2>] [[B<-D>|B<--destn>] I<sn2n>] [B<-i>|B<--ignorenodes>] [B<-P>|B<--postscripts> I<script1,script2...>|I<all>] 
 
 =head1 DESCRIPTION
 
@@ -47,6 +47,14 @@ It will also check the other services that are being used for the
 node (tftpserver, monserver, nfsserver, conserver), and if they were set 
 to the original service node they will be changed to point to the backup
 service node. 
+
+In some cases, if you are using the xCAT B<AIX> statelite support, the 
+B<snmove> command will synchronize the persistent statelite directories 
+from the nodes primary service node to it's backup service node. 
+This will only be done if the server specified in the B<statelite> table
+is the primary service node. You can also use the B<snmove> command to do
+only the synchronization by using the B<-l> option. This support
+applies to AIX systems only.
 
 If the -i option is specified, the nodes themselves will not be modified.
 
@@ -107,9 +115,13 @@ Specifies the hostname of the destination service node as known by (facing) the 
 
 No modifications will be made on the nodes. If not specified, several xCAT postscripts will be run on the nodes to complete the switch to the new service node.
 
+=item B<-l|--liteonly>
+
+Used to synchronize the xCAT B<AIX> statelite persistent files to the backup service node.  This option will only attempt to synchronize statelite files that are served by the primary service node for the compute node.  When you use this option the B<snmove> command will not actually move the nodes to the backup service node.
+
 =item B<-P|--postscripts>
 
-Specifies a list of extra postscripts to be run on the nodes after the nodes are moved over to the new serive node. If 'all' is specified, all the postscripts defined in the postscripts table will be run for the nodes. The specified postscripts must be stored under /install/postscripts directory. 
+Specifies a list of extra postscripts to be run on the nodes after the nodes are moved over to the new service node. If 'all' is specified, all the postscripts defined in the postscripts table will be run for the nodes. The specified postscripts must be stored under /install/postscripts directory. 
 
 =item B<-h|--help>
 
@@ -166,6 +178,12 @@ B<snmove sngroup1 -d xcatsn2 -P test1>
 Move all the nodes in xCAT group "sngroup1" to the SN named "xcatsn2" and do not run anything on the nodes.
 
 B<snmove sngroup1 -d xcatsn2 -i>
+
+=item 8.
+
+Synchronize any B<AIX> statelite files from the primary server for compute03 to the backup server. Do not move the node to the backup server at this time.
+
+B<snmove compute03 -V -l>
 
 =back
 
