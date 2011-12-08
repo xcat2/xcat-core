@@ -4,7 +4,7 @@ B<snmove> - Change xCAT compute nodes to use a different xCAT service node.
 
 =head1 SYNOPSIS
 
-B<mkdsklsnode> [B<-h>|B<--help>]
+B<snmove> [B<-h>|B<--help>]
 
 B<snmove> I<noderange> [B<-V>] [B<-l>|B<--liteonly>] [[B<-d>|B<--dest>]  I<sn2> ] [[B<-D>|B<--destn>] I<sn2n>] [B<-i>|B<--ignorenodes>] [[B<-P>|B<--postscripts>] I<script1,script2...>|I<all> ]
 
