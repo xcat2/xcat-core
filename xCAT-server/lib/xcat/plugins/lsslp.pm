@@ -3853,7 +3853,8 @@ sub get_rsp_dev
         #############################################
         my $passtab = xCAT::Table->new('passwd');
         if ( $passtab ) {
-            my ($ent) = $passtab->getAttribs({key=>'blade'},'username','password');
+            #my ($ent) = $passtab->getAttribs({key=>'blade'},'username','password');
+            my $ent = $passtab->getNodeAttribs('blade', ['username','password']);
             if ( defined( $ent )) {
                 $bladeuser = $ent->{username};
                 $bladepass = $ent->{password};
@@ -3863,17 +3864,18 @@ sub get_rsp_dev
         # Get MM userid/password
         #############################################
         my $mpatab = xCAT::Table->new('mpa');
-        foreach ( keys %$mm ) {
+        for my $nd ( keys %$mm ) {
             my $user = $bladeuser;
             my $pass = $bladepass;
 
             if ( defined( $mpatab )) {
-                my ($ent) = $mpatab->getAttribs({mpa=>$_},'username','password');
+                #my ($ent) = $mpatab->getAttribs({mpa=>$_},'username','password');
+                my $ent = $mpatab->getNodeAttribs($nd, ['username','password']);
                 if ( defined( $ent->{password} )) { $pass = $ent->{password}; }
                 if ( defined( $ent->{username} )) { $user = $ent->{username}; }
             }
-            $mm->{$_}->{username} = $user;
-            $mm->{$_}->{password} = $pass;
+            $mm->{$nd}->{username} = $user;
+            $mm->{$nd}->{password} = $pass;
         }
     }
     if (%$hmc )
