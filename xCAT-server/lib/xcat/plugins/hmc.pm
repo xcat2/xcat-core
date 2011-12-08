@@ -95,7 +95,7 @@ sub gethmccon {
     #################################
     # Get attributes
     #################################
-    my ($att) = $tabs{ppc}->getAttribs({'node'=>$node}, @attribs );
+    my ($att) = $tabs{ppc}->getNodeAttribs( $node, @attribs );
     
     if ( !defined( $att )) {
         #return( sprintf( $errmsg{NODE_UNDEF}, "ppc" ));
