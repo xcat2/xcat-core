@@ -3218,15 +3218,15 @@ sub getbladecons {
       my $ent=$mptabhash->{$node}->[0]; #$mptab->getNodeAttribs($node,['mpa', 'id']);
       if (defined($ent->{mpa})) { 
           $rsp->{node}->[0]->{mm}->[0]=$ent->{mpa};
-          if (defined($checkedmpas{$ent->{$mpa}}) or not defined $mpatab) {
+          if (defined($checkedmpas{$ent->{mpa}}) or not defined $mpatab) {
             if (defined($mpausers{$ent->{mpa}})) {
                 $rsp->{node}->[0]->{username}=[$mpausers{$ent->{mpa}}];
             } else {
                 $rsp->{node}->[0]->{username}=[$user];
             }
           } else {
-              $checkedmpas{$ent->{$mpa}}=1;
-              ($tmp)=$mpatab->getAttribs({'mpa'=>$mpa},'username');
+              $checkedmpas{$ent->{mpa}}=1;
+              ($tmp)=$mpatab->getNodeAttribs($ent->{mpa}, ['username']);
               if (defined($tmp) and defined $tmp->{username}) {
                   $mpausers{$ent->{mpa}}=$tmp->{username};
                   $rsp->{node}->[0]->{username}=[$tmp->{username}];
@@ -3558,7 +3558,7 @@ sub process_request {
     my $pass=$bladepass;
     my $ent;
     if (defined($mpatab)) {
-      ($ent)=$mpatab->getAttribs({'mpa'=>$mpa},'username','password');
+      ($ent)=$mpatab->getNodeAttribs($mpa, ['username','password']);
       if (defined($ent->{password})) { $pass = $ent->{password}; }
       if (defined($ent->{username})) { $user = $ent->{username}; }
     }
