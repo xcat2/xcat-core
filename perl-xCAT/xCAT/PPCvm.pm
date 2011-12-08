@@ -267,7 +267,7 @@ sub mkvm_parse_args {
         my $lparparent;
         my $ppctab  = xCAT::Table->new('ppc');
         foreach my $vnode (@{$opt{target}}) {
-            my $vcon = $ppctab->getAttribs({node => $vnode}, ('node','parent'));
+            my $vcon = $ppctab->getNodeAttribs( $vnode, ('node','parent'));
             if ($vcon and $vcon->{"node"} and $vcon->{"parent"}) {
                 my $lparent = $vcon->{"parent"};
                 $lparparent->{$lparent}->{$vnode} = $vnode;
@@ -1966,7 +1966,7 @@ sub mkfulllpar {
         # Create the new full LPAR's configure data  
         #################################
         my ($lpar_id, $profname);
-        my $vcon = $ppctab->getAttribs({node => $name}, ('id','pprofile'));
+        my $vcon = $ppctab->getAttribs($name, ('id','pprofile'));
            if ($vcon) {
                if ($vcon->{"id"}) {
                 $lpar_id = $vcon->{"id"};
