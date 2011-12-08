@@ -619,7 +619,7 @@ sub add_ppchcp {
     ###################################
     # Update ppchcp table
     ###################################
-    my ($ent) = $db{ppchcp}->getAttribs({ hcp=>$name},'hcp');
+    my ($ent) = $db{ppchcp}->getNodeAttribs( $name,'hcp');
     if ( !defined($ent) ) {
         $db{ppchcp}->setAttribs( {hcp=>$name}, 
             { username=>"",
@@ -704,7 +704,7 @@ sub add_systemX {
     ###################################
     # Update mpa table
     ###################################
-    my ($ent) = $db{mpa}->getAttribs({ mpa=>$name},'mpa');
+    my ($ent) = $db{mpa}->getNodeAttribs( $name,'mpa');
     if ( !defined($ent) ) {
         $db{mpa}->setAttribs( {mpa=>$name}, 
             { username=>"",
@@ -797,7 +797,7 @@ sub credentials {
         }
         else
         {
-            ($ent) = $tab->getAttribs( {hcp=>$server}, qw(username password));
+            ($ent) = $tab->getNodeAttribs( $server, qw(username password));
         }
         if ( $ent){
             if (defined($ent->{password})) { $pass = $ent->{password}; }
@@ -806,7 +806,7 @@ sub credentials {
     ##############################################################
     # If no user/passwd found, check if there is a default group
     ##############################################################
-        elsif( ($ent) = $tab->getAttribs( {hcp=>$defaultgrp{$hwtype}}, qw(username password)))
+        elsif( ($ent) = $tab->getNodeAttribs( $defaultgrp{$hwtype}, qw(username password)))
         {
             if ( $user_specified)
             {
@@ -814,7 +814,7 @@ sub credentials {
             }
             else
             {
-                ($ent) = $tab->getAttribs( {hcp=>$defaultgrp{$hwtype}}, qw(username password));
+                ($ent) = $tab->getNodeAttribs( $defaultgrp{$hwtype}, qw(username password));
             }
             if ( $ent){
                 if (defined($ent->{password})) { $pass = $ent->{password}; }
