@@ -319,33 +319,7 @@ sub getNodeData {
 	if ($type eq "location")
 	{
 	    # get locations with specific nodes
-	    push @imageInfo, $tab->getAttribs({node => $node}, @attrs);
-
-	    if (!defined $imageInfo[0])
-	    {
-	        # maybe node belongs to nodegroup
-	        # try to find it in groups
-	        my @tmpnodes = join(',', $node);
-
-	        # group info in nodelist tab
-	        my $nltab  = xCAT::Table->new('nodelist');
-            my $nltabdata = $nltab->getNodesAttribs(\@tmpnodes, ['node', 'groups']);
-
-            my $data = $nltabdata->{$node}->[0];
-	        my @grps = split(',', $data->{groups});
-	        foreach my $g (@grps)
-	        {
-	            chomp $g;
-	            my $info = $tab->getAttribs({node => $g}, @attrs);
-	            if(defined $info)
-	            {
-    	            push @imageInfo, $info; 
-	            }
-
-	            # return once get one record
-	            last if (defined $imageInfo[1]);
-	        }	        
-	    }
+	    push @imageInfo, $tab->getNodeAttribs($node, @attrs);
 	}
 	else
 	{
