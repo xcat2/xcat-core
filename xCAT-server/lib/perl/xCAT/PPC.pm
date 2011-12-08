@@ -1347,7 +1347,7 @@ sub handle_find_hw_children {
     if (!defined($mtms))  {
         return undef;
     }
-    my @nodearray = $vpdtab->getAttribs({serial=>$mtms->{serial}, mtm=>$mtms->{mtm}}, qw(node side));
+    my @nodearray = $vpdtab->getAttribs({serial=>$mtms->{serial}, mtm=>$mtms->{mtm}}, qw(node side)); # need regx
     if (!defined(@nodearray)) {
         return undef;
     }
