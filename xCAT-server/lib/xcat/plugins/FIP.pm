@@ -89,8 +89,8 @@ sub preprocess_request {
     }
 
     
-    my ($current_ppc_ent) = $ppctab->getAttribs({ node=>$current_node},@ppcattribs);
-    my ($fip_ppc_ent) = $ppctab->getAttribs({ node=>$fip_node},@ppcattribs);
+    my ($current_ppc_ent) = $ppctab->getNodeAttribs($current_node,@ppcattribs);
+    my ($fip_ppc_ent) = $ppctab->getNodeAttribs($fip_node,@ppcattribs);
     my @current_attrs;
     my @fip_attrs;
     if( $current_ppc_ent->{'parent'} ne $fip_ppc_ent->{'parent'} ) {
@@ -321,8 +321,8 @@ sub swapnodes
 	return 1;
     }
 
-    my ($current_ppc_ent) = $ppctab->getAttribs({ node=>$current_node},@ppcattribs);
-    my ($fip_ppc_ent) = $ppctab->getAttribs({ node=>$fip_node},@ppcattribs);
+    my ($current_ppc_ent) = $ppctab->getNodeAttribs( $current_node,@ppcattribs);
+    my ($fip_ppc_ent) = $ppctab->getNodeAttribs( $fip_node,@ppcattribs);
     my @current_attrs;
     my @fip_attrs;
     my $cec;
@@ -407,8 +407,8 @@ sub swapnodes
 	return 1;
     }
 
-    my $current_ent = $nodepostab->getAttribs({ node=>$current_node},@nodeposattribs);
-    my $fip_ent     = $nodepostab->getAttribs({ node=>$fip_node},@nodeposattribs);
+    my $current_ent = $nodepostab->getNodeAttribs( $current_node,@nodeposattribs);
+    my $fip_ent     = $nodepostab->getNodeAttribs( $fip_node,@nodeposattribs);
 
     # swap the current ent and the fip ent 
     $keyhash{'node'}    = $current_node; 
