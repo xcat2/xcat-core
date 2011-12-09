@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<chvm> - Changes HMC- and IVM-managed partition profiles. For Power 775, chvm could be used to change the octant configuration values for generating LPARs; change the I/O slots assignment to LPARs within the same CEC.
+B<chvm> - Changes HMC-, IVM-, and zVM-managed partition profiles or virtual machines. For Power 775, chvm could be used to change the octant configuration values for generating LPARs; change the I/O slots assignment to LPARs within the same CEC.
 
 =head1 SYNOPSIS
 
@@ -26,6 +26,56 @@ B<chvm> I<noderange> B<-i id> [B<-m> I<memory_interleaving>] B<-r> I<partition_r
 
 B<chvm> I<noderange> [B<-a> I<size>] [B<-d> I<disk>] [B<-p> I<disk>] [B<--resize> B<disk>=I<size>] [B<--cpus> I<count>] [B<--mem> I<memory>]
 
+=head2 zVM specific:
+
+B<chvm> I<noderange> [B<--add3390> I<disk pool> I<device address> I<cylinders> I<mode> I<read password> I<write password> I<multi password>]
+
+B<chvm> I<noderange> [B<--add3390active> I<device address> I<mode>]
+
+B<chvm> I<noderange> [B<--add9336 I<disk pool> I<virtual device> I<block size> I<mode> I<blocks> I<read password> I<write password> I<multi password>]
+
+B<chvm> I<noderange> [B<--adddisk2pool> I<function> I<region> I<volume> I<group>]
+
+B<chvm> I<noderange> [B<--addnic I<address> I<type> I<device count>]
+
+B<chvm> I<noderange> [B<--addprocessor I<address>]
+
+B<chvm> I<noderange> [B<--addprocessoractive> I<address> I<type>]
+
+B<chvm> I<noderange> [B<--addvdisk> I<userID]> I<device address> I<size>]
+
+B<chvm> I<noderange> [B<--connectnic2guestlan> I<address> I<lan> I<owner>]
+
+B<chvm> I<noderange> [B<--connectnic2vswitch> I<address> I<vswitch>]
+
+B<chvm> I<noderange> [B<--copydisk> I<target address> I<source node> I<source address>]
+
+B<chvm> I<noderange> [B<--dedicatedevice> I<virtual device> I<real device> I<mode>]
+
+B<chvm> I<noderange> [B<--deleteipl>]
+
+B<chvm> I<noderange> [B<--formatdisk> I<disk address> I<multi password>]
+
+B<chvm> I<noderange> [B<--disconnectnic> I<address>]
+
+B<chvm> I<noderange> [B<--grantvswitch> I<VSwitch>]
+
+B<chvm> I<noderange> [B<--removedisk> I<virtual device>]
+
+B<chvm> I<noderange> [B<--resetsmapi>]
+
+B<chvm> I<noderange> [B<--removediskfrompool> I<function> I<region> I<group>]
+
+B<chvm> I<noderange> [B<--removenic> I<address>]
+
+B<chvm> I<noderange> [B<--removeprocessor> I<address>]
+
+B<chvm> I<noderange> [B<--replacevs> I<directory entry>]
+
+B<chvm> I<noderange> [B<--setipl> I<ipl target> I<load parms> I<parms>]
+
+B<chvm> I<noderange> [B<--setpassword> I<password>]
+
 =head1 DESCRIPTION
 
 =head2 PPC (with HMC) specific:
@@ -45,6 +95,10 @@ The administrator should use lsvm to get the profile content, and then edit the 
 =head2 VMware/KVM specific:
 
 The chvm command modifes the vm specified in noderange.  Calling with deregister or purge options at the same time as the resize option is not recommended.
+
+=head2 zVM specific:
+
+The chvm command modifes the virtual machine's configuration specified in noderange.
 
 =head1 OPTIONS
 
@@ -147,6 +201,104 @@ Purge the Hard disk.  Deregisters and deletes the files.  Multiple can be done w
 Change the size of the Hard disk.  The disk can never be set to less than it's current size.  Multiple disks can be resized to I<size> by using comma separated values on the left side of B<=>.  The disks are specified by SCSI id.  Size defaults to GB.
 
 =back
+
+=head2 zVM specific:
+
+=item B<--add3390> I<disk pool> I<device address> I<cylinders> I<mode> I<read password> I<write password> I<multi password>
+
+Adds a 3390 (ECKD) disk to a virtual server's directory entry.
+
+=item B<--add3390active> I<device address> I<mode>
+
+Adds a 3390 (ECKD) disk that is defined in a virtual server's directory entry to that virtual server's active configuration.
+
+=item B<--add9336 I<disk pool> I<virtual device> I<block size> I<mode> I<blocks> I<read password> I<write password> I<multi password>
+
+Adds a 9336 (FBA) disk to a virtual server's directory entry.
+
+=item B<--adddisk2pool> I<function> I<region> I<volume> I<group>
+
+Add a disk to a disk pool defined in the EXTENT CONTROL. Function type can be either: (4) Define region as full volume and add to group OR (5) Add existing region to group.  The disk has to already be attached to SYSTEM.
+
+=item B<--addnic I<address> I<type> I<device count>
+
+Adds a network adapter to a virtual server's directory entry (case sensitive).
+
+=item B<--addprocessor I<address>
+
+Adds a virtual processor to a virtual server's directory entry.
+
+=item B<--addprocessoractive> I<address> I<type>
+
+Adds a virtual processor to a virtual server's active configuration (case sensitive).
+
+=item B<--addvdisk> I<userID]> I<device address> I<size>
+
+Adds a v-disk to a virtual server's directory entry.
+
+=item B<--connectnic2guestlan> I<address> I<lan> I<owner>
+
+Connects a given network adapter to a GuestLAN.
+
+=item B<--connectnic2vswitch> I<address> I<vswitch>
+
+Connects a given network adapter to a VSwitch.
+
+=item B<--copydisk> I<target address> I<source node> I<source address>
+
+Copy a disk attached to a given virtual server.
+
+=item B<--dedicatedevice> I<virtual device> I<real device> I<mode>
+
+Adds a dedicated device to a virtual server's directory entry.
+
+=item B<--deleteipl>
+
+Deletes the IPL statement from the virtual server's directory entry.
+
+=item B<--formatdisk> I<disk address> I<multi password>
+
+Formats a disk attached to a given virtual server (only ECKD disks supported). The disk should not be linked to any other virtual server. This command is best used after add3390().
+
+=item B<--disconnectnic> I<address>
+
+Disconnects a given network adapter.
+
+=item B<--grantvswitch> I<VSwitch>
+
+Grant VSwitch access for given virtual server.
+
+=item B<--removedisk> I<virtual device>
+
+Removes a minidisk from a virtual server's directory entry.
+
+=item B<--resetsmapi>
+
+Reset z/VM SMAPI, assuming the SMAPI worker machines to reset are: VSMWORK1, VSMWORK2, VSMWORK3, VSMREQIN, and VSMREQIU.
+
+=item B<--removediskfrompool> I<function> I<region> I<group>
+
+Remove a disk from a disk pool defined in the EXTENT CONTROL.  Function type can be either: (1) Remove region, (2) Remove region from group, (3) Remove region from all groups, OR (7) Remove entire group.
+
+=item B<--removenic> I<address>
+
+Removes a network adapter from a virtual server's directory entry.
+
+=item B<--removeprocessor> I<address>
+
+Removes a processor from an active virtual server's configuration.
+
+=item B<--replacevs> I<directory entry>
+
+Replaces a virtual server's directory entry.
+
+=item B<--setipl> I<ipl target> I<load parms> I<parms>
+
+Sets the IPL statement for a given virtual server.
+
+=item B<--setpassword> I<password>
+
+Sets the password for a given virtual server.
 
 =head1 RETURN VALUE
 
@@ -268,6 +420,64 @@ Output is similar to:
 
  vm1: node successfully changed
 
+=head2 zVM specific:
+
+1. To adds a 3390 (ECKD) disk to a virtual server's directory entry:
+
+ chvm gpok3 --add3390 POOL1 0101 3338 MR
+  
+Output is similar to:
+  
+ gpok3: Adding disk 0101 to LNX3... Done
+  
+2. To add a network adapter to a virtual server's directory entry:
+
+ chvm gpok3 --addnic 0600 QDIO 3
+  
+Output is similar to:
+  
+ gpok3: Adding NIC 0900 to LNX3... Done
+
+3. To connects a given network adapter to a GuestLAN:
+
+ chvm gpok3 --connectnic2guestlan 0600 GLAN1 LN1OWNR
+  
+Output is similar to:
+  
+ gpok3: Connecting NIC 0600 to GuestLan GLAN1 on LN1OWNR... Done
+ 
+4. To connects a given network adapter to a VSwitch:
+ 
+ chvm gpok3 --connectnic2vswitch 0600 VSW1
+ 
+Output is similar to:
+
+ gpok3: Connecting NIC 0600 to VSwitch VSW1 on LNX3... Done
+
+5. To removes a minidisk from a virtual server's directory entry:
+
+ chvm gpok3 --removedisk 0101
+ 
+Output is similar to:
+
+ gpok3: Removing disk 0101 on LNX3... Done
+
+6. To Removes a network adapter from a virtual server's directory entry:
+
+ chvm gpok3 --removenic 0700
+ 
+Output is similar to:
+
+ gpok3: Removing NIC 0700 on LNX3... Done
+
+7. To replaces a virtual server's directory entry:
+
+ chvm gpok3 --replacevs /tmp/dirEntry.txt
+
+Output is similar to:
+
+ gpok3: Replacing user entry of LNX3... Done
+ 
 
 =head1 FILES
 
