@@ -806,15 +806,15 @@ sub credentials {
     ##############################################################
     # If no user/passwd found, check if there is a default group
     ##############################################################
-        elsif( ($ent) = $tab->getNodeAttribs( $defaultgrp{$hwtype}, qw(username password)))
+        else
         {
             if ( $user_specified)
             { # need regx
-                ($ent) = $tab->getAttribs( {hcp=>$defaultgrp{$hwtype},username=>$user},qw(password));
+                ($ent) = $tab->getAllAttribs( {hcp=>$defaultgrp{$hwtype},username=>$user},qw(password));
             }
             else
             {
-                ($ent) = $tab->getNodeAttribs( $defaultgrp{$hwtype}, qw(username password));
+                ($ent) = $tab->getNodesAttribs( $defaultgrp{$hwtype}, qw(username password));
             }
             if ( $ent){
                 if (defined($ent->{password})) { $pass = $ent->{password}; }
