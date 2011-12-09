@@ -16,6 +16,7 @@ use xCAT::MsgUtils;
 use Sys::Hostname;
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::NetworkUtils;
 use Getopt::Long;
 use strict;
 
@@ -3219,27 +3220,21 @@ sub nodeSet {
 				return;
 			}
 		}
-
-		# Get first 3 octets of node IP (IPv4)
-		@words = split( /\./, $hostIP );
-		my $octets = "$words[0].$words[1].$words[2]";
 		
-		# Class B and A networks
-		my $octetsB = "$words[0].$words[1].0";
-		my $octetsA = "$words[0].0.0";
-
 		# Get networks in 'networks' table
 		my $entries = xCAT::zvmUtils->getAllTabEntries('networks');
 
 		# Go through each network
-		my $network;
+		my $network = "";
+		my $mask;
 		foreach (@$entries) {
 
-			# Get network
+			# Get network and mask
 			$network = $_->{'net'};
-
-			# If networks contains the first 3 octets of the node IP
-			if ( $network =~ m/$octets/i || $network =~ m/$octetsB/i || $network =~ m/$octetsA/i) {
+			$mask = $_->{'mask'};
+			
+			# If the host IP address is in this subnet, return
+			if (xCAT::NetworkUtils->ishostinsubnet($hostIP, $mask, $network)) {
 
 				# Exit loop
 				last;
@@ -3248,7 +3243,7 @@ sub nodeSet {
 				$network = "";
 			}
 		}
-
+		
 		# If no network found
 		if ( !$network ) {
 
