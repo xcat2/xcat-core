@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<rmvm> - Removes HMC- and IVM-managed partitions.
+B<rmvm> - Removes HMC-, IVM-, and zVM-managed partitions or virtual machines.
 
 =head1 SYNOPSIS
 
@@ -77,6 +77,13 @@ Output is similar to:
 
 lpar1: Success
 
+5. To remove a zVM virtual machine:
+
+I<rmvm gpok4>
+
+Output is similar to:
+
+ gpok4: Deleting virtual server gpok4... Done
 
 =head1 FILES
 

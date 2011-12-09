@@ -178,6 +178,24 @@ Output is similar to:
   type    name                           id      type-model  serial-number  address
   fsp     Server-9125-F2A-SN0262672-B  3       9125-F2A    0262672        192.168.200.243
 
+5. To collects the node information from one or more hardware control points on zVM AND populate the database with details collected by rscan:
+
+I<rscan gpok2 -W>
+
+Output is similar to:
+
+  gpok2:
+    objtype=node
+    arch=s390x
+    os=sles10sp3
+    hcp=gpok3.endicott.ibm.com
+    userid=LINUX2
+    nodetype=vm
+    parent=POKDEV61
+    groups=all
+    mgt=zvm
+
+
 =head1 FILES
 
 /opt/xcat/bin/rscan

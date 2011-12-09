@@ -34,6 +34,10 @@ B<rpower> I<noderange> [B<on>|B<off>|B<stat>|B<state>|B<reset>|B<boot>|B<of>|B<s
 
 B<rpower> I<noderange> [B<cycle>|B<softoff>] 
 
+=head2 zVM specific:
+
+B<rpower> I<noderange> [B<on>|B<off>|B<reset>|B<stat>|B<softoff>]
+
 =head1 DESCRIPTION
 
 B<rpower> controls the power for a single or range of nodes,  via the out-of-band path.

@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<mkvm> - Creates HMC- and IVM-managed partitions or other virtual machines.
+B<mkvm> - Creates HMC-, IVM-, and zVM-managed partitions or other virtual machines.
 
 =head1 SYNOPSIS
 
@@ -22,6 +22,12 @@ B<mkvm> [B<-V>| B<--verbose>] I<noderange> B<--full>
 
 B<mkvm> I<noderange> B<-m>|B<--master> I<mastername> B<-s>|B<--size> I<disksize> B<-f>|B<--force>
 
+=head2 For zVM:
+
+B<mkvm> I<noderange> I<directory entry file path>
+
+B<mkvm> I<noderange> I<source virtual machine> B<pool=> I<disk pool> B<pw=> I<multi password>
+
 =head1 DESCRIPTION
 
 =head2 For PPC:
@@ -39,6 +45,12 @@ Please note that the mkvm command currently only supports creating standard LPAR
 =head2 For KVM:
 
 mkvm ....
+
+=head2 For zVM:
+
+The first form of mkvm creates a new virtual machine based on a directory entry.
+
+The second form of this creates a new virtual machine with the same profile/resources as the specified node (cloning).
 
 =head1 OPTIONS
 
@@ -145,6 +157,44 @@ Output is similar to:
 
  lpar5: Success
  lpar6: Success
+
+
+5. To create a new virtual machine (gpok3) based on a directory entry:
+
+ mkvm gpok3 /tmp/dirEntry.txt
+ 
+Output is similar to:
+
+ gpok3: Creating user directory entry for LNX3... Done
+
+
+6. To clone a new virtual machine with the same profile/resources as the specified node:
+
+ mkvm gpok4 gpok3 pool=POOL1
+
+Output is similar to:
+
+ gpok4: Cloning gpok3
+ gpok4: Linking source disk (0100) as (1100)
+ gpok4: Linking source disk (0101) as (1101)
+ gpok4: Stopping LNX3... Done
+ gpok4: Creating user directory entry
+ gpok4: Granting VSwitch (VSW1) access for gpok3
+ gpok4: Granting VSwitch (VSW2) access for gpok3
+ gpok4: Adding minidisk (0100)
+ gpok4: Adding minidisk (0101)
+ gpok4: Disks added (2). Disks in user entry (2)
+ gpok4: Linking target disk (0100) as (2100)
+ gpok4: Copying source disk (1100) to target disk (2100) using FLASHCOPY
+ gpok4: Mounting /dev/dasdg1 to /mnt/LNX3
+ gpok4: Setting network configuration
+ gpok4: Linking target disk (0101) as (2101)
+ gpok4: Copying source disk (1101) to target disk (2101) using FLASHCOPY
+ gpok4: Powering on
+ gpok4: Detatching source disk (0101) at (1101)
+ gpok4: Detatching source disk (0100) at (1100)
+ gpok4: Starting LNX3... Done
+
 
 =head1 FILES
 

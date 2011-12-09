@@ -16,6 +16,18 @@ B<lsvm> [B<-a>| B<--all>] I<noderange>
 
 B<lsvm> [B<-l>| B<--long>] I<noderange>
 
+=head2 For zVM:
+
+B<lsvm> I<noderange>
+
+B<lsvm> I<noderange> B<--getnetworknames>
+
+B<lsvm> I<noderange> B<--getnetwork> I<network name>
+
+B<lsvm> I<noderange> B<--diskpoolnames>
+
+B<lsvm> I<noderange> B<--diskpool> I<pool name>
+
 =head1 DESCRIPTION
 
 The lsvm command lists all partition profiles defined for the partitions specified in noderange. If noderange is a CEC, all the partitions associated with that CEC are displayed.
@@ -35,6 +47,18 @@ The Memory Interleaving Mode has 3 valid options:
 
 More information about this part, refer to the section Using the *vm commands to define partitions in xCAT DFM  in the link below. 
   https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Power_775_Hardware_Management
+  
+=head2 For zVM:
+
+The first form of lsvm list the directory entry. 
+
+The second form of this command list the defined network names available for a given node.
+
+The third form of this command list the configuration for a given network.
+
+The fourth form of this command list the disk pool names available.
+
+The fifth form of this command list the configuration for a given disk pool.
 
 =head1 OPTIONS
 
@@ -58,6 +82,23 @@ List all the profiles for one partition
 B<-l>          
 
 Show lparnames for lpars.
+
+B<--getnetworknames>
+
+List the defined network names available for a given node.
+
+B<--getnetwork> I<network name>
+
+List the configuration for a given network.
+
+B<--diskpoolnames>
+
+List the disk pool names available.
+
+B<--diskpool> I<pool name>
+
+List the configuration for a given disk pool.
+
 
 =head1 RETURN VALUE
 
@@ -169,6 +210,70 @@ Output is similar to:
  OctantID=5,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
  OctantID=6,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
  OctantID=7,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+ Number of BSR arrays: 256,Bytes per BSR array: 4096,Available BSR array: 0;
+ Available huge page memory(in pages):     0
+ Configurable huge page memory(in pages):  12
+ Page Size(in GB):                         16
+ Maximum huge page memory(in pages):       24
+ Requested huge page memory(in pages):     15
+
+5. To list the virtual machine's directory entry:
+
+ lsvm gpok3
+
+Output is similar to:
+
+ gpok3: USER LNX3 PWD 512M 1G G
+ gpok3: INCLUDE LNXDFLT
+ gpok3: COMMAND SET VSWITCH VSW2 GRANT LNX3
+
+6. To list the defined network names available for a given node:
+
+ lsvm gpok3 --getnetworknames
+
+Output is similar to:
+
+ gpok3: LAN:QDIO SYSTEM GLAN1
+ gpok3: LAN:HIPERS SYSTEM GLAN2
+ gpok3: LAN:QDIO SYSTEM GLAN3
+ gpok3: VSWITCH SYSTEM VLANTST1
+ gpok3: VSWITCH SYSTEM VLANTST2
+ gpok3: VSWITCH SYSTEM VSW1
+ gpok3: VSWITCH SYSTEM VSW2
+ gpok3: VSWITCH SYSTEM VSW3
+
+7. To list the configuration for a given network:
+
+ lsvm gpok3 --getnetwork GLAN1
+
+Output is similar to:
+ 
+ gpok3: LAN SYSTEM GLAN1        Type: QDIO    Connected: 1    Maxconn: INFINITE
+ gpok3:   PERSISTENT  UNRESTRICTED  IP                        Accounting: OFF
+ gpok3:   IPTimeout: 5                 MAC Protection: Unspecified
+ gpok3:   Isolation Status: OFF
+
+8. To list the disk pool names available:
+
+ lsvm gpok3 --diskpoolnames
+ 
+Output is similar to:
+
+ gpok3: POOL1
+ gpok3: POOL2
+ gpok3: POOL3
+
+9. List the configuration for a given disk pool:
+
+ lsvm gpok3 --diskpool POOL1 free
+
+Output is similar to:
+ 
+ gpok3: #VolID DevType StartAddr Size
+ gpok3: EMC2C4 3390-09 0001 10016
+ gpok3: EMC2C5 3390-09 0001 10016
+
+=======
  Number of BSR arrays: 256,Bytes per BSR array: 4096,Available BSR array: 0;
  Available huge page memory(in pages):     0
  Configurable huge page memory(in pages):  12

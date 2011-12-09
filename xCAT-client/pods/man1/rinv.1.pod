@@ -182,6 +182,45 @@ To retrieve information about a VMware node vm1, enter:
  vm1: Hard disk 1 (d0): 9000 MB @ [nfs_192.168.68.21_vol_rc1storage_vmware] vm1_3/vm1.vmdk
  vm1: Hard disk 2 (d4): 64000 MB @ [nfs_192.168.68.21_vol_rc1storage_vmware] vm1_3/vm1_5.vmdk
 
+=item *
+
+To retrieve all information about a zVM node gpok3, enter:
+
+ rinv gpok3 all
+ gpok3: z/VM UserID: XCAT3
+ gpok3: z/VM Host: POKDEV61
+ gpok3:Operating System: SUSE Linux Enterprise Server 11 (s390x)
+ gpok3: Architecture:	s390x
+ gpok3: HCP: gpok3.endicott.ibm.com
+ gpok3: Privileges: 
+ gpok3:     Currently: G
+ gpok3:     Directory: G
+ gpok3: 
+ gpok3: Total Memory:	796M
+ gpok3: Processors: 
+ gpok3:     CPU 01  ID  FF0C452E20978000 CP   CPUAFF ON
+ gpok3:     CPU 00  ID  FF0C452E20978000 (BASE) CP   CPUAFF ON
+ gpok3: 
+ gpok3: Disks: 
+ gpok3:     DASD 0100 3390 EMC2C6 R/W      10016 CYL ON DASD  C2C6 SUBCHANNEL = 0000
+ gpok3:     DASD 0190 3390 EV61A2 R/O        107 CYL ON DASD  61A2 SUBCHANNEL = 000E
+ gpok3:     DASD 0191 3390 EMC20D R/O       1000 CYL ON DASD  C20D SUBCHANNEL = 0013
+ gpok3:     DASD 019D 3390 EV61A2 R/O        146 CYL ON DASD  61A2 SUBCHANNEL = 000F
+ gpok3:     DASD 019E 3390 EV61A2 R/O        250 CYL ON DASD  61A2 SUBCHANNEL = 0010
+ gpok3:     DASD 0300 9336 (VDSK) R/W     262144 BLK ON DASD  VDSK SUBCHANNEL = 0014
+ gpok3:     DASD 0301 9336 (VDSK) R/W     524288 BLK ON DASD  VDSK SUBCHANNEL = 0015
+ gpok3:     DASD 0402 3390 EV61A2 R/O        146 CYL ON DASD  61A2 SUBCHANNEL = 0011
+ gpok3:     DASD 0592 3390 EV61A2 R/O         70 CYL ON DASD  61A2 SUBCHANNEL = 0012
+ gpok3: 
+ gpok3: NICs:	
+ gpok3:     Adapter 0600.P00 Type: QDIO      Name: UNASSIGNED  Devices: 3
+ gpok3:       MAC: 02-00-06-00-05-38         LAN: * None
+ gpok3:     Adapter 0700.P00 Type: QDIO      Name: UNASSIGNED  Devices: 3
+ gpok3:       MAC: 02-00-06-00-05-39         LAN: * None
+ gpok3:     Adapter 0800.P00 Type: QDIO      Name: FOOBAR      Devices: 3
+ gpok3:       MAC: 02-00-06-00-05-3A         VSWITCH: SYSTEM VSW2
+
+=item *
 
 =back
 
