@@ -437,7 +437,7 @@ sub update_node_attribs
     ###########################
     my @users = qw(HMC admin general);
     foreach my $user ( @users ) {
-        my $pwhash = $db->{ppcdirect}->getAttribs( {hcp=>$predefined_node,username=>$user}, qw(password comments disable));
+        my $pwhash = $db->{ppcdirect}->getAttribs( {hcp=>$predefined_node,username=>$user}, qw(password comments disable));  # need regx 
         if ( $pwhash )
         {
             if ( $namediff )
@@ -791,8 +791,8 @@ sub credentials {
     $tab = xCAT::Table->new( $hcptab{$hwtype} );
     if ( $tab ) {
         my $ent;
-        if ( $user_specified)
-        {
+        if ( $user_specified) 
+        { # need regx
             ($ent) = $tab->getAttribs( {hcp=>$server,username=>$user},qw(password));
         }
         else
@@ -806,15 +806,15 @@ sub credentials {
     ##############################################################
     # If no user/passwd found, check if there is a default group
     ##############################################################
-        elsif( ($ent) = $tab->getNodeAttribs( $defaultgrp{$hwtype}, qw(username password)))
+        else
         {
             if ( $user_specified)
-            {
-                ($ent) = $tab->getAttribs( {hcp=>$defaultgrp{$hwtype},username=>$user},qw(password));
+            { # need regx
+                ($ent) = $tab->getAllAttribs( {hcp=>$defaultgrp{$hwtype},username=>$user},qw(password));
             }
             else
             {
-                ($ent) = $tab->getNodeAttribs( $defaultgrp{$hwtype}, qw(username password));
+                ($ent) = $tab->getNodesAttribs( $defaultgrp{$hwtype}, qw(username password));
             }
             if ( $ent){
                 if (defined($ent->{password})) { $pass = $ent->{password}; }
