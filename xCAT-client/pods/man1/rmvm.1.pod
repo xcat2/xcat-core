@@ -83,7 +83,7 @@ I<rmvm gpok4>
 
 Output is similar to:
 
- gpok4: Deleting virtual server gpok4... Done
+ gpok4: Deleting virtual server LNX4... Done
 
 =head1 FILES
 
