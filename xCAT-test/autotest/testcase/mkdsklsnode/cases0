@@ -1,0 +1,114 @@
+start:mkdsklsnode_h
+os:AIX
+cmd:mkdsklsnode -h
+check:rc==0
+check:output=~Usage
+end
+
+start:mkdsklsnode_i_f
+os:AIX
+cmd:mknimimage -r -t diskless -s $$SOURCE autotestdsklsimage 
+check:rc==0
+cmd:mkdsklsnode -i autotestdsklsimage $$CN -f
+check:rc==0
+check:output=~Initializing NIM machine '$$CN'
+check:output=~AIX/NIM diskless nodes were initialized
+cmd:lsnim -l $$CN
+check:rc==0
+cmd:rmdsklsnode $$CN
+cmd:nim -o remove autotestdsklsimage
+cmd:nim -o remove autotestdsklsimage_lpp_source
+cmd:nim -o remove autotestdsklsimage_shared_root
+cmd:nim -o remove autotestdsklsimage_paging
+cmd:chtab -d imagename=autotestdsklsimage osimage
+cmd:rm -rf /install/nim/lpp_source/autotestdsklsimage_lpp_source
+cmd:rm -rf /install/nim/paging/autotestdsklsimage_paging
+cmd:rm -rf /install/nim/spot/autotestdsklsimage
+cmd:rm -rf /install/nim/shared_root/autotestdsklsimage_shared_root
+end
+
+start:mkdsklsnode_i_f_V
+os:AIX
+cmd:mknimimage -r -t diskless -s $$SOURCE autotestdsklsimage
+check:rc==0
+cmd:mkdsklsnode -i autotestdsklsimage $$CN -f
+check:rc==0
+check:output=~$$MN: AIX/NIM diskless nodes were initialized
+check:output=~Initializing NIM machine '$$CN'
+check:output=~AIX/NIM diskless nodes were initialized
+cmd:lsnim -l $$CN
+check:rc==0
+cmd:rmdsklsnode $$CN
+cmd:nim -o remove autotestdsklsimage
+cmd:nim -o remove autotestdsklsimage_lpp_source
+cmd:nim -o remove autotestdsklsimage_shared_root
+cmd:nim -o remove autotestdsklsimage_paging
+cmd:chtab -d imagename=autotestdsklsimage osimage
+cmd:rm -rf /install/nim/lpp_source/autotestdsklsimage_lpp_source
+cmd:rm -rf /install/nim/paging/autotestdsklsimage_paging
+cmd:rm -rf /install/nim/spot/autotestdsklsimage
+cmd:rm -rf /install/nim/shared_root/autotestdsklsimage_shared_root
+end
+
+
+start:mkdsklsnode_n_i
+os:AIX
+cmd:mknimimage -r -t diskless -s $$SOURCE autotestdsklsimage
+check:rc==0
+cmd:mkdsklsnode -n -i autotestdsklsimage $$CN
+check:rc==0
+cmd:lsnim |grep $$CN|sed -e 's/_/ /g'|cut -d" " -f2 |grep ^autotestdsklsimage$ 
+check:rc==0
+cmd:rmdsklsnode -i autotestdsklsimage $$CN 
+cmd:nim -o remove autotestdsklsimage
+cmd:nim -o remove autotestdsklsimage_lpp_source
+cmd:nim -o remove autotestdsklsimage_shared_root
+cmd:nim -o remove autotestdsklsimage_paging
+cmd:chtab -d imagename=autotestdsklsimage osimage
+cmd:rm -rf /install/nim/lpp_source/autotestdsklsimage_lpp_source
+cmd:rm -rf /install/nim/paging/autotestdsklsimage_paging
+cmd:rm -rf /install/nim/spot/autotestdsklsimage
+cmd:rm -rf /install/nim/shared_root/autotestdsklsimage_shared_root
+end
+
+start:mkdsklsnode_node
+os:AIX
+cmd:mknimimage -r -t diskless -s $$SOURCE autotestdsklsimage
+check:rc==0
+cmd:mkdsklsnode $$CN
+check:rc==0
+check:output=~Initializing NIM machine '$$CN'
+cmd:lsnim -l $$CN
+check:rc==0
+cmd:rmdsklsnode $$CN
+cmd:nim -o remove autotestdsklsimage
+cmd:nim -o remove autotestdsklsimage_lpp_source
+cmd:nim -o remove autotestdsklsimage_shared_root
+cmd:nim -o remove autotestdsklsimage_paging
+cmd:chtab -d imagename=autotestdsklsimage osimage
+cmd:rm -rf /install/nim/lpp_source/autotestdsklsimage_lpp_source
+cmd:rm -rf /install/nim/paging/autotestdsklsimage_paging
+cmd:rm -rf /install/nim/shared_root/autotestdsklsimage_shared_root
+cmd:rm -rf /install/nim/spot/autotestdsklsimage
+end
+
+start:mkdsklsnode_i_psize_sparse_paging
+os:AIX
+cmd:mknimimage -r -t diskless -s $$SOURCE autotestdsklsimage
+check:rc==0
+cmd:mkdsklsnode -i autotestdsklsimage $$CN psize=128 sparse_paging=yes
+check:rc==0
+cmd:lsnim -l $$CN
+check:rc==0
+cmd:rmdsklsnode $$CN
+cmd:nim -o remove autotestdsklsimage
+cmd:nim -o remove autotestdsklsimage_lpp_source
+cmd:nim -o remove autotestdsklsimage_shared_root
+cmd:nim -o remove autotestdsklsimage_paging
+cmd:chtab -d imagename=autotestdsklsimage osimage
+cmd:rm -rf /install/nim/lpp_source/autotestdsklsimage_lpp_source
+cmd:rm -rf /install/nim/paging/autotestdsklsimage_paging
+cmd:rm -rf /install/nim/spot/autotestdsklsimage
+cmd:rm -rf /install/nim/shared_root/autotestdsklsimage_shared_root
+end
+
