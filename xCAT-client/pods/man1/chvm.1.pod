@@ -54,7 +54,7 @@ B<chvm> I<noderange> [B<--dedicatedevice> I<virtual_device> I<real_device> I<mod
 
 B<chvm> I<noderange> [B<--deleteipl>]
 
-B<chvm> I<noderange> [B<--formatdisk> I<disk address> I<multi_password>]
+B<chvm> I<noderange> [B<--formatdisk> I<disk_address> I<multi_password>]
 
 B<chvm> I<noderange> [B<--disconnectnic> I<address>]
 
