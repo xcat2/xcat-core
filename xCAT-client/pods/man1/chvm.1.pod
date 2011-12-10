@@ -32,13 +32,13 @@ B<chvm> I<noderange> [B<--add3390> I<disk pool> I<device address> I<cylinders> I
 
 B<chvm> I<noderange> [B<--add3390active> I<device address> I<mode>]
 
-B<chvm> I<noderange> [B<--add9336 I<disk pool> I<virtual device> I<block size> I<mode> I<blocks> I<read password> I<write password> I<multi password>]
+B<chvm> I<noderange> [B<--add9336> I<disk pool> I<virtual device> I<block size> I<mode> I<blocks> I<read password> I<write password> I<multi password>]
 
 B<chvm> I<noderange> [B<--adddisk2pool> I<function> I<region> I<volume> I<group>]
 
-B<chvm> I<noderange> [B<--addnic I<address> I<type> I<device count>]
+B<chvm> I<noderange> [B<--addnic> I<address> I<type> I<device count>]
 
-B<chvm> I<noderange> [B<--addprocessor I<address>]
+B<chvm> I<noderange> [B<--addprocessor> I<address>]
 
 B<chvm> I<noderange> [B<--addprocessoractive> I<address> I<type>]
 
@@ -212,7 +212,7 @@ Adds a 3390 (ECKD) disk to a virtual server's directory entry.
 
 Adds a 3390 (ECKD) disk that is defined in a virtual server's directory entry to that virtual server's active configuration.
 
-=item B<--add9336 I<disk pool> I<virtual device> I<block size> I<mode> I<blocks> I<read password> I<write password> I<multi password>
+=item B<--add9336> I<disk pool> I<virtual device> I<block size> I<mode> I<blocks> I<read password> I<write password> I<multi password>
 
 Adds a 9336 (FBA) disk to a virtual server's directory entry.
 
@@ -220,11 +220,11 @@ Adds a 9336 (FBA) disk to a virtual server's directory entry.
 
 Add a disk to a disk pool defined in the EXTENT CONTROL. Function type can be either: (4) Define region as full volume and add to group OR (5) Add existing region to group.  The disk has to already be attached to SYSTEM.
 
-=item B<--addnic I<address> I<type> I<device count>
+=item B<--addnic> I<address> I<type> I<device count>
 
 Adds a network adapter to a virtual server's directory entry (case sensitive).
 
-=item B<--addprocessor I<address>
+=item B<--addprocessor> I<address>
 
 Adds a virtual processor to a virtual server's directory entry.
 
