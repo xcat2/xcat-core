@@ -28,39 +28,39 @@ B<chvm> I<noderange> [B<-a> I<size>] [B<-d> I<disk>] [B<-p> I<disk>] [B<--resize
 
 =head2 zVM specific:
 
-B<chvm> I<noderange> [B<--add3390> I<disk pool> I<device address> I<cylinders> I<mode> I<read password> I<write password> I<multi password>]
+B<chvm> I<noderange> [B<--add3390> I<disk_pool> I<device_address> I<cylinders> I<mode> I<read_password> I<write_password> I<multi_password>]
 
-B<chvm> I<noderange> [B<--add3390active> I<device address> I<mode>]
+B<chvm> I<noderange> [B<--add3390active> I<device_address> I<mode>]
 
-B<chvm> I<noderange> [B<--add9336> I<disk pool> I<virtual device> I<block size> I<mode> I<blocks> I<read password> I<write password> I<multi password>]
+B<chvm> I<noderange> [B<--add9336> I<disk_pool> I<virtual_device> I<block_size> I<mode> I<blocks> I<read_password> I<write_password> I<multi_password>]
 
 B<chvm> I<noderange> [B<--adddisk2pool> I<function> I<region> I<volume> I<group>]
 
-B<chvm> I<noderange> [B<--addnic> I<address> I<type> I<device count>]
+B<chvm> I<noderange> [B<--addnic> I<address> I<type> I<device_count>]
 
 B<chvm> I<noderange> [B<--addprocessor> I<address>]
 
 B<chvm> I<noderange> [B<--addprocessoractive> I<address> I<type>]
 
-B<chvm> I<noderange> [B<--addvdisk> I<userID]> I<device address> I<size>]
+B<chvm> I<noderange> [B<--addvdisk> I<userID]> I<device_address> I<size>]
 
 B<chvm> I<noderange> [B<--connectnic2guestlan> I<address> I<lan> I<owner>]
 
 B<chvm> I<noderange> [B<--connectnic2vswitch> I<address> I<vswitch>]
 
-B<chvm> I<noderange> [B<--copydisk> I<target address> I<source node> I<source address>]
+B<chvm> I<noderange> [B<--copydisk> I<target_address> I<source_node> I<source_address>]
 
-B<chvm> I<noderange> [B<--dedicatedevice> I<virtual device> I<real device> I<mode>]
+B<chvm> I<noderange> [B<--dedicatedevice> I<virtual_device> I<real_device> I<mode>]
 
 B<chvm> I<noderange> [B<--deleteipl>]
 
-B<chvm> I<noderange> [B<--formatdisk> I<disk address> I<multi password>]
+B<chvm> I<noderange> [B<--formatdisk> I<disk address> I<multi_password>]
 
 B<chvm> I<noderange> [B<--disconnectnic> I<address>]
 
 B<chvm> I<noderange> [B<--grantvswitch> I<VSwitch>]
 
-B<chvm> I<noderange> [B<--removedisk> I<virtual device>]
+B<chvm> I<noderange> [B<--removedisk> I<virtual_device>]
 
 B<chvm> I<noderange> [B<--resetsmapi>]
 
@@ -70,9 +70,9 @@ B<chvm> I<noderange> [B<--removenic> I<address>]
 
 B<chvm> I<noderange> [B<--removeprocessor> I<address>]
 
-B<chvm> I<noderange> [B<--replacevs> I<directory entry>]
+B<chvm> I<noderange> [B<--replacevs> I<directory_entry>]
 
-B<chvm> I<noderange> [B<--setipl> I<ipl target> I<load parms> I<parms>]
+B<chvm> I<noderange> [B<--setipl> I<ipl_target> I<load_parms> I<parms>]
 
 B<chvm> I<noderange> [B<--setpassword> I<password>]
 
@@ -204,15 +204,15 @@ Change the size of the Hard disk.  The disk can never be set to less than it's c
 
 =head2 zVM specific:
 
-=item B<--add3390> I<disk pool> I<device address> I<cylinders> I<mode> I<read password> I<write password> I<multi password>
+=item B<--add3390> I<disk_pool> I<device_address> I<cylinders> I<mode> I<read_password> I<write_password> I<multi_password>
 
 Adds a 3390 (ECKD) disk to a virtual server's directory entry.
 
-=item B<--add3390active> I<device address> I<mode>
+=item B<--add3390active> I<device_address> I<mode>
 
 Adds a 3390 (ECKD) disk that is defined in a virtual server's directory entry to that virtual server's active configuration.
 
-=item B<--add9336> I<disk pool> I<virtual device> I<block size> I<mode> I<blocks> I<read password> I<write password> I<multi password>
+=item B<--add9336> I<disk_pool> I<virtual_device> I<block_size> I<mode> I<blocks> I<read_password> I<write_password> I<multi_password>
 
 Adds a 9336 (FBA) disk to a virtual server's directory entry.
 
@@ -220,7 +220,7 @@ Adds a 9336 (FBA) disk to a virtual server's directory entry.
 
 Add a disk to a disk pool defined in the EXTENT CONTROL. Function type can be either: (4) Define region as full volume and add to group OR (5) Add existing region to group.  The disk has to already be attached to SYSTEM.
 
-=item B<--addnic> I<address> I<type> I<device count>
+=item B<--addnic> I<address> I<type> I<device_count>
 
 Adds a network adapter to a virtual server's directory entry (case sensitive).
 
@@ -232,7 +232,7 @@ Adds a virtual processor to a virtual server's directory entry.
 
 Adds a virtual processor to a virtual server's active configuration (case sensitive).
 
-=item B<--addvdisk> I<userID]> I<device address> I<size>
+=item B<--addvdisk> I<userID]> I<device_address> I<size>
 
 Adds a v-disk to a virtual server's directory entry.
 
@@ -244,11 +244,11 @@ Connects a given network adapter to a GuestLAN.
 
 Connects a given network adapter to a VSwitch.
 
-=item B<--copydisk> I<target address> I<source node> I<source address>
+=item B<--copydisk> I<target_address> I<source_node> I<source_address>
 
 Copy a disk attached to a given virtual server.
 
-=item B<--dedicatedevice> I<virtual device> I<real device> I<mode>
+=item B<--dedicatedevice> I<virtual_device> I<real_device> I<mode>
 
 Adds a dedicated device to a virtual server's directory entry.
 
@@ -256,7 +256,7 @@ Adds a dedicated device to a virtual server's directory entry.
 
 Deletes the IPL statement from the virtual server's directory entry.
 
-=item B<--formatdisk> I<disk address> I<multi password>
+=item B<--formatdisk> I<disk_address> I<multi_password>
 
 Formats a disk attached to a given virtual server (only ECKD disks supported). The disk should not be linked to any other virtual server. This command is best used after add3390().
 
@@ -268,7 +268,7 @@ Disconnects a given network adapter.
 
 Grant VSwitch access for given virtual server.
 
-=item B<--removedisk> I<virtual device>
+=item B<--removedisk> I<virtual_device>
 
 Removes a minidisk from a virtual server's directory entry.
 
@@ -288,11 +288,11 @@ Removes a network adapter from a virtual server's directory entry.
 
 Removes a processor from an active virtual server's configuration.
 
-=item B<--replacevs> I<directory entry>
+=item B<--replacevs> I<directory_entry>
 
 Replaces a virtual server's directory entry.
 
-=item B<--setipl> I<ipl target> I<load parms> I<parms>
+=item B<--setipl> I<ipl_target> I<load_parms> I<parms>
 
 Sets the IPL statement for a given virtual server.
 

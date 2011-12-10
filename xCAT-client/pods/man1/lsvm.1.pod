@@ -22,11 +22,11 @@ B<lsvm> I<noderange>
 
 B<lsvm> I<noderange> B<--getnetworknames>
 
-B<lsvm> I<noderange> B<--getnetwork> I<network name>
+B<lsvm> I<noderange> B<--getnetwork> I<network_name>
 
 B<lsvm> I<noderange> B<--diskpoolnames>
 
-B<lsvm> I<noderange> B<--diskpool> I<pool name>
+B<lsvm> I<noderange> B<--diskpool> I<pool_name>
 
 =head1 DESCRIPTION
 
@@ -87,7 +87,7 @@ B<--getnetworknames>
 
 List the defined network names available for a given node.
 
-B<--getnetwork> I<network name>
+B<--getnetwork> I<network_name>
 
 List the configuration for a given network.
 
@@ -95,7 +95,7 @@ B<--diskpoolnames>
 
 List the disk pool names available.
 
-B<--diskpool> I<pool name>
+B<--diskpool> I<pool_name>
 
 List the configuration for a given disk pool.
 
@@ -216,6 +216,13 @@ Output is similar to:
  Page Size(in GB):                         16
  Maximum huge page memory(in pages):       24
  Requested huge page memory(in pages):     15
+=======
+ Number of BSR arrays: 256,Bytes per BSR array: 4096,Available BSR array: 0;
+ Available huge page memory(in pages):     0
+ Configurable huge page memory(in pages):  12
+ Page Size(in GB):                         16
+ Maximum huge page memory(in pages):       24
+ Requested huge page memory(in pages):     15
 
 5. To list the virtual machine's directory entry:
 
@@ -272,14 +279,6 @@ Output is similar to:
  gpok3: #VolID DevType StartAddr Size
  gpok3: EMC2C4 3390-09 0001 10016
  gpok3: EMC2C5 3390-09 0001 10016
-
-=======
- Number of BSR arrays: 256,Bytes per BSR array: 4096,Available BSR array: 0;
- Available huge page memory(in pages):     0
- Configurable huge page memory(in pages):  12
- Page Size(in GB):                         16
- Maximum huge page memory(in pages):       24
- Requested huge page memory(in pages):     15
 
 =head1 FILES
 

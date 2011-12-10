@@ -24,9 +24,9 @@ B<mkvm> I<noderange> B<-m>|B<--master> I<mastername> B<-s>|B<--size> I<disksize>
 
 =head2 For zVM:
 
-B<mkvm> I<noderange> I<directory entry file path>
+B<mkvm> I<noderange> I<directory_entry_file_path>
 
-B<mkvm> I<noderange> I<source virtual machine> B<pool=> I<disk pool> B<pw=> I<multi password>
+B<mkvm> I<noderange> I<source_virtual_machine> B<pool=> I<disk_pool> B<pw=> I<multi_password>
 
 =head1 DESCRIPTION
 
