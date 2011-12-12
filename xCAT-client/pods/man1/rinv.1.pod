@@ -28,6 +28,10 @@ B<rinv> I<noderange> {B<mtm>|B<serial>|B<mac>|B<bios>|B<diag>|B<mprom>|B<mparom>
 
 B<rinv> I<noderange> [B<-t>]
 
+=head2 zVM specific:
+
+B<rinv> I<noderange> {B<all>|B<config>}
+
 =head1 B<Description>
 
 B<rinv>  retrieves  hardware  configuration  information from the on-board

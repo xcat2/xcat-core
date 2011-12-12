@@ -159,7 +159,7 @@ Output is similar to:
  lpar6: Success
 
 
-5. To create a new virtual machine (gpok3) based on a directory entry:
+5. To create a new zVM virtual machine (gpok3) based on a directory entry:
 
  mkvm gpok3 /tmp/dirEntry.txt
  
@@ -168,7 +168,7 @@ Output is similar to:
  gpok3: Creating user directory entry for LNX3... Done
 
 
-6. To clone a new virtual machine with the same profile/resources as the specified node:
+6. To clone a new zVM virtual machine with the same profile/resources as the specified node:
 
  mkvm gpok4 gpok3 pool=POOL1
 

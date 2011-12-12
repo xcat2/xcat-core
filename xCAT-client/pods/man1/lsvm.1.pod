@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<lsvm> - Lists partition profile information for HMC- and IVM-managed nodes. For Power 775, it lists the LPARs' I/O slots information and CEC configuration.
+B<lsvm> - Lists partition profile information for HMC-, IVM-, and zVM-managed nodes. For Power 775, it lists the LPARs' I/O slots information and CEC configuration.
 
 =head1 SYNOPSIS
 
