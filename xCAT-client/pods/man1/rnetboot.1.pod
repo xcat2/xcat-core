@@ -8,6 +8,8 @@ B<rnetboot> [B<-V>|B<--verbose>] [B<-s> I<boot_device_order>] [B<-F>] [B<-f>] I<
 
 B<rnetboot> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
+B<rnetboot> noderange [B<ipl=> I<address>]
+
 
 =head1 DESCRIPTION
 
@@ -75,6 +77,8 @@ Command Version.
 
  rnetboot all -s hd,net
 
+ rnetboot all ipl=00c
+ 
 
 =head1 SEE ALSO
 
