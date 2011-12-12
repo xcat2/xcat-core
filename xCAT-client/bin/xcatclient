@@ -16,19 +16,20 @@ use Cwd;
 use File::Basename;
 #use Data::Dumper;
 use xCAT::Client;
-
+use strict;
 my $bname = basename($0);
 my $cmdref;
 if ($bname =~ /xcatclient/) { $cmdref->{command}->[0]=shift @ARGV; }  # xcatclient was invoked directly and the 1st arg is cmd name that is used to locate the plugin
 else { $cmdref->{command}->[0] = $bname; }        # the cmd was sym linked to xcatclient
 $cmdref->{cwd}->[0] = cwd();
 
-
+my $data;
 # allows our plugins to get the stdin of the cmd that invoked the plugin
 if ( (($^O =~ /^linux/i) && ($ENV{'SHELL'} =~ /\/ksh$/))  || !defined($ENV{'TERM
 '}) )
 {
     my $rin="";
+    my $rout;
     vec($rin,fileno(STDIN),1)=1;
     my $nfound=select($rout=$rin,"","",1);
     if ($nfound)
