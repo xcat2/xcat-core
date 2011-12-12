@@ -1815,25 +1815,44 @@ sub preprocess_request {
         # get the HCPs for the LPARs in order to figure out which service 
         # nodes to send the requests to
         ###################################################################
-        my $hcptab_name = ($package eq "fsp" or $package eq "bpa") ? "ppcdirect" : "ppchcp";
-        my $hcptab  = xCAT::Table->new( $hcptab_name );
-        unless ($hcptab ) {
-            $callback->({data=>["Cannot open $hcptab_name table"]});
-            $req = {};
-            return;
-        }
+        #my $hcptab_name = ($package eq "fsp" or $package eq "bpa") ? "ppcdirect" : "ppchcp";
+        #my $hcptab  = xCAT::Table->new( $hcptab_name );
+        #unless ($hcptab ) {
+        #    $callback->({data=>["Cannot open $hcptab_name table"]});
+        #    $req = {};
+        #    return;
+        #}
         # Check if each node is hcp 
         my %hcp_hash=();
         my @missednodes=();
-        foreach ( @$noderange ) {
-            my ($ent) = $hcptab->getNodeAttribs( $_,"hcp" );
-            if ( !defined( $ent )) {
-                push @missednodes, $_;
-                next;
-            }
-            push @{$hcp_hash{$_}{nodes}}, $_;
+        my $support_hcp_type;
+        # in the DFM model, cec/fsp/Frame/bpa can be hcp.
+        if ($package eq "fsp" or $package eq "bpa") {
+            $support_hcp_type = "(fsp|cec|bpa|frame)";
+        # in the HMC model, only hmc can be hcp.
+        } elsif ($package eq "hmc") {
+            $support_hcp_type = "hmc";
+        # package equal 'ivm', only ivm can be hcp.
+        } else {
+            $support_hcp_type = "ivm";
         }
-    
+        foreach ( @$noderange ) {
+            my $nodetype = xCAT::DBobjUtils->getnodetype($_);
+            if ($nodetype and $nodetype =~ /$support_hcp_type/) {
+                push @{$hcp_hash{$_}{nodes}}, $_;
+            } else {
+                push @missednodes, $_;
+            }
+        }
+        #foreach ( @$noderange ) {
+        #    my ($ent) = $hcptab->getNodeAttribs( $_,"hcp" );
+        #    if ( !defined( $ent )) {
+        #       push @missednodes, $_;
+        #    next;
+        #    }
+        #    push @{$hcp_hash{$_}{nodes}}, $_;
+        #}
+   
         #check if the left-over nodes are lpars
         if (@missednodes > 0) {
             my $ppctab = xCAT::Table->new("ppc");
