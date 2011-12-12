@@ -25,8 +25,7 @@ $cmdref->{cwd}->[0] = cwd();
 
 my $data;
 # allows our plugins to get the stdin of the cmd that invoked the plugin
-if ( (($^O =~ /^linux/i) && ($ENV{'SHELL'} =~ /\/ksh$/))  || !defined($ENV{'TERM
-'}) )
+if ( (($^O =~ /^linux/i) && ($ENV{'SHELL'} =~ /\/ksh$/))  || !defined($ENV{'TERM'}) )
 {
     my $rin="";
     my $rout;
