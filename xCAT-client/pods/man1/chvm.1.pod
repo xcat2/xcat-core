@@ -106,11 +106,11 @@ The chvm command modifes the virtual machine's configuration specified in nodera
 
 =over 10
 
-=item B<-h>          
+=item B<-h>
 
 Display usage message.
 
-=item B<-v>          
+=item B<-v>
 
 Command Version.
 
@@ -120,15 +120,15 @@ Command Version.
 
 =over 10
 
-=item B<-p> I<profile>  
+=item B<-p> I<profile>
 
 Name of an existing partition profile.
 
-=item I<attr>=I<val>    
+=item I<attr>=I<val>
 
 Specifies one or more "attribute equals value" pairs, separated by spaces.
 
-=item B<-V>          
+=item B<-V>
 
 Verbose output.
 
@@ -138,15 +138,15 @@ Verbose output.
 
 =over 10
 
-=item B<-i>              
+=item B<-i>
 
 Starting numeric id of the newly created partitions. For Power 775 using Direct FSP Management, the id value only could be B<1>, B<5>, B<9>, B<13>, B<17>, B<21>, B<25> and B<29>.
 
-=item B<-m>              
+=item B<-m>     
 
 memory interleaving. The setting value only could be B<1> or B<2>. B<2> means B<non-interleaved> mode (also 2MC mode), the memory cannot be shared across the processors in an octant. B<1> means B<interleaved> mode (also 8MC mode) , the memory can be shared. The default value is B<1> .
 
-=item B<-r>              
+=item B<-r>    
 
 partition rule.
 
@@ -162,7 +162,7 @@ The octants configuration value for one Octant could be  B<1>, B<2>, B<3>, B<4>,
  4 -- 4 partitions with a 25/25/25/25 split of cpus and memory
  5 -- 2 partitions with a 25/75 split of cpus and memory
 
-=item B<-p> I<profile>  
+=item B<-p> I<profile>
 
 Name of I/O slots assignment profile.
 
@@ -176,33 +176,35 @@ Set LPAR name for the specified lpars. If '*' specified, it means to get names f
 
 =over 10
 
-=item B<-a> I<size> 
+=item B<-a> I<size>
 
 Add a new Hard disk with size defaulting to GB.  Multiple can be added with comma separated values.
 
-=item B<--cpus> I<count> 
+=item B<--cpus> I<count>
 
 Set the number of CPUs.
 
-=item B<-d> I<disk> 
+=item B<-d> I<disk>
 
 Deregister the Hard disk but leave the backing files.  Multiple can be done with comma separated values.  The disks are specified by SCSI id.  Size defaults to GB.
 
-=item B<--mem> I<memory> 
+=item B<--mem> I<memory>
 
 Set the memory, defaults to MB.
 
-=item B<-p> I<disk> 
+=item B<-p> I<disk>
 
 Purge the Hard disk.  Deregisters and deletes the files.  Multiple can be done with comma separated values.  The disks are specified by SCSI id.  Size defaults to GB.
 
-=item B<--resize> B<disk>=I<size> 
+=item B<--resize> B<disk>=I<size>
 
 Change the size of the Hard disk.  The disk can never be set to less than it's current size.  Multiple disks can be resized to I<size> by using comma separated values on the left side of B<=>.  The disks are specified by SCSI id.  Size defaults to GB.
 
 =back
 
 =head2 zVM specific:
+
+=over 10
 
 =item B<--add3390> I<disk_pool> I<device_address> I<cylinders> I<mode> I<read_password> I<write_password> I<multi_password>
 
@@ -299,6 +301,8 @@ Sets the IPL statement for a given virtual server.
 =item B<--setpassword> I<password>
 
 Sets the password for a given virtual server.
+
+=back
 
 =head1 RETURN VALUE
 
