@@ -10,7 +10,7 @@ use Cwd;
 use File::Basename;
 use xCAT::MsgUtils;
 use xCAT::Client;
-
+use strict;
 use Getopt::Std;
 
 my $bname = basename($0);
@@ -56,6 +56,7 @@ $cmdref->{cwd}->[0] = cwd();
 my $data;
 if ( (($^O =~ /^linux/i) && ($ENV{'SHELL'} =~ /\/ksh$/))  || !defined($ENV{'TERM'}) )
 {
+    my $rout;
     my $rin="";
     vec($rin,fileno(STDIN),1)=1;
     my $nfound=select($rout=$rin,"","",1);
