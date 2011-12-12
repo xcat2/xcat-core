@@ -54,7 +54,7 @@ else
 $cmdref->{cwd}->[0] = cwd();
 # get info from files piped in as stdin
 my $data;
-if (($^O =~ /^linux/i) && ($ENV{'SHELL'} =~ /\/ksh$/))
+if ( (($^O =~ /^linux/i) && ($ENV{'SHELL'} =~ /\/ksh$/))  || !defined($ENV{'TERM'}) )
 {
     my $rin="";
     vec($rin,fileno(STDIN),1)=1;
