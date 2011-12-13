@@ -32,11 +32,11 @@ key --skip
 
 #No RAID
 #/boot really significant for this sort of setup nowadays?
-part None --fstype "PPC PReP Boot" --size 8
+part None --fstype "PPC PReP Boot" --size 8 --ondisk sda
 #part /boot --size 50 --fstype ext4
 
-part swap --size 1024 
-part / --size 1 --grow --fstype ext4
+part swap --size 1024 --ondisk sda
+part / --size 1 --grow --fstype ext4 --ondisk sda
 
 #RAID 0 /scr for performance
 #part / --size 1024 --ondisk sda
