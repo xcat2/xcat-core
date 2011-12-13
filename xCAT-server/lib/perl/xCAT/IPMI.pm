@@ -117,10 +117,9 @@ sub new {
         return $self;
     }
 
-    if ($ip =~ /::ffff:\d+\.\d+\.+\d+\.\d+/) {
+    if ($ip and $ip =~ /::ffff:\d+\.\d+\.+\d+\.\d+/) {
 	$ip =~ s/::ffff://;
-    }
-    if (not $ip and $bmc_n) {
+    } elsif (not $ip and $bmc_n) {
 	$ip = inet_ntoa($bmc_n);
     }
     $bmc_handlers{$ip}=$self;
