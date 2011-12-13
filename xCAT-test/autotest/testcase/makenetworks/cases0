@@ -20,10 +20,10 @@ check:output=~Version
 end
 
 start:makenetworks_d
-description:display
+os:AIX
 cmd:makenetworks -d > /tmp/mynetworksstanzas
 check:rc==0
-cmd:echo -ne "auto-testnetworks:\n objtype=network\n gateway=1.2.3.0\n mask=255.255.255.0\n net=1.2.3.1\n" >> /tmp/mynetworksstanzas 
+cmd:echo  "auto-testnetworks:\n objtype=network\n gateway=1.2.3.0\n mask=255.255.255.0\n net=1.2.3.1\n" >> /tmp/mynetworksstanzas 
 cmd:cat /tmp/mynetworksstanzas | chdef -z
 check:rc==0
 cmd:tabdump networks
@@ -31,6 +31,20 @@ check:output=~("auto-testnetworks","1.2.3.1","255.255.255.0",,"1.2.3.0",,,,,,,,,
 cmd:chtab -d netname=auto-testnetworks networks
 cmd:rm -f /tmp/mynetworksstanzas
 end
+
+start:makenetworks_d
+os:Linux
+cmd:makenetworks -d > /tmp/mynetworksstanzas
+check:rc==0
+cmd:echo -ne "auto-testnetworks:\n objtype=network\n gateway=1.2.3.0\n mask=255.255.255.0\n net=1.2.3.1\n" >> /tmp/mynetworksstanzas
+cmd:cat /tmp/mynetworksstanzas | chdef -z
+check:rc==0
+cmd:tabdump networks
+check:output=~("auto-testnetworks","1.2.3.1","255.255.255.0",,"1.2.3.0",,,,,,,,,,,,)
+cmd:chtab -d netname=auto-testnetworks networks
+cmd:rm -f /tmp/mynetworksstanzas
+end
+
 
 start:makenetworks_d_V
 description:display,verbose
@@ -44,8 +58,9 @@ check:output=~(mask=)
 end
 
 start:makenetworks
+os:Linux
 description:makenetworks
-cmd:num=`lsdef -t network |cut -d" " -f1 |tee test|wc -l`;for((i=1;i<=$num;i++)) do rmdef -t network `cat test|sed -n "${i}p"`; done
+cmd:num=`lsdef -t network |cut -d" " -f1 |tee /tmp/testnetworks|wc -l`;for((i=1;i<=$num;i++)) do rmdef -t network `cat /tmp/testnetworks|sed -n "${i}p"`; done
 check:rc==0
 check:output=~(definitions have been removed)
 cmd:tabdump networks
@@ -54,9 +69,12 @@ cmd:makenetworks
 check:rc==0
 cmd:tabdump networks
 check:rc==0
-cmd:lsdef -t network |cut -d" " -f1 > test1
-cmd:diff test test1
+cmd:lsdef -t network |cut -d" " -f1 > /tmp/inetworktest1
+cmd:diff /tmp/testnetworks /tmp/inetworktest1
 check:rc==0
-cmd:rm -f test
-cmd:rm -f test1
+cmd:rm -f /tmp/testnetworks
+cmd:rm -f /tmp/inetworktest1
 end
+
+
+
