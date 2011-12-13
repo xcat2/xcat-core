@@ -112,7 +112,7 @@ sub process_request
                     'S|sourcen=s'     => \$::SN1N,      # source SN akb node
                     'd|dest=s'        => \$::SN2,       # dest SN akb MN
                     'D|destn=s'       => \$::SN2N,      # dest SN akb node
-                    'l|statelite'     => \$::SLonly,    # update statelite only!
+                    'l|liteonly'     => \$::SLonly,    # update statelite only!
                     'P|postscripts=s' => \$::POST,      # postscripts to be run
                     'i|ignorenodes'   => \$::IGNORE,
                     'V|verbose'       => \$::VERBOSE,
