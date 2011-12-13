@@ -360,7 +360,7 @@ sub preprocess_for_rflash {
          
         my $cmd;
         if( -d $packages_fw) {
-            $cmd = "rm -rf $packages_fw";
+            $cmd = "rm -rf $packages_fw/*";
             xCAT::Utils->runcmd($cmd, 0);
                 if ($::RUNCMD_RC != 0)
                 {
@@ -371,7 +371,7 @@ sub preprocess_for_rflash {
                 }
             }
     
-        $cmd = "mkdir $packages_fw";
+        $cmd = "mkdir -p $packages_fw";
         xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
