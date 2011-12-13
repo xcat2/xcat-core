@@ -1862,11 +1862,6 @@ sub preprocess_request {
                 return;
             }
             foreach my $node (@missednodes) {
-                my ($ent) = $ppctab->getNodeAttribs( $node, "hcp");
-                if (defined($ent)) {
-                    push @{$hcp_hash{$node}{nodes}}, $node; 
-                    next;
-                }
 
                 my $ent=$ppctab->getNodeAttribs($node,['hcp']);
 #if (defined($ent->{hcp})) { push @{$hcp_hash{$ent->{hcp}}{nodes}}, $node;}
