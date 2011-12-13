@@ -83,9 +83,6 @@ sub process_request {
     		$noderange = \@nodenames;
             $request->{node} = $noderange;
         }
-	}else{
-		$callback->({error=>["No node names are given, I cannot figure out who you are."],errorcode=>[1]});
-		return;
 	}
 
 	my $command = $request->{command}->[0];
