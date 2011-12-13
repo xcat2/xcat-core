@@ -1059,7 +1059,7 @@ sub initDB
         }
         else
         {
-            xCAT::MsgUtils->message('I', "Updated cluster site definition.");
+            verbose("Updated cluster site definition.");
         }
     }
 
@@ -1128,7 +1128,7 @@ sub initDB
                   "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,remoteshell,otherpkgs,syncfiles';";
             }
             $chtabcmds .=
-               "$::XCATROOT/sbin/chtab node=service postscripts.postscripts='servicenode,xcatserver,xcatclient'";
+               "$::XCATROOT/sbin/chtab node=service postscripts.postscripts='servicenode'";
         }
 
         my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
