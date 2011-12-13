@@ -692,7 +692,7 @@ sub process_request
 
                     # do rsync of file/dir
                     my $synccmd =
-                      qq~$::XCATROOT/bin/prsync -o "rlHpEAogDz" $dodir $newsn{$n}:$todir 2>/dev/null~;
+                      qq~/usr/bin/rsync -arlHpEAogDz $dodir $newsn{$n}:$todir 2>/dev/null~;
 
 					if ($::VERBOSE) {
 						my $rsp;
