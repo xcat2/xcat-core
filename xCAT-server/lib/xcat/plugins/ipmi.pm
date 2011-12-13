@@ -1704,6 +1704,18 @@ sub process_currfruid {
             add_fruhash($sessdata);
             return;
     }
+    if ($rsp and $rsp->{code}) { #non-zero return code..
+            $sessdata->{currfrudata}="Unable to read";
+	    if  ($codes{$rsp->{code}}) {
+		$sessdata->{currfrudata} .= " (".$codes{$rsp->{code}}.")";
+	    } else {
+		$sessdata->{currfrudata} .= sprintf(" (Unknown reason %02xh)",$rsp->{code});
+            }
+            $sessdata->{currfrudone}=1;
+            add_fruhash($sessdata);
+            return;
+    }
+	
     if (check_rsp_errors($rsp,$sessdata)) {
         return;
     }
