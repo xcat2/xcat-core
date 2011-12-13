@@ -240,9 +240,9 @@ Change the password of the userid B<admin> for CEC/Frame from currentpasswd to n
 
 Change the password of the userid B<general> for CEC/Frame from currentpasswd to newpasswd. If the CEC/Frame is the factory default, the currentpasswd should NOT be specified; otherwise, the currentpasswd should be specified to the current password of the userid B<general> for the CEC/Frame.
 
-=item B<*_passwd>={B<currentpasswd,newpasswd>}
+=item B< *_passwd>={B<currentpasswd,newpasswd>}
 
-Change the passwords of the userids B<HMC>, B<HMC> and B<general> for CEC/Frame from currentpasswd to newpasswd. If the CEC/Frame is the factory default, the currentpasswd should NOT be specified; otherwise, if the current passwords of the userids B<HMC>, B<HMC> and B<general> for CEC/Frame are the same one, the currentpasswd should be specified to the current password, and then the password will be changed to the newpasswd. If the CEC/Frame is NOT the factory default, and the current passwords of the userids B<HMC>, B<HMC> and B<general> for CEC/Frame are NOT the same one, this option could NOT be used, and we should change the password one by one.
+Change the passwords of the userids B<HMC>, B<admin> and B<general> for CEC/Frame from currentpasswd to newpasswd. If the CEC/Frame is the factory default, the currentpasswd should NOT be specified; otherwise, if the current passwords of the userids B<HMC>, B<admin> and B<general> for CEC/Frame are the same one, the currentpasswd should be specified to the current password, and then the password will be changed to the newpasswd. If the CEC/Frame is NOT the factory default, and the current passwords of the userids B<HMC>, B<admin> and B<general> for CEC/Frame are NOT the same one, this option could NOT be used, and we should change the password one by one.
 
 =item B<frequency>
 
