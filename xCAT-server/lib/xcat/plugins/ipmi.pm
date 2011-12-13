@@ -3854,7 +3854,7 @@ sub checkleds {
 	my $key;
 	my $mfg_id=$sessdata->{mfg_id};
 #TODO device id
-	if ($mfg_id != 2) {
+	if ($mfg_id != 2 and $mfg_id != 20301) {
 		xCAT::SvrUtils::sendmsg("LED status not supported on this system",$callback,$sessdata->{node},%allerrornodes);
         return;
 	}
