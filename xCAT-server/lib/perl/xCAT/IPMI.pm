@@ -15,6 +15,13 @@ use strict;
 use warnings "all";
 
 use IO::Socket::INET;
+my $doipv6=eval {
+	require IO::Socket::INET6; 
+	IO::Socket::INET6->import();
+	require Socket6;
+        Socket6->import();
+	1;
+};
 use IO::Select;
 #use Data::Dumper;
 use Digest::MD5 qw/md5/;
@@ -79,7 +86,11 @@ sub new {
         $self->{'port'} = 623;
     }
     unless ($socket) {
-        $socket = IO::Socket::INET->new(Proto => 'udp');
+	if ($doipv6) {
+	        $socket = IO::Socket::INET6->new(Proto => 'udp');
+	} else {
+	        $socket = IO::Socket::INET->new(Proto => 'udp');
+	}
         if (-r "/proc/sys/net/core/rmem_max") { # we can detect the maximum allowed socket, read it.
             my $sysctl;
             open ($sysctl,"<","/proc/sys/net/core/rmem_max");
@@ -96,13 +107,28 @@ sub new {
         $select->add($socket);
     }
     my $bmc_n;
-    unless ($bmc_n = inet_aton($self->{bmc})) {
+    my ($family, $socktype, $protocol, $saddr, $name, $ip, $service);
+    if ($doipv6) {
+       ($family, $socktype, $protocol, $saddr, $name) = Socket6::getaddrinfo($self->{bmc},623,AF_UNSPEC,SOCK_DGRAM,0);
+       ($ip,$service) = getnameinfo($saddr,$Socket6::NI_NUMERICHOST);
+    }
+    unless ($saddr or $bmc_n = inet_aton($self->{bmc})) {
         $self->{error} = "Could not resolve ".$self->{bmc}." to an address";
         return $self;
     }
 
-    $bmc_handlers{inet_ntoa($bmc_n)}=$self;
-    $self->{peeraddr} = sockaddr_in($self->{port},inet_aton($self->{bmc}));
+    if ($ip =~ /::ffff:\d+\.\d+\.+\d+\.\d+/) {
+	$ip =~ s/::ffff://;
+    }
+    if (not $ip and $bmc_n) {
+	$ip = inet_ntoa($bmc_n);
+    }
+    $bmc_handlers{$ip}=$self;
+    if ($saddr) { 
+       $self->{peeraddr} = $saddr;
+    } else  {
+       $self->{peeraddr} = sockaddr_in($self->{port},$bmc_n);
+    }
     $self->{'sequencenumber'} = 0; #init sequence number
         $self->{'sequencenumberbytes'} = [0,0,0,0]; #init sequence number
         $self->{'sessionid'} = [0,0,0,0]; # init session id
@@ -395,8 +421,17 @@ sub route_ipmiresponse {
     }
     my $host;
     my $port;
-    ($port,$host) = sockaddr_in($sockaddr);
-    $host = inet_ntoa($host);
+    #($port,$host) = sockaddr_in6($sockaddr);
+    #$host = inet_ntoa($host);
+    if ($doipv6) {
+	    ($host,$port) = getnameinfo($sockaddr,$Socket6::NI_NUMERICHOST);
+    } else {
+	($port,$host) = sockaddr_in($sockaddr);
+	$host = inet_ntoa($host);
+    }
+    if ($host =~ /::ffff:\d+\.\d+\.+\d+\.\d+/) {
+	$host =~ s/::ffff://;
+    }
     if ($bmc_handlers{$host}) {
         $pendingpackets-=1;
         $bmc_handlers{$host}->handle_ipmi_packet(@rsp);
