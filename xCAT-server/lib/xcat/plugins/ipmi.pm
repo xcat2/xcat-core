@@ -1035,7 +1035,7 @@ sub getrvidparms {
         xCAT::SvrUtils::sendmsg("jnlp:$response",$callback,$sessdata->{node},%allerrornodes);
         return;
     }
-    unless ($sessdata->{mfg_id} == 2) { #Only implemented for IBM servers
+    unless ($sessdata->{mfg_id} == 2 or $sessdata->{mfg_id} == 20301) { #Only implemented for IBM servers
         xCAT::SvrUtils::sendmsg([1,"Remote video is not supported on this system"],$callback,$sessdata->{node},%allerrornodes);
         return;
     }
@@ -1059,6 +1059,35 @@ sub check_rsp_errors { #TODO: pass in command-specfic error code translation tab
     }
     return 0;
 }
+sub getrvidparms_imm2 {
+	my $rsp = shift;
+	my $sessdata = shift;
+    #wvid should be a possiblity, time to do the http...
+    my $browser = LWP::UserAgent->new();
+    my $message = "user=".$sessdata->{ipmisession}->{userid}."&password=".$sessdata->{ipmisession}->{password}."&SessionTimeout=1200";
+    $browser->cookie_jar({});
+    my $baseurl = "http://".$sessdata->{ipmisession}->{bmc}."/";
+    my $response = $browser->request(POST $baseurl."data/login",Referer=>"http://".$sessdata->{ipmisession}->{bmc}."/designs/imm/index.php",'Content-Type'=>"application/x-www-form-urlencoded",Content=>$message);
+    my $sessionid;
+    unless ($response->content =~ /\"ok\"?(.*)/ and $response->content =~ /\"authResult\":\"0\"/) {
+        xCAT::SvrUtils::sendmsg ([1,"Server returned unexpected data"],$callback,$sessdata->{node},%allerrornodes);
+        return;
+    }
+    $response = $browser->request(GET $baseurl."/designs/imm/remote-control.php");
+    if ($response->content =~ /isRPInstalled\s*=\s*'0'/) {
+        xCAT::SvrUtils::sendmsg ([1,"Node does not have feature key for remote video"],$callback,$sessdata->{node},%allerrornodes);
+    	$response = $browser->request(GET $baseurl."data/logout");
+	return;
+    }
+    $response = $browser->request(GET $baseurl."designs/imm/viewer(".$sessdata->{ipmisession}->{bmc}.'@0@'.time().'@1@0@1@jnlp)');
+    my $jnlp = $response->content;
+    $response = $browser->request(GET $baseurl."data/logout");
+    my $currnode = $sessdata->{node};
+    $jnlp =~ s!argument>title=.*Video Viewer</argument>!argument>title=$currnode wvid</argument>!;
+    xCAT::SvrUtils::sendmsg("method:imm",$callback,$sessdata->{node},%allerrornodes);
+    xCAT::SvrUtils::sendmsg("jnlp:$jnlp",$callback,$sessdata->{node},%allerrornodes);
+}
+
 sub getrvidparms_with_buildid {
     if (check_rsp_errors(@_)) {
         return;
@@ -1066,6 +1095,10 @@ sub getrvidparms_with_buildid {
     my $rsp = shift;
     my $sessdata = shift;
     my @build_id = (0,@{$rsp->{data}});
+    if ($build_id[1]==0x31 and $build_id[2]==0x41 and $build_id[3]==0x4f and $build_id[4]==0x4f) { #Only know how to cope with yuoo builds
+       return getrvidparms_imm2($rsp,$sessdata);
+    }
+
     unless ($build_id[1]==0x59 and $build_id[2]==0x55 and $build_id[3]==0x4f and $build_id[4]==0x4f) { #Only know how to cope with yuoo builds
         xCAT::SvrUtils::sendmsg([1,"Remote video is not supported on this system"],$callback,$sessdata->{node},%allerrornodes);
         return;
