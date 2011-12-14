@@ -274,6 +274,14 @@ sub handle_dbc_request {
             }
             my $oldhandle = $::XCAT_DBHS->{$dbindex}; #store old handle off 
             $::XCAT_DBHS->{$dbindex} = $::XCAT_DBHS->{$dbindex}->clone(); #replace broken db handle with nice, new, working one
+	    unless ($::XCAT_DBHS->{$dbindex}) { #this means the clone failed
+		#most likely result is the DB is down
+		#restore the old broken handle
+		#so that future recovery attempts have a shot
+		#a broken db handle we can recover, no db handle we cannot
+		$::XCAT_DBHS->{$dbindex} = $oldhandle;
+		return undef;
+	    }
             $dbobjsforhandle->{$::XCAT_DBHS->{$dbindex}} = $dbobjsforhandle->{$oldhandle}; #Move the map of depenednt objects to the new handle
             foreach (@afflictedobjs) {  #migrate afflicted objects to the new DB handle
                 $$_->{dbh} = $::XCAT_DBHS->{$dbindex};
@@ -3806,7 +3814,7 @@ sub writeAllEntries
         $rc=output_table($self->{tabname},$fh,$self,$data);
     }
     $query->finish();
-    CORE::close $fh; 
+    CORE::close($fh);
     return $rc;
 }
 
@@ -3892,7 +3900,7 @@ sub writeAllAttribsWhere
        $rc=output_table($self->{tabname},$fh,$self,$data);
     }
     $query->finish();
-    CORE::close $fh; 
+    CORE::close($fh);
     return $rc ;
 }
 #--------------------------------------------------------------------------
