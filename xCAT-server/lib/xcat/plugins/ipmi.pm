@@ -3948,9 +3948,14 @@ sub did_led {
 				xCAT::SvrUtils::sendmsg(sprintf("LED 0x%02x%02x (%s) active to indicate LED 0x%02x%02x (%s) is active",$led_id_ms,$led_id_ls,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds"),$returnd[4],$returnd[5],getsensorname($mfg_id,$prod_id,($returnd[4]<<8)+$returnd[5],"ibmleds")),$callback,$sessdata->{node},%allerrornodes);
             $sessdata->{activeleds}=1;
 			}
-			elsif ($sdr->led_id ==0) {
+			elsif ($sdr->led_id ==0 and $led_id_ms == 0 and $led_id_ls == 0) {
 				xCAT::SvrUtils::sendmsg(sprintf("LED 0x0000 (%s) active to indicate system error condition.",getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")),$callback,$sessdata->{node},%allerrornodes);
             $sessdata->{activeleds}=1;
+				if ($returnd[6] == 1 and $returnd[4] == 0xf and $returnd[5] == 0xff) {
+					$sessdata->{doled} = [$returnd[4],$returnd[5]];
+               $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xc0,data=>$sessdata->{doled},callback=>\&did_led,callback_args=>$sessdata);
+               return;
+            }
 			}
 			elsif ($returnd[6] == 2) {
 				my $sensor_desc;
@@ -3967,10 +3972,14 @@ sub did_led {
 		                        }
 		                }
 				#push(@output,sprintf("Sensor 0x%02x (%s) has activated LED 0x%04x",$sensor_num,$sensor_desc,$sdr->led_id));
-				xCAT::SvrUtils::sendmsg(sprintf("LED 0x%02x%02x active to indicate Sensor 0x%02x (%s) error.",$led_id_ms,$led_id_ls,$sensor_num,$sensor_desc),$callback,$sessdata->{node},%allerrornodes);
+            if ($led_id_ms == 0xf and $led_id_ls == 0xff) { 
+ 	           xCAT::SvrUtils::sendmsg(sprintf("LED active to indicate Sensor 0x%02x (%s) error.",$sensor_num,$sensor_desc),$callback,$sessdata->{node},%allerrornodes);
+            } else {
+               xCAT::SvrUtils::sendmsg(sprintf("LED %02x%02x active to indicate Sensor 0x%02x (%s) error.",$led_id_ms,$led_id_ls,$sensor_num,$sensor_desc),$callback,$sessdata->{node},%allerrornodes);
+            }
             $sessdata->{activeleds}=1;
 		        } else { #an LED is on for some other reason
-                    print "DEBUG: unknown LED reason code ".$returnd[6]."\n";
+                    #print "DEBUG: unknown LED reason code ".$returnd[6]."\n";
                     #TODO: discern meaning of more 'reason' codes, 5 and ff have come up
                 }
                     
