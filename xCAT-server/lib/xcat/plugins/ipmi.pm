@@ -4550,6 +4550,9 @@ sub sensor_was_read {
             if ($exdata1 & 1<<3) {
                 push @exparts,"Power Cycle";
             }
+            if (@exparts) {
+                $extext = join(",",@exparts);
+            }
         } elsif ($sdr->sensor_type == 0xd) {
             if ($exdata1 & 1) {
                 push @exparts,"Present";
@@ -4577,6 +4580,9 @@ sub sensor_was_read {
             }
             if ($exdata1 & 1<<8) {
                 push @exparts,"Rebuild aborted";
+            }
+            if (@exparts) {
+                $extext = join(",",@exparts);
             }
         } else {
             $extext = "xCAT needs to add support for ".$sdr->sensor_type;
