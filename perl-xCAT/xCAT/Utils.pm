@@ -2871,121 +2871,6 @@ sub getNodeIPaddress
             $nodeip = $ent->{'ip'};
         }
     }
-
-    #if still find ip, check if the object is cec or frame
-    #if so, find their children's IPs as theirself IPs.
-    my @children;
-    my $c1;
-    my $ips;
-    unless ( $nodeip ) {
-        my $type = xCAT::DBobjUtils->getnodetype($nodetocheck);
-        if ($type) {
-            if ($type eq "frame" or $type eq "cec")  {
-              # Read the ppc table for any entry that
-              # has parent=nodename and nodetype fsp or bpa  
-              my $ppctab  = xCAT::Table->new( 'ppc' );
-              my @ps = $ppctab->getAllNodeAttribs(['node','parent','nodetype']);
-              my $parent;
-              my $node;
-              my $type;
-              #search for addresses
-              for my $entry ( @ps ) {
-                 $parent = $entry->{parent};
-                 $node = $entry->{node};
-                 $type = $entry->{nodetype};
-                 if (defined($parent)  and $parent eq $nodetocheck ) {
-                   if ( defined($type) and $type eq 'fsp' or $type eq 'bpa'){
-                        push @$c1,$node;
-                   } 
-                 }
-              }  
-                #if $port exists, only for mkhwconn ... CEC/Frame 
-                if ( defined($port) ) {
-                    my @fsp_bpa = @$c1;
-                    undef ($c1);
-                    # mkhwconn only creates the connections for the FSPs/BPAs whoes port is $port.
-            	    my $vpd_tab   =  xCAT::Table->new('vpd');
-                    unless($vpd_tab) {
-                        return "-1"; # Cannot open vpd table
-                    }
-                    foreach ( @fsp_bpa ) {
-                        my $vpd_hash = $vpd_tab->getNodeAttribs( $_, [qw(side)]);
-                        my $side = $vpd_hash->{side};
-                        if (!defined($side)) {
-	                #return -2; # $_: No side in vpd table for  $_
-                             next;
-                }
-	            #print $side;
-                        if ( $side =~ /[A|a|B|b]-$port/) {
-                             push (@$c1, $_);
-                        }
-                    }
-                    $vpd_tab->close(); 
-    
-                    if(!defined($c1) || @$c1 == 0) {
-                            return "-3"; # the FSP/BPA's side is not $port.
-                    }
-                }
-
-                #my $hstab =  xCAT::Table->new('hosts');
-                #if ( $hstab ) {
-                #    my @myip = ();
-                #    foreach ( @$c1 )
-                #    {
-                #            my $point= $hstab->getNodeAttribs($_, ['ip']);
-                #            my $value = $point->{ip};
-                #            push (@myip, $value);
-                #    }
-                #    $ips = join ",", @myip;
-                #    return $ips;
-                #}
-
-                #modify the way of finding IP address.
-                my @myip = ();
-                my @nonip =();
-                foreach ( @$c1 )
-                {
-                    my $ifip = isIpaddr($_);
-                        if ($ifip)      {
-                            push (@myip, $_);
-                        } else {
-                            push (@nonip, $_);
-                        }
-                }
-                #if (scalar(@nonip)){
-                #    my $hstab =  xCAT::Table->new('hosts');
-                #    if ( $hstab ) {
-                #        my $ent = $hstab->getNodesAttribs(\@nonip,['ip']);
-                #        if ($ent){
-                #            foreach (@nonip) {
-                #                my $i = $ent->{$_}->[0]->{ip};
-                #                push (@myip, $i);
-                #            }
-                #        }
-                #    }
-                #}
-                foreach my $t (@nonip) {
-                    $nodeip = xCAT::NetworkUtils->getipaddr($t);
-                    if (!$nodeip) {
-                        my $hoststab = xCAT::Table->new( 'hosts');
-                        my $ent = $hoststab->getNodeAttribs( $t, ['ip'] );
-                        if ( $ent->{'ip'} ) {
-                            $nodeip = $ent->{'ip'};
-                        }
-                    }
-                    if($nodeip) {
-                        push (@myip, $nodeip);
-                    }
-                } 
-
-
-                $ips = join ",", @myip;
-                return $ips;
-            }
-        }
-    }
-
-            
             
     if ( $nodeip ) {
         return $nodeip;
@@ -2994,7 +2879,124 @@ sub getNodeIPaddress
     }
 }
         
-    
+ #-------------------------------------------------------------------------------
+
+=head3   getIPaddress - Used by DFM related functions to support service vlan redundancy.
+
+ Arguments:
+       Node name  only one at a time
+    Returns: ip address(s)
+    Globals:
+        none
+    Error:
+        none
+    Example:   my $c1 = xCAT::Utils::getIPaddress($nodetocheck);
+
+=cut
+
+#-------------------------------------------------------------------------------
+       
+sub getIPaddress 
+{
+    require xCAT::Table;
+    my $nodetocheck = shift;
+    my $port        = shift;
+    my $side = "[A|B]";
+    if (!defined($port)) {
+        $port = "[0|1]";
+    }
+
+# only need to parse IP addresses for Frame/CEC/BPA/FSP
+
+    my $type = xCAT::DBobjUtils->getnodetype($nodetocheck);
+    if ($type) {
+        my @children;
+        my %node_side_pairs = ();
+        my $children_num = 0;
+        my $parent;
+        my $ppctab  = xCAT::Table->new( 'ppc' );
+        my $vpdtab = xCAT::Table->new( 'vpd' );
+        if ($type eq "bpa" or $type eq "fsp") {
+            my $tmp_p = $ppctab->getNodeAttribs($nodetocheck, ['parent']);
+            if ($tmp_p and $tmp_p->{parent}) {
+                $parent = $tmp_p->{parent};
+            } else {
+                return undef;
+            }
+            my $tmp_s = $vpdtab->getNodeAttribs($nodetocheck, ['side']);
+            if ($tmp_s->{side} and ($tmp_s->{side} =~ /(A|B)-\d/i)) {
+                $side = $1; # get side for the fsp, in order to get its brothers
+            } else {
+                return -3;
+            }
+        } elsif ($type eq "frame" or $type eq "cec") {
+            $parent = $nodetocheck;
+        } else {
+            return undef;
+        }
+        my @ps = $ppctab->getAllNodeAttribs(['node','parent','nodetype']);
+        my $tmp_parent;
+        my $tmp_node;
+        my $tmp_type;
+#search for $nodetocheck's children or brothers
+        for my $entry ( @ps ) {
+            $tmp_parent = $entry->{parent};
+            $tmp_node = $entry->{node};
+            $tmp_type = $entry->{nodetype};
+            if ($tmp_parent  and ($tmp_parent eq $parent) ) {
+                if (!defined($tmp_type)) {
+                    $tmp_type = xCAT::DBobjUtils->getnodetype($tmp_node);
+                }
+                if ($tmp_type and ($tmp_type eq 'fsp' or $tmp_type eq 'bpa')) {
+                    push @children, $tmp_node;
+                }
+            }
+        } 
+        foreach my $tmp_n( @children) {
+            my $ent = $vpdtab->getNodeAttribs($tmp_n, ['side']);
+            if ($ent->{side} and $ent->{side} =~ /^$side-$port$/i) {
+                my $tmp_s = $ent->{side};
+                $tmp_s =~ s/a/A/;
+                $tmp_s =~ s/b/B/;
+                if (isIpaddr($tmp_n)) {
+                    $node_side_pairs{$tmp_s} = $tmp_n;           
+                    $children_num++;
+                } else {
+                    my $tmpip = xCAT::NetworkUtils->getipaddr($tmp_n);
+                    if (!$tmpip) {
+                        my $hoststab = xCAT::Table->new( 'hosts' );
+                        my $tmp = $hoststab->getNodeAttribs($tmp_n, ['ip']);
+                        if ($tmp->{ip}) {
+                            $tmpip = $tmp->{ip};
+                        }
+                    }
+                    if ($tmpip) {
+                        $node_side_pairs{$tmp_s} = $tmpip;
+                        $children_num++;
+                    }
+                } # end of parse IP address for a fsp/bpa
+            } # end of parse a child's side
+        } #end of loop for children
+        if ($children_num == 0) {
+            return undef; #no children or brothers for this node.
+        }
+        my @keys = qw(A-0 A-1 B-0 B-1);
+        my $out_strings = undef;
+        foreach my $tmp (@keys) {
+            if (!$node_side_pairs{$tmp}) {
+                $node_side_pairs{$tmp} = '';
+            }
+        }
+
+        $out_strings = $node_side_pairs{"A-0"}.','.$node_side_pairs{"A-1"}.','.$node_side_pairs{"B-0"}.','.$node_side_pairs{"B-1"};
+
+        return $out_strings;
+    } else {
+        return undef;
+    }
+}
+   
+   
     
 #-------------------------------------------------------------------------------
 

@@ -619,11 +619,12 @@ sub lshwconn
                 {
                     #my $node_ip_hash = $hosttab->getNodeAttribs( $node_name,[qw(ip)]);
                     #$node_ip = $node_ip_hash->{ip};
-                    $node_ip = xCAT::Utils::getNodeIPaddress( $node_name );
+                    #$node_ip = xCAT::Utils::getNodeIPaddress( $node_name );
+                    $node_ip = xCAT::Utils::getIPaddress( $node_name );
                 }
-                if (!$node_ip)
+                if (!$node_ip || ($node_ip == -3))
                 {
-                    push @value, [$node_name, $node_ip, $Rc];
+                    push @value, [$node_name, "Failed to get IP address.", $Rc];
                     next;
                 }
 

@@ -250,7 +250,11 @@ sub renergy {
         if( !defined($fsps) ) {
             return ([[$node, "Failed to get the FSPs for the cec $hcphost.", -1]]);
         }
-        my $hcp_ip = xCAT::Utils::getNodeIPaddress($hcphost);
+        #my $hcp_ip = xCAT::Utils::getNodeIPaddress($hcphost);
+        my $hcp_ip = xCAT::Utils::getIPaddress($hcphost);
+        if (!defined($hcp_ip) or ($hcp_ip == -3)) {
+            return ([[$node, "Failed to get IP address for $hcphost.", -1]]);
+        }
         push @hcps_ip, split(',', $hcp_ip);
         my $fsp_node = $$fsps[0];
         ($user, $password) = xCAT::PPCdb::credentials( $fsp_node, "fsp",'HMC');
