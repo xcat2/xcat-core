@@ -981,6 +981,7 @@ sub list {
     my $lpar_infos;
     my $bsr_infos;
     my $huge_infos;
+    my %lpar_huges = ();
     my $l_string = "\n";
     #print Dumper($hash);    
     while (my ($mtms,$h) = each(%$hash) ) {
@@ -1016,15 +1017,15 @@ sub list {
 		            	if (ref($bsr_infos) eq 'ARRAY') {
 			            	return $bsr_infos;
 		            	}
-					}
+                        $huge_infos = get_cec_attr_info($node_name, $d, "huge_page");
+                        if (ref($huge_infos) eq 'ARRAY') {
+                            return $huge_infos;
+                        }
+                    }
                     $lpar_infos = get_cec_attr_info($node_name, $d, "lpar_info");
                     if (ref($lpar_infos) eq 'ARRAY') {
                         return $lpar_infos;
                     }
-					$huge_infos = get_cec_attr_info($node_name, $d, "huge_page");
-					if (ref($huge_infos) eq 'ARRAY') {
-						return $huge_infos;
-					}
 		        }
                 my $v;
                 my @t; 
@@ -1034,22 +1035,32 @@ sub list {
 		            my $ios = join('/', @t);
                     if ($request->{opt}->{l}) {
                         my $lparname = get_cec_lpar_name($node_name, $lpar_infos, $lparid);
+                        my $hugepage;
                         if ($type =~ /^(fsp|cec)$/) {
    			                my $lpar_bsr = get_cec_lpar_bsr($node_name, $bsr_infos, $lparid, $lparname);
 			                if (ref($lpar_bsr) eq 'ARRAY') {
 			                    return $lpar_bsr;
 			                }
 			                $ios .= ": ".$lpar_bsr;
+                            $hugepage = get_cec_lpar_hugepage($node_name, $huge_infos, $lparid, $lparname);
+                            if (ref($hugepage) eq 'ARRAY') {
+                                return $hugepage;
+                            }
                         } else {
 							if ($lparid ne $id) {
 								next;
-							}
+                            } 
+                            if (defined($lpar_huges{$lparid})) {
+                                $hugepage = $lpar_huges{$lparid};
+                            } else {
+                                $hugepage = get_cec_attr_info($node_name, $d, "huge_page");
+                                if (ref($hugepage) eq 'ARRAY') {
+                                    return $hugepage;
+                                }
+                                $lpar_huges{$lparid} = $hugepage;
+                            }
 						}
-						my $hugepage = get_cec_lpar_hugepage($node_name, $huge_infos, $lparid, $lparname);
-						if (ref($hugepage) eq 'ARRAY') {
-							return $hugepage;
-						}
-						$ios .= ": ".$hugepage;
+                        $ios .= ": ".$hugepage;
                         if (ref($lparname) eq 'ARRAY') {
                             return $lparname;
                         } else {
