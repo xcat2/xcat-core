@@ -48,7 +48,7 @@ if ($^O =~ /^aix/i) {
 
 use lib "$::XCATROOT/lib/perl";
 use strict;
-
+use xCAT::Utils;
 # MAIN
 use IO::Socket;
 
@@ -89,10 +89,13 @@ if ($ENV{UPDATESECURITY} && $ENV{UPDATESECURITY} eq "1") {
         exit 0;
     }
 
-    # copy the postscripts to /install/postscripts
-    if (&runcmd("mkdir -p $installdir/postscripts; cp -p -R /xcatpost/* $installdir/postscripts > /dev/null 2>&1") != 0 ) {
+    # copy the postscripts to /install/postscripts, if not mounted
+    my $mounted = xCAT::Utils->isMounted($installdir);
+    if ($mounted == 0) { # not mounted
+      if (&runcmd("mkdir -p $installdir/postscripts; cp -p -R /xcatpost/* $installdir/postscripts > /dev/null 2>&1") != 0 ) {
         $msg = "$::sdate servicenode: Could not copy postscripts to $installdir/postscripts.\n";
         `logger -t xcat $msg`;
+      }
     }
 
     # copy the certificates
