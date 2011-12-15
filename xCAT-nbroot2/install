@@ -2,8 +2,9 @@
 echo $drivers
 dracut_install wget openssl tar ipmitool cpio gzip modprobe touch echo cut wc
 dracut_install grep ip hostname awk egrep grep dirname expr
-dracut_install mount.nfs sshd vi reboot lspci parted screen libvirtd /usr/share/libvirt/cpu_map.xml mkfs mkfs.ext4 mkfs.btrfs
-dracut_install mkswap df brctl vconfig ifenslave ssh-keygen /usr/bin/qemu-img /usr/libexec/qemu-kvm scp clear dhclient lldpad
+dracut_install mount.nfs sshd vi reboot lspci parted screen mkfs mkfs.ext4 mkfs.btrfs
+#dracut_install libvirtd /usr/share/libvirt/cpu_map.xml /usr/bin/qemu-img /usr/libexec/qemu-kvm
+dracut_install mkswap df brctl vconfig ifenslave ssh-keygen scp clear dhclient lldpad
 dracut_install lldptool /lib64/libnss_dns-2.12.so /lib64/libnss_dns.so.2
 dracut_install poweroff ntpq ntpd hwclock date /usr/share/terminfo/x/xterm /etc/nsswitch.conf /etc/services
 dracut_install /sbin/rsyslogd /etc/protocols umount /bin/rpm /usr/lib/rpm/rpmrc
