@@ -29,7 +29,6 @@ Requires: dhcp httpd nfs-utils expect nmap fping bind perl-XML-Parser vsftpd
 # No additional requires for zLinux right now
 %else
 # yaboot-xcat is pulled in so any MN can manage ppc nodes
-Obsoletes: atftp-xcat
 Requires: /etc/xinetd.d/tftp
 Requires: conserver-xcat yaboot-xcat perl-Net-Telnet
 %endif

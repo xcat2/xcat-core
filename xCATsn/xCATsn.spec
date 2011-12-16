@@ -32,7 +32,6 @@ Requires: perl-IO-Stty
 %ifarch s390x
 # No additional requires for zLinux right now
 %else
-Obsoletes: atftp-xcat
 Requires: /etc/xinetd.d/tftp
 Requires: conserver-xcat yaboot-xcat perl-Net-Telnet
 %endif
