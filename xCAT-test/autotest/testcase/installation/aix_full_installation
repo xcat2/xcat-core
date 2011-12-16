@@ -12,8 +12,8 @@ check:rc==0
 cmd:mkdir -p /install/nim/installp_bundle
 cmd:cp $$SSHPKG/xCATaixCN.bnd /install/nim/installp_bundle/
 check:rc==0
-cmd:nim -o define -t installp_bundle -a server=master -a location=/install/nim/installp_bundle/xCATaixCN.bnd xCATaixCN
-cmd:chdef -t osimage -o autotest installp_bundle="xCATaixCN"
+cmd:nim -o define -t installp_bundle -a server=master -a location=/install/nim/installp_bundle/xCATaixCN71.bnd xCATaixCN71
+cmd:chdef -t osimage -o autotest installp_bundle="xCATaixCN71"
 check:rc==0
 cmd:rscan __GETNODEATTR($$CN, hcp)__ -w
 check:rc==0
@@ -40,7 +40,7 @@ cmd:cat /etc/exports | grep $$CN
 check:output=~autotest_bosinst_data
 check:output=~spot/autotest/usr
 check:output=~xcataixscript
-check:output=~xCATaixCN.bnd
+check:output=~xCATaix71CN.bnd
 check:output=~autotest_lpp_source
 cmd:rnetboot $$CN
 check:rc==0
