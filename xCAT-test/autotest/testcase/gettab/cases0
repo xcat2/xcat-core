@@ -27,8 +27,6 @@ check:rc==0
 check:output=site.groups:
 end
 
-end
-
 
 start:gettab_h
 description:gettab -h and -? and --help
