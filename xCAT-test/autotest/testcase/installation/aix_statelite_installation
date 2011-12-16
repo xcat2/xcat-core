@@ -1,27 +1,38 @@
 start:aix_statelite_installation_flat
 os:AIX
-cmd:mkdir -p /nodedata
-cmd:chmod 755 /etc/exports
-cmd:cat /etc/exports|grep nodedata; if [ "$?" -ne "0" ]; then echo "/nodedata -sec=sys:none,anon=0,rw " >> /etc/exports; fi
-check:rc==0
-cmd:exportfs -a
+cmd:chtab priority=1 litetree.image="autotestcosi" litetree.directory="$$MN:/mydata"
 check:rc==0
 cmd:chtab node=$$CN statelite.statemnt="$$MN:/nodedata"
 check:rc==0
 cmd:chtab litefile.image="ALL" litefile.file="/logs/" litefile.options="persistent"
 check:rc==0
-cmd:mknimimage -u autotestcosi -V
+cmd:chtab litefile.image="ALL" litefile.file="/ro/" litefile.options="ro"
 check:rc==0
-check:output=~Installing installp filesets in SPOT $$CN
-check:output=~Installing RPM packages in SPOT $$CN
-check:output=~Completed Installing RPM packages in SPOT $$CN
-check:output=~Updated software in the NIM SPOT called
-cmd:lsnim | grep autotestcosi
+cmd:chtab litefile.image="ALL" litefile.file="/rw/" litefile.options="rw"
 check:rc==0
-check:output=~lpp_source
-check:output=~spot
-check:output=~paging
-check:output=~shared_root
+cmd:tabdump litefile
+check:rc==0
+cmd:chtab priority=4.7 policy.commands=litefile policy.rule=allow
+check:rc==0
+cmd:chtab priority=4.8 policy.commands=litetree policy.rule=allow
+check:rc==0
+cmd:mkdir -p /nodedata
+check:rc==0
+cmd:mkdir -p /mydata/ro
+check:rc==0
+cmd:mkdir -p /mydata/rw
+check:rc==0
+cmd:chmod -R 555 /mydata/ro
+check:rc==0
+cmd:chmod -R 777 /mydata/rw
+check:rc==0
+cmd:chmod 755 /etc/exports
+cmd:cat /etc/exports|grep nodedata; if [ "$?" -ne "0" ]; then echo "/nodedata -vers=4,sec=sys:none,anon=0,rw " >> /etc/exports; fi
+check:rc==0
+cmd:cat /etc/exports|grep mydata; if [ "$?" -ne "0" ]; then echo "/mydata -vers=4,sec=sys:none,anon=0,rw " >> /etc/exports; fi
+check:rc==0
+cmd:exportfs -a
+check:rc==0
 cmd:nim -o update -a packages=all -a source=$$SSHPKG autotestcosi_lpp_source
 check:rc==0
 cmd:mkdir -p /install/nim/installp_bundle
@@ -32,20 +43,30 @@ cmd:chdef -t osimage -o autotestcosi installp_bundle="xCATaixCN71"
 check:rc==0
 cmd:xcatchroot -i autotestcosi "/usr/bin/echo root:cluster|/usr/bin/chpasswd -c"
 check:rc==0
-cmd:mknimimage -u autotestcosi
+cmd:mknimimage -u autotestcosi -V
 check:rc==0
+check:output=~Installing installp filesets in SPOT 
+check:output=~Installing RPM packages in SPOT 
+check:output=~Completed Installing RPM packages in SPOT 
+check:output=~Updated software in the NIM SPOT called
+cmd:lsnim | grep autotestcosi
+check:rc==0
+check:output=~lpp_source
+check:output=~spot
+check:output=~paging
+check:output=~shared_root
 cmd:rscan __GETNODEATTR($$CN, hcp)__ -z > test.node
 check:rc==0
 cmd:sleep 60
 cmd:cat test.node|mkdef -z
 cmd:makeconservercf $$CN
 check:rc==0
-cmd:sleep 60
+cmd:sleep 90 
 cmd:cat /etc/conserver.cf | grep $$CN
 check:output=~$$CN
 cmd:getmacs $$CN -f -D
 check:rc==0
-cmd:mkdsklsnode -i autotestcosi $$CN -f
+cmd:mkdsklsnode -f -i autotestcosi $$CN 
 check:rc==0
 cmd:lsnim | grep $$CN
 check:output=~machines
@@ -61,7 +82,7 @@ check:output=~spot/autotestcosi/usr
 check:output=~autotestcosi_paging
 cmd:rnetboot $$CN
 check:rc==0
-cmd:sleep 600
+cmd:sleep 400
 cmd:lsdef -l $$CN| grep status
 check:output=~booted
 cmd:xdsh $$CN date
