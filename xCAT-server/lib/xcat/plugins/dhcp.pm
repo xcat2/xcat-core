@@ -786,24 +786,22 @@ sub preprocess_request
 		}
 	    }
 	}
-    } else { #send the request to every dhservers
-        if (@nodes > 0) {
-            $req->{'node'}=\@nodes;
-       	    @requests = ({%$req});    #Start with a straight copy to reflect local instance
-	    unless ($localonly) {
-	        my @sn = xCAT::Utils->getSNList('dhcpserver');
-	        if (@sn > 0) { $hasHierarchy=1; }
+    } elsif (@nodes > 0 or grep /-n/,@{$req->{arg}}) { #send the request to every dhservers
+        $req->{'node'}=\@nodes;
+       	@requests = ({%$req});    #Start with a straight copy to reflect local instance
+	unless ($localonly) {
+	    my @sn = xCAT::Utils->getSNList('dhcpserver');
+	    if (@sn > 0) { $hasHierarchy=1; }
 
-	        foreach my $s (@sn)
-	        {
-		    if (scalar @nodes == 1 and $nodes[0] eq $s) { next; }
-		    my $reqcopy = {%$req};
-		    $reqcopy->{'_xcatdest'} = $s;
-		    $reqcopy->{_xcatpreprocessed}->[0] = 1;
-		    push @requests, $reqcopy;
-	        }
+	    foreach my $s (@sn)
+	    {
+	        if (scalar @nodes == 1 and $nodes[0] eq $s) { next; }
+	        my $reqcopy = {%$req};
+	        $reqcopy->{'_xcatdest'} = $s;
+	        $reqcopy->{_xcatpreprocessed}->[0] = 1;
+	        push @requests, $reqcopy;
 	    }
-        }
+	}
     }
 
     if ( $hasHierarchy)
