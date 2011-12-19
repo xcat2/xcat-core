@@ -353,6 +353,7 @@ sub gennodename {
 		$group = @groups[0];
 	}	
 	
+	# Hostname and IP address regular expressions
 	my $hostname_regex;
 	my $ipaddr_regex;
 	
@@ -361,8 +362,15 @@ sub gennodename {
 	my $base_hostname;
 	my $base_ipaddr;
 	
+	# Network, submask, submask prefix, and host ranges
 	my $network = "";
 	my $mask;
+	my $prefix;
+	my $hosts_count;
+	my $range_low = 1;
+	my $range_high = 254;
+	
+	 # Hostname and IP address generated
 	my $hostname;
 	my $ipaddr;
 	my $tmp;
@@ -407,15 +415,32 @@ sub gennodename {
 				# Extract network
 				$tmp = rindex($network, '/');
 				if ($tmp > -1) {
+					# Get submask prefix
+					$prefix = substr($network, $tmp);
+					$prefix =~ s|/||g;
+					
+					# Get the number of hosts possible using submask
+					$hosts_count = 32 - int($prefix);
+					# Minus network and broadcast addresses
+					$hosts_count = 2 ** $hosts_count - 2;
+					
+					# Get network
 					$network = substr($network, 0, $tmp);
-				}				
+				}
 				
 				# Extract base digit, which depends on the netmask used
 				$base_digit = substr($network, rindex($network, '.') + 1);
+				# 1st number in range is network
+				$range_low = $base_digit + 1;
+				
+				# Get hosts range
+				if ($tmp > -1) {
+					$range_high = $base_digit + $hosts_count;
+				}
 			}
 		} # End of foreach
 	} # End of foreach
-				
+					
 	# Are there nodes in this group already?
 	# If so, use the existing nodes as a base
 	my $out = `nodels $group`;
@@ -469,30 +494,28 @@ sub gennodename {
 		return;
 	}
 	
-	# Find the network range for this group
+	# Find the network range for this group based on networks table
 	my @ranges;
-	my $iprange_low = 1;
-	my $iprange_high = 254;
 	if ($iprange) {
 		@args = split( /;/, $iprange );
 		foreach (@args) {
 			# If a network range exists
 			if ($_ =~ m/-/) {
 				@ranges = split( /-/, $_ );
-				$iprange_low = $ranges[0];				
-				$iprange_high = $ranges[1];
+				$range_low = $ranges[0];				
+				$range_high = $ranges[1];
 				
 				# Get the low and high ends digit
-				$iprange_low =~ s/$base_ipaddr//g;
-				$iprange_high =~ s/$base_ipaddr//g;
+				$range_low =~ s/$base_ipaddr//g;
+				$range_high =~ s/$base_ipaddr//g;
 			}
 		}
 	} # End of if ($iprange)
 	
 	# If no nodes exist in group
 	# Set the base digit to the low end of the network range
-	if ($iprange_low && $base_digit == 1) {
-		$base_digit = $iprange_low;
+	if ($range_low && $base_digit == 1) {
+		$base_digit = $range_low;
 		
 		# Generate hostname
 		$hostname = $base_hostname;
@@ -507,7 +530,7 @@ sub gennodename {
 	# Check xCAT tables, /etc/hosts, and ping to see if hostname is already used
 	while (`nodels $hostname` || `cat /etc/hosts | grep "$ipaddr "` || !(`ping -c 4 $ipaddr` =~ m/100% packet loss/)) {		
 		# Base digit invalid if over 254
-		if ($base_digit > $iprange_high) {
+		if ($base_digit > $range_high) {
 			last;
 		}
 		
@@ -523,11 +546,11 @@ sub gennodename {
 	}
 		
 	# Range must be within network range
-	if ($base_digit > $iprange_high) {
+	if ($base_digit > $range_high) {
 		return;
 	} else {
 		return ($hostname, $ipaddr, $base_digit);
-	}	
+	}
 }
 
 sub clonezlinux {
