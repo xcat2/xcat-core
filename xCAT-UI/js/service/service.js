@@ -175,14 +175,12 @@ function loadServiceProvisionPage(tabId) {
 
 	// Create radio buttons for platforms
 	var hwList = $('<ol>Platforms available:</ol>');
-	var ipmi = $('<li><input type="radio" name="hw" value="ipmi" checked/>iDataPlex</li>');
-	var blade = $('<li><input type="radio" name="hw" value="blade"/>BladeCenter</li>');
-	var hmc = $('<li><input type="radio" name="hw" value="hmc"/>System p</li>');
-	var zvm = $('<li><input type="radio" name="hw" value="zvm"/>System z</li>');
-
-	hwList.append(ipmi);
-	hwList.append(blade);
-	hwList.append(hmc);
+	var esx = $('<li><input type="radio" name="hw" value="esx" checked/>ESX</li>');
+	var kvm = $('<li><input type="radio" name="hw" value="kvm"/>KVM</li>');
+	var zvm = $('<li><input type="radio" name="hw" value="zvm"/>z\/VM</li>');
+	
+	hwList.append(esx);
+	hwList.append(kvm);
 	hwList.append(zvm);
 	provPg.append(hwList);
 
@@ -215,6 +213,14 @@ function loadServiceProvisionPage(tabId) {
 	        // Create an instance of the plugin
 	        var plugin;
 	        switch (hw) {
+	        case "kvm":
+	            plugin = new kvmPlugin();
+	            title = 'KVM';
+	            break;
+	        case "esx":
+	            plugin = new esxPlugin();
+	            title = 'ESX';
+	            break;
 	        case "blade":
 	            plugin = new bladePlugin();
 	            title = 'BladeCenter';
@@ -229,7 +235,7 @@ function loadServiceProvisionPage(tabId) {
 	            break;
 	        case "zvm":
 	            plugin = new zvmPlugin();
-	            title = 'System z';
+	            title = 'z/VM';
 	            
 	            // Get zVM host names
 	        	if (!$.cookie('srv_zvm')){
@@ -897,15 +903,25 @@ function setGroupCookies(data) {
 		var groups = new Array();
 		
 		// Index 0 is the table header
-		var cols, name, ip, hostname, desc;
-		for ( var i = 1; i < data.rsp.length; i++) {
+		var cols, name, ip, hostname, desc, comments, tmp;
+		for (var i = 1; i < data.rsp.length; i++) {
 			// Split into columns:
 			// node, ip, hostnames, otherinterfaces, comments, disable
 			cols = data.rsp[i].split(',');
 			name = cols[0].replace(new RegExp('"', 'g'), '');
 			ip = cols[1].replace(new RegExp('"', 'g'), '');
 			hostname = cols[2].replace(new RegExp('"', 'g'), '');
-			desc = cols[4].replace(new RegExp('"', 'g'), '');
+			
+			// It should return: "description: All machines; network: 10.1.100.0/24;"
+			comments = cols[4].replace(new RegExp('"', 'g'), '');
+			tmp = comments.split(';');
+			for (var j = 0; j < tmp.length; j++) {
+				if (tmp[j].indexOf('description:') > -1) {
+					desc = tmp[j].replace('description:', '');
+					desc = jQuery.trim(desc);
+				}
+			}
+			
 			groups.push(name + ':' + ip + ':' + hostname + ':' + desc);
 		}
 		

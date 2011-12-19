@@ -356,10 +356,13 @@ sub gennodename {
 	my $hostname_regex;
 	my $ipaddr_regex;
 	
+	my @comments;
 	my $base_digit = 0;
 	my $base_hostname;
 	my $base_ipaddr;
 	
+	my $network = "";
+	my $mask;
 	my $hostname;
 	my $ipaddr;
 	my $tmp;
@@ -368,7 +371,7 @@ sub gennodename {
 
 	# Get regular expression for hostname in 'hosts' table
 	my $tab = xCAT::Table->new( 'hosts', -create => 1, -autocommit => 0 );
-	my @results = $tab->getAllAttribsWhere( "node='" . $group . "'", 'ip' );
+	my @results = $tab->getAllAttribsWhere( "node='" . $group . "'", 'ip', 'comments' );
 	foreach (@results) {
 
 		# It should return: |gpok(\d+)|10.1.100.($1+0)|		
@@ -385,9 +388,36 @@ sub gennodename {
 		
 		# Get the ($1+0)
 		$ipaddr_regex =~ s/$base_ipaddr//g;
-	}
-	
+		
+		# Get the network within comments
+		# It should return: "description: All machines; network: 10.1.100.0/24;"
+		# This will help determine the 1st node in the group if none exists
+		@comments = split( /;/, $_->{'comments'} );
+		foreach (@comments) {
+			if ($_ =~ m/network:/i) {
+				$network = $_;
+				
+				# Remove network header
+				$network =~ s/network://g;
+				
+				# Trim network section
+				$network =~ s/\s*$//;
+				$network =~ s/^\s*//;
+
+				# Extract network
+				$tmp = rindex($network, '/');
+				if ($tmp > -1) {
+					$network = substr($network, 0, $tmp);
+				}				
+				
+				# Extract base digit, which depends on the netmask used
+				$base_digit = substr($network, rindex($network, '.') + 1);
+			}
+		} # End of foreach
+	} # End of foreach
+				
 	# Are there nodes in this group already?
+	# If so, use the existing nodes as a base
 	my $out = `nodels $group`;
 	@args = split( /\n/, $out );
 	foreach (@args) {
@@ -411,10 +441,73 @@ sub gennodename {
 	$ipaddr =~ s/$hostname_regex/$ipaddr_regex/gee;
 	$ipaddr = $base_ipaddr . $ipaddr;
 	
+	# Get networks in 'networks' table
+	$tab = xCAT::Table->new( 'networks', -create => 1, -autocommit => 0 );
+	my $entries = $tab->getAllEntries();
+
+	# Go through each network
+	my $iprange;
+	foreach (@$entries) {
+
+		# Get network, mask, and range
+		$network = $_->{'net'};
+		$mask = $_->{'mask'};
+		$iprange = $_->{'dynamicrange'};
+			
+		# If the host IP address is in this subnet, return
+		if (xCAT::NetworkUtils->ishostinsubnet($ipaddr, $mask, $network)) {
+
+			# Exit loop
+			last;
+		} else {
+			$network = "";
+		}
+	}
+	
+	# Exit if no network exist for group
+	if (!$network) {
+		return;
+	}
+	
+	# Find the network range for this group
+	my @ranges;
+	my $iprange_low = 1;
+	my $iprange_high = 254;
+	if ($iprange) {
+		@args = split( /;/, $iprange );
+		foreach (@args) {
+			# If a network range exists
+			if ($_ =~ m/-/) {
+				@ranges = split( /-/, $_ );
+				$iprange_low = $ranges[0];				
+				$iprange_high = $ranges[1];
+				
+				# Get the low and high ends digit
+				$iprange_low =~ s/$base_ipaddr//g;
+				$iprange_high =~ s/$base_ipaddr//g;
+			}
+		}
+	} # End of if ($iprange)
+	
+	# If no nodes exist in group
+	# Set the base digit to the low end of the network range
+	if ($iprange_low && $base_digit == 1) {
+		$base_digit = $iprange_low;
+		
+		# Generate hostname
+		$hostname = $base_hostname;
+		$hostname =~ s/#/$base_digit/g;
+		
+		# Generate IP address
+		$ipaddr = $hostname;
+		$ipaddr =~ s/$hostname_regex/$ipaddr_regex/gee;
+		$ipaddr = $base_ipaddr . $ipaddr;
+	}
+				
 	# Check xCAT tables, /etc/hosts, and ping to see if hostname is already used
-	while (`nodels $hostname` || `cat /etc/hosts | grep "$ipaddr "` || !(`ping -c 4 $ipaddr` =~ m/Destination Host Unreachable/)) {		
+	while (`nodels $hostname` || `cat /etc/hosts | grep "$ipaddr "` || !(`ping -c 4 $ipaddr` =~ m/100% packet loss/)) {		
 		# Base digit invalid if over 254
-		if ($base_digit > 254) {
+		if ($base_digit > $iprange_high) {
 			last;
 		}
 		
@@ -429,8 +522,8 @@ sub gennodename {
 		$ipaddr = $base_ipaddr . $ipaddr;
 	}
 		
-	# Range must be between 1-255
-	if ($base_digit > 254) {
+	# Range must be within network range
+	if ($base_digit > $iprange_high) {
 		return;
 	} else {
 		return ($hostname, $ipaddr, $base_digit);

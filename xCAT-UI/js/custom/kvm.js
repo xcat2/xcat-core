@@ -169,17 +169,32 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	// Append to provision tab
 	$('#' + tabId).append(provForm);
 	
+	// Create VM fieldset
 	var vmFS = $('<fieldset></fieldset>');
 	var vmLegend = $('<legend>Virtual Machine</legend>');
 	vmFS.append(vmLegend);
 	
+	var vmAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+	vmFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
+	vmFS.append(vmAttr);
+	
+	// Create hardware fieldset
 	var hwFS = $('<fieldset></fieldset>');
 	var hwLegend = $('<legend>Hardware</legend>');
 	hwFS.append(hwLegend);
 	
+	var hwAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+	hwFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/hardware.png"></img></div>'));
+	hwFS.append(hwAttr);
+	
+	// Create image fieldset
 	var imgFS = $('<fieldset></fieldset>');
 	var imgLegend = $('<legend>Image</legend>');
 	imgFS.append(imgLegend);
+	
+	var imgAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+	imgFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/operating_system.png"></img></div>'));
+	imgFS.append(imgAttr);
 	
 	provForm.append(vmFS, hwFS, imgFS);
 	
@@ -189,7 +204,7 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	host.append(hostLabel);
 	var hostInput = $('<input type="text" name="host"/>');
 	host.append(hostInput);
-	vmFS.append(host);
+	vmAttr.append(host);
 	
 	// Create group input
 	var group = $('<div></div>');
@@ -216,7 +231,7 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 		var groupInput = $('<input type="text" name="group"/>');
 		group.append(groupInput);
 	}
-	vmFS.append(group);
+	vmAttr.append(group);
 
 	// Create node input
 	var node = $('<div></div>');
@@ -224,7 +239,7 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	var nodeInput = $('<input type="text" name="node"/>');
 	node.append(nodeLabel);
 	node.append(nodeInput);
-	vmFS.append(node);
+	vmAttr.append(node);
 
 	// Create memory input
 	var memory = $('<div></div>');
@@ -232,7 +247,7 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	var memoryInput = $('<input type="text" name="memory" size="5"/>');
 	memory.append(memoryLabel);
 	memory.append(memoryInput);
-	hwFS.append(memory);
+	hwAttr.append(memory);
 	
 	// Create processor dropdown
 	var cpu = $('<div></div>');
@@ -249,7 +264,7 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	);
 	cpu.append(cpuLabel);
 	cpu.append(cpuSelect);
-	hwFS.append(cpu);
+	hwAttr.append(cpu);
 	
 	// Create NIC dropdown
 	var nic = $('<div></div>');
@@ -257,7 +272,7 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	var nicInput = $('<input type="text" name="nic"/>');
 	nic.append(nicLabel);
 	nic.append(nicInput);
-	hwFS.append(nic);
+	hwAttr.append(nic);
 	
 	// Create disk input
 	var disk = $('<div></div>');
@@ -268,7 +283,7 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 		'<option value="M">MB</option>'
 	);
 	disk.append(diskLabel, diskInput, diskSizeSelect);
-	hwFS.append(disk);
+	hwAttr.append(disk);
 	
 	// Create disk storage input
 	var storage = $('<div></div>');
@@ -276,7 +291,7 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	var storageInput = $('<input type="text" name="storage"/>');
 	storage.append(storageLabel);
 	storage.append(storageInput);
-	hwFS.append(storage);
+	hwAttr.append(storage);
 	
 	// Create operating system input
 	var os = $('<div></div>');
@@ -293,7 +308,7 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	});
 	os.append(osLabel);
 	os.append(osInput);
-	imgFS.append(os);
+	imgAttr.append(os);
 	
 	// Create architecture input
 	var arch = $('<div></div>');
@@ -310,7 +325,7 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	});
 	arch.append(archLabel);
 	arch.append(archInput);
-	imgFS.append(arch);
+	imgAttr.append(arch);
 	
 	// Create profile input
 	var profile = $('<div></div>');
@@ -327,7 +342,7 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	});
 	profile.append(profileLabel);
 	profile.append(profileInput);
-	imgFS.append(profile);
+	imgAttr.append(profile);
 	
 	// Create boot method dropdown
 	var method = $('<div></div>');
@@ -342,7 +357,7 @@ kvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	);
 	method.append(methodLabel);
 	method.append(methodSelect);
-	imgFS.append(method);
+	imgAttr.append(method);
 
 	/**
 	 * Provision existing

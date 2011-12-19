@@ -334,6 +334,26 @@ function createIpmiProvisionExisting(inst) {
 	// Create provision existing division
 	var provExisting = $('<div></div>');
 
+	// Create VM fieldset
+	var nodeFS = $('<fieldset></fieldset>');
+	var nodeLegend = $('<legend>Node</legend>');
+	nodeFS.append(nodeLegend);
+	
+	var nodeAttr = $('<div style="display: inline-table; vertical-align: middle; width: 85%; margin-left: 10px;"></div>');
+	nodeFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
+	nodeFS.append(nodeAttr);
+	
+	// Create image fieldset
+	var imgFS = $('<fieldset></fieldset>');
+	var imgLegend = $('<legend>Image</legend>');
+	imgFS.append(imgLegend);
+	
+	var imgAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+	imgFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/operating_system.png"></img></div>'));
+	imgFS.append(imgAttr);
+	
+	provExisting.append(nodeFS, imgFS);
+	
 	// Create group input
 	var group = $('<div></div>');
 	var groupLabel = $('<label for="provType">Group:</label>');
@@ -370,7 +390,7 @@ function createIpmiProvisionExisting(inst) {
 		var groupInput = $('<input type="text" name="group"/>');
 		group.append(groupInput);
 	}
-	provExisting.append(group);
+	nodeAttr.append(group);
 
 	// Create node input
 	var node = $('<div></div>');
@@ -378,7 +398,7 @@ function createIpmiProvisionExisting(inst) {
 	var nodeDatatable = $('<div id="' + dTableDivId + '" style="display: inline-block; max-width: 800px;"><p>Select a group to view its nodes</p></div>');
 	node.append(nodeLabel);
 	node.append(nodeDatatable);
-	provExisting.append(node);
+	nodeAttr.append(node);
 
 	// Create boot method drop down
 	var method = $('<div></div>');
@@ -393,7 +413,7 @@ function createIpmiProvisionExisting(inst) {
 	);
 	method.append(methodLabel);
 	method.append(methodSelect);
-	provExisting.append(method);
+	imgAttr.append(method);
 	
 	// Create operating system input
 	var os = $('<div></div>');
@@ -410,7 +430,7 @@ function createIpmiProvisionExisting(inst) {
 	});
 	os.append(osLabel);
 	os.append(osInput);
-	provExisting.append(os);
+	imgAttr.append(os);
 
 	// Create architecture input
 	var arch = $('<div></div>');
@@ -427,7 +447,7 @@ function createIpmiProvisionExisting(inst) {
 	});
 	arch.append(archLabel);
 	arch.append(archInput);
-	provExisting.append(arch);
+	imgAttr.append(arch);
 
 	// Create profile input
 	var profile = $('<div></div>');
@@ -444,7 +464,7 @@ function createIpmiProvisionExisting(inst) {
 	});
 	profile.append(profileLabel);
 	profile.append(profileInput);
-	provExisting.append(profile);
+	imgAttr.append(profile);
 
 	/**
 	 * Provision existing

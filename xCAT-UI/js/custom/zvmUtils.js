@@ -1160,7 +1160,7 @@ function openAddProcDialog(node) {
 				
 				// If inputs are not complete, show warning message
 				if (!node || !address || !type) {
-					var warn = createWarnBar('You are missing inputs.');
+					var warn = createWarnBar('Please provide a value for each missing field.');
 					warn.prependTo($(this));
 				} else {
     				// Add processor
@@ -1269,7 +1269,7 @@ function openAddDiskDialog(node, hcp) {
         		
         		// If inputs are not complete, show warning message
         		if (!node || !type || !address || !size || !pool || !mode) {
-					var warn = createWarnBar('You are missing inputs.');
+					var warn = createWarnBar('Please provide a value for each missing field.');
 					warn.prependTo($(this));
         		} else {
             		// Add disk
@@ -1500,7 +1500,7 @@ function openAddNicDialog(node, hcp) {
         		     
 				// If inputs are not complete, show warning message
 				if (!node || !nicType || !networkType || !address) {
-					errMsg = 'You are missing inputs.<br>';
+					errMsg = 'Please provide a value for each missing field.<br>';
 					ready = false;
         		} 
 				
@@ -1993,10 +1993,18 @@ function createZProvisionExisting(inst) {
 	vmFS.append(vmLegend);
 	provExisting.append(vmFS);
 		
+	var vmAttr = $('<div style="display: inline-table; vertical-align: middle; width: 85%; margin-left: 10px;"></div>');
+	vmFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
+	vmFS.append(vmAttr);
+		
 	var osFS = $('<fieldset></fieldset>');
 	var osLegend = $('<legend>Operating System</legend>');
 	osFS.append(osLegend);
 	provExisting.append(osFS);
+	
+	var osAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+	osFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/operating_system.png"></img></div>'));
+	osFS.append(osAttr);
 		
 	// Create group input
 	var group = $('<div></div>');
@@ -2033,16 +2041,16 @@ function createZProvisionExisting(inst) {
 		var groupInput = $('<input type="text" name="group"/>');
 		group.append(groupInput);
 	}
-	vmFS.append(group);
+	vmAttr.append(group);
 
 	// Create node input
 	var node = $('<div></div>');
 	var nodeLabel = $('<label for="nodeName">Nodes:</label>');
-	var nodeDatatable = $('<div class="indent" id="zNodesDatatableDIV' + inst + '"><p>Select a group to view its nodes</p></div>');
+	var nodeDatatable = $('<div class="indent" id="zNodesDatatableDIV' + inst + '" style="display: inline-block; max-width: 800px;"><p>Select a group to view its nodes</p></div>');
 	node.append(nodeLabel);
 	node.append(nodeDatatable);
-	vmFS.append(node);
-
+	vmAttr.append(node);
+	
 	// Create operating system image input
 	var os = $('<div></div>');
 	var osLabel = $('<label for="os">Operating system image:</label>');
@@ -2059,7 +2067,7 @@ function createZProvisionExisting(inst) {
 	});
 	os.append(osLabel);
 	os.append(osInput);
-	osFS.append(os);
+	osAttr.append(os);
 	
 	// Create boot method drop down
 	var bootMethod = $('<div></div>');
@@ -2073,7 +2081,7 @@ function createZProvisionExisting(inst) {
 	);
 	bootMethod.append(methoddLabel);
 	bootMethod.append(methodSelect);
-	osFS.append(bootMethod);
+	osAttr.append(bootMethod);
 	
 	// Generate tooltips
 	provExisting.find('div input[title]').tooltip({
@@ -2184,21 +2192,36 @@ function createZProvisionExisting(inst) {
 function createZProvisionNew(inst) {
 	// Create provision new node division
 	var provNew = $('<div></div>');
-		
+	
+	// Create VM fieldset
 	var vmFS = $('<fieldset></fieldset>');
 	var vmLegend = $('<legend>Virtual Machine</legend>');
 	vmFS.append(vmLegend);
 	provNew.append(vmFS);
 	
+	var vmAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+	vmFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
+	vmFS.append(vmAttr);
+	
+	// Create hardware fieldset
 	var hwFS = $('<fieldset></fieldset>');
 	var hwLegend = $('<legend>Hardware</legend>');
 	hwFS.append(hwLegend);
 	provNew.append(hwFS);
 	
+	var hwAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+	hwFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/hardware.png"></img></div>'));
+	hwFS.append(hwAttr);
+	
+	// Create OS fieldset
 	var osFS = $('<fieldset></fieldset>');
 	var osLegend = $('<legend>Operating System</legend>');
 	osFS.append(osLegend);
 	provNew.append(osFS);
+	
+	var osAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+	osFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/operating_system.png"></img></div>'));
+	osFS.append(osAttr);
 	
 	// Create group input
 	var group = $('<div></div>');
@@ -2216,7 +2239,7 @@ function createZProvisionNew(inst) {
 	});
 	group.append(groupLabel);
 	group.append(groupInput);
-	vmFS.append(group);
+	vmAttr.append(group);
 		
 	// Create node input
 	var nodeName = $('<div></div>');
@@ -2224,11 +2247,11 @@ function createZProvisionNew(inst) {
 	var nodeInput = $('<input type="text" name="nodeName" title="You must give a node or a node range. A node range must be given as: node1-node9 or node[1-9]."/>');
 	nodeName.append(nodeLabel);
 	nodeName.append(nodeInput);
-	vmFS.append(nodeName);
+	vmAttr.append(nodeName);
 
 	// Create user ID input
 	var userId = $('<div><label>User ID:</label><input type="text" name="userId" title="You must give a user ID or a user ID range. A user ID range must be given as: user1-user9 or user[1-9]."/></div>');
-	vmFS.append(userId);
+	vmAttr.append(userId);
 
 	// Create hardware control point input
 	var hcpDiv = $('<div></div>');
@@ -2256,7 +2279,7 @@ function createZProvisionNew(inst) {
 	});
 	hcpDiv.append(hcpLabel);
 	hcpDiv.append(hcpInput);
-	vmFS.append(hcpDiv);
+	vmAttr.append(hcpDiv);
 	
 	// Create operating system image input
 	var os = $('<div></div>');
@@ -2274,7 +2297,7 @@ function createZProvisionNew(inst) {
 	});
 	os.append(osLabel);
 	os.append(osInput);
-	osFS.append(os);
+	osAttr.append(os);
 
 	// Create user entry input
 	var defaultChkbox = $('<input type="checkbox" name="userEntry" value="default"/>').click(function() {
@@ -2339,7 +2362,7 @@ function createZProvisionNew(inst) {
 	});
 	var userEntry = $('<div><label for="userEntry">Directory entry:</label><textarea/></textarea></div>');
 	userEntry.append($('<span></span>').append(defaultChkbox, 'Use default'));
-	hwFS.append(userEntry);
+	hwAttr.append(userEntry);
 
 	// Create disk table
 	var diskDiv = $('<div class="provision"></div>');
@@ -2451,7 +2474,7 @@ function createZProvisionNew(inst) {
 	
 	diskDiv.append(diskLabel);
 	diskDiv.append(diskTable);
-	hwFS.append(diskDiv);
+	hwAttr.append(diskDiv);
 	
 	// Generate tooltips
 	provNew.find('div input[title]').tooltip({
@@ -2510,7 +2533,7 @@ function createZProvisionNew(inst) {
 		
 		// Show error message for missing inputs
 		if (!ready) {
-			errMsg = errMsg + 'You are missing inputs.<br>';
+			errMsg = errMsg + 'Please provide a value for each missing field.<br>';
 		}
 
 		// Check if user entry contains user ID

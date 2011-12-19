@@ -504,20 +504,30 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		cloneForm.append(statBar);
 		cloneForm.append(infoBar);
 		
+		// Create VM fieldset
 		var vmFS = $('<fieldset></fieldset>');
 		var vmLegend = $('<legend>Virtual Machine</legend>');
 		vmFS.append(vmLegend);
 		cloneForm.append(vmFS);
 		
+		var vmAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+		vmFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
+		vmFS.append(vmAttr);
+		
+		// Create hardware fieldset
 		var hwFS = $('<fieldset></fieldset>');
 		var hwLegend = $('<legend>Hardware</legend>');
 		hwFS.append(hwLegend);
 		cloneForm.append(hwFS);
 		
-		vmFS.append('<div><label>Target node range:</label><input type="text" id="tgtNode" name="tgtNode" title="You must give a node or a node range. A node range must be given as: node1-node9 or node[1-9]."/></div>');
-		vmFS.append('<div><label>Target user ID range:</label><input type="text" id="tgtUserId" name="tgtUserId" title="You must give a user ID or a user ID range. A user ID range must be given as: user1-user9 or user[1-9]."/></div>');
-		vmFS.append('<div><label>Clone source:</label><input type="text" id="srcNode" name="srcNode" readonly="readonly" value="' + node + '" title="The source node to be cloned"/></div>');
-		vmFS.append('<div><label>Hardware control point:</label><input type="text" id="newHcp" name="newHcp" readonly="readonly" value="' + hcp + '" title="The System z hardware control point (zHCP) responsible for managing the node(s). It must be the same as the source node."/></div>');
+		var hwAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+		hwFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/hardware.png"></img></div>'));
+		hwFS.append(hwAttr);
+		
+		vmAttr.append('<div><label>Target node range:</label><input type="text" id="tgtNode" name="tgtNode" title="You must give a node or a node range. A node range must be given as: node1-node9 or node[1-9]."/></div>');
+		vmAttr.append('<div><label>Target user ID range:</label><input type="text" id="tgtUserId" name="tgtUserId" title="You must give a user ID or a user ID range. A user ID range must be given as: user1-user9 or user[1-9]."/></div>');
+		vmAttr.append('<div><label>Clone source:</label><input type="text" id="srcNode" name="srcNode" readonly="readonly" value="' + node + '" title="The source node to be cloned"/></div>');
+		vmAttr.append('<div><label>Hardware control point:</label><input type="text" id="newHcp" name="newHcp" readonly="readonly" value="' + hcp + '" title="The System z hardware control point (zHCP) responsible for managing the node(s). It must be the same as the source node."/></div>');
 
 		// Create group input
 		var group = $('<div></div>');
@@ -534,7 +544,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		});
 		group.append(groupLabel);
 		group.append(groupInput);
-		vmFS.append(group);
+		vmAttr.append(group);
 
 		// Get list of disk pools
 		var temp = hcp.split('.');
@@ -548,9 +558,9 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		});
 		poolDiv.append(poolLabel);
 		poolDiv.append(poolInput);
-		hwFS.append(poolDiv);
+		hwAttr.append(poolDiv);
 
-		hwFS.append('<div><label>Disk password:</label><input type="password" id="diskPw" name="diskPw" title="The password that will be used for accessing the disk. This input is optional."/></div>');
+		hwAttr.append('<div><label>Disk password:</label><input type="password" id="diskPw" name="diskPw" title="The password that will be used for accessing the disk. This input is optional."/></div>');
 
 		// Generate tooltips
 		cloneForm.find('div input[title]').tooltip({

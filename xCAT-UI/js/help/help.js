@@ -9,7 +9,8 @@ function loadHelpPage(){
     helpForm.append(
     	'<fieldset>' + 
     		'<legend>Quick Start</legend>' +
-    		'<ol>' +
+    		'<div style="display: inline-table; vertical-align: middle;"><img src="images/help/quick_start.png" style="width: 90%;"></img></div>' +
+    		'<ol style="display: inline-table; vertical-align: middle;">' +
             	'<li><a href="configure.php" style="color: blue;">1. Discover hardware</a><br/>Discover all hardware in the cluster. Define them in the xCAT database. Initialize your cluster.</li>' +
             	'<li><a href="index.php" style="color: blue;">2. Verify defined nodes</a><br/>View nodes definition by groups in a table or graphical style.</li>' +
             	'<li><a href="configure.php" style="color: blue;">3. Install compute nodes</a><br/>Copy useful files from DVD onto harddisk. Create Linux images. Install compute nodes in stateful, stateless, and statelite style.</li>' +
@@ -19,7 +20,8 @@ function loadHelpPage(){
         '</fieldset>' +
     	'<fieldset>' +
     		'<legend>Advanced</legend>' + 
-    		'<ol>' + 
+    		'<div style="display: inline-table; vertical-align: middle;"><img src="images/help/advanced_settings.png" style="width: 90%;"></img></div>' +
+    		'<ol style="display: inline-table; vertical-align: middle;">' + 
     			'<li><a href="configure.php" style="color: blue;">a. Edit the xCAT database tables</a></li>' + 
     			'<li><a href="configure.php" style="color: blue;">b. Update the xCAT RPM on the Management Node</a></li>' + 
     		'</ol>' + 

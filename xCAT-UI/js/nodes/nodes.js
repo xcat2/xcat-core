@@ -380,10 +380,12 @@ function mkAddNodeLink() {
 		addNodeForm.append(info);
 		addNodeForm.append('<div><label for="mgt">Hardware management:</label>'
     		+ '<select id="mgt" name="mgt">'
+    			+ '<option value="esx">ESX</option>'
+    			+ '<option value="kvm">KVM</option>'
+    			+ '<option value="zvm">z\/VM</option>'
     			+ '<option value="ipmi">iDataPlex</option>' 
     			+ '<option value="blade">BladeCenter</option>'
     			+ '<option value="hmc">System p</option>'	// Documentation refers to 'IBM System p' (where p is NOT capitalized)
-    			+ '<option value="zvm">System z</option>'	// Documentation refers to 'IBM System z' (where z is NOT capitalized)
     		+ '</select>'
     	+ '</div>');
 		
@@ -439,6 +441,12 @@ function mkAddNodeLink() {
 					
 					var plugin;
 					switch(mgt) {
+						case "kvm":
+				            plugin = new kvmPlugin();
+				            break;
+				        case "esx":
+				            plugin = new esxPlugin();
+				            break;
 			    		case "blade":
 			        		plugin = new bladePlugin();
 			        		break;
@@ -1874,6 +1882,10 @@ function sortAlpha(a, b) {
  * @return Nothing
  */
 function powerNode(node, power2) {
+	// Show power loader
+	var powerCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
+	powerCol.find('img').show();
+	
 	node = node.replace('Power', '');
 	$.ajax( {
 		url : 'lib/cmd.php',
@@ -2081,6 +2093,10 @@ function updateStatusBar(data) {
  * @return Nothing
  */
 function updatePowerStatus(data) {
+	// Hide power loader
+	var powerCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
+	powerCol.find('img').hide();
+	
 	// Get datatable
 	var dTable = $('#' + nodesTableId).dataTable();
 
@@ -3025,6 +3041,10 @@ function openSetAttrsDialog() {
  * @return Nothing
  */
 function monitorNode(node, monitor) {
+	// Show ganglia loader
+	var gangliaCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(4)');
+	gangliaCol.find('img').show();
+	
 	if (monitor == 'on') {
 		// Append loader to warning bar
 		var warningBar = $('#nodesTab').find('.ui-state-error p');
@@ -3084,13 +3104,27 @@ function monitorNode(node, monitor) {
 							data : {
 								cmd : 'webrun',
 								tgt : '',
-								args : 'gangliastart;' + data.msg,
-								msg : ''
+								args : 'gangliastart;' + data.msg + ';-r',
+								msg : data.msg
 							},
 
 							success : function(data) {
 								// Remove any warnings
 								$('#nodesTab').find('.ui-state-error').remove();
+																
+								// Update datatable
+								$.ajax( {
+									url : 'lib/cmd.php',
+									dataType : 'json',
+									data : {
+										cmd : 'webrun',
+										tgt : '',
+										args : 'gangliastatus;' + data.msg,
+										msg : ''
+									},
+
+									success : loadGangliaStatus
+								});
 							}
 						});
 					} // End of if (warn)
@@ -3116,7 +3150,7 @@ function monitorNode(node, monitor) {
 	} else {
 		var args;
 		if (node) {
-			args = 'gangliastop;' + node;
+			args = 'gangliastop;' + node + ';-r';
 		} else {
 			args = 'gangliastop';
 		}
@@ -3132,7 +3166,9 @@ function monitorNode(node, monitor) {
 			},
 
 			success : function(data) {
-				// Do nothing
+				// Hide ganglia loader
+				var gangliaCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(4)');
+				gangliaCol.find('img').hide();
 			}
 		});
 	}

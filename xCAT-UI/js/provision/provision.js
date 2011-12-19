@@ -85,17 +85,17 @@ function loadProvisionPage() {
 	var hwList = $('<ol>Platforms available:</ol>');
 	var esx = $('<li><input type="radio" name="hw" value="esx" checked/>ESX</li>');
 	var kvm = $('<li><input type="radio" name="hw" value="kvm"/>KVM</li>');
+	var zvm = $('<li><input type="radio" name="hw" value="zvm"/>z\/VM</li>');
 	var ipmi = $('<li><input type="radio" name="hw" value="ipmi"/>iDataPlex</li>');
 	var blade = $('<li><input type="radio" name="hw" value="blade"/>BladeCenter</li>');
 	var hmc = $('<li><input type="radio" name="hw" value="hmc"/>System p</li>');
-	var zvm = $('<li><input type="radio" name="hw" value="zvm"/>System z</li>');
-
+	
 	hwList.append(esx);
 	hwList.append(kvm);
-	hwList.append(ipmi);
-	hwList.append(blade);
-	hwList.append(hmc);
 	hwList.append(zvm);
+	hwList.append(blade);
+	hwList.append(ipmi);
+	hwList.append(hmc);
 	provPg.append(hwList);
 
 	/**
@@ -140,7 +140,7 @@ function loadProvisionPage() {
 	            break;
 	        case "zvm":
 	            plugin = new zvmPlugin();
-	            title = 'System z';
+	            title = 'z/VM';
 	            break;
         }
 
