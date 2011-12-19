@@ -32,11 +32,23 @@ Provides: xCAT-server = %{epoch}:%{version}
 %description
 xCAT-server provides the core server and configuration management components of xCAT.  This package should be installed on your management server
 
+# %define VERBOSE %(if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ];then echo 1; else echo 0; fi)
+# %define NOVERBOSE %(if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ];then echo 0; else echo 1; fi)
+# %define NOVERBOSE %{?VERBOSE:1}%{!?VERBOSE:0}
+
 %prep
+# %if %NOVERBOSE
+# echo NOVERBOSE is on
+# set +x
+# %elseif
+# set -x
+# %endif
+
 %setup -q -n xCAT-server
 %build
 %install
 rm -rf $RPM_BUILD_ROOT
+#cp foo bar
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/sbin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/bin
 #mkdir -p $RPM_BUILD_ROOT/%{prefix}/rc.d
@@ -60,7 +72,6 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/pcp
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema/samples
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT
 
-set +x
 %ifos linux
 cp -a share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
 cp -a share/xcat/netboot/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/
@@ -70,7 +81,7 @@ cp -hpR share/xcat/netboot/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/
 %endif
 
 %ifos linux
-pwd
+# pwd
 cp -d sbin/* $RPM_BUILD_ROOT/%{prefix}/sbin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/*
 cp -d bin/* $RPM_BUILD_ROOT/%{prefix}/bin
@@ -107,8 +118,6 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/*
 
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/sles/*.postinstall
 
-set -x
-
 # For now, don't ship these plugins - to avoid AIX dependency.
 %ifnos linux
 rm $RPM_BUILD_ROOT/%{prefix}/sbin/stopstartxcatd
@@ -127,7 +136,6 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/activedirectory.pm
 cp lib/xcat/dsh/Context/* $RPM_BUILD_ROOT/%{prefix}/xdsh/Context
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/xdsh/Context/*
 
-set +x
 cp -r lib/xcat/monitoring/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/*
 
@@ -141,7 +149,6 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema/*
 
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema/samples
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema/samples/*
-set -x
 
 
 cp lib/xcat/shfunctions $RPM_BUILD_ROOT/%{prefix}/lib

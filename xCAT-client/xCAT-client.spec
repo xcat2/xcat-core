@@ -59,7 +59,6 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man3
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man5
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man8
 
-set +x
 %ifos linux
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/rvid
 cp share/xcat/rvid/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/rvid/
@@ -197,7 +196,6 @@ ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/makeroutes
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/snmove
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/lsxcatd
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/postage
-set -x
 
 
 %clean

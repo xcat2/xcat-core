@@ -43,8 +43,6 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/loadl
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/pe
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/rsct
 
-set +x
-
 %ifos linux
 cp -a share/xcat/IBMhpc/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/
 chmod -R 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/*
@@ -52,8 +50,6 @@ chmod -R 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/*
 cp -hpR share/xcat/IBMhpc/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/
 chmod -R 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/*
 %endif
-
-set -x
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-IBMhpc
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-IBMhpc

@@ -43,8 +43,6 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/autotest
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man1
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man1
 
-set +x
-
 cp xcattest $RPM_BUILD_ROOT/%{prefix}/bin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
 
@@ -55,7 +53,6 @@ cp share/doc/man1/* $RPM_BUILD_ROOT/%{prefix}/share/doc/man1
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man1/*
 
 cp -r autotest $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
-set -x
 
 
 %clean

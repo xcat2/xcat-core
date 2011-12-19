@@ -42,7 +42,7 @@ All files included are as they were downloadable on 4/7/2007
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/%{tarch}/nbroot
 cd $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/%{tarch}/nbroot
-tar zxvf %{SOURCE1}
+tar zxf %{SOURCE1}
 chmod 755 etc/init.d/S40network bin/getdestiny bin/getdestiny.awk bin/getipmi bin/getipmi.awk
 cd -
 

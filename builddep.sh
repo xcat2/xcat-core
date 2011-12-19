@@ -15,19 +15,18 @@
 #		DESTDIR=<dir> - the dir to place the dep tarball in.  The default is ../../../xcat-dep, relative
 #					to where this script is located.
 # 		UP=0 or UP=1 - override the default upload behavior 
+#       FRSYUM=1 - put the directory of individual rpms in the FRS area instead of project web area.
 
 # you can change this if you need to
 UPLOADUSER=bp-sawyers
 
+FRS=/home/frs/project/x/xc/xcat
 OSNAME=$(uname)
 
 if [ "$OSNAME" == "AIX" ]; then
 	GSA=/gsa/pokgsa/projects/x/xcat/build/aix/xcat-dep
 else
 	GSA=/gsa/pokgsa/projects/x/xcat/build/linux/xcat-dep
-fi
-
-if [ "$OSNAME" != "AIX" ]; then
 	export HOME=/root		# This is so rpm and gpg will know home, even in sudo
 fi
 
@@ -36,6 +35,13 @@ for i in $*; do
 	#declare `echo $i|cut -d '=' -f 1`=`echo $i|cut -d '=' -f 2`
 	export $i
 done
+
+# this is needed only when we are transitioning the yum over to frs
+if [ "$FRSYUM" = 1 ]; then
+	YUMDIR=$FRS
+else
+	YUMDIR=htdocs
+fi
 
 if [ ! -d $GSA ]; then
 	echo "builddep:  It appears that you do not have gsa installed to access the xcat-dep pkgs."
@@ -214,11 +220,12 @@ fi
 
 # Upload the dir structure to SF yum area.  Currently we do not have it preserving permissions
 # because that gives errors when different users try to do it.
-while ! rsync -rlv --delete * $UPLOADUSER,xcat@web.sourceforge.net:htdocs/$YUM/xcat-dep/
+i=0
+while [ $((i++)) -lt 10 ] && ! rsync -rlv --delete * $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/xcat-dep/
 do : ; done
 #ssh jbjohnso@shell1.sf.net "cd /home/groups/x/xc/xcat/htdocs/yum/; rm -rf dep-snap; tar jxvf $DFNAME"
 
 # Upload the tarball to the SF FRS Area
-#scp ../$DFNAME $UPLOADUSER@web.sourceforge.net:/home/frs/project/x/xc/xcat/xcat-dep/2.x_Linux/
-while ! rsync -v ../$DFNAME $UPLOADUSER,xcat@web.sourceforge.net:/home/frs/project/x/xc/xcat/xcat-dep/$FRSDIR/
+i=0
+while [ $((i++)) -lt 10 ] && ! rsync -v ../$DFNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat-dep/$FRSDIR/
 do : ; done

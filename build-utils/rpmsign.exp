@@ -49,7 +49,7 @@ if {$force_conservative} {
 
 
 set timeout -1
-spawn sh -c "rpm --resign  $argv"
+spawn sh -c "rpm --quiet --resign  $argv"
 match_max 100000
 expect -exact "Enter pass phrase: "
 send -- "\r"
