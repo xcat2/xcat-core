@@ -195,7 +195,7 @@ sub provzlinux {
 	}
 	
 	# Use default configuration if profile configuration does not exist
-	if (!$disk_pool || !$eckd_size || !$fba_size) {
+	if (!$disk_pool && (!$eckd_size || !$fba_size)) {
 		println( $callback, "$profile configuration for disk pool and size does not exist.  Using default configuration." );
 		
 		$disk_pool = $default_disk_pool;
