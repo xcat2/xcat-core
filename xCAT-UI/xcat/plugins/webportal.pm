@@ -159,7 +159,6 @@ sub provzlinux {
 	my $profile_diskpool_parm = $profile . "_diskpool";
 	my $profile_eckd_size_parm = $profile . "_eckd_size";
 	my $profile_fba_size_parm = $profile . "_fba_size";
-	
 	foreach (@tmp) {
 		# Get disk pool (default)
 		if ( $_ =~ m/default_diskpool=/i ) {
