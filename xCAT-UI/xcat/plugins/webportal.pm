@@ -159,20 +159,23 @@ sub provzlinux {
 	my $profile_diskpool_parm = $profile . "_diskpool";
 	my $profile_eckd_size_parm = $profile . "_eckd_size";
 	my $profile_fba_size_parm = $profile . "_fba_size";
+	my $default_disk_pool;
+	my $default_eckd_size;
+	my $default_fba_size;
 	foreach (@tmp) {
 		# Get disk pool (default)
 		if ( $_ =~ m/default_diskpool=/i ) {
-			$disk_pool = $_;
-			$disk_pool =~ s/default_diskpool=//g;
+			$default_disk_pool = $_;
+			$default_disk_pool =~ s/default_diskpool=//g;
 		}		
 		# Get disk size (default)
 		elsif ( $_ =~ m/default_eckd_size=/i ) {
-			$eckd_size = $_;
-			$eckd_size =~ s/default_eckd_size=//g;
+			$default_eckd_size = $_;
+			$default_eckd_size =~ s/default_eckd_size=//g;
 		}
 		elsif ( $_ =~ m/default_fba_size=/i ) {
-			$fba_size = $_;
-			$fba_size =~ s/default_fba_size=//g;
+			$default_fba_size = $_;
+			$default_fba_size =~ s/default_fba_size=//g;
 		}
 		
 		# Get profile disk pool (default)
@@ -189,6 +192,15 @@ sub provzlinux {
 			$fba_size = $_;
 			$fba_size =~ s/$profile_fba_size_parm=//g;
 		}
+	}
+	
+	# Use default configuration if profile configuration does not exist
+	if (!$disk_pool || !$eckd_size || !$fba_size) {
+		println( $callback, "$profile configuration for disk pool and size does not exist.  Using default configuration." );
+		
+		$disk_pool = $default_disk_pool;
+		$eckd_size = $default_eckd_size;
+		$fba_size = $default_fba_size;
 	}
 
 	my $site_tab    = xCAT::Table->new('site');
