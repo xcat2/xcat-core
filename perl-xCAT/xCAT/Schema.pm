@@ -844,19 +844,24 @@ site => {
    "              the node deployment, node discovery and power operations.\n\n".
    " ntpservers:  A comma delimited list of NTP servers for the cluster - often the\n".
    "              xCAT management node.\n\n".
-   " syspowerinterval:  The time of seconds that rpower command on CECs will wait between.\n".
-   "                 The CECs should be in the same frame. It is used for controlling the\n".
-   "                 CECs boot up speed. Default is 0.\n\n".
+   " syspowerinterval:  The time of seconds that rpower command on CECs will wait between\n".
+   "                 performing action on each target object.It's recommended that the CECs \n".
+   "                 target should be in the same frame. It is used for controlling the\n".
+   "                 CECs power on speed in large cluster. Default is 0.\n\n".
    " powerinterval:  The time of seconds that rpower command on lpars will wait between\n".
    "                 performing action on each target object.\n".
    "                 It is used for controlling the cluster boot up speed\n".
-   "                 in large clusters. Default is 0.\n\n".
-   "                 And it's used to control the time for the power command on each lpar by each hcp.\n\n".
+   "                 in large clusters. And it's used to control the time for the power command\n".
+   "                 on each lpar by each hcp.  Default is 0.\n\n".
    " ppcmaxp:  The max # of processes for PPC hw ctrl. If there are more than ppcmaxp hcps,\n".
    "           this parameter will take effect. It will control the max number of processes  \n".
    "           for PPC hardware control commands. Default is 64.\n\n".
-   " ppcretry:  The max # of PPC hw connection attempts before failing.\n\n".
-   " ppctimeout:  The timeout, in milliseconds, to use when communicating with PPC hw.\n\n".
+   " ppcretry:  The max # of PPC hw connection attempts to HMC before failing.\n".
+   "           It only takes effect on the hardware control commands through HMC. \n".
+   "           Default is 3.\n\n".
+   " ppctimeout:  The timeout, in milliseconds, to use when communicating with PPC hw through HMC.\n".
+   "              It only takes effect on the hardware control commands through HMC.\n".
+   "              Default is 0.\n\n".
    " pruneservices:  Whether to enable service pruning when noderm is run (i.e.\n".
    "                 removing DHCP entries when noderm is executed)\n\n".
    " rsh:  This is no longer used. path to remote shell command for xdsh.\n\n".
