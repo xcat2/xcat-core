@@ -26,6 +26,7 @@ use xCAT::Utils;
 use xCAT::NetworkUtils;
 use Getopt::Long;
 use xCAT::MsgUtils;
+use xCAT::Table;
 use Socket;
 
 #-----------------------------------------------------------------------------
@@ -878,7 +879,7 @@ sub discover_timezone_ubuntu
 =head3    initDB 
 	
     Will initialize the DB if it does not already exist,  also updates with
-	new data needed during update install.
+	new data needed or database changes during xCAT update install.
 
 =cut
 
@@ -1142,7 +1143,8 @@ sub initDB
             verbose("Created postscripts definition.");
         }
     }
-    # create basic policy definition, if does not exist or request reset.
+
+    # create or reset basic policy table definitions
     if (   ((!-r "/etc/xcat/policy.sqlite") && (!-r "/etc/xcat/cfgloc"))
         || $::FORCE
         || $::initDB)
@@ -1299,7 +1301,11 @@ sub initDB
             }
         }
 
-    }
+   } 
+   # remove xcatserver,xcatclient
+   # from the postscripts. They are now called by servicenode
+   &cleanupPSTable;
+   
 }    # end initial DB install setup
 
 #-----------------------------------------------------------------------------
@@ -1778,4 +1784,71 @@ sub setuphttp
     {
         verbose("httpd has been enabled.");
     }
+}
+#-----------------------------------------------------------------------------
+
+=head3   cleanupPSTable 
+	
+   Any line in the postscripts table that has the following
+   entry will have xcatserver,xcatclient remove because they
+   are not called by servicenode
+
+   ..."servicenode,xcatserver,xcatclient.."... 
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub cleanupPSTable 
+{
+ my $rc=0;
+ my $tab;
+ if ($tab = xCAT::Table->new("postscripts")) {
+   my @tableentries = $tab->getAllAttribs('node','postscripts');
+   foreach my $entry (@tableentries) {
+     my $node=$entry->{'node'};
+     my $pslist=$entry->{'postscripts'};
+     if ($pslist) {
+       my $servicenode=0;
+       my $newpslist ="\"";
+       my @ps= split(",", $pslist);    
+       # now check is servicenode and xcatclient and/or xcatserver in the list
+       foreach my $pscript (@ps) {
+         if ($pscript =~ /^servicenode/i) { # found servicenode ps
+            $newpslist .=$pscript;
+            $newpslist .=",";
+            $servicenode=1; 
+         } else{  # no service node just put entry on new table
+            if ($servicenode == 0) { 
+               $newpslist .=$pscript;
+               $newpslist .=",";
+            } else { # servicenode found, do not keep xcatserver/xcatclient 
+             if (($pscript =~ /^xcatserver/i) ||($pscript =~ /^xcatclient/i)) {
+                   next;
+               } else {
+                 $newpslist .=$pscript;
+                 $newpslist .=",";
+               }
+            }
+         }
+       }
+       chop $newpslist;
+       $newpslist .="\""; 
+       my $chtabcmds .=
+       "$::XCATROOT/sbin/chtab node=$node postscripts.postscripts=$newpslist;";
+        my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E',
+                 "Could not modify postscripts definition for $node.");
+        }
+     } 
+   }
+ }
+ else
+ {
+      xCAT::MsgUtils->message("E", " Could not open the postscripts table\n");
+      return 1;
+ }
+
+ return $rc
 }
