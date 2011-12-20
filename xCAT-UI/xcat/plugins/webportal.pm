@@ -94,7 +94,26 @@ sub provzlinux {
 	my $hcp   = $request->{arg}->[2];
 	my $img   = $request->{arg}->[3];
 	my $owner = $request->{arg}->[4];
+	
+	# Exit if missing inputs
+	if ( !$group || !$hcp || !$img || !$owner ) {
+		println( $callback, '(Error) Missing group, HCP, image, or owner' );
+		return;
+	}
 
+	# Get node OS base
+	my $profile;
+	my $arch;
+	my $os;
+	my @tmp;
+	( $profile, $arch, $os ) = getosimagedef( $callback, $img );
+	if ( $os =~ m/sp/i ) {
+		@tmp = split( /sp/, $os );
+	} else {
+		@tmp = split( /\./, $os );
+	}
+	my $os_base = $tmp[0];
+	
 	# Read in default disk pool and disk size /opt/zhcp/conf/default.conf on zHCP
 	#	pool = POOL3
 	#	eckd_size = 10016
@@ -102,15 +121,15 @@ sub provzlinux {
 	my $eckd_size;
 	my $fba_size;
 	my $default_conf   = '/opt/zhcp/conf/default.conf';
-	my $default_direct = "/opt/zhcp/conf/$group.direct";
+	my $default_direct = "/opt/zhcp/conf/profiles/$profile.direct";
 
 	# Check if a group based directory entry exists, else use default one
-	if ( !(`ssh $hcp "test -e /opt/zhcp/conf/$group.direct && echo Exists"`) ) {
-		$default_direct = '/opt/zhcp/conf/default.direct';
-		println( $callback, "$group.direct does not exist.  Using default.direct to generate directory entry." );
+	if ( !(`ssh $hcp "test -e /opt/zhcp/conf/profiles/$profile.direct && echo Exists"`) ) {
+		println( $callback, "$profile.direct does not exist.  Using default.direct to generate directory entry." );
 		
 		# Exit if default.direct does not exist
-		if ( !(`ssh $hcp "test -e /opt/zhcp/conf/default.direct && echo Exists"`) ) {
+		$default_direct = '/opt/zhcp/conf/profiles/default.direct';	
+		if ( !(`ssh $hcp "test -e /opt/zhcp/conf/profiles/default.direct && echo Exists"`) ) {
 			println( $callback, '(Error) $default_direct does not exists' );
 			return;
 		}
@@ -129,37 +148,49 @@ sub provzlinux {
 	}
 
 	my $out = `ssh $hcp "cat $default_conf"`;
-	my @tmp = split( /\n/, $out );
+	@tmp = split( /\n/, $out );
+	# default.conf should contain:
+	
+	# Default configuration for virtual machines handled by this zHCP
+	#	default_diskpool=POOL3
+	#	default_eckd_size=10016
+	#	compute_diskpool=POOL3
+	#	compute_eckd_size=10016	
+	my $profile_diskpool_parm = $profile . "_diskpool";
+	my $profile_eckd_size_parm = $profile . "_eckd_size";
+	my $profile_fba_size_parm = $profile . "_fba_size";
+	
 	foreach (@tmp) {
-		# Get disk pool
-		if ( $_ =~ m/pool =/i ) {
+		# Get disk pool (default)
+		if ( $_ =~ m/default_diskpool=/i ) {
 			$disk_pool = $_;
-			$disk_pool =~ s/pool =//g;
-		}
-
-		# Get disk size
-		elsif ( $_ =~ m/eckd_size =/i ) {
+			$disk_pool =~ s/default_diskpool=//g;
+		}		
+		# Get disk size (default)
+		elsif ( $_ =~ m/default_eckd_size=/i ) {
 			$eckd_size = $_;
-			$eckd_size =~ s/eckd_size =//g;
+			$eckd_size =~ s/default_eckd_size=//g;
 		}
-		elsif ( $_ =~ m/fba_size = /i ) {
+		elsif ( $_ =~ m/default_fba_size=/i ) {
 			$fba_size = $_;
-			$fba_size =~ s/fba_size = //g;
+			$fba_size =~ s/default_fba_size=//g;
+		}
+		
+		# Get profile disk pool (default)
+		elsif ( $_ =~ m/$profile_diskpool_parm=/i ) {
+			$disk_pool = $_;
+			$disk_pool =~ s/$profile_diskpool_parm=//g;
+		}
+		# Get profile disk size (default)
+		elsif ( $_ =~ m/$profile_eckd_size_parm=/i ) {
+			$eckd_size = $_;
+			$eckd_size =~ s/$profile_eckd_size_parm=//g;
+		}
+		elsif ( $_ =~ m/$profile_fba_size_parm=/i ) {
+			$fba_size = $_;
+			$fba_size =~ s/$profile_fba_size_parm=//g;
 		}
 	}
-
-	# Get node OS base
-	my $profile;
-	my $arch;
-	my $os;
-	( $profile, $arch, $os ) = getosimagedef( $callback, $img );
-	if ( $os =~ m/sp/i ) {
-		@tmp = split( /sp/, $os );
-	}
-	else {
-		@tmp = split( /\./, $os );
-	}
-	my $os_base = $tmp[0];
 
 	my $site_tab    = xCAT::Table->new('site');
 	my $hash        = $site_tab->getAttribs( { key => "installdir" }, 'value' );
