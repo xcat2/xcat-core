@@ -1074,6 +1074,16 @@ sub defmk
         }
     }
 
+    # Build up a hash for the array in objTypeLists
+    # for performance consideration, grep the array is not effective
+    my %objTypeListsHash;
+    foreach my $objk (keys %objTypeLists)
+    {
+        foreach my $obj (@{$objTypeLists{$objk}}) {
+            $objTypeListsHash{$objk}{$obj} = 1;
+        }
+    }
+
     OBJ: foreach my $obj (keys %::FINALATTRS)
     {
 
@@ -1115,7 +1125,7 @@ sub defmk
         }
 
         # if object already exists
-        if (grep(/^$obj$/, @{$objTypeLists{$type}}))
+        if (defined($objTypeListsHash{$type}{$obj}) && ($objTypeListsHash{$type}{$obj} == 1))
         {
             if ($::opt_f)
             {
@@ -1357,76 +1367,10 @@ sub defmk
             $error = 1;
             next;
         }
-
-        #
-        #  Need special handling for node objects that have the
-        #    groups attr set - may need to create group defs
-        #
-        if (($type eq "node") && $::FINALATTRS{$obj}{groups})
-        {
-
-            # get the list of groups in the "groups" attr
-            my @grouplist;
-            @grouplist = split(/,/, $::FINALATTRS{$obj}{groups});
-
-            # get the list of all defined group objects
-
-            # getObjectsOfType("group") only returns static groups,
-            # generally speaking, the nodegroup table should includes all the static and dynamic groups,
-            # but it is possible that the static groups are not in nodegroup table,
-            # so we have to get the static and dynamic groups separately.
-            my @definedgroups = xCAT::DBobjUtils->getObjectsOfType("group"); #static groups
-            my $grptab = xCAT::Table->new('nodegroup');
-            my @grplist = @{$grptab->getAllEntries()}; #dynamic groups and static groups in nodegroup table
-
-            my %GroupHash;
-            foreach my $g (@grouplist)
-            {
-                my $indynamicgrp = 0;
-                #check the dynamic node groups
-                foreach my $grpdef_ref (@grplist) 
-                {
-                     my %grpdef = %$grpdef_ref;
-                     if (($grpdef{'groupname'} eq $g) && ($grpdef{'grouptype'} eq 'dynamic'))
-                     {
-                         $indynamicgrp = 1;
-                         my $rsp;
-                         $rsp->{data}->[0] = "nodegroup $g is a dynamic node group, should not add a node into a dynamic node group statically.";
-                         xCAT::MsgUtils->message("I", $rsp, $::callback);
-                          last;
-                      }
-                }
-                if (!$indynamicgrp)
-                {
-                    if (!grep(/^$g$/, @definedgroups))
-                    {
-                        # define it
-                        $GroupHash{$g}{objtype}   = "group";
-                        $GroupHash{$g}{grouptype} = "static";
-                        $GroupHash{$g}{members}   = "static";
-                     }
-                }
-            }
-            if (defined(%GroupHash))
-            {
-                if ($::verbose)
-                {
-                    my $rsp;
-                    $rsp->{data}->[0] = "Write GroupHash: %GroupHash to xCAT database";
-                    xCAT::MsgUtils->message("I", $rsp, $::callback);
-                }
-                if (xCAT::DBobjUtils->setobjdefs(\%GroupHash) != 0)
-                {
-                    my $rsp;
-                    $rsp->{data}->[0] =
-                      "Could not write data to the xCAT database.";
-
-                    # xCAT::MsgUtils->message("E", $rsp, $::callback);
-                    $error = 1;
-                }
-            }
-
-        }    # end - if type = node
+        # Removed the code to handle the nodegroup table with mkdef -t node groups=xxx
+        # Only dynamic groups should be in nodegroup table
+        # Do not try to add static group into the nodegroup table
+        # performance!!!!
 
     } # end of each obj
 
