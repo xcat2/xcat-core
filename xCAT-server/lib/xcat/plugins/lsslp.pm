@@ -229,7 +229,7 @@ sub parse_args {
         CEC   => HARDWARE_SERVICE.":".SERVICE_CEC,
         FRAME => HARDWARE_SERVICE.":".SERVICE_FRAME,
         RSA   => HARDWARE_SERVICE.":".SERVICE_RSA.":",
-        CMM   => HARDWARE_SERVICE.":".SERVICE_CMM.":",
+        CMM   => HARDWARE_SERVICE.":".SERVICE_CMM,
         MM    => HARDWARE_SERVICE.":".SERVICE_MM.":"
     );
     #############################################
