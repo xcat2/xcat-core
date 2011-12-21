@@ -34,8 +34,9 @@ FRS=/home/frs/project/x/xc/xcat
 
 # Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
 for i in $*; do
-	#declare `echo $i|cut -d '=' -f 1`=`echo $i|cut -d '=' -f 2`
-	export $i
+	# upper case the variable name
+	varstring=`echo "$i"|cut -d '=' -f 1|tr [a-z] [A-Z]`=`echo "$i"|cut -d '=' -f 2`
+	export $varstring
 done
 if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ]; then
 	set -x
@@ -249,8 +250,9 @@ if [ "$OSNAME" != "AIX" ]; then
 	if ! $GREP '%_gpg_name' $MACROS 2>/dev/null; then
 		echo '%_gpg_name Jarrod Johnson' >> $MACROS
 	fi
-	build-utils/rpmsign.exp $DESTDIR/*rpm | grep -v 'was already signed'
-	build-utils/rpmsign.exp $SRCDIR/*rpm | grep -v 'was already signed'
+	echo "Signing RPMs..."
+	build-utils/rpmsign.exp $DESTDIR/*rpm | grep -v -E '(was already signed|rpm --quiet --resign)'
+	build-utils/rpmsign.exp $SRCDIR/*rpm | grep -v -E '(was already signed|rpm --quiet --resign)'
 	createrepo $DESTDIR
 	createrepo $SRCDIR
 	rm -f $SRCDIR/repodata/repomd.xml.asc

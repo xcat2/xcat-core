@@ -16,12 +16,24 @@
 #					to where this script is located.
 # 		UP=0 or UP=1 - override the default upload behavior 
 #       FRSYUM=1 - put the directory of individual rpms in the FRS area instead of project web area.
+#		VERBOSE=1 - to see lots of verbose output
 
 # you can change this if you need to
 UPLOADUSER=bp-sawyers
 
 FRS=/home/frs/project/x/xc/xcat
 OSNAME=$(uname)
+
+# Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
+for i in $*; do
+	# upper case the variable name
+	varstring=`echo "$i"|cut -d '=' -f 1|tr [a-z] [A-Z]`=`echo "$i"|cut -d '=' -f 2`
+	export $varstring
+done
+if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ]; then
+	set -x
+	VERBOSEMODE=1
+fi
 
 if [ "$OSNAME" == "AIX" ]; then
 	GSA=/gsa/pokgsa/projects/x/xcat/build/aix/xcat-dep
@@ -30,24 +42,27 @@ else
 	export HOME=/root		# This is so rpm and gpg will know home, even in sudo
 fi
 
-# Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
-for i in $*; do
-	#declare `echo $i|cut -d '=' -f 1`=`echo $i|cut -d '=' -f 2`
-	export $i
-done
-
 # this is needed only when we are transitioning the yum over to frs
+YUMREPOURL1="http://xcat.sourceforge.net/yum"
+YUMREPOURL2="https://sourceforge.net/projects/xcat/files/yum"
 if [ "$FRSYUM" = 1 ]; then
 	YUMDIR=$FRS
+	YUMREPOURL="$YUMREPOURL2"
 else
 	YUMDIR=htdocs
+	YUMREPOURL="$YUMREPOURL1"
+fi
+
+if [ -n "$VERBOSEMODE" ]; then
+	GREP=grep
+else
+	GREP="grep -q"
 fi
 
 if [ ! -d $GSA ]; then
 	echo "builddep:  It appears that you do not have gsa installed to access the xcat-dep pkgs."
 	exit 1;
 fi
-set -x
 cd `dirname $0`
 XCATCOREDIR=`/bin/pwd`
 if [ -z "$DESTDIR" ]; then
@@ -56,6 +71,7 @@ fi
 
 # Sync from the GSA master copy of the dep rpms
 mkdir -p $DESTDIR/xcat-dep
+echo "Syncing RPMs from $GSA/ to $DESTDIR/xcat-dep ..."
 rsync -ilrtpu --delete $GSA/ $DESTDIR/xcat-dep
 cd $DESTDIR/xcat-dep
 
@@ -80,21 +96,38 @@ if [ "$OSNAME" != "AIX" ]; then
 	fi
 
 	# Sign the rpms that are not already signed.  The "standard input reopened" warnings are normal.
-	$XCATCOREDIR/build-utils/rpmsign.exp `find . -type f -name '*.rpm'`
+	echo "Signing RPMs..."
+	$XCATCOREDIR/build-utils/rpmsign.exp `find . -type f -name '*.rpm'` | grep -v -E '(was already signed|rpm --quiet --resign)'
 
 	# Create the repodata dirs
+	echo "Creating repodata directories..."
 	for i in `find -mindepth 2 -maxdepth 2 -type d `; do
-		createrepo $i
+		if [ -n "$VERBOSEMODE" ]; then
+			createrepo $i
+		else
+			createrepo $i >/dev/null
+		fi
 		rm -f $i/repodata/repomd.xml.asc
 		gpg -a --detach-sign $i/repodata/repomd.xml
 		if [ ! -f $i/repodata/repomd.xml.key ]; then
 			cp $GSA/../keys/repomd.xml.key $i/repodata
 		fi
 	done
+
+	# Modify xCAT-dep.repo files to point to the correct place
+	if [ "$FRSYUM" = 1 ]; then
+		newurl="$YUMREPOURL2"
+		oldurl="$YUMREPOURL1"
+	else
+		newurl="$YUMREPOURL1"
+		oldurl="$YUMREPOURL2"
+	fi
+	sed -i -e "s|=$oldurl|=$newurl|g" `find . -name "xCAT-dep.repo" `
 fi
 
 if [ "$OSNAME" == "AIX" ]; then
 	# Build the instoss file
+
 	cat >instoss << 'EOF'
 #!/bin/ksh
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
@@ -114,10 +147,8 @@ fi
 cd $OSVER
 # Have to install rpms 1 at a time, since some may be already installed.
 # The only interdependency between the dep rpms so far is that net-snmp requires bash
-
 #  pyodbc is dependent on unixODBC
 rpm -Uvh unixODBC*
-
 for i in `ls *.rpm|grep -v -E '^tcl-|^tk-|^expect-|^unixODBC-|^xCAT-UI-deps'`; do
 	if [ "$i" == "perl-Net-DNS-0.66-1.aix5.3.ppc.rpm" ]; then
 		opts="--nodeps"
@@ -143,41 +174,8 @@ if [ $? -gt 0 ]; then
 	fi
 fi
 EOF
+# end of instoss file content
 
-# this is left over from Norms original instoss
-#rpm -Uvh perl-DBI-*.rpm
-#rpm -Uvh bash-*.rpm
-#rpm -Uvh perl-DBD-SQLite-*.rpm
-#rpm -Uvh popt-*.rpm
-#rpm -Uvh rsync-*.rpm
-#rpm -Uvh wget-*.rpm
-#rpm -Uvh libxml2-*.rpm
-#rpm -Uvh curl-*.rpm
-#rpm -Uvh expat-*.rpm
-#rpm -Uvh conserver-*.rpm
-#rpm -Uvh perl-Expect-*.rpm
-#rpm -Uvh perl-IO-Tty-*.rpm
-#rpm -Uvh perl-IO-Stty-*.rpm
-#rpm -Uvh perl-IO-Socket-SSL-*.rpm
-#rpm -Uvh perl-Net_SSLeay.pm-*.rpm
-#rpm -Uvh perl-Digest-SHA1-*.rpm
-#rpm -Uvh perl-Digest-SHA-*.rpm
-#rpm -Uvh perl-Digest-HMAC-*.rpm
-#rpm -Uvh --nodeps perl-Net-DNS-*.rpm
-#rpm -Uvh perl-Net-IP-*.rpm
-#rpm -Uvh perl-Digest-MD5-*.rpm
-#rpm -Uvh fping-*.rpm
-#rpm -Uvh openslp-xcat-*.rpm
-#rpm -Uvh perl-Crypt-SSLeay-*.rpm
-#rpm -Uvh perl-Net-Telnet-*.rpm
-# this requires bash
-#rpm -Uvh net-snmp-5*.rpm
-#rpm -Uvh net-snmp-devel-*.rpm
-#rpm -Uvh net-snmp-perl-*.rpm
-#rpm -Uvh unixODBC-*.rpm
-#if [ "$OSVER" == "6.1" ]; then
-#	rpm -Uvh perl-version-*.rpm
-#fi
 
 	chmod +x instoss
 fi
@@ -185,9 +183,13 @@ fi
 # Get the permissions correct.  Have to have all dirs/files with a group of xcat
 # and have them writeable by group, so any member of the xcat can build.
 if [ "$OSNAME" == "AIX" ]; then
-	mkgroup xcat 2>/dev/null
+	if ! lsgroup xcat >/dev/null 2>&1; then
+		mkgroup xcat
+	fi
 else
-	groupadd -f xcat
+	if ! $GREP xcat /etc/group; then
+		groupadd xcat
+	fi
 fi
 chgrp -R xcat *
 chmod -R g+w *
@@ -195,14 +197,21 @@ chmod -R g+w *
 # Build the tarball
 #VER=`cat $XCATCOREDIR/Version`
 cd ..
+if [ -n "$VERBOSEMODE" ]; then
+	verbosetar="-v"
+else
+	verbosetar=""
+fi
 if [ "$OSNAME" == "AIX" ]; then
 	DFNAME=dep-aix-`date +%Y%m%d%H%M`.tar.gz
-	tar -cvf ${DFNAME%.gz} xcat-dep
+	echo "Creating $DFNAME ..."
+	tar $verbosetar -cf ${DFNAME%.gz} xcat-dep
 	rm -f $DFNAME
 	gzip ${DFNAME%.gz}
 else
 	DFNAME=xcat-dep-`date +%Y%m%d%H%M`.tar.bz2
-	tar -jcvf $DFNAME xcat-dep
+	echo "Creating $DFNAME ..."
+	tar $verbosetar -jcf $DFNAME xcat-dep
 fi
 cd xcat-dep
 
@@ -221,11 +230,17 @@ fi
 # Upload the dir structure to SF yum area.  Currently we do not have it preserving permissions
 # because that gives errors when different users try to do it.
 i=0
-while [ $((i++)) -lt 10 ] && ! rsync -rlv --delete * $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/xcat-dep/
+if [ "$FRSYUM" = 1 ]; then
+	links="-L"		# FRS does not support rsyncing sym links
+else
+	links="-l"
+fi
+echo "Uploading RPMs to $YUMDIR/$YUM/xcat-dep/ ..."
+while [ $((i++)) -lt 10 ] && ! rsync $links -ruv --delete * $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/xcat-dep/
 do : ; done
-#ssh jbjohnso@shell1.sf.net "cd /home/groups/x/xc/xcat/htdocs/yum/; rm -rf dep-snap; tar jxvf $DFNAME"
 
 # Upload the tarball to the SF FRS Area
 i=0
+echo "Uploading $DFNAME to $FRS/xcat-dep/$FRSDIR/ ..."
 while [ $((i++)) -lt 10 ] && ! rsync -v ../$DFNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat-dep/$FRSDIR/
 do : ; done
