@@ -406,15 +406,16 @@ monsetting => {
  },
   },
 mp => {
-    cols => [qw(node mpa id comments disable)],
+    cols => [qw(node mpa id nodetype comments disable)],
     keys => [qw(node)],
     table_desc => 'Contains the hardware control info specific to blades.  This table also refers to the mpa table, which contains info about each Management Module.',
  descriptions => {
   node => 'The blade node name or group name.',
   mpa => 'The managment module used to control this blade.',
   id => 'The slot number of this blade in the BladeCenter chassis.',
-     comments => 'Any user-written notes.',
-     disable => "Set to 'yes' or '1' to comment out this row.",
+  nodetype => 'The hardware type for mp node. Valid values: mm,cmm, blade.',
+  comments => 'Any user-written notes.',
+  disable => "Set to 'yes' or '1' to comment out this row.",
  },
   },
 mpa => {
@@ -1587,6 +1588,11 @@ my @nodeattrs = (
                  tabentry => 'zvm.nodetype',
                  access_tabentry => 'ppc.node=attr:node',
                 },                   
+ {attr_name => 'hwtype',
+                 only_if => 'mgt=blade',
+                 tabentry => 'mp.nodetype',
+                 access_tabentry => 'mp.node=attr:node',
+                }, 
  {attr_name => 'supernode',
                  tabentry => 'ppc.supernode',
                  access_tabentry => 'ppc.node=attr:node',
@@ -1689,8 +1695,15 @@ my @nodeattrs = (
 #  mp table    #
 ################
         {attr_name => 'mpa',
-                 only_if => 'mgt=blade',
+                 # Remove the restriction so that fsp also can 
+                 # write to mpa attribute
+                 #only_if => 'mgt=blade',
                  tabentry => 'mp.mpa',
+                 access_tabentry => 'mp.node=attr:node',
+  },
+        {attr_name => 'slotid',
+                 only_if => 'mgt=fsp',
+                 tabentry => 'mp.id',
                  access_tabentry => 'mp.node=attr:node',
   },
         {attr_name => 'id',
