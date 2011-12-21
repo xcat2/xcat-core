@@ -860,6 +860,8 @@ sub changeVM {
 		}
 
 		#*** Use flashcopy ***
+		# Flashcopy only supports ECKD volumes
+		my $ddCopy = 0;
 		$out = `ssh $hcp "vmcp flashcopy"`;
 		if ( $out =~ m/HCPNFC026E/i ) {
 
@@ -885,8 +887,7 @@ sub changeVM {
 
 				xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Flashcopy lock is enabled" );
 				return;
-			}
-			else {
+			} else {
 
 				# Enable lock
 				$out = `ssh $hcp "touch /tmp/.flashcopy_lock"`;
@@ -909,13 +910,14 @@ sub changeVM {
 				# Remove lock
 				$out = `ssh $hcp "rm -f /tmp/.flashcopy_lock"`;
 			}
+		} else {
+			$ddCopy = 1;	
 		}
-		else {
 
-			# Flashcopy not supported
-
+		# Flashcopy not supported, use Linux dd
+		if ($ddCopy) {
 			#*** Use Linux dd to copy ***
-			xCAT::zvmUtils->printLn( $callback, "$tgtNode: FLASHCOPY not supported.  Using Linux DD" );
+			xCAT::zvmUtils->printLn( $callback, "$tgtNode: FLASHCOPY not working.  Using Linux DD" );
 
 			# Enable disks
 			$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", $tgtLinkAddr );
