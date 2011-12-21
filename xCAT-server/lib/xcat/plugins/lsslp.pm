@@ -34,11 +34,13 @@ use constant {
     SERVICE_HMC      => "hardware-management-console",
     SERVICE_IVM      => "integrated-virtualization-manager",
     SERVICE_MM       => "management-module",
+    SERVICE_CMM      => "chassis-management-module",
     SERVICE_RSA      => "remote-supervisor-adapter",
     SERVICE_RSA2     => "remote-supervisor-adapter-2",
     SLP_CONF         => "/usr/local/etc/slp.conf",
     SLPTOOL          => "/usr/local/bin/slptool",
     TYPE_MM          => "MM",
+    TYPE_CMM         => "CMM",
     TYPE_RSA         => "RSA",
     TYPE_BPA         => "BPA",
     TYPE_HMC         => "HMC",
@@ -64,6 +66,7 @@ my %service_slp = (
     @{[ SERVICE_HMC    ]} => TYPE_HMC,
     @{[ SERVICE_IVM    ]} => TYPE_IVM,
     @{[ SERVICE_MM     ]} => TYPE_MM,
+    @{[ SERVICE_CMM    ]} => TYPE_CMM,
     @{[ SERVICE_RSA    ]} => TYPE_RSA,
     @{[ SERVICE_RSA2   ]} => TYPE_RSA
 );
@@ -126,7 +129,8 @@ my %mgt = (
     lc(TYPE_MM)    => "blade",
     lc(TYPE_HMC)   => "hmc",
     lc(TYPE_IVM)   => "ivm",
-    lc(TYPE_RSA)   => "blade"
+    lc(TYPE_RSA)   => "blade",
+    lc(TYPE_CMM)   => "blade",
 );
 
 my @attribs    = qw(nodetype mtm serial side ip groups mgt id parent mac hidden otherinterfaces hwtype);
@@ -154,15 +158,17 @@ my %globlehwtype = (
     ivm   => $::NODETYPE_IVM,
     frame => $::NODETYPE_FRAME,
     cec   => $::NODETYPE_CEC,
+    cmm   => $::NODETYPE_CMM,
 );
 my %globalnodetype = (
-    fsp  => $::NODETYPE_PPC,
-    bpa  => $::NODETYPE_PPC,
-    cec  => $::NODETYPE_PPC,
-    frame=> $::NODETYPE_PPC,
-    hmc  => $::NODETYPE_PPC,
-    ivm  => $::NODETYPE_PPC,
-    lpar =>"$::NODETYPE_PPC,$::NODETYPE_OSI"
+    fsp   => $::NODETYPE_PPC,
+    bpa   => $::NODETYPE_PPC,
+    cec   => $::NODETYPE_PPC,
+    frame => $::NODETYPE_PPC,
+    hmc   => $::NODETYPE_PPC,
+    ivm   => $::NODETYPE_PPC,
+    cmm   => $::NODETYPE_CMM,
+    lpar  =>"$::NODETYPE_PPC,$::NODETYPE_OSI"
 );
 ##########################################################################
 # Command handler method from tables
@@ -223,6 +229,7 @@ sub parse_args {
         CEC   => HARDWARE_SERVICE.":".SERVICE_CEC,
         FRAME => HARDWARE_SERVICE.":".SERVICE_FRAME,
         RSA   => HARDWARE_SERVICE.":".SERVICE_RSA.":",
+        CMM   => HARDWARE_SERVICE.":".SERVICE_CMM.":",
         MM    => HARDWARE_SERVICE.":".SERVICE_MM.":"
     );
     #############################################
@@ -2131,6 +2138,15 @@ sub parse_responses {
        "slot",
        "ip-address" );
 
+    #######################################
+    # NGP CMM Attributes
+    #######################################
+    my @cmmattrs = (
+       "type",
+       "enclosure-mtm",
+       "enclosure-serial-number",
+       "slot",
+       "ipv4-address" );
     my %fid1;
     my %fid2;
     my %cid;
@@ -2169,33 +2185,65 @@ sub parse_responses {
             next;
         }
         ###########################################
+        # Extract the attributes
         # RSA/MM - slightly different attributes
         ###########################################
-        my $attr = \@attrs;
+        my $attr;
         if (( $type eq SERVICE_RSA ) or ( $type eq SERVICE_RSA2 ) or
             ( $type eq SERVICE_MM )) {
             $attr = \@xattrs;
-        }
-
-        ###########################################
-        # Extract the attributes
-        ###########################################
-        foreach ( @$attr ) {
-            unless ( $rsp =~ /\($_=([^\)]+)/ ) {
-                if ( $verbose ) {
-                    trace( $request, "Attribute not found: [$_]->($rsp)" );
+            foreach ( @$attr ) {
+                unless ( $rsp =~ /\($_=([^\)]+)/ ) {
+                    if ( $verbose ) {
+                        trace( $request, "Attribute not found: [$_]->($rsp)" );
+                    } 
+                    push @result, "N/A";
+                    next;
+                } 
+                my $val = $1;
+                if (( $_ =~ /^slot$/ ) and ( $val == 0 )) {
+                    push @result, "B";
+                } elsif (( $_ =~ /^slot$/ ) and ( $val == 1 )) {
+                    push @result, "A";
+                } else {
+                    push @result, $val; 
                 }
-                push @result, "N/A";
-                next;
             }
-            my $val = $1;
-            if (( $_ =~ /^slot$/ ) and ( $val == 0 )) {
-                push @result, "B";
-            } elsif (( $_ =~ /^slot$/ ) and ( $val == 1 )) {
-                push @result, "A";
-            } else {
+        } elsif ($type eq SERVICE_CMM) {
+            $attr = \@cmmattrs;
+            foreach ( @$attr ) {
+                unless ( $rsp =~ /\($_=([^\)]+)/ ) {
+                    if ( $verbose ) {
+                        trace( $request, "Attribute not found: [$_]->($rsp)" );
+                    }
+                    push @result, "N/A";
+                    next;
+                }
+                my $val = $1;
                 push @result, $val;
             }
+            trace( $request, ">>>>>>>>The type is $result[0], en-mtm is $result[1], en-sn is $result[2], slot is $result[3], ip is $result[4]", 1 );
+        } else {
+            $attr = \@attrs;
+            foreach ( @$attr ) {
+                unless ( $rsp =~ /\($_=([^\)]+)/ ) {
+                    if ( $verbose ) {
+                        trace( $request, "Attribute not found: [$_]->($rsp)" );
+                    }
+                    push @result, "N/A";
+                    next;
+                }
+                my $val = $1;
+                if (( $_ =~ /^slot$/ ) and ( $val == 0 )) {
+                    push @result, "B";
+                } elsif (( $_ =~ /^slot$/ ) and ( $val == 1 )) {
+                    push @result, "A";
+                } else {
+                    push @result, $val;
+                }
+            }
+            trace( $request, ">>>>>>>>The type is $result[0], mtm is $result[1], sn is $result[2], side is $result[3], ip is $result[4], parent mtm is $result[5], parent sn is $result[6], frame num is $result[7], cage num is $result[8].", 1 );
+
         }
         # match hosts table
         #my %hostip;
@@ -2325,7 +2373,7 @@ sub parse_responses {
 
             }
 
-        } else   {
+        } elsif ($type eq SERVICE_HMC) {
 
             ###########################################
             # for HMC
@@ -2397,9 +2445,26 @@ sub parse_responses {
             $result[0] = $service_slp{$type};
             $outhash{$host} = \@result;
 
-        }
-    }
-
+        } else {
+            ###########################################
+            # for CMM
+            ###########################################
+            trace( $request, "......Begin to define cmm ", 1);
+            $matchflag = 0;
+            $host = gethost_from_url( $request, $rsp, @result, \$matchflag);
+            trace( $request, "     The node $host match the old data and got the new name $host, $matchflag" , 1);
+            if ( !defined( $host )) {
+                next;
+            }
+            push @matchnodes, $host if ($matchflag eq 1) ;
+            $result[0] = $service_slp{$type};  
+            if ($host =~ /^(\w+)\(.*\)/) {
+                $host = $1;
+            }                 
+            $otherinterfacehash{$host}{otherinterfaces} = $result[4]; 
+            $outhash{$host} = \@result;
+        }    
+    }    
     ############################################################
     # find out the cageid for the cec
     ############################################################
@@ -2461,6 +2526,10 @@ sub parse_responses {
         my $bpamtm  = @$data[5];
         my $bpasn   = @$data[6];
         my $cagenum = @$data[8];
+        if($type eq TYPE_CMM) {
+            $hash{$h} = $data;
+            next;
+        }    
         trace( $request, "......The node is $h, type is $type, mtm is $mtm, sn is $sn, side is $side, ip is $ip0, bpamtm is $bpamtm, bpasn is $bpasn, cagenum is $cagenum", 1);
         # find cageid for the secondary fsp node
         if ( $type =~ /^FSP$/ || $type =~ /^CEC$/) {
@@ -2553,6 +2622,7 @@ sub parse_responses {
         my $bpasn   = @$data[6];
         my $cagenum = @$data[8];
 
+        next if($type eq TYPE_CMM);
         trace( $request, "......The node is $h", 1);
 
         ##########################################################
@@ -2655,8 +2725,7 @@ sub xCATdB {
         # CEC/FRAME have no ip so don't need neither
         # only HMC need to be and could be writen to host table
         #######################################
-        if ( $hostname =~ /^([^\(]+)\(([^\)]+)\)$/)
-        {
+        if ( $hostname =~ /^([^\(]+)\(([^\)]+)\)$/) {
             $name = $1;
             $ip  = $2;
         }
@@ -2807,11 +2876,21 @@ sub xCATdB {
                 # do something here
             }
         }
+        if ($type =~ /^CMM$/){
+            $db{nodelist}->setNodeAttribs($name,{node=>$name, groups=>"cmm,all"});
+            $db{vpd}->setNodeAttribs($name,{mtm=>$model, serial=>$serial});
+            $db{nodetype}->setNodeAttribs($name,{nodetype=>"blade"});
+            $db{nodehm}->setNodeAttribs($name,{mgt=>"blade"});
+            my $mptable = xCAT::Table->new('mp');
+            if($mptable) {
+                $mptable->setNodeAttribs($name,{nodetype=>"cmm", mpa=>$name, id=>$side});
+            }    
+        }
 
         ########################################
         # Write otherinterface to the host table
         ########################################
-        if ( $type =~ /^(FSP|BPA)$/ ) {
+        if ( $type =~ /^(FSP|BPA|CMM)$/ ) {
             my $hoststab  = xCAT::Table->new( 'hosts' );
             if ($hoststab and %otherinterfacehash) {
                  $hoststab->setNodesAttribs(\%otherinterfacehash);
