@@ -1506,12 +1506,10 @@ sub rscan {
 
     my ($k4, $u4);
     $k4->{node} = $name;
-    if ($type eq "blade" || $type eq "ppcblade"){
-      $u4->{nodetype} = "blade";
-    } elsif ($type eq "mm" || $type eq "cmm") {
-      $u4->{nodetype} = "blade";
-    } elsif ($type eq "fsp") {
+    if ($type eq "ppcblade" || $type eq "fsp"){
       $u4->{nodetype} = "ppc";
+    } elsif ($type eq "mm" || $type eq "cmm" || $type eq "blade") {
+      $u4->{nodetype} = "mp";
     }
     $db{nodetype}->setAttribs($k4,$u4);
     $db{nodetype}{commit} = 1;
@@ -1556,10 +1554,10 @@ sub rscan_xml {
         if ( /^name$/ ) {
             next;
         } elsif ( /^nodetype$/ ) {
-            if ($type eq "fsp") {
+            if ($origtype eq "fsp" || $origtype eq "ppcblade") {
               $d = "ppc";
             } else {
-              $d = $type;
+              $d = "mp";
             }
         } elsif ( /^groups$/ ) {
             $d = "$type,all";
@@ -1644,10 +1642,10 @@ sub rscan_stanza {
         if ( /^name$/ ) {
             next; 
         } elsif ( /^nodetype$/ ) {
-            if ($type eq "fsp") {
+            if ($origtype eq "fsp" || $origtype eq "ppcblade") {
               $d = "ppc";
             } else {
-              $d = $type;
+              $d = "mp";
             }
         } elsif ( /^groups$/ ) {
             $d = "$type,all";
