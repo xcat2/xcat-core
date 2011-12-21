@@ -73,6 +73,17 @@ sub preprocess_request {
         getmulcon($node,$callback);
         return [];
     }    
+    if ($arg1->{command}->[0] eq "rspconfig") { 
+        # All the nodes with mgt=blade or mgt=fsp will get here
+        # filter out the nodes for fsp.pm
+        my (@mpnodes, @fspnodes);
+        filter_nodes($arg1, \@mpnodes, \@fspnodes);
+        if (@fspnodes) {
+            $arg1->{noderange} = \@fspnodes;
+        } else {
+            return [];
+        }
+    }
     
     xCAT::PPC::preprocess_request(__PACKAGE__,@_);
 }
@@ -84,6 +95,68 @@ sub process_request {
     xCAT::PPC::process_request(__PACKAGE__,@_);
 }
 
+##########################################################################
+# Fliter the nodes that are GGP ppc blade node or common fsp node
+##########################################################################
+sub filter_nodes{
+    my ($req, $mpnodes, $fspnodes) = @_;
+
+    my @nodes = @{$req->{'node'}};
+    my $cmd = $req->{'command'}->[0];
+    my @args = @{$req->{'arg'}};
+    # get the nodes in the mp table
+    my $mptabhash;
+    my $mptab = xCAT::Table->new("mp");
+    if ($mptab) {
+        $mptabhash = $mptab->getNodesAttribs(\@nodes, ['mpa','nodetype']);
+    }
+    
+    # get the parent of the service processor
+    # for the NGP ppc blade, the ppc.parent is the mpa
+    my $ppctabhash;
+    my $ppctab = xCAT::Table->new("ppc");
+    if ($ppctab) {
+        $ppctabhash = $ppctab->getNodesAttribs(\@nodes,['parent','nodetype']);
+    }
+
+    my (@mp, @ngpfsp, @commonfsp);
+    my %fspparent;
+    # Get the parent for each node
+    foreach (@nodes) {
+      if (defined ($mptabhash->{$_}->[0]->{'mpa'})) {
+        push @mp, $_;
+        next;
+      }
+
+      if (defined ($ppctabhash->{$_}->[0]->{'parent'})) {
+        push @{$fspparent{$ppctabhash->{$_}->[0]->{'parent'}}}, $_;
+      } else {
+        push @commonfsp, $_;
+      }
+    }
+
+    # To check the type of parent of node, if equaling cmm, should be ngp fsp
+    my @parents = (keys %fspparent);
+    $mptabhash = $mptab->getNodesAttribs(\@parents,['nodetype']);
+    foreach (keys %fspparent) {
+      if (defined($mptabhash->{$_}->[0]->{'nodetype'})
+          && $mptabhash->{$_}->[0]->{'nodetype'} eq "cmm") {
+          push @ngpfsp, @{$fspparent{$_}};
+      } else {
+          push @commonfsp, @{$fspparent{$_}};
+      }
+    }
+
+    push @{$mpnodes}, @mp;
+    push @{$fspnodes}, @commonfsp;
+    if (($cmd eq "rspconfig") && (grep /^(network|network=.*)$/, @args)) {
+      push @{$mpnodes}, @ngpfsp;
+    } else {
+      push @{$fspnodes}, @ngpfsp;
+    }
+
+    return 0;
+}
 ##########################################################################
 # get hcp and id for rcons with fsp
 ##########################################################################
