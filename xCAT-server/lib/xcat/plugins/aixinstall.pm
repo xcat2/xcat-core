@@ -3531,7 +3531,7 @@ sub mknimimage
 	#
 	# Set root password in diskless images
 	#
-	my $rootpw;
+	my $rootpw = 'cluster';
 	my $method;
 	if (($::NIMTYPE eq "diskless") || ($::NIMTYPE eq "dataless"))
 	{

@@ -163,9 +163,11 @@ sub process_request {
         #get the root password for the node 
 	my $passtab = xCAT::Table->new('passwd');
 	if ($passtab) {
+        my $pass = 'cluster';
 	    (my $pent) = $passtab->getAttribs({key=>'system',username=>'root'},'password');
 	    if ($pent and defined ($pent->{password})) {
-		my $pass = $pent->{password};
+	        $pass = $pent->{password};
+        } 
         my $oldmask=umask(0077);
 		my $shadow;
 		open($shadow,"<","$rootimg_dir/etc/shadow");
@@ -183,7 +185,6 @@ sub process_request {
 		}
 		close($shadow);
         umask($oldmask);
-	    }
 	}
 
 	# sync fils configured in the synclist to the rootimage

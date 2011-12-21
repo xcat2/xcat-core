@@ -769,26 +769,31 @@ sub credentials {
     ###########################################
     # Check passwd tab
     ###########################################
-    my $tab = xCAT::Table->new( 'passwd' );
-    if ( $tab ) {
-        my $ent;
-        if ( $user_specified)
-        {
-            ($ent) = $tab->getAttribs( {key=>$hwtype,username=>$user},qw(password));
-        }
-        else
-        {
-            ($ent) = $tab->getAttribs( {key=>$hwtype}, qw(username password));
-        }
-        if ( $ent ) {
-            if (defined($ent->{password})) { $pass = $ent->{password}; }
-            if (defined($ent->{username})) { $user = $ent->{username}; }
-        }
+    #my $tab = xCAT::Table->new( 'passwd' );
+    #if ( $tab ) {
+    #my $ent;
+    #    if ( $user_specified)
+    #    {
+    #        ($ent) = $tab->getAttribs( {key=>$hwtype,username=>$user},qw(password));
+    #    }
+    #    else
+    #    {
+    #        ($ent) = $tab->getAttribs( {key=>$hwtype}, qw(username password));
+    #    }
+    #    if ( $ent ) {
+    #        if (defined($ent->{password})) { $pass = $ent->{password}; }
+    #        if (defined($ent->{username})) { $user = $ent->{username}; }
+    #    }
+    #}
+    my ($ent) = get_usr_passwd($hwtype, $user); 
+    if ($ent) {
+        if (defined($ent->{password})) { $pass = $ent->{password};}
+        if (defined($ent->{username})) { $user = $ent->{username};}
     }
     ##########################################
     # Check table based on specific node 
     ##########################################
-    $tab = xCAT::Table->new( $hcptab{$hwtype} );
+    my $tab = xCAT::Table->new( $hcptab{$hwtype} );
     if ( $tab ) {
         my $ent;
         if ( $user_specified) 
@@ -823,6 +828,60 @@ sub credentials {
         }
     }
     return( $user,$pass );
+}
+
+##########################################################################
+# Get password for user in 'passwd' table, if doesn't exist, use default
+# password for this user.
+##########################################################################
+my %power_accounts = (
+    HMC => 'abc123',
+    general => 'general',
+    admin => 'admin',    
+);
+my %default_passwd_accounts = (
+    system  => { root => 'cluster',},
+    hmc     => { hscroot => 'abc123',},
+    fsp     => \%power_accounts,
+    bpa     => \%power_accounts,
+    frame   => \%power_accounts,
+    cec     => \%power_accounts,
+    blade   => { USERID => 'PASSW0RD',},
+    ipmi    => { USERID => 'PASSW0RD',},
+    ivm     => { padmin => 'padmin',},
+    vmware  => { root => '',},
+    vcenter => { Administrator => ''},
+);
+
+sub get_usr_passwd {
+    my $key = shift;
+    if ($key && ($key =~ /xCAT::/)) {
+        $key = shift;
+    }
+    my $user = shift;
+    my $ent;
+    my $passwdtab = xCAT::Table->new('passwd');
+    if (!$passwdtab) {
+        return undef;
+    }
+    if ($user) {
+        ($ent) = $passwdtab->getAttribs({key => $key, username => $user}, qw(password cryptmethod));
+    } else {
+        ($ent) = $passwdtab->getNodeAttribs($key, qw(username password));
+    }
+    if (!$ent or !$ent->{password}) {
+        my $hash = $default_passwd_accounts{$key};
+        if (!$hash or ($user and !defined($hash->{$user}))) {
+            return undef;
+        }
+        if (!$user) {
+            my @tmp_keys = keys (%$hash);
+            $user = $tmp_keys[0];
+        }
+        $ent->{username} = $user;
+        $ent->{password} = $hash->{$user};
+    }
+    return $ent;
 }
 
 ##########################################################################

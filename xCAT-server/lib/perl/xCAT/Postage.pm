@@ -308,19 +308,22 @@ sub makescript
     #$os =~ tr/A-Z/a-z/;    # Convert to lowercase
     if ($os eq "aix" || $os eq "AIX")
     {
-        my $passwdtab = xCAT::Table->new('passwd');
-        unless ($passwdtab)
-        {
-            my $rsp;
-            push @{$rsp->{data}}, "Unable to open passwd table.";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-        }
+    #   my $passwdtab = xCAT::Table->new('passwd');
+    #   unless ($passwdtab)
+    #   {
+    #       my $rsp;
+    #       push @{$rsp->{data}}, "Unable to open passwd table.";
+    #       xCAT::MsgUtils->message("E", $rsp, $callback);
+    #   }
 
-        if ($passwdtab)
+    #   if ($passwdtab)
+    #   {
+    #       my $et =
+    #         $passwdtab->getAttribs({key => 'system', username => 'root'},
+    #                                'password', 'cryptmethod');
         {
-            my $et =
-              $passwdtab->getAttribs({key => 'system', username => 'root'},
-                                     'password', 'cryptmethod');
+            use xCAT::PPCdb qw(get_usr_passwd);
+            my $et = xCAT::PPCdb::get_usr_passwd('system', 'root');
             if ($et and defined($et->{'password'}))
             {
                 push @scriptd, "ROOTPW=" . $et->{'password'} . "\n";
