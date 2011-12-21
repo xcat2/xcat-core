@@ -1735,6 +1735,7 @@ sub gethost_from_url {
 
     my $request = shift;
     my $rsp     = shift;
+    my $flag    = shift;
     my $type    = shift;
     my $mtm     = shift;
     my $sn      = shift;
@@ -1746,9 +1747,6 @@ sub gethost_from_url {
     my $cage_number     = shift;
     my $host;
 
-    if ( $side =~ /^N\/A$/ ) {
-        $side = undef;
-    }
 
     #######################################
     # Extract IP from URL
@@ -1773,11 +1771,9 @@ sub gethost_from_url {
     #######################################
     # Get hostname from vpd table
     #######################################
-    #if ( exists($opt{M}) and ($opt{M} =~ /^vpd$/) ) {    #modified by yinle, use matching vpd as default.
-        $host = match_vpdtable($type, $mtm, $sn, $side, $bpc_machinetype, $bpc_serial, $frame_number, $cage_number);
-    #}
-
+    $host = match_vpdtable($type, $mtm, $sn, $side, $bpc_machinetype, $bpc_serial, $frame_number, $cage_number);
     if ( !$host ) {
+        $$flag = 0;
         $host = getFactoryHostname($type,$mtm,$sn,$side,$ip,$rsp);
         #######################################
         # Convert hostname to short-hostname
@@ -1785,6 +1781,8 @@ sub gethost_from_url {
         if ( $host =~ /([^\.]+)\./ ) {
             $host = $1;
         }
+    } else {
+        $$flag = 1;
     }
 
     return( "$host($ip)" );
@@ -2146,7 +2144,8 @@ sub parse_responses {
        "enclosure-mtm",
        "enclosure-serial-number",
        "slot",
-       "ipv4-address" );
+       "ipv4-address",
+       "mm-name" );
     my %fid1;
     my %fid2;
     my %cid;
@@ -2380,7 +2379,7 @@ sub parse_responses {
             ###########################################
             trace( $request, "......Begin to define hmc ", 1);
             $matchflag = 0;
-            $host = gethost_from_url( $request, $rsp, @result, \$matchflag);
+            $host = gethost_from_url( $request, $rsp, \$matchflag, @result);
             trace( $request, "     The node $host match the old data and got the new name $host, $matchflag" , 1);         
             if ( !defined( $host )) {
                 next;
@@ -2451,8 +2450,12 @@ sub parse_responses {
             ###########################################
             trace( $request, "......Begin to define cmm ", 1);
             $matchflag = 0;
-            $host = gethost_from_url( $request, $rsp, @result, \$matchflag);
+            $host = gethost_from_url( $request, $rsp, \$matchflag, @result);
             trace( $request, "     The node $host match the old data and got the new name $host, $matchflag" , 1);
+            if ( !defined( $host )) {
+                $host = $result[5];
+            }
+            
             if ( !defined( $host )) {
                 next;
             }
@@ -2704,7 +2707,28 @@ sub xCATdB {
     my %keyhash = ();
     my %updates = ();
     my %sn_node = ();
-
+    ########################################
+    # Update database if the name changed
+    ########################################
+    my %db       = ();
+    my @tabs     = qw(ppc vpd nodehm nodelist nodetype ppcdirect hosts mac mp);
+    foreach ( @tabs ) {
+        $db{$_} = xCAT::Table->new( $_);
+        if ( !$db{$_} ) {
+            return( "Error opening '$_'" );
+        }
+    }
+    my @vpdlist = $db{vpd}->getAllNodeAttribs(['node','serial','mtm','side']);
+    my @hostslist = $db{hosts}->getAllNodeAttribs(['node','ip']);
+    my @ppclist = $db{ppc}->getAllNodeAttribs(['node','hcp','id',
+                                               'pprofile','parent','supernode',
+                                               'comments', 'disable']);
+    my @maclist = $db{mac}->getAllNodeAttribs(['node','mac']);
+    
+        
+    ########################################
+    # Begin to write each node
+    ########################################
     foreach my $hostname ( keys %$outhash ) {
         my $data       = $outhash->{$hostname};
         my $name       = $hostname;
@@ -2737,23 +2761,6 @@ sub xCATdB {
             my $hostip = writehost($name,$ip);
         }
 
-        ########################################
-        # Update database if the name changed
-        ########################################
-        my %db       = ();
-        my @tabs     = qw(ppc vpd nodehm nodelist nodetype ppcdirect hosts mac);
-        foreach ( @tabs ) {
-            $db{$_} = xCAT::Table->new( $_, -create=>1, -autocommit=>0 );
-            if ( !$db{$_} ) {
-                return( "Error opening '$_'" );
-            }
-        }
-        my @vpdlist = $db{vpd}->getAllNodeAttribs(['node','serial','mtm','side']);
-        my @hostslist = $db{hosts}->getAllNodeAttribs(['node','ip']);
-        my @ppclist = $db{ppc}->getAllNodeAttribs(['node','hcp','id',
-                                                   'pprofile','parent','supernode',
-                                                   'comments', 'disable']);
-        my @maclist = $db{mac}->getAllNodeAttribs(['node','mac']);
         ########################################
         # Write result to every tables,
         # every entry write once, time-consuming!
@@ -2791,8 +2798,7 @@ sub xCATdB {
             # HMC: name=hostname, ip=ip, mac=mac
             ########################################
             xCAT::PPCdb::add_ppchcp( lc($type), "$name,$mac,$model,$serial,$ip",1 );
-        }
-        elsif ( $type =~ /^FSP$/ ) {
+        } elsif ( $type =~ /^FSP$/ ) {
             ########################################
             # FSP: name=hostname, id=slotid, mtms=mtms,
             # side=side, prof=null, frame=parent,
@@ -2820,11 +2826,9 @@ sub xCATdB {
                 #        "fsp","fsp",$name,$cageid,$model,$serial,$side,"","",$parent,$ip,\%db, $::UPDATE_CACHE{$name},\@ppclist);
                 #}
             }
-        }
-        elsif ( $type =~ /^(RSA|MM)$/ ) {
+        } elsif ( $type =~ /^(RSA|MM)$/ ) {
             xCAT::PPCdb::add_systemX( $type, $name, $data );
-        }
-        elsif ( $type =~ /^FRAME$/ ) {
+        } elsif ( $type =~ /^FRAME$/ ) {
             ########################################
             # Frame: type=frame, name=hostname, cageid=0,
             # mtms=mtms, side=null, prof=null, frame=itself,
@@ -2849,8 +2853,7 @@ sub xCATdB {
             {
                 # do something here
             }
-        }
-        elsif ( $type =~ /^CEC$/ ) {
+        } elsif ( $type =~ /^CEC$/ ) {
             ########################################
             # CEC: type=cec, name=hostname, cageid=cageid
             # mtms=mtms, side=null, prof=null,frame=parent
@@ -2875,28 +2878,26 @@ sub xCATdB {
             {
                 # do something here
             }
-        }
-        if ($type =~ /^CMM$/){
+        }elsif ($type =~ /^CMM$/){
             $db{nodelist}->setNodeAttribs($name,{node=>$name, groups=>"cmm,all"});
             $db{vpd}->setNodeAttribs($name,{mtm=>$model, serial=>$serial});
             $db{nodetype}->setNodeAttribs($name,{nodetype=>"blade"});
             $db{nodehm}->setNodeAttribs($name,{mgt=>"blade"});
-            my $mptable = xCAT::Table->new('mp');
-            if($mptable) {
-                $mptable->setNodeAttribs($name,{nodetype=>"cmm", mpa=>$name, id=>$side});
-            }    
-        }
-
-        ########################################
-        # Write otherinterface to the host table
-        ########################################
-        if ( $type =~ /^(FSP|BPA|CMM)$/ ) {
-            my $hoststab  = xCAT::Table->new( 'hosts' );
-            if ($hoststab and %otherinterfacehash) {
-                 $hoststab->setNodesAttribs(\%otherinterfacehash);
-            }
+            $db{mp}->setNodeAttribs($name,{nodetype=>"cmm", mpa=>$name, id=>$side});  
         }
     }
+    foreach ( @tabs ) {
+        $db{$_}->close();
+    }
+    
+    ########################################
+    # Write otherinterface to the host table
+    ########################################
+    my $hoststab  = xCAT::Table->new( 'hosts' );
+    if ($hoststab and %otherinterfacehash) {
+         $hoststab->setNodesAttribs(\%otherinterfacehash);
+    }
+    $hoststab->close();
 }
 
 ##########################################################################
