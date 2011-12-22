@@ -182,7 +182,7 @@ if [ "$OSNAME" != "AIX" ]; then
 			./makerpm xCAT-nbroot-core $arch
 			if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-nbroot-core-$arch"; fi
 		done
-		if [ "$FAILEDRPMS" = "ORIGFAILEDRPMS" ]; then	# all succeeded
+		if [ "$FAILEDRPMS" = "$ORIGFAILEDRPMS" ]; then	# all succeeded
 			rm -f $DESTDIR/xCAT-nbroot-core*rpm
 			rm -f $SRCDIR/xCAT-nbroot-core*rpm
 			mv $source/RPMS/noarch/xCAT-nbroot-core-*rpm $DESTDIR
@@ -205,9 +205,9 @@ for rpmname in xCAT xCATsn; do
 				if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname-$arch"; fi
 			done
 		fi
-		if [ "$FAILEDRPMS" = "ORIGFAILEDRPMS" ]; then	# all succeeded
-			rm -f $DESTDIR/$rpmname-*rpm
-			rm -f $SRCDIR/$rpmname-*rpm
+		if [ "$FAILEDRPMS" = "$ORIGFAILEDRPMS" ]; then	# all succeeded
+			rm -f $DESTDIR/$rpmname-$SHORTSHORTVER*rpm
+			rm -f $SRCDIR/$rpmname-$SHORTSHORTVER*rpm
 			mv $source/RPMS/*/$rpmname-$VER*rpm $DESTDIR
 			mv $source/SRPMS/$rpmname-$VER*rpm $SRCDIR
 		fi
@@ -348,14 +348,14 @@ fi
 if [ "$REL" = "devel" -o "$PREGA" != 1 ]; then
 	i=0
 	echo "Uploading RPMs from $CORE to $YUMDIR/$YUM/$REL/ ..."
-	while [ $((i++)) -lt 10 ] && ! rsync -urLv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL/
+	while [ $((i++)) -lt 5 ] && ! rsync -urLv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL/
 	do : ; done
 fi
 
 # Upload the individual source RPMs to sourceforge
 i=0
 echo "Uploading src RPMs from $SRCD to $YUMDIR/$YUM/$REL/ ..."
-while [ $((i++)) -lt 10 ] && ! rsync -urLv --delete $SRCD $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL/
+while [ $((i++)) -lt 5 ] && ! rsync -urLv --delete $SRCD $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL/
 do : ; done
 
 # Upload the tarball to sourceforge
@@ -363,12 +363,12 @@ if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
 	# upload tarball to FRS area
 	i=0
 	echo "Uploading $TARNAME to $FRS/xcat/$REL.x_$OSNAME/ ..."
-	while [ $((i++)) -lt 10 ] && ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat/$REL.x_$OSNAME/
+	while [ $((i++)) -lt 5 ] && ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat/$REL.x_$OSNAME/
 	do : ; done
 else
 	i=0
 	echo "Uploading $TARNAME to $YUMDIR/$YUM/$REL/ ..."
-	while [ $((i++)) -lt 10 ] && ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL/
+	while [ $((i++)) -lt 5 ] && ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL/
 	do : ; done
 fi
 
@@ -382,7 +382,7 @@ if [ "$OSNAME" != "AIX" -a "$REL" = "devel" -a "$PROMOTE" != 1 ]; then
 	rpm2cpio ../$XCATCORE/xCAT-test-*.$NOARCH.rpm | cpio -id '*.html'
 	i=0
 	echo "Uploading man pages to htdocs/ ..."
-	while [ $((i++)) -lt 10 ] && ! rsync -rv opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man7 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
+	while [ $((i++)) -lt 5 ] && ! rsync -rv opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man7 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
 	do : ; done
 	cd ..
 fi
