@@ -236,11 +236,11 @@ else
 	links="-l"
 fi
 echo "Uploading RPMs to $YUMDIR/$YUM/xcat-dep/ ..."
-while [ $((i++)) -lt 10 ] && ! rsync $links -ruv --delete * $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/xcat-dep/
+while [ $((i+=1)) -le 5 ] && ! rsync $links -ruv --delete * $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/xcat-dep/
 do : ; done
 
 # Upload the tarball to the SF FRS Area
 i=0
 echo "Uploading $DFNAME to $FRS/xcat-dep/$FRSDIR/ ..."
-while [ $((i++)) -lt 10 ] && ! rsync -v ../$DFNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat-dep/$FRSDIR/
+while [ $((i+=1)) -le 5 ] && ! rsync -v ../$DFNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat-dep/$FRSDIR/
 do : ; done

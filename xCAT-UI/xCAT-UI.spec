@@ -10,7 +10,9 @@ Vendor: IBM
 
 Source: xCAT-UI-%(cat Version).tar.gz
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
+%ifos linux
 BuildArch: noarch
+%endif
 Provides: xCAT-UI = %{version}
 Requires: xCAT-UI-deps >= 2.6
 
