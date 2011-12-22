@@ -46,7 +46,7 @@ fi
 # Find where this script is located to set some build variables
 cd `dirname $0`
 # strip the /src/xcat-core from the end of the dir to get the next dir up and use as the release
-if [ -z $REL ]; then
+if [ -z "$REL" ]; then
 	curdir=`pwd`
 	D=${curdir%/src/xcat-core}
 	REL=`basename $D`
@@ -251,8 +251,8 @@ if [ "$OSNAME" != "AIX" ]; then
 		echo '%_gpg_name Jarrod Johnson' >> $MACROS
 	fi
 	echo "Signing RPMs..."
-	build-utils/rpmsign.exp $DESTDIR/*rpm | grep -v -E '(was already signed|rpm --quiet --resign)'
-	build-utils/rpmsign.exp $SRCDIR/*rpm | grep -v -E '(was already signed|rpm --quiet --resign)'
+	build-utils/rpmsign.exp $DESTDIR/*rpm | grep -v -E '(was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
+	build-utils/rpmsign.exp $SRCDIR/*rpm | grep -v -E '(was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
 	createrepo $DESTDIR
 	createrepo $SRCDIR
 	rm -f $SRCDIR/repodata/repomd.xml.asc
@@ -315,17 +315,17 @@ fi	# not AIX
 # Build the tarball
 cd ..
 if [ -n "$VERBOSEMODE" ]; then
-	verbosetar="-v"
+	verboseflag="-v"
 else
-	verbosetar=""
+	verboseflag=""
 fi
 echo "Creating $TARNAME ..."
 if [ "$OSNAME" = "AIX" ]; then
-	tar $verbosetar -hcf ${TARNAME%.gz} $XCATCORE
+	tar $verboseflag -hcf ${TARNAME%.gz} $XCATCORE
 	rm -f $TARNAME
 	gzip ${TARNAME%.gz}
 else
-	tar $verbosetar -hjcf $TARNAME $XCATCORE
+	tar $verboseflag -hjcf $TARNAME $XCATCORE
 fi
 chgrp xcat $TARNAME
 chmod g+w $TARNAME
@@ -374,6 +374,7 @@ fi
 
 # Extract and upload the man pages in html format
 if [ "$OSNAME" != "AIX" -a "$REL" = "devel" -a "$PROMOTE" != 1 ]; then
+	echo "Extracting and uploading man pages to htdocs/ ..."
 	mkdir -p man
 	cd man
 	rm -rf opt
@@ -381,8 +382,7 @@ if [ "$OSNAME" != "AIX" -a "$REL" = "devel" -a "$PROMOTE" != 1 ]; then
 	rpm2cpio ../$XCATCORE/perl-xCAT-*.$NOARCH.rpm | cpio -id '*.html'
 	rpm2cpio ../$XCATCORE/xCAT-test-*.$NOARCH.rpm | cpio -id '*.html'
 	i=0
-	echo "Uploading man pages to htdocs/ ..."
-	while [ $((i++)) -lt 5 ] && ! rsync -rv opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man7 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
+	while [ $((i++)) -lt 5 ] && ! rsync $verboseflag -r opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man7 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
 	do : ; done
 	cd ..
 fi
