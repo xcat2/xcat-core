@@ -101,9 +101,18 @@ sub process_request {
 sub filter_nodes{
     my ($req, $mpnodes, $fspnodes) = @_;
 
-    my @nodes = @{$req->{'node'}};
-    my $cmd = $req->{'command'}->[0];
-    my @args = @{$req->{'arg'}};
+    my (@nodes,@args,$cmd);
+    if (defined($req->{'node'})) {
+      @nodes = @{$req->{'node'}};
+    } else {
+      return 1;
+    }
+    if (defined($req->{'command'})) {
+      $cmd = $req->{'command'}->[0];
+    }
+    if (defined($req->{'arg'})) {
+      @args = @{$req->{'arg'}};
+    }
     # get the nodes in the mp table
     my $mptabhash;
     my $mptab = xCAT::Table->new("mp");
@@ -149,7 +158,7 @@ sub filter_nodes{
 
     push @{$mpnodes}, @mp;
     push @{$fspnodes}, @commonfsp;
-    if (($cmd eq "rspconfig") && (grep /^(network|network=.*)$/, @args)) {
+    if (@args && ($cmd eq "rspconfig") && (grep /^(network|network=.*)$/, @args)) {
       push @{$mpnodes}, @ngpfsp;
     } else {
       push @{$fspnodes}, @ngpfsp;

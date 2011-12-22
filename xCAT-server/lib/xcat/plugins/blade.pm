@@ -1428,7 +1428,7 @@ sub rscan {
           }
         }
       } 
-      if ($type eq "fsp" || $type eq "blade" || $type eq "ppcblade") {
+      if ($type eq "fsp" || $type eq "ppcblade") {
         # for the fsp, using the ppc.parent and ppc.id to match
         # also get the fsp of the blade
         my @ppclist = $db{'ppc'}->getAllNodeAttribs(['node','parent','id']);
@@ -1454,14 +1454,16 @@ sub rscan {
       $u1->{nodetype} = "fsp";
       $u1->{id} = $id;
       $u1->{parent} = $mpa;
+      $db{ppc}->setAttribs($k1,$u1);
+      $db{ppc}{commit} = 1;
     } elsif ($type eq "ppcblade") {
       $u1->{hcp} = $fspname;
       $u1->{nodetype} = "lpar";
       $u1->{id} = "1";
       $u1->{parent} = $fspname;
+      $db{ppc}->setAttribs($k1,$u1);
+      $db{ppc}{commit} = 1;
     }
-    $db{ppc}->setAttribs($k1,$u1);
-    $db{ppc}{commit} = 1;
 
     # Update the entry in mp table for ppcblade and general blade
     if ($type ne "fsp") {  
@@ -3621,9 +3623,18 @@ sub preprocess_request {
 sub filter_nodes{
     my ($req, $mpnodes, $fspnodes) = @_;
 
-    my @nodes = @{$req->{'node'}};
-    my $cmd = $req->{'command'}->[0];
-    my @args = @{$req->{'arg'}};
+    my (@nodes,@args,$cmd);
+    if (defined($req->{'node'})) {
+      @nodes = @{$req->{'node'}};
+    } else {
+      return 1;
+    }
+    if (defined($req->{'command'})) {
+      $cmd = $req->{'command'}->[0];
+    }
+    if (defined($req->{'arg'})) {
+      @args = @{$req->{'arg'}};
+    }
     # get the nodes in the mp table
     my $mptabhash;
     my $mptab = xCAT::Table->new("mp");
@@ -3669,7 +3680,7 @@ sub filter_nodes{
 
     push @{$mpnodes}, @mp;
     push @{$fspnodes}, @commonfsp;
-    if (($cmd eq "rspconfig") && (grep /^(network|network=.*)$/, @args)) {
+    if (@args && ($cmd eq "rspconfig") && (grep /^(network|network=.*)$/, @args)) {
       push @{$mpnodes}, @ngpfsp;
     } else {
       push @{$fspnodes}, @ngpfsp;
