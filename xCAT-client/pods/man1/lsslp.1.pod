@@ -9,7 +9,7 @@ I<lsslp [-h| --help]>
 I<lsslp [-v| --version]>
 
 
-I<lsslp [<noderange>] [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s CEC|FRAME|MM|IVM|RSA|HMC][-t tries][-m][-I][-e command][-c [timeinterval[timeinterval,..]]][-C counts][-T timeout][--vpdtable][-M vpd|switchport][--updatehosts][-makedhcp]>
+I<lsslp [<noderange>] [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s CEC|FRAME|MM|IVM|RSA|HMC|CMM][-t tries][-m][-I][-e command][-c [timeinterval[timeinterval,..]]][-C counts][-T timeout][--vpdtable][-M vpd|switchport][--updatehosts][-makedhcp]>
 
 
 =head1 DESCRIPTION
@@ -289,6 +289,21 @@ or lsslp CEC1,CEC2,CEC3
   FSP     8205-E6B    1000ECP        B-1   50.0.0.32       50.0.0.28
   CEC     8205-E6B    1000ECP                              CEC3  
 
+
+9. To list all discovered CMM in stanza format, enter:
+   lsslp -s CMM -m -z 
+
+e114ngmm1:
+        objtype=node
+        mpa=e114ngmm1
+        nodetype=cmm
+        mtm=98939AX
+        serial=102537A
+        groups=cmm,all
+        mgt=blade
+        hidden=0
+        otherinterfaces=70.0.0.30
+        hwtype=cmm
 
 =head1 FILES
 
