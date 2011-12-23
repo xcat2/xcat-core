@@ -3141,7 +3141,11 @@ sub format_stanza {
         #################################
         # Add each attribute
         #################################
-        $result .= "\thcp=$name\n";
+        if ($type eq "cmm") {
+            $result .= "\tmpa=$name\n";
+        } else {    
+            $result .= "\thcp=$name\n";
+        }    
         foreach ( @attribs ) {
             my $d = $data[$i++];
 
@@ -3174,7 +3178,7 @@ sub format_stanza {
                     next;
                 }
             } elsif ( /^ip$/ )  {
-                if ( $type =~ /^(frame|cec)$/ ) {
+                if ( $type =~ /^(frame|cec|fsp|bpa|cmm)$/ ) {
                     next;
                 }
             } elsif (/^hidden$/) {
@@ -3238,7 +3242,11 @@ sub format_xml {
         #################################
         # Add each attribute
         #################################
-        $href->{Node}->{"hcp"} = $name;
+        if ($type eq "cmm") {
+            $href->{Node}->{"mpa"} = $name;
+        } else {    
+            $href->{Node}->{"hcp"} = $name;
+        } 
         foreach ( @attribs ) {
             my $d = $data[$i++];
 
@@ -3271,7 +3279,7 @@ sub format_xml {
                     next;
                 }
             } elsif ( /^ip$/ )  {
-                if ( $type =~ /^(frame|cec)$/ ) {
+                if ( $type =~ /^(frame|cec|fsp|bpa|cmm)$/ ) {
                     next;
                 }
             } elsif (/^hidden$/) {
