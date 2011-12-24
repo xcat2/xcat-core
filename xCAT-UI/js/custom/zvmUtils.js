@@ -2307,37 +2307,41 @@ function createZProvisionNew(inst) {
 		// Get tab ID
 		var thisTabId = $(this).parents('.ui-tabs-panel').attr('id');
 		
-		// Get objects for HCP, user ID, and group
+		// Get objects for HCP, user ID, and OS
 		var hcp = $('#' + thisTabId + ' input[name=hcp]');
 		var userId = $('#' + thisTabId + ' input[name=userId]');
-		var group = $('#' + thisTabId + ' input[name=group]');
+		var os = $('#' + thisTabId + ' input[name=os]');
 		
 		// Get default user entry when clicked
 		if ($(this).attr('checked')) {									
-			if (!hcp.val() || !group.val() || !userId.val()) {
+			if (!hcp.val() || !os.val() || !userId.val()) {
 				// Show warning message
-				var warn = createWarnBar('Please specify the hardware control point, group, and user ID before checking this box');
+				var warn = createWarnBar('Please specify the hardware control point, operating system, and user ID before checking this box');
 				warn.prependTo($(this).parents('.form'));
 				
 				// Highlight empty fields
-				jQuery.each([hcp, group, userId], function() {
+				jQuery.each([hcp, os, userId], function() {
 					if (!$(this).val()) {
 						$(this).css('border', 'solid #FF0000 1px');
 					}					
 				});
 			} else {
 				// Un-highlight empty fields
-				jQuery.each([hcp, group, userId], function() {
+				jQuery.each([hcp, os, userId], function() {
 					$(this).css('border', 'solid #BDBDBD 1px');
 				});
-				
+
+				// Get profile name
+				var tmp = os.val().split('-');
+				var profile = tmp[3];
+								
 				$.ajax({
 			        url : 'lib/cmd.php',
 			        dataType : 'json',
 			        data : {
 			            cmd : 'webrun',
 			            tgt : '',
-			            args : 'getdefaultuserentry;' + hcp.val() + ';' + group.val(),
+			            args : 'getdefaultuserentry;' + hcp.val() + ';' + profile,
 			            msg : thisTabId
 			        },
 			        
@@ -2355,7 +2359,7 @@ function createZProvisionNew(inst) {
 			$('#' + thisTabId + ' textarea:visible').val('');
 			
 			// Un-highlight empty fields
-			jQuery.each([hcp, group, userId], function() {
+			jQuery.each([hcp, os, userId], function() {
 				$(this).css('border', 'solid #BDBDBD 1px');
 			});
 		}

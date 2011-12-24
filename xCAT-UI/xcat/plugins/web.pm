@@ -2177,17 +2177,17 @@ sub web_getdefaultuserentry {
 	
 	# Get hardware control point
 	my $hcp = $request->{arg}->[1];
-	my $group = $request->{arg}->[2];
+	my $profile = $request->{arg}->[2];
 	
-	if (!$group) {
-		$group = 'default';
+	if (!$profile) {
+		$profile = 'default';
 	}
 	
 	my $entry;
-	if (!(`ssh $hcp "test -e /opt/zhcp/conf/$group.direct && echo 'File exists'"`)) {
-		$entry = `ssh $hcp "cat /opt/zhcp/conf/default.direct"`;
+	if (!(`ssh $hcp "test -e /opt/zhcp/conf/profiles/$profile.direct && echo 'File exists'"`)) {
+		$entry = `ssh $hcp "cat /opt/zhcp/conf/profiles/default.direct"`;
 	} else {
-		$entry = `ssh $hcp "cat /opt/zhcp/conf/$group.direct"`;	
+		$entry = `ssh $hcp "cat /opt/zhcp/conf/profiles/$profile.direct"`;	
 	}
 	
 	$callback->( { data => $entry } );
