@@ -45,7 +45,6 @@ sub handled_commands {
 		nodeset  => 'noderes:netboot',
 		getmacs  => 'nodehm:getmac,mgt',
 		rnetboot => 'nodehm:mgt',
-		lshwtree  => 'nodehm:mgt',
 	};
 }
 
@@ -478,11 +477,6 @@ sub process_request {
 			}
 
 		}    # End of foreach
-	}    # End of case
-	
-	#*** Show nodes hierarchy tree ***
-	elsif ( $command eq "lshwtree" ) {
-		listTree( $callback, \@nodes, $args );
 	}    # End of case
 
 	# Wait for all processes to end
