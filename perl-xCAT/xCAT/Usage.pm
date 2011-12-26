@@ -18,6 +18,7 @@ use xCAT::Utils;
 my %usage = (
     "rnetboot" => 
 "Usage: rnetboot <noderange> [-s net|hd] [-F] [-f] [-V|--verbose] [-m table.colum==expectedstatus] [-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
+       rnetboot <noderange> [ipl= address]
        rnetboot [-h|--help|-v|--version]",
     "rpower" => 
 "Usage: rpower <noderange> [--nodeps] [on|onstandby|off|suspend|reset|stat|state|boot] [-V|--verbose] [-m table.colum==expectedstatus][-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
@@ -36,6 +37,8 @@ my %usage = (
        rpower <noderange> [on|off|reset|stat|state|boot|of|sms]
      Blade specific:
        rpower <noderange> [cycle|softoff] [-V|--verbose]
+     zVM specific:
+       rpower noderange [on|off|reset|stat|softoff]
 ",
     "rbeacon" => 
 "Usage: rbeacon <noderange> [on|off|stat] [-V|--verbose]
@@ -74,7 +77,9 @@ my %usage = (
     Blade specific:
        rinv <noderange> [mtm|serial|mac|bios|diag|mprom|mparom|firm|all]
     VMware specific:
-       rinv <noderange>",
+       rinv <noderange>
+    zVM specific:
+       rinv noderange [all|config]",
     "rsetboot" => 
 "Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-V|--verbose]
        rsetboot [-h|--help|-v|--version]",
@@ -187,7 +192,10 @@ my %usage = (
        mkvm noderange -c destcec -p profile [-V|--verbose]
        mkvm noderange --full [-V|--verbose]
     For KVM
-       mkvm noderange -m|--master mastername -s|--size disksize -f|--force",
+       mkvm noderange -m|--master mastername -s|--size disksize -f|--force
+    For zVM
+       mkvm noderange directory_entry_file_path
+       mkvm noderange source_virtual_machine pool=disk_pool pw=multi_password",
     "lsvm" => 
 "Usage:
    Common:
@@ -196,7 +204,13 @@ my %usage = (
    PPC (with HMC) specific:
        lsvm <noderange> [-a|--all]
    PPC (using Direct FSP Management) specific:
-       lsvm <noderange> [-l|--long]",
+       lsvm <noderange> [-l|--long]
+   zVM specific:
+       lsvm noderange
+       lsvm noderange --getnetworknames
+       lsvm noderange --getnetwork network_name
+       lsvm noderange --diskpoolnames
+       lsvm noderange --diskpool pool_name",
     "chvm" => 
 "Usage:
    Common:
@@ -209,7 +223,32 @@ my %usage = (
        chvm <noderange> [lparname=<*|name>]
        chvm <noderange> -i <id> [-m <memory_interleaving>] -r <partition_rule>
    VMware specific:
-       chvm <noderange> [-a size][-d disk][-p disk][--resize disk=size][--cpus count][--mem memory]",
+       chvm <noderange> [-a size][-d disk][-p disk][--resize disk=size][--cpus count][--mem memory]
+   zVM specific:
+       chvm noderange [--add3390 disk_pool device_address cylinders mode read_password write_password multi_password]
+       chvm noderange [--add3390active device_address mode]
+       chvm noderange [--add9336 disk_pool virtual_device block_size mode blocks read_password write_password multi_password]
+       chvm noderange [--adddisk2pool function region volume group]
+       chvm noderange [--addnic address type device_count]
+       chvm noderange [--addprocessor address]
+       chvm noderange [--addprocessoractive address type]
+       chvm noderange [--addvdisk userID] device_address size]
+       chvm noderange [--connectnic2guestlan address lan owner]
+       chvm noderange [--connectnic2vswitch address vswitch]
+       chvm noderange [--copydisk target_address source_node source_address]
+       chvm noderange [--dedicatedevice virtual_device real_device mode]
+       chvm noderange [--deleteipl]
+       chvm noderange [--formatdisk disk_address multi_password]
+       chvm noderange [--disconnectnic address]
+       chvm noderange [--grantvswitch VSwitch]
+       chvm noderange [--removedisk virtual_device]
+       chvm noderange [--resetsmapi]
+       chvm noderange [--removediskfrompool function region group]
+       chvm noderange [--removenic address]
+       chvm noderange [--removeprocessor address]
+       chvm noderange [--replacevs directory_entry]
+       chvm noderange [--setipl ipl_target load_parms parms]
+       chvm noderange [--setpassword password]",
     "rmvm" => 
 "Usage: rmvm <noderange> [--service][-V|--verbose] 
        rmvm [-h|--help|-v|--version],
