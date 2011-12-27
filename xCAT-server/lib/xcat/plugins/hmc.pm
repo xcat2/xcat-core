@@ -169,5 +169,108 @@ sub gethmccon {
 	return $rsp;
 }
 
+##########################################################################
+# generate hardware tree, called from lstree.
+##########################################################################
+sub genhwtree
+{
+    my $nodelist = shift;  # array ref
+	my $callback = shift;
+	my %hwtree;
+
+    # read ppc table
+    my $ppctab = xCAT::Table->new('ppc');
+    unless ($ppctab)
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Can not open ppc table.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+    }
+
+    my @entries = $ppctab->getAllNodeAttribs(['node','parent','hcp']);
+
+##################################################################
+####################refine the loop after getnodetype updated!!!!!
+##################################################################
+
+    # only handle physical hardware objects here.
+    foreach my $node (@$nodelist)
+    {
+        # will build a hash like hmc->frame->cec
+        # for old xcat defs, ppc.nodetype may be blank, should use getnodetype().
+        my $ntype = xCAT::DBobjUtils->getnodetype($node);
+        if ($ntype =~ /^hmc$/)
+        {
+            # get all objects managed by this hmc.
+            foreach my $ent (@entries)
+            {
+                if ($ent->{hcp} =~ /$node/)
+                {
+                    my $type = xCAT::DBobjUtils->getnodetype($ent->{node});
+                    # use cec as leaves
+                    if ($type =~ /cec/)
+                    {
+                        if ($ent->{parent})
+                        {
+                            unless (grep(/$ent->{node}/, @{$hwtree{$node}{$ent->{parent}}}))
+                            {
+                                push @{$hwtree{$node}{$ent->{parent}}}, $ent->{node};
+                            }
+                        }
+                        else
+                        {
+                            unless (grep(/$ent->{node}/, @{$hwtree{$node}{0}}))
+                            {
+                                push @{$hwtree{$node}{0}}, $ent->{node};
+                            }
+                        }
+                    }
+                }
+            }            
+        }
+        elsif ($ntype =~ /^frame$/)
+        {
+            # get frame's hcp
+            my $fent = $ppctab->getNodeAttribs($node, ['hcp']);
+            # get all cecs by this frame
+            foreach my $ent (@entries)
+            {
+                if ($ent->{parent} =~ /$node/)
+                {
+                    unless (grep(/$ent->{node}/, @{$hwtree{$fent->{hcp}}{$node}}))
+                    {
+                        push @{$hwtree{$fent->{hcp}}{$node}}, $ent->{node};
+                    }
+                }               
+            }
+        }
+        elsif ($ntype =~ /^cec$/)
+        {
+            # get cec's parent
+            my $cent = $ppctab->getNodeAttribs($node, ['hcp','parent']);
+            if ($cent->{parent})
+            {
+                unless (grep(/$node/, @{$hwtree{$cent->{hcp}}{$cent->{parent}}}))
+                {
+                    push @{$hwtree{$cent->{hcp}}{$cent->{parent}}}, $node;
+                }
+            }
+            else
+            {
+                unless (grep(/$node/, @{$hwtree{$cent->{hcp}}{0}}))
+                {
+                    push @{$hwtree{$cent->{hcp}}{0}}, $node;
+                }
+            }
+        }
+        else
+        {
+            # may add new support later?
+            next;
+        }    
+    }
+
+    return \%hwtree;
+}
 
 1;
