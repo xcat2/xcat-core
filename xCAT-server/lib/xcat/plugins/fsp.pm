@@ -344,4 +344,98 @@ sub getmulcon {
     $callback->($rsp2);  
 }
 
+##########################################################################
+# generate hardware tree, called from lstree.
+##########################################################################
+sub genhwtree
+{
+    my $nodelist = shift;  # array ref
+	my $callback = shift;
+	my %hwtree;
+
+    # read ppc table
+    my $ppctab = xCAT::Table->new('ppc');
+    unless ($ppctab)
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Can not open ppc table.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+    }
+
+    my @entries = $ppctab->getAllNodeAttribs(['node','parent','hcp']);
+
+##################################################################
+####################refine the loop after getnodetype updated!!!!!
+##################################################################
+
+    # only handle physical hardware objects here.
+    foreach my $node (@$nodelist)
+    {
+        # will build a hash like sfp->frame->cec
+        my $ntype = xCAT::DBobjUtils->getnodetype($node);
+        if ($ntype =~ /^frame$/)
+        {
+            # assume frame always available in DFM.
+            # try to see if sfp available.
+            my $frment = $ppctab->getNodeAttribs($node, ['sfp']);
+
+            foreach my $ent (@entries)
+            {
+                # get all cecs by this frame
+                if ($ent->{parent} =~ /$node/)
+                {
+                    if ($frment->{sfp})
+                    {
+                        unless (grep(/$ent->{node}/, @{$hwtree{$frment->{sfp}}{$node}}))
+                        {
+                            push @{$hwtree{$frment->{sfp}}{$node}}, $ent->{node};
+                        }
+                    }
+                    else
+                    {
+                        unless (grep(/$ent->{node}/, @{$hwtree{0}{$node}}))
+                        {
+                            push @{$hwtree{0}{$node}}, $ent->{node};
+                        }
+                    }
+                }
+            }
+        }
+        elsif ($ntype =~ /^cec$/)
+        {
+            # get cec's parent
+            my $cent = $ppctab->getNodeAttribs($node, ['parent']);
+            if ($cent->{parent}) # assume frame always available for DFM
+            {
+                # try to see if sfp available.
+                my $frment = $ppctab->getNodeAttribs($cent->{parent}, ['sfp']);
+                if ($frment->{sfp})
+                {
+                    unless (grep(/$node/, @{$hwtree{$frment->{sfp}}{$cent->{parent}}}))
+                    {
+                        push @{$hwtree{$frment->{sfp}}{$cent->{parent}}}, $node;
+                    }
+                }
+                else
+                {
+                    unless (grep(/$node/, @{$hwtree{0}{$cent->{parent}}}))
+                    {
+                        push @{$hwtree{0}{$cent->{parent}}}, $node;
+                    }
+                }
+            }
+        }
+        else
+        {
+            # may add new support later?
+            next;
+        }    
+    }
+
+    return \%hwtree;
+}
+
+
+
+
 1;
