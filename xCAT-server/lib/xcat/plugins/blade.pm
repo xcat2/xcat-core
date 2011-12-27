@@ -4909,6 +4909,64 @@ sub dompa {
   #my $msgtoparent=freeze(\@outhashes); # = XMLout(\%output,RootName => 'xcatresponse');
   #print $out $msgtoparent; #$node.": $_\n";
 }
+
+##########################################################################
+# generate hardware tree, called from lstree.
+##########################################################################
+sub genhwtree
+{
+    my $nodelist = shift;  # array ref
+	my $callback = shift;
+	my %hwtree;
+
+    # get mm and bladeid
+    my $mptab = xCAT::Table->new('mp');
+    unless ($mptab)
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Can not open mp table.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+    }
+
+    my @entries = $mptab->getAllNodeAttribs(['node','mpa','id']);
+
+    foreach my $node (@$nodelist)
+    {
+
+        # read mp.mpa, mp.id.
+        my $mpent = $mptab->getNodeAttribs($node, ['mpa','id']);
+        if ($mpent)
+        {
+            if ($mpent->{mpa} eq $node)
+            {
+                # it's mm, need to list all blades managed by this mm
+                foreach my $ent (@entries)
+                {
+                    # need to exclude mm if needed.
+                    if ($ent->{mpa} eq $ent->{node})
+                    {
+                        next;
+                    }
+                    elsif ($ent->{mpa} =~ /$node/)
+                    {
+                        $hwtree{$node}{$ent->{id}} = $ent->{node};
+                    }
+                }
+            }
+            else
+            {
+                # it's blade
+                $hwtree{$mpent->{mpa}}{$mpent->{id}} = $node;
+            }
+        }    
+    }
+
+    return \%hwtree;    
+}
+
+
+
+
     
 1;
 
