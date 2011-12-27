@@ -138,6 +138,7 @@ ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/renergy
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/litetree
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/litefile
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/lslite
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/lstree
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/lsflexnode
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rmflexnode
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/mkflexnode
