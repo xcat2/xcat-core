@@ -8629,6 +8629,11 @@ sub doSNcopy2
 		}
     }
 
+    unless(scalar @SNlist)
+    {
+        return;
+    }
+    
 	my $snlist=join(',',@SNlist);
 
 	# copy the /etc/hosts file all the SNs
