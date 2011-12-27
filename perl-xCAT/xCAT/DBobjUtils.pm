@@ -911,7 +911,8 @@ sub setobjdefs
         my %attrlist;
         foreach my $entry (@{$datatype->{'attrs'}})
         {
-            push(@{$attrlist{$type}}, $entry->{'attr_name'});
+            #push(@{$attrlist{$type}}, $entry->{'attr_name'});
+            $attrlist{$type}{$entry->{'attr_name'}} = 1;
         }
 
         my @attrprovided=();
@@ -931,7 +932,7 @@ sub setobjdefs
                 next;
             }
 
-            if (!(grep /^$attr$/, @{$attrlist{$type}}))
+            if (!defined($attrlist{$type}{$attr}))
             {
                 if ($::verbose)
                 {
@@ -951,7 +952,7 @@ sub setobjdefs
         #   And we must do this in the order given in defspec!!
 
         my @setattrlist=();
-        my @checkedattrs;
+        my %checkedattrs;
         my $invalidattr;
 
         foreach my $this_attr (@{$datatype->{'attrs'}})
@@ -998,7 +999,7 @@ sub setobjdefs
                     if ( !($objhash{$objname}{$check_attr})  && !($DBattrvals{$objname}{$check_attr}) ) {
                         # if I didn't already check for this attr
                         my $rsp;
-                        if (!grep(/^$attr_name$/, @checkedattrs)) {
+                        if (!defined($checkedattrs{$attr_name})) {
                             push @{$rsp->{data}}, "Cannot set the \'$attr_name\' attribute unless a value is provided for \'$check_attr\'.";
 
                             foreach my $tmp_attr (@{$datatype->{'attrs'}}) {
@@ -1012,7 +1013,7 @@ sub setobjdefs
                             }
                         }
                         xCAT::MsgUtils->message("I", $rsp, $::callback);
-                        push(@checkedattrs, $attr_name);
+                        $checkedattrs{$attr_name} = 1;
                         if ( $invalidattr->{$attr_name}->{valid} ne 1 ) {
                             $invalidattr->{$attr_name}->{valid} = 0;
                             $invalidattr->{$attr_name}->{condition} = "\'$check_attr=$check_value\'";

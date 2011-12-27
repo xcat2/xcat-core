@@ -1629,17 +1629,17 @@ sub defch
 
             # get the data type definition from Schema.pm
             my $datatype = $xCAT::Schema::defspec{$::objtype};
-            my @list;
+            my %list;
             foreach my $this_attr (sort @{$datatype->{'attrs'}})
             {
                 my $a = $this_attr->{attr_name};
-                push(@list, $a);
+                $list{$a} = 1;
             }
 
             # set the attrs from the attr=val pairs
             foreach my $attr (keys %::ATTRS)
             {
-                if (!grep(/^$attr$/, @list) && ($::objtype ne 'site') && ($::objtype ne 'monitoring'))
+                if (!defined($list{$attr}) && ($::objtype ne 'site') && ($::objtype ne 'monitoring'))
                 {
                     my $rsp;
                     $rsp->{data}->[0] =
@@ -1689,6 +1689,15 @@ sub defch
             xCAT::MsgUtils->message("I", $rsp, $::callback);
         }
     }
+    # Build up a hash for the array in objTypeLists
+    # for performance consideration, grep the array is not effective
+    my %objTypeListsHash;
+    foreach my $objk (keys %objTypeLists)
+    {
+        foreach my $obj (@{$objTypeLists{$objk}}) {
+            $objTypeListsHash{$objk}{$obj} = 1;
+        }
+    }
 
     foreach my $obj (keys %::FINALATTRS)
     {
@@ -1707,7 +1716,7 @@ sub defch
             next;
         }
 
-        if (grep(/^$obj$/, @{$objTypeLists{$type}}))
+        if (defined($objTypeListsHash{$type}{$obj}) && ($objTypeListsHash{$type}{$obj} == 1))
         {
             $isDefined = 1;
         }
@@ -2066,81 +2075,11 @@ sub defch
 
         }    # end - if group type
 
-        #
-        #  Need special handling for node objects that have the
-        #    groups attr set - may need to create group defs
-        #
-        if (($type eq "node") && $::FINALATTRS{$obj}{groups})
-        {
+        # Removed the code to handle the nodegroup table with chdef -t node groups=xxx
+        # Only dynamic groups should be in nodegroup table
+        # Do not try to add static group into the nodegroup table
+        # performance!!!!
 
-            # get the list of groups in the "groups" attr
-            my @grouplist;
-            @grouplist = split(/,/, $::FINALATTRS{$obj}{groups});
-
-            # get the list of all defined group objects
-
-            # getObjectsOfType("group") only returns static groups,
-            # generally speaking, the nodegroup table should includes all the static and dynamic groups,
-            # but it is possible that the static groups are not in nodegroup table,
-            # so we have to get the static and dynamic groups separately.
-            my @definedgroups = xCAT::DBobjUtils->getObjectsOfType("group"); #Static node groups
-            my $grptab = xCAT::Table->new('nodegroup');
-            my @grplist = @{$grptab->getAllEntries()}; #dynamic groups and static groups in nodegroup table
-
-            # if we're creating the node or we're adding to or replacing
-            #    the "groups" attr then check if the group
-            #     defs exist and create them if they don't
-            if (!$isDefined || !$::opt_m)
-            {
-
-                #  we either replace, add or take away from the "groups"
-                #        list
-                #  if not taking away then we must be adding or replacing
-                my %GroupHash;
-                foreach my $g (@grouplist)
-                {
-                    my $indynamicgrp = 0;
-                    #check the dynamic node groups
-                    foreach my $grpdef_ref (@grplist)    
-                    {
-                         my %grpdef = %$grpdef_ref;
-                         if (($grpdef{'groupname'} eq $g) && ($grpdef{'grouptype'} eq 'dynamic'))
-                         {
-                             $indynamicgrp = 1;
-                             my $rsp;
-                             $rsp->{data}->[0] = "nodegroup $g is a dynamic node group, should not add a node into a dynamic node group statically.";
-                             xCAT::MsgUtils->message("I", $rsp, $::callback);
-                              last;
-                          }
-                    }
-                    if (!$indynamicgrp)
-                    {
-                        if (!grep(/^$g$/, @definedgroups))
-                        {
-
-                            # define it
-                            $GroupHash{$g}{objtype}   = "group";
-                            $GroupHash{$g}{grouptype} = "static";
-                            $GroupHash{$g}{members}   = "static";
-                        }
-                    }
-                }
-                if (defined(%GroupHash))
-                {
-
-                    if (xCAT::DBobjUtils->setobjdefs(\%GroupHash) != 0)
-                    {
-                        my $rsp;
-                        $rsp->{data}->[0] =
-                          "Could not write data to the xCAT database.";
-
-                        # xCAT::MsgUtils->message("E", $rsp, $::callback);
-                        $error = 1;
-                    }
-                }
-            }
-
-        }    # end - if type = node
         #special case for osimage, if the osimage was not defined,
         #chdef can not create it correctly if no attribute in osimage table is defined
         #set the default imagetype 'NIM' if it is not specified
