@@ -1341,12 +1341,12 @@ sub rscan {
       #generate the fsp entry base on the rscan result from the telnet command line
       if (defined($telnetrscan{$_}{'0'}) && $telnetrscan{$_}{'0'}{'type'} eq "fsp") {
         $fspname .= $name."-fsp0";
-        push @values, join( ",","fsp",$fspname,$_,"$type$model",$serial,"");
+        push @values, join( ",","fsp",$fspname,$_,"$type$model",$serial,$telnetrscan{$_}{'0'}{'ip'});
         $isppcblade = 1;
       }
       if (defined($telnetrscan{$_}{'1'}) && $telnetrscan{$_}{'1'}{'type'} eq "fsp") {
         $fspname = $name."-fsp1";
-        push @values, join( ",","fsp",$fspname,$_,"$type$model",$serial,"");
+        push @values, join( ",","fsp",$fspname,$_,"$type$model",$serial,$telnetrscan{$_}{'1'}{'ip'});
         $isppcblade = 1;
       }
       if ($isppcblade) {
