@@ -5747,4 +5747,43 @@ sub sendoutput {
     }
 }
 
+##########################################################################
+# generate hardware tree, called from lstree.
+##########################################################################
+sub genhwtree
+{
+    my $nodelist = shift;  # array ref
+	my $callback = shift;
+	my %hwtree;
+
+    my $bmchash;
+    # read ipmi.bmc
+    my $ipmitab = xCAT::Table->new('ipmi');
+    if ($ipmitab)
+    {
+        $bmchash = $ipmitab->getNodesAttribs($nodelist, ['bmc']);
+    }
+    else
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Can not open ipmi table.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+    }
+
+    foreach my $node (@$nodelist)
+    {
+        if ($bmchash->{$node}->[0]->{'bmc'})
+        {
+            push @{$hwtree{$bmchash->{$node}->[0]->{'bmc'}}}, $node;
+        }
+    
+    }
+
+    return \%hwtree;
+
+}
+
+
+
+
 1;
