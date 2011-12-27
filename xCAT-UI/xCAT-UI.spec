@@ -46,6 +46,7 @@ FILES=`find ${UI_JS} -name '*.js'`
 for i in ${FILES[*]}; do
 	# Ignore Javascripts that are already minified
 	if [[ ! $i =~ '.*\.min\.js$' ]]; then
+		echo "  Minifying $i ..."
 		`${JAVA} -jar ${COMPILER_JAR} --warning_level=QUIET --js=$i --js_output_file=$i.min`
 		
 		# Remove old Javascript and replace it with minified version
@@ -61,6 +62,7 @@ FILES=`find ${UI_JS} -name '*.js'`
 for i in ${FILES[*]}; do
 	# Ignore Javascripts that are already minified
 	if [[ ! $i = @(*.min.js) ]]; then
+		echo "  Minifying $i ..."
 		`${JAVA} -jar ${COMPILER_JAR} --warning_level=QUIET --js=$i --js_output_file=$i.min`
 		
 		# Remove old Javascript and replace it with minified version

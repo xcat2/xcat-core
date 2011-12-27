@@ -25,7 +25,7 @@
 #					xcat-core tarball to the SF web site instead of the FRS area.
 # 		UP=0 or UP=1 - override the default upload behavior 
 # 		SVNUP=<filename> - control which rpms get built by specifying a coresvnup file
-#       FRSYUM=1 - put the yum repo and snap builds in the FRS area instead of project web area.
+#       FRSYUM=0 - put the yum repo and snap builds in the old project web area instead of the FRS area.
 #		VERBOSE=1 - to see lots of verbose output
 
 # you can change this if you need to
@@ -67,7 +67,7 @@ if [ "$OSNAME" != "AIX" ]; then
 fi
 
 # this is needed only when we are transitioning the yum over to frs
-if [ "$FRSYUM" = 1 ]; then
+if [ "$FRSYUM" != 0 ]; then
 	YUMDIR=$FRS
 	YUMREPOURL="https://sourceforge.net/projects/xcat/files/yum"
 else

@@ -15,7 +15,7 @@
 #		DESTDIR=<dir> - the dir to place the dep tarball in.  The default is ../../../xcat-dep, relative
 #					to where this script is located.
 # 		UP=0 or UP=1 - override the default upload behavior 
-#       FRSYUM=1 - put the directory of individual rpms in the FRS area instead of project web area.
+#       FRSYUM=0 - put the directory of individual rpms in the project web area instead of the FRS area.
 #		VERBOSE=1 - to see lots of verbose output
 
 # you can change this if you need to
@@ -45,7 +45,7 @@ fi
 # this is needed only when we are transitioning the yum over to frs
 YUMREPOURL1="http://xcat.sourceforge.net/yum"
 YUMREPOURL2="https://sourceforge.net/projects/xcat/files/yum"
-if [ "$FRSYUM" = 1 ]; then
+if [ "$FRSYUM" != 0 ]; then
 	YUMDIR=$FRS
 	YUMREPOURL="$YUMREPOURL2"
 else
@@ -115,7 +115,7 @@ if [ "$OSNAME" != "AIX" ]; then
 	done
 
 	# Modify xCAT-dep.repo files to point to the correct place
-	if [ "$FRSYUM" = 1 ]; then
+	if [ "$FRSYUM" != 0 ]; then
 		newurl="$YUMREPOURL2"
 		oldurl="$YUMREPOURL1"
 	else
@@ -230,7 +230,7 @@ fi
 # Upload the dir structure to SF yum area.  Currently we do not have it preserving permissions
 # because that gives errors when different users try to do it.
 i=0
-if [ "$FRSYUM" = 1 ]; then
+if [ "$FRSYUM" != 0 ]; then
 	links="-L"		# FRS does not support rsyncing sym links
 else
 	links="-l"
