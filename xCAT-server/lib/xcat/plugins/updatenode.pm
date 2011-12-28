@@ -2475,7 +2475,7 @@ sub updateOS {
 		
 	# Get HTTP server
 	my $http = xCAT::Utils->my_ip_facing($node);
-	if ( !$htp ) {
+	if ( !$http ) {
 		push @{$rsp->{data}}, "$node: (Error) Missing HTTP server";
 		xCAT::MsgUtils->message("I", $rsp, $callback);
 		return;
