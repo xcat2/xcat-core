@@ -3170,7 +3170,7 @@ sub format_stanza {
                 }
                 $i++;
             } elsif ( /^side$/ ) {
-                if ( $type !~ /^(fsp|bpa)$/ ) {
+                if ( $type !~ /^(fsp|bpa|cmm)$/ ) {
                     next;
                 }
             } elsif ( /^parent$/ )  {
