@@ -24,11 +24,13 @@ $::NODETYPE_HMC="hmc";
 $::NODETYPE_IVM="ivm";
 $::NODETYPE_FRAME="frame";
 $::NODETYPE_CEC="cec";
+$::NODETYPE_CMM="cmm";
 
 # valid values for nodelist.nodetype column
 $::NODETYPE_OSI="osi"; 
 $::NODETYPE_PPC="ppc";
 $::NODETYPE_ZVM="zvm";
+$::NODETYPE_MP="mp";
 
 # valid values for nodelist.status columns or other status 
 $::STATUS_ACTIVE="alive";
