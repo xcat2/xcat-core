@@ -167,7 +167,7 @@ my %globalnodetype = (
     frame => $::NODETYPE_PPC,
     hmc   => $::NODETYPE_PPC,
     ivm   => $::NODETYPE_PPC,
-    cmm   => $::NODETYPE_CMM,
+    cmm   => $::NODETYPE_MP,
     lpar  =>"$::NODETYPE_PPC,$::NODETYPE_OSI"
 );
 ##########################################################################
