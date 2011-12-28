@@ -45,9 +45,6 @@ lsdef_t
 lsdef_t_i_o
 lsdef_t_w
 lsdef_t_err
-lsvm_null
-lsvm_node
-lsvm_err_node
 lslite_i
 lslite_noderange
 lslite_h
@@ -229,7 +226,6 @@ xcatstop
 xdcp_src_dst
 xdcp_P
 makedns_h
-makedns_v
 makedns_n_node
 makedns_d_node
 makedns_n
