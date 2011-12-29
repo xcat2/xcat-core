@@ -28,15 +28,28 @@ osname=`uname`
 xcatpostdir="/xcatpost"
 
 logger -t xCAT "$0: the OS name = $osname"
-if [ $osname = "Linux" ] 
-then
-`$xcatpostdir/startsyncfiles.awk`
-returncode=$?
-elif [ $osname = "AIX" ]
-then
-`$xcatpostdir/startsyncfiles.aix`
-returncode=$?
-fi
+quit="no"
+count=5
+while [ $quit = "no" ]; do
+  if [ $osname = "Linux" ]
+  then
+    `$xcatpostdir/startsyncfiles.awk`
+    returncode=$?
+  elif [ $osname = "AIX" ]
+  then
+    `$xcatpostdir/startsyncfiles.aix`
+    returncode=$?
+  fi
+
+  if [ $returncode -eq 0 ] || [ $count -eq 0 ]; then
+    quit="yes"
+  else
+    let SLI=$RANDOM%10
+    let SLI=SLI+10
+    sleep $SLI
+  fi
+  let count=count-1
+done
 
 if [ $returncode -eq 0 ]
 then
