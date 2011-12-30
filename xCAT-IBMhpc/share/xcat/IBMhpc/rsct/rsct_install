@@ -48,4 +48,5 @@ if [ $OS != "AIX" ]; then
 
 fi  
 
+exit 0
 
