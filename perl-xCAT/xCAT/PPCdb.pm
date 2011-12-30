@@ -798,7 +798,8 @@ sub credentials {
         my $ent;
         if ( $user_specified) 
         { # need regx
-            ($ent) = $tab->getAttribs( {hcp=>$server,username=>$user},qw(password));
+            #($ent) = $tab->getAttribs( {hcp=>$server,username=>$user},qw(password));
+            ($ent) = $tab->getNodeSpecAttribs( $server, {username=>$user},qw(password));
         }
         else
         {
@@ -815,7 +816,8 @@ sub credentials {
         {
             if ( $user_specified)
             { # need regx
-                ($ent) = $tab->getAllAttribs( {hcp=>$defaultgrp{$hwtype},username=>$user},qw(password));
+                #($ent) = $tab->getAllAttribs( {hcp=>$defaultgrp{$hwtype},username=>$user},qw(password));
+                ($ent) = $tab->getNodeSpecAttribs( $defaultgrp{$hwtype}, {username=>$user},qw(password));
             }
             else
             {

@@ -2319,6 +2319,72 @@ sub getNodeAttribs
     return wantarray ? @data : $data[0];
 }
 
+
+#--------------------------------------------------------------------------
+
+=head3 getNodeSpecAttribs
+    Description: Retrieves the requested attributes which matching the specified options for a node
+    Arguments:
+        Noderange
+        The specified options
+        List of attributes 
+    Return:
+        Attribute hash 
+    Example:
+        my $tab = xCAT::Table->new('ppcdirect');
+        my $ent = $tab->getNodeSpecAttribs($node, {username=>'HMC'}, qw/password/); 
+    Comments:
+        The keys of the specified options can be given in the list of attributes or not, 
+        this routine will deal with them.
+=cut
+
+#--------------------------------------------------------------------------
+
+sub getNodeSpecAttribs {
+    my $self = shift;
+    my $node = shift;
+    my %options = ();
+    my @attribs = ();
+    my @keys = ();
+    if (ref $_[0]) {
+        %options = %{shift()};
+        @attribs = @_;
+        foreach my $key (keys %options) {
+            if (!grep(/^$key$/, @attribs)) {
+                push @attribs, $key;
+            }
+        }
+    } else {
+        @attribs = @_;
+    }
+    if ((keys (%options)) == 0) {
+        my $ent = $self->getNodeAttribs($node, \@attribs);
+        return $ent; 
+    } else {
+        my $nodekey = "node";
+        if (defined $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}) {
+            $nodekey = $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol};
+        }
+        $options{$nodekey} = $node;
+        my $ent = $self->getAttribs(\%options, \@attribs);
+        if ($ent) {
+            return $ent;
+        }
+        my ($nodeghash) = $self->{nodelist}->getAttribs({node=>$node}, "groups");
+        unless(defined($nodeghash) && defined($nodeghash->{groups})) {
+            return undef;
+        }
+        my @nodegroups = split(/,/, $nodeghash->{groups});
+        foreach my $group (@nodegroups) {
+            $options{$nodekey} = $group;
+            my $g_ret = $self->getAttribs(\%options, \@attribs);
+            if ($g_ret) {
+                return $g_ret;
+            }
+        }
+    }
+    return undef;
+}
 #--------------------------------------------------------------------------
 
 =head3 getNodeAttribs_nosub
