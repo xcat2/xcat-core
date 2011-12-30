@@ -452,7 +452,7 @@ sub process_command {
                     #print Dumper($one_d);
                     if($$one_d[4]  =~ /^fsp$/ ||  $$one_d[4] =~ /^cec$/) {
                         if( $request->{syspowerinterval} > 0) {
-			    Time::HiRes::sleep($request->{syspowerinterval});
+                            no_interrupt_sleep($request->{syspowerinterval});
                         }
                     }
                 }
@@ -573,6 +573,16 @@ ENDOFFORK:
 
 
     return(0);
+}
+
+sub no_interrupt_sleep {
+    my $sleep_time = shift;
+    my $sleep_end = time + $sleep_time;
+    while (1) {
+        my $sleep_duration = $sleep_end - time;
+        last if $sleep_duration <= 0;
+        Time::HiRes::sleep($sleep_duration);
+    }
 }
 
 sub kill_children_by_pid {
