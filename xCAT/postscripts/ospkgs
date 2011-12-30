@@ -71,7 +71,11 @@ if [ $? -eq 0 ]; then
 fi
 
 if [ -z "$OSPKGDIR" ]; then
-    OSPKGDIR="$NFSSERVER$INSTALLDIR/$OSVER/$ARCH"
+    if [ $mounted -eq 0 ]; then
+        OSPKGDIR="$NFSSERVER$INSTALLDIR/$OSVER/$ARCH"
+    else
+        OSPKGDIR="$NFSSERVER/$OSVER/$ARCH"
+    fi
     if ( pmatch "$OSVER" "sles*" ); then
 	    OSPKGDIR="$OSPKGDIR/1"
     elif ( pmatch "$OSVER" "rhel*" ); then
