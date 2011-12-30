@@ -65,15 +65,11 @@ Verbose mode.
 
  rmdef -t node node1-node4
 
-=item 2. To remove all node and group definitions.
-
- rmdef -t node,group
-
-=item 3. To remove all node definitions for the nodes contained in the group bpcnodes.
+=item 2. To remove all node definitions for the nodes contained in the group bpcnodes.
 
  rmdef -t node -o bpcnodes
 
-=item 4. To remove the group called bpcnodes.
+=item 3. To remove the group called bpcnodes.
 
  rmdef -t group -o bpcnodes
 
