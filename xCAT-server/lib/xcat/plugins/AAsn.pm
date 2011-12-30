@@ -1335,6 +1335,14 @@ sub enable_TFTPhpa
     return 1;
   }
 
+  # kill the process of atftp if it's there
+  my @output = xCAT::Utils->runcmd("ps -ef | grep atftpd | grep -v grep", -1);
+  foreach my $ps (@output) {
+    $ps =~ s/^\s+//;    # strip any leading spaces
+    my ($uid, $pid, $ppid, $desc) = split /\s+/, $ps;
+    system("kill -9 $pid >/dev/null 2>&1");
+  }
+
   # read tftpdir directory from database
   my $tftpdir = xCAT::Utils->getTftpDir();
   if (!(-e $tftpdir)) {
