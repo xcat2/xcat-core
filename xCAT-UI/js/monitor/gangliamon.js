@@ -22,6 +22,8 @@ var cechash;
 var bladehash;
 //global x rack hash
 var rackhash;
+//global other type node hash
+var otherhash;
 /**
  * Load Ganglia monitoring tool
  * 
@@ -770,6 +772,7 @@ function drawGangliaNodesArea(){
 		case 'blade':
 		case 'cec':
 		case 'rack':
+		case 'other':
 		{
 			drawGangliaNodesAreaPic(type, name);
 		}
@@ -809,6 +812,10 @@ function drawGangliaNodesAreaPic(type, name){
 	    	arraypoint = rackhash[name];
 	    }
 	    break;
+	    case 'other':
+	    {
+	    	arraypoint = otherhash[1];
+	    }
 	    default:
 	    	break;
     }
@@ -882,6 +889,13 @@ function drawGangliaNodesAreaTab(type, name){
 				     monitorStatAgg('rack', rackhash[i]) + '</tr>';
 			tabobj.append(rowstr);
 		}
+		
+		if (otherhash[1].length > 0)
+		{
+			rowstr = '<tr><td><a href="#" onclick="addZoomDiv(this)" name="other">Other</a></td><td>Other</td>' +
+			         monitorStatAgg('other', otherhash[1]) + '</tr>';
+			tabobj.append(rowstr);
+		}
 	}
 	else{
 		for (var i in framehash[name]){
@@ -912,6 +926,7 @@ function monitorStatAgg(type, inputarray){
 		case 'blade':
 		case 'cec':
 		case 'rack':
+		case 'other':
 		{
 			tempArray = inputarray;
 		}
@@ -984,6 +999,9 @@ function extractLocationlData(locationData){
 	cechash = new Object();
 	bladehash = new Object();
 	rackhash = new Object();
+	//other unknown nodes only have one parent, use number 1 as there parent
+	otherhash = new Object();
+	otherhash[1] = new Array();
 	
 	var allnodearray = locationData.split(';');
 	var temparray;
@@ -1017,6 +1035,15 @@ function extractLocationlData(locationData){
 			}
 			break;
 			
+			case 'frame':
+			{
+				if (!framehash[name])
+				{
+					framehash[name] = new Array();
+				}
+			}
+			break;
+
 			case 'cec':
 			{
 				if (!framehash[parent]){
@@ -1025,7 +1052,10 @@ function extractLocationlData(locationData){
 				framehash[parent].push(name);
 			}
 			break;
+			
 			case 'lpar':
+			case 'lpar,osi':
+			case 'osi,lpar':
 			{
 				if (!cechash[parent]){
 					cechash[parent] = new Array();
@@ -1034,6 +1064,9 @@ function extractLocationlData(locationData){
 			}
 			break;
 			default:
+			{
+				otherhash[1].push(name);
+			}
 			break;
 		}
 	}
