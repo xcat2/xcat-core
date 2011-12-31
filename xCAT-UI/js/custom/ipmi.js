@@ -244,6 +244,28 @@ ipmiPlugin.prototype.addNode = function() {
 };
 
 /**
+ * return steps name for hardware discovery wizard
+ * 
+ * @return Nothing
+ */
+ipmiPlugin.prototype.getStep = function(){
+	return ['Basic Patterns', 'Swithes', 'Network', 'Services', 'Power on hardwares'];
+};
+
+/**
+ * return steps's init function for hardware discovery wizard
+ * 
+ * @return Nothing
+ */
+ipmiPlugin.prototype.getInitFunction = function(){
+	return [idataplexInitBasic, idataplexInitSwitch, idataplexInitNetwork, idataplexInitService, idataplexInitPowerOn];
+};
+
+ipmiPlugin.prototype.getNextFunction = function(){
+	return [idataplexCheckBasic, undefined, idataplexCheckNetwork, undefined, undefined,];
+};
+
+/**
  * Add iDataPlex node range
  * 
  * @return Nothing
@@ -638,4 +660,481 @@ function updateIpmiProvisionExistingStatus(data) {
 			$('#' + statBarId).find('div').append('<pre>It will take several minutes before the nodes are up and ready. Use nodestat to check the status of the install.</pre>');
 		}
 	}
+}
+
+/**
+ * step 2: init the idataplex basic pattern
+ * 
+ * @param 
+ * 
+ * @return
+ */
+function idataplexInitBasic(){
+    var tempip = '';
+    $('#discoverContentDiv').empty();
+    $('.tooltip').remove();
+    var showString = '<div style="min-height:360px" id="patternDiv"><h2>' + steps[currentStep] + '</h2>';
+    showString += '<table><tbody>';
+    //nodes title
+    showString += '<tr><td><h3>Nodes:</h3></td></tr>';
+    //nodes name range
+    showString += '<tr><td>Name Range:</td><td><input type="text" title="node[1-167] or node1-node167" ' +
+    'name="idataplexnodename" value="' + getDiscoverEnv('idataplexnodename') + '"></td>';
+    //nodes start ip
+    if (getDiscoverEnv('idataplexnodeip')){
+        tempip = getDiscoverEnv('idataplexnodeip');
+    }
+    else{
+        tempip = '172.30.20.1';
+    }
+    showString += '<td>Start IP:</td><td><input type="text" title="Format: XXX.XXX.XXX.1, last number must be 1.<br/> 172.30.20.1 is suggested." ' + 
+          'name="idataplexnodeip" value="' + tempip + '"></td></tr>';
+    //num-nodes-per-frame
+    showString += '<tr><td>Nodes number <br/>per Frame:</td><td><input type="text" title="84: Each frame contains 84 nodes.<br/>Valide Number:20,21,40,41,42,84." '+
+          'name="idataplexperframe" value="' + getDiscoverEnv('idataplexperframe') + '"></td><td></td><td></td></tr>';
+    //bmc title
+    showString += '<tr><td><h3>BMCs:</h3></td></tr>';
+    //bmc name range
+    showString += '<tr><td>Name Range:</td><td><input type="text" title="bmc[1-167] or bmc1-bmc167" ' +
+    'name="idataplexbmcname" value="' + getDiscoverEnv('idataplexbmcname') + '"></td>';
+    //bmc start ip
+    if (getDiscoverEnv('idataplexbmcip')){
+        tempip = getDiscoverEnv('idataplexbmcip');
+    }
+    else{
+        tempip = '172.30.120.1';
+    }
+    showString += '<td>Start IP:</td><td><input type="text" title="Format: XXX.XXX.XXX.1, last number must be 1.<br/>172.30.120.1 is suggested." ' + 
+          'name="idataplexbmcip" value="' + tempip + '"></td></tr>';
+    //switches title
+    showString += '<tr><td><h3>Switches:</h3></td></tr>';
+    //switches name range
+    showString += '<tr><td>Name Range:</td><td><input type="text" title="switch[1-4] or switch1-switch4" ' +
+    'name="idataplexswitchname" value="' + getDiscoverEnv('idataplexswitchname') + '"></td>';
+    //switches start ip
+    if (getDiscoverEnv('idataplexswitchip')){
+        tempip = getDiscoverEnv('idataplexswitchip');
+    }
+    else{
+        tempip = '172.30.10.1';
+    }
+    showString += '<td>Start IP:</td><td><input type="text" title="Format: XXX.XXX.XXX.1, last number must be 1.<br/>172.30.10.1 is suggested." ' + 
+          'name="idataplexswitchip" value="' + tempip + '"></td></tr>';
+    //nodes per switch
+    showString += '<tr><td>Nodes number <br/>per Switch:</td><td><input type="text" title="42: Each switch connect 42 nodes.<br/>Valide Number:20,21,40,41,42."' +
+        'name="idataplexperswitch" value="' + getDiscoverEnv('idataplexperswitch') + '"></td><td></td><td></td></tr>';
+    showString += '</tbody></table></div>';
+    
+    $('#discoverContentDiv').append(showString);
+    
+    $('#discoverContentDiv [title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 1
+    });
+    
+    createDiscoverButtons();
+}
+
+/**
+ * step 2: collect and check the basic pattern input on page.
+ * 
+ * @param 
+ * 
+ * @return   false: the input contains error, can not go to next step
+ *           true : the input are correct, go to the next step
+ */
+function idataplexCheckBasic(operType){
+    collectInputValue();
+
+    //click back button, do not need check, only collect input value is ok.
+    if ('back' == operType){
+        return true;
+    }
+    
+    $('#patternDiv .ui-state-error').remove();
+    var errMessage = '';
+    var nodename = getDiscoverEnv('idataplexnodename');
+    var nodeip = getDiscoverEnv('idataplexnodeip');
+    var bmcname = getDiscoverEnv('idataplexbmcname');
+    var bmcip = getDiscoverEnv('idataplexbmcip');
+    var switchname = getDiscoverEnv('idataplexswitchname');
+    var switchip = getDiscoverEnv('idataplexswitchip');
+    var nodesperswitch = getDiscoverEnv('idataplexperswitch');
+    var nodesperframe = getDiscoverEnv('idataplexperframe');
+    
+    //all fields should input
+    if (!nodename){
+        errMessage += 'Input the Nodes name.<br/>';
+    }
+    
+    if (!verifyIp(nodeip)){
+        errMessage += 'Input valid Nodes start ip.<br/>';
+    }
+    
+    if (!bmcname){
+        errMessage += 'Input the BMC name.<br/>';
+    }
+    
+    if (!verifyIp(bmcip)){
+        errMessage += 'Input valid BMC start ip.<br/>';
+    }
+    
+    if (!switchname){
+        errMessage += 'Input the switch name.<br/>';
+    }
+    
+    if (!verifyIp(switchip)){
+        errMessage += 'Input valid switch start ip.<br/>';
+    }
+    
+    if (!nodesperswitch){
+        errMessage += 'Input the nodes number per switch.<br/>';
+    }
+    
+    if (!nodesperframe){
+        errMessage += 'Input the nodes number per frame.<br/>';
+    }
+    
+    if ('' != errMessage){
+        var warnBar = createWarnBar(errMessage);
+        $('#patternDiv').prepend(warnBar);
+        return false;
+    }
+    
+    //check the relations among nodes, bmcs and switches
+    var nodeNum = expandNR(nodename).length;
+    var bmcNum = expandNR(bmcname).length;
+    var switchNum = expandNR(switchname).length;
+    var tempNumber = 0;
+    
+    //nodes number and bmc number
+    if (nodeNum != bmcNum){
+        errMessage += 'The number of Node must equal the number of BMC.<br/>';
+    }
+    
+    //nodes' number calculate by switches
+    tempNumber += Number(nodesperswitch) * switchNum;
+    
+    if (tempNumber < nodeNum){
+        errMessage += 'Input the node number per switch correctly.<br/>';
+    }
+    
+    if ('' != errMessage){
+        var warnBar = createWarnBar(errMessage);
+        $('#patternDiv').prepend(warnBar);
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * step 3: tell users to configure the switches.
+ * 
+ * @param 
+ * 
+ * @return
+ */
+function idataplexInitSwitch(){
+    $('#discoverContentDiv').empty();
+    $('.tooltip').remove();
+    var switchArray = expandNR(getDiscoverEnv('idataplexswitchname'));
+    var switchIp = getDiscoverEnv('idataplexswitchip');
+    var showString = '<div style="min-height:360px" id="switchDiv"><h2>' + steps[currentStep] + '</h2>';
+    showString += '<p>You defined ' + switchArray.length +' switches in last step. Configure them manually please:<br/>';
+    showString += '<ul><li>1. Start IP address: ' + switchIp + ', and the IPs must be continuous.</li>';
+    showString += '<li>2. Enable the SNMP agent on switches.</li>';
+    showString += '<li>3. If you want to use the SNMP V3, the user/password and AuthProto (default is \'md5\') should be set in the switches table.</li>';
+    showString += '<li>4. Click the next button.</li>';
+    showString += '</p>';
+    $('#discoverContentDiv').append(showString);
+    
+    createDiscoverButtons();
+}
+
+/**
+ * step 4: init the interface and dhcp dynamic range for hardware discovery page.
+ * 
+ * @param 
+ * 
+ * @return
+ */
+function idataplexInitNetwork(){
+    $('#discoverContentDiv').empty();
+    $('.tooltip').remove();
+    var startIp = '172.30.200.1';
+    var endIp = '172.30.255.254';
+    var showDiv = $('<div style="min-height:360px" id="networkDiv"><h2>' + steps[currentStep] + '</h2>');
+    var infoBar = createInfoBar('Make sure the discovery NIC\'s IP, start IP addresses and DHCP dynamic IP range are in the same subnet.');
+    showDiv.append(infoBar);
+    //init the ip range by input
+    if (getDiscoverEnv('idataplexIpStart')){
+        startIp = getDiscoverEnv('idataplexIpStart');
+    }
+    
+    if (getDiscoverEnv('idataplexIpEnd')){
+        endIp = getDiscoverEnv('idataplexIpEnd');
+    }
+    var showString = '<table><tbody>';
+    showString += '<tr><td>DHCP Dynamic Range:</td><td><input type="text" name="idataplexIpStart" value="' + startIp + 
+        '" title="A start Ip address for DHCP dynamic range.<br/>172.30.200.1 is suggested.">-<input type="text" name="idataplexIpEnd" value="' + 
+        endIp + '" title="This IP must larger than start IP, and the range must large than the number of nodes and bmcs.<br/>172.30.255.254 is suggested."></td></tr>';
+    showString += '</tbody></table>';
+    showDiv.append(showString);
+    
+    $('#discoverContentDiv').append(showDiv);
+    
+    $('#discoverContentDiv [title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 1
+    });
+    
+    createDiscoverButtons();
+}
+
+/**
+ * step 4: check the dynamic range for dhcp
+ * 
+ * @param 
+ * 
+ * @return
+ */
+function idataplexCheckNetwork(operType){
+    collectInputValue();
+
+    //click back button, do not need check, only collect input value is ok.
+    if ('back' == operType){
+        return true;
+    }
+    
+    $('#networkDiv .ui-state-error').remove();
+    var startIp = getDiscoverEnv('idataplexIpStart');
+    var endIp = getDiscoverEnv('idataplexIpEnd');
+    var errMessage = '';
+    if(!verifyIp(startIp)){
+        errMessage += 'Input the correct start IP address.<br/>';
+    }
+    
+    if(!verifyIp(endIp)){
+        errMessage += 'Input the correct end IP address.<br/>';
+    }
+    
+    if ('' != errMessage){
+        var warnBar = createWarnBar(errMessage);
+        $('#networkDiv').prepend(warnBar);
+        return false;
+    }
+    
+    if (ip2Decimal(endIp) <= ip2Decimal(startIp)){
+        var warnBar = createWarnBar('the end IP must larger than start IP.<br/>');
+        $('#networkDiv').prepend(warnBar);
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * step 5: configure service by xcat command and restart 
+ * 
+ * @param 
+ * 
+ * @return
+ */
+function idataplexInitService(operType){
+    $('#discoverContentDiv').empty();
+    $('.tooltip').remove();
+    var showStr = '<div style="min-height:360px" id="serviceDiv"><h2>' + steps[currentStep] + '</h2>';
+    showStr += '<ul>';
+    showStr += '<li id="fileLine"><span class="ui-icon ui-icon-wrench"></span>Create configure file for xcatsetup.</li>';
+    showStr += '<li id="setupLine"><span class="ui-icon ui-icon-wrench"></span>Wrote Objects into xCAT database by xcatsetup.</li>';
+    showStr += '<li id="hostsLine"><span class="ui-icon ui-icon-wrench"></span>Configure Hosts.</li>';
+    showStr += '<li id="dnsLine"><span class="ui-icon ui-icon-wrench"></span>Configure DNS.</li>';
+    showStr += '<li id="dhcpLine"><span class="ui-icon ui-icon-wrench"></span>Configure DHCP.</li>';
+    showStr += '<li id="conserverLine"><span class="ui-icon ui-icon-wrench"></span>Configure Conserver.</li>';
+    showStr += '</ul>';
+    showStr += '</div>';
+    $('#discoverContentDiv').append(showStr);
+    
+    if ('back' == operType){
+        createDiscoverButtons();
+        return;
+    }
+    
+    idataplexCreateSetupFile();
+}
+
+/**
+ * step 5: create the stanza file for xcatsetup
+ * 
+ * @param 
+ * 
+ * @return
+ */
+function idataplexCreateSetupFile(){
+    var fileContent = '';
+    
+    //add the waiting loader on page
+    $('#fileLine').append(createLoader());
+    
+    //site
+    fileContent += "xcat-site:\n" + 
+                   "  domain = cluster.com\n" +
+                   "  cluster-type = idataplex\n";
+    
+    //xcat-service-lan
+    fileContent += "xcat-service-lan:\n" +
+                   "  dhcp-dynamic-range = " + getDiscoverEnv('idataplexIpStart') + "-" + getDiscoverEnv('idataplexIpEnd') + "\n";
+    //xcat-switch
+    fileContent += "xcat-switches:\n" +
+                   "  hostname-range = " + getDiscoverEnv('idataplexswitchname') + "\n" +
+                   "  starting-ip = " + getDiscoverEnv('idataplexswitchip') + "\n";
+    
+    //xcat-node
+    fileContent += "xcat-nodes:\n" +
+                   "  hostname-range = " + getDiscoverEnv('idataplexnodename') + "\n" +
+                   "  starting-ip = " + getDiscoverEnv('idataplexnodeip') + "\n" +
+                   "  num-nodes-per-switch = " + getDiscoverEnv('idataplexperswitch') + "\n" +
+                   "  num-nodes-per-frame = " + getDiscoverEnv('idataplexperframe') + "\n";
+    
+    //xcat-bmc
+    fileContent += "xcat-bmcs:\n" +
+                   "  hostname-range = " + getDiscoverEnv('idataplexbmcname') + "\n" +
+                   "  starting-ip = " + getDiscoverEnv('idataplexbmcip') + "\n";
+    
+    $.ajax({
+        url : 'lib/systemcmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'echo -e "' + fileContent + '" > /tmp/webxcat.conf'
+        },
+        
+        success : function(data){
+            $('#fileLine img').remove();
+            var tempSpan = $('#fileLine').find('span');
+            tempSpan.removeClass('ui-icon-wrench');
+            tempSpan.addClass('ui-icon-check');
+            idataplexSetup();
+        }
+    });
+}
+
+/**
+ * step 5: run xcatsetup to create the database for idataplex cluster
+ * 
+ * @param 
+ * 
+ * @return
+ */
+function idataplexSetup(){
+    $('#setupLine').append(createLoader());
+    $.ajax({
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'xcatsetup',
+            tgt : '',
+            args : '/tmp/webxcat.conf',
+            msg : ''
+        },
+        
+        success : function(data){
+            $('#setupLine img').remove();
+            var tempSpan = $('#setupLine').find('span');
+            tempSpan.removeClass('ui-icon-wrench');
+            tempSpan.addClass('ui-icon-check');
+            idataplexMakehosts();
+        }
+    });
+}
+/**
+ * step 5: run makehosts for idataplex
+ * 
+ * @param 
+ * 
+ * @return
+ */
+function idataplexMakehosts(){
+    createDiscoverButtons();
+}
+/**
+ * step 5: run makedns for idataplex
+ * 
+ * @param 
+ * 
+ * @return
+ */
+function idataplexMakedns(){
+    
+}
+/**
+ * step 5: run make dhcp for idataplex
+ * 
+ * @param 
+ * 
+ * @return
+ */
+function idataplexMakedhcp(){
+    
+}
+/**
+ * step 5: run make conserver for idataplex
+ * 
+ * @param 
+ * 
+ * @return
+ */
+function idataplexMakeconserver(){
+    
+}
+/**
+ * step 6: tell users to power on all hardware for discovery
+ * 
+ * @param 
+ * 
+ * @return
+ */
+function idataplexInitPowerOn(){
+    $('#discoverContentDiv').empty();
+    $('.tooltip').remove();
+    var showString = '<div style="min-height:360px" id="poweronDiv"><h2>' + steps[currentStep] + '</h2>';
+    showString += 'Walk over to each idataplex server and push the power button to power on. <br/>' +
+                  'After about 5-10 minutes, nodes should be configured and ready for hardware management.<br/>';
+    $('#discoverContentDiv').append(showString);
+    
+    //add the refresh button
+    var refreshButton = createButton("Refresh");
+    $('#poweronDiv').append(refreshButton);
+    refreshButton.bind('click', function(){
+        var tempObj = $('#poweronDiv div p');
+        tempObj.empty().append(createLoader());
+        
+        $.ajax({
+            url : 'lib/cmd.php',
+            dataType : 'json',
+            data : {
+                cmd : 'rpower',
+                tgt : 'all',
+                args : 'stat',
+                msg : ''
+            },
+            
+            success : function(data){
+                var tempObj = $('#poweronDiv div p');
+                tempObj.empty();
+                for(var i in data.rsp){
+                    tempObj.append(data.rsp[i] + '<br/>');
+                }
+            }
+        });
+    });
+    
+    //add the info area
+    var infoBar = createInfoBar('Click the refresh button to check all nodes\' status.');
+    $('#poweronDiv').append(infoBar);
+    createDiscoverButtons();
 }

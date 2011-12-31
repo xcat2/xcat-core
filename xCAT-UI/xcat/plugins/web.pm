@@ -49,8 +49,10 @@ sub process_request {
 		'installganglia'=> \&web_installganglia,
 		'mkcondition'   => \&web_mkcondition,
 		'monls'         => \&web_monls,
+		'dynamiciprange'=> \&web_dynamiciprange,
 		'discover'      => \&web_discover,
 		'updatevpd'     => \&web_updatevpd,
+		'writeconfigfile'=> \&web_writeconfigfile,
 		'createimage'   => \&web_createimage,
         'provision'     => \&web_provision,
         'summary'       => \&web_summary,
@@ -1100,22 +1102,35 @@ sub web_monls() {
 	$callback->( { data => $ret } );
 }
 
+sub web_dynamiciprange{
+	my ($request, $callback, $sub_req ) = @_;
+	my $iprange = $request->{arg}->[1];
+
+	open(TEMPFILE, '>/tmp/iprange.conf');
+	print TEMPFILE "xcat-service-lan:\n";
+	print TEMPFILE "dhcp-dynamic-range = " . $iprange . "\n";
+	close(TEMPFILE);
+
+	#run xcatsetup command to change the dynamic ip range
+	xCAT::Utils->runcmd("xcatsetup /tmp/iprange.conf", -1, 1);
+	unlink('/tmp/iprange.conf');
+	xCAT::Utils->runcmd("makedhcp -n", -1, 1);
+	#restart the dhcp server
+	if (xCAT::Utils->isLinux()){
+	#	xCAT::Utils->runcmd("service dhcpd restart", -1, 1);
+	}
+	else{
+	#	xCAT::Utils->runcmd("startsrc -s dhcpsd", -1, 1);
+	}
+}
+
 sub web_discover {
 	my ( $request, $callback, $sub_req ) = @_;
-	my $type1 = '';
-	my $type2 = uc( $request->{arg}->[1] );
-
-	if ( 'FRAME' eq $type1 ) {
-		$type1 = 'BPA';
-	} elsif ( 'CEC' eq $request->{arg}->[1] ) {
-		$type1 = 'FSP';
-	} elsif ( 'HMC' eq $request->{arg}->[1] ) {
-		$type1 = 'HMC';
-	}
+	my $type = uc( $request->{arg}->[1] );
 
 	my $retStr  = '';
 	my $retInfo =
-	  xCAT::Utils->runcmd( "lsslp -s $type1 2>null | grep $type2 | awk '{print \$2\"-\"\$3}'",
+	  xCAT::Utils->runcmd( "lsslp -s -m $type 2>/dev/null | grep $type | awk '{print \$1\":\" \$2\"-\"\$3}'",
 		-1, 1 );
 	if ( scalar(@$retInfo) < 1 ) {
 		$retStr = 'Error: Can not discover frames in cluster!';
@@ -1145,6 +1160,18 @@ sub web_updatevpd {
 	}
 
 	$vpdtab->close();
+}
+
+sub web_writeconfigfile{
+	my ( $request, $callback, $sub_req ) = @_;
+	my $filename = $request->{arg}->[1];
+	my $content = $request->{arg}->[2];
+
+	open(TEMPFILE, '>'.$filename);
+	print TEMPFILE $content;
+	
+	close(TEMPFILE);
+	return;
 }
 
 sub web_createimage {
