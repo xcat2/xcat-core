@@ -482,7 +482,7 @@ sub getIfcfgByNic {
 
 	# If it is SLES 10 - ifcfg-qeth file is in /etc/sysconfig/network
 	elsif ( $os =~ m/SUSE Linux Enterprise Server 10/i ) {
-		$out = `ssh -o ConnectTimeout=5 $node "ls /etc/sysconfig/network/ifcfg-qeth*" | grep "$nic"`;
+		$out = `ssh -o ConnectTimeout=5 $node "ls /etc/sysconfig/network/ifcfg-qeth*" | grep -i "$nic"`;
 		@parms = split( '\n', $out );
 		return ( $parms[0] );
 	}
@@ -498,7 +498,7 @@ sub getIfcfgByNic {
 		foreach (@file) {
 
 			# If the network file contains the NIC address
-			$out = `ssh -o ConnectTimeout=5 $node "cat $_" | grep "$nic"`;
+			$out = `ssh -o ConnectTimeout=5 $node "cat $_" | grep -i "$nic"`;
 			if ($out) {
 
 				# Return ifcfg-eth file path

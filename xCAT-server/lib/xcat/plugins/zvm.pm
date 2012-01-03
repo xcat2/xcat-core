@@ -1819,7 +1819,7 @@ sub makeVM {
 			my $nicDef = xCAT::zvmUtils->replaceStr( $oldNicDef, $netName, "$netName MACID $macId" );
 
 			# Append MACID at the end
-			$out = `sed --in-place -e "s,$oldNicDef,$nicDef,g" $userEntry`;
+			$out = `sed --in-place -e "s,$oldNicDef,$nicDef,i" $userEntry`;
 		}
 
 		# SCP file over to HCP
@@ -2418,7 +2418,7 @@ sub clone {
 	$out = `cp $srcUserEntry $userEntry`;
 
 	# Replace source userID with target userID
-	$out = `sed --in-place -e "s,$sourceId,$tgtUserId,g" $userEntry`;
+	$out = `sed --in-place -e "s,$sourceId,$tgtUserId,i" $userEntry`;
 
 	# Get target MAC address in 'mac' table
 	my $targetMac;
@@ -2460,7 +2460,7 @@ sub clone {
 			$oldMacId = xCAT::zvmUtils->trimStr($oldMacId);
 
 			# Replace old MACID
-			$out = `sed --in-place -e "s,$oldMacId,$macId,g" $userEntry`;
+			$out = `sed --in-place -e "s,$oldMacId,$macId,i" $userEntry`;
 		}
 		else {
 
@@ -2470,7 +2470,7 @@ sub clone {
 			my $nicDef = xCAT::zvmUtils->replaceStr( $oldNicDef, $hcpNetName, "$hcpNetName MACID $macId" );
 
 			# Append MACID at the end
-			$out = `sed --in-place -e "s,$oldNicDef,$nicDef,g" $userEntry`;
+			$out = `sed --in-place -e "s,$oldNicDef,$nicDef,i" $userEntry`;
 		}
 	}
 
@@ -2907,8 +2907,8 @@ EOM"`;
 			# Location of this file depends on the OS
 			my $ifcfgPath = $cloneMntPt;
 			$ifcfgPath .= $srcIfcfg;
-			$out = `ssh $hcp sed --in-place -e "s/$sourceNode/$tgtNode/g" \ -e "s/$sourceIp/$targetIp/g" $cloneMntPt/etc/hosts`;
-			$out = `ssh $hcp sed --in-place -e "s/$sourceIp/$targetIp/g" \ -e "s/$sourceNode/$tgtNode/g" $ifcfgPath`;
+			$out = `ssh $hcp sed --in-place -e "s/$sourceNode/$tgtNode/g" \ -e "s/$sourceIp/$targetIp/i" $cloneMntPt/etc/hosts`;
+			$out = `ssh $hcp sed --in-place -e "s/$sourceIp/$targetIp/i" \ -e "s/$sourceNode/$tgtNode/g" $ifcfgPath`;
 
 			# Set MAC address
 			my $networkFile = $tgtNode . "NetworkConfig";
@@ -2962,7 +2962,7 @@ EOM"`;
 					}
 
 					# Set MAC address
-					$out = `ssh $hcp sed --in-place -e "s/$srcMac/$targetMac/g" $ifcfgPath`;
+					$out = `ssh $hcp sed --in-place -e "s/$srcMac/$targetMac/i" $ifcfgPath`;
 				}
 
 				#*** SUSE ***
