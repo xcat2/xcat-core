@@ -1809,11 +1809,11 @@ sub cleanupPSTable
      my $pslist=$entry->{'postscripts'};
      if ($pslist) {
        my $servicenode=0;
-       my $newpslist ="\"";
+       my $newpslist ="\'";
        my @ps= split(",", $pslist);    
        # now check is servicenode and xcatclient and/or xcatserver in the list
        foreach my $pscript (@ps) {
-         if ($pscript =~ /^servicenode/i) { # found servicenode ps
+         if ($pscript =~ /(^|\|)servicenode($|\|)/i) { # found servicenode ps
             $newpslist .=$pscript;
             $newpslist .=",";
             $servicenode=1; 
@@ -1822,7 +1822,7 @@ sub cleanupPSTable
                $newpslist .=$pscript;
                $newpslist .=",";
             } else { # servicenode found, do not keep xcatserver/xcatclient 
-             if (($pscript =~ /^xcatserver/i) ||($pscript =~ /^xcatclient/i)) {
+             if (($pscript =~ /(^|\|)xcatserver($|\|)/i) ||($pscript =~ /(^|\|)xcatclient($|\|)/i))  {
                    next;
                } else {
                  $newpslist .=$pscript;
@@ -1832,7 +1832,7 @@ sub cleanupPSTable
          }
        }
        chop $newpslist;
-       $newpslist .="\""; 
+       $newpslist .="\'"; 
        my $chtabcmds .=
        "$::XCATROOT/sbin/chtab node=$node postscripts.postscripts=$newpslist;";
         my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
