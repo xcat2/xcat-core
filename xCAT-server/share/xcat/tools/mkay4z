@@ -42,7 +42,14 @@ while (!($version eq '10' || $version eq '11')) {
 }
 
 # Get template path
-my $template_path = ask("Where do you want to place the template? (e.g. /tmp/autoyast.tmpl) ");
+my $template_path = '';
+while (!$template_path) {
+	$template_path = ask("Where do you want to place the template? (e.g. /tmp/autoyast.tmpl) ");
+	
+	if (!$template_path) {
+		print "  A path for the template is needed!\n";
+	}
+}
 
 # Default dasd and partition configuration
 # Used for testing
@@ -52,14 +59,14 @@ my %dasd_default = (
 		'type' => 'dasd_eckd_mod'
 	},
 	'0.0.0101' => {
-		'device_name' => '/dev/dasda',
+		'device_name' => '/dev/dasdb',
 		'type' => 'dasd_eckd_mod'
 	}
 );
 my %partitions_default = (
 	'/dev/dasda' => {
 		'device_fs' => 'ext4',
-		'device_size' => '4g',
+		'device_size' => 'max',
 		'device_mount' => '',
 		'device_lvm' => 'VG'
 	},
@@ -88,6 +95,7 @@ my %partitions_default = (
 );
 
 # Set default parameters for networking and root password
+# DHCP is set by default, but can changed based on user input
 my %parms = (
 	'hosts' => {
 		'localhost' => {
@@ -120,7 +128,7 @@ my %parms = (
 	'software' => 'Minimal'
 );
 
-# Use DHCP?
+# Configure interfaces (static or dhcp)
 my $dhcp = '';
 while (!($dhcp eq 'Y' || $dhcp eq 'y' || $dhcp eq 'Yes' || $dhcp eq 'yes' || $dhcp eq 'N' || $dhcp eq 'n' || $dhcp eq 'No' || $dhcp eq 'no')) {
 	$dhcp = ask("  Do you want to use DHCP? (yes or no) ");
@@ -304,7 +312,7 @@ my @args;
 
 $ask = 1;
 while ($ask) {
-	$selected = ask("Device to configure? (See list above)\nLeave blank and hit Enter to go to next step.\n");
+	$selected = ask("Which device do you want to configure? (See list above)\nLeave blank and hit Enter to go to next step.\n");
 	if ($selected && int($selected) > @device_list) {
 		print "  Unknown value!\n";
 		redo;
@@ -591,9 +599,6 @@ exit();
 
 
 
-
-
-
 #-------------------------------------------------------
 
 =head3   trim
@@ -792,7 +797,7 @@ END
 =head3   createInterfaces
 
 	Description	: Create the <interfaces> section
-    Arguments	: Interfaces attached to server
+    Arguments	: Interfaces hash
     Returns		: <interfaces> section
     Example		: my $section = createInterfaces($interfaces_ref);
     
@@ -1128,7 +1133,7 @@ END
 =head3   createNicModules
 
 	Description	: Create the <modules> section for each interface attached
-    Arguments	: Hash table of interfaces
+    Arguments	: Interfaces hash
     Returns		: <modules> section
     Example		: my $section = createNicModules(%interfaces);
     
@@ -1171,7 +1176,7 @@ END
 =head3   createSoftware
 
 	Description	: Create the <software> section
-    Arguments	: Software to be installed
+    Arguments	: Software list
     Returns		: <software> section
     Example		: my $section = createSoftware($dns);
     
@@ -1210,7 +1215,7 @@ END
 =head3   createRoutes
 
 	Description	: Create the <routes> section
-    Arguments	: Routing configuration
+    Arguments	: Interfaces hash
     Returns		: <routes> section
     Example		: my $section = createRoutes($route);
     
@@ -1266,7 +1271,7 @@ END
 =head3   createScripts
 
 	Description	: Create the <scripts> section to configure interfaces
-    Arguments	: Hash table of interfaces to configure with post-scripts
+    Arguments	: Interfaces hash
     Returns		: <scripts> section
     Example		: my $section = createScripts(%interfaces);
     
