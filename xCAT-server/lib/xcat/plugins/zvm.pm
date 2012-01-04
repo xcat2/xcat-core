@@ -2910,6 +2910,9 @@ EOM"`;
 			$out = `ssh $hcp sed --in-place -e "s/$sourceNode/$tgtNode/g" \ -e "s/$sourceIp/$targetIp/i" $cloneMntPt/etc/hosts`;
 			$out = `ssh $hcp sed --in-place -e "s/$sourceIp/$targetIp/i" \ -e "s/$sourceNode/$tgtNode/g" $ifcfgPath`;
 
+			# Get network layer
+			my $layer = xCAT::zvmCPUtils->getNetworkLayer( $hcp, $hcpNetName );
+			
 			# Set MAC address
 			my $networkFile = $tgtNode . "NetworkConfig";
 			if ( $srcOs =~ m/Red Hat/i ) {
@@ -2922,16 +2925,19 @@ EOM"`;
 
 				# SUSE only
 				$out = `ssh $hcp "cat $ifcfgPath" | grep -v "LLADDR" | grep -v "UNIQUE" > /tmp/$networkFile`;
-				$out = `echo "LLADDR='$targetMac'" >> /tmp/$networkFile`;
-				$out = `echo "UNIQUE=''" >> /tmp/$networkFile`;
+				
+				# Set to MAC address (only for layer 2)
+				if ( $layer == 2 ) {
+					$out = `echo "LLADDR='$targetMac'" >> /tmp/$networkFile`;
+					$out = `echo "UNIQUE=''" >> /tmp/$networkFile`;
+				}
 			}
 			xCAT::zvmUtils->sendFile( $hcp, "/tmp/$networkFile", $ifcfgPath );
 
 			# Remove network file from /tmp
 			$out = `rm /tmp/$networkFile`;
 
-			# Set to hardware configuration (Only for layer 2)
-			my $layer = xCAT::zvmCPUtils->getNetworkLayer( $hcp, $hcpNetName );
+			# Set to hardware configuration (only for layer 2)
 			if ( $layer == 2 ) {
 
 				#*** Red Hat ***
