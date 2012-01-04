@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
+# IBM(c) 2012 EPL license http://www.eclipse.org/legal/epl-v10.html
 #-------------------------------------------------------
 
 =head1	mkay4z
@@ -8,10 +8,8 @@
 	Author: 	Thang Pham (thang.pham@us.ibm.com)
 	Returns:	Autoyast template
 
-    Usage: 		mkay4z [conf_file] [ref_template], where
-    				[conf_file]: File containing Linux configuration
-    				[ref_template]: Reference autoyast template to build off of
-    Example: 	# ./mkay4z conf.txt ref.sles11.s390x.tmpl > custom.sles11.s390x.tmpl
+    Usage: 		mkay4z
+    Example: 	# ./mkay4z
     
 =cut
 
@@ -19,52 +17,484 @@
 use strict;
 use warnings;
 
-# Check arguments
-if(@ARGV != 2) {
+# Show help
+if (@ARGV > 0) {
 	print <<END;
-Invalid arguments!
+Create an autoyast template to be used by xCAT for Linux on System z.
+Created by Thang Pham (thang.pham\@us.ibm.com)
 
-Create an autoyast template for Linux on System z. For more information, 
-refer to http://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_zVM#SUSE_Linux_Enterprise_Server_6.
-
-Usage: mkay4z [conf file] [ref template], where
-    	 [conf file]: File containing Linux configuration
-    	 [ref template]: Reference autoyast template to build off of
-Example: # ./mkay4z conf.txt ref.sles11.s390x.tmpl > custom.sles11.s390x.tmpl
+IBM (c)2012 EPL license http://www.eclipse.org/legal/epl-v10.html
 END
 	exit();
 }
 
-# Get conf file and reference template
-my $file = $ARGV[0];
-my $tmpl = $ARGV[1];
+# Show help
+print "Creating autoyast template for Linux on System z...\n";
 
-# Create parameters to search for
-my @search = ('dasd', 'partitions', 'software');
-# Get parameters from conf file
-my %parms = getParms($file);
-# Set parameters for networking and root password
-$parms{'hosts'} = '[host_address=replace_host_address,name=replace_long_name replace_short_name]';
-$parms{'dns'} = '[hostname=replace_hostname,dhcp_hostname=true,dhcp_resolv=true,domain=replace_domain,nameserver=replace_nameserver]';
-$parms{'interfaces'} = '[device=replace_device,bootproto=dhcp,lladdr=replace_lladdr,chanids=replace_ccw_chan_ids]';
-$parms{'root_password'} = 'replace_root_password';
-
-# Check that all parameters are given
-my $missing = '';
-foreach(@search) {
-	if(!$parms{$_}) {
-		$missing .= "$_ ";
+# Get distro version
+my $version = '';
+while (!($version eq '10' || $version eq '11')) {
+	$version = ask("Select SUSE Linux Enterprise Server version? (10 or 11) ");
+	
+	if (!($version eq '10' || $version eq '11')) {
+		print "  Unknown value!\n";
 	}
 }
 
-# If there are missing paramters
-if($missing) {
-	print "Please supply the following parameters in $file: $missing";
-	exit();
+# Get template path
+my $template_path = ask("Where do you want to place the template? (e.g. /tmp/autoyast.tmpl) ");
+
+# Default dasd and partition configuration
+# Used for testing
+my %dasd_default = (
+	'0.0.0100' => {
+		'device_name' => '/dev/dasda',
+		'type' => 'dasd_eckd_mod'
+	},
+	'0.0.0101' => {
+		'device_name' => '/dev/dasda',
+		'type' => 'dasd_eckd_mod'
+	}
+);
+my %partitions_default = (
+	'/dev/dasda' => {
+		'device_fs' => 'ext4',
+		'device_size' => '4g',
+		'device_mount' => '',
+		'device_lvm' => 'VG'
+	},
+	'/dev/dasdb' => {
+		'device_fs' => 'ext4',
+		'device_size' => 'max',
+		'device_mount' => '',
+		'device_lvm' => 'VG'
+	},
+	'/dev/VG' => {
+		'lvm' => {
+			'lv_root' => {
+				'name' => 'lv_root',
+				'fs' => 'ext4',
+				'mount' => '/',
+				'size' => '4g'
+			},
+			'lv_opt' => {
+				'name' => 'lv_opt',
+				'fs' => 'ext4',
+				'mount' => '/opt',
+				'size' => 'max'
+			}
+		}
+	}
+);
+
+# Set default parameters for networking and root password
+my %parms = (
+	'hosts' => {
+		'localhost' => {
+			'host_address' => '127.0.0.1',
+			'name' => 'localhost'
+		},
+		'xcat' => {
+			'host_address' => 'replace_host_address',
+			'name' => 'replace_long_name replace_short_name'
+		}	
+	},
+	'dns' => {
+		'xcat' => {
+			'hostname' => 'replace_hostname',
+			'dhcp_hostname' => 'true',
+			'dhcp_resolv' => 'true',
+			'domain' => 'replace_domain',
+			'nameserver' => 'replace_nameserver'
+		}
+	},
+	'interfaces' => {
+		'xcat' => {
+			'bootproto' => 'dhcp',
+			'device' => 'replace_device',
+			'lladdr' => 'replace_lladdr',
+			'chanids' => 'replace_ccw_chan_ids'
+		}
+	},
+	'root_password' => 'replace_root_password',
+	'software' => 'Minimal'
+);
+
+# Use DHCP?
+my $dhcp = '';
+while (!($dhcp eq 'Y' || $dhcp eq 'y' || $dhcp eq 'Yes' || $dhcp eq 'yes' || $dhcp eq 'N' || $dhcp eq 'n' || $dhcp eq 'No' || $dhcp eq 'no')) {
+	$dhcp = ask("  Do you want to use DHCP? (yes or no) ");
+	
+	if ($dhcp eq 'Y' || $dhcp eq 'y' || $dhcp eq 'Yes' || $dhcp eq 'yes') {
+		$parms{'interfaces'} = {
+			'xcat' => {
+				'bootproto' => 'dhcp',
+				'device' => 'replace_device',
+				'lladdr' => 'replace_lladdr',
+				'chanids' => 'replace_ccw_chan_ids'
+			}
+		};
+	} elsif ($dhcp eq 'N' || $dhcp eq 'n' || $dhcp eq 'No' || $dhcp eq 'no') {
+		$parms{'interfaces'} = {
+			'xcat' => {
+				'bootproto' => 'static',
+				'device' => 'replace_device',
+				'lladdr' => 'replace_lladdr',
+				'ipaddr' => 'replace_ipaddr',
+				'netmask' => 'replace_netmask',
+				'broadcast' => 'replace_broadcast',
+				'network' => 'replace_network',
+				'chanids' => 'replace_ccw_chan_ids'
+			}
+		};
+	} else {
+		print "  Unknown value!\n";
+	}
+}
+
+# Hash array containing autoyast configuration
+my %dasd;
+my %partitions;
+my %lvm;
+
+# Prompts user for input?
+my $ask = 0;
+
+# Configure dasd
+my $dasd_option = 0;
+my $addr;
+my $dasd_type;
+my $device_name;
+my $device_type;
+my $tmp;
+my $i = 0;
+
+print <<END;
+
+CONFIGURING DASD...
+END
+while ($dasd_option != 4) {
+	print <<END;
+Select from the following options:
+  (1) Add DASD
+  (2) Remove DASD
+  (3) Show DASD configuration
+  (4) Go to next step
+END
+	$dasd_option = <>;
+	$dasd_option = trim($dasd_option);
+	while (!($dasd_option eq '1' || $dasd_option eq '2' || $dasd_option eq '3' || $dasd_option eq '4')) {
+		print "  Unknown value!\n";
+		$dasd_option = <>;
+		$dasd_option = trim($dasd_option);
+	}
+	
+	# Add dasd to template
+	if ($dasd_option == '1') {
+		# Get virtual address
+		$addr = ask("  What is the virtual address? ");
+		while (length($addr) < 4) { # Address length must be 4
+			$addr = '0' . $addr;
+		}
+		$addr = '0.0.' . $addr;
+		
+		# Get dasd type
+		$ask = 1;
+		while ($ask) {
+			$dasd_type = ask("  What is the type? (eckd or fba) ");
+			if ($dasd_type eq 'eckd') {
+				$dasd_type = 'dasd_eckd_mod';
+				$ask = 0;
+			} elsif ($dasd_type eq 'fba') {
+				$dasd_type = 'dasd_fba_mod';
+				$ask = 0;
+			} else {
+				print "    Unknown value!\n";
+			}
+		}
+		
+		# Save dasd in hash
+		$dasd{$addr}{'type'} = $dasd_type;
+	} 
+	
+	# Remove dasd from template
+	elsif ($dasd_option == '2') {
+		$addr = ask("  What is the virtual address to remove? ");
+		while (length($addr) < 4) { # Address length must be 4
+			$addr = '0' . $addr;
+		}
+		$addr = '0.0.' . $addr;
+		
+		# Remove from hash
+		delete $dasd{$addr};
+	} 
+
+	elsif ($dasd_option == '3') {
+		# Show configuration
+		print <<END;
+#  |   Address   |   Type   
+----------------------------
+END
+		foreach my $addr(sort keys %dasd){
+			$device_type = $dasd{$addr}{'type'};
+			print (pad($i, 3) . " " . pad($addr, 13) . " " . pad($device_type, 10) . "\n");
+			$i++;
+		}
+	}
+	
+	elsif ($dasd_option == '4') {
+		# Do nothing, go to next step	
+	} else {
+		print "  Unknown value!\n"
+	}
+}
+
+# Assign device names
+my @dasd_device_list = ('/dev/dasda', '/dev/dasdb', '/dev/dasdc', '/dev/dasdd', '/dev/dasde', '/dev/dasdf', '/dev/dasdg',
+'/dev/dasdh', '/dev/dasdi', '/dev/dasdj', '/dev/dasdk', '/dev/dasdl', '/dev/dasdm', '/dev/dasdn', '/dev/dasdo', '/dev/dasdp',
+'/dev/dasdq', '/dev/dasdr', '/dev/dasds', '/dev/dasdt', '/dev/dasdu', '/dev/dasdv', '/dev/dasdw', '/dev/dasdx', '/dev/dasdy',
+'/dev/dasdz');
+my $dasd_partition_info;
+my @device_list;
+$i = 0;
+for $addr (sort keys %dasd) {
+	# Assign a device name from list
+	my $device_name = $dasd_device_list[$i];
+
+	# Save dasd in hash
+	$dasd{$addr}{'device_name'} = $device_name;
+
+	# Save partition in hash
+	$partitions{$device_name}{'device_fs'} = '';
+	$partitions{$device_name}{'device_size'} = '';
+	$partitions{$device_name}{'device_mount'} = '';
+	$partitions{$device_name}{'device_lvm'} = '';
+	
+	# Create device list
+	$device_list[$i] = pad($device_name, 12) . " " . pad($addr, 13) . " " . pad($dasd{$addr}{'type'}, 7);
+	$i++;
+}
+
+print <<END;
+
+CONFIGURING PARTITIONS...
+Select a device from the list below to create a new partition.
+END
+print <<END;
+#  |   Device   |   Address   |   Type   
+---------------------------------------------
+END
+
+my $ask_lvm = 0;
+my $lvm;
+my $lvm_group;
+
+my $device_fs;
+my $device_mount;
+my $device_size;
+
+# Show device list
+for ($i = 0; $i < @device_list; $i++) {
+	print(pad($i, 3) . " " . $device_list[$i]. "\n");
+}
+
+# Configure device
+my $selected;
+my @args;
+
+$ask = 1;
+while ($ask) {
+	$selected = ask("Device to configure? (See list above)\nLeave blank and hit Enter to go to next step.\n");
+	if ($selected && int($selected) > @device_list) {
+		print "  Unknown value!\n";
+		redo;
+	}
+	
+	# Only configure if a device is selected
+	if (length($selected)) {
+		$selected = int($selected);
+		
+		@args = split('   ', $device_list[$selected]);
+		$device_name = $args[0];
+
+		# Get device filesystem
+		$device_fs = '';
+		while (!($device_fs eq 'ext2' || $device_fs eq 'ext3' || $device_fs eq 'ext4' || $device_fs eq 'swap')) {
+			$device_fs = ask("  What is the filesystem for $device_name? (ext2, ext3, ext4, or swap) ");
+			
+			if (!($device_fs eq 'ext2' || $device_fs eq 'ext3' || $device_fs eq 'ext4' || $device_fs eq 'swap')) {
+				print "    Unknown value!\n";
+			}
+		}
+		
+		# Get partition size
+		$device_size = '';
+		while (!$device_size) {
+			$device_size = ask("  What is the partition size? (e.g. 1g, 2g, or max) ");
+			if (!$device_size) {
+				print "  Please give a partition size!";
+			}
+		}
+		
+		# Is partition an LVM
+		$lvm = '';
+		while (!($lvm eq 'Y' || $lvm eq 'y' || $lvm eq 'Yes' || $lvm eq 'yes' || $lvm eq 'N' || $lvm eq 'n' || $lvm eq 'No' || $lvm eq 'no')) {
+			$lvm = ask("  Do you want to assign it to an LVM group? (yes or no) ");
+			$lvm_group = "";
+			$device_mount = "";
+		
+			if ($lvm eq 'Y' || $lvm eq 'y' || $lvm eq 'Yes' || $lvm eq 'yes') {
+				# Get partition LVM group
+				$lvm_group = ask("  What is the LVM group? ");
+				$ask_lvm = 1;
+				
+				# Create new entry for volume group
+				$tmp = '/dev/' . $lvm_group;
+				$partitions{$tmp}{'device_lvm'} = $lvm_group;
+			} elsif ($lvm eq 'N' || $lvm eq 'n' || $lvm eq 'No' || $lvm eq 'no') {
+				# Get partition mount point
+				$device_mount = ask("  What is the mount point? ");
+			} else {
+				print "    Unknown value!\n";
+			}
+		}
+		
+		# Save dasd in hash
+		$partitions{$device_name}{'device_fs'} = $device_fs;
+		$partitions{$device_name}{'device_size'} = $device_size;
+		$partitions{$device_name}{'device_mount'} = $device_mount;
+		$partitions{$device_name}{'device_lvm'} = $lvm_group;
+	} else {
+		$ask = 0;
+	}
+}
+
+# Configure LVM partitions
+my @lvm_list;
+if ($ask_lvm) {
+	print <<END;
+	
+CONFIGURING LVM PARTITIONS...
+Select an LVM group from the list below to create an LVM volume.
+END
+print <<END;
+#  |   LVM group   |   Devices   
+---------------------------------
+END
+
+	# Find LVM groups
+	for $device_name (sort keys %partitions) {
+		if (length($partitions{$device_name}{'device_lvm'}) && $device_name ne "/dev/$partitions{$device_name}{'device_lvm'}") {
+			$lvm{$partitions{$device_name}{'device_lvm'}}{'devices'} .= "$device_name ";
+		}
+	}
+	
+	# Print volume groups
+	$i = 0;
+	for $device_name (sort keys %lvm) {
+		print(pad($i, 3) . " " . pad($device_name, 15) . " " . pad($lvm{$device_name}{'devices'}, 10) . "\n");
+		$lvm_list[$i] = $device_name;
+		$i++;
+	}
+	
+	# Select LVM group
+	$ask = 1;
+	my $lvm_group;
+	my $lvm_vol_name;
+	my $lvm_vol_fs;
+	my $lvm_vol_mount;
+	my $lvm_vol_size;
+	while ($ask) {
+		$lvm_group = ask("Which LVM group do you want to configure? (See list above)\nLeave blank and hit Enter to go to next step.\n");
+		if (length($lvm_group)) {
+			$lvm_group = $lvm_list[int($lvm_group)];
+			$device_name = "/dev/$lvm_group";
+			
+			my $lvm_option = 0;
+			while ($lvm_option != 4) {
+				print <<END;
+		
+Select from the following options:
+  (1) Create LVM volume
+  (2) Remove LVM volume
+  (3) Show LVM configuration
+  (4) Back to menu
+END
+				$lvm_option = <>;
+				
+				# Add an LVM volume to template
+				if ($lvm_option == '1') {
+					# Get dasd virtual address
+					$lvm_vol_name = ask("  What is the LVM volume name? ");
+					
+					# Get device filesystem
+					$lvm_vol_fs = '';
+					while (!($lvm_vol_fs eq 'ext2' || $lvm_vol_fs eq 'ext3' || $lvm_vol_fs eq 'ext4' || $lvm_vol_fs eq 'swap')) {
+						$lvm_vol_fs = ask("  What is the LVM volume filesystem? (ext2, ext3, ext4, or swap) ");
+						
+						if (!($lvm_vol_fs eq 'ext2' || $lvm_vol_fs eq 'ext3' || $lvm_vol_fs eq 'ext4' || $lvm_vol_fs eq 'swap')) {
+							print "    Unknown value!\n";
+						}
+					}
+			
+					# Get partition mount point
+					$lvm_vol_mount = ask("  what is the Mount point? ");
+					
+					# Get partition size
+					$lvm_vol_size = ask("  What is the LVM volume size? (e.g. 1g, 2g, or max) ");
+		
+					# Save dasd in hash
+					$partitions{$device_name}{'lvm'}{$lvm_vol_name} = {
+						'fs' => $lvm_vol_fs,
+						'name' => $lvm_vol_name,
+						'mount' => $lvm_vol_mount,
+						'size' => $lvm_vol_size
+					};
+				} 
+				
+				# Remove an LVM volume from template
+				elsif ($lvm_option == '2') {
+					my $name = ask("  What is the LVM volume to remove? ");
+										
+					# Remove from hash
+					delete $partitions{$device_name}{'lvm'}{$name};
+				}
+
+				elsif ($lvm_option == '3') {
+					# Show configuration
+					print <<END;
+Group      |   Volume   |    Mount   |   Size   
+---------------------------------------------
+END
+
+					for $device_name (sort keys %partitions) {						
+						for $lvm_vol_name (sort keys %{$partitions{$device_name}{'lvm'}}) {
+							print(pad($device_name, 11) . " " . pad($partitions{$device_name}{'lvm'}{$lvm_vol_name}{'name'}, 12) . " " . pad($partitions{$device_name}{'lvm'}{$lvm_vol_name}{'mount'}, 12) . " " . pad($partitions{$device_name}{'lvm'}{$lvm_vol_name}{'size'}, 10));
+						}
+					}
+				}
+				
+				elsif ($lvm_option == '4') {
+					# Do nothing, go to next step	
+				} else {
+					print "  Unknown value!\n"
+				}
+			}
+		} else {
+			$ask = 0;		
+		}
+	} # End of while ($ask)
 }
 
 # Create <dasd> section
-my $dasdSection = createDasd($parms{'dasd'});
+my $dasdSection = createDasd(\%dasd, \%partitions);
+
+# Create <partitions> section
+my $partitionsSection = createPartitions(\%dasd, \%partitions);
+
+# Create <modules> section
+my $dasdModulesSection = createDasdModules(\%dasd);
+my $nicModulesSection = createNicModules($parms{'interfaces'});
 
 # Create <hosts> section
 my $hostsSection = createHosts($parms{'hosts'});
@@ -73,14 +503,7 @@ my $hostsSection = createHosts($parms{'hosts'});
 my $dnsSection = createDns($parms{'dns'});
 
 # Create <interfaces> section
-my ($interfacesSection, %interface) = createInterfaces($parms{'interfaces'});
-
-# Create <modules> section
-my $dasdModulesSection = createDasdModules($parms{'dasd'});
-my $nicModulesSection = createNicModules(%interface);
-
-# Create <partitions> section
-my $partitionsSection = createPartitions($parms{'partitions'});
+my ($interfacesSection) = createInterfaces($parms{'interfaces'});
 
 # Create software section
 my $softwareSection = createSoftware($parms{'software'});
@@ -94,7 +517,7 @@ END
 my $routesSection = createRoutes($parms{'interfaces'});
 
 # Create scripts section
-my $scriptsSection = createScripts(%interface);
+my $scriptsSection = createScripts($parms{'interfaces'});
 
 # Begin to build template
 
@@ -109,87 +532,67 @@ my $scriptsSection = createScripts(%interface);
 # 	insert_root_password
 #   insert_routes
 
-# Read in autoyast template
-open(FILE, $tmpl);
+# Generate autoyast template
+my $tmpl = '';
+if ($version eq '10') {
+	$tmpl = genSles10Tmpl();
+} elsif ($version eq '11') {
+	$tmpl = genSles11Tmpl();
+}
+
+# Print out template
+`echo "$tmpl" > $template_path`;
+
+open(FILE, $template_path);
 # Go through each line
+my $mod_tmpl = '';
 while(my $ln = <FILE>) {
 	# If the line matches the pattern to replace, print replacement
 	if($ln =~ 'insert_devices') {
-		print $dasdSection;
+		$mod_tmpl .= $dasdSection;
 	} elsif($ln =~ 'insert_hosts') {
-		print $hostsSection;
+		$mod_tmpl .= $hostsSection;
 	} elsif($ln =~ 'insert_dns') {
-		print $dnsSection;
+		$mod_tmpl .= $dnsSection;
 	} elsif($ln =~ 'insert_interfaces') {
-		print $interfacesSection;
+		$mod_tmpl .= $interfacesSection;
 	} elsif($ln =~ 'insert_modules') {
-		print $dasdModulesSection;
-		print $nicModulesSection;
+		$mod_tmpl .= $dasdModulesSection;
+		$mod_tmpl .= $nicModulesSection;
 	} elsif($ln =~ 'insert_partitioning_drives') {
-		print $partitionsSection;
+		$mod_tmpl .= $partitionsSection;
 	} elsif($ln =~ 'insert_software_pattern') {
-		print $softwareSection;
+		$mod_tmpl .= $softwareSection;
 	} elsif($ln =~ 'insert_root_password') {
-		print $passwordSection;
+		$mod_tmpl .= $passwordSection;
 	} elsif($ln =~ 'insert_routes') {
-		print $routesSection;
+		$mod_tmpl .= $routesSection;
 	} elsif($ln =~ '<scripts>') {
 		# Print line
 		$ln =~ s/\r//g;	# Remove return carriage
-		print $ln;
+		$mod_tmpl .= $ln;
 		
-		print $scriptsSection;
+		$mod_tmpl .= $scriptsSection;
 	} else {
 		# Print line
 		$ln =~ s/\r//g;	# Remove return carriage
-		print $ln;
+		$mod_tmpl .= $ln;
 	}
 }
 close(FILE);
 
-#-------------------------------------------------------
+# Print out modified template
+`echo "$mod_tmpl" > $template_path`;
 
-=head3   getParms
+# Done
+print "Done! See autoyast template under $template_path\n";
+exit();
 
-	Description	: Get the parameters in the conf file
-    Arguments	: Conf file
-    Returns		: Hash table of parameters
-    Example		: my %parms = getParms($file);
-    
-=cut
 
-#-------------------------------------------------------
-sub getParms {
-	my ($file) = @_;
-	
-	# Read in file
-	open(FILE, $file);
-	
-	# Go through line in the file
-	my %parms;
-	my $name = '';
-	my $tmp = '';
-	while(my $ln = <FILE>) {
-		# If the line contains ={, get the parameter name
-		if ($ln =~ /={/) {
-			($name, $tmp) = split(/={/, $ln, 2);
-			$parms{$name} = '';
-		}
-		
-		if ($name) {
-			# Append line to parameter
-			$parms{$name} = $parms{$name} . trim($ln);
-		}	
-	}
-	close(FILE);
-	
-	# Remove curly brackets
-	foreach my $key(keys %parms) {
-		$parms{$key} =~ s/(.*=\{|\})//g;
-	}
-	
-	return %parms;
-}
+
+
+
+
 
 #-------------------------------------------------------
 
@@ -221,46 +624,34 @@ sub trim {
 =head3   createDasd
 
 	Description	: Create the <dasd> section
-    Arguments	: Dasd attached to server
+    Arguments	: Dasd and partition hash
     Returns		: <dasd> section
-    Example		: my $section = createDasd($dasd);
+    Example		: my $section = createDasd($dasd_ref, $partition_ref);
     
 =cut
 
 #-------------------------------------------------------
 sub createDasd {
-	# Get string
-	my ($str) = @_;
+	# Get inputs
+	my ($dasd_ref, $partition_ref) = @_;
 	
-	# Split the dasd
-	my @args = split(/\],/, $str);
-	
-	# Remove square brackets
-	my $i;
-	for($i = 0; $i < @args; $i++) {
-		$args[$i] =~ s/(\[|\])//g;
-		$args[$i] = trim($args[$i]);
-	}
-	
-	# Create hash table for each dasd
-	my %dasd;
-	my @tmp;
-	my $pos;
-	my $length;
-	foreach(@args) {
-		# Split the arguments
-		# e.g. 0.0.0100,dasd_eckd_mod,(/dev/dasda,/dev/dasdb)
-		@tmp = split(/,/,$_,4);
-		$tmp[0] = trim($tmp[0]);
-		$dasd{$tmp[0]}{'channel'} = $tmp[0];
-		$dasd{$tmp[0]}{'modules'} = trim($tmp[1]);
-		$dasd{$tmp[0]}{'dev_name'} = trim($tmp[2]);
-		
-		# Remove brackets
-		$tmp[3] = trim($tmp[3]);
-		$dasd{$tmp[0]}{'partition_info'} = substr($tmp[3], 1, length($tmp[3])-2);
-	}
-	
+	my %dasd = %$dasd_ref;
+	my %partition = %$partition_ref;
+
+	# dasd hash should include:
+	# 	$dasd{$addr}{'device_name'} = $device_name;
+	#	$dasd{$addr}{'type'} = $dasd_type;
+	# partition hash should include:
+	# 	$partitions{$device_name}{'device_fs'} = '';
+	# 	$partitions{$device_name}{'device_size'} = '';
+	# 	$partitions{$device_name}{'device_mount'} = '';
+	# 	$partitions{$device_name}{'device_lvm'} = '';
+	# 	$partitions{$device_name}{'lvm'}{$lvm_vol_name} = {
+	#		'name' => $lvm_vol_name,
+	#		'mount' => $lvm_vol_mount,
+	#		'size' => $lvm_vol_size
+	#	};
+			
 	# Create <dasd> section
 	#   <!-- Dasd attached at 0100 --> 
 	#   <listentry>
@@ -302,20 +693,26 @@ sub createDasd {
 	#   </listentry>
 	my $xml = '';
 	
-	my @partInfo;
-	foreach my $id(sort (keys %dasd)){	
+	my $device_name;
+	my $device_type;
+	my $partition_info;
+	foreach my $addr(sort keys %dasd){	
+		$device_name = $dasd{$addr}{'device_name'};
+		$device_type = $dasd{$addr}{'type'};
+		
 		# If this dasd is to be used for Linux
-		if ($dasd{$id}{'partition_info'} =~ 'Linux native') {
+		if ($partitions{$device_name}{'device_mount'} || $partitions{$device_name}{'device_lvm'}) {
+			$partition_info = $device_name . "1 (Linux native)";
 			$xml .= <<END;
 <listentry>
   <bus>None</bus>
   <bus_hwcfg>none</bus_hwcfg>
-  <channel>$id</channel>
+  <channel>$addr</channel>
   <format config:type="boolean">true</format>
-  <dev_name>$dasd{$id}{'dev_name'}</dev_name>
+  <dev_name>$device_name</dev_name>
   <dev_names config:type="list">
-    <listentry>$dasd{$id}{'dev_name'}</listentry>
-    <listentry>/dev/disk/by-path/ccw-$id</listentry>
+    <listentry>$device_name</listentry>
+    <listentry>/dev/disk/by-path/ccw-$addr</listentry>
   </dev_names>
   <device>DASD</device>
   <driver>io_subchannel</driver>
@@ -325,14 +722,14 @@ sub createDasd {
       <modprobe config:type="boolean">true</modprobe>
         <modules config:type="list">
           <module_entry config:type="list">
-          <listentry>$dasd{$id}{'modules'}</listentry>
+          <listentry>$device_type</listentry>
           <listentry></listentry>
         </module_entry>
       </modules>
     </listentry>
   </drivers>
   <formatted config:type="boolean">false</formatted>
-  <partition_info>$dasd{$id}{'partition_info'}</partition_info>
+  <partition_info>$partition_info</partition_info>
   <resource>
     <io config:type="list">
       <listentry>
@@ -342,19 +739,20 @@ sub createDasd {
       </listentry>
     </io>
   </resource>
-  <sysfs_bus_id>$id</sysfs_bus_id>
+  <sysfs_bus_id>$addr</sysfs_bus_id>
 </listentry>
 END
 		} else {
+			$partition_info = $device_name;
 			$xml .= <<END;
 <listentry>
   <bus>None</bus>
   <bus_hwcfg>none</bus_hwcfg>
-  <channel>$id</channel>
-  <dev_name>$dasd{$id}{'dev_name'}</dev_name>
+  <channel>$addr</channel>
+  <dev_name>$device_name</dev_name>
   <dev_names config:type="list">
-    <listentry>$dasd{$id}{'dev_name'}</listentry>
-    <listentry>/dev/disk/by-path/ccw-$id</listentry>
+    <listentry>$device_name</listentry>
+    <listentry>/dev/disk/by-path/ccw-$addr</listentry>
   </dev_names>
   <device>DASD</device>
   <driver>io_subchannel</driver>
@@ -364,14 +762,14 @@ END
       <modprobe config:type="boolean">true</modprobe>
         <modules config:type="list">
           <module_entry config:type="list">
-          <listentry>$dasd{$id}{'modules'}</listentry>
+          <listentry>$device_type</listentry>
           <listentry/>
         </module_entry>
       </modules>
     </listentry>
   </drivers>
   <formatted config:type="boolean">true</formatted>
-  <partition_info>$dasd{$id}{'partition_info'}</partition_info>
+  <partition_info>$partition_info</partition_info>
   <resource>
     <disk_log_geo config:type="list">
       <listentry>
@@ -380,12 +778,12 @@ END
       </listentry>
     </disk_log_geo>
   </resource>
-  <sysfs_bus_id>$id</sysfs_bus_id>
+  <sysfs_bus_id>$addr</sysfs_bus_id>
 </listentry>
 END
-		}				
+		}		
 	}
-	
+
 	return $xml;
 }
 
@@ -396,54 +794,16 @@ END
 	Description	: Create the <interfaces> section
     Arguments	: Interfaces attached to server
     Returns		: <interfaces> section
-    Example		: my $section = createInterfaces($interfaces);
+    Example		: my $section = createInterfaces($interfaces_ref);
     
 =cut
 
 #-------------------------------------------------------
 sub createInterfaces {
 	# Get string
-	my ($str) = @_;
-	
-	# Split the interfaces
-	my @device = split(/\],/,$str);
-	
-	# Remove square brackets
-	my $i;
-	for($i = 0; $i < @device; $i++) {
-		$device[$i] =~ s/(\[|\])//g;
-		$device[$i] = trim($device[$i]);
-	}
-	
-	# Create hash table for each interface
-	my %interface;
-	my @args;
-
-	my $id;
-	my $name;
-	my $value;
-	
-	# Loop through each interface
-	foreach(@device) {
-		# Split the arguments
-		# e.g. device=eth0,bootproto=static,broadcast=10.1.100.255,...
-		@args = split(/,/,$_);
-				
-		# Device name should always be the first index
-		$args[0] =~ s/device=//g;
-		$id = trim($args[0]);
+	my ($interfaces_ref) = @_;
+	my %interfaces = %$interfaces_ref;
 		
-		# Go through each attribute and set hash table
-		for($i = 1; $i < @args; $i++) {
-			# Get the attribute name value pair
-			($name, $value) = split(/=/, $args[$i], 2);
-			$name = trim($name);
-			$value = trim($value);
-
-			$interface{$id}{$name} = $value;
-		}
-	}
-	
 	# Create <interfaces> section
 	# <interface>
 	#   <bootproto>static</bootproto>
@@ -465,18 +825,18 @@ sub createInterfaces {
 	#   <usercontrol>no</usercontrol>
 	# </interface>
 	my $xml = '';
-	foreach my $id(keys %interface){
+	foreach my $i(keys %interfaces){
 		# Create static interface
-		if($interface{$id}{'bootproto'} eq 'static') {
+		if($interfaces{$i}{'bootproto'} eq 'static') {
 			$xml .= <<END;	
 <interface>
-  <bootproto>$interface{$id}{'bootproto'}</bootproto>
-  <broadcast>$interface{$id}{'broadcast'}</broadcast>
-  <device>$id</device>
-  <ipaddr>$interface{$id}{'ipaddr'}</ipaddr>
-  <name>$interface{$id}{'name'}</name>
-  <netmask>$interface{$id}{'netmask'}</netmask>
-  <prefixlen>25</prefixlen>
+  <bootproto>$interfaces{$i}{'bootproto'}</bootproto>
+  <broadcast>$interfaces{$i}{'broadcast'}</broadcast>
+  <device>$interfaces{$i}{'device'}</device>
+  <ipaddr>$interfaces{$i}{'ipaddr'}</ipaddr>
+  <lladdr>$interfaces{$i}{'lladdr'}</lladdr>
+  <netmask>$interfaces{$i}{'netmask'}</netmask>
+  <network>$interfaces{$i}{'network'}</network>
   <startmode>auto</startmode>
 </interface>
 END
@@ -486,9 +846,9 @@ END
 		else {
 			$xml .= <<END;
 <interface>
-  <bootproto>$interface{$id}{'bootproto'}</bootproto>
-  <device>$id</device>
-  <lladdr>$interface{$id}{'lladdr'}</lladdr>
+  <bootproto>$interfaces{$i}{'bootproto'}</bootproto>
+  <device>$interfaces{$i}{'device'}</device>
+  <lladdr>$interfaces{$i}{'lladdr'}</lladdr>
   <startmode>auto</startmode>
   <usercontrol>no</usercontrol>
 </interface>
@@ -496,7 +856,7 @@ END
 		}
 	}
 	
-	return ($xml, %interface);
+	return ($xml);
 }
 
 #-------------------------------------------------------
@@ -504,47 +864,20 @@ END
 =head3   createPartitions
 
 	Description	: Create the <partitions> section
-    Arguments	: Partitions to create on server
+    Arguments	: Dasds and partition hash
     Returns		: <partitions> section
-    Example		: my $section = createPartitions($partitions);
+    Example		: my $section = createPartitions($dasd_ref, $partition_ref);
     
 =cut
 
 #-------------------------------------------------------
 sub createPartitions {
-	# Get string
-	my ($str) = @_;
+	# Get inputs
+	my ($dasd_ref, $partition_ref) = @_;
 	
-	# Split the interfaces
-	my @device = split(/\],/,$str);
-	
-	# Remove square brackets
-	my $i;
-	for($i = 0; $i < @device; $i++) {
-		$device[$i] =~ s/(\[|\])//g;
-		$device[$i] = trim($device[$i]);
-	}
-	
-	# Create hash table for each partitions
-	my %partitions;
-	my @args;
-	my $id;
-	
-	# Loop through each partitions
-	foreach(@device) {
-		# Split the arguments
-		# e.g. device=/dev/dasda,filesystem=ext3,(mount=/;size=4G),(lvm_group=VG;size=max)
-		# device=/dev/VG,(lv_name=LV_home;filesystenm=ext3;mount=/home;size=3G),(lv_name=LV_opt;filesystem=ext3;mount=/opt;size=3G)
-		@args = split(/,/,$_,2);
-				
-		# Device name should always be the first index
-		$args[0] =~ s/device=//g;
-		$id = trim($args[0]);
-				
-		# Partition setup should always be the second index
-		$partitions{$id}{'partition'} = trim($args[1]);
-	}
-	
+	my %dasd = %$dasd_ref;
+	my %partitions = %$partition_ref;
+			
 	# Create <partitions> section
 	# <drive>
     #   <device>/dev/dasda</device>
@@ -584,117 +917,83 @@ sub createPartitions {
 	#   <use>all</use>
 	# </drive>
 	my $xml = '';
-	my %layoutAttr;
-	my @layout;
-	
-	my @attrs;
-	my $name;
-	my $value;
-	
+		
 	# Go through each partition	
-	foreach my $id(sort (keys %partitions)){
-		# Split partition layout
-		@layout = split(/,/, $partitions{$id}{'partition'});
-		%layoutAttr = ();
-		
-		# Go through each layout		
-		for($i = 0; $i < @layout; $i++) {
-			# Remove parenthesis
-			$layout[$i] =~ s/(\(|\))//g;
-			$layout[$i] = trim($layout[$i]);
-			
-			# Split layout attributes
-			@attrs = split(/;/, $layout[$i]);
-			foreach(@attrs) {
-				($name, $value) = split(/=/, $_, 2);
-				$name = trim($name);
-				$value = trim($value);
-				$layoutAttr{$i}{$name} = $value;
-			}
-		}
-		
+	foreach my $device_name(sort keys %partitions) {		
 		# Create <drive> head
 		$xml .= <<END;
 <drive>
-  <device>$id</device>
+  <device>$device_name</device>
   <partitions config:type="list">
 END
 
-		# Go through each layout and create <partition> section(s)
-		my $isLvm;
-		foreach my $p(keys %layoutAttr){
-			$isLvm = 0;
-			
-			# If this partition is an LVM group
-			if($layoutAttr{$p}{'lvm_group'}) {
+		if (exists $partitions{$device_name}{'lvm'}) {
+			my %lvm_vols = %{ $partitions{$device_name}{'lvm'} };
+			foreach my $vol(sort keys %lvm_vols) {
+				# Create <partition> section for LVM volume
 				$xml .= <<END;
     <partition>
       <create config:type="boolean">true</create>
       <crypt_fs config:type="boolean">false</crypt_fs>
-      <filesystem config:type="symbol">$layoutAttr{$p}{'filesystem'}</filesystem>
-      <format config:type="boolean">false</format>
-      <loop_fs config:type="boolean">false</loop_fs>
-      <lvm_group>$layoutAttr{$p}{'lvm_group'}</lvm_group>
-      <mountby config:type="symbol">path</mountby>
-      <partition_id config:type="integer">142</partition_id>
-      <partition_nr config:type="integer">1</partition_nr>
-      <resize config:type="boolean">false</resize>
-      <size>$layoutAttr{$p}{'size'}</size>
-    </partition>
-END
-			}
-			
-			# If this partition is an LVM volume
-			elsif($layoutAttr{$p}{'lv_name'}) {
-				$isLvm = 1;
-				$xml .= <<END;
-    <partition>
-      <create config:type="boolean">true</create>
-      <crypt_fs config:type="boolean">false</crypt_fs>
-      <filesystem config:type="symbol">$layoutAttr{$p}{'filesystem'}</filesystem>
+      <filesystem config:type="symbol">$lvm_vols{$vol}{'fs'}</filesystem>
       <format config:type="boolean">true</format>
       <fstopt>acl,user_xattr</fstopt>
-      <lv_name>$layoutAttr{$p}{'lv_name'}</lv_name>
-      <mount>$layoutAttr{$p}{'mount'}</mount>
+      <lv_name>$lvm_vols{$vol}{'name'}</lv_name>
+      <mount>$lvm_vols{$vol}{'mount'}</mount>
       <mountby config:type="symbol">path</mountby>
       <partition_id config:type="integer">131</partition_id>
       <raid_options/>
       <resize config:type="boolean">false</resize>
-      <size>$layoutAttr{$p}{'size'}</size>
+      <size>$lvm_vols{$vol}{'size'}</size>
     </partition>
 END
 			}
-			
-			# Not an LVM
-			else {
-				$xml .= <<END;
+		} elsif (exists $partitions{$device_name}{'device_lvm'}) {
+			# Create <partition> section for LVM group
+			$xml .= <<END;
     <partition>
       <create config:type="boolean">true</create>
-      <filesystem config:type="symbol">$layoutAttr{$p}{'filesystem'}</filesystem>
+      <crypt_fs config:type="boolean">false</crypt_fs>
+      <filesystem config:type="symbol">$partitions{$device_name}{'device_fs'}</filesystem>
+      <format config:type="boolean">false</format>
+      <loop_fs config:type="boolean">false</loop_fs>
+      <lvm_group>$partitions{$device_name}{'device_lvm'}</lvm_group>
+      <mountby config:type="symbol">path</mountby>
+      <partition_id config:type="integer">142</partition_id>
+      <partition_nr config:type="integer">1</partition_nr>
+      <resize config:type="boolean">false</resize>
+      <size>$partitions{$device_name}{'device_size'}</size>
+    </partition>
+END
+		} else {
+			# Not an LVM group or volume
+			$xml .= <<END;
+    <partition>
+      <create config:type="boolean">true</create>
+      <filesystem config:type="symbol">$partitions{$device_name}{'device_fs'}</filesystem>
       <format config:type="boolean">true</format>
-      <mount>$layoutAttr{$p}{'mount'}</mount>
+      <mount>$partitions{$device_name}{'device_mount'}</mount>
       <mountby config:type="symbol">path</mountby>
       <partition_id config:type="integer">131</partition_id>
       <partition_nr config:type="integer">1</partition_nr>
       <partition_type>primary</partition_type>
-      <size>$layoutAttr{$p}{'size'}</size>
+      <size>$partitions{$device_name}{'device_size'}</size>
     </partition>	
 END
-			}
 		}
 		
 		# Create <drive> tail
-		if(!$isLvm) {
-		$xml .= <<END;
+		if (exists $partitions{$device_name}{'device_lvm'}) {
+			$xml .= <<END;
   </partitions>
+  <pesize>4M</pesize>
+  <type config:type="symbol">CT_LVM</type>
   <use>all</use>
 </drive>
 END
 		} else {
-		$xml .= <<END;
+			$xml .= <<END;
   </partitions>
-  <pesize>4M</pesize>
-  <type config:type="symbol">CT_LVM</type>
   <use>all</use>
 </drive>
 END
@@ -709,7 +1008,7 @@ END
 =head3   createHosts
 
 	Description	: Create the <hosts> section
-    Arguments	: Hosts to be created on server
+    Arguments	: Hosts to be created
     Returns		: <hosts> section
     Example		: my $section = createHosts($hosts);
     
@@ -717,47 +1016,8 @@ END
 
 #-------------------------------------------------------
 sub createHosts {
-		# Get string
-	my ($str) = @_;
-
-	# Split the hosts
-	my @hosts = split(/\],/,$str);
-	
-	# Remove square brackets
-	my $i;
-	for($i = 0; $i < @hosts; $i++) {
-		$hosts[$i] =~ s/(\[|\])//g;
-		$hosts[$i] = trim($hosts[$i]);
-	}
-	
-	# Create hash table for each host
-	my %host;
-	my @args;
-	
-	my $id;
-	my $name;
-	my $value;
-	
-	# Loop through each host
-	foreach(@hosts) {
-		# Split the arguments
-		# e.g. host_address=10.1.100.100,name=gpok100.endicott.ibm.com gpok100
-		@args = split(/,/,$_);
-				
-		# Host address should always be the first index
-		$args[0] =~ s/host_address=//g;
-		$id = trim($args[0]);
-		
-		# Go through each attribute and set hash table
-		for($i = 1; $i < @args; $i++) {
-			# Get the attribute name value pair
-			($name, $value) = split(/=/, $args[$i], 2);
-			$name = trim($name);
-			$value = trim($value);
-
-			$host{$id}{$name} = $value;
-		}
-	}
+	my ($hosts_ref) = @_;
+	my %hosts = %$hosts_ref;
 	
 	# Create <hosts> section
 	# e.g.
@@ -769,28 +1029,18 @@ sub createHosts {
     # </hosts_entry>
 	my $xml = '';
 	
-	# Create standard localhost entry
-	$xml .= <<END;
-  <hosts_entry>
-    <host_address>127.0.0.1</host_address>
-    <names config:type="list">
-      <name>localhost</name>
-    </names>
-  </hosts_entry>
-END
-	
 	# Create host entries
-	foreach my $id(keys %host){
+	foreach my $i(keys %hosts){
 		$xml .= <<END;
   <hosts_entry>
-    <host_address>$id</host_address>
+    <host_address>$hosts{$i}{'host_address'}</host_address>
     <names config:type="list">
-      <name>$host{$id}{'name'}</name>
+      <name>$hosts{$i}{'name'}</name>
     </names>
   </hosts_entry>
 END
 	}
-	
+		
 	return $xml;
 }
 
@@ -799,7 +1049,7 @@ END
 =head3   createDns
 
 	Description	: Create the <dns> section
-    Arguments	: DNS to use
+    Arguments	: DNS
     Returns		: <dns> section
     Example		: my $section = createDns($dns);
     
@@ -808,46 +1058,8 @@ END
 #-------------------------------------------------------
 sub createDns {
 	# Get string
-	my ($str) = @_;
-
-	# Split the hosts
-	my @dns = split(/\],/,$str);
-	
-	# Remove square brackets
-	my $i;
-	for($i = 0; $i < @dns; $i++) {
-		$dns[$i] =~ s/(\[|\])//g;
-		$dns[$i] = trim($dns[$i]);
-	}
-	
-	# Create hash table for each DNS
-	my %dn;
-	my @args;
-	
-	my $id;
-	my $name;
-	my $value;
-	
-	# Loop through each host
-	foreach(@dns) {
-		# Split the arguments
-		# e.g. hostname=gpok100,domain=endicott.ibm.com,nameserver=10.1.100.1
-		@args = split(/,/,$_);
-				
-		# Hostname should always be the first index
-		$args[0] =~ s/hostname=//g;
-		$id = trim($args[0]);
-		
-		# Go through each attribute and set hash table
-		for($i = 1; $i < @args; $i++) {
-			# Get the attribute name value pair
-			($name, $value) = split(/=/, $args[$i], 2);
-			$name = trim($name);
-			$value = trim($value);
-
-			$dn{$id}{$name} = $value;
-		}
-	}
+	my ($dns_ref) = @_;
+	my %dns = %$dns_ref;
 	
 	# Create <dns> section
 	#   <dhcp_hostname config:type="boolean">false</dhcp_hostname>
@@ -858,14 +1070,14 @@ sub createDns {
     #     <nameserver>10.1.100.100</nameserver>
     #   </nameservers>
     my $xml = '';
-	foreach my $id(keys %dn){
+	foreach my $i(keys %dns){
 		$xml .= <<END;
-<dhcp_hostname config:type="boolean">$dn{$id}{'dhcp_hostname'}</dhcp_hostname>
-<dhcp_resolv config:type="boolean">$dn{$id}{'dhcp_resolv'}</dhcp_resolv>
-<domain>$dn{$id}{'domain'}</domain>
-<hostname>$id</hostname>
+<dhcp_hostname config:type="boolean">$dns{$i}{'dhcp_hostname'}</dhcp_hostname>
+<dhcp_resolv config:type="boolean">$dns{$i}{'dhcp_resolv'}</dhcp_resolv>
+<domain>$dns{$i}{'domain'}</domain>
+<hostname>$dns{$i}{'hostname'}</hostname>
 <nameservers config:type="list">
-  <nameserver>$dn{$id}{'nameserver'}</nameserver>
+  <nameserver>$dns{$i}{'nameserver'}</nameserver>
 </nameservers>
 END
 	}
@@ -878,39 +1090,18 @@ END
 =head3   createDasdModules
 
 	Description	: Create the <modules> section for each dasd attached
-    Arguments	: Dasd attached to server
+    Arguments	: Dasd hash
     Returns		: <modules> section
-    Example		: my $section = createDasdModules($modules);
+    Example		: my $section = createDasdModules($dasd_ref);
     
 =cut
 
 #-------------------------------------------------------
 sub createDasdModules {
 	# Get string
-	my ($str) = @_;
-	
-	# Split the dasd
-	my @args = split(/\],/,$str);
-	
-	# Remove square brackets
-	my $i;
-	for($i = 0; $i < @args; $i++) {
-		$args[$i] =~ s/(\[|\])//g;
-		$args[$i] = trim($args[$i]);
-	}
-	
-	# Create hash table for each dasd
-	my %modules;
-	my @tmp;
-	foreach(@args) {
-		# Split the arguments
-		# e.g. 0.0.0100,dasd_eckd_mod,/dev/dasda,(/dev/dasda1;/dev/dasda2)
-		@tmp = split(/,/,$_,4);
-		$tmp[0] = trim($tmp[0]);
-		$modules{$tmp[0]}{'channel'} = $tmp[0];
-		$modules{$tmp[0]}{'module'} = trim($tmp[1]);
-	}
-	
+	my ($dasd_ref) = @_;
+	my %dasd = %$dasd_ref;
+		
 	# Create <modules> section
 	# <module_entry>
 	#   <device>dasd-bus-ccw-0.0.0100</device>
@@ -919,11 +1110,11 @@ sub createDasdModules {
 	# </module_entry>
 
 	my $xml = '';
-	foreach my $id(keys %modules){
+	foreach my $addr(keys %dasd){
 		$xml .= <<END;
 <module_entry>
-  <device>dasd-bus-ccw-$id</device>
-  <module>$modules{$id}{'module'}</module>
+  <device>dasd-bus-ccw-$addr</device>
+  <module>$dasd{$addr}{'type'}</module>
   <options></options>
 </module_entry>
 END
@@ -946,7 +1137,8 @@ END
 #-------------------------------------------------------
 sub createNicModules {
 	# Get hash table
-	my (%interface) = @_;
+	my ($interfaces_ref) = @_;
+	my %interfaces = %$interfaces_ref;
 	
 	# Create <modules> section
 	# <module_entry>
@@ -958,14 +1150,13 @@ sub createNicModules {
 	#   <options/>
 	# </module_entry>
 	my $xml = '';
-    my $script = '';
-	foreach my $id(sort (keys %interface)){
+	foreach my $i(sort (keys %interfaces)){
 		$xml .= <<END;
 <module_entry>
-  <ccw_chan_ids>$interface{$id}{'chanids'}</ccw_chan_ids>
+  <ccw_chan_ids>$interfaces{$i}{'chanids'}</ccw_chan_ids>
   <ccw_chan_mode>FOOBAR</ccw_chan_mode>
   <ccw_chan_num>3</ccw_chan_num>
-  <device>$id</device>
+  <device>$interfaces{$i}{'device'}</device>
   <module>qeth</module>
   <options></options>
 </module_entry>
@@ -996,14 +1187,14 @@ sub createSoftware {
 	my @software = split(/,/,$str);
 		
 	# Create <software> section
-	# <pattern>Basis-Devel</pattern>
-	# <pattern>Minimal</pattern>
-	# <pattern>base</pattern>
-	# <pattern>documentation</pattern>
-	# <pattern>file_server</pattern>
-	# <pattern>gnome</pattern>
-	# <pattern>print_server</pattern>
-	# <pattern>x11</pattern>
+	# 	<pattern>Basis-Devel</pattern>
+	# 	<pattern>Minimal</pattern>
+	# 	<pattern>base</pattern>
+	# 	<pattern>documentation</pattern>
+	# 	<pattern>file_server</pattern>
+	# 	<pattern>gnome</pattern>
+	# 	<pattern>print_server</pattern>
+	# 	<pattern>x11</pattern>
     my $xml = '';
 	foreach (@software){
 		 $xml .= <<END;
@@ -1027,47 +1218,9 @@ END
 
 #-------------------------------------------------------
 sub createRoutes {
-	# Get string
-	my ($str) = @_;
-	
-	# Split the interfaces
-	my @device = split(/\],/,$str);
-	
-	# Remove square brackets
-	my $i;
-	for($i = 0; $i < @device; $i++) {
-		$device[$i] =~ s/(\[|\])//g;
-		$device[$i] = trim($device[$i]);
-	}
-	
-	# Create hash table for each interface
-	my %interface;
-	my @args;
-	
-	my $id;
-	my $name;
-	my $value;
-	
-	# Loop through each interface
-	foreach(@device) {
-		# Split the arguments
-		# e.g. device=eth0,bootproto=static,broadcast=10.1.100.255,...
-		@args = split(/,/,$_);
-				
-		# Device name should always be the first index
-		$args[0] =~ s/device=//g;
-		$id = trim($args[0]);
-		
-		# Go through each attribute and set hash table
-		for($i = 1; $i < @args; $i++) {
-			# Get the attribute name value pair
-			($name, $value) = split(/=/, $args[$i], 2);
-			$name = trim($name);
-			$value = trim($value);
-
-			$interface{$id}{$name} = $value;
-		}
-	}
+	# Get hash table
+	my ($interfaces_ref) = @_;
+	my %interfaces = %$interfaces_ref;
 	
 	# Create <routes> section
 	# <ip_forward config:type="boolean">false</ip_forward>
@@ -1082,24 +1235,24 @@ sub createRoutes {
 
 	my $xml = '';
 	my $dest = '';
-	foreach my $id(sort (keys %interface)){
+	foreach my $i(sort (keys %interfaces)){
 		if(!$dest) {
 			# The first interface is the default route
 			$dest = 'default';
 		} else {
 			# Get network
-			$dest = substr($interface{$id}{'ipaddr'}, 0, rindex($interface{$id}{'ipaddr'}, '.'));
+			$dest = substr($interfaces{$i}{'ipaddr'}, 0, rindex($interfaces{$i}{'ipaddr'}, '.'));
 			$dest .= ".0";
 		}
 		
-		# Do not set route for DHCP interface
-		if(!($interface{$id}{'bootproto'} eq 'dhcp')) {
+		# Do not set gateway for DHCP interface
+		if(!($interfaces{$i}{'bootproto'} eq 'dhcp')) {
 			$xml .= <<END;	
   <route>
     <destination>$dest</destination>
-    <device>$id</device>
+    <device>$interfaces{$i}{'device'}</device>
     <gateway></gateway>
-    <netmask>$interface{$id}{'netmask'}</netmask>
+    <netmask>$interfaces{$i}{'netmask'}</netmask>
   </route>
 END
 		}
@@ -1122,18 +1275,19 @@ END
 #-------------------------------------------------------
 sub createScripts {
 	# Get hash table
-	my (%interface) = @_;
+	my ($interfaces_ref) = @_;
+	my %interfaces = %$interfaces_ref;
 
 	# Default route is being added by autoyast (bug)
 	# Setting default route in post-script
     my $xml = '';
     my $script = '';
-	foreach my $id(sort (keys %interface)){
+	foreach my $i(sort (keys %interfaces)){
 		# Set the default route for the firs interface
 		# Do not set default route for DHCP interface
-		if(!$script && !($interface{$id}{'bootproto'} eq 'dhcp')) {
+		if(!$script && !($interfaces{$i}{'bootproto'} eq 'dhcp')) {
 			$script .= <<END;
-echo "default - 0.0.0.0 $id" > /etc/sysconfig/network/routes
+echo "default - 0.0.0.0 $interfaces{$i}{'device'}" > /etc/sysconfig/network/routes
 END
 			last;
 		}
@@ -1159,4 +1313,1421 @@ END
 	}
 	
 	return $xml;
+}
+
+#-------------------------------------------------------
+
+=head3   ask
+
+	Description	: Prompt user for input
+    Arguments	: Question
+    Returns		: Answer
+    Example		: my $answer = ask("What day is today?");
+    
+=cut
+
+#-------------------------------------------------------
+sub ask {
+	my ($question) = @_;
+	
+	print "$question";
+	my $answer = <>;	
+	return trim($answer);
+}
+
+#-------------------------------------------------------
+
+=head3   pad
+
+	Description	: Pad a string to a given length
+    Arguments	: String and size
+    Returns		: Padded string
+    Example		: my $str = pad($str, 12);
+    
+=cut
+
+#-------------------------------------------------------
+sub pad {
+	my ($str, $size) = @_;
+	
+	while (length($str) < $size) {
+		$str = "$str ";
+	}
+
+	return $str;
+}
+
+#-------------------------------------------------------
+
+=head3   genSles11Tmpl
+
+	Description	: Generate SLES 11 autoyast template
+    Arguments	: Nothing
+    Returns		: SLES 11 autoyast template
+    Example		: my $tmpl = genSles11Tmpl();
+    
+=cut
+
+#-------------------------------------------------------
+sub genSles11Tmpl {
+	my $tmpl = <<AUTOYASTEND;
+<?xml version="1.0"?>
+<!DOCTYPE profile>
+<profile xmlns="http://www.suse.com/1.0/yast2ns" xmlns:config="http://www.suse.com/1.0/configns">
+
+  <!-- The dasd attached to the virtual server -->  
+  <dasd>
+    <devices config:type="list">
+      insert_devices     
+    </devices>
+  </dasd>
+  
+  
+  <general>
+    <mode>
+      <confirm config:type="boolean">false</confirm>
+    </mode>
+    <mouse>
+      <id>none</id>
+    </mouse>
+    <signature-handling/>
+  </general>
+  
+  
+  <!-- Groups to create on Linux -->
+  <groups config:type="list">
+    <group>
+      <groupname>users</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>floppy</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>bin</groupname>
+      <userlist>daemon</userlist>
+    </group>
+    <group>
+      <groupname>xok</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>nobody</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>modem</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>lp</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>tty</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>postfix</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>gdm</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>nogroup</groupname>
+      <userlist>nobody</userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>maildrop</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>messagebus</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>video</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>sys</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>shadow</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>console</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>cdrom</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>haldaemon</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>trusted</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>dialout</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>ts-shell</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>wheel</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>www</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>games</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>disk</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>audio</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>suse-ncc</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>ftp</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>at</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>kmem</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>public</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>root</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>mail</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>daemon</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>ntp</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>uucp</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>ntadmin</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>man</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>utmp</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>news</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>sshd</groupname>
+      <userlist></userlist>
+    </group>
+  </groups>
+  
+  
+  <!-- Contents of /etc/hosts -->
+  <host>
+    <hosts config:type="list">
+      insert_hosts
+    </hosts>
+  </host>
+    
+
+  <iscsi-client>
+    <initiatorname></initiatorname>
+    <targets config:type="list"/>
+    <version>1.0</version>
+  </iscsi-client>
+  
+
+  <!-- Language setup (english) -->
+  <language>
+    <language>en_US</language>
+    <languages></languages>
+  </language>
+  
+
+  <!-- Networking setup -->
+  <networking>
+    <dhcp_options>
+      <dhclient_additional_options></dhclient_additional_options>
+      <dhclient_client_id></dhclient_client_id>
+      <dhclient_hostname_option>AUTO</dhclient_hostname_option>
+    </dhcp_options>
+    <dns>
+      insert_dns
+    </dns>
+    <interfaces config:type="list">
+      insert_interfaces
+    </interfaces>
+    <managed config:type="boolean">false</managed>
+
+
+    <!-- Device type -->
+    <modules config:type="list">
+      insert_modules
+    </modules>
+    <routing>
+      <ip_forward config:type="boolean">false</ip_forward>
+      <routes config:type="list">
+        insert_routes
+      </routes>
+    </routing>
+  </networking>
+  
+  
+  <nis>
+    <nis_broadcast config:type="boolean">false</nis_broadcast>
+    <nis_broken_server config:type="boolean">false</nis_broken_server>
+    <nis_by_dhcp config:type="boolean">false</nis_by_dhcp>
+    <nis_domain></nis_domain>
+    <nis_local_only config:type="boolean">false</nis_local_only>
+    <nis_options></nis_options>
+    <nis_other_domains config:type="list">
+    </nis_other_domains>
+    <nis_servers config:type="list"/>
+    <start_autofs config:type="boolean">false</start_autofs>
+    <start_nis config:type="boolean">false</start_nis>
+  </nis>
+  
+  
+  <!-- File system partitioning -->
+  <partitioning config:type="list">
+    insert_partitioning_drives
+  </partitioning>
+    
+  
+  <proxy>
+    <enabled config:type="boolean">false</enabled>
+    <ftp_proxy></ftp_proxy>
+    <http_proxy></http_proxy>
+    <https_proxy></https_proxy>
+    <no_proxy>localhost, 127.0.0.1</no_proxy>
+    <proxy_password></proxy_password>
+    <proxy_user></proxy_user>
+  </proxy>
+  
+  
+  <report>
+    <errors>
+      <log config:type="boolean">true</log>
+      <show config:type="boolean">true</show>
+      <timeout config:type="integer">0</timeout>
+    </errors>
+    <messages>
+      <log config:type="boolean">true</log>
+      <show config:type="boolean">true</show>
+      <timeout config:type="integer">0</timeout>
+    </messages>
+    <warnings>
+      <log config:type="boolean">true</log>
+      <show config:type="boolean">true</show>
+      <timeout config:type="integer">0</timeout>
+    </warnings>
+    <yesno_messages>
+      <log config:type="boolean">true</log>
+      <show config:type="boolean">true</show>
+      <timeout config:type="integer">0</timeout>
+    </yesno_messages>
+  </report>
+  
+  
+  <runlevel>
+    <default>5</default>
+  </runlevel>
+  
+  
+  <!-- Software to install on Linux -->
+  <software>
+    <patterns config:type="list">
+      replace_software_patterns
+    </patterns>
+    <packages config:type="list">
+      replace_software_packages
+    </packages>
+  </software>
+  
+  
+  <!-- Time zone -->
+  <timezone>
+    <hwclock>UTC</hwclock>
+    <timezone>US/Eastern</timezone>
+  </timezone>
+  
+  
+  <user_defaults>
+    <expire></expire>
+    <group>100</group>
+    <groups>video,dialout</groups>
+    <home>/home</home>
+    <inactive>-1</inactive>
+    <shell>/bin/bash</shell>
+    <skel>/etc/skel</skel>
+  </user_defaults>
+AUTOYASTEND
+
+	# Handle second half
+	$tmpl .= <<AUTOYASTEND;
+	
+
+  <!-- Users on Linux -->
+  <users config:type="list">
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>Games account</fullname>
+      <gid>100</gid>
+      <home>/var/games</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>12</uid>
+      <user_password>*</user_password>
+      <username>games</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>bin</fullname>
+      <gid>1</gid>
+      <home>/bin</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>1</uid>
+      <user_password>*</user_password>
+      <username>bin</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>nobody</fullname>
+      <gid>65533</gid>
+      <home>/var/lib/nobody</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>65534</uid>
+      <user_password>*</user_password>
+      <username>nobody</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>Printing daemon</fullname>
+      <gid>7</gid>
+      <home>/var/spool/lpd</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>4</uid>
+      <user_password>*</user_password>
+      <username>lp</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>Postfix Daemon</fullname>
+      <gid>51</gid>
+      <home>/var/spool/postfix</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max>99999</max>
+        <min>0</min>
+        <warn>7</warn>
+      </password_settings>
+      <shell>/bin/false</shell>
+      <uid>51</uid>
+      <user_password>!</user_password>
+      <username>postfix</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>Novell Customer Center User</fullname>
+      <gid>106</gid>
+      <home>/var/lib/YaST2/suse-ncc-fakehome</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max>99999</max>
+        <min>0</min>
+        <warn>7</warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>102</uid>
+      <user_password>!</user_password>
+      <username>suse-ncc</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>FTP account</fullname>
+      <gid>49</gid>
+      <home>/srv/ftp</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>40</uid>
+      <user_password>*</user_password>
+      <username>ftp</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">false</encrypted>
+      <fullname>root</fullname>
+      <gid>0</gid>
+      <home>/root</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>0</uid>
+      <user_password>insert_root_password</user_password>
+      <username>root</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>Mailer daemon</fullname>
+      <gid>12</gid>
+      <home>/var/spool/clientmqueue</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/false</shell>
+      <uid>8</uid>
+      <user_password>*</user_password>
+      <username>mail</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>Daemon</fullname>
+      <gid>2</gid>
+      <home>/sbin</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>2</uid>
+      <user_password>*</user_password>
+      <username>daemon</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>NTP daemon</fullname>
+      <gid>103</gid>
+      <home>/var/lib/ntp</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max>99999</max>
+        <min>0</min>
+        <warn>7</warn>
+      </password_settings>
+      <shell>/bin/false</shell>
+      <uid>74</uid>
+      <user_password>!</user_password>
+      <username>ntp</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>Unix-to-Unix CoPy system</fullname>
+      <gid>14</gid>
+      <home>/etc/uucp</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>10</uid>
+      <user_password>*</user_password>
+      <username>uucp</username>
+    </user>
+    <user>
+      <fullname>User for D-BUS</fullname>
+      <gid>101</gid>
+      <home>/var/run/dbus</home>
+      <shell>/bin/false</shell>
+      <uid>100</uid>
+    </user>
+    <user>
+      <fullname>User for haldaemon</fullname>
+      <gid>102</gid>
+      <home>/var/run/hal</home>
+      <shell>/bin/false</shell>
+      <uid>101</uid>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>WWW daemon apache</fullname>
+      <gid>8</gid>
+      <home>/var/lib/wwwrun</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/false</shell>
+      <uid>30</uid>
+      <user_password>*</user_password>
+      <username>wwwrun</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>Manual pages viewer</fullname>
+      <gid>62</gid>
+      <home>/var/cache/man</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>13</uid>
+      <user_password>*</user_password>
+      <username>man</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>News system</fullname>
+      <gid>13</gid>
+      <home>/etc/news</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>9</uid>
+      <user_password>*</user_password>
+      <username>news</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>SSH daemon</fullname>
+      <gid>65</gid>
+      <home>/var/lib/sshd</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max>99999</max>
+        <min>0</min>
+        <warn>7</warn>
+      </password_settings>
+      <shell>/bin/false</shell>
+      <uid>71</uid>
+      <user_password>!</user_password>
+      <username>sshd</username>
+    </user>
+  </users>
+  
+  
+  <zfcp>
+    <devices config:type="list"/>
+  </zfcp>
+  
+  
+  <!-- Scripts (post-script) -->
+  <configure>
+    <scripts>
+    </scripts>
+  </configure>
+</profile>	
+AUTOYASTEND
+	return $tmpl;
+}
+
+#-------------------------------------------------------
+
+=head3   genSles10Tmpl
+
+	Description	: Generate SLES 10 autoyast template
+    Arguments	: Nothing
+    Returns		: SLES 10 autoyast template
+    Example		: my $tmpl = genSles10Tmpl();
+    
+=cut
+
+#-------------------------------------------------------
+sub genSles10Tmpl {
+	my $tmpl = <<AUTOYASTEND;
+<?xml version="1.0"?>
+<!DOCTYPE profile>
+<profile xmlns="http://www.suse.com/1.0/yast2ns" xmlns:config="http://www.suse.com/1.0/configns">
+
+  <!-- The dasd attached to the virtual server -->  
+  <dasd>
+    <devices config:type="list">
+      insert_devices     
+    </devices>
+  </dasd>
+  
+  
+  <general>
+    <mode>
+      <confirm config:type="boolean">false</confirm>
+    </mode>
+    <mouse>
+      <id>none</id>
+    </mouse>
+    <signature-handling/>
+  </general>
+  
+  
+  <!-- Groups to create on Linux -->
+  <groups config:type="list">
+    <group>
+      <groupname>users</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>floppy</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>bin</groupname>
+      <userlist>daemon</userlist>
+    </group>
+    <group>
+      <groupname>xok</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>nobody</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>modem</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>lp</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>tty</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>postfix</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>gdm</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>nogroup</groupname>
+      <userlist>nobody</userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>maildrop</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>messagebus</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>video</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>sys</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>shadow</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>console</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>cdrom</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>haldaemon</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>trusted</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>dialout</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>ts-shell</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>wheel</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>www</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>games</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>disk</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>audio</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>suse-ncc</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>ftp</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>at</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>kmem</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>public</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>root</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>mail</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>daemon</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>ntp</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>uucp</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>ntadmin</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>man</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>utmp</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <groupname>news</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
+      <group_password>!</group_password>
+      <groupname>sshd</groupname>
+      <userlist></userlist>
+    </group>
+  </groups>
+  
+  
+  <!-- Contents of /etc/hosts -->
+  <host>
+    <hosts config:type="list">
+      insert_hosts
+    </hosts>
+  </host>
+    
+
+  <iscsi-client>
+    <initiatorname></initiatorname>
+    <targets config:type="list"/>
+    <version>1.0</version>
+  </iscsi-client>
+  
+
+  <!-- Language setup (english) -->
+  <language>
+    <language>en_US</language>
+    <languages></languages>
+  </language>
+  
+
+  <!-- Networking setup -->
+  <networking>
+    <dhcp_options>
+      <dhclient_additional_options></dhclient_additional_options>
+      <dhclient_client_id></dhclient_client_id>
+      <dhclient_hostname_option>AUTO</dhclient_hostname_option>
+    </dhcp_options>
+    <dns>
+      insert_dns
+    </dns>
+    <interfaces config:type="list">
+      insert_interfaces
+    </interfaces>
+    <managed config:type="boolean">false</managed>
+
+
+    <!-- Device type -->
+    <modules config:type="list">
+      insert_modules
+    </modules>
+    <routing>
+      <ip_forward config:type="boolean">false</ip_forward>
+      <routes config:type="list">
+        insert_routes
+      </routes>
+    </routing>
+  </networking>
+  
+  
+  <nis>
+    <nis_broadcast config:type="boolean">false</nis_broadcast>
+    <nis_broken_server config:type="boolean">false</nis_broken_server>
+    <nis_by_dhcp config:type="boolean">false</nis_by_dhcp>
+    <nis_domain></nis_domain>
+    <nis_local_only config:type="boolean">false</nis_local_only>
+    <nis_options></nis_options>
+    <nis_other_domains config:type="list">
+    </nis_other_domains>
+    <nis_servers config:type="list"/>
+    <start_autofs config:type="boolean">false</start_autofs>
+    <start_nis config:type="boolean">false</start_nis>
+  </nis>
+  
+  
+  <!-- File system partitioning -->
+  <partitioning config:type="list">
+    insert_partitioning_drives
+  </partitioning>
+    
+  
+  <proxy>
+    <enabled config:type="boolean">false</enabled>
+    <ftp_proxy></ftp_proxy>
+    <http_proxy></http_proxy>
+    <https_proxy></https_proxy>
+    <no_proxy>localhost, 127.0.0.1</no_proxy>
+    <proxy_password></proxy_password>
+    <proxy_user></proxy_user>
+  </proxy>
+  
+  
+  <report>
+    <errors>
+      <log config:type="boolean">true</log>
+      <show config:type="boolean">true</show>
+      <timeout config:type="integer">0</timeout>
+    </errors>
+    <messages>
+      <log config:type="boolean">true</log>
+      <show config:type="boolean">true</show>
+      <timeout config:type="integer">0</timeout>
+    </messages>
+    <warnings>
+      <log config:type="boolean">true</log>
+      <show config:type="boolean">true</show>
+      <timeout config:type="integer">0</timeout>
+    </warnings>
+    <yesno_messages>
+      <log config:type="boolean">true</log>
+      <show config:type="boolean">true</show>
+      <timeout config:type="integer">0</timeout>
+    </yesno_messages>
+  </report>
+  
+  
+  <runlevel>
+    <default>5</default>
+  </runlevel>
+  
+  
+  <!-- Software to install on Linux -->
+  <software>
+    <patterns config:type="list">
+      replace_software_patterns
+    </patterns>
+    <packages config:type="list">
+      replace_software_packages
+    </packages>
+  </software>
+  
+  
+  <!-- Time zone -->
+  <timezone>
+    <hwclock>UTC</hwclock>
+    <timezone>US/Eastern</timezone>
+  </timezone>
+  
+  
+  <user_defaults>
+    <expire></expire>
+    <group>100</group>
+    <groups>video,dialout</groups>
+    <home>/home</home>
+    <inactive>-1</inactive>
+    <shell>/bin/bash</shell>
+    <skel>/etc/skel</skel>
+  </user_defaults>
+AUTOYASTEND
+  
+	$tmpl .= <<AUTOYASTEND;
+
+
+  <!-- Users on Linux -->
+  <users config:type="list">
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>Games account</fullname>
+      <gid>100</gid>
+      <home>/var/games</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>12</uid>
+      <user_password>*</user_password>
+      <username>games</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>bin</fullname>
+      <gid>1</gid>
+      <home>/bin</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>1</uid>
+      <user_password>*</user_password>
+      <username>bin</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>nobody</fullname>
+      <gid>65533</gid>
+      <home>/var/lib/nobody</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>65534</uid>
+      <user_password>*</user_password>
+      <username>nobody</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>Printing daemon</fullname>
+      <gid>7</gid>
+      <home>/var/spool/lpd</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>4</uid>
+      <user_password>*</user_password>
+      <username>lp</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>Postfix Daemon</fullname>
+      <gid>51</gid>
+      <home>/var/spool/postfix</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max>99999</max>
+        <min>0</min>
+        <warn>7</warn>
+      </password_settings>
+      <shell>/bin/false</shell>
+      <uid>51</uid>
+      <user_password>!</user_password>
+      <username>postfix</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>Novell Customer Center User</fullname>
+      <gid>106</gid>
+      <home>/var/lib/YaST2/suse-ncc-fakehome</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max>99999</max>
+        <min>0</min>
+        <warn>7</warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>102</uid>
+      <user_password>!</user_password>
+      <username>suse-ncc</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>FTP account</fullname>
+      <gid>49</gid>
+      <home>/srv/ftp</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>40</uid>
+      <user_password>*</user_password>
+      <username>ftp</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">false</encrypted>
+      <fullname>root</fullname>
+      <gid>0</gid>
+      <home>/root</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>0</uid>
+      <user_password>insert_root_password</user_password>
+      <username>root</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>Mailer daemon</fullname>
+      <gid>12</gid>
+      <home>/var/spool/clientmqueue</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/false</shell>
+      <uid>8</uid>
+      <user_password>*</user_password>
+      <username>mail</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>Daemon</fullname>
+      <gid>2</gid>
+      <home>/sbin</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>2</uid>
+      <user_password>*</user_password>
+      <username>daemon</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>NTP daemon</fullname>
+      <gid>103</gid>
+      <home>/var/lib/ntp</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max>99999</max>
+        <min>0</min>
+        <warn>7</warn>
+      </password_settings>
+      <shell>/bin/false</shell>
+      <uid>74</uid>
+      <user_password>!</user_password>
+      <username>ntp</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>Unix-to-Unix CoPy system</fullname>
+      <gid>14</gid>
+      <home>/etc/uucp</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>10</uid>
+      <user_password>*</user_password>
+      <username>uucp</username>
+    </user>
+    <user>
+      <fullname>User for D-BUS</fullname>
+      <gid>101</gid>
+      <home>/var/run/dbus</home>
+      <shell>/bin/false</shell>
+      <uid>100</uid>
+    </user>
+    <user>
+      <fullname>User for haldaemon</fullname>
+      <gid>102</gid>
+      <home>/var/run/hal</home>
+      <shell>/bin/false</shell>
+      <uid>101</uid>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>WWW daemon apache</fullname>
+      <gid>8</gid>
+      <home>/var/lib/wwwrun</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/false</shell>
+      <uid>30</uid>
+      <user_password>*</user_password>
+      <username>wwwrun</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>Manual pages viewer</fullname>
+      <gid>62</gid>
+      <home>/var/cache/man</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>13</uid>
+      <user_password>*</user_password>
+      <username>man</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>News system</fullname>
+      <gid>13</gid>
+      <home>/etc/news</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max></max>
+        <min></min>
+        <warn></warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>9</uid>
+      <user_password>*</user_password>
+      <username>news</username>
+    </user>
+    <user>
+      <encrypted config:type="boolean">true</encrypted>
+      <fullname>SSH daemon</fullname>
+      <gid>65</gid>
+      <home>/var/lib/sshd</home>
+      <password_settings>
+        <expire></expire>
+        <flag></flag>
+        <inact></inact>
+        <max>99999</max>
+        <min>0</min>
+        <warn>7</warn>
+      </password_settings>
+      <shell>/bin/false</shell>
+      <uid>71</uid>
+      <user_password>!</user_password>
+      <username>sshd</username>
+    </user>
+  </users>
+  
+  
+  <zfcp>
+    <devices config:type="list"/>
+  </zfcp>
+  
+  
+  <!-- Scripts (post-script) -->
+  <configure>
+    <scripts>
+    </scripts>
+  </configure>
+</profile>
+AUTOYASTEND
+	return $tmpl;
 }
