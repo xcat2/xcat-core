@@ -1183,7 +1183,8 @@ sub copycd
     my $installroot = "/install";
     my $sitetab = xCAT::Table->new('site');
 
-    require xCAT::discinfo;
+    require xCAT::data::discinfo;
+
 
     if ($sitetab)
     {
@@ -1239,11 +1240,11 @@ sub copycd
         $darch = "x86";
     }
     close($dinfo);
-    if ($xCAT::discinfo::distnames{$did})
+    if ($xCAT::data::discinfo::distnames{$did})
     {
         unless ($distname)
         {
-            $distname = $xCAT::discinfo::distnames{$did};
+            $distname = $xCAT::data::discinfo::distnames{$did};
         }
     }
     elsif ($desc =~ /^Final$/)
