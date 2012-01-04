@@ -262,7 +262,7 @@ ipmiPlugin.prototype.getInitFunction = function(){
 };
 
 ipmiPlugin.prototype.getNextFunction = function(){
-	return [idataplexCheckBasic, undefined, idataplexCheckNetwork, undefined, undefined,];
+	return [idataplexCheckBasic, undefined, idataplexCheckNetwork, undefined, undefined];
 };
 
 /**
