@@ -22,6 +22,7 @@ if (@ARGV > 0) {
 	print <<END;
 Create an autoyast template to be used by xCAT for Linux on System z.
 Created by Thang Pham (thang.pham\@us.ibm.com)
+Version 0.2
 
 IBM (c)2012 EPL license http://www.eclipse.org/legal/epl-v10.html
 END
