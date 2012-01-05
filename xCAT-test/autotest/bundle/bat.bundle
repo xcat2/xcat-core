@@ -41,9 +41,6 @@ lsdef_t
 lsdef_t_i_o
 lsdef_t_w
 lsdef_t_err
-lsvm_null
-lsvm_node
-lsvm_err_node
 makeconservercf_null
 makeconservercf_noderange
 makeconservercf_d
