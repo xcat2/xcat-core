@@ -514,9 +514,6 @@ my $dnsSection = createDns($parms{'dns'});
 # Create <interfaces> section
 my ($interfacesSection) = createInterfaces($parms{'interfaces'});
 
-# Create software section
-my $softwareSection = createSoftware($parms{'software'});
-
 # Create password section
 my $passwordSection = <<END;
   <user_password>$parms{'root_password'}</user_password>
@@ -570,8 +567,6 @@ while(my $ln = <FILE>) {
 		$mod_tmpl .= $nicModulesSection;
 	} elsif($ln =~ 'insert_partitioning_drives') {
 		$mod_tmpl .= $partitionsSection;
-	} elsif($ln =~ 'insert_software_pattern') {
-		$mod_tmpl .= $softwareSection;
 	} elsif($ln =~ 'insert_root_password') {
 		$mod_tmpl .= $passwordSection;
 	} elsif($ln =~ 'insert_routes') {
