@@ -38,30 +38,30 @@ then
 if [[ $NTYPE = service ]]
 then
 
-CLIENT_IP=`ping -c 3 $name-hf0 -I hf0 | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+CLIENT_IP=`ping -c 3 $name-hf0 -I hf0 2>/dev/null | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
 
-if [ -n $CLIENT_IP ]
+if [ -n "$CLIENT_IP" ]
 then
 echo "DEVICE=hf0
 NM_CONTROLLED=yes
 IPADDR=$CLIENT_IP
 NETMASK=255.0.0.0
 ONBOOT=yes
-" >/etc/sysconfig/network-scripts/ifcfg-hf$i
+" >/etc/sysconfig/network-scripts/ifcfg-hf0
 
-ifdown hf$i
-ifup hf$i
+ifdown hf0
+ifup hf0
 fi
 
 fi
 
 # Configure hf0-hf<n> interfaces one by one.
-for i in 1 2 3
+for i in 1 2 3 4 5 6 7
 do
 
-CLIENT_IP=`ping -c 3 $name-hf$i -I hf$i | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+CLIENT_IP=`ping -c 3 $name-hf$i -I hf$i 2>/dev/null | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
 
-if [ -n $CLIENT_IP ]
+if [ -n "$CLIENT_IP" ]
 then
 echo "DEVICE=hf$i
 NM_CONTROLLED=yes
@@ -95,7 +95,7 @@ for i in 1 2 3
 do
 CLIENT_IP=`ping -q -n -c 1 -w 1 $name-hf$i | grep PING |awk '{print $3}' | sed 's/(\(.*\)):/\1/' `
 
-if [ -n $CLIENT_IP ]
+if [ -n "$CLIENT_IP" ]
 then
 mkhfi -i hf$i -a $CLIENT_IP -m $NETMASK
 fi
@@ -105,7 +105,7 @@ done
 # Configure ml0 for AIX.
 CLIENT_IP=`ping -q -n -c 1 -w 1 $name-ml0 | grep PING |awk '{print $3}' | sed 's/(\(.*\)):/\1/' `
 
-if [ -n $CLIENT_IP ]
+if [ -n "$CLIENT_IP" ]
 then
     #Check whether the mlt0 is available
     `lsdev -C | grep mlt0 | grep Available 2>&1 >/dev/null`
