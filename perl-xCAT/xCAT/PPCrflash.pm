@@ -210,7 +210,7 @@ sub parse_args {
    
     $request->{callback}->({data =>[ "It may take considerable time to complete, depending on the number of systems being updated.  In particular, power subsystem updates may take an hour or more if there are many attached managed systems. Please waiting. "]});
 
-    if( $request->{hwtype} =~ /^fsp$/ && $opt{activate} =~ /^disruptive$/ ) {
+    if( $request->{hwtype} =~ /^(fsp|bpa)$/ && $opt{activate} =~ /^disruptive$/ ) {
         $request->{callback}->({data =>[ "You can find the log files in the /var/log/xcatd/dfm/rflash/."]});
     }
 
