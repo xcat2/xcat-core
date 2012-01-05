@@ -1,5 +1,6 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_plugin::xnba;
+use strict;
 use Sys::Syslog;
 use Socket;
 use File::Copy;
@@ -134,11 +135,11 @@ sub setstate {
   if ($kern->{kcmdline} =~ /!myipfn!/) {
       my $ipfn = '${next-server}';#xCAT::Utils->my_ip_facing($node);
       $kern->{kcmdline} =~ s/!myipfn!/$ipfn/g;
-      $elilokmdline =~ s/!myipfn!/%N/;
+      $elilokcmdline =~ s/!myipfn!/%N/g;
       $ipfn = xCAT::Utils->my_ip_facing($node);
       unless ($ipfn) { $ipfn = $::XCATSITEVALS{master}; }
       if ($ipfn) {
-      	$pxelinuxkcmdline =~ s/!myipfn!/$ipfn/;
+      	$pxelinuxkcmdline =~ s/!myipfn!/$ipfn/g;
       }
   }
   my $pcfg;
@@ -280,6 +281,8 @@ sub preprocess_request {
     #use Getopt::Long;
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("pass_through");
+    my $HELP;
+    my $VERSION;
     if (!GetOptions('h|?|help'  => \$HELP, 'v|version' => \$VERSION) ) {
       if($usage{$command}) {
           my %rsp;
@@ -493,6 +496,8 @@ sub process_request {
       $response{node}->[0]->{data}->[0]= getstate($_);
       $callback->(\%response);
     } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
+      my $rc;
+      my $errstr;
       ($rc,$errstr) = setstate($_,\%bphash,\%chainhash,\%machash,\%iscsihash);
       #currently, it seems setstate doesn't return error codes...
       #if ($rc) {
@@ -580,7 +585,7 @@ sub getNodesetStates {
     foreach my $node (@nodes) {
       my $tmp=getstate($node);
       my @a=split(' ', $tmp);
-      $stat = $a[0];
+      my $stat = $a[0];
       if (exists($hashref->{$stat})) {
 	  my $pa=$hashref->{$stat};
 	  push(@$pa, $node);
