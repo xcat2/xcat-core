@@ -45,7 +45,7 @@ while (!($version eq '10' || $version eq '11')) {
 # Get template path
 my $template_path = '';
 while (!$template_path) {
-	$template_path = ask("Where do you want to place the template? (e.g. /tmp/autoyast.tmpl) ");
+	$template_path = ask("Where do you want to place the template? (e.g. /tmp/custom.sles11.s390x.tmpl) ");
 	
 	if (!$template_path) {
 		print "  A path for the template is needed!\n";
