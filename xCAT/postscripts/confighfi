@@ -49,6 +49,7 @@ NETMASK=255.0.0.0
 ONBOOT=yes
 " >/etc/sysconfig/network-scripts/ifcfg-hf$i
 
+ifdown hf$i
 ifup hf$i
 fi
 
@@ -69,6 +70,7 @@ NETMASK=255.0.0.0
 ONBOOT=yes
 " >/etc/sysconfig/network-scripts/ifcfg-hf$i
 
+ifdown hf$i
 ifup hf$i
 fi
 
