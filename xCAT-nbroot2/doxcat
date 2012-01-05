@@ -105,6 +105,7 @@ while :; do
 	fi
 	destparameter=`echo $destiny|awk -F= '{print $2}'`
 	destiny=`echo $destiny|awk -F= '{print $1}'`
+        dest=`echo $destiny|awk '{print $1}'` #could probably use bash but oh well
 	if [ "$destiny" = "discover" ]; then #skip a query to xCAT when /proc/cmdline will do
 		/bin/dodiscovery
 		/bin/getcert $XCATMASTER:$XCATPORT
@@ -130,6 +131,8 @@ while :; do
 		cd -
 	elif [ "$destiny" = "reboot" -o "$destiny" = "boot" ]; then
 		/bin/nextdestiny $XCATMASTER:$XCATPORT
+		reboot -f
+	elif [ "$dest" = "install" -o "$dest" = "netboot" ]; then
 		reboot -f
 	elif [ "$destiny" = standby ]; then
 		destiny=''
