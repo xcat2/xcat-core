@@ -232,7 +232,8 @@ sub getfspcon {
     my $fsp_name   = $att->{hcp};
     my $id = $att->{id};
 	
-    my $fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name );
+    #my $fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name );
+    my $fsp_ip = xCAT::Utils::getIPaddress( $fsp_name );
     if(!defined($fsp_ip)) {
         #return "Failed to get the $fsp_name\'s ip";
         $rsp->{node}->[0]->{error}=["Can't get node address"];
