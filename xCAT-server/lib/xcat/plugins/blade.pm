@@ -1318,19 +1318,19 @@ sub rscan {
       if ($session->{ErrorStr}) {
         return(1,$session->{ErrorStr});
       }
-      $type =~ s/Not available/null/;
+      $type =~ s/Not available/null/i;
 
       my $model = $session->get([$bladeomodel,$_]);
       if ($session->{ErrorStr}) {
         return(1,$session->{ErrorStr});
       }
-      $model =~ s/Not available/null/;
+      $model =~ s/Not available/null/i;
 
       my $serial = $session->get([$bladeserialoid,$_]);
       if ($session->{ErrorStr}) {
         return(1,$session->{ErrorStr});
       }
-      $serial =~ s/Not available/null/;
+      $serial =~ s/Not available/null/i;
 
       my $name = $session->get([$bladeoname,$_]);
       if ($session->{ErrorStr}) {
@@ -1396,6 +1396,7 @@ sub rscan {
       return(1,"Error opening '$_'" );
     }
   }
+  my @msg4update;
   foreach (@values) {
     my @data = split /,/;
     my $type = $data[0];
@@ -1405,16 +1406,24 @@ sub rscan {
     my $serial = $data[4];
     my $fspname = $data[6];
 
+    # ignore the blade server which status is 'Comm Error'
+    if ($name =~ /Comm Error/) {
+      next;
+    }
+
     if (exists($opt{u})) {
       ## TRACE_LINE print "Rscan: orig_name [$name], orig_fsp [$fspname]\n";
       
       # search the existed node for updating
       # for the cmm, using the type-serial number to match
+      my $matched = 0;
       if ($type eq "cmm") {
         my @vpdlist = $db{vpd}->getAllNodeAttribs(['node','serial','mtm']);
         foreach (@vpdlist) {
           if ($_->{'mtm'} eq $mtm && $_->{'serial'} eq $serial) {
+            push @msg4update, sprintf("%-7s$format Matched To =>$format", $type, '['.$name.']', '['.$_->{'node'}.']');
             $name = $_->{'node'};
+            $matched = 1;
             last;
           }
         }
@@ -1423,7 +1432,9 @@ sub rscan {
         my @mplist = $db{mp}->getAllNodeAttribs(['node','mpa','id']);
         foreach (@mplist) {
           if ($_->{'mpa'} eq $mpa && $_->{'id'} eq $id) {
+            push @msg4update, sprintf("%-7s$format Matched To =>$format", "blade", '['.$name.']', '['.$_->{'node'}.']');
             $name = $_->{'node'};
+            $matched = 1;
             last;
           }
         }
@@ -1435,7 +1446,9 @@ sub rscan {
         foreach (@ppclist) {
           if ($_->{'parent'} eq $mpa && $_->{'id'} eq $id) {
             if ($type eq "fsp") {
+              push @msg4update, sprintf("%-7s$format Matched To =>$format", $type, '['.$name.']', '['.$_->{'node'}.']');
               $name = $_->{'node'};
+              $matched = 1;
             } else {
               $fspname = $_->{'node'};
             }
@@ -1444,6 +1457,11 @@ sub rscan {
         }
       }
       ## TRACE_LINE print "Rscan: matched_name[$name], mateched_fsp [$fspname]\n";
+      if (!$matched) {
+        my $displaytype = ($type eq "ppcblade") ? "blade" : $type;
+        push @msg4update, sprintf("%-7s$format NOT Matched. MM [%s]: Slot ID [%s]", $displaytype, '['.$name.']',$mpa, $id);
+        next;
+      }
     }
 
     # Update the ppc table for the fsp and ppcblade
@@ -1528,6 +1546,10 @@ sub rscan {
        $db{$_}->commit;
     }
   }
+
+  if (exists($opt{u})) {
+    $result = join("\n", @msg4update);
+  }
   return (0,$result);
 }
 
@@ -1544,6 +1566,10 @@ sub rscan_xml {
     my $origtype = $type;
     if ($type eq "ppcblade") {
       $type = "blade";
+    }
+    # ignore the blade server which status is 'Comm Error'
+    if ($data[1] =~ /Comm Error/) {
+      next;
     }
 
     my $href = {
@@ -1634,7 +1660,10 @@ sub rscan_stanza {
     if ($type eq "ppcblade") {
       $type = "blade";
     }
-
+    # ignore the blade server which status is 'Comm Error'
+    if ($data[1] =~ /Comm Error/) {
+      next;
+    }
     $result .= "$data[1]:\n\tobjtype=node\n";
 
     foreach ( @rscan_attribs ) {
@@ -4076,6 +4105,12 @@ sub rscanfsp {
     }
   }
 
+  # Get the interface side of fsp
+  # mm[1] -> eth1; mm[2] -> eth0;
+  my $ifside;
+  if ($mm =~ /\[(\d)\]/) {
+    $ifside = $1;
+  }
   foreach (@blade) {
     /blade\[(\d+)\]/;
     my $id = $1;
@@ -4088,15 +4123,19 @@ sub rscanfsp {
     my $side;
     foreach (@data) {
       if (/eth(\d)/) {
-        $side = $1;
-        $telnetrscan{$id}{$side}{'side'} = $side;
-        $telnetrscan{$id}{$side}{'type'} = "fsp";
+        if ($1 eq $ifside) {
+          $side = $1;
+          $telnetrscan{$id}{$side}{'side'} = $side;
+          $telnetrscan{$id}{$side}{'type'} = "fsp";
+        } else {
+          undef $side;
+        }
       }
-      if (/-i (\d+\.\d+\.\d+\.\d+)/ && $side) {
+      if (/-i (\d+\.\d+\.\d+\.\d+)/ && defined($side)) {
         $telnetrscan{$id}{$side}{'ip'} = $1;
+        ## TRACE_LINE print "rscanfsp found: blade[$id] - ip [$telnetrscan{$id}{$side}{'ip'}], type [$telnetrscan{$id}{$side}{'type'}], side [$telnetrscan{$id}{$side}{'side'}].\n";
       }
     }
-    ## TRACE_LINE print "rscanfsp found: blade[$id] - ip [$telnetrscan{$id}{$side}{'ip'}], type [$telnetrscan{$id}{$side}{'type'}], side [$telnetrscan{$id}{$side}{'side'}].\n";
   }
 
   return [0];
@@ -4163,8 +4202,12 @@ sub network {
     my @data = $t->cmd("ifconfig -T system:blade[$slot]");
     # get the active interface
     my $if;
-    foreach (@data) {
-      if (/eth(\d)/) { $if = "eth".$1; last;}
+    if ($mm =~ /\[(\d)\]/) {
+      $if = "eth".$1;
+    } else {
+      foreach (@data) {
+        if (/eth(\d)/) { $if = "eth".$1; last;}
+      }
     }
     if (!$if) {return ([1, "Cannot find the interface of blade."])};
     $cmd = "ifconfig -$if -c static -T system:blade[$slot]";
@@ -4301,8 +4344,12 @@ sub snmpcfg {
   if ($value !~ /^enable|disable$/i) {
     return([1,"Invalid argument '$value' (enable|disable)"]); 
   }
+  # Check the type of mm
+  my @data = $t->cmd("info -T system:$mm");
+  if (grep(/Mach type\/model: Chassis Management Module/, @data) && $mptype ne "cmm") {
+    return ([1,"The hwtype attribute should be set to \'cmm\' for a Chassis Management Module."]);
+  }
   # Query users on MM
-  my @data;
   my $id;
   if ($mptype =~ /^[a]?mm$/) {
     @data = $t->cmd("users -T system:$mm");
@@ -4361,6 +4408,12 @@ sub sshcfg {
 
   if (grep(/Error: Command not recognized/,@data)) {
     return([1,"SSH supported on AMM with minimum firmware BPET32"]);
+  }
+
+  # Check the type of mm
+  @data = $t->cmd("info -T system:$mm");
+  if (grep(/Mach type\/model: Chassis Management Module/, @data) && $mptype ne "cmm") {
+    return ([1,"The hwtype attribute should be set to \'cmm\' for a Chassis Management Module."]);
   }
 
   # Get firmware version on MM
