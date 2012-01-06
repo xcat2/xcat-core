@@ -44,7 +44,11 @@ fi
 allowcred.awk &
 CREDPID=$!
 sleep 1
-
+if [ "$(uname -s)" = "AIX" ]; then
+ AIX=1
+ export AIX 
+  logger -t xcat "remoteshell setting up AIX"
+fi
 
 getcredentials.awk ssh_dsa_hostkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_dsa_hostkey
 
