@@ -3,8 +3,7 @@
 #egan@us.ibm.com
 #(C)IBM Corp
 #
-# For Linux only
-
+#  Linux or AIX
 if [ -r /etc/ssh/sshd_config ]
 then
 	logger -t xcat "Install: setup /etc/ssh/sshd_config"
