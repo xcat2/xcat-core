@@ -153,6 +153,8 @@ sub fping_pping {
 	    s/ is unreachable/: noping/;
 	  } elsif ($_ =~ /is alive/) {
 	    s/ is alive/: ping/;
+	  } elsif ($_ =~ /address not found/) {
+	    s/ address not found/: noping/;
 	  }
 	  print $_;
 	}
