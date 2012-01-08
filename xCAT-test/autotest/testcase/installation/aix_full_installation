@@ -10,7 +10,7 @@ check:output=~bosinst_data
 cmd:nim -o update -a packages=all -a source=$$SSHPKG autotest_lpp_source
 check:rc==0
 cmd:mkdir -p /install/nim/installp_bundle
-cmd:cp $$SSHPKG/xCATaixCN.bnd /install/nim/installp_bundle/
+cmd:cp $$SSHPKG/xCATaixCN71.bnd /install/nim/installp_bundle/
 check:rc==0
 cmd:nim -o define -t installp_bundle -a server=master -a location=/install/nim/installp_bundle/xCATaixCN71.bnd xCATaixCN71
 cmd:chdef -t osimage -o autotest installp_bundle="xCATaixCN71"
