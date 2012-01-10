@@ -2716,6 +2716,17 @@ sub mknimimage
     {
         my $nimcmd = qq~chnfsdom~;
         my $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
+        my $sitetab = xCAT::Table->new('site');
+        my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
+        my $domain = $tmp->{value};
+        $sitetab->close;
+        if (!$domain)
+        {
+            my $rsp;
+            push @{$rsp->{data}}, "Can not determine domain name, check site table.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
         if ($::RUNCMD_RC != 0)
         {
             my $rsp;
@@ -2730,17 +2741,6 @@ sub mknimimage
         # NFSv4 domain is not set yet
         if ($nimout =~ /N\/A/)
         {
-            my $sitetab = xCAT::Table->new('site');
-            my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
-            my $domain = $tmp->{value};
-            $sitetab->close;
-            if (!$domain)
-            {
-                my $rsp;
-                push @{$rsp->{data}}, "Can not determine domain name, check site table.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return 1;
-            }
             $nimcmd = qq~chnfsdom $domain~;
             $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
             if ($::RUNCMD_RC != 0)
@@ -2765,7 +2765,23 @@ sub mknimimage
               xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
                                     0);
 
-
+        }
+        $nimcmd = qq~lsnim -FZ -a nfs_domain master~;
+        $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
+        if ($::RUNCMD_RC != 0)
+        {
+            my $rsp;
+            push @{$rsp->{data}}, "Could not get NFSv4 domain setting for nim master.\n";
+            if ($::VERBOSE)
+            {
+                push @{$rsp->{data}}, "$nimout";
+            }
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+        # NFSv4 domain is not set to nim master
+        if (!$nimout)
+        {
             #nim -o change -a nfs_domain=$nfsdom master
             $nimcmd = qq~nim -o change -a nfs_domain=$domain master~;
             $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
@@ -10827,20 +10843,20 @@ sub make_SN_resource
             xCAT::MsgUtils->message("E", $rsp, $callback);
             return 1;
         }
+        my $sitetab = xCAT::Table->new('site');
+        my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
+        my $domain = $tmp->{value};
+        $sitetab->close;
+        if (!$domain)
+        {
+            my $rsp;
+            push @{$rsp->{data}}, "Can not determine domain name, check site table.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
         # NFSv4 domain is not set yet
         if ($nimout =~ /N\/A/)
         {
-            my $sitetab = xCAT::Table->new('site');
-            my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
-            my $domain = $tmp->{value};
-            $sitetab->close;
-            if (!$domain)
-            {
-                my $rsp;
-                push @{$rsp->{data}}, "Can not determine domain name, check site table.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return 1;
-            }
             $scmd = "chnfsdom $domain";
             $nimout = xCAT::Utils->runcmd("$scmd", -1);
             if ($::RUNCMD_RC != 0)
@@ -10860,7 +10876,23 @@ sub make_SN_resource
             sleep 2;
             $scmd = qq~startsrc -g nfs~;
             $nimout = xCAT::Utils->runcmd("$scmd", -1);
-
+        }
+        $scmd = "lsnim -FZ -a nfs_domain master";
+        $nimout = xCAT::Utils->runcmd("$scmd", -1);
+        if ($::RUNCMD_RC != 0)
+        {
+            my $rsp;
+            push @{$rsp->{data}}, "Could not get NFSv4 domain setting for nim master.\n";
+            if ($::VERBOSE)
+            {
+                push @{$rsp->{data}}, "$nimout";
+            }
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+        # NFSv4 domain is not set to nim master
+        if (!$nimout)
+        {
             #nim -o change -a nfs_domain=$nfsdom master
             $scmd = "nim -o change -a nfs_domain=$domain master";
             $nimout = xCAT::Utils->runcmd("$scmd", -1);
