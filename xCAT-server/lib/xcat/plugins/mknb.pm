@@ -40,11 +40,11 @@ sub process_request {
    }
 
    my $tftpdir = xCAT::Utils->getTftpDir();
-   if (scalar(@{$request->{arg}}) != 1) {
-      $callback->({error=>"Need to specifiy architecture (x86, x86_64 or ppc64)"},{errorcode=>[1]});
+   my $arch = $request->{arg}->[0];
+   if (! $arch) {
+      $callback->({error=>"Need to specify architecture (x86, x86_64 or ppc64)"},{errorcode=>[1]});
       return;
    }
-   my $arch = $request->{arg}->[0];
    unless (-d "$::XCATROOT/share/xcat/netboot/$arch") {
       $callback->({error=>"Unable to find directory $::XCATROOT/share/xcat/netboot/$arch",errorcode=>[1]});
       return;
