@@ -2,6 +2,8 @@ var bpaList;
 var fspList;
 var lparList;
 var bladeList;
+var rackList;
+var unknownList;
 var graphicalNodeList;
 var selectNode;
 
@@ -100,6 +102,8 @@ function createPhysicalLayout(nodeList){
     lparList = new Object();
     bladeList = new Object();
     selectNode = new Object();
+    rackList = new Object();
+    unknownList = new Array();
     
 	//there is not graphical data, get the info now
 	if (!flag){
@@ -143,6 +147,7 @@ function fillList(nodeName, defaultnodetype){
     var nodetype = '';
     var mpa = '';
     var unit = '';
+    var rack = '';
     if (!graphicalNodeList[nodeName]){
         parentName = '';
         mtm = '';
@@ -164,6 +169,11 @@ function fillList(nodeName, defaultnodetype){
 			break;
 			case 'blade':{
 				mpa = graphicalNodeList[nodeName]['mpa'];
+				unit = graphicalNodeList[nodeName]['unit'];
+			}
+			break;
+			case 'systemx':{
+				rack = graphicalNodeList[nodeName]['rack'];
 				unit = graphicalNodeList[nodeName]['unit'];
 			}
 			break;
@@ -225,7 +235,19 @@ function fillList(nodeName, defaultnodetype){
 			}
 			bladeList[mpa].push(nodeName + ',' + unit);
 		}
+		break;
+		case 'systemx':{
+			if (!rack){
+				rack = '_notsupply_';
+			}
+			if (undefined == rackList[rack]){
+				rackList[rack] = new Array();
+			}
+			rackList[rack].push(nodeName + ',' + unit);
+		}
+		break;
 		default:
+			unknownList.push(nodeName);
 			break;
 	}
 }
@@ -251,9 +273,10 @@ function createGraphical(){
 	//add buttons
 	tabarea.append(createActionMenu());
 	tabarea.append(selectNodeDiv);
-	tabarea.append('<table id="graphTable" style="border-color: transparent;"></table>');
 	createSystempGraphical(bpaList, fspList, tabarea);
 	createBladeGraphical(bladeList, tabarea);
+	createSystemxGraphical(rackList, tabarea);
+	addUnknownGraphical(unknownList, tabarea);
 }
 /**
  * create the physical graphical layout for system p machines
@@ -266,9 +289,19 @@ function createGraphical(){
  */
 function createSystempGraphical(bpa, fsp, area){
 	var usedFsp = new Object();
-	var graphTable = $('#graphTable');
+	var graphTable = $('<table style="border-color: transparent;margin:0px 0px 10px 0px;" ></table>');
 	var elementNum = 0;
 	var row;
+	var showflag = false;
+	
+	//there is node in bpa list, so show add the title and show all frames
+	for (var bpaName in bpa){
+		showflag = true;
+		$('#graphTab').append('system p<hr/>');
+		$('#graphTab').append(graphTable);
+		break;
+	}
+	
 	for (var bpaName in bpa){
 		if (0 == elementNum % 3){
 			row = $('<tr></tr>');
@@ -316,6 +349,15 @@ function createSystempGraphical(bpa, fsp, area){
 		singleFsp.push([fspName, fsp[fspName]['mtm']]);
 	}
 	
+	//if there is not frame, so we should check if there is single cec and show the title and add node area.
+	if (!showflag){
+		for(var fspIndex in singleFsp){
+			$('#graphTab').append('system p<hr/>');
+			$('#graphTab').append(graphTable);
+			break;
+		}
+	}
+	
 	singleFsp.sort(function(a, b){
 		var unitNumA = 4;
 		var unitNumB = 4;
@@ -329,6 +371,7 @@ function createSystempGraphical(bpa, fsp, area){
 		
 		return (unitNumB - unitNumA);
 	});
+	
 	
 	elementNum = 0;
 	for (var fspIndex in singleFsp){
@@ -345,7 +388,6 @@ function createSystempGraphical(bpa, fsp, area){
 		row.append(td);
 	}
 	
-	area.append(graphTable);
 	
 	$('.tooltip input[type = checkbox]').bind('click', function(){
 		var lparName = $(this).attr('name');
@@ -418,13 +460,36 @@ function createSystempGraphical(bpa, fsp, area){
 	});
 }
 
+/**
+ * create the physical graphical layout for blades
+ * 
+ * @param blades : the blade list in global 
+ *        area: the element to append graphical layout
+ * @return
+ */
 function createBladeGraphical(blades, area){
-	var graphTable = $('#graphTable');
+	var graphTable = $('<table style="border-color: transparent;margin:0px 0px 10px 0px;"></table>');
 	var mpa = '';
 	var bladename = '';
 	var index = 0;
 	var mpaNumber = 0;
 	var row;
+	var showflag = false;
+	
+	//only show the title and nodes when there are blade in the blade list
+	for (mpa in blades){
+		showflag = true;
+		break;
+	}
+	
+	if (showflag){
+		$('#graphTab').append('Blade<hr/>');
+		$('#graphTab').append(graphTable);
+	}
+	//if there is not blade nodes, return directly
+	else{
+		return;
+	}
 	
 	for (mpa in blades){
 		var tempArray = new Array(14);
@@ -442,7 +507,7 @@ function createBladeGraphical(blades, area){
 		
 		
 		//fill the array with blade information, to create the empty slot
-		for (var index in blades[mpa]){
+		for (index in blades[mpa]){
 			bladeInfo = blades[mpa][index].split(',');
 			unit = parseInt(bladeInfo[1]);
 			tempArray[unit - 1] = bladeInfo[0];
@@ -450,7 +515,7 @@ function createBladeGraphical(blades, area){
 		}
 		
 		//draw the blades and empty slot in chasis
-		for (var index = 0; index < 14; index++){
+		for (index = 0; index < 14; index++){
 			if (tempArray[index]){
 				bladename = tempArray[index];
 				chasisDiv.append('<div id="' + bladename + '" class="bladeDiv bladeInsertDiv" title="' + bladename + '"></div>');
@@ -464,6 +529,67 @@ function createBladeGraphical(blades, area){
 		row.append(td);
 	}
 	
+}
+
+/**
+ * create the physical graphical layout for system x machines
+ * 
+ * @param xnodes : the system x node list in global 
+ *        area: the element to append graphical layout
+ * @return
+ */
+function createSystemxGraphical(xnodes, area){
+	var graphTable = $('<table style="border-color: transparent;margin:0px 0px 10px 0px;"></table>');
+	var xnodename = '';
+	var index = 0;
+	var rack = '';
+	var row;
+	var xnodenum = 0;
+	var showflag = false;
+	
+	//only the title and system x node when there is x nodes in the list
+	for (rack in rackList){
+		showflag = true;
+		break;
+	}
+	
+	if (showflag){
+		$('#graphTab').append('system x<hr/>');
+		$('#graphTab').append(graphTable);
+	}
+	//there is nothing to show, return directly
+	else{
+		return;
+	}
+
+	for (rack in rackList){
+		for(index in rackList[rack]){
+			var xnodename = rackList[rack][index];
+			if (0 == xnodenum % 3){
+				row = $('<tr></tr>');
+				graphTable.append(row);
+			}
+			xnodenum++;
+			var td = $('<td style="padding:0;border-color: transparent;"></td>');
+			var xnodeDiv = '<div id="' + xnodename + '" class="xnodeDiv" title="' + xnodename +'"></div>';
+			td.append(xnodeDiv);
+			row.append(td);
+		}
+	}
+}
+
+function addUnknownGraphical(unknownnode, area){
+	var graphTab = $('#graphTab');
+	var index = 0;
+	
+	if (unknownnode.length < 1){
+		return;
+	}
+	
+	graphTab.append('Unknown Type Nodes:<hr/>');
+	for (index in unknownnode){
+		graphTab.append(unknownnode[index] + '; ');
+	}
 }
 /**
  * update the lpars' background in cec, lpars area and  selectNode

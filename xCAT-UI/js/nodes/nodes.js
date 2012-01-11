@@ -66,7 +66,6 @@ function loadNodesPage() {
 
 		// Create loader and info bar
 		groups.append(createLoader());
-		$('#nodes').append(createInfoBar('Select a group to view its nodes.'));
 
 		// Get groups
 		$.ajax( {
@@ -235,7 +234,7 @@ function loadGroups(data) {
 }
 
 /**
- * Empty the nodes area and add two tabs for nodes result
+ * Empty the nodes area and add three tabs for nodes result
  * 
  * @param targetgroup
  * 			The name range for nodels command
@@ -525,7 +524,7 @@ function loadNodes(data) {
 		// Get key and value
 		args = rsp[i].split('=', 2);
 		var key = jQuery.trim(args[0]);
-		var val = jQuery.trim(rsp[i].substring(rsp[i].indexOf('=') + 1, rsp[i].length));
+		var val = jQuery.trim(rsp[i].substring(rsp[i].indexOf('=') + 1));
 		
 		// Create a hash table
 		attrs[node][key] = val;
