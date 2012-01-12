@@ -113,7 +113,7 @@ my @checkcmds = ("nimnodeset", "mkdsklsnode", "rmdsklsnode", "xcat2nim", "nimnod
 if (grep(/^$bname$/, @checkcmds) ) { 
 	# strip off all options
 	# use getopt instead of getopts to let long options pass through
-	getopt('dismot');
+	getopt('ismot');
 	# check the operands for a noderange
 	while (my $a = shift(@ARGV)) {
 		if (!($a =~ /=/) && !($a =~ /^-/)) {

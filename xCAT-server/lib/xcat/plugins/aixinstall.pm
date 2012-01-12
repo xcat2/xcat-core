@@ -614,6 +614,7 @@ sub nimnodeset
     if (
         !GetOptions(
 					'b|backupSN'  => \$::BACKUP,
+					'd|defonly'   => \$::DEFONLY,
                     'f|force'   => \$::FORCE,
                     'h|help'    => \$::HELP,
                     'i=s'       => \$::OSIMAGE,
@@ -7461,6 +7462,7 @@ sub prenimnodeset
     if (
         !GetOptions(
 					'b|backupSN'  => \$::BACKUP,
+					'd|defonly'   => \$::DEFONLY,
                     'f|force'   => \$::FORCE,
                     'h|help'    => \$::HELP,
                     'i=s'       => \$::OSIMAGE,
@@ -7971,14 +7973,16 @@ sub prenimnodeset
     #
     ######################################################
 
-
-	my $rc = &doSNcopy2($callback, \@nodelist, $nimprime, \@nimrestypes, \%imghash, \%lochash,  \%nodeosi, $subreq, $type);
-	if ($rc != 0 ){
-        my $rsp;
-        push @{$rsp->{data}},
-          "Could not copy NIM resources to the xCAT service nodes.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return (1);
+	# don't copy if define only is set
+    if (!$::DEFONLY) {
+		my $rc = &doSNcopy2($callback, \@nodelist, $nimprime, \@nimrestypes, \%imghash, \%lochash,  \%nodeosi, $subreq, $type);
+		if ($rc != 0 ){
+        	my $rsp;
+        	push @{$rsp->{data}},
+          		"Could not copy NIM resources to the xCAT service nodes.\n";
+        	xCAT::MsgUtils->message("E", $rsp, $callback);
+        	return (1);
+		}
     }
 
     # pass this along to the process_request routine
@@ -9073,6 +9077,7 @@ sub mkdsklsnode
     if (
         !GetOptions(
                     'b|backup'  => \$::BACKUP,
+					'd|defonly' => \$::DEFONLY,
                     'f|force'   => \$::FORCE,
                     'h|help'    => \$::HELP,
                     'i=s'       => \$::OSIMAGE,
@@ -11076,10 +11081,34 @@ sub make_SN_resource
                 if (grep(/^$restype$/, @dir_res))
                 {
 
-
-                    my $loc =
-                      dirname(dirname($lochash{$imghash{$image}{$restype}}));
+					my $loc = dirname(dirname($lochash{$imghash{$image}{$restype}}));
                     chomp $loc;
+
+					#  if shared_root and DEFONLY that means there may
+					# already be a directory created.   So we need to 
+					# move the existing dir so we can create the resource.
+					# we'll move the original dir back after the res
+					# is defined
+					my $moveit = 0;
+					my $origloc;
+					my $origlocbak;
+					if ($::DEFONLY && ( $restype eq "shared_root")) {
+						$origloc =  $lochash{$imghash{$image}{$restype}};
+						$origlocbak = "$origloc.bak";
+						# ex. /install/nim/shared_root/71Bdskls_shared_root
+						if (-d $origloc) {
+							my $mvcmd = qq~/usr/sbin/mvdir $origloc $origlocbak~;
+							my $output = xCAT::Utils->runcmd("$mvcmd", -1);
+							if ($::RUNCMD_RC != 0)
+							{
+								my $rsp;
+								push @{$rsp->{data}}, "Could not move $origloc.\n";
+								xCAT::MsgUtils->message("E", $rsp, $callback);
+							}
+							$moveit++;
+						}
+					}
+
                     if (
                         &mknimres(
                                   $imghash{$image}{$restype}, $restype,
@@ -11090,8 +11119,30 @@ sub make_SN_resource
                     {
                         next;
                     }
-                }
 
+					if ($moveit) {
+						# remove the directory
+						my $rmcmd = qq~/bin/rm -R $origloc~;
+						my $out2 = xCAT::Utils->runcmd("$rmcmd", -1);
+                        if ($::RUNCMD_RC != 0)
+                        {
+                            my $rsp;
+                            push @{$rsp->{data}}, "Could not remove $origloc.\n";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                        }
+
+						# move over the original
+						# in case it contains nfo for other node already
+						my $mvcmd2 = qq~/usr/sbin/mvdir $origlocbak $origloc~;
+						my $out3 = xCAT::Utils->runcmd("$mvcmd2", -1);
+                        if ($::RUNCMD_RC != 0)
+                        {
+                            my $rsp;
+                            push @{$rsp->{data}}, "Could not move $origlocbak to $origloc.\n";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                        }
+					}
+                }
 
                 # only make lpp_source for standalone type images
                 if (   ($restype eq "lpp_source")
@@ -11812,7 +11863,7 @@ sub mkdsklsnode_usage
     push @{$rsp->{data}}, "\tmkdsklsnode [-h | --help ]";
     push @{$rsp->{data}}, "or";
     push @{$rsp->{data}},
-      "\tmkdsklsnode [-V|--verbose] [-f|--force] [-n|--newname] \n\t\t[-i image_name] [-l location] [-p|--primarySN] [-b|--backupSN]\n\t\tnoderange [attr=val [attr=val ...]]\n";
+      "\tmkdsklsnode [-V|--verbose] [-f|--force] [-d|--defonly] [-n|--newname] \n\t\t[-i image_name] [-l location] [-p|--primarySN] [-b|--backupSN]\n\t\tnoderange [attr=val [attr=val ...]]\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
