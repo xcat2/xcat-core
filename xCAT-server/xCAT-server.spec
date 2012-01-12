@@ -186,6 +186,8 @@ rm -rf $RPM_BUILD_ROOT
 %{prefix}
 /etc/xcat
 /etc/init.d/xcatd
+/etc/apache2/conf.d/xcat-ws.conf
+/etc/httpd/conf.d/xcat-ws.conf
 
 %changelog
 * Fri Nov 20 2007 - Jarrod Johnson <jbjohnso@us.ibm.com>
