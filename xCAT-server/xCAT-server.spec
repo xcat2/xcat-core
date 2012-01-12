@@ -164,12 +164,18 @@ cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server/*
 #echo $RPM_BUILD_ROOT %{prefix}
 
+# genereate the configuration files for web service (REST API)
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/ws
+mkdir -p $RPM_BUILD_ROOT/etc/apache2/conf.d
+mkdir -p $RPM_BUILD_ROOT/etc/httpd/conf.d
 cp xCAT-wsapi/* $RPM_BUILD_ROOT/%{prefix}/ws
-echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" > $RPM_BUILD_ROOT/wstemp.txt
-cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf >> $RPM_BUILD_ROOT/wstemp.txt
-mv $RPM_BUILD_ROOT/wstemp.txt $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf
+echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" > $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
+cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache2 >>  $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
 
+echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" > $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf
+cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.httpd >> $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf
+rm -f $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache2
+rm -f $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.httpd
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -229,24 +235,6 @@ if [ "$1" -gt "1" ]; then #only on upgrade for AIX...
 fi  
 %endif
 
-#Web Service
-%ifos linux
-	if [ -e "/etc/redhat-release" ]; then
-		apachedaemon='httpd'
-		#apacheuser='apache'
-	else	#SUSE
-		apachedaemon='apache2'
-		#apacheuser='wwwrun'
-	fi
-
-	/bin/rm -f /etc/$apachedaemon/conf.d/xcat-ws.conf
-        mkdir -p /etc/$apachedaemon/conf.d/
-	/bin/ln -s %{prefix}/ws/xcat-ws.conf /etc/$apachedaemon/conf.d/
-
-	# Restart Apache Web Server
-	#/etc/init.d/$apachedaemon reload
-
-%endif
 
 exit 0
 
@@ -262,20 +250,9 @@ if [ $1 == 0 ]; then  #This means only on -e
     /sbin/chkconfig --del xcatd
   fi
   rm -f /usr/sbin/xcatd  #remove the symbolic
+
+  rm -f /etc/httpd/conf.d/xcat-ws.conf
+  rm -f /etc/httpd/conf.d/xcat-ws.conf
 fi
 %endif
-%ifos linux
-        if [ -e "/etc/redhat-release" ]; then
-                apachedaemon='httpd'
-                #apacheuser='apache'
-        else    #SUSE
-                apachedaemon='apache2'
-                #apacheuser='wwwrun'
-        fi
-
-        /bin/rm -f /etc/$apachedaemon/conf.d/xcat-ws.conf
-%endif
-
-
-
 
