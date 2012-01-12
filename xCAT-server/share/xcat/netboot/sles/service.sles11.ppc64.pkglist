@@ -44,6 +44,9 @@ unixODBC
 perl-DBD-mysql
 mysql-client
 libmysqlclient15
+lsvpd
+irqbalance
+procps
 #   The following rpms are available on the SLES SDK
 #   You will need to locate and make these rpms available in your zypper
 #   repository for service node installs
