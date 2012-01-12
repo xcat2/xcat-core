@@ -9,3 +9,6 @@ busybox-anaconda
 wget
 rsync
 dracut-network
+lsvpd
+irqbalance
+procps
