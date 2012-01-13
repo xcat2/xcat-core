@@ -1188,7 +1188,6 @@ function powerInitConfig(operType){
     showStr += '<ul>';
     showStr += '<li id="fileLine"><span class="ui-icon ' + iconClass + '"></span>Create configure file for xcatsetup.</li>';
     showStr += '<li id="setupLine"><span class="ui-icon ' + iconClass + '"></span>Wrote Objects into xCAT database by xcatsetup.</li>';
-    showStr += '<li id="dhcpLine"><span class="ui-icon ' + iconClass + '"></span>Configured DHCP.</li>';
     showStr += '</ul></div>';
     
     $('#discoverContentDiv').append(showStr);
@@ -1292,34 +1291,6 @@ function runSetup(){
             var tempSpan = $('#setupLine').find('span');
             tempSpan.removeClass('ui-icon-gear');
             tempSpan.addClass('ui-icon-check');
-            configDHCP();
-        }
-    });
-}
-/**
- * Step 7: create the dhcp configure file
- *          
- * @param 
- * 
- * @return
- */
-function configDHCP(){
-    $('#dhcpLine').append(createLoader());
-    $.ajax({
-        url : 'lib/cmd.php',
-        dataType : 'json',
-        data : {
-            cmd : 'makedhcp',
-            tgt : '',
-            args : '-n',
-            msg : ''
-        },
-        
-        success : function(){
-            $('#dhcpLine img').remove();
-            var tempSpan = $('#dhcpLine').find('span');
-            tempSpan.removeClass('ui-icon-gear');
-            tempSpan.addClass('ui-icon-check');
             createDiscoverButtons();
         }
     });
@@ -1335,12 +1306,20 @@ function configDHCP(){
 function powerInitUpdateDefinition(operType){
     $('#discoverContentDiv').empty();
     $('.tooltip').remove();
+    var iconClass = '';
+    if ('back' == operType){
+        iconClass = 'ui-icon-check';
+    }
+    else{
+        iconClass = 'ui-icon-gear';
+    }
     var showStr = '<div style="min-height:360px"><h2>' + steps[currentStep] + '<br/><br/></h2>';
     showStr += '<ul>';
-    showStr += '<li id="frameLine"><span class="ui-icon ui-icon-gear"></span>Update Frames into xCAT database.</li>';
-    showStr += '<li id="hmcLine1"><span class="ui-icon ui-icon-gear"></span>Discover HMCs.</li>';
-    showStr += '<li id="hmcLine2"><span class="ui-icon ui-icon-gear"></span>Update HMCs into xCAT database.</li>';
-    showStr += '<li id="cecLine"><span class="ui-icon ui-icon-gear"></span>Discover CECs and update into xCAT database.</li>';
+    showStr += '<li id="frameLine"><span class="ui-icon ' + iconClass + '"></span>Update Frames into xCAT database.</li>';
+    showStr += '<li id="hmcLine1"><span class="ui-icon ' + iconClass + '"></span>Discover HMCs.</li>';
+    showStr += '<li id="hmcLine2"><span class="ui-icon ' + iconClass + '"></span>Update HMCs into xCAT database.</li>';
+    showStr += '<li id="cecLine"><span class="ui-icon ' + iconClass + '"></span>Discover CECs and update into xCAT database.</li>';
+    showStr += '<li id="dhcpLine"><span class="ui-icon ' + iconClass + '"></span>Configured DHCP.</li>';
     showStr += '</ul></div>';
     
     $('#discoverContentDiv').append(showStr);
@@ -1490,6 +1469,35 @@ function lsslpWriteCec(){
         success: function(){
             $('#cecLine img').remove();
             var tempSpan = $('#cecLine').find('span');
+            tempSpan.removeClass('ui-icon-gear');
+            tempSpan.addClass('ui-icon-check');
+            configDHCP();
+        }
+    });
+}
+
+/**
+ * Step 8: create the dhcp configure file
+ *          
+ * @param 
+ * 
+ * @return
+ */
+function configDHCP(){
+    $('#dhcpLine').append(createLoader());
+    $.ajax({
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'makedhcp',
+            tgt : '',
+            args : '-n',
+            msg : ''
+        },
+        
+        success : function(){
+            $('#dhcpLine img').remove();
+            var tempSpan = $('#dhcpLine').find('span');
             tempSpan.removeClass('ui-icon-gear');
             tempSpan.addClass('ui-icon-check');
             createDiscoverButtons();
