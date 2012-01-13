@@ -1515,7 +1515,6 @@ sub rscan {
     $k3->{node}   = $name;
     if ($type eq "fsp") {
       $u3->{groups} = "fsp,all";
-      $u3->{hidden} = "1";
     } elsif ($type eq "ppcblade") {
       $u3->{groups} = "blade,all";
     } else {
@@ -1636,10 +1635,6 @@ sub rscan_xml {
             $href->{Node}->{$_} = $d;
         }
     }
-    # Specific values for fsp
-    if ($type eq 'fsp') {
-      $href->{Node}->{'hidden'} = "1";
-    }
     
     $xml.= XMLout($href,NoAttr=>1,KeyAttr=>[],RootName=>undef);
   }
@@ -1726,11 +1721,6 @@ sub rscan_stanza {
         if (!$ignore) {
             $result .= "\t$_=$d\n";
         }
-    }
-
-    # Specific values for fsp
-    if ($type eq 'fsp') {
-      $result .= "\thidden=1\n";
     }
   }
   return( $result );
@@ -4109,7 +4099,13 @@ sub rscanfsp {
   # mm[1] -> eth1; mm[2] -> eth0;
   my $ifside;
   if ($mm =~ /\[(\d)\]/) {
-    $ifside = $1;
+    if ($1 eq "1") {
+      $ifside = "1";
+    } elsif ($1 eq "2") {
+      $ifside = "0";
+    } else {
+      $ifside = $1;
+    }
   }
   foreach (@blade) {
     /blade\[(\d+)\]/;
@@ -4201,9 +4197,16 @@ sub network {
     # The network setting for the service processor of blade
     my @data = $t->cmd("ifconfig -T system:blade[$slot]");
     # get the active interface
+    # MM[1] - FSP eth1 MM[2] - FSP eth0
     my $if;
     if ($mm =~ /\[(\d)\]/) {
-      $if = "eth".$1;
+      if($1 eq "1") {
+        $if = "eth1";
+      } elsif($1 eq "2") {
+        $if = "eth0";
+      } else {
+        $if = "eth".$1;
+      }
     } else {
       foreach (@data) {
         if (/eth(\d)/) { $if = "eth".$1; last;}
