@@ -479,6 +479,10 @@ sub on_bmc_connect {
 		return;
 	}
 	if ($command eq "rpower") {
+        	unless (defined $sessdata->{device_id}) { #need get device id data initted for S3 support
+	            $sessdata->{ipmisession}->subcmd(netfn=>6,command=>1,data=>[],callback=>\&gotdevid,callback_args=>$sessdata);
+		    return;
+	        }
 		return power($sessdata);
 	} elsif ($command eq "rspreset") {
         return resetbmc($sessdata);
@@ -1156,7 +1160,7 @@ sub power {
 	my $text;
 	my $code;
         if (not $sessdata->{acpistate} and $sessdata->{mfg_id} == 20301) { #Only implemented for IBM servers
-		$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x1d,data=>[],callback=>\&power_with_acpi,callback_args=>$sessdata);
+		$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x1d,data=>[1],callback=>\&power_with_acpi,callback_args=>$sessdata);
 	} else {
 		$sessdata->{ipmisession}->subcmd(netfn=>0,command=>1,data=>[],callback=>\&power_with_context,callback_args=>$sessdata);
 	}
