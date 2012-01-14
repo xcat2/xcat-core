@@ -387,7 +387,7 @@ if [ "$1" != "serial-on" ]; then #if this terminal is a fake, don't use it, awkw
     # setup a mount point
     mkdir -p /bomc
     MNTPOINT=/bomc
-    mount -t nfs ${xcat_server}:#BOMCPATH# /bomc
+    mount -t nfs -o nolock ${xcat_server}:#BOMCPATH# /bomc
 fi
 
 export UXSPI_BOOTABLE=/bomc
