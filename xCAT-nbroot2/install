@@ -14,7 +14,7 @@ dracut_install chmod /lib/libc.so.6 /lib/ld-linux.so.2 /lib/libdl.so.2 /lib/libm
 dracut_install dmidecode /usr/lib64/libstdc++.so.6 #uxspi prereqs, but will use dmidecode to improve decision on loading ipmi_si
 dracut_install dmidecode /usr/lib64/libstdc++.so.5 #broadcom firmware update links against old lib
 dracut_install /lib/libpthread.so.0 #32 bit lib because UXSPI will not ship a native 64 bit build
-dracut_install /usr/lib64/libldap-2.4.so.2 /usr/lib64/liblber-2.4.so.2 /usr/lib64/libsasl2.so.2 #uxspi has incurred these...
+dracut_install /lib64/libldap-2.4.so.2 /lib64/liblber-2.4.so.2 /usr/lib64/libsasl2.so.2 #uxspi has incurred these...
 dracut_install /usr/share/zoneinfo/posix/Zulu
 dracut_install /usr/share/zoneinfo/posix/GMT-0
 dracut_install /usr/share/zoneinfo/posix/Europe/Istanbul
