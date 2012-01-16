@@ -109,8 +109,13 @@ sub process_request {
       system("ssh-keygen -t dsa -f $tempdir/etc/ssh_host_dsa_key -C '' -N ''");
    }
    if ($invisibletouch) {
+       if (-x "/usr/bin/lzma") { #let's reclaim some of that size...
+       $callback->({data=>["Creating genesis.fs.$arch.lzma in $tftpdir/xcat"]});
+       system("cd $tempdir; find . | cpio -o -H newc | lzma -C crc32 -9 > $tftpdir/xcat/genesis.fs.$arch.lzma");
+       } else {
        $callback->({data=>["Creating genesis.fs.$arch.gz in $tftpdir/xcat"]});
        system("cd $tempdir; find . | cpio -o -H newc | gzip -9 > $tftpdir/xcat/genesis.fs.$arch.gz");
+	}
    } else {
    	$callback->({data=>["Creating nbfs.$arch.gz in $tftpdir/xcat"]});
        system("cd $tempdir; find . | cpio -o -H newc | gzip -9 > $tftpdir/xcat/nbfs.$arch.gz");

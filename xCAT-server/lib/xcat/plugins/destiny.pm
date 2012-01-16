@@ -278,9 +278,15 @@ sub setdestiny {
           $xcatdport = $portent->{value};
       }
       if (-r "$tftpdir/xcat/genesis.kernel.$arch") {
+	  if (-r "$tftpdir/xcat/genesis.fs.$arch.lzma") {
+          $bootparms->setNodeAttribs($_,{kernel => "xcat/genesis.kernel.$arch",
+                                   initrd => "xcat/genesis.fs.$arch.lzma",
+                                   kcmdline => $kcmdline."xcatd=$master:$xcatdport destiny=$state"});
+	  } else {
           $bootparms->setNodeAttribs($_,{kernel => "xcat/genesis.kernel.$arch",
                                    initrd => "xcat/genesis.fs.$arch.gz",
                                    kcmdline => $kcmdline."xcatd=$master:$xcatdport destiny=$state"});
+	}
       } else {  #'legacy' environment
       $bootparms->setNodeAttribs($_,{kernel => "xcat/nbk.$arch",
                                    initrd => "xcat/nbfs.$arch.gz",
