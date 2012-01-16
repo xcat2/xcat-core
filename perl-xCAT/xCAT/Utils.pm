@@ -2916,12 +2916,24 @@ sub getIPaddress
         my $parent;
         my $ppctab  = xCAT::Table->new( 'ppc' );
         my $vpdtab = xCAT::Table->new( 'vpd' );
+        my $mptab = xCAT::Table->new( 'mp');
         if ($type eq "bpa" or $type eq "fsp") {
             my $tmp_p = $ppctab->getNodeAttribs($nodetocheck, ['parent']);
             if ($tmp_p and $tmp_p->{parent}) {
                 $parent = $tmp_p->{parent};
             } else {
                 return undef;
+            }
+            if ($mptab) {
+                my $tmp_p_type = $mptab->getNodeAttribs($parent, ['nodetype']);
+                if ($tmp_p_type && $tmp_p_type->{nodetype} =~ /^(cmm|mp)$/) {
+                    return getNodeIPaddress($nodetocheck);
+                } else {
+                    my $p_type = xCAT::DBobjUtils->getnodetype($parent);
+                    if ($p_type && $p_type =~ /^(cmm|mp)$/) {
+                        return getNodeIPaddress($nodetocheck);
+                    }
+                }
             }
             my $tmp_s = $vpdtab->getNodeAttribs($nodetocheck, ['side']);
             if ($tmp_s->{side} and ($tmp_s->{side} =~ /(A|B)-\d/i)) {
