@@ -10353,12 +10353,52 @@ sub mkdsklsnode
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
 
-                my $scmd = "chnfs -R on";
+                my $scmd = "exportfs -ua";
                 my $output = xCAT::Utils->runcmd("$scmd", -1);
                 if ($::RUNCMD_RC != 0)
                 {
                     my $rsp;
+                    push @{$rsp->{data}}, "Could not un-exportfs on $Sname.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    $error++;
+                }
+
+                $scmd = "chnfs -R on";
+                $output = xCAT::Utils->runcmd("$scmd", -1);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
                     push @{$rsp->{data}}, "Could not enable NFSv4 replication on $Sname.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    $error++;
+                }
+
+                $scmd = "stopsrc -g nfs";
+                $output = xCAT::Utils->runcmd("$scmd", -1);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Could not stop nfs group on $Sname.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    $error++;
+                }
+
+                $scmd = "startsrc -g nfs";
+                $output = xCAT::Utils->runcmd("$scmd", -1);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Could not stop nfs group on $Sname.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    $error++;
+                }
+
+                my $scmd = "exportfs -a";
+                my $output = xCAT::Utils->runcmd("$scmd", -1);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Could not exportfs on $Sname.\n";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     $error++;
                 }
