@@ -33,7 +33,7 @@ if grep 'BEGIN CERTIFICATE' /tmp/certresp.xml > /dev/null; then
 	awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/' < /tmp/certresp.xml > /etc/xcat/cert.pem
 	#stop transmitting sysDesc, allowing the public key to age out of validity
 	for iface in `grep '^  e' /var/lib/lldpad/lldpad.conf|awk '{print $1}' `; do
-		lldptool -T -i $iface -V sysDesc enableTx=no
+		lldptool -T -i $iface -V sysDesc enableTx=no >& /dev/null
 	done
 fi
 rm /tmp/certreq.xml

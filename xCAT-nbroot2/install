@@ -1,6 +1,8 @@
 #!/bin/sh
 echo $drivers
 dracut_install wget openssl tar ipmitool cpio gzip lsmod ethtool modprobe touch echo cut wc
+dracut_install netstat # broadcom update requires
+dracut_install uniq # mellanox update requires
 dracut_install grep ip hostname awk egrep grep dirname expr
 dracut_install mount.nfs sshd vi reboot lspci parted screen mkfs mkfs.ext4 mkfs.btrfs
 #dracut_install libvirtd /usr/share/libvirt/cpu_map.xml /usr/bin/qemu-img /usr/libexec/qemu-kvm
@@ -10,6 +12,9 @@ dracut_install poweroff ntpq ntpd hwclock date /usr/share/terminfo/x/xterm /etc/
 dracut_install /sbin/rsyslogd /etc/protocols umount /bin/rpm /usr/lib/rpm/rpmrc
 dracut_install chmod /lib/libc.so.6 /lib/ld-linux.so.2 /lib/libdl.so.2 /lib/libm.so.6 /sbin/route /sbin/ifconfig /usr/bin/head /etc/redhat-release ping tr lsusb /usr/share/hwdata/usb.ids #ibm fw wrapper requirements
 dracut_install dmidecode /usr/lib64/libstdc++.so.6 #uxspi prereqs, but will use dmidecode to improve decision on loading ipmi_si
+dracut_install dmidecode /usr/lib64/libstdc++.so.5 #broadcom firmware update links against old lib
+dracut_install /lib/libpthread.so.0 #32 bit lib because UXSPI will not ship a native 64 bit build
+dracut_install /usr/lib64/libldap-2.4.so.2 /usr/lib64/liblber-2.4.so.2 /usr/lib64/libsasl2.so.2 #uxspi has incurred these...
 dracut_install /usr/share/zoneinfo/posix/Zulu
 dracut_install /usr/share/zoneinfo/posix/GMT-0
 dracut_install /usr/share/zoneinfo/posix/Europe/Istanbul
