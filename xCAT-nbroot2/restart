@@ -6,7 +6,7 @@ if [ ! -z "$FORCENICS" ]; then
     echo "Forcing down nics aside from $FORCENICS due to discoverynics setting"
     for pidfile in /var/run/dhclient.*.pid; do
 	NIC=`echo $pidfile|awk -F. '{print $2}'`
-	if [ ! -z "$NIC" -a "$NIC" != "$FORCENICS" ]; then
+	if [ ! -z "$NIC" ] && echo $NIC | egrep -v "$FORCENICS"; then
 		dhclient -r -1 -cf /etc/dhclient.conf -pf $pidfile $NIC
 		rm $pidfile
 		ip link set $NIC down
@@ -14,7 +14,7 @@ if [ ! -z "$FORCENICS" ]; then
     done
     for pidfile in /var/run/dhclient6.*.pid; do
 	NIC=`echo $pidfile|awk -F. '{print $2}'`
-	if [ ! -z "$NIC" -a "$NIC" != "$FORCENICS" ]; then
+	if [ ! -z "$NIC" ] && echo $NIC | egrep -v "$FORCENICS"; then
 		dhclient -6 -r -1 -pf $pidfile -lf /var/lib/dhclient/dhclient6.leases $NIC
 		rm $pidfile
 		ip link set $NIC down
