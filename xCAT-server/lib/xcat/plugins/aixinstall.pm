@@ -10437,7 +10437,7 @@ sub mkdsklsnode
                 }
                 if ($needexport)
                 {
-                    my $scmd = "mknfsexp -d $install_dir -B -v 4 -g $install_dir\@$myip:$install_dir\@$remoteip -t rw -r '*'";
+                    my $scmd = "mknfsexp -d $install_dir -B -v 4 -g $install_dir\@$myip:$install_dir\@$remoteip -x -t rw -r '*'";
                     my $output = xCAT::Utils->runcmd("$scmd", -1);
                     if ($::RUNCMD_RC != 0)
                     {
