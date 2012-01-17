@@ -776,7 +776,7 @@ function createFspDiv(fspName, mtm, fsp){
 		}
 		var lparName = fsp[fspName]['children'][lparIndex];
 		var color = statusMap(lparList[lparName]);
-		lparStatusRow += '<td class="lparStatus" style="background-image:url(images/nodes/' + color + '.gif);padding: 0px;" name="' + lparName + '"></td>';
+		lparStatusRow += '<td class="lparStatus" style="background-image:url(images/nodes/' + color + '.gif);padding: 0px;" id="' + lparName + 'status"></td>';
 	}
 	
 	//select the backgroud
@@ -854,6 +854,7 @@ function statusMap(status){
 		case 'pbs':
 		case 'sshd':
 		case 'booting':
+		case 'booted':
 		case 'ping':{
 			color = 'green';
 		}
@@ -917,7 +918,7 @@ function changeNode(lparName, status){
 		imgUrl = 'url(images/nodes/'+ statusMap(lparList[lparName]) + '.gif)';
 		checkFlag = false;
 	}
-	$('#graphTable [name=' + lparName + ']').css('background-image', imgUrl);
+	$('#' + lparName + 'status').css('background-image', imgUrl);
 	$('.tooltip input[name="' + lparName + '"]').attr('checked', checkFlag);
 }
 
@@ -936,7 +937,7 @@ function coculateBlank(mtm){
 		return 24;
 	}
 	
-	switch(hardwareInfo[mtm]){
+	switch(hardwareInfo[mtm][1]){
 		case 1:
 		{
 			return 13;

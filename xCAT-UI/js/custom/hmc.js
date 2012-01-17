@@ -1005,10 +1005,10 @@ function powerInitDiscoverFrames(){
     if (getDiscoverEnv('framemtmsmap')){
         $('#framedisc div').html('Mapping the frame name and mtms which discovered by lsslp.<br\>' + 
                              'Select the frame name, then select the mtms.');
-        var mapArray = getDiscoverEnv('framemtmsmap').split(':');
+        var mapArray = getDiscoverEnv('framemtmsmap').split(';');
         for(var i in mapArray){
             var tempArray = mapArray[i].split(',');
-            showMap(tempArray[0], tempArray[1] + '-' + tempArray[2]);
+            showMap(tempArray[0], tempArray[1]);
         }
         
         createDiscoverButtons();
@@ -1137,11 +1137,12 @@ function checkFrameMtms(operType){
         var fname = $(this).children().eq(0).html();
         var mtms = $(this).children().eq(2).html();
         var pos = mtms.lastIndexOf('-');
+        var startpos = mtms.indexOf(':');
 
-        maps += (fname + ',' + mtms.substring(0, pos) + ',' + mtms.substring(pos + 1) + ':');
+        maps += (fname + ',' + mtms + ';');
         vpdFileCon += fname + ':\n';
         vpdFileCon += '  objtype=node\n  serial=' + mtms.substring(pos + 1) + '\n';
-        vpdFileCon += '  mtm=' + mtms.substring(0, pos) + '\n  side=A\n';
+        vpdFileCon += '  mtm=' + mtms.substring(startpos + 1, pos) + '\n  side=A\n';
     });
     
     maps = maps.substr(0, maps.length - 1);
@@ -1318,7 +1319,9 @@ function powerInitUpdateDefinition(operType){
     showStr += '<li id="frameLine"><span class="ui-icon ' + iconClass + '"></span>Update Frames into xCAT database.</li>';
     showStr += '<li id="hmcLine1"><span class="ui-icon ' + iconClass + '"></span>Discover HMCs.</li>';
     showStr += '<li id="hmcLine2"><span class="ui-icon ' + iconClass + '"></span>Update HMCs into xCAT database.</li>';
+    showStr += '<li id="frameLine2"><span class="ui-icon ' + iconClass + '"></span>Make hardware connections for Frames.</li>';
     showStr += '<li id="cecLine"><span class="ui-icon ' + iconClass + '"></span>Discover CECs and update into xCAT database.</li>';
+    showStr += '<li id="cecLine2"><span class="ui-icon ' + iconClass + '"></span>Make hardware connections for CECs.</li>';
     showStr += '<li id="dhcpLine"><span class="ui-icon ' + iconClass + '"></span>Configured DHCP.</li>';
     showStr += '</ul></div>';
     
@@ -1405,11 +1408,12 @@ function lsslpWriteHMC(){
             //create the hmc and mtms pair string
             for (var i in hmcArray){
                 var tPos = mtmsArray[i].lastIndexOf('-');
+                var startPos= mtmsArray[i].indexOf(':');
                 if ('' == tempPar){
-                    tempPar += hmcArray[i] + ',' + mtmsArray[i].substring(0, tPos) + ',' +mtmsArray[i].substring(tPos + 1);
+                    tempPar += hmcArray[i] + ',' + mtmsArray[i].substring(startPos + 1, tPos) + ',' +mtmsArray[i].substring(tPos + 1);
                 }
                 else{
-                    tempPar += ':' + hmcArray[i] + ',' + mtmsArray[i].substring(0, tPos) + ',' +mtmsArray[i].substring(tPos + 1);
+                    tempPar += ':' + hmcArray[i] + ',' + mtmsArray[i].substring(startPos + 1, tPos) + ',' +mtmsArray[i].substring(tPos + 1);
                 }
             }
             
@@ -1439,11 +1443,39 @@ function lsslpWriteHMC(){
                             var tempSpan = $('#hmcLine2').find('span');
                             tempSpan.removeClass('ui-icon-gear');
                             tempSpan.addClass('ui-icon-check');
-                            lsslpWriteCec();
+                            mkhwconnFrame();
                         }
                 });
                 }
         });
+        }
+    });
+}
+
+/**
+ * Step 8: make the hardware connection for frames.
+ *          
+ * @param 
+ * 
+ * @return
+ */
+function mkhwconnFrame(){
+	$('#frameLine2').append(createLoader());
+	$.ajax({
+		url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'mkhwconn',
+            tgt : 'frame',
+            args : '-t',
+            msg : ''
+        },
+        success: function(){
+            $('#frameLine2 img').remove();
+            var tempSpan = $('#frameLine2').find('span');
+            tempSpan.removeClass('ui-icon-gear');
+            tempSpan.addClass('ui-icon-check');
+            lsslpWriteCec();
         }
     });
 }
@@ -1469,6 +1501,34 @@ function lsslpWriteCec(){
         success: function(){
             $('#cecLine img').remove();
             var tempSpan = $('#cecLine').find('span');
+            tempSpan.removeClass('ui-icon-gear');
+            tempSpan.addClass('ui-icon-check');
+            mkhwconnCec();
+        }
+    });
+}
+
+/**
+ * Step 8: make hardware connection for cecs
+ *          
+ * @param 
+ * 
+ * @return
+ */
+function mkhwconnCec(){
+    $('#cecLine2').append(createLoader());
+    $.ajax({
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'mkhwconn',
+            tgt : 'cec',
+            args : '-t',
+            msg : ''
+        },
+        success: function(){
+            $('#cecLine2 img').remove();
+            var tempSpan = $('#cecLine2').find('span');
             tempSpan.removeClass('ui-icon-gear');
             tempSpan.addClass('ui-icon-check');
             configDHCP();

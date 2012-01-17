@@ -1130,7 +1130,7 @@ sub web_discover {
 
 	my $retStr  = '';
 	my $retInfo =
-	  xCAT::Utils->runcmd( "lsslp -s -m $type 2>/dev/null | grep $type | awk '{print \$1\":\" \$2\"-\"\$3}'",
+	  xCAT::Utils->runcmd( "lsslp -m -s $type 2>/dev/null | grep $type | awk '{print \$1\":\" \$2\"-\"\$3}'",
 		-1, 1 );
 	if ( scalar(@$retInfo) < 1 ) {
 		$retStr = 'Error: Can not discover frames in cluster!';

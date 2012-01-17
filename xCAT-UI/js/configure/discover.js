@@ -38,14 +38,7 @@ function createDiscoverButtons(){
 	var buttonDiv = $('<div style="text-align:center;padding:20px 0px 10px 0px;"></div>');
 	var backButton = createBackButton();
 	var nextButton = createNextButton();
-	var cancelButton = createButton('Cancel');
-	cancelButton.bind('click', function(){
-		$('#discoverTab').empty();
-		for (var name in discoverEnv){
-			removeDiscoverEnv(name);
-		}
-		loadDiscoverPage();
-	});
+	var cancelButton = createCancelButton();
 	
 	if (backButton){
 		buttonDiv.append(backButton);
@@ -54,9 +47,33 @@ function createDiscoverButtons(){
 	if (nextButton){
 		buttonDiv.append(nextButton);
 	}
+	
+	if (cancelButton){
+		buttonDiv.append(cancelButton);
+	}
 
-	buttonDiv.append(cancelButton);
 	$('#discoverContentDiv').append(buttonDiv);
+}
+
+function createCancelButton(){
+	if (0 == currentStep){
+		return undefined;
+	}
+	
+	if ((steps.length - 1) == currentStep){
+		return undefined;
+	}
+	
+	var cancelbutton = createButton('Cancel');
+	cancelbutton.bind('click', function(){
+		$('#discoverTab').empty();
+		for (var name in discoverEnv){
+			removeDiscoverEnv(name);
+		}
+		loadDiscoverPage();
+	});
+	
+	return cancelbutton;
 }
 
 /**

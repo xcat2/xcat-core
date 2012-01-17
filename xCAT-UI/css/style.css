@@ -786,6 +786,19 @@ table a:hover {
 .bladeInsertDiv{
 	background: url(../images/nodes/blade.jpg);
 }
+
+.xnodeDiv{
+	font-size: 12px;
+	height: 21px;
+	line-height: 21px;
+	width: 140px;
+	text-align: center;
+	background: url(../images/nodes/2ufsp.jpg);
+	border-style: solid;
+	border-width: 1px;
+	cursor: pointer;
+	display: inline-block;
+}
 /*--------------- Discovery section ---------------*/
 .discoverstep {
 	width: 960px;
