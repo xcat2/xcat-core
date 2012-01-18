@@ -111,7 +111,7 @@ sub process_request  {
   }
   $tmphash=($sitetable->getAttribs({key=>'genpasswords'},'value'))[0];
   if ($tmphash->{value} eq "1" or $tmphash->{value}  =~ /y(es)?/i) {
-    $password = genpassword(8)."1c";
+    $password = genpassword(10)."1cA!";
     $gennedpassword=1;
     $tmphash=$ipmitable->getNodeAttribs($node,['bmc','username','bmcport']);
   } else {
