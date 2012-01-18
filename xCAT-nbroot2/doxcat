@@ -106,19 +106,23 @@ while :; do
 	destparameter=`echo $destiny|awk -F= '{print $2}'`
 	destiny=`echo $destiny|awk -F= '{print $1}'`
         dest=`echo $destiny|awk '{print $1}'` #could probably use bash but oh well
-	if [ "$destiny" = "discover" ]; then #skip a query to xCAT when /proc/cmdline will do
+	if [ "$dest" = "discover" ]; then #skip a query to xCAT when /proc/cmdline will do
 		/bin/dodiscovery
 		/bin/getcert $XCATMASTER:$XCATPORT
 		destiny=''
-	elif [ "$destiny" = shell ]; then
+		dest=''
+	elif [ "$dest" = shell ]; then
 		echo "Dropping to debug shell, exit to check for further action"
 		destiny=''
+		dest=''
 		/bin/bash
-	elif [ "$destiny" = runcmd ]; then
+	elif [ "$dest" = runcmd ]; then
 		destiny=`/bin/nextdestiny $XCATMASTER:$XCATPORT`
+		dest=`echo $destiny|awk -F= '{print $1}'`
 		$destparameter
-	elif [ "$destiny" = runimage ]; then
+	elif [ "$dest" = runimage ]; then
 		destiny=`/bin/nextdestiny $XCATMASTER:$XCATPORT`
+		dest=`echo $destiny|awk -F= '{print $1}'`
 		mkdir /tmp/`basename $destparameter`
 		cd /tmp/`basename $destparameter`
 		ERROR=`wget $desparamater 2>&1`
@@ -129,13 +133,14 @@ while :; do
 		tar xvf `basename $TARG`
 		./runme.sh
 		cd -
-	elif [ "$destiny" = "reboot" -o "$destiny" = "boot" ]; then
+	elif [ "$dest" = "reboot" -o "$dest" = "boot" ]; then
 		/bin/nextdestiny $XCATMASTER:$XCATPORT
 		reboot -f
 	elif [ "$dest" = "install" -o "$dest" = "netboot" ]; then
 		reboot -f
-	elif [ "$destiny" = standby ]; then
+	elif [ "$dest" = standby ]; then
 		destiny=''
+		dest=''
 		delay=$((30+$RANDOM%270))
 		while [ $delay -gt 0 ]; do
 			echo -en "Received request to retry in a bit, will call xCAT back in $delay seconds  \r"
@@ -144,8 +149,9 @@ while :; do
 		done
 		echo "Retrying                                                                                   ";
 	else 
-		echo "Unrecognized directive $destiny"
+		echo "Unrecognized directive $dest"
 		destiny=''
+		dest=''
 		delay=$((30+$RANDOM%270))
 		while [ $delay -gt 0 ]; do
 			echo -en "Will retry in $delay seconds  \r"

@@ -11,6 +11,9 @@ if [ $reason = "PREINIT" -o $reason = "PREINIT6" ]; then
 		tries=$((tries-1))
 	done
 elif [ $reason = "BOUND" ]; then
+	if [ ! -z "$old_ip_address" ]; then
+		ip addr del dev $interface $old_ip_address/$old_subnet_mask
+	fi
 	if [ ! -z "$new_ip_address" -a ! -z "$new_subnet_mask" ]; then
 		ip addr add dev $interface $new_ip_address/$new_subnet_mask
 	fi
@@ -44,6 +47,9 @@ elif [ $reason = "BOUND" ]; then
 		rm -rf /usr/share/zoneinfo #free up ramdisk
 	fi
 elif [ $reason = "BOUND6" ]; then
+	if [ ! -z "$old_ip6_address" ]; then
+		ip addr del dev $interface $old_ip6_address/$old_ip6_prefixlen
+	fi
 	if [ ! -z "$new_ip6_address" ]; then 
 		ip addr add dev $interface $new_ip6_address/$new_ip6_prefixlen
 	fi
