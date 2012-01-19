@@ -187,16 +187,6 @@ sub process_request {
         umask($oldmask);
 	}
 
-	# sync fils configured in the synclist to the rootimage
-	#if (!$imagename) {
-	#    $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
-	#    if (defined ($syncfile) && -f $syncfile
-	#	&& -d $rootimg_dir) {
-	#	print "sync files from $syncfile to the $rootimg_dir\n";
-	#	`$::XCATROOT/bin/xdcp -i $rootimg_dir -F $syncfile`;
-	#    }
-	#}
-
     my $distname = $osver;
     unless ( -r "$::XCATROOT/share/xcat/netboot/$distname/" or not $distname) {
         chop($distname);
@@ -220,6 +210,15 @@ sub process_request {
             $exlistloc = xCAT::SvrUtils->get_exlist_file_name("$::XCATROOT/share/xcat/netboot/$distname", $profile, $osver, $arch); 
         }
 	}
+
+        #sync fils configured in the synclist to the rootimage
+        $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot", $imagename);
+        if (defined ($syncfile) && -f $syncfile
+                && -d $rootimg_dir) {
+                print "sync files from $syncfile to the $rootimg_dir\n";
+                `$::XCATROOT/bin/xdcp -i $rootimg_dir -F $syncfile`;
+        }
+
     # check if the file "litefile.save" exists or not
     # if it doesn't exist, then we get the synclist, and run liteMe
     # if it exists, it means "liteimg" has run more than one time, we need to compare with the synclist

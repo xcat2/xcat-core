@@ -316,14 +316,12 @@ sub process_request {
        umask($oldmask);
    }
 
-    # sync fils configured in the synclist to the rootimage
-   unless ($imagename) {
-       $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
-       if (defined ($syncfile) && -f $syncfile
-           && -d $rootimg_dir) {
-                print "sync files from $syncfile to the $rootimg_dir\n";
-               system("$::XCATROOT/bin/xdcp -i $rootimg_dir -F $syncfile");
-       }
+   # sync fils configured in the synclist to the rootimage
+   $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot", $imagename);
+   if (defined ($syncfile) && -f $syncfile
+       && -d $rootimg_dir) {
+            print "sync files from $syncfile to the $rootimg_dir\n";
+           system("$::XCATROOT/bin/xdcp -i $rootimg_dir -F $syncfile");
    }
 
     my $verb = "Packing";

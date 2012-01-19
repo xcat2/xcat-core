@@ -241,7 +241,7 @@ sub getsynclistfile()
     $nodes = shift;
   }
 
-  my ($os, $arch, $profile, $inst_type) = @_;
+  my ($os, $arch, $profile, $inst_type, $imgname) = @_;
 
   my $installdir = xCAT::Utils->getInstallDir();
 
@@ -364,6 +364,17 @@ sub getsynclistfile()
 
     return \%node_syncfile;
   } else {
+    if ($imgname) {
+        my $osimage_t = xCAT::Table->new('osimage');
+        unless ($osimage_t) {
+            return ;
+        }
+        my $synclist = $osimage_t->getAttribs({imagename=>$imgname}, 'synclists');
+        if ($synclist && $synclist->{'synclists'}) {
+            return $synclist->{'synclists'};
+        }
+    }
+
     my $platform = "";
     if ($os) {
       if ($os =~ /rh.*/)    { $platform = "rh"; }
