@@ -1786,6 +1786,10 @@ sub makeVM {
 	my $out;
 	my $target = "root@" . $hcp;
 	if ($userEntry) {
+		
+		# Copy user entry
+		$out = `cp $userEntry /tmp/$node.txt`;
+		$userEntry = "/tmp/$node.txt";
 
 		# Get MAC address in 'mac' table
 		my $macId;
@@ -1816,6 +1820,7 @@ sub makeVM {
 		$out = `cat $userEntry | egrep -i "NICDEF"`;
 		my @lines;
 		my @words;
+		my $line;
 		if ($out) {
 
 			# Get the network used by the HCP
@@ -1823,7 +1828,7 @@ sub makeVM {
 			@lines = split( '\n', $out );
 
 			# There should only be one network
-			my $line = xCAT::zvmUtils->trimStr( $lines[0] );
+			$line = xCAT::zvmUtils->trimStr( $lines[0] );
 			@words = split( ' ', $line );
 			my $netName = $words[4];
 
@@ -1835,9 +1840,24 @@ sub makeVM {
 			# Append MACID at the end
 			$out = `sed --in-place -e "s,$oldNicDef,$nicDef,i" $userEntry`;
 		}
+		
+		# Open user entry
+		$out = `cat $userEntry`;
+		@lines = split( '\n', $out );
+		
+		# Get the userID in user entry
+		$line = xCAT::zvmUtils->trimStr( $lines[0] );
+		@words = split( ' ', $line );
+		my $id = $words[1];
+		
+		# Change userID in user entry to match userID defined in xCAT
+		$out = `sed --in-place -e "s,$id,$userId,i" $userEntry`;
 
 		# SCP file over to HCP
 		$out = `scp $userEntry $target:$userEntry`;
+		
+		# Remove user entry
+		$out = `rm $userEntry`;
 
 		# Create virtual server
 		$out = `ssh $hcp "$::DIR/createvs $userId $userEntry"`;
