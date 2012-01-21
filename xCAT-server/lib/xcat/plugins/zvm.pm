@@ -1784,6 +1784,8 @@ sub makeVM {
 
 	# Create virtual server
 	my $out;
+	my @lines;
+	my @words;
 	my $target = "root@" . $hcp;
 	if ($userEntry) {
 		
@@ -1793,33 +1795,86 @@ sub makeVM {
 
 		# Get MAC address in 'mac' table
 		my $macId;
-		my $generateNew = 0;
+		my $generateNew = 1;
 		@propNames = ('mac');
 		$propVals = xCAT::zvmUtils->getNodeProps( 'mac', $node, @propNames );
+		
+		# If MAC address exists
 		if ( $propVals->{'mac'} ) {
 
 			# Get MAC suffix (MACID)
 			$macId = $propVals->{'mac'};
 			$macId = xCAT::zvmUtils->replaceStr( $macId, ":", "" );
 			$macId = substr( $macId, 6 );
-		}
-		else {
+		} else {
+				
+			# Get HCP MAC address
+			# The HCP should only have (1) network and (1) MAC address
+			xCAT::zvmCPUtils->loadVmcp($hcp);
+			$out   = `ssh -o ConnectTimeout=5 $hcp "vmcp q v nic" | grep "MAC:"`;
+			if ($out) {
+				@lines = split( "\n", $out );
+				@words = split( " ", $lines[0] );
 
-			# If no MACID is found, get one
-			$macId = xCAT::zvmUtils->getMacID($hcp);
-			if ( !$macId ) {
-				xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not generate MACID" );
-				return;
+				# Extract MAC prefix
+				my $prefix = $words[1];
+				$prefix = xCAT::zvmUtils->replaceStr( $prefix, "-", "" );
+				$prefix = substr( $prefix, 0, 6 );
+
+				# Generate MAC address
+				my $mac;
+				while ($generateNew) {
+					
+					# If no MACID is found, get one
+					$macId = xCAT::zvmUtils->getMacID($hcp);
+					if ( !$macId ) {
+						xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not generate MACID" );
+						return;
+					}
+
+					# Create MAC address
+					$mac = $prefix . $macId;
+						
+					# If length is less than 12, append a zero
+					if ( length($mac) != 12 ) {
+						$mac = "0" . $mac;
+					}
+		
+					# Format MAC address
+					$mac =
+					    substr( $mac, 0, 2 ) . ":"
+					  . substr( $mac, 2,  2 ) . ":"
+					  . substr( $mac, 4,  2 ) . ":"
+					  . substr( $mac, 6,  2 ) . ":"
+					  . substr( $mac, 8,  2 ) . ":"
+					  . substr( $mac, 10, 2 );
+					
+					# Check 'mac' table for MAC address
+					my $tab = xCAT::Table->new( 'mac', -create => 1, -autocommit => 0 );
+					my @entries = $tab->getAllAttribsWhere( "mac = '" . $mac . "'", 'node' );
+					
+					# If MAC address exists
+					if (@entries) {
+						# Generate new MACID
+						$out = xCAT::zvmUtils->generateMacId($hcp);
+						$generateNew = 1;
+					} else {
+						$generateNew = 0;
+						
+						# Save MAC address in 'mac' table
+						xCAT::zvmUtils->setNodeProp( 'mac', $node, 'mac', $mac );
+					}
+				} # End of while ($generateNew)
+				
+				# Generate new MACID
+				$out = xCAT::zvmUtils->generateMacId($hcp);
+			} else {
+				xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not find the MAC address of the zHCP" );
 			}
-
-			# Set flag to generate new MACID after virtual server is created
-			$generateNew = 1;
 		}
 
 		# If the user entry contains a NICDEF statement
 		$out = `cat $userEntry | egrep -i "NICDEF"`;
-		my @lines;
-		my @words;
 		my $line;
 		if ($out) {
 
@@ -1876,47 +1931,6 @@ sub makeVM {
 				xCAT::zvmUtils->printLn( $callback, "$node: Granting VSwitch ($_) access for $userId" );
 				$out = xCAT::zvmCPUtils->grantVSwitch( $callback, $hcp, $userId, $_ );
 				xCAT::zvmUtils->printLn( $callback, "$node: $out" );
-			}
-
-			# Get HCP MAC address
-			# The HCP should only have (1) network and (1) MAC address
-			xCAT::zvmCPUtils->loadVmcp($hcp);
-			$out   = `ssh -o ConnectTimeout=5 $hcp "vmcp q v nic" | grep "MAC:"`;
-			if ($out) {
-				@lines = split( "\n", $out );
-				@words = split( " ", $lines[0] );
-
-				# Extract MAC prefix
-				my $prefix = $words[1];
-				$prefix = xCAT::zvmUtils->replaceStr( $prefix, "-", "" );
-				$prefix = substr( $prefix, 0, 6 );
-
-				# Generate MAC address
-				my $mac = $prefix . $macId;
-
-				# If length is less than 12, append a zero
-				if ( length($mac) != 12 ) {
-					$mac = "0" . $mac;
-				}
-	
-				# Format MAC address
-				$mac =
-				    substr( $mac, 0, 2 ) . ":"
-				  . substr( $mac, 2,  2 ) . ":"
-				  . substr( $mac, 4,  2 ) . ":"
-				  . substr( $mac, 6,  2 ) . ":"
-				  . substr( $mac, 8,  2 ) . ":"
-				  . substr( $mac, 10, 2 );
-	
-				# Save MAC address in 'mac' table
-				xCAT::zvmUtils->setNodeProp( 'mac', $node, 'mac', $mac );
-			} else {
-				xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not find the MAC address of the zHCP" );
-			}
-
-			# Generate new MACID
-			if ( $generateNew == 1 ) {
-				$out = xCAT::zvmUtils->generateMacId($hcp);
 			}
 
 			# Remove user entry file (on HCP)
