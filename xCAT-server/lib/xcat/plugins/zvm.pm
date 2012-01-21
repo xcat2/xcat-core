@@ -521,6 +521,8 @@ sub removeVM {
 		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node ID" );
 		return;
 	}
+	# Capitalize userID
+	$userId =~ tr/a-z/A-Z/;
 
 	# Power off userID
 	my $out = `ssh $hcp "$::DIR/stopvs $userId"`;
@@ -608,6 +610,8 @@ sub changeVM {
 		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node ID" );
 		return;
 	}
+	# Capitalize userID
+	$userId =~ tr/a-z/A-Z/;
 
 	# Output string
 	my $out;
@@ -1238,7 +1242,9 @@ sub powerVM {
 		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node ID" );
 		return;
 	}
-
+	# Capitalize userID
+	$userId =~ tr/a-z/A-Z/;
+	
 	# Output string
 	my $out;
 
@@ -1339,6 +1345,8 @@ sub scanVM {
 		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node ID" );
 		return;
 	}
+	# Capitalize userID
+	$userId =~ tr/a-z/A-Z/;
 	
 	# Exit if node is not a HCP
 	if ( !( $hcp =~ m/$node./i ) ) {
@@ -1524,6 +1532,8 @@ sub inventoryVM {
 		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node ID" );
 		return;
 	}
+	# Capitalize userID
+	$userId =~ tr/a-z/A-Z/;
 
 	# Output string
 	my $str = "";
@@ -1657,6 +1667,8 @@ sub listVM {
 		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node ID" );
 		return;
 	}
+	# Capitalize userID
+	$userId =~ tr/a-z/A-Z/;
 
 	my $out;
 
@@ -1764,6 +1776,8 @@ sub makeVM {
 		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node ID" );
 		return;
 	}
+	# Capitalize userID
+	$userId =~ tr/a-z/A-Z/;
 
 	# Get user entry file (if any)
 	my $userEntry = $args->[0];
@@ -1941,6 +1955,8 @@ sub cloneVM {
 
 	# Get node userID
 	my $sourceId = $propVals->{'userid'};
+	# Capitalize userID
+	$sourceId =~ tr/a-z/A-Z/;
 
 	foreach (@nodes) {
 		xCAT::zvmUtils->printLn( $callback, "$_: Cloning $sourceNode" );
@@ -1972,6 +1988,8 @@ sub cloneVM {
 
 		# Get node userID
 		my $tgtId = $propVals->{'userid'};
+		# Capitalize userID
+		$tgtId =~ tr/a-z/A-Z/;
 
 		# Exit if missing target HCP
 		if ( !$tgtHcp ) {
@@ -2331,6 +2349,8 @@ sub clone {
 
 	# Get node userID
 	my $sourceId = $propVals->{'userid'};
+	# Capitalize userID
+	$sourceId =~ tr/a-z/A-Z/;
 
 	# Get source disks
 	my @srcDisks    = @$srcDisksRef;
@@ -2359,6 +2379,8 @@ sub clone {
 		xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Missing node ID" );
 		return;
 	}
+	# Capitalize userID
+	$tgtUserId =~ tr/a-z/A-Z/;
 
 	# Exit if source node HCP is not the same as target node HCP
 	if ( !( $srcHcp eq $hcp ) ) {
@@ -3062,6 +3084,8 @@ sub nodeSet {
 		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node ID" );
 		return;
 	}
+	# Capitalize userID
+	$userId =~ tr/a-z/A-Z/;
 
 	# Get install directory and domain from site table
 	my $siteTab        = xCAT::Table->new('site');
@@ -3861,6 +3885,8 @@ sub getMacs {
 		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node ID" );
 		return;
 	}
+	# Capitalize userID
+	$userId =~ tr/a-z/A-Z/;
 
 	# Get MAC address in 'mac' table
 	@propNames = ('mac');
@@ -3962,6 +3988,8 @@ sub netBoot {
 		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node ID" );
 		return;
 	}
+	# Capitalize userID
+	$userId =~ tr/a-z/A-Z/;
 
 	# Get IPL
 	my @ipl = split( '=', $args->[0] );
@@ -4028,6 +4056,8 @@ sub updateNode {
 		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node ID" );
 		return;
 	}
+	# Capitalize userID
+	$userId =~ tr/a-z/A-Z/;
 
 	# Get install directory
 	my $siteTab        = xCAT::Table->new('site');
