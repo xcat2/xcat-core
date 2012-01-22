@@ -101,11 +101,9 @@ function loadHcpInfo(data) {
 		} // End of if (hcp)
 	} else {
 		// Create warning dialog
-		var warnDialog = $('<div class="ui-state-error ui-corner-all">'
-			+ '<p><span class="ui-icon ui-icon-alert"></span>'
-			+ 'z/VM SMAPI is not responding to ' + hcp + '.  It needs to be reset.</p>'
-		+ '</div>');
-				
+		var msg = createWarnBar('z/VM SMAPI is not responding to ' + hcp + '.  It needs to be reset.');
+		var warnDialog = $('<div></div>').append(msg);
+						
 		// Open dialog
 		warnDialog.dialog({
 			title:'Warning',
