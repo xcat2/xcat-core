@@ -1,4 +1,4 @@
-# The shell is commented out so that it will run in bash on linux and ksh on aix 
+# The shell is commented out so that it will run in bash on linux and ksh on aix
 #  !/bin/bash
 
 # Build and upload the xcat-core code, on either linux or aix.
@@ -11,10 +11,10 @@
 #    the upload user listed below, so you don't have to keep entering pw's.  You can do this
 #    at https://sourceforge.net/account/ssh
 #  - On Linux:  make sure createrepo is installed on the build machine
-#  - On AIX:  Install openssl and openssh installp pkgs and run updtvpkg.  Install from http://www.perzl.org/aix/
+#  - On AIX:  Install openssl and openssh installp pkgs and run updtvpkg.  Install from http://www.perzl.org/aix/ :
 #			apr, apr-util, bash, bzip2, db4, expat, gdbm, gettext, glib2, gmp, info, libidn, neon, openssl (won't
-#			conflict with the installp version), pcre, perl-DBD-SQLite, perl-DBI, popt, python, readline, rsynce, sqlite,
-#			subversion, unixODBC, wget, zlib.
+#			conflict with the installp version - but i don't think you need this), pcre, perl-DBD-SQLite, perl-DBI,
+#           popt, python, readline, rsynce, sqlite, subversion, unixODBC, zlib.  Install wget from http://www-03.ibm.com/systems/power/software/aix/linux/toolbox/alpha.html
 #  - Run this script from the local svn repository you just created.  It will create the other
 #    directories that are needed.
 
@@ -25,14 +25,17 @@
 #					xcat-core tarball to the SF web site instead of the FRS area.
 # 		UP=0 or UP=1 - override the default upload behavior 
 # 		SVNUP=<filename> - control which rpms get built by specifying a coresvnup file
+#       FRSYUM=1 - put the yum repo and snap builds in the FRS area instead of project web area.
 
 # you can change this if you need to
 UPLOADUSER=bp-sawyers
 
+FRS=/home/frs/project/x/xc/xcat
 OSNAME=$(uname)
 
+# Find where this script is located to set some build variables
 cd `dirname $0`
-# Strip the /src/xcat-core from the end of the dir to get the next dir up and use as the release
+# strip the /src/xcat-core from the end of the dir to get the next dir up and use as the release
 CURDIR=`pwd`
 #D=${CURDIR/\/src\/xcat-core/}
 D=${CURDIR%/src/xcat-core}
@@ -47,21 +50,28 @@ if [ "$OSNAME" != "AIX" ]; then
 		echo "Can't get lock /var/lock/xcatbld-$REL.lock.  Someone else must be doing a build right now.  Exiting...."
 		exit 1
 	fi
+	
+	export HOME=/root		# This is so rpm and gpg will know home, even in sudo
 fi
 
 set -x
 
 # Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
 for i in $*; do
-	#declare `echo $i|cut -d '=' -f 1`=`echo $i|cut -d '=' -f 2`
-	export $i
+	# upper case the variable name
+	varstring=`echo "$i"|cut -d '=' -f 1|tr [a-z] [A-Z]`=`echo "$i"|cut -d '=' -f 2`
+	export $varstring
 done
 
-if [ "$OSNAME" != "AIX" ]; then
-	export HOME=/root		# This is so rpm and gpg will know home, even in sudo
+# this is needed only when we are transitioning the yum over to frs
+if [ "$FRSYUM" = 1 ]; then
+	YUMDIR=$FRS
+else
+	YUMDIR=htdocs
 fi
 
-XCATCORE="xcat-core"
+# Set variables based on which type of build we are doing
+XCATCORE="xcat-core"		# core-snap is a sym link to xcat-core
 svn up Version
 VER=`cat Version`
 SHORTVER=`cat Version|cut -d. -f 1,2`
@@ -90,7 +100,7 @@ mkdir -p $DESTDIR
 SRCDIR=../../$SRCD
 mkdir -p $SRCDIR
 GREP=grep
-# currently aix builds ppc rpms, but it should build noarch
+# currently aix builds ppc rpms, but someday it should build noarch
 if [ "$OSNAME" = "AIX" ]; then
 	NOARCH=ppc
 else
@@ -374,22 +384,26 @@ if [ ! -e core-snap ]; then
 	ln -s xcat-core core-snap
 fi
 if [ "$REL" = "devel" -o "$PREGA" != 1 ]; then
-	while ! rsync -urLv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:htdocs/$YUM/$REL/
+	i=0
+	while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL/
 	do : ; done
 fi
 
 # Upload the individual source RPMs to sourceforge
-while ! rsync -urLv --delete $SRCD $UPLOADUSER,xcat@web.sourceforge.net:htdocs/$YUM/$REL/
+i=0
+while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $SRCD $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL/
 do : ; done
 
 # Upload the tarball to sourceforge
 if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
 	# upload tarball to FRS area
 	#scp $TARNAME $UPLOADUSER@web.sourceforge.net:uploads/
-	while ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:/home/frs/project/x/xc/xcat/xcat/$REL.x_$OSNAME/
+	i=0
+	while [ $((i+=1)) -le 5 ] && ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat/$REL.x_$OSNAME/
 	do : ; done
 else
-	while ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:htdocs/$YUM/$REL/
+	i=0
+	while [ $((i+=1)) -le 5 ] && ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL/
 	do : ; done
 fi
 
@@ -401,7 +415,8 @@ if [ "$OSNAME" != "AIX" -a "$REL" = "devel" -a "$PROMOTE" != 1 ]; then
 	rpm2cpio ../$XCATCORE/xCAT-client-*.$NOARCH.rpm | cpio -id '*.html'
 	rpm2cpio ../$XCATCORE/perl-xCAT-*.$NOARCH.rpm | cpio -id '*.html'
 	rpm2cpio ../$XCATCORE/xCAT-test-*.$NOARCH.rpm | cpio -id '*.html'
-	while ! rsync -rv opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man7 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
+	i=0
+	while [ $((i+=1)) -le 5 ] && ! rsync -rv opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man7 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
 	do : ; done
 	cd ..
 fi
