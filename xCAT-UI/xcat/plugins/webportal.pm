@@ -618,7 +618,7 @@ sub clonezlinux {
 	#	eckd_size = 10016
 	my $disk_pool;
 	my $default_conf   = '/opt/zhcp/conf/default.conf';
-	my $default_direct = '/opt/zhcp/conf/default.direct';
+	my $default_direct = '/opt/zhcp/conf/profiles/default.direct';
 
 	# Exit if default.conf does not exist
 	if ( !(`ssh $hcp "test -e $default_conf && echo Exists"`) ) {
@@ -634,15 +634,33 @@ sub clonezlinux {
 
 	my $out = `ssh $hcp "cat $default_conf"`;
 	my @tmp = split( /\n/, $out );
+	# default.conf should contain:
+	
+	# Default configuration for virtual machines handled by this zHCP
+	#	default_diskpool=POOL3
+	#	compute_diskpool=POOL3
+	my $profile_diskpool_parm = '';
+	if ($profile) {
+		$profile_diskpool_parm = $profile . "_diskpool";
+	}
+	
 	foreach (@tmp) {
-		# Get disk pool
-		if ( $_ =~ m/pool =/i ) {
+		# Get disk pool (default)
+		if ( $_ =~ m/default_diskpool=/i ) {
 			$disk_pool = $_;
-			$disk_pool =~ s/pool =//g;
-			$disk_pool =~ s/\s*$//;	# Trim right
-			$disk_pool =~ s/^\s*//;	# Trim left
+			$disk_pool =~ s/default_diskpool=//g;
+		}
+		
+		# Get profile disk pool (default)
+		elsif ( $_ =~ m/$profile_diskpool_parm=/i && $profile_diskpool_parm) {
+			$disk_pool = $_;
+			$disk_pool =~ s/$profile_diskpool_parm=//g;
 		}
 	}
+	
+	# Trim disk pool of white space
+	$disk_pool =~ s/\s*$//;	# Trim right
+	$disk_pool =~ s/^\s*//;	# Trim left
 		
 	# Create VM
 	# e.g. webportal provzlinux [group] [hcp] [image]
