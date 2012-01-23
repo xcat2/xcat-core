@@ -25,21 +25,33 @@
 #					xcat-core tarball to the SF web site instead of the FRS area.
 # 		UP=0 or UP=1 - override the default upload behavior 
 # 		SVNUP=<filename> - control which rpms get built by specifying a coresvnup file
-#       FRSYUM=1 - put the yum repo and snap builds in the FRS area instead of project web area.
+#       FRSYUM=0 - put the yum repo and snap builds in the old project web area instead of the FRS area.
+#		VERBOSE=1 - to see lots of verbose output
 
 # you can change this if you need to
 UPLOADUSER=bp-sawyers
-
 FRS=/home/frs/project/x/xc/xcat
-OSNAME=$(uname)
+
+# Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
+for i in $*; do
+	# upper case the variable name
+	varstring=`echo "$i"|cut -d '=' -f 1|tr [a-z] [A-Z]`=`echo "$i"|cut -d '=' -f 2`
+	export $varstring
+done
+if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ]; then
+	set -x
+	VERBOSEMODE=1
+fi
 
 # Find where this script is located to set some build variables
 cd `dirname $0`
 # strip the /src/xcat-core from the end of the dir to get the next dir up and use as the release
-CURDIR=`pwd`
-#D=${CURDIR/\/src\/xcat-core/}
-D=${CURDIR%/src/xcat-core}
-REL=`basename $D`
+if [ -z "$REL" ]; then
+	curdir=`pwd`
+	D=${curdir%/src/xcat-core}
+	REL=`basename $D`
+fi
+OSNAME=$(uname)
 
 if [ "$OSNAME" != "AIX" ]; then
 	GSA=http://pokgsa.ibm.com/projects/x/xcat/build/linux
@@ -54,25 +66,19 @@ if [ "$OSNAME" != "AIX" ]; then
 	export HOME=/root		# This is so rpm and gpg will know home, even in sudo
 fi
 
-set -x
-
-# Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
-for i in $*; do
-	# upper case the variable name
-	varstring=`echo "$i"|cut -d '=' -f 1|tr [a-z] [A-Z]`=`echo "$i"|cut -d '=' -f 2`
-	export $varstring
-done
-
 # this is needed only when we are transitioning the yum over to frs
-if [ "$FRSYUM" = 1 ]; then
+if [ "$FRSYUM" != 0 ]; then
 	YUMDIR=$FRS
+	YUMREPOURL="https://sourceforge.net/projects/xcat/files/yum"
 else
 	YUMDIR=htdocs
+	YUMREPOURL="http://xcat.sourceforge.net/yum"
 fi
 
 # Set variables based on which type of build we are doing
 XCATCORE="xcat-core"		# core-snap is a sym link to xcat-core
-svn up Version
+echo "svn --quiet up Version"
+svn --quiet up Version
 VER=`cat Version`
 SHORTVER=`cat Version|cut -d. -f 1,2`
 SHORTSHORTVER=`cat Version|cut -d. -f 1`
@@ -99,7 +105,11 @@ if [ "$PROMOTE" != 1 ]; then      # very long if statement to not do builds if w
 mkdir -p $DESTDIR
 SRCDIR=../../$SRCD
 mkdir -p $SRCDIR
-GREP=grep
+if [ -n "$VERBOSEMODE" ]; then
+	GREP=grep
+else
+	GREP="grep -q"
+fi
 # currently aix builds ppc rpms, but someday it should build noarch
 if [ "$OSNAME" = "AIX" ]; then
 	NOARCH=ppc
@@ -110,172 +120,113 @@ UPLOAD=0
 if [ "$OSNAME" = "AIX" ]; then
 	source=/opt/freeware/src/packages
 else
-	if [ -f /etc/redhat-release ]; then
-		source="/usr/src/redhat"
-	else
-		source="/usr/src/packages"
+	source=`rpmbuild --eval '%_topdir' xCATsn/xCATsn.spec`
+	if [ $? -gt 0 ]; then
+		echo "Error: Could not determine rpmbuild's root directory."
+		exit 2
 	fi
+	#echo "source=$source"
 fi
 
 # If they have not given us a premade update file, do an svn update and capture the results
 if [ -z "$SVNUP" ]; then
 	SVNUP=../coresvnup
+	echo "svn up > $SVNUP"
 	svn up > $SVNUP
 fi
 
 # If anything has changed, we should always rebuild perl-xCAT
 if ! $GREP 'At revision' $SVNUP; then		# Use to be:  $GREP perl-xCAT $SVNUP; then
-   UPLOAD=1
-   ./makeperlxcatrpm
-   rm -f $DESTDIR/perl-xCAT*rpm
-   rm -f $SRCDIR/perl-xCAT*rpm
-   mv $source/RPMS/$NOARCH/perl-xCAT-$VER*rpm $DESTDIR/
-   mv $source/SRPMS/perl-xCAT-$VER*rpm $SRCDIR/
+	UPLOAD=1
+	./makerpm perl-xCAT
+	if [ $? -ne 0 ]; then
+		FAILEDRPMS="perl-xCAT"
+	else
+		rm -f $DESTDIR/perl-xCAT*rpm
+		rm -f $SRCDIR/perl-xCAT*rpm
+		mv $source/RPMS/$NOARCH/perl-xCAT-$VER*rpm $DESTDIR/
+		mv $source/SRPMS/perl-xCAT-$VER*rpm $SRCDIR/
+	fi
 fi
 if [ "$OSNAME" = "AIX" ]; then
 	# For the 1st one we overwrite, not append
 	echo "rpm -Uvh perl-xCAT-$SHORTSHORTVER*rpm" > $DESTDIR/instxcat
 fi
 
-if $GREP xCAT-client $SVNUP; then
-   UPLOAD=1
-   ./makeclientrpm
-   rm -f $DESTDIR/xCAT-client*rpm
-   rm -f $SRCDIR/xCAT-client*rpm
-   mv $source/RPMS/$NOARCH/xCAT-client-$VER*rpm $DESTDIR/
-   mv $source/SRPMS/xCAT-client-$VER*rpm $SRCDIR/
-fi
-if [ "$OSNAME" = "AIX" ]; then
-	echo "rpm -Uvh xCAT-client-$SHORTSHORTVER*rpm" >> $DESTDIR/instxcat
-fi
-
-if $GREP xCAT-UI $SVNUP; then
-   UPLOAD=1
-   rm -f $DESTDIR/xCAT-UI*rpm
-   rm -f $SRCDIR/xCAT-UI*rpm
-   ./makeuirpm
-   mv $source/RPMS/noarch/xCAT-UI-$VER*rpm $DESTDIR
-   mv $source/SRPMS/xCAT-UI-$VER*rpm $SRCDIR
-fi
-# Do not automatically install xCAT-UI on AIX
-#if [ "$OSNAME" = "AIX" ]; then
-#	echo "rpm -Uvh xCAT-UI-$SHORTSHORTVER*rpm" >> $DESTDIR/instxcat
-#fi
-
-if $GREP xCAT-IBMhpc $SVNUP; then
-   UPLOAD=1
-   rm -f $DESTDIR/xCAT-IBMhpc*rpm
-   rm -f $SRCDIR/xCAT-IBMhpc*rpm
-   ./makehpcrpm
-   mv $source/RPMS/$NOARCH/xCAT-IBMhpc-$VER*rpm $DESTDIR
-   mv $source/SRPMS/xCAT-IBMhpc-$VER*rpm $SRCDIR
-fi
-# Do not automatically install xCAT-IBMhpc on AIX
-#if [ "$OSNAME" = "AIX" ]; then
-#	echo "rpm -Uvh xCAT-IBMhpc-$SHORTSHORTVER*rpm" >> $DESTDIR/instxcat
-#fi
-
-if $GREP xCAT-server $SVNUP; then
-   UPLOAD=1
-   ./makeserverrpm
-   rm -f $DESTDIR/xCAT-server*rpm
-   rm -f $SRCDIR/xCAT-server*rpm
-   mv $source/RPMS/$NOARCH/xCAT-server-$VER*rpm $DESTDIR
-   mv $source/SRPMS/xCAT-server-$VER*rpm $SRCDIR
-fi
-if [ "$OSNAME" = "AIX" ]; then
-	echo "rpm -Uvh xCAT-server-$SHORTSHORTVER*rpm" >> $DESTDIR/instxcat
-fi
-
-if $GREP xCAT-rmc $SVNUP; then
-   UPLOAD=1
-   ./makermcrpm
-   rm -f $DESTDIR/xCAT-rmc*rpm
-   rm -f $SRCDIR/xCAT-rmc*rpm
-   mv $source/RPMS/$NOARCH/xCAT-rmc-$VER*rpm $DESTDIR
-   mv $source/SRPMS/xCAT-rmc-$VER*rpm $SRCDIR
-fi
-# Note: not putting xCAT-rmc into instxcat for aix here, because it has to be installed
-#		after xCAT.
-
-if $GREP xCAT-test $SVNUP; then
-   UPLOAD=1
-   ./maketestrpm
-   rm -f $DESTDIR/xCAT-test*rpm
-   rm -f $SRCDIR/xCAT-test*rpm
-   mv $source/RPMS/$NOARCH/xCAT-test-$VER*rpm $DESTDIR
-   mv $source/SRPMS/xCAT-test-$VER*rpm $SRCDIR
-fi
-# Note: not putting xCAT-test into instxcat for aix, because it is optional
+# Build the rest of the noarch rpms
+for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test; do
+	if $GREP $rpmname $SVNUP; then
+		UPLOAD=1
+		./makerpm $rpmname
+		if [ $? -ne 0 ]; then
+			FAILEDRPMS="$FAILEDRPMS $rpmname"
+		else
+			rm -f $DESTDIR/$rpmname*rpm
+			rm -f $SRCDIR/$rpmname*rpm
+			mv $source/RPMS/$NOARCH/$rpmname-$VER*rpm $DESTDIR/
+			mv $source/SRPMS/$rpmname-$VER*rpm $SRCDIR/
+		fi
+	fi
+	if [ "$OSNAME" = "AIX" ]; then
+		if [ "$rpmname" = "xCAT-client" -o "$rpmname" = "xCAT-server" ]; then		# we do not automatically install the rest of the rpms on AIX
+			echo "rpm -Uvh $rpmname-$SHORTSHORTVER*rpm" >> $DESTDIR/instxcat
+		fi
+	fi
+done
 
 if [ "$OSNAME" != "AIX" ]; then
 	if $GREP xCAT-nbroot $SVNUP; then
-	   UPLOAD=1
-	   ./makenbrootrpm x86_64
-	   ./makenbrootrpm ppc64
-	   ./makenbrootrpm x86
-	   rm -f $DESTDIR/xCAT-nbroot-core*rpm
-	   rm -f $SRCDIR/xCAT-nbroot-core*rpm
-	   mv $source/RPMS/noarch/xCAT-nbroot-core-*rpm $DESTDIR
-	   mv $source/SRPMS/xCAT-nbroot-core-*rpm $SRCDIR
+		UPLOAD=1
+		ORIGFAILEDRPMS="$FAILEDRPMS"
+		for arch in x86_64 x86 ppc64; do
+			./makerpm xCAT-nbroot-core $arch
+			if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-nbroot-core-$arch"; fi
+		done
+		if [ "$FAILEDRPMS" = "$ORIGFAILEDRPMS" ]; then	# all succeeded
+			rm -f $DESTDIR/xCAT-nbroot-core*rpm
+			rm -f $SRCDIR/xCAT-nbroot-core*rpm
+			mv $source/RPMS/noarch/xCAT-nbroot-core-*rpm $DESTDIR
+			mv $source/SRPMS/xCAT-nbroot-core-*rpm $SRCDIR
+		fi
 	fi
 fi
 
-if $GREP -E '^[UAD] +xCATsn/' $SVNUP; then
-   UPLOAD=1
-   rm -f $DESTDIR/xCATsn-*rpm
-   rm -f $SRCDIR/xCATsn-*rpm
-	if [ "$OSNAME" = "AIX" ]; then
-		./makexcatsnrpm
-		mv $source/RPMS/*/xCATsn-$VER*rpm $DESTDIR
-		mv $source/SRPMS/xCATsn-$VER*rpm $SRCDIR
-	else
-	   ./makexcatsnrpm x86_64
-	   mv $source/RPMS/*/xCATsn-$VER*rpm $DESTDIR
-	   mv $source/SRPMS/xCATsn-$VER*rpm $SRCDIR
-	   ./makexcatsnrpm i386
-	   mv $source/RPMS/*/xCATsn-$VER*rpm $DESTDIR
-	   ./makexcatsnrpm ppc64
-	   mv $source/RPMS/*/xCATsn-$VER*rpm $DESTDIR
-	   ./makexcatsnrpm s390x
-	   mv $source/RPMS/*/xCATsn-$VER*rpm $DESTDIR
+# Build the xCAT and xCATsn rpms for all platforms
+for rpmname in xCAT xCATsn; do
+	if $GREP -E "^[UAD] +$rpmname/" $SVNUP; then
+		UPLOAD=1
+		ORIGFAILEDRPMS="$FAILEDRPMS"
+		if [ "$OSNAME" = "AIX" ]; then
+			./makerpm $rpmname
+			if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname"; fi
+		else
+			for arch in x86_64 i386 ppc64 s390x; do
+				./makerpm $rpmname $arch
+				if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname-$arch"; fi
+			done
+		fi
+		if [ "$FAILEDRPMS" = "$ORIGFAILEDRPMS" ]; then	# all succeeded
+			rm -f $DESTDIR/$rpmname-$SHORTSHORTVER*rpm
+			rm -f $SRCDIR/$rpmname-$SHORTSHORTVER*rpm
+			mv $source/RPMS/*/$rpmname-$VER*rpm $DESTDIR
+			mv $source/SRPMS/$rpmname-$VER*rpm $SRCDIR
+		fi
 	fi
-fi
-
-if $GREP -E '^[UAD] +xCAT/' $SVNUP; then
-   UPLOAD=1
-   rm -f $DESTDIR/xCAT-$SHORTSHORTVER*rpm
-   rm -f $SRCDIR/xCAT-$SHORTSHORTVER*rpm
-	if [ "$OSNAME" = "AIX" ]; then
-	   ./makexcatrpm
-	   mv $source/RPMS/*/xCAT-$VER*rpm $DESTDIR
-	   mv $source/SRPMS/xCAT-$VER*rpm $SRCDIR
-	else
-	   ./makexcatrpm x86_64
-	   mv $source/RPMS/*/xCAT-$VER*rpm $DESTDIR
-	   mv $source/SRPMS/xCAT-$VER*rpm $SRCDIR
-	   ./makexcatrpm i386
-	   mv $source/RPMS/*/xCAT-$VER*rpm $DESTDIR
-	   ./makexcatrpm ppc64
-	   mv $source/RPMS/*/xCAT-$VER*rpm $DESTDIR
-	   ./makexcatrpm s390x
-	   mv $source/RPMS/*/xCAT-$VER*rpm $DESTDIR
-	fi
-fi
+done
 
 if [ "$OSNAME" = "AIX" ]; then
 	echo "rpm -Uvh xCAT-$SHORTSHORTVER*rpm" >> $DESTDIR/instxcat
 	echo "rpm -Uvh xCAT-rmc-$SHORTSHORTVER*rpm" >> $DESTDIR/instxcat
-	# add the service node bundle files 
-	#   these are now shipped as part of xCAT-server !!!!
-	#	- installed in /opt/xcat/share/xcat/installp_bundles
-	# cp xCATaixSN.bnd xCATaixSN2.bnd xCATaixSSH.bnd xCATaixSSL.bnd $DESTDIR/
 fi
 
 # Decide if anything was built or not
+if [ -n "$FAILEDRPMS" ]; then
+	echo "Error:  build of the following RPMs failed: $FAILEDRPMS"
+	exit 2
+fi
 if [ $UPLOAD == 0 -a "$UP" != 1 ]; then
 	echo "Nothing new detected"
-	exit 0;
+	exit 0
 fi
 #else we will continue
 
@@ -293,14 +244,15 @@ if [ "$OSNAME" != "AIX" ]; then
 	done
 	# tell rpm to use gpg to sign
 	MACROS=$HOME/.rpmmacros
-	if ! $GREP -q '%_signature gpg' $MACROS 2>/dev/null; then
+	if ! $GREP '%_signature gpg' $MACROS 2>/dev/null; then
 		echo '%_signature gpg' >> $MACROS
 	fi
-	if ! $GREP -q '%_gpg_name' $MACROS 2>/dev/null; then
+	if ! $GREP '%_gpg_name' $MACROS 2>/dev/null; then
 		echo '%_gpg_name Jarrod Johnson' >> $MACROS
 	fi
-	build-utils/rpmsign.exp $DESTDIR/*rpm
-	build-utils/rpmsign.exp $SRCDIR/*rpm
+	echo "Signing RPMs..."
+	build-utils/rpmsign.exp $DESTDIR/*rpm | grep -v -E '(was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
+	build-utils/rpmsign.exp $SRCDIR/*rpm | grep -v -E '(was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
 	createrepo $DESTDIR
 	createrepo $SRCDIR
 	rm -f $SRCDIR/repodata/repomd.xml.asc
@@ -317,10 +269,14 @@ fi
 
 # make everything have a group of xcat, so anyone can manage them once they get on SF
 if [ "$OSNAME" = "AIX" ]; then
-	mkgroup xcat 2>/dev/null
+	if ! lsgroup xcat >/dev/null 2>&1; then
+		mkgroup xcat
+	fi
 	chmod +x $DESTDIR/instxcat
-else
-	groupadd -f xcat
+else	# linux
+	if ! $GREP xcat /etc/group; then
+		groupadd xcat
+	fi
 fi
 chgrp -R xcat $DESTDIR
 chmod -R g+w $DESTDIR
@@ -338,10 +294,10 @@ if [ "$OSNAME" != "AIX" ]; then
 	cat >xCAT-core.repo << EOF
 [xcat-2-core]
 name=xCAT 2 Core packages
-baseurl=http://xcat.sourceforge.net/yum/$REL/$CORE
+baseurl=$YUMREPOURL/$REL/$CORE
 enabled=1
 gpgcheck=1
-gpgkey=http://xcat.sourceforge.net/yum/$REL/$CORE/repodata/repomd.xml.key
+gpgkey=$YUMREPOURL/$REL/$CORE/repodata/repomd.xml.key
 EOF
 
 	# Create the mklocalrepo script
@@ -358,12 +314,18 @@ fi	# not AIX
 
 # Build the tarball
 cd ..
+if [ -n "$VERBOSEMODE" ]; then
+	verboseflag="-v"
+else
+	verboseflag=""
+fi
+echo "Creating $TARNAME ..."
 if [ "$OSNAME" = "AIX" ]; then
-	tar -hcvf ${TARNAME%.gz} $XCATCORE
+	tar $verboseflag -hcf ${TARNAME%.gz} $XCATCORE
 	rm -f $TARNAME
 	gzip ${TARNAME%.gz}
 else
-	tar -hjcvf $TARNAME $XCATCORE
+	tar $verboseflag -hjcf $TARNAME $XCATCORE
 fi
 chgrp xcat $TARNAME
 chmod g+w $TARNAME
@@ -385,30 +347,34 @@ if [ ! -e core-snap ]; then
 fi
 if [ "$REL" = "devel" -o "$PREGA" != 1 ]; then
 	i=0
+	echo "Uploading RPMs from $CORE to $YUMDIR/$YUM/$REL/ ..."
 	while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL/
 	do : ; done
 fi
 
 # Upload the individual source RPMs to sourceforge
 i=0
+echo "Uploading src RPMs from $SRCD to $YUMDIR/$YUM/$REL/ ..."
 while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $SRCD $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL/
 do : ; done
 
 # Upload the tarball to sourceforge
 if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
 	# upload tarball to FRS area
-	#scp $TARNAME $UPLOADUSER@web.sourceforge.net:uploads/
 	i=0
+	echo "Uploading $TARNAME to $FRS/xcat/$REL.x_$OSNAME/ ..."
 	while [ $((i+=1)) -le 5 ] && ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat/$REL.x_$OSNAME/
 	do : ; done
 else
 	i=0
+	echo "Uploading $TARNAME to $YUMDIR/$YUM/$REL/ ..."
 	while [ $((i+=1)) -le 5 ] && ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL/
 	do : ; done
 fi
 
 # Extract and upload the man pages in html format
 if [ "$OSNAME" != "AIX" -a "$REL" = "devel" -a "$PROMOTE" != 1 ]; then
+	echo "Extracting and uploading man pages to htdocs/ ..."
 	mkdir -p man
 	cd man
 	rm -rf opt
@@ -416,7 +382,7 @@ if [ "$OSNAME" != "AIX" -a "$REL" = "devel" -a "$PROMOTE" != 1 ]; then
 	rpm2cpio ../$XCATCORE/perl-xCAT-*.$NOARCH.rpm | cpio -id '*.html'
 	rpm2cpio ../$XCATCORE/xCAT-test-*.$NOARCH.rpm | cpio -id '*.html'
 	i=0
-	while [ $((i+=1)) -le 5 ] && ! rsync -rv opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man7 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
+	while [ $((i+=1)) -le 5 ] && ! rsync $verboseflag -r opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man7 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
 	do : ; done
 	cd ..
 fi
