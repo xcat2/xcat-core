@@ -1,0 +1,172 @@
+# The shell is commented out so that it will run in bash on linux and ksh on aix
+#  !/bin/bash
+
+# Common script to make any one the xcat rpms.  To build locally, run in the top dir of local svn repository, for example:
+#   ./makerpm xCAT-server
+#   ./makerpm xCAT x86_64
+
+# set -x
+
+# Make one of the following rpms: perl-xCAT, xCAT-server, xCAT-client, xCAT-IBMhpc, xCAT-rmc, xCAT-UI, xCAT-test
+function makenoarch {
+	RPMNAME=$1
+	if [ "$OSNAME" = "AIX" ]; then
+		echo '.svn' > /tmp/xcat-excludes
+		tar -X /tmp/xcat-excludes -cf $RPMROOT/SOURCES/$RPMNAME-$VER.tar $RPMNAME
+		gzip -f $RPMROOT/SOURCES/$RPMNAME-$VER.tar
+		rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/ppc/$RPMNAME-$VER*rpm
+		echo "Building $RPMROOT/RPMS/ppc/$RPMNAME-$VER-snap*.ppc.rpm ..."
+		rpm $QUIET -ba $RPMNAME/$RPMNAME.spec
+		RC=$?
+	else	# linux
+		echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm ..."
+		tar --exclude .svn -czf $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz $RPMNAME
+		rm -f $RPMROOT/SRPMS/xCAT-server-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
+		rpmbuild $QUIET -ta $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz
+		RC=$?
+	fi
+}
+
+
+
+# Make one of the following rpms: xCAT, xCATsn
+function makexcat {
+	if [ "$OSNAME" != "AIX" -a -z "$2" ]; then
+		echo 'Usage: makerpm <RPMname> <arch>'
+		exit 1
+	fi
+
+	RPMNAME="$1"
+
+	if [ "$OSNAME" = "AIX" ]; then
+		source=/opt/freeware/src/packages
+		cd `dirname $0`/$RPMNAME
+		echo '.svn' > /tmp/xcat-excludes
+		echo 'upflag' >> /tmp/xcat-excludes
+
+		if [ "$RPMNAME" = "xCAT" ]; then
+			tar -X /tmp/xcat-excludes -cf $RPMROOT/SOURCES/postscripts.tar  postscripts LICENSE.html
+			gzip -f $RPMROOT/SOURCES/postscripts.tar
+			tar -X /tmp/xcat-excludes -cf $RPMROOT/SOURCES/templates.tar templates
+			gzip -f $RPMROOT/SOURCES/templates.tar
+			cp xcat.conf $RPMROOT/SOURCES
+			cp xCATMN $RPMROOT/SOURCES
+		else	# xCATsn
+			tar -X /tmp/xcat-excludes -cf $RPMROOT/SOURCES/license.tar LICENSE.html
+			gzip -f $RPMROOT/SOURCES/license.tar
+			cp xCATSN $RPMROOT/SOURCES
+		fi
+
+		rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/ppc/$RPMNAME-$VER*rpm
+		cd - >/dev/null
+
+		echo "Building $RPMROOT/RPMS/ppc/$RPMNAME-$VER-snap*.ppc.rpm ..."
+		rpm $QUIET -ba $RPMNAME/$RPMNAME.spec
+		RC=$?
+	else	# linux
+		ARCH="$2"
+		cd `dirname $0`/$RPMNAME
+
+		if [ "$RPMNAME" = "xCAT" ]; then
+			tar --exclude .svn -czf $RPMROOT/SOURCES/postscripts.tar.gz  postscripts LICENSE.html
+			tar --exclude .svn -czf $RPMROOT/SOURCES/prescripts.tar.gz  prescripts
+			tar --exclude .svn -czf $RPMROOT/SOURCES/templates.tar.gz templates
+			cp xcat.conf $RPMROOT/SOURCES
+			cp xCATMN $RPMROOT/SOURCES
+		else	# xCATsn
+			tar --exclude .svn -czf $RPMROOT/SOURCES/license.tar.gz LICENSE.html
+			cp xcat.conf $RPMROOT/SOURCES
+			cp xCATSN $RPMROOT/SOURCES
+		fi
+
+		cd - >/dev/null
+		rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/$ARCH/$RPMNAME-$VER*rpm
+		echo "Building $RPMROOT/RPMS/$ARCH/$RPMNAME-$VER-snap*.$ARCH.rpm ..."
+		rpmbuild $QUIET -ba $RPMNAME/$RPMNAME.spec --target $ARCH
+		RC=$?
+	fi
+}
+
+
+
+# Make the xCAT-nbroot-core rpm
+function makenbroot {
+	if [ -z "$2" ]; then
+		echo 'Usage: makerpm xCAT-nbroot-core <arch>'
+		exit 1
+	fi
+
+	DIR="xCAT-nbroot"
+	ARCH="$2"
+	RPMNAME="xCAT-nbroot-core-$ARCH"
+	SPEC="xcat-core-nbroot"
+	cd `dirname $0`/$DIR
+	tar --exclude .svn -czf $RPMROOT/SOURCES/xcat-nbrootoverlay.tar.gz -C overlay/  .
+	cp LICENSE.html $RPMROOT/BUILD
+	cp $SPEC.spec $RPMROOT/SOURCES
+	cd - >/dev/null
+	rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
+	echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm ..."
+	rpmbuild $QUIET -ba $DIR/$SPEC.spec --target $ARCH
+}
+
+
+
+# Make the xCAT-nbroot-core rpm
+function makegenesis {
+	DIR="xCAT-nbroot2"
+	RPMNAME="$1"
+	cd `dirname $0`/$DIR
+	tar --exclude .svn -cjf $RPMROOT/SOURCES/$RPMNAME.tar.bz2 .
+	cp LICENSE.html $RPMROOT/BUILD
+	cp $RPMNAME.spec $RPMROOT/SOURCES
+	cd - >/dev/null
+	rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
+	echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm ..."
+	rpmbuild $QUIET -ba $DIR/$RPMNAME.spec
+}
+
+
+
+# Main code....
+
+if [ -z "$1" ]; then
+	echo 'Usage: makerpm <RPMname> [<arch>]'
+	exit 1
+fi
+
+OSNAME=$(uname)
+VER=`cat Version`
+if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ];then
+	QUIET=""
+else
+	QUIET="--quiet"
+fi
+
+if [ "$OSNAME" = "AIX" ]; then
+	RPMROOT=/opt/freeware/src/packages
+else	# linux
+	rpmbuild --version > /dev/null
+	if [ $? -gt 0 ]; then
+		echo "Error: rpmbuild does not appear to be installed or working."
+		exit 2
+	fi
+	RPMROOT=`rpmbuild --eval '%_topdir' xCATsn/xCATsn.spec`
+	if [ $? -gt 0 ]; then
+		echo "Error: Could not determine rpmbuild's root directory."
+		exit 2
+	fi
+fi
+
+
+if [ "$1" = "xCAT" -o "$1" = "xCATsn" ]; then
+	makexcat $*
+elif [ "$1" = "xCAT-nbroot" -o "$1" = "xCAT-nbroot-core" ]; then
+	makenbroot xCAT-nbroot-core $2
+elif [ "$1" = "xCAT-genesis-builder" ]; then
+	makegenesis $*
+else	# must be one of the noarch rpms
+	makenoarch $*
+fi
+
+exit $RC
