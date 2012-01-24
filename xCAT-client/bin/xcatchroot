@@ -70,6 +70,7 @@ location=""
 osimage=""
 cmd_string=""
 verbose=0
+error=0
 
 usage="Usage:\n\txcatchroot -h\n\txcatchroot [-V] -i osimage  cmd_string"
 
@@ -254,7 +255,19 @@ else
     then
 		echo "Running command: ${chroot} /usr/xcatchrootscript\n"
 	fi
-	${chroot} /usr/xcatchrootscript
+	msg=`${chroot} /usr/xcatchrootscript`
+
+	rc=$?
+
+	echo "\n\n$msg\n\n"
+
+	if [ ${rc} -ne 0 ]
+	then 
+		error=1
+		echo "\nError: The chroot command failed for '$cmd_string'."
+		echo "Error: The return code from chroot was '${rc}'\n"
+	fi
+
 
 	# sensitive process has completed
 	${M_CHATTR} -a Rstate=available $spotObj
@@ -268,13 +281,11 @@ else
 fi
 
 # remove the tmp script
-if [ $verbose -eq 1 ]
-then
-	echo "Running command: 'rm $location/xcatchrootscript'\n"
-fi
-`rm $location/xcatchrootscript`
-
-# echo "\nNote: Be sure to perform the NIM check operation after completing NIM spot\nupdates. (ex. 'nim -o check <spot_name>')"
+/usr/bin/rm $location/xcatchrootscript
 
 # all done
+if [ $error -eq 1 ]
+then
+    exit 1
+fi
 exit 0
