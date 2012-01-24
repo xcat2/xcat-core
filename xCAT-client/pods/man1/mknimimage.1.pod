@@ -36,6 +36,8 @@ You can update the osimage definition and run the B<mknimimage> command with no 
 
 Or, you could do a more ad hoc update by providing one or more of the "installp_bundle", "otherpkgs", or "synclists" values on the command line. If any of these values are provided the B<mknimimage> command will use those values only. The osimage definition will not be used or updated.
 
+WARNING: Installing random RPM packages in a SPOT may have unpredictable consequences.  The SPOT is a very restricted environment and some RPM packages may corrupt the SPOT or even hang your management system.  Try to be very careful about the packages you install. When installing RPMs, if the mknimimage command hangs or if there are file systems left mounted after the command completes you may need to reboot your management node to recover.  This is a limitation of the current AIX support for diskless systems
+
 B<Copying an xCAT osimage.>
 
 You can use the "-i" and "-p" options to copy an existing diskless osimage.   To do this you must supply the name of an existing xCAT osimage definition and the name of the new osimage you wish to create. The B<mknimimage> command will do the following:
