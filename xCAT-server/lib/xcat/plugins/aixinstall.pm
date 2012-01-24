@@ -12961,6 +12961,8 @@ sub update_spot_rpm
     my $nimprime    = shift;
     my $subreq     = shift;
 
+	my $error;
+
     if ($::VERBOSE)
     {
         my $rsp;
@@ -12991,19 +12993,27 @@ sub update_spot_rpm
 
     if ($::RUNCMD_RC != 0)
     {
-        my $rsp;
-        push @{$rsp->{data}},
-          "Could not install rpm packages in SPOT $spotname.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return 1;
+		$error++;
     }
 
-    if ($::VERBOSE)
-    {
-        my $rsp;
-        push @{$rsp->{data}}, "Completed Installing RPM packages in SPOT $spotname.\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
-    }    
+	if ($::VERBOSE)
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "$output\n";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+	}
+
+	if ($error)
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "One or more errors occurred while installing rpm packages in SPOT $spotname.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	} else  {
+		my $rsp;
+		push @{$rsp->{data}}, "Completed Installing RPM packages in SPOT $spotname.\n";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+	}
 
     return 0;
 }
