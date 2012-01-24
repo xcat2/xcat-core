@@ -12073,6 +12073,8 @@ sub update_spot_rpm
     my $nimprime    = shift;
     my $subreq     = shift;
 
+	my $error;
+
     if ($::VERBOSE)
     {
         my $rsp;
@@ -12089,26 +12091,41 @@ sub update_spot_rpm
     }
     
     my $cdcmd = qq~cd $source_dir;~;
-    my $cmd = qq~$::XCATROOT/bin/xcatchroot -i $spotname "$cdcmd export INUCLIENTS=1; /usr/bin/rpm $rpm_flags $rpmpkgs"~;
+    my $cmd;
+
+	 if ($::VERBOSE)
+	 {
+		 $cmd = qq~$::XCATROOT/bin/xcatchroot -V -i $spotname "$cdcmd export INUCLIENTS=1; /usr/bin/rpm $rpm_flags $rpmpkgs"~;
+	 } else {
+		 $cmd = qq~$::XCATROOT/bin/xcatchroot -i $spotname "$cdcmd export INUCLIENTS=1; /usr/bin/rpm $rpm_flags $rpmpkgs"~;
+	 }
 
     my $output =
       xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
 
     if ($::RUNCMD_RC != 0)
     {
-        my $rsp;
-        push @{$rsp->{data}},
-          "Could not install rpm packages in SPOT $spotname.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return 1;
+		$error++;
     }
 
-    if ($::VERBOSE)
-    {
-        my $rsp;
-        push @{$rsp->{data}}, "Completed Installing RPM packages in SPOT $spotname.\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
-    }    
+	if ($::VERBOSE)
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "$output\n";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+	}
+
+	if ($error)
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "One or more errors occurred while installing rpm packages in SPOT $spotname.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	} else  {
+		my $rsp;
+		push @{$rsp->{data}}, "Completed Installing RPM packages in SPOT $spotname.\n";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+	}
 
     return 0;
 }
