@@ -2952,19 +2952,19 @@ EOM"`;
 			#*** Set network configuration ***
 			# Set hostname
 			xCAT::zvmUtils->printLn( $callback, "$tgtNode: Setting network configuration" );
-			$out = `ssh $hcp sed --in-place -e "s/$sourceNode/$tgtNode/g" $cloneMntPt/etc/HOSTNAME`;
+			$out = `ssh $hcp sed --in-place -e "s/$sourceNode/$tgtNode/i" $cloneMntPt/etc/HOSTNAME`;
 
 			# If Red Hat - Set hostname in /etc/sysconfig/network
 			if ( $srcOs =~ m/Red Hat/i ) {
-				$out = `ssh $hcp sed --in-place -e "s/$sourceNode/$tgtNode/g" $cloneMntPt/etc/sysconfig/network`;
+				$out = `ssh $hcp sed --in-place -e "s/$sourceNode/$tgtNode/i" $cloneMntPt/etc/sysconfig/network`;
 			}
 
 			# Get network configuration file
 			# Location of this file depends on the OS
 			my $ifcfgPath = $cloneMntPt;
 			$ifcfgPath .= $srcIfcfg;
-			$out = `ssh $hcp sed --in-place -e "s/$sourceNode/$tgtNode/g" \ -e "s/$sourceIp/$targetIp/i" $cloneMntPt/etc/hosts`;
-			$out = `ssh $hcp sed --in-place -e "s/$sourceIp/$targetIp/i" \ -e "s/$sourceNode/$tgtNode/g" $ifcfgPath`;
+			$out = `ssh $hcp sed --in-place -e "s/$sourceNode/$tgtNode/i" \ -e "s/$sourceIp/$targetIp/i" $cloneMntPt/etc/hosts`;
+			$out = `ssh $hcp sed --in-place -e "s/$sourceIp/$targetIp/i" \ -e "s/$sourceNode/$tgtNode/i" $ifcfgPath`;
 
 			# Get network layer
 			my $layer = xCAT::zvmCPUtils->getNetworkLayer( $hcp, $hcpNetName );
