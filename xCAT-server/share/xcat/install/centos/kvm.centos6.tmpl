@@ -1,6 +1,5 @@
 #egan@us.ibm.com
 #
-cmdline
 
 lang en_US
 
@@ -9,7 +8,6 @@ lang en_US
 # nfs --server hostname.of.server or IP --dir /path/to/RH/CD/image
 #
 #nfs --server #XCATVAR:INSTALL_NFS# --dir #XCATVAR:INSTALL_SRC_DIR#
-url --url http://#TABLE:noderes:$NODE:nfsserver#/install/#TABLE:nodetype:$NODE:os#/#TABLE:nodetype:$NODE:arch#
 
 #device ethernet e100
 keyboard "us"
@@ -32,8 +30,7 @@ clearpart --all --initlabel
 #No RAID
 #/boot really significant for this sort of setup nowadays?
 #part /boot --size 50 --fstype ext3
-part swap --size 1024 
-part / --size 1 --grow --fstype ext4
+%include /tmp/partitioning
 
 #RAID 0 /scr for performance
 #part / --size 1024 --ondisk sda
@@ -78,10 +75,6 @@ bootloader
 #
 install
 
-#
-# text mode install (default is graphical)
-#
-text
 
 #
 # firewall
