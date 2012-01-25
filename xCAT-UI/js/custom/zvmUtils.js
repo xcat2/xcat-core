@@ -1923,8 +1923,8 @@ function connect2GuestLan(data) {
 	var lanOwner = args[3].replace('owner=', '');
 	
 	// Write ajax response to status bar
-	var prg = writeRsp(rsp, node + ': ');	
-	$('#' + node + 'StatusBar').append(prg);	
+	var prg = writeRsp(rsp, node + ': ');
+	$('#' + node + 'StatusBar').find('div').append(prg);
 			
 	// Connect NIC to Guest LAN
 	$.ajax( {
@@ -1957,8 +1957,8 @@ function connect2VSwitch(data) {
 	var vswitchName = args[2].replace('vsw=', '');
 	
 	// Write ajax response to status bar
-	var prg = writeRsp(rsp, node + ': ');	
-	$('#' + node + 'StatusBar').append(prg);	
+	var prg = writeRsp(rsp, node + ': ');
+	$('#' + node + 'StatusBar').find('div').append(prg);
 
 	// Connect NIC to VSwitch
 	$.ajax( {
