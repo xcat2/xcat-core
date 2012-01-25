@@ -663,7 +663,7 @@ sub mknetboot
                 next;
             }
             $kcmdline .=
-              "console=tty0 console=ttyS" . $sent->{serialport} . "," . $sent->{serialspeed};
+              " console=tty0 console=ttyS" . $sent->{serialport} . "," . $sent->{serialspeed};
             if ($sent->{serialflow} =~ /(hard|tcs|ctsrts)/)
             {
                 $kcmdline .= "n8r";
@@ -1118,7 +1118,7 @@ sub mkinstall
                 }
 		#go cmdline if serial console is requested, the shiny ansi is just impractical
                 $kcmdline .=
-                    "cmdline console=tty0 console=ttyS"
+                    " cmdline console=tty0 console=ttyS"
                   . $sent->{serialport} . ","
                   . $sent->{serialspeed};
                 if ($sent->{serialflow} =~ /(hard|cts|ctsrts)/)
