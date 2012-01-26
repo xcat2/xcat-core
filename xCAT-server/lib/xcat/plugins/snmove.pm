@@ -629,7 +629,7 @@ sub process_request
                     $item++;
                     my $stmnt = "$sn_hash{$n}{'xcatmaster'}:$dir";
                     $SLmodhash{$item}{'statemnt'} = $stmnt;
-                    $SLmodhash{$item}{'node'}     = $line->{node};
+                    $SLmodhash{$item}{'node'}     = $n;
                 }
 
                 # check for the directory
@@ -680,48 +680,51 @@ sub process_request
                         next;
                     }
 
-                    if ($::VERBOSE)
-                    {
-                        my $rsp;
-                        push @{$rsp->{data}},
-                          "Synchronizing $old_node_hash->{$n}->{'oldmaster'}:$dir to $sn_hash{$n}{'xcatmaster'}\n";
-                        xCAT::MsgUtils->message("I", $rsp, $callback);
-                    }
+					if ( -d $dodir ) {
 
-                    my $todir = dirname($dodir);
+                    	if ($::VERBOSE)
+                    	{
+                        	my $rsp;
+                        	push @{$rsp->{data}},
+                          		"Synchronizing $old_node_hash->{$n}->{'oldmaster'}:$dir to $sn_hash{$n}{'xcatmaster'}\n";
+                        	xCAT::MsgUtils->message("I", $rsp, $callback);
+                    	}
 
-                    # do rsync of file/dir
-                    my $synccmd =
-                      qq~/usr/bin/rsync -arlHpEAogDz $dodir $newsn{$n}:$todir 2>/dev/null~;
+                    	my $todir = dirname($dodir);
 
-					if ($::VERBOSE) {
-						my $rsp;
-						push @{$rsp->{data}}, "On $old_node_hash->{$n}->{'oldsn'}: Running: \'$synccmd\'\n";
+                    	# do rsync of file/dir
+                    	my $synccmd =
+                      		qq~/usr/bin/rsync -arlHpEAogDz $dodir $newsn{$n}:$todir 2>/dev/null~;
 
-						xCAT::MsgUtils->message("I", $rsp, $callback);
-					}
+						if ($::VERBOSE) {
+							my $rsp;
+							push @{$rsp->{data}}, "On $old_node_hash->{$n}->{'oldsn'}: Running: \'$synccmd\'\n";
 
-                    my $output =
-                      xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh",
+							xCAT::MsgUtils->message("I", $rsp, $callback);
+						}
+
+                    	my $output =
+                      		xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh",
                                             $old_node_hash->{$n}->{'oldsn'},
                                             $synccmd, 0);
 
-                    if ($::RUNCMD_RC != 0)
-                    {
-                        my $rsp;
-                        push @{$rsp->{data}},
-                          "Could not sync statelite \'$dodir\'.";
-                        push @{$rsp->{data}}, "$output\n";
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
-                        $error++;
-                    }
-                    else
-                    {
-                        $id++;
-                        $donehash{$id}{oldXM} =
-                          $old_node_hash->{$n}->{'oldmaster'};
-                        $donehash{$id}{dir}   = $dodir;
-                        $donehash{$id}{newXM} = $sn_hash{$n}{'xcatmaster'};
+                    	if ($::RUNCMD_RC != 0)
+                    	{
+                        	my $rsp;
+                        	push @{$rsp->{data}},
+                          		"Could not sync statelite \'$dodir\'.";
+                        	push @{$rsp->{data}}, "$output\n";
+                        	xCAT::MsgUtils->message("E", $rsp, $callback);
+                        	$error++;
+                    	}
+                    	else
+                    	{
+                        	$id++;
+                        	$donehash{$id}{oldXM} =
+                          		$old_node_hash->{$n}->{'oldmaster'};
+                        	$donehash{$id}{dir}   = $dodir;
+                        	$donehash{$id}{newXM} = $sn_hash{$n}{'xcatmaster'};
+						}
                     }
 
                 }    # end if servers match

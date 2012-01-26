@@ -909,33 +909,6 @@ sub dolitesetup
         return 1;
     }
 
-	#
-	#  Check the statelite table for duplicate node entries
-	#
-	my $recs=$statelitetab->getAllEntries();
-	my @SLnodes;
-	foreach my $entry (@$recs) {
-
-		# get the "node" value
-        my $node = $entry->{node};
-
-		# run it through noderange
-		my @newnodes = xCAT::NodeRange::noderange($node);
-
-		# for each node - see if it's already in the list
-		foreach my $n (@newnodes) {
-			if (!grep (/^$n$/, @SLnodes) ) {
-				push(@SLnodes, $n);
-			} else {
-				# if it's already in the list then this is an error
-				my $rsp;
-				push @{$rsp->{data}}, "The node \'$n\' is included in multiple statelite entries.\n";
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-				return 1;
-			}
-		}
- 	}
-
 	# create the statelite table file
 	my $foundentry=0;
 	my $stateHash = $statelitetab->getNodesAttribs(\@nodelist, ['statemnt', 'mntopts']);
