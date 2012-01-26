@@ -257,15 +257,26 @@ if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
 TRIES=0
 if [ ! "$IPMIVER" == "1.5"  ]; then 
     echo -n "Enabling IPMI v 2.0 LAN access:"
-    SUPPORTEDSUITES=`ipmitool -d $idev lan print $LANCHAN|grep Suites|awk -F: '{print $2}'|sed -e 's/ 0//'`
-    PRIVS="X"
-    for priv in 1 2 3 4 5 6 7 8 9 10 11 12 13 14; do
-        if echo $SUPPORTEDSUITES|grep $priv > /dev/null; then
-            PRIVS="$PRIVS"a
-        else
-            PRIVS="$PRIVS"X
-        fi
+    #two goals here, make sure cipher suite 0 does not work as it is insecure
+    #mae sure cipher suite 3 does work because we will use it
+    #leave every thing else alone.
+    ACCESS=`ipmitool raw 0xc 2 1 24 0 0 `
+    NEWACCESS=""
+    i=0
+    for elem in $ACCESS; do
+	echo $i
+	if [ $i = 2 ]; then
+		NEWACCESS=`printf "$NEWACCESS 0x%02x" $((0x$elem&0xf0))`
+	elif [ $i = 3 ]; then
+		NEWACCESS=`printf "$NEWACCESS 0x%02x" $((0x$elem|0x40))`
+	elif [ $i != 0 ]; then
+		NEWACCESS="$NEWACCESS 0x$elem"
+	fi
+	i=$((i+1))
     done
+    echo $NEWACCESS
+	
+	
     while ! ipmitool -d $idev lan set $LANCHAN cipher_privs $PRIVS > /dev/null; do
         sleep 1
         let TRIES=TRIES+1

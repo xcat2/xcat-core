@@ -108,11 +108,20 @@ sub process_request {
       system("ssh-keygen -t rsa -f $tempdir/etc/ssh_host_rsa_key -C '' -N ''");
       system("ssh-keygen -t dsa -f $tempdir/etc/ssh_host_dsa_key -C '' -N ''");
    }
+   my $lzma_exit_value=1;
    if ($invisibletouch) {
+       my $done=0;
        if (-x "/usr/bin/lzma") { #let's reclaim some of that size...
        $callback->({data=>["Creating genesis.fs.$arch.lzma in $tftpdir/xcat"]});
        system("cd $tempdir; find . | cpio -o -H newc | lzma -C crc32 -9 > $tftpdir/xcat/genesis.fs.$arch.lzma");
-       } else {
+	$lzma_exit_value=$? >> 8;
+	if ($lzma_exit_value) {
+		$callback->({data=>["Creating genesis.fs.$arch.lzma in $tftpdir/xcat failed, falling back to gzip"]});
+	} else {
+		$done = 1;
+	}
+		
+       if (not $done) {
        $callback->({data=>["Creating genesis.fs.$arch.gz in $tftpdir/xcat"]});
        system("cd $tempdir; find . | cpio -o -H newc | gzip -9 > $tftpdir/xcat/genesis.fs.$arch.gz");
 	}
@@ -184,7 +193,11 @@ sub process_request {
          print $cfg "#!gpxe\n";
 	 if ($invisibletouch) {
          print $cfg 'imgfetch -n kernel http://${next-server}/tftpboot/xcat/genesis.kernel.'."$arch quiet xcatd=".$normnets->{$_}.":$xcatdport $consolecmdline BOOTIF=01-".'${netX/machyp}'."\n";
+	if ($lzma_exit_value) {
          print $cfg 'imgfetch -n nbfs http://${next-server}/tftpboot/xcat/genesis.fs.'."$arch.gz\n";
+	} else {
+         print $cfg 'imgfetch -n nbfs http://${next-server}/tftpboot/xcat/genesis.fs.'."$arch.lzma\n";
+	}
          } else {
          print $cfg 'imgfetch -n kernel http://${next-server}/tftpboot/xcat/nbk.'."$arch quiet xcatd=".$normnets->{$_}.":$xcatdport $consolecmdline\n";
          print $cfg 'imgfetch -n nbfs http://${next-server}/tftpboot/xcat/nbfs.'."$arch.gz\n";
