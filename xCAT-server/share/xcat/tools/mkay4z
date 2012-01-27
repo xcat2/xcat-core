@@ -478,7 +478,7 @@ END
 
 					for $device_name (sort keys %partitions) {						
 						for $lvm_vol_name (sort keys %{$partitions{$device_name}{'lvm'}}) {
-							print(pad($device_name, 11) . " " . pad($partitions{$device_name}{'lvm'}{$lvm_vol_name}{'name'}, 12) . " " . pad($partitions{$device_name}{'lvm'}{$lvm_vol_name}{'mount'}, 12) . " " . pad($partitions{$device_name}{'lvm'}{$lvm_vol_name}{'size'}, 10));
+							print(pad($device_name, 11) . " " . pad($partitions{$device_name}{'lvm'}{$lvm_vol_name}{'name'}, 12) . " " . pad($partitions{$device_name}{'lvm'}{$lvm_vol_name}{'mount'}, 12) . " " . pad($partitions{$device_name}{'lvm'}{$lvm_vol_name}{'size'}, 10) . "\n");
 						}
 					}
 				}
@@ -932,7 +932,7 @@ sub createPartitions {
   <partitions config:type="list">
 END
 
-		if (exists $partitions{$device_name}{'lvm'}) {
+		if (exists $partitions{$device_name}{'lvm'} && $partitions{$device_name}{'lvm'}) {
 			my %lvm_vols = %{ $partitions{$device_name}{'lvm'} };
 			foreach my $vol(sort keys %lvm_vols) {
 				# Create <partition> section for LVM volume
@@ -953,7 +953,7 @@ END
     </partition>
 END
 			}
-		} elsif (exists $partitions{$device_name}{'device_lvm'}) {
+		} elsif (exists $partitions{$device_name}{'device_lvm'} && $partitions{$device_name}{'device_lvm'}) {
 			# Create <partition> section for LVM group
 			$xml .= <<END;
     <partition>
@@ -988,7 +988,7 @@ END
 		}
 		
 		# Create <drive> tail
-		if (exists $partitions{$device_name}{'device_lvm'}) {
+		if (exists $partitions{$device_name}{'device_lvm'} && $partitions{$device_name}{'device_lvm'}) {
 			$xml .= <<END;
   </partitions>
   <pesize>4M</pesize>
