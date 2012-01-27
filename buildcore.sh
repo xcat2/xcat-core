@@ -26,6 +26,7 @@
 # 		UP=0 or UP=1 - override the default upload behavior 
 # 		SVNUP=<filename> - control which rpms get built by specifying a coresvnup file
 #       FRSYUM=0 - put the yum repo and snap builds in the old project web area instead of the FRS area.
+#		EMBED=<embedded-environment> - the environment for which a minimal version of xcat should be built, e.g. zvm or flex
 #		VERBOSE=1 - to see lots of verbose output
 
 # you can change this if you need to
@@ -76,6 +77,8 @@ else
 fi
 
 # Set variables based on which type of build we are doing
+if [ -n "$EMBED" ]; then EMBEDDIR="/$EMBED"
+else EMBEDDIR=""; fi
 XCATCORE="xcat-core"		# core-snap is a sym link to xcat-core
 echo "svn --quiet up Version"
 svn --quiet up Version
@@ -97,24 +100,25 @@ else
 		TARNAME=core-rpms-snap.tar.bz2
 	fi
 fi
-DESTDIR=../../$XCATCORE
+DESTDIR=../..$EMBEDDIR/$XCATCORE
 SRCD=core-snap-srpms
 
-
-if [ "$PROMOTE" != 1 ]; then      # very long if statement to not do builds if we are promoting
-mkdir -p $DESTDIR
-SRCDIR=../../$SRCD
-mkdir -p $SRCDIR
-if [ -n "$VERBOSEMODE" ]; then
-	GREP=grep
-else
-	GREP="grep -q"
-fi
 # currently aix builds ppc rpms, but someday it should build noarch
 if [ "$OSNAME" = "AIX" ]; then
 	NOARCH=ppc
 else
 	NOARCH=noarch
+fi
+
+
+if [ "$PROMOTE" != 1 ]; then      # very long if statement to not do builds if we are promoting
+mkdir -p $DESTDIR
+SRCDIR=$DESTDIR/../$SRCD
+mkdir -p $SRCDIR
+if [ -n "$VERBOSEMODE" ]; then
+	GREP=grep
+else
+	GREP="grep -q"
 fi
 UPLOAD=0
 if [ "$OSNAME" = "AIX" ]; then
@@ -135,18 +139,24 @@ if [ -z "$SVNUP" ]; then
 	svn up > $SVNUP
 fi
 
+# Process for making most of the rpms
+function maker {
+	rpmname="$1"
+	./makerpm $rpmname "$EMBED"
+	if [ $? -ne 0 ]; then
+		FAILEDRPMS="$FAILEDRPMS $rpmname"
+	else
+		rm -f $DESTDIR/$rpmname*rpm
+		rm -f $SRCDIR/$rpmname*rpm
+		mv $source/RPMS/$NOARCH/$rpmname-$VER*rpm $DESTDIR
+		mv $source/SRPMS/$rpmname-$VER*rpm $SRCDIR
+	fi
+}
+
 # If anything has changed, we should always rebuild perl-xCAT
 if ! $GREP 'At revision' $SVNUP; then		# Use to be:  $GREP perl-xCAT $SVNUP; then
 	UPLOAD=1
-	./makerpm perl-xCAT
-	if [ $? -ne 0 ]; then
-		FAILEDRPMS="perl-xCAT"
-	else
-		rm -f $DESTDIR/perl-xCAT*rpm
-		rm -f $SRCDIR/perl-xCAT*rpm
-		mv $source/RPMS/$NOARCH/perl-xCAT-$VER*rpm $DESTDIR/
-		mv $source/SRPMS/perl-xCAT-$VER*rpm $SRCDIR/
-	fi
+	maker perl-xCAT
 fi
 if [ "$OSNAME" = "AIX" ]; then
 	# For the 1st one we overwrite, not append
@@ -157,15 +167,8 @@ fi
 for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test; do
 	if $GREP $rpmname $SVNUP; then
 		UPLOAD=1
-		./makerpm $rpmname
-		if [ $? -ne 0 ]; then
-			FAILEDRPMS="$FAILEDRPMS $rpmname"
-		else
-			rm -f $DESTDIR/$rpmname*rpm
-			rm -f $SRCDIR/$rpmname*rpm
-			mv $source/RPMS/$NOARCH/$rpmname-$VER*rpm $DESTDIR/
-			mv $source/SRPMS/$rpmname-$VER*rpm $SRCDIR/
-		fi
+		if [ "$EMBED" = "zvm" -a "$rpmname" != "xCAT-server" -a "$rpmname" != "xCAT-UI" ]; then break; fi		# for embedded envs only need to build server special
+		maker $rpmname
 	fi
 	if [ "$OSNAME" = "AIX" ]; then
 		if [ "$rpmname" = "xCAT-client" -o "$rpmname" = "xCAT-server" ]; then		# we do not automatically install the rest of the rpms on AIX
@@ -174,7 +177,7 @@ for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test; d
 	fi
 done
 
-if [ "$OSNAME" != "AIX" ]; then
+if [ "$OSNAME" != "AIX" -a "$EMBED" != "zvm" ]; then
 	if $GREP xCAT-nbroot $SVNUP; then
 		UPLOAD=1
 		ORIGFAILEDRPMS="$FAILEDRPMS"
@@ -193,6 +196,7 @@ fi
 
 # Build the xCAT and xCATsn rpms for all platforms
 for rpmname in xCAT xCATsn; do
+	if [ "$EMBED" = "zvm" ]; then break; fi
 	if $GREP -E "^[UAD] +$rpmname/" $SVNUP; then
 		UPLOAD=1
 		ORIGFAILEDRPMS="$FAILEDRPMS"
@@ -218,6 +222,20 @@ if [ "$OSNAME" = "AIX" ]; then
 	echo "rpm -Uvh xCAT-$SHORTSHORTVER*rpm" >> $DESTDIR/instxcat
 	echo "rpm -Uvh xCAT-rmc-$SHORTSHORTVER*rpm" >> $DESTDIR/instxcat
 fi
+
+# Make sym links in the embed subdirs for the rpms we do not have to build special
+cd $DESTDIR
+if [ "$EMBED" = "zvm" ]; then
+	maindir="../../$XCATCORE"
+	rm -f xCAT-client-$SHORTSHORTVER*rpm
+	ln -s $maindir/xCAT-client-$SHORTSHORTVER*rpm .
+	rm -f xCAT-$SHORTSHORTVER*rpm
+	ln -s $maindir/xCAT-$SHORTSHORTVER*.s390x.rpm .
+	rm -f xCATsn-$SHORTSHORTVER*rpm
+	ln -s $maindir/xCATsn-$SHORTSHORTVER*.s390x.rpm .
+fi
+cd - >/dev/null
+
 
 # Decide if anything was built or not
 if [ -n "$FAILEDRPMS" ]; then
@@ -251,7 +269,7 @@ if [ "$OSNAME" != "AIX" ]; then
 		echo '%_gpg_name Jarrod Johnson' >> $MACROS
 	fi
 	echo "Signing RPMs..."
-	build-utils/rpmsign.exp $DESTDIR/*rpm | grep -v -E '(was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
+	build-utils/rpmsign.exp `find $DESTDIR -type f -name '*.rpm'` | grep -v -E '(was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
 	build-utils/rpmsign.exp $SRCDIR/*rpm | grep -v -E '(was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
 	createrepo $DESTDIR
 	createrepo $SRCDIR
@@ -285,20 +303,23 @@ chmod -R g+w $SRCDIR
 
 fi		# end of very long if-not-promote
 
-
 cd $DESTDIR
 
 if [ "$OSNAME" != "AIX" ]; then
+
 	# Modify the repo file to point to either xcat-core or core-snap
 	# Always recreate it, in case the whole dir was copied from devel to 2.x
+	if [ -n "$1" ]; then embed="$1/"
+	else embed=""; fi
 	cat >xCAT-core.repo << EOF
 [xcat-2-core]
 name=xCAT 2 Core packages
-baseurl=$YUMREPOURL/$REL/$CORE
+baseurl=$YUMREPOURL/$REL$EMBEDDIR/$CORE
 enabled=1
 gpgcheck=1
-gpgkey=$YUMREPOURL/$REL/$CORE/repodata/repomd.xml.key
+gpgkey=$YUMREPOURL/$REL$EMBEDDIR/$CORE/repodata/repomd.xml.key
 EOF
+
 
 	# Create the mklocalrepo script
 	cat >mklocalrepo.sh << 'EOF2'
@@ -347,33 +368,33 @@ if [ ! -e core-snap ]; then
 fi
 if [ "$REL" = "devel" -o "$PREGA" != 1 ]; then
 	i=0
-	echo "Uploading RPMs from $CORE to $YUMDIR/$YUM/$REL/ ..."
-	while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL/
+	echo "Uploading RPMs from $CORE to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
+	while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL$EMBEDDIR/
 	do : ; done
 fi
 
 # Upload the individual source RPMs to sourceforge
 i=0
-echo "Uploading src RPMs from $SRCD to $YUMDIR/$YUM/$REL/ ..."
-while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $SRCD $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL/
+echo "Uploading src RPMs from $SRCD to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
+while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $SRCD $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL$EMBEDDIR/
 do : ; done
 
 # Upload the tarball to sourceforge
 if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
 	# upload tarball to FRS area
 	i=0
-	echo "Uploading $TARNAME to $FRS/xcat/$REL.x_$OSNAME/ ..."
-	while [ $((i+=1)) -le 5 ] && ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat/$REL.x_$OSNAME/
+	echo "Uploading $TARNAME to $FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/ ..."
+	while [ $((i+=1)) -le 5 ] && ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/
 	do : ; done
 else
 	i=0
-	echo "Uploading $TARNAME to $YUMDIR/$YUM/$REL/ ..."
-	while [ $((i+=1)) -le 5 ] && ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL/
+	echo "Uploading $TARNAME to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
+	while [ $((i+=1)) -le 5 ] && ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL$EMBEDDIR/
 	do : ; done
 fi
 
 # Extract and upload the man pages in html format
-if [ "$OSNAME" != "AIX" -a "$REL" = "devel" -a "$PROMOTE" != 1 ]; then
+if [ "$OSNAME" != "AIX" -a "$REL" = "devel" -a "$PROMOTE" != 1 -a -z "$EMBED" ]; then
 	echo "Extracting and uploading man pages to htdocs/ ..."
 	mkdir -p man
 	cd man

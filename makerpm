@@ -18,11 +18,11 @@ function makenoarch {
 		tar -X /tmp/xcat-excludes -cf $RPMROOT/SOURCES/$RPMNAME-$VER.tar $RPMNAME
 		gzip -f $RPMROOT/SOURCES/$RPMNAME-$VER.tar
 		rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/ppc/$RPMNAME-$VER*rpm
-		echo "Building $RPMROOT/RPMS/ppc/$RPMNAME-$VER-snap*.ppc.rpm $IMBEDTXT..."
+		echo "Building $RPMROOT/RPMS/ppc/$RPMNAME-$VER-snap*.ppc.rpm $EMBEDTXT..."
 		rpm $QUIET -ba $RPMNAME/$RPMNAME.spec
 		RC=$?
 	else	# linux
-		echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm $IMBEDTXT..."
+		echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm $EMBEDTXT..."
 		tar --exclude .svn -czf $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz $RPMNAME
 		rm -f $RPMROOT/SRPMS/xCAT-server-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
 		rpmbuild $QUIET -ta $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz
@@ -35,7 +35,7 @@ function makenoarch {
 # Make one of the following rpms: xCAT, xCATsn
 function makexcat {
 	if [ "$OSNAME" != "AIX" -a -z "$2" ]; then
-		echo 'Usage: makerpm <RPMname> <arch> [<imbedded-system>]'
+		echo 'Usage: makerpm <RPMname> <arch> [<embedded-system>]'
 		exit 1
 	fi
 
@@ -63,7 +63,7 @@ function makexcat {
 		rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/ppc/$RPMNAME-$VER*rpm
 		cd - >/dev/null
 
-		echo "Building $RPMROOT/RPMS/ppc/$RPMNAME-$VER-snap*.ppc.rpm $IMBEDTXT..."
+		echo "Building $RPMROOT/RPMS/ppc/$RPMNAME-$VER-snap*.ppc.rpm $EMBEDTXT..."
 		rpm $QUIET -ba $RPMNAME/$RPMNAME.spec
 		RC=$?
 	else	# linux
@@ -84,7 +84,7 @@ function makexcat {
 
 		cd - >/dev/null
 		rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/$ARCH/$RPMNAME-$VER*rpm
-		echo "Building $RPMROOT/RPMS/$ARCH/$RPMNAME-$VER-snap*.$ARCH.rpm $IMBEDTXT..."
+		echo "Building $RPMROOT/RPMS/$ARCH/$RPMNAME-$VER-snap*.$ARCH.rpm $EMBEDTXT..."
 		rpmbuild $QUIET -ba $RPMNAME/$RPMNAME.spec --target $ARCH
 		RC=$?
 	fi
@@ -95,7 +95,7 @@ function makexcat {
 # Make the xCAT-nbroot-core rpm
 function makenbroot {
 	if [ -z "$2" ]; then
-		echo 'Usage: makerpm xCAT-nbroot-core <arch> [<imbedded-system>]'
+		echo 'Usage: makerpm xCAT-nbroot-core <arch> [<embedded-system>]'
 		exit 1
 	fi
 
@@ -109,7 +109,7 @@ function makenbroot {
 	cp $SPEC.spec $RPMROOT/SOURCES
 	cd - >/dev/null
 	rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
-	echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm $IMBEDTXT..."
+	echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm $EMBEDTXT..."
 	rpmbuild $QUIET -ba $DIR/$SPEC.spec --target $ARCH
 }
 
@@ -125,18 +125,18 @@ function makegenesis {
 	cp $RPMNAME.spec $RPMROOT/SOURCES
 	cd - >/dev/null
 	rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
-	echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm $IMBEDTXT..."
+	echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm $EMBEDTXT..."
 	rpmbuild $QUIET -ba $DIR/$RPMNAME.spec
 }
 
 
-# Export the name of the imbedded system we are building for
-function exportImbed {
+# Export the name of the embedded system we are building for
+function exportEmbed {
 	if [ -n "$1" ]; then
 		export "$1=1"
-		IMBEDTXT="for $1 "
+		EMBEDTXT="for $1 "
 	else
-		IMBEDTXT=""
+		EMBEDTXT=""
 	fi
 }
 
@@ -144,7 +144,7 @@ function exportImbed {
 # Main code....
 
 if [ -z "$1" ]; then
-	echo 'Usage: makerpm <RPMname> [<arch>] [<imbedded-system>]'
+	echo 'Usage: makerpm <RPMname> [<arch>] [<embedded-system>]'
 	exit 1
 fi
 
@@ -173,16 +173,16 @@ fi
 
 
 if [ "$1" = "xCAT" -o "$1" = "xCATsn" ]; then
-	exportImbed $3
+	exportEmbed $3
 	makexcat $1 $2
 elif [ "$1" = "xCAT-nbroot" -o "$1" = "xCAT-nbroot-core" ]; then
-	exportImbed $3
+	exportEmbed $3
 	makenbroot xCAT-nbroot-core $2
 elif [ "$1" = "xCAT-genesis-builder" ]; then
-	exportImbed $3
+	exportEmbed $3
 	makegenesis $1 $2
 else	# must be one of the noarch rpms
-	exportImbed $2
+	exportEmbed $2
 	makenoarch $1
 fi
 
