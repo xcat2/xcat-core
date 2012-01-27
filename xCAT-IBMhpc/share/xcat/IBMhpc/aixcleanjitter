@@ -1,0 +1,162 @@
+#!/usr/bin/ksh
+trap "chmod 774 /etc/rc.tcpip" INT QUIT TERM EXIT
+
+#NB: WANT TO ADD THIS BACK IN AT SOME POINT - SYSTEM HANG DETECTION DEAMON
+#shdaemon:2:off:/usr/sbin/shdaemon >/dev/console 2>&1 # High availability daemon
+rmitab shdaemon > /dev/null 2>&1
+
+#to disable topasrec, which runs as a cron job, need remove the following entry from /etc/inittab:
+#xmdaily:2:once:/usr/bin/topasrec -L -s 300 -R 1 -r 6 -o /etc/perf/daily/ -ypersistent=1 2>&1 >/dev/null #Start local binary recording
+rmitab xmdaily > /dev/null 2>&1 
+
+#to disable PM data collection, which is really topasout, run:
+#55 23 * * * /var/perf/pm/bin/pmcfg  >/dev/null 2>&1     #Enable PM Data Collection
+rmitab pmcfg > /dev/null 2>&1
+
+#to disable USB audio device overhead
+#naudio2::boot:/usr/sbin/naudio2 > /dev/null
+#naudio::boot:/usr/sbin/naudio > /dev/null
+rmitab naudio > /dev/null 2>&1
+rmitab naudio2 > /dev/null 2>&1
+
+#ensure mlt0 device tuned as recommended
+chdev -l mlt0 -a agg_killtime=2000000000 2> /dev/null # new change 
+chdev -l mlt0 -a agg_interval=2000000000 2> /dev/null # new change 
+chdev -l mlt0 -a agg_threshold=3 2> /dev/null
+
+#not planning on printing from P7IH:
+#piobe:2:wait:/usr/lib/lpd/pioinit_cp >/dev/null 2>&1  # pb cleanup
+rmitab piobe > /dev/null 2>&1
+
+#qdaemon:23456789:wait:/usr/bin/startsrc -sqdaemon
+rmitab qdaemon > /dev/null 2>&1
+
+#do we really need wpar support now?
+rcwpars:2:once:/etc/rc.wpars > /dev/console 2>&1 # Corrals autostart
+rmitab rcwpars > /dev/null 2>&1
+
+#have always seen this disabled in the past
+#perfstat:2:once:/usr/lib/perf/libperfstat_updt_dictionary >/dev/console 2>&1
+rmitab perfstat > /dev/null 2>&1
+
+#we aren't running GSA on PERCS machines. . .
+#gsa_updmn:2:wait:startsrc -s gsa_updmn > /dev/console 2>&1
+rmitab gsa_updmn > /dev/null 2>&1
+
+#unless we really are using this we should disable for perf testing
+#artex:2:wait:/usr/sbin/artexset -c -R /etc/security/artex/config/master_profile.xml > /dev/console 2>&1
+rmitab artex > /dev/null 2>&1
+
+#this is HACMP function . . . 
+#clcomd:23456789:once:/usr/bin/startsrc -s clcomd
+rmitab clcomd > /dev/null 2>&1
+
+#rpvserver:2:once:/etc/rc.rpvserver > /dev/console 2>&1
+rmitab rpvserver > /dev/null 2>&1
+
+#ha_star:h2:once:/etc/rc.ha_star >/dev/console 2>&1
+rmitab ha_star > /dev/null 2>&1
+
+#clusterconf:23456789:once:/usr/sbin/clusterconf
+rmitab clusterconf > /dev/null 2>&1
+
+
+#this is for http://<hostname>:5335/ibm/console access, which we don't want for PERCS
+#pconsole:2:once:/usr/bin/startsrc -s pconsole  > /dev/null 2>&1
+rmitab pconsole > /dev/null 2>&1
+
+#contains Network load balancing kernel extensions . . . not clear for HPC yet
+#rcnetwlm:23456789:wait:/etc/rc.netwlm start> /dev/console 2>&1 # Start netwlm
+rmitab rcnetwlm > /dev/null 2>&1
+
+#to disable cimservices, need to comment cimservices and platform agent: 
+#cimservices:2:once:/usr/bin/startsrc -s cimsys >/dev/null 2>&1
+#platform_agent:2:once:/usr/bin/startsrc -s platform_agent >/dev/null 2>&1
+rmitab cimservices > /dev/null 2>&1 
+rmitab platform_agent > /dev/null 2>&1 
+
+#we WILL want to add in RMC (RSCT) monitoring at some point
+#ctrmc:2:once:/usr/bin/startsrc -s ctrmc > /dev/console 2>&1
+rmitab ctrmc > /dev/null 2>&1
+
+#Jugement call . . . leave in for now
+#diagd:2:once:/usr/lpp/diagnostics/bin/diagd >/dev/console 2>&1
+
+#for NIM so keep for now
+#mount_tools:2:once:/usr/bin/mount_tools iofnim.austin.ibm.com > /dev/console 2>&1
+
+#following are needed for HPC so leave:
+#rcsciv1:23456789:wait:/usr/bin/startsrc -s scidv1 > /dev/console 2>&1
+#pnsd:2345:once:/opt/rsct/lapi/pnsd/startpnsdAIX 1>/dev/null 2>&1
+#dscrset:2:once:/usr/sbin/dscrctl -n -s 30 >/dev/null 2>/dev/console
+
+#to disable sendmail daemon, need to comment the line in /etc/rc.tcpip that begins: start /usr/lib/sendmail
+#As of 11/16/10 John L. re-enable sendmail as some subsystems want to use this for PERCS
+#Unless someone says we need it, it's back off - 4/18/11 John L.
+grep -q "^start /usr/lib/sendmail" /etc/rc.tcpip
+if [[ $? -eq 0 ]] then
+    cat /etc/rc.tcpip | sed 's/^start \/usr\/lib\/sendmail/#start \/usr\/lib\/sendmail/' > /tmp/rc.tcpip.tmpfile.$$
+    cp  -p /etc/rc.tcpip /etc/rc.tcpip.prev 
+    mv  /tmp/rc.tcpip.tmpfile.$$  /etc/rc.tcpip
+fi
+stopsrc -s sendmail > /dev/null 2>&1
+
+
+#to disable aixmibd daemon, need to comment the line in /etc/rc.tcpip that begins: start /usr/sbin/aixmibd
+grep -q "^start /usr/sbin/aixmibd" /etc/rc.tcpip
+if [[ $? -eq 0 ]] then
+    cat /etc/rc.tcpip | sed 's/^start \/usr\/sbin\/aixmibd/#start \/usr\/sbin\/aixmibd/' > /tmp/rc.tcpip.tmpfile.$$
+    cp  -p /etc/rc.tcpip /etc/rc.tcpip.prev2
+    mv  /tmp/rc.tcpip.tmpfile.$$  /etc/rc.tcpip
+fi
+stopsrc -s aixmibd > /dev/null 2>&1
+
+#to disable hostmibd daemon, need to comment the line in /etc/rc.tcpip that begins: start /usr/sbin/hostmibd
+grep -q "^start /usr/sbin/hostmibd" /etc/rc.tcpip
+if [[ $? -eq 0 ]] then
+    cat /etc/rc.tcpip | sed 's/^start \/usr\/sbin\/hostmibd/#start \/usr\/sbin\/hostmibd/' > /tmp/rc.tcpip.tmpfile.$$
+    cp  -p /etc/rc.tcpip /etc/rc.tcpip.prev2
+    mv  /tmp/rc.tcpip.tmpfile.$$  /etc/rc.tcpip
+fi
+stopsrc -s hostmibd > /dev/null 2>&1
+
+#to disable snmpmibd daemon, need to comment the line in /etc/rc.tcpip that begins: start /usr/sbin/snmpmibd
+grep -q "^start /usr/sbin/snmpmibd" /etc/rc.tcpip
+if [[ $? -eq 0 ]] then
+    cat /etc/rc.tcpip | sed 's/^start \/usr\/sbin\/snmpmibd/#start \/usr\/sbin\/snmpmibd/' > /tmp/rc.tcpip.tmpfile.$$
+    cp  -p /etc/rc.tcpip /etc/rc.tcpip.prev2
+    mv  /tmp/rc.tcpip.tmpfile.$$  /etc/rc.tcpip
+fi
+stopsrc -s snmpmibd > /dev/null 2>&1
+
+chmod 774 /etc/rc.tcpip
+
+#try to clean up some cron junk - we only touch the crontab file once (and save a backup)
+if [[ ! -f /var/spool/cron/crontabs/root.before.clean_jitter ]] then
+    cp -p /var/spool/cron/crontabs/root /var/spool/cron/crontabs/root.before.clean_jitter
+   
+    grep -v "bin\/pmcfg" /var/spool/cron/crontabs/root |  grep -v "bin\/stcron" | grep -v "bin\/dumpctr" | \
+        grep -v "ras\/dumpcheck" > /var/spool/cron/crontabs/root.after.clean_jitter
+    cp /var/spool/cron/crontabs/root.after.clean_jitter /var/spool/cron/crontabs/root 
+fi
+
+
+for i in $(ps -efk | grep "topasrec" | grep -v killproc | grep -v grep | awk ' {print $2} ') ; do
+  kill $i
+done
+
+ls -l /etc/rc.tcpip
+telinit q
+sleep 1
+
+/usr/sbin/schedo -F -o tick_sync=1
+/usr/sbin/schedo -F -o big_tick_size=1
+
+grep -q cosched3 /etc/poe.priority
+if [[ $? -ne 0 ]] then
+    echo '*  cosched1    18    100    97    10' >> /etc/poe.priority
+    echo '*  cosched2    13    100    99.5  10' >> /etc/poe.priority 
+    echo '*  cosched3    13    100    99     3' >> /etc/poe.priority
+    chmod 644 /etc/poe.priority
+fi
+
