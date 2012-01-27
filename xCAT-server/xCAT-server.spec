@@ -32,6 +32,8 @@ Provides: xCAT-server = %{epoch}:%{version}
 %description
 xCAT-server provides the core server and configuration management components of xCAT.  This package should be installed on your management server
 
+%define zvm %(if [ "$zvm" = "1" ];then echo 1; else echo 0; fi)
+
 # %define VERBOSE %(if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ];then echo 1; else echo 0; fi)
 # %define NOVERBOSE %(if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ];then echo 0; else echo 1; fi)
 # %define NOVERBOSE %{?VERBOSE:1}%{!?VERBOSE:0}
@@ -118,7 +120,7 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/*
 
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/sles/*.postinstall
 
-# For now, don't ship these plugins - to avoid AIX dependency.
+# For now, don't ship these plugins on AIX to avoid AIX dependency.
 %ifnos linux
 rm $RPM_BUILD_ROOT/%{prefix}/sbin/stopstartxcatd
 #rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/blade.pm
@@ -131,6 +133,40 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xen.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/kvm.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/vbox.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/activedirectory.pm
+%endif
+
+# Don't ship these on zVM, to reduce dependencies
+%if %zvm
+rm $RPM_BUILD_ROOT/%{prefix}/sbin/stopstartxcatd
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/blade.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpblade.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpilo.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ipmi.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ipmi.pm.legacy
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/nodediscover.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/switch.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xen.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/kvm.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/vbox.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/activedirectory.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/aixinstall.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/bmcconfig.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/bpa.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/esx.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/FIP.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/fsp.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hmc.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ivm.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/lsslp.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/pxe.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/toolscenter.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/windows.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xcat2nim.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xnba.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/ADUtils.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/IPMI.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/MellanoxIB.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPC.pm
 %endif
 
 cp lib/xcat/dsh/Context/* $RPM_BUILD_ROOT/%{prefix}/xdsh/Context

@@ -13,7 +13,8 @@ Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 %ifos linux
 BuildArch: noarch
-Requires: perl-SOAP-Lite
+# Do not need the SOAP rpm require, because rpm will generate it automatically if hpoa.pm is included
+#Requires: perl-SOAP-Lite
 %endif
 
 Provides: perl-xCAT = %{epoch}:%{version}
@@ -21,6 +22,8 @@ Provides: perl-xCAT = %{epoch}:%{version}
 %description
 Provides perl xCAT libraries for core functionality.  Required for all xCAT installations.
 Includes xCAT::Table, xCAT::NodeRange, among others.
+
+%define zvm %(if [ "$zvm" = "1" ];then echo 1; else echo 0; fi)
 
 %prep
 %setup -q -n perl-xCAT
@@ -56,9 +59,17 @@ chmod 755 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/data
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/data/*
 
 
-# For now, don't ship these plugins - to avoid AIX dependency error.
+# For now, don't ship these plugins on AIX, to avoid AIX dependency error.
 %ifnos linux
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/hpoa.pm
+%endif
+
+# Don't ship these on zVM, to reduce dependencies
+%if %zvm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/hpoa.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/vboxService.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/FSP*.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPC*.pm
 %endif
 
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/perl-xCAT
