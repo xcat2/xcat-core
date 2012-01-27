@@ -547,7 +547,9 @@ if ($version eq '10') {
 }
 
 # Print out template
-`echo "$tmpl" > $template_path`;
+open (TMPL, ">$template_path");
+print TMPL "$tmpl";
+close (TMPL);
 
 open(FILE, $template_path);
 # Go through each line
@@ -586,7 +588,9 @@ while(my $ln = <FILE>) {
 close(FILE);
 
 # Print out modified template
-`echo "$mod_tmpl" > $template_path`;
+open (TMPL, ">$template_path");
+print TMPL "$mod_tmpl";
+close (TMPL);
 
 # Done
 print "Done! See autoyast template under $template_path\n";
