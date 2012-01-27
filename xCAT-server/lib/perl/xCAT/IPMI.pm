@@ -14,7 +14,8 @@ use lib "$::XCATROOT/lib/perl";
 use strict;
 use warnings "all";
 
-use IO::Socket::INET;
+use IO::Socket::INET qw/!AF_INET6 !PF_INET6/;
+
 my $doipv6=eval {
 	require IO::Socket::INET6; 
 	IO::Socket::INET6->import();
