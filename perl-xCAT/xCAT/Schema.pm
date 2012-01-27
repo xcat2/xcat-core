@@ -871,6 +871,12 @@ site => {
    "              in tftpdir is mounted on all on Service Nodes. Default is 1/yes.\n". 
    "              If value is set to a hostname, the directory in tftpdir\n".
    "              will be mounted from that hostname on the SN\n\n". 
+   " shareinstall: Indicates if a shared file system will be used for installation\n". 
+   "               resources. Possible values are: 'no', 'sns', or 'all'.  'no' \n".
+   "               means a shared file system is not being used.  'sns' means a\n".
+   "               shared filesystem is being used across all service nodes.\n".
+   "               'all' means that the management as well as the service nodes\n".
+   "               are all using a common shared filesystem. The default is 'no'.\n".
    " skiptables:  Comma separated list of tables to be skipped by dumpxCATdb\n".
    " SNsyncfiledir:  The directory on the Service Node, where xdcp will copy the files\n".
    "                 from the MN that will eventually be copied to the compute nodes.\n\n".
@@ -1403,6 +1409,7 @@ my @nodeattrs = (
                  tabentry => 'nodehm.termport',
                  access_tabentry => 'nodehm.node=attr:node',
   },
+
 ###
 # TODO:  is nodehm.conserver used anywhere?  I couldn't find any code references
 ###
