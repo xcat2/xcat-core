@@ -604,7 +604,9 @@ inst "$moddir/dhclient.conf" "/etc/dhclient.conf"
 inst "$moddir/dhclient-script" "/sbin/dhclient-script"
 inst "$moddir/rsyslog.conf" "/etc/rsyslog.conf"
 inst "$moddir/99-imm.rules" "/etc/udev/rules.d/99-imm.rules"
+inst "$moddir/98-mlx.rules" "/etc/udev/rules.d/98-mlx.rules"
 inst "$moddir/setupimmnic" "/sbin/setupimmnic"
+inst "$moddir/loadmlxeth" "/sbin/loadmlxeth"
 dracut_install /sbin/rpc.statd /usr/sbin/sm-notify /etc/netconfig rpcbind /etc/host.conf /usr/sbin/rpc.idmapd
 dracut_install ps free find #debug 
 inst_dir /var/lib/nfs 
