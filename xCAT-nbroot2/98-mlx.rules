@@ -1,1 +1,1 @@
-SUBSYSTEM=="pci", ATTRS{subsystem_vendor}=="15b3", ATTRS{subsystem_device}=="4010", RUN+="/sbin/loadmlxeth"
+SUBSYSTEM=="pci", ATTRS{subsystem_vendor}=="15b3", ATTRS{class}=="0x020000", RUN+="/sbin/loadmlxeth"
