@@ -19,11 +19,6 @@ rmitab pmcfg > /dev/null 2>&1
 rmitab naudio > /dev/null 2>&1
 rmitab naudio2 > /dev/null 2>&1
 
-#ensure mlt0 device tuned as recommended
-chdev -l mlt0 -a agg_killtime=2000000000 2> /dev/null # new change 
-chdev -l mlt0 -a agg_interval=2000000000 2> /dev/null # new change 
-chdev -l mlt0 -a agg_threshold=3 2> /dev/null
-
 #not planning on printing from P7IH:
 #piobe:2:wait:/usr/lib/lpd/pioinit_cp >/dev/null 2>&1  # pb cleanup
 rmitab piobe > /dev/null 2>&1
@@ -59,7 +54,6 @@ rmitab ha_star > /dev/null 2>&1
 
 #clusterconf:23456789:once:/usr/sbin/clusterconf
 rmitab clusterconf > /dev/null 2>&1
-
 
 #this is for http://<hostname>:5335/ibm/console access, which we don't want for PERCS
 #pconsole:2:once:/usr/bin/startsrc -s pconsole  > /dev/null 2>&1
@@ -139,7 +133,6 @@ if [[ ! -f /var/spool/cron/crontabs/root.before.clean_jitter ]] then
         grep -v "ras\/dumpcheck" > /var/spool/cron/crontabs/root.after.clean_jitter
     cp /var/spool/cron/crontabs/root.after.clean_jitter /var/spool/cron/crontabs/root 
 fi
-
 
 for i in $(ps -efk | grep "topasrec" | grep -v killproc | grep -v grep | awk ' {print $2} ') ; do
   kill $i
