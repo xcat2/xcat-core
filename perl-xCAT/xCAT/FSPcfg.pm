@@ -1,7 +1,6 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT::FSPcfg;
-
 use strict;
 use Getopt::Long;
 use xCAT::Usage;
@@ -191,11 +190,11 @@ sub parse_args {
             $request->{arg} = [$arg];
             my $res = xCAT::PPCcfg::parse_args($request, @_);
             if (ref($res) eq 'ARRAY') {
-		my $check_cmd = &check_command($command, \%rsp);
-		if (!defined($check_cmd)) {
+		        my $check_cmd = &check_command($command, \%rsp);
+		        if (!defined($check_cmd)) {
                     return $res;
-		} else {
-		    return ([$_[0], "'$command' is only supported by type $check_cmd."]);
+		        } else {
+		            return ([$_[0], "'$command' is only supported by type $check_cmd."]);
                 }
             } else {
                 push @ppc_cmds, $command;
@@ -234,6 +233,8 @@ sub parse_args {
             if ( $result ) {
                 return( usage($result) );
             }
+        } elsif ($_ =~ /_passwd$/) {
+            return( usage("No argument specified for '$_'"));
         } 
     }
     ####################################
@@ -851,7 +852,7 @@ sub fsp_api_passwd {
     #$fsp_ip = xCAT::Utils::getNodeIPaddress($fsp_name);
     $fsp_ip = xCAT::Utils::getIPaddress($fsp_name);
     if(!defined($fsp_ip) or ($fsp_ip == -3)) {
-        $res = "Failed to get the $fsp_name\'s ip";
+        $res = "Failed to get IP address for $fsp_name.";
         return ([$node_name, $res, -1]);
     }
 
