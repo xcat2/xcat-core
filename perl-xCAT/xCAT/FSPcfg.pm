@@ -190,11 +190,11 @@ sub parse_args {
             $request->{arg} = [$arg];
             my $res = xCAT::PPCcfg::parse_args($request, @_);
             if (ref($res) eq 'ARRAY') {
-		my $check_cmd = &check_command($command, \%rsp);
-		if (!defined($check_cmd)) {
+		        my $check_cmd = &check_command($command, \%rsp);
+		        if (!defined($check_cmd)) {
                     return $res;
-		} else {
-		    return ([$_[0], "'$command' is only supported by type $check_cmd."]);
+		        } else {
+		            return ([$_[0], "'$command' is only supported by type $check_cmd."]);
                 }
             } else {
                 push @ppc_cmds, $command;
@@ -233,6 +233,8 @@ sub parse_args {
             if ( $result ) {
                 return( usage($result) );
             }
+        } elsif ($_ =~ /_passwd$/) {
+            return( usage("No argument specified for '$_'"));
         } 
     }
     ####################################

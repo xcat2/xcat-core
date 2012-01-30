@@ -158,13 +158,18 @@ sub parse_args {
             if ( $result ) {
                 return( usage($result) );
             }
+        } elsif ($_ =~ /_passwd$/) {
+            return( usage("No argument specified for '$_'"));
         } 
     }
     {
-        my $result = parse_dev_option( $request, \%cmds);
-        if ($result) {
-            return ( usage($result));
-        }
+        if ($request->{dev} eq '1' && $request->{other} eq '1') {
+            return ( usage("Invalid command arrays"));
+        } 
+#       my $result = parse_dev_option( $request, \%cmds);
+#       if ($result) {
+#           return ( usage($result));
+#       }
     }
     ####################################
     # Return method to invoke 
@@ -310,7 +315,15 @@ sub parse_option {
             return( "New password couldn't be empty for user 'HMC'" );
         }
     }
-
+    
+    if ( $command eq 'dev' or $command eq 'celogin1' ) {
+       if ($value !~ /^(enable|disable)$/i ) {
+           return( "Invalid argument '$value'" );
+       }
+       $request->{dev} = 1;
+    } else {
+       $request->{other} = 1; 
+    }
     return undef;
 }
 
