@@ -642,7 +642,8 @@ sub build_xmldesc {
     if (defined ($confdata->{vm}->{$node}->[0]->{vidmodel})) {
       my $model = $confdata->{vm}->{$node}->[0]->{vidmodel};
       my $vram = '8192';
-      $xtree{devices}->{video}= [ { 'content'=>'','model'=> {type=>$model,vram=>8192}}];
+      if ($model eq 'qxl') { $vram = 65536; } #surprise, spice blows up with less vram than this after version 0.6 and up
+      $xtree{devices}->{video}= [ { 'content'=>'','model'=> {type=>$model,vram=>$vram}}];
     } else {
       $xtree{devices}->{video}= [ { 'content'=>'','model'=> {type=>'vga',vram=>8192}}];
     }
