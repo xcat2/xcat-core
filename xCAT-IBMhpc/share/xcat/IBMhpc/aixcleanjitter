@@ -147,7 +147,7 @@ sleep 1
 
 grep -q cosched3 /etc/poe.priority 2> /dev/null
 if [[ $? -ne 0 ]] then
-    echo '*  cosched1    18    100    97    10' > /etc/poe.priority
+    echo '*  cosched1    18    100    97    10' >> /etc/poe.priority
     echo '*  cosched2    13    100    99.5  10' >> /etc/poe.priority 
     echo '*  cosched3    13    100    99     3' >> /etc/poe.priority
     chmod 644 /etc/poe.priority
