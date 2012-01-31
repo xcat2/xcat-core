@@ -1559,7 +1559,7 @@ sub spot_updates
         $installp_flags = $attrvals{installp_flags};
     }
 
-    my $rpm_flags = "-Uvh --replacepkgs";
+	my $rpm_flags = " -Uvh ";
     if ($attrvals{rpm_flags})
     {
         $rpm_flags = $attrvals{rpm_flags};
@@ -12093,25 +12093,87 @@ sub update_spot_rpm
     my $cdcmd = qq~cd $source_dir;~;
     my $cmd;
 
-	 if ($::VERBOSE)
-	 {
-		 $cmd = qq~$::XCATROOT/bin/xcatchroot -V -i $spotname "$cdcmd export INUCLIENTS=1; /usr/bin/rpm $rpm_flags $rpmpkgs"~;
-	 } else {
-		 $cmd = qq~$::XCATROOT/bin/xcatchroot -i $spotname "$cdcmd export INUCLIENTS=1; /usr/bin/rpm $rpm_flags $rpmpkgs"~;
-	 }
+	# need to test rpms to make sure all will install
+	#- add test to rpm cmd if not included in rpm_flags
+	#  
+	my @doinstall;
+	my @dontinstall;
+	# see if this is an install or update 
+	if ( ($rpm_flags =~ /\-i/ ) || ($rpm_flags =~ /install / ) || ($rpm_flags =~ /U/ ) || ($rpm_flags =~ /update / ) ) {
 
-    my $output =
-      xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
+		# if so then do test
 
-    if ($::RUNCMD_RC != 0)
-    {
-		$error++;
-    }
+		my $rflags;
+		# if the flags don't include test then add it
+		if ( !($rpm_flags =~ /\-test/ ) ) {
+			$rflags = " $rpm_flags  --test ";
+		}
 
-	if ($::VERBOSE)
-	{
+		my $tcmd = qq~$::XCATROOT/bin/xcatchroot -i $spotname "$cdcmd export INUCLIENTS=1; /usr/bin/rpm $rflags $rpmpkgs"~;
+		my @outpt = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $tcmd, 1);
+
+		my @badrpms;
+		foreach my $line (@outpt) {
+			my ($first, $second, $rest) = split /\s+/, $line;
+			chomp $first;
+			if ($first eq 'package') {
+				push @badrpms, $second;
+			}
+		}
+
+		my @origrpms = split /\s+/, $rpmpkgs;
+		foreach my $r ( @origrpms) {
+			my $sr = $r;
+			$r =~ s/\*$//g;
+			if (grep(/$r/, @badrpms)){
+         		push @dontinstall, $sr;
+    		} else {
+        		push @doinstall, $sr;
+    		}
+		}	
+
+		if (scalar @doinstall) {
+			$rpmpkgs= join(' ', @doinstall);
+			
+		} else {
+			$rpmpkgs="";
+		}
+	}
+
+	if (scalar(@doinstall)) {
+
+		if ($::VERBOSE)
+		{
+			$cmd = qq~$::XCATROOT/bin/xcatchroot -V -i $spotname "$cdcmd export INUCLIENTS=1; /usr/bin/rpm $rpm_flags $rpmpkgs"~;
+		} else {
+			$cmd = qq~$::XCATROOT/bin/xcatchroot -i $spotname "$cdcmd export INUCLIENTS=1; /usr/bin/rpm $rpm_flags $rpmpkgs"~;
+		}
+
+    	my $output =
+      		xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0); 
+
+    	if ($::RUNCMD_RC != 0)
+    	{
+			$error++;
+    	}
+
+		if ($::VERBOSE)
+		{
+			my $rsp;
+			push @{$rsp->{data}}, "$output\n";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
+	}
+
+	if (scalar(@dontinstall)) {
 		my $rsp;
-		push @{$rsp->{data}}, "$output\n";
+		push @{$rsp->{data}}, "The following RPM packages were already installed and were not reinstalled:\n";
+		xCAT::MsgUtils->message("W", $rsp, $callback);
+		my $rsp;
+		foreach my $rpm (@dontinstall) {
+            push @{$rsp->{data}}, "$rpm";
+        }
+		push @{$rsp->{data}}, "\n";
 		xCAT::MsgUtils->message("I", $rsp, $callback);
 	}
 
@@ -12121,13 +12183,19 @@ sub update_spot_rpm
 		push @{$rsp->{data}}, "One or more errors occurred while installing rpm packages in SPOT $spotname.\n";
 		xCAT::MsgUtils->message("E", $rsp, $callback);
 		return 1;
-	} else  {
+	} elsif (scalar(@doinstall))  {
 		my $rsp;
-		push @{$rsp->{data}}, "Completed Installing RPM packages in SPOT $spotname.\n";
+		push @{$rsp->{data}}, "Completed Installing the following RPM packages in SPOT $spotname:\n";
+		foreach my $rpm (@doinstall) {
+            push @{$rsp->{data}}, "$rpm";
+        }
+		push @{$rsp->{data}}, "\n";
 		xCAT::MsgUtils->message("I", $rsp, $callback);
 	}
 
-    return 0;
+
+
+	return 0;
 }
 
 #-------------------------------------------------------------------------------
