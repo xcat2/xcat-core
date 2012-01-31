@@ -34,8 +34,8 @@ while [ $WAITING -gt 0 ]; do
 	dhclient -6 -pf $pidfile -nw -lf /var/lib/dhclient/dhclient6.leases $NIC
     done
     
-    echo -n "Waiting 10 seconds for DHCP changes to take effect "
-    for i in 10 9 8 7 6 5 4 3 2 1; do
+    echo -en "Waiting 10 seconds for DHCP changes to take effect          \r"
+    for i in 9 8 7 6 5 4 3 2 1; do
        sleep 1
        echo -en "Waiting $i seconds for DHCP changes to take effect    \r"
     done
