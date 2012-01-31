@@ -1326,6 +1326,7 @@ sub dispatch_request {
     }
     if ($onlyone and not ($_->{'_xcatdest'} and xCAT::Utils->thishostisnot($_->{'_xcatdest'}))) {
         $SIG{CHLD}='DEFAULT';
+	if ($_->{'_xcatdelay'}) { sleep $_->{'_xcatdelay'}; }
         ${"xCAT_plugin::".$modname."::"}{process_request}->($_,$dispatch_cb,\&do_request);
         return;
     }
@@ -1355,6 +1356,7 @@ sub dispatch_request {
       $dispatch_parentfd = $parfd;
       my @prexcatdests=();
       my @xcatdests=();
+	if ($_->{'_xcatdelay'}) { sleep $_->{'_xcatdelay'}; }
      if (ref($_->{'_xcatdest'}) eq 'ARRAY') { #If array, consider it an 'anycast' operation, broadcast done through dupe 
                                               #requests, or an alternative join '&' maybe?
          @prexcatdests=@{$_->{'_xcatdest'}};
