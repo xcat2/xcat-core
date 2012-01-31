@@ -117,6 +117,7 @@ sub process_request {
 	$lzma_exit_value=$? >> 8;
 	if ($lzma_exit_value) {
 		$callback->({data=>["Creating genesis.fs.$arch.lzma in $tftpdir/xcat failed, falling back to gzip"]});
+		unlink ("$tftpdir/xcat/genesis.fs.$arch.lzma");
 	} else {
 		$done = 1;
 	}
