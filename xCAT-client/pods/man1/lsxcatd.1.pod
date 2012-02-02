@@ -25,7 +25,10 @@ Display usage message.
 =item B<-d|--database>
 
 Displays information about the current database being used by xCAT. 
-Any user can run the command.
+
+=item B<-t|--nodetype>
+
+Displays whether the node is a Management Node or a Service Node. 
 
 =item B<-a|--all>
 
@@ -56,6 +59,22 @@ Output is similar to:
   dbname=xcatdb
   dbhost=7.777.47.250
   dbadmin=xcatadm
+
+=item 2.
+
+To display all information:
+
+ lsxcatd -a 
+
+Output is similar to: 
+
+Version 2.7 (svn r, built Tue Jan 17 15:16:33 EST 2012)
+This is a Management Node
+cfgloc=mysql:dbname=xcatdb;host=10.6.0.1|xcatadmin
+dbengine=mysql
+dbname=xcatdb
+dbhost=10.6.0.1
+dbadmin=xcatadmin
 
 
 =back
