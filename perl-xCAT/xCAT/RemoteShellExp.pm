@@ -618,7 +618,7 @@ sub sendnodeskeys
         next; 
       }
 
-      my @result = $sendkeys->expect(
+        @result = $sendkeys->expect(
         $timeout,
         [
          $prompt1,  # Are you sure you want to ...
@@ -704,7 +704,7 @@ sub sendnodeskeys
       #run copy.sh prompts starts here 
       #
 
-      my @result = $sendkeys->expect(
+        @result = $sendkeys->expect(
         $timeout,
         [
          $prompt1,  # Are you sure you want to ...
