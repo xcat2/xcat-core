@@ -667,6 +667,7 @@ sub lsxcatd
     my $HELP;
     my $VERSION;
     my $DATABASE;
+    my $NODETYPE;
     my $ALL;
     my $rc=0;
 
@@ -676,6 +677,7 @@ sub lsxcatd
         push @{$rsp{data}}, "       lsxcatd [-v|--version]";
         push @{$rsp{data}}, "       lsxcatd [-h|--help]";
         push @{$rsp{data}}, "       lsxcatd [-d|--database]";
+        push @{$rsp{data}}, "       lsxcatd [-t|--nodetype]";
         push @{$rsp{data}}, "       lsxcatd [-a|--all]";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
         $cb->(\%rsp);
@@ -689,6 +691,7 @@ sub lsxcatd
     if (!GetOptions('h|?|help' => \$HELP,
                      'v|version' => \$VERSION,
                      'a|all' => \$ALL,
+                     't|type' => \$NODETYPE,
                      'd|database' => \$DATABASE))
              { $lsxcatd_usage->(1); return; }
 
@@ -699,6 +702,21 @@ sub lsxcatd
         my $version = xCAT::Utils->Version();
         $rsp{data}->[0] = "$version";
         $cb->(\%rsp);
+      if (!$ALL) {
+        return;
+      }
+    }
+    # nodetype  MN or SN 
+    if ($NODETYPE || $ALL) {
+        my %rsp;
+        if (xCAT::Utils->isMN()) {    # if on Management Node 
+          $rsp{data}->[0] = "This is a Management Node";
+          $cb->(\%rsp);
+        }
+        if (xCAT::Utils->isServiceNode()) {    # if on Management Node 
+          $rsp{data}->[0] = "This is a Service Node";
+          $cb->(\%rsp);
+        }
       if (!$ALL) {
         return;
       }
