@@ -125,8 +125,12 @@ sub preprocess_request
     # need for runcmd output
     $::CALLBACK = $cb;
 
-    # don't want preprocess to run on service node but _xcatdest is not set??
-    #if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+    #if already preprocessed, go straight to request
+    if (   (defined($req->{_xcatpreprocessed}))
+        && ($req->{_xcatpreprocessed}->[0] == 1))
+    {
+        return [$req];
+    }
 
     my $nodes   = $req->{node}; # this may not be the list of nodes we need!
     my $service = "xcat";
@@ -12169,7 +12173,7 @@ sub update_spot_rpm
 		my $rsp;
 		push @{$rsp->{data}}, "The following RPM packages were already installed and were not reinstalled:\n";
 		xCAT::MsgUtils->message("W", $rsp, $callback);
-		my $rsp;
+		$rsp ={};
 		foreach my $rpm (@dontinstall) {
             push @{$rsp->{data}}, "$rpm";
         }
