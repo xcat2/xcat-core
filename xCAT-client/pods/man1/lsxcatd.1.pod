@@ -4,7 +4,7 @@ B<lsxcatd> - lists xCAT daemon information.
 
 =head1 SYNOPSIS
 
-B<lsxcatd> [B<-h> | B<--help> | B<-v> | B<--version> | B<-d> | B<--database> | B<-a> | B<--all> ]
+B<lsxcatd> [B<-h> | B<--help> | B<-v> | B<--version> | B<-d> | B<--database> |B<-t> | B<--nodetype> | B<-a> | B<--all> ]
 
 =head1 DESCRIPTION
 
@@ -69,12 +69,12 @@ To display all information:
 Output is similar to: 
 
 Version 2.7 (svn r, built Tue Jan 17 15:16:33 EST 2012)
-This is a Management Node
-cfgloc=mysql:dbname=xcatdb;host=10.6.0.1|xcatadmin
-dbengine=mysql
-dbname=xcatdb
-dbhost=10.6.0.1
-dbadmin=xcatadmin
+ This is a Management Node
+ cfgloc=mysql:dbname=xcatdb;host=10.6.0.1|xcatadmin
+ dbengine=mysql
+ dbname=xcatdb
+ dbhost=10.6.0.1
+ dbadmin=xcatadmin
 
 
 =back
