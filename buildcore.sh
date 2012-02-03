@@ -167,7 +167,7 @@ fi
 for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test; do
 	if $GREP $rpmname $SVNUP; then
 		UPLOAD=1
-		if [ "$EMBED" = "zvm" -a "$rpmname" != "xCAT-server" -a "$rpmname" != "xCAT-UI" ]; then break; fi		# for embedded envs only need to build server special
+		if [ "$EMBED" = "zvm" -a "$rpmname" != "xCAT-server" -a "$rpmname" != "xCAT-UI" ]; then continue; fi		# for embedded envs only need to build server special
 		maker $rpmname
 	fi
 	if [ "$OSNAME" = "AIX" ]; then
