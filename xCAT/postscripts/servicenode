@@ -139,9 +139,9 @@ else
 
          &copycerts;
         
-       `logger -t $::sdate servicenode:  runing xcatserver -d`;
+       `logger -t $::sdate servicenode:  running xcatserver -d`;
 	&runcmd("xcatserver -d");
-       `logger -t $::sdate servicenode: runing xcatclient -d`;
+       `logger -t $::sdate servicenode: running xcatclient -d`;
 	&runcmd("xcatclient -d");
 }
 
