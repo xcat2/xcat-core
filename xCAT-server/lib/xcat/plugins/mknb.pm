@@ -126,6 +126,7 @@ sub process_request {
        $callback->({data=>["Creating genesis.fs.$arch.gz in $tftpdir/xcat"]});
        system("cd $tempdir; find . | cpio -o -H newc | gzip -9 > $tftpdir/xcat/genesis.fs.$arch.gz");
 	}
+     }
    } else {
    	$callback->({data=>["Creating nbfs.$arch.gz in $tftpdir/xcat"]});
        system("cd $tempdir; find . | cpio -o -H newc | gzip -9 > $tftpdir/xcat/nbfs.$arch.gz");
