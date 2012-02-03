@@ -3806,27 +3806,36 @@ sub readenergy {
 }
 sub readenergy_withiem {
     my $sessdata = shift;
+    $sessdata->{iem}->prep_get_precision();
+    $sessdata->{iemcallback} = \&got_precision;
+    execute_iem_commands($sessdata); #this gets all precision data initialized for AC and DC
+					# we need not make use of the generic extraction function, so we call execute_iem instead of process_data
+					#sorry the perl api I wrote sucks..
+}
+sub got_precision {
+    my $sessdata = shift;
     $sessdata->{iem}->prep_get_ac_energy();
     $sessdata->{iemcallback} = \&got_ac_energy;
     process_data_from_iem($sessdata);
 }
 sub got_ac_energy {
     my $sessdata = shift;
-    if ($sessdata->{abortediem}) {
+    unless ($sessdata->{abortediem}) {
+    	$sessdata->{iemtextdata} .= sprintf(" +/-%.1f%%",$sessdata->{iem}->energy_ac_precision()*0.1); #note while \x{B1} would be cool, it's non-trivial to support
+	xCAT::SvrUtils::sendmsg($sessdata->{iemtextdata},$callback,$sessdata->{node},%allerrornodes);
 	$sessdata->{abortediem}=0;
+   }
+   #this would be 'if sessdata->{abortediem}'.  Thus far this is only triggered in the case of a system that fairly obviously
+   #shouldn't have an AC meter.  As a consequence, don't output data that would suggest a user might actually get it
+   #in that case, another entity can provide a measure of the AC usage, but only an aggregate measure not an individual measure
 #        $sessdata->{iemtextdata} = "AC Energy Usage: ";
 #        if ($sessdata->{abortediemreason}) {
 #             $sessdata->{iemtextdata} .= $sessdata->{abortediemreason};
 #         }
 #        xCAT::SvrUtils::sendmsg($sessdata->{iemtextdata},$callback,$sessdata->{node},%allerrornodes);
-    	$sessdata->{iem}->prep_get_dc_energy();
-        $sessdata->{iemcallback} = \&got_dc_energy;
-        process_data_from_iem($sessdata);
-	return;
-    }
-    $sessdata->{iem}->prep_get_precision();
-    $sessdata->{iemcallback} = \&got_ac_energy_with_precision;
-    execute_iem_commands($sessdata); #this gets all precision data initialized
+    $sessdata->{iem}->prep_get_dc_energy();
+    $sessdata->{iemcallback} = \&got_dc_energy;
+    process_data_from_iem($sessdata);
 }
 sub got_ac_energy_with_precision {
     my $sessdata=shift;
