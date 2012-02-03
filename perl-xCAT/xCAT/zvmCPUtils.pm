@@ -18,7 +18,7 @@ use warnings;
 
 =head3   getUserId
 
-	Description	: Get the userID of a given node
+	Description	: Get the user ID of a given node
     Arguments	: Node
     Returns		: UserID
     Example		: my $userID = xCAT::zvmCPUtils->getUserId($node);
@@ -31,7 +31,7 @@ sub getUserId {
 	# Get inputs
 	my ( $class, $node ) = @_;
 
-	# Get userId using VMCP
+	# Get user ID using VMCP
 	my $out     = `ssh -o ConnectTimeout=5 $node "vmcp q userid"`;
 	my @results = split( ' ', $out );
 
@@ -281,8 +281,7 @@ sub getNetwork {
 	my $out;
 	if ( $netName eq "all" ) {
 		$out = `ssh -o ConnectTimeout=5 $node "vmcp q lan"`;
-	}
-	else {
+	} else {
 		$out = `ssh -o ConnectTimeout=5 $node "vmcp q lan $netName"`;
 	}
 
@@ -392,8 +391,7 @@ sub grantVSwitch {
 	my $retStr;
 	if ( $out =~ m/Command complete/i ) {
 		$retStr = "Done\n";
-	}
-	else {
+	} else {
 		$retStr = "Failed\n";
 		return $retStr;
 	}
@@ -428,8 +426,7 @@ sub flashCopy {
 	my $retStr = "";
 	if ( $out =~ m/Command complete/i ) {
 		$retStr = "Done\n";
-	}
-	else {
+	} else {
 		$out    = xCAT::zvmUtils->tabStr($out);
 		$retStr = "Failed\n$out";
 	}
@@ -463,8 +460,7 @@ sub punch2Reader {
 	my $searchStr = "created and transferred";
 	if ( !( $out =~ m/$searchStr/i ) ) {
 		$out = "Failed\n";
-	}
-	else {
+	} else {
 		$out = "Done\n";
 	}
 

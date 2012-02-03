@@ -20,7 +20,7 @@ use warnings;
 
 =head3   getNodeProps
 	Description	: Get node properties
-    Arguments	: 	Table name
+    Arguments	: 	Table
     				Node
     				Properties
     Returns		: Node properties from given table
@@ -101,7 +101,7 @@ sub getAllTabEntries {
 =head3   setNodeProp
 
 	Description	: Set a node property in a given table
-    Arguments	: 	Table name
+    Arguments	: 	Table
     			 	Node
     				Property name
     				Property value
@@ -133,7 +133,7 @@ sub setNodeProp {
 =head3   setNodeProps
 
 	Description	: Set node properties in a given table
-    Arguments	: 	Table name
+    Arguments	: 	Table
     			 	Node
     				Reference to property name/value hash
     Returns		: Nothing
@@ -544,7 +544,7 @@ sub sendFile {
 =head3   getRootDeviceAddr
 
 	Description	: Get the root device address of a given node
-    Arguments	: Node name
+    Arguments	: Node
     Returns		: Root device address
     Example		: my $deviceAddr = xCAT::zvmUtils->getRootDeviceAddr($node);
     
@@ -837,14 +837,12 @@ sub getMacID {
 		if ( $out =~ m/File exists/i ) {
 
 			# Do nothing
-		}
-		else {
+		} else {
 
 			# Create next_macid file
 			$out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFF0' > /opt/zhcp/conf/next_macid"`;
 		}
-	}
-	else {
+	} else {
 
 		# Create /opt/zhcp/conf directory
 		# Create next_mac - Contains next MAC address to use
@@ -864,7 +862,7 @@ sub getMacID {
 =head3   generateMacId
 
 	Description	: Generate a new MACID 
-    Arguments	: HCP node
+    Arguments	: zHCP node
     Returns		: Nothing
     Example		: my $macId = xCAT::zvmUtils->generateMacId($hcp);
     
@@ -883,14 +881,12 @@ sub generateMacId {
 		if ( $out =~ m/File exists/i ) {
 
 			# Do nothing
-		}
-		else {
+		} else {
 
 			# Create next_macid file
 			$out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFF0' > /opt/zhcp/conf/next_macid"`;
 		}
-	}
-	else {
+	} else {
 
 		# Create /opt/zhcp/conf directory
 		# Create next_mac - Contains next MAC address to use
@@ -1074,8 +1070,7 @@ sub getUserProfile {
 			# Get user profiles and save it in a file
 			$out = `ssh $hcp "$hcpDir/getuserprofile $profile > $file"`;
 		}
-	}
-	else {
+	} else {
 
 		# Get user profiles and save it in a file
 		$out = `ssh $hcp "$hcpDir/getuserprofile $profile > $file"`;
@@ -1091,8 +1086,8 @@ sub getUserProfile {
 =head3   inArray
 
 	Description	: Checks if a value exists in an array
-    Arguments	: 	Value to search for
-    				Array to search in
+    Arguments	: 	Search value
+    				Search array
     Returns		: The searched expression
     Example		: my $rtn = xCAT::zvmUtils->inArray($needle, @haystack);
     

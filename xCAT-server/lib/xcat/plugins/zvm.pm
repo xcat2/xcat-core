@@ -3240,7 +3240,7 @@ sub nodeSet {
 					$layer = xCAT::zvmCPUtils->getNetworkLayer($hcp, $_);
 					
 					# If template using DHCP, layer must be 2
-					if ((!$dhcp && $layer != 2) || ($dhcp && $layer == 2)) {
+					if ((!$dhcp && $layer != 2) || (!$dhcp && $layer == 2) || ($dhcp && $layer == 2)) {
 						# Save network name
 						$hcpNetName = $_;
 						
@@ -3286,7 +3286,7 @@ sub nodeSet {
 							$layer = xCAT::zvmCPUtils->getNetworkLayer($node, $_);
 					
 							# If template using DHCP, layer must be 2
-							if ((!$dhcp && $layer != 2) || ($dhcp && $layer == 2)) {
+							if ((!$dhcp && $layer != 2) || (!$dhcp && $layer == 2) || ($dhcp && $layer == 2)) {
 								# Save network name
 								$hcpNetName = $_;
 								
