@@ -938,7 +938,7 @@ sub add_or_delete_records {
             @ips = ($ctx->{hoststab}->{$node}->[0]->{ip});
         } else {
             @ips = getipaddr($node,GetAllAddresses=>1);
-            unless (@ips) {
+            if (!defined($ips[0])) {
                 xCAT::SvrUtils::sendmsg([1,"Unable to find an IP for $node in hosts table or via system lookup (i.e. /etc/hosts"], $callback);
                 next;
             }
