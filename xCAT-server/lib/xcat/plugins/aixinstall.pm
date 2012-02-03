@@ -11730,7 +11730,7 @@ sub rmdsklsnode
                 # don't remove the def
                 my $rsp;
                 push @{$rsp->{data}},
-                  "Node \'$nodename\' is currently in running state.  The NIM definition will not be removed.";
+                  "The Mstate of NIM machine \'$nodename\' is currently in running state.  The NIM definition will not be removed. You can use -f flag to forcely remove it.";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 $error++;
                 push(@nodesfailed, $nodename);
