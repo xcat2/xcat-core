@@ -290,6 +290,54 @@ function isAuthenticated() {
 }
 
 /**
+* Determine if a user has root access
+*
+* @param 	Nothing
+* @return 	True 	If the user has root access
+* 			False 	Otherwise
+*/
+function isRootAcess() {
+	if (is_logged() && $_SESSION["xcatpassvalid"]) {
+		$testacc = docmd('tabdump', '', array('policy', '-w', "name==" . $_SESSION["username"]), array());
+		if (isset($testacc->{'xcatresponse'}->{'data'}->{1})) {
+			$result = $testacc->{'xcatresponse'}->{'data'}->{1};
+			$result = str_replace('"', '', $result);
+			$args = array();
+			$args = explode(",", $result);
+			
+			// Get the comments which contains the privilege
+			$comments = $args[8];
+			$args = explode(";", $comments);
+			// Default privilege is guest
+			$privilege = 'guest';
+			$_SESSION["xcatpassvalid"] = 0;
+			foreach ($args as $arg) {
+				// Get user privilege
+				if ($arg && is_numeric(strpos($arg, "privilege"))) {
+					if (is_numeric(strpos($arg, "root"))) {
+						// Set privilege to root
+						$privilege = 'root';
+						$_SESSION["xcatpassvalid"] = 1;
+					}
+					
+					break;
+				}				
+			}
+		}
+	}
+	
+	if (strcmp($_SESSION["username"], 'root') == 0) {
+		$_SESSION["xcatpassvalid"] = 1;
+	}
+
+	if (isset($_SESSION["xcatpassvalid"]) and $_SESSION["xcatpassvalid"]==1) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
+/**
  * Log out of the current user session
  * 
  * @param 	Nothing

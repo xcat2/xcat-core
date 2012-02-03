@@ -30,7 +30,7 @@ if (isset($_REQUEST["username"])) {
 }
 
 $jdata = array();
-if (isAuthenticated()) {
+if (isAuthenticated() && isRootAcess()) {
 	$jdata["authenticated"]="yes";
 } else {
 	$jdata["authenticated"]="no";

@@ -1003,8 +1003,8 @@ function setOSImageCookies(data) {
 		var osArch = cols[osarchPos].replace(new RegExp('"', 'g'), '');
 		var osComments = cols[comments].replace(new RegExp('"', 'g'), '');
 		
-		// Only save compute profile and install boot
-		if (profile.indexOf('compute') > -1 && provMethod.indexOf('install') > -1) {
+		// Only save install boot
+		if (provMethod.indexOf('install') > -1) {
 			if (!osComments)
 				osComments = 'No descritption';
 			imageNames.push(osImage + ':' + osComments);
