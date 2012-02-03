@@ -679,6 +679,8 @@ sub writechildren2 {
         $cecend = $$cechash{'secondary-end'};
         for (my $ii = $framestart; $ii <= $frameend; $ii++) {
             for (my $jj = $cecstart; $jj <= $cecend; $jj++) {
+                $ii = int($ii);
+                $jj = int($jj);
                 $myip = $vlan1 . '.' . $ii . '.' . $jj . '.1';
                 $sidehash{$myip}->{side} = 'A-0';
                 push @ipgroup, $myip; 
