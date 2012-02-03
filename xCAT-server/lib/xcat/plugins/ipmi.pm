@@ -3812,6 +3812,18 @@ sub readenergy_withiem {
 }
 sub got_ac_energy {
     my $sessdata = shift;
+    if ($sessdata->{abortediem}) {
+	$sessdata->{abortediem}=0;
+#        $sessdata->{iemtextdata} = "AC Energy Usage: ";
+#        if ($sessdata->{abortediemreason}) {
+#             $sessdata->{iemtextdata} .= $sessdata->{abortediemreason};
+#         }
+#        xCAT::SvrUtils::sendmsg($sessdata->{iemtextdata},$callback,$sessdata->{node},%allerrornodes);
+    	$sessdata->{iem}->prep_get_dc_energy();
+        $sessdata->{iemcallback} = \&got_dc_energy;
+        process_data_from_iem($sessdata);
+	return;
+    }
     $sessdata->{iem}->prep_get_precision();
     $sessdata->{iemcallback} = \&got_ac_energy_with_precision;
     execute_iem_commands($sessdata); #this gets all precision data initialized
@@ -3847,11 +3859,19 @@ sub execute_iem_commands {
     }
 }
 sub executed_iem_command {
-    if (check_rsp_errors(@_)) {
+    my $rsp = $_[0];
+    my $sessdata = $_[1];
+    if ($rsp->{code} == 0xcb) {
+	$sessdata->{abortediem}=1;
+	$sessdata->{abortediemreason}="Not Present";
+	$sessdata->{iemcallback}->($sessdata);
+        return;	
+    }
+    if (check_rsp_errors(@_)) { #error while in an IEM transaction, skip to the end
+	$sessdata->{abortediem}=1;
+	$sessdata->{iemcallback}->($sessdata);
         return;
     }
-    my $rsp = shift;
-    my $sessdata = shift;
     my @returnd = ($rsp->{code},@{$rsp->{data}});
     $sessdata->{iem}->handle_next_payload(@returnd);
     execute_iem_commands($sessdata);
