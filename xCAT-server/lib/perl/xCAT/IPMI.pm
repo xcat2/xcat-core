@@ -111,7 +111,7 @@ sub new {
     my ($family, $socktype, $protocol, $saddr, $name, $ip, $service);
     if ($doipv6) {
        ($family, $socktype, $protocol, $saddr, $name) = Socket6::getaddrinfo($self->{bmc},623,AF_UNSPEC,SOCK_DGRAM,0);
-       ($ip,$service) = getnameinfo($saddr,$Socket6::NI_NUMERICHOST);
+       ($ip,$service) = getnameinfo($saddr,Socket6::NI_NUMERICHOST);
     }
     unless ($saddr or $bmc_n = inet_aton($self->{bmc})) {
         $self->{error} = "Could not resolve ".$self->{bmc}." to an address";
@@ -424,7 +424,7 @@ sub route_ipmiresponse {
     #($port,$host) = sockaddr_in6($sockaddr);
     #$host = inet_ntoa($host);
     if ($doipv6) {
-	    ($host,$port) = getnameinfo($sockaddr,$Socket6::NI_NUMERICHOST);
+	    ($host,$port) = getnameinfo($sockaddr,Socket6::NI_NUMERICHOST);
     } else {
 	($port,$host) = sockaddr_in($sockaddr);
 	$host = inet_ntoa($host);
