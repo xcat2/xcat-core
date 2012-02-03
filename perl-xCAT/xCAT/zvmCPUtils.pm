@@ -1,4 +1,4 @@
-# IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
+# IBM(c) 2012 EPL license http://www.eclipse.org/legal/epl-v10.html
 #-------------------------------------------------------
 
 =head1
@@ -206,6 +206,57 @@ sub getNetworkNames {
 	}
 
 	return ($names);
+}
+
+#-------------------------------------------------------
+
+=head3   getNetworkNamesArray
+
+	Description	: Get an array of network names available to a given node
+    Arguments	: Node
+    Returns		: Array of networks names
+    Example		: my @networks = xCAT::zvmCPUtils->getNetworkNamesArray($node);
+    
+=cut
+
+#-------------------------------------------------------
+sub getNetworkNamesArray {
+
+	# Get inputs
+	my ( $class, $node ) = @_;
+	my @networks;
+	my %netHash;
+	
+	# Get the networks used by the node
+	my $out   = `ssh $node "vmcp q v nic" | egrep -i "VSWITCH|LAN"`;
+	my @lines = split( '\n', $out );
+	
+	# Loop through each line
+	my $line;
+	my @words;
+	my $name;
+	foreach(@lines) {
+		# Get network name
+		# Line should contain: MAC: 02-00-01-00-00-12 VSWITCH: SYSTEM VSW1
+		$line = xCAT::zvmUtils->trimStr( $_ );
+		@words = split( ' ', $line );
+		if (@words) {
+			$name = xCAT::zvmUtils->trimStr( $words[4] );
+		
+			# If network is not 'None'
+			if ($name ne 'None') {
+				# Save network
+				$netHash{$name} = 1;
+			}
+		}
+	}
+	
+	# Push networks into array
+	foreach $name ( keys %netHash ) {
+		push(@networks, $name);
+	}
+			
+	return @networks;
 }
 
 #-------------------------------------------------------
@@ -485,7 +536,7 @@ sub getNetworkLayer {
 	# Get node properties from 'zvm' table
 	my @propNames = ('hcp');
 	my $propVals  = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
-
+	
 	# Get HCP
 	my $hcp = $propVals->{'hcp'};
 	if ( !$hcp ) {

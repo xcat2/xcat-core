@@ -1,4 +1,4 @@
-# IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
+# IBM(c) 2012 EPL license http://www.eclipse.org/legal/epl-v10.html
 #-------------------------------------------------------
 
 =head1
