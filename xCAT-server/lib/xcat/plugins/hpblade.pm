@@ -292,7 +292,13 @@ sub gethpbladecons {
 	
 sub preprocess_request { 
 	my $request = shift;
-	if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
+	#if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
+        if (   (defined($request->{_xcatpreprocessed}))
+        && ($request->{_xcatpreprocessed}->[0] == 1))
+        {
+           return [$request];
+        }
+
 	my $callback=shift;
 	my @requests;
 		

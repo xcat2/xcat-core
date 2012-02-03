@@ -196,8 +196,15 @@ sub pass_along {
 sub preprocess_request {
    #Assume shared tftp directory for boring people, but for cool people, help sync up tftpdirectory contents when 
    #they specify no sharedtftp in site table
+   
    my $stab = xCAT::Table->new('site');
    my $req = shift;
+   if (   (defined($req->{_xcatpreprocessed}))
+        && ($req->{_xcatpreprocessed}->[0] == 1))
+   {
+       return [$req];
+   }
+ 
    my $callback1 = shift;
    my $command = $req->{command}->[0];
    my $sub_req = shift;

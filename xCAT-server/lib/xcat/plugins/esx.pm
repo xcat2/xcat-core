@@ -134,6 +134,13 @@ sub handled_commands{
 sub preprocess_request {
 	my $request = shift;
 	my $callback = shift;
+   #if already preprocessed, go straight to request
+    if (   (defined($request->{_xcatpreprocessed}))
+        && ($request->{_xcatpreprocessed}->[0] == 1))
+    {
+        return [$request];
+    }
+
     my $username = 'root';
     my $password = '';
     my $vusername = "Administrator";
