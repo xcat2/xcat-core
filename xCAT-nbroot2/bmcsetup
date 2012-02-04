@@ -256,7 +256,7 @@ done
 if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
 TRIES=0
 if [ ! "$IPMIVER" == "1.5"  ]; then 
-    echo -n "Enabling IPMI v 2.0 LAN access:"
+    echo -n "Enabling IPMI v 2.0 LAN access: "
     #two goals here, make sure cipher suite 0 does not work as it is insecure
     #mae sure cipher suite 3 does work because we will use it
     #leave every thing else alone.
@@ -264,7 +264,6 @@ if [ ! "$IPMIVER" == "1.5"  ]; then
     NEWACCESS=""
     i=0
     for elem in $ACCESS; do
-	echo $i
 	if [ $i = 2 ]; then
 		NEWACCESS=`printf "$NEWACCESS 0x%02x" $((0x$elem&0xf0))`
 	elif [ $i = 3 ]; then
@@ -274,7 +273,11 @@ if [ ! "$IPMIVER" == "1.5"  ]; then
 	fi
 	i=$((i+1))
     done
-    echo $NEWACCESS
+    if ipmitool raw 0xc 1 1 24 $NEWACCESS > /dev/null; then
+		echo OK
+    else
+		echo ERROR
+    fi
 	
 	
     while ! ipmitool -d $idev lan set $LANCHAN cipher_privs $PRIVS > /dev/null; do
