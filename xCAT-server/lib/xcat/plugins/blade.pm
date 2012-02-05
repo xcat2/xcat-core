@@ -641,6 +641,13 @@ sub mpaconfig {
             push @cfgtext,"Unable to get alert configuration (is SNMP enabled?)";
             next;
          }
+      } elsif ($parameter =~ /^solcfg/i) {
+         my $data = $session->get(['.1.3.6.1.4.1.2.3.51.2.4.10.1.1',0]);
+         if ($data) {
+            push @cfgtext,"solcfg: enabled on mm";
+         } else {
+            push @cfgtext,"solcfg: disabled on mm";
+         }
       } else {
          $returncode |= 1;
          push(@cfgtext,"Unrecognized argument $parameter");
@@ -3986,7 +3993,7 @@ sub telnetcmds {
   my @unhandled;
   my %handled = ();
   my $result;
-  my @tcmds = qw(snmpcfg sshcfg network swnet pd1 pd2 textid network_reset rscanfsp initnetwork);
+  my @tcmds = qw(snmpcfg sshcfg network swnet pd1 pd2 textid network_reset rscanfsp initnetwork solcfg);
 
   # most of these commands should be able to be done
   # through SNMP, but they produce various errors.
@@ -4063,6 +4070,7 @@ sub telnetcmds {
     elsif (/^pd1|pd2$/) { $result = pd($t,$_,$handled{$_}); }
     elsif (/^textid$/)  { $result = mmtextid($t,$mpa,$handled{$_},$mm); }
     elsif (/^rscanfsp$/)  { $result = rscanfsp($t,$mpa,$handled{$_},$mm); }
+    elsif (/^solcfg$/)  { $result = solcfg($t,$handled{$_},$mm); }
     elsif (/^network_reset$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid,1); }
     push @data, "$_: @$result";
     $Rc |= shift(@$result);
@@ -4070,6 +4078,52 @@ sub telnetcmds {
   }
   $t->close;
   return([$Rc,\@unhandled,\@data]);
+}
+
+# Enable/Disable the sol against the mm and blades
+# The target node is mm, but all the blade servers belongs to this mm will be 
+# handled implicated
+sub solcfg {
+  my $t = shift;
+  my $value = shift;
+  my $mm = shift;
+
+  if ($value !~ /^enable|disable$/i) {
+    return([1,"Invalid argument '$value' (enable|disable)"]); 
+  }
+
+  my $setval;
+  if ($value eq "enable") {
+    $setval = "enabled";
+  } else {
+    $setval = "disabled";
+  }
+
+  my @output;
+  my $rc = 0;
+  my @data = $t->cmd("sol -status $setval -T system:$mm");
+  if (grep (/OK/, @data)) {
+    push @output, "$value: succeeded on $mm";
+  } else {
+    push @output, "$value: failed on $mm";
+    $rc = 1;
+  }
+
+  # Get the component list
+  my @data = $t->cmd("list -l 2");
+  foreach (@data) {
+    if (/^\s*(blade\[\d+\])\s+/) {
+      my @ret = $t->cmd("sol -status $setval -T $1");
+      if (grep (/OK/, @ret)) {
+        push @output, "$value: succeeded on $1";
+      } else {
+        push @output, "$value: failed on $1";
+        $rc = 1;
+      }
+    }
+  }
+
+  return ([$rc, @output]); 
 }
 
 # Scan the fsp for the NGP ppc nodes
