@@ -1305,7 +1305,7 @@ sub dispatch_request {
    #Since plugins may commonly experience this, a preprocess_request implementation
    #will for now be required for a command to be scaled through service nodes
    #If the plugin offers a preprocess method, use it to set the request array
-   if ((not (defined $request->{_xcatpreprocessed}->[0] and $request->{_xcatpreprocessed}->[0] == 1)) and (defined(${"xCAT_plugin::".$modname."::"}{preprocess_request}))) {
+   if ((not (defined $req->{_xcatpreprocessed}->[0] and $req->{_xcatpreprocessed}->[0] == 1)) and (defined(${"xCAT_plugin::".$modname."::"}{preprocess_request}))) {
     $SIG{CHLD}='DEFAULT';
     $reqs = ${"xCAT_plugin::".$modname."::"}{preprocess_request}->($req,$dispatch_cb,\&do_request);
    } else { #otherwise, pass it in without hierarchy support
