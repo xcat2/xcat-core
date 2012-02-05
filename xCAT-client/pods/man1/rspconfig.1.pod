@@ -30,11 +30,15 @@ B<rspconfig> I<noderange> B<sshcfg>={B<enable>|B<disable>}
 
 B<rspconfig> I<noderange> B<snmpcfg>={B<enable>|B<disable>}
 
+B<rspconfig> I<noderange> B<solcfg>={B<enable>|B<disable>}
+
 B<rspconfig> I<noderange> B<pd1>={B<nonred>|B<redwoperf>|B<redwperf>}
 
 B<rspconfig> I<noderange> B<pd2>={B<nonred>|B<redwoperf>|B<redwperf>}
 
 B<rspconfig> I<noderange> B<network>={[B<ip>],[B<host>],[B<gateway>],[B<netmask>]|B<*>}
+
+B<rspconfig> I<noderange> B<initnetwork>={[B<ip>],[B<host>],[B<gateway>],[B<netmask>]|B<*>}
 
 B<rspconfig> I<noderange> B<textid>={B<*|textid>}
 
@@ -87,6 +91,10 @@ B<rspconfig> I<noderange> {B<hostname>}
 B<rspconfig> I<noderange> B<hostname>={B<*|name>}
 
 B<rspconfig> I<noderange> B<--resetnet>
+
+=head2 FSP of NGP Blade Server Specific:
+
+B<rspconfig> I<noderange> B<network>={[ip],[host],[gateway],[netmask]│*}
 
 =head2 BPA/Frame Specific:
 
@@ -306,7 +314,13 @@ The subnet mask.
 
 =item B<network>={[I<ip>],[I<host>],[I<gateway>],[I<netmask>]|*}
 
-For MPA only. Get or set the MPA network parameters. If '*' is specified, all parameters are read from the xCAT database.
+For MPA:  get or set the MPA network parameters. If '*' is specified, all parameters are read from the xCAT database.
+
+For FSP of NGP blade server: set the network parameters. If '*' is specified, all parameters are read from the xCAT database.
+
+=item B<initnetwork>={[I<ip>],[I<host>],[I<gateway>],[I<netmask>]|*}
+
+For MPA only. Connecting to the IP of MPA from the hosts.otherinterfaces to set the MPA network parameters. If '*' is specified, all parameters are read from the xCAT database.
 
 =item B<network>={I<nic>,{[I<ip>],[I<host>],[I<gateway>],[I<netmask>]}|*}
 
@@ -358,6 +372,10 @@ Enable or disable SNMP on MPA.
 =item B<snmpdest>=I<snmpmanager-IP>
 
 Get or set where the SNMP alerts should be sent to.
+
+=item B<solcfg>={I<enable>|I<disable>}
+
+Enable or disable the sol on MPA and blade servers belongs to it.
 
 =item B<spdump>
 

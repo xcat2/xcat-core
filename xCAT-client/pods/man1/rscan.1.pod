@@ -15,6 +15,8 @@ I<rscan [-V|--verbose] noderange [-u][-w][-x|-z]>
 
 The rscan command lists hardware information for each node managed by the hardware control points specified in noderange.
 
+For the management module of blade, if the blade server is a NGP power blade, the fsp belongs to the blade server also will be scanned.
+
 Note: The first line of the output always contains information about the hardware control point. When using the rscan command to generate output for HMC or IVM hardware control points, it provides the FSPs and BPAs as part of the output. The only exception is the rscan -u flag which provides updates made hardware control point in the xCAT database. 
 
 =head1 OPTIONS
@@ -28,6 +30,10 @@ B<-v>          Command Version.
 B<-V>          Verbose output.
 
 B<-u>          Updates and then prints out node definitions in the xCAT database for CEC/BPA. It updates the existing nodes that contain the same mtms and serial number for nodes managed by the specified hardware control point. This primarily works with CEC/FSP and frame/BPA nodes when the node name is not the same as the managed system name on hardware control point (HMC), This flag will update the BPA/FSP node name definitions to be listed as the managed system name in the xCAT database.  
+
+For the NGP blade server, both the blade server and fsp object of xCAT will be updated if the mpa and slot id are matched to the object which has been defined in the xCAT database.
+
+Note: only the matched object will be updated.
 
 B<-w>          Writes output to xCAT database.
 
@@ -195,6 +201,30 @@ Output is similar to:
     groups=all
     mgt=zvm
 
+6. To scan the NGP blade center:
+
+I<rscan cmm01>
+
+Output is similar to:
+
+  type    name                  id      type-model  serial-number  address
+  cmm     AMM680520153          0       789392X     100048A        cmm01
+  fsp     SN#YL10JH184067-fsp1  1       789542X     10F752A        12.0.0.9
+  blade   SN#YL10JH184067       1       789542X     10F752A
+  fsp     SN#YL10JH184079-fsp1  3       789542X     10F697A        12.0.0.11
+  blade   SN#YL10JH184079       3       789542X     10F697A
+
+7. To update the NGP blade server:
+
+I<rscan cmm01 -u>
+
+Output is similar to:
+
+  cmm    [AMM680520153]         Matched To =>[cmm01]
+  fsp    [SN#YL10JH184067-fsp1] Matched To =>[cmm01node01-fsp]
+  blade  [SN#YL10JH184067]      Matched To =>[cmm01node01]
+  fsp    [SN#YL10JH184079-fsp1] Matched To =>[cmm01node03-fsp]
+  blade  [SN#YL10JH184079]      Matched To =>[cmm01node03]
 
 =head1 FILES
 
