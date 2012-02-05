@@ -520,6 +520,7 @@ sleep 0.05;
           $req->{'_xcat_clientip'}=inet_ntoa($client);
           $req->{'_xcat_clientport'}=$sport;
           if (defined($cmd_handlers{"findme"}) and xCAT::Utils->nodeonmynet(inet_ntoa($client))) { #only discover from ips that appear to be on a managed network
+            xCAT::MsgUtils->message("S","xcatd: Processing discovery request from ".$req->{'_clientip'});
             $req->{cacheonly}->[0] = 1;
             plugin_command($req,undef,\&build_response);
   	    if ($req->{cacheonly}->[0]) {
@@ -532,7 +533,9 @@ sleep 0.05;
            # }
 
 	    }
-          }
+          } else {
+            xCAT::MsgUtils->message("S","xcatd: Skipping discovery from ".inet_ntoa($client)." because we either have no discovery plugins or the client address does not match an IP network that xCAT is managing");
+	  }
         }
         if ($quit) { last; }
         while ($select->can_read(0)) { #grab any incoming requests during run

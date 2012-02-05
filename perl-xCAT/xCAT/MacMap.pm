@@ -525,6 +525,10 @@ sub refresh_switch {
     }
     unless ($session) { return; } 
     my $bridgetoifmap = walkoid($session,'.1.3.6.1.2.1.17.1.4.1.2',ciscowarn=>$iscisco); # Good for all switches
+    if (not ref $bridgetoifmap or !keys %{$bridgetoifmap}) { 
+            xCAT::MsgUtils->message("S","Error communicating with ".$session->{DestHost}.": failed to get a valid response to BRIDGE-MIB request");
+	    return;
+    }
 
     # my $mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.4.3.1.2'); 
     my $mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.7.1.2.2.1.2',silentfail=>1);
@@ -532,6 +536,10 @@ sub refresh_switch {
       #$mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.7.1.2.2.1.2');
       $mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.4.3.1.2',ciscowarn=>$iscisco); 
     } #Ok, time to process the data
+    if (not ref $mactoindexmap or !keys %{$mactoindexmap}) { 
+            xCAT::MsgUtils->message("S","Error communicating with ".$session->{DestHost}.": Unable to get MAC entries via either BRIDGE or Q-BRIDE MIB");
+	   return;
+    }
     foreach my $oid (keys %$namemap) {
     #$oid =~ m/1.3.6.1.2.1.31.1.1.1.1.(.*)/;
       my $ifindex = $oid;
