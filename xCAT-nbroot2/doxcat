@@ -63,7 +63,16 @@ done
 echo '};' >> /var/lib/lldpad/lldpad.conf
 lldpad -d
 dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$bootnic.pid $bootnic &
+#we'll kick of IPv6 and IPv4 on all nics, but not wait for them to come up unless doing discovery, to reduce
+#chances that we'll perform a partial discovery
+#in other scenarios where downed non-bootnics cause issues, will rely on retries to fix things up
 dhclient -6 -pf /var/run/dhclient6.$bootnic.pid $bootnic -lf /var/lib/dhclient/dhclient6.leases &
+NICSTOBRINGUP=`ip link|grep mtu|grep -v LOOPBACK|grep -v $bootnic|grep -v usb|grep -v ,UP|awk -F: '{print $2}'`
+export NICSTOBRINGUP
+for nic in $NICSTOBRINGUP; do
+	dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$nic.pid $nic &
+	dhclient -cf /etc/dhclient.conf -6 -pf /var/run/dhclient6.$nic.pid -lf var/lib/dhclient/dhclient6.leases $nic &
+done
 openssl genrsa -out /etc/xcat/certkey.pem 4096 > /dev/null 2>&1 &
 
 	
@@ -79,7 +88,7 @@ while ! ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v
 	fi
 	gripeiter=$((gripeiter-1))
 done
-echo -n "Acquired IPv4 address "
+echo -n "Acquired IPv4 address on $bootnic: "
 ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet|awk '{print $2}'
 ntpd -g -x
 (while ! ntpq -c "rv 0 state"|grep 'state=4' > /dev/null; do sleep 1; done; hwclock --systohc) &

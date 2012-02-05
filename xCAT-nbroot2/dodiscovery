@@ -5,11 +5,6 @@ PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
 export PUBKEY
 
 echo "Beginning node discovery process"
-NICSTOBRINGUP=`ip link|grep mtu|grep -v LOOPBACK|grep -v usb|grep -v ,UP|awk -F: '{print $2}'`
-for nic in $NICSTOBRINGUP; do
-	dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$nic.pid $nic &
-	#no need to go out of our way for superfluous ipv6 nics
-done
 waitforlink=100
 while [ ! -z "$NICSTOBRINGUP" -a $waitforlink -gt 0 ]; do
 	NICSTOBRINGUP=`ip link|grep mtu|grep -v LOOPBACK|grep -v usb|grep -v ,LOWER_UP|awk -F: '{print $2}'`
@@ -42,7 +37,7 @@ done
 if [ $timewaiting != 700 -a $timewaiting -gt 450 ]; then
 	echo "Got an address, but it took inordinately long, you may want to check spanning tree configuration"
 fi
-echo "Stopped waiting on nics to get addresses"
+echo "Network configuration complete, commencing transmit of discovery packets"
 XCATPORT=3001
 export XCATPORT
 for parm in `cat /proc/cmdline`; do
