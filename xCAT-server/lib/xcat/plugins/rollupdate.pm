@@ -107,9 +107,14 @@ sub preprocess_request {
     #   get sent up to the MN
 
     my $req = shift;
-    unless ( defined( $req->{_xcatdest} ) ) {
-        $req->{_xcatdest} = xCAT::Utils->get_site_Master();
+     #if already preprocessed, go straight to request
+    if (   (defined($req->{_xcatpreprocessed}))
+        && ($req->{_xcatpreprocessed}->[0] == 1))
+    {
+        return [$req];
     }
+
+    $req->{_xcatdest} = xCAT::Utils->get_site_Master();
     return [$req];
 }
 
