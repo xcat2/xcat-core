@@ -19,3 +19,6 @@ iputils
 dracut
 dracut-network
 bc
+lsvpd
+irqbalance
+procps

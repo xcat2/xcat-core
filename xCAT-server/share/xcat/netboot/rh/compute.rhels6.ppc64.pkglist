@@ -20,3 +20,6 @@ dracut
 dracut-network
 e2fsprogs
 bc
+lsvpd
+irqbalance
+procps

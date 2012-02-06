@@ -38,3 +38,6 @@ dracut
 dracut-network
 dash
 bc
+lsvpd
+irqbalance
+procps
