@@ -15,3 +15,6 @@ bc
 powerpc-utils
 timezone
 iputils
+lsvpd
+irqbalance
+procps
