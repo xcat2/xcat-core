@@ -3528,14 +3528,22 @@ sub preprocess_request {
 
   #parse the arguments for commands
   if ($command eq "getmacs") {
-    foreach my $arg (@exargs) {
-      if (defined($arg) && $arg !~ /^-V|--verbose|-d|--arp$/) {
-        $usage_string="Error arguments\n";
-        $usage_string .=xCAT::Usage->getUsage($command);
-        $callback->({data=>$usage_string});
-        $request = {};
-        return;
+    my (@mpnodes, @fspnodes);
+    filter_nodes($request, \@mpnodes, \@fspnodes);
+    if (@mpnodes) {
+      $noderange = \@mpnodes;
+      foreach my $arg (@exargs) {
+        if (defined($arg) && $arg !~ /^-V|--verbose|-d|--arp$/) {
+          $usage_string= ":Error arguments\n";
+          $usage_string .=xCAT::Usage->getUsage($command);
+          $callback->({data=>$usage_string});
+          $request = {};
+          return;
+        }
       }
+    } else {
+      $request = {};
+      return;
     }
   } elsif ($command eq "renergy") {
     if (! @exargs) {
@@ -3706,12 +3714,28 @@ sub filter_nodes{
 
     push @{$mpnodes}, @mp;
     push @{$fspnodes}, @commonfsp;
+    ## TRACE_LINE print "Nodes filter: mpnodes [@{$mpnodes}], fspnodes [@{$fspnodes}]\n";
     if (@args && ($cmd eq "rspconfig") && (grep /^(network|network=.*)$/, @args)) {
       push @{$mpnodes}, @ngpfsp;
+    } elsif($cmd eq "getmacs") {
+      if (@args && (grep /^-D$/,@args)) {
+        @mp = ();
+        foreach (@{$mpnodes}) {
+          if (defined($ppctabhash->{$_}->[0]->{'parent'})) {
+            push @{$fspnodes}, $_;
+          } else {
+            push @mp, $_;
+          }
+        }
+        push @{$fspnodes}, @ngpfsp;
+        @{$mpnodes} = ();;
+        push @{$mpnodes}, @mp;
+      } else { 
+        push @{$mpnodes}, @ngpfsp;
+      }
     } else {
       push @{$fspnodes}, @ngpfsp;
     }
-    ## TRACE_LINE print "Nodes filter: mpnodes [@{$mpnodes}], fspnodes [@{$fspnodes}]\n";
 
     return 0;
 }

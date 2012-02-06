@@ -84,7 +84,16 @@ sub preprocess_request {
             return [];
         }
     }
-    
+
+    if ($arg1->{command}->[0] eq "getmacs") {
+        my (@mpnodes, @fspnodes);
+        filter_nodes($arg1, \@mpnodes, \@fspnodes);
+        if (@fspnodes) {
+            $arg1->{noderange} = \@fspnodes;
+        } else {
+            return [];
+        }
+    }
     xCAT::PPC::preprocess_request(__PACKAGE__,@_);
 }
 
@@ -160,10 +169,25 @@ sub filter_nodes{
     push @{$fspnodes}, @commonfsp;
     if (@args && ($cmd eq "rspconfig") && (grep /^(network|network=.*)$/, @args)) {
       push @{$mpnodes}, @ngpfsp;
+    } elsif($cmd eq "getmacs") {
+      if (@args && (grep /^-D$/,@args)) {
+        @mp = ();
+        foreach (@{$mpnodes}) {
+          if (defined($ppctabhash->{$_}->[0]->{'parent'})) {
+            push @{$fspnodes}, $_;
+          } else {
+            push @mp, $_;
+          }
+        }
+        push @{$fspnodes}, @ngpfsp;
+        @{$mpnodes} = ();
+        push @{$mpnodes}, @mp;
+      } else { 
+        push @{$mpnodes}, @ngpfsp;
+      }
     } else {
       push @{$fspnodes}, @ngpfsp;
     }
-
     return 0;
 }
 ##########################################################################
