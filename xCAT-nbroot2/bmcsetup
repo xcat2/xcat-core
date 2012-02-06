@@ -280,12 +280,6 @@ if [ ! "$IPMIVER" == "1.5"  ]; then
     fi
 	
 	
-    while ! ipmitool -d $idev lan set $LANCHAN cipher_privs $PRIVS > /dev/null; do
-        sleep 1
-        let TRIES=TRIES+1
-    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-    done
-    if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
     TRIES=0
 
     echo -n "Enabling SOL for channel $LANCHAN:"
