@@ -8,3 +8,6 @@ openssh-clients
 busybox-anaconda
 wget
 rsync
+lsvpd
+irqbalance
+procps
