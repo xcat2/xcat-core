@@ -33,7 +33,6 @@ if ($^O =~ /^aix/i) {
 
 use lib "$::XCATROOT/lib/perl";
 use strict;
-use xCAT::Utils;
 
 # MAIN
 use IO::Socket;
@@ -74,6 +73,7 @@ if ($ENV{UPDATESECURITY} && $ENV{UPDATESECURITY} eq "1") {
     }
 
     # copy the postscripts to /install/postscripts, if not mounted
+require xCAT::Utils;
     my $mounted = xCAT::Utils->isMounted($installdir);
     if ($mounted == 0) { # not mounted
       if (&runcmd("mkdir -p $installdir/postscripts; cp -p -R /xcatpost/* $installdir/postscripts > /dev/null 2>&1") != 0 ) {
