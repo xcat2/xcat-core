@@ -129,13 +129,11 @@ if ($::osname eq 'AIX')
 else
 {
 	# Linux setup
-	#  remove OpenIPMI-tools and tftp
+	#  remove OpenIPMI-tools
 	#  install xcat from /install/xcat
 	#  Copy Certificates, and config file to apprpriate directories 
 	#  from /install and restart xcatd
 	&runcmd("rpm -e OpenIPMI-tools");
-
-	&runcmd("rpm -e tftp-server");
 
          &copycerts;
         
