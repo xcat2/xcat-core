@@ -22,6 +22,13 @@ my $idir;
 my $node;
 my %loggedrealms;
 my $lastmachinepass;
+my %tab_replacement=(
+     "noderes:nfsserver"=>"noderes:xcatmaster",
+     "noderes:tftpserver"=>"noderes:xcatmaster",
+     "noderes:xcatmaster"=>"site:key=master:value",
+    );
+
+
 
 sub subvars { 
   my $self = shift;
@@ -412,7 +419,13 @@ sub tabdb
     $tabh->close;
     unless($ent and  defined($ent->{$field})) {
       unless ($blankok) {
-         $tmplerr="Unable to find requested $field from $table, with $key";
+         #$tmplerr="Unable to find requested $field from $table, with $key";
+         my $rep=get_replacement($table,$key,$field);
+         if ($rep) {
+            return tabdb($rep->[0], $rep->[1], $rep->[2]);
+         } else {
+            $tmplerr="Unable to find requested $field from $table, with $key"
+         }
       }
       return "";
       #return "#TABLEBAD:$table:field $field not found#";
@@ -460,6 +473,27 @@ sub tabdb
 
 	#close(TAB);
 	#return "#TABLE:key not found#"
+}
+
+sub get_replacement {
+    my $table=shift;
+    my $key=shift;
+    my $field=shift;
+    my $rep;
+    if (exists($tab_replacement{"$table:$field"})) {
+	my $repstr=$tab_replacement{"$table:$field"};
+	if ($repstr) {
+	    my @a=split(':', $repstr);
+	    if (@a > 2) {
+		$rep=\@a;
+	    } else {
+		$rep->[0]=$a[0];
+                $rep->[1]=$key;
+                $rep->[2]=$a[1];
+	    }
+	}
+    }
+    return $rep;
 }
 
 1;
