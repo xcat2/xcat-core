@@ -445,7 +445,7 @@ sub process_command {
                     next;
                 }
         
-                if( $num > 0 && $request->{op} =~ /^on$/ && $request->{fsp_api} == 1) {
+                if( $num > 0 && $request->{op} =~ /^on/ && $request->{fsp_api} == 1) {
 		    my $t_hash = @$hash[1];
                     my $one_key_in_thash = (keys %$t_hash)[0];
                     my $one_d = $t_hash->{$one_key_in_thash};
