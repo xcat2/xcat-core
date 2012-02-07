@@ -1509,6 +1509,9 @@ sub rscan {
     $k2->{node} = $name;
     if ($type eq "ppcblade" || $type eq "fsp") {
       $u2->{mgt}  = "fsp";
+      if ($type eq "ppcblade"){
+        $u2->{cons} = "fsp";
+      }
     } else {
       $u2->{mgt}  = "blade";
       if($type eq "blade"){
@@ -1604,6 +1607,8 @@ sub rscan_xml {
         } elsif ( /^cons$/ ) {
             if($origtype eq "blade"){
               $d = "blade";
+            } elsif ($origtype eq "ppcblade"){
+              $d = "fsp";
             } else {
               $ignore = 1;
             }
@@ -1691,6 +1696,8 @@ sub rscan_stanza {
         } elsif ( /^cons$/ ) {
             if($origtype eq "blade"){
               $d = "blade";
+            } elsif ($origtype eq "ppcblade"){
+              $d = "fsp";
             } else {
               $ignore = 1;
             }
