@@ -1,4 +1,4 @@
-#!/usr/bin/ksh
+#!/bin/ksh
 trap "chmod 774 /etc/rc.tcpip" INT QUIT TERM EXIT
 
 #NB: WANT TO ADD THIS BACK IN AT SOME POINT - SYSTEM HANG DETECTION DEAMON
