@@ -74,6 +74,7 @@ sub parse_args {
         "general_passwd",
         "*_passwd",
         "resetnet",
+        "cec_off_policy"
     );
     my @bpa = (
 	"frame",
