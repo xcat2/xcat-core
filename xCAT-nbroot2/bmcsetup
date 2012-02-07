@@ -267,7 +267,7 @@ if [ ! "$IPMIVER" == "1.5"  ]; then
 	if [ $i = 2 ]; then
 		NEWACCESS=`printf "$NEWACCESS 0x%02x" $((0x$elem&0xf0))`
 	elif [ $i = 3 ]; then
-		NEWACCESS=`printf "$NEWACCESS 0x%02x" $((0x$elem|0x40))`
+		NEWACCESS=`printf "$NEWACCESS 0x%02x" $((0x$elem|0x44))`
 	elif [ $i != 0 ]; then
 		NEWACCESS="$NEWACCESS 0x$elem"
 	fi
