@@ -1932,13 +1932,21 @@ sub preprocess_request {
             #print "nodes=@nodes\n";
             push @requests, $reqcopy;
              
-            if(($req->{command}->[0] eq "rflash") && ( exists( $req->{opt}->{activate} ) ) && xCAT::Utils->isAIX() ) {
-                if ( $masters[0] ne $snkey ) {
+            if(($req->{command}->[0] eq "rflash") && ( exists( $req->{opt}->{activate} ) ) ) {
+                my $linuxrequired = 0;
+                if ( xCAT::Utils->isLinux() ) {
+                    my @installloc = xCAT::Utils->get_site_attribute("installloc");
+                    if (! ($installloc[0])) {
+                        $linuxrequired = 1;       
+                    }
+                }
+                
+                if ( ($linuxrequired || xCAT::Utils->isAIX()) && ( $masters[0] ne $snkey )) {
                     my $install_dir = xCAT::Utils->getInstallDir();
-                    my $cmd = "$::XCATROOT/bin/xdcp $snkey -P -R  $install_dir/packages_fw $install_dir/";
+                    my $cmd = "$::XCATROOT/bin/xdcp $snkey -R  $install_dir/packages_fw $install_dir/";
                     my $result = xCAT::Utils->runcmd("$cmd", -1); 
                     if ($::RUNCMD_RC != 0) {
-                        $callback->({data=>["Could not copy rpms in the $install_dir/packages_fw  to $snkey.\n"]});
+                        $callback->({data=>["$result. Could not copy rpms in the $install_dir/packages_fw  to $snkey.\n"]});
                         $req = {};
                         return;
                     }
