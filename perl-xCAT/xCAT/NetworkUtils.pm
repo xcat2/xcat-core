@@ -608,7 +608,7 @@ sub get_nic_ip
                    $_ =~ /$mode / ) {
                 my @ip = split /\n/;
                 for my $ent ( @ip ) {
-                    if ($ent =~ /^(eth\d)\s+/) {
+                    if ($ent =~ /^(eth\d|ib\d|hf\d)\s+/) {
                         $nic = $1;
                     }    
                     if ( $ent =~ /^\s*inet addr:\s*(\d+\.\d+\.\d+\.\d+)/ ) {
