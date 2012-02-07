@@ -85,6 +85,32 @@ done
 cd /xcatpost
 export PATH=/xcatpost:$PATH
 
+# use the run_ps subroutine to run the postscripts
+TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
+echo "
+# subroutine used to run postscripts
+run_ps () {
+ logdir=\"/var/log/xcat\"
+ mkdir -p \$logdir
+ logfile=\"/var/log/xcat/xcat.log\"
+ 
+ if [ -f \$1 ]; then 
+  echo \"Running postscript: \$@\" | tee -a \$logfile
+  ./\$@ 2>&1 1> /tmp/tmp4xcatlog
+  cat /tmp/tmp4xcatlog | tee -a \$logfile
+ else
+  echo \"Postscript \$1 does NOT exist.\" | tee -a \$logfile
+ fi
+}
+# subroutine end
+
+" > /tmp/mypostscript
+echo "$TMP" >> /tmp/mypostscript
+TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
+echo "$TMP" > /tmp/mypostscript 
+
+
+
 # Save post boot scripts to /tmp/mypostscript.post
 TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /tmp/mypostscript`
 echo "$TMP" > /tmp/mypostscript.post
