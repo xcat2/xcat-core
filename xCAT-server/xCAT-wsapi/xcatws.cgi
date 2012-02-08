@@ -24,7 +24,7 @@ my $queryString = $ENV{'QUERY_STRING'};
 my @path = split(/\//, $pathInfo);
 shift(@path);
 my $resource = $path[0];
-print $q->header('text/html');
+#print $q->header('text/html');
 my $request = {clienttype =>'ws'};
 
 #error status codes
@@ -102,6 +102,7 @@ my %resources = (groups           => \&groupsHandler,
 
 #if no resource was specified
 if($pathInfo =~ /^\/$/ || $pathInfo =~ /^$/){
+  print $q->header('text/html');
   print $q->p("This is the root page for the xCAT Rest Web Service.  Available resources are:");
   foreach (sort keys %resources){
     print $q->p($_);
@@ -1466,6 +1467,7 @@ sub wrapHtml
   {
     $baseUri .= "/";
   }
+  print $q->header('text/html');
   #print $q->p("dumping in wrapHtml ".Dumper(@response));
   foreach my $data (@response){
     if(@$data[0]->{error}){
