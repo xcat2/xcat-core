@@ -36,6 +36,14 @@ sub handled_commands {
 ##########################################################################
 sub preprocess_request {
     my ($arg1, $arg2, $arg3) = @_;
+
+    #if already preprocessed, go straight to request
+    if ((defined($arg1->{_xcatpreprocessed}))
+        && ($arg1->{_xcatpreprocessed}->[0] == 1))
+    {
+        return [$arg1];
+    }
+
     if ($arg1->{command}->[0] eq "gethmccon") { #Can handle it here and now
         my $node = $arg1->{noderange}->[0];
 		my $callback = $arg2;
