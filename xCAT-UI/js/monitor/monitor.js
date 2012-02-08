@@ -208,31 +208,39 @@ function loadMonitorPage() {
 		if (!$('#' + newTabId).length) {
 			// Create loader
 			var loader = $('<center></center>').append(createLoader(hw + 'ResourceLoader'));
-			tab.add(newTabId, hw, loader, true);
 
 			// Create an instance of the plugin
 			var plugin;
+			var displayName = "";
 			switch (hw) {
 				case "kvm":
 		            plugin = new kvmPlugin();
+		            displayName = "KVM";
 		            break;
 		        case "esx":
 		            plugin = new esxPlugin();
+		            displayName = "ESX";
 		            break;
 				case "blade":
 					plugin = new bladePlugin();
+					displayName = "BladeCenter";
 					break;
 				case "hmc":
 					plugin = new hmcPlugin();
+					displayName = "System p";
 					break;
 				case "ipmi":
 					plugin = new ipmiPlugin();
+					displayName = "iDataPlex";
 					break;
 				case "zvm":
 					plugin = new zvmPlugin();
+					displayName = "z\/VM";
 					break;
 			}
-
+			
+			// Add resource tab and load resources
+			tab.add(newTabId, displayName, loader, true);
 			plugin.loadResources();
 		}
 
