@@ -1,13 +1,15 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT::PPCboot;
+use lib "/opt/xcat/lib/perl";
+use Data::Dumper;
 use strict;
 use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
 use xCAT::Utils;
 use xCAT::MsgUtils;
-
+use xCAT::LparNetbootExp;
 
 ##########################################################################
 # Parse the command line for options and operands 
@@ -111,6 +113,7 @@ sub do_rnetboot {
     my $Rc      = SUCCESS;
     my $result  = "";
     my $cmd;
+    my %optarg;
 
     #######################################
     # Disconnect Expect session
@@ -125,21 +128,21 @@ sub do_rnetboot {
     my $fsp      = @$d[2];
     my $hcp      = @$d[3];
 
-    #######################################
-    # Find Expect script 
-    #######################################
-    $cmd = ($::XCATROOT) ? "$::XCATROOT/sbin/" : "/opt/xcat/sbin/";
-    $cmd .= "lpar_netboot.expect"; 
-
-    #######################################
-    # Check command installed
-    #######################################
-    if ( !-x $cmd ) {
-        return( [RC_ERROR,"Command not installed: $cmd"] );
-    }
-    if (!-x "/usr/bin/expect" ) {
-        return( [RC_ERROR,"Command not installed: /usr/bin/expect"] );
-    }
+    ########################################
+    ## Find Expect script
+    ########################################
+    #$cmd = ($::XCATROOT) ? "$::XCATROOT/sbin/" : "/opt/xcat/sbin/";
+    #$cmd .= "lpar_netboot.expect";
+    #
+    ########################################
+    ## Check command installed
+    ########################################
+    #if ( !-x $cmd ) {
+    #    return( [RC_ERROR,"Command not installed: $cmd"] );
+    #}
+    #if (!-x "/usr/bin/expect" ) {
+    #    return( [RC_ERROR,"Command not installed: /usr/bin/expect"] );
+    #}
     #######################################
     # Save user name and passwd of hcp to
     # environment variables.
@@ -152,13 +155,16 @@ sub do_rnetboot {
     # Turn on verbose and debugging
     #######################################
     if ( exists($request->{verbose}) ) {
-        $cmd.= " -v -x";
+        #$cmd.= " -v -x";
+        $optarg{'v'} = 1; #for verbose
+        $optarg{'x'} = 1; #for debug
     }
     #######################################
     # Force LPAR shutdown
     #######################################
     if ( exists( $opt->{f} ) || !xCAT::Utils->isAIX() ) {
-        $cmd.= " -i";
+        #$cmd.= " -i";
+        $optarg{'i'} = 1;
     } 
 
     #######################################
@@ -167,19 +173,24 @@ sub do_rnetboot {
     if (  exists( $opt->{s} )) {
         foreach ($opt->{s}) {
             if ( /^net$/ ) {
-                $cmd.= " -w 1";
+                #$cmd.= " -w 1";
+                $optarg{'w'} = 1;
             } elsif ( /^net,hd$/ ) {
-                $cmd.= " -w 2";
+                #$cmd.= " -w 2";
+                $optarg{'w'} = 2;
             } elsif ( /^hd,net$/ ) {
-                $cmd.= " -w 3";
+                #$cmd.= " -w 3";
+                $optarg{'w'} = 3;
             } elsif ( /^hd$/ ) {
-                $cmd.= " -w 4";
+                #$cmd.= " -w 4";
+                $optarg{'w'} = 4;
             }
         }
     }
 
     if (  exists( $opt->{o} )) {
-        $cmd.= " -o";
+        #$cmd.= " -o";
+        $optarg{'o'} = 1;
     }
 
     my @macs = split /\|/, $opt->{m};
@@ -188,10 +199,18 @@ sub do_rnetboot {
         # Network specified
         #######################################
         my $mac_a = lc($mac);
-        $cmd.= " -s auto -d auto -m $mac_a -S $opt->{S} -C $opt->{C} -N $opt->{N}";
+        #$cmd.= " -s auto -d auto -m $mac_a -S $opt->{S} -C $opt->{C} -N $opt->{N}";
+
+        $optarg{'s'} = 'auto';
+        $optarg{'d'} = 'auto';
+        $optarg{'m'} = $mac_a;
+        $optarg{'S'} = $opt->{S};
+        $optarg{'C'} = $opt->{C};
+        $optarg{'N'} = $opt->{N};
         if (defined($opt->{G}))
         {
-            $cmd.= " -G $opt->{G}";
+            #$cmd.= " -G $opt->{G}";
+            $optarg{'G'} = $opt->{G};
         }
   
 
@@ -239,7 +258,10 @@ sub do_rnetboot {
                 }
             }
             if ( defined($dump_target) and defined($dump_lun) and defined($dump_port) ) {
-                $cmd.= " -T \"$dump_target\" -L \"$dump_lun\" -p \"$dump_port\"";
+                #$cmd.= " -T \"$dump_target\" -L \"$dump_lun\" -p \"$dump_port\"";
+                $optarg{'T'} = $dump_target;
+                $optarg{'L'} = $dump_lun;
+                $optarg{'p'} = $dump_port;
             } else {
                 return( [RC_ERROR,"Unable to find DUMP_TARGET, DUMP_LUN, DUMP_PORT for iscsi dump"] );
             }
@@ -247,50 +269,63 @@ sub do_rnetboot {
 
         my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( [$node] );
         if ( grep /hf/, $client_nethash{$node}{mgtifname} ) {
-            $cmd.= " -t hfi-ent";
+            #$cmd.= " -t hfi-ent";
+            $optarg{'t'} = "hfi-ent";
         } else {
-            $cmd.= " -t ent";
+            #$cmd.= " -t ent";
+            $optarg{'t'} = "ent";
         }
 
         #######################################
         # Add command options
         #######################################
-        $cmd.= " -f \"$name\" \"$pprofile\" \"$fsp\" $id $hcp \"$node\"";
+        #$cmd.= " -f \"$name\" \"$pprofile\" \"$fsp\" $id $hcp \"$node\"";
+        $optarg{'f'} = 1;
+        $optarg{'name'} = $name;
+        $optarg{'pprofile'} = $pprofile;
+        $optarg{'fsp'} = $fsp;
+        $optarg{'id'} = $id;
+        $optarg{'hcp'} = $hcp;
+        $optarg{'node'} = $node;
 
         my $done = 0;
         while ( $done < 2 ) {
             $result = "";
             $Rc = SUCCESS;
-            #######################################
-            # Execute command
-            #######################################
-            my $pid = open( OUTPUT, "$cmd 2>&1 |");
-            $SIG{INT} = $SIG{TERM} = sub { #prepare to process job termination and propogate it down
-                kill 9, $pid;
-                return( [RC_ERROR,"Received INT or TERM signal"] );
-            };
-            if ( !$pid ) {
-                return( [RC_ERROR,"$cmd fork error: $!"] );
-            }
-            #######################################
-            # Get command output
-            #######################################
-            while ( <OUTPUT> ) {
-                $result.=$_;
-            }
-            close OUTPUT;
+            ########################################
+            ## Execute command
+            ########################################
+            #my $pid = open( OUTPUT, "$cmd 2>&1 |");
+            #$SIG{INT} = $SIG{TERM} = sub { #prepare to process job termination and propogate it down
+            #    kill 9, $pid;
+            #    return( [RC_ERROR,"Received INT or TERM signal"] );
+            #};
+            #if ( !$pid ) {
+            #    return( [RC_ERROR,"$cmd fork error: $!"] );
+            #}
+            ########################################
+            ## Get command output
+            ########################################
+            #while ( <OUTPUT> ) {
+            #    $result.=$_;
+            #}
+            #close OUTPUT;
+            #
+            ########################################
+            ## Get command exit code
+            ########################################
+            #
+            #foreach ( split /\n/, $result ) {
+            #    if ( /^lpar_netboot / ) {
+            #        $Rc = RC_ERROR;
+            #        last;
+            #    }
+            #}
 
             #######################################
-            # Get command exit code
+            # Invoke the lpar_netbootexp
             #######################################
-
-            foreach ( split /\n/, $result ) {
-                if ( /^lpar_netboot / ) {
-                    $Rc = RC_ERROR;
-                    last;
-                }
-            }
-
+            $Rc = xCAT::LparNetbootExp->lparnetbootexp(\%optarg, $request);
             if ( $Rc == SUCCESS ) {
                 $done = 2;
             } else {
