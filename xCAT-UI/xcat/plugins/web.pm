@@ -2186,7 +2186,7 @@ sub web_graphinfo{
 	}
 
 	foreach(@missinfoarray){
-		$missretstr = $missretstr . $_ . ':miss;'; 
+		$missretstr = $missretstr . $_ . ':linux:other;'; 
 	}
 
 	#combine all information into a string
