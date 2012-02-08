@@ -1111,12 +1111,16 @@ sub process_request {
 		   while ($newappstatus =~ /(\w+)\=(\w+)/) {
                        my $tmp1=$1;
                        my $tmp2=$2;
-                       if($oldappstatus =~ /$tmp1\=/){
-                           $oldappstatus =~ s/$tmp1\=\w+/$tmp1\=$tmp2/g;
-                       }else{
-                           $oldappstatus = $oldappstatus."\,$tmp1\=$tmp2";
-                       }
-                       $newappstatus =~ s/(\w+)\=(\w+)//g;
+		       if ($oldappstatus) {
+			   if($oldappstatus =~ /$tmp1\=/){
+			       $oldappstatus =~ s/$tmp1\=\w+/$tmp1\=$tmp2/g;
+			   }else{
+			       $oldappstatus = $oldappstatus."\,$tmp1\=$tmp2";
+			   }
+		       } else {
+			    $oldappstatus = "$tmp1\=$tmp2";
+		       }
+                       $newappstatus =~ s/(\w+)\=(\w+)//;
                     }
 	 	    $status1->{$node1}->{appstatus}= $oldappstatus; 
 		    $status1->{$node1}->{appstatustime}= $currtime; 
