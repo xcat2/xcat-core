@@ -168,7 +168,7 @@ sub runcmd
         $rc = $? >> 8;
         if ($rc > 0)
         {
-            my $msg="$::sdate servicenode: $cmd returned rc=$rc $::outref\n";
+            my $msg="$::sdate servicenode: $cmd returned rc=$rc \n";
             `logger -t xcat $msg`;
 			return 1;
         }
