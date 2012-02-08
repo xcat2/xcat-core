@@ -1123,7 +1123,7 @@ sub process_request {
                        }else{
                            $oldappstatus = $oldappstatus."\,$tmp1\=$tmp2";
                        }
-                       $newappstatus =~ s/(\w+)\=(\w+)//g;
+                       $newappstatus =~ s/(\w+)\=(\w+)//;
                     }
 	 	    $status1->{$node1}->{appstatus}= $oldappstatus; 
 		    $status1->{$node1}->{appstatustime}= $currtime; 
