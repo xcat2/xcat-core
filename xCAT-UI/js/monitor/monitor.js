@@ -315,18 +315,32 @@ function toggleMonitor() {
 	if (status == 'Off') {
 		command = 'monstop'	;
 	}
-		
+	
+	// Start or stop monitoring on xCAT
 	$.ajax({
 		url : 'lib/cmd.php',
 		dataType : 'json',
 		data : {
 			cmd : command,
 			tgt : '',
-			args : name + ';-r',
-			msg : name + ' switched ' + status
+			args : name + '',
+			msg : ''
 		},
-		success : updateMonStatus
-	});
+		success : function(data) {
+			// Start or stop monitoring on remote nodes
+			$.ajax({
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : command,
+					tgt : '',
+					args : name + ';-r',
+					msg : name + ' switched ' + status
+				},
+				success : updateMonStatus
+			});
+		}
+	});	
 }
 
 /**
