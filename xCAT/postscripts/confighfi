@@ -2,24 +2,8 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
-#=head1  otherpkgs
-#=head2  It gets the extra rpms and install/update them.
-#        The environment variable OTHERPKGS contains the rpms to be installed/updated.
-#        On MN, You need to:
-#        1. put rpms under /install/post/otherpkgs/os/arch directory where 'os' and 'arch'
-#           can be found in the nodetype table.
-#        2. put the name of the packages to /opt/xcat/share/xcat/netboot(install)/platform
-#           directory. The file name is one of the following:
-#              profile.os.arch.otherpkgs.pkglist
-#              profile.os.otherpkgs.pkglist
-#              profile.arch.otherpkgs.pkglist
-#              profile.otherpkgs.pkglist
-#   The install/deployment process will pick up the rpms and install them on the nodes.
-#   However, if the nodes have already installed and up and running, you can run the following
-#   command to have the extra rpms installed:
-#       updatenode noderange otherpkgs
-#
-#=cut
+# Sample xCAT post script for configuring hfi settings and some conventions.
+# This scripts works for both diskfull installs, diskless boots on AIX or Linux.
 #-------------------------------------------------------------------------------
 PLTFRM=`uname`
 
