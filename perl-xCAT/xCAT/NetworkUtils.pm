@@ -404,7 +404,7 @@ sub setup_ip_forwarding
  	} else {
 	    `echo "net.ipv4.ip_forward = $enable" >> $conf_file`;
 	}
-	`sysctl -p $conf_file`;
+	`sysctl -e -p $conf_file`; # workaround for redhat bug 639821
     }
     else
     {    
