@@ -2,121 +2,125 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
-#=head1  otherpkgs
-#=head2  It gets the extra rpms and install/update them.
-#        The environment variable OTHERPKGS contains the rpms to be installed/updated.
-#        On MN, You need to:
-#        1. put rpms under /install/post/otherpkgs/os/arch directory where 'os' and 'arch'
-#           can be found in the nodetype table.
-#        2. put the name of the packages to /opt/xcat/share/xcat/netboot(install)/platform
-#           directory. The file name is one of the following:
-#              profile.os.arch.otherpkgs.pkglist
-#              profile.os.otherpkgs.pkglist
-#              profile.arch.otherpkgs.pkglist
-#              profile.otherpkgs.pkglist
-#   The install/deployment process will pick up the rpms and install them on the nodes.
-#   However, if the nodes have already installed and up and running, you can run the following
-#   command to have the extra rpms installed:
-#       updatenode noderange otherpkgs
-#
-#=cut
+# Sample xCAT post script for configuring hfi settings and some conventions.
+# This scripts works for both diskfull installs, diskless boots on AIX or Linux.
+# Input:
+#   IP address: Each hfi interface should be assigned its hostname and IP address.
+#               hostname should be resolable from either /etc/hosts or name 
+#               resolution, with format: <nodename>-hfx
+#   netmask: Netmask is hardcoded in this script.  You have to manually modify it
+#            if it doesn't meet your requirement.
 #-------------------------------------------------------------------------------
 PLTFRM=`uname`
+NETMASK=255.0.0.0
 
 name=`echo $NODE | awk -F-hf '{print $1}'`
 if [ -z $name ]
 then
-name=$NODE
+    name=$NODE
 fi
 
 if [[ $PLTFRM != AIX  ]] && [[ $PLTFRM != aix  ]]
 then
 
-# A difference between service node and compute node is that service node is booted from
-# ethernet, all the HFI interfaces should be configured.  Compute node is booted from hf0
-# so hf0 on compute node should not be re-configured on compute node.
-if [[ $NTYPE = service ]]
-then
+    # A difference between service node and compute node is that service node is booted from
+    # ethernet, all the HFI interfaces should be configured.  Compute node is booted from hf0
+    # so hf0 on compute node should not be re-configured on compute node.
+    if [[ $NTYPE = service ]]
+    then
 
-CLIENT_IP=`ping -c 3 $name-hf0 -I hf0 2>/dev/null | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+        CLIENT_IP=`ping -c 3 $name-hf0 -I hf0 2>/dev/null | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
 
-if [ -n "$CLIENT_IP" ]
-then
-echo "DEVICE=hf0
+        if [ -n "$CLIENT_IP" ]
+        then
+            echo "DEVICE=hf0
 NM_CONTROLLED=yes
 IPADDR=$CLIENT_IP
-NETMASK=255.0.0.0
+NETMASK=$NETMASK
 ONBOOT=yes
 " >/etc/sysconfig/network-scripts/ifcfg-hf0
 
-ifdown hf0
-ifup hf0
-fi
+            ifdown hf0
+            ifup hf0
+        else
+            logger -t xcat "confighfi: cannot resolve hostname $name-hf0"
+        fi
+    elif [[ -z "$NTYPE" ]]
+    then
+        logger -t xcat "confighfi: cannot read node type definition"
+    fi
 
-fi
+    # Configure hf0-hf<n> interfaces one by one.
+    for i in 1 2 3 4 5 6 7
+    do
 
-# Configure hf0-hf<n> interfaces one by one.
-for i in 1 2 3 4 5 6 7
-do
+        CLIENT_IP=`ping -c 3 $name-hf$i -I hf$i 2>/dev/null | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
 
-CLIENT_IP=`ping -c 3 $name-hf$i -I hf$i 2>/dev/null | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
-
-if [ -n "$CLIENT_IP" ]
-then
-echo "DEVICE=hf$i
+        if [ -n "$CLIENT_IP" ]
+        then
+            echo "DEVICE=hf$i
 NM_CONTROLLED=yes
 IPADDR=$CLIENT_IP
-NETMASK=255.0.0.0
+NETMASK=$NETMASK
 ONBOOT=yes
 " >/etc/sysconfig/network-scripts/ifcfg-hf$i
 
-ifdown hf$i
-ifup hf$i
-fi
-
-done
+            ifdown hf$i
+            ifup hf$i
+        else
+            logger -t xcat "confighfi: cannot resolve hostname $name-hf$i"
+        fi
+    done
 
 else
-NETMASK=255.0.0.0
+    # Configurartion for AIX
+    if [[ $NTYPE = service ]]
+    then
 
-if [[ $NTYPE = service ]]
-then
+        CLIENT_IP=`ping -q -n -c 1 -w 1 $name-hf0 | grep PING |awk '{print $3}' | sed 's/(\(.*\)):/\1/' `
 
-CLIENT_IP=`ping -q -n -c 1 -w 1 $name-hf0 | grep PING |awk '{print $3}' | sed 's/(\(.*\)):/\1/' `
+        if [ -n "$CLIENT_IP" ]
+        then
+            mkhfi -i hf0 -a $CLIENT_IP -m $NETMASK
+        else
+            logger -t xcat "confighfi: cannot resolve hostname $name-hf0"
+        fi
+    elif [[ -z "$NTYPE" ]]
+    then
+        logger -t xcat "confighfi: cannot read node type definition"
+    fi
 
-if [ -n $CLIENT_IP ]
-then
-mkhfi -i hf0 -a $CLIENT_IP -m $NETMASK
-fi
+    for i in 1 2 3
+    do
+        CLIENT_IP=`ping -q -n -c 1 -w 1 $name-hf$i | grep PING |awk '{print $3}' | sed 's/(\(.*\)):/\1/' `
 
-fi
+        if [ -n "$CLIENT_IP" ]
+        then
+            mkhfi -i hf$i -a $CLIENT_IP -m $NETMASK
+        else
+            logger -t xcat "confighfi: cannot resolve hostname $name-hf$i"
+        fi
 
-for i in 1 2 3
-do
-CLIENT_IP=`ping -q -n -c 1 -w 1 $name-hf$i | grep PING |awk '{print $3}' | sed 's/(\(.*\)):/\1/' `
+    done
 
-if [ -n "$CLIENT_IP" ]
-then
-mkhfi -i hf$i -a $CLIENT_IP -m $NETMASK
-fi
+    # Configure ml0 for AIX.
+    CLIENT_IP=`ping -q -n -c 1 -w 1 $name-ml0 | grep PING |awk '{print $3}' | sed 's/(\(.*\)):/\1/' `
 
-done
+    if [ -n "$CLIENT_IP" ]
+    then
+        #Check whether the mlt0 is available
+        `lsdev -C | grep mlt0 | grep Available 2>&1 >/dev/null`
 
-# Configure ml0 for AIX.
-CLIENT_IP=`ping -q -n -c 1 -w 1 $name-ml0 | grep PING |awk '{print $3}' | sed 's/(\(.*\)):/\1/' `
+        chdev -l ml0 -a state=detach
 
-if [ -n "$CLIENT_IP" ]
-then
-    #Check whether the mlt0 is available
-    `lsdev -C | grep mlt0 | grep Available 2>&1 >/dev/null`
+        # Reconfig ml0 since HFx are configured after ml0 is available 
+        rmdev -l mlt0
+        mkdev -l mlt0
 
-    chdev -l ml0 -a state=detach
-
-    # Reconfig ml0 since HFx are configured after ml0 is available 
-    rmdev -l mlt0
-    mkdev -l mlt0
-
-    chdev -l ml0 -a netaddr=$CLIENT_IP -a netmask=$NETMASK -a state=up
-fi
+        sleep 2
+        chdev -l ml0 -a netaddr=$CLIENT_IP -a netmask=$NETMASK -a state=up
+    else
+        logger -t xcat "confighfi: cannot resolve hostname $name-ml0"
+    fi
 
 fi
