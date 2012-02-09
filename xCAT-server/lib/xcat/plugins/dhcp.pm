@@ -1713,6 +1713,11 @@ sub addnet
             {
                 $nameservers = $myip;
             }
+
+            if (!$ntpservers || ($ntpservers eq '<xcatmaster>'))
+            {
+                $ntpservers = $myip;
+            }
             
             $nameservers=putmyselffirst($nameservers);
             $ntpservers=putmyselffirst($ntpservers);
@@ -1821,8 +1826,6 @@ sub addnet
         }
         if ($ntpservers) {
         	push @netent, "    option ntp-servers $ntpservers;\n";
-        } elsif ($myip){
-        	push @netent, "    option ntp-servers $myip;\n";
         }
         if ($nameservers)
         {
