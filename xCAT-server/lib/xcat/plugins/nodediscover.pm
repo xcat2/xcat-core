@@ -235,14 +235,6 @@ sub process_request {
     		my $hosttag = gethosttag($node,$netn,@ifinfo[1],\%usednames);
 	print Dumper($hosttag) . "\n";
     		if ($hosttag) {
-                 #(my $rent) = $nrtab->getNodeAttribs($node,['primarynic','nfsserver']);
-                 (my $rent) = $nrtab->getNodeAttribs($node,['nfsserver']);
-                 #unless ($rent and $rent->{primarynic}) { #if primarynic not set, set it to this nic
-                 #  $nrtab->setNodeAttribs($node,{primarynic=>@ifinfo[1]});
-                 #}
-                 unless ($rent and $rent->{nfsserver}) {
-                    $nrtab->setNodeAttribs($node,{nfsserver=>xCAT::Utils->my_ip_facing($hosttag)});
-                 }
                  $usednames{$hosttag}=1;
                  if ($hosttag eq $node) {
     		   $macstring .= $currmac."|";
