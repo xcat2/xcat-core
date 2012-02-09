@@ -56,7 +56,7 @@ logger -t xcat "Install: Setup NTP"
 # else use the master which should be a service node
 if [ "$master" =  "$sitemaster" ]; then
   if [ $NTPSERVERS ]; then
-        if [ "$NODESETSTATE" = "statelite" ]; then
+        if [ "$NTPSERVERS" = "&lt;xcatmaster&gt;" ] || [ "$NTPSERVERS" = "<xcatmaster>" ]; then
             cp -a $conf_file $conf_file_org
             echo  "" > $conf_file
         else
@@ -66,14 +66,17 @@ if [ "$master" =  "$sitemaster" ]; then
                 mv -f $conf_file $conf_file_backup
             fi
         fi
-	for i in $(echo $NTPSERVERS | tr ',' ' ')
-	do
- 	   echo "server $i" >>$conf_file
-	   master=$i
-	done 
+        if [ "$NTPSERVERS" = "&lt;xcatmaster&gt;" ]; then
+            echo "server $master" >>$conf_file
+        else
+        	for i in $(echo $NTPSERVERS | tr ',' ' ')
+        	do
+         	   echo "server $i" >>$conf_file
+        	   master=$i
+        	done 
+        fi
   else
-	logger -t xcat "Install: $NTPSERVERS don't exist"
-        exit 0	
+	echo "server $master" >$conf_file
 
   fi
 else
