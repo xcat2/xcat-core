@@ -6,7 +6,6 @@ use xCAT::Table;
 use xCAT::Utils;
 use Getopt::Long;
 use Sys::Hostname;
-use xCAT::DBobjUtils;
 
 use strict;
 use Data::Dumper;
@@ -377,9 +376,8 @@ sub makeconservercf {
 
     if ( defined($typetab)) {
       my @ents = $typetab->getAllNodeAttribs([qw(node nodetype)]);
-      foreach my $tn (@ents) {
-        #$type{$_->{node}}=$_->{nodetype};
-        $type{$tn->{node}}= xCAT::DBobjUtils->getnodetype($tn->{node});
+      foreach (@ents) {
+        $type{$_->{node}}=$_->{nodetype};
       }
     }
     foreach (@cfgents) {
