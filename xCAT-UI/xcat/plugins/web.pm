@@ -2073,10 +2073,11 @@ sub web_graphinfo{
 		my $ppctab = xCAT::Table->new('ppc');
 		#nodetype, parent
 		$result = $ppctab->getNodesAttribs(\@parray, ['parent']);
+                my $typehash = xCAT::DBobjUtils->getnodetype(\@parray);
 		foreach(@parray){
 			my $value = $result->{$_};
 			if ($value->[0]){
-				$phash{$_} = xCAT::DBobjUtils->getnodetype($_) . ':' . $value->[0]->{'parent'} . ':';
+				$phash{$_} = $$typehash{$_} . ':' . $value->[0]->{'parent'} . ':';
 			}
 			else{
 				push(@missinfoarray, $_);
