@@ -90,14 +90,13 @@ sub mkhwconn_parse_args
     my @frame_members    = ();
     if ( $ppctab)
     {
+        my $typehash = xCAT::DBobjUtils->getnodetype($nodes, "ppc");
         for my $node ( @$nodes)
         {
             my $node_parent = undef;
             my $nodetype    = undef;
-            #my $nodetype_hash    = $nodetypetab->getNodeAttribs( $node,[qw(nodetype)]);
             my $node_parent_hash = $ppctab->getNodeAttribs( $node,[qw(parent)]);
-            #$nodetype    = $nodetype_hash->{nodetype};
-            $nodetype = xCAT::DBobjUtils->getnodetype($node);
+            $nodetype = $$typehash{$node};
             $node_parent = $node_parent_hash->{parent};
             if ( !$nodetype )
             {
