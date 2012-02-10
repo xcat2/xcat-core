@@ -752,13 +752,13 @@ sub credentials {
     ###########################################
     # find parent for fsp/bpa, use parent's attributes first
     ###########################################
-    my $ntype = xCAT::DBobjUtils->getnodetype($server);
+    my $ntype = xCAT::DBobjUtils->getnodetype($server, "ppc");
     if ($ntype =~ /^(fsp|bpa)$/)  {
         my $ptab =  xCAT::Table->new('ppc');
         if ($ptab)  {
             my $parent = $ptab->getNodeAttribs($server, ["parent"]);
             if ($parent and $parent->{parent})  {
-                my $ptype = xCAT::DBobjUtils->getnodetype($parent->{parent});
+                my $ptype = xCAT::DBobjUtils->getnodetype($parent->{parent}, "ppc");
                 if (($ptype =~ /^cec$/ and $ntype =~ /^fsp$/) or ($ptype =~ /^frame$/ and $ntype =~ /^bpa$/))
                 {
                     $server = $parent->{parent};
