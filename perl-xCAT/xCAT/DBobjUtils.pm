@@ -2185,15 +2185,20 @@ sub getchildren
     Arguments:
        An array of nodenames or 1 nodename 
     Returns:
-        type of node
+        If the input is an array, it returns a hash, 
+        for the nodes that can't get node type, it will be 'node' => undef;
+        If the input is not an array, it returns the value of type,
+        for the node that can't get node type, it will be undef;
     Globals:
         %NODETYPEHASH
     Error:
         $::RUNCMD_RC = 1; 
         Errors written to syslog
     Example:
-         $type = getnodetype($node);
-         $typerefer = getnodetype(\@nodes);
+         $type = xCAT::DBobjUtils->getnodetype($node, "ppc");
+         $type = xCAT::DBobjUtils->getnodetype($node);
+         $typerefer = xCAT::DBobjUtils->getnodetype(\@nodes, "PPC");
+         $typerefer = xCAT::DBobjUtils->getnodetype(\@nodes);
     Comments:
         none
 =cut
@@ -2207,97 +2212,218 @@ sub getnodetype
     {
         $nodes = shift;
     }
+    my $table = shift;
     my $rsp;
     my @tabletype = qw(ppc zvm);
+    my %typehash;
+    my %tablehash;
     $::RUNCMD_RC = 0; 
-
-    my $nodetypetab = xCAT::Table->new( 'nodetype' );
-    unless ($nodetypetab) {   # cannot open  the table return with error
-     xCAT::MsgUtils->
-          message('S', "getnodetype:Unable to open nodetype table.\n");
-          $::RUNCMD_RC = 1; 
-          return undef; 
-    }
     
-    my @types = ();
-    my $typep;
-    my $type;
-    if ( $nodes =~ /^ARRAY/) {
-      if (!%NODETYPEHASH) { 
-         my @nodetypes = $nodetypetab->getAllNodeAttribs(['node','nodetype']);
-         foreach my $tn (@nodetypes) {
-             $NODETYPEHASH{ $tn->{'node'} } = $tn->{'nodetype'};
-         }    
-      }    
-      foreach my $nn (@$nodes) {
-         $type = $NODETYPEHASH{$nn};
-         if ($type) {
-           my $flag = 0;
-           my @tablename;
-           foreach my $tt (split /,/, $type) {
-             if (grep(/$tt/, @tabletype)) {
-                 @tablename = grep(/$tt/, @tabletype);
-                 $flag = 1;
-                 next;
-             }    
-            }
-            unless ($flag) { # find type in nodetype table
-              push (@types, $type);
-            } else {  # use table (ppc or zvm) from attribute 
-                my $tablehandler = xCAT::Table->new( $tablename[0] );
-                unless ($tablehandler) {   # cannot open 
-                  xCAT::MsgUtils->
-                  message('S', "getnodetype:Unable to open $tablename[0] table.\n");
-                  $::RUNCMD_RC = 1; 
-                  return undef; 
+    my @failnodes;
+    my @failnodes1;
+    ######################################################################
+    # if the table arg is set, go to the specified table first
+    # if can't get anything from the specified table, go to nodetype table
+    ######################################################################
+    if ($table) {
+        my $nodetypetab = xCAT::Table->new( $table );
+        unless ($nodetypetab) {   
+            xCAT::MsgUtils->message('S', "getnodetype:Unable to open $table table.\n");
+            $::RUNCMD_RC = 1; 
+            if ( $nodes =~ /^ARRAY/) {
+                foreach my $tn (@$nodes) {
+                    $typehash{$tn} = undef;
                 }
-                # read the table
-                $typep = $tablehandler->getNodeAttribs($nn, ["nodetype"]);
-                if ($typep and $typep->{nodetype}) {
-                  $type = $typep->{nodetype};
-                  push (@types, $type);
-                } else {
-                   push (@types, undef);
-                }
-           } # end of processing PPC    
-         } else {
-             push (@types, undef);
-         }    
+            } else {
+                $typehash{$nodes} = undef; 
+            }            
+            return \%typehash; 
         }
-        return \@types;
-    } else {   # for one node
-        $typep  = $nodetypetab->getNodeAttribs($nodes, ["nodetype"]);
-        if ( $typep and $typep->{nodetype} ) {  
-            $type = $typep->{nodetype};
-            my $flag = 0;
-            my @tablename;
-            for my $tt ( split /,/, $type ) {
-                if ( grep(/$tt/, @tabletype)) {
-                    @tablename = grep(/$tt/, @tabletype);
-                    $flag = 1;
-                    next;
-                }
-            }
-            unless ($flag) { # find type in nodetype table
-                return $type;
-            } else {    # find type in ppc table
-                my $tablehandler = xCAT::Table->new( $tablename[0] );
-                if ( !$tablehandler ) {
-                      xCAT::MsgUtils->message('S', "getnodetype:Unable to open $tablename[0] table.\n");
-                        $::RUNCMD_RC = 1; 
-                        return undef; 
-                }
-                $typep = $tablehandler->getNodeAttribs($nodes, ["nodetype"]);
-                if ( $typep and $typep->{nodetype} ) {  
-                    $type = $typep->{nodetype};
-                    return $type;
+        ############################################
+        # if the input node arg is an array,
+        # query table and don't use the global hash
+        ############################################
+        if ( $nodes =~ /^ARRAY/) {
+            my $nodetypes = $nodetypetab->getNodesAttribs($nodes, ['nodetype']);
+            foreach my $tn (@$nodes) {
+                my $gottype = $nodetypes->{$tn}->[0]->{'nodetype'};
+                if ( $gottype ) {         
+                    $NODETYPEHASH{$tn} = $gottype;
+                    $typehash{$tn} = $gottype;  
                 } else {
-                    return undef;
-                }                    
+                    push @failnodes, $tn;
+                }
             }
+            ################################################
+            # for the failed nodes, go to nodetype table 
+            ################################################
+            if ( @failnodes ) {
+                my $typetable = xCAT::Table->new( 'nodetype' );
+                unless ($typetable) {   # cannot open  the table return with error
+                    xCAT::MsgUtils->message('S', "getnodetype:Unable to open nodetype table.\n");
+                    $::RUNCMD_RC = 1; 
+                    foreach my $tn (@failnodes) {
+                        $typehash{$tn} = undef;
+                    }
+                } else {
+                    my $nodetypes = $nodetypetab->getNodesAttribs(\@failnodes, ['nodetype']);
+                    foreach my $tn ( @failnodes ) {
+                        if ( $nodetypes->{$tn}->[0] ) {
+                            $NODETYPEHASH{$tn} = $nodetypes->{$tn}->[0];
+                            $typehash{$tn} = $nodetypes->{$tn}->[0];   
+                        } else {
+                            push @failnodes1, $tn;
+                            $typehash{$tn} = undef;  
+                        }
+                        ##################################################
+                        # give error msg for the nodes can't get nodetype
+                        ##################################################
+                        if ( @failnodes1 ) {
+                            my $nodelist =  join(",", @failnodes1);
+                            xCAT::MsgUtils->message('S', "getnodetype:Can't find these nodes' type: $nodelist.\n");
+                        } 
+                    }  
+                }                    
+            } 
+            #####################
+            # return the result
+            #####################      
+            return \%typehash;
+                
         } else {
-            return undef;
-        }    
+        ############################################
+        # if the input node arg is not an array,
+        # query table and use the global hash first
+        ############################################
+            if ( $NODETYPEHASH{$nodes} ) {
+                $typehash{$nodes} = $NODETYPEHASH{$nodes};
+                return \%typehash; 
+            } else {
+                my $typep = $nodetypetab->getNodeAttribs($nodes, ['nodetype']);
+                if ( $typep->{nodetype} ) {
+                    $NODETYPEHASH{$nodes} = $typep->{nodetype};
+                    return $typep->{nodetype};
+                } else { #if not find in the specified table, go to nodetype table
+                    my $typetable = xCAT::Table->new( 'nodetype' );
+                    unless ($typetable) {   # cannot open  the table return with error
+                        xCAT::MsgUtils->message('S', "getnodetype:Unable to open nodetype table.\n");
+                        $::RUNCMD_RC = 1; 
+                        return undef;
+                    }
+                    my $typep  = $typetable->getNodeAttribs($nodes, ['nodetype']);
+                    if ( $typep->{nodetype} ) {
+                        $NODETYPEHASH{$nodes} = $typep->{nodetype};
+                        return  $typep->{nodetype};
+                    } else {
+                        return undef;
+                    }    
+                }
+            }
+        }
+    } else {
+    ######################################################################
+    # if the table arg is not set, go to the nodetype table first
+    # if can't get anything from the specified table, go to nodetype table
+    ######################################################################
+        my $nodetypetab = xCAT::Table->new( 'nodetype' );
+        unless ($nodetypetab) {   
+            xCAT::MsgUtils->message('S', "getnodetype:Unable to open $table table.\n");
+            $::RUNCMD_RC = 1; 
+            if ( $nodes =~ /^ARRAY/) {
+                foreach my $tn (@$nodes) {
+                    $typehash{$tn} = undef;
+                }
+            } else {
+                $typehash{$nodes} = undef; 
+            }            
+            return \%typehash; 
+        }
+        ############################################
+        # if the input node arg is an array,
+        # query table and don't use the global hash
+        ############################################
+        if ( $nodes =~ /^ARRAY/) {
+            my $nodetypes = $nodetypetab->getNodesAttribs($nodes, ['nodetype']);
+            foreach my $tn (@$nodes) {
+                my $gottype = $nodetypes->{$tn}->[0]->{'nodetype'};
+                if ( $gottype) {
+                    if ($gottype =~ /,/) {   #if find ppc,osi
+                        my @tbty = split /,/, $gottype;
+                        foreach my $ttable (@tbty){
+                            if (grep(/$ttable/, @tabletype)){
+                            $tablehash{ $tn } = $ttable;
+                            last;
+                            }
+                        }
+                    } elsif (grep(/$gottype/, @tabletype)){    #if find ppc or zvm
+                        $tablehash{ $tn } = $gottype;  
+                    } else {                         
+                        $NODETYPEHASH{ $tn } = $gottype;
+                        $typehash{ $tn } = $gottype;     
+                    }                    
+                } else {
+                    $typehash{ $tn } = undef;
+                }
+            }
+            ################################################
+            # for the failed nodes, go to related tables 
+            ################################################
+            if ( %tablehash ) {
+                foreach my $ttable (@tabletype) {
+                    my @nodegroup;
+                    foreach my $fnode (keys %tablehash) {
+                        if ($tablehash{$fnode} eq $ttable) {
+                            push @nodegroup, $fnode;
+                        }
+                    }   
+                    next unless (@nodegroup);                    
+                    my $typetable = xCAT::Table->new( $ttable);
+                    unless ($typetable) {
+                        my $failnodes = join(",", @nodegroup);
+                        xCAT::MsgUtils->message('S', "getnodetype:Unable to open $ttable table, can't find $failnodes type.\n");
+                        $::RUNCMD_RC = 1; 
+                        foreach (@nodegroup) {
+                            $typehash{$_} = undef;
+                        }
+                    } else {
+                        my $typep  = $typetable->getNodesAttribs(\@nodegroup, ['nodetype']);
+                        foreach my $fn (@nodegroup) {
+                            if ( $typep->{$fn}->[0]->{'nodetype'} ) {
+                                $typehash{$fn} = $typep->{$fn}->[0]->{'nodetype'};
+                                $NODETYPEHASH{$fn} = $typep->{$fn}->[0]->{'nodetype'};
+                            } else {
+                                $typehash{$fn} = undef;
+                            }
+                        }                          
+                    }
+                }
+            }   
+            return \%typehash;  
+        } else { # if not an array
+            if ( $NODETYPEHASH{$nodes} ) {
+                return $NODETYPEHASH{$nodes}; 
+            } else {
+                my $typep = $nodetypetab->getNodeAttribs($nodes, ["nodetype"]);
+                if ( $typep->{nodetype} and !(grep(/$typep->{nodetype}/, @tabletype))) {
+                    $NODETYPEHASH{$nodes} = $typep->{nodetype};
+                    return $typep->{nodetype};
+                } elsif ( grep(/$typep->{nodetype}/, @tabletype) ) {
+                    my $typetable = xCAT::Table->new( $typep->{nodetype} );
+                    unless ($typetable) {
+                        xCAT::MsgUtils->message('S', "getnodetype:Unable to open nodetype table.\n");
+                        $::RUNCMD_RC = 1; 
+                        return undef;
+                    }
+                    my $typep = $typetable->getNodeAttribs($nodes, ["nodetype"]);
+                    if ( $typep->{nodetype} ) {
+                        $NODETYPEHASH{$nodes} = $typep->{nodetype};
+                        return $typep->{nodetype};
+                    } else {
+                        return undef;
+                    }    
+                }
+            }
+        }
     }
 }
 #-------------------------------------------------------------------------------
