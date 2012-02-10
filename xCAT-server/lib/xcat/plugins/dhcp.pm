@@ -733,7 +733,6 @@ sub preprocess_request
 		foreach my $n (@nodes)
 		{
 			# get the nodetype for each node
-			#my $ntype = xCAT::DBobjUtils->getnodetype($n);
             my $ntable = xCAT::Table->new('nodetype');
             if ($ntable) {
                 my $mytype = $ntable->getNodeAttribs($n,['nodetype']);
@@ -1177,9 +1176,10 @@ sub process_request
     if ($req->{node})
     {
         #@inodes = split /,/,${$req->{noderange}};
+        my $typehash = xCAT::DBobjUtils->getnodetype(\@{$req->{node}});
         foreach $pnode(@{$req->{node}})
         {
-            my $ntype = xCAT::DBobjUtils->getnodetype($pnode);
+            my $ntype = $$typehash{$pnode};
                 if ($ntype =~ /^(cec|frame)$/)
                 {
                     $cnode = xCAT::DBobjUtils->getchildren($pnode);
@@ -1202,10 +1202,15 @@ sub process_request
             $req->{node} = [];
             my $nodelist = xCAT::Table->new('nodelist');
             my @entries  = ($nodelist->getAllNodeAttribs([qw(node)]));
+            my @nodeentries;
+            foreach (@entries) {
+                push @nodeentries, $_->{node};
+            }                
+            my $typehash = xCAT::DBobjUtils->getnodetype(\@nodeentries);
             foreach (@entries)
             {
                 #delete the CEC and Frame node
-                my $ntype = xCAT::DBobjUtils->getnodetype($_->{node});
+                my $ntype = $$typehash{$_->{node}};
                 unless ($ntype =~ /^(cec|frame)$/)
                 {
                     push @{$req->{node}}, $_->{node};
@@ -1235,7 +1240,6 @@ sub process_request
 				foreach my $n (@{$req->{node}})
 				{
 					# get the nodetype for each node
-					#my $ntype = xCAT::DBobjUtils->getnodetype($n);
                     my $ntable = xCAT::Table->new('nodetype');
                     if ($ntable) {
                         my $ntype = $ntable->getNodeAttribs($n,['nodetype']);
