@@ -1,13 +1,17 @@
 #egan@us.ibm.com
 #
+cmdline
 
 lang en_US
+langsupport en_US
+network --bootproto dhcp
 
 #
 # Where's the source?
 # nfs --server hostname.of.server or IP --dir /path/to/RH/CD/image
 #
 #nfs --server #XCATVAR:INSTALL_NFS# --dir #XCATVAR:INSTALL_SRC_DIR#
+url --url http://#TABLE:noderes:$NODE:nfsserver#/install/#TABLE:nodetype:$NODE:os#/#TABLE:nodetype:$NODE:arch#
 
 #device ethernet e100
 keyboard "us"
@@ -22,15 +26,19 @@ zerombr
 #
 clearpart --all --initlabel
 #clearpart --linux
+key --skip
 
 #
 # Customize to fit your needs
 #
 
+iscsiname #TABLE:nodelist:$NODE:node#
+iscsi --ipaddr #TABLE:iscsi:$NODE:server# --user "#TABLEBLANKOKAY:iscsi:$NODE:userid#" --password "#TABLEBLANKOKAY:iscsi:$NODE:passwd#"
+
 #No RAID
 #/boot really significant for this sort of setup nowadays?
 #part /boot --size 50 --fstype ext3
-%include /tmp/partitioning
+part / --size 1 --grow --fstype ext3
 
 #RAID 0 /scr for performance
 #part / --size 1024 --ondisk sda
@@ -75,11 +83,21 @@ bootloader
 #
 install
 
+#
+# text mode install (default is graphical)
+#
+text
 
 #
 # firewall
 #
 firewall --disabled
+
+#
+# mouse selection
+#
+#mouse genericps/2 --emulthree
+mouse none
 
 #
 # Select a zone
@@ -130,9 +148,9 @@ reboot
 #
 #end of section
 #
-%packages
+%packages --resolvedeps
 #INCLUDE_DEFAULT_PKGLIST#
 %pre
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.rh#
 %post
-#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.rh#
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.rh.iscsi#

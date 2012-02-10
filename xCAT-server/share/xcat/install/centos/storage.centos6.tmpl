@@ -1,13 +1,19 @@
-#egan@us.ibm.com
-#
+#vallard@benincosa.org
+# this storage script allows you to install even if FC is installed because
+# it removes the drivers for qlogic.
+# tested on CentOS 5.3
+cmdline
 
 lang en_US
+langsupport en_US
+network --bootproto dhcp
 
 #
 # Where's the source?
 # nfs --server hostname.of.server or IP --dir /path/to/RH/CD/image
 #
 #nfs --server #XCATVAR:INSTALL_NFS# --dir #XCATVAR:INSTALL_SRC_DIR#
+url --url http://#TABLE:noderes:$NODE:nfsserver#/install/#TABLE:nodetype:$NODE:os#/#TABLE:nodetype:$NODE:arch#
 
 #device ethernet e100
 keyboard "us"
@@ -25,12 +31,13 @@ clearpart --all --initlabel
 
 #
 # Customize to fit your needs
+# /boot is strongly recommended
 #
 
 #No RAID
-#/boot really significant for this sort of setup nowadays?
-#part /boot --size 50 --fstype ext3
-%include /tmp/partitioning
+part /boot --size 100 --ondisk sda --fstype ext3
+part swap --size 2048 --ondisk sda
+part / --size 6000 --grow --ondisk sda --fstype ext3
 
 #RAID 0 /scr for performance
 #part / --size 1024 --ondisk sda
@@ -75,11 +82,21 @@ bootloader
 #
 install
 
+#
+# text mode install (default is graphical)
+#
+text
 
 #
 # firewall
 #
 firewall --disabled
+
+#
+# mouse selection
+#
+#mouse genericps/2 --emulthree
+mouse none
 
 #
 # Select a zone
@@ -97,6 +114,10 @@ timezone --utc "#TABLE:site:key=timezone:value#"
 #
 skipx
 
+#
+# Geez!
+#
+key --skip
 
 #
 # To generate an encrypted root password use:
@@ -130,9 +151,34 @@ reboot
 #
 #end of section
 #
-%packages
+%packages --resolvedeps
 #INCLUDE_DEFAULT_PKGLIST#
+
 %pre
-#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.rh#
+#!/bin/sh
+# This will remove the loaded HBA modules from the kernel
+remove_qla(){
+for i in $(lsmod | grep qla | awk .{print $1.}); do
+echo Will remove: $i >> /dev/tty1
+rmmod $i
+sleep 1
+done
+}
+
+remove_lpfc(){
+for i in $(lsmod | grep lpfc | awk .{print $1.}); do
+echo Will remove: $i >> /dev/tty1
+rmmod $i
+sleep 1
+done
+}
+
+remove_qla
+sleep 2
+remove_qla
+remove_lpfc
+echo "All qla modules removed"
+sleep 10
+#INCLUDE:../scripts/pre.rh#
 %post
-#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.rh#
+#INCLUDE:../scripts/post.rh#
