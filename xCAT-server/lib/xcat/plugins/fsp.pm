@@ -218,7 +218,7 @@ sub getfspcon {
     #################################
     # Get node type
     #################################
-    my $type = xCAT::DBobjUtils->getnodetype($node);
+    my $type = xCAT::DBobjUtils->getnodetype($node, "ppc");
     #my ($type) = grep( /^(lpar|osi)$/, @types );
     
     if ( !defined( $type ) or !($type =~ /lpar/) ) {
@@ -301,7 +301,7 @@ sub getmulcon {
     #################################
     # Get node type
     #################################
-    my $ntype = xCAT::DBobjUtils->getnodetype($node);
+    my $ntype = xCAT::DBobjUtils->getnodetype($node, "ppc");
     my @types = split /,/, $ntype;
     my ($type) = grep( /^(lpar|osi)$/, @types );
     
@@ -337,10 +337,9 @@ sub getmulcon {
     my $Rc;
     my $c = @hcp_list; 
 
-
+    my $hashtype = xCAT::DBobjUtils->getnodetype(\@hcp_list, "ppc");
     foreach my $thishcp ( @hcp_list ) {
-        #my $thishcp_type = xCAT::FSPUtils->getTypeOfNode($thishcp);
-        my $thishcp_type = xCAT::DBobjUtils->getnodetype($thishcp);
+        my $thishcp_type = $$hashtype{$thishcp};
         if(!defined($thishcp_type)) {
             $rsp->{node}->[0]->{error}=["Can't get nodetype of $thishcp"];
             $rsp->{node}->[0]->{errorcode}=[1];   
@@ -392,12 +391,12 @@ sub genhwtree
 ##################################################################
 ####################refine the loop after getnodetype updated!!!!!
 ##################################################################
-
+    my $typehash = xCAT::DBobjUtils->getnodetype(\@$nodelist, "ppc");
     # only handle physical hardware objects here.
     foreach my $node (@$nodelist)
     {
         # will build a hash like sfp->frame->cec
-        my $ntype = xCAT::DBobjUtils->getnodetype($node);
+        my $ntype = $$typehash{$node};
         if ($ntype =~ /^frame$/)
         {
             # assume frame always available in DFM.
