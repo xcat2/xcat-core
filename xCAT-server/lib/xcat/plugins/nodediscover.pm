@@ -146,6 +146,9 @@ sub process_request {
   #First, fill in tables with data fields..
   if (defined($request->{mtm}) or defined($request->{serial})) {
     my $vpdtab = xCAT::Table->new("vpd",-create=>1);
+    if ($request->{uuid}->[0]) {
+       $vpdtab->setNodeAttribs($node,{uuid=>$request->{uuid}->[0]});
+    }
     if ($request->{mtm}->[0]) {
       $vpdtab->setNodeAttribs($node,{mtm=>$request->{mtm}->[0]});
     }
