@@ -3011,8 +3011,9 @@ sub do_resetnet {
 
     if ( $req->{node} ) {
         $reset_all = 0;
+        my $typehash = xCAT::DBobjUtils->getnodetype(\@{ $req->{node}});
         foreach my $nn ( @{ $req->{node}} ) {
-            $nodetype = xCAT::DBobjUtils->getnodetype($nn);
+            $nodetype = $$typehash{$nn};
             # this brunch is just for the xcat 2.6(+) database
             if ( $nodetype =~ /^(cec|frame)$/ )  {
                 my $cnodep = xCAT::DBobjUtils->getchildren($nn);
