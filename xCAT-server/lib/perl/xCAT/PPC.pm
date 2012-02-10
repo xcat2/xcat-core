@@ -1062,11 +1062,11 @@ sub resolve {
     #################################
     # Check for valid "type"
     #################################
-    my $ttype = xCAT::DBobjUtils->getnodetype($node);
+    my $ttype = xCAT::DBobjUtils->getnodetype($node, "ppc");
     my ($type) = grep( 
             /^$::NODETYPE_LPAR|$::NODETYPE_OSI|$::NODETYPE_BPA|$::NODETYPE_FSP|$::NODETYPE_CEC|$::NODETYPE_FRAME$/,
             #split /,/, $ent->{nodetype} );
-            split /,/, $ttype);
+            split /,/, $$ttype{$node});
 
     if ( !defined( $type )) {
         #return( "Invalid node type: $ent->{nodetype}" );
@@ -1131,7 +1131,7 @@ sub resolve {
 
         my $ntype;
         if ( exists( $att->{parent} )) {
-            $ntype = xCAT::DBobjUtils->getnodetype($att->{parent});
+            $ntype = xCAT::DBobjUtils->getnodetype($att->{parent}, "ppc");
         }
         if (( $request->{command} eq "rvitals" ) &&
                 ( $request->{method}  =~ /^all|temp$/ && $ntype =~ /^cec$/ )) {
@@ -1361,8 +1361,13 @@ sub handle_find_hw_children {
     if (!defined(@nodearray)) {
         return undef;
     }
+    my @tempnodes;
+    foreach (@nodearray) {
+        push @tempnodes, $_->{node};
+    }  
+    my $typehash = xCAT::DBobjUtils->getnodetype(\@tempnodes, "ppc");
     foreach my $node (@nodearray) {
-        my $n_type = xCAT::DBobjUtils->getnodetype($node->{node});
+        my $n_type = $$typehash{$node->{node}};
         if ($n_type !~ /^$child_type$/ or !defined($node->{side})) {
             next;
         }  
@@ -1846,8 +1851,9 @@ sub preprocess_request {
         } else {
             $support_hcp_type = "ivm";
         }
+        my $typehash = xCAT::DBobjUtils->getnodetype(\@$noderange, "ppc");
         foreach ( @$noderange ) {
-            my $nodetype = xCAT::DBobjUtils->getnodetype($_);
+            my $nodetype = $$typehash{$_};
             if ($nodetype and $nodetype =~ /$support_hcp_type/) {
                 push @{$hcp_hash{$_}{nodes}}, $_;
             } else {
@@ -2173,7 +2179,7 @@ sub process_request {
 	        #print "thishcp:$thishcp\n";
 	        #get the nodetype of hcp:
 	        #my $thishcp_type = xCAT::FSPUtils->getTypeOfNode($thishcp,$callback);
-	        my  $thishcp_type = xCAT::DBobjUtils->getnodetype($thishcp);
+	        my  $thishcp_type = xCAT::DBobjUtils->getnodetype($thishcp, "ppc");
             if(!defined($thishcp_type)) {
                 my %output = ();
                 $output{node}->[0]->{name} = [$node];
@@ -2433,7 +2439,7 @@ sub getHCPsOfNodes
             my $ppctab = xCAT::Table->new('ppc');
             my %newhcp;
             if ( $ppctab ) {
-                my $typeref = xCAT::DBobjUtils->getnodetype($nodes);
+                my $typeref = xCAT::DBobjUtils->getnodetype($nodes, "ppc");
                 my $i = 0;
                 unless ( $request->{sfp} ) {
                     for my $n (@$nodes) {
@@ -2482,7 +2488,7 @@ sub getHCPsOfNodes
     #get hcp from ppc.
     foreach my $node( @$nodes) {
         #my $thishcp_type = xCAT::FSPUtils->getTypeOfNode($node, $callback);
-        my $thishcp_type = xCAT::DBobjUtils->getnodetype($node);
+        my $thishcp_type = xCAT::DBobjUtils->getnodetype($node, "ppc");
         if( $thishcp_type eq "hmc") {
             $hcps{$node}{hcp} = [$node];
             $hcps{$node}{num} = 1;
