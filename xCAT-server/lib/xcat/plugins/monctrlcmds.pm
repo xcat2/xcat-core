@@ -13,6 +13,8 @@ use xCAT::MsgUtils;
 use xCAT_monitoring::monitorctrl;
 use xCAT::Utils;
 use Sys::Hostname;
+use Data::Dumper;
+
 
 1;
 
@@ -90,7 +92,7 @@ sub preprocess_request
       return;               
     } else {
       my $allnodes=$a_ret[4];
-      print "allnodes=@$allnodes\n";
+      #print "allnodes=@$allnodes\n";
       my $pname=$a_ret[1];
       my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/$pname.pm";
       my $module_name="xCAT_monitoring::$pname";
@@ -115,6 +117,8 @@ sub preprocess_request
         $mon_hierachy=xCAT_monitoring::monitorctrl->getNodeMonServerPair($allnodes, 1);
       }
       
+      #print Dumper($mon_hierachy);
+
       if (ref($mon_hierachy) eq 'ARRAY') { 
           my $rsp2={};
           $rsp2->{data}->[0]=$mon_hierachy->[1];
@@ -132,39 +136,77 @@ sub preprocess_request
       foreach(@hostinfo) {$iphash{$_}=1;}
       if (!$isSV) { $iphash{'noservicenode'}=1;}
 
-      foreach (@mon_servers) {
+      #check if we should also pass nodes that are managed by the sn to mn. 
+      my $handleGrands=0;
+      if (!$isSV) {
+	  if (defined(${$module_name."::"}{handleGrandChildren})) {
+	      $handleGrands=${$module_name."::"}{handleGrandChildren}->();
+	  }  
+      }
+      #print "handleGrands=$handleGrands\n";
+     
+      my $index=0;
+      my $reqcopy_grands = {%$req};
+      foreach my $sv_pair (@mon_servers) {
         #service node come in pairs, the first one is the monserver adapter that facing the mn,
         # the second one is facing the cn. we use the first one here
-        my @server_pair=split(':', $_); 
+        my @server_pair=split(':', $sv_pair); 
         my $sv=$server_pair[0];
-        my $mon_nodes=$mon_hierachy->{$_};
+        my $sv1;
+	if (@server_pair>1) {
+	    $sv1=$server_pair[1];
+	}
+        my $mon_nodes=$mon_hierachy->{$sv_pair};
         if ((!$mon_nodes) || (@$mon_nodes ==0)) { next; }
-        print "sv=$sv, nodes=@$mon_nodes\n";
+        #print "sv=$sv, nodes=@$mon_nodes\n";
 
         my $reqcopy = {%$req};
 	if (! $iphash{$sv}) {
-	  if ($isSV) { next; } #if the command is issued on the monserver, only handle its children.
-	  $reqcopy->{'_xcatdest'}=$sv;
-	  $reqcopy->{_xcatpreprocessed}->[0] = 1;
-	  my $rsp2={};
-	  $rsp2->{data}->[0]="sending request to $sv..., ".join(',', @$mon_nodes);
-	  $callback->($rsp2);
-        } 
-
-        push @{$reqcopy->{module}}, $a_ret[1];
+	    if ($isSV) { next; } #if the command is issued on the monserver, only handle its children.
+	    else {
+		if ($handleGrands) {
+		    $index++;
+		    $reqcopy_grands->{"grand_$index"}="$sv,$sv1," . join(',', @$mon_nodes);
+		}
+	    }
+	    $reqcopy->{'_xcatdest'}=$sv;
+	    $reqcopy->{_xcatpreprocessed}->[0] = 1;
+	    my $rsp2={};
+	    $rsp2->{data}->[0]="sending request to $sv..., ".join(',', @$mon_nodes);
+	    $callback->($rsp2);
+	} 
+	    
+	push @{$reqcopy->{module}}, $a_ret[1];
 	if($command eq "monshow"){
-  	  push @{$reqcopy->{priv}}, $a_ret[2];
-	  push @{$reqcopy->{priv}}, $a_ret[3];
-     	push @{$reqcopy->{priv}}, $a_ret[5];
-	push @{$reqcopy->{priv}}, $a_ret[6];
-        push  @{$reqcopy->{priv}}, $a_ret[7];
+	    push @{$reqcopy->{priv}}, $a_ret[2];
+	    push @{$reqcopy->{priv}}, $a_ret[3];
+	    push @{$reqcopy->{priv}}, $a_ret[5];
+	    push @{$reqcopy->{priv}}, $a_ret[6];
+	    push  @{$reqcopy->{priv}}, $a_ret[7];
 	} else {
-        push @{$reqcopy->{nodestatmon}}, $a_ret[2];
-        push @{$reqcopy->{scope}}, $a_ret[3];
+	    push @{$reqcopy->{nodestatmon}}, $a_ret[2];
+	    push @{$reqcopy->{scope}}, $a_ret[3];
 	}
-        push @{$reqcopy->{nodeinfo}}, join(',', @$mon_nodes);
-        push @requests, $reqcopy;
-      } 
+	push @{$reqcopy->{nodeinfo}}, join(',', @$mon_nodes);
+	push @requests, $reqcopy;
+      }
+
+      #add the a request for mn to handle all its grand children
+      if ($index > 0) {
+	  $reqcopy_grands->{grand_total}=$index;
+	  push @{$reqcopy_grands->{module}}, $a_ret[1];
+	  if($command eq "monshow"){
+	      push @{$reqcopy_grands->{priv}}, $a_ret[2];
+	      push @{$reqcopy_grands->{priv}}, $a_ret[3];
+	      push @{$reqcopy_grands->{priv}}, $a_ret[5];
+	      push @{$reqcopy_grands->{priv}}, $a_ret[6];
+	      push @{$reqcopy_grands->{priv}}, $a_ret[7];
+	  } else {
+	      push @{$reqcopy_grands->{nodestatmon}}, $a_ret[2];
+	      push @{$reqcopy_grands->{scope}}, $a_ret[3];
+	  }
+	  push @requests, $reqcopy_grands;
+      }
     }
   } else {
     my $reqcopy = {%$req};
@@ -411,13 +453,32 @@ sub monstart {
   my $scope=$request->{scope}->[0];
   my $nodeinfo=$request->{nodeinfo}->[0];
 
-  my @nodes=split(',', $nodeinfo);
-  print "monstart get called: pname=$pname\nnodestatmon=$nodestatmon\nnodeinfo=$nodeinfo\nscope=$scope\n"; 
+  my $grands={};
+  my $total=0;
+  if (exists($request->{grand_total})) {
+      $total=$request->{grand_total};
+  }
+  for (my $i=1; $i<= $total; $i++) {
+       if (exists($request->{"grand_$i"})) {
+	   my $temp=$request->{"grand_$i"};
+	   my @tmpnodes=split(',', $temp);
+	   if (@tmpnodes > 2) {
+	       my $sv=shift(@tmpnodes);
+	       my $sv1=shift(@tmpnodes);
+	       $grands->{"$sv,$sv1"}=\@tmpnodes;
+	   }
+       }
+  }
+  #print "-------grands" . Dumper($grands);
 
-  xCAT_monitoring::monitorctrl->startMonitoring([$pname], \@nodes, $scope, $callback); 
+
+  my @nodes=split(',', $nodeinfo);
+  #print "monstart get called: pname=$pname\nnodestatmon=$nodestatmon\nnodeinfo=$nodeinfo\nscope=$scope\n"; 
+
+  xCAT_monitoring::monitorctrl->startMonitoring([$pname], \@nodes, $scope, $callback, $grands); 
 
   if ($nodestatmon) {
-    xCAT_monitoring::monitorctrl->startNodeStatusMonitoring($pname, \@nodes, $scope, $callback); 
+    xCAT_monitoring::monitorctrl->startNodeStatusMonitoring($pname, \@nodes, $scope, $callback, $grands); 
   }
   return;
 }
@@ -596,14 +657,34 @@ sub monstop {
   my $scope=$request->{scope}->[0];
   my $nodeinfo=$request->{nodeinfo}->[0];
 
+
+  my $grands={};
+  my $total=0;
+  if (exists($request->{grand_total})) {
+      $total=$request->{grand_total};
+  }
+  for (my $i=1; $i<= $total; $i++) {
+       if (exists($request->{"grand_$i"})) {
+	   my $temp=$request->{"grand_$i"};
+	   my @tmpnodes=split(',', $temp);
+	   if (@tmpnodes > 2) {
+	       my $sv=shift(@tmpnodes);
+	       my $sv1=shift(@tmpnodes);
+	       $grands->{"$sv,$sv1"}=\@tmpnodes;
+	   }
+       }
+  }
+  #print "-------grands" . Dumper($grands);
+
+
   my @nodes=split(',', $nodeinfo);
-  print "monstop get called: pname=$pname\nnodestatmon=$nodestatmon\nnodeinfo=@nodes\nscope=$scope\n"; 
+  #print "monstop get called: pname=$pname\nnodestatmon=$nodestatmon\nnodeinfo=@nodes\nscope=$scope\n"; 
 
   if ($nodestatmon) {
-    xCAT_monitoring::monitorctrl->stopNodeStatusMonitoring($pname, \@nodes, $scope, $callback); 
+    xCAT_monitoring::monitorctrl->stopNodeStatusMonitoring($pname, \@nodes, $scope, $callback, $grands); 
   }
 
-  xCAT_monitoring::monitorctrl->stopMonitoring([$pname], \@nodes, $scope, $callback); 
+  xCAT_monitoring::monitorctrl->stopMonitoring([$pname], \@nodes, $scope, $callback, $grands); 
 
   return;
 }
@@ -1003,7 +1084,7 @@ sub monadd {
         foreach my $group (@pn) {
           my $posts=$postscripts_h->{$group};
           if ($posts) {
-            (my $ref) = $table2->getAttribs({node => $group}, 'postscripts');
+	    (my $ref) = $table2->getAttribs({node => $group}, 'postscripts');
             if ($ref and $ref->{postscripts}) {
               my @old_a=split(',', $ref->{postscripts}); 
               my @new_a=split(',', $posts);
@@ -1399,10 +1480,30 @@ sub moncfg
   my $scope=$request->{scope}->[0];
   my $nodeinfo=$request->{nodeinfo}->[0];
 
-  my @nodes=split(',', $nodeinfo);
-  print "moncfg get called: pname=$pname\nnodestatmon=$nodestatmon\nnodeinfo=@nodes\nscope=$scope\n"; 
+  #print "---------monctrlcmnd::moncfg request=" . Dumper($request);
+  
+  my $grands={};
+  my $total=0;
+  if (exists($request->{grand_total})) {
+      $total=$request->{grand_total};
+  }
+  for (my $i=1; $i<= $total; $i++) {
+       if (exists($request->{"grand_$i"})) {
+	   my $temp=$request->{"grand_$i"};
+	   my @tmpnodes=split(',', $temp);
+	   if (@tmpnodes > 2) {
+	       my $sv=shift(@tmpnodes);
+	       my $sv1=shift(@tmpnodes);
+	       $grands->{"$sv,$sv1"}=\@tmpnodes;
+	   }
+       }
+  }
+  #print "-------grands" . Dumper($grands);
 
-  xCAT_monitoring::monitorctrl->config([$pname], \@nodes, $scope, $callback); 
+  my @nodes=split(',', $nodeinfo);
+  #print "moncfg get called: pname=$pname\nnodestatmon=$nodestatmon\nnodeinfo=@nodes\nscope=$scope\n"; 
+
+  xCAT_monitoring::monitorctrl->config([$pname], \@nodes, $scope, $callback, $grands); 
   return 0;
 }
 
@@ -1583,10 +1684,29 @@ sub mondecfg
   my $scope=$request->{scope}->[0];
   my $nodeinfo=$request->{nodeinfo}->[0];
 
-  my @nodes=split(',', $nodeinfo);
-  print "mondecfg get called: pname=$pname\nnodestatmon=$nodestatmon\nnodeinfo=@nodes\nscope=$scope\n"; 
+  my $grands={};
+  my $total=0;
+  if (exists($request->{grand_total})) {
+      $total=$request->{grand_total};
+  }
+  for (my $i=1; $i<= $total; $i++) {
+       if (exists($request->{"grand_$i"})) {
+	   my $temp=$request->{"grand_$i"};
+	   my @tmpnodes=split(',', $temp);
+	   if (@tmpnodes > 2) {
+	       my $sv=shift(@tmpnodes);
+	       my $sv1=shift(@tmpnodes);
+	       $grands->{"$sv,$sv1"}=\@tmpnodes;
+	   }
+       }
+  }
+  #print "-------grands" . Dumper($grands);
 
-  xCAT_monitoring::monitorctrl->deconfig([$pname], \@nodes, $scope, $callback); 
+  my @nodes=split(',', $nodeinfo);
+  #print "mondecfg get called: pname=$pname\nnodestatmon=$nodestatmon\nnodeinfo=@nodes\nscope=$scope\n"; 
+
+  xCAT_monitoring::monitorctrl->deconfig([$pname], \@nodes, $scope, $callback, $grands); 
+
   return 0;
 }
 

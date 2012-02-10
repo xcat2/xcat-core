@@ -203,6 +203,7 @@ sub sendMonSignal {
                 0 means local host only. 
                 2 means both local host and nodes, 
        callback -- the callback pointer for error and status displaying. It can be null.
+       grands  -- a hash pointer. key: "servicenode,xcatmaset", value: a array pointer of grand children nodes. This one is only set when the current node is mn and handleGrandChildren returns 1 by the monitoring plugin.
     Returns:
         A hash table keyed by the plug-in names. The value is an array pointer 
         pointer to a return code and  message pair. For example:
@@ -218,6 +219,7 @@ sub startMonitoring {
   my $noderef=shift,
   my $scope=shift;
   my $callback=shift;
+  my $grands=shift;
 
   refreshProductList();
 
@@ -230,7 +232,7 @@ sub startMonitoring {
   #print "product_names=@product_names\n";
 
   my %ret=();
-  print "-------startMonitoring: product_names=@product_names\n"; 
+  #print "-------startMonitoring: product_names=@product_names\n"; 
   foreach(@product_names) {
     my $aRef=$PRODUCT_LIST{$_};
     if ($aRef) {
@@ -239,7 +241,7 @@ sub startMonitoring {
       undef $SIG{CHLD};
       #initialize and start monitoring
       no strict  "refs";
-      my @ret1 = ${$module_name."::"}{start}->($noderef, $scope, $callback);
+      my @ret1 = ${$module_name."::"}{start}->($noderef, $scope, $callback,$grands);
       $ret{$_}=\@ret1;
     } else {
        $ret{$_}=[1, "Monitoring plug-in module $_ is not registered or enabled."];
@@ -264,6 +266,7 @@ sub startMonitoring {
                 0 means local host only. 
                 2 means both local host and nodes, 
        callback -- the callback pointer for error and status displaying. It can be null.
+       grands  -- a hash pointer. key: "servicenode,xcatmaset", value: a array pointer of grand children nodes. This one is only set when the current node is mn and handleGrandChildren returns 1 by the monitoring plugin.
     Returns:
         (return_code, error_message)
 
@@ -277,11 +280,12 @@ sub startNodeStatusMonitoring {
   my $noderef=shift,
   my $scope=shift;
   my $callback=shift;
+  my $grands=shift;
 
   refreshProductList();
 
   if (!$pname) {$pname=$NODESTAT_MON_NAME;}
-  print "----startNodeStatusMonitoring: pname=$pname\n"; 
+  #print "----startNodeStatusMonitoring: pname=$pname\n"; 
 
   if ($pname) {
     my $aRef=$PRODUCT_LIST{$pname};
@@ -290,12 +294,12 @@ sub startNodeStatusMonitoring {
       undef $SIG{CHLD};
       no strict  "refs";
       my $method = ${$module_name."::"}{supportNodeStatusMon}->();
-    print "method=$method\n";
+    #print "method=$method\n";
       # return value 0 means not support. 1 means yes. 
       if ($method > 0) {
         #start nodes tatus monitoring
         no strict  "refs";
-        my @ret2 = ${$module_name."::"}{startNodeStatusMon}->($noderef, $scope, $callback); 
+        my @ret2 = ${$module_name."::"}{startNodeStatusMon}->($noderef, $scope, $callback,$grands); 
         return @ret2;
       }         
       else {
@@ -325,6 +329,7 @@ sub startNodeStatusMonitoring {
                 0 means local host only. 
                 2 means both local host and nodes, 
        callback -- the callback pointer for error and status displaying. It can be null.
+       grands  -- a hash pointer. key: "servicenode,xcatmaset", value: a array pointer of grand children nodes. This one is only set when the current node is mn and handleGrandChildren returns 1 by the monitoring plugin.
     Returns:
         A hash table keyed by the plug-in names. The value is ann array pointer
         pointer to a return code and  message pair. For example:
@@ -340,6 +345,7 @@ sub stopMonitoring {
   my $noderef=shift,
   my $scope=shift;
   my $callback=shift;
+  my $grands=shift;
 
   #refreshProductList();
 
@@ -350,7 +356,7 @@ sub stopMonitoring {
   if (@product_names == 0) {
      @product_names=keys(%PRODUCT_LIST);
   }
-  print "-------stopMonitoring: product_names=@product_names\n"; 
+  #print "-------stopMonitoring: product_names=@product_names\n"; 
 
   my %ret=();
 
@@ -381,7 +387,7 @@ sub stopMonitoring {
     #stop monitoring
     undef $SIG{CHLD};
     no strict  "refs";
-    my @ret2 = ${$module_name."::"}{stop}->($noderef, $scope, $callback);
+    my @ret2 = ${$module_name."::"}{stop}->($noderef, $scope, $callback,$grands);
     $ret{$_}=\@ret2;
   }
 
@@ -403,6 +409,7 @@ sub stopMonitoring {
                 0 means local host only. 
                 2 means both local host and nodes, 
        callback -- the callback pointer for error and status displaying. It can be null.
+       grands  -- a hash pointer. key: "servicenode,xcatmaset", value: a array pointer of grand children nodes. This one is only set when the current node is mn and handleGrandChildren returns 1 by the monitoring plugin.
     Returns:
         (return_code, error_message)
 
@@ -416,6 +423,7 @@ sub stopNodeStatusMonitoring {
   my $noderef=shift,
   my $scope=shift;
   my $callback=shift;
+  my $grands=shift;
   #refreshProductList();
 
   if (!$pname) {$pname=$NODESTAT_MON_NAME;}
@@ -440,7 +448,7 @@ sub stopNodeStatusMonitoring {
       #}
     }
     no strict  "refs";
-    my @ret2 = ${$module_name."::"}{stopNodeStatusMon}->($noderef, $scope, $callback); 
+    my @ret2 = ${$module_name."::"}{stopNodeStatusMon}->($noderef, $scope, $callback,$grands); 
     return @ret2;
   }
 }
@@ -1229,6 +1237,7 @@ sub getAllRegs
                 0 means local host only. 
                 2 means both local host and nodes, 
        callback -- the callback pointer for error and status displaying. It can be null.
+       grands  -- a hash pointer. key: "servicenode,xcatmaset", value: a array pointer of grand children nodes. This one is only set when the current node is mn and handleGrandChildren returns 1 by the monitoring plugin.
     Returns:
         ret a hash with plug-in name as the keys and the an arry of 
         [return code, error message] as the values.
@@ -1242,6 +1251,7 @@ sub config {
   my $noderef=shift,
   my $scope=shift;
   my $callback=shift;
+  my $grands=shift;
 
   my %ret=();
   my @product_names=@$nameref;
@@ -1251,7 +1261,7 @@ sub config {
     @product_names=keys(%all);    
   }
   
-  print "------config: product_names=@product_names\n";
+  #print "------config: product_names=@product_names\n";
 
   foreach(@product_names) {
     if (exists($all{$_})) {
@@ -1268,7 +1278,7 @@ sub config {
       #initialize and start monitoring
       no strict  "refs";
       if (defined(${$module_name."::"}{config})) {
-        my @ret1 = ${$module_name."::"}{config}->($noderef, $scope, $callback);
+        my @ret1 = ${$module_name."::"}{config}->($noderef, $scope, $callback, $grands);
         $ret{$_}=\@ret1;
       }
     } else {
@@ -1291,6 +1301,7 @@ sub config {
                 0 means local host only. 
                 2 means both loca lhost and nodes, 
        callback -- the callback pointer for error and status displaying. It can be null.
+       grands  -- a hash pointer. key: "servicenode,xcatmaset", value: a array pointer of grand children nodes. This one is only set when the current node is mn and handleGrandChildren returns 1 by the monitoring plugin.
     Returns:
         ret a hash with plug-in name as the keys and the an arry of 
         [return code, error message] as the values.
@@ -1304,6 +1315,7 @@ sub deconfig {
   my $noderef=shift,
   my $scope=shift;
   my $callback=shift;
+  my $grands=shift;
 
   my @product_names=@$nameref;
 
@@ -1312,7 +1324,7 @@ sub deconfig {
   if (@product_names == 0) {
     @product_names=keys(%all);    
   }
-  print "------deconfig: product_names=@product_names\n";
+  #print "------deconfig: product_names=@product_names\n";
  
 
   foreach(@product_names) {
@@ -1330,7 +1342,7 @@ sub deconfig {
       #initialize and start monitoring
       no strict  "refs";
       if (defined(${$module_name."::"}{deconfig})) {
-        my @ret1 = ${$module_name."::"}{deconfig}->($noderef, $scope, $callback);
+        my @ret1 = ${$module_name."::"}{deconfig}->($noderef, $scope, $callback, $grands);
         $ret{$_}=\@ret1;
       }
     } else {
