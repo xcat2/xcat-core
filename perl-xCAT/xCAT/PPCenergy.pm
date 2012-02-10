@@ -176,7 +176,7 @@ sub parse_args {
     #}
 
     #my $nodetype_v = $nodetype_tb->getNodesAttribs($nodes, ['nodetype']);
-    my $nodetyperef = xCAT::DBobjUtils->getnodetype($nodes);  
+    my $nodetyperef = xCAT::DBobjUtils->getnodetype($nodes, "ppc");  
     my $i = 0;
     foreach my $node (@{$nodes}) {
         if (@$nodetyperef[$i] ne 'fsp' && 
@@ -234,7 +234,7 @@ sub renergy {
     }
 
     # get the user and passwd for hcp: hmc, fsp, cec
-    my $hcp_type = xCAT::DBobjUtils->getnodetype($hcphost);
+    my $hcp_type = xCAT::DBobjUtils->getnodetype($hcphost, "ppc");
     my $user;
     my $password;
     if ($hcp_type eq "hmc") {
