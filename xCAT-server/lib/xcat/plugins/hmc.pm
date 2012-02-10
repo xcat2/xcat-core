@@ -90,7 +90,7 @@ sub gethmccon {
     #################################
     # Get node type
     #################################
-    my $type = xCAT::DBobjUtils->getnodetype($node);
+    my $type = xCAT::DBobjUtils->getnodetype($node, "ppc");
     #my ($type) = grep( /^(lpar|osi)$/, @types );
     
     if ( !defined( $type ) or !($type =~/lpar/) ) {
@@ -202,11 +202,17 @@ sub genhwtree
 ##################################################################
 
     # only handle physical hardware objects here.
+    my $typehash = xCAT::DBobjUtils->getnodetype(\@$nodelist, "ppc");
+    my @ppcnodes;
+    foreach (@entries) {
+        push @ppcnodes, $_->{node};
+    }    
+    my $entnodetypehash = xCAT::DBobjUtils->getnodetype(\@ppcnodes, "ppc");
     foreach my $node (@$nodelist)
     {
         # will build a hash like hmc->frame->cec
         # for old xcat defs, ppc.nodetype may be blank, should use getnodetype().
-        my $ntype = xCAT::DBobjUtils->getnodetype($node);
+        my $ntype = $$typehash{$node};
         if ($ntype =~ /^hmc$/)
         {
             # get all objects managed by this hmc.
@@ -214,7 +220,7 @@ sub genhwtree
             {
                 if ($ent->{hcp} =~ /$node/)
                 {
-                    my $type = xCAT::DBobjUtils->getnodetype($ent->{node});
+                    my $type = $$entnodetypehash{$ent->{node}};
                     # use cec as leaves
                     if ($type =~ /cec/)
                     {
