@@ -101,7 +101,7 @@ sub mkhwconn_parse_args
     {
         #my $nodetype_hash    = $nodetypetab->getNodeAttribs( $opt{p},[qw(nodetype)]);
         #my $nodetype    = $nodetype_hash->{nodetype};
-        my $nodetype = xCAT::DBobjUtils->getnodetype($opt{p});
+        my $nodetype = xCAT::DBobjUtils->getnodetype($opt{p}, "ppc");
         if( !defined($nodetype) ) {
             return(usage("Something wrong with the specified HMC (-p Option). The HMC type doesn't exist."));
         }
@@ -114,7 +114,8 @@ sub mkhwconn_parse_args
     if ( $ppctab)
     {
         my $hcp_nodetype = undef;
-        for my $node ( @$nodes)
+        my $typehash = xCAT::DBobjUtils->getnodetype(\@$nodes, "ppc");
+        for my $node (@$nodes)
         {
             my $node_parent = undef;
             my $nodetype    = undef;
@@ -128,7 +129,7 @@ sub mkhwconn_parse_args
                 {
                     #my $node_hcp_nodetype_hash = $nodetypetab->getNodeAttribs($node_hcp_hash->{hcp},[qw(nodetype)]);
                     #$node_hcp_nodetype = $node_hcp_nodetype_hash->{nodetype};
-                    $node_hcp_nodetype = xCAT::DBobjUtils->getnodetype($node_hcp_hash->{hcp});
+                    $node_hcp_nodetype = xCAT::DBobjUtils->getnodetype($node_hcp_hash->{hcp}, "ppc");
                 }
                 if ( defined $hcp_nodetype )
                 {
@@ -148,7 +149,7 @@ sub mkhwconn_parse_args
  
             }
             #$nodetype    = $nodetype_hash->{nodetype};
-            $nodetype = xCAT::DBobjUtils->getnodetype($node);
+            $nodetype = $$typehash{$node};
             $node_parent = $node_parent_hash->{parent};
             if ( !$nodetype )
             {
@@ -351,6 +352,7 @@ sub lshwconn_parse_args
     }
        
     my $nodetype;
+    my $typehash = xCAT::DBobjUtils->getnodetype(\@{$request->{node}}, "ppc");
     for my $node ( @{$request->{node}})
     {
         #my $ent = $nodetypetab->getNodeAttribs( $node, [qw(nodetype)]);
@@ -359,7 +361,7 @@ sub lshwconn_parse_args
         #{
         #    return( ["Failed to get node type for node $node.\n"]);
         #}
-        my $ttype = xCAT::DBobjUtils->getnodetype($node);
+        my $ttype = $$typehash{$node};
         if ( ! $ttype)
         {
             return( ["Failed to get nodehm.mgt value for node $node.\n"]);
@@ -458,6 +460,7 @@ sub rmhwconn_parse_args
     my @bpa_ctrled_nodes = ();
     my @no_type_nodes    = ();
     my @frame_members    = ();
+    my $nodetype_hash = xCAT::DBobjUtils->getnodetype(\@$nodes, "ppc");
     for my $node ( @$nodes)
     {
         my $nodehm = $nodehmtab->getNodeAttribs( $node, [qw(mgt)]);
@@ -468,10 +471,8 @@ sub rmhwconn_parse_args
         
 	my $node_parent = undef;
         my $nodetype    = undef;
-        #my $nodetype_hash    = $nodetypetab->getNodeAttribs( $node,[qw(nodetype)]);
-        my $node_parent_hash = $ppctab->getNodeAttribs( $node,[qw(parent)]);
-        #$nodetype    = $nodetype_hash->{nodetype};
-        $nodetype = xCAT::DBobjUtils->getnodetype($node);
+        my $node_parent_hash = $ppctab->getNodeAttribs($node,[qw(parent)]);
+        $nodetype = $$nodetype_hash{$node};
         $node_parent = $node_parent_hash->{parent};
         if ( !$nodetype)
         {
