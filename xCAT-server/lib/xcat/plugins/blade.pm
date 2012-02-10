@@ -1645,6 +1645,8 @@ sub rscan_xml {
 
         if (!$ignore) {
             $href->{Node}->{$_} = $d;
+        } elsif (/^mpa$/ && $type eq "fsp") {
+            $href->{Node}->{ip} = $d;
         }
     }
     
@@ -1734,6 +1736,8 @@ sub rscan_stanza {
 
         if (!$ignore) {
             $result .= "\t$_=$d\n";
+        } elsif (/^mpa$/ && $type eq "fsp") {
+	    $result .= "\tip=$d\n";
         }
     }
   }
