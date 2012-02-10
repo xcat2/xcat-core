@@ -271,6 +271,7 @@ sub noderange_validate {
     ###########################################
     # Group nodes
     ###########################################
+    my $mytypehash = xCAT::DBobjUtils->getnodetype($noderange, "ppc");
     foreach my $node ( @$noderange ) {
         my $type = undef;
         #my $sitetab  = xCAT::Table->new( 'nodetype' );
@@ -280,7 +281,7 @@ sub noderange_validate {
         #       $type = $ent->{nodetype};
         #    }
         #}
-        $type = xCAT::DBobjUtils->getnodetype($node);
+        $type = $$mytypehash{$node};
         #print "type:$type\n";
         if( $type =~/(fsp|lpar|cec)/) {
             $f1 = 1;
