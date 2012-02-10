@@ -1310,7 +1310,7 @@ sub getHMCcontrolIP
     my $exp = shift;
 
     #get node type first
-    my $type =  xCAT::DBobjUtils::getnodetype($node);
+    my $type =  xCAT::DBobjUtils::getnodetype($node, "ppc");
     unless ($type)
     {
         return undef;
