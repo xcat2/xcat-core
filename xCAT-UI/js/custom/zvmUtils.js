@@ -2201,6 +2201,12 @@ function createZProvisionNew(inst) {
 	vmFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
 	vmFS.append(vmAttr);
 	
+	// Create OS fieldset
+	var osFS = $('<fieldset></fieldset>');
+	var osLegend = $('<legend>Operating System</legend>');
+	osFS.append(osLegend);
+	provNew.append(osFS);
+	
 	// Create hardware fieldset
 	var hwFS = $('<fieldset></fieldset>');
 	var hwLegend = $('<legend>Hardware</legend>');
@@ -2210,13 +2216,7 @@ function createZProvisionNew(inst) {
 	var hwAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
 	hwFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/hardware.png"></img></div>'));
 	hwFS.append(hwAttr);
-	
-	// Create OS fieldset
-	var osFS = $('<fieldset></fieldset>');
-	var osLegend = $('<legend>Operating System</legend>');
-	osFS.append(osLegend);
-	provNew.append(osFS);
-	
+		
 	var osAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
 	osFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/operating_system.png"></img></div>'));
 	osFS.append(osAttr);
