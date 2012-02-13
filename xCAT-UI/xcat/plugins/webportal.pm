@@ -228,7 +228,12 @@ sub provzlinux {
 
 	# Set node definitions
 	# Also put node into all group
-	$out = `mkdef -t node -o $node userid=$userid hcp=$hcp mgt=zvm groups=$group,all`;
+	if ($group eq 'all') {
+		$out = `mkdef -t node -o $node userid=$userid hcp=$hcp mgt=zvm groups=$group`;
+	} else {
+		# Put node in all group
+		$out = `mkdef -t node -o $node userid=$userid hcp=$hcp mgt=zvm groups=$group,all`;
+	}	
 	println( $callback, "$out" );
 
 	# Set nodetype definitions
