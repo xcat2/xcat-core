@@ -114,7 +114,7 @@ sub mkhwconn_parse_args
     if ( $ppctab)
     {
         my $hcp_nodetype = undef;
-        my $typehash = xCAT::DBobjUtils->getnodetype(\@$nodes, "ppc");
+        my $typehash = xCAT::DBobjUtils->getnodetype($nodes, "ppc");
         for my $node (@$nodes)
         {
             my $node_parent = undef;
@@ -460,7 +460,7 @@ sub rmhwconn_parse_args
     my @bpa_ctrled_nodes = ();
     my @no_type_nodes    = ();
     my @frame_members    = ();
-    my $nodetype_hash = xCAT::DBobjUtils->getnodetype(\@$nodes, "ppc");
+    my $nodetype_hash = xCAT::DBobjUtils->getnodetype($nodes, "ppc");
     for my $node ( @$nodes)
     {
         my $nodehm = $nodehmtab->getNodeAttribs( $node, [qw(mgt)]);
