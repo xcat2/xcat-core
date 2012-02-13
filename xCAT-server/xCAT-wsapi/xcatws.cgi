@@ -24,7 +24,7 @@ my $queryString = $ENV{'QUERY_STRING'};
 my @path = split(/\//, $pathInfo);
 shift(@path);
 my $resource = $path[0];
-#print $q->header('text/html');
+my $pageContent = '';
 my $request = {clienttype =>'ws'};
 
 #error status codes
@@ -43,15 +43,37 @@ my $STATUS_SERVICE_UNAVAILABLE = "503 Service Unavailable";
 my $STATUS_OK = "200 OK";
 my $STATUS_CREATED = "201 Created";
 
-sub sendStatusMsg{
-  my $code = shift;
-  my $message = shift;
-  print $q->header(-status => $code);
-  print $message;
+#default format
+my $format = 'html';
+
+sub addPageContent{
+    my $newcontent = shift;
+    $pageContent .= $newcontent;
+}
+
+#send the response to client side
+#the http only return once in each request, so all content shoudl save in a global variable,
+#create the response header by status
+sub sendResponseMsg{
+    my $code = shift;
+    my $tempFormat = '';
+    if('json' eq $format){
+	$tempFormat = 'application/json';
+    }
+    elsif('xml' eq $format){
+	$tempFormat = 'text/xml';
+    }
+    else{
+	$tempFormat = 'text/html';
+    }
+    print $q->header(-status => $code, -type =>$tempFormat);
+    print $pageContent;
+    exit(0);
 }
 
 sub unsupportedRequestType{
-  sendStatusMsg($STATUS_NOT_ALLOWED, "request method '$requestType' is not supported on resource '$resource'");
+    addPageContent("request method '$requestType' is not supported on resource '$resource'");
+    sendResponseMsg($STATUS_NOT_ALLOWED);
 }
 
 use XML::Simple;
@@ -59,13 +81,10 @@ $XML::Simple::PREFERRED_PARSER='XML::Parser';
 
 sub genRequest{
   if($DEBUGGING){
-    print $q->p("request ".Dumper($request));
+    addPageContent($q->p("request ".Dumper($request)));
   }
   my $xml = XMLout($request, RootName=>'xcatrequest',NoAttr=>1,KeyAttr=>[]);
 }
-
-#default format
-my $format = 'html';
 
 #data formatters.  To add one simple copy the format of an existing one
 # and add it to this hash
@@ -76,10 +95,10 @@ my %formatters = ('html' => \&wrapHtml,
 
 if($q->param('format'))
 {
-  $format = $q->param('format');
-  if(!exists $formatters{$format}){
-    sendStatusMsg($STATUS_BAD_REQUEST, "The format '$format' is not valid");
-    exit(0);
+    $format = $q->param('format');
+    if(!exists $formatters{$format}){
+    addPageContent("The format '$format' is not valid");
+    sendResponseMsg($STATUS_BAD_REQUEST);
   }
 }
 
@@ -102,37 +121,36 @@ my %resources = (groups           => \&groupsHandler,
 
 #if no resource was specified
 if($pathInfo =~ /^\/$/ || $pathInfo =~ /^$/){
-  print $q->header('text/html');
-  print $q->p("This is the root page for the xCAT Rest Web Service.  Available resources are:");
-  foreach (sort keys %resources){
-    print $q->p($_);
-  }
-  exit(0);
+    addPageContent($q->p("This is the root page for the xCAT Rest Web Service.  Available resources are:"));
+    foreach (sort keys %resources){
+	addPageContent($q->p($_));
+    }
+    sendResponseMsg($STATUS_OK);
 }
 
 sub doesResourceExist
 {
-  my $res = shift;
-  return exists $resources{$res};
+    my $res = shift;
+    return exists $resources{$res};
 }
 
 if($DEBUGGING){
-  if(defined $q->param('PUTDATA')){
-    print "put data ".$q->p($q->param('PUTDATA')."\n");
-  }
-  if(defined $q->param('POSTDATA')){
-    print "post data ".$q->p($q->param('POSTDATA')."\n");
-  }
-  print $q->p("Parameters ");
-  my @params = $q->param;
-  foreach (@params)
-  {
-    print "$_ = ".$q->param($_)."\n";
-  }
-  print $q->p("Query String $queryString"."\n");
-  print $q->p("HTTP Method $requestType"."\n");
-  print $q->p("URI $url"."\n");
-  print $q->p("path ".Dumper(@path)."\n");
+    if(defined $q->param('PUTDATA')){
+	addPageContent("put data ".$q->p($q->param('PUTDATA')."\n"));
+    }
+    if(defined $q->param('POSTDATA')){
+	addPageContent("post data ".$q->p($q->param('POSTDATA')."\n"));
+    }
+    addPageContent($q->p("Parameters "));
+    my @params = $q->param;
+    foreach (@params)
+    {
+        addPageContent("$_ = ".join(',',$q->param($_))."\n");
+    }
+    addPageContent($q->p("Query String $queryString"."\n"));
+    addPageContent($q->p("HTTP Method $requestType"."\n"));
+    addPageContent($q->p("URI $url"."\n"));
+    addPageContent($q->p("path ".Dumper(@path)."\n"));
 }
 
 my $userName;
@@ -196,17 +214,17 @@ sub groupsHandler{
   #does it make sense to even have this?
   elsif(isPost()){
     my $nodeRange = $q->param('nodeRange');
-    if(defined $groupName && defined $nodeRange){
-      $request->{command} = 'mkdef';
-      push @args, '-t';
-      push @args, 'group';
-      push @args, '-o';
-      push @args, $groupName;
-      push @args, "members=$nodeRange";
+    if((defined $groupName) && (defined $nodeRange)){
+        $request->{command} = 'mkdef';
+        push @args, '-t';
+	push @args, 'group';
+	push @args, '-o';
+        push @args, $groupName;
+	push @args, "members=$nodeRange";
     }
     else{
-      sendStatusMsg($STATUS_BAD_REQUEST, "A node range and group name must be specified for creating a group");
-      exit(0);
+	addPageContent("A node range and group name must be specified for creating a group");
+        sendResponseMsg($STATUS_BAD_REQUEST);
     }
   }
   elsif(isPut()){
@@ -217,8 +235,8 @@ sub groupsHandler{
         push @args, "p=$q->param('path')";
       }
       else{
-        sendStatusMsg($STATUS_BAD_REQUEST, "The path must be specified for creating directories for dsh");
-        exit(0);
+	addPageContent("The path must be specified for creating directories for dsh");
+        sendResponseMsg($STATUS_BAD_REQUEST);
       }
     }
     else{
@@ -228,8 +246,8 @@ sub groupsHandler{
          push @args, $q->param('field');
       }
       else{
-        sendStatusMsg($STATUS_BAD_REQUEST, "The group and fields must be specified to update groups");
-        exit(0);
+	addPageContent("The group and fields must be specified to update groups");
+        sendResponseMsg($STATUS_BAD_REQUEST);
       }
     }
   }
@@ -242,8 +260,8 @@ sub groupsHandler{
       push @args, $groupName;
     }
     else{
-      sendStatusMsg($STATUS_BAD_REQUEST, "The group must be specified to delete a group");
-      exit(0);
+	addPageContent("The group must be specified to delete a group");
+	sendResponseMsg($STATUS_BAD_REQUEST);
     }
   }
   else{
@@ -306,7 +324,7 @@ sub imagesHandler{
 ####not supported at the moment
     #if($q->param('type') eq /stateless/){
       #if(!defined $image){
-        #sendStatusMsg($STATUS_BAD_REQUEST, "The image name is required to create a stateless image");
+        #sendResponseMsg($STATUS_BAD_REQUEST, "The image name is required to create a stateless image");
         #exit(0);
       #}
       #$request->{command} = 'genimage';
@@ -329,7 +347,8 @@ sub imagesHandler{
         push @args, $image;
       }
       else{
-        sendStatusMsg($STATUS_BAD_REQUEST, "The image name is required to clean an os image");
+	addPageContent("The image name is required to clean an os image");
+        sendResponseMsg($STATUS_BAD_REQUEST);
       }
     }
   }
@@ -350,8 +369,8 @@ sub imagesHandler{
       push @args, $q->param('profile');
     }
     else{
-      sendStatusMsg($STATUS_BAD_REQUEST, "Either the image name or the os, architecture and profile must be specified to remove an image");
-      exit(0);
+	addPageContent("Either the image name or the os, architecture and profile must be specified to remove an image");
+	sendResponseMsg($STATUS_BAD_REQUEST);
     }
   }
   else{
@@ -383,7 +402,8 @@ sub logsHandler{
 
   #no real output unless the log type is defined
   if(!defined $logType){
-    print $q->p("Current logs available are auditlog and eventlog");
+    addPageContent("Current logs available are auditlog and eventlog");
+    sendResponseMsg($STATUS_BAD_REQUEST);
     exit(0);
   }
 
@@ -397,7 +417,8 @@ sub logsHandler{
         }
       }
       else{
-        sendStatusMsg($STATUS_BAD_REQUEST, "nodeRange must be specified to GET remote event logs");
+        addPageContent("nodeRange must be specified to GET remote event logs");
+        sendResponseMsg($STATUS_BAD_REQUEST);
       }
     }
     else{
@@ -414,7 +435,8 @@ sub logsHandler{
         push @args, 'clear';
       }
       else{
-        sendStatusMsg($STATUS_BAD_REQUEST, "nodeRange must be specified to clean remote event logs");
+	addPageContent("nodeRange must be specified to clean remote event logs");
+        sendResponseMsg($STATUS_BAD_REQUEST);
       }
     }
     else{
@@ -788,7 +810,8 @@ sub notificationsHandler{
   elsif(isPost()){
     $request->{command} = 'regnotif';
     if(!defined $q->param('fileName') || !defined $q->param('table') || !defined $q->param('operation')){
-      sendStatusMsg($STATUS_BAD_REQUEST, "fileName, table and operation must be specified for a POST on /notifications");
+      addPageContent("fileName, table and operation must be specified for a POST on /notifications");
+      sendResponseMsg($STATUS_BAD_REQUEST);
     }
     else{
       push @args, $q->param('fileName');
@@ -815,7 +838,8 @@ sub notificationsHandler{
       push @args, $q->param('fileName');
     }
     else{
-      sendStatusMsg($STATUS_BAD_REQUEST, "fileName must be specified for a DELETE on /notifications");
+      addPageContent("fileName must be specified for a DELETE on /notifications");
+      sendResponseMsg($STATUS_BAD_REQUEST);
     }
   }
   else{
@@ -824,7 +848,7 @@ sub notificationsHandler{
   }
   
   push @{$request->{arg}}, @args;
-  print "request is ".Dumper($request);
+  addPageContent("request is ".Dumper($request));
   my $req = genRequest();
   @responses = sendRequest($req);
 
@@ -882,8 +906,8 @@ sub policiesHandler{
     }
     #some response about the priority being required
     else{
-      sendStatusMsg($STATUS_BAD_REQUEST, "The priority must be specified when creating a policy");
-      exit(0);
+      addPageContent("The priority must be specified when creating a policy");
+      sendResponseMsg($STATUS_BAD_REQUEST);
     }
   }
   elsif(isDelete()){
@@ -907,8 +931,8 @@ sub policiesHandler{
     }
     #some response about the priority being required
     else{
-      sendStatusMsg($STATUS_BAD_REQUEST, "The priority must be specified when updating a policy");
-      exit(0);
+      addPageContent("The priority must be specified when updating a policy");
+      sendResponseMsg($STATUS_BAD_REQUEST);
     }
   }
   else{
@@ -917,7 +941,7 @@ sub policiesHandler{
   }
 
   push @{$request->{arg}}, @args;
-  print "request is ".Dumper($request);
+  addPageContent("request is ".Dumper($request));
   my $req = genRequest();
   @responses = sendRequest($req);
 
@@ -1016,8 +1040,8 @@ sub tablesHandler{
   elsif(isPut() || isPatch()){
     my $condition = $q->param('condition');
     if(!defined $table || !defined $condition){
-      sendStatusMsg($STATUS_BAD_REQUEST, "The table and condition must be specified when adding, changing or deleting an entry");
-      exit(0);
+      addPageContent("The table and condition must be specified when adding, changing or deleting an entry");
+      sendResponseMsg($STATUS_BAD_REQUEST);
     }
     $request->{command} = 'tabch';
     if(defined $q->param('delete')){
@@ -1093,8 +1117,8 @@ sub accountsHandler{
         }
       }
       else{
-        sendStatusMsg($STATUS_BAD_REQUEST, "The key must be specified when creating a non-cluster user");
-        exit(0);
+	addPageContent("The key must be specified when creating a non-cluster user");
+        sendResponseMsg($STATUS_BAD_REQUEST);
       }
     }
     #active directory user
@@ -1107,8 +1131,8 @@ sub accountsHandler{
         $request->{environment} = {XCAT_USERPASS => $q->param('userPass')};
       }
       else{
-        sendStatusMsg($STATUS_BAD_REQUEST, "The key must be specified when creating a cluster user");
-        exit(0);
+	addPageContent("The key must be specified when creating a cluster user");
+        sendResponseMsg($STATUS_BAD_REQUEST);
       }
     }
   }
@@ -1122,8 +1146,8 @@ sub accountsHandler{
         push @args, "passwd";
       }
       else{
-        sendStatusMsg($STATUS_BAD_REQUEST, "The key must be specified when deleting a non-cluster user");
-        exit(0);
+	addPageContent("The key must be specified when deleting a non-cluster user");
+        sendResponseMsg($STATUS_BAD_REQUEST);
       }
     }
     else{
@@ -1133,8 +1157,8 @@ sub accountsHandler{
         push @args, $q->param('userName');
       } 
       else{
-        sendStatusMsg($STATUS_BAD_REQUEST, "The userName must be specified when deleting a cluster user");
-        exit(0);
+	addPageContent("The userName must be specified when deleting a cluster user");
+        sendResponseMsg($STATUS_BAD_REQUEST);
       }
     }
   }
@@ -1150,8 +1174,8 @@ sub accountsHandler{
         }
       }
       else{
-        sendStatusMsg($STATUS_BAD_REQUEST, "The key must be specified when updating a non-cluster user");
-        exit(0);
+	addPageContent("The key must be specified when updating a non-cluster user");
+        sendResponseMsg($STATUS_BAD_REQUEST);
       }
     }
     #TODO:  there isn't currently a way to update cluster users
@@ -1226,7 +1250,8 @@ sub objectsHandler{
       push @args, '-v';
     }
     if(!defined $q->param('objectType')){
-      sendStatusMsg($STATUS_BAD_REQUEST, "The object must be specified.");
+      addPageContent("The object must be specified.");
+      sendResponseMsg($STATUS_BAD_REQUEST);
     }
     else{
       push @args, '-t';
@@ -1264,7 +1289,8 @@ sub objectsHandler{
       push @args, '-v';
     }
     if(!defined $q->param('objectType')){
-      sendStatusMsg($STATUS_BAD_REQUEST, "The object must be specified.");
+      addPageContent("The object must be specified.");
+      sendResponseMsg($STATUS_BAD_REQUEST);
     }
     else{
       push @args, '-t';
@@ -1310,8 +1336,8 @@ sub objectsHandler{
       }
     }
     else{
-      sendStatusMsg($STATUS_BAD_REQUEST, "Either the help info must be requested or the object must be specified or the flag that indicates everything should be removed.");
-      exit(0);
+      addPageContent("Either the help info must be requested or the object must be specified or the flag that indicates everything should be removed.");
+      sendResponseMsg($STATUS_BAD_REQUEST);
     }
     if(defined $q->param('nodeRange')){
       push @args, $q->param('nodeRange');
@@ -1417,8 +1443,8 @@ sub vmsHandler{
       }
     }
     else{
-      sendStatusMsg($STATUS_BAD_REQUEST, "The node range must be specified when deleting vms");
-      exit(0);
+      addPageContent("The node range must be specified when deleting vms");
+      sendResponseMsg($STATUS_BAD_REQUEST);
     }
   }
   else{
@@ -1439,127 +1465,129 @@ sub jobsHandler{
 
 #all data wrapping and writing is funneled through here
 sub wrapData{
-  my @data = shift;
-  #trim the serverdone message off
-  if(exists $data[0][$#{$data[0]}]->{serverdone}){
-    pop @{$data[0]};
-  }
-  if(exists $formatters{$format}){
-    $formatters{$format}->(@data);
-  }
+    my $data = shift;
+    my $errorInformation = '';
+    addPageContent($q->p(Dumper($data)));
+    #trim the serverdone message off
+    if (exists $data->[0]->{serverdone} && exists $data->[0]->{error}){
+	$errorInformation = $data->[0]->{error}->[0];
+	addPageContent($q->p($errorInformation));
+	if (($errorInformation =~ /Permission denied/) || ($errorInformation =~ /Authentication failure/)){
+	    sendResponseMsg($STATUS_UNAUTH);
+	}
+	else{
+	    sendResponseMsg($STATUS_FORBIDDEN);
+	}
+        exit 1;
+    }
+    else{
+	pop @{$data};
+    }
+    if(exists $formatters{$format}){
+	$formatters{$format}->($data);
+    }
+
+    #all information were add into the global varibale, call the response funcion
+    if(isPost()){
+        sendResponseMsg($STATUS_CREATED);
+    }
+    else{
+        sendResponseMsg($STATUS_OK);
+    }
 }
 
 sub wrapJson
 {
   my @data = shift;
-  print header('application/json');
   my $json;
   $json->{'data'} = \@data;
-  print to_json($json);
+  addPageContent(to_json($json));
 }
 
 sub wrapHtml
 {
   my $item;
-  my @response = shift;
+  my $response = shift;
   my $baseUri = $url.$pathInfo;
   if($baseUri !~ /\/^/)
   {
     $baseUri .= "/";
   }
-  print $q->header('text/html');
-  #print $q->p("dumping in wrapHtml ".Dumper(@response));
-  foreach my $data (@response){
-    if(@$data[0]->{error}){
-      if(@$data[0]->{error}[0] =~ /Permission denied/ || @$data[0]->{error}[0] =~ /Authentication failure/){
-        sendStatusMsg($STATUS_UNAUTH, @$data[0]->{error}[0]);
-      }
-      else{
-        sendStatusMsg($STATUS_FORBIDDEN, @$data[0]->{error}[0]);
-      }
-      exit(0);
-    }
-    else{
-      if(isPost()){
-        sendStatusMsg($STATUS_CREATED);
-      }
-      else{
-        sendStatusMsg($STATUS_OK);
-      }
-    }
-    foreach my $element (@$data){
+  #addPageContent($q->p("dumping in wrapHtml ".Dumper($response)));
+  foreach my $element (@$response){
+    #foreach my $element (@$data){
       #if($element->{error}){
       if($element->{node}){
-        print "<table border=1>";
+        addPageContent("<table border=1>");
         foreach $item (@{$element->{node}}){
           #my $url = $baseUri.$item->{name}[0];
-          #print "<tr><td><a href=$url>$item->{name}[0]</td></tr>";
-          print "<tr><td>$item->{name}[0]</td>";
+          addPageContent("<tr><td>$item->{name}[0]</td>");
           if(exists $item->{data} && exists $item->{data}[0]){
             if(ref($item->{data}[0]) eq 'HASH'){
               if(exists $item->{data}[0]->{desc} && exists $item->{data}[0]->{desc}[0]){
-                print "<td>$item->{data}[0]->{desc}[0]</td>";
+                addPageContent("<td>$item->{data}[0]->{desc}[0]</td>");
               }
               if(ref($item->{data}[0]) eq 'HASH' && exists $item->{data}[0]->{contents}[0]){
-                print "<td>$item->{data}[0]->{contents}[0]</td>";
+                addPageContent("<td>$item->{data}[0]->{contents}[0]</td>");
               }
             }
             else{
-              print "<td>$item->{data}[0]</td>";
+              addPageContent("<td>$item->{data}[0]</td>");
             }
           }
           elsif(exists $item->{error}){
-            print "<td>$item->{error}[0]</td>";
+            addPageContent("<td>$item->{error}[0]</td>");
           }
-          print "</tr>";
+          addPageContent("</tr>");
         }
-        print "</table>";
+        addPageContent("</table>");
       }
       elsif($element->{data}){
-        print "<table border=1>";
+        addPageContent("<table border=1>");
         foreach $item (@{$element->{data}}){
           my @values = split(/:/, $item, 2);
-          #print "<tr><td><a href=$url$pathInfo$key>$key</a></td><td>$value</td></tr>";
-          print "<tr>";
+          addPageContent("<tr>");
           foreach (@values){
             if($formatType =~ /splitCommas/){
               my @fields = split(/,/, $_,-1);
               foreach (@fields){
-                print "<td>$_</td>";
+                addPageContent("<td>$_</td>");
               }
             }
             else{
-              print "<td>$_</td>";
+              addPageContent("<td>$_</td>");
             }
           }
-          print "</tr>\n";
+          addPageContent("</tr>\n");
         }
-        print "</table>";
+        addPageContent("</table>");
       }
       elsif($element->{info}){
-        print "<table border=1>";
+        addPageContent("<table border=1>");
         foreach $item (@{$element->{info}}){
           my @values = split(/:/, $item, 2);
-          #print "<tr><td><a href=$url$pathInfo$key>$key</a></td><td>$value</td></tr>";
-          print "<tr>";
+          addPageContent("<tr>");
           foreach (@values){
             if($formatType =~ /splitCommas/){
               my @fields = split(/,/, $_,-1);
               foreach (@fields){
-                print "<td>$_</td>";
+                addPageContent("<td>$_</td>");
               }
             }
             else{
-              print "<td>$_</td>";
+              addPageContent("<td>$_</td>");
             }
           }
-          print "</tr>\n";
+          addPageContent("</tr>\n");
         }
-        print "</table>";
-        #foreach $item (@{$element->{info}}){
-          #print $item;
-        #}
-      }
+        addPageContent("</table>");
+    }
+    elsif($element->{error}){
+	addPageContent("<table border=1>");
+	foreach $item (@{$element->{error}}){
+	    addPageContent("<tr><td>" . $item . "</td></tr>");
+	}
+	addPageContent("</table>");
     }
   }
 }
@@ -1567,22 +1595,21 @@ sub wrapHtml
 sub wrapXml
 {
   my @data = shift;
-  print header('text/xml');
   foreach(@data){
     foreach(@$_){
-      print XMLout($_, RootName=>'',NoAttr=>1,KeyAttr=>[]);
+      addPageContent(XMLout($_, RootName=>'',NoAttr=>1,KeyAttr=>[]));
     }
   }
 }
 
 #general tests for valid requests and responses with HTTP codes here
 if(!doesResourceExist($resource)){
-  sendStatusMsg($STATUS_NOT_FOUND, "Resource '$resource' does not exist");
-  exit(0);
+    addPageContent("Resource '$resource' does not exist");
+    sendResponseMsg($STATUS_NOT_FOUND);
 }
 else{
   if($DEBUGGING){
-    print $q->p("resource is $resource");
+    addPageContent($q->p("resource is $resource"));
   }
   handleRequest();
 }
@@ -1606,7 +1633,7 @@ sub sendRequest{
     my $preXml = $request;
     #$preXml =~ s/</<br>&lt /g;
     #$preXml =~ s/>/&gt<br>/g;
-    print $q->p("request XML<br>$preXml");
+     addPageContent($q->p("request XML<br>".$preXml));
   }
 
   #hardcoded port for now
@@ -1637,12 +1664,12 @@ sub sendRequest{
   }
   unless ($client) {
     if ($@ =~ /SSL Timeout/) {
-      sendStatusMsg($STATUS_TIMEOUT, "Connection failure: SSL Timeout or incorrect certificates in ~/.xcat");
-      exit(0);
+      addPageContent("Connection failure: SSL Timeout or incorrect certificates in ~/.xcat");
+      sendResponseMsg($STATUS_TIMEOUT);
     }
     else{
-      sendStatusMsg($STATUS_SERVICE_UNAVAILABLE, "Connection failure: $@");
-      exit(0);
+      addPageContent("Connection failurexx: $@");
+      sendResponseMsg($STATUS_SERVICE_UNAVAILABLE);
     }
   }
 
@@ -1656,10 +1683,10 @@ sub sendRequest{
     $response .= $_;
     if (m/<\/xcatresponse>/) {
       #replace ESC with xxxxESCxxx because XMLin cannot handle it
+      addPageContent($response . "\n");
       $response =~ s/\e/xxxxESCxxxx/g;
-#print "responseXML is ".$response;
+      #print "responseXML is ".$response;
       $rsp = XMLin($response,SuppressEmpty=>undef,ForceArray=>1);
-
       #add ESC back
       foreach my $key (keys %$rsp) {
         if (ref($rsp->{$key}) eq 'ARRAY') {
@@ -1682,12 +1709,13 @@ sub sendRequest{
     }
   }
   unless ($cleanexit) {
-    sendStatusMsg($STATUS_SERVICE_UNAVAILABLE, "ERROR/WARNING: communication with the xCAT server seems to have been ended prematurely");
+    addPageContent("ERROR/WARNING: communication with the xCAT server seems to have been ended prematurely");
+    sendResponseMsg($STATUS_SERVICE_UNAVAILABLE);
     exit(0);
   }
   
   if($DEBUGGING){
-    print $q->p("response ".Dumper(@fullResponse));
+    addPageContent($q->p("response ".Dumper(@fullResponse)));
   }
   return @fullResponse;
 }
@@ -1722,6 +1750,6 @@ sub isAuthenticUser{
     return 1;
   }
   #authentication failure
-  sendStatusMsg($STATUS_UNAUTH, $responses[0]->{error}[0]);
-  return 0;
+  addPageContent($responses[0]->{error}[0]);
+  sendResponseMsg($STATUS_UNAUTH);
 }
