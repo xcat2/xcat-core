@@ -202,7 +202,7 @@ sub genhwtree
 ##################################################################
 
     # only handle physical hardware objects here.
-    my $typehash = xCAT::DBobjUtils->getnodetype(\@$nodelist, "ppc");
+    my $typehash = xCAT::DBobjUtils->getnodetype($nodelist, "ppc");
     my @ppcnodes;
     foreach (@entries) {
         push @ppcnodes, $_->{node};
