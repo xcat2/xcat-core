@@ -273,7 +273,7 @@ sub init_plugin
             print "\n"
               ; # make OK prints look better.  Only need to do this for the 1st service.
             my @tmp = xCAT::Utils->get_site_attribute("vsftp");   
-		    if ((!$tmp[0]) || ($tmp[0] !~ /0|NO|No|no|N|n/ )) {         
+		    if ($tmp[0] && ($tmp[0] !~ /0|NO|No|no|N|n/ )) {         
                 $rc = &setup_FTP();    # setup FTP
             }
             #enable the tftp-hpa for MN
