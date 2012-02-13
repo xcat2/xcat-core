@@ -90,7 +90,21 @@ else
             mv -f $conf_file $conf_file_backup
         fi
     fi
-    echo "server $master" >$conf_file
+
+    if [ $NTPSERVERS ]; then
+        if [ "$NTPSERVERS" = "&lt;xcatmaster&gt;" ] || [ "$NTPSERVERS" = "<xcatmaster>" ]; then
+            echo "server $master" >>$conf_file
+        else
+        	for i in $(echo $NTPSERVERS | tr ',' ' ')
+        	do
+         	   echo "server $i" >>$conf_file
+        	   master=$i
+        	done 
+        fi
+    else
+        echo "server $master" >$conf_file
+    fi
+
 fi
 
 OS_TYPE=`uname`
