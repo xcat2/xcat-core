@@ -640,7 +640,8 @@ sub mknetboot
             }
         }
 
-        if ( grep /hf/, $reshash->{$node}->[0]->{installnic} )
+        my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( [$node] );
+        if ( $client_nethash{$node}{mgtifname} =~ /hf/ )
         {
             $kcmdline .= "rdloaddriver=hf_if ";
         }
