@@ -260,7 +260,8 @@ sub rflash {
 		my @levels = split(/,/, $v);
 	       	
 	        my $frame = $$d[5];
-                if ( $frame ne $name ) {
+                my $type = xCAT::DBobjUtils->getnodetype($frame);
+                if ( ( $frame ne $name ) && ( $type eq "frame" ) ){
                     
                     my @frame_d = (0, 0, 0, $frame, "frame", 0);
 	            $action = "list_firmware_level";
