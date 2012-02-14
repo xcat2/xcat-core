@@ -141,6 +141,7 @@ run_ps () {
 # subroutine end
 
 " > /tmp/mypostscript
+echo "cd /xcatpost" >> /tmp/mypostscript
 echo "$TMP" >> /tmp/mypostscript
 TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
 echo "$TMP" > /tmp/mypostscript 
@@ -172,7 +173,7 @@ chkconfig --add xcatpostinit1
 #only run the prebooot scripts here
 TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /tmp/mypostscript`
 echo "$TMP" > /tmp/mypostscript
-
+cd /xcatpost
 /tmp/mypostscript
 
 updateflag.awk $MASTER 3002

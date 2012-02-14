@@ -118,6 +118,7 @@ run_ps () {
 # subroutine end
 
 " > /tmp/mypostscript
+echo "cd /xcatpost" >> /tmp/mypostscript
 echo "$TMP" >> /tmp/mypostscript
 TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
 echo "$TMP" > /tmp/mypostscript 
