@@ -16,7 +16,7 @@ if [ $rvid_vidproto = "vnc" ];then
 	    echo -e "$rvid_password\n$rvid_password"|vncpasswd /tmp/rvidpass.$$ > /dev/null
 	    #echo $rvid_password|vncviewer :$myport -via $rvid_server AutoSelect=0 FullColor=1 passwdInput=1 >& /dev/null &
 	    vncviewer $rvid_server:$myport AutoSelect=0 FullColor=1 passwd=/tmp/rvidpass.$$ >& /dev/null &
-    sleep 0.2
+    sleep 0.4
     flock -u 200
     rm /tmp/rvidpass.$$
 ) 200> /tmp/xcat/virtvnclock
