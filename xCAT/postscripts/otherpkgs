@@ -581,10 +581,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
             rm -f -R /tmp/postage/*
             cd /tmp/postage
     
-            for x in `echo "$plain_pkgs" | tr " " "\n"`
-            do
-	        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -nH --cut-dirs=2 -t 0 -T 60 --reject "index.html*" --no-parent http://$OTHERPKGDIR/$x 2> /tmp/wget.log  
-            done
+	    wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 --reject "index.html*" --no-parent http://$OTHERPKGDIR/ 2> /tmp/wget.log  
     
             mv $dir_no_ftproot/* /xcatpost/$dir_no_ftproot; 
             rm -rf $NFSSERVER
