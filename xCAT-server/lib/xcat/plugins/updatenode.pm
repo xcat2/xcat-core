@@ -1617,16 +1617,9 @@ sub doAIXcopy
                 	foreach my $pkg (@$list)
                 	{
                     	chomp $pkg;
-						my ($junk, $pname);
-						if (($pkg =~ /^R:/) || ($pkg =~ /^I:/) || ($pkg =~ /^E:/) )
+                    	if (!grep(/^$pkg$/, @pkglist))
                     	{
-                        	($junk, $pname) = split(/:/, $pkg);
-                    	} else {
-                        	$pname = $pkg;
-                    	}
-                    	if (!grep(/^$pname$/, @pkglist))
-                    	{
-                        	push(@pkglist, $pname);
+                        	push(@pkglist, $pkg);
                     	}
                 	}
                 	$bndloc{$bnd} = $loc;
@@ -1904,7 +1897,7 @@ sub updateAIXsoftware
                         } else {
                             $pname = $p;
                         }
-                        push @emgr_pkgs, $p;
+                        push @emgr_pkgs, $pname;
 
 					} else {
 						my ($junk, $pname);
