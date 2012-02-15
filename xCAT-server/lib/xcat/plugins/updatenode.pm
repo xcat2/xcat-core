@@ -1550,6 +1550,7 @@ sub doAIXcopy
 			# if it's an lpp_source than check both RPM and installp
 			my $rpmloc;
 			my $instploc;
+			my $emgrloc;
 			if ($::ALTSRC) {
 				# use same loc for everything
 				$rpmloc = $instploc = $imagedef{$img}{alt_loc};
@@ -1557,6 +1558,7 @@ sub doAIXcopy
 				# use specific lpp_source loc
 				$rpmloc = "$imagedef{$img}{lpp_loc}/RPMS/ppc";
 				$instploc = "$imagedef{$img}{lpp_loc}/installp/ppc";
+				$emgrloc = "$imagedef{$img}{lpp_loc}/emgr/ppc";
 			}
 
 			# get installp filesets in this dir
@@ -1569,8 +1571,7 @@ sub doAIXcopy
 			}
 
 			# get epkg files
-			# epkg files should go with installp filesets - I think?
-			my $ecmd = qq~/usr/bin/ls $instploc 2>/dev/null~;
+			my $ecmd = qq~/usr/bin/ls $emgrloc 2>/dev/null~;
 			my @elist = xCAT::Utils->runcmd("$ecmd", -1);
 			foreach my $f (@elist) {
 				if (($f =~ /epkg\.Z/)) {
@@ -1594,9 +1595,16 @@ sub doAIXcopy
         	{
             	foreach my $pkg (split(/,/, $imagedef{$img}{otherpkgs}))
             	{
-                	if (!grep(/^$pkg$/, @pkglist))
+					my ($junk, $pname);
+					if (($pkg =~ /^R:/) || ($pkg =~ /^I:/) || ($pkg =~ /^E:/) )
+					{
+   						($junk, $pname) = split(/:/, $pkg);             	
+					} else {
+						$pname = $pkg;
+					}
+					if (!grep(/^$pname$/, @pkglist))
                 	{
-                          push(@pkglist, $pkg);
+                          push(@pkglist, $pname);
                 	}
             	}
         	}
@@ -1609,9 +1617,16 @@ sub doAIXcopy
                 	foreach my $pkg (@$list)
                 	{
                     	chomp $pkg;
-                    	if (!grep(/^$pkg$/, @pkglist))
+						my ($junk, $pname);
+						if (($pkg =~ /^R:/) || ($pkg =~ /^I:/) || ($pkg =~ /^E:/) )
                     	{
-                        	push(@pkglist, $pkg);
+                        	($junk, $pname) = split(/:/, $pkg);
+                    	} else {
+                        	$pname = $pkg;
+                    	}
+                    	if (!grep(/^$pname$/, @pkglist))
+                    	{
+                        	push(@pkglist, $pname);
                     	}
                 	}
                 	$bndloc{$bnd} = $loc;
@@ -1654,21 +1669,24 @@ sub doAIXcopy
 			# get the dir names to copy to
 			my $rpm_srcdir;
 			my $instp_srcdir;
+			my $emgr_srcdir;
 			if ($::ALTSRC) {
 				$rpm_srcdir   = "$imagedef{$img}{alt_loc}";
 				$instp_srcdir = "$imagedef{$img}{alt_loc}";
+				$emgr_srcdir = "$imagedef{$img}{alt_loc}";
 			} else {
             	$rpm_srcdir   = "$imagedef{$img}{lpp_loc}/RPMS/ppc";
             	$instp_srcdir = "$imagedef{$img}{lpp_loc}/installp/ppc";
+				$emgr_srcdir = "$imagedef{$img}{lpp_loc}/emgr/ppc";
 			}
 
 			# make sure the dir exists on the service node
 			#  also make sure it's writeable by all
-			my $mkcmd = qq~/usr/bin/mkdir -p $rpm_srcdir; chmod 777 $rpm_srcdir; /usr/bin/mkdir -p $instp_srcdir; chmod 777 $instp_srcdir~;
+			my $mkcmd = qq~/usr/bin/mkdir -p $rpm_srcdir; chmod 777 $rpm_srcdir; /usr/bin/mkdir -p $instp_srcdir; chmod 777 $instp_srcdir; /usr/bin/mkdir -p $emgr_srcdir; chmod 777 $emgr_srcdir~;
 			my $output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snkey, $mkcmd, 0);
 			if ($::RUNCMD_RC  != 0) {
 				my $rsp;
-				push @{$rsp->{data}}, "Could not create $instp_srcdir on $snkey.\n";
+				push @{$rsp->{data}}, "Could not create directories on $snkey.\n";
 				if ($::VERBOSE) {
 					push @{$rsp->{data}}, "$output\n";
 				}
@@ -1681,7 +1699,7 @@ sub doAIXcopy
             {
                 my $rcpargs;
                 my $srcfile;
-                if (($pkg =~ /R:/) || ($pkg =~ /\.rpm/))
+                if (($pkg =~ /^R:/) || ($pkg =~ /\.rpm/))
                 {
 					my ($junk, $pname);
 					if ($pkg =~ /:/) {
@@ -1692,9 +1710,16 @@ sub doAIXcopy
 
                     # use rpm location
                     $rcpargs = ["$rpm_srcdir/$pname", "$rpm_srcdir"];
-                } elsif (($pkg =~ /epkg\.Z/)) {
-					my $pname = $pkg;
-					$rcpargs = ["$instp_srcdir/$pname", "$instp_srcdir"];
+
+                } elsif (($pkg =~ /^E:/) || ($pkg =~ /epkg\.Z/)) {
+
+					my ($junk, $pname);
+                    if ($pkg =~ /:/) {
+                        ($junk, $pname) = split(/:/, $pkg);
+                    } else {
+                        $pname = $pkg;
+                    }
+                    $rcpargs = ["$emgr_srcdir/$pname", "$emgr_srcdir"];
 				}
                 else
                 {
@@ -1862,7 +1887,7 @@ sub updateAIXsoftware
             {
                 foreach my $p (@pkglist)
                 {
-					if (($p =~ /\.rpm/) || ($p =~ /R:/))
+					if (($p =~ /\.rpm/) || ($p =~ /^R:/))
                     {
 						my ($junk, $pname);
 						if ($p =~ /:/) {
@@ -1871,8 +1896,16 @@ sub updateAIXsoftware
 							$pname = $p;
 						}
                         push @rpm_pkgs, $pname;
-                    } elsif (($p =~ /epkg\.Z/)) {
-						push @emgr_pkgs, $p;
+                    } elsif (($p =~ /epkg\.Z/) || ($p =~ /^E:/)) {
+
+						my ($junk, $pname);
+                        if ($p =~ /:/) {
+                            ($junk, $pname) = split(/:/, $p);
+                        } else {
+                            $pname = $p;
+                        }
+                        push @emgr_pkgs, $p;
+
 					} else {
 						my ($junk, $pname);
                         if ($p =~ /:/) {
@@ -2185,47 +2218,55 @@ sub updateAIXsoftware
 			# we may just get flags!
 			if ( ((scalar(@emgr_pkgs)) || $::ALLSW || ($imagedefs{$img}{emgr_flags})) && !$noemgr) {
 
-				my $emgrcmd = qq~cd /xcatmnt; /usr/sbin/emgr~;
-				
-				if ( (-e "/xcatmnt/$emgr_file_name") ) {
-					if ( (scalar(@emgr_pkgs)) || $::ALLSW ) {
-						# call emgr with -f filename
-						$emgrcmd .= qq~ -f /xcatmnt/$emgr_file_name~; 
-					}
 
-					if ($imagedefs{$img}{emgr_flags}) {
-						$emgrcmd .= qq~ $imagedefs{$img}{emgr_flags}~;
-					}
+				# if a specific dir was provided then use it
+                # otherwise use the rpm dir in the lpp src
+                my $dir;
+                if ($::ALTSRC) {
+                    $dir = "/xcatmnt";
+                } else {
+                    $dir = "/xcatmnt/emgr/ppc";
+                }
 
-               		if ($::VERBOSE)
-               		{
-                   		my $rsp;
-                   		push @{$rsp->{data}}, "Running: \'$emgrcmd\'.\n";
-                   		xCAT::MsgUtils->message("I", $rsp, $callback);
-               		}
+				my $emgrcmd = qq~cd $dir; /usr/sbin/emgr~;
 
-					my $output = xCAT::Utils->runxcmd({command => ["xdsh"], node => \@nodes, arg => [$emgrcmd]}, $subreq, -1, 1);
+				if ($imagedefs{$img}{emgr_flags}) {
+                    $emgrcmd .= qq~ $imagedefs{$img}{emgr_flags}~;
+                }
 
-               		if ($::RUNCMD_RC != 0)
-               		{
-                  		my $rsp;
-                   		push @{$rsp->{data}}, "Could not run emgr command.\n";
-						foreach my $o (@$output)
-                    	{
-                        	push @{$rsp->{data}}, "$o";
-                    	}
-                   		xCAT::MsgUtils->message("I", $rsp, $callback);
-                   		$error++;
-               		} elsif ($::VERBOSE)
-               		{
-                   		my $rsp;
-						foreach my $o (@$output)
-                    	{
-                        	push @{$rsp->{data}}, "$o";
-                    	}
-                   		xCAT::MsgUtils->message("I", $rsp, $callback);
-               		}
+				if ( (scalar(@emgr_pkgs)) || $::ALLSW ) {
+					# call emgr with -f filename
+					$emgrcmd .= qq~ -f /xcatmnt/$emgr_file_name~; 
 				}
+
+               	if ($::VERBOSE)
+               	{
+               		my $rsp;
+               		push @{$rsp->{data}}, "Running: \'$emgrcmd\'.\n";
+               		xCAT::MsgUtils->message("I", $rsp, $callback);
+               	}
+
+				my $output = xCAT::Utils->runxcmd({command => ["xdsh"], node => \@nodes, arg => [$emgrcmd]}, $subreq, -1, 1);
+
+               	if ($::RUNCMD_RC != 0)
+               	{
+               		my $rsp;
+               		push @{$rsp->{data}}, "Could not run emgr command.\n";
+					foreach my $o (@$output)
+                   	{
+                       	push @{$rsp->{data}}, "$o";
+                   	}
+               		xCAT::MsgUtils->message("I", $rsp, $callback);
+               		$error++;
+               	} elsif ($::VERBOSE)
+               	{
+               		my $rsp;
+					foreach my $o (@$output)
+                   	{
+                       	push @{$rsp->{data}}, "$o";
+                   	}
+               		xCAT::MsgUtils->message("I", $rsp, $callback);
+            	}
 			}
 
 			#
@@ -2274,9 +2315,6 @@ sub updateAIXsoftware
 
 					my $rcmd;
 					if (scalar(@rpm_pkgs)) {
-						# didn't mount dir if there were no packages
-						$rcmd = qq~cd $dir; /usr/bin/rpm $flags $pkg_string 2>/dev/null~;
-					} else {
 						$rcmd = qq~cd $dir; /usr/bin/rpm $flags $pkg_string 2>/dev/null~;
 					}
 
