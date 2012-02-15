@@ -243,7 +243,7 @@ Used to specify the NIM machine type. The possible values are "standalone", "dis
 
 =item B<-u>
 
-Used to update an AIX/NIM SPOT resource with additional software and configuration files.  This option is only valid for xCAT diskless osimage objects. The SPOT resource associated with the xCAT osimage definition will be updated. This option can also be used to update the nfs_vers attribute for the NIM resources associated with diskful or diskless image.
+Used to update an AIX/NIM SPOT resource with additional software and configuration files.  This option is only valid for xCAT diskless osimage objects. The SPOT resource associated with the xCAT osimage definition will be updated. This option can also be used to update the nfs_vers attribute from NFSv3 to NFSv4 for the NIM resources associated with diskful or diskless image.
 
 =item B<-V |--verbose>
 
