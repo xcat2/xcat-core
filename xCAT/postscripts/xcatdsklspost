@@ -22,7 +22,12 @@ update_VPD()
 	logger -t xCAT "xcatdsklspost: updating VPD database"
     fi
 }
-update_VPD
+
+# Run updatevpd only when necessary
+lsvpd | grep -i cpu 2>&1 1>/dev/null
+if [ "$?" = "1" ]; then
+  update_VPD
+fi
 
 download_postscripts()
 {
