@@ -461,20 +461,22 @@ the name of the NIM lpp_source resource.
 To update the AIX node "xcatn11" by installing the "bos.cpr" fileset using 
 the "-agQXY" installp flags.  Also display the output of the installp command.
 
-B<updatenode xcatn11 -V -S otherpkgs="bos.cpr" installp_flags="-agQXY">
+B<updatenode xcatn11 -V -S otherpkgs="I:bos.cpr" installp_flags="-agQXY">
+
+Note:  The 'I:' prefix is optional but recommended for installp packages.
 
 =item 10 
 
 To uninstall the "bos.cpr" fileset that was installed in the previous example.
 
-B<updatenode xcatn11 -V -S otherpkgs="bos.cpr" installp_flags="-u">
+B<updatenode xcatn11 -V -S otherpkgs="I:bos.cpr" installp_flags="-u">
 
 =item 11
 
 To update the AIX nodes "xcatn11" and "xcatn12" with the "gpfs.base" fileset
 and the "rsync" rpm using the installp flags "-agQXY" and the rpm flags "-i --nodeps".
 
-B<updatenode xcatn11,xcatn12 -V -S otherpkgs="gpfs.base,R:rsync-2.6.2-1.aix5.1.ppc.rpm" installp_flags="-agQXY" rpm_flags="-i --nodeps">
+B<updatenode xcatn11,xcatn12 -V -S otherpkgs="I:gpfs.base,R:rsync-2.6.2-1.aix5.1.ppc.rpm" installp_flags="-agQXY" rpm_flags="-i --nodeps">
 
 Note: Using the "-V" flag with multiple nodes may result in a large amount of output.
 
@@ -494,7 +496,7 @@ B<updatenode node01 -V -S installp_bundle="sslbnd,sshbnd" installp_flags="-agQXY
 
 To get a preview of what would happen if you tried to install the "rsct.base" fileset on AIX node "node42".  (You must use the "-V" option to get the full output from the installp command.)
 
-B<updatenode node42 -V -S otherpkgs="rsct.base" installp_flags="-apXY">
+B<updatenode node42 -V -S otherpkgs="I:rsct.base" installp_flags="-apXY">
 
 =item 15
 
@@ -516,7 +518,7 @@ installp filesets.)
 
 Install the interim fix package located in the /efixes directory.
 
-B<updatenode node29 -V -S -d /efixes otherpkgs=IZ38930TL0.120304.epkg.Z>
+B<updatenode node29 -V -S -d /efixes otherpkgs=E:IZ38930TL0.120304.epkg.Z>
 
 =item 18
 
