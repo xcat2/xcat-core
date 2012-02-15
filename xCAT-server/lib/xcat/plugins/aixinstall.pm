@@ -1940,7 +1940,7 @@ sub chkosimage
 	my %pkgtype;
 	foreach my $pkg (@pkglist)
 	{
-		if (($pkg =~ /R:/) || ($pkg =~ /I:/) )
+		if (($pkg =~ /^R:/) || ($pkg =~ /^I:/) || ($pkg =~ /^E:/) )
 		{
 			my ($junk, $pname) = split(/:/, $pkg);
 			push(@install_list, $pname);
@@ -1948,7 +1948,7 @@ sub chkosimage
 			push(@install_list, $pkg);
 		}
 
-		if (($pkg =~ /R:/)) {
+		if (($pkg =~ /^R:/)) {
 			# get a separate list of just the rpms - they must be preceded
 			#	by R:
 			my ($junk, $pname) = split(/:/, $pkg);
@@ -1971,6 +1971,7 @@ sub chkosimage
 
 	my $rpm_srcdir = "$lpp_loc/RPMS/ppc";
 	my $instp_srcdir = "$lpp_loc/installp/ppc";
+	my $emgr_srcdir = "$lpp_loc/emgr/ppc";
 
 	# get rpm packages
 	my $rcmd = qq~/usr/bin/ls $rpm_srcdir 2>/dev/null~;
@@ -1984,8 +1985,7 @@ sub chkosimage
 	}
 
 	# get epkg files
-	# epkg files should go with installp filesets - I think?
-	my $ecmd = qq~/usr/bin/ls $instp_srcdir 2>/dev/null~;
+	my $ecmd = qq~/usr/bin/ls $emgr_srcdir 2>/dev/null~;
 	my @elist = xCAT::Utils->runcmd("$ecmd", -1);
 	foreach my $f (@elist) {
 		if (($f =~ /epkg\.Z/)) {
@@ -10570,6 +10570,7 @@ sub checkNIMnetworks
             return 1;
         }
 
+
         foreach my $l (@result)
         {
 
@@ -11185,6 +11186,20 @@ sub make_SN_resource
                             push @{$rsp->{data}}, "Could not move $origlocbak to $origloc.\n";
                             xCAT::MsgUtils->message("E", $rsp, $callback);
                         }
+
+						# do a re-sync
+                        my $scmd = "nim -F -o sync_roots $imghash{$image}{spot}";
+                        my $output = xCAT::Utils->runcmd("$scmd", -1);
+                        if ($::RUNCMD_RC != 0)
+                        {
+                            my $rsp;
+                            push @{$rsp->{data}}, "Could not update $imghash{$image}{shared_root}.\n";
+                            if ($::VERBOSE)
+                            {
+                                push @{$rsp->{data}}, "$output";
+                            }
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                        }
 					}
                 }
 
@@ -11730,7 +11745,7 @@ sub rmdsklsnode
                 # don't remove the def
                 my $rsp;
                 push @{$rsp->{data}},
-                  "The Mstate of NIM machine \'$nodename\' is currently in running state.  The NIM definition will not be removed. You can use -f flag to forcely remove it.";
+                  "The Mstate of NIM machine \'$nodename\' is currently in running state.  The NIM definition will not be removed.";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 $error++;
                 push(@nodesfailed, $nodename);
@@ -12291,6 +12306,7 @@ sub update_spot_sw
         return 1;
     }
       
+	my $error;
     if (scalar(@bndlnames) > 0)
     {
         # do installp/RPM install for each bndls
@@ -12310,12 +12326,12 @@ sub update_spot_sw
             }
 
             # construct tmp file to hold the pkg list.
-            my ($tmp_installp, $tmp_rpm) = parse_installp_bundle($callback, $bndlloc);
+			my ($tmp_installp, $tmp_rpm, $tmp_emgr) = parse_installp_bundle($callback, $bndlloc);
 
             # use xcatchroot to install sw in SPOT on nimprime.
             
     		# install installp with file first.
-			if (defined($tmp_installp) ) {
+			if ( -e $tmp_installp ){
             	my $rc = update_spot_installp($callback, $chroot_lpploc, $tmp_installp, $iflags, $spotname, $nimprime, $subreq);
             	if ($rc)
             	{
@@ -12357,41 +12373,78 @@ sub update_spot_sw
 
 			}
 
+			# then install epkgs.
+			if ( -e $tmp_emgr ) {
+            	unless (open(EFILE, "<$tmp_emgr"))
+            	{
+                	my $rsp;
+                	push @{$rsp->{data}}, "Could not open $tmp_emgr for reading.\n";
+                	xCAT::MsgUtils->message("E", $rsp, $callback);
+                	$error++;
+            	} else {
+
+            		my @elist = <EFILE>;
+            		close(EFILE);
+            
+            		my $rc = update_spot_epkg($callback, $chroot_epkgloc, $tmp_emgr, $eflags, $spotname, $nimprime, $subreq);
+            		if ($rc)
+            		{
+                		#failed to update RPM
+                		$error++;
+            		}
+            
+            		# remove tmp file
+            		my $cmd = qq~/usr/bin/rm -f $tmp_emgr~;
+
+            		my $output =
+              			xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
+
+            		if ($::RUNCMD_RC != 0)
+            		{
+                		my $rsp;
+                		push @{$rsp->{data}},
+                  			"Could not run command: $cmd.\n";
+                		xCAT::MsgUtils->message("E", $rsp, $callback);
+                		$error++;
+            		}
+				}
+			}
+
 			# then to install RPMs.
-			if (defined($tmp_rpm) ) {
+			if (-e $tmp_rpm) {
             	unless (open(RFILE, "<$tmp_rpm"))
             	{
                 	my $rsp;
                 	push @{$rsp->{data}}, "Could not open $tmp_rpm for reading.\n";
                 	xCAT::MsgUtils->message("E", $rsp, $callback);
-                	return 1;
-            	}
+                	$error++;
+            	} else {
 
-            	my @rlist = <RFILE>;
-            	close(RFILE);
+            		my @rlist = <RFILE>;
+            		close(RFILE);
             
-            	my $rc = update_spot_rpm($callback, $chroot_rpmloc, \@rlist,
-                                          $rflags, $spotname, $nimprime, $subreq);
-            	if ($rc)
-            	{
-                	#failed to update RPM
-                	return 1;
-            	}
+            		my $rc = update_spot_rpm($callback, $chroot_rpmloc, \@rlist,$rflags, $spotname, $nimprime, $subreq);
+            		if ($rc)
+            		{
+                		#failed to update RPM
+                		$error++;
+            		}
             
-            	# remove tmp file
-            	my $cmd = qq~/usr/bin/rm -f $tmp_rpm~;
+            		# remove tmp file
+            		my $cmd = qq~/usr/bin/rm -f $tmp_rpm~;
 
-            	my $output =
-              		xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
+            		my $output =
+              			xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
 
-            	if ($::RUNCMD_RC != 0)
-            	{
-                	my $rsp;
-                	push @{$rsp->{data}},
-                  		"Could not run command: $cmd.\n";
-                	xCAT::MsgUtils->message("E", $rsp, $callback);
-                	return 1;
-            	}
+            		if ($::RUNCMD_RC != 0)
+            		{
+                		my $rsp;
+                		push @{$rsp->{data}},
+                  			"Could not run command: $cmd.\n";
+                		xCAT::MsgUtils->message("E", $rsp, $callback);
+                		$error++;
+            		}
+				}
 			}
         }
     }
@@ -12423,8 +12476,7 @@ sub update_spot_sw
             }
             close(IFILE);
 
-            my $rc = update_spot_installp($callback, $chroot_lpploc, $tmp_installp,
-                                          $iflags, $spotname, $nimprime, $subreq);
+            my $rc = update_spot_installp($callback, $chroot_lpploc, $tmp_installp, $iflags, $spotname, $nimprime, $subreq);
             if ($rc)
             {
                 #failed to update installp
@@ -12450,8 +12502,7 @@ sub update_spot_sw
         # 2. update rpm in spot
         if (scalar @$r_pkgs)
         {
-            my $rc = update_spot_rpm($callback, $chroot_rpmloc, \@$r_pkgs,
-                                          $rflags, $spotname, $nimprime, $subreq);
+            my $rc = update_spot_rpm($callback, $chroot_rpmloc, \@$r_pkgs,$rflags, $spotname, $nimprime, $subreq);
             if ($rc)
             {
                 #failed to update RPM
@@ -12479,8 +12530,7 @@ sub update_spot_sw
             }
             close(FILE);
 
-            my $rc = update_spot_epkg($callback, $chroot_epkgloc, $tmp_epkg,
-                                          $eflags, $spotname, $nimprime, $subreq);
+            my $rc = update_spot_epkg($callback, $chroot_epkgloc, $tmp_epkg, $eflags, $spotname, $nimprime, $subreq);
             if ($rc)
             {
                 #failed to update epkgs
@@ -12682,24 +12732,22 @@ sub sync_spot_files
 	generate tmp files for installp filesets and RPMs separately 
 	based on NIM installp_bundles
 	
-	/tmp/tmp_installp, /tmp/tmp_rpm
+	/tmp/tmp_installp, /tmp/tmp_rpm, /tmp/tmp_epkg
 
    	Arguments:
    	callback, installp_bundle location
 
   	Returns:
-	  installp list file, rpm list file
+	  installp list file, rpm list file, epkg list file
 
  	Comments:
- 	  my ($tmp_installp, $tmp_rpm) = parse_installp_bundle($callback, $bndlloc);
+ 	  my ($tmp_installp, $tmp_rpm, $tmp_emgr) = parse_installp_bundle($callback, $bndlloc);
 
 =cut
 
 #-------------------------------------------------------------------------------
-
 sub parse_installp_bundle
 {
-    
     my $callback = shift;
     my $bndfile = shift;
 
@@ -12715,30 +12763,51 @@ sub parse_installp_bundle
     # put installp/rpm into an array
     my @ilist;
     my @rlist;
+	my @elist;
 
+	my ($junk, $pname);
     while (my $line = <BNDL>)
     {
-        chomp $line;
-        
-        if ($line =~ /^I:/)
-        {
-            my ($junk, $iname) = split(/:/, $line);
-            push (@ilist, $iname);
-        }
-        elsif ($line =~ /^R:/)
-        {
-            my ($junk, $rname) = split(/:/, $line);
-            push (@rlist, $rname);
-        }
-    }
+		# skip blank and comment lines
+        next if ($line =~ /^\s*$/ || $line =~ /^\s*#/);
+		chomp $line;
+
+		if (($line =~ /\.rpm/) || ($line =~ /^R:/))
+		{
+			if ($line =~ /:/) {
+				($junk, $pname) = split(/:/, $line);
+			} else {
+				$pname = $line;
+			}
+			push (@rlist, $pname);
+		}
+		elsif (($line =~ /epkg\.Z/) || ($line =~ /^E:/)) 
+		{
+			if ($line =~ /:/) {
+				($junk, $pname) = split(/:/, $line);
+			} else {
+                $pname = $line;
+            }
+            push (@elist, $pname);
+		} else {
+			if ($line =~ /:/) {
+				($junk, $pname) = split(/:/, $line);
+			} else {
+				$pname = $line;
+            }
+            push (@ilist, $pname);
+		}
+	}
 
     close(BNDL);
 
     # put installp list into tmp file
     my $tmp_installp = "/tmp/tmp_installp";
     my $tmp_rpm = "/tmp/tmp_rpm";
+	my $tmp_emgr = "/tmp/tmp_emgr";
 
-	if ( scalar @ilist) {
+	if ( scalar(@ilist)) {
+
     	unless (open(IFILE, ">$tmp_installp"))
     	{
         	my $rsp;
@@ -12753,10 +12822,10 @@ sub parse_installp_bundle
     	}
     	close(IFILE);
 	} else {
-		$tmp_installp=undef;
+		$tmp_installp="";
 	}
 
-	if ( scalar @rlist) {
+	if ( scalar(@rlist)) {
     	# put rpm list into tmp file
     	unless (open(RFILE, ">$tmp_rpm"))
     	{
@@ -12772,10 +12841,29 @@ sub parse_installp_bundle
     	}
     	close(RFILE);
 	} else {
-		$tmp_rpm=undef;
+		$tmp_rpm="";
 	}
 
-    return ($tmp_installp, $tmp_rpm);
+	if ( scalar(@elist)) {
+        # put emgr list into tmp file
+        unless (open(EFILE, ">$tmp_emgr"))
+        {
+            my $rsp;
+            push @{$rsp->{data}}, "Could not open $tmp_emgr for writing.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+
+        foreach (@elist)
+        {
+            print EFILE $_ . "\n";
+        }
+        close(EFILE);
+    } else {
+        $tmp_emgr="";
+    }
+
+    return ($tmp_installp, $tmp_rpm, $tmp_emgr);
     
 }
 
@@ -12798,7 +12886,6 @@ sub parse_installp_bundle
 =cut
 
 #-------------------------------------------------------------------------------
-
 sub parse_otherpkgs
 {
     my $callback = shift;
@@ -12825,7 +12912,7 @@ sub parse_otherpkgs
     foreach my $p (@pkglist)
     {
         chomp $p;
-        if (($p =~ /\.rpm/) || ($p =~ /R:/))
+        if (($p =~ /\.rpm/) || ($p =~ /^R:/))
         {
             if ($p =~ /:/)
             {
@@ -12839,6 +12926,10 @@ sub parse_otherpkgs
         }
         elsif (($p =~ /epkg\.Z/))
         {
+			if ($p =~ /:/)
+			{
+				($junk, $pname) = split(/:/, $p);
+			}
             push @epkgs, $p;
         }
         else
@@ -12853,7 +12944,6 @@ sub parse_otherpkgs
             }
             push @installp_pkgs, $pname;    
         }
-        
     }
 
     return (\@installp_pkgs, \@rpm_pkgs, \@epkgs);
@@ -12985,15 +13075,16 @@ sub update_spot_rpm
     my $cdcmd = qq~cd $source_dir;~;
     my $cmd;
 
-	# need to test rpms to make sure all will install
-	#- add test to rpm cmd if not included in rpm_flags
+	# - need to test rpms to make sure all will install
+	#	- add test to rpm cmd if not included in rpm_flags
 	#  
-	my @doinstall;
-	my @dontinstall;
+	my @doinstall = split /\s+/, $rpmpkgs;
+	my @dontinstall=();
 	# see if this is an install or update 
 	if ( ($rpm_flags =~ /\-i/ ) || ($rpm_flags =~ /install / ) || ($rpm_flags =~ /U/ ) || ($rpm_flags =~ /update / ) ) {
 
 		# if so then do test
+		@doinstall = ();
 
 		my $rflags;
 		# if the flags don't include test then add it
@@ -13006,6 +13097,8 @@ sub update_spot_rpm
 
 		my @badrpms;
 		foreach my $line (@outpt) {
+			chomp $line;
+			$line =~ s/^\s+//; #remove leading spaces
 			my ($first, $second, $rest) = split /\s+/, $line;
 			chomp $first;
 			if ($first eq 'package') {
@@ -13014,17 +13107,23 @@ sub update_spot_rpm
 		}
 
 		my @origrpms = split /\s+/, $rpmpkgs;
-		foreach my $r ( @origrpms) {
-			my $sr = $r;
+		foreach my $sr ( @origrpms) {
+			my $r = $sr;
 			$r =~ s/\*$//g;
-			if (grep(/$r/, @badrpms)){
-         		push @dontinstall, $sr;
-    		} else {
-        		push @doinstall, $sr;
-    		}
+			my $found=0;
+			foreach my $b (@badrpms) {
+				if ($b =~ /$r/) {
+					push @dontinstall, $sr;
+					$found++;
+					last;
+				}
+			}
+			if (!$found ) {
+				push @doinstall, $sr;
+			}
 		}	
 
-		if (scalar @doinstall) {
+		if (scalar(@doinstall)) {
 			$rpmpkgs= join(' ', @doinstall);
 			
 		} else {
@@ -13047,6 +13146,9 @@ sub update_spot_rpm
     	if ($::RUNCMD_RC != 0)
     	{
 			$error++;
+			my $rsp;
+			#   push @{$rsp->{data}}, "\n\'$output\'\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
     	}
 
 		if ($::VERBOSE)
@@ -13061,12 +13163,12 @@ sub update_spot_rpm
 		my $rsp;
 		push @{$rsp->{data}}, "The following RPM packages were already installed and were not reinstalled:\n";
 		xCAT::MsgUtils->message("W", $rsp, $callback);
-		$rsp={};
+		my $rsp2;
 		foreach my $rpm (@dontinstall) {
-            push @{$rsp->{data}}, "$rpm";
+            push @{$rsp2->{data}}, "$rpm";
         }
-		push @{$rsp->{data}}, "\n";
-		xCAT::MsgUtils->message("I", $rsp, $callback);
+		push @{$rsp2->{data}}, "\n";
+		xCAT::MsgUtils->message("I", $rsp2, $callback);
 	}
 
 	if ($error)
@@ -13107,6 +13209,7 @@ sub update_spot_rpm
    Comments:
 			This uses "xcatchroot" and "emgr" commands directly.
    Note: assume the *.epkg.Z is copied to lpp_source dir already!	
+		(   ....<lpp_source>/emgr/ppc/*.Z )
 
 =cut
 
@@ -13128,7 +13231,7 @@ sub update_spot_epkg
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
     
-    my $cdcmd = qq~cd $source_dir;~;
+	my $cdcmd = qq~cd $source_dir; export INUCLIENTS=1;~;
     my $ecmd  = qq~/usr/sbin/emgr $eflags -f $listfile~;
     my $cmd = qq~$::XCATROOT/bin/xcatchroot -i $spotname "$cdcmd $ecmd"~;
 
@@ -13140,6 +13243,9 @@ sub update_spot_epkg
         my $rsp;
         push @{$rsp->{data}},
           "Could not install the interim fix in SPOT $spotname.\n";
+
+		push @{$rsp->{data}}, "One or more errors occurred while trying to install interim fix packages in $spotname.\n";
+        push @{$rsp->{data}}, "\n\'$output\'\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
