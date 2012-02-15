@@ -656,7 +656,11 @@ sub build_xmldesc {
     }
     $xtree{devices}->{graphics}->{autoport}='yes';
     $xtree{devices}->{graphics}->{listen}='0.0.0.0';
-    $xtree{devices}->{graphics}->{password}=genpassword(16);
+    if ($confdata->{vm}->{$node}->[0]->{vidpassword}) {
+    	$xtree{devices}->{graphics}->{password}=$confdata->{vm}->{$node}->[0]->{vidpassword};
+    } else {
+	    $xtree{devices}->{graphics}->{password}=genpassword(20);
+    }
     $xtree{devices}->{sound}->{model}='ac97';
   
     $xtree{devices}->{console}->{type}='pty';
@@ -702,18 +706,22 @@ sub getcons {
         $sconsparms->{node}->[0]->{baudrate}=[$serialspeed];
         return (0,$sconsparms);
     } elsif ($type eq "vid") {
+	$consdata->{server}=$hyper;
       my $domxml = $dom->get_xml_description();
       my $parseddom = $parser->parse_string($domxml);
       my ($graphicsnode) = $parseddom->findnodes("//graphics");
-      
-      my $tpasswd=genpassword(16);
+      my $tpasswd; 
+      if ($confdata->{vm}->{$node}->[0]->{vidpassword}) {
+	$tpasswd=$confdata->{vm}->{$node}->[0]->{vidpassword};
+      } else {
+      $tpasswd=genpassword(16);
       my $validto=POSIX::strftime("%Y-%m-%dT%H:%M:%S",gmtime(time()+60));
-      $graphicsnode->setAttribute("passwd",$tpasswd);
       $graphicsnode->setAttribute("passwdValidTo",$validto);
+     }
+      $graphicsnode->setAttribute("passwd",$tpasswd);
       $dom->update_device($graphicsnode->toString());
 	#$dom->update_device("<graphics type='".$consdata->{vidproto}."' passwd='$tpasswd' passwdValidTo='$validto' autoport='yes'/>");
 	$consdata->{password}=$tpasswd;
-	$consdata->{server}=$hyper;
 	return $consdata;
         #return (0,{$consdata->{vidproto}.'@'.$hyper.":".$consdata->{vidport}); #$consdata->{vncport});
     }
@@ -1063,7 +1071,11 @@ sub makedom {
     }
     my $parseddom = $parser->parse_string($xml);
     my ($graphics) = $parseddom->findnodes("//graphics");
-    $graphics->setAttribute("passwd",genpassword(20));
+    if ($confdata->{vm}->{$node}->[0]->{vidpassword}) {
+    	$graphics->setAttribute("passwd",$confdata->{vm}->{$node}->[0]->{vidpassword});
+    } else {
+    	$graphics->setAttribute("passwd",genpassword(20));
+    }
     $graphics->setAttribute("listen",'0.0.0.0');
     $xml = $parseddom->toString();
     my $errstr;
