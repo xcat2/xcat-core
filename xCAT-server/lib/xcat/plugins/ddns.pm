@@ -44,7 +44,7 @@ sub getzonesfornet {
     if ($net =~ /:/) {#ipv6, for now do the simple stuff under the assumption we won't have a mask indivisible by 4
         $net =~ s/\/(.*)//;
         my $maskbits=$1;
-        if ($mask) {
+        if ($maskbits%4) {
             die "Not supporting having a mask like $mask on an ipv6 network like $net";
         }
         my $netnum= getipaddr($net,GetNumber=>1);
