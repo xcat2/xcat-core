@@ -109,7 +109,7 @@ The name of a NIM mksysb resource.
 
 =item B<otherpkgs>
 
-One or more comma separated installp or rpm packages.  The rpm packages must have a prefix of 'R:', (ex. R:foo.rpm)
+One or more comma separated installp, emgr, or rpm packages.  The packages must have prefixes of 'I:', 'E:', or 'R:', respectively. (ex. R:foo.rpm)
 
 =item B<paging> 
 
@@ -153,7 +153,10 @@ The alternate flags to be passed along to the AIX installp command. (The default
 
 =item B<rpm_flags>
 
-The alternate flags to be passed along to the AIX rpm command. (The default for rpm_flags is "-Uvh --replacepkgs".)
+The alternate flags to be passed along to the AIX rpm command. (The default for
+rpm_flags is "-Uvh ".) The mknimimage command will check each rpm to see if 
+it is installed.  It will not be reinstalled unless you specify the appropriate
+rpm option, such as '--replacepkgs'. 
 
 =item B<emgr_flags>
 
@@ -166,10 +169,6 @@ The maximum size for a single dump image the dump resource will accept. Space is
 =item B<max_dumps>
 
 The maximum number of archived dumps for an individual client. The default is one. 
-
-=item B<notify>
-
-An administrator supplied script that will be invoked when a new dump is captured, or when a dump error occurs on the client.
 
 =item B<snapcollect>
 
@@ -185,7 +184,7 @@ Value Specifies the security method required for NFS access.
 
 =back
 
-Note that you may specify multiple "script", "otherpkgs", and "installp_bundle" resources by using a comma seperated list. (ex. "script=ascript,bscript"). RPM names may be included in the "otherpkgs" list by using a "R:" prefix(ex. "R:whatever.rpm"). epkg (AIX interim fix package) file names may be included in the "otherpkgs" too(ex. "otherpkgs=IZ38930TL0.120304.epkg.Z").
+Note that you may specify multiple "script", "otherpkgs", and "installp_bundle" resources by using a comma seperated list. (ex. "script=ascript,bscript"). RPM names may be included in the "otherpkgs" list by using a "R:" prefix(ex. "R:whatever.rpm"). epkg (AIX interim fix package) file names may be included in the "otherpkgs" using the 'E:' prefix. (ex. "otherpkgs=E:IZ38930TL0.120304.epkg.Z").
 
 =item B<-b mksysbfile>
 
@@ -317,7 +316,7 @@ B<mknimimage -t diskless -s 61cosi_lpp_source 611cosi tmp=mytmp home=myhome>
 
 10) Create a diskless image and update it with additional software using rpm flags and configuration files. 
 
-B<mknimimage -t diskless -s 61cosi_lpp_source 61dskls otherpkgs=fset1,R:foo.rpm,IZ38930TL0.120304.epkg.Z synclists=/install/mysyncfile rpm_flags="-i --nodeps">
+B<mknimimage -t diskless -s 61cosi_lpp_source 61dskls otherpkgs=I:fset1,R:foo.rpm,E:IZ38930TL0.120304.epkg.Z synclists=/install/mysyncfile rpm_flags="-i --nodeps">
 
 The xCAT osimage definition created by this command will include the "otherpkgs" and "synclists" values.  The NIM SPOT resource associated with this osimage will be updated with the additional software using rpm flags "-i --nodeps" and configuration files.
 
