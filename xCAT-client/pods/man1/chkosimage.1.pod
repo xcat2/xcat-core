@@ -21,6 +21,11 @@ The command gets the name of the lpp_source resource from the xCAT osimage
 definition and the location of the lpp_source directory from the NIM resource
 definition.
 
+It will check for installp, rpm and emgr type packages.
+
+Note: Remember to use the prefixes, "I:", "R:", and "E:", respectively,
+when specifying package names in an installp_bundle file or an otherpkgs list.
+
 In addition to checking for missing software the chkosimage command will
 also check to see if there are multiple matches.  This could happen 
 when you use wildcards in the software file names. For example,  if you
