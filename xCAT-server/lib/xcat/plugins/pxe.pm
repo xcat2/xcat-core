@@ -11,7 +11,7 @@ my $addkcmdlinehandled;
 my $request;
 my $callback;
 my $dhcpconf = "/etc/dhcpd.conf";
-my $tftpdir = xCAT::Utils->getTftpDir();
+my $globaltftpdir = xCAT::Utils->getTftpDir();
 #my $dhcpver = 3;
 
 my %usage = (
@@ -41,6 +41,7 @@ sub check_dhcp {
 
 sub getstate {
   my $node = shift;
+  my $tftpdir = shift;
   if (check_dhcp($node)) {
     if (-r $tftpdir . "/pxelinux.cfg/".$node) {
       my $fhand;
@@ -69,6 +70,7 @@ sub setstate {
   my %chainhash = %{shift()};
   my %machash = %{shift()};
   my %nthash = %{shift()};
+  my $tftpdir = shift;
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
   if (not $addkcmdlinehandled->{$node} and $kern->{addkcmdline}) {
 
@@ -460,18 +462,26 @@ sub process_request {
   my $chaintab = xCAT::Table->new('chain');
   my $mactab = xCAT::Table->new('mac'); #to get all the hostnames
   my $typetab = xCAT::Table->new('nodetype');
+  my $restab = xCAT::Table->new('noderes');
+  my %nrhash =  %{$restab->getNodesAttribs(\@nodes,[qw(tftpdir)])};
   my %bphash = %{$bptab->getNodesAttribs(\@nodes,[qw(kernel initrd kcmdline addkcmdline)])};
   my %chainhash = %{$chaintab->getNodesAttribs(\@nodes,[qw(currstate)])};
   my %machash = %{$mactab->getNodesAttribs(\@nodes,[qw(mac)])};
   my %nthash = %{$typetab->getNodesAttribs(\@nodes,[qw(os)])};
   foreach (@nodes) {
     my %response;
+    my $tftpdir;
+    if ($nrhash{$_} and $nrhash{$_}->[0] and $nrhash{$_}->[0]->{tftpdir}) {
+       $tftpdir = $nrhash{$_}->[0]->{tftpdir};
+    } else {
+       $tftpdir = $globaltftpdir;
+    }
     $response{node}->[0]->{name}->[0]=$_;
     if ($args[0] eq 'stat') {
-      $response{node}->[0]->{data}->[0]= getstate($_);
+      $response{node}->[0]->{data}->[0]= getstate($_,$tftpdir);
       $callback->(\%response);
     } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
-      ($rc,$errstr) = setstate($_,\%bphash,\%chainhash,\%machash,\%nthash);
+      ($rc,$errstr) = setstate($_,\%bphash,\%chainhash,\%machash,\%nthash,$tftpdir);
       if ($rc) {
         $response{node}->[0]->{errorcode}->[0]= $rc;
         $response{node}->[0]->{errorc}->[0]= $errstr;

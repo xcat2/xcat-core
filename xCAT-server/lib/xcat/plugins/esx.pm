@@ -4293,7 +4293,7 @@ sub mkcommonboot {
     my $bootmode = shift;
 	my $req      = shift;
 	my $doreq    = shift;
-	my $tftpdir  = "/tftpboot";
+	my $globaltftpdir  = "/tftpboot";
 	my @nodes    = @{$req->{node}};
 	my $ostab    = xCAT::Table->new('nodetype');
 	my $sitetab  = xCAT::Table->new('site');
@@ -4306,7 +4306,7 @@ sub mkcommonboot {
 		}
 		($ref) = $sitetab->getAttribs({key => 'tftpdir'}, 'value');
 		if ($ref and $ref->{value}) {
-			$tftpdir = $ref->{value};
+			$globaltftpdir = $ref->{value};
 		}
 	}
 	my %donetftp=();
@@ -4317,6 +4317,11 @@ sub mkcommonboot {
 	if ($nodehmtab) {
 		$serialconfig = $nodehmtab->getNodesAttribs(\@nodes,['serialport','serialspeed']);
 	}
+    my $restab = xCAT::Table->new('noderes',-create=>0);
+    my $resents;
+    if ($restab) {
+        $resents = $restab->getNodesAttribs(\@nodes,['tftpdir']);
+    }
 		
     my %tablecolumnsneededforaddkcmdline;
     my %nodesubdata;
@@ -4337,12 +4342,18 @@ sub mkcommonboot {
         }
     }
 
-
+    my $osents = $ostab->getNodesAttribs(\@nodes, ['os', 'arch', 'profile']);
 	foreach my $node (@nodes){
-		my $ent =  $ostab->getNodeAttribs($node, ['os', 'arch', 'profile']);
+		my $ent =  $osents->{$node}->[0]; 
 		my $arch = $ent->{'arch'};
 		my $profile = $ent->{'profile'};
 		my $osver = $ent->{'os'};
+        my $tftpdir;
+        if ($resents and $resents->{$node}->[0]->{tftpdir}) {
+           $tftpdir = $resents->{$node}->[0]->{tftpdir};
+        } else {
+           $tftpdir = $globaltftpdir;
+        }
 		#if($arch ne 'x86'){	
 		#	xCAT::SvrUtils::sendmsg([1,"VMware ESX hypervisors are x86, please change the nodetype.arch value to x86 instead of $arch for $node before proceeding:
         #e.g: nodech $node nodetype.arch=x86\n"]);
@@ -4376,7 +4387,7 @@ sub mkcommonboot {
         $shortprofname =~ s/\/\z//;
         $shortprofname =~ s/.*\///;
 		mkpath("$tftpdir/xcat/netboot/$osver/$arch/$shortprofname/");
-		unless($donetftp{$osver,$arch}) {
+		unless($donetftp{$osver,$arch,$profile,$tftpdir}) {
 			my $srcdir = "$installroot/$osver/$arch";
 			my $dest = "$tftpdir/xcat/netboot/$osver/$arch/$shortprofname";
 			cpNetbootImages($osver,$srcdir,$dest,$custprofpath,\%mods,bootmode=>$bootmode);
@@ -4395,7 +4406,7 @@ sub mkcommonboot {
                 mkpath("$dest/efi");
 				recursion_copy("$srcdir/efi","$dest/efi");
             }
-			$donetftp{$osver,$arch,$profile} = 1;
+			$donetftp{$osver,$arch,$profile,$tftpdir} = 1;
 		}
 		my $tp = "xcat/netboot/$osver/$arch/$shortprofname";
 	my $kernel;

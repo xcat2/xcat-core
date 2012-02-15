@@ -23,7 +23,7 @@ use File::Temp qw/mkdtemp/;
 
 use Socket;
 
-#use strict;
+use strict;
 my @cpiopid;
 
 sub handled_commands
@@ -47,7 +47,7 @@ sub mknetboot
         $statelite = "true";
     }
 
-    my $tftpdir  = "/tftpboot";
+    my $globaltftpdir  = "/tftpboot";
     my $nodes    = @{$req->{node}};
     my @nodes    = @{$req->{node}};
     my $ostab    = xCAT::Table->new('nodetype');
@@ -90,7 +90,7 @@ sub mknetboot
     my $machash = $mactab->getNodesAttribs(\@nodes, ['interface', 'mac']);
 
     my $restab = xCAT::Table->new('noderes');
-    my $reshash = $restab->getNodesAttribs(\@nodes, ['primarynic', 'tftpserver', 'xcatmaster', 'nfsserver', 'nfsdir', 'installnic']);
+    my $reshash = $restab->getNodesAttribs(\@nodes, ['primarynic', 'tftpserver', 'tftpdir', 'xcatmaster', 'nfsserver', 'nfsdir', 'installnic']);
 
     my %donetftp=();
     foreach my $node (@nodes)
@@ -98,6 +98,7 @@ sub mknetboot
         my $osver;
         my $arch;
         my $profile;
+        my $provmethod;
         my $rootimgdir;
         my $nodebootif; # nodebootif will be used if noderes.installnic is not set
         my $rootfstype;
@@ -140,6 +141,7 @@ sub mknetboot
 	        $profile = $ph->{profile};
             $rootfstype = $ph->{rootfstype};
             $nodebootif = $ph->{nodebootif};
+	    $provmethod = $ph->{provmethod};
 	
 	        $rootimgdir = $ph->{rootimgdir};
 	        unless ($rootimgdir) {
@@ -263,18 +265,25 @@ sub mknetboot
                 next;
             }
         }
+        my $tftpdir;
+ 	if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{tftpdir}) {
+	   $tftpdir = $reshash->{$node}->[0]->{tftpdir};
+        } else {
+	   $tftpdir = $globaltftpdir;
+        }
+
 
         mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
 
         #TODO: only copy if newer...
-        unless ($donetftp{$osver,$arch,$profile}) {
+        unless ($donetftp{$osver,$arch,$profile,$tftpdir}) {
             copy("$rootimgdir/kernel", "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
             if ($statelite) {
                 copy("$rootimgdir/initrd-statelite.gz", "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
             } else {
                 copy("$rootimgdir/initrd-stateless.gz", "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
             }
-            $donetftp{$osver,$arch,$profile} = 1;
+            $donetftp{$osver,$arch,$profile,$tftpdir} = 1;
         }
 
         if ($statelite) {
@@ -533,6 +542,8 @@ sub mkinstall
     my $request  = shift;
     my $callback = shift;
     my $doreq    = shift;
+    my $globaltftpdir = xCAT::Utils->getTftpDir();
+
     my @nodes    = @{$request->{node}};
     my $node;
     my $ostab = xCAT::Table->new('nodetype');
@@ -544,6 +555,19 @@ sub mkinstall
     my %img_hash=();
     my $installroot;
     $installroot = "/install";
+            my $restab = xCAT::Table->new('noderes');
+            my $bptab = xCAT::Table->new('bootparams',-create=>1);
+            my $hmtab  = xCAT::Table->new('nodehm');
+            my $resents    = 
+              $restab->getNodesAttribs(
+                                      \@nodes,
+                                      [
+                                       'nfsserver', 'tftpdir',
+                                       'primarynic', 'installnic'
+                                      ]
+                                      );
+            my $hments =
+              $hmtab->getNodesAttribs(\@nodes, ['serialport', 'serialspeed', 'serialflow']);
 
     if ($sitetab)
     {
@@ -567,6 +591,12 @@ sub mkinstall
         my $osinst;
         my $ent = $ntents->{$node}->[0];
 	my $plat = "";
+        my $tftpdir;
+ 	if ($resents->{$node} and $resents->{$node}->[0]->{tftpdir}) {
+	   $tftpdir = $resents->{$node}->[0]->{tftpdir};
+        } else {
+	   $tftpdir = $globaltftpdir;
+        }
 
         if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
 	    my $imagename=$ent->{provmethod};
@@ -717,46 +747,35 @@ sub mkinstall
             my @dd_drivers;
 
             #TODO: driver slipstream, targetted for network.
-            unless ($doneimgs{"$os|$arch"})
+            unless ($doneimgs{"$os|$arch|$tftpdir"})
             {
-                mkpath("/tftpboot/xcat/$os/$arch");
+                mkpath("/$tftpdir/xcat/$os/$arch");
                 if ($arch =~ /x86_64/)
                 {
                     copy("$pkgdir/1/boot/$arch/loader/linux",
-                         "/tftpboot/xcat/$os/$arch/");
+                         "/$tftpdir/xcat/$os/$arch/");
                     copy("$pkgdir/1/boot/$arch/loader/initrd",
-                         "/tftpboot/xcat/$os/$arch/");
-                    @dd_drivers = &insert_dd($callback, $os, $arch, "/tftpboot/xcat/$os/$arch/initrd");
+                         "/$tftpdir/xcat/$os/$arch/");
+                    @dd_drivers = &insert_dd($callback, $os, $arch, "/$tftpdir/xcat/$os/$arch/initrd");
                 } elsif ($arch =~ /x86/) {
                     copy("$pkgdir/1/boot/i386/loader/linux",
-                         "/tftpboot/xcat/$os/$arch/");
+                         "/$tftpdir/xcat/$os/$arch/");
                     copy("$pkgdir/1/boot/i386/loader/initrd",
-                         "/tftpboot/xcat/$os/$arch/");
-                    @dd_drivers = &insert_dd($callback, $os, $arch, "/tftpboot/xcat/$os/$arch/initrd");
+                         "/$tftpdir/xcat/$os/$arch/");
+                    @dd_drivers = &insert_dd($callback, $os, $arch, "/$tftpdir/xcat/$os/$arch/initrd");
                 }
                 elsif ($arch =~ /ppc/)
                 {
                     copy("$pkgdir/1/suseboot/inst64",
-                         "/tftpboot/xcat/$os/$arch");
-                    @dd_drivers = &insert_dd($callback, $os, $arch, "/tftpboot/xcat/$os/$arch/inst64");
+                         "/$tftpdir/xcat/$os/$arch");
+                    @dd_drivers = &insert_dd($callback, $os, $arch, "/$tftpdir/xcat/$os/$arch/inst64");
                 }
-                $doneimgs{"$os|$arch"} = 1;
+                $doneimgs{"$os|$arch|$tftpdir"} = 1;
             }
 
             #We have a shot...
-            my $restab = xCAT::Table->new('noderes');
-            my $bptab = xCAT::Table->new('bootparams',-create=>1);
-            my $hmtab  = xCAT::Table->new('nodehm');
-            my $ent    =
-              $restab->getNodeAttribs(
-                                      $node,
-                                      [
-                                       'nfsserver', 
-                                       'primarynic', 'installnic'
-                                      ]
-                                      );
-            my $sent =
-              $hmtab->getNodeAttribs($node, ['serialport', 'serialspeed', 'serialflow']);
+            my $ent    = $resents->{$node}->[0]; 
+            my $sent = $hments->{$node}->[0]; #hmtab->getNodeAttribs($node, ['serialport', 'serialspeed', 'serialflow']);
 	    my $netserver = '!myipfn!';
             if ($ent and $ent->{nfsserver})
             {

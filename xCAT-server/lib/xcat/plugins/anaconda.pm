@@ -155,7 +155,7 @@ sub mknetboot
     if($req->{command}->[0] =~ 'mkstatelite'){
         $statelite = "true";
     }
-    my $tftpdir  = "/tftpboot";
+    my $globaltftpdir  = "/tftpboot";
     my $nodes    = @{$req->{node}};
     my @args     = @{$req->{arg}};
     my @nodes    = @{$req->{node}};
@@ -183,7 +183,7 @@ sub mknetboot
         ($ref) = $sitetab->getAttribs({key => 'tftpdir'}, 'value');
         if ($ref and $ref->{value})
         {
-            $tftpdir = $ref->{value};
+            $globaltftpdir = $ref->{value};
         }
     }
     my %donetftp=();
@@ -195,7 +195,7 @@ sub mknetboot
 
     my $machash = $mactab->getNodesAttribs(\@nodes, ['interface','mac']);
 
-    my $reshash    = $restab->getNodesAttribs(\@nodes, ['primarynic','tftpserver','xcatmaster','nfsserver','nfsdir', 'installnic']);
+    my $reshash    = $restab->getNodesAttribs(\@nodes, ['primarynic','tftpserver','tftpdir','xcatmaster','nfsserver','nfsdir', 'installnic']);
     my $hmhash =
           $hmtab->getNodesAttribs(\@nodes,
                                  ['serialport', 'serialspeed', 'serialflow']);
@@ -218,6 +218,13 @@ sub mknetboot
         my $dump; # for kdump, its format is "nfs://<nfs_server_ip>/<kdump_path>"
         my $crashkernelsize;
         my $rootfstype; 
+        my $tftpdir;
+        if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{tftpdir}) {
+		$tftpdir = $reshash->{$node}->[0]->{tftpdir};
+        } else {
+		$tftpdir = $globaltftpdir;
+        }
+           
 
         my $ent = $oents{$node}->[0]; #ostab->getNodeAttribs($node, ['os', 'arch', 'profile']);
         if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
@@ -754,9 +761,9 @@ sub mkinstall
     my %img_hash=();
 
     my $installroot;
-    my $tftpdir;
+    my $globaltftpdir;
     $installroot = "/install";
-    $tftpdir = "/tftpboot";
+    $globaltftpdir = "/tftpboot";
 
     if ($sitetab)
     {
@@ -768,7 +775,7 @@ sub mkinstall
         ($ref) = $sitetab->getAttribs({key => 'tftpdir'}, 'value');
         if ($ref and $ref->{value})
         {
-            $tftpdir = $ref->{value};
+            $globaltftpdir = $ref->{value};
         }
     }
 
@@ -781,7 +788,7 @@ sub mkinstall
     my %osents = %{$ostab->getNodesAttribs(\@nodes, ['profile', 'os', 'arch', 'provmethod'])};
     my %rents =
               %{$restab->getNodesAttribs(\@nodes,
-                                     ['nfsserver', 'primarynic', 'installnic'])};
+                                     ['nfsserver', 'tftpdir', 'primarynic', 'installnic'])};
     my %hents = 
               %{$hmtab->getNodesAttribs(\@nodes,
                                      ['serialport', 'serialspeed', 'serialflow'])};
@@ -791,6 +798,7 @@ sub mkinstall
     foreach $node (@nodes)
     {
         my $os;
+        my $tftpdir;
         my $arch;
         my $profile;
         my $tmplfile;
@@ -800,6 +808,11 @@ sub mkinstall
 	my $platform;
 
         my $osinst;
+        if ($rents{$node}->[0] and $rents{$node}->[0]->{tftpdir}) {
+		$tftpdir = $rents{$node}->[0]->{tftpdir};
+        } else {
+		$tftpdir = $globaltftpdir;
+        }
         my $ent = $osents{$node}->[0]; #$ostab->getNodeAttribs($node, ['profile', 'os', 'arch']);
         if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
 	    $imagename=$ent->{provmethod};

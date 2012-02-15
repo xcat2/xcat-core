@@ -14,7 +14,7 @@ my %normalnodes;
 my $callback;
 my $sub_req;
 my $dhcpconf = "/etc/dhcpd.conf";
-my $tftpdir = "/tftpboot";
+my $globaltftpdir = "/tftpboot";
 #my $dhcpver = 3;
 
 my %usage = (
@@ -44,6 +44,7 @@ sub check_dhcp {
 
 sub getstate {
   my $node = shift;
+  my $tftpdir = shift;
   if (check_dhcp($node)) {
     if (-r $tftpdir . "/etc/".$node) {
       my $fhand;
@@ -71,6 +72,7 @@ sub setstate {
   my %bphash = %{shift()};
   my %chainhash = %{shift()};
   my %machash = %{shift()};
+  my $tftpdir = shift;
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
   if ($kern->{kcmdline} =~ /!myipfn!/) {
       my $ipfn = xCAT::Utils->my_ip_facing($node);
@@ -447,6 +449,8 @@ sub process_request {
   my $bphash = $bptab->getNodesAttribs(\@nodes,['kernel','initrd','kcmdline','addkcmdline']);
   my $chaintab=xCAT::Table->new('chain',-create=>1);
   my $chainhash=$chaintab->getNodesAttribs(\@nodes,['currstate']);
+  my $noderestab=xCAT::Table->new('noderes',-create=>1);
+  my $nodereshash=$noderestab->getNodesAttribs(\@nodes,['tftpdir']);
   my $mactab=xCAT::Table->new('mac',-create=>1);
   my $machash=$mactab->getNodesAttribs(\@nodes,['mac']);
   my $rc;
@@ -454,12 +458,18 @@ sub process_request {
 
   foreach (@nodes) {
     my %response;
+    my $tftpdir;
+    if ($nodereshash->{$_} and $nodereshash->{$_}->[0] and $nodereshash->{$_}->[0]->{tftpdir}) {
+       $tftpdir =  $nodereshash->{$_}->[0]->{tftpdir};
+    } else {
+       $tftpdir = $globaltftpdir;
+    }
     $response{node}->[0]->{name}->[0]=$_;
     if ($args[0] eq 'stat') {
-      $response{node}->[0]->{data}->[0]= getstate($_);
+      $response{node}->[0]->{data}->[0]= getstate($_,$tftpdir);
       $callback->(\%response);
     } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
-      ($rc,$errstr) = setstate($_,$bphash,$chainhash,$machash);
+      ($rc,$errstr) = setstate($_,$bphash,$chainhash,$machash,$tftpdir);
       if ($rc) {
         $response{node}->[0]->{errorcode}->[0]= $rc;
         $response{node}->[0]->{errorc}->[0]= $errstr;

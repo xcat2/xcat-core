@@ -12,7 +12,7 @@ my $request;
 my $callback;
 my $dhcpconf = "/etc/dhcpd.conf";
 #my $tftpdir = "/tftpboot";
-my $tftpdir = xCAT::Utils->getTftpDir();
+my $globaltftpdir = xCAT::Utils->getTftpDir();
 #my $dhcpver = 3;
 
 my %usage = (
@@ -42,6 +42,7 @@ sub check_dhcp {
 
 sub getstate {
   my $node = shift;
+  my $tftpdir = shift;
   if (check_dhcp($node)) {
     if (-r $tftpdir . "/xcat/xnba/nodes/".$node) {
       my $fhand;
@@ -79,6 +80,7 @@ sub setstate {
   my %chainhash = %{shift()};
   my %machash = %{shift()};
   my %iscsihash = %{shift()};
+  my $tftpdir = shift;
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
   unless ($addkcmdlinehandled->{$node}) { #Tag to let us know the plugin had a special syntax implemented for addkcmdline
     if ($kern->{addkcmdline}) {
@@ -450,15 +452,15 @@ sub process_request {
   }  
 
   #back to normal business
-  if (! -r "$tftpdir/xcat/pxelinux.0") {
+  if (! -r "$globaltftpdir/xcat/pxelinux.0") {
     unless (-r $::XCATROOT."/share/xcat/netboot/syslinux/pxelinux.0") {
        $callback->({error=>["Unable to find pxelinux.0 at ".$::XCATROOT."/share/xcat/netboot/syslinux/pxelinux.0"],errorcode=>[1]});
        return;
     }
-    copy($::XCATROOT."/share/xcat/netboot/syslinux/pxelinux.0","$tftpdir/xcat/pxelinux.0");
-     chmod(0644,"$tftpdir/xcat/pxelinux.0");
+    copy($::XCATROOT."/share/xcat/netboot/syslinux/pxelinux.0","$globaltftpdir/xcat/pxelinux.0");
+     chmod(0644,"$globaltftpdir/xcat/pxelinux.0");
   }
-  unless ( -r "$tftpdir/xcat/pxelinux.0" ) {
+  unless ( -r "$globaltftpdir/xcat/pxelinux.0" ) {
      $callback->({errror=>["Unable to find pxelinux.0 from syslinux"],errorcode=>[1]});
      return;
   }
@@ -479,7 +481,9 @@ sub process_request {
   #Time to actually configure the nodes, first extract database data with the scalable calls
   my $bptab = xCAT::Table->new('bootparams',-create=>1);
   my $chaintab = xCAT::Table->new('chain');
+  my $noderestab = xCAT::Table->new('noderes'); #in order to detect per-node tftp directories
   my $mactab = xCAT::Table->new('mac'); #to get all the hostnames
+  my %nrhash = %{$noderestab->getNodesAttribs(\@nodes,[qw(tftpdir)])};
   my %bphash = %{$bptab->getNodesAttribs(\@nodes,[qw(kernel initrd kcmdline addkcmdline)])};
   my %chainhash = %{$chaintab->getNodesAttribs(\@nodes,[qw(currstate)])};
   my %iscsihash;
@@ -488,17 +492,23 @@ sub process_request {
       %iscsihash = %{$iscsitab->getNodesAttribs(\@nodes,[qw(server target)])};
   }
   my %machash = %{$mactab->getNodesAttribs(\@nodes,[qw(mac)])};
-  mkpath($tftpdir."/xcat/xnba/nodes/");
   foreach (@nodes) {
+    my $tftpdir;
+    if ($nrhash{$_}->[0] and $nrhash{$_}->[0]->{tftpdir}) {
+	$tftpdir = $nrhash{$_}->[0]->{tftpdir};
+    } else {
+        $tftpdir = $globaltftpdir;
+    }
+    mkpath($tftpdir."/xcat/xnba/nodes/");
     my %response;
     $response{node}->[0]->{name}->[0]=$_;
     if ($args[0] eq 'stat') {
-      $response{node}->[0]->{data}->[0]= getstate($_);
+      $response{node}->[0]->{data}->[0]= getstate($_,$tftpdir);
       $callback->(\%response);
     } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
       my $rc;
       my $errstr;
-      ($rc,$errstr) = setstate($_,\%bphash,\%chainhash,\%machash,\%iscsihash);
+      ($rc,$errstr) = setstate($_,\%bphash,\%chainhash,\%machash,\%iscsihash,$tftpdir);
       #currently, it seems setstate doesn't return error codes...
       #if ($rc) {
       #  $response{node}->[0]->{errorcode}->[0]= $rc;
