@@ -2879,33 +2879,36 @@ sub mknimimage
             my @nimresupdated = ();
             if ($imagedef{$::image_name}{nimtype} eq "standalone")
             {
-                @nimrestoupdate = ("lpp_source", "spot", "bosinst_data", "installp_bundle");
+                @nimrestoupdate = ("lpp_source", "spot", "bosinst_data", "installp_bundle", "image_data", "resolv_conf");
             } 
             if (($imagedef{$::image_name}{nimtype} eq "diskless") && $imagedef{$::image_name}{root})
             {
-                @nimrestoupdate = ("lpp_source", "spot", "installp_bundle", "root", "paging");
+                @nimrestoupdate = ("lpp_source", "spot", "installp_bundle", "root", "paging", "resolv_conf");
             }
             if (($imagedef{$::image_name}{nimtype} eq "diskless") && $imagedef{$::image_name}{shared_root})
             {
-                @nimrestoupdate = ("lpp_source", "spot", "installp_bundle", "shared_root", "paging");
+                @nimrestoupdate = ("lpp_source", "spot", "installp_bundle", "shared_root", "paging", "resolv_conf");
             }
 
             foreach my $nimres (@nimrestoupdate)
             {
                 my $ninresname = $imagedef{$::image_name}{$nimres};
-                push @nimresupdated, $ninresname;
-                my $nimcmd = qq~nim -o change -a nfs_vers=4 $ninresname~;
-                my $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
-                if ($::RUNCMD_RC != 0)
+                if ($ninresname)
                 {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Could not set nfs_vers=4 for resource $ninresname.\n";
-                    if ($::VERBOSE)
+                    push @nimresupdated, $ninresname;
+                    my $nimcmd = qq~nim -o change -a nfs_vers=4 $ninresname~;
+                    my $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
+                    if ($::RUNCMD_RC != 0)
                     {
-                        push @{$rsp->{data}}, "$nimout";
+                        my $rsp;
+                        push @{$rsp->{data}}, "Could not set nfs_vers=4 for resource $ninresname.\n";
+                        if ($::VERBOSE)
+                        {
+                            push @{$rsp->{data}}, "$nimout";
+                        }
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        return 1;
                     }
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    return 1;
                 }
             }
             if ($::VERBOSE)
