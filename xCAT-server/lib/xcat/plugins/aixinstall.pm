@@ -11705,6 +11705,22 @@ sub rmdsklsnode
     # for each node
     my @nodesfailed;
     my $error;
+
+    # read nodelist.status
+    my $nlhash;
+    
+    my $nltab = xCAT::Table->new('nodelist');
+    if ($nltab)
+    {
+        $nlhash = $nltab->getNodesAttribs(\@nodelist, ['status']);
+    }
+    else
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Can not open nodelist table.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+    }
+
     foreach my $node (@nodelist)
     {
 
@@ -11718,12 +11734,8 @@ sub rmdsklsnode
         }
 
         # see if the node is running
-        my $mstate =
-          xCAT::InstUtils->get_nim_attr_val($nodename, "Mstate", $callback,
-                                            $Sname, $subreq);
-
-        # if it's not in ready state then
-        if (defined($mstate) && ($mstate =~ /currently running/))
+        # use nodelist.status
+        if ($nlhash && $nlhash->{$nodename}->[0]->{'status'} eq 'booted')
         {
             if ($::FORCE)
             {
@@ -11744,11 +11756,10 @@ sub rmdsklsnode
             }
             else
             {
-
                 # don't remove the def
                 my $rsp;
                 push @{$rsp->{data}},
-                  "The Mstate of NIM machine \'$nodename\' is currently in running state.  The NIM definition will not be removed.";
+                  "The nodelist.status of \'$nodename\' is currently \'booted\', use -f flag to forcely remove it.";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 $error++;
                 push(@nodesfailed, $nodename);
