@@ -21,7 +21,8 @@ my $url         = $q->url;
 my $pathInfo    = $q->path_info;
 my $requestType = $ENV{'REQUEST_METHOD'};
 my $queryString = $ENV{'QUERY_STRING'};
-my @path        = split(/\//, $pathInfo);
+my %queryhash;
+my @path = split(/\//, $pathInfo);
 shift(@path);
 my $resource    = $path[0];
 my $pageContent = '';
@@ -93,8 +94,10 @@ my %formatters = (
     'json' => \&wrapJson,
     'xml'  => \&wrapXml,);
 
-if ($q->param('format')) {
-    $format = $q->param('format');
+fetchParameter($queryString);
+
+if ($queryhash{'format'}) {
+    $format = $queryhash{'format'}->[0];
     if (!exists $formatters{$format}) {
         addPageContent("The format '$format' is not valid");
         sendResponseMsg($STATUS_BAD_REQUEST);
@@ -146,22 +149,37 @@ if ($DEBUGGING) {
         addPageContent("$_ = " . join(',', $q->param($_)) . "\n");
     }
     addPageContent($q->p("Query String $queryString" . "\n"));
+    addPageContent($q->p("Query parameters from the Query String" . Dumper(\%queryhash) . "\n"));
     addPageContent($q->p("HTTP Method $requestType" . "\n"));
     addPageContent($q->p("URI $url" . "\n"));
     addPageContent($q->p("path " . Dumper(@path) . "\n"));
+}
+
+#when use put and post, can not fetch the url-parameter, so add this sub to support all kinks of method
+sub fetchParameter {
+    my $parstr = shift;
+    unless ($parstr) {
+        return;
+    }
+
+    my @pairs = split(/&/, $parstr);
+    foreach my $pair (@pairs) {
+        my ($key, $value) = split(/=/, $pair);
+        $value =~ tr/+/ /;
+        $value =~ s/%([a-fA-F0-9][a-fA-F0-9])/chr(hex($1))/eg;
+        push @{$queryhash{$key}}, $value;
+    }
 }
 
 my $userName;
 my $password;
 
 sub handleRequest {
-    if (defined $q->param('userName')) {
-        $userName = $q->param(
-            'userName');
+    if (defined $queryhash{'userName'}) {
+        $userName = $queryhash{'userName'}->[0];
     }
-    if (defined $q->param('password')) {
-        $password = $q->param(
-            'password');
+    if (defined $queryhash{'password'}) {
+        $password = $queryhash{'password'}->[0];
     }
     if ($userName && $password) {
         $request->{becomeuser}->[0]->{username}->[0] = $userName;
@@ -709,7 +727,7 @@ sub nodesHandler {
             }
         }
         else {
-            $request->{command} = 'nodels';
+            $request->{command} = 'lsdef';
 
             #if the table or field is specified in the URI
             if (defined $subResource) {
@@ -718,7 +736,10 @@ sub nodesHandler {
 
             #maybe it's specified in the parameters
             else {
-                push @args, $q->param('field');
+                my @temparray = $q->param('field');
+                foreach (@temparray) {
+                    push @args, "-i", $_;
+                }
             }
         }
     }
@@ -994,53 +1015,34 @@ sub siteHandler {
     if (isGet()) {
         $request->{command} = 'lsdef';
         push @{$request->{arg}}, '-t', 'site', '-o', 'clustersite';
-        my $req = genRequest();
-        @responses = sendRequest($req);
+        my @temparray = $q->param('field');
+
+        #add the field name to get
+        if (scalar(@temparray) > 0) {
+            push @{$request->{arg}}, '-i';
+            push @{$request->{arg}}, join(',', @temparray),;
+        }
     }
-    elsif (isPut() || isPatch()) {
-        $request->{command} = 'tabch';
-        if (defined $q->param('PUTDATA')) {
+    elsif (isPut()) {
+        $request->{command} = 'chdef';
+        push @{$request->{arg}}, '-t', 'site', '-o', 'clustersite';
+        if ($q->param('PUTDATA')) {
             my $entries = decode_json $q->param('PUTDATA');
-            foreach (values %$entries) {
-                my %fields = %$_;
-                foreach my $key (keys %fields) {
-                    if ($key =~ /key/) {
-
-                        #the key needs to be first
-                        unshift @args, "key=$fields{$key}";
-                    }
-                    else {
-                        push @args, "site.$key=$fields{$key}";
-                    }
-                }
-                push @{$request->{arg}}, @args;
-                my $req          = genRequest();
-                my @subResponses = sendRequest($req);
-
-                #TODO:  look at the reponses and see if there are errors
-                push @responses, @subResponses;
+            foreach (@$entries) {
+                push @{$request->{arg}}, $_;
             }
+        }
+        else {
+            addPageContent("No Field and Value map was supplied.");
+            sendResponseMsg($STATUS_BAD_REQUEST);
         }
     }
     else {
         unsupportedRequestType();
-        exit();
     }
 
-    #change response formatting
-    foreach my $response (@responses) {
-        foreach my $item (@{$response->{data}}) {
-            if ($item !~ /^#/) {
-                my @values = split(/,/, $item);
-                my %item = (
-                    entry    => $values[0],
-                    value    => $values[1],
-                    comments => $values[2],
-                    disable  => $values[3]);
-                push @data, \%item;
-            }
-        }
-    }
+    my $req = genRequest();
+    @responses = sendRequest($req);
     return @responses;
 }
 
@@ -1565,7 +1567,6 @@ sub wrapHtml {
         $baseUri .= "/";
     }
 
-    addPageContent($q->p("dumping in wrapHtml ".Dumper($response)));
     foreach my $element (@$response) {
 
         #foreach my $element (@$data){
@@ -1619,18 +1620,27 @@ sub wrapHtml {
         if ($element->{info}) {
             addPageContent("<table border=1>");
             foreach $item (@{$element->{info}}) {
-                my @values = split(/:/, $item, 2);
                 addPageContent("<tr>");
-                foreach (@values) {
-                    if ($formatType =~ /splitCommas/) {
-                        my @fields = split(/,/, $_, -1);
-                        foreach (@fields) {
-                            addPageContent("<td>$_</td>");
-                        }
-                    }
-                    else {
-                        addPageContent("<td>$_</td>");
-                    }
+                my $fieldname  = '';
+                my $fieldvalue = '';
+
+                #strip whitespace in the string
+                $item =~ s/^\s+//;
+                $item =~ s/\s+$//;
+                if ($item =~ /Object/) {
+                    ($fieldname, $fieldvalue) = split(/:/, $item);
+                }
+                elsif ($item =~ /.*=.*/) {
+                    my $position = index $item, '=';
+                    $fieldname = substr $item, 0, $position;
+                    $fieldvalue = substr $item, $position + 1;
+                }
+                else {
+                    $fieldname = $item;
+                }
+                addPageContent("<td>" . $fieldname . "</td>");
+                if ($fieldvalue ne '') {
+                    addPageContent("<td>" . $fieldvalue . "</td>");
                 }
                 addPageContent("</tr>\n");
             }
