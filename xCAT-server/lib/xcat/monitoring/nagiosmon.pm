@@ -588,8 +588,7 @@ sub addNodes {
 	my $ip=xCAT::NetworkUtils->getipaddr($node);
 	#print "ip=$ip\n";
         `echo "\#BEGIN HOST $node
-define host\{
-    use             linux-server        
+define host\{\n    use             linux-server        
     host_name       $node                
     alias           $node    
     address         $ip              
@@ -648,8 +647,7 @@ command_line \\\$USER1\$/check_nrpe -H \\\$HOSTADDRESS\$ -t 30 -c \\\$ARG1\$
     #print "defining services in  $mychildren_cfg\n";
     my $rc=`grep "service_description" $mychildren_cfg`;
     if (!$rc || ($rc !~ /(\s)*service_description(\s)+SSH/)) {
-	`echo "define service{
-    use     generic-service
+	`echo "define service{\n    use     generic-service
     hostgroups    mychildren
     service_description SSH
     check_command   check_ssh
@@ -657,8 +655,7 @@ command_line \\\$USER1\$/check_nrpe -H \\\$HOSTADDRESS\$ -t 30 -c \\\$ARG1\$
 " >> $mychildren_cfg`;
     }
     if (!$rc || ($rc !~ /(\s)*service_description(\s)+FTP/)) {
-	`echo "define service{
-    use     generic-service
+	`echo "define service{\n    use     generic-service
     hostgroups    mychildren
     service_description FTP
     check_command   check_ftp
@@ -666,8 +663,7 @@ command_line \\\$USER1\$/check_nrpe -H \\\$HOSTADDRESS\$ -t 30 -c \\\$ARG1\$
 " >> $mychildren_cfg`;
     }
     if (!$rc || ($rc !~ /(\s)*service_description(\s)+Load(\s)*/)) {
-	`echo "define service{
-    use                             generic-service
+	`echo "define service{\n    use                             generic-service
     contact_groups                  admins
     hostgroups                      mychildren
     service_description             Load
@@ -676,8 +672,7 @@ command_line \\\$USER1\$/check_nrpe -H \\\$HOSTADDRESS\$ -t 30 -c \\\$ARG1\$
 " >> $mychildren_cfg`;
     }
     if (!$rc || ($rc !~ /(\s)*service_description(\s)+Processes(\s)*/)) {
-	`echo "define service{
-    use                             generic-service
+	`echo "define service{\n    use                             generic-service
     contact_groups                  admins
     hostgroups                      mychildren
     service_description             Processes
@@ -686,8 +681,7 @@ command_line \\\$USER1\$/check_nrpe -H \\\$HOSTADDRESS\$ -t 30 -c \\\$ARG1\$
 " >> $mychildren_cfg`;
     }
     if (!$rc || ($rc !~ /(\s)*service_description(\s)+Users(\s)*/)) {
-	`echo "define service{
-    use                             generic-service
+	`echo "define service{\n    use                             generic-service
     contact_groups                  admins
     hostgroups                      mychildren
     service_description             Users
@@ -875,8 +869,7 @@ sub addGrandNodes {
     my $rc=`grep "xCAT-node" $cn_template_cfg`;
     if (!$rc || ($rc !~ /^(\s)*name(\s)+xCAT-node/)) {
 	`echo "define host{
-        name                            xCAT-node
-        use                             generic-host
+        name                            xCAT-node\n        use                             generic-host
         check_period                    24x7
         active_checks_enabled  0
         passive_checks_enabled 1
@@ -927,8 +920,7 @@ sub addGrandNodes {
 	my $ip=xCAT::NetworkUtils->getipaddr($node);
 	#print "ip=$ip\n";
         `echo "\#BEGIN HOST $node
-define host\{
-    use         xCAT-node
+define host\{\n    use         xCAT-node
     host_name   $node
     alias       $node
     address     $ip
@@ -975,8 +967,7 @@ define host\{
 	#print "defining services in  $cn_cfg\n";
 	my $rc=`grep "service_description" $cn_cfg`;
 	if (!$rc || ($rc !~ /(\s)*service_description(\s)+SSH/)) {
-	    `echo "define service{
-    use     generic-service
+	    `echo "define service{\n    use     generic-service
     hostgroups  cn_$sv
     service_description  SSH
     check_command   check_ssh
@@ -986,8 +977,7 @@ define host\{
 " >> $cn_cfg`;
 	}
 	if (!$rc || ($rc !~ /(\s)*service_description(\s)+FTP/)) {
-	    `echo "define service{
-    use     generic-service
+	    `echo "define service{\n    use     generic-service
     hostgroups  cn_$sv
     service_description  FTP
     check_command   check_ssh
@@ -997,8 +987,7 @@ define host\{
 " >> $cn_cfg`;
 	}
 	if (!$rc || ($rc !~ /(\s)*service_description(\s)+Load(\s)*/)) {
-	    `echo "define service{
-    use     generic-service
+	    `echo "define service{\n    use     generic-service
     hostgroups  cn_$sv
     service_description Load
     check_command   check_ssh
@@ -1008,8 +997,7 @@ define host\{
 " >> $cn_cfg`;
 	}
 	if (!$rc || ($rc !~ /(\s)*service_description(\s)+Processes(\s)*/)) {
-	    `echo "define service{
-    use     generic-service
+	    `echo "define service{\n    use     generic-service
     hostgroups  cn_$sv
     service_description  Processes
     check_command   check_ssh
