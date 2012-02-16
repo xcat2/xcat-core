@@ -1034,6 +1034,12 @@ sub find_nameserver_for_dns {
             }
         }
     }
+    
+    if (defined $ctx->{aliases}->{$node}) {
+    	foreach (keys %{$ctx->{aliases}->{$node}}) {
+    		push @rrcontent, "$_ IN CNAME $name";
+    	}
+    }
     if ($ctx->{deletemode}) {
         push @rrcontent,"$name TXT";
         push @rrcontent,"$name A";
