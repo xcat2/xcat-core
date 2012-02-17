@@ -631,7 +631,10 @@ sub changeVM {
 		$out = `ssh $hcp "$::DIR/add3390 $userId $pool $addr $cyl $mode $readPw $writePw $multiPw"`;
 		
 		# Add to active configuration
-		$out .= `ssh $hcp "$::DIR/add3390active $userId $addr $mode"`;
+		my $ping = `pping $node`;
+		if ($ping =~ m/ping/i) {
+			$out .= `ssh $hcp "$::DIR/add3390active $userId $addr $mode"`;
+		}		
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
 
@@ -3215,12 +3218,44 @@ sub nodeSet {
 			@tmp = split( /\./, $os );
 		}
 		my $osBase = $tmp[0];
+		
+		# Get node distro
+		my $distro = "";
+		if ( $os =~ m/sles/i ) {
+			$distro = "sles";
+		} elsif ( $os =~ m/rhel/i ) {
+			$distro = "rh";
+		} else {
+			xCAT::zvmUtils->printLn( $callback, "$node: (Error) Unable to determine node Linux distribution" );
+			xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Verify the node Linux distribution is either sles* or rh*" );
+			return;
+		}
 
 		# Get autoyast/kickstart template
-		my $tmpl = "$profile.$osBase.$arch.tmpl";
-		
-		# Also check for $profile.$os.$arch.tmpl
-		
+		my $tmpl;
+				
+		# Check for $profile.$os.$arch.tmpl
+		if ( -e "$installDir/custom/install/$distro/$profile.$os.$arch.tmpl" ) {
+			$tmpl = "$profile.$os.$arch.tmpl";
+		} 
+		# Check for $profile.$osBase.$arch.tmpl
+		elsif ( -e "$installDir/custom/install/$distro/$profile.$osBase.$arch.tmpl" ) {
+			$tmpl = "$profile.$osBase.$arch.tmpl";
+		}  
+		# Check for $profile.$arch.tmpl
+		elsif ( -e "$installDir/custom/install/$distro/$profile.$arch.tmpl" ) {
+			$tmpl = "$profile.$arch.tmpl";
+		}
+		# Check for $profile.tmpl second
+		elsif ( -e "$installDir/custom/install/$distro/$profile.tmpl" ) {
+			$tmpl = "$profile.tmpl";
+		}
+		else {
+			# No template exists
+			xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing autoyast/kickstart template" );
+			xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Create a template under $installDir/custom/install/$distro/" );
+			return;
+		}
 
 		# Get host IP and hostname from /etc/hosts
 		$out = `cat /etc/hosts | grep "$node "`;
@@ -3229,16 +3264,27 @@ sub nodeSet {
 		my $hostname = $words[2];
 		if ( !$hostIP || !$hostname ) {
 			xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing IP for $node in /etc/hosts" );
-			xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Verify that the node's IP address is specified in the hosts table and then run makehosts" );
+			xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Verify that the nodes IP address is specified in the hosts table and then run makehosts" );
 			return;
 		}
 
 		# Check template if DHCP is used
 		my $dhcp = 0;
-		if ( -e "$installDir/custom/install/sles/$tmpl" ) {
-			$out = `cat $installDir/custom/install/sles/$tmpl | egrep -i "<bootproto>"`;
-			if ($out =~ m/dhcp/i) {
-				$dhcp = 1;
+		if ($distro eq "sles") {
+			# Check autoyast template
+			if ( -e "$installDir/custom/install/sles/$tmpl" ) {
+				$out = `cat $installDir/custom/install/sles/$tmpl | egrep -i "<bootproto>"`;
+				if ($out =~ m/dhcp/i) {
+					$dhcp = 1;
+				}
+			}
+		} elsif ($distro eq "rh") {
+			# Check kickstart template
+			if ( -e "$installDir/custom/install/rh/$tmpl" ) {
+				$out = `cat $installDir/custom/install/rh/$tmpl | egrep -i "--bootproto dhcp"`;
+				if ($out =~ m/dhcp/i) {
+					$dhcp = 1;
+				}
 			}
 		}
 		
