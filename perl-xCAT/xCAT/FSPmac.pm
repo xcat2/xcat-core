@@ -7,6 +7,7 @@ use Getopt::Long;
 use xCAT::PPCmac;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 
+use xCAT::LparNetbootExp;
 ##########################################################################
 # Parse the command line for options and operands 
 ##########################################################################
@@ -29,6 +30,7 @@ sub do_getmacs {
     my $ssh      = @$exp[0];
     my $userid   = @$exp[4];
     my $pw       = @$exp[5];
+    my %optarg;
     my $cmd;
     my $result;
 
@@ -45,18 +47,18 @@ sub do_getmacs {
     my $fsp      = @$d[2];
     my $hcp      = @$d[3];
 
-    #######################################
-    # Find Expect script 
-    #######################################
-    $cmd = ($::XCATROOT) ? "$::XCATROOT/sbin/" : "/opt/xcat/sbin/";
-    $cmd .= "lpar_netboot.expect"; 
-
-    #######################################
-    # Check command installed 
-    #######################################
-    if ( !-x $cmd ) {
-        return( [RC_ERROR,"Command not installed: $cmd"] );
-    }
+    ########################################
+    ## Find Expect script
+    ########################################
+    #$cmd = ($::XCATROOT) ? "$::XCATROOT/sbin/" : "/opt/xcat/sbin/";
+    #$cmd .= "lpar_netboot.expect";
+    #
+    ########################################
+    ## Check command installed
+    ########################################
+    #if ( !-x $cmd ) {
+    #    return( [RC_ERROR,"Command not installed: $cmd"] );
+    #}
     #######################################
     # Save user name and passwd of hcp to 
     # environment variables.
@@ -69,13 +71,16 @@ sub do_getmacs {
     # Turn on verbose and debugging 
     #######################################
     if ( exists($request->{verbose}) ) {
-        $cmd.= " -v -x";
+        #$cmd.= " -v -x";
+        $optarg{'v'} = 1; #for verbose
+        $optarg{'x'} = 1; #for debug
     }
     #######################################
     # Force LPAR shutdown
     #######################################
     if ( exists( $opt->{f} )) {
-        $cmd.= " -i";
+        #$cmd.= " -i";
+        $optarg{'i'} = 1;
     } else {
         #################################
         # Force LPAR shutdown if LPAR is
@@ -91,7 +96,8 @@ sub do_getmacs {
                 my $osname = "AIX";
                 if ( grep(/^$node$/, @nodelist) ) {
                     if ( !grep(/^$osname$/, @oslist) ) {
-                        $cmd.= " -i";
+                        #$cmd.= " -i";
+                        $optarg{'i'} = 1;
                     }
                     $intable = 1;
                     last;
@@ -104,15 +110,18 @@ sub do_getmacs {
         # but mnt node is running Linux
         #################################
         if ( xCAT::Utils->isLinux() && $intable == 0 ) {
-            $cmd.= " -i";
+               #$cmd.= " -i";
+               $optarg{'i'} = 1;
         }
     }
 
     my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( [$node] );
     if ( grep /hf/, $client_nethash{$node}{mgtifname} ) {
-        $cmd .= " -t hfi-ent";
+        #$cmd.= " -t hfi-ent";
+        $optarg{'t'} = "hfi-ent";
     } else {
-        $cmd .= " -t ent";
+        #$cmd.= " -t ent";
+        $optarg{'t'} = "ent";
     }
 
     #######################################
@@ -120,53 +129,66 @@ sub do_getmacs {
     #######################################
     if ( exists( $opt->{S} )) { 
         if ( exists( $opt->{o} )) {
-            $cmd .=" -o";
+            #$cmd .=" -o";
+           $optarg{'o'} = 1;
         }
-
-        $cmd.= " -D -s auto -d auto -S $opt->{S} -G $opt->{G} -C $opt->{C} ";
-    }
-
-    $pprofile = "not_use"; #lpar_netboot.expect need pprofile for p5 & p6, but for p7 ih, we don't use this attribute.
-
+        #$cmd.= " -D -s auto -d auto -S $opt->{S} -G $opt->{G} -C $opt->{C}";
+        $optarg{'D'} = 1;
+        $optarg{'s'} = 'auto';
+        $optarg{'d'} = 'auto';
+        $optarg{'S'} = $opt->{S};
+        $optarg{'C'} = $opt->{C};
+        $optarg{'G'} = $opt->{G};
+        $optarg{'pprofile'} = "not_use"; #lpar_netboot.expect need pprofile for p5 & p6, but for p7 ih, we don't use this attribute.
+    } 
     #######################################
     # Add command options 
     #######################################
-    $cmd.= " -f -M -A -n \"$name\" \"$pprofile\" \"$fsp\" $id $hcp \"$node\"";
-    #######################################
-    # Execute command 
-    #######################################
-    my $pid = open( OUTPUT, "$cmd 2>&1 |");
-    $SIG{INT} = $SIG{TERM} = sub { #prepare to process job termination and propogate it down
-        kill 9, $pid;
-        return( [RC_ERROR,"Received INT or TERM signal"] );
-    };
-    if ( !$pid ) {
-        return( [RC_ERROR,"$cmd fork error: $!"] );
-    }
+    #$cmd.= " -f -M -A -n \"$name\" \"$pprofile\" \"$fsp\" $id $hcp \"$node\"";
+    $optarg{'f'} = 1;
+    $optarg{'M'} = 1;
+    $optarg{'A'} = 1;
+    $optarg{'n'} = $name;
+    #$optarg{'pprofile'} = $pprofile;
+    $optarg{'fsp'} = $fsp;
+    $optarg{'id'} = $id;
+    $optarg{'hcp'} = $hcp;
+    $optarg{'node'} = $node;
 
-    #######################################
-    # Get command output 
-    #######################################
-    while ( <OUTPUT> ) {
-        $result.=$_;
-    }
-    close OUTPUT;
-
-    #######################################
-    # Get command exit code
-    #######################################
-    my $Rc = SUCCESS;
-
-    foreach ( split /\n/, $result ) {
-        if ( /^lpar_netboot / ) {
-            $Rc = RC_ERROR;
-            last;
-        }
-    }
+    ########################################
+    ## Execute command
+    ########################################
+    #my $pid = open( OUTPUT, "$cmd 2>&1 |");
+    #$SIG{INT} = $SIG{TERM} = sub { #prepare to process job termination and propogate it down
+    #    kill 9, $pid;
+    #    return( [RC_ERROR,"Received INT or TERM signal"] );
+    #};
+    #if ( !$pid ) {
+    #    return( [RC_ERROR,"$cmd fork error: $!"] );
+    #}
+    ########################################
+    ## Get command output
+    ########################################
+    #while ( <OUTPUT> ) {
+    #    $result.=$_;
+    #}
+    #close OUTPUT;
+    #
+    ########################################
+    ## Get command exit code
+    ########################################
+    #
+    #foreach ( split /\n/, $result ) {
+    #    if ( /^lpar_netboot / ) {
+    #        $Rc = RC_ERROR;
+    #        last;
+    #    }
+    #}
+    my $Rc = xCAT::LparNetbootExp->lparnetbootexp(\%optarg, $request);
     ######################################
     # Split results into array
     ######################################
-    return( [$Rc, split( /\n/, $result)] ); 
+    return $Rc;
 }
 
 
