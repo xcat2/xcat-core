@@ -66,7 +66,7 @@ int main() {
 		clientpacket[0x16] = (myip>>8)&0xff;
 		clientpacket[0x17] = (myip)&0xff;
 		txtptr = clientpacket+0x6c;
-		strncpy(txtptr,"bootmgfw.efi",128); // keeping 128 in there just in case someone changes the string
+		strncpy(txtptr,"Boot/bootmgfw.efi",128); // keeping 128 in there just in case someone changes the string
 		clientpacket[0xf0]=0x35; //DHCP MSG type 
 		clientpacket[0xf1]=0x1; // LEN of 1
 		clientpacket[0xf2]=0x5; //DHCP ACK
