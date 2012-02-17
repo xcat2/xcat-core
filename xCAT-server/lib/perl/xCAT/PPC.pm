@@ -1066,7 +1066,7 @@ sub resolve {
     my ($type) = grep( 
             /^$::NODETYPE_LPAR|$::NODETYPE_OSI|$::NODETYPE_BPA|$::NODETYPE_FSP|$::NODETYPE_CEC|$::NODETYPE_FRAME$/,
             #split /,/, $ent->{nodetype} );
-            split /,/, $$ttype{$node});
+            split /,/, $ttype);
 
     if ( !defined( $type )) {
         #return( "Invalid node type: $ent->{nodetype}" );
