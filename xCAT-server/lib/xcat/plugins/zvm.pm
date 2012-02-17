@@ -632,7 +632,7 @@ sub changeVM {
 		
 		# Add to active configuration
 		my $ping = `pping $node`;
-		if ($ping =~ m/ping/i) {
+		if (!($ping =~ m/noping/i)) {
 			$out .= `ssh $hcp "$::DIR/add3390active $userId $addr $mode"`;
 		}		
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
@@ -700,7 +700,7 @@ sub changeVM {
 
 		# Add to active configuration
 		my $ping = `pping $node`;
-		if ($ping =~ m/ping/i) {
+		if (!($ping =~ m/noping/i)) {
 			$out = `ssh $node "vmcp define nic $addr type $type"`;
 		}
 
@@ -744,7 +744,7 @@ sub changeVM {
 				
 		# Connect to LAN in active configuration
 		my $ping = `pping $node`;
-		if ($ping =~ m/ping/i) {
+		if (!($ping =~ m/noping/i)) {
 			$out = `ssh $node "vmcp couple $addr to $owner $lan"`;
 		}
 		
@@ -763,7 +763,7 @@ sub changeVM {
 
 		# Connect to VSwitch in active configuration
 		my $ping = `pping $node`;
-		if ($ping =~ m/ping/i) {
+		if (!($ping =~ m/noping/i)) {
 			$out .= `ssh $node "vmcp couple $addr to system $vswitch"`;
 		}
 		
