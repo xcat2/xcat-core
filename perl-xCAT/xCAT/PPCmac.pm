@@ -398,7 +398,7 @@ sub do_getmacs {
     ######################################
     # Split results into array
     ######################################
-    return( [$Rc, split( /\n/, $result)] ); 
+    return $Rc;
 }
 
 
@@ -679,9 +679,10 @@ sub getmacs {
             # Manually collect MAC addresses.
             #########################################
             $result = do_getmacs( $request, $d, $exp, $name, $node );
+            $Rc = shift(@$result);
         }
         $sitetab->close;
-        $Rc = shift(@$result);
+        
    
         ##################################
         # Form string from array results 
