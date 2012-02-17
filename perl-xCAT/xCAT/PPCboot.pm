@@ -325,7 +325,8 @@ sub do_rnetboot {
             #######################################
             # Invoke the lpar_netbootexp
             #######################################
-            $Rc = xCAT::LparNetbootExp->lparnetbootexp(\%optarg, $request);
+            $result = xCAT::LparNetbootExp->lparnetbootexp(\%optarg, $request);
+            $Rc = @$result[0];
             if ( $Rc == SUCCESS ) {
                 $done = 2;
             } else {
@@ -337,7 +338,7 @@ sub do_rnetboot {
             last;
         }
     }
-    return( [$Rc,$result] );
+    return  $result;
 }
 
 
