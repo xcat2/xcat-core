@@ -8,7 +8,6 @@ vim
 rpm
 bind
 bind-utils
-atftp
 ksh
 nfs-utils
 dhcp
