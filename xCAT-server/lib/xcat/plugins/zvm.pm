@@ -614,7 +614,7 @@ sub changeVM {
 	$userId =~ tr/a-z/A-Z/;
 
 	# Output string
-	my $out;
+	my $out = "";
 
 	# add3390 [disk pool] [device address] [cylinders] [mode] [read password] [write password] [multi password]
 	# [read password] [write password] [multi password] are optional
@@ -627,7 +627,11 @@ sub changeVM {
 		my $writePw = $args->[6];
 		my $multiPw = $args->[7];
 
+		# Add to directory entry
 		$out = `ssh $hcp "$::DIR/add3390 $userId $pool $addr $cyl $mode $readPw $writePw $multiPw"`;
+		
+		# Add to active configuration
+		$out .= `ssh $hcp "$::DIR/add3390active $userId $addr $mode"`;
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
 
@@ -692,7 +696,10 @@ sub changeVM {
 		my $devcount = $args->[3];
 
 		# Add to active configuration
-		$out = `ssh $node "vmcp define nic $addr type $type"`;
+		my $ping = `pping $node`;
+		if ($ping =~ m/ping/i) {
+			$out = `ssh $node "vmcp define nic $addr type $type"`;
+		}
 
 		# Add to directory entry
 		$out .= `ssh $hcp "$::DIR/addnic $userId $addr $type $devcount"`;
@@ -731,10 +738,13 @@ sub changeVM {
 		my $addr  = $args->[1];
 		my $lan   = $args->[2];
 		my $owner = $args->[3];
-		
+				
 		# Connect to LAN in active configuration
-		$out = `ssh $node "vmcp couple $addr to $owner $lan"`;
-
+		my $ping = `pping $node`;
+		if ($ping =~ m/ping/i) {
+			$out = `ssh $node "vmcp couple $addr to $owner $lan"`;
+		}
+		
 		$out .= `ssh $hcp "$::DIR/connectnic2guestlan $userId $addr $lan $owner"`;
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
@@ -747,9 +757,12 @@ sub changeVM {
 		# Grant access to VSWITCH for Linux user
 		$out = "Granting access to VSWITCH for $userId\n  ";
 		$out .= `ssh $hcp "vmcp set vswitch $vswitch grant $userId"`;
-				
+
 		# Connect to VSwitch in active configuration
-		$out .= `ssh $node "vmcp couple $addr to system $vswitch"`;
+		my $ping = `pping $node`;
+		if ($ping =~ m/ping/i) {
+			$out .= `ssh $node "vmcp couple $addr to system $vswitch"`;
+		}
 		
 		# Connect to VSwitch in directory entry
 		$out .= `ssh $hcp "$::DIR/connectnic2vswitch $userId $addr $vswitch"`;
