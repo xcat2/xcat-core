@@ -14,7 +14,7 @@ use Data::Dumper;
 #all data input will be done from the common structure
 
 #turn on or off the debugging output
-my $DEBUGGING = 0;
+my $DEBUGGING = 1;
 
 my $q           = CGI->new;
 my $url         = $q->url;
@@ -592,66 +592,69 @@ sub monitorsHandler {
 sub networksHandler {
     my @responses;
     my @args;
+    my $netname = '';
 
     if (isGet()) {
-        $request->{command} = 'tabdump';
-        push @args, 'networks';
+        $request->{command} = 'lsdef';
+        push @{$request->{arg}}, '-t', 'network';
+        if (defined($path[1])) {
+            push @{$request->{arg}}, $path[1];
+        }
     }
-    elsif (isPut() or isPatch()) {
-        my $subResource;
+    elsif (isPut() || isPost()) {
+        my $entries;
+        if (isPut()) {
+            $request->{command} = 'chdef';
+        }
+        else {
+            $request->{command} = 'mkdef';
+        }
+
         if (defined $path[1]) {
-            $subResource = $path[1];
+            $netname = $path[1];
         }
-        if ($subResource eq "hosts") {
-            $request->{command} = 'makehosts';
 
-            #is this needed?
-            push @args, 'all';
+        if ($netname eq '') {
+            addPageContent('A network name must be specified.');
+            sendResponseMsg($STATUS_BAD_REQUEST);
         }
-        elsif ($subResource eq "dhcp") {
 
-            #allow restarting of the dhcp service.  scary?
-            if ($q->param('command') eq "restart") {
-                if (isAuthenticUser()) {
-                    system('service dhcp restart');
-                }
-                else {
-                    exit(0);
-                }
+        push @{$request->{arg}}, '-t', 'network', '-o', $netname;
+        if (defined($q->param('PUTDATA'))) {
+            $entries = decode_json $q->param('PUTDATA');
+            if (scalar($entries) < 1) {
+                addPageContent("No Field and Value map was supplied.");
+                sendResponseMsg($STATUS_BAD_REQUEST);
             }
-            else {
-                $request->{command} = 'makedhcp';
-                foreach ($q->param('field')) {
-                    push @args, $_;
-                }
+            foreach (@$entries) {
+                push @{$request->{arg}}, $_;
             }
         }
-        elsif ($subResource eq "dns") {
-
-            #allow restarting of the named service.  scary?
-            if ($q->param('command') eq "restart") {
-                if (isAuthenticUser()) {
-                    system('service named restart');
-                }
-            }
-            else {
-                $request->{command} = 'makedns';
-                foreach ($q->param('field')) {
-                    push @args, $_;
-                }
-            }
+        else {
+            addPageContent("No Field and Value map was supplied.");
+            sendResponseMsg($STATUS_BAD_REQUEST);
         }
     }
     elsif (isPost()) {
 
     }
     elsif (isDelete()) {
+        $request->{command} = 'rmdef';
 
+        if (defined $path[1]) {
+            $netname = $path[1];
+        }
+        if ($netname eq '') {
+            addPageContent('A network name must be specified.');
+            sendResponseMsg($STATUS_BAD_REQUEST);
+        }
+        push @{$request->{arg}}, '-t', 'network', '-o', $netname;
     }
     else {
         unsupportedRequestType();
         exit(0);
     }
+    @responses = sendRequest(genRequest());
 
     return @responses;
 }
