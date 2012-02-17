@@ -691,7 +691,11 @@ sub changeVM {
 		my $type     = $args->[2];
 		my $devcount = $args->[3];
 
-		$out = `ssh $hcp "$::DIR/addnic $userId $addr $type $devcount"`;
+		# Add to active configuration
+		$out = `ssh $node "vmcp define nic $addr type $type"`;
+
+		# Add to directory entry
+		$out .= `ssh $hcp "$::DIR/addnic $userId $addr $type $devcount"`;
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
 
@@ -727,8 +731,11 @@ sub changeVM {
 		my $addr  = $args->[1];
 		my $lan   = $args->[2];
 		my $owner = $args->[3];
+		
+		# Connect to LAN in active configuration
+		$out = `ssh $node "vmcp couple $addr to $owner $lan"`;
 
-		$out = `ssh $hcp "$::DIR/connectnic2guestlan $userId $addr $lan $owner"`;
+		$out .= `ssh $hcp "$::DIR/connectnic2guestlan $userId $addr $lan $owner"`;
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
 
@@ -737,13 +744,16 @@ sub changeVM {
 		my $addr    = $args->[1];
 		my $vswitch = $args->[2];
 
-		# Connect to VSwitch
-		$out = `ssh $hcp "$::DIR/connectnic2vswitch $userId $addr $vswitch"`;
-
 		# Grant access to VSWITCH for Linux user
-		$out .= "Granting access to VSWITCH for $userId\n  ";
+		$out = "Granting access to VSWITCH for $userId\n  ";
 		$out .= `ssh $hcp "vmcp set vswitch $vswitch grant $userId"`;
-		$out = xCAT::zvmUtils->appendHostname( $node, $out );
+				
+		# Connect to VSwitch in active configuration
+		$out .= `ssh $node "vmcp couple $addr to system $vswitch"`;
+		
+		# Connect to VSwitch in directory entry
+		$out .= `ssh $hcp "$::DIR/connectnic2vswitch $userId $addr $vswitch"`;
+		$out = xCAT::zvmUtils->appendHostname( $node, $out );	
 	}
 
 	# copydisk [target address] [source node] [source address]
@@ -3195,6 +3205,9 @@ sub nodeSet {
 
 		# Get autoyast/kickstart template
 		my $tmpl = "$profile.$osBase.$arch.tmpl";
+		
+		# Also check for $profile.$os.$arch.tmpl
+		
 
 		# Get host IP and hostname from /etc/hosts
 		$out = `cat /etc/hosts | grep "$node "`;
