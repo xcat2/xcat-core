@@ -12,6 +12,7 @@ use xCAT::VMCommon;
 use xCAT_monitoring::monitorctrl;
 
 use xCAT::Table;
+use xCAT::Usage;
 use XML::LibXML; #now that we are in the business of modifying xml data, need something capable of preserving more of the XML structure
 #TODO: convert all uses of XML::Simple to LibXML?  Using both seems wasteful in a way..
 use XML::Simple qw(XMLout);
