@@ -5471,7 +5471,12 @@ sub preprocess_request {
      @noderanges=($realnoderange);
   }
   foreach my $noderange (@noderanges) {  
-     my $sn = xCAT::Utils->get_ServiceNode($noderange, "xcat", "MN");
+     my $sn;
+     if ($::XCATSITEVALS{ipmifanout} =~ /0|n/i) {
+        $sn = { '!xcatlocal!' => $noderange };
+     } else {
+        $sn = xCAT::Utils->get_ServiceNode($noderange, "xcat", "MN");
+     }
 
      # build each request for each service node
  
@@ -5480,7 +5485,9 @@ sub preprocess_request {
        #print "snkey=$snkey\n";
        my $reqcopy = {%$request};
        $reqcopy->{node} = $sn->{$snkey};
-       $reqcopy->{'_xcatdest'} = $snkey;
+       unless ($snkey eq '!xcatlocal!') {
+          $reqcopy->{'_xcatdest'} = $snkey;
+       }
        $reqcopy->{_xcatpreprocessed}->[0] = 1;
        if ($delay) { $reqcopy->{'_xcatdelay'} = $delay; }
        push @requests, $reqcopy;
