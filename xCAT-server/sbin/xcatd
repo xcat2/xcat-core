@@ -569,6 +569,7 @@ sleep 0.05;
 
 
 sub scan_plugins {
+  my $serialdest = shift;
   my @plugins=glob($plugins_dir."/*.pm");
   foreach (@plugins) {
     /.*\/([^\/]*).pm$/;
@@ -606,8 +607,36 @@ sub scan_plugins {
     }
     ${"xCAT_plugin::".$modname."::"}{init_plugin}->(\&do_request);
   }
+  if ($serialdest) { print $serialdest freeze(\%cmd_handlers); };
 }
-scan_plugins;
+
+my $pid_init;
+my $readpipe;
+my $writepipe;
+if (socketpair($readpipe, $writepipe,AF_UNIX,SOCK_STREAM,PF_UNSPEC)) {
+	$pid_init = xCAT::Utils->xfork;
+} else {
+    xCAT::MsgUtils->message("S", "socketpair failed: $!");
+}
+if (defined $pid_init) {
+	if ($pid_init) { #parent, just sit and wait..
+		close($writepipe);
+		my $serialized_handlers;
+		while ($serialized_handlers !~ /xCATINITDoneWithHandlersNow/) {
+			$serialized_handlers.=<$readpipe>;
+		}
+	        %cmd_handlers=%{thaw($serialized_handlers)};	
+ 	} else {
+		scan_plugins($writepipe);
+		print $writepipe "\nxCATINITDoneWithHandlersNow\n";
+		exit(0);
+	}
+} else {
+	print "Unable to branch the initialization portion, will use more memory\n";
+	scan_plugins();
+}
+	
+	
 unless (xCAT::Utils->isLinux()) {	# messes up the output of the service cmd on linux
 	eval {
 	    xCAT::MsgUtils->message("S","xCATd: service starting");
