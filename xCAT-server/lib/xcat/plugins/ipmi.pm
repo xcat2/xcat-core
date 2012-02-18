@@ -5402,10 +5402,13 @@ sub preprocess_request {
   my $callback=shift;
   my @requests;
 
-  my $noderange = $request->{node}; #Should be arrayref
+  my $realnoderange = $request->{node}; #Should be arrayref
   my $command = $request->{command}->[0];
   my $extrargs = $request->{arg};
   my @exargs=($request->{arg});
+  my $delay=0;
+  my $delayincrement=0;
+  my $chunksize=0;
   if (ref($extrargs)) {
     @exargs=@$extrargs;
   }
@@ -5430,10 +5433,19 @@ sub preprocess_request {
 	  $request = {};
 	  return;
       }
+      if ($::XCATSITEVALS{syspowerinterval}) {
+		unless($::XCATSITEVALS{syspowermaxnodes}) {
+			$callback->({errorcode=>[1],error=>["IPMI plugin requires syspowermaxnodes be defined if syspowerinterval is defined"]});
+		        $request = {};
+			return 0;
+		}
+	$chunksize=$::XCATSITEVALS{syspowermaxnodes};
+        $delayincrement=$::XCATSITEVALS{syspowerinterval};
+      }
   }
 
 
-  if (!$noderange) {
+  if (!$realnoderange) {
     $usage_string=xCAT::Usage->getUsage($command);
     $callback->({data=>$usage_string});
     $request = {};
@@ -5444,19 +5456,36 @@ sub preprocess_request {
 
   # find service nodes for requested nodes
   # build an individual request for each service node
-  my $service  = "xcat";
-  my $sn = xCAT::Utils->get_ServiceNode($noderange, $service, "MN");
+  my @noderanges;
+  if ($chunksize) {
+     while (scalar(@$realnoderange)) {
+             my @tmpnoderange;
+	     while (scalar(@$realnoderange) and $chunksize) {
+		push @tmpnoderange,(shift @$realnoderange);
+		$chunksize--;
+	     }
+	     push @noderanges,\@tmpnoderange;
+	     $chunksize=$::XCATSITEVALS{syspowermaxnodes};
+      }	
+  } else {
+     @noderanges=($realnoderange);
+  }
+  foreach my $noderange (@noderanges) {  
+     my $sn = xCAT::Utils->get_ServiceNode($noderange, "xcat", "MN");
 
-  # build each request for each service node
-
-  foreach my $snkey (keys %$sn)
-  {
-    #print "snkey=$snkey\n";
-    my $reqcopy = {%$request};
-    $reqcopy->{node} = $sn->{$snkey};
-    $reqcopy->{'_xcatdest'} = $snkey;
-    $reqcopy->{_xcatpreprocessed}->[0] = 1;
-    push @requests, $reqcopy;
+     # build each request for each service node
+ 
+     foreach my $snkey (keys %$sn)
+     {
+       #print "snkey=$snkey\n";
+       my $reqcopy = {%$request};
+       $reqcopy->{node} = $sn->{$snkey};
+       $reqcopy->{'_xcatdest'} = $snkey;
+       $reqcopy->{_xcatpreprocessed}->[0] = 1;
+       if ($delay) { $reqcopy->{'_xcatdelay'} = $delay; }
+       push @requests, $reqcopy;
+     }
+     $delay += $delayincrement;
   }
   return \@requests;
 }
