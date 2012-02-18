@@ -5433,7 +5433,7 @@ sub preprocess_request {
 	  $request = {};
 	  return;
       }
-      if ($::XCATSITEVALS{syspowerinterval}) {
+      if (($subcmd eq 'on' or $subcmd eq 'reset' or $subcmd eq 'boot') and $::XCATSITEVALS{syspowerinterval}) {
 		unless($::XCATSITEVALS{syspowermaxnodes}) {
 			$callback->({errorcode=>[1],error=>["IPMI plugin requires syspowermaxnodes be defined if syspowerinterval is defined"]});
 		        $request = {};
