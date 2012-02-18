@@ -5490,20 +5490,11 @@ sub process_request {
 	my $ipmipass = 'PASSW0RD';
 	my $ipmitrys = 3;
 	my $ipmitimeout = 2;
-	my $ipmimaxp = 64;
-	my $sitetab = xCAT::Table->new('site');
 	my $ipmitab = xCAT::Table->new('ipmi');
 	my $tmp;
-	if ($sitetab) {
-		($tmp)=$sitetab->getAttribs({'key'=>'ipmimaxp'},'value');
-		if (defined($tmp)) { $ipmimaxp=$tmp->{value}; }
-		($tmp)=$sitetab->getAttribs({'key'=>'ipmitimeout'},'value');
-		if (defined($tmp)) { $ipmitimeout=$tmp->{value}; }
-		($tmp)=$sitetab->getAttribs({'key'=>'ipmiretries'},'value');
-		if (defined($tmp)) { $ipmitrys=$tmp->{value}; }
-		($tmp)=$sitetab->getAttribs({'key'=>'ipmisdrcache'},'value');
-		if (defined($tmp)) { $enable_cache=$tmp->{value}; }
-	}
+        if ($::XCATSITEVALS{ipmitimeout}) { $ipmitimeout = $::XCATSITEVALS{ipmitimeout} };
+        if ($::XCATSITEVALS{ipmiretries}) { $ipmitrys = $::XCATSITEVALS{ipmitretries} };
+        if ($::XCATSITEVALS{ipmisdrcache}) { $enable_cache = $::XCATSITEVALS{ipmitsdrcache} };
 	my $passtab = xCAT::Table->new('passwd');
 	if ($passtab) {
 		($tmp)=$passtab->getAttribs({'key'=>'ipmi'},'username','password');
@@ -5554,12 +5545,7 @@ sub process_request {
   my %oldnodestatus=(); #saves the old node status
   my $check=0;
   my $global_check=1;
-  if ($sitetab) {
-    (my $ref) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
-    if ($ref) {
-       if ($ref->{value} =~ /0|n|N/) { $global_check=0; }
-    }
-  }
+  if ($::XCATSITEVALS{nodestatus} =~ /0|n|N/) { $global_check=0; }
 
 
   if ($command eq 'rpower') {
