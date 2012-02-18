@@ -580,6 +580,8 @@ sub mkinstall
 
     my %doneimgs;
     require xCAT::Template; #only used here, load so memory can be COWed
+            # Define a variable for driver update list
+            my @dd_drivers;
     foreach $node (@nodes)
     {
         my $os;
@@ -743,8 +745,6 @@ sub mkinstall
           )
         {
 
-            # Define a variable for driver update list
-            my @dd_drivers;
 
             #TODO: driver slipstream, targetted for network.
             unless ($doneimgs{"$os|$arch|$tftpdir"})
