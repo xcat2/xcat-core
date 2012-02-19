@@ -5,6 +5,7 @@ use lib "/opt/xcat/lib/perl";
 use strict;
 use Getopt::Long;
 use Socket;
+use xCAT::Usage;
 use POSIX "WNOHANG";
 use Storable qw(freeze thaw);
 use Time::HiRes qw(gettimeofday);

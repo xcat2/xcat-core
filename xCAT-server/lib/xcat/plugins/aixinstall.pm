@@ -20,6 +20,7 @@ use File::Basename;
 use xCAT::NodeRange;
 use xCAT::Schema;
 use xCAT::Utils;
+use xCAT::SvrUtils;
 use xCAT::NetworkUtils;
 use xCAT::InstUtils;
 use xCAT::DBobjUtils;

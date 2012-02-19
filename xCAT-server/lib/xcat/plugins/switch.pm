@@ -12,6 +12,7 @@ use Data::Dumper;
 use xCAT::MacMap;
 use xCAT::NodeRange;
 use Sys::Syslog;
+use xCAT::Usage;
 use Storable;
 use xCAT::MellanoxIB;
 

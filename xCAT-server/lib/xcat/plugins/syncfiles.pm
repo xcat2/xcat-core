@@ -10,6 +10,7 @@
 package xCAT_plugin::syncfiles;
 use xCAT::Utils;
 use xCAT::MsgUtils;
+use xCAT::SrvUtils;
 use xCAT::NodeRange;
 
 1;

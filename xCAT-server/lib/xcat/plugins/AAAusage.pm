@@ -2,6 +2,7 @@
 
 package xCAT_plugin::AAAusage;
 use strict;
+use xCAT::Usage;
 ##########################################################################
 #  Common help plugin for table-driven commands
 ##########################################################################

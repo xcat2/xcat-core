@@ -14,6 +14,7 @@ use xCAT::Table;
 use XML::Simple qw(XMLout);
 use IO::Socket;
 use IO::Select;
+use xCAT::Usage;
 use strict;
 #use warnings;
 my %vm_comm_pids;

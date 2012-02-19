@@ -13,6 +13,8 @@ use xCAT::Table;
 use xCAT::Schema;
 use Data::Dumper;
 use xCAT::Utils;
+use xCAT::SvrUtils;
+use xCAT::Usage;
 use xCAT::NetworkUtils;
 use xCAT::InstUtils;
 use Getopt::Long;

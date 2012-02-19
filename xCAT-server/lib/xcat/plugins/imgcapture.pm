@@ -16,6 +16,7 @@ use Data::Dumper;   # for debug purpose
 use Getopt::Long;
 use xCAT::MsgUtils;
 use xCAT::Utils;
+use xCAT::SvrUtils;
 use xCAT::Table;
 use File::Path qw(mkpath);
 

@@ -46,6 +46,7 @@ use xCAT::GlobalDef;
 use POSIX qw(ceil floor);
 use Storable qw(store_fd retrieve_fd thaw freeze);
 use xCAT::Utils;
+use xCAT::SvrUtils;
 use xCAT::Usage;
 use Thread qw(yield);
 use Socket;
