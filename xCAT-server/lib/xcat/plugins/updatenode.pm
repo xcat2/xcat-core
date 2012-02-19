@@ -1596,12 +1596,7 @@ sub doAIXcopy
             	foreach my $pkg (split(/,/, $imagedef{$img}{otherpkgs}))
             	{
 					my ($junk, $pname);
-					if (($pkg =~ /^R:/) || ($pkg =~ /^I:/) || ($pkg =~ /^E:/) )
-					{
-   						($junk, $pname) = split(/:/, $pkg);             	
-					} else {
-						$pname = $pkg;
-					}
+					$pname = $pkg;
 					if (!grep(/^$pname$/, @pkglist))
                 	{
                           push(@pkglist, $pname);
@@ -2308,7 +2303,9 @@ sub updateAIXsoftware
 
 					my $rcmd;
 					if (scalar(@rpm_pkgs)) {
-						$rcmd = qq~cd $dir; /usr/bin/rpm $flags $pkg_string 2>/dev/null~;
+						$rcmd = qq~cd $dir; /usr/bin/rpm $flags $pkg_string ~;
+					} else {
+						$rcmd = qq~/usr/bin/rpm $flags ~;
 					}
 
                     if ($::VERBOSE)
