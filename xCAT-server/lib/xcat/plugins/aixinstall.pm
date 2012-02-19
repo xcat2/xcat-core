@@ -8947,7 +8947,7 @@ sub doSNcopy
                                               "mksysb",       "resolv_conf",
                                               "script",       "installp_bundle",
                                               "bosinst_data", "lpp_source",
-                                              "spot"
+                                              "spot", "image_data" 
                                               );
                                 if (grep(/^$restype$/, @dorestypes))
                                 {
@@ -11378,7 +11378,7 @@ sub make_SN_resource
                 # if resolv_conf, bosinst_data  then
                 #   the last part of the location is the actual file name
                 # 	but not necessarily the resource name!
-                my @usefileloc = ("resolv_conf", "bosinst_data");
+                my @usefileloc = ("resolv_conf", "bosinst_data", "image_data");
                 if (grep(/^$restype$/, @usefileloc))
                 {
                     # define the local resource
