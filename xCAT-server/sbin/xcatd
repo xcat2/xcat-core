@@ -148,6 +148,8 @@ unless ($tmp) {
 }
 $port = $tmp->{value};
 $sport = $tmp->{value}+1;
+($tmp) = $sitetab->getAttribs({'key'=>'xcatmaxconnections'},'value');
+if ($tmp and $tmp->{value}) { $maxsslclients = $tmp->{value}; }
 
 
 my $plugins_dir=$::XCATROOT.'/lib/perl/xCAT_plugin';
@@ -621,7 +623,7 @@ if (socketpair($readpipe, $writepipe,AF_UNIX,SOCK_STREAM,PF_UNSPEC)) {
 if (defined $pid_init) {
 	if ($pid_init) { #parent, just sit and wait..
 		close($writepipe);
-		my $serialized_handlers;
+		my $serialized_handlers="";
 		while ($serialized_handlers !~ /xCATINITDoneWithHandlersNow/) {
 			$serialized_handlers.=<$readpipe>;
 		}
