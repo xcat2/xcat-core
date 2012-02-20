@@ -5562,7 +5562,7 @@ sub process_request {
 	my $tmp;
         if ($::XCATSITEVALS{ipmitimeout}) { $ipmitimeout = $::XCATSITEVALS{ipmitimeout} };
         if ($::XCATSITEVALS{ipmiretries}) { $ipmitrys = $::XCATSITEVALS{ipmitretries} };
-        if ($::XCATSITEVALS{ipmisdrcache}) { $enable_cache = $::XCATSITEVALS{ipmitsdrcache} };
+        if ($::XCATSITEVALS{ipmisdrcache}) { $enable_cache = $::XCATSITEVALS{ipmisdrcache} };
 	my $passtab = xCAT::Table->new('passwd');
 	if ($passtab) {
 		($tmp)=$passtab->getAttribs({'key'=>'ipmi'},'username','password');

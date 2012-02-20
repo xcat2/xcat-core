@@ -766,21 +766,24 @@ site => {
   # ----------------------------------------------------------------------------------|----------
   key => "Attribute Name:  Description\n\n".
    " auditskipcmds: List of commands that will not be written to the auditlog table.\n".
-   "                ALL - means all cmds will be skipped. If attribute null, all\n".
+   "                'ALL' means all cmds will be skipped. If attribute is null, all\n".
    "                commands will be written.\n".
-   "                For example: tabdump,nodels,lsdef will not log those cmds.\n".
-   "                ALL will not log any cmds.\n\n".
-   " blademaxp:  The maximum number of processes for blade hardware control.\n\n".
-   " cleanupxcatpost:  (yes/1 or no/0). Set to 'yes' or '1' to clean up the /xcatpost directory\n".
-   "                   on the stateless and statelite nodes after the postscripts are run.\n".
-   "                   Default is no.\n\n".
+   "                For example: tabdump,nodels,lsdef will not log those cmds.\n\n".
+   " blademaxp:  The maximum number of concurrent processes for blade hardware control.\n\n".
+   " cleanupxcatpost:  (yes/1 or no/0). Set to 'yes' or '1' to clean up the /xcatpost\n".
+   "                   directory on the stateless and statelite nodes after the\n".
+   "                   postscripts are run. Default is no.\n\n".
    " consoleondemand:  When set to 'yes', conserver connects and creates the console\n".
    "                   output only when the user opens the console. Default is no on\n".
-   "                   Linux, yes on AIX.\n\n\n".
-   " databaseloc:    Directory where we create the db instance directory (db2).\n                 Default is /var/lib. Only DB2 is currently supported. \n                 Do not use the directory in the site.installloc or \n                 installdir attribute.\n                 This attribute must not be changed once db2sqlsetup script has \n                 been run and DB2 has been setup.\n\n".
-   " db2installloc:  The location which the service nodes should mount for \n".
-   "                 the db2 code to install. Format hostname:/path.  If hostname is\n".
-   "                 omitted, it defaults to the management node. Default /mntdb2.\n\n".
+   "                   Linux, yes on AIX.\n\n".
+   " databaseloc:    Directory where we create the db instance directory.\n".
+   "                 Default is /var/lib. Only DB2 is currently supported.\n".
+   "                 Do not use the directory in the site.installloc or\n".
+   "                 installdir attribute. This attribute must not be changed\n".
+   "                 once db2sqlsetup script has been run and DB2 has been setup.\n\n".
+   " db2installloc:  The location which the service nodes should mount for\n".
+   "                 the db2 code to install. Format is hostname:/path.  If hostname is\n".
+   "                 omitted, it defaults to the management node. Default is /mntdb2.\n\n".
    " defserialflow:  The default serial flow - currently only used by the mknb command.\n\n".
    " defserialport:  The default serial port - currently only used by mknb.\n\n".
    " defserialspeed:  The default serial speed - currently only used by mknb.\n\n".
@@ -806,8 +809,8 @@ site => {
    "                failed nodes for any xCAT commands. See the 'noderange' manpage for\n".
    "                details on supported formats.\n\n".
    " forwarders:  The DNS servers at your site that can provide names outside of the\n".
-   "              cluster. The makedns command will configuire the DNS on the management node\n".
-   "              to forward requests it does not know to these servers.\n".
+   "              cluster. The makedns command will configuire the DNS on the management\n".
+   "              node to forward requests it does not know to these servers.\n".
    "              Note that the DNS servers on the service nodes will ignore this value\n".
    "              and always be configured to forward requests to the management node.\n\n".
    " fsptimeout:  The timeout, in milliseconds, to use when communicating with FSPs.\n\n".
@@ -820,51 +823,61 @@ site => {
    "              deployment packages in the format hostname:/path.  If hostname is\n".
    "              omitted, it defaults to the management node. The path must\n".
    "              match the path in the installdir attribute.\n\n".
-   " ipmimaxp:  The max # of processes for ipmi hw ctrl.\n\n".
-   " ipmiretries:  The # of retries to use when communicating with BMCs.\n\n".
+   " ipmidispatch:  Whether or not to send ipmi hw control operations to the service\n".
+   "                node of the target compute nodes. Default is 'y'.\n\n".
+   " ipmimaxp:  The max # of processes for ipmi hw ctrl. The default is 64. Currently,\n".
+   "            this is only used for HP hw control.\n\n".
+   " ipmiretries:  The # of retries to use when communicating with BMCs. Default is 3.\n\n".
    " ipmisdrcache:  If set to 'no', then the xCAT IPMI support will not cache locally\n".
    "                the target node's SDR cache to improve performance.\n\n".
-   " ipmitimeout:  The timeout to use when communicating with BMCs.\n\n".
+   " ipmitimeout:  The timeout to use when communicating with BMCs. Default is 2.\n".
+   "               This attribute is currently not used.\n\n".
    " iscsidir:  The path to put the iscsi disks in on the mgmt node.\n\n".
    " master:  The hostname of the xCAT management node, as known by the nodes.\n\n".
    " maxssh:  The max # of SSH connections at any one time to the hw ctrl point for PPC\n".
    "          This parameter doesn't take effect on the rpower command.\n".
-   "          It takes effects on other PPC hardware control command  getmacs/rnetboot/rbootseq and so on.\n".
-   "          Default is 8.\n\n".
-   " mnroutenames:  The name of the routes to be setup on the management node.\n\n".
-   "            It is a comma separated list of route names that are defined in the routes table.\n\n".
+   "          It takes effects on other PPC hardware control command\n".
+   "          getmacs/rnetboot/rbootseq and so on. Default is 8.\n\n".
+   " mnroutenames:  The name of the routes to be setup on the management node.\n".
+   "                It is a comma separated list of route names that are defined in the\n".
+   "                routes table.\n\n".
    " nameservers:  A comma delimited list of DNS servers that each node in the cluster\n".
    "               should use. This value will end up in the nameserver settings of the\n".
    "               /etc/resolv.conf on each node. It is common (but not required) to set\n".
-   "               this attribute value to the IP addr of the xCAT management node, if you have\n".
-   "               set up the DNS on the management node by running makedns.\n".
-   "               In a hierarchical cluster, you can also set this attribute to \"<xcatmaster>\"\n".
-   "               to mean the DNS server for each node should be the node that is managing it\n".
-   "               (either its service node or the management node).\n\n".
+   "               this attribute value to the IP addr of the xCAT management node, if\n".
+   "               you have set up the DNS on the management node by running makedns.\n".
+   "               In a hierarchical cluster, you can also set this attribute to\n".
+   "               \"<xcatmaster>\" to mean the DNS server for each node should be the\n".
+   "               node that is managing it (either its service node or the management\n".
+   "               node).\n\n".
    " nimprime :   The name of NIM server, if not set default is the AIX MN.
               If Linux MN, then must be set for support of mixed cluster (TBD).\n\n".
    " nodestatus:  If set to 'n', the nodelist.status column will not be updated during\n".
    "              the node deployment, node discovery and power operations.\n\n".
    " ntpservers:  A comma delimited list of NTP servers for the cluster - often the\n".
    "              xCAT management node.\n\n".
-   " syspowerinterval:  The time of seconds that rpower command on CECs will wait between\n".
-   "                 performing action on each target object.It's recommended that the CECs \n".
-   "                 target should be in the same frame. It is used for controlling the\n".
-   "                 CECs power on speed in large cluster. Default is 0.\n\n".
-   " powerinterval:  The time of seconds that rpower command on lpars will wait between\n".
-   "                 performing action on each target object.\n".
-   "                 It is used for controlling the cluster boot up speed\n".
-   "                 in large clusters. And it's used to control the time for the power command\n".
-   "                 on each lpar by each hcp.  Default is 0.\n\n".
+   " syspowerinterval:  The number of seconds the rpower command to servers will wait\n".
+   "                 between performing the action for each server. Currently supported\n".
+   "                 for system p CECs and system x IPMI servers.  This is used for\n".
+   "                 controlling the power on speed in large clusters. Default is 0.\n\n".
+   " syspowermaxnodes:  The number of servers to power on at one time before waiting\n".
+   "                    'syspowerinterval' seconds to continue on to the next set of\n".
+   "                    nodes. Currently only used for IPMI servers and must be set if\n".
+   "                    'syspowerinterval' is set.\n\n".
+   " powerinterval:  The number of seconds the rpower command to LPARs will wait between\n".
+   "                 performing the action for each LPAR. LPARs of different HCPs\n".
+   "                 (HMCs or FSPs) are done in parallel. This is used to limit the\n".
+   "                 cluster boot up speed in large clusters. Default is 0.  This is\n".
+   "                 currently only used for system p hardware.\n\n".
    " ppcmaxp:  The max # of processes for PPC hw ctrl. If there are more than ppcmaxp hcps,\n".
    "           this parameter will take effect. It will control the max number of processes  \n".
    "           for PPC hardware control commands. Default is 64.\n\n".
    " ppcretry:  The max # of PPC hw connection attempts to HMC before failing.\n".
    "           It only takes effect on the hardware control commands through HMC. \n".
    "           Default is 3.\n\n".
-   " ppctimeout:  The timeout, in milliseconds, to use when communicating with PPC hw through HMC.\n".
-   "              It only takes effect on the hardware control commands through HMC.\n".
-   "              Default is 0.\n\n".
+   " ppctimeout:  The timeout, in milliseconds, to use when communicating with PPC hw\n".
+   "              through HMC. It only takes effect on the hardware control commands\n".
+   "              through HMC. Default is 0.\n\n".
    " pruneservices:  Whether to enable service pruning when noderm is run (i.e.\n".
    "                 removing DHCP entries when noderm is executed)\n\n".
    " rsh:  This is no longer used. path to remote shell command for xdsh.\n\n".
@@ -907,11 +920,14 @@ site => {
    "                   will not interfere.\n\n".
    " vmwarereconfigonpower:  When set to no, the VMWare plugin will make no effort to\n".
    "                         push vm.cpus/vm.memory updates from xCAT to VMWare.\n\n".
-   " vsftp:       Default is 'n'. If set to 'y', the xcatd on the mn will automatically \n".
-   "              bring up the vsftpd. This setting does not apply to the sn, for sn\n".
-   "              you need to set servicenode.ftpserver=1 if you want the xcatd to\n".
+   " vsftp:       Default is 'n'. If set to 'y', the xcatd on the mn will automatically\n".
+   "              bring up vsftpd. This setting does not apply to the sn, for sn\n".
+   "              you need to set servicenode.ftpserver=1 if you want xcatd to\n".
    "              bring up vsftpd.\n\n".
    " xcatconfdir:  Where xCAT config data is (default /etc/xcat).\n\n".
+   " xcatmaxconnections:  Number of concurrent xCAT protocol requests before requests\n".
+   "                      begin queueing. This applies to both client command requests\n".
+   "                      and node requests, e.g. to get postscripts. Default is 64.\n\n".
    " xcatdport:  The port used by the xcatd daemon for client/server communication.\n\n".
    " xcatiport:  The port used by xcatd to receive install status updates from nodes.\n\n",
   value => 'The value of the attribute specified in the "key" column.',

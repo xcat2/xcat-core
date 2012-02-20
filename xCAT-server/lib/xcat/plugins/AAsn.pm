@@ -725,7 +725,7 @@ sub setup_DHCP
 
 =head3 setup_FTP
 
-    Sets up FTP services (vstftp)
+    Sets up FTP services (vsftp)
 
 =cut
 
@@ -757,7 +757,7 @@ sub setup_FTP
         xCAT::MsgUtils->message("S", "Error from command:$cmd");
     }
 
-    # start tftp
+    # start ftp
 
     my $rc = xCAT::Utils->startService("vsftpd");
     if ($rc != 0)
