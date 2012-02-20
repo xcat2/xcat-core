@@ -204,6 +204,7 @@ sub process_request {
     my $zapfiles;
     my $help;
     my $deletemode=0;
+    my $external=0;
     if ($request->{arg}) {
         $hadargs=1;
         @ARGV=@{$request->{arg}};
@@ -214,6 +215,7 @@ sub process_request {
             'a|all' => \$allnodes,
             'n|new' => \$zapfiles,
             'd|delete' => \$deletemode,
+            'e|external' => \$external,
             'h|help' => \$help,
             )) {
             #xCAT::SvrUtils::sendmsg([1,"TODO: makedns Usage message"], $callback);
@@ -243,61 +245,26 @@ sub process_request {
         return;
     }
     $ctx->{domain} = $stab->{value};
-    # get site.master
-    # check to see if /etc/resolv.conf has nameserver=site.master, if no
-    # put out a warning
-    my $master = $sitetab->getAttribs({key=>'master'},['value']);
-    unless ($master and $master->{value}) {
-        xCAT::SvrUtils::sendmsg([1,"master not defined in site table"], $callback);
-        return;
-    }
-    my $resolv="/etc/resolv.conf";
-    my $found=0;
-    # check if nameserver site.master in /etc/resolv.conf
-    my $nameserver=$master->{value};
-    my $cmd="grep $nameserver $resolv";
-    my @output=xCAT::Utils->runcmd($cmd, 0);
-    if ($::RUNCMD_RC != 0)
-    {
-        $found=0;
-    } else { # if it is there check it is a nameserver 
-      foreach my $line (@output) {    
-        if ($line =~ /^nameserver/) { # line is a nameserver line 
-           $found=1;
-           last;
-        }
-      } 
-   } 
-   if ($found == 0) { # not nameserver master found
-        xCAT::SvrUtils::sendmsg([0,"Warning:The management node is not defined as a nameserver in /etc/resolv.conf. Add \"nameserver $nameserver\" to /etc/resolv.conf and run makedns again."], $callback);
-   }
 
-    # chk if search site.domain or domain site.domain on AIX in /etc/resolv.conf
-    $found=0;
-    my $domain=$ctx->{domain};
-    my $cmd="grep $domain $resolv";
-    my @output=xCAT::Utils->runcmd($cmd, 0);
-    if ($::RUNCMD_RC != 0)
+    if($external) #need to check if /etc/resolv.conf existing
     {
-        $found=0;
-    } else { # if it is there check it is a search clause 
-      foreach my $line (@output) {    
-        if ($line =~ /^search/) { # line is a search line 
-           $found=1;
-           last;
+        my $resolv = "/etc/resolv.conf";
+        my $cmd = "egrep '^nameserver|^search' $resolv";
+        my $acmd = "egrep '^nameserver|^domain' $resolv";
+
+        if (xCAT::Utils->isAIX())
+        {
+            $cmd = $acmd;
         }
-        # if AIX could be a domain line
-        if (xCAT::Utils->isAIX()) {
-          if ($line =~ /^domain/) {
-             $found=1;
-             last;
-          }
+        
+        my @output=xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::SvrUtils::sendmsg([1,"You are using -e flag to update DNS records to an external DNS server, please ensure /etc/resolv.conf existing and pointed to this external DNS server."], $callback);
+            return;
         }
-      } 
-   } 
-   if ($found == 0) { # no search site.domain found
-        xCAT::SvrUtils::sendmsg([0,"Warning:The domain is not defined in a search path or domain path for AIX (in /etc/resolv.conf. Add \"search $domain\" to /etc/resolv.conf and run makedns again."], $callback);
    }
+   
    # check for selinux disabled
     my $rc=xCAT::Utils->isSELINUX();
     if ($rc == 0)
@@ -305,7 +272,6 @@ sub process_request {
         xCAT::SvrUtils::sendmsg([0,"Warning:SELINUX is not disabled. The makedns command will not be able to generate a complete DNS setup. Disable SELINUX and run the command again."], $callback);
 
     }
-
      
     my $networkstab = xCAT::Table->new('networks',-create=>0);
     unless ($networkstab) { xCAT::SvrUtils::sendmsg([1,'Unable to enumerate networks, try to run makenetworks'], $callback); }
@@ -524,7 +490,14 @@ sub process_request {
         }
     }
     #now we stick to Net::DNS style updates, with TSIG if possible.  TODO: kerberized (i.e. Windows) DNS server support, maybe needing to use nsupdate -g....
-    $ctx->{resolver} = Net::DNS::Resolver->new();
+    if ($external)
+    {
+        $ctx->{resolver} = Net::DNS::Resolver->new(); # based on /etc/resolv.conf
+    }
+    else
+    {
+        $ctx->{resolver} = Net::DNS::Resolver->new(nameservers=>['127.0.0.1']); # default to localhost
+    }
     add_or_delete_records($ctx);
     xCAT::SvrUtils::sendmsg("DNS setup is completed", $callback);
 }
@@ -1113,8 +1086,8 @@ sub makedns_usage
       "\n  makedns - sets up domain name services (DNS).";
     push @{$rsp->{data}}, "  Usage: ";
     push @{$rsp->{data}}, "\tmakedns [-h|--help ]";
-    push @{$rsp->{data}}, "\tmakedns [-n|--new ] [noderange]";
-    push @{$rsp->{data}}, "\tmakedns [-d|--delete noderange]";
+    push @{$rsp->{data}}, "\tmakedns [-e|--external] [-n|--new ] [noderange]";
+    push @{$rsp->{data}}, "\tmakedns [-e|--external] [-d|--delete noderange]";
     push @{$rsp->{data}}, "\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
