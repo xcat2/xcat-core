@@ -191,14 +191,20 @@ function loadServiceProvisionPage(tabId) {
 	okBtn.bind('click', function(event) {
 		var userName = $.cookie('srv_usrname');
 		var tmp = $.cookie(userName + '_usrnodes');
-		var nodes = tmp.split(',');
-		var maxVM = parseInt($.cookie(userName + '_maxvm'));
 		
-		// Do not allow user to clone if the maximum number of VMs is reached
-		if (nodes.length >= maxVM) {
-			var warn = createWarnBar('You have reached the maximum number of VMs allowed.  Please de-allocate some existing VMs to free up space or contact your system administrator request more VMs.');
-			warn.prependTo($('#' + tabId));
-			return;
+		// Get maximun number for nodes from cookie
+		var nodes = '';
+		var maxVM = 0;
+		if (tmp.length) {
+			nodes = tmp.split(',');
+			maxVM = parseInt($.cookie(userName + '_maxvm'));
+			
+			// Do not allow user to clone if the maximum number of VMs is reached
+			if (nodes.length >= maxVM) {
+				var warn = createWarnBar('You have reached the maximum number of virtual machines allowed (' + maxVM + ').  Delete unused virtual machines or contact your system administrator request more virtual machines.');
+				warn.prependTo($('#' + tabId));
+				return;
+			}
 		}
 		
 		// Get hardware that was selected
@@ -276,8 +282,7 @@ function loadServiceProvisionPage(tabId) {
  */
 function loadManagePage(tabId) {
 	// Create manage form
-	var loader = createLoader('');
-	var manageForm = $('<div></div>').append(loader);
+	var manageForm = $('<div></div>');
 
 	// Append to manage tab
 	$('#' + tabId).append(manageForm);
@@ -305,8 +310,7 @@ function getUserNodesDef() {
 	    });
 	} else {
 		// Clear the tab before inserting the table
-		$('#manageTab').children().remove();
-		$('#manageTab').append(createWarnBar('Could not find any nodes that belong to you. Do you have any? Or did your session expire?'));
+		$('#manageTab').append(createWarnBar('No nodes were found belonging to you!'));
 	}
 }
 
@@ -1295,7 +1299,7 @@ function cloneNode(tgtNodes) {
 	
 	// Do not allow user to clone if the maximum number of VMs is reached
 	if (usrNodes.length >= maxVM) {
-		var warn = createWarnBar('You have reached the maximum number of VMs allowed.  Please de-allocate some existing VMs to free up space or contact your system administrator request more VMs.');
+		var warn = createWarnBar('You have reached the maximum number of virtual machines allowed (' + maxVM + ').  Delete un-used virtual machines or contact your system administrator request more virtual machines.');
 		warn.prependTo($('#manageTab'));
 		return;
 	}

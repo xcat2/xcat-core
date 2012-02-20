@@ -1397,7 +1397,7 @@ function loadGangliaStatus(data) {
 	// Get datatable
 	var datatable = $('#' + nodesTableId).dataTable();
 	var ganglia = data.rsp;
-	var rowNum, node, status, args;
+	var rowNum, node, status;
 
 	for ( var i in ganglia) {
 		// ganglia[0] = nodeName and ganglia[1] = state
@@ -2052,6 +2052,9 @@ function updateStatusBar(data) {
 				dTable.fnDeleteRow(rowPos);
 			}
 		}
+		
+		// Adjust column size
+		adjustColumnSize(nodesTableId);
 	} else if (cmd == 'xdsh') {
 		// Hide loader
 		$('#' + statBarId).find('img').hide();

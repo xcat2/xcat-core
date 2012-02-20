@@ -224,7 +224,7 @@ sub provzlinux {
 		return;
 	}
 	
-	my $userid = 'XCAT' . $base_digit;
+	my $userid = $node;
 
 	# Set node definitions
 	# Also put node into all group
@@ -670,7 +670,7 @@ sub clonezlinux {
 	# Create VM
 	# e.g. webportal provzlinux [group] [hcp] [image]
 	my ($node, $ip, $base_digit) = gennodename( $callback, $group );
-	my $userid = 'XCAT' . $base_digit;
+	my $userid = $node;
 		
 	# Set node definitions
 	$out = `mkdef -t node -o $node userid=$userid hcp=$hcp mgt=zvm groups=$group`;
