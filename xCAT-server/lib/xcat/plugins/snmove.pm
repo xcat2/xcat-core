@@ -22,7 +22,7 @@ use xCAT::Table;
 use xCAT::Utils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
-use xCAT::SrvUtils;
+use xCAT::SvrUtils;
 use Getopt::Long;
 use xCAT::NodeRange;
 
