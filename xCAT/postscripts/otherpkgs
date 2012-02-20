@@ -574,7 +574,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     #Handle the rest with rpm
     if [ "$plain_pkgs" != "" ]; then 
         if [ $mounted -eq 0 ]; then
-	    dir_no_ftproot=${OTHERPKGDIR#$INSTALLDIR/}
+	    dir_no_ftproot=${OTHERPKGDIR#*$INSTALLDIR/}
             mkdir -p /xcatpost/$dir_no_ftproot 
             rm -f -R /xcatpost/$dir_no_ftproot/*
             mkdir -p /tmp/postage/
@@ -584,7 +584,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	    wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 --reject "index.html*" --no-parent http://$OTHERPKGDIR/ 2> /tmp/wget.log  
     
             mv $dir_no_ftproot/* /xcatpost/$dir_no_ftproot; 
-            rm -rf $NFSSERVER
+            rm -rf $dir_no_ftproot
             cd /xcatpost/$dir_no_ftproot
         else
             cd $OTHERPKGDIR
