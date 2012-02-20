@@ -5472,7 +5472,7 @@ sub preprocess_request {
   }
   foreach my $noderange (@noderanges) {  
      my $sn;
-     if ($::XCATSITEVALS{ipmifanout} =~ /0|n/i) {
+     if ($::XCATSITEVALS{ipmidispatch} =~ /0|n/i) {
         $sn = { '!xcatlocal!' => $noderange };
      } else {
         $sn = xCAT::Utils->get_ServiceNode($noderange, "xcat", "MN");
