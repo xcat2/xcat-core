@@ -788,7 +788,7 @@ sub mkinstall
     my %osents = %{$ostab->getNodesAttribs(\@nodes, ['profile', 'os', 'arch', 'provmethod'])};
     my %rents =
               %{$restab->getNodesAttribs(\@nodes,
-                                     ['nfsserver', 'tftpdir', 'primarynic', 'installnic'])};
+                                     ['xcatmaster', 'nfsserver', 'tftpdir', 'primarynic', 'installnic'])};
     my %hents = 
               %{$hmtab->getNodesAttribs(\@nodes,
                                      ['serialport', 'serialspeed', 'serialflow'])};
@@ -806,6 +806,15 @@ sub mkinstall
 	my $pkglistfile;
 	my $imagename;
 	my $platform;
+        my $xcatmaster;
+
+        my $ient = $rents->{$node}->[0];
+        if ($ient and $ient->{xcatmaster})
+        {
+            $xcatmaster = $ient->{xcatmaster};
+        } else {
+            $xcatmaster = '!myipfn!';
+        }
 
         my $osinst;
         if ($rents{$node}->[0] and $rents{$node}->[0]->{tftpdir}) {
@@ -1058,7 +1067,7 @@ sub mkinstall
 #                                      'serialport', 'serialspeed', 'serialflow'
 #                                     ]
 #                                     );
-            my $instserver='!myipfn!'; #default to autodetect from boot server
+            my $instserver = $xcatmaster;
             if ($ent and $ent->{nfsserver}) {
 	    	$instserver=$ent->{nfsserver};
 	    }

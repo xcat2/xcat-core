@@ -562,7 +562,7 @@ sub mkinstall
               $restab->getNodesAttribs(
                                       \@nodes,
                                       [
-                                       'nfsserver', 'tftpdir',
+                                       'nfsserver', 'tftpdir','xcatmaster',
                                        'primarynic', 'installnic'
                                       ]
                                       );
@@ -776,7 +776,13 @@ sub mkinstall
             #We have a shot...
             my $ent    = $resents->{$node}->[0]; 
             my $sent = $hments->{$node}->[0]; #hmtab->getNodeAttribs($node, ['serialport', 'serialspeed', 'serialflow']);
-	    my $netserver = '!myipfn!';
+
+            my $netserver;
+            if ($ent and $ent->{xcatmaster}) {
+                $netserver = $ent->{xcatmaster};
+            } else {
+                $netserver = '!myipfn!';
+            }
             if ($ent and $ent->{nfsserver})
             {
 		$netserver = $ent->{nfsserver};

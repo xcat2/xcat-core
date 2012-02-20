@@ -73,22 +73,44 @@ sub setstate {
   my %chainhash = %{shift()};
   my %machash = %{shift()};
   my $tftpdir = shift;
+  my %nrhash = %{shift()};
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
   if ($kern->{kcmdline} =~ /!myipfn!/) {
       my $ipfn = xCAT::Utils->my_ip_facing($node);
       unless ($ipfn) {
-        my @myself = xCAT::Utils->determinehostname();
-        my $myname = $myself[(scalar @myself)-1];
-         $callback->(
-                {
-                 error => [
-                     "$myname: Unable to determine the image server for $node"
-                 ],
-                 errorcode => [1]
-                }
-                );
+          my $servicenodes = $nrhash{$node}->[0];
+          if ($servicenodes and $servicenodes->{servicenode}) {
+              my @sns = split /,/, $servicenodes->{servicenode};
+              foreach my $sn ( @sns ) {
+                  # We are in the service node pools, print error if no facing ip.
+                  if (xCAT::InstUtils->is_me($sn)) {
+                      my @myself = xCAT::Utils->determinehostname();
+                      my $myname = $myself[(scalar @myself)-1];
+                      $callback->(
+                          {
+                          error => [
+                          "$myname: Unable to determine the image server for $node on service node $sn"
+                          ],
+                          errorcode => [1]
+                          }
+                      );
+                      return;
+                  }
+              }
+          } else {
+              $callback->(
+                          {
+                          error => [
+                          "$myname: Unable to determine the image server for $node"
+                          ],
+                          errorcode => [1]
+                          }
+                      );
+              return;
+          }
+      } else {
+          $kern->{kcmdline} =~ s/!myipfn!/$ipfn/g;
       }
-      $kern->{kcmdline} =~ s/!myipfn!/$ipfn/g;
   }
   if ($kern->{addkcmdline}) {
       $kern->{kcmdline} .= " ".$kern->{addkcmdline};
@@ -453,6 +475,8 @@ sub process_request {
   my $nodereshash=$noderestab->getNodesAttribs(\@nodes,['tftpdir']);
   my $mactab=xCAT::Table->new('mac',-create=>1);
   my $machash=$mactab->getNodesAttribs(\@nodes,['mac']);
+  my $nrtab=xCAT::Table->new('noderes',-create=>1);
+  my $nrhash=$nrtab->getNodesAttribs(\@nodes,['servicenode']);
   my $rc;
   my $errstr;
 
@@ -469,7 +493,7 @@ sub process_request {
       $response{node}->[0]->{data}->[0]= getstate($_,$tftpdir);
       $callback->(\%response);
     } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
-      ($rc,$errstr) = setstate($_,$bphash,$chainhash,$machash,$tftpdir);
+      ($rc,$errstr) = setstate($_,$bphash,$chainhash,$machash,$tftpdir,$nrhash);
       if ($rc) {
         $response{node}->[0]->{errorcode}->[0]= $rc;
         $response{node}->[0]->{errorc}->[0]= $errstr;
