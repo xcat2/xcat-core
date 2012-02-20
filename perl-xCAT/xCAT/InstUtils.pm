@@ -225,6 +225,7 @@ sub is_me
     {
         my ($inet, $myIP, $str) = split(" ", $int);
         chomp $myIP;
+        $myIP =~ s/addr://;
         $myIP =~ s/\/.*//; # ipv6 address 4000::99/64
         $myIP =~ s/\%.*//; # ipv6 address ::1%1/128
 
