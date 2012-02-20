@@ -100,12 +100,26 @@ sub provzlinux {
 		println( $callback, '(Error) Missing group, HCP, image, or owner' );
 		return;
 	}
+	
+	# Check the max # of virtual machines allowed
+	my $out = `tabdump nodetype -w nodetype.comments=~"owner:$owner"`;
+	my @tmp = split( /\n/, $out );
+	my $usrVM = scalar(@tmp) - 1;
+	
+	$out = `webportal getmaxvm $owner`;
+	$out =~ s/Max allowed: //g;
+	my $maxVM = int($out);
+	
+	# Do not continue if the max # is reached
+	if ($usrVM >= $maxVM) {
+		println( $callback, "You have reached the maximum number of virtual machines allowed ($maxVM). Delete unused virtual machines or contact your system administrator request more virtual machines.");
+		return;
+	}
 
 	# Get node OS base
 	my $profile;
 	my $arch;
 	my $os;
-	my @tmp;
 	( $profile, $arch, $os ) = getosimagedef( $callback, $img );
 	if ( $os =~ m/sp/i ) {
 		@tmp = split( /sp/, $os );
@@ -147,7 +161,7 @@ sub provzlinux {
 		return;
 	}
 
-	my $out = `ssh $hcp "cat $default_conf"`;
+	$out = `ssh $hcp "cat $default_conf"`;
 	@tmp = split( /\n/, $out );
 	# default.conf should contain:
 	
@@ -607,6 +621,21 @@ sub clonezlinux {
 	my $src_node = $request->{arg}->[1];
 	my $group = $request->{arg}->[2];
 	my $owner = $request->{arg}->[3];
+	
+	# Check the max # of virtual machines allowed
+	my $out = `tabdump nodetype -w nodetype.comments=~"owner:$owner"`;
+	my @tmp = split( /\n/, $out );
+	my $usrVM = scalar(@tmp) - 1;
+	
+	$out = `webportal getmaxvm $owner`;
+	$out =~ s/Max allowed: //g;
+	my $maxVM = int($out);
+	
+	# Do not continue if the max # is reached
+	if ($usrVM >= $maxVM) {
+		println( $callback, "You have reached the maximum number of virtual machines allowed ($maxVM). Delete unused virtual machines or contact your system administrator request more virtual machines.");
+		return;
+	}
 
 	# Get source node's HCP
 	my $props = xCAT::zvmUtils->getNodeProps( 'zvm', $src_node, ('hcp') );
@@ -637,8 +666,8 @@ sub clonezlinux {
 		return;
 	}
 
-	my $out = `ssh $hcp "cat $default_conf"`;
-	my @tmp = split( /\n/, $out );
+	$out = `ssh $hcp "cat $default_conf"`;
+	@tmp = split( /\n/, $out );
 	# default.conf should contain:
 	
 	# Default configuration for virtual machines handled by this zHCP
