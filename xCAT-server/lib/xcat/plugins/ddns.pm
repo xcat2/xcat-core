@@ -469,6 +469,29 @@ sub process_request {
         chmod 0775, $ctx->{dbdir}; # assure dynamic dns can actually execute against the directory
         update_namedconf($ctx); 
         update_zones($ctx);
+
+        # check if named is active before update dns records.
+        if (xCAT::Utils->isAIX())
+        {
+            my $cmd = "/usr/bin/lssrc -s $service |grep active";
+            my @output=xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                system("/usr/bin/startsrc -s $service");
+                xCAT::SvrUtils::sendmsg("Starting named complete", $callback);
+            }
+        }
+        else
+        {
+            my $cmd = "service $service status|grep running";
+            my @output=xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                system("service $service start");
+                xCAT::SvrUtils::sendmsg("Starting named complete", $callback);
+            }
+        }
+        
         if ($ctx->{restartneeded}) {
             xCAT::SvrUtils::sendmsg("Restarting $service", $callback);
 
@@ -965,7 +988,7 @@ sub add_or_delete_records {
                 $update->sign_tsig("xcat_key",$ctx->{privkey});
                 $numreqs=300;
                 my $reply = $resolver->send($update);
-                if ($reply->header->rcode ne 'NOERROR') {
+                if ($reply && ($reply->header->rcode ne 'NOERROR')) {
                     xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode], $callback);
                 }
                 $update =  Net::DNS::Update->new($zone); #new empty request
@@ -974,7 +997,7 @@ sub add_or_delete_records {
         if ($numreqs != 300) { #either no entries at all to begin with or a perfect multiple of 300
             $update->sign_tsig("xcat_key",$ctx->{privkey});
             my $reply = $resolver->send($update);
-            if ($reply->header->rcode ne 'NOERROR') {
+            if ($reply && ($reply->header->rcode ne 'NOERROR')) {
                  xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode], $callback);
             }
             
