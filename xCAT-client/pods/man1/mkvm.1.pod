@@ -20,7 +20,11 @@ B<mkvm> [B<-V>| B<--verbose>] I<noderange> B<--full>
 
 =head2 For KVM:
 
-B<mkvm> I<noderange> B<-m>|B<--master> I<mastername> B<-s>|B<--size> I<disksize> B<-f>|B<--force>
+B<mkvm> I<noderange> [B<-m|--master> I<mastername>] [B<-s|--size> I<disksize>] [B<--mem> I<memsize>] [B<--cpus> I<cpucount>] [B<-f|--force>]
+
+=head2 For Vmware:
+
+B<mkvm> I<noderange> [B<-s>|B<--size> I<disksize>] [B<--mem> I<memsize>] [B<--cpus> I<cpucount>]
 
 =head2 For zVM:
 
@@ -42,10 +46,12 @@ Please make sure the nodes in the I<noderange> is defined in the I<nodelist> tab
 
 Please note that the mkvm command currently only supports creating standard LPARs, not virtual LPARs working with VIOS server.
 
-=head2 For KVM:
+=head2 For KVM and Vmware:
 
-mkvm ....
+The mkvm command creates new virtual machine(s) with the I<disksize> size of hard disk, I<memsize> size of memory and I<cpucount> number of cpu. 
 
+For KVM: If B<-f>|B<--force> is specified, the storage will be destroyed first if it existed.
+ 
 =head2 For zVM:
 
 The first form of mkvm creates a new virtual machine based on a directory entry.
@@ -64,6 +70,18 @@ Display usage message.
 
 The cec (fsp) name for the destination.
 
+=item B<--cpus>
+
+The cpu count which will be created for the kvm/vmware virtual machine.
+
+=item B<--full>          
+
+Request to create a new full system partition for each CEC.
+
+=item B<-f|--force>
+
+If B<-f|--force> is specified, the storage will be destroyed first if it existed.
+
 =item B<-i>              
 
 Starting numeric id of the newly created partitions. 
@@ -72,13 +90,17 @@ Starting numeric id of the newly created partitions.
 
 The partition name of the source.
 
+=item B<--mem>
+
+The memory size which will be used for the new created kvm/vmware virtual machine. Unit is Megabyte.
+
 =item B<-p>             
 
 The file that contains the profiles for the source partitions.
 
-=item B<--full>          
+=item B<-s|--size>
 
-Request to create a new full system partition for each CEC.
+The size of storage which will be created for the kvm/vmware virtual machine.
 
 =item B<-v|--version>    
 
@@ -195,6 +217,9 @@ Output is similar to:
  gpok4: Detatching source disk (0100) at (1100)
  gpok4: Starting LNX3... Done
 
+7. To create a new kvm/vmware virtual machine with 10G storage, 2048M memory and 2 cpus.
+
+ mkvm vm1 -s 10G --mem 2048 --cpus 2
 
 =head1 FILES
 

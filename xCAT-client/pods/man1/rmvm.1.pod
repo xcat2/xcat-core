@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<rmvm> - Removes HMC-, IVM-, and zVM-managed partitions or virtual machines.
+B<rmvm> - Removes HMC-, IVM-, KVM-, Vmware- and zVM-managed partitions or virtual machines.
 
 =head1 SYNOPSIS
 
@@ -10,6 +10,8 @@ I<rmvm [-v| --version]>
 
 
 I<rmvm [-V| --verbose] noderange [-r] [--service]>
+
+=head2 For KVM and Vmware:
 
 I<rmvm [-p] [-f]>
 
