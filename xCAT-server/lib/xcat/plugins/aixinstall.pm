@@ -7555,6 +7555,9 @@ sub prenimnodeset
     my %objhash;
     my %attrs;
 	my %nimhash;
+    # currently supported valid attributes, may append later..
+    my @validattr = ("duplex", "speed", "psize", "sparse_paging", "dump_iscsi_port", "configdump");
+    my @badattr;
 
     # the first arg should be a noderange - the other should be attr=val
     #  - put attr=val operands in %attrs hash
@@ -7579,7 +7582,41 @@ sub prenimnodeset
 
             # put attr=val in hash
             $attrs{$attr} = $value;
+
+            if ($command eq 'mkdsklsnode')
+            {
+
+                # if it has an "=" sign its an attr=val - we hope
+                my ($attr, $value) = $a =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
+                if (!$attr || !$value)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Incorrect \'attr=val\' pair - $a\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return 1;
+                }
+
+                # check the valid attributes.
+                if (grep(/$attr/, @validattr))
+                {
+                    $attrs{$attr} = $value;
+                }
+                else
+                {
+                    push @badattr, $attr;
+                }
+            }
         }
+    }
+
+    if (scalar(@badattr))
+    {
+        my $rsp;
+        my $bad = join(', ', @badattr);
+        my $valid = join(', ', @validattr);
+        push @{$rsp->{data}}, "Bad attributes '$bad'. The valid attributes are '$valid'.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
     }
 
     my $Sname = xCAT::InstUtils->myxCATname();
@@ -9112,15 +9149,8 @@ sub mkdsklsnode
 
             # if it has an "=" sign its an attr=val - we hope
             my ($attr, $value) = $a =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
-            if (!defined($attr) || !defined($value))
-            {
-                my $rsp;
-                $rsp->{data}->[0] =
-                  "$Sname: Incorrect \'attr=val\' pair - $a\n";
-                xCAT::MsgUtils->message("E", $rsp, $::callback);
-                return 1;
-            }
 
+            # attributes already checked in prenimnodeset
             # put attr=val in hash
             $attrs{$attr} = $value;
         }
