@@ -6,9 +6,9 @@ B<makedns> - sets up domain name services (DNS).
 
 B<makedns> [I<-h>|I<--help>]
 
-B<makedns> [I<-n>|I<--new>] [I<noderange>]
+B<makedns> [-e|--external] [I<-n>|I<--new>] [I<noderange>]
 
-B<makedns> [I<-d>|I<--delete> I<noderange>]
+B<makedns> [-e|--external] [I<-d>|I<--delete> I<noderange>]
 
 =head1 DESCRIPTION
 
@@ -37,9 +37,17 @@ https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Cluster_Name_Resolut
 
 Use this flag to create new named configuration and db files.
 
-=item B<-d>|B<--delete> I<noderange>
+=item B<-d>|B<--delete>
 
-Remove the DNS records for the hosts specified by I<noderange>.
+Remove the DNS records.
+
+=item B<-e>|B<--external>
+
+Update DNS records to the external DNS server listed in /etc/resolv.conf.
+
+=item B<noderange>
+
+A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
 
 =back
 
