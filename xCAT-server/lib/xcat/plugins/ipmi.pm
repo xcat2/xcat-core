@@ -1231,7 +1231,7 @@ sub power_with_context {
 		);
 	if($subcommand eq "on") {
 		if ($sessdata->{powerstatus} eq "on") {
-			if ($sessdata->{acpistate} eq "suspend") { #ok, make this a wake
+			if ($sessdata->{acpistate} and $sessdata->{acpistate} eq "suspend") { #ok, make this a wake
 				$sessdata->{subcommand}="wake";
 				$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x1d,data=>[0,0],callback=>\&power_response,callback_args=>$sessdata);
 				return;
@@ -5394,6 +5394,14 @@ sub loadsdrcache {
 	return(0);
 }
 
+sub randomizelist { #in place shuffle of list
+	my $list = shift;
+	my $index = @$list;
+	while ($index--) {
+		my $swap=int(rand($index+1));
+		@$list[$index,$swap]=@$list[$swap,$index];
+	}
+}
 
 sub preprocess_request { 
   my $request = shift;
@@ -5457,7 +5465,31 @@ sub preprocess_request {
   # find service nodes for requested nodes
   # build an individual request for each service node
   my @noderanges;
+  srand();
   if ($chunksize) {
+     #first, we try to spread out the chunks so they don't happen to correlate to constrained service nodes or circuits
+     #for now, will get the sn map for all of them and interleave if dispatching
+     #if not dispatching, will randomize the noderange instead to lower likelihood of turning everything on a circuit at once
+     if (defined $::XCATSITEVALS{ipmidispatch} and $::XCATSITEVALS{ipmidispatch} =~ /0|n/i) { #no SN indicated, instead do randomize
+	randomizelist($realnoderange);
+     } else { # sn is indicated
+	my $bigsnmap = xCAT::Utils->get_ServiceNode($realnoderange, "xcat", "MN");
+     	foreach my $servicenode (keys %$bigsnmap) { #let's also shuffle within each service node responsibliity
+		randomizelist($bigsnmap->{$servicenode})
+	}
+	#now merge the per-servicenode list into a big list again
+	$realnoderange=[];
+	while (keys %$bigsnmap) {
+		foreach my $servicenode (keys %$bigsnmap) {
+			if (@{$bigsnmap->{$servicenode}}) {
+				push(@$realnoderange,pop(@{$bigsnmap->{$servicenode}}));
+			} else {
+				delete $bigsnmap->{$servicenode};
+			}
+		}
+	}
+	
+     }
      while (scalar(@$realnoderange)) {
              my @tmpnoderange;
 	     while (scalar(@$realnoderange) and $chunksize) {
@@ -5472,7 +5504,7 @@ sub preprocess_request {
   }
   foreach my $noderange (@noderanges) {  
      my $sn;
-     if ($::XCATSITEVALS{ipmidispatch} =~ /0|n/i) {
+     if (defined $::XCATSITEVALS{ipmidispatch} and $::XCATSITEVALS{ipmidispatch} =~ /0|n/i) {
         $sn = { '!xcatlocal!' => $noderange };
      } else {
         $sn = xCAT::Utils->get_ServiceNode($noderange, "xcat", "MN");
@@ -5581,7 +5613,7 @@ sub process_request {
   my %oldnodestatus=(); #saves the old node status
   my $check=0;
   my $global_check=1;
-  if ($::XCATSITEVALS{nodestatus} =~ /0|n|N/) { $global_check=0; }
+  if (defined $::XCATSITEVALS{nodestatus} and $::XCATSITEVALS{nodestatus} =~ /0|n|N/) { $global_check=0; }
 
 
   if ($command eq 'rpower') {
