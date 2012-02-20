@@ -24,6 +24,8 @@ nameservers at your site that can resolve names outside of your cluster.  With t
 management node to resolve names, and if it is a name that the MN DNS does not know about, it will ask the outside
 world.
 
+By default, B<makedns> sets up named service and updates the DNS records on the mamagement node, but if -e flag is specified, it also has the flexibility to update the DNS records to an external DNS server which is listed in the /etc/resolv.conf on the management node if this external DNS server can recognize xcat key as authentication.
+
 For more information on Cluster Name Resolution:
 https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Cluster_Name_Resolution
 
