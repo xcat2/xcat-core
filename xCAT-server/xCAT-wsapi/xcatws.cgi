@@ -14,7 +14,7 @@ use Data::Dumper;
 #all data input will be done from the common structure
 
 #turn on or off the debugging output
-my $DEBUGGING = 1;
+my $DEBUGGING = 0;
 
 my $q           = CGI->new;
 my $url         = $q->url;
@@ -598,7 +598,14 @@ sub networksHandler {
         $request->{command} = 'lsdef';
         push @{$request->{arg}}, '-t', 'network';
         if (defined($path[1])) {
-            push @{$request->{arg}}, $path[1];
+            push @{$request->{arg}}, '-o', $path[1];
+        }
+        my @temparray = $q->param('field');
+
+        #add the field name to get
+        if (scalar(@temparray) > 0) {
+            push @{$request->{arg}}, '-i';
+            push @{$request->{arg}}, join(',', @temparray),;
         }
     }
     elsif (isPut() || isPost()) {
@@ -634,9 +641,6 @@ sub networksHandler {
             addPageContent("No Field and Value map was supplied.");
             sendResponseMsg($STATUS_BAD_REQUEST);
         }
-    }
-    elsif (isPost()) {
-
     }
     elsif (isDelete()) {
         $request->{command} = 'rmdef';
