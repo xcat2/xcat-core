@@ -377,7 +377,7 @@ sub ishostinsubnet {
     $ip = getipaddr($ip,GetNumber=>1);
     $subnet = getipaddr($subnet,GetNumber=>1);
     $ip &= $mask;
-    if ($ip == $subnet) {
+    if ($ip && $subnet && ($ip == $subnet)) {
         return 1;
     } else {
         return 0;
