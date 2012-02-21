@@ -7856,14 +7856,15 @@ sub prenimnodeset
 
             # define the xcataixscript resource
             my $dcmd;
-            if ($::NFSv4)
-            {
-              $dcmd = qq~/usr/sbin/nim -o define -t script -a server=master -a nfs_vers=4 -a location=$install_dir/nim/scripts/xcataixscript xcataixscript 2>/dev/null~;
-            }
-            else
-            {
+            # TODO: xcataixscript is having problem with NFSv4, will be fixed in the next AIX release
+            #if ($::NFSv4)
+            #{
+            #  $dcmd = qq~/usr/sbin/nim -o define -t script -a server=master -a nfs_vers=4 -a location=$install_dir/nim/scripts/xcataixscript xcataixscript 2>/dev/null~;
+            #}
+            #else
+            #{
               $dcmd = qq~/usr/sbin/nim -o define -t script -a server=master -a location=$install_dir/nim/scripts/xcataixscript xcataixscript 2>/dev/null~;
-            }
+            #}
             $out =
               xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime,
                                     $dcmd, 0);
@@ -7876,7 +7877,8 @@ sub prenimnodeset
                 return (1);
             }
         } else {
-                if ($::NFSv4) {
+                # TODO: xcataixscript is having problem with NFSv4, will be fixed in the next AIX release
+                if (0 && $::NFSv4) {
                     my $cmd = qq~/usr/sbin/lsnim -Z -a nfs_vers xcataixscript 2>/dev/null~;
                         my @result = xCAT::Utils->runcmd("$cmd", -1);
                         if ($::RUNCMD_RC != 0)
