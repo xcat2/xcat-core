@@ -805,6 +805,35 @@ sub setup_DNS
         return 1;
     }
 
+    # start named on boot
+    if (xCAT::Utils->isAIX())
+    {
+        #/etc/inittab
+        my $cmd = "/usr/sbin/lsitab named > /dev/null 2>&1";
+        my $rc = system("$cmd") >>8;
+        if ($rc != 0)
+        {
+            #add new entry
+            my $mkcmd = qq~/usr/sbin/mkitab "named:2:once:/usr/sbin/named > /dev/console 2>&1"~;
+            system("$mkcmd");
+            xCAT::MsgUtils->message("SI", " named has been enabled on boot.");
+        }
+    }
+    else
+    {
+        #chkconfig
+        my $cmd = "/sbin/chkconfig $serv on";
+        my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message("SE", " Error: Could not enable $serv.");
+        }
+        else
+        {
+            xCAT::MsgUtils->message("SI", " $serv has been enabled on boot.");
+        }
+    }
+    
     return 0;
 }
 
