@@ -3989,12 +3989,12 @@ sub mk_lpp_source
 			#   - openssh, ?
 			#
 			my $out;
-			my $outp;
+			my @outp;
 			my $ccmd;
 
 			# try to find openssh and copy it to the new lpp_source loc
 			my $fcmd = "/usr/bin/find $::opt_s -print | /usr/bin/grep openssh.base";
-			$outp = xCAT::Utils->runcmd("$fcmd", -1);
+			@outp = xCAT::Utils->runcmd("$fcmd", -1);
 			if ($::RUNCMD_RC != 0)
             {
                 my $rsp;
@@ -4002,18 +4002,20 @@ sub mk_lpp_source
                 xCAT::MsgUtils->message("W", $rsp, $callback);
             }
 
-			chomp $outp;
-			my $dir = dirname($outp);
-
-			$ccmd = "/usr/bin/cp $dir/openssh* $loc/installp/ppc 2>/dev/null";
-			$out = xCAT::Utils->runcmd("$ccmd", -1);
-            if ($::RUNCMD_RC != 0)
-            {
-                my $rsp;
-                push @{$rsp->{data}}, "Could not copy openssh to $loc/installp/ppc.\n";
-                xCAT::MsgUtils->message("W", $rsp, $callback);
-            }
-			
+        	foreach my $line (@outp)
+        	{
+    			chomp $line;
+    			my $dir = dirname($line);
+    			$ccmd = "/usr/bin/cp $dir/openssh* $loc/installp/ppc 2>/dev/null";
+    			$out = xCAT::Utils->runcmd("$ccmd", -1);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Could not copy openssh to $loc/installp/ppc.\n";
+                    xCAT::MsgUtils->message("W", $rsp, $callback);
+                }    			
+        	}
+        				
 			# run inutoc
 			my $icmd = "/usr/sbin/inutoc $loc/installp/ppc";
 			$out = xCAT::Utils->runcmd("$icmd", -1);
