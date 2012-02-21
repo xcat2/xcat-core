@@ -2296,8 +2296,7 @@ sub getnodetype
         # query table and use the global hash first
         ############################################
             if ( $NODETYPEHASH{$nodes} ) {
-                $typehash{$nodes} = $NODETYPEHASH{$nodes};
-                return \%typehash; 
+                return $NODETYPEHASH{$nodes}; 
             } else {
                 my $typep = $nodetypetab->getNodeAttribs($nodes, ['nodetype']);
                 if ( $typep->{nodetype} ) {
