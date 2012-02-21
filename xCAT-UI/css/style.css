@@ -545,7 +545,7 @@ legend {
 	vertical-align: top;
 	width: 120px;
 	padding: 0px 0px 0px 20px;
-	display: inline-table;
+	display: inline-block;
 }
 
 .form div {
@@ -572,7 +572,7 @@ legend {
 	font: 12px sans-serif;
 	border: solid 1px #BDBDBD;
 	padding: 5px;
-	display: inline-table;
+	display: inline-block;
 }
 
 .form textarea {
