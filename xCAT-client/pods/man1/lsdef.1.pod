@@ -202,6 +202,13 @@ To list the nodes status and use xcoll to format the output.
 
  lsdef -t node -i status -c | xcoll
 
+=item 16.
+
+To display the description for some specific attributes that could be used
+when defining an xCAT node.
+
+ lsdef -t node -h -i profile,pprofile
+
 =back
 
 =head1 FILES

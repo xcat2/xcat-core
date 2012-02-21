@@ -566,6 +566,12 @@ sub processArgs
             my $rsp;
 
             if ($t eq 'site') {
+                if ($::opt_i)
+                {
+                    my $tmprsp;
+                    $tmprsp->{data}->[0] = "It is not supported to list the description of some specific site attributes, displaying the description for all site attributes instead.";
+                    xCAT::MsgUtils->message("W", $tmprsp, $::callback);
+                }
                 my $schema = xCAT::Table->getTableSchema('site');
                 my $desc;
 
@@ -581,7 +587,10 @@ sub processArgs
             # get the data type  definition from Schema.pm
             my $datatype = $xCAT::Schema::defspec{$t};
 
-            $rsp->{data}->[0] = "The valid attribute names for object type '$t' are:";
+            if (!$::opt_i)
+            {
+                $rsp->{data}->[0] = "The valid attribute names for object type '$t' are:";
+            }
 
             # get the objkey for this type object (ex. objkey = 'node')
             my $objkey = $datatype->{'objkey'};
@@ -591,10 +600,27 @@ sub processArgs
             my @alreadydone;    # the same attr may appear more then once
             my @attrlist;
             my $outstr = "";
-
+            my @dispattrs = ();
+            my %dispattrhash = ();
+            if ($::opt_i)
+            {
+                @dispattrs = split(/,/, $::opt_i);
+                foreach my $dattr (@dispattrs)
+                {
+                    $dispattrhash{$dattr} = 1;
+                }
+            }
             foreach my $this_attr (@{$datatype->{'attrs'}})
             {
                 my $attr = $this_attr->{attr_name};
+                # Only display the specified attributes
+                if ($::opt_i)
+                {
+                    if (!defined($dispattrhash{$attr}) || !$dispattrhash{$attr})
+                    {
+                        next;
+                    }
+                }
                 my $desc = $this_attr->{description};
                 if (!defined($desc)) {     
                     # description key not there, so go to the corresponding 
