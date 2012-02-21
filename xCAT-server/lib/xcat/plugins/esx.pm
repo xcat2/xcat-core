@@ -712,6 +712,7 @@ sub inv {
   if ($tableUpdate) {
   		my $cfgdatastore;
   		foreach (@{$vmview->layoutEx->file}) {
+		    #TODO, track ALL layoutEx->file....
 			if ($_->type eq 'config') {
 				$_->name =~ /\[([^\]]+)\]/;
 				$cfgdatastore = $hyphash{$hyp}->{datastoreurlmap}->{$1};
@@ -724,6 +725,9 @@ sub inv {
 		} elsif ($tablecfg{vm}->{$node}->[0]->{storage}) { #check the config file explicitly, ignore the rest
 			$cfgkey='storage';
 		}
+		my $configuration = $tablecfg{vm}->{$node}->[0]->{$cfgkey}; #TODO: prune urls that map to no layoutEx->file entries anymore
+		my $configappend = $configuration;
+		$configappend =~ s/^[^,=]*//;
 		$tablecfg{vm}->{$node}->[0]->{$cfgkey} =~ m!nfs://([^/]+)/!;
 		my $tablecfgserver =$1;
 		my $cfgserver = inet_aton($tablecfgserver);
@@ -732,7 +736,7 @@ sub inv {
 			my $cfgurl = $tablecfg{vm}->{$node}->[0]->{$cfgkey};
 			$cfgurl =~ s/$tablecfgserver/$cfgserver/;
 			if ($cfgurl ne $cfgdatastore) {
-				$updatehash{$cfgkey} = $cfgdatastore;
+				$updatehash{$cfgkey} = $cfgdatastore.$configappend;
 		    }
 		}
   }
