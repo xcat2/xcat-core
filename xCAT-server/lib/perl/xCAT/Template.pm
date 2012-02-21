@@ -25,7 +25,6 @@ my $lastmachinepass;
 my %tab_replacement=(
      "noderes:nfsserver"=>"noderes:xcatmaster",
      "noderes:tftpserver"=>"noderes:xcatmaster",
-     "noderes:xcatmaster"=>"site:key=master:value",
     );
 
 
@@ -68,6 +67,10 @@ sub subvars {
   (my $et) = $sitetab->getAttribs({key=>"master"},'value');
   if ($et and $et->{value}) {
       $master = $et->{value};
+  }
+  my $ipfn = xCAT::Utils->my_ip_facing($node);
+  if ($ipfn) {
+      $master = $ipfn;
   }
   $et = $noderestab->getNodeAttribs($node,['xcatmaster']);
   if ($et and $et->{'xcatmaster'}) { 
@@ -419,6 +422,12 @@ sub tabdb
     $tabh->close;
     unless($ent and  defined($ent->{$field})) {
       unless ($blankok) {
+         if ($field eq "xcatmaster") {
+           my $ipfn = xCAT::Utils->my_ip_facing($node);
+           if ($ipfn) {
+             return $ipfn;
+           }
+         }
          #$tmplerr="Unable to find requested $field from $table, with $key";
          my $rep=get_replacement($table,$key,$field);
          if ($rep) {
