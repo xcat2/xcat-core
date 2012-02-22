@@ -4628,6 +4628,7 @@ sub cpNetbootImages {
 		push @filestocopy,$_;
 	      }
 	    }
+	  }
 	    #now that we have a list, do the copy (mostly redundant, but PXE needs them tftp accessible)
 	    foreach (@filestocopy) {
 	      chomp;
@@ -4641,7 +4642,6 @@ sub cpNetbootImages {
 		xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents from $srcDir/$mod to $destDir/$mod, $srcDir/$mod not found"], $output_handler);
 	      }
 	    }
-	  }
 	} else {
 			xCAT::SvrUtils::sendmsg([1,"VMware $osver is not supported for netboot"], $output_handler);	  
 	}
