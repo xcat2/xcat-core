@@ -14,7 +14,7 @@ use Data::Dumper;
 #all data input will be done from the common structure
 
 #turn on or off the debugging output
-my $DEBUGGING = 0;
+my $DEBUGGING = 1;
 
 my $q           = CGI->new;
 my $url         = $q->url;
@@ -629,17 +629,21 @@ sub networksHandler {
         push @{$request->{arg}}, '-t', 'network', '-o', $netname;
         if (defined($q->param('PUTDATA'))) {
             $entries = decode_json $q->param('PUTDATA');
-            if (scalar($entries) < 1) {
-                addPageContent("No Field and Value map was supplied.");
-                sendResponseMsg($STATUS_BAD_REQUEST);
-            }
-            foreach (@$entries) {
-                push @{$request->{arg}}, $_;
-            }
+        }
+        elsif (defined($q->param('POSTDATA'))) {
+            $entries = decode_json $q->param('PUTDATA');
         }
         else {
             addPageContent("No Field and Value map was supplied.");
             sendResponseMsg($STATUS_BAD_REQUEST);
+        }
+
+        if (scalar($entries) < 1) {
+            addPageContent("No Field and Value map was supplied.");
+            sendResponseMsg($STATUS_BAD_REQUEST);
+        }
+        foreach (@$entries) {
+            push @{$request->{arg}}, $_;
         }
     }
     elsif (isDelete()) {
@@ -666,19 +670,10 @@ sub networksHandler {
 sub nodesHandler {
     my @responses;
     my @args;
+    my $noderange;
 
-    #does it specify nodes in the URI?
     if (defined $path[1]) {
-        $request->{noderange} = $path[1];
-    }
-
-    #in the query string?
-    elsif (defined $q->param('nodeRange')) {
-        $request->{noderange} = $q->param('nodeRange');
-    }
-    else {
-        addPageContent("Invalid nodes and/or groups in noderange");
-        sendResponseMsg($STATUS_EXPECT_FAILED);
+        $noderange = $path[1];
     }
 
     if (isGet()) {
@@ -704,9 +699,6 @@ sub nodesHandler {
                     push @args, $_;
                 }
             }
-        }
-        elsif ($subResource =~ "osImage") {
-
         }
         elsif ($subResource =~ "status") {
             $request->{command} = 'nodestat';
@@ -735,18 +727,18 @@ sub nodesHandler {
         }
         else {
             $request->{command} = 'lsdef';
+            push @args, "-t", "node";
 
-            #if the table or field is specified in the URI
-            if (defined $subResource) {
-                push @args, $subResource;
+            #add the nodegroup into args
+            if (defined($noderange)) {
+                push @args, "-o", $noderange;
             }
 
             #maybe it's specified in the parameters
-            else {
-                my @temparray = $q->param('field');
-                foreach (@temparray) {
-                    push @args, "-i", $_;
-                }
+            my @temparray = $q->param('field');
+            if (scalar(@temparray) > 0) {
+                push @args, "-i";
+                push @args, join(',', @temparray);
             }
         }
     }
@@ -798,26 +790,37 @@ sub nodesHandler {
         }
     }
     elsif (isPost()) {
-        $request->{command} = 'nodeadd';
-        if (defined $q->param('groups')) {
-            $request->{groups} = $q->param('groups');
+        $request->{command} = 'mkdef';
+        push @args, "-t", "node";
+
+        unless (defined($noderange)) {
+            addPageContent("No nodename was supplied.");
+            sendResponseMsg($STATUS_BAD_REQUEST);
         }
 
-        #since we can't predict which table fields will be passed
-        #we just pass everything else
-        for my $arg ($q->param) {
-            if ($arg !~ "nodeRange" && $arg !~ "groups") {
-                push @args, $arg;
+        push @args, "-o", $noderange;
+
+        if ($q->param('POSTDATA')) {
+            my $entries = decode_json $q->param('POSTDATA');
+            if (scalar($entries) < 1) {
+                addPageContent("No Field and Value map was supplied.");
+                sendResponseMsg($STATUS_BAD_REQUEST);
+            }
+            foreach (@$entries) {
+                push @args, $_;
             }
         }
-    }
-    elsif (isPatch()) {
-        $request->{command} = 'nodech';
     }
     elsif (isDelete()) {
 
         #FYI:  the nodeRange for delete has to be specified in the URI
-        $request->{command} = 'noderm';
+        $request->{command} = 'rmdef';
+        push @args, "-t", "node";
+        unless (defined($noderange)) {
+            addPageContent("No nodename was supplied.");
+            sendResponseMsg($STATUS_BAD_REQUEST);
+        }
+        push @args, "-o", $noderange;
     }
     else {
         unsupportedRequestType();
@@ -1027,7 +1030,7 @@ sub siteHandler {
         #add the field name to get
         if (scalar(@temparray) > 0) {
             push @{$request->{arg}}, '-i';
-            push @{$request->{arg}}, join(',', @temparray),;
+            push @{$request->{arg}}, join(',', @temparray);
         }
     }
     elsif (isPut()) {
@@ -1529,7 +1532,6 @@ sub jobsHandler {
 sub wrapData {
     my $data             = shift;
     my $errorInformation = '';
-    addPageContent($q->p(Dumper($data)));
 
     #trim the serverdone message off
     if (exists $data->[0]->{serverdone} && exists $data->[0]->{error}) {
@@ -1754,7 +1756,9 @@ sub sendRequest {
         if (m/<\/xcatresponse>/) {
 
             #replace ESC with xxxxESCxxx because XMLin cannot handle it
-            addPageContent($response . "\n");
+            if ($DEBUGGING) {
+                addPageContent($response . "\n");
+            }
             $response =~ s/\e/xxxxESCxxxx/g;
 
             #print "responseXML is ".$response;
