@@ -16,6 +16,10 @@ B<rmhwconn> [B<-V>| B<--verbose>] I<noderange>
 
 B<rmhwconn> I<noderange> B<-T> I<tooltype>
 
+=head2 PPC (use HMC as SFP) specific:
+
+B<rmhwconn> B<-s>
+
 =head1 DESCRIPTION
 
 For PPC (with HMC) specific:
@@ -27,6 +31,10 @@ Note: If a CEC belongs to a frame with a BPA installed, this CEC cannot be disco
 For PPC (without HMC, using FSPAPI) specific:
 
 It's used to disconnection CEC and Frame nodes from hardware server.
+
+For PPC (use HMC as SFP) specific:
+
+It is used to disconnect Frame nodes from HMC nodes.
 
 =head1 OPTIONS
 
