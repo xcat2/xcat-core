@@ -5,6 +5,7 @@ use warnings;
 use xCAT::Table;
 use xCAT::Utils;
 use Time::HiRes qw (sleep);
+use xCAT::Template;
 use xCAT::MsgUtils;
 use xCAT::SvrUtils;
 use xCAT::NodeRange;
