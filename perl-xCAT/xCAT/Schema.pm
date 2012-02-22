@@ -793,7 +793,8 @@ site => {
    "                       mn|eth1,eth2;service|bond0.\n\n".
    " dhcpsetup:  If set to 'n', it will skip the dhcp setup process in the nodeset cmd.\n\n".
    " disjointdhcps:  If set to '1', the .leases file on a service node only contains\n".
-   "                 the nodes it manages. The default value is '0' which means include all the nodes in the subnet.\n\n".
+   "                 the nodes it manages. The default value is '0'.\n".
+   "                 '0' value means include all the nodes in the subnet.\n\n".
    " dnshandler:  Name of plugin that handles DNS setup for makedns.\n".
    " domain:  The DNS domain name used for the cluster.\n\n".
    " ea_primary_hmc:  The hostname of the HMC that the Integrated Switch Network\n".
