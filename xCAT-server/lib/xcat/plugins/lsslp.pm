@@ -176,7 +176,6 @@ my %globalnodetype = (
 ##########################################################################
 sub handled_commands {
 
-    $macmap = xCAT::MacMap->new();
     return( {lsslp=>"lsslp"} );
 }
 
@@ -4012,6 +4011,7 @@ sub process_request {
     my $req      = shift;
     my $callback = shift;
     my $doreq    = shift;
+    unless ($macmap) { $macmap = xCAT::MacMap->new(); }
 
     ###########################################
     # Build hash to pass around
