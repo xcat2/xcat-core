@@ -18,7 +18,6 @@ use xCAT::MellanoxIB;
 
 my $macmap;
 sub handled_commands {
-    $macmap = xCAT::MacMap->new();
     return {
 	findme => 'switch',
 	findmac => 'switch',
@@ -106,6 +105,9 @@ sub process_request {
     my $req = shift;
     my $cb = shift;
     my $doreq = shift;
+    unless ($macmap) {
+	$macmap = xCAT::MacMap->new();
+    }
     my $node;
     my $mac = '';
     if ($req->{command}->[0] eq 'findmac') {
