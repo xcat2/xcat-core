@@ -139,8 +139,8 @@ sub run_lssyscfg
             arg     => ['state']
         },
     $req, 0, 1);
-    if ($::RUNCMD_RC != 0)   {
-        nc_msg(2, "Unable to run rpower $node state.\n");
+    if ($::RUNCMD_RC ne 0)   {
+        nc_msg($verbose, "Unable to run rpower $node state.\n");
         return undef;
     }
     my $output = join ',', @$out;
@@ -205,7 +205,7 @@ sub usage {
             \n\t--help\tPrints this help\n";
     nc_msg(1, $msg);
 
-    return [1];
+    return 0;
 }
 #-------------------------------------------------------------------------------
 
@@ -234,129 +234,130 @@ sub ck_args {
     my $profile = $opt->{pprofile};
 
     if (exists( $opt->{D}) and (!exists ($opt->{s}) or !exists ($opt->{d} ))) {
-        nc_msg(2, "Speed and duplex required\n");
+        nc_msg($verbose, "Speed and duplex required\n");
         usage;
-        return [1];
+        return 1;
     }
 
     if (exists ($opt->{D}) and !exists ($opt->{C}))  {
-        nc_msg(2, "Client IP is required\n");
+        nc_msg($verbose, "Client IP is required\n");
         usage;
-        return [1];
+        return 1;
     }
     if (exists( $opt->{D}) and !exists($opt->{S})) {
-        nc_msg(2, "Server IP is required\n");
+        nc_msg($verbose, "Server IP is required\n");
         usage;
-        return [1];
+        return 1;
     }
 
     if (exists( $opt->{D}) and !exists($opt->{G})) {
-        nc_msg(2, "Gateway IP is required\n");
+        nc_msg($verbose, "Gateway IP is required\n");
         usage;
-        return [1];
+        return 1;
     }
 
     unless($node) {
-        nc_msg(2, "Node is required\n");
+        nc_msg($verbose, "Node is required\n");
         usage;
-        return [1];
+        return 1;
     } else {
         nc_msg($verbose, "Node is $node\n");
     }
 
     unless($mtms) {
-        nc_msg(2, "Managed system is required\n");
+        nc_msg($verbose, "Managed system is required\n");
         usage;
-        return [1];
+        return 1;
     } else {
         nc_msg($verbose, "Managed system is $mtms.\n");
     }
 
     unless ($hcp) {
-        nc_msg(2, "Hardware control point address is required\n");
+        nc_msg($verbose, "Hardware control point address is required\n");
         usage;
-        return [1];
+        return 1;
     } else {
         nc_msg($verbose, "Hardware control point address is $hcp.\n");
     }
 
     unless ($lparid) {
-        nc_msg(2, "Lpar Id is required.\n");
+        nc_msg($verbose, "Lpar Id is required.\n");
         usage;
-        return [1];
+        return 1;
     } else {
         nc_msg($verbose, "LPAR Id is $lparid.\n");
     }
 
     unless ($profile) {
-        nc_msg(2, "Profile is required.\n");
+        nc_msg($verbose, "Profile is required.\n");
         usage;
-        return [1];
+        return 1;
     } else {
         nc_msg($verbose, "profile $profile.\n");
     }
 
     if ($opt->{M} and $opt->{g}) {
-        nc_msg(2, "Can not specify -M and -g flags together.\n");
+        nc_msg($verbose, "Can not specify -M and -g flags together.\n");
         usage;
-        return [1];
+        return 1;
     }
     if ($opt->{M} and ($opt->{m} or $opt->{l})) {
-        nc_msg(2, "Can not specify -M and -l or -m flags together.\n");
+        nc_msg($verbose, "Can not specify -M and -l or -m flags together.\n");
         usage;
-        return [1];
+        return 1;
     }
 
     if ($opt->{m} and $opt->{l}) {
-        nc_msg(2, "Can not specify -l and -m flags together.\n");
+        nc_msg($verbose, "Can not specify -l and -m flags together.\n");
         usage;
-        return [1];
+        return 1;
     }
 
     if ($opt->{A} and ($opt->{m} or $opt->{l})) {
-        nc_msg(2, "Can not specify -A and -m or -l flags together.\n");
+        nc_msg($verbose, "Can not specify -A and -m or -l flags together.\n");
         usage;
-        return [1];
+        return 1;
     }
 
     if ($opt->{A} and !exists($opt->{D}) and !exists($opt->{n})) {
-        nc_msg(2, "Flag -A must be specify with flag -D for booting.\n");
+        nc_msg($verbose, "Flag -A must be specify with flag -D for booting.\n");
         usage;
-        return [1];
+        return 1;
     }
 
     if ($opt->{M} and $opt->{D} and (!exists($opt->{S}) or !exists($opt->{G}) or !exists($opt->{C}) or !exists( $opt->{s}) or !exists($opt->{d}))) {
-        nc_msg(2, "Flag -M with -D require arguments for -C, -S, -G, -s and -d.\n");
+        nc_msg($verbose, "Flag -M with -D require arguments for -C, -S, -G, -s and -d.\n");
         usage;
-        return [1];
+        return 1;
     }
 
     if ($opt->{M} and !exists($opt->{D}) and (!exists($opt->{S}) or !exists($opt->{G}) or !exists($opt->{C}) or !exists($opt->{s}) or !exists($opt->{d}))){
-        nc_msg(2, "Flag -M with arguments for -C, -S, -G, -s and -d require -D flag.\n");
+        nc_msg($verbose, "Flag -M with arguments for -C, -S, -G, -s and -d require -D flag.\n");
         usage;
-        return [1];
+        return 1;
     }
 
     if ($opt->{M} and !exists($opt->{n})) {
-        nc_msg(2, "-M flag requires -n.\n");
+        nc_msg($verbose, "-M flag requires -n.\n");
         usage;
-        return [1];
+        return 1;
     }
 
     if ($node =~ /(\[ ]+)-/) {
-        nc_msg(2, "Error : $node, node is required\n");
-        return [1];
+        nc_msg($verbose, "Error : $node, node is required\n");
+        return 1;
     }
 
     if ($mtms =~ /(\[ ]+)-/) {
-        nc_msg(2, "Error : $mtms, Managed system is required\n");
-        return [1];
+        nc_msg($verbose, "Error : $mtms, Managed system is required\n");
+        return 1;
     }
 
     #if ($profile =~ /(\[ ]+)-/) {
-    #    nc_msg(2, "Error : $profile, profile is required\n");
-    #    return [1];
+    #    nc_msg($verbose, "Error : $profile, profile is required\n");
+    #    return 1;
     #}
+    return 0;
 }
 
 
@@ -423,6 +424,7 @@ sub get_phandle {
     my $expect_out;
     my $retry_count;
     my %path;
+    my $rc = 0;
 
 
     # This is the first procedure entered after getting to the ok prompt. On entry
@@ -446,22 +448,23 @@ sub get_phandle {
         [qr/]/=>
         sub {
             nc_msg($verbose, "Unexpected prompt\n");
-            return [1];
+            $rc = 1;
             }
         ],
         [timeout =>
         sub {
             $rconsole->send("\r");
-            return [1];
+            $rc = 1;
             }
         ],
         [eof =>
         sub {
-            nc_msg(2, "Cannot connect to $node");
-            return [1];
+            nc_msg($verbose, "Cannot connect to $node");
+            $rc = 1;
             }
         ],
     );
+    return 1 if ($rc eq 1);
     # Next, the 'ls' command is sent. The result is a display of the entire
     # device tree. The code then looks at the
     # output from the ls command one line at a time, trying to match it with the
@@ -526,17 +529,18 @@ sub get_phandle {
             ],
             [timeout=>
             sub {
-                nc_msg(2, "Timeout isolating single line of ls output\n");
-                return [1];
+                nc_msg($verbose, "Timeout isolating single line of ls output\n");
+                $rc = 1;
                 }
             ],
             [eof =>
             sub {
-                nc_msg(2, "Cannot connect to $node");
-                return [1];
+                nc_msg($verbose, "Cannot connect to $node");
+                $rc = 1;
                 }
             ],
         );
+        return 1 if ($rc eq 1);
         if ($result[2] =~ /(\w*)\:(\s*)\/(\S*)/) {
 
             my $x1 = $1;
@@ -569,8 +573,8 @@ sub get_phandle {
     if ( $adapter_found > 0 ) {
         return 0;
     } else {
-        nc_msg(2, "No network adapters found\n" );
-        return [1];
+        nc_msg($verbose, "No network adapters found\n" );
+        return 1;
     }
 
 }
@@ -684,29 +688,30 @@ sub  get_adap_prop    {
         ],
         [ qr/]/,
             sub {
-                nc_msg(2, "Unexpected prompt\n");
-                return [1];
+                nc_msg($verbose, "Unexpected prompt\n");
+                $rc = 1;
             }
         ],
         [ qr/(.*)DEFAULT(.*)/,
             sub {
-                nc_msg(2, " Default catch error\n");
-                return [1];
+                nc_msg($verbose, " Default catch error\n");
+                $rc = 1;
             }
         ],
         [ timeout=>
             sub {
-                nc_msg(2, "Timeout in getting adapter properpties\n");
-                return [1];
+                nc_msg($verbose, "Timeout in getting adapter properpties\n");
+                $rc = 1;
             }
         ],
         [ eof =>
             sub {
-                nc_msg(2, "Cannot connect to $node\n");
-                return [1];
+                nc_msg($verbose, "Cannot connect to $node\n");
+                $rc = 1;
             }
         ]
         );
+        return 1 if ($rc eq 1);
         # After state 3, the network type is parsed and the connector
         # type extracted.  If the type hasn't been found, add it to
         # the list of supported connector types.
@@ -790,6 +795,7 @@ sub get_mac_addr {
     my @pattern;
     my @newstate;
     my $mac_address;
+    my $rc = 0;
 
 
     nc_msg($verbose, "Status: get_mac_addr start\n");
@@ -875,20 +881,20 @@ sub get_mac_addr {
                             sub {
                                 #$mac_rc = $expect_out;
                                 nc_msg($verbose, "Status: Error getting MAC address for phandle=$phandle. RC=$mac_rc.\n");
-                                nc_msg(2, "Could not obtain MAC address; setting MAX to NA\n" );
-                                return "NA";
+                                nc_msg($verbose, "Could not obtain MAC address; setting MAX to NA\n" );
+                                $rc = 1;
                             }
                         ],
                         [ timeout=>
                             sub {
-                                nc_msg(2, "Timeout when getting mac address\n");
-                                return [1];
+                                nc_msg($verbose, "Timeout when getting mac address\n");
+                                $rc = 1;
                             }
                         ],
                         [ eof =>
                             sub {
-                                nc_msg(2, " Cannot connect to $node\n");
-                                return [1];
+                                nc_msg($verbose, " Cannot connect to $node\n");
+                                $rc = 1;
                             }
                         ]
                     );
@@ -897,30 +903,31 @@ sub get_mac_addr {
             ],
             [qr/]/=>
             sub {
-                nc_msg(2, "Unexpected prompt\n");
-                return [1];
+                nc_msg($verbose, "Unexpected prompt\n");
+                $rc = 1;
                 }
             ],
             [qr/(.*)DEFAULT(.*)/=>
             sub {
-                nc_msg(2, "Default catch error\n");
-                return [1];
+                nc_msg($verbose, "Default catch error\n");
+                $rc = 1;
                 }
             ],
             [timeout=>
             sub {
-                nc_msg(2, "Timeout in getting mac address\n");
+                nc_msg($verbose, "Timeout in getting mac address\n");
                 nc_msg($verbose, "timeout state is $state\n");
-                return [1];
+                $rc = 1;
                 }
             ],
             [eof =>
             sub {
-                nc_msg(2, "Cannot connect to $node");
-                return [1];
+                nc_msg($verbose, "Cannot connect to $node");
+                $rc = 1;
                 }
             ],
         );
+        return undef if ($rc eq 1);
     }
     # if the state is 0, 1, or 2, an error occurred and the join will fail
     if ($state eq 4) {
@@ -929,7 +936,7 @@ sub get_mac_addr {
         }
         return $mac_address;
     } else {
-        return [1];
+        return undef;
     }
 
 }
@@ -971,6 +978,7 @@ sub get_mac_addr {
     my @result;
     my @path;
     my $loc_code;
+    my $rc = 0;
 
     nc_msg($verbose, "Status: get_adaptr_loc start\n");
     # cmd(0) could have been sent as 3 commands. " ibm,loc-code" (tcl forces
@@ -1022,7 +1030,7 @@ sub get_mac_addr {
                 nc_msg($verbose, $msg[$state]);
                 $state = $newstate[$state];
             }
-           ],
+            ],
             [qr/1 >/=>
             sub {
                 my $exp = shift;
@@ -1033,21 +1041,21 @@ sub get_mac_addr {
                         [qr/0 >/=>
                         sub {
                             my $loc_rc = shift;
-                            nc_msg(2, "Error getting adapter physical location.\n");
+                            nc_msg($verbose, "Error getting adapter physical location.\n");
                             nc_msg($verbose, "Status: Error getting physical location for phandle=$phandle. RC=$loc_rc.\n");
-                            return [1];
+                            $rc = 1;
                             }
                         ],
                         [timeout=>
                         sub {
-                            nc_msg(2, "Timeout when openning console\n");
-                            return [1];
+                            nc_msg($verbose, "Timeout when openning console\n");
+                            $rc = 1;
                             }
                         ],
                         [eof=>
                         sub {
-                            nc_msg(2, "Cannot connect to the $node\n");
-                            return [1];
+                            nc_msg($verbose, "Cannot connect to the $node\n");
+                            $rc = 1;
                             }
                         ],
                     );
@@ -1057,29 +1065,30 @@ sub get_mac_addr {
             ],
             [qr/]/=>
             sub {
-                nc_msg(2, "Unexpected prompt\n");
-                return [1];
+                nc_msg($verbose, "Unexpected prompt\n");
+                $rc = 1;
                 }
             ],
             [qr/(.*)DEFAULT(.*)/=>
             sub {
-                nc_msg(2, "Default catch error\n");
-                return [1];
+                nc_msg($verbose, "Default catch error\n");
+                $rc = 1;
                 }
             ],
             [timeout=>
             sub {
-                nc_msg(2, "Timeout when openning console\n");
-                return [1];
+                nc_msg($verbose, "Timeout when openning console\n");
+                $rc = 1;
                 }
             ],
             [eof =>
             sub {
-                nc_msg(2, "Cannot connect to the $node\n");
-                return [1];
+                nc_msg($verbose, "Cannot connect to the $node\n");
+                $rc = 1;
                 }
             ],
         );
+        return undef if ($rc eq 1);
     }
     # Did we find one or more adapters?
 
@@ -1151,6 +1160,7 @@ sub  ping_server{
     my $i;
     my $ping_debug;
     my $ping_rc;
+    my $rc = 0;
 
     # If the adapter type chosen is ethernet, need to set the speed and duplex
     # of the adapter before we perform the ping.  If token ring or fddi,
@@ -1231,13 +1241,13 @@ sub  ping_server{
         #
         $adap_prop_list_array = get_adap_prop($phandle, $rconsole, $node, $verbose);
         if ( $adap_prop_list_array eq 1 ) {
-            nc_msg(2, "ERROR return from get_adap_prop\n");
-            return [1];
+            nc_msg($verbose, "ERROR return from get_adap_prop\n");
+            return 1;
         }
 
-        if ( $adap_prop_list_array eq undef ) {
-            nc_msg(2, "No properties found for adapter '$full_path_name'\n");
-            return [1];
+        if ( $adap_prop_list_array eq 0 ) {
+            nc_msg($verbose, "No properties found for adapter '$full_path_name'\n");
+            return 1;
         }
 
         # Now need to verify that the network params we were passed are valid for
@@ -1270,8 +1280,8 @@ sub  ping_server{
         $i = scalar(@adap_conn_list);
 
         if ( $properties_matched eq 0 ) {
-            nc_msg(2, "'$adap_speed/$adap_duplex' settings are not supported on this adapter\n");
-            return [1];
+            nc_msg($verbose, "'$adap_speed/$adap_duplex' settings are not supported on this adapter\n");
+            return 1;
         }
     } else {
         $state = 2;
@@ -1290,29 +1300,30 @@ sub  ping_server{
             ],
             [qr/]/=>
             sub {
-                nc_msg(2, "Unexpected prompt\n");
-                return [1];
+                nc_msg($verbose, "Unexpected prompt\n");
+                $rc = 1;
                 }
             ],
             [qr/(.*)DEFAULT(.*)/=>
             sub {
-                nc_msg(2, "Default catch error\n");
-                return [1];
+                nc_msg($verbose, "Default catch error\n");
+                $rc = 1;
                 }
             ],
             [timeout=>
             sub {
-                nc_msg(2, "Timeout when openning console\n");
-                return [1];
+                nc_msg($verbose, "Timeout when openning console\n");
+                $rc = 1;
                 }
             ],
             [eof=>
             sub {
-                nc_msg(2, "Cannot connect to the $node\n");
-                return [1];
+                nc_msg($verbose, "Cannot connect to the $node\n");
+                $rc = 1;
                 }
             ],
         );
+        return 1 if ($rc eq 1);
         if ( $state eq 1 ) {
             $adap_conn = $adap_conn_list[$j];
             $cmd[1] = "\" ethernet,$adap_speed,$adap_conn,$adap_duplex\" encode-string \" chosen-network-type\" property\r";
@@ -1381,26 +1392,26 @@ sub  ping_server{
                         ],
                         [qr/]/=>
                         sub {
-                            nc_msg(2, "Unexpected prompt\n");
-                            return [1];
+                            nc_msg($verbose, "Unexpected prompt\n");
+                            $rc = 1;
                             }
                         ],
                         [qr/(.*)DEFAULT(.*)/=>
                         sub {
-                            nc_msg(2, "Default catch error\n");
-                            return [1];
+                            nc_msg($verbose, "Default catch error\n");
+                            $rc = 1;
                             }
                         ],
                         [timeout=>
                         sub {
-                            nc_msg(2, "Timeout in ping server\n");
-                            return [1];
+                            nc_msg($verbose, "Timeout in ping server\n");
+                            $rc = 1;
                             }
                         ],
                         [eof =>
                         sub {
-                            nc_msg(2, "Cannot connect to $node\n");
-                            return [1];
+                            nc_msg($verbose, "Cannot connect to $node\n");
+                            $rc = 1;
                             }
                         ],
                     );
@@ -1435,8 +1446,8 @@ sub  ping_server{
                     $state = 0;
                 }
             } else {
-                nc_msg(2, "Unexpected ping return code\n");
-                return [1];
+                nc_msg($verbose, "Unexpected ping return code\n");
+                return 1;
             }
         }
     }
@@ -1479,6 +1490,7 @@ sub set_disk_boot {
     my @newstate;
     my $timeout;
     my $state;
+    my $rc = 0;
 
     # state 0, get SMS screen
     $done[0] = 0;
@@ -1573,31 +1585,37 @@ sub set_disk_boot {
                         }
                     }
                     $state = $newstate[$state];
-                    if ( ($state != 8) && ($state != 9) && ($state != 10) ) {
+                    if ( ($state ne 8) && ($state ne 9) && ($state ne 10) ) {
                         $cmd[$state] = "$expect_out[3]\r";
                     }
                 }
             ],
             [qr/THE SELECTED DEVICES WERE NOT DETECTED IN THE SYSTEM/=>
                 sub {
-                    nc_msg(2, " Status: THE hard disk WERE NOT DETECTED IN THE SYSTEM!\n");
-                    return [1];
+                    nc_msg($verbose, " Status: THE hard disk WERE NOT DETECTED IN THE SYSTEM!\n");
+                    $rc = 1;
                  }
             ],
             [timeout =>
                 sub {
-                    nc_msg(2, "Timeout in settin boot order\n");
-                    return [1];
+                    nc_msg($verbose, "Timeout in settin boot order\n");
+                    $rc = 1;
                 }
             ],
             [eof =>
                 sub {
-                    nc_msg(2, "Cannot connect to $node\n");
-                    return [1];
+                    nc_msg($verbose, "Cannot connect to $node\n");
+                    $rc = 1;
                 }
             ],
-            );
+        );
+        if ($rc eq 1) {
+            return 1;
+        } else {
+            return 0;
+        }            
     }
+    return 0;
 
 }
 
@@ -1643,6 +1661,7 @@ sub boot_network {
     my $state = 0;
     my $timeout;
     my $boot_device_bk;
+    my $rc = 0;
 
 
     nc_msg($verbose, "Status: boot_network start\n");
@@ -1667,11 +1686,11 @@ sub boot_network {
     # duplex during boot.
     # state 0, stack count 0
     $done[0] = 0;
-    if ($dump_target != "") {
+    if ($dump_target ne "") {
         $net_device[0] = "$full_path_name:iscsi,ciaddr=$client_ip,subnet-mask=$netmask,itname=dummy,iport=$dump_port,ilun=$dump_lun,iname=$dump_target,siaddr=$server_ip,2";
         $pattern[0] = "iSCSI";
     } else {
-        if ($extra_args != "" ) {
+        if ($extra_args ne "" ) {
             if ( $server_ip =~ /:/ ) { #ipv6
                 $net_device[0] = "$full_path_name:ipv6,speed=$speed,duplex=$duplex,siaddr=$server_ip,ciaddr=$client_ip,giaddr=$gateway_ip,filename=$node,$extra_args";
             } else {
@@ -1710,8 +1729,8 @@ sub boot_network {
         $state = 1;
     } else {
         if ($speed eq "" || $duplex eq "" ) {
-            nc_msg(2, "Cannot set speed or duplex for network boot\n");
-            return [1];
+            nc_msg($verbose, "Cannot set speed or duplex for network boot\n");
+            return 1;
         }
         $state = 0;
     }
@@ -1781,30 +1800,32 @@ sub boot_network {
             ],
             [qr/]/=>
                 sub {
-                nc_msg (2, "Unexpected prompt\n");
-                return [1];
+                nc_msg($verbose, "Unexpected prompt\n");
+                $rc = 1;
                 }
             ],
             [qr/(.*)DEFAULT(.*)/=>
                 sub {
-                    nc_msg(2, "Default catch error\n");
-                    return [1];
+                    nc_msg($verbose, "Default catch error\n");
+                    $rc = 1;
                 }
             ],
             [timeout=>
                 sub {
-                    nc_msg(2, "Timeout when openning console\n");
-                    return [1];
+                    nc_msg($verbose, "Timeout when openning console\n");
+                    $rc = 1;
                 }
             ],
             [eof=>
                 sub {
-                    nc_msg(2, "Cannot connect to the $node\n");
-                    return [1];
+                    nc_msg($verbose, "Cannot connect to the $node\n");
+                    $rc = 1;
                 }
             ],
         );
+        return 1 if ($rc eq 1);
     }
+    return 0;
 }
 #
 # PROCEDURE
@@ -1819,7 +1840,6 @@ sub Boot {
     my $timeout;
     my $state;
 
-
     nc_msg($verbose, "Status: waiting for the boot image to boot up.\n");
 
     $timeout = 1200;      # could take a while depending on configuration
@@ -1828,15 +1848,15 @@ sub Boot {
             sub {
                 # If we see a "problem doing RESTART-CMD" message, we re-hit the OPEN-DEV
                 # issue after firmware rebooted itself and we need to retry the netboot once more
-                    nc_msg(2, "The network boot ended in an error.\nError : RESTART-CMD\n");
-                return [1];
+                nc_msg($verbose, "The network boot ended in an error.\nError : RESTART-CMD\n");
+                $rc = 1;
             }
         ],
         #[!(qr/[0-9A-F]+/)=>
         #    sub {
-        #        nc_msg(2, "The network boot ended in an error.\n");
+        #        nc_msg($verbose, "The network boot ended in an error.\n");
         #        #nc_msg($verbose, $expect_out[buffer]);
-        #        return [1];
+        #        $rc = 1;
         #     }
         #],
         [qr/BOOTP/=>      #-ex
@@ -1852,23 +1872,23 @@ sub Boot {
         [timeout=>
         sub {
             my $mins = $timeout/60;
-            nc_msg(2, "Timeout waiting for the boot image to boot up. \
+            nc_msg($verbose, "Timeout waiting for the boot image to boot up. \
                   \n waited '$mins' minutes for the boot image to boot. \
                   \nEither the boot up has taken longer than expected or \
                   \nthere is a problem with system boot.  Check the boot \
                   \nof the node to determine if there is a problem.\n");
             #nc_msg($verbose, $expect_out[buffer]);
-            return [1];
+            $rc = 1;
             }
         ],
         [eof=>
         sub {
-            nc_msg(2, "Port closed waiting for boot image to boot.\n");
-            return [1];
+            nc_msg($verbose, "Port closed waiting for boot image to boot.\n");
+            $rc = 1;
             }
         ],
     );
-    return 0;
+    return $rc;
 }
 
 
@@ -1893,6 +1913,7 @@ sub multiple_open_dev {
     my $expect_out;
     my $command;
     my $timeout;
+    my $rc = 0;
 
     send_command($verbose, $rconsole, "dev /packages/net \r");
     send_command($verbose, $rconsole, "FALSE value OPEN-DEV_DEBUG \r");
@@ -1955,23 +1976,24 @@ sub multiple_open_dev {
         ],
         [qr/]/=>
             sub {
-                nc_msg(2, "Unexpected prompt\n");
-                return [1];
+                nc_msg($verbose, "Unexpected prompt\n");
+                $rc = 1;
              }
         ],
         [timeout =>
             sub {
                 send_user(2, "Timeout\n");
-                return [1];
+                $rc = 1;
             }
         ],
         [eof =>
             sub {
                 send_user(2, "Cannot connect to $node\n");
-                return [1];
+                $rc = 1;
             }
         ],
     );
+    return $rc;
 }
 ###################################################################
 #
@@ -1986,7 +2008,6 @@ sub  Firmware_Dump {
     my $verbose = shift;
     my $device_path = shift;
     my $phandle = shift;
-    my $rc;
     my $expect_out;
     my @done;
     my @cmd;
@@ -1995,6 +2016,7 @@ sub  Firmware_Dump {
     my @newstate;
     my $timeout;
     my $state = 0;
+    my $rc = 0;
 
     nc_msg($verbose,"Status: Firmware_Dump start\n");
 
@@ -2091,31 +2113,33 @@ sub  Firmware_Dump {
             ],
             [qr/]/=>
             sub {
-                nc_msg(2, "Unexpected prompt\n");
-                return [1];
+                nc_msg($verbose, "Unexpected prompt\n");
+                $rc = 1;
                 }
             ],
             [qr/(.*)DEFAULT(.*)/=>
             sub {
-                nc_msg(2, "Default catch error\n");
-                return [1];
+                nc_msg($verbose, "Default catch error\n");
+                $rc = 1;
                 }
             ],
             [timeout=>
                 sub {
-                nc_msg(2, "Timeout\n");
-                nc_msg(2, "Status: timeout state is $state\n");
-                return [1];
+                nc_msg($verbose, "Timeout\n");
+                nc_msg($verbose, "Status: timeout state is $state\n");
+                $rc = 1;
                 }
             ],
             [eof =>
                 sub {
-                nc_msg(2, "Cannot connect to $node\n");
-                return [1];
+                nc_msg($verbose, "Cannot connect to $node\n");
+                $rc = 1;
                 }
             ],
         );
+        return 1 if ($rc eq 1);
     }
+    return 0;
 }
 
 #-----------------------------------------------------------------------------
@@ -2197,7 +2221,6 @@ sub lparnetbootexp
     my $mac_address;
     my @outputarray;
     my $outputarrayindex = 0;
-
 
     $::CALLBACK = $req->{callback};
 #
@@ -2390,8 +2413,8 @@ sub lparnetbootexp
     # process the arguments
     ####################################
     $rc = xCAT::LparNetbootExp->ck_args($opt, $node, $verbose);
-    if ($rc != 0) {
-        nc_msg(2, "ck_args failed. \n");
+    if ($rc ne 0) {
+        nc_msg($verbose,, "ck_args failed. \n");
         return [1];
     }
 
@@ -2432,10 +2455,10 @@ sub lparnetbootexp
     $rconsole->log_stdout(0);           #hidden information return from rcons
 
     my $consolefork = $rconsole->spawn($cmd);
-#$rconsole->log_file("/tmp/consolelog");
+    #$rconsole->log_file("/tmp/consolelog");
     my $console_pid = $rconsole->pid;
     unless ($console_pid) {
-        nc_msg(2, "Unable to open console.\n");
+        nc_msg($verbose,, "Unable to open console.\n");
         return [1];
     }
     nc_msg($verbose, "spawn_id is $console_pid.\n");
@@ -2460,13 +2483,13 @@ sub lparnetbootexp
         [ timeout =>
             sub {
                 $rc = 1;
-                nc_msg(2, "Timeout waiting for console connection.\n");
+                nc_msg($verbose,, "Timeout waiting for console connection.\n");
             }
         ],
         [ eof =>
             sub {
                 $rc = 2;
-                nc_msg(2, "Please make sure rcons $node works.\n");
+                nc_msg($verbose,, "Please make sure rcons $node works.\n");
             }
         ],
     );
@@ -2481,7 +2504,7 @@ sub lparnetbootexp
     my $subreq = $req->{subreq};
     $output = xCAT::LparNetbootExp->run_lssyscfg($subreq, $verbose, $node);
     if ($output =~ /Not Available/) {
-        nc_msg(2, "LPAR is Not Available. Please make sure the CEC's state.\n");
+        nc_msg($verbose,, "LPAR is Not Available. Please make sure the CEC's state.\n");
         return [1];
     } else {
         nc_msg($verbose, "The lpar state is $output.\n");
@@ -2490,7 +2513,7 @@ sub lparnetbootexp
     if ($from_of) {
         #unless($output =~ /open-firmware/i){
         unless($output =~ /open firmware/i){
-            nc_msg(2, "You are using the -o option. Please make sure the LPAR's initial state is open firmware.\n");
+            nc_msg($verbose,, "You are using the -o option. Please make sure the LPAR's initial state is open firmware.\n");
             return [1];
         }
 
@@ -2512,13 +2535,13 @@ sub lparnetbootexp
                 },
             $subreq, 0, 1);
             $output = join ',', @$sysoutput;
-            if ($::RUNCMD_RC != 0) {    #$::RUNCMD_RC  will get its value from runxcmd_output
-                nc_msg(2, "Unable to run rpower $node off.\n");
+            if ($::RUNCMD_RC ne 0) {    #$::RUNCMD_RC  will get its value from runxcmd_output
+                nc_msg($verbose,, "Unable to run rpower $node off.\n");
                 return [1];
             }
 
             unless ($output =~ /Success/) {
-                nc_msg(2, "Power off failed.\n");
+                nc_msg($verbose,, "Power off failed.\n");
                 return [1];
             } else {
                 nc_msg($verbose, "Wait for power off.\n");
@@ -2535,7 +2558,7 @@ sub lparnetbootexp
                 }
                 $query_count++;
                 if ($query_count > 300) {
-                    nc_msg(2, "Power off failed.\n");
+                    nc_msg($verbose,, "Power off failed.\n");
                     return [1];
                 }
             }
@@ -2563,13 +2586,13 @@ sub lparnetbootexp
             $output = join ',', @$sysoutput;
             nc_msg($verbose, "Waiting for power on...\n");
 
-            if ($::RUNCMD_RC != 0) {
-                nc_msg(2, "Unable to run rpower $node sms\n");
+            if ($::RUNCMD_RC ne 0) {
+                nc_msg($verbose,, "Unable to run rpower $node sms\n");
                 return [1];
             }
             unless ($output =~ /Success/) {
                 if ($retry_count eq 3) {
-                    nc_msg(2, "Power off failed, msg is $output.\n");
+                    nc_msg($verbose,, "Power off failed, msg is $output.\n");
                     return [1];
                 }
                 sleep 1;
@@ -2591,13 +2614,13 @@ sub lparnetbootexp
             $output = join ',', @$sysoutput;
             nc_msg($verbose, "Waiting for power on...\n");
 
-            if ($::RUNCMD_RC != 0) {
-                nc_msg(2, "Unable to run rpower $node open firmware.\n");
+            if ($::RUNCMD_RC ne 0) {
+                nc_msg($verbose,, "Unable to run rpower $node open firmware.\n");
                 return [1];
             }
             unless ($output =~ /Success/) {
                 if ($retry_count eq 3) {
-                    nc_msg(2, "Power off failed, msg is $output.\n");
+                    nc_msg($verbose,, "Power off failed, msg is $output.\n");
                     return [1];
                 }
                 sleep 1;
@@ -2639,7 +2662,7 @@ sub lparnetbootexp
         );
 
         if ($query_count > 300 ) {
-            nc_msg(2, "Timed out waiting for power on of $node");
+            nc_msg($verbose,, "Timed out waiting for power on of $node");
             nc_msg($verbose, "error from rpower command : \"$output\" \n");
             return [1];
         }
@@ -2680,14 +2703,14 @@ sub lparnetbootexp
             sub {
                 nc_msg($verbose, "No password specified\n");
                 $rconsole->soft_close();
-                return [1];
+                $rc = 1;
                 }
             ],
             [qr/Invalid Password/=>
             sub {
                 nc_msg($verbose, "FSP password is invalid.\n");
                 $rconsole->soft_close();
-                return [1];
+                $rc = 1;
                 }
             ],
             [qr/SMS(.*)Navigation Keys/=>
@@ -2701,20 +2724,21 @@ sub lparnetbootexp
                 $rconsole->send("\r");
                 $retry_count++;
                 if ($retry_count eq 9) {
-                    nc_msg(2, "Timeout waiting for ok prompt; exiting.\n");
+                    nc_msg($verbose,, "Timeout waiting for ok prompt; exiting.\n");
                     $rconsole->soft_close();
-                    return [1];
+                    $rc = 1;
                     }
                 }
             ],
             [eof =>
             sub {
-                nc_msg(2, "Cannot connect to $node");
+                nc_msg($verbose,, "Cannot connect to $node");
                 $rconsole->soft_close();
-                return [1];
+                $rc = 1;
                 }
             ],
         );
+        return [1] if ($rc eq 1);
     }
 
 
@@ -2727,7 +2751,7 @@ sub lparnetbootexp
         nc_msg($verbose, "begin to set disk boot");
         my $result = set_disk_boot( $rconsole, $node, $verbose);#@expect_out, $rconsole, $node, $verbose);
         unless( $result ) {
-            nc_msg(2, "Unable to set $node boot order");
+            nc_msg($verbose,, "Unable to set $node boot order");
         }
     }
 
@@ -2744,11 +2768,11 @@ sub lparnetbootexp
     nc_msg($verbose, "begin to run get_phandle");
     while (!$done) {
         my $result = get_phandle($rconsole, $node, $verbose);
-        unless (!$result) {
+        if ( $result eq 1) {
             $retry_count++;
             $rconsole->send("\r");
             if ( $retry_count eq 3) {
-                nc_msg(2, "Unable to obtain network adapter information.  Quitting.\n");
+                nc_msg($verbose,, "Unable to obtain network adapter information.  Quitting.\n");
                 return [1];
             }
         } else {
@@ -2763,8 +2787,8 @@ sub lparnetbootexp
     ##############################
     nc_msg($verbose, "begin to run multiple_open_dev");
     my $result = xCAT::LparNetbootExp->multiple_open_dev($rconsole, $node, $verbose);
-    unless ( $result) {
-       nc_msg(2, "Unable to obtain network adapter information.  Quitting.\n");
+    if ( $result eq 1) {
+       nc_msg($verbose,, "Unable to obtain network adapter information.  Quitting.\n");
        return [1];
     }
 
@@ -2783,7 +2807,7 @@ sub lparnetbootexp
     # Display information for all
     # supported adapters
     ##############################
-    if ($noboot) {
+    if ($noboot) {  #if not do net boot
         if ($list_type) {
             $match_pat = $list_type;
         } else {
@@ -2888,17 +2912,17 @@ sub lparnetbootexp
                 },
             $subreq, 0, 1);
             $output = join ',', @$sysoutput;
-            if ($::RUNCMD_RC != 0) {
-                nc_msg(2, "Unable to run rpower $node sms.\n");
+            if ($::RUNCMD_RC ne 0) {
+                nc_msg($verbose,, "Unable to run rpower $node sms.\n");
                 nc_msg($verbose, "Status: error from rpower command\n");
-                nc_msg(2, "Error : $output\n");
+                nc_msg($verbose,, "Error : $output\n");
                 return [1];
             }
         }
     } else { # Do a network boot
     # Loop throught the adapters and perform a ping test to discover an
     # adapter that pings successfully, then use that adapter to network boot.
-        if ($discover_all) {
+        if ($discover_all) {  #rnetboot should not use -A
             for ($i = 0; $i <= $adapter_found; $i ++) {
                 $ping_rc = ping_server($phandle_array[$i], $full_path_name_array[$i], $rconsole, $node, $mac_address, $verbose, $adap_speed, $adap_duplex, $list_type, $server_ip, $client_ip, $gateway_ip);
 
@@ -2910,7 +2934,7 @@ sub lparnetbootexp
                     last;
                 }
             }
-        } elsif ( $macaddress != "" ) {
+        } elsif ( $macaddress ne "" ) {
             $match = 0;
             for ($i = 0; $i <= $adapter_found; $i++) {
                 if ($adap_type[$i] =~ /hfi-ent/) {
@@ -2923,7 +2947,7 @@ sub lparnetbootexp
                            $ping_rc = ping_server($phandle_array[$i], $full_path_name_array[$i], $rconsole, $node, $mac_address, $verbose, $adap_speed, $adap_duplex, $list_type, $server_ip, $client_ip, $gateway_ip);
                         }
                         unless ( $ping_rc eq 0) {
-                            nc_msg(2, "Unable to boot network adapter.\n" );
+                            nc_msg($verbose,, "Unable to boot network adapter.\n" );
                             return [1];
                         }
                     }
@@ -2935,10 +2959,10 @@ sub lparnetbootexp
                 }
             }
             unless($match) {
-                nc_msg(2, "Can not find mac address '$macaddress'\n");
+                nc_msg($verbose,, "Can not find mac address '$macaddress'\n");
                 return [1];
             }
-        } elsif ( $phys_loc != "") {
+        } elsif ( $phys_loc ne "") {
             $match = 0;
             for ($i = 0; $i <= $adapter_found; $i++) {
                 $loc_code = get_adaptr_loc($phandle_array[$i], $rconsole, $node, $verbose);
@@ -2946,7 +2970,7 @@ sub lparnetbootexp
                     if ($discovery) {
                         $ping_rc = ping_server($phandle_array[$i], $full_path_name_array[$i], $rconsole, $node, $mac_address, $verbose, $adap_speed, $adap_duplex, $list_type, $server_ip, $client_ip, $gateway_ip);
                         unless ($ping_rc eq 0) {
-                            nc_msg(2, "Unable to boot network adapter.\n");
+                            nc_msg($verbose,, "Unable to boot network adapter.\n");
                             return [1];
                         }
                     }
@@ -2958,7 +2982,7 @@ sub lparnetbootexp
                 }
             }
             if (!$match) {
-                nc_msg(2, "Can not find physical location '$phys_loc'\n");
+                nc_msg($verbose,, "Can not find physical location '$phys_loc'\n");
                 return [1];
             }
         } else {
@@ -2984,7 +3008,7 @@ sub lparnetbootexp
         }
         my $result;
         if ($full_path_name eq "") {
-            nc_msg(2, "Unable to boot network adapter.\n");
+            nc_msg($verbose,, "Unable to boot network adapter.\n");
             return [1];
         } else {
             nc_msg($verbose, "# Network booting install adapter.\n");
@@ -2996,7 +3020,7 @@ sub lparnetbootexp
             nc_msg($verbose, "bootp sent over netowrk.\n");
             my $res = Boot($rconsole, $node, $verbose);#, @expect_out);
             unless ($res eq 0) {
-                nc_msg(2, "Can not boot, result = $res. \n");
+                nc_msg($verbose,, "Can not boot, result = $res. \n");
             }
         } else {
             nc_msg($verbose, "return code $result from boot_network\n");
@@ -3019,14 +3043,14 @@ sub lparnetbootexp
                 ],
                 [ qr/timeout/i,
                     sub {
-                        nc_msg(2, "Timeout; exiting.\n");
-                        return [1];
+                        nc_msg($verbose,, "Timeout; exiting.\n");
+                        $rc = 1;
                     }
                 ],
                 [ eof =>
                     sub {
-                        nc_msg(2, "cannot connect to $node.\n");
-                        return [1];
+                        nc_msg($verbose,, "cannot connect to $node.\n");
+                        $rc = 1;
                     }
                 ],
                 [
@@ -3045,11 +3069,12 @@ sub lparnetbootexp
                     }
                 ],
             );
+        return [1] if ($rc eq 1);
         }
         nc_msg($verbose, "# bootp sent over network.\n");
         $rc = Boot($rconsole, $node, $verbose);#, @expect_out);
         unless ($rc eq 0) {
-            nc_msg(2, "Can't boot here. \n");
+            nc_msg($verbose,, "Can't boot here. \n");
         }
     }
 
