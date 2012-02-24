@@ -8784,7 +8784,7 @@ sub doSNcopy2
                                               "mksysb",       "resolv_conf",
                                               "script",       "installp_bundle",
                                               "bosinst_data", "lpp_source",
-                                              "spot"
+                                              "spot", "image_data"
                                               );
 							if (grep(/^$restype$/, @dorestypes))
 							{
@@ -11253,7 +11253,7 @@ sub make_SN_resource
                     # ex. /install/nim/lpp_source
 
                     # define the local res
-					my $cmd = "/usr/sbin/nim -Fo define -t lpp_source -a server=master -a location=$loc ";
+					my $cmd = "/usr/sbin/nim -Fo define -t lpp_source -a server=master -a location=$resdir ";
 
 					my @validattrs = ("verbose", "nfs_vers", "nfs_sec", "packages", "use_source_simages", "arch", "show_progress", "multi_volume", "group");
 
