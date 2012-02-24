@@ -45,6 +45,10 @@ sub check_dhcp {
 sub getstate {
   my $node = shift;
   my $tftpdir = shift;
+  if (!$tftpdir)
+  {
+      $tftpdir = xCAT::Utils->getTftpDir();
+  }
   if (check_dhcp($node)) {
     if (-r $tftpdir . "/etc/".$node) {
       my $fhand;
