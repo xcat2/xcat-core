@@ -196,6 +196,7 @@ hmcPlugin.prototype.loadResources = function() {
  */
 hmcPlugin.prototype.addNode = function() {
 	var diaDiv = $('<div id="addpnodeDiv" class="form"></div>');
+	diaDiv.append(createInfoBar('Add a node range'));
 	diaDiv.append('<div><label>Type:</label><select id="pnodetype"><option>HMC</option><option>Scan Node</option></select></div>');
 	diaDiv.append('<div id="pnodeeditarea" ></div>');
 	
