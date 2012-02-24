@@ -1056,26 +1056,38 @@ sub setupdb2env
     }
     else
     {        # LInux
-        my $cmd = "egrep -i \"DB2INSTANCE\" /etc/profile.d/xcat.sh";
+        my $cmd = "egrep -i \"DB2INSTANCE\" /etc/profile.d/xcatdb2.sh";
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0)
         {    # if not already there
-            open(FILE, ">>/etc/profile.d/xcat.sh")
-              or die "cannot open file /etc/profile.d/xcat.sh\n";
+            open(FILE, ">>/etc/profile.d/xcatdb2.sh")
+              or die "cannot open file /etc/profile.d/xcatdb2.sh\n";
             print FILE "export DB2INSTANCE=xcatdb \n";
             print FILE "export EXTSHM=ON \n";
             close FILE;
         }
-        my $cmd = "egrep -i \"DB2INSTANCE\" /etc/profile.d/xcat.csh";
+        my $cmd = "egrep -i \"DB2INSTANCE\" /etc/profile.d/xcatdb2.csh";
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0)
         {    # if not already there
-            open(FILE, ">>/etc/profile.d/xcat.csh")
-              or die "cannot open file /etc/profile.d/xcat.csh\n";
+            open(FILE, ">>/etc/profile.d/xcatdb2.csh")
+              or die "cannot open file /etc/profile.d/xcatdb2.csh\n";
             print FILE "setenv DB2INSTANCE \"xcatdb\" \n";
             print FILE "setenv EXTSHM \"ON\" \n";
             close FILE;
 
+        }
+        $cmd = "chmod 755 /etc/profile.d/xcatdb2.sh";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {
+                xCAT::MsgUtils->message("SE", " $cmd failed.");
+        }
+        $cmd = "chmod 755 /etc/profile.d/xcatdb2.csh";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {
+                xCAT::MsgUtils->message("SE", " $cmd failed.");
         }
         my $path = $::installdb2dir;
         $path .="\/lib64";
@@ -1944,7 +1956,7 @@ sub adddb2paths
    }
    else   #Linux
    {
-        my $profname = "/etc/profile.d/xcat.sh";
+        my $profname = "/etc/profile.d/xcatdb2.sh";
         my $cmd = qq~cat $profname | grep "db2"~;
         my $outref = xCAT::Utils->runcmd("$cmd", -1);
         if ($::RUNCMD_RC != 0)
@@ -1969,7 +1981,7 @@ sub adddb2paths
                 xCAT::MsgUtils->message('E', "Could not update $profname.");
             }
         } 
-        my $profname = "/etc/profile.d/xcat.csh";
+        my $profname = "/etc/profile.d/xcatdb2.csh";
         my $cmd = qq~cat $profname | grep "db2"~;
         my $outref = xCAT::Utils->runcmd("$cmd", -1);
         if ($::RUNCMD_RC != 0)
@@ -1993,6 +2005,19 @@ sub adddb2paths
             {
                 xCAT::MsgUtils->message('E', "Could not update $profname.");
             }
+            # set correct permissions
+            $cmd = "chmod 755 /etc/profile.d/xcatdb2.sh";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message("SE", " $cmd failed.");
+            }
+            $cmd = "chmod 755 /etc/profile.d/xcatdb2.csh";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message("SE", " $cmd failed.");
+            }
         } 
    }
 }
@@ -2002,6 +2027,8 @@ sub adddb2paths
 	   
 		remove DB2 on management node or service node. if you want to remove it 
 		from service node, you should use -s and -r flag together.
+             Note this function is not supported and the code has not been
+             kept up to date
 	
 =cut
 
