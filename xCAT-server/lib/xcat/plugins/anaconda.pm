@@ -24,7 +24,7 @@ use File::Temp qw/mkdtemp/;
 
 use Socket;
 
-#use strict;
+use strict;
 my @cpiopid;
 
 
@@ -309,7 +309,7 @@ sub mknetboot
                 }
             } else {
                 $callback->(
-                    { error => [ qq{Cannot find the linux image called "$osver-$arch-$provmethod-$profile", maybe you need to use the "nodeset <nr> osimage=<osimage name>" command to set the boot state} ],
+                    { error => [ qq{Cannot find the linux image called "$osver-$arch-$imgname-$profile", maybe you need to use the "nodeset <nr> osimage=<osimage name>" command to set the boot state} ],
                     errorcode => [1]}
                 );
             }
@@ -327,7 +327,7 @@ sub mknetboot
                 }
             } else {
                 $callback->(
-                    { error => [qq{ Cannot find the linux image called "$osver-$arch-$provmethod-$profile", maybe you need to use the "nodeset <nr> osimage=<your_image_name>" command to set the boot state}],
+                    { error => [qq{ Cannot find the linux image called "$osver-$arch-$imgname-$profile", maybe you need to use the "nodeset <nr> osimage=<your_image_name>" command to set the boot state}],
                     errorcode => [1] }
                 );
             }
@@ -808,7 +808,7 @@ sub mkinstall
 	my $platform;
         my $xcatmaster;
 
-        my $ient = $rents->{$node}->[0];
+        my $ient = $rents{$node}->[0];
         if ($ient and $ient->{xcatmaster})
         {
             $xcatmaster = $ient->{xcatmaster};
@@ -1486,9 +1486,34 @@ sub insert_dd {
     if (!@dd_list) {
         return ();
     }
-
     # Create the tmp dir for dd hack
     my $dd_dir = mkdtemp("/tmp/ddtmpXXXXXXX");
+    if (<$install_dir/$os/$arch/Packages/dracut*>) { #new style, skip the fanagling, copy over the dds and append them...
+	if (scalar(@dd_list) == 1) { #only one, just append it..
+		mkpath("$dd_dir/dd");
+		copy($dd_list[0],"$dd_dir/dd/dd.img");
+		chdir($dd_dir."/dd");
+    		$cmd = "find .|cpio -H newc -o|gzip -9 -c - > ../dd.gz";
+		xCAT::Utils->runcmd($cmd, -1);
+		unless (-f "../dd.gz") {
+			die "Error attempting to archive driver disk";
+		}
+		my $ddhdl;
+ 		my $inithdl;
+		open($inithdl,">>",$img);
+		open($ddhdl,"<","../dd.gz");
+		binmode($ddhdl);
+		binmode($inithdl);
+		{
+			local $/ = \32768;
+			while (my $block = <$ddhdl>) { print $inithdl $block; }
+		}
+		return;
+	} else {
+		die "TODO: multiple driver disk combination";
+	}
+    }
+
     mkpath "$dd_dir/initrd_img"; # The dir for the new initrd
 
     # unzip the initrd image
