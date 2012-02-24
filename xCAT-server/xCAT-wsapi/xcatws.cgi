@@ -680,49 +680,52 @@ sub nodesHandler {
         my $subResource;
         if (defined $path[2]) {
             $subResource = $path[2];
-        }
+            unless (defined($noderange)) {
+                addPageContent("Invalid nodes and/or groups in noderange");
+                sendResponseMsg($STATUS_BAD_REQUEST);
+            }
+            $request->{noderange} = $noderange;
 
-        if ($subResource =~ "power") {
-            $request->{command} = 'rpower';
-            push @args, 'stat';
-        }
-        elsif ($subResource =~ "bootState") {
-            $request->{command} = 'nodeset';
-            push @args, 'stat';
-        }
-        elsif ($subResource =~ "energy") {
-            $request->{command} = 'renergy';
+            #use the corresponding command by the subresource name
+            if ($subResource eq "power") {
+                $request->{command} = 'rpower';
+                push @args, 'stat';
+            }
+            elsif ($subResource eq "energy") {
+                $request->{command} = 'renergy';
 
-            #no fields will default to 'all'
-            if (defined $q->param('field')) {
-                foreach ($q->param('field')) {
-                    push @args, $_;
+                #no fields will default to 'all'
+                if (defined $q->param('field')) {
+                    push @args, $q->param('field');
+                }
+                else {
+                    push @args, 'all';
                 }
             }
-        }
-        elsif ($subResource =~ "status") {
-            $request->{command} = 'nodestat';
-        }
-        elsif ($subResource =~ "inventory") {
-            $request->{command} = 'rinv';
-            if (defined $q->param('field')) {
-                push @args, $q->param('field');
+            elsif ($subResource eq "status") {
+                $request->{command} = 'nodestat';
+            }
+            elsif ($subResource eq "inventory") {
+                $request->{command} = 'rinv';
+                if (defined $q->param('field')) {
+                    push @args, $q->param('field');
+                }
+                else {
+                    push @args, 'all';
+                }
+            }
+            elsif ($subResource eq "vitals") {
+                $request->{command} = 'rvitals';
+                if (defined $q->param('field')) {
+                    push @args, $q->param('field');
+                }
+                else {
+                    push @args, 'all';
+                }
             }
             else {
-                push @args, 'all';
-            }
-        }
-        elsif ($subResource =~ "location") {
-            $request->{command} = 'nodels';
-            push @args, 'nodepos';
-        }
-        elsif ($subResource =~ "vitals") {
-            $request->{command} = 'rvitals';
-            if (defined $q->param('field')) {
-                push @args, $q->param('field');
-            }
-            else {
-                push @args, 'all';
+                addPageContent("Unspported operation on nodes object.");
+                sendResponseMsg($STATUS_BAD_REQUEST);
             }
         }
         else {
@@ -744,46 +747,46 @@ sub nodesHandler {
     }
     elsif (isPut()) {
         my $subResource;
+        my $entries;
         if (defined $path[2]) {
             $subResource = $path[2];
-        }
-        if ($subResource =~ "bootState") {
-            $request->{command} = 'nodeset';
-            if (defined $q->param('boot')) {
-                push @args, 'boot';
+
+            unless (defined($noderange)) {
+                addPageContent("Invalid nodes and/or groups in noderange");
+                sendResponseMsg($STATUS_BAD_REQUEST);
             }
-            if (defined $q->param('install')) {
-                if ($q->param('install')) {
-                    push @args, "install=" . $q->param('install');
-                }
-                else {
-                    push @args, 'install';
-                }
+            $request->{noderange} = $noderange;
+
+            unless ($q->param('PUTDATA')) {
+                addPageContent("No set attribute was supplied.");
+                sendResponseMsg($STATUS_BAD_REQUEST);
             }
-            if (defined $q->param('netboot')) {
-                if ($q->param('netboot')) {
-                    push @args, "netboot=" . $q->param('netboot');
+            else {
+                $entries = decode_json $q->param('PUTDATA');
+                if (scalar(@$entries) < 1) {
+                    addPageContent("No set attribute was supplied.");
+                    sendResponseMsg($STATUS_BAD_REQUEST);
                 }
-                else {
-                    push @args, 'netboot';
-                }
-            }
-            if (defined $q->param('statelite')) {
-                if ($q->param('statelite')) {
-                    push @args, "statelite=" . $q->param('statelite');
-                }
-                else {
-                    push @args, 'statelite';
-                }
-            }
-            if (defined $q->param('bmcSetup')) {
-                push @args, "runcmd=bmcsetup";
             }
 
-            #can't do this
-            #if(defined $q->param('shell')){
-            #push @args, 'shell';
-            #}
+            foreach (@$entries) {
+                push @args, $_;
+            }
+            if ($subResource eq "power") {
+                $request->{command} = "rpower";
+            }
+            elsif ($subResource eq "energy") {
+                $request->{command} = "renergy";
+            }
+            elsif ($subResource eq "bootstat") {
+                $request->{command} = "nodeset";
+            }
+            elsif ($subResource eq "bootseq") {
+                $request->{command} = "rbootseq";
+            }
+            elsif ($subResource eq "setboot") {
+                $request->{command} = "rsetboot";
+            }
         }
         else {
             sendErrorMessage($STATUS_BAD_REQUEST, "The subResource \'$request->{subResource}\' does not exist");
