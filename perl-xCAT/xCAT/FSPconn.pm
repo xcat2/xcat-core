@@ -222,14 +222,16 @@ sub mkhwconn_parse_args
  
     if( ! exists $opt{port} )
     {
-        $opt{port} = "0";
-    }
-
-    if( $opt{port} ne "0" and $opt{port} ne "1")
+        $opt{port} = "[0|1]";
+    } elsif( $opt{port} ne "0" and $opt{port} ne "1")
     {
-        return( usage('Wrong value of  --port option. The value can be 0 or 1, and the default value is 0.'));   
+        if ($opt{port} eq "0,1") {
+            return ([0, "The option --port only be used to specify special port value, please don't specify this value if you want to use all ports."]); 
+        } else {
+            return( usage('Wrong value of  --port option. The value can only be 0 or 1.'));   
+        }
     }
-    
+   
     $ppctab->close();
     #$nodetypetab->close();
     $vpdtab->close();
@@ -613,7 +615,7 @@ sub lshwconn
           #          push @value, [$node_name, $values, $Rc];
           #          next;
           #     }
-                  
+           my %rec = ();       
            my @data_a = split("\n", $values);         
            foreach my $data(@data_a) {
 	           if( $data =~ /state/) { 
@@ -627,7 +629,11 @@ sub lshwconn
 	               my $slot       = $5;
 	               my $ipadd      = $6;
 	               my $alt_ipaddr = $7;
-	               $data = "$ipadd: $sp,ipadd=$ipadd,alt_ipadd=$alt_ipaddr,state=$state";
+                   if (exists($rec{$slot})) {
+                       next;
+                   }
+                   $rec{$slot} = 1;
+	               $data = "$sp,ipadd=$ipadd,alt_ipadd=$alt_ipaddr,state=$state";
                 }
              push @value, [$node_name, $data, $Rc];
           } 
