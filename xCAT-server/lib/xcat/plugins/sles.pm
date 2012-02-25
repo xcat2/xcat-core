@@ -1208,11 +1208,8 @@ sub insert_dd {
     
     my $pkgdir="$install_dir/$os/$arch";
     # Unzip the original initrd
-    if ($arch =~ /x86/) {
-        $cmd = "gunzip --quiet -c $img > $dd_dir/initrd";
-    } elsif ($arch =~/ppc/) {
+    if ($arch =~/ppc/) {
         $cmd = "gunzip --quiet -c $pkgdir/1/suseboot/initrd64 > $dd_dir/initrd";
-    }
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
         my $rsp;
@@ -1230,10 +1227,10 @@ sub insert_dd {
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return ();
     }
+    }
     
     # Create the dir for driver update disk
-    $cmd = "mkdir -p $dd_dir/initrd_img/cus_driverdisk";
-    xCAT::Utils->runcmd($cmd, -1);
+    mkpath("$dd_dir/initrd_img/cus_driverdisk");
 
     # insert the driver update disk into the cus_driverdisk dir
     foreach my $dd (@dd_list) {
@@ -1258,7 +1255,15 @@ sub insert_dd {
     xCAT::Utils->runcmd($cmd, -1);
 
     if ($arch =~ /x86/) {
-        copy ("$dd_dir/initrd.gz", "$img");
+	my $rdhandle;
+	my $ddhandle;
+	open($rdhandle,">>",$img);
+	open ($ddhandle,"<","$dd_dir/initrd.gz");
+	binmode($rdhandle);
+	binmode($ddhandle);
+	{ local $/ = 32768; my $block; while ($block = <$ddhandle>) { print $rdhandle $block; } }
+	close($rdhandle);
+	close($ddhandle);
     } elsif ($arch =~/ppc/) {
         # make sure the src kernel existed
         $cmd = "gunzip -c $pkgdir/1/suseboot/linux64.gz > $dd_dir/kernel";
@@ -1274,6 +1279,7 @@ sub insert_dd {
             return ();
         }
     }
+    system("rm -rf $dd_dir");
 
     my $rsp;
     push @{$rsp->{data}}, "Inserted the driver update disk:".join(',', sort(@dd_list)).".";
