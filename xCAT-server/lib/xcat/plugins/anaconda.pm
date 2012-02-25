@@ -1533,6 +1533,11 @@ sub insert_dd {
 		}
 		chdir("/");
 		xCAT::Utils->runcmd("rm -rf $dd_dir");
+		    my $rsp;
+		    push @{$rsp->{data}}, "Inserted the driver update disk:".join(',',@dd_list).".";
+		    xCAT::MsgUtils->message("I", $rsp, $callback);
+	
+		    return @dd_list;
 		return;
     }
 
