@@ -14,7 +14,7 @@
 #
 allowcred.awk &
 CREDPID=$!
-sleep 2
+sleep 5
 modprobe ipmi_si
 modprobe ipmi_devintf
 IPCFGMETHOD=static
