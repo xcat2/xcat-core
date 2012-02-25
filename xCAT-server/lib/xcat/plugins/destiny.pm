@@ -263,9 +263,6 @@ sub setdestiny {
          }
          $kcmdline .= ",".$ent->{serialspeed};
          #$ent = $nodehm->getNodeAttribs($_,['serialflow']);
-         if ($ent and ($ent->{serialflow} eq 'hard' or $ent->{serialflow} eq 'rtscts')) {
-            $kcmdline .= "n8r";
-         }
          $kcmdline .= " ";
       }
 
