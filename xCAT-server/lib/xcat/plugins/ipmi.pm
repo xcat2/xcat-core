@@ -1247,6 +1247,21 @@ sub power_with_context {
 			return;
 		}
 	} elsif ($subcommand eq "suspend") {
+		my $waitforsuspend;
+		if (@{$sessdata->{extraargs}} > 1) {
+    			@ARGV=@{$sessdata->{extraargs}};
+    			use Getopt::Long;
+			    unless(GetOptions(
+			        'w:i' => \$waitforsuspend
+		        )) {
+		        xCAT::SvrUtils::sendmsg([1,"Error parsing arguments"],$callback,$sessdata->{node},%allerrornodes);
+		        return;
+		    }
+		}
+		if (defined $waitforsuspend) {
+			if ($waitforsuspend == 0) { $waitforsuspend=30; }
+			$sessdata->{waitforsuspend}=time()+$waitforsuspend;
+		}
 		$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x1d,data=>[0,3],callback=>\&power_response,callback_args=>$sessdata);
 		return;
 	} elsif ($subcommand eq "wake") {
@@ -1271,7 +1286,32 @@ sub power_response {
 		unless ($text) { $text = sprintf("Unknown response %02xh",$rsp->{code}); }
 		xCAT::SvrUtils::sendmsg([1,$text],$callback,$sessdata->{node},%allerrornodes);
 	}
+	if ($sessdata->{waitforsuspend}) { #have to repeatedly power stat until happy or timeout exceeded
+		$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x1d,data=>[1],callback=>\&power_wait_for_suspend,callback_args=>$sessdata);
+		return;
+	}
 	xCAT::SvrUtils::sendmsg($sessdata->{subcommand},$callback,$sessdata->{node},%allerrornodes);
+}
+
+sub power_wait_for_suspend {
+	my $rsp = shift;
+	my $sessdata = shift;
+	if ($rsp->{error}) {
+		xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
+		return;
+	}
+	if ($rsp->{code} == 0) {
+		if ($rsp->{data}->[0] == 3) {
+			$sessdata->{acpistate} = "suspend";
+		}
+	}
+	if ($sessdata->{acpistate} eq "suspend") {
+		xCAT::SvrUtils::sendmsg("suspend",$callback,$sessdata->{node},%allerrornodes);
+	} elsif ($sessdata->{waitforsuspend} <= time()) {
+		xCAT::SvrUtils::sendmsg([1,"Failed to enter suspend state"],$callback,$sessdata->{node},%allerrornodes);
+	} else {
+		$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x1d,delayxmit=>5,data=>[1],callback=>\&power_wait_for_suspend,callback_args=>$sessdata);
+	}
 }
 
 sub generic {
