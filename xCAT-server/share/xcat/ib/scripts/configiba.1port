@@ -12,6 +12,18 @@ PLTFRM=`uname`
 if [[ $OSVER == rhels5*  || "$OSVER" == rhels6* ]]
 then
     ib_driver="rdma"
+    /sbin/service $ib_driver status
+    if [ $? -eq 1 ]
+    then
+        $ib_driver="openibd"
+        /sbin/service $ib_driver status
+        if [ $? -eq 1 ]
+        then
+            echo "Not found the driver dameon: rdma or openibd"
+            exit
+        fi
+    fi   
+
 else
     ib_driver="openibd"
 fi
