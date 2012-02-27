@@ -14,7 +14,8 @@ use Data::Dumper;
 #all data input will be done from the common structure
 
 #turn on or off the debugging output
-my $DEBUGGING = 1;
+my $DEBUGGING = 0;
+my $VERSION = "2.7";
 
 my $q           = CGI->new;
 my $url         = $q->url;
@@ -120,7 +121,8 @@ my %resources = (
     tables        => \&tablesHandler,
     accounts      => \&accountsHandler,
     objects       => \&objectsHandler,
-    vms           => \&vmsHandler);
+    vms           => \&vmsHandler,
+    version       => \&versionHandler);
 
 #if no resource was specified
 if ($pathInfo =~ /^\/$/ || $pathInfo =~ /^$/) {
@@ -1524,6 +1526,12 @@ sub vmsHandler {
     my $req       = genRequest();
     my @responses = sendRequest($req);
     return @responses;
+}
+
+sub versionHandler{
+    addPageContent($q->p("API version is $VERSION"));
+    sendResponseMsg($STATUS_OK);
+    exit(0);
 }
 
 #for operations that take a 'long' time to finish, this will provide the interface to check their status
