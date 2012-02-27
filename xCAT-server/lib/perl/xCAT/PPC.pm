@@ -2443,7 +2443,7 @@ sub getHCPsOfNodes
                 my $i = 0;
                 unless ( $request->{sfp} ) {
                     for my $n (@$nodes) {
-                        if (@$typeref[$i++] =~ /^fsp|bpa$/) {
+                        if ($$typeref{$n} =~ /^fsp|bpa$/) {
                             my $np = $ppctab->getNodeAttribs( $n, [qw(parent)]);
                             if ($np)  { # use parent(frame/cec)'s sfp attributes first,for high end machine with 2.5/2.6+ database
                                 my $psfp = $ppctab->getNodeAttribs( $np->{parent}, [qw(sfp)]);
@@ -2467,7 +2467,7 @@ sub getHCPsOfNodes
                         $newhcp{$n}{hcp} = [$sfp];
                         $newhcp{$n}{num} = 1;  
                         # set the sfp attribute to the database
-                        if (@$typeref[$i++] =~ /^fsp|bpa$/) {
+                        if ($$typeref{$n} =~ /^fsp|bpa$/) {
                             my $np = $ppctab->getNodeAttribs( $n, [qw(parent)]);
                             $sfphash{$np}{sfp} = $sfp if ( $np );                 
                         }
