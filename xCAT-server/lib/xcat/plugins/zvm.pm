@@ -1148,7 +1148,15 @@ sub changeVM {
 	# removedisk [virtual device address]
 	elsif ( $args->[0] eq "--removedisk" ) {
 		my $addr = $args->[1];
+		
+		# Remove from active configuration
+		my $ping = `pping $node`;
+		if (!($ping =~ m/noping/i)) {
+			$out = xCAT::zvmUtils->disableEnableDisk( $callback, $node, "-d", $addr );
+			$out = `ssh $node "vmcp det $addr"`;
+		}
 
+		# Remove from user directory entry
 		$out = `ssh $hcp "$::DIR/removemdisk $userId $addr"`;
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
@@ -1156,7 +1164,14 @@ sub changeVM {
 	# removenic [address]
 	elsif ( $args->[0] eq "--removenic" ) {
 		my $addr = $args->[1];
+		
+		# Remove from active configuration
+		my $ping = `pping $node`;
+		if (!($ping =~ m/noping/i)) {
+			$out = `ssh $node "vmcp det nic $addr"`;
+		}
 
+		# Remove from user directory entry
 		$out = `ssh $hcp "$::DIR/removenic $userId $addr"`;
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
@@ -1164,7 +1179,8 @@ sub changeVM {
 	# removeprocessor [address]
 	elsif ( $args->[0] eq "--removeprocessor" ) {
 		my $addr = $args->[1];
-
+		
+		# Remove from user directory entry
 		$out = `ssh $hcp "$::DIR/removeprocessor $userId $addr"`;
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
