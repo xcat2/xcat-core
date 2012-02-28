@@ -3371,7 +3371,7 @@ sub nodeSet {
 						# If network device is found
 						if ( $lines[$i] =~ m/ $_/i ) {
 							# Get network layer
-							$layer = xCAT::zvmCPUtils->getNetworkLayer($node, $_);
+							$layer = xCAT::zvmCPUtils->getNetworkLayer($hcp, $_);
 					
 							# If template using DHCP, layer must be 2
 							if ((!$dhcp && $layer != 2) || (!$dhcp && $layer == 2) || ($dhcp && $layer == 2)) {
@@ -3408,6 +3408,8 @@ sub nodeSet {
 			
 			return;
 		}
+		
+		xCAT::zvmUtils->printLn( $callback, "$node: Setting up networking on $hcpNetName (layer $layer)" );
 		
 		# Generate read, write, and data channels
 		my $readChannel = "0.0." . ( sprintf('%X', $channel + 0) );

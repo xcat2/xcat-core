@@ -517,7 +517,7 @@ sub sendCPCmd {
 
 	Description	: 	Get the network layer for a given node
     Arguments	: 	Node
-    				Network name (Optional)
+    				Network name
     Returns		: 	2 	- Layer 2
     				3 	- Layer 3
     				-1 	- Failed to get network layer
@@ -529,57 +529,20 @@ sub sendCPCmd {
 sub getNetworkLayer {
 	my ( $class, $node, $netName ) = @_;
 
-	# Get node properties from 'zvm' table
-	my @propNames = ('hcp');
-	my $propVals  = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
-	
-	# Get HCP
-	my $hcp = $propVals->{'hcp'};
-	if ( !$hcp ) {
-		return -1;
-	}
-
-	# Get network name
-	my $out   = `ssh -o ConnectTimeout=5 $node "vmcp q v nic" | egrep -i "VSWITCH|LAN"`;
-	my @lines = split( '\n', $out );
-
-	# Go through each line and extract VSwitch and Lan names
-	# Get the first network name found
-	if ( !$netName ) {
-		my $i;
-		my @vars;
-		for ( $i = 0 ; $i < @lines ; $i++ ) {
-
-			# Extract VSwitch name
-			if ( $lines[$i] =~ m/VSWITCH/i ) {
-				@vars = split( ' ', $lines[$i] );
-				$netName = $vars[4];
-				last;
-			}
-
-			# Extract Lan name
-			elsif ( $lines[$i] =~ m/LAN/i ) {
-				@vars = split( ' ', $lines[$i] );
-				$netName = $vars[4];
-				last;
-			}
-		}    # End of for
-	}    # End of if ( !$netName )
-
-	# If the network name could not be found
+	# Exit if the network name is not given
 	if ( !$netName ) {
 		return -1;
 	}
 
 	# Get network type (Layer 2 or 3)
-	$out = `ssh -o ConnectTimeout=5 $hcp "vmcp q lan $netName"`;
+	my $out = `ssh -o ConnectTimeout=5 $node "vmcp q lan $netName"`;
 	if ( !$out ) {
 		return -1;
 	}
 
 	# Go through each line
 	my $layer = 3;    # Default to layer 3
-	@lines = split( '\n', $out );
+	my @lines = split( '\n', $out );
 	foreach (@lines) {
 
 		# If the line contains ETHERNET, then it is a layer 2 network
