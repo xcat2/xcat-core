@@ -202,7 +202,7 @@ sub preprocess_request
     {
         # take care of -h etc.
         # also get osimage hash to pass on!!
-        my ($rc, $imagehash, $servers) = &prermnimimage($cb, $sub_req);
+        my ($rc, $imagehash, $servers, $mnsn) = &prermnimimage($cb, $sub_req);
         if ($rc)
         {    # either error or -h was processed etc.
             my $rsp;
@@ -218,10 +218,24 @@ sub preprocess_request
         # if something more than -h etc. then pass on the request
         if (defined($imagehash) && scalar(@{$servers}))
         {
+            my %allsn;
+            foreach my $sn (@{$mnsn}) # convert array to hash
+            {
+                $allsn{$sn} = 1;
+            }
+            
             foreach my $snkey (@{$servers})
             {
                 my $reqcopy = {%$req};
                 $reqcopy->{'_xcatdest'} = $snkey;
+
+                # put servicenode list in req, will use it in rmnimimage().
+                if(%allsn)
+                {
+                    # add tags to the hash keys that start with a number
+                    xCAT::InstUtils->taghash(\%allsn);
+                    $reqcopy->{'nodehash'} = \%allsn;
+                }
 
                 #$reqcopy->{_xcatpreprocessed}->[0] = 1;
                 if ($imagehash)
@@ -513,7 +527,7 @@ sub process_request
     }
     elsif ($command eq "rmnimimage")
     {
-        ($ret, $msg) = &rmnimimage($callback, $imagehash, $sub_req);
+        ($ret, $msg) = &rmnimimage($callback, $imagehash, $nodehash, $sub_req);
     }
 	elsif ($command eq "chkosimage")
 	{
@@ -5494,6 +5508,20 @@ sub prermnimimage
     my $nimprime = xCAT::InstUtils->getnimprime();
     chomp $nimprime;
 
+    # by default, get MN and all servers
+    my @allsn = ();
+    my @nlist = xCAT::Utils->list_all_nodes;
+    my $sn;
+    my $service = "xcat";
+    if (\@nlist)
+    {
+        $sn = xCAT::Utils->getSNformattedhash(\@nlist, $service, "MN");
+    }
+    foreach my $snkey (keys %$sn)
+    {
+        push(@allsn, $snkey);
+    }
+
     if ($::MN)
     {
 
@@ -5506,20 +5534,8 @@ sub prermnimimage
     }
     else
     {
-
-        # do MN and all servers
-        # 	get all the service nodes
-        my @nlist = xCAT::Utils->list_all_nodes;
-        my $sn;
-        my $service = "xcat";
-        if (\@nlist)
-        {
-            $sn = xCAT::Utils->getSNformattedhash(\@nlist, $service, "MN");
-        }
-        foreach my $snkey (keys %$sn)
-        {
-            push(@servicenodes, $snkey);
-        }
+        # do mn and all sn
+        @servicenodes = @allsn;
     }
 
     #
@@ -5546,7 +5562,7 @@ sub prermnimimage
         }
     }
 
-    return (0, \%imagedef, \@servicenodes);
+    return (0, \%imagedef, \@servicenodes, \@allsn);
 }
 
 #----------------------------------------------------------------------------
@@ -5568,6 +5584,7 @@ sub rmnimimage
 {
     my $callback = shift;
     my $imaghash = shift;
+    my $nodehash = shift;  # store all servicenodes.
     my $subreq   = shift;
 
     my @servernodelist;
@@ -5580,6 +5597,12 @@ sub rmnimimage
     else
     {
         return 0;
+    }
+
+    my %allsn;
+    if ($nodehash)
+    {
+        %allsn = %{$nodehash};
     }
 
     if (defined(@{$::args}))
@@ -5698,6 +5721,11 @@ sub rmnimimage
         my $res_name = $imagedef{$image_name}{$attr};
         chomp $res_name;
 
+        unless($res_name)
+        {
+            next;
+        }
+
         if ($attr eq 'script')
         {
             foreach (split /,/, $res_name)
@@ -5740,9 +5768,41 @@ sub rmnimimage
                 }
                 else
                 {
-                    $alloc_count =
-                      xCAT::InstUtils->get_nim_attr_val($resname, "alloc_count",
-                                                    $callback, "", $subreq);
+                    if ($::MN)
+                    {
+                        # check nim resources on mn or nimprime
+                        $alloc_count =
+                          xCAT::InstUtils->get_nim_attr_val($resname, "alloc_count",
+                                                        $callback, "", $subreq);
+                    }
+                    else
+                    {
+                        # get local hostname as target, since the req has been dispatched.
+                        my $hn = `hostname`;
+                        $alloc_count =
+                          xCAT::InstUtils->get_nim_attr_val($resname, "alloc_count",
+                                                        $callback, $hn, $subreq);
+                    }
+                    
+                    # if this is mn, check the alloc_count on sn too.
+                    if (xCAT::Utils->isMN())
+                    {
+                        foreach my $sn (keys %allsn)
+                        {
+                            my $acount =
+                              xCAT::InstUtils->get_nim_attr_val($resname, "alloc_count",
+                                                            $callback, $sn, $subreq);
+                            if ($acount != 0)
+                            {
+                                 my $rsp;
+                                push @{$rsp->{data}},
+                                  "$Sname: The resource named \'$resname\' is currently allocated on $sn. It will not be removed.\n";
+                                xCAT::MsgUtils->message("I", $rsp, $callback);
+                                
+                                $alloc_count = $alloc_count + $acount;
+                            }
+                        }
+                    }
                 }
 
                 if (defined($alloc_count) && ($alloc_count != 0))
