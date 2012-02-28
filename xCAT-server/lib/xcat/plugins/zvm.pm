@@ -3297,7 +3297,7 @@ sub nodeSet {
 		} elsif ($distro eq "rh") {
 			# Check kickstart template
 			if ( -e "$installDir/custom/install/rh/$tmpl" ) {
-				$out = `cat $installDir/custom/install/rh/$tmpl | egrep -i "--bootproto dhcp"`;
+				$out = `cat $installDir/custom/install/rh/$tmpl | egrep -ie "--bootproto dhcp"`;
 				if ($out =~ m/dhcp/i) {
 					$dhcp = 1;
 				}
@@ -3388,7 +3388,7 @@ sub nodeSet {
 								last;
 							} else {
 								# Go to next network available
-								$hcpNetName = ''
+								$hcpNetName = '';
 							}
 						}
 					} # End of foreach
@@ -3409,7 +3409,7 @@ sub nodeSet {
 			return;
 		}
 		
-		xCAT::zvmUtils->printLn( $callback, "$node: Setting up networking on $hcpNetName (layer $layer)" );
+		xCAT::zvmUtils->printLn( $callback, "$node: Setting up networking on $hcpNetName (layer:$layer | DHCP:$dhcp)" );
 		
 		# Generate read, write, and data channels
 		my $readChannel = "0.0." . ( sprintf('%X', $channel + 0) );
