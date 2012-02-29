@@ -363,11 +363,6 @@ sub get_nim_attr_val
       xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $target, $cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
-		if ($::VERBOSE) {
-			my $rsp;
-        	push @{$rsp->{data}}, "Could not run lsnim command: \'$cmd\'.\n";
-        	xCAT::MsgUtils->message("E", $rsp, $callback);
-		}
         return undef;
     }
 
