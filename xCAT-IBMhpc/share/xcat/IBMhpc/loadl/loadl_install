@@ -58,8 +58,8 @@ if [ $OS != "AIX" ]; then
         mkdir -p /tmp/loadl
         rm -f -R /tmp/loadl/*
         cd /tmp/loadl
-        download_dir=`echo $LOADL_DIR | cut -d '/' -f3-`
-        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=5 ftp://$SITEMASTER/$download_dir/*.rpm 2> /tmp/wget.log
+        download_dir=$LOADL_DIR
+        wget -l inf -nH -N -r --waitretry=10 --random-wait -T 60 -nH --cut-dirs=6 --reject "index.html*" --no-parent http://$SITEMASTER$download_dir/ 2> /tmp/wget.log
         rpm -Uvh LoadL-full-license*.rpm
         $linux_loadl_license_script -y -d .
         rm -Rf /tmp/loadl
