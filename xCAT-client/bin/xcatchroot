@@ -49,6 +49,11 @@ if [[ $OSNAME != "AIX" ]] ; then
 	exit 0
 fi
 
+# set this variable so the nim methods will work when use a
+#   gpfs file system
+NIM_ATTR_FORCE="yes"
+export NIM_ATTR_FORCE
+
 # include common NIM shell defines/functions
 NIM="/usr/sbin/nim"
 NIMPATH=/usr/lpp/bos.sysmgt/nim
