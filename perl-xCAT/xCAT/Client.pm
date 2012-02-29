@@ -955,6 +955,9 @@ sub handle_response {
   if (scalar @{$rsp->{node}}) {
 #print "printing node\n";
     my $nodes=($rsp->{node});
+    unless (ref $nodes eq 'ARRAY') {
+	$nodes = [$nodes];
+    }
     my $node;
     foreach $node (@$nodes) {
       my $desc=$node->{name}->[0];
