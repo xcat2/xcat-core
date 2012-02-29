@@ -14,7 +14,7 @@ then
     /sbin/service $ib_driver status
     if [ $? -eq 1 ]
     then
-        $ib_driver="openibd"
+        ib_driver="openibd"
         /sbin/service $ib_driver status
         if [ $? -eq 1 ]
         then
