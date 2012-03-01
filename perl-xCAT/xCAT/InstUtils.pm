@@ -211,7 +211,7 @@ sub is_me
 
     # get all the possible IPs for the node I'm running on
     my $ifcmd = "ifconfig -a | grep 'inet'";
-    my $result = xCAT::Utils->runcmd($ifcmd, 0, 1);
+    my $result = xCAT::Utils->runcmd($ifcmd, -1, 1);
     if ($::RUNCMD_RC != 0)
     {
         my $rsp;
@@ -367,8 +367,6 @@ sub get_nim_attr_val
     }
 
     # The command output may have the xdsh prefix "target:"
-    #my ($junk, $junk, $junk, $loc) = split(/:/, $nout);
-    #chomp $loc;
     my $loc;
     if ($nout =~ /.*$resname:(.*):$/)
     {
@@ -794,6 +792,15 @@ sub dolitesetup
     my $Sname = xCAT::InstUtils->myxCATname();
     chomp $Sname;
 
+	my $nimprime = xCAT::InstUtils->getnimprime();
+
+    my $target;
+    if (xCAT::Utils->isSN($Sname)) {
+        $target=$Sname;
+    } else {
+        $target=$nimprime;
+    }
+
 	my @nodelist;
 	my @nodel;
 	my @nl;
@@ -842,7 +849,7 @@ sub dolitesetup
 	}
 
 	# get spot inst_root loc
-	my $spotloc = xCAT::InstUtils->get_nim_attr_val($imghash{$imagename}{spot}, 'location', $callback, $Sname, $subreq);
+	my $spotloc = xCAT::InstUtils->get_nim_attr_val($imghash{$imagename}{spot}, 'location', $callback, $target, $subreq);
 
 	my $instrootloc = $spotloc . "/lpp/bos/inst_root";
 
