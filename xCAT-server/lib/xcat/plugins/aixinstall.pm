@@ -7659,7 +7659,7 @@ sub prenimnodeset
                 }
 
                 # check the valid attributes.
-                if (grep(/$attr/, @validattr))
+                if (grep(/^$attr$/, @validattr))
                 {
                     $attrs{$attr} = $value;
                 }
