@@ -582,7 +582,14 @@ sub scan_plugins {
         next;
     }
     no strict 'refs';
-    my $cmd_adds=${"xCAT_plugin::".$modname."::"}{handled_commands}->();
+    my $cmd_adds;
+    eval {
+       $cmd_adds=${"xCAT_plugin::".$modname."::"}{handled_commands}->();
+    };
+    if ($@) { 
+        xCAT::MsgUtils->message("S","Error registering module ".$_."  ...skipping");
+       next;
+    }
     foreach (keys %$cmd_adds) {
       my $value = $_;
       my @modulehandlerinfos;
