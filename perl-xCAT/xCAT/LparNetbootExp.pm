@@ -139,7 +139,7 @@ sub run_lssyscfg
             arg     => ['state']
         },
     $req, 0, 1);
-    if ($::RUNCMD_RC ne 0)   {
+    if ($::RUNCMD_RC != 0)   {
         nc_msg($verbose, "Unable to run rpower $node state.\n");
         return undef;
     }
@@ -745,11 +745,11 @@ sub  get_adap_prop    {
         # decode-string command is sent.
         if ( $state eq 5 ) {
             if ($result[3] =~/2 > \.s \w+ (\w*)/) {
-                $state = 2 if ($1 ne 0);
+                $state = 2 if ($1 != 0);
             }
         }
     }
-    if (scalar(@adap_prop_array) ne 0) {
+    if (scalar(@adap_prop_array) != 0) {
         return \@adap_prop_array;
     } else {
         return 0;
@@ -1330,14 +1330,14 @@ sub  ping_server{
             nc_msg($verbose, "Status: Trying connector type $adap_conn\n");
             $j++;
         }
-        if ((($tty_do_ping eq 1) && ($state eq 4)) || ($tty_do_ping ne 1) && ($state eq 3) ) {
+        if ((($tty_do_ping eq 1) && ($state eq 4)) || ($tty_do_ping != 1) && ($state eq 3) ) {
             $ping_debug = $result[2];
         }
-        if ( ( ($tty_do_ping eq 1) && ($state eq 5) ) || ($tty_do_ping ne 1) && ($state eq 4) ) {
+        if ( ( ($tty_do_ping eq 1) && ($state eq 5) ) || ($tty_do_ping != 1) && ($state eq 4) ) {
             if ( ($tty_do_ping eq 1) && ($state eq 5) ) {
                 #$ping_rc = $result[2];
                 $stack_level = length($result[4]);
-            } elsif ( ($state eq 4) && ($tty_do_ping ne 1) && ($result[2] =~ /PING SUCCESS/)) {
+            } elsif ( ($state eq 4) && ($tty_do_ping != 1) && ($result[2] =~ /PING SUCCESS/)) {
                 $ping_rc = 0;
             #} elsif ( $result[2] =~ /unknown word/ ) {
             #    nc_msg($verbose, "Status: try tty-do-ping.\n");
@@ -1382,7 +1382,7 @@ sub  ping_server{
                 # be removed.  Check for it, and remove if necessary
                 my $matchexp = 0;
                 my @exp_out;
-                while ( $stack_level ne 0 ) {
+                while ( $stack_level != 0 ) {
                     send_command($verbose, $rconsole, ".\r");
                     @exp_out = $rconsole->expect(
                         [qr/(\[0-9\]*)  ok(.*)(\[0-1\]) >(.*)/s=>
@@ -1585,7 +1585,7 @@ sub set_disk_boot {
                         }
                     }
                     $state = $newstate[$state];
-                    if ( ($state ne 8) && ($state ne 9) && ($state ne 10) ) {
+                    if ( ($state != 8) && ($state != 9) && ($state != 10) ) {
                         $cmd[$state] = "$expect_out[3]\r";
                     }
                 }
@@ -1613,7 +1613,7 @@ sub set_disk_boot {
             return 1;
         } else {
             return 0;
-        }            
+        }
     }
     return 0;
 
@@ -2413,7 +2413,7 @@ sub lparnetbootexp
     # process the arguments
     ####################################
     $rc = xCAT::LparNetbootExp->ck_args($opt, $node, $verbose);
-    if ($rc ne 0) {
+    if ($rc != 0) {
         nc_msg($verbose,, "ck_args failed. \n");
         return [1];
     }
@@ -2511,7 +2511,6 @@ sub lparnetbootexp
     }
 
     if ($from_of) {
-        #unless($output =~ /open-firmware/i){
         unless($output =~ /open firmware/i){
             nc_msg($verbose,, "You are using the -o option. Please make sure the LPAR's initial state is open firmware.\n");
             return [1];
@@ -2535,7 +2534,7 @@ sub lparnetbootexp
                 },
             $subreq, 0, 1);
             $output = join ',', @$sysoutput;
-            if ($::RUNCMD_RC ne 0) {    #$::RUNCMD_RC  will get its value from runxcmd_output
+            if ($::RUNCMD_RC != 0) {    #$::RUNCMD_RC  will get its value from runxcmd_output
                 nc_msg($verbose,, "Unable to run rpower $node off.\n");
                 return [1];
             }
@@ -2561,112 +2560,113 @@ sub lparnetbootexp
                     nc_msg($verbose,, "Power off failed.\n");
                     return [1];
                 }
+                sleep 1;
+            }
+        }
+
+
+
+        #################################################
+        # if set_boot_order is set, set the boot order
+        # if not set, power the node to open firmware
+        #################################################
+        $done = 0;
+        $retry_count = 0;
+        if ($set_boot_order > 1) {
+            nc_msg($verbose, "Power on $node to SMS.\n");
+            while (!$done) {
+                $sysoutput = xCAT::Utils->runxcmd(
+                    {
+                        command => ['rpower'],
+                        node    => [$node],
+                        arg     => ['sms']
+                    },
+                $subreq, 0, 1);
+                $output = join ',', @$sysoutput;
+                nc_msg($verbose, "Waiting for power on...\n");
+
+                if ($::RUNCMD_RC != 0) {
+                    nc_msg($verbose,, "Unable to run rpower $node sms\n");
+                    return [1];
+                }
+                unless ($output =~ /Success/) {
+                    if ($retry_count eq 3) {
+                        nc_msg($verbose,, "Power off failed, msg is $output.\n");
+                        return [1];
+                    }
+                    sleep 1;
+                    $retry_count ++;
+                } else {
+                    $done = 1;
+                }
+            }
+        } else {
+            nc_msg($verbose, "Power on the $node to the Open Firmware.\n");
+            while (!$done) {
+                $sysoutput = xCAT::Utils->runxcmd(
+                    {
+                        command => ['rpower'],
+                        node    => [$node],
+                        arg     => ['of']
+                    },
+                $subreq, 0, 1);
+                $output = join ',', @$sysoutput;
+                nc_msg($verbose, "Waiting for power on...\n");
+
+                if ($::RUNCMD_RC != 0) {
+                    nc_msg($verbose,, "Unable to run rpower $node open firmware.\n");
+                    return [1];
+                }
+                unless ($output =~ /Success/) {
+                    if ($retry_count eq 3) {
+                        nc_msg($verbose,, "Power off failed, msg is $output.\n");
+                        return [1];
+                    }
+                    sleep 1;
+                    $retry_count ++;
+                } else {
+                    $done = 1;
+                }
+            }
+        }
+
+
+        ###########################
+        # Check the node state
+        ###########################
+        $done = 0;
+        $query_count = 0;
+        $timeout = 1;
+        nc_msg($verbose, "Check the node state again;");
+        while(!$done) {
+            $output = xCAT::LparNetbootExp->run_lssyscfg($subreq, $verbose, $node);
+            nc_msg($verbose, "The node state is $output.\n");
+            if ($output =~ /Open Firmware/i) {
+                nc_msg($verbose, "Power on complete.\n");
+                $done = 1;
+                next;
+            }
+
+            $query_count++;
+            # if the node is not in openfirmware state, just wait for it
+            my @result = $rconsole->expect(
+                $timeout,
+                [ qr/(.*)elect this consol(.*)/=>
+                sub {
+                    $rconsole->send("0\r");
+                    #$rconsole->clear_accum();
+                    #$rconsole->exp_continue();
+                    }
+                ],
+            );
+
+            if ($query_count > 300 ) {
+                nc_msg($verbose,, "Timed out waiting for power on of $node");
+                nc_msg($verbose, "error from rpower command : \"$output\" \n");
+                return [1];
             }
             sleep 1;
         }
-    }
-
-
-    #################################################
-    # if set_boot_order is set, set the boot order
-    # if not set, power the node to open firmware
-    #################################################
-    $done = 0;
-    $retry_count = 0;
-    if ($set_boot_order) {
-        nc_msg($verbose, "Power on $node to SMS.\n");
-        while (!$done) {
-            $sysoutput = xCAT::Utils->runxcmd(
-                {
-                    command => ['rpower'],
-                    node    => [$node],
-                    arg     => ['sms']
-                },
-            $subreq, 0, 1);
-            $output = join ',', @$sysoutput;
-            nc_msg($verbose, "Waiting for power on...\n");
-
-            if ($::RUNCMD_RC ne 0) {
-                nc_msg($verbose,, "Unable to run rpower $node sms\n");
-                return [1];
-            }
-            unless ($output =~ /Success/) {
-                if ($retry_count eq 3) {
-                    nc_msg($verbose,, "Power off failed, msg is $output.\n");
-                    return [1];
-                }
-                sleep 1;
-                $retry_count ++;
-            } else {
-                $done = 1;
-            }
-        }
-    } else {
-        nc_msg($verbose, "Power on the $node to the Open Firmware.\n");
-        while (!$done) {
-            $sysoutput = xCAT::Utils->runxcmd(
-                {
-                    command => ['rpower'],
-                    node    => [$node],
-                    arg     => ['of']
-                },
-            $subreq, 0, 1);
-            $output = join ',', @$sysoutput;
-            nc_msg($verbose, "Waiting for power on...\n");
-
-            if ($::RUNCMD_RC ne 0) {
-                nc_msg($verbose,, "Unable to run rpower $node open firmware.\n");
-                return [1];
-            }
-            unless ($output =~ /Success/) {
-                if ($retry_count eq 3) {
-                    nc_msg($verbose,, "Power off failed, msg is $output.\n");
-                    return [1];
-                }
-                sleep 1;
-                $retry_count ++;
-            } else {
-                $done = 1;
-            }
-        }
-    }
-
-
-    ###########################
-    # Check the node state
-    ###########################
-    $done = 0;
-    $query_count = 0;
-    $timeout = 1;
-    nc_msg($verbose, "Check the node state again;");
-    while(!$done) {
-        $output = xCAT::LparNetbootExp->run_lssyscfg($subreq, $verbose, $node);
-        nc_msg($verbose, "The node state is $output.\n");
-        if ($output =~ /Open Firmware/i) {
-            nc_msg($verbose, "Power on complete.\n");
-            $done = 1;
-            next;
-        }
-
-        $query_count++;
-        # if the node is not in openfirmware state, just wait for it
-        my @result = $rconsole->expect(
-            $timeout,
-            [ qr/(.*)elect this consol(.*)/=>
-            sub {
-                $rconsole->send("0\r");
-                #$rconsole->clear_accum();
-                #$rconsole->exp_continue();
-                }
-            ],
-        );
-
-        if ($query_count > 300 ) {
-            nc_msg($verbose,, "Timed out waiting for power on of $node");
-            nc_msg($verbose, "error from rpower command : \"$output\" \n");
-            return [1];
-        }
-        sleep 1;
     }
 
 
@@ -2902,7 +2902,7 @@ sub lparnetbootexp
                 }
             }
         }
-        unless($from_of) {
+        if ($from_of != 1) {
             nc_msg($verbose, "power off the node after noboot eq 1\n");
             $sysoutput = xCAT::Utils->runxcmd(
                 {
@@ -2912,7 +2912,7 @@ sub lparnetbootexp
                 },
             $subreq, 0, 1);
             $output = join ',', @$sysoutput;
-            if ($::RUNCMD_RC ne 0) {
+            if ($::RUNCMD_RC != 0) {
                 nc_msg($verbose,, "Unable to run rpower $node sms.\n");
                 nc_msg($verbose, "Status: error from rpower command\n");
                 nc_msg($verbose,, "Error : $output\n");
@@ -3081,7 +3081,7 @@ sub lparnetbootexp
     ################################################
     # mission accomplished, beam me up scotty.
     #################################################
-    unless ($noboot) {
+    unless ($noboot) {  #if do the rnetboot, just return
         if ( $rc eq 0) {
             nc_msg($verbose, "# Finished.\n" );
             $outputarrayindex++;
@@ -3091,7 +3091,7 @@ sub lparnetbootexp
             $outputarrayindex++;
             $outputarray[$outputarrayindex] = "Finished in an error.";
         }
-    } else {
+    } else {   #if not rnetboot, for example, getmacs, power off the node
         $done = 0;
         $query_count = 0;
         while(!$done) {
@@ -3100,12 +3100,12 @@ sub lparnetbootexp
             ##############################################
             # separate the nodename from the query status
             ##############################################
-            if ($from_of ne 1) {
+            if ($from_of != 1) {
                 if (( $output =~ /off/i ) or ($output =~ /Not Activated/i)) {
                     $done = 1;
                 }
             } else {
-                if ( $output =~ /open-firmware/i ) {
+                if ( $output =~ /firmware/i ) {
                     $done = 1;
                 }
             }
