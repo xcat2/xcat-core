@@ -1,0 +1,65 @@
+#!/bin/sh  
+#
+#
+# Sample script to customize options for Mellonax OFED IB support
+# For AIX:
+#    TBD
+# For Linux:
+#    - For full-disk installs:
+#        - Copy rpms to node
+#        - Install IB rpms
+#    - For diskless images:
+#        - Copy the packages to the images.
+#        - Install IB rpms
+
+OS=`uname`
+#installroot='/install/netboot/sles11.1/x86_64/compute/rootimg'
+
+#OFED_DIR='/install/post/otherpkgs/sles11.1/x86_64/ofed/'
+OFED_DIR=$ofeddir
+
+if [ -z "$OFED_DIR" ]; then
+   # try to default
+   OFED_DIR=$INSTALL_DIR/post/otherpkgs/$OSVER/$ARCH/ofed
+fi
+
+
+
+if [ $NODESETSTATE != "genimage" ]; then
+   # running as a postscript in a full-disk install or AIX diskless install
+   installroot=""
+fi
+
+
+
+if [ $OS != "AIX" ]; then
+    if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
+    #  Being run from a stateful install postscript
+    #  Copy rpms directly from the xCAT management node and install
+        mkdir -p /tmp/ofed
+        rm -f -R /tmp/ofed/*
+        cd /tmp/ofed
+        #download_dir=`echo $OFED_DIR | cut -d '/' -f3-`
+        #wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=5 ftp://$SITEMASTER/$download_dir/ 2> /tmp/wget.log
+        download_dir=$OFED_DIR
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=6 --reject "index.html*"  --no-parent http://$SITEMASTER$download_dir/ 2> /tmp/wget.log
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=6 --reject "index.html*"  --no-parent http://$SITEMASTER$download_dir/.mlnx 2>> /tmp/wget.log
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=6 --reject "index.html*"  --no-parent http://$SITEMASTER$download_dir/.supported_kernels 2>> /tmp/wget.log
+        #rpm -Uvh --force libibverbs-devel*.rpm 
+        perl -x mlnxofedinstall --without-32bit --force
+        rm -Rf /tmp/ofed
+    fi
+
+    if [ $NODESETSTATE == "genimage" ]; then
+    # Being called from <image>.postinstall script
+    # Assume we are on the same machine
+        #if [[ $OS = sles* ]] || [[ $OS = suse* ]] || [[ -f /etc/SuSE-release ]]; then
+        # For SLES, assume zypper is available on the system running genimage
+            mkdir $installroot/tmp/ofed_install
+            cp -r $OFED_DIR $installroot/tmp/ofed_install/ 
+            chroot $installroot perl -x /tmp/ofed_install/ofed/mlnxofedinstall --without-32bit --force
+            rm -rf $installroot/tmp/ofed_install
+        #fi
+    fi
+fi
+
