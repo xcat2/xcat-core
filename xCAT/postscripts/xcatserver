@@ -43,7 +43,11 @@ export USEOPENSSLFORXCAT
       sed s/host=[^\|]*/host=$MASTER/ /etc/xcat/cfgloc > /etc/xcat/cfgloc.new
       mv /etc/xcat/cfgloc.new /etc/xcat/cfgloc
     else
+     if [ -n "$UPDATENODE" ] && [ $UPDATENODE -eq 1 ]; then
+      cp /etc/xcat/cfgloc /etc/xcat/cfgloc.db2
+     else
       mv /etc/xcat/cfgloc /etc/xcat/cfgloc.db2
+     fi
     fi
    chmod 600 /etc/xcat/cfgloc*
    # do not assume working directory, use the full path
