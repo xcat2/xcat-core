@@ -973,7 +973,7 @@ sub nimnodeset
                 }
 
                 my $rcmd =
-                  "/usr/sbin/nim -o reset -a force=yes $shorthost;/usr/sbin/nim -Fo deallocate -a subclass=all $shorthost";
+                  "/usr/sbin/nim -Fo reset -a force=yes $shorthost;/usr/sbin/nim -Fo deallocate -a subclass=all $shorthost";
                 my $output = xCAT::Utils->runcmd("$rcmd", -1);
                 if ($::RUNCMD_RC != 0)
                 {
@@ -1204,7 +1204,7 @@ sub nimnodeset
         }
 
         my $initcmd;
-        $initcmd = "/usr/sbin/nim -o bos_inst $arg_string $nim_name 2>&1";
+        $initcmd = "/usr/sbin/nim -Fo bos_inst $arg_string $nim_name 2>&1";
 
         if ($::VERBOSE)
         {
@@ -1669,6 +1669,7 @@ sub spot_updates
     # if synclistfile then add files to image (spot)
     if (defined($synclistfile))
     {
+
         my $rc = 0;
         $rc =
           &sync_spot_files($callback,     $image_name, $nimprime,
@@ -1707,7 +1708,7 @@ sub spot_updates
                 xCAT::MsgUtils->message("I", $rsp, $callback);
             }
 
-            my $rmcmd = qq~nim -o remove $spot_name 2>/dev/null~;
+            my $rmcmd = qq~nim -Fo remove $spot_name 2>/dev/null~;
             my $nout  =
               xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $sn, $rmcmd, 0);
             if ($::RUNCMD_RC != 0)
@@ -1743,7 +1744,7 @@ sub spot_updates
                 		xCAT::MsgUtils->message("I", $rsp, $callback);
             		}
 
-            		my $rmcmd = qq~nim -o remove $SRname 2>/dev/null~;
+            		my $rmcmd = qq~nim -Fo remove $SRname 2>/dev/null~;
             		my $nout  = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $sn, $rmcmd, 0);
             		if ($::RUNCMD_RC != 0)
             		{
@@ -2581,7 +2582,7 @@ sub mknimimage
             }
 
             #5. Conigure NIM master
-            $nimcmd = qq~nim -o change -a global_export=yes master~;
+            $nimcmd = qq~nim -Fo change -a global_export=yes master~;
             if ($::VERBOSE)
             {
                 my $rsp;
@@ -2603,7 +2604,7 @@ sub mknimimage
                 return 1;
             }
 
-            $nimcmd = qq~nim -o change -a nfs_domain=clusters.com master~;
+            $nimcmd = qq~nim -Fo change -a nfs_domain=clusters.com master~;
             if ($::VERBOSE)
             {
                 my $rsp;
@@ -2658,7 +2659,7 @@ sub mknimimage
                 return 1;
             }
             my $mask = xCAT::NetworkUtils->prefixtomask($prefixlength);
-            $nimcmd = qq~nim -o define -t ent6 -a net_addr=$net -a snm=$mask -a routing1="default $gw" $netname~;
+            $nimcmd = qq~nim -Fo define -t ent6 -a net_addr=$net -a snm=$mask -a routing1="default $gw" $netname~;
             if ($::VERBOSE)
             {
                 my $rsp;
@@ -2682,7 +2683,7 @@ sub mknimimage
             
             #7. Add an IPv6 interface to master
             my $hip = xCAT::NetworkUtils->getipaddr($hname);
-            $nimcmd = qq~nim -o change -a if2="$netname $hname $linklocaladdr" -a cable_type2=N/A master~;
+            $nimcmd = qq~nim -Fo change -a if2="$netname $hname $linklocaladdr" -a cable_type2=N/A master~;
             if ($::VERBOSE)
             {
                 my $rsp;
@@ -2803,7 +2804,7 @@ sub mknimimage
         if (!$nimout)
         {
             #nim -o change -a nfs_domain=$nfsdom master
-            $nimcmd = qq~nim -o change -a nfs_domain=$domain master~;
+            $nimcmd = qq~nim -Fo change -a nfs_domain=$domain master~;
             $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
             if ($::RUNCMD_RC != 0)
             {
@@ -2911,7 +2912,7 @@ sub mknimimage
                 if ($ninresname)
                 {
                     push @nimresupdated, $ninresname;
-                    my $nimcmd = qq~nim -o change -a nfs_vers=4 $ninresname~;
+                    my $nimcmd = qq~nim -Fo change -a nfs_vers=4 $ninresname~;
                     my $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
                     if ($::RUNCMD_RC != 0)
                     {
@@ -4182,7 +4183,7 @@ sub mk_spot
         {
 
             # Create the SPOT/COSI
-            my $cmd = "/usr/sbin/nim -o define -t spot -a server=master ";
+            my $cmd = "/usr/sbin/nim -Fo define -t spot -a server=master ";
 
 			# check for relevant cmd line attrs
 			my %cmdattrs;
@@ -4412,7 +4413,7 @@ sub mk_bosinst_data
             }
 
             # define the new bosinst_data resource
-            $cmd = "/usr/sbin/nim -o define -t bosinst_data -a server=master ";
+            $cmd = "/usr/sbin/nim -Fo define -t bosinst_data -a server=master ";
 
 			# check for relevant cmd line attrs
 			my %cmdattrs;
@@ -4696,6 +4697,7 @@ sub chk_resolv_conf
 	# check each node to make sure we have the correct resolv.conf 
 	#	for each one
 	#
+	my @donedefs;
 	foreach my $node (@nodelist) {
 
 		my $domain;
@@ -4875,6 +4877,11 @@ sub chk_resolv_conf
 			$create_res++;
 		}
 
+		# don't define the same resource again
+		if (grep(/^$resolv_conf_name$/, @donedefs)) {
+			next;
+		}
+
 		#
 		# create a new NIM resolv_conf resource - if needed
 		#
@@ -4962,7 +4969,7 @@ sub chk_resolv_conf
 			if (!grep(/^$resolv_conf_name$/, @nimresources))
             {
 
-            	$cmd = "/usr/sbin/nim -o define -t resolv_conf -a server=master ";
+            	$cmd = "/usr/sbin/nim -Fo define -t resolv_conf -a server=master ";
 				# check for relevant cmd line attrs
 				my %cmdattrs;
 				if ( ($::NFSv4) && (!$attrres{nfs_vers}) )
@@ -4997,6 +5004,8 @@ sub chk_resolv_conf
                 	return undef;
             	}
 
+				push @donedefs, $resolv_conf_name;
+
 				my $rsp;
 				push @{$rsp->{data}}, "Created a new resolv_conf resource called \'$resolv_conf_name\'.\n";
 				xCAT::MsgUtils->message("I", $rsp, $callback);
@@ -5028,7 +5037,7 @@ sub chk_resolv_conf
                          {
                              my $ecmd = qq~/usr/sbin/rmnfsexp -d $install_dir/nim/resolv_conf/$resolv_conf_name/resolv.conf -B 2>/dev/null~;
                              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $ecmd,0);
-                             my $nimcmd = qq~nim -o change -a nfs_vers=4 $resolv_conf_name~;
+                             my $nimcmd = qq~nim -Fo change -a nfs_vers=4 $resolv_conf_name~;
                              my $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
                              if ($::RUNCMD_RC != 0)
                              {
@@ -5157,7 +5166,7 @@ sub mk_resolv_conf
 
                 # define the new resolv_conf resource
                 my $cmd =
-                  "/usr/sbin/nim -o define -t resolv_conf -a server=master ";
+                  "/usr/sbin/nim -Fo define -t resolv_conf -a server=master ";
 
 				# check for relevant cmd line attrs
 				my %cmdattrs;
@@ -5306,7 +5315,7 @@ sub mk_mksysb
 
                 # create sys backup from remote node and define res
                 my $location = "$loc/$mksysb_name";
-                my $nimcmd = "/usr/sbin/nim -o define -t mksysb -a server=master ";
+                my $nimcmd = "/usr/sbin/nim -Fo define -t mksysb -a server=master ";
 
 				# check for relevant cmd line attrs
 				my %cmdattrs;
@@ -5356,11 +5365,11 @@ sub mk_mksysb
                 my $mkcmd;
                 if ($::NFSv4)
                 {
-                  $mkcmd = "/usr/sbin/nim -o define -t mksysb -a server=master -a nfs_vers=4 -a location=$::SYSB $mksysb_name 2>&1";
+                  $mkcmd = "/usr/sbin/nim -Fo define -t mksysb -a server=master -a nfs_vers=4 -a location=$::SYSB $mksysb_name 2>&1";
                 }
                 else
                 {
-                  $mkcmd = "/usr/sbin/nim -o define -t mksysb -a server=master -a location=$::SYSB $mksysb_name 2>&1";
+                  $mkcmd = "/usr/sbin/nim -Fo define -t mksysb -a server=master -a location=$::SYSB $mksysb_name 2>&1";
                 }
 
                 if ($::VERBOSE)
@@ -5843,7 +5852,7 @@ sub rmnimimage
                 }
 
                 # try to remove it
-                my $cmd = "nim -o remove $resname";
+                my $cmd = "nim -Fo remove $resname";
 
                 my $output;
                 $output = xCAT::Utils->runcmd("$cmd", -1);
@@ -5937,11 +5946,11 @@ sub mkScriptRes
         my $defcmd;
         if ($::NFSv4)
         {
-           $defcmd = qq~/usr/sbin/nim -o define -t script -a server=master -a nfs_vers=4 -a location=$respath $resname 2>/dev/null~;
+           $defcmd = qq~/usr/sbin/nim -Fo define -t script -a server=master -a nfs_vers=4 -a location=$respath $resname 2>/dev/null~;
         }
         else
         {
-           $defcmd = qq~/usr/sbin/nim -o define -t script -a server=master -a location=$respath $resname 2>/dev/null~;
+           $defcmd = qq~/usr/sbin/nim -Fo define -t script -a server=master -a location=$respath $resname 2>/dev/null~;
         }
 
         my $output =
@@ -6401,7 +6410,7 @@ sub mkdumpres
     my $type = 'dump';
 	my @validattrs = ("dumpsize", "max_dumps", "notify", "snapcollect", "verbose", "nfs_vers", "group");
 
-    my $cmd = "/usr/sbin/nim -o define -t $type -a server=master ";
+    my $cmd = "/usr/sbin/nim -Fo define -t $type -a server=master ";
     my $install_dir = xCAT::Utils->getInstallDir();
 
 	my %cmdattrs;
@@ -6504,7 +6513,7 @@ sub mknimres
 	my @validattrs;
 	@validattrs = ("nfs_vers", "verbose", "group");
 
-    my $cmd = "/usr/sbin/nim -o define -t $type -a server=master ";
+    my $cmd = "/usr/sbin/nim -Fo define -t $type -a server=master ";
     my $install_dir = xCAT::Utils->getInstallDir();
 
 	my %cmdattrs;
@@ -7409,7 +7418,7 @@ sub nimnodecust
     # put together a cust cmd line for NIM
     my @pkglist;
     my $custcmd =
-      "nim -o cust -a lpp_source=$::LPPSOURCE -a installp_flags=agQXY ";
+      "nim -Fo cust -a lpp_source=$::LPPSOURCE -a installp_flags=agQXY ";
     if ($::PACKAGELIST)
     {
         @pkglist = split(/,/, $::PACKAGELIST);
@@ -7684,6 +7693,26 @@ sub prenimnodeset
     my $Sname = xCAT::InstUtils->myxCATname();
     chomp $Sname;
 
+	# see if this is a shared filesystem environment
+    my $sitetab = xCAT::Table->new('site');
+    my ($tmp) = $sitetab->getAttribs({'key' => 'sharedinstall'}, 'value');
+    my $sharedinstall = $tmp->{value};
+    $sitetab->close;
+    if (!$sharedinstall) {
+        $sharedinstall="no";
+    }
+    if ( $sharedinstall eq "sns")  {
+        # if we're using a shared file system then we
+        #       must only do the primary service node
+        $type="primary";
+    }
+    chomp $sharedinstall;
+
+    #
+    #   TODO - if $sharedinstall is "all" or "sns", add check for proper
+    #       level of AIX nfsV4 software
+    #
+
     # make sure the nodes are resolvable
     #  - if not then exit
     foreach my $n (@nodelist)
@@ -7921,11 +7950,11 @@ sub prenimnodeset
             # TODO: xcataixscript is having problem with NFSv4, will be fixed in the next AIX release
             #if ($::NFSv4)
             #{
-            #  $dcmd = qq~/usr/sbin/nim -o define -t script -a server=master -a nfs_vers=4 -a location=$install_dir/nim/scripts/xcataixscript xcataixscript 2>/dev/null~;
+            #  $dcmd = qq~/usr/sbin/nim -Fo define -t script -a server=master -a nfs_vers=4 -a location=$install_dir/nim/scripts/xcataixscript xcataixscript 2>/dev/null~;
             #}
             #else
             #{
-              $dcmd = qq~/usr/sbin/nim -o define -t script -a server=master -a location=$install_dir/nim/scripts/xcataixscript xcataixscript 2>/dev/null~;
+              $dcmd = qq~/usr/sbin/nim -Fo define -t script -a server=master -a location=$install_dir/nim/scripts/xcataixscript xcataixscript 2>/dev/null~;
             #}
             $out =
               xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime,
@@ -7968,7 +7997,7 @@ sub prenimnodeset
                              # make sure we clean up the /etc/exports file of NFSv3 exports
                              my $ecmd = qq~/usr/sbin/rmnfsexp -d $install_dir/nim/scripts/xcataixscript -B 2>/dev/null~;
                              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $ecmd,0);
-                             my $nimcmd = qq~nim -o change -a nfs_vers=4 xcataixscript~;
+                             my $nimcmd = qq~nim -Fo change -a nfs_vers=4 xcataixscript~;
                              my $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
                              if ($::RUNCMD_RC != 0)
                              {
@@ -8066,6 +8095,24 @@ sub prenimnodeset
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 return (1);
             }
+
+			# if we're using a shared file system we should  re-sync
+            #   the shared_root resource
+            if ( ($sharedinstall eq "sns") || ($sharedinstall eq "all")) {
+                # do a re-sync
+                my $scmd = "nim -Fo sync_roots $imghash{$i}{spot}";
+                my $output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $scmd, 0);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Could not update $imghash{$i}{shared_root}.\n";
+                    if ($::VERBOSE)
+                    {
+                        push @{$rsp->{data}}, "$output";
+                    }
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                }
+            }
         }
     }
 
@@ -8082,17 +8129,31 @@ sub prenimnodeset
     #
     ######################################################
 
-	# don't copy if define only is set
-    if (!$::DEFONLY) {
-		my $rc = &doSNcopy2($callback, \@nodelist, $nimprime, \@nimrestypes, \%imghash, \%lochash,  \%nodeosi, $subreq, $type);
+    if ($sharedinstall eq "sns" ) {
+
+		# copy NIM resources and statelite files to SFS (shared file system)
+        my $rc = &doSFScopy($callback, \@nodelist, $nimprime, \@nimrestypes, \%imghash, \%lochash,  \%nodeosi, $subreq, $type);
 		if ($rc != 0 ){
-        	my $rsp;
-        	push @{$rsp->{data}},
-          		"Could not copy NIM resources to the xCAT service nodes.\n";
-        	xCAT::MsgUtils->message("E", $rsp, $callback);
-        	return (1);
+			my $rsp;
+			push @{$rsp->{data}}, "Could not copy NIM resources to the shared file system.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return (1);
 		}
-    }
+
+	} else {
+
+		# don't copy if define only is set
+    	if (!$::DEFONLY) {
+			my $rc = &doSNcopy2($callback, \@nodelist, $nimprime, \@nimrestypes, \%imghash, \%lochash,  \%nodeosi, $subreq, $type);
+			if ($rc != 0 ){
+        		my $rsp;
+        		push @{$rsp->{data}},
+          			"Could not copy NIM resources to the xCAT service nodes.\n";
+        		xCAT::MsgUtils->message("E", $rsp, $callback);
+        		return (1);
+			}
+    	}
+	}
 
     # pass this along to the process_request routine
     return (0, \%objhash, \%nethash, \%imghash, \%lochash, \%attrs, \%nimhash, \@nodelist, $type);
@@ -8525,6 +8586,7 @@ sub copyres2
 		}
 		chomp $dir;
 
+
 		my $restype=$reshash{$res}{restype};
 		my $resloc=$reshash{$res}{resloc};
 		my $resname=$res;
@@ -8625,8 +8687,6 @@ sub copyres2
 		#       - from NIM primary server
 		#
     	my $cpcmd;
-		# if res is spot or lpp_source then create temporary backup file
-		# 	to copy to service nodes my $bkdir;    # directory to backup
 		if ($restype eq "lpp_source")
 		{
 			# resloc - Ex. /install/nim/lpp_source/61D_lpp_source
@@ -8690,7 +8750,7 @@ sub copyres2
         Also 
 			-copy /etc/hosts to make sure we have name res for nodes
             from SN
-			- copy /install/postscripts so we have the lates
+			- copy /install/postscripts so we have the latest
 
         Returns:
             0 - OK
@@ -8872,18 +8932,17 @@ sub doSNcopy2
 
 #----------------------------------------------------------------------------
 
-=head3   doSNcopy
+=head3   doSFScopy
 
-        Copy NIM resource files/dirs to remote service nodes so they can be
-           defined locally
+		copy NIM resources and statelite files to SFS (shared file system)
 
 		Also copy /etc/hosts to make sure we have name res for nodes
             from SN
 
         Arguments:
         Returns:
-                snhash
-                undef - error
+ 			0 - OK
+            1 - error
         Globals:
         Example:
         Comments:
@@ -8891,7 +8950,7 @@ sub doSNcopy2
 =cut
 
 #-----------------------------------------------------------------------------
-sub doSNcopy
+sub doSFScopy
 {
     my $callback = shift;
     my $nodes    = shift;
@@ -8903,204 +8962,228 @@ sub doSNcopy
     my $subreq   = shift;
 	my $type     = shift;
 
-    my %lochash     = %{$locs};
-    my %imghash     = %{$imaghash};
+    my %lochash     = %{$locs}; # resource locations
+    my %imghash     = %{$imaghash}; # osimage defs
     my @nodelist    = @$nodes;
     my @nimrestypes = @$restypes;
-    my %nodeosi     = %{$nosi};
+    my %nodeosi     = %{$nosi};  # osimage name for each node
     my $install_dir = xCAT::Utils->getInstallDir();
 
-    #
-    #  Get a list of nodes for each service node
-    #
+	my $error;
+
+	#  Basic Flow
+	# 1) copy /etc/hosts to ALL SNs
+	# 2) get a list of images that need to be copied
+	# 3) pick a SN and make sure it is available ($targetsn)
+	# 4) copy the /install/postscripts to $targetsn
+	# 5) copy the /install/prescripts to $targetsn
+	# 6) decide what NIM resources to copy
+	# 	- if res is allocated anywhere then don't copy
+	#   - see if it is a valid resource
+	# 7) if shared_root is allocated then still copy the statelite stuff 
+	# 8) copy NIM resource files/dirs to $targetsn
+
+	#  the /etc/hosts file should be copied to each SN
+	my @SNlist;
+
+	#  Get a list of nodes for each service node
     my $sn = xCAT::Utils->getSNformattedhash(\@nodelist, "xcat", "MN", $type);
     if ($::ERROR_RC)
     {
         my $rsp;
         push @{$rsp->{data}}, "Could not get list of xCAT service nodes.";
         xCAT::MsgUtils->message("E", $rsp, $callback);
-        return undef;
+        return 1;
     }
 
-    #
-    # Get a list of images for each SN
-    #
-	my @SNlist;
-    my %SNosi;
-    foreach my $snkey (keys %$sn)
+	foreach my $snkey (keys %$sn)
     {
-        my @nodes = @{$sn->{$snkey}};
-        foreach my $n (@nodes)
-        {
-            if (!grep (/^$nodeosi{$n}$/, @{$SNosi{$snkey}}))
-            {
-                push(@{$SNosi{$snkey}}, $nodeosi{$n});
-            }
-        }
 		# get list of service nodes for these nodes
-		push (@SNlist, $snkey);
+        #   - don't include the MN
+        if (!xCAT::InstUtils->is_me($snkey)) {
+            push (@SNlist, $snkey);
+        }
+	}
+
+	unless(scalar @SNlist)
+    {
+        return 1;
     }
 
-    #
-    #  For each SN
-    #	- copy whatever is needed to the SNs
-    #
+    my $snlist=join(',',@SNlist);
 
-    foreach my $snkey (keys %$sn)
+    # copy the /etc/hosts file all the SNs
+    my $rcpcmd = "$::XCATROOT/bin/xdcp $snlist /etc/hosts /etc ";
+    my $output = xCAT::Utils->runcmd("$rcpcmd", -1);
+    if ($::RUNCMD_RC != 0)
     {
-        my @nimresources;
-        if (!xCAT::InstUtils->is_me($snkey))
-        {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not copy /etc/hosts to service nodes.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+		$error++;
+    }
 
-            # running on the management node so
-            # copy the /etc/hosts file to the SN
-            my $rcpcmd = "$::XCATROOT/bin/xdcp $snkey /etc/hosts /etc ";
-            my $output = xCAT::Utils->runcmd("$rcpcmd", -1);
+	# get a list of images that need to be copied?
+	my @imagenames;  # images that need to be copied to SFS
+	foreach my $node (@nodelist) {
+		if (!grep (/^$nodeosi{$node}$/, @imagenames) ) {
+			push(@imagenames, $nodeosi{$node});
+		}
+	}
 
-            if ($::RUNCMD_RC != 0)
-            {
-                my $rsp;
-                push @{$rsp->{data}}, "Could not copy /etc/hosts to $snkey.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-            }
+	# pick a SN and make sure it is available
+	my @targetSN;
+	my $targetsn;
+	foreach $sn (@SNlist) {
+		if (!xCAT::InstUtils->is_me($sn) ) {
+			$targetsn=$sn;
+			last;
+		}
+	}
+	push(@targetSN, $targetsn);
 
-            # update the postscripts on the SN
-            my $lscmd = "$::XCATROOT/bin/xdsh $snkey 'ls $install_dir/postscripts' >/dev/null 2>&1";
-            $output = xCAT::Utils->runcmd("$lscmd", -1);
-            if ($::RUNCMD_RC == 0)
-            {
+    # copy the /install/postscripts to $targetsn
 
-                # if the dir exists then we can update it
-                my $cpcmd =
-                  "$::XCATROOT/bin/xdcp $snkey -p -R $install_dir/postscripts/* $install_dir/postscripts ";
-                $output = xCAT::Utils->runcmd("$cpcmd", -1);
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}},
-                      "Could not copy $install_dir/postscripts to $snkey.\n";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                }
-            }
+	#	assume this directory always exists on the nimprime
+	my $cpcmd = qq~$::XCATROOT/bin/prsync -o "rlHpEAogDz" $install_dir/postscripts @targetSN:$install_dir~;
+	$output=xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cpcmd, 0);
+	if ($::RUNCMD_RC != 0)
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "Could not copy $install_dir/postscripts to $targetsn.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		$error++;
+	}
 
-            # copy NIM files/dir to the remote SN - so that
-            #	the NIM res defs can be created when the rest of this cmd
-            # 	runs on that SN
+	# copy the /install/prescripts to targetSN
 
-            # get a list of the resources that are defined on the SN
-            my $cmd =
-              qq~$::XCATROOT/bin/xdsh $snkey "/usr/sbin/lsnim -c resources | /usr/bin/cut -f1 -d' '"~;
-
-            my @resources = xCAT::Utils->runcmd("$cmd", -1);
-            if ($::RUNCMD_RC != 0)
-            {
-                my $rsp;
-                push @{$rsp->{data}}, "Could not get NIM resource definitions.";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return undef;
-            }
-
-            foreach my $r (@resources)
-            {
-                my ($node, $nimres) = split(': ', $r);
-                chomp $nimres;
-                push(@nimresources, $nimres);
-            }
-
-            # for each image
-            foreach my $image (@{$SNosi{$snkey}})
-            {
-
-                # for each resource
-                foreach my $restype (keys(%{$imghash{$image}}))
-                {
-
-                    my $nimtype = $imghash{$image}{'nimtype'};
-                    if (   ($nimtype ne 'standalone')
-                        && ($restype eq 'lpp_source'))
-                    {
-
-                        # don't copy lpp_source for diskless/dataless nodes
-                        next;
-                    }
-
-                    # if a valid NIM type and a value is set
-                    if (   ($imghash{$image}{$restype})
-                        && (grep(/^$restype$/, @nimrestypes)))
-                    {
-
-                        # could have a comma separated list - ex. script etc.
-                        foreach my $res (split /,/, $imghash{$image}{$restype})
-                        {
-                            chomp $res;
-
-                            # if the resources are not defined on the SN
-                            if (!grep(/^$res$/, @nimresources))
-                            {
-
-                                # copy appropriate files to the SN
-                                # use same location on all NIM servers
-                                # cp dirs/files to corresponding dirs on
-                                #   each SN - always in /install!!!
-                                # only care about these resource types for now
-
-                                my @dorestypes = (
-                                              "mksysb",       "resolv_conf",
-                                              "script",       "installp_bundle",
-                                              "bosinst_data", "lpp_source",
-                                              "spot", "image_data" 
-                                              );
-                                if (grep(/^$restype$/, @dorestypes))
-                                {
-                                    my $resloc = $lochash{$res};
-
-                                    #   if ($::VERBOSE) {
-                                    if (0)
-                                    {
-                                        my $rsp;
-                                        push @{$rsp->{data}},
-                                          "Copying NIM resources to the xCAT $snkey service node. This could take a while.";
-                                        xCAT::MsgUtils->message("I", $rsp,
-                                                                $callback);
-
-                                    }
-
-                                    if (
-                                        &copyres($callback, $snkey, $restype,
-                                                 $resloc,   $res,   $nimprime)
-                                      )
-                                    {
-
-                                        # error
-                                    }
-                                }
-
-                            }    # end - if res not defined
-                        }    # end foreach resource of this type
-                    }    # end - if it's a valid res type
-                }    # end - for each resource
-            }    # end - for each image
-        }    # end - if the SN is not me
-    }    # end - for each SN
-
-    # remove any lpp_source or spot backup files that were created
-    foreach my $file (@::removebk)
+	# check if there is anything to copy from the nimprime
+	my $lscmd = qq~/usr/bin/ls $install_dir/prescripts >/dev/null 2>&1~;
+	my $out = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $lscmd, 0);
+	if ($::RUNCMD_RC == 0)
     {
-        my $rmcmd = "/usr/bin/rm -f $file";
-        my $output = xCAT::Utils->runcmd("$rmcmd", -1);
+        # if the dir exists then we can update it on the targetsn
+        my $cpcmd = qq~$::XCATROOT/bin/prsync -o "rlHpEAogDz" $install_dir/prescripts  @targetSN:$install_dir~;
+		$output=xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cpcmd, 0);
         if ($::RUNCMD_RC != 0)
         {
             my $rsp;
-            push @{$rsp->{data}}, "Could not remove backup file: $file\n";
-            if ($::VERBOSE)
-            {
-                push @{$rsp->{data}}, "$output";
-            }
+            push @{$rsp->{data}}, "Could not copy $install_dir/prescripts to $targetsn.\n";
             xCAT::MsgUtils->message("E", $rsp, $callback);
+			$error++;
         }
     }
 
-    return \%$sn;
+	# Get list of resources that are allocated on any SNs
+	my %liteonly;
+	my @dontcopy;
+	foreach my $sn (@SNlist) {
+		foreach my $img (@imagenames) {
+			foreach my $restype (keys(%{$imghash{$img}})) {
+
+				if (!grep(/^$restype$/, @nimrestypes)) {
+					next;
+				}
+
+				# restype is spot, shared_root etc.
+				my $nimtype = $imghash{$img}{'nimtype'};
+				if ( ($nimtype ne 'standalone') && ($restype eq 'lpp_source'))
+				{
+					# don't copy lpp_source for diskless/dataless nodes
+					push(@dontcopy, $imghash{$img}{'lpp_source'});
+					next;
+				}
+
+				if ( ($nimtype ne 'standalone') && ($restype eq ''))
+               	{
+                   	# don't copy lpp_source for diskless/dataless nodes
+                   	push(@dontcopy, $imghash{$img}{'lpp_source'});
+                   	next;
+               	}
+
+				foreach my $res (split /,/, $imghash{$img}{$restype})
+				{
+					# could have a comma separated list - ex. script
+					my $alloc_count = xCAT::InstUtils->get_nim_attr_val($res, "alloc_count", $callback, $sn, $subreq);
+
+					if (defined($alloc_count) && ($alloc_count != 0)) {
+						# if it's allocated then don't copy it
+						push(@dontcopy, $res);
+
+						if ( ($nimtype ne 'standalone') && ($restype eq 'shared_root'))
+						{
+							$liteonly{$res}=$imghash{$img}{spot};
+						}
+					}
+				} # end - for each resource 
+			}
+		}
+	} # end - for each SN
+
+	# copy NIM resource files/dirs to $targetsn
+	#  - not necessary to copy paging or dump!!!
+
+	# for each image
+	foreach my $image (@imagenames)
+	{
+		# for each resource
+		foreach my $restype (keys(%{$imghash{$image}}))
+		{
+			# if a valid NIM type and a value is set
+			if (($imghash{$image}{$restype}) && (grep(/^$restype$/, @nimrestypes)))
+			{
+				# could have a comma separated list - ex. script etc.
+				foreach my $res (split /,/, $imghash{$image}{$restype})
+				{
+					chomp $res;
+
+					# if the resources need to be copied
+					if (!grep(/^$res$/, @dontcopy))
+					{
+						# copy appropriate files to the SN
+						# use same location on all NIM servers
+						my @dorestypes = (
+							"mksysb",       "resolv_conf",
+							"script",       "installp_bundle",
+							"bosinst_data", "lpp_source",
+							"spot", "image_data",
+							"root", "shared_root",
+							"shared_home" 
+						);
+						if (grep(/^$restype$/, @dorestypes))
+						{
+							my %resinfo;
+							push @{$resinfo{$res}{snlist}}, $targetsn;
+							$resinfo{$res}{restype}=$restype;
+							$resinfo{$res}{resloc}=$lochash{$res};
+
+#my $rsp;
+#push @{$rsp->{data}}, "target = $targetsn, res = $res, type = $resinfo{$res}{restype}, loc = $resinfo{$res}{resloc}\n";
+#xCAT::MsgUtils->message("I", $rsp, $callback);
+
+							if (&copyres2($callback, \%resinfo, $nimprime, $subreq) ) {
+								# error
+								my $rsp;
+								push @{$rsp->{data}}, "Could not copy NIM resource $res.\n";
+								xCAT::MsgUtils->message("E", $rsp, $callback);
+								$error++;
+                            }    
+                        }    # end - if it's a valid res type
+                    } # end if we should copy 
+                }    # end - for each resource
+            }    # end - if valid type
+        }    # end -  foreach type res
+    }    # end - for each osimage
+
+	if ($error)
+    {
+		my $rsp;
+		push @{$rsp->{data}}, "One or more errors occured while attempting to copy files to $targetsn.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	} 
+
+    return 0;
 }
 
 #----------------------------------------------------------------------------
@@ -9220,6 +9303,15 @@ sub mkdsklsnode
         }
     }
 
+	my $sitetab = xCAT::Table->new('site');
+    my ($tmp) = $sitetab->getAttribs({'key' => 'sharedinstall'}, 'value');
+    my $sharedinstall = $tmp->{value};
+    $sitetab->close;
+    if (!$sharedinstall) {
+        $sharedinstall="no";
+    }
+    chomp $sharedinstall;
+
 	my $rsp;
 	$rsp->{data}->[0] = "$Sname: Initializing AIX diskless nodes.  This could take a while.\n";
 	xCAT::MsgUtils->message("I", $rsp, $callback);
@@ -9302,8 +9394,7 @@ sub mkdsklsnode
     #
     if (!xCAT::InstUtils->is_me($nimprime))
     {
-        &make_SN_resource($callback,   \@nodelist, \@image_names,
-                          \%imagehash, \%lochash,  \%nethash, \%nimhash);
+        &make_SN_resource($callback,   \@nodelist, \@image_names, \%imagehash, \%lochash,  \%nethash, \%nimhash, $sharedinstall);
     }
     else
     {
@@ -9337,7 +9428,7 @@ sub mkdsklsnode
                       "$Sname: Synchronizing the NIM \'$imagehash{$img}{shared_root}\' resource.\n";
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
-                my $scmd = "nim -F -o sync_roots $imagehash{$img}{spot}";
+                my $scmd = "nim -Fo sync_roots $imagehash{$img}{spot}";
                 my $output = xCAT::Utils->runcmd("$scmd", -1);
                 if ($::RUNCMD_RC != 0)
                 {
@@ -9357,23 +9448,25 @@ sub mkdsklsnode
 	#
     #   check/do statelite setup
     #
-	#  already did this on the primary
-	if (!xCAT::InstUtils->is_me($nimprime)) {
-    	my $statelite=0;
-		foreach my $image (@image_names){
-    		if ($imagehash{$image}{shared_root}) {
+	#  not needed if using a shared file system
+	if ($sharedinstall eq "no") {
+		if (!xCAT::InstUtils->is_me($nimprime)) {
+    		my $statelite=0;
+			foreach my $image (@image_names){
+    			if ($imagehash{$image}{shared_root}) {
 
-        		# if this has a shared_root resource then
-        		#   it might need statelite setup
-        		my $rc=xCAT::InstUtils->dolitesetup($image, \%imagehash, \@nodelist, $callback, $subreq);
-        		if ($rc eq 1) { # error
-            		my $rsp;
-            		push @{$rsp->{data}}, qq{Could not complete the statelite setup.};
-            		xCAT::MsgUtils->message("E", $rsp, $callback);
-            		return 1;
-        		}
-			}
-    	}
+        			# if this has a shared_root resource then
+        			#   it might need statelite setup
+        			my $rc=xCAT::InstUtils->dolitesetup($image, \%imagehash, \@nodelist, $callback, $subreq);
+        			if ($rc eq 1) { # error
+            			my $rsp;
+            			push @{$rsp->{data}}, qq{Could not complete the statelite setup.};
+            			xCAT::MsgUtils->message("E", $rsp, $callback);
+            			return 1;
+        			}
+				}
+    		}
+		}
 	}
 
 	#
@@ -9493,7 +9586,7 @@ sub mkdsklsnode
                 }
 
                 my $rmcmd =
-                    "/usr/sbin/nim -o reset -a force=yes $nim_name;/usr/sbin/nim -Fo deallocate -a subclass=all $nim_name";
+                    "/usr/sbin/nim -Fo reset -a force=yes $nim_name;/usr/sbin/nim -Fo deallocate -a subclass=all $nim_name";
                 my $output = xCAT::Utils->runcmd("$rmcmd", -1);
                 if ($::RUNCMD_RC != 0)
                 {
@@ -9784,11 +9877,11 @@ sub mkdsklsnode
             my $initcmd;
             if ($type eq "diskless")
             {
-                $initcmd = "/usr/sbin/nim -o dkls_init $arg_string $nim_name 2>&1";
+                $initcmd = "/usr/sbin/nim -Fo dkls_init $arg_string $nim_name 2>&1";
             }
             else
             {
-                $initcmd = "/usr/sbin/nim -o dtls_init $arg_string $nim_name 2>&1";
+                $initcmd = "/usr/sbin/nim -Fo dtls_init $arg_string $nim_name 2>&1";
             }
 
             my $time = `date | cut -f5 -d' '`;
@@ -10109,222 +10202,224 @@ sub mkdsklsnode
 	#   in some cases - ex. file and dir names
 	#   - if NEWNAME then nim name = <nodename>_<osimage name>
 
-    # convert the @nodesfailed to hash for search performance considerations
-    my %fnhash = ();
-    foreach my $fnd (@nodesfailed)
-    {
-        $fnhash{$fnd} = 1;
-    }
 
-    # Only do the update for the successful nodes
-    my @snode = ();
-    foreach my $nd (@nodelist)
-    {
-        if(!defined($fnhash{$nd}) || ($fnhash{$nd} != 1))
-        {
-            push(@snode, $nd);
-        }
-    }
+	if ($sharedinstall eq "no") {
 
-    if(scalar(@snode) > 0)
-    {
-        my $nfshash;
-        my $restab = xCAT::Table->new('noderes');
-        if ($restab)
-        {
-            $nfshash = $restab->getNodesAttribs(\@nodelist, ['nfsserver']);
-        }
-        foreach my $snd (@snode)
-        {
-			my $nimname;
-			if ($::NEWNAME)
-			{
-			 	# need to use a new name for the node name
-				#   - not node hostname
-				# used for filenames and dirs in shared_root
-				# "<xcat_node_name>_<image_name>"
-				$snd =~ s/\..*$//; # make sure we have the short hostname
-				$nimname = $snd . "_" . $nodeosi{$snd};
-			} else {
-				$nimname = $snd;
-			}
+    	# convert the @nodesfailed to hash for search performance considerations
+    	my %fnhash = ();
+    	foreach my $fnd (@nodesfailed)
+    	{
+        	$fnhash{$fnd} = 1;
+    	}
 
-            # nfsserver defined for this node
-            if($nfshash->{$snd}->[0]->{'nfsserver'})
-            {
-                # if nfsserver is set to the service node itself, nothing needs to do
-                if(!xCAT::InstUtils->is_me($nfshash->{$snd}->[0]->{'nfsserver'}))
-                {
-                    my $osimg = $nodeosi{$snd};
-                    my ($nfshost,$nfsip) = xCAT::NetworkUtils->gethostnameandip($nfshash->{$snd}->[0]->{'nfsserver'});
-                    if (!$nfshost || !$nfsip)
-                    {
-                        my $rsp = {};
-                        $rsp->{data}->[0] = "Can not resolve the nfsserver $nfshost for node $snd";
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
-                        next;
-                    }
-                    #shared_root configuration
-                    my $hostfile;
-                    my $filesystemsfile;
-                    if($imagehash{$osimg}{'shared_root'})
-                    {
-                        my $imgsrdir = xCAT::InstUtils->get_nim_attr_val(
+    	# Only do the update for the successful nodes
+    	my @snode = ();
+    	foreach my $nd (@nodelist)
+    	{
+        	if(!defined($fnhash{$nd}) || ($fnhash{$nd} != 1))
+        	{
+            	push(@snode, $nd);
+        	}
+    	}
+
+    	if(scalar(@snode) > 0)
+    	{
+        	my $nfshash;
+        	my $restab = xCAT::Table->new('noderes');
+        	if ($restab)
+        	{
+            	$nfshash = $restab->getNodesAttribs(\@nodelist, ['nfsserver']);
+        	}
+        	foreach my $snd (@snode)
+        	{
+				my $nimname;
+				if ($::NEWNAME)
+				{
+			 		# need to use a new name for the node name
+					#   - not node hostname
+					# used for filenames and dirs in shared_root
+					# "<xcat_node_name>_<image_name>"
+					$snd =~ s/\..*$//; # make sure we have the short hostname
+					$nimname = $snd . "_" . $nodeosi{$snd};
+				} else {
+					$nimname = $snd;
+				}
+
+            	# nfsserver defined for this node
+            	if($nfshash->{$snd}->[0]->{'nfsserver'})
+            	{
+                	# if nfsserver is set to the service node itself, nothing needs to do
+                	if(!xCAT::InstUtils->is_me($nfshash->{$snd}->[0]->{'nfsserver'}))
+                	{
+                    	my $osimg = $nodeosi{$snd};
+                    	my ($nfshost,$nfsip) = xCAT::NetworkUtils->gethostnameandip($nfshash->{$snd}->[0]->{'nfsserver'});
+                    	if (!$nfshost || !$nfsip)
+                    	{
+                        	my $rsp = {};
+                        	$rsp->{data}->[0] = "Can not resolve the nfsserver $nfshost for node $snd";
+                        	xCAT::MsgUtils->message("E", $rsp, $callback);
+                        	next;
+                    	}
+                    	#shared_root configuration
+                    	my $hostfile;
+                    	my $filesystemsfile;
+                    	if($imagehash{$osimg}{'shared_root'})
+                    	{
+                        	my $imgsrdir = xCAT::InstUtils->get_nim_attr_val(
                                                         $imagehash{$osimg}{'shared_root'}, 
                                                         "location", $callback, $Sname, $subreq);
-                        $hostfile = "$imgsrdir/etc/.client_data/hosts.$nimname";
-                        $filesystemsfile = "$imgsrdir/etc/.client_data/filesystems.$nimname";
-                    }
-                    else # non-shared_root configuration
-                    {
-                        my $imgrootdir = xCAT::InstUtils->get_nim_attr_val(
+                        	$hostfile = "$imgsrdir/etc/.client_data/hosts.$nimname";
+                        	$filesystemsfile = "$imgsrdir/etc/.client_data/filesystems.$nimname";
+                    	}
+                    	else # non-shared_root configuration
+                    	{
+                        	my $imgrootdir = xCAT::InstUtils->get_nim_attr_val(
                                                           $imagehash{$osimg}{'root'},
                                                           "location", $callback, $Sname, $subreq);
-                        $hostfile = "$imgrootdir/$nimname/etc/hosts";
-                        $filesystemsfile = "$imgrootdir/$nimname/etc/filesystems";
-                        my ($nodehost, $nodeip) = xCAT::NetworkUtils->gethostnameandip($snd);
-                        if (!$nodehost || !$nodeip)
-                        {
-                            my $rsp = {};
-                            $rsp->{data}->[0] = "Can not resolve the node $snd";
-                            xCAT::MsgUtils->message("E", $rsp, $callback);
-                            next;
-                        }
-                        my $tftpdir = xCAT::Utils->getTftpDir();
-                        my $niminfofile = "$tftpdir/${nodeip}.info";
-                        #Update /tftpboot/<node>.info file
-                        my $fscontent;
-                        unless (open(NIMINFOFILE, "<$niminfofile"))
-                        {
-                            my $rsp = {};
-                            $rsp->{data}->[0] = "Can not open the niminfo file $niminfofile for node $snd";
-                            xCAT::MsgUtils->message("E", $rsp, $callback);
-                            next;
-                        }
-                        while (my $line = <NIMINFOFILE>)
-                        {
-                            $fscontent .= $line;
-                        }
+                        	$hostfile = "$imgrootdir/$nimname/etc/hosts";
+                        	$filesystemsfile = "$imgrootdir/$nimname/etc/filesystems";
+                        	my ($nodehost, $nodeip) = xCAT::NetworkUtils->gethostnameandip($snd);
+                        	if (!$nodehost || !$nodeip)
+                        	{
+                            	my $rsp = {};
+                            	$rsp->{data}->[0] = "Can not resolve the node $snd";
+                            	xCAT::MsgUtils->message("E", $rsp, $callback);
+                            	next;
+                        	}
+                        	my $tftpdir = xCAT::Utils->getTftpDir();
+                        	my $niminfofile = "$tftpdir/${nodeip}.info";
+                        	#Update /tftpboot/<node>.info file
+                        	my $fscontent;
+                        	unless (open(NIMINFOFILE, "<$niminfofile"))
+                        	{
+                            	my $rsp = {};
+                            	$rsp->{data}->[0] = "Can not open the niminfo file $niminfofile for node $snd";
+                            	xCAT::MsgUtils->message("E", $rsp, $callback);
+                            	next;
+                        	}
+                        	while (my $line = <NIMINFOFILE>)
+                        	{
+                            	$fscontent .= $line;
+                        	}
 
-                        # Update the ROOT & NIM_HOSTS
-                        $fscontent =~ s/(export\s+SPOT=)(.*):/$1$nfshost:/;
-                        $fscontent =~ s/(export\s+ROOT=)(.*):/$1$nfshost:/;
-                        $fscontent =~ s/(export\s+NIM_HOSTS=.*)"/$1$nfsip:$nfshost "/;
-                        close(NIMINFOFILE);
+                        	# Update the ROOT & NIM_HOSTS
+                        	$fscontent =~ s/(export\s+SPOT=)(.*):/$1$nfshost:/;
+                        	$fscontent =~ s/(export\s+ROOT=)(.*):/$1$nfshost:/;
+                        	$fscontent =~ s/(export\s+NIM_HOSTS=.*)"/$1$nfsip:$nfshost "/;
+                        	close(NIMINFOFILE);
 
-                        unless (open(TMPFILE, ">$niminfofile"))
-                        {
-                            my $rsp = {};
-                            $rsp->{data}->[0] = "Can not open the file $niminfofile for writing";
-                            xCAT::MsgUtils->message("E", $rsp, $callback);
-                            next;
-                        }
-                        print TMPFILE $fscontent;
-                        close(TMPFILE);
-
-                    }
+                        	unless (open(TMPFILE, ">$niminfofile"))
+                        	{
+                            	my $rsp = {};
+                            	$rsp->{data}->[0] = "Can not open the file $niminfofile for writing";
+                            	xCAT::MsgUtils->message("E", $rsp, $callback);
+                            	next;
+                        	}
+                        	print TMPFILE $fscontent;
+                        	close(TMPFILE);
+                    	}
                     
-                    # Update /etc/hosts file in the shared_root or root
-                    my $line = "$nfsip    $nfshost";
-                    my $cmd = "echo  $line >> $hostfile";
-                    xCAT::Utils->runcmd($cmd, 0);
-                    if ($::RUNCMD_RC != 0)
-                    {
-                        my $rsp = {};
-                        $rsp->{data}->[0] = "Can not update the NIM hosts file $hostfile for node $snd";
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
-                        next;
-                    }
+                    	# Update /etc/hosts file in the shared_root or root
+                    	my $line = "$nfsip    $nfshost";
+                    	my $cmd = "echo  $line >> $hostfile";
+                    	xCAT::Utils->runcmd($cmd, 0);
+                    	if ($::RUNCMD_RC != 0)
+                    	{
+                        	my $rsp = {};
+                        	$rsp->{data}->[0] = "Can not update the NIM hosts file $hostfile for node $snd";
+                        	xCAT::MsgUtils->message("E", $rsp, $callback);
+                        	next;
+                    	}
 
-                    #Update etc/filesystems file in the shared_root or root
-                    my $fscontent;
-                    unless (open(FSFILE, "<$filesystemsfile"))
-                    {
-                        my $rsp = {};
-                        $rsp->{data}->[0] = "Can not open the filesystems file $filesystemsfile for node $snd";
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
-                        next;
-                    }
-                    while (my $line = <FSFILE>)
-                    {
-                        $fscontent .= $line;
-                    }
+                    	#Update etc/filesystems file in the shared_root or root
+                    	my $fscontent;
+                    	unless (open(FSFILE, "<$filesystemsfile"))
+                    	{
+                        	my $rsp = {};
+                        	$rsp->{data}->[0] = "Can not open the filesystems file $filesystemsfile for node $snd";
+                        	xCAT::MsgUtils->message("E", $rsp, $callback);
+                        	next;
+                    	}
+                    	while (my $line = <FSFILE>)
+                    	{
+                        	$fscontent .= $line;
+                    	}
 
-                    # Update the mount server for / and /usr
-                    $fscontent =~ s/(\/:\s*\n\s+nodename\s+=\s+)(.*)/$1$nfshost/;
-                    $fscontent =~ s/(\/usr:\s*\n\s+nodename\s+=\s+)(.*)/$1$nfshost/;
-                    close(FSFILE);
+                    	# Update the mount server for / and /usr
+                    	$fscontent =~ s/(\/:\s*\n\s+nodename\s+=\s+)(.*)/$1$nfshost/;
+                    	$fscontent =~ s/(\/usr:\s*\n\s+nodename\s+=\s+)(.*)/$1$nfshost/;
+                    	close(FSFILE);
 
-                    my $tmpfile = $filesystemsfile . ".tmp";
-                    unless (open(FSTMPFILE, ">$tmpfile"))
-                    {
-                        my $rsp = {};
-                        $rsp->{data}->[0] = "Can not open the file $tmpfile for writing";
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
-                        next;
-                    }
-                    print FSTMPFILE $fscontent;
-                    close(FSTMPFILE);
+                    	my $tmpfile = $filesystemsfile . ".tmp";
+                    	unless (open(FSTMPFILE, ">$tmpfile"))
+                    	{
+                        	my $rsp = {};
+                        	$rsp->{data}->[0] = "Can not open the file $tmpfile for writing";
+                        	xCAT::MsgUtils->message("E", $rsp, $callback);
+                        	next;
+                    	}
+                    	print FSTMPFILE $fscontent;
+                    	close(FSTMPFILE);
 
-                    my $cpcmd = "cp $tmpfile $filesystemsfile";
-                    xCAT::Utils->runcmd($cpcmd, 0);
-                    if ($::RUNCMD_RC != 0)
-                    {
-                        my $rsp = {};
-                        $rsp->{data}->[0] = "Can not update the NIM filesystems file $filesystemsfile for node $snd";
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
-                        next;
-                    }
+                    	my $cpcmd = "cp $tmpfile $filesystemsfile";
+                    	xCAT::Utils->runcmd($cpcmd, 0);
+                    	if ($::RUNCMD_RC != 0)
+                    	{
+                        	my $rsp = {};
+                        	$rsp->{data}->[0] = "Can not update the NIM filesystems file $filesystemsfile for node $snd";
+                        	xCAT::MsgUtils->message("E", $rsp, $callback);
+                        	next;
+                    	}
+                	} #end if(!xCAT::InstUtils->is_me...
+            	}
 
-                } #end if(!xCAT::InstUtils->is_me...
-            }
+            	# Enable /proc filesystem by default
 
-            # Enable /proc filesystem by default
+            	my $filesystemsfile;
+            	my $osimg = $nodeosi{$snd};
 
-            my $filesystemsfile;
-            my $osimg = $nodeosi{$snd};
-
-            #shared_root or root configuration
-            if($imagehash{$osimg}{'shared_root'})
-            {
-                my $imgsrdir = xCAT::InstUtils->get_nim_attr_val(
+            	#shared_root or root configuration
+            	if($imagehash{$osimg}{'shared_root'})
+            	{
+                	my $imgsrdir = xCAT::InstUtils->get_nim_attr_val(
                                                 $imagehash{$osimg}{'shared_root'},
                                                  "location", $callback, $Sname, $subreq);
-                $filesystemsfile = "$imgsrdir/etc/.client_data/filesystems.$nimname";
-            }
-            else # non-shared_root configuration
-            {
-                my $imgrootdir = xCAT::InstUtils->get_nim_attr_val(
+                	$filesystemsfile = "$imgsrdir/etc/.client_data/filesystems.$nimname";
+            	}
+            	else # non-shared_root configuration
+            	{
+                	my $imgrootdir = xCAT::InstUtils->get_nim_attr_val(
                                                   $imagehash{$osimg}{'root'},
                                                   "location", $callback, $Sname, $subreq);
-                $filesystemsfile = "$imgrootdir/$nimname/etc/filesystems";
-            }
+                	$filesystemsfile = "$imgrootdir/$nimname/etc/filesystems";
+            	}
 
-            my $fscontent;
-            unless (open(FSFILE, "<$filesystemsfile"))
-            {
-                my $rsp = {};
-                $rsp->{data}->[0] = "Can not open the filesystems file $filesystemsfile for node $snd";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                next;
-            }
-            while (my $line = <FSFILE>)
-            {
-                $fscontent .= $line;
-            }
+            	my $fscontent;
+            	unless (open(FSFILE, "<$filesystemsfile"))
+            	{
+                	my $rsp = {};
+                	$rsp->{data}->[0] = "Can not open the filesystems file $filesystemsfile for node $snd";
+                	xCAT::MsgUtils->message("E", $rsp, $callback);
+                	next;
+            	}
+            	while (my $line = <FSFILE>)
+            	{
+                	$fscontent .= $line;
+            	}
 
-            if (!grep(/proc:/, $fscontent))
-            {
-                my $line = qq~/proc:\n	dev		=	/proc\n	vol		=	\"/proc\"\n	mount		=	true\n	check		=	false\n	free		=	false\n	vfs		=	procfs~;
+            	if (!grep(/proc:/, $fscontent))
+            	{
+                	my $line = qq~/proc:\n	dev		=	/proc\n	vol		=	\"/proc\"\n	mount		=	true\n	check		=	false\n	free		=	false\n	vfs		=	procfs~;
 
-                $cmd = "echo \"$line\" >> $filesystemsfile";
-                xCAT::Utils->runcmd($cmd, 0);
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp = {};
-                    $rsp->{data}->[0] = "Can not update the NIM filesystems file $filesystemsfile for node $snd";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    next;
+                	$cmd = "echo \"$line\" >> $filesystemsfile";
+                	xCAT::Utils->runcmd($cmd, 0);
+                	if ($::RUNCMD_RC != 0)
+                	{
+                    	my $rsp = {};
+                    	$rsp->{data}->[0] = "Can not update the NIM filesystems file $filesystemsfile for node $snd";
+                    	xCAT::MsgUtils->message("E", $rsp, $callback);
+                    	next;
+					}
                 }
             }
         }
@@ -10573,7 +10668,7 @@ sub mkdsklsnode
             }
         }
 
-        xCAT::MsgUtils->message("E", $rsp, $callback);
+        xCAT::MsgUtils->message("I", $rsp, $callback);
 	$retcode =  1;
     }
     else
@@ -10715,7 +10810,7 @@ sub checkNIMnetworks
                 $devtype = "ent";
             }
             my $cmd =
-              qq~/usr/sbin/nim -o define -t $devtype -a net_addr=$nethash{$node}{net} -a snm=$nethash{$node}{mask} -a routing1='default $nethash{$node}{gateway}' $nethash{$node}{netname} 2>/dev/null~;
+              qq~/usr/sbin/nim -Fo define -t $devtype -a net_addr=$nethash{$node}{net} -a snm=$nethash{$node}{mask} -a routing1='default $nethash{$node}{gateway}' $nethash{$node}{netname} 2>/dev/null~;
 
             my $output1 = xCAT::Utils->runcmd("$cmd", -1);
             if ($::RUNCMD_RC != 0)
@@ -10785,7 +10880,7 @@ sub checkNIMnetworks
 
             # define the new interface
             my $chcmd =
-              qq~/usr/sbin/nim -o change -a if$ifindex='$nethash{$node}{netname} $adapterhostname 0' -a cable_type$ctindex=N/A master 2>/dev/null~;
+              qq~/usr/sbin/nim -Fo change -a if$ifindex='$nethash{$node}{netname} $adapterhostname 0' -a cable_type$ctindex=N/A master 2>/dev/null~;
 
             my $output2 = xCAT::Utils->runcmd("$chcmd", -1);
             if ($::RUNCMD_RC != 0)
@@ -10830,7 +10925,7 @@ sub checkNIMnetworks
 
             # create static routes between the networks
             my $rtgcmd =
-              qq~/usr/sbin/nim -o change -a routing$rtindex='master_net $nethash{$node}{gateway} $adapterhost' $nethash{$node}{netname} 2>/dev/null~;
+              qq~/usr/sbin/nim -Fo change -a routing$rtindex='master_net $nethash{$node}{gateway} $adapterhost' $nethash{$node}{netname} 2>/dev/null~;
             my $output3 = xCAT::Utils->runcmd("$rtgcmd", -1);
             if ($::RUNCMD_RC != 0)
             {
@@ -10882,6 +10977,7 @@ sub make_SN_resource
     my $lhash    = shift;
     my $nethash  = shift;
 	my $nimres 	 = shift;
+	my $sharedinstall = shift;
 
     my @nodelist    = @{$nodes};
     my @image_names = @{$images};
@@ -11041,8 +11137,8 @@ sub make_SN_resource
         # NFSv4 domain is not set to nim master
         if (!$nimout)
         {
-            #nim -o change -a nfs_domain=$nfsdom master
-            $scmd = "nim -o change -a nfs_domain=$domain master";
+            #nim -Fo change -a nfs_domain=$nfsdom master
+            $scmd = "nim -Fo change -a nfs_domain=$domain master";
             $nimout = xCAT::Utils->runcmd("$scmd", -1);
             if ($::RUNCMD_RC != 0)
             {
@@ -11135,65 +11231,6 @@ sub make_SN_resource
                 #   then don't try to recreate it
 
                 #  see if it already exists on this SN
-                # if (grep(/^$imghash{$image}{$restype}$/, @nimresources))
-                if (0)
-                {
-
-                    # is it allocated?
-                    my $cmd =
-                      "/usr/sbin/lsnim -l $imghash{$image}{$restype} 2>/dev/null";
-                    my @result = xCAT::Utils->runcmd("$cmd", -1);
-                    if ($::RUNCMD_RC != 0)
-                    {
-                        my $rsp;
-                        push @{$rsp->{data}},
-                          "Could not run lsnim command: \'$cmd\'.\n";
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
-                        next;
-                    }
-
-                    my $alloc_count;
-                    foreach (@result)
-                    {
-                        my ($attr, $value) = split('=');
-                        chomp $attr;
-                        $attr =~ s/\s*//g;    # remove blanks
-                        chomp $value;
-                        $value =~ s/^\s*//;
-                        if ($attr eq "alloc_count")
-                        {
-                            $alloc_count = $value;
-                            last;
-                        }
-                    }
-
-                    if (defined($alloc_count) && ($alloc_count != 0))
-                    {
-                        my $rsp;
-                        push @{$rsp->{data}},
-                          "The resource named \'$imghash{$image}{$restype}\' is currently allocated. It will not be recreated.\n";
-                        xCAT::MsgUtils->message("I", $rsp, $callback);
-                        next;
-                    }
-                    else
-                    {
-
-                        # it's not allocated so remove and recreate
-                        my $cmd = "nim -Fo remove $imghash{$image}{$restype}";
-                        my $output = xCAT::Utils->runcmd("$cmd", -1);
-                        if ($::RUNCMD_RC != 0)
-                        {
-                            my $rsp;
-                            push @{$rsp->{data}},
-                              "Could not remove the NIM resource definition \'$imghash{$image}{$restype}\'.\n";
-                            push @{$rsp->{data}}, "$output";
-                            xCAT::MsgUtils->message("E", $rsp, $callback);
-                            next;
-                        }
-                    }
-                }
-
-                #  see if it already exists on this SN
                 if (grep(/^$imghash{$image}{$restype}$/, @nimresources))
                 {
                     my $rsp;
@@ -11235,7 +11272,7 @@ sub make_SN_resource
 					my $moveit = 0;
 					my $origloc;
 					my $origlocbak;
-					if ($::DEFONLY && ( $restype eq "shared_root")) {
+					if ( ($::DEFONLY || ($sharedinstall eq "sns")) && ( $restype eq "shared_root")) {
 						$origloc =  $lochash{$imghash{$image}{$restype}};
 						$origlocbak = "$origloc.bak";
 						# ex. /install/nim/shared_root/71Bdskls_shared_root
@@ -11275,27 +11312,13 @@ sub make_SN_resource
                         }
 
 						# move over the original
-						# in case it contains nfo for other node already
+						# in case it contains info for other node already
 						my $mvcmd2 = qq~/usr/sbin/mvdir $origlocbak $origloc~;
 						my $out3 = xCAT::Utils->runcmd("$mvcmd2", -1);
                         if ($::RUNCMD_RC != 0)
                         {
                             my $rsp;
                             push @{$rsp->{data}}, "Could not move $origlocbak to $origloc.\n";
-                            xCAT::MsgUtils->message("E", $rsp, $callback);
-                        }
-
-						# do a re-sync
-                        my $scmd = "nim -F -o sync_roots $imghash{$image}{spot}";
-                        my $output = xCAT::Utils->runcmd("$scmd", -1);
-                        if ($::RUNCMD_RC != 0)
-                        {
-                            my $rsp;
-                            push @{$rsp->{data}}, "Could not update $imghash{$image}{shared_root}.\n";
-                            if ($::VERBOSE)
-                            {
-                                push @{$rsp->{data}}, "$output";
-                            }
                             xCAT::MsgUtils->message("E", $rsp, $callback);
                         }
 					}
@@ -11469,7 +11492,7 @@ sub make_SN_resource
                     }
 				}
 
-                # if resolv_conf, bosinst_data  then
+                # if resolv_conf, bosinst_data, image_data then
                 #   the last part of the location is the actual file name
                 # 	but not necessarily the resource name!
                 my @usefileloc = ("resolv_conf", "bosinst_data", "image_data");
@@ -11540,7 +11563,7 @@ sub make_SN_resource
                     chomp $loc;
 
 					my $spotcmd;
-					$spotcmd = "/usr/sbin/nim -o define -t spot -a server=master -a location=$loc ";
+					$spotcmd = "/usr/sbin/nim -Fo define -t spot -a server=master -a location=$loc ";
 	
 					my @validattrs = ("verbose", "nfs_vers", "nfs_sec", "installp_flags", "auto_expand", "show_progress", "debug");
 
@@ -11870,7 +11893,7 @@ sub rmdsklsnode
         }
 
         # nim -Fo reset c75m5ihp05_53Lcosi
-        my $cmd = "nim -o reset -a force=yes $nodename  >/dev/null 2>&1";
+        my $cmd = "nim -Fo reset -a force=yes $nodename  >/dev/null 2>&1";
         my $output;
 
         $output = xCAT::Utils->runcmd("$cmd", -1);
@@ -12321,7 +12344,7 @@ sub getNodesetState
 			1 - error
 
    Comments:
-			This uses the NIM "nim -o cust" command.
+			This uses the NIM "nim -Fo cust" command.
 	Note - this assumes bnd and fileset lists are comma separated!
 =cut
 
