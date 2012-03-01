@@ -5,6 +5,7 @@ use Sys::Syslog;
 use Socket;
 use File::Copy;
 use File::Path;
+use xCAT::Scope;
 use Getopt::Long;
 
 my $addkcmdlinehandled;
