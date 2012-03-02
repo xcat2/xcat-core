@@ -1697,64 +1697,73 @@ sub spot_updates
     #
     if ($::UPDATE)
     {
-        foreach my $sn (@SNlist)
-        {
-            # remove the spot
-            if ($::VERBOSE)
-            {
-                my $rsp;
-                $rsp->{data}->[0] =
-                  "Removing SPOT \'$spot_name\' on service node $sn. This could take a while.\n";
-                xCAT::MsgUtils->message("I", $rsp, $callback);
-            }
 
-            my $rmcmd = qq~nim -Fo remove $spot_name 2>/dev/null~;
-            my $nout  =
-              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $sn, $rmcmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {
-                my $rsp;
-                push @{$rsp->{data}},
-                  "Could not remove $spot_name from service node $sn.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-            }
+		#  don't remove spots if SNs are using shared file system
+		#   mkdsklsnode will take care of copying out the updated spot
+		# check the sharedinstall attr
+		my $sharedinstall=xCAT::Utils->get_site_attribute('sharedinstall');
+		chomp $sharedinstall;
 
-
-			# if there is a shared_root then remove that also
-			#   - see if the shared_root exist and if it is allocated
-	    if ( $SRname ) {
-			my $alloc_count = xCAT::InstUtils->get_nim_attr_val($SRname, "alloc_count", $callback, $sn, $subreq);
-
-			if (defined($alloc_count)) {  # then the res exists
- 				if ($alloc_count != 0) {
+	  	if ( $sharedinstall ne "sns" )
+	  	{
+        	foreach my $sn (@SNlist)
+        	{
+            	# remove the spot
+            	if ($::VERBOSE)
+            	{
                 	my $rsp;
-                	push @{$rsp->{data}}, "The resource named \'$SRname\' is currently allocated on service node \'$sn\' and cannot be removed.\n";
+                	$rsp->{data}->[0] =
+                  		"Removing SPOT \'$spot_name\' on service node $sn. This could take a while.\n";
+                	xCAT::MsgUtils->message("I", $rsp, $callback);
+            	}
+
+            	my $rmcmd = qq~nim -Fo remove $spot_name 2>/dev/null~;
+            	my $nout  =
+              		xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $sn, $rmcmd, 0);
+            	if ($::RUNCMD_RC != 0)
+            	{
+                	my $rsp;
+                	push @{$rsp->{data}},
+                  	"Could not remove $spot_name from service node $sn.\n";
                 	xCAT::MsgUtils->message("E", $rsp, $callback);
             	}
-            	else
-            	{
 
-                	# shared_root  exists and is not allocated
-                	#  so it can be removed 
-					if ($::VERBOSE)
-            		{
-                		my $rsp;
-                		$rsp->{data}->[0] =
-                  		"Removing shared_root \'$SRname\' on service node $sn.\n";
-                		xCAT::MsgUtils->message("I", $rsp, $callback);
-            		}
+				# if there is a shared_root then remove that also
+				#   - see if the shared_root exist and if it is allocated
+	    		if ( $SRname ) {
+					my $alloc_count = xCAT::InstUtils->get_nim_attr_val($SRname, "alloc_count", $callback, $sn, $subreq);
 
-            		my $rmcmd = qq~nim -Fo remove $SRname 2>/dev/null~;
-            		my $nout  = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $sn, $rmcmd, 0);
-            		if ($::RUNCMD_RC != 0)
-            		{
-                		my $rsp;
-               			push @{$rsp->{data}}, "Could not remove \'$SRname\' from service node $sn.\n";
-                		xCAT::MsgUtils->message("E", $rsp, $callback);
-            		}
-				}
-	        }
-            }
+					if (defined($alloc_count)) {  # then the res exists
+ 						if ($alloc_count != 0) {
+                			my $rsp;
+                			push @{$rsp->{data}}, "The resource named \'$SRname\' is currently allocated on service node \'$sn\' and cannot be removed.\n";
+                			xCAT::MsgUtils->message("E", $rsp, $callback);
+            			}
+            			else
+            			{
+
+                			# shared_root  exists and is not allocated
+                			#  so it can be removed 
+							if ($::VERBOSE)
+            				{
+                				my $rsp;
+                				$rsp->{data}->[0] =
+                  				"Removing shared_root \'$SRname\' on service node $sn.\n";
+                				xCAT::MsgUtils->message("I", $rsp, $callback);
+            				}
+
+            				my $rmcmd = qq~nim -Fo remove $SRname 2>/dev/null~;
+            				my $nout  = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $sn, $rmcmd, 0);
+            				if ($::RUNCMD_RC != 0)
+            				{
+                				my $rsp;
+               					push @{$rsp->{data}}, "Could not remove \'$SRname\' from service node $sn.\n";
+                				xCAT::MsgUtils->message("E", $rsp, $callback);
+            				}
+						}
+	        		}
+            	}
+			}
         }
     } # end UPDATE
     return 0;
@@ -5517,17 +5526,8 @@ sub prermnimimage
     my $nimprime = xCAT::InstUtils->getnimprime();
     chomp $nimprime;
 
-	# convert to IP
-	my $nimprimeIP = xCAT::NetworkUtils->getipaddr($nimprime);
-	chomp $nimprimeIP;
-
-	# check the sharedinstall attr
-	my $sharedinstall=xCAT::Utils->get_site_attribute('sharedinstall');
-	chomp $sharedinstall;
-
     # by default, get MN and all servers
     my @allsn = ();
-	my @SFSsn = ();  # if sharedinstall=sns then get MN and one SN
     my @nlist = xCAT::Utils->list_all_nodes;
     my $sn;
     my $service = "xcat";
@@ -5535,22 +5535,8 @@ sub prermnimimage
     {
         $sn = xCAT::Utils->getSNformattedhash(\@nlist, $service, "MN");
     }
-
-	my $SFSdone;
     foreach my $snkey (keys %$sn)
     {
-		# if the SNs are using a shared file system then
-		#   we would only need to remove resources from the MN
-		#   and one SN.
-		if (($sharedinstall eq "sns") && (!$SFSdone)) {
-			my $snkeyIP = xCAT::NetworkUtils->getipaddr($snkey);
-			chomp $snkeyIP;
-			if ($snkeyIP ne $nimprimeIP) {
-				push(@SFSsn, $snkey);
-				push(@SFSsn, $nimprime);
-				$SFSdone++;
-			}
-		}
         push(@allsn, $snkey);
     }
 
@@ -5566,12 +5552,8 @@ sub prermnimimage
     }
     else
     {
-		if ($sharedinstall eq "sns") {
-			@servicenodes = @SFSsn;
-		} else {
-			# do mn and all sn
-			@servicenodes = @allsn;
-		}
+        # do mn and all sn
+        @servicenodes = @allsn;
     }
 
     #
