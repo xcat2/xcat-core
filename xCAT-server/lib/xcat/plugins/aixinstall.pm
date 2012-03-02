@@ -5517,8 +5517,17 @@ sub prermnimimage
     my $nimprime = xCAT::InstUtils->getnimprime();
     chomp $nimprime;
 
+	# convert to IP
+	my $nimprimeIP = xCAT::NetworkUtils->getipaddr($nimprime);
+	chomp $nimprimeIP;
+
+	# check the sharedinstall attr
+	my $sharedinstall=xCAT::Utils->get_site_attribute('sharedinstall');
+	chomp $sharedinstall;
+
     # by default, get MN and all servers
     my @allsn = ();
+	my @SFSsn = ();  # if sharedinstall=sns then get MN and one SN
     my @nlist = xCAT::Utils->list_all_nodes;
     my $sn;
     my $service = "xcat";
@@ -5526,8 +5535,22 @@ sub prermnimimage
     {
         $sn = xCAT::Utils->getSNformattedhash(\@nlist, $service, "MN");
     }
+
+	my $SFSdone;
     foreach my $snkey (keys %$sn)
     {
+		# if the SNs are using a shared file system then
+		#   we would only need to remove resources from the MN
+		#   and one SN.
+		if (($sharedinstall eq "sns") && (!$SFSdone)) {
+			my $snkeyIP = xCAT::NetworkUtils->getipaddr($snkey);
+			chomp $snkeyIP;
+			if ($snkeyIP ne $nimprimeIP) {
+				push(@SFSsn, $snkey);
+				push(@SFSsn, $nimprime);
+				$SFSdone++;
+			}
+		}
         push(@allsn, $snkey);
     }
 
@@ -5543,8 +5566,12 @@ sub prermnimimage
     }
     else
     {
-        # do mn and all sn
-        @servicenodes = @allsn;
+		if ($sharedinstall eq "sns") {
+			@servicenodes = @SFSsn;
+		} else {
+			# do mn and all sn
+			@servicenodes = @allsn;
+		}
     }
 
     #
