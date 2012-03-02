@@ -7853,6 +7853,34 @@ sub prenimnodeset
         }
     }
 
+    # no dump resource defined for osimage, but configdump is specified, report error.
+    my @badosi;
+    if (%attrs)
+    {
+        foreach my $attr (keys %attrs)
+        {
+            if ($attr =~ /^configdump$/)
+            {
+                foreach my $i (@image_names)
+                {
+                    if (!$imghash{$i}{dump})
+                    {
+            			push @badosi, $i;
+                    }
+                }
+            }
+
+            if (scalar @badosi)
+            {
+                my $badstring = join(',', @badosi);
+                my $rsp;
+                push @{$rsp->{data}}, "$Sname: No \'dump\' resource is defined for the osimage \'$badstring\', but the attribute \'$attr\' is specified. \n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+        }
+    }
+
     # add the "xcataixscript" script to each image def for standalone systems
     foreach my $i (@image_names)
     {
