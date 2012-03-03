@@ -71,7 +71,7 @@ elif [ -r /proc/device-tree/model ]; then #POWER
 fi
 CPUCOUNT=`cat /proc/cpuinfo |grep "model name"|wc -l`
 MEMORY=`cat /proc/meminfo |grep MemTotal|awk '{print $2}'`
-UUID=`cat /sys/devices/virtual/dmi/id/product_uuid`
+UUID=`dmidecode -s system-uuid`
 grep "model name" /proc/cpuinfo | while read line; do #to avoid pulling in tail, we do a goofy thing
 	echo $line > /tmp/cpumod
 done

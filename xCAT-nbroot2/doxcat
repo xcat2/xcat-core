@@ -20,7 +20,8 @@ fi
 
 if [ -r /sys/devices/virtual/dmi/id/product_uuid ]; then
 	duid='default-duid "\\000\\004';
-	for i in `sed -e s/-//g -e 's/\(..\)/\1 /g' /sys/devices/virtual/dmi/id/product_uuid`; do
+	#product_uuid in sysfs fails to cope with endianness of SMBIOS 2.6
+	for i in `dmidecode -s system-uuid|sed -e s/-//g -e 's/\(..\)/\1 /g'`; do
 		octnum="\\"`printf "\\%03o" 0x$i`
 		duid=$duid$octnum
 	done
