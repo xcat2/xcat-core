@@ -64,6 +64,7 @@ sub handled_commands {
 }
 
 my %macmap; #Store responses from rinv for discovery
+my %uuidmap;
 my $macmaptimestamp; #reflect freshness of cache
 my $mmprimoid = '1.3.6.1.4.1.2.3.51.2.22.5.1.1.4';#mmPrimary
 my $beaconoid = '1.3.6.1.4.1.2.3.51.2.2.8.2.1.1.11'; #ledBladeIdentity
@@ -238,7 +239,9 @@ sub fillresps {
   unless ($mac) { return; } #The event that a bay is empty should not confuse 
 #xcat into having an odd mapping
   $mac = uc($mac); #Make sure it is uppercase, the MM people seem to change their mind on this..
-  if ($mac =~ /->/) { #The new and 'improved' syntax for pBlades
+  if ($mac =~ /........-....-....-....-............/) { #a uuid
+	$uuidmap{$mac} = $node;
+  } elsif ($mac =~ /->/) { #The new and 'improved' syntax for pBlades
       $mac =~ /(\w+):(\w+):(\w+):(\w+):(\w+):(\w+)\s*->\s*(\w+):(\w+):(\w+):(\w+):(\w+):(\w+)/;
       my $fmac=hex($3.$4.$5.$6);
       my $lmac=hex($9.$10.$11.$12);
@@ -3900,7 +3903,7 @@ sub process_request {
     }
     my %invreq;
     $invreq{node} = \@blades;
-    $invreq{arg} = ['mac'];
+    $invreq{arg} = ['mac,uuid'];
     $invreq{command} = ['rinv'];
     my $mac;
     my $ip = $request->{'_xcat_clientip'};
@@ -3939,22 +3942,37 @@ sub process_request {
            }
         }
     }
-    unless ($found) { 
+    my $node;
+    if ($found) { 
+       $node = $macmap{$mac};
+    } else {
+       my $uuid;
+       foreach $uuid (@{$request->{uuid}}) {
+          $uuid = uc($uuid);
+	  if ($uuid and $uuidmap{$uuid}) {
+	     $node = $uuidmap{$uuid};
+	     last;
+	  }
+       }    
+    }
+    unless ($node) { 
       return 1; #failure
     }
-    my $mactab = xCAT::Table->new('mac',-create=>1);
-    $mactab->setNodeAttribs($macmap{$mac},{mac=>$mac});
-    $mactab->close();
+    if ($mac) {
+       my $mactab = xCAT::Table->new('mac',-create=>1);
+       $mactab->setNodeAttribs($macmap{$mac},{mac=>$mac});
+       $mactab->close();
+       undef $mactab;
+    }
     #my %request = (
     #  command => ['makedhcp'],
     #  node => [$macmap{$mac}]
     #  );
     #$doreq->(\%request);
     $request->{command}=['discovered'];
-    $request->{noderange} = [$macmap{$mac}];
+    $request->{noderange} = [$node];
     $doreq->($request);
     %{$request}=(); #Clear request. it is done
-    undef $mactab;
     return 0;
   }
 
