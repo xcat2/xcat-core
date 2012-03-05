@@ -3496,7 +3496,7 @@ sub preprocess_request {
   #parse the arguments for commands
   if ($command eq "getmacs") {
     my (@mpnodes, @fspnodes, @nohandle);
-    filter_nodes($request, \@mpnodes, \@fspnodes);
+    filter_nodes($request, \@mpnodes, \@fspnodes, \@nohandle);
     if (@nohandle) {
         $callback->({data=>"Cannot figure out plugin for nodes:@nohandle"});
     }
