@@ -83,7 +83,7 @@ sub fsp_api_action {
     $id = $$attrs[0];
     $fsp_name = $$attrs[3]; 
 
-    if($$attrs[4] =~ /^fsp$/ || $$attrs[4] =~ /^lpar$/ || $$attrs[4] =~ /^cec$/) {
+    if($$attrs[4] =~ /^fsp$/ || $$attrs[4] =~ /^lpar$/ || $$attrs[4] =~ /^(cec|blade)$/) {
         $type = 0;
 	    $fsp_bpa_type="fsp";
     } elsif($$attrs[4] =~ /^bpa$/ || $$attrs[4] =~ /^frame$/) { 
@@ -230,7 +230,7 @@ sub fsp_state_action {
     $fsp_name = $node_name; 
 
      
-    if($type_name =~ /^fsp$/ || $type_name =~ /^lpar$/ || $type_name =~ /^cec$/) {
+    if($type_name =~ /^fsp$/ || $type_name =~ /^lpar$/ || $type_name =~ /^(cec|blade)$/) {
         $type = 0;
     } else { 
 	$type = 1;
