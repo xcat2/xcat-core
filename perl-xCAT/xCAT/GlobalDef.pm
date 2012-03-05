@@ -24,6 +24,7 @@ $::NODETYPE_HMC="hmc";
 $::NODETYPE_IVM="ivm";
 $::NODETYPE_FRAME="frame";
 $::NODETYPE_CEC="cec";
+$::NODETYPE_BLADE="blade";
 $::NODETYPE_CMM="cmm";
 
 # valid values for nodelist.nodetype column
