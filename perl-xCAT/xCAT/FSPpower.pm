@@ -390,7 +390,7 @@ sub state {
                 my $rc = @$res[2];
                 my $val = @$res[1];
                 if( $rc != 0) {
-                    push @result, [$name, $prefix.$val,1];
+                    #push @result, [$name, $prefix.$val,1];
                 }
                 
                 if( !defined($val) || $val =~ /^error$/ ) {
