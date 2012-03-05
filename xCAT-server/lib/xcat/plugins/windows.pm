@@ -132,7 +132,13 @@ sub mkwinlinks {
     foreach (getips($node)) {
         link "$installroot/autoinst/$node.cmd","$installroot/autoinst/$_.cmd";
     }
-    if ($uuid) { link "$installroot/autoinst/$node.cmd","$installroot/autoinst/$uuid.cmd"; }
+    if ($uuid) { 
+	link "$installroot/autoinst/$node.cmd","$installroot/autoinst/$uuid.cmd"; 
+	#sadly, UUID endiannes is contentious to this day, tolerate a likely mangling
+	#of the UUID
+        $uuid =~ s/^(..)(..)(..)(..)-(..)(..)-(..)(..)-/$4$3$2$1-$6$5-$8$7/;
+	link "$installroot/autoinst/$node.cmd","$installroot/autoinst/$uuid.cmd"; 
+    }
 }
 
 sub winshell {
