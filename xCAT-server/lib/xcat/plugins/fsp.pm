@@ -76,8 +76,8 @@ sub preprocess_request {
     if ($arg1->{command}->[0] eq "rspconfig") { 
         # All the nodes with mgt=blade or mgt=fsp will get here
         # filter out the nodes for fsp.pm
-        my (@mpnodes, @fspnodes);
-        filter_nodes($arg1, \@mpnodes, \@fspnodes);
+        my (@mpnodes, @fspnodes, @nohandle);
+        filter_nodes($arg1, \@mpnodes, \@fspnodes, \@nohandle);
         if (@fspnodes) {
             $arg1->{noderange} = \@fspnodes;
         } else {
@@ -86,8 +86,8 @@ sub preprocess_request {
     }
 
     if ($arg1->{command}->[0] eq "getmacs") {
-        my (@mpnodes, @fspnodes);
-        filter_nodes($arg1, \@mpnodes, \@fspnodes);
+        my (@mpnodes, @fspnodes, @nohandle);
+        filter_nodes($arg1, \@mpnodes, \@fspnodes, \@nohandle);
         if (@fspnodes) {
             $arg1->{noderange} = \@fspnodes;
         } else {
@@ -105,10 +105,12 @@ sub process_request {
 }
 
 ##########################################################################
-# Fliter the nodes that are GGP ppc blade node or common fsp node
+# Fliter the nodes that are NGP ppc blade node or common fsp node
+# For rspconfig network, the NGP ppc blade will be included in the group of mp, othewise in the fsp group
+# For getmacs -D, the NGP ppc blade will be included in the group of common fsp, otherwise in the mp group
 ##########################################################################
 sub filter_nodes{
-    my ($req, $mpnodes, $fspnodes) = @_;
+    my ($req, $mpnodes, $fspnodes, $nohandle) = @_;
 
     my (@nodes,@args,$cmd);
     if (defined($req->{'node'})) {
@@ -128,40 +130,33 @@ sub filter_nodes{
     if ($mptab) {
         $mptabhash = $mptab->getNodesAttribs(\@nodes, ['mpa','nodetype']);
     }
-    
+
     # get the parent of the service processor
     # for the NGP ppc blade, the ppc.parent is the mpa
     my $ppctabhash;
     my $ppctab = xCAT::Table->new("ppc");
     if ($ppctab) {
-        $ppctabhash = $ppctab->getNodesAttribs(\@nodes,['parent','nodetype']);
+        $ppctabhash = $ppctab->getNodesAttribs(\@nodes,['nodetype']);
     }
-
-    my (@mp, @ngpfsp, @commonfsp);
+    my (@mp, @ngpfsp, @commonfsp, @unknow);
     my %fspparent;
     # Get the parent for each node
     foreach (@nodes) {
       if (defined ($mptabhash->{$_}->[0]->{'mpa'})) {
-        push @mp, $_;
-        next;
-      }
-
-      if (defined ($ppctabhash->{$_}->[0]->{'parent'})) {
-        push @{$fspparent{$ppctabhash->{$_}->[0]->{'parent'}}}, $_;
-      } else {
+        if (defined ($ppctabhash->{$_}->[0]->{'nodetype'}) && ($ppctabhash->{$_}->[0]->{'nodetype'} eq "blade")) {
+          push @ngpfsp, $_;
+          next;
+        }
+        else {
+          # Non NGP power blade
+          push @mp, $_;
+          next;
+        }
+      } elsif (defined ($ppctabhash->{$_}->[0]->{'nodetype'})) {
+        # otherwise, this is a general power node
         push @commonfsp, $_;
-      }
-    }
-
-    # To check the type of parent of node, if equaling cmm, should be ngp fsp
-    my @parents = (keys %fspparent);
-    $mptabhash = $mptab->getNodesAttribs(\@parents,['nodetype']);
-    foreach (keys %fspparent) {
-      if (defined($mptabhash->{$_}->[0]->{'nodetype'})
-          && $mptabhash->{$_}->[0]->{'nodetype'} eq "cmm") {
-          push @ngpfsp, @{$fspparent{$_}};
       } else {
-          push @commonfsp, @{$fspparent{$_}};
+        push @unknow, $_;
       }
     }
 
@@ -171,25 +166,20 @@ sub filter_nodes{
       push @{$mpnodes}, @ngpfsp;
     } elsif($cmd eq "getmacs") {
       if (@args && (grep /^-D$/,@args)) {
-        @mp = ();
-        foreach (@{$mpnodes}) {
-          if (defined($ppctabhash->{$_}->[0]->{'parent'})) {
-            push @{$fspnodes}, $_;
-          } else {
-            push @mp, $_;
-          }
-        }
         push @{$fspnodes}, @ngpfsp;
-        @{$mpnodes} = ();
-        push @{$mpnodes}, @mp;
-      } else { 
+      } else {
         push @{$mpnodes}, @ngpfsp;
       }
     } else {
       push @{$fspnodes}, @ngpfsp;
     }
+
+    push @{$nohandle}, @unknow;
+
+    ## TRACE_LINE print "Nodes filter: nodetype [commp:@mp,ngpp:@ngpfsp,comfsp:@commonfsp]. mpnodes [@{$mpnodes}], fspnodes [@{$fspnodes}]\n";
     return 0;
 }
+
 ##########################################################################
 # get hcp and id for rcons with fsp
 ##########################################################################
@@ -221,7 +211,7 @@ sub getfspcon {
     my $type = xCAT::DBobjUtils->getnodetype($node, "ppc");
     #my ($type) = grep( /^(lpar|osi)$/, @types );
     
-    if ( !defined( $type ) or !($type =~ /lpar/) ) {
+    if ( !defined( $type ) or !($type =~ /lpar|blade/) ) {
         #return( "Invalid node type: $ent->{nodetype}" );
         $rsp->{node}->[0]->{error}=["Invalid node type: $type"];
         $rsp->{node}->[0]->{errorcode}=[1];		
@@ -269,6 +259,7 @@ sub getfspcon {
 	$rsp = {node=>[{name=>[$node]}]};
 	$rsp->{node}->[0]->{fsp_ip}->[0]=$fsp_ip;
     $rsp->{node}->[0]->{id}->[0]=$id;	
+    $rsp->{node}->[0]->{type}->[0]=$type; #zet
     $callback->($rsp);	
     return $rsp	
 }
