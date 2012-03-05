@@ -671,34 +671,34 @@ sub child_response {
                                 }
                 		#save the nodes that has errors for node status monitoring
           			if ((exists($_->{errorcode})) && ($_->{errorcode} != 0))  {
-		        	    if($$failed_nodes[0] !~ /^noloop$/) {
-                            if (!grep /^$nodename$/, @$failed_nodes) {
-				         	    push(@$failed_nodes, $nodename);
-				         	}
-					        if( defined( $failed_msg->{$nodename} )) {
-					            my $f = $failed_msg->{$nodename}; 
-					            my $c = scalar(@$f);
-					            $failed_msg->{$nodename}->[$c] = $_;
-					        } else {
-					            $failed_msg->{$nodename}->[0] = $_;
-					        }
-                        } else {
-                            $callback->( $_ );
-                        } 
+		        	    #if($$failed_nodes[0] !~ /^noloop$/) {
+                                                #if (!grep /^$nodename$/, @$failed_nodes) {
+				         	#     push(@$failed_nodes, $nodename);
+				         	#}
+					        #if( defined( $failed_msg->{$nodename} )) {
+					        #    my $f = $failed_msg->{$nodename}; 
+					        #    my $c = scalar(@$f);
+					        #    $failed_msg->{$nodename}->[$c] = $_;
+					        #} else {
+					        #    $failed_msg->{$nodename}->[0] = $_;
+					        #}
+                                    #} else {
+                                        #$callback->( $_ );
+                                    #} 
 
-                        if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=-1; }
+                                if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=-1; }
                			#if verbose, print all the message;
 			     		#if not, print successful mesg for success, or all the failed mesg for failed.
-				     	if ( $verbose ) {
-				            $callback->( $_ );
-					    }
+				     	#if ( $verbose ) {
+				        #    $callback->( $_ );
+					#    }
 
 
                 		} else {
-                     	     if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=1; }
-                             $callback->( $_ );
+                     	            if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=1; }
+                              #$callback->( $_ );
                 		}
-                        #$callback->( $_ );
+                        $callback->( $_ );
            		}
      		}
 	    }
@@ -834,9 +834,9 @@ sub preprocess_nodes {
         ######################################
         # Get data values 
         ######################################
-        #my $hcp  = @$d[3];
-        my $hcp  = $hcps_will->{$node};
-        @$d[3] = $hcp;
+        my $hcp  = @$d[3];
+        #my $hcp  = $hcps_will->{$node};
+        #@$d[3] = $hcp;
         my $mtms = @$d[2];
  
         ######################################
@@ -1064,7 +1064,7 @@ sub resolve {
     #################################
     my $ttype = xCAT::DBobjUtils->getnodetype($node, "ppc");
     my ($type) = grep( 
-            /^$::NODETYPE_LPAR|$::NODETYPE_OSI|$::NODETYPE_BPA|$::NODETYPE_FSP|$::NODETYPE_CEC|$::NODETYPE_FRAME$/,
+            /^$::NODETYPE_LPAR|$::NODETYPE_OSI|$::NODETYPE_BPA|$::NODETYPE_FSP|$::NODETYPE_CEC|$::NODETYPE_FRAME|$::NODETYPE_BLADE$/,
             #split /,/, $ent->{nodetype} );
             split /,/, $ttype);
 
@@ -1178,9 +1178,11 @@ sub resolve {
         $att->{node}     = $node;
         $att->{type}     = $type;
     }
-    elsif ( $type =~ /^$::NODETYPE_CEC$/ ) {
+    elsif ( $type =~ /^$::NODETYPE_CEC|$::NODETYPE_BLADE$/ ) {
         $att->{pprofile} = 0;
-        $att->{id}       = 0;
+        if( $type =~ /^$::NODETYPE_CEC$/) {
+            $att->{id}       = 0;
+        }
         $att->{fsp}      = 0;
         $att->{node}     = $node;
         $att->{type}     = $type;
@@ -1556,7 +1558,7 @@ sub invoke_cmd {
     ########################################
     # Direct-attached FSP handler 
     ########################################
-    if ( ($power ne "hmc") && ( $hwtype =~ /^(fsp|bpa|cec|frame)$/) && $request->{fsp_api} == 0) {
+    if ( ($power ne "hmc") && ( $hwtype =~ /^(fsp|bpa|cec|frame|blade)$/) && $request->{fsp_api} == 0) {
 
         if ($request->{command} eq 'rpower') {
             my $check = &check_node_info($nodes);
@@ -2104,14 +2106,33 @@ sub process_request {
     ####################################
     # Option -V for verbose output
     ####################################
-    #if ( exists( $request->{opt}->{V} )) {
-    #    $request->{verbose} = 1;
-    #}
+    if ( exists( $request->{opt}->{V} )) {
+        $request->{verbose} = 1;
+    }
+
+    if( $request->{hwtype} ne 'hmc' ) {
+        $request->{fsp_api} = 1;
+        #For using rspconfig to disable/enable dev/celogin1 through ASMI
+        my $arg = $request->{arg};
+        if($request->{command} eq "rspconfig" and grep(/^(dev|celogin1)/, @$arg)) {
+           $request->{fsp_api} = 0;
+        }
+    } else {
+        $request->{fsp_api} = 0; 
+    }
+    
+    #print Dumper($request);
+    process_command( $request );
+    return;
+
+
     ####################################
     # Process remote command
     ####################################
     #process_command( $request );
     
+    #The following code will not be used in xCAT 2.7
+
     #The following code supports for Multiple hardware control points.
     #use @failed_nodes to store the nodes which need to be run.
     #print "before process_command\n";
