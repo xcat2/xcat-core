@@ -2269,8 +2269,8 @@ sub getnodetype
                     my $nodetypes = $nodetypetab->getNodesAttribs(\@failnodes, ['nodetype']);
                     foreach my $tn ( @failnodes ) {
                         if ( $nodetypes->{$tn}->[0] ) {
-                            $NODETYPEHASH{$tn} = $nodetypes->{$tn}->[0];
-                            $typehash{$tn} = $nodetypes->{$tn}->[0];   
+                            $NODETYPEHASH{$tn} = $nodetypes->{$tn}->[0]->{'nodetype'};
+                            $typehash{$tn} = $nodetypes->{$tn}->[0]->{'nodetype'};
                         } else {
                             push @failnodes1, $tn;
                             $typehash{$tn} = undef;  
