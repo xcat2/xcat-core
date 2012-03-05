@@ -157,7 +157,7 @@ sub mknetboot
     }
     my $globaltftpdir  = "/tftpboot";
     my $nodes    = @{$req->{node}};
-    my @args     = @{$req->{arg}};
+    my @args     = @{$req->{arg}} if(exists($req->{arg}));
     my @nodes    = @{$req->{node}};
     my $ostab    = xCAT::Table->new('nodetype');
     my $sitetab  = xCAT::Table->new('site');
