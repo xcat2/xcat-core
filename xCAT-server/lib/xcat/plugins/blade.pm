@@ -204,13 +204,14 @@ my %bootnumbers = (
   'usb' => 11
 );
 
-my @rscan_attribs = qw(nodetype name id mtm serial mpa parent groups mgt cons hwtype);
+my @rscan_attribs = qw(nodetype name id mtm serial mpa hcp groups mgt cons hwtype);
 my @rscan_header = (
   ["type",          "%-8s" ],
   ["name",          "" ],
   ["id",            "%-8s" ],
   ["type-model",    "%-12s" ],
   ["serial-number", "%-15s" ],
+  ["mpa",           "%-10s" ],
   ["address",       "%s\n" ]);
 
 my $session;
@@ -240,8 +241,9 @@ sub fillresps {
 #xcat into having an odd mapping
   $mac = uc($mac); #Make sure it is uppercase, the MM people seem to change their mind on this..
   if ($mac =~ /........-....-....-....-............/) { #a uuid
-	$uuidmap{$mac} = $node;
+       $uuidmap{$mac} = $node;
   } elsif ($mac =~ /->/) { #The new and 'improved' syntax for pBlades
+
       $mac =~ /(\w+):(\w+):(\w+):(\w+):(\w+):(\w+)\s*->\s*(\w+):(\w+):(\w+):(\w+):(\w+):(\w+)/;
       my $fmac=hex($3.$4.$5.$6);
       my $lmac=hex($9.$10.$11.$12);
@@ -1318,7 +1320,7 @@ sub rscan {
   if ($session->{ErrorStr}) {
     return(1,$session->{ErrorStr});
   }
-  push @values,join(",",$mmtypestr,$mmname,0,"$mmtype$mmmodel",$mmserial,$mpa);
+  push @values,join(",",$mmtypestr,$mmname,0,"$mmtype$mmmodel",$mmserial,$mpa,$mpa);
   my $max = length($mmname);
 
   foreach (1..14) {
@@ -1348,23 +1350,18 @@ sub rscan {
       }
       my $isppcblade;
       my $fspname;
-      #generate the fsp entry base on the rscan result from the telnet command line
+
+      # The %telnetrscan has the entires for the fsp. For NGP ppc blade, set the ip of fsp.
       if (defined($telnetrscan{$_}{'0'}) && $telnetrscan{$_}{'0'}{'type'} eq "fsp") {
-        $fspname .= $name."-fsp0";
-        push @values, join( ",","fsp",$fspname,$_,"$type$model",$serial,$telnetrscan{$_}{'0'}{'ip'});
-        $isppcblade = 1;
-      }
-      if (defined($telnetrscan{$_}{'1'}) && $telnetrscan{$_}{'1'}{'type'} eq "fsp") {
-        $fspname = $name."-fsp1";
-        push @values, join( ",","fsp",$fspname,$_,"$type$model",$serial,$telnetrscan{$_}{'1'}{'ip'});
-        $isppcblade = 1;
-      }
-      if ($isppcblade) {
         # give the NGP ppc blade an internal specific name to identify 
-        push @values, join( ",","ppcblade",$name,$_,"$type$model",$serial,"",$fspname);
+        push @values, join( ",","ppcblade",$name,$_,"$type$model",$serial,$mpa,$telnetrscan{$_}{'0'}{'ip'});
+      } elsif (defined($telnetrscan{$_}{'1'}) && $telnetrscan{$_}{'1'}{'type'} eq "fsp") {
+        # give the NGP ppc blade an internal specific name to identify 
+        push @values, join( ",","ppcblade",$name,$_,"$type$model",$serial,$mpa,$telnetrscan{$_}{'1'}{'ip'});
       } else {
-        push @values, join( ",","blade",$name,$_,"$type$model",$serial,"");
+        push @values, join( ",","blade",$name,$_,"$type$model",$serial,$mpa,"");
       }
+
       my $length  = (length($name) > length($fspname)) ? length($name) : length($fspname);
       $max = ($length > $max) ? $length : $max;
     }
@@ -1414,7 +1411,7 @@ sub rscan {
     my $id = $data[2];
     my $mtm= $data[3];
     my $serial = $data[4];
-    my $fspname = $data[6];
+    my $fspip = $data[6];
 
     # ignore the blade server which status is 'Comm Error'
     if ($name =~ /Comm Error/) {
@@ -1422,7 +1419,7 @@ sub rscan {
     }
 
     if (exists($opt{u})) {
-      ## TRACE_LINE print "Rscan: orig_name [$name], orig_fsp [$fspname]\n";
+      ## TRACE_LINE print "Rscan: orig_name [$name]\n";
       
       # search the existed node for updating
       # for the cmm, using the type-serial number to match
@@ -1449,24 +1446,8 @@ sub rscan {
           }
         }
       } 
-      if ($type eq "fsp" || $type eq "ppcblade") {
-        # for the fsp, using the ppc.parent and ppc.id to match
-        # also get the fsp of the blade
-        my @ppclist = $db{'ppc'}->getAllNodeAttribs(['node','parent','id']);
-        foreach (@ppclist) {
-          if ($_->{'parent'} eq $mpa && $_->{'id'} eq $id) {
-            if ($type eq "fsp") {
-              push @msg4update, sprintf("%-7s$format Matched To =>$format", $type, '['.$name.']', '['.$_->{'node'}.']');
-              $name = $_->{'node'};
-              $matched = 1;
-            } else {
-              $fspname = $_->{'node'};
-            }
-            last;
-          }
-        }
-      }
-      ## TRACE_LINE print "Rscan: matched_name[$name], mateched_fsp [$fspname]\n";
+      
+      ## TRACE_LINE print "Rscan: matched_name[$name]\n";
       if (!$matched) {
         my $displaytype = ($type eq "ppcblade") ? "blade" : $type;
         push @msg4update, sprintf("%-7s$format NOT Matched. MM [%s]: Slot ID [%s]", $displaytype, '['.$name.']',$mpa, $id);
@@ -1477,44 +1458,34 @@ sub rscan {
     # Update the ppc table for the fsp and ppcblade
     my ($k1,$u1);
     $k1->{node} = $name;
-    if ($type eq "fsp") {
-      $u1->{hcp} = $name;
-      $u1->{nodetype} = "fsp";
-      $u1->{id} = $id;
-      $u1->{parent} = $mpa;
-      $db{ppc}->setAttribs($k1,$u1);
-      $db{ppc}{commit} = 1;
-    } elsif ($type eq "ppcblade") {
-      $u1->{hcp} = $fspname;
-      $u1->{nodetype} = "lpar";
+    if ($type eq "ppcblade") {
+      #$u1->{hcp} = $fspip;
+      $u1->{nodetype} = "blade";
       $u1->{id} = "1";
-      $u1->{parent} = $fspname;
+      $u1->{parent} = $mpa;
       $db{ppc}->setAttribs($k1,$u1);
       $db{ppc}{commit} = 1;
     }
 
     # Update the entry in mp table for ppcblade and general blade
-    if ($type ne "fsp") {  
-      my ($k11,$u11);
-      $k11->{node} = $name;
-      $u11->{mpa}  = $mpa;
-      $u11->{id}   = $id;
-      if ($type eq "ppcblade") {
-        $u11->{nodetype} = "blade";
-      } else {
-        $u11->{nodetype}   = $type;
-      }
-      $db{mp}->setAttribs($k11,$u11);
-      $db{mp}{commit} = 1;
+    my ($k11,$u11);
+    $k11->{node} = $name;
+    $u11->{mpa}  = $mpa;
+    $u11->{id}   = $id;
+    if ($type eq "ppcblade") {
+      $u11->{nodetype} = "blade";
+    } else {
+      $u11->{nodetype}   = $type;
     }
+    $db{mp}->setAttribs($k11,$u11);
+    $db{mp}{commit} = 1;
+
 
     my ($k2,$u2);
     $k2->{node} = $name;
-    if ($type eq "ppcblade" || $type eq "fsp") {
+    if ($type eq "ppcblade") {
       $u2->{mgt}  = "fsp";
-      if ($type eq "ppcblade"){
-        $u2->{cons} = "fsp";
-      }
+      $u2->{cons} = "fsp";
     } else {
       $u2->{mgt}  = "blade";
       if($type eq "blade"){
@@ -1526,9 +1497,7 @@ sub rscan {
 
     my ($k3,$u3);
     $k3->{node}   = $name;
-    if ($type eq "fsp") {
-      $u3->{groups} = "fsp,all";
-    } elsif ($type eq "ppcblade") {
+    if ($type eq "ppcblade") {
       $u3->{groups} = "blade,all";
     } else {
       $u3->{groups} = $type.",all";
@@ -1538,9 +1507,11 @@ sub rscan {
 
     my ($k4, $u4);
     $k4->{node} = $name;
-    if ($type eq "ppcblade" || $type eq "fsp"){
-      $u4->{nodetype} = "ppc";
-    } elsif ($type eq "mm" || $type eq "cmm" || $type eq "blade") {
+    if ($type eq "ppcblade"){
+      $u4->{nodetype} = "ppc,osi";
+    } elsif ($type eq "blade") {
+      $u4->{nodetype} = "mp,osi";
+    } elsif ($type eq "mm" || $type eq "cmm") {
       $u4->{nodetype} = "mp";
     }
     $db{nodetype}->setAttribs($k4,$u4);
@@ -1594,15 +1565,17 @@ sub rscan_xml {
         if ( /^name$/ ) {
             next;
         } elsif ( /^nodetype$/ ) {
-            if ($origtype eq "fsp" || $origtype eq "ppcblade") {
-              $d = "ppc";
+            if ($origtype eq "ppcblade") {
+              $d = "ppc,osi";
+            } elsif ($origtype eq "blade") {
+              $d = "mp,osi";
             } else {
               $d = "mp";
             }
         } elsif ( /^groups$/ ) {
             $d = "$type,all";
         } elsif ( /^mgt$/ ) {
-            if ($origtype eq "fsp" || $origtype eq "ppcblade") {
+            if ($origtype eq "ppcblade") {
               $d = "fsp";
             } else {
               $d = "blade";
@@ -1616,16 +1589,10 @@ sub rscan_xml {
               $ignore = 1;
             }
         } elsif ( /^mpa$/ ) {
-            if($type ne "fsp"){
               $d = $mpa;
-            } else {
-              $ignore = 1;
-            }
         } elsif ( /^hwtype$/ ) {
-            if ($origtype eq "fsp") {
-              $d = "fsp";
-            } elsif ($origtype eq "ppcblade") {
-              $d = "lpar";
+            if ($origtype eq "ppcblade") {
+              $d = "blade";
             } else {
               $d = $type;
             }
@@ -1635,12 +1602,9 @@ sub rscan_xml {
               $href->{Node}->{slotid} = $d;
               $d = "1";
             }
-        } elsif (/^parent$/) {
-            if ($origtype eq "fsp") {
-              $d = $mpa;
-              $href->{Node}->{hcp} = $data[1];
-            } elsif ($origtype eq "ppcblade") {
-              $href->{Node}->{hcp} = $d;
+        } elsif (/^hcp/) {
+            if ($origtype eq "ppcblade") {
+              $href->{Node}->{parent} = $mpa;
             } else {
               $ignore = 1;
             }
@@ -1648,8 +1612,6 @@ sub rscan_xml {
 
         if (!$ignore) {
             $href->{Node}->{$_} = $d;
-        } elsif (/^mpa$/ && $type eq "fsp") {
-            $href->{Node}->{ip} = $d;
         }
     }
     
@@ -1685,15 +1647,17 @@ sub rscan_stanza {
         if ( /^name$/ ) {
             next; 
         } elsif ( /^nodetype$/ ) {
-            if ($origtype eq "fsp" || $origtype eq "ppcblade") {
-              $d = "ppc";
+            if ($origtype eq "ppcblade") {
+              $d = "ppc,osi";
+            } elsif ($origtype eq "blade") {
+              $d = "mp,osi";
             } else {
               $d = "mp";
             }
         } elsif ( /^groups$/ ) {
             $d = "$type,all";
         } elsif ( /^mgt$/ ) {
-            if ($origtype eq "fsp" || $origtype eq "ppcblade") {
+            if ($origtype eq "ppcblade") {
               $d = "fsp";
             } else {
               $d = "blade"; 
@@ -1707,16 +1671,10 @@ sub rscan_stanza {
               $ignore = 1;
             }
         } elsif ( /^mpa$/ ) {
-            if($type ne "fsp"){
               $d = $mpa;
-            } else {
-              $ignore = 1;
-            }
         } elsif ( /^hwtype$/ ) {
-            if ($origtype eq "fsp") {
-              $d = "fsp";
-            } elsif ($origtype eq "ppcblade") {
-              $d = "lpar";
+            if ($origtype eq "ppcblade") {
+              $d = "blade";
             } else {
               $d = $type;
             }
@@ -1726,12 +1684,9 @@ sub rscan_stanza {
               $result .= "\tslotid=$d\n";
               $d = "1";
             }
-        } elsif (/^parent$/) {
-            if ($origtype eq "fsp") {
-              $d = $mpa;
-              $result .= "\thcp=$data[1]\n";
-            } elsif ($origtype eq "ppcblade") {
-              $result .= "\thcp=$d\n";
+        } elsif (/^hcp/) {
+            if ($origtype eq "ppcblade") {
+              $result .= "\tparent=$mpa\n";
             } else {
               $ignore = 1;
             }
@@ -1739,8 +1694,6 @@ sub rscan_stanza {
 
         if (!$ignore) {
             $result .= "\t$_=$d\n";
-        } elsif (/^mpa$/ && $type eq "fsp") {
-	    $result .= "\tip=$d\n";
         }
     }
   }
@@ -3542,8 +3495,11 @@ sub preprocess_request {
 
   #parse the arguments for commands
   if ($command eq "getmacs") {
-    my (@mpnodes, @fspnodes);
+    my (@mpnodes, @fspnodes, @nohandle);
     filter_nodes($request, \@mpnodes, \@fspnodes);
+    if (@nohandle) {
+        $callback->({data=>"Cannot figure out plugin for nodes:@nohandle"});
+    }
     if (@mpnodes) {
       $noderange = \@mpnodes;
       foreach my $arg (@exargs) {
@@ -3570,8 +3526,11 @@ sub preprocess_request {
   } elsif ($command eq "rspconfig") {
     # All the nodes with mgt=blade or mgt=fsp will get here
     # filter out the nodes for blade.pm 
-    my (@mpnodes, @fspnodes);
-    filter_nodes($request, \@mpnodes, \@fspnodes);
+    my (@mpnodes, @fspnodes, @nohandle);
+    filter_nodes($request, \@mpnodes, \@fspnodes, \@nohandle);
+    if (@nohandle) {
+        $callback->({data=>"Cannot figure out plugin for nodes:@nohandle"});
+    }
     if (@mpnodes) {
       $noderange = \@mpnodes;
     } else {
@@ -3602,34 +3561,13 @@ sub preprocess_request {
       return [];
   }
 
-  # try to get the mpa from the ppc table for the fsp of NGP blade
-  my $ppctab = xCAT::Table->new("ppc");
-  my $ppctabhash;
-  if ($ppctab) {
-    $ppctabhash = $ppctab->getNodesAttribs($noderange,['parent','id']);
-  }
   foreach my $node (@$noderange) {
     my $ent=$mptabhash->{$node}->[0]; #$mptab->getNodeAttribs($node,['mpa', 'id']);
     if (defined($ent->{mpa})) { push @{$mpa_hash{$ent->{mpa}}{nodes}}, $node;}
     else {
-      # for the NGP ppc blade, the ppc.parent is the mpa
-      my $ppcent = $ppctabhash->{$node}->[0];
-      if (defined($ppcent->{'parent'}) && defined($ppcent->{'id'})) {
-        $ent= $mptab->getNodeAttribs($ppcent->{'parent'}, ['mpa','id','nodetype']);
-        if (defined($ent->{'nodetype'})
-            && $ent->{'nodetype'} eq "cmm") {
-          push @{$mpa_hash{$ent->{'mpa'}}{nodes}}, $node;
-          $ent->{'id'} = $ppcent->{'id'};
-        } else {
-          $callback->({data=>["no mpa defined for node $node"]});
-          $request = {};
-          return;
-        }
-      } else {
         $callback->({data=>["no mpa defined for node $node"]});
         $request = {};
         return;
-      }
     }
     if (defined($ent->{id})) { push @{$mpa_hash{$ent->{mpa}}{ids}}, $ent->{id};}
     else { push @{$mpa_hash{$ent->{mpa}}{ids}}, "";} 
@@ -3666,10 +3604,12 @@ sub preprocess_request {
 }
 
 ##########################################################################
-# Fliter the nodes that are GGP ppc blade node or common fsp node
+# Fliter the nodes that are NGP ppc blade node or common fsp node
+# For rspconfig network, the NGP ppc blade will be included in the group of mp, othewise in the fsp group
+# For getmacs -D, the NGP ppc blade will be included in the group of common fsp, otherwise in the mp group
 ##########################################################################
 sub filter_nodes{
-    my ($req, $mpnodes, $fspnodes) = @_;
+    my ($req, $mpnodes, $fspnodes, $nohandle) = @_;
 
     my (@nodes,@args,$cmd);
     if (defined($req->{'node'})) {
@@ -3695,55 +3635,38 @@ sub filter_nodes{
     my $ppctabhash;
     my $ppctab = xCAT::Table->new("ppc");
     if ($ppctab) {
-        $ppctabhash = $ppctab->getNodesAttribs(\@nodes,['parent','nodetype']);
+        $ppctabhash = $ppctab->getNodesAttribs(\@nodes,['nodetype']);
     }
 
-    my (@mp, @ngpfsp, @commonfsp);
+    my (@mp, @ngpfsp, @commonfsp, @unknow);
     my %fspparent;
     # Get the parent for each node
     foreach (@nodes) {
       if (defined ($mptabhash->{$_}->[0]->{'mpa'})) {
-        push @mp, $_;
-        next;
-      }
-
-      if (defined ($ppctabhash->{$_}->[0]->{'parent'})) {
-        push @{$fspparent{$ppctabhash->{$_}->[0]->{'parent'}}}, $_;
-      } else {
+        if (defined ($ppctabhash->{$_}->[0]->{'nodetype'}) && ($ppctabhash->{$_}->[0]->{'nodetype'} eq "blade")) {
+          push @ngpfsp, $_;
+          next;
+        }
+        else {
+          # Non NGP power blade
+          push @mp, $_;
+          next;
+        }
+      } elsif (defined ($ppctabhash->{$_}->[0]->{'nodetype'})) { 
+        # otherwise, this is a general power node
         push @commonfsp, $_;
-      }
-    }
-
-    # To check the type of parent of node, if equaling cmm, should be ngp fsp
-    my @parents = (keys %fspparent);
-    $mptabhash = $mptab->getNodesAttribs(\@parents,['nodetype']);
-    foreach (keys %fspparent) {
-      if (defined($mptabhash->{$_}->[0]->{'nodetype'})
-          && $mptabhash->{$_}->[0]->{'nodetype'} eq "cmm") {
-          push @ngpfsp, @{$fspparent{$_}};
       } else {
-          push @commonfsp, @{$fspparent{$_}};
+        push @unknow, $_;
       }
     }
 
     push @{$mpnodes}, @mp;
     push @{$fspnodes}, @commonfsp;
-    ## TRACE_LINE print "Nodes filter: mpnodes [@{$mpnodes}], fspnodes [@{$fspnodes}]\n";
     if (@args && ($cmd eq "rspconfig") && (grep /^(network|network=.*)$/, @args)) {
       push @{$mpnodes}, @ngpfsp;
     } elsif($cmd eq "getmacs") {
       if (@args && (grep /^-D$/,@args)) {
-        @mp = ();
-        foreach (@{$mpnodes}) {
-          if (defined($ppctabhash->{$_}->[0]->{'parent'})) {
-            push @{$fspnodes}, $_;
-          } else {
-            push @mp, $_;
-          }
-        }
         push @{$fspnodes}, @ngpfsp;
-        @{$mpnodes} = ();;
-        push @{$mpnodes}, @mp;
       } else { 
         push @{$mpnodes}, @ngpfsp;
       }
@@ -3751,11 +3674,13 @@ sub filter_nodes{
       push @{$fspnodes}, @ngpfsp;
     }
 
+    push @{$nohandle}, @unknow;
+
+    ## TRACE_LINE print "Nodes filter: nodetype [commp:@mp,ngpp:@ngpfsp,comfsp:@commonfsp]. mpnodes [@{$mpnodes}], fspnodes [@{$fspnodes}]\n";
     return 0;
 }
 
- 
-     
+
 sub build_more_info{
   my $noderange=shift;
   my $callback=shift;
@@ -3768,32 +3693,12 @@ sub build_more_info{
   my %mpa_hash=();
   my $mptabhash = $mptab->getNodesAttribs($noderange,['mpa','id','nodetype']);
 
-  # try to get the mpa from the ppc table for the fsp of NGP blade
-  my $ppctab = xCAT::Table->new("ppc");
-  my $ppctabhash;
-  if ($ppctab) {
-    $ppctabhash = $ppctab->getNodesAttribs($noderange,['parent','id']);
-  }
   foreach my $node (@$noderange) {
     my $ent=$mptabhash->{$node}->[0]; #$mptab->getNodeAttribs($node,['mpa', 'id']);
     if (defined($ent->{mpa})) { push @{$mpa_hash{$ent->{mpa}}{nodes}}, $node;}
     else {
-      # for the NGP ppc blade, the ppc.parent is the mpa
-      my $ppcent = $ppctabhash->{$node}->[0];
-      if (defined($ppcent->{'parent'}) && defined($ppcent->{'id'})) {
-        $ent= $mptab->getNodeAttribs($ppcent->{'parent'}, ['mpa','id','nodetype']);
-        if (defined($ent->{'nodetype'})
-            && $ent->{'nodetype'} eq "cmm") {
-          push @{$mpa_hash{$ent->{'mpa'}}{nodes}}, $node;
-          $ent->{'id'} = $ppcent->{'id'};
-        } else {
-          $callback->({data=>["no mpa defined for node $node"]});
-          return @moreinfo;;
-        }
-      } else {
         $callback->({data=>["no mpa defined for node $node"]});
         return @moreinfo;;
-      }
     }
     if (defined($ent->{id})) { push @{$mpa_hash{$ent->{mpa}}{ids}}, $ent->{id};}
     else { push @{$mpa_hash{$ent->{mpa}}{ids}}, "";} 
@@ -3943,19 +3848,19 @@ sub process_request {
         }
     }
     my $node;
-    if ($found) { 
+    if ($found) {
        $node = $macmap{$mac};
     } else {
        my $uuid;
        foreach $uuid (@{$request->{uuid}}) {
           $uuid = uc($uuid);
-	  if ($uuid and $uuidmap{$uuid}) {
-	     $node = $uuidmap{$uuid};
-	     last;
-	  }
-       }    
+         if ($uuid and $uuidmap{$uuid}) {
+            $node = $uuidmap{$uuid};
+            last;
+         }
+       }
     }
-    unless ($node) { 
+    unless ($node) {
       return 1; #failure
     }
     if ($mac) {
@@ -3964,6 +3869,7 @@ sub process_request {
        $mactab->close();
        undef $mactab;
     }
+
     #my %request = (
     #  command => ['makedhcp'],
     #  node => [$macmap{$mac}]
@@ -3991,7 +3897,7 @@ sub process_request {
     my $pass=$bladepass;
     my $ent;
     if (defined($mpatab)) {
-      ($ent)=$mpatab->getNodeAttribs($mpa, ['username','password']);
+      ($ent)=$mpatab->getNodeSpecAttribs($mpa, {username=>"USERID"},['username','password']);#zet modify here
       if (defined($ent->{password})) { $pass = $ent->{password}; }
       if (defined($ent->{username})) { $user = $ent->{username}; }
     }
@@ -4335,29 +4241,48 @@ sub network {
       if ( $value !~ /^\*$/) {
         return([1,"Invalid format: 'network=*'"]);
       }
-      my %nethash = xCAT::DBobjUtils->getNetwkInfo([$node]);
-      my $gate = $nethash{$node}{gateway};
-      my $result; 
+      if ($mpa eq $node) { #for network configure to management module
+        my %nethash = xCAT::DBobjUtils->getNetwkInfo([$node]);
+        my $gate = $nethash{$node}{gateway};
+        my $result; 
 
-      if ($gate) {
-        $result = xCAT::Utils::toIP($gate);
-        if (@$result[0] == 0) {
-          $gateway = @$result[1];
+        if ($gate) {
+          $result = xCAT::Utils::toIP($gate);
+          if (@$result[0] == 0) {
+            $gateway = @$result[1];
+          }
         }
-      }
-      $mask = $nethash{$node}{mask};
-      #the host is only needed for the map network configuration
-      if ($node eq $mpa) {
+        $mask = $nethash{$node}{mask};
+        #the host is only needed for the mpa network configuration
         $host = $node;
-      }
 
-      my $hosttab = xCAT::Table->new( 'hosts' );
-      if ($hosttab) {
-        my ($ent) = $hosttab->getNodeAttribs($node,['ip']);
-        if (defined($ent)) {
-          $ip = $ent->{ip};
+        my $hosttab = xCAT::Table->new( 'hosts' );
+        if ($hosttab) {
+          my ($ent) = $hosttab->getNodeAttribs($node,['ip']);
+          if (defined($ent)) {
+            $ip = $ent->{ip};
+          }
+          $hosttab->close();
         }
-        $hosttab->close();
+      } else {
+        my $ppctab = xCAT::Table->new( 'ppc' );
+        if ($ppctab) {
+          my $ppcent = $ppctab->getNodeAttribs($node,['hcp']);
+          if (defined($ppcent)) {
+            $ip = $ppcent->{hcp};
+          }
+        }
+        my %nethash = xCAT::DBobjUtils->getNetwkInfo([$ip]);
+        my $gate = $nethash{$ip}{gateway};
+        my $result;
+
+        if ($gate) {
+          $result = xCAT::Utils::toIP($gate);
+          if (@$result[0] == 0) {
+            $gateway = @$result[1];
+          }
+        }
+        $mask = $nethash{$ip}{mask};
       }
     }
   } else {
@@ -4865,11 +4790,14 @@ sub dompa {
         $text =~ s/\s+$//;
         $output{node}->[0]->{errorcode} = $rc;
         $output{node}->[0]->{name}->[0]=$node;
-        if ($rc) {
-            $output{node}->[0]->{error}->[0]=$text;
-        } else {
-            $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
-        }
+        # Don't use the {error} keyword to avoid the auto added 'Error'
+        # in the output especially for part of the nodes failed.
+        $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
+        #if ($rc) {
+        #    $output{node}->[0]->{error}->[0]=$text;
+        #} else {
+        #    $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
+        #}
         
         print $out freeze([\%output]);
         print $out "\nENDOFFREEZE6sK4ci\n";
