@@ -3897,7 +3897,7 @@ sub process_request {
     my $pass=$bladepass;
     my $ent;
     if (defined($mpatab)) {
-      ($ent)=$mpatab->getNodeSpecAttribs($mpa, {username=>"USERID"},['username','password']);#zet modify here
+      ($ent)=$mpatab->getNodeSpecAttribs($mpa, {username=>"USERID"},qw(username password));
       if (defined($ent->{password})) { $pass = $ent->{password}; }
       if (defined($ent->{username})) { $user = $ent->{username}; }
     }
@@ -3952,12 +3952,12 @@ sub telnetcmds {
   my @unhandled;
   my %handled = ();
   my $result;
-  my @tcmds = qw(snmpcfg sshcfg network swnet pd1 pd2 textid network_reset rscanfsp initnetwork solcfg);
+  my @tcmds = qw(snmpcfg sshcfg network swnet pd1 pd2 textid network_reset rscanfsp initnetwork solcfg USERID HMC);
 
   # most of these commands should be able to be done
   # through SNMP, but they produce various errors.
   foreach my $cmd (@_) {
-    if ($cmd =~ /^swnet|pd1|pd2|sshcfg|rscanfsp|=/) {
+    if ($cmd =~ /^swnet|pd1|pd2|sshcfg|rscanfsp|USERID|HMC|=/) {
       if (($cmd =~ /^textid/) and ($nodeid > 0)) {
         push @unhandled,$cmd;
         next;
@@ -4031,6 +4031,7 @@ sub telnetcmds {
     elsif (/^rscanfsp$/)  { $result = rscanfsp($t,$mpa,$handled{$_},$mm); }
     elsif (/^solcfg$/)  { $result = solcfg($t,$handled{$_},$mm); }
     elsif (/^network_reset$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid,1); }
+    elsif (/^(USERID|HMC)$/) {$result = passwd($t, $mpa, $1, $handled{$_}, $mm);}
     push @data, "$_: @$result";
     $Rc |= shift(@$result);
     push @cfgtext,@$result;
@@ -4164,6 +4165,31 @@ sub mmtextid {
   }
   return([0,"textid: $value"]);
 }
+
+sub passwd {
+  my $t = shift;
+  my $mpa = shift;
+  my $user = shift;
+  my $pass = shift;
+  my $mm = shift;
+  my $cmd = "users -n $user -p $pass -T system:$mm";
+  print "===>$cmd\n";
+  if (!$pass) {
+    return ([1, "No param specified"]);
+  }
+  my @data = $t->cmd($cmd);
+  if (!grep(/OK/i, @data)) {
+    return ([1, @data]);
+  }
+  my $mpatab = xCAT::Table->new('mpa');
+  if ($mpatab) {
+    $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
+  } else {
+    return ([1, "Update password for $user in 'mpa' table failed"]);
+  }
+  return ([0, "Success"]);
+}
+
 
 
 sub pd {

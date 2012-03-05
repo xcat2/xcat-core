@@ -28,7 +28,7 @@ my %hcptab = (
     bpa   => "ppcdirect",
     frame => "ppcdirect",
     cec   => "ppcdirect",
-    
+    blade => "mpa",    
 );
 
 ###########################################
@@ -41,7 +41,7 @@ my %defaultgrp = (
     bpa   => "bpa",
     frame => "frame",
     cec   => "cec",
-    
+    blade => "blade", 
 );
 my %globlehwtype = (
     fsp   => $::NODETYPE_FSP,
@@ -848,7 +848,8 @@ my %default_passwd_accounts = (
     bpa     => \%power_accounts,
     frame   => \%power_accounts,
     cec     => \%power_accounts,
-    blade   => { USERID => 'PASSW0RD',},
+    blade   => { USERID => 'PASSW0RD',
+                 HMC => 'PASSW0RD'},
     ipmi    => { USERID => 'PASSW0RD',},
     ivm     => { padmin => 'padmin',},
     vmware  => { root => '',},

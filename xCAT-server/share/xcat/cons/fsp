@@ -38,6 +38,7 @@ BEGIN
 my $sleepint=int(rand(10)); 
 use lib "$::XCATROOT/lib/perl";
 require xCAT::Client;
+require xCAT::Utils;
 use strict;
 #use Getopt::Long;
 #use xCAT::Table;
@@ -56,6 +57,7 @@ my $verbose = 0;
 my $node;
 my $ips;
 my $id;
+my $hwtype;
 
 ##########################################
 # Database errors
@@ -166,6 +168,17 @@ sub invoke_cmd {
     my $node = shift;
 	my $fsp_ip = shift;
     my $id = shift;
+    my $hwtype = shift;
+    my $machine;
+    my $state;
+    if ($hwtype eq 'blade') {
+        $machine = "blade";
+        $state = "on";
+    } else {
+        $machine = "CEC";
+        $state = "power on";
+    }
+
     #my @attribs = qw(id parent hcp);
     #my %tabs    = ();
 
@@ -240,7 +253,12 @@ sub invoke_cmd {
     #if(!defined($fsp_ip)) {
     #    return "Failed to get the $fsp_name\'s ip";
     #}
-    
+    my $power_state_cmd = "$fsp_api -a cec_state -t $type:$fsp_ip:$id:$node: 2>&1";
+    my $res = xCAT::Utils->runcmd($power_state_cmd, -1);
+    unless ($res and $res =~ /operating|standby/) {
+        return("The command 'rcons' is only support while the $machine is in the '$state' state");
+    } 
+
     my $cmd = "$fsp_api -a $action -t $type:$fsp_ip:$id:$node:\r";
     #print "cmd: $cmd\n";
     my $running_failed_code = "Reason code: 0x1000000";
@@ -294,6 +312,7 @@ sub getans {
     if ($rsp->{node}) {
         $ips = $rsp->{node}->[0]->{fsp_ip}->[0];
         $id = $rsp->{node}->[0]->{id}->[0];
+        $hwtype = $rsp->{node}->[0]->{type}->[0];
     }
 }
 
@@ -315,7 +334,7 @@ release_lock(); #done with xcatd, can run with near impunity
 
 $node = $ARGV[0];
 	
-my $result = invoke_cmd($node, $ips, $id);
+my $result = invoke_cmd($node, $ips, $id, $hwtype);
 if ( $result ne "0" ) {
     print STDERR "$node: $result\n";
     exit(1);

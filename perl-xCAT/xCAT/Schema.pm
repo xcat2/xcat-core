@@ -421,7 +421,7 @@ mp => {
   },
 mpa => {
     cols => [qw(mpa username password comments disable)],
-    keys => [qw(mpa)],
+    keys => [qw(mpa username)],
     nodecol => "mpa",
     table_desc => 'Contains info about each Management Module and how to access it.',
  descriptions => {

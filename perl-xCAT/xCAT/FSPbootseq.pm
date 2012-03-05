@@ -131,11 +131,26 @@ sub rbootseq {
     #print Dumper($d);
   
          
-    if (!($$d[4] =~ /^lpar$/)) { 
+    if (!($$d[4] =~ /^(lpar|blade)$/)) { 
         push @output, [$node_name, "\'boot\' command not supported for CEC or BPA", -1 ];
         return (\@output);
     }
-      
+    # add checking the power state of the cec 
+    my $power_state = xCAT::FSPUtils::fsp_api_action ($node_name, $d, "cec_state", $tooltype);
+    unless (@$power_state and @$power_state =~ /operating|standby/) {
+        my $machine;
+        my $state;
+        if ($$d[4] eq 'blade') {
+            $machine = "blade";
+            $state = "on";
+        } else {
+            $machine = "CEC";
+            $state = "power on";
+        }
+
+        push @output, [$node_name, "\'boot\' command can only support while the $machine is in the \'$state\' state, -1"];
+        return (\@output);
+    }   
     if( $opt->{net} ) {
         my $mactab = xCAT::Table->new( 'mac');
         unless($mactab) {

@@ -259,7 +259,7 @@ sub getfspcon {
 	$rsp = {node=>[{name=>[$node]}]};
 	$rsp->{node}->[0]->{fsp_ip}->[0]=$fsp_ip;
     $rsp->{node}->[0]->{id}->[0]=$id;	
-    $rsp->{node}->[0]->{type}->[0]=$type; #zet
+    $rsp->{node}->[0]->{type}->[0]=$type; 
     $callback->($rsp);	
     return $rsp	
 }

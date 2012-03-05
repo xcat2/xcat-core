@@ -209,13 +209,14 @@ sub powercmd {
 	    $newnames .="$node_name,";
 	    $newd = $d;
 	    $lpar_flag = 1;
-	} elsif ($$d[4] =~ /^(fsp|cec)$/) {
+	} elsif ($$d[4] =~ /^(fsp|cec|blade)$/) {
 	    if($action =~ /^on$/) { $action = "cec_on_autostart"; }
 	    if($action =~ /^off$/) { $action = "cec_off"; }
 	    if($action =~ /^resetsp$/) { $action = "reboot_service_processor"; }
 	    if($action =~ /^lowpower$/) { $action = "cec_on_low_power"; }
+        if($action =~ /^reboot$/) {$action = "cec_reboot";}
 	    if($action !~ /^cec_on_autostart$/ && $action !~ /^cec_off$/ &&  $action !~ /^cec_on_low_power$/ && $action !~ /^onstandby$/ && $action !~ /^reboot_service_processor$/ ) {
-	        push @output, [$node_name, "\'$action\' command not supported for CEC", -1 ];
+	        push @output, [$node_name, "\'$action\' command not supported for $$d[4]", -1 ];
 		next;
 	    }	
             $newids = $$d[0];	    
@@ -409,9 +410,18 @@ sub state {
             ##############################
             # Convert state to on/off 
             ##############################
+            if ($type eq 'blade') {
+                if ($value =~ /^(power-on-transition|power off|off)$/) {
+                    $value = "off";
+                } else {
+                    $value = "on";
+                }
+	        }	
             if ( defined( $convert )) {
                 $value = power_status( $value );
             }
+
+
             push @result, [$name,"$prefix$value",$Rc];
         }
     }

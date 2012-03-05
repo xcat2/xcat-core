@@ -157,7 +157,7 @@ sub mkhwconn_parse_args
                 next;
             } else
             {
-                unless ( $nodetype =~ /^(fsp|bpa|frame|cec|hmc)$/)
+                unless ( $nodetype =~ /^(fsp|bpa|frame|cec|hmc|blade)$/)
                 {
                      return ( usage("Node type is incorrect. \n"));
                 }
@@ -369,7 +369,7 @@ sub lshwconn_parse_args
             return( ["Failed to get nodehm.mgt value for node $node.\n"]);
         }
         if ( $ttype ne 'fsp' and $ttype ne 'cec'
-                and $ttype ne 'bpa' and $ttype ne 'frame')
+                and $ttype ne 'bpa' and $ttype ne 'frame' and $ttype ne 'blade')
         {
             return( ["Node type $ttype is not supported for this command in FSPAPI\n"]);
         }

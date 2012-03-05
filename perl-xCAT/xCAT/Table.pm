@@ -2346,9 +2346,9 @@ sub getNodeSpecAttribs {
     my %options = ();
     my @attribs = ();
     my @keys = ();
-    if (ref $_[0]) {
+    if (ref $_[0] eq 'HASH') {
         %options = %{shift()};
-        @attribs = @_;
+        @attribs = @{shift()};
         foreach my $key (keys %options) {
             if (!grep(/^$key$/, @attribs)) {
                 push @attribs, $key;
