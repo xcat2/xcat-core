@@ -1091,6 +1091,9 @@ sub list {
                     $l_string = $value;
 	 	        }
             } 
+            if ($l_string =~ /^\n$/) {
+                next;
+            }
 		    push @result, [$node_name, $l_string, $Rc];
 		    $l_string = "\n";
 	    } # end of while
