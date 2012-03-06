@@ -12,6 +12,8 @@ B<getmacs> [B<-h>| B<--help> | B<-v>| B<--version>]
 
 B<getmacs> I<noderange> [B<-F> I<filter>]
 
+B<getmacs> I<noderange> [B<-M>]
+
 B<getmacs> I<noderange> [B<-V>| B<--verbose>] [B<-f>] [B<-d>] [B<--arp>] | [B<-D> [B<-S> I<server>] [B<-G> I<gateway>] [B<-C> I<client>] [B<-o>]]
 
 =head2 blade specific:
@@ -61,6 +63,10 @@ Gateway IP address of the partition.  The default is to read from xCAT database 
 B<-h>          
 
 Display usage message.
+
+B<-M>
+
+Support multiple MAC addresses for the same adapter or port.  By default, multiple MAC addresses are disabled.
 
 B<-o>          
 
@@ -154,7 +160,17 @@ Output is similar to:
 
  lpar4:
  #Type  Phys_Port_Loc  MAC_Address  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed
- HFI  N/A  02:00:02:00:00:04:|02:00:02:00:00:05:|02:00:02:00:00:06  N/A  N/A  N/A  N/A  N/A  N/A  N/A
+ HFI  N/A  02:00:02:00:00:04  N/A  N/A  N/A  N/A  N/A  N/A  N/A
+
+7. To retrieve multiple MAC addresses from Power 775 HFI network adapter using Direct FSP Management, enter:
+
+ getmacs lpar4 -M
+
+Output is similar to:
+
+ lpar4:
+ #Type  Phys_Port_Loc  MAC_Address  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed
+ HFI  N/A  02:00:02:00:00:04|02:00:02:00:00:05|02:00:02:00:00:06  N/A  N/A  N/A  N/A  N/A  N/A  N/A
 
 =head1 FILES
 
