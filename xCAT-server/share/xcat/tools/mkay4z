@@ -151,6 +151,7 @@ while (!($dhcp eq 'Y' || $dhcp eq 'y' || $dhcp eq 'Yes' || $dhcp eq 'yes' || $dh
 				'lladdr' => 'replace_lladdr',
 				'ipaddr' => 'replace_ipaddr',
 				'netmask' => 'replace_netmask',
+				'gateway' => 'replace_gateway',
 				'broadcast' => 'replace_broadcast',
 				'network' => 'replace_network',
 				'chanids' => 'replace_ccw_chan_ids'
@@ -1256,7 +1257,7 @@ sub createRoutes {
   <route>
     <destination>$dest</destination>
     <device>$interfaces{$i}{'device'}</device>
-    <gateway></gateway>
+    <gateway>$interfaces{$i}{'gateway'}</gateway>
     <netmask>$interfaces{$i}{'netmask'}</netmask>
   </route>
 END
