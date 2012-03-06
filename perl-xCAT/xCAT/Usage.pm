@@ -181,6 +181,7 @@ my %usage = (
        getmacs [-h|--help|-v|--version]
    PPC specific:
        getmacs <noderange> [-F filter] 
+       getmacs <noderange> [-M]
        getmacs <noderange> [-V| --verbose] [-f] [-d] [--arp] | [-D [-S server] [-G gateway] [-C client]]
    blade specific:
        getmacs <noderange> [-V| --verbose] [-d] [--arp]

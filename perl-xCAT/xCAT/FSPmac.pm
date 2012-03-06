@@ -349,6 +349,10 @@ sub getmacs {
 		    if( $mac_addr ) {
 		        $mac_addr = format_mac($mac_addr);
 	            }
+                    if ( !exists( $opt->{M} )) {
+                        my @mac_addrs = split /\|/, $mac_addr;
+                        $mac_addr = @mac_addrs[0];
+                    }
                     $att{'MAC_Address'}        = ($mac_addr) ? $mac_addr : "N/A";
                     $att{'Adapter'}            = ($adapter_id) ? $adapter_id : "N/A";
                     $att{'Port_Group'}         = ($port_group) ? $port_group : "N/A"; 
