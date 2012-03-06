@@ -409,6 +409,14 @@
     </modules>
     <routing>
       <ip_forward config:type="boolean">false</ip_forward>
+      <routes config:type="list">
+        <route>
+          <destination>default</destination>
+          <device>-</device>
+          <gateway>replace_gateway</gateway>
+          <netmask>replace_netmask</netmask>
+        </route>
+      </routes>
     </routing>
   </networking>
   
