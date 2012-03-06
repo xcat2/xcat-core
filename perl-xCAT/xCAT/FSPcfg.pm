@@ -109,11 +109,18 @@ sub parse_args {
         "pending_power_on_side"
     );
 
+    my @blade = (
+        "cec_off_policy",
+        "pending_power_on_side"
+    );
+
+ 
     
     my %rsp = (
         fsp   => \@fsp,
         bpa   => \@bpa,
         cec   => \@cec,
+        blade   => \@blade,
         frame => \@frame,
     );
     #############################################
@@ -141,7 +148,7 @@ sub parse_args {
     }
  
     my $supported = $rsp{$request->{hwtype}};
-  
+     
     #############################################
     # Responds with usage statement
     #############################################
@@ -190,7 +197,7 @@ sub parse_args {
         my ($command,$value) = split( /=/, $arg );
         if ( !grep( /^$command$/, @$supported) and !$opt{resetnet}) {
             $request->{arg} = [$arg];
-            my $res = xCAT::PPCcfg::parse_args($request, @_);
+            my $res = xCAT::PPCcfg::parse_args($request, @_); 
             if (ref($res) eq 'ARRAY') {
 		        my $check_cmd = &check_command($command, \%rsp);
 		        if (!defined($check_cmd)) {
@@ -208,7 +215,8 @@ sub parse_args {
             return(usage( "Command multiple times: $command" ));
         }
         $cmds{$command} = $value;
-    } 
+    }
+    
     $request->{arg} = \@arg_array;
     if (scalar(@fsp_cmds) && scalar(@ppc_cmds)) {
         my $fsp_cmds_string = &array_to_string(\@fsp_cmds);
@@ -239,6 +247,7 @@ sub parse_args {
             return( usage("No argument specified for '$_'"));
         } 
     }
+    
     ####################################
     # Return method to invoke 
     ####################################
@@ -251,7 +260,7 @@ sub parse_args {
     ####################################
     if ( exists($cmds{frame}) or exists($cmds{cec_off_policy})) {
         $request->{hcp} = (exists($cmds{frame})) ? "bpa" : "fsp";
-        $request->{method} = "cfg";
+        $request->{method} = "cfg"; 
         return( \%opt );
     }
 
@@ -277,7 +286,6 @@ sub parse_args {
         $request->{method} = "passwd";
         return( \%opt );
     }
-
     $request->{method} = \%cmds;
     return( \%opt );
 }
@@ -359,7 +367,7 @@ sub check_node_info {
 	my $invalid_node = undef;
 	while (my ($mtsm, $h) = each (%$hash)) {
 		while (my ($name, $d) = each(%$h)) {
-			if (@$d[4] !~ /^(cec|frame)$/) {
+			if (@$d[4] !~ /^(cec|frame|blade)$/) {
 				$invalid_node = $name;
 				last;
 			}
@@ -382,10 +390,12 @@ my %fspapi_action = (
         pending_power_on_side => {
             query => {
                 cec => "list_firmware_level",
+                blade => "list_firmware_level",
                 frame => "list_firmware_level"
             },
             set => {
                 cec => "set_ipl_param",
+                blade => "set_ipl_param",
                 frame => "set_ipl_param"
             }
         },
@@ -746,7 +756,7 @@ sub cec_off_policy {
     my $value   = shift;
     my $hash    = shift;
     my $arg     = $request->{arg};
-
+    
     foreach ( @$arg ) {
         my $result;
         my $Rc;
