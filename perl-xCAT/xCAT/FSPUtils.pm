@@ -82,18 +82,19 @@ sub fsp_api_action {
     }
     $id = $$attrs[0];
     $fsp_name = $$attrs[3]; 
-
-    if($$attrs[4] =~ /^fsp$/ || $$attrs[4] =~ /^lpar$/ || $$attrs[4] =~ /^(cec|blade)$/) {
+    if($$attrs[4] =~ /^fsp$/ || $$attrs[4] =~ /^lpar$/ || $$attrs[4] =~ /^cec$/) {
         $type = 0;
 	    $fsp_bpa_type="fsp";
     } elsif($$attrs[4] =~ /^bpa$/ || $$attrs[4] =~ /^frame$/) { 
 	    $type = 1;
 	    $fsp_bpa_type="bpa";
+    } elsif($$attrs[4] =~ /^blade$/) { 
+        $type = 0;
+        $fsp_bpa_type = "blade";
     } else { 
         $res = "$fsp_name\'s type is $$attrs[4]. Not support for $$attrs[4]";
 	    return ([$node_name, $res, -1]);
     } 
-
     if( $action =~ /^add_connection$/) { 
         ############################
         # Get IP address
@@ -133,7 +134,9 @@ sub fsp_api_action {
 	            return ([$fsp_name, $res, -1]);
 	        }
 	        $tmp_node = $$children[0];
-	    } else {
+	    } elsif ($$attrs[4] =~ /^blade$/) { 
+            $tmp_node = $$attrs[5];
+        } else {
 	        $tmp_node = $fsp_name; 
 	    }
 	    	    
