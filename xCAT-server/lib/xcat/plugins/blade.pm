@@ -3859,9 +3859,9 @@ sub process_request {
     if ($found) {
        $node = $macmap{$mac};
     } else {
-       my $uuid;
-       foreach $uuid (@{$request->{uuid}}) {
-          $uuid = uc($uuid);
+       my $ruid;
+       foreach $ruid (@{$request->{uuid}}) {
+         my $uuid = uc($ruid);
          if ($uuid and $uuidmap{$uuid}) {
             $node = $uuidmap{$uuid};
             last;
