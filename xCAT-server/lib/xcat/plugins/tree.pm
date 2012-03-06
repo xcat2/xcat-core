@@ -259,6 +259,7 @@ sub lstree
         {
             foreach my $type (keys %hwnodes)
             {
+                eval "require xCAT_plugin::$type";
                 $hwtrees{$type} = ${"xCAT_plugin::".$type."::"}{genhwtree}->(\@{$hwnodes{$type}}, $callback);
             }
         }
@@ -307,7 +308,11 @@ sub lstree
             }
         }
 
-        my $ret = xCAT_plugin::zvm::listTree($callback, \@znodes);
+        if (scalar @znodes)
+        {
+         eval "require xCAT_plugin::zvm";
+         my $ret = xCAT_plugin::zvm::listTree($callback, \@znodes);
+        }
         
         ########### end ################
         
