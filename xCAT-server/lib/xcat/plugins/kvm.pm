@@ -526,8 +526,11 @@ sub build_diskstruct {
 }
 sub getNodeUUID {
     my $node = shift;
+    my $uuid;
     if ($confdata->{vpd}->{$node}->[0] and $confdata->{vpd}->{$node}->[0]->{uuid}) {
-        return $confdata->{vpd}->{$node}->[0]->{uuid};
+	$uuid = $confdata->{vpd}->{$node}->[0]->{uuid};
+	$uuid =~ s/^(..)(..)(..)(..)-(..)(..)-(..)(..)/$4$3$2$1-$6$5-$8$7/;
+        return $uuid;
     }
     if ($confdata->{mac}->{$node}->[0]->{mac}) { #a uuidv1 is possible, generate that for absolute uniqueness guarantee
         my $mac = $confdata->{mac}->{$node}->[0]->{mac};
@@ -537,7 +540,9 @@ sub getNodeUUID {
     } else {
         $updatetable->{vpd}->{$node}={uuid=>xCAT::Utils::genUUID()};
     }
-    return $updatetable->{vpd}->{$node}->{uuid};
+    $uuid = $updatetable->{vpd}->{$node}->{uuid};
+    $uuid =~ s/^(..)(..)(..)(..)-(..)(..)-(..)(..)/$4$3$2$1-$6$5-$8$7/;
+    return $uuid;
 
 }
 sub build_nicstruct {
@@ -1262,6 +1267,7 @@ sub rinv {
     }
     my $domain=$parser->parse_string($currxml);
     my $uuid = $domain->findnodes('/domain/uuid')->[0]->to_literal;
+    $uuid =~ s/^(..)(..)(..)(..)-(..)(..)-(..)(..)/$4$3$2$1-$6$5-$8$7/;
     xCAT::SvrUtils::sendmsg("UUID/GUID: $uuid", $callback,$node);
     my $cpus = $domain->findnodes('/domain/vcpu')->[0]->to_literal;
     xCAT::SvrUtils::sendmsg("CPUs: $cpus", $callback,$node);
