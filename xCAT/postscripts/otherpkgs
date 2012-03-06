@@ -224,22 +224,20 @@ fi
 mounted=0;
 result=`mount |grep /install |grep $NFSSERVER`
 if [ $? -eq 0 ]; then
-    NFSSERVER="/install"
     mounted=1 
 fi
 
+#OTHERPKGDIR is set only when the provmethod is the os image name
+#when it is not set, we need to figure it out here
 if [ -z "$OTHERPKGDIR" ]; then
     if [ $mounted -eq 0 ]; then
         OTHERPKGDIR="$NFSSERVER$INSTALLDIR/post/otherpkgs/$OSVER/$ARCH"
     else
-        OTHERPKGDIR="$NFSSERVER/post/otherpkgs/$OSVER/$ARCH"
+        OTHERPKGDIR="$INSTALLDIR/post/otherpkgs/$OSVER/$ARCH"
     fi
-fi
-
-if [ $mounted -eq 0 ]; then
-    otherpkg_subdir=${OTHERPKGDIR#$INSTALLDIR}
-    if [ "$otherpkg_subdir" != "$OTHERPKGDIR" ]; then
-	OTHERPKGDIR=${NFSSERVER}${otherpkg_subdir}
+else
+    if [ $mounted -eq 0 ]; then
+	OTHERPKGDIR=${NFSSERVER}${OTHERPKGDIR}
     fi
 fi
 
