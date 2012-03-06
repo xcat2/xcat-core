@@ -1,10 +1,9 @@
 #!/bin/sh
 retval=${SUCCESS}
-if [  `uname -r` == '5.0.0' ]; then
+case `uname -r` in 5.*) #if [  `uname -r` == '5.0.0' ]; then
     #duid=default-duid "\000\001\000\001LnC\304\000\020\030^\340\334";
     duid='default-duid "\000\004';
-
-    for i in `vsish -e get /hardware/bios/dmiInfo|grep -A15 UUID|sed -e 's/.*://'|sed -e ':a;N;$!ba;s/\n//g'`; do
+    for i in `vsish -e get /hardware/bios/dmiInfo|grep -A15 UUID|sed -e :a -e '$!N;s/\n/ /;ta;s/ //g;s/:/ /g;s/\[[^]]*\]//g;s/UUID *//;s/^\(0x..\) \(0x..\) \(0x..\) \(0x..\) \(0x..\) \(0x..\) \(0x..\) \(0x..\)/\4 \3 \2 \1 \6 \5 \8 \7/'`; do
         num=`printf "%d" $i`
         tnum=`printf "\\%03o" $i`
         duid=$duid$tnum
@@ -13,6 +12,6 @@ if [  `uname -r` == '5.0.0' ]; then
     echo $duid > /etc/dhclient6-vmk0.leases
     localcli network firewall ruleset set -r DHCPv6 -e y
     localcli network ip interface ipv6 set -i vmk0 -d y
-fi
+esac
 return $retval
 
