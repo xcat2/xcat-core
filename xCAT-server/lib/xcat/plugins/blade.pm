@@ -615,9 +615,9 @@ sub mpaconfig {
       }
       elsif ($parameter =~ /^community/i) {
          if ($assignment) {
-            setoid("1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.2.1.1",0,$value,'OCTET');
+            setoid("1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.2.1",0,$value,'OCTET');
          }
-         my $data = $session->get(["1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.2.1.1"]);
+         my $data = $session->get(["1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.2.1"]);
          push @cfgtext,"SP SNMP Community: $data";
          next;
       }
