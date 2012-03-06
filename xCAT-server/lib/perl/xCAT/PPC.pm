@@ -80,6 +80,7 @@ my %modules = (
                        fsp    => "xCAT::FSPcfg",
                        bpa    => "xCAT::FSPcfg",
                        cec    => "xCAT::FSPcfg",
+                       blade    => "xCAT::FSPcfg",
                        frame  => "xCAT::FSPcfg",
                       },
         rflash    => { hmc    => "xCAT::PPCrflash",
@@ -228,7 +229,7 @@ sub process_command {
     if ( !defined( $nodes )) {
         return(1);
     }
-
+    
     #get new node status
     my %oldnodestatus=(); #saves the old node status
         my @allerrornodes=();
@@ -794,7 +795,7 @@ sub preprocess_nodes {
             or ($request->{hwtype} eq "fsp" or $request->{hwtype} eq "bpa" ) 
             or ($request->{command} eq 'lshwconn' and $request->{nodetype} eq 'hmc')) and ($request->{fsp_api} != 1)
        ) {
-        my $result = resolve_hcp( $request, $noderange );
+        my $result = resolve_hcp( $request, $noderange ); 
         return( $result );
     }
     ##########################################
@@ -860,7 +861,10 @@ sub preprocess_nodes {
     # Get userid and password
     ##########################################
     while (my ($hcp,$hash) = each(%nodehash) ) {   
-        my @cred;
+        if($request->{hwtype} && ($request->{hwtype} eq "blade" )) { 
+            next;
+        }
+        my @cred; 
         if ($request->{hcp} && ($request->{hcp} eq "hmc" )) {
             @cred = xCAT::PPCdb::credentials( $hcp, $request->{hcp} );
         } else {
@@ -928,9 +932,9 @@ sub preprocess_nodes {
     # process per hardware control point.
     ##########################################
     while (my ($hcp,$hash) = each(%nodehash) ) {    
-        push @nodegroup,[$hcp,$hash]; 
-    }
-    return( \@nodegroup );
+        push @nodegroup,[$hcp,$hash];  
+    } 
+    return( \@nodegroup ); 
 }
 
 
@@ -1845,7 +1849,7 @@ sub preprocess_request {
         my $support_hcp_type;
         # in the DFM model, cec/fsp/Frame/bpa can be hcp.
         if ($package eq "fsp" or $package eq "bpa") {
-            $support_hcp_type = "(fsp|cec|bpa|frame)";
+            $support_hcp_type = "(fsp|cec|bpa|frame|blade)";
         # in the HMC model, only hmc can be hcp.
         } elsif ($package eq "hmc") {
             $support_hcp_type = "hmc";
