@@ -669,6 +669,7 @@ sub inv {
   my $moref = $vmview->{mo_ref}->value;
   xCAT::SvrUtils::sendmsg("Managed Object Reference: $moref", $output_handler,$node);
   my $uuid = $vmview->config->uuid;
+  $uuid =~ s/(..)(..)(..)(..)-(..)(..)-(..)(..)/$4$3$2$1-$6$5-$8$7/;
   xCAT::SvrUtils::sendmsg("UUID/GUID:  $uuid", $output_handler,$node);
   my $cpuCount = $vmview->config->hardware->numCPU;
   xCAT::SvrUtils::sendmsg("CPUs:  $cpuCount", $output_handler,$node);
@@ -2880,6 +2881,7 @@ sub build_cfgspec {
         my $vpdtab = xCAT::Table->new('vpd');
        	$vpdtab->setNodeAttribs($node,{uuid=>$uuid});
     }
+    $uuid =~ s/^(..)(..)(..)(..)-(..)(..)-(..)(..)/$4$3$2$1-$6$5-$8$7/;
     my @optionvals;
     if ($tablecfg{vm}->{$node}->[0]->{othersettings}) {
         my $key;
