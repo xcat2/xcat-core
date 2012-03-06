@@ -2901,6 +2901,9 @@ sub getIPaddress
     require xCAT::Table;
     my $nodetocheck = shift;
     my $port        = shift;
+    if (isIpaddr($nodetocheck)) {
+        return $nodetocheck;
+    }
     my $side = "[A|B]";
     if (!defined($port)) {
         $port = "[0|1]";

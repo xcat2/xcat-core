@@ -162,8 +162,12 @@ sub filter_nodes{
 
     push @{$mpnodes}, @mp;
     push @{$fspnodes}, @commonfsp;
-    if (@args && ($cmd eq "rspconfig") && (grep /^(network|network=.*)$/, @args)) {
-      push @{$mpnodes}, @ngpfsp;
+    if (@args && ($cmd eq "rspconfig")) {
+      if (!(grep /^(cec_off_policy|pending_power_on_side)/, @args)) {
+        push @{$mpnodes}, @ngpfsp;
+      } else {
+        push @{$fspnodes}, @ngpfsp;
+      }
     } elsif($cmd eq "getmacs") {
       if (@args && (grep /^-D$/,@args)) {
         push @{$fspnodes}, @ngpfsp;

@@ -1787,9 +1787,13 @@ sub getmacs {
                $mkey="primarynic";
            }
            if ($mkey) {
-	     while ( $nent->{$mkey} =~ /(\d+)/g ) {
-	       push @midxary,$1;
-	     }
+	           while ( $nent->{$mkey} =~ /(\d+)/g ) {
+                   my $nic = $1;
+                   if ($nic !~ /[1234]/) {
+                       return -1, "noderes.$mkey is not correct";
+                   }
+                   push @midxary,$nic;
+	           }
            }
        } else {
            $nrtab->close;
@@ -1804,7 +1808,7 @@ sub getmacs {
 
      my @allmacs;
      foreach my $midx ( @midxary) {
-       (my $macd,my $mac) = split (/:/,$macs[$midx],2);
+       (my $macd,my $mac) = split (/:/,$macs[$midx-1],2);
        $mac =~ s/\s+//g;
        if ($macd !~ /mac address \d/i) {
            return 1,"Unable to retrieve MAC address for interface $midx from Management Module";
@@ -3662,8 +3666,12 @@ sub filter_nodes{
 
     push @{$mpnodes}, @mp;
     push @{$fspnodes}, @commonfsp;
-    if (@args && ($cmd eq "rspconfig") && (grep /^(network|network=.*)$/, @args)) {
-      push @{$mpnodes}, @ngpfsp;
+    if (@args && ($cmd eq "rspconfig")) {
+      if (!(grep /^(cec_off_policy|pending_power_on_side)/, @args))  {
+          push @{$mpnodes}, @ngpfsp;
+      } else {
+          push @{$fspnodes}, @ngpfsp;
+      }
     } elsif($cmd eq "getmacs") {
       if (@args && (grep /^-D$/,@args)) {
         push @{$fspnodes}, @ngpfsp;
@@ -4173,9 +4181,8 @@ sub passwd {
   my $pass = shift;
   my $mm = shift;
   my $cmd = "users -n $user -p $pass -T system:$mm";
-  print "===>$cmd\n";
   if (!$pass) {
-    return ([1, "No param specified"]);
+    return ([1, "No param specified for '$user'"]);
   }
   my @data = $t->cmd($cmd);
   if (!grep(/OK/i, @data)) {
@@ -4363,7 +4370,7 @@ sub swnet {
   }
 
   if (!$value) {
-    my @data = $t->cmd("ifconfig -T system::$switch");
+    my @data = $t->cmd("ifconfig -T system:$switch");
     my $s = join('',@data);
     if ($s =~ /-i\s+(\S+)/) { $ip = $1; }
     if ($s =~ /-g\s+(\S+)/) { $gateway = $1; }
