@@ -3866,6 +3866,11 @@ sub process_request {
             $node = $uuidmap{$uuid};
             last;
          }
+         $uuid =~ s/(..)(..)(..)(..)-(..)(..)-(..)(..)/$4$3$2$1-$6$5-$8$7/;
+         if ($uuid and $uuidmap{$uuid}) {
+            $node = $uuidmap{$uuid};
+            last;
+         }
        }
     }
     unless ($node) {
