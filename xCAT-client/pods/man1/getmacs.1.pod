@@ -50,7 +50,7 @@ Perform ping test.  Please be aware that in this way, the lpars will be reset.
 
 B<-f>          
 
-Force immediate shutdown of the partition.
+Force immediate shutdown of the partition.This flag must be used with -D flag.
 
 B<-F>          
 
