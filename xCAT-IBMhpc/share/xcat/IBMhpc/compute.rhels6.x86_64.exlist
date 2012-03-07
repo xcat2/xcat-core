@@ -1,0 +1,3 @@
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/IBMhpc.rhels6.x86_64.exlist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/gpfs/gpfs.exlist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe.exlist#
