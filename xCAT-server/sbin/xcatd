@@ -282,6 +282,7 @@ sleep 0.05; #up to 50 ms outage possible
 my @clients;
 if ($inet6support) {
     @clients = gethostbyaddr($conn->peeraddr,AF_INET6);
+    unless (@clients) { @clients =  gethostbyaddr($conn->peeraddr,AF_INET); }
 } else {
     @clients = gethostbyaddr($conn->peeraddr,AF_INET);
 }
