@@ -1,24 +1,27 @@
 #!/bin/sh
 # Put the version, svn revision #, and build date into the Version function in Version.pm
 
-if [ -z "$1" ]
+if [ -z "$2" ]
 	then
-	echo "modifyVersion:  Error:  must specify the xCAT version as an argument!"
+	echo "modifyUtils:  Error:  must specify the xCAT version and svn revision number as arguments" >&2
 	exit
-	fi 
-VER=$1
-
-SVNINFO=`svn info 2>/dev/null|grep Revision`
-#/bin/echo -e $SVNINFO
-if [ $? -ne 0 -a -f .svninfo ]; then
-    SVNINFO=`cat .svninfo 2>/dev/null|grep Revision`
 fi
-if [ $? -eq 0 ]
-	then
-		SVNREF="svn r"`echo $SVNINFO|awk '{print $2}'`", "
-	else
-		SVNREF=""
-	fi
+
+VER=$1
+SVNREF="svn r$2, "
+
+#SVNINFO=`svn info 2>/dev/null|grep Revision`
+#/bin/echo -e $SVNINFO
+#if [ $? -ne 0 -a -f .svninfo ]; then
+#    SVNINFO=`cat .svninfo 2>/dev/null|grep Revision`
+#fi
+#if [ $? -eq 0 ]
+#	then
+#		SVNREF="svn r"`echo $SVNINFO|awk '{print $2}'`", "
+#	else
+#		SVNREF=""
+#	fi
+
 BUILDDATE=`date`
 #echo ". '(${SVNREF}built $BUILDDATE)'"
 
