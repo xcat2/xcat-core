@@ -29,7 +29,7 @@ Force reboot the system no matter what state the node is.  By default, rnetboot 
 
 B<-f>          
 
-Force immediate shutdown of the partition. This flag must be used with -D flag.
+Force immediate shutdown of the partition.
 
 B<-m>          
 
