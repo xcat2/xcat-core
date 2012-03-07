@@ -3134,6 +3134,8 @@ sub bladecmd {
   if ($slot =~ /-/) {
       $slot =~ s/-(.*)//;
       @moreslots = ($slot+1..$1);
+  } else {
+      @moreslots = ();
   }
   my $user = shift;
   my $pass = shift;
