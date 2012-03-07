@@ -66,7 +66,7 @@ Display usage message.
 
 B<-M>
 
-Support multiple MAC addresses for the same adapter or port.  By default, multiple MAC addresses are disabled.
+Return multiple MAC addresses for the same adapter or port, if available from the hardware.  For some network adapters (e.g. HFI) the MAC can change when there are some recoverable internal errors.  In this case, the hardware can return several MACs that the adapter can potentially have, so that xCAT can put all of them in DHCP.  This allows successful booting, even after a MAC change, but on Linux at this time, it can also cause duplicate IP addresses, so it is currently not recommended on Linux.  By default (without this flag), only a single MAC address is returned for each adapter.
 
 B<-o>          
 
