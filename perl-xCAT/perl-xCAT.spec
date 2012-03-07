@@ -22,6 +22,8 @@ Provides: perl-xCAT = %{epoch}:%{version}
 Provides perl xCAT libraries for core functionality.  Required for all xCAT installations.
 Includes xCAT::Table, xCAT::NodeRange, among others.
 
+%define svninfo %(svn info | grep Revision | awk '{print $2}')
+
 %prep
 %setup -q -n perl-xCAT
 %build
@@ -30,7 +32,7 @@ Includes xCAT::Table, xCAT::NodeRange, among others.
 # as it is in svn.
 
 # Modify the Version() function in xCAT/Utils.pm to automatically have the correct version
-./modifyUtils %{version}
+./modifyUtils %{version} %{svninfo}
 
 # Build the pod version of the man pages for each DB table.  It puts them in the man5 and man7 subdirs.
 # Then convert the pods to man pages and html pages.
