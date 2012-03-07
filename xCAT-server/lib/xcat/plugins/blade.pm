@@ -1808,7 +1808,7 @@ sub getmacs {
 
      my @allmacs;
      foreach my $midx ( @midxary) {
-       (my $macd,my $mac) = split (/:/,$macs[$midx-1],2);
+       (my $macd,my $mac) = split (/:/,$macs[$midx],2);
        $mac =~ s/\s+//g;
        if ($macd !~ /mac address \d/i) {
            return 1,"Unable to retrieve MAC address for interface $midx from Management Module";

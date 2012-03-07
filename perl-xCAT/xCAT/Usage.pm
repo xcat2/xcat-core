@@ -35,7 +35,9 @@ my %usage = (
        rpower <noderange> [stat|state|rackstandby|exit_rackstandby|resetsp]
      LPAR(using Direct FSP Management) specific:
        rpower <noderange> [on|off|reset|stat|state|boot|of|sms]
-     Blade specific:
+     Blade(using Direct FSP Management) specific:
+       rpower <noderange> [on|off|cycle|state]
+     Blade(using AMM) specific:
        rpower <noderange> [cycle|softoff] [-V|--verbose]
      zVM specific:
        rpower noderange [on|off|reset|stat|softoff]

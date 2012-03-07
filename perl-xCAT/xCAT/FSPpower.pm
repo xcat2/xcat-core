@@ -214,10 +214,10 @@ sub powercmd {
 	    if($action =~ /^off$/) { $action = "cec_off"; }
 	    if($action =~ /^resetsp$/) { $action = "reboot_service_processor"; }
 	    if($action =~ /^lowpower$/) { $action = "cec_on_low_power"; }
-        if($action =~ /^reboot$/) {$action = "cec_reboot";}
-	    if($action !~ /^cec_on_autostart$/ && $action !~ /^cec_off$/ &&  $action !~ /^cec_on_low_power$/ && $action !~ /^onstandby$/ && $action !~ /^reboot_service_processor$/ ) {
+        if($action =~ /^cycle$/) {$action = "cec_reboot";}
+	    if($action !~ /^cec_on_autostart$/ && $action !~ /^cec_off$/ &&  $action !~ /^cec_on_low_power$/ && $action !~ /^onstandby$/ && $action !~ /^reboot_service_processor$/ && $action !~ /^cec_reboot$/) {
 	        push @output, [$node_name, "\'$action\' command not supported for $$d[4]", -1 ];
-		next;
+		    return (\@output);
 	    }	
             $newids = $$d[0];	    
             $newnames = $node_name;
@@ -232,8 +232,7 @@ sub powercmd {
              $action = "reboot_service_processor";
          } else {
 	         push @output, [$node_name, "$node_name\'s type isn't fsp or lpar. Not allow doing this operation", -1 ];
-		 #return (\@output);
-                 next;
+		     return (\@output);
 	     }
              $newids = $$d[0];	    
              $newnames = $node_name;
@@ -285,11 +284,13 @@ sub powercmd {
                 next;
             }
         }
-	    push @output, [$node_name,"Success", 0];
+        if ((scalar(keys %$hash) == 1) and $Rc) {
+	        push @output, [$node_name, $data, $Rc];
+        } else {
+	        push @output, [$node_name,"Success", 0];
+        }
     } 
-
     return( \@output );
-
 }
 
 
