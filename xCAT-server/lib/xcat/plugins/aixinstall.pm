@@ -6882,9 +6882,12 @@ sub update_dd_boot
 			cp /SPOT/usr/bin/cat /usr/bin
 			cp /SPOT/usr/bin/awk /usr/bin
 			cp /SPOT/usr/bin/grep /usr/bin
+			cp /SPOT/usr/bin/cut  /usr/bin
+
+			SHOST=`echo \${NIM_HOSTNAME} | /usr/bin/cut -d . -f 1`
 
 			# statelite entry for this node
-			SLLINE=`/usr/bin/cat /mnt/statelite.table | /usr/bin/grep \${NIM_NAME}`
+			SLLINE=`/usr/bin/cat /mnt/statelite.table | /usr/bin/grep \${SHOST}`
 			# the statelite server
 			SLSERV=`echo \$SLLINE | /usr/bin/awk -F'|' '{print \$2}'`
 
@@ -6894,8 +6897,8 @@ sub update_dd_boot
 			$::MOUNT \${SLSERV}:\${SLDIR} /tmp
 
 			# - get the persistent version of basecust from the server
-			if [ -f /tmp/\${NIM_NAME}/etc/basecust  ]; then
-				cp -p /tmp/\${NIM_NAME}/etc/basecust /etc
+			if [ -f /tmp/\${SHOST}/etc/basecust  ]; then
+				cp -p /tmp/\${SHOST}/etc/basecust /etc
 				cp /SPOT/usr/lib/boot/restbase /usr/sbin
 				cp /SPOT/usr/bin/uncompress /usr/bin
 			fi
@@ -6914,7 +6917,9 @@ sub update_dd_boot
 			# need to mount persistent basecust over the one in RAM FS
 			$::MOUNT -o rw \${SLSERV}:\${SLDIR} /tmp
 			/usr/bin/touch /etc/basecust
-			mount /tmp/\${NIM_NAME}/etc/basecust /etc/basecust
+			cp /SPOT/usr/bin/cut  /usr/bin
+			SHOST=`echo \${NIM_HOSTNAME} | /usr/bin/cut -d . -f 1`
+			mount /tmp/\${SHOST}/etc/basecust /etc/basecust
 		fi
 	fi \n\n~;
 
