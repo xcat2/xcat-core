@@ -73,7 +73,7 @@ sub do_rnetboot {
     #######################################
     # Turn on verbose and debugging
     #######################################
-    if ( exists($request->{verbose}) ) {
+    if ( ${$request->{arg}}[0] eq '-V' ) {
         #$cmd.= " -v -x";
         $optarg{'v'} = 1; #for verbose
         $optarg{'x'} = 1; #for debug
