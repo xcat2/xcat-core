@@ -522,7 +522,7 @@ sub get_phandle {
             $timeout,
             [qr/(\n)([^\r]*)(\r)/=>
             sub {
-                nc_msg($verbose, "begin to parse network adapters \n");
+                nc_msg($verbose, "Parsing network adapters... \n");
                 #$rconsole->clear_accum();
                 }
             ],
