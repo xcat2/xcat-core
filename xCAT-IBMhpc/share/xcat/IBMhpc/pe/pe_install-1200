@@ -42,13 +42,14 @@ if [ $OS != "AIX" ]; then
         mkdir -p /tmp/pe
         rm -f -R /tmp/pe/*
         cd /tmp/pe
-        download_dir=`echo $PE_DIR | cut -d '/' -f3-`
-        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=5 ftp://$SITEMASTER/$download_dir/*.rpm 2> /tmp/wget.log
-        if [ ! -f /opt/ibmhpc/install/sbin/accept_ppe_license.sh ] ; then
-            rpm -Uvh IBM_pe_license*.rpm
+#        download_dir=`echo $PE_DIR | cut -d '/' -f3-`
+#        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=5 http://$SITEMASTER/$PE_DIR/*.rpm 2> /tmp/wget.log
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=6 --reject "index.html*"  --no-parent http://$SITEMASTER$PE_DIR/ 2> /tmp/wget.log
+        if [ ! -f /opt/ibmhpc/pe1200/sbin/accept_ppe_license.sh ] ; then
+            rpm -Uvh pe/ppe_rte_license*.rpm
         fi
-        IBM_PE_LICENSE_PROMPT=N /opt/ibmhpc/install/sbin/accept_ppe_license.sh
-        rpm -Uvh --force ibm_lapi*.rpm ibm_pe*.rpm ppe_*.rpm 
+        IBM_PPE_RTE_LICENSE_ACCEPT=yes /opt/ibmhpc/pe1200/sbin/accept_ppe_license.sh
+        rpm -Uvh ppe*.rpm 
         cd /
         rm -Rf /tmp/pe
     fi
@@ -60,32 +61,32 @@ if [ $OS != "AIX" ]; then
         # For SLES, assume zypper is available on the system running genimage
             if [ ! -d /opt/ibmhpc/pe1200/lap/license ] ; then
             # Install and accept PE license on the MN
-                IBM_PE_LICENSE_PROMPT=N zypper install $PE_DIR/ppe_rte_license*.rpm
+                IBM_PPE_RTE_LICENSE_ACCEPT=yes zypper install $PE_DIR/ppe_rte_license*.rpm
             fi
             # Install PE license rpm into image, BUT DO NOT ACCEPT
             # The java process fails when you try to run in chroot
-            zypper -R $installroot install $PE_DIR/ppe_rte_license*.rpm
+            IBM_PPE_RTE_LICENSE_ACCEPT=no zypper -R $installroot install $PE_DIR/ppe_rte_license*.rpm
             # Copy license files from MN into the image
             mkdir -p $installroot/opt/ibmhpc/pe1200/lap/license/
             cp -pR /opt/ibmhpc/pe1200/lap/license/* $installroot/opt/ibmhpc/pe1200/lap/license
             # Install PE product rpms
-            INUCLIENTS=1 INUBOSTYPE=1 zypper -R $installroot install $PE_DIR/ppe_rte* $PE_DIR/pperte* 
+            INUCLIENTS=1 INUBOSTYPE=1 zypper -R $installroot install $PE_DIR/pperte* 
         else
         # For Redhat, etc., assume yum is available on the system running genimage
             if [ ! -d /opt/ibmhpc/pe1200/lap/license ] ; then
             # Install and accept PE license on the MN
-                IBM_PE_LICENSE_PROMPT=N yum --nogpgcheck localupdate  $PE_DIR/ppe_rte_license*.rpm
+                IBM_PPE_RTE_LICENSE_ACCEPT=yes yum -y --nogpgcheck localupdate  $PE_DIR/ppe_rte_license*.rpm
                 #IBM_PE_LICENSE_PROMPT=N yum --nogpgcheck install  $PE_DIR/ppe_rte_license*.rpm
             fi
             # Install PE license rpm into image, BUT DO NOT ACCEPT
             # The java process fails when you try to run in chroot
-            yum -y --installroot $installroot --nogpgcheck install  $PE_DIR/ppe_rte_license*.rpm
+            IBM_PPE_RTE_LICENSE_ACCEPT=no yum -y --installroot $installroot --nogpgcheck install  $PE_DIR/ppe_rte_license*.rpm
             # Copy license files from MN into the image
             mkdir -p $installroot/opt/ibmhpc/pe1200/lap/license/
             cp -pR /opt/ibmhpc/pe1200/lap/license/* $installroot/opt/ibmhpc/pe1200/lap/license/
             #chroot $installroot /opt/ibmhpc/install/sbin/accept_ppe_license.sh
             # Install PE product rpms
-            INUCLIENTS=1 INUBOSTYPE=1 yum -y --installroot $installroot --nogpgcheck install  $PE_DIR/ppe_rte* $PE_DIR/pperte*
+            INUCLIENTS=1 INUBOSTYPE=1 yum -y --installroot $installroot --nogpgcheck install $PE_DIR/ppe_rte* $PE_DIR/pperte*
         fi
     fi
 fi
