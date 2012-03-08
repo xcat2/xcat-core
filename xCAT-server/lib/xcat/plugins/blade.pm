@@ -4181,6 +4181,43 @@ sub mmtextid {
   return([0,"textid: $value"]);
 }
 
+sub get_blades_for_mpa {
+  my $mpa = shift;
+  my %blades_hash = ();
+  my $mptab = xCAT::Table->new('mp');
+  my $ppctab = xCAT::Table->new('ppc');
+  my @attribs = qw(id pprofile parent hcp);
+  if (!defined($mptab) or !defined($ppctab)) {
+    return undef;
+  }
+  my @nodearray = $mptab->getAttribs({mpa=>$mpa,nodetype=>"blade"}, qw(node));
+  if (!defined(@nodearray)) {
+    return (\%blades_hash);
+  }
+  foreach (@nodearray) {
+      my $node = $_->{node};
+      my @values = ();
+      my ($att) = $ppctab->getNodeAttribs($node, \@attribs);
+      if (!defined($att)) {
+          next;
+      } elsif ($att and $att->{parent} and ($att->{parent} ne $mpa)) {
+          next;
+      }
+      my $hcp_ip = xCAT::Utils::getIPaddress($att->{hcp});
+      if (!defined($hcp_ip) or ($hcp_ip == -3)) {
+          next;
+      }
+      push @values, $att->{id};
+      push @values, '0';
+      push @values, '0';
+      push @values, $hcp_ip;
+      push @values, "blade";
+      push @values, $mpa;
+      $blades_hash{$node} = \@values; 
+  }
+  return (\%blades_hash);
+}
+
 sub passwd {
   my $t = shift;
   my $mpa = shift;
@@ -4197,7 +4234,41 @@ sub passwd {
   }
   my $mpatab = xCAT::Table->new('mpa');
   if ($mpatab) {
+    my ($ent)=$mpatab->getNodeSpecAttribs($mpa, {username=>$user},qw(password));
+    my $oldpass = 'PASSW0RD';
+    if (defined($ent->{password})) {$oldpass = $ent->{password}};
     $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
+    if ($user eq "HMC") {
+        my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
+        my $blades = &get_blades_for_mpa($mpa);
+        if (!defined($blades)) {
+            return ([1, "Find blades failed for $mpa"]);
+        }
+        my @failed_blades = ();
+        foreach (keys %$blades) {
+            my $node_name = $_;
+            my $att = $blades->{$node_name};
+            my $con_cmd = "$fsp_api -a query_connection -T 0 -t 0:$$att[3]:$$att[0]:$node_name: 2>&1";
+            #print "===>query_con_cmd=$con_cmd\n";
+            my $res = xCAT::Utils->runcmd($con_cmd, -1);
+            if ($res =~ /No connection information found/i) {
+                next;  #we don't need to update password for FSPs that havn't created DFM links#
+            } elsif ($res =~ /The hdwr_svr daemon is not currently running/i) {
+                return ([1, "Update password for 'hdwr_svr' failed because the 'hdwr_svr' daemon is not currently running. Please recreate the connections between blades and hdwr_svr."]);
+            }
+            my $hws_cmd = "$fsp_api -a reset_hws_pw -u $user -p $oldpass -P $pass -T 0 -t 0:$$att[3]:$$att[0]:$node_name: 2>&1";
+            #print "===>set_hws_cmd=$hws_cmd\n";
+
+            $res = xCAT::Utils->runcmd($hws_cmd, -1);
+            if ($res =~ /Error/i) {
+                push @failed_blades, $node_name;
+            }  
+        }
+        if (scalar(@failed_blades)) {
+            my $fblades = join (',',@failed_blades);
+            return ([1, "Update password of HMC for '$fblades' failed. Please recreate the DFM connections for them."]);
+        }
+    }
   } else {
     return ([1, "Update password for $user in 'mpa' table failed"]);
   }
