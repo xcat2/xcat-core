@@ -17,10 +17,9 @@ use warnings "all";
 use IO::Socket::INET qw/!AF_INET6 !PF_INET6/;
 
 my $doipv6=eval {
+	require Socket6;
 	require IO::Socket::INET6; 
 	IO::Socket::INET6->import();
-	require Socket6;
-        Socket6->import();
 	1;
 };
 use IO::Select;
@@ -111,7 +110,7 @@ sub new {
     my ($family, $socktype, $protocol, $saddr, $name, $ip, $service);
     if ($doipv6) {
        ($family, $socktype, $protocol, $saddr, $name) = Socket6::getaddrinfo($self->{bmc},623,AF_UNSPEC,SOCK_DGRAM,0);
-       ($ip,$service) = getnameinfo($saddr,Socket6::NI_NUMERICHOST());
+       ($ip,$service) = Socket6::getnameinfo($saddr,Socket6::NI_NUMERICHOST());
     }
     unless ($saddr or $bmc_n = inet_aton($self->{bmc})) {
         $self->{error} = "Could not resolve ".$self->{bmc}." to an address";
@@ -424,7 +423,7 @@ sub route_ipmiresponse {
     #($port,$host) = sockaddr_in6($sockaddr);
     #$host = inet_ntoa($host);
     if ($doipv6) {
-	    ($host,$port) = getnameinfo($sockaddr,Socket6::NI_NUMERICHOST());
+	    ($host,$port) = Socket6::getnameinfo($sockaddr,Socket6::NI_NUMERICHOST());
     } else {
 	($port,$host) = sockaddr_in($sockaddr);
 	$host = inet_ntoa($host);
