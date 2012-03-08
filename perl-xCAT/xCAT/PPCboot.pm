@@ -45,7 +45,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version I|iscsiboot F f o s=s m:s@ r=s t=s) )) { 
+    if ( !GetOptions( \%opt, qw(h|help V T v|version I|iscsiboot F f o s=s m:s@ r=s t=s) )) { 
         return( usage() );
     }
 
@@ -76,6 +76,17 @@ sub parse_args {
         if ($res != SUCCESS) {
              return(usage());
         } 
+    }
+    #############################################
+    # T is used for trace, V is used for debug
+    #############################################
+    if (exists($opt{T})) {
+        $opt{V} = 1;
+        delete $opt{T};
+
+    }elsif(exists($opt{V})) {
+        $opt{T} = 1;
+        delete $opt{V};
     }
     ####################################
     # Check for "-" with no option
@@ -154,7 +165,7 @@ sub do_rnetboot {
     #######################################
     # Turn on verbose and debugging
     #######################################
-    if ( exists($request->{verbose}) ) {
+    if ( ${$request->{arg}}[0] eq '-V' ) {
         #$cmd.= " -v -x";
         $optarg{'v'} = 1; #for verbose
         $optarg{'x'} = 1; #for debug
