@@ -4224,19 +4224,19 @@ sub passwd {
   my $user = shift;
   my $pass = shift;
   my $mm = shift;
-  my $cmd = "users -n $user -p $pass -T system:$mm";
   if (!$pass) {
     return ([1, "No param specified for '$user'"]);
-  }
-  my @data = $t->cmd($cmd);
-  if (!grep(/OK/i, @data)) {
-    return ([1, @data]);
   }
   my $mpatab = xCAT::Table->new('mpa');
   if ($mpatab) {
     my ($ent)=$mpatab->getNodeSpecAttribs($mpa, {username=>$user},qw(password));
     my $oldpass = 'PASSW0RD';
     if (defined($ent->{password})) {$oldpass = $ent->{password}};
+    my $cmd = "users -n $user -op $oldpass -p $pass -T system:$mm";
+    my @data = $t->cmd($cmd);
+    if (!grep(/OK/i, @data)) {
+        return ([1, @data]);
+    }
     $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
     if ($user eq "HMC") {
         my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
