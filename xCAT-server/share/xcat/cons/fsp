@@ -256,6 +256,7 @@ sub invoke_cmd {
     my $power_state_cmd = "$fsp_api -a cec_state -t $type:$fsp_ip:$id:$node: 2>&1";
     my $res = xCAT::Utils->runcmd($power_state_cmd, -1);
     unless ($res and $res =~ /operating|standby/) {
+        sleep 5;
         return("The command 'rcons' is only support while the $machine is in the '$state' state");
     } 
 
