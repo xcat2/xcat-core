@@ -703,17 +703,20 @@ sub web_gangliaShow{
 				my $cpunum = 0;
 				for($index = 0; $index < $size; $index += $step){
 					if ($runInfo->[$index] =~ /^(\S+): (\S+) (\S+)/){
-						if (($2 eq 'NaNQ') || ($2 eq 'nan')){
+						my $timestamp = $1;
+                        my $value = $2;
+                        my $valuenum = $3;
+						if ((lc($value) =~ /nanq/) || (lc($value) =~ /nan/)){
 							#the rrdtool fetch last outline line always nan, so no need to add into return string
 							if ($index == ($size - 1)){
 								next;
 							}
-							$temp .= $1 . ',0,';
+							$temp .= $timestamp . ',0,';
 						}
 						else{
-							$cpuidle = sprintf "%.2f", $2;
-							$cpunum = sprintf "%.2f", $3;
-							$temp .= $1 . ',' . (sprintf "%.2f", $cpuidle/$cpunum) . ',';
+							$cpuidle = sprintf "%.2f", $value;
+							$cpunum = sprintf "%.2f", $valuenum;
+							$temp .= $timestamp . ',' . (sprintf "%.2f", $cpuidle/$cpunum) . ',';
 						}
 					}
 				}
@@ -721,15 +724,17 @@ sub web_gangliaShow{
 			else{
 				for($index = 0; $index < $size; $index += $step){
 					if ($runInfo->[$index] =~ /^(\S+): (\S+).*/){
-						if (($2 eq 'NaNQ') || ($2 eq 'nan')){
+						my $timestamp = $1;
+						my $value = $2;
+						if ((lc($value) =~ /nanq/) || (lc($value) =~ /nan/)){
 							#the rrdtool fetch last outline line always nan, so no need to add into return string
 							if ($index == ($size - 1)){
 								next;
 							}
-							$temp .= $1 . ',0,';
+							$temp .= $timestamp . ',0,';
 						}
 						else{
-							$temp .= $1 . ',' . (sprintf "%.2f", $2) . ',';
+							$temp .= $timestamp . ',' . (sprintf "%.2f", $2) . ',';
 						}
 					}
 				}
@@ -1061,7 +1066,7 @@ sub web_rmcmonShow() {
                 next;
             }
             
-            if ($temp =~ /[NaNQ|nan]/){
+            if (lc($temp) =~ /[nanq|nan]/){
                 next;
             }
             
