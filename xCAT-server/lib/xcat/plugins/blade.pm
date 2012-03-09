@@ -1788,11 +1788,7 @@ sub getmacs {
            }
            if ($mkey) {
 	           while ( $nent->{$mkey} =~ /(\d+)/g ) {
-                   my $nic = $1;
-                   if ($nic !~ /[1234]/) {
-                       return -1, "noderes.$mkey is not correct";
-                   }
-                   push @midxary,$nic;
+                   push @midxary,$1;
 	           }
            }
        } else {
