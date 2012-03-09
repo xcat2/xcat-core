@@ -190,7 +190,9 @@ pre {
 	width: 260px;
 	height: 220px;
 }
-
+.summarypie td{
+	min-width:0px;
+}
 #summaryTab td{
 	border: 0px;
 	padding: 0px;
