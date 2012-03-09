@@ -263,6 +263,7 @@ function extractLocationlData(locationData) {
 		parent = temparray[2];
 		if (!parent) {
 			// Go to next node
+			otherhash[1].push(name);
 			continue;
 		}
 		
