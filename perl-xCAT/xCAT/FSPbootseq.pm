@@ -137,7 +137,11 @@ sub rbootseq {
     }
     # add checking the power state of the cec 
     my $power_state = xCAT::FSPUtils::fsp_api_action ($node_name, $d, "cec_state", $tooltype);
-    unless (@$power_state and @$power_state =~ /operating|standby/) {
+    if ( @$power_state[2] != 0  ) {
+        push @output, [$node_name, @$power_state[1], -1 ];
+        return (\@output);
+    }
+    unless (@$power_state[1] and @$power_state[1] =~ /operating|standby/) {
         my $machine;
         my $state;
         if ($$d[4] eq 'blade') {
@@ -148,7 +152,7 @@ sub rbootseq {
             $state = "power on";
         }
 
-        push @output, [$node_name, "\'boot\' command can only support while the $machine is in the \'$state\' state, -1"];
+        push @output, [$node_name, "\'boot\' command can only support while the $machine is in the \'$state\' state", -1];
         return (\@output);
     }   
     if( $opt->{net} ) {
