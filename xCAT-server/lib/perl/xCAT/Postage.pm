@@ -322,7 +322,7 @@ sub makescript
     #         $passwdtab->getAttribs({key => 'system', username => 'root'},
     #                                'password', 'cryptmethod');
         {
-            use xCAT::PPCdb qw(get_usr_passwd);
+            require xCAT::PPCdb;
             my $et = xCAT::PPCdb::get_usr_passwd('system', 'root');
             if ($et and defined($et->{'password'}))
             {
