@@ -750,8 +750,21 @@ unless ($pid_MON) {
 $$progname="xcatd: SSL listener";
 
 # Enable the signals for the subroutine calling trace
-$SIG{NUM50} = \&enable_callingtrace;
-$SIG{NUM51} = \&disable_callingtrace;
+$SIG{TRAP} = sub {
+  if (-f "/tmp/xcatcallingtrace.flag") {
+    if (open (TRACEFLAG, "</tmp/xcatcallingtrace.flag")) {
+      my $traceflag = <TRACEFLAG>;
+      if($traceflag == 1) {
+        &enable_callingtrace; 
+        print "enabled calling trace\n";
+      } else {
+        &disable_callingtrace;
+        print "dislabled calling trace\n";
+      }
+      close (TRACEFLAG);
+    }
+  }
+};
 
 #setup signal in NotifHandler so that the cache can be updated
 xCAT::NotifHandler::setup($$, $dbmaster);
@@ -2063,6 +2076,8 @@ sub enable_callingtrace{
   my @pluginfuncs = (); # function list that will be enabled for plugins
   my @xcatdfuncs = (); # function list that will be enabled for xcatd
 
+  # call the subroutine scan_plugins to fill the symbol table
+  scan_plugins();
 
   # Backup the trace log
   my ($sec,$min,$hour,$mday,$mon,$year) = localtime();
@@ -2252,8 +2267,7 @@ sub disable_callingtrace {
   foreach my $glob (keys %::DEBUG_FUN) {
     if (defined $::DEBUG_FUN{$glob}{'orig'}) {
       *{"$glob"} = $::DEBUG_FUN{$glob}{'orig'};
-      print $::LOG_FILE_HANDLE "$glob\n";
-      #print "$glob".":  => $::DEBUG_FUN{$glob}{orig}\n";
+      print $::LOG_FILE_HANDLE "$glob\n" if ($::LOG_FILE_HANDLE);
     }
   }
   print $::LOG_FILE_HANDLE "####################################################\n" if ($::LOG_FILE_HANDLE);
