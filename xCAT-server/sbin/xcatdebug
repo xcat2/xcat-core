@@ -90,10 +90,17 @@ if (defined($::FUNC)) {
     } else {
       unlink "/tmp/xcatcallingtrace.cfg";
     }
-    kill 50, $pid;
+    open(TRACEFLAG, ">/tmp/xcatcallingtrace.flag") or die "Cannot open file to write in /tmp\n";
+    print TRACEFLAG 1;
+    close (TRACEFLAG);
+    kill SIGTRAP, $pid;
     print "Enabled the subroutine calling trace.\n";
   } elsif ($::FUNC eq "disable") {
-    kill 51, $pid;
+    open(TRACEFLAG, ">/tmp/xcatcallingtrace.flag") or die "Cannot open file to write in /tmp\n";
+    print TRACEFLAG 0;
+    close (TRACEFLAG);
+    kill SIGTRAP, $pid;
+    unlink "/tmp/xcatcallingtrace.cfg";
     print "Disabled the subroutine calling trace.\n";
   } else {
     print "$usage";
