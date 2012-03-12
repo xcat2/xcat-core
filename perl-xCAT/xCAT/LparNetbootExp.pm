@@ -2594,7 +2594,7 @@ sub lparnetbootexp
     # if -o is not used, power node of
     ####################################
     unless ($from_of) {
-        if (($output =~ /off/i) or ($output =~ /Not Activated/i) ) {
+        if (($output =~ /^off$/i) or ($output =~ /Not Activated/i) ) {
             nc_msg($verbose, "# Power off complete.\n");
         } else {
             nc_msg($verbose, "# Begin to Power off the node.\n");
@@ -2622,7 +2622,7 @@ sub lparnetbootexp
             $query_count = 0;
             while (!$done) {
                 $output = xCAT::LparNetbootExp->run_lssyscfg($subreq, $verbose, $node);
-                if (($output =~ /off/i) or ($output =~ /Not Activated/)) {
+                if (($output =~ /^off$/i) or ($output =~ /Not Activated/)) {
                     nc_msg($verbose, "Power off complete.\n");
                     $done = 1;
                     next;
@@ -3180,7 +3180,7 @@ sub lparnetbootexp
             # separate the nodename from the query status
             ##############################################
             if ($from_of != 1) {
-                if (( $output =~ /off/i ) or ($output =~ /Not Activated/i)) {
+                if (( $output =~ /^off$/i ) or ($output =~ /Not Activated/i)) {
                     $done = 1;
                 }
             } else {
