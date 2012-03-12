@@ -92,9 +92,23 @@ B<rspconfig> I<noderange> B<hostname>={B<*|name>}
 
 B<rspconfig> I<noderange> B<--resetnet>
 
-=head2 FSP of NGP Blade Server Specific:
+=head2 NGP Blade Server Specific:
 
-B<rspconfig> I<noderange> B<network>={[ip],[host],[gateway],[netmask]│*}
+B<rspconfig> I<noderange> B<sshcfg>={B<enable>|B<disable>}
+
+B<rspconfig> I<noderange> B<snmpcfg>={B<enable>|B<disable>}
+
+B<rspconfig> I<noderange> B<network>={[B<ip>],[B<host>],[B<gateway>],[B<netmask>]|B<*>}
+
+B<rspconfig> I<noderange> B<solcfg>={B<enable>|B<disable>}
+
+B<rspconfig> I<noderange> B<textid>={B<*|textid>}
+
+B<rspconfig> I<noderange> B<HMC>={B<newpasswd>}
+
+B<rspconfig> I<noderange> B<USERID>={B<newpasswd>}
+
+B<rspconfig> I<noderange> B<cec_off_policy>={B<poweroff>|B<stayon>}
 
 =head2 BPA/Frame Specific:
 
@@ -375,7 +389,7 @@ Get or set where the SNMP alerts should be sent to.
 
 =item B<solcfg>={I<enable>|I<disable>}
 
-Enable or disable the sol on MPA and blade servers belongs to it.
+Enable or disable the sol on MPA (or CMM) and blade servers belongs to it.
 
 =item B<spdump>
 
@@ -408,6 +422,14 @@ Enter the current time in UTC (Coordinated Universal Time) format.
 =item B<textid>={I<*|textid>}
 
 Set the blade or MPA textid. When using '*', the textid used is the node name specified on the command-line. Note that when specifying an actual textid, only a single node can be specified in the noderange.
+
+=item B<HMC>={I<newpasswd>}
+
+Change the password of the userid B<HMC> for CMM in NGP environment.
+
+=item B<USERID>={I<newpasswd>}
+
+Change the password of the userid B<USERID> for CMM in NGP environment.
 
 =item B<--resetnet>
 
