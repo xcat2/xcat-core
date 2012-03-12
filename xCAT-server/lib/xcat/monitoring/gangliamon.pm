@@ -474,7 +474,7 @@ sub confGmetad {
 	}
 
 	my $tmp = `/bin/grep "xCAT gmetad settings done" $configure_file`;
-	if ($tmp) {    #openinf if ?
+	if (!$tmp) {    #openinf if ?
 		if ($callback) {
 			my $resp = {};
 			$resp->{data}->[0] = "$localhost: $tmp";
