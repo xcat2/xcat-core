@@ -1248,11 +1248,20 @@ sub power_with_context {
 		}
 	} elsif ($subcommand eq "suspend") {
 		my $waitforsuspend;
+		my $failtopowerdown;
+		my $failtoreset;
+		if ($sessdata->{powerstatus} eq "off") {
+		        xCAT::SvrUtils::sendmsg([1,"System is off, cannot be suspended"],$callback,$sessdata->{node},%allerrornodes);
+		        return;
+		}
+			
 		if (@{$sessdata->{extraargs}} > 1) {
     			@ARGV=@{$sessdata->{extraargs}};
     			use Getopt::Long;
 			    unless(GetOptions(
-			        'w:i' => \$waitforsuspend
+			        'w:i' => \$waitforsuspend,
+				'o' => \$failtopowerdown,
+				'r' => \$failtoreset,
 		        )) {
 		        xCAT::SvrUtils::sendmsg([1,"Error parsing arguments"],$callback,$sessdata->{node},%allerrornodes);
 		        return;
@@ -1262,6 +1271,8 @@ sub power_with_context {
 			if ($waitforsuspend == 0) { $waitforsuspend=30; }
 			$sessdata->{waitforsuspend}=time()+$waitforsuspend;
 		}
+		$sessdata->{failtopowerdown}=$failtopowerdown;
+		$sessdata->{failtoreset}=$failtoreset;
 		$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x1d,data=>[0,3],callback=>\&power_response,callback_args=>$sessdata);
 		return;
 	} elsif ($subcommand eq "wake") {
@@ -1308,7 +1319,18 @@ sub power_wait_for_suspend {
 	if ($sessdata->{acpistate} eq "suspend") {
 		xCAT::SvrUtils::sendmsg("suspend",$callback,$sessdata->{node},%allerrornodes);
 	} elsif ($sessdata->{waitforsuspend} <= time()) {
-		xCAT::SvrUtils::sendmsg([1,"Failed to enter suspend state"],$callback,$sessdata->{node},%allerrornodes);
+		delete $sessdata->{waitforsuspend};
+		if ($sessdata->{failtopowerdown}) {
+			$sessdata->{subcommand}='off',
+			xCAT::SvrUtils::sendmsg([1,"Failed to enter suspend state, forcing off"],$callback,$sessdata->{node},%allerrornodes);
+			power($sessdata);
+		} elsif ($sessdata->{failtoreset}) {
+			$sessdata->{subcommand}='reset',
+			xCAT::SvrUtils::sendmsg([1,"Failed to enter suspend state, forcing reset"],$callback,$sessdata->{node},%allerrornodes);
+			power($sessdata);
+		} else {
+			xCAT::SvrUtils::sendmsg([1,"Failed to enter suspend state"],$callback,$sessdata->{node},%allerrornodes);
+		}
 	} else {
 		$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x1d,delayxmit=>5,data=>[1],callback=>\&power_wait_for_suspend,callback_args=>$sessdata);
 	}
