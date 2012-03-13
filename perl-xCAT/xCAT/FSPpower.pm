@@ -61,7 +61,14 @@ sub enumerate {
             ##############################
             # No lparid for fsp/bpa     
             ##############################
-            if ( $type =~ /^(fsp|bpa|cec|frame)$/ ) {
+            if ( $type =~ /^(fsp|bpa|cec|frame|blade)$/ ) {
+                if ($type eq 'blade') {
+                    if ($state =~ /power-on-transition|power off/) {
+                        $state = "off";
+                    } else {
+                        $state = "on";
+                    }
+                }
                 $lparid = $type;
             }
             $outhash{ $lparid } = $state;
@@ -370,7 +377,7 @@ sub state {
             # Look up by lparid 
             ##################################
             my $type = @$d[4];
-            my $id   = ($type=~/^(fsp|bpa|cec|frame)$/) ? $type : @$d[0];
+            my $id   = ($type=~/^(fsp|bpa|cec|frame|blade)$/) ? $type : @$d[0];
             
             ##################################
             # Output error
@@ -387,7 +394,7 @@ sub state {
             ##################################
             # Node not found 
             ##################################
-            if ( !exists( $data->{$id} )) {
+            if ($type !~ /^blade$/ and !exists( $data->{$id} )) {
                 my $res = xCAT::FSPUtils::fsp_api_action($name, $d, "state"); 
                 my $rc = @$res[2];
                 my $val = @$res[1];
@@ -411,13 +418,6 @@ sub state {
             ##############################
             # Convert state to on/off 
             ##############################
-            if ($type eq 'blade') {
-                if ($value =~ /^(power-on-transition|power off|off)$/) {
-                    $value = "off";
-                } else {
-                    $value = "on";
-                }
-	        }	
             if ( defined( $convert )) {
                 $value = power_status( $value );
             }
