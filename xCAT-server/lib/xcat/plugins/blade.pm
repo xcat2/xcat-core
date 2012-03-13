@@ -211,7 +211,7 @@ my @rscan_header = (
   ["id",            "%-8s" ],
   ["type-model",    "%-12s" ],
   ["serial-number", "%-15s" ],
-  ["mpa",           "%-10s" ],
+  ["mpa",           "" ],
   ["address",       "%s\n" ]);
 
 my $session;
@@ -1321,7 +1321,8 @@ sub rscan {
     return(1,$session->{ErrorStr});
   }
   push @values,join(",",$mmtypestr,$mmname,0,"$mmtype$mmmodel",$mmserial,$mpa,$mpa);
-  my $max = length($mmname);
+  my $namemax = length($mmname);
+  my $mpamax = length($mpa);
 
   foreach (1..14) {
     my $tmp = $session->get([$bladexistsoid.".$_"]);
@@ -1348,8 +1349,6 @@ sub rscan {
       if ($session->{ErrorStr}) {
         return(1,$session->{ErrorStr});
       }
-      my $isppcblade;
-      my $fspname;
 
       # The %telnetrscan has the entires for the fsp. For NGP ppc blade, set the ip of fsp.
       if (defined($telnetrscan{$_}{'0'}) && $telnetrscan{$_}{'0'}{'type'} eq "fsp") {
@@ -1362,12 +1361,16 @@ sub rscan {
         push @values, join( ",","blade",$name,$_,"$type$model",$serial,$mpa,"");
       }
 
-      my $length  = (length($name) > length($fspname)) ? length($name) : length($fspname);
-      $max = ($length > $max) ? $length : $max;
+      my $namelength  = length($name);
+      $namemax = ($namelength > $namemax) ? $namelength : $namemax;
+      my $mpalength  = length($mpa);
+      $mpamax = ($mpalength > $mpamax) ? $mpalength : $mpamax;
     }
   }
-  my $format = sprintf "%%-%ds",($max+2);
+  my $format = sprintf "%%-%ds",($namemax+2);
   $rscan_header[1][1] = $format;
+  $format = sprintf "%%-%ds",($mpamax+2);
+  $rscan_header[5][1] = $format;
 
   if (exists($opt{x})) {
     $result = rscan_xml($mpa,\@values); 
