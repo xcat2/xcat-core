@@ -63,9 +63,7 @@ sub enumerate {
             ##############################
             if ( $type =~ /^(fsp|bpa|cec|frame|blade)$/ ) {
                 if ($type eq 'blade') {
-                    if ($state =~ /power-on-transition|power off/) {
-                        $state = "off";
-                    } else {
+                    if ($state =~ /standby|operating/) {
                         $state = "on";
                     }
                 }
