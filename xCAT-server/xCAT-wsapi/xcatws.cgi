@@ -15,7 +15,7 @@ use Data::Dumper;
 
 #turn on or off the debugging output
 my $DEBUGGING = 0;
-my $VERSION = "2.7";
+my $VERSION   = "2.7";
 
 my $q           = CGI->new;
 my $url         = $q->url;
@@ -1425,11 +1425,14 @@ sub objectsHandler {
 #complete i think, tho chvm could handle args better
 sub vmsHandler {
     my @args;
-    if (defined $q->param('nodeRange')) {
-        $request->{noderange} = $q->param('nodeRange');
+    my $noderange;
+    if (defined $path[1]) {
+        $noderange = $path[1];
+        $request->{noderange} = $noderange;
     }
-    if (defined $q->param('verbose')) {
-        push @args, '-V';
+    else {
+        addPageContent("Invalid nodes and/or groups in noderange");
+        sendResponseMsg($STATUS_BAD_REQUEST);
     }
 
     if (isGet()) {
@@ -1439,82 +1442,111 @@ sub vmsHandler {
         }
     }
     elsif (isPost()) {
-        if (defined $q->param('clone')) {
-            $request->{command} = 'clonevm';
-            if (defined $q->param('target')) {
-                push @args, '-t';
-                push @args, $q->param('target');
-            }
-            if (defined $q->param('source')) {
-                push @args, '-b';
-                push @args, $q->param('source');
-            }
-            if (defined $q->param('detached')) {
-                push @args, '-d';
-            }
-            if (defined $q->param('force')) {
-                push @args, '-f';
-            }
+        my $entries;
+        my %entryhash;
+        my $position;
+        $request->{command} = 'mkvm';
+        unless ($q->param('POSTDATA')) {
+            addPageContent("Invalid Parameters");
+            sendResponseMsg($STATUS_BAD_REQUEST);
         }
-        else {
 
-            #man page for mkvm needs updating for options
-            $request->{command} = 'mkvm';
-            if (defined $q->param('cec')) {
-                push @args, '-c';
-                push @args, $q->param('cec');
-            }
-            if (defined $q->param('startId')) {
-                push @args, '-i';
-                push @args, $q->param('startId');
-            }
-            if (defined $q->param('source')) {
-                push @args, '-l';
-                push @args, $q->param('source');
-            }
-            if (defined $q->param('profile')) {
-                push @args, '-p';
-                push @args, $q->param('profile');
-            }
-            if (defined $q->param('full')) {
-                push @args, '--full';
-            }
+        #collect all parameters from the postdata
+        my $entries = decode_json $q->param('PUTDATA');
+        if (scalar(@$entries) < 1) {
+            addPageContent("No set attribute was supplied.");
+            sendResponseMsg($STATUS_BAD_REQUEST);
+        }
 
-            #if(defined $q->param('master')){
-            #push @args, '-m';
-            #push @args, $q->param('master');
-            #}
-            #if(defined $q->param('size')){
-            #push @args, '-s';
-            #push @args, $q->param('size');
-            #}
-            #if(defined $q->param('force')){
-            #push @args, '-f';
-            #}
+        foreach (@$entries) {
+            my $key;
+            my $value;
+            $position = index($_, '=');
+            if ($position < 0) {
+                $key   = $_;
+                $value = 1;
+            }
+            else {
+                $key = substr $_, 0, $position;
+                $value = substr $_, $position + 1;
+            }
+            $entryhash{$key} = $value;
+        }
+
+        #for system p
+        if (defined $entryhash{'cec'}) {
+            push @args, '-c';
+            push @args, $entryhash{'cec'};
+        }
+
+        if (defined $entryhash{'startId'}) {
+            push @args, '-i';
+            push @args, $entryhash{'startId'};
+        }
+
+        if (defined $entryhash{'source'}) {
+            push @args, '-l';
+            push @args, $entryhash{'source'};
+        }
+
+        if (defined $entryhash{'profile'}) {
+            push @args, '-p';
+            push @args, $entryhash{'profile'};
+        }
+
+        if (defined $entryhash{'full'}) {
+            push @args, '--full';
+        }
+
+        #for KVM & Vmware
+        if (defined $entryhash{'master'}) {
+            push @args, '-m';
+            push @args, $entryhash{'master'};
+        }
+
+        if (defined $entryhash{'disksize'}) {
+            push @args, '-s';
+            push @args, $entryhash{'disksize'};
+        }
+
+        if (defined $entryhash{'memory'}) {
+            push @args, '--mem';
+            push @args, $entryhash{'memory'};
+        }
+
+        if (defined $entryhash{'cpu'}) {
+            push @args, '--cpus';
+            push @args, $entryhash{'cpu'};
+        }
+
+        if (defined $entryhash{'force'}) {
+            push @args, '-f';
         }
     }
-    elsif (isPut() || isPatch()) {
+    elsif (isPut()) {
         $request->{command} = 'chvm';
-        if (defined $q->param('field')) {
-            foreach ($q->param('field')) {
+        if ($q->param('PUTDATA')) {
+            my $entries = decode_json $q->param('PUTDATA');
+            if (scalar(@$entries) < 1) {
+                addPageContent("No Field and Value map was supplied.");
+                sendResponseMsg($STATUS_BAD_REQUEST);
+            }
+            foreach (@$entries) {
                 push @args, $_;
             }
         }
-
+        else {
+            addPageContent("No Field and Value map was supplied.");
+            sendResponseMsg($STATUS_BAD_REQUEST);
+        }
     }
     elsif (isDelete()) {
         $request->{command} = 'rmvm';
-        if (defined $request->{nodeRange}) {
-            if (defined $q->param('retain')) {
-                push @args, '-r';
-            }
-            if (defined $q->param('service')) {
-                push @args, '--service';
-            }
+        if (defined $q->param('retain')) {
+            push @args, '-r';
         }
-        else {
-            addPageContent("The node range must be specified when deleting vms");
-            sendResponseMsg($STATUS_BAD_REQUEST);
+        if (defined $q->param('service')) {
+            push @args, '--service';
         }
     }
     else {
@@ -1528,7 +1560,7 @@ sub vmsHandler {
     return @responses;
 }
 
-sub versionHandler{
+sub versionHandler {
     addPageContent($q->p("API version is $VERSION"));
     sendResponseMsg($STATUS_OK);
     exit(0);
