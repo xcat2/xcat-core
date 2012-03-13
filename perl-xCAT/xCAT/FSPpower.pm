@@ -36,7 +36,7 @@ sub enumerate {
         #$cmds{$type} = ($type=~/^lpar$/) ? "all_lpars_state" : "cec_state";
         if( $type=~/^lpar$/ ) {
             $cmds{$type} = "all_lpars_state";
-        } elsif ($type=~/^(fsp|cec)$/) {
+        } elsif ($type=~/^(fsp|cec|blade)$/) {
             $cmds{$type} =  "cec_state";
         } else {
             $cmds{$type} = "bpa_state";
