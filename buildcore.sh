@@ -178,7 +178,7 @@ for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test; d
 done
 
 if [ "$OSNAME" != "AIX" -a "$EMBED" != "zvm" ]; then
-	if $GREP -v nbroot2 $SVNUP|$GREP xCAT-nbroot; then
+	if grep -v nbroot2 $SVNUP|$GREP xCAT-nbroot; then
 		UPLOAD=1
 		ORIGFAILEDRPMS="$FAILEDRPMS"
 		for arch in x86_64 x86 ppc64; do
