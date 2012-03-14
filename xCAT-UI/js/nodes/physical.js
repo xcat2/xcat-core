@@ -254,7 +254,7 @@ function fillList(nodeName, defaultnodetype){
 
 function createGraphical(){
 	var tabarea = $('#graphTab');
-	var selectNodeDiv = $('<div id="selectNodeDiv" style="margin: 20px;">Nodes:</div>');
+	var selectNodeDiv = $('<div id="selectNodeDiv" style="margin: 20px;"></div>');
 	var temp = 0;
 	for (var i in selectNode){
 		temp ++;
@@ -262,7 +262,7 @@ function createGraphical(){
 	}
 	
 	//there is not selected lpars, show the info bar
-	if (0 == temp){
+	if (temp == 0){
 		tabarea.append(createInfoBar('Hover over a CEC and select the LPARs to do operations against.'));
 	}
 	//show selected lpars
@@ -578,19 +578,23 @@ function createSystemxGraphical(xnodes, area){
 	}
 }
 
-function addUnknownGraphical(unknownnode, area){
-	var graphTab = $('#graphTab');
-	var index = 0;
-	
-	if (unknownnode.length < 1){
+function addUnknownGraphical(unknownNodes, tab){	
+	// Do not continue if no nodes were found
+	if (unknownNodes.length < 1)
 		return;
+	
+	var list = "";
+	tab.append('<label>Unknown Type Nodes</label><hr/>');
+	for (var index in unknownNodes){
+		list += unknownNodes[index] + ', ';
+		
 	}
 	
-	graphTab.append('Unknown Type Nodes:<hr/>');
-	for (index in unknownnode){
-		graphTab.append(unknownnode[index] + '; ');
-	}
+	// Delete last comma
+	list = list.substr(0, list.length - 2);
+	tab.append(list);
 }
+
 /**
  * update the lpars' background in cec, lpars area and  selectNode
  * 
@@ -602,13 +606,15 @@ function updateSelectNodeDiv(){
 	$('#selectNodeDiv').empty();
 
 	//add buttons
-	$('#selectNodeDiv').append('Nodes: ');
-	for(var lparName in selectNode){
-		$('#selectNodeDiv').append(lparName + ' ');
-		temp ++;
-		if (6 < temp){
-			$('#selectNodeDiv').append('...');
-			break;
+	if (selectNode.length) {
+		$('#selectNodeDiv').append('Nodes: ');
+		for (var lparName in selectNode){
+			$('#selectNodeDiv').append(lparName + ' ');
+			temp ++;
+			if (temp > 6){
+				$('#selectNodeDiv').append('...');
+				break;
+			}
 		}
 	}
 }

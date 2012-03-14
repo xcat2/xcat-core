@@ -1,161 +1,151 @@
 /**
- * global variable
+ * Global variables
  */
-var XcatmonTableId="XcatMonsettingTable";
+var xcatMonTableId = "xcatMonSettingTable";
 
 /**
- * load xCAT monitor
+ * Load xCAT monitoring
  */
-function loadXcatMon(){
-	//find the xcat mon tab
+function loadXcatMon() {
+	// Find xCAT monitoring tab
 	var xcatMonTab = $('#xcatmon');
-	
 	xcatMonTab.append("<div id= xcatmonTable></div>");
-	
-	//show the content of the table monsetting
+
+	// Show content of monsetting table
 	$.ajax({
-		url:'lib/cmd.php',
-		dataType: 'json',
-		data:{
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
 			cmd : 'tabdump',
-			tgt :'',
+			tgt : '',
 			args : 'monsetting',
 			msg : ''
 		},
-		success: loadXcatMonSetting
-	});	
+		success : loadXcatMonSetting
+	});
 }
 
-function loadXcatMonSetting(data){	
-	var apps; //contain the xcatmon apps config
-	var rsp = data.rsp;	
-	var apps_flag = 0; //is the apps is stored?
-	var ping; //contain the xcatmon ping-interval setting
+function loadXcatMonSetting(data) {
+	var apps = ""; // Contains the xcatmon config
+	var rsp = data.rsp;
+	var apps_flag = 0;
+	var ping; // xcatmon ping interval
 	var ping_flag = 0;
 
-	//create a infoBar	
-	var infoBar=createInfoBar('Click on a cell to edit. Click outside the table to write to the cell. Once you are finished configuring the xCAT monitor, click on Apply.');
+	// Create an info bar
+	var infoBar = createInfoBar('Click on a cell to edit. Click outside the table to write to the cell. Once you are finished configuring the xCAT monitor, click on Apply.');
 	$('#xcatmonTable').append(infoBar);
-	
-	//create xcatmonTable
-	var XcatmonTable= new DataTable(XcatmonTableId);
-	
-	//create Datatable
+
+	// Create xcatmon table
+	var xcatmonTable = new DataTable(xcatMonTableId);
+
+	// Create datatable
 	var dTable;
-	
-	//create the xcatmonTable header	
-	var header=rsp[0].split(",");	
-	header.splice(3,2);
-	header.splice(0,1);
-	header[0]="apps name";
-	header[1]="configure";
+
+	// Create table header
+	var header = rsp[0].split(",");
+	header.splice(3, 2);
+	header.splice(0, 1);
+	header[0] = "App Name";
+	header[1] = "Configure";
 	header.push('<input type="checkbox" onclick="selectAllCheckbox(event,$(this))">');
-
 	header.unshift('');
-	XcatmonTable.init(header); //create the table header
+	xcatmonTable.init(header);
 
-	//create container of original table contents
-	var origCont= new Array();
-	origCont[0]=header; //table header
+	// Create container for original table contents
+	var origCont = new Array();
+	origCont[0] = header; // Table headers
 
-	//create contariner for new contents use for update the monsetting table
-	var newCont =new Object();
-	newCont[0]=rsp[0].split(","); //table header
-	
-	//create container for other monsetting lines not xcatmon
-	var otherCont =new Array();
+	// Create container for new contents to use later updating monsetting table
+	var newCont = new Object();
+	newCont[0] = rsp[0].split(","); // Table headers
 
-	$('#xcatmonTable').append(XcatmonTable.object()); //add table object
-	var m = 1; //the count for origCont
+	// Create container for other monsetting lines
+	var otherCont = new Array();
+
+	$('#xcatmonTable').append(xcatmonTable.object());
+	var m = 1; // Count for origCont
 	var n = 0;
-	for (var i=1; i<rsp.length; i++) { //get the apps and the ping-interval configure
-		var pos = rsp[i].indexOf("xcatmon"); //only check the xcatmon setting
+	for ( var i = 1; i < rsp.length; i++) {
+		var pos = rsp[i].indexOf("xcatmon"); // Only check xcatmon setting
 		if (pos == 1) {
-			//get the useful info and add it to the page.
-			if ((rsp[i].indexOf("apps")== -1 ) && (rsp[i].indexOf("ping")== -1)) {
-				var cols=rsp[i].split(',');
-
-				//pair the semicolon of the content
-				for (var j=0; j<cols.length; j++) {
-					if (cols[j].count('"')%2 == 1) {
-						while (cols[j].count('"')%2 == 1) {
-							cols[j]=cols[j]+","+cols[j+1];
-							cols.splice(j+1,1);
+			if ((rsp[i].indexOf("apps") == -1) && (rsp[i].indexOf("ping") == -1)) {
+				var cols = rsp[i].split(',');
+				for ( var j = 0; j < cols.length; j++) {
+					if (cols[j].count('"') % 2 == 1) {
+						while (cols[j].count('"') % 2 == 1) {
+							cols[j] = cols[j] + "," + cols[j + 1];
+							cols.splice(j + 1, 1);
 						}
 					}
-					cols[j] = cols[j].replace(new RegExp('"','g'),'');	
+					cols[j] = cols[j].replace(new RegExp('"', 'g'), '');
 				}
-				
-				//remove the commend disable
-				cols.splice(3,2);
-				//remove the xcatmon
-				cols.splice(0,1);
-				
-				cols.push('<input type="checkbox" name="' + cols[0] + '" title="Checking this checkbox will add/remove the app from the configure apps value" />');
-				cols.unshift('<span class="ui-icon ui-icon-close" onclick="deleteRow1(this)"></span>');
-				
-				//add the column tho the table
-				XcatmonTable.add(cols);
-				
+
+				cols.splice(3, 2);
+				cols.splice(0, 1);
+				cols.push('<input type="checkbox" name="' + cols[0] + '" title="Checking this box will add/remove the app from the configured app value"/>');
+				cols.unshift('<span class="ui-icon ui-icon-close" onclick="deleteXcatMonRow(this)"></span>');
+
+				// Add column to table
+				xcatmonTable.add(cols);
 				origCont[m++] = cols;
 			} else {
-				if (!apps_flag) { //check the apps setting
-					if (rsp[i].indexOf("apps") > -1) { //check for  is  apps or not
-						apps=rsp[i].split(',');
-					
-						for (var j=0; j<apps.length; j++) { //pair the semicolon
-							if (apps[j].count('"')%2 == 1) {
-								while (apps[j].count('"')%2 == 1){
-									apps[j] = apps[j]+","+apps[j+1];
-									apps.splice(j+1,1);
+				if (!apps_flag) { // Check the apps setting
+					if (rsp[i].indexOf("apps") > -1) {
+						apps = rsp[i].split(',');
+
+						for ( var j = 0; j < apps.length; j++) {
+							if (apps[j].count('"') % 2 == 1) {
+								while (apps[j].count('"') % 2 == 1) {
+									apps[j] = apps[j] + "," + apps[j + 1];
+									apps.splice(j + 1, 1);
 								}
 							}
-							apps[j] = apps[j].replace(new RegExp('"','g'),'');
+							apps[j] = apps[j].replace(new RegExp('"', 'g'), '');
 						}
-					
-						apps_flag=1; //set the flag to 1 to avoid this subroute
+
+						apps_flag = 1; // Set the flag to 1 to avoid this subroute
 					}
 				}
-				
-				//get into the ping setting subroute
+
+				// Get into the ping settings
 				if (!ping_flag) {
-					//check the ping-interval config
+					// Check the ping interval
 					if (rsp[i].indexOf("ping-interval") > -1) {
-						ping=rsp[i].split(',');
-						//pair the semicolon
-						for (var j=0; j<ping.length; j++) {
-							if (ping[j].count('"')%2 == 1) {
-								while (ping[j].count('"')%2 == 1) {
-									ping[j] = ping[j]+"," + ping[j+1];
-									ping.splice(j+1,1);
+						ping = rsp[i].split(',');
+						for ( var j = 0; j < ping.length; j++) {
+							if (ping[j].count('"') % 2 == 1) {
+								while (ping[j].count('"') % 2 == 1) {
+									ping[j] = ping[j] + "," + ping[j + 1];
+									ping.splice(j + 1, 1);
 								}
 							}
-							ping[j] = ping[j].replace((new RegExp('"','g')),'');
+							ping[j] = ping[j].replace((new RegExp('"', 'g')),
+									'');
 						}
 						ping_flag = 1;
 					}
 				}
-			}			
+			}
 		} else if (pos != 1) {
-			//the other monitor in the monsetting table
+			// The other monitor in the monsetting table
 			var otherCols = rsp[i].split(',');
-			for (var k=0; k<otherCols.length; k++) {
-				if (otherCols[k].count('"')%2 == 1) {
-					while (otherCols[k].count('"')%2 == 1) {
-						otherCols[k] = otherCols[k]+","+otherCols[k+1];
-						otherCols.splice(k+1,1);
+			for ( var k = 0; k < otherCols.length; k++) {
+				if (otherCols[k].count('"') % 2 == 1) {
+					while (otherCols[k].count('"') % 2 == 1) {
+						otherCols[k] = otherCols[k] + "," + otherCols[k + 1];
+						otherCols.splice(k + 1, 1);
 					}
 				}
-				otherCols[k] = otherCols[k].replace(new RegExp('"','g'),'');
+				otherCols[k] = otherCols[k].replace(new RegExp('"', 'g'), '');
 			}
-			//add the rows to the otherCont.
+
 			otherCont[n++] = otherCols;
 
 		}
 	}
-	//if the apps is not in the monsetting table.Then create the default apps row.
-	//when saving the changes,add the row to the table.
-	if(!apps_flag) {
+	// If app is not in the monsetting table, then create default apps row
+	if (!apps_flag) {
 		apps = rsp[0].split(',');
 		apps[0] = "xcatmon";
 		apps[1] = "apps";
@@ -164,196 +154,176 @@ function loadXcatMonSetting(data){
 		apps[4] = "";
 	}
 
-	//if the ping-interval is not in the monsetting table.Then create the default ping-interval row.
-	//when saving the changes,add the row to the table.
-	if(!ping_flag) {
+	// If the ping interval is not in the monsetting table, then create the
+	// default ping-interval
+	if (!ping_flag) {
 		ping = rsp[0].split(',');
 		ping[0] = "xcatmon";
 		ping[1] = "ping-interval";
-		//the default ping-interval setting is 5
+		
+		// Set default ping-interval setting to 5
 		ping[2] = "5";
 		ping[3] = "";
 		ping[4] = "";
 	}
 
-	//set the checkbox to be true according to the apps
+	// Set checkbox to be true
 	var checked = apps[2].split(',');
-	for (var i=0; i<checked.length; i++) {
-		//set the selcet checkbox to  true
-		$("input:checkbox[name="+checked[i]+"]").attr('checked',true);
-		for (var j=0; j<origCont.length; j++) {
-			//set the origCont's checkbox to true
+	for ( var i = 0; i < checked.length; i++) {
+		$("input:checkbox[name=" + checked[i] + "]").attr('checked', true);
+		for ( var j = 0; j < origCont.length; j++) {
 			if (origCont[j][1] == checked[i]) {
-				origCont[j].splice(3,1);
-				origCont[j].push('<input type="checkbox" name="'+origCont[j][1]+'" title="Click this checkbox will add/remove the app from the configure apps value." checked=true/>');
+				origCont[j].splice(3, 1);
+				origCont[j].push('<input type="checkbox" name="' + origCont[j][1] + '" title="Check this checkbox to add/remove the app from the configured app value." checked=true/>');
 			}
 		}
 
 	}
 	$(":checkbox").tooltip();
 
-	//make the table editable
-	$('#'+ XcatmonTableId + ' td:not(td:nth-child(1),td:last-child)').editable(
-		function (value,settings) {
-			var colPos = this.cellIndex;
-			var rowPos = dTable.fnGetPosition(this.parentNode);
-			dTable.fnUpdate(value,rowPos,colPos);
-			return (value);
-		},{
-			onblur : 'submit',
-			type : 'textarea',
-			placeholder: ' ',
-			height : '30px'
-		}
-	);
-	
-	//save the datatable 
-	dTable = $('#' + XcatmonTableId).dataTable({
-		'iDisplayLength': 50,
-		'bLengthChange': false,
-		"sScrollX": "100%",
-		"bAutoWidth": true
+	// Make the table editable
+	$('#' + xcatMonTableId + ' td:not(td:nth-child(1),td:last-child)').editable(function(value, settings) {
+		var colPos = this.cellIndex;
+		var rowPos = dTable.fnGetPosition(this.parentNode);
+		dTable.fnUpdate(value, rowPos, colPos);
+		return (value);
+	}, {
+		onblur : 'submit',
+		type : 'textarea',
+		placeholder : ' ',
+		height : '30px'
 	});
 
-	//create action bar
+	// Save datatable
+	dTable = $('#' + xcatMonTableId).dataTable({
+		'iDisplayLength' : 50,
+		'bLengthChange' : false,
+		"sScrollX" : "100%",
+		"bAutoWidth" : true
+	});
+
+	// Create action bar
 	var actionBar = $('<div class="actionBar"></div>');
 	var addRowLnk = $('<a>Add row</a>');
 	addRowLnk.bind('click', function(event) {
-		//create the container of the new row
+		// Create container for new row
 		var row = new Array();
-	
-		//add the delete button to the row
-		row.push('<span class="ui-icon ui-icon-close" onclick="deleteRow1(this)"></span>');
-		//add the xcatmon
-		//add the contain of the setting
-		for (var i=0; i<header.length-2; i++) {
+
+		// Add delete button to row
+		row.push('<span class="ui-icon ui-icon-close" onclick="deleteXcatMonRow(this)"></span>');
+		for ( var i = 0; i < header.length - 2; i++)
 			row.push('');
-		}
-		
-		//add the checkbox
-		row.push('<input type="checkbox" name="'+row[2]+'" title="Checking this checkbox will add/remove the app from the configure apps value"/>');
-		//get the datatable of the table
-		var dTable = $('#' + XcatmonTableId).dataTable();
-		//add  the new row to the datatable
+
+		// Add checkbox
+		row.push('<input type="checkbox" name="' + row[2] + '" title="Checking this checkbox will add/remove the app from the configured apps value"/>');
+		// Get the datatable of the table
+		var dTable = $('#' + xcatMonTableId).dataTable();
+		// Add the new row to the datatable
 		dTable.fnAddData(row);
-	
-		//make the datatable editable
+
+		// make the datatable editable
 		$(":checkbox[title]").tooltip();
-		$('#' + XcatmonTableId+' td:not(td:nth-child(1),td:last-child)').editable(
-			function(value,settings) {
-				var colPos = this.cellIndex;
-				var rowPos = dTable.fnGetPosition(this.parentNode);
-				dTable.fnUpdate(value,rowPos,colPos);
-				return (value);
-			},{
-				onblur : 'submit',
-				type : 'textarea',
-				placeholder: ' ',
-				height : '30px'
-			}
-		);
+		$('#' + xcatMonTableId + ' td:not(td:nth-child(1),td:last-child)').editable(function(value, settings) {
+			var colPos = this.cellIndex;
+			var rowPos = dTable
+					.fnGetPosition(this.parentNode);
+			dTable.fnUpdate(value, rowPos,
+					colPos);
+			return (value);
+		}, {
+			onblur : 'submit',
+			type : 'textarea',
+			placeholder : ' ',
+			height : '30px'
+		});
 	});
-	
-	/**
-	 * apply button
-	 * 
-	 * the Apply button is used to store the contain of the table in the page to
-	 * the monsetting table on the MN.
-	 */
+
+	// Create apply button to store the contents of the table to the monsetting table
 	var applyLnk = $('<a>Apply</a>');
-	applyLnk.bind('click', function(event){ 
-		//get the datatable of the page
-		var dTable = $('#' + XcatmonTableId).dataTable();
-		//get the rows of the datatable
-		var dRows = dTable.fnGetNodes();	
+	applyLnk.bind('click', function(event) {
+		// Get the datatable
+		var dTable = $('#' + xcatMonTableId).dataTable();
+		// Get datatable rows
+		var dRows = dTable.fnGetNodes();
 		var count = 0;
-		//create the new container of the apps' value.
+		
+		// Create a new container for the apps value
 		var appValue = '';
 		var tableName = 'monsetting';
-		var tmp;
-		var tmp1;
 		var closeBtn = createButton('close');
-		
-		//get the contain of the rows 
-		for (var i=0; i<dRows.length; i++) {
+
+		// Get the row contents
+		for ( var i = 0; i < dRows.length; i++) {
 			if (dRows[i]) {
-				//get the columns fo the row
+				// Get the row columns
 				var cols = dRows[i].childNodes;
-				//create the container of the new column 
+				// Create a container for the new columns
 				var vals = new Array();
 
-				for (var j=1; j<cols.length-1; j++) {
-					//get the value of every column(except the first and the last.why ? .ni dong de)
-					var val=cols.item(j).firstChild.nodeValue;
-
-					if (val == ' ') {
-						vals[j-1] = '';	
-					} else {
-						vals[j-1] = val;
-					}
+				for ( var j = 1; j < cols.length - 1; j++) {
+					var val = cols.item(j).firstChild.nodeValue;
+					if (val == ' ')
+						vals[j - 1] = '';
+					else
+						vals[j - 1] = val;
 				}
-				
-				//prepare another space for the array/
+
 				var vals_orig = new Array();
-				//copy the data from vals to vals_orig
-				for (var p=0; p<2; p++) {
+				// Copy data from vals to vals_orig
+				for ( var p = 0; p < 2; p++) {
 					var val = vals[p];
-					vals_orig[p] = val;	
+					vals_orig[p] = val;
 				}
 
 				vals.push('');
 				vals.push('');
 				vals.unshift('xcatmon');
-				//stored the new column to the newCont
-				newCont[i+1] = vals;
+				
+				// Stored new column to newCont
+				newCont[i + 1] = vals;
 
-				//check the checkbox of the row and add different checkbox to the orignCont
-				//for the cancle button
-				if (cols.item(cols.length-1).firstChild.checked) {
-					vals_orig.push('<input type="checkbox" name="' + vals_orig[0] + '" title="Click this checkbox will add/remove the app from the configure apps value." checked=true/>');
+				if (cols.item(cols.length - 1).firstChild.checked) {
+					vals_orig.push('<input type="checkbox" name="' + vals_orig[0] + '" title="Checking this checkbox will add/remove the app from the configured apps value" checked=true/>');
 				} else {
-					vals_orig.push('<input type="checkbox" name="' + vals_orig[0] + '" title="Click this checkbox will add/remove the app from the configure apps value."/>');
+					vals_orig.push('<input type="checkbox" name="' + vals_orig[0] + '" title="Checking this checkbox will add/remove the app from the configured apps value"/>');
 				}
-				
-				//push the delete button to the row
-				vals_orig.unshift('<span class="ui-icon ui-icon-close" onclick="deleteRow1(this)"></span>');
-				//add the row to the orignCont
-				origCont[i+1] = vals_orig;
-				count = i+1;
-				
-				//check the checkbox fo everyrow for merging the appName to  the apps values
-				if (cols.item(cols.length-1).firstChild.checked) {
-					//the new value for the apps.get the name fo every app.
-					appValue = appValue.concat(cols.item(2).firstChild.nodeValue+",");
-				}
+
+				// Add delete button to row
+				vals_orig.unshift('<span class="ui-icon ui-icon-close" onclick="deleteXcatMonRow(this)"></span>');
+				// Add row to origCont
+				origCont[i + 1] = vals_orig;
+				count = i + 1;
+
+				// Check checkbox for every row when merging the app name with the apps values
+				if (cols.item(cols.length - 1).firstChild.checked)
+					appValue = appValue.concat(cols.item(2).firstChild.nodeValue + ",");
 			}
 		}
-		
+
 		count++;
-		//delete the last "," of the apps value
-		appValue = appValue.substring(0,(appValue.length-1));
-		apps[2] = appValue;
 		
-		//newCont add the apps row
+		// Delete the last comma of the apps value
+		appValue = appValue.substring(0, (appValue.length - 1));
+		apps[2] = appValue;
+
 		newCont[count++] = apps;
-		//newCont add the ping-interval row
 		newCont[count++] = ping;
 
-		//add the other monitor setting of the mosetting
-		for (var j=0; j<otherCont.length; j++) {
+		// Add to other monitor settings
+		for ( var j = 0; j < otherCont.length; j++) {
 			newCont[count++] = otherCont[j];
 		}
-		
-		//create the save dialog
-		var dialogSave = $('<div id="saveDialog" align="center">saving the configuration </div>');
-		dialogSave.append(createLoader());
-		$('#xcatmon').append(dialogSave);
-		//open the dialog..modal is true
-		$("#saveDialog").dialog({modal: true});
-		//hide the cross...
-		$('.ui-dialog-titlebar-close').hide();
 
-		//put the table name and the contain to the tabRestore.php
+		// Create save dialog
+		var dialogSave = $('<div id="saveDialog" align="center">Saving configuration</div>');
+		dialogSave.append(createLoader());
+		
+		$('#xcatmon').append(dialogSave);
+		$("#saveDialog").dialog({
+			modal : true
+		});
+		
+		$('.ui-dialog-titlebar-close').hide();
 		$.ajax({
 			type : 'POST',
 			url : 'lib/tabRestore.php',
@@ -362,83 +332,76 @@ function loadXcatMonSetting(data){
 				table : tableName,
 				cont : newCont
 			},
-			success : function(data){
-				//empty the dialog.add the close button
-				$("#saveDialog").empty().append('<p>The Configure has saved!</p>');
+			success : function(data) {
+				// empty the dialog.add the close button
+				$("#saveDialog").empty().append('<p>Configuration saved!</p>');
 				$("#saveDialog").append(closeBtn);
 			}
-
 		});
-		
-		//close button function
-		closeBtn.bind('click', function(event){
-			$("#saveDialog").dialog("distroy");
+
+		// Close button
+		closeBtn.bind('click', function(event) {
+			$("#saveDialog").dialog("destroy");
 			$("#saveDialog").remove();
-	
 		});
 
-		//clear the newCont
+		// Clear the newCont
 		newCont = null;
 		newCont = new Object();
-		//just for tmp=newCont;
 		newCont[0] = rsp[0].split(",");
 	});
-	
+
 	var cancelLnk = $('<a>Cancel</a>');
-	cancelLnk.bind('click', function(event){
-		//get the datatable of the page
-		var dTable = $('#' + XcatmonTableId).dataTable();
-		
-		//clear the datatable
+	cancelLnk.bind('click', function(event) {
+		// Get the datatable for the page
+		var dTable = $('#' + xcatMonTableId).dataTable();
+
+		// Clear the datatable
 		dTable.fnClearTable();
 
-		//add the contain of the origCont to the datatable
-		for (var i=1; i<origCont.length; i++){
-			dTable.fnAddData(origCont[i],true);
-		}	
+		// Add the contents of origCont to the datatable
+		for ( var i = 1; i < origCont.length; i++)
+			dTable.fnAddData(origCont[i], true);
 
 		$(":checkbox[title]").tooltip();
-		$('#'+XcatmonTableId+' td:not(td:nth-child(1),td:last-child)').editable(
-		function (value,settings){
+		$('#' + xcatMonTableId + ' td:not(td:nth-child(1),td:last-child)').editable(function(value, settings) {
 			var colPos = this.cellIndex;
 			var rowPos = dTable.fnGetPosition(this.parentNode);
-			dTable.fnUpdate(value,rowPos,colPos);
+			dTable.fnUpdate(value, rowPos, colPos);
 			return (value);
-		},{
+		}, {
 			onblur : 'submit',
 			type : 'textarea',
-			placeholder: ' ',
+			placeholder : ' ',
 			height : '30px'
-		});	
+		});
 	});
-	
-	//actions
-	var actionsLnk = '<a>Actions</a>';
-	var actsMenu = createMenu([addRowLnk, applyLnk, cancelLnk]);
 
-	//create an action menu
+	// Create actions menu
+	var actionsLnk = '<a>Actions</a>';
+	var actsMenu = createMenu([ addRowLnk, applyLnk, cancelLnk ]);
 	var actionsMenu = createMenu([ [ actionsLnk, actsMenu ] ]);
 	actionsMenu.superfish();
 	actionsMenu.css('display', 'inline-block');
 	actionBar.append(actionsMenu);
-	
-	//create a division to hold actions menu
-	var menuDiv = $('<div id="' + XcatmonTableId + '_menuDiv" class="menuDiv"></div>');
-	$('#' + XcatmonTableId + '_wrapper').prepend(menuDiv);
-	menuDiv.append(actionBar);	
-	$('#' + XcatmonTableId + '_filter').appendTo(menuDiv);
+
+	// Create a division to hold actions menu
+	var menuDiv = $('<div id="' + xcatMonTableId + '_menuDiv" class="menuDiv"></div>');
+	$('#' + xcatMonTableId + '_wrapper').prepend(menuDiv);
+	menuDiv.append(actionBar);
+	$('#' + xcatMonTableId + '_filter').appendTo(menuDiv);
 }
 
 /**
- * delete a row from the table
+ * Delete a row from the table
  */
-function deleteRow1(obj){
-	var dTable = $('#' + XcatmonTableId).dataTable();
+function deleteXcatMonRow(obj) {
+	var dTable = $('#' + xcatMonTableId).dataTable();
 	var rows = dTable.fnGetNodes();
 	var tgtRow = $(obj).parent().parent().get(0);
-	for (var i in rows) {
+	for ( var i in rows) {
 		if (rows[i] == tgtRow) {
-			dTable.fnDeleteRow(i, null,true);
+			dTable.fnDeleteRow(i, null, true);
 			break;
 		}
 	}

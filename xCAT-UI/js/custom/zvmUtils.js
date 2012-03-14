@@ -101,8 +101,8 @@ function loadHcpInfo(data) {
 		} // End of if (hcp)
 	} else {
 		// Create warning dialog
-		var msg = createWarnBar('z/VM SMAPI is not responding to ' + hcp + '.  It needs to be reset.');
-		var warnDialog = $('<div></div>').append(msg);
+		var warning = createWarnBar('z/VM SMAPI is not responding to ' + hcp + '.  It needs to be reset.');
+		var warnDialog = $('<div></div>').append(warning);
 						
 		// Open dialog
 		warnDialog.dialog({
@@ -2279,6 +2279,24 @@ function createZProvisionNew(inst) {
 	hcpDiv.append(hcpInput);
 	vmAttr.append(hcpDiv);
 	
+	// Create an advanced link to set IP address and hostname
+	var advancedLnk = $('<div><label><a style="color: blue; cursor: pointer;">Advanced</a></label></div>');
+	vmAttr.append(advancedLnk);	
+	var advanced = $('<div style="margin-left: 20px;"></div>').hide();
+	vmAttr.append(advanced);
+	
+	var ip = $('<div><label>IP address:</label><input type="text" name="ip" ' + 
+		'title="Optional. Specify the IP address that will be assigned to this node. An IP address must be given in the following format: 192.168.0.1."/></div>');
+	advanced.append(ip);
+	var hostname = $('<div><label>Hostname:</label><input type="text" name="hostname" ' + 
+		'title="Optional. Specify the hostname that will be assigned to this node. A hostname must be given in the following format: ihost1.sourceforge.net."/></div>');
+	advanced.append(hostname);
+	
+	// Show IP address and hostname inputs on-click
+	advancedLnk.click(function() {
+		advanced.toggle();
+	});
+
 	// Create operating system image input
 	var os = $('<div></div>');
 	var osLabel = $('<label for="os">Operating system image:</label>');
@@ -2568,7 +2586,7 @@ function createZProvisionNew(inst) {
 				diskArgs.eq(i).css('border', 'solid #BDBDBD 1px');
 			}
 		}
-
+		
 		// If inputs are valid, ready to provision
 		if (ready) {
 			if (!os.val()) {
@@ -2627,6 +2645,20 @@ function createZProvisionNew(inst) {
 							var hcp = $('#' + thisTabId + ' input[name=hcp]').val();
 							// Get group
 							var group = $('#' + thisTabId + ' input[name=group]').val();
+							// Get IP address and hostname
+							var ip = $('#' + thisTabId + ' input[name=ip]').val();
+							var hostname = $('#' + thisTabId + ' input[name=hostname]').val();
+														
+							// Generate arguments to sent
+							var args = node + ';zvm.hcp=' + hcp
+								+ ';zvm.userid=' + userId
+								+ ';nodehm.mgt=zvm'
+								+ ';groups=' + group;
+							if (ip) 
+								args += ';hosts.ip=' + ip;
+							
+							if (hostname)
+								args += ';hosts.hostnames=' + hostname;
 
 							/**
 							 * (1) Define node
@@ -2637,9 +2669,7 @@ function createZProvisionNew(inst) {
 								data : {
 									cmd : 'nodeadd',
 									tgt : '',
-									args : node + ';zvm.hcp=' + hcp
-										+ ';zvm.userid=' + userId
-										+ ';nodehm.mgt=zvm' + ';groups=' + group,
+									args : args,
 									msg : 'cmd=nodeadd;out=' + inst
 								},
 
@@ -2702,6 +2732,20 @@ function createZProvisionNew(inst) {
 				var hcp = $('#' + thisTabId + ' input[name=hcp]').val();
 				// Get group
 				var group = $('#' + thisTabId + ' input[name=group]').val();
+				// Get IP address and hostname
+				var ip = $('#' + thisTabId + ' input[name=ip]').val();
+				var hostname = $('#' + thisTabId + ' input[name=hostname]').val();
+								
+				// Generate arguments to sent
+				var args = node + ';zvm.hcp=' + hcp
+					+ ';zvm.userid=' + userId
+					+ ';nodehm.mgt=zvm'
+					+ ';groups=' + group;
+				if (ip) 
+					args += ';hosts.ip=' + ip;
+				
+				if (hostname)
+					args += ';hosts.hostnames=' + hostname;
 
 				/**
 				 * (1) Define node
@@ -2712,9 +2756,7 @@ function createZProvisionNew(inst) {
 					data : {
 						cmd : 'nodeadd',
 						tgt : '',
-						args : node + ';zvm.hcp=' + hcp + ';zvm.userid='
-							+ userId + ';nodehm.mgt=zvm' + ';groups='
-							+ group,
+						args : args,
 						msg : 'cmd=nodeadd;out=' + inst
 					},
 

@@ -53,12 +53,13 @@ function showRepository(data) {
 	var show = "";
 
 	// Get the corresponding repository by OS Type
-	if ("aix" == data.rsp) {
+	if (data.rsp == "aix") {
+		// No repository exists for AIX on sourceforge!
 		develRepository = "http://xcat.sourceforge.net/aix/devel/xcat-core/";
 		stableRepository = "http://xcat.sourceforge.net/aix/xcat-core/";
 	} else {
-		develRepository = "http://xcat.sourceforge.net/yum/devel/xcat-core/";
-		stableRepository = "http://xcat.sourceforge.net/yum/xcat-core/";
+		develRepository = "http://sourceforge.net/projects/xcat/files/yum/devel/xcat-core/";
+		stableRepository = "http://sourceforge.net/projects/xcat/files/yum/stable/xcat-core/";
 	}
 
 	var repoList = $('<ol></ol>');

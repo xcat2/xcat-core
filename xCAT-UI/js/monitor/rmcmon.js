@@ -898,7 +898,7 @@ function chCondScopeDia() {
  */
 function mkResponseDia() {
 	var diaDiv = $('<div title="Make Response"><div>');
-	diaDiv.append('under construction.');
+	diaDiv.append('Not yet supported.');
 	
 	diaDiv.dialog({
 		 modal: true,
