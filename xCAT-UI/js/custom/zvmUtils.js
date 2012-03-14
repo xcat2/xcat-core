@@ -2362,7 +2362,7 @@ function createZProvisionNew(inst) {
 			});
 		}
 	});
-	var userEntry = $('<div><label for="userEntry">Directory entry:</label><textarea/></textarea></div>');
+	var userEntry = $('<div><label style="vertical-align: top;">Directory entry:</label><textarea/></textarea></div>');
 	userEntry.append($('<span></span>').append(defaultChkbox, 'Use default'));
 	hwAttr.append(userEntry);
 
