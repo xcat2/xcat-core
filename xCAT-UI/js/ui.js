@@ -796,18 +796,61 @@ function createIFrame(src) {
 
 /**
  * Open dialog to set xCAT UI settings
- * 
- * @return Nothing
  */
 function openSettings() {
 	// Create form to add node range
-	var settingsForm = $('<div class="form"></div>');
+	var dialog = $('<div class="form"></div>');
 	var info = createInfoBar('Select the settings you desire');
-	settingsForm.append(info);
+	dialog.append(info);
+	
+	var style = {
+		'color': 'blue',
+		'cursor': 'pointer',
+		'padding': '5px'
+	};
+	
+	var changeThemeOption = $('<div><center><a style="color: blue;">Change xCAT theme</a></center></div>').css(style);
+	dialog.append(changeThemeOption);
+	
+	var changePasswordOption = $('<div><center><a style="color: blue;">Change password</a></center></div>').css(style);
+	dialog.append(changePasswordOption);
+	
+	// Open form as a dialog
+	dialog.dialog({
+		modal: true,
+		title: 'Settings',
+		width: 400,
+		buttons: {
+        	"Cancel": function(){
+        		$(this).dialog("close");
+        	}
+		}
+	});
+	
+	// Bind to click event
+	changeThemeOption.click(function() {
+		dialog.dialog("close");
+		changeTheme();
+	});
+	
+	changePasswordOption.click(function() {
+		dialog.dialog("close");
+		changePassword();
+	});
+}
+
+/**
+ * Open dialog to change xCAT theme
+ */
+function changeTheme() {
+	// Create form to add node range
+	var dialog = $('<div class="form"></div>');
+	var info = createInfoBar('Select the xCAT theme you desire');
+	dialog.append(info);
 	
 	// Create select drop down for themes
 	var themeFS = $('<fieldset></fieldset>');
-	settingsForm.append(themeFS);
+	dialog.append(themeFS);
 	var legend = $('<legend>Theme</legend>');
 	themeFS.append(legend);
 	var oList = $('<ol></ol>');
@@ -827,9 +870,9 @@ function openSettings() {
 	}
 
 	// Open form as a dialog
-	settingsForm.dialog({
+	dialog.dialog({
 		modal: true,
-		title: 'Settings',
+		title: 'xCAT Theme',
 		width: 400,
 		buttons: {
         	"Ok": function(){
@@ -847,6 +890,93 @@ function openSettings() {
         			"Close" : function() {
         				$(this).dialog( "close" );
         			}
+        		});
+        	},
+        	"Cancel": function(){
+        		$(this).dialog( "close" );
+        	}
+		}
+	});
+}
+
+/**
+ * Open dialog to change user password
+ */
+function changePassword() {
+	// Create form to add node range
+	var dialog = $('<div id="changePassword" class="form"></div>');
+	var info = createInfoBar('Change your password');
+	dialog.append(info);
+	
+	dialog.append('<div><label>New password:</label><input type="password" name="newPassword"/></div>');
+	dialog.append('<div><label>Confirm password:</label><input type="password" name="confirmPassword"/></div>');
+	
+	// Open form as a dialog
+	dialog.dialog({
+		modal: true,
+		title: 'Change Password',
+		width: 400,
+		buttons: {
+        	"Ok": function(){
+        		// Remove any warning messages
+        		$(this).find('.ui-state-error').remove();
+        		
+        		var errorMessage = "";
+        		
+        		// Check each input is provided
+        		$('#changePassword input').each(function() {
+        			if (!$(this).val()) {
+        				errorMessage = "Please provide a value for each missing input!";
+        			}
+        		});
+        		
+        		// Do not continue if error found
+        		if (errorMessage) {
+        			dialog.prepend(createWarnBar(errorMessage));
+        			return;
+        		}
+        		
+        		// Check new and confirm passwords match
+        		var user = $.cookie('xcat_username');
+        		var newPassword = $('#changePassword input[name="newPassword"]').val();
+        		var confirmPassword = $('#changePassword input[name="confirmPassword"]').val();
+        		if (newPassword != confirmPassword) {
+        			dialog.prepend(createWarnBar("Please confirm new password!"));
+        			return;
+        		}
+        		
+        		// Change dialog buttons
+        	    $('#changePassword').dialog('option', 'buttons', {
+        	    	'Close':function(){
+        	    		$('#changePassword').dialog('close');
+        	    	}
+        	    });
+        		
+        		// Send request to change password
+        	    var url = window.location.pathname;
+        		var page = url.replace('/xcat/', '');
+        	    var url = 'lib/cmd.php';
+        	    // Service portal does not have access to cmd.php
+        	    if (page == 'service.php')
+        	    	url = 'lib/srv_cmd.php';
+        		$.ajax( {
+    				url : url,
+    				dataType : 'json',
+    				data : {
+    					cmd : 'webrun',
+    					tgt : '',
+    					args : 'passwd;' + user + ';' + newPassword,
+    					msg : ''
+    				},
+    				
+    				success : function (data) {
+    					// Show response message
+    					var rspMessage = "";
+    					for (var i in data.rsp)
+    						rspMessage += data.rsp[i] + "<br/>";
+    					
+    					 $('#changePassword').prepend(createInfoBar(rspMessage));
+    				}
         		});
         	},
         	"Cancel": function(){

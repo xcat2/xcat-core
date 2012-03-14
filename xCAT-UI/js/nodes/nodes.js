@@ -1,16 +1,11 @@
 /**
  * Global variables
  */
-// Node tabs
-var nodesTab;
-// Original node attributes
-var origAttrs = new Object();
-// Node attributes
-var nodeAttrs;
-// Node list
-var nodesList;
-// Nodes datatable ID
-var nodesTableId = 'nodesDatatable';
+var nodesTab; // Nodes tabs
+var origAttrs = new Object(); // Original node attributes
+var nodeAttrs; // Node attributes
+var nodesList; // Node list
+var nodesTableId = 'nodesDatatable'; // Nodes datatable ID
 
 /**
  * Set node tab

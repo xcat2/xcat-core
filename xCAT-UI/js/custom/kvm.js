@@ -66,7 +66,6 @@ kvmPlugin.prototype.loadInventory = function(data) {
 	$('#' + tabId).find('img').remove();
 
 	// Create division to hold inventory
-	var invDivId = tabId + 'Inventory';
 	var invDiv = $('<div></div>');
 	
 	// Create a fieldset
@@ -110,7 +109,7 @@ kvmPlugin.prototype.loadClonePage = function(node) {
 	// If there is no existing clone tab
 	if (!$('#' + newTabId).length) {
 		// Create info bar
-		var infoBar = createInfoBar('Not supported');
+		var infoBar = createInfoBar('Not yet supported');
 
 		// Create clone form
 		var cloneForm = $('<div class="form"></div>');
@@ -477,44 +476,25 @@ kvmPlugin.prototype.loadResources = function() {
 
 /**
  * Add node range
- * 
- * @return Nothing
  */
 kvmPlugin.prototype.addNode = function() {
-    var diag = $('<div id="addIdplx" class="form"></div>');
-    var info = createInfoBar('Add a node range');
-    diag.append(info);
+	var dialog = $('<div id="addKvm" class="form"></div>');
+    var info = createInfoBar('Add a KVM node');
+    dialog.append(info);
     
     // Create node inputs
-    var nodeFieldSet = $('<fieldset></fieldset>');
-	var legend = $('<legend>Node</legend>');
-	nodeFieldSet.append(legend);
-	diag.append(nodeFieldSet);
-	
-    var nodeInputs = '<div><label>Node: </label><input type="text"></div>' +
-               '<div><label>MAC:</label><input type="text"></div>' + 
-               '<div><label>IP: </label><input type="text"></div>' +
-               '<div><label>Groups: </label><input type="text"></div>';    
-    nodeFieldSet.append(nodeInputs);
+    dialog.append($('<div><label>Node:</label><input name="node" type="text"></div>'));
+	dialog.append($('<div><label>VM host:</label><input name="vmhost" type="text"></div>'));
+	dialog.append($('<div><label>IP address:</label><input name="ip" type="text"></div>'));
+	dialog.append($('<div><label>Groups:</label><input name="groups" type="text"></div>'));
     
-    var bmcFieldSet = $('<fieldset></fieldset>');
-	var legend = $('<legend>BMC</legend>');
-	bmcFieldSet.append(legend);
-	diag.append(bmcFieldSet);
-	
-	// Create BMC inputs
-	var bmcInputs = '<div><label>BMC:</label><input type="text"></div>' +
-     	'<div><label>IP:</label><input type="text"></div>' +
-     	'<div><label>Groups:</label><input type="text"></div>';    
-	 bmcFieldSet.append(bmcInputs);
-
-    diag.dialog({
+    dialog.dialog({
     	title: 'Add node',
         modal: true,
         width: 400,
         close: function(){$(this).remove();},
         buttons: {
-            "OK" : function(){addIdataplex();},
+            "OK" : function(){addKvmNode();},
             "Cancel": function(){$(this).dialog('close');}
         }
     });
@@ -522,61 +502,48 @@ kvmPlugin.prototype.addNode = function() {
 
 /**
  * Add iDataPlex node range
- * 
- * @return Nothing
  */
-function addIdataplex(){
-    var tempArray = new Array();
+function addKvmNode(){
+	var attr, args;
     var errorMessage = '';
-    var attr = '';
-    var args = '';
-    
+        
     // Remove existing warnings
-    $('#addIdplx .ui-state-error').remove();
+    $('#addKvm .ui-state-error').remove();
     
-    // Get input values
-    $('#addIdplx input').each(function(){
+    // Return input border colors to normal
+    $('#addKvm input').css('border', 'solid #BDBDBD 1px');
+    
+    // Check node attributes
+    $('#addKvm input').each(function(){
         attr = $(this).val();
-        if (attr) {
-            tempArray.push($(this).val());
-        } else {
+        if (!attr) {
             errorMessage = "Please provide a value for each missing field!";
-            return false;
+            $(this).css('border', 'solid #FF0000 1px');
         }
     });
     
+    // Show error message (if any)
     if (errorMessage) {
-        $('#addIdplx').prepend(createWarnBar(errorMessage));
+        $('#addKvm').prepend(createWarnBar(errorMessage));
         return;
     }
     
     // Create loader
-    $('#addIdplx').append(createLoader());
+    $('#addKvm').append(createLoader());
     
     // Change dialog buttons
-    $('#addIdplx').dialog('option', 'buttons', {
+    $('#addKvm').dialog('option', 'buttons', {
     	'Close':function(){
-    		$('#addIdplx').dialog('close');
+    		$('#addKvm').dialog('close');
     	}
     });
     
     // Generate chdef arguments
-    args = '-t;node;-o;' + tempArray[0] + ';mac=' + tempArray[1] + ';ip=' + tempArray[2] + ';groups=' + 
-          tempArray[3] + ';mgt=kvm;chain="runcmd=bmcsetup";netboot=xnba;nodetype=osi;profile=compute;' +
-          'bmc=' + tempArray[4];
-    $.ajax({
-        url : 'lib/cmd.php',
-        dataType : 'json',
-        data : {
-            cmd : 'chdef',
-            tgt : '',
-            args : args,
-            msg : ''
-        }
-    });
-     
-    // Generate chdef arguments for BMC
-    args = '-t;node;-o;' + tempArray[4] + ';ip=' + tempArray[5] + ';groups=' + tempArray[6];
+    args = '-t;node;-o;' + $('#addKvm input[name="node"]').val()
+	    + ';ip=' + $('#addKvm input[name="ip"]').val()
+	    + ';groups=' + $('#addKvm input[name="groups"]').val() 
+	    + ';vmhost=' + $('#addKvm input[name="vmhost"]').val() 
+	    + ';mgt=kvm;netboot=xnba;nodetype=osi;profile=compute';
     $.ajax({
         url : 'lib/cmd.php',
         dataType : 'json',
@@ -587,15 +554,30 @@ function addIdataplex(){
             msg : ''
         },
         success: function(data) {
-            $('#addIdplx img').remove();
+        	// Update /etc/hosts
+        	$.ajax({
+    			url : 'lib/cmd.php',
+    			dataType : 'json',
+    			data : {
+    				cmd : 'makehosts',
+    				tgt : '',
+    				args : '',
+    				msg : ''
+    			},
+    		});
+        	
+        	// Remove loader
+            $('#addKvm img').remove();
+            
+            // Get return message
             var message = '';
             for (var i in data.rsp) {
-                message += data.rsp[i];
+                message += data.rsp[i] + '<br/>';
             }
             
-            if (message) {
-                $('#addIdplx').prepend(createInfoBar(message));
-            }
+            // Show return message
+            if (message)
+                $('#addKvm').prepend(createInfoBar(message));
         }
     });
 }

@@ -64,11 +64,11 @@ function onlogin(data, txtStatus) {
 	if (data.authenticated == 'yes') {
 		$('#login_status').text('Login successful');
 		window.location = 'service.php';
-		
-		// Set user name cookie		
+				
+		// Set user name cookie
 		var exDate = new Date();
 		exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
-		$.cookie('srv_usrname', usrName, { expires: exDate });
+		$.cookie('xcat_username', usrName, { expires: exDate });
 	} else {
 		$('#login_status').text('Authentication failure');
 		$('#login_status').css('color', '#FF0000');
