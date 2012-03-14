@@ -123,13 +123,12 @@ sub makescript
     my $noderestab = xCAT::Table->new('noderes');
     my $typetab    = xCAT::Table->new('nodetype');
     my $posttab    = xCAT::Table->new('postscripts');
-    my $sitetab    = xCAT::Table->new('site');
     my $ostab    = xCAT::Table->new('osimage');
 
     my %rsp;
     my $rsp;
     my $master;
-    unless ($sitetab and $noderestab and $typetab and $posttab)
+    unless ($noderestab and $typetab and $posttab)
     {
         push @{$rsp->{data}},
           "Unable to open site or noderes or nodetype or postscripts table";
@@ -146,15 +145,14 @@ sub makescript
 
     # read all attributes for the site table and write an export
     # for them in the post install file
-    my $recs = $sitetab->getAllEntries();
     my $attribute;
     my $value;
     my $masterset = 0;
-    foreach (@$recs)    # export the attribute
+    foreach (keys(%::XCATSITEVALS))    # export the attribute
     {
-        $attribute = $_->{key};
+        $attribute = $_;
         $attribute =~ tr/a-z/A-Z/;
-        $value = $_->{value};
+        $value = $::XCATSITEVALS{$_};
         if ($attribute eq "MASTER")
         {
             $masterset = 1;
@@ -186,6 +184,8 @@ sub makescript
             push @scriptd, "export $attribute\n";
         }
     }    # end site table attributes
+
+
          # read the sshbetweennodes attribute and process
     my $enablessh=xCAT::Utils->enablessh($node); 
     if ($enablessh == 1) {
@@ -293,12 +293,6 @@ sub makescript
     }
     push @scriptd, 'PATH=`dirname $0`:$PATH' . "\n";
     push @scriptd, "export PATH\n";
-    my $sent = $sitetab->getAttribs({key => 'svloglocal'}, 'value');
-    if ($sent and defined($sent->{value}))
-    {
-        push @scriptd, "SVLOGLOCAL=" . $sent->{'value'} . "\n";
-        push @scriptd, "export SVLOGLOCAL\n";
-    }
 
     # add the root passwd, if any, for AIX nodes
     # get it from the system/root entry in the passwd table
