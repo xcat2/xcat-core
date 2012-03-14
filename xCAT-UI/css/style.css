@@ -544,7 +544,7 @@ legend {
 .form label {
 	color: #424242;
 	line-height: 1.5;
-	vertical-align: top;
+	vertical-align: middle;
 	width: 120px;
 	padding: 0px 0px 0px 20px;
 	display: inline-block;

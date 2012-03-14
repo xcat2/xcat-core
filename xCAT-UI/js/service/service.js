@@ -189,7 +189,7 @@ function loadServiceProvisionPage(tabId) {
 	 */
 	var okBtn = createButton('Ok');
 	okBtn.bind('click', function(event) {
-		var userName = $.cookie('srv_usrname');
+		var userName = $.cookie('xcat_username');
 		var tmp = $.cookie(userName + '_usrnodes');
 		
 		// Get maximun number for nodes from cookie
@@ -292,7 +292,7 @@ function loadManagePage(tabId) {
  * Get the user nodes definitions
  */
 function getUserNodesDef() {
-	var userName = $.cookie('srv_usrname');
+	var userName = $.cookie('xcat_username');
 	var userNodes = $.cookie(userName + '_usrnodes');
 	if (userNodes) {	
 		 // Get nodes definitions
@@ -590,7 +590,7 @@ function loadNodesTable(data) {
 				getNodesCurrentLoad();
 				
 				// Refresh nodes table
-				var userName = $.cookie('srv_usrname');
+				var userName = $.cookie('xcat_username');
 				var userNodes = $.cookie(userName + '_usrnodes');
 				if (userNodes) {
 					// Get nodes definitions
@@ -1057,7 +1057,7 @@ function setOSImageCookies(data) {
 function setUserNodes(data) {
 	if (data.rsp) {
 		// Get user name that is logged in
-		var userName = $.cookie('srv_usrname');
+		var userName = $.cookie('xcat_username');
 		var usrNodes = new Array();
 		
 		// Ignore first columns because it is the header
@@ -1290,7 +1290,7 @@ function monitorNode(node, monitor) {
  * @return Nothing
  */
 function cloneNode(tgtNodes) {	
-	var userName = $.cookie('srv_usrname');	
+	var userName = $.cookie('xcat_username');	
 	var nodes = tgtNodes.split(',');
 	var tmp = $.cookie(userName + '_usrnodes');
 	var usrNodes = tmp.split(',');
@@ -1586,7 +1586,7 @@ function unlockNode(tgtNodes) {
  * Get nodes current load information
  */
 function getNodesCurrentLoad(){
-	var userName = $.cookie('srv_usrname');
+	var userName = $.cookie('xcat_username');
 	var nodes = $.cookie(userName + '_usrnodes');
 	
     // Get nodes current status
@@ -2144,7 +2144,7 @@ function getNodeAttr(node, attrName) {
  * Set the maximum number of VMs a user could have
  */
 function setMaxVM() {
-	var userName = $.cookie('srv_usrname');
+	var userName = $.cookie('xcat_username');
 	
 	$.ajax( {
 		url : 'lib/srv_cmd.php',

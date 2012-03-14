@@ -61,7 +61,8 @@ sub process_request {
 	    'rinstall'	    => \&web_rinstall,
         'addnode'      => \&web_addnode,
 		'graph'		    => \&web_graphinfo,
-		'getdefaultuserentry' => \&web_getdefaultuserentry
+		'getdefaultuserentry' => \&web_getdefaultuserentry,
+		'passwd' => \&web_passwd
 	);
 
 	#check whether the request is authorized or not
@@ -1973,13 +1974,12 @@ sub web_addnode{
 		`/bin/grep '$hcpname' /etc/hosts`;
 		if ($?){
 			open(OUTPUTFILE, '>>/etc/hosts');
-			print OUTPUTFILE "$ip  $hcpname\n";
+			print OUTPUTFILE "$ip $hcpname\n";
 			close(OUTPUTFILE);
 		}
-		if ('hmc' eq $nodetype){
-			`chdef -t node -o $hcpname username=$username password=$passwd mgt=hmc nodetype=$nodetype groups=all`
-		}
-		else{
+		if ('hmc' eq $nodetype) {
+			`chdef -t node -o $hcpname username=$username password=$passwd mgt=hmc nodetype=$nodetype ip=$ip groups=all`
+		} else {
 			`chdef -t node -o $hcpname username=$username password=$passwd mgt=blade mpa=$hcpname nodetype=$nodetype id=0 groups=mm,all`
 		}
 		return;
@@ -2224,5 +2224,22 @@ sub web_getdefaultuserentry {
 	}
 	
 	$callback->( { data => $entry } );
+}
+
+sub web_passwd() {
+	my ( $request, $callback, $sub_req ) = @_;
+
+	# Get current and new passwords
+	my $user = $request->{arg}->[1];
+	my $newPassword = $request->{arg}->[2];
+	
+	# Generate encrypted password
+	my $encrypted = `perl -e "print crypt($newPassword, 03162012)"`;
+	# Save in xCAT passwd table
+	`chtab username=$user passwd.key=xcat passwd.password=$encrypted`;
+	
+	my $info = "Password successfully changed";
+	$callback->( { info => $info } );
+	return;
 }
 1;

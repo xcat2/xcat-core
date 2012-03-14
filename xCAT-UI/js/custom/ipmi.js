@@ -15,6 +15,28 @@ var ipmiPlugin = function() {
 };
 
 /**
+ * Steps for hardware discovery wizard
+ * 
+ * @return Discovery steps
+ */
+ipmiPlugin.prototype.getStep = function(){
+	return ['Basic patterns', 'Switches', 'Network', 'Services', 'Power on hardware'];
+};
+
+/**
+ * return steps's init function for hardware discovery wizard
+ * 
+ * @return Nothing
+ */
+ipmiPlugin.prototype.getInitFunction = function(){
+	return [idataplexInitBasic, idataplexInitSwitch, idataplexInitNetwork, idataplexInitService, idataplexInitPowerOn];
+};
+
+ipmiPlugin.prototype.getNextFunction = function(){
+	return [idataplexCheckBasic, undefined, idataplexCheckNetwork, undefined, undefined];
+};
+
+/**
  * Clone node (service page)
  * 
  * @param node
@@ -66,7 +88,6 @@ ipmiPlugin.prototype.loadInventory = function(data) {
 	$('#' + tabId).find('img').remove();
 
 	// Create division to hold inventory
-	var invDivId = tabId + 'Inventory';
 	var invDiv = $('<div></div>');
 	
 	// Create a fieldset
@@ -179,8 +200,6 @@ ipmiPlugin.prototype.loadProvisionPage = function(tabId) {
 
 /**
  * Load resources
- * 
- * @return Nothing
  */
 ipmiPlugin.prototype.loadResources = function() {
 	// Get resource tab ID
@@ -200,38 +219,19 @@ ipmiPlugin.prototype.loadResources = function() {
 
 /**
  * Add node range
- * 
- * @return Nothing
  */
 ipmiPlugin.prototype.addNode = function() {
-    var diag = $('<div id="addIdplx" class="form"></div>');
-    var info = createInfoBar('Add a node range');
-    diag.append(info);
+    var dialog = $('<div id="addIdplx" class="form"></div>');
+    var info = createInfoBar('Add a iDataPlex node');
+    dialog.append(info);
     
     // Create node inputs
-    var nodeFieldSet = $('<fieldset></fieldset>');
-	var legend = $('<legend>Node</legend>');
-	nodeFieldSet.append(legend);
-	diag.append(nodeFieldSet);
-	
-    var nodeInputs = '<div><label>Node: </label><input type="text"></div>' +
-               '<div><label>MAC:</label><input type="text"></div>' + 
-               '<div><label>IP: </label><input type="text"></div>' +
-               '<div><label>Groups: </label><input type="text"></div>';    
-    nodeFieldSet.append(nodeInputs);
-    
-    var bmcFieldSet = $('<fieldset></fieldset>');
-	var legend = $('<legend>BMC</legend>');
-	bmcFieldSet.append(legend);
-	diag.append(bmcFieldSet);
-	
-	// Create BMC inputs
-	var bmcInputs = '<div><label>BMC:</label><input type="text"></div>' +
-     	'<div><label>IP:</label><input type="text"></div>' +
-     	'<div><label>Groups:</label><input type="text"></div>';    
-	 bmcFieldSet.append(bmcInputs);
+    dialog.append($('<div><label>Node:</label><input name="node" type="text"/></div>'));
+	dialog.append($('<div><label>IP address:</label><input name="ip" type="text"/></div>'));
+	dialog.append($('<div><label>MAC address:</label><input name="mac" type="text"/></div>'));
+	dialog.append($('<div><label>Groups:</label><input name="groups" type="text"/></div>'));
 
-    diag.dialog({
+    dialog.dialog({
     	title: 'Add node',
         modal: true,
         width: 400,
@@ -244,52 +244,28 @@ ipmiPlugin.prototype.addNode = function() {
 };
 
 /**
- * return steps name for hardware discovery wizard
- * 
- * @return Nothing
- */
-ipmiPlugin.prototype.getStep = function(){
-	return ['Basic Patterns', 'Swithes', 'Network', 'Services', 'Power on hardwares'];
-};
-
-/**
- * return steps's init function for hardware discovery wizard
- * 
- * @return Nothing
- */
-ipmiPlugin.prototype.getInitFunction = function(){
-	return [idataplexInitBasic, idataplexInitSwitch, idataplexInitNetwork, idataplexInitService, idataplexInitPowerOn];
-};
-
-ipmiPlugin.prototype.getNextFunction = function(){
-	return [idataplexCheckBasic, undefined, idataplexCheckNetwork, undefined, undefined];
-};
-
-/**
  * Add iDataPlex node range
- * 
- * @return Nothing
  */
 function addIdataplex(){
-    var tempArray = new Array();
+	var attr, args;
     var errorMessage = '';
-    var attr = '';
-    var args = '';
-    
+        
     // Remove existing warnings
     $('#addIdplx .ui-state-error').remove();
     
-    // Get input values
+    // Return input border colors to normal
+    $('#addIdplx input').css('border', 'solid #BDBDBD 1px');
+    
+    // Check node attributes
     $('#addIdplx input').each(function(){
         attr = $(this).val();
-        if (attr) {
-            tempArray.push($(this).val());
-        } else {
+        if (!attr) {
             errorMessage = "Please provide a value for each missing field!";
-            return false;
+            $(this).css('border', 'solid #FF0000 1px');
         }
     });
     
+    // Show error message (if any)
     if (errorMessage) {
         $('#addIdplx').prepend(createWarnBar(errorMessage));
         return;
@@ -306,22 +282,11 @@ function addIdataplex(){
     });
     
     // Generate chdef arguments
-    args = '-t;node;-o;' + tempArray[0] + ';mac=' + tempArray[1] + ';ip=' + tempArray[2] + ';groups=' + 
-          tempArray[3] + ';mgt=ipmi;chain="runcmd=bmcsetup";netboot=xnba;nodetype=osi;profile=compute;' +
-          'bmc=' + tempArray[4];
-    $.ajax({
-        url : 'lib/cmd.php',
-        dataType : 'json',
-        data : {
-            cmd : 'chdef',
-            tgt : '',
-            args : args,
-            msg : ''
-        }
-    });
-     
-    // Generate chdef arguments for BMC
-    args = '-t;node;-o;' + tempArray[4] + ';ip=' + tempArray[5] + ';groups=' + tempArray[6];
+    args = '-t;node;-o;' + $('#addIdplx input[name="node"]').val()
+	    + ';ip=' + $('#addIdplx input[name="ip"]').val()
+	    + ';mac=' + $('#addIdplx input[name="mac"]').val() 
+	    + ';groups=' + $('#addIdplx input[name="groups"]').val()
+	    + ';mgt=ipmi;netboot=xnba;nodetype=osi;profile=compute';
     $.ajax({
         url : 'lib/cmd.php',
         dataType : 'json',
@@ -332,15 +297,30 @@ function addIdataplex(){
             msg : ''
         },
         success: function(data) {
+        	// Update /etc/hosts
+        	$.ajax({
+    			url : 'lib/cmd.php',
+    			dataType : 'json',
+    			data : {
+    				cmd : 'makehosts',
+    				tgt : '',
+    				args : '',
+    				msg : ''
+    			},
+    		});
+        	
+        	// Remove loader
             $('#addIdplx img').remove();
+            
+            // Get return message
             var message = '';
             for (var i in data.rsp) {
-                message += data.rsp[i];
+                message += data.rsp[i] + '<br/>';
             }
             
-            if (message) {
+            // Show return message
+            if (message)
                 $('#addIdplx').prepend(createInfoBar(message));
-            }
         }
     });
 }

@@ -74,6 +74,12 @@ function onlogin(data, txtStatus) {
 		    window.location = 'help.php';
 		}
 		
+		// Set user name cookie
+		var usrName = $("#login input[name='username']").val();
+		var exDate = new Date();
+		exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
+		$.cookie('xcat_username', usrName, { expires: exDate });
+		
 		// Set the logonflag
 		$.cookie('logonflag', 'yes', {
 		    path : '/xcat',

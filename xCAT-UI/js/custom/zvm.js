@@ -23,7 +23,7 @@ var zvmPlugin = function() {
  * @return Nothing
  */
 zvmPlugin.prototype.serviceClone = function(node) {	
-	var owner = $.cookie('srv_usrname');
+	var owner = $.cookie('xcat_username');
 	var group = getUserNodeAttr(node, 'groups');
 	
 	// Submit request to clone VM
@@ -88,7 +88,7 @@ zvmPlugin.prototype.loadServiceProvisionPage = function(tabId) {
 		var hcp = $('#select-table tbody tr:eq(0) td:eq(0) input[name="hcp"]:checked').val();
 		var group = $('#select-table tbody tr:eq(0) td:eq(1) input[name="group"]:checked').val();
 		var img = $('#select-table tbody tr:eq(0) td:eq(2) input[name="image"]:checked').val();
-		var owner = $.cookie('srv_usrname');
+		var owner = $.cookie('xcat_username');
 		
 		if(!hcp || !group || !img) {
 			// Show warning message
@@ -853,7 +853,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 	var legend = $('<legend>General</legend>');
 	fieldSet.append(legend);
 	var oList = $('<ol></ol>');
-	var item, label, input, args;
+	var item, label, args;
 
 	// Loop through each property
 	for ( var k = 0; k < 5; k++) {
@@ -961,7 +961,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			// Table columns - Type, Address, ID, Base, Dedicated, and Affinity
 			var procTabRow = $('<thead class="ui-widget-header"> <th>Type</th> <th>Address</th> <th>ID</th> <th>Base</th> <th>Dedicated</th> <th>Affinity</th> </thead>');
 			procTable.append(procTabRow);
-			var procType, procAddr, procId, procAff;
+			var procId, procAff;
 
 			/**
 			 * Remove processor
@@ -989,7 +989,6 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			}];
 
 			// Loop through each processor
-			var closeBtn;
 			var n, temp;
 			var procType, procAddr, procLink;
 			for (l = 0; l < attrs[keys[k]].length; l++) {
@@ -1188,7 +1187,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			// Table columns - Virtual device, Adapter Type, Port Name, # of Devices, MAC Address, and LAN Name
 			var nicTabRow = $('<thead class="ui-widget-header"> <th>Virtual Device #</th> <th>Adapter Type</th> <th>Port Name</th> <th># of Devices</th> <th>LAN Name</th></thead>');
 			nicTable.append(nicTabRow);
-			var nicVDev, nicType, nicPortName, nicNumOfDevs, nicMacAddr, nicLanName;
+			var nicVDev, nicType, nicPortName, nicNumOfDevs, nicLanName;
 
 			// Loop through each NIC (Data contained in 2 lines)
 			for (l = 0; l < attrs[keys[k]].length; l = l + 2) {
@@ -1289,9 +1288,6 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
 
 		success : setGroupsCookies
 	});
-
-	// Error message string
-	var errMsg;
 	
 	// Get provision tab instance
 	var inst = tabId.replace('zvmProvisionTab', '');
@@ -1388,13 +1384,14 @@ zvmPlugin.prototype.loadResources = function() {
  */
 zvmPlugin.prototype.addNode = function() {
 	// Create form to add node range
-	var addNodeForm = $('<div class="form"></div>');
-	var info = createInfoBar('Add a node range');
+	var addNodeForm = $('<div id="addZvm" class="form"></div>');
+	var info = createInfoBar('Add a z/VM node range');
 	addNodeForm.append(info);
-	addNodeForm.append('<div><label for="node">Node range:</label><input type="text" id="node" name="node"/></div>');
-	addNodeForm.append('<div><label for="userId">User ID range:</label><input type="text" id="userId" name="userId"/></div>');
-	addNodeForm.append('<div><label for="hcp">Hardware control point:</label><input type="text" id="hcp" name="hcp"/></div>');
-	addNodeForm.append('<div><label for="group">Group:</label><input type="text" id="group" name="group"/></div>');
+	addNodeForm.append('<div><label>Node range:</label><input type="text" name="node"/></div>');
+	addNodeForm.append('<div><label>IP address range (optional):</label><input name="ip" type="text"></div>');
+	addNodeForm.append('<div><label>User ID range:</label><input type="text" name="userId"/></div>');
+	addNodeForm.append('<div><label>Hardware control point:</label><input type="text" name="hcp"/></div>');
+	addNodeForm.append('<div><label>Groups:</label><input type="text" name="groups"/></div>');
 	
 	// Open form as a dialog
 	addNodeForm.dialog({
@@ -1408,13 +1405,14 @@ zvmPlugin.prototype.addNode = function() {
         		
 				// Get inputs
 				var nodeRange = $(this).find('input[name=node]').val();
+				var ipRange = $(this).find('input[name=ip]').val();
 				var userIdRange = $(this).find('input[name=userId]').val();				
-				var group = $(this).find('input[name=group]').val();
+				var group = $(this).find('input[name=groups]').val();
 				var hcp = $(this).find('input[name=hcp]').val();
 						
 				// Show warning message if inputs are not complete
 				if (!nodeRange || !userIdRange || !group || !hcp) {
-					var warn = createWarnBar('You are missing inputs.');
+					var warn = createWarnBar('Please provide a value for each missing field!');
 					warn.prependTo($(this));
         		} else {
     				// Check node range and user ID range
@@ -1422,14 +1420,12 @@ zvmPlugin.prototype.addNode = function() {
     				var errMsg = '';
     				var ready = true;
     				if (nodeRange.indexOf('-') > -1 || userIdRange.indexOf('-') > -1) {
-    					if (nodeRange.indexOf('-') < 0 || userIdRange.indexOf('-') < 0) {
+    					if (nodeRange.indexOf('-') < 0 || userIdRange.indexOf('-') < 0 || ipRange.indexOf('-') < 0) {
     						errMsg = errMsg + 'A user ID range and node range needs to be given. ';
     						ready = false;
     					} else {
     						var tmp = nodeRange.split('-');
     
-    						// Get node base name
-    						var nodeBase = tmp[0].match(/[a-zA-Z]+/);
     						// Get starting index
     						var nodeStart = parseInt(tmp[0].match(/\d+/));
     						// Get ending index
@@ -1437,24 +1433,43 @@ zvmPlugin.prototype.addNode = function() {
     
     						tmp = userIdRange.split('-');
     
-    						// Get user ID base name
-    						var userIdBase = tmp[0].match(/[a-zA-Z]+/);
     						// Get starting index
     						var userIdStart = parseInt(tmp[0].match(/\d+/));
     						// Get ending index
     						var userIdEnd = parseInt(tmp[1].match(/\d+/));
-    
+    						
+    						tmp = ipRange.split('-');
+    	    			    
+    			    		// Get starting IP address
+    			    		var ipStart = tmp[0].substring(tmp[0].lastIndexOf(".") + 1);
+    			    		// Get ending IP address
+    			    		var ipEnd = tmp[1].substring(tmp[1].lastIndexOf(".") + 1);
+    						    
     						// If starting and ending index do not match
     						if (!(nodeStart == userIdStart) || !(nodeEnd == userIdEnd)) {
-    							// Not ready
     							errMsg = errMsg + 'The node range and user ID range does not match. ';
+    							ready = false;
+    						}
+    						
+    						// If an IP address range is given and the starting and ending index do not match
+    						if (ipRange && !(nodeStart == ipStart) || !(nodeEnd == ipEnd)) {
+    							errMsg = errMsg + 'The node range and IP address range does not match. ';
     							ready = false;
     						}
     					}
     				}
-    				
+    				    				
     				// If there are no errors
     				if (ready) {
+    					$('#addZvm').append(createLoader());
+    					
+	    				// Change dialog buttons
+	    			    $('#addZvm').dialog('option', 'buttons', {
+	    			    	'Close':function(){
+	    			    		$('#addZvm').dialog('close');
+	    			    	}
+	    			    });
+	    			    
     			    	// If a node range is given
     			    	if (nodeRange.indexOf('-') > -1 && userIdRange.indexOf('-') > -1) {
     			    		var tmp = nodeRange.split('-');
@@ -1474,11 +1489,21 @@ zvmPlugin.prototype.addNode = function() {
     			    		var userIdStart = parseInt(tmp[0].match(/\d+/));
     			    		// Get ending index
     			    		var userIdEnd = parseInt(tmp[1].match(/\d+/));
+    			    		
+    			    		tmp = ipRange.split('-');
+    	    			    
+    			    		// Get network base
+    			    		var ipBase = tmp[0].substring(0, tmp[0].lastIndexOf(".") + 1);
+    			    		// Get starting IP address
+    			    		var ipStart = tmp[0].substring(tmp[0].lastIndexOf(".") + 1);
+    			    		// Get ending IP address
+    			    		var ipEnd = tmp[1].substring(tmp[1].lastIndexOf(".") + 1);
     			    
     			    		// Loop through each node in the node range
     			    		for ( var i = nodeStart; i <= nodeEnd; i++) {
     			    			var node = nodeBase + i.toString();
     			    			var userId = userIdBase + i.toString();
+    			    			var ip = ipBase + i.toString();
     			    			var inst = i + '/' + nodeEnd;
     			    
     			    			/**
@@ -1492,7 +1517,8 @@ zvmPlugin.prototype.addNode = function() {
     			    					tgt : '',
     			    					args : node + ';zvm.hcp=' + hcp
     			    						+ ';zvm.userid=' + userId
-    			    						+ ';nodehm.mgt=zvm' + ';groups=' + group,
+    			    						+ ';nodehm.mgt=zvm' + ';groups=' + group
+    			    						+ ';hosts.ip=' + ip,
     			    					msg : 'cmd=addnewnode;inst=' + inst + ';noderange=' + nodeRange
     			    				},
     			    
@@ -1508,19 +1534,33 @@ zvmPlugin.prototype.addNode = function() {
     			    					var rsp = data.rsp;
     			    					var args = data.msg.split(';');
     			    
-    			    					// Get command invoked
-    			    					var cmd = args[0].replace('cmd=', '');
+    			    					// Get instance returned and node range
     			    					var inst = args[1].replace('inst=', '');    					
     			    					var nodeRange = args[2].replace('noderange=', '');
     			    					
     			    					// If the last node was added
     			    					var tmp = inst.split('/');
     			    					if (tmp[0] == tmp[1]) {
+    			    						// Update /etc/hosts
+    			    			        	$.ajax({
+    			    			    			url : 'lib/cmd.php',
+    			    			    			dataType : 'json',
+    			    			    			data : {
+    			    			    				cmd : 'makehosts',
+    			    			    				tgt : '',
+    			    			    				args : '',
+    			    			    				msg : ''
+    			    			    			},
+    			    			    		});
+    			    			        	
+    			    						// Remove loader
+    			    			            $('#addZvm img').remove();
+    			    			            
     			        					// If there was an error, do not continue
     			        					if (rsp.length) {
-    			        						openDialog('warn', '(Error) Failed to create node definitions');		
+    			        						$('#addZvm').prepend(createWarnBar('Failed to create node definitions'));
     			        					} else {
-    			        						openDialog('info', 'Node definitions created for ' + nodeRange);	
+    			        						$('#addZvm').prepend(createInfoBar('Node definitions created for ' + nodeRange));
     			        					}
     			    					}
     			    				}
@@ -1536,7 +1576,8 @@ zvmPlugin.prototype.addNode = function() {
     			    				tgt : '',
     			    				args : nodeRange + ';zvm.hcp=' + hcp
     			    					+ ';zvm.userid=' + userIdRange
-    			    					+ ';nodehm.mgt=zvm' + ';groups=' + group,
+    			    					+ ';nodehm.mgt=zvm' + ';groups=' + group
+    			    					+ ';hosts.ip=' + ipRange,
     			    				msg : 'cmd=addnewnode;node=' + nodeRange
     			    			},
     			    
@@ -1551,23 +1592,32 @@ zvmPlugin.prototype.addNode = function() {
     			    				// Get ajax response
     			    				var rsp = data.rsp;
     			    				var args = data.msg.split(';');
-    			    
-    			    				// Get command invoked
-    			    				var cmd = args[0].replace('cmd=', '');
     			    				var node = args[1].replace('node=', '');
+    			    				
+    			    				// Update /etc/hosts
+    			    	        	$.ajax({
+    			    	    			url : 'lib/cmd.php',
+    			    	    			dataType : 'json',
+    			    	    			data : {
+    			    	    				cmd : 'makehosts',
+    			    	    				tgt : '',
+    			    	    				args : '',
+    			    	    				msg : ''
+    			    	    			},
+    			    	    		});
+    			    				
+    			    				// Remove loader
+    			    	            $('#addZvm img').remove();
     			    				
     			    				// If there was an error, do not continue
     			    				if (rsp.length) {
-    									openDialog('warn', '(Error) Failed to create node definition');		
-    								} else {
-    									openDialog('info', 'Node definitions created for ' + node);	
-    								}    				
+		        						$('#addZvm').prepend(createWarnBar('Failed to create node definitions'));
+		        					} else {
+		        						$('#addZvm').prepend(createInfoBar('Node definitions created for ' + node));
+		        					}
     			    			}
     			    		});
     			    	}
-    			    	
-    			    	// Close dialog
-    					$(this).dialog( "close" );
     				} else {
     					// Show warning message
     					var warn = createWarnBar(errMsg);
