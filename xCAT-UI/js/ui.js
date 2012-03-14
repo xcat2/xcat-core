@@ -800,7 +800,7 @@ function createIFrame(src) {
 function openSettings() {
 	// Create form to add node range
 	var dialog = $('<div class="form"></div>');
-	var info = createInfoBar('Select the settings you desire');
+	var info = createInfoBar('Select from the following options');
 	dialog.append(info);
 	
 	var style = {

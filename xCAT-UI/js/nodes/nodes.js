@@ -2402,10 +2402,10 @@ function loadRconsPage(tgtNodes){
 	redirectUrl += hostName;
 	pos = urlPath.lastIndexOf('/');
 	redirectUrl += urlPath.substring(0, pos + 1);
-	redirectUrl += 'rconsShow.php';
+	redirectUrl += 'rcons.php';
 	
 	// Open the rcons page
-	window.open(redirectUrl + "?rconsnd=" + tgtNodes, '', "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=no,width=670,height=436");
+	window.open(redirectUrl + "?rconsnd=" + tgtNodes, '', "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=no,width=590,height=436");
 }
 
 /**
@@ -3266,7 +3266,7 @@ function advancedLoad(group){
 }
 
 /**
- * Jump to provision page onclick
+ * Jump to provision page on-click
  * 
  * @param tgtNodes
  * 			Target nodes
@@ -3281,7 +3281,7 @@ function jump2Provision(tgtNodes){
     var master = '';
     var tftpserver = '';
     var nfsserver = '';
-    var diaDiv = $('<div title="Provision (only supported for Linux)" class="form" id="deployDiv"></div>');
+    var diaDiv = $('<div title="Provision" class="form" id="deployDiv"></div>');
     
     // Check the first node's arch type
     for (index in nodeArray){
@@ -3293,7 +3293,7 @@ function jump2Provision(tgtNodes){
             break;
         }
         
-        if (0 == index) {
+        if (index == 0) {
             archType = origAttrs[nodeName]['arch'];
         }
         
@@ -3313,11 +3313,11 @@ function jump2Provision(tgtNodes){
     }
     
     if (archType.indexOf('390') != -1) {
-        errorMsg += 'Please use the provision page.';
+        errorMsg += 'Please use the provision page';
     }
     
     // Open dialog to show error message
-    if ('' != errorMsg){
+    if (errorMsg){
         diaDiv.append(createWarnBar(errorMsg));
         diaDiv.dialog({
             modal: true,

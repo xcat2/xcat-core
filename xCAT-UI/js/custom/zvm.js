@@ -545,6 +545,24 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		group.append(groupLabel);
 		group.append(groupInput);
 		vmAttr.append(group);
+		
+		// Create an advanced link to set IP address and hostname
+		var advancedLnk = $('<div><label><a style="color: blue; cursor: pointer;">Advanced</a></label></div>');
+		vmAttr.append(advancedLnk);	
+		var advanced = $('<div style="margin-left: 20px;"></div>').hide();
+		vmAttr.append(advanced);
+		
+		var ip = $('<div><label>IP address range:</label><input type="text" name="ip" ' + 
+			'title="Optional. Specify the IP address range that will be assigned to these nodes. An IP address range must be given in the following format: 192.168.0.1-192.168.9."/></div>');
+		advanced.append(ip);
+		var hostname = $('<div><label>Hostname range:</label><input type="text" name="hostname" ' + 
+			'title="Optional. Specify the hostname range that will be assigned to these node. A hostname range must be given in the following format: ihost1.sourceforge.net-ihost9.sourceforge.net."/></div>');
+		advanced.append(hostname);
+		
+		// Show IP address and hostname inputs on-click
+		advancedLnk.click(function() {
+			advanced.toggle();
+		});
 
 		// Get list of disk pools
 		var temp = hcp.split('.');
@@ -610,9 +628,13 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 			var nodeRange = $('#' + newTabId + ' input[name=tgtNode]').val();
 			// Get target user ID
 			var userIdRange = $('#' + newTabId + ' input[name=tgtUserId]').val();
+			// Get IP address range
+			var ipRange = $('#' + newTabId + ' input[name=ip]').val();
+			// Get hostname range
+			var hostnameRange = $('#' + newTabId + ' input[name=hostname]').val();
 
 			// Check node range and user ID range
-			if (nodeRange.indexOf('-') > -1 || userIdRange.indexOf('-') > -1) {
+			if (nodeRange.indexOf('-') > -1 || userIdRange.indexOf('-') > -1 || ipRange.indexOf('-') > -1 || hostnameRange.indexOf('-') > -1) {
 				if (nodeRange.indexOf('-') < 0 || userIdRange.indexOf('-') < 0) {
 					errMsg = errMsg + 'A user ID range and node range needs to be given.<br>';
 					ready = false;
@@ -634,11 +656,43 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 					var userIdStart = parseInt(tmp[0].match(/\d+/));
 					// Get ending index
 					var userIdEnd = parseInt(tmp[1].match(/\d+/));
-
+					
+					var ipStart = "", ipEnd = "";
+					if (ipRange) {
+						tmp = ipRange.split('-');
+	    			    
+			    		// Get starting IP address
+			    		ipStart = tmp[0].substring(tmp[0].lastIndexOf(".") + 1);
+			    		// Get ending IP address
+			    		ipEnd = tmp[1].substring(tmp[1].lastIndexOf(".") + 1);
+					}
+		    		
+					var hostnameStart = "", hostnameEnd = "";
+					if (hostnameRange) {
+			    		tmp = hostnameRange.split('-');
+	
+			    		// Get starting hostname
+			    		hostnameStart = parseInt(tmp[0].substring(0, tmp[0].indexOf(".")).match(/\d+/));
+			    		// Get ending hostname
+			    		hostnameEnd = parseInt(tmp[1].substring(0, tmp[1].indexOf(".")).match(/\d+/));
+					}
+		    		
 					// If starting and ending index do not match
 					if (!(nodeStart == userIdStart) || !(nodeEnd == userIdEnd)) {
 						// Not ready to provision
 						errMsg = errMsg + 'The node range and user ID range does not match.<br>';
+						ready = false;
+					}
+					
+					// If an IP address range is given and the starting and ending index do not match
+					if (ipRange && !(nodeStart == ipStart) || !(nodeEnd == ipEnd)) {
+						errMsg = errMsg + 'The node range and IP address range does not match. ';
+						ready = false;
+					}
+					
+					// If a hostname range is given and the starting and ending index do not match
+					if (hostnameRange && !(nodeStart == hostnameStart) || !(nodeEnd == hostnameEnd)) {
+						errMsg = errMsg + 'The node range and hostname range does not match. ';
 						ready = false;
 					}
 				}
@@ -672,17 +726,45 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 
 					// Get user ID base name
 					var userIdBase = tmp[0].match(/[a-zA-Z]+/);
-					// Get starting index
-					var userIdStart = parseInt(tmp[0].match(/\d+/));
-					// Get ending index
-					var userIdEnd = parseInt(tmp[1].match(/\d+/));
-
+					    			    		    		
+					var ipBase = "";
+					if (ipRange) {
+						tmp = ipRange.split('-');
+						
+						// Get network base
+						ipBase = tmp[0].substring(0, tmp[0].lastIndexOf(".") + 1);
+					}
+		    		
+					var domain = "";
+					if (hostnameRange) {
+						tmp = hostnameRange.split('-');
+		    		
+						// Get domain name
+		    			domain = tmp[0].substring(tmp[0].indexOf("."));
+					}
+					
 					// Loop through each node in the node range
 					for ( var i = nodeStart; i <= nodeEnd; i++) {
 						var node = nodeBase + i.toString();
 						var userId = userIdBase + i.toString();
 						var inst = i + '/' + nodeEnd;
-
+												
+						var args = node 
+							+ ';zvm.hcp=' + hcp
+							+ ';zvm.userid=' + userId
+							+ ';nodehm.mgt=zvm' 
+							+ ';groups=' + group;
+						
+						if (ipRange) {
+							var ip = ipBase + i.toString();
+							args += ';hosts.ip=' + ip;
+						}
+						
+						if (hostnameRange) {
+							var hostname = node + domain;
+							args += ';hosts.hostnames=' + hostname;
+						}
+						
 						/**
 						 * (1) Define node
 						 */
@@ -692,10 +774,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 							data : {
 								cmd : 'nodeadd',
 								tgt : '',
-								args : node + ';zvm.hcp=' + hcp
-									+ ';zvm.userid=' + userId
-									+ ';nodehm.mgt=zvm' 
-									+ ';groups=' + group,
+								args : args,
 								msg : 'cmd=nodeadd;inst=' + inst 
 									+ ';out=' + statBarId 
 									+ ';node=' + node
@@ -704,7 +783,19 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 							success : updateZCloneStatus
 						});
 					}
-				} else {					
+				} else {
+					var args = nodeRange 
+						+ ';zvm.hcp=' + hcp
+						+ ';zvm.userid=' + userIdRange
+						+ ';nodehm.mgt=zvm' 
+						+ ';groups=' + group;
+					
+					if (ipRange)
+						args += ';hosts.ip=' + ipRange;
+					
+					if (hostnameRange)
+						args += ';hosts.hostnames=' + hostnameRange;
+					
 					/**
 					 * (1) Define node
 					 */
@@ -714,10 +805,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 						data : {
 							cmd : 'nodeadd',
 							tgt : '',
-							args : nodeRange + ';zvm.hcp=' + hcp
-								+ ';zvm.userid=' + userIdRange
-								+ ';nodehm.mgt=zvm' 
-								+ ';groups=' + group,
+							args : args,
 							msg : 'cmd=nodeadd;inst=1/1;out=' + statBarId
 								+ ';node=' + nodeRange
 						},
@@ -727,8 +815,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 				}
 
 				// Create loader
-				var loader = createLoader('');
-				$('#' + statBarId).find('div').append(loader);
+				$('#' + statBarId).find('div').append(createLoader());
 				$('#' + statBarId).show();
 
 				// Disable clone button
@@ -1388,8 +1475,9 @@ zvmPlugin.prototype.addNode = function() {
 	var info = createInfoBar('Add a z/VM node range');
 	addNodeForm.append(info);
 	addNodeForm.append('<div><label>Node range:</label><input type="text" name="node"/></div>');
-	addNodeForm.append('<div><label>IP address range (optional):</label><input name="ip" type="text"></div>');
 	addNodeForm.append('<div><label>User ID range:</label><input type="text" name="userId"/></div>');
+	addNodeForm.append('<div><label>IP address range (optional):</label><input name="ip" type="text"></div>');
+	addNodeForm.append('<div><label>Hostname range (optional):</label><input name="hostname" type="text"></div>');
 	addNodeForm.append('<div><label>Hardware control point:</label><input type="text" name="hcp"/></div>');
 	addNodeForm.append('<div><label>Groups:</label><input type="text" name="groups"/></div>');
 	
@@ -1406,6 +1494,7 @@ zvmPlugin.prototype.addNode = function() {
 				// Get inputs
 				var nodeRange = $(this).find('input[name=node]').val();
 				var ipRange = $(this).find('input[name=ip]').val();
+				var hostnameRange = $(this).find('input[name=hostname]').val();
 				var userIdRange = $(this).find('input[name=userId]').val();				
 				var group = $(this).find('input[name=groups]').val();
 				var hcp = $(this).find('input[name=hcp]').val();
@@ -1420,7 +1509,7 @@ zvmPlugin.prototype.addNode = function() {
     				var errMsg = '';
     				var ready = true;
     				if (nodeRange.indexOf('-') > -1 || userIdRange.indexOf('-') > -1) {
-    					if (nodeRange.indexOf('-') < 0 || userIdRange.indexOf('-') < 0 || ipRange.indexOf('-') < 0) {
+    					if (nodeRange.indexOf('-') < 0 || userIdRange.indexOf('-') < 0) {
     						errMsg = errMsg + 'A user ID range and node range needs to be given. ';
     						ready = false;
     					} else {
@@ -1438,12 +1527,25 @@ zvmPlugin.prototype.addNode = function() {
     						// Get ending index
     						var userIdEnd = parseInt(tmp[1].match(/\d+/));
     						
-    						tmp = ipRange.split('-');
-    	    			    
-    			    		// Get starting IP address
-    			    		var ipStart = tmp[0].substring(tmp[0].lastIndexOf(".") + 1);
-    			    		// Get ending IP address
-    			    		var ipEnd = tmp[1].substring(tmp[1].lastIndexOf(".") + 1);
+    						var ipStart = "", ipEnd = "";
+    						if (ipRange) {
+	    						tmp = ipRange.split('-');
+	    	    			    
+	    			    		// Get starting IP address
+	    			    		ipStart = tmp[0].substring(tmp[0].lastIndexOf(".") + 1);
+	    			    		// Get ending IP address
+	    			    		ipEnd = tmp[1].substring(tmp[1].lastIndexOf(".") + 1);
+    						}
+    						
+    						var hostnameStart = "", hostnameEnd = "";
+    						if (hostnameRange) {
+    				    		tmp = hostnameRange.split('-');
+    		
+    				    		// Get starting hostname
+    				    		hostnameStart = parseInt(tmp[0].substring(0, tmp[0].indexOf(".")).match(/\d+/));
+    				    		// Get ending hostname
+    				    		hostnameEnd = parseInt(tmp[1].substring(0, tmp[1].indexOf(".")).match(/\d+/));
+    						}
     						    
     						// If starting and ending index do not match
     						if (!(nodeStart == userIdStart) || !(nodeEnd == userIdEnd)) {
@@ -1454,6 +1556,12 @@ zvmPlugin.prototype.addNode = function() {
     						// If an IP address range is given and the starting and ending index do not match
     						if (ipRange && !(nodeStart == ipStart) || !(nodeEnd == ipEnd)) {
     							errMsg = errMsg + 'The node range and IP address range does not match. ';
+    							ready = false;
+    						}
+    						
+    						// If a hostname range is given and the starting and ending index do not match
+    						if (hostnameRange && !(nodeStart == hostnameStart) || !(nodeEnd == hostnameEnd)) {
+    							errMsg = errMsg + 'The node range and hostname range does not match. ';
     							ready = false;
     						}
     					}
@@ -1485,27 +1593,43 @@ zvmPlugin.prototype.addNode = function() {
     			    
     			    		// Get user ID base name
     			    		var userIdBase = tmp[0].match(/[a-zA-Z]+/);
-    			    		// Get starting index
-    			    		var userIdStart = parseInt(tmp[0].match(/\d+/));
-    			    		// Get ending index
-    			    		var userIdEnd = parseInt(tmp[1].match(/\d+/));
     			    		
-    			    		tmp = ipRange.split('-');
-    	    			    
-    			    		// Get network base
-    			    		var ipBase = tmp[0].substring(0, tmp[0].lastIndexOf(".") + 1);
-    			    		// Get starting IP address
-    			    		var ipStart = tmp[0].substring(tmp[0].lastIndexOf(".") + 1);
-    			    		// Get ending IP address
-    			    		var ipEnd = tmp[1].substring(tmp[1].lastIndexOf(".") + 1);
+    			    		var ipBase = "";
+    			    		if (ipRange) {
+	    			    		tmp = ipRange.split('-');
+	    	    			    
+	    			    		// Get network base
+	    			    		ipBase = tmp[0].substring(0, tmp[0].lastIndexOf(".") + 1);
+    			    		}
+    			    		
+    			    		var domain = "";
+    						if (hostnameRange) {
+    							tmp = hostnameRange.split('-');
+    			    		
+    							// Get domain name
+    			    			domain = tmp[0].substring(tmp[0].indexOf("."));
+    						}
     			    
     			    		// Loop through each node in the node range
     			    		for ( var i = nodeStart; i <= nodeEnd; i++) {
     			    			var node = nodeBase + i.toString();
     			    			var userId = userIdBase + i.toString();
-    			    			var ip = ipBase + i.toString();
     			    			var inst = i + '/' + nodeEnd;
     			    
+    			    			var args = node + ';zvm.hcp=' + hcp
+		    						+ ';zvm.userid=' + userId
+		    						+ ';nodehm.mgt=zvm' + ';groups=' + group;
+    			    			
+    			    			if (ipRange) {
+    			    				var ip = ipBase + i.toString();
+    			    				args += ';hosts.ip=' + ip;
+    			    			}
+    							
+    							if (hostnameRange) {
+    								var hostname = node + domain;
+    								args += ';hosts.hostnames=' + hostname;
+    							}
+    			    			
     			    			/**
     			    			 * (1) Define node
     			    			 */
@@ -1515,10 +1639,7 @@ zvmPlugin.prototype.addNode = function() {
     			    				data : {
     			    					cmd : 'nodeadd',
     			    					tgt : '',
-    			    					args : node + ';zvm.hcp=' + hcp
-    			    						+ ';zvm.userid=' + userId
-    			    						+ ';nodehm.mgt=zvm' + ';groups=' + group
-    			    						+ ';hosts.ip=' + ip,
+    			    					args : args,
     			    					msg : 'cmd=addnewnode;inst=' + inst + ';noderange=' + nodeRange
     			    				},
     			    
@@ -1567,6 +1688,16 @@ zvmPlugin.prototype.addNode = function() {
     			    			});
     			    		}
     			    	} else {
+    			    		var args = nodeRange + ';zvm.hcp=' + hcp
+		    					+ ';zvm.userid=' + userIdRange
+		    					+ ';nodehm.mgt=zvm' + ';groups=' + group;
+    			    		
+    			    		if (ipRange)
+    			    			args += ';hosts.ip=' + ipRange;
+    			    		
+    			    		if (hostnameRange)
+								args += ';hosts.hostnames=' + hostnameRange;
+    			    		
     			    		// Only one node to add
     			    		$.ajax( {
     			    			url : 'lib/cmd.php',
@@ -1574,10 +1705,7 @@ zvmPlugin.prototype.addNode = function() {
     			    			data : {
     			    				cmd : 'nodeadd',
     			    				tgt : '',
-    			    				args : nodeRange + ';zvm.hcp=' + hcp
-    			    					+ ';zvm.userid=' + userIdRange
-    			    					+ ';nodehm.mgt=zvm' + ';groups=' + group
-    			    					+ ';hosts.ip=' + ipRange,
+    			    				args : args,
     			    				msg : 'cmd=addnewnode;node=' + nodeRange
     			    			},
     			    

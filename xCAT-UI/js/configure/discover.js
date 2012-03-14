@@ -40,36 +40,30 @@ function createDiscoverButtons(){
 	var nextButton = createNextButton();
 	var cancelButton = createCancelButton();
 	
-	if (backButton){
+	if (backButton)
 		buttonDiv.append(backButton);
-	}
 	
-	if (nextButton){
+	if (nextButton)
 		buttonDiv.append(nextButton);
-	}
 	
-	if (cancelButton){
+	if (cancelButton)
 		buttonDiv.append(cancelButton);
-	}
 
 	$('#discoverContentDiv').append(buttonDiv);
 }
 
 function createCancelButton(){
-	if (0 == currentStep){
+	if (0 == currentStep)
 		return undefined;
-	}
 	
-	if ((steps.length - 1) == currentStep){
+	if ((steps.length - 1) == currentStep)
 		return undefined;
-	}
 	
 	var cancelbutton = createButton('Cancel');
 	cancelbutton.bind('click', function(){
 		$('#discoverTab').empty();
-		for (var name in discoverEnv){
+		for (var name in discoverEnv)
 			removeDiscoverEnv(name);
-		}
 		loadDiscoverPage();
 	});
 	
@@ -83,19 +77,16 @@ function createCancelButton(){
  */
 function createNextButton(){
 	var tempFlag = true;
-	if ((steps.length - 1) == currentStep){
+	if ((steps.length - 1) == currentStep)
 		return undefined;
-	}
 	
 	var nextButton = createButton('Next');
 	nextButton.bind('click', function(){
-		if (nextFunctions[currentStep]){
+		if (nextFunctions[currentStep])
 			tempFlag = nextFunctions[currentStep]('next');
-		}
 		
-		if (!tempFlag){
+		if (!tempFlag)
 			return;
-		}
 		currentStep ++;
 		initFunctions[currentStep]('next');
 	});
@@ -110,19 +101,16 @@ function createNextButton(){
  */
 function createBackButton(){
 	var tempFlag = true;
-	if (0 == currentStep){
+	if (0 == currentStep)
 		return undefined;
-	}
 	
 	var backButton = createButton('Back');
 	backButton.bind('click', function(){
-		if (nextFunctions[currentStep]){
+		if (nextFunctions[currentStep])
 			tempFlag = nextFunctions[currentStep]('back');
-		}
 		
-		if (!tempFlag){
+		if (!tempFlag)
 			return;
-		}
 		
 		currentStep--;
 
@@ -142,12 +130,10 @@ function createBackButton(){
  *       else return null.
  */
 function getDiscoverEnv(envName){
-	if (discoverEnv[envName]){
+	if (discoverEnv[envName])
 		return discoverEnv[envName];
-	}
-	else{
+	else
 		return '';
-	}
 }
 
 /**
@@ -160,9 +146,8 @@ function getDiscoverEnv(envName){
  * @return nothing
  */
 function setDiscoverEnv(envName, envValue){
-	if (envName){
+	if (envName)
 		discoverEnv[envName] = envValue;
-	}
 }
 
 /**
@@ -173,9 +158,8 @@ function setDiscoverEnv(envName, envValue){
  * @return nothing
  */
 function removeDiscoverEnv(envName){
-	if (discoverEnv[envName]){
+	if (discoverEnv[envName])
 		delete discoverEnv[envName];
-	}
 }
 
 /**
@@ -187,25 +171,23 @@ function removeDiscoverEnv(envName){
 function expandNR(nodeRange){
 	var retArray = new Array();
 	var tempResult;
-	if ('' == nodeRange){
+	if ('' == nodeRange)
 		return retArray;
-	}
 	
 	tempResult = nodeRange.match(/(.*?)\[(.*?)\](.*)/);
 	if (null != tempResult){
 		var parts = tempResult[2].split('-');
-		if (2 > parts.length){
+		if (2 > parts.length)
 			return retArray;
-		}
 		
 		var start = Number(parts[0]);
 		var end = Number(parts[1]);
 		var len = parts[0].length;
 		for (var i = parts[0]; i <= parts[1]; i++){
 			var ts = i.toString();
-			if (ts.length < len){
+			if (ts.length < len)
 				ts = "000000".substring(0, (len - ts.length)) + ts;
-			}
+
 			retArray = retArray.concat(expandNR(tempResult[1] + ts + tempResult[3]));
 		}
 		return retArray;
@@ -238,9 +220,8 @@ function expandNR(nodeRange){
 	var len = begin[2].length;
 	for (var i = begin[2]; i <= end[2]; i++){
 		var ts = i.toString();
-		if (ts.length < len){
+		if (ts.length < len)
 			ts = "000000".substring(0, (len - ts.length)) + ts;
-		}
 		retArray.push(prefix + ts);
 	}
 	
@@ -257,12 +238,10 @@ function collectInputValue(){
 	$('#discoverContentDiv input[type=text]').each(function(){
 		var name = $(this).attr('name');
 		var value = $(this).attr('value');
-		if ('' != value){
+		if ('' != value)
 			setDiscoverEnv(name, value);
-		}
-		else{
+		else
 			removeDiscoverEnv(name);
-		}
 	});
 	
 	return true;
@@ -289,9 +268,8 @@ function verifyIp(ip){
  * @return decimal type ip address
  */
 function ip2Decimal(ip){
-    if (!verifyIp(ip)){
+    if (!verifyIp(ip))
         return 0;
-    }
     
     var retIp = 0;
     var tempArray = ip.split('.');
@@ -303,6 +281,7 @@ function ip2Decimal(ip){
     retIp = retIp >>> 0;
     return retIp;
 }
+
 /**
  * calculate the end IP address by start IP and the number of IP range.
  * 
@@ -343,6 +322,7 @@ function calcEndIp(ipStart, num){
     ipArray[0] = ipArray[0] + parseInt(sum / 255);
     return (ipArray.join('.'));
 }
+
 /**
  * Step 1: show the wizard's function 
  *         platform selector(system P or system X)
@@ -350,27 +330,34 @@ function calcEndIp(ipStart, num){
  * @return nothing
  */
 function initSelectPlatform(){
-	var temp = '';
 	var type = '';
+	
 	$('#discoverContentDiv').empty();
 	$('.tooltip').remove();
-	temp += '<div style="min-height:360px"><h2>' + steps[currentStep] + '</h2>';
-	temp += '<p>This wizard will guide you through the process of defining the naming conventions within' + 
-		'your cluster, discovering the hardware on your network, and automatically defining it in the xCAT' +
-		'database.<br/>Choose which type of hardware you want to discover, and then click Next.</p>';
-	temp += '<input type="radio" name="platform" id="idataplex"><label for="idataplex">iDataPlex</label></input><br/>';
-	temp += '<input type="radio" name="platform" disabled="true" id="blade"><span  style="color:gray;"> Blade Center</span></input><br/>';
-	temp += '<input type="radio" name="platform" id="ih"> System p hardware (P7 IH)</input><br/>';
-	temp += '<input type="radio" name="platform" id="nonih"> System p hardware (Non P7 IH)</input><br/>';
-	temp += '</div>';
-	$('#discoverContentDiv').append(temp);
 	
-	if (getDiscoverEnv('machineType')){
+	var selectPlatform = $('<div style="min-height:360px"><h2>' + steps[currentStep] + '</h2></div>');
+	
+	var infoMsg = 'This wizard will guide you through the process of defining the naming conventions within' + 
+		'your cluster, discovering the hardware on your network, and automatically defining it in the xCAT' +
+		'database. Choose which type of hardware you want to discover, and then click Next.';
+	var info = createInfoBar(infoMsg);
+	selectPlatform.append(info);
+	
+	var hwList = $('<ol>Platforms available:</ol>'); 
+	hwList.append('<li><input type="radio" name="platform" id="idataplex"><label>iDataPlex</label></input></li>');
+	hwList.append('<li><input type="radio" name="platform" disabled="true" id="blade"><span  style="color:gray;"> BladeCenter</span></input></li>');
+	hwList.append('<li><input type="radio" name="platform" id="ih"> System p hardware (P7 IH)</input></li>');
+	hwList.append('<li><input type="radio" name="platform" id="nonih"> System p hardware (Non P7 IH)</input></li>');
+	
+	hwList.find('li').css('padding', '2px 10px');
+	selectPlatform.append(hwList);
+	
+	$('#discoverContentDiv').append(selectPlatform);
+	
+	if (getDiscoverEnv('machineType'))
 		type = getDiscoverEnv('machineType');
-	}
-	else{
+	else
 		type = 'ih';
-	}
 	
 	$('#discoverContentDiv #' + type).attr('checked', 'checked');
 	createDiscoverButtons();
@@ -386,19 +373,16 @@ function getPlatform(){
 	var platformObj;
 	switch(radioValue){
 	    case 'ih':
-	    case 'nonih':{
+	    case 'nonih':
 	        platformObj = new hmcPlugin();
-	    }
-	    break;
-	    case 'idataplex':{
+	        break;
+	    case 'idataplex':
 	    	platformObj = new ipmiPlugin();
-	    }
-	    break;
-	    case 'blade':{
-	        
-	    }
-	    break;
+	    	break;
+	    case 'blade':
+	    	break;
 	}
+	
 	steps = ['Platform'].concat(platformObj.getStep(), 'compelte');
 	initFunctions = [initSelectPlatform].concat(platformObj.getInitFunction(), complete);
 	nextFunctions = [getPlatform].concat(platformObj.getNextFunction(), undefined);

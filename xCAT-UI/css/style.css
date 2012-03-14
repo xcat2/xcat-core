@@ -4,7 +4,8 @@
 	font: 12px sans-serif;
 }
 
-.ui-dialog label,.ui-dialog input,.ui-dialog p,.ui-dialog button,.ui-dialog td {
+.ui-dialog label,.ui-dialog input,.ui-dialog p,.ui-dialog button,.ui-dialog td
+	{
 	font: 12px sans-serif;
 }
 
@@ -12,7 +13,8 @@
 	font: 12px sans-serif;
 }
 
-.ui-widget input, .ui-widget select, .ui-widget textarea, .ui-widget button {
+.ui-widget input,.ui-widget select,.ui-widget textarea,.ui-widget button
+	{
 	font: 12px sans-serif;
 }
 
@@ -119,7 +121,7 @@ body {
 }
 
 pre {
-	font-size: 10px;	
+	font-size: 10px;
 }
 
 /*--------------- Groups ---------------*/
@@ -151,11 +153,11 @@ pre {
 	font-size: 15px;
 }
 
-#groups .groupdiv{
+#groups .groupdiv {
 	padding-left: 10px;
 }
 
-#groups .groupdiv div{
+#groups .groupdiv div {
 	color: blue;
 	padding: 5px 0px 5px 20px;
 }
@@ -166,11 +168,11 @@ pre {
 }
 
 #groups .selectgroup {
-    background: #E5E5E5;
-    font-weight: bold;
+	background: #E5E5E5;
+	font-weight: bold;
 }
 
-#groups .actionDiv{
+#groups .actionDiv {
 	text-align: right;
 	padding-right: 5px;
 	border-top: thin solid #E7EBFF;
@@ -190,15 +192,18 @@ pre {
 	width: 260px;
 	height: 220px;
 }
-.summarypie td{
-	min-width:0px;
+
+.summarypie td {
+	min-width: 0px;
 }
-#summaryTab td{
+
+#summaryTab td {
 	border: 0px;
 	padding: 0px;
 	text-align: left;
 	line-height: 1;
 }
+
 /*--------------- Info/warning bar ---------------*/
 span.ui-icon-info {
 	float: left;
@@ -328,14 +333,14 @@ legend {
 }
 
 .sf-menu {
-	border-radius :0.3em 0.3em 0.3em 0.3em;
+	border-radius: 0.3em 0.3em 0.3em 0.3em;
 	margin-bottom: 0;
 	background: none;
 	border: 0px solid;
 }
 
 .sf-menu ul li {
-	width: 99%;	
+	width: 99%;
 }
 
 .sf-menu .sf-menu {
@@ -346,8 +351,8 @@ legend {
 	background: none;
 }
 
-.sf-sub-indicator{
-	right:0;
+.sf-sub-indicator {
+	right: 0;
 }
 
 .actionBar {
@@ -490,13 +495,13 @@ legend {
 }
 
 .sorting_asc,.sorting_desc,.sorting {
-	background: none;	
+	background: none;
 }
 
 /*--------------- jQuery context menu ---------------*/
 .context-menu-theme-vista {
-	background: #FAFAFA url(../images/contextmenu/context-menu-bg.gif) repeat-y left top
-		;
+	background: #FAFAFA url(../images/contextmenu/context-menu-bg.gif)
+		repeat-y left top;
 	border: 1px solid #868686;
 }
 
@@ -516,8 +521,9 @@ legend {
 }
 
 .context-menu-theme-vista .context-menu-item-hover {
-	background: transparent url(../images/contextmenu/context-menu-item-hover.gif)
-		repeat-x left center;
+	background: transparent
+		url(../images/contextmenu/context-menu-item-hover.gif) repeat-x left
+		center;
 	border: 1px solid #D7D0B3;
 }
 
@@ -647,16 +653,16 @@ table a:hover {
 }
 
 .mornitorwarning {
-   	background: #FFD700;
+	background: #FFD700;
 	cursor: pointer;
 }
 
 .monitorerror {
-	background:  #FF3030;
+	background: #FF3030;
 }
 
 .monitorunknown {
-    background:  #8B8B7A;
+	background: #8B8B7A;
 }
 
 .monitornodeli {
@@ -673,20 +679,21 @@ table a:hover {
 	margin: 0px 0px 10px 10px;
 }
 
-.monitorsumdiv td{
+.monitorsumdiv td {
 	padding: 0;
 	border-style: none;
 	font-size: 10px;
 }
+
 .monitornodediv {
 	width: 240px;
 	height: 120px;
 	margin: 0px 0px 15px 0px;
 }
 
-.monitorzoomlink{
+.monitorzoomlink {
 	cursor: pointer;
-	color : blue;
+	color: blue;
 }
 
 .provision div,.monitor div {
@@ -761,12 +768,12 @@ table a:hover {
 	height: 11px;
 }
 
-.fspcheckbox{
+.fspcheckbox {
 	padding: 0px;
 	margin: 3px 3px 1px 3px;
 }
 
-.chasisDiv{
+.chasisDiv {
 	width: 172px;
 	height: 108px;
 	font-size: 10px;
@@ -777,19 +784,19 @@ table a:hover {
 	padding: 11px 0px 0px 11px;
 }
 
-.bladeDiv{
-	float:left;
+.bladeDiv {
+	float: left;
 	width: 11px;
 	height: 89px;
 	text-align: left;
 	white-space: normal;
 }
 
-.bladeInsertDiv{
+.bladeInsertDiv {
 	background: url(../images/nodes/blade.jpg);
 }
 
-.xnodeDiv{
+.xnodeDiv {
 	font-size: 12px;
 	height: 21px;
 	line-height: 21px;
@@ -801,6 +808,7 @@ table a:hover {
 	cursor: pointer;
 	display: inline-block;
 }
+
 /*--------------- Discovery section ---------------*/
 .discoverstep {
 	width: 960px;
@@ -812,9 +820,9 @@ table a:hover {
 	border-radius: .3em;
 }
 
-.discovercurrentstep{
+.discovercurrentstep {
 	background-color: yellow;
-	font: normal bold 12px/ 35px sans-serif;
+	font: normal bold 12px/35px sans-serif;
 	padding: 5px;
 }
 
@@ -824,12 +832,13 @@ table a:hover {
 	padding: 0;
 }
 
-.discovercontent table{
-	border : none;
+.discovercontent table {
+	border: none;
 }
 
 .discovercontent td {
-	border : none;
+	border: none;
+	text-align: left;
 }
 
 .discovercontent th {
@@ -843,6 +852,6 @@ td.jqplot-table-legend {
 	border-width: 0px;
 }
 
-td.jqplot-table-legend > div {
+td.jqplot-table-legend>div {
 	border-width: 0px;
 }

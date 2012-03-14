@@ -1,8 +1,8 @@
 /**
  * Global variables
  */
-var origAttrs = new Object();	// Original image attributes
-var defAttrs; 					// Definable image attributes
+var origAttrs = new Object(); // Original image attributes
+var defAttrs; // Definable image attributes
 var imgTableId = 'imagesDatatable';	// Images datatable ID
 var softwareList = {
 	"rsct" : ["rsct.core.utils", "rsct.core", "src"],
@@ -308,8 +308,6 @@ function setImageDefAttrs(data) {
 
 /**
  * Load create image page
- * 
- * @return Nothing
  */
 function loadCreateImage() {
 	// Get nodes tab
@@ -322,48 +320,48 @@ function loadCreateImage() {
 		return;
 	}
 
-	var imageOsvers = $.cookie("osvers").split(",");
+	var imageOsVers = $.cookie("osvers").split(",");
 	var imageArch = $.cookie("osarchs").split(",");
-	var profileArray = $.cookie("profiles").split(",");
+	var profiles = $.cookie("profiles").split(",");
 	
-	var parm = '';
-	var i = 0;
+	var createImgForm = $('<div class="form"></div>');
+	var createImgFS = $('<fieldset></fieldset>').append('<legend>Create Image</legend>');
+	createImgForm.append(createImgFS);
 
-	// Create set properties form
-	var createImgForm = $('<div class="form" ></div>');
-
-	// Show the infomation
+	// Show info bar
 	var infoBar = createInfoBar('Specify the parameters for the image (stateless or statelite) you want to create, then click Create.');
-	createImgForm.append(infoBar);
+	createImgFS.append(infoBar);
 
-	// OS version selector
-	parm += '<div><label>OS version:</label><select id="osvers" onchange="hpcShow()">';
-	for (i in imageOsvers) {
-		parm += '<option value="' + imageOsvers[i] + '">' + imageOsvers[i] + '</option>';
-	}
-	parm += '</select></div>';
+	// Drop down for OS versions
+	var osVerSelect = $('<select id="osvers" onchange="hpcShow()"></select>');
+	for (var i in imageOsVers)
+		osVerSelect.append('<option value="' + imageOsVers[i] + '">' + imageOsVers[i] + '</option>');
+	createImgFS.append($('<div><label>OS version:</label></div>').append(osVerSelect));
 
-	// OS arch selector
-	parm += '<div><label>OS architecture:</label><select id="osarch" onchange="hpcShow()">';
-	for (i in imageArch) {
-		parm += '<option value="' + imageArch[i] + '">' + imageArch[i] + '</option>';
-	}
-	parm += '</select></div>';
+	// Drop down for OS architectures
+	var imgSelect = $('<select id="osarch" onchange="hpcShow()"></select>');
+	for (var i in imageArch)
+		imgSelect.append('<option value="' + imageArch[i] + '">' + imageArch[i] + '</option>');
+	createImgFS.append($('<div><label>OS architecture:</label></div>').append(imgSelect));
 
 	// Netboot interface input
-	parm += '<div><label>Netboot interface:</label><input type="text" id="netbootif"></div>';
+	createImgFS.append($('<div><label>Netboot interface:</label><input type="text" id="netbootif"/></div>'));
 	
 	// Profile selector
-	parm += '<div><label>Profile:</label><select id="profile" onchange="hpcShow()">';
-	for (i in profileArray) {
-	    parm += '<option value="' + profileArray[i] + '">' + profileArray[i] + '</option>';
-	}
-	parm += '</select></div>';
+	var profileSelect = $('<select id="profile" onchange="hpcShow()">');
+	for (var i in profiles)
+		profileSelect.append('<option value="' + profiles[i] + '">' + profiles[i] + '</option>');
+	createImgFS.append($('<div><label>Profile:</label></div>').append(profileSelect));
 	
-	// Boot method selector
-	parm += '<div><label>Boot method:</label><select id="bootmethod"><option value="stateless">stateless</option></select></div>';
-	createImgForm.append(parm);
-	createHpcSelect(createImgForm);
+	// Boot method drop down
+	createImgFS.append($('<div><label>Boot method:</label>' +
+		'<select id="bootmethod">' +
+			'<option value="stateless">stateless</option>' + 
+			'<option value="statelite">statelite</option>' + 
+		'</select></div>'));
+	
+	// Create HPC software stack fieldset
+	createHpcFS(createImgForm);
 
 	// The button used to create images is created here
     var createImageBtn = createButton("Create");
@@ -373,39 +371,40 @@ function loadCreateImage() {
 
     createImgForm.append(createImageBtn);
     
-	// Add and show the tab
+	// Add tab
 	tab.add(tabId, 'Create', createImgForm, true);
 	tab.select(tabId);
 
-	// Check the selected osver and osarch for hcp stack select
-	// If they are valid, show the hpc stack select area
+	// Check the selected OS version and OS arch for HPC stack
+	// If they are valid, show the HCP stack fieldset
 	hpcShow();	
 }
 
 /**
- * Create HPC select
+ * Create HPC fieldset
  * 
  * @param container
- *            The container to hold the HPC select
- * @return HPC select appended to the container
+ * 		The container to hold the HPC fieldset
+ * @return Nothing
  */
-function createHpcSelect(container) {
+function createHpcFS(container) {
 	var hpcFieldset = $('<fieldset id="hpcsoft"></fieldset>');
 	hpcFieldset.append('<legend>HPC Software Stack</legend>');
-	var str = 'Before selecting the software, you should have the following already completed for your xCAT cluster:<br/><br/>'
-			+ '1. If you are using xCAT hierarchy, your service nodes are installed and running.<br/>'
-			+ '2. Your compute nodes are defined to xCAT, and you have verified your hardware control capabilities, '
+	
+	var str = 'Before selecting the software, you should have the following already completed on your xCAT cluster:<br/><br/>'
+			+ '1. If you are using the xCAT hierarchy, your service nodes are installed and running.<br/>'
+			+ '2. Your compute nodes are defined in xCAT, and you have verified your hardware control capabilities, '
 			+ 'gathered MAC addresses, and done all the other necessary preparations for a diskless install.<br/>'
-			+ '3. You should have a diskless image created with the base OS installed and verified on at least one test node.<br/>'
-			+ '4. You should install the softwares on the management node, and copy all correponding packages into the location ' + '"/install/custom/otherpkgs/" based on '
-			+ '<a href="http://sourceforge.net/apps/mediawiki/xcat/index.php?title=IBM_HPC_Stack_in_an_xCAT_Cluster" target="_blank">these documentations</a>.<br/>';
+			+ '3. You should have a diskless image created with the base OS installed and verified it on at least one test node.<br/>'
+			+ '4. You should install the software on the management node and copy all correponding packages into the location "/install/custom/otherpkgs/" based on '
+			+ 'these <a href="http://sourceforge.net/apps/mediawiki/xcat/index.php?title=IBM_HPC_Stack_in_an_xCAT_Cluster" target="_blank">documents</a>.<br/>';
 	hpcFieldset.append(createInfoBar(str));
 	
-	// Advanced software when select the compute profile
+	// Advanced software
 	str = '<div id="partlysupport"><ul><li id="gpfsli"><input type="checkbox" onclick="softwareCheck(this)" name="gpfs">GPFS</li>' +
 		'<li id="rsctli"><input type="checkbox" onclick="softwareCheck(this)" name="rsct">RSCT</li>' + 
 		'<li id="peli"><input type="checkbox" onclick="softwareCheck(this)" name="pe">PE</li>' + 
-		'<li id="esslli"><input type="checkbox" onclick="esslCheck(this)" name="essl">ESSl&PESSL</li>' + 
+		'<li id="esslli"><input type="checkbox" onclick="esslCheck(this)" name="essl">ESSl & PESSL</li>' + 
 		'</ul></div>' +
 		'<div><ul><li id="gangliali"><input type="checkbox" onclick="softwareCheck(this)" name="ganglia">Ganglia</li>' +
 		'</ul></div>';

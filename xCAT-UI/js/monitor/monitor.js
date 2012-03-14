@@ -152,7 +152,7 @@ function loadMonitorPage() {
 			var pcpMon = $('<tr></tr>');
 			pcpMon.append($('<td><a href="#" name="pcpmon">PCP</a></td>'));
 			pcpMon.append($('<td></td>').append(statusButtonHash['pcpmon']));
-			pcpMon.append($('<td>Under construction.</td>'));
+			pcpMon.append($('<td>Not yet supported</td>'));
 			monTableBody.append(pcpMon);
 			
 			// Do not word wrap
@@ -303,7 +303,7 @@ function loadMonitorTab(name) {
  */
 function loadUnfinish(monitorName, tab) {
 	var unfinishPage = $('<div></div>');
-	unfinishPage.append(createInfoBar('Under construction'));
+	unfinishPage.append(createInfoBar('Not yet supported'));
 	tab.add(monitorName, 'Unfinished', unfinishPage, true);
 }
 

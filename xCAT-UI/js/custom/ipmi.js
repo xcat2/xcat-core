@@ -208,7 +208,7 @@ ipmiPlugin.prototype.loadResources = function() {
 	$('#' + tabId).find('img').remove();
 	
 	// Create info bar
-	var infoBar = createInfoBar('Under construction');
+	var infoBar = createInfoBar('Not yet supported');
 
 	// Create resource form
 	var resrcForm = $('<div class="form"></div>');
