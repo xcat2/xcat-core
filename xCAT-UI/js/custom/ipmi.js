@@ -306,7 +306,7 @@ function addIdataplex(){
     				tgt : '',
     				args : '',
     				msg : ''
-    			},
+    			}
     		});
         	
         	// Remove loader

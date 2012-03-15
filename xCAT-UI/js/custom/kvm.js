@@ -563,7 +563,7 @@ function addKvmNode(){
     				tgt : '',
     				args : '',
     				msg : ''
-    			},
+    			}
     		});
         	
         	// Remove loader
