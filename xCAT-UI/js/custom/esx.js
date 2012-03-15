@@ -564,7 +564,7 @@ function addEsxNode(){
     				tgt : '',
     				args : '',
     				msg : ''
-    			},
+    			}
     		});
         	
         	// Remove loader
