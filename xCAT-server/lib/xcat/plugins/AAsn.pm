@@ -1461,15 +1461,12 @@ sub enable_TFTPhpa
             {    # error
                 xCAT::MsgUtils->message("S",
                                         "Error on command: service xinetd start\n");
-                return 1;
             }
-            return 0;
         }
     }
 # /usr/sbin/in.tftpd -V
 # tftp-hpa 0.49, with remap, with tcpwrappers
 #
-    system("/usr/sbin/in.tftpd -v -l -s /tftpboot -m /etc/tftpmapfile4xcat.conf");
 
     
 
@@ -1484,6 +1481,14 @@ sub enable_TFTPhpa
     #}
     #xCAT::MsgUtils->message("S", " The tftp-hpa has been reconfigured.");
   }
+    if (-x "/usr/sbin/in.tftpd") {
+	system("killall in.tftpd"); #xinetd can leave behind blocking tftp servers even if it won't start new ones
+        my @tftpprocs=`ps axf|grep -v grep|grep in.tftpd`;
+	while (@tftpprocs) {
+		sleep 0.1;
+	}
+    	system("/usr/sbin/in.tftpd -v -l -s /tftpboot -m /etc/tftpmapfile4xcat.conf");
+    }
 
   return 0;
 }
