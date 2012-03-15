@@ -14,7 +14,7 @@ use Data::Dumper;
 #all data input will be done from the common structure
 
 #turn on or off the debugging output
-my $DEBUGGING = 0;
+my $DEBUGGING = 1;
 my $VERSION   = "2.7";
 
 my $q           = CGI->new;
@@ -170,6 +170,33 @@ sub fetchParameter {
         $value =~ tr/+/ /;
         $value =~ s/%([a-fA-F0-9][a-fA-F0-9])/chr(hex($1))/eg;
         push @{$queryhash{$key}}, $value;
+    }
+}
+
+#extract the put data or post data into perl hash, easy for retrieve
+sub extractData {
+    my $temphash = shift;
+    my $parArray = shift;
+    my $key;
+    my $value;
+    my $position;
+
+    #traversal all element in the array
+    foreach (@$parArray) {
+        $position = index($_, '=');
+        if ($position < 0) {
+            $key   = $_;
+            $value = 1;
+        }
+        else {
+            $key = substr $_, 0, $position;
+            $value = substr $_, $position + 1;
+        }
+        $temphash->{$key} = $value;
+
+        if ($DEBUGGING) {
+            addPageContent($q->p("The parameter extract from put/post data:<br/>" . Dumper($temphash)));
+        }
     }
 }
 
@@ -771,8 +798,10 @@ sub nodesHandler {
                 }
             }
 
-            foreach (@$entries) {
-                push @args, $_;
+            if (($subResource ne "dsh") && ($subResource ne "dcp")) {
+                foreach (@$entries) {
+                    push @args, $_;
+                }
             }
             if ($subResource eq "power") {
                 $request->{command} = "rpower";
@@ -788,6 +817,73 @@ sub nodesHandler {
             }
             elsif ($subResource eq "setboot") {
                 $request->{command} = "rsetboot";
+            }
+            elsif ($subResource eq "dsh") {
+                $request->{command} = "xdsh";
+                my %elements;
+                extractData(\%elements, $entries);
+                if ($elements{'devicetype'}) {
+                    push @args, '--devicetype';
+                    push @args, $elements{'devicetype'};
+                }
+                if ($elements{'execute'}) {
+                    push @args, '-e';
+                }
+                if ($elements{'environment'}) {
+                    push @args, '-E';
+                    push @args, $elements{'environment'};
+                }
+                if ($elements{'fanout'}) {
+                    push @args, '-f';
+                    push @args, $elements{'fanout'};
+                }
+                if ($elements{'nolocale'}) {
+                    push @args, '-L';
+                }
+                if ($elements{'userid'}) {
+                    push @args, '-l';
+                    push @args, $elements{'userid'};
+                }
+                if ($elements{'monitor'}) {
+                    push @args, '-m';
+                }
+                if ($elements{'options'}) {
+                    push @args, '-o';
+                    push @args, $elements{'options'};
+                }
+                if ($elements{'showconfig'}) {
+                    push @args, '-q';
+                }
+                if ($elements{'silent'}) {
+                    push @args, '-Q';
+                }
+                if ($elements{'remoteshell'}) {
+                    push @args, '-r';
+                    push @args, $elements{'remoteshell'};
+                }
+                if ($elements{'syntax'}) {
+                    push @args, '-S';
+                    push @args, $elements{'syntax'};
+                }
+                if ($elements{'timeout'}) {
+                    push @args, '-t';
+                    push @args, $elements{'timeout'};
+                }
+                if ($elements{'envlist'}) {
+                    push @args, '-X';
+                    push @args, $elements{'envlist'};
+                }
+                if ($elements{'sshsetup'}) {
+                    push @args, '-K';
+                    push @args, $elements{'sshsetup'};
+                }
+                if ($elements{'rootimg'}) {
+                    push @args, '-i';
+                    push @args, $elements{'rootimg'};
+                }
+                if ($elements{'command'}) {
+                    push @args, $elements{'command'};
+                }
             }
         }
         else {
