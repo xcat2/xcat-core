@@ -456,6 +456,29 @@ function appendProvisionSection(plugin, container) {
  * @returns Nothing
  */
 function appendProvision4Url(container){
+	// Get provision tab ID
+    var tabId = container.parents('.tab').attr('id');
+    
+	// Create node fieldset
+	var nodeFS = $('<fieldset></fieldset>');
+	var nodeLegend = $('<legend>Node</legend>');
+	nodeFS.append(nodeLegend);
+	container.append(nodeFS);
+	
+	var nodeAttr = $('<div style="display: inline-table; vertical-align: middle; width: 85%; margin-left: 10px;"></div>');
+	nodeFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
+	nodeFS.append(nodeAttr);
+	
+	// Create image fieldset
+	var imgFS = $('<fieldset></fieldset>');
+	var imgLegend = $('<legend>Image</legend>');
+	imgFS.append(imgLegend);
+	container.append(imgFS);
+	
+	var imgAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+	imgFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/operating_system.png"></img></div>'));
+	imgFS.append(imgAttr);
+	
     var query = window.location.search;
     var args = query.substr(1).split('&');
     var parms = new Object();
@@ -479,14 +502,15 @@ function appendProvision4Url(container){
     if (parms['tftpserver'])
     	tftpserver = parms['tftpserver'];
     
-    container.append('<div><label>Node:</label><input type="text" disabled="disabled" name="node" value="' + parms['nodes'] + '"></div>');
-    container.append('<div><label>Architecture:</label><input type="text" disabled="disabled" name="arch" value="' + parms['arch'] + '"></div>');
-    container.append('<div><label>Image name:</label><select name="image"></select></div>');
-	container.append( '<div><label>Install NIC:</label><input type="text" name="installNic"/></div>');
-	container.append('<div><label>Primary NIC:</label><input type="text" name="primaryNic"/></div>');   
-    container.append('<div><label>xCAT master:</label><input type="text" name="xcatMaster" value="' + master + '"></div>');
-    container.append('<div><label>TFTP server:</label><input type="text" name="tftpServer" value="' + tftpserver + '"></div>');
-    container.append('<div><label>NFS server:</label><input type="text" name="nfsServer" value="' + nfsserver + '"></div>');
+    nodeAttr.append('<div><label>Node:</label><input type="text" disabled="disabled" name="node" value="' + parms['nodes'] + '"></div>');
+    
+    imgAttr.append('<div><label>Architecture:</label><input type="text" disabled="disabled" name="arch" value="' + parms['arch'] + '"></div>');
+    imgAttr.append('<div><label>Image name:</label><select name="image"></select></div>');
+    imgAttr.append( '<div><label>Install NIC:</label><input type="text" name="installNic"/></div>');
+    imgAttr.append('<div><label>Primary NIC:</label><input type="text" name="primaryNic"/></div>');   
+    imgAttr.append('<div><label>xCAT master:</label><input type="text" name="xcatMaster" value="' + master + '"></div>');
+    imgAttr.append('<div><label>TFTP server:</label><input type="text" name="tftpServer" value="' + tftpserver + '"></div>');
+    imgAttr.append('<div><label>NFS server:</label><input type="text" name="nfsServer" value="' + nfsserver + '"></div>');
     
     return;
 }
@@ -713,7 +737,7 @@ function createNodesTable(group, outId) {
             
             // Create table to hold nodes
             var nTable = $('<table></table>');
-            var tHead = $('<thead class="ui-widget-header"> <th><input type="checkbox" onclick="selectAllCheckbox(event, $(this))"></th> <th>Node</th> </thead>');
+            var tHead = $('<thead class="ui-widget-header"> <th><input type="checkbox" onclick="selectAll4Table(event, $(this))"></th> <th>Node</th> </thead>');
             nTable.append(tHead);
             var tBody = $('<tbody></tbody>');
             nTable.append(tBody);
@@ -730,7 +754,7 @@ function createNodesTable(group, outId) {
             
             outId.empty().append(nTable);
             
-            if (index > 10)
+            if (nodes.length > 10)
             	outId.css('height', '300px');
             else
             	outId.css('height', 'auto');
@@ -760,4 +784,22 @@ function getCheckedByObj(obj) {
     }
 
     return str;
+}
+
+/**
+ * Select all checkboxes in the table
+ * 
+ * @param event
+ *            Event on element
+ * @param obj
+ *            Object triggering event
+ * @return Nothing
+ */
+function selectAll4Table(event, obj) {
+	// Get datatable ID
+	// This will ascend from <input> <td> <tr> <thead> <table>
+	var tableObj = obj.parents('table').find('tbody');
+	var status = obj.attr('checked');
+	tableObj.find(' :checkbox').attr('checked', status);
+	event.stopPropagation();
 }
