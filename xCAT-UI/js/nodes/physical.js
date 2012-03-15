@@ -584,7 +584,7 @@ function addUnknownGraphical(unknownNodes, tab){
 		return;
 	
 	var list = "";
-	tab.append('<label>Unknown Type Nodes</label><hr/>');
+	tab.append('<label>Unknown Node Type</label><hr/>');
 	for (var index in unknownNodes){
 		list += unknownNodes[index] + ', ';
 		
