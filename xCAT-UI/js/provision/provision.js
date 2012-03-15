@@ -172,6 +172,6 @@ function loadProvisionPage() {
 	    
 	    var provForm = $('<div class="form"></div>');
 	    $('#quickProvisionTab').append(provForm);
-	    createProvision('quick', provForm);
+	    appendProvisionSection('quick', provForm);
 	}
 }
