@@ -14,7 +14,7 @@ use Data::Dumper;
 #all data input will be done from the common structure
 
 #turn on or off the debugging output
-my $DEBUGGING = 1;
+my $DEBUGGING = 0;
 my $VERSION   = "2.7";
 
 my $q           = CGI->new;
@@ -822,67 +822,74 @@ sub nodesHandler {
                 $request->{command} = "xdsh";
                 my %elements;
                 extractData(\%elements, $entries);
-                if ($elements{'devicetype'}) {
+                if (defined($elements{'devicetype'})) {
                     push @args, '--devicetype';
                     push @args, $elements{'devicetype'};
                 }
-                if ($elements{'execute'}) {
+                if (defined($elements{'execute'})) {
                     push @args, '-e';
                 }
-                if ($elements{'environment'}) {
+                if (defined($elements{'environment'})) {
                     push @args, '-E';
                     push @args, $elements{'environment'};
                 }
-                if ($elements{'fanout'}) {
+                if (defined($elements{'fanout'})) {
                     push @args, '-f';
                     push @args, $elements{'fanout'};
                 }
-                if ($elements{'nolocale'}) {
+                if (defined($elements{'nolocale'})) {
                     push @args, '-L';
                 }
-                if ($elements{'userid'}) {
+                if (defined($elements{'userid'})) {
                     push @args, '-l';
                     push @args, $elements{'userid'};
                 }
-                if ($elements{'monitor'}) {
+                if (defined($elements{'monitor'})) {
                     push @args, '-m';
                 }
-                if ($elements{'options'}) {
+                if (defined($elements{'options'})) {
                     push @args, '-o';
                     push @args, $elements{'options'};
                 }
-                if ($elements{'showconfig'}) {
+                if (defined($elements{'showconfig'})) {
                     push @args, '-q';
                 }
-                if ($elements{'silent'}) {
+                if (defined($elements{'silent'})) {
                     push @args, '-Q';
                 }
-                if ($elements{'remoteshell'}) {
+                if (defined($elements{'remoteshell'})) {
                     push @args, '-r';
                     push @args, $elements{'remoteshell'};
                 }
-                if ($elements{'syntax'}) {
+                if (defined($elements{'syntax'})) {
                     push @args, '-S';
                     push @args, $elements{'syntax'};
                 }
-                if ($elements{'timeout'}) {
+                if (defined($elements{'timeout'})) {
                     push @args, '-t';
                     push @args, $elements{'timeout'};
                 }
-                if ($elements{'envlist'}) {
+                if (defined($elements{'envlist'})) {
                     push @args, '-X';
                     push @args, $elements{'envlist'};
                 }
-                if ($elements{'sshsetup'}) {
+                if (defined($elements{'sshsetup'})) {
                     push @args, '-K';
                     push @args, $elements{'sshsetup'};
                 }
-                if ($elements{'rootimg'}) {
+                if (defined($elements{'rootimg'})) {
                     push @args, '-i';
                     push @args, $elements{'rootimg'};
                 }
-                if ($elements{'command'}) {
+                if (defined($elements{'command'})) {
                     push @args, $elements{'command'};
+                }
+            }
+            elsif ($subResource eq "dcp") {
+                $request->{command} = "xdcp";
+                my %elements;
+                extractData(\%elements, $entries);
+                if (defined($elements{'fanout'})) {
                 }
             }
         }
