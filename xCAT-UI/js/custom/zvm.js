@@ -1671,7 +1671,7 @@ zvmPlugin.prototype.addNode = function() {
     			    			    				tgt : '',
     			    			    				args : '',
     			    			    				msg : ''
-    			    			    			},
+    			    			    			}
     			    			    		});
     			    			        	
     			    						// Remove loader
@@ -1731,7 +1731,7 @@ zvmPlugin.prototype.addNode = function() {
     			    	    				tgt : '',
     			    	    				args : '',
     			    	    				msg : ''
-    			    	    			},
+    			    	    			}
     			    	    		});
     			    				
     			    				// Remove loader
