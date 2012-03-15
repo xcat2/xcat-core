@@ -1359,7 +1359,7 @@ sub setup_HTTP
 sub enable_TFTPhpa
 {
   # Check whether the tftp-hpa has been installed
-  if (! -e "/etc/xinetd.d/tftp") {
+  unless (-x "/usr/sbin/in.tftpd" and -e "/etc/xinetd.d/tftp") {
     xCAT::MsgUtils->message("S", "ERROR: The tftpd was not installed, enable the tftp failed.");
     return 1;
   }
