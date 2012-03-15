@@ -761,6 +761,7 @@ sub web_gangliaLatest{
 	my $telnetcmd = '';
 	my $connect;
 	my $xmloutput = '';
+	my $tmpFilename = '/tmp/gangliadata';
 
 	$ganglia_return_flag = 0;
 	$gangliaclustername = '';
@@ -773,10 +774,12 @@ sub web_gangliaLatest{
 	if ('grid' eq $type){
 		$xmlparser = XML::Parser->new(Handlers=>{Start=>\&web_gangliaGridXmlStart, End=>\&web_gangliaXmlEnd});
 		$telnetcmd = "/?filter=summary\n";
+		$tmpFilename = '/tmp/gangliagriddata';
 	}
 	elsif('node' eq $type){
 		$xmlparser = XML::Parser->new(Handlers=>{Start=>\&web_gangliaNodeXmlStart, End=>\&web_gangliaXmlEnd});
 		$telnetcmd = "/\n";
+		$tmpFilename = '/tmp/ganglianodedata';
 	}
 
 	#use socket to telnet 127.0.0.1 8652(ganglia's interactive port)
@@ -787,14 +790,14 @@ sub web_gangliaLatest{
 	}
 
 	print $connect $telnetcmd;
-	open(TEMPFILE, '>/tmp/gangliadata');
+	open(TEMPFILE, '>' . $tmpFilename);
 	while(<$connect>){
 		print TEMPFILE $_;
 	}
 	close($connect);
 	close(TEMPFILE);
 
-	$xmlparser->parsefile('/tmp/gangliadata');
+	$xmlparser->parsefile($tmpFilename);
 
 	if ('grid' eq $type){
 		web_gangliaGridLatest($callback);
