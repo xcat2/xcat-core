@@ -193,17 +193,14 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
     var provForm = $('<div class="form"></div>');
 
     // Create info bar
-    var infoBar = createInfoBar('Provision a node on System p.');
+    var infoBar = createInfoBar('Provision a node on System p');
     provForm.append(infoBar);
 
     // Append to provision tab
     $('#' + tabId).append(provForm);
-
-    /**
-     * Create provision new node division
-     */
-    // You should copy whatever is in this function, put it here, and customize it
-    createProvision('hmc', provForm);
+    
+    // Append provisioning section for HMC
+    appendProvisionSection('hmc', provForm);
 };
 
 /**

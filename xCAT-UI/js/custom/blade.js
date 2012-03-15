@@ -608,7 +608,7 @@ function createBladeProvisionExisting(inst) {
 	// Create provision existing division
 	var provExisting = $('<div></div>');
 
-	// Create VM fieldset
+	// Create node fieldset
 	var nodeFS = $('<fieldset></fieldset>');
 	var nodeLegend = $('<legend>Node</legend>');
 	nodeFS.append(nodeLegend);
