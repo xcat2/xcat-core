@@ -4,7 +4,7 @@
 # Downloads/converts the xCAT docs on the sourceforge wiki to local HTML and PDF.
 # This script is not dependent on other xCAT code, so you can copy it to a machine
 # that has internet access to run it.  Before running this command, you must have
-# wget, python, and pisa installed.  See: https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Editing_xCAT_Documentation_Pages#Converting_Wiki_Pages_to_HTML_and_PDFs .
+# wget, python, and pisa installed.  See: http://sourceforge.net/apps/mediawiki/xcat/index.php?title=Editing_xCAT_Documentation_Pages#Converting_Wiki_Pages_to_HTML_and_PDFs .
 
 # Note: do not use the --upload option, unless your machine has authority to write to http://xcat.sourceforge.net/doc/ .
 #       You also need to set $UPLOADUSER to your sourceforge user.
@@ -61,7 +61,7 @@ if (!$UPLOADONLY) {
 	print "Downloading the xCAT wiki documentation...\n";
 	#    --html-extension --restrict-file-names=windows  --cut-dirs=3
 	# options that do not work:  --relative
-	my $wgetcmd = q(wget --recursive --convert-links --no-verbose --progress=bar --level=1 --page-requisites --no-parent --no-host-directories --no-directories --execute robots=off --post-data='printable=yes' --reject '*title=Special:*,*title=Talk:*,*title=-&*,*title=HowTos,*title=Main_Page,*title=MediaWiki:*,*title=Release_Notes,*title=Wish_List_for_xCAT_2,*&action=edit*,*&action=history*,*&printable=yes*,*&oldid=*,index.html,opensearch_desc.php,xcat,login.php,support' 'https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Documentation&printable=yes');
+	my $wgetcmd = q(wget --recursive --convert-links --no-verbose --progress=bar --level=1 --page-requisites --no-parent --no-host-directories --no-directories --execute robots=off --post-data='printable=yes' --reject '*title=Special:*,*title=Talk:*,*title=-&*,*title=HowTos,*title=Main_Page,*title=MediaWiki:*,*title=Release_Notes,*title=Wish_List_for_xCAT_2,*&action=edit*,*&action=history*,*&printable=yes*,*&oldid=*,index.html,opensearch_desc.php,xcat,login.php,support' 'http://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Documentation&printable=yes');
 	runwget($wgetcmd);
 	# remove the dir portion of links to other docs
 	#my $sedcmd = q(sed -i 's/<a href="\/apps\/mediawiki\/xcat\/index.php?title/<a href="index.php%3Ftitle/' *);
@@ -85,7 +85,7 @@ if (!$UPLOADONLY) {
 		if ($file =~ /^index.php\?title=MediaWiki:/ || $file eq 'index.php?title=XCAT_Documentation') { next; }
 		my ($docname) = $file =~ /^index.php\?title=(.+)$/;
 		print "Converting $docname to PDF format...\n";
-		my $url = "https://sourceforge.net/apps/mediawiki/xcat/$file&printable=yes";
+		my $url = "http://sourceforge.net/apps/mediawiki/xcat/$file&printable=yes";
 		my $destfile = "$docname.pdf";
 		my $cmd = "xhtml2pdf '$url' '$destfile' ";
 		#print "$cmd\n";
