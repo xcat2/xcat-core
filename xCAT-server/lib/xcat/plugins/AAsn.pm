@@ -1414,10 +1414,10 @@ sub enable_TFTPhpa
       } else {
         push @newcfgfile, $_;
       }
-    } elsif (/^\s*disable\s*=/ && !/^\s*disable\s*=\s*no/) {
+    } elsif (/^\s*disable\s*=/ && !/^\s*disable\s*=\s*yes/) {
       # enable the tftp by handling the entry 'disable = xx'
       my $newcfg = $_;
-      $newcfg =~ s/=.*$/= no/;
+      $newcfg =~ s/=.*$/= yes/;
       push @newcfgfile, $newcfg;
       $recfg = 1;
     } else {
@@ -1445,15 +1445,44 @@ sub enable_TFTPhpa
     }
     print FILE @newcfgfile;
     close (FILE);
-
-    # start xinetd
-    my $rc = xCAT::Utils->startService("xinetd");
-    if ($rc != 0)
-    {
-      xCAT::MsgUtils->message("S", " Failed to start xinetd.");
-      return 1;
+    my @output = xCAT::Utils->runcmd("service xinetd status", -1);
+    if ($::RUNCMD_RC == 0) {
+        if (grep(/running/, @output))
+        {
+                print ' ';              # indent service output to separate it from the xcatd service output
+            system "service xinetd stop";
+            if ($? > 0)
+            {    # error
+                xCAT::MsgUtils->message("S",
+                                        "Error on command: service xinetd stop\n");
+            }
+            system "service xinetd start";
+            if ($? > 0)
+            {    # error
+                xCAT::MsgUtils->message("S",
+                                        "Error on command: service xinetd start\n");
+                return 1;
+            }
+            return 0;
+        }
     }
-    xCAT::MsgUtils->message("S", " The tftp-hpa has been reconfigured.");
+# /usr/sbin/in.tftpd -V
+# tftp-hpa 0.49, with remap, with tcpwrappers
+#
+    system("/usr/sbin/in.tftpd -v -l -s /tftpboot -m /etc/tftpmapfile4xcat.conf");
+
+    
+
+
+     
+    # start xinetd
+    #my $rc = xCAT::Utils->startService("xinetd");
+    #if ($rc != 0)
+    #{
+    #  xCAT::MsgUtils->message("S", " Failed to start xinetd.");
+    #  return 1;
+    #}
+    #xCAT::MsgUtils->message("S", " The tftp-hpa has been reconfigured.");
   }
 
   return 0;
