@@ -4,6 +4,7 @@ use Data::Dumper;
 use Sys::Syslog;
 use xCAT::Scope;
 use xCAT::NetworkUtils;
+use xCAT::MsgUtils;
 use File::Path;
 use Socket;
 use Getopt::Long;
@@ -421,15 +422,18 @@ sub process_request {
      if (xCAT::Utils->nodeonmynet($_)) {
         push @nodes,$_;
      } else {
-        my $rsp;
-        $rsp->{data}->[0]="$_: stop configuration because of none sharedtftp and not on same network with its xcatmaster";
-        $callback->($rsp);
+        xCAT::MsgUtils->message("S", "$_: yaboot netboot: stop configuration because of none sharedtftp and not on same network with its xcatmaster.");
      }
    }
   } else {
      @nodes = @rnodes;
   }
-  #print "nodes=@nodes\nrnodes=@rnodes\n";
+
+  # return directly if no nodes in the same network
+  unless (@nodes) {
+     xCAT::MsgUtils->message("S", "xCAT: yaboot netboot: no valid nodes. Stop the operation on this server.");
+     return;
+  }
 
   if (ref($request->{arg})) {
     @args=@{$request->{arg}};
