@@ -1269,9 +1269,13 @@ sub plugin_command {
   if ($sock) { 
       my $clientpresence = new IO::Select; #The client may have gone away without confirmation, don't PIPE over this trivial thing
       $clientpresence->add($sock);
-      if ($clientpresence->can_write(5)) {
-          print $sock XMLout(\%done,RootName => 'xcatresponse',NoAttr=>1); 
-      } 
+      my $deadline = time()+5;
+      while ($deadline > time()) { #sometimes can_write exits prematurely without waiting the whole time.....
+	      if ($clientpresence->can_write(5)) {
+	          print $sock XMLout(\%done,RootName => 'xcatresponse',NoAttr=>1); 
+	          last;
+	      } 
+      }
   }
 }
 
