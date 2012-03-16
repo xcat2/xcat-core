@@ -339,19 +339,21 @@ unless ($onlyinitrd) {
           # append extra pkg names to yum command 
           if ($extrapkgnames{$pass}) {
               $yumcmd .= " $extrapkgnames{$pass} ";
-          }   
-          $yumcmd =~ s/ $/\n/;
+              $yumcmd =~ s/ $/\n/;
     
-          # debug
-          #print "yumcmd=$yumcmd\n";
-          #my $repo=`cat /tmp/genimage.$$.yum.conf`;
-          #print "repo=$repo";
-     
-          print "$envlist $yumcmd\n"; 
-          my $rc = system("$envlist $yumcmd");
-          if ($rc) { 
-              print "yum invocation failed\n";
-              exit 1;
+              # debug
+              #print "yumcmd=$yumcmd\n";
+              #my $repo=`cat /tmp/genimage.$$.yum.conf`;
+              #print "repo=$repo";
+      
+              print "$envlist $yumcmd\n"; 
+              my $rc = system("$envlist $yumcmd");
+              if ($rc) { 
+                  print "yum invocation failed\n";
+                  exit 1;
+              }
+          } else {
+                  print "No Packages marked for install\n";
           }
 	
           # remove the packages that are specified in the otherpkgs.list files with leading '--'
