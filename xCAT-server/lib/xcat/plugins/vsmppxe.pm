@@ -5,6 +5,7 @@ use Sys::Syslog;
 use Socket;
 use File::Copy;
 use Getopt::Long;
+use xCAT::MsgUtils;
 
 my $addkcmdlinehandled;
 my $request;
@@ -292,13 +293,17 @@ sub process_request {
      if (xCAT::Utils->nodeonmynet($_)) {
         push @nodes,$_;
       } else {
-         my $rsp;
-         $rsp->{data}->[0]="$_: stop configuration because of none sharedtftp and not on same network with its xcatmaster";
-         $callback->($rsp);
+        xCAT::MsgUtils->message("S", "$_: vsmppxe netboot: stop configuration because of none sharedtftp and not on same network with its xcatmaster.");
      }
    }
   } else {
      @nodes = @rnodes;
+  }
+
+  # return directly if no nodes in the same network
+  unless (@nodes) {
+     xCAT::MsgUtils->message("S", "xCAT: vsmppxe netboot: no valid nodes. Stop the operation on this server.");
+     return;
   }
 
   if (ref($request->{arg})) {
