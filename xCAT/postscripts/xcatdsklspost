@@ -170,7 +170,10 @@ else # for common mode
         fi
         SIPS=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient*eth*.leases 2> /dev/null|awk '{print $3}'|sed -e 's/;//'`
         if [ -z "$SIPS" ]; then
-            SIPS=`grep -h DHCPSID /var/lib/dhcpcd/*.info 2> /dev/null|awk -F= '{print $2}'|sed -e s/\'//g`
+            SIPS=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient*hf*.leases 2> /dev/null|awk '{print $3}'|sed -e 's/;//'`
+            if [ -z "$SIPS" ]; then
+                SIPS=`grep -h DHCPSID /var/lib/dhcpcd/*.info 2> /dev/null|awk -F= '{print $2}'|sed -e s/\'//g`
+            fi
         fi
         SIP=`echo $SIPS|awk '{printf $NF}' | tail -n 1` #Pick one for wget
         if [ -n "$SIP" ]; then
