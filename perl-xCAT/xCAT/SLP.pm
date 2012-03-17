@@ -46,7 +46,7 @@ sub dodiscover {
 		@srvtypes = split /,/,$args{SrvTypes};
 	}
 	foreach my $srvtype (@srvtypes) {
-		senddiscover_single(%args,SrvType=>$srvtype);
+		send_discover_single(%args,SrvType=>$srvtype);
 	}
 	unless ($args{NoWait}) { #in nowait, caller owns the responsibility..
 		#by default, report all respondants within 3 seconds:
@@ -63,10 +63,15 @@ sub dodiscover {
 				if ($rethash{$peername}) {
 					next; #got a dupe, discard
 				}
-				process_slp_packet(packet=>$slppacket,sockaddr=>$peer);
-				print $peername."\n";
-				print $scope."\n";
-				if ($args{Callback}) {
+				my $result = process_slp_packet(packet=>$slppacket,sockaddr=>$peer,'socket'=>$args{'socket'});
+				if ($result) {
+					$result->{peername} = $peername;
+					$result->{scopeid} = $scope;
+					$result->{sockaddr} = $peer;
+					$rethash{$peername} = $result;
+					if ($args{Callback}) {
+						$args{Callback}->($result);
+					}
 				}
 			}
 		}
@@ -76,15 +81,31 @@ sub dodiscover {
 sub process_slp_packet {
 	my %args = @_;
 	my $sockaddy = $args{sockaddr};
+	my $socket = $args{'socket'};
 	my $packet = $args{packet};
 	my $parsedpacket = removeslpheader($packet);
 	if ($parsedpacket->{FunctionId} == 2) {#Service Reply
 		$parsedpacket->{service_urls} = parse_service_reply($parsedpacket->{payload});
 		delete $parsedpacket->{payload};
+		unless (scalar @{$parsedpacket->{service_urls}}) { return undef; }
+		send_attribute_request('socket'=>$socket,url=>$parsedpacket->{service_urls}->[0],sockaddr=>$sockaddy);
+		return undef;
+	} else {
+		return undef;
 	}
-	use Data::Dumper;
-	print Dumper($parsedpacket);
 }
+sub send_attribute_request {
+	my %args = @_;
+	my $packet  = pack("C*",0,0); #no prlist
+	my $service = $args{url};
+	$service =~ s!://.*!!;
+	my $length = length($service);
+	$packet .= pack("C*",($length>>8),($length&0xff));
+	$packet .= $service.pack("C*",0,7).'DEFAULT'.pack("C*",0,0,0,0);
+	my $header = genslpheader($packet,FunctionId=>6);
+	$args{'socket'}->send($header.$packet,0,$args{sockaddry});
+}
+	
 
 sub parse_service_reply {
 	my $packet = shift;
@@ -113,7 +134,7 @@ sub extract_next_url { #section 4.3 url entries
 	return pack("C*",@url);
 }
 		
-sub senddiscover_single {
+sub send_discover_single {
 	my %args = @_;
 	my $packet = gendiscover(%args);
 	my @interfaces = get_interfaces(%args);
