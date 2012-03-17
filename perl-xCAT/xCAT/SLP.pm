@@ -1,5 +1,6 @@
 package xCAT::SLP;
 use Carp;
+use IO::Select;
 use strict;
 my $ip6support = eval {
 	require IO::Socket::INET6;
@@ -30,6 +31,13 @@ sub getmulticasthash {
 	
 sub dodiscover {
 	my %args = @_;
+	unless ($args{'socket'}) {
+		if ($ip6support) {
+			$args{'socket'} = IO::Socket::INET6->new(Proto => 'udp');
+		} else {
+			croak "TODO: SLP without ipv6";
+		}
+	}
 	unless ($args{SrvTypes}) { croak "SrvTypes argument is required for xCAT::SLP::Dodiscover"; }
    my @srvtypes;
 	if (ref $args{SrvTypes}) {
@@ -38,21 +46,78 @@ sub dodiscover {
 		@srvtypes = split /,/,$args{SrvTypes};
 	}
 	foreach my $srvtype (@srvtypes) {
-		dodiscover_single(%args,SrvType=>$srvtype);
+		senddiscover_single(%args,SrvType=>$srvtype);
+	}
+	unless ($args{NoWait}) { #in nowait, caller owns the responsibility..
+		#by default, report all respondants within 3 seconds:
+		my %rethash;
+		my $waitforsocket = IO::Select->new();
+		$waitforsocket->add($args{'socket'});
+		my $deadline=time()+3;
+		while ($deadline > time()) {
+			while ($waitforsocket->can_read(1)) {
+				my $slppacket;
+				my $peer = $args{'socket'}->recv($slppacket,1400);
+				my( $port,$flow,$ip6n,$scope) = Socket6::unpack_sockaddr_in6_all($peer);
+				my $peername = Socket6::inet_ntop(Socket6::AF_INET6(),$ip6n);
+				if ($rethash{$peername}) {
+					next; #got a dupe, discard
+				}
+				process_slp_packet(packet=>$slppacket,sockaddr=>$peer);
+				print $peername."\n";
+				print $scope."\n";
+				if ($args{Callback}) {
+				}
+			}
+		}
 	}
 }
-sub dodiscover_single {
+
+sub process_slp_packet {
+	my %args = @_;
+	my $sockaddy = $args{sockaddr};
+	my $packet = $args{packet};
+	my $parsedpacket = removeslpheader($packet);
+	if ($parsedpacket->{FunctionId} == 2) {#Service Reply
+		$parsedpacket->{service_urls} = parse_service_reply($parsedpacket->{payload});
+		delete $parsedpacket->{payload};
+	}
+	use Data::Dumper;
+	print Dumper($parsedpacket);
+}
+
+sub parse_service_reply {
+	my $packet = shift;
+	my @reply = unpack("C*",$packet);
+	if ($reply[0] != 0 or $reply[1] != 0) {
+		return ();
+	}
+	my @urls;
+	my $numurls = ($reply[2]<<8)+$reply[3];
+	splice (@reply,0,4);
+	while ($numurls--) {
+		push @urls,extract_next_url(\@reply);
+	}
+	return \@urls;
+}
+
+sub extract_next_url { #section 4.3 url entries
+	my $payload = shift;
+	splice (@$payload,0,3); # discard reserved and lifetime which we will not bother using
+	my $urllength = ((shift @$payload)<<8)+(shift @$payload);
+	my @url = splice(@$payload,0,$urllength);
+	my $authblocks = shift @$payload;
+	unless ($authblocks == 0) { 
+		$payload = []; #TODO: skip/use auth blocks if needed to get at more URLs
+	}
+	return pack("C*",@url);
+}
+		
+sub senddiscover_single {
 	my %args = @_;
 	my $packet = gendiscover(%args);
 	my @interfaces = get_interfaces(%args);
-	my $socket;
-	if ($args{'socket'}) {
-		$socket = $args{'socket'};
-	} elsif ($ip6support) {
-		$socket = IO::Socket::INET6->new(Proto => 'udp');
-	} else {
-		die "TODO: SLP without ipv6";
-	}
+	my $socket = $args{'socket'};
 	my $v6addr;
 	if ($ip6support) {
 		my $hash=getmulticasthash($args{SrvType});
@@ -129,6 +194,24 @@ sub gendiscover {
 #    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 #    |      Language Tag Length      |         Language Tag          \
 #    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+sub removeslpheader {
+	my $packet = shift;
+	my %parsedheader;
+	my @payload = unpack("C*",$packet);
+	$parsedheader{Version} = shift @payload;
+	$parsedheader{FunctionId} = shift @payload;
+	splice(@payload,0,3); #remove length
+	splice(@payload,0,2); #TODO: parse flags
+	splice(@payload,0,3); #ignore next ext offset for now
+	$parsedheader{Xid} = ((shift @payload)<<8)+(shift @payload);
+	my $langlen = ((shift @payload)<<8)+(shift @payload);
+	$parsedheader{lang} = pack("C*",splice(@payload,0,$langlen)); 
+	$parsedheader{payload} = pack("C*",@payload);
+	return \%parsedheader;
+}
+	
+	
+	
 sub genslpheader {
 	my $packet = shift;
 	my %args = @_;
