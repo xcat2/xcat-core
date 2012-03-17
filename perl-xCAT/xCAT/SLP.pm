@@ -1,4 +1,5 @@
 package xCAT::SLP;
+use Carp;
 use strict;
 my $ip6support = eval {
 	require IO::Socket::INET6;
@@ -10,37 +11,37 @@ unless ($ip6support) {
 	require IO::Socket::INET;
 }
 
-my $defaultsrvtypes = "service:management-hardware.IBM";
 #TODO: somehow get at system headers to get the value, put in linux's for now
 use constant IPV6_MULTICAST_IF => 17;
 
-sub getmulticasthashes {
-	my %args = @_;
-	my $srvtypes;
-	if ($args{SrvTypes}) {
-		$srvtypes = $args{SrvTypes};
-	} else {
-		$srvtypes = $defaultsrvtypes;
+sub getmulticasthash {
+	my $hash=0;
+	my @nums = unpack("C*",shift);
+	foreach my $num (@nums) {
+		$hash *= 33;
+		$hash += $num;
+		$hash &= 0xffff;
 	}
-	my @types = split /,/,$srvtypes;
-	my @hashes;
-	foreach (@types) {
-		my $hash=0;
-		my @nums = unpack("C*",$_);
-		foreach my $num (@nums) {
-			$hash *= 33;
-			$hash += $num;
-			$hash &= 0xffff;
-		}
-		$hash &= 0x3ff;
-	   $hash |= 0x1000;
-		push @hashes,sprintf("%04x",$hash);
-	}
-	return @hashes;
+	$hash &= 0x3ff;
+   $hash |= 0x1000;
+	return sprintf("%04x",$hash);
 }
 			
 	
 sub dodiscover {
+	my %args = @_;
+	unless ($args{SrvTypes}) { croak "SrvTypes argument is required for xCAT::SLP::Dodiscover"; }
+   my @srvtypes;
+	if (ref $args{SrvTypes}) {
+		@srvtypes = @{$args{SrvTypes}};
+	} else {
+		@srvtypes = split /,/,$args{SrvTypes};
+	}
+	foreach my $srvtype (@srvtypes) {
+		dodiscover_single(%args,SrvType=>$srvtype);
+	}
+}
+sub dodiscover_single {
 	my %args = @_;
 	my $packet = gendiscover(%args);
 	my @interfaces = get_interfaces(%args);
@@ -52,21 +53,18 @@ sub dodiscover {
 	} else {
 		die "TODO: SLP without ipv6";
 	}
-	my @v6addrs;
+	my $v6addr;
 	if ($ip6support) {
-		foreach my $hash (getmulticasthashes(%args)) {
-			my $target = "ff02::1:$hash";
-			my ($fam, $type, $proto, $addr, $name) = 
-			   Socket6::getaddrinfo($target,"svrloc",Socket6::AF_INET6(),SOCK_DGRAM,0);
-			push @v6addrs,$addr;
-		}
+		my $hash=getmulticasthash($args{SrvType});
+		my $target = "ff02::1:$hash";
+		my ($fam, $type, $proto, $name);
+		($fam, $type, $proto, $v6addr, $name) = 
+		   Socket6::getaddrinfo($target,"svrloc",Socket6::AF_INET6(),SOCK_DGRAM,0);
 	}
 	foreach my $iface (@interfaces) {
 		if ($ip6support) {
 			setsockopt($socket,Socket6::IPPROTO_IPV6(),IPV6_MULTICAST_IF,pack("I",$iface));
-		   foreach my $v6addr (@v6addrs) {
-				$socket->send($packet,0,$v6addr);
-			}
+			$socket->send($packet,0,$v6addr);
 		}
 		#TODO: IPv4 support
 #		setsockopt($socket,IPPROTO_IP,IP_MULTICAST_IF,
@@ -103,19 +101,14 @@ sub get_interfaces {
 #    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 sub gendiscover {
 	my %args = @_;
-	my $srvtypes;
-	if ($args{SrvTypes}) {
-		$srvtypes = $args{SrvTypes};
-	} else {
-		$srvtypes = $defaultsrvtypes;
-	}
+	my $srvtype = $args{SrvType};
 	my $scope = "DEFAULT";
 	if ($args{Scopes}) { $scope = $args{Scopes}; }
 	my $packet = pack("C*",0,0); #start with PRList, we have no prlist so zero
 	#TODO: actually accumulate PRList, particularly between IPv4 and IPv6 runs
-	my $length = length($srvtypes);
+	my $length = length($srvtype);
 	$packet .= pack("C*",($length>>8),($length&0xff));
-	$packet .= $srvtypes;
+	$packet .= $srvtype;
 	$length = length($scope);
 	$packet .= pack("C*",($length>>8),($length&0xff));
 	$packet .= $scope;
