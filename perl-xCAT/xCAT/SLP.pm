@@ -68,13 +68,14 @@ sub dodiscover {
 					$result->{peername} = $peername;
 					$result->{scopeid} = $scope;
 					$result->{sockaddr} = $peer;
-					$rethash{$peername} = $result;
+					$rethash{$peername.'%'.$scope} = $result;
 					if ($args{Callback}) {
 						$args{Callback}->($result);
 					}
 				}
 			}
 		}
+		return \%rethash;
 	}
 }
 
@@ -86,13 +87,50 @@ sub process_slp_packet {
 	my $parsedpacket = removeslpheader($packet);
 	if ($parsedpacket->{FunctionId} == 2) {#Service Reply
 		$parsedpacket->{service_urls} = parse_service_reply($parsedpacket->{payload});
-		delete $parsedpacket->{payload};
 		unless (scalar @{$parsedpacket->{service_urls}}) { return undef; }
 		send_attribute_request('socket'=>$socket,url=>$parsedpacket->{service_urls}->[0],sockaddr=>$sockaddy);
 		return undef;
+	} elsif ($parsedpacket->{FunctionId} == 7) { #attribute reply
+		$parsedpacket->{attributes} = parse_attribute_reply($parsedpacket->{payload});
+		delete $parsedpacket->{payload};
+		return $parsedpacket;
 	} else {
 		return undef;
 	}
+}
+
+sub parse_attribute_reply {
+	my $contents = shift;
+	my @payload = unpack("C*",$contents);
+	if ($payload[0] != 0 or $payload[1] != 0) {
+		return [];
+	}
+	my $attrlength = ($payload[2]<<8)+$payload[3];
+	splice(@payload,0,4);
+	my @attributes = splice(@payload,0,$attrlength);
+	my $attrstring = pack("C*",@attributes);
+	my %attribs;
+	#now we have a string...
+	while ($attrstring) {
+		if ($attrstring =~ /^\(/) {
+			$attrstring =~ s/([^)]*\)),?//;
+			my $attrib = $1;
+			$attrib =~ s/^\(//;
+			$attrib =~ s/\),?$//;
+			$attrib =~ s/=(.*)$//;
+			$attribs{$attrib}=[];
+			if ($1) {
+				my $valstring = $1;
+				foreach(split /,/,$valstring) {
+					push @{$attribs{$attrib}},$_;
+				}
+			}
+		} else {
+			$attrstring =~ s/([^,]*),?//;
+			$attribs{$1}=[];
+		}
+	}
+	return \%attribs;
 }
 sub send_attribute_request {
 	my %args = @_;
@@ -245,3 +283,17 @@ sub genslpheader {
 	return pack("C*",2, $args{FunctionId}, ($length >> 16), ($length >> 8)&0xff, $length&0xff, $flaghigh, $flaglow,0,0,0,$xid>>8,$xid&0xff,0,2)."en";
 }
 		
+unless (caller) { 
+	#time to provide unit testing/example usage
+	#somewhat fancy invocation with multiple services and callback for
+	#results on-the-fly
+	require Data::Dumper;
+	Data::Dumper->import();
+	my $srvtypes = ["service:management-hardware.IBM:chassis-management-module","service:management-hardware.IBM:management-module"];
+	xCAT::SLP::dodiscover(SrvTypes=>$srvtypes,Callback=>sub { print Dumper(@_) });
+	#example 2: simple invocation of a single service type
+	$srvtypes = "service:management-hardware.IBM:chassis-management-module";
+	print Dumper(xCAT::SLP::dodiscover(SrvTypes=>$srvtypes));
+	#TODO: pass-in socket and not wait inside SLP.pm example
+}
+1;
