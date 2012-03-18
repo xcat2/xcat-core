@@ -14,6 +14,8 @@ unless ($ip6support) {
 
 #TODO: somehow get at system headers to get the value, put in linux's for now
 use constant IPV6_MULTICAST_IF => 17;
+my %xid_to_srvtype_map;
+my $xid;
 
 sub getmulticasthash {
 	my $hash=0;
@@ -24,13 +26,14 @@ sub getmulticasthash {
 		$hash &= 0xffff;
 	}
 	$hash &= 0x3ff;
-   $hash |= 0x1000;
+	$hash |= 0x1000;
 	return sprintf("%04x",$hash);
 }
 			
 	
 sub dodiscover {
 	my %args = @_;
+	$xid = int(rand(16384))+1;
 	unless ($args{'socket'}) {
 		if ($ip6support) {
 			$args{'socket'} = IO::Socket::INET6->new(Proto => 'udp');
@@ -39,14 +42,14 @@ sub dodiscover {
 		}
 	}
 	unless ($args{SrvTypes}) { croak "SrvTypes argument is required for xCAT::SLP::Dodiscover"; }
-   my @srvtypes;
+	my @srvtypes;
 	if (ref $args{SrvTypes}) {
 		@srvtypes = @{$args{SrvTypes}};
 	} else {
 		@srvtypes = split /,/,$args{SrvTypes};
 	}
 	foreach my $srvtype (@srvtypes) {
-		send_discover_single(%args,SrvType=>$srvtype);
+		send_attribute_request_single(%args,SrvType=>$srvtype);
 	}
 	unless ($args{NoWait}) { #in nowait, caller owns the responsibility..
 		#by default, report all respondants within 3 seconds:
@@ -85,13 +88,15 @@ sub process_slp_packet {
 	my $socket = $args{'socket'};
 	my $packet = $args{packet};
 	my $parsedpacket = removeslpheader($packet);
-	if ($parsedpacket->{FunctionId} == 2) {#Service Reply
-		$parsedpacket->{service_urls} = parse_service_reply($parsedpacket->{payload});
-		unless (scalar @{$parsedpacket->{service_urls}}) { return undef; }
-		send_attribute_request('socket'=>$socket,url=>$parsedpacket->{service_urls}->[0],sockaddr=>$sockaddy);
-		return undef;
-	} elsif ($parsedpacket->{FunctionId} == 7) { #attribute reply
+#	if ($parsedpacket->{FunctionId} == 2) {#Service Reply
+#		$parsedpacket->{service_urls} = parse_service_reply($parsedpacket->{payload});
+#		unless (scalar @{$parsedpacket->{service_urls}}) { return undef; }
+#		send_attribute_request('socket'=>$socket,url=>$parsedpacket->{service_urls}->[0],sockaddr=>$sockaddy);
+#		return undef;
+#	} elsif ($parsedpacket->{FunctionId} == 7) { #attribute reply
+	if ($parsedpacket->{FunctionId} == 7) { #attribute reply
 		$parsedpacket->{attributes} = parse_attribute_reply($parsedpacket->{payload});
+		$parsedpacket->{SrvType} = $xid_to_srvtype_map{$parsedpacket->{Xid}};
 		delete $parsedpacket->{payload};
 		return $parsedpacket;
 	} else {
@@ -111,7 +116,13 @@ sub parse_attribute_reply {
 	my $attrstring = pack("C*",@attributes);
 	my %attribs;
 	#now we have a string...
+	my $lastattrstring;
 	while ($attrstring) {
+		if ($lastattrstring eq $attrstring) { #infinite loop
+			$attribs{unparsed_attribdata}=$attrstring;
+			last;
+		}
+		$lastattrstring=$attrstring;
 		if ($attrstring =~ /^\(/) {
 			$attrstring =~ s/([^)]*\)),?//;
 			my $attrib = $1;
@@ -128,53 +139,60 @@ sub parse_attribute_reply {
 		} else {
 			$attrstring =~ s/([^,]*),?//;
 			$attribs{$1}=[];
-		}
+		} 
 	}
 	return \%attribs;
 }
-sub send_attribute_request {
+sub generate_attribute_request {
 	my %args = @_;
+	my $srvtype = $args{SrvType};
+	my $scope = "DEFAULT";
+	if ($args{Scopes}) { $scope = $args{Scopes}; }
 	my $packet  = pack("C*",0,0); #no prlist
-	my $service = $args{url};
+	my $service = $srvtype;
 	$service =~ s!://.*!!;
 	my $length = length($service);
 	$packet .= pack("C*",($length>>8),($length&0xff));
-	$packet .= $service.pack("C*",0,7).'DEFAULT'.pack("C*",0,0,0,0);
+	$length = length($scope);
+	$packet .= $service.pack("C*",($length>>8),($length&0xff)).$scope;
+	$packet .= pack("C*",0,0,0,0);
 	my $header = genslpheader($packet,FunctionId=>6);
-	$args{'socket'}->send($header.$packet,0,$args{sockaddry});
+	$xid_to_srvtype_map{$xid++}=$srvtype;
+	return $header.$packet;
+#	$args{'socket'}->send($header.$packet,0,$args{sockaddry});
 }
 	
 
-sub parse_service_reply {
-	my $packet = shift;
-	my @reply = unpack("C*",$packet);
-	if ($reply[0] != 0 or $reply[1] != 0) {
-		return ();
-	}
-	my @urls;
-	my $numurls = ($reply[2]<<8)+$reply[3];
-	splice (@reply,0,4);
-	while ($numurls--) {
-		push @urls,extract_next_url(\@reply);
-	}
-	return \@urls;
-}
+#sub parse_service_reply {
+#	my $packet = shift;
+#	my @reply = unpack("C*",$packet);
+#	if ($reply[0] != 0 or $reply[1] != 0) {
+#		return ();
+#	}
+#	my @urls;
+#	my $numurls = ($reply[2]<<8)+$reply[3];
+#	splice (@reply,0,4);
+#	while ($numurls--) {
+#		push @urls,extract_next_url(\@reply);
+#	}
+#	return \@urls;
+#}
 
-sub extract_next_url { #section 4.3 url entries
-	my $payload = shift;
-	splice (@$payload,0,3); # discard reserved and lifetime which we will not bother using
-	my $urllength = ((shift @$payload)<<8)+(shift @$payload);
-	my @url = splice(@$payload,0,$urllength);
-	my $authblocks = shift @$payload;
-	unless ($authblocks == 0) { 
-		$payload = []; #TODO: skip/use auth blocks if needed to get at more URLs
-	}
-	return pack("C*",@url);
-}
+#sub extract_next_url { #section 4.3 url entries
+#	my $payload = shift;
+#	splice (@$payload,0,3); # discard reserved and lifetime which we will not bother using
+#	my $urllength = ((shift @$payload)<<8)+(shift @$payload);
+#	my @url = splice(@$payload,0,$urllength);
+#	my $authblocks = shift @$payload;
+#	unless ($authblocks == 0) { 
+#		$payload = []; #TODO: skip/use auth blocks if needed to get at more URLs
+#	}
+#	return pack("C*",@url);
+#}
 		
-sub send_discover_single {
+sub send_attribute_request_single {
 	my %args = @_;
-	my $packet = gendiscover(%args);
+	my $packet = generate_attribute_request(%args);
 	my @interfaces = get_interfaces(%args);
 	my $socket = $args{'socket'};
 	my $v6addr;
@@ -223,24 +241,24 @@ sub get_interfaces {
 #    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 #    |  length of <SLP SPI> string   |       <SLP SPI> String        \
 #    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-sub gendiscover {
-	my %args = @_;
-	my $srvtype = $args{SrvType};
-	my $scope = "DEFAULT";
-	if ($args{Scopes}) { $scope = $args{Scopes}; }
-	my $packet = pack("C*",0,0); #start with PRList, we have no prlist so zero
-	#TODO: actually accumulate PRList, particularly between IPv4 and IPv6 runs
-	my $length = length($srvtype);
-	$packet .= pack("C*",($length>>8),($length&0xff));
-	$packet .= $srvtype;
-	$length = length($scope);
-	$packet .= pack("C*",($length>>8),($length&0xff));
-	$packet .= $scope;
+#sub gendiscover {
+#	my %args = @_;
+#	my $srvtype = $args{SrvType};
+#	my $scope = "DEFAULT";
+#	if ($args{Scopes}) { $scope = $args{Scopes}; }
+#	my $packet = pack("C*",0,0); #start with PRList, we have no prlist so zero
+#	#TODO: actually accumulate PRList, particularly between IPv4 and IPv6 runs
+#	my $length = length($srvtype);
+#	$packet .= pack("C*",($length>>8),($length&0xff));
+#	$packet .= $srvtype;
+#	$length = length($scope);
+#	$packet .= pack("C*",($length>>8),($length&0xff));
+#	$packet .= $scope;
 	#no ldap predicates, and no auth, so zeroes..
-	$packet .= pack("C*",0,0,0,0);
-	my $header = genslpheader($packet,Multicast=>1,FunctionId=>1);
-	return $packet = $header.$packet;
-}
+#	$packet .= pack("C*",0,0,0,0);
+#	my $header = genslpheader($packet,Multicast=>1,FunctionId=>1);
+#	return $packet = $header.$packet;
+#}
 # SLP header from RFC 2608
 #     0                   1                   2                   3
 #     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -274,7 +292,6 @@ sub removeslpheader {
 sub genslpheader {
 	my $packet = shift;
 	my %args = @_;
-	my $xid = rand(65535);
 	my $flaghigh=0;
 	my $flaglow=0; #this will probably never ever ever change
 	if ($args{Multicast}) { $flaghigh |= 0x20; }
@@ -289,7 +306,7 @@ unless (caller) {
 	#results on-the-fly
 	require Data::Dumper;
 	Data::Dumper->import();
-	my $srvtypes = ["service:management-hardware.IBM:chassis-management-module","service:management-hardware.IBM:management-module"];
+	my $srvtypes = ["service:management-hardware.IBM:chassis-management-module","service:management-hardware.IBM:integrated-management-module2"];
 	xCAT::SLP::dodiscover(SrvTypes=>$srvtypes,Callback=>sub { print Dumper(@_) });
 	#example 2: simple invocation of a single service type
 	$srvtypes = "service:management-hardware.IBM:chassis-management-module";
