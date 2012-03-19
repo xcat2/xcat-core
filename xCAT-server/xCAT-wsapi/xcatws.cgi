@@ -338,38 +338,16 @@ sub imagesHandler {
     if (defined($path[1])) {
         $image = $path[1];
     }
-    else {
-        $image = $q->param('imageName');
-    }
 
     if (isGet()) {
+        $request->{command} = 'lsdef';
+        push @args, '-t', 'osimage';
         if (defined $image) {
-
-            #call chkosimage, but should only be used for AIX images
-            if ($q->param('checkAixImage')) {
-                $request->{command} = 'chkosimage';
-                push @args, $image;
-            }
-            else {
-                $request->{command} = 'tabget';
-                push @args, "imagename=$image";
-                if (defined $q->param('field')) {
-                    foreach ($q->param('field')) {
-                        push @args, "osimage.$_";
-                    }
-                }
-                else {
-                    foreach (@groupFields) {
-                        push @args, "osimage.$_";
-                    }
-                }
-            }
+            push @args, '-o', $image;
         }
-
-        #no image indicated, so list all
-        else {
-            $request->{command} = 'tabdump';
-            push @args, 'osimage';
+        if (defined($q->param('field'))) {
+            push @args, '-i';
+            push @args, join(',', $q->param('field'));
         }
     }
     elsif (isPost()) {
@@ -903,8 +881,7 @@ sub nodesHandler {
                 }
                 if (defined($elements{'rsyncfile'})) {
                     push @args, '-F';
-                    push @args, $elements{
-                        'rsyncfile'};
+                    push @args, $elements{'rsyncfile'};
                 }
                 if (defined($elements{'preserve'})) {
                     push @args, '-p';
