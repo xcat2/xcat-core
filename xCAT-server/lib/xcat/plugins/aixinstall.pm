@@ -6590,10 +6590,10 @@ sub update_dd_boot
 	# xCAT basecust support #2
     if [ -n "\${NIM_SHARED_ROOT}" ]
 	then
-		# if we found a statelite directory - above
+        # if we found a statelite directory - above
 		if [ -n "\${SLDIR}" ]
 		then
-        	# if we have a basecust file
+			# if we have a basecust file
 			if [ -f /tmp/\${SHOST}/etc/basecust  ]; then
 				# need to mount persistent basecust to RAM FS
 				cp /SPOT/usr/bin/mkdir /usr/bin
