@@ -6593,12 +6593,16 @@ sub update_dd_boot
 		# if we found a statelite directory - above
 		if [ -n "\${SLDIR}" ]
 		then
-			# need to mount persistent basecust over the one in RAM FS
-			mount -o rw \${SLSERV}:\${SLDIR} /tmp
-			/usr/bin/touch /etc/basecust
-			cp /SPOT/usr/bin/cut  /usr/bin
-			SHOST=`echo \${NIM_HOSTNAME} | /usr/bin/cut -d . -f 1`
-			mount /tmp/\${SHOST}/etc/basecust /etc/basecust
+        	# if we have a basecust file
+			if [ -f /tmp/\${SHOST}/etc/basecust  ]; then
+				# need to mount persistent basecust to RAM FS
+				cp /SPOT/usr/bin/mkdir /usr/bin
+				/usr/bin/mkdir -p /slmnt
+				mount -o rw \${SLSERV}:\${SLDIR} /slmnt
+				/usr/bin/touch /etc/basecust
+				SHOST=`echo \${NIM_HOSTNAME} | cut -d . -f 1`
+				mount /slmnt/\${SHOST}/etc/basecust /etc/basecust
+			fi
 		fi
 	fi \n\n~;
 
