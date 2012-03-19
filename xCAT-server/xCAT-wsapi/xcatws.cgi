@@ -334,6 +334,7 @@ sub imagesHandler {
     my @responses;
     my @args;
     my $image;
+    my $subResource;
 
     if (defined($path[1])) {
         $image = $path[1];
@@ -351,37 +352,33 @@ sub imagesHandler {
         }
     }
     elsif (isPost()) {
-####genimage and related commands do not go through xcatd....
-####not supported at the moment
-        #if($q->param('type') eq /stateless/){
-        #if(!defined $image){
-        #sendResponseMsg($STATUS_BAD_REQUEST, "The image name is required to create a stateless image");
-        #exit(0);
-        #}
-        #$request->{command} = 'genimage';
-        #foreach(param->{'field'}){
-        #}
-        #}
-        #else{
-        #if(defined $q->param('path')){
-        #$request->{command} = 'copycds';
-        #push @args, $q->param('path');
-        #}
-        #}
     }
-    elsif (isPut() || isPatch()) {
+    elsif (isPut()) {
 
-        #use chkosimage to remove any older versions of the rpms.  should only be used for AIX
-        if ($q->param('cleanAixImage')) {
-            if (defined $image) {
-                $request->{command} = 'chkosimage';
+        #check the operation type
+        unless (defined $path[2]) {
+            addPageContent("The subResource $subResource does not exist");
+            sendResponseMsg($STATUS_BAD_REQUEST);
+        }
+
+        $subResource = $path[2];
+
+        #check the image name
+        unless (defined $image) {
+            addPageContent("The image name is required to clean an os image");
+            sendResponseMsg($STATUS_BAD_REQUEST);
+        }
+
+        if ($subResource eq 'check') {
+            $request->{command} = 'chkosimage';
+            if (defined($q->param('PUTDATA'))) {
                 push @args, '-c';
-                push @args, $image;
             }
-            else {
-                addPageContent("The image name is required to clean an os image");
-                sendResponseMsg($STATUS_BAD_REQUEST);
-            }
+            push @args, $image;
+        }
+        else {
+            addPageContent("The subResource $subResource does not exist");
+            sendResponseMsg($STATUS_BAD_REQUEST);
         }
     }
     elsif (isDelete()) {
@@ -1579,20 +1576,7 @@ sub vmsHandler {
             sendResponseMsg($STATUS_BAD_REQUEST);
         }
 
-        foreach (@$entries) {
-            my $key;
-            my $value;
-            $position = index($_, '=');
-            if ($position < 0) {
-                $key   = $_;
-                $value = 1;
-            }
-            else {
-                $key = substr $_, 0, $position;
-                $value = substr $_, $position + 1;
-            }
-            $entryhash{$key} = $value;
-        }
+        extractData(\%entryhash, $entries);
 
         #for system p
         if (defined $entryhash{'cec'}) {
