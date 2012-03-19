@@ -48,8 +48,9 @@ sub dodiscover {
 	} else {
 		@srvtypes = split /,/,$args{SrvTypes};
 	}
+	my $interfaces = get_interfaces(%args);
 	foreach my $srvtype (@srvtypes) {
-		send_attribute_request_single(%args,SrvType=>$srvtype);
+		send_attribute_request_single(%args,ifacemap=>$interfaces,SrvType=>$srvtype);
 	}
 	unless ($args{NoWait}) { #in nowait, caller owns the responsibility..
 		#by default, report all respondants within 3 seconds:
@@ -193,7 +194,7 @@ sub generate_attribute_request {
 sub send_attribute_request_single {
 	my %args = @_;
 	my $packet = generate_attribute_request(%args);
-	my @interfaces = get_interfaces(%args);
+	my $interfaces = $args{ifacemap}; #get_interfaces(%args);
 	my $socket = $args{'socket'};
 	my $v6addr;
 	if ($ip6support) {
@@ -203,11 +204,12 @@ sub send_attribute_request_single {
 		($fam, $type, $proto, $v6addr, $name) = 
 		   Socket6::getaddrinfo($target,"svrloc",Socket6::AF_INET6(),SOCK_DGRAM,0);
 	}
-	foreach my $iface (@interfaces) {
+	foreach my $iface (keys %{$interfaces}) {
 		if ($ip6support) {
-			setsockopt($socket,Socket6::IPPROTO_IPV6(),IPV6_MULTICAST_IF,pack("I",$iface));
+			setsockopt($socket,Socket6::IPPROTO_IPV6(),IPV6_MULTICAST_IF,pack("I",$interfaces->{$iface}->{scopeidx}));
 			$socket->send($packet,0,$v6addr);
 		}
+		#setsockopt($socket,IPPROTO_IP,IP_MULTICAST_IF,
 		#TODO: IPv4 support
 #		setsockopt($socket,IPPROTO_IP,IP_MULTICAST_IF,
 	}
@@ -215,15 +217,27 @@ sub send_attribute_request_single {
 
 sub get_interfaces {
 	#TODO: AIX tolerance, no subprocess, include/exclude interface(s)
-	my @ipoutput = `ip link`;
-	my @ifaceoutput = grep(/MULTICAST/,@ipoutput);
-	my @interfaces;
-	foreach (@ifaceoutput) {
-		chomp;
-		s/:.*//;
-		push @interfaces,$_;
+	my @ipoutput = `ip addr`;
+	my %ifacemap;
+	my $payingattention=0;
+	my $interface;
+	foreach my $line (@ipoutput) {
+		if ($line =~ /^\d/) { # new interface, new context..
+			unless ($line =~ /MULTICAST/) { #don't care if it isn't multicast capable
+				$payingattention=0;
+				next;
+			}
+			$payingattention=1;
+			$line =~ /^([^:]*): ([^:]*):/;
+			$interface=$2;
+			$ifacemap{$interface}->{scopeidx}=$1;
+		}
+		unless ($payingattention) { next; } #don't think about lines unless in context of paying attention.
+		if ($line =~ /\s+inet\s+(\S+)\s/) { #got an ipv4 address, store it
+			push @{$ifacemap{$interface}->{ipv4addrs}},$1;
+		}
 	}
-	return @interfaces;
+	return \%ifacemap;
 }
 # discovery is "service request", rfc 2608 
 #     0                   1                   2                   3
