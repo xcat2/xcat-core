@@ -890,6 +890,47 @@ sub nodesHandler {
                 my %elements;
                 extractData(\%elements, $entries);
                 if (defined($elements{'fanout'})) {
+                    push @args, '-f';
+                    push @args, $elements{'fanout'};
+                }
+                if (defined($elements{'rootimg'})) {
+                    push @args, '-i';
+                    push @args, $elements{'rootimg'};
+                }
+                if (defined($elements{'options'})) {
+                    push @args, '-o';
+                    push @args, $elements{'options'};
+                }
+                if (defined($elements{'rsyncfile'})) {
+                    push @args, '-F';
+                    push @args, $elements{
+                        'rsyncfile'};
+                }
+                if (defined($elements{'preserve'})) {
+                    push @args, '-p';
+                }
+                if (defined($elements{'pull'})) {
+                    push @args, '-P';
+                }
+                if (defined($elements{'showconfig'})) {
+                    push @args, '-q';
+                }
+                if (defined($elements{'remotecopy'})) {
+                    push @args, '-r';
+                    push @args, $elements{'remotecopy'};
+                }
+                if (defined($elements{'recursive'})) {
+                    push @args, '-R';
+                }
+                if (defined($elements{'timeout'})) {
+                    push @args, '-t';
+                    push @args, $elements{'timeout'};
+                }
+                if (defined($elements{'source'})) {
+                    push @args, $elements{'source'};
+                }
+                if (defined($elements{'target'})) {
+                    push @args, $elements{'target'};
                 }
             }
         }
