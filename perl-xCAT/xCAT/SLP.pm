@@ -43,6 +43,7 @@ sub dodiscover {
 		}
 	}
 	unless ($args{SrvTypes}) { croak "SrvTypes argument is required for xCAT::SLP::Dodiscover"; }
+	setsockopt($args{'socket'},SOL_SOCKET,SO_BROADCAST,1); #allow for broadcasts to be sent, we know what we are doing
 	my @srvtypes;
 	if (ref $args{SrvTypes}) {
 		@srvtypes = @{$args{SrvTypes}};
@@ -259,10 +260,16 @@ sub send_service_request_single {
 			$socket->send($packet,0,$v6addr);
 		}
 		foreach my $ip (@{$interfaces->{$iface}->{ipv4addrs}}) {
-			$ip =~ s/\/.*//;
+			$ip =~ s/\/(.*)//;
+			my $maskbits = $1;
 			my $ipn = inet_aton($ip); #we are ipv4 only, this is ok
-			setsockopt($socket,0,IP_MULTICAST_IF,pack("NNI",$ipv4mcastaddr,$ipn,$interfaces->{$iface}->{scopeidx}));
+			my $ipnum=unpack("N",$ipn);
+			$ipnum= $ipnum | (2**(32-$maskbits))-1;
+			my $bcastn = pack("N",$ipnum);
+			my $bcastaddr = sockaddr_in(427,$bcastn);
+			setsockopt($socket,0,IP_MULTICAST_IF,$ipn);
 			$socket->send($packet,0,$ipv4sockaddr);
+			$socket->send($packet,0,$bcastaddr);
 		}
 	}
 }
@@ -273,8 +280,14 @@ sub get_interfaces {
 	my %ifacemap;
 	my $payingattention=0;
 	my $interface;
+	my $keepcurrentiface;
 	foreach my $line (@ipoutput) {
 		if ($line =~ /^\d/) { # new interface, new context..
+			if ($interface and not $keepcurrentiface) {
+				#don't bother reporting unusable nics
+				delete $ifacemap{$interface};
+			}
+			$keepcurrentiface=0;
 			unless ($line =~ /MULTICAST/) { #don't care if it isn't multicast capable
 				$payingattention=0;
 				next;
@@ -285,6 +298,9 @@ sub get_interfaces {
 			$ifacemap{$interface}->{scopeidx}=$1;
 		}
 		unless ($payingattention) { next; } #don't think about lines unless in context of paying attention.
+		if ($line =~ /inet/) {
+			$keepcurrentiface=1;
+		}
 		if ($line =~ /\s+inet\s+(\S+)\s/) { #got an ipv4 address, store it
 			push @{$ifacemap{$interface}->{ipv4addrs}},$1;
 		}
