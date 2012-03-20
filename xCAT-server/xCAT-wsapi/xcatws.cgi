@@ -14,7 +14,7 @@ use Data::Dumper;
 #all data input will be done from the common structure
 
 #turn on or off the debugging output
-my $DEBUGGING = 0;
+my $DEBUGGING = 1;
 my $VERSION   = "2.7";
 
 my $q           = CGI->new;
@@ -352,6 +352,51 @@ sub imagesHandler {
         }
     }
     elsif (isPost()) {
+        my $operationname = $image;
+        my $entries;
+        my %entryhash;
+
+        #check the post data
+        unless (defined($q->param('POSTDATA'))) {
+            addPageContent("Invalid Parameters");
+            sendResponseMsg($STATUS_BAD_REQUEST);
+        }
+        $entries = decode_json $q->param('POSTDATA');
+        if (scalar(@$entries) < 1) {
+            addPageContent("No set attribute was supplied.");
+            sendResponseMsg($STATUS_BAD_REQUEST);
+        }
+
+        extractData(\%entryhash, $entries);
+
+        #for image capture
+        if ($operationname eq 'capture') {
+            $request->{command} = 'imgcapture';
+            if (defined($entryhash{'nodename'})) {
+                $request->{noderange} = $entryhash{'nodename'};
+            }
+            else {
+                addPageContent('No node range.');
+                sendResponseMsg($STATUS_BAD_REQUEST);
+            }
+
+            if (defined($entryhash{'profile'})) {
+                push @args, '-p';
+                push @args, $entryhash{'profile'};
+            }
+            if (defined($entryhash{'osimage'})) {
+                push @args, '-o';
+                push @args, $entryhash{'osimage'};
+            }
+            if (defined($entryhash{'bootinterface'})) {
+                push @args, '-i';
+                push @args, $entryhash{'bootinterface'};
+            }
+            if (defined($entryhash{'netdriver'})) {
+                push @args, '-n';
+                push @args, $entryhash{'netdriver'};
+            }
+        }
     }
     elsif (isPut()) {
 
