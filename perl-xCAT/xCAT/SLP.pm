@@ -98,9 +98,12 @@ sub process_slp_packet {
 	my $packet = $args{packet};
 	my $parsedpacket = removeslpheader($packet);
 	if ($parsedpacket->{FunctionId} == 2) {#Service Reply
-		$parsedpacket->{service_urls} = parse_service_reply($parsedpacket->{payload});
-		unless (scalar @{$parsedpacket->{service_urls}}) { return undef; }
+		parse_service_reply($parsedpacket->{payload},$parsedpacket);
+		unless (ref $parsedpacket->{service_urls} and scalar @{$parsedpacket->{service_urls}}) { return undef; }
 		#send_attribute_request('socket'=>$socket,url=>$parsedpacket->{service_urls}->[0],sockaddr=>$sockaddy);
+		if ($parsedpacket->{attributes}) { #service reply had ext
+			return $parsedpacket; #don't bother sending attrrequest, already got it in first packet
+		}
 		my $srvtype = $xid_to_srvtype_map{$parsedpacket->{Xid}};
 		my $packet = generate_attribute_request(%args,SrvType=>$srvtype);
 		$socket->send($packet,0,$sockaddy);
@@ -121,9 +124,14 @@ sub parse_attribute_reply {
 	if ($payload[0] != 0 or $payload[1] != 0) {
 		return {};
 	}
-	my $attrlength = ($payload[2]<<8)+$payload[3];
-	splice(@payload,0,4);
-	my @attributes = splice(@payload,0,$attrlength);
+	splice (@payload,0,2);
+	return parse_attribute_list(\@payload);
+}
+sub parse_attribute_list {
+	my $payload = shift;
+	my $attrlength = ($payload->[0]<<8)+$payload->[1];
+	splice(@$payload,0,4);
+	my @attributes = splice(@$payload,0,$attrlength);
 	my $attrstring = pack("C*",@attributes);
 	my %attribs;
 	#now we have a string...
@@ -176,18 +184,44 @@ sub generate_attribute_request {
 
 sub parse_service_reply {
 	my $packet = shift;
+	my $parsedpacket = shift;
 	my @reply = unpack("C*",$packet);
 	if ($reply[0] != 0 or $reply[1] != 0) {
 		return ();
 	}
-	my @urls;
+	if ($parsedpacket->{extoffset}) {
+		my @extdata = splice(@reply,$parsedpacket->{extoffset}-$parsedpacket->{currentoffset});
+		$parsedpacket->{currentoffset} = $parsedpacket->{extoffset};
+		parse_extension(\@extdata,$parsedpacket);
+	}
 	my $numurls = ($reply[2]<<8)+$reply[3];
 	splice (@reply,0,4);
 	while ($numurls--) {
-		push @urls,extract_next_url(\@reply);
+		push @{$parsedpacket->{service_urls}},extract_next_url(\@reply);
 	}
-	return \@urls;
+	return;
 }
+
+sub parse_extension {
+	my $extdata = shift;
+	my $parsedpacket = shift;
+	my $extid = ($extdata->[0]<<8)+$extdata->[1];
+	my $nextext = (($extdata->[2])<<16)+(($extdata->[3])<<8)+$extdata->[4];
+	if ($nextext) {
+		my @nextext = splice(@$extdata,$nextext-$parsedpacket->{currentoffset});
+		$parsedpacket->{currentoffset} = $nextext;
+		parse_extension(\@nextext,$parsedpacket);
+	}
+	splice(@$extdata,0,5);
+	if ($extid == 2) {
+		#this is defined in RFC 3059, attribute list extension
+		#employed by AMM for one...
+		my $urllen = ((shift @$extdata)<<8)+(shift @$extdata);
+		splice @$extdata,0,$urllen; #throw this out for now..
+		$parsedpacket->{attributes} = parse_attribute_list($extdata);
+	}
+}
+	
 
 sub extract_next_url { #section 4.3 url entries
 	my $payload = shift;
@@ -275,6 +309,7 @@ sub generate_service_request {
 	my $srvtype = $args{SrvType};
 	my $scope = "DEFAULT";
 	if ($args{Scopes}) { $scope = $args{Scopes}; }
+	my $prlist="";
 	my $packet = pack("C*",0,0); #start with PRList, we have no prlist so zero
 	#TODO: actually accumulate PRList, particularly between IPv4 and IPv6 runs
 	my $length = length($srvtype);
@@ -285,7 +320,9 @@ sub generate_service_request {
 	$packet .= $scope;
 	#no ldap predicates, and no auth, so zeroes..
 	$packet .= pack("C*",0,0,0,0);
-	my $header = genslpheader($packet,Multicast=>1,FunctionId=>1);
+	$packet .= pack("C*",0,2,0,0,0,0,0,0,0,0);
+	my $extoffset = length($srvtype)+length($scope)+length($prlist)+10;
+	my $header = genslpheader($packet,Multicast=>1,FunctionId=>1,ExtOffset=>$extoffset);
 	$xid_to_srvtype_map{$xid++}=$srvtype;
 	return $packet = $header.$packet;
 }
@@ -309,11 +346,16 @@ sub removeslpheader {
 	$parsedheader{FunctionId} = shift @payload;
 	splice(@payload,0,3); #remove length
 	splice(@payload,0,2); #TODO: parse flags
-	splice(@payload,0,3); #ignore next ext offset for now
+	my $nextoffset = ((shift @payload)<<16)+((shift @payload)<<8)+(shift @payload); 
 	$parsedheader{Xid} = ((shift @payload)<<8)+(shift @payload);
 	my $langlen = ((shift @payload)<<8)+(shift @payload);
 	$parsedheader{lang} = pack("C*",splice(@payload,0,$langlen)); 
 	$parsedheader{payload} = pack("C*",@payload);
+	if ($nextoffset != 0) {
+		#correct offset since header will be removed
+		$parsedheader{currentoffset} = 14+$langlen;
+		$parsedheader{extoffset}=$nextoffset;
+	}
 	return \%parsedheader;
 }
 	
@@ -325,9 +367,14 @@ sub genslpheader {
 	my $flaghigh=0;
 	my $flaglow=0; #this will probably never ever ever change
 	if ($args{Multicast}) { $flaghigh |= 0x20; }
+	my $extoffset=0;
+	if ($args{ExtOffset}) {
+		$extoffset = $args{ExtOffset}+16;
+	}
+	my @extoffset=(($extoffset>>16),(($extoffset>>8)&0xff),($extoffset&0xff));
 	my $length = length($packet)+16; #our header is 16 bytes due to lang tag invariance
 	if ($length > 1400) { die "Overflow not supported in xCAT SLP"; }
-	return pack("C*",2, $args{FunctionId}, ($length >> 16), ($length >> 8)&0xff, $length&0xff, $flaghigh, $flaglow,0,0,0,$xid>>8,$xid&0xff,0,2)."en";
+	return pack("C*",2, $args{FunctionId}, ($length >> 16), ($length >> 8)&0xff, $length&0xff, $flaghigh, $flaglow,@extoffset,$xid>>8,$xid&0xff,0,2)."en";
 }
 		
 unless (caller) { 
