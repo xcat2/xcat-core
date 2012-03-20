@@ -19,6 +19,8 @@ BuildArch: noarch
 
 Provides: xCAT-client = %{epoch}:%{version}
 
+Requires: perl-xCAT >= %{epoch}:%(cat Version)
+
 # fping or nmap is needed by pping (in case xCAT-client is installed by itself on a remote client)
 %ifos linux
 Requires: nmap
