@@ -876,6 +876,7 @@ function drawGangliaNodesAreaPic(type, name) {
     var templength = 0;
     var showStr = '';
     var nodename = '';
+    var temparray;
     
     switch(type) {
 	    case 'blade': {
@@ -898,10 +899,11 @@ function drawGangliaNodesAreaPic(type, name) {
     }
     $('#gangliaNodes').html('<ul style="margin:0px;padding:0px;"></ul>');
     
+    temparray = arraypoint.sort();
     templength = arraypoint.length;
     
     for (index = 0; index < templength; index++) {
-        nodename = arraypoint[index];
+        nodename = temparray[index];
         switch (nodeStatus[nodename]) {
             case 'ERROR':
                 showStr = '<li class="monitorerror ui-corner-all monitornodeli" title="' + nodename + '"></li>';
