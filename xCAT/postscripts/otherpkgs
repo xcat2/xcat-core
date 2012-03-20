@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
@@ -220,12 +220,14 @@ if [ -z "$INSTALLDIR" ]; then
     INSTALLDIR="/install"
 fi
 
-#check if /install is mounted on the server, we may need to add code to conver NFSSERVER to ip 
+#check if /install is mounted on the server
 mounted=0;
-result=`mount |grep /install |grep $NFSSERVER`
+result=`mount |grep " $INSTALLDIR " |grep $NFSSERVER`
 if [ $? -eq 0 ]; then
     mounted=1 
 fi
+
+
 
 #OTHERPKGDIR is set only when the provmethod is the os image name
 #when it is not set, we need to figure it out here
