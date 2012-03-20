@@ -59,32 +59,14 @@ if [ $OS != "AIX" ]; then
     # Assume we are on the same machine
         if [[ $OS = sles* ]] || [[ $OS = suse* ]] || [[ -f /etc/SuSE-release ]]; then
         # For SLES, assume zypper is available on the system running genimage
-            if [ ! -d /opt/ibmhpc/pe1200/lap/license ] ; then
-            # Install and accept PE license on the MN
-                IBM_PPE_RTE_LICENSE_ACCEPT=yes zypper install $PE_DIR/ppe_rte_license*.rpm
-            fi
-            # Install PE license rpm into image, BUT DO NOT ACCEPT
-            # The java process fails when you try to run in chroot
-            IBM_PPE_RTE_LICENSE_ACCEPT=no zypper -R $installroot install $PE_DIR/ppe_rte_license*.rpm
-            # Copy license files from MN into the image
-            mkdir -p $installroot/opt/ibmhpc/pe1200/lap/license/
-            cp -pR /opt/ibmhpc/pe1200/lap/license/* $installroot/opt/ibmhpc/pe1200/lap/license
+            # Install PE license rpm into image
+            IBM_PPE_RTE_LICENSE_ACCEPT=yes zypper -R $installroot install $PE_DIR/ppe_rte_license*.rpm
             # Install PE product rpms
             INUCLIENTS=1 INUBOSTYPE=1 zypper -R $installroot install $PE_DIR/pperte* 
         else
         # For Redhat, etc., assume yum is available on the system running genimage
-            if [ ! -d /opt/ibmhpc/pe1200/lap/license ] ; then
-            # Install and accept PE license on the MN
-                IBM_PPE_RTE_LICENSE_ACCEPT=yes yum -y --nogpgcheck localupdate  $PE_DIR/ppe_rte_license*.rpm
-                #IBM_PE_LICENSE_PROMPT=N yum --nogpgcheck install  $PE_DIR/ppe_rte_license*.rpm
-            fi
-            # Install PE license rpm into image, BUT DO NOT ACCEPT
-            # The java process fails when you try to run in chroot
-            IBM_PPE_RTE_LICENSE_ACCEPT=no yum -y --installroot $installroot --nogpgcheck install  $PE_DIR/ppe_rte_license*.rpm
-            # Copy license files from MN into the image
-            mkdir -p $installroot/opt/ibmhpc/pe1200/lap/license/
-            cp -pR /opt/ibmhpc/pe1200/lap/license/* $installroot/opt/ibmhpc/pe1200/lap/license/
-            #chroot $installroot /opt/ibmhpc/install/sbin/accept_ppe_license.sh
+            # Install PE license rpm into image
+            IBM_PPE_RTE_LICENSE_ACCEPT=yes yum -y --installroot $installroot --nogpgcheck install  $PE_DIR/ppe_rte_license*.rpm
             # Install PE product rpms
             INUCLIENTS=1 INUBOSTYPE=1 yum -y --installroot $installroot --nogpgcheck install $PE_DIR/ppe_rte* $PE_DIR/pperte*
         fi
