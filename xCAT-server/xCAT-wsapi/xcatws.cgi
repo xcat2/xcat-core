@@ -14,7 +14,7 @@ use Data::Dumper;
 #all data input will be done from the common structure
 
 #turn on or off the debugging output
-my $DEBUGGING = 1;
+my $DEBUGGING = 0;
 my $VERSION   = "2.7";
 
 my $q           = CGI->new;
@@ -1242,17 +1242,27 @@ sub tablesHandler {
 
     #handle all gets
     if (isGet()) {
-        $request->{command} = 'tabdump';
-        if (defined $q->param('desc')) {
-            push @args, '-d';
-        }
 
         #table was specified
         if (defined $table) {
-            push @args, $table;
-            if (!defined $q->param('desc')) {
-                $formatType = 'splitCommas';
+            if (defined($q->param('col'))) {
+                $request->{command} = 'gettab';
+                push @args, $q->param('col') . '=' . $q->param('value');
+                my @temparray = $q->param('attribute');
+                foreach (@temparray) {
+                    push @args, $table . '.' . $_;
+                }
             }
+            else {
+                $request->{command} = 'tabdump';
+                push @args, $table;
+                if (!defined $q->param('desc')) {
+                    $formatType = 'splitCommas';
+                }
+            }
+        }
+        else {
+            $request->{command} = 'tabdump';
         }
     }
     elsif (isPut() || isPatch()) {
