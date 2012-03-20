@@ -23,7 +23,7 @@ BuildArch: noarch
 #Requires: 
 %endif
 
-Requires: perl-xCAT >= %{epoch}:%(cat Version|cut -d. -f 1,2)
+Requires: perl-xCAT >= %{epoch}:%(cat Version)
 Requires: xCAT-client  >= %{epoch}:%(cat Version|cut -d. -f 1,2)
 
 Provides: xCAT-IBMhpc = %{epoch}:%{version}
