@@ -279,7 +279,7 @@ sub update_ppc {
  
         if ( $ttype eq 'cec' )
         {
-            my $hostname =  xCAT_plugin::lsslp::gethost_from_url_or_old($tname, "FSP", $tmtm, $tsn, "", "", $tid, "","");
+            my $hostname =  get_host($tname, "FSP", $tmtm, $tsn, "", "", $tid, "","");
             if ($hostname ne $tname) 
             {
                 $hostname =~ /\-(\w)$/;
@@ -295,7 +295,7 @@ sub update_ppc {
             }
         } elsif ( $ttype eq 'frame' )
         {
-            my $hostname =  xCAT_plugin::lsslp::gethost_from_url_or_old($tname, "BPA", $tmtm, $tsn, "", "", $tid, "","");
+            my $hostname =  get_host($tname, "BPA", $tmtm, $tsn, "", "", $tid, "","");
             if ($hostname ne $tname) 
             {
                 $hostname =~ /\-(\w)$/;
@@ -909,7 +909,366 @@ sub update_credentials
 
     return undef;
 }
+#############################################################################
+# used for FSP/BPA redundancy database migration
+# if return something, it means it will use the old data name
+# or new data name
+# if return undef, it means the ip is not invalid and won't make any definition
+#############################################################################
+sub get_host {
+    my $nodename        = shift;
+    my $type            = shift;
+    my $mtm             = shift;
+    my $sn              = shift;
+    my $side            = shift;
+    my $ip              = shift;
+    my $cage_number     = shift;
+    my $parmtm          = shift;
+    my $parsn           = shift;
+    my $pname           = shift;
+    my $flagref         = shift;
+
+    #######################################
+    # Extract IP from URL
+    #######################################
+    if ($ip)
+    {
+        my $nets = xCAT::Utils::my_nets();
+        my $avip = getip_from_iplist( $ip, $nets);
+        #if ( !defined( $ip )) {
+        #    return undef;
+        #}
+    }
+    # get the information of existed nodes to do the migration
+
+    read_from_table() unless (%::OLD_DATA_CACHE);
+
+    foreach my $oldnode ( keys %::OLD_DATA_CACHE )
+    {
+        my $tmpmtm    = @{$::OLD_DATA_CACHE{$oldnode}}[0];
+        my $tmpsn     = @{$::OLD_DATA_CACHE{$oldnode}}[1];
+        my $tmpside   = @{$::OLD_DATA_CACHE{$oldnode}}[2];
+        my $tmpip     = @{$::OLD_DATA_CACHE{$oldnode}}[3];
+        my $tmpid     = @{$::OLD_DATA_CACHE{$oldnode}}[4];
+        my $tmpparent = @{$::OLD_DATA_CACHE{$oldnode}}[5];
+        my $tmptype   = uc(@{$::OLD_DATA_CACHE{$oldnode}}[6]);
+        my $unmatched = @{$::OLD_DATA_CACHE{$oldnode}}[7];
+
+        # used to match fsp defined by xcatsetup
+        # should return fast to save time  
+        if (($type eq "BPA" or $type eq "FSP") and ($tmptype eq $type) and $pname and $side) {
+            if ($pname eq $tmpparent and $side eq $tmpside)  {
+                $$flagref = 1;
+                return $oldnode;
+            }
+        }
+
+        # match the existed nodes including old data and user defined data
+        if (($type eq "BPA" or $type eq "FSP") and ($tmptype eq $type)) {
+            unless ($tmpmtm) {
+                next;
+            }
+
+            if ( $tmpmtm eq $mtm  and  $tmpsn eq $sn) {
+                my $ifip = xCAT::Utils->isIpaddr($oldnode);
+                if ( $ifip )  {# which means that the node is defined by the new lsslp
+                    if ( $tmpside eq $side ) {# match! which means that node is the same as the new one
+                        if ( $ip eq $tmpip ) { #which means that the ip is not changed
+                            # maybe we should check if the ip is invalid and send a warning
+                            $$flagref = 1;
+                            return $ip;
+                        }  else { #which means that the ip is changed
+                            my $vip = check_ip($ip);
+                            if ( !$vip )  { #which means the ip is changed and valid
+                                # maybe we should check if the old ip is invalid and send a warning
+                                # even so we should keep the definition as before
+                                # because this case, we can't put check_ip in the end
+                                $$flagref = 1;
+                                return $oldnode;
+                            } else {
+                                return $ip;
+                            }
+                        }
+                    }
+                }
+                else { # name is not a ip
+                    $side =~ /(\w)\-(\w)/;
+                    my $slot = $1;
+                    if ( $tmpside and $tmpside !~ /\-/ )  {# side is like A or B
+                        if ( $slot eq $tmpside ) {
+                            if ( $oldnode =~ /^Server\-/)  {#judge if need to change node's name
+                                if ( $ip eq $tmpip ) {
+                                    if ( $oldnode =~ /\-(A|B)$/) {
+                                        @{$::OLD_DATA_CACHE{$oldnode}}[7] = 0;
+                                        $$flagref = 1;
+                                        return  $oldnode;
+                                    } else {
+                                        @{$::OLD_DATA_CACHE{$oldnode}}[7] = 0;
+                                        #change node name, need to record the node here
+                                        $::UPDATE_CACHE{$mtm.'-'.$sn} = $oldnode;
+                                        $$flagref = 1;
+                                        return $oldnode.'-'.$slot;
+                                    }
+                                } else   {# not find a matched definition, but need to use the old node name
+                                    if ($unmatched){
+                                        $$flagref = 1;
+                                        return $oldnode;
+                                    }
+                                }
+                            } elsif ( $tmpside =~ /\-/ )  {# end of if ( $oldnode =~ /^Server\-/)
+                                if ( $ip eq $tmpip ) {
+                                    @{$::OLD_DATA_CACHE{$oldnode}}[7] = 0;
+                                    $$flagref = 1;
+                                    return $oldnode;
+                                } else{
+                                    if ($unmatched){
+                                        $$flagref = 1;
+                                        return $oldnode;
+                                    }
+                                }
+                            }
+                        }
+                    } elsif ( $tmpside =~ /\-/ ){
+                        if ( $side eq $tmpside ) {
+                            $$flagref = 1;
+                            return $oldnode;
+                        }
+                    } elsif ( !$tmpside ) {
+                        if ( $oldnode =~ /^Server\-/)  {#judge if need to change node's name
+                            if ( $oldnode !~ /\-(A|B)$/ ) {
+                                delete $::OLD_DATA_CACHE{$oldnode};
+                                $$flagref = 1; 
+                                return $oldnode."-".$slot;
+                            }
+                        }
+                        # if mtms could match but side not defined, we will trate
+                        # it as the result by rscan. And alway use its name.
+                        delete $::OLD_DATA_CACHE{$oldnode};
+                        $$flagref = 1;
+                        return $oldnode;
+                    }
+                }
+            }# end of if ($tmpmtm eq $mtm  and  $tmpsn eq $sn)
 
 
+        } 
+        if ( ($type eq "FRAME" or $type eq "CEC") and ($type eq $tmptype)){
+            if ( !$tmpmtm and !$tmpid)  {
+                next;
+            }
+            # user may define cec only with parent /id /type
+            # we should match this situation
+            if ( ($type eq "CEC") and $parmtm and $parsn  and  $cage_number ) {
+                my $tpparmtm = @{$::OLD_DATA_CACHE{$tmpparent}}[0];
+                my $tpparsn  = @{$::OLD_DATA_CACHE{$tmpparent}}[1];
+                if ( ($tpparmtm eq $parmtm) and ($tpparsn eq $parsn) and ($cage_number eq $tmpid) and ($type eq $tmptype) ) {
+                    $$flagref = 1;
+                    return $oldnode;
+                }
+            }
+
+            # user may define cec/frame only with mtms
+            # but what we consider here is just the data in xCAT 2.6
+            if ($tmpmtm eq $mtm  and  $tmpsn eq $sn and $tmptype eq $type)  {
+                if ( $oldnode =~ /^Server\-/)  {#judge if need to change node's name
+                    if ( $oldnode =~ /(\-A)$/) {
+                        $nodename = s/(\-A)$//;
+                        # should send a warning here
+                        $$flagref = 1;
+                        return $nodename;
+                    }
+                    else  {
+                        $$flagref = 1;
+                        return $oldnode;
+                    }
+                } else {
+                    $$flagref = 1;
+                    return $oldnode;
+                }
+            }
+        } # end of foreach my $oldnode ( keys %::OLD_DATA_CACHE ), not match
+    }
+
+    # not matched, use the new name
+    my $ifip = xCAT::Utils->isIpaddr($nodename);
+    unless ($ifip) {
+        return $nodename;
+    }else {
+        my $vip = check_ip($nodename);
+        if ( $vip )   {#which means the ip is a valid one
+            return $nodename;
+        } else {
+            return undef;
+        }
+    }
+
+}
+
+##########################################################################
+# Get correct IP from ip list in SLP Attr
+##########################################################################
+sub getip_from_iplist
+{
+    my $iplist  = shift;
+    my $nets    = shift;
+    my $inc     = shift;
+
+    my @ips = split /,/, $iplist;
+    my @ips2 = split /,/, $inc;
+    if ( $inc)
+    {
+        for my $net (keys %$nets)
+        {
+            my $flag = 1;
+            for my $einc (@ips2) {
+                if ( $nets->{$net} eq $einc) { 
+                    $flag = 0;
+                }
+            }
+            delete $nets->{$net} if ($flag) ;
+        }
+    }
+
+
+    for my $ip (@ips)
+    {
+        next if ( $ip =~ /:/); #skip IPV6 addresses
+        for my $net ( keys %$nets)
+        {
+            my ($n,$m) = split /\//,$net;
+            if ( xCAT::Utils::isInSameSubnet( $n, $ip, $m, 1) and
+                 xCAT::Utils::isPingable( $ip))
+            {
+                return $ip;
+            }
+        }
+    }
+    return undef;
+}
+
+sub read_from_table {
+    my %idhash;
+    my %typehash;
+    my %iphash;
+    my %vpdhash;
+    if ( !defined(%::OLD_DATA_CACHE))
+    {
+        # find out all the existed nodes' ipaddresses
+        my $hoststab  = xCAT::Table->new('hosts');
+        if ( $hoststab ) {
+            my @ipentries = $hoststab->getAllNodeAttribs( ['node','ip'] );
+            for my $ipentry ( @ipentries ) {
+                $iphash{$ipentry->{node}} = $ipentry->{ip};
+            }
+        } else {
+            return 1;
+        }
+
+        #find out all the existed nodes' type
+        my $nodetypetab  = xCAT::Table->new('nodetype');
+        if ( $nodetypetab ) {
+            my @typeentries = $nodetypetab->getAllNodeAttribs( ['node','nodetype'] );
+            for my $typeentry ( @typeentries) {
+                $typehash{$typeentry->{node}} = $typeentry->{nodetype};
+            }
+        } else {
+            return 2;
+        }
+
+        # find out all the existed nodes' mtms and side
+        my $vpdtab  = xCAT::Table->new( 'vpd' );
+        if ( $vpdtab )  {
+            my @vpdentries = $vpdtab->getAllNodeAttribs(['node','mtm','serial','side']);
+            for my $entry ( @vpdentries ) {
+                @{$vpdhash{$entry->{node}}}[0] = $entry->{mtm};
+                @{$vpdhash{$entry->{node}}}[1] = $entry->{serial}; 
+                @{$vpdhash{$entry->{node}}}[2] = $entry->{side};
+            }
+        } else {
+            return 3;
+        }
+        # find out all the existed nodes' attributes
+        my $ppctab  = xCAT::Table->new('ppc');
+        if ( $ppctab ) {
+            my @identries = $ppctab->getAllNodeAttribs( ['node','id','parent','nodetype'] );
+            for my $entry ( @identries ) {
+                next if ($entry->{nodetype} =~ /lpar/);
+                @{$::OLD_DATA_CACHE{$entry->{node}}}[0] = @{$vpdhash{$entry->{node}}}[0];#mtm
+                @{$::OLD_DATA_CACHE{$entry->{node}}}[1] = @{$vpdhash{$entry->{node}}}[1];#sn
+                @{$::OLD_DATA_CACHE{$entry->{node}}}[2] = @{$vpdhash{$entry->{node}}}[2];#side
+                # find node ip address, check node name first, then check hosts table
+                my $ifip = xCAT::Utils->isIpaddr($entry->{node});
+                if ( $ifip )
+                {
+                    @{$::OLD_DATA_CACHE{$entry->{node}}}[3] = $entry->{node};#ip
+                } else
+                {
+                    if ( exists ($iphash{$entry->{node}}) ) {
+                       @{$::OLD_DATA_CACHE{$entry->{node}}}[3] = $iphash{$entry->{node}};#ip
+                    }
+                    else  {
+                        @{$::OLD_DATA_CACHE{$entry->{node}}}[3] = "";#ip
+                    }
+                }
+                @{$::OLD_DATA_CACHE{$entry->{node}}}[4] = $entry->{id};#id
+                @{$::OLD_DATA_CACHE{$entry->{node}}}[5] = $entry->{parent};#parent
+                if ( exists $entry->{nodetype}) {
+                    @{$::OLD_DATA_CACHE{$entry->{node}}}[6] = $entry->{nodetype};#nodetype
+                } else {
+                    if ( exists ($typehash{$entry->{node}}) ) {
+                        @{$::OLD_DATA_CACHE{$entry->{node}}}[6] = $typehash{$entry->{node}};
+                    } else {
+                        @{$::OLD_DATA_CACHE{$entry->{node}}}[6] = "";
+                    }
+                }    
+                @{$::OLD_DATA_CACHE{$entry->{node}}}[7] = 1;
+            }
+        } else
+        {
+            return 4;
+        }
+    }
+    return 0;
+}
+##########################################################################
+# Makesure the ip in SLP URL is valid
+# return 1 if valid, 0 if invalid
+##########################################################################
+sub check_ip {
+    my $myip = shift;
+    my $firstoctet = $myip;
+    my @invalidiplist = (
+        "192.168.2.144",
+        "192.168.2.145",
+        "192.168.2.146",
+        "192.168.2.147",
+        "192.168.2.148",
+        "192.168.2.149",
+        "192.168.3.144",
+        "192.168.3.145",
+        "192.168.3.146",
+        "192.168.3.147",
+        "192.168.3.148",
+        "192.168.3.149",
+        "169.254.",
+        "127.0.0.0",
+        "127",
+        0,
+        );
+    $firstoctet =~ s/^(\d+)\..*/$1/;
+    if ($firstoctet >= 224 and $firstoctet <= 239)
+    {
+        return 0;
+    }
+    foreach (@invalidiplist)
+    {
+        if ( $myip =~ /^($_)/ )
+        {
+            return 0;
+        }
+    }
+
+    return 1;
+}
 1;
 
