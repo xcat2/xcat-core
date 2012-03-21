@@ -1481,13 +1481,27 @@ sub enable_TFTPhpa
     #}
     #xCAT::MsgUtils->message("S", " The tftp-hpa has been reconfigured.");
   }
+  my $protocols;
+  my $v4only="-4 ";
+  open($protocols,"<","/proc/net/protocols");
+  if ($protocols) {
+	my $line;
+	while ($line = <$protocols>) {
+		if ($line =~ /^TCPv6/) {
+			$v4only="";
+			last;
+		}
+	}
+    } else {
+	$v4only="";
+    }
     if (-x "/usr/sbin/in.tftpd") {
 	system("killall in.tftpd"); #xinetd can leave behind blocking tftp servers even if it won't start new ones
         my @tftpprocs=`ps axf|grep -v grep|grep in.tftpd`;
 	while (@tftpprocs) {
 		sleep 0.1;
 	}
-    	system("/usr/sbin/in.tftpd -v -l -s /tftpboot -m /etc/tftpmapfile4xcat.conf");
+    	system("/usr/sbin/in.tftpd $v4only -v -l -s /tftpboot -m /etc/tftpmapfile4xcat.conf");
     }
 
   return 0;
