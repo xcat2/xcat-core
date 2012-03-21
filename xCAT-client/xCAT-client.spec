@@ -247,6 +247,16 @@ echo "
 PERL5LIB=/usr/opt/perl5/lib/5.8.2:/usr/opt/perl5/lib/5.8.2/aix-thread-multi:/usr/opt/perl5/lib/site_perl/5.8.2:/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi " >>/etc/environment
 fi
 
+if ! egrep XCATROOT /etc/environment > /dev/null 2>&1 ; then
+echo "
+# xCAT setup
+XCATROOT=$RPM_INSTALL_PREFIX0
+PATH=\$XCATROOT/bin:\$XCATROOT/sbin:$PATH
+MANPATH=\$XCATROOT/share/man:\$MANPATH
+export XCATROOT PATH MANPATH
+" >> /etc/environment
+fi
+
 if ! egrep XCATROOT /etc/profile  > /dev/null 2>&1 ; then
 echo "
 # xCAT setup
