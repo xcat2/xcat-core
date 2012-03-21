@@ -292,7 +292,17 @@ sub powercmd {
         if ((scalar(keys %$hash) == 1) and $Rc) {
 	        push @output, [$node_name, $data, $Rc];
         } else {
-	        push @output, [$node_name,"Success", 0];
+                # check the state of the blade or CEC after cec_reboot in order to let HWS realize the destination CEC had been powerd off #
+                #my $msg = "success";
+                if ($action eq 'cec_reboot') {
+                     sleep 0.1;
+                     xCAT::FSPUtils::fsp_state_action (@$d[3], @$d[4], "cec_state");
+                     #my $state_res = xCAT::FSPUtils::fsp_state_action (@$d[3], @$d[4], "cec_state");
+                     #my @state_state = @$state_res[1];
+                     #$msg = @state_state[0];
+               }
+	       push @output, [$node_name,"Success", 0];
+	       #push @output, [$node_name,$msg, 0];
         }
     } 
     return( \@output );

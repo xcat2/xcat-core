@@ -4236,8 +4236,8 @@ sub passwd {
     if (!grep(/OK/i, @data)) {
         return ([1, @data]);
     }
-    $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
     if ($user eq "HMC") {
+        $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
         my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
         my $blades = &get_blades_for_mpa($mpa);
         if (!defined($blades)) {
@@ -4267,6 +4267,14 @@ sub passwd {
             my $fblades = join (',',@failed_blades);
             return ([1, "Update password of HMC for '$fblades' failed. Please recreate the DFM connections for them."]);
         }
+    } else {
+        @data = ();
+        my $snmp_cmd = "users -n $user -ap sha -pp des -ppw $pass -T system:$mm";
+        @data = $t->cmd($snmp_cmd);
+        if (!grep(/OK/i, @data)) {
+            return ([1, @data]);
+        }
+        $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
     }
   } else {
     return ([1, "Update password for $user in 'mpa' table failed"]);
