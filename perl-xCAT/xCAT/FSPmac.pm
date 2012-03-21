@@ -369,10 +369,21 @@ sub getmacs {
                     # specified
                     #########################################
                     if ( defined($filter) ) {
-                        my $matched = 1;
-                        foreach ( keys %$filter ) {
-                            if ( $att{$_} ne $filter->{$_} ) {
-                                $matched = 0;
+                        my $matched = 0;
+                        foreach my $key ( keys %$filter ) {
+                            if ( $key eq "MAC_Address" ) {
+                                my $mac = lc($att{$key});
+                                my $filter_mac = lc($filter->{$key});
+
+                                $mac =~ s/://g;
+                                $filter_mac =~ s/://g;
+
+                                if ( grep(/$filter_mac/, $mac) ) {
+                                    $matched = 1;
+                                    last;
+                                }
+                            } elsif ( grep(/$filter->{$key}/, $att{$key}) ) {
+                                $matched = 1;
                                 last;
                             }
                         }
