@@ -2920,19 +2920,22 @@ sub mknimimage
                 my $ninresname = $imagedef{$::image_name}{$nimres};
                 if ($ninresname)
                 {
-                    push @nimresupdated, $ninresname;
-                    my $nimcmd = qq~nim -Fo change -a nfs_vers=4 $ninresname~;
-                    my $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
-                    if ($::RUNCMD_RC != 0)
+                    foreach my $res2update (split /,/, $ninresname)
                     {
-                        my $rsp;
-                        push @{$rsp->{data}}, "Could not set nfs_vers=4 for resource $ninresname.\n";
-                        if ($::VERBOSE)
+                        push @nimresupdated, $res2update;
+                        my $nimcmd = qq~nim -Fo change -a nfs_vers=4 $res2update~;
+                        my $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
+                        if ($::RUNCMD_RC != 0)
                         {
-                            push @{$rsp->{data}}, "$nimout";
+                            my $rsp;
+                            push @{$rsp->{data}}, "Could not set nfs_vers=4 for resource $res2update.\n";
+                            if ($::VERBOSE)
+                            {
+                                push @{$rsp->{data}}, "$nimout";
+                            }
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            return 1;
                         }
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
-                        return 1;
                     }
                 }
             }
