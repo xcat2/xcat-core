@@ -578,7 +578,7 @@ sub getmacs {
                                 last;
                             }
                         }
-                        if ( $matched == 1 ) {
+                        if ( $matched ) {
                             push @$value,"$att{'Type'}  $att{'Phys_Port_Loc'}  $att{'MAC_Address'}  $att{'Adapter'}  $att{'Port_Group'}  $att{'Phys_Port'}  $att{'Logical_Port'}  $att{'VLan'}  $att{'VSwitch'}  $att{'Curr_Conn_Speed'}";
                         }
                     } else {
