@@ -39,7 +39,7 @@ sub dodiscover {
 		if ($ip6support) {
 			$args{'socket'} = IO::Socket::INET6->new(Proto => 'udp');
 		} else {
-			croak "TODO: SLP without ipv6";
+			$args{'socket'} = IO::Socket::INET->new(Proto => 'udp');
 		}
 	}
 	unless ($args{SrvTypes}) { croak "SrvTypes argument is required for xCAT::SLP::Dodiscover"; }
@@ -64,8 +64,15 @@ sub dodiscover {
 			while ($waitforsocket->can_read(1)) {
 				my $slppacket;
 				my $peer = $args{'socket'}->recv($slppacket,1400);
-				my( $port,$flow,$ip6n,$scope) = Socket6::unpack_sockaddr_in6_all($peer);
-				my $peername = Socket6::inet_ntop(Socket6::AF_INET6(),$ip6n);
+				my( $port,$flow,$ip6n,$ip4n,$scope);
+				my $peername;
+				if ($ip6support) {
+					( $port,$flow,$ip6n,$scope) = Socket6::unpack_sockaddr_in6_all($peer);
+					$peername = Socket6::inet_ntop(Socket6::AF_INET6(),$ip6n);
+				} else {
+					($port,$ip4n) = sockaddr_in($peer);
+					$peername = inet_ntoa($ip4n);
+				}
 				if ($rethash{$peername}) {
 					next; #got a dupe, discard
 				}
@@ -402,7 +409,7 @@ unless (caller) {
 	#results on-the-fly
 	require Data::Dumper;
 	Data::Dumper->import();
-	my $srvtypes = ["service:management-hardware.IBM:chassis-management-module","service:management-hardware.IBM:integrated-management-module2","service:management-hardware.IBM:management-module"];
+	my $srvtypes = ["service:management-hardware.IBM:chassis-management-module","service:management-hardware.IBM:integrated-management-module2","service:management-hardware.IBM:management-module","service:management-hardware.IBM:cec-service-processor"];
 	xCAT::SLP::dodiscover(SrvTypes=>$srvtypes,Callback=>sub { print Dumper(@_) });
 	#example 2: simple invocation of a single service type
 	$srvtypes = "service:management-hardware.IBM:chassis-management-module";
