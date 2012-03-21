@@ -254,7 +254,8 @@ sub invoke_cmd {
     my $res;
     my $index = 0;
     my $pre_state = undef;
-    my $wait_interval =20;
+    #my $wait_interval =20;
+    my $ipl_num = 0;
     while (1) {
         $res = xCAT::Utils->runcmd($power_state_cmd, -1);
         if ($res =~ /(operating|standby)$/) {
@@ -264,43 +265,56 @@ sub invoke_cmd {
             if (!$pre_state or ($pre_state ne $1)) {
                 $pre_state = $1;
                 print "\nDestination $machine is in POWER OFF state, Please power it on and wait.";
+                sleep 5;
             } else {
                 print ".";
+                sleep 30;
             }
         } elsif (($res =~ /(power-on-transition)$/) or ($pre_state eq "power off" and $res =~ /$node :\s([.*])/)) {
             if (!$pre_state or ($pre_state ne $1)) {
                 $pre_state = $1;
+                $index++;
                 print "\nDestination $machine is POWERING ON, please wait.";
+                sleep 5;
             } else {
                 print ".";
+                sleep 30;
             }
         } elsif ($res =~ /(power-off-transition)$/) {
             if (!$pre_state or ($pre_state ne $1)) {
                 $pre_state = $1;
                 print "\nDestination $machine is POWERING OFF.";
+                sleep 20;
             } else {
                 print ".";
                 sleep 5;
                 next;
             }
         } elsif ($res =~ /(IPL-in-process)$/) {
-            if ($pre_state and ($pre_state eq $1) and !$index) {
+            if (!$pre_state) {
+                $pre_state =$1;
+                sleep 10;
+                next;
+            } elsif ($pre_state and ($pre_state eq $1) and !$index) {
                 print "\nDestination $machine is POWERING ON, please wait.";
                 $index++;
             } else {
-                print ".";
+                #print "\r\n====>pre_state=$pre_state\n";
+                $ipl_num++;
                 $pre_state = $1;
-                if ($index == 1) {
-                    sleep 5;
-                    next;
+                if ($ipl_num == 4) {
+                    print ".";
+                    $ipl_num = 0;
                 }
             }
+            sleep 5;
         } else {
             $pre_state = $res;
-            print ".";
+            #print ".";
+            sleep 20;
         }
-        $wait_interval =20+int(rand(20));
-        sleep $wait_interval;
+        #$wait_interval =20+int(rand(20));
+        #sleep $wait_interval;
     }
     
     my $cmd = "$fsp_api -a $action -t $type:$fsp_ip:$id:$node:\r";
@@ -342,14 +356,22 @@ sub invoke_cmd {
      if ($failed == 3) {
          my $link_cmd = "$fsp_api -a fsp_reconnect -t $type:$fsp_ip:$id:$node: 2>&1";
          xCAT::Utils->runcmd($link_cmd, -1);
+         print "The connection is resetting, please wait.";
          my $link_state = "";
+         my $rs_num = 0;
          while (!$link_state or $link_state !~ /state=LINE UP/i) {
-              sleep 10;
+              sleep 2;
+              $rs_num++;
               $link_cmd = "$fsp_api -a query_connection -t $type:$fsp_ip:$id:$node: 2>&1";
               $link_state = xCAT::Utils->runcmd($link_cmd, -1);
+              if ($rs_num == 5) {
+                  print ".";
+                  $rs_num = 0;
+              }
          }
+         print "\n";
          $exp->hard_close();
-         return("The connection is reset, please wait...");
+         return (0);
      }
     
     my $escape = "\030";
