@@ -41,6 +41,16 @@ sub dodiscover {
 		} else {
 			$args{'socket'} = IO::Socket::INET->new(Proto => 'udp');
 		}
+		#make an extra effort to request biggest receive buffer OS is willing to give us
+		if (-r "/proc/sys/net/core/rmem_max") { # we can detect the maximum allowed socket, read it.
+			my $sysctl;
+			open ($sysctl,"<","/proc/sys/net/core/rmem_max");
+			my $maxrcvbuf=<$sysctl>;
+			my $rcvbuf = $socket->sockopt(SO_RCVBUF);
+			if ($maxrcvbuf > $rcvbuf) {
+				$socket->sockopt(SO_RCVBUF,$maxrcvbuf/2);
+			}
+		}
 	}
 	unless ($args{SrvTypes}) { croak "SrvTypes argument is required for xCAT::SLP::Dodiscover"; }
 	setsockopt($args{'socket'},SOL_SOCKET,SO_BROADCAST,1); #allow for broadcasts to be sent, we know what we are doing
