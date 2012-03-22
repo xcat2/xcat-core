@@ -10562,7 +10562,7 @@ sub mkdsklsnode
         }
         my $xcatmasterip = xCAT::NetworkUtils->getipaddr((keys %xcatmasterhash)[0]);
         my @allips = xCAT::Utils->gethost_ips();
-        if (!grep(/$xcatmasterip/, @allips))
+        if (!grep(/^$xcatmasterip$/, @allips))
         {
             $setuphanfserr++;
             my $rsp;
@@ -10575,7 +10575,7 @@ sub mkdsklsnode
         foreach my $snhost (keys %snhash)
         {
             my $snip = xCAT::NetworkUtils->getipaddr($snhost); 
-            if (grep(/$snip/, @allips))
+            if (grep(/^$snip$/, @allips))
             {
                 $snlocal = $snhost;
             }
