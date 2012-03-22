@@ -2,7 +2,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
-#=head1  otherpkgs
+#=head1  otherpkgs - only on Linux
 #=head2  It gets the extra rpms and install/update them.
 #        The environment variable OTHERPKGS contains the rpms to be installed/updated.
 #        On MN, You need to:
@@ -21,7 +21,12 @@
 #   
 #=cut
 #-------------------------------------------------------------------------------
-
+if [ "$(uname -s)" = "AIX" ]; then
+      logger -p local4.info -t xcat "otherpkgs not support on AIX, exiting "
+      exit 0
+  else
+      logger -p local4.info -t xcat "Running otherpkgs "
+fi
 
 # do nothing for diskless deployment case because it is done in the image already
 if [[ $UPDATENODE -ne 1 ]]; then
