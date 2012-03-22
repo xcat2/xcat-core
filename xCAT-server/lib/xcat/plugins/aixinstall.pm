@@ -10529,6 +10529,8 @@ sub mkdsklsnode
     {
         # Determine the service nodes pair
         my %snhash = ();
+        my %xcatmasterhash = ();
+        my $setuphanfserr = 0;
         foreach my $tnode (@nodelist)
         {
             # Use hash for performance consideration
@@ -10538,55 +10540,100 @@ sub mkdsklsnode
             {
                 $snhash{$sn} = 1;
             }
+            my $xcatmaster = $objhash{$tnode}{'xcatmaster'};
+            $xcatmasterhash{$xcatmaster} = 1;
         }
         if (scalar(keys %snhash) ne 2)
         {
+            $setuphanfserr++;
             my $rsp;
             my $snstr = join(',', keys %snhash);
             push @{$rsp->{data}}, "Could not determine the service nodes pair, the service nodes are $snstr.\n";
             xCAT::MsgUtils->message("E", $rsp, $callback);
         }
-        else
+
+        if (scalar(keys %xcatmasterhash) ne 1)
         {
-            # Who am I?
-            my $ipmatch;
-            my $myip;
-            my $remoteip;
-            my @snips = ();
-            foreach my $snhost (keys %snhash)
+            $setuphanfserr++;
+            my $rsp;
+            my $xcatmasterstr = join(',', keys %xcatmasterhash);
+            push @{$rsp->{data}}, "There are more than one xcatmaster for the nodes, the xcatmasters are $xcatmasterstr.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+        }
+        my $xcatmasterip = xCAT::NetworkUtils->getipaddr((keys %xcatmasterhash)[0]);
+        my @allips = xCAT::Utils->gethost_ips();
+        if (!grep(/$xcatmasterip/, @allips))
+        {
+            $setuphanfserr++;
+            my $rsp;
+            my $allipstr = join(',', @allips);
+            push @{$rsp->{data}}, "xcatmaster ip address $xcatmasterip is not configured on this node.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+        }
+        my $snlocal;
+        my $snremote;
+        foreach my $snhost (keys %snhash)
+        {
+            my $snip = xCAT::NetworkUtils->getipaddr($snhost); 
+            if (grep(/$snip/, @allips))
             {
-                my $snip = xCAT::NetworkUtils->getipaddr($snhost); 
-                push(@snips, $snip);
-            }
-            my @allips = xCAT::Utils->gethost_ips();
-            foreach my $localip (@allips)
-            {
-                if (($localip ne $snips[0]) && ($localip ne $snips[1]))
-                {
-                    next;
-                }
-                $ipmatch = 1;
-                if ($localip eq $snips[0])
-                {
-                    $myip = $snips[0];
-                    $remoteip = $snips[1];
-                }
-                if ($localip eq $snips[1])
-                {
-                    $myip = $snips[1];
-                    $remoteip = $snips[0];
-                }
-            }
-            if(!$ipmatch)
-            {
-                my $rsp;
-                my $localipstr = join(',', @allips);
-                my $snipstr = join(',', @snips);
-                push @{$rsp->{data}}, "The local ip address is not listed as service node, local ip addresses are $localipstr, the service nodes ip addresses are $snipstr.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
+                $snlocal = $snhost;
             }
             else
             {
+                $snremote = $snhost;
+            }
+        }
+        if (!$snlocal || !$snremote)
+        {
+            $setuphanfserr++;
+            my $rsp;
+            my $snstr = join(',', keys %snhash);
+            push @{$rsp->{data}}, "Wrong service nodes pair: $snstr\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+        }
+
+        if (!$setuphanfserr)
+        {
+            my $remoteip;
+            # Get the ip address on the remote service node
+            my $lscmd = qq~ifconfig -a | grep 'inet '~;
+	    my $out = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snremote, $lscmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+             	my $rsp;
+               	push @{$rsp->{data}},
+               	"Could not run command: $lscmd against node $snremote.\n";
+              	xCAT::MsgUtils->message("E", $rsp, $callback);
+            }
+            else
+            {
+                foreach my $line (split(/\n/, $out))
+                {
+                     $line =~ /inet\s+(.*?)\s+netmask\s+(.*?)\s+/;
+                     #$1 is ip address, $2 is netmask
+                      if ($1 && $2)
+                      {
+                            my $ip = $1;
+                            my $netmask = $2;
+                            if(xCAT::Utils::isInSameSubnet($xcatmasterip, $ip, $netmask, 2))
+                            {
+                                $remoteip = $ip;
+                                last;
+                            }
+                        }
+                 }
+              }
+
+              if (!$remoteip)
+              {
+             	my $rsp;
+               	push @{$rsp->{data}},
+               	"Could not find an ip address in the samesubnet with xcatmaster ip $xcatmasterip on node $snremote, falling back to service node $snremote.\n";
+              	xCAT::MsgUtils->message("E", $rsp, $callback);
+                $remoteip = xCAT::NetworkUtils->getipaddr($snremote);
+              }
+
                 # Setup NFSv4 replication
                 if ($::VERBOSE)
                 {
@@ -10679,7 +10726,7 @@ sub mkdsklsnode
                 }
                 if ($needexport)
                 {
-                    my $scmd = "mknfsexp -d $install_dir -B -v 4 -g $install_dir\@$myip:$install_dir\@$remoteip -x -t rw -r '*'";
+                    my $scmd = "mknfsexp -d $install_dir -B -v 4 -g $install_dir\@$xcatmasterip:$install_dir\@$remoteip -x -t rw -r '*'";
                     my $output = xCAT::Utils->runcmd("$scmd", -1);
                     if ($::RUNCMD_RC != 0)
                     {
@@ -10690,7 +10737,6 @@ sub mkdsklsnode
                     }
                 } # end if $needexport
             } # end else
-        } # end else
     } # end if $::SETUPHANFS
 
     #
