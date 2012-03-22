@@ -126,7 +126,7 @@ if [ "$OSNAME" != "AIX" ]; then
 fi
 
 if [ "$OSNAME" == "AIX" ]; then
-	# Build the instoss file
+	# Build the instoss file ------------------------------------------
 
 	cat >instoss << 'EOF'
 #!/bin/ksh
@@ -146,20 +146,22 @@ else
 fi
 cd $OSVER
 # Have to install rpms 1 at a time, since some may be already installed.
-# The only interdependency between the dep rpms so far is that net-snmp requires bash
-#  pyodbc is dependent on unixODBC
+# The only interdependency between the dep rpms so far is that net-snmp requires bash, and
+# pyodbc requires unixODBC.  (The bash dependency is taken care of automatically because it
+# comes earlier in the alphabet.)
 rpm -Uvh unixODBC*
-for i in `ls *.rpm|grep -v -E '^tcl-|^tk-|^expect-|^unixODBC-|^xCAT-UI-deps'`; do
+for i in `ls *.rpm|grep -v -E '^tcl-|^tk-|^expect-|^unixODBC-|^xCAT-UI-deps|^perl-DBD-DB2Lite'`; do
 	if [ "$i" == "perl-Net-DNS-0.66-1.aix5.3.ppc.rpm" ]; then
 		opts="--nodeps"
 	else
 		opts=""
 	fi
-	# this next if stmt means: if i does not start with perl-DBD-DB2
+	
+	# just in case we need it sometime, this next if stmt would mean: if it does not start with perl-DBD-DB2
 	#if [ "${i#perl-DBD-DB2}" == "$i" ]; then
-		echo rpm -Uvh $opts $i
-		rpm -Uvh $opts $i
-	#fi
+	
+	echo rpm -Uvh $opts $i
+	rpm -Uvh $opts $i
 done
 # don't try to install tcl, tk, or expect if they are already installed!
 lslpp -l | grep expect.base > /dev/null 2>&1
@@ -174,7 +176,7 @@ if [ $? -gt 0 ]; then
 	fi
 fi
 EOF
-# end of instoss file content
+# end of instoss file content ---------------------------------------------
 
 
 	chmod +x instoss
