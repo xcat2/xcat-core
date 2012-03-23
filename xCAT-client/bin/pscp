@@ -47,11 +47,14 @@ my $noderange, $destloc;
 if ($dest =~ /:/) { ($noderange, $destloc) = split(/:/, $dest); }
 else { usage("No node range specified\n\n"); }
 
+my  @user = getpwuid($>);
+my $homedir=$user[7];
+
 my $client = IO::Socket::SSL->new(
                 PeerAddr=>$xcathost,
-                SSL_key_file=>$ENV{HOME}."/.xcat/client-cred.pem",
-                SSL_cert_file=>$ENV{HOME}."/.xcat/client-cred.pem",
-                SSL_ca_file => $ENV{HOME}."/.xcat/ca.pem",
+                SSL_key_file=>$homedir."/.xcat/client-cred.pem",
+                SSL_cert_file=>$homedir."/.xcat/client-cred.pem",
+                SSL_ca_file => $homedir."/.xcat/ca.pem",
                 SSL_use_cert => 1,
                 #SSL_verify_mode => 1,
              );
