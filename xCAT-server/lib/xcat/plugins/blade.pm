@@ -3911,7 +3911,16 @@ sub process_request {
     my $pass=$bladepass;
     my $ent;
     if (defined($mpatab)) {
-      ($ent)=$mpatab->getNodeSpecAttribs($mpa, {username=>"USERID"},qw(username password));
+      #($ent)=$mpatab->getNodeSpecAttribs($mpa, {username=>"USERID"},qw(username password));
+      my @user_array = $mpatab->getNodeAttribs($mpa, qw(username password));
+      foreach my $entry (@user_array) {
+          if ($entry->{username}) {
+              if ($entry->{username} =~ /^USERID$/ or $entry->{username} !~ /^(HMC|general|admin)$/) {
+                  $ent = $entry;
+                  last;
+              }
+          }
+      } 
       if (defined($ent->{password})) { $pass = $ent->{password}; }
       if (defined($ent->{username})) { $user = $ent->{username}; }
     }
