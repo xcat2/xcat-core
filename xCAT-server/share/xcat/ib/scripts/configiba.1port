@@ -39,7 +39,8 @@ then
         sed -i "s/SDP_LOAD=yes/SDP_LOAD=no/g" /etc/infiniband/openib.conf
     fi
 
-    if [ $OS_name == "suse" ]
+    #if [ $OS_name == "suse" ]
+    if [ -f "/etc/modprobe.conf" ]
     then
         sed -i "/options ib_ehca nr_ports/d" /etc/modprobe.conf
         sed -i "/options ib_ehca lock_hcalls/d" /etc/modprobe.conf
@@ -53,10 +54,42 @@ then
 fi
 
 
+if [ $PLTFRM == "Linux" ]
+then
+
+    ib_number=`lspci | grep -i InfiniBand | wc -l` 
+    #loop_number=$[ $ib_number * 2 ] 
+    loop_number=$ib_number
+
+    if [ -f /etc/redhat-release ]
+    then
+        OS_name="redhat"
+    elif [ -f /etc/SuSE-release ]
+    then
+        OS_name="suse"
+    else
+        echo "Unsupported to config IB on this OS!"
+        exit
+     fi
+ 
+    if [ $OS_name == 'suse' ]
+    then
+         dir="/etc/sysconfig/network"
+    else
+         dir="/etc/sysconfig/network-scripts"
+    fi
+    `rm -f $dir/ifcfg-ib*`
+else
+    loop_number=`lsdev -Cc adapter |grep iba |wc -l`
+
+fi
+
+
 
 HOST=`hostname -s`
 
-for num in 0 1
+#for num in 0 1
+for (( num=0; num<$loop_number; num++))
 do
     # Take primary node name, add -ib$num and then reverse resolve to get what ip should be
     nic="ib$num"   
@@ -89,17 +122,7 @@ do
         if [ $PLTFRM == "Linux" ]
         then
             # Issue openibd for Linux at boot time
-            if [ -f /etc/redhat-release ]
-            then
-                OS_name="redhat"
-            elif [ -f /etc/SuSE-release ]
-            then
-                OS_name="suse"
-            else
-                echo "Unsupported to config IB on this OS!"
-                exit
-            fi
-            
+           
             if [ -f /etc/sysctl.conf ]
             then
                 sed -i "/net.ipv4.conf.$nic.arp_filter=1/d" /etc/sysctl.conf
@@ -109,13 +132,7 @@ do
             fi
 
             # Write the info to the ifcfg file
-            if [ $OS_name == 'suse' ]
-            then
-                dir="/etc/sysconfig/network"
-            else
-                dir="/etc/sysconfig/network-scripts"
-            fi
-            echo "DEVICE=$nic
+           echo "DEVICE=$nic
 BOOTPROTO=static
 IPADDR=$ip
 NETMASK=$netmask
@@ -184,7 +201,8 @@ then
 
     sleep 10
 
-    for num in 0 1
+    #for num in 0 1
+    for (( num=0; num<$loop_number; num++))
     do
         sleep 5
         #ifup ib$num
