@@ -823,6 +823,7 @@ while (not $listener and $retry) {
     }
     sleep(0.05);
 }
+my $listenwatcher = IO::Select->new($listener);
 
 unless ($listener) {
   kill 2, $pid_UDP;
@@ -840,13 +841,28 @@ open($mainpidfile,">","/tmp/xcat/mainservice.pid"); #if here, everyone else has 
 print $mainpidfile $$;
 close($mainpidfile);
 closelog();
+my @pendingconnections;
+my $tconn;
 until ($quit) {
   $SIG{CHLD} = \&ssl_reaper; #set here to ensure that signal handler is not corrupted during loop
-  next unless my $cnnection=$listener->accept;
-  my $connection;
-  while ($sslclients > $maxsslclients) { #THROTTLE
-      sleep 0.1; #Keep processor utilization down
+  if (@pendingconnections) {
+	while ($listenwatcher->can_read(0)) { #grab everything we ca
+		$tconn = $listener->accept;
+		unless ($tconn) { next; }
+		push @pendingconnections,$tconn;
+	}
+  } else {
+	$tconn = $listener->accept;
+	unless ($tconn) { next; }
+	push @pendingconnections,$tconn;
   }
+  unless (scalar @pendingconnections) { next; }
+  if ($sslclients > $maxsslclients) { #THROTTLE
+      $listenwatcher->can_read(0.1); #when next connection tries to come in or a tenth of a second, whichever comes first
+      next; #just keep pulling things off listen queue onto our own
+  }
+  my $cnnection=shift @pendingconnections;
+  my $connection;
   my $child = xCAT::Utils->xfork(); #Yes we fork, IO::Socket::SSL is not threadsafe..
   if ($child) {
       $immediatechildren{$child}=1;
