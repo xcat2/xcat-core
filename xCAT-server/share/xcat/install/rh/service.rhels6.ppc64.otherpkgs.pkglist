@@ -1,5 +1,4 @@
--OpenIPMI-tools
 xcat/xcat-core/xCATsn
-xcat/xcat-dep/rh6/ppc64/conserver
+xcat/xcat-dep/rh6/ppc64/conserver-xcat
 xcat/xcat-dep/rh6/ppc64/perl-Net-Telnet
 xcat/xcat-dep/rh6/ppc64/perl-Expect
