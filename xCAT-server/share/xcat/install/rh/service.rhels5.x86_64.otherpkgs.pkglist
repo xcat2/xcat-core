@@ -1,3 +1,2 @@
--OpenIPMI-tools
 xcat/xcat-core/xCATsn
-xcat/xcat-dep/rh5/x86_64/conserver
+xcat/xcat-dep/rh5/x86_64/conserver-xcat
