@@ -135,7 +135,7 @@ while :; do
 		dest=`echo $destiny|awk -F= '{print $1}'`
 		mkdir /tmp/`basename $destparameter`
 		cd /tmp/`basename $destparameter`
-		ERROR=`wget $desparamater 2>&1`
+		ERROR=`wget $destparamater 2>&1`
 		while [ $? == 1 ] && echo $ERROR|grep -v 416; do
 			sleep 10
 			ERROR=`wget -c $TARG 2>&1`
