@@ -215,7 +215,8 @@ else
 	echo "Creating $DFNAME ..."
 	tar $verbosetar -jcf $DFNAME xcat-dep
 fi
-cd xcat-dep
+
+#cd xcat-dep  <-- now we want to stay above xcat-dep, so we can rsync the whole dir
 
 if [ "$UP" == 0 ]; then
  exit 0;
@@ -238,11 +239,11 @@ else
 	links="-l"
 fi
 echo "Uploading RPMs to $YUMDIR/$YUM/xcat-dep/ ..."
-while [ $((i+=1)) -le 5 ] && ! rsync $links -ruv --delete * $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/xcat-dep/
+while [ $((i+=1)) -le 5 ] && ! rsync $links -ruv --delete xcat-dep $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/
 do : ; done
 
 # Upload the tarball to the SF FRS Area
 i=0
 echo "Uploading $DFNAME to $FRS/xcat-dep/$FRSDIR/ ..."
-while [ $((i+=1)) -le 5 ] && ! rsync -v ../$DFNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat-dep/$FRSDIR/
+while [ $((i+=1)) -le 5 ] && ! rsync -v $DFNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat-dep/$FRSDIR/
 do : ; done
