@@ -3915,7 +3915,7 @@ sub process_request {
       my @user_array = $mpatab->getNodeAttribs($mpa, qw(username password));
       foreach my $entry (@user_array) {
           if ($entry->{username}) {
-              if ($entry->{username} =~ /^USERID$/ or $entry->{username} !~ /^(HMC|general|admin)$/) {
+              if ($entry->{username} =~ /^USERID$/ or $entry->{username} !~ /^HMC$/) {
                   $ent = $entry;
                   last;
               }
