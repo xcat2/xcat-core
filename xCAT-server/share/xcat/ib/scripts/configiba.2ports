@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh  -vx
 # IBM(c) 2008 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 # Sample xCAT post script for configuring secondary adatper based on eth0
@@ -22,7 +22,6 @@ then
             exit
         fi
     fi   
- 
 else
     ib_driver="openibd"
 fi
@@ -49,10 +48,22 @@ then
 
 fi
 
+if [ $PLTFRM == "Linux" ]
+then
+
+    ib_number=`lspci | grep -i InfiniBand | wc -l` 
+    loop_number=$[ $ib_number * 2 ] 
+    #loop_number=$[ $loop_number - 1 ]
+else
+    loop_number=`lsdev -Cc adapter |grep iba |wc -l`
+
+fi
+
 
 HOST=`hostname -s`
 
-for num in 0 1
+#ifor num in 0 1
+for (( num=0; num<$loop_number; num++))
 do
     # Take primary node name, add -ib$num and then reverse resolve to get what ip should be
     nic="ib$num"   
@@ -166,7 +177,8 @@ then
 
     /sbin/service $ib_driver restart
 
-    for num in 0 1
+    #for num in 0 1
+    for (( num=0; num<$loop_number; num++))
     do
         sleep 5
              
