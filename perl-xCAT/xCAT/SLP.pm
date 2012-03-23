@@ -46,9 +46,9 @@ sub dodiscover {
 			my $sysctl;
 			open ($sysctl,"<","/proc/sys/net/core/rmem_max");
 			my $maxrcvbuf=<$sysctl>;
-			my $rcvbuf = $socket->sockopt(SO_RCVBUF);
+			my $rcvbuf = $args{'socket'}->sockopt(SO_RCVBUF);
 			if ($maxrcvbuf > $rcvbuf) {
-				$socket->sockopt(SO_RCVBUF,$maxrcvbuf/2);
+				$args{'socket'}->sockopt(SO_RCVBUF,$maxrcvbuf/2);
 			}
 		}
 	}
