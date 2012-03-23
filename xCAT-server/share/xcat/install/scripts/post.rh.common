@@ -1,0 +1,36 @@
+#
+# Setup hostname
+#
+echo "post scripts" >/root/post.log
+export PRINIC=#TABLEBLANKOKAY:noderes:THISNODE:primarynic#
+if [ "$PRINIC" == "mac" ]
+then
+    export PRINIC='#TABLE:mac:THISNODE:mac#'
+fi
+if [ -z "$PRINIC" ]
+then
+    for karg in $(cat /proc/cmdline |sed -e 's/-/:/g' -e 's/ /\n/g'); do
+        if  [ "${karg%%=*}" = "BOOTIF" ]; then
+            export PRINIC=`ifconfig -a|grep -i "hwaddr ${karg#*=01:}"|awk '{print $1}'`
+        fi
+    done
+    if [ -z "$PRINIC" ]; then
+        export PRINIC=eth0
+    fi
+fi
+if [ -z "$PRINIC" ]
+then
+    export PRINIC=eth0
+elif [[ `echo "$PRINIC" | grep -sqE ^[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+$ ;echo $?` == "0" ]]; then
+    export PRINIC=`ifconfig -a | grep -i "HWaddr $PRINIC" | awk '{print $1}'`
+fi
+IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
+if [ -z $IP ]
+then
+	dhclient eth0
+	IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
+fi
+
+export HOSTNAME=$(host $IP 2>/dev/null | awk '{print $5}' | awk -F. '{print $1}')
+hostname $HOSTNAME
+
