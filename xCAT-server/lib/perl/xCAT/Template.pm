@@ -147,6 +147,13 @@ sub subvars {
       $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
     }
   }
+
+  #Support hierarchical include
+  $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
+  if ($inc =~ /#INCLUDE:[^#^\n]+#/) {
+     $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
+  }
+
   #ok, now do everything else..
   $inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
   $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;

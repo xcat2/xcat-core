@@ -1,0 +1,47 @@
+#!/bin/sh
+
+cd /etc/sysconfig/network
+rm -f ifcfg-eth-id*
+rm -f ifcfg-myri*
+cat >ifcfg-eth0 <<EOF
+DEVICE=eth0
+BOOTPROTO=dhcp
+STARTMODE=onboot
+EOF
+
+. /tmp/prinicsetting
+rm /tmp/prinicsetting
+if [ "$PRINIC" != "eth0" ]
+then
+	cd /etc/sysconfig/network
+	if [ ! -r ifcfg-$PRINIC ]
+	then
+#		cp -f ifcfg-eth0 ifcfg-$PRINIC
+		mv -f ifcfg-eth0 ifcfg-$PRINIC
+		perl -pi -e "s/eth0/$PRINIC/" ifcfg-$PRINIC
+#		echo "DHCLIENT_PRIMARY_DEVICE=yes" >> ifcfg-$PRINIC
+	fi
+fi
+echo "DHCLIENT_PRIMARY_DEVICE=yes" >> ifcfg-$PRINIC
+perl -pi -e 's/^FIREWALL="yes"/FIREWALL="no"/' /etc/sysconfig/network/config
+/etc/init.d/network restart
+
+RAND=$(perl -e 'print int(rand(50)). "\n"')
+sleep $RAND
+jsi=0
+while [ $(hostname) == 'linux' ]
+do
+	if [ $jsi -gt 10 ]; then
+		logger "Slept too long!"
+		exit
+	fi
+	let jsi=jsi+1
+	sleep 1
+done
+echo "Slept $jsi seconds before hostname made sense."
+
+HOSTNAME=$(hostname -s)
+echo $HOSTNAME
+
+/sbin/portmap
+
