@@ -35,7 +35,7 @@ FRS=/home/frs/project/x/xc/xcat
 # Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
 for i in $*; do
 	# upper case the variable name
-	varstring=`echo "$i"|cut -d '=' -f 1|tr [a-z] [A-Z]`=`echo "$i"|cut -d '=' -f 2`
+	varstring=`echo "$i"|cut -d '=' -f 1|tr '[a-z]' '[A-Z]'`=`echo "$i"|cut -d '=' -f 2`
 	export $varstring
 done
 if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ]; then
