@@ -238,7 +238,7 @@ if [ "$FRSYUM" != 0 ]; then
 else
 	links="-l"
 fi
-echo "Uploading RPMs to $YUMDIR/$YUM/xcat-dep/ ..."
+echo "Uploading RPMs from xcat-dep to $YUMDIR/$YUM/ ..."
 while [ $((i+=1)) -le 5 ] && ! rsync $links -ruv --delete xcat-dep $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/
 do : ; done
 
