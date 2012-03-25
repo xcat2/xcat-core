@@ -44,6 +44,30 @@ my $EXITCODE;     # save the bitmask of all exit codes returned by calls to hand
 1;
 
 
+sub rspclean {
+      my $response = shift;
+      my $callback = shift;
+      my $rsps = XMLin($response,SuppressEmpty=>undef,ForceArray=>1);
+	foreach my $rsp (@{$rsps->{xcatresponse}}) {
+      #add ESC back
+      foreach my $key (keys %$rsp) {
+	  if (ref($rsp->{$key}) eq 'ARRAY') { 
+              foreach my $text (@{$rsp->{$key}}) {
+                  next unless defined $text;
+                  $text =~ s/xxxxESCxxxx/\e/g;
+              }
+          }
+	  else {
+              $rsp->{$key} =~ s/xxxxESCxxxx/\e/g;
+          }
+      }
+      $callback->($rsp);
+      if ($rsp->{serverdone}) {
+         return 1;
+      }
+	}
+	return 0;
+}
 #################################
 # submit_request will take an xCAT command and pass it to the xCAT
 #   server for execution.
@@ -169,6 +193,8 @@ $request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
   my $response;
   my $rsp;
   my $cleanexit=0;
+  my $massresponse="<massresponse>";
+  my $nextcoalescetime=time()+1;
   while (<$client>) {
     $response .= $_;
     if (m/<\/xcatresponse>/) {
@@ -176,32 +202,30 @@ $request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
       $response =~ s/\e/xxxxESCxxxx/g;
 
       if ($ENV{XCATXMLTRACE}) { print $response; }
-      $rsp = XMLin($response,SuppressEmpty=>undef,ForceArray=>1);
+      $massresponse.=$response;
       if($ENV{XCATXMLWARNING}) {
         validateXML($response);
       }
-
-      #add ESC back
-      foreach my $key (keys %$rsp) {
-	  if (ref($rsp->{$key}) eq 'ARRAY') { 
-              foreach my $text (@{$rsp->{$key}}) {
-                  next unless defined $text;
-                  $text =~ s/xxxxESCxxxx/\e/g;
-              }
-          }
-	  else {
-              $rsp->{$key} =~ s/xxxxESCxxxx/\e/g;
-          }
+      my $shouldexit;
+      if (time() > $nextcoalescetime) {
+        $nextcoalescetime=time()+1;
+	$massresponse .= "</massresponse>";
+         $shouldexit = rspclean($massresponse,$callback);
+	$massresponse="<massresponse>";
       }
-	  
+
       $response='';
-      $callback->($rsp);
-      if ($rsp->{serverdone}) {
+      if ($shouldexit) {
          $cleanexit=1;
         last;
       }
     }
   }
+  if (not $cleanexit and $massresponse ne "<massresponse>") {
+	$massresponse .= "</massresponse>";
+         $cleanexit = rspclean($massresponse,$callback);
+  }
+  $massresponse="";
   unless ($cleanexit) {
      print STDERR "ERROR/WARNING: communication with the xCAT server seems to have been ended prematurely\n";
   }
