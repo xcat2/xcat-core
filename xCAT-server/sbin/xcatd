@@ -1149,7 +1149,6 @@ sub plugin_command {
       foreach (keys %unhandled_nodes) {
          push @{$xcatresponse->{xcatresponse}},{node=>[{name=>[$_],error=>["Unable to identify plugin for this command, check relevant tables: $queuelist"],errorcode=>[1]}]};
       }
-      print $sock XMLout({node=>[{name=>[$_],error=>["Unable to identify plugin for this command, check relevant tables: $queuelist"],errorcode=>[1]}]},NoAttr=>1,RootName=>'xcatresponse');
       print $sock XMLout($xcatresponse,KeepRoot=>1,NoAttr=>1);
    } else {
       foreach (keys %unhandled_nodes) {
