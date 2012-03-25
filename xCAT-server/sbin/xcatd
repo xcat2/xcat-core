@@ -1024,17 +1024,15 @@ sub plugin_command {
       if ($hdlspec =~ /^site:/) { #A site entry specifies a plugin
           my $sitekey = $hdlspec;
           $sitekey =~ s/^site://;
-          $sitetab = xCAT::Table->new('site');
-          my $sent = $sitetab->getAttribs({key=>$sitekey},['value']);
-          if ($sent and $sent->{value}) { #A site style plugin specification is just like
+	  if ($::XCATSITEVALS{$sitekey}) {#A site style plugin specification is just like
                                           #a static global, it grabs all nodes rather than some
             $useglobals = -1; #If they tried to specify anything, don't use the default global handlers at all
             unless (@nodes) {
-              $handler_hash{$sent->{value}} = 1;
+              $handler_hash{$::XCATSITEVALS{$sitekey}} = 1;
               $usesiteglobal = 1;
             }
             foreach (@nodes) { #Specified a specific plugin, not a table lookup
-              $handler_hash{$sent->{value}}->{$_} = 1;
+              $handler_hash{$::XCATSITEVALS{$sitekey}}->{$_} = 1;
             }
           }
       } elsif ($hdlspec =~ /:/) { #Specificed a table lookup path for plugin name
