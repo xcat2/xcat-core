@@ -1274,8 +1274,19 @@ sub plugin_command {
 
   if (@deferredmsgargs) { xCAT::MsgUtils->message(@deferredmsgargs) };
   @deferredmsgargs=();
+  my %xcatresponses = ( xcatresponse => [] );
+  my $nextxmittime = time()+1;
   while (($plugin_numchildren > 0) and ($check_fds->count > 0)) { #this tracks end of useful data from children much more closely
-    relay_fds($check_fds,$sock);
+    relay_fds($check_fds,$xcatresponses{xcatresponse});
+    if (time() > $nextxmittime) {
+        $nextxmittime = time()+1;
+	send_pending_responses(\%xcatresponses,$sock);
+	$xcatresponses{xcatresponse}=[];
+    }
+  }
+  if (scalar(@{$xcatresponses{xcatresponse}})) {
+	send_pending_responses(\%xcatresponses,$sock);
+	$xcatresponses{xcatresponse}=[];
   }
   #while (relay_fds($check_fds,$sock)) {}
 
@@ -1811,11 +1822,21 @@ sub service_connection {
   }
 }
 
+sub send_pending_responses {
+	my $xcatresponse = shift;
+        my $sock = shift;
+  		my $resp = XMLout($xcatresponse,KeyAttr=>[], NoAttr=>1,KeepRoot=>1);
+		#sanitize the response, to avoid being killed by non-printable bytes
+  		$resp =~ tr/\011-\177/?/c;
+  		#seeing if using utf-8 offloads potential issues to client terminal, it didn't
+      		eval {
+		        print $sock $resp; 
+	      	};
+}
 sub relay_fds { #Relays file descriptors from pipes to children to the SSL socket
   my $fds = shift;
-  my $sock = shift;
+  my $replyqueue=shift;
   my $goneclient=0;
-  unless ($sock) { return 0; }
   my $collate = ( scalar @_ > 0 ? shift  : 0);
   my @readyset = $fds->can_read(1);
   my $rfh;
@@ -1830,13 +1851,7 @@ sub relay_fds { #Relays file descriptors from pipes to children to the SSL socke
 		print $rfh "nfin\n"; #ok, ack the data (superfluous, but svn revision history shows an oddity with killed processes and assuming that was legit... for now)
 					#ack before doing the real work to allow child to get back to work
 		$resp = thaw($resp);
-  		$resp = XMLout($resp,KeyAttr=>[], NoAttr=>1,RootName=>'xcatresponse');
-		#sanitize the response, to avoid being killed by non-printable bytes
-  		$resp =~ tr/\011-\177/?/c;
-  		#seeing if using utf-8 offloads potential issues to client terminal, it didn't
-      		eval {
-		        print $sock $resp; 
-	      	};
+		push @$replyqueue,$resp;
 		last;
       }
       if ($@ and $@ =~ /PIPE/) {
