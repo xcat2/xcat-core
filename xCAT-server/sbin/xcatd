@@ -1017,6 +1017,7 @@ sub plugin_command {
     my $hdlspec;
     my @globalhandlers=();
     my $useglobals=1; #If it stays 1, then use globals normally, if 0, use only for 'unhandled_nodes, if -1, don't do at all
+    my %hdlrcaches;
     foreach (@{$cmd_handlers{$req->{command}->[0]}}) {
       $hdlspec =$_->[1];
       my $ownmod = $_->[0];
@@ -1044,10 +1045,13 @@ sub plugin_command {
           ($table,$cols) = split(/:/,$hdlspec);
           my @colmns=split(/,/,$cols);
           my @columns;
-          my $hdlrtable=xCAT::Table->new($table);
-          unless ($hdlrtable) {
-            #TODO: proper error handling
-          }
+          my $hdlrtable=0;
+	  unless ($hdlrcaches{$hdlspec}) {
+             $hdlrtable=xCAT::Table->new($table,-create=>0);
+             unless ($hdlrtable) {
+	        next;
+             }
+	  }
           my $node;
           my $colvals = {};
           foreach my $colu (@colmns) {
@@ -1066,13 +1070,12 @@ sub plugin_command {
             $handler_hash{$ownmod} = 1;
             $useglobals = 1;
           }
-          my $hdlrcache;
     	  if ($hdlrtable) {
-          	$hdlrcache = $hdlrtable->getNodesAttribs(\@nodes,\@columns);
+          	$hdlrcaches{$hdlspec} = $hdlrtable->getNodesAttribs(\@nodes,\@columns);
 	  }
           foreach $node (@nodes) {
-	    unless ($hdlrcache) { next; }
-            my $attribs = $hdlrcache->{$node}->[0]; #$hdlrtable->getNodeAttribs($node,\@columns);
+	    unless ($hdlrcaches{$hdlspec}) { next; }
+            my $attribs = $hdlrcaches{$hdlspec}->{$node}->[0]; #$hdlrtable->getNodeAttribs($node,\@columns);
             unless (defined($attribs)) { next; } 
             foreach (@columns) {
               my $col=$_;
@@ -1094,7 +1097,7 @@ sub plugin_command {
               }
             }
           }
-  	  $hdlrtable->close;
+  	  $hdlrtable->close if $hdlrtable;
         }  # end if (@nodes)
 
       } else {
