@@ -57,6 +57,7 @@ if ($^O =~ /^aix/i) {
 
 use lib "$::XCATROOT/lib/perl";
 my $cachethreshold=16; #How many nodes in 'getNodesAttribs' before switching to full DB retrieval
+#TODO: dynamic tracking/adjustment, the point where cache is cost effective differs based on overall db size
 
 use DBI;
 $DBI::dbi_debug=9; # increase the debug output
@@ -2051,7 +2052,8 @@ sub getNodesAttribs {
     } else {
         @attribs = @_;
     }
-    if (scalar($nodelist) > $cachethreshold) {
+	#it should also be the case that cache will be used if it already is in play even if below cache threshold.  This would be desired behavior
+    if (scalar(@$nodelist) > $cachethreshold) {
         $self->{_use_cache} = 0;
         $self->{nodelist}->{_use_cache}=0;
         if ($self->{tabname} eq 'nodelist') { #a sticky situation
