@@ -276,7 +276,8 @@ sub send_service_request_single {
 			setsockopt($socket,Socket6::IPPROTO_IPV6(),IPV6_MULTICAST_IF,pack("I",$interfaces->{$iface}->{scopeidx}));
 			$socket->send($packet,0,$v6addr);
 		}
-		foreach my $ip (@{$interfaces->{$iface}->{ipv4addrs}}) {
+		foreach my $sip (@{$interfaces->{$iface}->{ipv4addrs}}) {
+			my $ip = $sip;
 			$ip =~ s/\/(.*)//;
 			my $maskbits = $1;
 			my $ipn = inet_aton($ip); #we are ipv4 only, this is ok
