@@ -133,10 +133,28 @@ sub question {
 #
 # Begin main
 #
+my $nfsserver='${xcat_server}';
+my $nfspath='#BOMCPATH#';
+my $profilename="bomc";
 
-GetOptions("s"=>\$surrogate, "l=s"=>\$logfile, 
+unless (GetOptions("s"=>\$surrogate, "l=s"=>\$logfile, 
 	"ph=s"=>\$proxy{host}, "pp=i"=>\$proxy{port}, 
-	"puser=s"=>\$proxy{user}, "ppw=s"=>\$proxy{pw});
+	"puser=s"=>\$proxy{user}, "ppw=s"=>\$proxy{pw},
+	"nfsserver=s"=>\$nfsserver,"nfspath=s"=>\$nfspath,
+	"profilename=s"=>\$profilename,
+)) {
+	printf "Usage:\n";
+	printf "--ph <proxyhost>\n";
+	printf "--pp <proxyport>\n";
+	printf "--puser <proxyuser>\n";
+	printf "--ppw <proxypassword>\n";
+	printf "-l <logfile>\n";
+	printf "-s\n";
+	printf "--nfsserver <NFS server address>\n";
+	printf "--nfspath <NFS server path>\n";
+	printf "--profilename <profile name>\n";
+	exit(1);
+}
 
 if (@ARGV > 0) {
         open(IN,"<",@ARGV[0]) || die "Cannot open input file @ARGV[0]";
@@ -276,8 +294,12 @@ while ( question("Would you like to add others?","no","yesno") eq "yes") {
 my $srcdir = question("Where is the ibm_utl_bomc bin file?","/root/Desktop",'');
 my $asudir = question("Where is the ibm_utl_asu tgz file?","/root/Desktop",'');
 my $ppath = "$instroot/netboot/toolscenter/$ARCH";
-my $path = "$ppath/bomc";
-my $repo = "$ppath/repo";
+my $path = "$ppath"."/".$profilename;
+my $reponame="repo";
+if ($profilename ne "bomc") {
+   $reponame=$profilename.".repo";
+}
+my $repo = "$ppath/$reponame";
 my $one_path = "$instroot/netboot/toolscenter/$ARCH";
 my $two_path = "$instroot/netboot/bomc/$ARCH";
 while ($path) {
@@ -387,7 +409,13 @@ if [ "$1" != "serial-on" ]; then #if this terminal is a fake, don't use it, awkw
     # setup a mount point
     mkdir -p /bomc
     MNTPOINT=/bomc
-    mount -t nfs -o nolock ${xcat_server}:#BOMCPATH# /bomc
+ENDOFSH
+print $sh "	if ! mount -t nfs -o nolock ${nfsserver}:${nfspath} /bomc; then\n";
+print $sh "		echo \"Unable to mount nfs from ${nfsserver}:${nfspath} update aborted\"\n";
+print $sh <<'ENDOFSH';
+		sleep 86400
+		reboot -f
+	fi
 fi
 
 export UXSPI_BOOTABLE=/bomc
