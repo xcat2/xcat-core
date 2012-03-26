@@ -77,7 +77,9 @@ if [ ! -z "$DUMP" ]; then
 
     if [ "$KDPROTO" = "nfs" ]; then
 	if (pmatch $OSVER "sles*") || (pmatch $OSVER "suse*") || [ -f /etc/SuSE-release ]; then
-	    echo "$DUMP" > /etc/sysconfig/kdump;
+	    KDPATH=${KDPATH//\//\\\/}
+	    KDPATH="nfs:\/\/${KDIP}${KDPATH}"
+	    sed -i "s/^KDUMP_TRANSFER=.*$/KDUMP_TRANSFER=\"${KDPATH}\"/" /etc/sysconfig/kdump
 	    /etc/init.d/boot.kdump restart
 	else
 	    if (pmatch $OSVER "fedora*") || (pmatch $OSVER "rhel6*") || (pmatch $OSVER "rhels6*") || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ];then
