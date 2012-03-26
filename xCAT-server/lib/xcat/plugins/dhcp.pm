@@ -97,10 +97,35 @@ sub delnode
             my $mac;
             my $hname;
             ($mac, $hname) = split(/!/, $mace);
-            unless ($hname) { $hname = $node; }
+
+            unless ($hname)
+            {
+                $hname = $node;
+            }    #Default to hostname equal to nodename
+            unless ($mac) { next; }    #Skip corrupt format
+
+            if ( !grep /:/,$mac ) {
+                $mac = lc($mac);
+                $mac =~ s/(\w{2})/$1:/g;
+                $mac =~ s/:$//;
+            }
+            my $hostname = $hname;
+            my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( [$node] );
+            if ( $client_nethash{$node}{mgtifname} =~ /hf/ )
+            {
+                if ( scalar(@macs) > 1 ) {
+                    if ( $hname !~ /^(.*)-hf(.*)$/ ) {
+                        $hostname = $hname . "-hf" . $count;
+                    } else {
+                        $hostname = $1 . "-hf" . $count;
+                    }
+                }
+            }
+            $count = $count + 2;
+            unless ($hostname) { $hostname = $node; }
             print $omshell "new host\n";
             print $omshell
-              "set name = \"$hname\"\n";    #Find and destroy conflict name
+              "set name = \"$hostname\"\n";    #Find and destroy conflict name
             print $omshell "open\n";
             print $omshell "remove\n";
             print $omshell "close\n";
@@ -117,9 +142,9 @@ sub delnode
             if ($inetn)
             {
                 my $ip;
-                if (inet_aton($hname))
+                if (inet_aton($hostname))
                 {
-                    $ip = inet_ntoa(inet_aton($hname));
+                    $ip = inet_ntoa(inet_aton($hostname));
                 }
                 if ($ip)
                 {
