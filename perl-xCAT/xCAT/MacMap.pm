@@ -337,6 +337,9 @@ sub refresh_table {
     if ($checked_pairs{$entry->{switch}}) {
       next;
     }
+    while($children > 64) {
+    	$self->handle_output($inputs);
+    }
     $checked_pairs{$entry->{switch}}=1;
     pipe my $child,my $parent;
     $child->autoflush(1);
