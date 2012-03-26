@@ -4,6 +4,15 @@
 # 
 
 # create /etc/sysconfig/network-scripts/
+pmatch ()
+{
+  case $1 in
+    $2) return 0;;  # zero return code means string matched by pattern
+  esac
+
+  return 1          # non-zero return code means string not matched by pattern
+}
+
 for i in `/bin/cat /proc/cmdline`; do
     KEY=`/bin/echo $i  | /bin/awk -F= '{print $1}'`
     if [ "$KEY" = "ifname" ]; then
@@ -62,15 +71,21 @@ if [ ! -z "$DUMP" ]; then
         KDIP=${XCAT%:*}
     fi
 
-    if [ "$KDPROTO" = "nfs" ]; then
-        echo "net $KDIP:$KDPATH" > /etc/kdump.conf
-    fi
-
     # workaround for RHEL6
     # the $KDIP:$KDPATH directory will be used to generate the initrd for kdump service
     /bin/mount $KDIP:$KDPATH /var/tmp
 
-    /etc/init.d/kdump restart
+    if [ "$KDPROTO" = "nfs" ]; then
+	if (pmatch $OSVER "sles*") || (pmatch $OSVER "suse*") || [ -f /etc/SuSE-release ]; then
+	    echo "$DUMP" > /etc/sysconfig/kdump;
+	    /etc/init.d/boot.kdump restart
+	else
+	    if (pmatch $OSVER "fedora*") || (pmatch $OSVER "rhel6*") || (pmatch $OSVER "rhels6*") || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ];then
+		echo "net $KDIP:$KDPATH" > /etc/kdump.conf
+		/etc/init.d/kdump restart
+	    fi
+	fi
+    fi
 
     /bin/umount /var/tmp
 else
