@@ -151,7 +151,7 @@ sub parse_attribute_reply {
 sub parse_attribute_list {
 	my $payload = shift;
 	my $attrlength = ($payload->[0]<<8)+$payload->[1];
-	splice(@$payload,0,4);
+	splice(@$payload,0,2);
 	my @attributes = splice(@$payload,0,$attrlength);
 	my $attrstring = pack("C*",@attributes);
 	my %attribs;
