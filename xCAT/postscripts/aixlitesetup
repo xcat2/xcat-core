@@ -62,21 +62,25 @@ ProcessStatelite () {
 
 		# /.statelite/tmpdir
 		if [ ! -d ${TMPDIR} ]; then
-			mkdir -m 755 -p ${TMPDIR}
+		    echo "mkdir -m 755 -p ${TMPDIR}" >>$LOG
+			mkdir -m 755 -p ${TMPDIR} 2>&1 >>$LOG
 		fi
 
 		# /.statelite/persistent
 		if [ ! -d ${PERSISTENT} ]; then
-			mkdir -m 755 -p ${PERSISTENT}
-		fi
+		    echo "mkdir -m 755 -p ${PERSISTENT}" >>$LOG
+			mkdir -m 755 -p ${PERSISTENT} 2>&1 >>$LOG
+		fi 
 
 		# mount 10.2.0.200:/nodedata /.statelite/persistent
-		/usr/sbin/mount ${MNTOPTS} $SERVER:$TOMNT ${PERSISTENT}
+		echo "/usr/sbin/mount ${MNTOPTS} $SERVER:$TOMNT ${PERSISTENT}" >>$LOG
+		/usr/sbin/mount ${MNTOPTS} $SERVER:$TOMNT ${PERSISTENT} 2>&1 >>$LOG
 
 		# make a node subdir
 		# /.statelite/persistent/<nodename>
 		if [ ! -d ${PERSISTENT}/${ME} ]; then
-			mkdir -m 755 -p ${PERSISTENT}/${ME}
+		    echo "mkdir -m 755 -p ${PERSISTENT}/${ME}" >>$LOG
+			mkdir -m 755 -p ${PERSISTENT}/${ME} 2>&1 >>$LOG
 		fi
 
 	done
@@ -200,7 +204,8 @@ ProcessLitefile () {
 MountTrees () {
 	# ex. /.statelite/mnt
 	if [ ! -d ${MOUNTDIR} ]; then
-		/usr/bin/mkdir -m 755 -p $MOUNTDIR
+	    echo "/usr/bin/mkdir -m 755 -p $MOUNTDIR" >>$LOG
+		/usr/bin/mkdir -m 755 -p $MOUNTDIR 2>&1 >>$LOG
 	fi
 
 	for i in `/usr/bin/cat $LITETREE | /usr/bin/grep -v '^#' | /usr/bin/grep $ME`
@@ -212,7 +217,8 @@ MountTrees () {
 
 		if [ ! -d ${MOUNTDIR}/${SERV}${DIR} ]; then
 			# ex. /.statelite/mnt/10.2.0.200/etc/
-			/usr/bin/mkdir -m 755 -p ${MOUNTDIR}/${SERV}${DIR}
+			echo "/usr/bin/mkdir -m 755 -p ${MOUNTDIR}/${SERV}${DIR}" >>$LOG
+			/usr/bin/mkdir -m 755 -p ${MOUNTDIR}/${SERV}${DIR} 2>&1 >>$LOG
 		fi
 
 		MAX=5
@@ -273,7 +279,7 @@ ProcessType () {
 			/usr/sbin/umount ${LOCAL}>>$LOG > /dev/null > /dev/null 2>&1
 
 			echo "/usr/sbin/mount ${SOURCE} ${LOCAL}" >>$LOG
-			/usr/sbin/mount ${SOURCE} ${LOCAL}>>$LOG 2>&1
+			/usr/sbin/mount ${SOURCE} ${LOCAL} 2>&1 >>$LOG
 			;;
 
         persistent)
@@ -283,8 +289,8 @@ ProcessType () {
 			#	over the local /blah
 			# ex. /.statelite/persistent/compute02/etc
             if [ ! -d ${PERSISTENT}/${ME}${PPATH} ]; then
-                /usr/bin/mkdir -m 755 -p ${PERSISTENT}/${ME}${PPATH}
                 echo "mkdir -p ${PERSISTENT}/${ME}${PPATH}" >>$LOG
+                /usr/bin/mkdir -m 755 -p ${PERSISTENT}/${ME}${PPATH} 2>&1 >>$LOG
             fi
 
             # if the file doesn't exist, then copy it over to persistent
@@ -322,7 +328,7 @@ ProcessType () {
 			/usr/sbin/umount ${LOCAL}>>$LOG > /dev/null 2>&1
 
             echo "/usr/sbin/mount ${SOURCE} ${LOCAL}" >>$LOG
-            /usr/sbin/mount ${SOURCE} ${LOCAL}>>$LOG 2>&1
+            /usr/sbin/mount ${SOURCE} ${LOCAL} 2>&1 >>$LOG
             ;;
 
 		ro)
@@ -341,12 +347,13 @@ ProcessType () {
 				if [ -d ${SOURCE} ]; then
 					# need to create local dir
 					echo "mkdir  -m 755 -p ${LOCAL}" >>$LOG
-            		/usr/bin/mkdir -m 755 -p ${LOCAL}
+            		/usr/bin/mkdir -m 755 -p ${LOCAL} 2>&1 >>$LOG
 				else			
 					# need to create local file
 					GDIR=`/usr/bin/dirname ${2}`
                     if [ ! -d ${GDIR} ]; then
-                        /usr/bin/mkdir -m 755 -p ${GDIR}
+                        echo "/usr/bin/mkdir -m 755 -p ${GDIR}" >>$LOG
+                        /usr/bin/mkdir -m 755 -p ${GDIR} 2>&1 >>$LOG
                     fi
 					/usr/bin/touch ${LOCAL}
 				fi
@@ -354,9 +361,9 @@ ProcessType () {
 			# make sure we don't get duplicate mounts
 			/usr/sbin/umount ${LOCAL}>>$LOG > /dev/null 2>&1
 
-			echo "/usr/sbin/mount -o ro ${SOURCE} ${LOCAL}" >>$LOG 2>&1
+			echo "/usr/sbin/mount -o ro ${SOURCE} ${LOCAL}" >>$LOG
 			# ex. mount -o ro /.statelite/mnt/<server>/etc/lppcfg /etc/lppcfg
-			/usr/sbin/mount -o ro ${SOURCE} ${LOCAL}>>$LOG 2>&1
+			/usr/sbin/mount -o ro ${SOURCE} ${LOCAL} 2>&1 >>$LOG
 			;;
 		*)
 			;;
