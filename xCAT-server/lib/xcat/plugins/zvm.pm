@@ -634,7 +634,7 @@ sub changeVM {
 		my $ping = `pping $node`;
 		if (!($ping =~ m/noping/i)) {
 			$out .= `ssh $hcp "$::DIR/add3390active $userId $addr $mode"`;
-		}		
+		}
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
 
@@ -3787,7 +3787,7 @@ sub nodeSet {
 			# Close sample parmfile
 			close(SAMPLEPARM);
 
-			# Get mdisk address
+			# Get mdisk virtual address
 			my @mdisks = xCAT::zvmUtils->getMdisks( $callback, $node );
 			my $dasd   = "";
 			my $i      = 0;
@@ -3798,8 +3798,22 @@ sub nodeSet {
 				# Do not put a comma at the end of the last disk address
 				if ( $i == @mdisks ) {
 					$dasd = $dasd . "0.0.$words[1]";
+				} else {
+					$dasd = $dasd . "0.0.$words[1],";
 				}
-				else {
+			}
+			
+			# Get dedicated virtual address
+			my @dedicates = xCAT::zvmUtils->getDedicates( $callback, $node );
+			$i = 0;
+			foreach (@dedicates) {
+				$i = $i + 1;
+				@words = split( ' ', $_ );
+
+				# Do not put a comma at the end of the last disk address
+				if ( $i == @dedicates ) {
+					$dasd = $dasd . "0.0.$words[1]";
+				} else {
 					$dasd = $dasd . "0.0.$words[1],";
 				}
 			}

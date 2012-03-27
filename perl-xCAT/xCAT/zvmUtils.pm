@@ -641,6 +641,49 @@ sub getMdisks {
 
 #-------------------------------------------------------
 
+=head3   getDedicates
+
+	Description	: Get the DEDICATE statements in the user entry of a given node
+    Arguments	: Node
+    Returns		: DEDICATE statements
+    Example		: my @dedicates = xCAT::zvmUtils->getDedicates($callback, $node);
+    
+=cut
+
+#-------------------------------------------------------
+sub getDedicates {
+
+	# Get inputs
+	my ( $class, $callback, $node ) = @_;
+
+	# Directory where executables are
+	my $dir = '/opt/zhcp/bin';
+
+	# Get HCP
+	my @propNames = ( 'hcp', 'userid' );
+	my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
+	my $hcp      = $propVals->{'hcp'};
+
+	# Get node userID
+	my $userId = $propVals->{'userid'};
+
+	my $out = `ssh $hcp "$dir/getuserentry $userId" | grep "DEDICATE"`;
+
+	# Get DEDICATE statements
+	my @lines = split( '\n', $out );
+	my @dedicates;
+	foreach (@lines) {
+		$_ = xCAT::zvmUtils->trimStr($_);
+
+		# Save MDISK statements
+		push( @dedicates, $_ );
+	}
+
+	return (@dedicates);
+}
+
+#-------------------------------------------------------
+
 =head3   getUserEntryWODisk
 
 	Description	: 	Get the user entry of a given node without MDISK statments, 
