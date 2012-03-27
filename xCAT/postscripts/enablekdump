@@ -22,7 +22,7 @@ for i in `/bin/cat /proc/cmdline`; do
         break
     elif [ "$KEY" = "netdev" ]; then
         ETHX=`/bin/echo $i | /bin/awk -F= '{print $2}'`
-        MACX=`/sbin/ip link show $netdev | /bin/grep ether | /bin/awk '{print $2}'`
+        MACX=`/sbin/ip link show $ETHX | /bin/grep ether | /bin/awk '{print $2}'`
         break
     elif [ "$KEY" = "BOOTIF" ]; then
         MACX=`/bin/echo $i | /bin/awk -F= '{print $2}'`
@@ -32,13 +32,19 @@ for i in `/bin/cat /proc/cmdline`; do
 done
 
 if [ ! -z "$MACX" ] && [ ! -z "$ETHX" ]; then
-    if [ ! -e $MNTDIR/etc/sysconfig/network-scripts/ifcfg-$ETHX ]; then
-        /bin/touch $MNTDIR/etc/sysconfig/network-scripts/ifcfg-$ETHX
+	if (pmatch $OSVER "sles*") || (pmatch $OSVER "suse*") || [ -f /etc/SuSE-release ]; then
+		CONFFILE=$MNTDIR/etc/sysconfig/network/ifcfg-$ETHX
+	fi
+	if (pmatch $OSVER "fedora*") || (pmatch $OSVER "rhel6*") || (pmatch $OSVER "rhels6*") || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ];then
+		CONFFILE=$MNTDIR/etc/sysconfig/network-scripts/ifcfg-$ETHX
+	fi
+    if [ ! -e $CONFFILE ]; then
+        /bin/touch $CONFFILE
     fi
-    echo "DEVICE=$ETHX" > $MNTDIR/etc/sysconfig/network-scripts/ifcfg-$ETHX
-    echo "BOOTPROTO=dhcp" >> $MNTDIR/etc/sysconfig/network-scripts/ifcfg-$ETHX
-    echo "HWADDR=$MACX" >> $MNTDIR/etc/sysconfig/network-scripts/ifcfg-$ETHX
-    echo "ONBOOT=yes" >> $MNTDIR/etc/sysconfig/network-scripts/ifcfg-$ETHX
+    echo "DEVICE=$ETHX" > $CONFFILE
+    echo "BOOTPROTO=dhcp" >> $CONFFILE
+    echo "HWADDR=$MACX" >> $CONFFILE
+    echo "ONBOOT=yes" >> $CONFFILE
 fi
 
 
