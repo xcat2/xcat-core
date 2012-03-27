@@ -6,9 +6,9 @@ B<genimage> - Generates a stateless image to be used for a diskless install.
 
 B<genimage>
 
-B<genimage>  B<-o> I<osver> [B<-a> I<arch>] B<-p> I<profile> B<-i> I<nodebootif> B<-n> I<nodenetdrivers> [B<-r> I<otherifaces>] [B<-k> I<kernelver>] [B<-g> I<krpmver>] [B<-m> I<statelite>] [B<-l> I<rootlimitsize>] [B<-t> I<tmplimitsize>] [B<--permission> I<permission>]
+B<genimage>  B<-o> I<osver> [B<-a> I<arch>] B<-p> I<profile> B<-i> I<nodebootif> B<-n> I<nodenetdrivers> [B<-r> I<otherifaces>] [B<-k> I<kernelver>] [B<-g> I<krpmver>] [B<-m> I<statelite>] [B<-l> I<rootlimitsize>] [B<-t> I<tmplimitsize>] [B<--permission> I<permission>] [B<--interactive>]
 
-B<genimage> [B<-o> I<osver>] [B<-a> I<arch>] [B<-p> I<profile>] [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-r> I<otherifaces>] [B<-k> I<kernelver>] [B<-g> I<krpmver>] [B<-m> I<statelite>] [B<-l> I<rootlimitsize>] [B<-t> I<tmplimitsize>] [B<--permission> I<permission>] I<imagename>
+B<genimage> [B<-o> I<osver>] [B<-a> I<arch>] [B<-p> I<profile>] [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-r> I<otherifaces>] [B<-k> I<kernelver>] [B<-g> I<krpmver>] [B<-m> I<statelite>] [B<-l> I<rootlimitsize>] [B<-t> I<tmplimitsize>] [B<--permission> I<permission>] [B<--interactive>] I<imagename>
 
 
 B<genimage> [B<-h> | B<--help> | B<-v> | B<--version>]
@@ -51,7 +51,7 @@ for stateless: B<packimage>
 
 for statelite: B<liteimg>
 
-Becides prompting for the input for some flags, the B<genimage> command can not be used in interactive mode.  If any of the rpms or other scripts prompt, such as to accept a license agreement, you must use the genimage script specific to your OS from the /opt/xcat/share/xcat/netboot/<os> directory.  
+Becides prompting for the input for some paramters, the B<genimage> command takes default quesses for the parameters not specified or not defined in the I<osimage> and I<linuximage> tables. It also makes default answers for questions from yum/zypper command when installing rpms into the image. Please use --interactive flag if you want yum/zypper command to prompt you for the answers.  
 
 The B<genimage> command must be run on a system that is the same architecture as the nodes it will be
 used on.  If the management node is not the same architecture, copy the contents of
@@ -125,6 +125,10 @@ This flag is for SLES only. Use this flag to specify the rpm version for kernel 
 
 This flag is for Ubuntu, Debian and Fedora12 only. Use this flag to specify if you want to generate statelite image. The default is to generate stateless image for these three operating systems. For others, this flag is invalid because both stateless and statelite images will be generated with this command.
 
+=item B<--interactive> 
+
+This flag allows the user to answer questions from yum/zypper command when installing rpms into the image. If it is not specified, '-y' will be passed to the yum command and '--non-interactive --no-gpg-checks' will be passed to the zypper command as default answers. 
+
 
 =item B<-v|--version>
 
@@ -167,7 +171,7 @@ x86_64 and place it in the
 
 =item 4
 
-  genimage -i eth0 -n tg3,bnx2 -o sles11 -p compute
+  genimage -i eth0 -n tg3,bnx2 -o sles11 -p compute --interactive
 
 =item 5
 
@@ -180,6 +184,10 @@ x86_64 and place it in the
 =item 7
 
   genimage myimagename
+
+=item 8
+
+  genimage myimagename --interactive
 
 
 =back
