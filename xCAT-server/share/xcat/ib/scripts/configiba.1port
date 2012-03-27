@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh  
 # IBM(c) 2008 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 # Sample xCAT post script for configuring secondary adatper based on eth0
@@ -80,6 +80,19 @@ then
     fi
     `rm -f $dir/ifcfg-ib*`
 else
+
+    loop_number=`lsdev | grep "IP over Infiniband Network Interface" | wc -l`
+
+    num=0
+    #for (( num = 0; num < loop_number; num++ ))
+    while [ $num -lt $loop_number ]
+    do
+          num1=`expr $num % 2`
+          `rmdev -d -l ib$num`
+          `rmdev -d -l ml$num1`
+          num=`expr $num + 1`
+    done
+    
     loop_number=`lsdev -Cc adapter |grep iba |wc -l`
 
 fi
@@ -89,7 +102,8 @@ fi
 HOST=`hostname -s`
 
 #for num in 0 1
-for (( num=0; num<$loop_number; num++))
+num=0
+while [ $num -lt $loop_number ]
 do
     # Take primary node name, add -ib$num and then reverse resolve to get what ip should be
     nic="ib$num"   
@@ -175,6 +189,8 @@ GATEWAY=$gateway" > $dir/ifcfg-$nic
             mkiba -a $ip -i $nic -A $ib_adapter -p $port -P -1 -S up -m $netmask
         fi
     fi
+         
+    num=`expr $num + 1`
 done
 
 # Bringup all the ib interfaces
@@ -202,7 +218,7 @@ then
     sleep 10
 
     #for num in 0 1
-    for (( num=0; num<$loop_number; num++))
+    while [ $num -lt $loop_number ]
     do
         sleep 5
         #ifup ib$num
@@ -213,6 +229,7 @@ then
             ifup ib$num      
         fi
 
+        num=`expr $num + 1`
     done
 fi
 
