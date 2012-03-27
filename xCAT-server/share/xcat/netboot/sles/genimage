@@ -56,7 +56,9 @@ my $rootimg_dir;
 my $mode;
 my $permission; #the permission works only for statelite mode currently
 my $krpmver;
-my $internal;
+my $tempfile;
+my $prompt;
+
 
 sub xdie {
    system("rm -rf /tmp/xcatinitrd.$$");
@@ -92,13 +94,14 @@ GetOptions(
    'g=s' => \$krpmver,
    'permission=s' => \$permission,
    'kerneldir=s' => \$kerneldir,   
-   'internal' =>\$internal, #internal flag
+   'tempfile=s' =>\$tempfile, #internal flag
    'pkglist=s' => \$pkglist,   #internal flag
    'srcdir=s' => \$srcdir,   #internal flag
    'otherpkgdir=s' => \$srcdir_otherpkgs,  #internal flag
    'otherpkglist=s' => \$otherpkglist,      #internal flag
    'postinstall=s' => \$postinstall_filename,  #internal flag
    'rootimgdir=s' => \$destdir,   #internal flag
+   'interactive' =>\$prompt, #internal flag
  );
 
 if (@ARGV > 0) {
@@ -111,7 +114,7 @@ my %updates = ();       # the hash for updating linuximage table
 
 
 $permission = "755" unless ($permission);
-$updates{'permission'} = $permission if ($internal);
+$updates{'permission'} = $permission if ($tempfile);
 
 unless ($arch) {
     $arch = `uname -m`;
@@ -120,14 +123,14 @@ unless ($arch) {
 }
 
 $srcdir="$installroot/$osver/$arch" unless ($srcdir);
-$updates{'pkgdir'} = $srcdir if ($internal);
+$updates{'pkgdir'} = $srcdir if ($tempfile);
 $srcdir = $srcdir . "/1";
 
 $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch" unless ($srcdir_otherpkgs); 
-$updates{'otherpkgdir'} = $srcdir_otherpkgs if ($internal);
+$updates{'otherpkgdir'} = $srcdir_otherpkgs if ($tempfile);
 
 $destdir="$installroot/netboot/$osver/$arch/$profile" unless ($destdir);
-$updates{'rootimgdir'} = $destdir if ($internal);
+$updates{'rootimgdir'} = $destdir if ($tempfile);
 
 $rootimg_dir="$destdir/rootimg";
 
@@ -136,7 +139,7 @@ if ($kernelver && (!$krpmver)) {
     exit 1;
 }
 $kerneldir = "$installroot/kernels" unless ($kerneldir);    # the default directory for 3rd-party kernel is "$installroot/kernels";
-#$updates{'kerneldir'} = $kerneldir if ($internal);
+#$updates{'kerneldir'} = $kerneldir if ($tempfile);
 
 unless ($osver and $profile) {
     usage();
@@ -145,7 +148,7 @@ unless ($osver and $profile) {
 my @ndrivers;
 
 if ($netdriver) {
-    if ( ($updates{'netdrivers'} ne $netdriver) and $internal ) {
+    if ( ($updates{'netdrivers'} ne $netdriver) and $tempfile ) {
         $updates{'netdrivers'} = $netdriver;
     }
 } else {
@@ -195,7 +198,7 @@ unless ($onlyinitrd) {
     unless ($imagename) {
         $otherpkglist=imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "otherpkgs.pkglist");
         unless ($otherpkglist) { $otherpkglist=imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "otherpkgs.pkglist"); }
-        $updates{'otherpkglist'} = $otherpkglist if ($internal and $otherpkglist);
+        $updates{'otherpkglist'} = $otherpkglist if ($tempfile and $otherpkglist);
     }
     my %extra_hash=();
     %extra_hash=imgutils::get_package_names($otherpkglist) if ($otherpkglist);
@@ -230,22 +233,25 @@ unless ($onlyinitrd) {
    open($fd,">>","$rootimg_dir/etc/fstab"); # TODO: is it necessary?
    print $fd "#Dummy fstab for rpm postscripts to see\n";
    close($fd);
+   
+   my $non_interactive;
+   if (!$prompt) { $non_interactive="--non-interactive --no-gpg-checks"; }
 
    if($osver_host == 11) {#zypper in SLES11 is different
        if(-e "$rootimg_dir/etc/zypp/repos.d/$osver.repo") {
 	   system("rm -rf $rootimg_dir/etc/zypp/repos.d/$osver.repo");
        }
-       system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks ar file:$srcdir $osver");
+       system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir $osver");
        if(-e "$rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo") {
            system("rm -rf $rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo");
        }
        my $srcdir_sdk  = "$installroot/$osver/$arch/sdk1";
        if ( -e "$srcdir_sdk") {
-           system("zypper -R $rootimg_dir  --non-interactive --no-gpg-checks ar file:$srcdir_sdk ${osver}sdk");
+           system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir_sdk ${osver}sdk");
        }
 
    }else {
-	   system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks sa file:$srcdir");
+	   system("zypper -R $rootimg_dir $non_interactive sa file:$srcdir");
    }
 
    # Add the rep for kernel packages
@@ -258,22 +264,22 @@ unless ($onlyinitrd) {
          if (-e "$rootimg_dir/etc/zypp/repos.d/$kernelver.repo") {
             system("rm -rf $rootimg_dir/etc/zypp/repos.d/$kernelver.repo");
          }
-         system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks ar file:$kerneldir $kernelver");
+         system("zypper -R $rootimg_dir $non_interactive ar file:$kerneldir $kernelver");
       } else {
-         system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks sa file:$kerneldir");
+         system("zypper -R $rootimg_dir $non_interactive sa file:$kerneldir");
       }
    }
 
    #remove the old repository for extra packages
    if ($osver_host == 11) {
-       my $result=`zypper -R $rootimg_dir --non-interactive --no-gpg-checks lr |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
+       my $result=`zypper -R $rootimg_dir $non_interactive lr |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
        if ($result =~ /\S/) {
-           system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks rr $result");
+           system("zypper -R $rootimg_dir $non_interactive rr $result");
        }
    } else {
-       my $result=`zypper -R $rootimg_dir --non-interactive --no-gpg-checks sl |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
+       my $result=`zypper -R $rootimg_dir $non_interactive sl |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
        if ($result =~ /\S/) {
-           system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks sd $result");
+           system("zypper -R $rootimg_dir $non_interactive sd $result");
        }
    }
 
@@ -292,15 +298,15 @@ unless ($onlyinitrd) {
        my $whole_path="$srcdir_otherpkgs/$_";
        if (-r "$srcdir_otherpkgs/$_/repodata/repomd.xml") {
 	   if($osver_host == 11) { 
-	       system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks ar file:$srcdir_otherpkgs/$_  otherpkg$index");
+	       system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir_otherpkgs/$_  otherpkg$index");
 	   }else {
-	       system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks sa file:$srcdir_otherpkgs/$_");
+	       system("zypper -R $rootimg_dir $non_interactive sa file:$srcdir_otherpkgs/$_");
 	   }
        } else {
 	   if($osver_host == 11) { 
-	       system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks ar -t Plaindir file:$srcdir_otherpkgs/$_  otherpkg$index");
+	       system("zypper -R $rootimg_dir $non_interactive ar -t Plaindir file:$srcdir_otherpkgs/$_  otherpkg$index");
 	   }else {
-	       system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks sa -t Plaindir file:$srcdir_otherpkgs/$_");
+	       system("zypper -R $rootimg_dir $non_interactive sa -t Plaindir file:$srcdir_otherpkgs/$_");
 	   }
        }
        $index++;
@@ -327,24 +333,24 @@ unless ($onlyinitrd) {
        next if /^\s*#/;
        my ($repotype,$repourl,$repoalias) = split m/\|/;
        if($osver_host == 11) {
-         system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks ar $repourl $repoalias");
+         system("zypper -R $rootimg_dir $non_interactive ar $repourl $repoalias");
        }else {
-         system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks sa $repourl $repoalias");
+         system("zypper -R $rootimg_dir $non_interactive sa $repourl $repoalias");
        }
      }
    }
 
    # Refresh the zypper cache in case there is still old data out there
-   system("zypper -R $rootimg_dir --non-interactive --no-gpg-checks refresh");
+   system("zypper -R $rootimg_dir $non_interactive  refresh");
 
    #my $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir --disablerepo=* ";
    #$yumcmd .= "install ";
    #mkpath("$rootimg_dir/var/lib/yum");
    my $yumcmd;
    if($osver =~ /sles11/ && $osver_host == 11) {
-       $yumcmd = "zypper -R $rootimg_dir --non-interactive --no-gpg-checks install -l "; #add -l for SLES11
+       $yumcmd = "zypper -R $rootimg_dir $non_interactive install -l "; #add -l for SLES11
    }else {
-       $yumcmd = "zypper -R $rootimg_dir --non-interactive --no-gpg-checks install ";
+       $yumcmd = "zypper -R $rootimg_dir $non_interactive install ";
    }
 
    #install packages from pkglist file
@@ -355,7 +361,7 @@ unless ($onlyinitrd) {
    }
 
    if ($pkglist) {
-        $updates{'pkglist'} = $pkglist if ($internal);
+        $updates{'pkglist'} = $pkglist if ($tempfile);
     } else {
       print "Unable to find package list for $profile!";
       exit 1;
@@ -445,7 +451,7 @@ unless ($onlyinitrd) {
            $envlist = join(' ', @{$extra_hash{$pass}{ENVLIST}});
        }
 
-       my $yumcmd_remove= "zypper -R $rootimg_dir --non-interactive  --no-gpg-checks remove ";
+       my $yumcmd_remove= "zypper -R $rootimg_dir $non_interactive remove ";
        if (exists ($extra_hash{$pass}{'PRE_REMOVE'})) {
            my $pa=$extra_hash{$pass}{'PRE_REMOVE'};
            my $rm_packges= join(' ', @$pa);
@@ -482,9 +488,9 @@ unless ($onlyinitrd) {
    # needed when running genimage again after updating software in repositories
    my $yumcmd_update;
    if ($osver_host == 11) {
-     $yumcmd_update = "zypper -R $rootimg_dir --non-interactive --no-gpg-checks update ";
+     $yumcmd_update = "zypper -R $rootimg_dir $non_interactive update ";
    } else {
-     $yumcmd_update = "zypper -R $rootimg_dir --non-interactive --no-gpg-checks update  ";
+     $yumcmd_update = "zypper -R $rootimg_dir $non_interactive update  ";
    }
    $rc = system("$yumcmd_update");
    # ignore any return code
@@ -537,7 +543,7 @@ unless ($basekernelver) {
 
 $kernelver = $basekernelver unless ($kernelver);
 chomp $kernelver;
-#$updates{kernelver} = $kernelver if ($internal);
+#$updates{kernelver} = $kernelver if ($tempfile);
 
 # copy the kernel to $destdir
 if ( -e "$rootimg_dir/boot/vmlinux-$kernelver") {
@@ -561,7 +567,7 @@ unless ($imagename) {
 if (($postinstall_filename) && (-x $postinstall_filename)) {
     #print "postinstall_filename=$postinstall_filename\n";
 
-    $updates{'postinstall'} = $postinstall_filename if ($internal);
+    $updates{'postinstall'} = $postinstall_filename if ($tempfile);
 
     my $rc = system($postinstall_filename, $rootimg_dir,$osver,$arch,$profile);
     if($rc) {
@@ -575,15 +581,16 @@ if (($postinstall_filename) && (-x $postinstall_filename)) {
 # now, update the linuximage and osimage tables
 # TODO: do statelite and stateless share the same attributes? currently, I will update both of them
 #BEGIN: PLEASE DO NOT CHANGE THE FOLLOWING CODE, genimage PLUGIN NEEDS TO PARSE THR OUTPUT
-if ($internal) {
+if ($tempfile) {
+    open(FILE, ">>$tempfile");
     if ($imagename) {
 	if (keys(%updates) > 0) {
-	    print "The output for table updates starts here\n";
-	    print "table::linuximage\n";
-	    print "imagename::$imagename\n";
+	    print FILE "The output for table updates starts here\n";
+	    print FILE "table::linuximage\n";
+	    print FILE "imagename::$imagename\n";
 	    my @a=%updates;
-	    print join('::',@a) . "\n";
-	    print "The output for table updates ends here\n";
+	    print FILE join('::',@a) . "\n";
+	    print FILE "The output for table updates ends here\n";
 	}
     } else {
 	$updates_os{'profile'} = $profile;
@@ -594,36 +601,37 @@ if ($internal) {
 	$updates_os{'osdistro'} = 'sles'; # not used currently
 	$updates_os{'osarch'} = $arch;
 	# update the imagename for stateless 
-	print "The output for table updates starts here\n";
-	print "table::osimage\n";
-	print "imagename::$osver-$arch-netboot-$profile\n";
+	print FILE "The output for table updates starts here\n";
+	print FILE "table::osimage\n";
+	print FILE "imagename::$osver-$arch-netboot-$profile\n";
 	my @a=%updates_os;
-	print join('::',@a) . "\n";
-	print "The output for table updates ends here\n";
+	print FILE join('::',@a) . "\n";
+	print FILE "The output for table updates ends here\n";
 	
-	print "The output for table updates starts here\n";
-	print "table::linuximage\n";
-	print "imagename::$osver-$arch-netboot-$profile\n";
+	print FILE "The output for table updates starts here\n";
+	print FILE "table::linuximage\n";
+	print FILE "imagename::$osver-$arch-netboot-$profile\n";
 	my @a=%updates;
-	print join('::',@a) . "\n";
-	print "The output for table updates ends here\n";
+	print FILE join('::',@a) . "\n";
+	print FILE "The output for table updates ends here\n";
 	
 	# update the imagename for statelite   
 	$updates_os{'provmethod'} = 'statelite';
-	print "The output for table updates starts here\n";
-	print "table::osimage\n";
-	print "imagename::$osver-$arch-statelite-$profile\n";
+	print FILE "The output for table updates starts here\n";
+	print FILE "table::osimage\n";
+	print FILE "imagename::$osver-$arch-statelite-$profile\n";
 	my @a=%updates_os;
-	print join('::',@a) . "\n";
-	print "The output for table updates ends here\n";
+	print FILE join('::',@a) . "\n";
+	print FILE "The output for table updates ends here\n";
 	
-	print "The output for table updates starts here\n";
-	print "table::linuximage\n";
-	print "imagename::$osver-$arch-statelite-$profile\n";
+	print FILE "The output for table updates starts here\n";
+	print FILE "table::linuximage\n";
+	print FILE "imagename::$osver-$arch-statelite-$profile\n";
 	my @a=%updates;
-	print join('::',@a) . "\n";
-	print "The output for table updates ends here\n";
+	print FILE join('::',@a) . "\n";
+	print FILE "The output for table updates ends here\n";
     }
+    close FILE;
 }
 #END
 

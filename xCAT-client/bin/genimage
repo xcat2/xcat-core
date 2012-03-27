@@ -38,6 +38,7 @@ my $tmplimit;
 my $krpmver;
 my $kerneldir;
 my $mode;
+my $interactive;
 
 #-----------------------------------------------------------------------------
 
@@ -50,18 +51,19 @@ sub print_usage
 {
     print "Usage:\n";
     print "    genimage\n\n";
-    print '    genimage  -o <osver> [-a <arch>] -p <profile> -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-m statelite] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>]'."\n\n";
-    print '    genimage [-o <osver>] [-a <arch>] [-p <profile>] [-i <nodebootif>] [-n <nodenetdrivers>] [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-m statelite] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>]  <imagename>'."\n\n";
+    print '    genimage  -o <osver> [-a <arch>] -p <profile> -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-m statelite] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>] [--interactive]'."\n\n";
+    print '    genimage [-o <osver>] [-a <arch>] [-p <profile>] [-i <nodebootif>] [-n <nodenetdrivers>] [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-m statelite] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>] [--interactive] <imagename>'."\n\n";
     print "      --permission is used for statelite only\n";
     print "      -g is used for SLES only\n\n";
     print "      -m is used for urbuntu, debian and fedora12 only\n\n";
     print "Examples:\n";
     print "    genimage\n";
+    print "    genimage --interactive\n";
     print "    genimage -i eth0 -n tg3 -o sles11 -p compute\n";
-    print "    genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute\n";
+    print "    genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute --interactive\n";
     print "    genimage -i eth0 -n tg3,bnx2 -o sles11 -p compute\n";
     print "    genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot --permission 777\n";
-    print "    genimage -i eth0 -n tg3 myimagename\n";
+    print "    genimage -i eth0 -n tg3 --interactive myimagename\n";
     print "    genimage myimagename\n";
 }
 
@@ -78,7 +80,8 @@ if (!GetOptions(
 	 'g=s' => \$krpmver,
 	 'm=s' => \$mode,
 	 'permission=s' => \$permission,
-	 'kerneldir=s' => \$kerneldir,   
+	 'kerneldir=s' => \$kerneldir, 
+         'interactive' => \$interactive,  
 	 'h|help' => \$help,
 	 'v|version' => \$version,
 )) {
@@ -125,7 +128,7 @@ if ((!$imagename) && (!$profile) && (!$os) && (!$arch)) {
 		    my $img = <stdin>;
 		    chomp($img);
 		    if($img eq ""){
-			$imagename = @images[0];
+			$imagename = $images[0];
 			last;
 		    }
 		    foreach(@images){
@@ -189,7 +192,7 @@ if ((!$imagename) && (!$os)){
 	$os = <stdin>;
 	chomp($os);
 	if($os eq ""){
-	    $os = @oses[0];
+	    $os = $oses[0];
 	    last;
 	}
 	foreach(@oses){
@@ -377,11 +380,53 @@ if ($kerneldir) {
     push @arg, "$kerneldir";
 }
 
+my $tempfile="/tmp/xcat_genimage.$$";
+push @arg, "--tempfile"; #this is the file that contains the output
+push @arg, "$tempfile";
+
+if ($interactive) {
+    push @arg, "--interactive";
+}
 
 my $cmdref;
 push (@{$cmdref->{arg}}, @arg);
 $cmdref->{command}->[0] = "genimage";   
 
-xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
-exit $xCAT::Client::EXITCODE;
+if (!$interactive) {
+    xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
+    exit $xCAT::Client::EXITCODE;
+} else {
+    #when in interactive mode, first call genimage.pm get info from DB, 
+    xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
+
+    #then call the specific genimage under /opt/xcat/share...
+    if (-f $tempfile) {
+	my $cmdname;
+	#read the command name
+	open(FILE1, "<$tempfile");
+	my @output = <FILE1>;
+ 	if (@output >0) {
+	    $cmdname=$output[0];
+	} else {
+	    close FILE1;
+	    return 1;
+	}
+	close FILE1;
+
+	# run the specific genimage command
+	#print "cmdname=$cmdname\n";
+	system("$cmdname");
+
+	#then call genimage.pm to save the DB
+	my @arg1;
+	push @arg1, $tempfile;
+	my $request;
+	push (@{$request->{arg}}, @arg1);
+	$request->{command}->[0] = "saveimgdata";  
+	xCAT::Client::submit_request($request, \&xCAT::Client::handle_response);
+	exit $xCAT::Client::EXITCODE;
+    } else {
+	exit 1;
+    }
+}
     

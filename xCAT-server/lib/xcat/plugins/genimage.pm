@@ -7,42 +7,17 @@ use lib "$::XCATROOT/lib/perl";
 use xCAT::Utils;
 use xCAT::SvrUtils;
 use xCAT::Table;
-use Data::Dumper;
+#use Data::Dumper;
 use File::Path;
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 
-my $prinic; #TODO be flexible on node primary nic
-my $othernics; #TODO be flexible on node primary nic
-my $netdriver;
-my $arch;
-my $profile;
-my $osver;
-my $rootlimit;
-my $tmplimit;
-my $installroot = "/install";
-my $kerneldir;
-my $kernelver = ""; 
-my $imagename;
-my $pkglist;
-my $srcdir;
-my $destdir;
-my $srcdir_otherpkgs;
-my $otherpkglist;
-my $postinstall_filename;
-my $rootimg_dir;
-my $mode;
-my $permission; #the permission works only for statelite mode currently
-my $krpmver;
-my $kerneldir;
-my $mode;
-
-
 
 sub handled_commands {
      return {
             genimage => "genimage",
+            saveimgdata => "genimage",
    }
 }
 
@@ -50,13 +25,46 @@ sub process_request {
    my $request = shift;
    my $callback = shift;
    my $doreq = shift;
-   my $installroot = xCAT::Utils->getInstallDir();
+   my $command = $request->{command}->[0];
 
    @ARGV = @{$request->{arg}};
+
+   #saveimg
+   if ($command eq "saveimgdata") { #it is called by /opt/xcat/bin/genimage with interactive mode
+       my $tempfile1=$ARGV[0];
+       return save_image_data($callback, $doreq, $tempfile1);
+   }
 
    #my $rsp;
    #$rsp->{data}->[0]="genimage plugin gets called with ARGV=@ARGV" ;
    #$callback->($rsp);
+
+   #now handle genimage
+   my $installroot = "/install";
+   $installroot = xCAT::Utils->getInstallDir();
+   my $prinic; #TODO be flexible on node primary nic
+   my $othernics; #TODO be flexible on node primary nic
+   my $netdriver;
+   my $arch;
+   my $profile;
+   my $osver;
+   my $rootlimit;
+   my $tmplimit;
+   my $kerneldir;
+   my $kernelver = ""; 
+   my $imagename;
+   my $pkglist;
+   my $srcdir;
+   my $destdir;
+   my $srcdir_otherpkgs;
+   my $otherpkglist;
+   my $postinstall_filename;
+   my $rootimg_dir;
+   my $mode;
+   my $permission; #the permission works only for statelite mode currently
+   my $krpmver;
+   my $interactive;
+   my $tempfile;
 
    GetOptions(
        'a=s' => \$arch,
@@ -71,7 +79,9 @@ sub process_request {
        'g=s' => \$krpmver,
        'm=s' => \$mode,
        'kerneldir=s' => \$kerneldir,   
-       'permission=s' => \$permission
+       'permission=s' => \$permission,
+       'interactive' => \$interactive,
+       'tempfile=s' => \$tempfile,
        );
 
    my $osimagetab;
@@ -109,7 +119,6 @@ sub process_request {
     }
 
    
-
    if (@ARGV > 0) {
        $imagename=$ARGV[0];
        if ($arch or $osver or $profile) {
@@ -276,82 +285,146 @@ sub process_request {
    if ($mode) { $cmd .= " -m $mode";}
    if ($permission) { $cmd .= " --permission $permission"; }
    if ($kerneldir) { $cmd .= " --kerneldir $kerneldir"; }
+   if ($interactive) { $cmd .= " --interactive" }
    
-   $cmd.= " --internal";
    if ($srcdir) { $cmd .= " --srcdir $srcdir";}
    if ($pkglist) { $cmd .= " --pkglist $pkglist";}
    if ($srcdir_otherpkgs) { $cmd .= " --otherpkgdir $srcdir_otherpkgs"; }
    if ($otherpkglist) { $cmd .= " --otherpkglist $otherpkglist"; }  
    if ($postinstall_filename)  { $cmd .= " --postinstall $postinstall_filename"; }
    if ($destdir) { $cmd .= " --rootimgdir $destdir"; } 
+   if ($tempfile) { $cmd .= " --tempfile $tempfile"; } 
 
    if ($imagename) {
        $cmd.= " $imagename";
    }
    
-   # now run the specific genimage command
+
    $callback->({info=>["$cmd"]});
    $::CALLBACK=$callback;
-   #my $output = xCAT::Utils->runcmd("$cmd", 0, 1); # non-stream 
-   my $output = xCAT::Utils->runcmd("$cmd", 0, 1, 1); # stream output 
-   open(FILE, ">/tmp/genimageoutput");
-   foreach my $entry (@$output) {
-    print FILE $entry;
-    print FILE "\n";
+   
+   if ($tempfile) {
+       #first print the command 
+       open(FILE, ">$tempfile");
+       print FILE "$cmd\n\n";
+       #then print the update info for osimage and linuximage table
+
+       if (keys(%updates_os) > 0) {
+	   print FILE "The output for table updates starts here\n";
+	   print FILE "table::osimage\n";
+	   print FILE "imagename::aaaaa_not_known_yet_aaaaa\n"; #special image name
+	   my @a=%updates_os;
+	   print FILE join('::',@a) . "\n";
+	   print FILE "The output for table updates ends here\n";
+       }
+       
+       if (keys(%updates_linux) > 0) {
+	   print FILE "The output for table updates starts here\n";
+	   print FILE "table::linuximage\n";
+	   print FILE "imagename::aaaaa_not_known_yet_aaaaa\n";  #special image name
+	   my @a=%updates_linux;
+	   print FILE join('::',@a) . "\n";
+	   print FILE "The output for table updates ends here\n";
+       }
+       close File;
+   } else {
+       $callback->({error=>["NO temp file provided to store the genimage command."]});
+       return;
    }
-   close FILE; 
-
-   #save the new settings to the osimage and linuximage tables
-   $cmd="cat /tmp/genimageoutput";
-   $output = xCAT::Utils->runcmd("$cmd", 0, 1); 
-   if ($output && (@$output > 0)) {
-       my $i=0;
-       while ($i < @$output) {
-	   if ( $output->[$i] =~ /The output for table updates starts here/) {
-	       #print "----got here $i\n";
-               my $tn;
-               my %keyhash;
-               my %updates;
-	       my $s1=$output->[$i +1];
-               my $s2=$output->[$i +2];
-               my $s3=$output->[$i +3];
-               if ($s1 =~ /^table::(.*)$/) {
-		   $tn=$1;
-	       }              
-               if ($s2 =~ /^imagename::(.*)$/) {
-		   $keyhash{'imagename'} = $1;
-	       }    
-
-	       if ($tn eq 'osimage') {
-		   %updates=%updates_os;
-	       } elsif ($tn eq 'linuximage') {
-		   %updates=%updates_linux;
-	       }
-
-	       my @a=split("::", $s3);
-	       for (my $j=0; $j < @a; $j=$j+2) {
-		   $updates{$a[$j]} = $a[$j+1];
-	       }
-	       splice(@$output, $i, 5);
-	       if (($tn) && (keys(%keyhash) > 0) && (keys(%updates) > 0)) {
-		   my $tab= xCAT::Table->new($tn, -create=>1);
-		   if ($tab) {
-		      $tab->setAttribs(\%keyhash, \%updates); 
-		      #print "table=$tn,%keyhash,%updates\n";
-		      #print Dumper(%keyhash);
-		      #print Dumper(%updates);
-		   }
-	       }
-	   } else {
-	       $i++;
-	   }
-       } 
-       # remove tmp file
-       #`rm /tmp/genimageoutput`; 
-       #remove the database upgrade section
-       # runcmd_S displays the output
-       #$callback->({info=>$output}); 
+   
+   if ($interactive) {
+       return; #back to the client, client will run 
+   } else {
+       #my $output = xCAT::Utils->runcmd("$cmd", 0, 1); # non-stream 
+       my $output = xCAT::Utils->runcmd("$cmd", 0, 1, 1); # stream output 
+       #open(FILE, ">>$tempfile");
+       #foreach my $entry (@$output) {
+       #   print FILE $entry;
+       #   print FILE "\n";
+       #}
+       #close FILE; 
+       
+       #parse the output and save the image data to osimage and linuximage table
+       save_image_data($callback, $doreq, $tempfile);
    }
+}
+
+sub save_image_data {
+    my $callback=shift;
+    my $doreq=shift;
+    my $filename=shift;
+    #updates_os and updates_linux are defined at the top of the given file with imagename::aaaaa_not_known_yet_aaaaa
+    my %updates_os=();
+    my %updates_linux=();
+    
+    my $cmd="cat $filename";
+    my $output = xCAT::Utils->runcmd("$cmd", 0, 1); 
+
+    if ($output && (@$output > 0)) {
+	my $i=0;
+	while ($i < @$output) {
+	    if ( $output->[$i] =~ /The output for table updates starts here/) {
+		#print "----got here $i\n";
+		my $tn;
+		my $imgname;
+		my %keyhash;
+		my %updates;
+		my $s1=$output->[$i +1];
+		my $s2=$output->[$i +2];
+		my $s3=$output->[$i +3];
+		if ($s1 =~ /^table::(.*)$/) {
+		    $tn=$1;
+		}              
+		if ($s2 =~ /^imagename::(.*)$/) {
+		    $imgname=$1;
+		    $keyhash{'imagename'} = $imgname;
+		}    
+		
+		if ($tn eq 'osimage') {
+		    %updates=%updates_os;
+		} elsif ($tn eq 'linuximage') {
+		    %updates=%updates_linux;
+		}
+		
+		
+		my @a=split("::", $s3);
+		for (my $j=0; $j < @a; $j=$j+2) {
+		    $updates{$a[$j]} = $a[$j+1];
+		}
+		splice(@$output, $i, 5);
+
+		if ($imgname eq "aaaaa_not_known_yet_aaaaa") {
+                    #the file contains updates_os and updates_linux at the begining of the file. So read them out and save the to the variables, do not commit yet because the real image name will be provided later in the file. 
+		    if (($tn) && (keys(%updates) > 0)) {
+			if ($tn eq 'osimage') {
+			    %updates_os=%updates;
+			}  elsif ($tn eq 'linuximage') {
+			    %updates_linux=%updates;
+			}
+		    }
+		} else {
+		    
+		    if (($tn) && (keys(%keyhash) > 0) && (keys(%updates) > 0)) {
+			my $tab= xCAT::Table->new($tn, -create=>1);
+			if ($tab) {
+			    $tab->setAttribs(\%keyhash, \%updates); 
+			    #print "table=$tn,%keyhash,%updates\n";
+			    #print "*** keyhash=" . Dumper(%keyhash);
+			    #print "*** updates=" . Dumper(%updates);
+			}
+		    }
+		}
+	    } else { # if ( $output->[$i] =~ ....)
+		$i++;
+	    }
+	} #if ($output && (@$output > 0)) 
+	 
+	# remove tmp file
+	#`rm /tmp/genimageoutput`; 
+	#remove the database upgrade section
+	# runcmd_S displays the output
+	#$callback->({info=>$output}); 
+    }    
 }
 
 1;
