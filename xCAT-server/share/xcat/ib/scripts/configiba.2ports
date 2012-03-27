@@ -88,7 +88,8 @@ else
           num=`expr $num + 1`
     done
     
-    loop_number=`lsdev -Cc adapter |grep iba |wc -l`
+    ib_number=`lsdev -Cc adapter |grep iba |wc -l`
+    loop_number=`expr $ib_number \* 2` 
 
 fi
 
