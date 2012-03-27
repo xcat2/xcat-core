@@ -101,7 +101,7 @@ GetOptions(
    'otherpkglist=s' => \$otherpkglist,      #internal flag
    'postinstall=s' => \$postinstall_filename,  #internal flag
    'rootimgdir=s' => \$destdir,   #internal flag
-   'interactive' =>\$prompt, #internal flag
+   'interactive' =>\$prompt, 
  );
 
 if (@ARGV > 0) {
@@ -1657,11 +1657,11 @@ sub load_dd()
 }
 
 sub usage {
-    print 'Usage: genimage  -o <OSVER> [-a <arch>] -p <profile> -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>]'."\n";
+    print 'Usage: genimage  -o <OSVER> [-a <arch>] -p <profile> -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>] [--interactive]'."\n";
     print "       --permission is used for statelite only\n";
     print "Examples:\n";
     print " genimage -i eth0 -n tg3 -o sles11 -p compute\n";
-    print " genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o sles11 -p compute\n";
+    print " genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o sles11 -p compute --interactive\n";
     print " genimage -i eth0 -n tg3,bnx2 -o sles11 -p compute\n";
     print " genimage -i eth0 -n tg3,bnx2 -o sles11 -p compute --permission 777\n";
     return 0;

@@ -84,7 +84,7 @@ GetOptions(
    'otherpkglist=s' => \$otherpkglist,      #internal flag
    'postinstall=s' => \$postinstall_filename,  #internal flag
    'rootimgdir=s' => \$destdir,   #internal flag
-   'interactive' =>\$prompt, #internal flag
+   'interactive' =>\$prompt, 
 );
 
 if (@ARGV > 0) {
@@ -1127,11 +1127,11 @@ sub generic_post { #This function is meant to leave the image in a state approxi
 
 
 sub usage {	
-   print 'Usage: genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -o <OSVER> -p <PROFILE> -k <KERNELVER> [-m <mode> [--permission <permission>]]'."\n";
+   print 'Usage: genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -o <OSVER> -p <PROFILE> -k <KERNELVER> [-m <mode> [--permission <permission>]] [--interactive]'."\n";
    print "       --permission only works when '-m statelite' is set\n";
    print "Examples:\n";
    print " genimage -i eth0 -n tg3 -o centos5.1 -p compute\n";
-   print " genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute\n";
+   print " genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute --interactive\n";
    print " genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot -m statelite\n";
    print " genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot -m statelite --permission 777\n";
    return 0;
