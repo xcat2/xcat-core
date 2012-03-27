@@ -49,8 +49,9 @@ my $rootimg_dir;
 my $rwfiles;   # these files are used by statelite for tmpfs rw
 my $mode;
 my $permission; # the permission works only for statelite mode currently
-my $internal;
+my $tempfile;
 my $kerneldir;
+my $prompt;
 
 
 sub xdie {
@@ -72,13 +73,14 @@ GetOptions(
    'm=s' => \$mode,
    'permission=s' => \$permission,
    'kerneldir=s' => \$kerneldir,   
-   'internal' =>\$internal, #internal flag
+   'tempfile=s' =>\$tempfile, #internal flag
    'pkglist=s' => \$pkglist,   #internal flag
    'srcdir=s' => \$srcdir,   #internal flag
    'otherpkgdir=s' => \$srcdir_otherpkgs,  #internal flag
    'otherpkglist=s' => \$otherpkglist,      #internal flag
    'postinstall=s' => \$postinstall_filename,  #internal flag
    'rootimgdir=s' => \$destdir,   #internal flag
+   'interactive' =>\$prompt, #internal flag
 );
 
 if (@ARGV > 0) {
@@ -92,7 +94,7 @@ if ($mode eq "statelite") {
     if (!$permission) {
         $permission = "755";
     }
-    $updates{'permission'} = $permission if ( $internal );
+    $updates{'permission'} = $permission if ( $tempfile );
 }
 
 if (!$arch) {
@@ -106,18 +108,18 @@ if (!$arch) {
 if (!$srcdir) { 
     $srcdir="$installroot/$osver/$arch";
 }
-$updates{'pkgdir'} = $srcdir if ($internal);
+$updates{'pkgdir'} = $srcdir if ($tempfile);
 
 if (!$srcdir_otherpkgs) { 
     $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch";
 }
-$updates{'otherpkgdir'} = $srcdir_otherpkgs if ($internal);
+$updates{'otherpkgdir'} = $srcdir_otherpkgs if ($tempfile);
 
 if (!$destdir)
 {
     $destdir="$installroot/netboot/$osver/$arch/$profile";
 }
-$updates{'rootimgdir'} = $destdir if ($internal);
+$updates{'rootimgdir'} = $destdir if ($tempfile);
 
 $rootimg_dir="$destdir/rootimg";
 
@@ -128,7 +130,7 @@ unless ($osver and $profile and $netdriver and $prinic) {
 }
 
 if ($netdriver) {
-    if ( ($updates{'netdrivers'} ne $netdriver) and ($internal) ) {
+    if ( ($updates{'netdrivers'} ne $netdriver) and ($tempfile) ) {
         $updates{'netdrivers'} = $netdriver;
     }
 }
@@ -180,11 +182,15 @@ unless ($onlyinitrd) {
    close($aptconfig);
    mkpath "$rootimg_dir/etc";
 
+   my $non_interactive;
+   if (!$prompt) { $non_interactive="-y"; }
 
    my $fd;
    open($fd,">>","$rootimg_dir/etc/fstab");
    print $fd "#Dummy fstab for rpm postscripts to see\n";
    close($fd);
+
+   
 
    my @line=split(" ",`ls -lh $installroot/$osver/$arch/dists/ | grep dr`);
    #print "$line\n";
@@ -208,7 +214,7 @@ unless ($onlyinitrd) {
    }
 
    if ($pkglist) {
-       $updates{'pkglist'} = $pkglist if ($internal);
+       $updates{'pkglist'} = $pkglist if ($tempfile);
    } else {
        print "Unable to find package list for $profile!";
        exit 1;
@@ -240,7 +246,7 @@ unless ($onlyinitrd) {
     }
     my %extra_hash=();
     if ($otherpkglist) {
-	$updates{'otherpkglist'} = $otherpkglist if ($internal);
+	$updates{'otherpkglist'} = $otherpkglist if ($tempfile);
        %extra_hash=get_package_names($otherpkglist);
     }
     my %extrapkgnames; 
@@ -259,7 +265,7 @@ unless ($onlyinitrd) {
       }
       close($yumconfig);
       $index--;
-      $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
+      $yumcmd = "yum $non_interactive -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
       foreach (0..$repnum) {
 	  $yumcmd .= "--enablerepo=$osver-$arch-$_ ";
       }
@@ -343,7 +349,7 @@ unless ($kernelver) {
     $kernelver=$basekernelver;
 }
 chomp($kernelver);
-#$updates{'kernelver'} = $kernelver if ($internal);
+#$updates{'kernelver'} = $kernelver if ($tempfile);
 
 open($moddeps,"<","$rootimg_dir/lib/modules/$kernelver/modules.dep");
 my @moddeps = <$moddeps>;
@@ -380,7 +386,7 @@ if (!$imagename) {
 
 if (($postinstall_filename) && (-x $postinstall_filename)) {
 
-    $updates{'postinstall'} = $postinstall_filename if ($internal);
+    $updates{'postinstall'} = $postinstall_filename if ($tempfile);
 
     my $rc = system($postinstall_filename, $rootimg_dir,$osver,$arch,$profile);
     if($rc) {
@@ -418,15 +424,16 @@ if($mode eq "statelite"){
 # now, update the linuximage and osimage tables
 # TODO: do statelite and stateless share the same attributes?
 #BEGIN: PLEASE DO NOT CHANGE THE FOLLOWING CODE, genimage PLUGIN NEEDS TO PARSE THR OUTPUT
-if ($internal) {
+if ($tempfile) {
+    open(FILE, ">>$tempfile");
     if ($imagename) {
 	if (keys(%updates) > 0) {
-	    print "The output for table updates starts here\n";
-	    print "table::linuximage\n";
-	    print "imagename::$imagename\n";
+	    print FILE "The output for table updates starts here\n";
+	    print FILE "table::linuximage\n";
+	    print FILE "imagename::$imagename\n";
 	    my @a=%updates;
-	    print join('::',@a) . "\n";
-	    print "The output for table updates ends here\n";
+	    print FILE join('::',@a) . "\n";
+	    print FILE "The output for table updates ends here\n";
 	}
     } else {
 	$updates_os{'profile'} = $profile;
@@ -441,20 +448,21 @@ if ($internal) {
 	$updates_os{'osdistro'} = 'sles'; # not used currently
 	$updates_os{'osarch'} = $arch;
 	# update the imagename for stateless 
-	print "The output for table updates starts here\n";
-	print "table::osimage\n";
-	print "imagename::$osver-$arch-netboot-$profile\n";
+	print FILE "The output for table updates starts here\n";
+	print FILE "table::osimage\n";
+	print FILE "imagename::$osver-$arch-netboot-$profile\n";
 	my @a=%updates_os;
-	print join('::',@a) . "\n";
-	print "The output for table updates ends here\n";
+	print FILE join('::',@a) . "\n";
+	print FILE "The output for table updates ends here\n";
 	
-	print "The output for table updates starts here\n";
-	print "table::linuximage\n";
-	print "imagename::$osver-$arch-netboot-$profile\n";
+	print FILE "The output for table updates starts here\n";
+	print FILE "table::linuximage\n";
+	print FILE "imagename::$osver-$arch-netboot-$profile\n";
 	my @a=%updates;
-	print join('::',@a) . "\n";
-	print "The output for table updates ends here\n";
-   }
+	print FILE join('::',@a) . "\n";
+	print FILE "The output for table updates ends here\n";
+    }
+    close FILE;
 }
 #END
 
