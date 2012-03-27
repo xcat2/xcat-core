@@ -1759,6 +1759,15 @@ sub setupODBC
     {
        xCAT::MsgUtils->message("E", " $cmd failed.");
     }
+    if ($::SERVER) {  # if on the DB2 Server
+      # set authorization to client so LoadL id can connect
+      $cmd = "db2 update dbm cfg using authentication client immediate"; 
+      $rc  = &rundb2cmd($cmd);
+      if ($rc != 0)
+      {
+        xCAT::MsgUtils->message("SI", " $cmd warning.");
+      }
+    }
 }
 
 #-----------------------------------------------------------------------------
