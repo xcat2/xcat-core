@@ -277,13 +277,14 @@ sub powercmd {
         if( $data =~ /Error/) {
             if( $data =~ /Power interval/) {
                 $data = "Error: Invalid powerinterval value in the site table. The valid powerinerval value could be 0 to 300 .";
+	            push @output, [$node_name, $data, -1];
+                next;
+            } elsif ( $data =~ /$node_name/) {
+	            push @output, [$node_name, $data, -1];
+                next;
             }
-	    push @output, [$node_name, $data, -1];
-        } else {
-	    push @output, [$node_name,"Success", 0];
         }
-               
-        
+	    push @output, [$node_name,"Success", 0];
     } 
 
     return( \@output );
@@ -385,8 +386,20 @@ sub state {
             # Node not found 
             ##################################
             if ( !exists( $data->{$id} )) {
-                push @result, [$name, $prefix."Node not found",1];
-                next;
+                my $res = xCAT::FSPUtils::fsp_api_action($name, $d, "state"); 
+                my $rc = @$res[2];
+                my $val = @$res[1];
+                if( $rc != 0) {
+                    push @result, [$name, $prefix.$val,1];
+                }
+                
+                if( !defined($val) || $val =~ /^error$/ ) {
+                    push @result, [$name, $prefix."Node not found",1];
+                    next;
+                } else {
+                    $data->{$id} = $val;
+                }
+
             }
             ##################################
             # Output value
