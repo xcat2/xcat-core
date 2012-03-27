@@ -4237,7 +4237,8 @@ sub passwd {
   }
   my $mpatab = xCAT::Table->new('mpa');
   if ($mpatab) {
-    my ($ent)=$mpatab->getNodeSpecAttribs($mpa, {username=>$user},qw(password));
+    #my ($ent)=$mpatab->getNodeSpecAttribs($mpa, {username=>$user},qw(password));
+    my ($ent)=$mpatab->getAttribs({mpa=>$mpa, username=>$user},qw(password));
     my $oldpass = 'PASSW0RD';
     if (defined($ent->{password})) {$oldpass = $ent->{password}};
     my $cmd = "users -n $user -op $oldpass -p $pass -T system:$mm";
