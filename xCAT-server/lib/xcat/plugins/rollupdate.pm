@@ -361,6 +361,8 @@ sub readFileInput {
 
     my @lines = split /\n/, $filedata;
 
+    my $rf_rc=0;
+    my $rf_err= "";
     my $prev_attr = "";
     foreach my $l (@lines) {
 
@@ -371,6 +373,8 @@ sub readFileInput {
         if ( $l =~ /^\s*(\w+)\s*=\s*(.*)\s*/ ) {
             my $attr = $1;
             my $val  = $2;
+            my $orig_attr = $attr;
+            my $orig_val  = $val;
             $attr =~ s/^\s*//;       # Remove any leading whitespace
             $attr =~ s/\s*$//;       # Remove any trailing whitespace
             $attr =~ tr/A-Z/a-z/;    # Convert to lowercase
@@ -380,8 +384,51 @@ sub readFileInput {
             # Convert the following values to lowercase
             if ( ($attr eq 'scheduler') ||
                  ($attr eq 'updateall') ||
+                 ($attr eq 'update_if_down') ||
                  ($attr eq 'skipshutdown') ) {
                 $val =~ tr/A-Z/a-z/;   
+                if ( ($attr eq 'scheduler') &&
+                     ($val ne 'loadleveler')   ) {
+                    $rf_err = "Stanza \'$orig_attr = $orig_val\' is not valid.  Valid values are \'loadleveler\'.";                    
+                    $rf_rc=1;
+                    my $rsp;
+                    push @{ $rsp->{data} },$rf_err;
+                    xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+                }
+                if ( ($attr eq 'updateall') &&
+                     (($val ne 'yes') &&
+                      ($val ne 'y')   &&
+                      ($val ne 'no')  &&
+                      ($val ne 'n')      )     ) {
+                    $rf_err = "Stanza \'$orig_attr = $orig_val\' is not valid.  Valid values are \'yes\' or \'no\'.";                    
+                    $rf_rc=1;
+                    my $rsp;
+                    push @{ $rsp->{data} },$rf_err;
+                    xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+                }
+                if ( ($attr eq 'update_if_down') &&
+                     (($val ne 'yes') &&
+                      ($val ne 'y')   &&
+                      ($val ne 'no')  &&
+                      ($val ne 'n')   &&
+                      ($val ne 'cancel')      )     ) {
+                    $rf_err = "Stanza \'$orig_attr = $orig_val\' is not valid.  Valid values are \'yes\', \'no\', or \'cancel\'.";                    
+                    $rf_rc=1;
+                    my $rsp;
+                    push @{ $rsp->{data} },$rf_err;
+                    xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+                }
+                if ( ($attr eq 'skipshutdown') &&
+                     (($val ne 'yes') &&
+                      ($val ne 'y')   &&
+                      ($val ne 'no')  &&
+                      ($val ne 'n')      )       ) {
+                    $rf_err = "Stanza \'$orig_attr = $orig_val\' is not valid.  Valid values are \'yes\' or \'no\'.";                    
+                    $rf_rc=1;
+                    my $rsp;
+                    push @{ $rsp->{data} },$rf_err;
+                    xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+                }
             }
 
             # Remove surrounding quotes in the following values
@@ -413,7 +460,7 @@ sub readFileInput {
         }
     }    # end while - go to next line
 
-    return 0;
+    return $rf_rc;
 }
 
 #----------------------------------------------------------------------------
