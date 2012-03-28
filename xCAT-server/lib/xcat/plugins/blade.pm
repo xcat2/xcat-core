@@ -18,6 +18,7 @@ use Thread qw(yield);
 use xCAT::Utils;
 use xCAT::Usage;
 use IO::Socket;
+use IO::Pty; #needed for ssh password login
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use strict;

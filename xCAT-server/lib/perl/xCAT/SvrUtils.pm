@@ -13,6 +13,9 @@ require xCAT::NetworkUtils;
 use File::Basename;
 
 use strict;
+use Exporter;
+our @ISA = qw/Exporter/;
+our @EXPORT_OK = qw/sendmsg/;
 
 
 #-------------------------------------------------------------------------------
