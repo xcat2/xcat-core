@@ -14,7 +14,7 @@
 
 OS=`uname`
 #installroot='/install/netboot/sles11.1/x86_64/compute/rootimg'
-
+INSTALL_DIR='/install'
 #OFED_DIR='/install/post/otherpkgs/sles11.1/x86_64/ofed/'
 OFED_DIR=$ofeddir
 
