@@ -167,6 +167,10 @@ sub process_request
         &usage($callback);
         return 1;
     }
+	
+	my $rsp;
+	push @{$rsp->{data}}, "Moving nodes to their backup service nodes.\n";
+	xCAT::MsgUtils->message("I", $rsp, $callback);
 
     #
     #  get the list of nodes
@@ -555,7 +559,14 @@ sub process_request
     my %SLmodhash;
     my %LTmodhash;
 
-    if ($::isaix)
+	# check the sharedinstall attr
+	my $sharedinstall=xCAT::Utils->get_site_attribute('sharedinstall');
+	chomp $sharedinstall;
+	if (!$sharedinstall) {
+        $sharedinstall="no";
+    }
+
+    if ( ($::isaix) && ($sharedinstall eq "no") )  
     {
 
         #
@@ -746,17 +757,15 @@ sub process_request
 
     }    # end sync statelite and litetree entries
 
-    if ($::VERBOSE)
-    {
-        my $rsp;
-        push @{$rsp->{data}}, "Setting new values in the xCAT database.\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
-    }
+	my $rsp;
+	push @{$rsp->{data}}, "Setting new values in the xCAT database.\n";
+	xCAT::MsgUtils->message("I", $rsp, $callback);
 
 	#
     # make updates to statelite table
 	#
-    if ($::isaix)
+
+	if ( ($::isaix) && ($sharedinstall eq "no") ) 
     {
 
         my $statetab = xCAT::Table->new('statelite', -create => 1);
@@ -833,7 +842,21 @@ sub process_request
                                $sub_req, 0, 1
                                );
         $callback->({data => $ret});
-    }
+	}
+
+	#
+	# - retarget the iscsi dump device to the new server for the nodes
+	#
+	if ((!$::IGNORE) && ($::isaix)) {
+
+		if (&dump_retarget($callback, \@nodes, $sub_req) != 0)
+		{
+			my $rsp;
+			push @{$rsp->{data}}, "One or more errors occured while attemping to re-target the dump device on cluster nodes.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			$error++;
+		}
+	}
 
     #
     #   Run niminit on AIX diskful nodes
@@ -851,6 +874,13 @@ sub process_request
                 # if this is a standalone node then run niminit
                 if (($nimtype{$node}) && ($nimtype{$node} eq 'standalone'))
                 {
+
+					if ($::VERBOSE)
+					{
+						my $rsp;
+						push @{$rsp->{data}},"Running niminit on $node.\n";
+						xCAT::MsgUtils->message("I", $rsp, $callback);	
+					}
 
                     my $nimcmd =
                       qq~/usr/sbin/niminit -a name=$node -a master=$newsn{$node} >/dev/null 2>&1~;
@@ -948,11 +978,17 @@ sub process_request
     # update the /etc/xcatinfo files on the nodes
     #	switch to the new server name
     #
-if (0) {  # save this for later - not needed yet
     if (!$::IGNORE)
     {
         if ($::isaix)
         {
+
+			if ($::VERBOSE)
+			{
+				my $rsp;
+				push @{$rsp->{data}}, "Updating the /etc/xcatinfo files.\n";
+				xCAT::MsgUtils->message("I", $rsp, $callback);
+			}
 
             foreach my $node (@nodes)
             {
@@ -983,7 +1019,6 @@ if (0) {  # save this for later - not needed yet
             }
         }    # end if isaix
     } # end of not ignore
-}  # end of not needed
 
     if (!$::IGNORE)
     {
@@ -1303,8 +1338,7 @@ if (0) {  # save this for later - not needed yet
 sub getSNinterfaces
 {
 
-    #my ($class, $list, $callback, $subreq) = @_;
-    my ($list, $callback, $subreq) = @_;
+    my ($list, $callback, $sub_req) = @_;
 
     my @snlist = @$list;
 
@@ -1329,7 +1363,7 @@ sub getSNinterfaces
         my $SNIP;
 
         my $result =
-          xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $sn, $ifcmd, 0);
+          xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $sn, $ifcmd, 0);
         if ($::RUNCMD_RC != 0)
         {
             my $rsp = {};
@@ -1418,3 +1452,315 @@ sub usage
     return 0;
 }
 
+#----------------------------------------------------------------------------
+
+=head3   dump_retarget
+
+			Switches the iscsi dump target of nodes to a backup service node.
+
+        Arguments:
+        Returns:
+            0 - OK
+            1 - error
+
+        Usage:  $ret = &dump_retarget($callback, \@nodelist, $sub_req);
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub dump_retarget
+{
+	my $callback = shift;
+	my $nodelist    = shift;
+	my $sub_req   = shift;
+
+	my @nodes = @$nodelist;
+
+	my $error;
+
+	my $rsp;
+	push @{$rsp->{data}}, "Re-targetting dump devices for:\n\'@nodes\'\n";
+	xCAT::MsgUtils->message("I", $rsp, $callback);
+
+	# get provmethod and xcatmaster for each node
+	my $nrtab = xCAT::Table->new('noderes');
+	my $nttab = xCAT::Table->new('nodetype');
+	my $nrhash;
+	my $nthash;
+	if ($nrtab)
+	{
+       	$nrhash = $nrtab->getNodesAttribs(\@nodes, ['xcatmaster', 'servicenode']);
+   	}
+   	else
+   	{
+       	my $rsp = {};
+       	$rsp->{data}->[0] = "Can not open noderes table.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+   	}
+	if ($nttab)
+   	{
+       	$nthash = $nttab->getNodesAttribs(\@nodes, ['provmethod']);
+   	}
+   	else
+   	{
+       	my $rsp = {};
+       	$rsp->{data}->[0] = "Can not open nodetype table.\n";
+       	xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+   	}
+
+	# get the network info for each node
+	# $nethash{nodename}{networks attr name} = value
+	my %nethash = xCAT::DBobjUtils->getNetwkInfo(\@nodes);
+
+
+	# get a list of nodes for each SNs and osimage combo
+	#		- also a list of osimages.
+	my %SNosinodes;
+	my @image_names;
+	my %SNname;
+	foreach my $node (@nodes)
+	{
+
+		my $xmast = $nrhash->{$node}->[0]->{'xcatmaster'};
+		my ($snode, $junk) = (split /,/, $nrhash->{$node}->[0]->{'servicenode'});
+		my $osimage = $nthash->{$node}->[0]->{'provmethod'};
+
+		push(@{$SNosinodes{$xmast}{$osimage}}, $node);
+
+		if (!grep(/^$osimage$/, @image_names) ) {
+			push(@image_names, $osimage);
+		}
+		$SNname{$xmast}=$snode;      
+	}
+
+	#
+	# get the image defs from the DB
+	#
+	my %imghash;
+	my %objtype;
+	# for each image
+	foreach my $m (@image_names) 
+	{
+		$objtype{$m} = 'osimage';
+	}
+	my %imghash = xCAT::DBobjUtils->getobjdefs(\%objtype, $callback);
+	if (!(%imghash))
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "Could not get xCAT osimage definitions.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+	}
+
+	# set the default port - todo - user could have set differently???
+	my $dump_port=32600;
+
+	# for each SN
+	foreach my $sn (keys %SNosinodes)
+	{
+		# get ip addr of SN as known by the node
+		#  - sn is "xcatmaster"   
+		chomp $sn;
+		my $SNip = xCAT::NetworkUtils->getipaddr($sn);
+
+		# this is "servicenode" value - get first in list
+		my ($xcatSNname, $junk) = (split /,/, $SNname{$sn}); 
+
+		# for each osimage needed for this SN
+		foreach my $osi (keys %{$SNosinodes{$sn}})
+		{
+
+			# get dump target and lun from nim dump res def
+			my @attrs = ("dump_target", "dump_lunid");
+			my $na = &getnimattr($imghash{$osi}{'dump'}, \@attrs, $callback, $xcatSNname, $sub_req);
+			my %nimattrs = %{$na};
+			my $dump_target = $nimattrs{dump_target};
+			my $dump_lunid = $nimattrs{dump_lunid};
+
+			# get configdump value from xCAT osimage def
+			my $configdump;
+			if ($imghash{$osi}{'configdump'}) {
+				$configdump = $imghash{$osi}{'configdump'};
+			} else {
+				$configdump = "selective";
+			}
+			
+			if ($::VERBOSE) {
+				# print values  ??
+				# or cmd??
+			}
+
+			if (!$dump_target || !$dump_port || !$SNip || !$dump_lunid) {
+				my $rsp;
+				push @{$rsp->{data}}, "Could not re-target the dump device for the following nodes. \n@{$SNosinodes{$sn}{$osi}}\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				$error++;
+				next;
+			}
+
+			my @nodelist = @{$SNosinodes{$sn}{$osi}};
+			foreach my $nd (@nodelist) {
+
+				chomp $nd;
+                my $Nodeip = xCAT::NetworkUtils->getipaddr($nd);
+
+				# need node gateway
+                my $gateway = $nethash{$nd}{'gateway'};
+
+				#  This should configure the iscsi disc on the client
+				my $tcmd = qq~/usr/lpp/bos.sysmgt/nim/methods/c_disc_target -a operation=discover -a target="$dump_target" -a dump_port="$dump_port" -a ipaddr="$SNip" -a lun_id="$dump_lunid"~;
+				my $hd = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nd, $tcmd, 0);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Could not run \'$tcmd\' on node $nd.\
+n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    $error++;
+                    next;
+                }
+				chomp $hd;
+
+				my $hdisk = $hd;
+				if ($hd =~ /:/) {
+					my $node;
+					($node, $hdisk) = split(': ', $hd);
+				}
+
+				chomp $hdisk;
+				$hdisk =~ s/\s*//g;
+
+				# define the disk on the client
+				my $mkcmd = qq~/usr/sbin/mkdev -l $hdisk~;
+
+				my $output = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nd, $mkcmd, 0);
+				if ($::RUNCMD_RC != 0)
+				{
+					my $rsp;
+					push @{$rsp->{data}}, "Could not run \'$mkcmd\' on node $nd.\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					$error++;
+					next;
+				}
+
+				# configure the dump device, select either selective or full
+				# for the configdump attribute.
+				my $ccmd = qq~/usr/lpp/bos.sysmgt/nim/methods/c_config_dump -a configdump=$configdump -a target=$dump_target -a dump_port=$dump_port -a ipaddr=$SNip -a lun_id=$dump_lunid~;
+
+				$output = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh",
+$nd, $ccmd, 0);
+				if ($::RUNCMD_RC != 0)
+				{
+					my $rsp;
+					push @{$rsp->{data}}, "Could not run \'$ccmd\' on node $nd.\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					$error++;
+					next;
+				}
+
+				# set the dump disk:
+				my $syscmd = qq~/usr/bin/sysdumpdev -p /dev/$hdisk~;
+				$output = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nd, $syscmd, 0);
+				if ($::RUNCMD_RC != 0)
+				{
+					my $rsp;
+					push @{$rsp->{data}}, "Could not run \'$syscmd\' on node $nd.\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					$error++;
+					next;
+				}
+
+				# point to the new server
+				my $blcmd = qq~/usr/bin/bootlist -m normal ent0 gateway=$gateway bserver=$SNip client=$Nodeip ~;
+
+				$output = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nd, $blcmd, 0);
+				if ($::RUNCMD_RC != 0)
+				{
+					my $rsp;
+					push @{$rsp->{data}}, "Could not run \'$blcmd\' on node $nd.\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					$error++;
+					next;
+				}
+
+				my $rsp;
+				push @{$rsp->{data}}, "Set the primary dump device for node \'$nd\' to \'/dev/$hdisk\' and changed the dump target to \'$sn\'.\n";
+				xCAT::MsgUtils->message("I", $rsp, $callback);
+
+			}
+		}
+	}
+
+	if ($error) {
+		return 1;
+	}
+
+	return 0;
+}
+
+#----------------------------------------------------------------------------
+
+=head3	getnimattr
+
+	Get the specified nim attrs form the named server
+
+	Returns:
+                undef - error
+                hash ref - 
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub getnimattr	
+{
+	my $resname = shift;
+	my $attr = shift;
+    my $callback = shift;
+    my $target   = shift;
+    my $sub_req  = shift;
+
+	my @attrs = @$attr;
+	my %attrval;
+
+	if (!$target)
+    {
+        $target = xCAT::InstUtils->getnimprime();
+    }
+    chomp $target;
+
+	my $ncmd  = "/usr/sbin/lsnim ";
+	foreach my $a (@attrs) 
+	{
+		$ncmd .= "-a $a ";
+	}
+
+	$ncmd .= "$resname 2>/dev/null";
+
+   	my $attrlist = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $target, $ncmd, 0);
+   	if ($::RUNCMD_RC != 0)
+   	{
+       	if ($::VERBOSE) {
+           	my $rsp;
+           	push @{$rsp->{data}}, "Could not run lsnim command: \'$ncmd\'.\n";
+           	xCAT::MsgUtils->message("E", $rsp, $callback);
+       	}
+       	return undef;
+   	}
+
+	foreach my $line (split(/\n/, $attrlist) ){
+		# look for attr name 
+		foreach my $a (@attrs) {
+			chomp $a;
+			if ($line  =~ /$a/) {
+				my ($stuff, $value) = split('=', $line);
+				chomp $value;
+
+				my ($val, $rest) = split(' ', $value);
+
+				# add to hash
+				$attrval{$a} = $val;
+			}
+		}
+	}
+
+	return \%attrval;
+}
