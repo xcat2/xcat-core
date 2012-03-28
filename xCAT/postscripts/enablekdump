@@ -79,7 +79,13 @@ if [ ! -z "$DUMP" ]; then
 
     # workaround for RHEL6
     # the $KDIP:$KDPATH directory will be used to generate the initrd for kdump service
-    /bin/mount $KDIP:$KDPATH /var/tmp
+    MOUNTPATH=""
+    if (pmatch $OSVER "*6\.." ); then
+	MOUNTPATH="/tmp"
+    else
+	MOUNTPATH="/var/tmp"
+    fi 
+    /bin/mount $KDIP:$KDPATH $MOUNTPATH
 
     if [ "$KDPROTO" = "nfs" ]; then
 	if (pmatch $OSVER "sles*") || (pmatch $OSVER "suse*") || [ -f /etc/SuSE-release ]; then
@@ -95,7 +101,7 @@ if [ ! -z "$DUMP" ]; then
 	fi
     fi
 
-    /bin/umount /var/tmp
+    /bin/umount $MOUNTPATH
 else
     /bin/echo "The kdump server is not configured"
 fi
