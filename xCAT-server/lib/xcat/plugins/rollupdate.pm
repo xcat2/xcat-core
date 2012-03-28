@@ -2058,9 +2058,11 @@ sub runrollupdate {
             my $pwrstat = xCAT::Utils->runxcmd( $pwrstat_cmd, $::SUBREQ, -1, 1 );
             foreach my $pline (@{$pwrstat}) {
                 my ( $pnode, $pstat, $rest ) = split( /\s+/, $pline );
-                if (    ( $pstat eq "Running" )
+                if (    ( ! $pstat )
+                     || ( $pstat eq "Running" )
                      || ( $pstat eq "Shutting" )
-                     || ( $pstat eq "on" ) )
+                     || ( $pstat eq "on" )
+                     || ( $pstat eq "Error:" ) )
                 {
 
                     $alldown = 0;
