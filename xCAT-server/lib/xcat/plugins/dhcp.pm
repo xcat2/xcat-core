@@ -92,6 +92,7 @@ sub delnode
     {
         my @macs = split(/\|/, $ent->{mac});
         my $mace;
+        my $count = 0;
         foreach $mace (@macs)
         {
             my $mac;
