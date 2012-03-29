@@ -421,7 +421,7 @@ mp => {
   },
 mpa => {
     cols => [qw(mpa username password comments disable)],
-    keys => [qw(mpa username)],
+	keys => [qw(mpa username)],
     nodecol => "mpa",
     table_desc => 'Contains info about each Management Module and how to access it.',
  descriptions => {
@@ -966,7 +966,7 @@ vpd => {
  },
   },
 nimimage  => {
- cols => [qw(imagename nimtype lpp_source spot root dump paging resolv_conf tmp home shared_home res_group nimmethod script bosinst_data installp_bundle mksysb fb_script shared_root otherpkgs image_data comments disable)],
+ cols => [qw(imagename nimtype lpp_source spot root dump paging resolv_conf tmp home shared_home res_group nimmethod script bosinst_data installp_bundle mksysb fb_script shared_root otherpkgs image_data configdump comments disable)],
  keys => [qw(imagename)],
     table_desc => 'All the info that specifies a particular AIX operating system image that can be used to deploy AIX nodes.',
  descriptions => {
@@ -991,6 +991,7 @@ nimimage  => {
   mksysb => 'The name of a NIM mksysb resource.',
   shared_root => 'A shared_root resource represents a directory that can be used as a / (root) directory by one or more diskless clients.',
   image_data  => 'The name of a NIM image_data resource.',
+  configdump  => 'Specifies the type of system dump to be collected. The values are selective, full, and none.  The default is selective.',
   comments => 'Any user-provided notes.',
   disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -2125,6 +2126,11 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  tabentry => 'nimimage.dump',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
+ {attr_name => 'configdump',
+				only_if => 'imagetype=NIM',
+				tabentry => 'nimimage.configdump',
+				access_tabentry => 'nimimage.imagename=attr:imagename',
+				},
  {attr_name => 'paging',
                  only_if => 'imagetype=NIM',
                  tabentry => 'nimimage.paging',
