@@ -150,10 +150,22 @@ sub get_nodeset_state
     }
 
     my $state = "undefined";
+    my $tftpdir;
 
     #get boot type (pxe, yaboot or aixinstall)  for the node
     my $noderestab = xCAT::Table->new('noderes', -create => 0);
-    my $ent = $noderestab->getNodeAttribs($node, [qw(netboot)]);
+    my $ent = $noderestab->getNodeAttribs($node, [qw(netboot tftpdir)]);
+
+    #get tftpdir from the noderes table, if not defined get it from site talbe
+    if ($ent && $ent->{tftpdir}) {
+	$tftpdir=$ent->{tftpdir};
+    }
+    if (!$tftpdir) {
+	if ($::XCATSITEVALS{tftpdir}) { 
+	    $tftpdir=$::XCATSITEVALS{tftpdir};
+	}
+    }
+
     if ($ent && $ent->{netboot})
     {
         my $boottype = $ent->{netboot};
@@ -162,21 +174,21 @@ sub get_nodeset_state
         if ($boottype eq "pxe")
         {
             require xCAT_plugin::pxe;
-            my $tmp = xCAT_plugin::pxe::getstate($node);
+            my $tmp = xCAT_plugin::pxe::getstate($node, $tftpdir);
             my @a = split(' ', $tmp);
             $state = $a[0];
         }
         elsif ($boottype eq "xnba")
         {
             require xCAT_plugin::xnba;
-            my $tmp = xCAT_plugin::xnba::getstate($node);
+            my $tmp = xCAT_plugin::xnba::getstate($node, $tftpdir);
             my @a = split(' ', $tmp);
             $state = $a[0];
         }
         elsif ($boottype eq "yaboot")
         {
             require xCAT_plugin::yaboot;
-            my $tmp = xCAT_plugin::yaboot::getstate($node);
+            my $tmp = xCAT_plugin::yaboot::getstate($node, $tftpdir);
             my @a = split(' ', $tmp);
             $state = $a[0];
         }
