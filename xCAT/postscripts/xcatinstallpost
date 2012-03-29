@@ -19,15 +19,7 @@ PATH=/xcatpost:$PATH
 export PATH
 chmod +x /xcatpost/*;
 
-#  Traditionally, mypostscript.post has been kept in /tmp across the first boot.
-#  However, Ubuntu cleans /tmp on reboot.  So, for Ubuntu, /var/tmp is used instead.
-#  Therefore, allow for finding mypostscript.post in /var/tmp or /tmp.
-
-if [ -e /var/tmp/mypostscript.post ]; then
-    POST_IN_DIR="/var/tmp"
-else
-    POST_IN_DIR="/tmp"
-fi
+POST_IN_DIR="/xcatpost"
 
 if [ -x /usr/bin/openssl ]; then
      SIP=`grep "^MASTER=" ${POST_IN_DIR}/mypostscript.post  |cut -d= -f2`
@@ -37,14 +29,14 @@ if [ -x /usr/bin/openssl ]; then
      export USEOPENSSLFORXCAT
 fi
 
-#  Regardless of where mypostscript.post was found, modify and run it in /tmp.
+#  Regardless of where mypostscript.post was found, modify and run it in /xcatpost.
 
-DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' ${POST_IN_DIR}/mypostscript.post`
-echo "$DHCP_TMP" > /tmp/mypostscript.post
+DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' /xcatpost/mypostscript.post`
+echo "$DHCP_TMP" > /xcatpost/mypostscript.post
 
-echo "updateflag.awk \$MASTER 3002 \"installstatus booted\"" >> /tmp/mypostscript.post
+echo "updateflag.awk \$MASTER 3002 \"installstatus booted\"" >> /xcatpost/mypostscript.post
 
-chmod +x /tmp/mypostscript.post
-if [ -x /tmp/mypostscript.post ];then
-   /tmp/mypostscript.post
+chmod +x /xcatpost/mypostscript.post
+if [ -x /xcatpost/mypostscript.post ];then
+   /xcatpost/mypostscript.post
 fi
