@@ -30,8 +30,8 @@ do
          mv $i/postscripts /xcatpost
          rm -rf $i
          chmod +x /xcatpost/*
-         /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
-         MYCONT=`grep MASTER /tmp/mypostscript`
+         /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /xcatpost/mypostscript
+         MYCONT=`grep MASTER /xcatpost/mypostscript`
          MAX_RETRIES=10
          RETRY=0
          while [ -z "$MYCONT" ]; do
@@ -43,12 +43,12 @@ do
 
             let SLI=$RANDOM%10+10
             sleep $SLI
-            /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
-            MYCONT=`grep MASTER /tmp/mypostscript`
+            /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /xcatpost/mypostscript
+            MYCONT=`grep MASTER /xcatpost/mypostscript`
          done
 
             
-         chmod +x /tmp/mypostscript
+         chmod +x /xcatpost/mypostscript
 			GOTIT=1
 			break
 		fi
@@ -74,7 +74,7 @@ cd /xcatpost
 export PATH=/xcatpost:$PATH
 
 # use the run_ps subroutine to run the postscripts
-TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
+TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
 echo "
 # subroutine used to run postscripts
 run_ps () {
@@ -84,24 +84,25 @@ run_ps () {
  
  if [ -f \$1 ]; then 
   echo \"Running postscript: \$@\" | tee -a \$logfile
-  ./\$@ 2>&1 1> /tmp/tmp4xcatlog
-  cat /tmp/tmp4xcatlog | tee -a \$logfile
+  #./\$@ 2>&1 1> /tmp/tmp4xcatlog
+  #cat /tmp/tmp4xcatlog | tee -a \$logfile
+  ./\$@ 2>&1 | tee -a $logfile
  else
   echo \"Postscript \$1 does NOT exist.\" | tee -a \$logfile
  fi
 }
 # subroutine end
 
-" > /tmp/mypostscript
-echo "$TMP" >> /tmp/mypostscript
-TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
-echo "$TMP" > /tmp/mypostscript 
+" > /xcatpost/mypostscript
+echo "$TMP" >> /xcatpost/mypostscript
+TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
+echo "$TMP" > /xcatpost/mypostscript 
 
 
-#save the postboot scripts to /tmp/mypostscript.post
-TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /tmp/mypostscript`
-echo "$TMP" > /tmp/mypostscript.post
-chmod 755 /tmp/mypostscript.post
+#save the postboot scripts to /xcatpost/mypostscript.post
+TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /xcatpost/mypostscript`
+echo "$TMP" > /xcatpost/mypostscript.post
+chmod 755 /xcatpost/mypostscript.post
 
 #create the post init 
 cat >/etc/init.d/xcatpostinit1 << 'EOF'
@@ -121,10 +122,10 @@ chmod 755 /opt/xcat/xcatinstallpost
 chkconfig --add xcatpostinit1
 
 #only run the prebooot scripts here
-TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /tmp/mypostscript`
-echo "$TMP" > /tmp/mypostscript
+TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /xcatpost/mypostscript`
+echo "$TMP" > /xcatpost/mypostscript
 
-/tmp/mypostscript
+/xcatpost/mypostscript
 export NODE=#TABLE:nodelist:THISNODE:node#
 export OSVER=#TABLE:nodetype:THISNODE:os#
 export ARCH=#TABLE:nodetype:THISNODE:arch#
@@ -134,4 +135,4 @@ sed -i 's/^terminal/#terminal/' /boot/grub/grub.conf
 updateflag.awk $MASTER 3002
 cd /
 #rm -Rf /xcatpost
-#rm -f /tmp/mypostscript
+#rm -f /xcatpost/mypostscript
