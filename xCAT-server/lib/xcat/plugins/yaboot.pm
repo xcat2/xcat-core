@@ -44,7 +44,8 @@ sub check_dhcp {
 }
 
 sub _slow_get_tftpdir { #make up for paths where tftpdir is not passed in
-    my $nrtab = = xCAT::Table->new('noderes',-create=>0); #in order to detect per-node tftp directories
+    my $node=shift;
+    my $nrtab = xCAT::Table->new('noderes',-create=>0); #in order to detect per-node tftp directories
     unless ($nrtab) { return $globaltftpdir; }
     my $ent = $nrtab->getNodeAttribs($node,["tftpdir"]);
     if ($ent and $ent->{tftpdir}) {
