@@ -775,7 +775,7 @@ sub invoke_cmd {
                     "sshcfg=enable",
                     "network_reset=$target_dev->{args}"
                     );
-            $result = xCAT_plugin::blade::telnetcmds(
+            $result = xCAT_plugin::blade::clicmds(
                     $ip,
                     $target_dev->{username},
                     $target_dev->{password},
