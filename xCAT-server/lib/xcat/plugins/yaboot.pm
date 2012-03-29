@@ -607,7 +607,7 @@ sub getNodesetStates {
       } else {
          $tftpdir = $globaltftpdir;
       }
-      my $tmp=getstate($node);
+      my $tmp=getstate($node, $tftpdir);
       my @a=split(' ', $tmp);
       $stat = $a[0];
       if (exists($hashref->{$stat})) {
