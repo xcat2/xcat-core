@@ -3965,7 +3965,7 @@ sub process_request {
   while (forward_data($callback,$sub_fds)) {}
 }
 
-sub telnetcmds {
+sub clicmds {
 
   my $mpa=shift;
   my $user=shift;
@@ -4897,7 +4897,7 @@ sub dompa {
         $rc = 1;
         $args = [];
       } else {
-        $result = telnetcmds($mpa,$user,$pass,$node,$slot,@exargs);
+        $result = clicmds($mpa,$user,$pass,$node,$slot,@exargs);
         $rc |= @$result[0];
         $args = @$result[1];
       }
@@ -4948,7 +4948,7 @@ sub dompa {
       if ($mptype eq "cmm") {
         # For the cmm, call the rscanfsp to discover the fsp for ppc blade
         my @telargs = ("rscanfsp");
-        telnetcmds($mpa,$user,$pass,$node,$slot,@telargs);
+        clicmds($mpa,$user,$pass,$node,$slot,@telargs);
       }
     }
   }
