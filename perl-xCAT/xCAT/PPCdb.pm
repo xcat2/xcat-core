@@ -4,7 +4,7 @@ package xCAT::PPCdb;
 use strict;
 use xCAT::Table;
 use xCAT::GlobalDef;
-use xCAT_plugin::lsslp;
+
 
 ###########################################
 # Factory defaults
