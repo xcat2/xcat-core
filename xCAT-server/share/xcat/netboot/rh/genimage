@@ -339,10 +339,6 @@ unless ($onlyinitrd) {
               }
           }
 
-          # mount /proc file system since several packages need it.
-          print "mount /proc file system\nchroot $rootimg_dir /bin/mount -t proc proc /proc\n";
-          system("chroot $rootimg_dir /bin/mount -t proc proc /proc");
-
           # install extra packages
           my $yumcmd_base = $yumcmd;
           $yumcmd .= "install ";
@@ -366,10 +362,6 @@ unless ($onlyinitrd) {
 	      print "No Packages marked for install\n";
           }
 
-          # umount /proc file system that just mounted
-          print "umount /proc file system\nchroot $rootimg_dir /bin/umount /proc\n";
-          system("chroot $rootimg_dir /bin/umount /proc");
-	
           # remove the packages that are specified in the otherpkgs.list files with leading '--'
           if (exists ($extra_hash{$pass}{'POST_REMOVE'})) {
               my $pa=$extra_hash{$pass}{'POST_REMOVE'};
