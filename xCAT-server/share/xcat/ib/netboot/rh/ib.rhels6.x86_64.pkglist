@@ -1,4 +1,6 @@
 
+pciutils
+pciutils-libs
 perl
 tcl
 tk
