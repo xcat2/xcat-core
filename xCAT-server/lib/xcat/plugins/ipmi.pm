@@ -52,6 +52,7 @@ sub handled_commands {
     rsetboot => 'nodehm:mgt', #done
     rbeacon => 'nodehm:mgt', #done
     reventlog => 'nodehm:mgt',
+    ripmi => 'ipmi',
 #    rfrurewrite => 'nodehm:mgt', #deferred, doesn't even work on several models, no one asks about it, keeping it commented for future requests
     getrvidparms => 'nodehm:mgt' #done
   }
@@ -484,6 +485,8 @@ sub on_bmc_connect {
 		    return;
 	        }
 		return power($sessdata);
+	} elsif ($command eq "ripmi") {
+		return ripmi($sessdata);
 	} elsif ($command eq "rspreset") {
         return resetbmc($sessdata);
     } elsif($command eq "rbeacon") {
@@ -1149,6 +1152,31 @@ sub getrvidparms_with_buildid {
 }
 
 
+sub ripmi { #implement generic raw ipmi commands
+	my $sessdata = shift;
+	my $netfun = hex(shift @{$sessdata->{extraargs}});
+	my $command = hex(shift @{$sessdata->{extraargs}});
+	my @data;
+	foreach (@{$sessdata->{extraargs}}) {
+		push @data,hex($_);
+	}
+	$sessdata->{ipmisession}->subcmd(netfn=>$netfun,command=>$command,data=>\@data,callback=>\&ripmi_callback,callback_args=>$sessdata);
+}
+
+sub ripmi_callback {
+    if (check_rsp_errors(@_)) {
+        return;
+    }
+        my $rsp = shift;
+	my $sessdata = shift;
+	if ($rsp->{error}) {
+		xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
+		return;
+	}
+	my $output=sprintf("%02X "x(scalar(@{$rsp->{data}})),@{$rsp->{data}});
+	xCAT::SvrUtils::sendmsg($output,$callback,$sessdata->{node},%allerrornodes);
+}
+	
 sub power {
 	my $sessdata = shift;
 
