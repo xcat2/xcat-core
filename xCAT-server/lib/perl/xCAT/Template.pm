@@ -9,6 +9,14 @@ use File::Path;
 #use Data::Dumper;
 use Sys::Syslog;
 use xCAT::ADUtils; #to allow setting of one-time machine passwords
+
+BEGIN
+{
+      $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+
+
+
 my $netdnssupport = eval {
     require Net::DNS;
     1;
