@@ -53,13 +53,22 @@ if [ $OS != "AIX" ]; then
     if [ $NODESETSTATE == "genimage" ]; then
     # Being called from <image>.postinstall script
     # Assume we are on the same machine
-        #if [[ $OS = sles* ]] || [[ $OS = suse* ]] || [[ -f /etc/SuSE-release ]]; then
-        # For SLES, assume zypper is available on the system running genimage
+        if [[ $OS = sles* ]] || [[ $OS = suse* ]] || [[ -f /etc/SuSE-release ]]; then
+            mkdir $installroot/tmp/ofed_install
+            cp -r $OFED_DIR $installroot/tmp/ofed_install/
+            mount -t devtmpfs  /dev $installroot/dev/
+            mount -t sysfs  /dev $installroot/sys
+            #chroot $installroot rpm -e --noscripts --allmatches mlnx-ofa_kernel-kmp-default 
+            chroot $installroot perl -x /tmp/ofed_install/ofed/mlnxofedinstall --without-32bit --force
+            rm -rf $installroot/tmp/ofed_install
+            umount $installroot/dev/
+            umount $installroot/sys
+        else
             mkdir $installroot/tmp/ofed_install
             cp -r $OFED_DIR $installroot/tmp/ofed_install/ 
             chroot $installroot perl -x /tmp/ofed_install/ofed/mlnxofedinstall --without-32bit --force
             rm -rf $installroot/tmp/ofed_install
-        #fi
+        fi
     fi
 fi
 
