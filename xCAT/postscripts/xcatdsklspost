@@ -24,9 +24,11 @@ update_VPD()
 }
 
 # Run updatevpd only when necessary
-lsvpd | grep -i cpu 2>&1 1>/dev/null
-if [ "$?" = "1" ]; then
-  update_VPD
+if [ -f /usr/sbin/lsvpd ]; then
+    /usr/sbin/lsvpd | grep -i cpu 2>&1 1>/dev/null
+    if [ "$?" = "1" ]; then
+      update_VPD
+    fi
 fi
 
 download_postscripts()
@@ -36,7 +38,9 @@ download_postscripts()
 	return 1;
     fi
 
-    INSTALLDIR=`grep 'INSTALLDIR' /opt/xcat/xcatinfo |cut -d= -f2`
+    if [ -f /opt/xcat/xcatinfo ]; then
+       INSTALLDIR=`grep 'INSTALLDIR' /opt/xcat/xcatinfo |cut -d= -f2`
+    fi
     if [ -z "$INSTALLDIR" ]; then
     INSTALLDIR="/install"
     fi
@@ -231,8 +235,8 @@ if [ -x /usr/bin/openssl ]; then
      export USEOPENSSLFORXCAT
 fi
 
-/xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript; 
-MYCONT=`grep MASTER /tmp/mypostscript`
+/xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /xcatpost/mypostscript; 
+MYCONT=`grep MASTER /xcatpost/mypostscript`
 #echo "MYCONT=$MYCONT"
 #if getpostscript.awk fails, the postscript will fall into infinit loop
 #so one retry_number is added to avoid sunc a condition
@@ -249,8 +253,8 @@ while [ -z "$MYCONT" ]; do
     SLI=$((10 + $SLI))
     sleep $SLI
     
-    /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript;
-    MYCONT=`grep MASTER /tmp/mypostscript`
+    /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /xcatpost/mypostscript;
+    MYCONT=`grep MASTER /xcatpost/mypostscript`
     if [ ! -z "$MYCONT" ]; then
         break;
     fi
@@ -259,7 +263,7 @@ done
 #save the MASTER into the xcatinfo file for node deployment case, 
 #for updatenode case, only save it when -M is specified
 if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ]; then
-    new_ms=`grep '^MASTER' /tmp/mypostscript |cut -d= -f2`
+    new_ms=`grep '^MASTER' /xcatpost/mypostscript |cut -d= -f2`
 fi
 if [ -n "$new_ms" ]; then
     if [ ! -f /opt/xcat/xcatinfo ]; then
@@ -278,39 +282,39 @@ fi
 # when called by the updatenode command
 #modify the UPDATENODE flag to 1 
 if [ "$MODE" = "1" ] || [ "$MODE" = "2" ]; then
-  TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1/g' /tmp/mypostscript`;
-  echo "$TMP" > /tmp/mypostscript;
+  TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1/g' /xcatpost/mypostscript`;
+  echo "$TMP" > /xcatpost/mypostscript;
 fi
 if [ "$MODE" = "5" ]; then
-  TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1\nUPDATESECURITY=1\nexport UPDATESECURITY/g' /tmp/mypostscript`;
-  echo "$TMP" > /tmp/mypostscript;
+  TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1\nUPDATESECURITY=1\nexport UPDATESECURITY/g' /xcatpost/mypostscript`;
+  echo "$TMP" > /xcatpost/mypostscript;
 fi
 
 # postscript name is specified with the updatenode
 if [ "XX$POSTSCRIPTS" != "XX" ]; then
   #remove all the postbootscripts
-  TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /tmp/mypostscript`
-  echo "$TMP" > /tmp/mypostscript
+  TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /xcatpost/mypostscript`
+  echo "$TMP" > /xcatpost/mypostscript
   #remove all the postscripts
-  TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /tmp/mypostscript`
-  echo "$TMP" > /tmp/mypostscript
-  echo "# postscripts-start-here" >> /tmp/mypostscript
+  TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /xcatpost/mypostscript`
+  echo "$TMP" > /xcatpost/mypostscript
+  echo "# postscripts-start-here" >> /xcatpost/mypostscript
   #add requested postscripts in
-  echo "$POSTSCRIPTS" | tr "," "\n" >> /tmp/mypostscript
-  echo "# postscripts-end-here" >> /tmp/mypostscript
+  echo "$POSTSCRIPTS" | tr "," "\n" >> /xcatpost/mypostscript
+  echo "# postscripts-end-here" >> /xcatpost/mypostscript
 fi
 
 #ADDSITEYUM is set by post.rh and post.rh.iscsi for full installtion
 #if [[ "$ADDSITEYUM" = "1" ]]; then
-#  TMP=`sed "/postscripts-start-here/ a addsiteyum" /tmp/mypostscript`
-#  echo "$TMP" > /tmp/mypostscript
+#  TMP=`sed "/postscripts-start-here/ a addsiteyum" /xcatpost/mypostscript`
+#  echo "$TMP" > /xcatpost/mypostscript
 #fi
 
-#MYCONT=`cat /tmp/mypostscript`
+#MYCONT=`cat /xcatpost/mypostscript`
 #echo "$MYCONT"
 
 # use the run_ps subroutine to run the postscripts
-TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
+TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
 echo "
 # subroutine used to run postscripts
 run_ps () {
@@ -319,43 +323,44 @@ run_ps () {
  logfile=\"/var/log/xcat/xcat.log\"
  
  if [ -f \$1 ]; then 
-  echo \"Running postscript: \$@\" | tee -a \$logfile
-  ./\$@ 2>&1 1> /tmp/tmp4xcatlog
-  cat /tmp/tmp4xcatlog | tee -a \$logfile
+  echo \"\`date\` Running postscript: \$@\" | tee -a \$logfile
+  #./\$@ 2>&1 1> /tmp/tmp4xcatlog
+  #cat /tmp/tmp4xcatlog | tee -a \$logfile
+  ./\$@ 2>&1 | tee -a $logfile
  else
-  echo \"Postscript \$1 does NOT exist.\" | tee -a \$logfile
+  echo \"\`date\` Postscript \$1 does NOT exist.\" | tee -a \$logfile
  fi
 }
 # subroutine end
 
-" > /tmp/mypostscript
-echo "$TMP" >> /tmp/mypostscript
-TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
-echo "$TMP" > /tmp/mypostscript 
+" > /xcatpost/mypostscript
+echo "$TMP" >> /xcatpost/mypostscript
+TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
+echo "$TMP" > /xcatpost/mypostscript 
 
 if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ]; then
   #notify the server that we are done with netbooting
-  CNS=`grep NODESTATUS= /tmp/mypostscript |awk -F = '{print $2}'`
+  CNS=`grep NODESTATUS= /xcatpost/mypostscript |awk -F = '{print $2}'`
   if [ -z "$CNS" ] || [ "$CNS" != "'0'" -a   "$CNS" != "'N'"  -a  "$CNS" != "'n'" ]; then
-      echo "updateflag.awk \$MASTER 3002 \"installstatus booted\"" >> /tmp/mypostscript
+      echo "updateflag.awk \$MASTER 3002 \"installstatus booted\"" >> /xcatpost/mypostscript
   fi
 fi
 
-DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' /tmp/mypostscript`
-echo "$DHCP_TMP" > /tmp/mypostscript
+DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' /xcatpost/mypostscript`
+echo "$DHCP_TMP" > /xcatpost/mypostscript
 
-CLEANUPXCATPOST=`grep CLEANUPXCATPOST= /tmp/mypostscript |awk -F = '{print $2}'` 
+CLEANUPXCATPOST=`grep CLEANUPXCATPOST= /xcatpost/mypostscript |awk -F = '{print $2}'` 
 if [ "$CLEANUPXCATPOST" = "'1'" ] || [ "$CLEANUPXCATPOST" = "'yes'" ]; then
-  echo "cd /" >> /tmp/mypostscript
+  echo "cd /" >> /xcatpost/mypostscript
   # /xcatpost might be read-only for statelite nodes
-  echo "rm -rf /xcatpost/*" >> /tmp/mypostscript
+  echo "rm -rf /xcatpost/*" >> /xcatpost/mypostscript
 fi
 
-chmod +x /tmp/mypostscript
-if [ -x /tmp/mypostscript ];then
-   /tmp/mypostscript
+chmod +x /xcatpost/mypostscript
+if [ -x /xcatpost/mypostscript ];then
+   /xcatpost/mypostscript
 fi
-#rm -f /tmp/mypostscript
+#rm -f /xcatpost/mypostscript
 
 #tell user it is done when this is called by updatenode command
 if [ "$MODE" = "1" ] || [ "$MODE" = "2" ] || [ "$MODE" = "5" ]; then
