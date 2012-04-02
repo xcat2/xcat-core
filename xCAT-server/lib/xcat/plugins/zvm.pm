@@ -670,26 +670,33 @@ sub changeVM {
 		my $volume 	= "";
 		my $group   = "";
 		
-		# Define region as full volume and add to group
-		if ($funct eq "4") {
-			$volume = $args->[3];
-			$group  = $args->[4];
-			$out = `ssh $hcp "$::DIR/adddisk2pool $funct $region $volume $group"`;
+		# Create an array for regions
+		my @regions;
+		if ( $region =~ m/,/i ) {
+			@regions = split( ',', $region );
+		} else {
+			push( @regions, $region );
 		}
 		
-		# Add existing region to group
-		elsif($funct eq "5") {
-			$group = $args->[3];
-			$out = `ssh $hcp "$::DIR/adddisk2pool $funct $region $group"`;
+		my $tmp;
+		foreach (@regions) {
+			$_ = xCAT::zvmUtils->trimStr($_);
+			
+			# Define region as full volume and add to group
+			if ($funct eq "4") {
+				$volume = $args->[3];
+				$group  = $args->[4];
+				$tmp = `ssh $hcp "$::DIR/adddisk2pool $funct $_ $volume $group"`;
+			}
+			
+			# Add existing region to group
+			elsif($funct eq "5") {
+				$group = $args->[3];
+				$tmp = `ssh $hcp "$::DIR/adddisk2pool $funct $_ $group"`;
+			}
+			
+			$out .= xCAT::zvmUtils->appendHostname( $node, $tmp );
 		}
-		
-		# Exit
-		else {
-			xCAT::zvmUtils->printLn( $callback, "$node: (Error) Option not supported" );
-			return;
-		}
-		
-		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
 	
 	# addnic [address] [type] [device count]
@@ -1130,19 +1137,32 @@ sub changeVM {
 		my $funct  = $args->[1];
 		my $region = $args->[2];
 		my $group  = "";
-
-		# Remove region from group | Remove entire group		
-		if ($funct eq "2" || $funct eq "7") {
-			$group  = $args->[3];
-			$out = `ssh $hcp "$::DIR/removediskfrompool $funct $region $group"`;
-		} 
 		
-		# Remove region | Remove region from all groups
-		elsif ($funct eq "1" || $funct eq "3") {
-			$out = `ssh $hcp "$::DIR/removediskfrompool $funct $region"`;
+		# Create an array for regions
+		my @regions;
+		if ( $region =~ m/,/i ) {
+			@regions = split( ',', $region );
+		} else {
+			push( @regions, $region );
 		}
-		
-		$out = xCAT::zvmUtils->appendHostname( $node, $out );
+
+		my $tmp;
+		foreach ( @regions ) {
+			$_ = xCAT::zvmUtils->trimStr($_);
+			
+			# Remove region from group | Remove entire group		
+			if ($funct eq "2" || $funct eq "7") {
+				$group  = $args->[3];
+				$tmp = `ssh $hcp "$::DIR/removediskfrompool $funct $_ $group"`;
+			} 
+			
+			# Remove region | Remove region from all groups
+			elsif ($funct eq "1" || $funct eq "3") {
+				$tmp = `ssh $hcp "$::DIR/removediskfrompool $funct $_"`;
+			}
+			
+			$out .= xCAT::zvmUtils->appendHostname( $node, $tmp );
+		}
 	}
 	
 	# removedisk [virtual device address]
