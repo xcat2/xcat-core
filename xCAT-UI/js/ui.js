@@ -1064,3 +1064,31 @@ function setMenu2Normal(menu) {
 	menu.css('background', '');
 	menu.find('a:eq(0)').css('color', '');
 }
+
+/**
+ * Get nodes that are checked in a given datatable
+ * 
+ * @param datatableId
+ *            The datatable ID
+ * @return Nodes that were checked
+ */
+function getNodesChecked(datatableId) {
+	var tgts = '';
+
+	// Get nodes that were checked
+	var nodes = $('#' + datatableId + ' input[type=checkbox]:checked');
+	for (var i in nodes) {
+		var tgtNode = nodes.eq(i).attr('name');
+		
+		if (tgtNode){
+			tgts += tgtNode;
+			
+			// Add a comma at the end
+			if (i < nodes.length - 1) {
+				tgts += ',';
+			}
+		}
+	}
+
+	return tgts;
+}

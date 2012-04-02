@@ -1881,7 +1881,7 @@ function loadDiskPoolTable(data) {
 	for ( var i = 2; i < tmp.length; i++) {
 		tmp[i] = jQuery.trim(tmp[i]);
 		var diskAttrs = tmp[i].split(' ');
-		dTable.fnAddData( [ '<input type="checkbox"/>', hcp, pool, stat, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3] ]);
+		dTable.fnAddData( [ '<input type="checkbox" name="' + diskAttrs[0] + '"/>', hcp, pool, stat, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3] ]);
 	}
 	
 	// Create actions menu
@@ -1898,13 +1898,38 @@ function loadDiskPoolTable(data) {
 		// Delete disk from pool
 		var deleteLnk = $('<a>Delete</a>');
 		deleteLnk.bind('click', function(event){
-			openDeleteDiskFromPoolDialog();
+			var disks = getNodesChecked(tableId);
+			openDeleteDiskFromPoolDialog(disks);
 		});
 		
 		// Refresh table
 		var refreshLnk = $('<a>Refresh</a>');
 		refreshLnk.bind('click', function(event){
+			$('#zvmDiskResource').empty().append(createLoader(''));
+			setDiskDataTable('');
 			
+			// Create a array for hardware control points
+			var hcps = new Array();
+			if ($.cookie('hcp').indexOf(',') > -1)
+				hcps = $.cookie('hcp').split(',');
+			else
+				hcps.push($.cookie('hcp'));
+			
+			// Query the disk pools for each
+			for (var i in hcps) {
+				$.ajax( {
+					url : 'lib/cmd.php',
+					dataType : 'json',
+					data : {
+						cmd : 'lsvm',
+						tgt : hcps[i],
+						args : '--diskpoolnames',
+						msg : hcps[i]
+					},
+
+					success : getDiskPool
+				});
+			}	
 		});
 		
 		// Create action bar
@@ -1998,8 +2023,12 @@ function loadDiskPoolTable(data) {
 
 /**
  * Open dialog to delete disk from pool
+ * 
+ * @param disks2delete
+ * 			Disks selected in table
+ * @return Nothing
  */
-function openDeleteDiskFromPoolDialog() {
+function openDeleteDiskFromPoolDialog(disks2delete) {
 	// Create form to delete disk to pool
 	var dialogId = 'zvmDeleteDiskFromPool';
 	var deleteDiskForm = $('<div id="' + dialogId + '" class="form"></div>');
@@ -2019,7 +2048,9 @@ function openDeleteDiskFromPoolDialog() {
 	var hcp = $('<div><label>Hardware control point:</label></div>');
 	var hcpSelect = $('<select name="hcp"></select>');
 	hcp.append(hcpSelect);
-	var region = $('<div><label>Region name:</label><input type="text" name="region"/></div>');
+	
+	// Set region input based on those selected on table (if any)
+	var region = $('<div><label>Region name:</label><input type="text" name="region" value="' + disks2delete + '"/></div>');
 	var group = $('<div><label>Group name:</label><input type="text" name="group"/></div>');
 	deleteDiskForm.append(action, hcp, region, group);
 
@@ -2048,7 +2079,7 @@ function openDeleteDiskFromPoolDialog() {
 			group.show();
 		}		
 	});
-	
+		
 	// Open dialog to delete disk
 	deleteDiskForm.dialog({
 		title:'Delete disk from pool',
