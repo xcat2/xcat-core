@@ -1955,7 +1955,7 @@ function loadDiskPoolTable(data) {
 			'padding': '0px',
 			'width': '500px'
 		});
-		$('#' + tableId + '_filter').css({'padding': '10px',});
+		$('#' + tableId + '_filter').css('padding', '10px');
 		menuDiv.append(actionBar);
 	}
 	
