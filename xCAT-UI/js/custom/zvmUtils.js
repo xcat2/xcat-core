@@ -1981,34 +1981,42 @@ function loadDiskPoolTable(data) {
 			// Update datatable
 			dTable.fnUpdate(value, rowPos, colPos, false);
 			
-			// Get table headers
-			var headers = $('#' + nodesTableId).parents('.dataTables_scroll').find('.dataTables_scrollHead thead tr:eq(0) th');
-						
-			// Get node name
-			var node = $(this).parent().find('td a.node').text();
-			// Get attribute name
-			var attrName = jQuery.trim(headers.eq(colPos).text());
-			// Get column value
-			var value = $(this).text();
+			// Get hardware control point
+			var hcp = $(this).parent('tr').find('td:eq(1)').text();
+			// Get disk group
+			var group = $(this).text();
+			// Get disk region
+			var region = $(this).parent('tr').find('td:eq(4)').text();
 			
-			// Build argument
-			var args = attrName + '=' + value;
+			// Remove disk from pool
+			$.ajax({
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'chvm',
+					tgt : hcp,
+					args : '--removediskfrompool;2;' + region + ';' + $(this).attr('revert'),
+					msg : 'zvmDiskResource'
+				},
+				
+				success : updateResourceDialog
+			});
 			
-			// Send command to change node attributes
-//        	$.ajax( {
-//        		url : 'lib/cmd.php',
-//        		dataType : 'json',
-//        		data : {
-//        			cmd : 'chdef',
-//        			tgt : '',
-//        			args : '-t;node;-o;' + node + ';' + args,
-//        			msg : 'out=nodesTab;tgt=' + node
-//        		},
-//
-//        		success: showChdefOutput
-//        	});
+			// Add disk to pool
+			$.ajax({
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'chvm',
+					tgt : hcp,
+					args : '--adddisk2pool;5;' + region + ';' + group,
+					msg : 'zvmDiskResource'
+				},
 
-			return value;
+				success : updateResourceDialog
+			});
+
+			return group;
 		}, {
 			onblur : 'submit', 	// Clicking outside editable area submits changes
 			type : 'textarea',
@@ -2084,7 +2092,7 @@ function openDeleteDiskFromPoolDialog(disks2delete) {
 	deleteDiskForm.dialog({
 		title:'Delete disk from pool',
 		modal: true,
-		width: 400,
+		width: 500,
 		buttons: {
         	"Ok": function(){
         		// Remove any warning messages
@@ -2112,7 +2120,7 @@ function openDeleteDiskFromPoolDialog(disks2delete) {
 					else
 						args = group;
 					
-    				// Add disk to pool
+    				// Remove disk from pool
     				$.ajax( {
     					url : 'lib/cmd.php',
     					dataType : 'json',
@@ -2184,7 +2192,7 @@ function openAddDisk2PoolDialog() {
 	addDiskForm.dialog({
 		title:'Add disk to pool',
 		modal: true,
-		width: 400,
+		width: 500,
 		buttons: {
         	"Ok": function(){
         		// Remove any warning messages
@@ -2256,9 +2264,27 @@ function updateResourceDialog(data) {
 		infoMsg = data.rsp;
 	}
 	
-	// Append info to dialog
-	var info = createInfoBar(infoMsg);
-	info.prependTo($('#' + dialogId));
+	// Create info bar with close button
+	var infoBar = $('<div class="ui-state-highlight ui-corner-all"></div>').css('margin', '5px 0px');
+	var icon = $('<span class="ui-icon ui-icon-info"></span>').css({
+		'display': 'inline-block',
+		'margin': '10px 5px'
+	});
+	
+	var close = $('<span class="ui-icon ui-icon-close"></span>').css({
+		'display': 'inline-block',
+		'float': 'right'
+	}).click(function() {
+		$(this).parent().remove();
+	});
+	
+	var info = $('<pre>' + infoMsg + '</pre>').css({
+		'display': 'inline-block',
+		'width': '90%'
+	});
+	
+	infoBar.append(icon, info, close);	
+	infoBar.prependTo($('#' + dialogId));
 }
 
 /**
