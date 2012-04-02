@@ -1445,7 +1445,7 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
  * 
  * @return Nothing
  */
-zvmPlugin.prototype.loadResources = function() {
+zvmPlugin.prototype.loadResources = function() {	
 	// Reset resource table
 	setDiskDataTable('');
 	setNetworkDataTable('');

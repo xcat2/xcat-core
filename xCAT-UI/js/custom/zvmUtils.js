@@ -1009,10 +1009,10 @@ function updateZCloneStatus(data) {
 function getZResources(data) {
 	// Do not continue if there is no output
 	if (data.rsp) {
-		// Loop through each line
+		// Push hardware control points into an array
 		var node, hcp;
 		var hcpHash = new Object();
-		for ( var i in data.rsp) {
+		for (var i in data.rsp) {
 			node = data.rsp[i][0];
 			hcp = data.rsp[i][1];
 			hcpHash[hcp] = 1;
@@ -1020,42 +1020,98 @@ function getZResources(data) {
 
 		// Create an array for hardware control points
 		var hcps = new Array();
-		for ( var key in hcpHash) {
-			hcps.push(key);
+		for (var key in hcpHash) {
 			// Get the short host name
 			hcp = key.split('.')[0];
-
-			// Get disk pools
-			$.ajax( {
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'lsvm',
-					tgt : hcp,
-					args : '--diskpoolnames',
-					msg : hcp
-				},
-
-				success : getDiskPool
-			});
-
-			// Get network names
-			$.ajax( {
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'lsvm',
-					tgt : hcp,
-					args : '--getnetworknames',
-					msg : hcp
-				},
-
-				success : getNetwork
-			});
+			hcps.push(hcp);
 		}
 
-		// Set cookie
+		// Set hardware control point cookie
 		$.cookie('hcp', hcps);
+						
+		// Delete loader
+		var tabId = 'zvmResourceTab';
+		$('#' + tabId).find('img[src="images/loader.gif"]').remove();
+		
+		// Create accordion panel for disk
+		var resourcesAccordion = $('<div id="zvmResourceAccordion"></div>');
+		var diskSection = $('<div id="zvmDiskResource"></div>');
+		var diskLnk = $('<h3><a href="#">Disks</a></h3>').click(function () {
+			// Do not load panel again if it is already loaded
+			if ($('#zvmDiskResource').children().length)
+				return;
+			else
+				$('#zvmDiskResource').append(createLoader(''));
+					
+			// Resize accordion
+			$('#zvmResourceAccordion').accordion('resize');
+			
+			// Create a array for hardware control points
+			var hcps = new Array();
+			if ($.cookie('hcp').indexOf(',') > -1)
+				hcps = $.cookie('hcp').split(',');
+			else
+				hcps.push($.cookie('hcp'));
+			
+			// Query the disk pools for each
+			for (var i in hcps) {
+				$.ajax( {
+					url : 'lib/cmd.php',
+					dataType : 'json',
+					data : {
+						cmd : 'lsvm',
+						tgt : hcps[i],
+						args : '--diskpoolnames',
+						msg : hcps[i]
+					},
+
+					success : getDiskPool
+				});
+			}			
+		});		
+		
+		// Create accordion panel for network
+		var networkSection = $('<div id="zvmNetworkResource"></div>');
+		var networkLnk = $('<h3><a href="#">Networks</a></h3>').click(function () {
+			// Do not load panel again if it is already loaded
+			if ($('#zvmNetworkResource').children().length)
+				return;
+			else
+				$('#zvmNetworkResource').append(createLoader(''));
+			
+			// Resize accordion
+			$('#zvmResourceAccordion').accordion('resize');
+			
+			// Create a array for hardware control points
+			var hcps = new Array();
+			if ($.cookie('hcp').indexOf(',') > -1)
+				hcps = $.cookie('hcp').split(',');
+			else
+				hcps.push($.cookie('hcp'));
+			
+			for ( var i in hcps) {
+				// Gather networks from hardware control points
+				$.ajax( {
+					url : 'lib/cmd.php',
+					dataType : 'json',
+					data : {
+						cmd : 'lsvm',
+						tgt : hcps[i],
+						args : '--getnetworknames',
+						msg : hcps[i]
+					},
+
+					success : getNetwork
+				});
+			}
+		});		
+		
+		resourcesAccordion.append(diskLnk, diskSection, networkLnk, networkSection);
+		
+		// Append accordion to tab
+		$('#' + tabId).append(resourcesAccordion);
+		resourcesAccordion.accordion();		
+		diskLnk.trigger('click');
 	}
 }
 
@@ -1785,48 +1841,39 @@ function getNetwork(data) {
  * @return Nothing
  */
 function loadDiskPoolTable(data) {
+	// Remove loader
+	var panelId = 'zvmDiskResource';
+	$('#' + panelId).find('img[src="images/loader.gif"]').remove();
+	
 	var args = data.msg.split(';');
 	var hcp = args[0].replace('hcp=', '');
 	var pool = args[1].replace('pool=', '');
 	var stat = args[2].replace('stat=', '');
 	var tmp = data.rsp[0].split(hcp + ': ');
 
-	// Remove loader
-	var loaderId = 'zvmResourceLoader';
-	if ($('#' + loaderId).length) {
-		$('#' + loaderId).remove();
-	}
-
-	// Resource tab ID
-	var tabID = 'zvmResourceTab';
-	var info = $('#' + tabID).find('.ui-state-highlight');
+	// Resource tab ID	
+	var info = $('#' + panelId).find('.ui-state-highlight');
 	// If there is no info bar
 	if (!info.length) {
 		// Create info bar
-		info = createInfoBar('Below are disks and networks found by the hardware control point.  It shows disk pools defined in the EXTENT CONTROL file and LANs|VSWITCHes available to use.');
-		$('#' + tabID).append(info);
+		info = createInfoBar('Below are disks that are defined in the EXTENT CONTROL file.');
+		$('#' + panelId).append(info);
 	}
 
 	// Get datatable
+	var tableId = 'zDiskDataTable';
 	var dTable = getDiskDataTable();
 	if (!dTable) {
-		// Create disks section
-		var fieldSet = $('<fieldset></fieldset>');
-		var legend = $('<legend>Disks</legend>');
-		fieldSet.append(legend);
-
-		// Create a datatable
-		var tableID = 'zDiskDataTable';
-		var table = new DataTable(tableID);
+		// Create a datatable		
+		var table = new DataTable(tableId);
 		// Resource headers: volume ID, device type, start address, and size
-		table.init( [ 'HCP', 'Pool', 'Status', 'Volume ID', 'Device type', 'Start address', 'Size' ]);
+		table.init( [ '<input type="checkbox" onclick="selectAllDisk(event, $(this))">', 'HCP', 'Pool', 'Status', 'Region', 'Device type', 'Starting address', 'Size' ]);
 
-		// Append datatable to tab
-		fieldSet.append(table.object());
-		$('#' + tabID).append(fieldSet);
+		// Append datatable to panel
+		$('#' + panelId).append(table.object());
 
 		// Turn into datatable
-		dTable = $('#' + tableID).dataTable();
+		dTable = $('#' + tableId).dataTable();
 		setDiskDataTable(dTable);
 	}
 
@@ -1834,8 +1881,371 @@ function loadDiskPoolTable(data) {
 	for ( var i = 2; i < tmp.length; i++) {
 		tmp[i] = jQuery.trim(tmp[i]);
 		var diskAttrs = tmp[i].split(' ');
-		dTable.fnAddData( [ hcp, pool, stat, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3] ]);
+		dTable.fnAddData( [ '<input type="checkbox"/>', hcp, pool, stat, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3] ]);
 	}
+	
+	// Create actions menu
+	if (!$('#zvmResourceActions').length) {
+		// Empty filter area
+		$('#' + tableId + '_length').empty();
+		
+		// Add disk to pool
+		var addLnk = $('<a>Add</a>');
+		addLnk.bind('click', function(event){
+			openAddDisk2PoolDialog();
+		});
+		
+		// Delete disk from pool
+		var deleteLnk = $('<a>Delete</a>');
+		deleteLnk.bind('click', function(event){
+			openDeleteDiskFromPoolDialog();
+		});
+		
+		// Refresh table
+		var refreshLnk = $('<a>Refresh</a>');
+		refreshLnk.bind('click', function(event){
+			
+		});
+		
+		// Create action bar
+		var actionBar = $('<div id="zvmResourceActions" class="actionBar"></div>');
+		
+		// Create an action menu
+		var actionsMenu = createMenu([addLnk, deleteLnk, refreshLnk]);
+		actionsMenu.superfish();
+		actionsMenu.css('display', 'inline-block');
+		actionBar.append(actionsMenu);
+		
+		// Set correct theme for action menu
+		actionsMenu.find('li').hover(function() {
+			setMenu2Theme($(this));
+		}, function() {
+			setMenu2Normal($(this));
+		});
+		
+		// Create a division to hold actions menu
+		var menuDiv = $('<div id="' + tableId + '_menuDiv" class="menuDiv"></div>');
+		$('#' + tableId + '_length').prepend(menuDiv);
+		$('#' + tableId + '_length').css({
+			'padding': '0px',
+			'width': '500px'
+		});
+		$('#' + tableId + '_filter').css({'padding': '10px',});
+		menuDiv.append(actionBar);
+	}
+	
+	/**
+	 * Enable editable columns
+	 */
+	// Do not make 1st, 2nd, 4th, 5th, 6th, 7th, or 8th column editable
+	$('#' + tableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7),td:nth-child(8))').editable(
+		function(value, settings) {		
+		    // If users did not make changes, return the value directly
+		    // jeditable saves the old value in this.revert
+		    if ($(this).attr('revert') == value){
+		        return value;
+		    }
+		    
+			// Get column index
+			var colPos = this.cellIndex;
+						
+			// Get row index
+			var dTable = $('#' + tableId).dataTable();
+			var rowPos = dTable.fnGetPosition(this.parentNode);
+			
+			// Update datatable
+			dTable.fnUpdate(value, rowPos, colPos, false);
+			
+			// Get table headers
+			var headers = $('#' + nodesTableId).parents('.dataTables_scroll').find('.dataTables_scrollHead thead tr:eq(0) th');
+						
+			// Get node name
+			var node = $(this).parent().find('td a.node').text();
+			// Get attribute name
+			var attrName = jQuery.trim(headers.eq(colPos).text());
+			// Get column value
+			var value = $(this).text();
+			
+			// Build argument
+			var args = attrName + '=' + value;
+			
+			// Send command to change node attributes
+//        	$.ajax( {
+//        		url : 'lib/cmd.php',
+//        		dataType : 'json',
+//        		data : {
+//        			cmd : 'chdef',
+//        			tgt : '',
+//        			args : '-t;node;-o;' + node + ';' + args,
+//        			msg : 'out=nodesTab;tgt=' + node
+//        		},
+//
+//        		success: showChdefOutput
+//        	});
+
+			return value;
+		}, {
+			onblur : 'submit', 	// Clicking outside editable area submits changes
+			type : 'textarea',
+			placeholder: ' ',
+			event : "dblclick", // Double click and edit
+			height : '50px' 	// The height of the text area
+		});
+	
+	// Resize accordion
+	$('#zvmResourceAccordion').accordion('resize');
+}
+
+/**
+ * Open dialog to delete disk from pool
+ */
+function openDeleteDiskFromPoolDialog() {
+	// Create form to delete disk to pool
+	var dialogId = 'zvmDeleteDiskFromPool';
+	var deleteDiskForm = $('<div id="' + dialogId + '" class="form"></div>');
+	// Create info bar
+	var info = createInfoBar('Remove a disk from a disk pool defined in the EXTENT CONTROL.');
+	deleteDiskForm.append(info);
+	var action = $('<div><label>Action:</label></div>');
+	var actionSelect = $('<select name="action">'
+			+ '<option value=""></option>'
+			+ '<option value="1">Remove region</option>'
+			+ '<option value="2">Remove region from group</option>'
+			+ '<option value="3">Remove region from all groups</option>'
+			+ '<option value="7">Remove entire group</option>'
+		+ '</select>');
+	action.append(actionSelect);
+	
+	var hcp = $('<div><label>Hardware control point:</label></div>');
+	var hcpSelect = $('<select name="hcp"></select>');
+	hcp.append(hcpSelect);
+	var region = $('<div><label>Region name:</label><input type="text" name="region"/></div>');
+	var group = $('<div><label>Group name:</label><input type="text" name="group"/></div>');
+	deleteDiskForm.append(action, hcp, region, group);
+
+	// Create a array for hardware control points
+	var hcps = new Array();
+	if ($.cookie('hcp').indexOf(',') > -1)
+		hcps = $.cookie('hcp').split(',');
+	else
+		hcps.push($.cookie('hcp'));
+	
+	// Append options for hardware control points
+	for (var i in hcps) {
+		hcpSelect.append($('<option value="' + hcps[i] + '">' + hcps[i] + '</option>'));
+	}
+			
+	actionSelect.change(function() {
+		if ($(this).val() == '1' || $(this).val() == '3') {
+			region.show();
+			group.hide();
+		} else if ($(this).val() == '2') {
+			region.show();
+			group.show();
+		} else if ($(this).val() == '7') {
+			region.val('FOOBAR');
+			region.hide();
+			group.show();
+		}		
+	});
+	
+	// Open dialog to delete disk
+	deleteDiskForm.dialog({
+		title:'Delete disk from pool',
+		modal: true,
+		width: 400,
+		buttons: {
+        	"Ok": function(){
+        		// Remove any warning messages
+        		$(this).find('.ui-state-error').remove();
+        		
+				// Get inputs
+        		var action = $(this).find('select[name=action]').val();
+				var hcp = $(this).find('select[name=hcp]').val();
+				var region = $(this).find('input[name=region]').val();
+				var group = $(this).find('input[name=group]').val();
+								
+				// If inputs are not complete, show warning message
+				if (!action || !hcp) {
+					var warn = createWarnBar('Please provide a value for each missing field.');
+					warn.prependTo($(this));
+				} else {
+					// Change dialog buttons
+    				$(this).dialog('option', 'buttons', {
+    					'Close': function() {$(this).dialog("close");}
+    				});
+    				
+					var args;
+					if (action == '2' || action == '7')
+						args = region + ';' + group;
+					else
+						args = group;
+					
+    				// Add disk to pool
+    				$.ajax( {
+    					url : 'lib/cmd.php',
+    					dataType : 'json',
+    					data : {
+    						cmd : 'chvm',
+    						tgt : hcp,
+    						args : '--removediskfrompool;' + action + ';' + args,
+    						msg : dialogId
+    					},
+    
+    					success : updateResourceDialog
+    				});
+				}
+			},
+			"Cancel": function() {
+        		$(this).dialog( "close" );
+        	}
+		}
+	});
+}
+
+/**
+ * Open dialog to add disk to pool
+ */
+function openAddDisk2PoolDialog() {
+	// Create form to add disk to pool
+	var dialogId = 'zvmAddDisk2Pool';
+	var addDiskForm = $('<div id="' + dialogId + '" class="form"></div>');
+	// Create info bar
+	var info = createInfoBar('Add a disk to a disk pool defined in the EXTENT CONTROL. The disk has to already be attached to SYSTEM.');
+	addDiskForm.append(info);
+	var action = $('<div><label>Action:</label></div>');
+	var actionSelect = $('<select name="action">'
+			+ '<option value=""></option>'
+			+ '<option value="4">Define region and add to group</option>'
+			+ '<option value="5">Add existing region to group</option>'
+		+ '</select>');
+	action.append(actionSelect);
+	
+	var hcp = $('<div><label>Hardware control point:</label></div>');
+	var hcpSelect = $('<select name="hcp"></select>');
+	hcp.append(hcpSelect);
+	var region = $('<div><label>Region name:</label><input type="text" name="region"/></div>');
+	var volume = $('<div><label>Volume name:</label><input type="text" name="volume"/></div>');
+	var group = $('<div><label>Group name:</label><input type="text" name="group"/></div>');
+	addDiskForm.append(action, hcp, region, volume, group);
+
+	// Create a array for hardware control points
+	var hcps = new Array();
+	if ($.cookie('hcp').indexOf(',') > -1)
+		hcps = $.cookie('hcp').split(',');
+	else
+		hcps.push($.cookie('hcp'));
+	
+	// Append options for hardware control points
+	for (var i in hcps) {
+		hcpSelect.append($('<option value="' + hcps[i] + '">' + hcps[i] + '</option>'));
+	}
+			
+	actionSelect.change(function() {
+		if ($(this).val() == '4') {
+			volume.show();
+		} else if ($(this).val() == '5') {
+			volume.hide();
+		}			
+	});
+		
+	// Open dialog to add disk
+	addDiskForm.dialog({
+		title:'Add disk to pool',
+		modal: true,
+		width: 400,
+		buttons: {
+        	"Ok": function(){
+        		// Remove any warning messages
+        		$(this).find('.ui-state-error').remove();
+        		
+				// Get inputs
+        		var action = $(this).find('select[name=action]').val();
+				var hcp = $(this).find('select[name=hcp]').val();
+				var region = $(this).find('input[name=region]').val();
+				var volume = $(this).find('input[name=volume]').val();
+				var group = $(this).find('input[name=group]').val();
+								
+				// If inputs are not complete, show warning message
+				if (!action || !hcp || !region || !group) {
+					var warn = createWarnBar('Please provide a value for each missing field.');
+					warn.prependTo($(this));
+				} else {
+					// Change dialog buttons
+    				$(this).dialog('option', 'buttons', {
+    					'Close': function() {$(this).dialog("close");}
+    				});
+    				
+					var args;
+					if (action == '4')
+						args = region + ';' + volume + ';' + group;
+					else
+						args = region + ';' + group;
+					
+    				// Add disk to pool
+    				$.ajax( {
+    					url : 'lib/cmd.php',
+    					dataType : 'json',
+    					data : {
+    						cmd : 'chvm',
+    						tgt : hcp,
+    						args : '--adddisk2pool;' + action + ';' + args,
+    						msg : dialogId
+    					},
+    
+    					success : updateResourceDialog
+    				});
+				}
+			},
+			"Cancel": function() {
+        		$(this).dialog( "close" );
+        	}
+		}
+	});
+}
+
+/**
+ * Update resource dialog
+ * 
+ * @param data
+ *            HTTP request data
+ * @return Nothing
+ */
+function updateResourceDialog(data) {	
+	var dialogId = data.msg;
+	var infoMsg;		
+	
+	// Create info message
+	if (jQuery.isArray(data.rsp)) {
+		infoMsg = '';
+		for (var i in data.rsp) {
+			infoMsg += data.rsp[i] + '</br>';
+		}
+	} else {
+		infoMsg = data.rsp;
+	}
+	
+	// Append info to dialog
+	var info = createInfoBar(infoMsg);
+	info.prependTo($('#' + dialogId));
+}
+
+/**
+ * Select all checkboxes in the datatable
+ * 
+ * @param event
+ *            Event on element
+ * @param obj
+ *            Object triggering event
+ * @return Nothing
+ */
+function selectAllDisk(event, obj) {
+	// Get datatable ID
+	// This will ascend from <input> <th> <tr> <thead> <table>
+	var tableObj = obj.parents('.datatable');
+	var status = obj.attr('checked');
+	tableObj.find(' :checkbox').attr('checked', status);
+	event.stopPropagation();
 }
 
 /**
@@ -1846,44 +2256,35 @@ function loadDiskPoolTable(data) {
  * @return Nothing
  */
 function loadNetworkTable(data) {
+	// Remove loader
+	var panelId = 'zvmNetworkResource';
+	$('#' + panelId).find('img[src="images/loader.gif"]').remove();
+	
 	var args = data.msg.split(';');
 	var hcp = args[0].replace('hcp=', '');
 	var type = args[1].replace('type=', '');
 	var name = args[2].replace('network=', '');
 	var tmp = data.rsp[0].split(hcp + ': ');
 
-	// Remove loader
-	var loaderId = 'zvmResourceLoader';
-	if ($('#' + loaderId).length) {
-		$('#' + loaderId).remove();
-	}
-
-	// Resource tab ID
-	var tabId = 'zvmResourceTab';
-	var info = $('#' + tabId).find('.ui-state-highlight');
+	// Resource tab ID	
+	var info = $('#' + panelId).find('.ui-state-highlight');
 	// If there is no info bar
 	if (!info.length) {
 		// Create info bar
-		info = createInfoBar('Below are disks and networks found by the hardware control point.  It shows disk pools defined in the EXTENT CONTROL file and LANs|VSWITCHes available to use.');
-		$('#' + tabId).append(info);
+		info = createInfoBar('Below are LANs/VSWITCHes available to use.');
+		$('#' + panelId).append(info);
 	}
 
 	// Get datatable
 	var dTable = getNetworkDataTable();
-	if (!dTable) {		
-		// Create networks section
-		var fieldSet = $('<fieldset></fieldset>');
-		var legend = $('<legend>Networks</legend>');
-		fieldSet.append(legend);
-
+	if (!dTable) {
 		// Create table
 		var tableId = 'zNetworkDataTable';
 		var table = new DataTable(tableId);
 		table.init( [ 'HCP', 'Type', 'Name', 'Details' ]);
 
 		// Append datatable to tab
-		fieldSet.append(table.object());
-		$('#' + tabId).append(fieldSet);
+		$('#' + panelId).append(table.object());
 
 		// Turn into datatable
 		dTable = $('#' + tableId).dataTable();
@@ -1904,7 +2305,10 @@ function loadNetworkTable(data) {
 	}
 	details += '</pre>';
 	
-	dTable.fnAddData( [ hcp, type, name, details ]);
+	dTable.fnAddData([ '<pre>' + hcp + '</pre>', '<pre>' + type + '</pre>', '<pre>' + name + '</pre>', details ]);
+	
+	// Resize accordion
+	$('#zvmResourceAccordion').accordion('resize');
 }
 
 /**

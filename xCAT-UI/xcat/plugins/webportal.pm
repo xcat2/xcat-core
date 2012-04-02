@@ -38,7 +38,8 @@ sub process_request {
 		'provzlinux'  => \&provzlinux,
 		'clonezlinux' => \&clonezlinux,
 		'genhostip'   => \&genhostip,
-		'getmaxvm'    => \&getmaxvm
+		'getmaxvm'    => \&getmaxvm,
+		'getuserprivilege' => \&getuserprivilege
 	);
 
 	# Check if the request is authorized
@@ -768,5 +769,40 @@ sub getmaxvm {
 	}
 	
 	$callback->( { data => "Max allowed: $max" } );
+}
+
+sub getuserprivilege {
+	# Get the user privilege
+	my ( $request, $callback, $sub_req ) = @_;
+	my $user = $request->{arg}->[1];
+	if (!$user) {
+		$callback->( { data => "(Error) No user name is specified" } );
+		return;
+	}
+	
+	my @args;
+	my $privilege = "user";
+	
+	# Look in 'policy' table
+	my $tab = xCAT::Table->new( 'policy', -create => 1, -autocommit => 0 );
+	my @results = $tab->getAllAttribsWhere( "name='" . $user . "'", 'comments' );
+	foreach (@results) {
+		if ( $_->{'comments'} ) {
+			@args = split( ';', $_->{'comments'} );
+			
+			# Extract user privilege
+			foreach (@args) {
+				if ($_ =~ m/privilege:/i) {
+					$_ =~ s/privilege://g;
+					$privilege = $_;					
+					$privilege =~ s/\s*$//;	# Trim right
+					$privilege =~ s/^\s*//;	# Trim left
+					last;
+				}
+			}
+		}
+	}
+	
+	$callback->( { data => "Privilege: $privilege" } );
 }
 1;

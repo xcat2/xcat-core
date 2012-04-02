@@ -342,7 +342,20 @@ function loadTable(data) {
 				cont : newCont
 			},
 			success : function(data) {
-				alert('Changes saved');
+				// Create info message
+				var dialog = $('<div></div>').append(createInfoBar('Changes saved!'));
+				
+				// Open dialog
+				dialog.dialog({
+					modal: true,
+					title: 'Info',
+					width: 400,
+					buttons: {
+						"Ok": function(){ 
+							$(this).dialog("close");
+						}
+					}
+				});
 			}
 		});
 	});
@@ -428,12 +441,8 @@ function loadTable(data) {
 			});
 	});
 	
-	// Actions
-	var actionsLnk = '<a>Actions</a>';
-	var actsMenu = createMenu([saveLnk, undoLnk, addLnk]);
-
 	// Create an action menu
-	var actionsMenu = createMenu([ [ actionsLnk, actsMenu ] ]);
+	var actionsMenu = createMenu([saveLnk, undoLnk, addLnk]);
 	actionsMenu.superfish();
 	actionsMenu.css('display', 'inline-block');
 	actionBar.append(actionsMenu);
