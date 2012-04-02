@@ -415,14 +415,18 @@ unless ($onlyinitrd) {
 		 }
              }
            }
-           $pkgnames .= " " . join(' ', @npa);
-	   $group_pkgnames .= " " . join(' ', @npa_group);
+           if (@npa) {
+               $pkgnames .= " " . join(' ', @npa);
+           }
+           if (@npa_group) {
+	       $group_pkgnames .= " " . join(' ', @npa_group);
+           }
        }
         my $envlist;
         if(exists $pkg_hash{$pass}{ENVLIST}){
             $envlist = join(' ', @{$pkg_hash{$pass}{ENVLIST}});
         }
-       if($pkgnames ne ' ')
+       if($pkgnames)
        {
            print "$envlist $yumcmd $pkgnames\n";
            $rc = system("$envlist $yumcmd $pkgnames");
@@ -432,7 +436,7 @@ unless ($onlyinitrd) {
 	       exit 1;
 	   }
        }
-       if($group_pkgnames ne ' ')
+       if($group_pkgnames)
        {
            print "$envlist $yumcmd -t pattern $group_pkgnames\n";
            $rc = system("$envlist $yumcmd -t pattern $group_pkgnames");
