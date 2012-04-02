@@ -1959,72 +1959,6 @@ function loadDiskPoolTable(data) {
 		menuDiv.append(actionBar);
 	}
 	
-	/**
-	 * Enable editable columns
-	 */
-	// Do not make 1st, 2nd, 4th, 5th, 6th, 7th, or 8th column editable
-	$('#' + tableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7),td:nth-child(8))').editable(
-		function(value, settings) {		
-		    // If users did not make changes, return the value directly
-		    // jeditable saves the old value in this.revert
-		    if ($(this).attr('revert') == value){
-		        return value;
-		    }
-		    
-			// Get column index
-			var colPos = this.cellIndex;
-						
-			// Get row index
-			var dTable = $('#' + tableId).dataTable();
-			var rowPos = dTable.fnGetPosition(this.parentNode);
-			
-			// Update datatable
-			dTable.fnUpdate(value, rowPos, colPos, false);
-			
-			// Get hardware control point
-			var hcp = $(this).parent('tr').find('td:eq(1)').text();
-			// Get disk group
-			var group = $(this).text();
-			// Get disk region
-			var region = $(this).parent('tr').find('td:eq(4)').text();
-			
-			// Remove disk from pool
-			$.ajax({
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'chvm',
-					tgt : hcp,
-					args : '--removediskfrompool;2;' + region + ';' + $(this).attr('revert'),
-					msg : 'zvmDiskResource'
-				},
-				
-				success : updateResourceDialog
-			});
-			
-			// Add disk to pool
-			$.ajax({
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'chvm',
-					tgt : hcp,
-					args : '--adddisk2pool;5;' + region + ';' + group,
-					msg : 'zvmDiskResource'
-				},
-
-				success : updateResourceDialog
-			});
-
-			return group;
-		}, {
-			onblur : 'submit', 	// Clicking outside editable area submits changes
-			type : 'textarea',
-			placeholder: ' ',
-			event : "dblclick", // Double click and edit
-			height : '50px' 	// The height of the text area
-		});
-	
 	// Resize accordion
 	$('#zvmResourceAccordion').accordion('resize');
 }
@@ -2252,8 +2186,8 @@ function openAddDisk2PoolDialog() {
  */
 function updateResourceDialog(data) {	
 	var dialogId = data.msg;
-	var infoMsg;		
-	
+	var infoMsg;
+
 	// Create info message
 	if (jQuery.isArray(data.rsp)) {
 		infoMsg = '';
@@ -2271,6 +2205,7 @@ function updateResourceDialog(data) {
 		'margin': '10px 5px'
 	});
 	
+	// Create close button to close info bar
 	var close = $('<span class="ui-icon ui-icon-close"></span>').css({
 		'display': 'inline-block',
 		'float': 'right'
@@ -2278,12 +2213,12 @@ function updateResourceDialog(data) {
 		$(this).parent().remove();
 	});
 	
-	var info = $('<pre>' + infoMsg + '</pre>').css({
+	var msg = $('<pre>' + infoMsg + '</pre>').css({
 		'display': 'inline-block',
 		'width': '90%'
 	});
 	
-	infoBar.append(icon, info, close);	
+	infoBar.append(icon, msg, close);	
 	infoBar.prependTo($('#' + dialogId));
 }
 
