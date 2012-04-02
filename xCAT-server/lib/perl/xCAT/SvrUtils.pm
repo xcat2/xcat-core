@@ -267,6 +267,7 @@ sub getsynclistfile()
     my %osimage_syncfile = ();
     my @profiles = ();
 
+  if ($nodes) {
     # get the profile attributes for the nodes
     my $nodetype_t = xCAT::Table->new('nodetype');
     unless ($nodetype_t) {
@@ -288,6 +289,7 @@ sub getsynclistfile()
         push @profiles, $profile;
       }
     }
+   }
 
     # get the syncfiles base on the osimage
     my $osimage_t = xCAT::Table->new('osimage');
