@@ -1,4 +1,4 @@
-package xCAT::SSH;
+package xCAT::SSHInteract;
 use Exporter;
 use Net::Telnet;
 use strict;
