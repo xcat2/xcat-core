@@ -8,9 +8,11 @@ use IO::Pty;
 use POSIX;
 
 sub _startssh {
+	my $self = shift;
 	my $pty = shift;
 	my $name = shift;
 	my $dest = shift;
+	my %args=@_;
 	my $tty;
 	my $tty_fd;
 	my $pid = fork();
@@ -25,7 +27,12 @@ sub _startssh {
 	open STDOUT,">&",$tty_fd;
 	$pty->make_slave_controlling_terminal();
 	close($tty);
-	exec ("ssh","-o","StrictHostKeyChecking=no","-l",$name,$dest);
+	my @cmd =  ("ssh","-o","StrictHostKeyChecking=no");
+	if ($args{"-nokeycheck"}) {
+		push @cmd,("-o","UserKnownHostsFile=/dev/null");
+	}
+	push @cmd,("-l",$name,$dest);
+	exec @cmd;
 }
 
 sub new {
@@ -42,8 +49,10 @@ sub new {
 	delete $args{"-host"};
 	delete $args{"-username"};
 	delete $args{"-password"};
+	my $nokeycheck = $args{"-nokeycheck"};
+	if ($nokeycheck) { delete $args{"-nokeycheck"}; }
 	my $self = Net::Telnet->new(%args);
-	_startssh($pty,$username,$host);
+	_startssh($self,$pty,$username,$host,"-nokeycheck"=>$nokeycheck);
 	$self->waitfor("-match" => '/password:/i', -errmode => "return") or die "Unable to reach host ",$self->lastline;
 	$self->print($password);
 	my $nextline = $self->getline();

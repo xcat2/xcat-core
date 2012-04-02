@@ -3972,6 +3972,7 @@ sub clicmds {
   my $pass=shift;
   my $node=shift;
   my $nodeid=shift;
+  my %args=@_;
   my $value;
   my @unhandled;
   my %handled = ();
@@ -3999,31 +4000,51 @@ sub clicmds {
   unless (%handled) {
     return([0,\@unhandled]);
   }
-  require Net::Telnet;
-  my $t = new Net::Telnet(
-                Timeout=>15, 
-                Errmode=>'return',
-                Prompt=>'/system> $/'
-  );
-
-  my $Rc;
-  if (defined($handled{'initnetwork'})) {
+  my $curruser = $user;
+  my $currpass = $pass;
+  my $nokeycheck=0; #default to checking ssh key
+  if ($args{defaultcfg}) {
+    $curruser="USERID";
+    $currpass = "PASSW0RD";
+    $nokeycheck=1;
+  }
+  my $curraddr = $mpa;
+  if ($args{curraddr}) {
+	$curraddr = $args{curraddr};
+  } elsif (defined($handled{'initnetwork'})) {
     # get the IP of mpa from the hosts.otherinterfaces
     my $hoststab = xCAT::Table->new('hosts');
     if ($hoststab) {
       my $hostdata = $hoststab->getNodeAttribs($node, ['otherinterfaces']);
       if (!$hostdata->{'otherinterfaces'}) {
-      return ([1,\@unhandled,"Cannot find the temporary IP from the hosts.otherinterfaces"]);
+         return ([1,\@unhandled,"Cannot find the temporary IP from the hosts.otherinterfaces"]);
       } else {
-        $Rc = $t->open($hostdata->{'otherinterfaces'});
-        ## TRACE_LINE print "Telnet to $hostdata->{'otherinterfaces'} for the initnetwork command.\n";
+      	$curraddr = $hostdata->{'otherinterfaces'};
       }
     }
-  } else {
-    $Rc = $t->open($mpa);
-  }
-  if ($Rc) {
-    $Rc = $t->login($user,$pass); 
+  } 
+  require xCAT::SSHInteract;
+  my $t = new  xCAT::SSHInteract(
+		-username=>$curruser,
+		-password=>$currpass,
+		-host=>$curraddr,
+		-nokeycheck=>$nokeycheck,
+                Timeout=>15, 
+                Errmode=>'return',
+                Prompt=>'/system> $/'
+		);
+  my $Rc=1;
+  unless ($t) { #ssh failed.. fallback to a telnet attempt for older AMMs with telnet disabled by default
+     require Net::Telnet;
+     $t = new Net::Telnet(
+                   Timeout=>15, 
+                   Errmode=>'return',
+                   Prompt=>'/system> $/'
+     );
+     $Rc = $t->open($curraddr);
+     if ($Rc) {
+       $Rc = $t->login($user,$pass); 
+     }
   }
   if (!$Rc) {
     push @cfgtext,$t->errmsg;
@@ -4187,6 +4208,7 @@ sub mmtextid {
   if (!grep(/OK/i,@data)) {
     return([1,@data]);
   }
+  my @data = $t->cmd("config -name \"$value\" -T system"); #on cmms, this identifier is frequently relevant...
   return([0,"textid: $value"]);
 }
 
