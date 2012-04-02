@@ -253,7 +253,6 @@ echo "
 XCATROOT=$RPM_INSTALL_PREFIX0
 PATH=\$XCATROOT/bin:\$XCATROOT/sbin:$PATH
 MANPATH=\$XCATROOT/share/man:\$MANPATH
-export XCATROOT PATH MANPATH
 " >> /etc/environment
 fi
 
