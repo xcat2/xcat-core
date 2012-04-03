@@ -30,7 +30,7 @@ install:
 	dh_testdir
 	dh_testroot
 	dh_installdirs
-	dh_install
+	dh_install -X".svn"
 	dh_link
 
 
@@ -47,7 +47,7 @@ binary-arch:
 	dh_installchangelogs 
 	dh_installdocs
 #	dh_installexamples
-	dh_install
+	dh_install -X".svn"
 	chmod 755 `pwd`/debian/xcat-test/opt/xcat/bin/*
 	chmod 444 `pwd`/debian/xcat-test/opt/xcat/share/man/man1/*
 	chmod 644 `pwd`/debian/xcat-test/opt/xcat/share/doc/man1/*
