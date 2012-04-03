@@ -16,6 +16,7 @@ use lib "$::XCATROOT/lib/perl";
 use xCAT::Table;
 use Thread qw(yield);
 use xCAT::Utils;
+use xCAT::NetworkUtils;
 use xCAT::Usage;
 use IO::Socket;
 use IO::Pty; #needed for ssh password login
