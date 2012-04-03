@@ -4444,6 +4444,9 @@ sub network {
           }
           $hosttab->close();
         }
+	unless ($ip) {
+		$ip = xCAT::NetworkUtils->getipaddr($node);
+	}
       } else {
         my $ppctab = xCAT::Table->new( 'ppc' );
         if ($ppctab) {
