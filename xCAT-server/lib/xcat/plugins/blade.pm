@@ -4029,12 +4029,32 @@ sub clicmds {
 		-password=>$currpass,
 		-host=>$curraddr,
 		-nokeycheck=>$nokeycheck,
+		-output_record_separator=>"\r",
                 Timeout=>15, 
                 Errmode=>'return',
                 Prompt=>'/system> $/'
 		);
   my $Rc=1;
-  unless ($t) { #ssh failed.. fallback to a telnet attempt for older AMMs with telnet disabled by default
+  if ($t) { #we sshed in, but we may be forced to deal with initial password set
+	my $output = $t->get();
+	if ($output =~ /Enter current password/) {
+		$t->print($currpass);
+		$t->waitfor(-match=>"/password:/i");
+		$t->print($pass);
+		$t->waitfor(-match=>"/password:/i");
+		$t->print($pass);
+		my $result=$t->getline();
+		chomp($result);
+		$result =~ s/\s*//;
+		while ($result eq "") {
+			$result = $t->getline();
+			$result =~ s/\s*//;
+		}
+		if ($result =~ /not compliant/) {
+         		return ([1,\@unhandled,"Management module refuses requested password as insufficiently secure, try another password"]);
+		}
+	}
+  } else {#ssh failed.. fallback to a telnet attempt for older AMMs with telnet disabled by default
      require Net::Telnet;
      $t = new Net::Telnet(
                    Timeout=>15, 
