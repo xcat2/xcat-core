@@ -3981,7 +3981,7 @@ sub clicmds {
 
   # most of these commands should be able to be done
   # through SNMP, but they produce various errors.
-  foreach my $cmd (@_) {
+  foreach my $cmd (@{$args{cmds}}) {
     if ($cmd =~ /^swnet|pd1|pd2|sshcfg|rscanfsp|USERID|HMC|=/) {
       if (($cmd =~ /^textid/) and ($nodeid > 0)) {
         push @unhandled,$cmd;
@@ -4939,7 +4939,7 @@ sub dompa {
         $rc = 1;
         $args = [];
       } else {
-        $result = clicmds($mpa,$user,$pass,$node,$slot,@exargs);
+        $result = clicmds($mpa,$user,$pass,$node,$slot,args=>\@exargs);
         $rc |= @$result[0];
         $args = @$result[1];
       }
@@ -4990,7 +4990,7 @@ sub dompa {
       if ($mptype eq "cmm") {
         # For the cmm, call the rscanfsp to discover the fsp for ppc blade
         my @telargs = ("rscanfsp");
-        clicmds($mpa,$user,$pass,$node,$slot,@telargs);
+        clicmds($mpa,$user,$pass,$node,$slot,args=>\@telargs);
       }
     }
   }

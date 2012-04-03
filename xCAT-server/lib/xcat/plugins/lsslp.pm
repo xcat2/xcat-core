@@ -780,7 +780,7 @@ sub invoke_cmd {
                     $target_dev->{username},
                     $target_dev->{password},
                     0,
-                    @cmds );
+                    cmds=>\@cmds );
         }
         elsif($target_dev->{'type'} eq 'hmc')
         {
