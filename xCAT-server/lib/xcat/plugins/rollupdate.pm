@@ -1002,7 +1002,8 @@ my @rcblines;
             my $mutex_string = &get_mutex($ugname);
             my $lastcount = 0;
             my $llcount = $machinecount;
-            if ($::updateall) {
+            if (($::updateall) &&
+                ($machinecount gt $::updateall_nodecount)) {
                 $lastcount = $machinecount % $::updateall_nodecount;
                 $llcount = $::updateall_nodecount;
             }
@@ -1832,6 +1833,7 @@ mxnode_loop:  foreach my $mxnode ( xCAT::NodeRange::noderange($mxnodegroup) ) {
      }
 
      if ( $resource_string ) {
+        my $cfg_change = 0;
         my $cmd = "llconfig -d FLOATING_RESOURCES SCHEDULE_BY_RESOURCES CENTRAL_MANAGER_LIST RESOURCE_MGR_LIST";
         my @llcfg_d = xCAT::Utils->runcmd( $cmd, 0 );
         my $curSCHED = "";
@@ -1844,29 +1846,43 @@ mxnode_loop:  foreach my $mxnode ( xCAT::NodeRange::noderange($mxnodegroup) ) {
             if ( $llattr =~ /FLOATING_RESOURCES/ ) {
                 $curFLOAT = $llval; }
         }
+        my $origSCHED = $curSCHED;
+        my $origFLOAT = $curFLOAT;
         $cmd = "llconfig -N -c ";
         $curFLOAT =~ s/XCATROLLINGUPDATE_MUTEX(\d)*\((\d)*\)//g;
         $curFLOAT =~ s/XCATROLLINGUPDATE_MAXUPDATES(\d)*\((\d)*\)//g;
-        $curFLOAT .= $resource_string;
-        $cmd .= "FLOATING_RESOURCES=\"$curFLOAT\" ";
+        $curFLOAT .= " $resource_string";
+        $curFLOAT =~ s/\s+/ /g; $curFLOAT =~ s/^\s//g; $curFLOAT =~ s/\s$//g;
+        $origFLOAT =~ s/\s+/ /g; $origFLOAT =~ s/^\s//g; $origFLOAT =~ s/\s$//g;
+        if ( $curFLOAT ne $origFLOAT ) {
+            $cmd .= "FLOATING_RESOURCES=\"$curFLOAT\" ";
+            $cfg_change = 1;
+        }
 
         $resource_string =~ s/\((\d)*\)//g;
         $curSCHED =~ s/XCATROLLINGUPDATE_MUTEX(\d)*//g;
         $curSCHED =~ s/XCATROLLINGUPDATE_MAXUPDATES(\d)*//g;
-        $curSCHED .= $resource_string;
-        $cmd .= "SCHEDULE_BY_RESOURCES=\"$curSCHED\" ";
-        my @llcfg_c;
-        if ($::TEST) {
-            my $rsp;
-            push @{ $rsp->{data} }, "In TEST mode.  Will NOT run command: $cmd ";
-               xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
-            $::RUNCMD_RC = 0;
-        } else {
-            @llcfg_c = xCAT::Utils->runcmd( $cmd, 0 );
+        $curSCHED .= " $resource_string";
+        $curSCHED =~ s/\s+/ /g; $curSCHED =~ s/^\s//g; $curSCHED =~ s/\s$//g;
+        $origSCHED =~ s/\s+/ /g; $origSCHED =~ s/^\s//g; $origSCHED =~ s/\s$//g;
+        if ( $curSCHED ne $origSCHED ) {
+            $cmd .= "SCHEDULE_BY_RESOURCES=\"$curSCHED\" ";
+            $cfg_change = 1;
         }
+        if ($cfg_change) {
+            my @llcfg_c;
+            if ($::TEST) {
+                my $rsp;
+                push @{ $rsp->{data} }, "In TEST mode.  Will NOT run command: $cmd ";
+                   xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+                $::RUNCMD_RC = 0;
+            } else {
+                @llcfg_c = xCAT::Utils->runcmd( $cmd, 0 );
+            }
 
-        # Send LL reconfig to all central mgrs and resource mgrs
-        llreconfig();
+            # Send LL reconfig to all central mgrs and resource mgrs
+            llreconfig();
+        }
     }
  
     $::LL_MUTEX_RESOURCES_CREATED = 1;
