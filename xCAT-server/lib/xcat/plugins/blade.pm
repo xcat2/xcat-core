@@ -3977,7 +3977,7 @@ sub clicmds {
   my @unhandled;
   my %handled = ();
   my $result;
-  my @tcmds = qw(snmpcfg sshcfg network swnet pd1 pd2 textid network_reset rscanfsp initnetwork solcfg USERID HMC);
+  my @tcmds = qw(snmpcfg sshcfg network swnet pd1 pd2 textid network_reset rscanfsp initnetwork solcfg userpassword USERID HMC);
 
   # most of these commands should be able to be done
   # through SNMP, but they produce various errors.
@@ -4096,7 +4096,8 @@ sub clicmds {
     elsif (/^rscanfsp$/)  { $result = rscanfsp($t,$mpa,$handled{$_},$mm); }
     elsif (/^solcfg$/)  { $result = solcfg($t,$handled{$_},$mm); }
     elsif (/^network_reset$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid,1); }
-    elsif (/^(USERID|HMC)$/) {$result = passwd($t, $mpa, $1, $handled{$_}, $mm);}
+    elsif (/^(USERID|HMC)$/) {$result = passwd($t, $mpa, $1, "=".$handled{$_}, $mm);}
+    elsif (/^userpassword$/) {$result = passwd($t, $mpa, $1, $handled{$_}, $mm);}
     push @data, "$_: @$result";
     $Rc |= shift(@$result);
     push @cfgtext,@$result;
@@ -4275,6 +4276,12 @@ sub passwd {
   my $user = shift;
   my $pass = shift;
   my $mm = shift;
+  if ($pass =~ /^=/) {
+	$pass=~ s/=//;
+  } elsif ($pass =~ /=/) {
+	($user,$pass) = split /=/,$pass;
+  }
+	
   if (!$pass) {
     return ([1, "No param specified for '$user'"]);
   }
@@ -4321,6 +4328,8 @@ sub passwd {
             return ([1, "Update password of HMC for '$fblades' failed. Please recreate the DFM connections for them."]);
         }
     } else {
+	#TODO: add new user if name mismatches what MM alread understands..
+	#additionally, may have to delete USERID in this event
         @data = ();
         my $snmp_cmd = "users -n $user -ap sha -pp des -ppw $pass -T system:$mm";
         @data = $t->cmd($snmp_cmd);
