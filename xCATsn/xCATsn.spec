@@ -32,7 +32,7 @@ Requires: perl-IO-Stty
 %ifarch s390x
 # No additional requires for zLinux right now
 %else
-Requires: atftp-xcat conserver yaboot-xcat perl-Net-Telnet
+Requires: atftp-xcat conserver-xcat yaboot-xcat perl-Net-Telnet
 %endif
 %endif
 
