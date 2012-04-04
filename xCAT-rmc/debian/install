@@ -1,0 +1,4 @@
+plugin/* opt/xcat/lib/perl/xCAT_monitoring/
+resources/* opt/xcat/lib/perl/xCAT_monitoring/rmc/resources/
+scripts/* opt/xcat/sbin/rmcmon/
+lib/perl/TEAL/* opt/xcat/lib/perl/TEAL/

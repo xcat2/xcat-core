@@ -1,0 +1,12 @@
+Source: xcat-rmc
+Section: admin
+Priority: extra
+Maintainer: Arif Ali <aali@ocf.co.uk>
+Build-Depends: debhelper (>= 5)
+Standards-Version: 3.7.2
+
+Package: xcat-rmc
+Architecture: all
+Depends: ${perl:Depends}, perl-xcat, xcat-server
+Description: RMC monitoring plug-in for xCAT
+ Provides RMC monitoring plug-in module for xCAT, configuration scripts, predefined conditions, responses and sensors
