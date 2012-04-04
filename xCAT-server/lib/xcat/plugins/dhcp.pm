@@ -1079,7 +1079,7 @@ sub process_request
             print DBG_FD $syscfg_dhcpd;
             close DBG_FD;
         } elsif ($_ eq "dhcpd" or $usingipv6) {
-            $callback->({error=>"The file /etc/sysconfig/$_ doesn't exist, check the dhcp server"});
+            $callback->({error=>["The file /etc/sysconfig/$_ doesn't exist, check the dhcp server"]});
 #        return;
         }
         }
