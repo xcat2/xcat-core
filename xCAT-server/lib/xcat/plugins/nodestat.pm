@@ -597,7 +597,7 @@ sub process_request_nmap {
    }
    #print "nmap -PE --send-ip -p $ports,3001 ".join(' ',@nodes) . "\n";
    # open($fping,"nmap -PE --send-ip -p $ports,3001 ".join(' ',@nodes). " 2> /dev/null|") or die("Can't start nmap: $!");
-   open($fping,"nmap -PE -p $ports,3001 ".join(' ',@nodes). " 2> /dev/null|") or die("Can't start nmap: $!");
+   open($fping,"nmap -PE --send-ip -p $ports,3001 ".join(' ',@nodes). " 2> /dev/null|") or die("Can't start nmap: $!");
    my $currnode='';
    my $port;
    my $state;
