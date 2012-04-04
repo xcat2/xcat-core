@@ -4107,7 +4107,7 @@ sub clicmds {
   }
   if ($reset) {
     $t->cmd("reset -T system:$mm");
-    push @result, "The management module has been reset to load the configuration";
+    push @data, "The management module has been reset to load the configuration";
   } 
   $t->close;
   return([$Rc,\@unhandled,\@data]);
@@ -4568,7 +4568,8 @@ sub snmpcfg {
   # Check the type of mm
   my @data = $t->cmd("info -T system:$mm");
   if (grep(/Mach type\/model: Chassis Management Module/, @data) && $mptype ne "cmm") {
-    return ([1,"The hwtype attribute should be set to \'cmm\' for a Chassis Management Module."]);
+    $mptype="cmm";
+    #return ([1,"The hwtype attribute should be set to \'cmm\' for a Chassis Management Module."]);
   }
   # Query users on MM
   my $id;
@@ -4634,7 +4635,8 @@ sub sshcfg {
   # Check the type of mm
   @data = $t->cmd("info -T system:$mm");
   if (grep(/Mach type\/model: Chassis Management Module/, @data) && $mptype ne "cmm") {
-    return ([1,"The hwtype attribute should be set to \'cmm\' for a Chassis Management Module."]);
+    #return ([1,"The hwtype attribute should be set to \'cmm\' for a Chassis Management Module."]);
+    $mptype="cmm"; #why in the world wouldn't we have just done this from the get go????
   }
 
   # Get firmware version on MM
