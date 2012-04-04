@@ -4055,6 +4055,7 @@ sub clicmds {
          		return ([1,\@unhandled,"Management module refuses requested password as insufficiently secure, try another password"]);
 		}
 	}
+  	$t->waitfor(match=>"/system> /");
   } else {#ssh failed.. fallback to a telnet attempt for older AMMs with telnet disabled by default
      require Net::Telnet;
      $t = new Net::Telnet(
@@ -4086,23 +4087,28 @@ sub clicmds {
   }
   @data = ();
 
+  my $reset;
   foreach (keys %handled) {
     if (/^snmpcfg/)     { $result = snmpcfg($t,$handled{$_},$user,$pass,$mm); }
     elsif (/^sshcfg$/)  { $result = sshcfg($t,$handled{$_},$user,$mm); }
     elsif (/^network$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid); }
-    elsif (/^initnetwork$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid,1); }
+    elsif (/^initnetwork$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid,1); $reset=1; }
     elsif (/^swnet/)   { $result = swnet($t,$_,$handled{$_}); }
     elsif (/^pd1|pd2$/) { $result = pd($t,$_,$handled{$_}); }
     elsif (/^textid$/)  { $result = mmtextid($t,$mpa,$handled{$_},$mm); }
     elsif (/^rscanfsp$/)  { $result = rscanfsp($t,$mpa,$handled{$_},$mm); }
     elsif (/^solcfg$/)  { $result = solcfg($t,$handled{$_},$mm); }
-    elsif (/^network_reset$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid,1); }
+    elsif (/^network_reset$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid,1); $reset=1; }
     elsif (/^(USERID|HMC)$/) {$result = passwd($t, $mpa, $1, "=".$handled{$_}, $mm);}
     elsif (/^userpassword$/) {$result = passwd($t, $mpa, $1, $handled{$_}, $mm);}
     push @data, "$_: @$result";
     $Rc |= shift(@$result);
     push @cfgtext,@$result;
   }
+  if ($reset) {
+    $t->cmd("reset -T system:$mm");
+    push @result, "The management module has been reset to load the configuration";
+  } 
   $t->close;
   return([$Rc,\@unhandled,\@data]);
 }
@@ -4495,10 +4501,6 @@ sub network {
   if ($gateway){ push @result,"Gateway: $gateway"; }
   if ($mask)   { push @result,"Subnet Mask: $mask"; }
 
-  if (defined($reset)) {
-    $t->cmd("reset -T system:$mm");
-    push @result, "The management module has been reset to load the configuration";
-  } 
   return([0,@result]);
 
 }
