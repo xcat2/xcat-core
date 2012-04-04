@@ -1168,10 +1168,10 @@ sub process_request
         }
         }
 	if ($usingipv6 and $missingfiles{dhcpd6}) {
-            $callback->({error=>"The file /etc/sysconfig/dhcpd6 doesn't exist, check the dhcp server"});
+            $callback->({error=>["The file /etc/sysconfig/dhcpd6 doesn't exist, check the dhcp server"]});
 	}
 	if ($missingfiles{dhcpd}) {
-            $callback->({error=>"The file /etc/sysconfig/dhcpd doesn't exist, check the dhcp server"});
+            $callback->({error=>["The file /etc/sysconfig/dhcpd doesn't exist, check the dhcp server"]});
 	}
 		
     }
