@@ -182,7 +182,7 @@ Output is similar to:
 
   #Updated following nodes:
   type    name                           id      type-model  serial-number  address
-  fsp     Server-9125-F2A-SN0262672-B  3       9125-F2A    0262672        192.168.200.243
+  fsp     Server-9125-F2A-SN0262672-B    3       9125-F2A    0262672        192.168.200.243
 
 5. To collects the node information from one or more hardware control points on zVM AND populate the database with details collected by rscan:
 
@@ -207,12 +207,10 @@ I<rscan cmm01>
 
 Output is similar to:
 
-  type    name                  id      type-model  serial-number  address
-  cmm     AMM680520153          0       789392X     100048A        cmm01
-  fsp     SN#YL10JH184067-fsp1  1       789542X     10F752A        12.0.0.9
-  blade   SN#YL10JH184067       1       789542X     10F752A
-  fsp     SN#YL10JH184079-fsp1  3       789542X     10F697A        12.0.0.11
-  blade   SN#YL10JH184079       3       789542X     10F697A
+  type    name                  id      type-model  serial-number  mpa        address
+  cmm     AMM680520153          0       789392X     100048A        cmm01      cmm01
+  blade   SN#YL10JH184067       1       789542X     10F752A        cmm01      12.0.0.9
+  blade   SN#YL10JH184079       3       789542X     10F697A        cmm01      12.0.0.11
 
 7. To update the NGP blade server:
 
@@ -221,9 +219,7 @@ I<rscan cmm01 -u>
 Output is similar to:
 
   cmm    [AMM680520153]         Matched To =>[cmm01]
-  fsp    [SN#YL10JH184067-fsp1] Matched To =>[cmm01node01-fsp]
   blade  [SN#YL10JH184067]      Matched To =>[cmm01node01]
-  fsp    [SN#YL10JH184079-fsp1] Matched To =>[cmm01node03-fsp]
   blade  [SN#YL10JH184079]      Matched To =>[cmm01node03]
 
 =head1 FILES
