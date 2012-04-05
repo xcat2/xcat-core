@@ -100,15 +100,15 @@ sub process_request {
 		}
 	}
 	my $mactab = xCAT::Table->new("mac");
-	my @maclist = $mactab->getAllNodeAttribs([qw/node mac/]);
 	my %machash;
+	my %macuphash;
+	my @maclist = $mactab->getAllNodeAttribs([qw/node mac/]);
 	foreach (@maclist) {
 		$machash{$_->{node}}=$_->{mac};
 	}
 		
 
 	
-	my $macupdatehash;
 	foreach my $data (@toconfig) {
 		my $mac = $data->{macaddress};
 		my $nodename = $data->{nodename};
@@ -124,8 +124,10 @@ sub process_request {
 			unless (do_blade_setup($data,curraddr=>$addr)) {
 				next;
 			}
+			$macuphash{$nodename} = { mac => $mac };
 		}
 	}
+	$mactab->setNodesAttrib(\%macuphash);
 }
 
 sub do_blade_setup {
