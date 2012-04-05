@@ -1207,9 +1207,7 @@ sub findSNsinBB {
 	my $framebase = $$framename{'primary-start'};
 	foreach my $p (@snpositions) {
 		my $cecbase = 0;
-        my $framehash = parsenoderange($STANZAS{'xcat-frames'});
-        my $frame1 = $$framehash{'primary-start'};
-        my $frame = $frame1;
+                my $frame = $framebase;
 		#my $frame = $framebase;
 		while ($p > ($cecbase + ($NUMCECSINFRAME{$frame}||$cecsperframe))) {
 			# p is not in this frame, go on to the next
