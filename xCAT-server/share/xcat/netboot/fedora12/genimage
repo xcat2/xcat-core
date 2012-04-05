@@ -624,7 +624,6 @@ EOS1
    }
    print $inifile <<EOMS;
 # check and see if debug is specified on command line
-set -x
 grep '\(debug\)' /proc/cmdline > /dev/null && export DEBUG=1
 mkdir -p /var/run
 netstart
