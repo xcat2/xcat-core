@@ -212,7 +212,11 @@ sub process_request {
          print $cfg "default=\"xCAT Genesis\"\ndelay=5\n\n";
          print $cfg 'image=/tftpboot/xcat/genesis.kernel.'."$arch\n";
 	 print $cfg "   label=\"xCAT Genesis\"\n";
+	if ($lzma_exit_value) {
 	 print $cfg "   initrd=/tftpboot/xcat/genesis.fs.$arch.gz\n";
+	} else {
+	 print $cfg "   initrd=/tftpboot/xcat/genesis.fs.$arch.lzma\n";
+	}
 	 print $cfg "   append=\"quiet xcatd=".$normnets->{$_}.":$xcatdport destiny=discover $consolecmdline BOOTIF=%B\"\n";
 	 close($cfg);
          open($cfg,">","$tftpdir/xcat/xnba/nets/$net.uefi");
