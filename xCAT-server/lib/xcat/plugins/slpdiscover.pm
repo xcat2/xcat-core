@@ -148,7 +148,7 @@ sub do_blade_setup {
 		return 0;
 	}
 	require xCAT_plugin::blade;
-	my @cmds = qw/snmpcfg=enable sshcfg=enable initnetwork=*/;
+	my @cmds = qw/snmpcfg=enable sshcfg=enable textid=* initnetwork=*/;
 	my $result = xCAT_plugin::blade::clicmds(
 						 $nodename,
 						 $localuser,
