@@ -954,54 +954,48 @@ sub nimnodeset
         my $shorthost;
         ($shorthost = $node) =~ s/\..*$//;
         chomp $shorthost;
-
-		# need to pass in this server name
-		my $cstate = xCAT::InstUtils->get_nim_attr_val($shorthost, "Cstate", $callback, "$Sname", $subreq);
-
-        if (defined($cstate) && (!($cstate =~ /ready/)))
+       
+        if ($::FORCE)
         {
-            if ($::FORCE)
+            if ($::VERBOSE)
             {
-
-                # if it's not in a ready state then reset it
-                if ($::VERBOSE)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}},
-                      "$Sname: Reseting NIM definition for $shorthost.\n";
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                }
-
-                my $rcmd =
-                  "/usr/sbin/nim -Fo reset -a force=yes $shorthost;/usr/sbin/nim -Fo deallocate -a subclass=all $shorthost";
-                my $output = xCAT::Utils->runcmd("$rcmd", -1);
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}},
-                      "$Sname: Could not reset the existing NIM object named \'$shorthost\'.\n";
-                    if ($::VERBOSE)
-                    {
-                        push @{$rsp->{data}}, "$output";
-                    }
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    $error++;
-                    push(@nodesfailed, $node);
-                    next;
-                }
-            }
-            else
-            {
-
                 my $rsp;
                 push @{$rsp->{data}},
-                  "$Sname: The NIM machine named $shorthost is not in the ready state and cannot be initialized.\n";
+                  "$Sname: Reseting NIM definition for $shorthost.\n";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            }
+
+            my $rcmd =
+              "/usr/sbin/nim -Fo reset -a force=yes $shorthost;/usr/sbin/nim -Fo deallocate -a subclass=all $shorthost";
+            my $output = xCAT::Utils->runcmd("$rcmd", -1);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "$Sname: Could not reset the existing NIM object named \'$shorthost\'.\n";
+                if ($::VERBOSE)
+                {
+                    push @{$rsp->{data}}, "$output";
+                }
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 $error++;
                 push(@nodesfailed, $node);
                 next;
-
             }
+        }
+        
+        # need to pass in this server name
+        my $cstate = xCAT::InstUtils->get_nim_attr_val($shorthost, "Cstate", $callback, "$Sname", $subreq);
+        if (defined($cstate) && (!($cstate =~ /ready/)))
+        {
+            my $rsp;
+            push @{$rsp->{data}},
+              "$Sname: The NIM machine named $shorthost is not in the ready state and cannot be initialized. Use -f flag to forcely initialize it.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            $error++;
+            push(@nodesfailed, $node);
+            next;
+
         }
 
         # set the NIM machine type
