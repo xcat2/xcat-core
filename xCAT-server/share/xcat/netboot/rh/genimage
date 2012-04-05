@@ -756,7 +756,6 @@ sub mkinitrd {
 	
 # add some functions
  	print $inifile <<EOS1; 	
-set -x
 NEWROOT="/sysroot"
 SHELL="/bin/sh"
 RWDIR=".statelite"
