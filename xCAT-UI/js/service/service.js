@@ -58,10 +58,9 @@ function initServicePage() {
     includeJs("js/jquery/jqplot.dateAxisRenderer.min.js");
     
     // Custom plugins
-	includeJs("js/custom/blade.js");
-	includeJs("js/custom/ipmi.js");
+	includeJs("js/custom/esx.js");
+	includeJs("js/custom/kvm.js");
 	includeJs("js/custom/zvm.js");
-	includeJs("js/custom/hmc.js");
 	    
 	// Enable settings link 	
 	$('#xcat_settings').click(function() {

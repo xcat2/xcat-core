@@ -22,7 +22,7 @@ var kvmPlugin = function() {
  * @return Nothing
  */
 kvmPlugin.prototype.serviceClone = function(node) {
-
+	openDialog('info', 'Not yet supported');
 };
 
 /**
@@ -33,7 +33,7 @@ kvmPlugin.prototype.serviceClone = function(node) {
  * @return Nothing
  */
 kvmPlugin.prototype.loadServiceProvisionPage = function(tabId) {
-	
+	$('#' + tabId).append(createInfoBar('Not yet supported'));
 };
 
 /**

@@ -2030,7 +2030,7 @@ function updateStatusBar(data) {
 		$('#' + statBarId).find('img').hide();
 
 		// Write ajax response to status bar
-		var prg = writeRsp(rsp, '');	
+		var prg = writeRsp(rsp, '');
 		$('#' + statBarId).find('div').append(prg);	
 		
 		// If there was an error, do not continue
@@ -2047,9 +2047,6 @@ function updateStatusBar(data) {
 				dTable.fnDeleteRow(rowPos);
 			}
 		}
-		
-		// Adjust column size
-		adjustColumnSize(nodesTableId);
 	} else if (cmd == 'xdsh') {
 		// Hide loader
 		$('#' + statBarId).find('img').hide();
@@ -2316,12 +2313,10 @@ function setGroupsCookies(data) {
  *            Column to find string under
  * @return The row index containing the search string
  */
-function findRow(str, table, col){
-	var dTable, rows, cols;
-	
+function findRow(str, table, col){	
 	// Get datatable
-	dTable = $(table).dataTable();
-	rows = dTable.fnGetData();
+	var dTable = $(table).dataTable();
+	var rows = dTable.fnGetData();
 	
 	// Loop through each row
 	for (var i in rows) {

@@ -140,7 +140,7 @@ function loadImages(data) {
 	// Copy CD into install directory
 	var copyCDLnk = $('<a>Copy CD</a>');
 	copyCDLnk.click(function() {
-		loadCopyCdPage();
+		openCopyCdDialog();
 	});
 	
 	// Generate stateless or statelite image
@@ -155,7 +155,7 @@ function loadImages(data) {
 		var tgtImages = getNodesChecked(imgTableId).split(',');
 		if (tgtImages) {
 			for (var i in tgtImages) {
-				 loadEditImagePage(tgtImages[i]);
+				 openEditImagePage(tgtImages[i]);
 			}
 		}
 	});
@@ -163,7 +163,7 @@ function loadImages(data) {
 	// Add a row
 	var addLnk = $('<a>Add</a>');
 	addLnk.click(function() {
-		loadAddImageDialog();
+		openAddImageDialog();
 	});
 	
 	// Remove a row
@@ -354,10 +354,8 @@ function confirmImageDeleteDialog(images) {
 
 /**
  * Open a dialog to add an image
- * 
- * @return Nothing
  */
-function loadAddImageDialog() {
+function openAddImageDialog() {
 	// Create dialog to add image
 	var dialogId = 'addImage';
 	var addImageForm = $('<div id="' + dialogId + '" class="form"></div>');
@@ -383,6 +381,30 @@ function loadAddImageDialog() {
 	provisionMethod.append(provisionSelect);
 	
 	// Create inputs for optional attributes
+	var exList = $('<div><label>Exclusion list:</label></div>');
+	var exListInput = $('<input type="text" name="exlist"/>');
+	exList.append(exListInput);
+	exListInput.serverBrowser({
+		onSelect : function(path) {
+			$('#addImage input[name="exlist"]').val(path);
+		},
+		onLoad : function() {
+			return $('#addImage input[name="exlist"]').val();
+		},
+		knownPaths : [{
+			text : 'Install',
+			image : 'desktop.png',
+			path : '/install'
+		}],
+		imageUrl : 'images/serverbrowser/',
+		systemImageUrl : 'images/serverbrowser/',
+		handlerUrl : 'lib/getpath.php',
+		title : 'Browse',
+		requestMethod : 'POST',
+		width : '500',
+		height : '300',
+		basePath : '/install' // Limit user to only install directory
+	});
 	var otherpkgDirectory = $('<div><label>Other package directory:</label></div>');
 	var otherpkgDirectoryInput = $('<input type="text" name="otherpkgdir"/>');
 	otherpkgDirectory.append(otherpkgDirectoryInput);
@@ -455,6 +477,30 @@ function loadAddImageDialog() {
 		height : '300',
 		basePath : '/install' // Limit user to only install directory
 	});
+	var postInstall = $('<div><label>Post install script:</label></div>');
+	var postInstallInput = $('<input type="text" name="postinstall"/>');
+	postInstall.append(postInstallInput);
+	postInstallInput.serverBrowser({
+		onSelect : function(path) {
+			$('#addImage input[name="postinstall"]').val(path);
+		},
+		onLoad : function() {
+			return $('#addImage input[name="postinstall"]').val();
+		},
+		knownPaths : [{
+			text : 'Install',
+			image : 'desktop.png',
+			path : '/install'
+		}],
+		imageUrl : 'images/serverbrowser/',
+		systemImageUrl : 'images/serverbrowser/',
+		handlerUrl : 'lib/getpath.php',
+		title : 'Browse',
+		requestMethod : 'POST',
+		width : '500',
+		height : '300',
+		basePath : '/install' // Limit user to only install directory
+	});
 	var template = $('<div><label>Template:</label></div>');
 	var templateInput = $('<input type="text" name="template"/>');
 	template.append(templateInput);
@@ -481,63 +527,81 @@ function loadAddImageDialog() {
 	});
 		
 	addImageForm.append(imageName, imageType, architecture, osName, osVersion, profile, provisionMethod,
-			otherpkgDirectory, packageDirectory, packageList, template);
+			exList, otherpkgDirectory, packageDirectory, packageList, postInstall, template);
 		
 	// Open dialog to add image
 	addImageForm.dialog({
 		title:'Add image',
 		modal: true,
-		width: 500,
+		width: 400,
 		buttons: {
         	"Ok": function(){
         		// Remove any warning messages
         		$(this).find('.ui-state-error').remove();
         		
 				// Get image attributes
-        		var imageType = $(this).find('input[name="imagetype"]').val();
-        		var architecture = $(this).find('input[name="osarch"]').val();
-        		var osName = $(this).find('input[name="osname"]').val();
-        		var osVersion = $(this).find('input[name="osvers"]').val();
-        		var profile = $(this).find('input[name="profile"]').val();
-        		var provisionMethod = $(this).find('select[name="provmethod"]').val();
+        		var imageType = $(this).find('input[name="imagetype"]');
+        		var architecture = $(this).find('input[name="osarch"]');
+        		var osName = $(this).find('input[name="osname"]');
+        		var osVersion = $(this).find('input[name="osvers"]');
+        		var profile = $(this).find('input[name="profile"]');
+        		var provisionMethod = $(this).find('select[name="provmethod"]');
         		
         		// Get optional image attributes
-        		var otherpkgDirectory = $(this).find('input[name="otherpkgdir"]').val();
-        		var pkgDirectory = $(this).find('input[name="pkgdir"]').val();
-        		var pkgList = $(this).find('input[name="pkglist"]').val();
-        		var template = $(this).find('input[name="template"]').val();
+        		var exList = $(this).find('input[name="exlist"]');
+        		var otherpkgDirectory = $(this).find('input[name="otherpkgdir"]');
+        		var pkgDirectory = $(this).find('input[name="pkgdir"]');
+        		var pkgList = $(this).find('input[name="pkglist"]');
+        		var postInstall = $(this).find('input[name="postinstall"]');
+        		var template = $(this).find('input[name="template"]');
         		
-        		// Override image name
-        		$(this).find('input[name="imagename"]').val(osVersion + '-' + architecture + '-' + provisionMethod + '-' + profile);
-        		var imageName = $(this).find('input[name="imagename"]').val();
+        		// Check that image attributes are provided before continuing
+        		var ready = 1;
+        		var inputs = new Array(imageType, architecture, osName, osVersion, profile, provisionMethod);
+        		for (var i in inputs) {
+        			if (!inputs[i].val()) {
+        				inputs[i].css('border-color', 'red');
+        				ready = 0;
+        			} else
+        				inputs[i].css('border-color', '');
+        		}
         		
 				// If inputs are not complete, show warning message
-				if (!imageType || !architecture || !osName || !osVersion ||	!profile || !provisionMethod) {
+				if (!ready) {
 					var warn = createWarnBar('Please provide a value for each missing field.');
 					warn.prependTo($(this));
 				} else {
+					// Override image name
+	        		$(this).find('input[name="imagename"]').val(osVersion.val() + '-' + architecture.val() + '-' + provisionMethod.val() + '-' + profile.val());
+	        		var imageName = $(this).find('input[name="imagename"]');
+	        		
 					// Change dialog buttons
     				$(this).dialog('option', 'buttons', {
     					'Close': function() {$(this).dialog("close");}
     				});
     				
     				// Create arguments to send via AJAX
-					var args = '-t;osimage;-o;' + imageName + ';' +
-						'imagetype=' + imageType + ';' +
-						'osarch=' + architecture + ';' +
-						'osname=' + osName + ';' +
-						'osvers=' + osVersion + ';' +
-						'profile=' + profile + ';' +
-						'provmethod=' + provisionMethod;
+					var args = '-t;osimage;-o;' + imageName.val() + ';' +
+						'imagetype=' + imageType.val() + ';' +
+						'osarch=' + architecture.val() + ';' +
+						'osname=' + osName.val() + ';' +
+						'osvers=' + osVersion.val() + ';' +
+						'profile=' + profile.val() + ';' +
+						'provmethod=' + provisionMethod.val();
 					
-					if (otherpkgDirectory)
-						args += ';otherpkgdir=' + otherpkgDirectory;
-					if (pkgDirectory)
-						args += ';pkgdir=' + pkgDirectory;
-					if (pkgList)
-						args += ';pkglist=' + pkgList;
-					if (template)
-						args += ';template=' + template;
+					// Get optional attributes
+					if (exList.val())
+						args += ';exlist=' + exList.val();
+					if (otherpkgDirectory.val())
+						args += ';otherpkgdir=' + otherpkgDirectory.val();
+					if (pkgDirectory.val())
+						args += ';pkgdir=' + pkgDirectory.val();
+					if (pkgList.val())
+						args += ';pkglist=' + pkgList.val();
+					if (postInstall.val())
+						args += ';postinstall=' + postInstall.val();
+					if (template.val())
+						args += ';template=' + template.val();
 					
     				// Add image to xCAT
     				$.ajax( {
@@ -571,13 +635,23 @@ function loadAddImageDialog() {
 function updateImageDialog(data) {	
 	var dialogId = data.msg;
 	var infoMsg;
+	
+	// Delete loader if one does exist
+    $('.ui-dialog #' + dialogId + ' img[src="images/loader.gif"]').remove();
 
 	// Create info message
 	if (jQuery.isArray(data.rsp)) {
 		infoMsg = '';
-		for (var i in data.rsp) {
+		
+		// If the data returned is more than 10 lines, get only the last line
+		var i, start;
+		if (data.rsp.length > 10)
+			start = data.rsp.length - 1;
+		else
+			start = 0;
+		
+		for (i = start; i < data.rsp.length; i++)
 			infoMsg += data.rsp[i] + '</br>';
-		}
 	} else {
 		infoMsg = data.rsp;
 	}
@@ -956,7 +1030,7 @@ function hpcShow() {
  *            Target image to set properties
  * @return Nothing
  */
-function loadEditImagePage(tgtImage) {
+function openEditImagePage(tgtImage) {
 	// Get nodes tab
 	var tab = getProvisionTab();
 
@@ -1223,31 +1297,11 @@ function loadEditImagePage(tgtImage) {
  * 
  * @return Nothing
  */
-function loadCopyCdPage() {
-	// Get provision tab
-	var tab = getProvisionTab();
-
-	// Generate new tab ID
-	var inst = 0;
-	newTabId = 'copyLinuxTab' + inst;
-	while ($('#' + newTabId).length) {
-		// If one already exists, generate another one
-		inst = inst + 1;
-		newTabId = 'copyLinuxTab' + inst;
-	}
-	
+function openCopyCdDialog() {	
 	// Create copy Linux form
-	var copyLinuxForm = $('<div class="form"></div>');
-	
-	// Create status bar, hide on load
-	var statBarId = 'copyLinuxStatusBar' + inst;
-	var statBar = createStatusBar(statBarId).hide();
-	copyLinuxForm.append(statBar);
-
-	// Create loader
-	var loader = createLoader('');
-	statBar.find('div').append(loader);
-	
+	var dialogId = 'imageCopyCd';
+	var copyLinuxForm = $('<div id="' + dialogId + '" class="form"></div>');
+			
 	// Create info bar
 	var infoBar = createInfoBar('Copy Linux distributions and service levels from CDs or DVDs to the install directory.');
 	copyLinuxForm.append(infoBar);
@@ -1261,26 +1315,10 @@ function loadCopyCdPage() {
 	copyLinuxForm.append(iso);
 	
 	// Create architecture input
-	copyLinuxForm.append('<div><label>Architecture:</label><input type="text" id="arch" name="arch" title="The architecture of the Linux distro on the ISO/DVD, e.g. rhel5.3, centos5.1, fedora9."/></div>');
+	copyLinuxForm.append('<div><label>Architecture:</label><input type="text" id="arch" name="arch"/></div>');
 	// Create distribution input
-	copyLinuxForm.append('<div><label>Distribution:</label><input type="text" id="distro" name="distro" title="The Linux distro name and version that the ISO/DVD contains, e.g. x86, s390x, ppc64."/></div>');
-	
-	// Generate tooltips
-	copyLinuxForm.find('div input[title]').tooltip({
-		position: "center right",
-		offset: [-2, 10],
-		effect: "fade",		
-		opacity: 0.7,
-		delay: 500,
-		predelay: 800,
-		events: {
-			def:     "mouseover,mouseout",
-			input:   "mouseover,mouseout",
-			widget:  "focus mouseover,blur mouseout",
-			tooltip: "mouseover,mouseout"
-		}
-	});
-	
+	copyLinuxForm.append('<div><label>Distribution:</label><input type="text" id="distro" name="distro"/></div>');
+			
 	/**
 	 * Browse
 	 */
@@ -1289,10 +1327,10 @@ function loadCopyCdPage() {
 	// Browse server directory and files
 	browseBtn.serverBrowser({
 		onSelect : function(path) {
-			$('#iso').val(path);
+			$('#imageCopyCd #iso').val(path);
 		},
 		onLoad : function() {
-			return $('#iso').val();
+			return $('#imageCopyCd #iso').val();
 		},
 		knownExt : [ 'exe', 'js', 'txt' ],
 		knownPaths : [ {
@@ -1310,90 +1348,49 @@ function loadCopyCdPage() {
 		basePath : '/install' // Limit user to only install directory
 	});
 	
-	/**
-	 * Copy
-	 */
-	var copyBtn = createButton('Copy');
-	copyLinuxForm.append(copyBtn);
-	copyBtn.bind('click', function(event) {
-		// Disable all inputs and buttons
-		$('#' + newTabId + ' input').attr('disabled', 'true');
-		$('#' + newTabId + ' button').attr('disabled', 'true');
-		// Show status bar and loader
-		$('#' + statBarId).show();
-		$('#' + statBarId).find('img').show();
-		
-		// Get Linux ISO
-		var iso = $('#' + newTabId + ' input[name=iso]').val();
-		// Get architecture
-		var arch = $('#' + newTabId + ' input[name=arch]').val();
-		// Get distribution
-		var distro = $('#' + newTabId + ' input[name=distro]').val();
+	// Open dialog to copy CD
+	copyLinuxForm.dialog({
+		title:'Copy CD',
+		modal: true,
+		width: 600,
+		buttons: {
+        	"Copy": function() {
+        		// Show loader
+        		$('.ui-dialog #imageCopyCd').append(createLoader(''));
+        		
+        		// Change dialog buttons
+				$(this).dialog('option', 'buttons', {
+					'Close': function() {$(this).dialog("close");}
+				});
+        		        		
+        		// Get image attributes
+        		var iso = $(this).find('input[name="iso"]');
+        		var arch = $(this).find('input[name="arch"]');
+        		var distro = $(this).find('input[name="distro"]');
 
-		// Send ajax request to copy ISO
-		$.ajax( {
-			url : 'lib/cmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'copycds',
-				tgt : '',
-				args : '-n;' + distro + ';-a;' + arch + ';' + iso,
-				msg : 'out=' + statBarId
+        		// Send ajax request to copy ISO
+        		$.ajax({
+        			url : 'lib/cmd.php',
+        			dataType : 'json',
+        			data : {
+        				cmd : 'copycds',
+        				tgt : '',
+        				args : '-n;' + distro.val() + ';-a;' + arch.val() + ';' + iso.val(),
+        				msg : dialogId
+        			},
+        			
+        			success : updateImageDialog
+        		});
 			},
-
-			/**
-			 * Show output
-			 * 
-			 * @param data
-			 *            Data returned from HTTP request
-			 * @return Nothing
-			 */
-			success : function(data) {
-				// Get output
-				var out = data.rsp;
-				// Get status bar ID
-				var statBarId = data.msg.replace('out=', '');
-				// Get tab ID
-				var tabId = statBarId.replace('copyLinuxStatusBar', 'copyLinuxTab'); 
-				
-				// Go through output and append to paragraph
-				var prg = $('<pre></pre>');
-				for (var i in out) {
-					if (out[i].length > 6) {
-						prg.append(out[i] + '<br/>');
-					}
-				}
-				$('#' + statBarId).find('div').append(prg);
-				
-				// Hide loader
-				$('#' + statBarId).find('img').hide();
-				// Enable inputs and buttons
-				$('#' + tabId + ' input').attr('disabled', '');
-				$('#' + tabId + ' button').attr('disabled', '');
-			}
-		});
+			"Cancel": function() {
+        		$(this).dialog( "close" );
+        	}
+		}
 	});
-	
-	/**
-	 * Cancel
-	 */
-	var cancelBtn = createButton('Cancel');
-	copyLinuxForm.append(cancelBtn);
-	cancelBtn.bind('click', function(event) {
-		// Close the tab
-		tab.remove($(this).parent().parent().attr('id'));
-	});
-
-	tab.add(newTabId, 'Copy', copyLinuxForm, true);
-	tab.select(newTabId);
 }
 
 /**
  * use users' input or select to create image
- * 
- * @param 
- *  
- * @return Nothing
  */
 function createImage() {
 	var osvers = $("#createImageTab #osvers").val();

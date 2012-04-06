@@ -46,6 +46,16 @@ Tab.prototype.init = function() {
 		}
 		
 		$.cookie('tabindex_history', order);
+		
+		// Find any datatable within the tab
+		var dTables = $(ui.panel).find('.dataTables_wrapper');
+		if(dTables.length) {
+			// Adjust column sizes for each datatable found
+			for (var i = 0; i < dTables.length; i++) {
+				var tableId = dTables.eq(i).attr('id').replace('_wrapper', '');
+				adjustColumnSize(tableId);
+			}
+		}
 	});
 
 	// Remove dummy tab
@@ -849,10 +859,6 @@ function changeTheme() {
 	dialog.append(info);
 	
 	// Create select drop down for themes
-	var themeFS = $('<fieldset></fieldset>');
-	dialog.append(themeFS);
-	var legend = $('<legend>Theme</legend>');
-	themeFS.append(legend);
 	var oList = $('<ol></ol>');
 	oList.append($('<li><input type="radio" name="theme" value="cupertino">Cupertino</li>'));
 	oList.append($('<li><input type="radio" name="theme" value="dark_hive">Dark Hive</li>'));
@@ -860,7 +866,7 @@ function changeTheme() {
 	oList.append($('<li><input type="radio" name="theme" value="start">Start (default)</li>'));
 	oList.append($('<li><input type="radio" name="theme" value="sunny">Sunny</li>'));
 	oList.append($('<li><input type="radio" name="theme" value="ui_dark">UI Darkness</li>'));
-	themeFS.append(oList);
+	dialog.append(oList);
 	
 	if ($.cookie('xcat_theme')) {
 		// Select theme
@@ -995,16 +1001,13 @@ function changePassword() {
  */
 function adjustColumnSize(tableId) {
 	var cols = $('#' + tableId).find('tbody tr:eq(0) td');
-	
 	// If the column size is zero, wait until table is initialized
-	if (!cols.eq(1).outerWidth()) {
-		adjustColumnSize(tableId);
-	} else {
+	if (cols.eq(1).outerWidth()) {
 		for (var i in cols) {
 			var headers = $('#' + tableId + '_wrapper .dataTables_scrollHead .datatable thead tr th').eq(i);
 			headers.css('width', cols.eq(i).outerWidth());
-		}		
-	}	
+		}
+	}
 }
 
 /**

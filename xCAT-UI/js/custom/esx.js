@@ -22,7 +22,7 @@ var esxPlugin = function() {
  * @return Nothing
  */
 esxPlugin.prototype.serviceClone = function(node) {
-
+	openDialog('info', 'Not yet supported');
 };
 
 /**
@@ -33,7 +33,7 @@ esxPlugin.prototype.serviceClone = function(node) {
  * @return Nothing
  */
 esxPlugin.prototype.loadServiceProvisionPage = function(tabId) {
-	
+	$('#' + tabId).append(createInfoBar('Not yet supported'));
 };
 
 /**
