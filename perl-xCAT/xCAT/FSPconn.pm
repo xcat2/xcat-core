@@ -92,6 +92,7 @@ sub mkhwconn_parse_args
     my $vpdtab = xCAT::Table->new( 'vpd');
     my @bpa_ctrled_nodes = ();
     my @no_type_nodes    = ();
+    my @error_type_nodes = ();
     my @frame_members    = ();
 
     ###########################################
@@ -159,7 +160,8 @@ sub mkhwconn_parse_args
             {
                 unless ( $nodetype =~ /^(fsp|bpa|frame|cec|hmc|blade)$/)
                 {
-                     return ( usage("Node type is incorrect. \n"));
+                     push @error_type_nodes, $node;
+                     next;
                 }
             }
             
@@ -188,9 +190,12 @@ sub mkhwconn_parse_args
     if (scalar(@no_type_nodes))
     {
         my $tmp_nodelist = join ',', @no_type_nodes;
-        return ( usage("Attribute nodetype.nodetype cannot be found for node(s) $tmp_nodelist"));
+        return ( usage("Attribute nodetype.nodetype cannot be found for node(s) $tmp_nodelist. Please define first and try again.\n"));
     }
-
+    if (scalar(@error_type_nodes)) {
+        my $tmp_nodelist = join ',', @error_type_nodes;
+        return ( usage("Incorrect nodetype for nodes(s): $tmp_nodelist. Please modify first and try again.\n"));
+    }
     #if (scalar(@bpa_ctrled_nodes))
     #{
     #    my $tmp_nodelist = join ',', @bpa_ctrled_nodes;
@@ -354,24 +359,30 @@ sub lshwconn_parse_args
     }
        
     my $nodetype;
+    my @no_typenodes = ();
+    my @no_mgt_nodes = ();
+    my @error_type_nodes = ();
     my $typehash = xCAT::DBobjUtils->getnodetype(\@{$request->{node}}, "ppc");
     for my $node ( @{$request->{node}})
     {
         #my $ent = $nodetypetab->getNodeAttribs( $node, [qw(nodetype)]);
         my $nodehm = $nodehmtab->getNodeAttribs( $node, [qw(mgt)]);
-        #if ( ! $ent) 
-        #{
-        #    return( ["Failed to get node type for node $node.\n"]);
-        #}
-        my $ttype = $$typehash{$node};
-        if ( ! $ttype)
+        if ( ! $nodehm) 
         {
-            return( ["Failed to get nodehm.mgt value for node $node.\n"]);
+            push @no_mgt_nodes, $node;
+            next; 
+        }
+        my $ttype = $$typehash{$node};
+        if ( !$ttype)
+        {
+            push @no_typenodes, $node;
+            next;
         }
         if ( $ttype ne 'fsp' and $ttype ne 'cec'
                 and $ttype ne 'bpa' and $ttype ne 'frame' and $ttype ne 'blade')
         {
-            return( ["Node type $ttype is not supported for this command in FSPAPI\n"]);
+            push @error_type_nodes, $node;
+            next;
         }
         if ( ! $nodetype)
         {
@@ -385,7 +396,19 @@ sub lshwconn_parse_args
             }
         }
     }
-
+    if (scalar(@no_typenodes)) {
+        my $tmp_nodelist = join ',', @no_typenodes;
+        return ( ["Attribute nodetype.nodetype cannot be found for node(s): $tmp_nodelist. Please define first and try again.\n"]);
+    }
+    if (scalar(@no_mgt_nodes)) {
+        my $tmp_nodelist = join ',', @no_mgt_nodes;
+        return( ["Failed to get nodehm.mgt value for node(s) $tmp_nodelist. Please define first and try again.\n"]);
+    }
+    if (scalar(@error_type_nodes)) {
+        my $tmp_nodelist = join ',', @error_type_nodes;
+        my $link = (scalar(@error_type_nodes) == '1')? 'is':'are';
+        return( ["Node type of node(s) $tmp_nodelist $link not supported for this command in FSPAPI.\n"]);
+    }
     #$nodetypetab->close();
     $nodehmtab->close();
     
@@ -461,6 +484,7 @@ sub rmhwconn_parse_args
     return( ["Failed to open table 'nodehm'.\n"]) if (! $nodehmtab);
     my @bpa_ctrled_nodes = ();
     my @no_type_nodes    = ();
+    my @no_mgt_nodes = ();
     my @frame_members    = ();
     my $nodetype_hash = xCAT::DBobjUtils->getnodetype($nodes, "ppc");
     for my $node ( @$nodes)
@@ -468,7 +492,8 @@ sub rmhwconn_parse_args
         my $nodehm = $nodehmtab->getNodeAttribs( $node, [qw(mgt)]);
         if ( ! $nodehm)
         {
-            return( ["Failed to get nodehm.mgt value for node $node.\n"]);
+            push @no_mgt_nodes, $node;
+            next;
         }
         
 	my $node_parent = undef;
@@ -505,9 +530,12 @@ sub rmhwconn_parse_args
     if (scalar(@no_type_nodes))
     {
         my $tmp_nodelist = join ',', @no_type_nodes;
-        return ( usage("Attribute nodetype.nodetype cannot be found for node(s) $tmp_nodelist"));
+        return ( usage("Attribute nodetype.nodetype cannot be found for node(s) $tmp_nodelist. Please define first and try again.\n"));
     }
-
+    if (scalar(@no_mgt_nodes)) {
+        my $tmp_nodelist = join ',', @no_mgt_nodes;
+        return( ["Failed to get nodehm.mgt value for node(s) $tmp_nodelist. Please define first and try again.\n"]);
+    }
     $ppctab->close();
     #$nodetypetab->close();
     $vpdtab->close();
