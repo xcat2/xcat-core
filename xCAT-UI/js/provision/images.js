@@ -129,7 +129,7 @@ function loadImages(data) {
 	$('#imagesTab').children().remove();
 	
 	// Create info bar for images tab
-	var info = createInfoBar('Click on a cell to edit.  Click outside the table to save changes.  Hit the Escape key to ignore changes.');
+	var info = createInfoBar('Double click on a cell to edit.  Click outside the table to save changes.  Hit the Escape key to ignore changes.');
 	$('#imagesTab').append(info);
 
 	/**
@@ -137,25 +137,60 @@ function loadImages(data) {
 	 * copy Linux distribution and edit image properties
 	 */
 
-	// Create copy CD link
+	// Copy CD into install directory
 	var copyCDLnk = $('<a>Copy CD</a>');
 	copyCDLnk.click(function() {
 		loadCopyCdPage();
 	});
 	
-	// Create image link
-	var newLnk = $('<a>Create image</a>');
-	newLnk.click(function() {
+	// Generate stateless or statelite image
+	var generateLnk = $('<a>Generate image</a>');
+	generateLnk.click(function() {
 		loadCreateImage();
 	});
 	
-	// Create edit link
-	var editBtn = $('<a>Edit</a>');
-	editBtn.click(function() {
+	// Edit image attributes
+	var editLnk = $('<a>Edit</a>');
+	editLnk.click(function() {
 		var tgtImages = getNodesChecked(imgTableId).split(',');
-		for (var i in tgtImages) {
-			 loadEditImagePage(tgtImages[i]);
+		if (tgtImages) {
+			for (var i in tgtImages) {
+				 loadEditImagePage(tgtImages[i]);
+			}
 		}
+	});
+	
+	// Add a row
+	var addLnk = $('<a>Add</a>');
+	addLnk.click(function() {
+		loadAddImageDialog();
+	});
+	
+	// Remove a row
+	var removeLnk = $('<a>Remove</a>');
+	removeLnk.click(function() {
+		var images = getNodesChecked(imgTableId);
+		if (images) {
+			confirmImageDeleteDialog(images);
+		}		
+	});
+	
+	// Refresh image table
+	var refreshLnk = $('<a>Refresh</a>');
+	refreshLnk.click(function() {
+		// Get images within the database
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'lsdef',
+				tgt : '',
+				args : '-t;osimage;-l',
+				msg : ''
+			},
+
+			success : loadImages
+		});
 	});
 	
 	// Insert table
@@ -179,11 +214,11 @@ function loadImages(data) {
 	
 	// Actions
 	var actionBar = $('<div class="actionBar"></div>');
-	var actionsLnk = '<a>Actions</a>';
-	var actsMenu = createMenu([copyCDLnk, newLnk, editBtn]);
+	var advancedLnk = '<a>Advanced</a>';
+	var advancedMenu = createMenu([copyCDLnk, generateLnk]);
 
 	// Create an action menu
-	var actionsMenu = createMenu([ [ actionsLnk, actsMenu ] ]);
+	var actionsMenu = createMenu([refreshLnk, addLnk, editLnk, removeLnk, [advancedLnk, advancedMenu]]);
 	actionsMenu.superfish();
 	actionsMenu.css('display', 'inline-block');
 	actionBar.append(actionsMenu);
@@ -205,8 +240,8 @@ function loadImages(data) {
 	 * Enable editable columns
 	 */
 	
-	// Do not make 1st, 2nd, 3rd, 4th, or 5th column editable
-	$('#' + imgTableId + ' td:not(td:nth-child(1),td:nth-child(2))').editable(
+	// Do not make 1st column editable
+	$('#' + imgTableId + ' td:not(td:nth-child(1))').editable(
 		function(value, settings) {	
 			// Get column index
 			var colPos = this.cellIndex;
@@ -250,6 +285,7 @@ function loadImages(data) {
 			onblur : 'submit', 	// Clicking outside editable area submits changes
 			type : 'textarea',	// Input type to use
 			placeholder: ' ',
+			event : "dblclick", // Double click and edit
 			height : '30px' 	// The height of the text area
 		});
 		
@@ -266,6 +302,308 @@ function loadImages(data) {
 
 		success : setImageDefAttrs
 	});
+}
+
+/**
+ * Open dialog to confirm deleting image
+ * 
+ * @param images
+ * 			Comma delimited image names 
+ * @return Nothing
+ */
+function confirmImageDeleteDialog(images) {
+	// Make images list more readable
+	var dialogId = 'confirmImageRemove';
+	var tmp = images.replace(new RegExp(',', 'g'), ', ');
+	var confirmDialog = $('<div id="' + dialogId + '">'
+			+ '<p>Are you sure you want to remove ' + tmp + '?</p>'
+		+ '</div>');
+			
+	// Open dialog to confirm delete
+	confirmDialog.dialog({
+		modal: true,
+		title: 'Confirm',
+		width: 500,
+		buttons: {
+			"Ok": function(){ 
+				// Change dialog buttons
+				$(this).dialog('option', 'buttons', {
+					'Close': function() {$(this).dialog("close");}
+				});
+				
+				// Add image to xCAT
+				$.ajax( {
+					url : 'lib/cmd.php',
+	        		dataType : 'json',
+	        		data : {
+	        			cmd : 'rmdef',
+	        			tgt : '',
+	        			args : '-t;osimage;-o;' + images,
+	        			msg : dialogId
+	        		},
+
+					success : updateImageDialog
+				});
+			},
+			"Cancel": function(){ 
+				$(this).dialog("close");
+			}
+		}
+	});
+}
+
+/**
+ * Open a dialog to add an image
+ * 
+ * @return Nothing
+ */
+function loadAddImageDialog() {
+	// Create dialog to add image
+	var dialogId = 'addImage';
+	var addImageForm = $('<div id="' + dialogId + '" class="form"></div>');
+	
+	// Create info bar
+	var info = createInfoBar('Provide the following attributes for the image. The image name will be generated based on the attributes you will give.');
+	addImageForm.append(info);
+	
+	// Create inputs for image attributes
+	var imageName = $('<div><label>Image name:</label><input type="text" name="imagename" disabled="disabled"/></div>');
+	var imageType = $('<div><label>Image type:</label><input type="text" name="imagetype"/></div>');
+	var architecture = $('<div><label>OS architecture:</label><input type="text" name="osarch"/></div>');
+	var osName = $('<div><label>OS name:</label><input type="text" name="osname"/></div>');
+	var osVersion = $('<div><label>OS version:</label><input type="text" name="osvers"/></div>');	
+	var profile = $('<div><label>Profile:</label><input type="text" name="profile"/></div>');
+	var provisionMethod = $('<div><label>Provision method:</label></div>');
+	var provisionSelect = $('<select name="provmethod">'
+			+ '<option value=""></option>'
+			+ '<option value="install">install</option>'
+			+ '<option value="netboot">netboot</option>'
+			+ '<option value="statelite">statelite</option>'
+		+ '</select>');
+	provisionMethod.append(provisionSelect);
+	
+	// Create inputs for optional attributes
+	var otherpkgDirectory = $('<div><label>Other package directory:</label></div>');
+	var otherpkgDirectoryInput = $('<input type="text" name="otherpkgdir"/>');
+	otherpkgDirectory.append(otherpkgDirectoryInput);
+	otherpkgDirectoryInput.serverBrowser({
+		onSelect : function(path) {
+			$('#addImage input[name="otherpkgdir"]').val(path);
+		},
+		onLoad : function() {
+			return $('#addImage input[name="otherpkgdir"]').val();
+		},
+		knownPaths : [{
+			text : 'Install',
+			image : 'desktop.png',
+			path : '/install'
+		}],
+		imageUrl : 'images/serverbrowser/',
+		systemImageUrl : 'images/serverbrowser/',
+		handlerUrl : 'lib/getpath.php',
+		title : 'Browse',
+		requestMethod : 'POST',
+		width : '500',
+		height : '300',
+		basePath : '/install' // Limit user to only install directory
+	});
+	var packageDirectory = $('<div><label>Package directory:</label></div>');
+	var packageDirectoryInput = $('<input type="text" name="pkgdir"/>');
+	packageDirectory.append(packageDirectoryInput);
+	packageDirectoryInput.serverBrowser({
+		onSelect : function(path) {
+			$('#addImage input[name="pkgdir"]').val(path);
+		},
+		onLoad : function() {
+			return $('#addImage input[name="pkgdir"]').val();
+		},
+		knownPaths : [{
+			text : 'Install',
+			image : 'desktop.png',
+			path : '/install'
+		}],
+		imageUrl : 'images/serverbrowser/',
+		systemImageUrl : 'images/serverbrowser/',
+		handlerUrl : 'lib/getpath.php',
+		title : 'Browse',
+		requestMethod : 'POST',
+		width : '500',
+		height : '300',
+		basePath : '/install' // Limit user to only install directory
+	});
+	var packageList = $('<div><label>Package list:</label></div>');
+	var packageListInput = $('<input type="text" name="pkglist"/>');
+	packageList.append(packageListInput);
+	packageListInput.serverBrowser({
+		onSelect : function(path) {
+			$('#addImage input[name="pkglist"]').val(path);
+		},
+		onLoad : function() {
+			return $('#addImage input[name="pkglist"]').val();
+		},
+		knownPaths : [{
+			text : 'Install',
+			image : 'desktop.png',
+			path : '/install'
+		}],
+		imageUrl : 'images/serverbrowser/',
+		systemImageUrl : 'images/serverbrowser/',
+		handlerUrl : 'lib/getpath.php',
+		title : 'Browse',
+		requestMethod : 'POST',
+		width : '500',
+		height : '300',
+		basePath : '/install' // Limit user to only install directory
+	});
+	var template = $('<div><label>Template:</label></div>');
+	var templateInput = $('<input type="text" name="template"/>');
+	template.append(templateInput);
+	templateInput.serverBrowser({
+		onSelect : function(path) {
+			$('#addImage input[name="template"]').val(path);
+		},
+		onLoad : function() {
+			return $('#addImage input[name="template"]').val();
+		},
+		knownPaths : [{
+			text : 'Install',
+			image : 'desktop.png',
+			path : '/install'
+		}],
+		imageUrl : 'images/serverbrowser/',
+		systemImageUrl : 'images/serverbrowser/',
+		handlerUrl : 'lib/getpath.php',
+		title : 'Browse',
+		requestMethod : 'POST',
+		width : '500',
+		height : '300',
+		basePath : '/install' // Limit user to only install directory
+	});
+		
+	addImageForm.append(imageName, imageType, architecture, osName, osVersion, profile, provisionMethod,
+			otherpkgDirectory, packageDirectory, packageList, template);
+		
+	// Open dialog to add image
+	addImageForm.dialog({
+		title:'Add image',
+		modal: true,
+		width: 500,
+		buttons: {
+        	"Ok": function(){
+        		// Remove any warning messages
+        		$(this).find('.ui-state-error').remove();
+        		
+				// Get image attributes
+        		var imageType = $(this).find('input[name="imagetype"]').val();
+        		var architecture = $(this).find('input[name="osarch"]').val();
+        		var osName = $(this).find('input[name="osname"]').val();
+        		var osVersion = $(this).find('input[name="osvers"]').val();
+        		var profile = $(this).find('input[name="profile"]').val();
+        		var provisionMethod = $(this).find('select[name="provmethod"]').val();
+        		
+        		// Get optional image attributes
+        		var otherpkgDirectory = $(this).find('input[name="otherpkgdir"]').val();
+        		var pkgDirectory = $(this).find('input[name="pkgdir"]').val();
+        		var pkgList = $(this).find('input[name="pkglist"]').val();
+        		var template = $(this).find('input[name="template"]').val();
+        		
+        		// Override image name
+        		$(this).find('input[name="imagename"]').val(osVersion + '-' + architecture + '-' + provisionMethod + '-' + profile);
+        		var imageName = $(this).find('input[name="imagename"]').val();
+        		
+				// If inputs are not complete, show warning message
+				if (!imageType || !architecture || !osName || !osVersion ||	!profile || !provisionMethod) {
+					var warn = createWarnBar('Please provide a value for each missing field.');
+					warn.prependTo($(this));
+				} else {
+					// Change dialog buttons
+    				$(this).dialog('option', 'buttons', {
+    					'Close': function() {$(this).dialog("close");}
+    				});
+    				
+    				// Create arguments to send via AJAX
+					var args = '-t;osimage;-o;' + imageName + ';' +
+						'imagetype=' + imageType + ';' +
+						'osarch=' + architecture + ';' +
+						'osname=' + osName + ';' +
+						'osvers=' + osVersion + ';' +
+						'profile=' + profile + ';' +
+						'provmethod=' + provisionMethod;
+					
+					if (otherpkgDirectory)
+						args += ';otherpkgdir=' + otherpkgDirectory;
+					if (pkgDirectory)
+						args += ';pkgdir=' + pkgDirectory;
+					if (pkgList)
+						args += ';pkglist=' + pkgList;
+					if (template)
+						args += ';template=' + template;
+					
+    				// Add image to xCAT
+    				$.ajax( {
+    					url : 'lib/cmd.php',
+    	        		dataType : 'json',
+    	        		data : {
+    	        			cmd : 'chdef',
+    	        			tgt : '',
+    	        			args : args,
+    	        			msg : dialogId
+    	        		},
+    
+    					success : updateImageDialog
+    				});
+				}
+			},
+			"Cancel": function() {
+        		$(this).dialog( "close" );
+        	}
+		}
+	});
+}
+
+/**
+ * Update image dialog
+ * 
+ * @param data
+ *            HTTP request data
+ * @return Nothing
+ */
+function updateImageDialog(data) {	
+	var dialogId = data.msg;
+	var infoMsg;
+
+	// Create info message
+	if (jQuery.isArray(data.rsp)) {
+		infoMsg = '';
+		for (var i in data.rsp) {
+			infoMsg += data.rsp[i] + '</br>';
+		}
+	} else {
+		infoMsg = data.rsp;
+	}
+	
+	// Create info bar with close button
+	var infoBar = $('<div class="ui-state-highlight ui-corner-all"></div>').css('margin', '5px 0px');
+	var icon = $('<span class="ui-icon ui-icon-info"></span>').css({
+		'display': 'inline-block',
+		'margin': '10px 5px'
+	});
+	
+	// Create close button to close info bar
+	var close = $('<span class="ui-icon ui-icon-close"></span>').css({
+		'display': 'inline-block',
+		'float': 'right'
+	}).click(function() {
+		$(this).parent().remove();
+	});
+	
+	var msg = $('<p>' + infoMsg + '</p>').css({
+		'display': 'inline-block',
+		'width': '90%'
+	});
+	
+	infoBar.append(icon, msg, close);	
+	infoBar.prependTo($('.ui-dialog #' + dialogId));
 }
 
 /**

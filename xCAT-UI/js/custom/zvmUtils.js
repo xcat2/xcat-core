@@ -1896,10 +1896,10 @@ function loadDiskPoolTable(data) {
 		});
 		
 		// Delete disk from pool
-		var deleteLnk = $('<a>Delete</a>');
-		deleteLnk.bind('click', function(event){
+		var removeLnk = $('<a>Remove</a>');
+		removeLnk.bind('click', function(event){
 			var disks = getNodesChecked(tableId);
-			openDeleteDiskFromPoolDialog(disks);
+			openRemoveDiskFromPoolDialog(disks);
 		});
 		
 		// Refresh table
@@ -1936,7 +1936,7 @@ function loadDiskPoolTable(data) {
 		var actionBar = $('<div id="zvmResourceActions" class="actionBar"></div>');
 		
 		// Create an action menu
-		var actionsMenu = createMenu([addLnk, deleteLnk, refreshLnk]);
+		var actionsMenu = createMenu([addLnk, removeLnk, refreshLnk]);
 		actionsMenu.superfish();
 		actionsMenu.css('display', 'inline-block');
 		actionBar.append(actionsMenu);
@@ -1964,13 +1964,13 @@ function loadDiskPoolTable(data) {
 }
 
 /**
- * Open dialog to delete disk from pool
+ * Open dialog to remove disk from pool
  * 
- * @param disks2delete
+ * @param disks2remove
  * 			Disks selected in table
  * @return Nothing
  */
-function openDeleteDiskFromPoolDialog(disks2delete) {
+function openRemoveDiskFromPoolDialog(disks2remove) {
 	// Create form to delete disk to pool
 	var dialogId = 'zvmDeleteDiskFromPool';
 	var deleteDiskForm = $('<div id="' + dialogId + '" class="form"></div>');
@@ -1992,7 +1992,7 @@ function openDeleteDiskFromPoolDialog(disks2delete) {
 	hcp.append(hcpSelect);
 	
 	// Set region input based on those selected on table (if any)
-	var region = $('<div><label>Region name:</label><input type="text" name="region" value="' + disks2delete + '"/></div>');
+	var region = $('<div><label>Region name:</label><input type="text" name="region" value="' + disks2remove + '"/></div>');
 	var group = $('<div><label>Group name:</label><input type="text" name="group"/></div>');
 	deleteDiskForm.append(action, hcp, region, group);
 
