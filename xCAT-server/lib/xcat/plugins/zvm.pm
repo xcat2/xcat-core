@@ -1771,7 +1771,14 @@ sub listVM {
 		my $pool  = $args->[1];
 		my $space = $args->[2];
 
-		$out = `ssh $hcp "$::DIR/getdiskpool $userId $pool $space"`;
+		if ($space eq "all") {
+			$out = `ssh $hcp "$::DIR/getdiskpool $userId $pool free"`;
+			
+			# Delete 1st line which is header
+			$out .= `ssh $hcp "$::DIR/getdiskpool $userId $pool used" | sed 1d`;
+		} else {
+			$out = `ssh $hcp "$::DIR/getdiskpool $userId $pool $space"`;
+		}
 	}
 
 	# Get network names
