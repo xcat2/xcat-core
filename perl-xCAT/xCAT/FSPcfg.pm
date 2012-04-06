@@ -906,8 +906,7 @@ sub resetnet {
     foreach ( @{$request->{noderange}}) {
        $nodehash{$_} = 1;
     }
-    # go to use lsslp do_resetnet
-    my $result = xCAT_plugin::lsslp::do_resetnet($request, \%nodehash);
+    my $result = xCAT::PPCcfg::doresetnet($request, \%nodehash);
 	return [$result];
 }
 1;
