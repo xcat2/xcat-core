@@ -29,6 +29,8 @@ case "$1" in
        fi
        update-rc.d xcatd disable
        rm -f /usr/sbin/xcatd  #remove the symbolic
+
+       rm -f /etc/apache2/conf.d/xcat-ws.conf
     ;;
 
     *)

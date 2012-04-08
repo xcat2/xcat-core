@@ -14,8 +14,11 @@ opt/xcat/share/xcat/image_data
 opt/xcat/share/xcat/cons
 opt/xcat/share/xcat/ib
 opt/xcat/share/xcat/ib/scripts
+opt/xcat/share/xcat/ib/scripts/Mellanox
+opt/xcat/share/xcat/ib/scripts/QLogic
 opt/xcat/share/xcat/ib/netboot
 opt/xcat/share/xcat/ib/netboot/sles
+opt/xcat/share/xcat/ib/netboot/rh
 opt/xcat/lib
 opt/xcat/lib/perl
 opt/xcat/lib/perl/xCAT
@@ -26,6 +29,8 @@ opt/xcat/lib/perl/xCAT_monitoring/samples
 opt/xcat/lib/perl/xCAT_monitoring/pcp
 opt/xcat/xdsh
 opt/xcat/xdsh/Context
+opt/xcat/ws
 etc/init.d
 etc/xcat
+etc/apache2/conf.d
 opt/xcat/share/doc/packages/xCAT-server

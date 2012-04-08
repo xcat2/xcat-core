@@ -10,7 +10,9 @@
 #export DH_VERBOSE=1
 
 export DH_COMPAT=5
-
+export buildroot=$(PWD)/debian/xcat-server
+export prefix=/opt/xcat
+export rootdir=$(buildroot)/$(prefix)
 
 build:
 	pwd
@@ -37,32 +39,35 @@ binary-indep: build install
 # Build architecture-dependent files here.
 binary-arch:
 	pwd
-	ROOTDIR=`pwd`/debian/xcat-server/opt/xcat
 	dh_testdir
 	dh_testroot
 	dh_installchangelogs 
 	dh_installdocs
 #	dh_installexamples
 	dh_install -X".svn"
-	chmod 755 `pwd`/debian/xcat-server/opt/xcat/bin/*
-	chmod 755 `pwd`/debian/xcat-server/opt/xcat/sbin/*
-	chmod 644 `pwd`/debian/xcat-server/opt/xcat/share/xcat/ca/*
-	chmod 755 `pwd`/debian/xcat-server/opt/xcat/share/xcat/cons/*
-	chmod 755 `pwd`/debian/xcat-server/opt/xcat/share/xcat/ib/*
-	chmod 755 `pwd`/debian/xcat-server/opt/xcat/share/xcat/ib/netboot/sles/*
-	chmod 644 `pwd`/debian/xcat-server/opt/xcat/lib/perl/xCAT_plugin/*
-	chmod 644 `pwd`/debian/xcat-server/opt/xcat/lib/perl/xCAT/*
-	chmod 644 `pwd`/debian/xcat-server/opt/xcat/xdsh/Context/*
-	chmod 644 `pwd`/debian/xcat-server/opt/xcat/lib/perl/xCAT_monitoring/*
-	chmod 755 `pwd`/debian/xcat-server/opt/xcat/lib/perl/xCAT_monitoring/samples
-	chmod 644 `pwd`/debian/xcat-server/opt/xcat/lib/perl/xCAT_monitoring/samples/*
-	chmod 755 `pwd`/debian/xcat-server/opt/xcat/lib/perl/xCAT_monitoring/pcp
-	chmod 644 `pwd`/debian/xcat-server/opt/xcat/lib/perl/xCAT_monitoring/pcp/*
-	chmod 644 `pwd`/debian/xcat-server/opt/xcat/lib/perl/xCAT_schema/*
-	chmod 755 `pwd`/debian/xcat-server/opt/xcat/lib/perl/xCAT_schema/samples
-	chmod 644 `pwd`/debian/xcat-server/opt/xcat/lib/perl/xCAT_schema/samples/*
-	chmod 644 `pwd`/debian/xcat-server/opt/xcat/lib/shfunctions
-	chmod 644 `pwd`/debian/xcat-server/opt/xcat/share/doc/packages/xCAT-server/*
+	chmod 755 $(rootdir)/bin/*
+	chmod 755 $(rootdir)/sbin/*
+	chmod 644 $(rootdir)/share/xcat/ca/*
+	chmod 755 $(rootdir)/share/xcat/cons/*
+	chmod 755 $(rootdir)/share/xcat/ib/*
+	chmod 755 $(rootdir)/share/xcat/ib/netboot/sles/*
+	chmod 755 $(rootdir)/share/xcat/ib/netboot/rh/*
+	chmod 644 $(rootdir)/lib/perl/xCAT_plugin/*
+	chmod 644 $(rootdir)/lib/perl/xCAT/*
+	chmod 644 $(rootdir)/xdsh/Context/*
+	chmod 644 $(rootdir)/lib/perl/xCAT_monitoring/*
+	chmod 755 $(rootdir)/lib/perl/xCAT_monitoring/samples
+	chmod 644 $(rootdir)/lib/perl/xCAT_monitoring/samples/*
+	chmod 755 $(rootdir)/lib/perl/xCAT_monitoring/pcp
+	chmod 644 $(rootdir)/lib/perl/xCAT_monitoring/pcp/*
+	chmod 644 $(rootdir)/lib/perl/xCAT_schema/*
+	chmod 755 $(rootdir)/lib/perl/xCAT_schema/samples
+	chmod 644 $(rootdir)/lib/perl/xCAT_schema/samples/*
+	chmod 644 $(rootdir)/lib/shfunctions
+	chmod 644 $(rootdir)/share/doc/packages/xCAT-server/*
+	echo "ScriptAlias /xcatws $(prefix)/ws/xcatws.cgi" > $(buildroot)/etc/apache2/conf.d/xcat-ws.conf
+	cat $(PWD)/xCAT-wsapi/xcat-ws.conf.apache2 >>  $(buildroot)/etc/apache2/conf.d/xcat-ws.conf
+	rm -rf $(rootdir)/ws/xcat-ws.conf*
 #	dh_installmenu
 #	dh_installdebconf	
 #	dh_installlogrotate
