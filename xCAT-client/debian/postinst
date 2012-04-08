@@ -23,10 +23,20 @@ case "$1" in
 
         cat << EOF > /etc/profile.d/xcat.sh
 XCATROOT=/opt/xcat
-PATH=\$PATH:\$XCATROOT/bin:\$XCATROOT/sbin
-MANPATH=\$MANPATH:\$XCATROOT/share/man:
+PATH=\$XCATROOT/bin:\$XCATROOT/sbin:\$PATH
+MANPATH \$XCATROOT/share/man:\$MANPATH
 export XCATROOT PATH MANPATH
 export PERL_BADLANG=0
+EOF
+	cat << EOF > /etc/profile.d/xcat.csh
+setenv XCATROOT "/opt/xcat"
+setenv PATH \${XCATROOT}/bin:\${XCATROOT}/sbin:\${PATH}
+if !(\$?MANPATH) then
+     setenv MANPATH \${XCATROOT}/share/man:
+else
+     setenv MANPATH \${XCATROOT}/share/man:\${MANPATH}
+endif
+setenv PERL_BADLANG 0
 EOF
 
 chmod 755 /etc/profile.d/xcat.*

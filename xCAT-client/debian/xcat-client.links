@@ -30,6 +30,7 @@ opt/xcat/bin/xcatclient opt/xcat/bin/renergy
 opt/xcat/bin/xcatclient opt/xcat/bin/litetree
 opt/xcat/bin/xcatclient opt/xcat/bin/litefile
 opt/xcat/bin/xcatclient opt/xcat/bin/lslite
+opt/xcat/bin/xcatclient opt/xcat/bin/lstree
 opt/xcat/bin/xcatclient opt/xcat/bin/lsflexnode
 opt/xcat/bin/xcatclient opt/xcat/bin/rmflexnode
 opt/xcat/bin/xcatclient opt/xcat/bin/mkflexnode
@@ -39,6 +40,7 @@ opt/xcat/bin/xcatclientnnr opt/xcat/bin/swapnodes
 opt/xcat/bin/xcatclientnnr opt/xcat/bin/nodegrpch
 opt/xcat/bin/xcatclientnnr opt/xcat/sbin/tabdump
 opt/xcat/bin/xcatclientnnr opt/xcat/sbin/tabprune
+opt/xcat/bin/xcatclientnnr opt/xcat/sbin/tabch
 opt/xcat/bin/xcatclientnnr opt/xcat/sbin/packimage
 opt/xcat/bin/xcatclientnnr opt/xcat/sbin/rmimage
 opt/xcat/bin/xcatclient opt/xcat/sbin/makedns
