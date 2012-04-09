@@ -2390,6 +2390,7 @@ sub clone_task_callback {
 	foreach $ndev (@{$nodeviews->[0]->config->hardware->device}) {
 	  unless ($ndev->{macAddress}) { next; } #not an ndev
 	  $ndev->{macAddress}=shift @macs;
+	  $ndev->{addressType}="manual";
 	  push @devstochange, VirtualDeviceConfigSpec->new(
 						device => $ndev,
 						operation =>  VirtualDeviceConfigSpecOperation->new('edit'));
