@@ -1205,18 +1205,21 @@ sub findSNsinBB {
         my $framerange = $STANZAS{'xcat-frames'}->{'hostname-range'};
         my $framename = parsenoderange($framerange);
 	my $framebase = $$framename{'primary-start'};
+	my $cecrange = $STANZAS{'xcat-cecs'}->{'hostname-range'};
+    my $cecname = parsenoderange($cecrange);
+    my $cecbasenum = $$cecname{'secondary-start'};
 	foreach my $p (@snpositions) {
 		my $cecbase = 0;
-                my $frame = $framebase;
-		#my $frame = $framebase;
+                my $frame = int($framebase) + ($bb -1) * $framesperbb;
 		while ($p > ($cecbase + ($NUMCECSINFRAME{$frame}||$cecsperframe))) {
 			# p is not in this frame, go on to the next
 			$cecbase += $NUMCECSINFRAME{$frame} || $cecsperframe;
 			$frame++;
 			#print "cecbase=$cecbase, frame=$frame\n";
-			if ($frame >= ($framebase+$framesperbb)) { errormsg("Can not find $sntext node position $p in building block $bb.",9); return 0; }
+            my $frametmp = $frame - ($bb -1) * $framesperbb;
+           if ($frametmp >= ($framebase+$framesperbb)) { errormsg("Can not find $sntext node position $p in building block $bb.",9); return 0; }
 		}
-		my $cecinframe = $p - $cecbase;
+        my $cecinframe = $p - $cecbase + $cecbasenum - 1;
 		#my $nodename = $primbase . sprintf("%0${primlen}d", $frame) . $secbase . sprintf("%0${seclen}d", $cecinframe) . $tertbase . sprintf("%0${tertlen}d", 1);
 		my $nodename = buildNodename($frame, $cecinframe, 1, $primbase, $primlen, $secbase, $seclen, $tertbase, $tertlen);
 		#print "nodename=$nodename\n";
