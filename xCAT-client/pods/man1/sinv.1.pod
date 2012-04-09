@@ -234,7 +234,6 @@ To execute B<sinv> on noderange, node1-node4, using node1 as
 the seed node, to generate the sinv.template from the xdsh command (-c),
 using the exact match option, generating no additional templates, enter:
 
-
 B<sinv> I<-c "xdsh node1-node4 lslpp -l | grep bos.adt"  -s node1 -e -p /tmp/sinv.template  -o /tmp/sinv.output> 
 
 Note: the /tmp/sinv.template file must be empty, otherwise it will be used
