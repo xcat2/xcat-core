@@ -160,6 +160,8 @@ sub process_request {
 
    #some rpms like atftp mount the rootimg/proc to /proc, we need to make sure rootimg/proc is free of junk 
    `umount -l $imagedir/rootimg/proc 2>&1 1>/dev/null`;
+   # also umount the rootimg/sys
+   `umount -l $imagedir/rootimg/sys 2>&1 1>/dev/null`;
 
    #Start removing the rootimg directory and files
    if (-d "$imagedir/rootimg") {
