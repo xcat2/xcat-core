@@ -4282,6 +4282,12 @@ sub passwd {
         my $snmp_cmd = "users -n $user -ap sha -pp des -ppw $pass -T system:$mm";
         @data = $t->cmd($snmp_cmd);
         if (!grep(/OK/i, @data)) {
+            $cmd = "users -n $user -op $pass -p $oldpass -T system:$mm";
+            my @back_pwd = $t->cmd($cmd);
+            if (!grep(/OK/i, @back_pwd)) {
+            #if we update password backward failed, we should update the mpa table for further use#
+                $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
+            }
             return ([1, @data]);
         }
         $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
