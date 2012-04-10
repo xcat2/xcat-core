@@ -580,6 +580,8 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 
     #Handle the rest with rpm
     if [ "$plain_pkgs" != "" ]; then 
+        echo "Warning: the packages $plain_pkgs could not be found in the repository, falling back to rpm command, did you forget to run createrepo?"
+        logger -p local4.info -t xcat "Warning: the packages $plain_pkgs could not be found in the repository, falling back to rpm command, did you forget to run createrepo?"
         if [ $mounted -eq 0 ]; then
 	    dir_no_ftproot=${OTHERPKGDIR#*$INSTALLDIR/}
             mkdir -p /xcatpost/$dir_no_ftproot 
