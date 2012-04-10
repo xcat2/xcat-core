@@ -6,6 +6,7 @@
 #
 # Author: Leonardo Tonetto <tonetto@linux.vnet.ibm.com>
 # Revisor: Adalberto Medeiros <adalbas@linux.vnet.ibm.com>
+# Revisor2: Arif Ali <aali@ocf.co.uk>
 #
 # Input:
 #
@@ -60,21 +61,19 @@ function makedeb {
 	#	
 	# Clean up
 	#
-	# Eliminate unnecessary directories and debian/files made by dpgk-buildpakcage
+	# Eliminate unnecessary directories and debian/files made by dpkg-buildpackage
 
 	find $SRC_ROOT -maxdepth 3 -type d -name "xcat-*" | grep debian | xargs rm -rf	
 	find $SRC_ROOT -maxdepth 3 -type f -name "files" | grep debian | xargs rm -f
 }
 
 # build all debian packages
-makedeb xCAT-client $PKG_LOCATION "$BUILD_STRING" $VERSION
-makedeb xCAT-nbroot $PKG_LOCATION "$BUILD_STRING" $VERSION
-makedeb perl-xCAT $PKG_LOCATION "$BUILD_STRING" $VERSION
-makedeb xCAT-server $PKG_LOCATION "$BUILD_STRING" $VERSION
-makedeb xCAT-UI $PKG_LOCATION "$BUILD_STRING" $VERSION
-makedeb xCAT $PKG_LOCATION "$BUILD_STRING" $VERSION
-makedeb xCATsn $PKG_LOCATION "$BUILD_STRING" $VERSION
-makedeb xCAT-test $PKG_LOCATION "$BUILD_STRING" $VERSION
+packages="xCAT-client xCAT-nbroot xCAT-nbroot2 perl-xCAT xCAT-server xCAT-UI xCAT xCATsn xCAT-test xCAT-IBMhpc xCAT-rmc"
+
+for file in `echo $packages`
+do
+    makedeb $file $PKG_LOCATION "$BUILD_STRING" $VERSION
+done
 
 if [ -d debs ]; then
 	rm -rf debs
