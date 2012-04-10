@@ -127,7 +127,7 @@ sub process_request {
 			$macuphash{$nodename} = { mac => $mac };
 		}
 	}
-	$mactab->setNodesAttrib(\%macuphash);
+	$mactab->setNodesAttribs(\%macuphash);
 }
 
 sub do_blade_setup {
