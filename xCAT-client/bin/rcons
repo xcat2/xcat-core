@@ -1,6 +1,10 @@
 #!/bin/sh
-HOME=`getent passwd $(whoami)|cut -d: -f 6`
-export HOME
+os=`uname`
+if [ "$os" == "Linux" ]; then 
+    HOME=`getent passwd $(whoami)|cut -d: -f 6`
+    export HOME
+fi
+
 if [ -z "$1" ] || [ "$1" = "-h"  ]; then
     echo "rcons - remotely accesses the serial console of a node"
     echo "rcons <singlenode> [conserver] [-f]"
