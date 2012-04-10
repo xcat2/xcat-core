@@ -1,0 +1,2 @@
+#opt/xcat/ui/etc/apache2/conf.d/xcat-ui.conf etc/apache2/conf.d/xcat-ui.conf
+opt/xcat/bin/xcatclientnnr opt/xcat/bin/webportal

@@ -5,3 +5,5 @@ etc opt/xcat/ui/
 images opt/xcat/ui/
 js opt/xcat/ui/
 lib opt/xcat/ui/
+xcat/plugins/web.pm opt/xcat/lib/perl/xCAT_plugin
+xcat/plugins/webportal.pm opt/xcat/lib/perl/xCAT_plugin

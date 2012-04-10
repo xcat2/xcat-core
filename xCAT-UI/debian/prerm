@@ -22,11 +22,9 @@ case "$1" in
     ;;
 
     remove)
-          apachedaemon=apache2
-
-          echo "Undoing $apachedaemon configuration for xCAT..."
-          /bin/rm -f /etc/$apachedaemon/conf.d/xcat-ui.conf
-          /etc/init.d/$apachedaemon reload
+          echo "Undoing apache2 configuration for xCAT..."
+          /bin/rm -f /etc/apache2/conf.d/xcat-ui.conf
+          /etc/init.d/apache2 restart
     ;;
 
     failed-upgrade)
