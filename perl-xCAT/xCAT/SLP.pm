@@ -104,9 +104,9 @@ sub dodiscover {
 					}
 				}
 			}
-		}
-		foreach my $srvtype (@srvtypes) {
-			send_service_request_single(%args,ifacemap=>$interfaces,SrvType=>$srvtype);
+			foreach my $srvtype (@srvtypes) {
+				send_service_request_single(%args,ifacemap=>$interfaces,SrvType=>$srvtype);
+			}
 		}
 		return \%rethash;
 	}
