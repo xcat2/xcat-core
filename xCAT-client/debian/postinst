@@ -24,7 +24,7 @@ case "$1" in
         cat << EOF > /etc/profile.d/xcat.sh
 XCATROOT=/opt/xcat
 PATH=\$XCATROOT/bin:\$XCATROOT/sbin:\$PATH
-MANPATH \$XCATROOT/share/man:\$MANPATH
+MANPATH=\$XCATROOT/share/man:\$MANPATH
 export XCATROOT PATH MANPATH
 export PERL_BADLANG=0
 EOF
