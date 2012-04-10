@@ -1857,7 +1857,7 @@ sub preprocess_request {
         } else {
             $support_hcp_type = "ivm";
         }
-        my $typehash = xCAT::DBobjUtils->getnodetype(\@$noderange, "ppc");
+        my $typehash = xCAT::DBobjUtils->getnodetype(\@$noderange) ;
         foreach ( @$noderange ) {
             my $nodetype = $$typehash{$_};
             if ($nodetype and $nodetype =~ /$support_hcp_type/) {
