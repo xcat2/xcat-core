@@ -20,6 +20,7 @@ set -e
 
 case "$1" in
     configure)
+	 cp -f /opt/xcat/share/xcat/scripts/xHRM /install/postscripts/
 	. /etc/profile.d/xcat.sh
 	if [ -f /tmp/xCAT_upgrade ]
 	then
