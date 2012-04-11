@@ -70,6 +70,10 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
     fi
 elif [ "$IPMIMFG" == 20301 ] ; then
     XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
+    IBMVPDV=`ipmitool raw 0x3a 0xb 2 0 16 1`
+    if [ $IBMVPDV -eq 2 ]; then
+	ISITE=1;
+    fi
         LOCKEDUSERS=1
         BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
         if [ ! -z "$BMCPORT" ]; then
@@ -161,6 +165,12 @@ if [ ! -z "$LOCKEDUSERS" ]; then
     fi
 else
     USERSLOT=2
+fi
+if [ "$ISITE" = 1 ];
+    while ! remoteimmsetup
+    do
+        echo "Waiting for xCAT remote configuration of service processor via CMM.."
+    done
 fi
 CURRENTUSER=`ipmitool -d $idev user list $LANCHAN|grep ^$USERSLOT|awk '{print $2}'`
 DISABLEUSERS=`echo 1 2 3 4|sed -e s/$USERSLOT//`
