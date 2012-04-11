@@ -7832,6 +7832,19 @@ sub prenimnodeset
     }
 
     #
+    # Get a list of all the nim resrouces defined.
+    #
+    $cmd = qq~/usr/sbin/lsnim | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
+    my @nimres = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 1);
+    if ($::RUNCMD_RC != 0)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not get NIM resources on $nimprime.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return (1);
+    }
+
+    #
     # get the image defs from the DB
     #
     my %lochash;
@@ -8097,6 +8110,15 @@ sub prenimnodeset
 
             foreach my $res (@reslist)
             {
+                # before get location, we need to validate if the nimres exists
+                unless (grep (/^$res$/, @nimres))
+                {
+                     my $rsp;
+                     push @{$rsp->{data}}, "NIM resource $res is not defined on $nimprime.\n";
+                     xCAT::MsgUtils->message("E", $rsp, $callback);
+                     return 1;
+
+                }
 
                 # go to primary NIM master to get resource defs and
                 #	pick out locations
