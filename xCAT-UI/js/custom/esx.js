@@ -15,6 +15,46 @@ var esxPlugin = function() {
 };
 
 /**
+ * Configure self-service page
+ */
+esxPlugin.prototype.loadConfigPage = function(tabId) {	
+	var configAccordion = $('<div id="esxConfigAccordion"></div>');
+	
+	// Create accordion panel for user
+	var userSection = $('<div id="esxConfigUser"></div>');
+	var userLnk = $('<h3><a href="#">Users</a></h3>').click(function () {
+		// Do not load panel again if it is already loaded
+		if ($('#esxConfigUser').find('.dataTables_wrapper').length)
+			return;
+		else
+			$('#esxConfigUser').append(createLoader(''));
+		
+		// Get user data
+		loadUserPanel('esxConfigUser');
+	});
+	
+	// Create accordion panel for profiles
+	var profileSection = $('<div id="esxConfigProfile"></div>');
+	profileSection.append(createInfoBar('Create, edit, and delete virtual machine profiles used in the self-service portal'));
+	var profileLnk = $('<h3><a href="#">Profiles</a></h3>').click(function () {
+		
+	});
+	
+	// Create accordion panel for nodes
+	var nodeSection = $('<div id="esxConfigNode"></div>');
+	nodeSection.append(createInfoBar('Modify node attributes'));
+	var nodeLnk = $('<h3><a href="#">Nodes</a></h3>').click(function () {
+		
+	});
+	
+	configAccordion.append(userLnk, userSection, profileLnk, profileSection, nodeLnk, nodeSection);
+	$('#' + tabId).append(configAccordion);
+	configAccordion.accordion();
+	
+	userLnk.trigger('click');
+};
+
+/**
  * Clone node (service page)
  * 
  * @param node

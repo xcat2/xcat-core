@@ -611,6 +611,7 @@ function initPage() {
 	if (page == 'configure.php') {
 		includeJs("js/configure/update.js");
 		includeJs("js/configure/discover.js");
+		includeJs("js/configure/service.js");
 		headers.eq(1).css(style);
 		loadConfigPage();
 	} else if (page == 'provision.php') {

@@ -15,6 +15,46 @@ var kvmPlugin = function() {
 };
 
 /**
+ * Configure self-service page
+ */
+kvmPlugin.prototype.loadConfigPage = function(tabId) {	
+	var configAccordion = $('<div id="kvmConfigAccordion"></div>');
+	
+	// Create accordion panel for user
+	var userSection = $('<div id="kvmConfigUser"></div>');
+	var userLnk = $('<h3><a href="#">Users</a></h3>').click(function () {
+		// Do not load panel again if it is already loaded
+		if ($('#kvmConfigUser').find('.dataTables_wrapper').length)
+			return;
+		else
+			$('#kvmConfigUser').append(createLoader(''));
+		
+		// Get user data
+		loadUserPanel('kvmConfigUser');
+	});
+	
+	// Create accordion panel for profiles
+	var profileSection = $('<div id="kvmConfigProfile"></div>');
+	profileSection.append(createInfoBar('Create, edit, and delete virtual machine profiles used in the self-service portal'));
+	var profileLnk = $('<h3><a href="#">Profiles</a></h3>').click(function () {
+		
+	});
+	
+	// Create accordion panel for nodes
+	var nodeSection = $('<div id="kvmConfigNode"></div>');
+	nodeSection.append(createInfoBar('Modify node attributes'));
+	var nodeLnk = $('<h3><a href="#">Nodes</a></h3>').click(function () {
+		
+	});
+	
+	configAccordion.append(userLnk, userSection, profileLnk, profileSection, nodeLnk, nodeSection);
+	$('#' + tabId).append(configAccordion);
+	configAccordion.accordion();
+	
+	userLnk.trigger('click');
+};
+
+/**
  * Clone node (service page)
  * 
  * @param node

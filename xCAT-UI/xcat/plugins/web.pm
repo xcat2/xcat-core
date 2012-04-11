@@ -62,7 +62,9 @@ sub process_request {
         'addnode'      => \&web_addnode,
 		'graph'		    => \&web_graphinfo,
 		'getdefaultuserentry' => \&web_getdefaultuserentry,
-		'passwd' => \&web_passwd
+		'passwd' => \&web_passwd,
+		'updateuser' => \&web_updateuser,
+		'deleteuser' => \&web_deleteuser
 	);
 
 	#check whether the request is authorized or not
@@ -2237,11 +2239,48 @@ sub web_passwd() {
 	my $newPassword = $request->{arg}->[2];
 	
 	# Generate encrypted password
-	my $encrypted = `perl -e "print crypt($newPassword, 03162012)"`;
+	my $random = rand(10000000);
+	my $encrypted = `perl -e "print crypt($newPassword, $random)"`;
 	# Save in xCAT passwd table
 	`chtab username=$user passwd.key=xcat passwd.password=$encrypted`;
 	
 	my $info = "Password successfully changed";
+	$callback->( { info => $info } );
+	return;
+}
+
+sub web_updateuser() {
+	my ( $request, $callback, $sub_req ) = @_;
+
+	# Get user attributes
+	my $priority = $request->{arg}->[1];
+	my $user = $request->{arg}->[2];
+	my $password = $request->{arg}->[3];
+	my $maxVM = $request->{arg}->[4];
+	
+	# Save in xCAT passwd and policy tables
+	`chtab username=$user passwd.key=xcat passwd.password=$password`;
+	`chtab name=$user policy.priority=$priority policy.comments="max-vm:$maxVM"`;
+	
+	my $info = "User successfully updated";
+	$callback->( { info => $info } );
+	return;
+}
+
+sub web_deleteuser() {
+	my ( $request, $callback, $sub_req ) = @_;
+
+	# Get user attributes
+	my $user = $request->{arg}->[1];
+	my @users = split( ',', $user );
+		
+	# Delete user from xCAT passwd and policy tables
+	foreach(@users) {
+		`chtab -d username=$_ passwd`;
+		`chtab -d name=$_ policy`;
+	}
+
+	my $info = "User successfully deleted";
 	$callback->( { info => $info } );
 	return;
 }

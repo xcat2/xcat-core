@@ -1139,10 +1139,11 @@ function getNodeAttrs(group) {
 		});
 		
 		// Create dialog to indicate table is updating
-		var update = $('<div id="updatingDialog" class="ui-state-highlight ui-corner-all">' 
-				+ '<p><span class="ui-icon ui-icon-info"></span> Updating table <img src="images/loader.gif"/></p>'
-			+'</div>');
+		var update = $('<div id="updatingDialog"></div>');
+		update.append(createInfoBar('Updating table <img src="images/loader.gif"/>'));
+		
 		update.dialog({
+			title: 'Updating',
 			modal: true,
 			width: 300,
 			position: 'center'
@@ -1165,7 +1166,7 @@ function addNodes2Table(data) {
 	// Hash of node attributes
 	var attrs = new Object();
 	// Node attributes
-	var headers = $('#' + nodesTableId + ' thead tr th');
+	var headers = $('#' + nodesTableId).parents('.dataTables_scroll').find('.dataTables_scrollHead thead tr th');
 	
 	// Variable to send command and request node status
 	var getNodeStatus = true;
@@ -1200,15 +1201,16 @@ function addNodes2Table(data) {
 		}
 	}
 		
-	// Set the first four headers
+	// Set the first five headers
 	var headersCol = new Object();
 	headersCol['node'] = 1;
 	headersCol['status'] = 2;
 	headersCol['power'] = 3;
-	headersCol['comments'] = 4;
+	headersCol['monitor'] = 4;
+	headersCol['comments'] = 5;
 	
 	// Go through each header
-	for (var i = 5; i < headers.length; i++) {
+	for (var i = 6; i < headers.length; i++) {
 		// Get the column index
 		headersCol[headers.eq(i).html()] = i;
 	}
@@ -1218,7 +1220,7 @@ function addNodes2Table(data) {
 	var rows = datatable.fnGetData();
 	for (var node in attrs) {
 		// Get row containing node
-		var nodeRowPos;
+		var nodeRowPos = 0;
 		for (var i in rows) {
 			// If column contains node
 			if (rows[i][1].indexOf('>' + node + '<') > -1) {
@@ -1266,7 +1268,7 @@ function addNodes2Table(data) {
 				
 		// Create icon for node comments
 		var tipID = node + 'Tip';
-		var commentsCol = $('#' + node).parent().parent().find('td').eq(4);
+		var commentsCol = $('#' + node).parent().parent().find('td').eq(5);
 		
 		// Create tooltip
 		var icon = $('<img id="' + tipID + '" src="' + iconSrc + '"></img>').css({

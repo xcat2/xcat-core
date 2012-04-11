@@ -155,48 +155,6 @@ function loadServicePage() {
 			}
 		});
 	}
-	
-	// Check if user has root privilege
-	// If so, add an admin tab
-	$.ajax( {
-		url : 'lib/srv_cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'webportal',
-			tgt : '',
-			args : 'getuserprivilege;' + $.cookie('xcat_username'),
-			msg : ''
-		},
-
-		success : function(data) {
-			var rsp = jQuery.trim(data.rsp);
-			rsp = rsp.replace('Privilege:', '');
-			var privilege = jQuery.trim(rsp);
-			
-			// If the user has root privilege, create an administrator tab
-			if (privilege == 'root') {
-				var configTabId = 'configTab';
-				serviceTabs.add(configTabId, 'Configure', '', false);
-				loadConfigPage(configTabId);
-			}
-		}
-	});
-}
-
-/**
- * Load the service portal's configure page
- * 
- * @param tabId
- * 			Tab ID where page will reside
- * @return Nothing
- */
-function loadConfigPage(tabId) {
-	// Create info bar
-	var infoBar = createInfoBar('Select a platform to configure, then click Ok.');
-	
-	// Create configure page
-	var configPg = $('<div class="form"></div>');
-	$('#' + tabId).append(infoBar, configPg);
 }
 
 /**
