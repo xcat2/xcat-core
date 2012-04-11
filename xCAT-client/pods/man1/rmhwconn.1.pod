@@ -30,7 +30,7 @@ Note: If a CEC belongs to a frame with a BPA installed, this CEC cannot be disco
 
 For PPC (without HMC, using FSPAPI) specific:
 
-It's used to disconnection CEC and Frame nodes from hardware server.
+It's used to disconnection CEC, Frame and Firebird nodes from hardware server.
 
 For PPC (use HMC as SFP) specific:
 
@@ -79,9 +79,15 @@ To remove the connection for Frame node frame1:
 
 =item 3.
 
-To disconnect all CEC nodes in node group cec from their related hardware serveri, using lpar tooltype:
+To disconnect all CEC nodes in node group cec from their related hardware service, using lpar tooltype:
  
  rmhwconn cec -T lpar
+
+=item 4.
+
+To disconnect all Firebird nodes from there related hardware service:
+ 
+ rmhwconn blade
 
 =back
 
