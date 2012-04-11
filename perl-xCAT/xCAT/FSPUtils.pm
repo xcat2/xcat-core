@@ -126,6 +126,7 @@ sub fsp_api_action {
     #get the HMC/password from  passwd table or ppcdirect table.
     if( $action =~ /^add_connection$/) {
         my $tmp_node; 
+        $user = 'HMC';
  	    if( $$attrs[4] =~ /^cec$/ || $$attrs[4] =~ /^frame$/ ) {
             #for redundant FSPs/BPAs, we only need to get the one node's HMC/passwd
             my $children = xCAT::DBobjUtils->getchildren($fsp_name);
@@ -136,15 +137,17 @@ sub fsp_api_action {
 	        $tmp_node = $$children[0];
 	    } elsif ($$attrs[4] =~ /^blade$/) { 
             $tmp_node = $$attrs[5];
+            $user = 'USERID';
         } else {
 	        $tmp_node = $fsp_name; 
 	    }
 	    	    
-	    ($user, $password) = xCAT::PPCdb::credentials( $tmp_node, $fsp_bpa_type,'HMC');        
+	    ($user, $password) = xCAT::PPCdb::credentials( $tmp_node, $fsp_bpa_type,$user);        
 	    if ( !$password) {
 	        $res = "Cannot get password of userid 'HMC'. Please check table 'passwd' or 'ppcdirect'.";
 	        return ([$node_name, $res, -1]);
 	    }
+        $user = 'HMC';
     }
 
     my $cmd;

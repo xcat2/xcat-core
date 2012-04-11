@@ -3975,12 +3975,12 @@ sub telnetcmds {
   my @unhandled;
   my %handled = ();
   my $result;
-  my @tcmds = qw(snmpcfg sshcfg network swnet pd1 pd2 textid network_reset rscanfsp initnetwork solcfg USERID HMC);
+  my @tcmds = qw(snmpcfg sshcfg network swnet pd1 pd2 textid network_reset rscanfsp initnetwork solcfg USERID);
 
   # most of these commands should be able to be done
   # through SNMP, but they produce various errors.
   foreach my $cmd (@_) {
-    if ($cmd =~ /^swnet|pd1|pd2|sshcfg|rscanfsp|USERID|HMC|=/) {
+    if ($cmd =~ /^swnet|pd1|pd2|sshcfg|rscanfsp|USERID|=/) {
       if (($cmd =~ /^textid/) and ($nodeid > 0)) {
         push @unhandled,$cmd;
         next;
@@ -4054,7 +4054,7 @@ sub telnetcmds {
     elsif (/^rscanfsp$/)  { $result = rscanfsp($t,$mpa,$handled{$_},$mm); }
     elsif (/^solcfg$/)  { $result = solcfg($t,$handled{$_},$mm); }
     elsif (/^network_reset$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid,1); }
-    elsif (/^(USERID|HMC)$/) {$result = passwd($t, $mpa, $1, $handled{$_}, $mm);}
+    elsif (/^(USERID)$/) {$result = passwd($t, $mpa, $1, $handled{$_}, $mm);}
     push @data, "$_: @$result";
     $Rc |= shift(@$result);
     push @cfgtext,@$result;
@@ -4246,7 +4246,20 @@ sub passwd {
     if (!grep(/OK/i, @data)) {
         return ([1, @data]);
     }
-    if ($user eq "HMC") {
+    {
+        @data = ();
+        my $snmp_cmd = "users -n $user -ap sha -pp des -ppw $pass -T system:$mm";
+        @data = $t->cmd($snmp_cmd);
+        if (!grep(/OK/i, @data)) {
+            $cmd = "users -n $user -op $pass -p $oldpass -T system:$mm";
+            my @back_pwd = $t->cmd($cmd);
+            if (!grep(/OK/i, @back_pwd)) {
+            #if we update password backward failed, we should update the mpa table for further use#
+                $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
+            }
+            return ([1, @data]);
+        }
+
         $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
         my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
         my $blades = &get_blades_for_mpa($mpa);
@@ -4277,20 +4290,6 @@ sub passwd {
             my $fblades = join (',',@failed_blades);
             return ([1, "Update password of HMC for '$fblades' failed. Please recreate the DFM connections for them."]);
         }
-    } else {
-        @data = ();
-        my $snmp_cmd = "users -n $user -ap sha -pp des -ppw $pass -T system:$mm";
-        @data = $t->cmd($snmp_cmd);
-        if (!grep(/OK/i, @data)) {
-            $cmd = "users -n $user -op $pass -p $oldpass -T system:$mm";
-            my @back_pwd = $t->cmd($cmd);
-            if (!grep(/OK/i, @back_pwd)) {
-            #if we update password backward failed, we should update the mpa table for further use#
-                $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
-            }
-            return ([1, @data]);
-        }
-        $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
     }
   } else {
     return ([1, "Update password for $user in 'mpa' table failed"]);
