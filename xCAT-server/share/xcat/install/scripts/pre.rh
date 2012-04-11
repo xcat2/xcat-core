@@ -9,6 +9,10 @@ do
 done
 chmod 644 /dev/vcs*
 chown root /dev/vcs*
+if [ -r /tmp/updates/etc/pki/tls/certs/ca-bundle.crt ]; then
+        cp -f /tmp/updates/etc/pki/tls/certs/ca-bundle.crt /etc/pki/tls/certs/
+fi
+
 
 cat >/tmp/foo.py <<EOF
 #!/usr/bin/python
