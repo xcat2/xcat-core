@@ -266,12 +266,12 @@ else
 
 	echo "\n\n$msg\n\n"
 
-	if [ ${rc} -ne 0 ]
-	then 
-		error=1
-		echo "\nError: The chroot command failed for '$cmd_string'."
-		echo "Error: The return code from chroot was '${rc}'\n"
-	fi
+	#if [ ${rc} -ne 0 ]
+	#then 
+	#	error=1
+	#	echo "\nError: The chroot command failed for '$cmd_string'."
+	#	echo "Error: The return code from chroot was '${rc}'\n"
+	#fi
 
 
 	# sensitive process has completed
@@ -289,8 +289,9 @@ fi
 /usr/bin/rm $location/xcatchrootscript
 
 # all done
-if [ $error -eq 1 ]
-then
-    exit 1
-fi
-exit 0
+#if [ $error -eq 1 ]
+#then
+#    exit 1
+#fi
+#exit 0
+exit ${rc}
