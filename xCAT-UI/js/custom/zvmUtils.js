@@ -3360,3 +3360,112 @@ function createzVM(tabId, group, hcp, img, owner) {
 	var iframe = createIFrame('lib/srv_cmd.php?cmd=webportal&tgt=&args=provzlinux;' + group + ';' + hcp + ';' + img + ';' + owner + '&msg=&opts=flush');
 	iframe.prependTo($('#' + tabId));
 }
+
+/**
+ * Query the profiles that exists
+ * 
+ * @param panelId
+ * 			Panel ID
+ * @return Nothing
+ */
+function queryProfiles(panelId) {
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'tabdump',
+			tgt : '',
+			args : 'osimage',
+			msg : panelId
+		},
+
+		success : function(data) {
+			var panelId = data.msg;
+			setOSImageCookies(data);
+			loadConfigProfilePanel(panelId);
+		}
+	});
+}
+
+/**
+ * Load the profiles panel to configure directory entries and disks for a profile
+ * 
+ * @param panelId
+ * 			Panel ID
+ * @return Nothing
+ */
+function loadConfigProfilePanel(panelId) {
+	// Remove loader
+	$('#' + panelId).find('img[src="images/loader.gif"]').remove();
+
+	// Create table
+	var tableId = 'zvmProfileTable';
+	var table = new DataTable(tableId);
+	table.init(['<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'Profile', 'Disk pool', 'Disk size', 'Directory entry']);
+
+	// Insert profiles into table
+	var profiles = $.cookie('profiles').split(',');
+	for (var i in profiles) {
+		if (profiles[i]) {
+			// Columns are: profile, disk pool, disk size, and directory entry
+			var cols = new Array(profiles[i], '', '', '');
+	
+			// Add remove button where id = user name
+			cols.unshift('<input type="checkbox" name="' + profiles[i] + '"/>');
+	
+			// Add row
+			table.add(cols);
+		}
+	}
+	
+	// Append datatable to tab
+	$('#' + panelId).append(table.object());
+
+	// Turn into datatable
+	var dTable = $('#' + tableId).dataTable({
+		'iDisplayLength': 50,
+		'bLengthChange': false,
+		"sScrollX": "100%",
+		"bAutoWidth": true
+	});
+	
+	// Create action bar
+	var actionBar = $('<div class="actionBar"></div>');
+	
+	var createLnk = $('<a>Create</a>');
+	createLnk.click(function() {
+		
+	});
+		
+	var deleteLnk = $('<a>Delete</a>');
+	deleteLnk.click(function() {
+
+	});
+	
+	var refreshLnk = $('<a>Refresh</a>');
+	refreshLnk.click(function() {
+
+	});
+	
+	// Create an action menu
+	var actionsMenu = createMenu([createLnk, deleteLnk, refreshLnk]);
+	actionsMenu.superfish();
+	actionsMenu.css('display', 'inline-block');
+	actionBar.append(actionsMenu);
+	
+	// Set correct theme for action menu
+	actionsMenu.find('li').hover(function() {
+		setMenu2Theme($(this));
+	}, function() {
+		setMenu2Normal($(this));
+	});
+	
+	// Create a division to hold actions menu
+	var menuDiv = $('<div id="' + tableId + '_menuDiv" class="menuDiv"></div>');
+	$('#' + tableId + '_wrapper').prepend(menuDiv);
+	menuDiv.append(actionBar);	
+	$('#' + tableId + '_filter').appendTo(menuDiv);
+
+	// Resize accordion
+	$('#zvmConfigAccordion').accordion('resize');
+}

@@ -29,8 +29,7 @@ zvmPlugin.prototype.loadConfigPage = function(tabId) {
 			return;
 		else
 			$('#zvmConfigUser').append(createLoader(''));
-		
-		// Get user data
+
 		loadUserPanel('zvmConfigUser');
 	});
 	
@@ -38,7 +37,13 @@ zvmPlugin.prototype.loadConfigPage = function(tabId) {
 	var profileSection = $('<div id="zvmConfigProfile"></div>');
 	profileSection.append(createInfoBar('Create, edit, and delete virtual machine profiles used in the self-service portal'));
 	var profileLnk = $('<h3><a href="#">Profiles</a></h3>').click(function () {
-		
+		// Do not load panel again if it is already loaded
+		if ($('#zvmConfigProfile').find('.dataTables_wrapper').length)
+			return;
+		else
+			$('#zvmConfigProfile').append(createLoader(''));
+
+		queryProfiles('zvmConfigProfile');
 	});
 	
 	// Create accordion panel for nodes

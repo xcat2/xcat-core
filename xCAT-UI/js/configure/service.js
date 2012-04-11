@@ -143,7 +143,7 @@ function loadUserTable(data) {
 	var table = new DataTable(tableId);
 
 	// Add column for the checkbox
-	headers.unshift('');
+	headers.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">');
 	table.init(headers);
 	headers.shift();
 

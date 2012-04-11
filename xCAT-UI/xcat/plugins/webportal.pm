@@ -135,66 +135,49 @@ sub provzlinux {
 	my $disk_pool;
 	my $eckd_size;
 	my $fba_size;
-	my $default_conf   = '/opt/zhcp/conf/default.conf';
-	my $default_direct = "/opt/zhcp/conf/profiles/$profile.direct";
+	my $default_conf   = "/var/opt/xcat/profiles/$profile.conf";
+	my $default_direct = "/var/opt/xcat/profiles/$profile.direct";
 
 	# Check if a group based directory entry exists, else use default one
-	if ( !(`ssh $hcp "test -e /opt/zhcp/conf/profiles/$profile.direct && echo Exists"`) ) {
+	if ( !(`test -e /var/opt/xcat/profiles/$profile.direct && echo Exists`) ) {
 		println( $callback, "$profile.direct does not exist.  Using default.direct to generate directory entry." );
 		
 		# Exit if default.direct does not exist
-		$default_direct = '/opt/zhcp/conf/profiles/default.direct';	
-		if ( !(`ssh $hcp "test -e /opt/zhcp/conf/profiles/default.direct && echo Exists"`) ) {
+		$default_direct = '/var/opt/xcat/profiles/default.direct';	
+		if ( !(`test -e /var/opt/xcat/profiles/default.direct && echo Exists`) ) {
 			println( $callback, '(Error) $default_direct does not exists' );
 			return;
 		}
 	}
 
 	# Exit if default.conf does not exist
-	if ( !(`ssh $hcp "test -e $default_conf && echo Exists"`) ) {
+	if ( !(`test -e $default_conf && echo Exists`) ) {
 		println( $callback, '(Error) $default_conf does not exists' );
 		return;
 	}
 
 	# Exit if default.direct does not exist
-	if ( !(`ssh $hcp "test -e $default_direct && echo Exists"`) ) {
+	if ( !(`test -e $default_direct && echo Exists`) ) {
 		println( $callback, '(Error) $default_direct does not exists' );
 		return;
 	}
 
-	$out = `ssh $hcp "cat $default_conf"`;
+	$out = `cat $default_conf`;
 	@tmp = split( /\n/, $out );
 	# default.conf should contain:
 	
-	# Default configuration for virtual machines handled by this zHCP
+	# Configuration for virtual machines
 	#	default_diskpool=POOL3
 	#	default_eckd_size=10016
-	#	compute_diskpool=POOL3
-	#	compute_eckd_size=10016	
 	my $profile_diskpool_parm = $profile . "_diskpool";
 	my $profile_eckd_size_parm = $profile . "_eckd_size";
 	my $profile_fba_size_parm = $profile . "_fba_size";
 	my $default_disk_pool;
 	my $default_eckd_size;
 	my $default_fba_size;
-	foreach (@tmp) {
-		# Get disk pool (default)
-		if ( $_ =~ m/default_diskpool=/i ) {
-			$default_disk_pool = $_;
-			$default_disk_pool =~ s/default_diskpool=//g;
-		}		
-		# Get disk size (default)
-		elsif ( $_ =~ m/default_eckd_size=/i ) {
-			$default_eckd_size = $_;
-			$default_eckd_size =~ s/default_eckd_size=//g;
-		}
-		elsif ( $_ =~ m/default_fba_size=/i ) {
-			$default_fba_size = $_;
-			$default_fba_size =~ s/default_fba_size=//g;
-		}
-		
+	foreach (@tmp) {		
 		# Get profile disk pool (default)
-		elsif ( $_ =~ m/$profile_diskpool_parm=/i ) {
+		if ( $_ =~ m/$profile_diskpool_parm=/i ) {
 			$disk_pool = $_;
 			$disk_pool =~ s/$profile_diskpool_parm=//g;
 		}
@@ -211,11 +194,8 @@ sub provzlinux {
 	
 	# Use default configuration if profile configuration does not exist
 	if (!$disk_pool && (!$eckd_size || !$fba_size)) {
-		println( $callback, "$profile configuration for disk pool and size does not exist.  Using default configuration." );
-		
-		$disk_pool = $default_disk_pool;
-		$eckd_size = $default_eckd_size;
-		$fba_size = $default_fba_size;
+		println( $callback, "(Error) $profile configuration for disk pool and size does not exist" );
+		return;
 	}
 
 	my $site_tab    = xCAT::Table->new('site');
@@ -263,7 +243,7 @@ sub provzlinux {
 	#	USER LXUSR PSWD 512M 1G G
 	#	INCLUDE LNXDFLT
 	#	COMMAND SET VSWITCH VSW2 GRANT LXUSR
-	$out = `ssh $hcp "sed $default_direct -e s/LXUSR/$userid/g" > /tmp/$node-direct.txt`;
+	$out = `sed $default_direct -e s/LXUSR/$userid/g > /tmp/$node-direct.txt`;
 	$out = `mkvm $node /tmp/$node-direct.txt`;
 	`rm -rf /tmp/$node-direct.txt`;
 	println( $callback, "$out" );
@@ -648,26 +628,26 @@ sub clonezlinux {
 	my $arch = $props->{'arch'};
 	my $profile = $props->{'profile'};
 
-	# Read in default disk pool from /opt/zhcp/conf/default.conf on zHCP
+	# Read in default disk pool from /var/opt/xcat/profiles/default.conf on xCAT MN
 	#	pool = POOL3
 	#	eckd_size = 10016
 	my $disk_pool;
-	my $default_conf   = '/opt/zhcp/conf/default.conf';
-	my $default_direct = '/opt/zhcp/conf/profiles/default.direct';
+	my $default_conf   = '/var/opt/xcat/profiles/default.conf';
+	my $default_direct = '/var/opt/xcat/profiles/default.direct';
 
 	# Exit if default.conf does not exist
-	if ( !(`ssh $hcp "test -e $default_conf && echo Exists"`) ) {
+	if ( !(`test -e $default_conf && echo Exists`) ) {
 		println( $callback, '(Error) $default_conf does not exists' );
 		return;
 	}
 
 	# Exit if default.direct does not exist
-	if ( !(`ssh $hcp "test -e $default_direct && echo Exists"`) ) {
+	if ( !(`test -e $default_direct && echo Exists`) ) {
 		println( $callback, '(Error) $default_direct does not exists' );
 		return;
 	}
 
-	$out = `ssh $hcp "cat $default_conf"`;
+	$out = `cat $default_conf`;
 	@tmp = split( /\n/, $out );
 	# default.conf should contain:
 	
