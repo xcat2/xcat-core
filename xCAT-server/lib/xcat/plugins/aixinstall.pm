@@ -4900,6 +4900,10 @@ sub chk_resolv_conf
    			my $install_dir = xCAT::Utils->getInstallDir();
             if ($::opt_l)
             {
+                if ($::opt_l =~ /\/$/)
+                {
+                    $::opt_l =~ s/\/$//; #remove tailing slash if needed
+                }
                 $loc = "$::opt_l/resolv_conf/$resolv_conf_name";
             }
             else
