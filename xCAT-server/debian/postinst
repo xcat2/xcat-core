@@ -21,6 +21,10 @@ set -e
 case "$1" in
     configure)
 	. /etc/profile.d/xcat.sh
+        if [ ! `grep -i imuxsock /etc/rsyslog.conf` ] ; then
+           echo \$ModLoad imuxsock >> /etc/rsyslog.conf
+           service rsyslog restart
+        fi
 	xcatconfig -i -d
 	update-rc.d xcatd enable
 	if [ -f /tmp/xCAT-server_upgrade.tmp ]; then
