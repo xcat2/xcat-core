@@ -1904,7 +1904,7 @@ sub preprocess_request {
         my @masters = xCAT::Utils->get_site_attribute("master");
        	#When run mkhwconn/lshwconn/rmhwconn with -T fnm for CNM, it will send the command to CEC/Frame direclty, 
      	#not through the service node if specified.
-        if ((($req->{command}->[0] eq "mkhwconn") || ($req->{command}->[0] eq "lshwconn" ) || ($req->{command}->[0] eq "rmhwconn" ))
+        if ($req->{command}->[0] =~ /^(mkhwconn|lshwconn|rmhwconn|rpower)$/
 	        && ( $req->{opt}->{T} == 1) )  {
 	        #for fnm
             my $reqcopy = {%$req};
