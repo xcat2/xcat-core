@@ -574,6 +574,18 @@ sub makescript
         }
     }
 
+    # SLES sdk
+    if ($os =~ /sles.*/)
+    {
+        my $installdir = $::XCATSITEVALS{'installdir'} ? $::XCATSITEVALS{'installdir'} : "/install";
+        my $sdkdir = "$installdir/$os/$arch/sdk1";
+        if (-e "$sdkdir")
+        {
+            push @scriptd, "SDKDIR='" . $sdkdir . "'\n";
+            push @scriptd, "export SDKDIR\n";
+        }
+    }
+
     # check if there are sync files to be handled
     my $syncfile;
     if (   ($provmethod)
