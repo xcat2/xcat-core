@@ -82,10 +82,10 @@ my $node = `$nlscmd`;
 chomp($node);
 print "node: $node\n";
 if($node ne ''){
-	system("logger -t xcat 'removing $node configuration from xCAT'");
+	system("logger -p local4.info -t xcat 'removing $node configuration from xCAT'");
 	print FILE "removing $node configuration from xCAT\n";
 	&rmblade($node);
 }else{
-	system("logger -t xcat 'a blade was removed from $mm:$slot but could not be identified'");
+	system("logger  -p local4.info -t xcat 'a blade was removed from $mm:$slot but could not be identified'");
 	print FILE "A blade was removed from $mm:$slot but could not be identified\n";
 }
