@@ -40,7 +40,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|Verbose m:s@ t=s r=s nodeps) )) {
+    if ( !GetOptions( \%opt, qw(V|Verbose m:s@ t=s T=s r=s nodeps) )) {
         return( usage() );
     }
     ####################################
@@ -83,6 +83,24 @@ sub parse_args {
              return(usage());
         }
     }
+
+    if( ! exists $opt{T} )
+    {
+        $opt{T} = "lpar"; #defaut value is lpar.
+    }
+    
+    if(  $opt{T} eq "lpar") {
+        $opt{T} = 0;   
+    } elsif($opt{T} eq "fnm") {
+        $opt{T} = 1;
+        if ( $request->{op} !~ /^(onstandby|state|stat)$/) {
+            return(usage("The tooltype fnm only could be used with onstandby/state/stat action."));
+        } 
+    } else {
+        return( usage('Wrong value of  -T option. The value can be lpar or fnm. The defaut value is lpar.'));
+    }
+
+
     return( \%opt );
 }
 

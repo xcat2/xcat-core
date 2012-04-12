@@ -23,6 +23,7 @@ sub enumerate {
 
     my $h    = shift;
     my $mtms    = shift;
+    my $tooltype = shift;
     my %outhash = ();
     my %cmds    = (); 
     my $type    = ();
@@ -44,7 +45,7 @@ sub enumerate {
     }
     foreach my $type ( keys %cmds ) {
         my $action = $cmds{$type};
-        my $values =  xCAT::FSPUtils::fsp_state_action ($cec_bpa, $type, $action);;
+        my $values =  xCAT::FSPUtils::fsp_state_action ($cec_bpa, $type, $action, $tooltype);
         my $Rc = shift(@$values);
         ##################################
         # Return error 
@@ -170,6 +171,7 @@ sub powercmd {
 
     my $request = shift;
     my $hash    = shift;
+    my $tooltype = $request->{opt}->{T};			
     my @result  = ();
     my @output;
     my $action;
@@ -270,7 +272,7 @@ sub powercmd {
    
     #print Dumper($newd);
 
-    my $res = xCAT::FSPUtils::fsp_api_action($newnames, $newd, $action, 0, $request->{'powerinterval'} );
+    my $res = xCAT::FSPUtils::fsp_api_action($newnames, $newd, $action, $tooltype, $request->{'powerinterval'} );
     #    print "In boot, state\n";
     #    print Dumper($res);
     my $Rc = @$res[2];
@@ -340,6 +342,7 @@ sub state {
     my $prefix  = shift;
     my $convert = shift;
     my @output  = ();
+    my $tooltype = $request->{opt}->{T};			
 			
     
     #print "------in state--------\n"; 
@@ -374,7 +377,7 @@ sub state {
         ######################################
         # Build CEC/LPAR information hash
         ######################################
-        my $stat = enumerate( $h, $mtms );
+        my $stat = enumerate( $h, $mtms, $tooltype);
         my $Rc = shift(@$stat);
         my $data = @$stat[0];
         #if($Rc != 0) {
@@ -404,7 +407,7 @@ sub state {
             # Node not found 
             ##################################
             if ($type !~ /^blade$/ and !exists( $data->{$id} )) {
-                my $res = xCAT::FSPUtils::fsp_api_action($name, $d, "state"); 
+                my $res = xCAT::FSPUtils::fsp_api_action($name, $d, "state", $tooltype); 
                 my $rc = @$res[2];
                 my $val = @$res[1];
                 if( $rc != 0) {
