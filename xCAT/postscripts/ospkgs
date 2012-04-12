@@ -114,7 +114,11 @@ groups=''   #groups
 pkgs_d=''   #packages to remove
 
 OIFS=$IFS
-IFS=$(printf '\n')
+IFS=$'\n'
+if ( pmatch "$OSVER" "ubuntu*" ); then
+    IFS=$(printf '\n')
+fi
+
 for x in `echo "$OSPKGS" | tr "," "\n"`
 do
     #remove leading and trailing spaces
