@@ -85,6 +85,12 @@ if [ -z "$OSPKGDIR" ]; then
     fi
 fi
 
+if [ "$SDKDIR" != "" ]; then 
+    if [ $mounted -eq 0 ]; then
+        SDKDIR="$NFSSERVER/$SDKDIR"
+    fi
+fi
+    
 if [ $mounted -eq 0 ]; then
     OSPKGDIR_NO_PREFIX=${OSPKGDIR#$INSTALLDIR}
 
@@ -276,6 +282,20 @@ elif ( pmatch "$OSVER" "sles11*" ); then
 	logger -t xcat "ospkgs: zypper ar $path $OSVER\n    $result"
 	echo "ospkgs: zypper ar $path $OSVER"
 	echo "    $result"
+    fi
+
+    if [ "$SDKDIR" != "" ]; then
+        if [ $mounted -eq 0 ]; then
+	    SDKDIR="http://$SDKDIR"
+        else
+            SDKDIR="file://$SDKDIR"
+        fi
+        result=`zypper ar $SDKDIR $OSVER-sdk`
+        if [ $? -ne 0 ]; then 
+	    logger -t xcat "ospkgs: zypper ar $SDKDIR $OSVER-sdk\n    $result"
+	    echo "ospkgs: zypper ar $SDKDIR $OSVER-sdk"
+	    echo "    $result"
+        fi
     fi
     
     result=`zypper --non-interactive refresh 2>&1` 
