@@ -3852,7 +3852,7 @@ sub writeAllEntries
     # open the file for write
     unless (open($fh," > $filename")) {
      my $msg="Unable to open $filename for write \n.";
-       `logger -t xcat $msg`;
+       `logger -p local4.err  -t xcat $msg`;
         return 1;  
     }
     my $query;
@@ -3937,7 +3937,7 @@ sub writeAllAttribsWhere
     # open the file for write
     unless (open($fh," > $filename")) {
      my $msg="Unable to open $filename for write \n.";
-       `logger -t xcat $msg`;
+       `logger -p local4.err -t xcat $msg`;
         return 1;  
     }
     my $header;
