@@ -744,6 +744,9 @@ function openDialog(type, msg) {
 	// Open dialog
 	msgDialog.dialog({
 		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
 		width: 500,
 		buttons: {
 			"Ok": function(){ 
@@ -829,6 +832,9 @@ function openSettings() {
 	// Open form as a dialog
 	dialog.dialog({
 		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
 		title: 'Settings',
 		width: 400,
 		buttons: {
@@ -879,6 +885,9 @@ function changeTheme() {
 	// Open form as a dialog
 	dialog.dialog({
 		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
 		title: 'xCAT Theme',
 		width: 400,
 		buttons: {
@@ -921,6 +930,9 @@ function changePassword() {
 	// Open form as a dialog
 	dialog.dialog({
 		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
 		title: 'Change Password',
 		width: 400,
 		buttons: {

@@ -108,6 +108,9 @@ function loadHcpInfo(data) {
 		warnDialog.dialog({
 			title:'Warning',
 			modal: true,
+			close: function(){
+	        	$(this).remove();
+	        },
 			width: 400,
 			buttons: {
 				"Reset": function(){
@@ -1201,6 +1204,9 @@ function openAddProcDialog(node) {
 	addProcForm.dialog({
 		title:'Add processor',
 		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
 		width: 400,
 		buttons: {
         	"Ok": function(){
@@ -1306,6 +1312,9 @@ function openAddDiskDialog(node, hcp) {
 	addDiskForm.dialog({
 		title:'Add disk',
 		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
 		width: 400,
 		buttons: {
         	"Ok": function(){
@@ -1537,6 +1546,9 @@ function openAddNicDialog(node, hcp) {
 	addNicForm.dialog({
 		title:'Add NIC',
 		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
 		width: 400,
 		buttons: {
         	"Ok": function(){
@@ -2026,6 +2038,9 @@ function openRemoveDiskFromPoolDialog(disks2remove) {
 	deleteDiskForm.dialog({
 		title:'Delete disk from pool',
 		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
 		width: 500,
 		buttons: {
         	"Ok": function(){
@@ -2126,6 +2141,9 @@ function openAddDisk2PoolDialog() {
 	addDiskForm.dialog({
 		title:'Add disk to pool',
 		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
 		width: 500,
 		buttons: {
         	"Ok": function(){
@@ -2999,6 +3017,9 @@ function createZProvisionNew(inst) {
 				confirmDialog.dialog({
 					title:'Confirm',
 					modal: true,
+					close: function(){
+			        	$(this).remove();
+			        },
 					width: 400,
 					buttons: {
 						"Ok": function(){

@@ -1383,6 +1383,9 @@ function deleteNode(tgtNodes) {
 	dialog.dialog({
 		title: "Confirm",
 		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
 		width: 400,
 		buttons: {
 			"Yes": function(){ 
@@ -1530,6 +1533,9 @@ function unlockNode(tgtNodes) {
 	dialog.dialog({
 		title: "Confirm",
 		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
 		width: 450,
 		buttons: {
 			"Ok": function(){

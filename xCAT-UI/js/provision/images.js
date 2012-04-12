@@ -322,6 +322,9 @@ function confirmImageDeleteDialog(images) {
 	// Open dialog to confirm delete
 	confirmDialog.dialog({
 		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
 		title: 'Confirm',
 		width: 500,
 		buttons: {
@@ -533,6 +536,9 @@ function openAddImageDialog() {
 	addImageForm.dialog({
 		title:'Add image',
 		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
 		width: 400,
 		buttons: {
         	"Ok": function(){
@@ -1351,6 +1357,9 @@ function openCopyCdDialog() {
 	// Open dialog to copy CD
 	copyLinuxForm.dialog({
 		title:'Copy CD',
+		close: function(){
+        	$(this).remove();
+        },
 		modal: true,
 		width: 600,
 		buttons: {

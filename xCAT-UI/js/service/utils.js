@@ -252,6 +252,9 @@ function prompt(type, msg) {
 	dialog.dialog({
 		title: type,
 		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
 		width: 400,
 		buttons: {
 			"Ok": function(){ 

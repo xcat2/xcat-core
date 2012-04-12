@@ -2911,6 +2911,9 @@ function openSetAttrsDialog() {
 	setPropsForm.dialog({
 		title: 'Set attributes',
 		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
 		height: 400,
 		width: 700,
 		buttons: {
@@ -3290,6 +3293,9 @@ function jump2Provision(tgtNodes){
         diaDiv.append(createWarnBar(errorMsg));
         diaDiv.dialog({
             modal: true,
+            close: function(){
+            	$(this).remove();
+            },
             width: 400,
             buttons: {
                 'Close': function(){
