@@ -251,7 +251,7 @@ BEGIN {
 
         while(1) {
                 if((ns |& getline) > 0)
-                        print $0 | "logger -t xcat"
+                        print $0 | "logger -p local4.info -t xcat"
 
                 if($0 == "ready")
                         print flag |& ns
