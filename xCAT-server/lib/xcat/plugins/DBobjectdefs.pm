@@ -2638,6 +2638,12 @@ sub defls
                             }
                         }
                     }
+                    if (scalar(keys %{$nodeosimagehash{$obj}}) == 0)
+                    {
+                        my $rsp;
+                        $rsp->{data}->[0] = "$obj: could not find information for osimage $nodeosimgname{$obj}";
+                        xCAT::MsgUtils->message("W", $rsp, $::callback);
+                    }
                 }
             }
         }
