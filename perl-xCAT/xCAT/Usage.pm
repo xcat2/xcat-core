@@ -114,7 +114,6 @@ my %usage = (
        rspconfig <singlenode> [textid=name]
        rspconfig <singlenode> [frame=number]
        rspconfig <singlenode> [USERID=passwd]
-       rspconfig <singlenode> [HMC=passwd]
        rspconfig <noderange>  [sshcfg=<enable|disable>|
            snmpcfg=<enable|disable>|                             
            pd1=<nonred|redwoperf|redwperf>|

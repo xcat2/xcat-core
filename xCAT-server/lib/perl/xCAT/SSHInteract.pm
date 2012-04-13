@@ -53,15 +53,18 @@ sub new {
 	if ($nokeycheck) { delete $args{"-nokeycheck"}; }
 	my $self = Net::Telnet->new(%args);
 	_startssh($self,$pty,$username,$host,"-nokeycheck"=>$nokeycheck);
-	$self->waitfor("-match" => '/password:/i', -errmode => "return") or die "Unable to reach host ",$self->lastline;
-	$self->print($password);
-	my $nextline = $self->getline();
-        if ($nextline eq "\n") {
+    my ($prematch,$match) = $self->waitfor([Match => $args{prompt},'/password:/i',]);
+    if ($match =~ /password:/i) {
+	    #$self->waitfor("-match" => '/password:/i', -errmode => "return") or die "Unable to reach host ",$self->lastline;
+            $self->print($password);
+            my $nextline = $self->getline();
+            if ($nextline eq "\n") {
 		$nextline = $self->get();
-	}
-	if ($nextline =~ /^password:/ or $nextline =~ /Permission denieid, please try again/) {
-		die "Incorrect Password";
-	}
+	    }
+	    if ($nextline =~ /^password:/ or $nextline =~ /Permission denieid, please try again/) {
+		    die "Incorrect Password";
+	    }
+    }
 	return bless($self,$class);
 }
 1;

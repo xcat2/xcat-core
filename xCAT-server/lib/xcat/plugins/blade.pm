@@ -3978,17 +3978,17 @@ sub clicmds {
   my @unhandled;
   my %handled = ();
   my $result;
-  my @tcmds = qw(snmpcfg sshcfg network swnet pd1 pd2 textid network_reset rscanfsp initnetwork solcfg userpassword USERID HMC);
+  my @tcmds = qw(snmpcfg sshcfg network swnet pd1 pd2 textid network_reset rscanfsp initnetwork solcfg userpassword USERID);
 
   # most of these commands should be able to be done
   # through SNMP, but they produce various errors.
-  foreach my $cmd (@{$args{cmds}}) {
-    if ($cmd =~ /^swnet|pd1|pd2|sshcfg|rscanfsp|USERID|HMC|=/) {
+  foreach my $cmd (@{$args{args}}) {
+    if ($cmd =~ /^swnet|pd1|pd2|sshcfg|rscanfsp|USERID|userpassword|=/) {
       if (($cmd =~ /^textid/) and ($nodeid > 0)) {
         push @unhandled,$cmd;
         next;
       }
-      my ($command,$value) = split /=/,$cmd;
+      my ($command,$value) = split /=/,$cmd,2;
 
       #$command =~ /^swnet/) allows for swnet1, swnet2, etc.
       if (grep(/^$command$/,@tcmds) || $command =~ /^swnet/) {
@@ -4099,7 +4099,7 @@ sub clicmds {
     elsif (/^rscanfsp$/)  { $result = rscanfsp($t,$mpa,$handled{$_},$mm); }
     elsif (/^solcfg$/)  { $result = solcfg($t,$handled{$_},$mm); }
     elsif (/^network_reset$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid,1); $reset=1; }
-    elsif (/^(USERID|HMC)$/) {$result = passwd($t, $mpa, $1, "=".$handled{$_}, $mm);}
+    elsif (/^(USERID)$/) {$result = passwd($t, $mpa, $1, "=".$handled{$_}, $mm);}
     elsif (/^userpassword$/) {$result = passwd($t, $mpa, $1, $handled{$_}, $mm);}
     push @data, "$_: @$result";
     $Rc |= shift(@$result);
@@ -4303,8 +4303,19 @@ sub passwd {
     if (!grep(/OK/i, @data)) {
         return ([1, @data]);
     }
-    if ($user eq "HMC") {
-        $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
+    @data = ();
+    my $snmp_cmd = "users -n $user -ap sha -pp des -ppw $pass -t system:$mm";
+    @data = $t->cmd($snmp_cmd);
+    if (!grep(/ok/i, @data)) {
+        $cmd = "users -n $user -op $pass -p $oldpass -T system:$mm";
+        my @back_pwd = $t->cmd($cmd);
+        if (!grep(/OK/i, @back_pwd)) {
+            $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
+        }
+        return ([1, @data]);
+    }
+    $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
+    if ($user eq "USERID") {
         my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
         my $blades = &get_blades_for_mpa($mpa);
         if (!defined($blades)) {
@@ -4337,13 +4348,6 @@ sub passwd {
     } else {
 	#TODO: add new user if name mismatches what MM alread understands..
 	#additionally, may have to delete USERID in this event
-        @data = ();
-        my $snmp_cmd = "users -n $user -ap sha -pp des -ppw $pass -T system:$mm";
-        @data = $t->cmd($snmp_cmd);
-        if (!grep(/OK/i, @data)) {
-            return ([1, @data]);
-        }
-        $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
     }
   } else {
     return ([1, "Update password for $user in 'mpa' table failed"]);
