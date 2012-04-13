@@ -61,7 +61,7 @@ sub new {
             if ($nextline eq "\n") {
 		$nextline = $self->get();
 	    }
-	    if ($nextline =~ /^password:/ or $nextline =~ /Permission denieid, please try again/) {
+	    if ($nextline =~ /^password:/ or $nextline =~ /Permission denied, please try again/) {
 		    die "Incorrect Password";
 	    }
     }
