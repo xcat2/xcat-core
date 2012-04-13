@@ -69,26 +69,26 @@ if [ $OS != "AIX" ]; then
 fi  
 
 
-# Create an empty nsddevices script for GPFS 
-# This assumes that the node is NOT an NSD server
-if [ $OS == "AIX" ]; then
-    # Create the script on the node
-    mkdir -p $installroot/var/mmfs/etc
-    echo 'return 0' > $installroot/var/mmfs/etc/nsddevices
-    chmod 744 $installroot/var/mmfs/etc/nsddevices
-else  # assume Linux
-    if [ $NODESETSTATE == "genimage" ]; then
-        # Create the script in the image
-        mkdir -p $installroot/var/mmfs/etc
-        echo 'return 0' > $installroot/var/mmfs/etc/nsddevices
-        chmod 744 $installroot/var/mmfs/etc/nsddevices
-    else
-        # Create the script on the node
-        mkdir -p /var/mmfs/etc
-        echo 'return 0' > /var/mmfs/etc/nsddevices
-        chmod 744 /var/mmfs/etc/nsddevices
-    fi
-fi
+## Create an empty nsddevices script for GPFS 
+## This assumes that the node is NOT an NSD server
+#if [ $OS == "AIX" ]; then
+#    # Create the script on the node
+#    mkdir -p $installroot/var/mmfs/etc
+#    echo 'return 0' > $installroot/var/mmfs/etc/nsddevices
+#    chmod 744 $installroot/var/mmfs/etc/nsddevices
+#else  # assume Linux
+#    if [ $NODESETSTATE == "genimage" ]; then
+#        # Create the script in the image
+#        mkdir -p $installroot/var/mmfs/etc
+#        echo 'return 0' > $installroot/var/mmfs/etc/nsddevices
+#        chmod 744 $installroot/var/mmfs/etc/nsddevices
+#    else
+#        # Create the script on the node
+#        mkdir -p /var/mmfs/etc
+#        echo 'return 0' > /var/mmfs/etc/nsddevices
+#        chmod 744 /var/mmfs/etc/nsddevices
+#    fi
+#fi
 
 
 # Add GPFS path to profile
