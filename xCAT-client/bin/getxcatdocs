@@ -17,16 +17,23 @@ use strict;
 #use lib "$::XCATROOT/lib/perl";
 #use xCAT::Utils;
 use Getopt::Long;
+use File::Path;
+use Cwd;
 #use Data::Dumper;
+
+# Update this list if you group any xcat docs on a separate page such that they are no longer linked from the
+# main doc page.
+my @indexdocs = ('XCAT_Documentation', 'Power_775_Cluster_Documentation', 'Highly_Available_Management_Node', 'Mixed_Cluster_Support');
 
 #my $VERSION;
 my $HELP;
 my $UPLOAD;
 my $UPLOADONLY;
+my $VERBOSE;
  
 my $usage = sub {
    	my $exitcode = shift @_;
-   	print "Usage: getxcatdocs [-?|-h|--help] [-u|--upload] [--uploadonly] [<destination-dir>]\n";
+   	print "Usage: getxcatdocs [-?|-h|--help] [-v|--verbose] [-u|--upload] [--uploadonly] [<destination-dir>]\n";
 	exit $exitcode;
 };
 
@@ -34,7 +41,7 @@ my $usage = sub {
 Getopt::Long::Configure("bundling");
 #Getopt::Long::Configure("pass_through");
 Getopt::Long::Configure("no_pass_through");
-if (!GetOptions('h|?|help'  => \$HELP, 'u|upload' => \$UPLOAD, 'uploadonly' => \$UPLOADONLY )) { $usage->(1); }
+if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE, 'u|upload' => \$UPLOAD, 'uploadonly' => \$UPLOADONLY )) { $usage->(1); }
 
 if ($HELP) { $usage->(0); }
 
@@ -49,57 +56,22 @@ my $destdir = scalar(@ARGV) ? $ARGV[0] : '.';
 chdir($destdir) or die "Can not cd to $destdir: $!\n";
 #my $docdir = $ENV{'PWD'};
 
-# Download the HTML
+# Download the HTML docs and convert them all to pdfs
 my @dir;
 if (!$UPLOADONLY) {
-	mkdir('html');
-	chdir('html');
-	#system('pwd');
-	unlink <*>;		# delete all the files in the dir, in case they previously ran this
-	#system('rm -rf nfs skins');
-	#system('ls');
-	print "Downloading the xCAT wiki documentation...\n";
-	#    --html-extension --restrict-file-names=windows  --cut-dirs=3
-	# options that do not work:  --relative
-	my $wgetcmd = q(wget --recursive --convert-links --no-verbose --progress=bar --level=1 --page-requisites --no-parent --no-host-directories --no-directories --execute robots=off --post-data='printable=yes' --reject '*title=Special:*,*title=Talk:*,*title=-&*,*title=HowTos,*title=Main_Page,*title=MediaWiki:*,*title=Release_Notes,*title=Wish_List_for_xCAT_2,*&action=edit*,*&action=history*,*&printable=yes*,*&oldid=*,index.html,opensearch_desc.php,xcat,login.php,support' 'http://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Documentation&printable=yes');
-	runwget($wgetcmd);
-	# remove the dir portion of links to other docs
-	#my $sedcmd = q(sed -i 's/<a href="\/apps\/mediawiki\/xcat\/index.php?title/<a href="index.php%3Ftitle/' *);
-	my $sedcmd = q(sed -i 's/<a href="index.php?title/<a href="index.php%3Ftitle/' *);
-	print "$sedcmd\n";
-	system($sedcmd);
-	# get the list of docs
-	opendir(DIR, '.') or die "Error: could not read the just created html directory.\n";
-	@dir = grep /^index.php\?title=/, readdir(DIR);		# /
-	close(DIR);
-	chdir('..');
+	@dir = gethtmldocs('html');
+	convert2pdf('pdf', \@dir);
 }
 
-# Convert to pdf
-if (!$UPLOADONLY) {
-	if (system('which xhtml2pdf >/dev/null 2>&1')) { die "xhtml2pdf is not installed.  See http://sourceforge.net/apps/mediawiki/xcat/index.php?title=Editing_xCAT_Documentation_Pages#Converting_Wiki_Pages_to_HTML_and_PDFs .\n"; }
-	mkdir('pdf');
-	chdir('pdf');
-	unlink <*>;		# delete all the files in the dir, in case they previously ran this
-	foreach my $file (@dir) {
-		if ($file =~ /^index.php\?title=MediaWiki:/ || $file eq 'index.php?title=XCAT_Documentation') { next; }
-		my ($docname) = $file =~ /^index.php\?title=(.+)$/;
-		print "Converting $docname to PDF format...\n";
-		my $url = "http://sourceforge.net/apps/mediawiki/xcat/$file&printable=yes";
-		my $destfile = "$docname.pdf";
-		my $cmd = "xhtml2pdf '$url' '$destfile' ";
-		#print "$cmd\n";
-		runh2p($cmd);
-	}
-	chdir('..');
-}
 
 # tar/compress
 my $date=`date +%Y%m%d%H%M`;
 chop $date;
 my $docname="xcat-docs-snap$date.tar.gz";
 #system('pwd');
-system("tar -zcf $docname html pdf 2>&1");
+my $cmd = "tar -zcf $docname html pdf 2>&1";
+verbose($cmd);
+system($cmd);
 
 # Optionally upload the tarball to sourceforge
 if ($UPLOAD || $UPLOADONLY) {
@@ -113,10 +85,69 @@ if ($UPLOAD || $UPLOADONLY) {
 exit 0;
 
 
+sub verbose { if ($VERBOSE) { print shift, "\n"; } }
+
+
+# Download all of the html docs from several "index" docs
+sub gethtmldocs {
+	my $dir = shift;
+	my $savedir = getcwd();
+	File::Path::make_path($dir);
+	chdir($dir);
+	#system('pwd');
+	unlink <*>;		# delete all the files in the dir, in case they previously ran this
+	#system('ls');
+	
+	my $indexes = '';
+	foreach my $index (@indexdocs) {
+		$indexes .= qq('http://sourceforge.net/apps/mediawiki/xcat/index.php?title=$index&printable=yes' );
+	}
+	print "Downloading the xCAT wiki documentation to $dir, from: $indexes ...\n";
+	runwget($indexes);
+	
+	# remove the dir portion of links to other docs
+	#my $sedcmd = q(sed -i 's/<a href="\/apps\/mediawiki\/xcat\/index.php?title/<a href="index.php%3Ftitle/' *);
+	my $sedcmd = q(sed -i 's/<a href="index.php?title/<a href="index.php%3Ftitle/g' *);
+	print "$sedcmd\n";
+	system($sedcmd);
+	# get the list of docs
+	opendir(DIR, '.') or die "Error: could not read the just created html directory.\n";
+	my @docs = grep /^index.php\?title=/, readdir(DIR);		# /
+	close(DIR);
+	chdir($savedir);
+	return @docs;
+}
+
+
+# Convert to pdf
+sub convert2pdf {
+	my ($dir, $files) = @_;
+	my $savedir = getcwd();
+	File::Path::make_path($dir);
+	chdir($dir);
+	if (system('which xhtml2pdf >/dev/null 2>&1')) { die "xhtml2pdf is not installed.  See http://sourceforge.net/apps/mediawiki/xcat/index.php?title=Editing_xCAT_Documentation_Pages#Converting_Wiki_Pages_to_HTML_and_PDFs .\n"; }
+	unlink <*>;		# delete all the files in the dir, in case they previously ran this
+	foreach my $file (@$files) {
+		if ($file =~ /^index.php\?title=MediaWiki:/ || $file eq 'index.php?title=XCAT_Documentation') { next; }
+		my ($docname) = $file =~ /^index.php\?title=(.+)$/;
+		print "Converting $docname to PDF format...\n";
+		my $url = "http://sourceforge.net/apps/mediawiki/xcat/$file&printable=yes";
+		my $destfile = "$docname.pdf";
+		my $cmd = "xhtml2pdf '$url' '$destfile' ";
+		runh2p($cmd);
+	}
+	chdir($savedir);
+}
+
+
 # Run the wget cmd and filter out some of the silly output
 sub runwget {
-	my $cmd = shift;
-	#print "$cmd\n";
+	my $index = shift;
+	# options we might consider: --html-extension --restrict-file-names=windows  --cut-dirs=3
+	# options that do not work:  --relative
+	my $rejectlist = q('*title=Special:*,*title=Talk:*,*title=-&*,*title=HowTos,*title=Main_Page,*title=MediaWiki:*,*title=Release_Notes,*title=Wish_List_for_xCAT_2,*&action=edit*,*&action=history*,*&printable=yes*,*&oldid=*,index.html,opensearch_desc.php,xcat,login.php,support');
+	my $cmd = qq(wget --recursive --convert-links --no-verbose --progress=bar --level=1 --page-requisites --no-parent --no-host-directories --no-directories --no-clobber --execute robots=off --post-data='printable=yes' --reject $rejectlist $index);
+	verbose($cmd);
 	open(OUT, "$cmd 2>&1 |") || die "can't fork $cmd: $!\n";
 	while (<OUT>) {
 		if (/URL:https*:\/\/sourceforge\.net.+\s+->\s+\"(\S+)\"\s+\[/) { print "Downloaded $1.\n"; }
@@ -128,7 +159,7 @@ sub runwget {
 # Run the xhtml2pdf cmd and filter out some of the silly output
 sub runh2p {
 	my $cmd = shift;
-	#print "$cmd\n";
+	verbose($cmd);
 	open(OUT, "$cmd 2>&1 |") || die "can't fork $cmd: $!\n";
 	while (<OUT>) {
 		next if /DeprecationWarning:\sthe sets module is deprecated/;
