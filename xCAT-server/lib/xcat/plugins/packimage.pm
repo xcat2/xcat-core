@@ -227,7 +227,7 @@ sub process_request {
     }
 
     my $xcat_packimg_tmpfile = "/tmp/xcat_packimg.$$";
-    my $excludestr = "find . ";
+    my $excludestr = "find . -xdev ";
     my $includestr;
     if ($exlistloc) {
         my $exlist;
@@ -275,7 +275,7 @@ sub process_request {
    $excludestr =~ s/-a $//;
    if ($includestr) {
        $includestr =~ s/-o $//;
-       $includestr = "find . " .  $includestr;
+       $includestr = "find . -xdev " .  $includestr;
    }
 
   print "\nexcludestr=$excludestr\n\n includestr=$includestr\n\n"; # debug
@@ -337,7 +337,7 @@ sub process_request {
     unlink("$destdir/rootimg.sfs");
     if ($method =~ /cpio/) {
         if ( ! $exlistloc ) {
-            $excludestr = "find . |cpio -H newc -o | gzip -c - > ../rootimg.gz";
+            $excludestr = "find . -xdev |cpio -H newc -o | gzip -c - > ../rootimg.gz";
         }else {
             chdir("$rootimg_dir");
             system("$excludestr >> $xcat_packimg_tmpfile"); 
