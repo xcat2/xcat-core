@@ -1738,7 +1738,7 @@ sub setuphttp
     my $cmd;
     # restart httpd
     if (-e "/etc/init.d/apache2")
-    {    #for sles
+    {    #for sles/ubuntu
         $cmd = "/etc/init.d/apache2 stop; /etc/init.d/apache2 start";
     }
     else
@@ -1758,8 +1758,15 @@ sub setuphttp
 
     # enable httpd
     if (-e "/etc/init.d/apache2")
-    {    #for sles
-        $cmd = "/sbin/chkconfig apache2 on";
+    {
+        if (is_lsb_ubuntu()) 
+        {   # for ubuntu
+            $cmd = "/usr/sbin/update-rc.d apache2 enable";
+        }
+        else
+        {   # for sles
+            $cmd = "/sbin/chkconfig apache2 on";
+        }
     }
     else
     {
