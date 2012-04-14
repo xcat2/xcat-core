@@ -365,7 +365,12 @@ sub ishostinsubnet {
         $numbits=128;
     }
     if ($mask) {
-        $mask=getipaddr($mask,GetNumber=>1);
+	if ($mask =~ /\//) {
+	    $mask =~ s/^\///;
+            $mask=Math::BigInt->new("0b".("1"x$mask).("0"x($numbits-$mask)));
+	} else {
+	        $mask=getipaddr($mask,GetNumber=>1);
+	}
     } else {  #CIDR notation supported
         if ($subnet =~ /\//) { 
             ($subnet,$mask) = split /\//,$subnet,2;
