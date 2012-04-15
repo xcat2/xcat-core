@@ -6,6 +6,7 @@ BEGIN
    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
 }
 close(STDIN);
+open(STDIN,"<","/dev/null");
 use lib "$::XCATROOT/lib/perl";
 use IO::Socket::SSL;
 use XML::Simple;
