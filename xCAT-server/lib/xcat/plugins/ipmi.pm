@@ -5628,7 +5628,20 @@ sub getipmicons {
     $ipmicons->{node}->[0]->{bmcaddr}->[0]=$argr->[1];
     $ipmicons->{node}->[0]->{bmcuser}->[0]=$argr->[2];
     $ipmicons->{node}->[0]->{bmcpass}->[0]=$argr->[3];
-    $cb->($ipmicons);
+    my $ipmisess =  xCAT::IPMI->new(bmc=>$argr->[1],userid=>$argr->[2],password=>$argr->[3]);
+    $ipmisess->{ipmicons} = $ipmicons;
+    $ipmisess->{cb} = $cb;
+    $ipmisess->subcmd(netfn=>0x6,command=>0x38,data=>[0x0e,0x04],callback=>\&got_channel_auth_cap_foripmicons,callback_args=>$ipmisess);
+}
+sub got_channel_auth_cap_foripmicons {
+    my $rsp = shift;
+    my $ipmis = shift;
+    if ($rsp->{error}) {
+        return;
+    }
+    if ($rsp->{code} != 0) { return; }
+    my $cb = $ipmis->{cb};
+    $cb->($ipmis->{ipmicons}); #ipmicons);
 }
 
 
@@ -5696,6 +5709,7 @@ sub process_request {
         foreach (@donargs) {
             getipmicons($_,$callback);
         }
+    	while (xCAT::IPMI->waitforrsp()) { yield };
         return;
     }
 
