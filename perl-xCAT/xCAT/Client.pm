@@ -115,13 +115,17 @@ sub submit_request {
   unless ($certfile) { $certfile = $homedir."/.xcat/client-cred.pem"; }
   unless ($cafile) { $cafile  = $homedir."/.xcat/ca.pem"; }
   $xCAT::Client::EXITCODE = 0;    # clear out exit code before invoking the plugin
-$request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
+if (ref($request) eq 'HASH') { # the request is an array, not pure XML
+ $request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
+}
 # If XCATBYPASS is set, invoke the plugin process_request method directly
 # without going through the socket connection to the xcatd daemon
   if ($ENV{XCATBYPASS}) {
      #add current userid to the request
-     if (!(defined($request->{username}))) {
-       $request->{username}->[0] = getpwuid($>);
+     if (ref($request) eq 'HASH') { # the request is an array, not pure XML
+       if (!(defined($request->{username}))) {
+         $request->{username}->[0] = getpwuid($>);
+       }
      }
    # Load plugins from either specified or default dir
     require xCAT::Table;
@@ -183,7 +187,12 @@ $request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
         die "Connection failure: $@"
      }
   }
-  my $msg=XMLout($request,RootName=>'xcatrequest',NoAttr=>1,KeyAttr=>[]);
+  my $msg;
+  if (ref($request) eq 'HASH') { # the request is an array, not pure XML
+    $msg=XMLout($request,RootName=>'xcatrequest',NoAttr=>1,KeyAttr=>[]);
+  } else { #XML
+    $msg=$request;
+  }
   if ($ENV{XCATXMLTRACE}) { print $msg; }
   if($ENV{XCATXMLWARNING}) {
     validateXML($msg);
@@ -315,7 +324,6 @@ sub plugin_command {
   my $callback = shift;
   my %handler_hash;
   my $usesiteglobal = 0;
-
   # We require these only in bypass mode to reduce start up time for the normal case
   #use lib "$::XCATROOT/lib/perl";
   #use xCAT::NodeRange;
@@ -325,6 +333,12 @@ sub plugin_command {
   require xCAT::Table;
 
   $Main::resps={};
+  my $xmlreq;
+  if (ref($req) ne 'HASH') { # the request XML, get an array
+    $xmlreq=$req;   # save the original XML
+    $req = XMLin($xmlreq,SuppressEmpty=>undef,ForceArray=>1) ;
+
+  }
   my @nodes;
   if ($req->{node}) {
     @nodes = @{$req->{node}};
