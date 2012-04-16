@@ -929,6 +929,11 @@ sub build_response {
 ##########################################
 sub handle_response {
   my $rsp = shift;
+  if ($ENV{'XCATSHOWXML'}) {
+    my  $xmlrec=XMLout($rsp,RootName=>'xcatresponse',NoAttr=>1,KeyAttr=>[]);
+    print "$xmlrec\n";
+   return;
+  }
 #print "in handle_response\n";
   # Handle errors
   if ($rsp->{errorcode}) {
