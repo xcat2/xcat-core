@@ -87,7 +87,7 @@ config_Rsyslog_C3()
   echo "# xCAT settings" >> $2
   #enable to receive remote logging
   if [ $isReceiving -eq 1 ]; then
-      sed 's/^\#\(\s\)*\$ModLoad\(\s\)*imudp.so/\$ModLoad imudp.so/' $2 >/tmp/sed.tmp
+      sed 's/^\#\(\s\)*\$ModLoad\(\s\)*imudp/\$ModLoad imudp/' $2 >/tmp/sed.tmp
       cat /tmp/sed.tmp >$2
       sed 's/^\#\(\s\)*\$UDPServerRun/\$UDPServerRun/' $2 >/tmp/sed.tmp
       cat /tmp/sed.tmp >$2
@@ -118,6 +118,9 @@ if [ "$(uname -s)" = "Linux" ]; then
       sysconfig="/etc/sysconfig/rsyslog"
       init="/etc/init.d/rsyslog"
       isRsyslog=1
+      if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ); then
+        sysconfig="/etc/default/rsyslog"
+      fi
     fi
   else 
     if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ]; then
