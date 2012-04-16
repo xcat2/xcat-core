@@ -25,8 +25,8 @@ BEGIN
     umask 0077;
     mkpath("/tmp/xcat/");
     unless (sysopen(LOCKHANDLE,"/tmp/xcat/consolelock",O_WRONLY | O_CREAT)) {
-        sleep 15;
         print "Unable to open lock file";
+        exec("sleep 15");
         exit 0;
     }
     get_lock();
@@ -58,9 +58,9 @@ my $cmdref={
 xCAT::Client::submit_request($cmdref,\&getans);
 until ($username and $password and $bmc) {
     release_lock(); #Let other clients have a go
-    $sleepint=10+int(rand(10));
+    $sleepint=10+int(rand(20));
     print "Console not ready, retrying in $sleepint seconds (Ctrl-e,c,o to skip delay) \n";
-    sleep $sleepint;
+    exec("sleep $sleepint");
     get_lock();
     xCAT::Client::submit_request($cmdref,\&getans);
 }
@@ -103,7 +103,8 @@ if ($rc) { #some shoddy vendors ignore the IPMI 2.0 requirement to support IPMI 
 while ($rc != 0) {
    $sleepint = 10+int(rand(20));
    print "Failure to reach IPMI device, retrying in $sleepint seconds (Hit Ctrl-E,c,o to skip)\n";
-   sleep $sleepint;
+   exec("sleep $sleepint");
+   #sleep $sleepint;
    @mcinfo=`$ipmitool -I lan -U $username -P $password -H $bmc mc info`;#| grep 'Manufacturer ID           : 343' > /dev/null 2>&1";
    $rc = $?;
     if ($rc) { #repeat workaround for shoddy vendors
