@@ -34,7 +34,7 @@ sub handled_commands
 {
     return {
             getAllEntries     => "DButils",
-            getNodeAttribs    => "DButils"
+            getNodesAttribs    => "DButils"
             };
 }
 
@@ -51,9 +51,9 @@ sub process_request
     {
         return getAllEntries($request,$callback);
     }
-    elsif ($command eq "getNodeAttribs") 
+    elsif ($command eq "getNodesAttribs") 
     {
-        return getNodeAttribs($request,$callback);
+        return getNodesAttribs($request,$callback);
     }
     else
     {
@@ -66,17 +66,13 @@ sub process_request
 # Read all the rows from the input table name and returns the response, so 
 # that the XML will look like this
 #<xcatresponse>
-#<row>
-#<attr>attribute1</attr>
-#<value>value1</value>
-#<attr>attribute2</attr>
-#<value>value2</value>
+#<rowN>
+#<attr1>value1</attr1>
 #.
 #.
 #.
-#<attr>attributeN</attr>
-#<value>valueN</value>
-#</row>
+#<attrN>valueN</attrN>
+#</rowN>
 #.
 #.
 #.
@@ -124,15 +120,53 @@ sub getAllEntries
 
         return;
 }
-# Read all the input attributes for the noderange  from the input table. 
-sub getAllNodeEntries
+# Read all the array of  attributes for the noderange  from the input table. 
+#<xcatresponse>
+#<node>
+#<name> nodename </name>
+#<attr1>value1</attr1>
+#.
+#.
+#.
+#<attrN>valueN</attrN>
+#</node>
+#.
+#.
+#.
+#</xcatresponse>
+#  
+#
+sub getNodesAttribs 
 {
     my $request      = shift;
-    my $callback = shift;
-    my $nodes    = $request->{node};
+    my $cb = shift;
+    my $node    = $request->{node};
     my $command  = $request->{command}->[0];
-    my $table    = $request->{table}-[0];
+    my $tablename    = $request->{table}->[0];
     my $attr    = $request->{attr};
+    my $tab=xCAT::Table->new($tablename);
+    my @nodes = @$node;
+    my @attrs= @$attr;
+    my %rsp;
+    my %noderecs;
+    my $rechash        =   $tab->getNodesAttribs(\@nodes,\@attrs);
+    foreach my $node (@nodes){
+       my @cols;
+       my %datseg=();
+       $datseg{name} = [$node];
+       my $recs = $rechash->{$node};
+       foreach my $rec (@$recs) { 
+         foreach my $key (keys %$rec) {
+            $datseg{$key} = [$rec->{$key}];
+         }
+         push @{$noderecs{$node}}, \%datseg;
+       }
+       push @{$rsp{"node"}}, @{$noderecs{$node}};
+
+    }
+# for checkin XML created
+#my  $xmlrec=XMLout(\%rsp,RootName=>'xcatresponse',NoAttr=>1,KeyAttr=>[]);
+       $cb->(\%rsp);
         return;
 }
 
