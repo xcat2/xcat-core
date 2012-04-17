@@ -3402,22 +3402,25 @@ function queryProfiles(panelId) {
 		success : function(data) {
 			var panelId = data.msg;
 			setOSImageCookies(data);
-			loadConfigProfilePanel(panelId);
+			configProfilePanel(panelId);
 		}
 	});
 }
 
 /**
- * Load the profiles panel to configure directory entries and disks for a profile
+ * Panel to configure directory entries and disks for a profile
  * 
  * @param panelId
  * 			Panel ID
  * @return Nothing
  */
-function loadConfigProfilePanel(panelId) {
-	// Remove loader
-	$('#' + panelId).find('img[src="images/loader.gif"]').remove();
+function configProfilePanel(panelId) {	
+	// Wipe panel clean
+	$('#' + panelId).empty();
 
+	// Add info bar
+	$('#' + panelId).append(createInfoBar('Create, edit, and delete profiles for the self-service portal. Double-click on a cell to edit a users properties. Click outside the table to save changes. Hit the Escape key to ignore changes.'));
+	
 	// Create table
 	var tableId = 'zvmProfileTable';
 	var table = new DataTable(tableId);
@@ -3425,6 +3428,7 @@ function loadConfigProfilePanel(panelId) {
 
 	// Insert profiles into table
 	var profiles = $.cookie('profiles').split(',');
+	profiles.push('default'); // Add default profile
 	for (var i in profiles) {
 		if (profiles[i]) {
 			// Columns are: profile, disk pool, disk size, and directory entry
@@ -3454,7 +3458,7 @@ function loadConfigProfilePanel(panelId) {
 	
 	var createLnk = $('<a>Create</a>');
 	createLnk.click(function() {
-		
+		profileDialog();
 	});
 		
 	var deleteLnk = $('<a>Delete</a>');
@@ -3464,7 +3468,7 @@ function loadConfigProfilePanel(panelId) {
 	
 	var refreshLnk = $('<a>Refresh</a>');
 	refreshLnk.click(function() {
-
+		queryProfiles(panelId);
 	});
 	
 	// Create an action menu
@@ -3488,4 +3492,168 @@ function loadConfigProfilePanel(panelId) {
 
 	// Resize accordion
 	$('#zvmConfigAccordion').accordion('resize');
+	
+	// Query directory entries and disk pool/size for each profile
+	for (var i in profiles) {
+		$.ajax({
+	        url : 'lib/cmd.php',
+	        dataType : 'json',
+	        data : {
+	            cmd : 'webrun',
+	            tgt : '',
+	            args : 'getdefaultuserentry;' + profiles[i],
+	            msg : 'out=' + panelId + ';profile=' + profiles[i]
+	        },
+	        
+	        success: insertDirectoryentry
+	    });
+		
+		$.ajax({
+	        url : 'lib/cmd.php',
+	        dataType : 'json',
+	        data : {
+	            cmd : 'webrun',
+	            tgt : '',
+	            args : 'getzdiskinfo;' + profiles[i],
+	            msg : 'out=' + panelId + ';profile=' + profiles[i]
+	        },
+	        
+	        success: insertDiskInfo
+	    });
+	}
+}
+
+/**
+ * Insert the directory entry into the profile table
+ * 
+ * @param data
+ *            Data from HTTP request
+ * @return Nothing
+ */
+function insertDirectoryentry(data) {
+	var tableId = 'zvmProfileTable';
+	var args = data.msg.split(';');
+	
+	var panelId = args[0].replace('out=', '');
+	var profile = args[1].replace('profile=', '');
+	
+	// Do not continue if there is nothing
+	if (!data.rsp.length)
+		return;
+	
+	var entry = data.rsp[0].replace(new RegExp('\n', 'g'), '<br/>');
+	
+	// Get the row containing the profile
+	var rowPos = findRow(profile, '#' + tableId, 1);
+	if (rowPos < 0)
+		return;
+
+	// Update the directory entry column
+	var dTable = $('#' + tableId).dataTable();
+	dTable.fnUpdate(entry, rowPos, 4, false);
+	
+	// Adjust table styling
+	$('#' + tableId + ' td:nth-child(5)').css({
+		'text-align': 'left'
+	});
+	adjustColumnSize(tableId);
+}
+
+/**
+ * Insert the disk info into the profile table
+ * 
+ * @param data
+ *            Data from HTTP request
+ * @return Nothing
+ */
+function insertDiskInfo(data) {
+	var tableId = 'zvmProfileTable';
+	var args = data.msg.split(';');
+	
+	var panelId = args[0].replace('out=', '');
+	var profile = args[1].replace('profile=', '');
+	
+	// Do not continue if there is nothing
+	if (!data.rsp.length)
+		return;
+	
+	// Get the row containing the profile
+	var rowPos = findRow(profile, '#' + tableId, 1);
+	if (rowPos < 0)
+		return;
+	
+	// Update the disk info columns
+	var dTable = $('#' + tableId).dataTable();
+	
+	var tmp = "";
+	var pool = "";
+	var eckdSize = 0;
+	var info = data.rsp[0].split('\n');
+	for (var i in info) {
+		if (info[i].indexOf('diskpool') > -1) {
+			tmp = info[i].split('=');
+			pool = jQuery.trim(tmp[1]);
+			
+			dTable.fnUpdate(pool, rowPos, 2, false);
+		} if (info[i].indexOf('eckd_size') > -1) {
+			tmp = info[i].split('=');
+			eckdSize = jQuery.trim(tmp[1]);
+			
+			dTable.fnUpdate(eckdSize, rowPos, 3, false);
+		}			
+	}
+	
+	// Adjust table styling
+	adjustColumnSize(tableId);
+}
+
+/**
+ * Open profile dialog
+ */
+function profileDialog() {
+	// Create form to add profile
+	var profileForm = $('<div class="form"></div>');
+	
+	// Create info bar
+	var info = createInfoBar('Configure the default settings for a profile');
+	profileForm.append(info);
+	
+	profileForm.append('<div><label>Profile:</label><input type="text" name="profile"/></div>');
+	profileForm.append('<div><label>Disk pool:</label><input type="text" name="disk_pool"/></div>');
+	profileForm.append('<div><label>Disk size (ECKD):</label><input type="text" name="disk_size_eckd"/></div>');
+	profileForm.append('<div><label style="vertical-align: top;">Directory entry:</label><textarea name="directory_entry"/></div>');
+		
+	// Open dialog to add processor
+	profileForm.dialog({
+		title:'Configure profile',
+		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
+		width: 600,
+		buttons: {
+        	"Ok": function(){
+        		// Remove any warning messages
+        		$(this).find('.ui-state-error').remove();
+        		
+				// Find profile attributes
+				var profile = $(this).find('input[name=profile]').val();
+				var pool = $(this).find('input[name=disk_pool]').val();
+				var size = $(this).find('input[name=disk_size_eckd]').val();
+				var entry = $(this).find('textarea[name=directory_entry]').val();
+				
+				// If inputs are not complete, show warning message
+				if (!profile || !pool || !size || !entry) {
+					var warn = createWarnBar('Please provide a value for each missing field.');
+					warn.prependTo($(this));
+				} else {    				
+    				// Close dialog
+    				$(this).dialog( "close" );
+				}
+			},
+			"Cancel": function() {
+        		$(this).dialog( "close" );
+        	}
+		}
+	});
 }

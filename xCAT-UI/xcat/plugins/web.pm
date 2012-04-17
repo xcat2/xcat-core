@@ -62,6 +62,7 @@ sub process_request {
         'addnode'      => \&web_addnode,
 		'graph'		    => \&web_graphinfo,
 		'getdefaultuserentry' => \&web_getdefaultuserentry,
+		'getzdiskinfo' => \&web_getzdiskinfo,
 		'passwd' => \&web_passwd,
 		'updateuser' => \&web_updateuser,
 		'deleteuser' => \&web_deleteuser
@@ -2213,7 +2214,7 @@ sub web_getdefaultuserentry {
 	# Get default user entry
 	my ( $request, $callback, $sub_req ) = @_;
 	
-	# Get hardware control point
+	# Get profile
 	my $profile = $request->{arg}->[1];
 	
 	if (!$profile) {
@@ -2283,4 +2284,26 @@ sub web_deleteuser() {
 	$callback->( { info => $info } );
 	return;
 }
+
+sub web_getzdiskinfo() {
+	# Get default disk info
+	my ( $request, $callback, $sub_req ) = @_;
+	
+	# Get profile
+	my $profile = $request->{arg}->[1];
+	
+	if (!$profile) {
+		$profile = 'default';
+	}
+	
+	my $info;
+	if (!(`test -e /var/opt/xcat/profiles/$profile.conf && echo 'File exists'`)) {
+		$info = `cat /var/opt/xcat/profiles/default.conf`;
+	} else {
+		$info = `cat /var/opt/xcat/profiles/$profile.conf`;	
+	}
+	
+	$callback->( { info => $info } );
+}
+
 1;
