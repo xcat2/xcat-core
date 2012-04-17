@@ -95,7 +95,11 @@ config_Rsyslog_C3()
 
   #enable to send the logging to master
   if [ $isLocal -eq 1 ]; then
-       touch  /var/log/messages  
+  #enable the MN to log all the logs from CN and MN itself
+      sed 's/\(^[^\#].*\/var\/log\/messages\)/\#\1/g' $2 >/tmp/sed.tmp
+      cat /tmp/sed.tmp >$2 
+      echo "*.debug  /var/log/messages" >> $2
+      touch  /var/log/messages  
   else
       sed 's/^\(\*\..*\)/\#\1/' $2 >/tmp/sed.tmp
       cat /tmp/sed.tmp >$2
