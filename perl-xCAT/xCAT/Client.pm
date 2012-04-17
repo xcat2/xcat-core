@@ -162,23 +162,19 @@ if (ref($request) eq 'HASH') { # the request is an array, not pure XML
   if ($ENV{XCATHOST}) {
     $xcathost=$ENV{XCATHOST};
   }
-  my $client;
-  if (-r $keyfile and -r $certfile and -r $cafile) {
-     $client = IO::Socket::SSL->new(
+  my $pclient;
+  if ($inet6support) {
+     $pclient = IO::Socket::INET6->new(
     PeerAddr => $xcathost,
-    SSL_key_file => $keyfile,
-    SSL_cert_file => $certfile,
-    SSL_ca_file => $cafile,
-    SSL_use_cert => 1,
     Timeout => 15,
     );
   } else {
-     $client = IO::Socket::SSL->new(
+     $pclient = IO::Socket::INET->new(
       PeerAddr => $xcathost,
       Timeout => 15,
      );
    }
-  unless ($client) {
+  unless ($pclient) {
      print "Unable to open socket connection to xcatd daemon on $xcathost.\n";
      print "Verify that the xcatd daemon is running and that your SSL setup is correct.\n";
      if ($@ =~ /SSL Timeout/) {
@@ -186,6 +182,20 @@ if (ref($request) eq 'HASH') { # the request is an array, not pure XML
      } else {
         die "Connection failure: $@"
      }
+  }
+  my $client;
+  if (-r $keyfile and -r $certfile and -r $cafile) {
+    $client = IO::Socket::SSL->start_SSL($pclient,
+    SSL_key_file => $keyfile,
+    SSL_cert_file => $certfile,
+    SSL_ca_file => $cafile,
+    SSL_use_cert => 1,
+    Timeout => 0,
+   );
+  } else {
+    $client =  IO::Socket::SSL->start_SSL($pclient,
+		 Timeout => 0,
+		);
   }
   my $msg;
   if (ref($request) eq 'HASH') { # the request is an array, not pure XML
