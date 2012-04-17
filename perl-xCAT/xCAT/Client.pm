@@ -158,22 +158,41 @@ $request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
   if ($ENV{XCATHOST}) {
     $xcathost=$ENV{XCATHOST};
   }
-  my $client;
-  if (-r $keyfile and -r $certfile and -r $cafile) {
-     $client = IO::Socket::SSL->new(
+  my $pclient;
+  if ($inet6support) {
+  	$pclient = IO::Socket::INET6->new(
     PeerAddr => $xcathost,
-    SSL_key_file => $keyfile,
-    SSL_cert_file => $certfile,
-    SSL_ca_file => $cafile,
-    SSL_use_cert => 1,
     Timeout => 15,
     );
   } else {
-     $client = IO::Socket::SSL->new(
+     $pclient = IO::Socket::INET->new(
       PeerAddr => $xcathost,
       Timeout => 15,
      );
    }
+  unless ($pclient) {
+     print "Unable to open socket connection to xcatd daemon on $xcathost.\n";
+     print "Verify that the xcatd daemon is running and that your SSL setup is correct.\n";
+     if ($@ =~ /SSL Timeout/) {
+        die "Connection failure: SSL Timeout or incorrect certificates in ~/.xcat";
+     } else {
+        die "Connection failure: $@"
+     }
+  }
+  my $client;
+  if (-r $keyfile and -r $certfile and -r $cafile) {
+    $client = IO::Socket::SSL->start_SSL($pclient,
+    SSL_key_file => $keyfile,
+    SSL_cert_file => $certfile,
+    SSL_ca_file => $cafile,
+    SSL_use_cert => 1,
+     Timeout => 0,
+     );
+  } else {
+  	 $client =  IO::Socket::SSL->start_SSL($pclient,
+	                 Timeout => 0,
+	                );
+  }
   unless ($client) {
      print "Unable to open socket connection to xcatd daemon on $xcathost.\n";
      print "Verify that the xcatd daemon is running and that your SSL setup is correct.\n";
@@ -183,6 +202,7 @@ $request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
         die "Connection failure: $@"
      }
   }
+
   my $msg=XMLout($request,RootName=>'xcatrequest',NoAttr=>1,KeyAttr=>[]);
   if ($ENV{XCATXMLTRACE}) { print $msg; }
   if($ENV{XCATXMLWARNING}) {
