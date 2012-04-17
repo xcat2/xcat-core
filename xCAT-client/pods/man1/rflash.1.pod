@@ -8,15 +8,15 @@ B<rflash> [B<-h>|B<--help> | B<-v>|B<--version>]
 
 =head2 PPC (with HMC) specific:
 
-B<rflash> I<noderange> B<-p> I<directory> [B<--activate> B<concurrent>|B<disruptive>] [B<-V>|B<--verbose>]
+B<rflash> I<noderange> B<-p> I<directory> {B<--activate> B<concurrent>|B<disruptive>} [B<-V>|B<--verbose>]
 
-B<rflash> I<noderange> [B<--commit>|B<--recover>] [B<-V>|B<--verbose>]
+B<rflash> I<noderange> {B<--commit>|B<--recover>} [B<-V>|B<--verbose>]
 
 =head2 PPC (without HMC, using Direct FSP Management) specific:
 
 B<rflash> I<noderange> B<-p> I<directory> B<--activate> B<disruptive> [B<-d> I<data_directory>]
 
-B<rflash> I<noderange> [B<--commit>|B<--recover>]
+B<rflash> I<noderange> {B<--commit>|B<--recover>}
 
 =head1 B<Description>
 
