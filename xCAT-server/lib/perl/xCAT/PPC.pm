@@ -839,6 +839,31 @@ sub preprocess_nodes {
         #my $hcp  = $hcps_will->{$node};
         #@$d[3] = $hcp;
         my $mtms = @$d[2];
+       
+        if( $request->{command} =~ /^(mkhwconn|lshwconn|rmhwconn)$/ && grep (/^-s$/, @{$request->{arg}})) {
+            my $sfp;
+            unless ( $request->{sfp} ) {
+                 my $ppctab = xCAT::Table->new('ppc');
+                 if ( $ppctab ) {
+                     my $ent = $ppctab->getNodeAttribs( $node, [qw(sfp)]);
+                     if( $request->{command} =~ /^(lshwconn|rmhwconn)$/ && !defined($ent)) {
+                         send_msg( $request, 1, "$node: No sfp defined in the ppc table.");
+                         next;
+                     }
+                     $sfp = $ent->{sfp};
+                  }
+            } else {
+                $sfp = $request->{sfp};
+            }
+            if( $request->{command} =~ /^(mkhwconn)$/ && !defined($sfp)) {
+               send_msg( $request, 1, "$node: Please specify the sfp in the commands or in the ppc table.");
+               next;
+            }
+            $request->{fsp_api} = 0;
+            $request->{hwtype} = "hmc";
+            $hcp = $sfp;
+         }
+
  
         ######################################
         # Special case for mkhwconn
