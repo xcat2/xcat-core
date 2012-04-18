@@ -522,12 +522,12 @@ sub mknetboot
 		#create the kcmd for node to support kdump
 		if ($dump){
 			if ($crashkernelsize){
-				$kcmdline .= " crashkernel=$crashkernelsize\@32M dump=$dump ";
+				$kcmdline .= " crashkernel=$crashkernelsize dump=$dump ";
 			}
 			else{
 				# for ppc64, the crashkernel paramter should be "128M@32M", otherwise, some kernel crashes will be met
 				if ($arch eq "ppc64"){
-					$kcmdline .= " crashkernel=128M\@32M dump=$dump ";
+					$kcmdline .= " crashkernel=256M\@64M dump=$dump ";
 				}
 				if ($arch =~ /86/){
 					$kcmdline .= " crashkernel=128M dump=$dump ";
