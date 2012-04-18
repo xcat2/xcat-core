@@ -3424,15 +3424,15 @@ function configProfilePanel(panelId) {
 	// Create table
 	var tableId = 'zvmProfileTable';
 	var table = new DataTable(tableId);
-	table.init(['<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'Profile', 'Disk pool', 'Disk size', 'Directory entry']);
+	table.init(['<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'Profile', 'Selectable', 'Disk pool', 'Disk size', 'Directory entry']);
 
 	// Insert profiles into table
 	var profiles = $.cookie('profiles').split(',');
 	profiles.push('default'); // Add default profile
 	for (var i in profiles) {
 		if (profiles[i]) {
-			// Columns are: profile, disk pool, disk size, and directory entry
-			var cols = new Array(profiles[i], '', '', '');
+			// Columns are: profile, selectable, disk pool, disk size, and directory entry
+			var cols = new Array(profiles[i], '', '', '', '');
 	
 			// Add remove button where id = user name
 			cols.unshift('<input type="checkbox" name="' + profiles[i] + '"/>');
@@ -3550,10 +3550,10 @@ function insertDirectoryentry(data) {
 
 	// Update the directory entry column
 	var dTable = $('#' + tableId).dataTable();
-	dTable.fnUpdate(entry, rowPos, 4, false);
+	dTable.fnUpdate(entry, rowPos, 5, false);
 	
 	// Adjust table styling
-	$('#' + tableId + ' td:nth-child(5)').css({
+	$('#' + tableId + ' td:nth-child(6)').css({
 		'text-align': 'left'
 	});
 	adjustColumnSize(tableId);
@@ -3594,12 +3594,12 @@ function insertDiskInfo(data) {
 			tmp = info[i].split('=');
 			pool = jQuery.trim(tmp[1]);
 			
-			dTable.fnUpdate(pool, rowPos, 2, false);
+			dTable.fnUpdate(pool, rowPos, 3, false);
 		} if (info[i].indexOf('eckd_size') > -1) {
 			tmp = info[i].split('=');
 			eckdSize = jQuery.trim(tmp[1]);
 			
-			dTable.fnUpdate(eckdSize, rowPos, 3, false);
+			dTable.fnUpdate(eckdSize, rowPos, 4, false);
 		}			
 	}
 	

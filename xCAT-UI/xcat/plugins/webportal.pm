@@ -342,7 +342,7 @@ sub provzlinux {
 	$out = `moncfg gangliamon $node -r`;
 	
 	# Show node information, e.g. IP, hostname, and root password
-	$out = `lsdef $node | egrep "ip=|hostnames="`;
+	$out = `lsdef $node -i ip,hostnames | egrep "ip=|hostnames="`;
 	my $rootpw = getsysrootpw();
 	println( $callback, "Your virtual machine is ready. It may take a few minutes before you can logon using VNC ($node:1). Below is your VM attributes." );
 	println( $callback, "$out" );
