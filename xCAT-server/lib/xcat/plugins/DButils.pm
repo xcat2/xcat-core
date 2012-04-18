@@ -104,16 +104,16 @@ sub getAllEntries
 	      return;
 	  }
 	}
-	# if there are records in the table
-    my $i=1;
-    my $row;
-    foreach my $rec (@$recs){  # for each record from the table
-      while ((my $attrname,my $value) = each(%$rec)) { # for each hash element
-        $row="row".$i;
-        @{$rsp{$row}{$attrname}}= $value; 
+    my %noderecs;
+      foreach my $rec (@$recs) { 
+        my %datseg=();
+        foreach my $key (keys %$rec) {
+         #$datseg{$key} = [$rec->{$key}];
+         $datseg{$key} = $rec->{$key};
+        }
+        push @{$noderecs{"row"}}, \%datseg;
       }
-      $i++; 
-    }
+      push @{$rsp{"row"}}, @{$noderecs{"row"}};
 # for checkin XML created
 #my  $xmlrec=XMLout(\%rsp,RootName=>'xcatresponse',NoAttr=>1,KeyAttr=>[]);
        $cb->(\%rsp);
@@ -151,7 +151,6 @@ sub getNodesAttribs
     my %noderecs;
     my $rechash        =   $tab->getNodesAttribs(\@nodes,\@attrs);
     foreach my $node (@nodes){
-       my @cols;
        my %datseg=();
        $datseg{name} = [$node];
        my $recs = $rechash->{$node};
