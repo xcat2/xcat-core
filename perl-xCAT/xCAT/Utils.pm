@@ -2949,24 +2949,25 @@ sub getIPaddress
         } else {
             return undef;
         }
-        my @ps = $ppctab->getAllNodeAttribs(['node','parent','nodetype']);
-        my $tmp_parent;
-        my $tmp_node;
-        my $tmp_type;
+        #my @ps = $ppctab->getAllNodeAttribs(['node','parent','nodetype']);
+        #my $tmp_parent;
+        #my $tmp_node;
+        #my $tmp_type;
 #search for $nodetocheck's children or brothers
-        for my $entry ( @ps ) {
-            $tmp_parent = $entry->{parent};
-            $tmp_node = $entry->{node};
-            $tmp_type = $entry->{nodetype};
-            if ($tmp_parent  and ($tmp_parent eq $parent) ) {
-                if (!defined($tmp_type)) {
-                    $tmp_type = xCAT::DBobjUtils->getnodetype($tmp_node);
-                }
-                if ($tmp_type and ($tmp_type eq 'fsp' or $tmp_type eq 'bpa')) {
-                    push @children, $tmp_node;
-                }
-            }
-        } 
+        #for my $entry ( @ps ) {
+        #    $tmp_parent = $entry->{parent};
+        #    $tmp_node = $entry->{node};
+        #    $tmp_type = $entry->{nodetype};
+        #    if ($tmp_parent  and ($tmp_parent eq $parent) ) {
+        #        if (!defined($tmp_type)) {
+        #            $tmp_type = xCAT::DBobjUtils->getnodetype($tmp_node);
+        #        }
+        #        if ($tmp_type and ($tmp_type eq 'fsp' or $tmp_type eq 'bpa')) {
+        #            push @children, $tmp_node;
+        #        }
+        #    }
+        #}
+        @children = split(/,/, $::CEC_FRAME_CHILDREN{$parent}); 
         foreach my $tmp_n( @children) {
             my $ent = $vpdtab->getNodeAttribs($tmp_n, ['side']);
             if ($ent->{side} and $ent->{side} =~ /^$side-$port$/i) {
