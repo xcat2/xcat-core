@@ -2260,7 +2260,7 @@ sub web_updateuser() {
 	
 	# Save in xCAT passwd and policy tables
 	`chtab username=$user passwd.key=xcat passwd.password=$password`;
-	`chtab name=$user policy.priority=$priority policy.comments="max-vm:$maxVM"`;
+	`chtab name=$user policy.priority=$priority policy.rule=allow policy.comments="max-vm:$maxVM"`;
 	
 	my $info = "User successfully updated";
 	$callback->( { info => $info } );
