@@ -818,6 +818,23 @@ sub preprocess_nodes {
             return undef;
         }
     }
+    
+    %::CEC_FRAME_CHILDREN;
+    if ( $request->{fsp_api} == 1 || $request->{command} =~ /^(mkhwconn|rmhwconn)$/) {
+         my @ps = $tabs{ppc}->getAllNodeAttribs(['node','parent','nodetype']); 
+         for my $entry ( @ps ) {
+             my $tmp_parent = $entry->{parent};
+             my $tmp_node = $entry->{node};
+             my $tmp_type = $entry->{nodetype};
+             if(defined($tmp_node) && defined($tmp_type) && ($tmp_type =~ /^(fsp|bpa)$/ && $tmp_parent) ) {
+                 #print "$tmp_node\n";
+                 $::CEC_FRAME_CHILDREN{$tmp_parent} .= "$tmp_node,";
+             }
+         }
+
+    }
+
+    # print Dumper(\%::CEC_FRAME_CHILDREN);
 
     ##########################################
     # Group nodes
