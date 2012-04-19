@@ -318,7 +318,7 @@ sub powercmd {
 sub power_status {
     my $value = shift;
     my @states = (
-        "Operating|operating",
+        "Operating|operating|on",
         "Running|running",
         "standby",
         "Open Firmware|open-firmware"
