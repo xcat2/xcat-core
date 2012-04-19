@@ -268,7 +268,7 @@ sub fsp_state_action {
     #################
     #$outhash{ $node_name } = $res;
     if( @res ) {
-        $res[0] =~ s/$node_name: //;
+        $res[0] =~ s/$node_name: //g;
     }
     return( [$Rc,@res] ); 
 }
