@@ -2887,7 +2887,8 @@ sub getNodeIPaddress
        Node name  only one at a time
     Returns: ip address(s)
     Globals:
-        none
+        %PPCHASH - HASH of nodename -> array of ip addresses
+ 
     Error:
         none
     Example:   my $c1 = xCAT::Utils::getIPaddress($nodetocheck);
@@ -2895,7 +2896,7 @@ sub getNodeIPaddress
 =cut
 
 #-------------------------------------------------------------------------------
-       
+my %PPCHASH;       
 sub getIPaddress 
 {
     require xCAT::Table;
@@ -2949,12 +2950,13 @@ sub getIPaddress
         } else {
             return undef;
         }
-        my @ps = $ppctab->getAllNodeAttribs(['node','parent','nodetype']);
-        my $tmp_parent;
-        my $tmp_node;
-        my $tmp_type;
-#search for $nodetocheck's children or brothers
-        for my $entry ( @ps ) {
+        if (!%PPCHASH) {
+          my @ps = $ppctab->getAllNodeAttribs(['node','parent','nodetype']);
+          my $tmp_parent;
+          my $tmp_node;
+          my $tmp_type;
+          #search for $nodetocheck's children or brothers
+          for my $entry ( @ps ) {
             $tmp_parent = $entry->{parent};
             $tmp_node = $entry->{node};
             $tmp_type = $entry->{nodetype};
@@ -2963,9 +2965,21 @@ sub getIPaddress
                     $tmp_type = xCAT::DBobjUtils->getnodetype($tmp_node);
                 }
                 if ($tmp_type and ($tmp_type eq 'fsp' or $tmp_type eq 'bpa')) {
-                    push @children, $tmp_node;
+                   # push @children, $tmp_node;
+                   push @{$PPCHASH{$tmp_parent}}, $tmp_node; 
                 }
             }
+          }
+          # Find parent in the hash and build return values
+          foreach (@{$PPCHASH{$parent}}) {
+            push @children, $_;
+          }
+        } else {  #PPCHASH exists
+          if (exists($PPCHASH{$parent})) {
+            foreach (@{$PPCHASH{$parent}}) {
+                push @children, $_;
+            }
+          }
         } 
         foreach my $tmp_n( @children) {
             my $ent = $vpdtab->getNodeAttribs($tmp_n, ['side']);
