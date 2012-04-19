@@ -11776,7 +11776,7 @@ sub prermdsklsnode
       )
     {
         &rmdsklsnode_usage($callback);
-        return;
+        return 1;
     }
 
     if ($::HELP)
