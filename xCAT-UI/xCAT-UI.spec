@@ -142,8 +142,8 @@ chmod 755 $RPM_BUILD_ROOT%{prefix}/ui/*
 	if [ "$1" = 1 ] || [ "$1" = 2 ]		# Install or upgrade
 	then
 		# Copy xCAT plugins to /opt/xcat/lib/perl/xCAT_plugin
-		cp %{prefix}/ui/xcat/plugins/web.pm ../lib/perl/xCAT_plugin/
-		cp %{prefix}/ui/xcat/plugins/webportal.pm ../lib/perl/xCAT_plugin/
+		cp %{prefix}/ui/xcat/plugins/web.pm %{prefix}/lib/perl/xCAT_plugin/
+		cp %{prefix}/ui/xcat/plugins/webportal.pm %{prefix}/lib/perl/xCAT_plugin/
 		/bin/ln -s ../bin/xcatclientnnr ../bin/webportal
 		/etc/init.d/xcatd restart
 		
