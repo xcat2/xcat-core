@@ -45,6 +45,18 @@ zvmPlugin.prototype.loadConfigPage = function(tabId) {
 		queryProfiles('zvmConfigProfile');
 	});
 	
+	// Create accordion panel for groups
+	var groupsSection = $('<div id="zvmConfigGroups"></div>');
+	var groupsLnk = $('<h3><a href="#">Groups</a></h3>').click(function () {
+		// Do not load panel again if it is already loaded
+		if ($('#zvmConfigGroups').find('.dataTables_wrapper').length)
+			return;
+		else
+			$('#zvmConfigGroups').append(createLoader(''));
+
+//		queryGroups('zvmConfigGroups');
+	});
+	
 	// Create accordion panel for nodes
 	var nodeSection = $('<div id="zvmConfigNode"></div>');
 	nodeSection.append(createInfoBar('Modify node attributes'));
@@ -52,7 +64,7 @@ zvmPlugin.prototype.loadConfigPage = function(tabId) {
 		
 	});
 	
-	configAccordion.append(userLnk, userSection, profileLnk, profileSection, nodeLnk, nodeSection);
+	configAccordion.append(userLnk, userSection, profileLnk, profileSection, groupsLnk, groupsSection, nodeLnk, nodeSection);
 	$('#' + tabId).append(configAccordion);
 	configAccordion.accordion();
 	

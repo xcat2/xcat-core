@@ -65,7 +65,9 @@ sub process_request {
 		'getzdiskinfo' => \&web_getzdiskinfo,
 		'passwd' => \&web_passwd,
 		'updateuser' => \&web_updateuser,
-		'deleteuser' => \&web_deleteuser
+		'deleteuser' => \&web_deleteuser,
+		'mkzprofile' => \&web_mkzprofile,
+		'rmzprofile' => \&web_rmzprofile
 	);
 
 	#check whether the request is authorized or not
@@ -2303,6 +2305,48 @@ sub web_getzdiskinfo() {
 		$info = `cat /var/opt/xcat/profiles/$profile.conf`;	
 	}
 	
+	$callback->( { info => $info } );
+}
+
+sub web_mkzprofile() {
+	# Create default profile
+	my ( $request, $callback, $sub_req ) = @_;
+	
+	# Get profile
+	my $profile = $request->{arg}->[1];
+	my $pool = $request->{arg}->[2];
+	my $size = $request->{arg}->[3];
+		
+	# Create profile under /var/opt/xcat/profiles
+	my $var = "";
+	`echo "# Configuration for virtual machines" > /var/opt/xcat/profiles/$profile.conf`;
+	$var = $profile . "_diskpool";
+	`echo "$var=$pool" >> /var/opt/xcat/profiles/$profile.conf`;
+	$var = $profile . "_eckd_size";
+	`echo "$var=$size" >> /var/opt/xcat/profiles/$profile.conf`;
+	
+	# Move directory entry into /var/opt/xcat/profiles from /var/tmp
+	`mv /var/tmp/$profile.direct /var/opt/xcat/profiles`;
+
+	my $info = "Profile successfully created/updated";
+	$callback->( { info => $info } );
+}
+
+sub web_rmzprofile() {
+	# Delete default profile
+	my ( $request, $callback, $sub_req ) = @_;
+	
+	# Get profile
+	my $profile = $request->{arg}->[1];
+	my @profiles = split( ',', $profile );
+		
+	# Delete profile under /var/opt/xcat/profiles
+	foreach(@profiles) {
+		`rm /var/opt/xcat/profiles/$_.conf`;
+		`rm /var/opt/xcat/profiles/$_.direct`;
+	}
+
+	my $info = "Profile successfully deleted";
 	$callback->( { info => $info } );
 }
 

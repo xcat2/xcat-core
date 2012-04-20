@@ -3419,7 +3419,7 @@ function configProfilePanel(panelId) {
 	$('#' + panelId).empty();
 
 	// Add info bar
-	$('#' + panelId).append(createInfoBar('Create, edit, and delete profiles for the self-service portal. Double-click on a cell to edit a users properties. Click outside the table to save changes. Hit the Escape key to ignore changes.'));
+	$('#' + panelId).append(createInfoBar('Create, edit, and delete profiles for the self-service portal. It is important to note the default z/VM user ID for any profile should be LXUSR.'));
 	
 	// Create table
 	var tableId = 'zvmProfileTable';
@@ -3456,23 +3456,47 @@ function configProfilePanel(panelId) {
 	// Create action bar
 	var actionBar = $('<div class="actionBar"></div>');
 	
+	// Create a profile
 	var createLnk = $('<a>Create</a>');
 	createLnk.click(function() {
 		profileDialog();
 	});
+	
+	// Edit a profile
+	var editLnk = $('<a>Edit</a>');
+	editLnk.click(function() {
+		var profiles = $('#' + tableId + ' input[type=checkbox]:checked');
+		for (var i in profiles) {
+			var profile = profiles.eq(i).attr('name');			
+			if (profile) {
+				// Column order is: profile, selectable, disk pool, disk size, and directory entry
+				var cols = profiles.eq(i).parents('tr').find('td');
+				var pool = cols.eq(3).text();
+				var size = cols.eq(4).text();
+				var entry = cols.eq(5).html().replace(new RegExp('<br>', 'g'), '\n');
+				
+				openEditProfileDialog(profile, pool, size, entry);
+			}
+		}
+	});
 		
+	// Delete a profile
 	var deleteLnk = $('<a>Delete</a>');
 	deleteLnk.click(function() {
-
+		var profiles = getNodesChecked(tableId);
+		if (profiles) {
+			openDeleteProfileDialog(profiles);
+		}
 	});
 	
+	// Refresh profiles table
 	var refreshLnk = $('<a>Refresh</a>');
 	refreshLnk.click(function() {
 		queryProfiles(panelId);
 	});
 	
 	// Create an action menu
-	var actionsMenu = createMenu([createLnk, deleteLnk, refreshLnk]);
+	var actionsMenu = createMenu([createLnk, editLnk, deleteLnk, refreshLnk]);
 	actionsMenu.superfish();
 	actionsMenu.css('display', 'inline-block');
 	actionBar.append(actionsMenu);
@@ -3505,7 +3529,7 @@ function configProfilePanel(panelId) {
 	            msg : 'out=' + panelId + ';profile=' + profiles[i]
 	        },
 	        
-	        success: insertDirectoryentry
+	        success: insertDirectoryEntry
 	    });
 		
 		$.ajax({
@@ -3530,7 +3554,7 @@ function configProfilePanel(panelId) {
  *            Data from HTTP request
  * @return Nothing
  */
-function insertDirectoryentry(data) {
+function insertDirectoryEntry(data) {
 	var tableId = 'zvmProfileTable';
 	var args = data.msg.split(';');
 	
@@ -3612,13 +3636,24 @@ function insertDiskInfo(data) {
  */
 function profileDialog() {
 	// Create form to add profile
-	var profileForm = $('<div class="form"></div>');
+	var dialogId = 'zvmCreateProfile';
+	var profileForm = $('<div id="' + dialogId + '" class="form"></div>');
 	
 	// Create info bar
 	var info = createInfoBar('Configure the default settings for a profile');
 	profileForm.append(info);
 	
-	profileForm.append('<div><label>Profile:</label><input type="text" name="profile"/></div>');
+	// Insert profiles into select
+	var profileSelect = $('<select name="profile"></select>');
+	var profiles = $.cookie('profiles').split(',');
+	profiles.push('default'); // Add default profile
+	for (var i in profiles) {
+		if (profiles[i]) {
+			profileSelect.append($('<option>' + profiles[i] + '</option>'));
+		}
+	}
+	
+	profileForm.append($('<div><label>Profile:</label></div>').append(profileSelect));
 	profileForm.append('<div><label>Disk pool:</label><input type="text" name="disk_pool"/></div>');
 	profileForm.append('<div><label>Disk size (ECKD):</label><input type="text" name="disk_size_eckd"/></div>');
 	profileForm.append('<div><label style="vertical-align: top;">Directory entry:</label><textarea name="directory_entry"/></div>');
@@ -3637,7 +3672,7 @@ function profileDialog() {
         		$(this).find('.ui-state-error').remove();
         		
 				// Find profile attributes
-				var profile = $(this).find('input[name=profile]').val();
+				var profile = $(this).find('select[name=profile]').val();
 				var pool = $(this).find('input[name=disk_pool]').val();
 				var size = $(this).find('input[name=disk_size_eckd]').val();
 				var entry = $(this).find('textarea[name=directory_entry]').val();
@@ -3646,9 +3681,211 @@ function profileDialog() {
 				if (!profile || !pool || !size || !entry) {
 					var warn = createWarnBar('Please provide a value for each missing field.');
 					warn.prependTo($(this));
-				} else {    				
-    				// Close dialog
-    				$(this).dialog( "close" );
+				} else {
+					// Change dialog buttons
+				    $('#' + dialogId).dialog('option', 'buttons', {
+				    	'Close':function(){
+				    		$(this).dialog('close');
+				    	}
+				    });
+				    
+					// Write file to /var/tmp
+					$.ajax({
+						url : 'lib/cmd.php',
+						dataType : 'json',
+						data : {
+							cmd : 'write',
+							tgt : '/var/tmp/' + profile + '.direct',
+							args : '',
+							cont : entry,
+							msg : dialogId + ';' + profile + ';' + pool + ';' + size
+						},
+
+						success : function(data) {
+							var args = data.msg.split(';');
+														
+							// Create profile in xCAT
+							$.ajax({
+						        url : 'lib/cmd.php',
+						        dataType : 'json',
+						        data : {
+						            cmd : 'webrun',
+						            tgt : '',
+						            args : 'mkzprofile;' + args[1] + ';' + args[2] + ';' + args[3],
+						            msg : args[0]
+						        },
+						        
+						        success: updatePanel
+						    });
+						}
+					});
+				}
+			},
+			"Cancel": function() {
+        		$(this).dialog( "close" );
+        	}
+		}
+	});
+}
+
+/**
+ * Open dialog to confirm profile delete
+ * 
+ * @param profiles
+ * 			Profiles to delete
+ * @return Nothing
+ */
+function openDeleteProfileDialog(profiles) {
+	// Create form to delete disk to pool
+	var dialogId = 'zvmDeleteProfile';
+	var deleteForm = $('<div id="' + dialogId + '" class="form"></div>');
+	
+	// Create info bar
+	var info = createInfoBar('Are you sure you want to delete ' + profiles.replace(new RegExp(',', 'g'), ', ') + '?');
+	deleteForm.append(info);
+			
+	// Open dialog to delete user
+	deleteForm.dialog({
+		title:'Delete user',
+		modal: true,
+		width: 400,
+		close: function(){
+        	$(this).remove();
+        },
+		buttons: {
+        	"Ok": function(){
+        		// Remove any warning messages
+        		$(this).find('.ui-state-error').remove();
+        		
+				// Change dialog buttons
+				$(this).dialog('option', 'buttons', {
+					'Close': function() {$(this).dialog("close");}
+				});
+										
+				// Delete user
+				$.ajax( {
+    				url : 'lib/cmd.php',
+    				dataType : 'json',
+    				data : {
+    					cmd : 'webrun',
+    					tgt : '',
+    					args : 'rmzprofile;' + profiles,
+    					msg : dialogId
+    				},
+    				success : updatePanel
+            	});
+			},
+			"Cancel": function() {
+        		$(this).dialog( "close" );
+        	}
+		}
+	});
+}
+
+/**
+ * Open dialog to edit profile
+ * 
+ * @param profile
+ * 			Profile to edit
+ * @param pool
+ * 			Disk pool
+ * @param size
+ * 			Disk size
+ * @param entry
+ * 			Directory entry
+ * @return Nothing
+ */
+function openEditProfileDialog(profile, pool, size, entry) {
+	// Create form to add profile
+	var dialogId = 'zvmEditProfile_' + profile;
+	var profileForm = $('<div id="' + dialogId + '" class="form"></div>');
+	
+	// Create info bar
+	var info = createInfoBar('Configure the default settings for a profile');
+	profileForm.append(info);
+	
+	// Insert profiles into select
+	var profileSelect = $('<select name="profile"></select>');
+	var profiles = $.cookie('profiles').split(',');
+	profiles.push('default'); // Add default profile
+	for (var i in profiles) {
+		if (profiles[i]) {
+			profileSelect.append($('<option value="' + profiles[i] + '">' + profiles[i] + '</option>'));
+		}
+	}
+	
+	profileForm.append($('<div><label>Profile:</label></div>').append(profileSelect));
+	profileForm.append('<div><label>Disk pool:</label><input type="text" name="disk_pool"/></div>');
+	profileForm.append('<div><label>Disk size (ECKD):</label><input type="text" name="disk_size_eckd"/></div>');
+	profileForm.append('<div><label style="vertical-align: top;">Directory entry:</label><textarea name="directory_entry"/></div>');
+		
+	// Insert profile values
+	profileSelect.val(profile);
+	profileForm.find('input[name=disk_pool]').val(pool);
+	profileForm.find('input[name=disk_size_eckd]').val(size);
+	profileForm.find('textarea[name=directory_entry]').val(entry);
+	
+	// Open dialog to add processor
+	profileForm.dialog({
+		title:'Configure profile',
+		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
+		width: 600,
+		buttons: {
+        	"Ok": function(){
+        		// Remove any warning messages
+        		$(this).find('.ui-state-error').remove();
+        		
+				// Find profile attributes
+				var profile = $(this).find('select[name=profile]').val();
+				var pool = $(this).find('input[name=disk_pool]').val();
+				var size = $(this).find('input[name=disk_size_eckd]').val();
+				var entry = $(this).find('textarea[name=directory_entry]').val();
+				
+				// If inputs are not complete, show warning message
+				if (!profile || !pool || !size || !entry) {
+					var warn = createWarnBar('Please provide a value for each missing field.');
+					warn.prependTo($(this));
+				} else {
+					// Change dialog buttons
+				    $('#' + dialogId).dialog('option', 'buttons', {
+				    	'Close':function(){
+				    		$(this).dialog('close');
+				    	}
+				    });
+				    
+					// Write file to /var/tmp
+					$.ajax({
+						url : 'lib/cmd.php',
+						dataType : 'json',
+						data : {
+							cmd : 'write',
+							tgt : '/var/tmp/' + profile + '.direct',
+							args : '',
+							cont : entry,
+							msg : dialogId + ';' + profile + ';' + pool + ';' + size
+						},
+
+						success : function(data) {
+							var args = data.msg.split(';');
+														
+							// Create profile in xCAT
+							$.ajax({
+						        url : 'lib/cmd.php',
+						        dataType : 'json',
+						        data : {
+						            cmd : 'webrun',
+						            tgt : '',
+						            args : 'mkzprofile;' + args[1] + ';' + args[2] + ';' + args[3],
+						            msg : args[0]
+						        },
+						        
+						        success: updatePanel
+						    });
+						}
+					});
 				}
 			},
 			"Cancel": function() {

@@ -21,6 +21,11 @@ if (isset($_GET["cmd"])) {
 	$tgt = $_GET["tgt"];
 	$args = $_GET["args"];
 	
+	// File contents in case of file write
+	if (isset($_GET["cont"])) {
+		$cont = $_GET["cont"];
+	}
+	
 	// Special messages put here
 	// This gets sent back to the AJAX request as is.
 	$msg = $_GET["msg"];
@@ -85,6 +90,17 @@ if (isset($_GET["cmd"])) {
 	// This command gets the nodes and groups
 	else if(strncasecmp($cmd, "extnoderange", 12) == 0) {
 		$rsp = extractExtnoderange($xml);
+	}	
+	// Write contents to file
+	else if(strncasecmp($cmd, "write", 4) == 0) {
+		// Directory should be /var/opt/xcat/profiles
+		// You can write anything to that directory
+		$file = "$tgt";
+		$handle = fopen($file, 'w') or die("Cannot open $file");
+		fwrite($handle, $cont);
+		fclose($handle);
+		
+		$rsp = "Directory entry written to $file";
 	}
 	// Handle the typical output
 	else {

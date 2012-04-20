@@ -40,6 +40,12 @@ esxPlugin.prototype.loadConfigPage = function(tabId) {
 		
 	});
 	
+	// Create accordion panel for groups
+	var groupsSection = $('<div id="esxConfigGroups"></div>');
+	var groupsLnk = $('<h3><a href="#">Groups</a></h3>').click(function () {
+
+	});	
+	
 	// Create accordion panel for nodes
 	var nodeSection = $('<div id="esxConfigNode"></div>');
 	nodeSection.append(createInfoBar('Modify node attributes'));
@@ -47,7 +53,7 @@ esxPlugin.prototype.loadConfigPage = function(tabId) {
 		
 	});
 	
-	configAccordion.append(userLnk, userSection, profileLnk, profileSection, nodeLnk, nodeSection);
+	configAccordion.append(userLnk, userSection, profileLnk, profileSection, groupsLnk, groupsSection, nodeLnk, nodeSection);
 	$('#' + tabId).append(configAccordion);
 	configAccordion.accordion();
 	

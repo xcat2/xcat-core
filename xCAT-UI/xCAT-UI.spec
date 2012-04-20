@@ -142,9 +142,9 @@ chmod 755 $RPM_BUILD_ROOT%{prefix}/ui/*
 	if [ "$1" = 1 ] || [ "$1" = 2 ]		# Install or upgrade
 	then
 		# Copy xCAT plugins to /opt/xcat/lib/perl/xCAT_plugin
-		cp %{prefix}/ui/xcat/plugins/web.pm /opt/xcat/lib/perl/xCAT_plugin/
-		cp %{prefix}/ui/xcat/plugins/webportal.pm /opt/xcat/lib/perl/xCAT_plugin/
-		/bin/ln -s /opt/xcat/bin/xcatclientnnr /opt/xcat/bin/webportal
+		cp %{prefix}/ui/xcat/plugins/web.pm ../lib/perl/xCAT_plugin/
+		cp %{prefix}/ui/xcat/plugins/webportal.pm ../lib/perl/xCAT_plugin/
+		/bin/ln -s ../bin/xcatclientnnr ../bin/webportal
 		/etc/init.d/xcatd restart
 		
 		# Copy php.ini file into /opt/xcat/ui and turn off output_buffering
@@ -167,7 +167,7 @@ chmod 755 $RPM_BUILD_ROOT%{prefix}/ui/*
 	    echo "Updating IBM HTTP server configuration for xCAT..."
 	    bin/rm -f /usr/IBM/HTTPServer/conf/xcat-ui.conf
 	    cp /usr/IBM/HTTPServer/conf/httpd.conf /usr/IBM/HTTPServer/conf/httpd.conf.xcat.ui.bak
-	    cat /opt/xcat/ui/etc/apache2/conf.d/xcat-ui.conf >> /usr/IBM/HTTPServer/conf/httpd.conf
+	    cat ../ui/etc/apache2/conf.d/xcat-ui.conf >> /usr/IBM/HTTPServer/conf/httpd.conf
 	    /usr/IBM/HTTPServer/bin/apachectl restart
 	
 	    # Put the encrypted password in /etc/security/passwd into the xcat passwd database
