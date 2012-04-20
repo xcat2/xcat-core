@@ -17,7 +17,7 @@ use strict;
 #use lib "$::XCATROOT/lib/perl";
 #use xCAT::Utils;
 use Getopt::Long;
-use File::Path;
+#use File::Path;
 use Cwd;
 #use Data::Dumper;
 
@@ -92,7 +92,8 @@ sub verbose { if ($VERBOSE) { print shift, "\n"; } }
 sub gethtmldocs {
 	my $dir = shift;
 	my $savedir = getcwd();
-	File::Path::make_path($dir);
+	#File::Path::make_path($dir);
+	mkdir($dir);
 	chdir($dir);
 	#system('pwd');
 	unlink <*>;		# delete all the files in the dir, in case they previously ran this
@@ -123,7 +124,8 @@ sub gethtmldocs {
 sub convert2pdf {
 	my ($dir, $files) = @_;
 	my $savedir = getcwd();
-	File::Path::make_path($dir);
+	#File::Path::make_path($dir);
+	mkdir($dir);
 	chdir($dir);
 	if (system('which xhtml2pdf >/dev/null 2>&1')) { die "xhtml2pdf is not installed.  See http://sourceforge.net/apps/mediawiki/xcat/index.php?title=Editing_xCAT_Documentation_Pages#Converting_Wiki_Pages_to_HTML_and_PDFs .\n"; }
 	unlink <*>;		# delete all the files in the dir, in case they previously ran this
