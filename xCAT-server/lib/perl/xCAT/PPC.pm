@@ -2139,7 +2139,8 @@ sub process_request {
         $request->{verbose} = 1;
     }
 
-    if( $request->{hwtype} ne 'hmc' ) {
+    #if( $request->{hwtype} ne 'hmc' ) {
+    if( $request->{hwtype} !~ /hmc|ivm/ ) {
         $request->{fsp_api} = 1;
         #For using rspconfig to disable/enable dev/celogin1 through ASMI
         my $arg = $request->{arg};
