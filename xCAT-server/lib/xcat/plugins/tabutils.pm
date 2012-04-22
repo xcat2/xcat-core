@@ -2183,7 +2183,10 @@ else {
 	else {
             ($column,$value) = split("=",$temp,2);
         }
-
+        unless (grep /$column/,@{$xCAT::Schema::tabspec{$table}->{cols}}) {
+             $callback->({error=>"$table.$column not a valid table.column description",errorcode=>[1]});
+             return;
+        }
     $tableupdates{$table}{$column}=$value;
   }
   
