@@ -2047,13 +2047,15 @@ if (!defined($req->{arg})) { $tabch_usage->(1); return; }
 # options can be bundled up like -vV
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
-
+my $delete;
+my $help;
+my $version;
 # parse the options
 if (
     !GetOptions(
-                'd|delete'  => \$::DELETE,
-                'h|help'    => \$::HELP,
-                'v|version' => \$::VERSION,
+                'd|delete'  => \$delete,
+                'h|help'    => \$help,
+                'v|version' => \$version,
     )
   )
 {
@@ -2061,10 +2063,10 @@ if (
     return; 
 }
 
-if ($::HELP) { $tabch_usage->(0); return; }
+if ($help) { $tabch_usage->(0); return; }
 
 # display the version statement if -v or --verison is specified
-if ($::VERSION)
+if ($version)
 {
     my %rsp;
     my $version = xCAT::Utils->Version();
@@ -2107,7 +2109,7 @@ else
     unshift(@ARGV, $target);
 }
 
-if ($::DELETE)
+if ($delete)
 {
 
     #delete option is specified
