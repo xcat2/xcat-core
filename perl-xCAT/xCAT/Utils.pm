@@ -27,6 +27,7 @@ use Symbol;
 use Digest::SHA1 qw/sha1/;
 use IPC::Open3;
 use IO::Select;
+use xCAT::GlobalDef;
 require xCAT::RemoteShellExp;
 use warnings "all";
 require xCAT::InstUtils;
