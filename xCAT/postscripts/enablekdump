@@ -80,7 +80,7 @@ if [ ! -z "$DUMP" ]; then
     # workaround for RHEL6
     # the $KDIP:$KDPATH directory will be used to generate the initrd for kdump service
     MOUNTPATH=""
-    if (pmatch $OSVER "*6\.." ); then
+    if (pmatch $OSVER "*6\.*" ); then
 	MOUNTPATH="/tmp"
     else
 	MOUNTPATH="/var/tmp"
