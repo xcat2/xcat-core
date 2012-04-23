@@ -6,9 +6,9 @@ B<genimage> - Generates a stateless image to be used for a diskless install.
 
 B<genimage>
 
-B<genimage>  B<-o> I<osver> [B<-a> I<arch>] B<-p> I<profile> B<-i> I<nodebootif> B<-n> I<nodenetdrivers> [B<-r> I<otherifaces>] [B<-k> I<kernelver>] [B<-g> I<krpmver>] [B<-m> I<statelite>] [B<-l> I<rootlimitsize>] [B<-t> I<tmplimitsize>] [B<--permission> I<permission>] [B<--interactive>]
+B<genimage>  B<-o> I<osver> [B<-a> I<arch>] B<-p> I<profile> B<-i> I<nodebootif> B<-n> I<nodenetdrivers> [B<-r> I<otherifaces>] [B<-k> I<kernelver>] [B<-g> I<krpmver>] [B<-m> I<statelite>] [B<-l> I<rootlimitsize>] [B<--permission> I<permission>] [B<--interactive>]
 
-B<genimage> [B<-o> I<osver>] [B<-a> I<arch>] [B<-p> I<profile>] [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-r> I<otherifaces>] [B<-k> I<kernelver>] [B<-g> I<krpmver>] [B<-m> I<statelite>] [B<-l> I<rootlimitsize>] [B<-t> I<tmplimitsize>] [B<--permission> I<permission>] [B<--interactive>] I<imagename>
+B<genimage> [B<-o> I<osver>] [B<-a> I<arch>] [B<-p> I<profile>] [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-r> I<otherifaces>] [B<-k> I<kernelver>] [B<-g> I<krpmver>] [B<-m> I<statelite>] [B<-l> I<rootlimitsize>] [B<--permission> I<permission>] [B<--interactive>] I<imagename>
 
 
 B<genimage> [B<-h> | B<--help> | B<-v> | B<--version>]
@@ -128,6 +128,10 @@ This flag is for Ubuntu, Debian and Fedora12 only. Use this flag to specify if y
 =item B<--interactive> 
 
 This flag allows the user to answer questions from yum/zypper command when installing rpms into the image. If it is not specified, '-y' will be passed to the yum command and '--non-interactive --no-gpg-checks' will be passed to the zypper command as default answers. 
+
+=item B<-t> I<tmplimit>
+
+(Deprecated) This flag allows the user to setup the /tmp and the /var/tmp file system sizes. This flag is no longer supported. You can overwrite any file system size using the .postinstall script where you can create a new /etc/fstab file. 
 
 
 =item B<-v|--version>

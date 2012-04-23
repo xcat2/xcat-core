@@ -1305,13 +1305,13 @@ END
       }
    }
 
-
         #copy conf files needed by nfs mount in sles11.2
         if($osver_host == 11)
         {
         system("cp -r $rootimg_dir/etc/protocols /tmp/xcatinitrd.$$/etc/");
         system("cp -r $rootimg_dir/etc/netconfig /tmp/xcatinitrd.$$/etc/");
         }
+
 
 	# Copy udev libraries
 	system("mkdir -p /tmp/xcatinitrd.$$/etc/udev");
@@ -1324,18 +1324,18 @@ END
 	system("cp -r $rootimg_dir/usr/bin/killall /tmp/xcatinitrd.$$/usr/bin");
 	
 	# Copy rules for network adapter
-#	my $name = `cat /etc/sysconfig/network/ifcfg-$prinic | grep NAME`;
-#	my $nic = '';
-#	if ($name =~ m/(\d+\.\d+\.\d+)/g) {
-#		$nic = $&;
-#	}
+	#my $name = `cat /etc/sysconfig/network/ifcfg-$prinic | grep NAME`;
+	#my $nic = '';
+	#if ($name =~ m/(\d+\.\d+\.\d+)/g) {
+	#	$nic = $&;
+	#}
 
     # Somehow checking for *$nic.rules does not work
     #if ( -f "/etc/udev/rules.d/*$nic.rules" ) {
-#       system("cp -r /etc/udev/rules.d/*$nic.rules /tmp/xcatinitrd.$$/etc/udev/rules.d");
+    #    system("cp -r /etc/udev/rules.d/*$nic.rules /tmp/xcatinitrd.$$/etc/udev/rules.d");
     #}
     #if ( -f "/etc/udev/rules.d/*persistent-net.rules" ) {
-#	    system("cp -r /etc/udev/rules.d/*persistent-net.rules /tmp/xcatinitrd.$$/etc/udev/rules.d");
+    #	    system("cp -r /etc/udev/rules.d/*persistent-net.rules /tmp/xcatinitrd.$$/etc/udev/rules.d");
     #}
 	
 	system("mkdir -p /tmp/xcatinitrd.$$/lib/udev");
@@ -1669,7 +1669,7 @@ sub load_dd()
 }
 
 sub usage {
-    print 'Usage: genimage  -o <OSVER> [-a <arch>] -p <profile> -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>] [--interactive]'."\n";
+    print 'Usage: genimage  -o <OSVER> [-a <arch>] -p <profile> -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-l rootlimitsize] [--permission <permission>] [--interactive]'."\n";
     print "       --permission is used for statelite only\n";
     print "Examples:\n";
     print " genimage -i eth0 -n tg3 -o sles11 -p compute\n";
