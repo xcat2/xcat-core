@@ -1669,7 +1669,7 @@ sub load_dd()
 }
 
 sub usage {
-    print 'Usage: genimage  -o <OSVER> [-a <arch>] -p <profile> -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>] [--interactive]'."\n";
+    print 'Usage: genimage  -o <OSVER> [-a <arch>] -p <profile> -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-l rootlimitsize] [--permission <permission>] [--interactive]'."\n";
     print "       --permission is used for statelite only\n";
     print "Examples:\n";
     print " genimage -i eth0 -n tg3 -o sles11 -p compute\n";
