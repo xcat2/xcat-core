@@ -75,33 +75,33 @@ An error has occurred.
 
 =item *
 
-To add nodes in noderange  node1-node4 with group all:
+To update nodes in noderange  node1-node4 to be in only group all:
 
-B<  nodech> I<node1-node4 groups=all>
+B<nodech> I<node1-node4 groups=all>
 
 =item *
 
 To put all nodes with nodepos.rack value of 2 into a group called rack2:
 
-B<  nodech> I<all> nodepos.rack==2 groups,=rack2
+B<nodech> I<all> nodepos.rack==2 groups,=rack2
 
 =item *
 
 To add nodes in noderange  node1-node4 to the nodetype table with os=rhel5:
 
-B<  nodech> I<node1-node4 groups=all,rhel5 nodetype.os=rhel5>
+B<nodech> I<node1-node4 groups=all,rhel5 nodetype.os=rhel5>
 
 =item *
 
-To add node1-node4 to group1:
+To add node1-node4 to group1 in addition to the groups they are already in:
 
-B<  nodech> I<node1-node4 groups,=group1>
+B<nodech> I<node1-node4 groups,=group1>
 
 =item *
 
 To put node1-node4 in group2, instead of group1:
 
-B<  nodech> I<node1-node4 groups^=group1 groups,=group2>
+B<nodech> I<node1-node4 groups^=group1 groups,=group2>
 
 =back
 
