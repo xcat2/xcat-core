@@ -54,6 +54,9 @@ sub handled_commands
             nr         => "tabutils",     # not implemented yet
             rnoderange => "tabutils",     # not implemented yet
             tabgrep    => "tabutils",
+            getAllEntries     => "tabutils",
+            getNodesAttribs    => "tabutils",
+            setNodesAttribs    => "tabutils",
             gennr    => "tabutils"
             };
 }
@@ -139,6 +142,14 @@ sub process_request
     }
     elsif ($command eq "tabch"){
         return tabch($request, $callback);
+    }
+    elsif ($command eq "getAllEntries")
+    {
+        return getAllEntries($request,$callback);
+    }
+    elsif ($command eq "getNodesAttribs")
+    {
+        return getNodesAttribs($request,$callback);
     }
     else
     {
@@ -2198,4 +2209,141 @@ else {
     $tables{$_}->commit;
   }
  }
+}
+
+
+#
+# getAllEntries
+#
+# Read all the rows from the input table name and returns the response, so 
+# that the XML will look like this
+#<xcatresponse>
+#<rowN>
+#<attr1>value1</attr1>
+#.
+#.
+#.
+#<attrN>valueN</attrN>
+#</rowN>
+#.
+#.
+#.
+#</xcatresponse>
+#  
+#
+sub getAllEntries
+{
+    my $request      = shift;
+    my $cb = shift;
+    my $command  = $request->{command}->[0];
+    my $tablename    = $request->{table}->[0];
+    my $tab=xCAT::Table->new($tablename);
+    my %rsp;
+    my $recs        =   $tab->getAllEntries("all");
+    unless (@$recs)        # table exists, but is empty.  Show header.
+    {
+	  if (defined($xCAT::Schema::tabspec{$tablename}))
+  	  {
+         my $header = "#";
+	      my @array =@{$xCAT::Schema::tabspec{$tablename}->{cols}};
+         foreach my $arow (@array) {
+           $header .= $arow;
+           $header .= ",";
+         }
+         chop $header;
+         push @{$rsp{row}}, $header;
+	      $cb->(\%rsp);
+	      return;
+	  }
+	}
+    my %noderecs;
+      foreach my $rec (@$recs) { 
+        my %datseg=();
+        foreach my $key (keys %$rec) {
+         #$datseg{$key} = [$rec->{$key}];
+         $datseg{$key} = $rec->{$key};
+        }
+        push @{$noderecs{"row"}}, \%datseg;
+      }
+      push @{$rsp{"row"}}, @{$noderecs{"row"}};
+# for checkin XML created
+#my  $xmlrec=XMLout(\%rsp,RootName=>'xcatresponse',NoAttr=>1,KeyAttr=>[]);
+       $cb->(\%rsp);
+
+        return;
+}
+# getNodesAttribs 
+# Read all the array of  attributes for the noderange  from the input table. 
+#<xcatresponse>
+#<node>
+#<name> nodename </name>
+#<attr1>value1</attr1>
+#.
+#.
+#.
+#<attrN>valueN</attrN>
+#</node>
+#.
+#.
+#.
+#</xcatresponse>
+#  
+#
+sub getNodesAttribs 
+{
+    my $request      = shift;
+    my $cb = shift;
+    my $node    = $request->{node};
+    my $command  = $request->{command}->[0];
+    my $tablename    = $request->{table}->[0];
+    my $attr    = $request->{attr};
+    my $tab=xCAT::Table->new($tablename);
+    my @nodes = @$node;
+    my @attrs= @$attr;
+    my %rsp;
+    my %noderecs;
+    my $rechash        =   $tab->getNodesAttribs(\@nodes,\@attrs);
+    foreach my $node (@nodes){
+       my %datseg=();
+       $datseg{name} = [$node];
+       my $recs = $rechash->{$node};
+       foreach my $rec (@$recs) { 
+         foreach my $key (keys %$rec) {
+            $datseg{$key} = [$rec->{$key}];
+         }
+         push @{$noderecs{$node}}, \%datseg;
+       }
+       push @{$rsp{"node"}}, @{$noderecs{$node}};
+
+    }
+# for checkin XML created
+#my  $xmlrec=XMLout(\%rsp,RootName=>'xcatresponse',NoAttr=>1,KeyAttr=>[]);
+       $cb->(\%rsp);
+        return;
+}
+
+
+# setNodesAttribs 
+# Sets the input attributes for the input list of nodes. 
+# Input 
+#    Table
+#    Hash of nodes pointing to the attributes and values to change
+#    
+sub setNodesAttribs 
+{
+    my $request      = shift;
+    my $cb = shift;
+    my $node    = $request->{node};
+    my $command  = $request->{command}->[0];
+    my $tablename    = $request->{table}->[0];
+    my $attr    = $request->{attr};
+    my $tab=xCAT::Table->new($tablename);
+    my @nodes = @$node;
+    my @attrs= @$attr;
+    my %rsp;
+    my %noderecs;
+# for checkin XML created
+#my  $xmlrec=XMLout(\%rsp,RootName=>'xcatresponse',NoAttr=>1,KeyAttr=>[]);
+#       $cb->(\%rsp);
+        return;
 }
