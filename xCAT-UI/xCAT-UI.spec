@@ -84,7 +84,7 @@ chmod 755 $RPM_BUILD_ROOT%{prefix}/ui/*
 
 %files
 %defattr(-,root,root)
-%{prefix}/ui
+%{prefix}
 
 %pre
 #********** Pre-install **********
