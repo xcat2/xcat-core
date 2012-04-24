@@ -94,7 +94,7 @@ ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/webportal
 
 %files
 %defattr(-,root,root)
-%{prefix}/ui
+%{prefix}
 
 %pre
 #********** Pre-install **********
