@@ -3695,6 +3695,7 @@ sub filter_nodes{
 sub build_more_info{
   my $noderange=shift;
   my $callback=shift;
+  unless ($noderange) { return []; }
   my $mptab = xCAT::Table->new("mp");
   my @moreinfo=();
   unless ($mptab) { 
