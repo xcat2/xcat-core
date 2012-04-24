@@ -204,6 +204,8 @@ sub init_dbworker {
                                 eval { #avoid hang by allowin client to die too
                                     print $currcon "*XCATBUGDETECTED*:$err:*XCATBUGDETECTED*\n";
                                     print $currcon "*XCATBUGDETECTED*76e9b54341\n";
+        			    $clientset->remove($currconn);
+			            close($currcon);
                                 };
                             }
                         }
