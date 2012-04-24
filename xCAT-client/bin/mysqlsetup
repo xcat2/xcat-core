@@ -973,8 +973,12 @@ sub setupmysqlroot
     {
         $cmd = "/usr/bin/mysqladmin -u root password $::rootpassword";
     }
-    xCAT::Utils->runcmd($cmd, 0);
 
+    # secure passwd in verbose mode
+    my $tmpv = $::VERBOSE;
+    $::VERBOSE = 0;
+    xCAT::Utils->runcmd($cmd, 0);
+    $::VERBOSE = $tmpv;
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message(
@@ -1549,14 +1553,18 @@ sub setupODBC
         my $entry =
           "[xCATDB]\nSERVER =$server\nDATABASE = xcatdb\nUSER     = xcatadmin\nPASSWORD = $passwd";
         $cmd = "echo \"$entry\" >> $rootodbcfile";
+        # secure passwd in verbose mode
+        my $tmpv = $::VERBOSE;
+        $::VERBOSE = 0;        
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {
-            $message = "$cmd failed. Could not setup root ODBC file.";
+            $message = "command failed. Could not setup root ODBC file.";
             xCAT::MsgUtils->message("E", "$message");
             exit(1);
 
         }
+        $::VERBOSE = $tmpv;
     }
     else
     {    # entry already there
@@ -1602,14 +1610,19 @@ sub createcfgloc
     my $mysqlentry =
       "mysql:dbname=xcatdb;host=$::MN|xcatadmin|$::adminpassword";
     $cmd = "echo \"$mysqlentry\" > $cfglocmysql";
+
+    # secure passwd in verbose mode
+    my $tmpv = $::VERBOSE;
+    $::VERBOSE = 0;    
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
-        $message = "$cmd failed. Could not setup cfgloc.mysql";
+        $message = "command failed. Could not setup cfgloc.mysql";
         xCAT::MsgUtils->message("E", "$message");
         exit(1);
 
     }
+    $::VERBOSE = $tmpv;
 
     # allow readonly by root
     chmod 0600, $cfglocmysql;
