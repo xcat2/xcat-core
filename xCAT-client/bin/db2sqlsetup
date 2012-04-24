@@ -2476,6 +2476,9 @@ sub updatepasswd
    if (xCAT::Utils->isMN()) {    # if on Management Node
      # xdsh <servicenodes>  -v /opt/xcat/bin/db2sqlsetup -C -p
      my $cmd="xdsh $snlist -v DATABASELOC=$::databaselocdir XCATDB2PW=$::adminpassword \/opt\/xcat\/bin\/db2sqlsetup -C -p";
+     # secure passwords in verbose mode
+     my $tmpv = $::VERBOSE;
+     $::VERBOSE = 0;
      xCAT::Utils->runcmd($cmd, 0);
      if ($::RUNCMD_RC != 0)
      {
@@ -2484,6 +2487,7 @@ sub updatepasswd
           "$cmd2 failed.  Could not change password on all the Service Nodes";
         xCAT::MsgUtils->message("E", "$message");
      }
+     $::VERBOSE = $tmpv;
    } else { # on the SN
      &shutdownxcatd;
      &mkdb2user;
