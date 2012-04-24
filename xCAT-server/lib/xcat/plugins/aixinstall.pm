@@ -3615,6 +3615,9 @@ sub mknimimage
 			$pwcmd = qq~$::XCATROOT/bin/xcatchroot -i $spot_name "/usr/bin/echo root:$rootpw | /usr/bin/chpasswd -c" >/dev/null 2>&1~;
 		}
 
+                # secure passwd in verbose mode
+                my $tmpv = $::VERBOSE;
+                $::VERBOSE = 0;
 		my $out = xCAT::Utils->runcmd("$pwcmd", -1);
 		if ($::RUNCMD_RC != 0)
 		{
@@ -3623,6 +3626,7 @@ sub mknimimage
 			push @{$rsp->{data}}, "$out\n";
             xCAT::MsgUtils->message("E", $rsp, $callback);
 		}
+		$::VERBOSE = $tmpv;
 	}
 
     #
