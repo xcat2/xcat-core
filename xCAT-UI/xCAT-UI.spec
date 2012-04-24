@@ -89,6 +89,7 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/web.pm
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/webportal.pm
 
 # Create symbolic link to webportal command
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/bin
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/webportal
 
 %files
