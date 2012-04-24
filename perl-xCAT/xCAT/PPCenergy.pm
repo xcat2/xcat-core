@@ -270,9 +270,13 @@ sub renergy {
         return ([[$node, "Cannot get user:password for the node. Please check table 'ppchcp' or 'ppcdirect'.", -1]]);
     }
 
+    # secure passwd in verbose mode
+    my $tmpv = $verbose;
+    $verbose = 0;
     if ($verbose) {
         push @return_msg, [$node, "Attributes of $node:\n User=$user\n Password=$password\n CEC=$cec_name\n nodetype=$hw_type\n inithcp=$hcphost\n hcps=@hcps_ip\n hcptype=$hcp_type", 0];
     }
+    $verbose = $tmpv;
 
     my $master = xCAT::Utils->get_site_Master();
     my $masterip = xCAT::NetworkUtils->getipaddr($master);
@@ -333,7 +337,12 @@ sub renergy {
     
         # Call the xCAT_cim_client to query or set the energy capabilities
         $cmd .= " 2>&1";
+
+        # secure passwd in verbose mode
+        my $tmpv = $::VERBOSE;
+        $::VERBOSE = 0;        
         my @result = xCAT::Utils->runcmd("$cmd", -1);
+        $::VERBOSE = $tmpv;
 
         foreach my $line (@result) {
             chomp($line);
