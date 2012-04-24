@@ -23,6 +23,7 @@
 #					Otherwise, and snap build is assumed.
 #		PREGA=1 - means this is a branch that has not been released yet, so during the promote, copy the
 #					xcat-core tarball to the SF web site instead of the FRS area.
+#		BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in prep for a release.
 # 		UP=0 or UP=1 - override the default upload behavior 
 # 		SVNUP=<filename> - control which rpms get built by specifying a coresvnup file
 #       FRSYUM=0 - put the yum repo and snap builds in the old project web area instead of the FRS area.
@@ -138,6 +139,10 @@ if [ -z "$SVNUP" ]; then
 	echo "svn up > $SVNUP"
 	svn up > $SVNUP
 fi
+SOMETHINGCHANGED=0
+if ! $GREP 'At revision' $SVNUP; then
+	SOMETHINGCHANGED=1
+fi
 
 # Process for making most of the rpms
 function maker {
@@ -154,7 +159,7 @@ function maker {
 }
 
 # If anything has changed, we should always rebuild perl-xCAT
-if ! $GREP 'At revision' $SVNUP; then		# Use to be:  $GREP perl-xCAT $SVNUP; then
+if [ $SOMETHINGCHANGED == 1 -o "$BUILDALL" == 1 ]; then		# Use to be:  $GREP perl-xCAT $SVNUP; then
 	UPLOAD=1
 	maker perl-xCAT
 fi
@@ -165,7 +170,7 @@ fi
 
 # Build the rest of the noarch rpms
 for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test; do
-	if $GREP $rpmname $SVNUP; then
+	if $GREP $rpmname $SVNUP || [ "$BUILDALL" == 1 ]; then
 		UPLOAD=1
 		if [ "$EMBED" = "zvm" -a "$rpmname" != "xCAT-server" -a "$rpmname" != "xCAT-UI" ]; then continue; fi		# for embedded envs only need to build server special
 		maker $rpmname
@@ -178,7 +183,7 @@ for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test; d
 done
 
 if [ "$OSNAME" != "AIX" -a "$EMBED" != "zvm" ]; then
-	if grep -v nbroot2 $SVNUP|$GREP xCAT-nbroot; then
+	if grep -v nbroot2 $SVNUP|$GREP xCAT-nbroot || [ "$BUILDALL" == 1 ]; then
 		UPLOAD=1
 		ORIGFAILEDRPMS="$FAILEDRPMS"
 		for arch in x86_64 x86 ppc64; do
@@ -197,7 +202,7 @@ fi
 # Build the xCAT and xCATsn rpms for all platforms
 for rpmname in xCAT xCATsn; do
 	if [ "$EMBED" = "zvm" ]; then break; fi
-	if $GREP -E "^[UAD] +$rpmname/" $SVNUP; then
+	if [ $SOMETHINGCHANGED == 1 -o "$BUILDALL" == 1 ]; then		# used to be:  if $GREP -E "^[UAD] +$rpmname/" $SVNUP; then
 		UPLOAD=1
 		ORIGFAILEDRPMS="$FAILEDRPMS"
 		if [ "$OSNAME" = "AIX" ]; then
