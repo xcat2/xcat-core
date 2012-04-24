@@ -486,13 +486,18 @@ sub mkpgusers
 
         # set xcatadm id password
         $cmd = qq~echo "xcatadm:$::adminpassword" | /bin/chpasswd -c~;
+
+        # secure passwd in verbose mode
+        my $tmpv = $::VERBOSE;
+        $::VERBOSE = 0;        
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0)
         {
 
-            xCAT::MsgUtils->message("E", " $cmd failed.");
+            xCAT::MsgUtils->message("E", " command failed.");
             exit(1);
         }
+        $::VERBOSE = $tmpv;
     }
 
     #
@@ -841,14 +846,19 @@ sub createcfgloc
     }
     my $pgentry = "Pg:dbname=xcatdb;host=$::MN|xcatadm|$::adminpassword";
     $cmd = "echo \"$pgentry\" > $cfgloc";
+
+    # secure passwd in verbose mode
+    my $tmpv = $::VERBOSE;
+    $::VERBOSE = 0;    
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
-        $message = "$cmd failed. Could not setup cfgloc";
+        $message = "command failed. Could not setup cfgloc";
         xCAT::MsgUtils->message("E", "$message");
         exit(1);
 
     }
+    $::VERBOSE = $tmpv;
 
     # allow readonly by root
     chmod 0600, $cfgloc;
