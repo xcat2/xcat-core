@@ -126,6 +126,12 @@ if (ref($request) eq 'HASH') { # the request is an array, not pure XML
        if (!(defined($request->{username}))) {
          $request->{username}->[0] = getpwuid($>);
        }
+
+       # only allow root to run
+       unless ($request->{username}->[0] =~ /root/) {
+         print ("WARNING: Only allow root to run XCATBYPASS mode, your current user ID is $request->{username}->[0].\n");
+         return 0;
+       }
      }
    # Load plugins from either specified or default dir
     require xCAT::Table;
