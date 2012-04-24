@@ -82,6 +82,14 @@ mkdir -p $RPM_BUILD_ROOT%{prefix}/ui
 cp -r * $RPM_BUILD_ROOT%{prefix}/ui
 chmod 755 $RPM_BUILD_ROOT%{prefix}/ui/*
 
+# Copy over xCAT UI plugins
+cp xcat/plugins/*.pm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/web.pm
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/webportal.pm
+
+# Create symbolic link to webportal command
+ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/webportal
+
 %files
 %defattr(-,root,root)
 %{prefix}/ui
@@ -142,9 +150,9 @@ chmod 755 $RPM_BUILD_ROOT%{prefix}/ui/*
 	if [ "$1" = 1 ] || [ "$1" = 2 ]		# Install or upgrade
 	then
 		# Copy xCAT plugins to /opt/xcat/lib/perl/xCAT_plugin
-		cp %{prefix}/ui/xcat/plugins/web.pm %{prefix}/lib/perl/xCAT_plugin/
-		cp %{prefix}/ui/xcat/plugins/webportal.pm %{prefix}/lib/perl/xCAT_plugin/
-		/bin/ln -s ../bin/xcatclientnnr ../bin/webportal
+		# cp %{prefix}/ui/xcat/plugins/web.pm %{prefix}/lib/perl/xCAT_plugin/
+		# cp %{prefix}/ui/xcat/plugins/webportal.pm %{prefix}/lib/perl/xCAT_plugin/
+		# /bin/ln -s ../bin/xcatclientnnr ../bin/webportal
 		/etc/init.d/xcatd restart
 		
 		# Copy php.ini file into /opt/xcat/ui and turn off output_buffering
