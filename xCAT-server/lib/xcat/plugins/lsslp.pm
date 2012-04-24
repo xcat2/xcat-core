@@ -3974,7 +3974,7 @@ sub get_rsp_dev
         #############################################
         foreach ( keys %$hmc ) {
             ( $hmc->{$_}->{username}, $hmc->{$_}->{password}) = xCAT::PPCdb::credentials( $hmc->{$_}->{name}, lc($hmc->{$_}->{'type'}), "hscroot" );
-            trace( $request, "user/passwd for $_ is $hmc->{$_}->{username} $hmc->{$_}->{password}");
+            trace( $request, "user/passwd for $_ is $hmc->{$_}->{username} xxxxxx");
         }
     }
 
@@ -3985,7 +3985,7 @@ sub get_rsp_dev
         #############################################
         foreach ( keys %$fsp ) {
             ( $fsp->{$_}->{username}, $fsp->{$_}->{password}) = xCAT::PPCdb::credentials( $fsp->{$_}->{name}, lc($fsp->{$_}->{'type'}), "admin");
-            trace( $request, "user/passwd for $_ is $fsp->{$_}->{username} $fsp->{$_}->{password}");
+            trace( $request, "user/passwd for $_ is $fsp->{$_}->{username} xxxxxx");
         }
     }
 
@@ -3996,7 +3996,7 @@ sub get_rsp_dev
         #############################################
         foreach ( keys %$bpa ) {
             ( $bpa->{$_}->{username}, $bpa->{$_}->{password}) = xCAT::PPCdb::credentials( $bpa->{$_}->{name}, lc($bpa->{$_}->{'type'}), "admin");
-            trace( $request, "user/passwd for $_ is $bpa->{$_}->{username} $bpa->{$_}->{password}");
+            trace( $request, "user/passwd for $_ is $bpa->{$_}->{username} xxxxxx");
         }
     }
 
