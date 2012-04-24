@@ -546,8 +546,11 @@ sub removeVM {
 	xCAT::zvmUtils->delTabEntry( 'noderes',  'node', $node );
 	xCAT::zvmUtils->delTabEntry( 'nodehm',   'node', $node );
 
-	# Remove old hostname from known_hosts
+	# Erase old hostname from known_hosts
 	$out = `ssh-keygen -R $node`;
+	
+	# Erase hostname from /etc/hosts
+	$out = `sed -i /$node./d /etc/hosts`;
 
 	return;
 }
