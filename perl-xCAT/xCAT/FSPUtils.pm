@@ -175,9 +175,17 @@ sub fsp_api_action {
 
     #print "cmd: $cmd\n"; 
     $SIG{CHLD} = 'DEFAULT'; 
+    # secure passwords in verbose mode
+    my $tmpv = $::VERBOSE;
+    if($action =~ /^add_connection$/)
+    {
+        # password involved
+        $::VERBOSE = 0;
+    }
     $res = xCAT::Utils->runcmd($cmd, -1);
     #$res = "good"; 
     $Rc = $::RUNCMD_RC;
+    $::VERBOSE = $tmpv;
     
     ##################
     # output the prompt
