@@ -2044,6 +2044,7 @@ sub getNodesAttribs {
         return dbc_call($self,'getNodesAttribs',@_);
     }
     my $nodelist = shift;
+    unless ($nodelist) { $nodelist = []; } #common to be invoked with undef seemingly
     my %options=();
     my @attribs;
     if (ref $_[0]) {
