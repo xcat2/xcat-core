@@ -298,6 +298,8 @@ sub runmysqlcmd
     if ($? > 0)    # error
     {
         $rc = $? >> 8;
+        # secure password
+        $cmd = "$mysql --user=$admin --password=xxxxxx --host=$hostname $dbname \< $file   ";
         xCAT::MsgUtils->message("SE",
                                 "The command $cmd had errors. Return=$rc");
     }
