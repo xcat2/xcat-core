@@ -83,6 +83,7 @@ cp -r * $RPM_BUILD_ROOT%{prefix}/ui
 chmod 755 $RPM_BUILD_ROOT%{prefix}/ui/*
 
 # Copy over xCAT UI plugins
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
 cp xcat/plugins/*.pm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/web.pm
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/webportal.pm
