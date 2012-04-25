@@ -45,6 +45,18 @@ zvmPlugin.prototype.loadConfigPage = function(tabId) {
 		queryProfiles('zvmConfigProfile');
 	});
 	
+	// Create accordion panel for images
+	var imgSection = $('<div id="zvmConfigImages"></div>');
+	var imgLnk = $('<h3><a href="#">Images</a></h3>').click(function () {
+		// Do not load panel again if it is already loaded
+		if ($('#zvmConfigImages').find('.dataTables_wrapper').length)
+			return;
+		else
+			$('#zvmConfigImages').append(createLoader(''));
+
+		queryImages('zvmConfigImages');
+	});
+	
 	// Create accordion panel for groups
 	var groupsSection = $('<div id="zvmConfigGroups"></div>');
 	var groupsLnk = $('<h3><a href="#">Groups</a></h3>').click(function () {
@@ -56,15 +68,8 @@ zvmPlugin.prototype.loadConfigPage = function(tabId) {
 
 //		queryGroups('zvmConfigGroups');
 	});
-	
-	// Create accordion panel for nodes
-	var nodeSection = $('<div id="zvmConfigNode"></div>');
-	nodeSection.append(createInfoBar('Modify node attributes'));
-	var nodeLnk = $('<h3><a href="#">Nodes</a></h3>').click(function () {
 		
-	});
-	
-	configAccordion.append(userLnk, userSection, profileLnk, profileSection, groupsLnk, groupsSection, nodeLnk, nodeSection);
+	configAccordion.append(userLnk, userSection, profileLnk, profileSection, imgLnk, imgSection, groupsLnk, groupsSection);
 	$('#' + tabId).append(configAccordion);
 	configAccordion.accordion();
 	

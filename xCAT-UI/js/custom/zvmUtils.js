@@ -3408,6 +3408,220 @@ function queryProfiles(panelId) {
 }
 
 /**
+ * Query the images that exists
+ * 
+ * @param panelId
+ * 			Panel ID
+ * @return Nothing
+ */
+function queryImages(panelId) {
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'tabdump',
+			tgt : '',
+			args : 'osimage',
+			msg : panelId
+		},
+
+		success : configImagePanel
+	});
+}
+
+/**
+ * Panel to configure OS images
+ * 
+ * @param data
+ * 			Data from HTTP request
+ * @return Nothing
+ */
+function configImagePanel(data) {	
+	var panelId = data.msg;
+	var rsp = data.rsp;
+	
+	// Wipe panel clean
+	$('#' + panelId).empty();
+
+	// Add info bar
+	$('#' + panelId).append(createInfoBar('Create, edit, and delete operating system images for the self-service portal.'));
+	
+	// Create table
+	var tableId = 'zvmImageTable';
+	var table = new DataTable(tableId);
+	table.init(['<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'Name', 'Selectable', 'OS Version', 'Profile', 'Method', 'Description']);
+
+	// Insert images into table
+	var imagePos = 0;
+	var profilePos = 0;
+	var osversPos = 0;
+	var osarchPos = 0;
+	var provMethodPos = 0;
+	var comments = 0;
+	var desc, selectable, tmp;
+	// Get column index for each attribute
+	var colNameArray = rsp[0].substr(1).split(',');
+	for (var i in colNameArray){
+		switch (colNameArray[i]){
+			case 'imagename': {
+				imagePos = i;
+			}
+			break;
+			
+			case 'profile':{
+				profilePos = i;
+			}
+			break;
+			
+			case 'osvers':{
+				osversPos = i;
+			}
+			break;
+			
+			case 'osarch':{
+				osarchPos = i;
+			}
+			break;
+			
+			case 'comments':{
+				comments = i;
+			}
+			break;
+			
+			case 'provmethod':{
+				provMethodPos = i;
+			}			
+			break;
+			
+			default :
+			break;
+		}
+	}
+	
+	// Go through each index
+	for (var i = 1; i < rsp.length; i++) {
+		// Get image name
+		var cols = rsp[i].split(',');
+		var name = cols[imagePos].replace(new RegExp('"', 'g'), '');
+		var profile = cols[profilePos].replace(new RegExp('"', 'g'), '');
+		var provMethod = cols[provMethodPos].replace(new RegExp('"', 'g'), '');
+		var osVer = cols[osversPos].replace(new RegExp('"', 'g'), '');
+		var osArch = cols[osarchPos].replace(new RegExp('"', 'g'), '');
+		var osComments = cols[comments].replace(new RegExp('"', 'g'), '');
+				
+		// Only save install boot and s390x architectures
+		if (osArch == "s390x") {
+			// Set default description and selectable
+			selectable = "no";
+			desc = "No description";
+			
+			if (osComments) {
+				tmp = osComments.split('|');
+				for (var j = 0; j < tmp.length; j++) {
+					// Save description
+					if (tmp[j].indexOf('description:') > -1) {
+						desc = tmp[j].replace('description:', '');
+						desc = jQuery.trim(desc);
+					}
+					
+					// Is the image selectable?
+					if (tmp[j].indexOf('selectable:') > -1) {
+						selectable = tmp[j].replace('selectable:', '');
+						selectable = jQuery.trim(selectable);
+					}
+				}
+			}
+			
+			// Columns are: name, selectable, OS version, profile, method, and description
+			var cols = new Array(name, selectable, osVer, profile, provMethod, desc);
+
+			// Add remove button where id = user name
+			cols.unshift('<input type="checkbox" name="' + name + '"/>');
+
+			// Add row
+			table.add(cols);
+		}		
+	}
+	
+	// Append datatable to tab
+	$('#' + panelId).append(table.object());
+
+	// Turn into datatable
+	var dTable = $('#' + tableId).dataTable({
+		'iDisplayLength': 50,
+		'bLengthChange': false,
+		"sScrollX": "100%",
+		"bAutoWidth": true
+	});
+	
+	// Create action bar
+	var actionBar = $('<div class="actionBar"></div>');
+	
+	// Create a profile
+	var createLnk = $('<a>Create</a>');
+	createLnk.click(function() {
+		imageDialog();
+	});
+	
+	// Edit a profile
+	var editLnk = $('<a>Edit</a>');
+	editLnk.click(function() {
+		var images = $('#' + tableId + ' input[type=checkbox]:checked');
+		for (var i in images) {
+			var image = images.eq(i).attr('name');			
+			if (image) {
+				// Column order is: profile, selectable, disk pool, disk size, and directory entry
+				var cols = images.eq(i).parents('tr').find('td');
+				var selectable = cols.eq(2).text();				
+				var osVersion = cols.eq(3).text();
+				var profile = cols.eq(4).text();
+				var method = cols.eq(5).text();
+				var description = cols.eq(6).text();
+				
+				editImageDialog(image, selectable, osVersion, profile, method, description);
+			}
+		}
+	});
+		
+	// Delete a profile
+	var deleteLnk = $('<a>Delete</a>');
+	deleteLnk.click(function() {
+		var images = getNodesChecked(tableId);
+		if (images) {
+			deleteImageDialog(images);
+		}
+	});
+	
+	// Refresh profiles table
+	var refreshLnk = $('<a>Refresh</a>');
+	refreshLnk.click(function() {
+		queryImages(panelId);
+	});
+	
+	// Create an action menu
+	var actionsMenu = createMenu([createLnk, editLnk, deleteLnk, refreshLnk]);
+	actionsMenu.superfish();
+	actionsMenu.css('display', 'inline-block');
+	actionBar.append(actionsMenu);
+	
+	// Set correct theme for action menu
+	actionsMenu.find('li').hover(function() {
+		setMenu2Theme($(this));
+	}, function() {
+		setMenu2Normal($(this));
+	});
+	
+	// Create a division to hold actions menu
+	var menuDiv = $('<div id="' + tableId + '_menuDiv" class="menuDiv"></div>');
+	$('#' + tableId + '_wrapper').prepend(menuDiv);
+	menuDiv.append(actionBar);	
+	$('#' + tableId + '_filter').appendTo(menuDiv);
+
+	// Resize accordion
+	$('#zvmConfigAccordion').accordion('resize');
+}
+
+/**
  * Panel to configure directory entries and disks for a profile
  * 
  * @param panelId
@@ -3424,15 +3638,15 @@ function configProfilePanel(panelId) {
 	// Create table
 	var tableId = 'zvmProfileTable';
 	var table = new DataTable(tableId);
-	table.init(['<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'Profile', 'Selectable', 'Disk pool', 'Disk size', 'Directory entry']);
+	table.init(['<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'Profile', 'Disk pool', 'Disk size', 'Directory entry']);
 
 	// Insert profiles into table
 	var profiles = $.cookie('profiles').split(',');
 	profiles.push('default'); // Add default profile
 	for (var i in profiles) {
 		if (profiles[i]) {
-			// Columns are: profile, selectable, disk pool, disk size, and directory entry
-			var cols = new Array(profiles[i], '', '', '', '');
+			// Columns are: profile, selectable, description, disk pool, disk size, and directory entry
+			var cols = new Array(profiles[i], '', '', '');
 	
 			// Add remove button where id = user name
 			cols.unshift('<input type="checkbox" name="' + profiles[i] + '"/>');
@@ -3471,11 +3685,11 @@ function configProfilePanel(panelId) {
 			if (profile) {
 				// Column order is: profile, selectable, disk pool, disk size, and directory entry
 				var cols = profiles.eq(i).parents('tr').find('td');
-				var pool = cols.eq(3).text();
-				var size = cols.eq(4).text();
-				var entry = cols.eq(5).html().replace(new RegExp('<br>', 'g'), '\n');
+				var pool = cols.eq(2).text();
+				var size = cols.eq(3).text();
+				var entry = cols.eq(4).html().replace(new RegExp('<br>', 'g'), '\n');
 				
-				openEditProfileDialog(profile, pool, size, entry);
+				editProfileDialog(profile, pool, size, entry);
 			}
 		}
 	});
@@ -3574,10 +3788,10 @@ function insertDirectoryEntry(data) {
 
 	// Update the directory entry column
 	var dTable = $('#' + tableId).dataTable();
-	dTable.fnUpdate(entry, rowPos, 5, false);
+	dTable.fnUpdate(entry, rowPos, 4, false);
 	
 	// Adjust table styling
-	$('#' + tableId + ' td:nth-child(6)').css({
+	$('#' + tableId + ' td:nth-child(5)').css({
 		'text-align': 'left'
 	});
 	adjustColumnSize(tableId);
@@ -3618,17 +3832,135 @@ function insertDiskInfo(data) {
 			tmp = info[i].split('=');
 			pool = jQuery.trim(tmp[1]);
 			
-			dTable.fnUpdate(pool, rowPos, 3, false);
+			dTable.fnUpdate(pool, rowPos, 2, false);
 		} if (info[i].indexOf('eckd_size') > -1) {
 			tmp = info[i].split('=');
 			eckdSize = jQuery.trim(tmp[1]);
 			
-			dTable.fnUpdate(eckdSize, rowPos, 4, false);
+			dTable.fnUpdate(eckdSize, rowPos, 3, false);
 		}			
 	}
 	
 	// Adjust table styling
 	adjustColumnSize(tableId);
+}
+
+/**
+ * Open image dialog
+ */
+function imageDialog() {
+	// Create form to add profile
+	var dialogId = 'zvmCreateImage';
+	var imageForm = $('<div id="' + dialogId + '" class="form"></div>');
+	
+	// Create info bar
+	var info = createInfoBar('Provide the following attributes for the image. The image name will be generated based on the attributes you will give.');
+	imageForm.append(info);
+		
+	var imageName = $('<div><label>Image name:</label><input type="text" name="imagename" disabled="disabled"/></div>');
+	var selectable = $('<div><label>Selectable:</label><input type="checkbox" name="selectable"/></div>');
+	var imageType = $('<div><label>Image type:</label><input type="text" name="imagetype" value="linux" disabled="disabled"/></div>');
+	var architecture = $('<div><label>OS architecture:</label><input type="text" name="osarch" value="s390x" disabled="disabled"/></div>');
+	var osName = $('<div><label>OS name:</label><input type="text" name="osname" value="Linux" disabled="disabled"/></div>');
+	var osVersion = $('<div><label>OS version:</label><input type="text" name="osvers"/></div>');	
+	var profile = $('<div><label>Profile:</label><input type="text" name="profile"/></div>');
+	var provisionMethod = $('<div><label>Provision method:</label></div>');
+	var provisionSelect = $('<select name="provmethod">'
+			+ '<option value=""></option>'
+			+ '<option value="install">install</option>'
+			+ '<option value="netboot">netboot</option>'
+			+ '<option value="statelite">statelite</option>'
+		+ '</select>');
+	provisionMethod.append(provisionSelect);
+	var comments = $('<div><label>Description:</label><input type="text" name="comments"/></div>');
+	imageForm.append(imageName, selectable, imageType, architecture, osName, osVersion, profile, provisionMethod, comments);
+	
+	// Open dialog to add image
+	imageForm.dialog({
+		title:'Create image',
+		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
+		width: 400,
+		buttons: {
+        	"Ok": function() {
+        		// Remove any warning messages
+        		$(this).find('.ui-state-error').remove();
+        		
+				// Get image attributes
+        		var imageType = $(this).find('input[name="imagetype"]');
+        		var selectable = $(this).find('input[name="selectable"]');
+        		var architecture = $(this).find('input[name="osarch"]');
+        		var osName = $(this).find('input[name="osname"]');
+        		var osVersion = $(this).find('input[name="osvers"]');
+        		var profile = $(this).find('input[name="profile"]');
+        		var provisionMethod = $(this).find('select[name="provmethod"]');
+        		var comments = $(this).find('input[name="comments"]');
+        		        		
+        		// Check that image attributes are provided before continuing
+        		var ready = 1;
+        		var inputs = new Array(imageType, architecture, osName, osVersion, profile, provisionMethod);
+        		for (var i in inputs) {
+        			if (!inputs[i].val()) {
+        				inputs[i].css('border-color', 'red');
+        				ready = 0;
+        			} else
+        				inputs[i].css('border-color', '');
+        		}
+        		
+				// If inputs are not complete, show warning message
+				if (!ready) {
+					var warn = createWarnBar('Please provide a value for each missing field.');
+					warn.prependTo($(this));
+				} else {
+					// Override image name
+	        		$(this).find('input[name="imagename"]').val(osVersion.val() + '-' + architecture.val() + '-' + provisionMethod.val() + '-' + profile.val());
+	        		var imageName = $(this).find('input[name="imagename"]');
+	        		
+					// Change dialog buttons
+    				$(this).dialog('option', 'buttons', {
+    					'Close': function() {$(this).dialog("close");}
+    				});
+    				
+    				// Set default description
+    				if (!comments.val())
+    					comments.val('No description');
+    				
+    				// Create arguments to send via AJAX
+					var args = 'updateosimage;' + imageName.val() + ';' +
+						imageType.val() + ';' +
+						architecture.val() + ';' +
+						osName.val() + ';' +
+						osVersion.val() + ';' +
+						profile.val() + ';' +
+						provisionMethod.val() + ';';
+						
+					if (selectable.attr('checked'))
+						args += '"description:' + comments.val() + '|selectable:yes"';
+					else
+						args += '"description:' + comments.val() + '|selectable:no"';
+															
+    				// Add image to xCAT
+    				$.ajax( {
+    					url : 'lib/cmd.php',
+    	        		dataType : 'json',
+    	        		data : {
+    	        			cmd : 'webrun',
+    	        			tgt : '',
+    	        			args : args,
+    	        			msg : dialogId
+    	        		},
+    
+    					success : updatePanel
+    				});
+				}
+			},
+			"Cancel": function() {
+        		$(this).dialog( "close" );
+        	}
+		}
+	});
 }
 
 /**
@@ -3735,7 +4067,7 @@ function profileDialog() {
  * 			Profiles to delete
  * @return Nothing
  */
-function openDeleteProfileDialog(profiles) {
+function deleteProfileDialog(profiles) {
 	// Create form to delete disk to pool
 	var dialogId = 'zvmDeleteProfile';
 	var deleteForm = $('<div id="' + dialogId + '" class="form"></div>');
@@ -3746,7 +4078,7 @@ function openDeleteProfileDialog(profiles) {
 			
 	// Open dialog to delete user
 	deleteForm.dialog({
-		title:'Delete user',
+		title:'Delete profile',
 		modal: true,
 		width: 400,
 		close: function(){
@@ -3795,7 +4127,7 @@ function openDeleteProfileDialog(profiles) {
  * 			Directory entry
  * @return Nothing
  */
-function openEditProfileDialog(profile, pool, size, entry) {
+function editProfileDialog(profile, pool, size, entry) {
 	// Create form to add profile
 	var dialogId = 'zvmEditProfile_' + profile;
 	var profileForm = $('<div id="' + dialogId + '" class="form"></div>');
@@ -3886,6 +4218,203 @@ function openEditProfileDialog(profile, pool, size, entry) {
 						    });
 						}
 					});
+				}
+			},
+			"Cancel": function() {
+        		$(this).dialog( "close" );
+        	}
+		}
+	});
+}
+
+/**
+ * Open dialog to confirm image delete
+ * 
+ * @param images
+ * 			Images to delete
+ * @return Nothing
+ */
+function deleteImageDialog(images) {
+	// Create form to delete disk to pool
+	var dialogId = 'zvmDeleteImage';
+	var deleteForm = $('<div id="' + dialogId + '" class="form"></div>');
+	
+	// Create info bar
+	var info = createInfoBar('Are you sure you want to delete ' + images.replace(new RegExp(',', 'g'), ', ') + '?');
+	deleteForm.append(info);
+			
+	// Open dialog to delete user
+	deleteForm.dialog({
+		title:'Delete image',
+		modal: true,
+		width: 400,
+		close: function(){
+        	$(this).remove();
+        },
+		buttons: {
+        	"Ok": function(){
+        		// Remove any warning messages
+        		$(this).find('.ui-state-error').remove();
+        		
+				// Change dialog buttons
+				$(this).dialog('option', 'buttons', {
+					'Close': function() {$(this).dialog("close");}
+				});
+										
+				// Delete user
+				$.ajax( {
+    				url : 'lib/cmd.php',
+    				dataType : 'json',
+    				data : {
+    					cmd : 'webrun',
+    					tgt : '',
+    					args : 'rmosimage;' + images,
+    					msg : dialogId
+    				},
+    				success : updatePanel
+            	});
+			},
+			"Cancel": function() {
+        		$(this).dialog( "close" );
+        	}
+		}
+	});
+}
+
+
+/**
+ * Edit image dialog
+ * 
+ * @param iName
+ * 			Image name
+ * @param iSelectable
+ * 			Is image selectable from service page
+ * @param iOsVersion
+ * 			OS version
+ * @param iProfile
+ * 			Profile name
+ * @param iMethod
+ * 			Provisioning method
+ * @param iComments
+ * 			Image description
+ * 
+ * @return Nothing
+ */
+function editImageDialog(iName, iSelectable, iOsVersion, iProfile, iMethod, iComments) {
+	// Create form to add profile
+	var dialogId = 'zvmCreateImage';
+	var imageForm = $('<div id="' + dialogId + '" class="form"></div>');
+	
+	// Create info bar
+	var info = createInfoBar('Provide the following attributes for the image. The image name will be generated based on the attributes you will give.');
+	imageForm.append(info);
+		
+	var imageName = $('<div><label>Image name:</label><input type="text" name="imagename" disabled="disabled"/></div>');
+	var selectable = $('<div><label>Selectable:</label><input type="checkbox" name="selectable"/></div>');
+	var imageType = $('<div><label>Image type:</label><input type="text" name="imagetype" value="linux" disabled="disabled"/></div>');
+	var architecture = $('<div><label>OS architecture:</label><input type="text" name="osarch" value="s390x" disabled="disabled"/></div>');
+	var osName = $('<div><label>OS name:</label><input type="text" name="osname" value="Linux" disabled="disabled"/></div>');
+	var osVersion = $('<div><label>OS version:</label><input type="text" name="osvers"/></div>');	
+	var profile = $('<div><label>Profile:</label><input type="text" name="profile"/></div>');
+	var provisionMethod = $('<div><label>Provision method:</label></div>');
+	var provisionSelect = $('<select name="provmethod">'
+			+ '<option value=""></option>'
+			+ '<option value="install">install</option>'
+			+ '<option value="netboot">netboot</option>'
+			+ '<option value="statelite">statelite</option>'
+		+ '</select>');
+	provisionMethod.append(provisionSelect);
+	var comments = $('<div><label>Description:</label><input type="text" name="comments"/></div>');
+	imageForm.append(imageName, selectable, imageType, architecture, osName, osVersion, profile, provisionMethod, comments);
+	
+	// Fill in image attributes
+	imageForm.find('input[name="imagename"]').val(iName);
+	imageForm.find('input[name="osvers"]').val(iOsVersion);
+	imageForm.find('input[name="profile"]').val(iProfile);
+	imageForm.find('select[name="provmethod"]').val(iMethod);
+	imageForm.find('input[name="comments"]').val(iComments);
+	if (iSelectable == "yes")
+		imageForm.find('input[name="selectable"]').attr('checked', 'checked');
+		
+	// Open dialog to add image
+	imageForm.dialog({
+		title:'Edit image',
+		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
+		width: 400,
+		buttons: {
+        	"Ok": function() {
+        		// Remove any warning messages
+        		$(this).find('.ui-state-error').remove();
+        		
+				// Get image attributes
+        		var imageType = $(this).find('input[name="imagetype"]');
+        		var selectable = $(this).find('input[name="selectable"]');
+        		var architecture = $(this).find('input[name="osarch"]');
+        		var osName = $(this).find('input[name="osname"]');
+        		var osVersion = $(this).find('input[name="osvers"]');
+        		var profile = $(this).find('input[name="profile"]');
+        		var provisionMethod = $(this).find('select[name="provmethod"]');
+        		var comments = $(this).find('input[name="comments"]');
+        		        		
+        		// Check that image attributes are provided before continuing
+        		var ready = 1;
+        		var inputs = new Array(imageType, architecture, osName, osVersion, profile, provisionMethod);
+        		for (var i in inputs) {
+        			if (!inputs[i].val()) {
+        				inputs[i].css('border-color', 'red');
+        				ready = 0;
+        			} else
+        				inputs[i].css('border-color', '');
+        		}
+        		
+				// If inputs are not complete, show warning message
+				if (!ready) {
+					var warn = createWarnBar('Please provide a value for each missing field.');
+					warn.prependTo($(this));
+				} else {
+					// Override image name
+	        		$(this).find('input[name="imagename"]').val(osVersion.val() + '-' + architecture.val() + '-' + provisionMethod.val() + '-' + profile.val());
+	        		var imageName = $(this).find('input[name="imagename"]');
+	        		
+					// Change dialog buttons
+    				$(this).dialog('option', 'buttons', {
+    					'Close': function() {$(this).dialog("close");}
+    				});
+    				
+    				// Set default description
+    				if (!comments.val())
+    					comments.val('No description');
+    				
+    				// Create arguments to send via AJAX
+					var args = 'updateosimage;' + imageName.val() + ';' +
+						imageType.val() + ';' +
+						architecture.val() + ';' +
+						osName.val() + ';' +
+						osVersion.val() + ';' +
+						profile.val() + ';' +
+						provisionMethod.val() + ';';
+						
+					if (selectable.attr('checked'))
+						args += '"description:' + comments.val() + '|selectable:yes"';
+					else
+						args += '"description:' + comments.val() + '|selectable:no"';
+															
+    				// Add image to xCAT
+    				$.ajax( {
+    					url : 'lib/cmd.php',
+    	        		dataType : 'json',
+    	        		data : {
+    	        			cmd : 'webrun',
+    	        			tgt : '',
+    	        			args : args,
+    	        			msg : dialogId
+    	        		},
+    
+    					success : updatePanel
+    				});
 				}
 			},
 			"Cancel": function() {

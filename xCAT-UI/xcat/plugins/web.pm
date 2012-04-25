@@ -67,7 +67,9 @@ sub process_request {
 		'updateuser' => \&web_updateuser,
 		'deleteuser' => \&web_deleteuser,
 		'mkzprofile' => \&web_mkzprofile,
-		'rmzprofile' => \&web_rmzprofile
+		'rmzprofile' => \&web_rmzprofile,
+		'updateosimage' => \&web_updateosimage,
+		'rmosimage' => \&web_rmosimage
 	);
 
 	#check whether the request is authorized or not
@@ -2347,6 +2349,41 @@ sub web_rmzprofile() {
 	}
 
 	my $info = "Profile successfully deleted";
+	$callback->( { info => $info } );
+}
+
+sub web_updateosimage() {
+	# Add OS image to xCAT table
+	my ( $request, $callback, $sub_req ) = @_;
+		
+	my $name = $request->{arg}->[1];
+	my $type = $request->{arg}->[2];
+	my $arch = $request->{arg}->[3];
+	my $osName = $request->{arg}->[4];
+	my $osVersion = $request->{arg}->[5];
+	my $profile = $request->{arg}->[6];
+	my $provMethod = $request->{arg}->[7];
+	my $comments = $request->{arg}->[8];
+	
+	`chtab -d imagename=$name osimage`;
+	`chtab osimage.imagename=$name osimage.imagetype=$type osimage.osarch=$arch osimage.osname=$osName osimage.osvers=$osVersion osimage.profile=$profile osimage.provmethod=$provMethod osimage.comments=$comments`;
+	my $info = "Image successfully updated";
+	$callback->( { info => $info } );
+}
+
+sub web_rmosimage() {
+	# Delete OS image from xCAT table
+	my ( $request, $callback, $sub_req ) = @_;
+		
+	my $name = $request->{arg}->[1];
+	my @names = split( ',', $name );
+		
+	# Delete user from xCAT passwd and policy tables
+	foreach(@names) {		
+		`chtab -d imagename=$_ osimage`;
+	}
+	
+	my $info = "Image successfully deleted";
 	$callback->( { info => $info } );
 }
 

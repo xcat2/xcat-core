@@ -151,10 +151,7 @@ ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/webportal
 	
 	if [ "$1" = 1 ] || [ "$1" = 2 ]		# Install or upgrade
 	then
-		# Copy xCAT plugins to /opt/xcat/lib/perl/xCAT_plugin
-		# cp %{prefix}/ui/xcat/plugins/web.pm %{prefix}/lib/perl/xCAT_plugin/
-		# cp %{prefix}/ui/xcat/plugins/webportal.pm %{prefix}/lib/perl/xCAT_plugin/
-		# /bin/ln -s ../bin/xcatclientnnr ../bin/webportal
+		# Restart xCAT
 		/etc/init.d/xcatd restart
 		
 		# Copy php.ini file into /opt/xcat/ui and turn off output_buffering
@@ -164,7 +161,7 @@ ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/webportal
 	    	/bin/sed /etc/php5/apache2/php.ini -e 's/output_buffering = 4096/output_buffering = Off/g' > %{prefix}/ui/php.ini
 	  	fi
 	  	
-		# Restart Apache Web Server
+		# Restart Apache Server
 		/etc/init.d/$apachedaemon restart
 		true
 	fi

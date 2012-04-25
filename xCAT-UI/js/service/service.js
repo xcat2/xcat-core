@@ -895,7 +895,7 @@ function loadNode(e) {
 }
 
 /**
- * Set a cookie for disk pool names
+ * Set a cookie for group names
  * 
  * @param data
  *            Data from HTTP request
@@ -906,8 +906,12 @@ function setGroupCookies(data) {
 		var groups = new Array();
 		
 		// Index 0 is the table header
-		var cols, name, ip, hostname, desc, comments, tmp;
+		var cols, name, ip, hostname, desc, selectable, comments, tmp;
 		for (var i = 1; i < data.rsp.length; i++) {
+			// Set default description and selectable
+			selectable = "no";
+			desc = "No description";
+			
 			// Split into columns:
 			// node, ip, hostnames, otherinterfaces, comments, disable
 			cols = data.rsp[i].split(',');
@@ -917,15 +921,24 @@ function setGroupCookies(data) {
 			
 			// It should return: "description: All machines; network: 10.1.100.0/24;"
 			comments = cols[4].replace(new RegExp('"', 'g'), '');
-			tmp = comments.split(';');
+			tmp = comments.split('|');
 			for (var j = 0; j < tmp.length; j++) {
+				// Save description
 				if (tmp[j].indexOf('description:') > -1) {
 					desc = tmp[j].replace('description:', '');
 					desc = jQuery.trim(desc);
 				}
+				
+				// Is the group selectable?
+				if (tmp[j].indexOf('selectable:') > -1) {
+					selectable = tmp[j].replace('selectable:', '');
+					selectable = jQuery.trim(selectable);
+				}
 			}
 			
-			groups.push(name + ':' + ip + ':' + hostname + ':' + desc);
+			// Save groups that are selectable
+			if (selectable == "yes")
+				groups.push(name + ':' + ip + ':' + hostname + ':' + desc);
 		}
 		
 		// Set cookie to expire in 60 minutes
@@ -946,7 +959,7 @@ function setOSImageCookies(data) {
 	// Get response
 	var rsp = data.rsp;
 
-	var imageNames = new Array;
+	var imageNames = new Array();
 	var profilesHash = new Object();
 	var osVersHash = new Object();
 	var osArchsHash = new Object();
@@ -956,7 +969,8 @@ function setOSImageCookies(data) {
 	var osarchPos = 0;
 	var provMethodPos = 0;
 	var comments = 0;
-	// Get the column value
+	var desc, selectable, tmp;
+	// Get column index for each attribute
 	var colNameArray = rsp[0].substr(1).split(',');
 	for (var i in colNameArray){
 		switch (colNameArray[i]){
@@ -1008,15 +1022,38 @@ function setOSImageCookies(data) {
 		
 		// Only save install boot
 		if (provMethod.indexOf('install') > -1) {
-			if (!osComments)
-				osComments = 'No descritption';
-			imageNames.push(osImage + ':' + osComments);
+			if (!osComments) {
+				osComments = "No descritption";
+				imageNames.push(osImage + ':' + osComments);
+			} else {
+				// Set default description and selectable
+				selectable = "no";
+				desc = "No description";
+				
+				tmp = osComments.split('|');
+				for (var j = 0; j < tmp.length; j++) {
+					// Save description
+					if (tmp[j].indexOf('description:') > -1) {
+						desc = tmp[j].replace('description:', '');
+						desc = jQuery.trim(desc);
+					}
+					
+					// Is the image selectable?
+					if (tmp[j].indexOf('selectable:') > -1) {
+						selectable = tmp[j].replace('selectable:', '');
+						selectable = jQuery.trim(selectable);
+					}
+				}
+				
+				// Save images that are selectable
+				if (selectable == "yes")
+					imageNames.push(osImage + ':' + desc);
+			}
+			
 			profilesHash[profile] = 1;
 			osVersHash[osVer] = 1;
 			osArchsHash[osArch] = 1;
-		}
-		
-		
+		}		
 	}
 
 	// Save image names in a cookie

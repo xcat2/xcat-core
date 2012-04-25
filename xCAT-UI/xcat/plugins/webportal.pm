@@ -442,7 +442,7 @@ sub gennodename {
 		# Get the network within comments
 		# It should return: "description: All machines; network: 10.1.100.0/24;"
 		# This will help determine the 1st node in the group if none exists
-		@comments = split( /;/, $_->{'comments'} );
+		@comments = split( /|/, $_->{'comments'} );
 		foreach (@comments) {
 			if ($_ =~ m/network:/i) {
 				$network = $_;
