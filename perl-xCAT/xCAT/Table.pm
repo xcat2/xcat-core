@@ -205,7 +205,7 @@ sub init_dbworker {
                                     print $currcon "*XCATBUGDETECTED*:$err:*XCATBUGDETECTED*\n";
                                     print $currcon "*XCATBUGDETECTED*76e9b54341\n";
         			    $clientset->remove($currconn);
-			            close($currcon);
+			            close($currconn);
                                 };
                             }
                         }
