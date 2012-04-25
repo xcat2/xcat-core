@@ -25,7 +25,7 @@ Conflicts: xCAT
 
 %ifos linux
 # yaboot-xcat is pulled in so any SN can manage ppc nodes
-Requires: dhcp httpd nfs-utils expect nmap fping bind perl-XML-Parser vsftpd
+Requires: dhcp httpd nfs-utils nmap fping bind perl-XML-Parser vsftpd
 %ifarch ppc64
 Requires: perl-IO-Stty
 %endif

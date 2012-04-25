@@ -164,6 +164,7 @@ for i in `ls *.rpm|grep -v -E '^tcl-|^tk-|^expect-|^unixODBC-|^xCAT-UI-deps|^per
 	rpm -Uvh $opts $i
 done
 # don't try to install tcl, tk, or expect if they are already installed!
+# this section about expect/tcl/tk can be removed once 2.8 releases, because 2.8 no longer requires expect
 lslpp -l | grep expect.base > /dev/null 2>&1
 if [ $? -gt 0 ]; then
 	if [ "$OSVER" == "5.3" ]; then
