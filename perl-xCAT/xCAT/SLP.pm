@@ -61,16 +61,16 @@ sub dodiscover {
 		@srvtypes = split /,/,$args{SrvTypes};
 	}
 	my $interfaces = get_interfaces(%args);
-        if ($args{Ip}) {
-            my @ips = split /,/, $args{Ip};
-                foreach my $ip (@ips) {
-                    foreach my $nic (keys %$interfaces) {
-                            unless (${${$interfaces->{$nic}}{ipv4addrs}}[0] =~ $ip) {
-                                    delete $interfaces->{$nic};
-                                }
-                        }
-                }
-        }
+    if ($args{Ip}) {
+        my @ips = split /,/, $args{Ip};
+            foreach my $ip (@ips) {
+                foreach my $nic (keys %$interfaces) {
+                        unless (${${$interfaces->{$nic}}{ipv4addrs}}[0] =~ $ip) {
+                                delete $interfaces->{$nic};
+                            }
+                    }
+            }
+    }
 	foreach my $srvtype (@srvtypes) {
 		send_service_request_single(%args,ifacemap=>$interfaces,SrvType=>$srvtype);
 	}
@@ -79,45 +79,48 @@ sub dodiscover {
 		my %rethash;
 		my $waitforsocket = IO::Select->new();
 		$waitforsocket->add($args{'socket'});
-		my $deadline=time()+3;
-		while ($deadline > time()) {
-			while ($waitforsocket->can_read(1)) {
-				my $slppacket;
-				my $peer = $args{'socket'}->recv($slppacket,1400);
-				my( $port,$flow,$ip6n,$ip4n,$scope);
-				my $peername;
-				if ($ip6support) {
-					( $port,$flow,$ip6n,$scope) = Socket6::unpack_sockaddr_in6_all($peer);
-					$peername = Socket6::inet_ntop(Socket6::AF_INET6(),$ip6n);
-				} else {
-					($port,$ip4n) = sockaddr_in($peer);
-					$peername = inet_ntoa($ip4n);
-				}
-				if ($rethash{$peername}) {
-					next; #got a dupe, discard
-				}
-				my $result = process_slp_packet(packet=>$slppacket,sockaddr=>$peer,'socket'=>$args{'socket'});
-				if ($result) {
-					if ($peername =~ /\./) { #ipv4
-						$peername =~ s/::ffff://;
-					}
-					$result->{peername} = $peername;
-					$result->{scopeid} = $scope;
-					$result->{sockaddr} = $peer;
-					my $hashkey;
-					if ($peername =~ /fe80/) {
-						$peername .= '%'.$scope;
-					}
-					$rethash{$peername} = $result;
-					if ($args{Callback}) {
-						$args{Callback}->($result);
-					}
-				}
-			}
-			foreach my $srvtype (@srvtypes) {
-				send_service_request_single(%args,ifacemap=>$interfaces,SrvType=>$srvtype);
-			}
-		}
+		my $retrytime = ($args{Retry}>0)?$args{Retry}+1:1;
+		for(my $i = 0; $i < $retrytime; $i++){
+		    my $deadline=time()+3;
+		    while ($deadline > time()) {
+		    	while ($waitforsocket->can_read(1)) {
+		    		my $slppacket;
+		    		my $peer = $args{'socket'}->recv($slppacket,1400);
+		    		my( $port,$flow,$ip6n,$ip4n,$scope);
+		    		my $peername;
+		    		if ($ip6support) {
+		    			( $port,$flow,$ip6n,$scope) = Socket6::unpack_sockaddr_in6_all($peer);
+		    			$peername = Socket6::inet_ntop(Socket6::AF_INET6(),$ip6n);
+		    		} else {
+		    			($port,$ip4n) = sockaddr_in($peer);
+		    			$peername = inet_ntoa($ip4n);
+		    		}
+		    		if ($rethash{$peername}) {
+		    			next; #got a dupe, discard
+		    		}
+		    		my $result = process_slp_packet(packet=>$slppacket,sockaddr=>$peer,'socket'=>$args{'socket'});
+		    		if ($result) {
+		    			if ($peername =~ /\./) { #ipv4
+		    				$peername =~ s/::ffff://;
+		    			}
+		    			$result->{peername} = $peername;
+		    			$result->{scopeid} = $scope;
+		    			$result->{sockaddr} = $peer;
+		    			my $hashkey;
+		    			if ($peername =~ /fe80/) {
+		    				$peername .= '%'.$scope;
+		    			}
+		    			$rethash{$peername} = $result;
+		    			if ($args{Callback}) {
+		    				$args{Callback}->($result);
+		    			}
+		    		}
+		    	}
+		    	foreach my $srvtype (@srvtypes) {
+		    		send_service_request_single(%args,ifacemap=>$interfaces,SrvType=>$srvtype);
+		    	}
+		    }
+		}	
 		return \%rethash;
 	}
 }
