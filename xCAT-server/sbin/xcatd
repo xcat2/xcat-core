@@ -1734,7 +1734,7 @@ sub service_connection {
               $resp->{serverdone}={};
               print $sock XMLout($resp,RootName => 'xcatresponse',NoAttr=>1);
           } elsif ($cmd_handlers{$req->{command}->[0]}) {
-            return plugin_command($req,$sock,\&convey_response);
+            plugin_command($req,$sock,\&convey_response);
           } elsif ($req->{command}->[0] eq "noderange" and $req->{noderange}) {
             my @nodes = noderange($req->{noderange}->[0]);
             my %resp;
