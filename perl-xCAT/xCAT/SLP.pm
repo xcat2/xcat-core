@@ -61,6 +61,16 @@ sub dodiscover {
 		@srvtypes = split /,/,$args{SrvTypes};
 	}
 	my $interfaces = get_interfaces(%args);
+        if ($args{Ip}) {
+            my @ips = split /,/, $args{Ip};
+                foreach my $ip (@ips) {
+                    foreach my $nic (keys %$interfaces) {
+                            unless (${${$interfaces->{$nic}}{ipv4addrs}}[0] =~ $ip) {
+                                    delete $interfaces->{$nic};
+                                }
+                        }
+                }
+        }
 	foreach my $srvtype (@srvtypes) {
 		send_service_request_single(%args,ifacemap=>$interfaces,SrvType=>$srvtype);
 	}
@@ -170,8 +180,8 @@ sub parse_attribute_list {
 			$attrib =~ s/\),?$//;
 			$attrib =~ s/=(.*)$//;
 			$attribs{$attrib}=[];
-			if ($1) {
-				my $valstring = $1;
+            my $valstring = $1;
+            if (defined $valstring) {
 				foreach(split /,/,$valstring) {
 					push @{$attribs{$attrib}},$_;
 				}
