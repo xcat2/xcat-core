@@ -4304,6 +4304,23 @@ sub mkinstall {
 sub mknetboot {
 	return mkcommonboot("stateless",@_);
 }
+sub merge_esxi5_append {
+	my $tmpl = shift;
+	my $append = shift;
+	my $outfile = shift;
+	my $in;
+	my $out;
+	open($in,"<",$tmpl);
+	open($out,">",$outfile);
+	my $line;
+	while ($line = <$in>) {
+		if ($line =~ /kernelopt=/) {
+			chomp($line);
+			$line .= $append."\n";
+		}
+		print $out $line;
+	}
+}
 sub mkcommonboot {
     my $bootmode = shift;
 	my $req      = shift;
@@ -4427,6 +4444,7 @@ sub mkcommonboot {
 	my $kernel;
 	my $kcmdline;
 	my $append;
+    my $shortappend;
 	if ($osver =~ /esxi4/) {
 	  my $bail=0;
 	  foreach (@reqmods) {
@@ -4481,7 +4499,13 @@ sub mkcommonboot {
 	}
 	elsif ($osver =~ /esxi5/) { #do a more straightforward thing..
 	  $kernel = "$tp/mboot.c32";
+      if (-r "$tftpdir/$tp/boot.cfg.$bootmode.$shortprofname.tmpl") { #so much for straightforward..
+	  	$shortappend = "-c $tp/boot.cfg.$bootmode.$shortprofname.$node";
+	} elsif (-r "$tp/boot.cfg.$bootmode.$shortprofname") {
+	  	$append = "-c $tp/boot.cfg.$bootmode.$shortprofname";
+	} else {
 	  $append = "-c $tp/boot.cfg.$bootmode";
+	}
 	  if ($bootmode eq "install") {
 	  	$append .= " ks=http://!myipfn!/install/autoinst/$node";
 		esxi_kickstart_from_template(node=>$node,os=>$osver,arch=>$arch,profile=>$profile);
@@ -4497,6 +4521,10 @@ sub mkcommonboot {
 		}
 	}
 	}
+    if ($shortappend) { #esxi5 user desiring to put everything in one boot config file. . .
+		merge_esxi5_append("$tftpdir/$tp/boot.cfg.$bootmode.$shortprofname.tmpl",$append,"$tftpdir/$tp/boot.cfg.$bootmode.$shortprofname.$node");
+    	$append=$shortappend;
+    }
 	$output_handler->({node=>[{name=>[$node],'_addkcmdlinehandled'=>[1]}]});
 
 
