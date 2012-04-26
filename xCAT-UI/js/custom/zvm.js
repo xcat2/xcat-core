@@ -66,7 +66,7 @@ zvmPlugin.prototype.loadConfigPage = function(tabId) {
 		else
 			$('#zvmConfigGroups').append(createLoader(''));
 
-//		queryGroups('zvmConfigGroups');
+		queryGroups('zvmConfigGroups');
 	});
 		
 	configAccordion.append(userLnk, userSection, profileLnk, profileSection, imgLnk, imgSection, groupsLnk, groupsSection);

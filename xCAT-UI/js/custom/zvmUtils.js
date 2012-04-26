@@ -3430,6 +3430,206 @@ function queryImages(panelId) {
 }
 
 /**
+ * Query the groups that exists
+ * 
+ * @param panelId
+ * 			Panel ID
+ * @return Nothing
+ */
+function queryGroups(panelId) {
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'tabdump',
+			tgt : '',
+			args : 'hosts',
+			msg : panelId
+		},
+
+		success : configGroupPanel
+	});
+}
+
+/**
+ * Panel to configure groups
+ * 
+ * @param data
+ * 			Data from HTTP request
+ * @return Nothing
+ */
+function configGroupPanel(data) {	
+	var panelId = data.msg;
+	var rsp = data.rsp;
+	
+	// Wipe panel clean
+	$('#' + panelId).empty();
+
+	// Add info bar
+	$('#' + panelId).append(createInfoBar('Create, edit, and delete groups for the self-service portal.'));
+	
+	// Create table
+	var tableId = 'zvmGroupTable';
+	var table = new DataTable(tableId);
+	table.init(['<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'Name', 'Selectable', 'IP', 'Hostname', 'Network', 'Description']);
+
+	// Insert groups into table
+	var nodePos = 0;
+	var ipPos = 0;
+	var hostnamePos = 0;
+	var commentsPos = 0;
+	var desc, selectable, tmp;
+	// Get column index for each attribute
+	var colNameArray = rsp[0].substr(1).split(',');
+	for (var i in colNameArray){
+		switch (colNameArray[i]){
+			case 'node':
+				nodePos = i;
+				break;
+			
+			case 'ip':
+				ipPos = i;
+				break;
+			
+			case 'hostnames':
+				hostnamePos = i;
+				break;
+			
+			case 'comments':
+				commentsPos = i;
+				break;
+			
+			default :
+				break;
+		}
+	}
+	
+	// Go through each index
+	for (var i = 1; i < rsp.length; i++) {
+		// Get image name
+		var cols = rsp[i].split(',');
+		var name = cols[nodePos].replace(new RegExp('"', 'g'), '');
+		var ip = cols[ipPos].replace(new RegExp('"', 'g'), '');
+		var hostname = cols[hostnamePos].replace(new RegExp('"', 'g'), '');
+		var comments = cols[commentsPos].replace(new RegExp('"', 'g'), '');
+				
+		// Set default description and selectable
+		selectable = "no";
+		network = "";
+		desc = "No description";
+		
+		if (comments) {
+			tmp = comments.split('|');
+			for (var j = 0; j < tmp.length; j++) {
+				// Save description
+				if (tmp[j].indexOf('description:') > -1) {
+					desc = tmp[j].replace('description:', '');
+					desc = jQuery.trim(desc);
+				}
+				
+				// Save network
+				if (tmp[j].indexOf('network:') > -1) {
+					network = tmp[j].replace('network:', '');
+					network = jQuery.trim(network);
+				}
+				
+				// Is the group selectable?
+				if (tmp[j].indexOf('selectable:') > -1) {
+					selectable = tmp[j].replace('selectable:', '');
+					selectable = jQuery.trim(selectable);
+				}
+			}
+		}
+		
+		// Columns are: name, selectable, network, and description
+		var cols = new Array(name, selectable, ip, hostname, network, desc);
+
+		// Add remove button where id = user name
+		cols.unshift('<input type="checkbox" name="' + name + '"/>');
+
+		// Add row
+		table.add(cols);
+	}
+	
+	// Append datatable to tab
+	$('#' + panelId).append(table.object());
+
+	// Turn into datatable
+	var dTable = $('#' + tableId).dataTable({
+		'iDisplayLength': 50,
+		'bLengthChange': false,
+		"sScrollX": "100%",
+		"bAutoWidth": true
+	});
+	
+	// Create action bar
+	var actionBar = $('<div class="actionBar"></div>');
+	
+	// Create a group
+	var createLnk = $('<a>Create</a>');
+	createLnk.click(function() {
+		groupDialog();
+	});
+	
+	// Edit a group
+	var editLnk = $('<a>Edit</a>');
+	editLnk.click(function() {
+		var groups = $('#' + tableId + ' input[type=checkbox]:checked');
+		for (var i in groups) {
+			var group = groups.eq(i).attr('name');			
+			if (group) {
+				// Column order is: name, selectable, network, and description
+				var cols = groups.eq(i).parents('tr').find('td');
+				var selectable = cols.eq(2).text();				
+				var ip = cols.eq(3).text();
+				var hostnames = cols.eq(4).text();
+				var network = cols.eq(5).text();
+				var description = cols.eq(6).text();
+				
+				editGroupDialog(group, selectable, ip, hostnames, network, description);
+			}
+		}
+	});
+		
+	// Delete a profile
+	var deleteLnk = $('<a>Delete</a>');
+	deleteLnk.click(function() {
+		var groups = getNodesChecked(tableId);
+		if (groups) {
+			deleteGroupDialog(groups);
+		}
+	});
+	
+	// Refresh profiles table
+	var refreshLnk = $('<a>Refresh</a>');
+	refreshLnk.click(function() {
+		queryGroups(panelId);
+	});
+	
+	// Create an action menu
+	var actionsMenu = createMenu([createLnk, editLnk, deleteLnk, refreshLnk]);
+	actionsMenu.superfish();
+	actionsMenu.css('display', 'inline-block');
+	actionBar.append(actionsMenu);
+	
+	// Set correct theme for action menu
+	actionsMenu.find('li').hover(function() {
+		setMenu2Theme($(this));
+	}, function() {
+		setMenu2Normal($(this));
+	});
+	
+	// Create a division to hold actions menu
+	var menuDiv = $('<div id="' + tableId + '_menuDiv" class="menuDiv"></div>');
+	$('#' + tableId + '_wrapper').prepend(menuDiv);
+	menuDiv.append(actionBar);	
+	$('#' + tableId + '_filter').appendTo(menuDiv);
+
+	// Resize accordion
+	$('#zvmConfigAccordion').accordion('resize');
+}
+
+/**
  * Panel to configure OS images
  * 
  * @param data
@@ -3843,6 +4043,102 @@ function insertDiskInfo(data) {
 	
 	// Adjust table styling
 	adjustColumnSize(tableId);
+}
+
+/**
+ * Open group dialog
+ */
+function groupDialog() {
+	// Create form to add profile
+	var dialogId = 'zvmCreateGroup';
+	var groupForm = $('<div id="' + dialogId + '" class="form"></div>');
+	
+	// Create info bar
+	var info = createInfoBar('Provide the following attributes for the group.');
+	groupForm.append(info);
+		
+	var group = $('<div><label>Group:</label><input type="text" name="group"/></div>');
+	var selectable = $('<div><label>Selectable:</label><input type="checkbox" name="selectable"/></div>');
+	var ip = $('<div><label>IP:</label><input type="text" name="ip"/></div>');
+	var hostnames = $('<div><label>Hostnames:</label><input type="text" name="hostnames"/></div>');
+	var network = $('<div><label>Network:</label><input type="text" name="network"/></div>');
+	var comments = $('<div><label>Description:</label><input type="text" name="comments"/></div>');
+	groupForm.append(group, selectable, ip, hostnames, network, comments);
+	
+	// Open dialog to add image
+	groupForm.dialog({
+		title:'Create group',
+		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
+		width: 400,
+		buttons: {
+        	"Ok": function() {
+        		// Remove any warning messages
+        		$(this).find('.ui-state-error').remove();
+        		
+				// Get group attributes
+        		var group = $(this).find('input[name="group"]');
+        		var selectable = $(this).find('input[name="selectable"]');
+        		var ip = $(this).find('input[name="ip"]');
+        		var hostnames = $(this).find('input[name="hostnames"]');
+        		var network = $(this).find('input[name="network"]');
+        		var comments = $(this).find('input[name="comments"]');
+        		        		
+        		// Check that group attributes are provided before continuing
+        		var ready = 1;
+        		var inputs = new Array(group, ip, hostnames, network);
+        		for (var i in inputs) {
+        			if (!inputs[i].val()) {
+        				inputs[i].css('border-color', 'red');
+        				ready = 0;
+        			} else
+        				inputs[i].css('border-color', '');
+        		}
+        		
+				// If inputs are not complete, show warning message
+				if (!ready) {
+					var warn = createWarnBar('Please provide a value for each missing field.');
+					warn.prependTo($(this));
+				} else {
+					// Change dialog buttons
+    				$(this).dialog('option', 'buttons', {
+    					'Close': function() {$(this).dialog("close");}
+    				});
+    				
+    				// Set default description
+    				if (!comments.val())
+    					comments.val('No description');
+    				
+    				// Create arguments to send via AJAX
+					var args = "updategroup;" + group.val() + ";'" + ip.val() + "';'" + hostnames.val() + "';";
+						
+					if (selectable.attr("checked"))
+						args += "'description:" + comments.val() + "|network:" + network.val() + "|selectable:yes";
+					else
+						args += "'description:" + comments.val() + "|network:" + network.val() + "|selectable:no";
+															
+    				// Add image to xCAT
+    				$.ajax( {
+    					url : 'lib/cmd.php',
+    	        		dataType : 'json',
+    	        		data : {
+    	        			cmd : 'webrun',
+    	        			tgt : '',
+    	        			args : args,
+    	        			msg : dialogId
+    	        		},
+    
+    					success : updatePanel
+    				});
+				}
+			},
+			"Cancel": function() {
+        		$(this).dialog( "close" );
+        	}
+		}
+	});
 }
 
 /**
@@ -4281,6 +4577,59 @@ function deleteImageDialog(images) {
 	});
 }
 
+/**
+ * Open dialog to confirm group delete
+ * 
+ * @param groups
+ * 			Groups to delete
+ * @return Nothing
+ */
+function deleteGroupDialog(groups) {
+	// Create form to delete disk to pool
+	var dialogId = 'zvmDeleteImage';
+	var deleteForm = $('<div id="' + dialogId + '" class="form"></div>');
+	
+	// Create info bar
+	var info = createInfoBar('Are you sure you want to delete ' + groups.replace(new RegExp(',', 'g'), ', ') + '?');
+	deleteForm.append(info);
+			
+	// Open dialog to delete user
+	deleteForm.dialog({
+		title:'Delete group',
+		modal: true,
+		width: 400,
+		close: function(){
+        	$(this).remove();
+        },
+		buttons: {
+        	"Ok": function(){
+        		// Remove any warning messages
+        		$(this).find('.ui-state-error').remove();
+        		
+				// Change dialog buttons
+				$(this).dialog('option', 'buttons', {
+					'Close': function() {$(this).dialog("close");}
+				});
+										
+				// Delete user
+				$.ajax( {
+    				url : 'lib/cmd.php',
+    				dataType : 'json',
+    				data : {
+    					cmd : 'webrun',
+    					tgt : '',
+    					args : 'rmgroup;' + groups,
+    					msg : dialogId
+    				},
+    				success : updatePanel
+            	});
+			},
+			"Cancel": function() {
+        		$(this).dialog( "close" );
+        	}
+		}
+	});
+}
 
 /**
  * Edit image dialog
@@ -4401,6 +4750,125 @@ function editImageDialog(iName, iSelectable, iOsVersion, iProfile, iMethod, iCom
 						args += '"description:' + comments.val() + '|selectable:yes"';
 					else
 						args += '"description:' + comments.val() + '|selectable:no"';
+															
+    				// Add image to xCAT
+    				$.ajax( {
+    					url : 'lib/cmd.php',
+    	        		dataType : 'json',
+    	        		data : {
+    	        			cmd : 'webrun',
+    	        			tgt : '',
+    	        			args : args,
+    	        			msg : dialogId
+    	        		},
+    
+    					success : updatePanel
+    				});
+				}
+			},
+			"Cancel": function() {
+        		$(this).dialog( "close" );
+        	}
+		}
+	});
+}
+
+/**
+ * Edit group dialog
+ * 
+ * @param iGroup
+ * 			Group name
+ * @param iSelectable
+ * 			Is group selectable from the service page
+ * @param iIp
+ * 			Group IP regex
+ * @param iHostnames
+ * 			Group hostnames regex
+ * @param iNetwork
+ * 			Group network, e.g. 10.1.2.0/24
+ * @param iComments
+ * 			Group description
+ * @return Nothing 
+ */
+function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iNetwork, iComments) {
+	// Create form to add profile
+	var dialogId = 'zvmCreateGroup';
+	var groupForm = $('<div id="' + dialogId + '" class="form"></div>');
+	
+	// Create info bar
+	var info = createInfoBar('Provide the following attributes for the group.');
+	groupForm.append(info);
+		
+	var group = $('<div><label>Group:</label><input type="text" name="group"/></div>');
+	var selectable = $('<div><label>Selectable:</label><input type="checkbox" name="selectable"/></div>');
+	var ip = $('<div><label>IP:</label><input type="text" name="ip"/></div>');
+	var hostnames = $('<div><label>Hostnames:</label><input type="text" name="hostnames"/></div>');
+	var network = $('<div><label>Network:</label><input type="text" name="network"/></div>');
+	var comments = $('<div><label>Description:</label><input type="text" name="comments"/></div>');
+	groupForm.append(group, selectable, ip, hostnames, network, comments);
+	
+	// Fill in group attributes
+	groupForm.find('input[name="group"]').val(iGroup);
+	groupForm.find('input[name="ip"]').val(iIp);
+	groupForm.find('input[name="hostnames"]').val(iHostnames);
+	groupForm.find('input[name="network"]').val(iNetwork);
+	groupForm.find('input[name="comments"]').val(iComments);
+	if (iSelectable == "yes")
+		groupForm.find('input[name="selectable"]').attr('checked', 'checked');
+	
+	// Open dialog to add image
+	groupForm.dialog({
+		title:'Edit group',
+		modal: true,
+		close: function(){
+        	$(this).remove();
+        },
+		width: 400,
+		buttons: {
+        	"Ok": function() {
+        		// Remove any warning messages
+        		$(this).find('.ui-state-error').remove();
+        		
+				// Get group attributes
+        		var group = $(this).find('input[name="group"]');
+        		var selectable = $(this).find('input[name="selectable"]');
+        		var ip = $(this).find('input[name="ip"]');
+        		var hostnames = $(this).find('input[name="hostnames"]');
+        		var network = $(this).find('input[name="network"]');
+        		var comments = $(this).find('input[name="comments"]');
+        		        		
+        		// Check that group attributes are provided before continuing
+        		var ready = 1;
+        		var inputs = new Array(group, ip, hostnames, network);
+        		for (var i in inputs) {
+        			if (!inputs[i].val()) {
+        				inputs[i].css('border-color', 'red');
+        				ready = 0;
+        			} else
+        				inputs[i].css('border-color', '');
+        		}
+        		
+				// If inputs are not complete, show warning message
+				if (!ready) {
+					var warn = createWarnBar('Please provide a value for each missing field.');
+					warn.prependTo($(this));
+				} else {
+					// Change dialog buttons
+    				$(this).dialog('option', 'buttons', {
+    					'Close': function() {$(this).dialog("close");}
+    				});
+    				
+    				// Set default description
+    				if (!comments.val())
+    					comments.val('No description');
+    				
+    				// Create arguments to send via AJAX
+					var args = "updategroup;" + group.val() + ";'" + ip.val() + "';'" + hostnames.val() + "';";
+						
+					if (selectable.attr("checked"))
+						args += "'description:" + comments.val() + "|network:" + network.val() + "|selectable:yes";
+					else
+						args += "'description:" + comments.val() + "|network:" + network.val() + "|selectable:no";
 															
     				// Add image to xCAT
     				$.ajax( {

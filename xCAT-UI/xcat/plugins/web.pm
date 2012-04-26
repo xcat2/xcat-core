@@ -69,7 +69,9 @@ sub process_request {
 		'mkzprofile' => \&web_mkzprofile,
 		'rmzprofile' => \&web_rmzprofile,
 		'updateosimage' => \&web_updateosimage,
-		'rmosimage' => \&web_rmosimage
+		'rmosimage' => \&web_rmosimage,
+		'updategroup' => \&web_updategroup,
+		'rmgroup' => \&web_rmgroup
 	);
 
 	#check whether the request is authorized or not
@@ -2387,4 +2389,40 @@ sub web_rmosimage() {
 	$callback->( { info => $info } );
 }
 
+sub web_updategroup() {
+	# Add group to xCAT table
+	my ( $request, $callback, $sub_req ) = @_;
+		
+	my $name = $request->{arg}->[1];
+	my $ip = $request->{arg}->[2];
+	$ip =~ s/'//g;
+	
+	my $hostnames = $request->{arg}->[3];
+	$hostnames =~ s/'//g;
+	
+	my $comments = $request->{arg}->[4];
+	$comments =~ s/'//g;
+	
+	`chtab -d node=$name hosts`;
+	`chtab node=$name hosts.ip="$ip" hosts.hostnames="$hostnames" hosts.comments="$comments"`;
+	
+	my $info = "Group successfully updated";
+	$callback->( { info => $info } );
+}
+
+sub web_rmgroup() {
+	# Delete group from xCAT table
+	my ( $request, $callback, $sub_req ) = @_;
+		
+	my $name = $request->{arg}->[1];
+	my @names = split( ',', $name );
+		
+	# Delete user from xCAT passwd and policy tables
+	foreach(@names) {		
+		`chtab -d node=$_ hosts`;
+	}
+	
+	my $info = "Group successfully deleted";
+	$callback->( { info => $info } );
+}
 1;
