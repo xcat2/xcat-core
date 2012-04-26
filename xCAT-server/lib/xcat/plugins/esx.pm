@@ -4499,10 +4499,8 @@ sub mkcommonboot {
 	}
 	elsif ($osver =~ /esxi5/) { #do a more straightforward thing..
 	  $kernel = "$tp/mboot.c32";
-      if (-r "$tftpdir/$tp/boot.cfg.$bootmode.$shortprofname.tmpl") { #so much for straightforward..
-	  	$shortappend = "-c $tp/boot.cfg.$bootmode.$shortprofname.$node";
-	} elsif (-r "$tp/boot.cfg.$bootmode.$shortprofname") {
-	  	$append = "-c $tp/boot.cfg.$bootmode.$shortprofname";
+      if (-r "$tftpdir/$tp/boot.cfg.$bootmode.tmpl") { #so much for straightforward..
+	  	$shortappend = "-c $tp/boot.cfg.$bootmode.$node";
 	} else {
 	  $append = "-c $tp/boot.cfg.$bootmode";
 	}
@@ -4522,7 +4520,7 @@ sub mkcommonboot {
 	}
 	}
     if ($shortappend) { #esxi5 user desiring to put everything in one boot config file. . .
-		merge_esxi5_append("$tftpdir/$tp/boot.cfg.$bootmode.$shortprofname.tmpl",$append,"$tftpdir/$tp/boot.cfg.$bootmode.$shortprofname.$node");
+		merge_esxi5_append("$tftpdir/$tp/boot.cfg.$bootmode.tmpl",$append,"$tftpdir/$tp/boot.cfg.$bootmode.$node");
     	$append=$shortappend;
     }
 	$output_handler->({node=>[{name=>[$node],'_addkcmdlinehandled'=>[1]}]});
@@ -4649,8 +4647,14 @@ sub cpNetbootImages {
 	  }
 	  my $statelesscfg;
 	  my @filestocopy = ("boot.cfg.$bootmode");
-	  if (-r "$overridedir/boot.cfg.$bootmode") {
+	  if (-r "$overridedir/boot.cfg.$bootmode.tmpl") {
+	    open ($statelesscfg,"<","$overridedir/boot.cfg.$bootmode.tmpl");
+	    @filestocopy = ("boot.cfg.$bootmode.tmpl");
+	  } elsif (-r "$overridedir/boot.cfg.$bootmode") {
 	    open ($statelesscfg,"<","$overridedir/boot.cfg.$bootmode");
+	  } elsif (-r "$srcDir/boot.cfg.$bootmode.tmpl") {
+	    @filestocopy = ("boot.cfg.$bootmode.tmpl");
+	    open ($statelesscfg,"<","$srcDir/boot.cfg.$bootmode.tmpl");
 	  } elsif (-r "$srcDir/boot.cfg.$bootmode") {
 	    open ($statelesscfg,"<","$srcDir/boot.cfg.$bootmode");
 	  } else {
