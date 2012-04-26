@@ -56,7 +56,8 @@ sub handled_commands
             tabgrep    => "tabutils",
             getAllEntries     => "tabutils",
             getNodesAttribs    => "tabutils",
-            setNodesAttribs    => "tabutils",
+            setNodesAttribs1    => "tabutils",
+            setNodesAttribs2    => "tabutils",
             gennr    => "tabutils"
             };
 }
@@ -150,6 +151,10 @@ sub process_request
     elsif ($command eq "getNodesAttribs")
     {
         return getNodesAttribs($request,$callback);
+    }
+    elsif ($command eq "setNodesAttribs1")
+    {
+        return setNodesAttribs1($request,$callback);
     }
     else
     {
@@ -2322,28 +2327,68 @@ sub getNodesAttribs
         return;
 }
 
-
-# setNodesAttribs 
-# Sets the input attributes for the input list of nodes. 
-# Input 
-#    Table
-#    Hash of nodes pointing to the attributes and values to change
+#
+# setNodesAttribs1 - setNodesAttribs format 1
+# Sets Nodes attributes for noderange for each of the tables supplied      
+# Example of XML in for this routine
+#<xcatrequest>
+#<clienttype>PCM</clienttype>
+#<command>setNodesAttribs1</command>
+#<noderange>blade01-blade02</noderange>
+#<arg>
+#   <table>
+#      <name>nodelist</name>
+#      <attrs>
+#         <groups>lissa</groups>
+#         <comments> This is a another testx</comments>
+#      </attrs>
+#   </table>
+#   <table>
+#      <name>nodetype</name>
+#      <attrs>
+#         <os>Redhat2</os>
+#         <comments> This is a another testy</comments>
+#      </attrs>
+#   </table>
+#</arg>
+#</xcatrequest>
 #    
-sub setNodesAttribs 
+sub setNodesAttribs1 
 {
     my $request      = shift;
     my $cb = shift;
     my $node    = $request->{node};
+    my $noderange    = $request->{noderange};
     my $command  = $request->{command}->[0];
-    my $tablename    = $request->{table}->[0];
-    my $attr    = $request->{attr};
-    my $tab=xCAT::Table->new($tablename);
-    my @nodes = @$node;
-    my @attrs= @$attr;
     my %rsp;
-    my %noderecs;
-# for checkin XML created
-#my  $xmlrec=XMLout(\%rsp,RootName=>'xcatresponse',NoAttr=>1,KeyAttr=>[]);
-#       $cb->(\%rsp);
+    my $args = $request->{arg};
+    my $tables= $args->[0]->{table};
+    # take input an build a request for the nodech function
+    my $newrequest;
+    $newrequest->{noderange} = $request->{noderange};
+    $newrequest->{command}->[0] = "nodech";
+    foreach my $table (@$tables) {
+      my $tablename    = $table->{name}->[0];
+      my $attrs = $table->{attrs}; 
+      foreach my $attrhash (@$attrs) {
+        foreach my $key (keys %$attrhash) {
+          my $tblattr = $tablename;
+          $tblattr .= ".$key=";
+          $tblattr .= $table->{attrs}->[0]->{$key}->[0];
+          push (@{$newrequest->{arg}}, $tblattr);
+        }
+      }
+    }
+   my  @nodes = xCAT::NodeRange::noderange($request->{noderange}->[0]);
+    
+    if (xCAT::NodeRange::nodesmissed()) {
+     my $rsp = {errorcode=>1,error=>"Invalid nodes in noderange:".join(',',xCAT::NodeRange::nodesmissed)};
+      $cb->(\%rsp);
+    }
+    if (@nodes) {
+       $newrequest->{node} = \@nodes;
+    }
+    #  call nodech
+    &nodech($newrequest->{node},$newrequest->{arg},$cb,0);
         return;
 }
