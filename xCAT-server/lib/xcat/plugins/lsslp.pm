@@ -299,7 +299,7 @@ sub parse_args {
            return( usage( "Invalid command tries (1-9)" ));
        }
     } else {
-        $request->{maxtries} = 1;
+        $request->{maxtries} = 0;
     }
 
     #############################################
@@ -411,8 +411,8 @@ sub parse_args {
     ##############################################
     # warn for no discovered nodes in database
     ##############################################
-    if ( exists( $opt{l} )) {
-        $request->{l} = 1;
+    if ( exists( $opt{I} )) {
+        $request->{I} = 1;
     }
     return(0);
 }
@@ -501,7 +501,7 @@ sub invoke_dodiscover {
     # SLP command
     ########################################
     my $services =  $request->{service};
-    my $result  = xCAT::SLP::dodiscover(SrvTypes=>$services,Callback=>\&handle_new_slp_entity, Ip=>$request->{i} );
+    my $result  = xCAT::SLP::dodiscover(SrvTypes=>$services,Callback=>\&handle_new_slp_entity, Ip=>$request->{i}, Retry=>$request->{maxtries} );
 
 
     #########################################
@@ -588,18 +588,7 @@ sub format_output {
         xCATdB( $outhash );
     }
 
-#exit(0);
-    ###########################################
-    # -I flat give the warning message for
-    # the no-response nodes
-    ###########################################
-    if ( $request->{I} ) {
-        my $outresult = integrity_check( $outhash );
-        if ($outresult)
-        {
-            send_msg( $request, 0, $outresult );
-        }
-    }
+
 
     ###########################################
     # -r flag for raw response format
@@ -635,7 +624,7 @@ sub format_output {
     ###########################################
     # -T flag for vpd table format
     ###########################################
-    if ( $request->{z} ) {
+    if ( $request->{vpdtable} ) {
         send_msg( $request, 0, format_table( $outhash ) );
         return;
     }
@@ -669,52 +658,7 @@ sub format_output {
     }
     send_msg( $request, 0, $result );
 }
-##########################################################################
-# Give the warning message for the no-response nodes
-##########################################################################
-sub integrity_check {
-    my $datahash = shift;
-    my $findflag = 0;
-    my $result;
 
-    foreach my $existnode ( keys %::OLD_DATA_CACHE )
-    {
-        my $tmptype = uc(@{$::OLD_DATA_CACHE{$existnode}}[6]);
-        my $tmpmtm  = @{$::OLD_DATA_CACHE{$existnode}}[0];
-        my $tmpsn   = @{$::OLD_DATA_CACHE{$existnode}}[1];
-        my $tmpside = @{$::OLD_DATA_CACHE{$existnode}}[2];
-        if ( $tmptype eq TYPE_CEC or $tmptype eq TYPE_FRAME or  $tmptype =~ /lpar/ ){
-            next;
-        }
-        $findflag = 0;
-        foreach my $foundnode ( keys %$datahash ){
-            my $newtype = ${$datahash->$foundnode}{type};
-            my $newmtm  = ${$datahash->$foundnode}{mtm};
-            my $newsn   = ${$datahash->$foundnode}{serial};
-            my $newside = ${$datahash->$foundnode}{side};
-
-            next if( !$foundnode or !$newtype or !$newtype or !$newsn );
-            if ( ($newtype eq $tmptype) and ($tmptype eq TYPE_BPA or $tmptype eq TYPE_FSP) ) {
-                # begin to match fsp/bpa
-                if (($newmtm eq $tmpmtm) and ($newsn eq $tmpsn) and ($newside eq $tmpside)) {
-                    $findflag = 1;
-                    last;
-                }
-            }elsif ( ($newtype eq $tmptype) and ($tmptype eq TYPE_HMC) ) {
-                # begin to match hmc
-                if (($newmtm eq $tmpmtm) and ($newsn eq $tmpsn)) {
-                    $findflag = 1;
-                    last;
-                }
-            }
-        }
-
-        if ($findflag eq 0 and $existnode ne "") {
-            $result .= "\n Warning: The node $existnode has no response. \n";
-        }
-    }
-    return $result;
-}
 ##########################################################################
 # Read the table and cache the data that will be used frequently
 ##########################################################################
@@ -1139,20 +1083,33 @@ sub parse_responses {
                 delete $outhash{$matchednode};
             }
         }
-        #my $nodelisttab = xCAT::Table->new('nodelist');
-        #unless ( $nodelisttab ) {
-        #    return( "Error opening 'nodelisttable'" );
-        #}
-        #my @nodes = $nodelisttab->getAllNodeAttribs([qw(node)]);
-        #for my $enode (@nodes) {
-        #       push @blades,;
-        #    if (exists $outhash{$enode->{node}}) {
-        #        trace( $request, "$matchednode,", 1);
-        #        delete $outhash{$enode->{node}};
-        #    }
-        #}
+    } 
+	if (exists($request->{I})) {
+	    my %existsnodes;
+    	my $nodelisttab = xCAT::Table->new('nodelist');
+        unless ( $nodelisttab ) {
+            return( "Error opening 'nodelisttable'" );
+        }
+        my @nodes = $nodelisttab->getAllNodeAttribs([qw(node)]);
+		my $notdisnode;
+        for my $enode (@nodes) {
+		    for my $mnode (@matchnode) {
+			    if ($enode->{node} eq ${$outhash{$mnode}}{hostname}) {
+				    $existsnodes{$enode->{node}} = 1;
+					last;
+				}
+            }				
+		}
+		
+        for my $enode (@nodes) {
+			unless ($existsnodes{$enode->{node}}) {
+				$notdisnode .= $enode->{node}.",";
+			}	
+		}
+        trace ( $request, "These nodes defined in database but can't be discovered: $notdisnode  \n", 1); 	
+	
+	}	
 
-    }
     return \%outhash;
 }
 ##########################################################################
@@ -1333,7 +1290,7 @@ sub format_table {
         my $type = ${$outhash->{$name}}{type};
         next if ($type =~ /^(fsp|bpa)$/);
         $result .= "${$outhash->{$name}}{hostname}:\n";
-        $result .= "\tobjtype=${$outhash->{$name}}{hostname}\n";
+        $result .= "\tobjtype=node\n";
         $result .= "\tmtm=${$outhash->{$name}}{mtm}\n";
         $result .= "\tserial=${$outhash->{$name}}{serial}\n";
     }
