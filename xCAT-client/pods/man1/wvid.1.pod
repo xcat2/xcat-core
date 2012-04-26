@@ -1,0 +1,35 @@
+=head1 B<Name>
+
+wvid - windowed remote video console for nodes
+
+=head1 B<Synopsis>
+
+B<wvid> I<noderange>
+
+=head1 B<Description>
+
+B<wvid> provides access to the remote node video console of a single node, or range of nodes or groups.
+B<wvid> provides a simple front-end to the hardware's remote console capability.
+Currently this command is supported for:  blades, BMC/IMM, KVM, and Xen
+
+The B<nodehm.cons> attribute of the node determines the method used to open the console.  See L<nodehm(5)|nodehm.5> for further details.
+
+=head1 B<Options>
+
+No options are supported at this time.
+
+=head1 B<Examples>
+
+=over 3
+
+=item 1.
+
+To open video consoles for the 1st 2 nodes:
+
+ wvid node1,node2
+
+=back
+
+=head1 B<See Also>
+
+L<noderange(3)|noderange.3>, L<rcons(1)|rcons.1>, L<wcons(1)|wcons.1>
