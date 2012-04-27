@@ -172,6 +172,9 @@ sub process_request
 	push @{$rsp->{data}}, "Moving nodes to their backup service nodes.\n";
 	xCAT::MsgUtils->message("I", $rsp, $callback);
 
+	my $nimprime = xCAT::InstUtils->getnimprime();
+	chomp $nimprime;
+
     #
     #  get the list of nodes
     #     - either from the command line or by checking which nodes are
@@ -552,13 +555,6 @@ sub process_request
         }
     }    # end - foreach node
 
-    #
-    # do the rsync of statelite files form the primary SN to the backup
-    #	SN if appropriate
-    #
-    my %SLmodhash;
-    my %LTmodhash;
-
 	# check the sharedinstall attr
 	my $sharedinstall=xCAT::Utils->get_site_attribute('sharedinstall');
 	chomp $sharedinstall;
@@ -566,6 +562,21 @@ sub process_request
         $sharedinstall="no";
     }
 
+	#
+	#  handle the statelite update for the sharedinstall=sns case
+	#	- using a shared file system across all service nodes
+	#
+	if ( ($::isaix) && ($sharedinstall eq "sns") ){
+		my $s = &sfsSLconfig(\@nodes, \%nhash, \%sn_hash, $nimprime, $callback, $sub_req);
+	}
+
+	# TBD - handle sharedinstall =all case ????
+
+	# handle the statelite update for sharedinstall=no
+	#  - not using a shared files system
+	my %SLmodhash;
+    my %LTmodhash;
+	
     if ( ($::isaix) && ($sharedinstall eq "no") )  
     {
 
@@ -844,10 +855,68 @@ sub process_request
         $callback->({data => $ret});
 	}
 
+	# 
+	# restore .client_data files on the new SN
+	#
+  if ( ($::isaix) && ($sharedinstall eq "sns") ){
+
+	# first get the shared_root locations for each SN and osimage 
+	my $nimtab = xCAT::Table->new('nimimage');
+	my %SRloc;
+	foreach my $n (@nodes) {
+		my $osimage = $nhash{$n}{'provmethod'};
+		my ($sn, $junk) = split(/,/, $nhash{$n}{'servicenode'});
+
+		# $sn is name of SN as known by management node
+
+		if (!$SRloc{$sn}{$osimage})  {
+
+			my $SRn = $nimtab->getAttribs({'imagename' => $osimage}, 'shared_root');
+			my $SRname=$SRn->{shared_root};
+
+			if ($SRname) {
+				my $srloc = xCAT::InstUtils->get_nim_attr_val($SRname, 'location', $callback, $nimprime, $sub_req);
+
+				$SRloc{$sn}{$osimage}=$srloc;
+			}
+		}
+	}
+	$nimtab->close();
+
+	# now try to restore any backup client data
+	# for each service node
+	foreach my $s (keys %SRloc) {
+
+		# for each osimage on that SN
+		foreach my $osi (keys %{$SRloc{$s}}) {
+
+			# set the names of the .client_data and backup directories
+			my $sloc = $SRloc{$s}{$osi};
+			# ex. /install/nim/shared_root/71Bdskls_shared_root
+
+			my $cdloc = "$sloc/etc/.client_data";
+			my $snbk = "$s" . "_" . "$osi";
+			my $bkloc = "$sloc/$snbk/.client_data";
+
+			my $ccmd=qq~/usr/bin/cp -r -p $bkloc/* $cdloc 2>/dev/null~;
+
+			my $output = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $s, $ccmd, 0);
+			if ($::RUNCMD_RC != 0)
+			{
+				if ($::VERBOSE) {
+					my $rsp;
+					push @{$rsp->{data}}, "Could not copy $bkloc on $s.\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+				}
+			}
+		}
+	}
+  }
+
 	#
 	# - retarget the iscsi dump device to the new server for the nodes
 	#
-	if ((!$::IGNORE) && ($::isaix)) {
+	if ((!$::IGNORE) && ($::isaix) && ($sharedinstall eq "sns")) {
 
 		if (&dump_retarget($callback, \@nodes, $sub_req) != 0)
 		{
@@ -1478,9 +1547,9 @@ sub dump_retarget
 
 	my $error;
 
-	my $rsp;
-	push @{$rsp->{data}}, "Re-targetting dump devices for:\n\'@nodes\'\n";
-	xCAT::MsgUtils->message("I", $rsp, $callback);
+	#my $rsp;
+	#push @{$rsp->{data}}, "Re-targetting dump devices for:\n\'@nodes\'\n";
+	#xCAT::MsgUtils->message("I", $rsp, $callback);
 
 	# get provmethod and xcatmaster for each node
 	my $nrtab = xCAT::Table->new('noderes');
@@ -1568,15 +1637,22 @@ sub dump_retarget
 		# for each osimage needed for this SN
 		foreach my $osi (keys %{$SNosinodes{$sn}})
 		{
+			if (!$imghash{$osi}{'dump'}) {
+				next;
+			}
 
 			# get dump target and lun from nim dump res def
+			my %nimattrs;
+			my $dump_target;
+			my $dump_lunid;
 			my @attrs = ("dump_target", "dump_lunid");
 			my $na = &getnimattr($imghash{$osi}{'dump'}, \@attrs, $callback, $xcatSNname, $sub_req);
-			my %nimattrs = %{$na};
-			my $dump_target = $nimattrs{dump_target};
-			my $dump_lunid = $nimattrs{dump_lunid};
-
-			# get configdump value from xCAT osimage def
+			
+			if ($na) {
+				%nimattrs = %{$na};
+				$dump_target = $nimattrs{dump_target};
+				$dump_lunid = $nimattrs{dump_lunid};
+			}
 			my $configdump;
 			if ($imghash{$osi}{'configdump'}) {
 				$configdump = $imghash{$osi}{'configdump'};
@@ -1605,6 +1681,8 @@ sub dump_retarget
 
 				# need node gateway
                 my $gateway = $nethash{$nd}{'gateway'};
+
+
 
 				#  This should configure the iscsi disc on the client
 				my $tcmd = qq~/usr/lpp/bos.sysmgt/nim/methods/c_disc_target -a operation=discover -a target="$dump_target" -a dump_port="$dump_port" -a ipaddr="$SNip" -a lun_id="$dump_lunid"~;
@@ -1669,8 +1747,40 @@ $nd, $ccmd, 0);
 					next;
 				}
 
+				# get the device name to use with the bootlist cmd
+				#
+				my $nimcmd = qq~netstat -in~;
+				my $nimout = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nd, $nimcmd,0);
+				my $myip = xCAT::NetworkUtils->getipaddr($nd);
+				chomp $myip;
+				my $intname;
+				foreach my $line (split(/\n/,$nimout))
+				{
+					my ($name, $junk1, $junk, $IP, $junk3) = split(" ", $line);
+					chomp $IP;
+					if ($IP eq $myip) 
+					{
+						$intname =$name;
+						last;
+					}
+				}
+
+				my $devicename;
+				if ($intname =~ /hf/) {
+					my $index =~ s/hf//g;
+					$devicename = "hfi" . $index; 
+				}
+				if ($intname =~ /en/) {
+					my $index =~ s/en//g;
+					$devicename = "ent" . $index;
+				}
+				if ($intname =~ /et/) {
+					my $index =~ s/et//g;
+					$devicename = "ent" . $index;
+				}
+
 				# point to the new server
-				my $blcmd = qq~/usr/bin/bootlist -m normal ent0 gateway=$gateway bserver=$SNip client=$Nodeip ~;
+				my $blcmd = qq~/usr/bin/bootlist -m normal $devicename gateway=$gateway bserver=$SNip client=$Nodeip ~;
 
 				$output = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nd, $blcmd, 0);
 				if ($::RUNCMD_RC != 0)
@@ -1721,6 +1831,10 @@ sub getnimattr
 	my @attrs = @$attr;
 	my %attrval;
 
+	if (!$resname) {
+		return undef;
+	}
+
 	if (!$target)
     {
         $target = xCAT::InstUtils->getnimprime();
@@ -1763,4 +1877,226 @@ sub getnimattr
 	}
 
 	return \%attrval;
+}
+
+#----------------------------------------------------------------------------
+
+=head3  sfsSLconfig
+
+            Does statelite setup when using a shared file system
+
+			The snmove cmd changes the xcatmaster value for the nodes
+			This means, that since we won't be running mkdsklsnode again, 
+			we need to take care of the ststelite file changes here
+				- update statelite tables in DB
+				- run dolitesetup to re-create the statelite files stored
+					in the shared_root directories
+				- copy the new statelite files to the shared_root directory
+					on the target service node (only one since this is a
+					shared filesystem
+				- note: not copying the persistent directory on the MN
+
+        Arguments:
+        Returns:
+            0 - OK
+            1 - error
+
+        Usage:  $ret = &sfsSLconfig(\@nodelist, \%nhash, \%sn_hash, $nimprime, 
+							$callback, $sub_req);
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub sfsSLconfig
+{
+    my $nodelist    = shift;
+	my $nh		= shift;
+	my $n_h		= shift;
+	my $nimprime = shift;                
+	my $callback = shift;
+    my $sub_req   = shift;
+
+    my @nodes = @$nodelist;
+	my %nhash = %{$nh};
+	my %sn_hash = %{$n_h};
+	my %imghash;  # osimage def
+
+	my $statemnt;
+    my $server;
+    my $dir;
+    my $item = 0;
+
+	my %SLmodhash;   # changes for the statelite DB table
+
+	#  gather some basic info
+    my $targetsn;  # name of SN to copy files to
+	my %objtype;  # need to pass to getobjdefs
+	my %osinodes; # list of nodes for each osimage
+	my @osimage;  # list of osimages
+    foreach my $n (@nodes) {
+        if (!grep(/$nhash{$n}{'provmethod'}/, @osimage) ){
+            push (@osimage, $nhash{$n}{'provmethod'});
+
+            $objtype{$nhash{$n}{'provmethod'}} = 'osimage';
+
+			push (@{$osinodes{$nhash{$n}{'provmethod'}}}, $n);
+
+			my ($sn, $snbak) = split(/,/, $nhash{$n}{servicenode});
+            if (!$targetsn) {
+                if (!xCAT::InstUtils->is_me($sn) ) {
+                    $targetsn=$sn;
+                }
+            }
+        }
+    }
+
+	# get hash of statelite table entries
+	my $statetab = xCAT::Table->new('statelite', -create => 1);
+    my $recs = $statetab->getAllEntries;
+
+	#
+	# update the statelite DB tables
+	#
+	foreach my $line (@$recs)
+    {
+        # see what nodes this entry applies to
+        my @nodeattr = &noderange($line->{node}, 0);
+
+		$statemnt = $line->{statemnt};
+		($server, $dir) = split(/:/, $statemnt);
+
+		chomp $server;
+
+		foreach my $n (@nodes)
+		{
+			# if the node is not in the noderange for this
+			#       entry then skip it
+			if (!grep(/$n/, @nodeattr))
+			{
+				next;
+			}
+
+			# check for the server
+			if (grep /\$/, $server)
+			{
+				my $serv = xCAT::SvrUtils->subVars($server, $n, 'server', $callback);
+				$server = $serv;
+
+				# note: if a variable IS used in the entry then it
+				#   does not have to be updated.
+			}
+			else
+			{
+
+				# if the $server value was the old SN hostname
+				#       then we need to
+				#   update the statelite table with the new SN name
+				$item++;
+				my $stmnt = "$sn_hash{$n}{'xcatmaster'}:$dir";
+				$SLmodhash{$item}{'statemnt'} = $stmnt;
+				$SLmodhash{$item}{'node'}     = $n;
+			}
+
+			my $rsp;
+			push @{$rsp->{data}}, "Setting new values in the xCAT database.\n";
+			xCAT::MsgUtils->message("I", $rsp, $callback);			
+
+			# for each key in SLmodhash - update the statelite table
+			foreach my $item (keys %SLmodhash)
+			{			
+				my $node     = $SLmodhash{$item}{'node'};
+				my $statemnt = $SLmodhash{$item}{'statemnt'};
+
+				$statetab->setAttribs({'node' => $node}, {'statemnt' => $statemnt});
+			}
+		}
+	} # end statelite DB update
+
+	# done with statelite table
+	$statetab->close();
+
+	# get the osimage defs
+	my %imghash = xCAT::DBobjUtils->getobjdefs(\%objtype, $callback);
+	if (!(%imghash))
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "Could not get xCAT osimage definitions.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
+
+	# 
+	# call dolitesetup() for each osimage needed for the nodes
+	#	to re-do the statelite tables etc. in the shared_root dir
+	#
+	foreach my $i (@osimage)
+    {
+
+        #  dolitesetup to update the shared_root table files
+		#  - updates files in the sopot and shared_root resour
+        my $rc=xCAT::InstUtils->dolitesetup($i, \%imghash, \@{$osinodes{$i}}, $callback, $sub_req);
+        if ($rc eq 1) { # error
+            my $rsp;
+            push @{$rsp->{data}}, "Could not complete the statelite setup.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+    } # end statelite setup
+
+	#
+    #  copy files to target SN
+    #
+
+	foreach my $i (@osimage)
+	{
+		my $SRname = $imghash{$i}{shared_root};
+
+		if ($SRname) {
+			my $srloc = xCAT::InstUtils->get_nim_attr_val( $imghash{$i}{shared_root}, "location", $callback, $nimprime, $sub_req);
+
+			if ($srloc) {
+				my $cpcmd = qq~$::XCATROOT/bin/xdcp $targetsn ~;
+				my $output;
+				if (-f "$srloc/statelite.table") {
+					$cpcmd .= qq~$srloc/statelite.table ~;
+				}
+
+				if (-f "$srloc/litefile.table") {
+					$cpcmd .= qq~$srloc/litefile.table ~;
+				}
+
+				if (-f "$srloc/litetree.table") {
+					$cpcmd .= qq~$srloc/litetree.table ~;
+				}
+
+				if (-f "$srloc/aixlitesetup") {
+					$cpcmd .= qq~$srloc/aixlitesetup ~;
+				}
+				$cpcmd .= qq~$srloc/ ~;
+
+				$output=xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nimprime, $cpcmd, 0);
+				if ($::RUNCMD_RC != 0)
+				{
+					my $rsp;
+					push @{$rsp->{data}}, "Could not copy new statelite file to $targetsn\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+				}
+
+				my $ddir = "$srloc/.default";
+				if (-d $ddir ) {
+					$cpcmd = qq~$::XCATROOT/bin/xdcp $targetsn -R $srloc/.default $srloc/~;
+				}
+
+				$output=xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nimprime, $cpcmd, 0);
+				if ($::RUNCMD_RC != 0)
+				{
+					my $rsp;
+					push @{$rsp->{data}}, "Could not copy new statelite information to $targetsn\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+				}
+			}
+		}
+	}  # end copy files
+
+	return 0;
 }
