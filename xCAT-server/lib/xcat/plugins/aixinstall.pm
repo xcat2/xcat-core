@@ -10553,7 +10553,46 @@ sub mkdsklsnode
         $error++;
     }
 
+    my $needexport = 1;
+    my $install_dir;
+    # Remove the exports added by NIM
     if ($::SETUPHANFS)
+    {
+        $install_dir = xCAT::Utils->getInstallDir();
+        $scmd = "lsnfsexp -c";
+        my @output = xCAT::Utils->runcmd("$scmd", -1);
+        if ($::RUNCMD_RC != 0)
+        {
+            my $rsp;
+            push @{$rsp->{data}}, "Could not list nfs exports on $Sname.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            $error++;
+        }
+        foreach my $line (@output)
+        {
+            next if ($line =~ /^#/);
+            my ($directory,$anonuid,$public,$versions,$exname,$refer,$replica,$allother) = split(':', $line);
+            if (($directory eq $install_dir) && ($replica))
+            {
+                $needexport = 0;
+                last;
+            }
+            if ($directory =~ /^$install_dir/)
+            {
+                my $scmd = "rmnfsexp -d $directory";
+                my $output = xCAT::Utils->runcmd("$scmd", -1);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Could not unexport NFS directory $directory on $Sname.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    $error++;
+                }
+            }
+        }
+    }
+
+    if ($::SETUPHANFS && !$::BACKUP)
     {
         # Determine the service nodes pair
         my %snhash = ();
@@ -10718,39 +10757,6 @@ sub mkdsklsnode
                     push @{$rsp->{data}}, "Could not exportfs on $Sname.\n";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     $error++;
-                }
-                my $install_dir = xCAT::Utils->getInstallDir();
-                $scmd = "lsnfsexp -c";
-                my @output = xCAT::Utils->runcmd("$scmd", -1);
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Could not list nfs exports on $Sname.\n";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    $error++;
-                }
-                my $needexport = 1;
-                foreach my $line (@output)
-                {
-                    next if ($line =~ /^#/);
-                    my ($directory,$anonuid,$public,$versions,$exname,$refer,$replica,$allother) = split(':', $line);
-                    if (($directory eq $install_dir) && ($replica))
-                    {
-                        $needexport = 0;
-                        last;
-                    }
-                    if ($directory =~ /^$install_dir/)
-                    {
-                        my $scmd = "rmnfsexp -d $directory";
-                        my $output = xCAT::Utils->runcmd("$scmd", -1);
-                        if ($::RUNCMD_RC != 0)
-                        {
-                            my $rsp;
-                            push @{$rsp->{data}}, "Could not unexport NFS directory $directory on $Sname.\n";
-                            xCAT::MsgUtils->message("E", $rsp, $callback);
-                            $error++;
-                        }
-                    }
                 }
                 if ($needexport)
                 {
