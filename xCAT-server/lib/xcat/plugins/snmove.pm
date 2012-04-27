@@ -1011,12 +1011,11 @@ sub process_request
                                        },
                                        $sub_req, 0, 1
                                        );
+		my $rsp;
+		$rsp->{data}=$ret;
+                xCAT::MsgUtils->message("I", $rsp, $callback);
                 if ($::RUNCMD_RC != 0)
                 {
-                    my $rsp;
-                    push @{$rsp->{data}},
-                      "Could not run the nodeset command.\n";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
                     $error++;
                 }
             }
@@ -1031,12 +1030,11 @@ sub process_request
                                        },
                                        $sub_req, 0, 1
                                        );
+		my $rsp;
+		$rsp->{data}=$ret;
+                xCAT::MsgUtils->message("I", $rsp, $callback);
                 if ($::RUNCMD_RC != 0)
                 {
-                    my $rsp;
-                    push @{$rsp->{data}},
-                      "Could not run the nodeset command.\n";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
                     $error++;
                 }
             }
