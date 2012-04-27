@@ -140,20 +140,27 @@ will automatically be run on the node.
 If the file B<filename> is not updated on the node,  the B<filename.post> will not be run.  
 
 Putting the B<filename.post> in the file list to rsync to the node is required
-for hierarchical clusters.  It is optional for non-hierarchical cluster. 
+for hierarchical clusters.  It is optional for non-hierarchical clusters. 
+
+Another feature is teh B<EXECUTEALWAYS:> clause in the synclist file.  The B<EXECUTEALWAYS:> will list all the postscripts that you would like to run after the files are sync'd to the nodes.   These scripts will run whether or not any files are sync'd to the nodes.  The scripts have no special format, but must contain the fully qualified path.
+
+The scripts must be also added to the file list to rsync to the node for hierarchical clusters.  It is optional for non-hierarchical clusters.
 
 For example, your rsynclist file may look like this:
  /tmp/file2  ->  /tmp/file2
  /tmp/file2.post -> /tmp/file2.post
  /tmp/file3  ->  /tmp/filex
  /tmp/file3.post -> /tmp/file3.post
+ /tmp/myscript -> /tmp/myscript
  # the below are postscripts
  EXECUTE:
  /tmp/file2.post
  /tmp/file3.post
+ EXECUTEALWAYS:
+ /tmp/myscript
 
 If /tmp/file2 and /tmp/file3  update /tmp/file2 and /tmp/filex on the node, then the postscripts /tmp/file2.post and /tmp/file3.post are automatically run on 
-the node. 
+the node. /tmp/myscript will always be run on the node. 
 
 On Linux rsync always uses ssh remoteshell. On AIX, ssh or rsh is used depending on the site.useSSHonAIX attribute.
 
