@@ -144,17 +144,6 @@ if [ "$MODE" = "4" ]; then # for statelite mode
     fi
 else # for common mode
     downloaded=0;
-    #open the xcatinfo file to look for the master if it is not set
-    if [ -f /opt/xcat/xcatinfo ]; then
-        SIP=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2`
-        if [ -n "$SIP" ]; then
-            download_postscripts $SIP
-            if [ $? -eq 0 ]; then 
-                downloaded=1
-            fi
-        fi
-    fi
-
     #try the -m if it is specified, -m is passed in the updatenode command
     if [ $downloaded -eq 0 ]; then
         if [ "XX$P_SIP" != "XX" ]; then
@@ -165,6 +154,20 @@ else # for common mode
             fi
         fi
     fi 
+
+    #open the xcatinfo file to look for the master if it is not set
+    if [ $downloaded -eq 0 ]; then
+	if [ -f /opt/xcat/xcatinfo ]; then
+            SIP=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2`
+            if [ -n "$SIP" ]; then
+		download_postscripts $SIP
+		if [ $? -eq 0 ]; then 
+                    downloaded=1
+		fi
+            fi
+	fi
+    fi
+
     
     #try the dhcp server, this is used for initial boot for the node.
     if [ $downloaded -eq 0 ]; then
