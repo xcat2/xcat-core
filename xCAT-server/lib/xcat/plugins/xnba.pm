@@ -479,7 +479,7 @@ sub process_request {
      chmod(0644,"$globaltftpdir/xcat/pxelinux.0");
   }
   unless ( -r "$globaltftpdir/xcat/pxelinux.0" ) {
-     $callback->({errror=>["Unable to find pxelinux.0 from syslinux"],errorcode=>[1]});
+     $callback->({error=>["Unable to find pxelinux.0 from syslinux"],errorcode=>[1]});
      return;
   }
 
