@@ -4212,6 +4212,7 @@ sub parse_and_run_dcp
         # the parsing of the file will fill in an array of postscripts 
         # need to be run if the associated file is updated
         @::postscripts=();
+        @::alwayspostscripts=();
         if (xCAT::Utils->isServiceNode())
         {    # running on service node
             $rc =
@@ -4280,12 +4281,26 @@ sub parse_and_run_dcp
     #  @::postscripts should be empty in this case anyway
     # if postscripts to run after rsync, process the output and 
     # create the xdsh command to run the ones needed
+    my  @results2;
+    my  @results3;
     if ((@::postscripts) && ($::SYNCSN == 0)) {
-      my @results2 = &run_rsync_postscripts(\@results,$synfiledir); 
-      return (@results2);
+       @results2 = &run_rsync_postscripts(\@results,$synfiledir); 
+    }
+    if ((@::alwayspostscripts) && ($::SYNCSN == 0)) {
+       @results3 = &run_always_rsync_postscripts(\@nodelist,$synfiledir); 
+    }
+    my @newresults;
+    if (@results2) {
+      @newresults = (@results2);
+    }
+    if (@results3) {
+      @newresults = (@newresults,@results3);
+    }
+    if (@newresults) {
+      return (@newresults);
     } else {
       return (@results);
-    }
+    }    
 }
 
 #-------------------------------------------------------------------------------
@@ -4295,7 +4310,7 @@ sub parse_and_run_dcp
 
         This parses the -F rsync input file. and runs rsync to the input
 		image for the files
-		Does not process the EXECUTE statement
+		Does not process the EXECUTE or EXECUTEALWAYS statement
 
         File format:
           /.../file1 ->  /.../dir1/filex
@@ -4345,7 +4360,8 @@ sub rsync_to_image
 
         # process no more lines, do not exec
         # do not execute postscripts when syncing servicenodes
-        if ($line =~ /EXECUTE:/) { # process no more lines
+        if (($line =~ /EXECUTE:/) || ($line =~ /EXECUTEALWAYS:/))
+        { # process no more lines
 			last;
 	}
         if ($line =~ /(.+) -> (.+)/)
@@ -4440,6 +4456,15 @@ sub rsync_to_image
           /.../file1 ->  /.../dir1
           /.../*     ->  /.../dir1
           /.../file1 /..../filex  -> /...../dir1
+          /tmp/file2  ->  /tmp/file2
+          /tmp/file2.post -> /tmp/file2.post
+          EXECUTE: 
+          /tmp/file2.post
+          EXECUTEALWAYS:
+          /tmp/myscript1
+          /tmp/myscript2
+          .
+          .
 
         Arguments:
 		  Input nodelist,options, pointer to the sync file,flag is 
@@ -4476,25 +4501,71 @@ sub parse_rsync_input_file_on_MN
     while (my $line = <INPUTFILE>)
     {
         chomp $line;
-        if ($line =~ /^#/)    # skip commments
+        if (($line =~ /^#/) || ( $line =~ /^\s*$/ ))
+                        # skip commments  and blanks
         {
             next;
         }
         # if syncing only the service node directory, do not execute
         # postscripts
-        if ($line =~ /EXECUTE:/) {
+        if ($line =~ /EXECUTE:/) {  # execute if files sync'd
           if ($::SYNCSN == 1) {
         	last;
           } else {
-             while (my $line = <INPUTFILE>)
+             while ( $line = <INPUTFILE>)
              {
+               if ($line =~ /EXECUTEALWAYS:/) {  
+                  # finished with EXECUTE clause 
+                  while ( $line = <INPUTFILE>)
+                  {
+                    chomp $line;
+                    if (($line =~ /^#/) || ( $line =~ /^\s*$/ ))
+                        # skip commments  and blanks
+                    {
+                     next;
+                    }
+                    push @::alwayspostscripts,$line;
+                  }
+                   
+               }
                chomp $line;
-               if ($line =~ /^#/)    # skip commments
+               if (($line =~ /^#/) || ( $line =~ /^\s*$/ ))
+                        # skip commments  and blanks
                {
                  next;
                }
                push @::postscripts,$line;
-              }
+             }
+           
+         }
+        }
+        if ($line =~ /EXECUTEALWAYS:/) {  # execute always 
+          if ($::SYNCSN == 1) {
+        	last;
+          } else {
+             while ( $line = <INPUTFILE>)
+             {
+               if ($line =~ /EXECUTE:/) {  
+                  # finished with EXECUTEALWAYS clause 
+                  while ( $line = <INPUTFILE>)
+                  {
+                    chomp $line;
+                    if (($line =~ /^#/) || ( $line =~ /^\s*$/ ))
+                        # skip commments  and blanks
+                    {
+                     next;
+                    }
+                    push @::postscripts,$line;
+                  }
+               }
+               chomp $line;
+               if (($line =~ /^#/) || ( $line =~ /^\s*$/ ))
+                        # skip commments  and blanks
+               {
+                 next;
+               }
+               push @::alwayspostscripts,$line;
+             }
            
          }
         }
@@ -4652,24 +4723,70 @@ sub parse_rsync_input_file_on_SN
     while (my $line = <INPUTFILE>)
     {
         chomp $line;
-        if ($line =~ /^#/)    # skip commments
+        if (($line =~ /^#/) || ( $line =~ /^\s*$/ ))
+                        # skip commments  and blanks
         {
             next;
         }
         # if syncing only the service node directory, do not execute
         # postscripts
-        if ($line =~ /EXECUTE:/) {
+        if ($line =~ /EXECUTE:/) {  # these we execute only if file is sync'd
           if ($::SYNCSN == 1) {
         	last;
           } else {
              while (my $line = <INPUTFILE>)
              {
+               if ($line =~ /EXECUTEALWAYS:/) {  
+                  # finished with EXECUTE clause 
+                  while ( $line = <INPUTFILE>)
+                  {
+                    chomp $line;
+                    if (($line =~ /^#/) || ( $line =~ /^\s*$/ ))
+                        # skip commments  and blanks
+                    {
+                     next;
+                    }
+                    push @::alwayspostscripts,$line;
+                  }
+                   
+               }
                chomp $line;
                if ($line =~ /^#/)    # skip commments
                {
                  next;
                }
                push @::postscripts,$line;
+              }
+           
+         }
+        }
+        # These we always execute
+        if ($line =~ /EXECUTEALWAYS:/) {
+          if ($::SYNCSN == 1) {
+        	last;
+          } else {
+             while ( $line = <INPUTFILE>)
+             {
+               if ($line =~ /EXECUTE:/) {  
+                  # finished with EXECUTEALWAYS clause 
+                  while ( $line = <INPUTFILE>)
+                  {
+                    chomp $line;
+                    if (($line =~ /^#/) || ( $line =~ /^\s*$/ ))
+                        # skip commments  and blanks
+                    {
+                     next;
+                    }
+                    push @::postscripts,$line;
+                  }
+               }
+               chomp $line;
+               if (($line =~ /^#/) || ( $line =~ /^\s*$/ ))
+                        # skip commments  and blanks
+               {
+                 next;
+               }
+               push @::alwayspostscripts,$line;
               }
            
          }
@@ -4774,6 +4891,7 @@ sub parse_rsync_input_file_on_SN
 
         This executes the postscript file on the nodes where
 	    the corresponding rsync file was updated
+        These are the scripts after EXECUTE: in the syncfile
         rsync returns a list of files that have been updated
         in the form   hostname: <full file path>
         For example:  node1: tmp/test/file1  ( yes it leaves the first / off)
@@ -4809,13 +4927,13 @@ sub run_rsync_postscripts
     foreach my $postsfile (@::postscripts) {
        my $tmppostfile = $postsfile ;
  
-       # remove  first character, we have to do this because the
-       # return from rsync is tmp/file1  not /tmp/file1
        # if service node need to add the SNsyncfiledir to the path
        if (xCAT::Utils->isServiceNode()) {
          my $tmpp=$syncdir . $tmppostfile;
          $tmppostfile = $tmpp;
        }
+       # remove  first character for the compare, we have to do this because the
+       # return from rsync is tmp/file1  not /tmp/file1
        substr($tmppostfile,0,1)=""; 
 
        # now remove .post from the postscript file for the compare
@@ -4867,6 +4985,65 @@ sub run_rsync_postscripts
     return @newoutput;
 }
 
+#-------------------------------------------------------------------------------
+
+=head3
+     run_always_rsync_postscript 
+
+  This subroutine runs the xdsh command for all the scripts listed in the
+  EXECUTEALWAYS: clause of the synclist file. 
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+
+sub run_always_rsync_postscripts 
+{
+    my ($hostnames,$syncdir) = @_;
+    my @hosts   = @$hostnames;
+    my @newoutput= (); 
+    my $dshparms; 
+    foreach my $postsfile (@::alwayspostscripts) {
+       my $tmppostfile = $postsfile ;
+ 
+       # if service node need to add the SNsyncfiledir to the path
+       if (xCAT::Utils->isServiceNode()) {
+         my $tmpp=$syncdir . $tmppostfile;
+         $tmppostfile = $tmpp;
+       }
+
+       foreach my $host (@hosts) {
+         # build xdsh queue 
+         # build host and all scripts to execute
+         push (@{$dshparms->{'postscripts'} {$postsfile}}, $host);
+       }
+    }
+    # now if we have postscripts to run, run xdsh
+    my $out;
+    foreach  my $ps ( keys %{$$dshparms{'postscripts'}}) {
+        my @nodes;
+        push (@nodes, @{$$dshparms{'postscripts'}{$ps}}); 
+        # if on the service node need to add the $syncdir directory 
+        # to the path
+        if (xCAT::Utils->isServiceNode()) {
+         my $tmpp=$syncdir . $ps;
+         $ps=$tmpp;
+        }
+         
+         $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
+                                    node    => \@nodes,
+                                    arg     => [ "-e", $ps ]
+                             }, $::SUBREQ, 0,1);
+        foreach my $r (@$out){
+                push(@newoutput, $r);
+
+        }
+
+
+    }
+    return @newoutput;
+}
 #-------------------------------------------------------------------------------
 
 =head3
