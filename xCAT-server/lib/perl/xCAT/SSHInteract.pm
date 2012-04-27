@@ -53,7 +53,7 @@ sub new {
 	if ($nokeycheck) { delete $args{"-nokeycheck"}; }
 	my $self = Net::Telnet->new(%args);
 	_startssh($self,$pty,$username,$host,"-nokeycheck"=>$nokeycheck);
-    my ($prematch,$match) = $self->waitfor([Match => $args{prompt},'/password:/i',]);
+    my ($prematch,$match) = $self->waitfor([Match => $args{prompt},'/password:/i',]) or die "Login Failed: ",$self->lastline;
     if ($match =~ /password:/i) {
 	    #$self->waitfor("-match" => '/password:/i', -errmode => "return") or die "Unable to reach host ",$self->lastline;
             $self->print($password);
