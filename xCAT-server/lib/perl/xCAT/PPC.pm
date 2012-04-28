@@ -818,6 +818,11 @@ sub preprocess_nodes {
             return undef;
         }
     }
+    
+    if ( $request->{fsp_api} == 1 || $request->{command} =~ /^(mkhwconn|rmhwconn)$/) {
+         xCAT::FSPUtils::getHcpAttribs($request, \%tabs);
+    }
+
 
     ##########################################
     # Group nodes
@@ -840,31 +845,6 @@ sub preprocess_nodes {
         #@$d[3] = $hcp;
         my $mtms = @$d[2];
        
-        if( $request->{command} =~ /^(mkhwconn|lshwconn|rmhwconn)$/ && grep (/^-s$/, @{$request->{arg}})) {
-            my $sfp;
-            unless ( $request->{sfp} ) {
-                 my $ppctab = xCAT::Table->new('ppc');
-                 if ( $ppctab ) {
-                     my $ent = $ppctab->getNodeAttribs( $node, [qw(sfp)]);
-                     if( $request->{command} =~ /^(lshwconn|rmhwconn)$/ && !defined($ent)) {
-                         send_msg( $request, 1, "$node: No sfp defined in the ppc table.");
-                         next;
-                     }
-                     $sfp = $ent->{sfp};
-                  }
-            } else {
-                $sfp = $request->{sfp};
-            }
-            if( $request->{command} =~ /^(mkhwconn)$/ && !defined($sfp)) {
-               send_msg( $request, 1, "$node: Please specify the sfp in the commands or in the ppc table.");
-               next;
-            }
-            $request->{fsp_api} = 0;
-            $request->{hwtype} = "hmc";
-            $hcp = $sfp;
-         }
-
- 
         ######################################
         # Special case for mkhwconn
         ######################################
@@ -886,16 +866,30 @@ sub preprocess_nodes {
     # Get userid and password
     ##########################################
     while (my ($hcp,$hash) = each(%nodehash) ) {   
-        if($request->{hwtype} && ($request->{hwtype} eq "blade" )) { 
-            next;
-        }
         my @cred; 
-        if ($request->{hcp} && ($request->{hcp} eq "hmc" )) {
-            @cred = xCAT::PPCdb::credentials( $hcp, $request->{hcp} );
-        } else {
-            @cred = xCAT::PPCdb::credentials( $hcp, $request->{hwtype} );
-        }
+        if( $request->{fsp_api} != 1 ) {
+            if ($request->{hcp} && ($request->{hcp} eq "hmc" )) {
+                @cred = xCAT::PPCdb::credentials( $hcp, $request->{hcp} );
+            } else {
+                @cred = xCAT::PPCdb::credentials( $hcp, $request->{hwtype} );
+            }
             $request->{$hcp}{cred} = \@cred;
+         }
+         
+	 if( $request->{fsp_api} == 1 && $request->{command} eq "mkhwconn") {
+             my $user;
+             if($request->{hwtype} && ($request->{hwtype} eq "blade" )) {
+	        $user = "USERID";
+             }
+             if($request->{hwtype} && ($request->{hwtype} =~ /^(fsp|bpa)$/ )) {
+	        $user = "HMC";
+             }
+            
+	     @cred = xCAT::PPCdb::credentials( $hcp, $request->{hwtype}, $user );
+	    
+             $request->{$hcp}{cred} = \@cred;
+	 }
+     
     } 
     ##########################################
     # Group the nodes - we will fork one 
@@ -1278,6 +1272,32 @@ sub resolve {
                 }
         } 
     }
+   
+    ############################
+    #Specail case for mkhwconn/lshwconn/rmhwconn with -s	
+    ############################
+    if( $request->{command} =~ /^(mkhwconn|lshwconn|rmhwconn)$/ && grep (/^-s$/, @{$request->{arg}})) {
+        my $sfp;
+        unless ( $request->{sfp} ) {
+            my $ent = $tabs->{ppc}->getNodeAttribs( $node, [qw(sfp)]);
+            if( $request->{command} =~ /^(lshwconn|rmhwconn)$/ && !defined($ent)) {
+                return( "$node: No sfp defined in the ppc table.");
+            
+            }
+            $sfp = $ent->{sfp};
+            
+        } else {
+            $sfp = $request->{sfp};
+        }
+        if( $request->{command} =~ /^(mkhwconn)$/ && !defined($sfp)) {
+            return("$node: Please specify the sfp in the commands or in the ppc table.");
+        }
+        $request->{fsp_api} = 0;
+        $request->{hwtype} = "hmc";
+        $att->{hcp} = $sfp;
+    }
+
+
     #################################
     # Build array of data 
     #################################
