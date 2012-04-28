@@ -4212,7 +4212,9 @@ sub get_blades_for_mpa {
       } elsif ($att and $att->{parent} and ($att->{parent} ne $mpa)) {
           next;
       }
-      my $hcp_ip = xCAT::Utils::getIPaddress($att->{hcp});
+      my $request;
+      my $nodetype = "blade";
+      my $hcp_ip = xCAT::FSPUtils::getIPaddress($request, $nodetype, $att->{hcp});
       if (!defined($hcp_ip) or ($hcp_ip == -3)) {
           next;
       }
