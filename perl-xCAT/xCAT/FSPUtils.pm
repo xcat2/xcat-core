@@ -30,6 +30,186 @@ require xCAT::Utils;
 require xCAT::NodeRange;
 
 
+        
+ #-------------------------------------------------------------------------------
+
+=head3   getHcpAttribs - Build 2 Hashes from ppc/vpd table
+                         on hash is : CEC/Frame is the Key, FSPs/BPAs are the value. 
+			 the other is: fsp/bpa is the key, the side is the value.
+
+ Arguments:
+    Returns: 
+    Globals:
+        none
+    Error:
+        none
+    Example:    xCAT::FSPUtils::getPPCAttribs($request, \%tabs);
+
+=cut
+
+#-------------------------------------------------------------------------------
+       
+sub getHcpAttribs 
+{
+    my $request = shift;
+    my $tabs     = shift;
+    my %ppchash ;
+    my %vpd ;
+    my $t = `date`;
+    print $t."\n"; 
+    my @vs = $tabs->{vpd}->getAllNodeAttribs(['node', 'side']);
+    for my $entry ( @vs ) {
+        my $tmp_node = $entry->{node};
+        my $tmp_side = $entry->{side};
+	if(defined($tmp_node) && defined($tmp_side)) {
+            $vpd{$tmp_node} = $tmp_side ;     	
+	}
+    }
+    
+    my $t = `date`;
+    print $t."\n"; 
+    my @ps = $tabs->{ppc}->getAllNodeAttribs(['node','parent','nodetype']); 
+    for my $entry ( @ps ) {
+        my $tmp_parent = $entry->{parent};
+        my $tmp_node = $entry->{node};
+        my $tmp_type = $entry->{nodetype};
+        if(defined($tmp_node) && defined($tmp_type) && ($tmp_type =~ /^(fsp|bpa)$/ && $tmp_parent) ) {
+            push @{$ppchash{$tmp_parent}{children}}, $tmp_node;
+	    #push @{$ppchash{$tmp_parent}}, $tmp_node;
+        }
+
+	#if(exists($ppchash{$tmp_node})) {
+	#     if( defined($tmp_type) ) {
+	#         #push @{$ppchash{$tmp_node}{type}}, $tmp_type;
+	#     } else {
+	#	 my %output;
+	#	 my $msg = "no type for $tmp_type in the ppc table.";
+	#         $output{errorcode} = 1;
+	#         $output{data} = $msg;
+	#	 $request->{callback}->( \%output );
+	#     }
+	#}
+     }
+     
+     $request->{ppc}=\%ppchash ;
+     $request->{vpd}=\%vpd ;
+     
+}
+        
+ #-------------------------------------------------------------------------------
+
+=head3   getIPaddress - Used by DFM related functions to support service vlan redundancy.
+
+ Arguments:
+       Node name  only one at a time
+    Returns: ip address(s)
+    Globals:
+        none
+    Error:
+        none
+    Example:   my $c1 = xCAT::Utils::getIPaddress($nodetocheck);
+
+=cut
+
+#-------------------------------------------------------------------------------
+       
+sub getIPaddress 
+{
+#    require xCAT::Table;
+    my $request     = shift;
+    my $type       = shift;
+    my $nodetocheck = shift;
+    my $port        = shift;
+    if (xCAT::Utils::isIpaddr($nodetocheck)) {
+        return $nodetocheck;
+    }
+    my $side = "[A|B]";
+    if (!defined($port)) {
+        $port = "[0|1]";
+    }
+    
+    my $ppc = $request->{ppc};
+    my $vpd = $request->{vpd};
+    
+# only need to parse IP addresses for Frame/CEC/BPA/FSP
+
+    #my $type = xCAT::DBobjUtils->getnodetype($nodetocheck);
+    #my $type = $$attrs[4]; 
+    if ($type) {
+        my @children;
+        my %node_side_pairs = ();
+        my $children_num = 0;
+        my $parent;
+        if ($type eq "bpa" or $type eq "fsp") {
+         
+            push @children, $nodetocheck;
+            
+	    #my $tmp_s = $vpdtab->getNodeAttribs($nodetocheck, ['side']);
+	    my $tmp_s = $vpd->{$nodetocheck};
+            if ($tmp_s and $tmp_s =~ /(A|B)-\d/i) {
+                $side = $1; # get side for the fsp, in order to get its brothers
+		
+            } else {
+                return -3;
+            }
+        } elsif ($type eq "frame" or $type eq "cec") {
+            $parent = $nodetocheck;
+        } else {
+            return undef;
+        }
+        if( @children == 0 ) {	
+            if( exists($ppc->{$parent} ) ) {
+	        @children = @{$ppc->{$parent}->{children}}; 
+            } else {
+	        return undef;
+	    }
+	}
+        foreach my $tmp_n( @children) {  
+            my $tmp_s = $vpd->{$tmp_n};
+            if ($tmp_s and $tmp_s =~ /^$side-$port$/i) {
+                $tmp_s =~ s/a/A/;
+                $tmp_s =~ s/b/B/;
+                if (xCAT::Utils::isIpaddr($tmp_n)) {
+                    $node_side_pairs{$tmp_s} = $tmp_n;           
+                    $children_num++;
+                } else {
+                    my $tmpip = xCAT::NetworkUtils->getipaddr($tmp_n);
+                    if (!$tmpip) {
+			#my $hoststab = xCAT::Table->new( 'hosts' );
+			#my $tmp = $hoststab->getNodeAttribs($tmp_n, ['ip']);
+			#if ($tmp->{ip}) {
+			#    $tmpip = $tmp->{ip};
+			#}
+                    }
+                    if ($tmpip) {
+                        $node_side_pairs{$tmp_s} = $tmpip;
+                        $children_num++;
+                    }
+                } # end of parse IP address for a fsp/bpa
+            } # end of parse a child's side
+        } #end of loop for children
+        if ($children_num == 0) {
+            return undef; #no children or brothers for this node.
+        }
+        my @keys = qw(A-0 A-1 B-0 B-1);
+        my $out_strings = undef;
+        foreach my $tmp (@keys) {
+            if (!$node_side_pairs{$tmp}) {
+                $node_side_pairs{$tmp} = '';
+            }
+        }
+
+        $out_strings = $node_side_pairs{"A-0"}.','.$node_side_pairs{"A-1"}.','.$node_side_pairs{"B-0"}.','.$node_side_pairs{"B-1"};
+
+        return $out_strings;
+    } else {
+        return undef;
+    }
+}
+ 
+
+
+
 
 #-------------------------------------------------------------------------------
 
@@ -56,6 +236,7 @@ require xCAT::NodeRange;
 
 #-------------------------------------------------------------------------------
 sub fsp_api_action {
+    my $request  = shift;
     my $node_name  = shift;
     my $attrs      = shift;
     my $action     = shift;
@@ -99,12 +280,10 @@ sub fsp_api_action {
         ############################
         # Get IP address
         ############################
-        #$fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name, $parameter );
-        $fsp_ip = xCAT::Utils::getIPaddress( $fsp_name, $parameter );
-	    undef($parameter);
+        $fsp_ip = getIPaddress($request, $$attrs[4], $fsp_name, $parameter );
+	undef($parameter);
     } else {
-        #$fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name );
-        $fsp_ip = xCAT::Utils::getIPaddress( $fsp_name );
+        $fsp_ip = getIPaddress($request, $$attrs[4], $fsp_name );
     }
 
     if(!defined($fsp_ip)) {
@@ -126,27 +305,22 @@ sub fsp_api_action {
     #get the HMC/password from  passwd table or ppcdirect table.
     if( $action =~ /^add_connection$/) {
         my $tmp_node; 
-        $user = 'HMC';
- 	    if( $$attrs[4] =~ /^cec$/ || $$attrs[4] =~ /^frame$/ ) {
-            #for redundant FSPs/BPAs, we only need to get the one node's HMC/passwd
-            my $children = xCAT::DBobjUtils->getchildren($fsp_name);
-	        if( !defined($children) ) {
-	            $res = "Failed to get the $fsp_name\'s FSPs/BPAs"; 
-	            return ([$fsp_name, $res, -1]);
-	        }
-	        $tmp_node = $$children[0];
-	    } elsif ($$attrs[4] =~ /^blade$/) { 
-            $tmp_node = $$attrs[5];
-            $user = 'USERID';
-        } else {
+ 	if( $$attrs[4] =~ /^cec$/ || $$attrs[4] =~ /^frame$/ ) {
+	     $tmp_node = $node_name;
+	} elsif ($$attrs[4] =~ /^blade$/) { 
+                $tmp_node = $$attrs[5];
+	} else {
 	        $tmp_node = $fsp_name; 
-	    }
-	    	    
-	    ($user, $password) = xCAT::PPCdb::credentials( $tmp_node, $fsp_bpa_type,$user);        
-	    if ( !$password) {
-	        $res = "Cannot get password of userid 'HMC'. Please check table 'passwd' or 'ppcdirect'.";
-	        return ([$node_name, $res, -1]);
-	    }
+	}
+	
+        my $cred = $request->{$tmp_node}{cred}; 
+        ($user, $password) = @$cred ;
+	#($user, $password) = xCAT::PPCdb::credentials( $tmp_node, $fsp_bpa_type,'HMC');        
+	if ( !$password) {
+	     $res = "Cannot get password of userid 'HMC'. Please check table 'passwd' or 'ppcdirect'.";
+	     return ([$node_name, $res, -1]);
+	}
+
         $user = 'HMC';
     }
 
@@ -222,8 +396,9 @@ sub fsp_api_action {
 
 #-------------------------------------------------------------------------------
 sub fsp_state_action {
+    my $request  = shift;
     my $node_name  = shift;
-    my $type_name  = shift;
+    my $attrs  = shift;
     my $action     = shift;
     my $tooltype   = shift;
     my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api"; 
@@ -244,7 +419,7 @@ sub fsp_state_action {
     $fsp_name = $node_name; 
 
      
-    if($type_name =~ /^fsp$/ || $type_name =~ /^lpar$/ || $type_name =~ /^(cec|blade)$/) {
+    if( $$attrs[4] =~ /^(fsp|lpar|cec|blade)$/) {
         $type = 0;
     } else { 
 	$type = 1;
@@ -253,8 +428,7 @@ sub fsp_state_action {
     ############################
     # Get IP address
     ############################
-    #$fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name );
-    $fsp_ip = xCAT::Utils::getIPaddress( $fsp_name );
+    $fsp_ip = getIPaddress($request, $$attrs[4], $fsp_name );
     if(!defined($fsp_ip) or ($fsp_ip == -3)) {
         $res[0] = ["Failed to get IP address for $fsp_name."];
         return ([$node_name, @res, -1]);	
@@ -281,37 +455,10 @@ sub fsp_state_action {
     return( [$Rc,@res] ); 
 }
 
-sub getTypeOfNode
-{
-    my $class      = shift;
-    my $node        = shift;
-    my $callback   = shift;
-    
-    my $nodetypetab = xCAT::Table->new( 'nodetype');
-
-    if (!$nodetypetab) {
-        my $rsp;
-        $rsp->{errorcode}->[0] = [1];
-        $rsp->{data}->[0]= "Failed to open table 'nodetype'";
-        xCAT::MsgUtils->message('E', $rsp, $callback);
-    }
-    my $nodetype_hash    = $nodetypetab->getNodeAttribs( $node,[qw(nodetype)]);
-    my $nodetype    = $nodetype_hash->{nodetype};
-    if ( !$nodetype) {
-        my $rsp;
-        $rsp->{errorcode}->[0] = [1];
-        $rsp->{data}->[0]= "Not found the $node\'s nodetype";
-        xCAT::MsgUtils->message('E', $rsp, $callback);
-        return undef;
-    }
-    return $nodetype;    
-    
-}
-
 
 #-------------------------------------------------------------------------------
 
-=head3  fsp_api_partition_action
+=head3  fsp_api_create_partition
     Description:
         invoke the fsp_api to perform the functions 
 
@@ -327,13 +474,14 @@ sub getTypeOfNode
     Error:
         none
     Example:
-        my $res = xCAT::FSPUtils::fsp_api_action( $node_name, $d, "add_connection", $tooltype );
+        my $res = xCAT::FSPUtils::fsp_api_create_partition($request, ... );
     Comments:
 
 =cut
 
 #-------------------------------------------------------------------------------
-sub fsp_api_create_parttion {
+sub fsp_api_create_partition {
+    my $request   = shift;
     my $starting_lpar_id   = shift;
     my $octant_cfg = shift;
     my $node_number        = shift;
@@ -371,8 +519,7 @@ sub fsp_api_create_parttion {
     ############################
     # Get IP address
     ############################
-    #$fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name );
-    $fsp_ip = xCAT::Utils::getIPaddress( $fsp_name );
+    $fsp_ip = getIPaddress($request, $$attrs[4], $fsp_name );
     if(!defined($fsp_ip) or ($fsp_ip == -3)) {
         $res = "Failed to get IP address for $fsp_name.";
         return ([$fsp_name, $res, -1]);	

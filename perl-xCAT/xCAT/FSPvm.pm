@@ -644,7 +644,7 @@ sub do_op_extra_cmds {
     while (my ($mtms, $h) = each(%$hash)) {
         while (my($name, $d) = each(%$h)) {
             my $tmp_value = ($param eq '*') ? $name : $param;
-            my $value = xCAT::FSPUtils::fsp_api_action($name, $d, $action, 0, $tmp_value);
+            my $value = xCAT::FSPUtils::fsp_api_action($request, $name, $d, $action, 0, $tmp_value);
             if (@$value[1] && ((@$value[1] =~ /Error/i) && (@$value[2] ne '0'))) {
                 return ([[$name, @$value[1], '1']]) ;
             } else {
@@ -721,7 +721,7 @@ sub modify_by_prof {
         }
         #get the current I/O slot information
         my $action = "get_io_slot_info";
-        my $values =  xCAT::FSPUtils::fsp_api_action ($cec_name, $td, $action);
+        my $values =  xCAT::FSPUtils::fsp_api_action ($request, $cec_name, $td, $action);
         my $Rc = $$values[2];
         if ( $Rc != 0 ) {
             push @result, [$cec_name, $$values[1], $Rc];
@@ -738,7 +738,7 @@ sub modify_by_prof {
         #get all the nodes state in the same cec
         $action = "all_lpars_state";
         undef($values);
-        my $values =  xCAT::FSPUtils::fsp_state_action ($cec_name, "fsp", $action); 
+        my $values =  xCAT::FSPUtils::fsp_state_action ($request, $cec_name, $td, $action); 
         $Rc = shift(@$values);
         if ( $Rc != 0 ) {
             push @result, [$cec_name, $$values[0], $Rc];
@@ -770,7 +770,7 @@ sub modify_by_prof {
                     return ( \@result ); 
                 }                   
      
-                my $values =  xCAT::FSPUtils::fsp_api_action ($lpar, $d, $action, $tooltype, $drc_index);
+                my $values =  xCAT::FSPUtils::fsp_api_action ($request, $lpar, $d, $action, $tooltype, $drc_index);
                 #my $Rc = shift(@$values);
                 my $Rc = pop(@$values);
                 if ( $Rc != 0 ) {
@@ -787,6 +787,7 @@ sub modify_by_prof {
 
 sub enumerate {
 
+    my $request  = shift;
     my $h    = shift;
     my $mtms    = shift;
     my %outhash = ();
@@ -802,7 +803,7 @@ sub enumerate {
    
     $td[4]="fsp"; 
     my $action = "get_io_slot_info";
-    my $values =  xCAT::FSPUtils::fsp_api_action ($cec, \@td, $action);
+    my $values =  xCAT::FSPUtils::fsp_api_action ($request, $cec, \@td, $action);
     #my $Rc = shift(@$values);
     my $Rc = $$values[2];
     if ( $Rc != 0 ) {
@@ -818,7 +819,7 @@ sub enumerate {
  
     if( $type =~ /^(fsp|cec)$/ )  {
 	$action = "query_octant_cfg";
-	my $values =  xCAT::FSPUtils::fsp_api_action ($cec, \@td, $action);
+	my $values =  xCAT::FSPUtils::fsp_api_action ($request, $cec, \@td, $action);
 	my $Rc = pop(@$values);
 	if ( $Rc != 0 ) {
 	    return( [$Rc,$$values[1]] );
@@ -841,6 +842,7 @@ sub enumerate {
 }
 
 sub get_cec_attr_info {
+	my $request = shift;
 	my $name = shift;
 	my $attr = shift;
 	my $op = shift;
@@ -850,7 +852,7 @@ sub get_cec_attr_info {
 		huge_page => "get_huge_page"	
 	);
 	my $action = $op_hash{$op};
-	my $values = xCAT::FSPUtils::fsp_api_action($name, $attr, $action);
+	my $values = xCAT::FSPUtils::fsp_api_action($request, $name, $attr, $action);
     if (@$values[1] && ((@$values[1] =~ /Error/i) && @$values[2] ne '0')) {
         return ([[$name, @$values[1], '1']]);
     }
@@ -985,7 +987,7 @@ sub list {
     my $l_string = "\n";
     #print Dumper($hash);    
     while (my ($mtms,$h) = each(%$hash) ) {
-	    my $info = enumerate( $h, $mtms );
+	    my $info = enumerate($request, $h, $mtms );
     	my $Rc = shift(@$info);
 	    my $data = @$info[0];
          	
@@ -1013,16 +1015,16 @@ sub list {
                 # get the I/O slot information  
                 if($request->{opt}->{l}) {
 					if ($type =~ /^(fsp|cec)$/) {
-						$bsr_infos = get_cec_attr_info($node_name, $d, "bsr"); 
+						$bsr_infos = get_cec_attr_info($request, $node_name, $d, "bsr"); 
 		            	if (ref($bsr_infos) eq 'ARRAY') {
 			            	return $bsr_infos;
 		            	}
-                        $huge_infos = get_cec_attr_info($node_name, $d, "huge_page");
+                        $huge_infos = get_cec_attr_info($request,$node_name, $d, "huge_page");
                         if (ref($huge_infos) eq 'ARRAY') {
                             return $huge_infos;
                         }
                     }
-                    $lpar_infos = get_cec_attr_info($node_name, $d, "lpar_info");
+                    $lpar_infos = get_cec_attr_info($request, $node_name, $d, "lpar_info");
                     if (ref($lpar_infos) eq 'ARRAY') {
                         return $lpar_infos;
                     }
@@ -1053,7 +1055,7 @@ sub list {
                             if (defined($lpar_huges{$lparid})) {
                                 $hugepage = $lpar_huges{$lparid};
                             } else {
-                                $hugepage = get_cec_attr_info($node_name, $d, "huge_page");
+                                $hugepage = get_cec_attr_info($request, $node_name, $d, "huge_page");
                                 if (ref($hugepage) eq 'ARRAY') {
                                     return $hugepage;
                                 }
@@ -1144,7 +1146,7 @@ sub list_orig {
             # This is a CEC
             ####################################
             else {
-		my $values = xCAT::FSPUtils::fsp_api_action( $node_name, $d, "query_octant_cfg");
+		my $values = xCAT::FSPUtils::fsp_api_action($request, $node_name, $d, "query_octant_cfg");
                 my $Rc = @$values[2];
 		my $data = @$values[1];
 		if ( $Rc != SUCCESS ) {
@@ -1210,7 +1212,7 @@ sub create {
             }
         }
         
-        my $values =  xCAT::FSPUtils::fsp_api_action ($cec_name, $d, "query_octant_cfg");   
+        my $values =  xCAT::FSPUtils::fsp_api_action ($request, $cec_name, $d, "query_octant_cfg");   
         my $Rc = shift(@$values);
         if ( $Rc != 0 ) {
             return( [[$cec_name,$$values[0],$Rc]] );
@@ -1287,7 +1289,7 @@ sub create {
 
 	
 	#$values = xCAT::FSPUtils::fsp_api_create_parttion( $starting_lpar_id, $octant_cfg, $node_number, $d, "set_octant_cfg");
-        $values =  xCAT::FSPUtils::fsp_api_action ($cec_name, $d, "set_octant_cfg", 0, $parameters);   
+        $values =  xCAT::FSPUtils::fsp_api_action ($request,$cec_name, $d, "set_octant_cfg", 0, $parameters);   
         my $Rc = $$values[2];
      	my $data = $$values[1];
 	if ( $Rc != SUCCESS ) {

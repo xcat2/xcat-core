@@ -82,6 +82,7 @@ sub getshorthost {
 ##########################################################################
 sub enumerate {
 
+    my $request   = shift;
     my $hash   = shift;
     my $exp   = shift;
     my $hwtype = ();
@@ -118,7 +119,7 @@ sub enumerate {
                 push @values, $data;
                 next;
             }  
-            my $stat = xCAT::FSPUtils::fsp_api_action ($node_name, $d, "query_connection");
+            my $stat = xCAT::FSPUtils::fsp_api_action ($request, $node_name, $d, "query_connection");
             my $Rc = @$stat[2];
     	    my $data = @$stat[1];
            
@@ -183,7 +184,7 @@ sub enumerate {
 	    #####################################
             # Enumerate LPARs 
             #####################################
-            $stat = xCAT::FSPUtils::fsp_api_action ($node_name, $d, "get_lpar_info");
+            $stat = xCAT::FSPUtils::fsp_api_action ($request, $node_name, $d, "get_lpar_info");
             $Rc = @$stat[2];
     	    $data = @$stat[1];
 	    
@@ -524,7 +525,7 @@ sub rscan {
     ###################################
     # Enumerate all the hardware
     ###################################
-    my $values = enumerate( $hash );
+    my $values = enumerate($request, $hash );
     #print "In rscan:\n";
     #print Dumper($values);
     if ( ref($values) ne 'ARRAY' ) {
