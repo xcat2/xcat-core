@@ -257,7 +257,7 @@ sub getmacs {
             #########################################
             for ( my $stat = 0; $stat < 3; $stat++ ) {
 		#my $output = xCAT::PPCcli::lshwres( $exp, @$cmd[$stat], $hcp);
-                my $output  = xCAT::FSPUtils::fsp_api_action($name, $d, $cmd[$stat]);
+                my $output  = xCAT::FSPUtils::fsp_api_action($request, $name, $d, $cmd[$stat]);
 		my $macs; 
                 my $res = $$output[1];
 		chomp($res);

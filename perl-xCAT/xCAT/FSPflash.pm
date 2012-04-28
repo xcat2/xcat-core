@@ -248,7 +248,7 @@ sub rflash {
 
             if( !defined($housekeeping) && ($$d[4] =~ /^fsp$/ || $$d[4] =~ /^lpar$/ || $$d[4] =~ /^cec$/)) {
                 $action  =  "get_compatible_version_from_rpm";
-	        my $values = xCAT::FSPUtils::fsp_api_action( $name, $d, $action, 0, $request->{opt}->{d} );
+	        my $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, $action, 0, $request->{opt}->{d} );
 		my $Rc =  @$values[2];
 		my $v = @$values[1];
 		if ($Rc != 0) {
@@ -265,7 +265,7 @@ sub rflash {
                     
                     my @frame_d = (0, 0, 0, $frame, "frame", 0);
 	            $action = "list_firmware_level";
-	            $values = xCAT::FSPUtils::fsp_api_action( $frame, \@frame_d, $action );	
+	            $values = xCAT::FSPUtils::fsp_api_action($request, $frame, \@frame_d, $action );	
 	            $Rc =  @$values[2];
 	            my $frame_firmware_level = @$values[1];
 		    if ($Rc != 0) {
@@ -300,7 +300,7 @@ sub rflash {
             }
 
 	   if(!defined($housekeeping)) {	   
-               my $values  = xCAT::FSPUtils::fsp_api_action( $name, $d, "list_firmware_level"); 
+               my $values  = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "list_firmware_level"); 
                my $Rc = @$values[2];
 	       my $level = @$values[1];
 	       #####################################
@@ -348,7 +348,7 @@ sub rflash {
 	       dpush ( \@value, [$name, $msg]);
 	   }
 
-           my $res = xCAT::FSPUtils::fsp_api_action( $name, $d, $action, 0, $request->{opt}->{d} );
+           my $res = xCAT::FSPUtils::fsp_api_action($request, $name, $d, $action, 0, $request->{opt}->{d} );
            push(@value,[$name, @$res[1], @$res[2]]);
            return (\@value);
 	         

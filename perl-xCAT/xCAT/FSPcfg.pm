@@ -465,7 +465,7 @@ sub do_query {
     while (my ($mtms, $h) = each(%$hash)) {
         while (my($name, $d) = each(%$h)) {
             my $action = $fspapi_action{$cmd}{query}{@$d[4]};
-            my $values = xCAT::FSPUtils::fsp_api_action($name, $d, $action);
+            my $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, $action);
             &do_process_query_res($name, $cmd, \@result, $values);
             #my $res = &do_process_query_res($name, $cmd, \@result, $values);
             #if (defined($res)) {
@@ -512,7 +512,7 @@ sub do_set {
         while (my($name, $d) = each(%$h)) {
             my $action = $fspapi_action{$cmd}{set}{@$d[4]};
             my $para = &do_set_get_para($name, $cmd, $value);
-            my $values = xCAT::FSPUtils::fsp_api_action($name, $d, $action, 0, $para);
+            my $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, $action, 0, $para);
 #           print Dumper($values);
             &do_process_set_res($name, $cmd, \@result, $values);
             #my $res = &do_process_set_res($name, $cmd, \@result, $values);
@@ -594,7 +594,7 @@ sub passwd {
            			while ( my ($node,$d) = each(%$h) ) {
                			my $type = @$d[4];
 				my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
-				my $cmd = xCAT::FSPcfg::fsp_api_passwd ($node, $d, $usr, $passwd, $newpasswd);
+				my $cmd = xCAT::FSPcfg::fsp_api_passwd ($request, $node, $d, $usr, $passwd, $newpasswd);
                 		my $Rc = @$cmd[2];
 				my $data = @$cmd[1];
                 		my $usr_back = $usr;
@@ -676,7 +676,7 @@ sub frame {
                     # Get frame number
                     #################################
 		    #$data = xCAT::PPCcli::lssyscfg( $exp, @$d[4], @$d[2], 'frame_num' );
-		    $data = xCAT::FSPUtils::fsp_api_action( $node, $d, "get_frame_number");
+		    $data = xCAT::FSPUtils::fsp_api_action( $request, $node, $d, "get_frame_number");
                     $Rc = pop(@$data);
 
                     #################################
@@ -707,7 +707,7 @@ sub frame {
                         return( [[$node,"Cannot find frame num in database", -1]] );
                     }
 		    #$data = xCAT::PPCcli::chsyscfg( $exp, "bpa", $d, "frame_num=".$ent->{id} );
-		    $data = xCAT::FSPUtils::fsp_api_action( $node, $d, "set_frame_number", 0, $ent->{id});
+		    $data = xCAT::FSPUtils::fsp_api_action( $request, $node, $d, "set_frame_number", 0, $ent->{id});
                     $Rc = pop(@$data);
 
                     #################################
@@ -726,7 +726,7 @@ sub frame {
                     # Read the frame number from opt
                     #################################
 		    #$data = xCAT::PPCcli::chsyscfg( $exp, "bpa", $d, "frame_num=$value" );
-                    $data = xCAT::FSPUtils::fsp_api_action( $node, $d, "set_frame_number", 0, $value);
+                    $data = xCAT::FSPUtils::fsp_api_action( $request, $node, $d, "set_frame_number", 0, $value);
 		    $Rc = pop(@$data);
 
                     #################################
@@ -774,7 +774,7 @@ sub cec_off_policy {
                     #################################
                     # Get platform IPL parameters 
                     #################################
-		    $data = xCAT::FSPUtils::fsp_api_action( $node, $d, "get_phyp_cfg_power_off_policy");
+		    $data = xCAT::FSPUtils::fsp_api_action( $request, $node, $d, "get_phyp_cfg_power_off_policy");
                     $Rc = pop(@$data);
 
                     #################################
@@ -798,7 +798,7 @@ sub cec_off_policy {
 		    } else {
 		        $value = "cec_off_policy_stayon";
 		    }
-                    $data = xCAT::FSPUtils::fsp_api_action( $node, $d, $value);
+                    $data = xCAT::FSPUtils::fsp_api_action( $request, $node, $d, $value);
 		    $Rc = pop(@$data);
 
                     #################################
@@ -830,6 +830,7 @@ sub cec_off_policy {
 # Invoke fsp_api to change the passwords and store updated passwd in db
 ##########################################################################
 sub fsp_api_passwd {
+    my $request  = shift;
     my $node_name  = shift;
     my $attrs      = shift;
     my $user       = shift;
@@ -862,7 +863,8 @@ sub fsp_api_passwd {
     ############################
     #$fsp_ip = xCAT::Utils::get_hdwr_ip($fsp_name);
     #$fsp_ip = xCAT::Utils::getNodeIPaddress($fsp_name);
-    $fsp_ip = xCAT::Utils::getIPaddress($fsp_name);
+    #$fsp_ip = xCAT::Utils::getIPaddress($fsp_name);
+    $fsp_ip = getIPaddress($request, $attrs, $fsp_name );
     if(!defined($fsp_ip) or ($fsp_ip == -3)) {
         $res = "Failed to get IP address for $fsp_name.";
         return ([$node_name, $res, -1]);

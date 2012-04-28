@@ -154,7 +154,7 @@ sub firmware {
 		        @$d[4] = "fsp";
 			    @$d[0] = 0;
 	       }
-           my $values = xCAT::FSPUtils::fsp_api_action( $name, $d, "list_firmware_level");
+           my $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "list_firmware_level");
            my $Rc = @$values[2];
    	       my $data = @$values[1];
            #print "values";
@@ -248,7 +248,7 @@ sub deconfig {
 	    #    @$d[4] = "fsp";
 	    #    @$d[0] = 0;
 	    #}
-	    my $values = xCAT::FSPUtils::fsp_api_action( $name, $d, "get_cec_deconfigured");
+	    my $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "get_cec_deconfigured");
 	    my $Rc = @$values[2];
 	    my $data = @$values[1];
 	    #print "values";

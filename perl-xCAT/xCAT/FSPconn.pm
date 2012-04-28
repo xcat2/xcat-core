@@ -596,7 +596,7 @@ sub mkhwconn
 
             #}
 
-            my $res = xCAT::FSPUtils::fsp_api_action( $node_name, $d, "add_connection", $tooltype, $opt->{port} );
+            my $res = xCAT::FSPUtils::fsp_api_action($request, $node_name, $d, "add_connection", $tooltype, $opt->{port} );
             $Rc = @$res[2];
 	    if( @$res[1] ne "") {
                 push @value, [$node_name, @$res[1], $Rc];
@@ -628,7 +628,7 @@ sub lshwconn
          {    
 	      my $d = $node_hash->{$node_name};
 	      my $action = "query_connection";
-	      my $res = xCAT::FSPUtils::fsp_api_action ($node_name, $d, $action, $tooltype);
+	      my $res = xCAT::FSPUtils::fsp_api_action ($request, $node_name, $d, $action, $tooltype);
 	      #print "in lshwconn:\n";
 	      #print Dumper($res);
 	      my $Rc = @$res[2];
@@ -697,7 +697,7 @@ sub rmhwconn
 
             my ( undef,undef,undef,undef,$type) = @$d;
 
-	    my $res = xCAT::FSPUtils::fsp_api_action( $node_name, $d, "rm_connection", $tooltype );
+	    my $res = xCAT::FSPUtils::fsp_api_action($request, $node_name, $d, "rm_connection", $tooltype );
             $Rc = @$res[2];
 	    if( @$res[1] ne "") {
                 push @value, [$node_name, @$res[1], $Rc];

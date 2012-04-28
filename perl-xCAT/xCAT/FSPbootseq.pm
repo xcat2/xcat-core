@@ -136,7 +136,7 @@ sub rbootseq {
         return (\@output);
     }
     # add checking the power state of the cec 
-    my $power_state = xCAT::FSPUtils::fsp_api_action ($node_name, $d, "cec_state", $tooltype);
+    my $power_state = xCAT::FSPUtils::fsp_api_action ($request, $node_name, $d, "cec_state", $tooltype);
     if ( @$power_state[2] != 0  ) {
         push @output, [$node_name, @$power_state[1], -1 ];
         return (\@output);
@@ -208,7 +208,7 @@ sub rbootseq {
        
        }
 
-       my $res = xCAT::FSPUtils::fsp_api_action ($node_name, $d, "set_lpar_bootstring", $tooltype, $parameter);
+       my $res = xCAT::FSPUtils::fsp_api_action ($request, $node_name, $d, "set_lpar_bootstring", $tooltype, $parameter);
        #print "In boot, state\n";
        #print Dumper($res);
        my $Rc = @$res[2];

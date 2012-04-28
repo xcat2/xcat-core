@@ -60,6 +60,7 @@ sub enumerate_temp {
 ##########################################################################
 sub enumerate_lcds {
 
+    my $request= shift;
     my $name= shift;
     my $d = shift;
     my $mtms = @$d[2];
@@ -78,7 +79,7 @@ sub enumerate_lcds {
 	    $action = "cec_query_lcds"; 
     }
     
-    my $values = xCAT::FSPUtils::fsp_api_action ($name, $d, $action);
+    my $values = xCAT::FSPUtils::fsp_api_action ($request, $name, $d, $action);
     $Rc =  @$values[2];
     my $data = @$values[1];
     $data =~ /\|(\w*)/ ;
@@ -97,6 +98,7 @@ sub enumerate_lcds {
 ##########################################################################
 sub enumerate_rackenv {
 
+    my $request= shift;
     my $name= shift;
     my $d = shift;
     #my $mtms = @$d[2];
@@ -106,7 +108,7 @@ sub enumerate_rackenv {
     my %outhash = ();
     my $action = "get_rack_env"; 
    
-    my $values = xCAT::FSPUtils::fsp_api_action ($name, $d, $action);
+    my $values = xCAT::FSPUtils::fsp_api_action ($request, $name, $d, $action);
     $Rc =  @$values[2];
     my $data = @$values[1];
     if ( $Rc != 0 ) {
@@ -303,7 +305,7 @@ sub rackenv {
             }
             
             my $action = "get_rack_env";
-            my $values = xCAT::FSPUtils::fsp_api_action ($name, $d, $action);
+            my $values = xCAT::FSPUtils::fsp_api_action ($request, $name, $d, $action);
             my $Rc =  @$values[2];
             my $data = @$values[1];
             if ( $Rc != 0 ) {
@@ -370,7 +372,7 @@ sub lcds {
 	    #    push @result, [$name, "$text Not available(NO HMC)", 1];
 	    #    next;
 	    #}
-            $refcodes = enumerate_lcds($name, $d);
+            $refcodes = enumerate_lcds($request, $name, $d);
             $num = 1;
             foreach $rcode (@$refcodes){
                 $Rc = shift(@$rcode);

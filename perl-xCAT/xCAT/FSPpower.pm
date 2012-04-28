@@ -21,6 +21,7 @@ sub parse_args {
 ##########################################################################
 sub enumerate {
 
+    my $request    = shift;
     my $h    = shift;
     my $mtms    = shift;
     my $tooltype = shift;
@@ -28,12 +29,15 @@ sub enumerate {
     my %cmds    = (); 
     my $type    = ();
     my $cec_bpa = ();
+    my $tmp_d;
+    
     ######################################
     # Check for CEC/LPAR/BPAs in list
     ######################################
     while (my ($name,$d) = each(%$h) ) {
         $cec_bpa = @$d[3];
         $type = @$d[4];
+	$tmp_d = $d;
         #$cmds{$type} = ($type=~/^lpar$/) ? "all_lpars_state" : "cec_state";
         if( $type=~/^lpar$/ ) {
             $cmds{$type} = "all_lpars_state";
@@ -45,7 +49,8 @@ sub enumerate {
     }
     foreach my $type ( keys %cmds ) {
         my $action = $cmds{$type};
-        my $values =  xCAT::FSPUtils::fsp_state_action ($cec_bpa, $type, $action, $tooltype);
+	#my $values =  xCAT::FSPUtils::fsp_state_action ($request, $cec_bpa, $type, $action, $tooltype);
+        my $values =  xCAT::FSPUtils::fsp_state_action ($request, $cec_bpa, $tmp_d, $action, $tooltype);
         my $Rc = shift(@$values);
         ##################################
         # Return error 
@@ -117,7 +122,7 @@ sub powercmd_boot {
 	       next;
        }
        
-       my $res = xCAT::FSPUtils::fsp_api_action ($node_name, $d, "state");
+       my $res = xCAT::FSPUtils::fsp_api_action ($request,$node_name, $d, "state");
        #print "In boot, state\n";
        #print Dumper($res);
        my $Rc = @$res[2];
@@ -147,7 +152,7 @@ sub powercmd_boot {
        }
 
 
-       $res = xCAT::FSPUtils::fsp_api_action ($node_name, $d, $op);
+       $res = xCAT::FSPUtils::fsp_api_action ($request,$node_name, $d, $op);
 	
        # @output  ...	
        $Rc = @$res[2];
@@ -272,7 +277,7 @@ sub powercmd {
    
     #print Dumper($newd);
 
-    my $res = xCAT::FSPUtils::fsp_api_action($newnames, $newd, $action, $tooltype, $request->{'powerinterval'} );
+    my $res = xCAT::FSPUtils::fsp_api_action($request, $newnames, $newd, $action, $tooltype, $request->{'powerinterval'} );
     #    print "In boot, state\n";
     #    print Dumper($res);
     my $Rc = @$res[2];
@@ -299,7 +304,7 @@ sub powercmd {
                 #my $msg = "success";
                 if ($action eq 'cec_reboot') {
                      sleep 0.1;
-                     xCAT::FSPUtils::fsp_state_action (@$d[3], @$d[4], "cec_state");
+                     xCAT::FSPUtils::fsp_state_action ($request, @$d[3], $d, "cec_state");
                      #my $state_res = xCAT::FSPUtils::fsp_state_action (@$d[3], @$d[4], "cec_state");
                      #my @state_state = @$state_res[1];
                      #$msg = @state_state[0];
@@ -377,7 +382,7 @@ sub state {
         ######################################
         # Build CEC/LPAR information hash
         ######################################
-        my $stat = enumerate( $h, $mtms, $tooltype);
+        my $stat = enumerate($request, $h, $mtms, $tooltype);
         my $Rc = shift(@$stat);
         my $data = @$stat[0];
         #if($Rc != 0) {
@@ -407,7 +412,7 @@ sub state {
             # Node not found 
             ##################################
             if ($type !~ /^blade$/ and !exists( $data->{$id} )) {
-                my $res = xCAT::FSPUtils::fsp_api_action($name, $d, "state", $tooltype); 
+                my $res = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "state", $tooltype); 
                 my $rc = @$res[2];
                 my $val = @$res[1];
                 if( $rc != 0) {
@@ -495,7 +500,7 @@ sub state1 {
 	    if($$d[4] =~ /^fsp$/ || $$d[4] =~ /^bpa$/) {
 	        $action = "cec_state";		  
             } 
-            my $stat = xCAT::FSPUtils::fsp_api_action ($node_name, $d, $action);
+            my $stat = xCAT::FSPUtils::fsp_api_action ($request, $node_name, $d, $action);
             my $Rc = @$stat[2];
     	    my $data = @$stat[1];
             my $type = @$d[4];
