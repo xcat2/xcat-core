@@ -320,13 +320,24 @@ sub swapnodes
 	xCAT::MsgUtils->message("E", $rsp, $callback);
 	return 1;
     }
-
+   
     my ($current_ppc_ent) = $ppctab->getNodeAttribs( $current_node,@ppcattribs);
     my ($fip_ppc_ent) = $ppctab->getNodeAttribs( $fip_node,@ppcattribs);
     my @current_attrs;
     my @fip_attrs;
     my $cec;
     if( $current_ppc_ent->{'parent'} eq $fip_ppc_ent->{'parent'} ) {
+
+        my %tabs;
+	$tabs{ppc}=$ppctab;
+	$tabs{vpd}= xCAT::Table->new( 'vpd', -create=>1, -autocommit=>0);
+        unless (  !exists( $tabs{vpd} )  ) {
+	    $rsp->{data}->[0] = "Cannot open vpd table";
+	    xCAT::MsgUtils->message("E", $rsp, $callback);
+	    return 1;
+        }
+
+	xCAT::FSPUtils::getHcpAttribs($request, \%tabs);
 	#the attributes of the current LPAR will be used for fsp_api_action
         push @current_attrs, $current_ppc_ent->{'id'};
         push @current_attrs, "0";
@@ -348,7 +359,7 @@ sub swapnodes
         my $type = "lpar";
 	$action = "all_lpars_state";
 	
-        my $values =  xCAT::FSPUtils::fsp_state_action ($cec, $type, $action);
+        my $values =  xCAT::FSPUtils::fsp_state_action ($request, $cec, \@current_attrs, $action);
         my $Rc = shift(@$values);
 	if ( $Rc != 0 ) {
 	     $rsp->{data}->[0] = $$values[0];
@@ -427,7 +438,7 @@ sub swapnodes
     if( $current_ppc_ent->{'parent'} eq $fip_ppc_ent->{'parent'} ) {
 	
 	$action = "get_io_slot_info";
-	$values =  xCAT::FSPUtils::fsp_api_action ($cec, \@current_attrs, $action);
+	$values =  xCAT::FSPUtils::fsp_api_action ($request,$cec, \@current_attrs, $action);
 	#$Rc = shift(@$values);
 	$Rc = pop(@$values);
 	if ( $Rc != 0 ) {
@@ -442,7 +453,7 @@ sub swapnodes
 	foreach my $v (@data) {
 	    my ($lpar_id, $busid, $location, $drc_index, $owner_type, $owner, $descr) = split(/,/, $v);
 	    if( $lpar_id eq $current_ppc_ent->{'id'} ) {
-	        $vals =  xCAT::FSPUtils::fsp_api_action ($fip_node, \@fip_attrs, $action, $tooltype, $drc_index); 
+	        $vals =  xCAT::FSPUtils::fsp_api_action ($request, $fip_node, \@fip_attrs, $action, $tooltype, $drc_index); 
 	        $Rc = pop(@$vals);
 	        if ( $Rc != 0 ) {
 	             $rsp->{data}->[0] = $$vals[1];
