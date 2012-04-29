@@ -35,6 +35,9 @@ unless ($inet6support) {
 
 
 use XML::Simple; #smaller than libxml....
+use Fcntl;
+use POSIX qw/:errno_h/;
+use IO::Select;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
 #require Data::Dumper;
 my $xcathost='localhost:3001';
@@ -220,29 +223,51 @@ $request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
   my $cleanexit=0;
   my $massresponse="<massresponse>";
   my $nextcoalescetime=time()+1;
-  while (<$client>) {
-    $response .= $_;
-    if (m/<\/xcatresponse>/) {
-      #replace ESC with xxxxESCxxx because XMLin cannot handle it
-      $response =~ s/\e/xxxxESCxxxx/g;
-
-      if ($ENV{XCATXMLTRACE}) { print $response; }
-      $massresponse.=$response;
-      if($ENV{XCATXMLWARNING}) {
-        validateXML($response);
-      }
+  my $coalescenow=0;
+  my $flags;
+  fcntl($client,F_GETFL,$flags);
+  $flags |= O_NONBLOCK; #select can be a bit.. fickle, make sysread work more easily...
+  fcntl($client,F_SETFL,$flags);
+  my $clientsel = new IO::Select;
+  $clientsel->add($client);
+  my $line;
+  my $newdata=0;
+  while (1) {
       my $shouldexit;
-      if (time() > $nextcoalescetime) {
+      if ($newdata and ($coalescenow or time() > $nextcoalescetime)) {
+        $coalescenow=0;
+        $newdata=0;
         $nextcoalescetime=time()+1;
 	$massresponse .= "</massresponse>";
          $shouldexit = rspclean($massresponse,$callback);
 	$massresponse="<massresponse>";
       }
 
-      $response='';
       if ($shouldexit) {
          $cleanexit=1;
         last;
+      }
+    $line = "";
+    $clientsel->can_read(0.5);
+    my $readbytes;
+    do { $readbytes=sysread($client,$line,65535,length($line)); } while ($readbytes);
+    unless (length($line)) {
+	if (not defined $readbytes and $! == EAGAIN) { next; }
+        last;
+    }
+    $newdata=1;
+    $response .= $line;
+    if ($line =~ m/<\/xcatresponse>/) {
+      if ($line =~ /serverdone/) { $coalescenow=1; } #if serverdone was detected, hint at coalesce code to flush things out now
+	#this means that coalesce can be triggered by stray words in the output prematurely, but that's harmless
+      #replace ESC with xxxxESCxxx because XMLin cannot handle it
+      $response =~ s/\e/xxxxESCxxxx/g;
+
+      if ($ENV{XCATXMLTRACE}) { print $response; }
+      $massresponse.=$response;
+      $response='';
+      if($ENV{XCATXMLWARNING}) {
+        validateXML($response);
       }
     }
   }
