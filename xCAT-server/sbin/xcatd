@@ -34,7 +34,7 @@ use xCAT::MsgUtils;
 use File::Path;
 use Time::HiRes qw(sleep);
 use Thread qw(yield);
-use Fcntl ":flock";
+use Fcntl qw/:DEFAULT :flock/;
 use xCAT::Client qw(submit_request);
 my $clientselect = new IO::Select;
 my $sslclients = 0; #THROTTLE
@@ -92,7 +92,7 @@ Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 
 use Storable qw(dclone);
-use POSIX qw(WNOHANG setsid);
+use POSIX qw(WNOHANG setsid :errno_h);
 my $pidfile;
 my $foreground;
 GetOptions(
@@ -1686,12 +1686,25 @@ sub service_connection {
   eval { #REMOVEEVALFORDEBUG
     my $request;
     my $req=undef;
-    alarm(15);
-    while (<$sock>) {
-      alarm(0);
-      $request .= $_;
+    my $line;
+    my $flags;
+    fcntl($sock,F_GETFL,$flags);
+    $flags |= O_NONBLOCK; #we want sysread to bail on us, select seems to be evil to us still..
+    fcntl($sock,F_SETFL,$flags);
+    my $clientsel = new IO::Select;
+    $clientsel->add($sock);
+    while (1) {
+      $line="";
+      unless ($clientsel->can_read(15)) { last; } #don't let an unresponsive client hold us up
+      my $bytesread;
+      do  { $bytesread=sysread($sock,$line,65536,length($line)) } while ($bytesread);
+      if (length($line)==0) {
+	      if (not defined $bytesread and $! == EAGAIN) { next; } #
+	      last;
+      }
+      $request .= $line;
       #$req = eval { XMLin($request, ForceArray => [ 'attribute' , 'attributepair' ]) };
-      if (m/<\/xcatrequest>/) {
+      if ($line =~ m/<\/xcatrequest>/) {
         $req = eval { XMLin($request, SuppressEmpty=>undef,ForceArray=>1) };
         #first change peername on 'becomeuser' tag if present and valid
         if (defined $req->{becomeuser}) {
@@ -1779,7 +1792,6 @@ sub service_connection {
           next;
         }
       }
-      alarm(15);
     } 
   }; #REMOVEEVALFORDEBUG
   if ($@) { # The eval statement caught a program bug..
