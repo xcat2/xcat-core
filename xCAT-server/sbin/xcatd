@@ -1688,10 +1688,9 @@ sub service_connection {
     my $request;
     my $req=undef;
     alarm(15);
-    my $line;
-    while (alarm (15) and $line = <$sock>) {
+    while (<$sock>) {
       alarm(0);
-      $request .= $line;
+      $request .= $_;
       #$req = eval { XMLin($request, ForceArray => [ 'attribute' , 'attributepair' ]) };
       if (m/<\/xcatrequest>/) {
         $req = eval { XMLin($request, SuppressEmpty=>undef,ForceArray=>1) };
