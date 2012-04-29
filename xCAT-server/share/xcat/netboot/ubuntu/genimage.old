@@ -11,6 +11,7 @@ use File::Copy;
 use File::Find;
 use Getopt::Long;
 use Cwd qw(realpath);
+use xCAT::Utils;
 #use strict;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
@@ -18,7 +19,6 @@ Getopt::Long::Configure("pass_through");
 my $prinic; #TODO be flexible on node primary nic
 my $othernics; #TODO be flexible on node primary nic
 my $netdriver;
-my @yumdirs;
 my $arch;
 my %libhash;
 my @filestoadd;
@@ -56,6 +56,7 @@ my $prompt;
 
 sub xdie {
    system("rm -rf /tmp/xcatinitrd.$$");
+   umount_chroot($rootimg_dir);
    die @_;
 }
 
@@ -187,7 +188,7 @@ unless ($onlyinitrd) {
 
    my $fd;
    open($fd,">>","$rootimg_dir/etc/fstab");
-   print $fd "#Dummy fstab for rpm postscripts to see\n";
+   print $fd "#Dummy fstab for dpkg postscripts to see\n";
    close($fd);
 
    my $non_interactive;
@@ -198,14 +199,9 @@ unless ($onlyinitrd) {
    #print "$index\n";
    my $dist = $line[@line-1];
 
+   my $aptcmd = "chroot $rootimg_dir apt-get update && chroot $rootimg_dir apt-get $non_interactive ";
    my $aptcmd1 = "debootstrap";
    my $aptcmd2 = "--arch $uarch $dist $rootimg_dir file://$installroot/$osver/$arch/";
-   #foreach (0..$repnum) {
-   #   $yumcmd .= "--enablerepo=$osver-$arch-$_ ";
-   #}
-   
-   #yumcmd .= "install ";
-   #mkpath("$rootimg_dir/var/lib/yum");
 
    if (!$imagename) {
        $pkglist= get_profile_def_filename($customdir,"pkglist");
@@ -240,6 +236,13 @@ unless ($onlyinitrd) {
        }
    }
 
+   mount_chroot($rootimg_dir);
+
+   # Add the local repo from MN temporarily for apt-get update/upgrade
+   open($aptconfig,">","$rootimg_dir/etc/apt/sources.list");
+   print $aptconfig "deb file://$installroot/$osver/$arch/ $dist main\n";
+   close($aptconfig);
+   
    #Now let's handle extra packages
     if (!$imagename) {
 	$otherpkglist=get_profile_def_filename($customdir, "otherpkgs.pkglist");
@@ -253,57 +256,50 @@ unless ($onlyinitrd) {
     my %extrapkgnames; 
 
     if (keys(%extra_hash) > 0) {
-      open($yumconfig,">>","/tmp/genimage.$$.yum.conf");
+      open($aptconfig,">>","$rootimg_dir/etc/apt/sources.list.d/genimage.$$.apt.list");
       my $index=1;
       foreach $pass (sort (keys(%extra_hash))) {
         foreach (keys(%{$extra_hash{$pass}})) {
 	  if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
-	  print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs/$_\ngpgpcheck=0\n\n";
+	  print $aptconfig "deb file://$srcdir_otherpkgs/$_ . /";
 	  $index++;
 	  my $pa=$extra_hash{$pass}{$_};
 	  $extrapkgnames{$pass} .= " " . join(' ', @$pa);
         }
       }
-      close($yumconfig);
+      close($aptconfig);
       $index--;
-      $yumcmd = "yum $non_interactive -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
-      foreach (0..$repnum) {
-	  $yumcmd .= "--enablerepo=$osver-$arch-$_ ";
-      }
-      for (1..$index) {
-	  $yumcmd .= "--enablerepo=otherpkgs$_ ";
-      } 
 
       foreach $pass (sort (keys(%extra_hash))) {
       #remove the packages that are specified in the otherpkgs.list files with leading '-'
-          my $yumcmd_remove= "$yumcmd erase ";
+          my $aptcmd_remove= "$aptcmd remove ";
           if (exists ($extra_hash{$pass}{'PRE_REMOVE'})) {
 	      my $pa=$extra_hash{$pass}{'PRE_REMOVE'};
 	      my $rm_packges= join(' ', @$pa);
 	      if ($rm_packges) {
-                  print "$yumcmd_remove $rm_packges\n";
-	          $rc = system("$yumcmd_remove $rm_packges");
+                  print "$aptcmd_remove $rm_packges\n";
+	          $rc = system("$aptcmd_remove $rm_packges\"");
 	      }
           }
 
 
       #install extra packages
-          my $yumcmd_base = $yumcmd;
-          $yumcmd .= "install ";
-          #append extra pkg names to yum command 
+          my $aptcmd_base = $aptcmd;
+          $aptcmd .= "install ";
+          #append extra pkg names to apt-get command 
           if ($extrapkgnames{$pass}) {
-	      $yumcmd .= " $extrapkgnames{$pass} ";
+	      $aptcmd .= " $extrapkgnames{$pass} ";
           }   
-          $yumcmd =~ s/ $/\n/;
+          $aptcmd =~ s/ $/\n/;
     
           #debug
-          print "yumcmd=$yumcmd\n";
-          #my $repo=`cat /tmp/genimage.$$.yum.conf`;
+          print "aptcmd=$aptcmd\n";
+          #my $repo=`cat $rootimg_dir/etc/sources.list.d/genimage.$$.apt.list`;
           #print "repo=$repo";
       
-          my $rc = system($yumcmd);
+          my $rc = system("$aptcmd\"");
           if ($rc) { 
-	      print "yum invocation failed\n";
+	      print "apt-get invocation failed\n";
 	      exit 1;
           }
 	
@@ -312,19 +308,26 @@ unless ($onlyinitrd) {
 	      my $pa=$extra_hash{$pass}{'POST_REMOVE'};
 	      my $rm_packges= join(' ', @$pa);
 	      if ($rm_packges) {
-                  print "$yumcmd_remove $rm_packges\n";
-	          $rc = system("$yumcmd_remove $rm_packges");
+                  print "$aptcmd_remove $rm_packges\n";
+	          $rc = system("$aptcmd_remove $rm_packges");
 	      }
           }
       }
    }
 
-   # run yum update to update any installed rpms
+   # run apt-get upgrade to update any installed debs
    # needed when running genimage again after updating software in repositories
-   my $yumcmd_update = $yumcmd_base . " update  ";
-   $rc = system("$yumcmd_update");
+   my $aptcmd_update = $aptcmd . " upgrade  ";
+   print "$aptcmd_update\n";
+   $rc = system("$aptcmd_update");
+   umount_chroot($rootimg_dir);
    # ignore any return code
 
+   # Add the local repo from MN
+   my $master = xCAT::Utils->get_site_Master();
+   open($aptconfig,">","$rootimg_dir/etc/apt/sources.list");
+   print $aptconfig "deb http://$master$installroot/$osver/$arch/ $dist main\n";
+   close($aptconfig);
 
    postscripts(); #run 'postscripts'
 }
@@ -375,7 +378,6 @@ while (scalar @checkdeps) {
     }
 }
 close($moddeps);
-unlink "/tmp/genimage.$$.yum.conf";
 
 #-- run postinstall script
 if (!$imagename) {
@@ -495,7 +497,7 @@ sub getlibs {
 sub mkinitrd {
 	mkpath("/tmp/xcatinitrd.$$/bin");
 	if($basekernelver eq $kernelver) {
-		copy(<$rootimg_dir/boot/vmlinuz*>,"$destdir/kernel");
+		copy("$rootimg_dir/boot/vmlinuz*","$destdir/kernel");
 	}
 	else {
 		if(-r "$rootimg_dir/boot/vmlinuz-$kernelver") {
@@ -519,6 +521,8 @@ sub mkinitrd {
 	mkpath("/tmp/xcatinitrd.$$/dev/mapper");
 	mkpath("/tmp/xcatinitrd.$$/sysroot");
 	mkpath("/tmp/xcatinitrd.$$/etc/ld.so.conf.d");
+	mkpath("/tmp/xcatinitrd.$$/etc/udhcpc");
+	mkpath("/tmp/xcatinitrd.$$/usr/share/udhcpc");
 	mkpath("/tmp/xcatinitrd.$$/var/lib/dhclient");
 	my $inifile;
 
@@ -620,9 +624,8 @@ echo '
 
 EOS1
 
-
 	print $inifile "busybox mount -t proc /proc /proc\n";
-	#print $inifile "busybox --install\n";
+	print $inifile "busybox --install\n";
 	print $inifile "busybox mount -t sysfs /sys /sys\n";
    print $inifile "mount -o mode=0755 -t tmpfs /dev /dev\n";
    print $inifile "mkdir /dev/pts\n";
@@ -945,20 +948,70 @@ EOMS
    print $inifile "  exit\n";
    print $inifile "fi\n";
    print $inifile "cd /\n";
-   print $inifile "cp /var/lib/dhclient/dhclient.leases /sysroot/dev/.dhclient-$prinic.leases\n";
-   print $inifile "cp /var/lib/dhclient/dhclient.leases /sysroot/var/lib/dhclient/dhclient-$prinic.leases\n";
-   print $inifile "mknod /sysroot/dev/console c 5 1\n";
+   print $inifile "cp /etc/hostname /sysroot/etc/hostname\n";
+   print $inifile "cp /etc/resolv.conf /sysroot/etc/resolv.conf\n";
    print $inifile "exec switch_root -c /dev/console /sysroot /sbin/init\n";
    close($inifile);
 
 
-
-
-
    open($inifile,">"."/tmp/xcatinitrd.$$/bin/netstart");
-   print $inifile "#!/sbin/nash\n";
-   print $inifile "network --device $prinic --bootproto dhcp\n";
+   print $inifile "#!/bin/sh\n";
+   print $inifile "udhcpc -n -q -i $prinic\n";
    close($inifile);
+
+   open($inifile,">"."/tmp/xcatinitrd.$$/usr/share/udhcpc/default.script");
+
+print $inifile <<'EOF';
+#!/bin/sh
+
+# udhcpc script edited by Tim Riker <Tim@Rikers.org>
+
+[ -z "$1" ] && echo "Error: should be called from udhcpc" && exit 1
+
+RESOLV_CONF="/etc/resolv.conf"
+[ -n "$broadcast" ] && BROADCAST="broadcast $broadcast"
+[ -n "$subnet" ] && NETMASK="netmask $subnet"
+
+case "$1" in
+	deconfig)
+		/sbin/ifconfig $interface 0.0.0.0
+		;;
+
+	renew|bound)
+		/sbin/ifconfig $interface $ip $BROADCAST $NETMASK
+
+		if [ -n "$hostname" ] ; then
+			hostname $hostname
+			echo $hostname > /etc/hostname
+		fi
+
+		if [ -n "$router" ] ; then
+			echo "deleting routers"
+			while route del default gw 0.0.0.0 dev $interface ; do
+				:
+			done
+
+			for i in $router ; do
+				route add default gw $i dev $interface
+			done
+		fi
+
+		echo -n > $RESOLV_CONF
+		[ -n "$domain" ] && echo search $domain >> $RESOLV_CONF
+		for i in $dns ; do
+			echo adding dns $i
+			echo nameserver $i >> $RESOLV_CONF
+		done
+		;;
+esac
+
+exit 0
+EOF
+   
+   close($inifile);
+   chmod(0755,"/tmp/xcatinitrd.$$/usr/share/udhcpc/default.script");
+
+
 	chmod(0755,"/tmp/xcatinitrd.$$/init");
 	chmod(0755,"/tmp/xcatinitrd.$$/bin/netstart");
    @filestoadd=();
@@ -970,7 +1023,7 @@ EOMS
      }
    }
    # add rsync for statelite
-   foreach ("bin/cpio","sbin/nash","bin/busybox","bin/bash", "usr/sbin/chroot", "sbin/rmmod","sbin/mount.nfs","/usr/bin/rsync") {
+   foreach ("bin/busybox", "bin/bash", "sbin/mount.nfs","usr/bin/rsync") {
       getlibs($_);
       push @filestoadd,$_;
    }
@@ -1101,13 +1154,13 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    close($cfgfile);
    # Create the ifcfg-x file for diskless node. But keep the ONBOOT=no
    # to skip the break of nfs-based boot
-   open($cfgfile,">","$rootimg_dir/etc/sysconfig/network-scripts/ifcfg-$prinic");
-   print $cfgfile "ONBOOT=no\nBOOTPROTO=dhcp\nDEVICE=$prinic\n";
+   open($cfgfile,">","$rootimg_dir/etc/network/interfaces");
+   print $cfgfile "auto $prinic\niface $prinic inet dhcp\n";
    close($cfgfile);
    foreach (split /,/,$othernics) {
       if (/^$/) { next; }
-      open($cfgfile,">","$rootimg_dir/etc/sysconfig/network-scripts/ifcfg-$_");
-      print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$_\n";
+      open($cfgfile,">","$rootimg_dir/etc/network/interfaces");
+      print $cfgfile "\nauto $_\niface $_ inet dhcp\n";
       close($cfgfile);
    }
    open($cfgfile,">>","$rootimg_dir/etc/securetty");
@@ -1133,7 +1186,7 @@ sub generic_post { #This function is meant to leave the image in a state approxi
       copy $_,"$rootimg_dir/root/";
    }
    unless (  -r <$rootimg_dir/etc/rc3.d/S??network>) {
-       symlink  "/etc/init.d/network","$rootimg_dir/etc/rc3.d/S10network";
+       symlink  "/etc/init.d/networking","$rootimg_dir/etc/rc3.d/S10networking";
    }
    open($cfgfile,">","$rootimg_dir/etc/rc3.d/S60gettyset");
    print $cfgfile "#!/bin/bash\n"; 
@@ -1165,6 +1218,24 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    close($cfgfile);
    
    copy(<$rootimg_dir/boot/vmlinuz*>,"$destdir/kernel"); } 
+
+sub mount_chroot {
+   my $rootimage_dir = shift;
+   mkdir("$rootimage_dir/install");
+   system("mount -o bind /dev $rootimage_dir/dev");
+   system("mount -o bind /proc $rootimage_dir/proc");
+   system("mount -o bind /sys $rootimage_dir/sys");
+   system("mount -o bind /install $rootimage_dir/install");
+}
+
+sub umount_chroot {
+   my $rootimage_dir = shift;
+   system("umount $rootimage_dir/dev");
+   system("umount $rootimage_dir/proc");
+   system("umount $rootimage_dir/sys");
+   system("umount $rootimage_dir/install");
+   rmdir("$rootimage_dir/install");
+}
 
 sub get_package_names {
    my $plist_file_name=shift;

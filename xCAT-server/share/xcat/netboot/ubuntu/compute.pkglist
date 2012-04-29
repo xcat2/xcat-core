@@ -2,7 +2,7 @@ bash
 nfs-common
 openssl
 dhcp3-client
-linux-image-generic
+linux-image-server
 openssh-server 
 openssh-client
 wget
@@ -10,4 +10,3 @@ vim
 ntp
 rsyslog
 rsync
-busybox-static
