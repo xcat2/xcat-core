@@ -795,7 +795,6 @@ sub process_request
 
     }
 
-	#print "sn_hash=" . Dumper(%sn_hash) . "\n";
     # update the node definitions #1
     if (keys(%sn_hash) > 0)
     {
@@ -809,7 +808,6 @@ sub process_request
             $error++;
         }
     }
-
 
     #
     # handle conserver
@@ -826,7 +824,6 @@ sub process_request
         }
     }
 
-	#print "sn_hash=" . Dumper(%sn_hash) . "\n";
     # update the node definition #2
     if (keys(%sn_hash1) > 0)
     {
@@ -978,7 +975,7 @@ sub process_request
     if ($::islinux)
     {
 
-        #tftp, dhcp and nfs (site.disjointdhcps should be set to 1 ?)
+        #tftp, dhcp and nfs (site.disjointdhcps should be set to 1)
 
         # get a list of nodes for each provmethod
         my %nodeset_hash;
@@ -1014,11 +1011,12 @@ sub process_request
                                        },
                                        $sub_req, 0, 1
                                        );
-                
-		my $rsp;
-		$rsp->{data}=$ret;
-                xCAT::MsgUtils->message("I", $rsp, $callback);
-                if ($::RUNCMD_RC != 0) {
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}},
+                      "Could not run the nodeset command.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
                     $error++;
                 }
             }
