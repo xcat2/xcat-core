@@ -21,7 +21,7 @@ Source4: prescripts.tar.gz
 
 Provides: xCAT = %{version}
 Conflicts: xCATsn
-Requires: xCAT-server xCAT-client perl-DBD-SQLite
+Requires: xCAT-server xCAT-client perl-DBD-SQLite xCAT-genesis-x86_64 elilo-xcat
 
 %ifos linux
 Requires: dhcp httpd nfs-utils nmap fping bind perl-XML-Parser vsftpd perl(CGI)
