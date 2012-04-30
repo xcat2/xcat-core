@@ -91,7 +91,7 @@ if [ "$MTM" != "unknown" ]; then
 	echo "<mtm>$MTM</mtm>" >> /tmp/discopacket
 fi
 if [ "$SERIAL" != "unknown" ]; then
-	echo "<serial>$SERIAL</serial>"
+	echo "<serial>$SERIAL</serial>" >> /tmp/discopacket
 fi
 for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://`; do
 	DRIVER=`grep DRIVER /sys/class/net/$dev/device/uevent|awk -F= '{print $2}'`
