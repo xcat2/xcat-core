@@ -26,11 +26,14 @@ while [ $WAITING -gt 0 ]; do
     for pidfile in /var/run/dhclient.*.pid; do
 	NIC=`echo $pidfile|awk -F. '{print $2}'`
 	dhclient -r -1 -cf /etc/dhclient.conf -pf $pidfile $NIC
+	ip -4 addr flush dev $NIC 
 	dhclient -cf /etc/dhclient.conf -nw -pf $pidfile $NIC
     done
     for pidfile in /var/run/dhclient6.*.pid; do
 	NIC=`echo $pidfile|awk -F. '{print $2}'`
 	dhclient -6 -r -1 -pf $pidfile -lf /var/lib/dhclient/dhclient6.leases $NIC
+	ip -6 addr flush dev $NIC  scope global
+	ip -6 addr flush dev $NIC  scope site
 	dhclient -6 -pf $pidfile -nw -lf /var/lib/dhclient/dhclient6.leases $NIC
     done
     
