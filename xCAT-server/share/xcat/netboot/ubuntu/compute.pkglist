@@ -10,3 +10,4 @@ vim
 ntp
 rsyslog
 rsync
+busybox-static
