@@ -1678,7 +1678,7 @@ sub mknb
 {
     if ($::arch eq "x86_64" || $::arch eq "x86")
     {
-        foreach my $ar (qw(x86 x86_64 ppc64))
+        foreach my $ar (qw(x86_64))
         {
             my $cmd = "$::XCATROOT/sbin/mknb $ar";
             my $outref = xCAT::Utils->runcmd("$cmd", 0);
