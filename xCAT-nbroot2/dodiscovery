@@ -65,6 +65,7 @@ if [ -r /sys/devices/virtual/dmi/id/product_name ]; then  #x86
 		MTM=VMware
 	else 
 		MTM=`cat /sys/devices/virtual/dmi/id/product_name|awk -F'[' '{print $2}'|awk -F']' '{print $1}'`
+		SERIAL=`cat /sys/devices/virtual/dmi/id/product_serial`
 	fi
 elif [ -r /proc/device-tree/model ]; then #POWER
 	MTM=`cat /proc/device-tree/model |awk -F, '{print $2}'`
