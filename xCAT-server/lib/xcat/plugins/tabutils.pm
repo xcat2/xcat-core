@@ -2379,16 +2379,11 @@ sub setNodesAttribs1
         }
       }
     }
-   my  @nodes = xCAT::NodeRange::noderange($request->{noderange}->[0]);
-    
-    if (xCAT::NodeRange::nodesmissed()) {
-     my $rsp = {errorcode=>1,error=>"Invalid nodes in noderange:".join(',',xCAT::NodeRange::nodesmissed)};
-      $cb->(\%rsp);
+    if (@$node) {
+      &nodech(\@$node,$newrequest->{arg},$cb,0);
+    } else {
+     my $rsp = {errorcode=>1,error=>"No nodes in noderange"};
+     $cb->(\%rsp);
     }
-    if (@nodes) {
-       $newrequest->{node} = \@nodes;
-    }
-    #  call nodech
-    &nodech($newrequest->{node},$newrequest->{arg},$cb,0);
         return;
 }
