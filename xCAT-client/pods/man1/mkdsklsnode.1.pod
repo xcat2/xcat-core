@@ -6,7 +6,7 @@ B<mkdsklsnode> - Use this xCAT command to define and initialize AIX/NIM diskless
 
 B<mkdsklsnode [-h|--help ]>
 
-B<mkdsklsnode [-V|--verbose] [-f|--force] [-n|--newname] [-i osimage_name] [-l location] [-p|--primarySN] [-b|--backupSN] [-S|--setuphanfs] noderange [attr=val [attr=val ...]]>
+B<mkdsklsnode [-V|--verbose] [-f|--force] [-n|--newname] [-i osimage_name] [-l location] [-u|--updateSN] [-k|--skipsync] [-p|--primarySN] [-b|--backupSN] [-S|--setuphanfs] noderange [attr=val [attr=val ...]]>
 
 =head1 DESCRIPTION
 
@@ -78,7 +78,14 @@ The tcpip port number to use to communicate dump images from the client to the d
 
 =item B<configdump>
 
-Specifies the type dump to be collected at the client.  The values are "selective", "full", and	"none".  If the configdump attribute is set to "full" or "selective" the client will automatically be setup to dump to an iSCSI Target device. The "selective" memory dump will avoid dumping user data. The "full" memory dump will dump all the memory of the client partition. Selective and full memory dumps will be collected in the dump resource allocated to the client. Only POWER6 clients an dump to the dump resource.
+Specifies the type dump to be collected from the client.  The values are
+"selective", "full", and "none".  If the configdump attribute is set to "full"
+or "selective" the client will automatically be configured to dump to an iSCSI
+target device. The "selective" memory dump will avoid dumping user data. The
+"full" memory dump will dump all the memory of the client partition. Selective
+and full memory dumps will be stored in subdirectory of the dump resource
+allocated to the client. This attribute is saved in the xCAT osimage
+definition.
 
 =back
 
@@ -98,6 +105,10 @@ Display usage message.
 
 The name of an existing xCAT osimage definition. If this information is not provided on the command line the code checks the node definition for the value of the "provmethod" attribute. If the "-i" value is provided on the command line then that value will be used to set the "provmethod" attribute of the node definitions.
 
+=item B<-k|--skipsync>
+
+Use this option to have the mkdsklsnode command skip the NIM sync_roots operation.  This option should only be used if you are certain that the shared_root resource does not have to be updated from the SPOT.  Normally, when the SPOT is updated, you should do a sync_roots on the shared_root resource.
+
 =item B<-l|--location>
 
 The directory location to use when creating new NIM resolv_conf resources. The default location is /install/nim.
@@ -113,6 +124,10 @@ When using backup service nodes only update the primary.  The default is to upda
 =item B<-S|--setuphanfs>
 
 Setup NFSv4 replication between the primary service nodes and backup service nodes to provide high availability NFS for the compute nodes. This option only exports the /install directory with NFSv4 replication settings, the data synchronization between the primary service nodes and backup service nodes needs to be taken care of through some mechanism.
+
+=item B<-u|--updateSN>
+
+Use this option if you wish to update the osimages but do not want to define or initialize the NIM client definitions. This option is only valid when the xCAT "site" definition attribute "sharedinstall" is set to either "sns" or "all".
 
 =item B<noderange>
 
