@@ -1841,7 +1841,14 @@ sub send_pending_responses {
   		$resp =~ tr/\011-\177/?/c;
   		#seeing if using utf-8 offloads potential issues to client terminal, it didn't
       		eval {
-		        print $sock $resp; 
+			my $rsplen = length($resp);
+                        my $blocks = int($rsplen/4096)-1;
+                        if ($rsplen%4096) {
+                                $blocks += 1;
+                        }
+                        foreach (0..$blocks) {
+                                syswrite($sock,$resp,4096,$_*4096);
+                        }
 	      	};
 }
 sub relay_fds { #Relays file descriptors from pipes to children to the SSL socket
