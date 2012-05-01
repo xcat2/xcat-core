@@ -145,7 +145,7 @@ if [ $IPCFGMETHOD="static" ]; then
 	    TRIES=0
 	fi
 else
-	 let idev=NUMBMCS-1
+	 let idev=NUMBMCS
 	 while [ $idev -gt 0 ]; do
                 let idev=idev-1
                 TRIES=0
@@ -157,7 +157,7 @@ else
         done
 fi
 
-let idev=NUMBMCS-1
+let idev=NUMBMCS
 while [ $idev -gt 0 ]; do
       let idev=idev-1
       TRIES=0
@@ -176,7 +176,7 @@ if [ ! -z "$LOCKEDUSERS" ]; then
 else
     USERSLOT=2
 fi
-if [ "$ISITE" = 1 ];
+if [ "$ISITE" = 1 ]; then
     while ! remoteimmsetup
     do
         echo "Waiting for xCAT remote configuration of service processor via CMM.."
