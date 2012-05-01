@@ -224,8 +224,7 @@ $request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
   my $massresponse="<massresponse>";
   my $nextcoalescetime=time()+1;
   my $coalescenow=0;
-  my $flags;
-  fcntl($client,F_GETFL,$flags);
+  my $flags=fcntl($client,F_GETFL,0);
   $flags |= O_NONBLOCK; #select can be a bit.. fickle, make sysread work more easily...
   fcntl($client,F_SETFL,$flags);
   my $clientsel = new IO::Select;

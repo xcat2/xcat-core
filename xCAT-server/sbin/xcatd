@@ -1687,8 +1687,7 @@ sub service_connection {
     my $request;
     my $req=undef;
     my $line;
-    my $flags;
-    fcntl($sock,F_GETFL,$flags);
+    my $flags=fcntl($sock,F_GETFL,0);
     $flags |= O_NONBLOCK; #we want sysread to bail on us, select seems to be evil to us still..
     fcntl($sock,F_SETFL,$flags);
     my $clientsel = new IO::Select;
