@@ -85,6 +85,17 @@ Currently supported attributes:
 
 The name of a NIM bosinst_data resource.
 
+=item B<configdump>
+
+Specifies the type dump to be collected from the client.  The values are 
+"selective", "full", and "none".  If the configdump attribute is set to "full"
+or "selective" the client will automatically be configured to dump to an iSCSI 
+target device. The "selective" memory dump will avoid dumping user data. The
+"full" memory dump will dump all the memory of the client partition. Selective
+and full memory dumps will be stored in subdirectory of the dump resource 
+allocated to the client. This attribute is saved in the xCAT osimage 
+definition.
+
 =item B<dump>
 
 The name of the NIM dump resource.
