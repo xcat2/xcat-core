@@ -69,8 +69,8 @@ if ($arg =~ /^-/)                    # no noderange
     {                                # xdcp
         &parse_args_xdcp;
     }
-    if ($::ROOTIMG != 1)
-    {    # if not running against rootimg then noderange required
+    if (($::ROOTIMG != 1) && ($::MGMTNODE != 1))
+    {    # if not running against rootimg or on the MN then noderange required
         xCAT::MsgUtils->message("I",
                  "Node range not specified, see $bname man page for syntax.\n");
         exit 1;
@@ -217,6 +217,7 @@ sub parse_args_xdsh
             'f|fanout=i'               => \$options{'fanout'},
             'h|help'                   => \$options{'help'},
             'l|user=s'                 => \$options{'user'},
+            'M|mgmtnode'               => \$options{'mgmtnode'},
             'm|monitor'                => \$options{'monitor'},
             'o|node-options=s'         => \$options{'node-options'},
             'q|show-config'            => \$options{'show-config'},
@@ -451,6 +452,10 @@ sub parse_args_xdsh
     {
         $::ROOTIMG = 1;
     }
+    if ($options{'mgmtnode'})
+    {
+        $::MGMTNODE = 1;
+    }
     if ($options{'node-rsh'})    # if set on command line, use it
     {
         $::NODE_RSH = 1;
@@ -501,6 +506,7 @@ sub parse_args_xdcp
                     'h|help'           => \$options{'help'},
                     'i|rootimg=s'      => \$options{'rootimg'},
                     'l|user=s'         => \$options{'user'},
+                    'M|mgmtnode'       => \$options{'mgmtnode'},
                     'n|nodes=s'        => \$options{'nodes'},
                     'o|node-options=s' => \$options{'node-options'},
                     'q|show-config'    => \$options{'show-config'},
@@ -575,6 +581,10 @@ sub parse_args_xdcp
     if ($options{'rootimg'})
     {
         $::ROOTIMG = 1;
+    }
+    if ($options{'mgmtnode'})
+    {
+        $::MGMTNODE = 1;
     }
     if (($options{'rootimg'}) && (!($options{'File'})))
     {
