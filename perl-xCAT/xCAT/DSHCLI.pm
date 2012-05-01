@@ -3468,7 +3468,7 @@ sub usage_dsh
     my $usagemsg2  = "      [-B bypass ] [-c] [-e] [-E environment_file]
       [--devicetype type_of_device] [-f fanout]\n";
     my $usagemsg3 = "      [-l user_ID] [-L]  ";
-    my $usagemsg4 = "[-m] [-o options][-q] [-Q] [-r remote_shell]
+    my $usagemsg4 = "[-m] [-M]  [-o options][-q] [-Q] [-r remote_shell]
       [-i image] [-s] [-S ksh | csh] [-t timeout]\n";
     my $usagemsg5 = "      [-T] [-X environment variables] [-v] [-z]\n";
     my $usagemsg6 = "      <command_list>";
@@ -3560,6 +3560,7 @@ sub parse_and_run_dsh
             'f|fanout=i'               => \$options{'fanout'},
             'h|help'                   => \$options{'help'},
             'l|user=s'                 => \$options{'user'},
+            'M|mgmtnode'               => \$options{'mgmtnode'}, 
             'm|monitor'                => \$options{'monitor'},
             'o|node-options=s'         => \$options{'node-options'},
             'q|show-config'            => \$options{'show-config'},
@@ -3598,8 +3599,19 @@ sub parse_and_run_dsh
         xCAT::DSHCLI->usage_dsh;
         return 0;
     }
-
     my $rsp = {};
+    # if option management node and not on the management node exit error
+    if ($options{'mgmtnode'})
+    {
+     if (!xCAT::Utils->isMN()) {
+        $rsp->{data}->[0] =
+          "To use the -M flag, the command must be run on the Management Node.";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+       return 1;
+     }
+    }
+
+
     if ($options{'show-config'})
     {
         xCAT::DSHCLI->show_dsh_config;
@@ -3642,12 +3654,23 @@ sub parse_and_run_dsh
         $options{'user'} = $ENV{'DSH_TO_USERID'};
     }
 
-    if ((!(defined(@$nodes))) && (!(defined($options{'rootimg'}))))
-    {    #  no nodes and not -i option, error
+    #  no nodes and not -i or -M option, error
+    if (!(defined(@$nodes))) {
+      if ((!(defined($options{'rootimg'}))) && (!(defined($options{'mgmtnode'}))))
+      {   
         my $rsp = ();
-        $rsp->{data}->[0] = "Unless using -i option,  noderange is required.";
+        $rsp->{data}->[0] = "Unless using -i or -M  option,  noderange is required.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return;
+      }
+    }
+    if ((defined($options{'rootimg'})) && (defined($options{'mgmtnode'})))
+    {   
+        my $rsp = ();
+        $rsp->{data}->[0] = "Cannot use  -i and -M  options together.";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+        return;
+      
     }
     # Determine switch type, processing Mellanox not the same as QLogic
     my $switchtype = $options{'devicetype'};
@@ -3848,21 +3871,25 @@ sub parse_and_run_dsh
 
         }
     }
-    else
+    else  # run on MN and other nodes
     {
+        # if running command on MN
+        if (defined $options{'mgmtnode'})
+        {
+          @results = xCAT::DSHCLI->run_on_mgmtnode(\%options);
+          if ($::RUNCMD_RC)
+          {    # error from dsh
+            my $rsp = ();
+            $rsp->{data}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 
-        #
-        # Execute the dsh api
-        #@results = xCAT::DSHCLI->runDsh_api(\%options, 0);
-        #if ($::RUNCMD_RC)
-        #{    # error from dsh
-        #   $rsp->{data}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
-        #  xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-
-        #}
-        # Execute the dsh command
+          }
+        }
+        # Execute xdsh to the nodes other than the MN
         # number of nodes failed becomes the xdsh return code
-        $::FAILED_NODES = xCAT::DSHCLI->execute_dsh(\%options);
+        if (defined(@$nodes)) {  # if there are other nodes in the command
+          $::FAILED_NODES = xCAT::DSHCLI->execute_dsh(\%options);
+        }
     }
     return (@results);
 }
@@ -3894,7 +3921,7 @@ sub usage_dcp
 {
     ### usage message
     my $usagemsg1 = " xdcp -h \n xdcp -q\n xdcp -V \n xdcp <noderange>\n";
-    my $usagemsg2 = "      [-B bypass] [-c] [-f fanout] [-l user_ID]\n";
+    my $usagemsg2 = "      [-M] [-B bypass] [-c] [-f fanout] [-l user_ID]\n";
     my $usagemsg3 =
       "      [-o options] [-p] [-P] [-q] [-Q] [-r node_remote_copy]\n";
     my $usagemsg4 =
@@ -3987,6 +4014,7 @@ sub parse_and_run_dcp
                     'F|File=s'         => \$options{'File'},
                     'h|help'           => \$options{'help'},
                     'l|user=s'         => \$options{'user'},
+                    'M|mgmtnode'       => \$options{'mgmtnode'}, 
                     'o|node-options=s' => \$options{'node-options'},
                     'q|show-config'    => \$options{'show-config'},
                     'p|preserve'       => \$options{'preserve'},
@@ -4016,6 +4044,16 @@ sub parse_and_run_dcp
         usage_dcp;
         return (0);
     }
+    # if option management node and not on the management node exit error
+    if ($options{'mgmtnode'})
+    {
+     if (!xCAT::Utils->isMN()) {
+        $rsp->{data}->[0] =
+          "To use the -M flag, the command must be run on the Management Node.";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+       return 1;
+     }
+    }
     if ($options{'show-config'})
     {
         xCAT::DSHCLI->show_dsh_config;
@@ -4032,12 +4070,23 @@ sub parse_and_run_dcp
             return;
         }
     }
-    if ((!(defined(@$nodes))) && (!(defined($options{'rootimg'}))))
-    {    #  no nodes and not -i option, error
+    #  no nodes and not -i or -M option, error
+    if (!(defined(@$nodes))) {
+      if ((!(defined($options{'rootimg'}))) && (!(defined($options{'mgmtnode'}))))
+      {   
         my $rsp = ();
-        $rsp->{data}->[0] = "Unless using -i option,  noderange is required.";
+        $rsp->{data}->[0] = "Unless using -i or -M  option,  noderange is required.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return;
+      }
+    }
+    if ((defined($options{'rootimg'})) && (defined($options{'mgmtnode'})))
+    {   
+        my $rsp = ();
+        $rsp->{data}->[0] = "Cannot use  -i and -M  options together.";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+        return;
+      
     }
 
     if ($options{'version'})
@@ -5047,6 +5096,31 @@ sub run_always_rsync_postscripts
 #-------------------------------------------------------------------------------
 
 =head3
+      run_on_mgmtnode
+
+  This subroutine runs the xdsh command on the Management Node
+  Arguments:
+      $optionRef:
+         Specifies a hash in which the xdsh options are provided
+      $exitCode:
+		  reference to an array for efficiency.
+  Example:
+      my @outref = xCAT::DSHCLI->run_on_mgmtnode(\%options);
+
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub run_on_mgmtnode
+{
+    my ($class, $options) = @_;
+    my $cmd;
+    return;
+}
+#-------------------------------------------------------------------------------
+
+=head3
       runlocal_on_rootimg
 
   This subroutine runs the xdsh command against the input image on the local
@@ -5057,7 +5131,7 @@ sub run_always_rsync_postscripts
       $exitCode:
 		  reference to an array for efficiency.
   Example:
-      my @outref = xCAT::DSHCLI->runlocal_rootimg(\%options);
+      my @outref = xCAT::DSHCLI->runlocal_rootimg(\%options,$imagename);
 
 
 =cut
