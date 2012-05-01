@@ -767,14 +767,14 @@ sub nimnodeset
     #
     # See if we need to create a resolv_conf resource
     #
-    my $RChash;
-    $RChash = &chk_resolv_conf($callback, \%objhash, \@nodelist, \%nethash, \%imagehash, \%attrs, \%nodeosi, $subreq);
-    if ( !defined($RChash) ){
+    my %RChash;
+    %RChash = &chk_resolv_conf($callback, \%objhash, \@nodelist, \%nethash, \%imagehash, \%attrs, \%nodeosi, $subreq);
+    if ( !%RChash ){
         my $rsp;
         push @{$rsp->{data}}, "Could not check NIM resolv_conf resource.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
     }
-    my %resolv_conf_hash = %{$RChash};
+    my %resolv_conf_hash = %RChash;
 
     #
     #  Get a list of all nim resource types
@@ -2855,19 +2855,6 @@ sub mknimimage
     if ($::UPDATE)
     {
 
-        # don't update spot unlees it is for diskless/dataless
-#        if ($imagedef{$::image_name}{nimtype} eq "standalone")
-#        {
-#            my $rsp;
-#            push @{$rsp->{data}},
-#              "The \'-u\' option is only valid for diskless and dataless nodes.\n";
-#            xCAT::MsgUtils->message("E", $rsp, $callback);
-#            &mknimimage_usage($callback);
-#            return 1;
-#        }
-
-
-        # mknimimage -u imagename nfs_vers=4 to update the osimage to be NFSv4 capable 
         if(($::attrres{'nfs_vers'} == 4) && $is_defined)
         {
             # Check site.useNFSv4onAIX
@@ -3615,9 +3602,10 @@ sub mknimimage
 			$pwcmd = qq~$::XCATROOT/bin/xcatchroot -i $spot_name "/usr/bin/echo root:$rootpw | /usr/bin/chpasswd -c" >/dev/null 2>&1~;
 		}
 
-                # secure passwd in verbose mode
-                my $tmpv = $::VERBOSE;
-                $::VERBOSE = 0;
+		# secure passwd in verbose mode
+		my $tmpv = $::VERBOSE;
+		$::VERBOSE = 0;
+	
 		my $out = xCAT::Utils->runcmd("$pwcmd", -1);
 		if ($::RUNCMD_RC != 0)
 		{
@@ -3627,6 +3615,7 @@ sub mknimimage
             xCAT::MsgUtils->message("E", $rsp, $callback);
 		}
 		$::VERBOSE = $tmpv;
+
 	}
 
     #
@@ -4607,8 +4596,8 @@ sub mk_resolv_conf_file
 		Called by: nimnodeset() and mkdsklsnode()
 
         Returns:
-               0 - undef
-               1 - ptr to hash of resolv_conf resource names
+                - undef
+                - ptr to hash of resolv_conf resource names
 =cut
 
 #-----------------------------------------------------------------------------
@@ -4678,7 +4667,7 @@ sub chk_resolv_conf
         my $rsp;
         push @{$rsp->{data}}, "Could not get list of NIM resources.";
         xCAT::MsgUtils->message("E", $rsp, $callback);
-        return 1;
+        return undef;
     }
 
 	# 
@@ -4691,7 +4680,7 @@ sub chk_resolv_conf
 		my $rsp;
 		push @{$rsp->{data}}, "Could not run \'$ifgcmd\'.\n";
 		xCAT::MsgUtils->message("E", $rsp, $callback);
-		return 1;
+		return undef;
 	}
 
 	my @myIPs;
@@ -4904,7 +4893,7 @@ sub chk_resolv_conf
    			my $install_dir = xCAT::Utils->getInstallDir();
             if ($::opt_l)
             {
-                if ($::opt_l =~ /\/$/)
+				if ($::opt_l =~ /\/$/)
                 {
                     $::opt_l =~ s/\/$//; #remove tailing slash if needed
                 }
@@ -5032,7 +5021,7 @@ sub chk_resolv_conf
                             my $rsp;
                             push @{$rsp->{data}}, "Could not run lsnim command: \'$cmd\'.\n";
                             xCAT::MsgUtils->message("E", $rsp, $callback);
-                            return 1;
+                            return undef;
                         }
                         my $nfsvers;
                         my $nimname;
@@ -5062,7 +5051,7 @@ sub chk_resolv_conf
                                      push @{$rsp->{data}}, "$nimout";
                                  }
                                  xCAT::MsgUtils->message("E", $rsp, $callback);
-                                 return 1;
+                                 return undef;
                              }
                          }
                     } #end if $::NFSv4
@@ -7568,10 +7557,12 @@ sub prenimnodeset
                     'f|force'   => \$::FORCE,
                     'h|help'    => \$::HELP,
                     'i=s'       => \$::OSIMAGE,
+					'k|skipsync' => \$::SKIPSYNC,
 					'l=s'       => \$::opt_l,
                     'n|new'     => \$::NEWNAME,
 					'p|primarySN' => \$::PRIMARY,
                     'S|setuphanfs' => \$::SETUPHANFS,
+					'u|updateSN'   => \$::UPDATESN,
                     'verbose|V' => \$::VERBOSE,
                     'v|version' => \$::VERSION,
         )
@@ -7724,11 +7715,7 @@ sub prenimnodeset
     if (!$sharedinstall) {
         $sharedinstall="no";
     }
-    if ( $sharedinstall eq "sns")  {
-        # if we're using a shared file system then we
-        #       must only do the primary service node
-        $type="primary";
-    }
+
     chomp $sharedinstall;
 
     #
@@ -7839,7 +7826,7 @@ sub prenimnodeset
         return (1);
     }
 
-    #
+	#
     # Get a list of all the nim resrouces defined.
     #
     $cmd = qq~/usr/sbin/lsnim | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
@@ -7870,6 +7857,24 @@ sub prenimnodeset
         return (1);
     }
 
+	#  if a configdump value was provided then add it to the osimage defs
+	if ($attrs{configdump})
+	{
+		foreach my $i (@image_names)
+		{
+			$imghash{$i}{configdump} = $attrs{configdump};
+		}
+
+		# update the osimage defs
+		if (xCAT::DBobjUtils->setobjdefs(\%imghash) != 0)
+		{
+			my $rsp;
+			$rsp->{data}->[0] = "Could not update xCAT osimage definitions.\n";
+			xCAT::MsgUtils->message("E", $rsp, $::callback);
+			return 1;
+		}
+	}
+
     #
     # modify the image hash with whatever was passed in with attr=val
     #	- also add xcataixpost if appropriate
@@ -7889,7 +7894,8 @@ sub prenimnodeset
         }
     }
 
-    # no dump resource defined for osimage, but configdump is specified, report error.
+    # no dump resource defined for osimage, 
+	#	but configdump is specified, report error.
     my @badosi;
     if (%attrs)
     {
@@ -8118,7 +8124,8 @@ sub prenimnodeset
 
             foreach my $res (@reslist)
             {
-                # before get location, we need to validate if the nimres exists
+
+				# before get location, we need to validate if the nimres exists
                 unless (grep (/^$res$/, @nimres))
                 {
                      my $rsp;
@@ -8172,6 +8179,33 @@ sub prenimnodeset
 			# if we're using a shared file system we should  re-sync
             #   the shared_root resource
             if ( ($sharedinstall eq "sns") || ($sharedinstall eq "all")) {
+
+				my $moveit = 0;
+				my $origloc;
+				my $locbak;
+
+				# if the management node also shares the file system then
+				#	save/restore the .client data files.
+				if (( $sharedinstall eq "all") && ($lochash{$imghash{$i}{shared_root}}) ) {
+					my $resloc =  $lochash{$imghash{$i}{shared_root}};	
+					# ex. /install/nim/shared_root/71Bdskls_shared_root
+
+					$origloc = "$resloc/etc/.client_data";
+					$locbak = "$resloc/etc/.client_data_bkup";
+
+					if (-d $origloc) {
+						my $cpcmd = qq~/usr/bin/mkdir -m 644 -p $locbak; /usr/sbin/cp -r -p $origloc/* $locbak~;
+
+						my $output = xCAT::Utils->runcmd("$cpcmd", -1);
+						if ($::RUNCMD_RC != 0) {
+							my $rsp;
+							push @{$rsp->{data}}, "Could not copy $origloc.\n";
+							xCAT::MsgUtils->message("E", $rsp, $callback);
+						}
+						$moveit++;
+					}
+				}
+			if (!$::SKIPSYNC) {
                 # do a re-sync
                 my $scmd = "nim -Fo sync_roots $imghash{$i}{spot}";
                 my $output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $scmd, 0);
@@ -8185,6 +8219,19 @@ sub prenimnodeset
                     }
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                 }
+			}
+
+				if ($moveit) {
+					# copy back the .client data files
+					my $cpcmd = qq~/usr/sbin/cp -r -p $locbak/* $$origloc~;
+
+					my $output = xCAT::Utils->runcmd("$cpcmd", -1);
+					if ($::RUNCMD_RC != 0) {
+						my $rsp;
+						push @{$rsp->{data}}, "Could not copy $locbak.\n";
+						xCAT::MsgUtils->message("E", $rsp, $callback);
+					}
+				}
             }
         }
     }
@@ -8228,8 +8275,12 @@ sub prenimnodeset
     	}
 	}
 
-    # pass this along to the process_request routine
-    return (0, \%objhash, \%nethash, \%imghash, \%lochash, \%attrs, \%nimhash, \@nodelist, $type);
+	if ($::UPDATESN) {
+		return (2);
+	} else {
+    	# pass this along to the process_request routine
+    	return (0, \%objhash, \%nethash, \%imghash, \%lochash, \%attrs, \%nimhash, \@nodelist, $type);
+	}
 }
 
 #----------------------------------------------------------------------------
@@ -8793,7 +8844,7 @@ sub copyres2
 			$cpcmd = qq~$::XCATROOT/bin/prsync -o "rlHpEAogDz" $resloc  $SNlist:$dir 2>/dev/null~;
 		}
 
-		if ($::VERBOSE)
+#		if ($::VERBOSE)
 		{
 			my $rsp;
 			push @{$rsp->{data}}, "Copying NIM resource $res to service nodes.\n";
@@ -9085,6 +9136,11 @@ sub doSFScopy
 
     my $snlist=join(',',@SNlist);
 
+# ndebug
+my $rsp;
+push @{$rsp->{data}}, "snlist=$snlist\n";
+xCAT::MsgUtils->message("I", $rsp, $callback);
+
     # copy the /etc/hosts file all the SNs
     my $rcpcmd = "$::XCATROOT/bin/xdcp $snlist /etc/hosts /etc ";
     my $output = xCAT::Utils->runcmd("$rcpcmd", -1);
@@ -9116,6 +9172,9 @@ sub doSFScopy
 	push(@targetSN, $targetsn);
 
     # copy the /install/postscripts to $targetsn
+
+#  TODO - don't really need prsync since we're only copying to 
+#	one service node
 
 	#	assume this directory always exists on the nimprime
 	my $cpcmd = qq~$::XCATROOT/bin/prsync -o "rlHpEAogDz" $install_dir/postscripts @targetSN:$install_dir~;
@@ -9150,11 +9209,27 @@ sub doSFScopy
 	# Get list of resources that are allocated on any SNs
 	my %liteonly;
 	my @dontcopy;
-	foreach my $sn (@SNlist) {
+
+	# by default, get MN and all servers
+    my @allsn = ();
+    my @nlist = xCAT::Utils->list_all_nodes;
+    my $snode;
+    my $service = "xcat";
+    if (\@nlist)
+    {
+        $sn = xCAT::Utils->getSNformattedhash(\@nlist, $service, "MN");
+    }
+    foreach my $sn (keys %$snode) {
 		foreach my $img (@imagenames) {
 			foreach my $restype (keys(%{$imghash{$img}})) {
 
 				if (!grep(/^$restype$/, @nimrestypes)) {
+					next;
+				}
+
+				#  don't copy dump or paging
+				if ( ($restype eq 'dump') || ($restype eq 'paging') ) {
+					push(@dontcopy, $imghash{$img}{$restype});
 					next;
 				}
 
@@ -9176,12 +9251,21 @@ sub doSFScopy
 
 				foreach my $res (split /,/, $imghash{$img}{$restype})
 				{
+
+					if (grep (/^$res$/, @dontcopy)) {
+						next;
+					}
+
 					# could have a comma separated list - ex. script
 					my $alloc_count = xCAT::InstUtils->get_nim_attr_val($res, "alloc_count", $callback, $sn, $subreq);
 
 					if (defined($alloc_count) && ($alloc_count != 0)) {
 						# if it's allocated then don't copy it
 						push(@dontcopy, $res);
+
+						my $rsp;
+						push @{$rsp->{data}}, "NIM resource $res is currently allocated on service node $sn and will not be re-copied to the service nodes.\n";
+						xCAT::MsgUtils->message("I", $rsp, $callback);
 
 						if ( ($nimtype ne 'standalone') && ($restype eq 'shared_root'))
 						{
@@ -9202,6 +9286,13 @@ sub doSFScopy
 		# for each resource
 		foreach my $restype (keys(%{$imghash{$image}}))
 		{
+
+			#  don't copy dump or paging
+			if ( ($restype eq 'dump') || ($restype eq 'paging') ) {
+				next;
+			}
+
+
 			# if a valid NIM type and a value is set
 			if (($imghash{$image}{$restype}) && (grep(/^$restype$/, @nimrestypes)))
 			{
@@ -9211,6 +9302,7 @@ sub doSFScopy
 					chomp $res;
 
 					# if the resources need to be copied
+					my %resinfo;
 					if (!grep(/^$res$/, @dontcopy))
 					{
 						# copy appropriate files to the SN
@@ -9225,14 +9317,9 @@ sub doSFScopy
 						);
 						if (grep(/^$restype$/, @dorestypes))
 						{
-							my %resinfo;
 							push @{$resinfo{$res}{snlist}}, $targetsn;
 							$resinfo{$res}{restype}=$restype;
 							$resinfo{$res}{resloc}=$lochash{$res};
-
-#my $rsp;
-#push @{$rsp->{data}}, "target = $targetsn, res = $res, type = $resinfo{$res}{restype}, loc = $resinfo{$res}{resloc}\n";
-#xCAT::MsgUtils->message("I", $rsp, $callback);
 
 							if (&copyres2($callback, \%resinfo, $nimprime, $subreq) ) {
 								# error
@@ -9243,6 +9330,55 @@ sub doSFScopy
                             }    
                         }    # end - if it's a valid res type
                     } # end if we should copy 
+
+					# if this is a shared_root and we didn't copy it
+					#	then we need to copy the statelite updates.
+					if ( ($restype eq 'shared_root') && grep(/^$res$/, @dontcopy)) {
+
+						my $rsp;
+						push @{$rsp->{data}}, "Copying xCAT statelite files to service node $targetsn.\n";
+						xCAT::MsgUtils->message("I", $rsp, $callback);
+
+						my $srloc = $lochash{$res};
+						my $cpcmd = qq~$::XCATROOT/bin/xdcp $targetsn ~;
+						my $output;
+						if (-f "$srloc/statelite.table") {
+							$cpcmd .= qq~$srloc/statelite.table ~;
+						}
+
+						if (-f "$srloc/litefile.table") {
+							$cpcmd .= qq~$srloc/litefile.table ~;
+						}
+
+						if (-f "$srloc/litetree.table") {
+							$cpcmd .= qq~$srloc/litetree.table ~;
+						}
+
+						if (-f "$srloc/aixlitesetup") {
+							$cpcmd .= qq~$srloc/aixlitesetup ~;
+						}
+						$cpcmd .= qq~$srloc/ ~;
+						$output=xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cpcmd, 0);
+						if ($::RUNCMD_RC != 0)
+						{
+							my $rsp;
+							push @{$rsp->{data}}, "Could not copy new statelite file to $targetsn\n";
+							xCAT::MsgUtils->message("E", $rsp, $callback);
+						}
+
+						my $ddir = "$srloc/.default";
+						if (-d $ddir ) {
+							$cpcmd = qq~$::XCATROOT/bin/xdcp $targetsn -R $srloc/.default $srloc/~;
+						}
+
+						$output=xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cpcmd, 0);
+						if ($::RUNCMD_RC != 0)
+						{
+							my $rsp;
+							push @{$rsp->{data}}, "Could not copy new statelite information to $targetsn\n";
+							xCAT::MsgUtils->message("E", $rsp, $callback);
+						}
+					}
                 }    # end - for each resource
             }    # end - if valid type
         }    # end -  foreach type res
@@ -9346,6 +9482,7 @@ sub mkdsklsnode
                     'f|force'   => \$::FORCE,
                     'h|help'    => \$::HELP,
                     'i=s'       => \$::OSIMAGE,
+					'k|skipsync' => \$::SKIPSYNC,
                     'l=s'       => \$::opt_l,
                     'n|new'     => \$::NEWNAME,
                     'p|primary' => \$::PRIMARY,
@@ -9545,14 +9682,14 @@ sub mkdsklsnode
 	#
     # See if we need to create a resolv_conf resource
     #
-	my $RChash;
-	$RChash = &chk_resolv_conf($callback, \%objhash, \@nodelist, \%nethash, \%imagehash, \%attrs, \%nodeosi, $subreq); 
-	if ( !defined($RChash) ){
+	my %RChash;
+	%RChash = &chk_resolv_conf($callback, \%objhash, \@nodelist, \%nethash, \%imagehash, \%attrs, \%nodeosi, $subreq); 
+	if ( !%RChash ){
         my $rsp;
         push @{$rsp->{data}}, "Could not check NIM resolv_conf resource.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
     }
-	my %resolv_conf_hash = %{$RChash};
+	my %resolv_conf_hash = %RChash;
 
     #
     # define and initialize the diskless/dataless nodes
@@ -9926,12 +10063,15 @@ sub mkdsklsnode
             if ($imagehash{$image_name}{dump})
             {
                 $arg_string .= "-a dump=$imagehash{$image_name}{dump} ";
-                               if ($attrs{configdump} ) {
-                                       $arg_string .= "-a configdump=$attrs{configdump} ";
-                               } else {
-                                       # the default is selective
-                                       $arg_string .= "-a configdump=selective ";
-                               }
+
+				if ($imagehash{$image_name}{configdump}) {
+					$arg_string .= "-a configdump=$imagehash{$image_name}{configdump} ";
+				} elsif ($attrs{configdump} ) {
+					$arg_string .= "-a configdump=$attrs{configdump} ";
+				} else {
+					# the default is selective
+					$arg_string .= "-a configdump=selective ";
+				}
             }
             if ($imagehash{$image_name}{home})
             {
@@ -10497,6 +10637,44 @@ sub mkdsklsnode
             }
         }
     }
+
+	# if this is shared_root and "sns" then make a 
+	#	backup of the .client_data dir
+	#   this will be restored by snmove when failing over to this SN
+	if ($sharedinstall eq "sns")
+	{
+		foreach my $i (@image_names) 
+		{
+
+			if ($imagehash{$i}{'shared_root'} )
+			{
+				my $loc = $lochash{$imagehash{$i}{shared_root}};
+				my $cdloc = "$loc/etc/.client_data";	
+				# Sname is name of SN as known by management node
+				my $snbk = $Sname . "_" . $i;
+				my $bkloc = "$loc/$snbk/.client_data";
+
+				my $fcmd;
+				if (-d $bkloc) 
+				{
+					# if backup exist then rm contents
+					$fcmd = qq~/usr/bin/rm $bkloc/* ; ~;
+				} else {
+					# else create dir
+					$fcmd=qq~/usr/bin/mkdir -m 644 -p $bkloc ; ~;
+				}
+
+				my $ccmd=qq~$fcmd  /usr/bin/cp -p -r $cdloc/* $bkloc~;
+				my $output = xCAT::Utils->runcmd("$ccmd", -1);
+				if ($::RUNCMD_RC != 0)
+				{
+					my $rsp;
+					push @{$rsp->{data}}, "Could not back up $cdloc on $Sname \n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+				}
+			}
+		}
+	}
 
     #
     # update the node definitions with the new osimage - if provided
@@ -11447,8 +11625,7 @@ sub make_SN_resource
                             xCAT::MsgUtils->message("E", $rsp, $callback);
                         }
 					}
-                }
-
+				}
                 # only make lpp_source for standalone type images
                 if (   ($restype eq "lpp_source")
                     && ($imghash{$image}{"nimtype"} eq 'standalone'))
@@ -12179,7 +12356,7 @@ sub mkdsklsnode_usage
     push @{$rsp->{data}}, "\tmkdsklsnode [-h | --help ]";
     push @{$rsp->{data}}, "or";
     push @{$rsp->{data}},
-      "\tmkdsklsnode [-V|--verbose] [-f|--force] [-d|--defonly] [-n|--newname] \n\t\t[-i image_name] [-l location] [-p|--primarySN] [-b|--backupSN]\n\t\tnoderange [attr=val [attr=val ...]]\n";
+      "\tmkdsklsnode [-V|--verbose] [-f|--force] [-d|--defonly] [-n|--newname] \n\t\t[-i image_name] [-u|--updateSN] [-l location] [-p|--primarySN]\n\t\t[-b|--backupSN] [-k|--skipsync]\n\t\tnoderange [attr=val [attr=val ...]]\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
