@@ -113,9 +113,9 @@ sub process_request  {
   if ($tmphash->{value} eq "1" or $tmphash->{value}  =~ /y(es)?/i) {
     $password = genpassword(10)."1cA!";
     $gennedpassword=1;
-    $tmphash=$ipmitable->getNodeAttribs($node,['bmc','username','bmcport']);
+    $tmphash=$ipmitable->getNodeAttribs($node,['bmc','username','bmcport','taggedvlan']);
   } else {
-    $tmphash=$ipmitable->getNodeAttribs($node,['bmc','username','bmcport','password']);
+    $tmphash=$ipmitable->getNodeAttribs($node,['bmc','username','bmcport','password','taggedvlan']);
     if ($tmphash->{password}) {
       $password = $tmphash->{password};
     }
@@ -145,6 +145,9 @@ sub process_request  {
 	  my $response={bmcip=>$ip,netmask=>$mask,gateway=>$gw,username=>$username,password=>$password};
 	  if (defined $bmcport) {
 	      $response->{bmcport}=$bmcport;
+	  }
+	  if (defined $tmphash->{taggedvlan}) {
+	      $response->{taggedvlan}=$tmphash->{taggedvlan};
 	  }
   	$callback->($response);
   }
