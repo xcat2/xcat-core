@@ -24,8 +24,8 @@ $(document).ready(function() {
     }).button();
     
 	if (document.location.protocol == 'http:') {
-		$('#login_status').html('You are using an unencrypted session!');
-		$('#login_status').css('color', 'red');
+		$('#login-status').html('You are using an unencrypted session!');
+		$('#login-status').css('color', 'red');
 	}
 	
 	if (!$("#login input[name='username']").val()) {
@@ -62,7 +62,7 @@ function onlogin(data, txtStatus) {
 	var usrName = $("#login input[name='username']").val();
 	$("#login input[name='password']").val('');
 	if (data.authenticated == 'yes') {
-		$('#login_status').text('Login successful');
+		$('#login-status').text('Login successful');
 		window.location = 'service.php';
 				
 		// Set user name cookie
@@ -70,8 +70,8 @@ function onlogin(data, txtStatus) {
 		exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
 		$.cookie('xcat_username', usrName, { expires: exDate });
 	} else {
-		$('#login_status').text('Authentication failure');
-		$('#login_status').css('color', '#FF0000');
+		$('#login-status').text('Authentication failure');
+		$('#login-status').css('color', '#FF0000');
 	}
 }
 
@@ -79,8 +79,8 @@ function onlogin(data, txtStatus) {
  * Authenticate user for new session
  */
 function authenticate() {
-	$('#login_status').css('color', '#000000');
-	$('#login_status').html('Authenticating...');
+	$('#login-status').css('color', '#000000');
+	$('#login-status').html('Authenticating...');
 	
 	var passwd = $("#login input[name='password']").val();
 	$.post('lib/srv_log.php', {

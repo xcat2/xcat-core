@@ -7,8 +7,8 @@ require_once "$TOPDIR/lib/jsonwrapper.php";
 /**
  * Replace the contents of an xCAT table
  *
- * @param 	$tab	The xCAT table
- * @param	$cont	The xCAT table contents
+ * @param $tab     The xCAT table
+ * @param $cont    The xCAT table contents
  * @return The xCAT response.  Replies are in the form of JSON
  */
 if (isset($_POST["table"])) {
@@ -24,7 +24,7 @@ $request = simplexml_load_string('<xcatrequest></xcatrequest>');
 $request->addChild('command', 'tabrestore');
 
 // Setup authentication
-$usernode=$request->addChild('becomeuser');
+$usernode = $request->addChild('becomeuser');
 $usernode->addChild('username', $_SESSION["username"]);
 $usernode->addChild('password', getpassword());
 
@@ -43,7 +43,7 @@ foreach($cont as $line){
 	}
 
 	// Go through each column
-	foreach($line as &$col){
+	foreach ($line as &$col){
 		// If the column does begins and end with a quote
 		// Change quotes to &quot;
 		if(!empty($col) && !preg_match('/^".*"$/', $col)) {
@@ -55,9 +55,11 @@ foreach($cont as $line){
 	ksort($line, SORT_NUMERIC);
 	$keys = array_keys($line);
 	$max = count($line) - 1;
-	if($keys[$max] != $max){
+	if ($keys[$max] != $max){
 		for ($i = 0; $i <= $keys[$max]; $i++) {
-			if (!isset($line[$i])) {$line[$i]='';}
+			if (!isset($line[$i])) {
+				$line[$i]='';
+			}
 		}
 		ksort($line, SORT_NUMERIC);
 	}

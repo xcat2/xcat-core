@@ -273,13 +273,13 @@ function showRmcSummary(returnData) {
             summaryTable.append(summaryRow);
         }
         summaryRow.append(tempTd);
-        attrDiv = $('<div id="monitorsumdiv' + attr + '" class="monitorsumdiv"></div>');
+        attrDiv = $('<div id="monitor-sum-div' + attr + '" class="monitor-sum-div"></div>');
         tempTd.append(attrDiv);
         for (var i in attrValues) {
             tempArray.push( [ globalTimeStamp[i], Number(attrValues[i]) ]);
         }
 
-        $.jqplot('monitorsumdiv' + attr, [ tempArray ], {
+        $.jqplot('monitor-sum-div' + attr, [ tempArray ], {
             series: [{
                 showMarker : false
             }],
@@ -348,13 +348,13 @@ function parseRmcData(returnData) {
 }
 
 function createUnkownNode(nodeName) {
-    var tempLi = '<li class="monitorunknown ui-corner-all monitornodeli" id="' + nodeName + '" ' + 
+    var tempLi = '<li class="monitor-unknown ui-corner-all monitor-node-li" id="' + nodeName + '" ' + 
                  'title="Name:' + nodeName + '<br/>Unknown"></li>';
     return tempLi;
 }
 
 function createErrorNode(nodeName) {
-    var tempLi = '<li class="monitorerror ui-corner-all monitornodeli id="' + nodeName + '" ' +
+    var tempLi = '<li class="monitor-error ui-corner-all monitor-node-li id="' + nodeName + '" ' +
                  'title="Name:' + nodeName + '<br/>Error"></li>';
 }
 
@@ -403,12 +403,12 @@ function showRmcNodes(data, nodename) {
     memAvg = parseInt(tempSum / index);
     
     if (cpuAvg >= 10 && memAvg <= 90){
-        classname = 'monitornormal';
+        classname = 'monitor-normal';
     } else {
-        classname = 'mornitorwarning';
+        classname = 'mornitor-warning';
     }
     
-    var normalLi = $('<li class="' + classname + ' ui-corner-all monitornodeli" id="' + nodename + '" title="' +
+    var normalLi = $('<li class="' + classname + ' ui-corner-all monitor-node-li" id="' + nodename + '" title="' +
          'Name:' + nodename + '<br/> CpuIdle: ' + cpuAvg + '%<br/> MemFree: ' + memAvg + '%"></li>');
     
     $('#rmcmonDetail ul').append(normalLi);
@@ -440,8 +440,8 @@ function showNode(nodeName) {
 
     for ( var attr in globalNodesDetail[nodeName]) {
         var tempTd = $('<td style="border:0px;padding:1px 1px;"></td>');
-        var attrChat = $('<div id="monitornodediv' + nodeName + attr
-                + '" class="monitornodediv"></div>');
+        var attrChat = $('<div id="monitor-node-div' + nodeName + attr
+                + '" class="monitor-node-div"></div>');
         if (0 == parseNum % 4) {
             nodeRow = $('<tr></tr>');
             nodeTable.append(nodeRow);
@@ -457,7 +457,7 @@ function showNode(nodeName) {
             tempArray.push( [ globalTimeStamp[i], Number(tempData[i]) ]);
         }
 
-        $.jqplot('monitornodediv' + nodeName + attr, [ tempArray ], {
+        $.jqplot('monitor-node-div' + nodeName + attr, [ tempArray ], {
             series : [{
                 showMarker : false
             }],

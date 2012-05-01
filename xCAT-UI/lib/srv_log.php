@@ -11,29 +11,29 @@ header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 
 if (isset($_REQUEST["password"])) {
-	// Clear data from session
-	$_SESSION = array();
+    // Clear data from session
+    $_SESSION = array();
 
-	// Zap existing session entirely
-	session_regenerate_id(true);
-	setpassword($_REQUEST["password"]);
+    // Zap existing session entirely
+    session_regenerate_id(true);
+    setpassword($_REQUEST["password"]);
 
-	// Invalid password
-	$_SESSION["srv_xcatpassvalid"] = -1;
+    // Invalid password
+    $_SESSION["srv_xcatpassvalid"] = -1;
 }
 
 if (isset($_REQUEST["username"])) {
-	$_SESSION["srv_username"] = $_REQUEST["username"];
+    $_SESSION["srv_username"] = $_REQUEST["username"];
 
-	// Invalid user name
-	$_SESSION["srv_xcatpassvalid"]=-1;
+    // Invalid user name
+    $_SESSION["srv_xcatpassvalid"]=-1;
 }
 
 $jdata = array();
 if (isAuthenticated()) {
-	$jdata["authenticated"]="yes";
+    $jdata["authenticated"]="yes";
 } else {
-	$jdata["authenticated"]="no";
+    $jdata["authenticated"]="no";
 }
 
 echo json_encode($jdata);

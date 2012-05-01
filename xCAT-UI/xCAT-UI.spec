@@ -120,7 +120,7 @@ ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/webportal
         echo "Installing xCAT-UI on AIX..."
     else
         echo ""
-        echo "Error! IBM HTTP Server is not installed or not installed in the default directory (/usr/IBM/HTTPServer/)."
+        echo "Error! IBM HTTP Server has not been installed or has not been installed in the default directory (/usr/IBM/HTTPServer/)."
         exit -1;
     fi
 %endif

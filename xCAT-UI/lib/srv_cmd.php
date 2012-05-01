@@ -5,22 +5,21 @@ require_once "$TOPDIR/lib/srv_functions.php";
 require_once "$TOPDIR/lib/jsonwrapper.php";
 
 /**
- * Issue a xCAT command, e.g. rinv gpok123 all
- * This will handle most commands.  If not, you can create your
- * own .php.  Look at zCmd.php for an example.
+ * Issue a xCAT command, e.g. rinv gpok123 all. This will handle most commands.
+ * If not, you can create your own .php.  Look at zCmd.php for an example.
  *
- * @param 	$cmd	The xCAT command
- * @param	$tgt	The target node or group
- * @param 	$args	The xCAT command arguments, separated by semicolons
- * @param	$opts	The xCAT command options, separated by semicolons
- * @return 	The xCAT response.  Replies are in the form of JSON
+ * @param     $cmd    The xCAT command
+ * @param    $tgt    The target node or group
+ * @param     $args    The xCAT command arguments, separated by semicolons
+ * @param    $opts    The xCAT command options, separated by semicolons
+ * @return     The xCAT response.  Replies are in the form of JSON
  */
 if (isset($_GET["cmd"])) {
 	// HTTP GET requests
 	$cmd = $_GET["cmd"];
 	$tgt = $_GET["tgt"];
 	$args = $_GET["args"];
-	
+
 	// Special messages put here
 	// This gets sent back to the AJAX request as is.
 	$msg = $_GET["msg"];
@@ -29,7 +28,7 @@ if (isset($_GET["cmd"])) {
 	if (!$tgt) {
 		$tgt = NULL;
 	}
-	
+
 	// If no $msg is given, set $msg to NULL
 	if (!$msg) {
 		$msg = NULL;
@@ -47,12 +46,12 @@ if (isset($_GET["cmd"])) {
 			$args_array = array($args);
 		}
 	}
-	
+
 	// If no $opts are given, set $opts_array to NULL
 	$opts_array = array();
 	if (isset($_GET["opts"])) {
 		$opts = $_GET["opts"];
-		
+
 		// If $args contains multiple arguments, split it into an array
 		if (strpos($opts,";")) {
 			// Split the arguments into an array
@@ -69,7 +68,7 @@ if (isset($_GET["cmd"])) {
 	if (in_array("flush", $opts_array)) {
 		return;
 	}
-	
+
 	$rsp = array();
 
 	// webrun pping and gangliastatus output needs special handling
@@ -92,17 +91,16 @@ if (isset($_GET["cmd"])) {
 			foreach ($child->children() as $data) {
 				if($data->name) {
 					$node = $data->name;
-					
+
 					if($data->data->contents){
 						$cont = $data->data->contents;
-					}
-					else{
+					} else {
 						$cont = $data->data;
 					}
-					
+
 					$cont = str_replace(":|:", "\n", $cont);
 					array_push($rsp, "$node: $cont");
-				} else if(strlen("$data") > 2) {
+				} else if (strlen("$data") > 2) {
 					$data = str_replace(":|:", "\n", $data);
 					array_push($rsp, "$data");
 				}
@@ -118,8 +116,8 @@ if (isset($_GET["cmd"])) {
 /**
  * Extract the output for a webrun command
  *
- * @param	$xml 	The XML output from docmd()
- * @return 	An array containing the output
+ * @param $xml    The XML output from docmd()
+ * @return An array containing the output
  */
 function extractWebrun($xml) {
 	$rsp = array();
@@ -130,7 +128,7 @@ function extractWebrun($xml) {
 		foreach($nodes->children() as $node){
 			// Get the node name
 			$name = $node->name;
-			
+
 			// Get the content
 			$status = $node->data;
 			$status = str_replace(":|:", "\n", $status);
@@ -147,8 +145,8 @@ function extractWebrun($xml) {
 /**
  * Extract the output for a nodels command
  *
- * @param	$xml 	The XML output from docmd()
- * @return 	An array containing the output
+ * @param $xml    The XML output from docmd()
+ * @return An array containing the output
  */
 function extractNodels($xml) {
 	$rsp = array();
@@ -176,8 +174,8 @@ function extractNodels($xml) {
 /**
  * Extract the output for a extnoderange command
  *
- * @param 	$xml 	The XML output from docmd()
- * @return 	The nodes and groups
+ * @param $xml    The XML output from docmd()
+ * @return The nodes and groups
  */
 function extractExtnoderange($xml) {
 	$rsp = array();

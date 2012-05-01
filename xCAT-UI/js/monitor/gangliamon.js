@@ -476,11 +476,11 @@ function drawGridSummary() {
     }
     
     gridDrawArea.empty();
-    showStr = '<table style="border-style:none;"><tr><td style="padding:0;border-style:none;"><div id="gangliasummaryload" class="monitorsumdiv"></div></td>' + 
-              '<td style="padding:0;border-style:none;"><div id="gangliasummarycpu" class="monitorsumdiv"></div></td>' +
-              '<td style="padding:0;border-style:none;"><div id="gangliasummarymem" class="monitorsumdiv"></div></td></tr>' +
-              '<tr><td style="padding:0;border-style:none;"><div id="gangliasummarydisk" class="monitorsumdiv"></div></td>' +
-              '<td style="padding:0;border-style:none;"><div id="gangliasummarynetwork" class="monitorsumdiv"></div></td>' +
+    showStr = '<table style="border-style:none;"><tr><td style="padding:0;border-style:none;"><div id="gangliasummaryload" class="monitor-sum-div"></div></td>' + 
+              '<td style="padding:0;border-style:none;"><div id="gangliasummarycpu" class="monitor-sum-div"></div></td>' +
+              '<td style="padding:0;border-style:none;"><div id="gangliasummarymem" class="monitor-sum-div"></div></td></tr>' +
+              '<tr><td style="padding:0;border-style:none;"><div id="gangliasummarydisk" class="monitor-sum-div"></div></td>' +
+              '<td style="padding:0;border-style:none;"><div id="gangliasummarynetwork" class="monitor-sum-div"></div></td>' +
               '<td style="padding:0;border-style:none;"></td></tr></table>';
     gridDrawArea.append(showStr);
     drawLoadFlot('gangliasummaryload', 'Grid', gridData['load_one'], gridData['cpu_num']);
@@ -906,23 +906,23 @@ function drawGangliaNodesAreaPic(type, name) {
         nodename = temparray[index];
         switch (nodeStatus[nodename]) {
             case 'ERROR':
-                showStr = '<li class="monitorerror ui-corner-all monitornodeli" title="' + nodename + '"></li>';
+                showStr = '<li class="monitor-error ui-corner-all monitor-node-li" title="' + nodename + '"></li>';
                 break;
             case 'WARNING':
-                showStr = '<li class="mornitorwarning ui-corner-all monitornodeli" title="' + nodename + '"></li>';
+                showStr = '<li class="mornitor-warning ui-corner-all monitor-node-li" title="' + nodename + '"></li>';
                 break;
             case 'NORMAL':
-                showStr = '<li class="monitornormal ui-corner-all monitornodeli" title="' + nodename + '"></li>';
+                showStr = '<li class="monitor-normal ui-corner-all monitor-node-li" title="' + nodename + '"></li>';
                 break;
             default:
-            	showStr = '<li class="monitorunknown ui-corner-all monitornodeli" title="' + nodename + '"></li>';
+            	showStr = '<li class="monitor-unknown ui-corner-all monitor-node-li" title="' + nodename + '"></li>';
             	break;
         }
         $('#gangliaNodes ul').append(showStr);
     }
     
     // Bind all normal and warning nodes click event
-    $('.monitornormal,.monitorwarning').bind('click', function() {
+    $('.monitor-normal,.monitorwarning').bind('click', function() {
         var nodename = $(this).attr('title');
         window.open('ganglianode.php?n=' + nodename + '&p=' + nodePath[nodename],
                 'nodedetail','height=430,width=950,scrollbars=yes,status =no');
@@ -1077,7 +1077,7 @@ function updateZoom(obj) {
 	while ($('#zoomDiv span:last').attr('name') != type) {
 		$('#zoomDiv span:last').remove();
 	}
-	$(obj).removeClass('monitorzoomlinkli');
+	$(obj).removeClass('monitor-zoom-link');
 	$(obj).unbind('click');
 	
 	drawGangliaNodesArea();
@@ -1093,7 +1093,7 @@ function addZoomDiv(obj) {
 	var type = $(obj).attr('name');
 	
 	var lastzoomobj = $('#zoomDiv span:last');
-	lastzoomobj.addClass('monitorzoomlink');
+	lastzoomobj.addClass('monitor-zoom-link');
 	lastzoomobj.bind('click', function() {
 		updateZoom(this);
 	});

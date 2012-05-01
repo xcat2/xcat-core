@@ -26,8 +26,8 @@ $(document).ready(function() {
     $('#login button').button();
     
 	if (document.location.protocol == "http:") {
-		$("#login_status").html("You are using an unencrypted session!");
-		$("#login_status").css("color", "#ff0000");
+		$("#login-status").html("You are using an unencrypted session!");
+		$("#login-status").css("color", "#ff0000");
 	}
 	
 	if ($("#login input[name='username']").val() == "") {
@@ -64,7 +64,7 @@ function onlogin(data, txtStatus) {
 	// Clear password field regardless of what happens
 	$("#login input[name='password']").val("");
 	if (data.authenticated == "yes") {
-		$("#login_status").text("Login successful");
+		$("#login-status").text("Login successful");
 
 		// Not the first time to log
 		if ($.cookie('logonflag')){
@@ -87,7 +87,7 @@ function onlogin(data, txtStatus) {
 		});
 		
 	} else {
-		$("#login_status").text("Authentication failure").css("color", "#FF0000");
+		$("#login-status").text("Authentication failure").css("color", "#FF0000");
 	}
 }
 
@@ -97,8 +97,8 @@ function onlogin(data, txtStatus) {
  * @return Nothing
  */
 function authenticate() {
-	$("#login_status").css("color", "#000000");
-	$("#login_status").html('Authenticating...');
+	$("#login-status").css("color", "#000000");
+	$("#login-status").html('Authenticating...');
 	var passwd = $("#login input[name='password']").val();
 	$.post("lib/log.php", {
 		username : $("#login input[name='username']").val(),

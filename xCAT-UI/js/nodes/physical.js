@@ -312,7 +312,7 @@ function createSystempGraphical(bpa, fsp, area){
 		
 		var td = $('<td style="padding:0;border-color: transparent;"></td>');
 		var frameDiv = $('<div class="frameDiv"></div>');
-		frameDiv.append('<div style="height:27px;" title="' + bpaName + '"><input type="checkbox" class="fspcheckbox" name="check_'+ bpaName +'"></div>');
+		frameDiv.append('<div style="height:27px;" title="' + bpaName + '"><input type="checkbox" class="fspCheckbox" name="check_'+ bpaName +'"></div>');
 		
 		//for P7-IH, all the cecs are insert into the frame from down to up, so we had to show the cecs same as the
 		//physical layout.
@@ -445,7 +445,7 @@ function createSystempGraphical(bpa, fsp, area){
 		updateSelectNodeDiv();
 	});
 	
-	$('.fspcheckbox').bind('click', function(){
+	$('.fspCheckbox').bind('click', function(){
 		var itemName = $(this).attr('name');
 		name = itemName.substr(6);
 		
@@ -571,8 +571,8 @@ function createSystemxGraphical(xnodes, area){
 			}
 			xnodenum++;
 			var td = $('<td style="padding:0;border-color: transparent;"></td>');
-			var xnodeDiv = '<div id="' + xnodename + '" class="xnodeDiv" title="' + xnodename +'"></div>';
-			td.append(xnodeDiv);
+			var xNodeDiv = '<div id="' + xnodename + '" class="xNodeDiv" title="' + xnodename +'"></div>';
+			td.append(xNodeDiv);
 			row.append(td);
 		}
 	}
@@ -801,7 +801,7 @@ function createFspDiv(fspName, mtm, fsp){
 	}
 		
 	//create return value
-	var retHtml = '<input style="padding:0;" class="fspcheckbox" type="checkbox" name="check_' + fspName + '">';
+	var retHtml = '<input style="padding:0;" class="fspCheckbox" type="checkbox" name="check_' + fspName + '">';
 	retHtml += '<div value="' + fspName + '" class="' + divClass + '">';
 	retHtml += '<div class="lparDiv"><table><tbody><tr>' + lparStatusRow + '</tr></tbody></table></div></div>';
 	return retHtml;
