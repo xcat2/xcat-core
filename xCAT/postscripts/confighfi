@@ -72,6 +72,40 @@ ONBOOT=yes
         fi
     done
 
+    # Configure bond0 on Linux
+    CLIENT_IP=`ping -c 3 $name-bond0 -I hf$i 2>/dev/null | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+    if [ -n "$CLIENT_IP" ]
+    then
+        echo "DEVICE=bond0
+NM_CONTROLLED=yes
+IPADDR=$CLIENT_IP
+NETMASK=$NETMASK
+ONBOOT=yes
+" >/etc/sysconfig/network-scripts/ifcfg-bond0
+    fi
+
+    if lsmod | grep bonding
+    then
+        rmmod bonding
+    fi
+
+    modprobe bonding mode=multi-link miimon=100
+
+    xmit_hash_policy=layer3+4
+    sleep 1
+
+    for x in hf0 hf1 hf2 hf3; do
+
+        ip link set dev ${x} down
+        echo +${x} > /sys/class/net/bond0/bonding/slaves
+    done
+
+    bond-mld > m.out 2>&1 &
+    ip link set dev bond0 mtu 65536
+
+    ifdown bond0
+    ifup bond0
+
 else
     # Configurartion for AIX
     if [[ $NTYPE = service ]]
