@@ -18,6 +18,8 @@
 #  You can run the following commands to install/update the rpms from os distro.
 #       updatenode noderange ospkgs 
 #       updatenode noderange -S    (this one intslls/updates rpms from os distro as well as otherpkgs)
+#       updatenode noderange -P "ospkgs --keeprepo"  (this one will preserve the original repositories when installing/updating the rpms. )
+#    
 #   
 #=cut
 #-------------------------------------------------------------------------------
