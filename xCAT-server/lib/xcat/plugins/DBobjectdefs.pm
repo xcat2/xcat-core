@@ -730,7 +730,7 @@ sub processArgs
     {
         my @tmplist;
 
-        if ($::command eq 'rmdef')
+        if (($::command eq 'rmdef') || ($::command eq 'chdef'))
         {
             my $rsp;
             $rsp->{data}->[0] =
