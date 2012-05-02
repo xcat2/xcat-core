@@ -256,7 +256,7 @@ $request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
     }
     $newdata=1;
     $response .= $line;
-    if ($line =~ m/<\/xcatresponse>/) {
+    if ($line =~ m/<\/xcatresponse>\s*\z/) {
       if ($line =~ /serverdone/) { $coalescenow=1; } #if serverdone was detected, hint at coalesce code to flush things out now
 	#this means that coalesce can be triggered by stray words in the output prematurely, but that's harmless
       #replace ESC with xxxxESCxxx because XMLin cannot handle it
