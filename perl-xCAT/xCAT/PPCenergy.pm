@@ -179,8 +179,8 @@ sub parse_args {
     my $nodetyperef = xCAT::DBobjUtils->getnodetype($nodes, "ppc");  
     my $i = 0;
     foreach my $node (@{$nodes}) {
-        if (@$nodetyperef[$i] ne 'fsp' && 
-            @$nodetyperef[$i] ne 'cec') {
+        if ($$nodetyperef{$node} ne 'fsp' &&
+            $$nodetyperef{$node} ne 'cec') {
             push @notfspnodes, $node;
         }
         $i++;
