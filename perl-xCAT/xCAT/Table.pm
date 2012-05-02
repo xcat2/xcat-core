@@ -3022,6 +3022,9 @@ sub getAllAttribs
     my @attribs = @_;
     my @results = ();
     if ($self->{_use_cache}) {
+        if ($self->{_cachestamp} < (time()-5)) { #NEVER use a cache older than 5 seconds
+		$self->_refresh_cache();
+	}
         my @results;
         my $cacheline;
         CACHELINE: foreach $cacheline (@{$self->{_tablecache}}) {
@@ -3248,6 +3251,9 @@ sub getAttribs
     }
     my @return;
     if ($self->{_use_cache}) {
+        if ($self->{_cachestamp} < (time()-5)) { #NEVER use a cache older than 5 seconds
+		$self->_refresh_cache();
+	}
         my @results;
         my $cacheline;
         if (scalar(keys %keypairs) == 1 and $keypairs{node}) { #99.9% of queries look like this, optimized case
