@@ -639,7 +639,7 @@ sub lshwconn
                     #my $node_ip_hash = $hosttab->getNodeAttribs( $node_name,[qw(ip)]);
                     #$node_ip = $node_ip_hash->{ip};
                     #$node_ip = xCAT::Utils::getNodeIPaddress( $node_name );
-		    my $d = $nodehash->{$node_name};
+		    my $d = $node_hash->{$node_name};
                     $node_ip = xCAT::FSPUtils::getIPaddress($request, $$d[4], $node_name );
                 }
                 if (!$node_ip || ($node_ip == -3))
