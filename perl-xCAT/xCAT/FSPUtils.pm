@@ -160,7 +160,7 @@ sub getIPaddress
 	    #my $tmp_s = $vpdtab->getNodeAttribs($nodetocheck, ['side']);
 	    my $tmp_s = $vpd->{$nodetocheck};
             if ($tmp_s and $tmp_s =~ /(A|B)-\d/i) {
-                $side = $1; # get side for the fsp, in order to get its brothers
+                $side = $1; # get side for the fsp
 		
             } else {
                 return -3;
@@ -172,6 +172,7 @@ sub getIPaddress
         }
         if( @children == 0 ) {	
             if( exists($ppc->{$parent} ) ) {
+		#for cec/frame, get the FSPs/BPAs from the hash we built in getHcpAttribs() before. 
 	        @children = @{$ppc->{$parent}->{children}}; 
             } else {
 	        return undef;
@@ -315,7 +316,8 @@ sub fsp_api_action {
     #print "fsp name: $fsp_name\n";
     #print "fsp ip: $fsp_ip\n";
   
-    #get the HMC/password from  passwd table or ppcdirect table.
+    #In DFM, only the add_connection action need the userid/password to create the connection
+    #between hdwr_svr and FSPs or BPAs. 
     if( $action =~ /^add_connection$/) {
         my $tmp_node; 
  	if( $$attrs[4] =~ /^cec$/ || $$attrs[4] =~ /^frame$/ ) {
@@ -333,7 +335,7 @@ sub fsp_api_action {
 	     $res = "Cannot get password of userid 'HMC'. Please check table 'passwd' or 'ppcdirect'.";
 	     return ([$node_name, $res, -1]);
 	}
-
+        # The userid for creating connection only is "HMC".
         $user = 'HMC';
     }
 
