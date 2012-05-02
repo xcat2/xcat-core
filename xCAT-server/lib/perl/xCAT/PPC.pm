@@ -818,14 +818,22 @@ sub preprocess_nodes {
             return undef;
         }
     }
-    
+   
+    ##########################################################
+    # For DFM actions, all the IPs of the FSPs/BPAs corresponding CECs/Frames will be used to do the 
+    # comminucation with the hdwr_svr. So use the gethcpAttribs() to collect the CECs' FSPs, and Frames'
+    # BPA here for process fork .
+    # In the HMC hardware control environment, the mkhwconn/rmhwconn commands will use the FSPs' IPs or
+    # the BPAs' IPs. So it also need to collect the CECs' FSPs, and Frames' BPA here.
+    ##########################################################
     if ( $request->{fsp_api} == 1 || $request->{command} =~ /^(mkhwconn|rmhwconn)$/) {
          xCAT::FSPUtils::getHcpAttribs($request, \%tabs);
     }
 
 
     ##########################################
-    # Group nodes
+    # Group nodes. The first key is hcp, and the second key is mtms. This Group result is temporary.
+    # All the attributs collected here will be used for the different commands Grcup Nodes later.
     ##########################################
     foreach my $node ( @$noderange ) {
         my $d = resolve( $request, $node, \%tabs );
@@ -846,7 +854,9 @@ sub preprocess_nodes {
         my $mtms = @$d[2];
        
         ######################################
-        # Special case for mkhwconn
+        # Special case for mkhwconn with -p. The hcp in the command is specified by the users, 
+	# not in the DB, and the hcp value is stored in  $request->{opt}->{p}.
+	# So set the  $request->{opt}->{p} as the key the %nodehash directly.
         ######################################
         if ( $request->{command} eq "mkhwconn" and 
               exists $request->{opt}->{p})
@@ -876,6 +886,10 @@ sub preprocess_nodes {
             $request->{$hcp}{cred} = \@cred;
          }
          
+	 ######################################################
+	 #In DFM suppport, only the mkhwconn command need the userid/password to
+	 #create the connection between hdwr_svr and FSPs/BPAs
+	 ###################################################### 
 	 if( $request->{fsp_api} == 1 && $request->{command} eq "mkhwconn") {
              my $user;
              if($request->{hwtype} && ($request->{hwtype} eq "blade" )) {
@@ -1274,7 +1288,8 @@ sub resolve {
     }
    
     ############################
-    #Specail case for mkhwconn/lshwconn/rmhwconn with -s	
+    #Specail case for mkhwconn/lshwconn/rmhwconn with -s . The sfp value( always the hmc) should
+    #be set as the hcp. 
     ############################
     if( $request->{command} =~ /^(mkhwconn|lshwconn|rmhwconn)$/ && grep (/^-s$/, @{$request->{arg}})) {
         my $sfp;
