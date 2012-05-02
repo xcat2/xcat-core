@@ -31,6 +31,7 @@ remote node or device appended to  the  copied  source_file  name.  The
 If using hierarchy, then xdcp runs on the service node that is servicing the compute node. The file will first be copied to the path defined in the site table, SNsyncfiledir attribute, or the default path /var/xcat/syncfiles on the service node, if the attribute is not defined. The -P flag will not automatically copy
 the files from the compute node to the Management node, hierarchically.  There
 is a two step process, see -P flag.  
+If the Management Node is target node, it must be defined in the xCAT database with nodetype=mn.When the B<xdcp> command runs the Management Node as the target, it does not use remote commands but uses the local OS copy (cp) command. 
 
 B<REMOTE> B<USER>:
 

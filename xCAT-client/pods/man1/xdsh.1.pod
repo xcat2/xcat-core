@@ -1,6 +1,6 @@
 =head1 B<NAME>
 
-B<xdsh> - Concurrently runs commands on multiple nodes, or an install image.
+B<xdsh> - Concurrently runs commands on multiple nodes (Management Node, Service Nodes, compute nodes), or an install image.
 
 =head1 B<SYNOPSIS>
 
@@ -21,16 +21,17 @@ B<xdsh> [B<-h> | B<-V> | B<-q>]
 
 =head1 B<DESCRIPTION>
 
-The B<xdsh> command runs commands in parallel on remote nodes.  The B<xdsh> command issues  a
+The B<xdsh> command runs commands in parallel on remote nodes and/or the Management Node.   The B<xdsh> command issues  a
 remote  shell command for each target specified, and returns the output
 from all targets,
 formatted so that command results  from  all  nodes  can  be  managed.
+If the command is to be executed  on the Management Node, it does not use a remote shell command, but uses the local OS copy or shell command. The Management Node must be defined in the xCAT database and have a nodetype of mn. 
 The B<xdsh> command is an xCAT Distributed Shell Utility.
 
 
 B<COMMAND> B<SPECIFICATION>:
 
-The commands to execute on the remote  targets  are  specified  by  the
+The commands to execute on the  targets  are  specified  by  the
 I<command_list>  B<xdsh>  parameter, or executing a local script using the B<-e>
 flag.
 
