@@ -864,7 +864,7 @@ sub fsp_api_passwd {
     #$fsp_ip = xCAT::Utils::get_hdwr_ip($fsp_name);
     #$fsp_ip = xCAT::Utils::getNodeIPaddress($fsp_name);
     #$fsp_ip = xCAT::Utils::getIPaddress($fsp_name);
-    $fsp_ip = getIPaddress($request, $attrs, $fsp_name );
+    $fsp_ip = xCAT::FSPUtils::getIPaddress($request, $$attrs[4], $fsp_name );
     if(!defined($fsp_ip) or ($fsp_ip == -3)) {
         $res = "Failed to get IP address for $fsp_name.";
         return ([$node_name, $res, -1]);
