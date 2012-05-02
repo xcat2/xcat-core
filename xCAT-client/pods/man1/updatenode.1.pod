@@ -126,6 +126,20 @@ https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_AIX_RTE_Diskful
 For diskless installs, read:
 https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_AIX_Diskless_Nodes
 
+B<For Linux systems:>
+
+It is equivalent to running the 
+folloiwng command:
+
+ updatenode noderange -P ospkgs,otherpkgs
+
+It will update all the rpms specified in the .pkglist file and .otherpkgs.pkglist 
+file. ospkgs postscript will normally remove all the existing rpm 
+repositories before adding server:/install/<os>/<arch/ as the new repository. 
+To preserve the existing repositories, you can run the following command instead:
+
+updatenode noderange -P "ospkgs --keeprepo,otherpkgs"
+
 
 =head2 To run postscripts
 
@@ -334,13 +348,13 @@ Update the ca and credentials to the service nodes.
 
 =item B<-P|--scripts>
 
-Specifies that postscripts should be run on the nodes.
+Specifies that postscripts should be run on the nodes. 
 updatenode -P syncfiles is not supported.  The syncfiles postscript can only
-be run during install.  You should use updatenode <noderange> -F instead.
+be run during install.  You should use updatenode <noderange> -F instead. 
 
 =item B<-S|--sw>
 
-Specifies that node software should be updated.
+Specifies that node software should be updated. 
 
 =item B<-s|--sn>
 
@@ -425,7 +439,8 @@ the following command is equivalent:
 
 B<updatenode clstrn01 "script1 p1 p2,script2">
 
-p1 p2 are parameters for script1.
+p1 p2 are parameters for script1. 
+ 
 
 =item 6
 
