@@ -19,61 +19,6 @@
 #    - Configure poe.limits file
 
 OS=`uname`
-INSTALL_DIR='/install'
-PE_DIR=$pedir
-
-if [ -z "$PE_DIR" ]; then
-   # try to default
-   PE_DIR=$INSTALL_DIR/post/otherpkgs/$OSVER/$ARCH/pe
-fi
-
-
-if [ $NODESETSTATE != "genimage" ]; then
-   # running as a postscript in a full-disk install or AIX diskless install
-   installroot=""
-fi
-
-
-
-if [ $OS != "AIX" ]; then
-    if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
-    #  Being run from a stateful install postscript
-    #  Copy rpms directly from the xCAT management node and install
-        mkdir -p /tmp/pe
-        rm -f -R /tmp/pe/*
-        cd /tmp/pe
-#        download_dir=`echo $PE_DIR | cut -d '/' -f3-`
-#        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=5 http://$SITEMASTER/$PE_DIR/*.rpm 2> /tmp/wget.log
-        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=6 --reject "index.html*"  --no-parent http://$SITEMASTER$PE_DIR/ 2> /tmp/wget.log
-        if [ ! -f /opt/ibmhpc/pe1200/sbin/accept_ppe_license.sh ] ; then
-            IBM_PPE_RTE_LICENSE_ACCEPT=yes rpm -Uvh ppe_rte_license*.rpm
-        fi
-        IBM_PPE_RTE_LICENSE_ACCEPT=yes /opt/ibmhpc/pe1200/sbin/accept_ppe_license.sh
-        rpm -Uvh --force ppe*.rpm 
-        cd /
-        rm -Rf /tmp/pe
-    fi
-
-    if [ $NODESETSTATE == "genimage" ]; then
-    # Being called from <image>.postinstall script
-    # Assume we are on the same machine
-        if [[ $OS = sles* ]] || [[ $OS = suse* ]] || [[ -f /etc/SuSE-release ]]; then
-        # For SLES, assume zypper is available on the system running genimage
-            # Install PE license rpm into image
-            IBM_PPE_RTE_LICENSE_ACCEPT=yes zypper -R $installroot install $PE_DIR/ppe_rte_license*.rpm
-            # Install PE product rpms
-            INUCLIENTS=1 INUBOSTYPE=1 zypper -R $installroot install $PE_DIR/pperte* 
-        else
-        # For Redhat, etc., assume yum is available on the system running genimage
-            # Install PE license rpm into image
-            IBM_PPE_RTE_LICENSE_ACCEPT=yes yum -y --installroot $installroot --nogpgcheck install  $PE_DIR/ppe_rte_license*.rpm
-            # Install PE product rpms
-            INUCLIENTS=1 INUBOSTYPE=1 yum -y --installroot $installroot --nogpgcheck install $PE_DIR/ppe_rte* $PE_DIR/pperte*
-        fi
-    fi
-fi
-
-
 
 # Configure the PNSD.cfg to use a smaller log so it doesn't use so much memory
 # for a stateless image.  Normally, pnsd creates this file if it does not 
