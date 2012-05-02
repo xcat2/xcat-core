@@ -33,11 +33,15 @@ require xCAT::NodeRange;
         
  #-------------------------------------------------------------------------------
 
-=head3   getHcpAttribs - Build 2 Hashes from ppc/vpd table
-                         on hash is : CEC/Frame is the Key, FSPs/BPAs are the value. 
-			 the other is: fsp/bpa is the key, the side is the value.
+=head3   getHcpAttribs 
+ Description:
+     Build 2 Hashes from ppc/vpd table
+     one hash is : CEC/Frame is the Key, FSPs/BPAs are the value. 
+     the other is: fsp/bpa is the key, the side is the value.
 
  Arguments:
+     $request: this hash will be usded to store the ppc hash and vpd hash
+     $tabs: the hash store the new tables for ppc and bpd.
     Returns: 
     Globals:
         none
@@ -55,8 +59,7 @@ sub getHcpAttribs
     my $tabs     = shift;
     my %ppchash ;
     my %vpd ;
-    my $t = `date`;
-    print $t."\n"; 
+    
     my @vs = $tabs->{vpd}->getAllNodeAttribs(['node', 'side']);
     for my $entry ( @vs ) {
         my $tmp_node = $entry->{node};
@@ -66,8 +69,6 @@ sub getHcpAttribs
 	}
     }
     
-    my $t = `date`;
-    print $t."\n"; 
     my @ps = $tabs->{ppc}->getAllNodeAttribs(['node','parent','nodetype']); 
     for my $entry ( @ps ) {
         my $tmp_parent = $entry->{parent};
@@ -98,16 +99,28 @@ sub getHcpAttribs
         
  #-------------------------------------------------------------------------------
 
-=head3   getIPaddress - Used by DFM related functions to support service vlan redundancy.
-
+=head3   getIPaddress 
+ Description:    
+        Used by DFM related functions. When getting the IPs for CECs' FSPs, or
+        getting the IPs for Frames' BPAs. And the IPs order is A-0,A-1,B-0,B-1.
+	When getting the IP for one FSP or one BPA, if the $nodetocheck it one IP,
+	it will return the IP immediately; if not, it will get the IP of the FSP or BPA.
+                         
  Arguments:
-       Node name  only one at a time
+    $request: Because getIPaddress() is always used for one node after the process fork. Avoiding to 
+              access the DB for each node in the subprocess, we should collect the attributs before
+	      process fork, and put the attributes in the $request variable. For the getIpaddress().
+              The $request parameter should include the ppc hash which mapping the CEC->FSPs and 
+              Frames->BPAs, and vpd hash the fsp->side and the bpa->side.
+    $type:    the type of the $nodetocheck
+    $nodetocheck:  Node name,  only one node at a time.
+    $port:   if the $nodetocheck is a fsp or bpa, it will be usde.
     Returns: ip address(s)
     Globals:
         none
     Error:
         none
-    Example:   my $c1 = xCAT::Utils::getIPaddress($nodetocheck);
+    Example:   my $c1 = xCAT::FSPUtils::getIPaddress($request, $type, $nodetocheck);
 
 =cut
 
