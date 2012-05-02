@@ -832,7 +832,7 @@ sub preprocess_nodes {
 
 
     ##########################################
-    # Group nodes. The first key is hcp, and the second key is mtms. This Group result is temporary.
+    # Group nodes. The first key is hcp, and the second kery is mtms.
     # All the attributs collected here will be used for the different commands Grcup Nodes later.
     ##########################################
     foreach my $node ( @$noderange ) {
@@ -892,16 +892,29 @@ sub preprocess_nodes {
 	 ###################################################### 
 	 if( $request->{fsp_api} == 1 && $request->{command} eq "mkhwconn") {
              my $user;
-             if($request->{hwtype} && ($request->{hwtype} eq "blade" )) {
-	        $user = "USERID";
-             }
-             if($request->{hwtype} && ($request->{hwtype} =~ /^(fsp|bpa)$/ )) {
-	        $user = "HMC";
-             }
-            
-	     @cred = xCAT::PPCdb::credentials( $hcp, $request->{hwtype}, $user );
+	     while( my($mtms, $h) = each(%$hash) ) {
+	         while(my($node, $tmp_d) = each(%$h) ) {
+		     my $type = $$tmp_d[4];
+		     ###############
+		     #For NGP, get the passwd of the cmm's username USERID
+		     ###############
+		     if($type && $type =~ /^blade$/) {
+	                 $user = "USERID";
+			 my $cmm = $$tmp_d[5];
+	                 @cred = xCAT::PPCdb::credentials( $cmm, $type, $user );
+                         $request->{$cmm}{cred} = \@cred;
+		     }
+                     ############################
+		     #For P7 IH DFM, get the password of the CEC's/Frame's username HMC
+		     ###########################
+		     if($type && $type =~ /^(fsp|bpa|cec|frame)$/) {
+		         $user = "HMC"; 
+	                 @cred = xCAT::PPCdb::credentials( $hcp, $type, $user );
+                         $request->{$hcp}{cred} = \@cred;
+		     }
+                  }
+	      }
 	    
-             $request->{$hcp}{cred} = \@cred;
 	 }
      
     } 
