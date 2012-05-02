@@ -781,10 +781,12 @@ sub fork_fanout_dcp
               $remoteshell->remote_copy_command(\%rcp_config, $remote_copy);
 
         }
-        else
+        else  # this is the local host
         {
             if ($$options{'destDir_srcFile'}{$user_target})
             {
+                # build the rsync script in /tmp/rsync_$user_target
+                # or /tmp/rsync_$user_target_s for a service node
                 if ($::SYNCSN == 1)
                 {    # syncing service node
 
@@ -795,6 +797,7 @@ sub fork_fanout_dcp
                 {
                     $rsyncfile = "/tmp/rsync_$user_target";
                 }
+                # build the rsync script in /tmp/rsync_$user_target
                 open(RSYNCCMDFILE, "> $rsyncfile")
                   or die "can not open file $rsyncfile";
                 my $dest_dir_list = join ' ',
@@ -813,16 +816,18 @@ sub fork_fanout_dcp
                     {
                         print RSYNCCMDFILE "/bin/cp $src_file_list $dest_dir\n";
                     }
-                    my %diff_dest_hash =
-                      %{$$options{'destDir_srcFile'}{$user_target}{$dest_dir}
+                    if (defined(%{$$options{'destDir_srcFile'}{$user_target}{$dest_dir}{'diff_dest_name'}})){
+                      my %diff_dest_hash =
+                        %{$$options{'destDir_srcFile'}{$user_target}{$dest_dir}
                           {'diff_dest_name'}};
-                    foreach my $src_file_diff_dest (keys %diff_dest_hash)
-                    {
+                      foreach my $src_file_diff_dest (keys %diff_dest_hash)
+                      {
                         next if !-e $src_file_diff_dest;
                         my $diff_basename =
                           $diff_dest_hash{$src_file_diff_dest};
                         print RSYNCCMDFILE
                           "/bin/cp $src_file_diff_dest $dest_dir/$diff_basename\n";
+                      }
                     }
                 }
 
