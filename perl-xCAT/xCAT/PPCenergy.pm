@@ -251,7 +251,7 @@ sub renergy {
             return ([[$node, "Failed to get the FSPs for the cec $hcphost.", -1]]);
         }
         #my $hcp_ip = xCAT::Utils::getNodeIPaddress($hcphost);
-        my $hcp_ip = xCAT::Utils::getIPaddress($hcphost);
+        my $hcp_ip = xCAT::FSPUtils::getIPaddress($request, $hw_type, $hcphost);
         if (!defined($hcp_ip) or ($hcp_ip == -3)) {
             return ([[$node, "Failed to get IP address for $hcphost.", -1]]);
         }
