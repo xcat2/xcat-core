@@ -1,0 +1,14 @@
+pe/src
+
+#ENV:IBM_PPE_RTE_LICENSE_ACCEPT=yes#
+pe/ppe_rte_license*
+
+pe/pperteman*
+pe/ppertesles11p*
+pe/ppertesamples*
+
+# PE HPC toolkit needed on login node
+# ENV:IBM_PPEDEV_LICENSE_ACCEPT=yes#
+#pe/ppedev_license*
+#pe/ppedev_hpct_*
+#pe/ppedev_runtime*
