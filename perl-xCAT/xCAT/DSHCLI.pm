@@ -2889,6 +2889,12 @@ sub _resolve_nodes
         resolve_nodes_hash
 
         Builds the resolved nodes hash.
+        Does not do much anymore because we removed address resolution from
+        xdsh and just let ssh do it.  Stayed to preserve the logic of the old
+        code.
+        Does check if the Management Node is part of the node range and sets
+        localhost if it is.  The MN must be defined in nodelist and with 
+        nodetype.nodetype=mn.
 
         Arguments:
        	$options - options hash table describing dsh configuration options
@@ -2916,6 +2922,11 @@ sub bld_resolve_nodes_hash
 {
     my ($class, $options, $resolved_targets, @target_list) = @_;
 
+    # find out if we have an MN in the list, local cp and sh will be used
+    # not remote shell
+    my $tab = xCAT::Table->new('nodetype');
+    my $type = $tab->getNodesAttribs(\@target_list,['nodetype']);
+ 
     foreach my $target (@target_list)
     {
 
@@ -2924,6 +2935,10 @@ sub bld_resolve_nodes_hash
         my $localhost;
         my $user;
         my $context = "XCAT";
+        my $nodetype=$type->{$target}->[0]->{nodetype};
+        if ($type->{$target}->[0]->{nodetype} eq "mn") {
+          $localhost=$target;
+        }
         my %properties = (
                           'hostname'   => $hostname,
                           'ip-address' => $ip_address,
