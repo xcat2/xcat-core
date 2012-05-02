@@ -31,43 +31,6 @@ if [ -n "$1" ]; then
 fi
 
 OS=`uname`
-INSTALL_DIR='/install'
-UPDATES_DIR='post/otherpkgs/gpfs_updates'
-
-if [ $OS != "AIX" ]; then
-    if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
-    #  Being run from a stateful install postscript
-    #  Copy rpms directly from the xCAT management node and install        
-        mkdir -p /tmp/gpfs_updates
-        rm -f -R /tmp/gpfs_updates/*
-        cd /tmp/gpfs_updates
-#        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=3 ftp://$SITEMASTER/$UPDATES_DIR/*.rpm 2> /tmp/wget.log
-        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=4 --reject "index.html*"  --no-parent http://$SITEMASTER$INSTALL_DIR/$UPDATES_DIR/ 2> /tmp/wget.log
-        if [ -n "`ls *.rpm 2> /dev/null`" ] ; then
-            rpm -Uvh *.rpm
-        fi
-        cd /
-        rm -f -R /tmp/gpfs_updates
-    fi
-
-    if [ $NODESETSTATE == "genimage" ]; then
-      if [ -d $INSTALL_DIR/$UPDATES_DIR ] ;  then
-    # Being called from <image>.postinstall script
-    # Assume we are on the same machine
-        if [[ $OS = sles* ]] || [[ $OS = suse* ]] || [[ -f /etc/SuSE-release ]]; then
-        # For SLES, assume zypper is available on the system running genimage
-            zypper -R $installroot ar file:$INSTALL_DIR/$UPDATES_DIR gpfs_updates
-        #   zypper -R $installroot install gpfs.gplbin*
-            zypper -R $installroot update  gpfs*
-            zypper -R $installroot rr gpfs_updates
-        else
-	# For Redhat, etc., assume yum is available on the system running genimage
-             yum -y --installroot $installroot --nogpgcheck localupdate $INSTALL_DIR/$UPDATES_DIR/*.rpm
-        fi
-      fi
-    fi
-fi  
-
 
 ## Create an empty nsddevices script for GPFS 
 ## This assumes that the node is NOT an NSD server
