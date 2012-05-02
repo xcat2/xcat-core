@@ -12,6 +12,5 @@ I:ppe.loc.license
 #I:ppedev.hpct
 
 # MetaCluster (checkpoint/restore)
-I:mcr.rte
 I:mdcr
 
