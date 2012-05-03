@@ -97,6 +97,11 @@ sub parse_args {
     #print "in parse_args:\n";
     #print $command;
     #print Dumper(\%opt);    
+    
+    my $nodetype = xCAT::DBobjUtils->getnodetype($$node[0], "ppc");
+    if( $nodetype =~ /^blade$/) {
+        $request->{callback}->({data =>[ "After running rebootseq on the nodes successfully, it's required to run <rpower noderange reset> to make the setting be permanent"]});
+    } 
 
     ####################################
     # Set method to invoke 
