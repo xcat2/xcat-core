@@ -6,6 +6,7 @@ use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
 use xCAT::DBobjUtils;
+use xCAT::FSPUtils;
 
 ##############################################
 # Globals
