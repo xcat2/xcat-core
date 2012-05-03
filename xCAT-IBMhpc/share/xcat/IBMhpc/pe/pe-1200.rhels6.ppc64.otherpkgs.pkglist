@@ -1,5 +1,5 @@
 pe/src
-pe/bsr
+pe/libbsr
 
 #ENV:IBM_PPE_RTE_LICENSE_ACCEPT=yes#
 pe/ppe_rte_license*
