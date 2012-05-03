@@ -4402,6 +4402,8 @@ sub mkcommonboot {
 		unless(
             -r "$custprofpath/vmkboot.gz"
 			or -r "$custprofpath/b.z"
+			or	-r "$custprofpath/mboot.c32"
+			or -r "$custprofpath/install.tgz"
 			or	-r "$installroot/$osver/$arch/mboot.c32"
 			or -r "$installroot/$osver/$arch/install.tgz" ){
 			xCAT::SvrUtils::sendmsg([1,"Please run copycds first for $osver or create custom image in $custprofpath/"], $output_handler);
