@@ -148,7 +148,7 @@ MountTrees () {
 		mkdir -p ${TREEMOUNT}/${SERV}/${MNT}
 		MAX=15
 		TRIES=1
-		while ! mount $SERV:$MNT ${TREEMOUNT}/${SERV}/${MNT} -r -n -o nolock,tcp
+		while ! mount $SERV:$MNT ${TREEMOUNT}/${SERV}/${MNT} -r -n -o nolock,tcp,nfsvers=3
 		do
 			if [ "$TRIES" = "$MAX" ]; then
 				echo "Can't mount $i.  I give up.. ">/dev/console

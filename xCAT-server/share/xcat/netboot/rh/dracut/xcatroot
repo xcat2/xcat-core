@@ -99,7 +99,7 @@ elif [ -r /rootimg-statelite.gz ]; then
     MAXTRIES=5
     ITER=0
 	if [ -z $MNTOPTS ]; then
-		MNT_OPTIONS="nolock,rsize=32768,tcp,timeo=14"
+		MNT_OPTIONS="nolock,rsize=32768,tcp,nfsvers=3,timeo=14"
 	else
 		MNT_OPTIONS=$MNTOPTS
 	fi
