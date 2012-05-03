@@ -79,3 +79,11 @@ if [ "$OS" == "AIX" ]; then
   fi
   mount /proc
 fi
+
+# Generate mpi modules
+if [ "$OS" != "AIX" ]; then
+    gen_xlf=`grep PE_LATEST_LEVEL $installroot/etc/ppe.cfg | cut -f2 -d ' ' `/mpich2/sbin/xlf_gen_mpimod
+    if [ -x $installroot/$gen_xlf ] ; then
+          chroot $installroot $gen_xlf
+    fi
+fi
