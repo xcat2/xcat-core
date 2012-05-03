@@ -123,7 +123,7 @@ my @invalidiplist = (
 my %ip4neigh;
 my %ip6neigh;
 my %searchmacs;
-
+my %globalopt;
 #these globals are only used in mn
 my %ip_addr    = ();
 
@@ -280,7 +280,7 @@ sub parse_args {
     # Option -V for verbose output
     #############################################
     if ( exists( $opt{V} )) {
-        $request->{verbose} = 1;
+        $globalopt{verbose} = 1;
     }
 
     #############################################
@@ -293,13 +293,11 @@ sub parse_args {
     # Command tries
     #############################################
     if ( exists( $opt{t} )) {
-       $request->{maxtries} = $opt{t};
+       $globalopt{maxtries} = $opt{t};
 
-       if ( $request->{maxtries} !~ /^0?[1-9]$/ ) {
+       if ( $globalopt{maxtries} !~ /^0?[1-9]$/ ) {
            return( usage( "Invalid command tries (1-9)" ));
        }
-    } else {
-        $request->{maxtries} = 0;
     }
 
     #############################################
@@ -309,40 +307,33 @@ sub parse_args {
         if ( !exists( $services{$opt{s}} )) {
             return(usage( "Invalid service: $opt{s}" ));
         }
-        $request->{service} = $services{$opt{s}};
-    } else {
-        $request->{service} = [WILDCARD_SERVICE,HARDWARE_SERVICE,SOFTWARE_SERVICE];
+        $globalopt{service} = $services{$opt{s}};
     }
-
     #############################################
     # Check the validation of -T option
     #############################################
     if ( exists( $opt{T} )) {
-        $request->{time_out} = $opt{T};
-        if ( $request->{time_out} !~ /^\d+$/ ) {
+        $globalopt{time_out} = $opt{T};
+        if ( $globalopt{time_out} !~ /^\d+$/ ) {
             return( usage( "Invalid timeout value, should be number" ));
         }
         if (!exists( $opt{C} )) {
             return ( usage( "-T should be used with -C" ));
         }
-    }else{
-        $request->{time_out} = 300;
     }
 
     #############################################
     # Check the validation of -C option
     #############################################
     if ( exists( $opt{C} )) {
-        $request->{C} = $opt{C};
+        $globalopt{C} = $opt{C};
 
-        if ( $request->{C} !~ /^\d+$/ ) {
+        if ( $globalopt{C} !~ /^\d+$/ ) {
             return( usage( "Invalid expect entries, should be number" ));
         }
         if ( !exists($opt{i} )) {
             return( usage( "-C should be used with -i" ));
         }
-    }else {
-        $request->{C} = 0;
     }
 
     #############################################
@@ -364,57 +355,57 @@ sub parse_args {
                 }
             }
         }
-        $request->{i} = $opt{i};
+        $globalopt{i} = $opt{i};
     }
 
     #############################################
     # write to the database
     #############################################
     if ( exists( $opt{w} )) {
-        $request->{w} = 1;
+        $globalopt{w} = 1;
     }
 
     #############################################
     # list the raw information
     #############################################
     if ( exists( $opt{r} )) {
-        $request->{r} = 1;
+        $globalopt{r} = 1;
     }
 
     #############################################
     # list the xml formate data
     #############################################
     if ( exists( $opt{x} )) {
-        $request->{x} = 1;
+        $globalopt{x} = 1;
     }
 
     #############################################
     # list the stanza formate data
     #############################################
     if ( exists( $opt{z} )) {
-        $request->{z} = 1;
+        $globalopt{z} = 1;
     }
 
     #############################################
     # match vpd table
     #############################################
     if ( exists( $opt{vpdtable} )) {
-        $request->{vpdtable} = 1;
+        $globalopt{vpdtable} = 1;
     }
     #########################################################
     # only list the nodes that discovered for the first time
     #########################################################
     if ( exists( $opt{n} )) {
-        $request->{n} = 1;
+        $globalopt{n} = 1;
     }
 
     ##############################################
     # warn for no discovered nodes in database
     ##############################################
     if ( exists( $opt{I} )) {
-        $request->{I} = 1;
+        $globalopt{I} = 1;
     }
-    return(0);
+    return (0);
 }
 
 
@@ -434,7 +425,7 @@ sub trace {
             send_msg( $request, 0, $msg );
         }
     } else {
-        if ( exists($request->{verbose}) ) {
+        if ( exists($globalopt{verbose}) ) {
             my ($sec,$min,$hour,$mday,$mon,$yr,$wday,$yday,$dst) = localtime(time);
             my $msg = sprintf "%02d:%02d:%02d %5d %s", $hour,$min,$sec,$$,$msg;
             send_msg( $request, 0, $msg );
@@ -500,8 +491,30 @@ sub invoke_dodiscover {
     ########################################
     # SLP command
     ########################################
-    my $services =  $request->{service};
-    my $result  = xCAT::SLP::dodiscover(SrvTypes=>$services,Callback=>\&handle_new_slp_entity, Ip=>$request->{i}, Retry=>$request->{maxtries} );
+    my $services;
+    my $maxt;
+    if ($globalopt{service}) {
+        $services = $globalopt{service};
+    } else {
+        $services = [WILDCARD_SERVICE,HARDWARE_SERVICE,SOFTWARE_SERVICE];
+    }
+    if ($globalopt{maxtries}) {
+        $maxt = $globalopt{maxtries};
+    } else {
+        $maxt = 0;
+    }
+    unless ($globalopt{time_out}){
+        $globalopt{time_out} = 300;
+    }    
+    unless ($globalopt{C}){
+        $globalopt{C} = 0;
+    }
+    my %arg;
+   $arg{SrvTypes} = $services;
+   $arg{Callback} = \&handle_new_slp_entity;
+   $arg{Ip} = $globalopt{i} if($globalopt{i});
+   $arg{Retry} = $maxt;
+   my $result  = xCAT::SLP::dodiscover(%arg);
 
 
     #########################################
@@ -523,7 +536,7 @@ sub invoke_dodiscover {
     #    my $start_time = Time::HiRes::gettimeofday();
     #    my $elapse;
     #    my $found = scalar(keys %found_cec);
-    #    while ( $found < $request->{C} ) {
+    #    while ( $found < $globalopt{C} ) {
     #        $rlt = xCAT::SLP::dodiscover(SrvTypes=>$services,Callback=>sub { print Dumper(@_) });
     #        $val =  @$rlt[1];
     #        for my $v (keys %$val) {
@@ -535,7 +548,7 @@ sub invoke_dodiscover {
     #        }
     #        $found = scalar(keys %val_tmp);
     #        $elapse = Time::HiRes::gettimeofday() - $start_time;
-    #        if ( $elapse > $request->{time_out} ) {
+    #        if ( $elapse > $globalopt{time_out} ) {
     #            send_msg( $request, 0, "Time out, Force return.\n" );
     #            last;
     #        }
@@ -583,7 +596,7 @@ sub format_output {
     ###########################################
     # -w flag for write to xCat database
     ###########################################
-    if ( $request->{w} ) {
+    if ( $globalopt{w} ) {
         send_msg( $request, 0, "Begin to write into Database, this may change node name" );
         xCATdB( $outhash );
     }
@@ -594,7 +607,7 @@ sub format_output {
     # -r flag for raw response format
     ###########################################
     my %rawhash;
-    if ( $request->{r} ) {
+    if ( $globalopt{r} ) {
         foreach ( keys %$outhash ) {
             my $raw = ${$outhash->{$_}}{url};
             $rawhash{$raw} = 1;
@@ -609,14 +622,14 @@ sub format_output {
     ###########################################
     # -x flag for xml format
     ###########################################
-    if ( $request->{x} ) {
+    if ( $globalopt{x} ) {
         send_msg( $request, 0, format_xml( $outhash ));
         return;
     }
     ###########################################
     # -z flag for stanza format
     ###########################################
-    if ( $request->{z} ) {
+    if ( $globalopt{z} ) {
         send_msg( $request, 0, format_stanza( $outhash ));
         return;
     }
@@ -624,7 +637,7 @@ sub format_output {
     ###########################################
     # -T flag for vpd table format
     ###########################################
-    if ( $request->{vpdtable} ) {
+    if ( $globalopt{vpdtable} ) {
         send_msg( $request, 0, format_table( $outhash ) );
         return;
     }
@@ -777,7 +790,7 @@ sub get_host_from_url {
     # Extract IP from URL
     #######################################
     my $nets = xCAT::Utils::my_nets();
-    my $inc = $request->{i};
+    my $inc = $globalopt{i};
     my @ips = @{$attr->{'ip-address'}};
 
     my @ips2 = split /,/, $inc;
@@ -809,7 +822,7 @@ sub get_host_from_url {
 
 
     if (scalar(@validip) == 0) {
-                if ($request->{verbose}) {
+                if ($globalopt{verbose}) {
                     trace( $request, "Invalid IP address in URL" );
         }
             return undef;
@@ -891,7 +904,7 @@ sub parse_responses {
         # attribute not found
         ###########################################
         if ( !exists(${$searchmacs{$rsp}}{attributes} )) {
-            if ( $request->{verbose}  ) {
+            if ( $globalopt{verbose}  ) {
                 trace( $request, "Attribute not found for: $rsp" );
             }
             next;
@@ -902,7 +915,7 @@ sub parse_responses {
         my $attributes = ${$searchmacs{$rsp}}{attributes};
         my $type = ${$attributes->{'type'}}[0] ;
         if ( !exists($service_slp{$type} )) {
-            if ( $request->{verbose}  ) {
+            if ( $globalopt{verbose}  ) {
                 trace( $request, "Discarding unsupported type: $type" );
             }
             next;
@@ -1075,7 +1088,7 @@ sub parse_responses {
     ##########################################################
     # If there is -n flag, skip the matched nodes
     ##########################################################
-    if (exists($request->{n})) {
+    if (exists($globalopt{n})) {
         trace( $request, "\n\n\nThere is -n flag, skip these nodes:\n", 1);
         for my $matchednode (@matchnode) {
             if ($outhash{$matchednode}) {
@@ -1084,7 +1097,7 @@ sub parse_responses {
             }
         }
     } 
-	if (exists($request->{I})) {
+        if (exists($globalopt{I})) {
 	    my %existsnodes;
     	my $nodelisttab = xCAT::Table->new('nodelist');
         unless ( $nodelisttab ) {
@@ -1398,7 +1411,6 @@ sub process_request {
 
     my $req      = shift;
     my $callback = shift;
-    my $doreq    = shift;
     #unless ($macmap) { $macmap = xCAT::MacMap->new(); }
 
     ###########################################
@@ -1428,7 +1440,7 @@ sub process_request {
     ###########################################
     my $start;
 
-    if ( exists($req->{verbose}) ) {
+    if ( exists($globalopt{verbose}) ) {
         #######################################
         # Write header for trace
         #######################################
@@ -1441,7 +1453,7 @@ sub process_request {
     ###########################################
     # Record begin time
     ###########################################
-    if ( exists($req->{verbose}) ) {
+    if ( exists($globalopt{verbose}) ) {
         $start = Time::HiRes::gettimeofday();
     }
     ############################################
@@ -1470,12 +1482,12 @@ sub process_request {
     #}
     #while (child_response($callback,$fds)) {}
 
-    invoke_dodiscover(\%request);
+    invoke_dodiscover();
 
     ###########################################
     # Record ending time
     ###########################################
-    if ( exists($req->{verbose}) ) {
+    if ( exists($globalopt{verbose}) ) {
         my $elapsed = Time::HiRes::gettimeofday() - $start;
         my $msg = sprintf( "Total SLP Time: %.3f sec\n", $elapsed );
         trace( $req, $msg );
@@ -1545,7 +1557,7 @@ sub filtersamevlan {
     my $nets = xCAT::Utils::my_nets();
     my $validnets;
     for my $net ( keys %$nets) {
-        for my $nic ( split /,/, $request->{i} ) {
+        for my $nic ( split /,/, $globalopt{i} ) {
             if ( $nets->{$net} eq $nic ) {
                 $validnets->{$net} = $nic;
             }
