@@ -4151,7 +4151,7 @@ sub rscanfsp {
     my $id = $1;
     # get the hardware type, only get the fsp for PPC blade
     @data = $t->cmd("info -T system:$_");
-    if (! grep /(Mach type\/model:.*PPC)|(Mach type\/model: pITE)|(Mach type\/model: IBM Flex System p)|(Firebird)/, @data) {
+    if (! grep /(Product Name: IBM Flex System p)|(Mach type\/model:.*PPC)|(Mach type\/model: pITE)|(Mach type\/model: IBM Flex System p)|(Firebird)/, @data) {
       next;
     }
     @data = $t->cmd("ifconfig -T system:$_");
