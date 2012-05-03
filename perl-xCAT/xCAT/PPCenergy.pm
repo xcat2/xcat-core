@@ -7,6 +7,7 @@ use Getopt::Long;
 use xCAT::Usage;
 use xCAT::NodeRange;
 use xCAT::DBobjUtils;
+use xCAT::FSPUtils;
 
 %::QUERY_ATTRS = (
 'savingstatus' => 1,

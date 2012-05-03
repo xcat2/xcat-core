@@ -5,6 +5,7 @@ use strict;
 use Getopt::Long;
 use xCAT::Usage;
 use xCAT::Utils;
+use xCAT::FSPUtils;
 use xCAT::PPCcfg;
 #use Data::Dumper;
 #use xCAT::PPCcli;
