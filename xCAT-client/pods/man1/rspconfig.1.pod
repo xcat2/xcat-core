@@ -456,6 +456,12 @@ Display the version number.
 
 =item *
 
+To setup new ssh keys on the Management Module mm:
+
+ B<rspconfig> mm snmpcfg=enable sshcfg=enable  
+
+=item *
+
 To turn on SNMP alerts for node5:
 
 B<rspconfig> I<node5> B<alert>=B<on>
