@@ -1,1 +1,7 @@
 essl/ibm-java2-ppc64-jre
+
+#ENV:IBM_ESSL_LICENSE_ACCEPT=yes#
+essl/essl*
+
+#ENV:IBM_PESSL_LICENSE_ACCEPT=yes#
+essl/pessl*
