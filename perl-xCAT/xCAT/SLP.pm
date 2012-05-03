@@ -2,6 +2,7 @@ package xCAT::SLP;
 use Carp;
 use IO::Select;
 use strict;
+use xCAT::Utils;
 my $ip6support = eval {
 	require IO::Socket::INET6;
 	require Socket6;
@@ -307,11 +308,36 @@ sub send_service_request_single {
 
 sub get_interfaces {
 	#TODO: AIX tolerance, no subprocess, include/exclude interface(s)
-	my @ipoutput = `ip addr`;
 	my %ifacemap;
 	my $payingattention=0;
 	my $interface;
 	my $keepcurrentiface;
+        # AIX part
+    if (xCAT::Utils->isAIX()) {
+        $ip6support = 0;
+        my $result = `ifconfig -a`;
+        my @nics = $result =~ /(\w+\d+)\: flags=/g;
+        my @adapter = split /\w+\d+:\s+flags=/, $result;
+        for (my $i=0; $i<scalar(@adapter); $i++) {
+            $_ = $adapter[$i+1];
+            if ( !($_ =~ /LOOPBACK/ ) and
+                   $_ =~ /UP(,|>)/ and
+                   $_ =~ /BROADCAST/ ) {
+                my @ip = split /\n/;
+                foreach ( @ip ) {
+                    if ( $_ =~ /^\s*inet\s+/ and
+                         $_ =~ /broadcast\s+(\d+\.\d+\.\d+\.\d+)/ ) {
+                      push @{$ifacemap{$nics[$i]}->{ipv4addrs}},$1;
+
+                        if( $nics[$i]=~ /\w+(\d+)/){
+                        $ifacemap{$nics[$i]}->{scopeidx} = $1+2;
+                       }
+                    }
+                }
+            }
+        }
+    } else {
+            my @ipoutput = `ip addr`;
 	foreach my $line (@ipoutput) {
 		if ($line =~ /^\d/) { # new interface, new context..
 			if ($interface and not $keepcurrentiface) {
@@ -336,6 +362,7 @@ sub get_interfaces {
 			push @{$ifacemap{$interface}->{ipv4addrs}},$1;
 		}
 	}
+    }
 	return \%ifacemap;
 }
 # discovery is "service request", rfc 2608 
