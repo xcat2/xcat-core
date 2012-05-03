@@ -547,7 +547,7 @@ sub _execute_dsh
                 }
                 else
                 {
-
+                    # LKV: This is where the output shows up
                     #print STDOUT @{$output_buffers{$user_target}};
                     #print STDERR @{$error_buffers{$user_target}};
                     chomp(@{$output_buffers{$user_target}});
