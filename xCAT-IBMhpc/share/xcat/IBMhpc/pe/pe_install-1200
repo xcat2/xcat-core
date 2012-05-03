@@ -89,10 +89,10 @@ if [ "$OS" != "AIX" ]; then
 fi
 
 
-# BSR configuration for Power Linux nodes
-if [ "$OS" != "AIX" ]; then
-    chroot $installroot groupadd bsr
-    chroot $installroot mkdir -p /var/lib/bsr
-    chroot $installroot chown root:bsr /var/lib/bsr
-    chroot $installroot chmod g+sw /var/lib/bsr
-fi
+# BSR configuration, uncomment the following lines to enable BSR configuration on Power Linux cluter.  
+#if [ "$OS" != "AIX" ]; then
+#    chroot $installroot groupadd bsr
+#    chroot $installroot mkdir -p /var/lib/bsr
+#    chroot $installroot chown root:bsr /var/lib/bsr
+#    chroot $installroot chmod g+sw /var/lib/bsr
+#fi
