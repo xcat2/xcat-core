@@ -4433,6 +4433,9 @@ sub network {
 
   ## TRACE_LINE print "The cmd to set for the network = $cmd\n";
   my @data = $t->cmd($cmd);
+  if (!@data) {
+    return ([1,"Failed"]);
+  }
   my @result = grep(/These configuration changes will become active/,@data);
   ## TRACE_LINE print "  rc = @data\n"; 
   if (!@result) {
