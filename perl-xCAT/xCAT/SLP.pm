@@ -35,6 +35,7 @@ sub getmulticasthash {
 	
 sub dodiscover {
 	my %args = @_;
+        my $rspcount = 0;
 	$xid = int(rand(16384))+1;
 	unless ($args{'socket'}) {
 		if ($ip6support) {
@@ -82,7 +83,8 @@ sub dodiscover {
 		$waitforsocket->add($args{'socket'});
 		my $retrytime = ($args{Retry}>0)?$args{Retry}+1:1;
 		for(my $i = 0; $i < $retrytime; $i++){
-		    my $deadline=time()+3;
+                    my $waittime = ($args{Time}>0)?$args{Time}:3;
+		    my $deadline=time()+$waittime;
 		    while ($deadline > time()) {
 		    	while ($waitforsocket->can_read(1)) {
 		    		my $slppacket;
@@ -116,7 +118,13 @@ sub dodiscover {
 		    				$args{Callback}->($result);
 		    			}
 		    		}
+                    $rspcount++;
 		    	}
+                if ($args{Time} and $args{Count}) {
+                    if ($rspcount >= $args{Count}) {
+                        last;
+                    }
+                }
 		    	foreach my $srvtype (@srvtypes) {
 		    		send_service_request_single(%args,ifacemap=>$interfaces,SrvType=>$srvtype);
 		    	}
