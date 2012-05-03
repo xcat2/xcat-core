@@ -30,7 +30,7 @@ my %mm_comm_pids;
 my $browser;
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
-use Data::Dumper;
+#use Data::Dumper;
 use POSIX "WNOHANG";
 use Storable qw(freeze thaw);
 use IO::Select;
@@ -39,6 +39,7 @@ use Time::HiRes qw(gettimeofday sleep);
 use xCAT::DBobjUtils;
 use Getopt::Long;
 use xCAT::SvrUtils;
+use xCAT::FSPUtils;
 
 sub handled_commands {
   return {
