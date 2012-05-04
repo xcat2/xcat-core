@@ -4642,12 +4642,16 @@ sub cpNetbootImages {
         }
 
 	}elsif ($osver =~ /esxi5/) { #we need boot.cfg.stateles
-	  if (! -r "$srcDir/boot.cfg.$bootmode" and ! -r "$overridedir/boot.cfg.$bootmode") {
+	  my @filestocopy = ("boot.cfg.$bootmode");
+	  if (-r "$srcDir/boot.cfg.$bootmode" or -r "$overridedir/boot.cfg.$bootmode") {
+	     @filestocopy = ("boot.cfg.$bootmode");
+      } elsif (-r "$srcDir/boot.cfg.$bootmode.tmpl" or -r "$overridedir/boot.cfg.$bootmode.tmpl") {
+	     @filestocopy = ("boot.cfg.$bootmode.tmpl");
+      } else {
 	    xCAT::SvrUtils::sendmsg([1,"$srcDir is missing boot.cfg.$bootmode file required for $bootmode boot"], $output_handler);
 	    return;
 	  }
 	  my $statelesscfg;
-	  my @filestocopy = ("boot.cfg.$bootmode");
 	  if (-r "$overridedir/boot.cfg.$bootmode.tmpl") {
 	    open ($statelesscfg,"<","$overridedir/boot.cfg.$bootmode.tmpl");
 	    @filestocopy = ("boot.cfg.$bootmode.tmpl");
