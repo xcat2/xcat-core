@@ -4729,6 +4729,8 @@ sub sshcfg {
       return([1,"Maximum number of SSH keys reached for this chassis"]);
     }
     return([1,$data[0]]);
+  } elsif (! grep /OK/, @data) {
+    return([1,$data[0]]);
   }
   # Enable ssh on MM
   @data = $t->cmd("ports -sshe on -T system:$mm");
