@@ -5,22 +5,21 @@
 
 // Retain session variables across page requests
 session_start();
-session_write_close();	// Do not block HTTP requests
+session_write_close();    // Do not block other HTTP requests
 
-// The settings below display error on the screen,
-// instead of giving blank pages.
+// The settings below display error on the screen, instead of giving blank pages.
 error_reporting(E_ALL);
 ini_set('display_errors', true);
 
 /**
  * Run a command using the xCAT client/server protocol
  *
- * @param 	$cmd			The xCAT command
- * @param	$nr				Node range or group
- * @param	$args_array		Command arguments
- * @param	$opts_array		Command options
- * @return 	A tree of SimpleXML objects.
- * 			See perl-xCAT/xCAT/Client.pm for the format
+ * @param    $cmd           The xCAT command
+ * @param    $nr            Node range or group
+ * @param    $args_array    Command arguments
+ * @param    $opts_array    Command options
+ * @return A tree of SimpleXML objects.
+ *         See perl-xCAT/xCAT/Client.pm for the format
  */
 function docmd($cmd, $nr, $args_array, $opts_array){
 	// If we are not logged in,
@@ -34,7 +33,9 @@ function docmd($cmd, $nr, $args_array, $opts_array){
 	// Add command, node range, and arguments to request
 	$request = simplexml_load_string('<xcatrequest></xcatrequest>');
 	$request->addChild('command', $cmd);
-	if(!empty($nr)) { $request->addChild('noderange', $nr); }
+	if (!empty($nr)) {
+		$request->addChild('noderange', $nr);
+	}
 	if (!empty($args_array)) {
 		foreach ($args_array as $a) {
 			$request->addChild('arg',$a);
@@ -53,9 +54,9 @@ function docmd($cmd, $nr, $args_array, $opts_array){
 /**
  * Used by docmd() to submit request to xCAT
  *
- * @param 	$req			Tree of SimpleXML objects
- * @param 	$opts_array		Request options
- * @return 	A tree of SimpleXML objects
+ * @param    $req           Tree of SimpleXML objects
+ * @param    $opts_array    Request options
+ * @return A tree of SimpleXML objects
  */
 function submit_request($req, $skipVerify, $opts_array){
 	$xcathost = "localhost";
@@ -63,46 +64,46 @@ function submit_request($req, $skipVerify, $opts_array){
 	$rsp = FALSE;
 	$response = '';
 	$cleanexit = 0;
-	
+
 	// Determine whether to flush output or not
 	$flush = false;
 	if ($opts_array && in_array("flush", $opts_array)) {
 		$flush = true;
 	}
-	
+
 	// Determine how to handle the flush output
 	// You can specify a function name, in place of TBD, to handle the flush output
 	$flush_format = "";
 	if ($opts_array && in_array("flush-format=TBD", $opts_array)) {
 		$flush_format = "TBD";
 	}
-	
-	// Open syslog, include the process ID and also send
-	// the log to standard error, and use a user defined
-	// logging mechanism
+
+	// Open syslog, include the process ID and also send the log to standard error,
+	// and use a user defined logging mechanism
 	openlog("xCAT-UI", LOG_PID | LOG_PERROR, LOG_LOCAL0);
 
 	// Open a socket to xcatd
 	syslog(LOG_INFO, "Opening socket to xcatd...");
-	if($fp = stream_socket_client('ssl://'.$xcathost.':'.$port, $errno, $errstr, 30, STREAM_CLIENT_CONNECT)){
+	if ($fp = stream_socket_client('ssl://'.$xcathost.':'.$port, $errno, $errstr, 30, STREAM_CLIENT_CONNECT)){
 		$reqXML = $req->asXML();
 		$nr = $req->noderange;
 		$cmd = $req->command;
-		
+
 		syslog(LOG_INFO, "Sending request: $cmd $nr");
-		stream_set_blocking($fp, 0);	// Set as non-blocking
-		fwrite($fp,$req->asXML());		// Send XML to xcatd
-		set_time_limit(900);			// Set 15 minutes timeout (for long running requests) 
-										// The default is 30 seconds which is too short for some requests
-		
+		stream_set_blocking($fp, 0);    // Set as non-blocking
+		fwrite($fp,$req->asXML());      // Send XML to xcatd
+		set_time_limit(900);            // Set 15 minutes timeout (for long running requests)
+		// The default is 30 seconds which is too short for some requests
+
 		// Turn on output buffering
 		ob_start();
-		while(!feof($fp)) {				// Read until there is no more	
+		while (!feof($fp)) {
+			// Read until there is no more
 			// Remove newlines and add it to the response
 			$str = fread($fp, 8192);
 			if ($str) {
 				$response .= preg_replace('/>\n\s*</', '><', $str);
-				
+
 				// Flush output to browser
 				if ($flush) {
 					// Strip HTML tags from output
@@ -117,50 +118,48 @@ function submit_request($req, $skipVerify, $opts_array){
 							flush();
 						}
 					}
-				}				
+				}
 			}
-							
+
 			// Look for serverdone response
 			$fullpattern = '/<xcatresponse>\s*<serverdone>\s*<\/serverdone>\s*<\/xcatresponse>/';
 			$mixedpattern = '/<serverdone>\s*<\/serverdone>.*<\/xcatresponse>/';
 			$recentpattern = '/<\/xcatresponse>/';
-			if(preg_match($recentpattern,$str) && preg_match($mixedpattern,$response)) {
-				// Transaction is done,
-				// Package up XML and return it
+			if (preg_match($recentpattern,$str) && preg_match($mixedpattern,$response)) {
+				// Transaction is done, package up XML and return it
 				// Remove the serverdone response and put an xcat tag around the rest
 				$count = 0;
-				$response = preg_replace($fullpattern,'', $response, -1, $count);		// 1st try to remove the long pattern
-				if (!$count) { $response = preg_replace($mixedpattern,'', $response) . '</xcatresponse>/'; }		// if its not there, then remove the short pattern
+				$response = preg_replace($fullpattern,'', $response, -1, $count); // 1st try to remove the long pattern
+				if (!$count) {
+					$response = preg_replace($mixedpattern,'', $response) . '</xcatresponse>/';
+				}
 				$response = "<xcat>$response</xcat>";
-				//delete the \n between '>' and '<'
 				$response = preg_replace('/>\n\s*</', '><', $response);
-				//replace the '\n' by ':|:' in the data area.
 				$response = preg_replace('/\n/', ':|:', $response);
 				$rsp = simplexml_load_string($response,'SimpleXMLElement', LIBXML_NOCDATA);
 				$cleanexit = 1;
 				break;
 			}
 		} // End of while(!feof($fp))
-		
+
 		syslog(LOG_INFO, "($cmd $nr) Sending response");
 		fclose($fp);
 	} else {
 		echo "<p>xCAT submit request socket error: $errno - $errstr</p>";
 	}
-	
+
 	// Flush (send) the output buffer and turn off output buffering
 	ob_end_flush();
 
 	// Close syslog
 	closelog();
-	
+
 	if(! $cleanexit) {
 		if (preg_match('/^\s*<xcatresponse>.*<\/xcatresponse>\s*$/',$response)) {
 			// Probably an error message
 			$response = "<xcat>$response</xcat>";
 			$rsp = simplexml_load_string($response,'SimpleXMLElement', LIBXML_NOCDATA);
-		}
-		elseif(!$skipVerify) {
+		} else if(!$skipVerify) {
 			echo "<p>(Error) xCAT response ended prematurely: ", htmlentities($response), "</p>";
 			$rsp = FALSE;
 		}
@@ -170,10 +169,6 @@ function submit_request($req, $skipVerify, $opts_array){
 
 /**
  * Enable password storage to split between cookie and session variable
- *
- * @param 	$data
- * @param	$key
- * @return
  */
 function xorcrypt($data, $key) {
 	$datalen = strlen($data);
@@ -187,9 +182,6 @@ function xorcrypt($data, $key) {
 
 /**
  * Get password
- *
- * @param 	Nothing
- * @return
  */
 function getpassword() {
 	if (isset($GLOBALS['xcatauthsecret'])) {
@@ -204,13 +196,11 @@ function getpassword() {
 }
 
 /**
- * Get the password splitting knowledge between server
- * and client side persistant storage.  Caller should regenerate
- * session ID when contemplating a new user/password, to preclude
- * session fixation, though fixation is limited without the secret.
+ * Get the password splitting knowledge between server and client side persistant storage.
+ * Caller should regenerate session ID when contemplating a new user/password, 
+ * to preclude session fixation, though fixation is limited without the secret.
  *
- * @param 	$password	Password
- * @return 	Nothing
+ * @param $password    Password
  */
 function setpassword($password) {
 	$randlen = strlen($password);
@@ -227,8 +217,8 @@ function setpassword($password) {
 /**
  * Get RAND characters
  *
- * @param 	$length		Length of characters
- * @return 	RAND characters
+ * @param $length    Length of characters
+ * @return RAND characters
  */
 function getrandchars($length) {
 	$charset = '0123456789abcdefghijklmnopqrstuvwxyz!@#$%^&*';
@@ -246,9 +236,7 @@ function getrandchars($length) {
 /**
  * Determine if a user/password session exists
  *
- * @param 	Nothing
- * @return 	True 	If user has a session.
- * 			False 	Otherwise
+ * @return True if user has a session, false otherwise
  */
 function is_logged() {
 	if (isset($_SESSION["username"]) and !is_bool(getpassword())) {
@@ -260,10 +248,8 @@ function is_logged() {
 
 /**
  * Determine if a user is currently logged in successfully
- * 
- * @param 	Nothing
- * @return 	True 	If the user is currently logged in successfully
- * 			False 	Otherwise
+ *
+ * @return True if the user is currently logged in successfully, false otherwise
  */
 function isAuthenticated() {
 	if (is_logged()) {
@@ -290,12 +276,10 @@ function isAuthenticated() {
 }
 
 /**
-* Determine if a user has root access
-*
-* @param 	Nothing
-* @return 	True 	If the user has root access
-* 			False 	Otherwise
-*/
+ * Determine if a user has root access
+ *
+ * @return True if the user has root access, false otherwise
+ */
 function isRootAcess() {
 	if (is_logged() && $_SESSION["xcatpassvalid"]) {
 		$testacc = docmd('tabdump', '', array('policy', '-w', "name==" . $_SESSION["username"]), array());
@@ -304,7 +288,7 @@ function isRootAcess() {
 			$result = str_replace('"', '', $result);
 			$args = array();
 			$args = explode(",", $result);
-			
+
 			// Get the comments which contains the privilege
 			$comments = $args[8];
 			$args = explode(";", $comments);
@@ -319,13 +303,13 @@ function isRootAcess() {
 						$privilege = 'root';
 						$_SESSION["xcatpassvalid"] = 1;
 					}
-					
+
 					break;
-				}				
+				}
 			}
 		}
 	}
-	
+
 	if (strcmp($_SESSION["username"], 'root') == 0) {
 		$_SESSION["xcatpassvalid"] = 1;
 	}
@@ -338,10 +322,7 @@ function isRootAcess() {
 }
 
 /**
- * Log out of the current user session
- * 
- * @param 	Nothing
- * @return 	Nothing
+ * Log out of current user session
  */
 function logout() {
 	// Clear the secret cookie from browser
@@ -360,12 +341,9 @@ function logout() {
 
 /**
  * Format a given string and echo it back to the browser
- * 
- * @param 	$str	String
- * @return 	Nothing
  */
 function format_TBD($str) {
-	// Format a given string however you want it 
+	// Format a given string however you want it
 	echo $tmp . '<br/>';
 	flush();
 }

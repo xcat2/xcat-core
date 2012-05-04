@@ -1,17 +1,18 @@
 <?php
 echo <<<EEE
 <html>
-	<head>
-	    <title>Node {$_GET['n']} Ganglia Report</title>
-	    <meta content="600" http-equiv="refresh">
-	    <meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
-	    <link href="css/style.css" rel=stylesheet type="text/css">
-	    <link href="css/jquery.jqplot.css" rel=stylesheet type="text/css">
-	    <script type="text/javascript" src="js/jquery/jquery.min.js"></script>
-	    <script type="text/javascript" src="js/jquery/jquery-ui.min.js"></script>
-	    <script type="text/javascript" src="js/ui.js"></script>
+    <head>
+        <title>Node {$_GET['n']} Ganglia Report</title>
+        <meta content="600" http-equiv="refresh">
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+        <link href="css/style.css" rel=stylesheet type="text/css">
+        <link href="css/jquery.jqplot.css" rel=stylesheet type="text/css">
+        <script type="text/javascript" src="js/jquery/jquery.min.js"></script>
+        <script type="text/javascript" src="js/jquery/jquery-ui.min.js"></script>
+        <script type="text/javascript" src="js/ui.js"></script>
 EEE;
 ?>
+
 <script type="text/javascript">
 window.onload=function() {
     var nodepath = $('#nodepath').val();
@@ -37,9 +38,9 @@ window.onload=function() {
 };
 
 function drawNodesummary(summaryString){
-	var nodename = $('#nodename').val();
-	var nodeData = new Object();
-	var metricArray = summaryString.split(';');
+    var nodename = $('#nodename').val();
+    var nodeData = new Object();
+    var metricArray = summaryString.split(';');
     var metricname = '';
     var valueArray = '';
     var position = 0;
@@ -64,27 +65,28 @@ function drawNodesummary(summaryString){
     drawNetworkFlot('ganglianodenetwork', nodename, nodeData['bytes_in'], nodeData['bytes_out']);
 }
 </script>
+
 <?php
 echo <<<EEE
-	</head>
-	<body>
-		<input id="nodename" type="hidden" value="{$_GET['n']}"></input>
-		<input id="nodepath" type="hidden" value="{$_GET['p']}"></input>
-		<div style="background-color:white;" class="tab">
-			<table style="border-style:none;">
-				<tr>
-					<td style="padding:0;border-style:none;"><div id="ganglianodeload" class="monitorsumdiv"></div></td>
-					<td style="padding:0;border-style:none;"><div id="ganglianodecpu" class="monitorsumdiv"></div></td>
-					<td style="padding:0;border-style: none;"><div id="ganglianodemem" class="monitorsumdiv"></div></td>
-				</tr>
-				<tr>
-					<td style="padding:0;border-style:none;"><div id="ganglianodedisk" class="monitorsumdiv"></div></td>
-					<td style="padding:0;border-style:none;"><div id="ganglianodenetwork" class="monitorsumdiv"></div></td>
-					<td style="padding:0;border-style:none;"></td>
-				</tr>
-			</table>
-		</div>
-	</body>
+    </head>
+    <body>
+        <input id="nodename" type="hidden" value="{$_GET['n']}"></input>
+        <input id="nodepath" type="hidden" value="{$_GET['p']}"></input>
+        <div style="background-color:white;" class="tab">
+            <table style="border-style:none;">
+                <tr>
+                    <td style="padding:0;border-style:none;"><div id="ganglianodeload" class="monitor-sum-div"></div></td>
+                    <td style="padding:0;border-style:none;"><div id="ganglianodecpu" class="monitor-sum-div"></div></td>
+                    <td style="padding:0;border-style: none;"><div id="ganglianodemem" class="monitor-sum-div"></div></td>
+                </tr>
+                <tr>
+                    <td style="padding:0;border-style:none;"><div id="ganglianodedisk" class="monitor-sum-div"></div></td>
+                    <td style="padding:0;border-style:none;"><div id="ganglianodenetwork" class="monitor-sum-div"></div></td>
+                    <td style="padding:0;border-style:none;"></td>
+                </tr>
+            </table>
+        </div>
+    </body>
 </html>
 EEE;
 ?>

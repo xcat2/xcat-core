@@ -1,11 +1,10 @@
-/*--------------- Dialogs ---------------*/
+/*--- Dialogs ---*/
 .ui-dialog input {
 	border: solid 1px #BDBDBD;
 	font: 12px sans-serif;
 }
 
-.ui-dialog label,.ui-dialog input,.ui-dialog p,.ui-dialog button,.ui-dialog td
-	{
+.ui-dialog label,.ui-dialog input,.ui-dialog p,.ui-dialog button,.ui-dialog td {
 	font: 12px sans-serif;
 }
 
@@ -13,12 +12,11 @@
 	font: 12px sans-serif;
 }
 
-.ui-widget input,.ui-widget select,.ui-widget textarea,.ui-widget button
-	{
+.ui-widget input,.ui-widget select,.ui-widget textarea,.ui-widget button {
 	font: 12px sans-serif;
 }
 
-/*--------------- Tooltip ---------------*/
+/*--- Tooltip ---*/
 .tooltip {
 	background-color: #000;
 	border: 1px solid #fff;
@@ -37,7 +35,7 @@
 	margin: 0px;
 }
 
-/*--------------- Header ---------------*/
+/*--- Header ---*/
 #header {
 	height: 39px;
 	width: 1000px;
@@ -90,15 +88,7 @@
 	color: #FF0000;
 }
 
-#layoutselector {
-	padding: 2px 10px 0px 2px; /* Top right left bottom*/
-	text-align: right;
-	color: #FFC125;
-	text-decoration: none;
-	display: block;
-}
-
-/*--------------- Body and content ---------------*/
+/*--- Body and content ---*/
 body {
 	background: #1C1C1C;
 	font: 12px sans-serif;
@@ -124,7 +114,7 @@ pre {
 	font-size: 10px;
 }
 
-/*--------------- Groups ---------------*/
+/*--- Groups ---*/
 #groups {
 	width: 150px;
 	vertical-align: top;
@@ -178,7 +168,7 @@ pre {
 	border-top: thin solid #E7EBFF;
 }
 
-/*--------------- Nodes section ---------------*/
+/*--- Nodes section ---*/
 #nodes {
 	width: 790px;
 	min-height: 570px;
@@ -204,7 +194,7 @@ pre {
 	line-height: 1;
 }
 
-/*--------------- Info/warning bar ---------------*/
+/*--- Info and warning bar ---*/
 span.ui-icon-info {
 	float: left;
 	margin-right: 0.3em;
@@ -227,7 +217,7 @@ span.ui-icon-info {
 	text-align: center
 }
 
-/*--------------- jQuery tabs ---------------*/
+/*--- jQuery tabs ---*/
 .tab {
 	font: 12px sans-serif;
 	border-style: none;
@@ -248,7 +238,7 @@ span.ui-icon-info {
 	cursor: pointer;
 }
 
-/*--------------- Inventory and user entry ---------------*/
+/*--- Inventory and user entry ---*/
 .tab table {
 	border-width: 1px;
 	border-spacing: 0px;
@@ -326,7 +316,7 @@ legend {
 	height: 300px;
 }
 
-/*--------------- menu Div Actions bar ---------------*/
+/*--- menu Div Actions bar ---*/
 .menuDiv {
 	padding: 0.5em;
 	height: 30px;
@@ -373,7 +363,7 @@ legend {
 	margin: 0;
 }
 
-/*--------------- jQuery datatable ---------------*/
+/*--- jQuery datatable ---*/
 .dataTables_wrapper {
 	overflow: auto;
 	width: auto;
@@ -414,8 +404,7 @@ legend {
 }
 
 /*** < > buttons ***/
-.paginate_disabled_previous,.paginate_enabled_previous,.paginate_disabled_next,.paginate_enabled_next
-	{
+.paginate_disabled_previous,.paginate_enabled_previous,.paginate_disabled_next,.paginate_enabled_next {
 	height: 19px;
 	width: 19px;
 	margin-left: 2px;
@@ -472,7 +461,7 @@ legend {
 	color: #FF0000;
 }
 
-/*--------------- Editable column ---------------*/
+/*--- Editable column ---*/
 .tab .datatable textarea {
 	font: 12px sans-serif;
 	border: solid 1px #BDBDBD;
@@ -498,7 +487,7 @@ legend {
 	background: none;
 }
 
-/*--------------- jQuery context menu ---------------*/
+/*--- jQuery context menu ---*/
 .context-menu-theme-vista {
 	background: #FAFAFA url(../images/contextmenu/context-menu-bg.gif)
 		repeat-y left top;
@@ -536,8 +525,7 @@ legend {
 	background-image: none;
 }
 
-.context-menu-theme-vista .context-menu-item-hover .context-menu-item-inner
-	{
+.context-menu-theme-vista .context-menu-item-hover .context-menu-item-inner {
 	padding: 3px 15px 3px 35px;
 	margin-left: 0px;
 }
@@ -546,7 +534,7 @@ legend {
 	color: #A7A7A7;
 }
 
-/*--------------- Forms ---------------*/
+/*--- Forms ---*/
 .form label {
 	color: #424242;
 	line-height: 1.5;
@@ -613,7 +601,7 @@ table a:hover {
 	border: solid 1px #d4d4d4;
 }
 
-/*--------------- Provision disk table ---------------*/
+/*--- Provision disk table ---*/
 .provision table {
 	border-width: 1px;
 	border-spacing: 0px;
@@ -630,7 +618,7 @@ table a:hover {
 	width: 60px;
 }
 
-/*--------------- Provision and clone table ---------------*/
+/*--- Provision and clone table ---*/
 .special table {
 	border-width: 1px;
 	border-spacing: 0px;
@@ -646,52 +634,52 @@ table a:hover {
 	padding: 3px;
 }
 
-/*--------------- Provision and monitor forms ---------------*/
-.monitornormal {
+/*--- Provision and monitor forms ---*/
+.monitor-normal {
 	background: #66CD00;
 	cursor: pointer;
 }
 
-.mornitorwarning {
+.mornitor-warning {
 	background: #FFD700;
 	cursor: pointer;
 }
 
-.monitorerror {
+.monitor-error {
 	background: #FF3030;
 }
 
-.monitorunknown {
+.monitor-unknown {
 	background: #8B8B7A;
 }
 
-.monitornodeli {
+.monitor-node-li {
 	width: 10px;
 	height: 10px;
 	float: left;
 	border: 1px solid white;
 }
 
-.monitorsumdiv {
+.monitor-sum-div {
 	width: 300px;
 	height: 180px;
 	float: left;
 	margin: 0px 0px 10px 10px;
 }
 
-.monitorsumdiv td {
+.monitor-sum-div td {
 	padding: 0;
 	border-style: none;
 	font-size: 10px;
 }
 
-.monitornodediv {
+.monitor-node-div {
 	width: 240px;
 	height: 120px;
 	margin: 0px 0px 15px 0px;
 }
 
-.monitorzoomlink {
+.monitor-zoom-link {
 	cursor: pointer;
 	color: blue;
 }
@@ -710,7 +698,7 @@ table a:hover {
 	height: 150px;
 }
 
-/*--------------- Physical layout section ---------------*/
+/*--- Physical layout section ---*/
 .frameDiv {
 	width: 179px;
 	height: 500px;
@@ -768,7 +756,7 @@ table a:hover {
 	height: 11px;
 }
 
-.fspcheckbox {
+.fspCheckbox {
 	padding: 0px;
 	margin: 3px 3px 1px 3px;
 }
@@ -796,7 +784,7 @@ table a:hover {
 	background: url(../images/nodes/blade.jpg);
 }
 
-.xnodeDiv {
+.xNodeDiv {
 	font-size: 12px;
 	height: 21px;
 	line-height: 21px;
@@ -809,45 +797,7 @@ table a:hover {
 	display: inline-block;
 }
 
-/*--------------- Discovery section ---------------*/
-.discoverstep {
-	width: 960px;
-	vertical-align: top;
-	background-color: #A9D0F5;
-	padding: 0px 0px 0px 5px;
-	-moz-border-radius: .3em;
-	-webkit-border-radius: .3em;
-	border-radius: .3em;
-}
-
-.discovercurrentstep {
-	background-color: yellow;
-	font: normal bold 12px/35px sans-serif;
-	padding: 5px;
-}
-
-.discovercontent {
-	width: 960px;
-	display: inline-table;
-	padding: 0;
-}
-
-.discovercontent table {
-	border: none;
-}
-
-.discovercontent td {
-	border: none;
-	text-align: left;
-}
-
-.discovercontent th {
-	font: normal bold 15px sans-serif;
-	text-align: center;
-	border: none;
-}
-
-/*--------------- jqPlot Pie legend ---------------*/
+/*--- jqPlot Pie legend ---*/
 td.jqplot-table-legend {
 	border-width: 0px;
 }

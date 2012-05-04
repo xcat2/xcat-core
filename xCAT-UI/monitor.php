@@ -10,8 +10,8 @@ loadPage();
 
 /* Login user */
 if (!isAuthenticated()) {
-	login();
+    login();
 } else {
-	loadContent();
+    loadContent();
 }
 ?>

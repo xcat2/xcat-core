@@ -77,14 +77,14 @@ function rconsSynchronise($parameter) {
 		if (0 == strlen($line)) {
 			continue;
 		}
-		
+
 		if ('<' == substr($line, 0, 1)) {
 			$flag = true;
 			$return .= $line;
 			break;
 		}
 	}
-	
+
 	if ($flag) {
 		while (!feof($fp)) {
 			$return .= fgets($fp, 1024);

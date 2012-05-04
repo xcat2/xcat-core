@@ -7,9 +7,9 @@ require_once "$TOPDIR/lib/jsonwrapper.php";
 /**
  * Issue an xCAT command (only for z)
  *
- * @param 	$cmd	The xCAT command
- * @param	$tgt	The target node or group
- * @param	$args	The xCAT command arguments, separated by semicolons
+ * @param $cmd     The xCAT command
+ * @param $tgt     The target node or group
+ * @param $args    The xCAT command arguments, separated by semicolons
  * @return The xCAT response.  Replies are in the form of JSON
  */
 if (isset($_GET["cmd"])) {
@@ -56,7 +56,7 @@ if (isset($_GET["cmd"])) {
 	$rsp = array();
 
 	// Replace user entry
-	if(strncasecmp($cmd, "chvm", 4) == 0 && strncasecmp($arr[0], "--replacevs", 11) == 0) {
+	if (strncasecmp($cmd, "chvm", 4) == 0 && strncasecmp($arr[0], "--replacevs", 11) == 0) {
 		// Directory /var/tmp permissions = 777
 		// You can write anything to that directory
 		$userEntry = "/var/tmp/$tgt.txt";
@@ -77,7 +77,7 @@ if (isset($_GET["cmd"])) {
 	}
 
 	// Create virtual server
-	else if(strncasecmp($cmd, "mkvm", 4) == 0) {
+	else if (strncasecmp($cmd, "mkvm", 4) == 0) {
 		// Directory /var/tmp permissions = 777
 		// You can write anything to that directory
 		$userEntry = "/var/tmp/$tgt.txt";

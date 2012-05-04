@@ -82,6 +82,16 @@ mkdir -p $RPM_BUILD_ROOT%{prefix}/ui
 cp -r * $RPM_BUILD_ROOT%{prefix}/ui
 chmod 755 $RPM_BUILD_ROOT%{prefix}/ui/*
 
+# Copy over xCAT UI plugins
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
+cp xcat/plugins/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/web.pm
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/webportal.pm
+
+# Create symbolic link to webportal command
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/bin
+ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/webportal
+
 %files
 %defattr(-,root,root)
 %{prefix}
@@ -110,7 +120,7 @@ chmod 755 $RPM_BUILD_ROOT%{prefix}/ui/*
         echo "Installing xCAT-UI on AIX..."
     else
         echo ""
-        echo "Error! IBM HTTP Server is not installed or not installed in the default directory (/usr/IBM/HTTPServer/)."
+        echo "Error! IBM HTTP Server has not been installed or has not been installed in the default directory (/usr/IBM/HTTPServer/)."
         exit -1;
     fi
 %endif
@@ -141,10 +151,7 @@ chmod 755 $RPM_BUILD_ROOT%{prefix}/ui/*
 	
 	if [ "$1" = 1 ] || [ "$1" = 2 ]		# Install or upgrade
 	then
-		# Copy xCAT plugins to /opt/xcat/lib/perl/xCAT_plugin
-		cp %{prefix}/ui/xcat/plugins/web.pm /opt/xcat/lib/perl/xCAT_plugin/
-		cp %{prefix}/ui/xcat/plugins/webportal.pm /opt/xcat/lib/perl/xCAT_plugin/
-		/bin/ln -s /opt/xcat/bin/xcatclientnnr /opt/xcat/bin/webportal
+		# Restart xCAT
 		/etc/init.d/xcatd restart
 		
 		# Copy php.ini file into /opt/xcat/ui and turn off output_buffering
@@ -154,7 +161,7 @@ chmod 755 $RPM_BUILD_ROOT%{prefix}/ui/*
 	    	/bin/sed /etc/php5/apache2/php.ini -e 's/output_buffering = 4096/output_buffering = Off/g' > %{prefix}/ui/php.ini
 	  	fi
 	  	
-		# Restart Apache Web Server
+		# Restart Apache Server
 		/etc/init.d/$apachedaemon restart
 		true
 	fi
@@ -167,7 +174,7 @@ chmod 755 $RPM_BUILD_ROOT%{prefix}/ui/*
 	    echo "Updating IBM HTTP server configuration for xCAT..."
 	    bin/rm -f /usr/IBM/HTTPServer/conf/xcat-ui.conf
 	    cp /usr/IBM/HTTPServer/conf/httpd.conf /usr/IBM/HTTPServer/conf/httpd.conf.xcat.ui.bak
-	    cat /opt/xcat/ui/etc/apache2/conf.d/xcat-ui.conf >> /usr/IBM/HTTPServer/conf/httpd.conf
+	    cat ../ui/etc/apache2/conf.d/xcat-ui.conf >> /usr/IBM/HTTPServer/conf/httpd.conf
 	    /usr/IBM/HTTPServer/bin/apachectl restart
 	
 	    # Put the encrypted password in /etc/security/passwd into the xcat passwd database

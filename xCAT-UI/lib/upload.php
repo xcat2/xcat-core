@@ -4,26 +4,26 @@
  */
 $type = $_FILES["file"]["type"];
 if ($type == "text/plain" || $type == "application/octet-stream" || $type == "application/x-shellscript" || $type == "application/x-sh") {
-	$error = $_FILES["file"]["error"];
-	if ($error) {
-		echo "Return Code: " . $error;
-	} else {
-		$file = $_FILES["file"]["name"];
-		$path = "/var/tmp/" . $file;
-		move_uploaded_file($_FILES["file"]["tmp_name"], $path);
+    $error = $_FILES["file"]["error"];
+    if ($error) {
+        echo "Return Code: " . $error;
+    } else {
+        $file = $_FILES["file"]["name"];
+        $path = "/var/tmp/" . $file;
+        move_uploaded_file($_FILES["file"]["tmp_name"], $path);
 
-		// Open and read given file
-		$handler = fopen($path, "r");
-		$data = fread($handler, filesize($path));
-		fclose($handler);
+        // Open and read given file
+        $handler = fopen($path, "r");
+        $data = fread($handler, filesize($path));
+        fclose($handler);
 
-		// Print out file contents
-		echo $data;
+        // Print out file contents
+        echo $data;
 
-		// Remove this file
-		unlink($path);
-	}
+        // Remove this file
+        unlink($path);
+    }
 } else {
-	echo "(Error) File type $type not supported";
+    echo "(Error) File type $type not supported";
 }
 ?>
