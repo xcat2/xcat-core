@@ -186,6 +186,7 @@ sub send_msg {
 
     my $request = shift;
     my $ecode   = shift;
+    my $msg     = shift;
     my %output;
 
     #################################################
@@ -205,7 +206,7 @@ sub send_msg {
     elsif ( exists( $request->{callback} )) {
         my $callback = $request->{callback};
         $output{errorcode} = $ecode;
-        $output{data} = \@_;
+        $output{data} = $msg;
         $callback->( \%output );
     }
 }
@@ -503,17 +504,16 @@ sub invoke_dodiscover {
     } else {
         $maxt = 0;
     }
-    unless ($globalopt{time_out}){
-        $globalopt{time_out} = 300;
-    }    
-    unless ($globalopt{C}){
-        $globalopt{C} = 0;
-    }
+
+    
     my %arg;
    $arg{SrvTypes} = $services;
    $arg{Callback} = \&handle_new_slp_entity;
    $arg{Ip} = $globalopt{i} if($globalopt{i});
    $arg{Retry} = $maxt;
+   $arg{Count} = $globalopt{C} if($globalopt{C});
+   $arg{Time} = $globalopt{T} if($globalopt{T});
+   
    my $result  = xCAT::SLP::dodiscover(%arg);
 
 
@@ -568,7 +568,26 @@ sub format_output {
     my $request = shift;
     my $length  = length( $header[IP_ADDRESSES][TEXT] );
     my $result;
+    
+    ###########################################
+    # No responses
+    ###########################################
+    if ( keys %searchmacs  == 0 ){
+        send_msg( $request, 0, "No responses" );
+        return;
+    }
 
+    ###########################################
+    # Check -C -T
+    ###########################################
+    if ($globalopt{C}){
+        if (scalar(keys %searchmacs) ne $globalopt{C}) {
+            send_msg( $request, 0, "Timeout...Fource to return" );
+        }    
+    }
+    ###########################################
+    # Read table to get exists data
+    ###########################################
     my $errcode = read_from_table();
     if ($errcode) {
         send_msg( $request, 0, "Can't open $errcode table" );
@@ -578,13 +597,7 @@ sub format_output {
     # Parse responses and add to hash
     ###########################################
     my $outhash = parse_responses( $request, \$length );
-    ###########################################
-    # No responses
-    ###########################################
-    if ( keys %$outhash  == 0 ){
-        send_msg( $request, 0, "No responses" );
-        return;
-    }
+
     ###########################################
     # filter the result and keep the specified nodes
     ###########################################
