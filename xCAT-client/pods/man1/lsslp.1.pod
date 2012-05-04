@@ -9,7 +9,7 @@ I<lsslp [-h| --help]>
 I<lsslp [-v| --version]>
 
 
-I<lsslp [<noderange>] [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s CEC|FRAME|MM|IVM|RSA|HMC|CMM][-t tries][-m][-I][-e command][-c [timeinterval[timeinterval,..]]][-C counts][-T timeout][--vpdtable][-M vpd|switchport][--updatehosts][-makedhcp]>
+I<lsslp [<noderange>] [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s CEC|FRAME|MM|IVM|RSA|HMC|CMM][-t tries][-I][-C counts][-T timeout][--vpdtable]>
 
 
 =head1 DESCRIPTION
@@ -29,29 +29,10 @@ B<noderange>   The nodes which the user want to discover.
             will list the bpa or fsp nodes within the nodes(bap for frame, fsp for cec).
             Please do not use noderange with the flag -s.
 
-B<-c>          Convergence timeout.
-            A value-list of 32 bit integers used as timeouts, in milliseconds, to
-            implement the convergence algorithm. Each value specifies the time
-            to wait before sending the next request, or until nothing new
-            has been learned from two successive requests. A maximum of 5 comma-
-            seperated values are allowed. Note that specifying -c with no arguments
-            will use the timeout values last specified. Not including -c will use
-            the hardcoded defaults of 500,750,1000,1500,2000 milliseconds.
 
 B<-i>          IP(s) the command will send out (defaults to all available adapters).
 
-B<-e>          Path and command name of IBM SLP slp_query (defaults to OpenSLP - slptool).
-            An IBM proprietary implementation of SLP can be also be used.
-            Contact IBM for details. 
-
 B<-h>          Display usage message.
-
-B<-m>          Multicast mode (defaults to broadcast).
-
-B<--makedhcp>  Issue xCAT command makedhcp internally.
-
-B<-M>          Matching mode, match the pre-defined node names from vpd table or switch table.
-             Matching vpd table is the default setting whether the flag is specified. And matching switch table is not yet supported.
 
 B<-n>          Only display and write the newly discovered hardwares.
 
@@ -69,14 +50,6 @@ B<-T>          The number in seconds to limite the time costing of lsslp. Must b
 B<-s>          Service type interested in discovering.
 
 B<-t>          Number or service-request attempts.
-
-B<--updatehosts>  Display current IP address or write the ip address into xCAT DB. Please be 
-            aware that otherinterfaces column in hosts table saved the current ip address, 
-            ip column stores the new ip address that user defined. With this option, lsslp
-            will write the current ip to ip column also, which means the ip user wants is 
-            the same as current ip address running on hardwares. This is to avoid useless 
-            network resetting that if ip and otherinterfaces are the same, lsslp will skip
-            the network resetting for that node.
 
 B<--vpdtable>  Output the SLP response in vpdtable formatting. Easy for writting data to vpd table.
 
@@ -102,16 +75,16 @@ B<-I>          Give the warning message for the nodes in database which have no 
 
 =head1 EXAMPLES
 
-1. To list all discovered HMC service types in tabular format with convergence timeouts of 5000,5000,2000,1000,1000 milliseconds, enter:
+1. To list all discovered HMC service types in tabular format, enter:
 
- lsslp -s HMC -c 5000,5000,2000,1000,1000
+ lsslp -s HMC
 
 Output is similar to:
 
- device type-model serial-number ip-addresses                    hostname
- HMC    7310CR2    103F55A        1.1.1.115 2.2.2.164 3.3.3.102  hmc01
- HMC    7310CR2    105369A        3.3.3.103 2.2.2.103 1.1.1.163  hmc02
- HMC    7310CR3    KPHHK24        3.3.3.154 2.2.2.110 1.1.1.154  hmc03
+ device type-model serial-number ip-addresses   hostname
+ HMC    7310CR2    103F55A        1.1.1.115      hmc01
+ HMC    7310CR2    105369A        3.3.3.103      hmc02
+ HMC    7310CR3    KPHHK24        3.3.3.154      hmc03
 
 
 2. list all discovered FSP service types in raw response format on subnet 30.0.0.255, enter:
@@ -155,7 +128,7 @@ c76v1hmc02:
         nodetype=hmc
         mtm=7315CR2
         serial=10407DA
-        ip=192.168.200.125 20.0.0.125 9.114.113.125
+        ip=192.168.200.125
         groups=hmc,all
         mgt=hmc
         mac=00:1a:64:fb:7d:50        
@@ -167,7 +140,7 @@ c76v1hmc02:
         mtm=9125-F2A
         serial=0262662
         side=A-0
-        ip=192.168.200.244
+        otherinterfaces=192.168.200.244
         groups=fsp,all
         mgt=fsp
         id=4
@@ -191,7 +164,7 @@ Server-8205-E6B-SN1074CDP:
         mtm=9458-100
         serial=99201WM
         side=B-0
-        ip=192.168.200.33
+        otherinterfaces=192.168.200.33
         groups=bpa,all
         mgt=bpa
         id=0
@@ -212,7 +185,7 @@ Server-9125-F2A-SN0262652:
 
 5. To list all discovered service types in stanza format and display the IP address, enter:
 
- lsslp -w --updatehosts
+ lsslp -w 
 
 Output is similar to:
 
@@ -226,7 +199,7 @@ Output is similar to:
     mgt=fsp
     id=0
     mac=00:14:5E:F0:5C:FD
-    ip=50.0.0.5
+    otherinterfaces=50.0.0.5
 
  bpa01:
     objtype=node
@@ -238,7 +211,7 @@ Output is similar to:
     mgt=bpa
     id=0
     mac=00:1A:64:54:8C:A5
-    ip=50.0.0.1
+    otherinterfaces=50.0.0.1
 
 
 6. To list all the CECs, enter:
