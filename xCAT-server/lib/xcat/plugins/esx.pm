@@ -4314,9 +4314,8 @@ sub merge_esxi5_append {
 	open($out,">",$outfile);
 	my $line;
 	while ($line = <$in>) {
-		if ($line =~ /kernelopt=/) {
-			chomp($line);
-			$line .= $append."\n";
+		if ($line =~ /modules=b.b00/) {
+			$line =~ s/modules=b.b00/modules=b.b00 $append/;
 		}
 		print $out $line;
 	}
