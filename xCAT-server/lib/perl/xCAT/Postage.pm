@@ -905,7 +905,8 @@ sub includefile
         next
           if (   /^\s*#/
               && !/^\s*#INCLUDE:[^#^\n]+#/
-              && !/^\s*#NEW_INSTALL_LIST#/);    #-- skip comments
+              && !/^\s*#NEW_INSTALL_LIST#/
+              && !/^\s*#ENV:[^#^\n]+#/);   #-- skip comments
         push(@text, $_);
     }
 
