@@ -4526,6 +4526,10 @@ sub mkcommonboot {
 			$append .= " -s ".$serialconfig->{$node}->[0]->{serialspeed}." com".$comport."_baud=".$serialconfig->{$node}->[0]->{serialspeed};
 		}
 	}
+		if (defined $bpadds->{$node}->[0]->{addkcmdline}) {
+			$append .= " ".$bpadds->{$node}->[0]->{addkcmdline};
+            $append =~ s/#NODEATTRIB:([^:#]+):([^:#]+)#/$nodesubdata{$1}->{$node}->[0]->{$2}/eg;
+		}
 	}
     if ($shortappend) { #esxi5 user desiring to put everything in one boot config file. . .
 		merge_esxi5_append("$tftpdir/$tp/boot.cfg.$bootmode.tmpl",$append,"$tftpdir/$tp/boot.cfg.$bootmode.$node");
