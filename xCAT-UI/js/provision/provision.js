@@ -6,12 +6,10 @@ var provisionTabs; // Provision tabs
 /**
  * Set the provision tab
  * 
- * @param obj
- *            Tab object
- * @return Nothing
+ * @param obj Tab object
  */
 function setProvisionTab(obj) {
-	provisionTabs = obj;
+    provisionTabs = obj;
 }
 
 /**
@@ -21,157 +19,155 @@ function setProvisionTab(obj) {
  * @return Tab object
  */
 function getProvisionTab() {
-	return provisionTabs;
+    return provisionTabs;
 }
 
 /**
  * Load provision page
- * 
- * @return Nothing
  */
 function loadProvisionPage() {
-	// If the page is loaded
-	if ($('#content').children().length) {
-		// Do not load again
-		return;
-	}
+    // If the page is loaded
+    if ($('#content').children().length) {
+        // Do not load again
+        return;
+    }
 
-	// Get OS image names
-	if (!$.cookie('imagenames')){
-		$.ajax( {
-			url : 'lib/cmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'tabdump',
-				tgt : '',
-				args : 'osimage',
-				msg : ''
-			},
+    // Get OS image names
+    if (!$.cookie('imagenames')){
+        $.ajax( {
+            url : 'lib/cmd.php',
+            dataType : 'json',
+            data : {
+                cmd : 'tabdump',
+                tgt : '',
+                args : 'osimage',
+                msg : ''
+            },
 
-			success : setOSImageCookies
-		});
-	}
+            success : setOSImageCookies
+        });
+    }
 
-	// Get groups
-	if (!$.cookie('groups')){
-		$.ajax( {
-			url : 'lib/cmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'extnoderange',
-				tgt : '/.*',
-				args : 'subgroups',
-				msg : ''
-			},
+    // Get groups
+    if (!$.cookie('groups')){
+        $.ajax( {
+            url : 'lib/cmd.php',
+            dataType : 'json',
+            data : {
+                cmd : 'extnoderange',
+                tgt : '/.*',
+                args : 'subgroups',
+                msg : ''
+            },
 
-			success : setGroupsCookies
-		});
-	}
-	
-	// Create info bar
-	var infoBar = createInfoBar('Select a platform to provision or re-provision a node on, then click Ok.');
-	
-	// Create provision page
-	var provPg = $('<div class="form"></div>');
-	provPg.append(infoBar);
+            success : setGroupsCookies
+        });
+    }
+    
+    // Create info bar
+    var infoBar = createInfoBar('Select a platform to provision or re-provision a node on, then click Ok.');
+    
+    // Create provision page
+    var provPg = $('<div class="form"></div>');
+    provPg.append(infoBar);
 
-	// Create provision tab
-	var tab = new Tab('provisionPageTabs');
-	setProvisionTab(tab);
-	tab.init();
-	$('#content').append(tab.object());
+    // Create provision tab
+    var tab = new Tab('provisionPageTabs');
+    setProvisionTab(tab);
+    tab.init();
+    $('#content').append(tab.object());
 
-	// Create radio buttons for platforms
-	var hwList = $('<ol>Platforms available:</ol>');
-	var esx = $('<li><input type="radio" name="hw" value="esx" checked/>ESX</li>');
-	var kvm = $('<li><input type="radio" name="hw" value="kvm"/>KVM</li>');
-	var zvm = $('<li><input type="radio" name="hw" value="zvm"/>z\/VM</li>');
-	var ipmi = $('<li><input type="radio" name="hw" value="ipmi"/>iDataPlex</li>');
-	var blade = $('<li><input type="radio" name="hw" value="blade"/>BladeCenter</li>');
-	var hmc = $('<li><input type="radio" name="hw" value="hmc"/>System p</li>');
-	
-	hwList.append(esx);
-	hwList.append(kvm);
-	hwList.append(zvm);
-	hwList.append(blade);
-	hwList.append(ipmi);
-	hwList.append(hmc);
-	provPg.append(hwList);
+    // Create radio buttons for platforms
+    var hwList = $('<ol>Platforms available:</ol>');
+    var esx = $('<li><input type="radio" name="hw" value="esx" checked/>ESX</li>');
+    var kvm = $('<li><input type="radio" name="hw" value="kvm"/>KVM</li>');
+    var zvm = $('<li><input type="radio" name="hw" value="zvm"/>z\/VM</li>');
+    var ipmi = $('<li><input type="radio" name="hw" value="ipmi"/>iDataPlex</li>');
+    var blade = $('<li><input type="radio" name="hw" value="blade"/>BladeCenter</li>');
+    var hmc = $('<li><input type="radio" name="hw" value="hmc"/>System p</li>');
+    
+    hwList.append(esx);
+    hwList.append(kvm);
+    hwList.append(zvm);
+    hwList.append(blade);
+    hwList.append(ipmi);
+    hwList.append(hmc);
+    provPg.append(hwList);
 
-	/**
-	 * Ok
-	 */
-	var okBtn = createButton('Ok');
-	okBtn.bind('click', function(event) {
-		// Get hardware that was selected
-		var hw = $(this).parent().find('input[name="hw"]:checked').val();
-	    
-	    var inst = 0;
-	    var newTabId = hw + 'ProvisionTab' + inst;
-		while ($('#' + newTabId).length) {
-			// If one already exists, generate another one
-			inst = inst + 1;
-			newTabId = hw + 'ProvisionTab' + inst;
-		}
-		
+    /**
+     * Ok
+     */
+    var okBtn = createButton('Ok');
+    okBtn.bind('click', function(event) {
+        // Get hardware that was selected
+        var hw = $(this).parent().find('input[name="hw"]:checked').val();
+        
+        var inst = 0;
+        var newTabId = hw + 'ProvisionTab' + inst;
+        while ($('#' + newTabId).length) {
+            // If one already exists, generate another one
+            inst = inst + 1;
+            newTabId = hw + 'ProvisionTab' + inst;
+        }
+        
         // Create an instance of the plugin
-		var title = '';
+        var title = '';
         var plugin;
         switch (hw) {
-	        case "kvm":
-	            plugin = new kvmPlugin();
-	            title = 'KVM';
-	            break;
-	        case "esx":
-	            plugin = new esxPlugin();
-	            title = 'ESX';
-	            break;
-	        case "blade":
-	            plugin = new bladePlugin();
-	            title = 'BladeCenter';
-	            break;
-	        case "hmc":
-	            plugin = new hmcPlugin();
-	            title = 'System p';
-	            break;
-	        case "ipmi":
-	            plugin = new ipmiPlugin();
-	            title = 'iDataPlex';
-	            break;
-	        case "zvm":
-	            plugin = new zvmPlugin();
-	            title = 'z/VM';
-	            break;
+            case "kvm":
+                plugin = new kvmPlugin();
+                title = 'KVM';
+                break;
+            case "esx":
+                plugin = new esxPlugin();
+                title = 'ESX';
+                break;
+            case "blade":
+                plugin = new bladePlugin();
+                title = 'BladeCenter';
+                break;
+            case "hmc":
+                plugin = new hmcPlugin();
+                title = 'System p';
+                break;
+            case "ipmi":
+                plugin = new ipmiPlugin();
+                title = 'iDataPlex';
+                break;
+            case "zvm":
+                plugin = new zvmPlugin();
+                title = 'z/VM';
+                break;
         }
 
         // Select tab
         tab.add(newTabId, title, '', true);
         tab.select(newTabId);
         plugin.loadProvisionPage(newTabId);
-	});
-	provPg.append(okBtn);
+    });
+    provPg.append(okBtn);
 
-	// Add provision tab
-	tab.add('provisionTab', 'Provision', provPg, false);
-	// Add image tab
-	tab.add('imagesTab', 'Images', '', false);
-	
-	// Load tabs onselect
-	$('#provisionPageTabs').bind('tabsselect', function(event, ui){ 
-		// Load image page 
-		if (!$('#imagesTab').children().length && ui.index == 1) {
-			$('#imagesTab').append($('<center></center>').append(createLoader('')));
-			loadImagesPage();
-		}
-	});
-	
-	// Open the quick provision tab
-	if (window.location.search) {
-	    tab.add('quickProvisionTab', 'Quick Provision', '', true);
-	    tab.select('quickProvisionTab');
-	    
-	    var provForm = $('<div class="form"></div>');
-	    $('#quickProvisionTab').append(provForm);
-	    appendProvisionSection('quick', provForm);
-	}
+    // Add provision tab
+    tab.add('provisionTab', 'Provision', provPg, false);
+    // Add image tab
+    tab.add('imagesTab', 'Images', '', false);
+    
+    // Load tabs onselect
+    $('#provisionPageTabs').bind('tabsselect', function(event, ui){ 
+        // Load image page 
+        if (!$('#imagesTab').children().length && ui.index == 1) {
+            $('#imagesTab').append($('<center></center>').append(createLoader('')));
+            loadImagesPage();
+        }
+    });
+    
+    // Open the quick provision tab
+    if (window.location.search) {
+        tab.add('quickProvisionTab', 'Quick Provision', '', true);
+        tab.select('quickProvisionTab');
+        
+        var provForm = $('<div class="form"></div>');
+        $('#quickProvisionTab').append(provForm);
+        appendProvisionSection('quick', provForm);
+    }
 }
