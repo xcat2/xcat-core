@@ -11,7 +11,7 @@ fi
 cd /tmp
 RAND=$(perl -e 'print int(rand(50)). "\n"')
 sleep $RAND
-for i in $(seq 1 20)
+for t in $(seq 1 20)
 do
 	GOTIT=0
 	for i in $MASTER_IPS
