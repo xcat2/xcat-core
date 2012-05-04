@@ -78,6 +78,17 @@ if [ -e "/etc/SuSE-release" ]; then
         exit -1;
     fi
 fi
+# only need to check on AIX
+%ifnos linux
+if [ -x /usr/sbin/emgr ]; then          # Check for emgr cmd
+	/usr/sbin/emgr -l 2>&1 |  grep -i xCAT   # Test for any xcat ifixes -  msg and exit if found
+	if [ $? = 0 ]; then
+		echo "Error: One or more xCAT emgr ifixes are installed. You must use the /usr/sbin/emgr command to uninstall each xCAT emgr ifix prior to RPM installation."
+		exit 2
+	fi
+fi
+%endif
+
 
 
 %install
