@@ -4351,7 +4351,7 @@ sub mkcommonboot {
     my $restab = xCAT::Table->new('noderes',-create=>0);
     my $resents;
     if ($restab) {
-        $resents = $restab->getNodesAttribs(\@nodes,['tftpdir']);
+        $resents = $restab->getNodesAttribs(\@nodes,['tftpdir','nfsserver']);
     }
 		
     my %tablecolumnsneededforaddkcmdline;
@@ -4380,6 +4380,13 @@ sub mkcommonboot {
 		my $profile = $ent->{'profile'};
 		my $osver = $ent->{'os'};
         my $tftpdir;
+	    my $ksserver;
+        if ($resents and $resents->{$node}->[0]->{nfsserver}) {
+			$ksserver=$resents->{$node}->[0]->{nfsserver};
+		} else {
+			$ksserver='!myipfn!';
+		}
+
         if ($resents and $resents->{$node}->[0]->{tftpdir}) {
            $tftpdir = $resents->{$node}->[0]->{tftpdir};
         } else {
@@ -4506,7 +4513,7 @@ sub mkcommonboot {
 	  $append = "-c $tp/boot.cfg.$bootmode";
 	}
 	  if ($bootmode eq "install") {
-	  	$append .= " ks=http://!myipfn!/install/autoinst/$node";
+	  	$append .= " ks=http://$ksserver/install/autoinst/$node";
 		esxi_kickstart_from_template(node=>$node,os=>$osver,arch=>$arch,profile=>$profile);
 	  }
 	  if ($bootmode ne "install" and $serialconfig->{$node}) { #don't do it for install, installer croaks currently
