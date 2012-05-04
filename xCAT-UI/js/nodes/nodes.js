@@ -47,8 +47,6 @@ function getNodesTableId() {
 
 /**
  * Load nodes page
- * 
- * @return Nothing
  */
 function loadNodesPage() {
     // If groups are not already loaded
@@ -97,20 +95,18 @@ function loadNodesPage() {
 /**
  * Show cluster summary in pie charts
  * 
- * @param groupName
- *                 Group name
- * @return Nothing
+ * @param groupName Group name
  */
 function loadPieSummary(groupName){
     var summaryTable = '<table style="border: 0px none;">' +
                        '<tr>' +
-                               '<td><div id="statuspie" class="summarypie"></div></td>' +
-                               '<td><div id="ospie" class="summarypie"></div></td>' +
-                               '<td><div id="archpie" class="summarypie"></div></td>' +
+                           '<td><div id="statuspie" class="summarypie"></div></td>' +
+                           '<td><div id="ospie" class="summarypie"></div></td>' +
+                           '<td><div id="archpie" class="summarypie"></div></td>' +
                        '</tr>' +
                        '<tr>' +
-                               '<td><div id="provmethodpie" class="summarypie"></td>' +
-                               '<td><div id="nodetypepie" class="summarypie"></div></td>' +
+                           '<td><div id="provmethodpie" class="summarypie"></td>' +
+                           '<td><div id="nodetypepie" class="summarypie"></div></td>' +
                        '</tr></table>';
     $('#summaryTab').append(summaryTable);
     $('#summaryTab .summarypie').append(createLoader());
@@ -136,11 +132,8 @@ function loadPieSummary(groupName){
 /**
  * Get nodes information and draw pie chart
  * 
- * @param index
- *             Node index
- * @param valuePair
- *             Node information key value pairing
- * @return Nothing
+ * @param index Node index
+ * @param valuePair Node information key value pairing
  */
 function drawPieSummary(index, valuePair){
     var position = 0;
@@ -189,9 +182,7 @@ function drawPieSummary(index, valuePair){
 /**
  * Load groups
  * 
- * @param data
- *            Data returned from HTTP request
- * @return Nothing
+ * @param data Data returned from HTTP request
  */
 function loadGroups(data) {
     // Remove loader
@@ -231,13 +222,9 @@ function loadGroups(data) {
 /**
  * Empty the nodes area and add three tabs for nodes result
  * 
- * @param targetgroup
- *             The name range for nodels command
- * @param cmdargs
- *             Filter arguments for nodels command
- * @param message
- *             The useful information from the HTTP request
- * @return Nothing
+ * @param targetgroup The name range for nodels command
+ * @param cmdargs Filter arguments for nodels command
+ * @param message The useful information from the HTTP request
  */
 function drawNodesArea(targetgroup, cmdargs, message){
     // Clear nodes division
@@ -279,9 +266,7 @@ function drawNodesArea(targetgroup, cmdargs, message){
                 /**
                  * Get node definitions for first 50 nodes
                  * 
-                 * @param data
-                 *            Data returned from HTTP request
-                 * @return Nothing
+                 * @param data Data returned from HTTP request
                  */
                 success : function(data) {
                     var rsp = data.rsp;
@@ -404,9 +389,7 @@ function mkAddNodeLink() {
                 /**
                  * Set node attributes and open dialog
                  * 
-                 * @param data
-                 *            Data returned from HTTP request
-                 * @return Nothing
+                 * @param data Data returned from HTTP request
                  */
                 success : function(data) {
                     // Save node attributes
@@ -481,9 +464,7 @@ function mkAddNodeLink() {
 /**
  * Load nodes belonging to a given group
  * 
- * @param data
- *            Data returned from HTTP request
- * @return Nothing
+ * @param data Data returned from HTTP request
  */
 function loadNodes(data) {
     // Clear the tab before inserting the table
@@ -1062,8 +1043,7 @@ function loadNodes(data) {
 /**
  * Get nodes currently shown in datatable
  * 
- * @param tableId
- *            Datatable ID
+ * @param tableId Datatable ID
  * @return String of nodes shown
  */
 function getNodesShown(tableId) {
@@ -1089,9 +1069,7 @@ function getNodesShown(tableId) {
 /**
  * Get attributes for nodes not yet initialized
  * 
- * @param group
- *            Group name
- * @return Nothing
+ * @param group Group name
  */
 function getNodeAttrs(group) {    
     // Get datatable headers and rows
@@ -1154,9 +1132,7 @@ function getNodeAttrs(group) {
 /**
  * Add nodes to datatable
  * 
- * @param data
- *            Data returned from HTTP request
- * @return Nothing
+ * @param data Data returned from HTTP request
  */
 function addNodes2Table(data) {
     // Data returned
@@ -1386,9 +1362,7 @@ function addNodes2Table(data) {
 /**
  * Load the status of Ganglia for a given group
  * 
- * @param data
- *            Data returned from HTTP request
- * @return Nothing
+ * @param data Data returned from HTTP request
  */
 function loadGangliaStatus(data) {
     // Get datatable
@@ -1419,9 +1393,7 @@ function loadGangliaStatus(data) {
 /**
  * Refresh the status of Ganglia for each node
  * 
- * @param group
- *            Group name
- * @return Nothing
+ * @param group Group name
  */
 function refreshGangliaStatus(group) {
     // Show ganglia loader
@@ -1449,9 +1421,7 @@ function refreshGangliaStatus(group) {
 /**
  * Load power status for each node
  * 
- * @param data
- *            Data returned from HTTP request
- * @return Nothing
+ * @param data Data returned from HTTP request
  */
 function loadPowerStatus(data) {
     var dTable = $('#' + nodesTableId).dataTable();
@@ -1480,11 +1450,8 @@ function loadPowerStatus(data) {
 /**
  * Refresh power status for each node
  * 
- * @param group
- *            Group name
- * @param tableId
- *            Table to update node status
- * @return Nothing
+ * @param group Group name
+ * @param tableId Table to update node status
  */
 function refreshPowerStatus(group, tableId) {
     // Show power loader
@@ -1512,9 +1479,7 @@ function refreshPowerStatus(group, tableId) {
 /**
  * Load node status for each node
  * 
- * @param data
- *            Data returned from HTTP request
- * @return Nothing
+ * @param data Data returned from HTTP request
  */
 function loadNodeStatus(data) {
     var dTable = $('#' + nodesTableId).dataTable();
@@ -1545,11 +1510,8 @@ function loadNodeStatus(data) {
 /**
  * Refresh ping status for each node
  * 
- * @param group
- *            Group name
- * @param tableId
- *            Table to update node status
- * @return Nothing
+ * @param group Group name
+ * @param tableId Table to update node status
  */
 function refreshNodeStatus(group, tableId) {
     // Show ping loader
@@ -1577,9 +1539,7 @@ function refreshNodeStatus(group, tableId) {
 /**
  * Load inventory for given node
  * 
- * @param e
- *            Windows event
- * @return Nothing
+ * @param e Windows event
  */
 function loadNode(e) {
     if (!e) {
@@ -1652,9 +1612,7 @@ function loadNode(e) {
 /**
  * Unlock a node by setting the ssh keys
  * 
- * @param tgtNodes
- *            Nodes to unlock
- * @return Nothing
+ * @param tgtNodes Nodes to unlock
  */
 function loadUnlockPage(tgtNodes) {
     // Get nodes tab
@@ -1749,9 +1707,7 @@ function loadUnlockPage(tgtNodes) {
 /**
  * Load script page
  * 
- * @param tgtNodes
- *            Targets to run script against
- * @return Nothing
+ * @param tgtNodes Targets to run script against
  */
 function loadScriptPage(tgtNodes) {
     // Get nodes tab
@@ -1871,11 +1827,8 @@ function sortAlpha(a, b) {
 /**
  * Power on a given node
  * 
- * @param node
- *            Node to power on or off
- * @param power2
- *            Power node to given state
- * @return Nothing
+ * @param node Node to power on or off
+ * @param power2 Power node to given state
  */
 function powerNode(node, power2) {
     // Show power loader
@@ -1900,9 +1853,7 @@ function powerNode(node, power2) {
 /**
  * Load delete node page
  * 
- * @param tgtNodes
- *            Nodes to delete
- * @return Nothing
+ * @param tgtNodes Nodes to delete
  */
 function loadDeletePage(tgtNodes) {
     // Get nodes tab
@@ -2004,9 +1955,7 @@ function loadDeletePage(tgtNodes) {
 /**
  * Update status bar of a given tab
  * 
- * @param data
- *            Data returned from HTTP request
- * @return Nothing
+ * @param data Data returned from HTTP request
  */
 function updateStatusBar(data) {
     // Get ajax response
@@ -2084,9 +2033,7 @@ function updateStatusBar(data) {
 /**
  * Update power status of a node in the datatable
  * 
- * @param data
- *            Data from HTTP request
- * @return Nothing
+ * @param data Data from HTTP request
  */
 function updatePowerStatus(data) {
     // Hide power loader
@@ -2132,9 +2079,7 @@ function updatePowerStatus(data) {
 /**
  * Run a script
  * 
- * @param inst
- *            Remote script tab instance
- * @return Nothing
+ * @param inst Remote script tab instance
  */
 function runScript(inst) {
     // Get tab ID
@@ -2175,10 +2120,8 @@ function runScript(inst) {
 /**
  * Get an attribute of a given node
  * 
- * @param node
- *            The node
- * @param attrName
- *            The attribute
+ * @param node The node
+ * @param attrName The attribute
  * @return The attribute of the node
  */
 function getNodeAttr(node, attrName) {
@@ -2214,9 +2157,7 @@ function getNodeAttr(node, attrName) {
 /**
  * Set a cookie for the OS images
  * 
- * @param data
- *            Data from HTTP request
- * @return Nothing
+ * @param data Data from HTTP request
  */
 function setOSImageCookies(data) {
     // Get response
@@ -2295,9 +2236,7 @@ function setOSImageCookies(data) {
 /**
  * Set a cookie for the groups
  * 
- * @param data
- *            Data from HTTP request
- * @return Nothing
+ * @param data Data from HTTP request
  */
 function setGroupsCookies(data) {
     var rsp = data.rsp;
@@ -2307,12 +2246,9 @@ function setGroupsCookies(data) {
 /**
  * Find the row index containing a column with a given string
  * 
- * @param str
- *            String to search for
- * @param table
- *            Table to check
- * @param col
- *            Column to find string under
+ * @param str String to search for
+ * @param table Table to check
+ * @param col Column to find string under
  * @return The row index containing the search string
  */
 function findRow(str, table, col){    
@@ -2334,11 +2270,8 @@ function findRow(str, table, col){
 /**
  * Select all checkboxes in the datatable
  * 
- * @param event
- *            Event on element
- * @param obj
- *            Object triggering event
- * @return Nothing
+ * @param event Event on element
+ * @param obj Object triggering event
  */
 function selectAllCheckbox(event, obj) {
     // Get datatable ID
@@ -2352,9 +2285,7 @@ function selectAllCheckbox(event, obj) {
 /**
  * Load rcons page
  * 
- * @param tgtNodes
- *            Targets to run rcons against
- * @return Nothing
+ * @param tgtNodes Targets to run rcons against
  */
 function loadRconsPage(tgtNodes){
     var hostName = window.location.host;
@@ -2380,8 +2311,7 @@ function loadRconsPage(tgtNodes){
 /**
  * Create a tool tip for comments
  * 
- * @param comment
- *            Comments to be placed in a tool tip
+ * @param comment Comments to be placed in a tool tip
  * @return Tool tip
  */
 function createCommentsToolTip(comment) {
@@ -2543,9 +2473,7 @@ function createMonitorToolTip() {
 /**
  * Open dialog to configure xCAT monitor
  * 
- * @param data
- *            Data returned from HTTP request
- * @return Nothing
+ * @param data Data returned from HTTP request
  */
 function openConfXcatMon(data) {
     // Create info bar
@@ -2633,9 +2561,7 @@ function openConfXcatMon(data) {
 /**
  * Show chdef output
  * 
- * @param data
- *            Data returned from HTTP request
- * @return Nothing
+ * @param data Data returned from HTTP request
  */
 function showChdefOutput(data) {
     // Get output
@@ -2664,9 +2590,7 @@ function showChdefOutput(data) {
 /**
  * Set node attributes
  * 
- * @param data
- *            Data returned from HTTP request
- * @return Nothing
+ * @param data Data returned from HTTP request
  */
 function setNodeAttrs(data) {
     // Clear hash table containing definable node attributes
@@ -2707,9 +2631,7 @@ function setNodeAttrs(data) {
 /**
  * Load set node properties page
  * 
- * @param tgtNode
- *            Target node to set properties
- * @return Nothing
+ * @param tgtNode Target node to set properties
  */
 function editNodeProps(tgtNode) {
     // Get nodes tab
@@ -2845,8 +2767,6 @@ function editNodeProps(tgtNode) {
 
 /**
  * Open set node attributes dialog
- * 
- * @return Nothing
  */
 function openSetAttrsDialog() {
     // Open new tab
@@ -3003,11 +2923,8 @@ function openSetAttrsDialog() {
 /**
  * Turn on monitoring for a given node
  * 
- * @param node
- *            Node to monitor on or off
- * @param monitor
- *            Monitor state, on or off
- * @return Nothing
+ * @param node Node to monitor on or off
+ * @param monitor Monitor state, on or off
  */
 function monitorNode(node, monitor) {
     // Show ganglia loader
@@ -3036,9 +2953,7 @@ function monitorNode(node, monitor) {
                 /**
                  * Start ganglia on a given node range
                  * 
-                 * @param data
-                 *            Data returned from HTTP request
-                 * @return Nothing
+                 * @param data Data returned from HTTP request
                  */
                 success : function(data) {
                     // Get response
@@ -3146,9 +3061,7 @@ function monitorNode(node, monitor) {
 /**
  * Install Ganglia on a given node
  * 
- * @param node
- *            Node to install Ganglia on
- * @return Nothing
+ * @param node Node to install Ganglia on
  */
 function installGanglia(node) {
     var iframe = createIFrame('lib/cmd.php?cmd=webrun&tgt=&args=installganglia;' + node + '&msg=' + node + '&opts=flush');
@@ -3161,9 +3074,7 @@ function installGanglia(node) {
 /**
  * After nodes are loaded, load more information based on different hardware architectures 
  * 
- * @param group
- *             Group name
- * @return Nothing
+ * @param group Group name
  */
 function advancedLoad(group){
     var tempIndex = 0;
@@ -3240,9 +3151,7 @@ function advancedLoad(group){
 /**
  * Jump to provision page on-click
  * 
- * @param tgtNodes
- *             Target nodes
- * @return Nothing
+ * @param tgtNodes Target nodes
  */
 function jump2Provision(tgtNodes){
     var nodeArray = tgtNodes.split(',');
@@ -3318,6 +3227,7 @@ function jump2Provision(tgtNodes){
     if (origAttrs[nodeName]['nfsserver']) {
         nfsserver = origAttrs[nodeName]['nfsserver'];
     }
+    
     window.location.href = 'provision.php?nodes=' + tgtNodes + '&arch=' + archType + '&master=' + master +
                            '&tftpserver=' + tftpserver + '&nfsserver=' + nfsserver;
 }
