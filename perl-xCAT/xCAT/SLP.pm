@@ -332,11 +332,22 @@ sub get_interfaces {
                    $_ =~ /UP(,|>)/ and
                    $_ =~ /BROADCAST/ ) {
                 my @ip = split /\n/;
-                foreach ( @ip ) {
-                    if ( $_ =~ /^\s*inet\s+/ and
-                         $_ =~ /broadcast\s+(\d+\.\d+\.\d+\.\d+)/ ) {
-                      push @{$ifacemap{$nics[$i]}->{ipv4addrs}},$1;
-
+                for my$entry  ( @ip ) {
+                    if ( $entry =~ /broadcast\s+/ and $entry =~ /^\s*inet\s+(\d+\.\d+\.\d+\.\d+)/) {
+                        my $tmpip = $1;
+                        if($entry =~ /netmask\s+(0x\w+)/) {
+                            my $mask = hex($1);
+                            my $co = 31;
+                            my $count = 0;
+                            while ($co+1) {
+                                if((($mask&(2**$co))>>$co) == 1) {
+                                    $count++;
+                                }
+                                $co--;
+                            }
+                            $tmpip = $tmpip.'/'.$count;
+                        }    
+                        push @{$ifacemap{$nics[$i]}->{ipv4addrs}},$tmpip;
                         if( $nics[$i]=~ /\w+(\d+)/){
                         $ifacemap{$nics[$i]}->{scopeidx} = $1+2;
                        }
@@ -345,8 +356,8 @@ sub get_interfaces {
             }
         }
     } else {
-            my @ipoutput = `ip addr`;
-	foreach my $line (@ipoutput) {
+        my @ipoutput = `ip addr`;
+	    foreach my $line (@ipoutput) {
 		if ($line =~ /^\d/) { # new interface, new context..
 			if ($interface and not $keepcurrentiface) {
 				#don't bother reporting unusable nics
