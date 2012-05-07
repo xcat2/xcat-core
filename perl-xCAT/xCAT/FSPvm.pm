@@ -801,7 +801,7 @@ sub enumerate {
         @td = @$d;
     }
    
-    $td[4]="fsp"; 
+    $td[4]="cec"; 
     my $action = "get_io_slot_info";
     my $values =  xCAT::FSPUtils::fsp_api_action ($request, $cec, \@td, $action);
     #my $Rc = shift(@$values);
