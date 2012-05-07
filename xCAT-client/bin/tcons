@@ -1,0 +1,18 @@
+#!/bin/sh
+f=1                                                                    
+p=0                                                                    
+for i in `nodels $1`; do                                               
+    if [ "$f" = 1 ]; then                                              
+        f=0                                                            
+    	qdate=$((`date +%s`+5))
+        tmux new-session -d -s tcons.$$ -x 800 -y 800 "rcons $i;if [ \`date +%s\` -lt $qdate ]; then echo Press enter to close; read qdate; fi"       
+        continue                                                       
+    fi                                                                 
+    tmux select-pane -t $p                                             
+    p=$((p+1))                                                         
+    qdate=$((`date +%s`+5))
+    tmux split -h "rcons $i;if [ \`date +%s\` -lt $qdate ]; then echo Press enter to close; read qdate; fi"
+    tmux select-layout tiled
+done                                                                   
+tmux select-pane -t 0
+tmux attach -t tcons.$$                                                
