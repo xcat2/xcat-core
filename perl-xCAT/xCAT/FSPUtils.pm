@@ -145,9 +145,7 @@ sub getIPaddress
     my $vpd = $request->{vpd};
     
 # only need to parse IP addresses for Frame/CEC/BPA/FSP
-    if ($type eq "lpar") {
-        $type = xCAT::DBobjUtils->getnodetype($nodetocheck);
-    }
+
     #my $type = xCAT::DBobjUtils->getnodetype($nodetocheck);
     #my $type = $$attrs[4]; 
     if ($type) {
@@ -167,7 +165,15 @@ sub getIPaddress
             } else {
                 return -3;
             }
-        } elsif ($type eq "frame" or $type eq "cec") {
+        } elsif ($type eq "frame" or $type eq "cec" or $type eq "lpar") {
+            #In DFM
+	    #1. when the node type is frame, its hcp( $nodetocheck ) is frame, 
+	    #and it will get the BPAs IPs for the Frame.
+	    #2. when the node type is CEC, its hcp( $nodetocheck ) is CEC, 
+	    #and it will get the FSPs IPs for the CEC.
+	    #3. when the node type is lpar, its hcp is the CEC.
+	    #the $nodetocheck is its' hcp. So set $nodetocheck to $parent variable. 
+	    #And then get the FSPs IPs for the CEC. 
             $parent = $nodetocheck;
         } else {
             return undef;
@@ -447,8 +453,8 @@ sub fsp_state_action {
     ############################
     $fsp_ip = getIPaddress($request, $$attrs[4], $fsp_name );
     if(!defined($fsp_ip) or ($fsp_ip == -3)) {
-        $res[0] = ["Failed to get IP address for $fsp_name."];
-        return ([$node_name, @res, -1]);	
+        $res[0] = "Failed to get IP address for $fsp_name or the related FSPs/BPAs.";
+        return ([-1, $res[0]]);	
     }
 	
     #print "fsp name: $fsp_name\n";
