@@ -4373,6 +4373,9 @@ sub network {
       if (!$ip and !$host and !$gateway and !$mask) {
         return([1,"No changes specified"]);
       }
+      if ($mpa ne $node) {
+          $host = undef;
+      }
     }
     else {
       if ( $value !~ /^\*$/) {
