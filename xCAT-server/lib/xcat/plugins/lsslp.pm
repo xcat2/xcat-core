@@ -505,7 +505,7 @@ sub invoke_dodiscover {
         $maxt = 0;
     }
 
-    
+
     my %arg;
    $arg{SrvTypes} = $services;
    $arg{Callback} = \&handle_new_slp_entity;
@@ -513,7 +513,7 @@ sub invoke_dodiscover {
    $arg{Retry} = $maxt;
    $arg{Count} = $globalopt{C} if($globalopt{C});
    $arg{Time} = $globalopt{T} if($globalopt{T});
-   
+
    my $result  = xCAT::SLP::dodiscover(%arg);
 
 
@@ -568,7 +568,7 @@ sub format_output {
     my $request = shift;
     my $length  = length( $header[IP_ADDRESSES][TEXT] );
     my $result;
-    
+
     ###########################################
     # No responses
     ###########################################
@@ -583,7 +583,7 @@ sub format_output {
     if ($globalopt{C}){
         if (scalar(keys %searchmacs) ne $globalopt{C}) {
             send_msg( $request, 0, "Timeout...Fource to return" );
-        }    
+        }
     }
     ###########################################
     # Read table to get exists data
@@ -719,7 +719,7 @@ sub read_from_table {
         }
 
         #find out all the existed nodes' type
-        my $typehashref = xCAT::DBobjUtils->getnodetype(\@nodelist, "ppc");
+        my $typehashref = xCAT::DBobjUtils->getnodetype(\@nodelist);
 
         # find out all the existed nodes' mtms and side
         my $vpdtab  = xCAT::Table->new( 'vpd' );
@@ -1019,10 +1019,10 @@ sub parse_responses {
                 $atthash{children} = ${$attributes->{'ip-address'}}[0].",".${$attributes->{'ip-address'}}[1];
                 $atthash{url} =  ${$searchmacs{$rsp}}{payload};
                 $outhash{'Server-'.$atthash{mtm}.'-SN'.$atthash{serial}} = \%atthash;
-			} else {
-			    #update frameid and cageid to fix the firmware mistake
-			    ${$outhash{$name}}{fid} = int(${$attributes->{'frame-number'}}[0]) if(int(${$attributes->{'frame-number'}}[0]) != 0);
-			    ${$outhash{$name}}{cid} = int(${$attributes->{'cage-number'}}[0]) if(int(${$attributes->{'cage-number'}}[0]) != 0);       
+            } else {
+                #update frameid and cageid to fix the firmware mistake
+                ${$outhash{$name}}{fid} = int(${$attributes->{'frame-number'}}[0]) if(int(${$attributes->{'frame-number'}}[0]) != 0);
+                ${$outhash{$name}}{cid} = int(${$attributes->{'cage-number'}}[0]) if(int(${$attributes->{'cage-number'}}[0]) != 0);
             }
         }
     }
@@ -1109,32 +1109,32 @@ sub parse_responses {
                 delete $outhash{$matchednode};
             }
         }
-    } 
-        if (exists($globalopt{I})) {
-	    my %existsnodes;
-    	my $nodelisttab = xCAT::Table->new('nodelist');
-        unless ( $nodelisttab ) {
-            return( "Error opening 'nodelisttable'" );
+    }
+    if (exists($globalopt{I})) {
+        my %existsnodes;
+    my $nodelisttab = xCAT::Table->new('nodelist');
+    unless ( $nodelisttab ) {
+        return( "Error opening 'nodelisttable'" );
+    }
+    my @nodes = $nodelisttab->getAllNodeAttribs([qw(node)]);
+            my $notdisnode;
+    for my $enode (@nodes) {
+                for my $mnode (@matchnode) {
+                        if ($enode->{node} eq ${$outhash{$mnode}}{hostname}) {
+                                $existsnodes{$enode->{node}} = 1;
+                                    last;
+                            }
         }
-        my @nodes = $nodelisttab->getAllNodeAttribs([qw(node)]);
-		my $notdisnode;
-        for my $enode (@nodes) {
-		    for my $mnode (@matchnode) {
-			    if ($enode->{node} eq ${$outhash{$mnode}}{hostname}) {
-				    $existsnodes{$enode->{node}} = 1;
-					last;
-				}
-            }				
-		}
-		
-        for my $enode (@nodes) {
-			unless ($existsnodes{$enode->{node}}) {
-				$notdisnode .= $enode->{node}.",";
-			}	
-		}
-        trace ( $request, "These nodes defined in database but can't be discovered: $notdisnode  \n", 1); 	
-	
-	}	
+            }
+
+    for my $enode (@nodes) {
+                    unless ($existsnodes{$enode->{node}}) {
+                            $notdisnode .= $enode->{node}.",";
+                    }
+            }
+    trace ( $request, "These nodes defined in database but can't be discovered: $notdisnode  \n", 1);
+
+    }
 
     return \%outhash;
 }
@@ -1542,19 +1542,19 @@ sub filter {
             if ( ${$oldhash->{$foundnode}}{hostname} =~ /^(\w+)\(.*\)/ )  {
                 if ( $1 eq $n ) {
                     $newhash->{$foundnode} = $oldhash->{$foundnode};
-                                        if (${$oldhash->{$foundnode}}{type} eq TYPE_CEC or ${$oldhash->{$foundnode}}{type} eq  TYPE_FRAME) {
-                                            my @ips =  split /,/, ${$oldhash->{$foundnode}}{children};
-                                            $newhash->{$ips[0]} = $oldhash->{$ips[0]};
-                                                $newhash->{$ips[1]} = $oldhash->{$ips[1]};
-                                        }
+                    if (${$oldhash->{$foundnode}}{type} eq TYPE_CEC or ${$oldhash->{$foundnode}}{type} eq  TYPE_FRAME) {
+                        my @ips =  split /,/, ${$oldhash->{$foundnode}}{children};
+                        $newhash->{$ips[0]} = $oldhash->{$ips[0]};
+                        $newhash->{$ips[1]} = $oldhash->{$ips[1]};
+                    }
                 }
             } elsif ( ${$oldhash->{$foundnode}}{hostname} eq $n )  {
                 $newhash->{$foundnode} = $oldhash->{$foundnode};
-                                if (${$oldhash->{$foundnode}}{type} eq TYPE_CEC or ${$oldhash->{$foundnode}}{type} eq  TYPE_FRAME) {
-                                    my @ips =  split /,/, ${$oldhash->{$foundnode}}{children};
-                                    $newhash->{$ips[0]} = $oldhash->{$ips[0]};
-                                        $newhash->{$ips[1]} = $oldhash->{$ips[1]};
-                                }
+                if (${$oldhash->{$foundnode}}{type} eq TYPE_CEC or ${$oldhash->{$foundnode}}{type} eq  TYPE_FRAME) {
+                    my @ips =  split /,/, ${$oldhash->{$foundnode}}{children};
+                    $newhash->{$ips[0]} = $oldhash->{$ips[0]};
+                    $newhash->{$ips[1]} = $oldhash->{$ips[1]};
+                }
             }
         }
     }
@@ -1621,12 +1621,28 @@ sub get_mac_for_addr {
 # Get ipv4 mac addresses
 ###########################################
 sub get_ipv4_neighbors {
+    if (xCAT::Utils->isAIX()) {
+        my @ipdata = `arp -a`;
+        %ip6neigh=();
+        for my $entry (@ipdata) {
+            if ($entry =~ /(\d+\.\d+\.\d+\.\d+)/) {
+                my $ip = $1;
+                #if ($entry =~ /at (\w+\:\w+\:\w+\:\w+\:\w+\:\w+)/) {
+                #    $ip4neigh{$ip}=$1;
+                if ($entry =~ /at (\w+)\:(\w+)\:(\w+)\:(\w+)\:(\w+)\:(\w+)/) {
+                     $ip4neigh{$ip}=$1.$2.$3.$4.$5.$6;
+                }
+
+            }
+        }
+    } else {
         #TODO: something less 'hacky'
         my @ipdata = `ip -4 neigh`;
         %ip6neigh=();
         foreach (@ipdata) {
-                if (/^(\S*)\s.*lladdr\s*(\S*)\s/) {
-                        $ip4neigh{$1}=$2;
-                }
+            if (/^(\S*)\s.*lladdr\s*(\S*)\s/) {
+                    $ip4neigh{$1}=$2;
+            }
         }
+    }
 }
