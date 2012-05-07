@@ -1989,9 +1989,6 @@ sub makeVM {
 
         # SCP file over to zHCP
         $out = `scp $userEntry $target:$userEntry`;
-        
-        # Remove user entry
-        $out = `rm $userEntry`;
 
         # Create virtual server
         $out = `ssh $hcp "$::DIR/createvs $userId $userEntry"`;
@@ -2015,8 +2012,10 @@ sub makeVM {
             # Remove user entry file (on zHCP)
             $out = `ssh -o ConnectTimeout=5 $hcp "rm $userEntry"`;
         }
-    }
-    else {
+        
+        # Remove user entry on xCAT
+        $out = `rm $userEntry`;
+    } else {
 
         # Create NOLOG virtual server
         $out = `ssh $hcp "$::DIR/createvs $userId"`;
