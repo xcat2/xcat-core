@@ -261,7 +261,7 @@ sub rflash {
 	       	
 	        my $frame = $$d[5];
                 my $type = xCAT::DBobjUtils->getnodetype($frame);
-                if ( ( $frame ne $name ) && ( $type eq "frame" ) && $activate !~ /^deferred$/){
+                if ( ( $frame ne $name ) && ( $type eq "frame" ) ){
                     
                     my @frame_d = (0, 0, 0, $frame, "frame", 0);
 	            $action = "list_firmware_level";
@@ -327,8 +327,7 @@ sub rflash {
     	  
            if($housekeeping =~ /^commit$/) { $action = "code_commit"}
            if($housekeeping =~ /^recover$/) { $action = "code_reject"}
-           if($housekeeping =~ /^bpa_acdl$/) { $action = "acdl"}
-           if($activate =~ /^(disruptive|deferred)$/) { 
+           if($activate =~ /^disruptive$/) { 
                $action = "code_update";
            }
            if($activate =~ /^concurrent$/) {
