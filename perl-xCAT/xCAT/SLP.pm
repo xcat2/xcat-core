@@ -18,6 +18,7 @@ use constant IPV6_MULTICAST_IF => 17;
 use constant IP_MULTICAST_IF => 32;
 my %xid_to_srvtype_map;
 my $xid;
+my $gprlist; 
 
 sub getmulticasthash {
 	my $hash=0;
@@ -107,6 +108,11 @@ sub dodiscover {
 		    				$peername =~ s/::ffff://;
 		    			}
 		    			$result->{peername} = $peername;
+                        if ($gprlist) {
+                            $gprlist = $gprlist.','.$peername;
+                        } else {
+                            $gprlist = $peername;
+                        }
 		    			$result->{scopeid} = $scope;
 		    			$result->{sockaddr} = $peer;
 		    			my $hashkey;
@@ -405,10 +411,11 @@ sub generate_service_request {
 	my $srvtype = $args{SrvType};
 	my $scope = "DEFAULT";
 	if ($args{Scopes}) { $scope = $args{Scopes}; }
-	my $prlist="";
-	my $packet = pack("C*",0,0); #start with PRList, we have no prlist so zero
-	#TODO: actually accumulate PRList, particularly between IPv4 and IPv6 runs
-	my $length = length($srvtype);
+	my $prlist = $gprlist;
+    my $prlength = length($prlist);
+	my $packet = pack("C*",($prlength>>8),($prlength&0xff));
+    $packet .= $prlist;
+    my $length = length($srvtype);
 	$packet .= pack("C*",($length>>8),($length&0xff));
 	$packet .= $srvtype;
 	$length = length($scope);
