@@ -146,6 +146,9 @@ sub getIPaddress
     
 # only need to parse IP addresses for Frame/CEC/BPA/FSP
 
+    if ($type eq "lpar") {
+        $type = xCAT::DBobjUtils->getnodetype($nodetocheck);
+    }
     #my $type = xCAT::DBobjUtils->getnodetype($nodetocheck);
     #my $type = $$attrs[4]; 
     if ($type) {
