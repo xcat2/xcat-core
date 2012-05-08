@@ -3517,7 +3517,6 @@ sub nodeSet {
         $propVals = xCAT::zvmUtils->getTabPropsByKey( 'networks', 'net', $network, @propNames );
         my $mask       = $propVals->{'mask'};
         my $gateway    = $propVals->{'gateway'};
-        my $ftp        = $propVals->{'tftpserver'};
 
         # Convert <xcatmaster> to nameserver IP
         my $nameserver;
@@ -3527,13 +3526,22 @@ sub nodeSet {
             $nameserver = $propVals->{'nameservers'};
         }
     
-        if ( !$network || !$mask || !$ftp || !$nameserver ) {
-
+        if ( !$network || !$mask || !$nameserver ) {
             # It is acceptable to not have a gateway
             xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing network information" );
-            xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Specify the mask, gateway, tftpserver, and nameservers for the subnet in the networks table" );
+            xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Specify the mask, gateway, and nameservers for the subnet in the networks table" );
             return;
         }
+        
+        @propNames = ( 'nfsserver' );
+        $propVals = xCAT::zvmUtils->getNodeProps( 'noderes', $node, @propNames );
+        my $nfs = $propVals->{'nfsserver'};
+        if ( !$nfs ) {
+        	$nfs = $master;
+        }
+        
+        # Combine NFS server and installation directory, e.g. 10.0.0.1/install
+        $nfs .= $installDir;
 
         # Get broadcast address of NIC
         my $ifcfg = xCAT::zvmUtils->getIfcfgByNic( $hcp, $readChannel );
@@ -3678,7 +3686,7 @@ sub nodeSet {
             #   Install=ftp://10.0.0.1/sles10.2/s390x/1/
             #   UseVNC=1  VNCPassword=12345678
             #   InstNetDev=osa OsaInterface=qdio OsaMedium=eth Manual=0
-            my $ay = "ftp://$ftp/custom/install/sles/" . $node . "." . $profile . ".tmpl";
+            my $ay = "http://$nfs/custom/install/sles/" . $node . "." . $profile . ".tmpl";
 
             $parms = $parmHeader . "\n";
             $parms = $parms . "AutoYaST=$ay\n";
@@ -3695,7 +3703,7 @@ sub nodeSet {
 
             $parms = $parms . "ReadChannel=$readChannel WriteChannel=$writeChannel DataChannel=$dataChannel\n";
             $parms = $parms . "Nameserver=$nameserver Portname=$portName Portno=0\n";
-            $parms = $parms . "Install=ftp://$ftp/$os/s390x/1/\n";
+            $parms = $parms . "Install=http://$nfs/$os/s390x/1/\n";
             $parms = $parms . "UseVNC=1 VNCPassword=12345678\n";
             $parms = $parms . "InstNetDev=$instNetDev OsaInterface=$osaInterface OsaMedium=$osaMedium Manual=0\n";
 
@@ -3791,7 +3799,7 @@ sub nodeSet {
             $out = `sed --in-place -e "/%post/r $postScript" $customTmpl`;
 
             # Edit template
-            my $url = "ftp://$ftp/$os/s390x/";
+            my $url = "http://$nfs/$os/s390x/";
             $out =
 `sed --in-place -e "s,replace_url,$url,g" \ -e "s,replace_ip,$hostIP,g" \ -e "s,replace_netmask,$mask,g" \ -e "s,replace_gateway,$gateway,g" \ -e "s,replace_nameserver,$nameserver,g" \ -e "s,replace_hostname,$hostname,g" \ -e "s,replace_rootpw,$passwd,g" \ -e "s,replace_master,$master,g" \ -e "s,replace_install_dir,$installDir,g" $customTmpl`;
 
@@ -3860,7 +3868,7 @@ sub nodeSet {
             #    GATEWAY=10.0.0.1 DNS=9.0.2.11 MTU=1500
             #    PORTNAME=UNASSIGNED PORTNO=0 LAYER2=0
             #    vnc vncpassword=12345678
-            my $ks = "ftp://$ftp/custom/install/rh/" . $node . "." . $profile . ".tmpl";
+            my $ks = "http://$nfs/custom/install/rh/" . $node . "." . $profile . ".tmpl";
 
             $parms = $parmHeader . "\n";
             $parms = $parms . "ks=$ks\n";
@@ -4330,8 +4338,7 @@ sub updateNode {
 
             # Exit loop
             last;
-        }
-        else {
+        } else {
             $network = "";
         }
     }
@@ -4348,8 +4355,8 @@ sub updateNode {
     # Get FTP server
     @propNames = ('tftpserver');
     $propVals = xCAT::zvmUtils->getTabPropsByKey( 'networks', 'net', $network, @propNames );
-    my $ftp = $propVals->{'tftpserver'};
-    if ( !$ftp ) {
+    my $nfs = $propVals->{'tftpserver'};
+    if ( !$nfs ) {
 
         # It is acceptable to not have a gateway
         xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing FTP server" );
@@ -4384,7 +4391,7 @@ sub updateNode {
             # SLES 11 requires zypper
 
             # SuSE Enterprise Linux path - ftp://10.0.0.1/sles10.3/s390x/1/
-            $path = "ftp://$ftp/$version/s390x/1/";
+            $path = "http://$nfs/install/$version/s390x/1/";
 
             # Add installation source using rug
             $out = `ssh $node "rug sa -t zypp $path $version"`;
@@ -4405,7 +4412,7 @@ sub updateNode {
         else {
 
             # Red Hat Enterprise Linux path - ftp://10.0.0.1/rhel5.4/s390x/Server/
-            $path = "ftp://$ftp/$version/s390x/Server/";
+            $path = "http://$nfs/install/$version/s390x/Server/";
 
             # Check if file.repo already has this repository location
             $out = `ssh $node "cat /etc/yum.repos.d/file.repo"`;
