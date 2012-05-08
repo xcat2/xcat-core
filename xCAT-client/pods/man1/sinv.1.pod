@@ -79,7 +79,7 @@ which will automatically build the template for you from the
 seed node named.
 
 If a template path file does not exist, and a seed node is not input,
-then sinv will automatically use the first node in the noderange as
+then sinv will automatically use the one node in the noderange as
 the seed node and build the template.
 
 
@@ -106,7 +106,7 @@ that is stored in template path.  You can use this parameter instead of running
 the command yourself to build the template.
 
 B<Note:> If the template path file does not exists, and no seed node is 
-supplied, the seed node automatically is the first node in the
+supplied, the seed node automatically is one node in the
 noderange.
 
 
