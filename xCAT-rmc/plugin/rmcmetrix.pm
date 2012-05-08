@@ -146,6 +146,7 @@ sub parse_lsrsrc_output
 	my %count = {};
 	
 	foreach $line (@$output){
+	    if ($line =~ /^ERROR/) { next;}   #skip the lines with error
 		@value = split /::/, $line;
 		$name = $value[0];
 		$name =~ s/[^A-Za-z0-9]+/'.'/;
@@ -211,7 +212,7 @@ sub getmetrix
 	my @output = ();
 	my $rrd = undef;
 	my $line = undef;
-	my $ret = undef;
+	my $ret = 0;
 	my $msg = undef;
 	my $cmd = undef;
 
@@ -243,25 +244,26 @@ sub getmetrix
 
 	if($rname eq "__ALL__"){
 		$cmd = "CT_MANAGEMENT_SCOPE=3 lsrsrc-api -i -s $rsrc"."::::Name::NodeNameList::$attr";
-		@output = xCAT::Utils->runcmd($cmd, 0);
-		if($::RUNCMD_RC != 0){
-			$line = join '', @output;
-			return ($::RUNCMD_RC, $line);
-		}
+		@output = xCAT::Utils->runcmd($cmd, -1);
+		#if($::RUNCMD_RC != 0){
+		#	$line = join '', @output;
+		#	return ($::RUNCMD_RC, $line);
+		#}
+                #print "+++++ rsrc=$rsrc\nattrs=@attrs\noutput=@output\n";
 		&parse_lsrsrc_output($rsrc, \@attrs, \@output);
 	} else {
 		@names = split /,/, $rname;
 		foreach $name (@names){
 			$cmd = "CT_MANAGEMENT_SCOPE=3 lsrsrc-api -i -s $rsrc"."::\'Name==\"$name\"\'::Name::NodeNameList::$attr";
-			@output = xCAT::Utils->runcmd($cmd, 0);
-			if($::RUNCMD_RC){
-				$line = join '', @output;
-				return ($::RUNCMD_RC, $line);
-			}
+			@output = xCAT::Utils->runcmd($cmd, -1);
+			#if($::RUNCMD_RC){
+			#	$line = join '', @output;
+			#	return ($::RUNCMD_RC, $line);
+			#}
+                        #print "--- rsrc=$rsrc\nattrs=@attrs\noutput=@output\n";
 			&parse_lsrsrc_output($rsrc, \@attrs, \@output);
 		}
 	}
-	
 	foreach $attr (keys %metrix){
 		foreach $nnlist (keys %{$metrix{$attr}}){
 			if(($nnlist ne 'summary') && ($nnlist ne 'number')){
