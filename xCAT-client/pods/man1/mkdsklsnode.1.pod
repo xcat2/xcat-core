@@ -10,11 +10,11 @@ B<mkdsklsnode [-V|--verbose] [-f|--force] [-n|--newname] [-i osimage_name] [-l l
 
 =head1 DESCRIPTION
 
-This xCAT command can be used to define and/or initialize AIX/NIM diskless machines. Once this step is completed the xCAT B<rnetboot> command may be used to initiate a network boot of the nodes.
+This xCAT command can be used to define and/or initialize AIX/NIM diskless machines. Once this step is completed you can use either the xCAT B<rnetboot> command or the B<rbootseq/rpower> commands to initiate a network boot of the nodes.
 
 The command can be used to define and initialize a new NIM machine object or it can be used to reinitialize an existing machine to use a different operating system image.
 
-This command will also create a NIM resolv_conf resource to be used when installing the node.  If a resolv_conf resource is not already included in the xCAT osimage definition and if the "domain" and "nameservers" values are set then a new resolv_conf resource will be created and the name will be added to the osimage definition.
+This command will also create a NIM resolv_conf resource to be used when installing the node.  If a resolv_conf resource is not already included in the xCAT osimage definition and if the "domain" and "nameservers" values are set then a new NIM resolv_conf resource will be created and allocated to the nodes.
 
 The "domain" and "nameservers" attributes can be set in either the xCAT "network" definition used by the nodes or in the xCAT cluster "site" definition. The setting in the "network" definition will take priority.
 
