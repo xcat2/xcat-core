@@ -59,7 +59,7 @@ sub usage
     my $usagemsg3  =
       " -p <template path> [-o output file ] [-t <template count>]\n";
     my $usagemsg4 = "      [-r remove templates] [-s <seednode>]\n";
-    my $usagemsg5 = "      [-e exactmatch] [-i ignore]\n";
+    my $usagemsg5 = "      [-e exactmatch] [-i ignore] [-V verbose]\n";
     my $usagemsg6 = "      {-c <command>  | -f <command file>}";
     my $usagemsg .= $usagemsg1 .= $usagemsg1a .= $usagemsg3 .= $usagemsg4 .=
       $usagemsg5 .= $usagemsg6;
@@ -475,18 +475,6 @@ sub parse_and_run_sinv
                    },
                    \&$cmdoutput
                    );
-        if ($? > 0)
-        {
-            my $rsp = {};
-            my $i   = 0;
-            foreach my $line (@cmdresult)
-            {
-                $rsp->{data}->[$i] = $line;
-                $i++;
-            }
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return 1;
-        }
 
         #  write the results to the tempfile after running through xdshcoll
         $rc = &storeresults($callback);
@@ -517,18 +505,6 @@ sub parse_and_run_sinv
                \&$cmdoutput
                );
 
-    if ($? > 0)
-    {
-        my $rsp = {};
-        my $i   = 0;
-        foreach my $line (@cmdresult)
-        {
-            $rsp->{data}->[$i] = $line;
-            $i++;
-        }
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return 1;
-    }
 
     #  write the results to the tempfile after running through xdshcoll
     $rc = &storeresults($callback);
@@ -1166,6 +1142,7 @@ sub writereport
     my $rsp = {};
     $ignorefirsttemplate =~ tr/a-z/A-Z/;    # convert to upper
     my $firstpass = 0;
+    my @allnodearray=();
     foreach my $template (sort keys %nodehash)
     {
 
@@ -1193,6 +1170,7 @@ sub writereport
             {
                 my @shortnodename = split(/\./, $node);
                 push @nodearray, $shortnodename[0];    # add to process list
+                push @allnodearray, $shortnodename[0];  # add to total list
                 $nodelist .= $shortnodename[0];        # add to print list
                 $nodelist .= ',';
             }
@@ -1250,7 +1228,8 @@ sub writereport
             my @shortnodename;
             chomp $dshnodename;
             $dshnodename =~ s/\s*//g;    # remove blanks
-            foreach my $nodename (@nodearray)
+            #foreach my $nodename (@nodearray)
+            foreach my $nodename (@allnodearray)
             {
                 @shortdshnodename = split(/\./, $dshnodename);
                 @shortnodename    = split(/\./, $nodename);
