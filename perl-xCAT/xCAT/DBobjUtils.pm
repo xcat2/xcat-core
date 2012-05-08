@@ -2278,11 +2278,11 @@ sub getnodetype
                         ##################################################
                         # give error msg for the nodes can't get nodetype
                         ##################################################
-                        if ( @failnodes1 ) {
-                            my $nodelist =  join(",", @failnodes1);
-                            xCAT::MsgUtils->message('S', "getnodetype:Can't find these nodes' type: $nodelist.\n");
-                        } 
                     }  
+                    if ( @failnodes1 ) {
+                        my $nodelist =  join(",", @failnodes1);
+                        xCAT::MsgUtils->message('S', "getnodetype:Can't find these nodes' type: $nodelist.\n");
+                    } 
                 }                    
             } 
             #####################
