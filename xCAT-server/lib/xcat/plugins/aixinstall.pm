@@ -767,14 +767,14 @@ sub nimnodeset
     #
     # See if we need to create a resolv_conf resource
     #
-    my %RChash;
-    %RChash = &chk_resolv_conf($callback, \%objhash, \@nodelist, \%nethash, \%imagehash, \%attrs, \%nodeosi, $subreq);
-    if ( !%RChash ){
+    my $RChash;
+    $RChash = &chk_resolv_conf($callback, \%objhash, \@nodelist, \%nethash, \%imagehash, \%attrs, \%nodeosi, $subreq);
+    if ( !$RChash ){
         my $rsp;
         push @{$rsp->{data}}, "Could not check NIM resolv_conf resource.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
     }
-    my %resolv_conf_hash = %RChash;
+    my %resolv_conf_hash = %{$RChash};
 
     #
     #  Get a list of all nim resource types
@@ -9682,14 +9682,14 @@ sub mkdsklsnode
 	#
     # See if we need to create a resolv_conf resource
     #
-	my %RChash;
-	%RChash = &chk_resolv_conf($callback, \%objhash, \@nodelist, \%nethash, \%imagehash, \%attrs, \%nodeosi, $subreq); 
-	if ( !%RChash ){
+	my $RChash;
+	$RChash = &chk_resolv_conf($callback, \%objhash, \@nodelist, \%nethash, \%imagehash, \%attrs, \%nodeosi, $subreq); 
+	if ( !$RChash ){
         my $rsp;
         push @{$rsp->{data}}, "Could not check NIM resolv_conf resource.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
     }
-	my %resolv_conf_hash = %RChash;
+	my %resolv_conf_hash = %{$RChash};
 
     #
     # define and initialize the diskless/dataless nodes
