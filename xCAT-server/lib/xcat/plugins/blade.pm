@@ -16,8 +16,10 @@ use lib "$::XCATROOT/lib/perl";
 use xCAT::Table;
 use Thread qw(yield);
 use xCAT::Utils;
+use xCAT::NetworkUtils;
 use xCAT::Usage;
 use IO::Socket;
+use IO::Pty; #needed for ssh password login
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use strict;
@@ -30,7 +32,7 @@ my %mm_comm_pids;
 my $browser;
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
-#use Data::Dumper;
+use Data::Dumper;
 use POSIX "WNOHANG";
 use Storable qw(freeze thaw);
 use IO::Select;
@@ -39,7 +41,6 @@ use Time::HiRes qw(gettimeofday sleep);
 use xCAT::DBobjUtils;
 use Getopt::Long;
 use xCAT::SvrUtils;
-use xCAT::FSPUtils;
 
 sub handled_commands {
   return {
@@ -3966,28 +3967,29 @@ sub process_request {
   while (forward_data($callback,$sub_fds)) {}
 }
 
-sub telnetcmds {
+sub clicmds {
 
   my $mpa=shift;
   my $user=shift;
   my $pass=shift;
   my $node=shift;
   my $nodeid=shift;
+  my %args=@_;
   my $value;
   my @unhandled;
   my %handled = ();
   my $result;
-  my @tcmds = qw(snmpcfg sshcfg network swnet pd1 pd2 textid network_reset rscanfsp initnetwork solcfg USERID);
+  my @tcmds = qw(snmpcfg sshcfg network swnet pd1 pd2 textid network_reset rscanfsp initnetwork solcfg userpassword USERID);
 
   # most of these commands should be able to be done
   # through SNMP, but they produce various errors.
-  foreach my $cmd (@_) {
-    if ($cmd =~ /^swnet|pd1|pd2|sshcfg|rscanfsp|USERID|=/) {
+  foreach my $cmd (@{$args{args}}) {
+    if ($cmd =~ /^swnet|pd1|pd2|sshcfg|rscanfsp|USERID|userpassword|=/) {
       if (($cmd =~ /^textid/) and ($nodeid > 0)) {
         push @unhandled,$cmd;
         next;
       }
-      my ($command,$value) = split /=/,$cmd;
+      my ($command,$value) = split /=/,$cmd,2;
 
       #$command =~ /^swnet/) allows for swnet1, swnet2, etc.
       if (grep(/^$command$/,@tcmds) || $command =~ /^swnet/) {
@@ -4000,31 +4002,72 @@ sub telnetcmds {
   unless (%handled) {
     return([0,\@unhandled]);
   }
-  require Net::Telnet;
-  my $t = new Net::Telnet(
-                Timeout=>15, 
-                Errmode=>'return',
-                Prompt=>'/system> $/'
-  );
-
-  my $Rc;
-  if (defined($handled{'initnetwork'})) {
+  my $curruser = $user;
+  my $currpass = $pass;
+  my $nokeycheck=0; #default to checking ssh key
+  if ($args{defaultcfg}) {
+    $curruser="USERID";
+    $currpass = "PASSW0RD";
+    $nokeycheck=1;
+  }
+  my $curraddr = $mpa;
+  if ($args{curraddr}) {
+	$curraddr = $args{curraddr};
+  } elsif (defined($handled{'initnetwork'})) {
     # get the IP of mpa from the hosts.otherinterfaces
     my $hoststab = xCAT::Table->new('hosts');
     if ($hoststab) {
       my $hostdata = $hoststab->getNodeAttribs($node, ['otherinterfaces']);
       if (!$hostdata->{'otherinterfaces'}) {
-      return ([1,\@unhandled,"Cannot find the temporary IP from the hosts.otherinterfaces"]);
+         return ([1,\@unhandled,"Cannot find the temporary IP from the hosts.otherinterfaces"]);
       } else {
-        $Rc = $t->open($hostdata->{'otherinterfaces'});
-        ## TRACE_LINE print "Telnet to $hostdata->{'otherinterfaces'} for the initnetwork command.\n";
+      	$curraddr = $hostdata->{'otherinterfaces'};
       }
     }
-  } else {
-    $Rc = $t->open($mpa);
-  }
-  if ($Rc) {
-    $Rc = $t->login($user,$pass); 
+  } 
+  require xCAT::SSHInteract;
+  my $t = new  xCAT::SSHInteract(
+		-username=>$curruser,
+		-password=>$currpass,
+		-host=>$curraddr,
+		-nokeycheck=>$nokeycheck,
+		-output_record_separator=>"\r",
+                Timeout=>15, 
+                Errmode=>'return',
+                Prompt=>'/system> $/'
+		);
+  my $Rc=1;
+  if ($t) { #we sshed in, but we may be forced to deal with initial password set
+	my $output = $t->get();
+	if ($output =~ /Enter current password/) {
+		$t->print($currpass);
+		$t->waitfor(-match=>"/password:/i");
+		$t->print($pass);
+		$t->waitfor(-match=>"/password:/i");
+		$t->print($pass);
+		my $result=$t->getline();
+		chomp($result);
+		$result =~ s/\s*//;
+		while ($result eq "") {
+			$result = $t->getline();
+			$result =~ s/\s*//;
+		}
+		if ($result =~ /not compliant/) {
+         		return ([1,\@unhandled,"Management module refuses requested password as insufficiently secure, try another password"]);
+		}
+	}
+  	$t->waitfor(match=>"/system> /");
+  } else {#ssh failed.. fallback to a telnet attempt for older AMMs with telnet disabled by default
+     require Net::Telnet;
+     $t = new Net::Telnet(
+                   Timeout=>15, 
+                   Errmode=>'return',
+                   Prompt=>'/system> $/'
+     );
+     $Rc = $t->open($curraddr);
+     if ($Rc) {
+       $Rc = $t->login($user,$pass); 
+     }
   }
   if (!$Rc) {
     push @cfgtext,$t->errmsg;
@@ -4045,22 +4088,28 @@ sub telnetcmds {
   }
   @data = ();
 
+  my $reset;
   foreach (keys %handled) {
     if (/^snmpcfg/)     { $result = snmpcfg($t,$handled{$_},$user,$pass,$mm); }
     elsif (/^sshcfg$/)  { $result = sshcfg($t,$handled{$_},$user,$mm); }
     elsif (/^network$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid); }
-    elsif (/^initnetwork$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid,1); }
+    elsif (/^initnetwork$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid,1); $reset=1; }
     elsif (/^swnet/)   { $result = swnet($t,$_,$handled{$_}); }
     elsif (/^pd1|pd2$/) { $result = pd($t,$_,$handled{$_}); }
     elsif (/^textid$/)  { $result = mmtextid($t,$mpa,$handled{$_},$mm); }
     elsif (/^rscanfsp$/)  { $result = rscanfsp($t,$mpa,$handled{$_},$mm); }
     elsif (/^solcfg$/)  { $result = solcfg($t,$handled{$_},$mm); }
-    elsif (/^network_reset$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid,1); }
-    elsif (/^(USERID)$/) {$result = passwd($t, $mpa, $1, $handled{$_}, $mm);}
+    elsif (/^network_reset$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid,1); $reset=1; }
+    elsif (/^(USERID)$/) {$result = passwd($t, $mpa, $1, "=".$handled{$_}, $mm);}
+    elsif (/^userpassword$/) {$result = passwd($t, $mpa, $1, $handled{$_}, $mm);}
     push @data, "$_: @$result";
     $Rc |= shift(@$result);
     push @cfgtext,@$result;
   }
+  if ($reset) {
+    $t->cmd("reset -T system:$mm");
+    push @data, "The management module has been reset to load the configuration";
+  } 
   $t->close;
   return([$Rc,\@unhandled,\@data]);
 }
@@ -4188,6 +4237,7 @@ sub mmtextid {
   if (!grep(/OK/i,@data)) {
     return([1,@data]);
   }
+  my @data = $t->cmd("config -name \"$value\" -T system"); #on cmms, this identifier is frequently relevant...
   return([0,"textid: $value"]);
 }
 
@@ -4213,9 +4263,7 @@ sub get_blades_for_mpa {
       } elsif ($att and $att->{parent} and ($att->{parent} ne $mpa)) {
           next;
       }
-      my $request;
-      my $nodetype = "blade";
-      my $hcp_ip = xCAT::FSPUtils::getIPaddress($request, $nodetype, $att->{hcp});
+      my $hcp_ip = xCAT::Utils::getIPaddress($att->{hcp});
       if (!defined($hcp_ip) or ($hcp_ip == -3)) {
           next;
       }
@@ -4236,6 +4284,12 @@ sub passwd {
   my $user = shift;
   my $pass = shift;
   my $mm = shift;
+  if ($pass =~ /^=/) {
+	$pass=~ s/=//;
+  } elsif ($pass =~ /=/) {
+	($user,$pass) = split /=/,$pass;
+  }
+	
   if (!$pass) {
     return ([1, "No param specified for '$user'"]);
   }
@@ -4250,21 +4304,19 @@ sub passwd {
     if (!grep(/OK/i, @data)) {
         return ([1, @data]);
     }
-    {
-        @data = ();
-        my $snmp_cmd = "users -n $user -ap sha -pp des -ppw $pass -T system:$mm";
-        @data = $t->cmd($snmp_cmd);
-        if (!grep(/OK/i, @data)) {
-            $cmd = "users -n $user -op $pass -p $oldpass -T system:$mm";
-            my @back_pwd = $t->cmd($cmd);
-            if (!grep(/OK/i, @back_pwd)) {
-            #if we update password backward failed, we should update the mpa table for further use#
-                $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
-            }
-            return ([1, @data]);
+    @data = ();
+    my $snmp_cmd = "users -n $user -ap sha -pp des -ppw $pass -t system:$mm";
+    @data = $t->cmd($snmp_cmd);
+    if (!grep(/ok/i, @data)) {
+        $cmd = "users -n $user -op $pass -p $oldpass -T system:$mm";
+        my @back_pwd = $t->cmd($cmd);
+        if (!grep(/OK/i, @back_pwd)) {
+            $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
         }
-
-        $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
+        return ([1, @data]);
+    }
+    $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
+    if ($user eq "USERID") {
         my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
         my $blades = &get_blades_for_mpa($mpa);
         if (!defined($blades)) {
@@ -4294,6 +4346,9 @@ sub passwd {
             my $fblades = join (',',@failed_blades);
             return ([1, "Update password of HMC for '$fblades' failed. Please recreate the DFM connections for them."]);
         }
+    } else {
+	#TODO: add new user if name mismatches what MM alread understands..
+	#additionally, may have to delete USERID in this event
     }
   } else {
     return ([1, "Update password for $user in 'mpa' table failed"]);
@@ -4404,6 +4459,9 @@ sub network {
           }
           $hosttab->close();
         }
+	unless ($ip) {
+		$ip = xCAT::NetworkUtils->getipaddr($node);
+	}
       } else {
         my $ppctab = xCAT::Table->new( 'ppc' );
         if ($ppctab) {
@@ -4455,10 +4513,6 @@ sub network {
   if ($gateway){ push @result,"Gateway: $gateway"; }
   if ($mask)   { push @result,"Subnet Mask: $mask"; }
 
-  if (defined($reset)) {
-    $t->cmd("reset -T system:$mm");
-    push @result, "The management module has been reset to load the configuration";
-  } 
   return([0,@result]);
 
 }
@@ -4526,7 +4580,8 @@ sub snmpcfg {
   # Check the type of mm
   my @data = $t->cmd("info -T system:$mm");
   if (grep(/Mach type\/model: Chassis Management Module/, @data) && $mptype ne "cmm") {
-    return ([1,"The hwtype attribute should be set to \'cmm\' for a Chassis Management Module."]);
+    $mptype="cmm";
+    #return ([1,"The hwtype attribute should be set to \'cmm\' for a Chassis Management Module."]);
   }
   # Query users on MM
   my $id;
@@ -4592,7 +4647,8 @@ sub sshcfg {
   # Check the type of mm
   @data = $t->cmd("info -T system:$mm");
   if (grep(/Mach type\/model: Chassis Management Module/, @data) && $mptype ne "cmm") {
-    return ([1,"The hwtype attribute should be set to \'cmm\' for a Chassis Management Module."]);
+    #return ([1,"The hwtype attribute should be set to \'cmm\' for a Chassis Management Module."]);
+    $mptype="cmm"; #why in the world wouldn't we have just done this from the get go????
   }
 
   # Get firmware version on MM
@@ -4914,7 +4970,7 @@ sub dompa {
         $rc = 1;
         $args = [];
       } else {
-        $result = telnetcmds($mpa,$user,$pass,$node,$slot,@exargs);
+        $result = clicmds($mpa,$user,$pass,$node,$slot,args=>\@exargs);
         $rc |= @$result[0];
         $args = @$result[1];
       }
@@ -4965,7 +5021,7 @@ sub dompa {
       if ($mptype eq "cmm") {
         # For the cmm, call the rscanfsp to discover the fsp for ppc blade
         my @telargs = ("rscanfsp");
-        telnetcmds($mpa,$user,$pass,$node,$slot,@telargs);
+        clicmds($mpa,$user,$pass,$node,$slot,args=>\@telargs);
       }
     }
   }
