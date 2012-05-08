@@ -3983,7 +3983,7 @@ sub clicmds {
 
   # most of these commands should be able to be done
   # through SNMP, but they produce various errors.
-  foreach my $cmd (@{$args{args}}) {
+  foreach my $cmd (@{$args{cmds}}) {
     if ($cmd =~ /^swnet|pd1|pd2|sshcfg|rscanfsp|USERID|userpassword|=/) {
       if (($cmd =~ /^textid/) and ($nodeid > 0)) {
         push @unhandled,$cmd;
