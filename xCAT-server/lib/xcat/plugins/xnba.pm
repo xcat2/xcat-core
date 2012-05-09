@@ -263,6 +263,9 @@ sub setstate {
 my $errored = 0;
 sub pass_along { 
     my $resp = shift;
+    if ($resp->{error} and not ref $resp->{error}) {
+	$resp->{error} = [ $resp->{error} ];
+    }
     if ($resp and ($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
         $errored=1;
     }
