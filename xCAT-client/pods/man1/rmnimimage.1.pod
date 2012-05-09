@@ -6,7 +6,7 @@ B<rmnimimage> - Use this xCAT command to remove NIM resources specified in an xC
 
 B<rmnimimage [-h|--help]>
 
-B<rmnimimage [-V|--verbose] [-d|--delete] [-x|--xcatdef] [-M|--managementnode] [-s servicenoderange] osimage_name>
+B<rmnimimage [-V|--verbose] [-f|--force] [-d|--delete] [-x|--xcatdef] [-M|--managementnode] [-s servicenoderange] osimage_name>
 
 =head1 DESCRIPTION
 
@@ -26,6 +26,8 @@ If you wish to remove NIM resources on the management node only, you can specify
 
 If you wish to also remove the xCAT osimage definition you must specify the "-x" option.
 
+This command will not remove NIM resources if they are currently being used in another xCAT osimage definition.  To see which resources are common between osimages you can specify the "-V" option.  You can override this check by specifying the "-f" option.
+
 This command will not remove NIM resources if they are currently allocated.  You must deallocate the resources before they can be removed.   See the B<xcat2nim> and B<rmdsklsnode> commands for information on how to deallocate and remove NIM machine definitions for standalone and diskless nodes.
 
 See the AIX NIM documentation for additional details on how to deallocate and remove unwanted NIM objects.
@@ -41,6 +43,10 @@ Display usage message.
 =item B<-d|--delete>	
 
 Delete any files or directories that were left after the "nim -o remove" command was run. This option will also remove the lpp_source resouce and all files contained in the lpp_source directories. When this command completes all definitions and files will be completely erased so use with caution!
+
+=item B<-f|--force>
+
+Override the check for shared resources when removing an xCAT osimage.
 
 =item B<-M|--managementnode>
 
