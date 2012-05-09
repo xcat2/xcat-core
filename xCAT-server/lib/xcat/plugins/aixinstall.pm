@@ -9194,11 +9194,6 @@ sub doSFScopy
 
     my $snlist=join(',',@SNlist);
 
-# ndebug
-my $rsp;
-push @{$rsp->{data}}, "snlist=$snlist\n";
-xCAT::MsgUtils->message("I", $rsp, $callback);
-
     # copy the /etc/hosts file all the SNs
     my $rcpcmd = "$::XCATROOT/bin/xdcp $snlist /etc/hosts /etc ";
     my $output = xCAT::Utils->runcmd("$rcpcmd", -1);
