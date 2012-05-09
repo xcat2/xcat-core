@@ -767,7 +767,8 @@ sub nimnodeset
     #
     # See if we need to create a resolv_conf resource
     #
-    my $RChash;
+
+	my $RChash;
     $RChash = &chk_resolv_conf($callback, \%objhash, \@nodelist, \%nethash, \%imagehash, \%attrs, \%nodeosi, $subreq);
     if ( !$RChash ){
         my $rsp;
@@ -5500,6 +5501,63 @@ sub prermnimimage
         return (1);
     } 
 
+	#  need to check if NIM res is mentioned in another osimage def
+	#  if not force then don't remove osimage
+
+	if (!$::FORCE) {
+		my %allosimages;
+		my %objtype;
+		foreach my $os (@deflist) {
+			$objtype{$os} = 'osimage';
+		}
+		%allosimages = xCAT::DBobjUtils->getobjdefs(\%objtype, $callback);
+		if (!(%allosimages))
+    	{
+        	my $rsp;
+        	push @{$rsp->{data}}, "Could not get xCAT image definitions.\n";
+        	xCAT::MsgUtils->message("E", $rsp, $callback);
+        	return (0);
+    	}
+
+		#  Get a list of all nim resource types
+		#
+		my @nimrestypes;
+		my $cmd = qq~/usr/sbin/lsnim -P -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
+		@nimrestypes = xCAT::Utils->runcmd("$cmd", -1);
+		if ($::RUNCMD_RC != 0)
+		{
+			my $rsp;
+			push @{$rsp->{data}}, "Could not get NIM resource types.";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return 1;
+		}
+
+		my $found=0;
+		foreach my $restype (@nimrestypes) {
+			foreach my $img (@deflist) {
+				if ($image_name ne $img) {
+
+					if ( $allosimages{$image_name}{$restype} && ($allosimages{$img}{$restype} eq $allosimages{$image_name}{$restype} )) {
+						# these two images share a resource
+						if ($::VERBOSE) {
+							my $rsp;
+							push @{$rsp->{data}}, "The osimage $image_name and $img share the common resource $allosimages{$img}{$restype}\n";
+							xCAT::MsgUtils->message("I", $rsp, $callback);
+						}
+						$found++;
+					}
+				}
+			}
+		}
+
+		if ($found) {
+			my $rsp;
+			push @{$rsp->{data}}, "One or more resources are being used in other osimage definitions.  The osimage $image_name will not be removed.  Use the force option to override this check.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return 1;
+		}
+	}
+
     # get the xCAT image definition
     my %objtype;
     $objtype{$image_name} = 'osimage';
@@ -9135,11 +9193,6 @@ sub doSFScopy
     }
 
     my $snlist=join(',',@SNlist);
-
-# ndebug
-my $rsp;
-push @{$rsp->{data}}, "snlist=$snlist\n";
-xCAT::MsgUtils->message("I", $rsp, $callback);
 
     # copy the /etc/hosts file all the SNs
     my $rcpcmd = "$::XCATROOT/bin/xdcp $snlist /etc/hosts /etc ";
