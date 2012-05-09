@@ -151,7 +151,8 @@ sub do_blade_setup {
 	}
 	require xCAT_plugin::blade;
 	my @cmds = qw/snmpcfg=enable sshcfg=enable textid=* initnetwork=*/;
-	my $result = xCAT_plugin::blade::clicmds(
+	my $result;
+	my $rc = eval { $result = xCAT_plugin::blade::clicmds(
 						 $nodename,
 						 $localuser,
 						 $localpass,
@@ -160,6 +161,11 @@ sub do_blade_setup {
 						 curraddr=>$addr,
 						 defaultcfg=>1,
 						 cmds=>\@cmds );
+		1;
+	};
+        if (not $rc) {
+		sendmsg([1,"Failed to set up Management module due to $@"],$callback,$nodename);
+	}
 	if ($result) {
 		if ($result->[0]) {
 			sendmsg([$result->[0],$result->[2]],$callback,$nodename);
