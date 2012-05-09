@@ -104,11 +104,7 @@ B<rspconfig> I<noderange> B<solcfg>={B<enable>|B<disable>}
 
 B<rspconfig> I<noderange> B<textid>={B<*|textid>}
 
-B<rspconfig> I<noderange> B<HMC>={B<newpasswd>}
-
 B<rspconfig> I<noderange> B<USERID>={B<newpasswd>}
-
-B<rspconfig> I<noderange> B<cec_off_policy>={B<poweroff>|B<stayon>}
 
 =head2 BPA/Frame Specific:
 
@@ -330,7 +326,7 @@ The subnet mask.
 
 For MPA:  get or set the MPA network parameters. If '*' is specified, all parameters are read from the xCAT database.
 
-For FSP of NGP blade server: set the network parameters. If '*' is specified, all parameters are read from the xCAT database.
+For FSP of NGP blade server: set the network parameters. If '*' is specified, all parameters are read from the xCAT database. If the object node is blade, the 'host' parameter shall not specified.
 
 =item B<initnetwork>={[I<ip>],[I<host>],[I<gateway>],[I<netmask>]|*}
 
