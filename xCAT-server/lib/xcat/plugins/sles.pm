@@ -101,6 +101,8 @@ sub mknetboot
         my $provmethod;
         my $rootimgdir;
         my $nodebootif; # nodebootif will be used if noderes.installnic is not set
+        my $dump;  #for kdump
+        my $crashkernelsize;
         my $rootfstype;
 	
 	    my $ent= $ntents->{$node}->[0];
@@ -121,12 +123,18 @@ sub mknetboot
 		            if (!$linuximagetab) {
 			            $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
 		            }
-		            (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'rootimgdir', 'nodebootif');
+		            (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'rootimgdir', 'nodebootif', 'dump', 'crashkernelsize');
 		            if (($ref1) && ($ref1->{'rootimgdir'})) {
 			            $img_hash{$imagename}->{rootimgdir}=$ref1->{'rootimgdir'};
 		            }
                     if (($ref1) && ($ref1->{'nodebootif'})) {
                         $img_hash{$imagename}->{nodebootif} = $ref1->{'nodebootif'};
+                    }
+		 			if (($ref1) && ($ref1->{'dump'})){
+						$img_hash{$imagename}->{dump} = $ref1->{'dump'};
+					}
+					if (($ref1) && ($ref1->{'crashkernelsize'})) {
+                        $img_hash{$imagename}->{crashkernelsize} = $ref1->{'crashkernelsize'};
                     }
 		        } else {
 		            $callback->(
@@ -142,6 +150,8 @@ sub mknetboot
             $rootfstype = $ph->{rootfstype};
             $nodebootif = $ph->{nodebootif};
 	    $provmethod = $ph->{provmethod};
+			$dump = $ph->{dump};
+			$crashkernelsize = $ph->{crashkernelsize};
 	
 	        $rootimgdir = $ph->{rootimgdir};
 	        unless ($rootimgdir) {
@@ -175,6 +185,26 @@ sub mknetboot
                     errorcode => [1]}
                 );
             }
+
+			#get the dump path and kernel crash memory side for kdump on sles
+			if (!$linuximagetab){
+				$linuximagetab = xCAT::Table->new('linuximage');
+			}
+			if ($linuximagetab){
+				(my $ref1) = $linuximagetab->getAttribs({imagename => $imgname}, 'dump', 'crashkernelsize');
+				if ($ref1 && $ref1->{'dump'}){
+					$dump = $ref1->{'dump'};
+				}
+				if ($ref1 and $ref1->{'crashkernelsize'}){
+					$crashkernelsize = $ref1->{'crashkernelsize'};
+				}
+			}
+			else{
+				$callback->(
+                    { error => [qq{ Cannot find the linux image called "$osver-$arch-$imgname-$profile", maybe you need to use the "nodeset <nr> osimage=<your_image_name>" command to set the boot state}],
+                    errorcode => [1] }
+                );
+			}
 
 	        $rootimgdir="$installroot/netboot/$osver/$arch/$profile";
 	    }
@@ -488,6 +518,22 @@ sub mknetboot
                 $kcmdline .= "n8r";
             }
         }
+
+		#create the kcmd for node to support kdump
+		if ($dump){
+			if ($crashkernelsize){
+				$kcmdline .= " crashkernel=$crashkernelsize dump=$dump ";
+			}
+			else{
+				# for ppc64, the crashkernel paramter should be "128M@32M", otherwise, some kernel crashes will be met
+				if ($arch eq "ppc64"){
+					$kcmdline .= " crashkernel=256M\@64M dump=$dump ";
+				}
+				if ($arch =~ /86/){
+					$kcmdline .= " crashkernel=128M dump=$dump ";
+				}
+			}
+		}
 
         my $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-stateless.gz";
         $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-statelite.gz" if ($statelite);

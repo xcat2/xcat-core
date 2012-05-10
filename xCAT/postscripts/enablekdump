@@ -4,6 +4,15 @@
 # 
 
 # create /etc/sysconfig/network-scripts/
+pmatch ()
+{
+  case $1 in
+    $2) return 0;;  # zero return code means string matched by pattern
+  esac
+
+  return 1          # non-zero return code means string not matched by pattern
+}
+
 for i in `/bin/cat /proc/cmdline`; do
     KEY=`/bin/echo $i  | /bin/awk -F= '{print $1}'`
     if [ "$KEY" = "ifname" ]; then
@@ -13,7 +22,7 @@ for i in `/bin/cat /proc/cmdline`; do
         break
     elif [ "$KEY" = "netdev" ]; then
         ETHX=`/bin/echo $i | /bin/awk -F= '{print $2}'`
-        MACX=`/sbin/ip link show $netdev | /bin/grep ether | /bin/awk '{print $2}'`
+        MACX=`/sbin/ip link show $ETHX | /bin/grep ether | /bin/awk '{print $2}'`
         break
     elif [ "$KEY" = "BOOTIF" ]; then
         MACX=`/bin/echo $i | /bin/awk -F= '{print $2}'`
@@ -23,13 +32,19 @@ for i in `/bin/cat /proc/cmdline`; do
 done
 
 if [ ! -z "$MACX" ] && [ ! -z "$ETHX" ]; then
-    if [ ! -e $MNTDIR/etc/sysconfig/network-scripts/ifcfg-$ETHX ]; then
-        /bin/touch $MNTDIR/etc/sysconfig/network-scripts/ifcfg-$ETHX
+	if (pmatch $OSVER "sles*") || (pmatch $OSVER "suse*") || [ -f /etc/SuSE-release ]; then
+		CONFFILE=$MNTDIR/etc/sysconfig/network/ifcfg-$ETHX
+	fi
+	if (pmatch $OSVER "fedora*") || (pmatch $OSVER "rhel6*") || (pmatch $OSVER "rhels6*") || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ];then
+		CONFFILE=$MNTDIR/etc/sysconfig/network-scripts/ifcfg-$ETHX
+	fi
+    if [ ! -e $CONFFILE ]; then
+        /bin/touch $CONFFILE
     fi
-    echo "DEVICE=$ETHX" > $MNTDIR/etc/sysconfig/network-scripts/ifcfg-$ETHX
-    echo "BOOTPROTO=dhcp" >> $MNTDIR/etc/sysconfig/network-scripts/ifcfg-$ETHX
-    echo "HWADDR=$MACX" >> $MNTDIR/etc/sysconfig/network-scripts/ifcfg-$ETHX
-    echo "ONBOOT=yes" >> $MNTDIR/etc/sysconfig/network-scripts/ifcfg-$ETHX
+    echo "DEVICE=$ETHX" > $CONFFILE
+    echo "BOOTPROTO=dhcp" >> $CONFFILE
+    echo "HWADDR=$MACX" >> $CONFFILE
+    echo "ONBOOT=yes" >> $CONFFILE
 fi
 
 
@@ -62,17 +77,39 @@ if [ ! -z "$DUMP" ]; then
         KDIP=${XCAT%:*}
     fi
 
-    if [ "$KDPROTO" = "nfs" ]; then
-        echo "net $KDIP:$KDPATH" > /etc/kdump.conf
-    fi
-
     # workaround for RHEL6
     # the $KDIP:$KDPATH directory will be used to generate the initrd for kdump service
-    /bin/mount $KDIP:$KDPATH /var/tmp
+    MOUNTPATH=""
+    if (pmatch $OSVER "*6\.*" ); then
+	MOUNTPATH="/tmp"
+    else
+	MOUNTPATH="/var/tmp"
+    fi 
+    /bin/mount $KDIP:$KDPATH $MOUNTPATH
 
-    /etc/init.d/kdump restart
+    if [ "$KDPROTO" = "nfs" ]; then
+	if (pmatch $OSVER "sles*") || (pmatch $OSVER "suse*") || [ -f /etc/SuSE-release ]; then
+	    KDPATH=${KDPATH//\//\\\/}
+	    KDPATH="nfs:\/\/${KDIP}${KDPATH}"
+	    sed -i "s/^KDUMP_SAVEDIR=.*$/KDUMP_SAVEDIR=\"${KDPATH}\"/" /etc/sysconfig/kdump
+            sed -i "s/^KDUMP_COPY_KERNEL=.*$/KDUMP_COPY_KERNEL=no/" /etc/sysconfig/kdump
+            #change the mount and remount shell scripts' name, workaround for kdump on stateless node
+            oldmount=`ls /lib/mkinitrd/boot/*-mount.sh`
+            oldremount=`ls /lib/mkinitrd/boot/*-remount.sh`
+            mv $oldmount ${oldmount}.bak
+            mv $oldremount ${oldremount}.bak
+	    /etc/init.d/boot.kdump restart
+            mv ${oldmount}.bak $oldmount
+            mv ${oldremount}.bak $oldremount
+	else
+	    if (pmatch $OSVER "fedora*") || (pmatch $OSVER "rhel6*") || (pmatch $OSVER "rhels6*") || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ];then
+		echo "net $KDIP:$KDPATH" > /etc/kdump.conf
+		/etc/init.d/kdump restart
+	    fi
+	fi
+    fi
 
-    /bin/umount /var/tmp
+    /bin/umount $MOUNTPATH
 else
     /bin/echo "The kdump server is not configured"
 fi
