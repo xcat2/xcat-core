@@ -739,6 +739,10 @@ sub new
             return undef;
         }
     } else { #direct db access mode
+        if ($opentables{$self->{tabname}}->{$self->{autocommit}}) { #if we are inside the db worker and asked to create a new table that is already open, just return a reference to that table
+								    #generally speaking, this should cause a lot of nodelists to be shared
+		return $opentables{$self->{tabname}}->{$self->{autocommit}};
+        }
         $self->{dbuser}="";
         $self->{dbpass}="";
 
