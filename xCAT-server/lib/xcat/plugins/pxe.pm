@@ -17,7 +17,7 @@ my $globaltftpdir = xCAT::Utils->getTftpDir();
 #my $dhcpver = 3;
 
 my %usage = (
-    "nodeset" => "Usage: nodeset <noderange> [install|shell|boot|runcmd=bmcsetup|netboot|iscsiboot|osimage=<imagename>|statelite]",
+    "nodeset" => "Usage: nodeset <noderange> [install|shell|boot|runcmd=bmcsetup|netboot|iscsiboot|osimage=<imagename>|statelite|offline]",
 );
 sub handled_commands {
   return {
