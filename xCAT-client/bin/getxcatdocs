@@ -71,7 +71,7 @@ my $docname="xcat-docs-snap$date.tar.gz";
 #system('pwd');
 my $cmd = "tar -zcf $docname html pdf 2>&1";
 verbose($cmd);
-system($cmd);
+system($cmd) == 0 or die "Error running $cmd: $!, rc=$?";
 
 # Optionally upload the tarball to sourceforge
 if ($UPLOAD || $UPLOADONLY) {
@@ -106,14 +106,28 @@ sub gethtmldocs {
 	print "Downloading the xCAT wiki documentation to $dir, from: $indexes ...\n";
 	runwget($indexes);
 	
-	# remove the dir portion of links to other docs
+	# Remove the funny chars from the links to other docs and rename the docs
 	#my $sedcmd = q(sed -i 's/<a href="\/apps\/mediawiki\/xcat\/index.php?title/<a href="index.php%3Ftitle/' *);
-	my $sedcmd = q(sed -i 's/<a href="index.php?title/<a href="index.php%3Ftitle/g' *);
-	print "$sedcmd\n";
-	system($sedcmd);
+	# sed -i 's/href="index.php%3Ftitle=/href="/g' index.php\?title\=
+	# sed -i 's/<a href="\([^"]*\)"/<a href="\1.html"/'
+	# This searches for '<a href="index.php?title=' and then all text before a '"' or '#', and then removes the front part and add .html on the end
+	# Note: this does not convert the 'MediaWiki:*' files because they are used in <link> tags, but converting them does not seem to do any good anyway.
+	my $cmd = q(sed -i 's/<a href="index.php?title=\\([^"#]*\\)\\("\|#\\)/<a href="\1.html\2/g' *);
+	verbose($cmd);
+	system($cmd) == 0 or die "Error running $cmd: $!, rc=$?";
 	# get the list of docs
 	opendir(DIR, '.') or die "Error: could not read the just created html directory.\n";
-	my @docs = grep /^index.php\?title=/, readdir(DIR);		# /
+	#my @docs = grep /^index.php\?title=/, readdir(DIR);		# /
+	my @docs;
+	foreach my $f (readdir(DIR)) {
+		if ($f !~ /^index.php\?title=/ || $f =~ /^index.php\?title=MediaWiki:/) { next; }
+		my $newf = $f;
+		$newf =~ s/^index.php\?title=//;
+		if ($newf !~ /\./) { $newf .= '.html'; }
+		verbose("Renaming $f to $newf");
+		rename($f, $newf);
+		push @docs, $newf;
+	}
 	close(DIR);
 	chdir($savedir);
 	return @docs;
@@ -130,11 +144,13 @@ sub convert2pdf {
 	if (system('which xhtml2pdf >/dev/null 2>&1')) { die "xhtml2pdf is not installed.  See http://sourceforge.net/apps/mediawiki/xcat/index.php?title=Editing_xCAT_Documentation_Pages#Converting_Wiki_Pages_to_HTML_and_PDFs .\n"; }
 	unlink <*>;		# delete all the files in the dir, in case they previously ran this
 	foreach my $file (@$files) {
-		if ($file =~ /^index.php\?title=MediaWiki:/ || $file eq 'index.php?title=XCAT_Documentation') { next; }
-		my ($docname) = $file =~ /^index.php\?title=(.+)$/;
-		print "Converting $docname to PDF format...\n";
-		my $url = "http://sourceforge.net/apps/mediawiki/xcat/$file&printable=yes";
-		my $destfile = "$docname.pdf";
+		#if ($file =~ /^index.php\?title=MediaWiki:/ || $file eq 'index.php?title=XCAT_Documentation') { next; }
+		if ($file eq 'XCAT_Documentation') { next; }
+		#my ($docname) = $file =~ /^index.php\?title=(.+)$/;
+		$file =~ s/\.html$//;
+		print "Converting $file to PDF format...\n";
+		my $url = 'http://sourceforge.net/apps/mediawiki/xcat/index.php?title=' . $file . '&printable=yes';
+		my $destfile = "$file.pdf";
 		my $cmd = "xhtml2pdf '$url' '$destfile' ";
 		runh2p($cmd);
 	}
@@ -147,7 +163,8 @@ sub runwget {
 	my $index = shift;
 	# options we might consider: --html-extension --restrict-file-names=windows  --cut-dirs=3
 	# options that do not work:  --relative
-	my $rejectlist = q('*title=Special:*,*title=Talk:*,*title=-&*,*title=HowTos,*title=Main_Page,*title=MediaWiki:*,*title=Release_Notes,*title=Wish_List_for_xCAT_2,*&action=edit*,*&action=history*,*&printable=yes*,*&oldid=*,index.html,opensearch_desc.php,xcat,login.php,support');
+	#my $rejectlist = q('*title=Special:*,*title=Talk:*,*title=-&*,*title=HowTos,*title=Main_Page,*title=MediaWiki:*,*title=Release_Notes,*title=Wish_List_for_xCAT_2,*&action=edit*,*&action=history*,*&printable=yes*,*&oldid=*,index.html,opensearch_desc.php,xcat,login.php,support');
+	my $rejectlist = q('*title=Special:*,*title=Talk:*,*title=-&*,*title=HowTos,*title=Main_Page,*title=Release_Notes,*title=Wish_List_for_xCAT_2,*&action=edit*,*&action=history*,*&printable=yes*,*&oldid=*,index.html,opensearch_desc.php,xcat,login.php,support');
 	my $cmd = qq(wget --recursive --convert-links --no-verbose --progress=bar --level=1 --page-requisites --no-parent --no-host-directories --no-directories --no-clobber --execute robots=off --post-data='printable=yes' --reject $rejectlist $index);
 	verbose($cmd);
 	open(OUT, "$cmd 2>&1 |") || die "can't fork $cmd: $!\n";
