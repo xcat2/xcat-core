@@ -66,13 +66,13 @@ sub dodiscover {
 	my $interfaces = get_interfaces(%args);
     if ($args{Ip}) {
         my @ips = split /,/, $args{Ip};
-            foreach my $ip (@ips) {
-                foreach my $nic (keys %$interfaces) {
-                        unless (${${$interfaces->{$nic}}{ipv4addrs}}[0] =~ $ip) {
-                                delete $interfaces->{$nic};
-                            }
-                    }
+        foreach my $ip (@ips) {
+            foreach my $nic (keys %$interfaces) {
+                unless (${${$interfaces->{$nic}}{ipv4addrs}}[0] =~ $ip) {
+                    delete $interfaces->{$nic};
+                }
             }
+        }
     }
 	foreach my $srvtype (@srvtypes) {
 		send_service_request_single(%args,ifacemap=>$interfaces,SrvType=>$srvtype);
@@ -84,7 +84,7 @@ sub dodiscover {
 		$waitforsocket->add($args{'socket'});
 		my $retrytime = ($args{Retry}>0)?$args{Retry}+1:1;
 		for(my $i = 0; $i < $retrytime; $i++){
-                    my $waittime = ($args{Time}>0)?$args{Time}:3;
+            my $waittime = ($args{Time}>0)?$args{Time}:3;
 		    my $deadline=time()+$waittime;
 		    while ($deadline > time()) {
 		    	while ($waitforsocket->can_read(1)) {
@@ -109,7 +109,7 @@ sub dodiscover {
 		    			}
 		    			$result->{peername} = $peername;
                         if ($gprlist) {
-                            $gprlist = $gprlist.','.$peername;
+                            $gprlist = $gprlist.','.$peername if($rspcount < 100);
                         } else {
                             $gprlist = $peername;
                         }
@@ -119,12 +119,12 @@ sub dodiscover {
 		    			if ($peername =~ /fe80/) {
 		    				$peername .= '%'.$scope;
 		    			}
+                        $rspcount++;
 		    			$rethash{$peername} = $result;
 		    			if ($args{Callback}) {
 		    				$args{Callback}->($result);
 		    			}
 		    		}
-                    $rspcount++;
 		    	}
                 if ($args{Time} and $args{Count}) {
                     if ($rspcount >= $args{Count}) {
