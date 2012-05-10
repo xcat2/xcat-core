@@ -165,7 +165,7 @@ sub getIPaddress
             } else {
                 return -3;
             }
-        } elsif ($type eq "frame" or $type eq "cec" or $type eq "lpar") {
+        } elsif ($type eq "frame" or $type eq "cec" or ($type =~ /lpar/i)) {
             #In DFM
 	    #1. when the node type is frame, its hcp( $nodetocheck ) is frame, 
 	    #and it will get the BPAs IPs for the Frame.
