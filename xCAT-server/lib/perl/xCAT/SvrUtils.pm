@@ -10,7 +10,7 @@ use lib "$::XCATROOT/lib/perl";
 require xCAT::Table;
 require xCAT::Utils;
 require xCAT::NetworkUtils;
-use File::Basename;
+use File::Path;
 
 use strict;
 use Exporter;
