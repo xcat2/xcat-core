@@ -55,6 +55,10 @@ Prepare server for deploying diskless nodes. With the diskless solution, the os 
 
 Prepare server for deploying statelite nodes. Statelite provides an efficient and flexible diskless solution because most of the OS image is NFS mounted read-only, but a configurable list of directories and files can be read-write. The read-write files can either be persistent across reboots, or volatile (restoring to pristine state after reboot). The configuration can be  done through B<litefile>, B<litetree> and B<statelite> tables. 
 
+=item B<offline>
+
+Cleanup the current pxe/tftp boot configuration files for the nodes requested
+
 =item B<osimage=<imagename>>
 
 Prepare server for installing a node using the sepcified os image. The os image is defined in the I<osimage> table and I<linuximage> table.  
