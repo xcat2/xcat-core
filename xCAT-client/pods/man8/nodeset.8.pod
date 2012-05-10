@@ -57,7 +57,7 @@ Prepare server for deploying statelite nodes. Statelite provides an efficient an
 
 =item B<offline>
 
-Clean the current boot configuration files for the nodes requested
+Cleanup the current pxe/tftp boot configuration files for the nodes requested
 
 =item B<osimage=<imagename>>
 
