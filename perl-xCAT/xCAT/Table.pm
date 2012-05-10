@@ -2232,7 +2232,9 @@ $evalcpt->permit('require');
 sub getNodeAttribs
 {
     my $self    = shift;
-    if ($dbworkerpid) {
+    if ($dbworkerpid) { #TODO: should this be moved outside of the DB worker entirely?  I'm thinking so, but I don't dare do so right now...
+			#the benefit would be the potentially computationally intensive substitution logic would be moved out and less time inside limited
+			#db worker scope
         return dbc_call($self,'getNodeAttribs',@_);
     }
     my $node    = shift;
@@ -2245,7 +2247,29 @@ sub getNodeAttribs
         @attribs = @_;
     }
     my $datum;
+    my $oldusecache;
+    if ($options{eagercache}) { #TODO: If this *were* split out of DB worker, this logic would have to move *into* returnany
+        if ($self->{tabname} eq 'nodelist') { #a sticky situation
+            my @locattribs=@attribs;
+            unless (grep(/^node$/,@locattribs)) {
+                push @locattribs,'node';
+            }
+            unless (grep(/^groups$/,@locattribs)) {
+                push @locattribs,'groups';
+            }
+            $self->_build_cache(\@locattribs);
+        } else {
+            $self->_build_cache(\@attribs);
+            $self->{nodelist}->_build_cache(['node','groups']);
+        }
+ 	$oldusecache=$self->{_use_cache};
+	$self->{_use_cache}=1;
+    }
     my @data = $self->getNodeAttribs_nosub_returnany($node, \@attribs,%options);
+    if ($options{eagercache}) {
+	$self->{_use_cache}=$oldusecache;
+	#in this case, we just let the cache live, even if it is to be ignored by most invocations
+    }
     #my ($datum, $extra) = $self->getNodeAttribs_nosub($node, \@attribs);
     #if ($extra) { return undef; }    # return (undef,"Ambiguous query"); }
     defined($data[0])
