@@ -2036,7 +2036,6 @@ sub chkosimage
 		}
 	}
 
-
 	# get installp filesets in this dir
 	my $icmd = qq~installp -L -d $instp_srcdir | /usr/bin/cut -f2 -d':' 2>/dev/null~;
 	my @ilist = xCAT::Utils->runcmd("$icmd", -1);
@@ -11341,7 +11340,6 @@ sub checkNIMnetworks
 
 		Also does the NIM setup for additional networks if necessary.
 
-
         Arguments:
         Returns:
                 0 - OK
@@ -13438,13 +13436,17 @@ sub parse_otherpkgs
             }
             push @rpm_pkgs, $pname;    
         }
-        elsif (($p =~ /epkg\.Z/))
+
+# ndebug
+		elsif (($p =~ /epkg\.Z/) || ($p =~ /^E:/))
         {
 			if ($p =~ /:/)
 			{
 				($junk, $pname) = split(/:/, $p);
+			} else {
+				$pname = $p;
 			}
-            push @epkgs, $p;
+            push @epkgs, $pname;
         }
         else
         {
