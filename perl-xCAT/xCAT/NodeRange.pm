@@ -37,6 +37,7 @@ my %allnodehash;
 my @grplist;
 my $didgrouplist;
 my %allgrphash;
+my $allgrphashstamp;
 my $retaincache=0;
 my $recurselevel=0;
 
@@ -237,7 +238,8 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
          # The atom is not a dynamic node group, is it a static node group???
          if(!$isdynamicgrp)
          {
-            unless (scalar %allgrphash) { #build a group membership cache
+            unless (scalar %allgrphash and (time() < ($allgrphashstamp+5))) { #build a group membership cache
+		$allgrphashstamp=time();
                 my $nlent;
 	            foreach $nlent (@allnodeset) { 
 	                my @groups=split(/,/,$nlent->{groups}); 
@@ -540,7 +542,7 @@ sub noderange {
     $nodelist =xCAT::Table->new('nodelist',-create =>1); 
     $nodelist->_set_use_cache(0); #TODO: a more proper external solution
     @cachedcolumns = ('node','groups');
-    $nodelist->_build_cache(\@cachedcolumns);
+    $nodelist->_build_cache(\@cachedcolumns,noincrementref=>1);
     $nodelist->_set_use_cache(1); #TODO: a more proper external solution
   }
   my %nodes = ();
@@ -624,9 +626,9 @@ sub noderange {
     if ($recurselevel) {
         $recurselevel--;
     } else {
-        unless ($retaincache) {
-            retain_cache(0);
-        }
+        #unless ($retaincache) {
+        #    retain_cache(0);
+        #}
     }
     return sort (keys %nodes);
 
