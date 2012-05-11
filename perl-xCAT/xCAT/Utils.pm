@@ -6309,12 +6309,18 @@ sub enablessh
     {
 
         # if not a service node we need to check, before enabling
-        my $sitetab    = xCAT::Table->new('site');
-        my $attr = "sshbetweennodes";
-        my $ref = $sitetab->getAttribs({key => $attr}, 'value');
-        if ($ref)
-        {
-            my $values = $ref->{value};
+        my $values;
+	if (keys %::XCATSITEVALS) {
+		$values=$::XCATSITEVALS{sshbetweennodes};
+	} else {
+	        my $sitetab    = xCAT::Table->new('site');
+	        my $attr = "sshbetweennodes";
+	        my $ref = $sitetab->getAttribs({key => $attr}, 'value');
+	        if ($ref) {
+            	   $values = $ref->{value};
+	        }
+ 	}
+	if ($values) {
             my @groups = split(/,/, $values);
             if (grep(/^ALLGROUPS$/, @groups))
             {
