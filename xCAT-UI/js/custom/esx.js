@@ -19,7 +19,7 @@ var esxPlugin = function() {
  */
 esxPlugin.prototype.loadConfigPage = function(tabId) {    
     var configAccordion = $('<div id="esxConfigAccordion"></div>');
-    
+        
     // Create accordion panel for user
     var userSection = $('<div id="esxConfigUser"></div>');
     var userLnk = $('<h3><a href="#">Users</a></h3>').click(function () {
@@ -28,32 +28,46 @@ esxPlugin.prototype.loadConfigPage = function(tabId) {
             return;
         else
             $('#esxConfigUser').append(createLoader(''));
-        
-        // Get user data
+
         loadUserPanel('esxConfigUser');
     });
     
     // Create accordion panel for profiles
     var profileSection = $('<div id="esxConfigProfile"></div>');
-    profileSection.append(createInfoBar('Create, edit, and delete virtual machine profiles used in the self-service portal'));
     var profileLnk = $('<h3><a href="#">Profiles</a></h3>').click(function () {
-        
+        // Do not load panel again if it is already loaded
+        if ($('#esxConfigProfile').find('.dataTables_wrapper').length)
+            return;
+        else
+            $('#esxConfigProfile').append(createLoader(''));
+
+    });
+    
+    // Create accordion panel for images
+    var imgSection = $('<div id="esxConfigImages"></div>');
+    var imgLnk = $('<h3><a href="#">Images</a></h3>').click(function () {
+        // Do not load panel again if it is already loaded
+        if ($('#esxConfigImages').find('.dataTables_wrapper').length)
+            return;
+        else
+            $('#esxConfigImages').append(createLoader(''));
+
+        queryImages('esxConfigImages');
     });
     
     // Create accordion panel for groups
     var groupsSection = $('<div id="esxConfigGroups"></div>');
     var groupsLnk = $('<h3><a href="#">Groups</a></h3>').click(function () {
+        // Do not load panel again if it is already loaded
+        if ($('#esxConfigGroups').find('.dataTables_wrapper').length)
+            return;
+        else
+            $('#esxConfigGroups').append(createLoader(''));
 
-    });    
-    
-    // Create accordion panel for nodes
-    var nodeSection = $('<div id="esxConfigNode"></div>');
-    nodeSection.append(createInfoBar('Modify node attributes'));
-    var nodeLnk = $('<h3><a href="#">Nodes</a></h3>').click(function () {
-        
+        queryGroups('esxConfigGroups');
     });
-    
-    configAccordion.append(userLnk, userSection, profileLnk, profileSection, groupsLnk, groupsSection, nodeLnk, nodeSection);
+        
+    configAccordion.append(userLnk, userSection, profileLnk, profileSection, imgLnk, imgSection, groupsLnk, groupsSection);
     $('#' + tabId).append(configAccordion);
     configAccordion.accordion();
     
