@@ -2938,6 +2938,7 @@ sub getAllNodeAttribs
     }
     my $attribq = shift;
     my $hashretstyle = shift;
+    my %options=@_;
     my $rethash;
     my @results = ();
     my %donenodes
@@ -2956,10 +2957,12 @@ sub getAllNodeAttribs
     $query = $self->{dbh}->prepare($qstring);
     $query->execute();
     xCAT::NodeRange::retain_cache(1);
+    unless (%options{prefetchcache}) {
     $self->{_use_cache} = 0;
     $self->{nodelist}->{_use_cache}=0;
     $self->_clear_cache();
     $self->{nodelist}->_clear_cache();
+    }
     $self->_build_cache($attribq);
     $self->{nodelist}->_build_cache(['node','groups']);
     $self->{_use_cache} = 1;
@@ -2969,9 +2972,14 @@ sub getAllNodeAttribs
 
         unless ($data->{$nodekey} =~ /^$/ || !defined($data->{$nodekey}))
         {    #ignore records without node attrib, not possible?
-            my @nodes =
-              xCAT::NodeRange::noderange($data->{$nodekey})
-              ;    #expand node entry, to make groups expand
+	    
+            my @nodes;
+	    unless ($self->{nrcache}->{$data->{$nodekey}} and (($self->{nrcache}->{$data->{$nodekey}}->{tstamp} + 5) > time())) {
+		my @cnodes = xCAT::NodeRange::noderange($data->{$nodekey});
+		$self->{nrcache}->{$data->{$nodekey}}->{value} = \@cnodes; 
+		$self->{nrcache}->{$data->{$nodekey}}->{tstamp} = time();
+	    }
+            @nodes = @{$self->{nrcache}->{$data->{$nodekey}}->{value}};    #expand node entry, to make groups expand
             unless (@nodes) { #in the event of an entry not in nodelist, use entry value verbatim
                 @nodes = ($data->{$nodekey});
             }

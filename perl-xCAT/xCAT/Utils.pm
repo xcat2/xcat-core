@@ -3896,7 +3896,7 @@ sub isSN
         return 0;
 
     }
-    my @nodes = $servicenodetab->getAllNodeAttribs(['tftpserver']);
+    my @nodes = $servicenodetab->getAllNodeAttribs(['tftpserver'],undef,prefetchcache=>1);
     $servicenodetab->close;
     foreach my $nodes (@nodes)
     {
