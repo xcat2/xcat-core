@@ -152,13 +152,17 @@ sub get_nodeset_state
     {
         $node = shift;
     }
+    my %options=@_;
+    my %gnopts;
+    if ($options{prefetchcache}) { $gnopts{prefetchcache}=1; }
+
 
     my $state = "undefined";
     my $tftpdir;
 
     #get boot type (pxe, yaboot or aixinstall)  for the node
     my $noderestab = xCAT::Table->new('noderes', -create => 0);
-    my $ent = $noderestab->getNodeAttribs($node, [qw(netboot tftpdir)]);
+    my $ent = $noderestab->getNodeAttribs($node, [qw(netboot tftpdir)],%gnopts);
 
     #get tftpdir from the noderes table, if not defined get it from site talbe
     if ($ent && $ent->{tftpdir}) {
@@ -212,7 +216,7 @@ sub get_nodeset_state
     if ($state eq "undefined")
     {
         my $chaintab = xCAT::Table->new('chain');
-        my $stref = $chaintab->getNodeAttribs($node, ['currstate']);
+        my $stref = $chaintab->getNodeAttribs($node, ['currstate'],%gnopts);
         if ($stref and $stref->{currstate}) { $state = $stref->{currstate}; }
     }
 
