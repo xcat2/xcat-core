@@ -880,7 +880,9 @@ sub getNodeMonServerPair {
   if (@nodes==0) { return $ret; }
 
   my $table2=xCAT::Table->new("noderes", -create =>1);
-  my $tabdata = $table2->getNodesAttribs(\@nodes,['monserver', 'servicenode', 'xcatmaster']);
+  my %gnopts;
+  if (scalar (@nodes) == 1) {  $gnopts{prefetchcache}=1; } #if only doing one server, it seems probable that this was a Postage type scenario
+  my $tabdata = $table2->getNodesAttribs(\@nodes,['monserver', 'servicenode', 'xcatmaster'],%gnopts);
   my $sitemaster=xCAT::Utils->get_site_attribute('master'); 
   foreach my $node (@nodes) {
     my $monserver;
