@@ -36,33 +36,6 @@ ipmiPlugin.prototype.getNextFunction = function() {
 };
 
 /**
- * Clone node (service page)
- * 
- * @param node Node to clone
- */
-ipmiPlugin.prototype.serviceClone = function(node) {
-
-};
-
-/**
- * Load provision page (service page)
- * 
- * @param tabId Tab ID where page will reside
- */
-ipmiPlugin.prototype.loadServiceProvisionPage = function(tabId) {
-
-};
-
-/**
- * Show node inventory (service page)
- * 
- * @param data Data from HTTP request
- */
-ipmiPlugin.prototype.loadServiceInventory = function(data) {
-
-};
-
-/**
  * Load node inventory
  * 
  * @param data Data from HTTP request

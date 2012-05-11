@@ -26,32 +26,46 @@ kvmPlugin.prototype.loadConfigPage = function(tabId) {
             return;
         else
             $('#kvmConfigUser').append(createLoader(''));
-        
-        // Get user data
+
         loadUserPanel('kvmConfigUser');
     });
     
     // Create accordion panel for profiles
     var profileSection = $('<div id="kvmConfigProfile"></div>');
-    profileSection.append(createInfoBar('Create, edit, and delete virtual machine profiles used in the self-service portal'));
     var profileLnk = $('<h3><a href="#">Profiles</a></h3>').click(function () {
-        
+        // Do not load panel again if it is already loaded
+        if ($('#kvmConfigProfile').find('.dataTables_wrapper').length)
+            return;
+        else
+            $('#kvmConfigProfile').append(createLoader(''));
+
+    });
+    
+    // Create accordion panel for images
+    var imgSection = $('<div id="kvmConfigImages"></div>');
+    var imgLnk = $('<h3><a href="#">Images</a></h3>').click(function () {
+        // Do not load panel again if it is already loaded
+        if ($('#kvmConfigImages').find('.dataTables_wrapper').length)
+            return;
+        else
+            $('#kvmConfigImages').append(createLoader(''));
+
+        queryImages('kvmConfigImages');
     });
     
     // Create accordion panel for groups
     var groupsSection = $('<div id="kvmConfigGroups"></div>');
     var groupsLnk = $('<h3><a href="#">Groups</a></h3>').click(function () {
+        // Do not load panel again if it is already loaded
+        if ($('#kvmConfigGroups').find('.dataTables_wrapper').length)
+            return;
+        else
+            $('#kvmConfigGroups').append(createLoader(''));
 
-    });    
-    
-    // Create accordion panel for nodes
-    var nodeSection = $('<div id="kvmConfigNode"></div>');
-    nodeSection.append(createInfoBar('Modify node attributes'));
-    var nodeLnk = $('<h3><a href="#">Nodes</a></h3>').click(function () {
-        
+        queryGroups('kvmConfigGroups');
     });
-    
-    configAccordion.append(userLnk, userSection, profileLnk, profileSection, groupsLnk, groupsSection, nodeLnk, nodeSection);
+        
+    configAccordion.append(userLnk, userSection, profileLnk, profileSection, imgLnk, imgSection, groupsLnk, groupsSection);
     $('#' + tabId).append(configAccordion);
     configAccordion.accordion();
     

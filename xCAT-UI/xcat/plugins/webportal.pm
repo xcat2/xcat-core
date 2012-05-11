@@ -482,22 +482,6 @@ sub gennodename {
             }
         } # End of foreach
     } # End of foreach
-                    
-    # Are there nodes in this group already?
-    # If so, use the existing nodes as a base
-    my $out = `nodels $group`;
-    @args = split( /\n/, $out );
-    foreach (@args) {
-        $_ =~ s/$hostname_regex/$1/g;
-
-        # Take the greatest digit
-        if ( int($_) > $base_digit ) {
-            $base_digit = int($_);
-        }
-    }
-
-    # +1 to base digit to obtain next hostname
-    $base_digit = $base_digit + 1;
     
     # Generate hostname
     $hostname = $base_hostname;

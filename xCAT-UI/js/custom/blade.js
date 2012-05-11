@@ -13,33 +13,6 @@ var bladePlugin = function() {
 };
 
 /**
- * Clone node (service page)
- * 
- * @param node Node to clone
- */
-bladePlugin.prototype.serviceClone = function(node) {
-
-};
-
-/**
- * Load provision page (service page)
- * 
- * @param tabId Tab ID where page will reside
- */
-bladePlugin.prototype.loadServiceProvisionPage = function(tabId) {
-    
-};
-
-/**
- * Show node inventory (service page)
- * 
- * @param data Data from HTTP request
- */
-bladePlugin.prototype.loadServiceInventory = function(data) {
-    
-};
-
-/**
  * Load node inventory
  * 
  * @param data Data from HTTP request
