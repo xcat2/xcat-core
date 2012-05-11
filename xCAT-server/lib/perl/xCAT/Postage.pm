@@ -938,7 +938,7 @@ sub includefile
 sub getnodesetstate
 {
     my $node = shift;
-    return xCAT::SvrUtils->get_nodeset_state($node);
+    return xCAT::SvrUtils->get_nodeset_state($node,prefetchcache=>1);
 }
 
 sub net_parms
