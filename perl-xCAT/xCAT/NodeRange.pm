@@ -184,6 +184,7 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
     if ($recurselevel > 4096) { die "NodeRange seems to be hung on evaluating $atom, recursion limit hit"; } 
     unless (scalar(@allnodeset) and (($allnodesetstamp+5) > time())) { #Build a cache of all nodes, some corner cases will perform worse, but by and large it will do better.  We could do tests to see where the breaking points are, and predict how many atoms we have to evaluate to mitigate, for now, implement the strategy that keeps performance from going completely off the rails
 	$allnodesetstamp=time();
+	$nodelist->_set_use_cache(1);
         @allnodeset = $nodelist->getAllAttribs('node','groups');
         %allnodehash = map { $_->{node} => 1 } @allnodeset;
     }
