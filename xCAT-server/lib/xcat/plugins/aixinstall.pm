@@ -1942,9 +1942,28 @@ sub chkosimage
 	if ($imagedef{$image_name}{installp_bundle})
 	{
 		my @bndlist = split(/,/, $imagedef{$image_name}{installp_bundle});
+
+		#  Get a list of the defined NIM installp_bundle resources
+		#
+		my $cmd = qq~/usr/sbin/lsnim -t installp_bundle | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
+		my @instp_bnds = xCAT::Utils->runcmd("$cmd", -1);
+		if ($::RUNCMD_RC != 0)
+		{
+			my $rsp;
+			push @{$rsp->{data}}, "Could not get NIM installp_bundle definitions.";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+		}
+
+
 		foreach my $bnd (@bndlist)
 		{
 			$bnd =~ s/\s*//g;    # remove blanks
+
+			# make sure the NIM installp_bundle resource is defined
+			if (!grep(/^$bnd$/, @instp_bnds) ) {
+				next;
+			}
+
 			my ($rc, $list, $loc) = xCAT::InstUtils->readBNDfile($callback, $bnd, $nimprime, $subreq);
 			foreach my $pkg (@$list)
 			{
@@ -1996,8 +2015,10 @@ sub chkosimage
 	# get rpm packages
 	my $rcmd = qq~/usr/bin/ls $rpm_srcdir 2>/dev/null~;
 	my @rlist = xCAT::Utils->runcmd("$rcmd", -1);
+
 	foreach my $f (@rlist) {
 		if ($f =~ /\.rpm/) {
+
 			if (!grep(/^$f$/, @srclist)) {
 				push (@srclist, $f);
 			}	
@@ -2015,9 +2036,11 @@ sub chkosimage
 		}
 	}
 
+
 	# get installp filesets in this dir
 	my $icmd = qq~installp -L -d $instp_srcdir | /usr/bin/cut -f2 -d':' 2>/dev/null~;
 	my @ilist = xCAT::Utils->runcmd("$icmd", -1);
+
 	foreach my $f (@ilist) {
 		chomp $f;
 		push (@srclist, $f);
@@ -2027,6 +2050,7 @@ sub chkosimage
 	my $rpmerror = 0;
 	my $remlist;
 	# check for each one - give msg if missing
+
 	foreach my $file (@install_list) {
 
 		$file =~ s/\*//g;		
@@ -2043,7 +2067,9 @@ sub chkosimage
 		my $foundlist = "";
 
 		foreach my $lppfile (@srclist) {
-			if ($lppfile =~ /$file/) {
+
+			# need both these checks to cover different naming issues
+			if ( ($lppfile eq $file) || ($lppfile =~ /^$file/)) {
 				$foundit++;
 				$foundlist .= "$lppfile  ";
 			}
@@ -11314,6 +11340,7 @@ sub checkNIMnetworks
             root, shared_home, spot, tmp, resolv_conf
 
 		Also does the NIM setup for additional networks if necessary.
+
 
         Arguments:
         Returns:
