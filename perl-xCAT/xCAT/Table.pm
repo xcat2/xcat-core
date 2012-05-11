@@ -2122,7 +2122,8 @@ sub _clear_cache { #PRIVATE FUNCTION TO EXPIRE CACHED DATA EXPLICITLY
         $self->{_cache_ref} -= 1;
         return;
     } elsif ($self->{_cache_ref} == 1) { #If it is 1, decrement to zero and carry on
-        $self->{_cache_ref} = 0;
+        return;
+        #$self->{_cache_ref} = 0;
     }
     #it shouldn't have been zero, but whether it was 0 or 1, ensure that the cache is gone
     $self->{_use_cache}=0; # Signal slow operation to any in-flight operations that may fail with empty cache
