@@ -89,12 +89,14 @@ ONBOOT=yes
         rmmod bonding
     fi
 
-    modprobe bonding mode=multi-link miimon=100
+    modprobe bonding mode=multi-link miimon=100 xmit_hash_policy=layer3+4 
 
-    xmit_hash_policy=layer3+4
     sleep 1
 
-    for x in hf0 hf1 hf2 hf3; do
+    # Starting from HFI DD2.1, there are 8 interfaces per io hub.  You will need to
+    # adjust following line to only include hf0,hf1,hf2,hf3 if you are working with
+    # HFI DD2.0 devices.
+    for x in hf0 hf1 hf2 hf3 hf4 hf5 hf6 hf7; do
 
         ip link set dev ${x} down
         echo +${x} > /sys/class/net/bond0/bonding/slaves
