@@ -3124,6 +3124,7 @@ sub getAllAttribs
         $keyhash{node} = "node1";
         $keyhash{groups} = "compute1";
 	$table->delEntries(\%keyhash);
+         $table->commit;
         Build delete statement and'ing the elements of the hash
         DELETE FROM nodelist WHERE ("groups" = "compute1" AND "node" = "node1")
     Comments:
