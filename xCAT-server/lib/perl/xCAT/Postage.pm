@@ -162,7 +162,7 @@ sub makescript
             push @scriptd, "export SITEMASTER\n";
 
             # if node has service node as master then override site master
-            my $et = $noderestab->getNodeAttribs($node, ['xcatmaster']);
+            my $et = $noderestab->getNodeAttribs($node, ['xcatmaster'],prefetchcache=>1);
             if ($et and defined($et->{'xcatmaster'}))
             {
                 $value = $et->{'xcatmaster'};
@@ -209,7 +209,7 @@ sub makescript
     push @scriptd, "export NODE\n";
 
     my $et =
-      $typetab->getNodeAttribs($node, ['os', 'arch', 'profile', 'provmethod']);
+      $typetab->getNodeAttribs($node, ['os', 'arch', 'profile', 'provmethod'],prefetchcache=>1);
     if ($^O =~ /^linux/i)
     {
         unless ($et and $et->{'os'} and $et->{'arch'})
@@ -224,7 +224,7 @@ sub makescript
 
     my $noderesent =
       $noderestab->getNodeAttribs($node,
-                                  ['nfsserver', 'installnic', 'primarynic','routenames']);
+                                  ['nfsserver', 'installnic', 'primarynic','routenames'],prefetchcache=>1);
     if ($noderesent and defined($noderesent->{'nfsserver'}))
     {
         push @scriptd, "NFSSERVER=" . $noderesent->{'nfsserver'} . "\n";
@@ -357,7 +357,7 @@ sub makescript
     push @scriptd, "export NTYPE\n";
 
     my $mactab = xCAT::Table->new("mac", -create => 0);
-    my $tmp = $mactab->getNodeAttribs($node, ['mac']);
+    my $tmp = $mactab->getNodeAttribs($node, ['mac'],prefetchcache=>1);
     if (defined($tmp) && ($tmp))
     {
         my $mac = $tmp->{mac};
@@ -369,7 +369,7 @@ sub makescript
     my $vlan;
     my $swtab = xCAT::Table->new("switch", -create => 0);
     if ($swtab) {
-	my $tmp = $swtab->getNodeAttribs($node, ['vlan']);
+	my $tmp = $swtab->getNodeAttribs($node, ['vlan'],prefetchcache=>1);
 	if (defined($tmp) && ($tmp) && $tmp->{vlan})
 	{
 	    $vlan = $tmp->{vlan};
@@ -378,7 +378,7 @@ sub makescript
 	} else {
 	    my $vmtab = xCAT::Table->new("vm", -create => 0);
 	    if ($vmtab) {
-		my $tmp1 = $vmtab->getNodeAttribs($node, ['nics']);
+		my $tmp1 = $vmtab->getNodeAttribs($node, ['nics'],prefetchcache=>1);
 		if (defined($tmp1) && ($tmp1) && $tmp1->{nics})
 		{
 		    push @scriptd, "VMNODE='YES'\n";
@@ -410,7 +410,7 @@ sub makescript
 		if (($subnet) && ($netmask)) {
 		    my $hoststab = xCAT::Table->new("hosts", -create => 0);
 		    if ($hoststab) {
-			my $tmp = $hoststab->getNodeAttribs($node, ['otherinterfaces']);
+			my $tmp = $hoststab->getNodeAttribs($node, ['otherinterfaces'],prefetchcache=>1);
 			if (defined($tmp) && ($tmp) && $tmp->{otherinterfaces})
 			{
 			    my $otherinterfaces = $tmp->{otherinterfaces};
@@ -732,7 +732,7 @@ sub makescript
 
     # get postscripts for node specific
     my $et1 =
-      $posttab->getNodeAttribs($node, ['postscripts', 'postbootscripts']);
+      $posttab->getNodeAttribs($node, ['postscripts', 'postbootscripts'],prefetchcache=>1);
     $ps = $et1->{'postscripts'};
     if ($ps)
     {
