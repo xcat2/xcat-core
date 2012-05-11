@@ -24,8 +24,10 @@ Conflicts: xCATsn
 Requires: xCAT-server xCAT-client perl-DBD-SQLite
 
 %ifos linux
-Requires: dhcp httpd nfs-utils nmap fping bind perl-XML-Parser perl(CGI)
+Requires: httpd nfs-utils nmap fping bind perl-XML-Parser perl(CGI)
 Requires: /etc/xinetd.d/tftp
+# On RHEL this pulls in dhcp, on SLES it pulls in dhcp-server
+Requires: /usr/sbin/dhcpd
 %ifarch s390x
 # No additional requires for zLinux right now
 %else
@@ -66,18 +68,29 @@ tar -xf postscripts.tar
 %build
 
 %pre
-if [ -e "/etc/SuSE-release" ]; then
+# this is now handled by requiring /usr/sbin/dhcpd
+#if [ -e "/etc/SuSE-release" ]; then
     # In SuSE, dhcp-server provides the dhcp server, which is different from the RedHat.
     # When building the package, we cannot add "dhcp-server" into the "Requires", because RedHat doesn't 
     # have such one package.
     # so there's only one solution, Yes, it looks ugly.
-    rpm -q dhcp-server >/dev/null
-    if [ $? != 0 ]; then
-        echo ""
-        echo "!! On SuSE, the dhcp-server package should be installed before installing xCAT !!"
-        exit -1;
-    fi
+    #rpm -q dhcp-server >/dev/null
+    #if [ $? != 0 ]; then
+    #    echo ""
+    #    echo "!! On SuSE, the dhcp-server package should be installed before installing xCAT !!"
+    #    exit -1;
+    #fi
+#fi
+# only need to check on AIX
+%ifnos linux
+if [ -x /usr/sbin/emgr ]; then          # Check for emgr cmd
+	/usr/sbin/emgr -l 2>&1 |  grep -i xCAT   # Test for any xcat ifixes -  msg and exit if found
+	if [ $? = 0 ]; then
+		echo "Error: One or more xCAT emgr ifixes are installed. You must use the /usr/sbin/emgr command to uninstall each xCAT emgr ifix prior to RPM installation."
+		exit 2
+	fi
 fi
+%endif
 
 
 %install
@@ -123,17 +136,6 @@ cp %{SOURCE5} $RPM_BUILD_ROOT/etc/xCATMN
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 
-%pre
-# only need to check on AIX
-%ifnos linux
-if [ -x /usr/sbin/emgr ]; then          # Check for emgr cmd
-	/usr/sbin/emgr -l 2>&1 |  grep -i xCAT   # Test for any xcat ifixes -  msg and exit if found
-	if [ $? = 0 ]; then
-		echo "Error: One or more xCAT emgr ifixes are installed. You must use the /usr/sbin/emgr command to uninstall each xCAT emgr ifix prior to RPM installation."
-		exit 2
-	fi
-fi
-%endif
 
 %post
 %ifnos linux
