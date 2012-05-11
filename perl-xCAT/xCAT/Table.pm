@@ -2139,6 +2139,7 @@ sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
         return dbc_call($self,'_build_cache',@_);
     }
     my $attriblist = shift;
+    my %copts = @_;
     my $refresh = not ref $attriblist; #if attriblist is not a reference, it is a refresh request
     if (not ref $attriblist) {
        $attriblist = $self->{_cached_attriblist}; #need attriblist to mean something, don't know how this didn't break horribly already
@@ -2146,7 +2147,9 @@ sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
     
     if (not $refresh and $self->{_cache_ref}) { #we have active cache reference, increment counter and return
         #TODO: ensure that the cache isn't somehow still ludirously old
-        $self->{_cache_ref} += 1;
+	unless ($copts{noincrementref}) {
+           $self->{_cache_ref} += 1;
+        }
 	my $currattr;
 	my $cachesufficient=1;
 	foreach $currattr (@$attriblist) { #if any of the requested attributes are not cached, we must rebuild
@@ -2248,7 +2251,8 @@ sub getNodeAttribs
     }
     my $datum;
     my $oldusecache;
-    if ($options{eagercache}) { #TODO: If this *were* split out of DB worker, this logic would have to move *into* returnany
+    my $nloldusecache;
+    if ($options{prefetchcache}) { #TODO: If this *were* split out of DB worker, this logic would have to move *into* returnany
         if ($self->{tabname} eq 'nodelist') { #a sticky situation
             my @locattribs=@attribs;
             unless (grep(/^node$/,@locattribs)) {
@@ -2257,17 +2261,20 @@ sub getNodeAttribs
             unless (grep(/^groups$/,@locattribs)) {
                 push @locattribs,'groups';
             }
-            $self->_build_cache(\@locattribs);
+            $self->_build_cache(\@locattribs,noincrementref=>1);
         } else {
-            $self->_build_cache(\@attribs);
-            $self->{nodelist}->_build_cache(['node','groups']);
+            $self->_build_cache(\@attribs,noincrementref=>1);
+            $self->{nodelist}->_build_cache(['node','groups'],noincrementref=>1);
         }
  	$oldusecache=$self->{_use_cache};
+ 	$nloldusecache=$self->{nodelist}->{_use_cache};
 	$self->{_use_cache}=1;
+	$self->{nodelist}->{_use_cache}=1;
     }
     my @data = $self->getNodeAttribs_nosub_returnany($node, \@attribs,%options);
-    if ($options{eagercache}) {
+    if ($options{prefetchcache}) {
 	$self->{_use_cache}=$oldusecache;
+	$self->{nodelist}->{_use_cache}=$nloldusecache;
 	#in this case, we just let the cache live, even if it is to be ignored by most invocations
     }
     #my ($datum, $extra) = $self->getNodeAttribs_nosub($node, \@attribs);
