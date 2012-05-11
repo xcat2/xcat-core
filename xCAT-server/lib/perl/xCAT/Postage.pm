@@ -293,10 +293,16 @@ sub makescript
     }
     push @scriptd, 'PATH=`dirname $0`:$PATH' . "\n";
     push @scriptd, "export PATH\n";
-    my $sent = $sitetab->getAttribs({key => 'svloglocal'}, 'value');
-    if ($sent and defined($sent->{value}))
+    my $svloglocal;
+    if (keys %::XCATSITEVALS) {
+	$svloglocal = $::XCATSITEVALS{svloglocal};
+    } else {
+    	my $sent = $sitetab->getAttribs({key => 'svloglocal'}, 'value');
+        if ($sent and defined($sent->{value})) { $svloglocal = $sent->{'value'}; }
+    }
+    if ($svloglocal)
     {
-        push @scriptd, "SVLOGLOCAL=" . $sent->{'value'} . "\n";
+        push @scriptd, "SVLOGLOCAL=" . $svloglocal . "\n";
         push @scriptd, "export SVLOGLOCAL\n";
     }
 
