@@ -3119,11 +3119,13 @@ sub getAllAttribs
     Error:
 
     Example:
-	my $table=xCAT::Table->new("notification", -create => 1,-autocommit => 0);
-	my %key_col = (filename=>$fname);
-	$table->delEntries(\%key_col);
-	$table->commit;
-
+	my $table=xCAT::Table->new("nodelist");
+        my %keyhash;
+        $keyhash{node} = "node1";
+        $keyhash{groups} = "compute1";
+	$table->delEntries(\%keyhash);
+        Build delete statement and'ing the elements of the hash
+        DELETE FROM nodelist WHERE ("groups" = "compute1" AND "node" = "node1")
     Comments:
         none
 
