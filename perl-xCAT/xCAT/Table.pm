@@ -2934,7 +2934,7 @@ sub getAllNodeAttribs
     $query = $self->{dbh}->prepare($qstring);
     $query->execute();
     xCAT::NodeRange::retain_cache(1);
-    unless (%options{prefetchcache}) {
+    unless ($options{prefetchcache}) {
     $self->{_use_cache} = 0;
     $self->{nodelist}->{_use_cache}=0;
     }
