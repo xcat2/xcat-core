@@ -32,10 +32,11 @@ my $grptab;
 
 #my $nodeprefix = "node";
 my @allnodeset;
-my $allnodesetstamp;
+my $allnodesetstamp=0;
 my %allnodehash;
 my @grplist;
 my $didgrouplist;
+my $glstamp=0;
 my %allgrphash;
 my $allgrphashstamp;
 my $retaincache=0;
@@ -210,8 +211,9 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
         unless ($grptab) {
            $grptab = xCAT::Table->new('nodegroup');
         }
-        if ($grptab and not $didgrouplist and not scalar @grplist) { 
+        if ($grptab and (($glstamp < (time()-5)) or (not $didgrouplist and not scalar @grplist))) { 
             $didgrouplist = 1;
+	    $glstamp=time();
             @grplist = @{$grptab->getAllEntries()};
         }
         my $isdynamicgrp = 0;
@@ -478,7 +480,6 @@ sub extnoderange { #An extended noderange function.  Needed as the more straight
         }
         $return->{intersectinggroups}=[sort keys %grouphash];
     }
-    retain_cache(0);
     return $return;
 }
 sub abbreviate_noderange { 
@@ -626,10 +627,6 @@ sub noderange {
     }
     if ($recurselevel) {
         $recurselevel--;
-    } else {
-        #unless ($retaincache) {
-        #    retain_cache(0);
-        #}
     }
     return sort (keys %nodes);
 
