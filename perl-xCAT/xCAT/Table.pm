@@ -12,7 +12,9 @@
 #   -cache to persist so long as '_build_cache' calls concurrently stack (for NodeRange interpretation mainly) (done)
 #   -Allow plugins to define a staleness threshold for getNodesAttribs freshness (complicated enough to postpone...)
 #    so that actions requested by disparate managed nodes may aggregate in SQL calls
-# reference count managed cache lifetime, if clear_cache is called, and build_chache has been called twice, decrement the counter
+# cache lifetime is no longer determined strictly by function duration
+# now it can live up to 5 seconds.  However, most calls will ignore the cache unless using a special option.
+# Hmm, potential issue, getNodesAttribs might return up to 5 second old data even if caller expects brand new data
 # if called again, decrement again and clear cache
 # for getNodesAttribs, we can put a parameter to request allowable staleneess
 # if the cachestamp is too old, build_cache is called
@@ -352,8 +354,6 @@ sub handle_dbc_request {
          return $opentables{$tablename}->{$autocommit}->_set_use_cache(@args);
     } elsif ($functionname eq '_build_cache') {
          return $opentables{$tablename}->{$autocommit}->_build_cache(@args);
-    } elsif ($functionname eq '_clear_cache') {
-         return $opentables{$tablename}->{$autocommit}->_clear_cache(@args);
     } else {
         die "undefined function $functionname";
     }
@@ -2084,10 +2084,8 @@ sub getNodesAttribs {
         my @nodeentries=$self->getNodeAttribs($_,\@attribs,%options);
         $rethash->{$_} = \@nodeentries; #$self->getNodeAttribs($_,\@attribs);
     }
-    $self->_clear_cache;
     $self->{_use_cache} = 0;
-    if ($self->{tabname} ne 'nodelist') { #avoid calling clear_cache on nodelist twice
-	    $self->{nodelist}->_clear_cache;
+    if ($self->{tabname} ne 'nodelist') { 
 	    $self->{nodelist}->{_use_cache} = 0;
     }
     return $rethash;
@@ -2111,27 +2109,6 @@ sub _refresh_cache { #if cache exists, force a rebuild, leaving reference counts
     return;
 }
 
-sub _clear_cache { #PRIVATE FUNCTION TO EXPIRE CACHED DATA EXPLICITLY
-    #This is no longer sufficient to do at destructor time, as Table objects actually live an indeterminite amount of time now
-    #TODO: only clear cache if ref count mentioned in build_cache is 1, otherwise decrement ref count
-    my $self = shift;
-    if ($dbworkerpid) {
-        return dbc_call($self,'_clear_cache',@_);
-    }
-    if ($self->{_cache_ref} > 1) { #don't clear the cache if there are still live references
-        $self->{_cache_ref} -= 1;
-        return;
-    } elsif ($self->{_cache_ref} == 1) { #If it is 1, decrement to zero and carry on
-        return;
-        #$self->{_cache_ref} = 0;
-    }
-    #it shouldn't have been zero, but whether it was 0 or 1, ensure that the cache is gone
-    $self->{_use_cache}=0; # Signal slow operation to any in-flight operations that may fail with empty cache
-    $self->{_cached_attriblist} = undef;
-    undef $self->{_tablecache};
-    undef $self->{_nodecache};
-}
-
 sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
 #TODO: increment a reference counter type thing to preserve current cache
 #Also, if ref count is 1 or greater, and the current cache is less than 3 seconds old, reuse the cache?
@@ -2147,10 +2124,6 @@ sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
     }
     
     if (not $refresh and $self->{_cache_ref}) { #we have active cache reference, increment counter and return
-        #TODO: ensure that the cache isn't somehow still ludirously old
-	unless ($copts{noincrementref}) {
-           $self->{_cache_ref} += 1;
-        }
 	my $currattr;
 	my $cachesufficient=1;
 	foreach $currattr (@$attriblist) { #if any of the requested attributes are not cached, we must rebuild
@@ -2159,6 +2132,10 @@ sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
 	      last;
 	   }
 	}
+        if ($self->{_cachestamp} < (time()-5)) { #NEVER use a cache older than 5 seconds
+		$cachesufficient=0;
+	}
+        
 	if ($cachesufficient) { return; }
 	#cache is insufficient, now we must do the converse of above
 	#must add any currently cached columns to new list if not requested
@@ -2960,8 +2937,6 @@ sub getAllNodeAttribs
     unless (%options{prefetchcache}) {
     $self->{_use_cache} = 0;
     $self->{nodelist}->{_use_cache}=0;
-    $self->_clear_cache();
-    $self->{nodelist}->_clear_cache();
     }
     $self->_build_cache($attribq);
     $self->{nodelist}->_build_cache(['node','groups']);
@@ -3015,11 +2990,8 @@ sub getAllNodeAttribs
             }
         }
     }
-    $self->_clear_cache();
-    $self->{nodelist}->_clear_cache();
     $self->{_use_cache} = 0;
     $self->{nodelist}->{_use_cache} = 0;
-    xCAT::NodeRange::retain_cache(0);
     $query->finish();
     if ($hashretstyle) {
         return $rethash;
