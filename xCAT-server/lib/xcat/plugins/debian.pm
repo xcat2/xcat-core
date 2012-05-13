@@ -205,20 +205,15 @@ sub copycd
     }
     my $dinfo;
     open($dinfo, $path . "/.disk/info");
-    my $darch;
     my $line = <$dinfo>;
     chomp($line);
     my @line2 = split(/ /,$line);
-    $darch = $line2[6];
     close($dinfo);
 
-
-    # Ubuntu 10.04 doesn't put into the correct place
-    # This in essence will pick up the LTS releases
-    $darch = $line2[7] if ($darch eq "Release");
-
-    # For debian lenny to work
-    $darch = $line2[8] if ($darch eq "Official");
+    my $isnetinst = 0;
+    my $prod = $line2[0];   # The product should be the first word
+    my $ver = $line2[1];    # The version should be the second word
+    my $darch = $line2[6];  # The architecture should be the seventh word
 
     # Check to see if $darch is defined
     unless ($darch)
@@ -226,27 +221,30 @@ sub copycd
         return;
     }
 
-    # The product should be the first word
-    my $prod = $line2[0];
-
-    # The version should be the second word
-    my $ver = $line2[1];
-
-    # For debian lenny to work
-    $ver = $line2[2] if ($ver eq "GNU/Linux");
-
-    if ($prod eq "Ubuntu" or $prod eq "Ubuntu-Server" )
+    if ( $prod eq "Debian")
     {
-        $distname="ubuntu".$ver;
-	$detdistname="ubuntu".$ver;
-    }
-    elsif ($prod eq "Debian")
-    {
+        # Debian specific, the arch and version are in different places
+        $darch = $line2[6]; 
+        $ver = $line2[2];
+
+	# For the purpose of copying the netinst cd before the main one
+	# So that we have the netboot images
+        $isnetinst = 1 if ($line2[7] eq "NETINST");
+
         $distname="debian".$ver;
 	$detdistname="debian".$ver;
     }
-    else {
-        return;
+    elsif ($prod eq "Ubuntu" or $prod eq "Ubuntu-Server" )
+    {
+        # to cover for LTS releases
+        $darch = $line2[7] if ($line2[2] eq "LTS");
+
+        $distname="ubuntu".$ver;
+	$detdistname="ubuntu".$ver;
+    }
+    else
+    {
+	return;
     }
 
     # So that I can use amd64 below 
@@ -289,6 +287,7 @@ sub copycd
          {data => "Copying media to $installroot/$distname/$arch"});
     my $omask = umask 0022;
     mkpath("$installroot/$distname/$arch");
+    mkpath("$installroot/$distname/$arch/install/netboot") if ($isnetinst);
     umask $omask;
     my $rc;
     $SIG{INT} =  $SIG{TERM} = sub { 
@@ -350,6 +349,13 @@ sub copycd
     # removes the links unstable and testing, otherwise the repository does not work for debian
     system("rm -f $installroot/$distname/$arch/dists/unstable");
     system("rm -f $installroot/$distname/$arch/dists/testing");
+
+    # copies the netboot files for debian
+    if ($isnetinst)
+    {
+	system("cp install.*/initrd.gz $installroot/$distname/$arch/install/netboot/.");
+	system("cp install.*/vmlinuz $installroot/$distname/$arch/install/netboot/.");
+    }
 
     if ($rc != 0)
     {
@@ -641,10 +647,10 @@ sub mkinstall
                          and $initrdpath = "$pkgdir/install/netboot/ubuntu-installer/$darch/initrd.gz"
                     ) or 
 		    (
-                         -r "$::XCATROOT/share/xcat/install/$platform/".$os."Images/linux"
-                         and $kernpath = "$::XCATROOT/share/xcat/install/$platform/".$os."Images/linux"
-                         and -r "$::XCATROOT/share/xcat/install/$platform/".$os."Images/initrd.gz"
-                         and $initrdpath = "$::XCATROOT/share/xcat/install/$platform/".$os."Images/initrd.gz"
+                         -r "$pkgdir/install/netboot/vmlinuz"
+                         and $kernpath = "$pkgdir/install/netboot/vmlinuz"
+                         and -r "$pkgdir/install/netboot/initrd.gz"
+                         and $initrdpath = "$pkgdir/install/netboot/initrd.gz"
 
 		    )
 		 )
