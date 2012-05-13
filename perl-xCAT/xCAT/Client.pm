@@ -528,7 +528,8 @@ sub plugin_command {
           }
       } #Otherwise, global handler is implicitly disabled
   } else {
-    return 1;  #TODO: error back that request has no known plugin for it
+     print "Error request: $req->{command}->[0]  has no known plugin for it.\n"; 
+    return 1;  
   }
   if ($useunhandled) {
    my $queuelist;
