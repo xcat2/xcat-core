@@ -13,6 +13,9 @@
 # For the purpose of getting the distribution name
 . /etc/lsb-release
 
+# Supported distributions
+dists="maverick natty oneiric precise"
+
 a_flag=            # automatic flag - only update if repo was updated
 c_flag=            # xcat-core (trunk-delvel) path
 d_flag=            # xcat-dep (trunk) path
@@ -133,22 +136,29 @@ then
     rm -rdf debs/
     cd $CMD_PATH
 
-    cat << __EOF__ > $repo_xcat_core_path/conf/distributions
+    rm -rf $repo_xcat_core_path/conf/distributions
+
+    for dist in $dists; do
+       cat << __EOF__ >> $repo_xcat_core_path/conf/distributions
 Origin: xCAT internal repository
 Label: xcat-core bazaar repository
-Codename: $DISTRIB_CODENAME
+Codename: $dist
 Architectures: i386 amd64 
 Components: main
 Description: Repository automatically genereted conf 
+
 __EOF__
+     done
 
     cat << __EOF__ > $repo_xcat_core_path/conf/options
 verbose
 basedir .
 __EOF__
 
-    for file in `ls $repo_xcat_core_path/*.deb`; do
-	reprepro -b $repo_xcat_core_path includedeb $DISTRIB_CODENAME $file;
+    for dist in $dists; do
+      for file in `ls $repo_xcat_core_path/*.deb`; do
+	reprepro -b $repo_xcat_core_path includedeb $dist $file;
+      done
     done
 
     mv $xcat_core_path/latest_version $repo_xcat_core_path/xcat-core_latest-build
@@ -160,6 +170,7 @@ echo deb file://"`pwd`" $DISTRIB_CODENAME main > /etc/apt/sources.list.d/xcat-co
 __EOF__
 
     chmod 775 $repo_xcat_core_path/mklocalrepo.sh
+    rm -rf $repo_xcat_core_path/*.deb
 
     if [ -z "$local_flag" ]
     then
@@ -201,22 +212,30 @@ then
     rm -rdf $repo_xcat_dep_path
     mkdir -p $repo_xcat_dep_path/conf
     find $xcat_dep_path -iname '*.deb' -exec cp {} $repo_xcat_dep_path \;
-    cat << __EOF__ > $repo_xcat_dep_path/conf/distributions
+
+    rm -rf $repo_xcat_core_path/conf/distributions
+
+    for dist in $dists; do
+    cat << __EOF__ >> $repo_xcat_dep_path/conf/distributions
 Origin: xCAT internal repository
 Label: xcat-dep bazaar repository
-Codename: $DISTRIB_CODENAME
+Codename: $dist
 Architectures: i386 amd64 
 Components: main
 Description: Repository automatically genereted conf 
+
 __EOF__
+done
 
     cat << __EOF__ > $repo_xcat_dep_path/conf/options
 verbose
 basedir .
 __EOF__
 
-    for file in `ls $repo_xcat_dep_path/*.deb`; do
-	reprepro -b $repo_xcat_dep_path includedeb $DISTRIB_CODENAME $file;
+    for dist in $dists; do
+      for file in `ls $repo_xcat_dep_path/*.deb`; do
+	reprepro -b $repo_xcat_dep_path includedeb $dist $file;
+      done
     done
 
     cat << '__EOF__' > $repo_xcat_dep_path/mklocalrepo.sh
@@ -225,7 +244,8 @@ cd `dirname $0`
 echo deb file://"`pwd`" $DISTRIB_CODENAME main > /etc/apt/sources.list.d/xcat-dep.list
 __EOF__
 
-    chmod 775 $repo_xcat_core_path/mklocalrepo.sh
+    chmod 775 $repo_xcat_dep_path/mklocalrepo.sh
+    rm -rf $repo_xcat_dep_path/*.deb
 
     if [ -z "$local_flag" ]
     then
