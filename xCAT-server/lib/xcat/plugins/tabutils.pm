@@ -54,10 +54,10 @@ sub handled_commands
             nr         => "tabutils",     # not implemented yet
             rnoderange => "tabutils",     # not implemented yet
             tabgrep    => "tabutils",
-            getAllEntries     => "tabutils",
-            getNodesAttribs    => "tabutils",
-            setNodesAttribs1    => "tabutils",
-            setNodesAttribs2    => "tabutils",
+            getAllEntries    => "tabutils",
+            getNodesAttribs  => "tabutils",
+            setNodesAttribs1  => "tabutils",
+            delEntries       => "tabutils",
             gennr    => "tabutils"
             };
 }
@@ -155,6 +155,10 @@ sub process_request
     elsif ($command eq "setNodesAttribs1")
     {
         return setNodesAttribs1($request,$callback);
+    }
+    elsif ($command eq "delEntries")
+    {
+        return delEntries($request,$callback);
     }
     else
     {
@@ -2339,7 +2343,7 @@ sub getNodesAttribs
 #   <table>
 #      <name>nodelist</name>
 #      <attrs>
-#         <groups>lissa</groups>
+#         <groups>test</groups>
 #         <comments> This is a another testx</comments>
 #      </attrs>
 #   </table>
@@ -2357,7 +2361,7 @@ sub setNodesAttribs1
 {
     my $request      = shift;
     my $cb = shift;
-    my $node    = $request->{node};
+    my $node    = $request->{node};   # added by Client.pm
     my $noderange    = $request->{noderange};
     my $command  = $request->{command}->[0];
     my %rsp;
@@ -2369,6 +2373,8 @@ sub setNodesAttribs1
     $newrequest->{command}->[0] = "nodech";
     foreach my $table (@$tables) {
       my $tablename    = $table->{name}->[0];
+      my $tab=xCAT::Table->new($tablename);
+      my %keyhash;
       my $attrs = $table->{attrs}; 
       foreach my $attrhash (@$attrs) {
         foreach my $key (keys %$attrhash) {
@@ -2386,4 +2392,71 @@ sub setNodesAttribs1
      $cb->(\%rsp);
     }
         return;
+}
+#
+# delEntries 
+# Deletes the table entry based on the input attributes      
+# The attributes and AND'd to together to form the delete request
+# DELETE FROM nodelist WHERE ("groups" = "compute1,test" AND "status" = "down")
+# Example of XML in for this routine
+#    
+#<xcatrequest>
+#<clienttype>PCM</clienttype>
+#<command>delEntries</command>
+#<table>
+#      <name>nodelist</name>
+#      <attrs>
+#         <groups>compute1,test</groups>
+#         <status>down</status>
+#      </attrs>
+#</table>
+#  .
+#  .
+#<table>
+#  .
+#  .
+#  .
+#</table>
+#</xcatrequest>
+# 
+# To delete all entries in a table, input no attributes
+#<xcatrequest>
+#<clienttype>PCM</clienttype>
+#<command>delEntries</command>
+#<table>
+#      <name>nodelist</name>
+#</table>
+#</xcatrequest>
+
+
+sub delEntries 
+{
+    my $request      = shift;
+    my $cb = shift;
+   # my $node    = $request->{node};   # added by Client.pm
+   # my $noderange    = $request->{noderange};
+    my $command  = $request->{command}->[0];
+    my %rsp;
+   # my $args = $request->{arg};
+   # my $tables= $args->[0]->{table};
+   # my $tables= $request->{table}->{name};
+    my $tables= $request->{table};
+    foreach my $table (@$tables) {
+      my $tablename    = $table->{name}->[0];
+      my $tab=xCAT::Table->new($tablename);
+      my %keyhash;
+      my $attrs = $table->{attrs}; 
+      foreach my $attrhash (@$attrs) {
+        foreach my $key (keys %$attrhash) {
+          $keyhash{$key} = $attrhash->{$key}->[0];
+        }
+      }
+      if (%keyhash) {     # delete based on requested attributes
+         $tab->delEntries(\%keyhash);    #Yes, delete *all* entries
+      } else {            # delete all entries
+         $tab->delEntries();    #delete *all* entries
+      }
+      $tab->commit;         #  commit
+    }
+    return;
 }
