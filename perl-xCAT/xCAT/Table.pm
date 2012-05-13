@@ -3115,6 +3115,10 @@ sub getAllAttribs
          $table->commit;
         Build delete statement and'ing the elements of the hash
         DELETE FROM nodelist WHERE ("groups" = "compute1" AND "node" = "node1")
+
+        If called with no attributes, it will delete all entries in the table. 
+          $table->delEntries();
+          $table->commit;
     Comments:
         none
 
