@@ -58,6 +58,7 @@ sub handled_commands
             getNodesAttribs  => "tabutils",
             setNodesAttribs1  => "tabutils",
             delEntries       => "tabutils",
+            getAttribs       => "tabutils",
             gennr    => "tabutils"
             };
 }
@@ -159,6 +160,10 @@ sub process_request
     elsif ($command eq "delEntries")
     {
         return delEntries($request,$callback);
+    }
+    elsif ($command eq "getAttribs")
+    {
+        return getAttribs($request,$callback);
     }
     else
     {
@@ -2283,6 +2288,15 @@ sub getAllEntries
 }
 # getNodesAttribs 
 # Read all the array of  attributes for the noderange  from the input table. 
+#<xcatrequest>
+#<clienttype>PCM</clienttype>
+#<command>getNodesAttribs</command>
+#<table>nodelist</table>
+#<noderange>blade01-blade02</noderange>
+#<attr>groups</attr>
+#<attr>status</attr>
+#</xcatrequest>
+#
 #<xcatresponse>
 #<node>
 #<name> nodename </name>
@@ -2433,13 +2447,8 @@ sub delEntries
 {
     my $request      = shift;
     my $cb = shift;
-   # my $node    = $request->{node};   # added by Client.pm
-   # my $noderange    = $request->{noderange};
     my $command  = $request->{command}->[0];
     my %rsp;
-   # my $args = $request->{arg};
-   # my $tables= $args->[0]->{table};
-   # my $tables= $request->{table}->{name};
     my $tables= $request->{table};
     foreach my $table (@$tables) {
       my $tablename    = $table->{name}->[0];
@@ -2459,4 +2468,48 @@ sub delEntries
       $tab->commit;         #  commit
     }
     return;
+}
+# getAttribs 
+# Read all the array of  attributes for the key  from the input table. 
+#<xcatrequest>
+#<clienttype>PCM</clienttype>
+#<command>getAttribs</command>
+#<table>site</table>
+#<keys>
+#  <key>domain</key>
+#</keys>
+#<attrs>value</attrs>
+#<attrs>comments</attrs>
+#</xcatrequest>
+#
+#
+#<xcatresponse>
+#<value>{domain value}</value>
+#<comments>This is a comment</comments>
+#</xcatresponse>
+sub getAttribs 
+{
+    my $request      = shift;
+    my $cb = shift;
+    my $command  = $request->{command}->[0];
+    my $tablename = $request->{table}->[0];
+    my $attr   = $request->{attrs};
+    my @attrs= @$attr;
+    my $tab=xCAT::Table->new($tablename);
+    my %rsp;
+    my %keyhash;
+    foreach my $k (keys %{$request->{keys}->[0]}) {
+      $keyhash{$k} = $request->{keys}->[0]->{$k}->[0];
+    }
+    my $recs  =   $tab->getAttribs(\%keyhash,\@attrs);
+    
+    if ($recs) {
+      my %attrhash=%$recs;
+      foreach my $k (keys %attrhash) {
+          
+       push @{$rsp{$k}}, $recs->{$k};
+      }
+    }
+       $cb->(\%rsp);
+        return;
 }
