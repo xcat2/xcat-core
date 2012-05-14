@@ -2138,12 +2138,14 @@ sub clonevms {
     my $base;
     my $force;
     my $detach;
+	my $specialize;
     my $target;
     require Getopt::Long;
     GetOptions(
         'b=s' => \$base,
         'f' => \$force,
         'd' => \$detach,
+		'specialize' => \$specialize,
         't=s' => \$target,
         );
     if ($base and $target) {
@@ -2220,7 +2222,7 @@ sub clonevms {
     if ($target) {
         return promote_vm_to_master(node=>$nodes->[0],target=>$target,force=>$force,detach=>$detach,cluster=>$cluster,hyp=>$hyp,url=>$url,mastername=>$mastername);
     } elsif ($base) {
-        return clone_vms_from_master(nodes=>$nodes,base=>$base,detach=>$detach,cluster=>$cluster,hyp=>$hyp,mastername=>$base,masterent=>$masterref);
+        return clone_vms_from_master(nodes=>$nodes,base=>$base,detach=>$detach,cluster=>$cluster,hyp=>$hyp,mastername=>$base,masterent=>$masterref,specialize=>$specialize);
     }
 }
 sub sortoutdatacenters { #figure out all the vmfolders for all the nodes passed in
@@ -2262,6 +2264,7 @@ sub sortoutdatacenters { #figure out all the vmfolders for all the nodes passed 
 sub clone_vms_from_master {
     my %args = @_;
     my $mastername=$args{mastername};
+	my $specialize=$args{specialize};
     my $hyp = $args{hyp};
     my $cluster=$args{cluster};
     my $regex=qr/^$mastername\z/;
@@ -2318,6 +2321,9 @@ sub clone_vms_from_master {
 	unless ($args{detach}) {
 	  $clonespecargs{snapshot}=$masterview->snapshot->currentSnapshot;
 	}
+	if ($specialize) {
+		$clonespecargs{customization} = make_customization_spec($node);
+    }
 	my $clonespec = VirtualMachineCloneSpec->new(%clonespecargs);
         my $vmfolder = $vmhash{$node}->{vmfolder};
         my $task = $masterview->CloneVM_Task(folder=>$vmfolder,name=>$node,spec=>$clonespec);
@@ -2331,6 +2337,60 @@ sub clone_vms_from_master {
         $running_tasks{$task}->{vm} = $node; #$hyp_conns->{$hyp};
     }
 }
+
+sub make_customization_spec {
+	my $node = shift;
+	my $password="Passw0rd";
+	my $wintimezone=35;
+	#map of number to strings can be found at 
+	#http://osman-shener-en.blogspot.com/2008/02/unattendedtxt-time-zone-index.html
+	my $fullname="fooooo";
+	my $orgName="barrrr";
+	my @runonce = ("dir"); #to be read in from postscripts table
+
+	my $identity = CustomizationSysprep->new(
+		guiRunOnce=>CustomizationGuiRunOnce->new(
+			commandList=>\@runonce,
+		),
+		guiUnattended => CustomizationGuiUnattended->new(
+			autoLogon=>0,
+			autoLogonCount=>1,
+			password=>CustomizationPassword->new(
+				plainText=>1,
+				value=>$password,
+			),
+			timeZone=>$wintimezone,
+		),
+	identification=>get_customizedidentification(),
+	userData=>CustomizationUserData->new(
+		computerName=>CustomizationFixedName->new(name=>$node),
+		fullName=>$fullname,
+		orgName=>$orgName,
+		productId=>"",
+	),
+  );
+  my $options = CustomizationWinOptions->new(changeSID=>1,deleteAccounts=>0); 
+  my $customizationspec = CustomizationSpec->new(
+  	globalIPSettings=>CustomizationGlobalIPSettings->new(),
+	identity=>$identity,
+	nicSettingMap=>[
+		CustomizationAdapterMapping->new(adapter=>CustomizationIPSettings->new(ip=>CustomizationDhcpIpGenerator->new()))
+		],
+	options=>$options,
+  );
+  return $customizationspec;
+
+}
+
+sub get_customizedidentification {
+     return CustomizationIdentification->new(
+	            joinWorkgroup=>"Temp",
+     );
+}
+
+
+
+
 sub get_placement_resources {
     my %args = @_;
     my $pool;
@@ -4314,8 +4374,11 @@ sub merge_esxi5_append {
 	open($out,">",$outfile);
 	my $line;
 	while ($line = <$in>) {
-		if ($line =~ /modules=b.b00/) {
-			$line =~ s/modules=b.b00/modules=b.b00 $append/;
+		if ($line =~ /kernelopt=/) {
+		   chomp($line);
+		   $line .= $append."\n";
+		#if ($line =~ /modules=b.b00/) {
+		#	$line =~ s/modules=b.b00/modules=b.b00 $append/;
 		}
 		print $out $line;
 	}
