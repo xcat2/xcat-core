@@ -3254,7 +3254,7 @@ sub getAttribs
 {
 
     #Takes two arguments:
-    #-Node name (will be compared against the 'Node' column)
+    #-Key(s) name (will be compared against the table key(s) value)
     #-List reference of attributes for which calling code wants at least one of defined
     # (recurse argument intended only for internal use.)
     # Returns a hash reference with requested attributes defined.
