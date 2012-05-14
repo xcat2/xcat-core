@@ -907,9 +907,9 @@ fi
 EOMS
     
     # udevd needed by s390x for networking
-    if ($arch ne "s390x") {
-        print $inifile "killall -9 udevd\n";
-    }
+#    if ($arch ne "s390x") {
+#        print $inifile "killall -9 udevd\n";
+#    }
     
     if($mode eq "statelite") {
         print $inifile "echo debug: before netstart\n";
