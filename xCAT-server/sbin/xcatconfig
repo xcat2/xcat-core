@@ -368,6 +368,9 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL || $::genCredentials)
     system($xcmd);
 }
 
+# wait for the starting of xcatd
+&waitxcatd;
+
 # more  config needed after xcatd start
 if ($::INITIALINSTALL || $::FORCE)
 {
@@ -1695,6 +1698,31 @@ sub mknb
         }
     }
 
+}
+
+#-----------------------------------------------------------------------------
+=head3    waitxcatd 
+	
+     Wait xcatd to function after the restart of xcatd 
+
+=cut
+#-----------------------------------------------------------------------------
+sub waitxcatd {
+    my $cmd = "$::XCATROOT/bin/nodels -v";
+    my $n = 0;
+    while ($n++ < 10) {
+        sleep 1;
+        my $output = xCAT::Utils->runcmd("$cmd", -1);
+        if ($::RUNCMD_RC == 0 || $output =~ /Version/) {
+            last;
+        } else {
+            next;
+        }
+    }
+
+    if ($n >= 10) {
+        print "Failed to check the status of xcatd\n";
+    }
 }
 
 #-----------------------------------------------------------------------------
