@@ -1,0 +1,4 @@
+# The following are for SLES11 systems running InfiniBand networks
+#    You should comment out these packages when running with HFI,
+libibverbs
+libibverbs-32bit
