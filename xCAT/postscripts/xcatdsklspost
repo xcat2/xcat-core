@@ -19,7 +19,7 @@ update_VPD()
 {
     if [ -f /usr/sbin/vpdupdate ]; then
         vpdupdate
-	logger -t xCAT "xcatdsklspost: updating VPD database"
+	logger -t xCAT -p local4.info "xcatdsklspost: updating VPD database"
     fi
 }
 
@@ -139,7 +139,7 @@ if [ "$MODE" = "4" ]; then # for statelite mode
     else
         echo "xCAT management server IP can't be determined.";
 	echo "exiting...";
-        logger -t xCAT "xcatdsklspost:xCAT management server IP can't be determined.\nexiting...";
+        logger -t xCAT -p local4.err "xcatdsklspost:xCAT management server IP can't be determined.\nexiting...";
         exit;
     fi
 else # for common mode
@@ -210,7 +210,7 @@ else # for common mode
     if [ $downloaded -eq 0 ]; then
         hn=`hostname`
         echo "Cannot download the postscripts from the xCAT server for node $hn"
-        logger -t xCAT "xcatdsklspost:Cannot download the postscripts from the xCAT server for node $hn"
+        logger -t xCAT -p local4.err "xcatdsklspost:Cannot download the postscripts from the xCAT server for node $hn"
         exit  
     fi
 
