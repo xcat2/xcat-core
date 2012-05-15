@@ -43,11 +43,11 @@ ONBOOT=yes
             ifdown hf0
             ifup hf0
         else
-            logger -t xcat "confighfi: cannot resolve hostname $name-hf0"
+            logger -t xcat -p local4.err "confighfi: cannot resolve hostname $name-hf0"
         fi
     elif [[ -z "$NTYPE" ]]
     then
-        logger -t xcat "confighfi: cannot read node type definition"
+        logger -t xcat -p local4.err "confighfi: cannot read node type definition"
     fi
 
     # Configure hf0-hf<n> interfaces one by one.
@@ -68,7 +68,7 @@ ONBOOT=yes
             ifdown hf$i
             ifup hf$i
         else
-            logger -t xcat "confighfi: cannot resolve hostname $name-hf$i"
+            logger -t xcat -p local4.err "confighfi: cannot resolve hostname $name-hf$i"
         fi
     done
 
@@ -119,11 +119,11 @@ else
         then
             mkhfi -i hf0 -a $CLIENT_IP -m $NETMASK
         else
-            logger -t xcat "confighfi: cannot resolve hostname $name-hf0"
+            logger -t xcat -p local4.err "confighfi: cannot resolve hostname $name-hf0"
         fi
     elif [[ -z "$NTYPE" ]]
     then
-        logger -t xcat "confighfi: cannot read node type definition"
+        logger -t xcat -p local4.err "confighfi: cannot read node type definition"
     fi
 
     for i in 1 2 3
@@ -134,7 +134,7 @@ else
         then
             mkhfi -i hf$i -a $CLIENT_IP -m $NETMASK
         else
-            logger -t xcat "confighfi: cannot resolve hostname $name-hf$i"
+            logger -t xcat -p local4.err "confighfi: cannot resolve hostname $name-hf$i"
         fi
 
     done
@@ -156,7 +156,7 @@ else
         sleep 2
         chdev -l ml0 -a netaddr=$CLIENT_IP -a netmask=$NETMASK -a state=up
     else
-        logger -t xcat "confighfi: cannot resolve hostname $name-ml0"
+        logger -t xcat -p local4.err "confighfi: cannot resolve hostname $name-ml0"
     fi
 
 fi
