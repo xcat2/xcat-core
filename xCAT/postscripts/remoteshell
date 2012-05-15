@@ -6,7 +6,7 @@
 #  Linux or AIX
 if [ -r /etc/ssh/sshd_config ]
 then
-	logger -t xcat "Install: setup /etc/ssh/sshd_config"
+	logger -t xcat -p local4.info "Install: setup /etc/ssh/sshd_config"
 	cp /etc/ssh/sshd_config /etc/ssh/sshd_config.ORIG
 	sed -i 's/^X11Forwarding .*$/X11Forwarding yes/' /etc/ssh/sshd_config
 	sed -i 's/^KeyRegenerationInterval .*$/KeyRegenerationInterval 0/' /etc/ssh/sshd_config
@@ -22,7 +22,7 @@ fi
 
 if [ -d /xcatpost/_ssh ]
 then
-	logger -t xcat "Install: setup root .ssh"
+	logger -p local4.info -t xcat "Install: setup root .ssh"
 	cd /xcatpost/_ssh
 	mkdir -p /root/.ssh
 	cp -f * /root/.ssh
@@ -37,7 +37,7 @@ fi
 #	cp /xcatpost/hostkeys/*_key /etc/ssh/
 #fi
 if [ ! -x /usr/bin/openssl ]; then
-    logger -t xcat "Install: /usr/bin/openssl is not executable."
+    logger -t xcat -p local4.err "Install: /usr/bin/openssl is not executable."
     exit 0
 fi
 allowcred.awk &
@@ -46,7 +46,7 @@ sleep 1
 if [ "$(uname -s)" = "AIX" ]; then
  AIX=1
  export AIX 
-  logger -t xcat "remoteshell setting up AIX"
+  logger -t xcat -p local4.info "remoteshell setting up AIX"
 fi
 
 getcredentials.awk ssh_dsa_hostkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_dsa_hostkey
@@ -56,7 +56,7 @@ grep -E '<error>' /tmp/ssh_dsa_hostkey
 if [ $? -ne 0 ]; then
 	#the message received is the data
 	cat /tmp/ssh_dsa_hostkey | grep -E -v '</{0,1}data>|</{0,1}content>|</{0,1}desc>' >/etc/ssh/ssh_host_dsa_key
-	logger -t xCAT ssh_dsa_hostkey
+	logger -t xCAT -p local4.info ssh_dsa_hostkey
 	MYCONT=`cat /etc/ssh/ssh_host_dsa_key`
         while [ -z "$MYCONT" ]; do
                 let SLI=$RANDOM%10
@@ -72,7 +72,7 @@ if [ $? -ne 0 ]; then
 else 
 	#the message received is an error, so parse it
 	ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/ssh_dsa_hostkey`
-	logger -t xCAT Error: $ERR_MSG
+	logger -t xCAT -p local4.err Error: $ERR_MSG
 fi
 rm /tmp/ssh_dsa_hostkey
 
@@ -83,7 +83,7 @@ grep -E '<error>' /tmp/ssh_rsa_hostkey
 if [ $? -ne 0 ]; then
 	#the message received is the data we request
 	cat /tmp/ssh_rsa_hostkey | grep -E -v '</{0,1}data>|</{0,1}content>|</{0,1}desc>' >/etc/ssh/ssh_host_rsa_key
-	logger -t xCAT ssh_rsa_hostkey
+	logger -t xCAT -p local4.info ssh_rsa_hostkey
 	MYCONT=`cat /etc/ssh/ssh_host_rsa_key`
 	while [ -z "$MYCONT" ]; do
     		let SLI=$RANDOM%10
@@ -99,7 +99,7 @@ if [ $? -ne 0 ]; then
 else
 	#This is an error message
 	ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/ssh_rsa_hostkey`
-	logger -t xCAT Error: $ERR_MSG
+	logger -t xCAT -p local4.err Error: $ERR_MSG
 fi
 rm /tmp/ssh_rsa_hostkey
 
@@ -122,7 +122,7 @@ then
   if [ $? -ne 0 ]; then
 	#The message contains the data we request
 	cat /tmp/ssh_root_key | grep -E -v '</{0,1}data>|</{0,1}content>|</{0,1}desc>' > /root/.ssh/id_rsa
-	logger -t xCAT ssh_root_key
+	logger -t xCAT -p local4.info ssh_root_key
 	MYCONT=`cat /root/.ssh/id_rsa`
 	while [ -z "$MYCONT" ]; do
 		let SLI=$RANDOM%10
@@ -134,7 +134,7 @@ then
   else
 	#This is an error message
 	ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/ssh_root_key`
-	logger -t xCAT ssh_root_key Error: $ERR_MSG
+	logger -t xCAT -p local4.err ssh_root_key Error: $ERR_MSG
   fi
   rm /tmp/ssh_root_key
 
@@ -147,7 +147,7 @@ then
 fi
 
 # start up the sshd for syncfiles postscript to do the sync work
-logger -t xCAT "start up sshd"
+logger -t xCAT -p local4.info "start up sshd"
 
 if [[ $OSVER == ubuntu* ]]
 then
