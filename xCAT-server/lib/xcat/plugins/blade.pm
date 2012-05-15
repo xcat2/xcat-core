@@ -32,7 +32,7 @@ my %mm_comm_pids;
 my $browser;
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
-use Data::Dumper;
+#use Data::Dumper;
 use POSIX "WNOHANG";
 use Storable qw(freeze thaw);
 use IO::Select;
@@ -41,6 +41,7 @@ use Time::HiRes qw(gettimeofday sleep);
 use xCAT::DBobjUtils;
 use Getopt::Long;
 use xCAT::SvrUtils;
+use xCAT::FSPUtils;
 
 sub handled_commands {
   return {
@@ -4263,7 +4264,9 @@ sub get_blades_for_mpa {
       } elsif ($att and $att->{parent} and ($att->{parent} ne $mpa)) {
           next;
       }
-      my $hcp_ip = xCAT::Utils::getIPaddress($att->{hcp});
+      my $request;
+      my $nodetype = "blade";
+      my $hcp_ip = xCAT::FSPUtils::getIPaddress($request, $nodetype, $att->{hcp});
       if (!defined($hcp_ip) or ($hcp_ip == -3)) {
           next;
       }
