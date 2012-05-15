@@ -59,7 +59,7 @@ my $host = `echo $ENV{NODE} |sed "s/-hf[0-9]//g"`;
 chomp($host);
 my $hostname = "$host-$nic";
 my $ip = &getipaddr($hostname);
-if (!$ip) { system("logger -t xcat 'configeth: cannot resolve $hostname.'"); exit 1; }
+if (!$ip) { system("logger -t xcat -p local4.err  'configeth: cannot resolve $hostname.'"); exit 1; }
 
 if ($^O =~ /^aix/i) { 
         if ($ip =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/) {
@@ -71,7 +71,7 @@ if ($^O =~ /^aix/i) {
 elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /sles|suse/i)) || (-f "/etc/SuSE-release")) { 
 	# Write the info to the ifcfg file
 	my $dir = "/etc/sysconfig/network";
-	if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat 'configeth: cannot open $dir/ifcfg-$nic.'"); exit 1; }
+	if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat -p local4.err 'configeth: cannot open $dir/ifcfg-$nic.'"); exit 1; }
 	# Not sure what is really REQUIRED from below -- copied the eth file from
 	# the system
 	print FILE "BOOTPROTO=\'static\'\n";
@@ -96,11 +96,11 @@ elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /sles|suse/i)) || (-f "/etc/SuSE-release"
 	if (! -f "$dir/ifcfg-$nic") {
 	    my $hostname = "$ENV{NODE}";
 	    my $ip = &getipaddr($hostname);
-	    if (!$ip) { system("logger -t xcat 'configeth: cannot resolve $hostname.'"); exit 1; }
+	    if (!$ip) { system("logger -t xcat -p local4.err 'configeth: cannot resolve $hostname.'"); exit 1; }
 	    
 	    # Write the info to the ifcfg file
 	    my $dir = "/etc/sysconfig/network";
-	    if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat 'configeth: cannot open $dir/ifcfg-$nic.'"); exit 1; }
+	    if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat -p local4.err  'configeth: cannot open $dir/ifcfg-$nic.'"); exit 1; }
 	    # Not sure what is really REQUIRED from below -- copied the eth file from
 	    # the system
 	    print FILE "BOOTPROTO=\'static\'\n";
@@ -124,7 +124,7 @@ elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /sles|suse/i)) || (-f "/etc/SuSE-release"
 else {
 	# Write the info to the ifcfg file
 	my $dir = "/etc/sysconfig/network-scripts";
-	if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat 'configeth: cannot open $dir/ifcfg-$nic.'"); exit 1; }
+	if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat -p local4.err 'configeth: cannot open $dir/ifcfg-$nic.'"); exit 1; }
 	print FILE "DEVICE=$nic\n";
 	print FILE "BOOTPROTO=none\n";
 	print FILE "IPADDR=$ip\n";
@@ -135,7 +135,7 @@ else {
 
 	runcmd("$dir/ifup $nic");
 }
-system("logger -t xcat 'configeth: successfully configured $nic.'");
+system("logger -t xcat -p local4.info 'configeth: successfully configured $nic.'");
 
 exit 0;
 
@@ -145,7 +145,7 @@ sub runcmd {
 	my @output = `$cmd`;
 	my $rc = $? >> 8;
 	if ($rc) {
-		system("logger -t xcat 'configeth: command $cmd failed with rc $rc: " . join('',@output) . "'");
+		system("logger -t xcat -p local4.err 'configeth: command $cmd failed with rc $rc: " . join('',@output) . "'");
 		my $errout= "configeth: command $cmd failed with rc $rc.";
                 echo $errout;
 		exit $rc;
