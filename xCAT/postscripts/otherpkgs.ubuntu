@@ -65,9 +65,9 @@ if [ $mounted -eq 0 ]; then
 fi
 
 echo NFSSERVER=$NFSSERVER
-logger -t xcat "NFSSERVER=$NFSSERVER"
+logger -t xcat -p local4.info  "NFSSERVER=$NFSSERVER"
 echo OTHERPKGDIR=$OTHERPKGDIR
-logger -t xcat "OTHERPKGDIR=$OTHERPKGDIR"
+logger -t xcat  -p local4.info "OTHERPKGDIR=$OTHERPKGDIR"
 
 #if [ -x "/sbin/dhcpcd" ]; then
 #    dhcpcd -n $PRIMARYNIC
@@ -291,17 +291,17 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     if [ $hasyum -eq 1 ]; then 
         echo "yum -y upgrade"
         result=`yum -y upgrade 2>&1`
-        logger -t xcat "$result"
+        logger -t xcat  -p local4.info "$result"
         if [ $? -ne 0 ]; then 
-	    logger -t xcat "otherpkgs: $result"
+	    logger -t xcat  -p local4.info "otherpkgs: $result"
         fi
         echo "$result"
     elif [ $haszypper -eq 1 ]; then
         echo "zypper --non-interactive update --auto-agree-with-license"
 	result=`zypper --non-interactive update --auto-agree-with-license 2>&1`
-        logger -t xcat "$result"
+        logger -t xcat  -p local4.info "$result"
 	if [ $? -ne 0 ]; then 
-            logger -t xcat "otherpkgs: $result"
+            logger -t xcat  -p local4.info "otherpkgs: $result"
 	fi
         echo "$result"
     fi     
@@ -315,17 +315,17 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         if [ $hasyum -eq 1 ]; then 
             echo "yum -y remove $repo_pkgs_preremove"
             result=`yum -y remove $repo_pkgs_preremove 2>&1`
-            logger -t xcat "$result"
+            logger -t xcat  -p local4.info "$result"
             if [ $? -ne 0 ]; then 
-	        logger -t xcat "otherpkgs: $result"
+	        logger -t xcat  -p local4.info "otherpkgs: $result"
             fi
             echo "$result"
         elif [ $haszypper -eq 1 ]; then
             echo "zypper remove -y $repo_pkgs_preremove"
 	    result=`zypper remove -y $repo_pkgs_preremove 2>&1`
-            logger -t xcat "$result"
+            logger -t xcat  -p local4.info "$result"
 	    if [ $? -ne 0 ]; then 
-                logger -t xcat "otherpkgs: $result"
+                logger -t xcat  -p local4.info "otherpkgs: $result"
 	    fi
             echo "$result"
         fi
@@ -334,9 +334,9 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     if [ "$plain_pkgs_preremove" != "" ]; then 
         echo "$sremovecommand $plain_pkgs_preremove" 
         result=`$sremovecommand $plain_pkgs_preremove 2>&1`
-        logger -t xcat "$result"
+        logger -t xcat  -p local4.info "$result"
         if [ $? -ne 0 ]; then 
-	    logger -t xcat "otherpkgs $result"
+	    logger -t xcat  -p local4.info "otherpkgs $result"
         fi
         echo "$result"
     fi
@@ -347,17 +347,17 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         if [ $hasyum -eq 1 ]; then 
             echo "yum -y install $repo_pkgs"
             result=`yum -y install $repo_pkgs 2>&1`
-	    logger -t xcat "$result"
+	    logger -t xcat  -p local4.info "$result"
             if [ $? -ne 0 ]; then 
-                logger -t xcat "otherpkgs: $result"
+                logger -t xcat  -p local4.info "otherpkgs: $result"
             fi
             echo "$result"
         elif [ $haszypper -eq 1 ]; then
             echo "zypper install -y $repo_pkgs"
 	    result=`zypper install -y $repo_pkgs 2>&1`
-            logger -t xcat "$result"
+            logger -t xcat  -p local4.info "$result"
 	    if [ $? -ne 0 ]; then 
-                logger -t xcat "otherpkgs: $result"
+                logger -t xcat  -p local4.info "otherpkgs: $result"
 	    fi
             echo "$result"
             #remove the repos
@@ -369,9 +369,9 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	elif [ $hasapt -eq 1 ]; then
 	    echo "apt-get -q -y --force-yes install $repo_pkgs"
 	    result=`apt-get -q -y --force-yes install $repo_pkgs 2>&1`
-	    logger -t xcat "$result"
+	    logger -t xcat  -p local4.info "$result"
 	    if [ $? -ne 0 ]; then 
-                logger -t xcat "otherpkgs: $result"
+                logger -t xcat  -p local4.info "otherpkgs: $result"
 	    fi
             echo "$result"
         fi
@@ -401,9 +401,9 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 
         echo "$supdatecommand --replacepkgs $plain_pkgs" 
         result=`$supdatecommand --replacepkgs $plain_pkgs 2>&1`
-        logger -t xcat "$result"
+        logger -t xcat  -p local4.info "$result"
         if [ $? -ne 0 ]; then 
-	    logger -t xcat "otherpkgs $result"
+	    logger -t xcat  -p local4.info "otherpkgs $result"
         fi
         echo "$result"
     
@@ -420,25 +420,25 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         if [ $hasyum -eq 1 ]; then 
             echo "yum -y remove $repo_pkgs_postremove"
             result=`yum -y remove $repo_pkgs_postremove 2>&1`
-            logger -t xcat "$result"
+            logger -t xcat  -p local4.info "$result"
             if [ $? -ne 0 ]; then 
-                logger -t xcat "otherpkgs: $result"
+                logger -t xcat  -p local4.info  "otherpkgs: $result"
             fi
             echo "$result"
         elif [ $haszypper -eq 1 ]; then
             echo "zypper remove -y $repo_pkgs_postremove"
 	    result=`zypper remove -y $repo_pkgs_postremove 2>&1`
-            logger -t xcat "$result"
+            logger -t xcat  -p local4.info  "$result"
 	    if [ $? -ne 0 ]; then 
-                logger -t xcat "otherpkgs: $result"
+                logger -t xcat  -p local4.info "otherpkgs: $result"
     	    fi
             echo "$result"
         elif [ $hasapt -eq 1 ]; then 
             echo "apt-get -y remove $repo_pkgs_postremove"
             result=`apt-get -y remove $repo_pkgs_postremove 2>&1`
-            logger -t xcat "$result"
+            logger -t xcat  -p local4.info "$result"
             if [ $? -ne 0 ]; then 
-                logger -t xcat "otherpkgs: $result"
+                logger -t xcat  -p local4.info "otherpkgs: $result"
             fi
             echo "$result"
         fi
@@ -447,9 +447,9 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     if [ "$plain_pkgs_postremove" != "" ]; then 
         echo "$sremovecommand $plain_pkgs_postremove" 
         result=`$sremovecommand $plain_pkgs_postremove 2>&1`
-        logger -t xcat "$result"
+        logger -t xcat  -p local4.info "$result"
         if [ $? -ne 0 ]; then 
-       	    logger -t xcat "otherpkgs $result"
+       	    logger -t xcat  -p local4.info "otherpkgs $result"
         fi
         echo "$result"
     fi
