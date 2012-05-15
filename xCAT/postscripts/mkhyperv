@@ -77,17 +77,17 @@ stop () {
   grep -q GenuineIntel /proc/cpuinfo && /sbin/modprobe -r kvm-intel
   grep -q AuthenticAMD /proc/cpuinfo && /sbin/modprobe -r kvm-amd
 }
-logger -t xcat "KVM $1"
+logger -t xcat -p local4.info "KVM $1"
 case "\$1" in
   start)
     echo -n $"Starting KVM: "
-    logger -t xcat "Starting KVM:"
+    logger -t xcat  -p local4.info "Starting KVM:"
     start
     echo
     ;;
   stop)
     echo -n $"Shutting down KVM: "
-    logger -t xcat "Shutting down KVM:"
+    logger -t xcat  -p local4.info "Shutting down KVM:"
     stop
     echo
     ;;
@@ -96,9 +96,9 @@ case "\$1" in
     ;;
   *)
     echo "Unknown command: \$1" >&2
-    logger -t xcat "Unknown command: \$1"
+    logger -t xcat  -p local4.info "Unknown command: \$1"
     echo "Valid commands are: start, stop, status" >&2
-    logger -t xcat "Valid commands are: start, stop, status"
+    logger -t xcat  -p local4.info "Valid commands are: start, stop, status"
     exit 1
 esac
 EOF
@@ -126,7 +126,7 @@ disconnect_targets()
 {
   iscsiadm -m node --logout
 }
-logger -t xcat "iscsi $1"
+logger -t xcat  -p local4.info "iscsi $1"
 case "\$1" in
     start)
       connect_targets
@@ -139,9 +139,9 @@ case "\$1" in
       ;;
     *)
       echo "Unknown command: \$1" >&2
-      logger -t xcat "Unknown command: \$1"
+      logger -t xcat  -p local4.info  "Unknown command: \$1"
       echo "Valid commands are: start, stop, status" >&2
-      logger -t xcat "Valid commands are: start, stop, status"
+      logger -t xcat  -p local4.info "Valid commands are: start, stop, status"
       exit 1
 esac
 EOF
