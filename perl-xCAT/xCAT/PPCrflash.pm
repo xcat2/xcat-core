@@ -94,7 +94,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(h|help v|version V|verbose p=s d=s activate=s commit recover) )) {
+    if ( !GetOptions( \%opt, qw(h|help v|version V|verbose p=s d=s activate=s commit recover bpa_acdl) )) {
         return( usage() );
     }
     
@@ -112,6 +112,11 @@ sub parse_args {
     #################################
     #Option --activate not valid with --commit or --recover
     #################################
+    if (exists($opt{bpa_acdl}) && (exists($opt{activate}) || exists($opt{commit}) || 
+                                   exists($opt{recover}) || exists($opt{p}) || exists($opt{d}))) {
+        return ( usage("Option --bpa_acdl not valid with other options "));
+    }
+    
     if( exists( $opt{activate} ) && (exists( $opt{commit}) || exists( $opt{recover}))) {
         return( usage("Option --activate not valid with --commit or --recover ") );
     }    
@@ -149,8 +154,8 @@ sub parse_args {
     #--activate's value only can be concurrent and disruptive
     ################################
     if(exists($opt{activate})) {
-        if( ($opt{activate} ne "concurrent") && ($opt{activate} ne "disruptive")) {
-            return (usage("--activate's value can only be concurrent or disruptive"));
+        if( ($opt{activate} ne "deferred") && ($opt{activate} ne "disruptive")) {
+            return (usage("--activate's value can only be deferred or disruptive"));
         }
 
         if(!exists( $opt{d} )) {
@@ -181,6 +186,9 @@ sub parse_args {
     } elsif( defined( $opt{ recover }) ) {
         print "recover flag\n";
         $housekeeping = "recover";
+    } elsif (defined( $opt{ bpa_acdl})) {
+        print "bpa_acdl flag\n";
+        $housekeeping = "bpa_acdl";
     } else {
         print "no housekeeping - update mode\n";
         $housekeeping = undef;
@@ -526,9 +534,9 @@ sub get_lic_filenames {
     #        return ("", "","", $msg, -1);
     #    }
         } else {
-        $msg = $msg . "Upgrade $mtms disruptively!";
-            if($activate ne "disruptive") {
-                $msg = "Option --activate's value shouldn't be concurrent, and it must be disruptive";
+        $msg = $msg . "Upgrade $mtms!";
+            if($activate !~ /^(disruptive|deferred)$/) {
+                $msg = "Option --activate's value shouldn't be $activate, and it must be disruptive or deferred";
                 return ("", "","", $msg, -1);
             }
         } 

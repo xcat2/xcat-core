@@ -146,9 +146,9 @@ sub get_lic_filenames {
 	#		return ("", "","", $msg, -1);
 	#	}
 	  } else {
-		$msg = $msg . "Upgrade $mtms disruptively!";
-           if($activate ne "disruptive") {
-	    		$msg = "Option --activate's value shouldn't be concurrent, and it must be disruptive";
+		$msg = $msg . "Upgrade $mtms!";
+           if($activate !~ /^(disruptive|deferred)$/ {
+	    		$msg = "Option --activate's value shouldn't be $activate, and it must be disruptive or deferred";
 			return ("", "","", $msg, -1);
 		}
        	 } 
@@ -261,7 +261,7 @@ sub rflash {
 	       	
 	        my $frame = $$d[5];
                 my $type = xCAT::DBobjUtils->getnodetype($frame);
-                if ( ( $frame ne $name ) && ( $type eq "frame" ) ){
+                if ( ( $frame ne $name ) && ( $type eq "frame" ) && $activate !~ /^deferred$/){
                     
                     my @frame_d = (0, 0, 0, $frame, "frame", 0);
 	            $action = "list_firmware_level";
@@ -327,14 +327,15 @@ sub rflash {
     	  
            if($housekeeping =~ /^commit$/) { $action = "code_commit"}
            if($housekeeping =~ /^recover$/) { $action = "code_reject"}
-           if($activate =~ /^disruptive$/) { 
+           if($housekeeping =~ /^bpa_acdl$/) { $action = "acdl"}
+           if($activate =~ /^(disruptive|deferred)$/) { 
                $action = "code_update";
-           }
-           if($activate =~ /^concurrent$/) {
-               my $res = "\'concurrent\' option not supported in FSPflash.Please use disruptive mode";
+           } elsif (exists($activate)){
+               #if($activate =~ /^concurrent$/) {
+               my $res = "\'$activate\' option not supported in FSPflash. Please use disruptive or deferred mode";
                push @value, [$name, $res, -1];
-	       next;
-          }
+	           next;
+           }
 	   
 	   my $msg;	
 	   if(!defined($housekeeping)) {	   
