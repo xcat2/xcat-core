@@ -328,8 +328,10 @@ sub rflash {
            if($housekeeping =~ /^commit$/) { $action = "code_commit"}
            if($housekeeping =~ /^recover$/) { $action = "code_reject"}
            if($housekeeping =~ /^bpa_acdl$/) { $action = "acdl"}
-           if($activate =~ /^(disruptive|deferred)$/) { 
+           if($activate eq "disruptive") { 
                $action = "code_update";
+           } elsif ($activate eq "deferred") {
+               $action = "code_updateD";
            } elsif (exists($activate)){
                #if($activate =~ /^concurrent$/) {
                my $res = "\'$activate\' option not supported in FSPflash. Please use disruptive or deferred mode";
