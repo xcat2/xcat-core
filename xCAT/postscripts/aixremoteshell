@@ -50,14 +50,14 @@ $rc = &runcmd("chown root $home");
 if ($rc != 0)
 {
    my $msg = "It fails to chown root $home";
-   `logger -t xcat $msg`;
+   `logger -t xcat -p local4.err $msg`;
    exit 1;
 }
 $rc = &runcmd("chgrp system $home");
 if ($rc != 0)
 {
    my $msg = "It fails to chgrp system $home";
-   `logger -t xcat $msg`;
+   `logger -t xcat  -p local4.err $msg`;
    exit 1;
 }
 
@@ -80,7 +80,7 @@ else
 	# setting up ssh
 	if (&setupSSH != 0) {
 		my $msg = "Failed to setup ssh on $node.\n";
-		`logger -t xcat $msg`;
+		`logger -t xcat  -p local4.err  $msg`;
 #	print $msg;
 		exit 0;
 	}
@@ -119,7 +119,7 @@ sub setupSSH
     else
     {    # ssh not installed
         my $msg = "Failed to setup ssh on $node, ssh not installed. \n";
-        `logger -t xcat $msg`;
+        `logger -t xcat -p local4.err  $msg`;
         exit 0;
     }
 
@@ -139,7 +139,7 @@ sub setupSSH
     else
     {    # ssh keys not available
         my $msg = "Failed to setup ssh on $node, ssh keys not available. \n";
-        `logger -t xcat $msg`;
+        `logger -t xcat  -p local4.err $msg`;
         exit 0;
     }
 
@@ -162,7 +162,7 @@ sub setupSSH
 	}
 	else {
         $msg = "aixremoteshell: Could not get ssh_host_dsa_key file.\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat  -p local4.err  $msg`;
     }
 
 	my $response=&getresponse("ssh_rsa_hostkey");
@@ -180,7 +180,7 @@ sub setupSSH
 	}
 	else {
         $msg = "aixremoteshell: Could not get ssh_host_rsa_key file.\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat  -p local4.err $msg`;
     }
         if ( $nodetype eq "service") {
 		&runcmd("mkdir -p /etc/xcat/hostkeys; cp /etc/ssh/ssh* /etc/xcat/hostkeys/. > /dev/null 2>&1");
@@ -207,7 +207,7 @@ sub setupSSH
 	  }
 	  else {
             $msg = "aixremoteshell: Could not get id_rsa file.\n";
-            `logger -t xcat $msg`;
+            `logger -t xcat  -p local4.err  $msg`;
           }
         }
 
@@ -241,7 +241,7 @@ sub getresponse
 
 	unless ($sock) {
 		my $msg = "aixremoteshell: Cannot connect to host \'$::servnode\'\n";
-		`logger -t xcat $msg`;
+		`logger -t xcat  -p local4.err  $msg`;
 		#print $msg;
 		kill 2, $lpid;
 		return undef;
@@ -293,7 +293,7 @@ sub openlistener
 	unless (defined $pid) {
 		# fork failed
 		$msg = "aixremoteshell: Could not fork process.\n";
-		`logger -t xcat $msg`;
+		`logger -t xcat  -p local4.err  $msg`;
 		print $msg;
 		return undef;
 	}
@@ -312,7 +312,7 @@ sub openlistener
 
 	unless ($listener) {
        	my $msg = "aixremoteshell: Cannot open socket on \'$node\'\n";
-   		`logger -t xcat $msg`;
+   		`logger -t xcat  -p local4.err $msg`;
 		print $msg;
        	exit 1;
    	}
@@ -353,7 +353,7 @@ sub runcmd
         if ($rc > 0)
         {
             my $msg = "$cmd returned rc=$rc @$::outref\n";
-            `logger -t xcat $msg`;
+            `logger -t xcat  -p local4.info $msg`;
 #			print $msg;
         }
     }
