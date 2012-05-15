@@ -11,7 +11,7 @@ exit 0
 echo "$RSHC" | grep "ssh" >/dev/null 2>&1
 if [ "$?" = "0" ]
 then
-	logger -t xcat "Install: Running makesshgkh on the server"
+	logger -t xcat -p local4.info "Install: Running makesshgkh on the server"
 
 	service sshd start
 	ssh $MASTER $XCATROOT/sbin/makesshgkh $NODE
