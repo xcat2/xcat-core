@@ -10,7 +10,7 @@ if LOCALFS=$(tabdb $SITETAB localfs 1)
 then
 	LOCALDIR=$(echo $LOCALFS | awk -F: '{print $2}')
 else
-	echo "$0: localfs not defined in $SITETAB" | logger -t xcat
+	echo "$0: localfs not defined in $SITETAB" | logger -t xcat -p local4.err
 	exit 1
 fi
 
@@ -18,7 +18,7 @@ ARCH=$(uname -m)
 
 DIRS="$LOCALDIR/goto/lib"
 
-echo "$0: arch is $ARCH" | logger -t xcat
+echo "$0: arch is $ARCH" | logger -t xcat -p local4.info
 case "$ARCH" in
 	i686)
 		DIRS="$DIRS $LOCALDIR/intel/$ARCH/lib"
