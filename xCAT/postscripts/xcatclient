@@ -10,17 +10,17 @@
 # from the postscript table into the servicenode postscript. 
 #
 if [ ! $1 ]; then
-   logger -t xcat "xcatclient call without -d, doing nothing."
+   logger -t xcat -p local4.err "xcatclient call without -d, doing nothing."
    exit 0
 fi
 if [ $1 != "-d" ]; then
-   logger -t xcat "xcatclient call without -d, doing nothing."
+   logger -t xcat  -p local4.err "xcatclient call without -d, doing nothing."
    exit 0
 fi
-logger -t xcat "xcatclient call with -d. getting credentials and cfgloc "
+logger -t xcat -p local4.info "xcatclient call with -d. getting credentials and cfgloc "
 
 if [ ! -x /usr/bin/openssl ]; then #Unless we have openssl stup
-   logger -t xcat "$0: /usr/bin/openssl is not executable"
+   logger -t xcat -p local4.err "$0: /usr/bin/openssl is not executable"
    exit 0
 fi
 USEOPENSSLFORXCAT=1 #Declare 2.3 style SSL
@@ -44,7 +44,7 @@ export USEOPENSSLFORXCAT
      done
    else
      ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/xcat_client_cred`
-     logger -t xCAT xcat_client_cred Error: $ERR_MSG
+     logger -t xCAT -p local4.err xcat_client_cred Error: $ERR_MSG
    fi
    rm /tmp/xcat_client_cred
 
