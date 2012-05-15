@@ -10809,46 +10809,7 @@ sub mkdsklsnode
         $error++;
     }
 
-    my $needexport = 1;
-    my $install_dir;
-    # Remove the exports added by NIM
     if ($::SETUPHANFS)
-    {
-        $install_dir = xCAT::Utils->getInstallDir();
-        $scmd = "lsnfsexp -c";
-        my @output = xCAT::Utils->runcmd("$scmd", -1);
-        if ($::RUNCMD_RC != 0)
-        {
-            my $rsp;
-            push @{$rsp->{data}}, "Could not list nfs exports on $Sname.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            $error++;
-        }
-        foreach my $line (@output)
-        {
-            next if ($line =~ /^#/);
-            my ($directory,$anonuid,$public,$versions,$exname,$refer,$replica,$allother) = split(':', $line);
-            if (($directory eq $install_dir) && ($replica))
-            {
-                $needexport = 0;
-                last;
-            }
-            if ($directory =~ /^$install_dir/)
-            {
-                my $scmd = "rmnfsexp -d $directory";
-                my $output = xCAT::Utils->runcmd("$scmd", -1);
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Could not unexport NFS directory $directory on $Sname.\n";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    $error++;
-                }
-            }
-        }
-    }
-
-    if ($::SETUPHANFS && !$::BACKUP)
     {
         # Determine the service nodes pair
         my %snhash = ();
@@ -10875,24 +10836,9 @@ sub mkdsklsnode
             xCAT::MsgUtils->message("E", $rsp, $callback);
         }
 
-        if (scalar(keys %xcatmasterhash) ne 1)
-        {
-            $setuphanfserr++;
-            my $rsp;
-            my $xcatmasterstr = join(',', keys %xcatmasterhash);
-            push @{$rsp->{data}}, "There are more than one xcatmaster for the nodes, the xcatmasters are $xcatmasterstr.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-        }
         my $xcatmasterip = xCAT::NetworkUtils->getipaddr((keys %xcatmasterhash)[0]);
         my @allips = xCAT::Utils->gethost_ips();
-        if (!grep(/^$xcatmasterip$/, @allips))
-        {
-            $setuphanfserr++;
-            my $rsp;
-            my $allipstr = join(',', @allips);
-            push @{$rsp->{data}}, "xcatmaster ip address $xcatmasterip is not configured on this node.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-        }
+
         my $snlocal;
         my $snremote;
         foreach my $snhost (keys %snhash)
@@ -10918,10 +10864,48 @@ sub mkdsklsnode
 
         if (!$setuphanfserr)
         {
+            my $localip;
+            # Get the ip address on the local service node
+            my $lscmd = qq~ifconfig -a | grep 'inet '~;
+            my $out = xCAT::Utils->runcmd("$lscmd", -1);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                "Could not run command: $lscmd on node $snlocal.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+            }
+            else
+            {
+                foreach my $line (split(/\n/, $out))
+                {
+                     $line =~ /inet\s+(.*?)\s+netmask\s+(.*?)\s+/;
+                     #$1 is ip address, $2 is netmask
+                      if ($1 && $2)
+                      {
+                            my $ip = $1;
+                            my $netmask = $2;
+                            if(xCAT::Utils::isInSameSubnet($xcatmasterip, $ip, $netmask, 2))
+                            {
+                                $localip = $ip;
+                                last;
+                            }
+                        }
+                 }
+             }
+             if (!$localip)
+             {
+             	my $rsp;
+               	push @{$rsp->{data}},
+               	"Could not find an ip address in the samesubnet with xcatmaster ip $xcatmasterip on node $snlocal, falling back to service node $snlocal.\n";
+              	xCAT::MsgUtils->message("E", $rsp, $callback);
+                $localip = xCAT::NetworkUtils->getipaddr($snlocal);
+             }
+            
             my $remoteip;
             # Get the ip address on the remote service node
-            my $lscmd = qq~ifconfig -a | grep 'inet '~;
-	    my $out = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snremote, $lscmd, 0);
+            $lscmd = qq~ifconfig -a | grep 'inet '~;
+	    $out = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snremote, $lscmd, 0);
             if ($::RUNCMD_RC != 0)
             {
              	my $rsp;
@@ -11014,9 +10998,42 @@ sub mkdsklsnode
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     $error++;
                 }
+                my $install_dir = xCAT::Utils->getInstallDir();
+                $scmd = "lsnfsexp -c";
+                my @output = xCAT::Utils->runcmd("$scmd", -1);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Could not list nfs exports on $Sname.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    $error++;
+                }
+                my $needexport = 1;
+                foreach my $line (@output)
+                {
+                    next if ($line =~ /^#/);
+                    my ($directory,$anonuid,$public,$versions,$exname,$refer,$replica,$allother) = split(':', $line);
+                    if (($directory eq $install_dir) && ($replica))
+                    {
+                        $needexport = 0;
+                        last;
+                    }
+                    if ($directory =~ /^$install_dir/)
+                    {
+                        my $scmd = "rmnfsexp -d $directory";
+                        my $output = xCAT::Utils->runcmd("$scmd", -1);
+                        if ($::RUNCMD_RC != 0)
+                        {
+                            my $rsp;
+                            push @{$rsp->{data}}, "Could not unexport NFS directory $directory on $Sname.\n";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            $error++;
+                        }
+                    }
+                }
                 if ($needexport)
                 {
-                    my $scmd = "mknfsexp -d $install_dir -B -v 4 -g $install_dir\@$xcatmasterip:$install_dir\@$remoteip -x -t rw -r '*'";
+                    my $scmd = "mknfsexp -d $install_dir -B -v 4 -g $install_dir\@$localip:$install_dir\@$remoteip -x -t rw -r '*'";
                     my $output = xCAT::Utils->runcmd("$scmd", -1);
                     if ($::RUNCMD_RC != 0)
                     {
