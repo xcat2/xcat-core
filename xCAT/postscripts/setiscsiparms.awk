@@ -9,10 +9,10 @@ BEGIN {
 
 	while(1) {
                 if((ns |& getline) > 0)
-                        print $0 | "logger -t xcat"
+                        print $0 | "logger -t xcat -p local4.info"
                 else {
                     print "Retrying iSCSI paramater config script"
-                    print "Retrying iSCSI paramater config script" | "logger -t xcat"
+                    print "Retrying iSCSI paramater config script" | "logger -t xcat -p local4.info"
                     close(ns)
                     system("sleep 1")
                 }
