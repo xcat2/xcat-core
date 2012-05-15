@@ -85,7 +85,7 @@ sub runcmd {
 	my @output = `$cmd`;
 	my $rc = $? >> 8;
 	if ($rc) {
-		system("logger -t xcat 'confignimsh: command $cmd failed with rc $rc: " . join('',@output) . "'");
+		system("logger -t xcat -p local4.err 'confignimsh: command $cmd failed with rc $rc: " . join('',@output) . "'");
 		exit $rc;
 	}
 }
