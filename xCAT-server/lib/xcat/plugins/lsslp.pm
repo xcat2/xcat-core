@@ -804,7 +804,7 @@ sub get_host_from_url {
     #######################################
     my $nets = xCAT::Utils::my_nets();
     my $inc = $globalopt{i};
-    my @ips = @{$attr->{'ip-address'}};
+    my @ips = (exists $attr->{'ip-address'})? @{$attr->{'ip-address'}}: @{$attr->{'ipv4-address'}};
 
     my @ips2 = split /,/, $inc;
     my @validip;
@@ -853,11 +853,11 @@ sub get_host_from_url {
         foreach my $ip (@validip) {
             my $hname = gethostbyaddr( inet_aton($ip), AF_INET );
             if($hname) {
-                            $host = $hname;
-                                $vip = $ip;
-                                last;
+                $host = $hname;
+                $vip = $ip;
+                last;
 
-                    }
+            }
         }
         foreach my $ip (@validip) {
             my $hoststab = xCAT::Table->new( 'hosts' );
@@ -947,20 +947,21 @@ sub parse_responses {
             $atthash{mac} = $rsp;
             $atthash{hostname} = get_host_from_url($request, $attributes);
             $atthash{otherinterfaces} = ${$attributes->{'ip-address'}}[0];
-                        $atthash{url} =  ${$searchmacs{$rsp}}{payload};
+            $atthash{url} =  ${$searchmacs{$rsp}}{payload};
             $outhash{'Server-'.$atthash{mtm}.'-SN'.$atthash{serial}} = \%atthash;
             $$length = length( $atthash{ip}) if ( length( $atthash{ip} ) > $$length );
         } elsif ($type eq SERVICE_CMM) {
             $atthash{type} = $service_slp{$type};
-            $atthash{mtm} = ${$attributes->{'enclosure-machinetype-model'}}[0];
+            $atthash{mtm} = ${$attributes->{'enclosure-mtm'}}[0];
             $atthash{serial} = ${$attributes->{'enclosure-serial-number'}}[0];
             $atthash{slot} = int(${$attributes->{'slot'}}[0]);
-            $atthash{ip} = ${$attributes->{'ip-address'}}[0];
+            $atthash{ip} = ${$attributes->{'ipv4-address'}}[0];
             $atthash{mac} = $rsp;
             $atthash{mname} = ${$attributes->{'mm-name'}}[0];
-                        $atthash{url} =  ${$searchmacs{$rsp}}{payload};
+            $atthash{url} =  ${$searchmacs{$rsp}}{payload};
             $atthash{hostname} = get_host_from_url($request, $attributes);
-            $atthash{otherinterfaces} = ${$attributes->{'ip-address'}}[0];
+			$atthash{mpa} = $atthash{hostname};
+            $atthash{otherinterfaces} = ${$attributes->{'ipv4-address'}}[0];
             $outhash{'Server-'.$atthash{mtm}.'-SN'.$atthash{serial}} = \%atthash;
             $$length = length( $atthash{ip}) if ( length( $atthash{ip} ) > $$length );
         } elsif ($type eq SERVICE_HMC) {
@@ -969,16 +970,16 @@ sub parse_responses {
             $atthash{serial} = ${$attributes->{'serial-number'}}[0];
             $atthash{ip} = ${$attributes->{'ip-address'}}[0];
             $atthash{hostname} = get_host_from_url($request, $attributes);
-                        my @ips = @{$attributes->{'ip-address'}};
-                        foreach my $tmpip (@ips) {
+            my @ips = @{$attributes->{'ip-address'}};
+            foreach my $tmpip (@ips) {
                 if (exists($::OLD_DATA_CACHE{"hmc*".$tmpip})){
                     $atthash{hostname} = $::OLD_DATA_CACHE{"hmc*".$tmpip};
                     push  @matchnode, 'Server-'.$atthash{mtm}.'-SN'.$atthash{serial};
                     $atthash{ip} = $tmpip;
                 }
-                    }
+            }
             $atthash{mac} = $rsp;
-                        $atthash{url} =  ${$searchmacs{$rsp}}{payload};
+            $atthash{url} =  ${$searchmacs{$rsp}}{payload};
             $atthash{otherinterfaces} = ${$attributes->{'ip-address'}}[0];
             $outhash{'Server-'.$atthash{mtm}.'-SN'.$atthash{serial}} = \%atthash;
             $$length = length( $atthash{ip}) if ( length( $atthash{ip} ) > $$length );
