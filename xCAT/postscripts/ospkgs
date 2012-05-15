@@ -115,9 +115,9 @@ if [ $mounted -eq 0 ]; then
     fi
 fi
 
-logger -t xcat "NFSSERVER=$NFSSERVER"
-logger -t xcat "OSPKGDIR=$OSPKGDIR"
-logger -t xcat "OSPKGS=$OSPKGS"
+logger -t xcat -p local4.info "NFSSERVER=$NFSSERVER"
+logger -t xcat -p local4.info "OSPKGDIR=$OSPKGDIR"
+logger -t xcat -p local4.info "OSPKGS=$OSPKGS"
 
 if [ $debug -ne 0 ]; then
     echo NFSSERVER=$NFSSERVER
@@ -200,13 +200,13 @@ if ( pmatch "$OSVER" "sles10*" ); then
     fi
     result=`rug sa $path $OSVER`
     if [ $? -ne 0 ]; then 
-	logger -t xcat "ospkgs: rug sa $path $OSVER\n    $result"
+	logger -t xcat -p local4.info "ospkgs: rug sa $path $OSVER\n    $result"
 	echo "ospkgs: rug sa $path $OSVER"
 	echo "    $result"
     fi
     result=`rug sub $OSVER`
     if [ $? -ne 0 ]; then 
-	logger -t xcat "ospkgs: rug sub $OSVER\n    $result"
+	logger -t xcat -p local4.info "ospkgs: rug sub $OSVER\n    $result"
 	echo "ospkgs: rug sub $OSVER"
 	echo "    $result"
     fi
@@ -218,7 +218,7 @@ if ( pmatch "$OSVER" "sles10*" ); then
 
     result=`rug update -y --agree-to-third-party-licences`
     if [ $? -ne 0 ]; then 
-	logger -t xcat "rug update -y --agree-to-third-party-licences\n    $result"
+	logger -t xcat -p local4.info "rug update -y --agree-to-third-party-licences\n    $result"
         echo "ospkgs: rug update -y --agree-to-third-party-licences"
 		echo "    $result"
     else
@@ -234,7 +234,7 @@ if ( pmatch "$OSVER" "sles10*" ); then
 	cmd="$ENVLIST rug install -y --agree-to-third-party-licences -t pattern $groups"
 	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
-	    logger -t xcat "ospkgs: $cmd\n    $result"
+	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
 	else
@@ -250,7 +250,7 @@ if ( pmatch "$OSVER" "sles10*" ); then
 	cmd="$ENVLIST rug install -y --agree-to-third-party-licences $pkgs"
 	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
-	    logger -t xcat "ospkgs: $cmd\n    $result"
+	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
 	else
@@ -266,7 +266,7 @@ if ( pmatch "$OSVER" "sles10*" ); then
 	cmd="$ENVLIST rug remove -y $pkgs_d"
 	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
-	    logger -t xcat "ospkgs: $cmd\n    $result"
+	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
 	else
@@ -304,7 +304,7 @@ elif ( pmatch "$OSVER" "sles11*" ); then
     result=`zypper ar $path $OSVER 2>&1`
     if [ $? -ne 0 ]; then 
 	if ( ! pmatch "$result" "*exists*" ); then 
-	    logger -t xcat "ospkgs: zypper ar $path $OSVER\n    $result"
+	    logger -t xcat -p local4.info "ospkgs: zypper ar $path $OSVER\n    $result"
 	    echo "ospkgs: zypper ar $path $OSVER"
 	    echo "    $result"
 	fi
@@ -319,7 +319,7 @@ elif ( pmatch "$OSVER" "sles11*" ); then
         result=`zypper ar $SDKDIR $OSVER-sdk 2>&1`
         if [ $? -ne 0 ]; then 
 	    if ( ! pmatch "$result" "*exists*" ); then 
-		logger -t xcat "ospkgs: zypper ar $SDKDIR $OSVER-sdk\n    $result"
+		logger -t xcat -p local4.info "ospkgs: zypper ar $SDKDIR $OSVER-sdk\n    $result"
 		echo "ospkgs: zypper ar $SDKDIR $OSVER-sdk"
 		echo "    $result"
 	    fi
@@ -335,7 +335,7 @@ elif ( pmatch "$OSVER" "sles11*" ); then
     #upgrade the all existing rpms
     result=`zypper --non-interactive update --auto-agree-with-licenses`
     if [ $? -ne 0 ]; then 
-	logger -t xcat "ospkgs: zypper --non-interactive update --auto-agree-with-licenses\n    $result"
+	logger -t xcat -p local4.info  "ospkgs: zypper --non-interactive update --auto-agree-with-licenses\n    $result"
 	echo "ospkgs: zypper --non-interactive update --auto-agree-with-licenses"
 	echo "    $result"
     else
@@ -350,7 +350,7 @@ elif ( pmatch "$OSVER" "sles11*" ); then
 	cmd="$ENVLIST zypper install -y --auto-agree-with-licenses -t pattern $groups"
 	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
-	    logger -t xcat "ospkgs: $cmd\n    $result"
+	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
 	else
@@ -366,7 +366,7 @@ elif ( pmatch "$OSVER" "sles11*" ); then
 	cmd="$ENVLIST zypper install -y --auto-agree-with-licenses $pkgs"
 	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
-	    logger -t xcat "ospkgs: $cmd    $result"
+	    logger -t xcat -p local4.info "ospkgs: $cmd    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
 	else
@@ -382,7 +382,7 @@ elif ( pmatch "$OSVER" "sles11*" ); then
 	cmd="$ENVLIST zypper remove -y $pkgs_d"
 	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
-	    logger -t xcat "ospkgs: $cmd    $result"
+	    logger -t xcat -p local4.info "ospkgs: $cmd    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
 	else
@@ -479,7 +479,7 @@ else
     #upgrade the existing rpms
     result=`yum -y upgrade 2>&1`
     if [ $? -ne 0 ]; then 
-	logger -t xcat "ospkgs: yum -y upgrade\n    $result"
+	logger -t xcat -p local4.info "ospkgs: yum -y upgrade\n    $result"
 	echo "ospkgs: yum -y upgrade"
 	echo "    $result"
     else
@@ -494,7 +494,7 @@ else
 	cmd="echo $groups| $ENVLIST xargs yum -y groupinstall"
 	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
-	    logger -t xcat "ospkgs: $cmd\n    $result"
+	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
 	else
@@ -510,7 +510,7 @@ else
 	cmd="$ENVLIST yum -y install $pkgs"
 	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
-	    logger -t xcat "ospkgs: $cmd\n    $result"
+	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
 	else
@@ -526,7 +526,7 @@ else
 	cmd="$ENVLIST yum -y remove $pkgs_d"
 	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
-	    logger -t xcat "ospkgs: $cmd\n    $result"
+	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
 	else
