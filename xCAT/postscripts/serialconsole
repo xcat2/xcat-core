@@ -4,7 +4,7 @@ for i in /boot/grub/grub.conf /boot/grub/menu.lst
 do
 	if [ -r "$i" ]
 	then
-		logger -t xcat "Install: got GRUB at $i"
+		logger -t xcat -p local4.info "Install: got GRUB at $i"
 		GRUB=$i
 		GRUBDIR=$(dirname $GRUB)
 		GRUBFILE=$(basename $GRUB)
@@ -14,7 +14,7 @@ done
 
 if [ -n "$GRUB" ]
 then
-        logger -t xcat "Install: the GRUB dir is $GRUBDIR"
+        logger -t xcat -p local4.info "Install: the GRUB dir is $GRUBDIR"
 	cd $GRUBDIR
 	perl -pi -e 's/^gfxmenu/#gfxmenu/' $GRUBFILE
 	perl -pi -e 's/^color/#color/' $GRUBFILE
