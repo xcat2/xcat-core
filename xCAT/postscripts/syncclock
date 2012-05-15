@@ -10,7 +10,7 @@ if TIMESERVERS=$(tabdb $SITETAB timeservers 1)
 then
 	:
 else
-	echo "$0: timeservers not defined in $SITETAB" | logger -t xcat
+	echo "$0: timeservers not defined in $SITETAB" | logger -t xcat -p local4.err
 	exit
 fi
 
@@ -18,19 +18,19 @@ T=$(echo $TIMESERVERS | awk -F, '{print $1}')
 
 if [ -n "$T" -a "$T" != "NA" ]
 then
-	logger -t xcat "Install: sync clock"
-	ntpdate -bs $T 2>&1 | logger -t xcat
+	logger -t xcat -p local4.info "Install: sync clock"
+	ntpdate -bs $T 2>&1 | logger -t xcat -p local4.info
 
-	logger -t xcat "$0: the OS version is $OSVER"
+	logger -t xcat "$0: the OS version is $OSVER" -p local4.info
 	case "$OSVER" in
 		rh9|rh[awe]s[34]|rh*5)
-			hwclock -w 2>&1 | logger -t xcat
+			hwclock -w 2>&1 | logger -t xcat -p local4.info
 			;;
 		rh*)
-			setclock 2>&1 | logger -t xcat
+			setclock 2>&1 | logger -t xcat -p local4.info
 			;;
 		sles*|suse8*|suse9*|suse10)
-			clock -w 2>&1 | logger -t xcat
+			clock -w 2>&1 | logger -t xcat -p local4.info
 			;;
 	esac
 fi
