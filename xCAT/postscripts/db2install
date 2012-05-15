@@ -83,7 +83,7 @@ my @installlocdir = split '/', $installdir;  # get base of installdir
 my @dblocdir = split '/',$::databaseloc;  # get base of database
 if ($installlocdir[1] eq $dblocdir[1] ) { # if they match,error
   my $msg="db2install:The site databaseloc attribute is set to the directory or a sub-directory of the site table installloc or installdir attribute or the default of /install.  This is not a supported configuration.";
-  `logger -t xcat $msg`;
+  `logger -t xcat -p local4.err $msg`;
        exit(1);
 }
 
@@ -125,7 +125,7 @@ if (!(-e ($db2install)))
         if ($rc != 0)
         {
             $msg = "db2install:Error installing DB2. Cannot continue. \n";
-            `logger -t xcat $msg`;
+            `logger -t xcat -p local4.err $msg`;
             &unmountdb2code;
             exit(1);
 
@@ -138,14 +138,14 @@ if (!(-e ($db2install)))
     {
         $msg =
           "db2install:Cannot mount the site.db2installloc directory to get the db2 code to install. Setup cannot continue.\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat -p local4.err $msg`;
         exit(1);
     }
 }
 else
 {
     $msg = "db2install:DB2 is already installed. Will skip installation. \n";
-    `logger -t xcat $msg`;
+    `logger -t xcat -p local4.info  $msg`;
 }
 
 # get the cfgloc file,if linux should be in /etc/xcat/cfgloc.db2 from xcatserver
@@ -155,7 +155,7 @@ if ($rc != 0)
 {    # could not get the cfgloc file, cannot continue
     $msg =
       "db2install:Cannot get the cfgloc file from the MN.  Client setup cannot continue. \n";
-    `logger -t xcat $msg`;
+    `logger -t xcat -p local4.err $msg`;
     exit 1;
 }
 
@@ -188,7 +188,7 @@ sub runcmd
         if ($rc > 0)
         {
             my $msg = "db2install:$cmd returned rc=$rc $::outref\n";
-            `logger -t xcat $msg`;
+            `logger -t xcat -p local4.info $msg`;
             return 1;
         }
     }
@@ -213,7 +213,7 @@ sub getcfgloc
         if ($::RUNCMD_RC != 0)
         {
             $msg = "db2install: $cmd failed.\n";
-            `logger -t xcat $msg`;
+            `logger -t xcat -p local4.err $msg`;
             return 1;
         }
 
@@ -236,7 +236,7 @@ sub getcfgloc
         else
         {
             $msg = "db2install: Could not get cfgloc file.\n";
-            `logger -t xcat $msg`;
+            `logger -t xcat -p local4.err $msg`;
             return 1;
         }
 
@@ -256,7 +256,7 @@ sub getcfgloc
         else
         {
             $msg = "db2install: cfgloc file not for DB2.\n";
-            `logger -t xcat $msg`;
+            `logger -t xcat -p local4.err $msg`;
             return 1;
         }
     }
@@ -381,7 +381,7 @@ sub installdb2code
     if ((!(-e $installcode1)) && (!(-e $installcode2)) && (!(-e $installcode3)) && (!(-e $installcode4)))
     {
         $msg = "db2install:Install code  does not exist. Cannot install DB2 code.\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat -p local4.err $msg`;
         exit 1;
     }
     # pick the correct install directory
@@ -402,7 +402,7 @@ sub installdb2code
     my $expect_log = "/tmp/xcatexpect.log";
     $msg =
       "db2install:Starting DB2 install. Monitor progress in $expect_log on the node. \n";
-    `logger -t xcat $msg`;
+    `logger -t xcat -p local4.info $msg`;
     my $db2sql;
     my $timeout = 1000;    #sets Expect default timeout, 0 accepts immediately
     my $timeout;           # null says wait forever
@@ -459,7 +459,7 @@ sub installdb2code
     unless ($db2sql->spawn($spawncmd))
     {
         $msg = "db2install:Unable to run $spawncmd to create database.\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat -p local4.err $msg`;
         exit 1;
 
     }
@@ -496,12 +496,12 @@ sub installdb2code
         my $errmsg = $result[1];
         $db2sql->soft_close();
         $msg = "db2install:Installing DB2 results = $errmsg.\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat -p local4.info  $msg`;
 
     }
     $db2sql->soft_close();
     $msg = "db2install:Ending DB2 install.\n";
-    `logger -t xcat $msg`;
+    `logger -t xcat -p local4.info $msg`;
     return $rc;
 
 }
@@ -565,12 +565,12 @@ sub rundb2sqlsetup
       "XCATDB2SERVER=$::MN XCATDB2PW=$password $::XCATROOT/bin/db2sqlsetup -i -C";
     }
     $msg = "db2install:Running Client setup. \"$::XCATROOT/bin/db2sqlsetup -i -C\"\n";
-    `logger -t xcat $msg`;
+    `logger -t xcat -p local4.info $msg`;
 
     $rc = &runcmd($cmd);
 
     $msg = "db2install: Client setup finished.\n";
-    `logger -t xcat $msg`;
+    `logger -t xcat -p local4.info $msg`;
 
     return $rc;
 
@@ -623,7 +623,7 @@ sub getresponse
     unless ($sock)
     {
         $msg = "db2install: Cannot connect to host \'$::MN\'\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat -p local4.err $msg`;
         print $msg;
         return undef;
     }
@@ -682,7 +682,7 @@ sub openlistener
 
         # fork failed
         $msg = "db2install: Could not fork process.\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat -p local4.err $msg`;
 
         #print $msg;
         return undef;
@@ -706,7 +706,7 @@ sub openlistener
     unless ($listener)
     {
         my $msg = "db2install: Cannot open socket on \'$node\'\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat -p local4.err $msg`;
         print $msg;
         exit 1;
     }
