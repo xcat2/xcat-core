@@ -56,7 +56,9 @@ sub dodiscover {
 		}
 	}
 	unless ($args{SrvTypes}) { croak "SrvTypes argument is required for xCAT::SLP::Dodiscover"; }
-	setsockopt($args{'socket'},SOL_SOCKET,SO_BROADCAST,1); #allow for broadcasts to be sent, we know what we are doing
+	unless (xCAT::Utils->isAIX()) { # AIX bug, can't set socket with SO_BROADCAST, otherwise multicast can't work.
+	    setsockopt($args{'socket'},SOL_SOCKET,SO_BROADCAST,1); #allow for broadcasts to be sent, we know what we are doing
+	}
 	my @srvtypes;
 	if (ref $args{SrvTypes}) {
 		@srvtypes = @{$args{SrvTypes}};
