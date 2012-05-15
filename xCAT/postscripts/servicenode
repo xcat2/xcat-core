@@ -94,7 +94,7 @@ require xCAT::Utils;
     if ($mounted == 0) { # not mounted
       if (&runcmd("mkdir -p $installdir/postscripts; cp -p -R /xcatpost/* $installdir/postscripts > /dev/null 2>&1") != 0 ) {
         $msg = "$::sdate servicenode: Could not copy postscripts to $installdir/postscripts.\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat -p local4.warning $msg`;
       }
     }
 
@@ -105,9 +105,9 @@ require xCAT::Utils;
         &getcreds;
     } else {   # Linux
       # call xcatserver,xcatclient to transfer the SSL credentials and cfgloc
-       `logger -t $::sdate servicenode:  running xcatserver -d`;
+       `logger -t xcat -p local4.info $::sdate servicenode:  running xcatserver -d`;
 	&runcmd("xcatserver -d");
-       `logger -t $::sdate servicenode: running xcatclient -d`;
+       `logger -t xcat -p local4.info $::sdate servicenode: running xcatclient -d`;
 	&runcmd("xcatclient -d");
     }
     
@@ -123,7 +123,7 @@ if ($::osname eq 'AIX')
 	if ( $rc != 0) {
 		my $msg="$::sdate  servicenode: One or more errors occurred when attempting to configure node $::hname as an xCAT service node.\n";
 #		print "$msg\n";
-		`logger -t xcat $msg`;
+		`logger -t xcat -p local4.warning $msg`;
 	}
 } 
 else
@@ -137,13 +137,13 @@ else
 
          &copycerts;
         
-       `logger -t $::sdate servicenode:  running xcatserver -d`;
+       `logger -t xcat -p local4.info $::sdate servicenode:  running xcatserver -d`;
 	&runcmd("xcatserver -d");
-       `logger -t $::sdate servicenode: running xcatclient -d`;
+       `logger -t xcat -p local4.info $::sdate servicenode: running xcatclient -d`;
 	&runcmd("xcatclient -d");
 }
 
-`logger -t $::sdate servicenode:  rc=$rc`;
+`logger -t xcat -p local4.info $::sdate servicenode:  rc=$rc`;
 exit $rc;
 
 #
@@ -169,7 +169,7 @@ sub runcmd
         if ($rc > 0)
         {
             my $msg="$::sdate servicenode: $cmd returned rc=$rc \n";
-            `logger -t xcat $msg`;
+            `logger -t xcat -p local4.info  $msg`;
 			return 1;
         }
     }
@@ -187,13 +187,13 @@ sub setupAIXsn
 	# makes it a service node 
 	if (&runcmd("touch /etc/xCATSN") != 0 ) {
 		$msg = "$::sdate servicenode: Could not touch /etc/xCATSN\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat -p local4.warning $msg`;
     }
 
 	# copy the postscripts to /install/postscripts
 	if (&runcmd("mkdir -p $installdir/postscripts; cp -p -R /xcatpost/* $installdir/postscripts > /dev/null 2>&1") != 0 ) {
 		$msg = "$::sdate servicenode: Could not copy postscripts to $installdir/postscripts.\n";
-		`logger -t xcat $msg`;
+		`logger -t xcat -p local4.warning $msg`;
 	}
 
 	# check if /install/postscripts is in /etc/exports
@@ -201,7 +201,7 @@ sub setupAIXsn
         # if not add it and make sure it is exported
         if (&runcmd("echo '$installdir/postscripts -ro' >> /etc/exports; exportfs -a") !=0 ) {
             $msg = "$::sdate servicenode: Could not update the /etc/exports file.\n";
-            `logger -t xcat $msg`;
+            `logger -t xcat -p local4.warning  $msg`;
         }
     }
 
@@ -209,7 +209,7 @@ sub setupAIXsn
 	if (-f "/etc/xCATMN") {
 		if (&runcmd("rm  /etc/xCATMN") != 0 ) {
 			$msg = "$::sdate servicenode: Could not remove /etc/xCATMN\n";
-			`logger -t xcat $msg`;
+			`logger -t xcat -p local4.warning $msg`;
 		}
 	}
 
@@ -223,13 +223,13 @@ sub setupAIXsn
 
 	if (&runcmd($mkssys_cmd) != 0) {
 		$msg = "$::sdate servicenode: Could not create subsystem for xcatd. It maybe already have been added.\n";
-		`logger -t xcat $msg`;
+		`logger -t xcat -p local4.warning $msg`;
 	}
 
 	# start xcatd
 	if (&runcmd("$::XCATROOT/sbin/restartxcatd") != 0) {
 		$msg = "$::sdate servicenode: Could not start xcatd.\n\n $::outref \n";
-       	`logger -t xcat $msg`;
+       	`logger -t xcat -p local4.warning  $msg`;
     }
 
 	# add xcatd to /etc/inittab???
@@ -245,25 +245,25 @@ sub setupAIXsn
 	# set ulimit - so we can copy over large files - like spot
 	if (&runcmd("/usr/bin/chuser fsize=-1 root") != 0) {
 		$msg = "$::sdate servicenode: Could not change ulimit\n";
-		`logger -t xcat $msg`;
+		`logger -t xcat -p local4.warning $msg`;
 	}
 
 	# stop inetd, make sure bootp & tftp are in /etc/inetd.conf and restart
     if (&runcmd("stopsrc -s inetd") != 0) {
         $msg = "$::sdate servicenode: Could not stop inetd.\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat -p local4.warning  $msg`;
     }
 
     my $tmp_inetd_file = "/etc/inetd.conf.tmp";
     unless (open(TMPINETD, ">>$tmp_inetd_file")) {
         $msg = "$::sdate servicenode: Could not open $tmp_inetd_file.\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat  -p local4.warning  $msg`;
     }
 
     my $inetd_file_name = "/etc/inetd.conf";
     unless (open(INETDFILE, "<$inetd_file_name")) {
         $msg = "$::sdate servicenode: Could not open $inetd_file_name.\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat  -p local4.warning $msg`;
     }
 
     while (my $l = <INETDFILE>) {
@@ -280,18 +280,18 @@ sub setupAIXsn
 
 	if (&runcmd("mv $tmp_inetd_file $inetd_file_name > /dev/null 2>&1") != 0) {
         $msg = "$::sdate servicenode: Could not update /etc/inetd.conf.\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat  -p local4.warning $msg`;
     }
 
     if (&runcmd("startsrc -s inetd") != 0) {
         $msg = "$::sdate servicenode: Could not restart inetd.\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat  -p local4.warning $msg`;
     }
 
 	# do nim master setup - master fileset already installed
     if (&runcmd("/usr/sbin/nim_master_setup -a mk_resource=no") != 0) {
         $msg = "$::sdate servicenode: Could not run nim_master_setup.\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat  -p local4.warning  $msg`;
     }
 
 	#
@@ -302,7 +302,7 @@ sub setupAIXsn
 	# restore the original .rhosts that was removed by NIM setup
 	if (&runcmd("cp /.rhosts.prev /.rhosts ") != 0 ) {
 		$msg = "$::sdate servicenode: Could not restore the .rhosts file.\n";
-		`logger -t xcat $msg`;
+		`logger -t xcat  -p local4.warning $msg`;
 	}
 
 	return 0;
@@ -333,7 +333,7 @@ sub getcreds
 	}
 	else {
 		$msg = "$::sdate servicenode: Could not get client-cred.pem file.\n";
-		`logger -t xcat $msg`;
+		`logger -t xcat  -p local4.warning $msg`;
 	}
 
 	$response=&getresponse("xcat_server_cred");
@@ -351,7 +351,7 @@ sub getcreds
 	}
 	else {
         $msg = "$::sdate servicenode: Could not get server-cred.pem file.\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat  -p local4.warning $msg`;
     }
 
 	$response=&getresponse("xcat_cfgloc");
@@ -381,7 +381,7 @@ sub getcreds
 	}
 	else {
         $msg = "$::sdate servicenode: Could not get cfgloc file.\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat  -p local4.warning  $msg`;
     }
 
 	return 0;
@@ -430,7 +430,7 @@ sub getresponse
 
 	unless ($sock) {
 		my $msg = "$::sdate servicenode:  Cannot connect to host \'$::servnode\'\n";
-		`logger -t xcat $msg`;
+		`logger -t xcat  -p local4.err $msg`;
 		print $msg;
 		return undef;
 	}
@@ -483,7 +483,7 @@ sub openlistener
 	unless (defined $pid) {
 		# fork failed
 		$msg = "$::sdate servicenode:  Could not fork process.\n";
-		`logger -t xcat $msg`;
+		`logger -t xcat  -p local4.err $msg`;
 		#print $msg;
 		return undef;
 	}
@@ -502,7 +502,7 @@ sub openlistener
 
 	unless ($listener) {
        	my $msg = "$::sdate servicenode:  Cannot open socket on \'$node\'\n";
-   		`logger -t xcat $msg`;
+   		`logger -t xcat  -p local4.err  $msg`;
 		print $msg;
        	exit 1;
    	}
@@ -555,7 +555,7 @@ sub copycerts
     else
     {
         $msg = "$::sdate servicenode: /xcatpost/_xcat directory does not exist\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat  -p local4.warning $msg`;
 
     }
     if (-d "/xcatpost/ca")
@@ -574,7 +574,7 @@ sub copycerts
     else
     {
         $msg = "$::sdate servicenode: /xcatpost/ca directory does not exist\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat  -p local4.warning $msg`;
 
     }
     # if AIX, only need for AIX because xcatserver script does it for Linux
@@ -595,7 +595,7 @@ sub copycerts
       else
       {
         $msg = "$::sdate servicenode: /xcatpost/_xcat directory does not exist\n";
-        `logger -t xcat $msg`;
+        `logger -t xcat  -p local4.warning $msg`;
       }
     }
     return $rc;
