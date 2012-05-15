@@ -57,13 +57,14 @@ sub runcmd
         $rc = $? >> 8;
         if ($rc > 0)
         {
-            `logger -t xcat "runcmd $cmd failed, error message is:"`;
+            `logger -t xcat -p local4.err "runcmd $cmd failed, error message is:"`;
             my $errmsg;
             foreach my $err (@::outref)
             {
                 $errmsg .= $err;
             }
-            `logger -t xcat "$errmsg"`;
+            `logger -t xcat -p local4.err "$errmsg"`;
+
              exit;
         }
     }
