@@ -128,7 +128,7 @@ cmd_string=$1
 # check for cmd string
 if [[ $cmd_string = "" ]] ; then
 	echo "ERROR: A command strng is required."
-	echo "xcatchroot: ERROR: A command strng is required." | logger -t xcat
+	echo "xcatchroot: ERROR: A command strng is required." | logger -t xcat -p local4.err
 	echo $usage
 	exit 1
 fi
@@ -136,7 +136,7 @@ fi
 # chk for osimage ??
 if [[ $osimage = "" ]] ; then
 	echo "ERROR: An xCAT osimage name is required."
-	echo "xcatchroot: ERROR: An xCAT osimage name is required." | logger -t xcat
+	echo "xcatchroot: ERROR: An xCAT osimage name is required." | logger -t xcat  -p local4.err
 	echo $usage
 	exit 1
 fi
@@ -151,7 +151,7 @@ spot=`/opt/xcat/bin/lsdef -t osimage -o $osimage -i spot | grep spot | cut -f2 -
 
 if [[ $spot = "" ]] ; then
 	echo "ERROR: Could not get spot name from xCAT osimage definition."
-	echo "xcatchroot: ERROR: Could not get spot name from xCAT osimage definition." | logger -t xcat
+	echo "xcatchroot: ERROR: Could not get spot name from xCAT osimage definition." | logger -t xcat  -p local4.err
 	exit 1
 fi
 
@@ -181,7 +181,7 @@ if ${LSNIM} $spot >/dev/null ; then
 
 	else
 		echo "ERROR: Cannot use chroot with remote resources $spot." 
-		echo "xcatchroot: ERROR: Cannot use chroot with remote resources $spot." | logger -t xcat
+		echo "xcatchroot: ERROR: Cannot use chroot with remote resources $spot." | logger -t xcat  -p local4.err
 		exit 1
 	fi
 fi
@@ -207,7 +207,7 @@ if ${LSNIM} $lpp_source >/dev/null ; then
 		lpp_source=`${LSNIM} -a location $lppObj | ${AWK} '/location/ {print $3}'`
 	else
 		echo "ERROR: Cannot use chroot with remote resource $lpp_source."
-        echo "xcatchroot: ERROR: Cannot use chroot with remote resource $lpp_source." | logger -t xcat
+        echo "xcatchroot: ERROR: Cannot use chroot with remote resource $lpp_source." | logger -t xcat  -p local4.err
         exit 1
 	fi
 fi
@@ -215,7 +215,7 @@ fi
 # last sanity check before chroot session is attempted
 if [[ ! -d $location ]] ; then
 	echo "ERROR: Unable to proceed. Check resource name(s) also verify path location(s)."
-	echo "xcatchroot: ERROR: Unable to proceed. Check resource name(s) also verify path location(s)." | logger -t xcat
+	echo "xcatchroot: ERROR: Unable to proceed. Check resource name(s) also verify path location(s)." | logger -t xcat  -p local4.err
 	exit 1
 else
 
