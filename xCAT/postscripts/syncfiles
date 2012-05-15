@@ -17,17 +17,17 @@ fi
 #do nothing id there is no sync file template for the node
 if [ -n "$NOSYNCFILES" ] && [ $NOSYNCFILES -eq 1 ]; then
    echo "  Did not sync any files."
-   logger -t xCAT "$0: there is no sync file template for the node"
+   logger -t xCAT -p local4.err "$0: there is no sync file template for the node"
    exit 0
 fi
 
-logger -t xCAT "Performing syncfiles postscript"
+logger -t xCAT -p local4.info "Performing syncfiles postscript"
 
 osname=`uname`
 # run the xdcp on the MN/SN
 xcatpostdir="/xcatpost"
 
-logger -t xCAT "$0: the OS name = $osname"
+logger -t xCAT -p local4.info "$0: the OS name = $osname"
 quit="no"
 count=5
 while [ $quit = "no" ]; do
@@ -53,9 +53,9 @@ done
 
 if [ $returncode -eq 0 ]
 then
-  logger -t xCAT "$0: Perform Syncing File action successfully"
+  logger -t xCAT -p local4.info "$0: Perform Syncing File action successfully"
 else
-  logger -t xCAT "$0: Perform Syncing File action encountered error"
+  logger -t xCAT -p local4.err "$0: Perform Syncing File action encountered error"
 fi
 
 exit 0
