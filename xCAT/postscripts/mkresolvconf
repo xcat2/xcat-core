@@ -26,7 +26,7 @@ if [ -n "$master" ] && [ -n "$domain" ]; then
 	echo "search $domain" >$conf_file
 	echo "nameserver $master" >>$conf_file
 else     
-	logger -t xcat "Could not create resolv.conf on $node."
+	logger -t xcat -p local4.err "Could not create resolv.conf on $node."
 	exit 1
 fi
 
