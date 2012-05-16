@@ -116,7 +116,7 @@ sub process_request {
 		if ($addr =~ /^fe80/) { #Link local address requires scope index
 			$addr .= "%".$data->{scopeid};
 		}
-		if ($machash{$nodename} =~ /$mac/) { #ignore prospects already known to mac table
+		if ($machash{$nodename} =~ /$mac/i) { #ignore prospects already known to mac table
 			next;
 		}
 		sendmsg(":Found ".$nodename." which seems to be ".$data->{SrvType}." at address $addr",$callback);
