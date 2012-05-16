@@ -124,6 +124,7 @@ sub process_request {
 			unless (do_blade_setup($data,curraddr=>$addr)) {
 				next;
 			}
+			sendmsg(":Configuration of ".$nodename." complete, configuration may take a few minutes to take effect",$callback);
 			$macuphash{$nodename} = { mac => $mac };
 		}
 	}
