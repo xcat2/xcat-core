@@ -986,6 +986,7 @@ sub plugin_command {
   if ($req->{node}) {
     @nodes = @{$req->{node}};
   } elsif ($req->{noderange} and $req->{noderange}->[0]) {
+    xCAT::NodeRange::retain_cache(0); #if the request has a 'noderange' element, take the performance hit for the sake of freshness
     @nodes = noderange($req->{noderange}->[0]);
     if (nodesmissed) {
       my $rsp = {errorcode=>1,error=>"Invalid nodes and/or groups in noderange: ".join(',',nodesmissed)};
@@ -1716,7 +1717,7 @@ sub service_connection {
 	      if (not defined $bytesread and $! == EAGAIN) { next; } #
 	      last;
       }
-    	my $flags=fcntl($sock,F_GETFL,0);
+    	 $flags=fcntl($sock,F_GETFL,0);
 	    $flags &= ~O_NONBLOCK; #now we want *print* to be blocking IO
 	    fcntl($sock,F_SETFL,$flags);
       $request .= $line;
@@ -1765,6 +1766,7 @@ sub service_connection {
           } elsif ($cmd_handlers{$req->{command}->[0]}) {
             plugin_command($req,$sock,\&convey_response);
           } elsif ($req->{command}->[0] eq "noderange" and $req->{noderange}) {
+    	    xCAT::NodeRange::retain_cache(0); #if the request has a 'noderange' element, take the performance hit for the sake of freshness
             my @nodes = noderange($req->{noderange}->[0]);
             my %resp;
             if (nodesmissed) {
