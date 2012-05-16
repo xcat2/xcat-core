@@ -111,7 +111,7 @@ sub dodiscover {
 		    			}
 		    			$result->{peername} = $peername;
                         if ($gprlist) {
-                            $gprlist = $gprlist.','.$peername if($rspcount < 100);
+                            $gprlist .= ','.$peername if(length($gprlist) < 1250);
                         } else {
                             $gprlist = $peername;
                         }
