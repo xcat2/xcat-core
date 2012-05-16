@@ -243,6 +243,7 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
          {
             unless (scalar %allgrphash and (time() < ($allgrphashstamp+5))) { #build a group membership cache
 		$allgrphashstamp=time();
+        	%allgrphash=();
                 my $nlent;
 	            foreach $nlent (@allnodeset) { 
 	                my @groups=split(/,/,$nlent->{groups}); 
