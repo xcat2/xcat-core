@@ -59,6 +59,7 @@ sub handled_commands
             setNodesAttribs1  => "tabutils",
             delEntries       => "tabutils",
             getAttribs       => "tabutils",
+            setAttribs       => "tabutils",
             gennr    => "tabutils"
             };
 }
@@ -164,6 +165,10 @@ sub process_request
     elsif ($command eq "getAttribs")
     {
         return getAttribs($request,$callback);
+    }
+    elsif ($command eq "setAttribs")
+    {
+        return setAttribs($request,$callback);
     }
     else
     {
@@ -2231,14 +2236,21 @@ else {
 #
 # Read all the rows from the input table name and returns the response, so 
 # that the XML will look like this
+#<xcatrequest>
+#<clienttype>PCM</clienttype>
+#<command>getAllEntries</command>
+#<table>nodelist</table>
+#</xcatrequest>
+
+
 #<xcatresponse>
-#<rowN>
+#<row>
 #<attr1>value1</attr1>
 #.
 #.
 #.
 #<attrN>valueN</attrN>
-#</rowN>
+#</row>
 #.
 #.
 #.
@@ -2366,17 +2378,17 @@ sub getNodesAttribs
 #<arg>
 #   <table>
 #      <name>nodelist</name>
-#      <attrs>
+#      <attr>
 #         <groups>test</groups>
 #         <comments> This is a another testx</comments>
-#      </attrs>
+#      </attr>
 #   </table>
 #   <table>
 #      <name>nodetype</name>
-#      <attrs>
+#      <attr>
 #         <os>Redhat2</os>
 #         <comments> This is a another testy</comments>
-#      </attrs>
+#      </attr>
 #   </table>
 #</arg>
 #</xcatrequest>
@@ -2399,12 +2411,12 @@ sub setNodesAttribs1
       my $tablename    = $table->{name}->[0];
       my $tab=xCAT::Table->new($tablename);
       my %keyhash;
-      my $attrs = $table->{attrs}; 
+      my $attrs = $table->{attr}; 
       foreach my $attrhash (@$attrs) {
         foreach my $key (keys %$attrhash) {
           my $tblattr = $tablename;
           $tblattr .= ".$key=";
-          $tblattr .= $table->{attrs}->[0]->{$key}->[0];
+          $tblattr .= $table->{attr}->[0]->{$key}->[0];
           push (@{$newrequest->{arg}}, $tblattr);
         }
       }
@@ -2429,10 +2441,10 @@ sub setNodesAttribs1
 #<command>delEntries</command>
 #<table>
 #      <name>nodelist</name>
-#      <attrs>
+#      <attr>
 #         <groups>compute1,test</groups>
 #         <status>down</status>
-#      </attrs>
+#      </attr>
 #</table>
 #  .
 #  .
@@ -2443,7 +2455,7 @@ sub setNodesAttribs1
 #</table>
 #</xcatrequest>
 # 
-# To delete all entries in a table, input no attributes
+# To delete all entries in a table, you input no attributes
 #<xcatrequest>
 #<clienttype>PCM</clienttype>
 #<command>delEntries</command>
@@ -2464,7 +2476,7 @@ sub delEntries
       my $tablename    = $table->{name}->[0];
       my $tab=xCAT::Table->new($tablename);
       my %keyhash;
-      my $attrs = $table->{attrs}; 
+      my $attrs = $table->{attr}; 
       foreach my $attrhash (@$attrs) {
         foreach my $key (keys %$attrhash) {
           $keyhash{$key} = $attrhash->{$key}->[0];
@@ -2488,8 +2500,8 @@ sub delEntries
 #<keys>
 #  <key>domain</key>
 #</keys>
-#<attrs>value</attrs>
-#<attrs>comments</attrs>
+#<attr>value</attr>
+#<attr>comments</attr>
 #</xcatrequest>
 #
 #
@@ -2503,7 +2515,7 @@ sub getAttribs
     my $cb = shift;
     my $command  = $request->{command}->[0];
     my $tablename = $request->{table}->[0];
-    my $attr   = $request->{attrs};
+    my $attr   = $request->{attr};
     my @attrs= @$attr;
     my $tab=xCAT::Table->new($tablename);
     my %rsp;
@@ -2521,5 +2533,39 @@ sub getAttribs
       }
     }
        $cb->(\%rsp);
+        return;
+}
+# setAttribs 
+# Set the  attributes for the key(s) input in the table. 
+#<xcatrequest>
+#<clienttype>PCM</clienttype>
+#<command>setAttribs</command>
+#<table>site</table>
+#<keys>
+#  <key>domain</key>
+#</keys>
+#<attr>
+#  <value>cluster.net</value>
+#  <comments>This is a comment</comments>
+#</xcatrequest>
+#</attr>
+#
+sub setAttribs 
+{
+    my $request      = shift;
+    my $cb = shift;
+    my $command  = $request->{command}->[0];
+    my $tablename = $request->{table}->[0];
+    my $tab=xCAT::Table->new($tablename);
+    my %rsp;
+    my %keyhash;
+    my %attrhash;
+    foreach my $k (keys %{$request->{keys}->[0]}) {
+      $keyhash{$k} = $request->{keys}->[0]->{$k}->[0];
+    }
+    foreach my $a (keys %{$request->{attr}->[0]}) {
+      $attrhash{$a} = $request->{attr}->[0]->{$a}->[0];
+    }
+    $tab->setAttribs(\%keyhash,\%attrhash);
         return;
 }
