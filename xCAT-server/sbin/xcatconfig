@@ -368,9 +368,6 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL || $::genCredentials)
     system($xcmd);
 }
 
-# wait for the starting of xcatd
-&waitxcatd;
-
 # more  config needed after xcatd start
 if ($::INITIALINSTALL || $::FORCE)
 {
@@ -1045,6 +1042,7 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=dnshandler site.value=ddns;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=vsftp site.value=n;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=cleanupxcatpost site.value=no;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=dhcplease site.value=43200;";
 
         if ($::osname eq 'AIX')
         {
@@ -1281,7 +1279,7 @@ sub initDB
 
         # switch from bind.pm to ddns.pm
         # give a warning message for the first time
-        my $cmds = "$::XCATROOT/sbin/tabdump site|grep dnshandler";
+        my $cmds = "XCATBYPASS=Y $::XCATROOT/sbin/tabdump site|grep dnshandler";
         $outref = xCAT::Utils->runcmd("$cmds", -1);
         if ($::RUNCMD_RC != 0)
         {
@@ -1683,7 +1681,7 @@ sub mknb
     {
         foreach my $ar (qw(x86_64))
         {
-            my $cmd = "$::XCATROOT/sbin/mknb $ar";
+            my $cmd = "XCATBYPASS=Y $::XCATROOT/sbin/mknb $ar";
             my $outref = xCAT::Utils->runcmd("$cmd", 0);
             if ($::RUNCMD_RC != 0)
             {
@@ -1701,31 +1699,6 @@ sub mknb
 }
 
 #-----------------------------------------------------------------------------
-=head3    waitxcatd 
-	
-     Wait xcatd to function after the restart of xcatd 
-
-=cut
-#-----------------------------------------------------------------------------
-sub waitxcatd {
-    my $cmd = "$::XCATROOT/bin/nodels -v";
-    my $n = 0;
-    while ($n++ < 10) {
-        sleep 1;
-        my $output = xCAT::Utils->runcmd("$cmd", -1);
-        if ($::RUNCMD_RC == 0 || $output =~ /Version/) {
-            last;
-        } else {
-            next;
-        }
-    }
-
-    if ($n >= 10) {
-        print "Failed to check the status of xcatd\n";
-    }
-}
-
-#-----------------------------------------------------------------------------
 
 =head3    makenetworks 
 	
@@ -1738,7 +1711,7 @@ sub makenetworks
 {
 
     # run makenetworks
-    my $cmd = "$::XCATROOT/sbin/makenetworks";
+    my $cmd = "XCATBYPASS=Y $::XCATROOT/sbin/makenetworks";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
