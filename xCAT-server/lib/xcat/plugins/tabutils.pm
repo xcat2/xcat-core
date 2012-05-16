@@ -2288,6 +2288,7 @@ sub getAllEntries
 }
 # getNodesAttribs 
 # Read all the array of  attributes for the noderange  from the input table. 
+# If the <attr>ALL</attr> is input then read all the attributes
 #<xcatrequest>
 #<clienttype>PCM</clienttype>
 #<command>getNodesAttribs</command>
@@ -2325,6 +2326,15 @@ sub getNodesAttribs
     my @attrs= @$attr;
     my %rsp;
     my %noderecs;
+    if (grep (/ALL/,@attrs)) { # read the  schema and build array of all attrs
+        @attrs=();
+        my $schema = xCAT::Table->getTableSchema($tablename);
+        my $desc = $schema->{descriptions};
+        foreach my $c (@{$schema->{cols}}) {
+           # my $space = (length($c)<7 ? "\t\t" : "\t");
+            push @attrs, $c;
+        }
+    }
     my $rechash        =   $tab->getNodesAttribs(\@nodes,\@attrs);
     foreach my $node (@nodes){
        my %datseg=();
