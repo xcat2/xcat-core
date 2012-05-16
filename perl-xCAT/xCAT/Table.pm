@@ -2159,6 +2159,9 @@ sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
 	      last;
 	   }
 	}
+        if ($self->{_cachestamp} < (time()-5)) { #NEVER use a cache older than 5 seconds
+		$cachesufficient=0;
+	}
 	if ($cachesufficient) { return; }
 	#cache is insufficient, now we must do the converse of above
 	#must add any currently cached columns to new list if not requested
