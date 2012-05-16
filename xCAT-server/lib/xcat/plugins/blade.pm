@@ -4582,7 +4582,7 @@ sub snmpcfg {
   }
   # Check the type of mm
   my @data = $t->cmd("info -T system:$mm");
-  if (grep(/Mach type\/model: Chassis Management Module/, @data) && $mptype ne "cmm") {
+  if (grep(/: Chassis Management Module/, @data) && $mptype ne "cmm") {
     $mptype="cmm";
     #return ([1,"The hwtype attribute should be set to \'cmm\' for a Chassis Management Module."]);
   }
@@ -4649,7 +4649,7 @@ sub sshcfg {
 
   # Check the type of mm
   @data = $t->cmd("info -T system:$mm");
-  if (grep(/Mach type\/model: Chassis Management Module/, @data) && $mptype ne "cmm") {
+  if (grep(/: Chassis Management Module/, @data) && $mptype ne "cmm") {
     #return ([1,"The hwtype attribute should be set to \'cmm\' for a Chassis Management Module."]);
     $mptype="cmm"; #why in the world wouldn't we have just done this from the get go????
   }
