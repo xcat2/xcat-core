@@ -41,7 +41,7 @@ Note: If a CEC belongs to a frame, which has a BPA installed, this CEC should no
 
 For PPC (using Direct FSP Management) specific:
 
-It is used to set up connections for CEC, Frame and Firebird node to Hardware Server on management node (or service node ). It only could be done according to the node definition in xCAT DB. And this command will try to read the user/password from the ppcdirect table (for Firebird, from mpa table) first. If fails, then read them from passwd table. 
+It is used to set up connections for CEC, Frame and IBM Flex Compute Node (Compute Node for short) to Hardware Server on management node (or service node ). It only could be done according to the node definition in xCAT DB. And this command will try to read the user/password from the ppcdirect table (for Compute Node, from mpa table) first. If fails, then read them from passwd table. 
 
 Commonly , the username is B<HMC>. If using the B<ppcdirect> table,  each CEC/Frame and user/password should be  stored in B<ppcdirect> table. If using the B<passwd> table, the key should be "B<cec>" or "B<frame>", and the related user/password are stored in B<passwd> table.
 When B<--port> is specified, this command will create the connections for CECs/Frames whose side in B<vpd> table is equal to port value.
@@ -127,7 +127,7 @@ To setup the connection between the frame and it's SFP node. This command will a
 
 =item 6.
 
-To setup the connection between the Firebird and hardware server:
+To setup the connection between the Compute Node and hardware server:
 
  mkhwconn blade -t
 

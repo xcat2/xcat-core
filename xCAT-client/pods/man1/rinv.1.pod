@@ -20,7 +20,7 @@ B<rinv> I<noderange> {B<firm>}
 
 B<rinv> I<noderange> {B<deconfig> [B<-x>]}
 
-=head2 NGP Blade Server Specific:
+=head2 IBM Flex System Compute Node Specific:
 
 B<rinv> I<noderange> {B<firm>}
 
@@ -128,7 +128,7 @@ Set the values in the vm table to what vCenter has for the indicated nodes.
 
 =item *
 
-To retrieve all information available from blade node4, enter:
+To retrieve all information available from blade node5, enter:
 
  rinv node5 all
 

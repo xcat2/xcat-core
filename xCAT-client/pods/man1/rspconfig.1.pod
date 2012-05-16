@@ -92,7 +92,7 @@ B<rspconfig> I<noderange> B<hostname>={B<*|name>}
 
 B<rspconfig> I<noderange> B<--resetnet>
 
-=head2 NGP Blade Server Specific:
+=head2 IBM Flex Compute Node Specific:
 
 B<rspconfig> I<noderange> B<sshcfg>={B<enable>|B<disable>}
 
@@ -326,7 +326,7 @@ The subnet mask.
 
 For MPA:  get or set the MPA network parameters. If '*' is specified, all parameters are read from the xCAT database.
 
-For FSP of NGP blade server: set the network parameters. If '*' is specified, all parameters are read from the xCAT database. If the object node is blade, the 'host' parameter shall not specified.
+For IBM Flex Compute Node (Compute Node for short):set the network parameters. If '*' is specified, all parameters are read from the xCAT database. If the object node is blade, the 'host' parameter shall not specified.
 
 =item B<initnetwork>={[I<ip>],[I<host>],[I<gateway>],[I<netmask>]|*}
 
@@ -419,13 +419,9 @@ Enter the current time in UTC (Coordinated Universal Time) format.
 
 Set the blade or MPA textid. When using '*', the textid used is the node name specified on the command-line. Note that when specifying an actual textid, only a single node can be specified in the noderange.
 
-=item B<HMC>={I<newpasswd>}
-
-Change the password of the userid B<HMC> for CMM in NGP environment.
-
 =item B<USERID>={I<newpasswd>}
 
-Change the password of the userid B<USERID> for CMM in NGP environment.
+Change the password of the userid B<USERID> for CMM.
 
 =item B<--resetnet>
 

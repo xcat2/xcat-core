@@ -30,7 +30,7 @@ For PPC (without HMC, using Direct FSP Management) specific:
 
 Note: If network adapters are physically assigned to LPARs, getmacs cannot read the MAC addresses unless perform ping test, since there is no HMC command to read them and getmacs has to login to open formware. And if the LPARs has never been activated before, getmacs need to be performed with the option "B<-D>" to get theirs MAC addresses.
 
-For Firebird blade specific:
+For IBM Flex Compute Node (Compute Node for short) specific:
 
 Note: If "B<-d>" is specified, all the MAC of the blades will be displayed. Otherwise, the number of MAC address that the 'installnic' attribute of the blade specified will be write to mac table.
 

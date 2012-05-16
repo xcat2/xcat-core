@@ -108,7 +108,7 @@ This option is recommended over B<cycle>.
 
 =item B<cycle>
 
-Power off, then on. For Firebird blade, just reset the blade.
+Power off, then on. For IBM Flex Compute Node, just reset the node.
 
 =item B<of>
 

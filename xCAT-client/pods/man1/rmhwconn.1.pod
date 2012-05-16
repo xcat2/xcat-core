@@ -30,7 +30,7 @@ Note: If a CEC belongs to a frame with a BPA installed, this CEC cannot be disco
 
 For PPC (without HMC, using FSPAPI) specific:
 
-It's used to disconnection CEC, Frame and Firebird nodes from hardware server.
+It's used to disconnection CEC, Frame and IBM Flex Compute Nodes (Compute Node for short) from hardware server.
 
 For PPC (use HMC as SFP) specific:
 
@@ -85,7 +85,7 @@ To disconnect all CEC nodes in node group cec from their related hardware servic
 
 =item 4.
 
-To disconnect all Firebird nodes from there related hardware service:
+To disconnect all Compute Nodes from there related hardware service:
  
  rmhwconn blade
 
