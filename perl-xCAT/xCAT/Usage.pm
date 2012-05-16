@@ -78,6 +78,8 @@ my %usage = (
        rinv <noderange> [deconfig [-x]]
     Blade specific:
        rinv <noderange> [mtm|serial|mac|bios|diag|mprom|mparom|firm|all]
+    IBM Flex System Compute Node specific:
+       rinv <noderange> [firm]
     VMware specific:
        rinv <noderange>
     zVM specific:
