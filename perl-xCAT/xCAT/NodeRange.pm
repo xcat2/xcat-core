@@ -32,13 +32,13 @@ my $grptab;
 
 #my $nodeprefix = "node";
 my @allnodeset;
-my $allnodesetstamp=0;
 my %allnodehash;
 my @grplist;
 my $didgrouplist;
 my $glstamp=0;
+my $allnodesetstamp=0;
+my $allgrphashstamp=0;
 my %allgrphash;
-my $allgrphashstamp;
 my $retaincache=0;
 my $recurselevel=0;
 
@@ -448,7 +448,10 @@ sub retain_cache { #A semi private operation to be used *ONLY* in the interestin
     $retaincache=shift;
     unless ($retaincache) { #take a call to retain_cache(0) to also mean that any existing
         #cache must be zapped
-        if ($nodelist) { $nodelist->_clear_cache(); }
+        if ($nodelist) { $nodelist->_refresh_cache(); }
+	$glstamp=0;
+	$allnodesetstamp=0;
+	$allgrphashstamp=0;
         undef $nodelist;
         @allnodeset=();
         %allnodehash=();
