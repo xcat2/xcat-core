@@ -1594,11 +1594,17 @@ sub addnet6
         }
 
     }
+
+    my $dhcplease = 43200;
+    if (defined $::XCATSITEVALS{'dhcplease'} && $::XCATSITEVALS{'dhcplease'} ne "") {
+         $dhcplease = $::XCATSITEVALS{'dhcplease'};
+    }
+
     my @netent = (
                    "  subnet6 $net {\n",
-                   "    max-lease-time 43200;\n",
-                   "    min-lease-time 43200;\n",
-                   "    default-lease-time 43200;\n",
+                   "    max-lease-time $dhcplease;\n",
+                   "    min-lease-time $dhcplease;\n",
+                   "    default-lease-time $dhcplease;\n",
                    );
     #for now, just do address allocatios (phase 1)
     #phase 2 (by 2.6 presumably) will include the various things like DNS server and other options allowed by dhcpv6
@@ -1821,11 +1827,15 @@ sub addnet
                          
         my $maskn = unpack("N", inet_aton($mask));
         my $netn  = unpack("N", inet_aton($net));
+        my $dhcplease = 43200;
+        if (defined $::XCATSITEVALS{'dhcplease'} && $::XCATSITEVALS{'dhcplease'} ne "") {
+             $dhcplease = $::XCATSITEVALS{'dhcplease'};
+        }
         @netent = (
                    "  subnet $net netmask $mask {\n",
-                   "    max-lease-time 43200;\n",
-                   "    min-lease-time 43200;\n",
-                   "    default-lease-time 43200;\n"
+                   "    max-lease-time $dhcplease;\n",
+                   "    min-lease-time $dhcplease;\n",
+                   "    default-lease-time $dhcplease;\n"
                    );
         if ($gateway)
         {

@@ -793,6 +793,7 @@ site => {
    "                  specify different NICs for different nodes:\n".
    "                       mn|eth1,eth2;service|bond0.\n\n".
    " dhcpsetup:  If set to 'n', it will skip the dhcp setup process in the nodeset cmd.\n\n".
+   " dhcplease:  The lease time for the dhcp client. The default value is 43200.\n\n".
    " disjointdhcps:  If set to '1', the .leases file on a service node only contains\n".
    "                 the nodes it manages. The default value is '0'.\n".
    "                 '0' value means include all the nodes in the subnet.\n\n".
