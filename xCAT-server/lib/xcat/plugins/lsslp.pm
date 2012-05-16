@@ -954,7 +954,7 @@ sub parse_responses {
             $atthash{type} = $service_slp{$type};
             $atthash{mtm} = ${$attributes->{'enclosure-mtm'}}[0];
             $atthash{serial} = ${$attributes->{'enclosure-serial-number'}}[0];
-            $atthash{slot} = int(${$attributes->{'slot'}}[0]);
+            $atthash{side} = int(${$attributes->{'slot'}}[0]);
             $atthash{ip} = ${$attributes->{'ipv4-address'}}[0];
             $atthash{mac} = $rsp;
             $atthash{mname} = ${$attributes->{'mm-name'}}[0];
