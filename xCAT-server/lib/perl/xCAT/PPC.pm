@@ -171,7 +171,7 @@ sub process_command {
     my $failed_msg = shift;
     my %nodes    = ();
     my $callback = $request->{callback};
-    my $sitetab  = xCAT::Table->new( 'site' );
+    #my $sitetab  = xCAT::Table->new( 'site' );
     my @site     = qw(ppcmaxp ppctimeout maxssh ppcretry fsptimeout powerinterval syspowerinterval); 
     my $start;
     my $verbose = $request->{verbose};
@@ -190,37 +190,15 @@ sub process_command {
     #######################################
     # Get site table attributes 
     #######################################
-    if ( defined( $sitetab )) {
-        foreach ( @site ) {
-            my ($ent) = $sitetab->getAttribs({ key=>$_},'value');
-            if ( defined($ent) ) { 
-                $request->{$_} = $ent->{value}; 
-            }
+    foreach ( @site ) {
+        my @val = xCAT::Utils->get_site_attribute($_); 
+        if ( defined($val[0]) ) { 
+            $request->{$_} = $val[0]; 
         }
-    }
+    } 
     if ( exists( $request->{verbose} )) {
         $start = Time::HiRes::gettimeofday();
     }
-
-    #xCAT doesn't support FSPpower,FSPinv and FSPrflash by default
-    #$request->{fsp_api} = 0;
-    #######################################
-    # FSPpower, FSPinv and FSPrflash handler
-    #########################################
-    #my $hwtype  = $request->{hwtype}; 
-    #if ( $hwtype eq "fsp" or $hwtype eq "bpa") {
-    #    my $fsp_api = check_fsp_api($request);
-    #    if($fsp_api == 0 && 
-    #	    ($request->{command} =~ /^(rpower)$/  ||  $request->{command} =~ /^rinv$/ || $request->{command} =~ /^rflash$/
-    #            || $request->{command} =~ /^getmacs$/ || $request->{command} =~ /^rnetboot$/ || $request->{command} =~ /^rvitals$/  
-    #            || $request->{command} =~ /^mkhwconn$/ || $request->{command} =~ /^rmhwconn$/ || $request->{command} =~ /^lshwconn$/
-    #            || $request->{command} =~ /^rscan$/ || ($request->{command} =~ /^rspconfig$/ && $request->{method} =~ /^passwd$/)
-    #        )
-    #          ) {
-	        #support FSPpower, FSPinv and FSPrflash 
-    #        $request->{fsp_api} = 1;
-    #        }
-    #} 
 
     #######################################
     # Group nodes based on command
@@ -235,12 +213,10 @@ sub process_command {
         my @allerrornodes=();
     my $check=0;
     my $global_check=1;
-    if ($sitetab) {
-        (my $ref) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
-        if ($ref) {
-            if ($ref->{value} =~ /0|n|N/) { $global_check=0; }
+    my @val = xCAT::Utils->get_site_attribute("nodestatus");
+    if (defined($val[0])) {
+            if ($val[0] =~ /0|n|N/) { $global_check=0; }
         }
-    }
 
     my $command=$request->{command};
     if (($command eq 'rpower') || ($command eq 'rnetboot')) {
