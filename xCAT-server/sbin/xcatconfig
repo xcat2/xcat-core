@@ -1796,6 +1796,7 @@ sub cleanupPSTable
  if ($tab = xCAT::Table->new("postscripts")) {
    my @tableentries = $tab->getAllAttribs('node','postscripts');
    foreach my $entry (@tableentries) {
+     my $changeit=0;
      my $node=$entry->{'node'};
      my $pslist=$entry->{'postscripts'};
      if ($pslist) {
@@ -1814,6 +1815,7 @@ sub cleanupPSTable
                $newpslist .=",";
             } else { # servicenode found, do not keep xcatserver/xcatclient 
              if (($pscript =~ /(^|\|)xcatserver($|\|)/i) ||($pscript =~ /(^|\|)xcatclient($|\|)/i))  {
+                   $changeit=1; # had to remove xcatserver/xcatclient
                    next;
                } else {
                  $newpslist .=$pscript;
@@ -1824,14 +1826,16 @@ sub cleanupPSTable
        }
        chop $newpslist;
        $newpslist .="\'"; 
-       my $chtabcmds .=
-       "$::XCATROOT/sbin/chtab node=$node postscripts.postscripts=$newpslist;";
-        my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
-        if ($::RUNCMD_RC != 0)
-        {
+       if ($changeit == 1) {  # we had to modify the line
+         my $chtabcmds .=
+        "$::XCATROOT/sbin/chtab node=$node postscripts.postscripts=$newpslist;";
+          my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
+          if ($::RUNCMD_RC != 0)
+          {
             xCAT::MsgUtils->message('E',
                  "Could not modify postscripts definition for $node.");
-        }
+          }
+       }
      } 
    }
  }
