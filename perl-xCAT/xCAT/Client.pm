@@ -147,13 +147,15 @@ if (ref($request) eq 'HASH') { # the request is an array, not pure XML
        }
     } else {
        # figure out default plugins dir
-       my $sitetab=xCAT::Table->new('site');
-       unless ($sitetab) {
-         print ("ERROR: Unable to open basic site table for configuration\n");
-       }
+       #my $sitetab=xCAT::Table->new('site');
+       #unless ($sitetab) {
+       #  print ("ERROR: Unable to open basic site table for configuration\n");
+       #}
        $plugins_dir=$::XCATROOT.'/lib/perl/xCAT_plugin';
        scan_plugins();
     }
+
+    populate_site_hash();
 
   #  don't do XML transformation -- assume request is well-formed
   #  my $xmlreq=XMLout($request,RootName=>xcatrequest,NoAttr=>1,KeyAttr=>[]);
@@ -419,9 +421,10 @@ sub plugin_command {
       if ($hdlspec =~ /^site:/) { #A site entry specifies a plugin
           my $sitekey = $hdlspec;
           $sitekey =~ s/^site://;
-          $sitetab = xCAT::Table->new('site');
-          my $sent = $sitetab->getAttribs({key=>$sitekey},['value']);
-          if ($sent and $sent->{value}) { #A site style plugin specification is just like
+          #$sitetab = xCAT::Table->new('site');
+          #my $sent = $sitetab->getAttribs({key=>$sitekey},['value']);
+          #if ($sent and $sent->{value}) { #A site style plugin specification is just like
+          if ($::XCATSITEVALS{$sitekey}) { #A site style plugin specification is just like
                                           #a static global, it grabs all nodes rather than some
             $useglobals = -1; #If they tried to specify anything, don't use the default global handlers at all
             unless (@nodes) {
@@ -885,6 +888,23 @@ sub build_response {
 
 
 }    # end of submit_request()
+
+####################################
+# populates all the site attributes into %::XCATSITEVALS
+# This is used with XCATBYPASS=1
+###################################
+sub populate_site_hash {
+    %::XCATSITEVALS=();
+    my $sitetab = xCAT::Table->new('site',-create=>0);
+    unless ($sitetab) { 
+       print ("ERROR: Unable to open basic site table for configuration\n");
+       return; 
+    }
+    my @records = $sitetab->getAllAttribs(qw/key value/);
+    foreach (@records) {
+        $::XCATSITEVALS{$_->{key}}=$_->{value};
+    }
+}
 
 
 
