@@ -4500,9 +4500,11 @@ sub mkcommonboot {
             }
             if ($osver =~ /esxi4/ and -r "$::XCATROOT/share/xcat/netboot/syslinux/mboot.c32") { #prefer xCAT patched mboot.c32 with BOOTIF for mboot
 			    copy("$::XCATROOT/share/xcat/netboot/syslinux/mboot.c32", $dest);
-            } else {
+            } elsif (-r "$custprofpath/mboot.c32") {
+			    copy("$custprofpath/mboot.c32", $dest);
+            } elsif (-r "$srcdir/mboot.c32") {
 			    copy("$srcdir/mboot.c32", $dest);
-            }
+ 			}
             if (-f "$srcdir/efiboot.img") {
 				copy("$srcdir/efiboot.img",$dest);
 				print("$srcdir/efi");
