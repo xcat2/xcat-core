@@ -796,22 +796,25 @@ sub get_site_attribute
     my ($class, $attr) = @_;
     
     my $values;
-
-    my $sitetab = xCAT::Table->new('site');
-    if ($sitetab)
-    {
-        (my $ref) = $sitetab->getAttribs({key => $attr}, 'value');
-        if ($ref)
+    if (defined($::XCATSITEVALS{$attr})) {
+        $values = ($::XCATSITEVALS{$attr});
+    } else {
+        my $sitetab = xCAT::Table->new('site');
+        if ($sitetab)
         {
-            $values = $ref->{value};
+            (my $ref) = $sitetab->getAttribs({key => $attr}, 'value');
+            if ($ref)
+            {
+                $values = $ref->{value};
+            }
         }
-    }
-    else
-    {
-        xCAT::MsgUtils->message("E", " Could not read the site table\n");
+        else
+        {
+            xCAT::MsgUtils->message("E", " Could not read the site table\n");
 
+        }
+        $sitetab->close;
     }
-    $sitetab->close;
     return $values;
 }
 
@@ -2373,9 +2376,11 @@ sub my_nets
 
   # now get remote nets
     my $nettab = xCAT::Table->new("networks");
-    my $sitetab = xCAT::Table->new("site");
-    my $master = $sitetab->getAttribs({key=>'master'},'value');
-    $master = $master->{value};
+    #my $sitetab = xCAT::Table->new("site");
+    #my $master = $sitetab->getAttribs({key=>'master'},'value');
+    #$master = $master->{value};
+    my @masters = xCAT::Utils->get_site_attribute("master"); 
+    my $master = $masters[0];
     my @vnets = $nettab->getAllAttribs('net','mgtifname','mask');
 
     foreach(@vnets){
@@ -2970,13 +2975,16 @@ sub GetMasterNodeName
                                 "Unable to open noderes or nodetype table.\n");
         return 1;
     }
-    my $sitetab = xCAT::Table->new('site');
-    (my $et) = $sitetab->getAttribs({key => "master"}, 'value');
-    if ($et and $et->{value})
-    {
-        $master = $et->{value};
-    }
-    $et = $noderestab->getNodeAttribs($node, ['xcatmaster']);
+    #my $sitetab = xCAT::Table->new('site');
+    #(my $et) = $sitetab->getAttribs({key => "master"}, 'value');
+    #if ($et and $et->{value})
+    #{
+    #    $master = $et->{value};
+    #}
+    my @masters = xCAT::Utils->get_site_attribute("master"); 
+    $master = $masters[0];
+    
+    my $et = $noderestab->getNodeAttribs($node, ['xcatmaster']);
     if ($et and $et->{'xcatmaster'})
     {
         $master = $et->{'xcatmaster'};
@@ -2984,13 +2992,13 @@ sub GetMasterNodeName
     unless ($master)
     {
         xCAT::MsgUtils->message('S', "Unable to identify master for $node.\n");
-        $sitetab->close;
+        #$sitetab->close;
         $noderestab->close;
         $typetab->close;
         return 1;
     }
 
-    $sitetab->close;
+    #$sitetab->close;
     $noderestab->close;
     $typetab->close;
     return $master;
