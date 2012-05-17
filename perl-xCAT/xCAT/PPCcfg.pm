@@ -90,7 +90,7 @@ sub parse_args {
     #}
     
     my $nodes = $request->{node};
-    my $typehash = xCAT::DBobjUtils->getnodetype($nodes, "ppc");
+    my $typehash = xCAT::DBobjUtils->getnodetype($nodes);
     foreach my $nn (@$nodes) {
         $request->{hwtype} = $$typehash{$nn};
         last if ($request->{hwtype});
