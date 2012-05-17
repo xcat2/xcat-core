@@ -1012,10 +1012,10 @@ sub setupxcatdb
     my $mysql_prompt = 'mysql> ';
     my $expect_log   = undef;
     my $debug        = 0;
-    if ($::VERBOSE)
-    {
-        $debug = 1;
-    }
+    #if ($::VERBOSE)
+    #{
+    #    $debug = 1;
+    #}
     $mysql = new Expect;
     my $createuser =
       "CREATE USER xcatadmin IDENTIFIED BY \'$::adminpassword\';\r";
@@ -1132,10 +1132,10 @@ sub setupLL
     my $mysql_prompt = 'mysql> ';
     my $expect_log   = undef;
     my $debug        = 0;
-    if ($::VERBOSE)
-    {
-        $debug = 1;
-    }
+    #if ($::VERBOSE)
+    #{
+    #    $debug = 1;
+    #}
     $mysql = new Expect;
     my $setLLfunction =
       "SET GLOBAL log_bin_trust_function_creators=1;\r";
@@ -1241,10 +1241,10 @@ sub addhosts
 {
     my @hosts;
     my $debug = 0;
-    if ($::VERBOSE)
-    {
-        $debug = 1;
-    }
+    #if ($::VERBOSE)
+    #{
+    #    $debug = 1;
+    #}
 
     open(HOSTFILE, "<$::HOSTFILE")
       or
