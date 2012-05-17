@@ -499,6 +499,11 @@ sub invoke_dodiscover {
     } else {
         $services = [WILDCARD_SERVICE,HARDWARE_SERVICE,SOFTWARE_SERVICE];
     }
+	#efix for hmc bug
+	if ($services  =~ /hardware-management-console/)  {
+	     $services = [WILDCARD_SERVICE,HARDWARE_SERVICE,SOFTWARE_SERVICE];
+    }		 
+	 
     if ($globalopt{maxtries}) {
         $maxt = $globalopt{maxtries};
     } else {
@@ -598,6 +603,17 @@ sub format_output {
     ###########################################
     my $outhash = parse_responses( $request, \$length );
 
+	#hmc bug efix
+	my $newouthash;
+	if ($globalopt{service} =~ /hardware-management-console/) {
+	    for my $en ( keys %$outhash ) {
+		    if (${$outhash->{$en}}{type} eq 'hmc') {
+			    $newouthash->{$en} = $outhash->{$en};
+			}
+		}		
+	    $outhash =  $newouthash;
+	}
+	
     ###########################################
     # filter the result and keep the specified nodes
     ###########################################
