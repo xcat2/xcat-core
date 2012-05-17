@@ -67,10 +67,9 @@ sub dodiscover {
 	}
 	my $interfaces = get_interfaces(%args);
     if ($args{Ip}) {
-        my @ips = split /,/, $args{Ip};
-        foreach my $ip (@ips) {
-            foreach my $nic (keys %$interfaces) {
-                unless (${${$interfaces->{$nic}}{ipv4addrs}}[0] =~ $ip) {
+        foreach my $nic (keys %$interfaces) {
+            if (${${$interfaces->{$nic}}{ipv4addrs}}[0] =~ /(\d+\.\d+\.\d+\.\d+)/) {
+                unless ($args{Ip} =~ $1) {
                     delete $interfaces->{$nic};
                 }
             }
@@ -310,6 +309,9 @@ sub send_service_request_single {
 			my $ip = $sip;
 			$ip =~ s/\/(.*)//;
 			my $maskbits = $1;
+            if (xCAT::Utils->isAIX()) {
+                my $runcmd = `route add 239.255.255.253 $ip`;
+            }
 			my $ipn = inet_aton($ip); #we are ipv4 only, this is ok
 			my $ipnum=unpack("N",$ipn);
 			$ipnum= $ipnum | (2**(32-$maskbits))-1;
