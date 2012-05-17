@@ -14,6 +14,11 @@
 PLTFRM=`uname`
 NETMASK=255.0.0.0
 
+# bond-mld binary is shipped seperately, admin should adjust the following PATH 
+# to where bond-mld binary is. 
+PATH=$PATH:/usr/local/sbin/
+export PATH
+
 name=`echo $NODE | awk -F-hf '{print $1}'`
 if [ -z $name ]
 then
@@ -73,7 +78,14 @@ ONBOOT=yes
     done
 
     # Configure bond0 on Linux
-    CLIENT_IP=`ping -c 3 $name-bond0 -I hf$i 2>/dev/null | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+    if lsmod | grep bonding
+    then
+        rmmod bonding
+    fi
+
+    modprobe bonding mode=multi-link miimon=100 xmit_hash_policy=layer3+4 
+
+    CLIENT_IP=`ping -c 3 $name-bond0 -I bond0 2>/dev/null | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
     if [ -n "$CLIENT_IP" ]
     then
         echo "DEVICE=bond0
@@ -84,22 +96,11 @@ ONBOOT=yes
 " >/etc/sysconfig/network-scripts/ifcfg-bond0
     fi
 
-    if lsmod | grep bonding
-    then
-        rmmod bonding
-    fi
-
-    modprobe bonding mode=multi-link miimon=100 xmit_hash_policy=layer3+4 
-
-    sleep 1
-
-    # Starting from HFI DD2.1, there are 8 interfaces per io hub.  You will need to
-    # adjust following line to only include hf0,hf1,hf2,hf3 if you are working with
-    # HFI DD2.0 devices.
-    for x in hf0 hf1 hf2 hf3 hf4 hf5 hf6 hf7; do
-
-        ip link set dev ${x} down
-        echo +${x} > /sys/class/net/bond0/bonding/slaves
+    x=0
+    while [ $x -le $i ]; do
+        ip link set dev hf${x} down
+        echo +hf${x} > /sys/class/net/bond0/bonding/slaves
+        x=$((x+1))
     done
 
     bond-mld > m.out 2>&1 &
