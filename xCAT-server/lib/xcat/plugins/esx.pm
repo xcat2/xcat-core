@@ -2338,20 +2338,204 @@ sub clone_vms_from_master {
     }
 }
 
+my %wintimezonemap = (
+	"Dateline Standard Time" => 0,
+	"(GMT-12:00) International Date Line West" => 0,
+	"Samoa Standard Time" => 1,
+	"(GMT-11:00) Midway Island, Samoa" => 1,
+	"Hawaiian Standard Time" => 2,
+	"(GMT-10:00) Hawaii" => 2,
+	"Alaskan Standard Time" => 3,
+	"(GMT-09:00) Alaska" => 3,
+	"Pacific Standard Time" => 4,
+	"(GMT-08:00) Pacific Time (US and Canada); Tijuana" => 4,
+	"Mountain Standard Time" => 10,
+	"(GMT-07:00) Mountain Time (US and Canada)" => 10,
+	"Mexico Standard Time 2" => 13,
+	"(GMT-07:00) Chihuahua, La Paz, Mazatlan" => 13,
+	"U.S. Mountain Standard Time" => 15,
+	"(GMT-07:00) Arizona" => 15,
+	"Central Standard Time" => 20,
+	"(GMT-06:00) Central Time (US and Canada)" => 20,
+	"Canada Central Standard Time" => 25,
+	"(GMT-06:00) Saskatchewan" => 25,
+	"Mexico Standard Time" => 30,
+	"(GMT-06:00) Guadalajara, Mexico City, Monterrey" => 30,
+	"Central America Standard Time" => 33,
+	"(GMT-06:00) Central America" => 33,
+	"Eastern Standard Time" => 35,
+	"(GMT-05:00) Eastern Time (US and Canada)" => 35,
+	"U.S. Eastern Standard Time" => 40,
+	"(GMT-05:00) Indiana (East)" => 40,
+    "S.A. Pacific Standard Time" => 45,
+	"(GMT-05:00) Bogota, Lima, Quito" => 45,
+	"Atlantic Standard Time" => 50,
+	"(GMT-04:00) Atlantic Time (Canada)" => 50,
+	"S.A. Western Standard Time" => 55,
+	"(GMT-04:00) Caracas, La Paz" => 55,
+	"Pacific S.A. Standard Time" => 56,
+	"(GMT-04:00) Santiago" => 56,
+	"Newfoundland and Labrador Standard Time" => 60,
+	"(GMT-03:30) Newfoundland and Labrador" => 60,
+	"E. South America Standard Time" => 65,
+	"(GMT-03:00) Brasilia" => 65,
+	"S.A. Eastern Standard Time" => 70,
+	"(GMT-03:00) Buenos Aires, Georgetown" => 70,
+	"Greenland Standard Time" => 73,
+	"(GMT-03:00) Greenland" => 73,
+	"Mid-Atlantic Standard Time" => 75,
+	"(GMT-02:00) Mid-Atlantic" => 75,
+	"Azores Standard Time" => 80,
+	"(GMT-01:00) Azores" => 80,
+	"Cape Verde Standard Time" => 83,
+	"(GMT-01:00) Cape Verde Islands" => 83,
+	"GMT Standard Time" => 85,
+	"(GMT) Greenwich Mean Time : Dublin, Edinburgh, Lisbon, London" => 85,
+	"Greenwich Standard Time" => 90,
+	"(GMT) Casablanca, Monrovia" => 90,
+	"Central Europe Standard Time" => 95,
+	"(GMT+01:00) Belgrade, Bratislava, Budapest, Ljubljana, Prague" => 95,
+	"Central European Standard Time" => 100,
+	"(GMT+01:00) Sarajevo, Skopje, Warsaw, Zagreb" => 100,
+	"Romance Standard Time" => 105,
+	"(GMT+01:00) Brussels, Copenhagen, Madrid, Paris" => 105,
+	"W. Europe Standard Time" => 110,
+	"(GMT+01:00) Amsterdam, Berlin, Bern, Rome, Stockholm, Vienna" => 110,
+	"W. Central Africa Standard Time" => 113,
+	"(GMT+01:00) West Central Africa" => 113,
+	"E. Europe Standard Time" => 115,
+	"(GMT+02:00) Bucharest" => 115,
+	"Egypt Standard Time" => 120,
+	"(GMT+02:00) Cairo" => 120,
+	"FLE Standard Time" => 125,
+	"(GMT+02:00) Helsinki, Kyiv, Riga, Sofia, Tallinn, Vilnius" => 125,
+	"GTB Standard Time" => 130,
+	"(GMT+02:00) Athens, Istanbul, Minsk" => 130,
+	"Israel Standard Time" => 135,
+	"(GMT+02:00) Jerusalem" => 135,
+	"South Africa Standard Time" => 140,
+	"(GMT+02:00) Harare, Pretoria" => 140,
+	"Russian Standard Time" => 145,
+	"(GMT+03:00) Moscow, St. Petersburg, Volgograd" => 145,
+	"Arab Standard Time"  => 150,
+	"(GMT+03:00) Kuwait, Riyadh" => 150,
+	"E. Africa Standard Time" => 155,
+	"(GMT+03:00) Nairobi" => 155,
+	"Arabic Standard Time" => 158,
+	"(GMT+03:00) Baghdad" => 158,
+	"Iran Standard Time" => 160,
+	"(GMT+03:30) Tehran" => 160,
+	"Arabian Standard Time" => 165,
+	"(GMT+04:00) Abu Dhabi, Muscat" => 165,
+	"Caucasus Standard Time" => 170,
+	"(GMT+04:00) Baku, Tbilisi, Yerevan" =>  170,
+	"Transitional Islamic State of Afghanistan Std." => 175,
+	"(GMT+04:30) Kabul" => 175,
+	"Ekaterinburg Standard Time" => 180,
+	"(GMT+05:00) Ekaterinburg" => 180,
+	"West Asia Standard Time" => 185,
+	"(GMT+05:00) Islamabad, Karachi, Tashkent" => 185,
+	"India Standard Time" => 190,
+	"(GMT+05:30) Chennai, Kolkata, Mumbai, New Delhi" => 190,
+	"Nepal Standard Time" => 193,
+	"(GMT+05:45) Kathmandu" => 193,
+	"Central Asia Standard Time" => 195,
+	"(GMT+06:00) Astana, Dhaka" => 195,
+	"Sri Lanka Standard Time" => 200,
+	"(GMT+06:00) Sri Jayawardenepura" => 200,
+	"N. Central Asia Standard Time" => 201,
+	"(GMT+06:00) Almaty, Novosibirsk" => 201,
+	"Myanmar Standard Time" => 203,
+	"(GMT+06:30) Yangon (Rangoon)" => 203,
+	"S.E. Asia Standard Time" => 205,
+	"(GMT+07:00) Bangkok, Hanoi, Jakarta" => 205,
+	"North Asia Standard Time" => 207,
+	"(GMT+07:00) Krasnoyarsk" => 207,
+	"China Standard Time" => 210,
+	"(GMT+08:00) Beijing, Chongqing, Hong Kong SAR, Urumqi" => 210,
+	"Singapore Standard Time" => 215,
+	"(GMT+08:00) Kuala Lumpur, Singapore" => 215,
+	"Taipei Standard Time" => 220,
+	"(GMT+08:00) Taipei" => 220,
+	"W. Australia Standard Time" => 225,
+	"(GMT+08:00) Perth" => 225,
+	"North Asia East Standard Time" => 227,
+	"(GMT+08:00) Irkutsk, Ulaan Bataar" => 227,
+	"Korea Standard Time" => 230,
+	"(GMT+09:00) Seoul" => 230,
+	"Tokyo Standard Time" => 235,
+	"(GMT+09:00) Osaka, Sapporo, Tokyo" => 235,
+	"Yakutsk Standard Time" => 240,
+	"(GMT+09:00) Yakutsk" => 240,
+	"A.U.S. Central Standard Time" => 245,
+	"(GMT+09:30) Darwin" => 245,
+	"Cen. Australia Standard Time" => 250,
+	"(GMT+09:30) Adelaide" => 250,
+	"A.U.S. Eastern Standard Time" => 255,
+	"(GMT+10:00) Canberra, Melbourne, Sydney" => 255,
+	"E. Australia Standard Time" => 260,
+	"(GMT+10:00) Brisbane" => 260,
+	"Tasmania Standard Time" => 265,
+	"(GMT+10:00) Hobart" => 265,
+	"Vladivostok Standard Time" => 270,
+	"(GMT+10:00) Vladivostok" => 270,
+	"West Pacific Standard Time" => 275,
+	"(GMT+10:00) Guam, Port Moresby" => 275,
+	"Central Pacific Standard Time" => 280,
+	"(GMT+11:00) Magadan, Solomon Islands, New Caledonia" => 280,
+	"Fiji Islands Standard Time" => 285,
+	"(GMT+12:00) Fiji Islands, Kamchatka, Marshall Islands" => 285,
+	"New Zealand Standard Time" => 290,
+	"(GMT+12:00) Auckland, Wellington" => 290,
+	"Tonga Standard Time" => 300,
+	"(GMT+13:00) Nuku'alofa" => 300,
+);
+
 sub make_customization_spec {
 	my $node = shift;
 	my $password="Passw0rd";
-	my $wintimezone=35;
+	my $wintimezone;
 	#map of number to strings can be found at 
 	#http://osman-shener-en.blogspot.com/2008/02/unattendedtxt-time-zone-index.html
 	my $fullname="fooooo";
 	my $orgName="barrrr";
-	my @runonce = ("dir"); #to be read in from postscripts table
+	my @runonce=(); #to be read in from postscripts table
+	if ($::XCATSITEVALS{wintimezone}) {
+		$wintimezone=$::XCATSITEVALS{wintimezone};
+	}
+	if ($wintimezonemap{$wintimezone}) {
+		$wintimezone = $wintimezonemap{$wintimezone};
+	}
+	my $ptab=xCAT::Table->new('postscripts',-create=>0);
+	
+	if ($ptab) {
+		my $psent = $ptab->getNodeAttribs($node,[qw/postscripts postbootscripts/]);
+		if ($psent and $psent->{postscripts}) {
+			push @runonce,split /,/,$psent->{postscripts};
+		}
+		if ($psent and $psent->{postbootscripts}) {
+			push @runonce,split /,/,$psent->{postbootscripts};
+		}
+	}
+    $ptab = xCAT::Table->new('passwd',-create=>0);
+	unless ($ptab) {
+		die "passwd table needed";
+	}
+	my ($passent) = $ptab->getAttribs({"key"=>"system",username=>"Administrator"},'password');
+	unless ($passent) {
+		die "need passwd table entry for system account Administrator";
+	}
+	$password=$passent->{password};
+	my %runonce;
+	if (scalar @runonce) { #skip section if no postscripts or postbootscripts
+		%runonce=(
+			guiRunOnce=>CustomizationGuiRunOnce->new(
+            commandList=>\@runonce,
+        );
+    }
 
 	my $identity = CustomizationSysprep->new(
-		guiRunOnce=>CustomizationGuiRunOnce->new(
-			commandList=>\@runonce,
-		),
+		%runonce,
 		guiUnattended => CustomizationGuiUnattended->new(
 			autoLogon=>0,
 			autoLogonCount=>1,
