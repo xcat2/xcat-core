@@ -594,12 +594,17 @@ sub  update_tables_with_templates
   
     #print "osver=$osver, arch=$arch, osname=$osname, genos=$genos\n";
     my $installroot = xCAT::Utils->getInstallDir();
-    my $sitetab = xCAT::Table->new('site');
-    if ($sitetab) {
-	(my $ref) = $sitetab->getAttribs({key => "installdir"}, "value");
-	if ($ref and $ref->{value}) {
-	    $installroot = $ref->{value};
-	}
+    #my $sitetab = xCAT::Table->new('site');
+    #if ($sitetab) {
+    #	(my $ref) = $sitetab->getAttribs({key => "installdir"}, "value");
+    #	if ($ref and $ref->{value}) {
+    #       $installroot = $ref->{value};
+    #	}
+    #}
+    my @installdirs = xCAT::Utils->get_site_attribute("installdir");
+    my $tmp = $installdirs[0];
+    if ( defined($tmp)) {
+       $installroot = $tmp; 
     }
     my $cuspath="$installroot/custom/install/$osname";
     my $defpath="$::XCATROOT/share/xcat/install/$osname"; 
@@ -756,12 +761,17 @@ sub  update_tables_with_diskless_image
   
     #print "osver=$osver, arch=$arch, osname=$osname, genos=$genos, profile=$profile\n";
     my $installroot = xCAT::Utils->getInstallDir();
-    my $sitetab = xCAT::Table->new('site');
-    if ($sitetab) {
-	(my $ref) = $sitetab->getAttribs({key => "installdir"}, "value");
-	if ($ref and $ref->{value}) {
-	    $installroot = $ref->{value};
-	}
+    #my $sitetab = xCAT::Table->new('site');
+    #if ($sitetab) {
+    #	(my $ref) = $sitetab->getAttribs({key => "installdir"}, "value");
+    #	if ($ref and $ref->{value}) {
+    #	    $installroot = $ref->{value};
+    #	}
+    #}
+    my @installdirs = xCAT::Utils->get_site_attribute("installdir");
+    my $tmp = $installdirs[0];
+    if ( defined($tmp)) {
+       $installroot = $tmp; 
     }
     my $cuspath="$installroot/custom/netboot/$osname";
     my $defpath="$::XCATROOT/share/xcat/netboot/$osname"; 
@@ -1064,8 +1074,10 @@ sub subVars {
                                         my $ent;
                                         my $val;
                                         if($table eq 'site'){
-                                                $val = $tab->getAttribs( { key => "$col" }, 'value' );
-                                                $val = $val->{'value'};
+                                                #$val = $tab->getAttribs( { key => "$col" }, 'value' );
+                                                #$val = $val->{'value'};
+                                                my @vals = xCAT::Utils->get_site_attribute($col);
+                                                $val = $vals[0];
                                         }else{
                                                 $ent = $tab->getNodeAttribs($node,[$col]);
                                                 $val = $ent->{$col};
