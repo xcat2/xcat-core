@@ -25,6 +25,8 @@ while [ -z "$BMCIP" -a $IPCFGMETHOD="static" ]; do
     done
     TIMEOUT=15
     BMCIP=`grep bmcip /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    BMCVLAN=`grep taggedvlan /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    if [ -z "$BMCVLAN" ]; then BMCVLAN=off; fi
     BMCGW=`grep gateway /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     BMCNM=`grep netmask /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     BMCUS=`grep username /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
@@ -150,6 +152,13 @@ else
                 done
         done
 fi
+
+let idev=NUMBMCS-1
+while [ $idev -gt 0 ]; do
+      let idev=idev-1
+      TRIES=0
+      ipmitool -d $idev lan set $LANCHAN vlan id $BMCVLAN
+done
 
 let idev=NUMBMCS-1
 for bmcu in $BMCUS; do
