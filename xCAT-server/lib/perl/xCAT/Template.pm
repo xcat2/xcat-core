@@ -71,10 +71,10 @@ sub subvars {
   close($inh);
   my $master;
   #my $sitetab = xCAT::Table->new('site');
-  #my $noderestab = xCAT::Table->new('noderes');
+  my $noderestab = xCAT::Table->new('noderes');
   #(my $et) = $sitetab->getAttribs({key=>"master"},'value');
   my @masters = xCAT::Utils->get_site_attribute("master");
-  my $tmp = $masters[0]
+  my $tmp = $masters[0];
   if ( defined($tmp) ) {
       $master = $tmp;
   }
@@ -82,7 +82,7 @@ sub subvars {
   if ($ipfn) {
       $master = $ipfn;
   }
-  $et = $noderestab->getNodeAttribs($node,['xcatmaster']);
+  my $et = $noderestab->getNodeAttribs($node,['xcatmaster']);
   if ($et and $et->{'xcatmaster'}) { 
     $master = $et->{'xcatmaster'};
   }
