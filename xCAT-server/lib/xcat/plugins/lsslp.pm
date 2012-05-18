@@ -318,9 +318,9 @@ sub parse_args {
         if ( $globalopt{time_out} !~ /^\d+$/ ) {
             return( usage( "Invalid timeout value, should be number" ));
         }
-        if (!exists( $opt{C} )) {
-            return ( usage( "-T should be used with -C" ));
-        }
+        #if (!exists( $opt{C} )) {
+        #    return ( usage( "-T should be used with -C" ));
+        #}
     }
 
     #############################################
@@ -426,7 +426,7 @@ sub trace {
             send_msg( $request, 0, $msg );
         }
     } else {
-        if ( exists($globalopt{verbose}) ) {
+        if ( $globalopt{verbose})  {
             my ($sec,$min,$hour,$mday,$mon,$yr,$wday,$yday,$dst) = localtime(time);
             my $msg = sprintf "%02d:%02d:%02d %5d %s", $hour,$min,$sec,$$,$msg;
             send_msg( $request, 0, $msg );
@@ -851,11 +851,9 @@ sub get_host_from_url {
 
 
     if (scalar(@validip) == 0) {
-                if ($globalopt{verbose}) {
-                    trace( $request, "Invalid IP address in URL" );
-        }
-            return undef;
-        }
+        trace( $request, "Invalid IP address in URL" );
+        return undef;
+     }
 
 
     #######################################
@@ -913,7 +911,7 @@ sub parse_responses {
     my $nettab = xCAT::Table->new('networks');
     my @nets = $nettab->getAllAttribs('netname', 'net','mask','mgtifname');
     if (scalar(@nets) == 0) {
-        trace( $request, "Can't get networks information from networks table" , 1);
+        send_msg( $request, 0, "Can't get networks information from networks table" );
     } else {
         foreach my $enet (@nets) {
             next if ($enet->{'net'} =~ /:/);
@@ -927,15 +925,13 @@ sub parse_responses {
         $addr{$netref->{$entry}}{netmask} = $net{$entry}{netmask};
     }
 
-    trace( $request, "Now lsslp begin to parse its response: " , 1);
+    trace( $request, "Now lsslp begin to parse its response...");
     foreach my $rsp ( keys(%searchmacs) ) {
         ###########################################
         # attribute not found
         ###########################################
         if ( !exists(${$searchmacs{$rsp}}{attributes} )) {
-            if ( $globalopt{verbose}  ) {
-                trace( $request, "Attribute not found for: $rsp" );
-            }
+            trace( $request, "Attribute not found for $rsp" );
             next;
         }
         ###########################################
@@ -944,11 +940,11 @@ sub parse_responses {
         my $attributes = ${$searchmacs{$rsp}}{attributes};
         my $type = ${$attributes->{'type'}}[0] ;
         if ( !exists($service_slp{$type} )) {
-            if ( $globalopt{verbose}  ) {
-                trace( $request, "Discarding unsupported type: $type" );
-            }
+            trace( $request, "Discarding unsupported type  $type" );
             next;
         }
+		
+
         ###########################################
         # Define nodes
         ###########################################
@@ -966,6 +962,10 @@ sub parse_responses {
             $atthash{url} =  ${$searchmacs{$rsp}}{payload};
             $outhash{'Server-'.$atthash{mtm}.'-SN'.$atthash{serial}} = \%atthash;
             $$length = length( $atthash{ip}) if ( length( $atthash{ip} ) > $$length );
+            trace( $request, "Discover node $atthash{hostname}: type is $atthash{type}, \
+			mtm is $atthash{mtm}, sn is $atthash{serial}, slot is $atthash{slot}, \
+			ip is $atthash{ip}, mac is $atthash{mac}, otheringerfaces is $atthash{otherinterfaces}" );
+
         } elsif ($type eq SERVICE_CMM) {
             $atthash{type} = $service_slp{$type};
             $atthash{mtm} = ${$attributes->{'enclosure-mtm'}}[0];
@@ -980,6 +980,11 @@ sub parse_responses {
             $atthash{otherinterfaces} = ${$attributes->{'ipv4-address'}}[0];
             $outhash{'Server-'.$atthash{mtm}.'-SN'.$atthash{serial}} = \%atthash;
             $$length = length( $atthash{ip}) if ( length( $atthash{ip} ) > $$length );
+            trace( $request, "Discover node $atthash{hostname}: type is $atthash{type}, \
+			mtm is $atthash{mtm}, sn is $atthash{serial}, side is $atthash{side}, \
+			ip is $atthash{ip}, mac is $atthash{mac}, mname is $atthash{mname},\
+			mpa is $atthash{mpa}, otheringerfaces is $atthash{otherinterfaces}" );
+
         } elsif ($type eq SERVICE_HMC) {
             $atthash{type} = $service_slp{$type};
             $atthash{mtm} = ${$attributes->{'machinetype-model'}}[0];
@@ -999,6 +1004,9 @@ sub parse_responses {
             $atthash{otherinterfaces} = ${$attributes->{'ip-address'}}[0];
             $outhash{'Server-'.$atthash{mtm}.'-SN'.$atthash{serial}} = \%atthash;
             $$length = length( $atthash{ip}) if ( length( $atthash{ip} ) > $$length );
+            trace( $request, "Discover node $atthash{hostname}: type is $atthash{type},\
+			mtm is $atthash{mtm},sn is $atthash{serial},  ip is $atthash{ip},\
+			mac is $atthash{mac}, otheringerfaces is $atthash{otherinterfaces}" );
         }else {
             #begin to define fsp and bpa
             my %tmphash;
@@ -1018,6 +1026,10 @@ sub parse_responses {
             $tmphash{cid} = int(${$attributes->{'cage-number'}}[0]);
             $outhash{$tmphash{ip}} = \%tmphash;
             $$length = length( $tmphash{ip}) if ( length( $tmphash{ip} ) > $$length );
+            trace( $request, "Discover node $atthash{hostname}:type is $tmphash{type}, mtm is $tmphash{mtm}, \
+			sn is $tmphash{serial}, side is $tmphash{side},parent is $tmphash{parent},ip is $tmphash{ip}, \
+			cec id is $tmphash{cid} , frame id is $tmphash{fid},mac is $tmphash{side}, \
+			otheringerfaces is $atthash{otherinterfaces}" );
             #begin to define frame and cec
             $atthash{type} = $service_slp{$type};
             $atthash{mtm} = ${$attributes->{'machinetype-model'}}[0];
@@ -1041,6 +1053,9 @@ sub parse_responses {
                 ${$outhash{$name}}{fid} = int(${$attributes->{'frame-number'}}[0]) if(int(${$attributes->{'frame-number'}}[0]) != 0);
                 ${$outhash{$name}}{cid} = int(${$attributes->{'cage-number'}}[0]) if(int(${$attributes->{'cage-number'}}[0]) != 0);
             }
+			trace( $request, "Discover node $atthash{hostname}: type is $atthash{type},  mtm is $atthash{mtm},\
+			sn is $atthash{serial},  mac is $atthash{mac}, children is $atthash{children}, frame id is $atthash{fid}, \
+			cec id is $atthash{cid}, otheringerfaces is $atthash{otherinterfaces}" );
         }
     }
 
@@ -1051,17 +1066,18 @@ sub parse_responses {
     # and can't be done together
     ###########################################################
     my $newhostname;
-    trace( $request, "\n\n\nBegin to find find frame's hostname", 1);
+    trace( $request, "\n\n\nBegin to find find frame's hostname");
     foreach my $h ( keys %outhash ) {
         if(${$outhash{$h}}{type} eq TYPE_FRAME) {
             $newhostname = $::OLD_DATA_CACHE{"frame*".${$outhash{$h}}{mtm}."*".${$outhash{$h}}{serial}};
             if ($newhostname) {
                 ${$outhash{$h}}{hostname} = $newhostname ;
+				trace ( $request, "$h find hostname $newhostname");
                 push  @matchnode, $h;
             }
         }
     }
-    trace( $request, "\n\n\nBegin to find cec's parent, adjust cec id", 1);
+    trace( $request, "\n\n\nBegin to find cec's parent");
     foreach my $h ( keys %outhash ) {
         next unless (${$outhash{$h}}{type} eq TYPE_CEC);
         my $parent;
@@ -1078,10 +1094,10 @@ sub parse_responses {
             $parent = $existing_node if ($existing_node);
         }
         ${$outhash{$h}}{parent} = $parent;
+		trace( $request, "$h find parent $parent") if ($parent); 
+    }
 
-        }
-
-    trace( $request, "\n\n\nBegin to find cec hostname", 1);
+    trace( $request, "\n\n\nBegin to find cec hostname");
     foreach my $h ( keys %outhash ) {
         if(${$outhash{$h}}{type} eq TYPE_CEC) {
             my $newhostname1 = $::OLD_DATA_CACHE{"cec*".${$outhash{$h}}{mtm}.'*'.${$outhash{$h}}{serial}};
@@ -1097,16 +1113,18 @@ sub parse_responses {
         }
     }
 
-    trace( $request, "\n\n\nBegin to find fsp/bpa's hostname and parent", 1);
+    trace( $request, "\n\n\nBegin to find fsp/bpa's hostname and parent");
     foreach my $h ( keys %outhash ) {
         if(${$outhash{$h}}{type} eq TYPE_FSP or ${$outhash{$h}}{type} eq TYPE_BPA) {
             $newhostname = $::OLD_DATA_CACHE{${$outhash{$h}}{type}."*".${$outhash{$h}}{mtm}.'*'.${$outhash{$h}}{serial}.'*'.${$outhash{$h}}{side}};
             if ($newhostname){
                 ${$outhash{$h}}{hostname} = $newhostname ;
+                trace( $request, "$h find hostname $newhostname");
                 push  @matchnode, $h;
             }
             my $ptmp = ${$outhash{$h}}{parent};
             ${$outhash{$h}}{parent} = ${$outhash{$ptmp}}{hostname};
+			trace( $request, "$h find parent ${$outhash{$ptmp}}{hostname}");
             #check if fsp/bpa's ip is valid
             my $vip = check_ip(${$outhash{$h}}{ip});
             unless ( $vip )   { #which means the ip is a valid one
@@ -1119,38 +1137,37 @@ sub parse_responses {
     # If there is -n flag, skip the matched nodes
     ##########################################################
     if (exists($globalopt{n})) {
-        trace( $request, "\n\n\nThere is -n flag, skip these nodes:\n", 1);
+        trace( $request, "\n\n\nThere is -n flag, skip these nodes:\n");
         for my $matchednode (@matchnode) {
             if ($outhash{$matchednode}) {
-                trace( $request, "$matchednode,", 1);
+                trace( $request, "skip the node $matchednode\n");
                 delete $outhash{$matchednode};
             }
         }
     }
     if (exists($globalopt{I})) {
         my %existsnodes;
-    my $nodelisttab = xCAT::Table->new('nodelist');
-    unless ( $nodelisttab ) {
-        return( "Error opening 'nodelisttable'" );
-    }
-    my @nodes = $nodelisttab->getAllNodeAttribs([qw(node)]);
-            my $notdisnode;
-    for my $enode (@nodes) {
-                for my $mnode (@matchnode) {
-                        if ($enode->{node} eq ${$outhash{$mnode}}{hostname}) {
-                                $existsnodes{$enode->{node}} = 1;
-                                    last;
-                            }
+        my $nodelisttab = xCAT::Table->new('nodelist');
+        unless ( $nodelisttab ) {
+            return( "Error opening 'nodelisttable'" );
         }
+        my @nodes = $nodelisttab->getAllNodeAttribs([qw(node)]);
+        my $notdisnode;
+        for my $enode (@nodes) {
+            for my $mnode (@matchnode) {
+                if ($enode->{node} eq ${$outhash{$mnode}}{hostname}) {
+                    $existsnodes{$enode->{node}} = 1;
+                    last;
+                }
             }
-
-    for my $enode (@nodes) {
-                    unless ($existsnodes{$enode->{node}}) {
-                            $notdisnode .= $enode->{node}.",";
-                    }
+        }
+        
+        for my $enode (@nodes) {
+            unless ($existsnodes{$enode->{node}}) {
+                $notdisnode .= $enode->{node}.",";
             }
-    trace ( $request, "These nodes defined in database but can't be discovered: $notdisnode  \n", 1);
-
+        }
+        send_msg ( $request, 0, "These nodes defined in database but can't be discovered: $notdisnode  \n");
     }
 
     return \%outhash;
@@ -1464,28 +1481,18 @@ sub process_request {
         return(1);
     }
 
-
-    ###########################################
-    # do discover
-    ###########################################
-    my $start;
-
-    if ( exists($globalopt{verbose}) ) {
-        #######################################
-        # Write header for trace
-        #######################################
-        my $tm  = localtime( time );
-        my $msg = "\n--------  $tm\nTime     PID";
-        trace( $req, $msg );
-    }
+    #######################################
+    # Write header for trace
+    #######################################
+    my $tm  = localtime( time );
+    my $msg = "\n--------  $tm\nTime     PID";
+    trace( \%request, $msg );
 
 
     ###########################################
     # Record begin time
     ###########################################
-    if ( exists($globalopt{verbose}) ) {
-        $start = Time::HiRes::gettimeofday();
-    }
+    my $start = Time::HiRes::gettimeofday();
     ############################################
     ## Fork one process per adapter
     ############################################
@@ -1517,11 +1524,10 @@ sub process_request {
     ###########################################
     # Record ending time
     ###########################################
-    if ( exists($globalopt{verbose}) ) {
-        my $elapsed = Time::HiRes::gettimeofday() - $start;
-        my $msg = sprintf( "Total SLP Time: %.3f sec\n", $elapsed );
-        trace( $req, $msg );
-    }
+
+    my $elapsed = Time::HiRes::gettimeofday() - $start;
+    my $msg2 = sprintf( "Total SLP Time: %.3f sec\n", $elapsed );
+    trace( \%request, $msg2 );
     ###########################################
     # Combined responses from all children
     ###########################################
