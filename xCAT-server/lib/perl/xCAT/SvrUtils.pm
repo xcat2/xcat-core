@@ -1122,7 +1122,7 @@ sub setupNFSTree {
     my $sip = shift;
     my $callback = shift;
 
-    my $cmd = "litetree $node";
+    my $cmd = "XCATBYPASS=Y litetree $node";
     my @uris = xCAT::Utils->runcmd($cmd, 0);
 
     foreach my $uri (@uris) {
