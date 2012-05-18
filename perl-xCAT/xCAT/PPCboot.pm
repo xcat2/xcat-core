@@ -467,9 +467,12 @@ sub rnetboot {
         }
     }
 
-    my $sitetab  = xCAT::Table->new('site');
-    my $vcon = $sitetab->getAttribs({key => "conserverondemand"}, 'value');
-    if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
+    #my $sitetab  = xCAT::Table->new('site');
+    #my $vcon = $sitetab->getAttribs({key => "conserverondemand"}, 'value');
+    my @vcons = xCAT::Utils->get_site_attribute("conserverondemand");
+    my $vcon = $vcons[0]; 
+    #if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
+    if ( defined($vcon) and $vcon eq "yes" ) {
         $result = xCAT::PPCcli::lpar_netboot(
                             $exp,
                             $request->{verbose},
@@ -482,7 +485,7 @@ sub rnetboot {
         #########################################
         $result = do_rnetboot( $request, $d, $exp, $name, $node, \%opt );
     }
-    $sitetab->close;
+    #$sitetab->close;
 
     if (defined($request->{opt}->{m})) {
     
