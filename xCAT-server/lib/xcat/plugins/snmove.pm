@@ -1030,15 +1030,14 @@ sub process_request
                                        },
                                        $sub_req, 0, 1
                                        );
-
-				if ($::RUNCMD_RC != 0)
-				{
-					my $rsp;
-					push @{$rsp->{data}}, "Could not run the nodeset command.\n";
-					xCAT::MsgUtils->message("E", $rsp, $callback);
-					$error++;
-				}
-			}
+		my $rsp;
+		$rsp->{data}=$ret;
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+                if ($::RUNCMD_RC != 0)
+                {
+                    $error++;
+                }
+            }
         }
     }    # end - for Linux system only
 
@@ -1813,8 +1812,6 @@ sub dump_retarget
 				# need node gateway
                 my $gateway = $nethash{$nd}{'gateway'};
 
-
-
 				#  This should configure the iscsi disc on the client
 				my $tcmd = qq~/usr/lpp/bos.sysmgt/nim/methods/c_disc_target -a operation=discover -a target="$dump_target" -a dump_port="$dump_port" -a ipaddr="$SNip" -a lun_id="$dump_lunid"~;
 				my $hd = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nd, $tcmd, 0);
@@ -1829,14 +1826,27 @@ n";
                 }
 				chomp $hd;
 
-				my $hdisk = $hd;
-				if ($hd =~ /:/) {
-					my $node;
-					($node, $hdisk) = split(': ', $hd);
+				my $hdisk;
+				foreach my $line ( split(/\n/, $hd )) {
+					if ( $line =~ /hdisk/ ) {
+						$hdisk = $line;
+						if ($line =~ /:/) {
+							my $node;
+							($node, $hdisk) = split(': ', $line);
+						}
+					}
 				}
 
 				chomp $hdisk;
 				$hdisk =~ s/\s*//g;
+
+				if (!$hdisk) {
+					my $rsp;
+                    push @{$rsp->{data}}, "Could not determine dump device for node $nd.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    $error++;
+                    next;
+				}
 
 				# define the disk on the client
 				my $mkcmd = qq~/usr/sbin/mkdev -l $hdisk~;
