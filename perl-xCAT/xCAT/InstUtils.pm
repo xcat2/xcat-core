@@ -72,11 +72,13 @@ sub getnimprime
     # or it is the xCAT management node.
 
     my $nimprime = xCAT::Utils->get_site_Master();
-    my $sitetab  = xCAT::Table->new('site');
-    (my $et) = $sitetab->getAttribs({key => "nimprime"}, 'value');
-    if ($et and $et->{value})
+    #my $sitetab  = xCAT::Table->new('site');
+    #(my $et) = $sitetab->getAttribs({key => "nimprime"}, 'value');
+    my @nimprimes = xCAT::Utils->get_site_attribute("nimprime");
+    my $tmp = $nimprimes[0];
+    if (defined($tmp))
     {
-        $nimprime = $et->{value};
+        $nimprime = $tmp;
     }
 
     my $hostname;
