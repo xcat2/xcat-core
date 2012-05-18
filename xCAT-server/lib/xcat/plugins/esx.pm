@@ -2348,7 +2348,7 @@ sub make_customization_spec {
 	my $fullname="Unspecified User";
 	my $orgName="Unspecified Organization";
 	if ($::XCATSITEVALS{winfullname}) { $fullname = $::XCATSITEVALS{winfullname}; }
-	if ($::XCATSITEVALS{winorgname}) { $orgname = $::XCATSITEVALS{winorgname}; }
+	if ($::XCATSITEVALS{winorgname}) { $orgName = $::XCATSITEVALS{winorgname}; }
 	my @runonce=(); #to be read in from postscripts table
 	$wintimezone=xCAT::TZUtils::get_wintimezonenum();
 	my $ptab=xCAT::Table->new('postscripts',-create=>0);
@@ -2375,7 +2375,8 @@ sub make_customization_spec {
 	if (scalar @runonce) { #skip section if no postscripts or postbootscripts
 		%runonce=(
 			guiRunOnce=>CustomizationGuiRunOnce->new(
-            commandList=>\@runonce,
+            	commandList=>\@runonce,
+            )
         );
     }
 
