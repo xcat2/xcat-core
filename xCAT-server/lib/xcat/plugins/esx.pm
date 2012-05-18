@@ -4411,7 +4411,9 @@ sub merge_esxi5_append {
 		#if ($line =~ /modules=b.b00/) {
 		#	$line =~ s/modules=b.b00/modules=b.b00 $append/;
 		}
-		print $out $line;
+		unless ($line =~ /^prefix=/) {
+			print $out $line;
+		}
 	}
 }
 sub mkcommonboot {
