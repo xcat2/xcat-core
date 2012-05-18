@@ -165,9 +165,11 @@ sub rvlan {
     #  operation => "pvid=<vid> or vlan=<vid>" for now, addvlan= and delvlan= for tagged vlans, 'pvid', vlan, or stat without = checks current value
     my $self=shift;
     my $community = "public";
-    $self->{sitetab} = xCAT::Table->new('site');
-    my $tmp = $self->{sitetab}->getAttribs({key=>'snmpc'},'value');
-    if ($tmp and $tmp->{value}) { $community = $tmp->{value} }
+    #$self->{sitetab} = xCAT::Table->new('site');
+    #my $tmp = $self->{sitetab}->getAttribs({key=>'snmpc'},'value');
+    my @snmpcs =  xCAT::Utils->get_site_attribute("snmpc");
+    my $tmp = $snmpcs[0];
+    if ( defined($tmp) ) { $community = $tmp }
     my %args = @_;
     my $op=$args{operation};
     my $nodes=$args{nodes};
@@ -287,9 +289,12 @@ sub refresh_table {
   $self->{switchestab} = xCAT::Table->new('switches', -create => 1);
   my @switchentries=$self->{switchestab}->getAllNodeAttribs([qw(switch snmpversion username password privacy auth)]);
   my $community = "public";
-  $self->{sitetab} = xCAT::Table->new('site');
-  my $tmp = $self->{sitetab}->getAttribs({key=>'snmpc'},'value');
-  if ($tmp and $tmp->{value}) { $community = $tmp->{value} }
+  #$self->{sitetab} = xCAT::Table->new('site');
+  #my $tmp = $self->{sitetab}->getAttribs({key=>'snmpc'},'value');
+  #if ($tmp and $tmp->{value}) { $community = $tmp->{value} }
+  my @snmpcs =  xCAT::Utils->get_site_attribute("snmpc");
+  my $tmp = $snmpcs[0];
+  if ( defined($tmp) ) { $community = $tmp }
   else { #Would warn here.. 
   }
   $self->{switchparmhash}={};
