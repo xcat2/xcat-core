@@ -70,11 +70,13 @@ sub subvars {
   }
   close($inh);
   my $master;
-  my $sitetab = xCAT::Table->new('site');
-  my $noderestab = xCAT::Table->new('noderes');
-  (my $et) = $sitetab->getAttribs({key=>"master"},'value');
-  if ($et and $et->{value}) {
-      $master = $et->{value};
+  #my $sitetab = xCAT::Table->new('site');
+  #my $noderestab = xCAT::Table->new('noderes');
+  #(my $et) = $sitetab->getAttribs({key=>"master"},'value');
+  my @masters = xCAT::Utils->get_site_attribute("master");
+  my $tmp = $masters[0]
+  if ( defined($tmp) ) {
+      $master = $tmp;
   }
   my $ipfn = xCAT::Utils->my_ip_facing($node);
   if ($ipfn) {
@@ -208,16 +210,17 @@ sub machinepassword {
             $ou = $ouent->{ou};
         }
     }
-    my $sitetab = xCAT::Table->new('site');
-    unless ($sitetab) {
-        return "ERROR: unable to open site table"; 
-    }
+    #my $sitetab = xCAT::Table->new('site');
+    #unless ($sitetab) {
+    #    return "ERROR: unable to open site table"; 
+    #}
     my $domain;
-    (my $et) = $sitetab->getAttribs({key=>"domain"},'value');
-    if ($et and $et->{value}) {
-        $domain = $et->{value};
-    }
-    unless ($domain) {
+    #(my $et) = $sitetab->getAttribs({key=>"domain"},'value');
+    my @domains =  xCAT::Utils->get_site_attribute("domain");
+    my $tmp = $domains[0];
+    if (defined($tmp)) {
+        $domain = $tmp;
+    } else {
         return "ERROR: no domain set in site table";
     }
     my $realm = uc($domain);
@@ -237,9 +240,12 @@ sub machinepassword {
         }
         $loggedrealms{$realm}=1;
     }
-    my $server = $sitetab->getAttribs({key=>'directoryserver'},['value']);
-    if ($server and $server->{value}) {
-        $server = $server->{value};
+    #my $server = $sitetab->getAttribs({key=>'directoryserver'},['value']);
+    my $server;
+    my @servers = xCAT::Utils->get_site_attribute("directoryserver");
+    $tmp = $servers[0];
+    if (defined($tmp)) {
+        $server = $tmp;
     } else {
         $server = '';
         if ($netdnssupport) {
