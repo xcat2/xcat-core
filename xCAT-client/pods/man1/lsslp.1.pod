@@ -9,7 +9,7 @@ I<lsslp [-h| --help]>
 I<lsslp [-v| --version]>
 
 
-I<lsslp [<noderange>] [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s CEC|FRAME|MM|IVM|RSA|HMC|CMM][-t tries][-I][-C counts][-T timeout][--vpdtable]>
+I<lsslp [noderange] [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s CEC|FRAME|MM|IVM|RSA|HMC|CMM][-t tries][-I][-C counts][-T timeout][--vpdtable]>
 
 
 =head1 DESCRIPTION
@@ -38,13 +38,12 @@ B<-n>          Only display and write the newly discovered hardwares.
 
 B<-r>          Display Raw SLP response.
 
-B<-C>          The number of the nodes expected to find, specified by the user. 
+B<-C>          The number of the expected responses specified by the user. 
             When using this flag, lsslp will not return until the it has found all the nodes or time out.
-            The default max time is 5 minutes. The user can use -T flag the specify the time they want to use.
+            The default max time is 3 secondes. The user can use -T flag the specify the time they want to use.
             A short time will limite the time costing, while a long time will help to find all the nodes.
 
-B<-T>          The number in seconds to limite the time costing of lsslp. Must be used with the flag -C.
-            See the help of flag -C for more details.            
+B<-T>          The number in seconds to limite the time costing of lsslp.             
 
 
 B<-s>          Service type interested in discovering.
