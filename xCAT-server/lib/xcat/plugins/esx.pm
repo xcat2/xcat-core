@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::TZUtils;
 use Time::HiRes qw (sleep);
 use xCAT::Template;
 use xCAT::MsgUtils;
@@ -2341,17 +2342,46 @@ sub clone_vms_from_master {
 sub make_customization_spec {
 	my $node = shift;
 	my $password="Passw0rd";
-	my $wintimezone=35;
+	my $wintimezone;
 	#map of number to strings can be found at 
 	#http://osman-shener-en.blogspot.com/2008/02/unattendedtxt-time-zone-index.html
-	my $fullname="fooooo";
-	my $orgName="barrrr";
-	my @runonce = ("dir"); #to be read in from postscripts table
+	my $fullname="Unspecified User";
+	my $orgName="Unspecified Organization";
+	if ($::XCATSITEVALS{winfullname}) { $fullname = $::XCATSITEVALS{winfullname}; }
+	if ($::XCATSITEVALS{winorgname}) { $orgName = $::XCATSITEVALS{winorgname}; }
+	my @runonce=(); #to be read in from postscripts table
+	$wintimezone=xCAT::TZUtils::get_wintimezonenum();
+	my $ptab=xCAT::Table->new('postscripts',-create=>0);
+	
+	if ($ptab) {
+		my $psent = $ptab->getNodeAttribs($node,[qw/postscripts postbootscripts/]);
+		if ($psent and $psent->{postscripts}) {
+			push @runonce,split /,/,$psent->{postscripts};
+		}
+		if ($psent and $psent->{postbootscripts}) {
+			push @runonce,split /,/,$psent->{postbootscripts};
+		}
+	}
+    $ptab = xCAT::Table->new('passwd',-create=>0);
+	unless ($ptab) {
+		die "passwd table needed";
+	}
+	my ($passent) = $ptab->getAttribs({"key"=>"system",username=>"Administrator"},'password');
+	unless ($passent) {
+		die "need passwd table entry for system account Administrator";
+	}
+	$password=$passent->{password};
+	my %runonce;
+	if (scalar @runonce) { #skip section if no postscripts or postbootscripts
+		%runonce=(
+			guiRunOnce=>CustomizationGuiRunOnce->new(
+            	commandList=>\@runonce,
+            )
+        );
+    }
 
 	my $identity = CustomizationSysprep->new(
-		guiRunOnce=>CustomizationGuiRunOnce->new(
-			commandList=>\@runonce,
-		),
+		%runonce,
 		guiUnattended => CustomizationGuiUnattended->new(
 			autoLogon=>0,
 			autoLogonCount=>1,
@@ -2383,8 +2413,9 @@ sub make_customization_spec {
 }
 
 sub get_customizedidentification {
+	#for now, just do a 'TBD' workgroup.  VMWare not supporting joining without domain admin password is rather unfortunate
      return CustomizationIdentification->new(
-	            joinWorkgroup=>"Temp",
+	            joinWorkgroup=>"TBD",
      );
 }
 
@@ -4380,7 +4411,9 @@ sub merge_esxi5_append {
 		#if ($line =~ /modules=b.b00/) {
 		#	$line =~ s/modules=b.b00/modules=b.b00 $append/;
 		}
-		print $out $line;
+		unless ($line =~ /^prefix=/) {
+			print $out $line;
+		}
 	}
 }
 sub mkcommonboot {
