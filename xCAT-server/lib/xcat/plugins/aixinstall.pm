@@ -32,6 +32,8 @@ use strict;
 use Socket;
 use File::Path;
 
+use Fcntl qw/:flock/;
+
 # options can be bundled up like -vV
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
@@ -8288,21 +8290,34 @@ sub prenimnodeset
 						$moveit++;
 					}
 				}
-			if (!$::SKIPSYNC) {
-                # do a re-sync
-                my $scmd = "nim -Fo sync_roots $imghash{$i}{spot}";
-                my $output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $scmd, 0);
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Could not update $imghash{$i}{shared_root}.\n";
-                    if ($::VERBOSE)
-                    {
-                        push @{$rsp->{data}}, "$output";
-                    }
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                }
-			}
+				if (!$::SKIPSYNC) {
+
+                	# do a re-sync
+					# if it's allocated then don't update it
+                	my $alloc_count = xCAT::InstUtils->get_nim_attr_val($imghash{$i}{shared_root}, "alloc_count", $callback, "", $subreq);
+                	if (defined($alloc_count) && ($alloc_count != 0))
+                	{
+                    	my $rsp;
+                    	push @{$rsp->{data}}, "The resource named \'$imghash{$i}{shared_root}\' is currently allocated. It will not be re-synchronized.\n";
+                    	xCAT::MsgUtils->message("I", $rsp, $callback);
+                	}
+					else
+					{
+
+                		my $scmd = "nim -Fo sync_roots $imghash{$i}{spot}";
+                		my $output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $scmd, 0);
+                		if ($::RUNCMD_RC != 0)
+                		{
+                    		my $rsp;
+                    		push @{$rsp->{data}}, "Could not update $imghash{$i}{shared_root}.\n";
+                    		if ($::VERBOSE)
+                    		{
+                        		push @{$rsp->{data}}, "$output";
+                    		}
+                    		xCAT::MsgUtils->message("E", $rsp, $callback);
+                		}
+					}
+				}
 
 				if ($moveit) {
 					# copy back the .client data files
@@ -9295,7 +9310,7 @@ sub doSFScopy
     my $service = "xcat";
     if (\@nlist)
     {
-        $sn = xCAT::Utils->getSNformattedhash(\@nlist, $service, "MN");
+		$snode = xCAT::Utils->getSNformattedhash(\@nlist, $service, "MN");
     }
     foreach my $sn (keys %$snode) {
 		foreach my $img (@imagenames) {
@@ -9307,7 +9322,10 @@ sub doSFScopy
 
 				#  don't copy dump or paging
 				if ( ($restype eq 'dump') || ($restype eq 'paging') ) {
-					push(@dontcopy, $imghash{$img}{$restype});
+					if (!grep(/^$imghash{$img}{$restype}$/, @dontcopy))
+					{
+						push(@dontcopy, $imghash{$img}{$restype});
+					}
 					next;
 				}
 
@@ -9316,20 +9334,15 @@ sub doSFScopy
 				if ( ($nimtype ne 'standalone') && ($restype eq 'lpp_source'))
 				{
 					# don't copy lpp_source for diskless/dataless nodes
-					push(@dontcopy, $imghash{$img}{'lpp_source'});
+					if (!grep(/^$imghash{$img}{'lpp_source'}$/, @dontcopy))
+                    {
+						push(@dontcopy, $imghash{$img}{'lpp_source'});
+					}
 					next;
 				}
 
-				if ( ($nimtype ne 'standalone') && ($restype eq ''))
-               	{
-                   	# don't copy lpp_source for diskless/dataless nodes
-                   	push(@dontcopy, $imghash{$img}{'lpp_source'});
-                   	next;
-               	}
-
 				foreach my $res (split /,/, $imghash{$img}{$restype})
 				{
-
 					if (grep (/^$res$/, @dontcopy)) {
 						next;
 					}
@@ -9339,7 +9352,10 @@ sub doSFScopy
 
 					if (defined($alloc_count) && ($alloc_count != 0)) {
 						# if it's allocated then don't copy it
-						push(@dontcopy, $res);
+						if (!grep(/^$res$/, @dontcopy))
+                   		{
+							push(@dontcopy, $res);
+						}
 
 						my $rsp;
 						push @{$rsp->{data}}, "NIM resource $res is currently allocated on service node $sn and will not be re-copied to the service nodes.\n";
@@ -9381,6 +9397,7 @@ sub doSFScopy
 
 					# if the resources need to be copied
 					my %resinfo;
+
 					if (!grep(/^$res$/, @dontcopy))
 					{
 						# copy appropriate files to the SN
@@ -10178,6 +10195,42 @@ sub mkdsklsnode
             my $time = `date | cut -f5 -d' '`;
             chomp $time;
 
+			#
+			#  wait for shared root lock - need to be sure we don't change it
+			# 		while another SN is in the process of def and backup
+			#
+
+			# see if the shared_root is being modified
+			my $origloc;
+			my $SRlock;
+			my $locked=0;
+			my $lockfile;
+			if ($imagehash{$image_name}{shared_root} ) {
+				# get the shared_root location
+				$origloc = xCAT::InstUtils->get_nim_attr_val($imagehash{$image_name}{shared_root}, 'location', $callback, $Sname);
+
+				# see if this is a shared filesystem environment
+				my $sitetab = xCAT::Table->new('site');
+				my ($tmp) = $sitetab->getAttribs({'key' => 'sharedinstall'}, 'value');
+				my $sharedinstall = $tmp->{value};
+				$sitetab->close;
+				if (!$sharedinstall) {
+					$sharedinstall="no";
+				}
+
+				chomp $sharedinstall;
+
+				# try to get a lock if this is shared_root and using
+				#		a shared filesystem
+				if ($origloc && ($sharedinstall eq "sns")) {
+
+					$lockfile = "$origloc/lockfile";
+					open($SRlock, "<", $lockfile);
+					flock($SRlock,LOCK_EX);
+					$locked++;
+				}
+			}
+
             my $rsp;
             push @{$rsp->{data}}, "$Sname: Initializing NIM machine \'$nim_name\'. \n";
 			xCAT::MsgUtils->message("I", $rsp, $callback);
@@ -10197,7 +10250,13 @@ sub mkdsklsnode
                 push(@nodesfailed, $node);
                 next;
             }
-        }
+
+			if ($locked) {
+				flock($SRlock,LOCK_UN);
+				close($SRlock);
+			}
+
+        } # end doinit
 
         # Update /tftpboot/nodeip.info to export the variable BASECUST_REMOVAL
         # then during the network boot, rc.dd_boot script will check this variable
@@ -11670,10 +11729,24 @@ sub make_SN_resource
 					my $moveit = 0;
 					my $origloc;
 					my $origlocbak;
+					my $lockfile;
+					my $SRlock;
+					my $locked;
 					if ( ($::DEFONLY || ($sharedinstall eq "sns")) && ( $restype eq "shared_root")) {
+
+
 						$origloc =  $lochash{$imghash{$image}{$restype}};
-						$origlocbak = "$origloc.bak";
-						# ex. /install/nim/shared_root/71Bdskls_shared_root
+                        $origlocbak = "$origloc.bak";
+                        # ex. /install/nim/shared_root/71Bdskls_shared_root
+						#
+						# need to set a lock so that some other SN doesn't
+						#		modify anything while we're doing this
+						#
+						$lockfile = "$origloc/lockfile";
+						open($SRlock, "<", $lockfile);
+						flock($SRlock,LOCK_EX);
+						$locked++;
+
 						if (-d $origloc) {
 							my $mvcmd = qq~/usr/sbin/mvdir $origloc $origlocbak~;
 							my $output = xCAT::Utils->runcmd("$mvcmd", -1);
@@ -11695,6 +11768,10 @@ sub make_SN_resource
                         ) != 0
                       )
                     {
+						if ( $locked) {
+                        	flock($SRlock,LOCK_UN);
+                        	close($SRlock);
+                    	}
                         next;
                     }
 
@@ -11719,6 +11796,11 @@ sub make_SN_resource
                             push @{$rsp->{data}}, "Could not move $origlocbak to $origloc.\n";
                             xCAT::MsgUtils->message("E", $rsp, $callback);
                         }
+					}
+
+					if ( $locked) {
+						flock($lockfile,LOCK_UN);
+						close($lockfile);
 					}
 				}
                 # only make lpp_source for standalone type images
@@ -12248,13 +12330,43 @@ sub rmdsklsnode
             $nodename = $name . "_" . $::opt_i;
         }
 
+		# see if the node is defined as a nim client
+		my $lscmd = qq~/usr/sbin/lsnim -l $nodename 2>/dev/null~;
+		$output = xCAT::Utils->runcmd("$lscmd", -1);
+        if ($::RUNCMD_RC != 0)
+        {
+            # doesn't exist 
+			if ($::VERBOSE)
+			{
+				my $rsp;
+				push @{$rsp->{data}}, "Node \'$nodename\' is not defined.";
+				xCAT::MsgUtils->message("I", $rsp, $callback);
+			}
+			next;
+        }
+
         # see if the node is running
-        # use nodelist.status
-        if ($nlhash && $nlhash->{$nodename}->[0]->{'status'} eq 'booted')
+
+		my $badmstate;
+        my $badnodestat;
+		# check BOTH Mstate and nodestat
+
+		# check NIM Mstate for node
+		my $mstate = xCAT::InstUtils->get_nim_attr_val($nodename, "Mstate", $callback, $Sname, $subreq);
+        if ($mstate && (!($mstate =~ /currently running/)) ) {
+			$badmstate++;
+		}
+
+        # check xCAT nodelist.status for the node
+        if ($nlhash && $nlhash->{$nodename}->[0]->{'status'} ne 'booted')
+		{
+			$badnodestat++;
+		}
+
+		if (!$badmstate && !$badnodestat) 
         {
             if ($::FORCE)
             {
-
                 if ($::VERBOSE)
                 {
                     my $rsp;
@@ -12266,15 +12378,14 @@ sub rmdsklsnode
                 my $scmd = "shutdown -F &";
                 my $output;
                 $output =
-                  xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nodename,
-                                        $scmd, 0);
+                  xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nodename, $scmd, 0);
             }
             else
             {
                 # don't remove the def
                 my $rsp;
                 push @{$rsp->{data}},
-                  "The nodelist.status of \'$nodename\' is currently \'booted\', use -f flag to forcely remove it.";
+                  "The node \'$nodename\' is currently running. Use the -f flag to force the removal.";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 $error++;
                 push(@nodesfailed, $nodename);
@@ -13454,7 +13565,6 @@ sub parse_otherpkgs
             push @rpm_pkgs, $pname;    
         }
 
-# ndebug
 		elsif (($p =~ /epkg\.Z/) || ($p =~ /^E:/))
         {
 			if ($p =~ /:/)
