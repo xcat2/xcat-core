@@ -30,20 +30,27 @@ sub process_request {
     my $command = $request->{command}->[0];
     $callback = shift;
     my $doreq = shift;
-    use Data::Dumper;
-    my $sitetab = xCAT::Table->new('site');
+    #use Data::Dumper;
+    #my $sitetab = xCAT::Table->new('site');
     my $domain;
-    $domain = $sitetab->getAttribs({key=>'domain'},['value']);
-    if ($domain and $domain->{value}) { 
-        $domain = $domain->{value};
+    #$domain = $sitetab->getAttribs({key=>'domain'},['value']);
+    my @domains = xCAT::Utils->get_site_attribute("domain");
+    my $tmp = $domains[0];
+    if (defined($tmp)) { 
+        $domain = $tmp;
     } else {
         $domain = undef;
     }
     #TODO: if multi-domain support implemented, use the domains table to reference between realm and domain  
-    my $server = $sitetab->getAttribs({key=>'directoryserver'},['value']);
-    my $realm = $sitetab->getAttribs({key=>'realm'},['value']);
-    if ($realm and $realm->{value}) {
-        $realm = $realm->{value};
+    #my $server = $sitetab->getAttribs({key=>'directoryserver'},['value']);
+    #my $realm = $sitetab->getAttribs({key=>'realm'},['value']);
+    my @directoryservers =  xCAT::Utils->get_site_attribute("directoryserver");
+    my @realms = xCAT::Utils->get_site_attribute("realm");
+    my $tmp1 = $realms[0];
+    my $server;
+    my $realm;
+    if (defined($tmp1)) {
+        $realm = $tmp1;
     } else {
         $realm = uc($domain);
         $realm =~ s/\.$//; #remove trailing dot if provided
@@ -54,8 +61,9 @@ sub process_request {
         xCAT::SvrUtils::sendmsg([1,"activedirectory entry missing from passwd table"], $callback);
         return 1;
     }
-    if ($server and $server->{value}) {
-        $server = $server->{value};
+    my $tmp2 = $directoryservers[0];
+    if (defined($tmp2)) {
+        $server = $tmp2;
     } else {
         my $res = Net::DNS::Resolver->new;
         my $query = $res->query("_ldap._tcp.$domain","SRV");
