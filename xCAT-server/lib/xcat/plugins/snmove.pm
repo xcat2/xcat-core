@@ -567,7 +567,7 @@ sub process_request
 	#	- using a shared file system across all service nodes
 	#
 	if ( ($::isaix) && ($sharedinstall eq "sns") ){
-		my $s = &sfsSLconfig(\@nodes, \%nhash, \%sn_hash, $nimprime, $callback, $sub_req);
+		my $s = &sfsSLconfig(\@nodes, \%nhash, \%sn_hash, $old_node_hash, $nimprime, $callback, $sub_req);
 	}
 
 	# TBD - handle sharedinstall =all case ????
@@ -1180,22 +1180,73 @@ sub process_request
         if (keys(%gwhash) > 0)
         {
             my $rsp;
-            $rsp->{data}->[0] = "Setting up the default routes on the nodes.";
+            $rsp->{data}->[0] = "Checking the default routes on the nodes.";
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
+		
+		# for each new xcatmaster ip (gateway)
         foreach my $gw (keys %gwhash)
         {
-            my $cmd =
-              "route add default gw"
-              ;    #this is temporary,TODO, set perminant route on the nodes.
 
-            #            if (xCAT::Utils->isAIX())
-            if ($::isaix)
-            {
-                $cmd = "route add default";
-            }
-            my $ret =
-              xCAT::Utils->runxcmd(
+			# for each node that is moved to this new gateway
+			foreach my $nd ( @{$gwhash{$gw}} ) {
+
+            	my $cmd = "route add default gw";  # for linux
+
+            	if ($::isaix)
+            	{
+
+					# we need to make sure we have a default gateway set
+					#  to the new SN - however we do not want to add 
+					#	an additional default gateway and we don't
+					# 	want to do anything to change what the user 
+					#	may have set up
+					# SO - just see if the old SN is the only default set 
+					#	and if so then change it to the new gw (SN)
+
+					my $oldgwip = xCAT::NetworkUtils->getipaddr($old_node_hash->{$nd}->{'oldmaster'});
+
+					# get the ouptut of "netstat -rn"
+					my $netcmd = qq~netstat -rn~;
+					my $netout = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nd, $netcmd, 0);
+
+					my $foundold;
+                	my $foundnew;
+					# see what default routes are set
+					foreach my $l (split(/\n/, $netout)) {
+						my $line;
+						my $junk;
+						if ($l =~ /:/) {
+                			($junk, $line) = split(/:/, $l);
+            			} else {
+                			$line = $l;
+						}
+
+						my ($dest, $IP, $junk) = split(" ", $line);
+						if ($dest eq 'default') {
+							if ( $IP eq $oldgwip) {
+								$foundold++;
+							}
+							if ( $IP eq $gw) {
+								$foundnew++;
+							}
+						} else {
+							next;
+						}
+					} # end foreach
+
+					# decide if we need to change default gw
+					if ($foundold && !$foundnew) {
+						$cmd = "route change default";
+					} else {
+						$cmd = "";
+					}
+            	}
+
+				if ($cmd ) 
+				{
+            		my $ret =
+              			xCAT::Utils->runxcmd(
                                    {
                                     command => ['xdsh'],
                                     node    => $gwhash{$gw},
@@ -1203,16 +1254,97 @@ sub process_request
                                    },
                                    $sub_req, -1, 1
                                    );
-            if ($::RUNCMD_RC != 0)
+
+            		if ($::RUNCMD_RC != 0)
+            		{
+						my $rsp;
+						push @{$rsp->{data}}, $ret;
+						push @{$rsp->{data}}, "Could not set default route.\n";
+						xCAT::MsgUtils->message("E", $rsp, $callback);
+						$error++;
+            		}
+				}
+
+			} # end foreach node
+        } # end for each new gw
+    } # if not ignore nodes
+
+	#  
+	#  run the bootlist command
+	#			
+	if (!$::IGNORE)
+    {
+        if ($::isaix)
+        {
+        #    if ($::VERBOSE)
             {
-                $error++;
+                my $rsp;
+                push @{$rsp->{data}}, "Updating the bootlist.\n";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
             }
 
-            my $rsp;
-            $rsp->{data} = $ret;
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-        }
-    }
+			my %nethash = xCAT::DBobjUtils->getNetwkInfo(\@nodes);
+
+            foreach my $nd (@nodes)
+			{
+				# get the device name to use with the bootlist cmd
+				my $nimcmd = qq~netstat -in~;
+				my $nimout = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nd, $nimcmd,0);
+				my $myip = xCAT::NetworkUtils->getipaddr($nd);
+				chomp $myip;
+				my $intname;
+				foreach my $l (split(/\n/,$nimout))
+				{
+					my $line;
+					my $junk;
+					if ($l =~ /:/) {
+						($junk, $line) = split(/:/, $l);
+					} else {
+						$line = $l;
+					}
+					my ($name, $junk1, $junk, $IP, $junk3) = split(" ", $line);
+					chomp $IP;
+
+					if ($IP eq $myip) 
+					{
+						$intname =$name;
+						last;
+					}
+				}
+
+				my $devicename;
+				if ($intname =~ /hf/) {
+					$intname =~ s/hf/hfi/g;  
+				} elsif ($intname =~ /en/) {
+					$intname =~ s/en/ent/g;
+				} elsif ($intname =~ /et/) {
+					my $index = $intname =~ s/et//g;
+					$intname =~ s/et/ent/g; 
+				} 
+
+				$devicename = $intname;
+
+				# need node gateway
+                my $gateway = $nethash{$nd}{'gateway'};
+
+				# the boot server is the new xcatmaster value
+				my $snIP = xCAT::NetworkUtils->getipaddr($newxcatmaster{$nd});
+
+				# point to the new server
+				my $blcmd = qq~/usr/bin/bootlist -m normal $devicename gateway=$gateway bserver=$snIP client=$myip ~;
+
+				my $output = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nd, $blcmd, 0);
+				if ($::RUNCMD_RC != 0)
+				{
+					my $rsp;
+					push @{$rsp->{data}}, "Could not run \'$blcmd\' on node $nd.\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					$error++;
+					next;
+				}
+			}
+		}
+	}
 
     # run postscripts to take care of syslog, ntp, and mkresolvconf
     #	 - if they are included in the postscripts table
@@ -1545,9 +1677,9 @@ sub dump_retarget
 
 	my $error;
 
-	#my $rsp;
-	#push @{$rsp->{data}}, "Re-targetting dump devices for:\n\'@nodes\'\n";
-	#xCAT::MsgUtils->message("I", $rsp, $callback);
+	my $rsp;
+	push @{$rsp->{data}}, "Checking dump devices.\n";
+	xCAT::MsgUtils->message("I", $rsp, $callback);
 
 	# get provmethod and xcatmaster for each node
 	my $nrtab = xCAT::Table->new('noderes');
@@ -1745,51 +1877,6 @@ $nd, $ccmd, 0);
 					next;
 				}
 
-				# get the device name to use with the bootlist cmd
-				#
-				my $nimcmd = qq~netstat -in~;
-				my $nimout = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nd, $nimcmd,0);
-				my $myip = xCAT::NetworkUtils->getipaddr($nd);
-				chomp $myip;
-				my $intname;
-				foreach my $line (split(/\n/,$nimout))
-				{
-					my ($name, $junk1, $junk, $IP, $junk3) = split(" ", $line);
-					chomp $IP;
-					if ($IP eq $myip) 
-					{
-						$intname =$name;
-						last;
-					}
-				}
-
-				my $devicename;
-				if ($intname =~ /hf/) {
-					my $index =~ s/hf//g;
-					$devicename = "hfi" . $index; 
-				}
-				if ($intname =~ /en/) {
-					my $index =~ s/en//g;
-					$devicename = "ent" . $index;
-				}
-				if ($intname =~ /et/) {
-					my $index =~ s/et//g;
-					$devicename = "ent" . $index;
-				}
-
-				# point to the new server
-				my $blcmd = qq~/usr/bin/bootlist -m normal $devicename gateway=$gateway bserver=$SNip client=$Nodeip ~;
-
-				$output = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nd, $blcmd, 0);
-				if ($::RUNCMD_RC != 0)
-				{
-					my $rsp;
-					push @{$rsp->{data}}, "Could not run \'$blcmd\' on node $nd.\n";
-					xCAT::MsgUtils->message("E", $rsp, $callback);
-					$error++;
-					next;
-				}
-
 				my $rsp;
 				push @{$rsp->{data}}, "Set the primary dump device for node \'$nd\' to \'/dev/$hdisk\' and changed the dump target to \'$sn\'.\n";
 				xCAT::MsgUtils->message("I", $rsp, $callback);
@@ -1910,6 +1997,7 @@ sub sfsSLconfig
     my $nodelist    = shift;
 	my $nh		= shift;
 	my $n_h		= shift;
+	my $old_node_hash = shift;
 	my $nimprime = shift;                
 	my $callback = shift;
     my $sub_req   = shift;
@@ -1957,13 +2045,18 @@ sub sfsSLconfig
 	#
 	foreach my $line (@$recs)
     {
-        # see what nodes this entry applies to
-        my @nodeattr = &noderange($line->{node}, 0);
-
 		$statemnt = $line->{statemnt};
-		($server, $dir) = split(/:/, $statemnt);
 
+        # if the statemnt is a variable then skip it
+        if (grep /^\$/, $statemnt) {
+            next;
+        }
+
+		($server, $dir) = split(/:/, $statemnt);
 		chomp $server;
+
+		# see what nodes this entry applies to
+        my @nodeattr = &noderange($line->{node}, 0);
 
 		foreach my $n (@nodes)
 		{
@@ -1974,38 +2067,16 @@ sub sfsSLconfig
 				next;
 			}
 
-			# check for the server
-			if (grep /\$/, $server)
-			{
-				my $serv = xCAT::SvrUtils->subVars($server, $n, 'server', $callback);
-				$server = $serv;
+			# if the $server value was the old SN hostname
+			#       then we need to
+			#   update the statelite table with the new SN name
 
-				# note: if a variable IS used in the entry then it
-				#   does not have to be updated.
-			}
-			else
-			{
-
-				# if the $server value was the old SN hostname
-				#       then we need to
-				#   update the statelite table with the new SN name
-				$item++;
+			if ( $server eq $old_node_hash->{$n}->{'oldmaster'} ) {	
 				my $stmnt = "$sn_hash{$n}{'xcatmaster'}:$dir";
 				$SLmodhash{$item}{'statemnt'} = $stmnt;
 				$SLmodhash{$item}{'node'}     = $n;
-			}
 
-			my $rsp;
-			push @{$rsp->{data}}, "Setting new values in the xCAT database.\n";
-			xCAT::MsgUtils->message("I", $rsp, $callback);			
-
-			# for each key in SLmodhash - update the statelite table
-			foreach my $item (keys %SLmodhash)
-			{			
-				my $node     = $SLmodhash{$item}{'node'};
-				my $statemnt = $SLmodhash{$item}{'statemnt'};
-
-				$statetab->setAttribs({'node' => $node}, {'statemnt' => $statemnt});
+				$statetab->setAttribs({'node' => $n}, {'statemnt' => $stmnt, 'mntopts' => $line->{mntopts}, 'comments' => $line->{comments}, 'disable' => $line->{disable}});
 			}
 		}
 	} # end statelite DB update
