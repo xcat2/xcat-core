@@ -676,9 +676,14 @@ sub getmacs {
             return( [[$node,"Node not found, lparid=$lparid",RC_ERROR]] );
         }
 
-        my $sitetab  = xCAT::Table->new('site');
-        my $vcon = $sitetab->getAttribs({key => "conserverondemand"}, 'value');
-        if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
+        #my $sitetab  = xCAT::Table->new('site');
+        #my $vcon = $sitetab->getAttribs({key => "conserverondemand"}, 'value');
+        #there may be something wrong with the conserverondemand attribute. 
+        # Currently, the code is not used. So not fix this time. Just keep it here.
+        my @vcons = xCAT::Utils->get_site_attribute("conserverondemand");
+        my $vcon = $vcons[0];
+        #if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
+        if ( defined($vcon) and $vcon eq "yes" ) {
             $result = xCAT::PPCcli::lpar_netboot(
                             $exp,
                             $request->{verbose},
@@ -692,7 +697,7 @@ sub getmacs {
             $result = do_getmacs( $request, $d, $exp, $name, $node );
             $Rc = shift(@$result);
         }
-        $sitetab->close;
+        #$sitetab->close;
         
    
         ##################################
