@@ -17,6 +17,11 @@ my $callback;
 my $docmd;
 my %ip4neigh;
 my %ip6neigh;
+my %flexchassismap;
+my %flexchassisuuid;
+my %nodebymp;
+my %passwordmap;
+my %chassisbyuuid;
 my %searchmacs;
 my %researchmacs;
 my $macmap;
@@ -54,6 +59,11 @@ sub get_ipv6_neighbors {
 sub handle_new_slp_entity {
 	my $data = shift;
 	delete $data->{sockaddr}; #won't need it
+	if ($data->{SrvType} eq "service:management-hardware.IBM:integrated-management-module2" and $data->{attributes}->{enclosure-form-factor}->[0] eq "BC2") {
+		#this is a Flex ITE, don't go mac searching for it, but remember the chassis UUID for later
+		push @{$flexchassismap{$data->{attributes}->{chassis-uuid}->[0]}},$data;
+		return;
+	}
 	my $mac = get_mac_for_addr($data->{peername});
 	unless ($mac) { return; }
 	$searchmacs{$mac} = $data;
@@ -64,7 +74,7 @@ sub process_request {
 	$callback = shift;
 	$docmd = shift;
 	%searchmacs=();
-	my $srvtypes = [ qw/service:management-hardware.IBM:chassis-management-module service:management-hardware.IBM:management-module/ ];
+	my $srvtypes = [ qw/service:management-hardware.IBM:chassis-management-module service:management-hardware.IBM:management-module service:management-hardware.IBM:integrated-management-module2/ ];
 	xCAT::SLP::dodiscover(SrvTypes=>$srvtypes,Callback=>\&handle_new_slp_entity);
 	$macmap = xCAT::MacMap->new();
 	$macmap->refresh_table();
@@ -77,6 +87,7 @@ sub process_request {
 		my $data = $searchmacs{$mac};
 		$data->{nodename}=$node;
 		$data->{macaddress}=$mac;
+		$chassisbyuuid{$data->{attributes}->{enclosure-uuid}->[0]}=$node;
 		push @toconfig,$data;
 	}
 	my $mpatab=xCAT::Table->new("mpa",-create=>0);
@@ -109,6 +120,14 @@ sub process_request {
 		
 
 	
+	my $mptab = xCAT::Table->new('mp');
+	if ($mptab) {
+		my @mpents = $mptab->getAllNodeAttribs(['node','mp','id']);
+		foreach (@mpents) {
+			$nodebymp{$_->{mp}}->{$_->{id}}=$_->{node};
+		}
+	}
+		
 	foreach my $data (@toconfig) {
 		my $mac = $data->{macaddress};
 		my $nodename = $data->{nodename};
@@ -124,11 +143,32 @@ sub process_request {
 			unless (do_blade_setup($data,curraddr=>$addr)) {
 				next;
 			}
+			$flexchassisuuid{$nodename}=$data->{attributes}->{enclosure-uuid}->[0];
+			configure_hosted_elements($nodename);
+			unless (do_blade_setup($data,curraddr=>$addr,pass2=>1)) {
+				next;
+			}
 			sendmsg(":Configuration of ".$nodename." complete, configuration may take a few minutes to take effect",$callback);
 			$macuphash{$nodename} = { mac => $mac };
 		}
 	}
 	$mactab->setNodesAttribs(\%macuphash);
+}
+
+sub configure_hosted_elements {
+	my $cmm = shift;
+	my $uuid=$flexchassisuuid{$cmm};
+	my $node;
+	my $immdata;
+	my $ipmitab;
+	$ipmitab->getNodesAttribs();
+	my $slot;
+	foreach $immdata (@{$flexchassismap{$uuid}}) {
+		$slot=$immdata->{attributes}->{slot}->[0];
+		if ($node = $nodebymp{$cmm}->{$slot}) {
+			xCAT::IMM::SetupIMM($node);
+		}
+	}
 }
 
 sub do_blade_setup {
@@ -151,8 +191,18 @@ sub do_blade_setup {
 		return 0;
 	}
 	require xCAT_plugin::blade;
-	my @cmds = qw/snmpcfg=enable sshcfg=enable textid=* initnetwork=*/;
+	my @cmds;
+	my %exargs;
+	if ($args{pass2}) {
+	  @cmds = qw/initnetwork=*/; 
+	  %exargs = ( nokeycheck=>1 ); #still not at the 'right' ip, so the known hosts shouldn't be bothered
+	} else {
+	  @cmds = qw/snmpcfg=enable sshcfg=enable textid=*/; # initnetwork=*/; defer initnetwork until after chassis members have been configured
+	  %exargs = ( defaultcfg=>1 );
+        }
 	my $result;
+        $passwordmap{$nodename}->{username}=$localuser;
+        $passwordmap{$nodename}->{password}=$localpass;
 	my $rc = eval { $result = xCAT_plugin::blade::clicmds(
 						 $nodename,
 						 $localuser,
@@ -160,7 +210,7 @@ sub do_blade_setup {
 						 $nodename,
 						 0,
 						 curraddr=>$addr,
-						 defaultcfg=>1,
+						 %exargs,
 						 cmds=>\@cmds );
 		1;
 	};
