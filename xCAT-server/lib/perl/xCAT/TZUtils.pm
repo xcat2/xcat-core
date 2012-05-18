@@ -686,7 +686,7 @@ sub get_wintimezone {
 	if ($::XCATSITEVALS{'wintimezone'}) {
 		return $::XCATSITEVALS{'wintimezone'};
 	} elsif ($::XCATSITEVALS{'timezone'}) {
-		return $posixtowintimezonemap{::XCATSITEVALS{'timezone'}};
+		return $posixtowintimezonemap{$::XCATSITEVALS{'timezone'}};
 	}
 }
 
