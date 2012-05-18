@@ -4038,7 +4038,7 @@ sub clicmds {
                 Prompt=>'/system> $/'
 		);
   my $Rc=1;
-  if ($t) { #we sshed in, but we may be forced to deal with initial password set
+  if ($t and not $t->atprompt) { #we sshed in, but we may be forced to deal with initial password set
 	my $output = $t->get();
 	if ($output =~ /Enter current password/) {
 		$t->print($currpass);
@@ -4058,7 +4058,7 @@ sub clicmds {
 		}
 	}
   	$t->waitfor(match=>"/system> /");
-  } else {#ssh failed.. fallback to a telnet attempt for older AMMs with telnet disabled by default
+  } elsif (not $t) {#ssh failed.. fallback to a telnet attempt for older AMMs with telnet disabled by default
      require Net::Telnet;
      $t = new Net::Telnet(
                    Timeout=>15, 
@@ -4973,7 +4973,7 @@ sub dompa {
         $rc = 1;
         $args = [];
       } else {
-        $result = clicmds($mpa,$user,$pass,$node,$slot,args=>\@exargs);
+        $result = clicmds($mpa,$user,$pass,$node,$slot,cmds=>\@exargs);
         $rc |= @$result[0];
         $args = @$result[1];
       }
@@ -5024,7 +5024,7 @@ sub dompa {
       if ($mptype eq "cmm") {
         # For the cmm, call the rscanfsp to discover the fsp for ppc blade
         my @telargs = ("rscanfsp");
-        clicmds($mpa,$user,$pass,$node,$slot,args=>\@telargs);
+        clicmds($mpa,$user,$pass,$node,$slot,cmds=>\@telargs);
       }
     }
   }

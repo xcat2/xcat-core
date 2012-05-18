@@ -1,8 +1,10 @@
 package xCAT::SSHInteract;
 use Exporter;
 use Net::Telnet;
+BEGIN {
+	our @ISA = qw/Exporter Net::Telnet/;
+};
 use strict;
-our @ISA = qw/Exporter Net::Telnet/;
 our @EXPORT_OK = ();
 use IO::Pty;
 use POSIX;
@@ -21,11 +23,11 @@ sub _startssh {
 	}
 	#in child
 	$tty = $pty->slave or die "$!";
+	$pty->make_slave_controlling_terminal();
 	$tty_fd = $tty->fileno or die "$!";
 	close($pty);
 	open STDIN, "<&", $tty_fd;
 	open STDOUT,">&",$tty_fd;
-	$pty->make_slave_controlling_terminal();
 	close($tty);
 	my @cmd =  ("ssh","-o","StrictHostKeyChecking=no");
 	if ($args{"-nokeycheck"}) {
@@ -50,10 +52,13 @@ sub new {
 	delete $args{"-username"};
 	delete $args{"-password"};
 	my $nokeycheck = $args{"-nokeycheck"};
-	if ($nokeycheck) { delete $args{"-nokeycheck"}; }
-	my $self = Net::Telnet->new(%args);
+	delete $args{"-nokeycheck"};
+	my $self = $class->Net::Telnet::new(%args);
 	_startssh($self,$pty,$username,$host,"-nokeycheck"=>$nokeycheck);
-    my ($prematch,$match) = $self->waitfor([Match => $args{prompt},'/password:/i',]) or die "Login Failed: ",$self->lastline;
+	my $promptex = $args{Prompt};
+	$promptex =~ s!^/!!;
+	$promptex =~ s!/\z!!;
+    my ($prematch,$match) = $self->waitfor(Match => $args{Prompt},Match=>'/password:/i') or die "Login Failed: ",$self->lastline;
     if ($match =~ /password:/i) {
 	    #$self->waitfor("-match" => '/password:/i', -errmode => "return") or die "Unable to reach host ",$self->lastline;
             $self->print($password);
@@ -64,7 +69,13 @@ sub new {
 	    if ($nextline =~ /^password:/ or $nextline =~ /Permission denied, please try again/) {
 		    die "Incorrect Password";
 	    }
-    }
+    } elsif ($match =~ /$promptex/) {
+	*$self->{_xcatsshinteract}->{_atprompt}=1;
+	}
 	return bless($self,$class);
+}
+sub atprompt {
+	my $self=shift;
+	return *$self->{_xcatsshinteract}->{_atprompt};
 }
 1;
