@@ -639,14 +639,19 @@ sub setup_DHCP
     my $snonly = 0;
     # read the disjointdhcps attribute to determine if we will setup
     # dhcp for all nodes or just for the nodes service by this service node
-    my $sitetab = xCAT::Table->new('site');
-    if ($sitetab)
-    {
-        my $href;
-        ($href) = $sitetab->getAttribs({key => 'disjointdhcps'}, 'value');
-        if ($href and $href->{value}) {
-            $snonly=$href->{value};
-        }
+    #my $sitetab = xCAT::Table->new('site');
+    #if ($sitetab)
+    #{
+    #    my $href;
+    #    ($href) = $sitetab->getAttribs({key => 'disjointdhcps'}, 'value');
+    #    if ($href and $href->{value}) {
+    #        $snonly=$href->{value};
+    #    }
+    #}
+    my @hs = xCAT::Utils->get_site_attribute("disjointdhcps");
+    my $tmp = $hs[0];
+    if(defined($tmp)) {
+        $snonly = $tmp;
     }
 
     # run makedhcp
@@ -1180,12 +1185,14 @@ sub setup_TFTP
     my $mountdirectory = "1";        # default to mount tftpdir
     my $tftphost       = $master;    # default to master
          # read sharedtftp attribute from site table, if exist
-    my $stab = xCAT::Table->new('site');
-    my $sharedtftp = $stab->getAttribs({key => 'sharedtftp'}, 'value');
-    if ($sharedtftp)
+    #my $stab = xCAT::Table->new('site');
+    #my $sharedtftp = $stab->getAttribs({key => 'sharedtftp'}, 'value');
+    my @ss = xCAT::Utils->get_site_attribute("sharedtftp");
+    my $sharedtftp = $ss[0];
+    if ( defined($sharedtftp) )
     {
 
-        $tftphost       = $sharedtftp->{value};    # either hostname or yes/no
+        $tftphost       = $sharedtftp;    # either hostname or yes/no
         $mountdirectory = $tftphost;
         $mountdirectory =~ tr/a-z/A-Z/;            # convert to upper
         if (   $mountdirectory ne "1"
@@ -1202,7 +1209,7 @@ sub setup_TFTP
         }
 
     }
-    $stab->close;
+    #$stab->close;
 
     # read tftpdir directory from database
     $tftpdir = xCAT::Utils->getTftpDir();
