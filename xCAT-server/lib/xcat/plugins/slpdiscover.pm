@@ -2,6 +2,8 @@ package xCAT_plugin::slpdiscover;
 use strict;
 use xCAT::SvrUtils qw/sendmsg/;
 use xCAT::SLP;
+use xCAT::NetworkUtils;
+use xCAT::SSHInteract;
 use xCAT::MacMap;
 my $defaultbladeuser;
 my $defaultbladepass;
@@ -59,9 +61,9 @@ sub get_ipv6_neighbors {
 sub handle_new_slp_entity {
 	my $data = shift;
 	delete $data->{sockaddr}; #won't need it
-	if ($data->{SrvType} eq "service:management-hardware.IBM:integrated-management-module2" and $data->{attributes}->{enclosure-form-factor}->[0] eq "BC2") {
+	if ($data->{SrvType} eq "service:management-hardware.IBM:integrated-management-module2" and $data->{attributes}->{"enclosure-form-factor"}->[0] eq "BC2") {
 		#this is a Flex ITE, don't go mac searching for it, but remember the chassis UUID for later
-		push @{$flexchassismap{$data->{attributes}->{chassis-uuid}->[0]}},$data;
+		push @{$flexchassismap{$data->{attributes}->{"chassis-uuid"}->[0]}},$data;
 		return;
 	}
 	my $mac = get_mac_for_addr($data->{peername});
@@ -87,7 +89,7 @@ sub process_request {
 		my $data = $searchmacs{$mac};
 		$data->{nodename}=$node;
 		$data->{macaddress}=$mac;
-		$chassisbyuuid{$data->{attributes}->{enclosure-uuid}->[0]}=$node;
+		$chassisbyuuid{$data->{attributes}->{"enclosure-uuid"}->[0]}=$node;
 		push @toconfig,$data;
 	}
 	my $mpatab=xCAT::Table->new("mpa",-create=>0);
@@ -143,7 +145,7 @@ sub process_request {
 			unless (do_blade_setup($data,curraddr=>$addr)) {
 				next;
 			}
-			$flexchassisuuid{$nodename}=$data->{attributes}->{enclosure-uuid}->[0];
+			$flexchassisuuid{$nodename}=$data->{attributes}->{"enclosure-uuid"}->[0];
 			configure_hosted_elements($nodename);
 			unless (do_blade_setup($data,curraddr=>$addr,pass2=>1)) {
 				next;
@@ -155,6 +157,41 @@ sub process_request {
 	$mactab->setNodesAttribs(\%macuphash);
 }
 
+sub setupIMM {
+	my $node = shift;
+	my %args = @_;
+	my $ipmitab = xCAT::Table->new('ipmi',-create=>0);
+	unless ($ipmitab) { die "ipmi settings required to set up imm in xCAT" }
+	my $ient = $ipmitab->getNodeAttribs($node,[qw/bmc/],prefetchcache=>1);
+	my $newaddr;
+	if ($ient) {
+		$newaddr = $ient->{bmc};
+	}
+	my @ips;
+	if ($newaddr) {
+		@ips = xCAT::NetworkUtils::getipaddr($newaddr,GetAllAddresses=>1);
+	}
+	#ok, with all ip addresses in hand, time to enable IPMI and set all the ip addresses (still static only, TODO: dhcp
+	my $ssh = new xCAT::SSHInteract(-username=>$args{username},
+					-password=>$args{password},
+					-host=>$args{curraddr},
+					-nokeycheck=>1,
+					-output_record_separator=>"\r",
+					Timeout=>15,
+					Errmode=>'return',
+					Prompt=>'/MYIMM> $/');
+	if ($ssh and $ssh->atprompt) { #we are in and good to issue commands
+		$ssh->cmd("users -1 -n ".$args{username}." -p ".$args{password}." -a super"); #this gets ipmi going
+		foreach my $ip (@ips) {
+			if ($ip =~ /:/) { 
+				$ssh->cmd("ifconfig eth0 -ipv6static enable -i6 $ip");
+			} else {
+				$ssh->cmd("ifconfig eth0 -c static -i $ip");
+			}
+		}
+	}
+}
+
 sub configure_hosted_elements {
 	my $cmm = shift;
 	my $uuid=$flexchassisuuid{$cmm};
@@ -163,10 +200,16 @@ sub configure_hosted_elements {
 	my $ipmitab;
 	$ipmitab->getNodesAttribs();
 	my $slot;
+        my $user = $passwordmap{$cmm}->{username};
+        my $pass = $passwordmap{$cmm}->{password};
 	foreach $immdata (@{$flexchassismap{$uuid}}) {
 		$slot=$immdata->{attributes}->{slot}->[0];
 		if ($node = $nodebymp{$cmm}->{$slot}) {
-			xCAT::IMM::SetupIMM($node);
+			my $addr = $immdata->{peername}; #todo, use sockaddr and remove the 427 port from it instead?
+			if ($addr =~ /^fe80/) { #Link local address requires scope index
+				$addr .= "%".$immdata->{scopeid};
+			}
+			setupIMM($node,curraddr=>$addr,username=>$user,password=>$pass);
 		}
 	}
 }
