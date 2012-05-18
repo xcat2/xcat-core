@@ -138,6 +138,7 @@ sub process_request {
 			$addr .= "%".$data->{scopeid};
 		}
 		if ($machash{$nodename} =~ /$mac/i) { #ignore prospects already known to mac table
+			configure_hosted_elements($nodename);
 			next;
 		}
 		sendmsg(":Found ".$nodename." which seems to be ".$data->{SrvType}." at address $addr",$callback);
