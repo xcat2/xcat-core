@@ -190,6 +190,7 @@ sub setupIMM {
 				$ssh->cmd("ifconfig eth0 -c static -i $ip");
 			}
 		}
+		$ssh->close();
 	}
 }
 
