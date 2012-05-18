@@ -4011,6 +4011,9 @@ sub clicmds {
     $currpass = "PASSW0RD";
     $nokeycheck=1;
   }
+  if ($args{nokeycheck}) {
+    $nokeycheck=1;
+  }
   my $curraddr = $mpa;
   if ($args{curraddr}) {
 	$curraddr = $args{curraddr};
