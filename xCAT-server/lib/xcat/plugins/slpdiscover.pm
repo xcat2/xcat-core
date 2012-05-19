@@ -139,6 +139,7 @@ sub process_request {
 			$addr .= "%".$data->{scopeid};
 		}
 		$flexchassisuuid{$nodename}=$data->{attributes}->{"enclosure-uuid"}->[0];
+		setup_cmm_pass($nodename);
 		if ($machash{$nodename} =~ /$mac/i) { #ignore prospects already known to mac table
 			configure_hosted_elements($nodename);
 			next;
@@ -219,11 +220,8 @@ sub configure_hosted_elements {
 	}
 }
 
-sub do_blade_setup {
-	my $data = shift;
-	my %args = @_;
-	my $addr = $args{curraddr};
-	my $nodename = $data->{nodename};
+sub setup_cmm_pass {
+	my $nodename = shift;
 	my $localuser=$defaultbladeuser;
 	my $localpass=$defaultbladepass;
 	if ($mpahash->{$nodename}) {
@@ -234,6 +232,16 @@ sub do_blade_setup {
 			$localuser = $mpahash->{$nodename}->[0]->{password};
 		}
 	}
+        $passwordmap{$nodename}->{username}=$localuser;
+        $passwordmap{$nodename}->{password}=$localpass;
+}
+sub do_blade_setup {
+	my $data = shift;
+	my %args = @_;
+	my $addr = $args{curraddr};
+	my $nodename = $data->{nodename};
+	my $localuser=$passwordmap{$nodename}->{username};
+	my $localpass=$passwordmap{$nodename}->{password};
 	if (not $localpass or $localpass eq "PASSW0RD") {
 		sendmsg([1,":Password for blade must be specified in either mpa or passwd tables, and it must not be PASSW0RD"],$callback,$nodename);
 		return 0;
@@ -249,8 +257,6 @@ sub do_blade_setup {
 	  %exargs = ( defaultcfg=>1 );
         }
 	my $result;
-        $passwordmap{$nodename}->{username}=$localuser;
-        $passwordmap{$nodename}->{password}=$localpass;
 	my $rc = eval { $result = xCAT_plugin::blade::clicmds(
 						 $nodename,
 						 $localuser,
