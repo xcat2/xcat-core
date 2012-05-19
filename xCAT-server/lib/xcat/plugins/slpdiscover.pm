@@ -276,5 +276,6 @@ sub do_blade_setup {
 			sendmsg([$result->[0],$result->[2]],$callback,$nodename);
 		}
 	}
+	return $rc;
 }
 1;
