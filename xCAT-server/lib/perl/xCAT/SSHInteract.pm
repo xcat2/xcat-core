@@ -63,11 +63,15 @@ sub new {
 	    #$self->waitfor("-match" => '/password:/i', -errmode => "return") or die "Unable to reach host ",$self->lastline;
             $self->print($password);
             my $nextline = $self->getline();
-            if ($nextline eq "\n") {
+            chomp($nextline);
+            while ($nextline =~ /^\s*$/) {
 		$nextline = $self->get();
+            	chomp($nextline);
 	    }
 	    if ($nextline =~ /^password:/ or $nextline =~ /Permission denied, please try again/) {
 		    die "Incorrect Password";
+	    } elsif ($nextline =~ /$promptex/) {
+		*$self->{_xcatsshinteract}->{_atprompt}=1;
 	    }
     } elsif ($match =~ /$promptex/) {
 	*$self->{_xcatsshinteract}->{_atprompt}=1;
