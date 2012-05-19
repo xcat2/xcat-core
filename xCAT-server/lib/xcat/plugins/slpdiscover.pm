@@ -5,6 +5,7 @@ use xCAT::SLP;
 use xCAT::NetworkUtils;
 use xCAT::SSHInteract;
 use xCAT::MacMap;
+use xCAT_plugin::bmcconfig;
 my $defaultbladeuser;
 my $defaultbladepass;
 my $mpahash;
@@ -193,7 +194,8 @@ sub setupIMM {
 			if ($ip =~ /:/) { 
 				$ssh->cmd("ifconfig eth0 -ipv6static enable -i6 $ip");
 			} else {
-				$ssh->cmd("ifconfig eth0 -c static -i $ip");
+				(my $sip,my $mask,my $gw) = xCAT_plugin::bmcconfig::net_parms($ip);
+				$ssh->cmd("ifconfig eth0 -c static -i $ip -s $mask -g $gw");
 			}
 		}
 		$ssh->close();
@@ -216,8 +218,9 @@ sub configure_hosted_elements {
 			if ($addr =~ /^fe80/) { #Link local address requires scope index
 				$addr .= "%".$immdata->{scopeid};
 			}
-			if ($doneaddrs{$addr}) { next; }
-			$doneaddrs{$addr}=1;
+			if ($doneaddrs{$node}) { next; }
+			$doneaddrs{$node}=1;
+			sendmsg(":Configuration of ".$node." commencing, configuration may take a few minutes to take effect",$callback);
 			setupIMM($node,slpdata=>$immdata,curraddr=>$addr,username=>$user,password=>$pass);
 		}
 	}
