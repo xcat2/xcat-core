@@ -179,6 +179,7 @@ sub setupIMM {
 	if ($newaddr) {
 		@ips = xCAT::NetworkUtils::getipaddr($newaddr,GetAllAddresses=>1);
 	}
+	endmsg(":Configuration of ".$node." commencing, configuration may take a few minutes to take effect",$callback);
 	#ok, with all ip addresses in hand, time to enable IPMI and set all the ip addresses (still static only, TODO: dhcp
 	my $ssh = new xCAT::SSHInteract(-username=>$args{username},
 					-password=>$args{password},
@@ -220,7 +221,6 @@ sub configure_hosted_elements {
 			}
 			if ($doneaddrs{$node}) { next; }
 			$doneaddrs{$node}=1;
-			sendmsg(":Configuration of ".$node." commencing, configuration may take a few minutes to take effect",$callback);
 			setupIMM($node,slpdata=>$immdata,curraddr=>$addr,username=>$user,password=>$pass);
 		}
 	}
