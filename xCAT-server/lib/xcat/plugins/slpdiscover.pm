@@ -61,12 +61,13 @@ sub get_ipv6_neighbors {
 sub handle_new_slp_entity {
 	my $data = shift;
 	delete $data->{sockaddr}; #won't need it
+	my $mac = get_mac_for_addr($data->{peername});
 	if ($data->{SrvType} eq "service:management-hardware.IBM:integrated-management-module2" and $data->{attributes}->{"enclosure-form-factor"}->[0] eq "BC2") {
+		$data->{macaddress}=$mac;
 		#this is a Flex ITE, don't go mac searching for it, but remember the chassis UUID for later
 		push @{$flexchassismap{$data->{attributes}->{"chassis-uuid"}->[0]}},$data;
 		return;
 	}
-	my $mac = get_mac_for_addr($data->{peername});
 	unless ($mac) { return; }
 	$searchmacs{$mac} = $data;
 }
@@ -161,11 +162,14 @@ sub process_request {
 sub setupIMM {
 	my $node = shift;
 	my %args = @_;
+	my $slpdata = $args{slpdata};
 	my $ipmitab = xCAT::Table->new('ipmi',-create=>0);
 	unless ($ipmitab) { die "ipmi settings required to set up imm in xCAT" }
-	my $ient = $ipmitab->getNodeAttribs($node,[qw/bmc/],prefetchcache=>1);
+	my $ient = $ipmitab->getNodeAttribs($node,[qw/bmc bmcid/],prefetchcache=>1);
 	my $newaddr;
 	if ($ient) {
+		my $bmcid=$ient->{bmcid};
+		if ($bmcid and $slpdata->{macaddress} =~ /$bmcid/) { return; } #skip configuration, we already know this one
 		$newaddr = $ient->{bmc};
 	}
 	my @ips;
@@ -199,8 +203,6 @@ sub configure_hosted_elements {
 	my $uuid=$flexchassisuuid{$cmm};
 	my $node;
 	my $immdata;
-	my $ipmitab;
-	$ipmitab->getNodesAttribs();
 	my $slot;
         my $user = $passwordmap{$cmm}->{username};
         my $pass = $passwordmap{$cmm}->{password};
@@ -211,7 +213,7 @@ sub configure_hosted_elements {
 			if ($addr =~ /^fe80/) { #Link local address requires scope index
 				$addr .= "%".$immdata->{scopeid};
 			}
-			setupIMM($node,curraddr=>$addr,username=>$user,password=>$pass);
+			setupIMM($node,slpdata=>$immdata,curraddr=>$addr,username=>$user,password=>$pass);
 		}
 	}
 }
