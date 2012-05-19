@@ -562,16 +562,6 @@ sub process_request
         $sharedinstall="no";
     }
 
-	#
-	#  handle the statelite update for the sharedinstall=sns case
-	#	- using a shared file system across all service nodes
-	#
-	if ( ($::isaix) && ($sharedinstall eq "sns") ){
-		my $s = &sfsSLconfig(\@nodes, \%nhash, \%sn_hash, $old_node_hash, $nimprime, $callback, $sub_req);
-	}
-
-	# TBD - handle sharedinstall =all case ????
-
 	# handle the statelite update for sharedinstall=no
 	#  - not using a shared files system
 	my %SLmodhash;
@@ -836,6 +826,19 @@ sub process_request
         }
     }
 
+	#
+    #  handle the statelite update for the sharedinstall=sns case
+    #   - using a shared file system across all service nodes
+	#	- must be done AFTER node def is updated!
+    #
+    if ( ($::isaix) && ($sharedinstall eq "sns") ){
+        my $s = &sfsSLconfig(\@nodes, \%nhash, \%sn_hash, $old_node_hash, $nimprime, $callback, $sub_req);
+    }
+
+    # TBD - handle sharedinstall =all case ????
+
+
+
     # run makeconservercf
     my @nodes_con = keys(%sn_hash1);
     if (@nodes_con > 0)
@@ -884,6 +887,7 @@ sub process_request
 	$nimtab->close();
 
 	# now try to restore any backup client data
+
 	# for each service node
 	foreach my $s (keys %SRloc) {
 
@@ -898,15 +902,50 @@ sub process_request
 			my $snbk = "$s" . "_" . "$osi";
 			my $bkloc = "$sloc/$snbk/.client_data";
 
-			my $ccmd=qq~/usr/bin/cp -r -p $bkloc/* $cdloc 2>/dev/null~;
+			# get a list of files from the backup dir
+			my $rcmd = qq~/usr/bin/ls $bkloc 2>/dev/null~;
 
-			my $output = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $s, $ccmd, 0);
+			my $rlist = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $s, $rcmd, 0);
+
 			if ($::RUNCMD_RC != 0)
 			{
-				if ($::VERBOSE) {
+				my $rsp;
+				push @{$rsp->{data}}, "Could not list contents of $bkloc.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				$error++;
+			}
+
+			# restore file on node by node basis
+			#	we don't want all the files!
+			#	- just the ones we are moving
+			foreach my $nd (@nodes) {
+
+				$nd =~ s/\..*$//;
+
+				# for each file in $bkloc
+				my $filestring = "";
+				foreach my $f ( split(/\n/, $rlist) ){
+					my $junk;
+					my $file;
+					if ($f =~ /:/) {
+						($junk, $file) = split(/:/, $f);
+					}
+					$file =~ s/\s*//g;    # remove blanks
+
+					# if file contains node name then copy it
+					if ($file =~ /$nd/) {
+						$filestring .= "$bkloc/$file ";
+					}
+				}
+				my $ccmd=qq~/usr/bin/cp -p -r $filestring $cdloc 2>/dev/null~;
+
+				my $output = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $s, $rcmd, 0);
+				if ($::RUNCMD_RC != 0)
+				{
 					my $rsp;
-					push @{$rsp->{data}}, "Could not copy $bkloc on $s.\n";
+					push @{$rsp->{data}}, "Could not copy files to $cdloc.\n";
 					xCAT::MsgUtils->message("E", $rsp, $callback);
+					$error++;
 				}
 			}
 		}
@@ -2047,7 +2086,6 @@ sub sfsSLconfig
         }
     }
 
-	# get hash of statelite table entries
 	my $statetab = xCAT::Table->new('statelite', -create => 1);
     my $recs = $statetab->getAllEntries;
 
@@ -2081,7 +2119,6 @@ sub sfsSLconfig
 			# if the $server value was the old SN hostname
 			#       then we need to
 			#   update the statelite table with the new SN name
-
 			if ( $server eq $old_node_hash->{$n}->{'oldmaster'} ) {	
 				my $stmnt = "$sn_hash{$n}{'xcatmaster'}:$dir";
 				$SLmodhash{$item}{'statemnt'} = $stmnt;
