@@ -125,9 +125,9 @@ sub process_request {
 	
 	my $mptab = xCAT::Table->new('mp');
 	if ($mptab) {
-		my @mpents = $mptab->getAllNodeAttribs(['node','mp','id']);
+		my @mpents = $mptab->getAllNodeAttribs(['node','mpa','id']);
 		foreach (@mpents) {
-			$nodebymp{$_->{mp}}->{$_->{id}}=$_->{node};
+			$nodebymp{$_->{mpa}}->{$_->{id}}=$_->{node};
 		}
 	}
 		
@@ -138,16 +138,16 @@ sub process_request {
 		if ($addr =~ /^fe80/) { #Link local address requires scope index
 			$addr .= "%".$data->{scopeid};
 		}
+		$flexchassisuuid{$nodename}=$data->{attributes}->{"enclosure-uuid"}->[0];
 		if ($machash{$nodename} =~ /$mac/i) { #ignore prospects already known to mac table
 			configure_hosted_elements($nodename);
 			next;
 		}
-		sendmsg(":Found ".$nodename." which seems to be ".$data->{SrvType}." at address $addr",$callback);
 		if ($data->{SrvType} eq "service:management-hardware.IBM:chassis-management-module") {
+			sendmsg(":Found ".$nodename." which seems to be ".$data->{SrvType}." at address $addr",$callback);
 			unless (do_blade_setup($data,curraddr=>$addr)) {
 				next;
 			}
-			$flexchassisuuid{$nodename}=$data->{attributes}->{"enclosure-uuid"}->[0];
 			configure_hosted_elements($nodename);
 			unless (do_blade_setup($data,curraddr=>$addr,pass2=>1)) {
 				next;
@@ -195,6 +195,7 @@ sub setupIMM {
 			}
 		}
 		$ssh->close();
+		$ipmitab->setNodeAttribs($node,{bmcid=>$slpdata->{macaddress}});
 	}
 }
 
