@@ -17,6 +17,7 @@ sub handled_commands {
 
 my $callback;
 my $docmd;
+my %doneaddrs;
 my %ip4neigh;
 my %ip6neigh;
 my %flexchassismap;
@@ -215,6 +216,8 @@ sub configure_hosted_elements {
 			if ($addr =~ /^fe80/) { #Link local address requires scope index
 				$addr .= "%".$immdata->{scopeid};
 			}
+			if ($doneaddrs{$addr}) { next; }
+			$doneaddrs{$addr}=1;
 			setupIMM($node,slpdata=>$immdata,curraddr=>$addr,username=>$user,password=>$pass);
 		}
 	}
