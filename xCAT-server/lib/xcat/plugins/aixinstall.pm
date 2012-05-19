@@ -10791,23 +10791,53 @@ sub mkdsklsnode
 				my $snbk = $Sname . "_" . $i;
 				my $bkloc = "$loc/$snbk/.client_data";
 
-				my $fcmd;
-				if (-d $bkloc) 
+				my $mkcmd;
+				if (! -d $bkloc) 
 				{
-					# if backup exist then rm contents
-					$fcmd = qq~/usr/bin/rm $bkloc/* ; ~;
-				} else {
 					# else create dir
-					$fcmd=qq~/usr/bin/mkdir -m 644 -p $bkloc ; ~;
+					$mkcmd=qq~/usr/bin/mkdir -m 644 -p $bkloc ~;
+					my $output = xCAT::Utils->runcmd("$mkcmd", -1);
+					if ($::RUNCMD_RC != 0)
+					{
+						my $rsp;
+						push @{$rsp->{data}}, "Could not create $bkloc\n";
+						xCAT::MsgUtils->message("E", $rsp, $callback);
+					}
 				}
 
-				my $ccmd=qq~$fcmd  /usr/bin/cp -p -r $cdloc/* $bkloc~;
-				my $output = xCAT::Utils->runcmd("$ccmd", -1);
+				# should only backup files for the specific nodes
+
+				# get list of files from $cdloc dir
+				my $rcmd = qq~/usr/bin/ls $cdloc 2>/dev/null~;
+				my @rlist = xCAT::Utils->runcmd("$rcmd", -1);
 				if ($::RUNCMD_RC != 0)
 				{
 					my $rsp;
-					push @{$rsp->{data}}, "Could not back up $cdloc on $Sname \n";
+					push @{$rsp->{data}}, "Could not list contents of $cdloc.\n";
 					xCAT::MsgUtils->message("E", $rsp, $callback);
+					$error++;
+				}
+
+				foreach my $nd (@nodelist) {
+                	$nd =~ s/\..*$//;
+
+                    # for each file in $cdloc
+					my $filestring = "";
+					foreach my $f (@rlist) {
+						# if file contains node name then copy it
+						if ($f =~ /$nd/) {
+							$filestring .="$cdloc/$f ";
+						}
+					}
+					my $ccmd=qq~/usr/bin/cp -p -r $filestring $bkloc 2>/dev/null~;
+					my $output = xCAT::Utils->runcmd("$ccmd", -1);
+					if ($::RUNCMD_RC != 0)
+					{
+						my $rsp;
+						push @{$rsp->{data}}, "Could not copy files to $bkloc. \n";
+						xCAT::MsgUtils->message("E", $rsp, $callback);
+						$error++;
+					}
 				}
 			}
 		}
