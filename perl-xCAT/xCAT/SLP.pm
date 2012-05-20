@@ -16,6 +16,7 @@ unless ($ip6support) {
 #TODO: somehow get at system headers to get the value, put in linux's for now
 use constant IPV6_MULTICAST_IF => 17;
 use constant IP_MULTICAST_IF => 32;
+use constant REQ_INTERVAL => 1;
 my %xid_to_srvtype_map;
 my $xid;
 my $gprlist; 
@@ -85,7 +86,10 @@ sub dodiscover {
 		$waitforsocket->add($args{'socket'});
 		my $retrytime = ($args{Retry}>0)?$args{Retry}+1:1;
 		for(my $i = 0; $i < $retrytime; $i++){
-            my $waittime = ($args{Time}>0)?$args{Time}:3;
+            my $sendcount = 0;
+            my $startinterval = time();
+            my $interval;
+            my $waittime = ($args{Time}>0)?$args{Time}:10;
 		    my $deadline=time()+$waittime;
 		    while ($deadline > time()) {
 		    	while ($waitforsocket->can_read(1)) {
@@ -132,9 +136,14 @@ sub dodiscover {
                         last;
                     }
                 }
-		    	foreach my $srvtype (@srvtypes) {
-		    		send_service_request_single(%args,ifacemap=>$interfaces,SrvType=>$srvtype);
-		    	}
+				$interval = time() -  $startinterval;
+                if ( $interval > REQ_INTERVAL ){#* (2**$sendcount))) { #double time
+                    $sendcount++;
+                    $startinterval = time();
+		    	    foreach my $srvtype (@srvtypes) {
+		    	    	send_service_request_single(%args,ifacemap=>$interfaces,SrvType=>$srvtype);
+		    	    }
+				}	
 		    }
 		}	
 		return \%rethash;
