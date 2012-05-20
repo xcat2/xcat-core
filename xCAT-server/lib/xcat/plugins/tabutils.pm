@@ -60,6 +60,7 @@ sub handled_commands
             delEntries       => "tabutils",
             getAttribs       => "tabutils",
             setAttribs       => "tabutils",
+            NodeRange       => "tabutils",
             gennr    => "tabutils"
             };
 }
@@ -169,6 +170,10 @@ sub process_request
     elsif ($command eq "setAttribs")
     {
         return setAttribs($request,$callback);
+    }
+    elsif ($command eq "NodeRange")
+    {
+        return NodeRange($request,$callback);
     }
     else
     {
@@ -2312,7 +2317,7 @@ sub getAllEntries
 #
 #<xcatresponse>
 #<node>
-#<name> nodename </name>
+#<name>nodename</name>
 #<attr1>value1</attr1>
 #.
 #.
@@ -2548,7 +2553,6 @@ sub getAttribs
 #  <value>cluster.net</value>
 #  <comments>This is a comment</comments>
 #</xcatrequest>
-#</attr>
 #
 sub setAttribs 
 {
@@ -2568,4 +2572,32 @@ sub setAttribs
     }
     $tab->setAttribs(\%keyhash,\%attrhash);
         return;
+}
+# noderange 
+# Expands the input noderange into a list of nodes. 
+#<xcatrequest>
+#<clienttype>PCM</clienttype>
+#<command>noderange</command>
+#<noderange>compute1-compute2</noderange>
+#</xcatrequest>
+#<xcatresponse>
+#<node>nodename1</node>
+# .
+# .
+#<node>nodenamern1</node>
+#</xcatresponse>
+sub NodeRange  
+{
+    my $request      = shift;
+    my $cb = shift;
+    my $command  = $request->{command}->[0];
+    my %rsp;
+    my $node=$request->{node}; 
+    my @nodes = @$node;
+    foreach my $node (@nodes){
+      push @{$rsp{"node"}}, $node;
+
+    }
+    $cb->(\%rsp);
+    return;
 }
