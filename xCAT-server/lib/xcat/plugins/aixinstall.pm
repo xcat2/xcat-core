@@ -7884,6 +7884,7 @@ sub prenimnodeset
                 next;
             }
         }
+
         if (!grep (/^$nodeosi{$node}$/, @image_names))
         {
             push(@image_names, $nodeosi{$node});
@@ -10829,14 +10830,17 @@ sub mkdsklsnode
 							$filestring .="$cdloc/$f ";
 						}
 					}
-					my $ccmd=qq~/usr/bin/cp -p -r $filestring $bkloc 2>/dev/null~;
-					my $output = xCAT::Utils->runcmd("$ccmd", -1);
-					if ($::RUNCMD_RC != 0)
-					{
-						my $rsp;
-						push @{$rsp->{data}}, "Could not copy files to $bkloc. \n";
-						xCAT::MsgUtils->message("E", $rsp, $callback);
-						$error++;
+
+					if ($filestring) {
+						my $ccmd=qq~/usr/bin/cp -p -r $filestring $bkloc 2>/dev/null~;
+						my $output = xCAT::Utils->runcmd("$ccmd", -1);
+						if ($::RUNCMD_RC != 0)
+						{
+							my $rsp;
+							push @{$rsp->{data}}, "Could not copy files to $bkloc. \n";
+							xCAT::MsgUtils->message("E", $rsp, $callback);
+							$error++;
+						}
 					}
 				}
 			}
@@ -10856,11 +10860,8 @@ sub mkdsklsnode
             # change the node def if we were successful
             $nodeattrs{$node}{objtype} = 'node';
             $nodeattrs{$node}{os}      = "AIX";
-            if ($::OSIMAGE)
-            {
-                $nodeattrs{$node}{profile}    = $::OSIMAGE;
-                $nodeattrs{$node}{provmethod} = $::OSIMAGE;
-            }
+			$nodeattrs{$node}{profile}    = $nodeosi{$node};
+			$nodeattrs{$node}{provmethod} = $nodeosi{$node};
         }
     }
     if (xCAT::DBobjUtils->setobjdefs(\%nodeattrs) != 0)
