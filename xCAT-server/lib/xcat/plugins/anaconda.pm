@@ -50,12 +50,13 @@ sub preprocess_request
         return [$req];
     }
 
-    my $stab = xCAT::Table->new('site');
-    my $sent;
-    ($sent) = $stab->getAttribs({key => 'sharedtftp'}, 'value');
-    unless (    $sent
-            and defined($sent->{value})
-            and ($sent->{value} =~ /no/i or $sent->{value} =~ /0/))
+    #my $stab = xCAT::Table->new('site');
+    #my $sent;
+    #($sent) = $stab->getAttribs({key => 'sharedtftp'}, 'value');
+    my @ents = xCAT::Utils->get_site_attribute("sharedtftp");
+    my $site_ent = $ents[0];
+    unless (  defined($site_ent)
+            and ($site_ent =~ /no/i or $site_ent =~ /0/))
     {
 
         #unless requesting no sharedtftp, don't make hierarchical call
@@ -160,7 +161,7 @@ sub mknetboot
     my @args     = @{$req->{arg}} if(exists($req->{arg}));
     my @nodes    = @{$req->{node}};
     my $ostab    = xCAT::Table->new('nodetype');
-    my $sitetab  = xCAT::Table->new('site');
+    #my $sitetab  = xCAT::Table->new('site');
     my $linuximagetab;
     my $osimagetab;
     my %img_hash=();
@@ -168,23 +169,28 @@ sub mknetboot
     $installroot = "/install";
     my $xcatdport = "3001";
 
-    if ($sitetab)
+    #if ($sitetab)
+    #{
+    #    (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
+    my @ents = xCAT::Utils->get_site_attribute("installdir");
+    my $site_ent = $ents[0];
+    if ( defined($site_ent) )
     {
-        (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
-        if ($ref and $ref->{value})
-        {
-            $installroot = $ref->{value};
-        }
-        ($ref) = $sitetab->getAttribs({key => 'xcatdport'}, 'value');
-        if ($ref and $ref->{value})
-        {
-            $xcatdport = $ref->{value};
-        }
-        ($ref) = $sitetab->getAttribs({key => 'tftpdir'}, 'value');
-        if ($ref and $ref->{value})
-        {
-            $globaltftpdir = $ref->{value};
-        }
+        $installroot = $site_ent;
+    }
+    #    ($ref) = $sitetab->getAttribs({key => 'xcatdport'}, 'value');
+    @ents = xCAT::Utils->get_site_attribute("installdir");
+    $site_ent = $ents[0];
+    if ( defined($site_ent) )
+    {
+        $xcatdport = $site_ent;
+    }
+    #    ($ref) = $sitetab->getAttribs({key => 'tftpdir'}, 'value');
+    @ents = xCAT::Utils->get_site_attribute("tftpdir");
+    $site_ent = $ents[0];
+    if ( defined($site_ent) )
+    {
+        $globaltftpdir = $site_ent;
     }
     my %donetftp=();
     my %oents = %{$ostab->getNodesAttribs(\@nodes,[qw(os arch profile provmethod)])};
@@ -759,7 +765,7 @@ sub mkinstall
     my $callback = shift;
     my $doreq    = shift;
     my @nodes    = @{$request->{node}};
-    my $sitetab  = xCAT::Table->new('site');
+    #my $sitetab  = xCAT::Table->new('site');
     my $linuximagetab;
     my $osimagetab;
     my %img_hash=();
@@ -769,19 +775,23 @@ sub mkinstall
     $installroot = "/install";
     $globaltftpdir = "/tftpboot";
 
-    if ($sitetab)
+    #if ($sitetab)
+    #{
+    #    (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
+    my @ents = xCAT::Utils->get_site_attribute("installdir");
+    my $site_ent = $ents[0];
+    if( defined($site_ent) )    
     {
-        (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
-        if ($ref and $ref->{value})
-        {
-            $installroot = $ref->{value};
-        }
-        ($ref) = $sitetab->getAttribs({key => 'tftpdir'}, 'value');
-        if ($ref and $ref->{value})
-        {
-            $globaltftpdir = $ref->{value};
-        }
+        $installroot = $site_ent;
     }
+    #( $ref) = $sitetab->getAttribs({key => 'tftpdir'}, 'value');
+    @ents = xCAT::Utils->get_site_attribute("tftpdir");
+    $site_ent = $ents[0];
+    if( defined($site_ent) )    
+    {
+        $globaltftpdir = $site_ent;
+    }
+    #}
 
     my $node;
     my $ostab = xCAT::Table->new('nodetype');
@@ -1214,14 +1224,14 @@ sub copycd
 
     require xCAT::data::discinfo;
 
-    if ($sitetab)
+    #if ($sitetab)
+    #{
+    #    (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
+    my @ents = xCAT::Utils->get_site_attribute("installdir");
+    my $site_ent = $ents[0];
+    if( defined($site_ent) )    
     {
-        (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
-        #print Dumper($ref);
-        if ($ref and $ref->{value})
-        {
-            $installroot = $ref->{value};
-        }
+        $installroot = $site_ent;
     }
 
     my $distname;
