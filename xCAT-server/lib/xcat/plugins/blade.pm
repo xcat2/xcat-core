@@ -4313,7 +4313,7 @@ sub passwd {
         return ([1, @data]);
     }
     @data = ();
-    my $snmp_cmd = "users -n $user -ap sha -pp des -ppw $pass -t system:$mm";
+    my $snmp_cmd = "users -n $user -ap sha -pp des -ppw $pass -T system:$mm";
     @data = $t->cmd($snmp_cmd);
     if (!grep(/ok/i, @data)) {
         $cmd = "users -n $user -op $pass -p $oldpass -T system:$mm";
