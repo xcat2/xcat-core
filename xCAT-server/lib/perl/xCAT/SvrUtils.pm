@@ -273,29 +273,29 @@ sub getsynclistfile()
     my %osimage_syncfile = ();
     my @profiles = ();
 
-  if ($nodes) {
-    # get the profile attributes for the nodes
-    my $nodetype_t = xCAT::Table->new('nodetype');
-    unless ($nodetype_t) {
-      return ;
+    if ($nodes) {
+	# get the profile attributes for the nodes
+	my $nodetype_t = xCAT::Table->new('nodetype');
+	unless ($nodetype_t) {
+	    return ;
+	}
+	my $nodetype_v = $nodetype_t->getNodesAttribs($nodes, ['profile', 'provmethod']);
+	
+	# the vaule of profile for AIX node is the osimage name
+	foreach my $node (@$nodes) {
+	    my $profile = $nodetype_v->{$node}->[0]->{'profile'};
+	    my $provmethod=$nodetype_v->{$node}->[0]->{'provmethod'};
+	    if ($provmethod) {
+		$profile=$provmethod;
+	    }
+	    
+	    $node_syncfile{$node} = $profile;
+	    
+	    if (! grep /$profile/, @profiles) {
+		push @profiles, $profile;
+	    }
+	}
     }
-    my $nodetype_v = $nodetype_t->getNodesAttribs($nodes, ['profile', 'provmethod']);
-
-    # the vaule of profile for AIX node is the osimage name
-    foreach my $node (@$nodes) {
-      my $profile = $nodetype_v->{$node}->[0]->{'profile'};
-      my $provmethod=$nodetype_v->{$node}->[0]->{'provmethod'};
-      if ($provmethod) {
-	  $profile=$provmethod;
-      }
-	  
-      $node_syncfile{$node} = $profile;
-      
-      if (! grep /$profile/, @profiles) {
-        push @profiles, $profile;
-      }
-    }
-   }
 
     # get the syncfiles base on the osimage
     my $osimage_t = xCAT::Table->new('osimage');
@@ -319,17 +319,6 @@ sub getsynclistfile()
   if ($nodes) {
     my %node_syncfile = ();
 
-    my %node_insttype = ();
-    my %insttype_node = ();
-    # get the nodes installation type
-    xCAT::SvrUtils->getNodesetStates($nodes, \%insttype_node);
-    # convert the hash to the node=>type
-    foreach my $type (keys %insttype_node) {
-      foreach my $node (@{$insttype_node{$type}}) {
-        $node_insttype{$node} = $type;
-      }
-    }
-
     # get the os,arch,profile attributes for the nodes
     my $nodetype_t = xCAT::Table->new('nodetype');
     unless ($nodetype_t) {
@@ -350,12 +339,10 @@ sub getsynclistfile()
 	      $node_syncfile{$node} = $synclist->{'synclists'};
 	  }  
       } else {
-	  $inst_type = $node_insttype{$node};
-	  if ($inst_type eq "netboot" || $inst_type eq "diskless" || $inst_type eq "statelite") {
+	  $inst_type = "install";
+	  if ($provmethod eq "netboot" || $provmethod eq "diskless" || $provmethod eq "statelite") {
 	      $inst_type = "netboot";
-	  } else {
-	      $inst_type = "install";
-	  }
+	  } 
 	  
 	  $profile = $nodetype_v->{$node}->[0]->{'profile'};
 	  $os = $nodetype_v->{$node}->[0]->{'os'};
@@ -373,15 +360,7 @@ sub getsynclistfile()
 	  }
 
 	  my $base =  "$installdir/custom/$inst_type/$platform";
-	  if (-r "$base/$profile.$os.$arch.synclist") {
-	      $node_syncfile{$node} = "$base/$profile.$os.$arch.synclist";
-	  } elsif (-r "$base/$profile.$arch.synclist") {
-	      $node_syncfile{$node} = "$base/$profile.$arch.synclist";
-	  } elsif (-r "$base/$profile.$os.synclist") {
-	      $node_syncfile{$node} = "$base/$profile.$os.synclist";
-	  } elsif (-r "$base/$profile.synclist") {
-	      $node_syncfile{$node} = "$base/$profile.synclist";
-	  }
+	  $node_syncfile{$node} = xCAT::SvrUtils::get_file_name($base, "synclist", $profile, $os, $arch);	 
       }
     }
 
@@ -412,16 +391,7 @@ sub getsynclistfile()
     }
 
     my $base = "$installdir/custom/$inst_type/$platform";
-    if (-r "$base/$profile.$os.$arch.synclist") {
-      return "$base/$profile.$os.$arch.synclist";
-    } elsif (-r "$base/$profile.$arch.synclist") {
-      return "$base/$profile.$arch.synclist";
-    } elsif (-r "$base/$profile.$os.synclist") {
-      return "$base/$profile.$os.synclist";
-    } elsif (-r "$base/$profile.synclist") {
-      return "$base/$profile.synclist";
-    }
-
+    return xCAT::SvrUtils::get_file_name($base, "synclist", $profile, $os, $arch);
   }
 
 }
