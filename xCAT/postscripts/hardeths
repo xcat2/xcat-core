@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh 
 # pmatch determines if 1st argument string is matched by 2nd argument pattern
 
 pmatch ()
@@ -95,6 +95,13 @@ EOF
         echo IPADDR=$IPADDR >> $NICFILE
         echo NETMASK=$NETMASK >> $NICFILE 
     fi
+
+    #for netboot/statelite case, restart the network interface. For diskful installation, it is not necessary because the restart of the network  will happen at the first boot.
+    if [ "$NODESETSTATE" = "netboot" ] || [ "$NODESETSTATE" = "statelite" ]
+    then
+	ifdown $nic
+        ifup $nic
+    fi
 done
 
 if ( pmatch $OSVER "ubuntu*")
@@ -106,3 +113,4 @@ iface lo inet loopback
 
 EOF
 fi
+
