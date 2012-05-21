@@ -170,7 +170,7 @@ sub process_slp_packet {
 	} elsif ($parsedpacket->{FunctionId} == 7) { #attribute reply
 		$parsedpacket->{SrvType} = $xid_to_srvtype_map{$parsedpacket->{Xid}};
 		$parsedpacket->{attributes} = parse_attribute_reply($parsedpacket->{payload});
-		delete $parsedpacket->{payload};
+		#delete $parsedpacket->{payload}; 
 		return $parsedpacket;
 	} else {
 		return undef;
