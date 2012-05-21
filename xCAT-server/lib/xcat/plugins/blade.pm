@@ -4031,7 +4031,9 @@ sub clicmds {
     }
   } 
   require xCAT::SSHInteract;
-  my $t = new  xCAT::SSHInteract(
+  my $t;
+  eval {
+  $t = new  xCAT::SSHInteract(
 		-username=>$curruser,
 		-password=>$currpass,
 		-host=>$curraddr,
@@ -4041,6 +4043,16 @@ sub clicmds {
                 Errmode=>'return',
                 Prompt=>'/system> $/'
 		);
+  };
+  my $errmsg=$@;
+  if ($errmsg) {
+	if ($errmsg =~ /Login Failed/) {
+	    $errmsg = "Failed to login to $mpa";
+	    if ($curraddr ne $mpa) { $errmsg .= " (currently at $curraddr)" }
+        push @cfgtext,$errmsg;
+	    return([1,\@unhandled,$errmsg]);
+        } else { die $@; }
+  }
   my $Rc=1;
   if ($t and not $t->atprompt) { #we sshed in, but we may be forced to deal with initial password set
 	my $output = $t->get();
