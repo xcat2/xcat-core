@@ -555,6 +555,7 @@ sub mpaconfig {
         next;
       }
       elsif ($parameter eq "textid") {
+         $textid = 1;
          if ($assignment) {
            my $txtid = ($value =~ /^\*/) ? $node : $value;
            setoid("1.3.6.1.4.1.2.3.51.2.22.1.7.1.1.5",$nodeid,$txtid,'OCTET');
@@ -563,7 +564,7 @@ sub mpaconfig {
             setoid("1.3.6.1.4.1.2.3.51.2.22.1.7.1.1.5",$_,$txtid.", slot $extrabay",'OCTET');
             $extrabay+=1;
            }
-         }
+         } else {
          my $data;
          if ($slot > 0) {
            $data = $session->get([$bladeoname,$nodeid]);
@@ -571,11 +572,11 @@ sub mpaconfig {
          else {
            $data = $session->get([$mmoname->{$mptype},0]);
          }
-         $textid = 1;
          push @cfgtext,"textid: $data";
          foreach(@morenodeids) {
             $data = $session->get([$bladeoname,$_]);
             push @cfgtext,"textid: $data";
+           }
          }
       }
       elsif ($parameter =~ /^snmpcfg$/i) {
@@ -4106,6 +4107,7 @@ sub clicmds {
     elsif (/^network_reset$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid,1); $reset=1; }
     elsif (/^(USERID)$/) {$result = passwd($t, $mpa, $1, "=".$handled{$_}, $mm);}
     elsif (/^userpassword$/) {$result = passwd($t, $mpa, $1, $handled{$_}, $mm);}
+    if (!defined($result)) {next;}
     push @data, "$_: @$result";
     $Rc |= shift(@$result);
     push @cfgtext,@$result;
@@ -4242,7 +4244,7 @@ sub mmtextid {
     return([1,@data]);
   }
   my @data = $t->cmd("config -name \"$value\" -T system"); #on cmms, this identifier is frequently relevant...
-  return([0,"textid: $value"]);
+  return undef; #([0,"textid: $value"]);
 }
 
 sub get_blades_for_mpa {
