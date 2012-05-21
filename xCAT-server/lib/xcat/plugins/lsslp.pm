@@ -314,8 +314,8 @@ sub parse_args {
     # Check the validation of -T option
     #############################################
     if ( exists( $opt{T} )) {
-        $globalopt{time_out} = $opt{T};
-        if ( $globalopt{time_out} !~ /^\d+$/ ) {
+        $globalopt{T} = $opt{T};
+        if ( $globalopt{T} !~ /^\d+$/ ) {
             return( usage( "Invalid timeout value, should be number" ));
         }
         #if (!exists( $opt{C} )) {
