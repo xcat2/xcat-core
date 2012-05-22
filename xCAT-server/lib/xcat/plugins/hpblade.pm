@@ -638,14 +638,16 @@ sub process_request {
 	my $bladeuser = 'USERID';
 	my $bladepass = 'PASSW0RD';
 	my $blademaxp = 64;
-	my $sitetab = xCAT::Table->new('site');
+	#my $sitetab = xCAT::Table->new('site');
 	my $mpatab = xCAT::Table->new('mpa');
 	my $mptab = xCAT::Table->new('mp');
 	my $tmp;
-	if ($sitetab) {
-		($tmp)=$sitetab->getAttribs({'key'=>'blademaxp'},'value');
-		if (defined($tmp)) { $blademaxp=$tmp->{value}; }
-	}
+	#if ($sitetab) {
+		#($tmp)=$sitetab->getAttribs({'key'=>'blademaxp'},'value');
+                my @entries =  xCAT::Utils->get_site_attribute("blademaxp");
+                my $t_entry = $entries[0];
+		if (defined($t_entry)) { $blademaxp=$t_entry; }
+	#}
 	my $passtab = xCAT::Table->new('passwd');
 	if ($passtab) {
 		($tmp)=$passtab->getAttribs({'key'=>'blade'},'username','password');
