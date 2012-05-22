@@ -25,9 +25,11 @@ if ( $distro =~ /ubuntu.*/ ){
 
 sub handled_commands
 {
-    my $sitetab = xCAT::Table->new('site');
-    my $stab = $sitetab->getAttribs({key=>'dnshandler'},['value']);
-    unless ($stab and $stab->{value}) {
+    #my $sitetab = xCAT::Table->new('site');
+    #my $stab = $sitetab->getAttribs({key=>'dnshandler'},['value']);
+    my @entries =  xCAT::Utils->get_site_attribute("dnshandler");
+    my $site_entry = $entries[0];
+    unless ( defined($site_entry)) {
         return {"makedns" => "ddns"};
     }
 
@@ -238,13 +240,15 @@ sub process_request {
     
     $ctx->{deletemode}=$deletemode;
     # check for site.domain     
-    my $sitetab = xCAT::Table->new('site');
-    my $stab = $sitetab->getAttribs({key=>'domain'},['value']);
-    unless ($stab and $stab->{value}) {
+    #my $sitetab = xCAT::Table->new('site');
+    #my $stab = $sitetab->getAttribs({key=>'domain'},['value']);
+    my @entries =  xCAT::Utils->get_site_attribute("domain");
+    my $site_entry = $entries[0];
+    unless ( defined($site_entry)) {
         xCAT::SvrUtils::sendmsg([1,"domain not defined in site table"], $callback);
         return;
     }
-    $ctx->{domain} = $stab->{value};
+    $ctx->{domain} = $site_entry;
 
     if($external) #need to check if /etc/resolv.conf existing
     {
@@ -406,9 +410,11 @@ sub process_request {
         $ctx->{privkey} = $pent->{password};
     } #do not warn/error here yet, if we can't generate or extract, we'll know later
 
-    $stab =  $sitetab->getAttribs({key=>'forwarders'},['value']);
-    if ($stab and $stab->{value}) {
-        my @forwarders = split /[ ,]/,$stab->{value};
+    #$stab =  $sitetab->getAttribs({key=>'forwarders'},['value']);
+    my @entries =  xCAT::Utils->get_site_attribute("forwarders");
+    my $site_entry = $entries[0];
+    if ( defined($site_entry)) {
+        my @forwarders = split /[ ,]/,$site_entry;
         $ctx->{forwarders}=\@forwarders;
     }
     $ctx->{zonestotouch}->{$ctx->{domain}}=1;
@@ -428,11 +434,15 @@ sub process_request {
     if (1) { #TODO: function to detect and return 1 if the master server is DNS SOA for all the zones we care about
         #here, we are examining local files to assure that our key is in named.conf, the zones we care about are there, and that if
         #active directory is in use, allow the domain controllers to update specific zones
-        $stab =$sitetab->getAttribs({key=>'directoryprovider'},['value']);
-        if ($stab and $stab->{value} and $stab->{value} eq 'activedirectory') {
-            $stab =$sitetab->getAttribs({key=>'directoryservers'},['value']);
-            if ($stab and $stab->{value} and $stab->{value}) {
-                my @dservers = split /[ ,]/,$stab->{value};
+        #$stab =$sitetab->getAttribs({key=>'directoryprovider'},['value']);
+        @entries =  xCAT::Utils->get_site_attribute("directoryprovider");
+        $site_entry = $entries[0];
+        if ( defined($site_entry) and $site_entry eq 'activedirectory') {
+            #$stab =$sitetab->getAttribs({key=>'directoryservers'},['value']);
+            @entries =  xCAT::Utils->get_site_attribute("directoryservers");
+            $site_entry = $entries[0];
+            if ( defined($site_entry)) {
+                my @dservers = split /[ ,]/,$site_entry;
                 $ctx->{adservers} = \@dservers;
                 $ctx->{adzones} = {
                     "_msdcs.". $ctx->{domain} => 1,
@@ -442,9 +452,11 @@ sub process_request {
                 };
             }
         }
-        $stab =$sitetab->getAttribs({key=>'dnsupdaters'},['value']); #allow unsecure updates from these
-        if ($stab and $stab->{value} and $stab->{value}) {
-                my @nservers = split /[ ,]/,$stab->{value};
+        #$stab =$sitetab->getAttribs({key=>'dnsupdaters'},['value']); #allow unsecure updates from these
+        @entries =  xCAT::Utils->get_site_attribute("dnsupdaters");
+        $site_entry = $entries[0];
+        if ( defined($site_entry) ) {
+                my @nservers = split /[ ,]/,$site_entry;
                 $ctx->{dnsupdaters} = \@nservers;
         }
         if ($zapfiles) { #here, we unlink all the existing files to start fresh
@@ -564,21 +576,24 @@ sub process_request {
 sub get_zonesdir {
     my $ZonesDir = get_dbdir();
 
-    my $sitetab = xCAT::Table->new('site');
+    #my $sitetab = xCAT::Table->new('site');
 
-    unless ($sitetab)
-    {
-        my $rsp = {};
-        $rsp->{data}->[0] = "No site table found.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-    }
+    #unless ($sitetab)
+    #{
+    #    my $rsp = {};
+    #    $rsp->{data}->[0] = "No site table found.\n";
+    #    xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+    #}
+    
+    my @entries =  xCAT::Utils->get_site_attribute("bindzones");
+    my $site_entry = $entries[0];
 
-    if ($sitetab) {
-        my ($ref) = $sitetab->getAttribs({key => 'bindzones'}, 'value');
-        if ($ref and $ref->{value}) {
-            $ZonesDir= $ref->{value};
+    #if ($sitetab) {
+    #    my ($ref) = $sitetab->getAttribs({key => 'bindzones'}, 'value');
+        if ( defined($site_entry) ) {
+            $ZonesDir= $site_entry;
         }
-    }
+    #}
 
     return "$ZonesDir";
 }
@@ -590,21 +605,24 @@ sub get_conf {
         $conf="/etc/bind/named.conf";
     }
 
-    my $sitetab = xCAT::Table->new('site');
+    #my $sitetab = xCAT::Table->new('site');
 
-    unless ($sitetab)
-    {
-        my $rsp = {};
-        $rsp->{data}->[0] = "No site table found.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-    }
+    #unless ($sitetab)
+    #{
+    #    my $rsp = {};
+    #    $rsp->{data}->[0] = "No site table found.\n";
+    #    xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+    #}
+    
+    my @entries =  xCAT::Utils->get_site_attribute("bindconf");
+    my $site_entry = $entries[0];
 
-    if ($sitetab) {
-        my ($ref) = $sitetab->getAttribs({key => 'bindconf'}, 'value');
-        if ($ref and $ref->{value}) {
-            $conf= $ref->{value};
+    #if ($sitetab) {
+        #my ($ref) = $sitetab->getAttribs({key => 'bindconf'}, 'value');
+        if ( defined($site_entry) ) {
+            $conf= $site_entry;
         }
-    }
+    #}
 
     return "$conf";
 }
@@ -612,19 +630,21 @@ sub get_conf {
 sub get_dbdir {
     my $DBDir;
 
-    my $sitetab = xCAT::Table->new('site');
-    unless ($sitetab) {
-        my $rsp = {};
-        $rsp->{data}->[0] = "No site table found.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-    }
+    #my $sitetab = xCAT::Table->new('site');
+    #unless ($sitetab) {
+    #    my $rsp = {};
+    #    $rsp->{data}->[0] = "No site table found.\n";
+    #    xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+    #}
 
-    if ($sitetab) {
-        (my $ref) = $sitetab->getAttribs({key => 'binddir'}, 'value');
-        if ($ref and $ref->{value}) {
-            $DBDir = $ref->{value};
+    my @entries =  xCAT::Utils->get_site_attribute("binddir");
+    my $site_entry = $entries[0];
+    #if ($sitetab) {
+        #(my $ref) = $sitetab->getAttribs({key => 'binddir'}, 'value');
+        if ( defined($site_entry) ) {
+            $DBDir = $site_entry;
         }
-    }
+    #}
 
     if ( -d "$DBDir" ) {
         return "$DBDir"
