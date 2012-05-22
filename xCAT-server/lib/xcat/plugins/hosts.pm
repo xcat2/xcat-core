@@ -163,15 +163,17 @@ sub process_request {
 
 
   my $hoststab = xCAT::Table->new('hosts');
-  my $sitetab = xCAT::Table->new('site');
+  #my $sitetab = xCAT::Table->new('site');
   my $domain;
   my $lockh;
-  if ($sitetab) {
-    my $dent = $sitetab->getAttribs({key=>'domain'},'value');
-    if ($dent and $dent->{value}) {
-        $domain=$dent->{value};
+  #if ($sitetab) {
+    #my $dent = $sitetab->getAttribs({key=>'domain'},'value');
+    my @entries =  xCAT::Utils->get_site_attribute("domain");
+    my $t_entry = $entries[0];
+    if ( defined($t_entry) ) {
+        $domain=$t_entry;
     }
-  }
+  #}
 
   @hosts = ();
   if ($REMOVE) {
