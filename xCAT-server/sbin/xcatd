@@ -1453,11 +1453,13 @@ sub dispatch_request {
        $dispatch_children++;
        $dispatched_children{$child}=1;
        $child_fdset->add($pfd);
+	close($parfd);
        next;
     }
     unless (defined $child) {
        $dispatch_cb->({error=>['Fork failure dispatching request'],errorcode=>[1]});
     }
+    close($pfd);
     $SIG{CHLD}='DEFAULT';
       $dispatch_parentfd = $parfd;
       my @prexcatdests=();
