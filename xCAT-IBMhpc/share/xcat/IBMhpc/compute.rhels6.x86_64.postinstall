@@ -59,7 +59,7 @@ installroot=$installroot pedir=$otherpkgs/pe NODESETSTATE=genimage   $hpc/pe/pe_
 
 # Run script to accept LoadLeveler license, install product rpms, 
 # and do some config
-installroot=$installroot loadldir=$otherpkgs/loadl NODESETSTATE=genimage   $hpc/loadl/loadl_install
+installroot=$installroot loadldir=$otherpkgs/loadl NODESETSTATE=genimage   $hpc/loadl/loadl_install-5103
 
 # Run script to install RSCT rpms.  Not available on x86_64
 #installroot=$installroot rsctdir=$otherpkgs/rsct NODESETSTATE=genimage   $hpc/rsct/rsct_install
