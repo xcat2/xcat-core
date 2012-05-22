@@ -3790,14 +3790,19 @@ sub process_request {
   my $bladeuser = 'USERID';
   my $bladepass = 'PASSW0RD';
   my $blademaxp = 64;
-  my $sitetab = xCAT::Table->new('site');
+  #my $sitetab = xCAT::Table->new('site');
   my $mpatab = xCAT::Table->new('mpa');
   my $mptab = xCAT::Table->new('mp');
   my $tmp;
-  if ($sitetab) {
-    ($tmp)=$sitetab->getAttribs({'key'=>'blademaxp'},'value');
-    if (defined($tmp)) { $blademaxp=$tmp->{value}; }
+  my @entries =  xCAT::Utils->get_site_attribute("blademaxp");
+  my $site_entry = $entries[0];
+  if(defined($site_entry)) {
+      $blademaxp = $site_entry;
   }
+  #if ($sitetab) {
+  #  ($tmp)=$sitetab->getAttribs({'key'=>'blademaxp'},'value');
+  #  if (defined($tmp)) { $blademaxp=$tmp->{value}; }
+  #}
   if ($request->{environment}->[0]->{XCAT_BLADEUSER}) {
       $bladeuser=$request->{environment}->[0]->{XCAT_BLADEUSER}->[0];
       $bladepass=$request->{environment}->[0]->{XCAT_BLADEPASS}->[0];
@@ -5090,13 +5095,18 @@ sub dompa {
   my @allerrornodes=();
   my $check=0;
   my $global_check=1;
-  my $sitetab = xCAT::Table->new('site');
-  if ($sitetab) {
-    (my $ref) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
-    if ($ref) {
-       if ($ref->{value} =~ /0|n|N/) { $global_check=0; }
-    }
+  my @entries =  xCAT::Utils->get_site_attribute("nodestatus");
+  my $site_entry = $entries[0];
+  if(defined($site_entry)) {
+      if ($site_entry =~ /0|n|N/) { $global_check=0; }
   }
+  #my $sitetab = xCAT::Table->new('site');
+  #if ($sitetab) {
+  #  (my $ref) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
+  #  if ($ref) {
+  #     if ($ref->{value} =~ /0|n|N/) { $global_check=0; }
+  #  }
+  #}
 
 
   if ($command eq 'rpower') {
