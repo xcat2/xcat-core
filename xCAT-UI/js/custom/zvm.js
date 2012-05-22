@@ -662,7 +662,9 @@ zvmPlugin.prototype.loadClonePage = function(node) {
             for ( var i = 0; i < inputs.length; i++) {
                 if (!inputs.eq(i).val()
                     && inputs.eq(i).attr('name') != 'diskPw'
-                    && inputs.eq(i).attr('name') != 'diskPool') {
+                    && inputs.eq(i).attr('name') != 'diskPool'
+                	&& inputs.eq(i).attr('name') != 'ip'
+            		&& inputs.eq(i).attr('name') != 'hostname') {
                     inputs.eq(i).css('border', 'solid #FF0000 1px');
                     ready = false;
                 } else {
