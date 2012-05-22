@@ -1529,8 +1529,8 @@ sub setupAIXIPMITool
 
 =head3    setupAIXexports 
 	
-    Set AIX exports  - export /install  
-                  remove export of /install/postscripts
+    Set AIX exports 
+
 =cut
 
 #-----------------------------------------------------------------------------
@@ -1538,42 +1538,25 @@ sub setupAIXIPMITool
 sub setupAIXexports
 
 {
-    # check if /install/postscripts is exported, remove it
+    # check if /install/postscripts is exported
     my $lsnfsexpcmd =
       "/usr/sbin/lsnfsexp -d $::INSTALLDIR/postscripts 2>&1";
-    my $outref = xCAT::Utils->runcmd("$lsnfsexpcmd", -1);
-    if ($::RUNCMD_RC == 0)
-    {
-       if ($outref) {  # really is exported
-        # remove it 
-        my $rmnfsexpcmd= "/usr/sbin/rmnfsexp -d $::INSTALLDIR/postscripts 2>&1";
-        xCAT::Utils->runcmd("$rmnfsexpcmd", -1);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message('E',
-                     "Could not unexport directory $::INSTALLDIR/postscripts.");
-        }
-       }
-    }
-    # check if /install is exported
-    my $lsnfsexpcmd =
-      "/usr/sbin/lsnfsexp -d $::INSTALLDIR 2>&1";
     my $outref = xCAT::Utils->runcmd("$lsnfsexpcmd", -1);
     if (($::RUNCMD_RC != 0) || ($outref !~ /-vers=3:4/))
     {
 
         # if not exported for both NFS version 3 and version 4,
         # make sure it is exported with -vers=3:4
-        my $rmnfsexpcmd = "/usr/sbin/rmnfsexp -d $::INSTALLDIR 2>&1";
+        my $rmnfsexpcmd = "/usr/sbin/rmnfsexp -d $::INSTALLDIR/postscripts 2>&1";
         xCAT::Utils->runcmd("$rmnfsexpcmd", -1);
 
         my $mknfsexpcmd =
-          "mknfsexp -d $::INSTALLDIR '-B' -v '3,4' -t 'ro'";
+          "mknfsexp -d $::INSTALLDIR/postscripts '-B' -v '3,4' -t 'ro'";
         my $outref2 = xCAT::Utils->runcmd("$mknfsexpcmd", -1);
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                                "Could not export directory $::INSTALLDIR.");
+                                    "Could not export directory $::INSTALLDIR/postscripts.");
         }
     }
 }
