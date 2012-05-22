@@ -258,9 +258,11 @@ sub docfheaders {
   #-- then start all consoles on demand
   #-- this helps eliminate many ssh connections to blade AMM
   #-- which seems to kill AMMs occasionally
-  my $sitetab  = xCAT::Table->new('site');
-  my $vcon = $sitetab->getAttribs({key => "consoleondemand"}, 'value');
-  if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
+  #my $sitetab  = xCAT::Table->new('site');
+  #my $vcon = $sitetab->getAttribs({key => "consoleondemand"}, 'value');
+  my @entries =  xCAT::Utils->get_site_attribute("consoleondemand");
+  my $site_entry = $entries[0];
+  if ( defined($site_entry) and $site_entry eq "yes" ) {
     push @newheaders,"  options ondemand;\n";
   }
 
