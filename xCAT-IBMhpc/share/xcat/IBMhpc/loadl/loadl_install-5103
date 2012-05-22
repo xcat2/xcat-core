@@ -1,0 +1,118 @@
+#!/bin/sh  
+
+#
+# Sample script to accept license and install LoadLeveler resmgr package
+# and perform additional customizations
+# For AIX:
+#    add LL path to profile
+#    create directories for LL log, spool, etc.
+# For Linux:
+#    Add LL bin directory to PATH in default profile (modify "linux_loadl_bin"
+#      if using a different LL bin location)
+#    Create LL log directories (modify "logdir" if not using /var/loadl)
+#    Change the owner of these directories (modify "loadl_admin" and
+#           "loadl_group" if not using loadl:loadl)
+#    If run from genimage, copy in /etc/LoadL.cfg from MN into image
+#    
+
+OS=`uname`
+
+####
+#  Linux Note:  This script only installs the LoadL_resmgr_full rpm
+#  To also install the LoadL_scheduler rpm, remove the "-c resmgr"
+#  option from the line below
+#  Also, change the bin path below to the correct directory
+####
+linux_loadl_bin=/opt/ibmll/LoadL/resmgr/full/bin
+
+####
+# For AIX, the LoadLeveler lpps are listed in the loadl.bnd bundle file
+# By default, it will only install the LoadL.resmgr package
+# To install the full LoadLeveler product, edit that bundle file
+# and change the bin path below to the correct directory
+####
+aix_loadl_bin=/usr/lpp/LoadL/resmgr/full/bin
+
+
+logdir=/var/loadl
+loadl_admin=loadl
+loadl_group=loadl
+
+
+if [ $OS != "AIX" ]; then
+    if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
+        groupadd $loadl_group
+        useradd -g $loadl_group $loadl_admin
+    fi
+fi
+
+
+# Add LoadLeveler path to profile
+if [ "$OS" == "AIX" ]; then
+    # add to /etc/profile
+    if ! grep 'LoadL' /etc/profile  > /dev/null 2>&1 ; then
+        echo "export PATH=\$PATH:$aix_loadl_bin" >> /etc/profile
+    fi
+    # UNCOMMENT to add to /etc/inittab if not already in image
+    #if ! grep 'loadl' /etc/inittab ; then
+    #   echo "loadl:2:once:/usr/lpp/LoadL/resmgr/full/bin/llrctl start > /dev/console 2>&1" >> /etc/inittab
+   #fi
+
+
+else  # assume Linux
+    loadlprofile=/etc/profile.d/loadl
+    if [ $NODESETSTATE == "genimage" ]; then
+       loadlprofile=$installroot$loadlprofile
+    fi
+    if [ ! -e $loadlprofile.sh ]; then
+        echo "export PATH=\$PATH:$linux_loadl_bin" > $loadlprofile.sh
+        echo "export PATH=\$PATH:$linux_loadl_bin" > $loadlprofile.csh
+        # Turn off LANG support since we did not install other msg catalogs
+        echo 'export LC_CTYPE=POSIX' $loadlprofile.sh
+        echo 'export LC_CTYPE=POSIX' $loadlprofile.csh
+        echo 'export LC_ALL=POSIX' $loadlprofile.sh
+        echo 'export LC_ALL=POSIX' $loadlprofile.csh
+        chmod 744 $loadlprofile.sh
+        chmod 744 $loadlprofile.csh
+    fi
+fi
+
+
+
+# Create LoadLeveler Directories:
+# For stateless nodes, these directories need to be created in the image
+# since they will be in memory only, and will be lost on node reboot. 
+# You may choose to modify this approach and use a more 
+# persistent location. 
+# For statelite, make sure the directory is writable;  
+# this will also be a memory-only copy of the files unless you set 
+# the directory "persistent" in the statelite table.  
+if [ $NODESETSTATE != "genimage" ]; then
+   # running as a postscript in a full-disk install or AIX diskless install
+   installroot=""
+fi  
+mkdir -p $installroot$logdir/execute
+mkdir -p $installroot$logdir/spool
+mkdir -p $installroot$logdir/log
+mkdir -p $installroot$logdir/sockets
+mkdir -p $installroot$logdir/core
+chmod 700 $installroot$logdir/spool
+chmod 1777 $installroot$logdir/execute
+chmod 775 $installroot$logdir/log
+chmod 777 $installroot$logdir/sockets
+chmod 777 $installroot$logdir/core
+
+# Owner set to 'loadl' userid, change if using a different userid
+chown -R $loadl_admin:$loadl_group $installroot$logdir/
+
+# UNCOMMENT to let llcompute.sh/llserver.sh to create /etc/LoadL.cfg
+#if [ "$NODESETSTATE" == "genimage" ] && [ -f /etc/LoadL.cfg ] ; then
+#    cp /etc/LoadL.cfg $installroot/etc/LoadL.cfg
+#fi
+
+
+# UNCOMMENT to  Start loadleveler during postscripts 
+#if [ $NODESETSTATE != "genimage" ]; then
+#   /usr/lpp/LoadL/resmgr/full/bin/llrctl start
+#fi
+
