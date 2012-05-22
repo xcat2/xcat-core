@@ -710,15 +710,17 @@ sub preprocess_request
 
   
     my $snonly=0;
-    my $sitetab = xCAT::Table->new('site');
-    if ($sitetab)
-    {
-        my $href;
-        ($href) = $sitetab->getAttribs({key => 'disjointdhcps'}, 'value');
-        if ($href and $href->{value}) {
-	    $snonly=$href->{value};
+    #my $sitetab = xCAT::Table->new('site');
+    #if ($sitetab)
+    #{
+        #my $href;
+        #($href) = $sitetab->getAttribs({key => 'disjointdhcps'}, 'value');
+        my @entries =  xCAT::Utils->get_site_attribute("disjointdhcps");
+        my $t_entry = $entries[0];
+        if (defined($t_entry)) {
+	    $snonly=$t_entry;
 	}
-    }
+    #}
     my @requests=();
     my $hasHierarchy=0;
 
@@ -880,22 +882,26 @@ sub process_request
 	return;  
     }
 
-    my $sitetab = xCAT::Table->new('site');
+    #my $sitetab = xCAT::Table->new('site');
     my %activenics;
     my $querynics = 1;
-    if ($sitetab)
-    {
-        my $href;
-        ($href) = $sitetab->getAttribs({key => 'dhcpinterfaces'}, 'value');
-        unless ($href and $href->{value})
+    #if ($sitetab)
+    #{
+        #my $href;
+        #($href) = $sitetab->getAttribs({key => 'dhcpinterfaces'}, 'value');
+        my @entries =  xCAT::Utils->get_site_attribute("dhcpinterfaces");
+        my $t_entry = $entries[0];
+        unless ( defined($t_entry) )
         {    #LEGACY: singular keyname for old style site value
-            ($href) = $sitetab->getAttribs({key => 'dhcpinterface'}, 'value');
+            @entries =  xCAT::Utils->get_site_attribute("dhcpinterface");
+            $t_entry = $entries[0];
+            #($href) = $sitetab->getAttribs({key => 'dhcpinterface'}, 'value');
         }
-        if ($href and $href->{value})
+        if ( defined($t_entry) )
         #syntax should be like host|ifname1,ifname2;host2|ifname3,ifname2 etc or simply ifname,ifname2
         #depending on complexity of network wished to be described
         {
-           my $dhcpinterfaces = $href->{value};
+           my $dhcpinterfaces = $t_entry;
            my $dhcpif;
            INTF: foreach $dhcpif (split /;/,$dhcpinterfaces) {
               my $host;
@@ -929,29 +935,37 @@ sub process_request
               }
            }
         }
-        ($href) = $sitetab->getAttribs({key => 'nameservers'}, 'value');
-        if ($href and $href->{value}) {
-            $sitenameservers = $href->{value};
+        #($href) = $sitetab->getAttribs({key => 'nameservers'}, 'value');
+        @entries =  xCAT::Utils->get_site_attribute("nameservers");
+        $t_entry = $entries[0];
+        if ( defined($t_entry) ) {
+            $sitenameservers = $t_entry;
         }
-        ($href) = $sitetab->getAttribs({key => 'ntpservers'}, 'value');
-        if ($href and $href->{value}) {
-            $sitentpservers = $href->{value};
+        #($href) = $sitetab->getAttribs({key => 'ntpservers'}, 'value');
+        @entries =  xCAT::Utils->get_site_attribute("ntpservers");
+        $t_entry = $entries[0];
+        if ( defined($t_entry) ) {
+            $sitentpservers = $t_entry;
         }
-        ($href) = $sitetab->getAttribs({key => 'logservers'}, 'value');
-        if ($href and $href->{value}) {
-            $sitelogservers = $href->{value};
+        #($href) = $sitetab->getAttribs({key => 'logservers'}, 'value');
+        @entries =  xCAT::Utils->get_site_attribute("logservers");
+        $t_entry = $entries[0];
+        if ( defined($t_entry) ) {
+            $sitelogservers = $t_entry;
         }
         #($href) = $sitetab->getAttribs({key => 'domain'}, 'value');
-        ($href) = $sitetab->getAttribs({key => 'domain'}, 'value');
-        unless ($href and $href->{value})
+        #($href) = $sitetab->getAttribs({key => 'domain'}, 'value');
+        @entries =  xCAT::Utils->get_site_attribute("domain");
+        $t_entry = $entries[0];
+        unless ( defined($t_entry) )
         {
             $callback->(
                  {error => ["No domain defined in site tabe"], errorcode => [1]}
                  );
             return;
         }
-        $domain = $href->{value};
-    }
+        $domain = $t_entry;
+    #}
 
     @dhcpconf = ();
     @dhcp6conf = ();
