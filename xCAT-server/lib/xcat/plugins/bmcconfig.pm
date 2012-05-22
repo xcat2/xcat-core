@@ -92,7 +92,7 @@ sub process_request  {
      $callback->({error=>["Unable to prove root on your IP approves of this request"],errorcode=>[1]});
      return;
   }
-  my $sitetable = xCAT::Table->new('site');
+  #my $sitetable = xCAT::Table->new('site');
   my $ipmitable = xCAT::Table->new('ipmi');
   my $passtable = xCAT::Table->new('passwd');
   my $tmphash;
@@ -109,8 +109,10 @@ sub process_request  {
   if ($tmphash->{password}) { #It came for free with the last query
     $password=$tmphash->{password};
   }
-  $tmphash=($sitetable->getAttribs({key=>'genpasswords'},'value'))[0];
-  if ($tmphash->{value} eq "1" or $tmphash->{value}  =~ /y(es)?/i) {
+  #$tmphash=($sitetable->getAttribs({key=>'genpasswords'},'value'))[0];
+  my @entries =  xCAT::Utils->get_site_attribute("blademaxp");
+  my $site_entry = $entries[0];
+  if ($site_entry eq "1" or $site_entry  =~ /y(es)?/i) {
     $password = genpassword(10)."1cA!";
     $gennedpassword=1;
     $tmphash=$ipmitable->getNodeAttribs($node,['bmc','username','bmcport','taggedvlan']);
