@@ -1,2 +1,2 @@
 #INCLUDE:/opt/xcat/share/xcat/IBMhpc/IBMhpc.rhels6.x86_64.pkglist#
-#INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe-1200.x86_64.pkglist#    
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe-1200.rhels6.x86_64.pkglist#    
