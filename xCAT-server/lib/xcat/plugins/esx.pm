@@ -346,35 +346,43 @@ sub process_request {
 	} else {
 		@exargs = ($request->{arg});
 	}
-	my $sitetab = xCAT::Table->new('site');
-	if($sitetab){
-		(my $ref) = $sitetab->getAttribs({key => 'usehostnamesforvcenter'}, 'value');
-		if ($ref and $ref->{value}) {
-			$usehostnamesforvcenter = $ref->{value};
+	#my $sitetab = xCAT::Table->new('site');
+	#if($sitetab){
+		#(my $ref) = $sitetab->getAttribs({key => 'usehostnamesforvcenter'}, 'value');
+                my @entries =  xCAT::Utils->get_site_attribute("usehostnamesforvcenter");
+                my $t_entry = $entries[0];
+		if ( defined($t_entry) ) {
+			$usehostnamesforvcenter = $t_entry;
 		}
-		($ref) = $sitetab->getAttribs({key => 'vcenterautojoin'}, 'value');
-		if ($ref and defined $ref->{value}) {
-			$vcenterautojoin = $ref->{value};
-            if ($vcenterautojoin =~ /^n/ or $vcenterautojoin =~ /^dis/) {
-                $vcenterautojoin=0;
-            }
+		#($ref) = $sitetab->getAttribs({key => 'vcenterautojoin'}, 'value');
+                @entries =  xCAT::Utils->get_site_attribute("vcenterautojoin");
+                $t_entry = $entries[0];
+		if ( defined($t_entry) ) {
+                   $vcenterautojoin = $t_entry;
+                   if ($vcenterautojoin =~ /^n/ or $vcenterautojoin =~ /^dis/) {
+                       $vcenterautojoin=0;
+                   }
 		}
-		($ref) = $sitetab->getAttribs({key => 'vmwaredatastoreautomount'}, 'value');
-		if ($ref and defined $ref->{value}) {
-			$datastoreautomount = $ref->{value};
-            if ($datastoreautomount =~ /^n/ or $datastoreautomount =~ /^dis/) {
-                $datastoreautomount=0;
-            }
+		#($ref) = $sitetab->getAttribs({key => 'vmwaredatastoreautomount'}, 'value');
+                @entries =  xCAT::Utils->get_site_attribute("vmwaredatastoreautomount");
+                $t_entry = $entries[0];
+		if ( defined($t_entry) ) {
+			$datastoreautomount = $t_entry;
+                    if ($datastoreautomount =~ /^n/ or $datastoreautomount =~ /^dis/) {
+                        $datastoreautomount=0;
+                    }
 		}
-        ($ref) = $sitetab->getAttribs({key => 'vmwarereconfigonpower'},'value');
-        if ($ref and defined $ref->{value}) {
-            $reconfigreset=$ref->{value};
-            if ($reconfigreset =~ /^(n|d)/i) { #if no or disable, skip it
-                $reconfigreset=0;
-            }
-        }
+                #($ref) = $sitetab->getAttribs({key => 'vmwarereconfigonpower'},'value');
+                @entries =  xCAT::Utils->get_site_attribute("vmwarereconfigonpower");
+                $t_entry = $entries[0];
+		if ( defined($t_entry) ) {
+                    $reconfigreset=$t_entry;
+                    if ($reconfigreset =~ /^(n|d)/i) { #if no or disable, skip it
+                        $reconfigreset=0;
+                    }
+                }
 
-	}
+#	}
 
 
 	if ($request->{moreinfo}) { $moreinfo=$request->{moreinfo}; }
@@ -4027,13 +4035,15 @@ sub copycd {
     my $darch;
 	my $installroot;
 	$installroot = "/install";
-	my $sitetab = xCAT::Table->new('site');
-	if($sitetab){
-		(my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
-		if ($ref and $ref->{value}) {
-			$installroot = $ref->{value};
+	#my $sitetab = xCAT::Table->new('site');
+	#if($sitetab){
+		#(my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
+                my @entries =  xCAT::Utils->get_site_attribute("installdir");
+                my $t_entry = $entries[0];
+		if ( defined($t_entry) ) {
+			$installroot = $t_entry;
 		}
-	}
+	#}
 	@ARGV = @{$request->{arg}};
 	GetOptions(
 		'n=s' => \$distname,
@@ -4423,19 +4433,23 @@ sub mkcommonboot {
 	my $globaltftpdir  = "/tftpboot";
 	my @nodes    = @{$req->{node}};
 	my $ostab    = xCAT::Table->new('nodetype');
-	my $sitetab  = xCAT::Table->new('site');
+	#my $sitetab  = xCAT::Table->new('site');
 	my $bptab		 = xCAT::Table->new('bootparams',-create=>1);
 	my $installroot = "/install";
-	if ($sitetab){
-		(my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
-		if ($ref and $ref->{value}) {
-			$installroot = $ref->{value};
+	#if ($sitetab){
+		#(my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
+                my @entries =  xCAT::Utils->get_site_attribute("installdir");
+                my $t_entry = $entries[0];
+		if ( defined($t_entry) ) {
+                    $installroot = $t_entry;
 		}
-		($ref) = $sitetab->getAttribs({key => 'tftpdir'}, 'value');
-		if ($ref and $ref->{value}) {
-			$globaltftpdir = $ref->{value};
+		#($ref) = $sitetab->getAttribs({key => 'tftpdir'}, 'value');
+                @entries =  xCAT::Utils->get_site_attribute("tftpdir");
+                $t_entry = $entries[0];
+		if ( defined($t_entry) ) {
+                    $globaltftpdir = $t_entry;
 		}
-	}
+	#}
 	my %donetftp=();
 
 	my $bpadds = $bptab->getNodesAttribs(\@nodes,['addkcmdline']);
