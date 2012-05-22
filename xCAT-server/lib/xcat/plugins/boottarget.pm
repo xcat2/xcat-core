@@ -43,12 +43,13 @@ sub preprocess_request
         return [$req];
     }
 
-    my $stab = xCAT::Table->new('site');
-    my $sent;
-    ($sent) = $stab->getAttribs({key => 'sharedtftp'}, 'value');
-    unless (    $sent
-            and defined($sent->{value})
-            and ($sent->{value} =~ /no/i or $sent->{value} =~ /0/))
+    #my $stab = xCAT::Table->new('site');
+    #my $sent;
+    #($sent) = $stab->getAttribs({key => 'sharedtftp'}, 'value');
+    my @entries =  xCAT::Utils->get_site_attribute("sharedtftp");
+    my $site_entry = $entries[0];
+    unless (   defined($site_entry)
+            and ( $site_entry =~ /no/i or $site_entry =~ /0/))
     {
 
         #unless requesting no sharedtftp, don't make hierarchical call
