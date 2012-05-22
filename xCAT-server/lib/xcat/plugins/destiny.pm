@@ -20,19 +20,21 @@ my $iscsitab;
 my $bptab;
 my $typetab;
 my $restab;
-my $sitetab;
+#my $sitetab;
 my $hmtab;
 my $tftpdir="/tftpboot";
 
 
 my $nonodestatus=0;
-my $sitetab = xCAT::Table->new('site');
-if ($sitetab) {
-    (my $ref1) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
-    if ($ref1) {
-	if ($ref1->{value} =~ /0|n|N/) { $nonodestatus=1; }
+#my $sitetab = xCAT::Table->new('site');
+#if ($sitetab) {
+    #(my $ref1) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
+    my @entries =  xCAT::Utils->get_site_attribute("nodestatus");
+    my $site_entry = $entries[0];
+    if ( defined($site_entry) ) {
+	if ($site_entry =~ /0|n|N/) { $nonodestatus=1; }
     }
-}
+#}
 
 
 sub handled_commands {
@@ -230,11 +232,15 @@ sub setdestiny {
     $restab=xCAT::Table->new('noderes',-create=>1);
     my $bootparms=xCAT::Table->new('bootparams',-create=>1);
     my $nodetype = xCAT::Table->new('nodetype');
-    my $sitetab = xCAT::Table->new('site');
+    #my $sitetab = xCAT::Table->new('site');
     my $nodehm = xCAT::Table->new('nodehm');
     my $hments = $nodehm->getNodesAttribs(\@nodes,['serialport','serialspeed','serialflow']);
-    (my $portent) = $sitetab->getAttribs({key=>'xcatdport'},'value');
-    (my $mastent) = $sitetab->getAttribs({key=>'master'},'value');
+    #(my $portent) = $sitetab->getAttribs({key=>'xcatdport'},'value');
+    my @entries =  xCAT::Utils->get_site_attribute("xcatdport");
+    my $port_entry = $entries[0];
+    #(my $mastent) = $sitetab->getAttribs({key=>'master'},'value');
+    my @entries =  xCAT::Utils->get_site_attribute("master");
+    my $master_entry = $entries[0];
     my $enthash = $nodetype->getNodesAttribs(\@nodes,[qw(arch)]);
     my $resents = $restab->getNodeAttribs(\@nodes,[qw(xcatmaster)]);
     foreach (@nodes) {
@@ -247,8 +253,8 @@ sub setdestiny {
       my $ent = $resents->{$_}->[0]; #$restab->getNodeAttribs($_,[qw(xcatmaster)]);
       my $master;
       my $kcmdline = "quiet ";
-      if ($mastent and $mastent->{value}) {
-          $master = $mastent->{value};
+      if ( defined($master_entry) ) {
+          $master = $master_entry;
       }
       if ($ent and $ent->{xcatmaster}) {
           $master = $ent->{xcatmaster};
@@ -271,8 +277,8 @@ sub setdestiny {
           return;
       }
       my $xcatdport="3001";
-      if ($portent and $portent->{value}) {
-          $xcatdport = $portent->{value};
+      if ( defined($port_entry)) {
+          $xcatdport = $port_entry;
       }
       if (-r "$tftpdir/xcat/genesis.kernel.$arch") {
 	  if (-r "$tftpdir/xcat/genesis.fs.$arch.lzma") {
@@ -451,8 +457,10 @@ sub getdestiny {
   my $nrents = $restab->getNodesAttribs(\@nodes,[qw(tftpserver xcatmaster)]);
   $bptab = xCAT::Table->new('bootparams',-create=>1);
   my $bpents = $bptab->getNodesAttribs(\@nodes,[qw(kernel initrd kcmdline xcatmaster)]);
-  my $sitetab= xCAT::Table->new('site');
-  (my $sent) = $sitetab->getAttribs({key=>'master'},'value');
+  #my $sitetab= xCAT::Table->new('site');
+  #(my $sent) = $sitetab->getAttribs({key=>'master'},'value');
+  my @entries =  xCAT::Utils->get_site_attribute("master");
+  my $master_value = $entries[0];
 
   my %node_status=();
   foreach $node (@nodes) {
@@ -504,8 +512,8 @@ sub getdestiny {
         $response{imgserver}=$nrent->{tftpserver};
     } elsif (defined $nrent->{xcatmaster}) {
         $response{imgserver}=$nrent->{xcatmaster};
-    } elsif (defined($sent->{value})) {
-        $response{imgserver}=$sent->{value};
+    } elsif (defined( $master_value )) {
+        $response{imgserver}=$master_value;
     } else {
        $response{imgserver} = xCAT::Utils->my_ip_facing($node);
     }
