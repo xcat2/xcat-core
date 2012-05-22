@@ -1,4 +1,5 @@
 pe/src
+pe/libbsr
 
 #ENV:IBM_PPE_RTE_LICENSE_ACCEPT=yes#
 pe/ppe_rte_license*
@@ -12,3 +13,7 @@ pe/ppertesamples*
 #pe/ppedev_license*
 #pe/ppedev_hpct_*
 #pe/ppedev_runtime*
+
+# Checkpoint/restart function support
+#pe/user-cr
+#pe/lxc

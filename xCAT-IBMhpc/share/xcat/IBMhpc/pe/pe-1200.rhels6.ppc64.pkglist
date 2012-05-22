@@ -1,0 +1,4 @@
+# The following are for RHEL6 systems running InfiniBand networks
+#    You should comment out these packages when running with HFI,
+libibverbs.ppc
+libibverbs.ppc64
