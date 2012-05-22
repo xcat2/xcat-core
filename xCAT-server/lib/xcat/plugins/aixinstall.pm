@@ -10507,12 +10507,11 @@ sub mkdsklsnode
 	#   - which is the one from the SPOT
 	#
 	# doesn't hurt to create new file for all nodes passed in
+
 	my @imgsdone;
 	foreach my $n (@nodelist) {
 		my $img = $nodeosi{$n};
-		if (grep(/^$img$/, @imgsdone )) {
-			next;
-		}
+
 		$n =~ s/\..*$//; # make sure we have the short hostname
 		my $node;
 		if ($::NEWNAME)
@@ -11678,6 +11677,18 @@ sub make_SN_resource
         return 1;
     }
 
+	# run the sync operation on the node to make sure the GPFS res
+	#       location is refreshed
+
+	my $scmd = qq~/usr/sbin/sync; /usr/sbin/sync; /usr/sbin/sync~;
+	my $output = xCAT::Utils->runcmd("$scmd", -1);
+	if ($::RUNCMD_RC != 0)
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "Could not run $scmd on SNname\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+	}
+
     #
     # go through each osimage needed on this server
     #	- if the NIM resource is not already defined then define it
@@ -12122,6 +12133,18 @@ sub make_SN_resource
                 }    # end  - if spot
             }    # end - if valid NIM res type
         }    # end - for each restype in osimage def
+
+		#  try to make sure the spot and boot image is in correct state
+		if ($imghash{$image}{spot}) {
+			my $ckcmd = qq~/usr/sbin/nim -Fo check $imghash{$image}{spot}~;
+			my $output = xCAT::Utils->runcmd("$ckcmd", -1);
+			if ($::RUNCMD_RC != 0)
+			{
+				my $rsp;
+				push @{$rsp->{data}}, "Could not run $ckcmd.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+			}
+		}
     }    # end - for each image
 
     return 0;
