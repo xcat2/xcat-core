@@ -61,12 +61,13 @@ sub preprocess_request
         return [$req];
     }
 
-    my $stab = xCAT::Table->new('site');
-    my $sent;
-    ($sent) = $stab->getAttribs({key => 'sharedtftp'}, 'value');
-    unless (    $sent
-            and defined($sent->{value})
-            and ($sent->{value} =~ /no/i or $sent->{value} =~ /0/))
+    #my $stab = xCAT::Table->new('site');
+    #my $sent;
+    #($sent) = $stab->getAttribs({key => 'sharedtftp'}, 'value');
+    my @entries =  xCAT::Utils->get_site_attribute("defserialport");
+    my $t_entry = $entries[0];
+    unless (  defined($t_entry)
+            and ($t_entry =~ /no/i or $t_entry =~ /0/))
     {
 
         #unless requesting no sharedtftp, don't make hierarchical call
@@ -137,21 +138,23 @@ sub mknetboot
     my @args     = @{$req->{arg}};
     my @nodes    = @{$req->{node}};
     my $ostab    = xCAT::Table->new('nodetype');
-    my $sitetab  = xCAT::Table->new('site');
+    #my $sitetab  = xCAT::Table->new('site');
 
     my $installroot = xCAT::Utils->getInstallDir();
     my $tftpdir = xCAT::Utils->getTftpDir();
 
     my $xcatiport;
 
-    if ($sitetab)
-    {
-        (my $ref) = $sitetab->getAttribs({key => 'xcatiport'}, 'value');
-        if ($ref and $ref->{value})
+    #if ($sitetab)
+    #{
+        #(my $ref) = $sitetab->getAttribs({key => 'xcatiport'}, 'value');
+        my @entries =  xCAT::Utils->get_site_attribute("xcatiport");
+        my $t_entry = $entries[0];
+        if ( defined($t_entry) )
         {
-            $xcatiport = $ref->{value};
+            $xcatiport = $t_entry;
         }
-    }
+    #}
     my %oents = %{$ostab->getNodesAttribs(\@nodes,[qw(os arch profile)])};
     my $restab = xCAT::Table->new('noderes');
     my $bptab  = xCAT::Table->new('bootparams',-create=>1);
