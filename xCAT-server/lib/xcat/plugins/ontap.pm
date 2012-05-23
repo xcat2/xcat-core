@@ -55,10 +55,12 @@ sub process_request {
         return;
     }
     my @nodes = @{$request->{node}};
-    my $sitetab = xCAT::Table->new('site');
-    (my $dent) = $sitetab->getAttribs({key=>'domain'},'value');
-    if ($dent and $dent->{value}) {
-        $domain = $dent->{value};
+    #my $sitetab = xCAT::Table->new('site');
+    #(my $dent) = $sitetab->getAttribs({key=>'domain'},'value');
+    my @entries =  xCAT::Utils->get_site_attribute("domain");
+    my $t_entry = $entries[0];
+    if ( defined($t_entry) ) {
+        $domain = $t_entry;
         $domain = join(".",reverse(split(/\./,$domain)));
     } else {
         xCAT::SvrUtils::sendmsg([1,"Cannot determine domain name for iqn generation from site table"], $output_handler);
