@@ -799,7 +799,7 @@ sub setupODBC
     if ($::osname eq 'AIX') {
         my $message =
           "Setup of the ODBC is only supported on Linux.";
-        xCAT::MsgUtils->message("E", " $cmd failed. $message");
+        xCAT::MsgUtils->message("E", "$message");
         exit(1);
     }
 
@@ -809,21 +809,21 @@ sub setupODBC
     # for all OS need unixODBC rpm
     my $message;
     my $cmd = "rpm -qa | grep unixODBC";
-    xCAT::Utils->runcmd($cmd, 0);
+    xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)
     {
          $message =
-          "unixODBC* rpm is not installed. Install from the OS CDs.";
-        xCAT::MsgUtils->message("E", " $cmd failed. $message");
+          "unixODBC rpm is not installed. Install from the OS CDs.";
+        xCAT::MsgUtils->message("E", "$message");
         exit(1);
     }
     $cmd = "rpm -qa | grep postgresql-odbc";
-    xCAT::Utils->runcmd($cmd, 0);
+    xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)
     {
          $message =
-          "postgresql-odbc* rpm  is not installed. Install from the OS CDs.";
-        xCAT::MsgUtils->message("E", " $cmd failed. $message");
+          "postgresql-odbc rpm  is not installed. Install from the OS CDs.";
+        xCAT::MsgUtils->message("E", " $message");
         exit(1);
     }
     my $xcatconfig       = "/etc/xcat/cfgloc";
@@ -843,7 +843,7 @@ sub setupODBC
 
      $message =
               "Cannot find host info in the /etc/xcat/cfgloc  file. Configuration of ODBC cannot continue.";
-            xCAT::MsgUtils->message("E", " $cmd failed. $message");
+            xCAT::MsgUtils->message("E", "$message");
             exit(1);
 
     }
@@ -857,7 +857,7 @@ sub setupODBC
     if (!( -e $odbcinstfile)) {
      $message =
            "Cannot find $odbcinstfile. Configuration of ODBC cannot continue.";
-            xCAT::MsgUtils->message("E", " $cmd failed. $message");
+            xCAT::MsgUtils->message("E", "$message");
             exit(1);
     }
     # setup the DSN odbc.ini file
@@ -902,7 +902,7 @@ sub setupODBC
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {
-            $message = "command failed. Could not setup root ODBC file.";
+            $message = "Could not setup root ODBC file $rootodbcfile.";
             xCAT::MsgUtils->message("E", "$message");
             exit(1);
 
