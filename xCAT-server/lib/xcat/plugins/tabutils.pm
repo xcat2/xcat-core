@@ -298,9 +298,11 @@ sub noderm
     }
 
     if (!$nodes) { $noderm_usage->(1); return; }
-    my $sitetab = xCAT::Table->new('site');
-    my $pdhcp = $sitetab->getAttribs({key=>'pruneservices'},['value']);
-    if ($pdhcp and $pdhcp->{value} and $pdhcp->{value} !~ /n(\z|o)/i) {
+    #my $sitetab = xCAT::Table->new('site');
+    #my $pdhcp = $sitetab->getAttribs({key=>'pruneservices'},['value']);
+    my @entries =  xCAT::Utils->get_site_attribute("pruneservices");
+    my $t_entry = $entries[0];
+    if ( defined($t_entry) and $t_entry !~ /n(\z|o)/i) {
         $requestcommand->({command=>['makedhcp'],node=>$nodes,arg=>['-d']});
     }
 
