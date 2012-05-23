@@ -318,9 +318,9 @@ sub send_service_request_single {
 			my $ip = $sip;
 			$ip =~ s/\/(.*)//;
 			my $maskbits = $1;
-            if (xCAT::Utils->isAIX()) {
-                my $runcmd = `route add 239.255.255.253 $ip`;
-            }
+            #if (xCAT::Utils->isAIX()) {
+            #    my $runcmd = `route add 239.255.255.253 $ip`;
+            #}
 			my $ipn = inet_aton($ip); #we are ipv4 only, this is ok
 			my $ipnum=unpack("N",$ipn);
 			$ipnum= $ipnum | (2**(32-$maskbits))-1;
