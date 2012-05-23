@@ -175,13 +175,15 @@ sub preprocess_request
     if ($nodes) { 
 	my $usenmapfrommn=0;
 	if (-x '/usr/bin/nmap' or -x '/usr/local/bin/nmap') {
-	    my $sitetab = xCAT::Table->new('site');
-	    if ($sitetab) {
-		(my $ref) = $sitetab->getAttribs({key => 'useNmapfromMN'}, 'value');
-		if ($ref) {
-		    if ($ref->{value} =~ /1|yes|YES|Y|y/) { $usenmapfrommn=1; }
+	    #my $sitetab = xCAT::Table->new('site');
+	    #if ($sitetab) {
+		#(my $ref) = $sitetab->getAttribs({key => 'useNmapfromMN'}, 'value');
+                my @entries =  xCAT::Utils->get_site_attribute("useNmapfromMN");
+                my $t_entry = $entries[0];
+		if (defined($t_entry)) {
+		    if ($t_entry =~ /1|yes|YES|Y|y/) { $usenmapfrommn=1; }
 		}
-	    }
+	    #}
 	}
 
 	#get monsettings
