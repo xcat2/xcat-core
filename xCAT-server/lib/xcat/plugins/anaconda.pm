@@ -685,12 +685,16 @@ sub mknetboot
 
         # if kdump service is enbaled, add "crashkernel=" and "kdtarget="
         if ($dump) {
-            if ($arch eq "ppc64") { # for ppc64, the crashkernel paramter should be "128M@32M", otherwise, some kernel crashes will be met
-                if ( $crashkernelsize ) {
-                    $kcmdline .= " crashkernel=$crashkernelsize\@32M dump=$dump ";
-                } else {
-                    $kcmdline .= " crashkernel=256M\@32M dump=$dump ";
-                }
+            if ($crashkernelsize){
+                 $kcmdline .= " crashkernel=$crashkernelsize dump=$dump ";
+            }
+            else{
+                 if ($arch eq "ppc64"){
+                     $kcmdline .= " crashkernel=256M\@64M dump=$dump ";
+                 }
+                 if ($arch =~ /86/){
+                     $kcmdline .= " crashkernel=128M dump=$dump ";
+                 }
             }
         }
 
