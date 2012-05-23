@@ -64,18 +64,22 @@ sub process_request {
    }
    my $iscsitab = xCAT::Table->new('iscsi'); 
    my @nodes = @{$request->{node}};
-   my $sitetab = xCAT::Table->new('site');
-   unless ($sitetab) {
-      $callback->({error=>"Fatal error opening site table",errorcode=>[1]});
-      return;
-   }
+   #my $sitetab = xCAT::Table->new('site');
+   #unless ($sitetab) {
+   #   $callback->({error=>"Fatal error opening site table",errorcode=>[1]});
+   #   return;
+   #}
    my $domain;
-   (my $ipent) = $sitetab->getAttribs({key=>'domain'},'value');
-   if ($ipent and $ipent->{value}) { $domain = $ipent->{value}; }
-   ($ipent) = $sitetab->getAttribs({key=>'iscsidir'},'value');
+   #(my $ipent) = $sitetab->getAttribs({key=>'domain'},'value');
+   my @entries =  xCAT::Utils->get_site_attribute("domain");
+   my $t_entry = $entries[0];
+   if ( defined($t_entry) ) { $domain = $t_entry; }
+   #($ipent) = $sitetab->getAttribs({key=>'iscsidir'},'value');
    my $iscsiprefix;
-   if ($ipent and $ipent->{value}) {
-      $iscsiprefix = $ipent->{value};
+   my @entries =  xCAT::Utils->get_site_attribute("iscsidir");
+   my $t_entry = $entries[0];
+   if ( defined($t_entry) ) {
+      $iscsiprefix = $t_entry;
    }
    foreach my $node (@nodes) {
       my $fileloc;
