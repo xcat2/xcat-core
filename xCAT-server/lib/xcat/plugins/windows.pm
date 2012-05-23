@@ -472,15 +472,17 @@ sub copycd
     my $distname = "";
     my $installroot;
     $installroot = "/install";
-    my $sitetab = xCAT::Table->new('site');
-    if ($sitetab)
-    {
-        (my $ref) = $sitetab->getAttribs({key => installdir}, value);
-        if ($ref and $ref->{value})
+    #my $sitetab = xCAT::Table->new('site');
+    #if ($sitetab)
+    #{
+        #(my $ref) = $sitetab->getAttribs({key => installdir}, value);
+        my @entries =  xCAT::Utils->get_site_attribute("installdir");
+        my $t_entry = $entries[0]; 
+        if ( defined($t_entry) )
         {
-            $installroot = $ref->{value};
+            $installroot = $t_entry;
         }
-    }
+    #}
 
     @ARGV = @{$request->{arg}};
     GetOptions(
