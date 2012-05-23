@@ -309,7 +309,7 @@ function loadUserTable4Policy(data) {
     
     // Start with the 2nd row (1st row is the headers)
     topPriority = 0;
-    for ( var i = 1; i < rsp.length; i++) {
+    for (var i = 1; i < rsp.length; i++) {
         // Split into columns
         var tmp = rsp[i].split(',');
         
@@ -326,8 +326,13 @@ function loadUserTable4Policy(data) {
         
         // Update the priority and max-vm columns
         if (rowPos > -1) {
-            var maxVM = tmp[8].replace('max-vm:', '');
-            maxVM = maxVM.replace(';', '');
+            var maxVM = 0;
+            var comments = tmp[8].split(';');
+            for (var k in comments) {
+                if (comments[k].indexOf('max-vm:') > -1)
+                    maxVM = comments[k].replace('max-vm:', '');
+            }
+            
             datatable.fnUpdate(maxVM, rowPos, 4, false);
             
             var priority = tmp[0];
