@@ -9230,7 +9230,7 @@ sub doSFScopy
 
 	unless(scalar @SNlist)
     {
-        return 1;
+        return 0;
     }
 
     my $snlist=join(',',@SNlist);
@@ -12136,13 +12136,15 @@ sub make_SN_resource
 
 		#  try to make sure the spot and boot image is in correct state
 		if ($imghash{$image}{spot}) {
-			my $ckcmd = qq~/usr/sbin/nim -Fo check $imghash{$image}{spot}~;
+			my $ckcmd = qq~/usr/sbin/nim -Fo check $imghash{$image}{spot} 2>/dev/null~;
 			my $output = xCAT::Utils->runcmd("$ckcmd", -1);
 			if ($::RUNCMD_RC != 0)
 			{
-				my $rsp;
-				push @{$rsp->{data}}, "Could not run $ckcmd.\n";
-				xCAT::MsgUtils->message("E", $rsp, $callback);
+				if ($::VERBOSE) {
+					my $rsp;
+					push @{$rsp->{data}}, "Could not run $ckcmd.\n";
+					xCAT::MsgUtils->message("I", $rsp, $callback);
+				}
 			}
 		}
     }    # end - for each image
