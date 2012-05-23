@@ -36,7 +36,7 @@ my $logdir = "/var/log/xcat";
 if (!-d $logdir) {
 	mkpath($logdir);
 }
-
+$::NOERROR=0;   # used to control whether to display an error
 $::sdate = `/bin/date`;
 chomp $::sdate;
 my $logfile = $logdir . "/xcat.log";
@@ -381,10 +381,12 @@ if ($nodesetstat eq 'diskless') {
     # see if BASECUST_REMOVAL is set in /etc/niminfo
     if (-f "/etc/niminfo") {
         $cmd = "cat /etc/niminfo | grep 'BASECUST_REMOVAL'";
+        $::NOERROR=1;
         &runcmd($cmd);
         my $line = $::outref;
         my ($junk, $torm) =  split(/=/, $line);
 
+        $::NOERROR=0;
         $cmd = "cat /etc/niminfo | grep 'NIM_HOSTNAME'";
         &runcmd($cmd);
         $line = $::outref;
@@ -549,7 +551,7 @@ sub runcmd
 {
     my ($cmd, $logerr) = @_;
 
-    if(! defined($logerr)) {
+    if(! defined($logerr)) {   # always log errors
         $logerr = 1;
     }
     my $rc=0;
@@ -561,7 +563,9 @@ sub runcmd
         $rc = $? >> 8;
         if ($rc > 0 && $logerr)
         {
-		print "$::sdate  xcataixpost: run: $cmd - $::outref\n";
+                if ($::NOERROR == 0) {  # print the error message
+	  	  print "$::sdate  xcataixpost: run: $cmd - $::outref\n";
+                }                                
 		print $::LOG_FILE "$::sdate  xcataixpost: run: $cmd - $::outref\n";
         }
     }
