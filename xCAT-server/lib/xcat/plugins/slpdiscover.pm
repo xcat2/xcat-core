@@ -180,6 +180,10 @@ sub setupIMM {
 		@ips = xCAT::NetworkUtils::getipaddr($newaddr,GetAllAddresses=>1);
 	}
 	sendmsg(":Configuration of ".$node." commencing, configuration may take a few minutes to take effect",$callback);
+	my $child = fork();
+	if ($child) { return; }
+	unless (defined $child) { die "error spawining process" }
+	
 	#ok, with all ip addresses in hand, time to enable IPMI and set all the ip addresses (still static only, TODO: dhcp
 	my $ssh = new xCAT::SSHInteract(-username=>$args{username},
 					-password=>$args{password},
@@ -224,6 +228,7 @@ sub configure_hosted_elements {
 			setupIMM($node,slpdata=>$immdata,curraddr=>$addr,username=>$user,password=>$pass);
 		}
 	}
+	while (wait() > 0) {}
 }
 
 sub setup_cmm_pass {
