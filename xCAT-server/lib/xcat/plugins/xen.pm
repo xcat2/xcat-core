@@ -764,12 +764,14 @@ sub process_request {
   if ($command eq 'revacuate' or $command eq 'rmigrate') {
       $vmmaxp=1; #for now throttle concurrent migrations, requires more sophisticated heuristics to ensure sanity
   } else {
-      my $sitetab = xCAT::Table->new('site');
-      my $tmp;
-      if ($sitetab) {
-        ($tmp)=$sitetab->getAttribs({'key'=>'vmmaxp'},'value');
-        if (defined($tmp)) { $vmmaxp=$tmp->{value}; }
-      }
+      #my $sitetab = xCAT::Table->new('site');
+      #my $tmp;
+      #if ($sitetab) {
+        #($tmp)=$sitetab->getAttribs({'key'=>'vmmaxp'},'value');
+        my @entries =  xCAT::Utils->get_site_attribute("vmmaxp");
+        my $t_entry = $entries[0];
+        if (defined($t_entry)) { $vmmaxp=$t_entry; }
+      #}
   }
 
   my $children = 0;
@@ -814,13 +816,15 @@ sub process_request {
   my @allerrornodes=();
   my $check=0;
   my $global_check=1;
-  my $sitetab = xCAT::Table->new('site');
-  if ($sitetab) {
-    (my $ref) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
-    if ($ref) {
-       if ($ref->{value} =~ /0|n|N/) { $global_check=0; }
+  #my $sitetab = xCAT::Table->new('site');
+  #if ($sitetab) {
+    #(my $ref) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
+    my @entries =  xCAT::Utils->get_site_attribute("nodestatus");
+    my $t_entry = $entries[0];
+    if ( defined($t_entry) ) {
+       if ($t_entry =~ /0|n|N/) { $global_check=0; }
     }
-  }
+  #}
 
 
   if ($command eq 'rpower') {
