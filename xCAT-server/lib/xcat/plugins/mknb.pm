@@ -14,30 +14,38 @@ sub handled_commands {
 sub process_request {
    my $request = shift;
    my $callback = shift;
-   my $sitetab = xCAT::Table->new('site');
+   #my $sitetab = xCAT::Table->new('site');
    my $serialport;
    my $serialspeed;
    my $serialflow;
    my $xcatdport = 3001;
-   if ($sitetab) {
-      my $portent = $sitetab->getAttribs({key=>'defserialport'},'value');
-      if ($portent and defined($portent->{value})) {
-         $serialport=$portent->{value};
+   #if ($sitetab) {
+      #my $portent = $sitetab->getAttribs({key=>'defserialport'},'value');
+      my @entries =  xCAT::Utils->get_site_attribute("defserialport");
+      my $t_entry = $entries[0];
+      if ( defined($t_entry) ) {
+         $serialport=$t_entry;
       }
-      $portent = $sitetab->getAttribs({key=>'defserialspeed'},'value');
-      if ($portent and defined($portent->{value})) {
-         $serialspeed=$portent->{value};
+      #$portent = $sitetab->getAttribs({key=>'defserialspeed'},'value');
+      @entries =  xCAT::Utils->get_site_attribute("defserialspeed");
+      $t_entry = $entries[0];
+      if ( defined($t_entry) ) {
+         $serialspeed=$t_entry;
       }
-      $portent = $sitetab->getAttribs({key=>'defserialflow'},'value');
-      if ($portent and defined($portent->{value})) {
-         $serialflow=$portent->{value};
+      #$portent = $sitetab->getAttribs({key=>'defserialflow'},'value');
+      @entries =  xCAT::Utils->get_site_attribute("defserialflow");
+      $t_entry = $entries[0];
+      if ( defined($t_entry) ) {
+         $serialflow=$t_entry;
       }
-      $portent = $sitetab->getAttribs({key=>'xcatdport'},'value');
-      if ($portent and defined($portent->{value})) {
-         $xcatdport=$portent->{value};
+      #$portent = $sitetab->getAttribs({key=>'xcatdport'},'value');
+      @entries =  xCAT::Utils->get_site_attribute("xcatdport");
+      $t_entry = $entries[0];
+      if ( defined($t_entry) ) {
+         $xcatdport=$t_entry;
       }
-      $sitetab->close;
-   }
+      #$sitetab->close;
+   #}
 
    my $tftpdir = xCAT::Utils->getTftpDir();
    my $arch = $request->{arg}->[0];
