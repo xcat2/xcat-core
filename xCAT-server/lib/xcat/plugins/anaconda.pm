@@ -179,7 +179,7 @@ sub mknetboot
         $installroot = $site_ent;
     }
     #    ($ref) = $sitetab->getAttribs({key => 'xcatdport'}, 'value');
-    @ents = xCAT::Utils->get_site_attribute("installdir");
+    @ents = xCAT::Utils->get_site_attribute("xcatdport");
     $site_ent = $ents[0];
     if ( defined($site_ent) )
     {
