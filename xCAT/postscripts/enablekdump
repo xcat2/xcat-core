@@ -104,6 +104,7 @@ if [ ! -z "$DUMP" ]; then
 	else
 	    if (pmatch $OSVER "fedora*") || (pmatch $OSVER "rhel6*") || (pmatch $OSVER "rhels6*") || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ];then
 		echo "net $KDIP:$KDPATH" > /etc/kdump.conf
+                echo "link_delay 180" >> /etc/kdump.conf
 		/etc/init.d/kdump restart
 	    fi
 	fi
