@@ -34,13 +34,15 @@ sub process_request {
 	my $callback = shift;
 	my $doreq = shift;
 
-	my $sitetab = xCAT::Table->new('site');
-	my $ent = $sitetab->getAttribs({key=>'installdir'},['value']);
+	#my $sitetab = xCAT::Table->new('site');
+	#my $ent = $sitetab->getAttribs({key=>'installdir'},['value']);
+        my @entries =  xCAT::Utils->get_site_attribute("installdir");
+        my $t_entry = $entries[0];
 	my $installroot = "/install";
 
 	# get /install directory
-	if ($ent and $ent->{value}) {
-		$installroot = $ent->{value};
+	if ( defined($t_entry) ) {
+		$installroot = $t_entry;
 	}
 	# if not defined, error out... or should we set it as default?
 	unless ($installroot) {
