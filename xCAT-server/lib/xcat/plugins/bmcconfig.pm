@@ -110,7 +110,7 @@ sub process_request  {
     $password=$tmphash->{password};
   }
   #$tmphash=($sitetable->getAttribs({key=>'genpasswords'},'value'))[0];
-  my @entries =  xCAT::Utils->get_site_attribute("blademaxp");
+  my @entries =  xCAT::Utils->get_site_attribute("genpasswords");
   my $site_entry = $entries[0];
   if ($site_entry eq "1" or $site_entry  =~ /y(es)?/i) {
     $password = genpassword(10)."1cA!";
