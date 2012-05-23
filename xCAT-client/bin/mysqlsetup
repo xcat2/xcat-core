@@ -1551,7 +1551,7 @@ sub setupODBC
     if ($::RUNCMD_RC != 0)    # then xcat entry not there
     {
         my $entry =
-          "[xCATDB]\nSERVER =$server\nDATABASE = xcatdb\nUSER     = xcatadmin\nPASSWORD = $passwd";
+          "[xCATDB]\nSERVER =$server\nDATABASE = xcatdb\nUSER     = $adminid\nPASSWORD = $passwd";
         $cmd = "echo \"$entry\" >> $rootodbcfile";
         # secure passwd in verbose mode
         my $tmpv = $::VERBOSE;
