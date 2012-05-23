@@ -352,10 +352,12 @@ sub preprocess_request {
 
    #Assume shared tftp directory for boring people, but for cool people, help sync up tftpdirectory contents when 
    #they specify no sharedtftp in site table
-   my $stab = xCAT::Table->new('site');
+   #my $stab = xCAT::Table->new('site');
   
-   my $sent = $stab->getAttribs({key=>'sharedtftp'},'value');
-   if ($sent and ($sent->{value} == 0 or $sent->{value} =~ /no/i)) {
+   #my $sent = $stab->getAttribs({key=>'sharedtftp'},'value');
+   my @entries =  xCAT::Utils->get_site_attribute("sharedtftp");
+   my $t_entry = $entries[0];
+   if ( defined($t_entry)  and ($t_entry == 0 or $t_entry =~ /no/i)) {
       $req->{'_disparatetftp'}=[1];
       if ($req->{inittime}->[0]) {
           return [$req];
@@ -526,13 +528,15 @@ sub process_request {
   unless (($args[0] eq 'stat') || ($inittime) || ($args[0] eq 'offline')) {
       #dhcp stuff
       my $do_dhcpsetup=1;
-      my $sitetab = xCAT::Table->new('site');
-      if ($sitetab) {
-          (my $ref) = $sitetab->getAttribs({key => 'dhcpsetup'}, 'value');
-          if ($ref) {
-             if ($ref->{value} =~ /0|n|N/) { $do_dhcpsetup=0; }
+      #my $sitetab = xCAT::Table->new('site');
+      #if ($sitetab) {
+          #(my $ref) = $sitetab->getAttribs({key => 'dhcpsetup'}, 'value');
+          my @entries =  xCAT::Utils->get_site_attribute("dhcpsetup");
+          my $t_entry = $entries[0];
+          if (defined($t_entry) ) {
+             if ($t_entry =~ /0|n|N/) { $do_dhcpsetup=0; }
           }
-      }
+      #}
 
       if ($do_dhcpsetup) {
          if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command, only change local settings if already farmed
