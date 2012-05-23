@@ -51,7 +51,7 @@ sub mknetboot
     my $nodes    = @{$req->{node}};
     my @nodes    = @{$req->{node}};
     my $ostab    = xCAT::Table->new('nodetype');
-    my $sitetab  = xCAT::Table->new('site');
+    #my $sitetab  = xCAT::Table->new('site');
     my $linuximagetab;
     my $pkgdir;
     my $osimagetab;
@@ -60,19 +60,21 @@ sub mknetboot
 
     my $xcatdport = "3001";
 
-    if ($sitetab)
-    {
-        (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
-        if ($ref and $ref->{value})
-        {
-            $installroot = $ref->{value};
+    #if ($sitetab)
+    #{
+        #(my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
+        my @entries =  xCAT::Utils->get_site_attribute("installdir");
+        my $t_entry = $entries[0];
+        if ( defined($t_entry) ) {
+            $installroot = $t_entry;
         }
-        ($ref) = $sitetab->getAttribs({key => 'xcatdport'}, 'value');
-        if ($ref and $ref->{value}) 
-        {
-            $xcatdport = $ref->{value};
+        #($ref) = $sitetab->getAttribs({key => 'xcatdport'}, 'value');
+        @entries =  xCAT::Utils->get_site_attribute("xcatdport");
+        $t_entry = $entries[0];
+        if ( defined($t_entry) ) {
+            $xcatdport = $t_entry;
         }
-    }
+    #}
 
     my $ntents = $ostab->getNodesAttribs($req->{node}, ['os', 'arch', 'profile', 'provmethod']);
     my %img_hash=();
@@ -593,7 +595,7 @@ sub mkinstall
     my @nodes    = @{$request->{node}};
     my $node;
     my $ostab = xCAT::Table->new('nodetype');
-    my $sitetab  = xCAT::Table->new('site');
+    #my $sitetab  = xCAT::Table->new('site');
     my $linuximagetab;
     my $osimagetab;
 
@@ -615,14 +617,15 @@ sub mkinstall
             my $hments =
               $hmtab->getNodesAttribs(\@nodes, ['serialport', 'serialspeed', 'serialflow']);
 
-    if ($sitetab)
-    {
-        (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
-        if ($ref and $ref->{value})
-        {
-            $installroot = $ref->{value};
+    #if ($sitetab)
+    #{
+        #(my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
+        my @entries =  xCAT::Utils->get_site_attribute("installdir");
+        my $t_entry = $entries[0];
+        if ( defined($t_entry) ) {
+            $installroot = $t_entry;
         }
-    }
+    #}
 
     my %doneimgs;
     require xCAT::Template; #only used here, load so memory can be COWed
@@ -975,16 +978,17 @@ sub copycd
     my $arch;
     my $path;
     $installroot = "/install";
-    my $sitetab = xCAT::Table->new('site');
-    if ($sitetab)
-    {
-        (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
-        print Dumper($ref);
-        if ($ref and $ref->{value})
-        {
-            $installroot = $ref->{value};
+    #my $sitetab = xCAT::Table->new('site');
+    #if ($sitetab)
+    #{
+        #(my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
+        #print Dumper($ref);
+        my @entries =  xCAT::Utils->get_site_attribute("installdir");
+        my $t_entry = $entries[0];
+        if ( defined($t_entry) ) {
+            $installroot = $t_entry;
         }
-    }
+    #}
 
     @ARGV = @{$request->{arg}};
     GetOptions(
