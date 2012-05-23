@@ -64,7 +64,7 @@ sub preprocess_request
     #my $stab = xCAT::Table->new('site');
     #my $sent;
     #($sent) = $stab->getAttribs({key => 'sharedtftp'}, 'value');
-    my @entries =  xCAT::Utils->get_site_attribute("defserialport");
+    my @entries =  xCAT::Utils->get_site_attribute("sharedtftp");
     my $t_entry = $entries[0];
     unless (  defined($t_entry)
             and ($t_entry =~ /no/i or $t_entry =~ /0/))
