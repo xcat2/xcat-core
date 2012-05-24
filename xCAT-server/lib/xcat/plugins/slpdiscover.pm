@@ -204,7 +204,7 @@ sub setupIMM {
 			} else {
 				(my $sip,my $mask,my $gw) = xCAT_plugin::bmcconfig::net_parms($ip);
 				my $cmd = "ifconfig eth0 -c static -i $ip -s $mask";
-				if ($gw) { $cmd .= "-g $gw"; }
+				if ($gw) { $cmd .= " -g $gw"; }
 				$ssh->cmd($cmd);
 			}
 		}
