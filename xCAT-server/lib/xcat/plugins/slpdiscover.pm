@@ -209,6 +209,7 @@ sub setupIMM {
 		$ssh->close();
 		$ipmitab->setNodeAttribs($node,{bmcid=>$slpdata->{macaddress}});
 	}
+	exit(0);
 }
 
 sub configure_hosted_elements {
