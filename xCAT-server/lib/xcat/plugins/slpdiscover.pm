@@ -203,7 +203,9 @@ sub setupIMM {
 				$ssh->cmd("ifconfig eth0 -ipv6static enable -i6 $ip");
 			} else {
 				(my $sip,my $mask,my $gw) = xCAT_plugin::bmcconfig::net_parms($ip);
-				$ssh->cmd("ifconfig eth0 -c static -i $ip -s $mask -g $gw");
+				my $cmd = "ifconfig eth0 -c static -i $ip -s $mask";
+				if ($gw) { $cmd .= "-g $gw"; }
+				$ssh->cmd($cmd);
 			}
 		}
 		$ssh->close();
