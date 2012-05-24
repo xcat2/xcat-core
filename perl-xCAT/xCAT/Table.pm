@@ -2059,6 +2059,7 @@ sub getNodesAttribs {
     } else {
         @attribs = @_;
     }
+    my @realattribs = @attribs; #store off the requester attribute list, the cached columns may end up being a superset and we shouldn't return more than asked
 	#it should also be the case that cache will be used if it already is in play even if below cache threshold.  This would be desired behavior
     if (scalar(@$nodelist) > $cachethreshold) {
         $self->{_use_cache} = 0;
@@ -2081,7 +2082,7 @@ sub getNodesAttribs {
     }
     my $rethash;
     foreach (@$nodelist) {
-        my @nodeentries=$self->getNodeAttribs($_,\@attribs,%options);
+        my @nodeentries=$self->getNodeAttribs($_,\@realattribs,%options);
         $rethash->{$_} = \@nodeentries; #$self->getNodeAttribs($_,\@attribs);
     }
     $self->{_use_cache} = 0;
