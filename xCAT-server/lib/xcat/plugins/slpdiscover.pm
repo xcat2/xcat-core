@@ -67,7 +67,10 @@ sub handle_new_slp_entity {
 	if ($data->{SrvType} eq "service:management-hardware.IBM:integrated-management-module2" and $data->{attributes}->{"enclosure-form-factor"}->[0] eq "BC2") {
 		$data->{macaddress}=$mac;
 		#this is a Flex ITE, don't go mac searching for it, but remember the chassis UUID for later
-		push @{$flexchassismap{$data->{attributes}->{"chassis-uuid"}->[0]}},$data;
+		if ($flexchassismap{$data->{attributes}->{"chassis-uuid"}->[0]}->{$mac} and $data->{peername} !~ /fe80/) {
+			return;
+		}
+		$flexchassismap{$data->{attributes}->{"chassis-uuid"}->[0]}->{$mac}=$data;
 		return;
 	}
 	unless ($mac) { return; }
@@ -179,7 +182,7 @@ sub setupIMM {
 	if ($newaddr) {
 		@ips = xCAT::NetworkUtils::getipaddr($newaddr,GetAllAddresses=>1);
 	}
-	sendmsg(":Configuration of ".$node." commencing, configuration may take a few minutes to take effect",$callback);
+	sendmsg(":Configuration commencing, configuration may take a few minutes to take effect",$callback,$node);
 	my $child = fork();
 	if ($child) { return; }
 	unless (defined $child) { die "error spawining process" }
@@ -216,7 +219,7 @@ sub configure_hosted_elements {
 	my $slot;
         my $user = $passwordmap{$cmm}->{username};
         my $pass = $passwordmap{$cmm}->{password};
-	foreach $immdata (@{$flexchassismap{$uuid}}) {
+	foreach $immdata (values %{$flexchassismap{$uuid}}) {
 		$slot=$immdata->{attributes}->{slot}->[0];
 		if ($node = $nodebymp{$cmm}->{$slot}) {
 			my $addr = $immdata->{peername}; #todo, use sockaddr and remove the 427 port from it instead?
@@ -226,7 +229,10 @@ sub configure_hosted_elements {
 			if ($doneaddrs{$node}) { next; }
 			$doneaddrs{$node}=1;
 			setupIMM($node,slpdata=>$immdata,curraddr=>$addr,username=>$user,password=>$pass);
+		} else {
+			sendmsg(": Ignoring target in bay $slot, no node found with mp.mpa/mp.id matching",$callback,$cmm);
 		}
+	
 	}
 	while (wait() > 0) {}
 }
