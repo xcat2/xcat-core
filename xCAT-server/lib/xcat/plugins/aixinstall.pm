@@ -10224,9 +10224,10 @@ sub mkdsklsnode
 				# try to get a lock if this is shared_root and using
 				#		a shared filesystem
 				if ($origloc && ($sharedinstall eq "sns")) {
-
-					$lockfile = "$origloc/lockfile";
-					open($SRlock, "<", $lockfile);
+					my $fl = dirname($origloc);
+					$lockfile = "$fl/lockfile_$imagehash{$image_name}{shared_root}";
+					# ex. /install/nim/shared_root/lockfile_71Dskls
+					open($SRlock, ">>", $lockfile);
 					flock($SRlock,LOCK_EX);
 					$locked++;
 				}
@@ -10249,6 +10250,10 @@ sub mkdsklsnode
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 $error++;
                 push(@nodesfailed, $node);
+				if ($locked) {
+                	flock($SRlock,LOCK_UN);
+                	close($SRlock);
+            	}
                 next;
             }
 
@@ -11784,8 +11789,10 @@ sub make_SN_resource
 						# need to set a lock so that some other SN doesn't
 						#		modify anything while we're doing this
 						#
-						$lockfile = "$origloc/lockfile";
-						open($SRlock, "<", $lockfile);
+						my $fl = dirname($origloc);
+                    	$lockfile = "$fl/lockfile_$imghash{$image}{$restype}";
+						# ex. /install/nim/shared_root/lockfile_71Dskls
+						open($SRlock, ">>", $lockfile);
 						flock($SRlock,LOCK_EX);
 						$locked++;
 
@@ -11841,8 +11848,8 @@ sub make_SN_resource
 					}
 
 					if ( $locked) {
-						flock($lockfile,LOCK_UN);
-						close($lockfile);
+						flock($SRlock,LOCK_UN);
+						close($SRlock);
 					}
 				}
                 # only make lpp_source for standalone type images
