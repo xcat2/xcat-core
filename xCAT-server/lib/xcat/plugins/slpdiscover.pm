@@ -147,7 +147,7 @@ sub process_request {
 			next;
 		}
 		if ($data->{SrvType} eq "service:management-hardware.IBM:chassis-management-module") {
-			sendmsg(":Found ".$nodename." which seems to be ".$data->{SrvType}." at address $addr",$callback);
+			sendmsg(":Found ".$data->{SrvType}." at address $addr",$callback,$nodename);
 			unless (do_blade_setup($data,curraddr=>$addr)) {
 				next;
 			}
@@ -155,7 +155,7 @@ sub process_request {
 			unless (do_blade_setup($data,curraddr=>$addr,pass2=>1)) {
 				next;
 			}
-			sendmsg(":Configuration of ".$nodename." complete, configuration may take a few minutes to take effect",$callback);
+			sendmsg(":Configuration complete, configuration may take a few minutes to take effect",$callback,$nodename);
 			$macuphash{$nodename} = { mac => $mac };
 		}
 	}
