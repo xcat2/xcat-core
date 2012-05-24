@@ -299,6 +299,7 @@ sub send_service_request_single {
 	my $packet = generate_service_request(%args);
 	my $interfaces = $args{ifacemap}; #get_interfaces(%args);
 	my $socket = $args{'socket'};
+	my @v6addrs;
 	my $v6addr;
 	if ($ip6support) {
 		my $hash=getmulticasthash($args{SrvType});
@@ -306,13 +307,19 @@ sub send_service_request_single {
 		my ($fam, $type, $proto, $name);
 		($fam, $type, $proto, $v6addr, $name) = 
 		   Socket6::getaddrinfo($target,"svrloc",Socket6::AF_INET6(),SOCK_DGRAM,0);
+		push @v6addrs,$v6addr;
+		($fam, $type, $proto, $v6addr, $name) = 
+		   Socket6::getaddrinfo("ff01::1:$hash","svrloc",Socket6::AF_INET6(),SOCK_DGRAM,0);
+		push @v6addrs,$v6addr;
 	}
 	my $ipv4mcastaddr = inet_aton("239.255.255.253"); #per rfc 2608
 	my $ipv4sockaddr  = sockaddr_in(427,$ipv4mcastaddr);
 	foreach my $iface (keys %{$interfaces}) {
 		if ($ip6support) {
 			setsockopt($socket,Socket6::IPPROTO_IPV6(),IPV6_MULTICAST_IF,pack("I",$interfaces->{$iface}->{scopeidx}));
-			$socket->send($packet,0,$v6addr);
+			foreach $v6addr (@v6addrs) {
+				$socket->send($packet,0,$v6addr);
+			}
 		}
 		foreach my $sip (@{$interfaces->{$iface}->{ipv4addrs}}) {
 			my $ip = $sip;
