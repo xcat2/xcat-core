@@ -1,4 +1,4 @@
 #ENV:IBM_LOADL_LICENSE_ACCEPT=yes#
-LoadL-full-license*
-LoadL-scheduler-full*
-LoadL-resmgr-full*
+loadl/LoadL-full-license*
+loadl/LoadL-scheduler-full*
+loadl/LoadL-resmgr-full*
