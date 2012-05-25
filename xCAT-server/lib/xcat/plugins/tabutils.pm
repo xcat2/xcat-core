@@ -2071,8 +2071,8 @@ sub tabch {
         push @{$rsp{data}}, "         that identifies the rows in a table to be changed.";
         push @{$rsp{data}}, "         tablename.colname=newvalue ";
         push @{$rsp{data}}, "         the new value for the specified row and column of the table.";
-        push @{$rsp{data}}, "       tabprune [-h|--help]";
-        push @{$rsp{data}}, "       tabprune [-v|--version]";
+        push @{$rsp{data}}, "       tabch [-h|--help]";
+        push @{$rsp{data}}, "       tabch [-v|--version]";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
         $callback->(\%rsp);
     };
