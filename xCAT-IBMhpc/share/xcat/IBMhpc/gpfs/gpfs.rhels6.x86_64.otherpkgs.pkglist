@@ -3,6 +3,7 @@ gpfs/gpfs.gpl
 gpfs/gpfs.gplbin*
 gpfs/gpfs.msg.en_US
 
-# List additinal package names in comments to reduce image size, uncomment them if they are necessary for you.
+# List additinal package names in comments to reduce image size
+# uncomment them if they are necessary for you
 #gpfs/gpfs.gnr
 #gpfs/gpfs.docs
