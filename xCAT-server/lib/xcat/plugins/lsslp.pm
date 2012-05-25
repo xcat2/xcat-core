@@ -1030,6 +1030,44 @@ sub parse_responses {
 			sn is $tmphash{serial}, side is $tmphash{side},parent is $tmphash{parent},ip is $tmphash{ip}, \
 			cec id is $tmphash{cid} , frame id is $tmphash{fid},mac is $tmphash{side}, \
 			otheringerfaces is $atthash{otherinterfaces}" );
+            
+            #####################################################################
+            #define another side to fix the issue that the result is imcomplete
+            #####################################################################
+            my %tmphash1;
+            $tmphash1{ip} = (${$searchmacs{$rsp}}{peername} =~ ${$attributes->{'ip-address'}}[0])?${$attributes->{'ip-address'}}[1]:${$attributes->{'ip-address'}}[0]; 
+            unless ($outhash{$tmphash1{ip}}) {
+                my $validflag = 1;
+                foreach (@invalidiplist){
+                    if ( $tmphash1{ip} =~ /^($_)/ ){
+                        $validflag = 0;
+                        last;
+                    }
+                }    
+                if ($validflag == 1) {
+                    $tmphash1{type} = ($type eq SERVICE_BPA) ? TYPE_BPA : TYPE_FSP;
+                    $tmphash1{mtm} = ${$attributes->{'machinetype-model'}}[0];
+                    $tmphash1{serial} = ${$attributes->{'serial-number'}}[0];
+                    my $loc = ($tmphash1{ip} =~ ${$attributes->{'ip-address'}}[0]) ? 0:1; #every entry has two ip-addresses
+                    $tmphash1{side} = (int(${$attributes->{'slot'}}[0]) == 0) ? 'B-'.$loc:'A-'.$loc;
+                    $tmphash1{mac} = get_mac_for_addr($tmphash1{ip});
+                    $tmphash1{parent} =  'Server-'.$tmphash1{mtm}.'-SN'.$tmphash1{serial};
+                    $tmphash1{hostname} = $tmphash1{ip};
+                    $tmphash1{otherinterfaces} = ${$searchmacs{$rsp}}{peername};
+                    $tmphash1{bpcmtm} = ${$attributes->{'bpc-machinetype-model'}}[0];
+                    $tmphash1{bpcsn} = ${$attributes->{'bpc-serial-number'}}[0];
+                    $tmphash1{fid} = int(${$attributes->{'frame-number'}}[0]);
+                    $tmphash1{cid} = int(${$attributes->{'cage-number'}}[0]);
+                    $outhash{$tmphash1{ip}} = \%tmphash1;
+                    $$length = length( $tmphash1{ip}) if ( length( $tmphash1{ip} ) > $$length );
+                    trace( $request, "Discover node $atthash{hostname}:type is $tmphash1{type}, mtm is $tmphash1{mtm}, \
+			        sn is $tmphash1{serial}, side is $tmphash1{side},parent is $tmphash1{parent},ip is $tmphash1{ip}, \
+			        cec id is $tmphash1{cid} , frame id is $tmphash1{fid},mac is $tmphash1{side}, \
+			        otheringerfaces is $atthash{otherinterfaces}" );
+                }
+            }
+            ######################################################################
+            
             #begin to define frame and cec
             $atthash{type} = $service_slp{$type};
             $atthash{mtm} = ${$attributes->{'machinetype-model'}}[0];
