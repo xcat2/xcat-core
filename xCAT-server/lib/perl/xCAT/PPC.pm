@@ -1119,9 +1119,11 @@ sub resolve {
         }
         #############################
         # Get BPA (if any)
+        #DFM doesn't support rvitals with temp, so add the if  fsp_api != 1
+        #It will improve the performance of rvitals with all
         #############################
         if (( $request->{command} eq "rvitals" ) &&
-                ( $request->{method}  =~ /^all|temp$/ )) { 
+                ( $request->{method}  =~ /^all|temp$/ ) && $request->{fsp_api} != 1 ) { 
             my ($ent) = $tabs->{ppc}->getNodeAttribs( $att->{parent},['parent']);
 
             #############################
@@ -1160,7 +1162,7 @@ sub resolve {
             $ntype = xCAT::DBobjUtils->getnodetype($att->{parent}, "ppc");
         }
         if (( $request->{command} eq "rvitals" ) &&
-                ( $request->{method}  =~ /^all|temp$/ && $ntype =~ /^cec$/ )) {
+                ( $request->{method}  =~ /^all|temp$/ && $ntype =~ /^cec$/ ) && $request->{fsp_api} != 1 ) {
             my ($ent) = $tabs->{ppc}->getNodeAttribs( $att->{parent},['parent']);
 
             #############################
@@ -1181,7 +1183,7 @@ sub resolve {
                 $att->{bpa} = "$vpd->{mtm}*$vpd->{serial}";
             }
         } elsif (( $request->{command} eq "rvitals" ) &&
-                 ( $request->{method}  =~ /^all|temp$/ && $ntype =~ /^bpa$/ )) {
+                 ( $request->{method}  =~ /^all|temp$/ && $ntype =~ /^bpa$/ ) && $request->{fsp_api} != 1) {
             my @attrs = qw(mtm serial);
             my ($vpd) = $tabs->{vpd}->getNodeAttribs($att->{parent},\@attrs);
             ########################
@@ -1216,7 +1218,7 @@ sub resolve {
         $att->{bpa}      = $att->{parent};
 
         if (( $request->{command} eq "rvitals" ) &&
-                ( $request->{method}  =~ /^all|temp$/ )) {
+                ( $request->{method}  =~ /^all|temp$/ ) && $request->{fsp_api} != 1) {
 
             #############################
             # Find MTMS in vpd database
