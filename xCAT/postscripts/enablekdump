@@ -41,10 +41,21 @@ if [ ! -z "$MACX" ] && [ ! -z "$ETHX" ]; then
     if [ ! -e $CONFFILE ]; then
         /bin/touch $CONFFILE
     fi
-    echo "DEVICE=$ETHX" > $CONFFILE
-    echo "BOOTPROTO=dhcp" >> $CONFFILE
-    echo "HWADDR=$MACX" >> $CONFFILE
-    echo "ONBOOT=yes" >> $CONFFILE
+    if (pmatch $ETHX "hf*") ; then
+        IP=`/sbin/ifconfig $ETHX | /bin/grep -i "inet addr" | awk '{print $2}' | awk -F: '{print $2}'`
+        MASK=`/sbin/ifconfig $ETHX | /bin/grep -i "inet addr" | awk '{print $4}' | awk -F: '{print $2}'`
+        echo "DEVICE=$ETHX" > $CONFFILE
+        echo "BOOTPROTO=static" >> $CONFFILE
+        echo "HWADDR=$MACX" >> $CONFFILE
+        echo "ONBOOT=yes" >> $CONFFILE
+        echo "IPADDR=$IP" >> $CONFFILE
+        echo "NETMASK=$MASK" >> $CONFFILE
+    else
+        echo "DEVICE=$ETHX" > $CONFFILE
+        echo "BOOTPROTO=dhcp" >> $CONFFILE
+        echo "HWADDR=$MACX" >> $CONFFILE
+        echo "ONBOOT=yes" >> $CONFFILE
+    fi
 fi
 
 
