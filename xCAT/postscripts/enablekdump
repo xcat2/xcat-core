@@ -41,10 +41,21 @@ if [ ! -z "$MACX" ] && [ ! -z "$ETHX" ]; then
     if [ ! -e $CONFFILE ]; then
         /bin/touch $CONFFILE
     fi
-    echo "DEVICE=$ETHX" > $CONFFILE
-    echo "BOOTPROTO=dhcp" >> $CONFFILE
-    echo "HWADDR=$MACX" >> $CONFFILE
-    echo "ONBOOT=yes" >> $CONFFILE
+    if (pmatch $ETHX "hf*") ; then
+        IP=`/sbin/ifconfig $ETHX | /bin/grep -i "inet addr" | awk '{print $2}' | awk -F: '{print $2}'`
+        MASK=`/sbin/ifconfig $ETHX | /bin/grep -i "inet addr" | awk '{print $4}' | awk -F: '{print $2}'`
+        echo "DEVICE=$ETHX" > $CONFFILE
+        echo "BOOTPROTO=static" >> $CONFFILE
+        echo "HWADDR=$MACX" >> $CONFFILE
+        echo "ONBOOT=yes" >> $CONFFILE
+        echo "IPADDR=$IP" >> $CONFFILE
+        echo "NETMASK=$MASK" >> $CONFFILE
+    else
+        echo "DEVICE=$ETHX" > $CONFFILE
+        echo "BOOTPROTO=dhcp" >> $CONFFILE
+        echo "HWADDR=$MACX" >> $CONFFILE
+        echo "ONBOOT=yes" >> $CONFFILE
+    fi
 fi
 
 
@@ -52,14 +63,12 @@ for i in `cat /proc/cmdline`; do
     KEY=`echo $i | awk -F= '{print $1}'`
     if [ "$KEY" = "dump" ]; then
         DUMP=`echo $i |awk -F= '{print $2}'`
-        if [ ! -z "$XCAT" ]; then
-            break
-        fi
     elif [ "$KEY" = "XCAT" ]; then
         XCAT=`echo $i |awk -F= '{print $2}'`
-        if [ ! -z "$DUMP" ]; then
-            break
-        fi
+    elif [ "$KEY" = "fadump" ]; then
+        FADUMP=`echo $i |awk -F= '{print $2}'`
+    elif [ "$KEY" = "fadump_target" ]; then
+        DUMP=`echo $i |awk -F= '{print $2}'`
     fi
 done
 
@@ -92,19 +101,13 @@ if [ ! -z "$DUMP" ]; then
 	    KDPATH=${KDPATH//\//\\\/}
 	    KDPATH="nfs:\/\/${KDIP}${KDPATH}"
 	    sed -i "s/^KDUMP_SAVEDIR=.*$/KDUMP_SAVEDIR=\"${KDPATH}\"/" /etc/sysconfig/kdump
-            sed -i "s/^KDUMP_COPY_KERNEL=.*$/KDUMP_COPY_KERNEL=no/" /etc/sysconfig/kdump
-            #change the mount and remount shell scripts' name, workaround for kdump on stateless node
-            oldmount=`ls /lib/mkinitrd/boot/*-mount.sh`
-            oldremount=`ls /lib/mkinitrd/boot/*-remount.sh`
-            mv $oldmount ${oldmount}.bak
-            mv $oldremount ${oldremount}.bak
 	    /etc/init.d/boot.kdump restart
-            mv ${oldmount}.bak $oldmount
-            mv ${oldremount}.bak $oldremount
 	else
 	    if (pmatch $OSVER "fedora*") || (pmatch $OSVER "rhel6*") || (pmatch $OSVER "rhels6*") || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ];then
 		echo "net $KDIP:$KDPATH" > /etc/kdump.conf
-                echo "link_delay 180" >> /etc/kdump.conf
+		if [ ! -z $FADUMP ]; then
+		    /bin/umount $MOUNTPATH
+                fi
 		/etc/init.d/kdump restart
 	    fi
 	fi
