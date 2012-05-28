@@ -56,40 +56,68 @@ sub enumerate_temp {
 }
 
 ##########################################################################
-# Returns refcode
+# Returns refcode ; In DFM, it will get both the LCD value and the Current Power status Value
 ##########################################################################
 sub enumerate_lcds {
 
     my $request= shift;
     my $name= shift;
     my $d = shift;
-    my $mtms = @$d[2];
-    my $Rc = undef;
-    my $value = undef;
-    my $nodetype = @$d[4];
-    my $lpar_id = @$d[0];
-    my @refcode = ();
-    my $action; 
-    if($$d[4] =~ /^lpar$/) {
-	    $action = "query_lcds"; 
-	
-    #} elsif($$d[4] =~ /^fsp$/) { 
-    #    $action = "cec_query_lcds"; 
-    } else {
-	    $action = "cec_query_lcds"; 
-    }
-    
-    my $values = xCAT::FSPUtils::fsp_api_action ($request, $name, $d, $action);
+    my $action = shift; 
+    my $only_lcds = shift; 
+    my $prefix  = "Current LCD:";
+    my $power_status_prefix = "Current Power Status:";
+    my $Rc;
+    my @refcode;
+    my $c;
+ 
+    my $values = xCAT::FSPUtils::fsp_api_action ($request, $name, $d, $action); 
     $Rc =  @$values[2];
     my $data = @$values[1];
-    $data =~ /\|(\w*)/ ;
-       my $code = $1;
-       if ( ! $code) {
-          push @refcode, [$Rc, "blank"];
-       } else {
-          push @refcode, [$Rc, $code] ;
-       }
+    if( $Rc != 0 ) {
+        my @names = split(/,/, $name);
+        my @t_data = split(/\n\n/, $data); 
+        foreach my $n (@names) {
+            if( $data =~ /$n/ ) {
+                chomp $t_data[$c];
+                push @refcode,[$n, "$prefix $t_data[$c]", $Rc];
+                if( $only_lcds == 0) {
+                    push @refcode,[$n, "$power_status_prefix $t_data[$c]", $Rc];
+                }
+                $c++;
+            } else {
+                push @refcode, [$n, "$prefix $data", $Rc];
+                if( $only_lcds == 0) {
+                    push @refcode, [$n, "$power_status_prefix $data", $Rc];
+                }
+            }
+        }
+    } else {
+       my @array =  split(/\n/, $data);
+       foreach my $a (@array) {
+            my @t = split(/:/, $a);
+            my $name = $t[0];
+            $data = $t[1];
+            ## it will not parse the power status if only lcds.
+            # $only_lcds = 0, it will get the power status
+            # $only_lcds = 0, not get the power status.
+            if( $only_lcds == 0) { 
+                # get power status
+                if( $data =~ /1\|/) {
+                    push @refcode, [$name, "$power_status_prefix on", $Rc] ;
+                } else {
+                    push @refcode, [$name, "$power_status_prefix off", $Rc];
+                }
+            }
 
+            # get lcd value
+            if( $data =~ /1\|(\w[\w\s]*)/) {
+               push @refcode, [$name, "$prefix $1", $Rc] ;
+            } else {
+               push @refcode, [$name, "$prefix blank", $Rc];
+            }
+        }
+    }
     return \@refcode;
 }
 
@@ -337,6 +365,8 @@ sub rackenv {
 
 ##########################################################################
 # Returns system power status (on or off) 
+# This subroutine will not be used in DFM
+# And the power status will be returned with lcds
 ##########################################################################
 sub power {
     return( xCAT::FSPpower::state(@_,"Current Power Status: ",1));
@@ -349,9 +379,47 @@ sub state {
     return( xCAT::FSPpower::state(@_,"System State: "));
 }
 ###########################################################################
-# Returns system LCD status (LCD1, LCD2)
+# Returns system LCD status and the power status
 ##########################################################################
 sub lcds {
+    my $request = shift;
+    my $hash    = shift;
+    my $exp     = shift;
+    my $result;
+    my $newids;
+    my $newnames;
+    my $newd;
+    my $action;
+    my $type;
+    my $only_lcds;
+    if( $request->{method} =~ /^lcds$/ ) {
+        $only_lcds = 1;
+    }
+    while (my ($mtms,$h) = each(%$hash) ) {
+        while(my ($name, $d) = each(%$h) ){
+            $newids .="$$d[0],";
+            $newnames .="$name,";
+            $newd = $d;
+            if( defined( $type) && $type ne $$d[4] )  {
+                push @$result,  [$name, "$name\'s type is $$d[4]. Please get the lcds for $type and $$d[4] seperately", -1 ];
+                return $result;
+            } 
+            $type = $$d[4];
+            if( $type =~ /lpar/ ) {
+                $action = "query_lcds";
+            } else {
+                $action = "cec_query_lcds";
+            }
+         }
+    }
+    
+    $$newd[0] = $newids;
+    $result = enumerate_lcds($request, $newnames, $newd, $action, $only_lcds);
+    
+    return $result;
+}
+
+sub lcds_orig {
     my $request = shift;
     my $hash    = shift;
     my $exp     = shift;
@@ -367,11 +435,6 @@ sub lcds {
 
     while (my ($mtms,$h) = each(%$hash) ) {
         while(my ($name, $d) = each(%$h) ){
-            #Support HMC only
-	    #if($hwtype ne 'hmc'){
-	    #    push @result, [$name, "$text Not available(NO HMC)", 1];
-	    #    next;
-	    #}
             $refcodes = enumerate_lcds($request, $name, $d);
             $num = 1;
             foreach $rcode (@$refcodes){
@@ -385,7 +448,6 @@ sub lcds {
     return \@result;
 }
 
-
 ##########################################################################
 # Returns all vitals
 ##########################################################################
@@ -394,7 +456,6 @@ sub all {
     my @values = ( 
         @{rackenv(@_)}, 
         @{state(@_)},
-        @{power(@_)},
         @{lcds(@_)}, 
     ); 
 
