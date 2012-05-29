@@ -3575,7 +3575,7 @@ sub preprocess_request {
     else {
         $callback->({data=>["no mpa defined for node $node"]});
         $request = {};
-        next;
+        return;
     }
     if (defined($ent->{id})) { push @{$mpa_hash{$ent->{mpa}}{ids}}, $ent->{id};}
     else { push @{$mpa_hash{$ent->{mpa}}{ids}}, "";} 
