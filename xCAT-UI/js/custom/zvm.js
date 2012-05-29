@@ -738,13 +738,13 @@ zvmPlugin.prototype.loadClonePage = function(node) {
                     }
                     
                     // If an IP address range is given and the starting and ending index do not match
-                    if (ipRange && !(nodeStart == ipStart) || !(nodeEnd == ipEnd)) {
+                    if (ipRange && (!(nodeStart == ipStart) || !(nodeEnd == ipEnd))) {
                         errMsg = errMsg + 'The node range and IP address range does not match. ';
                         ready = false;
                     }
                     
                     // If a hostname range is given and the starting and ending index do not match
-                    if (hostnameRange && !(nodeStart == hostnameStart) || !(nodeEnd == hostnameEnd)) {
+                    if (hostnameRange && (!(nodeStart == hostnameStart) || !(nodeEnd == hostnameEnd))) {
                         errMsg = errMsg + 'The node range and hostname range does not match. ';
                         ready = false;
                     }
