@@ -42,6 +42,7 @@ use xCAT::DBobjUtils;
 use Getopt::Long;
 use xCAT::SvrUtils;
 use xCAT::FSPUtils;
+my $indiscover=0;
 
 sub handled_commands {
   return {
@@ -3573,7 +3574,9 @@ sub preprocess_request {
   foreach my $node (@$noderange) {
     my $ent=$mptabhash->{$node}->[0]; #$mptab->getNodeAttribs($node,['mpa', 'id']);
     if (defined($ent->{mpa})) { push @{$mpa_hash{$ent->{mpa}}{nodes}}, $node;}
-    else {
+    elsif ($indiscover) {
+	next;
+    } else {
         $callback->({data=>["no mpa defined for node $node"]});
         $request = {};
         return;
@@ -3843,10 +3846,12 @@ sub process_request {
     unless ($request->{cacheonly}->[0] or $macmap{$mac} or $macmaptimestamp > (time() - 20)) { #do not refresh cache if requested not to, if it has an entry, or is recent
       %macmap = ();
       $macmaptimestamp=time();
+      $indiscover=1;
       foreach (@{preprocess_request(\%invreq,\&fillresps)}) {
          %invreq = %$_;
          process_request(\%invreq,\&fillresps);
       }
+      $indiscover=0;
     }
     my $found=0;
     if ($mac and $macmap{$mac}) { 
