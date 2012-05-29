@@ -405,13 +405,14 @@ sub lcds {
                 return $result;
             } 
             $type = $$d[4];
-            if( $type =~ /lpar/ ) {
-                $action = "query_lcds";
-            } else {
-                $action = "cec_query_lcds";
-            }
          }
     }
+            
+    if( $type =~ /lpar/ ) {
+        $action = "query_lcds";
+    } else {
+        $action = "cec_query_lcds";
+    } 
     
     $$newd[0] = $newids;
     $result = enumerate_lcds($request, $newnames, $newd, $action, $only_lcds);
