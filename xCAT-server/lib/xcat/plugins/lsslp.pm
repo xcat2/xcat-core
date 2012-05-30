@@ -964,7 +964,7 @@ sub parse_responses {
             $$length = length( $atthash{ip}) if ( length( $atthash{ip} ) > $$length );
             trace( $request, "Discover node $atthash{hostname}: type is $atthash{type}, \
 			mtm is $atthash{mtm}, sn is $atthash{serial}, slot is $atthash{slot}, \
-			ip is $atthash{ip}, mac is $atthash{mac}, otheringerfaces is $atthash{otherinterfaces}" );
+			ip is $atthash{ip}, mac is $atthash{mac}, otherinterfaces is $atthash{otherinterfaces}" );
 
         } elsif ($type eq SERVICE_CMM) {
             $atthash{type} = $service_slp{$type};
@@ -983,7 +983,7 @@ sub parse_responses {
             trace( $request, "Discover node $atthash{hostname}: type is $atthash{type}, \
 			mtm is $atthash{mtm}, sn is $atthash{serial}, side is $atthash{side}, \
 			ip is $atthash{ip}, mac is $atthash{mac}, mname is $atthash{mname},\
-			mpa is $atthash{mpa}, otheringerfaces is $atthash{otherinterfaces}" );
+			mpa is $atthash{mpa}, otherinterfaces is $atthash{otherinterfaces}" );
 
         } elsif ($type eq SERVICE_HMC) {
             $atthash{type} = $service_slp{$type};
@@ -1006,7 +1006,7 @@ sub parse_responses {
             $$length = length( $atthash{ip}) if ( length( $atthash{ip} ) > $$length );
             trace( $request, "Discover node $atthash{hostname}: type is $atthash{type},\
 			mtm is $atthash{mtm},sn is $atthash{serial},  ip is $atthash{ip},\
-			mac is $atthash{mac}, otheringerfaces is $atthash{otherinterfaces}" );
+			mac is $atthash{mac}, otherinterfaces is $atthash{otherinterfaces}" );
         }else {
             #begin to define fsp and bpa
             my %tmphash;
@@ -1026,10 +1026,10 @@ sub parse_responses {
             $tmphash{cid} = int(${$attributes->{'cage-number'}}[0]);
             $outhash{$tmphash{ip}} = \%tmphash;
             $$length = length( $tmphash{ip}) if ( length( $tmphash{ip} ) > $$length );
-            trace( $request, "Discover node $atthash{hostname}:type is $tmphash{type}, mtm is $tmphash{mtm}, \
+            trace( $request, "Discover node $tmphash{hostname}:type is $tmphash{type}, mtm is $tmphash{mtm}, \
 			sn is $tmphash{serial}, side is $tmphash{side},parent is $tmphash{parent},ip is $tmphash{ip}, \
-			cec id is $tmphash{cid} , frame id is $tmphash{fid},mac is $tmphash{side}, \
-			otheringerfaces is $atthash{otherinterfaces}" );
+			cec id is $tmphash{cid} , frame id is $tmphash{fid},mac is $tmphash{mac}, \
+			otherinterfaces is $tmphash{otherinterfaces}" );
             
             #####################################################################
             #define another side to fix the issue that the result is imcomplete
@@ -1060,12 +1060,18 @@ sub parse_responses {
                     $tmphash1{cid} = int(${$attributes->{'cage-number'}}[0]);
                     $outhash{$tmphash1{ip}} = \%tmphash1;
                     $$length = length( $tmphash1{ip}) if ( length( $tmphash1{ip} ) > $$length );
-                    trace( $request, "Discover node $atthash{hostname}:type is $tmphash1{type}, mtm is $tmphash1{mtm}, \
+                    trace( $request, "Discover node $tmphash1{hostname}:type is $tmphash1{type}, mtm is $tmphash1{mtm}, \
 			        sn is $tmphash1{serial}, side is $tmphash1{side},parent is $tmphash1{parent},ip is $tmphash1{ip}, \
-			        cec id is $tmphash1{cid} , frame id is $tmphash1{fid},mac is $tmphash1{side}, \
-			        otheringerfaces is $atthash{otherinterfaces}" );
+			        cec id is $tmphash1{cid} , frame id is $tmphash1{fid},mac is $tmphash1{mac}, \
+			        otherinterfaces is $tmphash1{otherinterfaces}" );
                 }
             }
+            # this part of code is used to avoid two messages sent from different ports of fsp give different info. Although this hasn't showed.
+            #else {
+              #  ${$outhash{$tmphash1{ip}}{fid} = int(${$attributes->{'frame-number'}}[0]) if(int(${$attributes->{'frame-number'}}[0]) != 0);
+              #  ${$outhash{$tmphash1{ip}}{cid} = int(${$attributes->{'cage-number'}}[0]) if(int(${$attributes->{'cage-number'}}[0]) != 0);
+              #  trace( $request, "change frame id to ${$outhash{$tmphash1{ip}}{fid}, change cec id to ${$outhash{$tmphash1{ip}}{cid} \n");
+            #}        
             ######################################################################
             
             #begin to define frame and cec
@@ -1077,7 +1083,7 @@ sub parse_responses {
                 $atthash{slot} = '';
                 $atthash{ip} = '';
                 $atthash{hostname} = 'Server-'.$atthash{mtm}.'-SN'.$atthash{serial};;
-                $atthash{mac} = $rsp;
+                $atthash{mac} = "";
                 $atthash{bpcmtm} = ${$attributes->{'bpc-machinetype-model'}}[0];
                 $atthash{bpcsn} = ${$attributes->{'bpc-serial-number'}}[0];
                 $atthash{fid} = int(${$attributes->{'frame-number'}}[0]);
@@ -1090,10 +1096,12 @@ sub parse_responses {
                 #update frameid and cageid to fix the firmware mistake
                 ${$outhash{$name}}{fid} = int(${$attributes->{'frame-number'}}[0]) if(int(${$attributes->{'frame-number'}}[0]) != 0);
                 ${$outhash{$name}}{cid} = int(${$attributes->{'cage-number'}}[0]) if(int(${$attributes->{'cage-number'}}[0]) != 0);
+                $outhash{$name}{children} .= ",".${$attributes->{'ip-address'}}[0].",".${$attributes->{'ip-address'}}[1];# at most save 8 ips and have redendant
+                trace( $request, "adjust frame id to ${$outhash{$name}}{fid}, cec id to  ${$outhash{$name}}{cid}, children to $outhash{$name}{children} ");
             }
 			trace( $request, "Discover node $atthash{hostname}: type is $atthash{type},  mtm is $atthash{mtm},\
 			sn is $atthash{serial},  mac is $atthash{mac}, children is $atthash{children}, frame id is $atthash{fid}, \
-			cec id is $atthash{cid}, otheringerfaces is $atthash{otherinterfaces}" );
+			cec id is $atthash{cid}, otherinterfaces is $atthash{otherinterfaces}" );
         }
     }
 
@@ -1605,16 +1613,18 @@ sub filter {
                     $newhash->{$foundnode} = $oldhash->{$foundnode};
                     if (${$oldhash->{$foundnode}}{type} eq TYPE_CEC or ${$oldhash->{$foundnode}}{type} eq  TYPE_FRAME) {
                         my @ips =  split /,/, ${$oldhash->{$foundnode}}{children};
-                        $newhash->{$ips[0]} = $oldhash->{$ips[0]};
-                        $newhash->{$ips[1]} = $oldhash->{$ips[1]};
+                        for (my $i=0; $i<scalar(@ips); $i++) {
+                            $newhash->{$ips[$i]} = $oldhash->{$ips[$i]};
+                        }
                     }
                 }
             } elsif ( ${$oldhash->{$foundnode}}{hostname} eq $n )  {
                 $newhash->{$foundnode} = $oldhash->{$foundnode};
                 if (${$oldhash->{$foundnode}}{type} eq TYPE_CEC or ${$oldhash->{$foundnode}}{type} eq  TYPE_FRAME) {
                     my @ips =  split /,/, ${$oldhash->{$foundnode}}{children};
-                    $newhash->{$ips[0]} = $oldhash->{$ips[0]};
-                    $newhash->{$ips[1]} = $oldhash->{$ips[1]};
+                    for (my $i=0; $i<scalar(@ips); $i++) {
+                        $newhash->{$ips[$i]} = $oldhash->{$ips[$i]};
+                    }
                 }
             }
         }
