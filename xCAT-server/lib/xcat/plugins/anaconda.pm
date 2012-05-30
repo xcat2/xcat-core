@@ -614,7 +614,7 @@ sub mknetboot
         #}
         # append the mac address
         my $mac;
-        if( $useifname && $machash->{$node}->[0] && $machash->{$node}->[0]->{'mac'}) {
+        if( $machash->{$node}->[0] && $machash->{$node}->[0]->{'mac'}) {
             # TODO: currently, only "mac" attribute with classic style is used, the "|" delimited string of "macaddress!hostname" format is not used
             $mac = $machash->{$node}->[0]->{'mac'};
 #            if ( (index($mac, "|") eq -1) and (index($mac, "!") eq -1) ) {
@@ -642,7 +642,7 @@ sub mknetboot
         } elsif ( $reshash->{$node}->[0] and $reshash->{$node}->[0]->{primarynic} and $reshash->{$node}->[0]->{primarynic} ne "mac") {
             $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{primarynic} . " ";
         } else {
-            if ( $useifname && $mac) {
+            if ( !$useifname && $mac) {
                 $kcmdline .= "BOOTIF=" . $mac . " ";
             }
         }
