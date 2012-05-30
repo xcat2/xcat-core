@@ -231,7 +231,7 @@ if (($::INIT) && ($::xcatrunningpgsql == 0))
         $::backupdir .= "/xcat-dbback";
     }
 
-    #&backupxcatdb;
+    &backupxcatdb;
 
     # shutdown the xcatd daemon while migrating
     &shutdownxcatd;
