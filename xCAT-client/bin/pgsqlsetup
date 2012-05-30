@@ -231,7 +231,7 @@ if (($::INIT) && ($::xcatrunningpgsql == 0))
         $::backupdir .= "/xcat-dbback";
     }
 
-    &backupxcatdb;
+    #&backupxcatdb;
 
     # shutdown the xcatd daemon while migrating
     &shutdownxcatd;
@@ -798,22 +798,96 @@ sub setupxcatdb
 
 {
     my $cmd;
+    # create the database
+    if ($::osname eq 'AIX')
+    {
+      $cmd = "$::installdir/bin/createdb  $::dbname ";
+    } else {
+      $cmd = "createdb  $::dbname ";
+    }
+    &runpostgrescmd($cmd);
+    if ($? > 0) {
+        xCAT::MsgUtils->message("E",
+                               "Failed creating the $::dbname database");
+        #exit(1);
+    }
 
-    # must su to postgres id
     if ($::osname eq 'AIX')
     {
-      $cmd = "$::installdir/bin/createuser -SDRP xcatadm";
-    } else {
-      $cmd = "createuser -SDRP xcatadm";
+      $cmd = "/var/lib/pgsql/bin/psql -d $::dbname -U postgres";
+    } else {  # Linux
+      if ($::postgres90 == 1) {
+       $cmd = "/usr/pgsql-9.0/bin/psql -d $::dbname -U postgres";
+      } else { 
+       $cmd = "/usr/bin/psql -d $::dbname -U postgres"; 
+      }
     }
-    &runpostgrescmd($cmd);
-    if ($::osname eq 'AIX')
+    my $pgsql;
+    my $timeout  = 10;    # sets Expect default timeout, 0 accepts immediately
+    my $pwd_sent = 0;
+    my $pg_prompt   = "$::dbname=# ";
+    my $expect_log   = undef;
+    my $debug        = 0;
+    $pgsql = new Expect;
+
+    #
+    # -re $pg_prompt
+    #    For example xcatdb=# 
+    #
+    #
+
+    # disable command echoing
+    #$pgsql->slave->stty(qw(sane -echo));
+
+    #
+    # exp_internal(1) sets exp_internal debugging
+    # to STDERR.
+    #
+    #$pgsql->exp_internal(1);
+    $pgsql->exp_internal($debug);
+
+    #
+    # log_stdout(0) prevent the program's output from being shown.
+    #  turn on if debugging error
+    #$pgsql->log_stdout(1);
+    $pgsql->log_stdout($debug);
+
+    my $createuser="CREATE USER xcatadm WITH PASSWORD \'$::adminpassword\';\r";
+    my $spawncmd;
+    $spawncmd = $cmd; 
+    unless ($pgsql->spawn($spawncmd))
     {
-      $cmd = "$::installdir/bin/createdb -O xcatadm $::dbname ";
-    } else {
-      $cmd = "createdb -O xcatadm $::dbname ";
+        xCAT::MsgUtils->message("E",
+                  "Unable to run $spawncmd to add xcat admin user.");
+        return;
+
     }
-    &runpostgrescmd($cmd);
+    my @result = $pgsql->expect(
+        $timeout,
+        [
+         $pg_prompt,
+         sub {
+             $pgsql->send("$createuser");
+             $pgsql->clear_accum();
+             $pgsql->exp_continue();
+             $pgsql->send("\q;\r");
+           }
+        ]
+     );
+    ######################################
+    # Expect error - report and quit
+    ##########################################
+    if (defined($result[1]))
+    {
+        my $errmsg = $result[1];
+        $pgsql->soft_close();
+        xCAT::MsgUtils->message("E",
+                               "Failed creating xcatadm id. $errmsg");
+        exit(1);
+
+    }
+    $pgsql->soft_close();
+
 
 }
 
@@ -1040,15 +1114,18 @@ sub restorexcatdb
                        " $::backupdir is missing. Cannot retore the database.");
         exit(1);
     }
+    my $tmpv = $::VERBOSE;
+    $::VERBOSE = 0;        
 
     # restore it
     my $cmd = "XCATBYPASS=1 XCATCFG=\"$xcatcfg\" restorexCATdb -p $::backupdir";
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
-        xCAT::MsgUtils->message("E", " $cmd failed.");
+        xCAT::MsgUtils->message("E", " restorexCATdb -p $::backupdir failed.");
         exit(1);
     }
+    $::VERBOSE = $tmpv;
 
     #
     # start the daemon
