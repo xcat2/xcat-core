@@ -206,7 +206,7 @@ sub parse_args {
     ####################
     #suport for "rflash", copy the rpm and xml packages from user-spcefied-directory to /install/packages_fw
     #####################    
-    if ( (!exists($opt{commit})) && (!exists($opt{ recover }))) {
+    if ( (!exists($opt{commit})) && (!exists($opt{ recover })) && (!exists($opt{bpa_acdl}))) {
         if( preprocess_for_rflash($request, \%opt) == -1) {
             return( usage() );
         }
