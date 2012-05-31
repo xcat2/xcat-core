@@ -152,12 +152,15 @@ if ($::RUNCMD_RC != 0)
     xCAT::MsgUtils->message("E", " $cmd failed. $message");
     exit(1);
 }
-# check if 9.0 release,  setup different
-if  (grep(/postgresql90/, @output)) {  # postgresql 9.0
-  $::postgres90=1;
-  $::installdir         = "/var/lib/pgsql/9.0"; # override default
-  $::installdatadir         = "/var/lib/pgsql/9.0/data"; # override default
-  $::pgcmddir               = "/usr/pgsql-9.0/bin";      # pg cmds location 
+# check if 9.X release,  setup different
+if  (grep(/postgresql9/, @output)) {  # postgresql 9.x
+ # figure out which 9.x release  and build path
+ my @parseout= split(/\-/, $output[0]);
+ my @ptflevel= split ("postgresql9",$parseout[0]);
+ $::postgres9=@ptflevel[1];  # set it to the PTF level
+ $::installdir         = "/var/lib/pgsql/9.$::postgres9"; # override default
+ $::installdatadir    = "/var/lib/pgsql/9.$::postgres9/data"; # override default
+ $::pgcmddir        = "/usr/pgsql-9.$::postgres9/bin";      # pg cmds location 
 }
 
 # check to see if  PostgreSQL  is running
@@ -724,8 +727,8 @@ sub pgstart
     }
     else    # linux
     {
-        if ($::postgres90 == 1) {
-          $cmd = "service postgresql-9.0 start";
+        if (defined($::postgres9)) { # set to the PTF level of postgresql 9.X
+          $cmd = "service postgresql-9.$::postgres9 start";
         } else {
           $cmd = "service postgresql start";
         }
@@ -763,8 +766,8 @@ sub pgreboot
     }
     else    # linux
     {
-        if ($::postgres90 == 1) {
-          $cmd = "chkconfig postgresql-9.0 on";
+        if (defined($::postgres9)) { # set to the postgresql ptf level
+          $cmd = "chkconfig postgresql-9.$::postgres9 on";
         } else {
           $cmd = "chkconfig postgresql on";
         }
