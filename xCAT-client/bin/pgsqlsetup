@@ -71,6 +71,7 @@ $Getopt::Long::ignorecase = 0;
 # Default install location for all but version 9.0
 $::installdir             = "/var/lib/pgsql";         # install location
 $::installdatadir         = "/var/lib/pgsql/data";    # install location
+$::pgcmddir               = "/usr/bin";               # pg cmds location 
 
 # parse the options
 if (
@@ -156,6 +157,7 @@ if  (grep(/postgresql90/, @output)) {  # postgresql 9.0
   $::postgres90=1;
   $::installdir         = "/var/lib/pgsql/9.0"; # override default
   $::installdatadir         = "/var/lib/pgsql/9.0/data"; # override default
+  $::pgcmddir               = "/usr/pgsql-9.0/bin";      # pg cmds location 
 }
 
 # check to see if  PostgreSQL  is running
@@ -602,7 +604,7 @@ sub initpgdb
     {
        $cmd = "$::installdir/bin/initdb -D $::installdatadir ";
     } else {
-      $cmd = "initdb -D $::installdatadir ";
+      $cmd = "$::pgcmddir/initdb -D $::installdatadir ";
     }
     &runpostgrescmd($cmd);
 
@@ -802,8 +804,8 @@ sub setupxcatdb
     if ($::osname eq 'AIX')
     {
       $cmd = "$::installdir/bin/createdb  $::dbname ";
-    } else {
-      $cmd = "createdb  $::dbname ";
+    } else {  #Linux
+      $cmd = "$::pgcmddir/createdb  $::dbname ";
     }
     &runpostgrescmd($cmd);
     if ($? > 0) {
@@ -816,11 +818,7 @@ sub setupxcatdb
     {
       $cmd = "/var/lib/pgsql/bin/psql -d $::dbname -U postgres";
     } else {  # Linux
-      if ($::postgres90 == 1) {
-       $cmd = "/usr/pgsql-9.0/bin/psql -d $::dbname -U postgres";
-      } else { 
-       $cmd = "/usr/bin/psql -d $::dbname -U postgres"; 
-      }
+       $cmd = "$::pgcmddir/psql -d $::dbname -U postgres";
     }
     my $pgsql;
     my $timeout  = 10;    # sets Expect default timeout, 0 accepts immediately
@@ -1027,7 +1025,7 @@ sub setupODBC
     chmod 0600, $rootodbcfile;
 
     # create root role
-    $cmd = "createuser -SDRP root with password '$::adminpassword' ";
+    $cmd = "$::pgcmddir/createuser -SDRP root with password '$::adminpassword' ";
     &runpostgrescmd($cmd);
 
 }
