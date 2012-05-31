@@ -3851,7 +3851,10 @@ sub process_request {
       %macmap = ();
       $macmaptimestamp=time();
       $indiscover=1;
-      foreach (@{preprocess_request(\%invreq,\&fillresps)}) {
+      my $reqs = preprocess_request(\%invreq,\&fillresps);
+      my @reql;
+      if ($reqs) { @reql = @{$reqs}; }
+      foreach (@reql) {
          %invreq = %$_;
          process_request(\%invreq,\&fillresps);
       }
