@@ -160,17 +160,19 @@ sub preprocess_request
         $::IPv6 = 1;
     }
 
-    my $sitetab = xCAT::Table->new('site');
-    my $nfsv4entry = $sitetab->getAttribs({'key' => 'useNFSv4onAIX'}, 'value');
-    if($nfsv4entry and defined ($nfsv4entry->{'value'}))
+    #my $sitetab = xCAT::Table->new('site');
+    #my $nfsv4entry = $sitetab->getAttribs({'key' => 'useNFSv4onAIX'}, 'value');
+    my @tmp = xCAT::Utils->get_site_attribute("useNFSv4onAIX");
+    my $nfsv4entry = $tmp[0];
+    if( defined ($nfsv4entry) )
     {
-        if ($nfsv4entry->{value}  =~ /1|Yes|yes|YES|Y|y/)
+        if ($nfsv4entry =~ /1|Yes|yes|YES|Y|y/)
         { 
             $::NFSv4 = 1;
             $::MOUNT = "mount -o vers=4";
         }
     }
-    $sitetab->close;
+    #$sitetab->close;
 
     #exit if preprocessed
     # if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
@@ -505,16 +507,18 @@ sub process_request
         xCAT::MsgUtils->message("E", $rsp, $callback);
     }
         
-    my $sitetab = xCAT::Table->new('site');
-    my $nfsv4entry = $sitetab->getAttribs({'key' => 'useNFSv4onAIX'}, 'value');
-    if($nfsv4entry and defined ($nfsv4entry->{'value'}))
-    {
-        if ($nfsv4entry->{value}  =~ /1|Yes|yes|YES|Y|y/)
-        { 
-            $::NFSv4 = 1;
-        }
+    #my $sitetab = xCAT::Table->new('site');
+    #my $nfsv4entry = $sitetab->getAttribs({'key' => 'useNFSv4onAIX'}, 'value');
+    #if($nfsv4entry and defined ($nfsv4entry->{'value'}))
+    #{
+    my @nfsv4entries = xCAT::Utils->get_site_attribute("useNFSv4onAIX");
+    my $tmp = $nfsv4entries[0];
+    if ( defined($tmp) && $tmp =~ /1|Yes|yes|YES|Y|y/)
+    { 
+        $::NFSv4 = 1;
     }
-    $sitetab->close;
+    #}
+    #$sitetab->close;
 
     # figure out which cmd and call the subroutine to process
     if ($command eq "mkdsklsnode")
@@ -1698,7 +1702,9 @@ sub spot_updates
 		#  don't remove spots if SNs are using shared file system
 		#   mkdsklsnode will take care of copying out the updated spot
 		# check the sharedinstall attr
-		my $sharedinstall=xCAT::Utils->get_site_attribute('sharedinstall');
+		#my $sharedinstall=xCAT::Utils->get_site_attribute('sharedinstall');
+		my @sharedinstalls=xCAT::Utils->get_site_attribute('sharedinstall');
+		my $sharedinstall = $sharedinstalls[0];
 		chomp $sharedinstall;
 
 	  	if ( $sharedinstall ne "sns" )
@@ -2476,10 +2482,12 @@ sub mknimimage
             }
             #2. Configure nfs domain for nfs version 4
             # check site table - get domain attr
-            my $sitetab = xCAT::Table->new('site');
-            my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
-            my $domain = $tmp->{value};
-            $sitetab->close;
+            #my $sitetab = xCAT::Table->new('site');
+            #my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
+            #my $domain = $tmp->{value};
+            #$sitetab->close;
+            my @domains = xCAT::Utils->get_site_attribute("domain");
+            my $domain = $domains[0];
             if (!$domain)
             {
                 my $rsp;
@@ -2768,10 +2776,12 @@ sub mknimimage
     {
         my $nimcmd = qq~chnfsdom~;
         my $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
-        my $sitetab = xCAT::Table->new('site');
-        my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
-        my $domain = $tmp->{value};
-        $sitetab->close;
+        #my $sitetab = xCAT::Table->new('site');
+        #my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
+        #my $domain = $tmp->{value};
+        #$sitetab->close;
+        my @domains = xCAT::Utils->get_site_attribute("domain");
+        my $domain = $domains[0];
         if (!$domain)
         {
             my $rsp;
@@ -4519,23 +4529,28 @@ sub mk_resolv_conf_file
     my $fullname = "$loc/resolv.conf";
 
     # check site table - get domain, nameservers attr
-    my $sitetab = xCAT::Table->new('site');
-    my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
-    my $domain = $tmp->{value};
-    my ($tmp2) = $sitetab->getAttribs({'key' => 'nameservers'}, 'value');
+    #my $sitetab = xCAT::Table->new('site');
+    #my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
+    #my $domain = $tmp->{value};
+    my @domains = xCAT::Utils->get_site_attribute("domain");
+    my $domain = $domains[0];
+    #my ($tmp2) = $sitetab->getAttribs({'key' => 'nameservers'}, 'value');
+    my @nameserver = xCAT::Utils->get_site_attribute("nameservers");
+    my $tmp2 = $nameserver[0];
 
     # convert <xcatmaster> to nameserver IP
     my $nameservers;
-    if ($tmp2->{value} eq '<xcatmaster>')
+    #if ($tmp2->{value} eq '<xcatmaster>')
+    if ( defined($tmp2) && $tmp2 eq '<xcatmaster>')
     {
         $nameservers = xCAT::InstUtils->convert_xcatmaster();
     }
     else
     {
-        $nameservers = $tmp2->{value};
+        $nameservers = $tmp2;
     }
 
-    $sitetab->close;
+   #$sitetab->close;
 
     # if set then create file
     if ($domain && $nameservers)
@@ -4676,13 +4691,17 @@ sub chk_resolv_conf
     chomp $nimprime;
 
 	# get site domain and nameservers values
-	my $sitetab = xCAT::Table->new('site');
-	my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
-    my $site_domain = $tmp->{value};
+	#my $sitetab = xCAT::Table->new('site');
+	#my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
+    #my $site_domain = $tmp->{value};
+    my @domains = xCAT::Utils->get_site_attribute("domain");
+    my $site_domain = $domains[0];
 
-	my ($tmp2) = $sitetab->getAttribs({'key' => 'nameservers'}, 'value');
-    my $site_nameservers = $tmp2->{value};
-    $sitetab->close;
+	#my ($tmp2) = $sitetab->getAttribs({'key' => 'nameservers'}, 'value');
+    #my $site_nameservers = $tmp2->{value};
+    #$sitetab->close;
+    my @nameserver = xCAT::Utils->get_site_attribute("nameservers");
+    my $site_nameservers = $nameserver[0];
 
 	#  Get a list of the all NIM resources
     #
@@ -5143,21 +5162,25 @@ sub mk_resolv_conf
 
         # we may need to create a new one
         # check site table - get domain, nameservers attr
-        my $sitetab = xCAT::Table->new('site');
-        my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
-        my $domain = $tmp->{value};
-        my ($tmp2) = $sitetab->getAttribs({'key' => 'nameservers'}, 'value');
+        #my $sitetab = xCAT::Table->new('site');
+        #my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
+        #my $domain = $tmp->{value};
+        my @domains = xCAT::Utils->get_site_attribute("domain");
+        my $domain = $domains[0];
+        #my ($tmp2) = $sitetab->getAttribs({'key' => 'nameservers'}, 'value');
+        my @nameserver = xCAT::Utils->get_site_attribute("nameservers");
+        my $tmp2 = $nameserver[0];
         # convert <xcatmaster> to nameserver IP
         my $nameservers;
-        if ($tmp2->{value} eq '<xcatmaster>')
+        if ($tmp2 eq '<xcatmaster>')
         {
             $nameservers = xCAT::InstUtils->convert_xcatmaster();
         }
         else
         {
-            $nameservers = $tmp2->{value};
+            $nameservers = $tmp2;
         }
-        $sitetab->close;
+        #$sitetab->close;
 
         # if set then we want a resolv_conf file
         if (defined($domain) && defined($nameservers))
@@ -7793,10 +7816,12 @@ sub prenimnodeset
     chomp $Sname;
 
 	# see if this is a shared filesystem environment
-    my $sitetab = xCAT::Table->new('site');
-    my ($tmp) = $sitetab->getAttribs({'key' => 'sharedinstall'}, 'value');
-    my $sharedinstall = $tmp->{value};
-    $sitetab->close;
+    #my $sitetab = xCAT::Table->new('site');
+    #my ($tmp) = $sitetab->getAttribs({'key' => 'sharedinstall'}, 'value');
+    #my $sharedinstall = $tmp->{value};
+    #$sitetab->close;
+    my @sharedinstalls = xCAT::Utils->get_site_attribute("sharedinstall");
+    my $sharedinstall = $sharedinstalls[0];
     if (!$sharedinstall) {
         $sharedinstall="no";
     }
@@ -9609,10 +9634,12 @@ sub mkdsklsnode
         }
     }
 
-	my $sitetab = xCAT::Table->new('site');
-    my ($tmp) = $sitetab->getAttribs({'key' => 'sharedinstall'}, 'value');
-    my $sharedinstall = $tmp->{value};
-    $sitetab->close;
+	#my $sitetab = xCAT::Table->new('site');
+    #my ($tmp) = $sitetab->getAttribs({'key' => 'sharedinstall'}, 'value');
+    #my $sharedinstall = $tmp->{value};
+    #$sitetab->close;
+    my @sharedinstalls = xCAT::Utils->get_site_attribute("sharedinstall");
+    my $sharedinstall = $sharedinstalls[0];
     if (!$sharedinstall) {
         $sharedinstall="no";
     }
@@ -10211,10 +10238,12 @@ sub mkdsklsnode
 				$origloc = xCAT::InstUtils->get_nim_attr_val($imagehash{$image_name}{shared_root}, 'location', $callback, $Sname);
 
 				# see if this is a shared filesystem environment
-				my $sitetab = xCAT::Table->new('site');
-				my ($tmp) = $sitetab->getAttribs({'key' => 'sharedinstall'}, 'value');
-				my $sharedinstall = $tmp->{value};
-				$sitetab->close;
+				#my $sitetab = xCAT::Table->new('site');
+				#my ($tmp) = $sitetab->getAttribs({'key' => 'sharedinstall'}, 'value');
+				#my $sharedinstall = $tmp->{value};
+				#$sitetab->close;
+                                my @sharedinstalls = xCAT::Utils->get_site_attribute("sharedinstall");
+                                my $sharedinstall = $sharedinstalls[0];
 				if (!$sharedinstall) {
 					$sharedinstall="no";
 				}
@@ -11579,10 +11608,12 @@ sub make_SN_resource
             xCAT::MsgUtils->message("E", $rsp, $callback);
             return 1;
         }
-        my $sitetab = xCAT::Table->new('site');
-        my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
-        my $domain = $tmp->{value};
-        $sitetab->close;
+        #my $sitetab = xCAT::Table->new('site');
+        #my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
+        #my $domain = $tmp->{value};
+        #$sitetab->close;
+        my @domains = xCAT::Utils->get_site_attribute("domain");
+        my $domain = $domains[0];
         if (!$domain)
         {
             my $rsp;
