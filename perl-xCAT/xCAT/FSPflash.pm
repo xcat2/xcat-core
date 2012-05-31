@@ -147,7 +147,7 @@ sub get_lic_filenames {
 	#	}
 	  } else {
 		$msg = $msg . "Upgrade $mtms!";
-           if($activate !~ /^(disruptive|deferred)$/ {
+           if($activate !~ /^(disruptive|deferred)$/) {
 	    		$msg = "Option --activate's value shouldn't be $activate, and it must be disruptive or deferred";
 			return ("", "","", $msg, -1);
 		}
@@ -332,7 +332,7 @@ sub rflash {
                $action = "code_update";
            } elsif ($activate eq "deferred") {
                $action = "code_updateD";
-           } elsif (exists($activate)){
+           } elsif (defined($activate)){
                #if($activate =~ /^concurrent$/) {
                my $res = "\'$activate\' option not supported in FSPflash. Please use disruptive or deferred mode";
                push @value, [$name, $res, -1];
