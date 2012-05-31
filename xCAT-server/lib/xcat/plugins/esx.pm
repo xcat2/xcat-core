@@ -4284,6 +4284,7 @@ sub  makecustomizedmod {
         }
     }
     unless ($password) {
+        xCAT::SvrUtils::sendmsg([1,": Unable to find a password entry for esxi in passwd table"], $output_handler);
         return 0;
     }
     mkpath("/tmp/xcat");
