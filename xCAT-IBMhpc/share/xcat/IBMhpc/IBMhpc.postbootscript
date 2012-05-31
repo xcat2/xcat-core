@@ -18,14 +18,9 @@ $ps_dir/compilers_license
 
 
 # Run script to install PE and accept license
-$ps_dir/pe_install
-
-
-# Run script to install ESSL and PESSL rpms
-$ps_dir/essl_install
-
+$ps_dir/pe_install-1200
 
 # Run script to accept LoadLeveler license, install product rpms, 
 # and do some config
-$ps_dir/loadl_install
+$ps_dir/loadl_install-5103
 
