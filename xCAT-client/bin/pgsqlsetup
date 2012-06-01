@@ -882,6 +882,67 @@ sub setupxcatdb
     }
     $pgsql->soft_close();
 
+    # setup root user
+    $pgsql = new Expect;
+
+    #
+    # -re $pg_prompt
+    #    For example xcatdb=# 
+    #
+    #
+
+    # disable command echoing
+    #$pgsql->slave->stty(qw(sane -echo));
+
+    #
+    # exp_internal(1) sets exp_internal debugging
+    # to STDERR.
+    #
+    #$pgsql->exp_internal(1);
+    $pgsql->exp_internal($debug);
+
+    #
+    # log_stdout(0) prevent the program's output from being shown.
+    #  turn on if debugging error
+    #$pgsql->log_stdout(1);
+    $pgsql->log_stdout($debug);
+
+    $createuser="CREATE USER root WITH PASSWORD \'$::adminpassword\';\r";
+    $spawncmd;
+    $spawncmd = $cmd; 
+    unless ($pgsql->spawn($spawncmd))
+    {
+        xCAT::MsgUtils->message("E",
+                  "Unable to run $spawncmd to add xcat root user.");
+        return;
+
+    }
+    my @result = $pgsql->expect(
+        $timeout,
+        [
+         $pg_prompt,
+         sub {
+             $pgsql->send("$createuser");
+             $pgsql->clear_accum();
+             $pgsql->exp_continue();
+             $pgsql->send("\q;\r");
+           }
+        ]
+     );
+    ######################################
+    # Expect error - report and quit
+    ##########################################
+    if (defined($result[1]))
+    {
+        my $errmsg = $result[1];
+        $pgsql->soft_close();
+        xCAT::MsgUtils->message("E",
+                               "Failed creating root id. $errmsg");
+        exit(1);
+
+    }
+    $pgsql->soft_close();
+
 
 }
 
@@ -1013,16 +1074,13 @@ sub setupODBC
     }
     else
     {    # entry already there
-         $message = "$rootodbcfile already configured, will not change. Make sure the userid and password are correct for Pg";
+         $message = "$rootodbcfile already configured, will not change. Make sure the userid and password are correct for PostgreSQL";
         xCAT::MsgUtils->message("I", "$message");
     }
 
     # allow readonly by root
     chmod 0600, $rootodbcfile;
 
-    # create root role
-    $cmd = "$::pgcmddir/createuser -SDRP root with password '$::adminpassword' ";
-    &runpostgrescmd($cmd);
 
 }
 
