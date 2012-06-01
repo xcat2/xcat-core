@@ -5,18 +5,10 @@
 # For AIX:
 #    TBD
 # For Linux:
-#    - For full-disk installs:
-#        - Copy rpms to node
-#        - Install and accept PE license rpm
-#        - Install PE rpms
-#    - For diskless images:
-#        - Install PE license on MN if not already installed
-#        - Install PE license rpm into image, but DO NOT ACCEPT
-#          (java accept program will hang)
-#        - Copy PE license files from MN into image
-#        - Install PE rpms
 #    - Create a smaller PNSD log file in /tmp 
 #    - Configure poe.limits file
+#    - Generate and store checkpoint key
+#    - BSR support configuration
 
 OS=`uname`
 
