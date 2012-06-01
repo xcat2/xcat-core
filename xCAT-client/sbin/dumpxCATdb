@@ -309,7 +309,7 @@ sub PG_bindump
     
     # create backup file name
     my $backupfile="$::PATH/pgbackup.$$";
-    my $cmd="$pgcmddir/pg_dump xcatdb -f $backupfile -U postgres -F custom";
+    my $cmd="$pgcmddir/pg_dump $dbname -f $backupfile -U postgres -F custom";
     my $info=xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
       xCAT::MsgUtils->message("E", "$cmd failed"); 
