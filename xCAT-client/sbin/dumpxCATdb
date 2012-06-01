@@ -42,11 +42,21 @@ if ($::BINARY) {  # not using xCAT to dump, using the database utility
      } else {
        xCAT::MsgUtils->message("I", "Backup Failed.");
      }
-     exit $rc;
-   }  else {
-    xCAT::MsgUtils->message("E",
-                            "Binary dump (-b) is only supported for DB2");
-    exit 1;
+     exit $rc; 
+   } else {
+     if ($DBname eq "PG") {
+       $rc=&PG_bindump;
+       if ($rc == 0) {
+         xCAT::MsgUtils->message("I", "Backup Complete.");
+       } else {
+         xCAT::MsgUtils->message("I", "Backup Failed.");
+       }
+       exit $rc;
+      }  else {
+        xCAT::MsgUtils->message("E",
+                            "Binary dump (-b) is not supported for $DBname");
+        exit 1;
+     }
    }
 }
 
@@ -247,6 +257,62 @@ sub DB2_bindump
     if ($rc != 0)
     {
       xCAT::MsgUtils->message("E", " $cmd error.");
+      return 1;
+    }
+    return 0;
+   
+}
+#-----------------------------------------------------------------------------
+
+=head3 PG_bindump 
+  
+    Uses the PostgreSQL Database supplied backup utility to backup the database
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub PG_bindump 
+{
+    my $msg;
+    my $rc=0;
+    my $pgcmddir               = "/usr/bin";      
+    # get path to Postgresql commands if running 9.X version
+    my $cmd = "rpm -qa | grep postgresql";
+    my @output=xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+      my $message =
+      "\nPostgreSQL is not installed.  If on AIX, it should be first obtained from the xcat dependency tarballs and installed before running this command.\n If on Linux, install from the OS CDs.";
+    xCAT::MsgUtils->message("E", " $cmd failed. $message");
+    exit(1);
+    }
+    # check if 9.X release,  setup different
+    if  (grep(/postgresql9/, @output)) {  # postgresql 9.x
+       # figure out which 9.x release  and build path
+       # for example 9.x release /usr/pgsql-9.x/bin
+       my @parseout= split(/\-/, $output[0]);
+       my @ptflevel= split ("postgresql9",$parseout[0]);
+       my $postgres9=@ptflevel[1];  # set it to the PTF level
+       $pgcmddir        = "/usr/pgsql-9.$postgres9/bin"; # pg cmds location
+    }
+    # Get database, admin from cfgloc file
+    my $cmd="cat /etc/xcat/cfgloc";
+    my $info=xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
+      xCAT::MsgUtils->message("E", "Cannot read /etc/xcat/cfgloc."); 
+      return 1;
+    }
+    chomp($info); 
+    my ($db,$admin,$pw) = split(/\|/, $info); 
+    my ($info1,$info2) = split(/=/,$db);
+    my ($dbname,$host) = split(/;/,$info2);
+    
+    # create backup file name
+    my $backupfile="$::PATH/pgbackup.$$";
+    my $cmd="$pgcmddir/pg_dump xcatdb -f $backupfile -U postgres -F custom";
+    my $info=xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
+      xCAT::MsgUtils->message("E", "$cmd failed"); 
       return 1;
     }
     return 0;
