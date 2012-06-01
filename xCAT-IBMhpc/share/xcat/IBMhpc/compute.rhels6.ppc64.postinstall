@@ -54,7 +54,7 @@ installroot=$installroot pedir=$otherpkgs/pe NODESETSTATE=genimage   $hpc/pe/pe_
 
 
 # Run script to install ESSL and PESSL rpms
-installroot=$installroot essldir=$otherpkgs/essl NODESETSTATE=genimage   $hpc/essl/essl_install
+#installroot=$installroot essldir=$otherpkgs/essl NODESETSTATE=genimage   $hpc/essl/essl_install
 
 
 # Run script to accept LoadLeveler license, install product rpms, 
