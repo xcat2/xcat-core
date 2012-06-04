@@ -47,6 +47,7 @@ installroot=$installroot   $hpc/gpfs/gpfs_mmsdrfs
 
 # Run script to accept compiler license
 installroot=$installroot NODESETSTATE=genimage   $hpc/compilers/compilers_license
+#installroot=$installroot NODESETSTATE=genimage   $hpc/compilers/upc_license
 
 
 # Run script to install PE and accept license
