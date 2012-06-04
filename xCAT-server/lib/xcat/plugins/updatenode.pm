@@ -511,12 +511,7 @@ sub preprocess_updatenode
             }
         
             if (scalar(@{$Linuxnodes})) {
-                my $DBname = xCAT::Utils->get_DBName;
-                if ($DBname eq "DB2") {
-                  $ps = "remoteshell,servicenode,db2install";
-                } else {
-                  $ps = "remoteshell,servicenode";
-                }
+                $ps = "remoteshell,servicenode";
                 $req_rs->{rerunps}->[0] = "yes";
                 $req_rs->{rerunps4security}->[0] = "yes";
                 $req_rs->{node} = $Linuxnodes;
@@ -1046,11 +1041,7 @@ $AIXnodes_nd, $subreq  ) != 0 ) {
         {    
            my $DBname = xCAT::Utils->get_DBName;
            if ($orig_postscripts eq "allkeys44444444security") {
-              if ($DBname eq "DB2") {   
-                $postscripts = "remoteshell,servicenode,db2install";
-              } else {
-                $postscripts = "remoteshell,servicenode";
-              }
+               $postscripts = "remoteshell,servicenode";
            } else {
                $postscripts = $orig_postscripts;
            }
