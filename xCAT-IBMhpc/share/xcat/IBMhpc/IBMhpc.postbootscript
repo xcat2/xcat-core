@@ -8,6 +8,7 @@ ps_dir=/xcatpost
 
 # Run script to set up some basics for all HPC software
 $ps_dir/IBMhpc.postscript
+$ps_dir/IBMhpc.post
 
 # Run script to install gpfs updates
 $ps_dir/gpfs_updates
