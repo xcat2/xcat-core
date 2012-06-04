@@ -703,6 +703,22 @@ sub updatenode
     # XXX: Suppose that compute nodes has the same Install dir location.
     my $installdir = xCAT::Utils->getInstallDir();
 
+    #if the postscripts directory exists then make sure it is 
+    # world readable and executable by root 
+    my $postscripts = "$installdir/postscripts";
+    if (-e $postscripts) {
+      my $cmd="chmod -R u+x,a+r $postscripts";
+      xCAT::Utils->runcmd($cmd, 0);
+      my $rsp = {};
+      if ($::RUNCMD_RC != 0)
+      {
+         $rsp->{data}->[0] = "$cmd failed.\n";
+         xCAT::MsgUtils->message("E", $rsp, $callback);
+
+       }
+    }
+
+
     # convert the hashes back to the way they were passed in
     my $flatreq = xCAT::InstUtils->restore_request($request, $callback);
     my $imgdefs;
