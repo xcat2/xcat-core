@@ -16,7 +16,7 @@ $ps_dir/gpfs_updates
 
 # Run script to accept compiler license
 $ps_dir/compilers_license
-
+#$ps_dir/upc_license
 
 # Run script to install PE and accept license
 $ps_dir/pe_install-1200
