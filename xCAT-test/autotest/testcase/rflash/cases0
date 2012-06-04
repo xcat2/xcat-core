@@ -1,0 +1,11 @@
+start:rflash_h
+cmd:rflash -h
+check:rc==0
+check:output=~Usage
+end
+
+start:rflash_v
+cmd:rflash -v
+check:rc==0
+check:output=~Version
+end
