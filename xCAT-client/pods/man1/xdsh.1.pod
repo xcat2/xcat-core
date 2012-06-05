@@ -525,6 +525,12 @@ B<xdsh> I<qswitch -K -l username --devicetype IBSwitch::Qlogic>
 
 =item *
 
+To define the Management Node (mn1) in the database so you can use xdsh, Enter
+
+B<chdef> I<-t node -o mn1 groups=mn nodetype=mn>
+
+=item *
+
 To define the Mellanox switch as a node and run a command to show the ssh keys. 
 B<mswitch> with device configuration file
 

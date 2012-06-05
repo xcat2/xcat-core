@@ -506,6 +506,12 @@ Run:
 
 B<xdcp> I<-i /install/netboot/fedora9/x86_64/compute/rootimg -F /tmp/myrsync>
 
+=item *
+
+To define the Management Node (mn1) in the database so you can use xdcp,run 
+
+B<chdef> I<-t node -o mn1 groups=mn nodetype=mn>
+
 
 =back
 
