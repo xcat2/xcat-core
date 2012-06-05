@@ -352,7 +352,11 @@ sub rflash {
 	   }
 
            my $res = xCAT::FSPUtils::fsp_api_action($request, $name, $d, $action, 0, $request->{opt}->{d} );
-           push(@value,[$name, @$res[1], @$res[2]]);
+           if ($action eq "acdl" && @$res[2] eq '0') {
+               push(@value, [$name, "Success", '0']);
+           } else {
+               push(@value,[$name, @$res[1], @$res[2]]);
+           }
            return (\@value);
 	         
         }
