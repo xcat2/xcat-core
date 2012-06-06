@@ -29,7 +29,7 @@ if [ $OS != "AIX" ]; then
        #if [ -n "`ls xlmass.lib-6.1.0*.rpm 2> /dev/null`" ] ; then
        #    rpm -ivh --oldpackage xlmass.lib-6.1.0*.rpm
        #fi
-       #cd $installroot
+       #cd $installroot/
        #rm -f -R /tmp/compilers/
 
        if [ -n "$vacpp_script" ] ; then
