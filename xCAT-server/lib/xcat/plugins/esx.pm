@@ -2286,10 +2286,13 @@ sub clone_vms_from_master {
     }
     my $masterview=$masterviews->[0];
     my $masterent=$args{masterent};
+    my $ostype;
     foreach $node (@nodes) {
         my $destination=$tablecfg{vm}->{$node}->[0]->{storage};
         my $nodetypeent;
         my $vment;
+	    
+        $ostype=$masterent->{'os'};
         foreach (qw/os arch profile/) {
             $nodetypeent->{$_}=$masterent->{$_};
         }
@@ -2323,7 +2326,7 @@ sub clone_vms_from_master {
 	  $clonespecargs{snapshot}=$masterview->snapshot->currentSnapshot;
 	}
 	if ($specialize) {
-		$clonespecargs{customization} = make_customization_spec($node);
+		$clonespecargs{customization} = make_customization_spec($node,ostype=>$ostype);
     }
 	my $clonespec = VirtualMachineCloneSpec->new(%clonespecargs);
         my $vmfolder = $vmhash{$node}->{vmfolder};
@@ -2341,6 +2344,7 @@ sub clone_vms_from_master {
 
 sub make_customization_spec {
 	my $node = shift;
+    my %args = @_;
 	my $password="Passw0rd";
 	my $wintimezone;
 	#map of number to strings can be found at 
@@ -2371,6 +2375,16 @@ sub make_customization_spec {
 		die "need passwd table entry for system account Administrator";
 	}
 	$password=$passent->{password};
+    my %lfpd;
+    if ($args{ostype} and $args{ostype} =~ /win2k3/) {
+		%lfpd = (
+			licenseFilePrintData=>CustomizationLicenseFilePrintData->new(
+				autoMode=>CustomizationLicenseDataMode->new(
+				    val => 'perSeat',
+				)
+			)
+		);
+    }
 	my %runonce;
 	if (scalar @runonce) { #skip section if no postscripts or postbootscripts
 		%runonce=(
@@ -2382,6 +2396,7 @@ sub make_customization_spec {
 
 	my $identity = CustomizationSysprep->new(
 		%runonce,
+		%lfpd,
 		guiUnattended => CustomizationGuiUnattended->new(
 			autoLogon=>0,
 			autoLogonCount=>1,
