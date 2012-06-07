@@ -396,7 +396,7 @@ sub pipe_handler
                       || print STDOUT
                       "dsh>  Error_file_closed $$target_properties{hostname} $output_file\n";
                     my $rsp={};
-                    $rsp->{data}->[0] =
+                    $rsp->{error}->[0] =
                       "Error_file_closed $$target_properties{hostname $output_file}.\n";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                     ($output_file == $$target_properties{'output-fh'})
@@ -713,8 +713,8 @@ sub pping_hostnames
       xCAT::Utils->runcmd("$::XCATROOT/bin/pping $hostname_list", -1);
       if ($::RUNCMD_RC !=0) {
         my $rsp={};
-        $rsp->{data}->[0] = "Error from pping";
-        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        $rsp->{error}->[0] = "Error from pping";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
       }
      $::RUNCMD_RC =0; # reset
     my @no_response = ();
