@@ -2388,7 +2388,7 @@ sub make_customization_spec {
 		%lfpd = (
 			licenseFilePrintData=>CustomizationLicenseFilePrintData->new(
 				autoMode=>CustomizationLicenseDataMode->new(
-				    val => 'perSeat',
+				    'perSeat'
 				)
 			)
 		);
