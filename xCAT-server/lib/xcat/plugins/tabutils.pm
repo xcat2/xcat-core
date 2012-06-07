@@ -126,7 +126,7 @@ sub process_request
     }
     elsif ($command eq "tabdump")
     {
-        return tabdump($args, $callback);
+        return tabdump($args, $callback,$request);
     }
     elsif ($command eq "lsxcatd")
     {
@@ -531,6 +531,7 @@ sub tabdump
 {
     my $args  = shift;
     my $cb    = shift;
+    my $request = shift;
     my $table = "";
     my $HELP;
     my $DESC;
@@ -576,6 +577,7 @@ sub tabdump
         $cb->(\%rsp);
         return;
     }
+    if ($FILENAME and $FILENAME !~ /^\//) { $FILENAME =~ s/^/$request->{cwd}->[0]\//; }
 
 
     if ($HELP) { $tabdump_usage->(0); return; }
