@@ -96,7 +96,7 @@ sub execute_dcp
     if (!scalar(%resolved_targets))
     {
         my $rsp = {};
-        $rsp->{data}->[0] = "No hosts in node list 1";
+        $rsp->{error}->[0] = "No hosts in node list 1";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return ++$result;
     }
@@ -113,7 +113,7 @@ sub execute_dcp
     # )
     #{
     #    my $rsp ={};
-    #    $rsp->{data}->[0] = " The DSH fanout value has exceeded the system file descriptor upper limit. Please either reduce the fanout value, or increase max file descriptor number by running ulimit.";
+    #    $rsp->{error}->[0] = " The DSH fanout value has exceeded the system file descriptor upper limit. Please either reduce the fanout value, or increase max file descriptor number by running ulimit.";
     #    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
     #   return ++$result;
     #}
@@ -154,9 +154,9 @@ sub execute_dcp
         {
             my @active_list = keys(%targets_active);
             my $rsp         = {};
-            $rsp->{data}->[0] =
+            $rsp->{error}->[0] =
               " Timed out waiting for response from child processes for the following nodes.";
-            $rsp->{data}->[1] = " @active_list";
+            $rsp->{error}->[1] = " @active_list";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             kill 'INT', keys(%pid_targets);
             $result++;
@@ -319,7 +319,7 @@ sub execute_dsh
 
     if (!scalar(%resolved_targets))
     {
-        $rsp->{data}->[0] = " No hosts in node list 2";
+        $rsp->{error}->[0] = " No hosts in node list 2";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return ++$result;
     }
@@ -445,10 +445,10 @@ sub _execute_dsh
         if ($fh_count == 0)
         {
             my @active_list = keys(%targets_active);
-            $rsp->{data}->[0] =
+            $rsp->{error}->[0] =
               " Timed out waiting for response from child processes for the following nodes. Terminating the child processes. ";
-            $rsp->{data}->[1] = " @active_list";
-            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+            $rsp->{error}->[1] = " @active_list";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             @targets_failed = keys(%targets_active);
 
             &handle_signal_dsh('INT', 2);
@@ -541,8 +541,8 @@ sub _execute_dsh
                         push @{$rsp->{data}}, @{$output_buffers{$user_target}};
                         xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
                         $rsp = {};
-                        push @{$rsp->{data}}, @{$error_buffers{$user_target}};
-                        xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+                        push @{$rsp->{error}}, @{$error_buffers{$user_target}};
+                        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                     }
                 }
                 else
@@ -556,8 +556,8 @@ sub _execute_dsh
                     push @{$rsp->{data}}, @{$output_buffers{$user_target}};
                     xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
                     $rsp = {};
-                    push @{$rsp->{data}}, @{$error_buffers{$user_target}};
-                    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+                    push @{$rsp->{error}}, @{$error_buffers{$user_target}};
+                    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
                 }
             }
@@ -576,9 +576,9 @@ sub _execute_dsh
                 # " $user_target remote Command return code = $exit_code.";
                 #xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 1);
 
-                $rsp->{data}->[0] = "dsh>  Remote_command_failed $user_target";
+                $rsp->{error}->[0] = "dsh>  Remote_command_failed $user_target";
                 $$options{'monitor'}
-                  && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                  && xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                 if (!grep(/$user_target/, @targets_failed))
                 {    # not already in list
 
@@ -594,10 +594,10 @@ sub _execute_dsh
                 if ($target_rc != 0)
                 {
 
-                    $rsp->{data}->[0] =
+                    $rsp->{error}->[0] =
                       "dsh>  Remote_command_failed $user_target";
                     $$options{'monitor'}
-                      && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 1);
+                      && xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 
                     push @targets_failed, $user_target;
                     push @{$dsh_target_status{'failed'}}, $user_target
@@ -606,14 +606,14 @@ sub _execute_dsh
 
                 elsif (!defined($target_rc) && !$dsh_cmd_background && ($::DSH_MELLANOX_SWITCH==0))
                 {
-                    $rsp->{data}->[0] =
+                    $rsp->{error}->[0] =
                       " A return code for the command run on the host $user_target was not received.";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
                     my $rsp = {};
-                    $rsp->{data}->[0] =
+                    $rsp->{error}->[0] =
                       "dsh>  Remote_command_failed $user_target";
                     $$options{'monitor'}
-                      && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                      && xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
                     push @targets_failed, $user_target;
                     push @{$dsh_target_status{'failed'}}, $user_target
@@ -1117,7 +1117,7 @@ sub fork_fanout_dsh
         @process_info = xCAT::DSHCore->fork_output($user_target, @dsh_command);
         if ($process_info[0] == -2)
         {
-            $rsp->{data}->[0] =
+            $rsp->{error}->[0] =
               "$user_target could not execute this command $dsh_command[0] - $$options{'command'} ,  $! ";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         }
@@ -1127,14 +1127,14 @@ sub fork_fanout_dsh
         if ($process_info[0] == -4)
         {
 
-            $rsp->{data}->[0] = "Cannot redirect STDOUT, error= $!";
+            $rsp->{error}->[0] = "Cannot redirect STDOUT, error= $!";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         }
 
         if ($process_info[0] == -5)
         {
 
-            $rsp->{data}->[0] = "Cannot redirect STDERR, error= $!";
+            $rsp->{error}->[0] = "Cannot redirect STDERR, error= $!";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         }
 
@@ -1505,7 +1505,7 @@ sub stream_output
 
                 if ($exit_code != 0)
                 {
-                    $rsp->{data}->[0] =
+                    $rsp->{error}->[0] =
                       "$user_target remote shell had error code: $exit_code";
                     !$$options{'silent'}
                       && (xCAT::MsgUtils->message("E", $rsp, $::CALLBACK));
@@ -1526,15 +1526,15 @@ sub stream_output
                     if ($target_rc != 0)
                     {
 
-                        $rsp->{data}->[0] =
+                        $rsp->{error}->[0] =
                           " $user_target remote Command had return code: $$target_properties{'target-rc'} ";
                         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
                         my $rsp = {};
-                        $rsp->{data}->[0] =
+                        $rsp->{error}->[0] =
                           "dsh>  Remote_command_failed $user_target";
                         $$options{'monitor'}
-                          && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                          && xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
                         push @$targets_failed, $user_target;
                     }
@@ -1542,7 +1542,7 @@ sub stream_output
                     elsif (!defined($target_rc))
                     {
 
-                        $rsp->{data}->[0] =
+                        $rsp->{error}->[0] =
                           " $user_target a return code run on this host was not received. ";
                         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
@@ -1673,15 +1673,15 @@ sub stream_error
 
                 if ($exit_code != 0)
                 {
-                    $rsp->{data}->[0] =
+                    $rsp->{error}->[0] =
                       " $user_target remote shell had exit code $exit_code.";
                     !$$options{'silent'}
                       && (xCAT::MsgUtils->message("E", $rsp, $::CALLBACK));
 
-                    $rsp->{data}->[0] =
+                    $rsp->{error}->[0] =
                       "dsh>  Remote_command_failed $user_target";
                     $$options{'monitor'}
-                      && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                      && xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
                     push @$targets_failed, $user_target;
                     push @{$dsh_target_status{'failed'}}, $user_target
@@ -1694,14 +1694,14 @@ sub stream_error
                     if ($target_rc != 0)
                     {
 
-                        $rsp->{data}->[0] =
+                        $rsp->{error}->[0] =
                           "$user_target remote command had return code $$target_properties{'target-rc'}";
                         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
-                        $rsp->{data}->[0] =
+                        $rsp->{error}->[0] =
                           "dsh>  Remote_command_failed $user_target";
                         $$options{'monitor'}
-                          && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                          && xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
                         push @$targets_failed, $user_target;
                     }
@@ -1709,14 +1709,14 @@ sub stream_error
                     elsif (!defined($target_rc) && ($::DSH_MELLANOX_SWITCH==0))
                     {
 
-                        $rsp->{data}->[0] =
+                        $rsp->{error}->[0] =
                           "A return code for the command run on $user_target was not received.";
                         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
-                        $rsp->{data}->[0] =
+                        $rsp->{error}->[0] =
                           "dsh>  Remote_command_failed $user_target";
                         $$options{'monitor'}
-                          && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                          && xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
                         push @$targets_failed, $user_target;
                     }
@@ -1825,7 +1825,7 @@ sub config_dcp
     if (!(-e "$::CONTEXT_DIR$$options{'context'}.pm"))
     {
 
-        $rsp->{data}->[0] =
+        $rsp->{error}->[0] =
           "Context file $::CONTEXT_DIR$$options{'context'}.pm does not exist.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return ++$result;
@@ -1941,7 +1941,7 @@ sub config_dcp
 
     if ($$options{'pull'} && !(-d $$options{'target'}))
     {
-        $rsp->{data}->[0] =
+        $rsp->{error}->[0] =
           "Cannot copy to target $$options{'target'}. Directory does not exist.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return ++$result;
@@ -2021,7 +2021,7 @@ sub config_dsh
     if (!(-e "$::CONTEXT_DIR$$options{'context'}.pm"))
     {
 
-        $rsp->{data}->[0] =
+        $rsp->{error}->[0] =
           "Context file $::CONTEXT_DIR$$options{'context'}.pm does not exist.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return ++$result;
@@ -2067,7 +2067,7 @@ sub config_dsh
          }
          else
          {
-            $rsp->{data}->[0] = "EMsgMISSING_DEV_CFG";
+            $rsp->{error}->[0] = "EMsgMISSING_DEV_CFG";
             xCAT::MsgUtils->message('E', $rsp, $::CALLBACK);
          }
     }
@@ -2127,7 +2127,7 @@ sub config_dsh
 
     if ($$options{'environment'} && (-z $$options{'environment'}))
     {
-        $rsp->{data}->[0] = "File: $$options{'environment'} is empty.";
+        $rsp->{error}->[0] = "File: $$options{'environment'} is empty.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         $$options{'environment'} = undef;
     }
@@ -2146,7 +2146,7 @@ sub config_dsh
             && ($$options{'syntax'} ne 'ksh'))
       )
     {
-        $rsp->{data}->[0] =
+        $rsp->{error}->[0] =
           "Incorrect argument \"$$options{'syntax'}\" specified on -S flag. ";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return ++$result;
@@ -2336,7 +2336,7 @@ sub config_dsh
         if (!(-e $exe_command[0]))
         {
 
-            $rsp->{data}->[0] = "File $exe_command[0] does not exist";
+            $rsp->{error}->[0] = "File $exe_command[0] does not exist";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return ++$result;
         }
@@ -2344,7 +2344,7 @@ sub config_dsh
         if (-z $exe_command[0])
         {
 
-            $rsp->{data}->[0] = "File $exe_command[0] is empty.";
+            $rsp->{error}->[0] = "File $exe_command[0] is empty.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return ++$result;
         }
@@ -2352,7 +2352,7 @@ sub config_dsh
         if (!(-x $exe_command[0]))
         {
 
-            $rsp->{data}->[0] = "File $exe_command[0] is not executable.";
+            $rsp->{error}->[0] = "File $exe_command[0] is not executable.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return ++$result;
         }
@@ -2471,7 +2471,7 @@ sub handle_signal_dsh
     my $rsp = {};
     if ($dsh_exec_state == $DSH_STATE_BEGIN)
     {
-        $rsp->{data}->[0] =
+        $rsp->{error}->[0] =
           "Command execution ended prematurely due to a previous error or stop request from the user.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         exit(1);
@@ -2479,7 +2479,7 @@ sub handle_signal_dsh
 
     elsif ($dsh_exec_state == $DSH_STATE_INIT_STARTED)
     {
-        $rsp->{data}->[0] =
+        $rsp->{error}->[0] =
           "Command execution ended prematurely due to a previous error or stop request from the user.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
@@ -2501,7 +2501,7 @@ sub handle_signal_dsh
                 if ($fatal_error)
                 {
 
-                    $rsp->{data}->[0] =
+                    $rsp->{error}->[0] =
                       "Running the command on $user_target has been cancelled due to unrecoverable error.  The command was never sent to the host.";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                 }
@@ -2519,7 +2519,7 @@ sub handle_signal_dsh
             }
         }
 
-        $rsp->{data}->[0] =
+        $rsp->{error}->[0] =
           "Running commands have been cancelled due to unrecoverable error or stop request by user.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
@@ -2555,22 +2555,22 @@ sub handle_signal_dsh
                 if ($fatal_error)
                 {
 
-                    $rsp->{data}->[0] =
+                    $rsp->{error}->[0] =
                       "$user_target: running of the command on this host has been cancelled due to unrecoverable error.\n The command was never sent to the host.";
-                    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                 }
 
                 else
                 {
 
-                    $rsp->{data}->[0] =
+                    $rsp->{error}->[0] =
                       "$user_target: running of the command on this host has been cancelled due to unrecoverable error or stop request by user.\n The command was never sent to the host.";
-                    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
-                    $rsp->{data}->[0] =
+                    $rsp->{error}->[0] =
                       "xdsh>  Remote_command_cancelled $user_target";
                     $$dsh_options{'monitor'}
-                      && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                      && xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                 }
 
                 push @{$dsh_target_status{'canceled'}}, $user_target;
@@ -2611,7 +2611,7 @@ sub handle_signal_dsh
 
         if (@targets_active_list)
         {
-            $rsp->{data}->[0] =
+            $rsp->{error}->[0] =
               "Caught SIG$signal - terminating the child processes.";
             !$$dsh_options{'stats'}
               && xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -2634,17 +2634,17 @@ sub handle_signal_dsh
                     if ($fatal_error)
                     {
 
-                        $rsp->{data}->[0] =
+                        $rsp->{error}->[0] =
                           "Running the command on $user_target has been interrupted due to unrecoverable error.  The command may not have completed successfully.";
-                        xCAT::MsgUtils->message("V", $rsp, $::CALLBACK);
+                        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                     }
 
                     else
                     {
 
-                        $rsp->{data}->[0] =
+                        $rsp->{error}->[0] =
                           "Running the command on $user_target has been interrupted due to unrecoverable error or stop request by the user.  The command may not have completed successfully.";
-                        xCAT::MsgUtils->message("V", $rsp, $::CALLBACK);
+                        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                     }
                 }
 
@@ -2668,22 +2668,22 @@ sub handle_signal_dsh
                     if ($fatal_error)
                     {
 
-                        $rsp->{data}->[0] =
+                        $rsp->{error}->[0] =
                           "Running the command on $user_target has been cancelled due to unrecoverable error.  The command was never sent to the host.";
-                        xCAT::MsgUtils->message("V", $rsp, $::CALLBACK);
+                        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                     }
 
                     else
                     {
 
-                        $rsp->{data}->[0] =
+                        $rsp->{error}->[0] =
                           "Running the command on $user_target has been cancelled due to unrecoverable error or stop request by the user.  The command was never sent to the host.";
-                        xCAT::MsgUtils->message("V", $rsp, $::CALLBACK);
+                        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
-                        $rsp->{data}->[0] =
+                        $rsp->{error}->[0] =
                           "dsh>  Remote_command_cancelled $user_target";
                         $$dsh_options{'monitor'}
-                          && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                          && xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                     }
 
                     push @{$dsh_target_status{'canceled'}}, $user_target;
@@ -2692,7 +2692,7 @@ sub handle_signal_dsh
 
             @{$dsh_target_status{'waiting'}} = ();
 
-            $rsp->{data}->[0] =
+            $rsp->{error}->[0] =
               "Command execution ended prematurely due to a previous unrecoverable error or stop request by the user.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         }    #end fatal_error != 2
@@ -2716,18 +2716,18 @@ sub handle_signal_dsh
             $dsh_stats{'end-time'}   = localtime();
         }
 
-        $rsp->{data}->[0] =
+        $rsp->{error}->[0] =
           "Running the command  stopped due to unrecoverable error or stop request by the user.";
-        xCAT::MsgUtils->message("V", $rsp, $::CALLBACK);
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
         return;
     }
 
     else
     {
-        $rsp->{data}->[0] =
+        $rsp->{error}->[0] =
           "Running the command  stopped due to unrecoverable error or stop request by the user.";
-        xCAT::MsgUtils->message("V", $rsp, $::CALLBACK);
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         exit(1);
     }
 }
@@ -3014,14 +3014,14 @@ sub verify_targets
 
             foreach my $user_target (@targets)
             {
-                $rsp->{data}->[0] =
+                $rsp->{error}->[0] =
                   "$user_target is not responding. No command will be issued to this host.";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
-                $rsp->{data}->[0] =
+                $rsp->{error}->[0] =
                   "dsh>  Remote_command_cancelled $user_target";
                 $$dsh_options{'monitor'}
-                  && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                  && xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
                 push @{$dsh_target_status{'canceled'}}, $user_target;
                 $$dsh_unresolved_targets{$user_target} =
@@ -3308,7 +3308,7 @@ sub check_valid_options
         {
             my $rsp = {};
             my $badopts = join(',', @invalid_opts);
-            $rsp->{data}->[0] = "Invalid options: $badopts";
+            $rsp->{error}->[0] = "Invalid options: $badopts";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
@@ -3358,7 +3358,7 @@ sub ignoreEnv
     {
         $env = join ",", @env_not_valid;
         my $rsp = {};
-        $rsp->{data}->[0] = "Invalid Environment Variable: $env";
+        $rsp->{error}->[0] = "Invalid Environment Variable: $env";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return;
     }
@@ -3425,7 +3425,7 @@ sub isFdNumExceed
     if ($fdnum !~ /\s*\d+\s*/)                 #this should never happen
     {
         my $rsp = {};
-        $rsp->{data}->[0] = "Unsupport ulimit return code!";
+        $rsp->{error}->[0] = "Unsupport ulimit return code!";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return;
     }
@@ -3447,7 +3447,7 @@ sub isFdNumExceed
     if (($max_fd_req + $remain_fd_num) > $fdnum)
     {
         my $rsp = {};
-        $rsp->{data}->[0] = "Reached fdnum=  $fdnum";
+        $rsp->{error}->[0] = "Reached fdnum=  $fdnum";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return;
     }
@@ -3629,7 +3629,7 @@ sub parse_and_run_dsh
     if ($options{'node-rsh'}
         && (!-f $options{'node-rsh'} || !-x $options{'node-rsh'}))
     {
-        $rsp->{data}->[0] =
+        $rsp->{error}->[0] =
           "Remote command: $remotecommand does not exist or is not executable.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return;
@@ -3639,7 +3639,7 @@ sub parse_and_run_dsh
     if ($options{'node-rsh'}
         && (grep /rsync/, $options{'node-rsh'}))
     {
-        $rsp->{data}->[0] =
+        $rsp->{error}->[0] =
           "Remote command: $remotecommand should be used with the dcp command. ";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return;
@@ -3665,7 +3665,7 @@ sub parse_and_run_dsh
     if ((!(defined(@$nodes))) && (!(defined($options{'rootimg'}))))
     {    #  no nodes and not -i option, error
         my $rsp = ();
-        $rsp->{data}->[0] = "Unless using -i option,  noderange is required.";
+        $rsp->{error}->[0] = "Unless using -i option,  noderange is required.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return;
     }
@@ -3685,7 +3685,7 @@ sub parse_and_run_dsh
          if (!(-e ($options{'rootimg'})))
          {    # directory does not exist
             my $rsp = ();
-            $rsp->{data}->[0] =
+            $rsp->{error}->[0] =
               "Input image directory $options{'rootimg'} does not exist.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
@@ -3704,7 +3704,7 @@ sub parse_and_run_dsh
         if (defined(@$nodes))
         {
             my $rsp = ();
-            $rsp->{data}->[0] =
+            $rsp->{error}->[0] =
               "Input noderange:@$nodes and any other xdsh flags or environment variables are not valid with -i flag.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
@@ -3755,7 +3755,7 @@ sub parse_and_run_dsh
         # if devicetype=Mellanox,  xdsh does not setup ssh,  rspconfig does
         if ($switchtype =~ /Mellanox/i) {
            my $rsp = ();
-           $rsp->{data}->[0] = 
+           $rsp->{error}->[0] = 
             "You do not use xdsh -K to setup the Mellanox switch ssh keys. Use rspconfig. See man page for rspconfig option sshcfg={enable|disable}.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
@@ -3764,7 +3764,7 @@ sub parse_and_run_dsh
         if (defined $options{'rootimg'})
         {
             my $rsp = ();
-            $rsp->{data}->[0] = "Cannot use -R and -K flag together";
+            $rsp->{error}->[0] = "Cannot use -R and -K flag together";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
 
@@ -3780,7 +3780,7 @@ sub parse_and_run_dsh
         if (!($ENV{'DSH_REMOTE_PASSWORD'}))
         {
             my $rsp = ();
-            $rsp->{data}->[0] =
+            $rsp->{error}->[0] =
               "User password for ssh key exchange has not been supplied.\n Cannot complete the -K command\n";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
@@ -3790,7 +3790,7 @@ sub parse_and_run_dsh
         if (!($ENV{'DSH_FROM_USERID'}))
         {
             my $rsp = ();
-            $rsp->{data}->[0] =
+            $rsp->{error}->[0] =
               "Current Userid has not been supplied.\n Cannot complete the -K command.\n";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
@@ -3801,7 +3801,7 @@ sub parse_and_run_dsh
                                         # keys
         {
             my $rsp = ();
-            $rsp->{data}->[0] =
+            $rsp->{error}->[0] =
               "Logon  Userid has not been supplied.\n Cannot complete the -K command.\n";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
@@ -3817,8 +3817,8 @@ sub parse_and_run_dsh
             && ($current_userid ne "root"))
         {
             my $rsp = ();
-            $rsp->{data}->[0] =
-              "When touserid:$to_userid is not the same as the current user:$current_userid. The the command must be run by root id.";
+            $rsp->{error}->[0] =
+              "When touserid:$to_userid is not the same as the current user:$current_userid. The command must be run by root id.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
@@ -3852,7 +3852,7 @@ sub parse_and_run_dsh
     if (!(@ARGV))
     {    #  no args , an error
 
-        $rsp->{data}->[0] = "No command argument provided";
+        $rsp->{error}->[0] = "No command argument provided";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return;
     }
@@ -3863,7 +3863,7 @@ sub parse_and_run_dsh
         if ($::RUNCMD_RC)
         {    # error from dsh
             my $rsp = ();
-            $rsp->{data}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
+            $rsp->{error}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 
         }
@@ -3876,7 +3876,7 @@ sub parse_and_run_dsh
         #@results = xCAT::DSHCLI->runDsh_api(\%options, 0);
         #if ($::RUNCMD_RC)
         #{    # error from dsh
-        #   $rsp->{data}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
+        #   $rsp->{error}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
         #  xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 
         #}
@@ -4047,7 +4047,7 @@ sub parse_and_run_dcp
         if (xCAT::Utils->isAIX())
         {
             my $rsp = ();
-            $rsp->{data}->[0] = "The -i option is not supported on AIX.";
+            $rsp->{error}->[0] = "The -i option is not supported on AIX.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
@@ -4055,7 +4055,7 @@ sub parse_and_run_dcp
     if ((!(defined(@$nodes))) && (!(defined($options{'rootimg'}))))
     {    #  no nodes and not -i option, error
         my $rsp = ();
-        $rsp->{data}->[0] = "Unless using -i option,  noderange is required.";
+        $rsp->{error}->[0] = "Unless using -i option,  noderange is required.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return;
     }
@@ -4079,7 +4079,7 @@ sub parse_and_run_dcp
         if (!(-e ($options{'rootimg'})))
         {    # directory does not exist
             my $rsp = ();
-            $rsp->{data}->[0] =
+            $rsp->{error}->[0] =
               "Input image directory $options{'rootimg'} does not exist.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
@@ -4087,7 +4087,7 @@ sub parse_and_run_dcp
         if (!($options{'File'}))
         {    # File not given
             my $rsp = ();
-            $rsp->{data}->[0] =
+            $rsp->{error}->[0] =
               "If -i option is use, then the -F option must input the file list.\nThe file will contain the list of files to rsync to the image.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
@@ -4105,7 +4105,7 @@ sub parse_and_run_dcp
         if (!-f $options{'File'})
         {
             my $rsp = ();
-            $rsp->{data}->[0] = "File:$syncfile does not exist.";
+            $rsp->{error}->[0] = "File:$syncfile does not exist.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
@@ -4115,7 +4115,7 @@ sub parse_and_run_dcp
     if ($options{'File'} && $options{'node-rcp'})
     {
         my $rsp = ();
-        $rsp->{data}->[0] =
+        $rsp->{error}->[0] =
           "If -F option is use, then -r is invalid. The command will always the rsync using ssh.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return;
@@ -4125,7 +4125,7 @@ sub parse_and_run_dcp
     if (!($options{'File'}) && $options{'rsyncSN'})
     {
         my $rsp = ();
-        $rsp->{data}->[0] =
+        $rsp->{error}->[0] =
           "If -s option is use, then -F must point to the syncfile.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return;
@@ -4155,7 +4155,7 @@ sub parse_and_run_dcp
     if ($options{'node-rcp'}
         && (!-f $options{'node-rcp'} || !-x $options{'node-rcp'}))
     {
-        $rsp->{data}->[0] =
+        $rsp->{error}->[0] =
           "Remote command: $remotecopycommand does not exist or is not executable.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return;
@@ -4174,7 +4174,7 @@ sub parse_and_run_dcp
         if (!($options{'rootimg'}))
         {
             my $rsp = {};
-            $rsp->{data}->[0] = "Noderange missing in command input.";
+            $rsp->{error}->[0] = "Noderange missing in command input.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
@@ -4199,7 +4199,7 @@ sub parse_and_run_dcp
         if ($rc != 0)
         {    # error from dcp
             my $rsp = {};
-            $rsp->{data}->[0] = "Error running rsync to image:$image.";
+            $rsp->{error}->[0] = "Error running rsync to image:$image.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 
         }
@@ -4207,6 +4207,7 @@ sub parse_and_run_dcp
 
     }
     my $synfiledir;
+    my $nodesyncfiledir;
     # if rsyncing the nodes or service nodes
     if ($options{'File'})
     {
@@ -4217,14 +4218,21 @@ sub parse_and_run_dcp
             $::SYNCSN = 1;
         }
 
-        # set default sync dir on service node
+        # set default sync dir on service node  and node
         $synfiledir = "/var/xcat/syncfiles";
+        $nodesyncfiledir = "/var/xcat/node/syncfiles";
 
         # get the directory on the servicenode to put the rsync files in
         my @syndir = xCAT::Utils->get_site_attribute("SNsyncfiledir");
         if ($syndir[0])
         {
             $synfiledir = $syndir[0];
+        }
+        # get the directory on the node to put the append files in
+        my @nodesyncdir = xCAT::Utils->get_site_attribute("Nodesyncfiledir");
+        if ($nodesyncdir[0])
+        {
+           $nodesyncfiledir = $nodesyncdir[0];
         }
 
         my $rc;
@@ -4237,17 +4245,17 @@ sub parse_and_run_dcp
         {    # running on service node
             $rc =
               &parse_rsync_input_file_on_SN(\@nodelist, \%options, $syncfile,
-                                            $synfiledir);
+                                            $synfiledir,$nodesyncfiledir);
         }
         else
         {    # running on MN
             $rc =
               &parse_rsync_input_file_on_MN(\@nodelist, \%options, $syncfile,
-                                            $::SYNCSN, $synfiledir);
+                                            $::SYNCSN, $synfiledir,$nodesyncfiledir);
         }
         if ($rc == 1)
         {
-            $rsp->{data}->[0] = "Error parsing the rsync file:$syncfile.";
+            $rsp->{error}->[0] = "Error parsing the rsync file:$syncfile.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
@@ -4257,7 +4265,7 @@ sub parse_and_run_dcp
     {
         if (@ARGV < 1)
         {
-            $rsp->{data}->[0] = "Missing file arguments";
+            $rsp->{error}->[0] = "Missing file arguments";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
@@ -4266,7 +4274,7 @@ sub parse_and_run_dcp
         {
             if ($options{'pull'})
             {
-                $rsp->{data}->[0] = "Missing target_path";
+                $rsp->{error}->[0] = "Missing target_path";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
                 return;
             }
@@ -4280,8 +4288,8 @@ sub parse_and_run_dcp
 
         elsif ($options{'pull'} && (@ARGV > 2))
         {
-            $rsp->{data}->[0] = "Cannot pull more than one file from targets.";
-            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 1);
+            $rsp->{error}->[0] = "Cannot pull more than one file from targets.";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
 
@@ -4379,8 +4387,9 @@ sub rsync_to_image
         }
 
         # process no more lines, do not exec
-        # do not execute postscripts when syncing servicenodes
-        if (($line =~ /EXECUTE:/) || ($line =~ /EXECUTEALWAYS:/))
+        # do not execute postscripts when syncing images 
+        if (($line =~ /EXECUTE:/) || ($line =~ /EXECUTEALWAYS:/) 
+           || ($line =~ /APPEND:/))
         { # process no more lines
 			last;
 	}
@@ -4414,7 +4423,7 @@ sub rsync_to_image
                 if ($::RUNCMD_RC != 0)
                 {
                     my $rsp = {};
-                    $rsp->{data}->[0] = "Command: $cmd failed.";
+                    $rsp->{error}->[0] = "Command: $cmd failed.";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
                     return;
                 }
@@ -4452,8 +4461,8 @@ sub rsync_to_image
             if ($::RUNCMD_RC != 0)
             {
                 my $rsp = {};
-                $rsp->{data}->[0] = "Command: $synccmd failed.";
-                xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                $rsp->{error}->[0] = "Command: $synccmd failed.";
+                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             }
 
         }    # valid line
@@ -4513,10 +4522,11 @@ sub rsync_to_image
 sub parse_rsync_input_file_on_MN
 {
     use File::Basename;
-    my ($nodes, $options, $input_file, $rsyncSN, $syncdir) = @_;
+    my ($nodes, $options, $input_file, $rsyncSN, $syncdir,$nodesyncfiledir) = @_;
     my @dest_host    = @$nodes;
     my $process_line = 0;
     my $destfileisdir;
+    my $clause=0;
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
     while (my $line = <INPUTFILE>)
     {
@@ -4526,71 +4536,37 @@ sub parse_rsync_input_file_on_MN
         {
             next;
         }
-        # if syncing only the service node directory, do not execute
-        # postscripts
-        if ($line =~ /EXECUTE:/) {  # execute if files sync'd
-          if ($::SYNCSN == 1) {
-        	last;
-          } else {
-             while ( $line = <INPUTFILE>)
-             {
-               if ($line =~ /EXECUTEALWAYS:/) {  
-                  # finished with EXECUTE clause 
-                  while ( $line = <INPUTFILE>)
-                  {
-                    chomp $line;
-                    if (($line =~ /^#/) || ( $line =~ /^\s*$/ ))
-                        # skip commments  and blanks
-                    {
-                     next;
-                    }
-                    push @::alwayspostscripts,$line;
-                  }
-                   
-               }
-               chomp $line;
-               if (($line =~ /^#/) || ( $line =~ /^\s*$/ ))
-                        # skip commments  and blanks
-               {
-                 next;
-               }
-               push @::postscripts,$line;
-             }
-           
-         }
+        # Determine if processing a clause or the synclist 
+        if (($line =~ /EXECUTE:/) || ($line =~ /EXECUTEALWAYS:/)
+                 || ($line =~ /APPEND:/)) { 
+             $clause=$line;
+             next;   # get the content of the clause
         }
-        if ($line =~ /EXECUTEALWAYS:/) {  # execute always 
-          if ($::SYNCSN == 1) {
-        	last;
-          } else {
-             while ( $line = <INPUTFILE>)
-             {
-               if ($line =~ /EXECUTE:/) {  
-                  # finished with EXECUTEALWAYS clause 
-                  while ( $line = <INPUTFILE>)
-                  {
-                    chomp $line;
-                    if (($line =~ /^#/) || ( $line =~ /^\s*$/ ))
-                        # skip commments  and blanks
-                    {
-                     next;
-                    }
-                    push @::postscripts,$line;
-                  }
+        # processing a clause
+        if (($clause =~ /APPEND:/) || ($clause =~ /EXECUTEALWAYS:/)
+            || ($clause =~ /EXECUTE:/)) {
+            if (($::SYNCSN == 1) && (($clause =~ /EXECUTEALWAYS:/) ||
+                  ($clause =~ /EXECUTE:/))) {  # skip, if syncing SN only
+         	next;
+            } else {   # process the clause
+               if ($clause =~ /EXECUTE:/) {
+                  push @::postscripts,$line;
+                 # next;
                }
-               chomp $line;
-               if (($line =~ /^#/) || ( $line =~ /^\s*$/ ))
-                        # skip commments  and blanks
-               {
-                 next;
+               if ($clause =~ /EXECUTEALWAYS:/) {
+                  push @::alwayspostscripts,$line;
+                 # next;
                }
-               push @::alwayspostscripts,$line;
-             }
+               if ($clause =~ /APPEND:/) {
+                    #    $build_append_rsync( );
+                  next;
+               }
            
-         }
-        }
-        if ($line =~ /(.+) -> (.+)/)
-        {
+           }
+         } else {  # not processing EXECUTE, EXECUTEALWAYS or APPEND
+          # otherwise it is just the synclist
+          if ($line =~ /(.+) -> (.+)/)
+          {
 
             $process_line = 1;
             my $src_file  = $1;
@@ -4678,15 +4654,16 @@ sub parse_rsync_input_file_on_MN
                           {'diff_dest_name'}{$srcfile} = $dest_basename;
                     }
 
-                }
-            }
-        }
-    }
+                } # end of each srcfile
+            }   # end of each node
+          } # if synclist line
+        } # end processing clauses EXECUTE, APPEND, etc 
+    } #end while processing file
     close INPUTFILE;
     if ($process_line == 0)
     {    # no valid lines in the file
         my $rsp = {};
-        $rsp->{data}->[0] = "Found no lines to process in $input_file.";
+        $rsp->{error}->[0] = "Found no lines to process in $input_file.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return 1;
     }
@@ -4696,7 +4673,44 @@ sub parse_rsync_input_file_on_MN
     }
     return 0;
 }
+#-------------------------------------------------------------------------------
 
+=head3
+      build_append_rsync 
+
+        Handles the 
+           APPEND: clause in the synclist
+           /tmp/appendfile -> /tmp/receivefile
+
+           Syncs the append file to the node to the NodeSyncfiledir
+           Builds a script to append the file (appendfile) to the  
+           receiving file (receivefile). It will first backup or restore
+           the original receivefile. 
+
+        Returns:
+          Files do not exist, rsync errors. 
+
+        Globals:
+
+
+        Error:
+        	None
+
+        Example:
+
+        Comments:
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub build_append_rsync 
+{
+    use File::Basename;
+    my ($nodes, $options, $input_file, $syncdir) = @_;
+
+    return 0;
+}
 #-------------------------------------------------------------------------------
 
 =head3
@@ -4739,6 +4753,7 @@ sub parse_rsync_input_file_on_SN
     my @dest_host    = @$nodes;
     my $process_line = 0;
     my $destfileisdir;
+    my $clause=0;
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
     while (my $line = <INPUTFILE>)
     {
@@ -4748,69 +4763,36 @@ sub parse_rsync_input_file_on_SN
         {
             next;
         }
-        # if syncing only the service node directory, do not execute
-        # postscripts
-        if ($line =~ /EXECUTE:/) {  # these we execute only if file is sync'd
-          if ($::SYNCSN == 1) {
-        	last;
-          } else {
-             while (my $line = <INPUTFILE>)
-             {
-               if ($line =~ /EXECUTEALWAYS:/) {  
-                  # finished with EXECUTE clause 
-                  while ( $line = <INPUTFILE>)
-                  {
-                    chomp $line;
-                    if (($line =~ /^#/) || ( $line =~ /^\s*$/ ))
-                        # skip commments  and blanks
-                    {
-                     next;
-                    }
-                    push @::alwayspostscripts,$line;
-                  }
-                   
-               }
-               chomp $line;
-               if ($line =~ /^#/)    # skip commments
-               {
-                 next;
-               }
-               push @::postscripts,$line;
-              }
-           
-         }
+        # Determine if processing a clause or the synclist
+        if (($line =~ /EXECUTE:/) || ($line =~ /EXECUTEALWAYS:/)
+                 || ($line =~ /APPEND:/)) {
+             $clause=$line;
+             next;   # get the content of the clause
         }
-        # These we always execute
-        if ($line =~ /EXECUTEALWAYS:/) {
-          if ($::SYNCSN == 1) {
-        	last;
-          } else {
-             while ( $line = <INPUTFILE>)
-             {
-               if ($line =~ /EXECUTE:/) {  
-                  # finished with EXECUTEALWAYS clause 
-                  while ( $line = <INPUTFILE>)
-                  {
-                    chomp $line;
-                    if (($line =~ /^#/) || ( $line =~ /^\s*$/ ))
-                        # skip commments  and blanks
-                    {
-                     next;
-                    }
-                    push @::postscripts,$line;
-                  }
+        # processing a clause
+        if (($clause =~ /APPEND:/) || ($clause =~ /EXECUTEALWAYS:/)
+            || ($clause =~ /EXECUTE:/)) {
+            if (($::SYNCSN == 1) && (($clause =~ /EXECUTEALWAYS:/) ||
+                  ($clause =~ /EXECUTE:/))) {  # skip, if syncing SN only
+         	next;
+            } else {   # process the clause
+               if ($clause =~ /EXECUTE:/) {
+                  push @::postscripts,$line;
+                 # next;
                }
-               chomp $line;
-               if (($line =~ /^#/) || ( $line =~ /^\s*$/ ))
-                        # skip commments  and blanks
-               {
-                 next;
+               if ($clause =~ /EXECUTEALWAYS:/) {
+                  push @::alwayspostscripts,$line;
+                 # next;
                }
-               push @::alwayspostscripts,$line;
-              }
+               if ($clause =~ /APPEND:/) {
+                    #    $build_append_rsync( );
+                  next;
+               }
            
-         }
-        }
+           }
+         } else {  # not processing EXECUTE, EXECUTEALWAYS or APPEND
+          # otherwise it is just the synclist
+
         if ($line =~ /(.+) -> (.+)/)
         {
             $process_line = 1;
@@ -4886,15 +4868,16 @@ sub parse_rsync_input_file_on_SN
                           {'diff_dest_name'}{$newsrcfile} = $dest_basename;
                     }
 
-                }
-            }
-        }
-    }
+                } # end of srcfile
+            } # end of each node
+        } # end of synclist
+      }# end processing clauses EXECUTE, APPEND, etc
+    } #end of processing file
     close INPUTFILE;
     if ($process_line == 0)
     {    # no valid lines in the file
         my $rsp = {};
-        $rsp->{data}->[0] = "Found no lines to process in $input_file.";
+        $rsp->{error}->[0] = "Found no lines to process in $input_file.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return 1;
     }
@@ -5097,7 +5080,7 @@ sub runlocal_on_rootimg
     if ($::RUNCMD_RC != 0)
     {
         my $rsp = {};
-        $rsp->{data}->[0] = "Command: $cmd failed, unable to process image.";
+        $rsp->{error}->[0] = "Command: $cmd failed, unable to process image.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return;
 
