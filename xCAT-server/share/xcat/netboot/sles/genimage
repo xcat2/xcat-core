@@ -906,11 +906,6 @@ then
 fi
 EOMS
     
-    # udevd needed by s390x for networking
-#    if ($arch ne "s390x") {
-#        print $inifile "killall -9 udevd\n";
-#    }
-    
     if($mode eq "statelite") {
         print $inifile "echo debug: before netstart\n";
         print $inifile "# check and see if debug is specified on command line\n";
@@ -968,7 +963,16 @@ done
 ip addr add dev lo 127.0.0.1/8
 ip link set lo up
 cd /
+EOMS
 
+# udevd needed by s390x for networking
+# but for other type of machine, udevd will affect the start of devices which detected
+#  after the chroot, so kill it after the working of network device
+if ($arch ne "s390x") {
+    print $inifile "killall -9 udevd\n";
+}
+
+print $inifile <<EOMS;    
 for i in `cat /proc/cmdline`; do
    KEY=`echo \$i |awk -F= '{print \$1}'`
    if [ "\$KEY" == 'imgurl' ]; then
@@ -1037,6 +1041,7 @@ if [ "\$STATELITE" = "1" ]; then
     else
         # for statelite mode on top of the ramdisk
 EOMS
+
     print $inifile "if [ -r /rootimg-statelite.gz ]; then \n";
     print $inifile "echo Setting up RAM-root tmpfs.\n";
     if ($rootlimit) {
