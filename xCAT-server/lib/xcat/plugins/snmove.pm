@@ -1444,7 +1444,13 @@ sub process_request
 
                 # xCAT's default scripts to be run: syslog, 
 				#			setupntp, and mkresolvconf
-                my @valid_scripts = ("syslog", "setupntp", "mkresolvconf");
+
+				my @valid_scripts;
+				if ( ($::isaix) && ($sharedinstall eq "sns") ){
+					@valid_scripts = ("syslog", "setupntp");
+				} else {
+					@valid_scripts = ("syslog", "setupntp", "mkresolvconf");
+				}
                 my $scripts1 = "";
                 if (($user_posts) && ($user_posts eq "all"))
                 {
