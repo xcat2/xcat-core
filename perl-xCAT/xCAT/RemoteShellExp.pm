@@ -76,7 +76,7 @@ sub remoteshellexp
   if (!($flag))
   {
        my $rsp = {};
-       $rsp->{data}->[0] = 
+       $rsp->{error}->[0] = 
        "No flag provide to remoteshellexp.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 2);
         return 2;
@@ -84,7 +84,7 @@ sub remoteshellexp
 
   if (($flag ne "k") && ($flag ne "t") && ($flag ne "s")) {
        my $rsp = {};
-       $rsp->{data}->[0] = 
+       $rsp->{error}->[0] = 
         "Invalid  flag  $flag provided.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
        return 2;
@@ -99,14 +99,14 @@ sub remoteshellexp
   if ($flag eq "s"){
 	if (!$to_user_password) {
        my $rsp = {};
-       $rsp->{data}->[0] = 
+       $rsp->{error}->[0] = 
         "The DSH_REMOTE_PASSWORD environment variable has not been set to the user id password on the node which will have their ssh keys updated (ususally root).";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
        return 2;
 	}
 	if (!$nodes) {
        my $rsp = {};
-       $rsp->{data}->[0] = 
+       $rsp->{error}->[0] = 
         "No nodes were input to update the user's ssh keys.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
        return 2;
@@ -162,7 +162,7 @@ sub remoteshellexp
   # Check to see if empty
   if (-z $key) {
          my $rsp = {};
-         $rsp->{data}->[0] = 
+         $rsp->{error}->[0] = 
          "The $key file is empty. Remove it and rerun the command.";
          xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
          return 1;
@@ -170,7 +170,7 @@ sub remoteshellexp
   } 
   if (-z $key2) {
          my $rsp = {};
-         $rsp->{data}->[0] = 
+         $rsp->{error}->[0] = 
          "The $key2 file is empty. Remove it and rerun the command.";
          xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
          return 1;
@@ -187,7 +187,7 @@ sub remoteshellexp
   {
     if (!($nodes)) {
          my $rsp = {};
-         $rsp->{data}->[0] = 
+         $rsp->{error}->[0] = 
          "There are no nodes defined to update the ssh keys.";
          xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
          return 1;
@@ -267,7 +267,7 @@ sub gensshkeys
     unless ($keygen->spawn($spawncmd))
     {
        my $rsp = {};
-       $rsp->{data}->[0] = 
+       $rsp->{error}->[0] = 
         "Unable to run $spawncmd.";
        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
        return 1;
@@ -324,8 +324,8 @@ sub gensshkeys
           return 0;
         } else {
           my $rsp = {};
-          $rsp->{data}->[0] =  $msg;
-          xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+          $rsp->{error}->[0] =  $msg;
+          xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
           return 1;
         }
 
@@ -394,7 +394,7 @@ sub testkeys
     unless ($testkeys->spawn($spawncmd))
     {
        my $rsp = {};
-       $rsp->{data}->[0] = 
+       $rsp->{error}->[0] = 
         "Unable to run $spawncmd.";
        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
        return 1;
@@ -446,8 +446,8 @@ sub testkeys
           return 0;
         } else {
           my $rsp = {};
-          $rsp->{data}->[0] =  $msg;
-          xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+          $rsp->{error}->[0] =  $msg;
+          xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
           return 1;
         }
 
@@ -522,7 +522,7 @@ sub sendnodeskeys
       unless ($sendkeys->spawn($spawnmkdir))
       {
         my $rsp = {};
-        $rsp->{data}->[0] = 
+        $rsp->{error}->[0] = 
          "Unable to run $spawnmkdir on $node";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         next;
@@ -571,8 +571,8 @@ sub sendnodeskeys
                   $rc=0;
                } else {
                  my $rsp = {};
-                 $rsp->{data}->[0] =  "mkdir:$node has error,$msg";
-                 xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                 $rsp->{error}->[0] =  "mkdir:$node has error,$msg";
+                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                  $rc=1;
                }
             }
@@ -612,7 +612,7 @@ sub sendnodeskeys
       unless ($sendkeys->spawn($spawncopyfiles))
       {
         my $rsp = {};
-        $rsp->{data}->[0] = 
+        $rsp->{error}->[0] = 
          "Unable to run $spawncopyfiles on $node.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         next; 
@@ -658,8 +658,8 @@ sub sendnodeskeys
                   $rc=0;
                } else {
                 my $rsp = {};
-                $rsp->{data}->[0] =  "copykeys:$node has error,$msg";
-                xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                $rsp->{error}->[0] =  "copykeys:$node has error,$msg";
+                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                 $rc=1;
               }
             }
@@ -693,7 +693,7 @@ sub sendnodeskeys
       unless ($sendkeys->spawn($spawnruncopy))
       {
         my $rsp = {};
-        $rsp->{data}->[0] = 
+        $rsp->{error}->[0] = 
          "Unable to run $spawnruncopy.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         next; # go to next node
@@ -743,8 +743,8 @@ sub sendnodeskeys
                   $rc=0;
                } else {
                  my $rsp = {};
-                 $rsp->{data}->[0] =  "copy.sh:$node has error,$msg";
-                 xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                 $rsp->{error}->[0] =  "copy.sh:$node has error,$msg";
+                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                  $rc=1;
               }
             }
@@ -829,7 +829,7 @@ sub senddeviceskeys
       unless ($sendkeys->spawn($spawnaddkey))
       {
         my $rsp = {};
-        $rsp->{data}->[0] = 
+        $rsp->{error}->[0] = 
          "Unable to run $spawnaddkey.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         next; # go to next node
@@ -877,8 +877,8 @@ sub senddeviceskeys
               $rc=0;
             } else {
               my $rsp = {};
-              $rsp->{data}->[0] =  "$node has error,$msg";
-              xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+              $rsp->{error}->[0] =  "$node has error,$msg";
+              xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
               $rc=1;
               next; # go to next node
             }
