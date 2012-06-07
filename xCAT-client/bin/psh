@@ -26,19 +26,25 @@ Getopt::Long::Configure("no_pass_through");
 if (!GetOptions(
   "i|interface=s" => \$interface,
   'l|loginname=s' => \$username,
+  'f|fanout=s' => \$fanout,
   "nonodecheck" => \$::NONODECHECK,  #does not check the noderange, in this case, noderange need to be a list of nodes.
   'h|help' => \$help,
   ) || $help || scalar(@ARGV)<2 ) {
-  print "Usage: psh [-i <interface>] [-l <user>] <noderange> <command>\n";
+  print "Usage: psh [-i <interface>] [-l <user>] [-f <fanout>] <noderange> <command>\n";
   exit;
 }
 my %nodehdl;
 my $xcathost='localhost:3001';
+my $pshmaxp = 64; #TODO: should this be server dictated or local conf?
 if ($ENV{XCATHOST}) {
   $xcathost=$ENV{XCATHOST};
 }
-
-my $pshmaxp = 64; #TODO: should this be server dictated or local conf?
+if ($fanout) {  # see if they overroad the fanout from the command line
+  $pshmaxp=$fanout;
+}
+if ($ENV{XCATPSHFANOUT}) {  # env variable rules
+  $pshmaxp=$ENV{XCATPSHFANOUT};
+}
 my $noderange = $ARGV[0];
 my @nodes=();
 
