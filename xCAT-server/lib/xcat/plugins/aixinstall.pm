@@ -8148,6 +8148,10 @@ sub prenimnodeset
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 return (1);
             }
+
+			# add this res to @nimres
+			push(@nimres, 'xcataixscript');
+
         } else {
                 # TODO: xcataixscript is having problem with NFSv4, will be fixed in the next AIX release
                 if (0 && $::NFSv4) {
