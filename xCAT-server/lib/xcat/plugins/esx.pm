@@ -2196,6 +2196,7 @@ sub clonevms {
             my $url;
             if ($tablecfg{vm}->{$_}->[0]->{storage}) {
                 $url=$tablecfg{vm}->{$_}->[0]->{storage};
+				$url =~ s/=.*//;
             } else {
                 $url=$masterref->{storage};
             }
@@ -2312,6 +2313,7 @@ sub clone_vms_from_master {
             $destination=$masterent->{storage};
             $vment->{storage}=$destination;
         }
+		$destination =~ s/=.*//;
         my $placement_resources=get_placement_resources(hyp=>$hyp,cluster=>$cluster,destination=>$destination);
         my $pool=$placement_resources->{pool};
         my $dstore=$placement_resources->{datastore};
