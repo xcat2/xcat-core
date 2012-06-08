@@ -18,9 +18,14 @@ sub localize_yumrepo {
     $installpfx = "$installroot/$distname/$arch";
     mkpath("$installroot/postscripts/repos/$distname/$arch/");
     open($yumrepofile,">","$installroot/postscripts/repos/$distname/$arch/local-repository.tmpl");
-    find(\&check_tofix,$installpfx);
-    close($yumrepofile);
+    my %options=(
+      wanted => \&check_tofix,
+      follow_fast => 1
+      );
+    find(\%options,$installpfx);    
+     close($yumrepofile);
 }
+
 sub check_tofix {
    if (-d $File::Find::name and $File::Find::name =~ /\/repodata$/) {
 		if($distname =~ /rhels5/)
