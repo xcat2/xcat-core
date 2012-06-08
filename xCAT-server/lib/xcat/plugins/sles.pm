@@ -980,7 +980,6 @@ sub copycd
     my $mntpath=undef;
     my $inspection=undef;
 
-print "call sles";
 
     $installroot = "/install";
     #my $sitetab = xCAT::Table->new('site');
@@ -1151,7 +1150,6 @@ print "call sles";
     }
 
     my $ospkgpath= "$path/$discnumber";
-    print "$ospkgpath\n";
 
     if(-l $ospkgpath)
     {
@@ -1231,7 +1229,6 @@ print "call sles";
 
         my $hassymlink = eval { symlink("",""); 1 };
         if ($hassymlink) {
-		print "$defaultpath/$discnumber";
                 symlink($ospkgpath,"$defaultpath/$discnumber");
         }else
         {
