@@ -102,7 +102,10 @@ sub parse_args {
     # Option -v for version
     ####################################
     if ( exists( $opt{v} )) {
-        return( \$::VERSION );
+        if (!defined($::VERSION)) {
+            return ([xCAT::Usage->getVersion($cmd)]);
+        } 
+        return( [$::VERSION] );
     }
     
     if ( exists( $opt{h}) || $opt{help}) {
