@@ -37,6 +37,9 @@ sub process_request {
   my $distname = undef;
   my $arch = undef;
   my $help = undef;
+  my $inspection=undef;
+  my $path=undef;	 
+
   $identified=0;
   $::CDMOUNTPATH="/mnt/xcat";
   my $existdir = getcwd;
@@ -47,22 +50,26 @@ sub process_request {
   GetOptions(
     'n|name|osver=s' => \$distname,
     'a|arch=s' => \$arch,
-    'h|help' => \$help
-  );
+    'h|help' => \$help,
+    'i|inspection' => \$inspection,
+    'p|path=s' => \$path 
+ );
   if ($help) {
-    $callback->({info=>"copycds [{-n|--name|--osver}=distroname] [{-a|--arch}=architecture] 1st.iso [2nd.iso ...]."});
-    return;
+     $callback->({info=>"copycds [{-p|--path}=path] [{-n|--name|--osver}=distroname] [{-a|--arch}=architecture] [-i|--inspection] 1st.iso [2nd.iso ...]."});    
+     return;
   }
   if ($arch and $arch =~ /i.86/) {
     $arch = 'x86';
   }
   my @args = @ARGV; #copy ARGV
   unless ($#args >= 0) {
-    $callback->({error=>"copycds needs at least one full path to ISO currently."});
-    return;
+	$callback->({error=>"copycds needs at least one full path to ISO currently.",errorcode=>[1]});    
+	return;
   }
   my $file;
   foreach (@args) {
+    $identified=0;
+
     unless (/^\//) { #If not an absolute path, concatenate with client specified cwd
       s/^/$request->{cwd}->[0]\//;
     }
@@ -86,25 +93,48 @@ sub process_request {
     elsif (-r $file and -f $file) # Assume ISO file
       { $mntopts .= " -o ro,loop"; }
     else {
-      $callback->({error=>"The management server was unable to find/read $file. Ensure that file exists on the server at the specified location."});
-      return;
+       $callback->({error=>"The management server was unable to find/read $file. Ensure that file exists on the server at the specified location.",errorcode=>[1]});      
+       return;
     }
 
     mkdir "/mnt/xcat";
 
     if (system("mount $mntopts $file /mnt/xcat")) {
-      $callback->({error=>"copycds was unable to mount $file to /mnt/xcat."});
-      return;
+	$callback->({error=>"copycds was unable to mount $file to /mnt/xcat.",errorcode=>[1]});
+      	return;
     }
     my $newreq = dclone($request);
     $newreq->{command}= [ 'copycd' ]; #Note the singular, it's different
-    $newreq->{arg} = ["-p","/mnt/xcat"];
+    $newreq->{arg} = ["-m","/mnt/xcat"];
+
+    if($path)
+    {
+        push @{$newreq->{arg}},("-p",$path);
+    }
+
+    if($inspection)
+    {
+      push @{$newreq->{arg}},("-i");
+      $callback->({info=>"OS Image:".$_});
+    }
+
     if ($distname) {
-      push @{$newreq->{arg}},("-n",$distname);
-    }
+      if($inspection){
+      $callback->({warning=>"copycds: option --inspection specified, argument specified with option --name is ignored"});
+      }
+      else{
+        push @{$newreq->{arg}},("-n",$distname);
+      }
+     }
     if ($arch) {
+      if($inspection){
+      $callback->({warning=>"copycds: option --inspection specified, argument specified with option --arch is ignored"});
+      }
+      else{
       push @{$newreq->{arg}},("-a",$arch);
-    }
+      }
+   }    
+
     $doreq->($newreq,\&take_answer);
     $::CDMOUNTPATH="";
 
