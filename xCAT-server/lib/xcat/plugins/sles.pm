@@ -977,6 +977,11 @@ sub copycd
     my $installroot;
     my $arch;
     my $path;
+    my $mntpath=undef;
+    my $inspection=undef;
+
+print "call sles";
+
     $installroot = "/install";
     #my $sitetab = xCAT::Table->new('site');
     #if ($sitetab)
@@ -994,12 +999,14 @@ sub copycd
     GetOptions(
                'n=s' => \$distname,
                'a=s' => \$arch,
+               'm=s' => \$mntpath,
+	       'i'   => \$inspection,
                'p=s' => \$path
                );
-    unless ($path)
+    unless ($mntpath)
     {
 
-        #this plugin needs $path...
+        #this plugin needs $mntpath...
         return;
     }
     if ($distname and $distname !~ /^sles|^suse/)
@@ -1008,12 +1015,12 @@ sub copycd
         #If they say to call it something other than SLES or SUSE, give up?
         return;
     }
-    unless (-r $path . "/content")
+    unless (-r $mntpath . "/content")
     {
         return;
     }
     my $dinfo;
-    open($dinfo, $path . "/content");
+    open($dinfo, $mntpath . "/content");
     my $darch;
     while (<$dinfo>)
     {
@@ -1033,7 +1040,7 @@ sub copycd
         return;
     }
     my $dirh;
-    opendir($dirh, $path);
+    opendir($dirh, $mntpath);
     my $discnumber;
     my $totaldiscnumber;
     while (my $pname = readdir($dirh))
@@ -1043,21 +1050,21 @@ sub copycd
             $discnumber = $1;
             chomp($discnumber);
             my $mfile;
-            open($mfile, $path . "/" . $pname . "/media");
+            open($mfile, $mntpath . "/" . $pname . "/media");
             <$mfile>;
             <$mfile>;
             $totaldiscnumber = <$mfile>;
             chomp($totaldiscnumber);
             close($mfile);
-            open($mfile, $path . "/" . $pname . "/products");
+            open($mfile, $mntpath . "/" . $pname . "/products");
             my $prod = <$mfile>;
             close($mfile);
 
             if ($prod =~ m/SUSE-Linux-Enterprise-Server/ || $prod =~ m/SUSE-Linux-Enterprise-Software-Development-Kit/)
             {
-                if (-f "$path/content") {
+                if (-f "$mntpath/content") {
                     my $content;
-                    open($content,"<","$path/content");
+                    open($content,"<","$mntpath/content");
                     my @contents = <$content>;
                     close($content);
                     foreach (@contents) {
@@ -1086,10 +1093,15 @@ sub copycd
 	    
         }
     }
+
     unless ($distname and $discnumber)
     {
         return;
     }
+
+
+
+
     if ($darch and $darch =~ /i.86/)
     {
         $darch = "x86";
@@ -1116,13 +1128,46 @@ sub copycd
             return;
         }
     }
+
+    if($inspection)
+    {
+            $callback->(
+                {
+                 info =>
+                   "DISTNAME:$distname\n"."ARCH:$arch\n"."DISCNO:$discnumber\n"
+                }
+                );
+            return;
+    }
+
     %{$request} = ();    #clear request we've got it.
 
-    $callback->(
-         {data => "Copying media to $installroot/$distname/$arch/$discnumber"});
+
+
+    my $defaultpath="$installroot/$distname/$arch";
+    unless($path)
+    {
+        $path=$defaultpath;
+    }
+
+    my $ospkgpath= "$path/$discnumber";
+    print "$ospkgpath\n";
+
+    if(-l $ospkgpath)
+    {
+        unlink($ospkgpath);
+    }elsif(-d $ospkgpath)
+    {
+	rmtree($ospkgpath);	
+    }
+    mkpath("$ospkgpath");
+
     my $omask = umask 0022;
-    mkpath("$installroot/$distname/$arch/$discnumber");
     umask $omask;
+
+    $callback->(
+         {data => "Copying media to $ospkgpath"});
+
     my $rc;
     $SIG{INT} =  $SIG{TERM} = sub { 
        foreach(@cpiopid){
@@ -1134,7 +1179,7 @@ sub copycd
        }
     };
     my $kid;
-    chdir $path;
+    chdir $mntpath;
     my $numFiles = `find . -print | wc -l`;
     my $child = open($kid,"|-");
     unless (defined $child) {
@@ -1150,7 +1195,7 @@ sub copycd
        close($kid);
        $rc = $?;
     } else {
-        my $c = "nice -n 20 cpio -vdump $installroot/$distname/$arch/$discnumber";
+        my $c = "nice -n 20 cpio -vdump $ospkgpath";
         my $k2 = open(PIPE, "$c 2>&1 |") ||
            $callback->({error => "Media copy operation fork failure"});
 	push @cpiopid, $k2;
@@ -1168,8 +1213,33 @@ sub copycd
     #  system(
     #    "cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch/$discnumber/"
     #    );
-    chmod 0755, "$installroot/$distname/$arch";
-    chmod 0755, "$installroot/$distname/$arch/$discnumber";
+    chmod 0755, "$path";
+    chmod 0755, "$ospkgpath"; 
+
+
+    unless($path =~ /^($defaultpath)/)
+    {
+	mkpath("$defaultpath/$discnumber");
+        if(-d "$defaultpath/$discnumber")
+        {
+                rmtree("$defaultpath/$discnumber");
+        }
+        else
+        {
+                unlink("$defaultpath/$discnumber");
+        }
+
+        my $hassymlink = eval { symlink("",""); 1 };
+        if ($hassymlink) {
+		print "$defaultpath/$discnumber";
+                symlink($ospkgpath,"$defaultpath/$discnumber");
+        }else
+        {
+                link($ospkgpath,"$defaultpath/$discnumber");
+        }
+
+    }
+
     if ($detdistname eq "sles10.2" and $discnumber eq "1") { #Go and correct inst_startup.ycp in the install root
         my $tmnt = tempdir("xcat-sles.$$.XXXXXX",TMPDIR=>1);
         my $tdir = tempdir("xcat-slesd.$$.XXXXXX",TMPDIR=>1);
@@ -1213,15 +1283,15 @@ sub copycd
     else
     {
         $callback->({data => "Media copy operation successful"});
-	my @ret=xCAT::SvrUtils->update_tables_with_templates($distname, $arch);
+	my @ret=xCAT::SvrUtils->update_tables_with_templates($distname, $arch,$path);
         if ($ret[0] != 0) {
 	    $callback->({data => "Error when updating the osimage tables: " . $ret[1]});
 	}
-        my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot");
+        my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot",$path);
         if ($ret[0] != 0) {
             $callback->({data => "Error when updating the osimage tables for stateless: " . $ret[1]});
         }
-        my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite");
+        my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite",$path);
         if ($ret[0] != 0) {
             $callback->({data => "Error when updating the osimage tables for statelite: " . $ret[1]});
         }
