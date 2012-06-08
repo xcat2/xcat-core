@@ -524,6 +524,7 @@ sub get_imgcapture_exlist_file_name {
     Arguments:
         osver
         arch
+	ospkgdir
     Returns:
         an array (retcode, errmsg). The first one is the return code. If 0, it means succesful. 
 
@@ -537,7 +538,8 @@ sub  update_tables_with_templates
 	$osver = shift;
     }
     my $arch = shift;  #like ppc64, x86, x86_64
-    
+    my $ospkgdir=shift;      
+
     my $osname=$osver;;  #like sles, rh, centos, windows
     my $ostype="Linux";  #like Linux, Windows
     my $imagetype="linux";
@@ -638,7 +640,7 @@ sub  update_tables_with_templates
 			}
 		    }
 		}
-		if ($found) { next; } 
+#		if ($found) { next; } 
 
 		my $imagename=$osver . "-" . $arch . "-install-" . $profile;
                 #TODO: check if there happen to be a row that has the same imagename but with different contents
@@ -658,7 +660,7 @@ sub  update_tables_with_templates
 		    if ($linuximagetab) {
 			my %key_col = (imagename=>$imagename);
 			my %tb_cols=(template=>$tmplfile, 
-				     pkgdir=>"$installroot/$osver/$arch",
+				     pkgdir=>$ospkgdir,
 				     pkglist=>$pkglistfile,
 				     otherpkglist=>$otherpkgsfile,
 				     otherpkgdir=>"$installroot/post/otherpkgs/$osver/$arch");
@@ -687,6 +689,8 @@ sub  update_tables_with_templates
         osver
         arch
         profile
+        mode
+        ospkgdir
     Returns:
         an array (retcode, errmsg). The first one is the return code. If 0, it means succesful. 
 
@@ -702,6 +706,7 @@ sub  update_tables_with_diskless_image
     my $arch = shift;  #like ppc64, x86, x86_64
     my $profile = shift;
     my $mode=shift;
+    my $ospkgdir=shift; 
 
     my $provm="netboot";
     if ($mode) { $provm = $mode; } 
@@ -810,7 +815,10 @@ sub  update_tables_with_diskless_image
     		    }
     		}
     	    }
-    	    if ($found) { print "The image is already in the db.\n"; next; } 
+           if ($found) { 
+                           print "The image is already in the db.\n"; 
+ #                         next; 
+                         } 
     	    
     	    my $imagename=$osver . "-" . $arch . "-$provm-" . $profile;
     	    #TODO: check if there happen to be a row that has the same imagename but with different contents
@@ -830,8 +838,8 @@ sub  update_tables_with_diskless_image
     		if ($linuximagetab) {
     		    my %key_col = (imagename=>$imagename);
     		    my %tb_cols=(pkglist=>$pkglistfile, 
-    				 pkgdir=>"$installroot/$osver/$arch",
-    				 otherpkglist=>$otherpkgsfile,
+				 pkgdir=>$ospkgdir,    				 
+				 otherpkglist=>$otherpkgsfile,
     				 otherpkgdir=>"$installroot/post/otherpkgs/$osver/$arch",
     				 exlist=>$exlistfile,
     				 postinstall=>$postfile,
