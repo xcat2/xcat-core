@@ -574,8 +574,21 @@ sub mknetboot
                 }
 		    }
 		    $kcmdline .= $statemnt ." ";
+                    my $xcatmasterip;
+                    # if xcatmaster is hostname, convert it to ip address
+                    if (xCAT::Utils->validate_ip($xcatmaster)) {
+                        # Using XCAT=<hostname> will cause problems rc.statelite.ppc.redhat
+                        # when trying to run chroot command
+                        $xcatmasterip = xCAT::NetworkUtils->getipaddr($xcatmaster);
+                        if (!$xcatmasterip)
+                        {
+                            $xcatmasterip = $xcatmaster;
+                        }
+                    } else {
+                        $xcatmasterip = $xcatmaster;
+                    }
 		    $kcmdline .=
-			    "XCAT=$xcatmaster:$xcatdport ";
+			    "XCAT=$xcatmasterip:$xcatdport ";
             if ($rootfstype ne "ramdisk") {
                 # BEGIN service node
                 my $isSV = xCAT::Utils->isServiceNode();
