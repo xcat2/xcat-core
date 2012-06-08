@@ -4,7 +4,7 @@ B<pscp> - parallel remote copy
 
 =head1 B<Synopsis>
 
-B<pscp> [-i I<suffix>] [I<scp options> I<...>] I<filename> [I<filename> I<...>] I<noderange:destinationdirectory>
+B<pscp> [-i I<suffix>] [I<scp options> I<...>] [B<-f> I<fanout>] I<filename> [I<filename> I<...>] I<noderange:destinationdirectory>
 
 B<pscp> {B<-h>|B<--help>|B<-v>|B<--version>}
 
@@ -22,6 +22,11 @@ B<pscp> is NOT multicast, but is parallel unicasts.
 =head1 B<Options>
 
 =over 7
+
+=item B<-f> I<fanout>
+
+Specifies a fanout value for the maximum number of  concur-
+rently  executing  remote shell processes.
 
 =item B<-i> I<suffix>
 
@@ -49,6 +54,14 @@ Print version.
 
 =back
 
+=over 4
+
+=item B<XCATPSHFANOUT>
+
+Specifies  the fanout value. This variable is overridden by
+the B<-f> flag.  Default is 64.
+
+=back
 
 =head1 B<Examples>
 
