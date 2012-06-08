@@ -802,7 +802,7 @@ sub preprocess_nodes {
     # In the HMC hardware control environment, the mkhwconn/rmhwconn commands will use the FSPs' IPs or
     # the BPAs' IPs. So it also need to collect the CECs' FSPs, and Frames' BPA here.
     ##########################################################
-    if ( $request->{fsp_api} == 1 || $request->{command} =~ /^(mkhwconn|rmhwconn)$/) {
+    if ( $request->{fsp_api} == 1 || $request->{command} =~ /^(mkhwconn|rmhwconn|lshwconn)$/) {
          xCAT::FSPUtils::getHcpAttribs($request, \%tabs);
     }
 
