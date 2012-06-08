@@ -18,6 +18,7 @@ use POSIX qw(:signal_h :errno_h :sys_wait_h);
 my $interface;
 GetOptions(
   "interface=s" => \$interface,
+  "f|fanout=s" => \$fanout,
   );
 my %nodehdl;
 my $xcathost='localhost:3001';
@@ -28,11 +29,18 @@ if ($ENV{XCATHOST}) {
 sub usage
 {
   print $_[0];
-  print "Usage: pscp [-i <SUFFIX>] [SCP OPTIONS...] FILE... <NODERANGE>:<DESTINATION>\n";
+  print "Usage: pscp [ -f fanout] [-i <SUFFIX>] [SCP OPTIONS...] FILE... <NODERANGE>:<DESTINATION>\n";
   exit 1;
 }
 
-my $pshmaxp = 64; #TODO: should this be server dictated or local conf?
+my $pshmaxp = 64; 
+if ($fanout) {  # see if they overroad the fanout from the command line
+  $pshmaxp=$fanout;
+}
+if ($ENV{XCATPSHFANOUT}) {  # env variable rules
+  $pshmaxp=$ENV{XCATPSHFANOUT};
+}
+
 
 # Processing arguments
 usage unless @ARGV;
