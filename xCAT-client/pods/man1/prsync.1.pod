@@ -6,7 +6,7 @@ prsync - parallel rsync
 
 B<prsync> I<filename> [I<filename> I<...>] I<noderange:destinationdirectory>
 
-B<prsync>  [I<-o rsync options>] [I<filename> I<filename> I<...>] [I<directory> I<directory> I<...>]
+B<prsync>  [I<-o rsync options>] [B<-f> I<fanout>] [I<filename> I<filename> I<...>] [I<directory> I<directory> I<...>]
 I<noderange:destinationdirectory>
 
 B<prsync> {B<-h>|B<--help>|B<-v>|B<--version>}
@@ -28,6 +28,11 @@ B<prsync> is NOT multicast, but is parallel unicasts.
 
 rsync options.  See B<rsync(1)>.
 
+=item B<-f> I<fanout>
+
+Specifies a fanout value for the maximum number of  concur-
+rently  executing  remote shell processes.
+
 =item B<filename>
 
 A space delimited list of files to rsync.
@@ -47,6 +52,15 @@ Print help.
 =item B<-v>|B<--version>
 
 Print version.
+
+=back
+
+=over 4
+
+=item B<XCATPSHFANOUT>
+
+Specifies  the fanout value. This variable is overridden by
+the B<-f> flag.  Default is 64.
 
 =back
 

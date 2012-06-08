@@ -4,7 +4,7 @@ psh - parallel remote shell
 
 =head1 B<Synopsis>
 
-B<psh> [B<-i> I<interface>] [B<-l> I<user>] I<noderange> I<command>
+B<psh> [B<-i> I<interface>] [B<-f> I<fanout>] [B<-l> I<user>] I<noderange> I<command>
 
 B<psh> {B<-h>|B<--help>|B<-v>|B<--version>}
 
@@ -28,6 +28,11 @@ The NIC on the node that psh should communicate with.  For example, if I<interfa
 then psh will concatenate B<-eth1> to the end of every node name before ssh'ing to it.  This
 assumes those host names have been set up to resolve to the IP address of each of the eth1 NICs.
 
+=item B<-f> I<fanout>
+
+Specifies a fanout value for the maximum number of  concur-
+rently  executing  remote shell processes. 
+
 =item B<-l> I<user>
 
 Log into the nodes as the specified username.  The default is to use the same username as you
@@ -50,6 +55,16 @@ Print help.
 
 =back
 
+=head1 B<Environment> B<Variables>
+
+=over 4
+
+=item B<XCATPSHFANOUT>
+
+Specifies  the fanout value. This variable is overridden by
+the B<-f> flag.  Default is 64.
+
+=back
 
 =head1 B<Examples>
 
