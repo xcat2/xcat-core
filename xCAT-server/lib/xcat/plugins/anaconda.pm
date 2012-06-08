@@ -1443,6 +1443,7 @@ sub copycd
 
     unless($path =~ /^($defaultpath)/)
     {
+	mkpath($defaultpath); 
         if(-d $defaultpath)
         {
                 rmtree($defaultpath);
