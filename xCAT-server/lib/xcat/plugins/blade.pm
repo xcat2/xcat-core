@@ -4014,7 +4014,6 @@ sub clicmds {
   }
   my $curruser = $user;
   my $currpass = $pass;
-  my $promote_pass = $pass; #used for genesis state processing
   my $nokeycheck=0; #default to checking ssh key
   if ($args{defaultcfg}) {
     $curruser="USERID";
@@ -4024,6 +4023,7 @@ sub clicmds {
   if ($args{nokeycheck}) {
     $nokeycheck=1;
   }
+  my $promote_pass = $pass; #used for genesis state processing
   my $curraddr = $mpa;
   if ($args{curraddr}) {
 	$curraddr = $args{curraddr};
@@ -4065,7 +4065,11 @@ sub clicmds {
 	    if ($curraddr ne $mpa) { $errmsg .= " (currently at $curraddr)" }
         push @cfgtext,$errmsg;
 	    return([1,\@unhandled,$errmsg]);
-        } else { die $@; }
+    } else { 
+        push @cfgtext, $errmsg;
+        return([1,\@unhandled,$errmsg]);
+        #die $@; 
+    }
   }
   my $Rc=1;
   if ($t and not $t->atprompt) { #we sshed in, but we may be forced to deal with initial password set
