@@ -1799,7 +1799,7 @@ sub getmacs {
                    push @midxary,$1;
 	           }
            }
-       } else {
+       } elsif ($display !~ /yes/){
            $nrtab->close;
            return -1, "please set noderes.installnic or noderes.primarynic";
        }
