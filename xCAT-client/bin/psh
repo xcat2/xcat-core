@@ -35,15 +35,15 @@ if (!GetOptions(
 }
 my %nodehdl;
 my $xcathost='localhost:3001';
-my $pshmaxp = 64; #TODO: should this be server dictated or local conf?
+my $pshmaxp = 64; 
 if ($ENV{XCATHOST}) {
   $xcathost=$ENV{XCATHOST};
 }
+if ($ENV{XCATPSHFANOUT}) {  
+  $pshmaxp=$ENV{XCATPSHFANOUT};
+}
 if ($fanout) {  # see if they overroad the fanout from the command line
   $pshmaxp=$fanout;
-}
-if ($ENV{XCATPSHFANOUT}) {  # env variable rules
-  $pshmaxp=$ENV{XCATPSHFANOUT};
 }
 my $noderange = $ARGV[0];
 my @nodes=();
