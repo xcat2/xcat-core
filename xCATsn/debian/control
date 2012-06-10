@@ -7,7 +7,7 @@ Standards-Version: 3.7.2
 
 Package: xcatsn
 Architecture: all
-Depends: ${perl:Depends}, xcat-server (>= 2.5.0), perl-xcat (>= 2.5.0), xcat-client (>= 2.5.0), libdbd-sqlite3-perl, libxml-parser-perl, atftp-xcat, conserver-xcat, libnet-telnet-perl, dhcp3-server, apache2, expect, nfs-kernel-server, nmap, fping, bind9, vsftpd, ipmitool-xcat (>=1.8.9), syslinux-xcat, xcat-nbroot-core-x86, xcat-nbroot-core-amd64, xcat-nbroot-core-ppc64
-Recommends: xnba-undi, yaboot-xcat
+Depends: ${perl:Depends}, xcat-server, perl-xcat, xcat-client, libdbd-sqlite3-perl, libxml-parser-perl, atftp-xcat, conserver-xcat, libnet-telnet-perl, dhcp3-server, apache2, expect, nfs-kernel-server, nmap, fping, bind9, ipmitool-xcat (>=1.8.9), syslinux-xcat, xnba-undi, xcat-genesis-amd64, elilo-xcat
+Recommends: yaboot-xcat
 Description: Metapackage for a common, default xCAT service node setup
  xCATsn is a service node management package intended for at-scale management, including hardware management and software management.
