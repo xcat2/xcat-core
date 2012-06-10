@@ -97,10 +97,6 @@ in interactive mode.
 
 =back
 
-=head1 B<Author>
-
-Egan Ford <egan@us.ibm.com>
-
 =head1 B<See> B<Also>
 
 L<noderange(3)|noderange.3>, L<pscp(1)|pscp.1>, L<pping(1)|pping.1>, L<prsync(1)|prsync.1>

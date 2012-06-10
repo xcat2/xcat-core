@@ -79,10 +79,6 @@ B<prsync> I<passwd> I<group> I<rack01:/etc>
 
 =back
 
-=head1 B<Author>
-
-Egan Ford <egan@us.ibm.com>
-
 =head1 B<See> B<Also>
 
 L<noderange(3)|noderange.3>, L<pscp(1)|pscp.1>, L<pping(1)|pping.1>, L<psh(1)|psh.1>

@@ -68,10 +68,6 @@ the B<-f> flag.  Default is 64.
 B<pscp> B<-r> I</usr/local> I<node1,node3:/usr/local>
 B<pscp> I<passwd> I<group> I<rack01:/etc>
 
-=head1 B<Author>
-
-Egan Ford <egan@us.ibm.com>
-
 =head1 B<See> B<Also>
 
 L<noderange(3)|noderange.3>, L<pping(1)|pping.1>, L<prsync(1)|prsync.1>, L<psh(1)|psh.1>
