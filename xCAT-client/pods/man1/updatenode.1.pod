@@ -344,7 +344,7 @@ Display usage message.
 =item B<-k|--security>
 
 Update the ssh keys and host keys for the service nodes and compute nodes;
-Update the ca and credentials to the service nodes.
+Update the ca and credentials to the service nodes.  Never run this command to the Management Node, it will take down xcatd. 
 
 =item B<-P|--scripts>
 
