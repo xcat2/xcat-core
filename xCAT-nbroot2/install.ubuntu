@@ -617,7 +617,6 @@ inst_dir /var/lib/nfs/statd/sm.bak
 inst_dir /var/lib/nfs/rpc_pipefs/nfs
 inst "/bin/bash" "/bin/sh"
 inst "/lib64/libnss_dns-2.12.so"
-inst "/root/.ssh/id_rsa.pub" "/.ssh/authorized_keys"
 inst "/lib/terminfo/l/linux" "/lib/terminfo/l/linux"
 inst "/lib/terminfo/v/vt100" "/lib/terminfo/v/vt100"
 inst_hook cmdline 10 "$moddir/xcat-cmdline.sh" 
