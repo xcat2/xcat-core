@@ -12457,10 +12457,10 @@ sub rmdsklsnode
                 # don't remove the def
                 my $rsp;
                 push @{$rsp->{data}},
-                  "The node \'$name\' is currently running. Use the -f flag to force the removal.";
+                  "The node \'$name\' is currently running. Use the -f flag to force the removal of the NIM client definition.";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 $error++;
-                push(@nodesfailed, $name);
+                push(@nodesfailed, $nodename);
                 next;
             }
 		  } # end - if not REMDEF
