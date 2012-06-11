@@ -6,17 +6,19 @@ B<rmdsklsnode> - Use this xCAT command to remove AIX/NIM diskless machine defini
 
 B<rmdsklsnode [-h | --help ]>
 
-B<rmdsklsnode [-V|--verbose] [-f|--force] [-i image_name] [-p|--primarySN] [-b|--backupSN] noderange>
+B<rmdsklsnode [-V|--verbose] [-f|--force] [-r|--remdef] [-i image_name] [-p|--primarySN] [-b|--backupSN] noderange>
 
 =head1 DESCRIPTION
 
-Use this command to remove all NIM machine names that were created for the specified xCAT nodes.
+Use this command to remove all NIM client machine definitions that were created for the specified xCAT nodes.
 
 The xCAT node definitions will not be removed.
 
 The default is to assume that the NIM machine names are the same as the xCAT node names.  If you had used the "-n" option when you created the NIM machine definitions with the B<mkdsklsnode> command then the NIM machine names would be a combination of the xCAT node name and the osimage name used to initialize the NIM machine. To remove these definitions you must provide the name of the osimage that was used.
 
 If you are using xCAT service nodes the B<rmdsklsnode> command will automatically determine the correct server(s) for the node and remove the NIM definitions on that server(s).
+
+If the node you are trying to remove is currently running the B<rmdsklsnode> command will not remove the definitions.  You can use the "-f" option to shut down the node and remove the definition.  You can also use the "-r" option to leave the node running but remove the NIM definitions.
 
 Use the xCAT B<rmdef> command to remove xCAT node definitions.
 
@@ -50,6 +52,10 @@ A set of comma delimited node names and/or group names. See the "noderange" man 
 When using backup service nodes only update the primary.  The default is to upda
 te both the primary and backup service nodes.
 
+=item B<-r|--remdef>		
+
+Use this option to reset, deallocate, and remove NIM client definitions.  This option will not attempt to shut down running nodes.
+
 =item B<-V |--verbose>
 
 Verbose mode.
@@ -76,13 +82,17 @@ An error has occurred.
 
 B<rmdsklsnode node01>
 
-2) Remove the NIM machine definition for xCAT node "node02" and the image "61cosi". (i.e. NIM machine name "node02_61cosi".)
+2) Remove the NIM client machine definition for xCAT node "node02" that was created with the mkdsklsnode -n option and the image "AIXdskls". (i.e. NIM client machine name "node02_AIXdskls".)
 
-B<rmdsklsnode -i 61cosi node02>
+B<rmdsklsnode -i AIXdskls node02>
 
-3) Remove the NIM definitions for all xCAT nodes in the group "aixnodes". Remove the NIM definitions even if the NIM node state is set to "currently running".
+3) Remove the NIM client definitions for all the xCAT nodes in the group "aixnodes". Attempt to shut down the nodes if they are running.
 
 B<rmdsklsnode -f aixnodes>
+
+4) Remove the NIM client definitions for all the xCAT nodes in the group "aixnodes".  Do not attempt to shut down any running nodes.
+
+B<rmdsklsnode -r aixnodes>
 
 =head1 FILES
 
