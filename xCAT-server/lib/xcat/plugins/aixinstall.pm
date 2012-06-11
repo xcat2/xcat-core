@@ -12201,6 +12201,7 @@ sub prermdsklsnode
                     'h|help'    => \$::HELP,
                     'i=s'       => \$::opt_i,
 					'p|primarySN' => \$::PRIMARY,
+					'r|remdef'        => \$::REMDEF,
                     'verbose|V' => \$::VERBOSE,
                     'v|version' => \$::VERSION,
         )
@@ -12310,6 +12311,7 @@ sub rmdsklsnode
                     'f|force'   => \$::FORCE,
                     'h|help'    => \$::HELP,
                     'i=s'       => \$::opt_i,
+					'r|remdef'        => \$::REMDEF,
                     'verbose|V' => \$::VERBOSE,
                     'v|version' => \$::VERSION,
         )
@@ -12425,19 +12427,22 @@ sub rmdsklsnode
 		}
 
         # check xCAT nodelist.status for the node
-        if ($nlhash && $nlhash->{$nodename}->[0]->{'status'} ne 'booted')
+        if ($nlhash && $nlhash->{$name}->[0]->{'status'} ne 'booted')
 		{
 			$badnodestat++;
 		}
 
 		if (!$badmstate && !$badnodestat) 
         {
+			# if REMDEF then skip the node shut down
+          if (!$::REMDEF)
+          {
             if ($::FORCE)
             {
                 if ($::VERBOSE)
                 {
                     my $rsp;
-                    push @{$rsp->{data}}, "Shutting down node \'$nodename\'";
+                    push @{$rsp->{data}}, "Shutting down node \'$name\'";
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
 
@@ -12445,25 +12450,26 @@ sub rmdsklsnode
                 my $scmd = "shutdown -F &";
                 my $output;
                 $output =
-                  xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nodename, $scmd, 0);
+                  xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $name, $scmd, 0);
             }
             else
             {
                 # don't remove the def
                 my $rsp;
                 push @{$rsp->{data}},
-                  "The node \'$nodename\' is currently running. Use the -f flag to force the removal.";
+                  "The node \'$name\' is currently running. Use the -f flag to force the removal.";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 $error++;
-                push(@nodesfailed, $nodename);
+                push(@nodesfailed, $name);
                 next;
             }
+		  } # end - if not REMDEF
         }
 
         if ($::VERBOSE)
         {
             my $rsp;
-            push @{$rsp->{data}}, "Resetting node \'$nodename\'";
+            push @{$rsp->{data}}, "Resetting NIM client node \'$nodename\'";
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
 
@@ -12491,7 +12497,7 @@ sub rmdsklsnode
         {
             my $rsp;
             push @{$rsp->{data}},
-              "Deallocating resources for node \'$nodename\'";
+              "Deallocating resources for NIM node \'$nodename\'";
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
 
@@ -12516,7 +12522,7 @@ sub rmdsklsnode
         {
             my $rsp;
             push @{$rsp->{data}},
-              "Removing the NIM definition for node \'$nodename\'";
+              "Removing the NIM definition for NIM node \'$nodename\'";
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
 
@@ -12652,7 +12658,7 @@ sub rmdsklsnode_usage
     push @{$rsp->{data}}, "\trmdsklsnode [-h | --help ]";
     push @{$rsp->{data}}, "or";
     push @{$rsp->{data}},
-      "\trmdsklsnode [-V|--verbose] [-f|--force] {-i image_name}\n\t\t[-p|--primarySN] [-b|--backupSN]  noderange";
+      "\trmdsklsnode [-V|--verbose] [-f|--force] [-r|--remdef]\n\t\t{-i image_name} [-p|--primarySN] [-b|--backupSN]  noderange";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
