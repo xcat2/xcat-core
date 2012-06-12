@@ -5,18 +5,17 @@ B<copycds> - Copies Linux distributions and service levels from CDs/DVDs to inst
 
 =head1 SYNOPSIS
 
-B<copycds> [{B<-n|--name|--osver>}=I<distroname>] [{B<-a|--arch>}=I<architecture>] {I<iso>|I<device-path>} ...
+B<copycds> [{B<-n|--name|--osver>}=I<distroname>] [{B<-a|--arch>}=I<architecture>] [{B<-p|--path>}=I<ospkgpath>] {I<iso>|I<device-path>} ...
+
+B<copycds> [B<-i>|B<--inspection>] {I<iso>|I<device-path>}
 
 B<copycds> [B<-h>|B<--help>]
 
 
 =head1 DESCRIPTION
 
-The B<copycds> command copies all contents of Distribution CDs/DVDs or Service Pack CDs/DVDs to the install directory as
-designated in the B<site> table attribute: B<installdir>.  The B<copycds> command can copy from one or more ISO files,
-or from the CD/DVD device path.  If xCAT doesn't recognize the signature of the CD/DVD (e.g. in the .discinfo
-file), you must specify the -n and -a options.  This is sometimes the case for distros that have very
-recently been released, and the xCAT code hasn't been updated for it yet.
+The B<copycds> command copies all contents of Distribution CDs/DVDs or Service Pack CDs/DVDs to a destination directory. The destination directory is specified by -p option. If no path is specified, the default destination directory will be formed from the B<installdir> site attribute and the distro name and architecture, for example: /install/sles11.2/ppc64. The B<copycds> command can copy from one or more ISO files, or CD/DVD device path. You can specify -i or --inspection option to check whether the CDs/DVDs can be recognized by xCAT. If recognized, the distribution name, architecture and the disc no (the disc sequence number of CDs/DVDs in multi-disk distribution) of the CD/DVD is displayed. If xCAT doesn't recognize the CD/DVD, you must specify the -n and -a options. This is sometimes the case for distros that have very recently been released, and the xCAT code hasn't been updated for it yet.
+
 
 
 =head1 OPTIONS
@@ -27,11 +26,29 @@ recently been released, and the xCAT code hasn't been updated for it yet.
 
 The linux distro name and version that the ISO/DVD contains.  Examples:  rhels5.3, centos5.1, fedora9.
 
-=item {B<-a|--arch>}=I<architecture>]
+=item {B<-a|--arch>}=I<architecture>
 
 The architecture of the linux distro on the ISO/DVD.  Examples:  x86, x86_64, ppc64.
 
+=item {B<-p|--path>}=I<ospkgpath>
+
+The destination directory to which the contents of ISO/DVD will be copied. When this option is not specified, the default destination directory will be formed from the B<installdir> site attribute and the distro name and architecture, for example: /install/sles11.2/ppc64. This option only supports distributions of sles and redhat.
+
+=item {B<-i|--inspection>}
+
+Check whether xCAT can recognize the CD/DVDs in the argument list without any disc copy, display the os distribution name, architecture and disc no of each recognized CD/DVD. This option only supports distributions of sles and redhat.
+
 =back
+
+=head1 RETURN VALUE
+
+Zero:                    
+  The command completed successfully.
+  For the --inspection option, the ISO/DVD have been recognized successfully
+
+Nonzero:
+  An Error has occurred.
+  For the --inspection option, the ISO/DVD cannot be recognized
 
 
 =head1 EXAMPLES
@@ -46,9 +63,9 @@ B<copycds cd1.iso cd2.iso cd3.iso>
 
 =item *
 
-To copy the RPMs from a physical DVD:
+To copy the RPMs from a physical DVD to /depot/kits/3 directory:
 
-B<copycds /dev/dvd>
+B<copycds -p /depot/kits/3 /dev/dvd>
 
 =item *
 
@@ -56,9 +73,34 @@ To copy the RPMs from a DVD ISO of a very recently released distro:
 
 B<copycds -n rhels5.3 -a x86_64 dvd.iso>
 
+=item *
+
+To check whether a DVD ISO can be recognized by xCAT and display the recognized disc info:
+
+B<copycds -i /media/RHEL/6.0/RHEL6.0-20100922.1-Server-ppc64-DVD1.iso>
+
 =back
 
+=head1 NOTES
 
+1. The B<-p> and B<-i> options currently only support distributions of sles and redhat.
+
+2. The output format of copycds --inspection is:
+
+  OS Image:<value>
+  DISTNAME:<value>
+  ARCH:<value>
+  DISCNO:<value>
+
+As a example:
+
+  OS Image:/media/RHEL/6.2/RHEL6.2-20111117.0-Server-ppc64-DVD1.iso
+  DISTNAME:rhels6.2
+  ARCH:ppc64
+  DISCNO:1
+
+For the attributes failed to be recognized, the value will be blank.
+ 
 =head1 SEE ALSO
 
 L<nodeset(8)|nodeset.8>, L<site(5)|site.5>, L<nodetype(5)|nodetype.5>
