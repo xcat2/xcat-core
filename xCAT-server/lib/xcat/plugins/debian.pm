@@ -173,6 +173,9 @@ sub copycd
     my $installroot;
     my $arch;
     my $path;
+    my $mntpath=undef;
+    my $inspection=undef;
+
     $installroot = "/install";
     my $sitetab = xCAT::Table->new('site');
     if ($sitetab)
@@ -190,21 +193,23 @@ sub copycd
                'n=s' => \$distname,
                'a=s' => \$arch,
                'p=s' => \$path,
+               'm=s' => \$mntpath,
+               'i'   => \$inspection
                );
-    unless ($path)
+    unless ($mntpath)
     {
 
         #this plugin needs $path...
         return;
     }
     
-    unless (-r $path . "/.disk/info")
+    unless (-r $mntpath . "/.disk/info")
     {
         xCAT::MsgUtils->message("S","The CD doesn't look like a Debian CD, exiting...");
         return;
     }
     my $dinfo;
-    open($dinfo, $path . "/.disk/info");
+    open($dinfo, $mntpath . "/.disk/info");
     my $line = <$dinfo>;
     chomp($line);
     my @line2 = split(/ /,$line);
@@ -281,13 +286,38 @@ sub copycd
             return;
         }
     }
+
+
+    if($inspection)
+    {
+            $callback->(
+                {
+                 info =>
+                   "DISTNAME:$distname\n"."ARCH:$arch\n"
+                }
+                );
+            return;
+    }
+
     %{$request} = ();    #clear request we've got it.
 
-    $callback->(
-         {data => "Copying media to $installroot/$distname/$arch"});
+
+    my $defaultpath="$installroot/$distname/$arch";
+    unless($path)
+    {
+        $path=$defaultpath;
+    }
+
+    $callback->({data => "Copying media to $path"});
+    
     my $omask = umask 0022;
-    mkpath("$installroot/$distname/$arch");
-    mkpath("$installroot/$distname/$arch/install/netboot") if ($isnetinst);
+    if(-l $path)
+    {
+        unlink($path);
+    }
+    mkpath("$path");
+
+
     umask $omask;
     my $rc;
     $SIG{INT} =  $SIG{TERM} = sub { 
@@ -300,7 +330,7 @@ sub copycd
        }
     };
     my $kid;
-    chdir $path;
+    chdir $mntpath;
     my $numFiles = `find . -print | wc -l`;
     my $child = open($kid,"|-");
     unless (defined $child) {
@@ -316,7 +346,7 @@ sub copycd
        close($kid);
        $rc = $?;
     } else {
-        my $c = "nice -n 20 cpio -vdump $installroot/$distname/$arch";
+        my $c = "nice -n 20 cpio -vdump $path";
         my $k2 = open(PIPE, "$c 2>&1 |") ||
            $callback->({error => "Media copy operation fork failure"});
 	push @cpiopid, $k2;
@@ -334,7 +364,30 @@ sub copycd
     #  system(
     #    "cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch/"
     #    );
-    chmod 0755, "$installroot/$distname/$arch";
+    chmod 0755, "$path";
+
+    unless($path =~ /^($defaultpath)/)
+    {
+        mkpath($defaultpath);
+        if(-d $defaultpath)
+        {
+                rmtree($defaultpath);
+        }
+        else
+        {
+                unlink($defaultpath);
+        }
+
+        my $hassymlink = eval { symlink("",""); 1 };
+        if ($hassymlink) {
+                symlink($path,$defaultpath);
+        }else
+        {
+                link($path,$defaultpath);
+        }
+
+    }
+
 
     # Need to do this otherwise there will be warning about corrupt Packages file
     # when installing a system
@@ -350,6 +403,7 @@ sub copycd
     system("rm -f $installroot/$distname/$arch/dists/unstable");
     system("rm -f $installroot/$distname/$arch/dists/testing");
 
+    mkpath("$installroot/$distname/$arch/install/netboot") if ($isnetinst);
     # copies the netboot files for debian
     if ($isnetinst)
     {
@@ -364,15 +418,15 @@ sub copycd
     else
     {
         $callback->({data => "Media copy operation successful"});
-	my @ret=xCAT::SvrUtils->update_tables_with_templates($distname, $arch);
+	my @ret=xCAT::SvrUtils->update_tables_with_templates($distname, $arch,$path);
         if ($ret[0] != 0) {
 	    $callback->({data => "Error when updating the osimage tables: " . $ret[1]});
 	}
-        my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot");
+        my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot",$path);
         if ($ret[0] != 0) {
             $callback->({data => "Error when updating the osimage tables for stateless: " . $ret[1]});
         }
-        my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite");
+        my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite",$path);
         if ($ret[0] != 0) {
             $callback->({data => "Error when updating the osimage tables for statelite: " . $ret[1]});
         }
