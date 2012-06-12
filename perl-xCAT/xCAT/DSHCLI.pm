@@ -4524,7 +4524,7 @@ sub parse_rsync_input_file_on_MN
     use File::Basename;
     my ($nodes, $options, $input_file, $rsyncSN, $syncdir,$nodesyncfiledir) = @_;
     my @dest_host    = @$nodes;
-    my $process_line = 0;
+    $::process_line = 0;
     my $destfileisdir;
     my $clause=0;
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
@@ -4551,15 +4551,13 @@ sub parse_rsync_input_file_on_MN
             } else {   # process the clause
                if ($clause =~ /EXECUTE:/) {
                   push @::postscripts,$line;
-                 # next;
                }
                if ($clause =~ /EXECUTEALWAYS:/) {
                   push @::alwayspostscripts,$line;
-                 # next;
                }
                if ($clause =~ /APPEND:/) {
-                    #    $build_append_rsync( );
-                  next;
+                  my $onServiceNode=0;
+                 &build_append_rsync($line,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode);
                }
            
            }
@@ -4568,7 +4566,7 @@ sub parse_rsync_input_file_on_MN
           if ($line =~ /(.+) -> (.+)/)
           {
 
-            $process_line = 1;
+            $::process_line = 1;
             my $src_file  = $1;
             my $dest_file = $2;
             $dest_file =~ s/[\s;]//g;
@@ -4660,7 +4658,7 @@ sub parse_rsync_input_file_on_MN
         } # end processing clauses EXECUTE, APPEND, etc 
     } #end while processing file
     close INPUTFILE;
-    if ($process_line == 0)
+    if ($::process_line == 0)
     {    # no valid lines in the file
         my $rsp = {};
         $rsp->{error}->[0] = "Found no lines to process in $input_file.";
@@ -4683,9 +4681,11 @@ sub parse_rsync_input_file_on_MN
            /tmp/appendfile -> /tmp/receivefile
 
            Syncs the append file to the node to the NodeSyncfiledir
-           Builds a script to append the file (appendfile) to the  
+           Set up structure to build a script to append
+           the file (appendfile) to the  
            receiving file (receivefile). It will first backup or restore
-           the original receivefile. 
+           the original receivefile.  This script will be built after the sync
+           when we find out what appendfiles changes.  See build_append_script.
 
         Returns:
           Files do not exist, rsync errors. 
@@ -4694,7 +4694,7 @@ sub parse_rsync_input_file_on_MN
 
 
         Error:
-        	None
+          Files do not exist, rsync errors. 
 
         Example:
 
@@ -4707,8 +4707,73 @@ sub parse_rsync_input_file_on_MN
 sub build_append_rsync 
 {
     use File::Basename;
-    my ($nodes, $options, $input_file, $syncdir) = @_;
+    my ($line,$nodes, $options,$input_file, $rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode) = @_;
+    my @dest_host    = @$nodes;
+    my $process_line = 0;
+    my $destfileisdir;
+    if ($line =~ /(.+) -> (.+)/)
+    {
 
+            $::process_line = 1;
+            my $src_file  = $1; # append file left of arror
+            # it will be sync'd to $nodesyncfiledir/$append_file
+            my $dest_file = $nodesyncfiledir;
+            $dest_file .= $src_file;  
+            $dest_file =~ s/[\s;]//g;
+            my     $dest_dir = dirname($dest_file);
+            $dest_dir =~ s/\s*//g;    #remove blanks
+
+            foreach my $target_node (@dest_host)
+            {
+                $$options{'destDir_srcFile'}{$target_node} ||= {};
+
+                    #  if syncing the Service Node, file goes to the same place
+                    #  where it was on the MN off the syncdir on the service
+                    # node
+                    if ($rsyncSN == 1)
+                    {    #  syncing the SN
+                        $dest_dir = $syncdir;    # the SN sync dir
+                        $dest_dir .= dirname($src_file);
+                        $dest_dir =~ s/\s*//g;    #remove blanks
+                    }
+                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
+                      {};
+
+                    my $src_basename = basename($src_file);    # get file name
+                    # if this is syncing from the Service Node then we have
+                    # to pick up files from /var/xcat/syncfiles...
+                    if ($onServiceNode == 1) {
+                      my $newsrcfile = $syncdir;    # add syndir on front
+                      $newsrcfile .= $src_file;
+                      $src_file=$newsrcfile;
+                    }
+                    # destination file name
+                    my  $dest_basename = basename($dest_file);
+                    if ($rsyncSN == 1)    # dest file will be the same as src
+                    {                     #  syncing the SN
+                        $dest_basename = $src_basename;
+                    }
+                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
+                      $dest_basename =~ s/[\s;]//g;
+
+                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
+                          {'same_dest_name'} ||= [];
+                    push @{$$options{'destDir_srcFile'}{$target_node}
+                              {$dest_dir}{'same_dest_name'}}, $src_file;
+
+            }   # end of each node
+          } # if synclist line
+    if ($::process_line == 0)
+    {    # no valid lines in the file
+        my $rsp = {};
+        $rsp->{error}->[0] = "Found no lines to process in $input_file APPEND Clause.";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+        return 1;
+    }
+    else
+    {
+        $$options{'nodes'} = join ',', keys %{$$options{'destDir_srcFile'}};
+    }
     return 0;
 }
 #-------------------------------------------------------------------------------
@@ -4749,10 +4814,11 @@ sub build_append_rsync
 sub parse_rsync_input_file_on_SN
 {
     use File::Basename;
-    my ($nodes, $options, $input_file, $syncdir) = @_;
+    my ($nodes, $options, $input_file, $syncdir,$nodesyncfiledir) = @_;
     my @dest_host    = @$nodes;
     my $process_line = 0;
     my $destfileisdir;
+    my $rsyncSN;
     my $clause=0;
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
     while (my $line = <INPUTFILE>)
@@ -4778,15 +4844,14 @@ sub parse_rsync_input_file_on_SN
             } else {   # process the clause
                if ($clause =~ /EXECUTE:/) {
                   push @::postscripts,$line;
-                 # next;
                }
                if ($clause =~ /EXECUTEALWAYS:/) {
                   push @::alwayspostscripts,$line;
-                 # next;
                }
                if ($clause =~ /APPEND:/) {
-                    #    $build_append_rsync( );
-                  next;
+                  $process_line = 1;
+                  my $onServiceNode=1;
+                 &build_append_rsync($line,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode );
                }
            
            }
