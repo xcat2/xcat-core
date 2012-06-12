@@ -71,7 +71,7 @@ function makexcat {
 		cd `dirname $0`/$RPMNAME
 
 		if [ "$RPMNAME" = "xCAT" ]; then
-			tar --exclude .svn -czf $RPMROOT/SOURCES/postscripts.tar.gz  postscripts LICENSE.html
+			tar --exclude .svn --exclude upflag -czf $RPMROOT/SOURCES/postscripts.tar.gz  postscripts LICENSE.html
 			tar --exclude .svn -czf $RPMROOT/SOURCES/prescripts.tar.gz  prescripts
 			tar --exclude .svn -czf $RPMROOT/SOURCES/templates.tar.gz templates
 			cp xcat.conf $RPMROOT/SOURCES
