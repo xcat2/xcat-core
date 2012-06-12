@@ -4065,7 +4065,7 @@ sub copycd {
 	GetOptions(
 		'n=s' => \$distname,
 		'a=s' => \$arch,
-		'p=s' => \$path
+		'm=s' => \$path
 	);
 	# run a few tests to see if the copycds should use this plugin
 	unless ($path){
