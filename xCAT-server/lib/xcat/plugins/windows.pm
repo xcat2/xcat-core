@@ -488,7 +488,7 @@ sub copycd
     GetOptions(
                'n=s' => \$distname,
                'a=s' => \$arch,
-               'p=s' => \$path
+               'm=s' => \$path
                );
     unless ($path)
     {
