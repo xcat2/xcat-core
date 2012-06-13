@@ -805,3 +805,13 @@ td.jqplot-table-legend {
 td.jqplot-table-legend>div {
 	border-width: 0px;
 }
+
+/*--- setup wizard section ---*/
+#discoverTab table{
+	border-style: none;
+}
+
+#discoverTab td{
+	border-style: none;
+	text-align: left;
+}
