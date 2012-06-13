@@ -629,11 +629,6 @@ sub check_invalid_exports
               "DSH_NODE_LIST is set but is not supported. It will be ignored.\n"
               );
     }
-    if ($ENV{'WCOLL'})
-    {
-        xCAT::MsgUtils->message("I",
-                    "WCOLL is set but is not supported. It will be ignored.\n");
-    }
     if ($ENV{'DSH_DEVICE_LIST'})
     {
         xCAT::MsgUtils->message(
