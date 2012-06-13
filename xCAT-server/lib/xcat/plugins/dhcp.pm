@@ -520,7 +520,7 @@ sub addnode
             unless (grep /#definition for host $node aka host $hostname/, @dhcpconf)
             {
                 push @dhcpconf,
-                     "#definition for host $node aka host $hostname can be found in the dhcpd.leases file\n";
+                     "#definition for host $node aka host $hostname can be found in the dhcpd.leases file (typically /var/lib/dhcpd/dhcpd.leases)\n";
             }
         }
         $count = $count + 2;
