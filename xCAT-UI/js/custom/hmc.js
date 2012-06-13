@@ -821,6 +821,13 @@ function powerInitSiteTable(operType) {
  * Step 4: When the values are ready, create the table
  */
 function showSiteArea() {
+	var adminpasswd = getDiscoverEnv('adminpasswd');
+	adminpasswd = adminpasswd ? adminpasswd : "admin";
+	var generalpasswd = getDiscoverEnv('generalpasswd');
+	generalpasswd = generalpasswd? generalpasswd : "general";
+	var hmcpasswd = getDiscoverEnv('hmcpasswd');
+	hmcpasswd = hmcpasswd ? hmcpasswd : "abc123";
+	
     var showString = '<table><tbody>';
     
     showString += '<tr><td>Domain Name:</td><td><input type="text" name="domainname" value="'
@@ -835,6 +842,15 @@ function showSiteArea() {
             + getDiscoverEnv('ipStart')
             + '" title="A start Ip address for DHCP dynamic range.">-<input type="text" name="ipEnd" disabled="disabled" value="'
             + getDiscoverEnv('ipEnd') + '"></td></tr>';
+    showString += '<tr><td>admin password for FRAME and CEC:</td><td><input type="text" '
+    	    + 'name="adminpasswd" value="' + adminpasswd 
+    	    + '" title="the password used for xCAT to log on bpa and fsp with admin account."</td></tr>';
+    showString += '<tr><td>general password for FRAME and CEC:</td><td><input type="text" '
+	        + 'name="generalpasswd" value="' + generalpasswd 
+	        + '" title="the password used for xCAT to log on bpa and fsp with general account."</td></tr>';
+    showString += '<tr><td>hmc password for FRAME and CEC:</td><td><input type="text" '
+	        + 'name="hmcpasswd" value="' + hmcpasswd 
+	        + '" title="the password used for xCAT to log on bpa and fsp with hmc account."</td></tr>';
     showString += '</tbody></table>';
 
     $('#discoverContentDiv div').eq(0).append(showString);
@@ -906,6 +922,18 @@ function checkSiteTable(operType) {
 
     if (!getDiscoverEnv('ipEnd')) {
         errMessage += 'Input the DHCP Dynamic Range.<br/>';
+    }
+    
+    if (!getDiscoverEnv('adminpasswd')) {
+        errMessage += 'Input the admin\'s password for FRAME and CEC.<br/>';
+    }
+    
+    if (!getDiscoverEnv('generalpasswd')) {
+        errMessage += 'Input the general\'s password for FRAME and CEC.<br/>';
+    }
+    
+    if (!getDiscoverEnv('hmcpasswd')) {
+        errMessage += 'Input the hmc\'s password for FRAME and CEC.<br/>';
     }
 
     if ('' == errMessage) {
