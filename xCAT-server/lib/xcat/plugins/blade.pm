@@ -4073,11 +4073,11 @@ sub clicmds {
   }
   my $Rc=1;
   if ($t and not $t->atprompt) { #we sshed in, but we may be forced to deal with initial password set
+	my $output = $t->get();
+	if ($output =~ /Enter current password/) {
         if (defined($handled{USERID})) {
             $promote_pass = $handled{USERID};
         }
-	my $output = $t->get();
-	if ($output =~ /Enter current password/) {
 		$t->print($currpass);
 		$t->waitfor(-match=>"/password:/i");
 		$t->print($promote_pass);
