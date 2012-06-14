@@ -995,6 +995,7 @@ sub initDB
         my $chtabcmds;
         my $confdir = "/etc/xcat";
         my $syncdir = "/var/xcat/syncfiles";
+        my $nodesyncdir = "/var/xcat/node/syncfiles";
         $chtabcmds = "$::XCATROOT/sbin/chtab key=blademaxp site.value=64;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=domain site.value=$domain;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=fsptimeout site.value=0;";
@@ -1024,6 +1025,8 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=sharedtftp site.value=1;";
         $chtabcmds .=
           "$::XCATROOT/sbin/chtab key=SNsyncfiledir site.value=$syncdir;";
+        $chtabcmds .=
+          "$::XCATROOT/sbin/chtab key=Nodesyncfiledir site.value=$nodesyncdir;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=tftpdir site.value=$tftpdir;";
         $chtabcmds .=
           "$::XCATROOT/sbin/chtab key=xcatdport site.value=$xcatport;";
