@@ -34,12 +34,15 @@ Includes xCAT::Table, xCAT::NodeRange, among others.
 # All of the tarball source has been unpacked there and is in the same file structure
 # as it is in svn.
 
+%if %fsm
+%else
 # Modify the Version() function in xCAT/Utils.pm to automatically have the correct version
 ./modifyUtils %{version} %{svninfo}
 
 # Build the pod version of the man pages for each DB table.  It puts them in the man5 and man7 subdirs.
 # Then convert the pods to man pages and html pages.
 ./db2man
+%endif
 
 %install
 # The install phase puts all of the files in the paths they should be in when the rpm is
@@ -71,6 +74,7 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/hpoa.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/hpoa.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/vboxService.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/FSP*.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/RemoteShellExp.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPC*.pm
 # have to put PPCdb.pm back because it is needed by Postage.pm
 cp xCAT/PPCdb.pm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/
@@ -93,6 +97,8 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/perl-xCAT/*
 cp README $RPM_BUILD_ROOT/%{prefix}
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/README
 
+%if %fsm
+%else
 # These were built dynamically in the build phase
 cp share/man/man5/* $RPM_BUILD_ROOT/%{prefix}/share/man/man5
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/man/man5/*
@@ -102,6 +108,7 @@ cp share/man/man7/* $RPM_BUILD_ROOT/%{prefix}/share/man/man7
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/man/man7/*
 cp share/doc/man7/* $RPM_BUILD_ROOT/%{prefix}/share/doc/man7
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man7/*
+%endif
 
 %clean
 # This step does not happen until *after* the %files packaging below
