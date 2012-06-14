@@ -779,6 +779,10 @@ function createFspDiv(fspName, mtm, fsp) {
         temp = mtm;
     }
     
+    if (!hardwareInfo[temp]){
+    	hardwareInfo[temp] = ['unkown', 2];
+    }
+    
     if (hardwareInfo[temp][1]) {
         divClass += 'fspDiv' + hardwareInfo[temp][1];
     } else {
