@@ -899,7 +899,7 @@ site => {
    " skiptables:  Comma separated list of tables to be skipped by dumpxCATdb\n".
    " SNsyncfiledir:  The directory on the Service Node, where xdcp will rsync the files\n".
    "                 from the MN that will eventually be rsync'd to the compute nodes.\n\n".
-   " Nodesyncfiledir:  The directory on the Node, where xdcp will rsync the files\n".
+   " nodesyncfiledir:  The directory on the node, where xdcp will rsync the files\n".
    " snmpc:  The snmp community string that xcat should use when communicating with the\n".
    "         switches.\n\n".
    " sshbetweennodes:  Comma separated list of groups to enable passwordless root \n".
