@@ -7,6 +7,12 @@
 # 2) We gather machine types and download firmware
 # 3) We construct the bootable image and set up the NFS mount
 # 
+
+#
+# 2012.04.27  Brian Elliott Finley <bfinley@us.ibm.com>
+# - improve verbiage
+#
+
 BEGIN
 {
   $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
@@ -340,8 +346,8 @@ if ( system("cp -r $src $repo")) {
 
 my $do_asu = question("Do you want to configure CMOS Settings for ASU?","yes","yesno");
 if ($do_asu eq "yes") {
-  my $sol = question("Are these systems configured for SOL?","yes","yesno");
-  my $hpc = question("Are these HPC systems?","yes","yesno");
+  my $sol = question("Do you want these systems configured for SOL?","yes","yesno");
+  my $hpc = question("Do you want these systems configured for HPC?","yes","yesno");
   if ($sol eq "yes") {
     $sol = "sol";
   } 
