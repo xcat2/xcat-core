@@ -230,7 +230,6 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/toolscenter.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xcat2nim.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xnba.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/IPMI.pm
-rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/SLP.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/SSHInteract.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/MellanoxIB.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPC.pm
