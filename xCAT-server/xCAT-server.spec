@@ -160,7 +160,7 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema/samples/*
 rm $RPM_BUILD_ROOT/%{prefix}/sbin/stopstartxcatd
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/activedirectory.pm
 # this is needed by lsslp.pm
-#rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/blade.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/blade.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpblade.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpilo.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ipmi.pm
@@ -194,6 +194,45 @@ rm $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/hmc
 rm $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/ivm
 rm $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/multiple
 rm $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/fsp
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/snmpmon.pm
+rm $RPM_BUILD_ROOT/%{prefix}/sbin/xcat_traphandler
+%endif
+
+# Don't ship these on FSM, to reduce dependencies
+%if %fsm
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/installp_bundles
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
+rm $RPM_BUILD_ROOT/%{prefix}/sbin/stopstartxcatd
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpblade.pm
+rm $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/detect_dhcpd
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpilo.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ipmi.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ipmi.pm.legacy
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/nodediscover.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/switch.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xen.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/kvm.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/vbox.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/aixinstall.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/bmcconfig.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/bpa.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ddns.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/dhcp.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/FIP.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/fsp.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hmc.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ivm.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/lsslp.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/slpdiscover.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/pxe.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/toolscenter.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xcat2nim.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xnba.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/IPMI.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/SLP.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/SSHInteract.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/MellanoxIB.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPC.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/snmpmon.pm
 rm $RPM_BUILD_ROOT/%{prefix}/sbin/xcat_traphandler
 %endif
