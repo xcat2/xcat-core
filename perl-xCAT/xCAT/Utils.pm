@@ -28,7 +28,9 @@ use Digest::SHA1 qw/sha1/;
 use IPC::Open3;
 use IO::Select;
 use xCAT::GlobalDef;
-require xCAT::RemoteShellExp;
+eval {
+  require xCAT::RemoteShellExp;
+};
 use warnings "all";
 require xCAT::InstUtils;
 require xCAT::NetworkUtils;

@@ -74,7 +74,6 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/hpoa.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/hpoa.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/vboxService.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/FSP*.pm
-rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/RemoteShellExp.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPC*.pm
 # have to put PPCdb.pm back because it is needed by Postage.pm
 cp xCAT/PPCdb.pm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/
@@ -85,6 +84,8 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPCdb.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/hpoa.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/vboxService.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/FSP*.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/RemoteShellExp.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/LparNetbootExp.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPC*.pm
 # have to put PPCdb.pm back because it is needed by Postage.pm
 cp xCAT/PPCdb.pm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/
