@@ -897,8 +897,9 @@ site => {
    "               'all' means that the management as well as the service nodes\n".
    "               are all using a common shared filesystem. The default is 'no'.\n".
    " skiptables:  Comma separated list of tables to be skipped by dumpxCATdb\n".
-   " SNsyncfiledir:  The directory on the Service Node, where xdcp will copy the files\n".
-   "                 from the MN that will eventually be copied to the compute nodes.\n\n".
+   " SNsyncfiledir:  The directory on the Service Node, where xdcp will rsync the files\n".
+   "                 from the MN that will eventually be rsync'd to the compute nodes.\n\n".
+   " Nodesyncfiledir:  The directory on the Node, where xdcp will rsync the files\n".
    " snmpc:  The snmp community string that xcat should use when communicating with the\n".
    "         switches.\n\n".
    " sshbetweennodes:  Comma separated list of groups to enable passwordless root \n".
