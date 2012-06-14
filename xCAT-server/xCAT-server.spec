@@ -33,6 +33,7 @@ Provides: xCAT-server = %{epoch}:%{version}
 xCAT-server provides the core server and configuration management components of xCAT.  This package should be installed on your management server
 
 %define zvm %(if [ "$zvm" = "1" ];then echo 1; else echo 0; fi)
+%define fsm %(if [ "$fsm" = "1" ];then echo 1; else echo 0; fi)
 
 # %define VERBOSE %(if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ];then echo 1; else echo 0; fi)
 # %define NOVERBOSE %(if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ];then echo 0; else echo 1; fi)

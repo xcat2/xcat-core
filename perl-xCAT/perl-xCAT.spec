@@ -24,6 +24,7 @@ Provides perl xCAT libraries for core functionality.  Required for all xCAT inst
 Includes xCAT::Table, xCAT::NodeRange, among others.
 
 %define zvm %(if [ "$zvm" = "1" ];then echo 1; else echo 0; fi)
+%define fsm %(if [ "$fsm" = "1" ];then echo 1; else echo 0; fi)
 %define svninfo %(svn info | grep Revision | awk '{print $2}')
 
 %prep
@@ -67,6 +68,16 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/hpoa.pm
 
 # Don't ship these on zVM, to reduce dependencies
 %if %zvm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/hpoa.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/vboxService.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/FSP*.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPC*.pm
+# have to put PPCdb.pm back because it is needed by Postage.pm
+cp xCAT/PPCdb.pm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPCdb.pm
+%endif
+# Don't ship these on FSM, to reduce dependencies
+%if %fsm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/hpoa.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/vboxService.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/FSP*.pm
