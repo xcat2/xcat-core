@@ -1026,7 +1026,7 @@ sub initDB
         $chtabcmds .=
           "$::XCATROOT/sbin/chtab key=SNsyncfiledir site.value=$syncdir;";
         $chtabcmds .=
-          "$::XCATROOT/sbin/chtab key=Nodesyncfiledir site.value=$nodesyncdir;";
+          "$::XCATROOT/sbin/chtab key=nodesyncfiledir site.value=$nodesyncdir;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=tftpdir site.value=$tftpdir;";
         $chtabcmds .=
           "$::XCATROOT/sbin/chtab key=xcatdport site.value=$xcatport;";
