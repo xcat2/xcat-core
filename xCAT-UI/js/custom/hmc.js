@@ -489,7 +489,7 @@ function powerInitBasicPattern() {
     var showString = '<div style="min-height:360px" id="patternDiv"><h2>' + steps[currentStep] + '</h2>';
     showString += '<table><tbody>';
 
-    showString += '<tr><td><h3>Frames:</h3></td></tr>';
+    showString += '<tr><td><b>Frames:</b></td></tr>';
     showString += '<tr><td>Name Range:</td><td><input type="text" title="Format: Frame[1-6] or F1-F6" '
             + 'name="frameName" value="'
             + getDiscoverEnv('frameName')
@@ -497,28 +497,41 @@ function powerInitBasicPattern() {
     
     // Use the super node to configure file and calculate the CEC's number
     showString += '<td></td><td></td></tr>';
+    showString += '<tr><td>Vlan1 IP Header:</td><td><input type="text" name="vlan1ip" value="'
+               + getDiscoverEnv('vlan1ip') + '"></td><td>Vlan2 IP Header:</td>'
+               + '<td><input type="text" name="vlan2ip" value="' + getDiscoverEnv('vlan2ip') + '"></td></tr>';
 
-    showString += '<tr><td><h3>Drawers:</h3></td></tr>';
+    showString += '<tr><td><b>Drawers:</b></td></tr>';
     showString += '<tr><td>Name Range:</td><td><input type="text" title="Format: CEC[1-60] or F[1-6]C[1-10]" '
             + 'name="cecName" value="' + getDiscoverEnv('cecName') + '"></td>';
 
     showString += '<td>Number of LPARs per Drawer:</td><td><input type="text" name="lparNumPerCec" value="'
             + getDiscoverEnv('lparNumPerCec') + '"></td></tr>';
 
-    showString += '<tr><td><h3>Lpars:</h3></td></tr>';
+    showString += '<tr><td><b>Lpars:</b></td></tr>';
     showString += '<tr><td>Name Range:</td><td><input type="text" title="Format: F[1-6]C[1-10]L[1-8]" '
             + 'name="lparName" value="'
             + getDiscoverEnv('lparName')
-            + '"></td><td></td><td></td></tr>';
+            + '"></td><td>Starting IP Adress:</td><td><input type="text" name="lparstartip" value="'
+            + getDiscoverEnv('lparstartip') + '"></td></tr>';
 
-    showString += '<tr><td><h3>HMCs:</h3></td></tr>';
+    showString += '<tr><td><b>HMCs:</b></td></tr>';
     showString += '<tr id="hmcTr"><td>Name Range:</td><td><input type="text" title="Format: HMC[01-10] or HMC01-HMC10" name="hmcName" value="'
             + getDiscoverEnv('hmcName') + '"></td>';
 
     showString += '<td>Number of Frames per HMC:</td><td><input type="text" name="frameNumPerHmc" value="'
             + getDiscoverEnv('frameNumPerHmc') + '"></td></tr>';
-    showString += '<tr><td>Hardware Managment:</td><td><input type="radio" name="managetype" value="hmc" title="Hardware Management Console">HMC&nbsp;&nbsp;';
+    showString += '<tr><td>Starting IP Adress:</td><td><input type="text" name="hmcstartip" value="'
+            + getDiscoverEnv('hmcstartip') + '"></td>';
+    showString += '<td>Hardware Managment:</td><td><input type="radio" name="managetype" value="hmc" title="Hardware Management Console">HMC&nbsp;&nbsp;';
     showString += '<input type="radio" name="managetype" value="dfm" title="Direct FSP Management">DFM</td></tr>';
+    
+    showString += '<tr><td><b>Building Block</b></td></tr>';
+    showString += '<tr><td>Frame amount per BB:</td>' 
+               + '<td><input type="text" name="framepbb" value="' + getDiscoverEnv('framepbb') + '"></td>'
+               + '<td>CEC amount per BB:</td>'
+               + '<td><input type="text" name="cecpbb" value="' + getDiscoverEnv('cecpbb') + '"></td>'
+               + '</tr>';
     showString += '</tbody></table></div>';
 
     $('#discoverContentDiv').append(showString);
@@ -603,6 +616,30 @@ function checkBasicPattern(operType) {
     if (!frameNumPerHmc) {
         errMessage += 'Input the Frame Number Per HMC.<br/>';
     }
+    
+    if (!getDiscoverEnv('vlan1ip')){
+    	errMessage += 'Input the Vlan 1 IP Header.<br/>';
+    }
+    
+    if (!getDiscoverEnv('vlan2ip')){
+    	errMessage += 'Input the Vlan 2 IP Header.<br/>';
+    }
+    
+    if (!getDiscoverEnv('lparstartip')){
+    	errMessage += 'Input the Lpars\' Starting IP Adress.<br/>';
+    }
+    
+    if (!getDiscoverEnv('hmcstartip')){
+    	errMessage += 'Input the HMCs\' Starting IP Adress.<br/>';
+    }
+    
+    if (!getDiscoverEnv('framepbb')){
+    	errMessage += 'Input the Frame amount per BB.<br/>';
+    }
+    
+    if (!getDiscoverEnv('cecpbb')){
+    	errMessage += 'Input the CEC amount per BB<br/>';
+    }
 
     // Hardware management type is HMC
     if ('hmc' == $('#discoverContentDiv :checked').attr('value')) {
@@ -628,7 +665,7 @@ function checkBasicPattern(operType) {
         }
     }
 
-    if ((Number(lparNumPerCec) * cecNum) != lparNum) {
+    if ((Number(lparNumPerCec) * cecNum) > lparNum) {
         errMessage += 'The number of Lpars calculate by Name Range should be '
                 + Number(lparNumPerCec) * cecNum
                 + '("the number of Drawers" * "the number of lpar per drawer")';
@@ -719,16 +756,6 @@ function checkSupernode(operType) {
 
     var warnBar;
     if (errString) {
-        warnBar = createWarnBar(errString);
-        $('#supernodeDiv').prepend(warnBar);
-        return false;
-    }
-
-    var cecArray = expandNR(getDiscoverEnv('cecName'));
-    if (eceNum != cecArray.length) {
-        errString += 'The number of CEC calculated from supernode configure is '
-            + eceNum + ', but the number ' + 'calculated from CECs\' Name Range is ' + cecArray.length
-            + '. Reconfigure the supernode please.';
         warnBar = createWarnBar(errString);
         $('#supernodeDiv').prepend(warnBar);
         return false;
