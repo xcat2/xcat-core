@@ -2,7 +2,7 @@ Summary: Core executables and data of the xCAT management project
 Name: xCAT-client
 Version: %(cat Version)
 Release: snap%(date +"%Y%m%d%H%M")
-Epoch: 4
+Epoch: 5
 License: EPL
 Group: Applications/System
 Source: xCAT-client-%(cat Version).tar.gz
@@ -212,6 +212,10 @@ rm -rf $RPM_BUILD_ROOT
 %{prefix}
 
 %changelog
+* Thu Jun 14 2012 - Brian Elliott Finley <bfinley@us.ibm.com>
+- Use "-f" when removing /etc/profile.d/xcat.* on erase.  If the file is
+  already removed, then with out "-f", the package fails to erase.
+
 * Wed May 2 2007 - Norm Nott <nott@us.ibm.com>
 - Made changes to make this work on AIX
 
@@ -283,7 +287,7 @@ exit 0
 %preun
 %ifos linux
 if [ $1 == 0 ]; then  #This means only on -e
-rm /etc/profile.d/xcat.*
+rm -f /etc/profile.d/xcat.*
 fi
 %endif
 
