@@ -12,6 +12,7 @@ Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
 Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 
+%define fsm %(if [ "$fsm" = "1" ];then echo 1; else echo 0; fi)
 %ifnos linux
 AutoReqProv: no
 %endif
@@ -20,7 +21,11 @@ AutoReqProv: no
 # also need to fix Requires for AIX
 %ifos linux
 BuildArch: noarch
+%if %fsm
+Requires: perl-IO-Socket-SSL perl-XML-Simple
+%else
 Requires: perl-IO-Socket-SSL perl-XML-Simple perl-IO-Tty perl-Crypt-SSLeay make
+%endif
 Obsoletes: atftp-xcat
 %endif
 
@@ -33,7 +38,6 @@ Provides: xCAT-server = %{epoch}:%{version}
 xCAT-server provides the core server and configuration management components of xCAT.  This package should be installed on your management server
 
 %define zvm %(if [ "$zvm" = "1" ];then echo 1; else echo 0; fi)
-%define fsm %(if [ "$fsm" = "1" ];then echo 1; else echo 0; fi)
 
 # %define VERBOSE %(if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ];then echo 1; else echo 0; fi)
 # %define NOVERBOSE %(if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ];then echo 0; else echo 1; fi)
@@ -206,8 +210,10 @@ rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
 rm $RPM_BUILD_ROOT/%{prefix}/sbin/stopstartxcatd
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpblade.pm
 rm $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/detect_dhcpd
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/AAsn.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpilo.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ipmi.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/blade.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ipmi.pm.legacy
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/nodediscover.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/switch.pm

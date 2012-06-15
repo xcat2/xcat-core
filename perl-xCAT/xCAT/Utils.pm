@@ -24,7 +24,10 @@ use File::Path;
 use Socket;
 use strict;
 use Symbol;
-use Digest::SHA1 qw/sha1/;
+my $sha1support = eval {
+	require Digest::SHA1;
+	1;
+};
 use IPC::Open3;
 use IO::Select;
 use xCAT::GlobalDef;
@@ -113,9 +116,9 @@ sub genUUID
         $mac = lc($mac);
         $uuid .= $mac;
         return $uuid;
-    } elsif ($args{url}) { #generate a UUIDv5 from URL
+    } elsif ($args{url} and $sha1support) { #generate a UUIDv5 from URL
         #6ba7b810-9dad-11d1-80b4-00c04fd430c8 is the uuid for URL namespace
-        my $sum = sha1('6ba7b810-9dad-11d1-80b4-00c04fd430c8'.$args{url});
+        my $sum = Digest::SHA1::sha1('6ba7b810-9dad-11d1-80b4-00c04fd430c8'.$args{url});
         my @data = unpack("C*",$sum);
         splice @data,16;
         $data[6] = $data[6] & 0xf;

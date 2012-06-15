@@ -11,6 +11,8 @@ Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
 Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
+%define fsm %(if [ "$fsm" = "1" ];then echo 1; else echo 0; fi)
+
 
 # AIX will build with an arch of "ppc"
 %ifos linux
@@ -89,6 +91,9 @@ chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man8/*
 # cp share/doc/xCAT2onAIX.odt $RPM_BUILD_ROOT/%{prefix}/share/doc
 # cp share/doc/xCAT2onAIX.pdf $RPM_BUILD_ROOT/%{prefix}/share/doc
 # %endif
+%if %fsm
+rm -f $RPM_BUILD_ROOT/%{prefix}/bin/*setup
+%else
 cp -r share/doc/* $RPM_BUILD_ROOT/%{prefix}/share/doc
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/doc/*
 # These were built dynamically during the build phase
@@ -102,6 +107,7 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man5/*
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man8/*
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client/*
+%endif
 
 cp share/xcat/tools/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
 #cp usr/share/xcat/scripts/setup-local-client.sh $RPM_BUILD_ROOT/usr/share/xcat/scripts/setup-local-client.sh
