@@ -1248,6 +1248,7 @@ function createSetupFile() {
     } else {
         fileContent += '  use-direct-fsp-control = 1\n';
     }
+    fileContent += '  topology = 8D \n';
 
     // DHCP IP range
     fileContent += 'xcat-service-lan:\n';
@@ -1258,6 +1259,7 @@ function createSetupFile() {
     if (getDiscoverEnv('hmcName')) {
         fileContent += 'xcat-hmcs:\n';
         fileContent += '  hostname-range = ' + getDiscoverEnv('hmcName') + '\n';
+        fileContent += '  starting-ip = ' + getDiscoverEnv('hmcstartip') + '\n';
     }
 
     // Frame
@@ -1266,18 +1268,27 @@ function createSetupFile() {
     fileContent += '  num-frames-per-hmc = ' + getDiscoverEnv('frameNumPerHmc')
             + '\n';
     fileContent += '  vpd-file = /tmp/webvpd.stanza\n';
+    fileContent += '  vlan-1 = ' + getDiscoverEnv('vlan1ip') + '\n';
+    fileContent += '  vlan-2 = ' + getDiscoverEnv('vlan2ip') + '\n';
 
     // CEC
     fileContent += 'xcat-cecs:\n';
     fileContent += '  hostname-range = ' + getDiscoverEnv('cecName') + '\n';
     fileContent += '  delete-unused-cecs = 1\n';
     fileContent += '  supernode-list = /tmp/websupernode.txt\n';
+    fileContent += '  delete-unused-cecs = 1 \n';
+    
+    //Building Block
+    fileContent += 'xcat-building-blocks:\n';
+    fileContent += '  num-frames-per-bb = ' + getDiscoverEnv('framepbb') + '\n';
+    fileContent += '  num-cecs-per-bb = ' + getDiscoverEnv('cecpbb') + '\n';
 
     // LPAR
     fileContent += 'xcat-lpars:\n';
     fileContent += '  num-lpars-per-cec = ' + getDiscoverEnv('lparNumPerCec')
             + '\n';
     fileContent += '  hostname-range = ' + getDiscoverEnv('lparName') + '\n';
+    fileContent += '  starting-ip = ' + getDiscoverEnv('lparstartip') + '\n';
 
     $.ajax({
         url : 'lib/cmd.php',
