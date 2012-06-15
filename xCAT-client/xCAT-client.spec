@@ -93,6 +93,8 @@ chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man8/*
 # %endif
 %if %fsm
 rm -f $RPM_BUILD_ROOT/%{prefix}/bin/*setup
+rm -f $RPM_BUILD_ROOT/%{prefix}/bin/xdcp
+rm -f $RPM_BUILD_ROOT/%{prefix}/bin/xdsh
 %else
 cp -r share/doc/* $RPM_BUILD_ROOT/%{prefix}/share/doc
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/doc/*
