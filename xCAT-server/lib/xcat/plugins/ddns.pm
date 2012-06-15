@@ -419,7 +419,7 @@ sub process_request {
     }
     $ctx->{zonestotouch}->{$ctx->{domain}}=1;
 
-    xCAT::SvrUtils::sendmsg("Getting reverse zones, this may take several minutes in scaling cluster.", $callback);
+    xCAT::SvrUtils::sendmsg("Getting reverse zones, this may take several minutes for a large cluster.", $callback);
     
     foreach (@nodes) {
         my @revzones =  get_reverse_zones_for_entity($ctx,$_);;
@@ -964,7 +964,7 @@ sub update_namedconf {
 sub add_or_delete_records {
     my $ctx = shift;
 
-    xCAT::SvrUtils::sendmsg("Updating DNS records, this may take several minutes in scaling cluster.", $callback);
+    xCAT::SvrUtils::sendmsg("Updating DNS records, this may take several minutes for a large cluster.", $callback);
     
     unless ($ctx->{privkey}) {
         my $passtab = xCAT::Table->new('passwd');
