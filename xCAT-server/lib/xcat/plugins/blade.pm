@@ -4146,6 +4146,10 @@ sub clicmds {
     $Rc |= shift(@$result);
     push @cfgtext,@$result;
   }
+  # dealing with SNMP v3 disable in genesis state#
+  if ($promote_pass ne $pass) {
+    snmpcfg($t, 'disable', $user, $promote_pass, $mm);
+  }
   if ($reset) {
     $t->cmd("reset -T system:$mm");
     push @data, "The management module has been reset to load the configuration";
