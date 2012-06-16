@@ -100,10 +100,22 @@ if [ ! -z "$DUMP" ]; then
 
     if [ "$KDPROTO" = "nfs" ]; then
 	if (pmatch $OSVER "sles*") || (pmatch $OSVER "suse*") || [ -f /etc/SuSE-release ]; then
-	    KDPATH=${KDPATH//\//\\\/}
-	    KDPATH="nfs:\/\/${KDIP}${KDPATH}"
-	    sed -i "s/^KDUMP_SAVEDIR=.*$/KDUMP_SAVEDIR=\"${KDPATH}\"/" /etc/sysconfig/kdump
-            sed -i "s/^KDUMP_COPY_KERNEL=.*$/KDUMP_COPY_KERNEL=no/" /etc/sysconfig/kdump
+	    KDTEMPPATH=${KDPATH//\//\\\/}
+	    KDTEMPPATH="nfs:\/\/${KDIP}${KDTEMPPATH}\/${NODE}"
+	    sed -i "s/^KDUMP_SAVEDIR=.*$/KDUMP_SAVEDIR=\"${KDTEMPPATH}\"/" /etc/sysconfig/kdump
+            sed -i "s/^KDUMP_COPY_KERNEL=.*$/KDUMP_COPY_KERNEL=\"no\"/" /etc/sysconfig/kdump
+            sed -i "s/^KDUMP_PRESCRIPT=.*$/KDUMP_PRESCRIPT=\"\/tmp\/createdir\"/" /etc/sysconfig/kdump
+            sed -i "s/^KDUMP_REQUIRED_PROGRAMS=.*$/KDUMP_REQUIRED_PROGRAMS=\"\/tmp\/createdir\"/" /etc/sysconfig/kdump
+            TEMPDELAY=$(($RANDOM%30))
+            #work around for the kdump on sles 11.2
+            echo "/bin/mkdir -p /root/tmp/" > /tmp/createdir
+            #following 5 lines is the work around for kdump on multiply nodes
+            echo "/bin/sleep ${TEMPDELAY}" >> /tmp/createdir
+            echo "/bin/mount -o nolock ${KDIP}:${KDPATH} /tmp" >> /tmp/createdir
+            echo "/bin/mkdir -p /tmp/${NODE}" >> /tmp/createdir
+            echo "/bin/sleep ${TEMPDELAY}" >> /tmp/createdir
+            echo "/bin/umount /tmp" >> /tmp/createdir
+            /bin/chmod 777 /tmp/createdir    
             #change the mount and remount shell scripts' name, workaround for kdump on stateless node
             oldmount=`ls /lib/mkinitrd/boot/*-mount.sh`
             oldremount=`ls /lib/mkinitrd/boot/*-remount.sh`
@@ -121,7 +133,7 @@ if [ ! -z "$DUMP" ]; then
 	fi
     fi
 
-    /bin/umount $MOUNTPATH
+    /bin/umount -l $MOUNTPATH
 else
     /bin/echo "The kdump server is not configured"
 fi
