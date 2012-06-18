@@ -575,55 +575,6 @@ sub pipe_handler_buffer
     return $eof_reached;
 }
 
-#---------------------------------------------------------------------------
-
-=head3
-        fping_hostnames
-
-        Executes fping on a given list of hostnames and returns a list of those
-        hostnames that did not respond
-
-        Arguments:
-        	@hostnames - list of hostnames to execute for fping
-
-        Returns:
-        	@no_response - list of hostnames that did not respond
-        	undef if fping is not installed
-                
-        Globals:
-        	None
-    
-        Error:
-        	None
-    
-        Example:
-        	@bad_hosts = xCAT::DSHCore->fping_hostnames(@host_list);
-
-        Comments:
-
-=cut
-
-#---------------------------------------------------------------------------
-
-sub fping_hostnames
-{
-    my ($class, @hostnames) = @_;
-
-    my $fping = (-x '/usr/sbin/fping') || undef;
-    !$fping && return undef;
-
-    my @output = `/usr/sbin/fping -B 1.0 -r 1 -t 50 -i 10 -p 50 @hostnames`;
-
-    my @no_response = ();
-    foreach my $line (@output)
-    {
-        my ($hostname, $token, $status) = split ' ', $line;
-        !(($token eq 'is') && ($status eq 'alive'))
-          && (push @no_response, $hostname);
-    }
-
-    return @no_response;
-}
 
 #---------------------------------------------------------------------------
 
