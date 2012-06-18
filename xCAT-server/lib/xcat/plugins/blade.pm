@@ -556,6 +556,7 @@ sub mpaconfig {
         next;
       }
       elsif ($parameter eq "textid") {
+         $textid = 1;
          if ($assignment) {
            my $txtid = ($value =~ /^\*/) ? $node : $value;
            setoid("1.3.6.1.4.1.2.3.51.2.22.1.7.1.1.5",$nodeid,$txtid,'OCTET');
@@ -564,7 +565,7 @@ sub mpaconfig {
             setoid("1.3.6.1.4.1.2.3.51.2.22.1.7.1.1.5",$_,$txtid.", slot $extrabay",'OCTET');
             $extrabay+=1;
            }
-         }
+         } else {
          my $data;
          if ($slot > 0) {
            $data = $session->get([$bladeoname,$nodeid]);
@@ -572,11 +573,11 @@ sub mpaconfig {
          else {
            $data = $session->get([$mmoname->{$mptype},0]);
          }
-         $textid = 1;
          push @cfgtext,"textid: $data";
          foreach(@morenodeids) {
             $data = $session->get([$bladeoname,$_]);
             push @cfgtext,"textid: $data";
+           }
          }
       }
       elsif ($parameter =~ /^snmpcfg$/i) {
@@ -1798,7 +1799,7 @@ sub getmacs {
                    push @midxary,$1;
 	           }
            }
-       } else {
+       } elsif ($display !~ /yes/){
            $nrtab->close;
            return -1, "please set noderes.installnic or noderes.primarynic";
        }
@@ -4027,6 +4028,7 @@ sub clicmds {
   if ($args{nokeycheck}) {
     $nokeycheck=1;
   }
+  my $promote_pass = $pass; #used for genesis state processing
   my $curraddr = $mpa;
   if ($args{curraddr}) {
 	$curraddr = $args{curraddr};
@@ -4058,22 +4060,34 @@ sub clicmds {
   };
   my $errmsg=$@;
   if ($errmsg) {
+        if ($errmsg =~ /Known_hosts issue/) {
+            $errmsg = "The entry for $curraddr in known_hosts table is out of date, pls run 'makeknownhosts $curraddr -r' to delete it from known_hosts table.";
+           push @cfgtext, $errmsg;
+           return([1, \@unhandled, $errmsg]);
+        }
 	if ($errmsg =~ /Login Failed/) {
 	    $errmsg = "Failed to login to $mpa";
 	    if ($curraddr ne $mpa) { $errmsg .= " (currently at $curraddr)" }
         push @cfgtext,$errmsg;
 	    return([1,\@unhandled,$errmsg]);
-        } else { die $@; }
+    } else { 
+        push @cfgtext, $errmsg;
+        return([1,\@unhandled,$errmsg]);
+        #die $@; 
+    }
   }
   my $Rc=1;
   if ($t and not $t->atprompt) { #we sshed in, but we may be forced to deal with initial password set
 	my $output = $t->get();
 	if ($output =~ /Enter current password/) {
+        if (defined($handled{USERID})) {
+            $promote_pass = $handled{USERID};
+        }
 		$t->print($currpass);
 		$t->waitfor(-match=>"/password:/i");
-		$t->print($pass);
+		$t->print($promote_pass);
 		$t->waitfor(-match=>"/password:/i");
-		$t->print($pass);
+		$t->print($promote_pass);
 		my $result=$t->getline();
 		chomp($result);
 		$result =~ s/\s*//;
@@ -4082,6 +4096,7 @@ sub clicmds {
 			$result =~ s/\s*//;
 		}
 		if ($result =~ /not compliant/) {
+                        push @cfgtext,"The current account password has expired, please modify it first";
          		return ([1,\@unhandled,"Management module refuses requested password as insufficiently secure, try another password"]);
 		}
 	}
@@ -4129,11 +4144,16 @@ sub clicmds {
     elsif (/^rscanfsp$/)  { $result = rscanfsp($t,$mpa,$handled{$_},$mm); }
     elsif (/^solcfg$/)  { $result = solcfg($t,$handled{$_},$mm); }
     elsif (/^network_reset$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid,1); $reset=1; }
-    elsif (/^(USERID)$/) {$result = passwd($t, $mpa, $1, "=".$handled{$_}, $mm);}
-    elsif (/^userpassword$/) {$result = passwd($t, $mpa, $1, $handled{$_}, $mm);}
+    elsif (/^(USERID)$/) {$result = passwd($t, $mpa, $1, "=".$handled{$_}, $promote_pass, $mm);}
+    elsif (/^userpassword$/) {$result = passwd($t, $mpa, $1, $handled{$_}, $promote_pass, $mm);}
+    if (!defined($result)) {next;}
     push @data, "$_: @$result";
     $Rc |= shift(@$result);
     push @cfgtext,@$result;
+  }
+  # dealing with SNMP v3 disable in genesis state#
+  if ($promote_pass ne $pass) {
+    snmpcfg($t, 'disable', $user, $promote_pass, $mm);
   }
   if ($reset) {
     $t->cmd("reset -T system:$mm");
@@ -4267,7 +4287,7 @@ sub mmtextid {
     return([1,@data]);
   }
   my @data = $t->cmd("config -name \"$value\" -T system"); #on cmms, this identifier is frequently relevant...
-  return([0,"textid: $value"]);
+  return undef; #([0,"textid: $value"]);
 }
 
 sub get_blades_for_mpa {
@@ -4314,6 +4334,7 @@ sub passwd {
   my $mpa = shift;
   my $user = shift;
   my $pass = shift;
+  my $oldpass = shift;
   my $mm = shift;
   if ($pass =~ /^=/) {
 	$pass=~ s/=//;
@@ -4328,18 +4349,21 @@ sub passwd {
   if ($mpatab) {
     #my ($ent)=$mpatab->getNodeSpecAttribs($mpa, {username=>$user},qw(password));
     my ($ent)=$mpatab->getAttribs({mpa=>$mpa, username=>$user},qw(password));
-    my $oldpass = 'PASSW0RD';
-    if (defined($ent->{password})) {$oldpass = $ent->{password}};
-    my $cmd = "users -n $user -op $oldpass -p $pass -T system:$mm";
-    my @data = $t->cmd($cmd);
-    if (!grep(/OK/i, @data)) {
-        return ([1, @data]);
+    #my $oldpass = 'PASSW0RD';
+    #if (defined($ent->{password})) {$oldpass = $ent->{password}};
+    my @data = ();
+    if ($oldpass ne $pass) {
+        my $cmd = "users -n $user -op $oldpass -p $pass -T system:$mm";
+        my @data = $t->cmd($cmd);
+        if (!grep(/OK/i, @data)) {
+            return ([1, @data]);
+        }
     }
     @data = ();
-    my $snmp_cmd = "users -n $user -ap sha -pp des -ppw $pass -t system:$mm";
+    my $snmp_cmd = "users -n $user -ap sha -pp des -ppw $pass -T system:$mm";
     @data = $t->cmd($snmp_cmd);
     if (!grep(/ok/i, @data)) {
-        $cmd = "users -n $user -op $pass -p $oldpass -T system:$mm";
+        my $cmd = "users -n $user -op $pass -p $oldpass -T system:$mm";
         my @back_pwd = $t->cmd($cmd);
         if (!grep(/OK/i, @back_pwd)) {
             $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});

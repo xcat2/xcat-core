@@ -28,6 +28,7 @@ sub _startssh {
 	close($pty);
 	open STDIN, "<&", $tty_fd;
 	open STDOUT,">&",$tty_fd;
+        open STDERR, ">&", STDOUT;
 	close($tty);
 	my @cmd =  ("ssh","-o","StrictHostKeyChecking=no");
 	if ($args{"-nokeycheck"}) {
@@ -58,7 +59,7 @@ sub new {
 	my $promptex = $args{Prompt};
 	$promptex =~ s!^/!!;
 	$promptex =~ s!/\z!!;
-    my ($prematch,$match) = $self->waitfor(Match => $args{Prompt},Match=>'/password:/i') or die "Login Failed: ",$self->lastline;
+    my ($prematch,$match) = $self->waitfor(Match => $args{Prompt},Match=>'/password:/i',Match=>'/REMOTE HOST IDENTIFICATION HAS CHANGED/') or die "Login Failed:", $self->lastline;
     if ($match =~ /password:/i) {
 	    #$self->waitfor("-match" => '/password:/i', -errmode => "return") or die "Unable to reach host ",$self->lastline;
             $self->print($password);
@@ -75,6 +76,8 @@ sub new {
 	    }
     } elsif ($match =~ /$promptex/) {
 	*$self->{_xcatsshinteract}->{_atprompt}=1;
+    } elsif ($match =~ /REMOTE HOST IDENTIFICATION HAS CHANGED/){
+        die "Known_hosts issue";
 	}
 	return bless($self,$class);
 }
