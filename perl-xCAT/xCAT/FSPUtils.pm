@@ -351,6 +351,8 @@ sub fsp_api_action {
     my $install_dir = xCAT::Utils->getInstallDir();
     if( $action =~ /^(code_update|get_compatible_version_from_rpm)$/) { 
         $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:$parameter -d $install_dir/packages_fw/";
+    } elsif($action =~ /^code_updateD$/) {
+        $cmd = "$fsp_api -a code_update -D -T $tooltype -t $type:$fsp_ip:$id:$node_name:$parameter -d $install_dir/packages_fw/";
     } elsif($action =~ /^add_connection$/) {
     	$cmd = "$fsp_api -a $action -u $user -p $password -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
     } elsif ($action =~ /^set_frame_number$/) { 

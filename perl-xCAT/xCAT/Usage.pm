@@ -78,6 +78,8 @@ my %usage = (
        rinv <noderange> [deconfig [-x]]
     Blade specific:
        rinv <noderange> [mtm|serial|mac|bios|diag|mprom|mparom|firm|all]
+    IBM Flex System Compute Node specific:
+       rinv <noderange> [firm]
     VMware specific:
        rinv <noderange>
     zVM specific:
@@ -268,8 +270,9 @@ my %usage = (
 	rflash <noderange> -p <rpm_directory> [--activate concurrent | disruptive][-V|--verbose] 
 	rflash <noderange> [--commit | --recover] [-V|--verbose]
     PPC (using Direct FSP Management) specific:
-	rflash <noderange> -p <rpm_directory> --activate disruptive [-d <data_directory>]
-	rflash <noderange> [--commit | --recover] [-V|--verbose]",
+	rflash <noderange> -p <rpm_directory> --activate <disruptive|deferred> [-d <data_directory>]
+	rflash <noderange> [--commit | --recover] [-V|--verbose]
+        rflash <noderange> [--bpa_acdl]",
     "mkhwconn" =>
 "Usage:
     mkhwconn [-h|--help]
