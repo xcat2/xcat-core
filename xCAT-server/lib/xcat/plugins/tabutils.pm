@@ -1580,7 +1580,7 @@ sub nodech
                                 if ($_ eq $nodekey) { next; } #skip attempts to manipulate 'node' type columns in a groupch
                                 $clrhash{$_}="";    
                             }
-                            $tabhdl->setAttribs({node=>$entity},\%uhsh);
+                            $tabhdl->setAttribs({$nodekey=>$entity},\%uhsh);
                             $changed=1;
                             $nodes = [noderange($entity)];
                             unless (scalar @$nodes) { next; }
