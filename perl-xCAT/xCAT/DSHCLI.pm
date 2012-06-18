@@ -4383,14 +4383,18 @@ sub parse_and_run_dcp
     my  @results2;
     my  @results3;
     my  @results4;
+    my $ranpostscripts;
+    my $ranappendscripts;
     if ((@::postscripts) && ($::SYNCSN == 0)) {
        @results2 = &run_rsync_postscripts(\@results,$synfiledir); 
+       $ranpostscripts=1;
     }
     if ((@::alwayspostscripts) && ($::SYNCSN == 0)) {
        @results3 = &run_always_rsync_postscripts(\@nodelist,$synfiledir); 
     }
     if ((@::appendlines) && ($::SYNCSN == 0)) {
        @results4 = &bld_and_run_append(\@nodelist,\@results,$synfiledir,$nodesyncfiledir); 
+       $ranappendscripts=1;
     }
     my @newresults;
     if (@results2) {
@@ -4405,7 +4409,11 @@ sub parse_and_run_dcp
     if (@newresults) {
       return (@newresults);
     } else {
-      return (@results);
+      # don't report results for postscripts and appendscripts because
+      # you get all the rsync returned lines
+      if (($ranpostscripts == 0 ) && ($ranappendscripts ==0)){
+        return (@results);
+      }    
     }    
 }
 
@@ -4637,11 +4645,13 @@ sub parse_rsync_input_file_on_MN
                if ($clause =~ /APPEND:/) {
                  # location of the base append script
                   my $onServiceNode=0;
-                 &build_append_rsync($line,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode);
+                  my $syncappendscript=0;
+                 &build_append_rsync($line,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncappendscript);
                 # add the append script to the sync
                 $::appendscript = "/opt/xcat/share/xcat/scripts/xdcpappend.sh";
                 my $appendscriptline = "$::appendscript -> $::appendscript"; 
-                 &build_append_rsync($appendscriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode);
+                $syncappendscript=1;  # syncing the xdcpappend.sh script
+                 &build_append_rsync($appendscriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncappendscript);
                }
            
            }
@@ -4764,12 +4774,12 @@ sub parse_rsync_input_file_on_MN
            APPEND: clause in the synclist
            /tmp/appendfile -> /tmp/receivefile
 
-           Syncs the append file to the node to the NodeSyncfiledir
-           Set up structure to build a script to append
-           the file (appendfile) to the  
-           receiving file (receivefile). It will first backup or restore
-           the original receivefile.  This script will be built after the sync
-           when we find out what appendfiles changes.  See build_append_script.
+           Syncs the append file from the left side of the arrow
+           to the nodes into the site.nodesyncfiledir directory
+           After we find out which append file are actually changed, we 
+           will sync and run and the append script
+           /opt/xcat/share/xcat/script/xdcpappend.sh
+           See build_append_script.
 
         Returns:
           Files do not exist, rsync errors. 
@@ -4791,7 +4801,7 @@ sub parse_rsync_input_file_on_MN
 sub build_append_rsync 
 {
     use File::Basename;
-    my ($line,$nodes, $options,$input_file, $rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode) = @_;
+    my ($line,$nodes, $options,$input_file, $rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncappendscript) = @_;
     my @dest_host    = @$nodes;
     my $process_line = 0;
     my $destfileisdir;
@@ -4802,7 +4812,9 @@ sub build_append_rsync
     {
 
             $::process_line = 1;
-            push @::appendlines,$line;
+            if ($syncappendscript == 0) { # don't add the xdcpappend.sh line 
+              push @::appendlines,$line;
+            }
             my $src_file  = $1; # append file left of arror
             # it will be sync'd to $nodesyncfiledir/$append_file
             my $dest_file = $nodesyncfiledir;
@@ -4831,7 +4843,7 @@ sub build_append_rsync
                     # if this is syncing from the Service Node then we have
                     # to pick up files from /var/xcat/syncfiles...
                     if ($onServiceNode == 1) {
-                      my $newsrcfile = $syncdir;    # add syndir on front
+                      my $newsrcfile = $syncdir;    # add SN syndir on front
                       $newsrcfile .= $src_file;
                       $src_file=$newsrcfile;
                     }
@@ -4939,7 +4951,13 @@ sub parse_rsync_input_file_on_SN
                if ($clause =~ /APPEND:/) {
                   $process_line = 1;
                   my $onServiceNode=1;
-                 &build_append_rsync($line,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode );
+                  my $syncappendscript=0;
+                 &build_append_rsync($line,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncappendscript);
+                # add the append script to the sync
+                $::appendscript = "/opt/xcat/share/xcat/scripts/xdcpappend.sh";
+                my $appendscriptline = "$::appendscript -> $::appendscript"; 
+                $syncappendscript=1;  # syncing the xdcpappend.sh script
+                 &build_append_rsync($appendscriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncappendscript);
                }
            
            }
@@ -5145,9 +5163,12 @@ sub run_rsync_postscripts
 =head3
        &bld_and_run_append 
 
-        This executes the append postscript file on the nodes where
-	    the corresponding append file was updated
+        This builds the parm list and executes (xdsh) the append postscript file
+        on the nodes where
+        the corresponding append file was updated.
+        The append postscript has been previous sync'd to the nodes. 
         These are the scripts after APPEND: in the syncfile
+
         rsync returns a list of files that have been updated
         in the form   hostname: <full file path>
         For example:  node1: tmp/test/file1  ( yes it leaves the first / off)
@@ -5163,14 +5184,9 @@ sub run_rsync_postscripts
           postscripts to run and leave any other messages 
           to return to the admin.
 
-        Sample of script built for each append line an entry like this
-        only need to mkdir for the original file to copy to the 
-        nodesyncdir because the directory for the append file will be 
-        created during the sync of the append file.
         Runs xdsh with input to call /opt/xcat/share/xcat/scripts/xdcpappend.sh
-        which will perform the append function on the node.  This file has been
-        rsyncd to the node with the append file previously.
-
+        which will perform the append function on the node.  
+        Input is the nodesyncfiledir appendfile:orgfile appendfile2:orgfile2....
 =cut
 
 #-------------------------------------------------------------------------------
@@ -5185,14 +5201,14 @@ sub bld_and_run_append
     my $firstpass=1;
     my $headeradded=0;
     
-    $::xdcpappendparms = $nodesyncfiledir;
+    $::xdcpappendparms = "$nodesyncfiledir ";
 
     # directory to save the original file to append
     my $nodesaveorgfiledir=$nodesyncfiledir;
     $nodesaveorgfiledir .="/org";
     # add append directory to the base nodesyncfiledir
     $nodesyncfiledir .= "/append";
-
+    # build the input appendfile:orgfile parsm
     foreach my $appendline (@::appendlines) {
       if ($appendline =~ /(.+) -> (.+)/)
       {
@@ -5235,9 +5251,12 @@ sub bld_and_run_append
       
     }  # end for each append line
     #  add append script to each host to execute, if we build one.
-    if (-e $::appendscript) {  
+    if (-e $::appendscript) { 
+       #  the append script has been sync'd to the site.nodesynfiledir
+       my $nodeappendscript = $nodesyncfiledir;
+       $nodeappendscript .= $::appendscript;
        foreach my $host (@hosts) {
-        push (@{$dshparms->{'appendscripts'} {$::appendscript}}, $host);
+        push (@{$dshparms->{'appendscripts'} {$nodeappendscript}}, $host);
        }
        # now run xdsh
        my $out;
