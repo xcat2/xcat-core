@@ -5,6 +5,7 @@ use strict;
 use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
+use Storable qw(freeze thaw);
 use POSIX "WNOHANG";
 
 ##########################################
@@ -945,7 +946,7 @@ sub get_rsp_dev
         #############################################
         foreach ( keys %$hmc ) {
             ( $hmc->{$_}->{username}, $hmc->{$_}->{password}) = xCAT::PPCdb::credentials( $hmc->{$_}->{name}, lc($hmc->{$_}->{'type'}), "hscroot" );
-            trace( $request, "user/passwd for $_ is $hmc->{$_}->{username} $hmc->{$_}->{password}");
+            #trace( $request, "user/passwd for $_ is $hmc->{$_}->{username} $hmc->{$_}->{password}");
         }
     }
 
@@ -956,7 +957,7 @@ sub get_rsp_dev
         #############################################
         foreach ( keys %$fsp ) {
             ( $fsp->{$_}->{username}, $fsp->{$_}->{password}) = xCAT::PPCdb::credentials( $fsp->{$_}->{name}, lc($fsp->{$_}->{'type'}), "admin");
-            trace( $request, "user/passwd for $_ is $fsp->{$_}->{username} $fsp->{$_}->{password}");
+            #trace( $request, "user/passwd for $_ is $fsp->{$_}->{username} $fsp->{$_}->{password}");
         }
     }
 
@@ -967,7 +968,7 @@ sub get_rsp_dev
         #############################################
         foreach ( keys %$bpa ) {
             ( $bpa->{$_}->{username}, $bpa->{$_}->{password}) = xCAT::PPCdb::credentials( $bpa->{$_}->{name}, lc($bpa->{$_}->{'type'}), "admin");
-            trace( $request, "user/passwd for $_ is $bpa->{$_}->{username} $bpa->{$_}->{password}");
+            #trace( $request, "user/passwd for $_ is $bpa->{$_}->{username} $bpa->{$_}->{password}");
         }
     }
 
@@ -1054,7 +1055,7 @@ sub invoke_cmd {
     elsif($target_dev->{'type'} eq 'hmc')
     {
         @cmds = ("network_reset=$target_dev->{args}");
-        trace( $request, "sshcmds on hmc $ip");
+        #trace( $request, "sshcmds on hmc $ip");
         $result = xCAT::PPC::sshcmds_on_hmc(
                 $ip,
                 $target_dev->{username},
@@ -1064,7 +1065,7 @@ sub invoke_cmd {
     else #The rest must be fsp or bpa
     {
         @cmds = ("network=$ip,$target_dev->{args}");
-        trace( $request, "update config on $target_dev->{'type'} $ip");
+        #trace( $request, "update config on $target_dev->{'type'} $ip");
         $result = xCAT::PPC::updconf_in_asm(
                 $ip,
                 $target_dev,
