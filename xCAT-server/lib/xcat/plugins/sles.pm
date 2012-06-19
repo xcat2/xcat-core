@@ -572,6 +572,8 @@ sub process_request
     my $distname = undef;
     my $arch     = undef;
     my $path     = undef;
+    if ($::XCATSITEVALS{"httpmethod"}) { $httpmethod = $::XCATSITEVALS{"httpmethod"}; }
+    if ($::XCATSITEVALS{"httpport"}) { $httpport = $::XCATSITEVALS{"httpport"}; }
     if ($request->{command}->[0] eq 'copycd')
     {
         return copycd($request, $callback, $doreq);
