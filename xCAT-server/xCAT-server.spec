@@ -190,6 +190,7 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/windows.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xcat2nim.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xnba.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/IPMI.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/SSHInteract.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/MellanoxIB.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPC.pm
 # Can not remove this, because it is needed by Templates.pm
