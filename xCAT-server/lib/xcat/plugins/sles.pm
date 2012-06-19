@@ -20,6 +20,8 @@ Getopt::Long::Configure("pass_through");
 use File::Path;
 use File::Copy;
 use File::Temp qw/mkdtemp/;
+my $httpmethod = "http";
+my $httpport = "80";
 
 use Socket;
 
@@ -420,7 +422,7 @@ sub mknetboot
                     "NFSROOT=$nfssrv:$nfsdir STATEMNT=";
             } else {
                 $kcmdline =
-                    "imgurl=http://$imgsrv/$rootimgdir/rootimg-statelite.gz STATEMNT=";
+                    "imgurl=$httpmethod://$imgsrv/$rootimgdir/rootimg-statelite.gz STATEMNT=";
             }
             # add support for subVars in the value of "statemnt"
             my $statemnt="";
@@ -467,7 +469,7 @@ sub mknetboot
         else
         {
             $kcmdline =
-              "imgurl=http://$imgsrv/$rootimgdir/rootimg.$suffix ";
+              "imgurl=$httpmethod://$imgsrv/$rootimgdir/rootimg.$suffix ";
         }
         $kcmdline .= "XCAT=$xcatmaster:$xcatdport quiet ";
 
@@ -837,11 +839,11 @@ sub mkinstall
 		$netserver = $ent->{nfsserver};
             }
             my $kcmdline =
-                "quiet autoyast=http://"
+                "quiet autoyast=$httpmethod://"
               . $netserver
               . "$installroot/autoinst/"
               . $node
-              . " install=http://"
+              . " install=$httpmethod://"
               . $netserver
               . "$pkgdir/1";
 

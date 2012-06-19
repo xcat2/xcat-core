@@ -26,6 +26,8 @@ use Socket;
 
 use strict;
 my @cpiopid;
+my $httpmethod="http";
+my $httpport="80";
 
 
 
@@ -548,7 +550,7 @@ sub mknetboot
                     $kcmdline = "NFSROOT=$nfssrv:$nfsdir STATEMNT=";	
                 }
             } else {
-                $kcmdline =  "imgurl=http://$imgsrv/$rootimgdir/rootimg-statelite.gz STATEMNT=";
+                $kcmdline =  "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg-statelite.gz STATEMNT=";
             }
 
             # add support for subVars in the value of "statemnt"
@@ -608,7 +610,7 @@ sub mknetboot
 	    }
         else {
             $kcmdline =
-              "imgurl=http://$imgsrv/$rootimgdir/rootimg.$suffix ";
+              "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg.$suffix ";
             $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
         }
 
@@ -1099,8 +1101,8 @@ sub mkinstall
 	    	$instserver=$ent->{nfsserver};
 	    }
             my $kcmdline =
-                "quiet repo=http://$instserver/install/$os/$arch/ ks=http://"
-              . $instserver
+                "quiet repo=$httpmethod://$instserver:$httpport/install/$os/$arch/ ks=$httpmethod://"
+              . $instserver . ":". $httpport
               . "/install/autoinst/"
               . $node;
             if ($maxmem) {
