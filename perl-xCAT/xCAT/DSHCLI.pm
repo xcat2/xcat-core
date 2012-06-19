@@ -4271,6 +4271,27 @@ sub parse_and_run_dcp
     }
     my $synfiledir;
     my $nodesyncfiledir;
+    # set default sync dir on service node  and node
+    # right now setting the nodes and sn syncfiledir the same, leaving
+    # the possibility that one day we may want them to be different 
+    $synfiledir = "/var/xcat/syncfiles";
+    $nodesyncfiledir = "/var/xcat/node/syncfiles";
+
+    # get the directory on the servicenode to put the rsync files in
+    my @syndir = xCAT::Utils->get_site_attribute("SNsyncfiledir");
+    if ($syndir[0])
+    {
+            $synfiledir = $syndir[0];
+    }
+    # get the directory on the node to put the rsync files in
+    my @syndir = xCAT::Utils->get_site_attribute("nodesyncfiledir");
+    if ($syndir[0])
+    {
+          $nodesyncfiledir = $syndir[0]; 
+    }
+
+    my $rc;
+    my $syncfile = $options{'File'};
     # if rsyncing the nodes or service nodes
 
     if ($options{'File'})
@@ -4282,27 +4303,6 @@ sub parse_and_run_dcp
             $::SYNCSN = 1;
         }
 
-        # set default sync dir on service node  and node
-        # right now setting the nodes and sn syncfiledir the same, leaving
-        # the possibility that one day we may want them to be different 
-        $synfiledir = "/var/xcat/syncfiles";
-        $nodesyncfiledir = "/var/xcat/node/syncfiles";
-
-        # get the directory on the servicenode to put the rsync files in
-        my @syndir = xCAT::Utils->get_site_attribute("SNsyncfiledir");
-        if ($syndir[0])
-        {
-            $synfiledir = $syndir[0];
-        }
-        # get the directory on the node to put the rsync files in
-        my @syndir = xCAT::Utils->get_site_attribute("nodesyncfiledir");
-        if ($syndir[0])
-        {
-            $nodesyncfiledir = $syndir[0]; 
-        }
-
-        my $rc;
-        my $syncfile = $options{'File'};
         # the parsing of the file will fill in an array of postscripts 
         # need to be run if the associated file is updated
         @::postscripts=();
@@ -4392,7 +4392,7 @@ sub parse_and_run_dcp
     if ((@::alwayspostscripts) && ($::SYNCSN == 0)) {
        @results3 = &run_always_rsync_postscripts(\@nodelist,$synfiledir); 
     }
-    if ((@::appendlines) && ($::SYNCSN == 0)) {
+    if (($::appendscript) && ($::SYNCSN == 0)) {
        @results4 = &bld_and_run_append(\@nodelist,\@results,$synfiledir,$nodesyncfiledir); 
        $ranappendscripts=1;
     }
@@ -4633,7 +4633,8 @@ sub parse_rsync_input_file_on_MN
         if (($clause =~ /APPEND:/) || ($clause =~ /EXECUTEALWAYS:/)
             || ($clause =~ /EXECUTE:/)) {
             if (($::SYNCSN == 1) && (($clause =~ /EXECUTEALWAYS:/) ||
-                  ($clause =~ /EXECUTE:/))) {  # skip, if syncing SN only
+                  ($clause =~ /EXECUTE:/))) {  
+               # for EXECUTE and EXECUTEALWAYS skip, if syncing SN only
          	next;
             } else {   # process the clause
                if ($clause =~ /EXECUTE:/) {
@@ -4644,12 +4645,18 @@ sub parse_rsync_input_file_on_MN
                }
                if ($clause =~ /APPEND:/) {
                  # location of the base append script
+                 # for APPEND we have to sync the appendscript and the
+                 # append file to the SN
                   my $onServiceNode=0;
                   my $syncappendscript=0;
                  &build_append_rsync($line,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncappendscript);
+                if ($::SYNCSN == 0) {
+                  # this triggers the running of the appendscript
+                  $::appendscript ="/opt/xcat/share/xcat/scripts/xdcpappend.sh";
+                }
                 # add the append script to the sync
-                $::appendscript = "/opt/xcat/share/xcat/scripts/xdcpappend.sh";
-                my $appendscriptline = "$::appendscript -> $::appendscript"; 
+                my  $appscript ="/opt/xcat/share/xcat/scripts/xdcpappend.sh";
+                my $appendscriptline = "$appscript -> $appscript"; 
                 $syncappendscript=1;  # syncing the xdcpappend.sh script
                  &build_append_rsync($appendscriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncappendscript);
                }
@@ -4953,9 +4960,13 @@ sub parse_rsync_input_file_on_SN
                   my $onServiceNode=1;
                   my $syncappendscript=0;
                  &build_append_rsync($line,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncappendscript);
+                if ($::SYNCSN == 0) {
+                  # this triggers the running of the appendscript
+                  $::appendscript ="/opt/xcat/share/xcat/scripts/xdcpappend.sh";
+                }
                 # add the append script to the sync
-                $::appendscript = "/opt/xcat/share/xcat/scripts/xdcpappend.sh";
-                my $appendscriptline = "$::appendscript -> $::appendscript"; 
+                my  $appscript ="/opt/xcat/share/xcat/scripts/xdcpappend.sh";
+                my $appendscriptline = "$appscript -> $appscript"; 
                 $syncappendscript=1;  # syncing the xdcpappend.sh script
                  &build_append_rsync($appendscriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncappendscript);
                }
@@ -5250,8 +5261,8 @@ sub bld_and_run_append
       }
       
     }  # end for each append line
-    #  add append script to each host to execute, if we build one.
-    if (-e $::appendscript) { 
+    #  add append script to each host to execute.  
+    if ($::appendscript) { 
        #  the append script has been sync'd to the site.nodesynfiledir
        my $nodeappendscript = $nodesyncfiledir;
        $nodeappendscript .= $::appendscript;
@@ -5263,12 +5274,6 @@ sub bld_and_run_append
        foreach  my $ps ( keys %{$$dshparms{'appendscripts'}}) {
          my @nodes;
          push (@nodes, @{$$dshparms{'appendscripts'}{$ps}}); 
-         # if on the service node need to add the $syncdir directory 
-         # to the path
-         if (xCAT::Utils->isServiceNode()) {
-          my $tmpp=$syncdir . $ps;
-          $ps=$tmpp;
-         }
          
          $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
                                     node    => \@nodes,
