@@ -25,12 +25,12 @@ Requires: xCAT-server xCAT-client perl-DBD-SQLite
 
 %ifos linux
 Requires: httpd nfs-utils nmap bind perl-XML-Parser perl(CGI)
-Requires: /etc/xinetd.d/tftp
 # On RHEL this pulls in dhcp, on SLES it pulls in dhcp-server
 Requires: /usr/sbin/dhcpd
 %ifarch s390x
 # No additional requires for zLinux right now
 %else
+Requires: /etc/xinetd.d/tftp
 # yaboot-xcat is pulled in so any MN can manage ppc nodes
 Requires: conserver-xcat yaboot-xcat perl-Net-Telnet fping
 %endif
