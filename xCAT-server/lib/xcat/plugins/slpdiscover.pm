@@ -8,6 +8,8 @@ use xCAT::MacMap;
 use xCAT_plugin::bmcconfig;
 my $defaultbladeuser;
 my $defaultbladepass;
+my $currentbladepass;
+my $currentbladeuser;
 my $mpahash;
 
 sub handled_commands {
@@ -101,6 +103,16 @@ sub process_request {
 	my $mpatab=xCAT::Table->new("mpa",-create=>0);
 	my @mpaentries;
 	$mpahash={};
+	if (ref $request->{environment} and ref $request->{environment}->[0]->{XCAT_CURRENTPASS}) {
+		$currentbladepass=$request->{environment}->[0]->{XCAT_CURRENTPASS}->[0];
+	} else {
+		$currentbladepass="PASSW0RD";
+	}
+	if (ref $request->{environment} and ref $request->{environment}->[0]->{XCAT_CURRENTUSER}) {
+		$currentbladeuser=$request->{environment}->[0]->{XCAT_CURRENTUSER}->[0];
+	} else {
+		$currentbladeuser="USERID";
+	}
 	if ($mpatab) {
 		@mpaentries = $mpatab->getAllNodeAttribs([qw/mpa username password/]);
 		foreach (@mpaentries) {
@@ -274,9 +286,10 @@ sub do_blade_setup {
 	  %exargs = ( nokeycheck=>1 ); #still not at the 'right' ip, so the known hosts shouldn't be bothered
 	} else {
 	  @cmds = qw/snmpcfg=enable sshcfg=enable textid=*/; # initnetwork=*/; defer initnetwork until after chassis members have been configured
-	  %exargs = ( defaultcfg=>1 );
+	  %exargs = ( curruser=>$currentbladeuser, currpass=>$currentbladepass );
         }
 	my $result;
+        $@="";
 	my $rc = eval { $result = xCAT_plugin::blade::clicmds(
 						 $nodename,
 						 $localuser,
@@ -288,12 +301,23 @@ sub do_blade_setup {
 						 cmds=>\@cmds );
 		1;
 	};
-        if (not $rc) {
-		sendmsg([1,"Failed to set up Management module due to $@"],$callback,$nodename);
+	my $errmsg=$@;
+        if ($errmsg) {
+		if ($errmsg =~ /Incorrect Password/) {
+			sendmsg([1,"Failed to set up Management module due to Incorrect Password (You may try the environment variables XCAT_CURRENTUSER and/or XCAT_CURRENTPASS to try a different value)"],$callback,$nodename);
+		}else {
+			sendmsg([1,"Failed to set up Management module due to $errmsg"],$callback,$nodename);
+		}
+		return 0;
 	}
 	if ($result) {
 		if ($result->[0]) {
+			if ($result->[2] =~ /Incorrect Password/) {
+				sendmsg([1,"Failed to set up Management module due to Incorrect Password (You may try the environment variables XCAT_CURRENTUSER and/or XCAT_CURRENTPASS to try a different value)"],$callback,$nodename);
+				return 0;
+			}
 			sendmsg([$result->[0],$result->[2]],$callback,$nodename);
+			return 0;
 		}
 	}
 	return $rc;
