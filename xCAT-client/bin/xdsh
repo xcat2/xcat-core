@@ -268,7 +268,7 @@ sub parse_args_xdsh
     if ($options{'cleanup'})
     {
 
-        # get the directory on the servicenode to put the  files in
+        # get the directories on the servicenode to put the  files in
         my $defaultsyndir = "/var/xcat/syncfiles";
         my @syndir        = xCAT::Utils->get_site_attribute("SNsyncfiledir");
         my $synfiledir;
@@ -280,11 +280,23 @@ sub parse_args_xdsh
         {
             $synfiledir = "/var/xcat/syncfiles";    # default
         }
+        # for append function
+        my $defaultnodesyndir = "/var/xcat/node/syncfiles";
+        my @syndir2       = xCAT::Utils->get_site_attribute("nodesyncfiledir");
+        my $synfiledir2;
+        if ($syndir2[0])
+        {
+            $synfiledir2 = $syndir2[0];
+        }
+        else
+        {
+            $synfiledir2 = "/var/xcat/node/syncfiles";    # default
+        }
         if ($defaultsyndir ne $synfiledir)
         {
             my $answer;
             my $msg =
-              "Do you wish to erase $synfiledir and all subdirectories?\n Enter Y or N.";
+              "Do you wish to erase $synfiledir,$synfiledir2 and all subdirectories?\n Enter Y or N.";
             xCAT::MsgUtils->message('I', "$msg");
             `stty -echo`;
             chop($answer = <STDIN>);
@@ -295,11 +307,11 @@ sub parse_args_xdsh
                 exit 0;
             }
         }
-        my $cmd = "xdsh $snodes -v rm -rf $synfiledir/*";
+        my $cmd = "xdsh $snodes -v rm -rf $synfiledir/*;xdsh $snodes -v rm -rf $synfiledir2";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {                                           # error
-            my $msg = "Error from $cmd: to cleanup servicenodes sync directory";
+            my $msg = "Error from $cmd: to cleanup servicenodes";
             xCAT::MsgUtils->message("E", $msg);
             exit 1;
         }
