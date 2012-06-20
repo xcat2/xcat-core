@@ -842,12 +842,12 @@ sub mkinstall
             }
             my $kcmdline =
                 "quiet autoyast=$httpmethod://"
-              . $netserver
-              . "$installroot/autoinst/"
+              . $netserver . ":" . $httpport
+              . "/install/autoinst/"
               . $node
               . " install=$httpmethod://"
-              . $netserver
-              . "$pkgdir/1";
+              . $netserver . ":" . $httpport
+              . "/install/$os/$arch/1";
 
             my $netdev = "";
             if ($ent->{installnic})
