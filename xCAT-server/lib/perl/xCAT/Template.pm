@@ -216,13 +216,13 @@ sub autoulaaddress {
       my $prefix = $::XCATSITEVALS{autoulaprefix};
       $suffix =~ /(..):(..:..):(..:..):(..)/;
       my $leadbyte = $1;
-      my $mask = (($leadbyte & 2) ^ 2);
+      my $mask = ((hex($leadbyte) & 2) ^ 2);
       if ($mask) {
-        $leadbyte = $leadbyte | $mask;
+        $leadbyte = hex($leadbyte) | $mask;
       } else {
-        $leadbyte = $leadbyte & 0xfd; #mask out the one bit
+        $leadbyte = hex($leadbyte) & 0xfd; #mask out the one bit
       }
-      $suffix = "$leadbyte$2ff:fe$3$4";
+      $suffix = sprintf("%02x$2ff:fe$3$4",$leadbyte);
 
       return $prefix.$suffix;
 }
