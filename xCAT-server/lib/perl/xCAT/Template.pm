@@ -172,6 +172,7 @@ sub subvars {
   $inc =~ s/#TABLEBLANKOKAY:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3,'1')/eg;
   $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
   $inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
+  $inc =~ s/#KICKSTARTNET#/kickstartnetwork()/eg;
   $inc =~ s/#INCLUDE_NOP:([^#^\n]+)#/includefile($1,1,0)/eg;
   $inc =~ s/#INCLUDE_PKGLIST:([^#^\n]+)#/includefile($1,0,1)/eg;
   $inc =~ s/#INCLUDE_PTRNLIST:([^#^\n]+)#/includefile($1,0,2)/eg;
@@ -193,6 +194,39 @@ sub subvars {
   close($outh);
   return 0;
 }
+
+sub kickstartnetwork {
+	my $line = "network --bootproto=";
+      my $mactab = xCAT::Table->new('mac',-create=>0);
+      unless ($mactab) { die "mac table should always exist prior to flexcat specific template processing"; }
+      my $ent = $mactab->getNodeAttribs($node,['mac']);
+      unless ($ent and $ent->{mac}) { die "missing mac data for $node"; }
+      my $suffix = $ent->{mac};
+      $suffix = lc($suffix);
+	if ($::XCATSITEVALS{managedaddressmode} eq "autoula") {
+		$line .= "static --device=$suffix --noipv4 --ipv6=";
+		$line .= autoulaaddress($suffix);
+	} else {
+		$line .= "dhcp";
+	}
+	return $line;
+}
+sub autoulaaddress {
+      my $suffix = shift;
+      my $prefix = $::XCATSITEVALS{autoulaprefix};
+      $suffix =~ /(..):(..:..):(..:..):(..)/;
+      my $leadbyte = $1;
+      my $mask = (($leadbyte & 2) ^ 2);
+      if ($mask) {
+        $leadbyte = $leadbyte | $mask;
+      } else {
+        $leadbyte = $leadbyte & 0xfd; #mask out the one bit
+      }
+      $suffix = "$leadbyte$2ff:fe$3$4";
+
+      return $prefix.$suffix;
+}
+
 sub machinepassword {
     if ($lastmachinepass) { #note, this should only happen after another call
 			    #to subvars that does *not* request reuse
