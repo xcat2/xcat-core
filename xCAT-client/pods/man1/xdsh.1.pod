@@ -15,7 +15,7 @@ B<xdsh> I<noderange>  [B<-K>] [B<-l>  I<userID>] B<--devicetype> I<type_of_devic
 
 B<xdsh> [B<-i> I<image path | nim image name>] I<command_list>
 
-B<xdsh> I<servicenoderange>  [B<-c>] 
+B<xdsh> I<noderange>  [B<-c>] 
 
 B<xdsh> [B<-h> | B<-V> | B<-q>]
 
@@ -123,8 +123,7 @@ improve performance but causes the output to be unsorted.
 The  B<-z> flag displays the exit code from the last command issued on the
 remote node in I<command_list>. Note that OpenSSH behaves differently;  it
 returns  the  exit status of the last remote command issued as its exit
-status. This affects the behavior of B<xdsh> and may require using the  B<-c>
-flag.  If  the  command  issued  on the remote node is run in the
+status. If  the  command  issued  on the remote node is run in the
 background, the exit status is not displayed.
 
 The B<-m> flag monitors execution of the B<xdsh> command by  printing  status
@@ -136,11 +135,7 @@ executed on the remote targets are displayed.
 
 No error detection  or recovery mechanism is provided for remote
 targets. The B<xdsh> command output to standard error and standard output can
-be analyzed to determine the appropriate course of action.  In interac-
-tive mode, if a command cannot be executed  on  a  remote  target  (for
-example,  a  remote shell command resulting in a non-zero return code),
-subsequent commands are not sent to this node on this invocation of the
-B<xdsh> command unless the B<-c> flag is specified.
+be analyzed to determine the appropriate course of action. 
 
 B<COMMAND> B<OUTPUT>:
 
@@ -181,8 +176,12 @@ running commands, are terminated (SIGTERM).
 =item B<-c>|B<--cleanup>
 
 This flag will have xdsh remove all files from the subdirectories of the
-the directory on the Service Node, where xdcp stages the copy to the 
-compute nodes as defined in the site table SNsyncfiledir attribute. 
+the directory on the servicenodes, where xdcp stages the copy to the 
+compute nodes as defined in the site table SNsyncfiledir and nodesyncfiledir
+ attribute, when the target is a service node. 
+It can also be used to remove the nodesyncfiledir directory on the compute 
+nodes, which keeps the backup copies of files for the xdcp APPEND function
+support, if a compute node is the target. 
 
 =item B<-e>|B<--execute>
 
