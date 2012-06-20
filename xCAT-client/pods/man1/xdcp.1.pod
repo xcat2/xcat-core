@@ -143,25 +143,50 @@ If the file B<filename> is not updated on the node,  the B<filename.post> will n
 Putting the B<filename.post> in the file list to rsync to the node is required
 for hierarchical clusters.  It is optional for non-hierarchical clusters. 
 
-Another feature is teh B<EXECUTEALWAYS:> clause in the synclist file.  The B<EXECUTEALWAYS:> will list all the postscripts that you would like to run after the files are sync'd to the nodes.   These scripts will run whether or not any files are sync'd to the nodes.  The scripts have no special format, but must contain the fully qualified path.
+Another option is the B<EXECUTEALWAYS:> clause in the synclist file.  The B<EXECUTEALWAYS:> will list all the postscripts that you would like to run after the files are sync'd to the nodes.   These scripts will run whether or not any files are sync'd to the nodes.  The scripts have no special format, but must contain the fully qualified path.
 
 The scripts must be also added to the file list to rsync to the node for hierarchical clusters.  It is optional for non-hierarchical clusters.
 
 For example, your rsynclist file may look like this:
- /tmp/file2  ->  /tmp/file2
- /tmp/file2.post -> /tmp/file2.post
- /tmp/file3  ->  /tmp/filex
- /tmp/file3.post -> /tmp/file3.post
+ /tmp/share/file2  ->  /tmp/file2
+ /tmp/share/file2.post -> /tmp/file2.post
+ /tmp/share/file3  ->  /tmp/filex
+ /tmp/share/file3.post -> /tmp/file3.post
  /tmp/myscript -> /tmp/myscript
  # the below are postscripts
  EXECUTE:
- /tmp/file2.post
- /tmp/file3.post
+ /tmp/share/file2.post
+ /tmp/share/file3.post
  EXECUTEALWAYS:
  /tmp/myscript
 
 If /tmp/file2 and /tmp/file3  update /tmp/file2 and /tmp/filex on the node, then the postscripts /tmp/file2.post and /tmp/file3.post are automatically run on 
 the node. /tmp/myscript will always be run on the node. 
+
+
+Another option is the B<APPEND:> clause in the synclist file. The B<APPEND:> clause is used to append the contents of the input file to an existing file on the node.  The file to append B<must> already exist on the node and not be part of the synclist that contains the B<APPEND:> clause. 
+
+For example, your rsynclist file may look like this:
+ /tmp/share/file2  ->  /tmp/file2
+ /tmp/share/file2.post -> /tmp/file2.post
+ /tmp/share/file3  ->  /tmp/filex
+ /tmp/share/file3.post -> /tmp/file3.post
+ /tmp/myscript -> /tmp/myscript
+ # the below are postscripts
+ EXECUTE:
+ /tmp/share/file2.post
+ /tmp/share/file3.post
+ EXECUTEALWAYS:
+ /tmp/myscript
+ APPEND:
+ /etc/myappenddir/appendfile -> /etc/mysetup/setup
+ /etc/myappenddir/appendfile2 -> /etc/mysetup/setup2
+
+When you use the append script,  the file  (left) of the arrow is appended to the file right of the arrow.  In this example, /etc/myappenddir/appendfile is appended to /etc/mysetup/setup file, which must already exist on the node. The /opt/xcat/share/xcat/scripts/xdcpappend.sh is used to accomplish this. 
+
+Note: no order can be assumed by the order that the EXECUTE,EXECUTEALWAYS and APPEND clause fall in the synclist file. 
+
+For more information on syncing files to node, read https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Sync-ing_Config_Files_to_Nodes
 
 On Linux rsync always uses ssh remoteshell. On AIX, ssh or rsh is used depending on the site.useSSHonAIX attribute.
 
