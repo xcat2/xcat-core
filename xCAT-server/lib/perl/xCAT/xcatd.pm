@@ -89,8 +89,17 @@ sub validate {
       next unless ($peerhost eq $rule->{host});
     }
     if ($rule->{commands} and $rule->{commands} ne '*') {
-      #TODO: syntax for multiple commands
-      next unless ($request->{command}->[0] eq $rule->{commands});
+      my @commands = split(",", $rule->{commands});
+      my $found =0;
+      foreach my $cmd (@commands) {
+        if ($request->{command}->[0] eq $cmd) {
+           $found=1;
+           last;
+        }
+      }
+      if ($found == 0) {  # no command match
+        next ;
+      }
     }
     if ($rule->{parameters} and $rule->{parameters} ne '*') {
       my $parms;
