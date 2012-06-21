@@ -216,9 +216,10 @@ sub init_dbworker {
             };
             if ($@) { #this should never be reached, but leave it intact just in case
                 my $err=$@;
-                xCAT::MsgUtils->message("S","xcatd: possible BUG encountered by xCAT DB worker ".$err);
+                eval { xCAT::MsgUtils->message("S","xcatd: possible BUG encountered by xCAT DB worker ".$err); };
             }
             if ($intendedpid != $$) { #avoid redundant fork
+                eval { xCAT::MsgUtils->message("S","Pid $$ shutting itself down because only pid $intendedpid is permitted to be in this area"); };
                 exit(0);
             }
         }
