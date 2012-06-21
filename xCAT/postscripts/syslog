@@ -259,6 +259,11 @@ else
       echo "# xCAT settings" >> $conf_file
       echo "destination loghost { udp(\"$master\"); };" >> $conf_file
       echo 'log { source(src); destination(loghost); };' >> $conf_file
+      #comment out the line that logs to localhost
+      sed -i '/destination messages/s/^/#/'  $conf_file
+      sed -i '/destination(messages)/s/^/#/'  $conf_file
+      sed -i '/destination warn/s/^/#/'  $conf_file
+      sed -i '/destination(warn)/s/^/#/'  $conf_file
     else 
       if [ -f $conf_file.XCATORIG ]; then 
         rm -f $conf_file 
