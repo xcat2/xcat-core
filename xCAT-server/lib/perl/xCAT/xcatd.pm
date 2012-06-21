@@ -38,7 +38,7 @@ This program module file, is a set of utilities used by xCAT daemon.
     Error:
         none
     Example:
-       if(xCAT::XCATd->validate($peername,$peerhost,$req)) {
+       if(xCAT::XCATd->validate($peername,$peerhost,$req,$peerhostorg,\@deferredmsgargs)) {
                 .
                 .
     Comments:
@@ -54,6 +54,7 @@ sub validate {
   my $peername=shift;
   my $peerhost=shift;
   my $request=shift;
+  my $peerhostorg=shift;
   my $deferredmsgargs=shift;
    
   # now check the policy table if user can run the command
@@ -70,7 +71,7 @@ sub validate {
   # check to see if peerhost is trusted
   foreach $rule (@$policies) {
      
-    if (($rule->{name} and ($rule->{name} eq $peerhost))  && ($rule->{rule}=~ /trusted/i)) {
+    if (($rule->{name} and (($rule->{name} eq $peerhost) || ($rule->{name} eq $peerhostorg)))  && ($rule->{rule}=~ /trusted/i)) {
      $peerstatus="Trusted";
      last;
     }
