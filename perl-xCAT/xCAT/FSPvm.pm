@@ -16,7 +16,7 @@ use xCAT::Usage;
 use xCAT::NodeRange;
 use xCAT::FSPUtils;
 #use Data::Dumper;
-
+use xCAT::MsgUtils qw(verbose_message);
 ##############################################
 # Globals
 ##############################################
@@ -109,7 +109,7 @@ sub chvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose p=s i=s m=s r=s ) )) {
+    if ( !GetOptions( \%opt, qw(V|Verbose p=s i=s m=s r=s ) )) {
         return( usage() );
     }
     ####################################
@@ -361,7 +361,7 @@ sub mkvm_parse_args {
 #    if ( !GetOptions( \%opt, qw(V|verbose ibautocfg ibacap=s i=s l=s c=s p=s full) )) {
 #        return( usage() );
 #    }
-    if ( !GetOptions( \%opt, qw(V|verbose i=s m=s r=s ) )) {
+    if ( !GetOptions( \%opt, qw(V|Verbose i=s m=s r=s ) )) {
         return( usage() );
     }
 ####################################
@@ -535,7 +535,7 @@ sub rmvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose service r) )) {
+    if ( !GetOptions( \%opt, qw(V|Verbose service r) )) {
         return( usage() );
     }
     return(usage( "rmvm doesn't support for Power 775." ));
@@ -592,7 +592,7 @@ sub lsvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose l|long) )) {
+    if ( !GetOptions( \%opt, qw(V|Verbose l|long) )) {
         return( usage() );
     }
     ####################################
@@ -644,6 +644,7 @@ sub do_op_extra_cmds {
     while (my ($mtms, $h) = each(%$hash)) {
         while (my($name, $d) = each(%$h)) {
             my $tmp_value = ($param eq '*') ? $name : $param;
+            xCAT::MsgUtils->verbose_message($request, "$request->{command} $action for node:$name, parm:$tmp_value."); 
             my $value = xCAT::FSPUtils::fsp_api_action($request, $name, $d, $action, 0, $tmp_value);
             if (@$value[1] && ((@$value[1] =~ /Error/i) && (@$value[2] ne '0'))) {
                 return ([[$name, @$value[1], '1']]) ;
@@ -698,7 +699,7 @@ sub modify_by_prof {
     my %io = ();   
     my %lpar_state = ();
     my @result;   
-
+    xCAT::MsgUtils->verbose_message($request, "$request->{command} START."); 
     if (defined( $request->{stdin} )) {
          my $p =  $request->{stdin};
          my @io = split(/\n/, $p) ;
@@ -720,6 +721,7 @@ sub modify_by_prof {
             $cec_name = @$d[3]; 
         }
         #get the current I/O slot information
+        xCAT::MsgUtils->verbose_message($request, "$request->{command} :get_io_slot_info for node:$cec_name."); 
         my $action = "get_io_slot_info";
         my $values =  xCAT::FSPUtils::fsp_api_action ($request, $cec_name, $td, $action);
         my $Rc = $$values[2];
@@ -736,6 +738,7 @@ sub modify_by_prof {
         } 
         
         #get all the nodes state in the same cec
+        xCAT::MsgUtils->verbose_message($request, "$request->{command} :get all the nodes state for CEC:$cec_name."); 
         $action = "all_lpars_state";
         undef($values);
         my $values =  xCAT::FSPUtils::fsp_state_action ($request, $cec_name, $td, $action); 
@@ -770,6 +773,7 @@ sub modify_by_prof {
                     return ( \@result ); 
                 }                   
      
+                xCAT::MsgUtils->verbose_message($request, "$request->{command} :set_io_slot_owner io_slot_info:$f,owner:$lpar."); 
                 my $values =  xCAT::FSPUtils::fsp_api_action ($request, $lpar, $d, $action, $tooltype, $drc_index);
                 #my $Rc = shift(@$values);
                 my $Rc = pop(@$values);
@@ -781,6 +785,7 @@ sub modify_by_prof {
                   
         }
     }
+    xCAT::MsgUtils->verbose_message($request, "$request->{command} END."); 
     return( \@result );
 }
 
@@ -795,6 +800,7 @@ sub enumerate {
     my $type;
     my @td;
 
+    xCAT::MsgUtils->verbose_message($request, "lsvm :enumerate START for mtms:$mtms.");
     while (my ($name,$d) = each(%$h) ) {
         $cec = @$d[3];
         $type = @$d[4];
@@ -802,6 +808,7 @@ sub enumerate {
     }
    
     $td[4]="cec"; 
+    xCAT::MsgUtils->verbose_message($request, "lsvm :enumerate get_io_slot_info for node:$cec.");
     my $action = "get_io_slot_info";
     my $values =  xCAT::FSPUtils::fsp_api_action ($request, $cec, \@td, $action);
     #my $Rc = shift(@$values);
@@ -818,6 +825,7 @@ sub enumerate {
     #}
  
     if( $type =~ /^(fsp|cec)$/ )  {
+        xCAT::MsgUtils->verbose_message($request, "lsvm :enumerate query_octant_cfg for node:$cec.");
 	$action = "query_octant_cfg";
 	my $values =  xCAT::FSPUtils::fsp_api_action ($request, $cec, \@td, $action);
 	my $Rc = pop(@$values);
@@ -838,6 +846,7 @@ sub enumerate {
         $outhash{ $cec } = $res;	
     } 
     
+    xCAT::MsgUtils->verbose_message($request, "lsvm :enumerate END for mtms:$mtms.");
     return( [0,\%outhash] );
 }
 
@@ -986,6 +995,7 @@ sub list {
     my %lpar_huges = ();
     my $l_string = "\n";
     #print Dumper($hash);    
+    xCAT::MsgUtils->verbose_message($request, "lsvm START");
     while (my ($mtms,$h) = each(%$hash) ) {
 	    my $info = enumerate($request, $h, $mtms );
     	my $Rc = shift(@$info);
@@ -1008,7 +1018,7 @@ sub list {
            #     push @result, [$node_name, "Node not found",1];
            # 	next;
            # }
-           
+            xCAT::MsgUtils->verbose_message($request, "lsvm :parse io info for node:$node_name.");           
             if( defined($msg)) { 
                  push @result,[$node_name, $msg, 0];
             } else {
@@ -1083,6 +1093,7 @@ sub list {
             
             # get the octant configuration value    
             if ($type=~/^(fsp|cec)$/) {
+                xCAT::MsgUtils->verbose_message($request, "lsvm :parse octant info for $type:$node_name.");           
                 my $value = $data->{$cec};
 		        if ($request->{opt}->{l}) {
 		            my $cec_bsr = get_cec_cec_bsr($node_name, $bsr_infos);
@@ -1100,6 +1111,7 @@ sub list {
 		    $l_string = "\n";
 	    } # end of while
     }# end of while
+    xCAT::MsgUtils->verbose_message($request, "lsvm END.");
     return( \@result );
 }
 
@@ -1193,6 +1205,7 @@ sub create {
     my %node_id = (); 
     my @nodes = @{$opt->{target}};	
    
+    xCAT::MsgUtils->verbose_message($request, "$request->{command} START."); 
     #print Dumper($request); 
     #####################################
     # Get source node information
@@ -1212,6 +1225,7 @@ sub create {
             }
         }
         
+        xCAT::MsgUtils->verbose_message($request, "$request->{command} :query_octant_cfg for CEC:$cec_name."); 
         my $values =  xCAT::FSPUtils::fsp_api_action ($request, $cec_name, $d, "query_octant_cfg");   
         my $Rc = shift(@$values);
         if ( $Rc != 0 ) {
@@ -1288,6 +1302,7 @@ sub create {
 
 
 	
+        xCAT::MsgUtils->verbose_message($request, "$request->{command} :set_octant_cfg for CEC:$cec_name,param:$parameters."); 
 	#$values = xCAT::FSPUtils::fsp_api_create_parttion( $starting_lpar_id, $octant_cfg, $node_number, $d, "set_octant_cfg");
         $values =  xCAT::FSPUtils::fsp_api_action ($request,$cec_name, $d, "set_octant_cfg", 0, $parameters);   
         my $Rc = $$values[2];
@@ -1305,6 +1320,7 @@ sub create {
         	
     }
     
+    xCAT::MsgUtils->verbose_message($request, "$request->{command} END."); 
     return( \@result );
 }
 

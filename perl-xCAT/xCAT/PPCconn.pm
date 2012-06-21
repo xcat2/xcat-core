@@ -7,7 +7,7 @@ use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
 use xCAT::DBobjUtils;
 use xCAT::FSPUtils;
-
+use xCAT::MsgUtils qw(verbose_message);
 ##############################################
 # Globals
 ##############################################
@@ -473,6 +473,7 @@ sub mkhwconn
     my @value   = ();
     my $Rc      = undef;
 
+    xCAT::MsgUtils->verbose_message($request, "mkhwconn START."); 
     for my $cec_bpa ( keys %$hash)
     {
         my $node_hash = $hash->{$cec_bpa};
@@ -501,6 +502,7 @@ sub mkhwconn
             } else {
                 push @newnodes,$cnode;
             }
+            xCAT::MsgUtils->verbose_message($request, "mkhwconn :mksysconn for node:$node_name."); 
             for my $nn ( @newnodes )
             {
                 my $node_ip;
@@ -549,6 +551,7 @@ sub mkhwconn
 #            }
         }
     }
+    xCAT::MsgUtils->verbose_message($request, "mkhwconn END."); 
     return \@value;
 }
 ##########################################################################

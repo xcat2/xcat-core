@@ -7,6 +7,7 @@ use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::NetworkUtils;
 use xCAT::FSPUtils;
+use xCAT::MsgUtils qw(verbose_message);
 #use Data::Dumper;
 
 ##########################################################################
@@ -135,12 +136,13 @@ sub rbootseq {
     #print "d"; 
     #print Dumper($d);
   
-         
+    xCAT::MsgUtils->verbose_message($request, "rbootseq START for node:$node_name, type=$$d[4].");        
     if (!($$d[4] =~ /^(lpar|blade)$/)) { 
         push @output, [$node_name, "\'boot\' command not supported for CEC or BPA", -1 ];
         return (\@output);
     }
     # add checking the power state of the cec 
+    xCAT::MsgUtils->verbose_message($request, "rbootseq check machine state for node:$node_name.");        
     my $power_state = xCAT::FSPUtils::fsp_api_action ($request, $node_name, $d, "cec_state", $tooltype);
     if ( @$power_state[2] != 0  ) {
         push @output, [$node_name, @$power_state[1], -1 ];
@@ -205,14 +207,17 @@ sub rbootseq {
 	        push @output, [$node_name, "The mac address in mac table could NOT be used for rbootseq with -net. HFI mac , or other wrong format?", -1 ];	
                 return( \@output );
          }	    
+         xCAT::MsgUtils->verbose_message($request, "rbootseq <$node_name> net=$parameter");        
        }
 
        if( $opt->{hfi}) {
        
            $parameter = "/hfi-iohub/hfi-ethernet:$o->{server},,$o->{client},$o->{gateway},$bootp_retries,$tftp_retries,$o->{netmask},$blksize";	      
        
+           xCAT::MsgUtils->verbose_message($request, "rbootseq <$node_name> hfi=$parameter");        
        }
 
+       xCAT::MsgUtils->verbose_message($request, "rbootseq set_lpar_bootstring for node:$node_name.");        
        my $res = xCAT::FSPUtils::fsp_api_action ($request, $node_name, $d, "set_lpar_bootstring", $tooltype, $parameter);
        #print "In boot, state\n";
        #print Dumper($res);
@@ -222,6 +227,7 @@ sub rbootseq {
        ##################################
        # Output error
        ##################################
+       xCAT::MsgUtils->verbose_message($request, "rbootseq return:$Rc.");        
        if ( $Rc != SUCCESS ) {
 	       push @output, [$node_name,$data,$Rc];
 	} else { 

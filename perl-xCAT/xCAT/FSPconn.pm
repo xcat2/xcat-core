@@ -8,6 +8,7 @@ use xCAT::Usage;
 #use Data::Dumper;
 use xCAT::FSPUtils;
 use xCAT::PPCconn;
+use xCAT::MsgUtils qw(verbose_message);
 
 ##############################################
 # Globals
@@ -56,7 +57,7 @@ sub mkhwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help t  s:s T=s p=s P=s port=s ) )) {
+    if ( !GetOptions( \%opt, qw(V|Verbose h|help t  s:s T=s p=s P=s port=s ) )) {
         return( usage() );
     }
 
@@ -321,7 +322,7 @@ sub lshwconn_parse_args
         return $opttmp;
     }
 	
-    if ( !GetOptions( \%opt, qw(V|verbose h|help T=s s) )) {
+    if ( !GetOptions( \%opt, qw(V|Verbose h|help T=s s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
@@ -438,7 +439,7 @@ sub rmhwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help T=s s) )) {
+    if ( !GetOptions( \%opt, qw(V|Verbose h|help T=s s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
@@ -571,7 +572,7 @@ sub mkhwconn
     my $Rc      = undef;
     my $tooltype= $opt->{T};
     
-    
+    xCAT::MsgUtils->verbose_message($request, "mkhwconn START."); 
     for my $cec_bpa ( keys %$hash)
     {
         my $node_hash = $hash->{$cec_bpa};
@@ -596,6 +597,7 @@ sub mkhwconn
 
             #}
 
+            xCAT::MsgUtils->verbose_message($request, "mkhwconn :add_connection for node:$node_name."); 
             my $res = xCAT::FSPUtils::fsp_api_action($request, $node_name, $d, "add_connection", $tooltype, $opt->{port} );
             $Rc = @$res[2];
 	    if( @$res[1] ne "") {
@@ -604,6 +606,7 @@ sub mkhwconn
 
         }
     }
+    xCAT::MsgUtils->verbose_message($request, "mkhwconn END."); 
     return \@value;
 }
 ##########################################################################

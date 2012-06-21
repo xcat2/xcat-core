@@ -7,7 +7,7 @@ use Getopt::Long;
 use Data::Dumper;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::NetworkUtils;
-
+use xCAT::MsgUtils qw(verbose_message);
 use xCAT::LparNetbootExp;
 
 ##########################################################################
@@ -394,6 +394,7 @@ sub do_getmacs {
             #        last;
             #    }
             #}
+            xCAT::MsgUtils->verbose_message($request, "getmacs :lparnetbootexp for node:$node.");
             my $Rc = xCAT::LparNetbootExp->lparnetbootexp(\%optarg, $request);
     ######################################
     # Split results into array
@@ -631,6 +632,7 @@ sub getmacs {
         #########################################
         # Connect to fsp to achieve MAC address
         #########################################
+        xCAT::MsgUtils->verbose_message($request, "getmacs START.");
         my $d = $par;
 
         #########################################
@@ -651,6 +653,7 @@ sub getmacs {
         # Get name known by HCP
         #########################################
         my $filter = "name,lpar_id";
+        xCAT::MsgUtils->verbose_message($request, "getmacs :lssyscfg filter '$filter'.");
         my $values = xCAT::PPCcli::lssyscfg( $exp, $type, $mtms, $filter );
         my $Rc = shift(@$values);
 
@@ -694,6 +697,7 @@ sub getmacs {
             #########################################
             # Manually collect MAC addresses.
             #########################################
+            xCAT::MsgUtils->verbose_message($request, "getmacs :do_getmacs for node:$node.");
             $result = do_getmacs( $request, $d, $exp, $name, $node );
             $Rc = shift(@$result);
         }
@@ -749,6 +753,7 @@ sub getmacs {
         if ( !exists( $opt->{d} )) {
             writemac( $node, $result );
         }
+        xCAT::MsgUtils->verbose_message($request, "getmacs END.");
         return( [[$node,$data,$Rc]] );
     }
 }

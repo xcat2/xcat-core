@@ -8,7 +8,7 @@ use xCAT::PPCdb;
 use xCAT::Usage;
 use xCAT::NodeRange;
 use Data::Dumper;
-
+use xCAT::MsgUtils qw(verbose_message);
 
 ##############################################
 # Globals
@@ -504,6 +504,7 @@ sub clone {
     # Enumerate CECs
     #####################################
     my $filter = "type_model,serial_num";
+    xCAT::MsgUtils->verbose_message($request, "$request->{command} :lssyscfg fsps.filter:'$filter'.");
     my $cecs = xCAT::PPCcli::lssyscfg( $exp, "fsps", $filter );
     my $Rc = shift(@$cecs);
 
@@ -579,6 +580,7 @@ sub clone {
         $temp[2] = $destcec;
         $temp[4] = 'lpar';
 
+        xCAT::MsgUtils->verbose_message($request, "$request->{command} :mksyscfg lpar.cfg:'$cfg'.");
         my $result = xCAT::PPCcli::mksyscfg( $exp, "lpar", \@temp, $cfg ); 
         $Rc = shift(@$result);
 
@@ -618,6 +620,7 @@ sub remove {
     my @lpars   = ();
     my @values  = ();
     
+    xCAT::MsgUtils->verbose_message($request, "$request->{command} START.");
     while (my ($mtms,$h) = each(%$hash) ) {
         while (my ($lpar,$d) = each(%$h) ) {
             my $lparid = @$d[0];
@@ -641,6 +644,7 @@ sub remove {
             ####################################
             else {
                 my $filter = "name,lpar_id";
+                xCAT::MsgUtils->verbose_message($request, "$request->{command} :lssyscfg lpar.filter:'$filter'.");
                 my $result = xCAT::PPCcli::lssyscfg( 
                                              $exp,
                                              "lpar",
@@ -673,6 +677,7 @@ sub remove {
                     ###############################################
                     # begin to retrieve the CEC's service lpar id
                     ############################################### 
+                    xCAT::MsgUtils->verbose_message($request, "$request->{command} :lssyscfg fsp.filter:'service_lpar_id'.");
                     my $service_lparid = xCAT::PPCcli::lssyscfg(
                                                   $exp,
                                                   "fsp",
@@ -687,6 +692,7 @@ sub remove {
                         my $cfgdata = @$service_lparid[0];
                             if ( ($id == $cfgdata) && ($cfgdata !~ /none/) ) {
                                 $cfgdata = "service_lpar_id=none";
+                                xCAT::MsgUtils->verbose_message($request, "$request->{command} :lssyscfg fsp.filter:'$cfgdata'.");
                                 my $result = xCAT::PPCcli::chsyscfg( $exp, "fsp", $d, $cfgdata );
                                 $Rc = shift(@$result);
                                 if ( $Rc != SUCCESS ) {
@@ -703,6 +709,7 @@ sub remove {
                 ################################
                 # Send remove command 
                 ################################
+                xCAT::MsgUtils->verbose_message($request, "$request->{command} :rmsyscfg lpar.id:$id.");
                 my $result = xCAT::PPCcli::rmsyscfg( $exp, \@d );
                 my $Rc = shift(@$result);
 
@@ -710,6 +717,7 @@ sub remove {
                 # Remove LPAR from database 
                 ################################
                 if ( $Rc == SUCCESS and !exists( $opt->{r} ) ) {
+                    xCAT::MsgUtils->verbose_message($request, "$request->{command} :remove lpar:$name from xCATdb.");
                     my $err = xCATdB( "rmvm", $name,"", $id,"", $type,"" , $lpar );
                     if ( defined( $err )) {
                         push @values, [$lpar,$err,RC_ERROR];
@@ -720,6 +728,7 @@ sub remove {
             }
         }
     }
+    xCAT::MsgUtils->verbose_message($request, "$request->{command} END.");
     return( \@values ); 
 }
 
@@ -791,6 +800,7 @@ sub modify_by_attr {
     my $attrstr= $opt->{a};
     my @values;
 
+    xCAT::MsgUtils->verbose_message($request, "$request->{command} START.");
     # attrstr will be in stdin for "cat vmdef | chvm nodename"
     if (!defined($attrstr) && defined($request->{stdin})) {
         my $tempattr = $request->{stdin};
@@ -836,6 +846,7 @@ sub modify_by_attr {
                 ###########################
                 # Get current profile
                 ###########################
+                xCAT::MsgUtils->verbose_message($request, "$request->{command} :lssyscfg node.id:'@$d[0]'.");
                 my $cfg_res = xCAT::PPCcli::lssyscfg(
                              $exp,
                              "node",
@@ -868,6 +879,7 @@ sub modify_by_attr {
                 }
 
 
+               xCAT::MsgUtils->verbose_message($request, "$request->{command} :lssyscfg prof.filter:'lpar_ids=@$d[0],profile_names=@$cfg_res[0]'.");
                 my $prof = xCAT::PPCcli::lssyscfg(
                              $exp,
                              "prof",
@@ -893,12 +905,14 @@ sub modify_by_attr {
                     push @values, [$lpar, $err_msg, $Rc];
                     next;
                 }
+                xCAT::MsgUtils->verbose_message($request, "$request->{command} :chsyscfg prof.cfg:'$cfgdata'.");
                 my $result = xCAT::PPCcli::chsyscfg( $exp, "prof", $d, $cfgdata );
                 $Rc = shift(@$result);
                 push @values, [$lpar,@$result[0],$Rc];
             }
         }
     }
+    xCAT::MsgUtils->verbose_message($request, "$request->{command} END.");
     return (\@values);
 }
 
@@ -1004,6 +1018,7 @@ sub modify_by_prof {
     my $profile = $opt->{p};
     my @values;
 
+    xCAT::MsgUtils->verbose_message($request, "$request->{command} START.");
     #######################################
     # -p flag, find profile specified
     #######################################
@@ -1029,6 +1044,7 @@ sub modify_by_prof {
                 ###########################
                 # Get LPAR profiles 
                 ###########################
+                xCAT::MsgUtils->verbose_message($request, "$request->{command} :lssyscfg prof.filter:'lpar_ids=@$d[0],profile_names=$profile'.");
                 my $prof = xCAT::PPCcli::lssyscfg(
                              $exp,
                              "prof",
@@ -1100,6 +1116,7 @@ sub modify_by_prof {
             # Send command 
             ###############################
             if ( defined( $profile )) {
+               xCAT::MsgUtils->verbose_message($request, "$request->{command} :mksyscfg prof.cfg:'$cfg'.");
                my $result = xCAT::PPCcli::mksyscfg( $exp, "prof", $d, $cfg );
                my $Rc = shift(@$result);
 
@@ -1112,12 +1129,14 @@ sub modify_by_prof {
                push @values, [$lpar,@$result[0],$Rc];
             }
             else {
+               xCAT::MsgUtils->verbose_message($request, "$request->{command} :chsyscfg prof.cfg:'$cfg'.");
                my $result = xCAT::PPCcli::chsyscfg( $exp, "prof", $d, $cfg );
                my $Rc = shift(@$result);
                push @values, [$lpar,@$result[0],$Rc];
             }
         }
     }
+    xCAT::MsgUtils->verbose_message($request, "$request->{command} END.");
     return( \@values );
 }
 
@@ -1136,6 +1155,7 @@ sub list {
     my @lpars   = ();
     my $result;
 
+    xCAT::MsgUtils->verbose_message($request, "$request->{command} START.");
     while (my ($mtms,$h) = each(%$hash) ) {
         while (my ($lpar,$d) = each(%$h) ) {
             my $lparid = @$d[0];
@@ -1161,6 +1181,7 @@ sub list {
             ####################################
             else {
                 my $filter = "name,lpar_id";
+                xCAT::MsgUtils->verbose_message($request, "$request->{command} :lssyscfg lpar.filter:'$filter'.");
                 my $result = xCAT::PPCcli::lssyscfg(
                                              $exp,
                                              "lpar",
@@ -1191,6 +1212,7 @@ sub list {
                 #################################
                 # Get source LPAR profile
                 #################################
+                xCAT::MsgUtils->verbose_message($request, "$request->{command} :lssyscfg prof.filter:'lpar_ids=$id'.");
                 my $prof = xCAT::PPCcli::lssyscfg(
                                       $exp,
                                       "prof",
@@ -1244,7 +1266,7 @@ sub list {
     foreach ( sort keys %$values ) {
         push @value,$values->{$_};
     }
-
+    xCAT::MsgUtils->verbose_message($request, "$request->{command} END.");
     return( \@value );
 }
 ##########################################################################
@@ -1604,7 +1626,7 @@ sub create {
     my $mtms;
     my $type;
     my $profile;
-
+    xCAT::MsgUtils->verbose_message($request, "$request->{command} START.");
     #####################################
     # Get source node information
     #####################################
@@ -1643,6 +1665,7 @@ sub create {
     #####################################
     # Get source LPAR profile  
     #####################################
+    xCAT::MsgUtils->verbose_message($request, "$request->{command} :lssyscfg prof.filter:'lpar_ids=$lparid'.");
     my $prof = xCAT::PPCcli::lssyscfg(
                               $exp,
                               "prof",
@@ -1721,6 +1744,7 @@ sub create {
         #################################
         # Create new LPAR  
         #################################
+        xCAT::MsgUtils->verbose_message($request, "$request->{command} :mksyscfg lpar.cfg:'$cfgdata'.");
         $result = xCAT::PPCcli::mksyscfg( $exp, "lpar", $d, $cfgdata ); 
         $Rc = shift(@$result);
 
@@ -1728,6 +1752,7 @@ sub create {
         # Add new LPAR to database 
         #################################
         if ( $Rc == SUCCESS ) {
+            xCAT::MsgUtils->verbose_message($request, "$request->{command} :add lpar:$name from xCATdb.");
             my $err = xCATdB( "mkvm", $name, $profile, $id, $d, $hwtype, $lpar);
             if ( defined( $err )) {
                 push @values, [$name,$err,RC_ERROR];
@@ -1738,6 +1763,7 @@ sub create {
         push @values, [$name,@$result[0],$Rc];
         $id++;
     }
+    xCAT::MsgUtils->verbose_message($request, "$request->{command} END.");
     return( \@values );
 }
 

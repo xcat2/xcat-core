@@ -6,7 +6,7 @@ use strict;
 use Getopt::Long;
 use xCAT::PPCmac;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
-
+use xCAT::MsgUtils qw(verbose_message);
 use xCAT::LparNetbootExp;
 ##########################################################################
 # Parse the command line for options and operands 
@@ -184,6 +184,7 @@ sub do_getmacs {
     #        last;
     #    }
     #}
+    xCAT::MsgUtils->verbose_message($request, "getmacs :lparnetbootexp for node:$node.");
     my $Rc = xCAT::LparNetbootExp->lparnetbootexp(\%optarg, $request);
     ######################################
     # Split results into array
@@ -442,6 +443,7 @@ sub getmacs {
         #########################################
         # Connect to fsp to achieve MAC address
         #########################################
+        xCAT::MsgUtils->verbose_message($request, "getmacs START.");
         my $d = $par;
 
         #########################################
@@ -501,6 +503,7 @@ sub getmacs {
             #########################################
             # Manually collect MAC addresses.
             #########################################
+            xCAT::MsgUtils->verbose_message($request, "getmacs :do_getmacs for node:$node.");
             $result = do_getmacs( $request, $d, $exp, $name, $node );
         #}
         #$sitetab->close;
@@ -575,6 +578,7 @@ sub getmacs {
             writemac( $node, $value );
         }
 	#return( [[$node,$data,$Rc]] );
+        xCAT::MsgUtils->verbose_message($request, "getmacs END.");
 	return $res;
     }
 }

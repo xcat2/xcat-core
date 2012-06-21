@@ -7,6 +7,7 @@ use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
 use Storable qw(freeze thaw);
 use POSIX "WNOHANG";
+use xCAT::MsgUtils qw(verbose_message);
 
 ##########################################
 # Globals
@@ -359,6 +360,7 @@ sub passwd {
             while ( my ($cec,$h) = each(%$hash) ) {
                 while ( my ($node,$d) = each(%$h) ) {
                     my $type = @$d[4];
+                    xCAT::MsgUtils->verbose_message($request, "rspconfig :modify password of $usr for node:$node.");
                     my $data = xCAT::PPCcli::chsyspwd( $exp, $usr, $type, $cec, $passwd, $newpasswd );
                     my $Rc = shift(@$data);
                     my $usr_back = $usr;
@@ -369,6 +371,7 @@ sub passwd {
                     # Write the new password to table
                     ##################################
                     if ( $Rc == SUCCESS ) {
+                        xCAT::MsgUtils->verbose_message($request, "rspconfig :update xCATdb for node:$node,ID:$usr_back.");
                         xCAT::PPCdb::update_credentials( $node, $type, $usr_back, $newpasswd );
                     }
                 }
@@ -438,6 +441,7 @@ sub sshcfg {
     # Determine if SSH is enabled 
     #####################################
     if ( !defined( $mode )) {
+        xCAT::MsgUtils->verbose_message($request, "rspconfig :check sshcfg for user:$logon on node:$server.");
         my $result = xCAT::PPCcli::send_cmd( $exp, "cat $auth" );
         my $Rc = shift(@$result);        
 
@@ -460,6 +464,7 @@ sub sshcfg {
     #####################################
     # Enable/disable SSH 
     #####################################
+    xCAT::MsgUtils->verbose_message($request, "rspconfig :sshcfg $mode for user:$logon on node:$server.");
     my $result = xCAT::PPCcli::mkauthkeys( $exp, $mode, $logon, $sshkey );
     my $Rc = shift(@$result);
 
@@ -503,6 +508,7 @@ sub frame {
                     #################################
                     # Get frame number
                     #################################
+                    xCAT::MsgUtils->verbose_message($request, "rspconfig :get frame_num for node:$node.");
                     $data = xCAT::PPCcli::lssyscfg( $exp, @$d[4], @$d[2], 'frame_num' );
                     $Rc = shift(@$data);
 
@@ -533,6 +539,7 @@ sub frame {
                     if ( !defined($ent) or !defined($ent->{id}) ) {
                         return( [[$node,"Cannot find frame num in database",RC_ERROR]] );
                     }
+                    xCAT::MsgUtils->verbose_message($request, "rspconfig :set frame_num=".$ent->{id}." for node:$node.");
                     $data = xCAT::PPCcli::chsyscfg( $exp, "bpa", $d, "frame_num=".$ent->{id} );
                     $Rc = shift(@$data);
 
@@ -550,6 +557,7 @@ sub frame {
                     # Set frame number
                     # Read the frame number from opt
                     #################################
+                    xCAT::MsgUtils->verbose_message($request, "rspconfig :set frame_num=$value for node:$node.");
                     $data = xCAT::PPCcli::chsyscfg( $exp, "bpa", $d, "frame_num=$value" );
                     $Rc = shift(@$data);
 
@@ -565,6 +573,7 @@ sub frame {
                     #################################
                     # Set frame number to database
                     #################################
+                    xCAT::MsgUtils->verbose_message($request, "rspconfig : set frame_num, update node:$node attr id=$value.");
                     $tab->setNodeAttribs( $node, { id=>$value } );
                 }
             }
@@ -597,6 +606,7 @@ sub hostname {
                     #################################
                     # Get system name
                     #################################
+                    xCAT::MsgUtils->verbose_message($request, "rspconfig :get system name for node:$node.");
                     $data = xCAT::PPCcli::lssyscfg( $exp, @$d[4], @$d[2], 'name' );
                     $Rc = shift(@$data);
 
@@ -609,6 +619,7 @@ sub hostname {
 
                     push @$result, [$node,@$data[0],SUCCESS];
                 } elsif ( $value eq '*' ) {
+                    xCAT::MsgUtils->verbose_message($request, "rspconfig :set system name:$node for node:$node.");
                     $data = xCAT::PPCcli::chsyscfg( $exp, @$d[4], $d, "new_name=$node" );
                     $Rc = shift(@$data);
 
@@ -621,6 +632,7 @@ sub hostname {
 
                     push @$result, [$node,@$data[0],SUCCESS];
                 } else {
+                    xCAT::MsgUtils->verbose_message($request, "rspconfig :set system name:$value for node:$node.");
                     $data = xCAT::PPCcli::chsyscfg( $exp, @$d[4], $d, "new_name=$value" );
                     $Rc = shift(@$data);
 
@@ -766,6 +778,7 @@ sub doresetnet {
             $targets->{$nodetype}->{$oi}->{'args'} .= ",$netinfo{$oi}{'gateway'},$netinfo{$oi}{'mask'}";
         }
         $ip_host->{$oi} = $name;
+        xCAT::MsgUtils->verbose_message($req, "rspconfig :resetnet collecting information for node:$name.");
     }
 
     $result = undef;
@@ -1045,6 +1058,7 @@ sub invoke_cmd {
                 "sshcfg=enable",
                 "network_reset=$target_dev->{args}"
                 );
+        xCAT::MsgUtils->verbose_message($request, "rspconfig :doresetnet run xCAT_plugin::blade::clicmds for node:$target_dev->{name},ip:$ip.");
         $result = xCAT_plugin::blade::clicmds(
                 $ip,
                 $target_dev->{username},
@@ -1056,6 +1070,7 @@ sub invoke_cmd {
     {
         @cmds = ("network_reset=$target_dev->{args}");
         #trace( $request, "sshcmds on hmc $ip");
+        xCAT::MsgUtils->verbose_message($request, "rspconfig :doresetnet run xCAT::PPC::sshcmds_on_hmc for node:$target_dev->{name},ip:$ip.");
         $result = xCAT::PPC::sshcmds_on_hmc(
                 $ip,
                 $target_dev->{username},
@@ -1066,6 +1081,7 @@ sub invoke_cmd {
     {
         @cmds = ("network=$ip,$target_dev->{args}");
         #trace( $request, "update config on $target_dev->{'type'} $ip");
+        xCAT::MsgUtils->verbose_message($request, "rspconfig :doresetnet run xCAT::PPC::updconf_in_asm for node:$target_dev->{name},ip:$ip.");
         $result = xCAT::PPC::updconf_in_asm(
                 $ip,
                 $target_dev,

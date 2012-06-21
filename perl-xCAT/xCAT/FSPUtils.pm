@@ -28,7 +28,7 @@ require xCAT::Schema;
 require xCAT::Utils;
 #use  Data::Dumper;
 require xCAT::NodeRange;
-
+use xCAT::MsgUtils qw(verbose_message);
 
         
  #-------------------------------------------------------------------------------
@@ -285,6 +285,7 @@ sub fsp_api_action {
     }
     $id = $$attrs[0];
     $fsp_name = $$attrs[3]; 
+    xCAT::MsgUtils->verbose_message($request, "fsp_api_action START node:$node_name,type:$$attrs[4].");
     if($$attrs[4] =~ /^fsp$/ || $$attrs[4] =~ /^lpar$/ || $$attrs[4] =~ /^cec$/) {
         $type = 0;
 	    $fsp_bpa_type="fsp";
@@ -307,7 +308,7 @@ sub fsp_api_action {
     } else {
         $fsp_ip = getIPaddress($request, $$attrs[4], $fsp_name );
     }
-
+    xCAT::MsgUtils->verbose_message($request, "fsp_api_action getIPaddress:$fsp_ip.");
     if(!defined($fsp_ip)) {
         $res = "Failed to get IP address for $fsp_name or the related FSPs/BPAs.";
         return ([$node_name, $res, -1]);	
@@ -371,7 +372,7 @@ sub fsp_api_action {
             $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
         }
     }
-
+    xCAT::MsgUtils->verbose_message($request, "fsp_api_action cmd:$cmd.");
     #print "cmd: $cmd\n"; 
     $SIG{CHLD} = 'DEFAULT'; 
     # secure passwords in verbose mode
@@ -393,6 +394,7 @@ sub fsp_api_action {
     if(defined($res)) {
         $res =~ s/$node_name: //g;
     }
+    xCAT::MsgUtils->verbose_message($request, "fsp_api_action return:$Rc.");
     return( [$node_name,$res, $Rc] ); 
 }
 
@@ -444,6 +446,7 @@ sub fsp_state_action {
     $fsp_name = $node_name; 
 
      
+    xCAT::MsgUtils->verbose_message($request, "fsp_state_action START node:$node_name,type:$$attrs[4].");
     if( $$attrs[4] =~ /^(fsp|lpar|cec|blade)$/) {
         $type = 0;
     } else { 
@@ -459,11 +462,13 @@ sub fsp_state_action {
         return ([-1, $res[0]]);	
     }
 	
+    xCAT::MsgUtils->verbose_message($request, "fsp_state_action getIPaddress:$fsp_ip.");
     #print "fsp name: $fsp_name\n";
     #print "fsp ip: $fsp_ip\n";
     my $cmd;
     #$cmd = "$fsp_api -a $action -u $user -p $password -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
     $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
+    xCAT::MsgUtils->verbose_message($request, "fsp_state_action cmd:$cmd.");
     #print "cmd: $cmd\n"; 
     $SIG{CHLD} = 'DEFAULT'; 
     @res = xCAT::Utils->runcmd($cmd, -1);
@@ -477,6 +482,7 @@ sub fsp_state_action {
     if( @res ) {
         $res[0] =~ s/$node_name: //g;
     }
+    xCAT::MsgUtils->verbose_message($request, "fsp_state_action return:$Rc.");
     return( [$Rc,@res] ); 
 }
 

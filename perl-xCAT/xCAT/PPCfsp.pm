@@ -10,7 +10,7 @@ use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
 use Socket;
 use xCAT::PPCdb; 
-
+use xCAT::MsgUtils qw(verbose_message);
 
 ##########################################
 # Globals
@@ -389,6 +389,7 @@ sub process_cmd {
         ##################################
         # Run command 
         ##################################
+        xCAT::MsgUtils->verbose_message($request, "$command :$_ for node:$server."); 
         my $res = $cmds{$command}{$_}[1]($exp, $request, $form, \%menu);
         push @$res, $_;
         push @result, $res;

@@ -43,6 +43,8 @@ use Getopt::Long;
 use xCAT::SvrUtils;
 use xCAT::FSPUtils;
 my $indiscover=0;
+my $CALLBACK = undef;
+my $verbose_cmd = undef;
 
 sub handled_commands {
   return {
@@ -836,6 +838,7 @@ sub vitals {
          push @vitems,split( /,/,$_);
        }
      }
+     verbose_message("slotid:$slot, options:@vitems.");
   } else {		#-- chassis query
      foreach (@_) {
        if ($_ eq 'all') {
@@ -853,6 +856,7 @@ sub vitals {
          push @vitems,split( /,/,$_);
        }
      }
+     verbose_message("for chassis, options:@vitems.");
   }
   if (grep /fan/,@vitems or grep /blower/,@vitems) { #We'll lump blowers and fans together for blades, besides, BCS fans
                                                      #use the 'blower' OIDs anyway
@@ -3730,6 +3734,18 @@ sub build_more_info{
   return \@moreinfo;
 }
 
+sub verbose_message {
+    my $data = shift;
+    if (!defined($CALLBACK) or !defined($verbose_cmd))  {
+        return;   
+    }
+    my ($sec,$min,$hour,$mday,$mon,$yr,$wday,$yday,$dst) = localtime(time);
+    my $time = sprintf "%04d%02d%02d.%02d:%02d:%02d", $yr+1900,$mon+1,$mday,$hour,$min,$sec;
+    $data = "$time ($$) $verbose_cmd:".$data; 
+    my %rsp;
+    $rsp{data} = [$data];
+    xCAT::MsgUtils->message("I", \%rsp, $CALLBACK); 
+}
 sub process_request { 
   $SIG{INT} = $SIG{TERM} = sub { 
      foreach (keys %mm_comm_pids) {
@@ -3758,6 +3774,10 @@ sub process_request {
     @exargs = @{$request->{arg}};
   } else {
     @exargs = ($request->{arg});
+  }
+  if (grep /-V|--Verbose/, @exargs) {
+      $CALLBACK = $callback;
+      $verbose_cmd = $command;
   }
 
   my $moreinfo;
@@ -3995,7 +4015,7 @@ sub clicmds {
   my %handled = ();
   my $result;
   my @tcmds = qw(snmpcfg sshcfg network swnet pd1 pd2 textid network_reset rscanfsp initnetwork solcfg userpassword USERID);
-
+  verbose_message("start deal with $mptype CLI options:@{$args{cmds}}.");
   # most of these commands should be able to be done
   # through SNMP, but they produce various errors.
   foreach my $cmd (@{$args{cmds}}) {
@@ -4012,9 +4032,13 @@ sub clicmds {
         next;
       }
     }
+    if ($cmd =~ /-v|--Verbose/) {
+        next;
+    }
     push @unhandled,$cmd;
   }
   unless (%handled) {
+    verbose_message("no option needed to be handled with $mptype CLI.");
     return([0,\@unhandled]);
   }
   my $curruser = $user;
@@ -4050,6 +4074,7 @@ sub clicmds {
   } 
   require xCAT::SSHInteract;
   my $t;
+  verbose_message("start SSH mpa:$mpa session for node:$node.");
   eval {
   $t = new  xCAT::SSHInteract(
 		-username=>$curruser,
@@ -4087,6 +4112,7 @@ sub clicmds {
         if (defined($handled{USERID})) {
             $promote_pass = $handled{USERID};
         }
+                verbose_message("deal with genesis state for mpa:$mpa.");
 		$t->print($currpass);
 		$t->waitfor(-match=>"/password:/i");
 		$t->print($promote_pass);
@@ -4106,6 +4132,7 @@ sub clicmds {
 	}
   	$t->waitfor(match=>"/system> /");
   } elsif (not $t) {#ssh failed.. fallback to a telnet attempt for older AMMs with telnet disabled by default
+     verbose_message("start telnet mpa:$curraddr session for node:$node.");
      require Net::Telnet;
      $t = new Net::Telnet(
                    Timeout=>15, 
@@ -4164,6 +4191,7 @@ sub clicmds {
     push @data, "The management module has been reset to load the configuration";
   } 
   $t->close;
+  verbose_message("finished SSH mpa:$curraddr session for node:$node.");
   return([$Rc,\@unhandled,\@data]);
 }
 
@@ -5090,7 +5118,7 @@ sub dompa {
       return;
     }
   }
-
+  verbose_message("start deal with SNMP session.");
   $mpauser= $mpahash->{$mpa}->{username};
   $mpapass = $mpahash->{$mpa}->{password};
   $session = new SNMP::Session(
@@ -5263,6 +5291,7 @@ sub dompa {
       } 
       xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%old, 1);
   }
+  verbose_message("SNMP session completed.");
   #my $msgtoparent=freeze(\@outhashes); # = XMLout(\%output,RootName => 'xcatresponse');
   #print $out $msgtoparent; #$node.": $_\n";
 }

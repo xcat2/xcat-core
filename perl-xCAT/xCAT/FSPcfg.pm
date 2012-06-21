@@ -9,7 +9,7 @@ use xCAT::FSPUtils;
 use xCAT::PPCcfg;
 #use Data::Dumper;
 #use xCAT::PPCcli;
-
+use xCAT::MsgUtils qw(verbose_message);
 
 ##########################################
 # Globals
@@ -466,6 +466,7 @@ sub do_query {
     while (my ($mtms, $h) = each(%$hash)) {
         while (my($name, $d) = each(%$h)) {
             my $action = $fspapi_action{$cmd}{query}{@$d[4]};
+            xCAT::MsgUtils->verbose_message($request, "rspconfig :$action for node:$name."); 
             my $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, $action);
             &do_process_query_res($name, $cmd, \@result, $values);
             #my $res = &do_process_query_res($name, $cmd, \@result, $values);
@@ -512,6 +513,7 @@ sub do_set {
     while (my ($mtms, $h) = each(%$hash)) {
         while (my($name, $d) = each(%$h)) {
             my $action = $fspapi_action{$cmd}{set}{@$d[4]};
+            xCAT::MsgUtils->verbose_message($request, "rspconfig :$action for node:$name, param:$value."); 
             my $para = &do_set_get_para($name, $cmd, $value);
             my $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, $action, 0, $para);
 #           print Dumper($values);
@@ -595,6 +597,7 @@ sub passwd {
            			while ( my ($node,$d) = each(%$h) ) {
                			my $type = @$d[4];
 				my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
+                                xCAT::MsgUtils->verbose_message($request, "rspconfig :modify password of $usr for node:$node.");
 				my $cmd = xCAT::FSPcfg::fsp_api_passwd ($request, $node, $d, $usr, $passwd, $newpasswd);
                 		my $Rc = @$cmd[2];
 				my $data = @$cmd[1];
@@ -607,6 +610,7 @@ sub passwd {
                 		# Write the new password to table
                 		##################################
                 		if ( $Rc == 0 ) {
+                                    xCAT::MsgUtils->verbose_message($request, "rspconfig :update xCATdb for node:$node,ID:$usr.");
                 		    xCAT::PPCdb::update_credentials( $node, $type, $usr, $newpasswd );
                 		}
             			}
@@ -677,6 +681,7 @@ sub frame {
                     # Get frame number
                     #################################
 		    #$data = xCAT::PPCcli::lssyscfg( $exp, @$d[4], @$d[2], 'frame_num' );
+                    xCAT::MsgUtils->verbose_message($request, "rspconfig :get_frame_number for node:$node.");
 		    $data = xCAT::FSPUtils::fsp_api_action( $request, $node, $d, "get_frame_number");
                     $Rc = pop(@$data);
 
@@ -708,6 +713,7 @@ sub frame {
                         return( [[$node,"Cannot find frame num in database", -1]] );
                     }
 		    #$data = xCAT::PPCcli::chsyscfg( $exp, "bpa", $d, "frame_num=".$ent->{id} );
+                    xCAT::MsgUtils->verbose_message($request, "rspconfig :set_frame_number for node:$node,id:$ent->{id}.");
 		    $data = xCAT::FSPUtils::fsp_api_action( $request, $node, $d, "set_frame_number", 0, $ent->{id});
                     $Rc = pop(@$data);
 
@@ -727,6 +733,7 @@ sub frame {
                     # Read the frame number from opt
                     #################################
 		    #$data = xCAT::PPCcli::chsyscfg( $exp, "bpa", $d, "frame_num=$value" );
+                    xCAT::MsgUtils->verbose_message($request, "rspconfig :set_frame_number for node:$node,id:$value.");
                     $data = xCAT::FSPUtils::fsp_api_action( $request, $node, $d, "set_frame_number", 0, $value);
 		    $Rc = pop(@$data);
 
@@ -775,6 +782,7 @@ sub cec_off_policy {
                     #################################
                     # Get platform IPL parameters 
                     #################################
+                    xCAT::MsgUtils->verbose_message($request, "rspconfig :get_phyp_cfg_power_off_policy for node:$node.");
 		    $data = xCAT::FSPUtils::fsp_api_action( $request, $node, $d, "get_phyp_cfg_power_off_policy");
                     $Rc = pop(@$data);
 
@@ -794,6 +802,7 @@ sub cec_off_policy {
                     #################################
                     # Set cec off policy 
                     #################################
+                    xCAT::MsgUtils->verbose_message($request, "rspconfig :set power_off_policy for node:$node,policy:$value.");
 		    if( $value eq "poweroff") {
 		        $value = "cec_off_policy_poweroff";
 		    } else {
