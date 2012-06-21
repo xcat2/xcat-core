@@ -148,7 +148,10 @@ unless ($tmp) {
    die;
 }
 $port = $tmp->{value};
-$sport = $tmp->{value}+1;
+my ($tmp) = $sitetab->getAttribs({'key'=>'xcatiport'},'value');
+if ($tmp) {
+	$sport = $tmp->{value};
+}
 ($tmp) = $sitetab->getAttribs({'key'=>'xcatmaxconnections'},'value');
 if ($tmp and $tmp->{value}) { $maxsslclients = $tmp->{value}; }
 
@@ -222,6 +225,7 @@ sub daemonize {
   
 my %cmd_handlers;
 sub do_installm_service { 
+	unless ($sport) { return; }
   #This function servers as a handler for messages from installing nodes
 my $socket;
   my $installpidfile;
