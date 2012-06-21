@@ -924,8 +924,8 @@ if ($inet6support) {
 
     unless ($peerhost) { $peerhost = gethostbyaddr($connection->peeraddr,AF_INET); }
     $peerfqdn=$peerhost;
-
-	if ($domain) {
+    my $peerhostorg=$peerhost;  # save original with domain for validation
+    if ($domain) {
         # strip off domain if set
         $peerhost && $peerhost =~ s/\.$domain\.*$//;
     } else {
@@ -938,7 +938,7 @@ if ($inet6support) {
     $peerhost && $peerhost =~ s/-ib\d*$//;
     #printf('info'.": xcatd: connection from ".($peername ? $peername . "@" . $peerhost : $peerhost)."\n");
     $$progname="xCATd SSL: Instance for ".($peername ? $peername ."@".$peerhost : $peerhost) if $peerhost;
-    service_connection($connection,$peername,$peerhost,$peerfqdn);
+    service_connection($connection,$peername,$peerhost,$peerfqdn,$peerhostorg);
     xexit(0);
   }
   $sslclients++; #THROTTLE
@@ -1692,6 +1692,7 @@ sub service_connection {
   my $peername = shift;
   my $peerhost = shift;
   my $peerfqdn = shift;
+  my $peerhostorg = shift;
   my $peerport = $sock->peerport;
   my %tables=();
   #some paranoid measures could reduce a third party abusing stage3 image to attempting to get USER/PASS for BMCs:
@@ -1743,7 +1744,7 @@ sub service_connection {
         #we have a full request..
         #printf $request."\n";
         $request="";
-        if (xCAT::xcatd->validate($peername,$peerhost,$req,\@deferredmsgargs)) {
+        if (xCAT::xcatd->validate($peername,$peerhost,$req,$peerhostorg,\@deferredmsgargs)) {
           $req->{'_xcat_authname'} = [$peername];
           $req->{'_xcat_clienthost'} = [$peerhost];
           $req->{'_xcat_clientfqdn'} = [$peerfqdn];
