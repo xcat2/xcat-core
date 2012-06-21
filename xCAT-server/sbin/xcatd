@@ -148,7 +148,7 @@ unless ($tmp) {
    die;
 }
 $port = $tmp->{value};
-my ($tmp) = $sitetab->getAttribs({'key'=>'xcatiport'},'value');
+($tmp) = $sitetab->getAttribs({'key'=>'xcatiport'},'value');
 if ($tmp) {
 	$sport = $tmp->{value};
 }
