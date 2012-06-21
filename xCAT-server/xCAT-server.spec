@@ -207,6 +207,8 @@ rm $RPM_BUILD_ROOT/%{prefix}/sbin/xcat_traphandler
 %if %fsm
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/installp_bundles
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/install
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot
 rm $RPM_BUILD_ROOT/%{prefix}/sbin/stopstartxcatd
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpblade.pm
 rm $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/detect_dhcpd
