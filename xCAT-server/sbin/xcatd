@@ -922,8 +922,8 @@ if ($inet6support) {
 
     unless ($peerhost) { $peerhost = gethostbyaddr($connection->peeraddr,AF_INET); }
     $peerfqdn=$peerhost;
-
-	if ($domain) {
+    my $peerhostorg=$peerhost;  # save original with domain for validation
+    if ($domain) {
         # strip off domain if set
         $peerhost && $peerhost =~ s/\.$domain\.*$//;
     } else {
@@ -936,7 +936,7 @@ if ($inet6support) {
     $peerhost && $peerhost =~ s/-ib\d*$//;
     #printf('info'.": xcatd: connection from ".($peername ? $peername . "@" . $peerhost : $peerhost)."\n");
     $$progname="xCATd SSL: Instance for ".($peername ? $peername ."@".$peerhost : $peerhost) if $peerhost;
-    service_connection($connection,$peername,$peerhost,$peerfqdn);
+    service_connection($connection,$peername,$peerhost,$peerfqdn,$peerhostorg);
     xexit(0);
   }
   $sslclients++; #THROTTLE
@@ -1690,6 +1690,7 @@ sub service_connection {
   my $peername = shift;
   my $peerhost = shift;
   my $peerfqdn = shift;
+  my $peerhostorg = shift;
   my $peerport = $sock->peerport;
   my %tables=();
   #some paranoid measures could reduce a third party abusing stage3 image to attempting to get USER/PASS for BMCs:
@@ -1741,7 +1742,7 @@ sub service_connection {
         #we have a full request..
         #printf $request."\n";
         $request="";
-        if (validate($peername,$peerhost,$req)) {
+        if (validate($peername,$peerhost,$req,$peerhostorg)) {
           $req->{'_xcat_authname'} = [$peername];
           $req->{'_xcat_clienthost'} = [$peerhost];
           $req->{'_xcat_clientfqdn'} = [$peerfqdn];
@@ -1960,6 +1961,7 @@ sub validate {
   my $peername=shift;
   my $peerhost=shift;
   my $request=shift;
+  my $peerhostorg=shift;
   my $policytable = xCAT::Table->new('policy');
   unless ($policytable) {
      xCAT::MsgUtils->message("S","Unable to open policy data, denying");
@@ -1973,7 +1975,7 @@ sub validate {
   # check to see if peerhost is trusted
   foreach $rule (@$policies) {
      
-    if (($rule->{name} and ($rule->{name} eq $peerhost))  && ($rule->{rule}=~ /trusted/i)) {
+    if (($rule->{name} and (($rule->{name} eq $peerhost) || ($rule->{name} eq $peerhostorg)))  && ($rule->{rule}=~ /trusted/i)) {
      $peerstatus="Trusted";
      last;
     }
