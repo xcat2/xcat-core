@@ -4246,7 +4246,7 @@ sub copycd {
 	    }
 	    open($bootcfg,">","$installroot/$distname/$arch/boot.cfg.install");
 	    foreach (@bootcfg) {
-	      if (/^modules=/ and $_ !~ /xcatmod.tgz/) {
+	      if (/^modules=/ and $_ !~ /xcatmod.tgz/ and not $::XCATSITEVALS{xcatesximoddisable}) {
 			chomp();
 			s! *\z! --- xcatmod.tgz\n!;
 	      }
@@ -4260,7 +4260,7 @@ sub copycd {
 	      s!--- tools.t00!!; #tools could be useful, but for now skip the memory requirement
 	      s!--- weaselin.i00!!; #and also don't need the weasel install images if... not installing
 	      
-	      if (/^modules=/ and $_ !~ /xcatmod.tgz/) {
+	      if (/^modules=/ and $_ !~ /xcatmod.tgz/ and not $::XCATSITEVALS{xcatesximoddisable}) {
 		chomp();
 		s! *\z! --- xcatmod.tgz\n!;
 	      }
@@ -4292,6 +4292,7 @@ sub copycd {
 sub  makecustomizedmod {
     my $osver = shift;
     my $dest = shift;
+	if ($::XCATSITEVALS{xcatesximoddisable}) { return 1; }
     my $modname;
     if ($osver =~ /esxi4/) { #want more descriptive name,but don't break esxi4 setups.
       $modname="mod.tgz";
@@ -4555,11 +4556,12 @@ sub mkcommonboot {
         $shortprofname =~ s/\/\z//;
         $shortprofname =~ s/.*\///;
 		mkpath("$tftpdir/xcat/netboot/$osver/$arch/$shortprofname/");
+        my $havemod=0;
 		unless($donetftp{$osver,$arch,$profile,$tftpdir}) {
 			my $srcdir = "$installroot/$osver/$arch";
 			my $dest = "$tftpdir/xcat/netboot/$osver/$arch/$shortprofname";
 			cpNetbootImages($osver,$srcdir,$dest,$custprofpath,\%mods,bootmode=>$bootmode);
-            if (makecustomizedmod($osver,$dest)) {
+            if ($havemod = makecustomizedmod($osver,$dest)) {
                 push @reqmods,"mod.tgz";
                 $mods{"mod.tgz"}=1;
             }
