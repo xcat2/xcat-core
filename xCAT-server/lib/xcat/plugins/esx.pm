@@ -4841,7 +4841,7 @@ sub cpNetbootImages {
 sub copyIfNewer {
   my $source = shift;
   my $dest = shift;
-  if (! -e $dest or -C $source > -C $dest) {
+  if (! -e $dest or -C $source < -C $dest) {
     return copy($source,$dest);
   }
   return 1; 
