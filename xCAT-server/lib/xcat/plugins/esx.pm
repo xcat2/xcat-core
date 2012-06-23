@@ -4829,6 +4829,8 @@ sub cpNetbootImages {
 	      push @filestocopy,$1;
 	    } elsif (/^modules=(.*)/) {
 	      foreach (split / --- /,$1) {
+			s/^\s*//;
+			s/\s.*//;
 		push @filestocopy,$_;
 	      }
 	    }
