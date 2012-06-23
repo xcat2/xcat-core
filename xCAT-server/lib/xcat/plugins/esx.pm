@@ -204,9 +204,7 @@ sub preprocess_request {
 		} elsif (defined($ent->{migrationdest})) {
             $cluster_hash{$ent->{migrationdest}}->{nodes}->{$node}=1;
 		} else {
-			$callback->({data=>["no host or cluster defined for guest $node"]});
-			$request = {};
-			return;
+			xCAT::SvrUtils::sendmsg([1,": no host or cluster defined for guest"], $callback,$node);
 		}
         }
 	}
@@ -553,10 +551,12 @@ sub process_request {
                 push @badhypes,$_;
 				}
                 my @relevant_nodes = sort (keys %{$hyphash{$_}->{nodes}});
+				my $sadhypervisor=$_;
                 foreach (@relevant_nodes) {
-		    if ($command eq "rmigrate" and grep /-f/,@exargs) { $limbonodes{$_}=1; } else {
+		    if ($command eq "rmigrate" and grep /-f/,@exargs) { $limbonodes{$_}=$needvcentervalidation{$sadhypervisor}; } else {
                     xCAT::SvrUtils::sendmsg([1,": hypervisor unreachable"], $output_handler,$_);
 			}
+				if ($command eq "rpower" and grep /stat/,@exargs) { $limbonodes{$_}=$needvcentervalidation{$sadhypervisor}; } #try to stat power anyway through vcenter of interest...
                 }
                 delete $hyphash{$_};
             }
@@ -1833,6 +1833,9 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
             }
         }
     }
+	foreach (keys %limbonodes) {
+		$vcenterhash{$limbonodes{$_}}->{vms}->{$_}=1;
+	}
     my $cluster;
     foreach $cluster (keys %clusterhash) {
         foreach $node (keys %{$clusterhash{$cluster}->{nodes}}) {
@@ -1840,25 +1843,23 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
         }
     }
     my $currentvcenter;
+    my %foundlimbo;
     foreach $currentvcenter (keys %vcenterhash) {
         #retrieve all vm views in one gulp
         my $vmsearchstring = join(")|(",keys %{$vcenterhash{$currentvcenter}->{vms}});
         $vmsearchstring = '^(('.$vmsearchstring.'))(\z|\.)';
         my $regex = qr/$vmsearchstring/;
         $vcviews{$currentvcenter} = $vcenterhash{$currentvcenter}->{conn}->find_entity_views(view_type => 'VirtualMachine',properties=>$properties,filter=>{'config.name'=>$regex});
-    }
-    foreach $hyp (keys %hyphash) {
-        if ($viavcenterbyhyp->{$hyp}) {
-            foreach (@{$vcviews{$hyphash{$hyp}->{vcenter}->{name}}}) {
+            foreach (@{$vcviews{$currentvcenter}}) {
                 my $node = $_->{'config.name'};
                 unless (defined $tablecfg{vm}->{$node}) {
                     $node =~ s/\..*//; #try the short name;
                 }
                 if (defined $tablecfg{vm}->{$node}) { #see if the host pointer requires a refresh 
 		    my $hostref = $hostrefbynode{$node};
-		    if ($hostref eq $_->{'runtime.host'}->value) { next; } #the actual host reference  matches the one that we got when populating hostviews based on what the table had to say #TODO: does this mean it is buggy if we want to mkvm/rmigrate/etc if the current vm.host is wrong and the noderange doesn't have something on the right hostview making us not get it in the
+		    if ($hostref and $hostref eq $_->{'runtime.host'}->value) { next; } #the actual host reference  matches the one that we got when populating hostviews based on what the table had to say #TODO: does this mean it is buggy if we want to mkvm/rmigrate/etc if the current vm.host is wrong and the noderange doesn't have something on the right hostview making us not get it in the
 		    #mass request?  Or is it just slower because it hand gets host views?
-                    my $host = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$_->{'runtime.host'},properties=>['summary.config.name']);
+                    my $host = $vcenterhash{$currentvcenter}->{conn}->get_view(mo_ref=>$_->{'runtime.host'},properties=>['summary.config.name']);
 		    $host = $host->{'summary.config.name'};
                     my $shost = $host;
                     $shost =~ s/\..*//;
@@ -1869,14 +1870,27 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
                         die "Error opening vm table";
                     }
                     if ($nodes[0]) {
+						if ($limbonodes{$node}) { $foundlimbo{$node}=$currentvcenter; }
                         $vmtab->setNodeAttribs($node,{host=>$nodes[0]});
                     } #else {
                       #  $vmtab->setNodeAttribs($node,{host=>$host});
                     #}
                 }
             }
-        }
     }
+	foreach my $lnode (keys %foundlimbo) {
+                $vmviews= $vcviews{$foundlimbo{$lnode}};
+                my %mgdvms; #sort into a hash for convenience
+                foreach (@$vmviews) {
+                     $mgdvms{$_->{'config.name'}} = $_;
+                }
+                $function->(
+                    node=>$lnode,
+                    vm=>$lnode,
+                    vmview=>$mgdvms{$node},
+                    exargs=>\@exargs
+                    );
+	}
     my @entitylist;
     push @entitylist,keys %hyphash;
     push @entitylist,keys %clusterhash;
