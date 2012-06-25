@@ -575,18 +575,35 @@ sub process_request_nmap {
    if ($chaintab) {
 	%chainhash = %{$chaintab->getNodesAttribs(\@nodes,['currstate'])};
    }
+   my $hoststab = xCAT::Table->new('hosts',-create=>0);
+   my %hostsents;
+   if ($hoststab) { %hostsents = %{$hoststab->getNodesAttribs(\@nodes,['ip'])}; }
+   my @ips;
+   my @ip6s;
    foreach (@nodes) {
 	$unknownnodes{$_}=1;
 	my $ip = undef;
-        $ip = xCAT::NetworkUtils->getipaddr($_);
-        if( !defined $ip) {
-                my %rsp;
-                $rsp{name}=[$_];
-                $rsp{data} = [ "Please make sure $_ exists in /etc/hosts or DNS" ];
-                $callback->({node=>[\%rsp]});
-        } else {
-            $nodebyip{$ip} = $_;
-        }
+	if ($hostsents{$_}) { 
+		$ip = $hostsents{$_}->[0]->{ip};
+            	$nodebyip{$ip} = $_;
+	        $ip = xCAT::NetworkUtils->getipaddr($ip);
+            	$nodebyip{$ip} = $_;
+	} else {
+	        $ip = xCAT::NetworkUtils->getipaddr($_);
+	}
+	if( !defined $ip) {
+	        my %rsp;
+	        $rsp{name}=[$_];
+	        $rsp{data} = [ "Please make sure $_ exists in /etc/hosts or DNS or hosts table" ];
+	        $callback->({node=>[\%rsp]});
+	} else {
+	    if ($ip =~ /:/) { 
+		 push @ip6s,$ip;
+	    } else { 
+	            push @ips,$ip;
+ 	    }
+	    $nodebyip{$ip} = $_;
+	}
    }
 
    my $ret={};
@@ -599,7 +616,6 @@ sub process_request_nmap {
    }
    #print "nmap -PE --send-ip -p $ports,3001 ".join(' ',@nodes) . "\n";
    # open($fping,"nmap -PE --send-ip -p $ports,3001 ".join(' ',@nodes). " 2> /dev/null|") or die("Can't start nmap: $!");
-   open($fping,"nmap -PE --send-ip -p $ports,3001 ".join(' ',@nodes). " 2> /dev/null|") or die("Can't start nmap: $!");
    my $currnode='';
    my $port;
    my $state;
@@ -607,8 +623,14 @@ sub process_request_nmap {
    my %rsp;
    my $installquerypossible=0;
    my @nodesetnodes=();
+   foreach my $ip6 (0,1) { #first pass, ipv4, second pass ipv6
+   if ($ip6 and scalar(@ip6s)) {
+   open($fping,"nmap -6 -PS --send-ip -p $ports,3001 ".join(' ',@ip6s). " 2> /dev/null|") or die("Can't start nmap: $!");
+   } elsif (scalar(@ips)) {
+   open($fping,"nmap -PE --send-ip -p $ports,3001 ".join(' ',@ips). " 2> /dev/null|") or die("Can't start nmap: $!");
+   } else { next; }
    while (<$fping>) {
-      if (/Interesting ports on ([^ ]*) / or /Nmap scan report for ([^ ]*)/) {
+      if (/Interesting ports on ([^ ]*)[: ]/ or /Nmap scan report for ([^ ]*)/) {
           my $tmpnode=$1;
           if ($currnode) {     #if still thinking about last node, flush him out
               my $status = join ',',sort keys %states ;
@@ -631,6 +653,8 @@ sub process_request_nmap {
               }
           }
           $currnode=$tmpnode;
+	  $currnode =~ s/:$//;
+	  
 
           my $nip;
           if ($nip = xCAT::NetworkUtils->getipaddr($currnode)) { #reverse lookup may not resemble the nodename, key by ip
@@ -666,6 +690,7 @@ sub process_request_nmap {
               }
           }
       } 
+   }
    }
 
    if ($currnode) {
