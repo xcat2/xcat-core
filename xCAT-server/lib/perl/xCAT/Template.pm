@@ -46,6 +46,7 @@ sub subvars {
   my $pkglistfile=shift;
   my $media_dir = shift;
   my $platform=shift;
+  my $partitionfile=shift;
   my %namedargs = @_; #further expansion of this function will be named arguments, should have happened sooner.
   unless ($namedargs{reusemachinepass}) {
 	$lastmachinepass="";
@@ -185,6 +186,42 @@ sub subvars {
   my $sles_sdk_media = "http://" . $tftpserver->{tftpserver} . $media_dir . "/sdk1";
   
   $inc =~ s/#SLES_SDK_MEDIA#/$sles_sdk_media/eg;
+
+  #if user specify the partion file, replace the default partition strategy
+  if ($partitionfile){
+    #if the content of the partition file is definition replace the default is ok
+    my $partcontent = '';
+    my $scriptflag = 0;
+
+    if ($partitionfile =~ /^s:(.*)/){
+        $scriptflag = 1;
+        $partitionfile = $1;
+    }
+
+    if (-r $partitionfile){
+        open ($inh, "<", $partitionfile);
+        while (<$inh>){
+            $partcontent .= $_;
+        }
+        close ($inh);
+
+        #the content of the specified file is a script which can write partition definition into /tmp/partitionfile
+        if ($scriptflag){
+            my $tempstr = "%inlcude /tmp/partitionfile\n";
+            $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$tempstr/;
+            #modify the content in the file, and write into %pre part
+            $partcontent = "cat > /tmp/partscript << EOF\n" . $partcontent . "\nEOF\n";
+            $partcontent .= "chmod 755 /tmp/partscript\n";
+            $partcontent .=  "/tmp/partscript\n";
+            #replace the #XCA_PARTITION_SCRIPT#
+            $inc =~ s/#XCA_PARTITION_SCRIPT#/$partcontent/;
+        }
+        else{
+            $partcontent =~ s/\s$//;
+            $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$partcontent/;
+        }
+    }
+  }
 
   if ($tmplerr) {
      close ($outh);
