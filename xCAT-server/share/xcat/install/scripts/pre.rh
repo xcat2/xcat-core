@@ -190,3 +190,4 @@ echo "part /boot --size 256 --fstype ext3 --ondisk $instdisk" >> /tmp/partitioni
 echo "part swap --recommended --ondisk $instdisk" >> /tmp/partitioning
 echo "part / --size 1 --grow --ondisk $instdisk --fstype $FSTYPE" >> /tmp/partitioning
 	
+#XCA_PARTITION_SCRIPT#
