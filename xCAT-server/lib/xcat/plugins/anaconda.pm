@@ -838,6 +838,7 @@ sub mkinstall
 	my $imagename;
 	my $platform;
         my $xcatmaster;
+        my $partfile;
 
         my $ient = $rents{$node}->[0];
         if ($ient and $ient->{xcatmaster})
@@ -870,7 +871,7 @@ sub mkinstall
 		    if (!$linuximagetab) {
 			$linuximagetab=xCAT::Table->new('linuximage', -create=>1);
 		    }
-		    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkgdir', 'pkglist');
+		    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkgdir', 'pkglist', 'partitionfile');
 		    if ($ref1) {
 			if ($ref1->{'template'}) {
 			    $img_hash{$imagename}->{template}=$ref1->{'template'};
@@ -881,6 +882,9 @@ sub mkinstall
 			if ($ref1->{'pkglist'}) {
 			    $img_hash{$imagename}->{pkglist}=$ref1->{'pkglist'};
 			}
+            if ($ref1->{'partitionfile'}) {
+                $img_hash{$imagename}->{partitionfile} = $ref1->{'partitionfile'};
+            }
 		    }
 		    # if the install template wasn't found, then lets look for it in the default locations.
 		    unless($img_hash{$imagename}->{template}){
@@ -919,6 +923,7 @@ sub mkinstall
 	    $os = $ph->{osver};
 	    $arch  = $ph->{osarch};
 	    $profile = $ph->{profile};
+        $partfile = $ph->{partitionfile};
 	    $platform=xCAT_plugin::anaconda::getplatform($os);
 	
 	    $tmplfile=$ph->{template};
@@ -953,6 +958,26 @@ sub mkinstall
 	    if (! $pkglistfile) { $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$::XCATROOT/share/xcat/install/$platform", $profile, $os, $arch, $genos); }
 
 	    $pkgdir="$installroot/$os/$arch";
+        #get the partition file from the linuximage table
+        my $imgname = "$os-$arch-install-$profile";
+
+        if ( ! $linuximagetab ) {
+            $linuximagetab = xCAT::Table->new('linuximage');
+        }
+
+        if ( $linuximagetab ) {
+            (my $ref1) = $linuximagetab->getAttribs({imagename => $imgname}, 'partitionfile');
+            if ( $ref1 and $ref1->{'partitionfile'}){
+                $partfile = $ref1->{'partitionfile'};
+            }
+        
+            #can not find the linux osiamge object, tell users to run "nodeset <nr> osimage=***"
+            else {
+                $callback->(
+                     { error => [qq{ Cannot find the linux image called "$imgname", maybe you need to use the "nodeset <nr> osimage=<your_image_name>" command to set the boot state}], errorcode => [1] }
+            );
+        }
+        }
 	}
 
         my @missingparms;
@@ -1009,7 +1034,10 @@ sub mkinstall
                     $tmplfile,
                     "/$installroot/autoinst/" . $node,
                     $node,
-		    $pkglistfile
+		            $pkglistfile,
+                    undef,
+                    undef,
+                    $partfile
                     );
         }
  
