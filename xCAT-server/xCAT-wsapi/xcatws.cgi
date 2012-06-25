@@ -1765,9 +1765,9 @@ sub wrapData {
 }
 
 sub wrapJson {
-    my @data = shift;
+    my $data = shift;
     my $json;
-    $json->{'data'} = \@data;
+    $json->{'data'} = $data;
     addPageContent(to_json($json));
 }
 
