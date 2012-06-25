@@ -234,15 +234,19 @@ sub subvars {
 
 sub kickstartnetwork {
 	my $line = "network --bootproto=";
+	my $hoststab;
       my $mactab = xCAT::Table->new('mac',-create=>0);
-      unless ($mactab) { die "mac table should always exist prior to flexcat specific template processing"; }
+      unless ($mactab) { die "mac table should always exist prior to template processing when doing autoula"; }
       my $ent = $mactab->getNodeAttribs($node,['mac']);
       unless ($ent and $ent->{mac}) { die "missing mac data for $node"; }
       my $suffix = $ent->{mac};
       $suffix = lc($suffix);
 	if ($::XCATSITEVALS{managedaddressmode} eq "autoula") {
+		unless ($hoststab) { $hoststab = xCAT::Table->new('hosts',-create=>1); }
 		$line .= "static --device=$suffix --noipv4 --ipv6=";
-		$line .= autoulaaddress($suffix);
+		my $ulaaddr = autoulaaddress($suffix);
+		$hoststab->setNodeAttribs($node,{ip=>$ulaaddr});
+		$line .= $ulaaddr;
 	} else {
 		$line .= "dhcp";
 	}
