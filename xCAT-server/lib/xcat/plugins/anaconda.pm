@@ -1835,11 +1835,13 @@ sub insert_dd {
             xCAT::Utils->runcmd($cmd, -1);
     
             # Get the entries from modinfo
+	    my $drivername;
             open (DDMODINFO, "<", "$dd_dir/mnt/modinfo");
             while (<DDMODINFO>) {
                 if ($_ =~ /^Version/) { next; }
-                if ($_ =~ /^(\S*)/) {
+                if ($_ =~ /^(\S+)/) {
                     push @dd_drivers, $1;
+ 		    $drivername=$1;
                 }
                 push @modinfo, $_;
             }
@@ -1850,12 +1852,29 @@ sub insert_dd {
             xCAT::Utils->runcmd($cmd, -1);
     
             # Append the modules.dep
-            $cmd = "cat $dd_dir/mnt/modules.dep >> $dd_dir/initrd_img/modules/modules.dep";
-            xCAT::Utils->runcmd($cmd, -1);
+	    my $depfile;
+	    my $target;
+	    open($target,">>","$dd_dir/initrd_img/modules/modules.dep");
+	    open($depfile,"<","$dd_dir/mnt/modules.dep");
+	    my $curline;
+            while ($curline=<$depfile>) {
+		if ($curline !~ /:/) { #missing the rather important first half of the equation here....
+			$curline = $drivername.": ".$curline;
+		}
+		print $target $curline;
+            }
+            close($target);
+	    close($depfile);
     
             # Append the pcitable
+	    if (-r "$dd_dir/mnt/pcitable") { 
             $cmd = "cat $dd_dir/mnt/pcitable >> $dd_dir/initrd_img/modules/pcitable";
             xCAT::Utils->runcmd($cmd, -1);
+	    }
+	    if (-r "$dd_dir/mnt/modules.pcimap") { 
+            $cmd = "cat $dd_dir/mnt/modules.pcimap >> $dd_dir/initrd_img/modules/modules.pcimap";
+            xCAT::Utils->runcmd($cmd, -1);
+	    }
     
             $cmd = "umount -f $dd_dir/mnt";
             xCAT::Utils->runcmd($cmd, -1);
