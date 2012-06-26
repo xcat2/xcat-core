@@ -3812,6 +3812,27 @@ sub parse_and_run_dsh
 
     if (defined $options{'ssh-setup'})
     {
+        # check if any node in the noderange is the Management Node and exit 
+        # with error, if the Management Node is in the Database and in the
+        # noderange
+        my $mname;
+        my $tab = xCAT::Table->new('nodetype');
+        my @nodelist2=$tab->getAllNodeAttribs(['node','nodetype']);
+        foreach my $n (@nodelist2) {
+           if ($n->{'nodetype'} eq "mn") {  # this is the MN
+              $mname=$n->{'node'};
+              last;
+           } 
+        }
+        if ($mname) {  # MN in the database
+         if (grep(/$mname/, @nodelist)) { # if MN in the noderange
+            my $rsp = {};
+            $rsp->{error}->[0] =
+              "You must not run -K option against the Management Node:$mname.";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            return;
+         } 
+        } 
         # if devicetype=Mellanox,  xdsh does not setup ssh,  rspconfig does
         if ($switchtype =~ /Mellanox/i) {
            my $rsp = {};
