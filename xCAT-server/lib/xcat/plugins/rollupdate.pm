@@ -1121,7 +1121,8 @@ my @rcblines;
             } else {
                 my $submit_count = 1;
                 if ($::updateall){ 
-                   $submit_count = $machinecount / $::updateall_nodecount;
+                   $submit_count = int($machinecount / $::updateall_nodecount);
+                   if ($submit_count == 0) {$submit_count = 1;}
                 }
                 for (1..$submit_count) {
                     @llsubmit = xCAT::Utils->runcmd( "$cmd", 0 );
