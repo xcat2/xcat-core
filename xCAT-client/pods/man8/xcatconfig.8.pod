@@ -14,7 +14,7 @@ B<xcatconfig> {B<-i>|B<--initinstall>}  [B<-V>|B<--verbose>]
 
 B<xcatconfig> {B<-u>|B<--updateinstall>}  [B<-V>|B<--verbose>]
 
-B<xcatconfig> [B<-k>|B<--sshkeys>] [B<-s>|B<--sshnodehostkeys>] [B<-c>|B<--credentials>] [B<-d>|B<--database>] [B<-V>|B<--verbose>]
+B<xcatconfig> [B<-k>|B<--sshkeys>] [B<-s>|B<--sshnodehostkeys>] [B<-c>|B<--credentials>] [B<-d>|B<--database>] [B<-m>|B<--mgtnode>]  [B<-V>|B<--verbose>]
 
 B<xcatconfig> {B<-f>|B<--force>} [B<-V>|B<--verbose>]
 
@@ -70,6 +70,11 @@ Additional action must be taken after using the force options.  ssh keys must be
 A new set of common ssh host keys will have  been generated for the nodes. If you wish your nodes to be able to ssh to each other with out password intervention,  then you should redistribute these new keys to the nodes. If the nodes hostkeys are updated then you will need to remove their entries from the known_hosts files on the management node before using ssh, xdsh, xdcp. 
 Redistribute credentials and ssh keys to the service nodes and ssh keys to the nodes by using the updatenode -k command.   
 
+=item B<-m|--mgtnode>
+
+This option will add the Management Node to the database with the correct attributes set to be recognized by xCAT.  This should be run after the hostname of the Management Node is set to the name that  will resolve to the cluster-facing NIC.
+
+
 =back
 
 =head1 EXAMPLES
@@ -99,5 +104,11 @@ B<xcatconfig> I<-s>
 To regenerate node host ssh keys and credentials:
 
 B<xcatconfig> I<-s> I<-c>
+
+=item *
+
+To add the Management Node to the DB:
+
+B<xcatconfig> I<-m> 
 
 =back
