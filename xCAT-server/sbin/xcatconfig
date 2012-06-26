@@ -51,6 +51,7 @@ if (
                 'i|initinstall'     => \$::INITIALINSTALL,
                 'u|updateinstall'   => \$::UPDATEINSTALL,
                 'k|sshkeys'         => \$::genSSHRootKeys,
+                'm|mgtnode'         => \$::setupMNinDB,
                 's|sshnodehostkeys' => \$::genSSHNodeHostKeys,
                 'c|credentials'     => \$::genCredentials,
                 'd|database'        => \$::initDB,
@@ -73,6 +74,7 @@ if (   (!$::HELP)
     && (!$::genSSHRootKeys)
     && (!$::genSSHNodeHostKeys)
     && (!$::genCredentials)
+    && (!$::setupMNinDB)
     && (!$::initDB)
     && (!$::VERSION))
 {
@@ -183,23 +185,6 @@ chomp $::root;
 
 
 # some Linux-only config
-# Do not need to start vsftpd here, because when xcatd starts, it will restart it
-#if ($::osname eq 'Linux')
-#{
-# start vsftpd
-#    my $cmd    = "/sbin/chkconfig vsftpd on";
-#    my $outref = xCAT::Utils->runcmd("$cmd", 0);
-#    my $cmd    = "/etc/init.d/vsftpd restart";
-#    my $outref = xCAT::Utils->runcmd("$cmd", 0);
-#    if ($::RUNCMD_RC != 0)
-#    {
-#        xCAT::MsgUtils->message('E', "Could not start VSFTPD.");
-#    }
-#    else
-#    {
-#        xCAT::MsgUtils->message('I', "VSFTPD has been restarted.");
-#    }
-#}    # end Linux-only
 
 #
 # Generate ssh host keys for the nodes
@@ -381,7 +366,7 @@ if ($::INITIALINSTALL || $::FORCE)
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                             "Could not remove $::TFTPDIR/pxelinux.cfg/default");
+                          "Could not remove $::TFTPDIR/pxelinux.cfg/default");
         }
         else
         {
@@ -425,7 +410,10 @@ END
         }    
     }
 }
-
+# if xcatconfig -m request to setup the management node in the database
+if ($::setupMNinDB) {
+  &setupMNinDB;
+}
 exit;
 
 #####################################
@@ -450,7 +438,7 @@ sub usage
         );
     xCAT::MsgUtils->message(
         'I',
-        "xcatconfig [-h|--help]\nxcatconfig [-v|--version]\nxcatconfig [-f|--force] [-V|--verbose]\nxcatconfig [-i|--initinstall] [-V|--verbose]\nxcatconfig [-u|--updateinstall] [-V|--verbose]\nxcatconfig [-k|--sshkeys] [-s|--sshnodehostkeys] [-c|--credentials] [-d|database] [-V|--verbose]"
+        "xcatconfig [-h|--help]\nxcatconfig [-v|--version]\nxcatconfig [-f|--force] [-V|--verbose]\nxcatconfig [-i|--initinstall] [-V|--verbose]\nxcatconfig [-u|--updateinstall] [-V|--verbose]\nxcatconfig [-k|--sshkeys] [-s|--sshnodehostkeys] [-c|--credentials] [-d|database] [-m|mgtnode] [-V|--verbose]"
         );
 }
 
@@ -1856,4 +1844,31 @@ sub cleanupPSTable
  }
 
  return $rc
+}
+#-----------------------------------------------------------------------------
+
+=head3   setupMNinDB 
+	
+   Will add the management node to the database with group=mn and nodetype=mn 
+
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub setupMNinDB
+{
+   my $mnname = `hostname`;
+   chomp $mnname;
+   $mnname && $mnname =~ s/\..*//; # strip off domain
+   my $chtabcmds = "$::XCATROOT/sbin/chtab node=$mnname nodelist.groups=mn nodetype.nodetype=mn;";
+   my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
+   if ($::RUNCMD_RC != 0)
+   {
+      xCAT::MsgUtils->message('E', "Could not add $mnname to the dateabase.");
+   }
+   else
+   {
+       verbose("Added $mnname to the database.");
+   }
+    return; 
 }
