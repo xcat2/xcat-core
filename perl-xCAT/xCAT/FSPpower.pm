@@ -30,6 +30,7 @@ sub enumerate {
     my $type    = ();
     my $cec_bpa = ();
     my $tmp_d;
+    my $tmp_name;
     
     ######################################
     # Check for CEC/LPAR/BPAs in list
@@ -37,7 +38,8 @@ sub enumerate {
     while (my ($name,$d) = each(%$h) ) {
         $cec_bpa = @$d[3];
         $type = @$d[4];
-	$tmp_d = $d;
+        $tmp_d = $d;
+        $tmp_name = $name;
         #$cmds{$type} = ($type=~/^lpar$/) ? "all_lpars_state" : "cec_state";
         if( $type=~/^lpar$/ ) {
             $cmds{$type} = "all_lpars_state";
@@ -69,6 +71,12 @@ sub enumerate {
             ##############################
             if ( $type =~ /^(fsp|bpa|cec|frame|blade)$/ ) {
                 if ($type eq 'blade') {
+                    if ($state eq 'operating') {
+                        my $res = xCAT::FSPUtils::fsp_api_action($request, $tmp_name,$tmp_d,'state',$tooltype);
+                        if (@$res[2] == 0 and @$res[1] =~ /open-firmware/i) {
+                            $state = @$res[1];
+                        }
+                    }
                     if ($state =~ /standby|operating/) {
                         $state = "on";
                     }
