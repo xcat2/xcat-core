@@ -1304,7 +1304,7 @@ sub defmk
                         my $rsp;
                         $rsp->{data}->[0] =
                           "Cannot determine a member list for group \'$obj\'.";
-                        xCAT::MsgUtils->message("E", $rsp, $::callback);
+                        xCAT::MsgUtils->message("W", $rsp, $::callback);
                     }
                 }
 
