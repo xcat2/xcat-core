@@ -12,6 +12,11 @@ use warnings;
 
 
 use Socket;
+my $inet6support = eval {
+	require Socket6;
+	require IO::Socket::INET6;
+	1;
+};
 use IO::Handle;
 use Getopt::Long;
 use Data::Dumper;
@@ -71,11 +76,16 @@ sub installer_query {
    my $destport = 3001;
    my $socket;
    my $text = "";
-   my $proto = getprotobyname('tcp');
-   socket($socket,PF_INET,SOCK_STREAM,$proto) || return 0;
-   my $addr = gethostbyname($node);
-   my $sin = sockaddr_in($destport,$addr);
-   connect($socket,$sin) || return 0;
+   if ($inet6support) {
+	$socket = IO::Socket::INET6->new(PeerAddr => $node, PeerPort => 3001);
+	unless ($socket) { return 0; }
+   } else {
+	   my $proto = getprotobyname('tcp');
+	   socket($socket,PF_INET,SOCK_STREAM,$proto) || return 0;
+	   my $addr = gethostbyname($node);
+	   my $sin = sockaddr_in($destport,$addr);
+	   connect($socket,$sin) || return 0;
+   }
    print $socket "stat \n";
    $socket->flush;
    while (<$socket>) { 
@@ -641,8 +651,10 @@ sub process_request_nmap {
 		  else {$appsd .= $app_t . "=down,";}
 	      }
 	      $appsd =~ s/,$//;
+	      my $target=$currnode;
+	      if ($hostsents{$target} and $target = $hostsents{$target}->[0]->{ip}) { $target = $hostsents{$target}->[0]->{ip}; }
 
-              if ($status or ($installquerypossible and $status = installer_query($currnode))) { #pingable, but no *clue* as to what the state may be
+              if ($status or ($installquerypossible and $status = installer_query($target))) { #pingable, but no *clue* as to what the state may be
                   $ret->{$currnode}->{'status'}="ping";
                   $ret->{$currnode}->{'appstatus'}=$status;
                   $ret->{$currnode}->{'appsd'}=$appsd;
@@ -703,7 +715,9 @@ sub process_request_nmap {
        }
        $appsd =~ s/,$//;
    
-       if ($status or ($installquerypossible and $status = installer_query($currnode))) { #pingable, but no *clue* as to what the state may be
+      my $target=$currnode;
+      if ($hostsents{$target} and  $hostsents{$target}->[0]->{ip}) { $target = $hostsents{$target}->[0]->{ip}; }
+       if ($status or ($installquerypossible and $status = installer_query($target))) { #pingable, but no *clue* as to what the state may be
 	   $ret->{$currnode}->{'status'}="ping";
 	   $ret->{$currnode}->{'appstatus'}=$status;
 	   $ret->{$currnode}->{'appsd'}=$appsd;
