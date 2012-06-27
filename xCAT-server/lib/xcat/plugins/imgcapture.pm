@@ -337,7 +337,7 @@ sub imgcapture {
         my $cmd;
 
         if( $osimg ) {
-            $cmd = "$::XCATROOT/share/xcat/netboot/$platform/genimage $osimg";
+            $cmd = "$::XCATROOT/bin/genimage $osimg ";
         } else {
             $cmd = "$::XCATROOT/share/xcat/netboot/$platform/genimage -o $os -a $arch -p $profile ";
         }
