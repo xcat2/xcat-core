@@ -31,6 +31,7 @@ key --skip
 # Customize to fit your needs
 #
 
+#XCAT_PARTITION_START#
 #No RAID
 #/boot really significant for this sort of setup nowadays?
 #part None --fstype "PPC PReP Boot" --size 8
@@ -64,6 +65,7 @@ raid swap --level 1 --device md1 raid.11 raid.12
 part raid.21 --size 1 --fstype ext4 --grow --ondisk mpatha
 part raid.22 --size 1 --fstype ext4 --grow --ondisk mpathb
 raid / --level 1 --device md2 raid.21 raid.22
+#XCAT_PARTITION_END#
 
 #
 # bootloader config

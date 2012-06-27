@@ -39,6 +39,7 @@ key --skip
 #part swap --size 1024 
 #part / --size 1 --grow --fstype ext4
 
+#XCAT_PARTITION_START#
 #RAID 0 /scr for performance
 #part / --size 1024 --ondisk sda
 #part swap --size 512 --ondisk sda
@@ -64,6 +65,7 @@ raid swap --level 1 --device md1 raid.11 raid.12
 part raid.21 --size 1 --fstype ext4 --grow --ondisk sda
 part raid.22 --size 1 --fstype ext4 --grow --ondisk sdb
 raid / --level 1 --device md2 raid.21 raid.22
+#XCAT_PARTITION_END#
 
 #
 # bootloader config
