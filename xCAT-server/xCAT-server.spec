@@ -12,7 +12,6 @@ Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
 Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 
-%define fsm %(if [ "$fsm" = "1" ];then echo 1; else echo 0; fi)
 %ifnos linux
 AutoReqProv: no
 %endif
@@ -21,13 +20,21 @@ AutoReqProv: no
 # also need to fix Requires for AIX
 %ifos linux
 BuildArch: noarch
-%if %fsm
 Requires: perl-IO-Socket-SSL perl-XML-Simple
-%else
-Requires: perl-IO-Socket-SSL perl-XML-Simple perl-IO-Tty perl-Crypt-SSLeay make
-%endif
 Obsoletes: atftp-xcat
 %endif
+
+%define fsm %(if [ "$fsm" = "1" ];then echo 1; else echo 0; fi)
+
+%if %fsm
+# nothing needed here
+%else
+%ifos linux
+# do this for non-fsm linux
+Requires: perl-IO-Tty perl-Crypt-SSLeay make
+%endif
+%endif
+
 
 Requires: perl-xCAT >= %{epoch}:%(cat Version)
 Requires: xCAT-client  >= %{epoch}:%(cat Version|cut -d. -f 1,2)
