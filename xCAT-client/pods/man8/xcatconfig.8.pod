@@ -74,7 +74,6 @@ Redistribute credentials and ssh keys to the service nodes and ssh keys to the n
 
 This option will add the Management Node to the database with the correct attributes set to be recognized by xCAT.  This should be run after the hostname of the Management Node is set to the name that  will resolve to the cluster-facing NIC.
 
-
 =back
 
 =head1 EXAMPLES
