@@ -74,7 +74,7 @@ if [ -f /etc/xCATMN ]; then
 else
     #om SN
     mounted=0
-    result=`mount |grep /install`
+    result=`mount |grep "/install " | grep nfs`
     if [ $? -eq 0 ]; then
 	mounted=1
     fi
