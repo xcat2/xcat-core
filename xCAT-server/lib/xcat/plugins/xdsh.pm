@@ -643,7 +643,22 @@ sub process_nodes
             # xdsh and xdcp pull just use the input request
         if (($command eq "xdcp") && ($::dcppull == 0))
         {
-            $newSNreq->{arg}->[-2] = $::SNpath;
+            # have to change each file path and add the SNsynfiledir
+            # except the last entry which is the destination on the computenode
+            my $args = $newSNreq->{arg};
+            my $arraysize = @$args;
+            my $i = 0;
+            foreach (@$args) {
+              if ($arraysize > 1) { 
+                my $tmpfile =$synfiledir ;
+                $tmpfile .=$newSNreq->{arg}->[$i] ;
+                $newSNreq->{arg}->[$i] = $tmpfile;
+                $arraysize--; 
+                $i++;
+              } else {
+                 last;
+              }    
+            }
         } else { # if xdsh -e
           if ($::dshexecute) { # put in new path from SN directory
             my $destination=$synfiledir . $::dshexecute;
