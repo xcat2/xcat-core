@@ -477,13 +477,11 @@ sub mknetboot
         my $netdev = "";
         my $mac = $machash->{$node}->[0]->{mac};
 
-        if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{installnic}) {
-            if ($reshash->{$node}->[0]->{installnic} ne "mac") {
+        if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{installnic} and ($reshash->{$node}->[0]->{installnic} ne "mac")) {
                 $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{installnic} . " ";
-            }
         } elsif ($nodebootif) {
             $kcmdline .=  "netdev=" . $nodebootif . " ";
-        } elsif ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{primarynic}) {
+        } elsif ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{primarynic} and ($reshash->{$node}->[0]->{primarynic} ne "mac")) {
             $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{primarynic} . " ";
         } else {
             if ($arch =~ /x86/) {
