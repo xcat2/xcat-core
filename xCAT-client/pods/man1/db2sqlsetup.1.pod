@@ -11,6 +11,8 @@ B<db2sqlsetup> {B<-v>|B<--version>}
 
 B<db2sqlsetup> {B<-i>|B<--init>}{<-S> | <-C>} [-o|--setupODBC]  [B<-V>|B<--verbose>]
 
+B<db2sqlsetup> {B<-i>|B<--init>}{<-S>} [-N|--nostart]  [-o|--setupODBC]  [B<-V>|B<--verbose>]
+
 B<db2sqlsetup> {B<-o>|B<--setupODBC>} {<-S> | <-C>} [-V|--verbose] 
 
 B<db2sqlsetup> {B<-p>|B<--passwd>} [<-S> | <-C>]
@@ -63,6 +65,11 @@ The password change option is to change the database access password for the DB2
 This options says whether to setup the Server (-S) on the Management Node, or the Client (-C) on the Service Nodes.
 
 
+=item B<-N|--nostart>
+
+This option with the -S flag will create the database, but will not backup and restore xCAT into the database. It will create the cfgloc file such that the next start of xcatd will try and contact the database.
+
+
 =item B<-o|--setupODBC>
 
 This option sets up the ODBC  /etc/../odbcinst.ini, /etc/../odbc.ini and the .odbc.ini file in roots home directory will be created and initialized to run off the xcatdb DB2 database.
@@ -70,6 +77,22 @@ This option sets up the ODBC  /etc/../odbcinst.ini, /etc/../odbc.ini and the .od
 =back
 
 =head1 ENVIRONMENT VARIABLES
+
+=over 2
+
+=item *
+
+XCATDB2INSPATH  overrides the default install path for DB2 which is /opt/ibm/db2/V9.7 for Linux and /opt/IBM/db2/V9.7 for AIX.
+
+=item *
+
+DATABASELOC override the where to create the xcat DB2 database, which is /var/lib/db2 by default of taken from the site.databaseloc  attribute.
+
+=item *
+
+XCATDB2PW can be set to the password for the xcatdb DB2 instance id so that there will be no prompting for a password when the script is run.
+
+=back
 
 =head1 EXAMPLES
 
