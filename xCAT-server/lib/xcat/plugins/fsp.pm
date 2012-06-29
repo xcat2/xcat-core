@@ -73,7 +73,8 @@ sub preprocess_request {
         getmulcon($node,$callback);
         return [];
     }    
-    if ($arg1->{command}->[0] eq "rspconfig") { 
+    #if ($arg1->{command}->[0] eq "rspconfig") { 
+    if ($arg1->{command}->[0] =~ /rspconfig|rvitals/) { 
         # All the nodes with mgt=blade or mgt=fsp will get here
         # filter out the nodes for fsp.pm
         my (@mpnodes, @fspnodes, @nohandle);
@@ -174,6 +175,8 @@ sub filter_nodes{
       } else {
         push @{$mpnodes}, @ngpfsp;
       }
+    } elsif ($cmd eq "rvitals") {
+      push @{$mpnodes},@ngpfsp;
     } else {
       push @{$fspnodes}, @ngpfsp;
     }

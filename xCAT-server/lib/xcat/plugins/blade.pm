@@ -52,7 +52,7 @@ sub handled_commands {
     rpower => 'nodehm:power,mgt',
     getbladecons => 'blade',
     getrvidparms => 'nodehm:mgt',
-    rvitals => 'nodehm:mgt',
+    rvitals => 'nodehm:mgt=blade|fsp',
     rinv => 'nodehm:mgt',
     rbeacon => 'nodehm:mgt',
     rspreset => 'nodehm:mgt',
@@ -101,6 +101,7 @@ my $bladediagbuildidoid = '1.3.6.1.4.1.2.3.51.2.2.21.5.2.1.6'; #bladeDiagsVpdBui
 my $bladediagdateoid = '1.3.6.1.4.1.2.3.51.2.2.21.5.2.1.8';#bladeDiagsVpdDate
 my $eventlogoid = '1.3.6.1.4.1.2.3.51.2.3.4.2.1.2';#readEventLogString
 my $clearlogoid = '.1.3.6.1.4.1.2.3.51.2.3.4.3';#clearEventLog
+my $chassisfanbase = '.1.3.6.1.4.1.2.3.51.2.2.3.50.1.';
 my $blower1speedoid = '.1.3.6.1.4.1.2.3.51.2.2.3.1';#blower2speed
 my $blower2speedoid = '.1.3.6.1.4.1.2.3.51.2.2.3.2';#blower2speed
 my $blower3speedoid = '.1.3.6.1.4.1.2.3.51.2.2.3.3';#blower2speed
@@ -228,6 +229,7 @@ my %mpahash;
 my $currnode;
 my $mpa;
 my $mptype; # The type of mp node. For cmm, it's 'cmm'
+my $mpatype; # The type of node's mpa. Used for SNMP OIDs.
 my $mpauser;
 my $mpapass;
 my $allinchassis=0;
@@ -917,12 +919,21 @@ sub vitals {
       my $tnum;
       for my $tmp (@$bindobj) {
         if ($tmp and defined $tmp->[2] and $tmp->[2] !~ /Not Readable/ and $tmp->[2] ne "") {
+            my $restype=$tmp->[0];
+            $restype =~ s/^.*\.(\d*)$/$1/;
+            if ($restype =~ /^([6789])$/) {
+                $tmp->[2] = "CPU ".($1 - 5)." Temp: ".$tmp->[2]; 
+            }
           push @output,cleantemp($tmp->[2]);
         }
       }
       unless (defined $chassiswidevitals{ambient}) {
           $chassiswidevitals{ambient} = [];
-          my @ambientbind=([".1.3.6.1.4.1.2.3.51.2.2.1.5.1","0"],[".1.3.6.1.4.1.2.3.51.2.2.1.5.2","0"]);
+          my @ambientbind=([".1.3.6.1.4.1.2.3.51.2.2.1.5.1","0"],
+                           [".1.3.6.1.4.1.2.3.51.2.2.1.5.2","0"]);
+          if ($mpatype eq 'cmm') {
+              pop @ambientbind;
+          }
           my $targ = new SNMP::VarList(@ambientbind);
           my $tempidx=1;
           $session->get($targ);
@@ -1063,7 +1074,7 @@ sub vitals {
     }
 
 
-     if (grep /volt/,@vitems) {
+     if ((grep /volt/,@vitems) and ($mpatype ne 'cmm')) {
        my $voltbase = "1.3.6.1.4.1.2.3.51.2.2.2.1";
        my %voltlabels = ( 1=>"+5V", 2=>"+3.3V", 3=>"+12V", 5=>"-5V", 6=>"+2.5V", 8=>"+1.8V" );
        foreach my $idx ( keys %voltlabels ) {
@@ -1080,10 +1091,15 @@ sub vitals {
       }
 
      if (grep /ambient/,@vitems) {
-       my %oids = (
+       my %oids = ();
+       if ($mpatype ne 'cmm') {
+       %oids = (
         "Ambient 1",".1.3.6.1.4.1.2.3.51.2.2.1.5.1.0",
         "Ambient 2",".1.3.6.1.4.1.2.3.51.2.2.1.5.2",	
-       );
+       ); 
+       } else {
+         %oids = ("Ambient 1",".1.3.6.1.4.1.2.3.51.2.2.1.5.1.0");
+       }
        foreach my $oid ( keys %oids ) {
          $tmp=$session->get([$oids{$oid}]);
          push @output,sprintf("%s: %s",$oid,$tmp) if $tmp !~ /NOSUCHINSTANCE/;
@@ -1097,10 +1113,15 @@ sub vitals {
 
 
      if (grep /power/,@vitems) {
-         my %oids = (
+         my %oids = ();
+         if ($mpatype ne 'cmm') {
+          %oids = (
           "PD1",".1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.3.1",
           "PD2",".1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.3.2",
          );
+         } else {
+             %oids = ("PD1",".1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.3.1");
+         }
          foreach my $oid ( keys %oids ) {
            $tmp=$session->get([$oids{$oid}]);
            push @output,sprintf("%s: %s",$oid,$tmp) if $tmp !~ /NOSUCHINSTANCE/;
@@ -1212,9 +1233,21 @@ sub populatefanvitals {
         push @{$chassiswidevitals{fan}},$text;
     }
 }
+sub by_number {
+    if ($a < $b) {
+        -1;
+    } elsif ($a > $b) {
+        1;
+    } else {
+        0;
+    }
+} 
 sub populateblowervitals {
           $chassiswidevitals{blower}=[];
-          my @bindoid = (
+          my %blowerstats=();
+          my @bindoid = ();
+          if ($mpatype ne 'cmm') {
+              @bindoid = (
               [$blower1speedoid,"0"],
               [$blower2speedoid,"0"],
               [$blower3speedoid,"0"],
@@ -1232,25 +1265,47 @@ sub populateblowervitals {
               [$blower3contstateoid,"0"],
               [$blower4contstateoid,"0"],
           );
-          my $bind = new SNMP::VarList(@bindoid);
-          $session->get($bind);
-          my %blowerstats=();
-          foreach (@$bind) {
-              if ($_->[2] eq "NOSUCHINSTANCE") { next; }
-              my $idx=$_->[0];
-              $idx =~ s/^.*\.(\d*)$/$1/;
-              if ($idx < 10) {
-                  $blowerstats{$idx}->{percentage}=$_->[2];
-                  $blowerstats{$idx}->{percentage}=~ s/^[^\d]*(\d*)[^\d].*$/$1/;
-              } elsif ($idx < 20) {
-                  $blowerstats{$idx-9}->{state}=$_->[2];
-              } elsif ($idx < 30) {
-                  $blowerstats{$idx-19}->{rpm}=$_->[2];
-              } elsif ($idx < 40) {
-                  $blowerstats{$idx-29}->{cstate}=$_->[2];
+          } else {
+              foreach my $fanentry (3..6) {
+                  foreach (1..10) {
+                      push @bindoid, [$chassisfanbase.$fanentry, "$_"]; 
+                  }
               }
           }
-          foreach my $blowidx (sort keys %blowerstats) {
+          my $bind = new SNMP::VarList(@bindoid);
+          $session->get($bind);
+          foreach (@$bind) {
+              if ($_->[2] eq "NOSUCHINSTANCE") { next; }
+              if ($mpatype ne 'cmm') {
+                  my $idx=$_->[0];
+                  $idx =~ s/^.*\.(\d*)$/$1/;
+                  if ($idx < 10) {
+                      $blowerstats{$idx}->{percentage}=$_->[2];
+                      $blowerstats{$idx}->{percentage}=~ s/^[^\d]*(\d*)[^\d].*$/$1/;
+                  } elsif ($idx < 20) {
+                      $blowerstats{$idx-9}->{state}=$_->[2];
+                  } elsif ($idx < 30) {
+                      $blowerstats{$idx-19}->{rpm}=$_->[2];
+                  } elsif ($idx < 40) {
+                      $blowerstats{$idx-29}->{cstate}=$_->[2];
+                  }
+              } else {
+                  my $idx = $_->[1];
+                  my $tmp_type = $_->[0];
+                  $tmp_type =~ s/^.*\.(\d*)$/$1/;
+                  if ($tmp_type eq 3) {
+                      $blowerstats{$idx}->{percentage}=$_->[2];
+                      $blowerstats{$idx}->{percentage}=~ s/^(\d*)%.*$/$1/;
+                  } elsif ($tmp_type eq 4) {
+                      $blowerstats{$idx}->{state}=$_->[2];
+                  } elsif ($tmp_type eq 5) {
+                      $blowerstats{$idx}->{rpm}=$_->[2];
+                  } elsif ($tmp_type eq 6) {
+                      $blowerstats{$idx}->{cstate}=$_->[2];
+                  }         
+              }
+          }
+          foreach my $blowidx (sort by_number keys %blowerstats) {
               my $bdata=$blowerstats{$blowidx};
               my $text="Blower/Fan $blowidx:";
               if (defined $bdata->{rpm}) {
@@ -1264,6 +1319,8 @@ sub populateblowervitals {
                   $text.=" Bad state";
               } elsif ($bdata->{state} == 0) {
                   $text .= " Unknown state";
+              } elsif ($bdata->{state} == 1) {
+                  $text .= " Good state";
               }
               if ($bdata->{cstate} == 1) {
                   $text .= " Controller flashing";
@@ -3534,7 +3591,8 @@ sub preprocess_request {
         $request = {};
         return;
     }
-  } elsif ($command eq "rspconfig") {
+  #} elsif ($command eq "rspconfig") {
+  } elsif ($command =~  /^(rspconfig|rvitals)$/) {
     # All the nodes with mgt=blade or mgt=fsp will get here
     # filter out the nodes for blade.pm 
     my (@mpnodes, @fspnodes, @nohandle);
@@ -3687,6 +3745,8 @@ sub filter_nodes{
       } else { 
         push @{$mpnodes}, @ngpfsp;
       }
+    } elsif ($cmd eq "rvitals") {
+        push @{$mpnodes}, @ngpfsp;
     } else {
       push @{$fspnodes}, @ngpfsp;
     }
@@ -3948,8 +4008,13 @@ sub process_request {
       $mpahash{$mpa}->{nodetype}->{$node}=$mptype;
     }
   }
+  my @mpas = (keys %mpahash);
+  my $mpatypes = $mptab->getNodesAttribs(\@mpas, ['nodetype']);
   my $sub_fds = new IO::Select;
   foreach $mpa (sort (keys %mpahash)) {
+    if (defined($mpatypes->{$mpa}->[0]->{'nodetype'})) {
+        $mpahash{$mpa}->{mpatype} =$mpatypes->{$mpa}->[0]->{'nodetype'};
+    }
     while ($children > $blademaxp) { forward_data($callback,$sub_fds); }
     $children++;
     my $cfd;
@@ -5180,6 +5245,7 @@ sub dompa {
   foreach $node (sort (keys %{$mpahash->{$mpa}->{nodes}})) {
     $curn = $node;
     $mptype = $mpahash->{$mpa}->{nodetype}->{$node};
+    $mpatype = $mpahash->{$mpa}->{mpatype};
     my ($rc,@output) = bladecmd($mpa,$node,$mpahash->{$mpa}->{nodes}->{$node},$mpahash->{$mpa}->{username},$mpahash->{$mpa}->{password},$command,@$args); 
 
     #print "output=@output\n";
