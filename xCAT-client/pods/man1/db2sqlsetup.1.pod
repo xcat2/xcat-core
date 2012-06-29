@@ -110,10 +110,13 @@ To setup DB2 Client for  xCAT to run on the DB2 xcatdb database, on the SN:
 
 B<db2sqlsetup> I<-i> I<-C>
 
+=item *
 
 To setup the ODBC for  DB2 xcatdb database access, on the MN :
 
 B<db2sqlsetup> I<-o> I<-S>
+
+=item *
 
 To setup the ODBC for  DB2 xcatdb database access, on the SN :
 
