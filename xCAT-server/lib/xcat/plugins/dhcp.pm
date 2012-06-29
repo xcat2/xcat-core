@@ -1443,7 +1443,10 @@ sub process_request
         else
         {
             system("/etc/init.d/dhcpd restart");
-            system("chkconfig dhcpd on");
+            # should not chkconfig dhcpd on every makedhcp invoation
+            # it is not appropriate and will cause problem for HAMN
+            # do it in xcatconfig instead
+            #system("chkconfig dhcpd on");
         }
     }
     flock($dhcplockfd,LOCK_UN);
