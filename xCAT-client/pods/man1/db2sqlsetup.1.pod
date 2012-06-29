@@ -121,9 +121,9 @@ B<db2sqlsetup> I<-o> I<-C>
 
 =item *
 
-To remove DB2 from xCAT MN:
+To setup the DB2 database but not start xcat running with it:
 
-B<db2sqlsetup> I<-r> I<-S>
+B<db2sqlsetup> I<-i> I<-S> I<-N>
 
 =item *
 
