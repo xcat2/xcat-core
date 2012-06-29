@@ -57,7 +57,7 @@ sub mkhwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|Verbose h|help t  s:s T=s p=s P=s port=s ) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help t  s:s T=s p=s P=s port=s ) )) {
         return( usage() );
     }
 
@@ -322,7 +322,7 @@ sub lshwconn_parse_args
         return $opttmp;
     }
 	
-    if ( !GetOptions( \%opt, qw(V|Verbose h|help T=s s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help T=s s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
@@ -439,7 +439,7 @@ sub rmhwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|Verbose h|help T=s s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help T=s s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});

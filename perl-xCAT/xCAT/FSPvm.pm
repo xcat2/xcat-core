@@ -109,7 +109,7 @@ sub chvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|Verbose p=s i=s m=s r=s ) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose p=s i=s m=s r=s ) )) {
         return( usage() );
     }
     ####################################
@@ -361,7 +361,7 @@ sub mkvm_parse_args {
 #    if ( !GetOptions( \%opt, qw(V|verbose ibautocfg ibacap=s i=s l=s c=s p=s full) )) {
 #        return( usage() );
 #    }
-    if ( !GetOptions( \%opt, qw(V|Verbose i=s m=s r=s ) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose i=s m=s r=s ) )) {
         return( usage() );
     }
 ####################################
@@ -535,7 +535,7 @@ sub rmvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|Verbose service r) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose service r) )) {
         return( usage() );
     }
     return(usage( "rmvm doesn't support for Power 775." ));
@@ -592,7 +592,7 @@ sub lsvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|Verbose l|long) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose l|long) )) {
         return( usage() );
     }
     ####################################

@@ -66,7 +66,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|Verbose x) )) { 
+    if ( !GetOptions( \%opt, qw(V|verbose x) )) { 
         return( usage() );
     }
     ####################################

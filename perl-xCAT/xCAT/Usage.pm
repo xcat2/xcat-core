@@ -90,7 +90,7 @@ my %usage = (
     "rbootseq" => 
 "Usage: 
        Common:
-           rbootseq [-h|--help|-v|--version|-V|--Verbose]
+           rbootseq [-h|--help|-v|--version|-V|--verbose]
        Blade specific:
            rbootseq <noderange> [hd0|hd1|hd2|hd3|net|iscsi|usbflash|floppy|none],...
        PPC (using Direct FSP Management) specific:
@@ -101,7 +101,7 @@ my %usage = (
     "rspconfig" => 
 "Usage: 
    Common:
-       rspconfig [-h|--help|-v|--version|-V|--Verbose]
+       rspconfig [-h|--help|-v|--version|-V|--verbose]
    BMC/MPA Common:
        rspconfig <noderange> [snmpdest|alert|community] [-V|--verbose]
        rspconfig <noderange> [snmpdest=<dest ip address>|alert=<on|off|en|dis|enable|disable>|community=<string>]

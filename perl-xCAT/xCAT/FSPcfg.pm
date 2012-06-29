@@ -173,7 +173,7 @@ sub parse_args {
     Getopt::Long::Configure( "bundling" );
     $request->{method} = undef;
 
-    if ( !GetOptions( \%opt, qw(V|Verbose resetnet))) {
+    if ( !GetOptions( \%opt, qw(V|verbose resetnet))) {
         return( usage() );
     }
     ####################################
