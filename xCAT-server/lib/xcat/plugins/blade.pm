@@ -1393,7 +1393,7 @@ sub rscan {
     return( join('',($_[0],$usage_string)));
   };
 
-  if ( !GetOptions(\%opt,qw(V|Verbose w x z u))){
+  if ( !GetOptions(\%opt,qw(V|verbose w x z u))){
     return(1,usage());
   }
   if ( defined($ARGV[0]) ) {
@@ -3897,7 +3897,7 @@ sub process_request {
   } else {
     @exargs = ($request->{arg});
   }
-  if (grep /-V|--Verbose/, @exargs) {
+  if (grep /-V|--verbose/, @exargs) {
       $CALLBACK = $callback;
       $verbose_cmd = $command;
   }
@@ -4159,7 +4159,7 @@ sub clicmds {
         next;
       }
     }
-    if ($cmd =~ /-v|--Verbose/) {
+    if ($cmd =~ /-V|--verbose/) {
         next;
     }
     push @unhandled,$cmd;
@@ -4459,13 +4459,21 @@ sub get_blades_for_mpa {
     return undef;
   }
   my @nodearray = $mptab->getAttribs({mpa=>$mpa,nodetype=>"blade"}, qw(node));
+  my @blades = ();
+  my $nodesattrs;
   if (!defined(@nodearray)) {
     return (\%blades_hash);
+  } else {
+      foreach (@nodearray) {
+          if (defined($_->{node})) {
+              push @blades, $_->{node};
+          }
+      }
+      $nodesattrs = $ppctab->getNodesAttribs(\@blades, \@attribs);
   }
-  foreach (@nodearray) {
-      my $node = $_->{node};
+  foreach my $node (@blades) {
       my @values = ();
-      my ($att) = $ppctab->getNodeAttribs($node, \@attribs);
+      my $att = $nodesattrs->{$node}->[0];
       if (!defined($att)) {
           next;
       } elsif ($att and $att->{parent} and ($att->{parent} ne $mpa)) {
@@ -4484,6 +4492,7 @@ sub get_blades_for_mpa {
       push @values, "blade";
       push @values, $mpa;
       $blades_hash{$node} = \@values; 
+      verbose_message("values for node:$node, value:@values.");
   }
   return (\%blades_hash);
 }
