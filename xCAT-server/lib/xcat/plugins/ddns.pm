@@ -535,41 +535,6 @@ sub process_request {
     }
     add_or_delete_records($ctx);
 
-    # start named on boot
-    if (xCAT::Utils->isAIX())
-    {
-        #/etc/inittab
-        my $cmd = "/usr/sbin/lsitab named > /dev/null 2>&1";
-        my $rc = system("$cmd") >>8;
-        if ($rc != 0)
-        {
-            #add new entry
-            my $mkcmd = qq~/usr/sbin/mkitab "named:2:once:/usr/sbin/named > /dev/console 2>&1"~;
-            system("$mkcmd");
-            
-            my $rsp = {};
-            $rsp->{data}->[0] = "named has been enabled on boot.";
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-        }
-    }
-    else
-    {
-        #chkconfig
-        my $cmd = "/sbin/chkconfig $service on";
-        my $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            my $rsp = {};
-            $rsp->{data}->[0] = "Could not enable $service.";
-            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-        }
-        else
-        {
-            my $rsp = {};
-            $rsp->{data}->[0] = "$service has been enabled on boot.";
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-        }
-    }
     xCAT::SvrUtils::sendmsg("DNS setup is completed", $callback);
 }
 

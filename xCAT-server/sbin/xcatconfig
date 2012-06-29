@@ -356,6 +356,7 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL || $::genCredentials)
 # more  config needed after xcatd start
 if ($::INITIALINSTALL || $::FORCE)
 {
+    &startnamedonboot;
     my $cmd;
     if ($::osname eq 'Linux') {
      #Zap the almost certainly wrong pxelinux.cfg file
@@ -1875,4 +1876,45 @@ sub setupMNinDB
        verbose("Added $mnname to the database.");
    }
     return; 
+}
+#-----------------------------------------------------------------------------
+
+=head3    startnamedonboot 
+	
+     Configure named to start on boot
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub startnamedonboot
+{
+    # start named on boot
+    if (xCAT::Utils->isAIX())
+    {
+        #/etc/inittab
+        my $cmd = "/usr/sbin/lsitab named > /dev/null 2>&1";
+        my $rc = system("$cmd") >>8;
+        if ($rc != 0)
+        {
+            #add new entry
+            my $mkcmd = qq~/usr/sbin/mkitab "named:2:once:/usr/sbin/named > /dev/console 2>&1"~;
+            system("$mkcmd");
+
+            xCAT::MsgUtils->message("I", "named has been enabled on boot.");
+        }
+    }
+    else
+    {
+        #chkconfig
+        my $cmd = "/sbin/chkconfig named on";
+        my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message("E", "Could not enable named.");
+        }
+        else
+        {
+            xCAT::MsgUtils->message("I", "named has been enabled on boot.");
+        }
+    }
 }
