@@ -37,9 +37,6 @@
    contains the db2 database directory,  so  if DATABASELOC=/db2database then
    the actual location for the db2 database is /db2database/db2.    
    
-   -r flag will help you to remove DB2 from xCAT and uninstall DB2 from either
-   management node or service node. The flag -r and -S used together for 
-   management node, and -r and -C are used together for service node.
 =cut
 
 BEGIN
@@ -86,6 +83,7 @@ if (
                 'i|init'    => \$::INIT,
                 'S|Server'  => \$::SERVER,
                 'C|Client'  => \$::CLIENT,
+                'N|nostart'      => \$::NOSTART,
                 'o|odbc'    => \$::SETUPODBC,
                 'h|help'    => \$::HELP,
                 'v|version' => \$::VERSION,
@@ -158,6 +156,18 @@ if ($::RM)
 if ((!($::INIT)) && (!($::SETUPODBC)) && (!($::PASSWD)))
 {
     xCAT::MsgUtils->message("I", "Either -i,-o or -p flag must be chosen");
+    &usage;
+    exit(1);
+}
+if (($::NOSTART) && ($::CLIENT))
+{
+    xCAT::MsgUtils->message("I", "-N is not valid with the -C option. ");
+    &usage;
+    exit(1);
+}
+if (($::NOSTART) && (!($::SERVER)))
+{
+    xCAT::MsgUtils->message("I", "-N must be used with the -S flag. ");
     &usage;
     exit(1);
 }
@@ -235,6 +245,7 @@ if ($ENV{'DATABASELOC'})    # input where xcatdb is located
     $::databaselocdir = $ENV{'DATABASELOC'};
     $::databaseloc .="\/db2";
 } else { # use site.databaseloc if set
+  if (!($::NOSTART)) {
     my $cmd = " XCATBYPASS=1  tabdump site | grep databaseloc";
     my @output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC == 0)    # if there 
@@ -245,36 +256,38 @@ if ($ENV{'DATABASELOC'})    # input where xcatdb is located
        $::databaseloc .="\/db2";
    
     }
+  }
 }
 
 
-
+# If not NOSTART where we are setting up DB2 before xCAT is installed. 
 # check that they have not defined the databaseloc under the site.installoc 
 # directory, default /install.  This is invalid because this directory
 # is usually mounted on the Service Nodes.  Error out if they do
 # this is really the attribute in installdir which I will check. 
-my @installlocdir;
-my $cmd = " XCATBYPASS=1  tabdump site | grep installdir";
-my @installlocation = xCAT::Utils->runcmd($cmd, -1);
-if ($::RUNCMD_RC == 0)   
-{
- (my $attr, my $installoc) = split(",", $installlocation[0]);
- (my $q,my $installpt) = split("\"", $installoc);  # remove quotes
- @installlocdir = split '/', $installpt;  # get the base directory
+if (!($::NOSTART)){
+  my @installlocdir;
+  my $cmd = " XCATBYPASS=1  tabdump site | grep installdir";
+  my @installlocation = xCAT::Utils->runcmd($cmd, -1);
+  if ($::RUNCMD_RC == 0)   
+  {
+   (my $attr, my $installoc) = split(",", $installlocation[0]);
+   (my $q,my $installpt) = split("\"", $installoc);  # remove quotes
+   @installlocdir = split '/', $installpt;  # get the base directory
 
-} else { 
-   $installlocdir[1] = "install";   # default
-}
+  } else { 
+     $installlocdir[1] = "install";   # default
+  }
   
-# is it the same as the first directory in databaseloc
-my @dblocdir = split '/', $::databaselocdir;  # get the base directory
-$installlocdir[1] =~ s/\s*//g; #remove blanks
-$dblocdir[1] =~ s/\s*//g; #remove blanks
-if ($installlocdir[1] eq $dblocdir[1] ) { # if they match,error
+  # is it the same as the first directory in databaseloc
+  my @dblocdir = split '/', $::databaselocdir;  # get the base directory
+  $installlocdir[1] =~ s/\s*//g; #remove blanks
+  $dblocdir[1] =~ s/\s*//g; #remove blanks
+  if ($installlocdir[1] eq $dblocdir[1] ) { # if they match,error
        xCAT::MsgUtils->message("E", "The site databaseloc  attribute is set to the directory or a sub-directory of the site table installloc or installdir attribute or the default of /install.  This is not a supported configuration.");
        exit(1);
+  }
 }
-
 if (!(-e $::databaselocdir)){ # if it does not exist, create it
    my $cmd = "mkdir -p $::databaselocdir";
    xCAT::Utils->runcmd($cmd, 0);
@@ -364,8 +377,8 @@ if ($::PASSWD) {
 # initial setup request and not already running db2
 if (($::INIT) && ($::xcatrunningdb2 == 0))
 {
-    if ($::SERVER)
-    {    # setting up db2 server on the MN 
+    if (($::SERVER) && (!($::NOSTART))) 
+    {    # setting up db2 server on the MN and not nostart option  
 
         # makesure the daemon is running 
         &startxcatd;
@@ -492,12 +505,18 @@ if (($::INIT) && ($::xcatrunningdb2 == 0))
     {
        if ($::xcatrunningdb2 == 0) # if not already running on db2
        {
+        if (!($::NOSTART)){
           &restorexcatdb;
+        }
        }
 
-        xCAT::MsgUtils->message("I",
+        if ($::NOSTART) {
+          xCAT::MsgUtils->message("I",
+                                "xCAT DB2 database is setup.\n");
+        } else {
+          xCAT::MsgUtils->message("I",
                                 "xCAT is  running on the DB2 database.\n");
-
+        }
        # add cron entry for table reorg
        &updatecrontab;
 
@@ -550,7 +569,7 @@ sub usage
         "Usage:\ndb2sqlsetup - Performs the setup of IBM DB2 for xCAT to use as its database. See man db2sqlsetup for more information."
         );
   my $msg=
-      "db2sqlsetup <-h|--help>\n           <-v|--version>\n           <-i|--init> <-S|-C> [-o|--setupODBC] [-V|--verbose]\n           <-o|--setupODBC> <-S|-C> [-V|--verbose]\n           <-p|--passwd> [-S|-C]\n ";
+      "db2sqlsetup <-h|--help>\n           <-v|--version>\n           <-i|--init> <-S|-C> [-N|--nostart] [-o|--setupODBC] [-V|--verbose]\n           <-o|--setupODBC> <-S|-C> [-V|--verbose]\n           <-p|--passwd> [-S|-C]\n ";
 
     xCAT::MsgUtils->message('I', "$msg");
 }
@@ -1785,9 +1804,19 @@ sub createcfgloc
 
 {
     my $cfgloc       = "/etc/xcat/cfgloc";
+    my $dir = "/etc/xcat";
     my $cfglocbackup = "/etc/xcat/cfgloc.xcat.backup";
     my $cmd;
     my $message;
+    if (!(-e $dir)){ # if it does not exist, create it
+      $cmd = "mkdir -p $dir";
+      xCAT::Utils->runcmd($cmd, 0);
+      if ($::RUNCMD_RC != 0)
+      {
+         xCAT::MsgUtils->message("E", " $cmd failed. Cannot create the cfgloc file");
+         return 1;
+      }
+    }
 
     # if they had an old cfgloc , save it
     if (-e ($cfgloc))
