@@ -67,7 +67,7 @@ This options says whether to setup the Server (-S) on the Management Node, or th
 
 =item B<-N|--nostart>
 
-This option with the -S flag will create the database, but will not backup and restore xCAT into the database. It will create the cfgloc file such that the next start of xcatd will try and contact the database.
+This option with the -S flag will create the database, but will not backup and restore xCAT into the database. It will create the cfgloc file such that the next start of xcatd will try and contact the database.  This can be used to setup the xCAT DB2 database during or before install. 
 
 
 =item B<-o|--setupODBC>
