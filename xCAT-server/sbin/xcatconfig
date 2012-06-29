@@ -381,6 +381,10 @@ if ($::INITIALINSTALL || $::FORCE)
      &makenetworks;
      &setuphttp;
 
+     # chkconfig dhcpd on
+     system("chkconfig dhcpd on");
+
+
      my $linux_note =
       "xCAT is now running, it is recommended to tabedit networks \nand set a dynamic ip address range on any networks where nodes \nare to be discovered. Then, run makedhcp -n to create a new dhcpd \nconfiguration file, and \/etc\/init.d\/dhcpd restart. Either examine sample \nconfiguration templates, or write your own, or specify a value per \nnode with nodeadd or tabedit.";
      xCAT::MsgUtils->message('I', $linux_note);
