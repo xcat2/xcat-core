@@ -1919,7 +1919,7 @@ sub inv {
       push @invitems,(qw(bios diag mprom mparom));
       next;
     }
-    if ($item =~ /^bios/) {
+    if ($item =~ /^bios/ and $mptype !~ /mm/) {
       my $biosver;
       my $biosbuild;
       my $biosdate;
@@ -1931,7 +1931,7 @@ sub inv {
       if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
       push @output,"BIOS: $biosver ($biosbuild $biosdate)";
     }
-    if ($item =~ /^diag/) {
+    if ($item =~ /^diag/ and $mptype !~ /mm/) {
       my $diagver;
       my $diagdate;
       my $diagbuild;
@@ -1946,7 +1946,7 @@ sub inv {
       $diagdate = $data;
       push @output,"Diagnostics:  $diagver ($diagbuild $diagdate)";
     }
-    if ($item =~ /^[sm]prom/) {
+    if ($item =~ /^[sm]prom/ and $mptype !~ /mm/) {
       my $spver;
       my $spbuild;
       $data=$session->get([$bladempveroid,$slot]);
@@ -1973,13 +1973,28 @@ sub inv {
       push @output,"Management Module firmware: $mpaver ($mpabuild $mpadate)";
     }
     if ($item =~ /^model/ or $item =~ /^mtm/) {
-      $data=$session->get([$blademtmoid,$slot]);
-      if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
-      push @output,"Machine Type/Model: ".$data;
-      $updatehash{mtm}=$data;
+      if ($mptype eq 'cmm') {
+        my $type = $session->get(['1.3.6.1.4.1.2.3.51.2.2.21.1.1.1', '0']);
+        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+        my $model = $session->get(['1.3.6.1.4.1.2.3.51.2.2.21.1.1.2', '0']);
+        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+        push @output, "Machine Type/Model: ".$type.$model;
+        $updatehash{mtm}=$type.$model;
+      } else {
+        my $type=$session->get([$blademtmoid,$slot]);
+        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+        my $model = $session->get([$bladeomodel, $slot]);
+        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+        push @output,"Machine Type/Model: ".$type.$model;
+        $updatehash{mtm}=$type.$model;
+      }
     }
     if ($item =~ /^uuid/ or $item =~ /^guid/) {
-      $data=$session->get([$bladeuuidoid,$slot]);
+      if ($mptype eq 'cmm') {
+          $data=$session->get(['.1.3.6.1.4.1.2.3.51.2.2.21.2.1.1.6', '1']);
+      } else {
+          $data=$session->get([$bladeuuidoid,$slot]);
+      }
       if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
       $data =~ s/ //;
       $data =~ s/ /-/;
@@ -1991,7 +2006,12 @@ sub inv {
       $updatehash{uuid}=$data;
     }
     if ($item =~ /^serial/) {
-      $data=$session->get([$bladeserialoid,$slot]);
+      if ($mptype eq 'cmm') {
+          #chassisInfoVpd->chassisVpd->chassisSerialNumber
+          $data=$session->get(['1.3.6.1.4.1.2.3.51.2.2.21.1.1.3','0']);
+      } else {
+          $data=$session->get([$bladeserialoid,$slot]);
+      }
       if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
       push @output,"Serial Number: ".$data;
       $updatehash{serial}=$data;
