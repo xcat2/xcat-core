@@ -1348,7 +1348,7 @@ sub rscan {
     return( join('',($_[0],$usage_string)));
   };
 
-  if ( !GetOptions(\%opt,qw(V|Verbose w x z u))){
+  if ( !GetOptions(\%opt,qw(V|verbose w x z u))){
     return(1,usage());
   }
   if ( defined($ARGV[0]) ) {
@@ -4381,13 +4381,21 @@ sub get_blades_for_mpa {
     return undef;
   }
   my @nodearray = $mptab->getAttribs({mpa=>$mpa,nodetype=>"blade"}, qw(node));
+  my @blades = ();
+  my $nodesattrs;
   if (!defined(@nodearray)) {
     return (\%blades_hash);
+  } else {
+      foreach (@nodearray) {
+          if (defined($_->{node})) {
+              push @blades, $_->{node};
+          }
+      }
+      $nodesattrs = $ppctab->getNodesAttribs(\@blades, \@attribs);     
   }
-  foreach (@nodearray) {
-      my $node = $_->{node};
+  foreach my $node (@blades) {
+      my $att = $nodesattrs->{$node}->[0]; 
       my @values = ();
-      my ($att) = $ppctab->getNodeAttribs($node, \@attribs);
       if (!defined($att)) {
           next;
       } elsif ($att and $att->{parent} and ($att->{parent} ne $mpa)) {
