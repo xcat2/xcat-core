@@ -168,6 +168,24 @@ else # for common mode
 	fi
     fi
 
+    # Try the host in XCAT= kernel parameter
+    if [ $downloaded -eq 0 ]; then
+         for i in `cat /proc/cmdline`; do
+             KEY=`echo $i | awk -F= '{print $1}'`
+             if [ "$KEY" =  "XCAT" ]; then
+                 TMP=`echo $i | awk -F= '{print $2}'`
+                 SIP=`echo $TMP | cut -d: -f1`
+                 if [ -n "$SIP" ]; then
+                     download_postscripts $SIP
+                     if [ $? -eq 0 ]; then
+                         downloaded=1
+                         break
+                     fi
+                 fi
+            fi
+          done
+    fi
+
     
     #try the dhcp server, this is used for initial boot for the node.
     if [ $downloaded -eq 0 ]; then
