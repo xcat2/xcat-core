@@ -904,13 +904,8 @@ sub fsp_api_passwd {
 ##########################################################################
 sub resetnet {
     my $request = shift;
-    my $hash    = shift;
-    my %nodehash;
-    foreach ( @{$request->{noderange}}) {
-       $nodehash{$_} = 1;
-    }
-    my $result = xCAT::PPCcfg::doresetnet($request, \%nodehash);
-	return [$result];
+    xCAT::PPCcfg::doresetnet($request);
+    exit(0);
 }
 1;
 
