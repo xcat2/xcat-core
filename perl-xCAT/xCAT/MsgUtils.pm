@@ -710,5 +710,24 @@ sub backup_logfile
     return $::OK;
 }
 
+sub verbose_message
+{
+    shift;
+    my $req = shift;
+    my $data = shift;
+    if (!defined($req->{verbose}))  {
+        return;
+    }
+    my ($sec,$min,$hour,$mday,$mon,$yr,$wday,$yday,$dst) = localtime(time);
+    my $time = sprintf "%04d%02d%02d.%02d:%02d:%02d", $yr+1900,$mon+1,$mday,$hour,$min,$sec;
+    $data = "$time ($$) ".$data;
+    if (defined($req->{callback})) {
+        my %rsp;
+        $rsp{data} = [$data];
+        xCAT::MsgUtils->message("I", \%rsp, $req->{callback});
+    } else {
+        xCAT::MsgUtils->message("I", $data);
+    }
+}
 1;
 
