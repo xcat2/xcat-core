@@ -19,7 +19,7 @@ my %rspconfig = (
 );
 
 my %rsp_result;
-
+my $start;
 ##########################################################################
 # Parse the command line for options and operands
 ##########################################################################
@@ -652,181 +652,173 @@ sub hostname {
     return( [@$result] );
 }
 ##########################################################################
-# Do resetnet 
+# Do resetnet public entry
 ##########################################################################
 sub resetnet {
     my $request = shift;
-    my $hash    = shift;
-    my %nodehash;
-    foreach ( @{$request->{noderange}}) {
-       $nodehash{$_} = 1;
-    }
-    my $result = doresetnet($request, \%nodehash);
-	return [$result];
+    doresetnet($request);
+    exit(0);
 }
 ##########################################################################
 # Reset the network interfraces if necessary
 ##########################################################################
 sub doresetnet {
 
-    my $req     = shift;
-    my $outhash = shift;
-    my $reset_all = 1;
-    my $namehash;
+    my $req = shift;
+    my %iphash;
     my $targets;
     my $result;
-    my $nodetype;
-
-
-    # when invoked by rspconfig, the input data are different.
-    # so I re-write this part.
-    #if ( $outhash ) {
-    #    $reset_all = 0;
-    #    foreach my $name ( keys %$outhash ) {
-    #        my $data = $outhash->{$name};
-    #        my $ip = @$data[4];
-    #        if ( $name =~ /^([^\(]+)\(([^\)]+)\)$/) {
-    #            $name = $1;
-    #            $ip = $2;
-    #        }
-    #        $namehash->{$name} = $ip;
-    #    }
-    #}
+    my %grouphash;
+    my %oihash;
+    my %machash;
+    my %vpdhash;
+    
+	unless ($req) {
+	    send_msg( $req, 1, "request is empty, return" );
+		return;
+	}	
+    ###########################################
+    # prepare to reset network
+    ###########################################
+    xCAT::MsgUtils->verbose_message($req, "rspconfig :do resetnet begin to phase nodes");
     my $hoststab = xCAT::Table->new( 'hosts' );
     if ( !$hoststab ) {
         send_msg( $req, 1, "Error open hosts table" );
-        return( [RC_ERROR] );
-    }
-
+        return;
+    } else {
+        my @hostslist = $hoststab->getAllNodeAttribs(['node','otherinterfaces']);
+        foreach my $otherentry ( @hostslist) {
+            $oihash{$otherentry->{node}} = $otherentry->{otherinterfaces};
+        }
+    }    
+    
     my $mactab = xCAT::Table->new( 'mac' );
     if ( !$mactab ) {
         send_msg( $req, 1, "Error open mac table" );
-        return( [RC_ERROR] );
+        return;
+    }else{
+        my @maclist = $hoststab->getAllNodeAttribs(['node','mac']);
+        foreach my $macentry (@maclist) {
+            $machash{$macentry->{node}} = $macentry->{mac};
+        }
     }
 
-    if ( $req->{node} ) {
-        $reset_all = 0;
-        my $typehash = xCAT::DBobjUtils->getnodetype(\@{ $req->{node}});
+    my $vpdtab = xCAT::Table->new( 'vpd' );
+    if ( !$vpdtab ) {
+        send_msg( $req, 1, "Error open vpd table" );
+        return;
+    } else {
+        my @vpdlist = $vpdtab->getAllNodeAttribs(['node','mtm','serial','side']);
+        foreach my $vpdentry (@vpdlist) {
+            if ($vpdentry->{side} =~ /(\w)\-\w/) {
+                my $side = $1;
+                $vpdhash{$vpdentry->{node}} = $vpdentry->{mtm}."*".$vpdentry->{serial}."*".$side;
+            }   
+        }
+    } 
+
+    unless ( $req->{node} ) {
+        send_msg( $req, 0, "no node specified" );
+        return;
+    }
+    ###########################################
+    # Process nodes and get network information
+    ###########################################
+    my $nodetype = $req->{hwtype};
+    if ( $nodetype =~ /^(cec|frame)$/ )  {   
+        # this brunch is just for the xcat 2.6(or 2.6+) database
         foreach my $nn ( @{ $req->{node}} ) {
-            $nodetype = $$typehash{$nn};
-            # this brunch is just for the xcat 2.6(+) database
-            if ( $nodetype =~ /^(cec|frame)$/ )  {
-                my $cnodep = xCAT::DBobjUtils->getchildren($nn);
-                $nodetype = ( $nodetype =~ /^frame$/i ) ? "bpa" : "fsp";
-                if ($cnodep) {
-                    foreach my $cnode (@$cnodep) {
-                        my $ip = xCAT::Utils::getNodeIPaddress( $cnode );
-                        $namehash->{$cnode} = $ip;
-                    }
-                } else {
-                    send_msg( $req, 1, "Can't get the fsp/bpa nodes for the $nn" );
-                    return( [RC_ERROR] );
+            my $cnodep = xCAT::DBobjUtils->getchildren($nn);
+            $nodetype = ( $nodetype =~ /^frame$/i ) ? "bpa" : "fsp";
+            if ($cnodep) {
+                foreach my $cnode (@$cnodep) {
+                    my $ip = xCAT::Utils::getNodeIPaddress( $cnode );
+                    my $oi = $oihash{$cnode};
+                    if ( exists($oihash{$cnode}) and $ip eq $oihash{$cnode}) {
+                        send_msg( $req, 0, "$cnode: same ip address, skipping $nn network reset" );  
+                    } elsif( ! exists $machash{$cnode}){
+                        send_msg( $req, 0, "$cnode: no mac defined, skipping $nn network reset" );
+                    } else {
+                        $iphash{$cnode}{sip} = $ip;
+                        $iphash{$cnode}{tip} = $oihash{$cnode};
+                        if(exists $grouphash{$vpdhash{$cnode}}) {
+                            $grouphash{$vpdhash{$cnode}} .= ",$cnode";
+                        } else {
+                            $grouphash{$vpdhash{$cnode}} = "$cnode";
+                        }
+                        $targets->{$nodetype}->{$ip}->{'args'} = "0.0.0.0,$cnode";
+                        $targets->{$nodetype}->{$ip}->{'mac'} = $machash{$cnode};
+                        $targets->{$nodetype}->{$ip}->{'name'} = $cnode;
+                        $targets->{$nodetype}->{$ip}->{'ip'} = $oi;
+                        $targets->{$nodetype}->{$ip}->{'type'} = $nodetype;
+                        my %netinfo = xCAT::DBobjUtils->getNetwkInfo( [$oi] );
+                        $targets->{$nodetype}->{$ip}->{'args'} .= ",$netinfo{$oi}{'gateway'},$netinfo{$oi}{'mask'}";
+                        xCAT::MsgUtils->verbose_message($req, "doresetnet: get node $cnode info $targets->{$nodetype}->{$ip}->{'args'}, oi is $oi, ip is $ip");
+                        $targets->{$nodetype}->{$oi} = $targets->{$nodetype}->{$ip};
+					}    
                 }
-            # this brunch is just for the xcat 2.5(-) databse
-            } elsif ( $nodetype =~ /^(fsp|bpa)$/ )  {
-                my $ip = xCAT::Utils::getNodeIPaddress( $nn );
-                $namehash->{$nn} = $ip;
-            } elsif ( !$nodetype ){
-                send_msg( $req, 0, "$nn: no nodetype defined, skipping network reset" );
-            }
-        }
+            } else {
+                send_msg( $req, 1, "Can't get the fsp/bpa nodes for the $nn" );
+                return;
+           }
+        }              
+    # this brunch is just for the xcat 2.5(or 2.5-) databse
+    } elsif ( $nodetype =~ /^(fsp|bpa)$/ )  {
+        foreach my $nn ( @{ $req->{node}} ) {
+            my $ip = xCAT::Utils::getNodeIPaddress( $nn );
+            my $oi = $oihash{$nn};
+            if( exists($oihash{$nn}) and $ip eq $oihash{$nn}) {
+                send_msg( $req, 0, "$nn: same ip address, skipping network reset" );  
+            } elsif (!exists $machash{$nn}){
+                send_msg( $req, 0, "$nn: no mac defined, skipping network reset" );
+            } else {
+                $iphash{$nn}{sip} = $ip;
+                $iphash{$nn}{tip} = $oihash{$nn};
+                if(exists $grouphash{$vpdhash{$nn}}) {
+                    $grouphash{$vpdhash{$nn}} .= ",$nn";
+                } else {
+                    $grouphash{$vpdhash{$nn}} = "$nn";
+                }
+                $targets->{$nodetype}->{$ip}->{'args'} = "0.0.0.0,$nn";
+                $targets->{$nodetype}->{$ip}->{'mac'} = $machash{$nn};
+                $targets->{$nodetype}->{$ip}->{'name'} = $nn;
+                $targets->{$nodetype}->{$ip}->{'ip'} = $oi;
+                $targets->{$nodetype}->{$ip}->{'type'} = $nodetype;
+                my %netinfo = xCAT::DBobjUtils->getNetwkInfo( [$oi] );
+                $targets->{$nodetype}->{$ip}->{'args'} .= ",$netinfo{$oi}{'gateway'},$netinfo{$oi}{'mask'}";
+                xCAT::MsgUtils->verbose_message($req, "doresetnet: get node $nn info $targets->{$nodetype}->{$ip}->{'args'}, oi is $oi, ip is $ip");
+                $targets->{$nodetype}->{$oi} = $targets->{$nodetype}->{$ip};
+			}
+        }                
+    } elsif ( !$nodetype ){
+        send_msg( $req, 0, "no nodetype defined, skipping network reset" );
+        return;
+    } else {
+        send_msg( $req, 0, "$nodetype not supported, skipping network reset" );
+        return;
     }
-    send_msg( $req, 0, "\nStart to reset network..\n" );
-
-    my $ip_host;
-    my @hostslist = $hoststab->getAllNodeAttribs(['node','otherinterfaces']);
-    foreach my $host ( @hostslist ) {
-        my $name = $host->{node};
-        my $oi = $host->{otherinterfaces};
-
-        #####################################
-        # find the otherinterfaces for the
-        # specified nodes, or the all nodes
-        # Skip the node if the IP attributes
-        # is same as otherinterfaces
-        #####################################
-        if ( $reset_all eq 0 && !exists( $namehash->{$name}) ){
-            next;
-        }
-
-        #if ( $namehash->{$name} ) {
-        #    $hoststab->setNodeAttribs( $name,{otherinterfaces=>$namehash->{$name}} );
-        #}
-
-        if (!$oi or $oi eq $namehash->{$name}) {
-            send_msg( $req, 0, "$name: same ip address, skipping network reset" );
-            next;
-        }
-
-        my $mac = $mactab->getNodeAttribs( $name, [qw(mac)]);
-        if ( !$mac or !$mac->{mac} ) {
-            send_msg( $req, 0, "$name: no mac defined, skipping network reset" );
-            next;
-        }
-
-        #####################################
-        # Make the target that will reset its
-        # network interface
-        #####################################
-        $targets->{$nodetype}->{$oi}->{'args'} = "0.0.0.0,$name";
-        $targets->{$nodetype}->{$oi}->{'mac'} = $mac->{mac};
-        $targets->{$nodetype}->{$oi}->{'name'} = $name;
-        $targets->{$nodetype}->{$oi}->{'ip'} = $oi;
-        $targets->{$nodetype}->{$oi}->{'type'} = $nodetype;
-        if ( $nodetype !~ /^mm$/ ) {
-            my %netinfo = xCAT::DBobjUtils->getNetwkInfo( [$oi] );
-            $targets->{$nodetype}->{$oi}->{'args'} .= ",$netinfo{$oi}{'gateway'},$netinfo{$oi}{'mask'}";
-        }
-        $ip_host->{$oi} = $name;
-        xCAT::MsgUtils->verbose_message($req, "rspconfig :resetnet collecting information for node:$name.");
-    }
-
-    $result = undef;
+    
+    unless (%grouphash) {
+	    send_msg( $req, 0, "Failed to group the nodes, skipping network reset" );
+        return;
+    }    
     ###########################################
     # Update target hardware w/discovery info
     ###########################################
-    my ($fail_nodes,$succeed_nodes) = rspconfig( $req, $targets );
-    $result = "\nReset network failed nodes:\n";
-    foreach my $ip ( @$fail_nodes ) {
-        if ( $ip_host->{$ip} ) {
-            $result .= $ip_host->{$ip} . ",";
-        }
-    }
-    $result .= "\nReset network succeed nodes:\n";
-    foreach my $ip ( @$succeed_nodes ) {
-        if ( $ip_host->{$ip} ) {
-            $result .= $ip_host->{$ip} . ",";
-            my $new_ip = $hoststab->getNodeAttribs( $ip_host->{$ip}, [qw(ip)]);
-            $hoststab->setNodeAttribs( $ip_host->{$ip},{otherinterfaces=>$new_ip->{ip}} );
-        }
-    }
-    $result .= "\nReset network finished.\n";
-    $hoststab->close();
-
-    send_msg( $req, 0, $result );
-
-    return undef;
-}
-##########################################################################
-# Run rspconfig against targets
-##########################################################################
-sub rspconfig {
-
-    my $request   = shift;
-    my $targets   = shift;
-    my $callback  = $request->{callback};
-    my $start = Time::HiRes::gettimeofday();
-
-    my %rsp_dev = get_rsp_dev( $request, $targets);
-    #############################################
-    # Fork one process per MM/HMC
-    #############################################
+    my %rsp_dev = get_rsp_dev( $req, $targets);
+    
+    ######################################################
+    # Start to reset network. Fork one process per BPA/FSP
+    ######################################################
+    send_msg( $req, 0, "\nStart to reset network..\n" );
+    $start = Time::HiRes::gettimeofday();
     my $children = 0;
     $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children--; } };
     my $fds = new IO::Select;
-
-    foreach my $ip ( keys %rsp_dev) {
-        my $pipe = fork_cmd( $request, $ip, \%rsp_dev);
+    my $callback  = $req->{callback};
+    foreach my $node ( keys %grouphash) {
+        xCAT::MsgUtils->verbose_message($req, "========> begin to fork process for node $node");
+        my $pipe = fork_cmd( $req, $node, \%rsp_dev, \%grouphash, \%iphash);
         if ( $pipe ) {
             $fds->add( $pipe );
             $children++;
@@ -840,18 +832,16 @@ sub rspconfig {
     }
     while (child_response($callback,$fds)) {}
 
-    #if ( $verbose ) {
-    #    my $elapsed = Time::HiRes::gettimeofday() - $start;
-    #    my $msg = sprintf( "Total rspconfig Time: %.3f sec\n", $elapsed );
-    #    trace( $request, $msg );
-    #}
+    my $elapsed = Time::HiRes::gettimeofday() - $start;
+    my $msg = sprintf( "Total rspconfig Time: %.3f sec\n", $elapsed );
+    xCAT::MsgUtils->verbose_message($req, $msg);
 
     my $result;
     my @failed_node;
     my @succeed_node;
     foreach my $ip ( keys %rsp_result ) {
         #################################
-        # Error logging on to MM
+        # Error logging on 
         #################################
         my $result = $rsp_result{$ip};
         my $Rc = shift(@$result);
@@ -861,47 +851,66 @@ sub rspconfig {
         } else {
             push @succeed_node, $ip;
         }
-    
-        if ( $Rc != SUCCESS ) {
-            #############################
-            # MM connect error
-            #############################
-            if ( ref(@$result[0]) ne 'ARRAY' ) {
-                #if ( $verbose ) {
-                #    trace( $request, "$ip: @$result[0]" );
-                #}
-                delete $rsp_dev{$ip};
-                next;
-            }
-        }
-    
-        ##################################
-        # Process each response
-        ##################################
-        if ( defined(@$result[0]) ) {
-            foreach ( @{@$result[0]} ) {
-                #if ( $verbose ) {
-                #    trace( $request, "$ip: $_" );
-                #}
-                /^(\S+)\s+(\d+)/;
-                my $cmd = $1;
-                $Rc = $2;
-    
-                if ( $cmd =~ /^network_reset/ ) {
-                    if ( $Rc != SUCCESS ) {
-                        delete $rsp_dev{$ip};
-                        next;
-                    }
-                    #if ( $verbose ) {
-                    #    trace( $request,"Resetting management-module ($ip)...." );
-                    #}
-                }
-            }
-        }
+   # 
+   #     if ( $Rc != SUCCESS ) {
+   #         #############################
+   #         # connect error
+   #         #############################
+   #         if ( ref(@$result[0]) ne 'ARRAY' ) {
+   #             #if ( $verbose ) {
+   #             #    trace( $request, "$ip: @$result[0]" );
+   #             #}
+   #             delete $rsp_dev{$ip};
+   #             next;
+   #         }
+   #     }
+   # 
+   #     ##################################
+   #     # Process each response
+   #     ##################################
+   #     if ( defined(@$result[0]) ) {
+   #         foreach ( @{@$result[0]} ) {
+   #             #if ( $verbose ) {
+   #             #    trace( $request, "$ip: $_" );
+   #             #}
+   #             /^(\S+)\s+(\d+)/;
+   #             my $cmd = $1;
+   #             $Rc = $2;
+   # 
+   #             if ( $cmd =~ /^network_reset/ ) {
+   #                 if ( $Rc != SUCCESS ) {
+   #                     delete $rsp_dev{$ip};
+   #                     next;
+   #                 }
+   #                 #if ( $verbose ) {
+   #                 #    trace( $request,"Resetting management-module ($ip)...." );
+   #                 #}
+   #             }
+   #         }
+   #     }
     }
 
-    return( \@failed_node, \@succeed_node );
+    ###########################################
+    # Print the result
+    ###########################################
+    $result = "\nReset network failed nodes:\n";
+    foreach my $fspport ( @failed_node ) {
+        $result .= $fspport.",";
+    }
+    $result .= "\nReset network succeed nodes:\n";
+    foreach my $fspport ( @succeed_node ) {
+        $result .= $fspport.",";
+        xCAT::MsgUtils->verbose_message( $req, "$fspport: Set the otherinterfaces value of $fspport to $iphash{$fspport}{sip} ");
+        $hoststab->setNodeAttribs( $fspport ,{otherinterfaces=> $iphash{$fspport}{sip}} );
+    }
+    $result .= "\nReset network finished.\n";
+    $hoststab->close();
+   
+    send_msg( $req, 0, $result );
+   
+    return undef;
 }
+
 #############################################
 # Get rsp devices and their logon info
 #############################################
@@ -935,7 +944,7 @@ sub get_rsp_dev
             }
         }
         #############################################
-        # Get MM userid/password
+        # Get userid/password
         #############################################
         my $mpatab = xCAT::Table->new('mpa');
         for my $nd ( keys %$mm ) {
@@ -959,7 +968,7 @@ sub get_rsp_dev
         #############################################
         foreach ( keys %$hmc ) {
             ( $hmc->{$_}->{username}, $hmc->{$_}->{password}) = xCAT::PPCdb::credentials( $hmc->{$_}->{name}, lc($hmc->{$_}->{'type'}), "hscroot" );
-            #trace( $request, "user/passwd for $_ is $hmc->{$_}->{username} $hmc->{$_}->{password}");
+            xCAT::MsgUtils->verbose_message( $request, "user/passwd for $_ is $hmc->{$_}->{username} $hmc->{$_}->{password}");
         }
     }
 
@@ -970,7 +979,7 @@ sub get_rsp_dev
         #############################################
         foreach ( keys %$fsp ) {
             ( $fsp->{$_}->{username}, $fsp->{$_}->{password}) = xCAT::PPCdb::credentials( $fsp->{$_}->{name}, lc($fsp->{$_}->{'type'}), "admin");
-            #trace( $request, "user/passwd for $_ is $fsp->{$_}->{username} $fsp->{$_}->{password}");
+            xCAT::MsgUtils->verbose_message( $request, "user/passwd for $_ is $fsp->{$_}->{username} $fsp->{$_}->{password}");
         }
     }
 
@@ -981,7 +990,7 @@ sub get_rsp_dev
         #############################################
         foreach ( keys %$bpa ) {
             ( $bpa->{$_}->{username}, $bpa->{$_}->{password}) = xCAT::PPCdb::credentials( $bpa->{$_}->{name}, lc($bpa->{$_}->{'type'}), "admin");
-            #trace( $request, "user/passwd for $_ is $bpa->{$_}->{username} $bpa->{$_}->{password}");
+            xCAT::MsgUtils->verbose_message( $request, "user/passwd for $_ is $bpa->{$_}->{username} $bpa->{$_}->{password}");
         }
     }
 
@@ -992,10 +1001,13 @@ sub get_rsp_dev
 ##########################################################################
 sub fork_cmd {
 
-    my $request  = shift;
-    my $ip       = shift;
-    my $arg      = shift;
-    my $services = shift;
+    my $request = shift;
+    my $node = shift;
+    my $rspdevref = shift;
+    my $grouphashref = shift;
+    my $iphashref = shift;
+    my $result; 
+    my @data = ("RSPCONFIG6sK4ci");
 
     #######################################
     # Pipe childs output back to parent
@@ -1018,11 +1030,78 @@ sub fork_cmd {
         ###################################
         close( $parent );
         $request->{pipe} = $child;
+        my @ns = split /,/, $grouphashref->{$node};
+        my $ips ;
+        #foreach my $nn(@ns) {
+        #    $ips = ${$iphashref->{$nn}}{tip}.",".${$iphashref->{$nn}}{sip};
+        #    xCAT::MsgUtils->verbose_message($request, "The node ips are $ips");
+        #    my $ip = pingnodes($ips);
+        #    unless($ip) { #retry one time
+        #        $ip =  pingnodes($ips);
+        #    }
+        #    if($ip) { 
+        #        xCAT::MsgUtils->verbose_message($request, "Begin to use ip $ip to loggin");
+        #        $result = invoke_cmd( $request, $ip, $rspdevref);
+        #        push @data, $ip;
+        #        push @data, @$result[0];
+        #        push @data, @$result[2];
+        #    } else {
+        #        send_msg($request, 0, "Can't loggin the node, the ip $ips are invalid");
+        #    } 
+        #}
+        my $retrytime = 0;
+        while (scalar(@ns)) {        
+            foreach my $fspport (@ns) {
+                my $ip = ${$iphashref->{$fspport}}{tip};
+                my $rc = system("ping -q -n -c 1 -w 1 $ip > /dev/null");
+                if ($rc != 0) {
+                    $ip = ${$iphashref->{$fspport}}{sip};
+                    $rc = system("ping -q -n -c 1 -w 1 $ip > /dev/null");
+                    if ($rc != 0) {
+                        xCAT::MsgUtils->verbose_message($request, "$fspport: Ping failed for both ips: ${$iphashref->{$fspport}}{tip}, ${$iphashref->{$fspport}}{sip}. Need to retry for fsp $fspport. Retry $retrytime");
+                        # record verbose info, retry 10 times for the noping situation
+						$retrytime++;
+						if ($retrytime > 10) {
+						    @ns = () ;
+						    push @data, $fspport;
+                            push @data, 1;
+						}; 
+                    } else {
+                        xCAT::MsgUtils->verbose_message($request, "$fspport: has got new ip $ip");
+                        shift @ns;
+                        push @data, $fspport;
+                        push @data, 0;
+					}
+                    next;					
+                } else {
+                    xCAT::MsgUtils->verbose_message($request, "$fspport: Begin to use ip $ip to loggin");
+                    $result = invoke_cmd( $request, $ip, $rspdevref);            
+                    xCAT::MsgUtils->verbose_message($request, "$fspport: resetnet result is @$result[0]");
+				    if (@$result[0] == 0) {
+                        shift @ns;
+                        push @data, $fspport;
+                        push @data, 0;
+                        #push @data, @$result[2];
+				    	xCAT::MsgUtils->verbose_message($request, "$fspport: reset successfully for node $fspport");
+                    } else {
+                        xCAT::MsgUtils->verbose_message($request, "$fspport: reset fail for node $fspport, retrying...");
+                    }
+                }				
 
-        invoke_cmd( $request, $ip, $arg, $services );
+            }
+
+            # retry time less than five mins.
+            my $elapsed = Time::HiRes::gettimeofday() - $start;    
+            @ns = () if ($elapsed > 180);
+        }        
+        ####################################
+        # Pass result array back to parent
+        ####################################
+        my $out = $request->{pipe};
+        print $out freeze( \@data );
+        print $out "\nENDOFFREEZE6sK4ci\n";
         exit(0);
-    }
-    else {
+    } else {
         ###################################
         # Parent process
         ###################################
@@ -1046,11 +1125,18 @@ sub invoke_cmd {
     # Telnet (rspconfig) command
     ########################################
     my $target_dev = $args->{$ip};
+    
+    ########################################
+    # check args
+    ########################################
+    unless ($target_dev){
+        send_msg( $request, 1, "invoke_cmd: Can't get the device information about the target $ip" );
+        return;
+    }
+    
     my @cmds;
     my $result;
-    #if ( $verbose ) {
-    #    trace( $request, "Forked: ($ip)->($target_dev->{args})" );
-    #}
+
     if ($target_dev->{'type'} eq 'mm')
     {
         @cmds = (
@@ -1069,7 +1155,7 @@ sub invoke_cmd {
     elsif($target_dev->{'type'} eq 'hmc')
     {
         @cmds = ("network_reset=$target_dev->{args}");
-        #trace( $request, "sshcmds on hmc $ip");
+        xCAT::MsgUtils->verbose_message($request, "sshcmds on hmc $ip");
         xCAT::MsgUtils->verbose_message($request, "rspconfig :doresetnet run xCAT::PPC::sshcmds_on_hmc for node:$target_dev->{name},ip:$ip.");
         $result = xCAT::PPC::sshcmds_on_hmc(
                 $ip,
@@ -1078,9 +1164,8 @@ sub invoke_cmd {
                 @cmds );
     }
     else #The rest must be fsp or bpa
-    {
+    {   
         @cmds = ("network=$ip,$target_dev->{args}");
-        #trace( $request, "update config on $target_dev->{'type'} $ip");
         xCAT::MsgUtils->verbose_message($request, "rspconfig :doresetnet run xCAT::PPC::updconf_in_asm for node:$target_dev->{name},ip:$ip.");
         $result = xCAT::PPC::updconf_in_asm(
                 $ip,
@@ -1088,16 +1173,8 @@ sub invoke_cmd {
                 @cmds );
     }
 
-    ####################################
-    # Pass result array back to parent
-    ####################################
-    my @data = ("RSPCONFIG6sK4ci", $ip, @$result[0], @$result[2]);
-    my $out = $request->{pipe};
 
-
-    print $out freeze( \@data );
-    print $out "\nENDOFFREEZE6sK4ci\n";
-    return;
+    return $result;
 }
     
 
@@ -1157,9 +1234,14 @@ sub child_response {
             #############################
             if ( @$responses[0] =~ /^RSPCONFIG6sK4ci$/ ) {
                 shift @$responses;
-                my $ip = shift(@$responses);
-
-                $rsp_result{$ip} = $responses;
+                my $ip = @$responses[0];
+                my @rsp1 = (@$responses[1]);
+                $rsp_result{$ip} = \@rsp1;
+				$ip = @$responses[2];
+				if ($ip) {
+                    my @rsp2 = (@$responses[3]);
+                    $rsp_result{$ip} = \@rsp2;
+				}	
                 next;
             }
             #############################
@@ -1177,8 +1259,27 @@ sub child_response {
         close($rfh);
     }
 }
-
+##########################################################################
+# PPing nodes befor loggin the node while doing resetnet
+##########################################################################
+#sub pingnodes {
+#    my $ips = shift;
+#    my @ping = split /,/, $ips;
+#    #my @ping = `pping $ips`;
+#    foreach my $res (@ping) {
+#        #if ($res =~ /(\w+)\:\s+ping/i) {
+#        #    my $ip = $1;
+#        #    return $ip
+#        #}
+#        my $rc = system("ping -q -n -c 1 -w 1 $res > /dev/null");
+#        if ($rc == 0) {
+#           return $res; 
+#        }
+#    }    
+#    return undef;    
+#}
 1;
+
 
 
 
