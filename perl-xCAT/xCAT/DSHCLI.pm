@@ -777,6 +777,7 @@ sub fork_fanout_dcp
             #eval "require RemoteShell::$rsh_extension";
             eval "require xCAT::$rsh_extension";
             my $remoteshell = "xCAT::$rsh_extension";
+            # HERE: Build the dcp command based on the arguments
             @dcp_command =
               $remoteshell->remote_copy_command(\%rcp_config, $remote_copy);
 
@@ -4251,9 +4252,13 @@ sub parse_and_run_dcp
             }
 
             else
-            {
-                $options{'target'} = '';
-                $options{'source'} = pop @ARGV;
+            {  
+                # HERE:only one line of input source and target in that line
+                # such as xdcp -R " /test/* /test"
+                my $tmparg = pop @ARGV;
+                my ($src,$tgt) = split " ", $tmparg;
+                $options{'target'} = $tgt;
+                $options{'source'} = join $::__DCP_DELIM, $src;
             }
         }
 
@@ -4266,6 +4271,7 @@ sub parse_and_run_dcp
 
         else
         {
+            # Get the source and the target
             $options{'target'} = pop @ARGV;
             $options{'source'} = join $::__DCP_DELIM, @ARGV;
         }
@@ -4273,6 +4279,7 @@ sub parse_and_run_dcp
     }
 
     # Execute the dcp api
+    # HERE:  Run xdcp
     @results = xCAT::DSHCLI->runDcp_api(\%options, 0);
     $::FAILED_NODES = $::RUNCMD_RC;
     
