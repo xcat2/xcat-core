@@ -648,13 +648,15 @@ sub process_nodes
             my $args = $newSNreq->{arg};
             my $arraysize = @$args;
             my $i = 0;
-            foreach (@$args) {
+            foreach my $sarg (@$args) {
               if ($arraysize > 1) { 
-                my $tmpfile =$synfiledir ;
-                $tmpfile .=$newSNreq->{arg}->[$i] ;
-                $newSNreq->{arg}->[$i] = $tmpfile;
-                $arraysize--; 
-                $i++;
+                if (($sarg !~ /^-/) && ( $sarg !~ /^\//)) {  # just a flag, skip
+                  my $tmpfile =$synfiledir ;
+                  $tmpfile .=$newSNreq->{arg}->[$i] ;
+                  $newSNreq->{arg}->[$i] = $tmpfile;
+                  $arraysize--; 
+                  $i++;
+                }
               } else {
                  last;
               }    
