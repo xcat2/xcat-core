@@ -479,6 +479,31 @@ unless ($imagename) {
 
 if (($postinstall_filename) && (-x $postinstall_filename)) {
 
+    #For Mellonax IB script. In diskless image, the uname -r not returning the rootimg level, 
+    #because the "uname -r" only returns the version of the kernel in use
+    #create a temporary uname script. for every flag except for -r, it should just call the real 
+    #uname with the same flags and return that info.
+    if(!( -e "$rootimg_dir/bin/orig_uname")) {
+        system("mv $rootimg_dir/bin/uname $rootimg_dir/bin/orig_uname");
+    }
+    my $tmpuname;
+    open($tmpuname,">","$rootimg_dir/bin/uname");
+    print $tmpuname <<EOS_UNAME;
+#!/bin/sh
+
+if [[ \$\# -eq 1 && \$1 == "-r" ]]; then
+    echo $kernelver
+    exit 0
+fi
+
+res=`/bin/orig_uname \$\*`
+echo \$res
+
+EOS_UNAME
+
+    close($tmpuname);
+    system("chmod +x $rootimg_dir/bin/uname");
+
     $updates{'postinstall'} = $postinstall_filename if ($tempfile);
 
     my $rc = system($postinstall_filename, $rootimg_dir,$osver,$arch,$profile);
@@ -486,6 +511,9 @@ if (($postinstall_filename) && (-x $postinstall_filename)) {
         print "postinstall script failed\n";
         exit 1;
     }
+
+    # restore the orig uname
+    system("mv $rootimg_dir/bin/orig_uname $rootimg_dir/bin/uname");
 }
 
 # all the attributes have been gathered
