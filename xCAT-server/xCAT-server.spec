@@ -215,7 +215,22 @@ rm $RPM_BUILD_ROOT/%{prefix}/sbin/xcat_traphandler
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/installp_bundles
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/install
-rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/add-on
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/aix
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/centos
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/debian
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/esxi/48.esxifixup
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/esxi/xcatsplash
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/fedora*
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/imgutils
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/rh
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/SL
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/sles
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/suse
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/syslinux
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/ubuntu
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/windows
+
 rm $RPM_BUILD_ROOT/%{prefix}/sbin/stopstartxcatd
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpblade.pm
 rm $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/detect_dhcpd
