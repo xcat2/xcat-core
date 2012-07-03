@@ -81,6 +81,9 @@ sub validate {
       #TODO: more complex matching (lists, wildcards)
       next unless ($peername and $peername eq $rule->{name});
     }
+    if ($rule->{name} and $rule->{name} eq '*') { #a name is required, but can be any name whatsoever....
+      next unless ($peername);
+    }
     if ($rule->{time} and $rule->{time} ne '*') {
       #TODO: time ranges
     }
