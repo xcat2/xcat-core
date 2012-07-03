@@ -370,17 +370,23 @@ sub nextdestiny {
     #TODO: service third party getdestiny..
   } else { #client asking to move along its own chain
     #TODO: SECURITY with this, any one on a node could advance the chain, for node, need to think of some strategy to deal with...
-    unless ($request->{'_xcat_clienthost'}->[0]) {
-      #ERROR? malformed request
-      return; #nothing to do here...
+    my $node;
+    if ($::XCATSITEVALS{nodeauthentication}) { #if requiring node authentication, this request will have a certificate associated with it, use it instead of name resolution
+	unless (ref $request->{username}) { return; } #TODO: log an attempt without credentials? 
+	$node = $request->{username}->[0];
+    } else {
+	    unless ($request->{'_xcat_clienthost'}->[0]) {
+	      #ERROR? malformed request
+	      return; #nothing to do here...
+	    }
+	    $node = $request->{'_xcat_clienthost'}->[0];
     }
-    my $node = $request->{'_xcat_clienthost'}->[0];
-    ($node) = noderange($node);
-    unless ($node) {
+   ($node) = noderange($node);
+   unless ($node) {
       #not a node, don't trust it
       return;
-    }
-    @nodes=($node);
+   }
+   @nodes=($node);
   }
 
   my $node;
