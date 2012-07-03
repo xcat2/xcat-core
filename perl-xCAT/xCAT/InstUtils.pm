@@ -119,43 +119,52 @@ sub myxCATname
 
 	# make sure xcatd is running - & db is available
 	#    this routine is called during initial install of xCAT
-        my $cmd="lsxcatd -d > /dev/null 2>&1";
-        my $outref = [];
-        @$outref = `$cmd`;
-        my $rc = $? >> 8;
-
-        if ($rc == 0)
-        {
-
-    	  if (xCAT::Utils->isMN())
-    	  {
-
+	my $cmd="lsxcatd -d > /dev/null 2>&1";
+	my $outref = [];
+	@$outref = `$cmd`;
+	my $rc = $? >> 8;
+	if ($rc == 0)
+	{
+		if (xCAT::Utils->isMN())
+		{
         	# read the site table, master attrib
         	my $hostname = xCAT::Utils->get_site_Master();
         	if (($hostname =~ /\d+\.\d+\.\d+\.\d+/) || ($hostname =~ /:/))
         	{
-            $name = xCAT::NetworkUtils->gethostname($hostname);
+            	$name = xCAT::NetworkUtils->gethostname($hostname);
         	}
         	else
         	{
             	$name = $hostname;
         	}
-
-       	  }
-    	  elsif (xCAT::Utils->isServiceNode())
-    	  {
-
-        	# the myxcatpost_<nodename> file should exist on all nodes!
-        	my $catcmd = "cat /xcatpost/myxcatpost_* | grep '^NODE='";
-			# - can't use runcmd because this routine is called by runcmd
-
-			my $output = `$catcmd`;
-        	if ($::RUNCMD_RC == 0)
+		}
+		elsif (xCAT::Utils->isServiceNode())
+		{
+			my $filename;
+			# get any files with the format myxcatpost_*
+			my $lscmd = qq~/bin/ls /xcatpost/myxcatpost_*  2>/dev/null~;
+			my $output = `$lscmd`;
+			my $rc = $? >> 8;
+    		if ($rc == 0)
         	{
-            	($junk, $name) = split('=', $output);
+				foreach my $line ( split(/\n/, $output)) {
+					my ($junk, $hostname) = split('myxcatpost_', $line);
+					if (xCAT::InstUtils->is_me($hostname)) {
+						$filename="/xcatpost/myxcatpost_$hostname";
+						last;
+					}
+				}
+
+				if ( -e $filename ) {
+					my $catcmd = qq~/bin/cat $filename | grep '^NODE=' 2>/dev/null~;
+					my $string = `$catcmd`;
+					if ($rc == 0) {
+						($junk, $name) = split('=', $string);
+					}
+				}
         	}
-	 }
-       }
+	 	}
+	}
 
 	if (!$name) {
 		$name = hostname();
