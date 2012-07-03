@@ -717,9 +717,10 @@ sub modify_by_prof {
     while (my ($cec,$h) = each(%$hash) ) {
         while (my ($lpar,$d) = each(%$h) ) {
             $td = $d;
-            @$td[4] = "fsp";
+            #@$td[4] = "fsp";
             $cec_name = @$d[3]; 
         }
+        $td->[4] = "cec";
         #get the current I/O slot information
         xCAT::MsgUtils->verbose_message($request, "$request->{command} :get_io_slot_info for node:$cec_name."); 
         my $action = "get_io_slot_info";
