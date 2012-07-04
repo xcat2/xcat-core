@@ -645,6 +645,7 @@ sub mkinstall
         my $ent = $ntents->{$node}->[0];
 	my $plat = "";
         my $tftpdir;
+        my $partfile;
  	if ($resents->{$node} and $resents->{$node}->[0]->{tftpdir}) {
 	   $tftpdir = $resents->{$node}->[0]->{tftpdir};
         } else {
@@ -678,6 +679,9 @@ sub mkinstall
 			if ($ref1->{'pkglist'}) {
 			    $img_hash{$imagename}->{pkglist}=$ref1->{'pkglist'};
 			}
+            if ($ref1->{'partitionfile'}) {
+                $img_hash{$imagename}->{partitionfile}=$ref1->{'partitionfile'};
+            }
 		    }
 		} else {
 		    $callback->(
@@ -697,6 +701,7 @@ sub mkinstall
 		$pkgdir="$installroot/$os/$arch";
 	    }
 	    $pkglistfile=$ph->{pkglist};
+        $partfile=$ph->{partitionfile};
 	}
 	else {
 	    $os = $ent->{os};
@@ -719,6 +724,26 @@ sub mkinstall
 	    if (! $pkglistfile) { $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$::XCATROOT/share/xcat/install/$plat", $profile, $os, $arch); }
 
 	    $pkgdir="$installroot/$os/$arch";
+
+        #get the partition file from the linuximage table
+        my $imgname = "$os-$arch-install-$profile";
+
+        if (! $linuximagetab) {
+            $linuximagetab = xCAT::Table->new('linuximage');
+        }
+
+        if ( $linuximagetab ) {
+            (my $ref1) = $linuximagetab->getAttribs({imagename => $imgname}, 'partitionfile');
+            if ( $ref1 and $ref1->{'partitionfile'}){
+                $partfile = $ref1->{'partitionfile'};
+            }
+
+            else {
+                $callback->(
+                     { error => [qq{ Cannot find the linux image called "$imgname", maybe you need to use the "nodeset <nr> osimage=<your_image_name>" command to set the boot state}], errorcode => [1] }
+            );
+            }
+        }
 	}
 	
 
@@ -756,7 +781,9 @@ sub mkinstall
                          "$installroot/autoinst/$node",
                          $node,
 		         $pkglistfile,
-		         $pkgdir
+		         $pkgdir,
+                 undef,
+                 $partfile
                          );
         }
 
