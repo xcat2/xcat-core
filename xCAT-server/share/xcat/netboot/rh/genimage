@@ -85,6 +85,7 @@ GetOptions(
    'otherpkglist=s' => \$otherpkglist,      #internal flag
    'postinstall=s' => \$postinstall_filename,  #internal flag
    'rootimgdir=s' => \$destdir,   #internal flag
+   'driverupdatesrc=s' => \$driverupdatesrc, #internal flag
    'interactive' =>\$prompt, 
 );
 
@@ -435,7 +436,7 @@ foreach my $dd (@dd_drivers) {
     unless (grep { $_ eq $dd} @ndrivers) {
         push @new_order, $dd;
     }
-    print "Added driver $dd from driver update disk.\n";
+    print "Added driver $dd from driver update disk or driver rpm.\n";
 }
 @ndrivers = (@new_order, @ndrivers);
 
@@ -1495,18 +1496,68 @@ sub get_path ()
     }
 }
 
-#load the driver update disk, and return the driver names by loading order
+my @all_real_path;
+sub get_all_path ()
+{
+    if ($File::Find::name =~ /\/$driver_name/) {
+        push @all_real_path, $File::Find::name;
+    }
+}
+
+# Load driver disk and driver rpm to the initrd
+# Get the driver disk or driver rpm from the osimage.driverupdatesrc
+# The valid value: dud:/install/dud/dd.img,rpm:/install/rpm/d.rpm, if missing the tag: 'dud'/'rpm'
+# the 'rpm' is default.
+#
+# If cannot find the driver disk from osimage.driverupdatesrc, will try to search driver disk 
+# from /install/driverdisk/<os>/<arch>
+#
+# For driver rpm, the driver list will be gotten from osimage.netdrivers. If not set, copy all the drivers from driver 
+# rpm to the initrd.
+#
+# Return the driver names by loading order
+
 sub load_dd ()
 {
-    # Get the Driver Update Disk images, it can be .img or .iso
-    if (! -d "$installroot/driverdisk/$osver/$arch") {
-        return ();
+    my @dd_list;
+    my @rpm_list;
+    my @driver_list;
+
+    my @rpm_drivers;
+
+    # Parse the parameters to the the source of Driver update disk and Driver rpm, and driver list as well
+    if ($driverupdatesrc) {
+        my @srcs = split(',', $driverupdatesrc);
+        foreach my $src (@srcs) {
+            if ($src =~ /dud:(.*)/i) {
+                push @dd_list, $1;
+            } elsif ($src =~ /rpm:(.*)/i) {
+                push @rpm_list, $1;
+            } else {
+                push @rpm_list, $src;
+            }
+        }
+    }
+    if (! @dd_list) {
+        # get Driver update disk from the default path if not specified in osimage
+        # check the Driver Update Disk images, it can be .img or .iso
+        if (-d "$installroot/driverdisk/$osver/$arch") {
+            @dd_list = `find $installroot/driverdisk/$osver/$arch -type f`;
+        }
     }
 
-    my @dd_list = `find $installroot/driverdisk/$osver/$arch -type f`;
-    chomp(@dd_list);
+    foreach (split /,/,$netdriver) {
+        unless (/\.ko$/) {
+            s/$/.ko/;
+        }
+        push @driver_list, $_;
+    }
 
-    if (! @dd_list) {
+
+    chomp(@dd_list);
+    chomp(@rpm_list);
+
+    unless (@dd_list || @rpm_list ) {
         return ();
     }
 
@@ -1515,7 +1566,7 @@ sub load_dd ()
     mkpath "$dd_dir/mnt";
     mkpath "$dd_dir/mods";
     
-    my @dd_drivers = ();    #dirver name
+    my @dd_drivers = ();    #driver name
     
     # Loading drivers from each Driver Disk
     foreach my $dd (@dd_list) {
@@ -1587,6 +1638,59 @@ sub load_dd ()
             print "umount the directory $dd_dir/mnt failed\n";
             exit 1;
         }
+    }
+
+    # Loading the drivers from rpm packages
+    if (@rpm_list) {
+        if (@rpm_list) {
+            # Extract the files from rpm to the tmp dir
+            mkpath "$dd_dir/rpm";
+            foreach my $rpm (@rpm_list) {
+                if (-r $rpm) {
+                    if (system ("cd $dd_dir/rpm; rpm2cpio $rpm | cpio -idum")) {
+                        print "Error: Cannot extract the files from the rpm $rpm.\n";
+                    }
+                } else {
+                    print "Error: Cannot read the rpm $rpm.\n";
+                }
+            }
+            # Copy the firmware to the rootimage
+            if (-d "$dd_dir/rpm/lib/firmware") {
+                system ("cp -rf $dd_dir/rpm/lib/firmware $rootimg_dir/lib");
+            }
+            # Copy the drivers to the rootimage
+            if (-d "$dd_dir/rpm/lib/modules/$kernelver") {
+              if (@driver_list) {
+                foreach my $driver (@driver_list) {
+                  $driver_name = $driver;
+                  $real_path = "";
+                  find(\&get_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
+                  if ($real_path && $real_path =~ m!$dd_dir/rpm(/lib/modules/$kernelver/.*?)[^\/]*$!) {
+                      if (! -d "$rootimg_dir$1") {
+                          mkpath "$rootimg_dir$1";
+                      }
+                      system ("cp -rf $real_path $rootimg_dir$1");
+                      push @rpm_drivers, $driver;
+                  } else {
+                      print "Error: cannot find the driver $driver from the driver rpms\n";
+                  }
+                }
+              } else {
+                # copy all the drviers to the rootimage
+                system ("cp -rf $dd_dir/rpm/lib/modules/$kernelver $rootimg_dir/lib/modules/");
+                find(\&get_all_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
+                foreach (@all_real_path) {
+                  if (basename($_) =~ /\.ko$/) {
+                      push @rpm_drivers, basename($_);
+                  }
+                }
+              }
+            } else {
+              print "Warning: cannot find the kernel $kernelver from drvier rpms\n";
+            }
+        }
+
+        push @dd_drivers, @rpm_drivers;
     }
 
     # Generate the dependency relationship

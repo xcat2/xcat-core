@@ -132,7 +132,7 @@ sub process_request {
 	   return 1;
        }
        
-       (my $ref_linuximage_tab) = $linuximagetab->getAttribs({imagename => $imagename}, 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'postinstall', 'rootimgdir', 'kerneldir', 'krpmver', 'nodebootif', 'otherifce', 'kernelver', 'netdrivers', 'permission');
+       (my $ref_linuximage_tab) = $linuximagetab->getAttribs({imagename => $imagename}, 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'postinstall', 'rootimgdir', 'kerneldir', 'krpmver', 'nodebootif', 'otherifce', 'kernelver', 'netdrivers', 'permission','driverupdatesrc');
        unless ($ref_linuximage_tab) {
 	   $callback->({error=>["Cannot find $imagename from the linuximage table."],errorcode=>[1]});
 	   return 1;
@@ -164,6 +164,7 @@ sub process_request {
        $otherpkglist = $ref_linuximage_tab->{'otherpkglist'};
        $postinstall_filename = $ref_linuximage_tab->{'postinstall'};
        $destdir = $ref_linuximage_tab->{'rootimgdir'};
+       $driverupdatesrc = $ref_linuximage_tab->{'driverupdatesrc'};
        
        # TODO: how can we do if the user specifies one wrong value to the following attributes?
        # currently, one message is output to indicate the users there will be some updates
@@ -294,6 +295,7 @@ sub process_request {
    if ($postinstall_filename)  { $cmd .= " --postinstall $postinstall_filename"; }
    if ($destdir) { $cmd .= " --rootimgdir $destdir"; } 
    if ($tempfile) { $cmd .= " --tempfile $tempfile"; } 
+   if ($driverupdatesrc) { $cmd .= " --driverupdatesrc $driverupdatesrc"; }
 
    if ($imagename) {
        $cmd.= " $imagename";

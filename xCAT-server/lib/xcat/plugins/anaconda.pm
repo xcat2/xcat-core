@@ -21,6 +21,8 @@ Getopt::Long::Configure("pass_through");
 use File::Path;
 use File::Copy;
 use File::Temp qw/mkdtemp/;
+use File::Find;
+use File::Basename;
 
 use Socket;
 
@@ -839,6 +841,8 @@ sub mkinstall
 	my $platform;
         my $xcatmaster;
         my $partfile;
+        my $netdrivers;
+        my $driverupdatesrc;
 
         my $ient = $rents{$node}->[0];
         if ($ient and $ient->{xcatmaster})
@@ -885,6 +889,12 @@ sub mkinstall
             if ($ref1->{'partitionfile'}) {
                 $img_hash{$imagename}->{partitionfile} = $ref1->{'partitionfile'};
             }
+			if ($ref1->{'driverupdatesrc'}) {
+			    $img_hash{$imagename}->{driverupdatesrc}=$ref1->{'driverupdatesrc'};
+			}
+			if ($ref1->{'netdrivers'}) {
+			    $img_hash{$imagename}->{netdrivers}=$ref1->{'netdrivers'};
+			}
 		    }
 		    # if the install template wasn't found, then lets look for it in the default locations.
 		    unless($img_hash{$imagename}->{template}){
@@ -932,6 +942,9 @@ sub mkinstall
 		$pkgdir="$installroot/$os/$arch";
 	    }
 	    $pkglistfile=$ph->{pkglist};
+
+	    $netdrivers = $ph->{netdrivers};
+	    $driverupdatesrc = $ph->{driverupdatesrc};
 	}
 	else {
 	    $os = $ent->{os};
@@ -1108,9 +1121,16 @@ sub mkinstall
                 if($esxi){
                     copyesxiboot($pkgdir, "$tftpdir/xcat/$os/$arch");		
                 }else{
-                    copy($kernpath,"$tftpdir/xcat/$os/$arch");
-                    copy($initrdpath,"$tftpdir/xcat/$os/$arch/initrd.img");
-                    &insert_dd($callback, $os, $arch, "$tftpdir/xcat/$os/$arch/initrd.img");
+                    my $tftppath;
+                    if ($profile) {
+                        $tftppath = "/$tftpdir/xcat/$os/$arch/$profile";
+                    } else {
+                        $tftppath = "/$tftpdir/xcat/$os/$arch";
+                    }
+                    mkpath ("$tftppath");
+                    copy($kernpath,"$tftppath");
+                    copy($initrdpath,"$tftppath/initrd.img");
+                    &insert_dd($callback, $os, $arch, "$tftppath/initrd.img", $driverupdatesrc, $netdrivers);
                 }
                 $doneimgs{"$os|$arch"} = 1;
             }
@@ -1228,8 +1248,13 @@ sub mkinstall
                     $kcmdline .= " --- xcat/$os/$arch/$_";
                 }
             }else{
-                $k = "xcat/$os/$arch/vmlinuz";
-                $i = "xcat/$os/$arch/initrd.img";
+                if ($profile) {
+                    $k = "xcat/$os/$arch/$profile/vmlinuz";
+                    $i = "xcat/$os/$arch/$profile/initrd.img";
+                } else {
+                    $k = "xcat/$os/$arch/vmlinuz";
+                    $i = "xcat/$os/$arch/initrd.img";
+                }
             }
 
             $bptab->setNodeAttribs(
@@ -1576,31 +1601,530 @@ sub copyesxiboot {
     }
 }
 
-# Get the driver update disk from /install/driverdisk/<os>/<arch>
-# Take out the drivers from driver update disk and insert them
-# into the initrd
+# callback subroutine for 'find' command to return the path
+my $driver_name;
+my $real_path;
+sub get_path ()
+{
+    if ($File::Find::name =~ /\/$driver_name/) {
+        $real_path = $File::Find::name;
+    }
+}
+
+# callback subroutine for 'find' command to return the path for all the matches
+my @all_real_path;
+sub get_all_path ()
+{
+    if ($File::Find::name =~ /\/$driver_name/) {
+        push @all_real_path, $File::Find::name;
+    }
+}
+
+# Get the driver disk or driver rpm from the osimage.driverupdatesrc
+# The valid value: dud:/install/dud/dd.img,rpm:/install/rpm/d.rpm, if missing the tag: 'dud'/'rpm'
+# the 'rpm' is default.
+#
+# If cannot find the driver disk from osimage.driverupdatesrc, will try to search driver disk 
+# from /install/driverdisk/<os>/<arch>
+#
+# For driver rpm, the driver list will be gotten from osimage.netdrivers. If not set, copy all the drivers from driver 
+# rpm to the initrd.
+#
+
 sub insert_dd {
     my $callback = shift;
     my $os = shift;
     my $arch = shift;
     my $img = shift;
+    my $driverupdatesrc = shift;
+    my $drivers = shift;
 
     my $install_dir = xCAT::Utils->getInstallDir();
 
-    # Find out the dirver disk which need to be inserted into initrd
-    if (! -d "$install_dir/driverdisk/$os/$arch") {
-        return ();
+    my $cmd;
+       
+    my @inserted_dd = ();
+    my @dd_drivers = ();
+    
+    my @dd_list;
+    my @rpm_list;
+    my @driver_list;
+
+    my @rpm_drivers;
+
+    # Parse the parameters to the the source of Driver update disk and Driver rpm, and driver list as well
+    if ($driverupdatesrc) {
+        my @srcs = split(',', $driverupdatesrc);
+        foreach my $src (@srcs) {
+            if ($src =~ /dud:(.*)/i) {
+                push @dd_list, $1;
+            } elsif ($src =~ /rpm:(.*)/i) {
+                push @rpm_list, $1;
+            } else {
+                push @rpm_list, $src;
+            }
+        }
+    }
+    if (! @dd_list) {
+        # get Driver update disk from the default path if not specified in osimage
+        # check the Driver Update Disk images, it can be .img or .iso
+        if (-d "$install_dir/driverdisk/$os/$arch") {
+            $cmd = "find $install_dir/driverdisk/$os/$arch -type f";
+            @dd_list = xCAT::Utils->runcmd($cmd, -1);
+        }
     }
 
-    my $cmd = "find $install_dir/driverdisk/$os/$arch -type f";
-    my @dd_list = xCAT::Utils->runcmd($cmd, -1);
-    chomp(@dd_list);
-    if (!@dd_list) {
-        return ();
+    foreach (split /,/,$drivers) {
+        unless (/\.ko$/) {
+            s/$/.ko/;
+        }
+        push @driver_list, $_;
     }
+
+    chomp(@dd_list);
+    chomp(@rpm_list);
+    
+    unless (@dd_list || @rpm_list ) {
+        return undef;
+    }
+
     # Create the tmp dir for dd hack
     my $dd_dir = mkdtemp("/tmp/ddtmpXXXXXXX");
-    if (<$install_dir/$os/$arch/Packages/dracut*>) { #new style, skip the fanagling, copy over the dds and append them...
+
+    # regenerate the original initrd for non dracut or need to add the drivers from rpm packages
+    # dracut + drvier rpm
+    # !dracut + driver rpm
+    # !dracut + driver disk
+    if (!<$install_dir/$os/$arch/Packages/dracut*> || @rpm_list) {
+        mkpath "$dd_dir/initrd_img"; # The dir for the new initrd
+
+        # unzip the initrd image
+        $cmd = "gunzip -c $img > $dd_dir/initrd";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            my $rsp;
+            push @{$rsp->{data}}, "Handle the driver update disk failed. Could not gunzip the initial initrd.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return undef;
+        }
+    
+        # Extract the files from original initrd
+        $cmd = "cd $dd_dir/initrd_img; cpio -id --quiet < ../initrd";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            my $rsp;
+            push @{$rsp->{data}}, "Handle the driver update disk failed. Could not extract files from the initial initrd.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return undef;
+        }
+
+        if (@rpm_list) {
+            # Extract the files from rpm to the tmp dir
+            mkpath "$dd_dir/rpm";
+            foreach my $rpm (@rpm_list) {
+                if (-r $rpm) {
+                    $cmd = "cd $dd_dir/rpm; rpm2cpio $rpm | cpio -idum";
+                    xCAT::Utils->runcmd($cmd, -1);
+                    if ($::RUNCMD_RC != 0) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Handle the driver update failed. Could not extract files from the rpm $rpm.";
+                        xCAT::MsgUtils->message("I", $rsp, $callback);
+                    }
+                } else {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Handle the driver update failed. Could not read the rpm $rpm.";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
+            }
+        }
+    
+        # The rh6 has different initrd format with old version (rh 5.x)
+        # The new format of initrd is made by dracut, it has the /lib/modules/<kernel>
+        # directory like the root image
+        # If the os has dracut rpm packet, then copy the drivers to the /lib/modules/<kernel>
+        # and recreate the dependency by the depmod command 
+        
+        if (<$install_dir/$os/$arch/Packages/dracut*>) { #rh6, fedora13 ...
+            # For dracut mode, only copy the drivers from rpm packages to the /lib/modules/<kernel>
+            # The driver disk will be handled that append the whole disk to the orignial initrd
+
+            if (@rpm_list) {
+                # Copy the firmware to the rootimage
+                if (-d "$dd_dir/rpm/lib/firmware") {
+                    if (! -d "$dd_dir/initrd_img/lib") {
+                        mkpath "$dd_dir/initrd_img/lib";
+                    }
+                    $cmd = "cp -rf $dd_dir/rpm/lib/firmware $dd_dir/initrd_img/lib";
+                    xCAT::Utils->runcmd($cmd, -1);
+                    if ($::RUNCMD_RC != 0) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Handle the driver update failed. Could not copy firmware to the initrd.";
+                        xCAT::MsgUtils->message("I", $rsp, $callback);
+                    }
+                }
+                
+                # Copy the drivers to the initrd
+                # Figure out the kernel version
+                my @kernelpaths = <$dd_dir/initrd_img/lib/modules/*>;
+                my @kernelvers;
+                foreach (@kernelpaths) {
+                    if (basename($_) =~ /^[\d\.]+/) {
+                        push @kernelvers, basename($_);
+                    }
+                }
+
+                foreach my $kernelver (@kernelvers) {
+                  if (@driver_list) {
+                    foreach my $driver (@driver_list) {
+                      $driver_name = $driver;
+                      $real_path = "";
+                      find(\&get_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
+                      if ($real_path && $real_path =~ m!$dd_dir/rpm(/lib/modules/$kernelver/.*?)[^\/]*$!) {
+                          if (! -d "$dd_dir/initrd_img$1") {
+                              mkpath "$dd_dir/initrd_img$1";
+                          }
+                          $cmd = "cp -rf $real_path $dd_dir/initrd_img$1";
+                          xCAT::Utils->runcmd($cmd, -1);
+                          if ($::RUNCMD_RC != 0) {
+                              my $rsp;
+                              push @{$rsp->{data}}, "Handle the driver update failed. Could not copy driver $driver to the initrd.";
+                              xCAT::MsgUtils->message("I", $rsp, $callback);
+                          } else {
+                              push @rpm_drivers, $driver;
+                          }
+                      }
+                    }
+                  } else {
+                    # copy all the drviers to the rootimage
+                    if (-d "$dd_dir/rpm/lib/modules/$kernelver") {
+                        $cmd = "cp -rf $dd_dir/rpm/lib/modules/$kernelver $dd_dir/initrd_img/lib/modules/";
+                        xCAT::Utils->runcmd($cmd, -1);
+                        if ($::RUNCMD_RC != 0) {
+                            my $rsp;
+                            push @{$rsp->{data}}, "Handle the driver update failed. Could not copy /lib/modules/$kernelver to the initrd.";
+                            xCAT::MsgUtils->message("I", $rsp, $callback);
+                        }
+                    } else {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Handle the driver update failed. Could not find /lib/modules/$kernelver from the driver rpms.";
+                        xCAT::MsgUtils->message("I", $rsp, $callback);
+                    }
+                }
+        
+                # regenerate the modules dependency
+                foreach my $kernelver (@kernelvers) {
+                    $cmd = "depmod -b $dd_dir/initrd_img $kernelver";
+                    xCAT::Utils->runcmd($cmd, -1);
+                    if ($::RUNCMD_RC != 0) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Handle the driver update failed. Could not generate the depdency for the drivers in the initrd.";
+                        xCAT::MsgUtils->message("I", $rsp, $callback);
+                    }
+                }
+              }
+            }
+        } else {# non dracut mode, for rh5, fedora12 ...
+            # For non-dracut mode, the drviers need to be merged into the initrd with the specific format
+
+            # Create directory for the driver modules hack
+            mkpath "$dd_dir/modules";
+            
+            # Extract files from the modules.cgz of initrd
+            $cmd = "cd $dd_dir/modules; gunzip -c $dd_dir/initrd_img/modules/modules.cgz | cpio -id";
+            xCAT::Utils->runcmd($cmd, -1);
+            if ($::RUNCMD_RC != 0) {
+                my $rsp;
+                push @{$rsp->{data}}, "Handle the driver update disk failed. Could not gunzip modules.cgz from the initial initrd.";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return undef;
+            }
+        
+            my @modinfo = ();
+            foreach my $dd (@dd_list) {
+                mkpath "$dd_dir/mnt";
+                mkpath "$dd_dir/dd_modules";
+        
+                $cmd = "mount -o loop $dd $dd_dir/mnt";
+                xCAT::Utils->runcmd($cmd, -1);
+                if ($::RUNCMD_RC != 0) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Handle the driver update disk failed. Could not mount the driver update disk.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return undef;
+                }
+    
+                $cmd = "cd $dd_dir/dd_modules; gunzip -c $dd_dir/mnt/modules.cgz | cpio -id";
+                xCAT::Utils->runcmd($cmd, -1);
+    
+                if ($::RUNCMD_RC != 0) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Handle the driver update disk failed. Could not gunzip the modules.cgz from the driver update disk.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    system("umount -f $dd_dir/mnt");
+                    return undef;
+                }
+        
+                # Copy all the driver files out
+                $cmd = "cp -rf $dd_dir/dd_modules/* $dd_dir/modules";
+                xCAT::Utils->runcmd($cmd, -1);
+        
+                # Copy the firmware into the initrd
+                mkpath "$dd_dir/initrd_img/firmware";
+                $cmd = "cp -rf $dd_dir/dd_modules/firmware/* $dd_dir/initrd_img/firmware";
+                xCAT::Utils->runcmd($cmd, -1);
+       
+                my $drivername; 
+                # Get the entries from modinfo
+                open (DDMODINFO, "<", "$dd_dir/mnt/modinfo");
+                while (<DDMODINFO>) {
+                    if ($_ =~ /^Version/) { next; }
+                    if ($_ =~ /^(\S+)/) {
+                        push @dd_drivers, $1;
+                        $drivername=$1;
+                    }
+                    push @modinfo, $_;
+                }
+                close (DDMODINFO);
+        
+                # Append the modules.alias
+                if (-r "$dd_dir/mnt/modules.alias") {
+                  $cmd = "cat $dd_dir/mnt/modules.alias >> $dd_dir/initrd_img/modules/modules.alias";
+                  xCAT::Utils->runcmd($cmd, -1);
+                }
+        
+                # Append the modules.dep
+                my $depfile;
+                my $target;
+                open($target,">>","$dd_dir/initrd_img/modules/modules.dep");
+                open($depfile,"<","$dd_dir/mnt/modules.dep");
+                my $curline;
+                while ($curline=<$depfile>) {
+                    if ($curline !~ /:/) { #missing the rather important first half of the equation here....
+                        $curline = $drivername.": ".$curline;
+                    }
+                    print $target $curline;
+                }
+                close($target);
+                close($depfile);
+
+                # Append the pcitable
+                if (-r "$dd_dir/mnt/pcitable") {
+                  $cmd = "cat $dd_dir/mnt/pcitable >> $dd_dir/initrd_img/modules/pcitable";
+                  xCAT::Utils->runcmd($cmd, -1);
+                }
+
+                if (-r "$dd_dir/mnt/modules.pcimap") { 
+                  $cmd = "cat $dd_dir/mnt/modules.pcimap >> $dd_dir/initrd_img/modules/modules.pcimap";
+                  xCAT::Utils->runcmd($cmd, -1);
+                }
+        
+                $cmd = "umount -f $dd_dir/mnt";
+                xCAT::Utils->runcmd($cmd, -1);
+                if ($::RUNCMD_RC != 0) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Handle the driver update disk failed. Could not unmount the driver update disk.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    system("umount -f $dd_dir/mnt");
+                    return undef;
+                }
+    
+                # Clean the env
+                rmtree "$dd_dir/mnt";
+                rmtree "$dd_dir/dd_modules";
+                
+                push @inserted_dd, $dd;
+            }
+
+            # Merge the drviers from rpm packages to the initrd
+            if (@rpm_list) {
+                # Copy the firmware to the rootimage
+                if (-d "$dd_dir/rpm/lib/firmware") {
+                    if (! -d "$dd_dir/initrd_img/lib") {
+                        mkpath "$dd_dir/initrd_img/lib";
+                    }
+                    $cmd = "cp -rf $dd_dir/rpm/lib/firmware $dd_dir/initrd_img";
+                    xCAT::Utils->runcmd($cmd, -1);
+                    if ($::RUNCMD_RC != 0) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Handle the driver update failed. Could not copy firmware to the initrd.";
+                        xCAT::MsgUtils->message("I", $rsp, $callback);
+                    }
+                }
+
+                # Copy the drivers to the initrd
+                # Figure out the kernel version
+                my @kernelpaths = <$dd_dir/modules/*>;
+                my @kernelvers;
+                foreach (@kernelpaths) {
+                    push @kernelvers, basename($_);
+                }
+
+               foreach my $kernelver (@kernelvers) {
+                  # find the $kernelver/$arch dir in the $dd_dir/modules
+                  my $arch4modules;
+                  foreach (<$dd_dir/modules/$kernelver/*>) {
+                      if (basename($_) =~ $arch) {
+                          $arch4modules = basename($_);
+                      }
+                  }
+                  if (!$arch4modules) {
+                      $arch4modules = basename(<$dd_dir/modules/$kernelver/*>);
+                  }
+                  if (! -d "$dd_dir/modules/$kernelver/$arch4modules/") {
+                      next;
+                  }
+                  if (@driver_list) {
+                    # copy all the specific drviers to the initrd
+                    foreach my $driver (@driver_list) {
+                      $driver_name = $driver;
+                      $real_path = "";
+                      find(\&get_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
+                      if ($real_path ) {
+    
+                          $cmd = "cp -rf $real_path $dd_dir/modules/$kernelver/$arch4modules/";
+                          xCAT::Utils->runcmd($cmd, -1);
+                          if ($::RUNCMD_RC != 0) {
+                              my $rsp;
+                              push @{$rsp->{data}}, "Handle the driver update failed. Could not copy driver $driver to the initrd.";
+                              xCAT::MsgUtils->message("I", $rsp, $callback);
+                          } else {
+                              push @rpm_drivers, $driver;
+                          }
+                      }
+                    }
+                  } else {
+                    # copy all the drviers to the initrd
+                    if (-d "$dd_dir/rpm/lib/modules/$kernelver") {
+                        find(\&get_all_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
+                        foreach my $driverpath (@all_real_path) {
+                            $cmd = "cp -rf $driverpath $dd_dir/modules/$kernelver/$arch4modules/";
+                            xCAT::Utils->runcmd($cmd, -1);
+                            if ($::RUNCMD_RC != 0) {
+                                my $rsp;
+                                push @{$rsp->{data}}, "Handle the driver update failed. Could not copy $driverpath to the initrd.";
+                                xCAT::MsgUtils->message("I", $rsp, $callback);
+                            }
+                            if ($driverpath =~ s/([^\/]*)\.ko//) {
+                                push @rpm_drivers, $1;
+                            }
+                        }
+                    } else {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Handle the driver update failed. Could not find /lib/modules/$kernelver from the driver rpms.";
+                        xCAT::MsgUtils->message("I", $rsp, $callback);
+                    }
+                }
+
+                # Append the modules.dep to the one in the initrd
+                if (-f "$dd_dir/rpm/lib/modules/$kernelver/modules.dep") {
+                    $cmd = "cat $dd_dir/rpm/lib/modules/$kernelver/modules.dep >> $dd_dir/initrd_img/modules/modules.dep";
+                    xCAT::Utils->runcmd($cmd, -1);
+                }
+              }
+            }
+
+            # Regenerate the modules.dep
+            # 'depmod' command only can handle the drivers in /lib/modules/kernelver strcuture, so copy the drivers to a temporary
+            # dirctory $dd_dir/depmod/lib/modules/$mk, run 'depmod' and copy the modules.dep to the correct dir
+            my ($mk, $ma);
+            $mk = <$dd_dir/modules/*>;
+            if (-d $mk) {
+              $mk = basename($mk);
+              $ma = <$dd_dir/modules/$mk/*>;
+              if (-d $ma) {
+                mkpath "$dd_dir/depmod/lib/modules/$mk";
+                xCAT::Utils->runcmd("cp -rf $ma/* $dd_dir/depmod/lib/modules/$mk", -1);
+                $cmd = "depmod -b $dd_dir/depmod/";
+                xCAT::Utils->runcmd($cmd, -1);
+                if ($::RUNCMD_RC != 0) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Handle the driver update failed. Could not generate the depdency for the drivers in the initrd.";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
+                if (-f "$dd_dir/depmod/lib/modules/$mk/modules.dep") {
+                    copy ("$dd_dir/depmod/lib/modules/$mk/modules.dep", "$dd_dir/initrd_img/modules/modules.dep");
+                }
+
+                # remove the path and postfix of the driver modules from the new generated modules.dep since original format has not path and postfix
+                my @newdep;
+                if (open (DEP, "<$dd_dir/initrd_img/modules/modules.dep")) {
+                  while (<DEP>) {
+                    s/\/lib\/modules\/$mk\/([^\.]+)\.ko/$1/g;
+                    if (/:\s*\S+/) {
+                      push @newdep, $_;
+                    }
+                  }
+                  close (DEP);
+                }
+                if (open (NEWDEP, ">$dd_dir/initrd_img/modules/modules.dep")) {
+                  print NEWDEP @newdep;
+                  close (NEWDEP);
+                }
+              }
+            }
+            
+        
+            # Append the modinfo into the module-info
+            open (MODINFO, "<", "$dd_dir/initrd_img/modules/module-info");
+            open (MODINFONEW, ">", "$dd_dir/initrd_img/modules/module-info.new");
+            my $removeflag = 0;
+            my @orig_drivers;
+            while (<MODINFO>) {
+                my $line = $_;
+                if ($line =~ /^(\S+)/) {
+                    if (grep /$1/, @dd_drivers) {
+                        $removeflag = 1;
+                        next;
+                    } else {
+                        push @orig_drivers, $1;
+                        $removeflag = 0;
+                    }
+                }
+        
+                if ($removeflag == 1) { next; }
+                print MODINFONEW $line;
+            }
+        
+            print MODINFONEW @modinfo;
+
+            # add the drivers from rpm
+            foreach my $dr (@rpm_drivers) {
+                $dr =~ s/\.ko//;
+                if (! grep /^$dr$/, (@orig_drivers,@dd_drivers)) {
+                    print MODINFONEW $dr."\n";
+                }
+            }
+
+            close (MODINFONEW);
+            close (MODINFO);
+            move ("$dd_dir/initrd_img/modules/module-info.new", "$dd_dir/initrd_img/modules/module-info");
+        
+            # Repack the modules
+            $cmd = "cd $dd_dir/modules; find . -print | cpio -o -H crc | gzip -9 > $dd_dir/initrd_img/modules/modules.cgz";
+            xCAT::Utils->runcmd($cmd, -1);
+            if ($::RUNCMD_RC != 0) {
+                my $rsp;
+                push @{$rsp->{data}}, "Handle the driver update disk failed. Could not pack the hacked modules.cgz.";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return undef;
+            }
+        } # End of non dracut
+    
+        # Repack the initrd
+        $cmd = "cd $dd_dir/initrd_img; find .|cpio -H newc -o|gzip -9 -c - > $dd_dir/initrd.img";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            my $rsp;
+            push @{$rsp->{data}}, "Handle the driver update disk failed. Could not pack the hacked initrd.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return undef;
+        }
+    
+        copy ("$dd_dir/initrd.img", $img);
+    }
+
+    # dracut + driver disk, just append the driver disk to the initrd
+    if (<$install_dir/$os/$arch/Packages/dracut*> && @dd_list) { #new style, skip the fanagling, copy over the dds and append them...
 	mkpath("$dd_dir/dd");
 	if (scalar(@dd_list) == 1) { #only one, just append it..
 		copy($dd_list[0],"$dd_dir/dd/dd.img");
@@ -1627,323 +2151,39 @@ sub insert_dd {
 	} else { #there should be no else...
 		die "This should never occur";
 	}
-		chdir($dd_dir."/dd");
-    		$cmd = "find .|cpio -H newc -o|gzip -9 -c - > ../dd.gz";
-		xCAT::Utils->runcmd($cmd, -1);
-		unless (-f "../dd.gz") {
-			die "Error attempting to archive driver disk";
-		}
-		my $ddhdl;
- 		my $inithdl;
-		open($inithdl,">>",$img);
-		open($ddhdl,"<","../dd.gz");
-		binmode($ddhdl);
-		binmode($inithdl);
-		{
-			local $/ = \32768;
-			while (my $block = <$ddhdl>) { print $inithdl $block; }
-		}
-		chdir("/");
-		xCAT::Utils->runcmd("rm -rf $dd_dir");
-		    my $rsp;
-		    push @{$rsp->{data}}, "Inserted the driver update disk:".join(',',@dd_list).".";
-		    xCAT::MsgUtils->message("I", $rsp, $callback);
-	
-		    return @dd_list;
-		return;
+
+	chdir($dd_dir."/dd");
+		$cmd = "find .|cpio -H newc -o|gzip -9 -c - > ../dd.gz";
+	xCAT::Utils->runcmd($cmd, -1);
+	unless (-f "../dd.gz") {
+		die "Error attempting to archive driver disk";
+	}
+	my $ddhdl;
+		my $inithdl;
+	open($inithdl,">>",$img);
+	open($ddhdl,"<","../dd.gz");
+	binmode($ddhdl);
+	binmode($inithdl);
+	{
+		local $/ = \32768;
+		while (my $block = <$ddhdl>) { print $inithdl $block; }
+	}
+	chdir("/");
+	push @inserted_dd, @dd_list;
     }
 
-    mkpath "$dd_dir/initrd_img"; # The dir for the new initrd
-
-    # unzip the initrd image
-    $cmd = "gunzip -c $img > $dd_dir/initrd";
-    xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0) {
-        my $rsp;
-        push @{$rsp->{data}}, "Handle the driver update disk failed. Could not gunzip the initial initrd.";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return undef;
-    }
-
-    # Extract the files from original initrd
-    $cmd = "cd $dd_dir/initrd_img; cpio -id --quiet < ../initrd";
-    xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0) {
-        my $rsp;
-        push @{$rsp->{data}}, "Handle the driver update disk failed. Could not extract files from the initial initrd.";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return undef;
-    }
-
-    # Create directory for the driver modules hack
-    mkpath "$dd_dir/modules";
-
-    my @inserted_dd = ();
-    my @dd_drivers = ();
-
-    # The rh6 has different initrd format with old version (rh 5.x)
-    # The new format of initrd is made by dracut, it has the /lib/modules/<kernel>
-    # directory like the root image
-    # If the os has dracut rpm packet, then copy the drivers to the /lib/modules/<kernel>
-    # and recreate the dependency by the depmod command 
-    
-    $cmd = "find $install_dir/$os/$arch/ | grep dracut";
-    my @dracut = xCAT::Utils->runcmd($cmd, -1);
-    if (grep (/dracut-.*\.rpm/, @dracut)) {#dracut mode, for rh6, fedora13 ...
-        #copy the firmware into the initrd
-        if (-d "$dd_dir/mnt/firmware") {
-            $cmd = "cp -rf $dd_dir/mnt/firmware/* $dd_dir/initrd_img/lib/firmware";
-            xCAT::Utils->runcmd($cmd, -1);
-        }
-
-        # Figure out the kernel version of the initrd
-        my $kernelver;
-        opendir (KERNEL, "$dd_dir/initrd_img/lib/modules");
-        while ($kernelver = readdir(KERNEL)) {
-            if ($kernelver =~ /^\./ || $kernelver !~ /^\d/) { 
-                $kernelver = "";
-                next; 
-            }
-            if (-d "$dd_dir/initrd_img/lib/modules/$kernelver") {
-                last;
-            }
-            $kernelver = "";
-        }
-
-        # The initrd has problem
-        if ($kernelver eq "") {
-            return ();
-        }
-        
-        # Copy the drivers to the lib/modules/<$kernelver>/
-        if (! -d "$dd_dir/initrd_img/lib/modules/$kernelver/kernel/drivers/driverdisk") {
-            mkpath "$dd_dir/initrd_img/lib/modules/$kernelver/kernel/drivers/driverdisk";
-        }
-
-        foreach my $dd (@dd_list) {
-            mkpath "$dd_dir/mnt";
-            mkpath "$dd_dir/dd_modules";
-    
-            $cmd = "mount -o loop $dd $dd_dir/mnt";
-            xCAT::Utils->runcmd($cmd, -1);
-            if ($::RUNCMD_RC != 0) {
-                my $rsp;
-                push @{$rsp->{data}}, "Handle the driver update disk failed. Could not mount the driver update disk.";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return undef;
-            }
-    
-            $cmd = "cd $dd_dir/dd_modules; gunzip -c $dd_dir/mnt/modules.cgz | cpio -id";
-            xCAT::Utils->runcmd($cmd, -1);
-    
-            if ($::RUNCMD_RC != 0) {
-                my $rsp;
-                push @{$rsp->{data}}, "Handle the driver update disk failed. Could not gunzip the modules.cgz from the driver update disk.";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                system("umount -f $dd_dir/mnt");
-                return undef;
-            }
-
-            # Get all the drivers which belong to $kernelver/$arch
-            $cmd = "find $dd_dir/dd_modules/$kernelver/$arch/ -type f";
-
-            my @drivers = xCAT::Utils->runcmd($cmd, -1);
-            foreach my $d (@drivers) {
-                chomp($d);
-                # The drivers in the initrd is in zip format
-                $cmd = "gzip $d";
-                xCAT::Utils->runcmd($cmd, -1);
-                $d .= ".gz";
-
-                my $driver_name = $d;
-                $driver_name =~ s/.*\///;
-
-                # If the driver file existed, then over write
-                $cmd = "find $dd_dir/initrd_img/lib/modules/$kernelver -type f -name $driver_name";
-                my @exist_file = xCAT::Utils->runcmd($cmd, -1);
-                if (! @exist_file) {
-                    $cmd = "cp $d $dd_dir/initrd_img/lib/modules/$kernelver/kernel/drivers/driverdisk";
-                } else {
-                    $cmd = "cp $d $exist_file[0]";
-                }
-                xCAT::Utils->runcmd($cmd, -1);
-            }
-
-            $cmd = "umount -f $dd_dir/mnt";
-            xCAT::Utils->runcmd($cmd, -1);
-            if ($::RUNCMD_RC != 0) {
-                my $rsp;
-                push @{$rsp->{data}}, "Handle the driver update disk failed. Could not unmount the driver update disk.";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                system("umount -f $dd_dir/mnt");
-                return undef;
-            }
-
-            # Clean the env
-            rmtree "$dd_dir/mnt";
-            rmtree "$dd_dir/dd_modules";
-
-            push @inserted_dd, $dd;
-        }
-
-        # Generate the dependency relationship
-        $cmd = "chroot $dd_dir/initrd_img/ depmod $kernelver";
-        xCAT::Utils->runcmd($cmd, -1);
-    } else {
-        # Extract files from the modules.cgz of initrd
-        $cmd = "cd $dd_dir/modules; gunzip -c $dd_dir/initrd_img/modules/modules.cgz | cpio -id";
-        xCAT::Utils->runcmd($cmd, -1);
-        if ($::RUNCMD_RC != 0) {
-            my $rsp;
-            push @{$rsp->{data}}, "Handle the driver update disk failed. Could not gunzip modules.cgz from the initial initrd.";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return undef;
-        }
-    
-        my @modinfo = ();
-        foreach my $dd (@dd_list) {
-            mkpath "$dd_dir/mnt";
-            mkpath "$dd_dir/dd_modules";
-    
-            $cmd = "mount -o loop $dd $dd_dir/mnt";
-            xCAT::Utils->runcmd($cmd, -1);
-            if ($::RUNCMD_RC != 0) {
-                my $rsp;
-                push @{$rsp->{data}}, "Handle the driver update disk failed. Could not mount the driver update disk.";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return undef;
-            }
-
-            $cmd = "cd $dd_dir/dd_modules; gunzip -c $dd_dir/mnt/modules.cgz | cpio -id";
-            xCAT::Utils->runcmd($cmd, -1);
-
-            if ($::RUNCMD_RC != 0) {
-                my $rsp;
-                push @{$rsp->{data}}, "Handle the driver update disk failed. Could not gunzip the modules.cgz from the driver update disk.";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                system("umount -f $dd_dir/mnt");
-                return undef;
-            }
-    
-            # Copy all the driver files out
-            $cmd = "cp -rf $dd_dir/dd_modules/* $dd_dir/modules";
-            xCAT::Utils->runcmd($cmd, -1);
-    
-            # Copy the firmware into the initrd
-            mkpath "$dd_dir/initrd_img/firmware";
-            $cmd = "cp -rf $dd_dir/dd_modules/firmware/* $dd_dir/initrd_img/firmware";
-            xCAT::Utils->runcmd($cmd, -1);
-    
-            # Get the entries from modinfo
-	    my $drivername;
-            open (DDMODINFO, "<", "$dd_dir/mnt/modinfo");
-            while (<DDMODINFO>) {
-                if ($_ =~ /^Version/) { next; }
-                if ($_ =~ /^(\S+)/) {
-                    push @dd_drivers, $1;
- 		    $drivername=$1;
-                }
-                push @modinfo, $_;
-            }
-            close (DDMODINFO);
-    
-            # Append the modules.alias
-            $cmd = "cat $dd_dir/mnt/modules.alias >> $dd_dir/initrd_img/modules/modules.alias";
-            xCAT::Utils->runcmd($cmd, -1);
-    
-            # Append the modules.dep
-	    my $depfile;
-	    my $target;
-	    open($target,">>","$dd_dir/initrd_img/modules/modules.dep");
-	    open($depfile,"<","$dd_dir/mnt/modules.dep");
-	    my $curline;
-            while ($curline=<$depfile>) {
-		if ($curline !~ /:/) { #missing the rather important first half of the equation here....
-			$curline = $drivername.": ".$curline;
-		}
-		print $target $curline;
-            }
-            close($target);
-	    close($depfile);
-    
-            # Append the pcitable
-	    if (-r "$dd_dir/mnt/pcitable") { 
-            $cmd = "cat $dd_dir/mnt/pcitable >> $dd_dir/initrd_img/modules/pcitable";
-            xCAT::Utils->runcmd($cmd, -1);
-	    }
-	    if (-r "$dd_dir/mnt/modules.pcimap") { 
-            $cmd = "cat $dd_dir/mnt/modules.pcimap >> $dd_dir/initrd_img/modules/modules.pcimap";
-            xCAT::Utils->runcmd($cmd, -1);
-	    }
-    
-            $cmd = "umount -f $dd_dir/mnt";
-            xCAT::Utils->runcmd($cmd, -1);
-            if ($::RUNCMD_RC != 0) {
-                my $rsp;
-                push @{$rsp->{data}}, "Handle the driver update disk failed. Could not unmount the driver update disk.";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                system("umount -f $dd_dir/mnt");
-                return undef;
-            }
-
-            # Clean the env
-            rmtree "$dd_dir/mnt";
-            rmtree "$dd_dir/dd_modules";
-            
-            push @inserted_dd, $dd;
-        }
-    
-        # Append the modinfo into the module-info
-        open (MODINFO, "<", "$dd_dir/initrd_img/modules/module-info");
-        open (MODINFONEW, ">", "$dd_dir/initrd_img/modules/module-info.new");
-        my $removeflag = 0;
-        while (<MODINFO>) {
-            my $line = $_;
-            if ($line =~ /^(\S+)/) {
-                if (grep /$1/, @dd_drivers) {
-                    $removeflag = 1;
-                    next;
-                } else {
-                    $removeflag = 0;
-                }
-            }
-    
-            if ($removeflag == 1) { next; }
-            print MODINFONEW $line;
-        }
-    
-        print MODINFONEW @modinfo;
-        close (MODINFONEW);
-        close (MODINFO);
-        move ("$dd_dir/initrd_img/modules/module-info.new", "$dd_dir/initrd_img/modules/module-info");
-    
-        # Repack the modules
-        $cmd = "cd $dd_dir/modules; find . -print | cpio -o -H crc | gzip -9 > $dd_dir/initrd_img/modules/modules.cgz";
-        xCAT::Utils->runcmd($cmd, -1);
-        if ($::RUNCMD_RC != 0) {
-            my $rsp;
-            push @{$rsp->{data}}, "Handle the driver update disk failed. Could not pack the hacked modules.cgz.";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return undef;
-        }
-    } # End of non dracut
-
-    # Repack the initrd
-    $cmd = "cd $dd_dir/initrd_img; find .|cpio -H newc -o|gzip -9 -c - > $dd_dir/initrd.img";
-    xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0) {
-        my $rsp;
-        push @{$rsp->{data}}, "Handle the driver update disk failed. Could not pack the hacked initrd.";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return undef;
-    }
-
-    copy ("$dd_dir/initrd.img", $img);
-
+    # clean the env
     rmtree $dd_dir;
-
+        
     my $rsp;
-    push @{$rsp->{data}}, "Inserted the driver update disk:".join(',',@inserted_dd).".";
+    if (@dd_list) {
+        push @{$rsp->{data}}, "Inserted the driver update disk:".join(',',@inserted_dd).".";
+    }
+    if (@driver_list) {
+        push @{$rsp->{data}}, "Inserted the drivers:".join(',', sort(@rpm_drivers))." from driver packages.";
+    } elsif (@rpm_list) {
+         push @{$rsp->{data}}, "Inserted the drivers from driver packages:".join(',', sort(@rpm_list)).".";
+    }
     xCAT::MsgUtils->message("I", $rsp, $callback);
 
     return @inserted_dd;

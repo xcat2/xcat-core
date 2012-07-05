@@ -624,7 +624,7 @@ osimage => {
  },
   },
 linuximage  => {
- cols => [qw(imagename template pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir kerneldir nodebootif otherifce netdrivers kernelver krpmver permission dump crashkernelsize partitionfile comments disable)],
+ cols => [qw(imagename template pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir kerneldir nodebootif otherifce netdrivers kernelver krpmver permission dump crashkernelsize partitionfile driverupdatesrc comments disable)],
  keys => [qw(imagename)],
     table_desc => 'Information about a Linux operating system image that can be used to deploy cluster nodes.',
  descriptions => {
@@ -647,6 +647,7 @@ linuximage  => {
   dump => qq{The NFS directory to hold the Linux kernel dump file (vmcore) when the node with this image crashes, its format is "nfs://<nfs_server_ip>/<kdump_path>". If you want to use the node's "xcatmaster" (its SN or MN), <nfs_server_ip> can be left blank. For example, "nfs:///<kdump_path>" means the NFS directory to hold the kernel dump file is on the node's SN, or MN if there's no SN.},
   crashkernelsize => 'the size that assigned to the kdump kernel. If the kernel size is not set, 256M will be the default value.',
   partitionfile => 'There are 2 format about this attribute. One is "<partition file absolute path>", the content of the partition file must use the corresponding format with the OS type. The other one is "s:<partition file absolute path>", the content of the partition file should be a shell script which must write the partition difinition into /tmp/partitionfile. This attribute only works for diskful install.',
+  driverupdatesrc => 'The source of the drivers which need to be loaded during the boot. Two types of driver update source are supported: Driver update disk and Driver rpm package. The value for this attribute should be comma separated sources. Each source should be the format tab:full_path_of_srouce_file. The tab keyword can be: dud (for Driver update disk) and rpm (for driver rpm). If missing the tab, the rpm format is the default. e.g. dud:/install/dud/dd.img,rpm:/install/rpm/d.rpm',
   comments => 'Any user-written notes.',
   disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -2102,6 +2103,11 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
  {attr_name => 'partitionfile',
                  only_if => 'imagetype=linux',
                  tabentry => 'linuximage.partitionfile',
+                 access_tabentry => 'linuximage.imagename=attr:imagename',
+                },
+ {attr_name => 'driverupdatesrc',
+                 only_if => 'imagetype=linux',
+                 tabentry => 'linuximage.driverupdatesrc',
                  access_tabentry => 'linuximage.imagename=attr:imagename',
                 },
 ####################
