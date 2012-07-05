@@ -1061,38 +1061,54 @@ sub fork_cmd {
                         xCAT::MsgUtils->verbose_message($request, "$fspport: Ping failed for both ips: ${$iphashref->{$fspport}}{tip}, ${$iphashref->{$fspport}}{sip}. Need to retry for fsp $fspport. Retry $retrytime");
                         # record verbose info, retry 10 times for the noping situation
 						$retrytime++;
-						if ($retrytime > 10) {
-						    @ns = () ;
-						    push @data, $fspport;
-                            push @data, 1;
-						}; 
+                        if ($retrytime > 5) {
+                            while (@ns) {
+                                my $n1 = shift @ns;
+                                push @data, $n1;
+                                push @data, 1;  
+                                xCAT::MsgUtils->verbose_message($request, "$n1: Ping failed for both ips: ${$iphashref->{$n1}}{tip}, ${$iphashref->{$n1}}{sip}. Need to retry for fsp $n1. return");
+                            } 
+                        }; 
                     } else {
                         xCAT::MsgUtils->verbose_message($request, "$fspport: has got new ip $ip");
-                        shift @ns;
+                        my @temp;
+                        foreach my $tn (@ns){
+                            push @temp, $tn unless ($tn eq $fspport);
+                        }
+                        @ns = @temp;    
                         push @data, $fspport;
                         push @data, 0;
-					}
-                    next;					
+                    }                  
                 } else {
                     xCAT::MsgUtils->verbose_message($request, "$fspport: Begin to use ip $ip to loggin");
                     $result = invoke_cmd( $request, $ip, $rspdevref);            
                     xCAT::MsgUtils->verbose_message($request, "$fspport: resetnet result is @$result[0]");
-				    if (@$result[0] == 0) {
-                        shift @ns;
+                    if (@$result[0] == 0) {
+                        my @temp;
+                        foreach my $tn (@ns){
+                            push @temp, $tn unless ($tn eq $fspport);
+                        }
+                        @ns = @temp;                        
                         push @data, $fspport;
                         push @data, 0;
                         #push @data, @$result[2];
-				    	xCAT::MsgUtils->verbose_message($request, "$fspport: reset successfully for node $fspport");
+                        xCAT::MsgUtils->verbose_message($request, "$fspport: reset successfully for node $fspport");
                     } else {
                         xCAT::MsgUtils->verbose_message($request, "$fspport: reset fail for node $fspport, retrying...");
                     }
-                }				
-
+                }                
             }
 
-            # retry time less than five mins.
-            my $elapsed = Time::HiRes::gettimeofday() - $start;    
-            @ns = () if ($elapsed > 180);
+            # retry time less than 1 min.
+            my $elapsed = Time::HiRes::gettimeofday() - $start; 
+            if ($elapsed > 60) {
+                while (@ns) {
+                    my $n1 = shift @ns;
+                    push @data, $n1;
+                    push @data, 1; 
+                    xCAT::MsgUtils->verbose_message($request, "$n1: ASMI retry failed, return.");                    
+                }                              
+            }
         }        
         ####################################
         # Pass result array back to parent
