@@ -218,7 +218,12 @@ sub subvars {
         }
         else{
             $partcontent =~ s/\s$//;
-            $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$partcontent/;
+            if ($inc =~ /#XCAT_PARTITION_START#/){
+                $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$partcontent/;
+            }
+            elsif ($inc =~ /<!-- XCAT-PARTITION-START -->/){
+                $inc =~ s/<!-- XCAT-PARTITION-START -->[\s\S]*<!-- XCAT-PARTITION-END -->/$partcontent/;
+            }
         }
     }
   }
