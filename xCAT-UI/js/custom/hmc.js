@@ -1351,20 +1351,19 @@ function powerInitUpdateDefinition(operType) {
     
     var showStr = '<div style="min-height:360px"><h2>' + steps[currentStep] + '<br/><br/></h2>';
     showStr += '<ul>';
-    showStr += '<li id="frameLine"><span class="ui-icon ' + iconClass
-            + '"></span>Update Frames into xCAT database.</li>';
+    
     showStr += '<li id="hmcLine1"><span class="ui-icon ' + iconClass
             + '"></span>Discover HMCs.</li>';
     showStr += '<li id="hmcLine2"><span class="ui-icon ' + iconClass
             + '"></span>Update HMCs into xCAT database.</li>';
+    showStr += '<li id="frameLine1"><span class="ui-icon ' + iconClass
+            + '"></span>Update Frames into xCAT database.</li>';
     showStr += '<li id="frameLine2"><span class="ui-icon ' + iconClass
-            + '"></span>Make hardware connections for Frames.</li>';
+            + '"></span>Set up Frame(DHCP, DNS, Hardware connection).</li>';
     showStr += '<li id="cecLine"><span class="ui-icon ' + iconClass
             + '"></span>Discover CECs and update into xCAT database.</li>';
     showStr += '<li id="cecLine2"><span class="ui-icon ' + iconClass
-            + '"></span>Make hardware connections for CECs.</li>';
-    showStr += '<li id="dhcpLine"><span class="ui-icon ' + iconClass
-            + '"></span>Configured DHCP.</li>';
+            + '"></span>Set up CEC(DHCP, DNS, Hardware connection).</li>';
     showStr += '</ul></div>';
 
     $('#discoverContentDiv').append(showStr);
@@ -1374,32 +1373,7 @@ function powerInitUpdateDefinition(operType) {
         return;
     }
 
-    lsslpWriteFrame();
-}
-
-/**
- * Step 8: Write all lsslp frame info into the database
- */
-function lsslpWriteFrame() {
-    $('#frameLine').append(createLoader());
-    $.ajax({
-        url : 'lib/cmd.php',
-        dataType : 'json',
-        data : {
-            cmd : 'lsslp',
-            tgt : '',
-            args : '-s;FRAME;-w',
-            msg : ''
-        },
-
-        success : function() {
-            $('#frameLine img').remove();
-            var tempSpan = $('#frameLine').find('span');
-            tempSpan.removeClass('ui-icon-gear');
-            tempSpan.addClass('ui-icon-check');
-            lsslpWriteHMC();
-        }
-    });
+    lsslpWriteHMC();
 }
 
 /**
@@ -1429,7 +1403,7 @@ function lsslpWriteHMC() {
             var mtmsArray = data.rsp[0].split(';');
             var tempPar = '';
 
-            if (hmcArray.length != mtmsArray.length) {
+            if (hmcArray.length > mtmsArray.length) {
                 // Error info
                 $('#hmcLine2 img').remove();
                 var warnBar = createWarnBar('Error: Defined ' + hmcArray.length
@@ -1481,7 +1455,7 @@ function lsslpWriteHMC() {
                             var tempSpan = $('#hmcLine2').find('span');
                             tempSpan.removeClass('ui-icon-gear');
                             tempSpan.addClass('ui-icon-check');
-                            mkhwconnFrame();
+                            lsslpWriteFrame();
                         }
                     });
                 }
@@ -1491,17 +1465,44 @@ function lsslpWriteHMC() {
 }
 
 /**
- * Step 8: Make the hardware connection for frames
+ * Step 8: Write all lsslp frame info into the database
  */
-function mkhwconnFrame() {
-    $('#frameLine2').append(createLoader());
+function lsslpWriteFrame() {
+    $('#frameLine1').append(createLoader());
     $.ajax({
         url : 'lib/cmd.php',
         dataType : 'json',
         data : {
-            cmd : 'mkhwconn',
-            tgt : 'frame',
-            args : '-t',
+            cmd : 'lsslp',
+            tgt : '',
+            args : '-s;FRAME;-w',
+            msg : ''
+        },
+
+        success : function() {
+            $('#frameLine1 img').remove();
+            var tempSpan = $('#frameLine1').find('span');
+            tempSpan.removeClass('ui-icon-gear');
+            tempSpan.addClass('ui-icon-check');
+            frameSetup();
+        }
+    });
+}
+
+/**
+ * Step 8: config the frame
+ */
+function frameSetup() {
+	$('#frameLine2').append(createLoader());
+	var tempargs = getDiscoverEnv('adminpasswd') + ';' + getDiscoverEnv('generalpasswd') + ';' 
+	             + getDiscoverEnv('hmcpasswd');
+    $.ajax({
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'webrun',
+            tgt : '',
+            args : 'framesetup;' + tempargs,
             msg : ''
         },
         success : function() {
@@ -1533,53 +1534,30 @@ function lsslpWriteCec() {
             var tempSpan = $('#cecLine').find('span');
             tempSpan.removeClass('ui-icon-gear');
             tempSpan.addClass('ui-icon-check');
-            mkhwconnCec();
+            cecsetup();
         }
     });
 }
 
 /**
- * Step 8: Make hardware connection for CECs
+ * Step 8: config the cec
  */
-function mkhwconnCec() {
-    $('#cecLine2').append(createLoader());
+function cecsetup(){
+	$('#cecLine2').append(createLoader());
+	var tempargs = getDiscoverEnv('adminpasswd') + ';' + getDiscoverEnv('generalpasswd') + ';' 
+                   + getDiscoverEnv('hmcpasswd');
     $.ajax({
         url : 'lib/cmd.php',
         dataType : 'json',
         data : {
-            cmd : 'mkhwconn',
-            tgt : 'cec',
-            args : '-t',
+            cmd : 'webrun',
+            tgt : '',
+            args : 'cecsetup;' + tempargs,
             msg : ''
         },
         success : function() {
             $('#cecLine2 img').remove();
             var tempSpan = $('#cecLine2').find('span');
-            tempSpan.removeClass('ui-icon-gear');
-            tempSpan.addClass('ui-icon-check');
-            configDHCP();
-        }
-    });
-}
-
-/**
- * Step 8: Create the DHCP configure file
- */
-function configDHCP() {
-    $('#dhcpLine').append(createLoader());
-    $.ajax({
-        url : 'lib/cmd.php',
-        dataType : 'json',
-        data : {
-            cmd : 'makedhcp',
-            tgt : '',
-            args : '-n',
-            msg : ''
-        },
-
-        success : function() {
-            $('#dhcpLine img').remove();
-            var tempSpan = $('#dhcpLine').find('span');
             tempSpan.removeClass('ui-icon-gear');
             tempSpan.addClass('ui-icon-check');
             createDiscoverButtons();
