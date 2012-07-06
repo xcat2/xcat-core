@@ -174,6 +174,7 @@ sub subvars {
   $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
   $inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
   $inc =~ s/#KICKSTARTNET#/kickstartnetwork()/eg;
+  $inc =~ s/#ESXIPV6SETUP#/esxipv6setup()/eg;
   $inc =~ s/#INCLUDE_NOP:([^#^\n]+)#/includefile($1,1,0)/eg;
   $inc =~ s/#INCLUDE_PKGLIST:([^#^\n]+)#/includefile($1,0,1)/eg;
   $inc =~ s/#INCLUDE_PTRNLIST:([^#^\n]+)#/includefile($1,0,2)/eg;
@@ -237,6 +238,21 @@ sub subvars {
   return 0;
 }
 
+sub esxipv6setup {
+ if ($::XCATSITEVALS{managedaddressmode} ne "autoula") { return ""; } # blank unless autoula
+	my $hoststab;
+      my $mactab = xCAT::Table->new('mac',-create=>0);
+      my $ent = $mactab->getNodeAttribs($node,['mac']);
+      my $suffix = $ent->{mac};
+      $suffix = lc($suffix);
+      unless ($mactab) { die "mac table should always exist prior to template processing when doing autoula"; }
+ #in autoula, because ESXi weasel doesn't seemingly grok IPv6 at all, we'll have to do it in %pre
+		unless ($hoststab) { $hoststab = xCAT::Table->new('hosts',-create=>1); }
+		my $ulaaddr = autoulaaddress($suffix);
+		$hoststab->setNodeAttribs($node,{ip=>$ulaaddr});
+ return 'esxcfg-vmknic -i '.$ulaaddr.'/64 "Management Network"'."\n";
+}
+	
 sub kickstartnetwork {
 	my $line = "network --bootproto=";
 	my $hoststab;
