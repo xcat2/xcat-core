@@ -53,7 +53,7 @@ if [ $OS != "AIX" ]; then
     if [ $NODESETSTATE == "genimage" ]; then
     # Being called from <image>.postinstall script
     # Assume we are on the same machine
-        if [[ $OS = sles* ]] || [[ $OS = suse* ]] || [[ -f /etc/SuSE-release ]]; then
+        if [[ $OS == sles* ]] || [[ $OS == suse* ]] || [[ -f /etc/SuSE-release ]]; then
             mkdir $installroot/tmp/ofed_install
             cp -r $OFED_DIR $installroot/tmp/ofed_install/
             mount -t devtmpfs  /dev $installroot/dev/
