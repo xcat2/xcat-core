@@ -605,12 +605,25 @@ sub make_bundle {
 
 	$callback->({data=>["Getting litefile settings"]});
 	my @imageInfo;
-        # get the directories with no names
-        push @imageInfo, $lftab->getAttribs({image => ''}, ('file','options'));
-        # get the ALL directories
-        push @imageInfo, $lftab->getAttribs({image => 'ALL'}, ('file','options'));
-        # get for the image specific directories
-        push @imageInfo, $lftab->getAttribs({image => $imagename}, ('file','options'));
+        my @imagegroupsattr = ('groups');
+        # Check if this image contains osimage.groups attribute.
+        # if so, means user wants to use specific directories to this image.
+        my $osimagetab = xCAT::Table->new("osimage",-create=>1);
+        my $imagegroups = $osimagetab->getAttribs({imagename => $imagename}, @imagegroupsattr);
+        if ($imagegroups and $imagegroups->{groups}) {
+            # get for the image groups specific directories
+            push @imageInfo, $lftab->getAttribs({image => $imagegroups->{groups}}, ('file','options'));
+            # get for the image specific directories
+            push @imageInfo, $lftab->getAttribs({image => $imagename}, ('file','options'));
+        } else {
+            # get the directories with no names
+            push @imageInfo, $lftab->getAttribs({image => ''}, ('file','options'));
+            # get the ALL directories
+            push @imageInfo, $lftab->getAttribs({image => 'ALL'}, ('file','options'));
+            # get for the image specific directories
+            push @imageInfo, $lftab->getAttribs({image => $imagename}, ('file','options'));
+        }
+
 	open(FILE,">$tpath/litefile.csv") or die "Could not open $tpath/litefile.csv";
 	foreach(@imageInfo){
 	    my $file=$_->{file};

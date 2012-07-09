@@ -603,11 +603,12 @@ notification => {
  },
   },
 osimage => {
- cols => [qw(imagename profile imagetype provmethod rootfstype osname osvers osdistro osarch synclists postscripts postbootscripts comments disable)],
+ cols => [qw(imagename groups profile imagetype provmethod rootfstype osname osvers osdistro osarch synclists postscripts postbootscripts comments disable)],
  keys => [qw(imagename)],
     table_desc => 'Basic information about an operating system image that can be used to deploy cluster nodes.',
  descriptions => {
   imagename => 'The name of this xCAT OS image definition.',
+  groups => 'A comma-delimited list of groups this image is a member of.  Group names are arbitrary.',
   imagetype => 'The type of operating system image this definition represents (linux,AIX).',
   provmethod => 'The provisioning method for node deployment. The valid values are install, netboot or statelite. It is not used by AIX.',
   rootfstype => 'The filesystem type for the rootfs is used when the provmethod is statelite. The valid values are nfs or ramdisk. The default value is nfs',
@@ -1965,6 +1966,10 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
 @{$defspec{osimage}->{'attrs'}} = (
  {attr_name => 'imagename',
                  tabentry => 'osimage.imagename',
+                 access_tabentry => 'osimage.imagename=attr:imagename',
+                 },
+ {attr_name => 'groups',
+                 tabentry => 'osimage.groups',
                  access_tabentry => 'osimage.imagename=attr:imagename',
                  },
  {attr_name => 'imagetype',
