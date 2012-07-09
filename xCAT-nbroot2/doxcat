@@ -1,7 +1,7 @@
 if [ ! -z "$BOOTIF" ]; then
 	BOOTIF=`echo $BOOTIF|sed -e s/01-// -e s/-/:/g`
 	echo -n "Waiting for device with address $BOOTIF to appear.."
-	gripeiter=300
+	gripeiter=6000
 	while [ -z "$bootnic" ]; do 
 		bootnic=`ip link show|grep -B1 $BOOTIF|grep mtu|awk '{print $2}'|sed -e 's/:$//'`
 		sleep 0.1
