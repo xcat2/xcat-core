@@ -1748,6 +1748,9 @@ sub runcmd {
     my $cmd     = $request->{command};
     my $method  = $request->{method};
     my $hwtype  = $request->{hwtype};
+    if (ref($hwtype) eq 'ARRAY') {
+        $hwtype = @$hwtype[0];
+    }
     #my $modname = $modules{$cmd};
     my $modname = $modules{$cmd}{$hwtype};
 
