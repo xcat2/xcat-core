@@ -326,6 +326,8 @@ sub getNodeData {
             my $osimagetab = xCAT::Table->new("osimage",-create=>1);
             my $imagegroups = $osimagetab->getAttribs({imagename => $image}, @imagegroupsattr);
             if ($imagegroups and $imagegroups->{groups}) {
+                # get the directories with no names
+                push @imageInfo, $tab->getAttribs({image => ''}, @attrs);
                 # get for the image groups specific directories
                 push @imageInfo, $tab->getAttribs({image => $imagegroups->{groups}}, @attrs);
                 # get for the image specific directories

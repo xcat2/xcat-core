@@ -611,6 +611,8 @@ sub make_bundle {
         my $osimagetab = xCAT::Table->new("osimage",-create=>1);
         my $imagegroups = $osimagetab->getAttribs({imagename => $imagename}, @imagegroupsattr);
         if ($imagegroups and $imagegroups->{groups}) {
+            # get the directories with no names
+            push @imageInfo, $lftab->getAttribs({image => ''}, ('file','options'));
             # get for the image groups specific directories
             push @imageInfo, $lftab->getAttribs({image => $imagegroups->{groups}}, ('file','options'));
             # get for the image specific directories
