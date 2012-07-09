@@ -27,8 +27,8 @@
    Setups up AIX 6.1+ and Linux,  but most work needs to be done on AIX. 
    See man pgsqlsetup for more information and the documentation. 
 
-   If the -P flag is supplied, we are supporting setup under PCM.  The database
-   will be called kusudb.  Additional setup for PCM is required.
+   If the -P flag is supplied, we are supporting setup under PCM.
+    Additional setup for PCM is required.
 
 =cut
 
@@ -72,15 +72,21 @@ $Getopt::Long::ignorecase = 0;
 $::installdir             = "/var/lib/pgsql";         # install location
 $::installdatadir         = "/var/lib/pgsql/data";    # install location
 $::pgcmddir               = "/usr/bin";               # pg cmds location 
-
+my $INIT;
+my $SETUPODBC;
+my $NOSTART;
+my $SETUPPCM;
+my $HELP;
+my $VERSION;
 # parse the options
 if (
     !GetOptions(
-                'i|init'    => \$::INIT,
-                'o|odbc'    => \$::SETUPODBC,
-                'P|PCM'     => \$::SETUPPCM,
-                'h|help'    => \$::HELP,
-                'v|version' => \$::VERSION,
+                'i|init'    => \$INIT,
+                'o|odbc'    => \$SETUPODBC,
+                'N|nostart'    => \$NOSTART,
+                'P|PCM'     => \$SETUPPCM,
+                'h|help'    => \$HELP,
+                'v|version' => \$VERSION,
                 'V|verbose' => \$::VERBOSE,
     )
   )
@@ -90,27 +96,23 @@ if (
 }
 
 # display the usage if -h or --help is specified
-if ($::HELP)
+if ($HELP)
 {
     &usage;
     exit(0);
 }
 
 # display the version statement if -v or --version is specified
-if ($::VERSION)
+if ($VERSION)
 {
     my $version = xCAT::Utils->Version();
     xCAT::MsgUtils->message("I", $version);
     exit 0;
 }
-# Are we setting up PCM 
-if ($::SETUPPCM)
-{
-   $::dbname="kusudb";
-} else {
-   $::dbname="xcatdb";
-}
-if ((!($::INIT)) && (!($::SETUPODBC)))
+# Database name xcatdb 
+$::dbname="xcatdb";
+
+if ((!($INIT)) && (!($SETUPODBC)))
 {
     xCAT::MsgUtils->message("I", "Either -i  or -o flag must be chosen");
     &usage;
@@ -119,7 +121,7 @@ if ((!($::INIT)) && (!($::SETUPODBC)))
 
 # check to see if only odbc update,  no passwords needed
 my $odbconly = 0;
-if ((!($::INIT)) && ($::SETUPODBC))
+if ((!($INIT)) && ($SETUPODBC))
 {
     $odbconly = 1;
 
@@ -183,7 +185,7 @@ if (-e ("/etc/xcat/cfgloc"))    # check to see if xcat is using pgsql
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC == 0)
     {
-        if ($::INIT)
+        if ($INIT)
         {
             my $message =
               "The /etc/xcat/cfgloc file is already configured for PostgreSQL. xcat database initialization will not take place.";
@@ -212,10 +214,10 @@ if (($odbconly == 0)  && ($xcatrunningpgsql == 0))
 }
 
 # initial setup request and not already running pgsql
-if (($::INIT) && ($xcatrunningpgsql == 0))
+if (($INIT) && ($xcatrunningpgsql == 0))
 {
 
-
+  if (!($NOSTART)) {  # if not just setting up the database
     #
     # Backup current database
     #
@@ -232,9 +234,13 @@ if (($::INIT) && ($xcatrunningpgsql == 0))
 
     &backupxcatdb;
 
-    # shutdown the xcatd daemon while migrating
+    # shutdown the xcatd daemon 
     &shutdownxcatd;
-
+  }
+  my $hname;
+  $hname = `hostname`;
+  chomp $hname;
+  if (!($NOSTART)) {  # if not just setting up the database
     #
     #  Get MN name from site.master in backed up database
     # if that does not exist use resolved hostname
@@ -242,89 +248,91 @@ if (($::INIT) && ($xcatrunningpgsql == 0))
     my $sitefile = "$::backupdir/site.csv";
     my $cmd      = "grep master $sitefile";
     my @output   = xCAT::Utils->runcmd($cmd, -1);
-    my $hname;
-    if ($::RUNCMD_RC != 0)    # no entry in site table
-    {
-        $hname = `hostname`;
-        chomp $hname;
-    }
-    else                      # from site.master
+    if ($::RUNCMD_RC == 0)    #  entry in site table
     {
         (my $attr, my $master) = split(",", $output[0]);
         (my $q, $hname) = split("\"", $master);
         chomp $hname;
-
     }
+  }
+    
 
-    my $ipaddr = xCAT::NetworkUtils->getipaddr($hname);
-    if ($ipaddr)
-    {
+  my $ipaddr = xCAT::NetworkUtils->getipaddr($hname);
+  if ($ipaddr)
+  {
         $::MN = $ipaddr;
-    }
-    else
-    {
+  }
+  else
+  {
         xCAT::MsgUtils->message("E", "Hostname resolution for $hname failed.");
         exit(1);
-    }
+  }
 
 
-    # Add postgres user and group and xcatadm for AIX
-    # create the /var/lib/pgsql data directory and set permissions.
-    # All this is done on Linux install automatically:
-    #  postgres is created on Linux and xcatadm does not need to be a
-    #  real userid on Linux. Also directory permissions are correct on Linux
-    #
-    if ($::osname eq 'AIX')
-    {
+  # Add postgres user and group and xcatadm for AIX
+  # create the /var/lib/pgsql data directory and set permissions.
+  # All this is done on Linux install automatically:
+  #  postgres is created on Linux and xcatadm does not need to be a
+  #  real userid on Linux. Also directory permissions are correct on Linux
+  #
+  if ($::osname eq 'AIX')
+  {
         &mkpgusers;
-    }
+  }
 
-    #
-    # Init Pg database and setup pg_hba.conf and postgresql.conf
-    #
-    &initpgdb;
+  #
+  # Init Pg database and setup pg_hba.conf and postgresql.conf
+  #
+  &initpgdb;
 
-    #
-    # Start Postgresql server
-    #
-    if ($pgsqlrunning == 0)  # if not already running
-    {
+  #
+  # Start Postgresql server
+  #
+  if ($pgsqlrunning == 0)  # if not already running
+  {
          &pgstart;
-    }
+  }
 
-    #
-    # Setup Postgresql to restart on reboot
-    #
-    &pgreboot;
+  #
+  # Setup Postgresql to restart on reboot
+  #
+  &pgreboot;
 
 
-    # if xcat not already configured to run Postgresql add xCAT database
-    if ($xcatrunningpgsql == 0)
-    {
+  # if xcat not already configured to run Postgresql add xCAT database
+  if ($xcatrunningpgsql == 0)
+  {
 
-        #
-        # Create xcatd  database
-        # Create xcatadm in the database
-        #
-        &setupxcatdb;
+     #
+     # Create xcatd  database
+     # Create xcatadm in the database
+     #
+     &setupxcatdb;
 
-        #
-        # create cfgloc file
-        #
-        &createcfgloc;
+     #
+     # create cfgloc file
+     #
+     &createcfgloc;
 
+     if (!($NOSTART)) {  # if not just setting up the database
         #
         # Restore backed up database into PostgreSQL
         #
         &restorexcatdb;
-    }
-
-    xCAT::MsgUtils->message("I",
+     }
+   }
+   
+   if (!($NOSTART)) {  # if not just setting up the database
+      xCAT::MsgUtils->message("I",
                            "xCAT is running on the PostgreSQL database.\n");
+   } else {
+      xCAT::MsgUtils->message("I",
+                           "xCAT PostgreSQL database is setup.\n");
+   }
 
 }    # end initialization
 
-if ($::SETUPODBC)
+if ($SETUPODBC)
 {
 
     #
@@ -359,7 +367,7 @@ sub usage
         "Usage:\npgsqlsetup - Performs the setup of PostgreSQL for xCAT to use as its database. See man pgsqlsetup for more information."
         );
     my $msg =
-      "pgsqlsetup <-h|--help>\n           <-v|--version>\n           <-i|--init> [-P|--PCM] [-o|--odbc] [-V|--verbose]\n           <-o|--odbc> [-V|--verbose]";
+      "pgsqlsetup <-h|--help>\n           <-v|--version>\n           <-i|--init> [-N|--nostart] [-P|--PCM] [-o|--odbc] [-V|--verbose]\n           <-o|--odbc> [-V|--verbose]";
 
     xCAT::MsgUtils->message('I', "$msg");
 }
