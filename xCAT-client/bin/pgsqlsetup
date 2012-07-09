@@ -242,37 +242,37 @@ if (($::INIT) && ($::xcatrunningpgsql == 0))
         exit(1);
     }
 
-    # PostgreSQL not running, then initialize the database
+
+    # Add postgres user and group and xcatadm for AIX
+    # create the /var/lib/pgsql data directory and set permissions.
+    # All this is done on Linux install automatically:
+    #  postgres is created on Linux and xcatadm does not need to be a
+    #  real userid on Linux. Also directory permissions are correct on Linux
+    #
+    if ($::osname eq 'AIX')
+    {
+        &mkpgusers;
+    }
+
+    #
+    # Init Pg database and setup pg_hba.conf and postgresql.conf
+    #
+    &initpgdb;
+
+    # PostgreSQL not running
     if ($::pgsqlrunning == 0)
     {
-
-        # Add postgres user and group and xcatadm for AIX
-        # create the /var/lib/pgsql data directory and set permissions.
-        # All this is done on Linux install automatically:
-        #  postgres is created on Linux and xcatadm does not need to be a
-        #  real userid on Linux. Also directory permissions are correct on Linux
-        #
-        if ($::osname eq 'AIX')
-        {
-            &mkpgusers;
-        }
-
-        #
-        # Init Pg database and setup pg_hba.conf and postgresql.conf
-        #
-        &initpgdb;
-
         #
         # Start Postgresql server
         #
         &pgstart;
-
-        #
-        # Setup Postgresql to restart on reboot
-        #
-        #&pgreboot;
-
     }
+
+    #
+    # Setup Postgresql to restart on reboot
+    #
+    &pgreboot;
+
 
     # if xcat not already configured to run Postgresql add xCAT database
     if ($::xcatrunningpgsql == 0)
