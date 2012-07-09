@@ -1579,6 +1579,16 @@ sub inventoryVM {
 
     # Get inputs
     my ( $callback, $node, $args ) = @_;
+    
+    # Output string
+    my $str = "";
+    
+    # Check if node is pingable
+    if (`nodestat $node | egrep -i "noping"`) {
+    	$str = "$node: (Error) Host is unreachable";
+        xCAT::zvmUtils->printLn( $callback, "$str" );
+        return;
+    }
 
     # Get node properties from 'zvm' table
     my @propNames = ( 'hcp', 'userid' );
@@ -1598,10 +1608,7 @@ sub inventoryVM {
         return;
     }
     # Capitalize user ID
-    $userId =~ tr/a-z/A-Z/;
-
-    # Output string
-    my $str = "";
+    $userId =~ tr/a-z/A-Z/;   
 
     # Load VMCP module
     xCAT::zvmCPUtils->loadVmcp($node);
