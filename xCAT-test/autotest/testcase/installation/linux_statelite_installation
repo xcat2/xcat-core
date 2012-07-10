@@ -17,7 +17,7 @@ cmd:service dhcpd restart
 check:rc==0
 cmd:copycds $$ISO
 check:rc==0
-cmd:genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__
 check:rc==0
