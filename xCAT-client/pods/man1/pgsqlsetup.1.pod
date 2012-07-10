@@ -9,7 +9,7 @@ B<pgsqlsetup> {B<-h>|B<--help>}
 
 B<pgsqlsetup> {B<-v>|B<--version>}
 
-B<pgsqlsetup> {B<-i>|B<--init>} [-P|--PCM] [-o|--setupODBC] [B<-V>|B<--verbose>]
+B<pgsqlsetup> {B<-i>|B<--init>} [-N|nostart] [-P|--PCM] [-o|--setupODBC] [B<-V>|B<--verbose>]
 
 B<pgsqlsetup> {B<-o>|B<--setupODBC>} [-V|--verbose] 
 
@@ -41,6 +41,10 @@ On AIX, it additionally setup the xcatadm unix id and the postgres id and group.
 To add additional nodes to access the PostgreSQL server, setup on the Management Node,  edit the pg_hba.conf file.   
 
 For more documentation see:https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Setting_Up_PostgreSQL_as_the_xCAT_DB
+
+=item B<-N|--nostart>
+
+This option with the -i flag will create the database, but will not backup and restore xCAT tables into the database. It will create the cfgloc file such that the next start of xcatd will try and contact the database.  This can be used to setup the xCAT PostgreSQL database during or before install.
 
 =item B<-P|--PCM>
 
