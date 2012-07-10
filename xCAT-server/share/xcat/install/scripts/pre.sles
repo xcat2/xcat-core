@@ -158,6 +158,8 @@ if [ -d /sys/firmware/efi ]; then
 else
 	sed -e 's!<device>XCATPARTITIONHOOK</device>!<device>'$instdisk'</device>!' /tmp/profile/autoinst.xml > /tmp/profile/modified.xml
 fi
+
+#XCA_PARTITION_SCRIPT#
 ]]>
 
           </source>
