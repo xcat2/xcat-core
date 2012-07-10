@@ -194,11 +194,19 @@ zvmPlugin.prototype.loadServiceInventory = function(data) {
     var tabId = args[0].replace('out=', '');
     // Get node
     var node = args[1].replace('node=', '');
-    // Get node inventory
-    var inv = data.rsp[0].split(node + ':');
-
+    
     // Remove loader
     $('#' + tabId).find('img').remove();
+    
+    // Do not continue if error is found
+    if (data.rsp[0].indexOf('Error') > -1) {
+    	var warn = createWarnBar(data.rsp[0]);
+    	$('#' + tabId).append(warn);
+    	return;
+    }
+    
+    // Get node inventory
+    var inv = data.rsp[0].split(node + ':');
 
     // Create array of property keys
     var keys = new Array('userId', 'host', 'os', 'arch', 'hcp', 'priv', 'memory', 'proc', 'disk', 'nic');
@@ -738,13 +746,13 @@ zvmPlugin.prototype.loadClonePage = function(node) {
                     }
                     
                     // If an IP address range is given and the starting and ending index do not match
-                    if (ipRange && !(nodeStart == ipStart) || !(nodeEnd == ipEnd)) {
+                    if (ipRange && (!(nodeStart == ipStart) || !(nodeEnd == ipEnd))) {
                         errMsg = errMsg + 'The node range and IP address range does not match. ';
                         ready = false;
                     }
                     
                     // If a hostname range is given and the starting and ending index do not match
-                    if (hostnameRange && !(nodeStart == hostnameStart) || !(nodeEnd == hostnameEnd)) {
+                    if (hostnameRange && (!(nodeStart == hostnameStart) || !(nodeEnd == hostnameEnd))) {
                         errMsg = errMsg + 'The node range and hostname range does not match. ';
                         ready = false;
                     }
@@ -900,11 +908,19 @@ zvmPlugin.prototype.loadInventory = function(data) {
     var tabId = args[0].replace('out=', '');
     // Get node
     var node = args[1].replace('node=', '');
-    // Get node inventory
-    var inv = data.rsp[0].split(node + ':');
-
+    
     // Remove loader
     $('#' + tabId).find('img').remove();
+    
+    // Do not continue if error is found
+    if (data.rsp[0].indexOf('Error') > -1) {
+    	var warn = createWarnBar(data.rsp[0]);
+    	$('#' + tabId).append(warn);
+    	return;
+    }
+    
+    // Get node inventory
+    var inv = data.rsp[0].split(node + ':');  
 
     // Create status bar
     var statBarId = node + 'StatusBar';
@@ -979,7 +995,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
     });
 
     // Align toggle link to the right
-    var toggleLnkDiv = $('<div class="toggle"></div>').css( {
+    var toggleLnkDiv = $('<div class="toggle"></div>').css({
         'text-align' : 'right'
     });
     toggleLnkDiv.append(toggleLink);
