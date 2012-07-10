@@ -208,14 +208,26 @@ sub subvars {
 
         #the content of the specified file is a script which can write partition definition into /tmp/partitionfile
         if ($scriptflag){
-            my $tempstr = "%inlcude /tmp/partitionfile\n";
-            $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$tempstr/;
-            #modify the content in the file, and write into %pre part
-            $partcontent = "cat > /tmp/partscript << EOF\n" . $partcontent . "\nEOF\n";
-            $partcontent .= "chmod 755 /tmp/partscript\n";
-            $partcontent .=  "/tmp/partscript\n";
-            #replace the #XCA_PARTITION_SCRIPT#
-            $inc =~ s/#XCA_PARTITION_SCRIPT#/$partcontent/;
+            #for redhat/sl/centos/kvm/fedora
+            if ($inc =~ /#XCAT_PARTITION_START#/) {
+                my $tempstr = "%inlcude /tmp/partitionfile\n";
+                $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$tempstr/;
+                #modify the content in the file, and write into %pre part
+                $partcontent = "cat > /tmp/partscript << EOF\n" . $partcontent . "\nEOF\n";
+                $partcontent .= "chmod 755 /tmp/partscript\n";
+                $partcontent .= "/tmp/partscript\n";
+                #replace the #XCA_PARTITION_SCRIPT#
+                $inc =~ s/#XCA_PARTITION_SCRIPT#/$partcontent/;
+            }
+            #for sles/suse
+            elsif ($inc =~ /<!-- XCAT-PARTITION-START -->/){
+                $partcontent = "cat > /tmp/partscript << EOF\n" . $partcontent . "\nEOF\n";
+                $partcontent .= "chmod 755 /tmp/partscript\n";
+                $partcontent .= "/tmp/partscript\n";
+                $partcontent .= "PARTDEF=`cat /tmp/partitionfile`\n";
+                $partcontent .= "sed -e 's/<!-- XCAT-PARTITION-START -->[\s\S]*<!-- XCAT-PARTITION-END -->/\${PARTDEF}/' /tmp/profile/autoinst.xml > /tmp/profile/modified.xml";
+                $inc =~ s/#XCA_PARTITION_SCRIPT#/$partcontent/;
+            }
         }
         else{
             $partcontent =~ s/\s$//;
@@ -252,7 +264,7 @@ sub esxipv6setup {
 		$hoststab->setNodeAttribs($node,{ip=>$ulaaddr});
  return 'esxcfg-vmknic -i '.$ulaaddr.'/64 "Management Network"'."\n";
 }
-	
+
 sub kickstartnetwork {
 	my $line = "network --bootproto=";
 	my $hoststab;
