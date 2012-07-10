@@ -274,8 +274,9 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
 
     if ($::osname eq 'AIX')
     {
-        xCAT::Utils->setupAIXconserver($::VERBOSE);
-
+        if ($::INITIALINSTALL) {  # only do once on install
+          xCAT::Utils->setupAIXconserver($::VERBOSE);
+        }
         &setupAIXIPMITool;
 
         # Add the xcatd subsystem to the AIX
