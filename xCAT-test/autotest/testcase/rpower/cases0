@@ -8,7 +8,7 @@ cmd:sleep 30
 cmd:rpower $$CN stat
 check:output=~Not Activated
 cmd:rpower $$CN on
-cmd:sleep 100
+cmd:sleep 30
 end
 
 start:rpower_stat
@@ -31,7 +31,7 @@ check:output=~Success
 cmd:sleep 30
 cmd:rpower $$CN stat
 check:output=~Running
-cmd:sleep 100
+cmd:sleep 30
 end
 
 start:rpower_on
@@ -45,7 +45,7 @@ check:output=~Success
 cmd:sleep 30
 cmd:rpower $$CN stat
 check:output=~Running
-cmd:sleep 100
+cmd:sleep 30
 end
 
 start:rpower_reset
@@ -57,7 +57,7 @@ check:output=~Success
 cmd:sleep 30
 cmd:rpower $$CN stat
 check:output=~Running
-cmd:sleep 100
+cmd:sleep 30
 end
 
 start:rpower_noderange
