@@ -1018,9 +1018,10 @@ sub setupODBC
             exit(1);
 
     }
-    # get host and password from cfgloc
-    (my $connstring, my $adminid, my $passwd) = split(/\|/, $output[0]);
-    (my $database,   my $id,      my $server) = split(/=/,  $connstring);
+    # get host and password database from cfgloc
+    my( $connstring,  $adminid,  $passwd) = split(/\|/, $output[0]);
+    my ($hdr, $id, $server) = split(/=/,  $connstring);
+    my ($database,$footer) = split(/;/,  $id);
     # the odbcinst.ini file should have been created during install of the 
     # unixODBC and postgresql-ODBC rpms
     my $odbcfile     = "/etc/odbc.ini";
