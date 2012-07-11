@@ -865,7 +865,7 @@ sub setupODBC
             exit(1);
     }
     # setup the DSN odbc.ini file
-    $cmd = "fgrep -i xcatdb";
+    $cmd = "fgrep -i xcatdb $odbcfile";
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)    # then xcat entry not there
     {
