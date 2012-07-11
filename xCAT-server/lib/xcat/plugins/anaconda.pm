@@ -983,13 +983,12 @@ sub mkinstall
             if ( $ref1 and $ref1->{'partitionfile'}){
                 $partfile = $ref1->{'partitionfile'};
             }
-        
-            #can not find the linux osiamge object, tell users to run "nodeset <nr> osimage=***"
-            else {
+        }
+        #can not find the linux osiamge object, tell users to run "nodeset <nr> osimage=***"
+        else {
                 $callback->(
                      { error => [qq{ Cannot find the linux image called "$imgname", maybe you need to use the "nodeset <nr> osimage=<your_image_name>" command to set the boot state}], errorcode => [1] }
             );
-        }
         }
 	}
 
