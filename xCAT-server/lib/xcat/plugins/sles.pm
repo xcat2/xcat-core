@@ -749,12 +749,11 @@ sub mkinstall
             if ( $ref1 and $ref1->{'partitionfile'}){
                 $partfile = $ref1->{'partitionfile'};
             }
-
-            else {
-                $callback->(
-                     { error => [qq{ Cannot find the linux image called "$imgname", maybe you need to use the "nodeset <nr> osimage=<your_image_name>" command to set the boot state}], errorcode => [1] }
+        }
+        else {
+            $callback->(
+                { error => [qq{ Cannot find the linux image called "$imgname", maybe you need to use the "nodeset <nr> osimage=<your_image_name>" command to set the boot state}], errorcode => [1] }
             );
-            }
         }
 	}
 	
