@@ -1770,12 +1770,24 @@ sub getmacs {
 
    my $display = ();
    my $byarp = ();
-   foreach my $arg (@args) {
-      if ($arg eq "-d") {
-         $display = "yes";
-      } elsif ($arg eq "--arp") {
-         $byarp = "yes";
-      }
+   my $installnic = undef;
+   #foreach my $arg (@args) {
+   #   if ($arg eq "-d") {
+   #      $display = "yes";
+   #   } elsif ($arg eq "--arp") {
+   #      $byarp = "yes";
+   #   }
+   #}
+   while (@args) {
+       my $arg = shift @args;
+       if ($arg eq "-d") {
+          $display = "yes";
+       } elsif ($arg eq "--arp") {
+          $byarp = "yes";
+       } elsif ($arg eq "-i") {
+          $installnic = shift @args;
+          $installnic =~ s/eth|en//;
+       }
    }
 
    if ($byarp eq "yes") {
@@ -1841,24 +1853,28 @@ sub getmacs {
 
    my $midx=0;
    my @midxary;
-   my $nrtab = xCAT::Table->new('noderes');
-   if ($nrtab) {
-       my $nent = $nrtab->getNodeAttribs($curn,['primarynic','installnic']);
-       if ($nent) {
-           my $mkey;
-           if (defined $nent->{installnic}) { #Prefer the install nic
-               $mkey="installnic";
-           } elsif (defined $nent->{primarynic}) { #see if primary nic was set
-               $mkey="primarynic";
+   if (defined($installnic)) {
+      push @midxary, $installnic;
+   } else {
+       my $nrtab = xCAT::Table->new('noderes');
+       if ($nrtab) {
+           my $nent = $nrtab->getNodeAttribs($curn,['primarynic','installnic']);
+           if ($nent) {
+               my $mkey;
+               if (defined $nent->{installnic}) { #Prefer the install nic
+                   $mkey="installnic";
+               } elsif (defined $nent->{primarynic}) { #see if primary nic was set
+                   $mkey="primarynic";
+               }
+               if ($mkey) {
+                   while ( $nent->{$mkey} =~ /[en|eth](\d+)/g ) {
+                       push @midxary,$1;
+                   }
+               }
+           #} elsif ($display !~ /yes/){
+           #   return -1, "please set noderes.installnic or noderes.primarynic";
            }
-           if ($mkey) {
-	           while ( $nent->{$mkey} =~ /(\d+)/g ) {
-                   push @midxary,$1;
-	           }
-           }
-       } elsif ($display !~ /yes/){
            $nrtab->close;
-           return -1, "please set noderes.installnic or noderes.primarynic";
        }
    }
    if ($code==0) {
@@ -1866,7 +1882,9 @@ sub getmacs {
       my $allmac = join("\n", @macs);
       return 0,":The mac address is:\n$allmac";
      }
-
+     if (!@midxary) {
+         push @midxary, '0';
+     }
      my @allmacs;
      foreach my $midx ( @midxary) {
        (my $macd,my $mac) = split (/:/,$macs[$midx],2);
@@ -3590,14 +3608,22 @@ sub preprocess_request {
     }
     if (@mpnodes) {
       $noderange = \@mpnodes;
-      foreach my $arg (@exargs) {
-        if (defined($arg) && $arg !~ /^-V|--verbose|-d|--arp$/) {
+      my @args = @exargs;
+      while (@args) {
+          my $arg = shift @args;
+          if ($arg =~ /^-V|--verbose|-d|--arp$/) {
+              next;
+          } elsif ($arg =~ /^-i$/) {
+              my $int = shift @args;
+              if (defined($int) && $int =~ /^[eth|en]\d$/) {
+                  next;
+              }
+          }
           $usage_string= ":Error arguments\n";
           $usage_string .=xCAT::Usage->getUsage($command);
           $callback->({data=>$usage_string});
           $request = {};
-          return;
-        }
+          return;         
       }
     } else {
       $request = {};

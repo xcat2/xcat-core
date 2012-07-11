@@ -187,7 +187,7 @@ my %usage = (
        getmacs <noderange> [-M]
        getmacs <noderange> [-V| --verbose] [-f] [-d] [--arp] | [-D [-S server] [-G gateway] [-C client]]
    blade specific:
-       getmacs <noderange> [-V| --verbose] [-d] [--arp]
+       getmacs <noderange> [-V| --verbose] [-d] [--arp] [-i ethN|enN]
 ",
     "mkvm" => 
 "Usage:
