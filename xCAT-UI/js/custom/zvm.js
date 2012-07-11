@@ -912,11 +912,13 @@ zvmPlugin.prototype.loadInventory = function(data) {
     // Remove loader
     $('#' + tabId).find('img').remove();
     
-    // Do not continue if error is found
+    // Check for error
+    var error = false;
     if (data.rsp[0].indexOf('Error') > -1) {
+    	error = true;
+    	
     	var warn = createWarnBar(data.rsp[0]);
-    	$('#' + tabId).append(warn);
-    	return;
+    	$('#' + tabId).append(warn);    	
     }
     
     // Get node inventory
@@ -948,7 +950,10 @@ zvmPlugin.prototype.loadInventory = function(data) {
     attrNames['nic'] = 'NICs:';
 
     // Create hash table for node attributes
-    var attrs = getAttrs(keys, attrNames, inv);
+    var attrs;
+    if (!error) {
+    	attrs = getAttrs(keys, attrNames, inv);
+    }
     
     // Create division to hold user entry
     var ueDivId = node + 'UserEntry';
@@ -999,7 +1004,18 @@ zvmPlugin.prototype.loadInventory = function(data) {
         'text-align' : 'right'
     });
     toggleLnkDiv.append(toggleLink);
+    
+    // Append to tab
+    $('#' + tabId).append(statBar);
+    $('#' + tabId).append(toggleLnkDiv);
+    $('#' + tabId).append(ueDiv);
+    $('#' + tabId).append(invDiv);
 
+    // Do not continue if error
+    if (error) {
+    	return;
+    }
+        
     /**
      * General info section
      */
@@ -1010,15 +1026,15 @@ zvmPlugin.prototype.loadInventory = function(data) {
     var item, label, args;
 
     // Loop through each property
-    for ( var k = 0; k < 5; k++) {
+    for (var k = 0; k < 5; k++) {
         // Create a list item for each property
         item = $('<li></li>');
-
+        
         // Create a label - Property name
         label = $('<label>' + attrNames[keys[k]] + '</label>');
         item.append(label);
-
-        for ( var l = 0; l < attrs[keys[k]].length; l++) {
+	    
+        for (var l = 0; l < attrs[keys[k]].length; l++) {
             // Create a input - Property value(s)
             // Handle each property uniquely
             item.append(attrs[keys[k]][l]);
@@ -1056,8 +1072,8 @@ zvmPlugin.prototype.loadInventory = function(data) {
             // Create a label - Property name
             label = $('<label>' + attrNames[keys[k]].replace(':', '') + '</label>');
             item.append(label);
-
-            // Loop through each line
+            
+        	// Loop through each line
             for (l = 0; l < attrs[keys[k]].length; l++) {
                 // Create a new list item for each line
                 hwItem = $('<li></li>');
@@ -1283,7 +1299,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
                     dasdBody.append(dasdTabRow);
                 }
             }
-
+            
             dasdTable.append(dasdBody);
 
             /**
@@ -1399,12 +1415,6 @@ zvmPlugin.prototype.loadInventory = function(data) {
     // Append inventory to division
     fieldSet.append(oList);
     invDiv.append(fieldSet);
-
-    // Append to tab
-    $('#' + tabId).append(statBar);
-    $('#' + tabId).append(toggleLnkDiv);
-    $('#' + tabId).append(ueDiv);
-    $('#' + tabId).append(invDiv);
 };
 
 /**
