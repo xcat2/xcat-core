@@ -213,7 +213,7 @@ sub subvars {
                 my $tempstr = "%inlcude /tmp/partitionfile\n";
                 $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$tempstr/;
                 #modify the content in the file, and write into %pre part
-                $partcontent = "cat > /tmp/partscript << EOF\n" . $partcontent . "\nEOF\n";
+                $partcontent = "cat > /tmp/partscript << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
                 $partcontent .= "chmod 755 /tmp/partscript\n";
                 $partcontent .= "/tmp/partscript\n";
                 #replace the #XCA_PARTITION_SCRIPT#
@@ -221,11 +221,11 @@ sub subvars {
             }
             #for sles/suse
             elsif ($inc =~ /<!-- XCAT-PARTITION-START -->/){
-                $partcontent = "cat > /tmp/partscript << EOF\n" . $partcontent . "\nEOF\n";
+                my $tempstr = "<drive><device>XCATPARTITIONTEMP</device></drive>";
+                $inc =~ s/<!-- XCAT-PARTITION-START -->[\s\S]*<!-- XCAT-PARTITION-END -->/$tempstr/;
+                $partcontent = "cat > /tmp/partscript << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
                 $partcontent .= "chmod 755 /tmp/partscript\n";
                 $partcontent .= "/tmp/partscript\n";
-                $partcontent .= "PARTDEF=`cat /tmp/partitionfile`\n";
-                $partcontent .= "sed -e 's/<!-- XCAT-PARTITION-START -->[\s\S]*<!-- XCAT-PARTITION-END -->/\${PARTDEF}/' /tmp/profile/autoinst.xml > /tmp/profile/modified.xml";
                 $inc =~ s/#XCA_PARTITION_SCRIPT#/$partcontent/;
             }
         }
