@@ -203,9 +203,13 @@ sub process_command {
     #######################################
     # Group nodes based on command
     #######################################
-    my $nodes = preprocess_nodes( $request, $hcps_will );
-    if ( !defined( $nodes )) {
-        return(1);
+    my $nodes;
+    unless ($request->{command} =~ /^rspconfig$/&& exists( $request->{opt}->{resetnet})){
+
+        $nodes = preprocess_nodes( $request, $hcps_will );
+        if ( !defined( $nodes )) {
+            return(1);
+        }
     }
     
     #get new node status
@@ -1748,9 +1752,6 @@ sub runcmd {
     my $cmd     = $request->{command};
     my $method  = $request->{method};
     my $hwtype  = $request->{hwtype};
-    if (ref($hwtype) eq 'ARRAY') {
-        $hwtype = @$hwtype[0];
-    }
     #my $modname = $modules{$cmd};
     my $modname = $modules{$cmd}{$hwtype};
 
@@ -2412,77 +2413,6 @@ sub sshcmds_on_hmc
     return ([0, undef, \@data]);
 }
 
-##########################################################################
-# logon asm and update configuration
-##########################################################################
-sub updconf_in_asm
-{
-    my $ip = shift;
-    my $target_dev = shift;
-    my @cmds = @_;
-
-    eval { require xCAT::PPCfsp };
-    if ( $@ ) {
-        return ([1,@cmds]);
-    }
-
-    my %handled;
-    for my $cmd (@cmds)
-    {
-        if ( $cmd =~ /(.+?)=(.*)/)
-        {
-            my ($command,$value) = ($1,$2);
-            $handled{$command} = $value;
-        }
-    }
-
-    my %request = (
-            ppcretry    => 1,
-            verbose     => 0,
-            ppcmaxp     => 64,
-            ppctimeout  => 0,
-            fsptimeout  => 0,
-            ppcretry    => 3,
-            maxssh      => 8,
-            arg         => \@cmds,
-            method      => \%handled,
-            command     => 'rspconfig',
-            hwtype      => lc($target_dev->{'type'}),
-            );
-
-    my $valid_ip;
-    my @exp;
-    foreach my $individual_ip ( split /,/, $ip ) {
-        ################################
-        # Get userid and password 
-        ################################
-        my @cred = ($target_dev->{'username'},$target_dev->{'password'});
-        $request{$individual_ip}{cred} = \@cred;
-        $request{node} = [$individual_ip];  
-
-        @exp = xCAT::PPCfsp::connect(\%request, $individual_ip);
-        ####################################
-        # Successfully connected 
-        ####################################
-        if ( ref($exp[0]) eq "LWP::UserAgent" ) {
-            $valid_ip = $individual_ip;
-            last;
-        }
-    }
-
-    ####################################
-    # Error connecting 
-    ####################################
-    if ( ref($exp[0]) ne "LWP::UserAgent" ) {
-        return ([1,@cmds]);
-    }
-    my $result = xCAT::PPCfsp::handler( $valid_ip, \%request, \@exp );
-    my $RC = shift( @$result);
-    my @data;
-    push @data, @$result[0];
-
-    return ([0, undef, \@data]);
-}
 
 sub check_fsp_api
 {
