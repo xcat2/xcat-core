@@ -158,8 +158,18 @@ if [ -d /sys/firmware/efi ]; then
 else
 	sed -e 's!<device>XCATPARTITIONHOOK</device>!<device>'$instdisk'</device>!' /tmp/profile/autoinst.xml > /tmp/profile/modified.xml
 fi
-
 #XCA_PARTITION_SCRIPT#
+#add the following part for replace the partition definition in /tmp/profile/autoinst.xml
+if [ -r "/tmp/partitionfile" ]; then
+    while read line
+    do
+        con="${con}${line}"
+    done < /tmp/partitionfile
+    con=${con//>\s+</><}
+    con=${con// /xcattempspace}
+    sed -e '/<drive>/{N;N;s!.*!'$con'!}' /tmp/profile/autoinst.xml > /tmp/profile/modified1.xml
+    sed -e 's!xcattempspace! !g' /tmp/profile/modified1.xml > /tmp/profile/modified.xml
+fi
 ]]>
 
           </source>
