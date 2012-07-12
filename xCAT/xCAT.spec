@@ -24,19 +24,14 @@ Conflicts: xCATsn
 Requires: xCAT-server xCAT-client perl-DBD-SQLite
 
 %ifos linux
-Requires: dhcp httpd nfs-utils expect nmap fping bind perl-XML-Parser vsftpd perl(CGI)
+Requires: dhcp httpd nfs-utils expect nmap bind perl-XML-Parser vsftpd perl(CGI)
 Requires: /etc/xinetd.d/tftp
-%ifarch s390x
-# No additional requires for zLinux right now
-%else
+%ifnarch s390x
 # yaboot-xcat is pulled in so any MN can manage ppc nodes
-Requires: conserver-xcat yaboot-xcat perl-Net-Telnet
+Requires: conserver-xcat yaboot-xcat perl-Net-Telnet fping
 %endif
 %ifarch ppc64
 Requires: perl-IO-Stty
-%endif
-%ifarch ppc64 x86_64
-Requires: openslp-xcat
 %endif
 %endif
 
