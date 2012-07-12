@@ -27,18 +27,13 @@ Requires: xCAT-server xCAT-client perl-DBD-SQLite
 Requires: httpd nfs-utils nmap bind perl-XML-Parser perl(CGI)
 # On RHEL this pulls in dhcp, on SLES it pulls in dhcp-server
 Requires: /usr/sbin/dhcpd
-%ifarch s390x
-# No additional requires for zLinux right now
-%else
+%ifnarch s390x
 Requires: /etc/xinetd.d/tftp
 # yaboot-xcat is pulled in so any MN can manage ppc nodes
 Requires: conserver-xcat yaboot-xcat perl-Net-Telnet fping
 %endif
 %ifarch ppc64
 Requires: perl-IO-Stty
-%endif
-%ifarch ppc64 x86_64
-Requires: openslp-xcat
 %endif
 %endif
 
