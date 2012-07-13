@@ -2198,7 +2198,7 @@ sub clonevms {
     my $masterref;
     if ($base) { #if base, we need to pull in the target datastores
         my $mastertab=xCAT::Table->new('vmmaster');
-        $masterref=$mastertab->getNodeAttribs( $base,[qw/storage os arch profile storagemodel nics/]);
+        $masterref=$mastertab->getNodeAttribs( $base,[qw/storage os arch profile storagemodel nics specializeparameters/]);
         unless ($masterref) {
             foreach my $node (@$nodes) {
                 xCAT::SvrUtils::sendmsg([1,"Cannot find master $base in vmmaster table"], $output_handler,$node);
@@ -2350,7 +2350,9 @@ sub clone_vms_from_master {
 	  $clonespecargs{snapshot}=$masterview->snapshot->currentSnapshot;
 	}
 	if ($specialize) {
-		$clonespecargs{customization} = make_customization_spec($node,ostype=>$ostype);
+	    my %custargs;
+		if ($masterent->{specializeparameters}) { %custargs = ( parameters=>$masterent->{specializeparameters} ); }
+		$clonespecargs{customization} = make_customization_spec($node,ostype=>$ostype,%custargs);
     }
 	my $clonespec = VirtualMachineCloneSpec->new(%clonespecargs);
         my $vmfolder = $vmhash{$node}->{vmfolder};
@@ -2417,13 +2419,19 @@ sub make_customization_spec {
             )
         );
     }
-
+    my %autologonargs = ( autoLogon=>0, autoLogonCount=>1, );
+    if ($args{parameters} and $args{parameters} =~ /autoLogonCount=([^,]*)/i) {
+		my $count = $1;
+		if ($count) { 
+			$autologonargs{autoLogon}=1;
+			$autologonargs{autoLogonCount}=$count;
+        }
+    }
 	my $identity = CustomizationSysprep->new(
 		%runonce,
 		%lfpd,
 		guiUnattended => CustomizationGuiUnattended->new(
-			autoLogon=>0,
-			autoLogonCount=>1,
+			%autologonargs,
 			password=>CustomizationPassword->new(
 				plainText=>1,
 				value=>$password,

@@ -167,7 +167,7 @@ vmmaster => {
 #storagemodel to allow chvm on a clone to be consistent with the master by default
 #nics to track the network mapping that may not be preserved by the respective plugin's specific cfg info
 #nicmodel same as storagemodel, except omitting for now until chvm actually does nics...
-    cols => [qw(name os arch profile storage storagemodel nics vintage originator virttype comments disable)],
+    cols => [qw(name os arch profile storage storagemodel nics vintage originator virttype specializeparameters comments disable)],
     keys => [qw(name)],
     nodecol => 'name', #well what do you know, I used it...
     table_desc => 'Inventory of virtualization images for use with clonevm.  Manual intervention in this table is not intended.',
@@ -181,6 +181,7 @@ vmmaster => {
         'nics' => 'The nic configuration and relationship to vlans/bonds/etc',
         'vintage' => "When this image was created",
         'originator' => 'The user who created the image',
+	'specializeparameters' => 'Implementation specific arguments, currently only "autoLogonCount=<number" for ESXi clonevme',
         'virttype' => 'The type of virtualization this image pertains to (e.g. vmware, kvm, etc)',
     }
 },
