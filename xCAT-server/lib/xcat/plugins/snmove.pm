@@ -2085,7 +2085,7 @@ sub sfsSLconfig
 
 			push (@{$osinodes{$nhash{$n}{'provmethod'}}}, $n);
 
-			my ($sn, $snbak) = split(/,/, $nhash{$n}{servicenode});
+			my ($sn, $snbak) = split(/,/, $sn_hash{$n}{servicenode});
             if (!$targetsn) {
                 if (!xCAT::InstUtils->is_me($sn) ) {
                     $targetsn=$sn;
