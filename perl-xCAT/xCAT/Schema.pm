@@ -124,7 +124,7 @@ kvm_masterdata => {
         
 
 litetree => {
-	cols => [qw(priority image directory comments disable)],
+	cols => [qw(priority image directory mntopts comments disable)],
 	keys => [qw(priority)],
 	required => [qw(priority directory)],
 	table_desc => 'Directory hierarchy to traverse to get the initial contents of node files.  The files that are specified in the litefile table are searched for in the directories specified in this table.',        
@@ -132,6 +132,7 @@ litetree => {
 		priority => 'This number controls what order the directories are searched.  Directories are searched from smallest priority number to largest.',
 		image => "The name of the image that will use this directory, as specified in the osimage table.  If image is not supplied, the default is 'ALL'. 'ALL' means use it for all images.",
 		directory => 'The location (hostname:path) of a directory that contains files specified in the litefile table.  Variables are allowed.  E.g: $noderes.nfsserver://xcatmasternode/install/$node/#CMD=uname-r#/',
+		mntopts => "A comma-separated list of options to use when mounting the persistent directory.  (Ex. 'soft') The default is to do a 'hard' mount.",
 		comments => 'Any user-written notes.',
 		disable => "Set to 'yes' or '1' to comment out this row.",      
 	},
