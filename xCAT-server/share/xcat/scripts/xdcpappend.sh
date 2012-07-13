@@ -3,7 +3,7 @@
 # append operation on the nodes.
 #First parm is nodesyncfiledir,  then after that are the lines for the
 #APPEND clause  put in the format   
-#appendfile appendfile:orgfile appendfile2:orgfile2.....
+#appendfile1:orgfile1 appendfile2:orgfile2.....
 #
 nodesyncfiledir=$1
 nodesyncfiledirorg="$nodesyncfiledir/org"
