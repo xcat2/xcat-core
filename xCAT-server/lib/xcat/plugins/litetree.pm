@@ -199,7 +199,7 @@ sub showSync {
 		foreach my $priority (sort {$a <=> $b} keys %$dirs){
 			# split the nfs server up from the directory:
 			my $mntpnt;
-			my ($server, $dir) = split(/:/,$dirs->{$priority});
+			my ($server, $dir, $mntopts) = split(/:/,$dirs->{$priority});
 
 			# if server is blank then its the directory:
 			unless($dir){
@@ -226,6 +226,12 @@ sub showSync {
 				}
 			}	
 			$mntpnt .= $dir;
+
+			# add the mount options if we have any
+			if ($mntopts) {
+				$mntpnt .= " :$mntopts";
+			}
+
 			# ok, now we have all the mount points.  Let's go through them all?
 			if ($::from_lslite == 1)
 			{
@@ -303,7 +309,7 @@ sub getNodeData {
 	my @imageInfo;
 	my @attrs;
 	if($type eq "dir"){
-		@attrs = ('priority', 'directory');
+		@attrs = ('priority', 'directory', 'mntopts');
 	}elsif($type =~ /file|image/){
 		@attrs = ('file','options');
 	}elsif($type =~ /location/){
@@ -341,7 +347,7 @@ sub mergeArrays {
 	if($type eq "dir"){
 		foreach(@$arr){
 			if($_->{directory} eq ''){ next; }
-			$attrs->{$_->{priority}} = $_->{directory};
+			$attrs->{$_->{priority}} = "$_->{directory}:$_->{mntopts}";
 		}
 	}elsif($type =~ /file|image/){
         
