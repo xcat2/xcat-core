@@ -827,6 +827,9 @@ site => {
    "                prefix (e.g. 00:11:aa)\n\n".
    " genpasswords:  Automatically generate random passwords for BMCs when configuring\n".
    "                them.\n\n".
+   " httpport:    The port number that the booting/installing nodes should contact the\n".
+   "              http server on the MN/SN on. It is your responsibility to configure\n".
+   "              the http server to listen on that port - xCAT will not do that.\n\n".
    " installdir:  The local directory name used to hold the node deployment packages.\n\n".
    " installloc:  The location from which the service nodes should mount the \n".
    "              deployment packages in the format hostname:/path.  If hostname is\n".
