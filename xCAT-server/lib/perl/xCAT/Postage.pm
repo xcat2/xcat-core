@@ -121,6 +121,7 @@ sub makescript
     my ($master, $ps, $os, $arch, $profile);
 
     my $noderestab = xCAT::Table->new('noderes');
+    my $nodelisttab = xCAT::Table->new('nodelist');
     my $typetab    = xCAT::Table->new('nodetype');
     my $posttab    = xCAT::Table->new('postscripts');
     my $ostab    = xCAT::Table->new('osimage');
@@ -128,10 +129,10 @@ sub makescript
     my %rsp;
     my $rsp;
     my $master;
-    unless ($noderestab and $typetab and $posttab)
+    unless ($noderestab and $typetab and $posttab and $nodelisttab)
     {
         push @{$rsp->{data}},
-          "Unable to open site or noderes or nodetype or postscripts table";
+          "Unable to open site or noderes or nodetype or postscripts or nodelist table";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return undef;
 
@@ -186,7 +187,13 @@ sub makescript
     }    # end site table attributes
 
 
-         # read the sshbetweennodes attribute and process
+    # read the nodes groups
+    my $groups= 
+      $nodelisttab->getNodeAttribs($node, ['groups']);
+    
+    push @scriptd, "GROUPS=$groups->{groups}\n";
+    push @scriptd, "export GROUPS\n";
+    # read the sshbetweennodes attribute and process
     my $enablessh=xCAT::Utils->enablessh($node); 
     if ($enablessh == 1) {
         push @scriptd, "ENABLESSHBETWEENNODES=YES\n";
