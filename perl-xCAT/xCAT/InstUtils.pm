@@ -1028,12 +1028,13 @@ sub dolitesetup
 	my @treelist = xCAT::Utils->runcmd("/opt/xcat/bin/litetree $noderange", -1);
 	if (scalar(@treelist) > 0) {
 		foreach my $l (@treelist) {
-			my ($p, $serv, $dir) = split (/:/, $l);
+			my ($p, $serv, $dir, $mopts) = split (/:/, $l);
 			$p =~ s/\s*//g;
 			$serv =~ s/\s*//g;
 			$dir =~ s/\s*//g;
+			$mopts =~ s/\s*//g;
         	my $serverIP = xCAT::NetworkUtils->getipaddr($serv);
-			my $entry = "$p|$serverIP|$dir";
+			my $entry = "$p|$serverIP|$dir|$mopts";
         	print LITETREE $entry . "\n";
 			$foundstatelite++;
     	}
