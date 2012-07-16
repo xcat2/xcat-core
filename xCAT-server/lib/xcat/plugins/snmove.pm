@@ -168,9 +168,11 @@ sub process_request
         return 1;
     }
 	
-	my $rsp;
-	push @{$rsp->{data}}, "Moving nodes to their backup service nodes.\n";
-	xCAT::MsgUtils->message("I", $rsp, $callback);
+	if (!$::SLonly) {
+		my $rsp;
+		push @{$rsp->{data}}, "Moving nodes to their backup service nodes.\n";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+	}
 
 	my $nimprime = xCAT::InstUtils->getnimprime();
 	chomp $nimprime;
@@ -566,6 +568,15 @@ sub process_request
 	#  - not using a shared files system
 	my %SLmodhash;
     my %LTmodhash;
+
+	if ( ($::SLonly) && ($sharedinstall eq "sns") )
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "The liteonly option is not valaid when using a shared file system across service nodes.\n";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+		return 1;
+	}
+		
 	
     if ( ($::isaix) && ($sharedinstall eq "no") )  
     {
@@ -690,54 +701,49 @@ sub process_request
                         next;
                     }
 
-                  	if ( -d $dodir ) {
+                   	if ($::VERBOSE)
+                   	{
+                       	my $rsp;
+                       	push @{$rsp->{data}},
+                          		"Synchronizing $dodir to $sn_hash{$n}{'xcatmaster'}\n";
+                       	xCAT::MsgUtils->message("I", $rsp, $callback);
+                   	}
 
-                    	if ($::VERBOSE)
-                    	{
-                        	my $rsp;
-                        	push @{$rsp->{data}},
-                          		"Synchronizing $old_node_hash->{$n}->{'oldmaster'}:$dir to $sn_hash{$n}{'xcatmaster'}\n";
-                        	xCAT::MsgUtils->message("I", $rsp, $callback);
-                    	}
+                   	my $todir = dirname($dodir);
 
-                    	my $todir = dirname($dodir);
+                  	# do rsync of file/dir
+                   	my $synccmd =
+                     		qq~/usr/bin/rsync -arlHpEAogDz $dodir $newsn{$n}:$todir 2>&1~;
 
-                    	# do rsync of file/dir
-                    	my $synccmd =
-                      		qq~/usr/bin/rsync -arlHpEAogDz $dodir $newsn{$n}:$todir 2>&1~;
+					if ($::VERBOSE) {
+						my $rsp;
+						push @{$rsp->{data}}, "On $old_node_hash->{$n}->{'oldsn'}: Running: \'$synccmd\'\n";
 
-						if ($::VERBOSE) {
-							my $rsp;
-							push @{$rsp->{data}}, "On $old_node_hash->{$n}->{'oldsn'}: Running: \'$synccmd\'\n";
+						xCAT::MsgUtils->message("I", $rsp, $callback);
+					}
 
-							xCAT::MsgUtils->message("I", $rsp, $callback);
-						}
-
-                    	my $output =
-                      		xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh",
-                                            $old_node_hash->{$n}->{'oldsn'},
-                                            $synccmd, 0);
+                   	my $output =
+                     		xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh",
+                                           $old_node_hash->{$n}->{'oldsn'},
+                                           $synccmd, 0);
 	
-                    	if ($::RUNCMD_RC != 0)
-                    	{
-                        	my $rsp;
-                        	push @{$rsp->{data}},
-                          		"Could not sync statelite \'$dodir\'.";
-							push @{$rsp->{data}}, "$output\n";
-                        	xCAT::MsgUtils->message("E", $rsp, $callback);
-                        	$error++;
-                    	}
-                    	else
-                    	{
-                        	$id++;
-                        	$donehash{$id}{oldXM} =
-                          		$old_node_hash->{$n}->{'oldmaster'};
-                        	$donehash{$id}{dir}   = $dodir;
-                        	$donehash{$id}{newXM} = $sn_hash{$n}{'xcatmaster'};
-                    	}
-
-				  	} # end if dodir exists
-
+                   	if ($::RUNCMD_RC != 0)
+                   	{
+                       	my $rsp;
+                       	push @{$rsp->{data}},
+                         		"Could not sync statelite \'$dodir\'.";
+						push @{$rsp->{data}}, "$output\n";
+                       	xCAT::MsgUtils->message("E", $rsp, $callback);
+                       	$error++;
+                   	}
+                   	else
+                   	{
+                       	$id++;
+                       	$donehash{$id}{oldXM} =
+                         		$old_node_hash->{$n}->{'oldmaster'};
+                       	$donehash{$id}{dir}   = $dodir;
+                       	$donehash{$id}{newXM} = $sn_hash{$n}{'xcatmaster'};
+                   	}
                 }    # end if servers match
             }    # end - foreach node
         }    # end for each line in statelite table
@@ -745,18 +751,13 @@ sub process_request
         # done with statelite table
         $statetab->close();
 
-        if ($error)
-        {
-            return 1;
-        }
-
         # if only statelite sync is required then return now
         if ($::SLonly)
         {
             return 0;
         }
 
-    }    # end sync statelite and litetree entries
+    }    # end sync statelite
 
 	my $rsp;
 	push @{$rsp->{data}}, "Setting new values in the xCAT database.\n";
@@ -1333,6 +1334,7 @@ sub process_request
 				chomp $myip;
 				my $intname;
 				foreach my $l (split(/\n/,$nimout))
+
 				{
 					my $line;
 					my $junk;
