@@ -2130,7 +2130,7 @@ sub web_graphinfo {
             if ( $value->[0] ) {
                 $phash{$_} = $$typehash{$_} . ':' . $value->[0]->{'parent'} . ':';
             } else {
-                push( @missinfoarray, $_ );
+               $phash{$_} = $$typehash{$_} . '::';
             }
         }
         $ppctab->close();
