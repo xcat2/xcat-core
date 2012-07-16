@@ -26,9 +26,11 @@ for i in $*; do
   filebackup="$nodesyncfiledirorg$orgfile"
   # now do the work
   mkdir -p $filebackupdir 
+  # if there does not exist an original backup, make one
   if [ ! -f "$filebackup" ]; then
     cp -p $orgfile $filebackup
   fi
+  # copy original backup to the local file and append
   cp -p $filebackup $orgfile
   cat $appendfile >> $orgfile
 
