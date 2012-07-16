@@ -46,19 +46,15 @@ ProcessStatelite () {
 
 	for i in `/usr/bin/cat $STATELITE | /usr/bin/grep -v '^#' | /usr/bin/grep $ME`
 	do
-
 		SERVER=`echo $i | /usr/bin/awk -F'|' '{print $2}'`
 		TOMNT=`echo $i | /usr/bin/awk -F'|' '{print $3}'`
 		OPTS=`echo $i | /usr/bin/awk -F'|' '{print $4}'`
-
-# ndebug
 
 		if [ "$OPTS" = "" ]; then
 			MNTOPTS=" -o llock "
 		else
 			MNTOPTS=" -o llock -o $OPTS "
 		fi
-
 
 		# /.statelite/tmpdir
 		if [ ! -d ${TMPDIR} ]; then
@@ -215,6 +211,14 @@ MountTrees () {
 		SERV=`echo $i | /usr/bin/awk -F'|' '{print $2}'`
 		DIR=`echo $i | /usr/bin/awk -F'|' '{print $3}'`
 
+		OPTS=`echo $i | /usr/bin/awk -F'|' '{print $4}'`
+
+		if [ "$OPTS" = "" ]; then
+			MOPTS=" -o llock "
+		else
+			MOPTS=" -o llock -o $OPTS "
+		fi
+
 		if [ ! -d ${MOUNTDIR}/${SERV}${DIR} ]; then
 			# ex. /.statelite/mnt/10.2.0.200/etc/
 			echo "/usr/bin/mkdir -m 755 -p ${MOUNTDIR}/${SERV}${DIR}" >>$LOG
@@ -225,7 +229,8 @@ MountTrees () {
         TRIES=1
 
 		# ex. 10.2.0.200:/etc/ /.statelite/mnt/10.2.0.200/etc/
-        while ! /usr/sbin/mount -o llock $SERV:$DIR ${MOUNTDIR}/${SERV}${DIR} 
+		echo "/usr/sbin/mount ${MOPTS} $SERV:$DIR ${MOUNTDIR}/${SERV}${DIR}" >>$LOG
+        while ! /usr/sbin/mount ${MOPTS} $SERV:$DIR ${MOUNTDIR}/${SERV}${DIR} 
         do
             if [ "$TRIES" = "$MAX" ]
             then
@@ -234,7 +239,7 @@ MountTrees () {
             fi
             TRIES=`expr $TRIES + 1`
             S=`expr $RANDOM % 20`
-            echo "Can't mount $SERV:$MNT... Sleeping $S seconds then trying again" >>$LOG
+            echo "Can't mount $SERV:$DIR... Sleeping $S seconds then trying again" >>$LOG
             sleep $S
         done
 	done
