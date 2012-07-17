@@ -861,22 +861,26 @@ site => {
    "              the node deployment, node discovery and power operations.\n\n".
    " ntpservers:  A comma delimited list of NTP servers for the cluster - often the\n".
    "              xCAT management node.\n\n".
-   " syspowerinterval:  The number of seconds the rpower command to servers will wait\n".
-   "                 between performing the action for each server. Currently supported\n".
-   "                 for system p CECs and system x IPMI servers.  This is used for\n".
-   "                 controlling the power on speed in large clusters. Default is 0.\n\n".
+   " syspowerinterval:  For system p CECs, this is the number of seconds the rpower\n".
+   "                 command will wait between performing the action for each CEC.\n".
+   "                 For system x IPMI servers, this is the number of seconds the\n".
+   "                 rpower command will wait between powering on <syspowermaxnodes>\n".
+   "                 nodes at a time.  This value is used to control the power on speed\n".
+   "                 in large clusters. Default is 0.\n\n".
    " syspowermaxnodes:  The number of servers to power on at one time before waiting\n".
    "                    'syspowerinterval' seconds to continue on to the next set of\n".
-   "                    nodes. Currently only used for IPMI servers and must be set if\n".
-   "                    'syspowerinterval' is set.\n\n".
+   "                    nodes.  If the noderange given to rpower includes nodes served\n".
+   "                    by different service nodes, it will try to spread each set of\n".
+   "                    nodes across the service nodes evenly. Currently only used for\n".
+   "                    IPMI servers and must be set if 'syspowerinterval' is set.\n\n".
    " powerinterval:  The number of seconds the rpower command to LPARs will wait between\n".
    "                 performing the action for each LPAR. LPARs of different HCPs\n".
    "                 (HMCs or FSPs) are done in parallel. This is used to limit the\n".
    "                 cluster boot up speed in large clusters. Default is 0.  This is\n".
    "                 currently only used for system p hardware.\n\n".
-   " ppcmaxp:  The max # of processes for PPC hw ctrl. If there are more than ppcmaxp hcps,\n".
-   "           this parameter will take effect. It will control the max number of processes  \n".
-   "           for PPC hardware control commands. Default is 64.\n\n".
+   " ppcmaxp:  The max # of processes for PPC hw ctrl. If there are more than ppcmaxp\n".
+   "           hcps, this parameter will take effect. It will control the max number of\n".
+   "           processes for PPC hardware control commands. Default is 64.\n\n".
    " ppcretry:  The max # of PPC hw connection attempts to HMC before failing.\n".
    "           It only takes effect on the hardware control commands through HMC. \n".
    "           Default is 3.\n\n".
