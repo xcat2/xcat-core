@@ -184,14 +184,16 @@ chomp $::arch;
 chomp $::root;
 
 
-# some Linux-only config
 
 #
 # Generate ssh host keys for the nodes
 #
 #
 if (xCAT::Utils->isMN()) {
-  &genSSHNodeHostKey;
+  if ($::FORCE || $::genSSHNodeHostKeys || $::INITIALINSTALL || $::UPDATEINSTALL )
+  {
+      &genSSHNodeHostKey;
+  }
 }
 #
 #  gen root's ssh keys, if needed and copy to appropriate directories to
@@ -642,13 +644,11 @@ sub genSSHNodeHostKey
 
     my $hostkey  = "$::INSTALLDIR/postscripts/hostkeys/ssh_host_rsa_key";
     my $hostkey2 = "/etc/xcat/hostkeys/ssh_host_rsa_key";
-    if (   ((!-r $hostkey) && (!-r $hostkey2))
-        || $::FORCE
-        || $::genSSHNodeHostKeys)
+    if ((!-r $hostkey) && (!-r $hostkey2))   # if they do not exist
     {
 
-        #  create directories /etc/xcat/hostkeys and /install/postscripts/hostkeys
-        if (!-d "$::INSTALLDIR/postscripts/hostkeys")    # directory for public keys
+        #create directories /etc/xcat/hostkeys and /install/postscripts/hostkeys
+        if (!-d "$::INSTALLDIR/postscripts/hostkeys") # dir for public keys
         {
             my $cmd = "/bin/mkdir -m 755 -p $::INSTALLDIR/postscripts/hostkeys";
             my $outref = xCAT::Utils->runcmd("$cmd", 0);
