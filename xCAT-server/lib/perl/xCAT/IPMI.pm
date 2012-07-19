@@ -391,8 +391,20 @@ sub waitforrsp {
 
     if ($select->can_read($timeout)) {
         while ($select->can_read(0)) {
-            $peerport = $socket->recv($data,1500,0);
-            route_ipmiresponse($peerport,unpack("C*",$data));
+               my @ipmiq=();
+                while ($select->can_read(0)) {
+                        $peerport = $socket->recv($data,1500,0);
+                        push @ipmiq,[$peerport,$data];
+                }
+                while (@ipmiq) {
+                        my $datagram = shift @ipmiq;
+                        ($peerport,$data) = @$datagram;
+                        route_ipmiresponse($peerport,unpack("C*",$data));
+                        while ($select->can_read(0)) {
+                                $peerport = $socket->recv($data,1500,0);
+                                push @ipmiq,[$peerport,$data];
+                        }
+                }
         }
     }
     return scalar (keys %sessions_waiting);
@@ -401,7 +413,7 @@ sub waitforrsp {
 sub timedout {
     my $self = shift;
     $self->{timeout} = $self->{timeout}+1;
-    if ($self->{timeout} > 4) { #giveup, really
+    if ($self->{timeout} > 5) { #giveup, really
         $self->{timeout}=2;
         my $rsp={};
         $rsp->{error} = "timeout";
