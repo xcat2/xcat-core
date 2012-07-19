@@ -58,7 +58,7 @@ if [ $OS != "AIX" ]; then
         # For SLES, assume zypper is available on the system running genimage
             zypper -R $installroot ar file:$INSTALL_DIR/$UPDATES_DIR gpfs_updates
         #   zypper -R $installroot install gpfs.gplbin*
-            zypper -R $installroot update  gpfs*
+            zypper --non-interactive -R $installroot update  gpfs*
             zypper -R $installroot rr gpfs_updates
         else
 	# For Redhat, etc., assume yum is available on the system running genimage
