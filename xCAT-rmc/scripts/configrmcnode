@@ -178,7 +178,14 @@ if [ $ADD -eq 1 ]; then
   if [[ -z "$NFSSERVER" ]]; then
     NFSSERVER=$MASTER
   fi
-  
+ 
+  if [ -f /opt/xcat/xcatinfo ]; then
+    INSTALLDIR=`grep 'INSTALLDIR' /opt/xcat/xcatinfo |cut -d= -f2`
+  fi
+  if [ -z "$INSTALLDIR" ]; then
+    INSTALLDIR="/install"
+  fi
+ 
   nodetype="node"
   if [[ $NTYPE = service ]]; then
       nodetype=sn
@@ -187,19 +194,12 @@ if [ $ADD -eq 1 ]; then
   mkdir -p /var/xcat/rmcmon
   rm -f -R /var/xcat/rmcmon/*
   if [[ $OSTYPE = linux* ]]; then
-      mkdir -p /tmp/postage/rmcmon/scripts
-      mkdir -p /tmp/postage/rmcmon/resources/$nodetype
-      rm -f -R /tmp/postage/rmcmon/scripts/*
-      rm -f -R /tmp/postage/rmcmon/resources/$nodetype/*
-      cd /tmp/postage/rmcmon/scripts
-      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$NFSSERVER/postscripts/rmcmon/scripts 2> /tmp/wget.log
-      cd /tmp/postage/rmcmon/resources/$nodetype
-      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$NFSSERVER/postscripts/rmcmon/resources/$nodetyp 2> /tmp/wget.log
-      mv $NFSSERVER/postscripts/rmcmon/* /var/xcat/rmcmon;
-      rm -rf $NFSSERVER
-	  cd /tmp/postage/rmcmon/scripts
-	  mv $NFSSERVER/postscripts/rmcmon/* /var/xcat/rmcmon/;
-      rm -rf $NFSSERVER
+      mkdir -p /tmp/postage/
+      rm -f -R /tmp/postage/rmcmon/*
+      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$NFSSERVER$INSTALLDIR/postscripts/rmcmon/scripts -P /tmp/postage/ 2> /tmp/wget.log
+      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$NFSSERVER$INSTALLDIR/postscripts/rmcmon/resources/$nodetyp -P /tmp/postage/ 2> /tmp/wget.log
+      mv /tmp/postage/rmcmon/* /var/xcat/rmcmon;
+      rm -rf /tmp/postage/rmcmon/
   else
       mkdir -p /xcatmnt
       if [[ $USENFSV4ONAIX = yes ]] || [[ $USENFSV4ONAIX = 1 ]] || [[ $USENFSV4ONAIX = Yes ]] || [[ $USENFSV4ONAIX = YES ]] || [[ $USENFSV4ONAIX = Y ]] || [[ $USENFSV4ONAIX = y ]]; then
