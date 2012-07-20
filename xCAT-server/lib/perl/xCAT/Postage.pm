@@ -512,10 +512,51 @@ sub makescript
                 $stat = "netboot";
             }
 
-            $ospkglist =
-              xCAT::SvrUtils->get_pkglist_file_name(
+
+            # generate the default imagename, and get its attributes
+            my $imagename = "$os-$arch-$provmethod-$profile";            
+            my $linuximagetab = xCAT::Table->new('linuximage', -create => 1);
+            (my $ref1) =
+            $linuximagetab->getAttribs({imagename => $imagename},
+                                     'pkglist', 'pkgdir', 'otherpkglist',
+                                     'otherpkgdir');
+            if ($ref1)
+            {
+                if ($ref1->{'pkglist'})
+                {
+                    $ospkglist = $ref1->{'pkglist'};
+                }
+       
+                if ($ref1->{'pkgdir'})
+                {
+                    push @scriptd, "OSPKGDIR=" . $ref1->{'pkgdir'} . "\n";
+                    push @scriptd, "export OSPKGDIR\n";
+                }
+
+                if ($ref1->{'otherpkglist'})
+                {
+                    $pkglist = $ref1->{'otherpkglist'};
+                }
+
+                if ($ref1->{'otherpkgdir'})
+                {
+                    push @scriptd,
+                      "OTHERPKGDIR=" . $ref1->{'otherpkgdir'} . "\n";
+                    push @scriptd, "export OTHERPKGDIR\n";
+                }
+
+            }
+
+
+          
+            if (!$ospkglist)
+            {
+                $ospkglist =
+                xCAT::SvrUtils->get_pkglist_file_name(
                                           "$installroot/custom/$stat/$platform",
                                           $profile, $os, $arch);
+            }
+
             if (!$ospkglist)
             {
                 $ospkglist =
@@ -524,10 +565,14 @@ sub makescript
                                        $profile, $os, $arch);
             }
 
-            $pkglist =
-              xCAT::SvrUtils->get_otherpkgs_pkglist_file_name(
+            if (!$pkglist)
+            {
+                $pkglist =
+                xCAT::SvrUtils->get_otherpkgs_pkglist_file_name(
                                           "$installroot/custom/$stat/$platform",
                                           $profile, $os, $arch);
+            }
+
             if (!$pkglist)
             {
                 $pkglist =
