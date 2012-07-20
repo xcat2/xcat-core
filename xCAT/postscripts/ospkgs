@@ -92,14 +92,21 @@ if [ -z "$OSPKGDIR" ]; then
     else
         OSPKGDIR="$NFSSERVER/$OSVER/$ARCH"
     fi
-    if ( pmatch "$OSVER" "sles*" ); then
-	    OSPKGDIR="$OSPKGDIR/1"
-    elif ( pmatch "$OSVER" "rhel*" ); then
-        OSPKGDIR="$OSPKGDIR/Server"
-    elif ( pmatch "$OSVER" "SL*" ); then
-        OSPKGDIR="$OSPKGDIR/SL"
+
+else 
+    if [ $mounted -eq 0 ]; then
+        OSPKGDIR="$NFSSERVER$OSPKGDIR"
     fi
 fi
+
+if ( pmatch "$OSVER" "sles*" ); then
+    OSPKGDIR="$OSPKGDIR/1"
+elif ( pmatch "$OSVER" "rhel*" ); then
+    OSPKGDIR="$OSPKGDIR/Server"
+elif ( pmatch "$OSVER" "SL*" ); then
+    OSPKGDIR="$OSPKGDIR/SL"
+fi
+
 
 if [ "$SDKDIR" != "" ]; then 
     if [ $mounted -eq 0 ]; then
@@ -107,13 +114,13 @@ if [ "$SDKDIR" != "" ]; then
     fi
 fi
     
-if [ $mounted -eq 0 ]; then
-    OSPKGDIR_NO_PREFIX=${OSPKGDIR#$INSTALLDIR}
+#if [ $mounted -eq 0 ]; then
+#    OSPKGDIR_NO_PREFIX=${OSPKGDIR#$INSTALLDIR}
 
-    if [ "$OSPKGDIR" != "$OSPKGDIR_NO_PREFIX" ]; then
-        OSPKGDIR="$NFSSERVER/$OSPKGDIR_NO_PREFIX"
-    fi
-fi
+#    if [ "$OSPKGDIR" != "$OSPKGDIR_NO_PREFIX" ]; then
+#        OSPKGDIR="$NFSSERVER/$OSPKGDIR_NO_PREFIX"
+#    fi
+#fi
 
 logger -t xcat -p local4.info "NFSSERVER=$NFSSERVER"
 logger -t xcat -p local4.info "OSPKGDIR=$OSPKGDIR"
