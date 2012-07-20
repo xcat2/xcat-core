@@ -1420,7 +1420,19 @@ sub dispatch_request {
       kill 2, $_;                                     
    }
   };                                                
-
+  # this is used to filter out the incorrect module that xcat command came into
+  # Mainly useful for hierarchical environment on SN
+  if (defined $req->{'_modname'} ) {
+    my $in_modname = undef;
+    if (ref $req->{'_modname'} eq 'ARRAY') {
+        $in_modname = $req->{'_modname'}->[0];
+    } else {
+        $in_modname = $req->{'_modname'};
+    }
+    if ($in_modname ne $modname) {
+      $reqs = [];
+    }
+  }
 
   my $onlyone=0;
   if (defined $reqs and (scalar(@{$reqs}) == 1)) {
@@ -1497,6 +1509,8 @@ sub dispatch_request {
             my $errstr;
             eval {
             undef $_->{'_xcatdest'};
+            #mainly used by SN to filter out the incorrect module that xcat command came into
+            $_->{'_modname'} = $modname;
             xCAT::Client::submit_request($_,\&dispatch_callback,$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/ca.pem"); 
             };
             if ($@) {
