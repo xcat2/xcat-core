@@ -2477,26 +2477,34 @@ sub web_framesetup {
     my $adminpasswd = $request->{arg}->[1];
     my $generalpasswd = $request->{arg}->[2];
     my $hmcpasswd = $request->{arg}->[3];
+    my $configphase = $request->{arg}->[4];
     my @tempnode = 'bpa';
     
-    return;
-    #run makedhcp 
-    xCAT::Utils->runcmd('makedhcp bpa', -1, 1);
-    sleep(10);
-    #run makehosts
-    xCAT::Utils->runcmd('makehosts bpa', -1, 1);
-    #run chtab command
-    xCAT::Utils->runcmd('chtab key=bpa,username=HMC passwd.password=' . $hmcpasswd, -1, 1);
-    xCAT::Utils->runcmd('chtab key=bpa,username=admin passwd.password=' . $adminpasswd, -1, 1);
-    xCAT::Utils->runcmd('chtab key=bpa,username=general passwd.password=' . $generalpasswd, -1, 1);
-    #mkhwconn
-    xCAT::Utils->runcmd('mkhwconn frame -t', -1, 1);
-    #rspconfig
-    xCAT::Utils->runcmd('rspconfig frame general_passwd=general,' . $generalpasswd, -1, 1);
-    xCAT::Utils->runcmd('rspconfig frame admin_passwd=admin,' . $adminpasswd, -1, 1);
-    xCAT::Utils->runcmd('rspconfig frame HMC_passwd=,' . $hmcpasswd, -1, 1);
+    if ($configphase == 1){
+        #run makedhcp
+        xCAT::Utils->runcmd('makedhcp bpa', -1, 1);
+        sleep(10);
+        #run makehosts
+        xCAT::Utils->runcmd('makehosts bpa', -1, 1);
+        $callback->( { info => 'Configure FRAMEs DHCP, DNS finished.' } );
+    }
+    elsif ($configphase == 2){
+        #run chtab command
+        xCAT::Utils->runcmd('chtab key=bpa,username=HMC passwd.password=' . $hmcpasswd, -1, 1);
+        xCAT::Utils->runcmd('chtab key=bpa,username=admin passwd.password=' . $adminpasswd, -1, 1);
+        xCAT::Utils->runcmd('chtab key=bpa,username=general passwd.password=' . $generalpasswd, -1, 1);
+    
+        #mkhwconn
+        xCAT::Utils->runcmd('mkhwconn frame -t', -1, 1);
+        #rspconfig
+        xCAT::Utils->runcmd('rspconfig frame general_passwd=general,' . $generalpasswd, -1, 1);
+        xCAT::Utils->runcmd('rspconfig frame admin_passwd=admin,' . $adminpasswd, -1, 1);
+        xCAT::Utils->runcmd('rspconfig frame HMC_passwd=,' . $hmcpasswd, -1, 1);
 
-    $callback->( { info => 'frame setup finished.' } );
+        $callback->( { info => 'Create hardware connection and configure password finished.' } );
+    }
+    else{
+    }
 }
 
 sub web_cecsetup{
@@ -2504,26 +2512,33 @@ sub web_cecsetup{
     my $adminpasswd = $request->{arg}->[1];
     my $generalpasswd = $request->{arg}->[2];
     my $hmcpasswd = $request->{arg}->[3];
+    my $configphase = $request->{arg}->[4];
     my @tempnode = 'bpa';
 
-    return;
-    #run makedhcp
-    xCAT::Utils->runcmd('makedhcp fsp', -1, 1);
-    sleep(10);
-    #run makehosts
-    xCAT::Utils->runcmd('makehosts fsp', -1, 1);
-    #run chtab command
-    xCAT::Utils->runcmd('chtab key=fsp,username=HMC passwd.password=' . $hmcpasswd, -1, 1);
-    xCAT::Utils->runcmd('chtab key=fsp,username=admin passwd.password=' . $adminpasswd, -1, 1);
-    xCAT::Utils->runcmd('chtab key=fsp,username=general passwd.password=' . $generalpasswd, -1, 1);
-    #run mkhwconn
-    xCAT::Utils->runcmd('mkhwconn cec -t', -1, 1);
-    #run rspconfig
-    xCAT::Utils->runcmd('rspconfig cec general_passwd=general,' . $generalpasswd, -1, 1);
-    xCAT::Utils->runcmd('rspconfig cec admin_passwd=admin,' . $adminpasswd, -1, 1);
-    xCAT::Utils->runcmd('rspconfig cec HMC_passwd=,' . $hmcpasswd, -1, 1);
+    if ($configphase == 1){
+        #run makedhcp
+        xCAT::Utils->runcmd('makedhcp fsp', -1, 1);
+        sleep(10);
+        #run makehosts
+        xCAT::Utils->runcmd('makehosts fsp', -1, 1);
+        $callback->( { info => 'Configure CEC DHCP, DNS finished.' } );
+    }
+    elsif ($configphase == 2){
+        #run chtab command
+        xCAT::Utils->runcmd('chtab key=fsp,username=HMC passwd.password=' . $hmcpasswd, -1, 1);
+        xCAT::Utils->runcmd('chtab key=fsp,username=admin passwd.password=' . $adminpasswd, -1, 1);
+        xCAT::Utils->runcmd('chtab key=fsp,username=general passwd.password=' . $generalpasswd, -1, 1);
+        #run mkhwconn
+        xCAT::Utils->runcmd('mkhwconn cec -t', -1, 1);
+        #run rspconfig
+        xCAT::Utils->runcmd('rspconfig cec general_passwd=general,' . $generalpasswd, -1, 1);
+        xCAT::Utils->runcmd('rspconfig cec admin_passwd=admin,' . $adminpasswd, -1, 1);
+        xCAT::Utils->runcmd('rspconfig cec HMC_passwd=,' . $hmcpasswd, -1, 1);
 
-    $callback->( { info => 'cec setup finished.' } );
+        $callback->( { info => 'Create hardware connection and configure password finished.' } );
+    }
+    else{
+    }
 }
 
 1;
