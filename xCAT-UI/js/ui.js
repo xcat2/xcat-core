@@ -307,9 +307,11 @@ DataTable.prototype.add = function(rowCont) {
  * @param barId Status bar ID
  */
 function createStatusBar(barId) {
-    var statusBar = $('<div class="ui-state-highlight ui-corner-all" id="' + barId + '"></div>').css({
+    var statusBar = $('<div class="ui-corner-all" id="' + barId + '"></div>').css({
         'margin-bottom': '5px',
-        'min-height': '30px'
+        'min-height': '30px',
+        'background-color':'#7BBEDE', 
+    	'color': '#FFFFFF'
     });
     
     // Create info icon
@@ -350,7 +352,11 @@ function createStatusBar(barId) {
  * @return Info bar
  */
 function createInfoBar(msg) {
-    var infoBar = $('<div class="ui-state-highlight ui-corner-all"></div>').css('margin', '5px 0px');
+    var infoBar = $('<div class="ui-corner-all"></div>').css({
+    	'margin': '5px 0px', 
+    	'background-color':'#7BBEDE', 
+    	'color': '#FFFFFF'
+    });
     var icon = $('<span class="ui-icon ui-icon-info"></span>').css({
         'display': 'inline-block',
         'margin': '10px 5px'

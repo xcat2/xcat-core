@@ -22,7 +22,7 @@ var hmcPlugin = function() {
 hmcPlugin.prototype.getStep = function() {
     return [ 'Basic patterns', 'Supernode', 'More patterns',
             'Power on hardware', 'Discover frames', 'Management node',
-            'Update definitions', 'Create LPARs' ];
+            'Discover Rest of Hardware and Update Definitions', 'Create LPARs' ];
 };
 
 hmcPlugin.prototype.getInitFunction = function() {
@@ -1276,7 +1276,6 @@ function createSetupFile() {
     fileContent += '  hostname-range = ' + getDiscoverEnv('cecName') + '\n';
     fileContent += '  delete-unused-cecs = 1\n';
     fileContent += '  supernode-list = /tmp/websupernode.txt\n';
-    fileContent += '  delete-unused-cecs = 1 \n';
     
     //Building Block
     fileContent += 'xcat-building-blocks:\n';
@@ -1289,6 +1288,8 @@ function createSetupFile() {
             + '\n';
     fileContent += '  hostname-range = ' + getDiscoverEnv('lparName') + '\n';
     fileContent += '  starting-ip = ' + getDiscoverEnv('lparstartip') + '\n';
+    fileContent += '  aliases = -hf0 \n';
+    fileContent += '  otherinterfaces = -hf1:11.1.3.1,-hf2:12.1.3.1,-hf3:13.1.3.1,-hf4:14.1.3.1,-hf5:15.1.3.1,,-hf6:16.1.3.1,-hf7:17.1.3.1,-bond0:18.1.3.1 \n';
 
     $.ajax({
         url : 'lib/cmd.php',
@@ -1359,11 +1360,19 @@ function powerInitUpdateDefinition(operType) {
     showStr += '<li id="frameLine1"><span class="ui-icon ' + iconClass
             + '"></span>Update Frames into xCAT database.</li>';
     showStr += '<li id="frameLine2"><span class="ui-icon ' + iconClass
-            + '"></span>Set up Frame(DHCP, DNS, Hardware connection).</li>';
+            + '"></span>Set up Frame DHCP, DNS.</li>';
+    showStr += '<li id="frameLine3"><span class="ui-icon ' + iconClass
+            + '"></span>Resetting networks on FRAME to get persistent IP.</li>';
+    showStr += '<li id="frameLine4"><span class="ui-icon ' + iconClass
+            + '"></span>Creating hardware connection for FRAME.</li>';
     showStr += '<li id="cecLine"><span class="ui-icon ' + iconClass
             + '"></span>Discover CECs and update into xCAT database.</li>';
     showStr += '<li id="cecLine2"><span class="ui-icon ' + iconClass
-            + '"></span>Set up CEC(DHCP, DNS, Hardware connection).</li>';
+            + '"></span>Set up CEC DHCP, DNS.</li>';
+    showStr += '<li id="cecLine3"><span class="ui-icon ' + iconClass
+            + '"></span>Resetting networks on CEC to get persistent IP.</li>';
+    showStr += '<li id="cecLine4"><span class="ui-icon ' + iconClass
+            + '"></span>Creating hardware connection for CEC.</li>';
     showStr += '</ul></div>';
 
     $('#discoverContentDiv').append(showStr);
@@ -1490,7 +1499,7 @@ function lsslpWriteFrame() {
 }
 
 /**
- * Step 8: config the frame
+ * Step 8: config the frame dhcp and dns
  */
 function frameSetup() {
 	$('#frameLine2').append(createLoader());
@@ -1502,12 +1511,65 @@ function frameSetup() {
         data : {
             cmd : 'webrun',
             tgt : '',
-            args : 'framesetup;' + tempargs,
+            args : 'framesetup;' + tempargs + ';1',
             msg : ''
         },
+
         success : function() {
             $('#frameLine2 img').remove();
             var tempSpan = $('#frameLine2').find('span');
+            tempSpan.removeClass('ui-icon-gear');
+            tempSpan.addClass('ui-icon-check');
+            frameReset();
+        }
+    });
+}
+
+/**
+ * Step 8: reset the networks for frames
+ */
+function frameReset(){
+	$('#frameLine3').append(createLoader());
+	$.ajax({
+		url : 'lib/cmd.php',
+		dataType : 'json',
+        data : {
+            cmd : 'rspconfig',
+            tgt : 'frame',
+            args : '--resetnet',
+            msg : ''
+        },
+
+        success : function() {
+            $('#frameLine3 img').remove();
+            var tempSpan = $('#frameLine3').find('span');
+            tempSpan.removeClass('ui-icon-gear');
+            tempSpan.addClass('ui-icon-check');
+            frameHwconn();
+        }
+	});
+}
+
+/**
+ * Step 8: create hardware connection for frames
+ */
+function frameHwconn(){
+	$('#frameLine4').append(createLoader());
+	var tempargs = getDiscoverEnv('adminpasswd') + ';' + getDiscoverEnv('generalpasswd') + ';' 
+	             + getDiscoverEnv('hmcpasswd');
+    $.ajax({
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'webrun',
+            tgt : '',
+            args : 'framesetup;' + tempargs + ';2',
+            msg : ''
+        },
+
+        success : function() {
+            $('#frameLine4 img').remove();
+            var tempSpan = $('#frameLine4').find('span');
             tempSpan.removeClass('ui-icon-gear');
             tempSpan.addClass('ui-icon-check');
             lsslpWriteCec();
@@ -1540,7 +1602,7 @@ function lsslpWriteCec() {
 }
 
 /**
- * Step 8: config the cec
+ * Step 8: config the cec dhcp and dns
  */
 function cecsetup(){
 	$('#cecLine2').append(createLoader());
@@ -1552,12 +1614,63 @@ function cecsetup(){
         data : {
             cmd : 'webrun',
             tgt : '',
-            args : 'cecsetup;' + tempargs,
+            args : 'cecsetup;' + tempargs + ';1',
             msg : ''
         },
         success : function() {
             $('#cecLine2 img').remove();
             var tempSpan = $('#cecLine2').find('span');
+            tempSpan.removeClass('ui-icon-gear');
+            tempSpan.addClass('ui-icon-check');
+            cecReset();
+        }
+    });
+}
+
+/**
+ * Step 8: reset the networks for cecs
+ */
+function cecReset(){
+	$('#cecLine3').append(createLoader());
+	$.ajax({
+		url : 'lib/cmd.php',
+		dataType : 'json',
+        data : {
+            cmd : 'rspconfig',
+            tgt : 'cec',
+            args : '--resetnet',
+            msg : ''
+        },
+
+        success : function() {
+            $('#cecLine3 img').remove();
+            var tempSpan = $('#cecLine3').find('span');
+            tempSpan.removeClass('ui-icon-gear');
+            tempSpan.addClass('ui-icon-check');
+            cecHwconn();
+        }
+	});
+}
+
+/**
+ * Step 8: config the cec
+ */
+function cecHwconn(){
+	$('#cecLine4').append(createLoader());
+	var tempargs = getDiscoverEnv('adminpasswd') + ';' + getDiscoverEnv('generalpasswd') + ';' 
+                   + getDiscoverEnv('hmcpasswd');
+    $.ajax({
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'webrun',
+            tgt : '',
+            args : 'cecsetup;' + tempargs + ';2',
+            msg : ''
+        },
+        success : function() {
+            $('#cecLine4 img').remove();
+            var tempSpan = $('#cecLine4').find('span');
             tempSpan.removeClass('ui-icon-gear');
             tempSpan.addClass('ui-icon-check');
             createDiscoverButtons();

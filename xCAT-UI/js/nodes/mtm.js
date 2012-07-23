@@ -40,5 +40,5 @@ var hardwareInfo = {
     '9179-MHC' : [ 'P7-780', 4 ],
     '8231-E2C' : [ 'P7 HE', 4 ],
     '9125-F2C' : [ 'Power 775', 2], 
-    '78AC-100' : [ 'Power 775', 2] // FSP
+    '78AC-100' : [ 'Power 775', 2] // bpa
 };
