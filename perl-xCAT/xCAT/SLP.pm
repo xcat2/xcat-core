@@ -20,6 +20,9 @@ use constant REQ_INTERVAL => 1;
 my %xid_to_srvtype_map;
 my $xid;
 my $gprlist; 
+my %searchmacs;
+my %ip4neigh;
+my %ip6neigh;
 
 sub getmulticasthash {
 	my $hash=0;
@@ -126,9 +129,10 @@ sub dodiscover {
 		    			}
                         $rspcount++;
 		    			$rethash{$peername} = $result;
-		    			if ($args{Callback}) {
-		    				$args{Callback}->($result);
-		    			}
+		    			#if ($args{Callback}) {
+		    			#	$args{Callback}->($result);
+		    			#}
+		    			handle_new_slp_entity($result);
 		    		}
 		    	}
                 if ($args{Time} and $args{Count}) {
@@ -146,7 +150,7 @@ sub dodiscover {
 				}	
 		    }
 		}	
-		return \%rethash;
+		return \%searchmacs;
 	}
 }
 
@@ -513,4 +517,75 @@ unless (caller) {
 	print Dumper(xCAT::SLP::dodiscover(SrvTypes=>$srvtypes));
 	#TODO: pass-in socket and not wait inside SLP.pm example
 }
+###########################################
+# Parse the slp resulte data
+###########################################
+sub handle_new_slp_entity {
+        my $data = shift;
+        delete $data->{sockaddr}; #won't need it
+        my $mac = get_mac_for_addr($data->{peername});
+        unless ($mac) { return; }
+        $searchmacs{$mac} = $data;
+}
+###########################################
+# Get mac addresses
+###########################################
+sub get_mac_for_addr {
+        my $neigh;
+        my $addr = shift;
+        if ($addr =~ /:/) {
+                get_ipv6_neighbors();
+                return $ip6neigh{$addr};
+        } else {
+                get_ipv4_neighbors();
+                return $ip4neigh{$addr};
+        }
+}
+
+###########################################
+# Get ipv4 mac addresses
+###########################################
+sub get_ipv4_neighbors {
+    if (xCAT::Utils->isAIX()) {
+        my @ipdata = `arp -a`;
+        %ip6neigh=();
+        for my $entry (@ipdata) {
+            if ($entry =~ /(\d+\.\d+\.\d+\.\d+)/) {
+                my $ip = $1;
+                #if ($entry =~ /at (\w+\:\w+\:\w+\:\w+\:\w+\:\w+)/) {
+                #    $ip4neigh{$ip}=$1;
+                if ($entry =~ /at (\w+)\:(\w+)\:(\w+)\:(\w+)\:(\w+)\:(\w+)/) {
+                     $ip4neigh{$ip}=$1.$2.$3.$4.$5.$6;
+                }
+
+            }
+        }
+    } else {
+        #TODO: something less 'hacky'
+        my @ipdata = `ip -4 neigh`;
+        %ip6neigh=();
+        foreach (@ipdata) {
+            if (/^(\S*)\s.*lladdr\s*(\S*)\s/) {
+                    $ip4neigh{$1}=$2;
+            }
+        }
+    }
+}
+
+
+
+###########################################
+# Get ipv6 mac addresses
+###########################################
+sub get_ipv6_neighbors {
+        #TODO: something less 'hacky'
+        my @ipdata = `ip -6 neigh`;
+        %ip6neigh=();
+        foreach (@ipdata) {
+                if (/^(\S*)\s.*lladdr\s*(\S*)\s/) {
+                        $ip6neigh{$1}=$2;
+                }
+        }
+}
+
 1;
