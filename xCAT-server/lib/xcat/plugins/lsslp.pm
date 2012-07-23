@@ -120,9 +120,6 @@ my @invalidiplist = (
 #######################################
 
 
-my %ip4neigh;
-my %ip6neigh;
-my %searchmacs;
 my %globalopt;
 #these globals are only used in mn
 my %ip_addr    = ();
@@ -513,13 +510,13 @@ sub invoke_dodiscover {
 
     my %arg;
    $arg{SrvTypes} = $services;
-   $arg{Callback} = \&handle_new_slp_entity;
+   #$arg{Callback} = \&handle_new_slp_entity;
    $arg{Ip} = $globalopt{i} if($globalopt{i});
    $arg{Retry} = $maxt;
    $arg{Count} = $globalopt{C} if($globalopt{C});
    $arg{Time} = $globalopt{T} if($globalopt{T});
 
-   my $result  = xCAT::SLP::dodiscover(%arg);
+    my $searchmacsref = xCAT::SLP::dodiscover(%arg);
 
 
     #########################################
@@ -561,7 +558,8 @@ sub invoke_dodiscover {
     #    send_msg( $request, 0, "Discovered $found nodes \n" );
     #    $values = \%val_tmp;
     #}
-
+    
+    return $searchmacsref;
 }
 
 
@@ -571,6 +569,8 @@ sub invoke_dodiscover {
 sub format_output {
 
     my $request = shift;
+    my $searchmacsref = shift;
+    my %searchmacs = %$searchmacsref;
     my $length  = length( $header[IP_ADDRESSES][TEXT] );
     my $result;
 
@@ -601,7 +601,7 @@ sub format_output {
     ###########################################
     # Parse responses and add to hash
     ###########################################
-    my $outhash = parse_responses( $request, \$length );
+    my $outhash = parse_responses( $request, \$length, $searchmacsref );
 
 	#hmc bug efix
 	my $newouthash;
@@ -899,11 +899,12 @@ sub parse_responses {
 
     my $request = shift;
     my $length  = shift;
+    my $searchmacsref = shift;
     my $matchflag;
     my %outhash;
     my $host;
     my @matchnode;
-
+    my %searchmacs = %$searchmacsref;
 
    #get networks information for defining HMC
     my %net;
@@ -1050,7 +1051,7 @@ sub parse_responses {
                     $tmphash1{serial} = ${$attributes->{'serial-number'}}[0];
                     my $loc = ($tmphash1{ip} =~ ${$attributes->{'ip-address'}}[0]) ? 0:1; #every entry has two ip-addresses
                     $tmphash1{side} = (int(${$attributes->{'slot'}}[0]) == 0) ? 'B-'.$loc:'A-'.$loc;
-                    $tmphash1{mac} = get_mac_for_addr($tmphash1{ip});
+                    $tmphash1{mac} = xCAT::SLP::get_mac_for_addr($tmphash1{ip});
                     $tmphash1{parent} =  'Server-'.$tmphash1{mtm}.'-SN'.$tmphash1{serial};
                     $tmphash1{hostname} = $tmphash1{ip};
                     $tmphash1{otherinterfaces} = ${$searchmacs{$rsp}}{peername};
@@ -1565,7 +1566,7 @@ sub process_request {
     #}
     #while (child_response($callback,$fds)) {}
 
-    invoke_dodiscover();
+    my $searchmacsref = invoke_dodiscover();
 
     ###########################################
     # Record ending time
@@ -1577,26 +1578,11 @@ sub process_request {
     ###########################################
     # Combined responses from all children
     ###########################################
-    format_output( \%request );
+    format_output( \%request, $searchmacsref);
 
     return( SUCCESS );
 }
 
-
-
-###########################################
-# Get ipv6 mac addresses
-###########################################
-sub get_ipv6_neighbors {
-        #TODO: something less 'hacky'
-        my @ipdata = `ip -6 neigh`;
-        %ip6neigh=();
-        foreach (@ipdata) {
-                if (/^(\S*)\s.*lladdr\s*(\S*)\s/) {
-                        $ip6neigh{$1}=$2;
-                }
-        }
-}
 
 
 ##########################################################################
@@ -1662,58 +1648,4 @@ sub filtersamevlan {
     }
     return $newhash;
 }
-
-###########################################
-# Parse the slp resulte data
-###########################################
-sub handle_new_slp_entity {
-        my $data = shift;
-        delete $data->{sockaddr}; #won't need it
-        my $mac = get_mac_for_addr($data->{peername});
-        unless ($mac) { return; }
-        $searchmacs{$mac} = $data;
-}
-###########################################
-# Get mac addresses
-###########################################
-sub get_mac_for_addr {
-        my $neigh;
-        my $addr = shift;
-        if ($addr =~ /:/) {
-                get_ipv6_neighbors();
-                return $ip6neigh{$addr};
-        } else {
-                get_ipv4_neighbors();
-                return $ip4neigh{$addr};
-        }
-}
-
-###########################################
-# Get ipv4 mac addresses
-###########################################
-sub get_ipv4_neighbors {
-    if (xCAT::Utils->isAIX()) {
-        my @ipdata = `arp -a`;
-        %ip6neigh=();
-        for my $entry (@ipdata) {
-            if ($entry =~ /(\d+\.\d+\.\d+\.\d+)/) {
-                my $ip = $1;
-                #if ($entry =~ /at (\w+\:\w+\:\w+\:\w+\:\w+\:\w+)/) {
-                #    $ip4neigh{$ip}=$1;
-                if ($entry =~ /at (\w+)\:(\w+)\:(\w+)\:(\w+)\:(\w+)\:(\w+)/) {
-                     $ip4neigh{$ip}=$1.$2.$3.$4.$5.$6;
-                }
-
-            }
-        }
-    } else {
-        #TODO: something less 'hacky'
-        my @ipdata = `ip -4 neigh`;
-        %ip6neigh=();
-        foreach (@ipdata) {
-            if (/^(\S*)\s.*lladdr\s*(\S*)\s/) {
-                    $ip4neigh{$1}=$2;
-            }
-        }
-    }
-}
+1;
