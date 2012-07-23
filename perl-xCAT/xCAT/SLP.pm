@@ -16,7 +16,7 @@ unless ($ip6support) {
 #TODO: somehow get at system headers to get the value, put in linux's for now
 use constant IPV6_MULTICAST_IF => 17;
 use constant IP_MULTICAST_IF => 32;
-use constant REQ_INTERVAL => 1;
+use constant REQ_INTERVAL => 0.5;
 my %xid_to_srvtype_map;
 my $xid;
 my $gprlist; 
@@ -42,6 +42,7 @@ sub dodiscover {
 	my %args = @_;
         my $rspcount = 0;
 	$xid = int(rand(16384))+1;
+    my %resulthash;
 	unless ($args{'socket'}) {
 		if ($ip6support) {
 			$args{'socket'} = IO::Socket::INET6->new(Proto => 'udp');
@@ -95,9 +96,9 @@ sub dodiscover {
             my $waittime = ($args{Time}>0)?$args{Time}:10;
 		    my $deadline=time()+$waittime;
 		    while ($deadline > time()) {
-		    	while ($waitforsocket->can_read(1)) {
+                        while ($waitforsocket->can_read(0)) {
 		    		my $slppacket;
-		    		my $peer = $args{'socket'}->recv($slppacket,1400);
+                                my $peer = $args{'socket'}->recv($slppacket,1400,0);
 		    		my( $port,$flow,$ip6n,$ip4n,$scope);
 		    		my $peername;
 		    		if ($ip6support) {
@@ -132,7 +133,7 @@ sub dodiscover {
 		    			#if ($args{Callback}) {
 		    			#	$args{Callback}->($result);
 		    			#}
-		    			handle_new_slp_entity($result);
+                        $resulthash{$peername} = $result;
 		    		}
 		    	}
                 if ($args{Time} and $args{Count}) {
@@ -150,8 +151,12 @@ sub dodiscover {
 				}	
 		    }
 		}	
-		return \%searchmacs;
-	}
+        } #end nowait
+
+        foreach my $entry (keys %resulthash) {
+            handle_new_slp_entity($resulthash{$entry})
+        }
+        return \%searchmacs;
 }
 
 sub process_slp_packet {
