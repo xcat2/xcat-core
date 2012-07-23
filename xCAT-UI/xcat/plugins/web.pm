@@ -72,7 +72,9 @@ sub process_request {
         'updateosimage'       => \&web_updateosimage,
         'rmosimage'           => \&web_rmosimage,
         'updategroup'         => \&web_updategroup,
-        'rmgroup'             => \&web_rmgroup
+        'rmgroup'             => \&web_rmgroup,
+        'framesetup'          => \&web_framesetup,
+        'cecsetup'            => \&web_cecsetup
     );
 
     # Check whether the request is authorized or not
@@ -1209,7 +1211,7 @@ sub web_discover {
     my $type = uc( $request->{arg}->[1] );
 
     my $retStr  = '';
-    my $retInfo = xCAT::Utils->runcmd( "lsslp -m -s $type 2>/dev/null | grep $type | awk '{print \$1\":\" \$2\"-\"\$3}'", -1, 1 );
+    my $retInfo = xCAT::Utils->runcmd( "lsslp -m -s $type 2>/dev/null | grep -i $type | awk '{print \$1\":\" \$2\"-\"\$3}'", -1, 1 );
     if ( scalar(@$retInfo) < 1 ) {
         $retStr = 'Error: Can not discover frames in cluster!';
     } else {
@@ -2130,7 +2132,7 @@ sub web_graphinfo {
             if ( $value->[0] ) {
                 $phash{$_} = $$typehash{$_} . ':' . $value->[0]->{'parent'} . ':';
             } else {
-                push( @missinfoarray, $_ );
+                $phash{$_} = $$typehash{$_} . '::';
             }
         }
         $ppctab->close();
@@ -2469,4 +2471,74 @@ sub web_rmgroup() {
     my $info = "Group successfully deleted";
     $callback->( { info => $info } );
 }
+
+sub web_framesetup {
+    my ( $request, $callback, $sub_req ) = @_;
+    my $adminpasswd = $request->{arg}->[1];
+    my $generalpasswd = $request->{arg}->[2];
+    my $hmcpasswd = $request->{arg}->[3];
+    my $configphase = $request->{arg}->[4];
+    my @tempnode = 'bpa';
+    
+    if ($configphase == 1){
+        #run makedhcp
+        xCAT::Utils->runcmd('makedhcp bpa', -1, 1);
+        sleep(10);
+        #run makehosts
+        xCAT::Utils->runcmd('makehosts bpa', -1, 1);
+        $callback->( { info => 'Configure FRAMEs DHCP, DNS finished.' } );
+    }
+    elsif ($configphase == 2){
+        #run chtab command
+        xCAT::Utils->runcmd('chtab key=bpa,username=HMC passwd.password=' . $hmcpasswd, -1, 1);
+        xCAT::Utils->runcmd('chtab key=bpa,username=admin passwd.password=' . $adminpasswd, -1, 1);
+        xCAT::Utils->runcmd('chtab key=bpa,username=general passwd.password=' . $generalpasswd, -1, 1);
+    
+        #mkhwconn
+        xCAT::Utils->runcmd('mkhwconn frame -t', -1, 1);
+        #rspconfig
+        xCAT::Utils->runcmd('rspconfig frame general_passwd=general,' . $generalpasswd, -1, 1);
+        xCAT::Utils->runcmd('rspconfig frame admin_passwd=admin,' . $adminpasswd, -1, 1);
+        xCAT::Utils->runcmd('rspconfig frame HMC_passwd=,' . $hmcpasswd, -1, 1);
+
+        $callback->( { info => 'Create hardware connection and configure password finished.' } );
+    }
+    else{
+    }
+}
+
+sub web_cecsetup{
+    my ( $request, $callback, $sub_req ) = @_;
+    my $adminpasswd = $request->{arg}->[1];
+    my $generalpasswd = $request->{arg}->[2];
+    my $hmcpasswd = $request->{arg}->[3];
+    my $configphase = $request->{arg}->[4];
+    my @tempnode = 'bpa';
+
+    if ($configphase == 1){
+        #run makedhcp
+        xCAT::Utils->runcmd('makedhcp fsp', -1, 1);
+        sleep(10);
+        #run makehosts
+        xCAT::Utils->runcmd('makehosts fsp', -1, 1);
+        $callback->( { info => 'Configure CEC DHCP, DNS finished.' } );
+    }
+    elsif ($configphase == 2){
+        #run chtab command
+        xCAT::Utils->runcmd('chtab key=fsp,username=HMC passwd.password=' . $hmcpasswd, -1, 1);
+        xCAT::Utils->runcmd('chtab key=fsp,username=admin passwd.password=' . $adminpasswd, -1, 1);
+        xCAT::Utils->runcmd('chtab key=fsp,username=general passwd.password=' . $generalpasswd, -1, 1);
+        #run mkhwconn
+        xCAT::Utils->runcmd('mkhwconn cec -t', -1, 1);
+        #run rspconfig
+        xCAT::Utils->runcmd('rspconfig cec general_passwd=general,' . $generalpasswd, -1, 1);
+        xCAT::Utils->runcmd('rspconfig cec admin_passwd=admin,' . $adminpasswd, -1, 1);
+        xCAT::Utils->runcmd('rspconfig cec HMC_passwd=,' . $hmcpasswd, -1, 1);
+
+        $callback->( { info => 'Create hardware connection and configure password finished.' } );
+    }
+    else{
+    }
+}
+
 1;
