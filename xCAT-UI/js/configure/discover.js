@@ -90,23 +90,33 @@ function createNextButton() {
  */
 function createBackButton() {
     var tempFlag = true;
+    var tempButton;
     if (0 == currentStep)
         return undefined;
 
-    var backButton = createButton('Back');
-    backButton.bind('click', function() {
-        if (nextFunctions[currentStep])
-            tempFlag = nextFunctions[currentStep]('back');
+    if ((steps.length - 1) == currentStep){
+    	tempButton = createButton('Complete');
+    	tempButton.bind('click', function() {
+    		window.location.href="index.php";
+    	});
+    }
+    else{
+    	var tempButton = createButton('Back');
+        tempButton.bind('click', function() {
+            if (nextFunctions[currentStep])
+                tempFlag = nextFunctions[currentStep]('back');
 
-        if (!tempFlag)
-            return;
+            if (!tempFlag)
+                return;
 
-        currentStep--;
+            currentStep--;
 
-        initFunctions[currentStep]('back');
-    });
+            initFunctions[currentStep]('back');
+        });
+    }
+    
 
-    return backButton;
+    return tempButton;
 }
 
 /**
@@ -314,7 +324,7 @@ function initSelectPlatform() {
     selectPlatform.append(info);
 
     var hwList = $('<ol>Platforms available:</ol>');
-    hwList.append('<li><input type="radio" name="platform" id="idataplex"><label>iDataPlex</label></input></li>');
+    hwList.append('<li><input type="radio" name="platform" disabled="true" id="idataplex"><label>iDataPlex</label></input></li>');
     hwList.append('<li><input type="radio" name="platform" disabled="true" id="blade"><span  style="color:gray;"> BladeCenter</span></input></li>');
     hwList.append('<li><input type="radio" name="platform" id="ih"> System p hardware (P7 IH)</input></li>');
     hwList.append('<li><input type="radio" name="platform" id="nonih"> System p hardware (Non P7 IH)</input></li>');
