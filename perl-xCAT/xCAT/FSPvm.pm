@@ -60,7 +60,7 @@ sub chvm_parse_extra_options {
 			return "no value specified";
 		}
 		if ($cmd =~ /^lparname$/) {
-			if ($value ne '*' && $value !~ /^[a-zA-Z0-9-_]$/) {
+			if ($value ne '*' && $value !~ /^[a-zA-Z0-9-_]+$/) {
 				return "'$value' invalid";
 			}	
 			my $len = rindex $value."\$", "\$";
