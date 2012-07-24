@@ -107,3 +107,14 @@ fi
 #        chroot $installroot chmod g+sw /var/lib/bsr
 #    fi
 #fi
+
+
+# pelinks script support, uncomment the following lines and change to the correct pe version that you intend to use.
+#PE_VERSION=1202
+#if [ "$OS" != "AIX" ]; then
+#    if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
+#        MP_CONFIG=$PE_VERSION /opt/ibmhpc/pe$PE_VERSION/ppe.poe/bin/pelinks
+#    else
+#        export MP_CONFIG=$PE_VERSION;chroot $installroot /opt/ibmhpc/pe$PE_VERSION/ppe.poe/bin/pelinks
+#    fi
+#fi
