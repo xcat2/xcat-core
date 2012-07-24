@@ -10590,9 +10590,6 @@ sub mkdsklsnode
 	#   in some cases - ex. file and dir names
 	#   - if NEWNAME then nim name = <nodename>_<osimage name>
 
-
-	if ($sharedinstall eq "no") {
-
     	# convert the @nodesfailed to hash for search performance considerations
     	my %fnhash = ();
     	foreach my $fnd (@nodesfailed)
@@ -10811,7 +10808,6 @@ sub mkdsklsnode
                 }
             }
         }
-    }
 
 	# if this is shared_root and "sns" then make a 
 	#	backup of the .client_data dir
