@@ -698,27 +698,52 @@ function powerInitSupernode() {
     // Add the introduction about the page
     var infoStr = '<div>The supernode-list file lists what supernode numbers should be ';
     infoStr += 'given to each CEC in each frame. Here is a sample file:<br/>';
-    infoStr += 'frame1: 0, 1, 16<br/>frame2: 17, 32<br/>frame3: 33, 48, 49<br/>';
-    infoStr += 'frame4: 64 , 65, 80<br/>frame5: 81, 96<br/>frame6: 97(1), 112(1), 113(1), 37(1), 55, 71<br/>';
+    infoStr += 'frame01: 0, 1, 16<br/>frame02: 17, 32<br/>frame03: 33, 48, 49<br/>';
+    infoStr += 'frame04: 64 , 65, 80<br/>frame05: 81, 96<br/>frame06: 97(1), 112(1), 113(1), 37(1), 55, 71<br/>';
     infoStr += 'The name before the colon is the node name of the frame BPC. The numbers after the colon '
             + 'are the supernode numbers to assign to the groups of CECs in that frame from bottom to top. '
             + 'Each supernode contains 4 CECs, unless it is immediately followed by "(#)", in which case the '
-            + 'number in parenthesis indicates how many CECs are in this supernode.</div>';
+            + 'number in parenthesis indicates how many CECs are in this supernode.<br/><br/>'
+            + 'You can define the supernode by inputting manually or load a configure file same with the correct format.</div>';
     
     var InfoBar = createInfoBar(infoStr);
     $('#discoverContentDiv #supernodeDiv').append(InfoBar);
+    
+    var uploadform = $('<form action="lib/upload.php" method="post" enctype="multipart/form-data">' 
+    		           + 'Configuration File:'
+    		           + '<input type="file" id="file" name="file"></form>');
+    uploadform.find('form').append(createButton('Parse'));
+    uploadform.ajaxForm({
+    	success: parseSupernodeConfig
+    });
+    
+    $('#discoverContentDiv #supernodeDiv').append(uploadform);
 
     var frameArray = expandNR(getDiscoverEnv('frameName'));
     var showStr = '<center><table><tbody>';
     for (var i in frameArray) {
+    	var tempname = 'sp_' + frameArray[i];
         showStr += '<tr><td>' + frameArray[i]
-                + ':</td><td><input type="text" name="sp_' + frameArray[i]
-                + '" value="' + getDiscoverEnv('sp_' + frameArray[i])
+                + ':</td><td><input type="text" name="' + tempname + '" id="' + tempname
+                + '" value="' + getDiscoverEnv(tempname)
                 + '"></td></tr>';
     }
     
     showStr += '</tbody></table></center>';
     $('#discoverContentDiv #supernodeDiv').append(showStr);
+}
+
+/**
+ * Step 3: Parse the content in the configure file
+ */
+function parseSupernodeConfig(responseText){
+	var lines = responseText.split("\n");
+	for(var i in lines){
+		var spMap = lines[i].split(':');
+		var spName = spMap[0];
+		var spDef = spMap[1];
+		$('#sp_' + spName).attr('value', spDef);
+	}
 }
 
 /**
@@ -1009,29 +1034,50 @@ function powerInitDiscoverFrames() {
     $('.tooltip').remove();
     var showDiv = $('<div style="min-height:360px" id="discoverShow"><h2>'
             + steps[currentStep] + '</h2>');
-    var statBar = createStatusBar('framedisc');
-    showDiv.append(statBar);
     $('#discoverContentDiv').append(showDiv);
-    $('#discoverShow').append('<center><table><tr><td id="frameTd">'
-            + '</td><td style="width:20px"></td><td id="mtmsTd"></td></tr></table></center>');
-
+    
+    //the discover button, use lsslp
+    var discoverButton = createButton('Discovery by lsslp');
+    discoverButton.bind('click', function(){
+    	$('#discoverShow').empty();
+    	$('#discoverContentDiv button').remove();
+    	$('#discoverShow').append(createStatusBar('framedisc'));
+    	$('#discoverShow').append('<center><table><tr><td id="frameTd">'
+                + '</td><td style="width:20px"></td><td id="mtmsTd"></td></tr></table></center>');
+    	discoverFrame();
+    });
+    $('#discoverShow').append(discoverButton);
+    
+    //the import button, use mtms map file
+    var importButton = createButton('Import the mtms map file');
+    importButton.bind('click', function(){
+    	$('#discoverShow').empty();
+    	$('#discoverContentDiv button').remove();
+    	$('#discoverShow').append(createStatusBar('framedisc'));
+    	$('#framedisc div').html('Use the mtms map file with the format <framename> <mtm> <serial>(frame1 78AC-100 9920032).');
+    	$('#discoverShow').append('<center><form action="lib/upload.php" method="post" enctype="multipart/form-data">MTMS map file:'
+                + '<input type="file" name="file"></form></center>');
+        $('#discoverShow form').append(createButton('Parse'));
+        $('#discoverShow form').ajaxForm({
+        	success : parseMtmsMap
+        });
+    });
+    $('#discoverShow').append(importButton);
+    
     if (getDiscoverEnv('framemtmsmap')) {
-        $('#framedisc div').html(
-                'Mapping the frame name and mtms which discovered by lsslp.<br\>'
-                + 'Select the frame name, then select the mtms.');
-        
         var mapArray = getDiscoverEnv('framemtmsmap').split(';');
         for (var i in mapArray) {
             var tempArray = mapArray[i].split(',');
-            showMap(tempArray[0], tempArray[1]);
+            showMap(tempArray[0], tempArray[1], 0);
         }
 
         createDiscoverButtons();
         return;
     }
+}
 
-    statBar.find('div').append('Discovering all Frames by lsslp.').append(
-            createLoader());
+function discoverFrame(){
+	$('#framedisc div').append('Discovering all Frames by lsslp.').append(createLoader());
     
     $.ajax({
         url : 'lib/cmd.php',
@@ -1087,6 +1133,46 @@ function powerInitDiscoverFrames() {
     });
 }
 
+function parseMtmsMap(responseText){
+	var frameArray = expandNR(getDiscoverEnv('frameName'));
+	var lines = responseText.split("\n");
+	var temphash = new Object();
+	var nulldefine = '';
+	
+	for(var i in lines){
+		var temparray = lines[i].split(" ");
+		var tempname = temparray[0];
+		var tempmtm = temparray[1];
+		var tempserial = temparray[2];
+		temphash[tempname] = tempmtm + '-' + tempserial;
+	}
+	
+	for (var i in frameArray){
+		var tempname = frameArray[i];
+		if (!temphash[tempname]){
+			if (!nulldefine){
+				nulldefine += 'tempname';
+			}
+			else{
+				nulldefine += ', tempname';
+			}
+		}
+	}
+	
+	if (nulldefine){
+		$('#framedisc div').html(
+                'Error: ' + nulldefine + ' was not defined in the map file, please check!');
+		return;
+	}
+	else{
+		for (var i in temphash){
+			showMap(i, temphash[i], 0);
+		}
+	}
+	
+	createDiscoverButtons();
+}
+
 function createMap(obj) {
     var fname = '';
     var mname = '';
@@ -1104,12 +1190,12 @@ function createMap(obj) {
     }
 
     $('#discoverShow :checked').parent().remove();
-    showMap(fname, mname);
+    showMap(fname, mname, 1);
 }
 
-function showMap(fname, mname) {
+function showMap(fname, mname, deleteflag) {
     var rowClass = '';
-
+    var deleteicon = '';
     if ($('#discoverShow fieldset').size() < 1) {
         $('#discoverShow')
                 .append(
@@ -1122,6 +1208,9 @@ function showMap(fname, mname) {
         rowClass = 'even';
     }
 
+    if (deleteflag){
+    	deleteicon = '<td><span class="ui-icon ui-icon-trash" style="cursor:pointer;" onclick="deleteMap(this)"></span></td>';
+    }
     $('#discoverShow fieldset table')
             .append(
                     '<tr class="'
@@ -1130,7 +1219,7 @@ function showMap(fname, mname) {
                             + fname
                             + '</td><td width="20px">&lt;----&gt;</td><td>'
                             + mname
-                            + '</td><td><span class="ui-icon ui-icon-trash" style="cursor:pointer;" onclick="deleteMap(this)"></span></td></tr>');
+                            + '</td>' + deleteicon + '</tr>');
 }
 
 function deleteMap(obj) {
