@@ -18,6 +18,7 @@ numactl
 libnuma1
 libpython2_6-1_0
 xinetd
+ksh
 
 gcc-32bit
 gcc
