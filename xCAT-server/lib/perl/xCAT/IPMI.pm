@@ -104,6 +104,7 @@ sub new {
             my $rcvbuf = $socket->sockopt(SO_RCVBUF);
             $maxpending=$rcvbuf/1500; #probably could have maxpending go higher, but just go with typical MTU as a guess
         }
+        $maxpending=128; #TODO: analysis to mitigate this hard limit
         $select->add($socket);
     }
     my $bmc_n;
@@ -737,18 +738,8 @@ sub sendpayload {
     my %args = @_;
     my @msg = (0x6,0x0,0xff,0x07); #RMCP header is constant in IPMI
     my $type = $args{type} & 0b00111111;
-    $sessions_waiting{$self}={};
-    $sessions_waiting{$self}->{ipmisession}=$self;
     my @payload = @{$args{payload}};
     $self->{pendingargs} = \%args;
-    if ($args{delayxmit}) {
-	$sessions_waiting{$self}->{timeout}=time()+$args{delayxmit};
-	$self->{timeout}=1; #since we are burning one of the retry attempts, start the backoff algorithm faster to make it come out even
-	undef $args{delayxmit};
-        return; #don't actually transmit packet, use retry timer to start us off
-    } else {
-    	$sessions_waiting{$self}->{timeout}=time()+$self->{timeout};
-    }
     
     push @msg,$self->{'authtype'}; # add authtype byte (will support 0 only for session establishment, 2 for ipmi 1.5, 6 for ipmi2
     if ($self->{'ipmiversion'} eq '2.0') { #TODO: revisit this to see if assembly makes sense
@@ -812,6 +803,16 @@ sub sendpayload {
         $self->waitforrsp();
     }
     $socket->send(pack("C*",@msg),0,$self->{peeraddr});
+    $sessions_waiting{$self}={};
+    $sessions_waiting{$self}->{ipmisession}=$self;
+    if ($args{delayxmit}) {
+	$sessions_waiting{$self}->{timeout}=time()+$args{delayxmit};
+	$self->{timeout}=1; #since we are burning one of the retry attempts, start the backoff algorithm faster to make it come out even
+	undef $args{delayxmit};
+        return; #don't actually transmit packet, use retry timer to start us off
+    } else {
+    	$sessions_waiting{$self}->{timeout}=time()+$self->{timeout};
+    }
     $pendingpackets+=1;
     if ($self->{sequencenumber}) { #if using non-zero, increment, otherwise..
         $self->{sequencenumber} += 1;
