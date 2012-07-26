@@ -9,8 +9,14 @@
 #For example:
 #/tmp/myusers:/etc/passwd /tmp/mypasswds:/etc/shadow /tmp/mygrps:/etc/group
 #
+
+# Check for Linux, AIX not supported 
+
+if [ "$(uname -s)" != "Linux" ]; then
+  logger -t xCAT -p local4.err "Merge: xdcp merge is only supported on Linux" 
+  exit 1
+fi
 #this is the base path to the merge directory
-logger -t xCAT "xdcp merge started"
 nodesyncfiledir=$1
 #this is the backup copy of the original current file 
 nodesyncfiledirorg="$nodesyncfiledir/org"
@@ -36,7 +42,7 @@ for i in $*; do
   # if curfile not /etc/passwd  or /etc/shadow or /etc/group 
   # exit error
   #if [ "$curfile" != "/etc/passwd" ] && [ "$curfile" != "/etc/shadow" ] && [ "$curfile" != "/etc/group" ]; then
-  #  `logger -t xCAT -p local4.err "Merge: $curfile is not /etc/passwd or /etc/shadow or /etc/group. It cannot be processes." `
+  #  logger -t xCAT -p local4.err "Merge: $curfile is not /etc/passwd or /etc/shadow or /etc/group. It cannot be processes." 
   #   exit 1
   #fi 
   # get the directory to backup the original file  
@@ -101,5 +107,4 @@ for i in $*; do
   #  echo "rm $mergefile.userlist"
    
 done
-logger -t xCAT "xdcp merge complete"
 exit 0
