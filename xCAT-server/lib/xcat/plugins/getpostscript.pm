@@ -61,8 +61,15 @@ sub process_request
     }
 
     my $client;
-    if ($request->{'_xcat_clienthost'}) {
-      $client = $request->{'_xcat_clienthost'}->[0];
+    if ($::XCATSITEVALS{nodeauthentication}) { #if requiring node authentication, this request will have a certificate associated with it, use it instead of name resolution
+	unless (ref $request->{username}) { return; } #TODO: log an attempt without credentials? 
+	$client = $request->{username}->[0];
+    } else {
+	    unless ($request->{'_xcat_clienthost'}->[0]) {
+	      #ERROR? malformed request
+	      return; #nothing to do here...
+	    }
+	    $client = $request->{'_xcat_clienthost'}->[0];
     }
 
     if ($client) { ($client) = noderange($client) };
