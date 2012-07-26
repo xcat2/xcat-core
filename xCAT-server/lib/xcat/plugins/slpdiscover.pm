@@ -258,10 +258,10 @@ sub setup_cmm_pass {
 	my $localpass=$defaultbladepass;
 	if ($mpahash->{$nodename}) {
 		if ($mpahash->{$nodename}->{username}) {
-			$localuser = $mpahash->{$nodename}->[0]->{username};
+			$localuser = $mpahash->{$nodename}->{username};
 		}
 		if ($mpahash->{$nodename}->{password}) {
-			$localuser = $mpahash->{$nodename}->[0]->{password};
+			$localpass = $mpahash->{$nodename}->{password};
 		}
 	}
         $passwordmap{$nodename}->{username}=$localuser;
