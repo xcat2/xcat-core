@@ -464,7 +464,7 @@ sub makescript
         (my $ref1) =
           $linuximagetab->getAttribs({imagename => $provmethod},
                                      'pkglist', 'pkgdir', 'otherpkglist',
-                                     'otherpkgdir');
+                                     'otherpkgdir', 'kerneldir');
         if ($ref1)
         {
             if ($ref1->{'pkglist'})
@@ -485,6 +485,11 @@ sub makescript
                       "OTHERPKGDIR=" . $ref1->{'otherpkgdir'} . "\n";
                     push @scriptd, "export OTHERPKGDIR\n";
                 }
+            }
+            if ($ref1->{'kerneldir'})
+            {
+                push @scriptd, "KERNELDIR=" . $ref1->{'kerneldir'} . "\n";
+                push @scriptd, "export KERNELDIR\n";
             }
         }
     }
