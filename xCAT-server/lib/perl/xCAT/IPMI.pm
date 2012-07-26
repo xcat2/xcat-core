@@ -134,7 +134,7 @@ sub new {
         $self->{'sessionid'} = [0,0,0,0]; # init session id
         $self->{'authtype'}=0; # first messages will have auth type of 0
         $self->{'ipmiversion'}='1.5'; # send first packet as 1.5
-        $self->{'timeout'}=2; #start at a quick timeout, increase on retry
+        $self->{'timeout'}=1; #start at a quick timeout, increase on retry
         $self->{'seqlun'}=0; #the IPMB seqlun combo, increment by 4s
         $self->{'logged'}=0;
     return $self;
@@ -242,14 +242,19 @@ sub session_activated {
                 0x85 => "Invalid session ID",
                 0x86 => $self->{userid}. " is not allowed to be Administrator or Administrator not allowed over network",
                 );
-    my @data = @{$rsp->{data}};
     if ($code) {
         my $errtxt = sprintf("ERROR: Unable to log in to BMC due to code %02xh",$code);
         if ($localcodes{$code}) {
             $errtxt .= " ($localcodes{$code})";
         }
         $self->{onlogon}->($errtxt, $self->{onlogon_args});
+	return;
     }
+    if ($rsp->{error}) { 
+	$self->{onlogon}->($rsp->{error}, $self->{onlogon_args});
+	return;
+    }
+    my @data = @{$rsp->{data}};
     $self->{sessionid} = [splice @data,1,4];
     $self->{sequencenumber}=$data[1]+($data[2]<<8)+($data[3]<<16)+($data[4]<<24);
     $self->{sequencenumberbytes} = [splice @data,1,4];
@@ -405,7 +410,7 @@ sub waitforrsp {
                                 push @ipmiq,[$peerport,$data];
                         }
                 }
-        }
+	}
     }
     return scalar (keys %sessions_waiting);
 }
@@ -414,7 +419,7 @@ sub timedout {
     my $self = shift;
     $self->{timeout} = $self->{timeout}+1;
     if ($self->{timeout} > 5) { #giveup, really
-        $self->{timeout}=2;
+        $self->{timeout}=1;
         my $rsp={};
         $rsp->{error} = "timeout";
         $self->{ipmicallback}->($rsp,$self->{ipmicallback_args});
@@ -712,6 +717,7 @@ sub parse_ipmi_payload {
     $rsp->{cmd} = shift @payload;
     $rsp->{code} = shift @payload;
     $rsp->{data} = \@payload;
+    $self->{timeout}=1;
     $self->{ipmicallback}->($rsp,$self->{ipmicallback_args});
     return 0;
 }
