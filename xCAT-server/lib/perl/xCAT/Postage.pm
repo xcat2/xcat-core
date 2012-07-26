@@ -191,8 +191,8 @@ sub makescript
     my $groups= 
       $nodelisttab->getNodeAttribs($node, ['groups']);
     
-    push @scriptd, "GROUPS=$groups->{groups}\n";
-    push @scriptd, "export GROUPS\n";
+    push @scriptd, "GROUP=$groups->{groups}\n";
+    push @scriptd, "export GROUP\n";
     # read the sshbetweennodes attribute and process
     my $enablessh=xCAT::Utils->enablessh($node); 
     if ($enablessh == 1) {
