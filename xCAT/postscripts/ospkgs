@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh  
 # IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
@@ -34,6 +34,136 @@ pmatch ()
 
   return 1          # non-zero return code means string not matched by pattern
 }
+
+##
+##  The following routines implement the notion of an array.
+##  The POSIX shell does not support arrays.
+##  With these routines, an array conceptually called "my_array" is implmented using the following series
+##  of variables:
+##
+##      my_array__ARRAY_HIGH_INDEX  - holds the highest index used in the array
+##      my_array__0   - value for element 0 of my_array: my_array[0] in standard array notation
+##      my_array__1   - value for element 1 of my_array: my_array[1] in standard array notation
+##         .                             .
+##         .                             .
+##         .                             .
+##
+
+#
+#  array_empty - make the array whose name is given by $1 empty (with no elements).
+#
+#    sample call:  array_empty my_array
+#
+
+array_empty ()
+{
+    local array_name="$1"
+    local high_ndx_varname="${array_name}__ARRAY_HIGH_INDEX"
+    local elem_varname
+    local high_ndx
+    local ndx
+
+    # Determine current element count
+
+    eval "high_ndx=\$${high_ndx_varname}"
+
+    if [ -z "$high_ndx" ]; then
+        return
+    fi
+
+    # Unset all previously defined element variables and the high index variable
+
+    ndx=0
+
+    while [ $ndx -le $high_ndx ]; do
+        elem_varname="${array_name}__${ndx}"
+
+        eval "unset ${elem_varname}"
+
+        ndx=$(expr $ndx + 1)
+    done
+
+    eval "unset ${high_ndx_varname}"
+}
+
+#
+#  array_get_size - return the size of the array whose name is given by $1.
+#                   The size, which is the highest index plus one is written to standard output
+#
+#    sample call:  size=$(array_get_size my_array)
+#
+
+array_get_size ()
+{
+    local array_name="$1"
+
+    local high_ndx_varname="${array_name}__ARRAY_HIGH_INDEX"
+    local high_ndx
+
+    eval "high_ndx=\$${high_ndx_varname}"
+
+    if [ -z "$high_ndx" ]; then
+        high_ndx=-1
+    fi
+
+    echo $(expr $high_ndx + 1)
+}
+
+#
+#  array_set_element - set an element to a value.  $1 is the array name, $2 is the element index,
+#                      $3 is the element value.
+#
+#    sample call:  array_set_element my_array index "the new element value"
+#
+
+array_set_element ()
+{
+    local array_name="$1"
+    local ndx="$2"
+    local elem_value="$3"
+    local high_ndx_varname="${array_name}__ARRAY_HIGH_INDEX"
+    local elem_varname
+    local high_ndx
+
+    # Set specified element to specified value
+
+    elem_varname="${array_name}__${ndx}"
+
+    eval "${elem_varname}=\"${elem_value}\""
+
+    # Adjust high index
+
+    eval "high_ndx=\$${high_ndx_varname}"
+
+    if [ -z "$high_ndx" ]; then
+        high_ndx=-1
+    fi
+
+    if [ $ndx -gt $high_ndx ]; then
+        eval "${high_ndx_varname}=${ndx}"
+    fi
+}
+
+#
+#  array_get_element - get an element's value.  $1 is the array name, $2 is the element index.
+#
+#    sample call:  value=$(array_get_element my_array index)
+#
+
+array_get_element ()
+{
+    local array_name="$1"
+    local ndx="$2"
+
+    eval "echo \"\$${array_name}__${ndx}\""
+}
+
+##
+##  End of set routines.
+##
+
+
+
 
 debug=0
 
@@ -92,20 +222,50 @@ if [ -z "$OSPKGDIR" ]; then
     else
         OSPKGDIR="$NFSSERVER/$OSVER/$ARCH"
     fi
-
-else 
-    if [ $mounted -eq 0 ]; then
-        OSPKGDIR="$NFSSERVER$OSPKGDIR"
+    
+    if ( pmatch "$OSVER" "sles*" ); then
+        OSPKGDIR="$OSPKGDIR/1"
+    elif ( pmatch "$OSVER" "rhel*" ); then
+        OSPKGDIR="$OSPKGDIR/Server"
+    elif ( pmatch "$OSVER" "SL*" ); then
+        OSPKGDIR="$OSPKGDIR/SL"
     fi
-fi
 
-if ( pmatch "$OSVER" "sles*" ); then
-    OSPKGDIR="$OSPKGDIR/1"
-elif ( pmatch "$OSVER" "rhel*" ); then
-    OSPKGDIR="$OSPKGDIR/Server"
-elif ( pmatch "$OSVER" "SL*" ); then
-    OSPKGDIR="$OSPKGDIR/SL"
+else
+
+    if [ "$KERNELDIR" != "" ]; then 
+        if [ $mounted -eq 0 ]; then
+            OSPKGDIR="$OSPKGDIR:$KERNELDIR"
+        fi
+    fi
+ 
+    OIFS=$IFS
+    IFS=$':'
+    if ( pmatch "$OSVER" "ubuntu*" ); then
+        IFS=$(printf ':')
+    fi
+
+    array_ospkgdirs=($OSPKGDIR)   
+    IFS=$OIFS
+    array_empty os_path
+    index=0
+    for dir in  ${array_ospkgdirs[@]}  
+    do
+        if [ $mounted -eq 0 ]; then
+            OSPKGDIR="$OSPKGDIR"  
+            ospkgdir="$NFSSERVER$dir"
+            array_set_element os_path $index $ospkgdir
+        else
+            OSPKGDIR="$NFSSERVER$OSPKGDIR"  
+            array_set_element os_path $index $dir
+        fi
+        
+        index=$(expr $index + 1)          
+            
+    done    
+
 fi
+ 
 
 
 if [ "$SDKDIR" != "" ]; then 
@@ -303,18 +463,43 @@ elif ( pmatch "$OSVER" "sles11*" ); then
 	fi
     fi
 
-    if [ $mounted -eq 0 ]; then
-	path="http://$OSPKGDIR"
-    else
-        path="file://$OSPKGDIR"
-    fi
-    result=`zypper ar $path $OSVER 2>&1`
-    if [ $? -ne 0 ]; then 
-	if ( ! pmatch "$result" "*exists*" ); then 
-	    logger -t xcat -p local4.info "ospkgs: zypper ar $path $OSVER\n    $result"
-	    echo "ospkgs: zypper ar $path $OSVER"
-	    echo "    $result"
-	fi
+    SUM=$(array_get_size os_path)
+    i=0
+   
+    if [ $SUM -eq 0 ]; then 
+
+        if [ $mounted -eq 0 ]; then
+	    path="http://$OSPKGDIR"
+        else
+            path="file://$OSPKGDIR"
+        fi
+        result=`zypper ar $path $OSVER 2>&1`
+        if [ $? -ne 0 ]; then 
+	    if ( ! pmatch "$result" "*exists*" ); then 
+	        logger -t xcat -p local4.info "ospkgs: zypper ar $path $OSVER\n    $result"
+	        echo "ospkgs: zypper ar $path $OSVER"
+	        echo "    $result"
+	    fi
+        fi
+    else 
+        while [ $i -lt $SUM ]; do 
+            OSPKGDIR=$(array_get_element os_path $i)
+            if [ $mounted -eq 0 ]; then
+                path="http://$OSPKGDIR"
+            else
+                path="file://$OSPKGDIR"
+            fi
+            result=`zypper ar $path $OSVER-"path$i"  2>&1`
+            if [ $? -ne 0 ]; then 
+	        if ( ! pmatch "$result" "*exists*" ); then 
+	            logger -t xcat -p local4.info "ospkgs: zypper ar $path $OSVER-path$i\n    $result"
+	            echo "ospkgs: zypper ar $path $OSVER-path$i"
+	            echo "    $result"
+	        fi
+            fi
+           
+            i=$((i+1)) 
+        done
     fi
 
     if [ "$SDKDIR" != "" ]; then
@@ -461,20 +646,43 @@ else
 
     result=`yum clean all`
 
+    SUM=$(array_get_size os_path)
+    i=0
+   
+    if [ $SUM -eq 0 ]; then 
     #create new repo file
-    REPOFILE="/etc/yum.repos.d/$OSVER.repo"
-    if [ ! -f $REPOFILE ]; then
-	echo "[$OSVER]" > $REPOFILE
-	echo "name=$OSVER" >> $REPOFILE
-	if [ $mounted -eq 0 ]; then
-	    echo "baseurl=http://$OSPKGDIR" >> $REPOFILE
-	else
-	    echo "baseurl=file://$OSPKGDIR" >> $REPOFILE
-	fi
-	echo "enabled=1" >> $REPOFILE
-	echo "gpgcheck=0" >> $REPOFILE
-    fi
+        REPOFILE="/etc/yum.repos.d/$OSVER.repo"
+        if [ ! -f $REPOFILE ]; then
+	    echo "[$OSVER]" > $REPOFILE
+	    echo "name=$OSVER" >> $REPOFILE
+	    if [ $mounted -eq 0 ]; then
+	        echo "baseurl=http://$OSPKGDIR" >> $REPOFILE
+	    else
+	        echo "baseurl=file://$OSPKGDIR" >> $REPOFILE
+	    fi
+	    echo "enabled=1" >> $REPOFILE
+	    echo "gpgcheck=0" >> $REPOFILE
+         fi
+    else
 
+        while [ $i -lt $SUM ]; do 
+           REPOFILE="/etc/yum.repos.d/$OSVER-path$i.repo"
+           OSPKGDIR=$(array_get_element os_path $i)
+           if [ ! -f $REPOFILE ]; then
+	       echo "[$OSVER-path$i]" > $REPOFILE
+	       echo "name=$OSVER-path$i" >> $REPOFILE
+	       if [ $mounted -eq 0 ]; then
+	           echo "baseurl=http://$OSPKGDIR" >> $REPOFILE
+	       else
+	           echo "baseurl=file://$OSPKGDIR" >> $REPOFILE
+	       fi
+	       echo "enabled=1" >> $REPOFILE
+	       echo "gpgcheck=0" >> $REPOFILE
+           fi
+           i=$((i+1)) 
+        done  
+    fi
+ 
     #import the release key?
     #my $key = "$installDIR/$os/$arch/RPM-GPG-KEY-redhat-release";
     #my $tmp = "/tmp/RPM-GPG-KEY-redhat-release";
