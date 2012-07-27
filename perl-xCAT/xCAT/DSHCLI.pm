@@ -4330,6 +4330,7 @@ sub parse_and_run_dcp
         @::postscripts=();
         @::alwayspostscripts=();
         @::appendlines=();
+        @::mergelines=();
         if (xCAT::Utils->isServiceNode())
         {    # running on service node
             $rc =
@@ -4411,8 +4412,10 @@ sub parse_and_run_dcp
     my  @results2;
     my  @results3;
     my  @results4;
+    my  @results5;
     my $ranpostscripts;
     my $ranappendscripts;
+    my $ranmergescripts;
     if ((@::postscripts) && ($::SYNCSN == 0)) {
        @results2 = &run_rsync_postscripts(\@results,$synfiledir); 
        $ranpostscripts=1;
@@ -4424,6 +4427,10 @@ sub parse_and_run_dcp
        @results4 = &bld_and_run_append(\@nodelist,\@results,$synfiledir,$nodesyncfiledir); 
        $ranappendscripts=1;
     }
+    if (($::mergescript) && ($::SYNCSN == 0)) {
+       @results5 = &bld_and_run_merge(\@nodelist,\@results,$synfiledir,$nodesyncfiledir); 
+       $ranmergescripts=1;
+    }
     my @newresults;
     if (@results2) {
       @newresults = (@results2);
@@ -4434,12 +4441,16 @@ sub parse_and_run_dcp
     if (@results4) {
       @newresults = (@newresults,@results3,@results4);
     }
+    if (@results5) {
+      @newresults = (@newresults,@results3,@results4,@results5);
+    }
     if (@newresults) {
       return (@newresults);
     } else {
-      # don't report results for postscripts and appendscripts because
+      # don't report results for postscripts,appendscripts,mergescripts because
       # you get all the rsync returned lines
-      if (($ranpostscripts == 0 ) && ($ranappendscripts ==0)){
+      if (($ranpostscripts == 0 ) && ($ranappendscripts == 0) 
+         && ($ranmergescripts == 0)) { 
         return (@results);
       }    
     }    
@@ -4503,7 +4514,7 @@ sub rsync_to_image
         # process no more lines, do not exec
         # do not execute postscripts when syncing images 
         if (($line =~ /EXECUTE:/) || ($line =~ /EXECUTEALWAYS:/) 
-           || ($line =~ /APPEND:/))
+           || ($line =~ /APPEND:/) || ($line =~ /MERGE:/))
         { # process no more lines
 			last;
 	}
@@ -4653,13 +4664,13 @@ sub parse_rsync_input_file_on_MN
         }
         # Determine if processing a clause or the synclist 
         if (($line =~ /EXECUTE:/) || ($line =~ /EXECUTEALWAYS:/)
-                 || ($line =~ /APPEND:/)) { 
+                 || ($line =~ /APPEND:/) || ($line =~ /MERGE:/)) { 
              $clause=$line;
              next;   # get the content of the clause
         }
         # processing a clause
         if (($clause =~ /APPEND:/) || ($clause =~ /EXECUTEALWAYS:/)
-            || ($clause =~ /EXECUTE:/)) {
+            || ($clause =~ /EXECUTE:/) || ($clause =~ /MERGE:/)) {
             if (($::SYNCSN == 1) && (($clause =~ /EXECUTEALWAYS:/) ||
                   ($clause =~ /EXECUTE:/))) {  
                # for EXECUTE and EXECUTEALWAYS skip, if syncing SN only
@@ -4687,6 +4698,23 @@ sub parse_rsync_input_file_on_MN
                 my $appendscriptline = "$appscript -> $appscript"; 
                 $syncappendscript=1;  # syncing the xdcpappend.sh script
                  &build_append_rsync($appendscriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncappendscript);
+               }
+               if ($clause =~ /MERGE:/) {
+                 # location of the base merge script
+                 # for MERGE we have to sync the mergescript and the
+                 # merge file to the SN
+                  my $onServiceNode=0;
+                  my $syncmergescript=0;
+                 &build_merge_rsync($line,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncmergescript);
+                if ($::SYNCSN == 0) {
+                  # this triggers the running of the mergescript
+                  $::mergescript ="/opt/xcat/share/xcat/scripts/xdcpmerge.sh";
+                }
+                # add the merge script to the sync
+                my  $mergescript ="/opt/xcat/share/xcat/scripts/xdcpmerge.sh";
+                my $mergescriptline = "$mergescript -> $mergescript"; 
+                $syncmergescript=1;  # syncing the xdcpmerge.sh script
+                 &build_merge_rsync($mergescriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncmergescript);
                }
            
            }
@@ -4914,6 +4942,145 @@ sub build_append_rsync
 #-------------------------------------------------------------------------------
 
 =head3
+      build_merge_rsync 
+
+        Handles the 
+           MERGE: clause in the synclist
+           /tmp/mypasswd -> /etc/passwd
+           /tmp/mygroup -> /etc/group
+           /tmp/myshadow -> /etc/shadow
+
+          Merges the information from the files in mypasswd, mygroup,
+          myshadow into /etc/passwd, /etc/group , /etc/shadow on the nodes.
+          These are the only files supported from MERGE and only on Linux
+        Returns:
+          Files do not exist, rsync errors. 
+
+        Globals:
+
+
+        Error:
+          Files do not exist, rsync errors. 
+
+        Example:
+
+        Comments:
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub build_merge_rsync 
+{
+    use File::Basename;
+    my ($line,$nodes, $options,$input_file, $rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncmergescript) = @_;
+    my @dest_host    = @$nodes;
+    my $process_line = 0;
+    my $destfileisdir;
+    # add merge directory to the base nodesyncfiledir
+    $nodesyncfiledir .= "/merge/mergefiles";
+    
+    if ($line =~ /(.+) -> (.+)/)
+    {
+
+            $::process_line = 1;
+            if ($syncmergescript == 0) { # don't add the xdcpmerge.sh line 
+              push @::mergelines,$line;
+            }
+            my $src_file  = $1; # merge file left of arror
+            # it will be sync'd to $nodesyncfiledir/$merge_file
+            my $dest_file = $nodesyncfiledir;
+            $dest_file .= $src_file;  
+            $dest_file =~ s/[\s;]//g;
+            my     $dest_dir = dirname($dest_file);
+            $dest_dir =~ s/\s*//g;    #remove blanks
+
+            foreach my $target_node (@dest_host)
+            {
+                $$options{'destDir_srcFile'}{$target_node} ||= {};
+
+                    #  if syncing the Service Node, file goes to the same place
+                    #  where it was on the MN off the syncdir on the service
+                    # node
+                    if ($rsyncSN == 1)
+                    {    #  syncing the SN
+                        $dest_dir = $syncdir;    # the SN sync dir
+                        $dest_dir .= dirname($src_file);
+                        $dest_dir =~ s/\s*//g;    #remove blanks
+                    }
+                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
+                      {};
+
+                    my $src_basename = basename($src_file);    # get file name
+                    # if this is syncing from the Service Node then we have
+                    # to pick up files from /var/xcat/syncfiles...
+                    if ($onServiceNode == 1) {
+                      my $newsrcfile = $syncdir;    # add SN syndir on front
+                      $newsrcfile .= $src_file;
+                      $src_file=$newsrcfile;
+                    }
+                    # destination file name
+                    my  $dest_basename = basename($dest_file);
+                    if ($rsyncSN == 1)    # dest file will be the same as src
+                    {                     #  syncing the SN
+                        $dest_basename = $src_basename;
+                    }
+                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
+                      $dest_basename =~ s/[\s;]//g;
+
+                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
+                          {'same_dest_name'} ||= [];
+                    push @{$$options{'destDir_srcFile'}{$target_node}
+                              {$dest_dir}{'same_dest_name'}}, $src_file;
+
+            }   # end of each node
+          } # if synclist line
+    if ($::process_line == 0)
+    {    # no valid lines in the file
+        my $rsp = {};
+        $rsp->{error}->[0] = "Found no lines to process in $input_file APPEND Clause.";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+        return 1;
+    }
+    else
+    {
+        $$options{'nodes'} = join ',', keys %{$$options{'destDir_srcFile'}};
+    }
+    return 0;
+}
+#-------------------------------------------------------------------------------
+
+=head3
+       parse_rsync_input_file_on_SN
+
+        This parses the -F rsync input file on the Service node.
+
+        File format:
+          /.../file1 ->  /.../dir1/filex
+          /.../file1 ->  /.../dir1
+          /.../*     ->  /.../dir1
+          /.../file1 /..../filex  -> /...../dir1
+
+        Arguments:
+		  Input nodelist,options, pointer to the sync file and
+		  the directory to syn the files from 
+		  based on defaults or the site.SNsyncfiledir attribute,
+
+        Returns:
+           Errors if invalid options or the executed dcp command
+
+        Globals:
+
+
+        Error:
+        	None
+
+        Example:
+
+        Comments:
+#-------------------------------------------------------------------------------
+
+=head3
        parse_rsync_input_file_on_SN
 
         This parses the -F rsync input file on the Service node.
@@ -4966,12 +5133,13 @@ sub parse_rsync_input_file_on_SN
         }
         # Determine if processing a clause or the synclist
         if (($line =~ /EXECUTE:/) || ($line =~ /EXECUTEALWAYS:/)
-                 || ($line =~ /APPEND:/)) {
+                 || ($line =~ /APPEND:/) || ($line =~ /MERGE:/)) {
              $clause=$line;
              next;   # get the content of the clause
         }
         # processing a clause
-        if (($clause =~ /APPEND:/) || ($clause =~ /EXECUTEALWAYS:/)
+        if (($clause =~ /APPEND:/) || ($clause =~ /MERGE:/)
+            || ($clause =~ /EXECUTEALWAYS:/)
             || ($clause =~ /EXECUTE:/)) {
             if (($::SYNCSN == 1) && (($clause =~ /EXECUTEALWAYS:/) ||
                   ($clause =~ /EXECUTE:/))) {  # skip, if syncing SN only
@@ -4997,6 +5165,21 @@ sub parse_rsync_input_file_on_SN
                 my $appendscriptline = "$appscript -> $appscript"; 
                 $syncappendscript=1;  # syncing the xdcpappend.sh script
                  &build_append_rsync($appendscriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncappendscript);
+               }
+               if ($clause =~ /MERGE:/) {
+                  $process_line = 1;
+                  my $onServiceNode=1;
+                  my $syncmergescript=0;
+                 &build_merge_rsync($line,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncmergescript);
+                if ($::SYNCSN == 0) {
+                  # this triggers the running of the mergescript
+                  $::mergescript ="/opt/xcat/share/xcat/scripts/xdcpmerge.sh";
+                }
+                # add the merge script to the sync
+                my  $appscript ="/opt/xcat/share/xcat/scripts/xdcpmerge.sh";
+                my $mergescriptline = "$appscript -> $appscript"; 
+                $syncmergescript=1;  # syncing the xdcpmerge.sh script
+                 &build_merge_rsync($mergescriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncmergescript);
                }
            
            }
@@ -5202,7 +5385,7 @@ sub run_rsync_postscripts
 =head3
        &bld_and_run_append 
 
-        This builds the parm list and executes (xdsh) the append postscript file
+        This builds the parm list and executes (xdsh) the append script file
         on the nodes where
         the corresponding append file was updated.
         The append postscript has been previous sync'd to the nodes. 
@@ -5213,7 +5396,7 @@ sub run_rsync_postscripts
         For example:  node1: tmp/test/file1  ( yes it leaves the first / off)
         This routine must match that list to the input list of append files.
         If there is a match, it will add the append function to 
-        the append postscript 
+        the append script 
        Input: the output from the xdcp rsync run
             : @::appendlines  to run
 
@@ -5239,6 +5422,7 @@ sub bld_and_run_append
     my $dshparms; 
     my $firstpass=1;
     my $headeradded=0;
+    my $processappend=0;
     
     $::xdcpappendparms = "$nodesyncfiledir ";
 
@@ -5283,6 +5467,7 @@ sub bld_and_run_append
                my $parm="$appendfile:$filetoappend ";
 
                $::xdcpappendparms .= $parm;
+               $processappend=1;
 
             }
          }
@@ -5290,7 +5475,7 @@ sub bld_and_run_append
       
     }  # end for each append line
     #  add append script to each host to execute.  
-    if ($::appendscript) { 
+    if ($::appendscript && ($processappend==1)) { 
        #  the append script has been sync'd to the site.nodesynfiledir
        my $nodeappendscript = $nodesyncfiledir;
        $nodeappendscript .= $::appendscript;
@@ -5306,6 +5491,137 @@ sub bld_and_run_append
          $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
                                     node    => \@nodes,
                                     arg     => [ $ps , $::xdcpappendparms ]
+                             }, $::SUBREQ, 0,1);
+         foreach my $r (@$out){
+                push(@newoutput, $r);
+
+         }
+       }
+
+    }
+    return @newoutput;
+}
+#-------------------------------------------------------------------------------
+
+=head3
+       &bld_and_run_merge 
+
+        This builds the parm list and executes (xdsh) the merge script file
+        on the nodes where
+        the corresponding merge file was updated.
+        The merge script has been previous sync'd to the nodes. 
+        These are the scripts after MERGE: in the syncfile
+
+        rsync returns a list of files that have been updated
+        in the form   hostname: <full file path>
+        For example:  node1: tmp/test/file1  ( yes it leaves the first / off)
+        This routine must match that list to the input list of merge files.
+        If there is a match, it will add the merge function to 
+        the merge script 
+       Input: the output from the xdcp rsync run
+            : @::mergelines  to run
+
+        Comments:
+          Needs to remove the lines from rsync that are return to let
+          me know files were updated from the output to determine which 
+          postscripts to run and leave any other messages 
+          to return to the admin.
+
+        Runs xdsh with input to call /opt/xcat/share/xcat/scripts/xdcpmerge.sh
+        which will perform the merge function on the node.  
+        Input is the nodesyncfiledir mergefile1:orgfile mergefile2:orgfile2....]        Note: MERGE is only support on Linux and for /etc/passwd,/etc/shadow,
+              and /etc/group
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub bld_and_run_merge
+{
+    my ($hostnames,$rsyncoutput,$syncdir,$nodesyncfiledir) = @_;
+    my @hosts   = @$hostnames;
+    my @rsync_output   = @$rsyncoutput;
+    my @newoutput= (); 
+    my $dshparms; 
+    my $firstpass=1;
+    my $headeradded=0;
+    my $processmerge=0;
+    
+    $::xdcpmergeparms = "$nodesyncfiledir ";
+
+    # directory to save the original file to merge 
+    my $nodesaveorgfiledir=$nodesyncfiledir;
+    $nodesaveorgfiledir .="/org";
+    # add merge directory to the base nodesyncfiledir
+    $nodesyncfiledir .= "/merge";
+    # build the input mergefile:orgfile parsm
+    foreach my $mergeline (@::mergelines) {
+      if ($mergeline =~ /(.+) -> (.+)/)
+      {
+         my $mergefile  = $1; # merge file left of arrow 
+         my $filetomerge = $2; # file to merge right of arrow
+         if (($filetomerge ne "/etc/passwd")
+            && ($filetomerge ne "/etc/group")
+            && ($filetomerge ne "/etc/shadow")) {
+                my $rsp = {};
+                $rsp->{error}->[0] = "$filetomerge is not either /etc/passwd, /etc/group or /etc/shadow. Those are the only supported files for MERGE";
+                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+                 return 1;
+            
+         }
+         my $tmpmergefile = $mergefile;
+         # if service node need to add the syncdir to the path
+         # for the match
+         if (xCAT::Utils->isServiceNode()) {
+             my $tmpp=$syncdir . $tmpmergefile;
+             $tmpmergefile = $tmpp;
+         }
+         # remove first char for the compare, we have to do this because the
+         # return from rsync is tmp/file1  not /tmp/file1
+         substr($tmpmergefile,0,1)="";
+         # check to see if this file was rsync'd and to which hosts
+         foreach my $line (@rsync_output) {
+           my($hostname,$ps) = split(/: /, $line);
+           chomp $ps;
+           chomp $hostname;
+           if ($ps eq "rsync") {  # this is a line that is not an update
+                # save output , if firstpass through output
+                if ($firstpass == 1) {
+                   push @newoutput, $line;
+                  $firstpass = 0;
+                }
+                next;
+            }
+            # build the merge script (xdcpmerge.sh) parameter list,
+            # based on all the merge files
+            # that were rsyn'd to at least one node
+            if ($tmpmergefile eq $ps) { 
+               my $parm="$mergefile:$filetomerge ";
+
+               $::xdcpmergeparms .= $parm;
+               $processmerge=1;
+
+            }
+         }
+      }
+      
+    }  # end for each merge line
+    #  add merge script to each host to execute. If we need to run anything 
+    if ($::mergescript && ($processmerge==1)) { 
+       #  the merge script has been sync'd to the site.nodesynfiledir
+       my $nodemergescript = $nodesyncfiledir;
+       $nodemergescript .= $::mergescript;
+       foreach my $host (@hosts) {
+        push (@{$dshparms->{'mergescripts'} {$nodemergescript}}, $host);
+       }
+       # now run xdsh
+       my $out;
+       foreach  my $ps ( keys %{$$dshparms{'mergescripts'}}) {
+         my @nodes;
+         push (@nodes, @{$$dshparms{'mergescripts'}{$ps}}); 
+         
+         $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
+                                    node    => \@nodes,
+                                    arg     => [ $ps , $::xdcpmergeparms ]
                              }, $::SUBREQ, 0,1);
          foreach my $r (@$out){
                 push(@newoutput, $r);
