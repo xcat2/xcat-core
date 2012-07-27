@@ -1439,8 +1439,8 @@ function powerInitUpdateDefinition(operType) {
         iconClass = 'ui-icon-gear';
     }
     
-    var showStr = '<div style="min-height:360px"><h2>' + steps[currentStep] + '<br/><br/></h2>';
-    showStr += '<ul>';
+    var showStr = '<div style="min-height:360px"><h2>' + steps[currentStep] + '</h2>';
+    showStr += '<div id="outputinfo"></div><ul>';
     
     showStr += '<li id="hmcLine1"><span class="ui-icon ' + iconClass
             + '"></span>Discover HMCs.</li>';
@@ -1465,6 +1465,8 @@ function powerInitUpdateDefinition(operType) {
     showStr += '</ul></div>';
 
     $('#discoverContentDiv').append(showStr);
+    $('#discoverContentDiv #outputinfo').append(createStatusBar('returninfo'));
+    
 
     if ('back' == operType) {
         createDiscoverButtons();
@@ -1511,6 +1513,9 @@ function lsslpWriteHMC() {
                 createDiscoverButtons();
                 return;
             }
+            else{
+            	$('#returninfo div').append('<p>Discover ' + hmcArray.length + ' hmcs.</p>');
+            }
 
             // Create the HMC and MTMs pair string
             for (var i in hmcArray) {
@@ -1548,11 +1553,12 @@ function lsslpWriteHMC() {
                             args : '-s;HMC;-w',
                             msg : ''
                         },
-                        success : function() {
+                        success : function(data) {
                             $('#hmcLine2 img').remove();
                             var tempSpan = $('#hmcLine2').find('span');
                             tempSpan.removeClass('ui-icon-gear');
                             tempSpan.addClass('ui-icon-check');
+                            $('#returninfo div').append('<p>Add the discovered hmc into xCAT Database.<br/>' + data.rsp[0] +'</p>');
                             lsslpWriteFrame();
                         }
                     });
@@ -1577,11 +1583,12 @@ function lsslpWriteFrame() {
             msg : ''
         },
 
-        success : function() {
+        success : function(data) {
             $('#frameLine1 img').remove();
             var tempSpan = $('#frameLine1').find('span');
             tempSpan.removeClass('ui-icon-gear');
             tempSpan.addClass('ui-icon-check');
+            $('#returninfo div').append('<p>Write the discovered FRAMES into xCAT Database.<br/><pre>' + data.rsp.join("\n") + '</pre></p>');
             frameSetup();
         }
     });
@@ -1604,11 +1611,12 @@ function frameSetup() {
             msg : ''
         },
 
-        success : function() {
+        success : function(data) {
             $('#frameLine2 img').remove();
             var tempSpan = $('#frameLine2').find('span');
             tempSpan.removeClass('ui-icon-gear');
             tempSpan.addClass('ui-icon-check');
+            $('#returninfo div').append('<p><pre>' + data.rsp.join("\n") + '</pre></p>');
             frameReset();
         }
     });
@@ -1629,11 +1637,12 @@ function frameReset(){
             msg : ''
         },
 
-        success : function() {
+        success : function(data) {
             $('#frameLine3 img').remove();
             var tempSpan = $('#frameLine3').find('span');
             tempSpan.removeClass('ui-icon-gear');
             tempSpan.addClass('ui-icon-check');
+            $('#returninfo div').append('<p>Reset network on FRAMES to get persistent IP.<br/><pre>' + data.rsp.join("\n") + '</pre></p>');
             frameHwconn();
         }
 	});
@@ -1656,11 +1665,12 @@ function frameHwconn(){
             msg : ''
         },
 
-        success : function() {
+        success : function(data) {
             $('#frameLine4 img').remove();
             var tempSpan = $('#frameLine4').find('span');
             tempSpan.removeClass('ui-icon-gear');
             tempSpan.addClass('ui-icon-check');
+            $('#returninfo div').append('<p><pre>' + data.rsp.join("\n") + '</p>');
             lsslpWriteCec();
         }
     });
@@ -1680,11 +1690,12 @@ function lsslpWriteCec() {
             args : '-s;CEC;-w',
             msg : ''
         },
-        success : function() {
+        success : function(data) {
             $('#cecLine img').remove();
             var tempSpan = $('#cecLine').find('span');
             tempSpan.removeClass('ui-icon-gear');
             tempSpan.addClass('ui-icon-check');
+            $('#returninfo div').append('<p>Discover and write CECs into xCAT Database.<br/><pre>' + data.rsp.join("\n") + '</pre></p>');
             cecsetup();
         }
     });
@@ -1706,11 +1717,12 @@ function cecsetup(){
             args : 'cecsetup;' + tempargs + ';1',
             msg : ''
         },
-        success : function() {
+        success : function(data) {
             $('#cecLine2 img').remove();
             var tempSpan = $('#cecLine2').find('span');
             tempSpan.removeClass('ui-icon-gear');
             tempSpan.addClass('ui-icon-check');
+            $('#returninfo div').append('<p><pre>' + data.rsp.join("\n") + '</pre></p>');
             cecReset();
         }
     });
@@ -1731,11 +1743,12 @@ function cecReset(){
             msg : ''
         },
 
-        success : function() {
+        success : function(data) {
             $('#cecLine3 img').remove();
             var tempSpan = $('#cecLine3').find('span');
             tempSpan.removeClass('ui-icon-gear');
             tempSpan.addClass('ui-icon-check');
+            $('#returninfo div').append('<p>Reset network on CECs to get persistent IP.<br/><pre>' + data.rsp.join("\n") + '</pre></p>');
             cecHwconn();
         }
 	});
@@ -1757,11 +1770,12 @@ function cecHwconn(){
             args : 'cecsetup;' + tempargs + ';2',
             msg : ''
         },
-        success : function() {
+        success : function(data) {
             $('#cecLine4 img').remove();
             var tempSpan = $('#cecLine4').find('span');
             tempSpan.removeClass('ui-icon-gear');
             tempSpan.addClass('ui-icon-check');
+            $('#returninfo div').append('<p><pre>' + data.rsp.join("\n") + '</pre></p>');
             createDiscoverButtons();
         }
     });

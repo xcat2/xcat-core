@@ -311,7 +311,9 @@ function createStatusBar(barId) {
         'margin-bottom': '5px',
         'min-height': '30px',
         'background-color':'#7BBEDE', 
-    	'color': '#FFFFFF'
+    	'color': '#FFFFFF',
+    	'max-height': '150px',
+    	'overflow': 'auto'
     });
     
     // Create info icon
