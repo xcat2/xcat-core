@@ -116,7 +116,7 @@ sub remote_copy_command
         # if only syncing the service node or
         # (no postscripts and no append lines)  then do not
         # get update file notification
-        if (($::SYNCSN  == 1) || ((!(defined @::postscripts) && (!(defined @::appendlines))))) { 
+        if (($::SYNCSN  == 1) || ((!(defined @::postscripts)) && (!(defined @::appendlines)) && (!(defined @::mergelines)))) { 
           $sync_opt .= '-Lprogtz ';
         } else {
            $sync_opt .= '-Liprogtz --out-format=%f%L '; # add notify of update
