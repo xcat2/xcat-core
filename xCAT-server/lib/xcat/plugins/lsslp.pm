@@ -770,18 +770,22 @@ sub read_from_table {
             my $side = @{$vpdhash{$node}}[2];
             my $id = $ppchash{$node}[0];
             my $parent = $ppchash{$node}[1];
+            my $pmtm = @{$vpdhash{$parent}}[0];
+            my $psn = @{$vpdhash{$parent}}[1];
             my $ip = $iphash{$node};
             if ($type =~ /frame/){
-                $::OLD_DATA_CACHE{"frame*".$mtm."*".$sn} = $node;
+                $::OLD_DATA_CACHE{"frame*".$mtm."*".$sn} = $node if (defined $mtm and defined $sn);
             }elsif ($type =~ /cec/) {
-                $::OLD_DATA_CACHE{"cec*".$mtm."*".$sn} = $node;
-                $::OLD_DATA_CACHE{"cec*".$parent."*".$id} = $node;
+                $::OLD_DATA_CACHE{"cec*".$mtm."*".$sn} = $node if (defined $mtm and defined $sn);
+                my $iid = int($id);
+                $parent = 'Server-'.$pmtm.'-SN'.$psn;
+                $::OLD_DATA_CACHE{"cec*".$parent."*".$iid} = $node if (defined $parent and defined $id);
             }elsif ($type =~ /^fsp|bpa$/) {
-                $::OLD_DATA_CACHE{$type."*".$mtm."*".$sn."*".$side} = $node;
+                $::OLD_DATA_CACHE{$type."*".$mtm."*".$sn."*".$side} = $node if (defined $mtm and defined $sn);;
             }elsif ($type =~ /hmc/) {
-                $::OLD_DATA_CACHE{"hmc*".$ip} = $node;
+                $::OLD_DATA_CACHE{"hmc*".$ip} = $node if (defined $ip);
             }else {
-                $::OLD_DATA_CACHE{$type."*".$mtm."*".$sn} = $node;
+                $::OLD_DATA_CACHE{$type."*".$mtm."*".$sn} = $node if (defined $mtm and defined $sn);;
             }
         }
     }
@@ -1061,7 +1065,7 @@ sub parse_responses {
                     $tmphash1{cid} = int(${$attributes->{'cage-number'}}[0]);
                     $outhash{$tmphash1{ip}} = \%tmphash1;
                     $$length = length( $tmphash1{ip}) if ( length( $tmphash1{ip} ) > $$length );
-                    trace( $request, "Discover node $tmphash1{hostname}:type is $tmphash1{type}, mtm is $tmphash1{mtm}, \
+                    trace( $request, "Discover another node $tmphash1{hostname}:type is $tmphash1{type}, mtm is $tmphash1{mtm}, \
 			        sn is $tmphash1{serial}, side is $tmphash1{side},parent is $tmphash1{parent},ip is $tmphash1{ip}, \
 			        cec id is $tmphash1{cid} , frame id is $tmphash1{fid},mac is $tmphash1{mac}, \
 			        otherinterfaces is $tmphash1{otherinterfaces}" );
@@ -1093,16 +1097,21 @@ sub parse_responses {
                 $atthash{children} = ${$attributes->{'ip-address'}}[0].",".${$attributes->{'ip-address'}}[1];
                 $atthash{url} =  ${$searchmacs{$rsp}}{payload};
                 $outhash{'Server-'.$atthash{mtm}.'-SN'.$atthash{serial}} = \%atthash;
+			    trace( $request, "Discover node $atthash{hostname}: type is $atthash{type},  mtm is $atthash{mtm},\
+			    sn is $atthash{serial},  mac is $atthash{mac}, children is $atthash{children}, frame id is $atthash{fid}, \
+			    cec id is $atthash{cid}, otherinterfaces is $atthash{otherinterfaces}, parent is $atthash{parent}" );
             } else {
                 #update frameid and cageid to fix the firmware mistake
                 ${$outhash{$name}}{fid} = int(${$attributes->{'frame-number'}}[0]) if(int(${$attributes->{'frame-number'}}[0]) != 0);
                 ${$outhash{$name}}{cid} = int(${$attributes->{'cage-number'}}[0]) if(int(${$attributes->{'cage-number'}}[0]) != 0);
+                ${$outhash{$name}}{bpcmtm} = ${$attributes->{'bpc-machinetype-model'}}[0] if(int(${$attributes->{'bpc-machinetype-model'}}[0]) != 0);
+                ${$outhash{$name}}{bpcsn} = ${$attributes->{'bpc-serial-number'}}[0] if(int(${$attributes->{'bpc-serial-number'}}[0]) != 0);
+                $atthash{parent} = 'Server-'.${$outhash{$name}}{bpcmtm}.'-SN'.${$outhash{$name}}{bpcsn} if ($type eq SERVICE_FSP);
                 $outhash{$name}{children} .= ",".${$attributes->{'ip-address'}}[0].",".${$attributes->{'ip-address'}}[1];# at most save 8 ips and have redendant
-                trace( $request, "adjust frame id to ${$outhash{$name}}{fid}, cec id to  ${$outhash{$name}}{cid}, children to $outhash{$name}{children} ");
+                trace( $request, "adjust frame id to ${$outhash{$name}}{fid}, cec id to  ${$outhash{$name}}{cid}, children to $outhash{$name}{children},\
+				bpcmtm to ${$outhash{$name}}{bpcmtm}, bpcsn to ${$outhash{$name}}{bpcsn}");
             }
-			trace( $request, "Discover node $atthash{hostname}: type is $atthash{type},  mtm is $atthash{mtm},\
-			sn is $atthash{serial},  mac is $atthash{mac}, children is $atthash{children}, frame id is $atthash{fid}, \
-			cec id is $atthash{cid}, otherinterfaces is $atthash{otherinterfaces}" );
+
         }
     }
 
@@ -1149,12 +1158,16 @@ sub parse_responses {
         if(${$outhash{$h}}{type} eq TYPE_CEC) {
             my $newhostname1 = $::OLD_DATA_CACHE{"cec*".${$outhash{$h}}{mtm}.'*'.${$outhash{$h}}{serial}};
             if ($newhostname1) {
+                trace( $request, "$h find hostname $newhostname1 with mtms");
                 ${$outhash{$h}}{hostname} = $newhostname1;
                 push  @matchnode, $h;
             }
-            my $newhostname2 = $::OLD_DATA_CACHE{"cec*".${$outhash{$h}}{parent}.'*'.${$outhash{$h}}{id}};
+            my $tp = 'Server-'.${$outhash{$h}}{bpcmtm}.'-SN'.${$outhash{$h}}{bpcsn} ;
+            trace( $request, "$h begin to find hostname with parent $tp and id ${$outhash{$h}}{cid}");
+            my $newhostname2 = $::OLD_DATA_CACHE{"cec*".$tp.'*'.${$outhash{$h}}{cid}};
             if ($newhostname2) {
                 ${$outhash{$h}}{hostname} = $newhostname2;
+                trace( $request, "$h find hostname $newhostname2 with parent and id");
                 push  @matchnode, $h;
             }
         }
