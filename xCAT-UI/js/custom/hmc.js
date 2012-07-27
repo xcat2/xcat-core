@@ -712,12 +712,15 @@ function powerInitSupernode() {
     var uploadform = $('<form action="lib/upload.php" method="post" enctype="multipart/form-data">' 
     		           + 'Configuration File:'
     		           + '<input type="file" id="file" name="file"></form>');
-    uploadform.find('form').append(createButton('Parse'));
+    uploadform.append(createButton('Parse'));
     uploadform.ajaxForm({
     	success: parseSupernodeConfig
     });
     
-    $('#discoverContentDiv #supernodeDiv').append(uploadform);
+    var tempCenterObj = $('<center></center>');
+    tempCenterObj.append(uploadform);
+    
+    $('#discoverContentDiv #supernodeDiv').append(tempCenterObj);
 
     var frameArray = expandNR(getDiscoverEnv('frameName'));
     var showStr = '<center><table><tbody>';
