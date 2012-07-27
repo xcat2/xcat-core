@@ -16,7 +16,7 @@ unless ($ip6support) {
 #TODO: somehow get at system headers to get the value, put in linux's for now
 use constant IPV6_MULTICAST_IF => 17;
 use constant IP_MULTICAST_IF => 32;
-use constant REQ_INTERVAL => 0.5;
+use constant REQ_INTERVAL => 1;
 my %xid_to_srvtype_map;
 my $xid;
 my $gprlist; 
@@ -42,7 +42,6 @@ sub dodiscover {
 	my %args = @_;
         my $rspcount = 0;
 	$xid = int(rand(16384))+1;
-    my %resulthash;
 	unless ($args{'socket'}) {
 		if ($ip6support) {
 			$args{'socket'} = IO::Socket::INET6->new(Proto => 'udp');
@@ -83,35 +82,46 @@ sub dodiscover {
 	foreach my $srvtype (@srvtypes) {
 		send_service_request_single(%args,ifacemap=>$interfaces,SrvType=>$srvtype);
 	}
+    my %rethash;
 	unless ($args{NoWait}) { #in nowait, caller owns the responsibility..
 		#by default, report all respondants within 3 seconds:
-		my %rethash;
 		my $waitforsocket = IO::Select->new();
 		$waitforsocket->add($args{'socket'});
 		my $retrytime = ($args{Retry}>0)?$args{Retry}+1:1;
+        my @peerarray;
+		my @pkgarray;
 		for(my $i = 0; $i < $retrytime; $i++){
             my $sendcount = 0;
             my $startinterval = time();
             my $interval;
-            my $waittime = ($args{Time}>0)?$args{Time}:10;
+            my $retryinterval = ($args{Retry}>0)?$args{Retry}:REQ_INTERVAL;
+            my $waittime = ($args{Time}>0)?$args{Time}:20;
 		    my $deadline=time()+$waittime;
+            my( $port,$flow,$ip6n,$ip4n,$scope);
+            my $slppacket;
+            my $peername;
 		    while ($deadline > time()) {
                         while ($waitforsocket->can_read(0)) {
-		    		my $slppacket;
+
                                 my $peer = $args{'socket'}->recv($slppacket,1400,0);
-		    		my( $port,$flow,$ip6n,$ip4n,$scope);
-		    		my $peername;
+
+                    push @peerarray, $peer;
+					push @pkgarray, $slppacket;
+                }
+                for(my $j = 0; $j< scalar(@peerarray); $j++) {
+				    my $pkg = $peerarray[$j];
+					my $slpkg = $pkgarray[$j];
 		    		if ($ip6support) {
-		    			( $port,$flow,$ip6n,$scope) = Socket6::unpack_sockaddr_in6_all($peer);
+                        ( $port,$flow,$ip6n,$scope) = Socket6::unpack_sockaddr_in6_all($pkg);
 		    			$peername = Socket6::inet_ntop(Socket6::AF_INET6(),$ip6n);
 		    		} else {
-		    			($port,$ip4n) = sockaddr_in($peer);
+                        ($port,$ip4n) = sockaddr_in($pkg);
 		    			$peername = inet_ntoa($ip4n);
 		    		}
 		    		if ($rethash{$peername}) {
 		    			next; #got a dupe, discard
 		    		}
-		    		my $result = process_slp_packet(packet=>$slppacket,sockaddr=>$peer,'socket'=>$args{'socket'});
+                    my $result = process_slp_packet(packet=>$slpkg,sockaddr=>$pkg,'socket'=>$args{'socket'});
 		    		if ($result) {
 		    			if ($peername =~ /\./) { #ipv4
 		    				$peername =~ s/::ffff://;
@@ -123,7 +133,7 @@ sub dodiscover {
                             $gprlist = $peername;
                         }
 		    			$result->{scopeid} = $scope;
-		    			$result->{sockaddr} = $peer;
+                        $result->{sockaddr} = $pkg;
 		    			my $hashkey;
 		    			if ($peername =~ /fe80/) {
 		    				$peername .= '%'.$scope;
@@ -133,16 +143,17 @@ sub dodiscover {
 		    			#if ($args{Callback}) {
 		    			#	$args{Callback}->($result);
 		    			#}
-                        $resulthash{$peername} = $result;
 		    		}
 		    	}
+                @peerarray = ();
+				@pkgarray = ();
+                $interval = time() -  $startinterval;
                 if ($args{Time} and $args{Count}) {
-                    if ($rspcount >= $args{Count}) {
+                    if ($rspcount >= $args{Count} or $interval >= $args{Time}) {
                         last;
                     }
                 }
-				$interval = time() -  $startinterval;
-                if ( $interval > REQ_INTERVAL ){#* (2**$sendcount))) { #double time
+                if ( $interval >  $retryinterval){#* (2**$sendcount))) { #double time
                     $sendcount++;
                     $startinterval = time();
 		    	    foreach my $srvtype (@srvtypes) {
@@ -153,8 +164,8 @@ sub dodiscover {
 		}	
         } #end nowait
 
-        foreach my $entry (keys %resulthash) {
-            handle_new_slp_entity($resulthash{$entry})
+    foreach my $entry (keys %rethash) {
+        handle_new_slp_entity($rethash{$entry})
         }
         return \%searchmacs;
 }
