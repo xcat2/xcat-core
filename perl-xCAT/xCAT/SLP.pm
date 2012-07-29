@@ -141,9 +141,9 @@ sub dodiscover {
 		    			}
                         $rspcount++;
 		    			$rethash{$peername} = $result;
-		    			#if ($args{Callback}) {
-		    			#	$args{Callback}->($result);
-		    			#}
+		    			if ($args{Callback}) {
+		    				$args{Callback}->($result);
+		    			}
 		    		}
 		    	}
                 @peerarray = ();
