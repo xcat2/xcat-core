@@ -13,8 +13,10 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use strict;
 use warnings "all";
+use Time::HiRes qw/time/;
 
 use IO::Socket::INET qw/!AF_INET6 !PF_INET6/;
+my $initialtimeout=0.200;
 
 my $doipv6=eval {
 	require Socket6;
@@ -417,9 +419,9 @@ sub waitforrsp {
 
 sub timedout {
     my $self = shift;
-    $self->{timeout} = $self->{timeout}+1;
-    if ($self->{timeout} > 5) { #giveup, really
-        $self->{timeout}=1;
+    $self->{timeout} = $self->{timeout}*2;
+    if ($self->{timeout} > 7) { #giveup, really
+        $self->{timeout}=$initialtimeout;
         my $rsp={};
         $rsp->{error} = "timeout";
         $self->{ipmicallback}->($rsp,$self->{ipmicallback_args});
@@ -717,7 +719,7 @@ sub parse_ipmi_payload {
     $rsp->{cmd} = shift @payload;
     $rsp->{code} = shift @payload;
     $rsp->{data} = \@payload;
-    $self->{timeout}=1;
+    $self->{timeout}=$initialtimeout;
     $self->{ipmicallback}->($rsp,$self->{ipmicallback_args});
     return 0;
 }
@@ -825,7 +827,7 @@ sub sendpayload {
     $sessions_waiting{$self}->{ipmisession}=$self;
     if ($args{delayxmit}) {
 	$sessions_waiting{$self}->{timeout}=time()+$args{delayxmit};
-	$self->{timeout}=1; #since we are burning one of the retry attempts, start the backoff algorithm faster to make it come out even
+	$self->{timeout}=$initialtimeout/2; #since we are burning one of the retry attempts, start the backoff algorithm faster to make it come out even
 	undef $args{delayxmit};
         return; #don't actually transmit packet, use retry timer to start us off
     } else {
