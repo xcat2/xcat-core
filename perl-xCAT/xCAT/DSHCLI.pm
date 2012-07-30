@@ -4978,8 +4978,11 @@ sub build_merge_rsync
     my $process_line = 0;
     my $destfileisdir;
     # add merge directory to the base nodesyncfiledir
-    $nodesyncfiledir .= "/merge/mergefiles";
-    
+    if ($syncmergescript == 1) {  # syncing the xdcpmerge.sh
+      $nodesyncfiledir .= "/merge";
+    } else {   # all the other merge scripts
+       $nodesyncfiledir .= "/merge/mergefiles";
+    }
     if ($line =~ /(.+) -> (.+)/)
     {
 
