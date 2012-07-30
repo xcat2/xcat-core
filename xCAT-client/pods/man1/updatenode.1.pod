@@ -329,8 +329,9 @@ performed to the service nodes that service the
 nodes in the noderange. This updates the service
 nodes with the data to sync to the nodes. rsync and ssh must
 be installed and configured on the service nodes.
-For hierachy, this should be done before syncing the files
-to the nodes with the -F flag. 
+For hierachy, this optionally can  be done before syncing the files
+to the nodes with the -F flag.  If the -f flag is not used, then
+the -F flag will sync the servicenodes before the nodes automatically.
 The function is not supported for statelite installations.
 For statelite installations to sync files, you should use the
 read-only option for files/directories listed in
