@@ -3660,9 +3660,11 @@ sub preprocess_request {
               next;
           } elsif ($arg =~ /^-i$/) {
               my $int = shift @args;
-              if (defined($int) && $int =~ /^[eth|en]\d$/) {
+              if (defined($int) && $int =~ /^(eth|en)\d$/) {
                   next;
               }
+          } elsif ($arg eq '') {
+              next;
           }
           $usage_string= ":Error arguments\n";
           $usage_string .=xCAT::Usage->getUsage($command);
