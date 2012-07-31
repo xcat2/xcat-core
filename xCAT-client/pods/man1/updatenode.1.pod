@@ -332,6 +332,10 @@ be installed and configured on the service nodes.
 For hierachy, this optionally can  be done before syncing the files
 to the nodes with the -F flag.  If the -f flag is not used, then
 the -F flag will sync the servicenodes before the nodes automatically.
+When installing nodes in a hierarchical cluster, this flag should be
+used to sync the service nodes before the install, since the files will
+be sync'd from the service node by the syncfiles postscript during the
+install.
 The function is not supported for statelite installations.
 For statelite installations to sync files, you should use the
 read-only option for files/directories listed in
