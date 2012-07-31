@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # This script is used by the xdcp MERGE: function to perform the
 # merge operation on the nodes for the /etc/passwd, /etc/shadow and 
 # and /etc/group files. These are the only supported files for merge.
