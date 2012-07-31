@@ -4,9 +4,9 @@ README for: /usr/share/xcat/templates/e1350 directory
 The set of *.csv files in this directory are sample xCAT table values that
 you may wish to use as templates for defining your xCAT cluster.
 The data is based on defining a cluster using the address scheme given in:
-ftp://ftp.software.ibm.com/eserver/xseries/1350FS_0507.pdf.
-Additional information on using xCAT 2.0 can be found in 
-/usr/share/doc/perl-xCAT-2.0/xCAT2.0.doc[pdf] on your system.
+http://download.boulder.ibm.com/ibmdl/pub/systems/support/system_x_pdf/intelligent_cluster_factory_settings_05.24.12b.pdf.
+Additional information on using xCAT 2.0 can be found at 
+http://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_iDataPlex_Cluster_Quick_Start.
 
 Check the 1350 default templates to see if they apply to your environment.
 If you decide to use some of these templates, modify them, or create your own,
@@ -25,16 +25,15 @@ For example:
 
 
 You can add nodes to the database by using the nodeadd command. 
-See the example below and details in /usr/share/doc/perl-xCAT-2.0/xCAT2.0.doc[pdf].  
+See the example below and details in http://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_iDataPlex_Cluster_Quick_Start.  
 
 For example, to add 2048 IPMI rackmount nodes which happen to start 
 at the first U of the first rack, with each rack having a 1U switch
-and 41 servers plugged into that switch, numbered 1-41 in order.
-Nodes named node1-node2048, and be members of groups named:
-  41nodeperrack,41perswitch,ipmi,compute,all 
+and 41 servers plugged into that switch, numbered 1-41 in order,
+with the nodes named node1-node2048, and members of groups named
+41nodeperrack,41perswitch,ipmi,compute,all, run the following:
 
-The run the following:
-nodeadd node1-node2048 groups=41nodeperrack,41perswitch,ipmi,compute,all
+  nodeadd node1-node2048 groups=41nodeperrack,41perswitch,ipmi,compute,all
 
 After that, other tables will setup according to that scheme:
 nodels node1235 nodepos.u nodepos.rack switch.switch switch.port ipmi.bmc hosts.ip
