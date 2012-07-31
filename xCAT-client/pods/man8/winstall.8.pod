@@ -40,11 +40,6 @@ B<winstall> -o rhels5.1 -p compute I<node1-node20>
 
 Install nodes 1 through 20, forcing rhels5.1 and compute profile.
 
-
-=head1 B<Author>
-
-Jarrod B Johnson <jbjohnso@us.ibm.com>
-
 =head1 B<See> B<Also>
 
 L<noderange(3)|noderange.3>, L<rinstall(8)|rinstall.8>, L<wcons(1)|wcons.1>
