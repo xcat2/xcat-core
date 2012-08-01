@@ -4192,13 +4192,7 @@ sub parse_and_run_dcp
         }
 
         # input -F file is sync'd to site.syncfiledir on the  service node
-  
-        #if (xCAT::Utils->isServiceNode())
-        #{    # running on service node
-        #    my $snsynfile = $synfiledir;
-        #    $snsynfile .= $options{'File'};
-        #    $options{'File'} = $snsynfile;
-        #}
+        # filename directory already changed 
         my $syncfile = $options{'File'};
         if (!-f $options{'File'})
         {
