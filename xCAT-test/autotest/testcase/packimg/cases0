@@ -2,7 +2,8 @@ start:packimage_o_p_a_m
 os:Linux
 description:
 cmd:copycds $$ISO
-cmd:genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+#cmd:genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
 check:rc==0
@@ -14,7 +15,8 @@ end
 
 start:packimage_p_a_o
 os:Linux
-cmd:genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+#cmd:genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
 check:rc==0
@@ -29,7 +31,8 @@ end
 start:packimage_imagename
 os:Linux
 description:
-cmd:genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+#cmd:genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
 check:rc==0
