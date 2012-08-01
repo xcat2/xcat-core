@@ -1,6 +1,7 @@
 start:packimage_o_p_a_m
 os:Linux
 description:
+cmd:copycds $$ISO
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
