@@ -4177,23 +4177,6 @@ sub parse_and_run_dcp
             return;
         }
     }
-    if ($options{'File'})
-    {
-
-        # input -F file is copied to tmp file on a service node
-        if (xCAT::Utils->isServiceNode())
-        {    # running on service node
-            $options{'File'} = "/tmp/xcatrf.tmp";
-        }
-        my $syncfile = $options{'File'};
-        if (!-f $options{'File'})
-        {
-            my $rsp = {};
-            $rsp->{error}->[0] = "File:$syncfile does not exist.";
-            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-            return;
-        }
-    }
 
     # invalid to put the -F  with the -r flag
     if ($options{'File'} && $options{'node-rcp'})
@@ -4314,6 +4297,14 @@ sub parse_and_run_dcp
 
     my $rc;
     my $syncfile = $options{'File'};
+    if (!-f $options{'File'})
+    {
+            my $rsp = ();
+            $rsp->{data}->[0] = "File:$syncfile does not exist.";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            return;
+    }
+
     # if rsyncing the nodes or service nodes
 
     if ($options{'File'})
@@ -4341,7 +4332,31 @@ sub parse_and_run_dcp
         {    # running on MN
             $rc =
               &parse_rsync_input_file_on_MN(\@nodelist, \%options, $syncfile,
-                                            $::SYNCSN, $synfiledir,$nodesyncfiledir);
+                      $::SYNCSN, $synfiledir,$nodesyncfiledir);
+                           # build a temporary syncfile for the node's synclist
+              # we need to make sure the latest is on the servicenode
+              # for running of the syncfiles postscript, which only pulls
+              # from the service node
+              my $tmpsyncfile="/tmp/xdcpsynclist.$$";
+              my $syncline = "$syncfile -> $syncfile";
+              open(FILE, ">$tmpsyncfile")
+                or die "cannot open file $tmpsyncfile\n";
+              print FILE " $syncline";
+              close FILE;
+              # now put the original syncfile on the queue to sync to the SN's
+              $rc =
+              &parse_rsync_input_file_on_MN(\@nodelist, \%options, $tmpsyncfile,
+                        $::SYNCSN, $synfiledir,$nodesyncfiledir);
+              # cleanup
+              my $cmd = "rm $tmpsyncfile";
+              my @output = xCAT::Utils->runcmd($cmd, 0);
+              if ($::RUNCMD_RC != 0)
+              {
+                    my $rsp = {};
+                    $rsp->{data}->[0] = "Command: $cmd failed.";
+                    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+              }
+
         }
         if ($rc == 1)
         {
@@ -4632,6 +4647,8 @@ sub rsync_to_image
 
         Globals:
 
+         $::SYNCSN  indicates we are only syncing the files to the
+                service nodes xdcp -s flag
 
         Error:
         	None
@@ -4639,6 +4656,8 @@ sub rsync_to_image
         Example:
 
         Comments:
+            We also add the original synclist file for the node to be sync'd
+                to the service node
 
 =cut
 
