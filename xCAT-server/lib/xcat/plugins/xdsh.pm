@@ -72,7 +72,6 @@ sub preprocess_request
     my $nodes   = $req->{node};
     my $service = "xcat";
     my @requests;
-    $::tmpsyncsnfile = "/tmp/xcatrf.tmp";
     $::RUNCMD_RC     = 0;
     @::good_SN;
     @::bad_SN;
@@ -90,7 +89,7 @@ sub preprocess_request
         }
         if ($var eq "DSH_RSYNC_FILE")    # from -F flag
         {    # if hierarchy,need to copy file to the SN
-            $::syncsnfile = $value;    # in the new /tmp/xcatrf.tmp
+            $::syncsnfile = $value;    # name of syncfile 
         }
         if ($var eq "DCP_PULL")        # from -P flag
         {
@@ -272,9 +271,8 @@ sub process_servicenodes_xdcp
     $::RUNCMD_RC = 0;
     my $cmd = $req->{command}->[0];
 
-    # if xdcp -F command (input $syncsnfile) and service nodes first need
-    #   to be rsync to the
-    #  $synfiledir  directory
+    # if xdcp -F command (input $syncsnfile) and the original synclist need
+    # to be rsync to the $synfiledir  directory on the service nodes first 
     if ($::syncsnfile)
     {
         if (!-f $::syncsnfile)
@@ -285,7 +283,8 @@ sub process_servicenodes_xdcp
             return (1);    # process no service nodes
         }
 
-        # xdcp rsync each of the files contained in the -F syncfile to
+        # xdcp rsync each of the files contained in the -F syncfile and the
+        # original synclist input on the -F flag to
         # the service node first to the site.SNsyncfiledir directory
         #change noderange to the service nodes
         # sync each one and check for error
@@ -328,39 +327,6 @@ sub process_servicenodes_xdcp
             }
         }    # end foreach good servicenode
 
-        # for all the service nodes that are still good
-        # need to xdcp rsync file( -F input)
-        # to the service node  to the /tmp/xcatrf.tmp file
-        my @good_SN2 = @::good_SN;
-        @::good_SN = ();
-        foreach my $node (@good_SN2)
-        {
-            my @sn = ();
-            push @sn, $node;
-
-            # run the command to each good servicenode
-            # xdcp <sn> <syncfile> <tmp/xcatrf.tmp>
-            my $addreq;
-            $addreq->{'_xcatdest'}  = $::mnname;
-            $addreq->{node}         = \@sn;
-            $addreq->{noderange}    = \@sn;
-            $addreq->{arg}->[0]     = "$::syncsnfile";
-            $addreq->{arg}->[1]     = "$::tmpsyncsnfile";
-            $addreq->{command}->[0] = $cmd;
-            $addreq->{cwd}->[0]     = $req->{cwd}->[0];
-            $addreq->{env}          = $req->{env};
-            &process_request($addreq, $callback, $sub_req);
-
-            if ($::FAILED_NODES == 0)
-            {
-                push @::good_SN, $node;
-            }
-            else
-            {
-                push @::bad_SN, $node;
-            }
-
-        }    # end foreach good service node
     }    # end  xdcp -F
     else
     {
@@ -611,10 +577,12 @@ sub process_nodes
 
     # if the xdcp -F option to sync the nodes
     # then for a Node
-    # change the command to use the -F /tmp/xcatrf.tmp
+    # change the command to use the -F syncfiledir path to the synclist 
     # because that is where the file was put on the SN
     #
     my $newSNreq = dclone($req);
+    my $newsyncfile = $synfiledir;
+    $newsyncfile .=$::syncsnfile;
     if ($::syncsnfile)    # -F option
     {
         my $args = $newSNreq->{arg};
@@ -624,11 +592,13 @@ sub process_nodes
         {
 
             # find the -F and change the name of the
-            # file in the next array entry to the tmp file
+            # file in the next array entry to the file that  
+            # is in the site.SNsyncfiledir
+            # 	directory on the service node
             if ($argument eq "-F")
             {
                 $i++;
-                $newSNreq->{arg}->[$i] = $::tmpsyncsnfile;
+                $newSNreq->{arg}->[$i] = $newsyncfile;
                 last;
             }
             $i++;
@@ -831,10 +801,6 @@ sub xdcp
         }
 
         xCAT::MsgUtils->message("D", $rsp, $callback);
-    }
-    if (-e "/tmp/xcatrf.tmp")
-    {    # used tmp file for -F option
-            #`rm /tmp/xcatrf.tmp`;
     }
 
     # set return code
