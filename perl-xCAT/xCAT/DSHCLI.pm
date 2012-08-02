@@ -4334,27 +4334,29 @@ sub parse_and_run_dcp
               &parse_rsync_input_file_on_MN(\@nodelist, \%options, $syncfile,
                       $::SYNCSN, $synfiledir,$nodesyncfiledir);
                            # build a temporary syncfile for the node's synclist
-              # we need to make sure the latest is on the servicenode
-              # for running of the syncfiles postscript, which only pulls
-              # from the service node
-              my $tmpsyncfile="/tmp/xdcpsynclist.$$";
-              my $syncline = "$syncfile -> $syncfile";
-              open(FILE, ">$tmpsyncfile")
-                or die "cannot open file $tmpsyncfile\n";
-              print FILE " $syncline";
-              close FILE;
-              # now put the original syncfile on the queue to sync to the SN's
-              $rc =
-              &parse_rsync_input_file_on_MN(\@nodelist, \%options, $tmpsyncfile,
+              if ($::SYNCSN ==1) {  # syncing a servicenode
+                # we need to make sure the latest is on the servicenode
+                # for running of the syncfiles postscript, which only pulls
+                # from the service node
+                my $tmpsyncfile="/tmp/xdcpsynclist.$$";
+                my $syncline = "$syncfile -> $syncfile";
+                open(FILE, ">$tmpsyncfile")
+                  or die "cannot open file $tmpsyncfile\n";
+                print FILE " $syncline";
+                close FILE;
+                # now put the original syncfile on the queue to sync to the SN's
+                $rc =
+                &parse_rsync_input_file_on_MN(\@nodelist, \%options, $tmpsyncfile,
                         $::SYNCSN, $synfiledir,$nodesyncfiledir);
-              # cleanup
-              my $cmd = "rm $tmpsyncfile";
-              my @output = xCAT::Utils->runcmd($cmd, 0);
-              if ($::RUNCMD_RC != 0)
-              {
+                # cleanup
+                my $cmd = "rm $tmpsyncfile";
+                my @output = xCAT::Utils->runcmd($cmd, 0);
+                if ($::RUNCMD_RC != 0)
+                {
                     my $rsp = {};
                     $rsp->{data}->[0] = "Command: $cmd failed.";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+                }
               }
 
         }
