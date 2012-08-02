@@ -52,22 +52,20 @@ If it outputs B<"Timeout waiting for prompt"> during the upgrade, please set the
 
 =head2 PPC (using Direct FSP Management) specific:
 
-In currently Direct FSP/BPA Management, our B<rflash> doesn't support B<concurrent> value of B<--activate> flag, and only support B<disruptive>. The B<disruptive> option will cause any affected systems that are powered on to be powered down before installing and activating the update. So we require that the systems should be powered off before do the firmware update. 
+In currently Direct FSP/BPA Management, our B<rflash> doesn't support B<concurrent> value of B<--activate> flag, and supports B<disruptive> and B<deferred>. The B<disruptive> option will cause any affected systems that are powered on to be powered down before installing and activating the update. So we require that the systems should be powered off before do the firmware update. 
+
+The B<deferred> option will load the new firmware into the T (temp) side, but will not activate it like the disruptive firmware. The customer will continue to run the Frames and CECs working with the P (perm) side and can wait for a maintenance window where they can activate and boot the Frame/CECs with new firmware levels. Refer to the link to get more details:
+  https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Power_775_Hardware_Management#Perform_Deferred_Firmware_upgrades_for_frame.2FCEC_on_Power_775
 
 In Direct FSP/BPA Management, there is -d <data_directory> option. The default value is /tmp. When do firmware update, rflash will put some related data from rpm packages in <data_directory> directory, so the execution of rflash will require available disk space in <data_directory> for the command to properly execute: 
 
-   (1) For one CEC/Frame, if the rpm package size is rpmsize, it requires that the available disk space should be more than: 
-       3 * rpmsize 
-   (2) For 12 CECs and 1 Frame in a building block, the rpm packages of the CECs are the same one, it require that the available disk space should be more than: 
-        3 * rpmsize + 11 * 1.5 * rpmsize =  19.5 * rpmsize
-   (3)For n CECs/Frames, all the rpm packages are different, it require that the available disk space should be more than: 
-       3 * rpmsize * n  
-   (4)For 2 building block, each building block including 12 CECs and 1 Frame, and the rpm packages of the CECs in two building block are the same one. it require that the available disk space should be more than: 
-        3 * rpmsize + 11 * 1.5 * rpmsize + 12 * 1.5 * rpmsize =  37.5 * rpmsize
-   (5) For 2 building block, each building block including 12 CECs and 1 Frame, and the rpm packages of the CECs in the same building block are the same one, but in different building block are different. it require that the available disk space should be more than:
-       (3 * rpmsize + 11 * 1.5 * rpmsize) * 2 =  39 * rpmsize
+For one GFW rpm packages and power code rpm package , if the GFW rpm package size is gfw_rpmsize, and the Power code rpm package size is power_rpmsize, it requires that the available disk space should be more than: 
+  1.5*gfw_rpmsize + 1.5*power_rpmsize
 
 For Power 775, the rflash command takes effect on the primary and secondary FSPs or BPAs almost in parallel. 
+
+For more details about the Firmware Update using Direct FSP/BPA Management, refer to:
+  https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Power_775_Hardware_Management#Updating_the_BPA_and_FSP_firmware_using_xCAT_DFM
 
 =head1 B<Options>
 
@@ -75,7 +73,7 @@ For Power 775, the rflash command takes effect on the primary and secondary FSPs
 
 =item B<-h|--help>
 
-Writes the command’s usage statement to standard output. 
+Writes the command's usage statement to standard output.
 
 =item B<-p directory>
 
