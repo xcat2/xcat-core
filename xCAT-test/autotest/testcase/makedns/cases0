@@ -77,7 +77,7 @@ check:rc==0
 cmd:nslookup testnodedns
 check:rc==0
 check:output=~(10.1.1.1)
-cmd:ls /var/named/ |grep db.10.1.1
+cmd:ls /var/named 2>&1 |grep db.10.1.1 || ls /var/lib/named 2>&1 |grep db.10.1.1
 check:rc==0
 check:output=~(db.10.1.1)
 check:output=~(db.10.1.1.jnl)
@@ -99,7 +99,7 @@ cmd:chdef -t network -o testnet net="10.1.1.0" mask="255.255.255.0"
 check:rc==0
 cmd:makedns -n testnodedns
 check:rc==0
-cmd:ls /var/named/ |grep db.10.1.1
+cmd:ls /var/named 2>&1 |grep db.10.1.1 || ls /var/lib/named 2>&1 |grep db.10.1.1
 check:rc==0
 check:output=~(db.10.1.1)
 check:output=~(db.10.1.1.jnl)
@@ -128,7 +128,7 @@ cmd:service named start
 cmd:nslookup testnodedns
 check:rc==0
 check:output=~(10.1.1.1)
-cmd:ls /var/named/ |grep db.10.1.1
+cmd:ls /var/named 2>&1 |grep db.10.1.1 || ls /var/lib/named 2>&1 |grep db.10.1.1
 check:rc==0
 check:output=~(db.10.1.1)
 check:output=~(db.10.1.1.jnl)
