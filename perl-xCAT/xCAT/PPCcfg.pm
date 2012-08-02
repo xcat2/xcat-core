@@ -659,7 +659,7 @@ sub hostname {
 sub resetnet {
     my $request = shift;
     doresetnet($request);
-    exit(0);
+    return 0;
 }
 ##########################################################################
 # Reset the network interfraces if necessary
