@@ -35,6 +35,7 @@ if ($^O eq 'linux')
         	$class - Calling module name (discarded)
         	$config - Reference to copy command configuration hash table
         	$exec_path - Path to rsync executable
+        	$localhost - 1 indicates we are running on the Management Node 
 
         Returns:
         	A command array for the rsync command with the appropriate
@@ -68,7 +69,7 @@ if ($^O eq 'linux')
 
 sub remote_copy_command
 {
-    my ($class, $config, $exec_path) = @_;
+    my ($class, $config, $exec_path,$localhost) = @_;
 
     $exec_path || ($exec_path = $RSYNC_CMD);
 
@@ -96,13 +97,13 @@ sub remote_copy_command
         if ($^O eq 'aix')
         {
             if (-e ("/usr/bin/rsync")) {
-             if ($usersh == 0) { # using ssh
+             if (($usersh == 0) || ($localhost == 1)) { # using ssh, or local 
                 $sync_opt = '--rsync-path /usr/bin/rsync ';
              } else {
                 $sync_opt = '--rsh /bin/rsh --rsync-path /usr/bin/rsync ';
              }
             } else {
-             if ($usersh == 0) { # using ssh
+             if (($usersh == 0) || ($localhost == 1)) { # using ssh, or local
                 $sync_opt = '--rsync-path /usr/local/bin/rsync ';
              } else {
                 $sync_opt = '--rsh /bin/rsh --rsync-path /usr/local/bin/rsync ';
@@ -141,12 +142,17 @@ sub remote_copy_command
               "$$config{'dest-user'}@" . "$$config{'dest-host'}";
         }
         print RSCYCCMDFILE "#!/bin/sh\n";
-        if ($usersh == 0) { # using ssh
-          print RSCYCCMDFILE
-            "/usr/bin/ssh  $dest_user_host '/bin/mkdir -p $dest_dir_list'\n";
-        } else {
-          print RSCYCCMDFILE
-            "/usr/bin/rsh  $dest_user_host '/bin/mkdir -p $dest_dir_list'\n";
+        if ($localhost == 1) { # running to the MN from the MN
+            print RSCYCCMDFILE
+              "/bin/mkdir -p $dest_dir_list\n";
+        } else {  # not running to another node 
+          if ($usersh == 0) { # using ssh
+            print RSCYCCMDFILE
+              "/usr/bin/ssh  $dest_user_host '/bin/mkdir -p $dest_dir_list'\n";
+          } else {
+            print RSCYCCMDFILE
+              "/usr/bin/rsh  $dest_user_host '/bin/mkdir -p $dest_dir_list'\n";
+          }
         }
         foreach my $dest_dir (keys %{$$config{'destDir_srcFile'}})
         {
@@ -158,8 +164,13 @@ sub remote_copy_command
             my $src_file_list = join ' ', @src_file;
             if ($src_file_list)
             {
+               if ($localhost == 1) {  # running local ( on MN)
                 print RSCYCCMDFILE
-                  "$exec_path $sync_opt $src_file_list $dest_user_host:$dest_dir\n";
+                 "$exec_path $sync_opt $src_file_list $dest_dir\n";
+               } else {  # running to another node
+                print RSCYCCMDFILE
+                 "$exec_path $sync_opt $src_file_list $dest_user_host:$dest_dir\n";
+               }
             }
             my %diff_dest_hash =
               %{$$config{'destDir_srcFile'}{$dest_dir}{'diff_dest_name'}};

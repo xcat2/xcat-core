@@ -786,6 +786,7 @@ sub fork_fanout_dcp
             eval "require xCAT::$rsh_extension";
             my $remoteshell = "xCAT::$rsh_extension";
             # HERE: Build the dcp command based on the arguments
+            my $localhost=0;   # this is from the MN to another node 
             @dcp_command =
               $remoteshell->remote_copy_command(\%rcp_config, $remote_copy);
 
@@ -794,79 +795,44 @@ sub fork_fanout_dcp
         {
             if ($$options{'destDir_srcFile'}{$user_target})
             {
-                # build the rsync script in /tmp/rsync_$user_target
-                # or /tmp/rsync_$user_target_s for a service node
-                if ($::SYNCSN == 1)
-                {    # syncing service node
+            my $target_type = $$target_properties{'type'};
 
-                    $rsyncfile = "/tmp/rsync_$user_target";
-                    $rsyncfile .= "_s";
-                }
-                else
-                {
-                    $rsyncfile = "/tmp/rsync_$user_target";
-                }
-                my $RSYNC_CMD;
-                my $sync_opt;
-                if (xCAT::Utils->isAIX()) { 
-                 if (-e ("/usr/bin/rsync")) {
-                   $RSYNC_CMD = '/usr/bin/rsync';
-                 } else {
-                    $RSYNC_CMD = '/usr/local/bin/rsync';
-                 }
-                } else { #Linux
-                      $RSYNC_CMD = '/usr/bin/rsync';
-                }
-                if ((!(defined @::postscripts)) && (!(defined @::appendlines)))
-                {
-                   $sync_opt .= '-Lprogtz ';
-                } else {
-                   # add notify of update
-                   $sync_opt .= '-Liprogtz --out-format=%f%L ';
-                }
+            my %rcp_config = ();
 
-                # build the rsync script in /tmp/rsync_$user_target 
-                open(RSYNCCMDFILE, "> $rsyncfile")
-                  or die "can not open file $rsyncfile";
-                my $dest_dir_list = join ' ',
-                  keys %{$$options{'destDir_srcFile'}{$user_target}};
-                print RSYNCCMDFILE "#!/bin/sh\n";
-                print RSYNCCMDFILE "/bin/mkdir -p $dest_dir_list\n";
-                foreach my $dest_dir (
-                             keys %{$$options{'destDir_srcFile'}{$user_target}})
-                {
-                    if (defined(%{$$options{'destDir_srcFile'}{$user_target}
-                       {$dest_dir}{'same_dest_name'}})){
-                      my @src_file =
-                        @{$$options{'destDir_srcFile'}{$user_target}{$dest_dir}
-                          {'same_dest_name'}};
-                      @src_file = map { $_ if -e $_; } @src_file;
-                      my $src_file_list = join ' ', @src_file;
-                      if ($src_file_list)
-                      {
-                        print RSYNCCMDFILE "$RSYNC_CMD $sync_opt $src_file_list $dest_dir\n";
-                      }
-                    }
-                    if (defined(%{$$options{'destDir_srcFile'}{$user_target}
-                       {$dest_dir}{'diff_dest_name'}})){
-                      my %diff_dest_hash =
-                        %{$$options{'destDir_srcFile'}{$user_target}{$dest_dir}
-                          {'diff_dest_name'}};
-                      foreach my $src_file_diff_dest (keys %diff_dest_hash)
-                      {
-                        next if !-e $src_file_diff_dest;
-                        my $diff_basename =
-                          $diff_dest_hash{$src_file_diff_dest};
-                        print RSYNCCMDFILE
-                          " $RSYNC_CMD $sync_opt $src_file_diff_dest $dest_dir/$diff_basename\n";
-                      }
-                    }
-                }
+            my $remote_copy;
+            my $rsh_extension = 'RSH';
 
-                #print RSYNCCMDFILE "/bin/rm -f $rsyncfile\n";
-                close RSYNCCMDFILE;
-                chmod 0755, $rsyncfile;
-                @dcp_command = ('/bin/sh', '-c', $rsyncfile);
+            if ($target_type eq 'node')
+            {
+                $remote_copy =
+                     $$options{'node-rcp'}{$$target_properties{'context'}}
+                  || $$target_properties{'remote-copy'};
+                ($remote_copy =~ /\/scp$/)   && ($rsh_extension = 'SSH');
+                ($remote_copy =~ /\/rsync$/) && ($rsh_extension = 'RSYNC');
+                $rcp_config{'options'} =
+                  $$options{'node-options'}{$$target_properties{'context'}};
+            }
+
+            $rcp_config{'preserve'}  = $$options{'preserve'};
+            $rcp_config{'recursive'} = $$options{'recursive'};
+
+
+             $rcp_config{'src-file'}  = $$options{'source'};
+             $rcp_config{'dest-host'} = $$target_properties{'hostname'};
+             $rcp_config{'dest-file'} = $$options{'target'};
+             $rcp_config{'dest-user'} = $$target_properties{'user'}
+                  || $$options{'user'};
+             $rcp_config{'destDir_srcFile'} =
+                  $$options{'destDir_srcFile'}{$user_target};
+
+            #eval "require RemoteShell::$rsh_extension";
+            eval "require xCAT::$rsh_extension";
+            my $remoteshell = "xCAT::$rsh_extension";
+            # HERE: Build the dcp command based on the arguments
+            my $localhost=1;   # this is on the MN to the MN
+            @dcp_command =
+              $remoteshell->remote_copy_command(\%rcp_config, $remote_copy,$localhost);
+                
             }
             else    # just a copy not a sync
             {
@@ -4444,7 +4410,7 @@ sub parse_and_run_dcp
     }
 
     # Execute the dcp api
-    # HERE:  Run xdcp
+    # HERE:  Run xdcp  LKV
     @results = xCAT::DSHCLI->runDcp_api(\%options, 0);
     $::FAILED_NODES = $::RUNCMD_RC;
     
