@@ -1774,9 +1774,6 @@ sub runcmd {
     my $cmd     = $request->{command};
     my $method  = $request->{method};
     my $hwtype  = $request->{hwtype};
-    if (ref($hwtype) eq 'ARRAY') {
-        $hwtype = @$hwtype[0];
-    }
     #my $modname = $modules{$cmd};
     my $modname = $modules{$cmd}{$hwtype};
 
@@ -2163,6 +2160,7 @@ sub process_request {
     $request->{stdin}   = $req->{stdin}->[0];
     $request->{method} = $req->{method}->[0];
     $request->{op}   = $req->{op}->[0];
+    
     $request->{enableASMI} = $req->{enableASMI};
     #support more options in hierachy
     if( ref( $req->{opt}) eq 'ARRAY' ) {
@@ -2172,9 +2170,12 @@ sub process_request {
             $t{$k} = $h->{$k}->[0];
         }
         $request->{opt} = \%t;
-     }
+    }
+    if (ref($req->{hwtype}) eq 'ARRAY') {
+        $request->{hwtype} = $req->{hwtype}->[0];
+    }
 
-#    $request->{hwtype}  = $package;
+#   $request->{hwtype}  = $package;
     $request->{callback}= $callback;
     $request->{subreq}  = $subreq;
     #########################
