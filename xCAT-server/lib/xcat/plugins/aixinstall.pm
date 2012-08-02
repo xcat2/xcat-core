@@ -1286,9 +1286,9 @@ sub nimnodeset
     # restart inetd
     if ($::VERBOSE)
     {
-        my $rsp;
-        push @{$rsp->{data}}, "Restarting inetd on $Sname.\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
+#        my $rsp;
+#        push @{$rsp->{data}}, "Restarting inetd on $Sname.\n";
+#        xCAT::MsgUtils->message("I", $rsp, $callback);
     }
 
     if (0)
@@ -10906,31 +10906,28 @@ sub mkdsklsnode
         $error++;
     }
 
-    # restart inetd
-    if ($::VERBOSE)
-    {
-        my $rsp;
-        push @{$rsp->{data}}, "Restarting inetd on $Sname.\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
-    }
-    my $scmd = "stopsrc -s inetd";
-    my $output = xCAT::Utils->runcmd("$scmd", -1);
-    if ($::RUNCMD_RC != 0)
-    {
-        my $rsp;
-        push @{$rsp->{data}}, "Could not stop inetd on $Sname.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        $error++;
-    }
-    $scmd = "startsrc -s inetd";
-    $output = xCAT::Utils->runcmd("$scmd", -1);
-    if ($::RUNCMD_RC != 0)
-    {
-        my $rsp;
-        push @{$rsp->{data}}, "Could not start inetd on $Sname.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        $error++;
-    }
+	# check that inetd is active
+	$cmd = "/usr/bin/lssrc -s inetd";
+	my @output=xCAT::Utils->runcmd($cmd, 0);
+
+	if (grep /\sinoperative/, @output)	
+	{
+		if ($::VERBOSE)
+		{
+			my $rsp;
+			push @{$rsp->{data}}, "Starting inetd on $Sname.\n";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
+
+    	my $scmd = "startsrc -s inetd";
+    	my $output = xCAT::Utils->runcmd("$scmd", -1);
+    	if ($::RUNCMD_RC != 0)
+    	{
+        	my $rsp;
+        	push @{$rsp->{data}}, "Could not start inetd on $Sname.\n";
+        	xCAT::MsgUtils->message("E", $rsp, $callback);
+    	}
+	}
 
     if ($::SETUPHANFS)
     {
@@ -10959,6 +10956,14 @@ sub mkdsklsnode
             xCAT::MsgUtils->message("E", $rsp, $callback);
         }
 
+        if (scalar(keys %xcatmasterhash) ne 1)
+        {
+            $setuphanfserr++;
+            my $rsp;
+            my $xcatmasterstr = join(',', keys %xcatmasterhash);
+            push @{$rsp->{data}}, "There are more than one xcatmaster for the nodes, the xcatmasters are $xcatmasterstr.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+        }
         my $xcatmasterip = xCAT::NetworkUtils->getipaddr((keys %xcatmasterhash)[0]);
         my @allips = xCAT::Utils->gethost_ips();
 
@@ -10967,6 +10972,7 @@ sub mkdsklsnode
         foreach my $snhost (keys %snhash)
         {
             my $snip = xCAT::NetworkUtils->getipaddr($snhost); 
+
             if (grep(/^$snip$/, @allips))
             {
                 $snlocal = $snhost;
@@ -10976,6 +10982,7 @@ sub mkdsklsnode
                 $snremote = $snhost;
             }
         }
+
         if (!$snlocal || !$snremote)
         {
             $setuphanfserr++;
@@ -10989,14 +10996,14 @@ sub mkdsklsnode
         {
             my $localip;
             # Get the ip address on the local service node
-            my $lscmd = qq~ifconfig -a | grep 'inet '~;
+            my $lscmd = "ifconfig -a | grep 'inet '";
             my $out = xCAT::Utils->runcmd("$lscmd", -1);
             if ($::RUNCMD_RC != 0)
             {
                 my $rsp;
                 push @{$rsp->{data}},
                 "Could not run command: $lscmd on node $snlocal.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
+                xCAT::MsgUtils->message("W", $rsp, $callback);
             }
             else
             {
@@ -11021,7 +11028,7 @@ sub mkdsklsnode
              	my $rsp;
                	push @{$rsp->{data}},
                	"Could not find an ip address in the samesubnet with xcatmaster ip $xcatmasterip on node $snlocal, falling back to service node $snlocal.\n";
-              	xCAT::MsgUtils->message("E", $rsp, $callback);
+              	xCAT::MsgUtils->message("W", $rsp, $callback);
                 $localip = xCAT::NetworkUtils->getipaddr($snlocal);
              }
             
@@ -11034,7 +11041,7 @@ sub mkdsklsnode
              	my $rsp;
                	push @{$rsp->{data}},
                	"Could not run command: $lscmd against node $snremote.\n";
-              	xCAT::MsgUtils->message("E", $rsp, $callback);
+              	xCAT::MsgUtils->message("W", $rsp, $callback);
             }
             else
             {
@@ -11060,69 +11067,12 @@ sub mkdsklsnode
              	my $rsp;
                	push @{$rsp->{data}},
                	"Could not find an ip address in the samesubnet with xcatmaster ip $xcatmasterip on node $snremote, falling back to service node $snremote.\n";
-              	xCAT::MsgUtils->message("E", $rsp, $callback);
+              	xCAT::MsgUtils->message("W", $rsp, $callback);
                 $remoteip = xCAT::NetworkUtils->getipaddr($snremote);
               }
 
-                # Setup NFSv4 replication
-                if ($::VERBOSE)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Setting up NFSv4 replication on $Sname.\n";
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                }
-
-                my $scmd = "exportfs -ua";
-                my $output = xCAT::Utils->runcmd("$scmd", -1);
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Could not un-exportfs on $Sname.\n";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    $error++;
-                }
-
-                $scmd = "chnfs -R on";
-                $output = xCAT::Utils->runcmd("$scmd", -1);
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Could not enable NFSv4 replication on $Sname.\n";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    $error++;
-                }
-
-                $scmd = "stopsrc -g nfs";
-                $output = xCAT::Utils->runcmd("$scmd", -1);
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Could not stop nfs group on $Sname.\n";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    $error++;
-                }
-
-                $scmd = "startsrc -g nfs";
-                $output = xCAT::Utils->runcmd("$scmd", -1);
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Could not stop nfs group on $Sname.\n";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    $error++;
-                }
-
-                $scmd = "exportfs -a";
-                $output = xCAT::Utils->runcmd("$scmd", -1);
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Could not exportfs on $Sname.\n";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    $error++;
-                }
                 my $install_dir = xCAT::Utils->getInstallDir();
-                $scmd = "lsnfsexp -c";
+                my $scmd = "lsnfsexp -c";
                 my @output = xCAT::Utils->runcmd("$scmd", -1);
                 if ($::RUNCMD_RC != 0)
                 {
@@ -11154,10 +11104,70 @@ sub mkdsklsnode
                         }
                     }
                 }
+
                 if ($needexport)
                 {
-                    my $scmd = "mknfsexp -d $install_dir -B -v 4 -g $install_dir\@$localip:$install_dir\@$remoteip -x -t rw -r '*'";
+
+					# Setup NFSv4 replication
+                	if ($::VERBOSE)
+                	{
+                    	my $rsp;
+                    	push @{$rsp->{data}}, "Setting up NFSv4 replication on $Sname.\n";
+                    	xCAT::MsgUtils->message("I", $rsp, $callback);
+                	}
+
+                    $scmd = "exportfs -ua";
                     my $output = xCAT::Utils->runcmd("$scmd", -1);
+                    if ($::RUNCMD_RC != 0)
+                    {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Could not un-exportfs on $Sname.\n";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        $error++;
+                    }
+
+                    $scmd = "chnfs -R on";
+                    $output = xCAT::Utils->runcmd("$scmd", -1);
+                    if ($::RUNCMD_RC != 0)
+                    {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Could not enable NFSv4 replication on $Sname.\n";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        $error++;
+                    }
+
+                    $scmd = "stopsrc -g nfs";
+                    $output = xCAT::Utils->runcmd("$scmd", -1);
+                    if ($::RUNCMD_RC != 0)
+                    {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Could not stop nfs group on $Sname.\n";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        $error++;
+                    }
+
+                    $scmd = "startsrc -g nfs";
+                    $output = xCAT::Utils->runcmd("$scmd", -1);
+                    if ($::RUNCMD_RC != 0)
+                    {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Could not stop nfs group on $Sname.\n";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        $error++;
+                    }
+
+                    $scmd = "exportfs -a";
+                    $output = xCAT::Utils->runcmd("$scmd", -1);
+                    if ($::RUNCMD_RC != 0)
+                    {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Could not exportfs on $Sname.\n";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        $error++;
+                    }
+
+                    my $scmd = "mknfsexp -d $install_dir -B -v 4 -g $install_dir\@$localip:$install_dir\@$remoteip -x -t rw -r '*'";
+                    $output = xCAT::Utils->runcmd("$scmd", -1);
                     if ($::RUNCMD_RC != 0)
                     {
                         my $rsp;
