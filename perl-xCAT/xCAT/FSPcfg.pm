@@ -914,7 +914,7 @@ sub fsp_api_passwd {
 sub resetnet {
     my $request = shift;
     xCAT::PPCcfg::doresetnet($request);
-    exit(0);
+    return 0;
 }
 1;
 
