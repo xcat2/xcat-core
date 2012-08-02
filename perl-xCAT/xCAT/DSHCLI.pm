@@ -790,7 +790,7 @@ sub fork_fanout_dcp
               $remoteshell->remote_copy_command(\%rcp_config, $remote_copy);
 
         }
-        else  # this is the local host
+        else  # this is the local host ( running on the Management Node)
         {
             if ($$options{'destDir_srcFile'}{$user_target})
             {
@@ -806,7 +806,26 @@ sub fork_fanout_dcp
                 {
                     $rsyncfile = "/tmp/rsync_$user_target";
                 }
-                # build the rsync script in /tmp/rsync_$user_target
+                my $RSYNC_CMD;
+                my $sync_opt;
+                if (xCAT::Utils->isAIX()) { 
+                 if (-e ("/usr/bin/rsync")) {
+                   $RSYNC_CMD = '/usr/bin/rsync';
+                 } else {
+                    $RSYNC_CMD = '/usr/local/bin/rsync';
+                 }
+                } else { #Linux
+                      $RSYNC_CMD = '/usr/bin/rsync';
+                }
+                if ((!(defined @::postscripts)) && (!(defined @::appendlines)))
+                {
+                   $sync_opt .= '-Lprogtz ';
+                } else {
+                   # add notify of update
+                   $sync_opt .= '-Liprogtz --out-format=%f%L ';
+                }
+
+                # build the rsync script in /tmp/rsync_$user_target 
                 open(RSYNCCMDFILE, "> $rsyncfile")
                   or die "can not open file $rsyncfile";
                 my $dest_dir_list = join ' ',
@@ -816,16 +835,20 @@ sub fork_fanout_dcp
                 foreach my $dest_dir (
                              keys %{$$options{'destDir_srcFile'}{$user_target}})
                 {
-                    my @src_file =
-                      @{$$options{'destDir_srcFile'}{$user_target}{$dest_dir}
+                    if (defined(%{$$options{'destDir_srcFile'}{$user_target}
+                       {$dest_dir}{'same_dest_name'}})){
+                      my @src_file =
+                        @{$$options{'destDir_srcFile'}{$user_target}{$dest_dir}
                           {'same_dest_name'}};
-                    @src_file = map { $_ if -e $_; } @src_file;
-                    my $src_file_list = join ' ', @src_file;
-                    if ($src_file_list)
-                    {
-                        print RSYNCCMDFILE "/bin/cp $src_file_list $dest_dir\n";
+                      @src_file = map { $_ if -e $_; } @src_file;
+                      my $src_file_list = join ' ', @src_file;
+                      if ($src_file_list)
+                      {
+                        print RSYNCCMDFILE "$RSYNC_CMD $sync_opt $src_file_list $dest_dir\n";
+                      }
                     }
-                    if (defined(%{$$options{'destDir_srcFile'}{$user_target}{$dest_dir}{'diff_dest_name'}})){
+                    if (defined(%{$$options{'destDir_srcFile'}{$user_target}
+                       {$dest_dir}{'diff_dest_name'}})){
                       my %diff_dest_hash =
                         %{$$options{'destDir_srcFile'}{$user_target}{$dest_dir}
                           {'diff_dest_name'}};
@@ -835,7 +858,7 @@ sub fork_fanout_dcp
                         my $diff_basename =
                           $diff_dest_hash{$src_file_diff_dest};
                         print RSYNCCMDFILE
-                          "/bin/cp $src_file_diff_dest $dest_dir/$diff_basename\n";
+                          " $RSYNC_CMD $sync_opt $src_file_diff_dest $dest_dir/$diff_basename\n";
                       }
                     }
                 }
@@ -845,7 +868,7 @@ sub fork_fanout_dcp
                 chmod 0755, $rsyncfile;
                 @dcp_command = ('/bin/sh', '-c', $rsyncfile);
             }
-            else
+            else    # just a copy not a sync
             {
                 @dcp_command =
                   ('/bin/cp', '-r', $$options{'source'}, $$options{'target'});
@@ -4296,13 +4319,16 @@ sub parse_and_run_dcp
     }
 
     my $rc;
-    my $syncfile = $options{'File'};
-    if (!-f $options{'File'})
-    {
+    my $syncfile;
+    if ($options{'File'}) {
+     $syncfile = $options{'File'};
+     if (!-f $options{'File'}) 
+     {
             my $rsp = ();
             $rsp->{data}->[0] = "File:$syncfile does not exist.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
+     }
     }
 
     # if rsyncing the nodes or service nodes
@@ -4334,27 +4360,29 @@ sub parse_and_run_dcp
               &parse_rsync_input_file_on_MN(\@nodelist, \%options, $syncfile,
                       $::SYNCSN, $synfiledir,$nodesyncfiledir);
                            # build a temporary syncfile for the node's synclist
-              # we need to make sure the latest is on the servicenode
-              # for running of the syncfiles postscript, which only pulls
-              # from the service node
-              my $tmpsyncfile="/tmp/xdcpsynclist.$$";
-              my $syncline = "$syncfile -> $syncfile";
-              open(FILE, ">$tmpsyncfile")
-                or die "cannot open file $tmpsyncfile\n";
-              print FILE " $syncline";
-              close FILE;
-              # now put the original syncfile on the queue to sync to the SN's
-              $rc =
-              &parse_rsync_input_file_on_MN(\@nodelist, \%options, $tmpsyncfile,
+              if ($::SYNCSN ==1) {  # syncing a servicenode
+                # we need to make sure the latest is on the servicenode
+                # for running of the syncfiles postscript, which only pulls
+                # from the service node
+                my $tmpsyncfile="/tmp/xdcpsynclist.$$";
+                my $syncline = "$syncfile -> $syncfile";
+                open(FILE, ">$tmpsyncfile")
+                  or die "cannot open file $tmpsyncfile\n";
+                print FILE " $syncline";
+                close FILE;
+                # now put the original syncfile on the queue to sync to the SN's
+                $rc =
+                &parse_rsync_input_file_on_MN(\@nodelist, \%options, $tmpsyncfile,
                         $::SYNCSN, $synfiledir,$nodesyncfiledir);
-              # cleanup
-              my $cmd = "rm $tmpsyncfile";
-              my @output = xCAT::Utils->runcmd($cmd, 0);
-              if ($::RUNCMD_RC != 0)
-              {
+                # cleanup
+                my $cmd = "rm $tmpsyncfile";
+                my @output = xCAT::Utils->runcmd($cmd, 0);
+                if ($::RUNCMD_RC != 0)
+                {
                     my $rsp = {};
                     $rsp->{data}->[0] = "Command: $cmd failed.";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+                }
               }
 
         }
