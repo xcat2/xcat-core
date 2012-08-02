@@ -2148,8 +2148,10 @@ sub process_request {
         }
         $request->{opt} = \%t;
      }
-
-#    $request->{hwtype}  = $package;
+    if (ref($req->{hwtype}) eq 'ARRAY') {
+        $request->{hwtype} = $req->{hwtype}->[0];
+    }
+#   $request->{hwtype}  = $package;
     $request->{callback}= $callback;
     $request->{subreq}  = $subreq;
     #########################
