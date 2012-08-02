@@ -156,7 +156,7 @@ if ($netdriver) {
     if ($arch eq 'x86' or $arch eq 'x86_64') {
         @ndrivers = qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx_en/;
     } elsif ($arch eq 'ppc64') {
-        @ndrivers = qw/e1000 e1000e igb ibmveth ehea/;
+        @ndrivers = qw/e1000 e1000e igb ibmveth ehea be2net/;
     } elsif ($arch eq "s390x") {
         @ndrivers = qw/qdio ccwgroup qeth qeth_l2 qeth_l3/;
     }
