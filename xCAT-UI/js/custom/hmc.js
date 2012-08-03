@@ -1310,7 +1310,7 @@ function powerInitConfig(operType) {
     
     showStr += '<ul>';
     showStr += '<li id="fileLine"><span class="ui-icon ' + iconClass
-            + '"></span>Create configure file for xcatsetup.</li>';
+            + '"></span>Create configuration file for xcatsetup.</li>';
     showStr += '<li id="setupLine"><span class="ui-icon ' + iconClass
             + '"></span>Wrote Objects into xCAT database by xcatsetup.</li>';
     showStr += '</ul></div>';
@@ -1484,91 +1484,98 @@ function powerInitUpdateDefinition(operType) {
  */
 function lsslpWriteHMC() {
     $('#hmcLine1').append(createLoader());
-    $.ajax({
-        url : 'lib/cmd.php',
-        dataType : 'json',
-        data : {
-            cmd : 'webrun',
-            tgt : '',
-            args : 'discover;hmc',
-            msg : ''
-        },
-
-        success : function(data) {
-            // modify the page elements
-            $('#hmcLine1 img').remove();
-            var tempSpan = $('#hmcLine1').find('span');
-            tempSpan.removeClass('ui-icon-gear');
-            tempSpan.addClass('ui-icon-check');
-            $('#hmcLine2').append(createLoader());
-
-            var hmcArray = expandNR(getDiscoverEnv('hmcName'));
-            var mtmsArray = data.rsp[0].split(';');
-            var tempPar = '';
-
-            if (hmcArray.length > mtmsArray.length) {
-                // Error info
-                $('#hmcLine2 img').remove();
-                var warnBar = createWarnBar('Error: Defined ' + hmcArray.length
-                        + ' HMCs, but discovered ' + mtmsArray.length
-                        + ' HMCs. Please check the configuration.');
-                $('#discoverContentDiv div').prepend(warnBar);
-                createDiscoverButtons();
-                return;
-            }
-            else{
-            	$('#returninfo div').append('<p>Discover ' + hmcArray.length + ' hmcs.</p>');
-            }
-
-            // Create the HMC and MTMs pair string
-            for (var i in hmcArray) {
-                var tPos = mtmsArray[i].lastIndexOf('-');
-                var startPos = mtmsArray[i].indexOf(':');
-                if ('' == tempPar) {
-                    tempPar += hmcArray[i] + ','
-                            + mtmsArray[i].substring(startPos + 1, tPos) + ','
-                            + mtmsArray[i].substring(tPos + 1);
-                } else {
-                    tempPar += ':' + hmcArray[i] + ','
-                            + mtmsArray[i].substring(startPos + 1, tPos) + ','
-                            + mtmsArray[i].substring(tPos + 1);
-                }
-            }
-
-            // Write MTMs and HMC name pair into vpd table
-            $.ajax({
-                url : 'lib/cmd.php',
-                dataType : 'json',
-                data : {
-                    cmd : 'webrun',
-                    tgt : '',
-                    args : 'updatevpd;' + tempPar,
-                    msg : ''
-                },
-                success : function() {
-                    // Run lsslp and write all info into datatable
-                    $.ajax({
-                        url : 'lib/cmd.php',
-                        dataType : 'json',
-                        data : {
-                            cmd : 'lsslp',
-                            tgt : '',
-                            args : '-s;HMC;-w',
-                            msg : ''
-                        },
-                        success : function(data) {
-                            $('#hmcLine2 img').remove();
-                            var tempSpan = $('#hmcLine2').find('span');
-                            tempSpan.removeClass('ui-icon-gear');
-                            tempSpan.addClass('ui-icon-check');
-                            $('#returninfo div').append('<p>Add the discovered hmc into xCAT Database.<br/>' + data.rsp[0] +'</p>');
-                            lsslpWriteFrame();
-                        }
-                    });
-                }
-            });
-        }
+    var cmdlink = 'lib/cmd.php?cmd=lsslp&tgt=&args=-s;HMC&msg=&opts=flush';
+    var hmciframe1 = $('<iframe id="hmciframe1"></iframe>').attr('src', cmdlink).css({
+    	'display': 'block',
+        'border': '0px',
+        'margin': '10px',
+        'width': '100%',
+        'overflow': 'visible'
     });
+    
+    hmciframe1.load( function() {
+    	var mapstring = "Add map between hmc and frames into xCAT database<br/>";
+    	//extract the return information from the iframe hmciframe1
+    	var mtmsArray = new Array();
+    	var hmclines = $(document.getElementById('hmciframe1').contentWindow.document.body).text();
+    	var temparray = hmclines.split("\n");
+    	for (var i in temparray){
+    		var line = temparray[i].replace(/(^\s*)|(\s*$)/g, "");
+    		if (line.toLowerCase().indexOf('hmc') >= 0){
+    			line = line.replace(/\s+/g, " ");
+    			var attrs = line.split(" ");
+    			//attrs[1] is mtm, attrs[2] is serial number
+    			mtmsArray.push(attrs[1], attrs[2]);
+    		}
+    	}
+        // modify the page elements
+        $('#hmcLine1 img').remove();
+        var tempSpan = $('#hmcLine1').find('span');
+        tempSpan.removeClass('ui-icon-gear');
+        tempSpan.addClass('ui-icon-check');
+        $('#hmcLine2').append(createLoader());
+
+        var hmcArray = expandNR(getDiscoverEnv('hmcName'));
+        var tempPar = '';
+
+        if (hmcArray.length > (mtmsArray.length / 2)) {
+            // Error info
+            $('#hmcLine2 img').remove();
+            var warnBar = createWarnBar('Error: Defined ' + hmcArray.length
+                    + ' HMCs, but discovered ' + mtmsArray.length / 2
+                    + ' HMCs. Please check the configuration.');
+            $('#discoverContentDiv div').prepend(warnBar);
+            createDiscoverButtons();
+            return;
+        }
+
+        // Create the HMC and MTMs pair string
+        for (var i in hmcArray) {
+        	var j = 2 * i;
+            if ('' == tempPar) {
+                tempPar += hmcArray[i] + ',' + mtmsArray[j] + ',' + mtmsArray[j + 1];
+            } else {
+                tempPar += ':' + hmcArray[i] + ',' + mtmsArray[j] + ',' + mtmsArray[j + 1];
+            }
+            mapstring += hmcArray[i] + '<----->' + mtmsArray[j] + '-' + mtmsArray[j + 1] + '<br/>';
+        }
+        
+        $('#returninfo div').append('<p>' + mapstring + '</p>'); 
+
+        // Write MTMs and HMC name pair into vpd table
+        $.ajax({
+            url : 'lib/cmd.php',
+            dataType : 'json',
+            data : {
+                cmd : 'webrun',
+                tgt : '',
+                args : 'updatevpd;' + tempPar,
+                msg : ''
+            },
+            success : function() {
+            	$('#returninfo div').append('<p>Add the discovered HMCs into xCAT database.</p>');
+            	var cmklink2 = 'lib/cmd.php?cmd=lsslp&tgt=&args=-w;-s;HMC&msg=&opts=flush';
+            	var hmciframe2 = $('<iframe id="hmciframe2"></iframe>').attr('src', cmdlink).css({
+                	'display': 'block',
+                    'border': '0px',
+                    'margin': '10px',
+                    'width': '100%',
+                    'overflow': 'visible'
+                });
+            	$('#returninfo div').append(hmciframe2);
+            	
+            	hmciframe2.load(function() {
+                    $('#hmcLine2 img').remove();
+                    var tempSpan = $('#hmcLine2').find('span');
+                    tempSpan.removeClass('ui-icon-gear');
+                    tempSpan.addClass('ui-icon-check');
+                    lsslpWriteFrame();
+                });
+            }
+        });
+    });
+    
+    $('#returninfo div').append(hmciframe1);
 }
 
 /**
@@ -1576,24 +1583,23 @@ function lsslpWriteHMC() {
  */
 function lsslpWriteFrame() {
     $('#frameLine1').append(createLoader());
-    $.ajax({
-        url : 'lib/cmd.php',
-        dataType : 'json',
-        data : {
-            cmd : 'lsslp',
-            tgt : '',
-            args : '-s;FRAME;-w',
-            msg : ''
-        },
-
-        success : function(data) {
-            $('#frameLine1 img').remove();
-            var tempSpan = $('#frameLine1').find('span');
-            tempSpan.removeClass('ui-icon-gear');
-            tempSpan.addClass('ui-icon-check');
-            $('#returninfo div').append('<p>Write the discovered FRAMES into xCAT Database.<br/><pre>' + data.rsp.join("\n") + '</pre></p>');
-            frameSetup();
-        }
+    $('#returninfo div').append('<p>Write the discovered FRAMES into xCAT Database.</p>');
+    var cmdlink = 'lib/cmd.php?cmd=lsslp&tgt=&args=-w;-s;FRAME&msg=&opts=flush';;
+    var frameiframe1 = $('<iframe id="frameiframe1"></iframe>').attr('src', cmdlink).css({
+    	'display': 'block',
+        'border': '0px',
+        'margin': '10px',
+        'width': '100%',
+        'overflow': 'visible'
+    });
+	$('#returninfo div').append(frameiframe1);
+	
+	frameiframe1.load(function(data) {
+        $('#frameLine1 img').remove();
+        var tempSpan = $('#frameLine1').find('span');
+        tempSpan.removeClass('ui-icon-gear');
+        tempSpan.addClass('ui-icon-check');
+        frameSetup();
     });
 }
 
@@ -1630,25 +1636,23 @@ function frameSetup() {
  */
 function frameReset(){
 	$('#frameLine3').append(createLoader());
-	$.ajax({
-		url : 'lib/cmd.php',
-		dataType : 'json',
-        data : {
-            cmd : 'rspconfig',
-            tgt : 'frame',
-            args : '--resetnet',
-            msg : ''
-        },
-
-        success : function(data) {
-            $('#frameLine3 img').remove();
-            var tempSpan = $('#frameLine3').find('span');
-            tempSpan.removeClass('ui-icon-gear');
-            tempSpan.addClass('ui-icon-check');
-            $('#returninfo div').append('<p>Reset network on FRAMES to get persistent IP.<br/><pre>' + data.rsp.join("\n") + '</pre></p>');
-            frameHwconn();
-        }
-	});
+	$('#returninfo div').append('<p>Reset network on FRAMES to get persistent IP.</p>');
+    var cmdlink = 'lib/cmd.php?cmd=rspconfig&tgt=frame&args=--resetnet&msg=&opts=flush';;
+    var frameiframe2 = $('<iframe id="frameiframe2"></iframe>').attr('src', cmdlink).css({
+    	'display': 'block',
+        'border': '0px',
+        'margin': '10px',
+        'width': '100%',
+        'overflow': 'visible'
+    });
+	$('#returninfo div').append(frameiframe2);
+	frameiframe2.load(function() {
+        $('#frameLine3 img').remove();
+        var tempSpan = $('#frameLine3').find('span');
+        tempSpan.removeClass('ui-icon-gear');
+        tempSpan.addClass('ui-icon-check');
+        frameHwconn();
+    });
 }
 
 /**
@@ -1684,23 +1688,22 @@ function frameHwconn(){
  */
 function lsslpWriteCec() {
     $('#cecLine').append(createLoader());
-    $.ajax({
-        url : 'lib/cmd.php',
-        dataType : 'json',
-        data : {
-            cmd : 'lsslp',
-            tgt : '',
-            args : '-s;CEC;-w',
-            msg : ''
-        },
-        success : function(data) {
-            $('#cecLine img').remove();
-            var tempSpan = $('#cecLine').find('span');
-            tempSpan.removeClass('ui-icon-gear');
-            tempSpan.addClass('ui-icon-check');
-            $('#returninfo div').append('<p>Discover and write CECs into xCAT Database.<br/><pre>' + data.rsp.join("\n") + '</pre></p>');
-            cecsetup();
-        }
+    $('#returninfo div').append('<p>Discover and write CECs into xCAT Database.</p>');
+    var cmdlink = 'lib/cmd.php?cmd=lsslp&tgt=&args=-s;CEC;-w&msg=&opts=flush';;
+    var ceciframe1 = $('<iframe id="ceciframe1"></iframe>').attr('src', cmdlink).css({
+    	'display': 'block',
+        'border': '0px',
+        'margin': '10px',
+        'width': '100%',
+        'overflow': 'visible'
+    });
+	$('#returninfo div').append(ceciframe1);
+	ceciframe1.load(function() {
+        $('#cecLine img').remove();
+        var tempSpan = $('#cecLine').find('span');
+        tempSpan.removeClass('ui-icon-gear');
+        tempSpan.addClass('ui-icon-check');
+        cecsetup();
     });
 }
 
@@ -1736,25 +1739,23 @@ function cecsetup(){
  */
 function cecReset(){
 	$('#cecLine3').append(createLoader());
-	$.ajax({
-		url : 'lib/cmd.php',
-		dataType : 'json',
-        data : {
-            cmd : 'rspconfig',
-            tgt : 'cec',
-            args : '--resetnet',
-            msg : ''
-        },
-
-        success : function(data) {
-            $('#cecLine3 img').remove();
-            var tempSpan = $('#cecLine3').find('span');
-            tempSpan.removeClass('ui-icon-gear');
-            tempSpan.addClass('ui-icon-check');
-            $('#returninfo div').append('<p>Reset network on CECs to get persistent IP.<br/><pre>' + data.rsp.join("\n") + '</pre></p>');
-            cecHwconn();
-        }
-	});
+	$('#returninfo div').append('<p>Reset network on CECs to get persistent IP.</p>');
+    var cmdlink = 'lib/cmd.php?cmd=rspconfig&tgt=cec&args=--resetnet&msg=&opts=flush';;
+    var ceciframe2 = $('<iframe id="ceciframe2"></iframe>').attr('src', cmdlink).css({
+    	'display': 'block',
+        'border': '0px',
+        'margin': '10px',
+        'width': '100%',
+        'overflow': 'visible'
+    });
+	$('#returninfo div').append(ceciframe2);
+	ceciframe2.load(function() {
+        $('#cecLine3 img').remove();
+        var tempSpan = $('#cecLine3').find('span');
+        tempSpan.removeClass('ui-icon-gear');
+        tempSpan.addClass('ui-icon-check');
+        cecHwconn();
+    });
 }
 
 /**

@@ -97,6 +97,10 @@ function submit_request($req, $skipVerify, $opts_array){
 
 		// Turn on output buffering
 		ob_start();
+		if ($flush){
+		    echo str_pad('',1024)."\n";
+		}
+		
 		while (!feof($fp)) {
 			// Read until there is no more
 			// Remove newlines and add it to the response
