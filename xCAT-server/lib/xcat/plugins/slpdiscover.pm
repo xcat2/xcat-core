@@ -86,20 +86,7 @@ sub process_request {
 	%searchmacs=();
 	my $srvtypes = [ qw/service:management-hardware.IBM:chassis-management-module service:management-hardware.IBM:management-module service:management-hardware.IBM:integrated-management-module2/ ];
 	xCAT::SLP::dodiscover(SrvTypes=>$srvtypes,Callback=>\&handle_new_slp_entity);
-	$macmap = xCAT::MacMap->new();
-	$macmap->refresh_table();
-	my @toconfig;
-	foreach my $mac (keys(%searchmacs)) {
-		my $node = $macmap->find_mac($mac,1);
-		unless ($node) {
-			next;
-		}
-		my $data = $searchmacs{$mac};
-		$data->{nodename}=$node;
-		$data->{macaddress}=$mac;
-		$chassisbyuuid{$data->{attributes}->{"enclosure-uuid"}->[0]}=$node;
-		push @toconfig,$data;
-	}
+	
 	my $mpatab=xCAT::Table->new("mpa",-create=>0);
 	my @mpaentries;
 	$mpahash={};
@@ -132,10 +119,12 @@ sub process_request {
 	}
 	my $mactab = xCAT::Table->new("mac");
 	my %machash;
+	my %node2machash;
 	my %macuphash;
 	my @maclist = $mactab->getAllNodeAttribs([qw/node mac/]);
 	foreach (@maclist) {
 		$machash{$_->{node}}=$_->{mac};
+		$node2machash{$_->{mac}} = $_->{node};
 	}
 		
 
@@ -147,7 +136,26 @@ sub process_request {
 			$nodebymp{$_->{mpa}}->{$_->{id}}=$_->{node};
 		}
 	}
-		
+
+	$macmap = xCAT::MacMap->new();
+	$macmap->refresh_table();
+	my @toconfig;
+	foreach my $mac (keys(%searchmacs)) {
+		my $node = $macmap->find_mac($mac,1);
+		unless ($node) {
+			if (defined $node2machash{$mac}) {
+				$node = $node2machash{$mac};
+			} else {
+				next;
+			}
+		}
+		my $data = $searchmacs{$mac};
+		$data->{nodename}=$node;
+		$data->{macaddress}=$mac;
+		$chassisbyuuid{$data->{attributes}->{"enclosure-uuid"}->[0]}=$node;
+		push @toconfig,$data;
+	}
+
 	foreach my $data (@toconfig) {
 		my $mac = $data->{macaddress};
 		my $nodename = $data->{nodename};
@@ -156,13 +164,16 @@ sub process_request {
 			$addr .= "%".$data->{scopeid};
 		}
 		$flexchassisuuid{$nodename}=$data->{attributes}->{"enclosure-uuid"}->[0];
-		setup_cmm_pass($nodename);
-		if ($machash{$nodename} =~ /$mac/i) { #ignore prospects already known to mac table
-			configure_hosted_elements($nodename);
-			next;
-		}
+		
 		if ($data->{SrvType} eq "service:management-hardware.IBM:chassis-management-module") {
 			sendmsg(":Found ".$data->{SrvType}." at address $addr",$callback,$nodename);
+			
+			setup_cmm_pass($nodename);
+			if ($machash{$nodename} =~ /$mac/i) { #ignore prospects already known to mac table
+				configure_hosted_elements($nodename);
+				next;
+			}
+		
 			unless (do_blade_setup($data,curraddr=>$addr)) {
 				next;
 			}
@@ -187,14 +198,21 @@ sub setupIMM {
 	my $newaddr;
 	if ($ient) {
 		my $bmcid=$ient->{bmcid};
-		if ($bmcid and $slpdata->{macaddress} =~ /$bmcid/) { return; } #skip configuration, we already know this one
+		if ($bmcid and $slpdata->{macaddress} =~ /$bmcid/) { 
+			sendmsg("The IMM has been configured (ipmi.bmcid). Skipped.",$callback, $node);
+			return; 
+		} #skip configuration, we already know this one
 		$newaddr = $ient->{bmc};
 	}
 	my @ips;
 	if ($newaddr) {
 		@ips = xCAT::NetworkUtils::getipaddr($newaddr,GetAllAddresses=>1);
 	}
-	sendmsg(":Configuration commencing, configuration may take a few minutes to take effect",$callback,$node);
+	if (!@ips) {
+		sendmsg(":Cannot find the IP attribute for bmc",$callback,$node);
+		return;
+	}
+	sendmsg(":Configuration of ".$node."[".join(',',@ips)."] commencing, configuration may take a few minutes to take effect",$callback);
 	my $child = fork();
 	if ($child) { return; }
 	unless (defined $child) { die "error spawining process" }
