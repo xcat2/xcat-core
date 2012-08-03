@@ -703,7 +703,7 @@ sub mkinitrd_dracut {
 
         # update etc/dracut.conf
         open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
-        if (-d glob("/usr/share/dracut/modules.d/[0-9]*fadump")){
+        if (-d glob("$rootimg_dir/usr/share/dracut/modules.d/[0-9]*fadump")){
             print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules fadump"\n};
         }
         else{
@@ -738,7 +738,7 @@ sub mkinitrd_dracut {
 
         # update etc/dracut.conf
         open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
-        if (-d glob("/usr/share/dracut/modules.d/[0-9]*fadump")){
+        if (-d glob("$rootimg_dir/usr/share/dracut/modules.d/[0-9]*fadump")){
             print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules fadump"\n};
         }
         else{
