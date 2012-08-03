@@ -4133,6 +4133,9 @@ sub clicmds {
     $curruser="USERID";
     $currpass = "PASSW0RD";
     $nokeycheck=1;
+  } else {
+       if ($args{curruser}) { $curruser = $args{curruser}; $nokeycheck=1; }
+       if ($args{currpass}) { $currpass = $args{currpass}; $nokeycheck=1; }
   }
   if ($args{nokeycheck}) {
     $nokeycheck=1;
