@@ -693,7 +693,12 @@ sub mkinitrd_dracut {
 
         # update etc/dracut.conf
         open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
-        print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules"\n};
+        if (-d glob("$rootimg_dir/usr/share/dracut/modules.d/[0-9]*fadump")){
+            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules fadump"\n};
+        }
+        else{
+            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules"\n};
+        }
         print $DRACUTCONF qq{add_drivers+="$add_drivers"\n};
         print $DRACUTCONF qq{filesystems+="nfs"\n};
         close $DRACUTCONF;
@@ -723,7 +728,12 @@ sub mkinitrd_dracut {
 
         # update etc/dracut.conf
         open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
-        print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules"\n};
+        if (-d glob("$rootimg_dir/usr/share/dracut/modules.d/[0-9]*fadump")){
+            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules fadump"\n};
+        }
+        else{
+            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules"\n};
+        }
         print $DRACUTCONF qq{add_drivers+="$add_drivers"\n};
         close $DRACUTCONF;
     } else {
