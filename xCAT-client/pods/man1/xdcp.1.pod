@@ -184,6 +184,25 @@ For example, your rsynclist file may look like this:
 
 When you use the append script,  the file  (left) of the arrow is appended to the file right of the arrow.  In this example, /etc/myappenddir/appendfile is appended to /etc/mysetup/setup file, which must already exist on the node. The /opt/xcat/share/xcat/scripts/xdcpappend.sh is used to accomplish this. 
 
+Another option is the B<MERGE:> clause in the synclist file. The B<MERGE:> clause is used to append the contents of the input file to /etc/passwd, /etc/group, or /etc/shadow on a Linux node.  It is only supported for those files and only on Linux. You must not use both the APPEND and MERGE funcion for these three files. The processing could end up not creating the file you desire. The MERGE function is the preferred method, becuase APPEND only adds to the file.  MERGE will add to the file but also insure there are no duplicate entries.   
+
+For example, your rsynclist file may look like this:
+ /tmp/share/file2  ->  /tmp/file2
+ /tmp/share/file2.post -> /tmp/file2.post
+ /tmp/share/file3  ->  /tmp/filex
+ /tmp/share/file3.post -> /tmp/file3.post
+ /tmp/myscript -> /tmp/myscript
+ # the below are postscripts
+ EXECUTE:
+ /tmp/share/file2.post
+ /tmp/share/file3.post
+ EXECUTEALWAYS:
+ /tmp/myscript
+ APPEND:
+/custom/mypasswd -> /etc/passwd
+/custom/mygroups -> /etc/group
+/custom/myshadow -> /etc/shadow
+
 Note: no order can be assumed by the order that the EXECUTE,EXECUTEALWAYS and APPEND clause fall in the synclist file. 
 
 For more information on syncing files to node, read https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Sync-ing_Config_Files_to_Nodes
