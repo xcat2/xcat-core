@@ -281,7 +281,7 @@ sub kickstartnetwork {
 		$hoststab->setNodeAttribs($node,{ip=>$ulaaddr});
 		$line .= $ulaaddr;
 	} else {
-		$line .= "dhcp";
+		$line .= "dhcp --device=$suffix";
 	}
 	return $line;
 }
