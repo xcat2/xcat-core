@@ -140,7 +140,7 @@ sub process_request {
 
     chdir($existdir);
     while (wait() > 0) { yield(); } #Make sure all children exit before trying umount
-    system("umount /mnt/xcat");
+    system("umount -l /mnt/xcat");
     unless ($identified) {
        $callback->({error=>["copycds could not identify the ISO supplied, you may wish to try -n <osver>"],errorcode=>[1]});
     }
