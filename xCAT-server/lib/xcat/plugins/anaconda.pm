@@ -711,16 +711,21 @@ sub mknetboot
         # if kdump service is enbaled, add "crashkernel=" and "kdtarget="
         if ($dump) {
             my $fadumpFlag = 0;
+            my $fadump = '';
+            my $kdump = '';
             if ($dump =~ /^fadump.*/){
                 $dump =~ s/fadump://g;
                 $fadumpFlag = 1;
+                $fadump = $dump;
+                $kdump = $dump;
                 if ($dump =~ /^nfs:\/\/\/.*/){
-                    $dump =~ s/(nfs:\/\/)(\/.*)/${1}${xcatmaster}${2}/;
+                    $fadump =~ s/(nfs:\/\/)(\/.*)/net,${xcatmaster}:${2}/;
+                    $kdump =~ s /(nfs:\/\/)(\/.*)/${1}${xcatmaster}${2}/;
                 }
             }
             if ($crashkernelsize){
                 if ($fadumpFlag && $arch eq "ppc64"){
-                    $kcmdline .= " fadump=on fadump_reserve_mem=$crashkernelsize fadump_target=$dump dump=$dump ";
+                    $kcmdline .= " fadump=on fadump_reserve_mem=$crashkernelsize fadump_target=$fadump fadump_default=noreboot dump=$kdump ";
                 }
                 else{
                     $kcmdline .= " crashkernel=$crashkernelsize dump=$dump ";
@@ -729,7 +734,7 @@ sub mknetboot
             else{
                 if ($arch eq "ppc64"){
                     if ($fadumpFlag){
-                        $kcmdline .= " fadump=on fadump_reserve_mem=512M fadump_target=$dump dump=$dump ";
+                        $kcmdline .= " fadump=on fadump_reserve_mem=512M fadump_target=$fadump fadump_default=noreboot dump=$kdump ";
                     }
                     else{
                         $kcmdline .= " crashkernel=256M\@64M dump=$dump ";
