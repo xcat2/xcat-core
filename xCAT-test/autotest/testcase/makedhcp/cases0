@@ -1,16 +1,15 @@
 start:makedhcp_n
 os:Linux
-cmd:mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak
+cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
 cmd:makedhcp -n
 check:rc==0
-cmd:ls /etc/dhcp/dhcpd.conf
+cmd:ls /etc/dhcp/dhcpd.conf || ls /etc/dhcpd.conf
 check:rc==0
 cmd:ps -e | grep dhcpd
 check:rc==0
 check:output=~dhcpd
-cmd:mv -f /etc/dhcp/dhcpd.conf.bak /etc/dhcp/dhcpd.conf
+cmd:if [ -f "/etc/dhcp/dhcpd.conf" ]; then mv -f /etc/dhcp/dhcpd.conf.bak /etc/dhcp/dhcpd.conf; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf.bak /etc/dhcpd.conf; fi
 end
-
 
 start:makedhcp_h
 description:help
@@ -29,15 +28,15 @@ end
 start:makedhcp_n_linux
 description:Create a new dhcp configuration file with a network statement for each network the dhcp daemon should listen on
 os:Linux
-cmd:mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak
+cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
 cmd:makedhcp -n
 check:rc==0
-cmd:ls /etc/dhcp/dhcpd.conf
+cmd:ls /etc/dhcp/dhcpd.conf || ls /etc/dhcpd.conf
 check:rc==0
 cmd:ps -e | grep dhcpd
 check:rc==0
 check:output=~dhcpd
-cmd:mv -f /etc/dhcp/dhcpd.conf.bak /etc/dhcp/dhcpd.conf
+cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
 end
 
 start:makedhcp_n_aix
@@ -60,16 +59,16 @@ cmd:mkdef -t node -o testnode1 groups=compute mac=11:22:33:55:66:88 arch=ppc64
 cmd:chdef -t node -o testnode1 netboot=yaboot tftpserver=192.16.10.0 nfsserver=192.16.10.0 monserver=192.16.10.0 xcatmaster=192.16.10.0 installnic="mac" primarynic="mac"
 cmd:lsdef -l testnode1 -z > /tmp/CN.stanza
 cmd:chdef -t node -o testnode1 mac=11:22:33:44:55:66
-cmd:mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak
+cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
 cmd:makedhcp -n
 cmd:makedhcp -a
 check:rc==0
-cmd:cat /var/lib/dhcpd/dhcpd.leases 
+cmd:if [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases; fi
 check:output=~testnode1
 check:output=~11:22:33:44:55:66
 cmd:cat /tmp/CN.stanza | chdef -z
 cmd:rmdef testnode1
-cmd:mv -f /etc/dhcp/dhcpd.conf.bak /etc/dhcp/dhcpd.conf
+cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
 end
 
 start:makedhcp_a_d_linux
@@ -77,14 +76,14 @@ os:Linux
 cmd:lsdef -t node -l -z > /tmp/all.nodes
 cmd:mkdef -t node -o testnode1 groups=compute mac=11:22:33:55:66:88 arch=ppc64
 cmd:mkdef -t node -o testnode2 groups=compute mac=11:22:33:55:66:99 arch=ppc64
-cmd:mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak
+cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
 cmd:makedhcp -n
 cmd:makedhcp -a 
 check:rc==0
-cmd:cat /var/lib/dhcpd/dhcpd.leases > /tmp/1
+cmd:if [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases > /tmp/1; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases > /tmp/1; fi
 cmd:makedhcp -a -d
 check:rc==0
-cmd:cat /var/lib/dhcpd/dhcpd.leases > /tmp/2
+cmd:if [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases > /tmp/2; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases > /tmp/2; fi
 cmd:diff /tmp/1 /tmp/2 
 check:output=~testnode1
 check:output=~deleted
@@ -100,21 +99,21 @@ description:Delete all node entries, added by xCAT, in the noderange from the DH
 os:Linux
 cmd:mkdef -t node -o testnode1 groups=compute mac=11:22:33:55:66:88 arch=ppc64
 cmd:chdef -t node -o testnode1 netboot=yaboot tftpserver=192.16.10.0 nfsserver=192.16.10.0 monserver=192.16.10.0 xcatmaster=192.16.10.0 installnic="mac" primarynic="mac"
-cmd:mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak
+cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
 cmd:lsdef -l testnode1 -z > /tmp/CN.stanza
 cmd:chdef -t node -o testnode1 mac=11:22:33:44:55:66
 cmd:makedhcp -n
 cmd:makedhcp testnode1
-cmd:cat /var/lib/dhcpd/dhcpd.leases > /tmp/1
+cmd:if [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases > /tmp/1; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases > /tmp/1; fi
 cmd:makedhcp -d testnode1 
 check:rc==0
-cmd:cat /var/lib/dhcpd/dhcpd.leases > /tmp/2 
+cmd:if [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases > /tmp/2; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases > /tmp/2; fi
 cmd:diff /tmp/1 /tmp/2
 check:output=~testnode1
 check:output=~deleted
 cmd:cat /tmp/CN.stanza | chdef -z
 cmd:rmdef testnode1
-cmd:mv -f /etc/dhcp/dhcpd.conf.bak /etc/dhcp/dhcpd.conf
+cmd:if [ -f "/etc/dhcp/dhcpd.conf" ]; then mv -f /etc/dhcp/dhcpd.conf.bak /etc/dhcp/dhcpd.conf; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf.bak /etc/dhcpd.conf; fi
 cmd:rm -f /tmp/1 /tmp/2
 end
 
@@ -124,7 +123,7 @@ cmd:lsdef -l $$CN -z > /tmp/$$CN.stanza
 cmd:chdef -t node -o $$CN mac=11:22:33:44:55:66
 cmd:makedhcp -a
 check:rc==0
-cmd:cat /var/lib/dhcpd/dhcpd.leases
+cmd:if [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases; fi
 check:output=~$$CN
 check:output=~11:22:33:44:55:66
 cmd:chdef -t node -o $$CN mac=
@@ -136,7 +135,7 @@ os:Linux
 cmd:makedhcp -a -d
 check:rc==0
 cmd:service dhcpd restart
-cmd:cat /var/lib/dhcpd/dhcpd.leases | grep $$CN
+cmd:if [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases | grep $$CN; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases | grep $$CN; fi
 check:output!~$$CN
 cmd:makedhcp -a
 end
@@ -146,7 +145,7 @@ os:Linux
 cmd:makedhcp -d $$CN
 check:rc==0
 cmd:service dhcpd restart
-cmd:cat /var/lib/dhcpd/dhcpd.leases | grep $$CN
+cmd:if [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases | grep $$CN; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases | grep $$CN; fi
 check:output!~$$CN
 cmd:makedhcp -a
 end
