@@ -65,6 +65,11 @@ sub include_file
        chomp($_);
        s/\s+$//;  #remove trailing spaces
        next if /^\s*$/; #-- skip empty lines
+       next
+          if (   /^\s*#/
+              && !/^\s*#INCLUDE:[^#^\n]+#/
+              && !/^\s*#NEW_INSTALL_LIST#/
+              && !/^\s*#ENV:[^#^\n]+#/);    #-- skip comments
        push(@text, $_);
    }
    
@@ -86,6 +91,11 @@ sub get_package_names {
         chomp;
 	s/\s+$//;   #remove trailing white spaces
 	next if /^\s*$/; #-- skip empty lines
+        next
+           if (   /^\s*#/
+               && !/^\s*#INCLUDE:[^#^\n]+#/
+               && !/^\s*#NEW_INSTALL_LIST#/
+               && !/^\s*#ENV:[^#^\n]+#/);    #-- skip comments
 	push(@tmp_array,$_);
      }
      close($pkgfile);
