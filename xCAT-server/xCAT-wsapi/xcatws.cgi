@@ -166,7 +166,7 @@ sub fetchParameter {
 
     my @pairs = split(/&/, $parstr);
     foreach my $pair (@pairs) {
-        my ($key, $value) = split(/=/, $pair);
+        my ($key, $value) = split(/=/, $pair, 2);
         $value =~ tr/+/ /;
         $value =~ s/%([a-fA-F0-9][a-fA-F0-9])/chr(hex($1))/eg;
         push @{$queryhash{$key}}, $value;
@@ -796,7 +796,7 @@ sub nodesHandler {
     }
     elsif (isPut()) {
         my $subResource;
-        my $entries;
+        my @entries;
         if (defined $path[2]) {
             $subResource = $path[2];
 
@@ -807,19 +807,32 @@ sub nodesHandler {
             $request->{noderange} = $noderange;
 
             unless ($q->param('PUTDATA')) {
-                addPageContent("No set attribute was supplied.");
-                sendResponseMsg($STATUS_BAD_REQUEST);
+                #temporary allowance for the put data to be contained in the queryString
+                unless ($queryhash{'putData'}) {
+                    addPageContent("No set attribute was supplied.");
+                    sendResponseMsg($STATUS_BAD_REQUEST);
+                }
+                else {
+                    foreach my $put (@{$queryhash{'putData'}}) {
+                        my ($key, $value) = split(/=/, $put, 2);
+                        if ($key eq 'field' && $value) {
+                            push @entries, $value;
+                        }
+                    }
+                }
+
+                    
             }
             else {
-                $entries = decode_json $q->param('PUTDATA');
-                if (scalar(@$entries) < 1) {
+                @entries = decode_json $q->param('PUTDATA');
+                if (scalar(@entries) < 1) {
                     addPageContent("No set attribute was supplied.");
                     sendResponseMsg($STATUS_BAD_REQUEST);
                 }
             }
 
             if (($subResource ne "dsh") && ($subResource ne "dcp")) {
-                foreach (@$entries) {
+                foreach (@entries) {
                     push @args, $_;
                 }
             }
@@ -841,7 +854,7 @@ sub nodesHandler {
             elsif ($subResource eq "dsh") {
                 $request->{command} = "xdsh";
                 my %elements;
-                extractData(\%elements, $entries);
+                extractData(\%elements, @entries);
                 if (defined($elements{'devicetype'})) {
                     push @args, '--devicetype';
                     push @args, $elements{'devicetype'};
@@ -908,7 +921,7 @@ sub nodesHandler {
             elsif ($subResource eq "dcp") {
                 $request->{command} = "xdcp";
                 my %elements;
-                extractData(\%elements, $entries);
+                extractData(\%elements, @entries);
                 if (defined($elements{'fanout'})) {
                     push @args, '-f';
                     push @args, $elements{'fanout'};
@@ -954,7 +967,8 @@ sub nodesHandler {
             }
         }
         else {
-            sendErrorMessage($STATUS_BAD_REQUEST, "The subResource \'$request->{subResource}\' does not exist");
+            #sendErrorMessage($STATUS_BAD_REQUEST, "The subResource \'$request->{subResource}\' does not exist");
+            sendResponseMsg($STATUS_BAD_REQUEST, "The subResource \'$request->{subResource}\' does not exist");
         }
     }
     elsif (isPost()) {
@@ -1204,16 +1218,32 @@ sub siteHandler {
     elsif (isPut()) {
         $request->{command} = 'chdef';
         push @{$request->{arg}}, '-t', 'site', '-o', 'clustersite';
-        if ($q->param('PUTDATA')) {
-            my $entries = decode_json $q->param('PUTDATA');
-            foreach (@$entries) {
-                push @{$request->{arg}}, $_;
-            }
-        }
-        else {
-            addPageContent("No Field and Value map was supplied.");
-            sendResponseMsg($STATUS_BAD_REQUEST);
-        }
+		unless ($q->param('PUTDATA')) {
+			#temporary allowance for the put data to be contained in the queryString
+			unless ($queryhash{'putData'}) {
+				addPageContent("No set attribute was supplied.");
+				sendResponseMsg($STATUS_BAD_REQUEST);
+			}
+			else {
+                    foreach my $put (@{$queryhash{'putData'}}) {
+                        my ($key, $value) = split(/=/, $put, 2);
+                        if ($key eq 'field' && $value) {
+                            push @{$request->{arg}}, $value;
+                        }
+                    }
+                }
+		} else {
+			if ($q->param('PUTDATA')) {
+				my $entries = decode_json $q->param('PUTDATA');
+				foreach (@$entries) {
+					push @{$request->{arg}}, $_;
+				}
+			}
+			else {
+				addPageContent("No Field and Value map was supplied.");
+				sendResponseMsg($STATUS_BAD_REQUEST);
+			}
+		}
     }
     else {
         unsupportedRequestType();
@@ -1756,7 +1786,10 @@ sub wrapData {
     }
 
     #all information were add into the global varibale, call the response funcion
-    if (isPost()) {
+    if (exists $data->[0]->{info} && $data->[0]->{info}->[0] =~ /Could not find an object/) {
+        sendResponseMsg($STATUS_NOT_FOUND);
+    }
+    elsif (isPost()) {
         sendResponseMsg($STATUS_CREATED);
     }
     else {
@@ -2035,3 +2068,5 @@ sub isAuthenticUser {
     addPageContent($responses[0]->{error}[0]);
     sendResponseMsg($STATUS_UNAUTH);
 }
+
+
