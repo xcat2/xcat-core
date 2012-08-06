@@ -720,7 +720,7 @@ sub mknetboot
                 $kdump = $dump;
                 if ($dump =~ /^nfs:\/\/\/.*/){
                     $fadump =~ s/(nfs:\/\/)(\/.*)/net,${xcatmaster}:${2}/;
-                    $kdump =~ s /(nfs:\/\/)(\/.*)/${1}${xcatmaster}${2}/;
+                    $kdump =~ s/(nfs:\/\/)(\/.*)/${1}${xcatmaster}${2}/;
                 }
             }
             if ($crashkernelsize){
