@@ -14,7 +14,7 @@ B<rflash> I<noderange> {B<--commit>|B<--recover>} [B<-V>|B<--verbose>]
 
 =head2 PPC (without HMC, using Direct FSP Management) specific:
 
-B<rflash> I<noderange> B<-p> I<directory> B<--activate> B<disruptive> [B<-d> I<data_directory>]
+B<rflash> I<noderange> B<-p> I<directory> B<--activate> B<disruptive>|B<deferred> [B<-d> I<data_directory>]
 
 B<rflash> I<noderange> {B<--commit>|B<--recover>}
 
@@ -59,7 +59,7 @@ The B<deferred> option will load the new firmware into the T (temp) side, but wi
 
 In Direct FSP/BPA Management, there is -d <data_directory> option. The default value is /tmp. When do firmware update, rflash will put some related data from rpm packages in <data_directory> directory, so the execution of rflash will require available disk space in <data_directory> for the command to properly execute: 
 
-For one GFW rpm packages and power code rpm package , if the GFW rpm package size is gfw_rpmsize, and the Power code rpm package size is power_rpmsize, it requires that the available disk space should be more than: 
+For one GFW rpm package and one power code rpm package , if the GFW rpm package size is gfw_rpmsize, and the Power code rpm package size is power_rpmsize, it requires that the available disk space should be more than: 
   1.5*gfw_rpmsize + 1.5*power_rpmsize
 
 For Power 775, the rflash command takes effect on the primary and secondary FSPs or BPAs almost in parallel. 
