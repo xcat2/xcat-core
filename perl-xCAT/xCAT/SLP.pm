@@ -572,7 +572,8 @@ sub get_ipv4_neighbors {
                 #if ($entry =~ /at (\w+\:\w+\:\w+\:\w+\:\w+\:\w+)/) {
                 #    $ip4neigh{$ip}=$1;
                 if ($entry =~ /at (\w+)\:(\w+)\:(\w+)\:(\w+)\:(\w+)\:(\w+)/) {
-                     $ip4neigh{$ip}=$1.$2.$3.$4.$5.$6;
+                     #$ip4neigh{$ip}=$1.$2.$3.$4.$5.$6;
+                    $ip4neigh{$ip}=sprintf("%02s%02s%02s%02s%02s%02s",$1,$2,$3,$4,$5,$6);
                 }
 
             }
