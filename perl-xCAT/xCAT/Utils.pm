@@ -6452,5 +6452,45 @@ sub pingNodeStatus {
  
   return %status;
 }
+#-------------------------------------------------------------------------------
+
+=head3   noderangecontainsMN 
+    Returns:
+       returns nothing, if ManagementNode is not the input noderange 
+       returns name of MN,  if Management Node is in the input noderange 
+    Globals:
+        none
+    Error:
+        none
+    Input:
+      array of nodes in the noderange
+    Example:
+    my $mn=xCAT::Utils->noderangecontainsMN($noderange);
+    Comments:
+=cut
+
+#-------------------------------------------------------------------------------
+sub noderangecontainsMn 
+{
+ my ($class, @noderange)=@_;
+ # check if any node in the noderange is the Management Node return the
+ # name 
+ my $mname;
+ my $tab = xCAT::Table->new('nodetype');
+ my @nodelist=$tab->getAllNodeAttribs(['node','nodetype']);
+ foreach my $n (@nodelist) {
+   if ($n->{'nodetype'} eq "mn") {  # this is the MN
+      $mname=$n->{'node'};
+      last;
+   }
+ }
+ if (grep(/$mname/, @noderange)) { # if MN in the noderange
+   return $mname;
+ } else {
+   return ;
+ }
+}
+
+
 
 1;
