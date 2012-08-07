@@ -615,12 +615,16 @@ sub process_nodes
         {
             # have to change each file path and add the SNsynfiledir
             # except the last entry which is the destination on the computenode
+            # skip flags 
             my $args = $newSNreq->{arg};
             my $arraysize = @$args;
             my $i = 0;
             foreach my $sarg (@$args) {
               if ($arraysize > 1) { 
-                if (($sarg !~ /^-/) && ( $sarg !~ /^\//)) {  # just a flag, skip
+                if ($sarg =~ /^-/) {  # just a flag, skip
+                  $arraysize--; 
+                  $i++;
+                } else { 
                   my $tmpfile =$synfiledir ;
                   $tmpfile .=$newSNreq->{arg}->[$i] ;
                   $newSNreq->{arg}->[$i] = $tmpfile;
