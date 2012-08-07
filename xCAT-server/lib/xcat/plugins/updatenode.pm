@@ -973,23 +973,13 @@ $AIXnodes_nd, $subreq  ) != 0 ) {
     if ($request->{security} && $request->{security}->[0] eq "yes") {
        # check to see if the Management Node is in the noderange and
        # if it is abort
-        my $mname;
-        my $tab = xCAT::Table->new('nodetype');
-        my @nodelist2=$tab->getAllNodeAttribs(['node','nodetype']);
-        foreach my $n (@nodelist2) {
-           if ($n->{'nodetype'} eq "mn") {  # this is the MN
-              $mname=$n->{'node'};
-              last;
-           }
-        }
-        if ($mname) {  # MN in the database
-         if (grep(/$mname/, @$nodes)) { # if MN in the noderange
+       my $mname = xCAT::Utils->noderangecontainsMn(@$nodes);
+       if ($mname) {  # MN in the nodelist
             my $rsp = {};
             $rsp->{error}->[0] =
               "You must not run -K option against the Management Node:$mname.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
-         }
         }
          
         # generate the arguments
