@@ -270,8 +270,12 @@ rm $RPM_BUILD_ROOT/%{prefix}/sbin/xcat_traphandler
 
 cp lib/xcat/shfunctions $RPM_BUILD_ROOT/%{prefix}/lib
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/shfunctions
+%if %fsm
+%else
+echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" > $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
 mkdir -p $RPM_BUILD_ROOT/etc/init.d
 cp etc/init.d/xcatd $RPM_BUILD_ROOT/etc/init.d
+%endif
 #TODO: the next has to me moved to postscript, to detect /etc/xcat vs /etc/opt/xcat
 mkdir -p $RPM_BUILD_ROOT/etc/xcat
 cp etc/xcat/postscripts.rules $RPM_BUILD_ROOT/etc/xcat/
@@ -305,9 +309,9 @@ rm -rf $RPM_BUILD_ROOT
 #%doc LICENSE.html
 %{prefix}
 /etc/xcat
-/etc/init.d/xcatd
 %if %fsm
 %else
+/etc/init.d/xcatd
 /etc/apache2/conf.d/xcat-ws.conf
 /etc/httpd/conf.d/xcat-ws.conf
 %endif
