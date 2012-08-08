@@ -205,6 +205,8 @@ sub preprocess_request
 	if (keys(%apps) == 0) {
 	    $apps{'sshd'}->{'group'} = "ALL";   #ALL means anything on the nodelist table, it is different from all
 	    $apps{'sshd'}->{'port'} = "22"; 
+	    $apps{'https'}->{'group'} = "ALL";   #ALL means anything on the nodelist table, it is different from all
+	    $apps{'https'}->{'port'} = "443"; 
  	    $apps{'pbs'}->{'group'} = "ALL"; 
 	    $apps{'pbs'}->{'port'} = "15002"; 
 	    $apps{'xend'}->{'group'} = "ALL"; 
@@ -213,7 +215,7 @@ sub preprocess_request
             $apps{'rdp'}->{'port'} = "3389";
             $apps{'msrpc'}->{'group'} = "ALL";
             $apps{'msrpc'}->{'port'} = "135";
-            $apps{'APPS'}=['sshd', 'pbs', 'xend'];
+            $apps{'APPS'}=['sshd', 'https', 'pbs', 'xend'];
         } else {
 	    #go thorugh the settings and put defaults in
 	    foreach my $app (keys(%apps)) {
