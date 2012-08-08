@@ -372,18 +372,19 @@ sub subcmd {
 
 sub waitforrsp {
     my $self=shift;
+    my %args=@_;
+    
     my $data;
     my $peerport;
     my $peerhost;
     my $timeout; #TODO: code to scan pending objects to find soonest retry deadline
     my $curtime=time();
+    if (defined $args{timeout}) { $timeout =  $args{timeout}; }
     foreach (keys %sessions_waiting) {
-       if  ($sessions_waiting{$_}->{timeout} <= $curtime) { #retry or fail..
-           my $session = $sessions_waiting{$_}->{ipmisession};
-           delete $sessions_waiting{$_};
-           $pendingpackets-=1;
-           $session->timedout();
-           next;
+       if (defined $timeout and $timeout == 0) { last; } #once we get to zero, then there is no lower and anything else is a waste
+       if  ($sessions_waiting{$_}->{timeout} <= $curtime) {
+	   $timeout=0; #this waitforrsp must go as quickly to retry as possible, but give it a chance this iteration to clear without timedout being called
+	   	       #if something defferred entry into waitforrsp so long that there was no chance to check for response, this grants at least one shot at getting data
         }
         if (defined $timeout) {
             if ($timeout < $sessions_waiting{$_}->{timeout}-$curtime) {
@@ -414,6 +415,16 @@ sub waitforrsp {
                 }
 	}
     }
+    foreach (keys %sessions_waiting) { #now that we have given all incoming packets a chance, if some sessions were past due when we entered
+    				      #take timeout response action now
+       if  ($sessions_waiting{$_}->{timeout} <= $curtime) {
+           my $session = $sessions_waiting{$_}->{ipmisession};
+           delete $sessions_waiting{$_};
+           $pendingpackets-=1;
+           $session->timedout();
+           next;
+       }
+    }
     return scalar (keys %sessions_waiting);
 }
 
@@ -427,7 +438,7 @@ sub timedout {
         $self->{ipmicallback}->($rsp,$self->{ipmicallback_args});
         return;
     }
-    $self->sendpayload(%{$self->{pendingargs}});
+    $self->sendpayload(%{$self->{pendingargs}},nowait=>1); #do not induce the xmit to wait for packets, just spit it out.  timedout is in a wait-for-packets loop already, so it's fine
 }
 sub route_ipmiresponse {
     my $sockaddr=shift;
@@ -819,8 +830,16 @@ sub sendpayload {
             #push integrity data
             }
     }
-    while ($pendingpackets > $maxpending) { #if we hit our ceiling, wait until a slot frees up
-        $self->waitforrsp();
+    unless ($args{nowait}) { #if nowait indicated, the packet will be sent regardless of maxpending
+    			     #primary use case would be retries that should represent no delta to pending sessions in aggregate and therefore couldn't exceed maxpending anywy
+			     #if we did do this on timedout, waitforrsp may recurse, which is a complicated issue.  Theoretically, if waitforrsp protected itself, it 
+			     #would act the same, but best be explicit about nowait if practice does not match theory
+			     #another scenario is if we have urgent payload for a BMC (PET acknowledge, negotiating login if temp session id is very short lived
+	    $self->waitforrsp(timeout=>0); #the intent here is to interrupt outgoing activity to give a chance to respond to incoming data
+	    				   #until we send, the ball is in our court so things are less time critical
+	    while ($pendingpackets > $maxpending) { #if we hit our ceiling, wait until a slot frees up, which can't happen until either a packet is received or someone gives up
+	        $self->waitforrsp();
+	    }
     }
     $socket->send(pack("C*",@msg),0,$self->{peeraddr});
     $sessions_waiting{$self}={};
