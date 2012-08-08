@@ -36,6 +36,8 @@ When creating a new NIM machine definition the default is to use the same name a
 
 You can use the "-n" option of the mkdsklsnode command to create and initialize an alternate NIM machine definition for the same physical nodes. This option allows you to set up a new image to use when a node is next rebooted while the node is currently running.  This is possible because the NIM name for a machine definition does not have to be the hostname of the node.  This allows you to have multiple NIM machine definitions for the same physical node. The naming convention for the new NIM machine name is "<xcat_node_name>_<image_name>", (Ex. "node01_61spot"). Since all the NIM initialization can be done while the node is running the downtime for for the node is reduced to the time it takes to reboot.
 
+B<Note:> When using the "-n" option make sure that the new osimage you specify and all the NIM resources that are used are different than what are currently being used on the nodes.  The NIM resources should not be shared between the old osimage and the new osimage. 
+
 You can use the force option to reinitialize a node if it already has resources allocated or it is in the wrong NIM state. This option will reset the NIM node and deallocate resources before reinititializing. Use this option with caution since reinitializing a node will stop the node if it is currently running.
 
 After the mkdsklsnode command completes you can use the B<lsnim> command to check the NIM node definition to see if it is ready for booting the node. ("lsnim -l <nim_node_name>").
