@@ -20,6 +20,7 @@ use Data::Dumper;
 use LWP::Simple;
 use xCAT::Table;
 use xCAT::NodeRange;
+use xCAT::TableUtils;
 require XML::Parser;
 
 sub handled_commands {
@@ -1265,7 +1266,7 @@ sub web_createimage {
     my $imagetype = lc( $request->{arg}->[5] );
     my @softArray;
     my $netdriver  = '';
-    my $installdir = xCAT::Utils->getInstallDir();
+    my $installdir = xCAT::TableUtils->getInstallDir();
     my $tempos     = $ostype;
     $tempos =~ s/[0-9\.]//g;
     my $CONFILE;
@@ -1666,7 +1667,7 @@ sub web_provision {
     my $line = '';
     my %imageattr;
     my $retinfo = xCAT::Utils->runcmd( "lsdef -t osimage -l $imageName", -1, 1 );
-    my $installdir = xCAT::Utils->getInstallDir();
+    my $installdir = xCAT::TableUtils->getInstallDir();
 
     # Parse output, get the OS name and type
     foreach $line (@$retinfo) {
