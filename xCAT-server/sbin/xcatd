@@ -27,6 +27,8 @@ if ($^O =~ /^aix/i) {
 use lib "$::XCATROOT/lib/perl";
 use Storable qw(freeze thaw);
 use xCAT::Utils;
+use xCAT::TableUtils;
+use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
 use xCAT::xcatd;
 use File::Path;
@@ -1444,7 +1446,7 @@ sub dispatch_request {
     if (ref $_->{'_xcatdest'} and (ref $_->{'_xcatdest'}) eq 'ARRAY') {
         _->{'_xcatdest'} =  $_->{'_xcatdest'}->[0];
     }
-    if ($onlyone and not ($_->{'_xcatdest'} and xCAT::Utils->thishostisnot($_->{'_xcatdest'}))) {
+    if ($onlyone and not ($_->{'_xcatdest'} and xCAT::NetworkUtils->thishostisnot($_->{'_xcatdest'}))) {
         $SIG{CHLD}='DEFAULT';
 	if ($_->{'_xcatdelay'} and not ref $_->{'_xcatdelay'}) { sleep $_->{'_xcatdelay'}; }
         ${"xCAT_plugin::".$modname."::"}{process_request}->($_,$dispatch_cb,\&do_request);
@@ -1497,7 +1499,7 @@ sub dispatch_request {
      my $request_satisfied=0;
      foreach $xcatdest (@xcatdests) {
         my $dlock;
-        if ($xcatdest and xCAT::Utils->thishostisnot($xcatdest)) {
+        if ($xcatdest and xCAT::NetworkUtils->thishostisnot($xcatdest)) {
             #mkpath("/var/lock/xcat/"); #For now, limit intra-xCAT requests to one at a time, to mitigate DB handle usage
             #open($dlock,">","/var/lock/xcat/dispatchto_$xcatdest");
             #flock($dlock,LOCK_EX);
