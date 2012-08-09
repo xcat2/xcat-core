@@ -266,7 +266,7 @@ sub esxipv6setup {
 }
 
 sub kickstartnetwork {
-	my $line = "network --bootproto=";
+	my $line = "network --onboot=yes --bootproto=";
 	my $hoststab;
       my $mactab = xCAT::Table->new('mac',-create=>0);
       unless ($mactab) { die "mac table should always exist prior to template processing when doing autoula"; }
