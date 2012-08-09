@@ -2918,10 +2918,12 @@ sub noderangecontainsMn
  my $tab = xCAT::Table->new('nodetype');
  my @nodelist=$tab->getAllNodeAttribs(['node','nodetype']);
  foreach my $n (@nodelist) {
+  if (defined($n->{'nodetype'})) {
    if ($n->{'nodetype'} eq "mn") {  # this is the MN
       $mname=$n->{'node'};
       last;
    }
+  }
  }
  if (grep(/$mname/, @noderange)) { # if MN in the noderange
    return $mname;
