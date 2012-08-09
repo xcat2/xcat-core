@@ -7,6 +7,7 @@ use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
 use Storable qw(freeze thaw);
 use POSIX "WNOHANG";
+use xCAT::NetworkUtils;
 use xCAT::MsgUtils qw(verbose_message);
 
 use LWP;
@@ -736,7 +737,7 @@ sub doresetnet {
             $nodetype = ( $nodetype =~ /^frame$/i ) ? "bpa" : "fsp";
             if ($cnodep) {
                 foreach my $cnode (@$cnodep) {
-                    my $ip = xCAT::Utils::getNodeIPaddress( $cnode );
+                    my $ip = xCAT::NetworkUtils::getNodeIPaddress( $cnode );
                     my $oi = $oihash{$cnode};
                     if(!defined $ip) {
                         send_msg($req, "doresetnet: can't get $cnode ip");
@@ -785,7 +786,7 @@ sub doresetnet {
     # this brunch is just for the xcat 2.5(or 2.5-) databse
     } elsif ( $nodetype =~ /^(fsp|bpa)$/ )  {
         foreach my $nn ( @{ $req->{node}} ) {
-            my $ip = xCAT::Utils::getNodeIPaddress( $nn );
+            my $ip = xCAT::NetworkUtils::getNodeIPaddress( $nn );
             if(!defined $ip) {
                 send_msg($req, "doresetnet: can't get $nn ip");
                 next;

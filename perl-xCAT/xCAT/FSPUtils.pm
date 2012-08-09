@@ -23,6 +23,7 @@ require xCAT::InstUtils;
 require xCAT::NetworkUtils;
 require xCAT::Schema;
 require xCAT::Utils;
+require xCAT::TableUtils;
 #use  Data::Dumper;
 require xCAT::NodeRange;
 use xCAT::MsgUtils qw(verbose_message);
@@ -130,7 +131,7 @@ sub getIPaddress
     my $type       = shift;
     my $nodetocheck = shift;
     my $port        = shift;
-    if (xCAT::Utils::isIpaddr($nodetocheck)) {
+    if (xCAT::NetworkUtils::isIpaddr($nodetocheck)) {
         return $nodetocheck;
     }
     my $side = "[A|B]";
@@ -188,7 +189,7 @@ sub getIPaddress
             if ($tmp_s and $tmp_s =~ /^$side-$port$/i) {
                 $tmp_s =~ s/a/A/;
                 $tmp_s =~ s/b/B/;
-                if (xCAT::Utils::isIpaddr($tmp_n)) {
+                if (xCAT::NetworkUtils::isIpaddr($tmp_n)) {
                     $node_side_pairs{$tmp_s} = $tmp_n;           
                     $children_num++;
                 } else {
@@ -346,7 +347,7 @@ sub fsp_api_action {
     }
 
     my $cmd;
-    my $install_dir = xCAT::Utils->getInstallDir();
+    my $install_dir = xCAT::TableUtils->getInstallDir();
     if( $action =~ /^(code_update|get_compatible_version_from_rpm)$/) { 
         $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:$parameter -d $install_dir/packages_fw/";
     } elsif($action =~ /^code_updateD$/) {

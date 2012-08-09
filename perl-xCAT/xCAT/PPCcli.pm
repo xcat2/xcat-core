@@ -6,7 +6,7 @@ require Exporter;
     our @ISA = qw(Exporter);
     our @EXPORT_OK = qw(SUCCESS RC_ERROR EXPECT_ERROR NR_ERROR);  
 use Expect;
-
+use xCAT::NetworkUtils;
 
 #############################################
 # Removes Ctrl characters from term output
@@ -1335,7 +1335,7 @@ sub getHMCcontrolIP
         #my @newnodes = split(/,/, $nodes_found->[0]);
         #$Rc = shift(@newnodes);
         #for my $entry (@newnodes) {
-        #    if(xCAT::Utils->isIpaddr($entry)) {
+        #    if(xCAT::NetworkUtils->isIpaddr($entry)) {
         #        push @ips,$entry;
         #    }    
         #    $ip_result = join( ",", @ips );

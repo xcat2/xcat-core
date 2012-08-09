@@ -4,7 +4,9 @@ package xCAT::PPCdb;
 use strict;
 use xCAT::Table;
 use xCAT::GlobalDef;
-
+use xCAT::Utils;
+use xCAT::TableUtils;
+use xCAT::NetworkUtils;
 
 ###########################################
 # Factory defaults
@@ -947,7 +949,7 @@ sub get_host {
     #######################################
     if ($ip)
     {
-        my $nets = xCAT::Utils::my_nets();
+        my $nets = xCAT::NetworkUtils::my_nets();
         my $avip = getip_from_iplist( $ip, $nets);
         #if ( !defined( $ip )) {
         #    return undef;
@@ -984,7 +986,7 @@ sub get_host {
             }
 
             if ( $tmpmtm eq $mtm  and  $tmpsn eq $sn) {
-                my $ifip = xCAT::Utils->isIpaddr($oldnode);
+                my $ifip = xCAT::NetworkUtils->isIpaddr($oldnode);
                 if ( $ifip )  {# which means that the node is defined by the new lsslp
                     if ( $tmpside eq $side ) {# match! which means that node is the same as the new one
                         if ( $ip eq $tmpip ) { #which means that the ip is not changed
@@ -1104,7 +1106,7 @@ sub get_host {
     }
 
     # not matched, use the new name
-    my $ifip = xCAT::Utils->isIpaddr($nodename);
+    my $ifip = xCAT::NetworkUtils->isIpaddr($nodename);
     unless ($ifip) {
         return $nodename;
     }else {
@@ -1150,8 +1152,8 @@ sub getip_from_iplist
         for my $net ( keys %$nets)
         {
             my ($n,$m) = split /\//,$net;
-            if ( xCAT::Utils::isInSameSubnet( $n, $ip, $m, 1) and
-                 xCAT::Utils::isPingable( $ip))
+            if ( xCAT::NetworkUtils::isInSameSubnet( $n, $ip, $m, 1) and
+                 xCAT::NetworkUtils::isPingable( $ip))
             {
                 return $ip;
             }
@@ -1211,7 +1213,7 @@ sub read_from_table {
                 @{$::OLD_DATA_CACHE{$entry->{node}}}[1] = @{$vpdhash{$entry->{node}}}[1];#sn
                 @{$::OLD_DATA_CACHE{$entry->{node}}}[2] = @{$vpdhash{$entry->{node}}}[2];#side
                 # find node ip address, check node name first, then check hosts table
-                my $ifip = xCAT::Utils->isIpaddr($entry->{node});
+                my $ifip = xCAT::NetworkUtils->isIpaddr($entry->{node});
                 if ( $ifip )
                 {
                     @{$::OLD_DATA_CACHE{$entry->{node}}}[3] = $entry->{node};#ip

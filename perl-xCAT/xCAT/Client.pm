@@ -714,7 +714,7 @@ sub dispatch_request {
     if (ref $_->{'_xcatdest'} and (ref $_->{'_xcatdest'}) eq 'ARRAY') {
         _->{'_xcatdest'} =  $_->{'_xcatdest'}->[0];
     }
-    if ($onlyone and not ($_->{'_xcatdest'} and xCAT::Utils->thishostisnot($_->{'_xcatdest'}))) {
+    if ($onlyone and not ($_->{'_xcatdest'} and xCAT::NetworkUtils->thishostisnot($_->{'_xcatdest'}))) {
        $SIG{CHLD}='DEFAULT';
        ${"xCAT_plugin::".$modname."::"}{process_request}->($_,$dispatch_cb,\&do_request);
         return;
@@ -755,7 +755,7 @@ sub dispatch_request {
      my $request_satisfied=0;
      foreach $xcatdest (@xcatdests) {
         my $dlock;
-        if ($xcatdest and xCAT::Utils->thishostisnot($xcatdest)) {
+        if ($xcatdest and xCAT::NetworkUtils->thishostisnot($xcatdest)) {
 #----- added to Client.pm -----#
        $dispatch_cb->({warning=>['XCATBYPASS is set, skipping hierarchy call to '.$_->{'_xcatdest'}.'']});
 #----- end added to Client.pm -----#

@@ -14,6 +14,7 @@ use Getopt::Long;
 require xCAT::DSHCore;
 use xCAT::MsgUtils;
 use xCAT::Utils;
+use xCAT::TableUtils;
 use lib '/opt/xcat/xdsh';
 our @dsh_available_contexts = ();
 our @dsh_valid_contexts     = ();
@@ -3906,7 +3907,7 @@ sub parse_and_run_dsh
         #
         # setup ssh keys on the nodes or ib switch
         #
-        my $rc      = xCAT::Utils->setupSSH($options{'nodes'});
+        my $rc      = xCAT::TableUtils->setupSSH($options{'nodes'});
         my @results = "return code = $rc";
         return (@results);
     }
@@ -4262,13 +4263,13 @@ sub parse_and_run_dcp
     $nodesyncfiledir = "/var/xcat/node/syncfiles";
 
     # get the directory on the servicenode to put the rsync files in
-    my @syndir = xCAT::Utils->get_site_attribute("SNsyncfiledir");
+    my @syndir = xCAT::TableUtils->get_site_attribute("SNsyncfiledir");
     if ($syndir[0])
     {
             $synfiledir = $syndir[0];
     }
     # get the directory on the node to put the rsync files in
-    my @syndir = xCAT::Utils->get_site_attribute("nodesyncfiledir");
+    my @syndir = xCAT::TableUtils->get_site_attribute("nodesyncfiledir");
     if ($syndir[0])
     {
           $nodesyncfiledir = $syndir[0]; 

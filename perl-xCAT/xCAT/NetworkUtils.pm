@@ -25,7 +25,7 @@ my $socket6support = eval { require Socket6 };
 our @ISA       = qw(Exporter);
 our @EXPORT_OK = qw(getipaddr);
 
-
+my $utildata; #data to persist locally
 #--------------------------------------------------------------------------------
 
 =head1    xCAT::NetworkUtils
@@ -481,9 +481,9 @@ sub my_ip_in_subnet
         return undef;
     } 
 
-    my $fmask = xCAT::Utils::formatNetmask($mask, 0, 1);
+    my $fmask = xCAT::NetworkUtils::formatNetmask($mask, 0, 1);
 
-    my $localnets = xCAT::Utils->my_nets();
+    my $localnets = xCAT::NetworkUtils->my_nets();
 
     return $localnets->{"$net\/$fmask"};
 }
@@ -622,5 +622,1350 @@ sub get_nic_ip
         }
     }
     return \%iphash;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   classful_networks_for_net_and_mask
+
+    Arguments:
+        network and mask
+    Returns:
+        a list of classful subnets that constitute the entire potentially classless arguments
+    Globals:
+        none
+    Error:
+        none
+    Example:
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub classful_networks_for_net_and_mask
+{
+    my $network    = shift;
+    my $mask       = shift;
+    my $given_mask = 0;
+    if ($mask =~ /\./)
+    {
+        $given_mask = 1;
+        my $masknumber = unpack("N", inet_aton($mask));
+        $mask = 32;
+        until ($masknumber % 2)
+        {
+            $masknumber = $masknumber >> 1;
+            $mask--;
+        }
+    }
+
+    my @results;
+    my $bitstoeven = (8 - ($mask % 8));
+    if ($bitstoeven eq 8) { $bitstoeven = 0; }
+    my $resultmask = $mask + $bitstoeven;
+    if ($given_mask)
+    {
+        $resultmask =
+          inet_ntoa(pack("N", (2**$resultmask - 1) << (32 - $resultmask)));
+    }
+    push @results, $resultmask;
+
+    my $padbits  = (32 - ($bitstoeven + $mask));
+    my $numchars = int(($mask + $bitstoeven) / 4);
+    my $curmask  = 2**$mask - 1 << (32 - $mask);
+    my $nown     = unpack("N", inet_aton($network));
+    $nown = $nown & $curmask;
+    my $highn = $nown + ((2**$bitstoeven - 1) << (32 - $mask - $bitstoeven));
+
+    while ($nown <= $highn)
+    {
+        push @results, inet_ntoa(pack("N", $nown));
+
+        #$rethash->{substr($nowhex, 0, $numchars)} = $network;
+        $nown += 1 << (32 - $mask - $bitstoeven);
+    }
+    return @results;
+}
+
+
+#-------------------------------------------------------------------------------
+
+=head3   my_hexnets
+
+    Arguments:
+        none
+    Returns:
+    Globals:
+        none
+    Error:
+        none
+    Example:
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub my_hexnets
+{
+    my $rethash;
+    my @nets = split /\n/, `/sbin/ip addr`;
+    foreach (@nets)
+    {
+        my @elems = split /\s+/;
+        unless (/^\s*inet\s/)
+        {
+            next;
+        }
+        (my $curnet, my $maskbits) = split /\//, $elems[2];
+        my $bitstoeven = (4 - ($maskbits % 4));
+        if ($bitstoeven eq 4) { $bitstoeven = 0; }
+        my $padbits  = (32 - ($bitstoeven + $maskbits));
+        my $numchars = int(($maskbits + $bitstoeven) / 4);
+        my $curmask  = 2**$maskbits - 1 << (32 - $maskbits);
+        my $nown     = unpack("N", inet_aton($curnet));
+        $nown = $nown & $curmask;
+        my $highn =
+          $nown + ((2**$bitstoeven - 1) << (32 - $maskbits - $bitstoeven));
+
+        while ($nown <= $highn)
+        {
+            my $nowhex = sprintf("%08x", $nown);
+            $rethash->{substr($nowhex, 0, $numchars)} = $curnet;
+            $nown += 1 << (32 - $maskbits - $bitstoeven);
+        }
+    }
+    return $rethash;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 get_host_from_ip
+    Description:
+        Get the hostname of an IP addresses. First from hosts table, and then try system resultion.
+        If there is a shortname, it will be returned. Otherwise it will return long name. If the IP cannot be resolved, return undef;
+        
+    Arguments:
+        $ip: the IP to get;
+        
+    Returns:  
+        Return: the hostname.
+For an example
+        
+    Globals:
+        none
+        
+    Error:
+        none
+        
+    Example:
+        xCAT::NetworkUtils::get_host_from_ip('192.168.200.1')
+    
+    Comments:
+=cut
+
+#-----------------------------------------------------------------------
+sub get_host_from_ip
+{
+    my $ip = shift;
+}
+ 
+#-------------------------------------------------------------------------------
+
+=head3 isPingable
+    Description:
+        Check if an IP address can be pinged
+        
+    Arguments:
+        $ip: the IP to ping;
+        
+    Returns:  
+        Return: 1 indicates yes; 0 indicates no.
+For an example
+        
+    Globals:
+        none
+        
+    Error:
+        none
+        
+    Example:
+        xCAT::NetworkUtils::isPingable('192.168.200.1')
+    
+    Comments:
+        none
+=cut
+
+#-----------------------------------------------------------------------
+my %PING_CACHE;
+sub isPingable
+{
+    my $ip = shift;
+
+    my $rc;
+    if ( exists $PING_CACHE{ $ip})
+    {
+         $rc = $PING_CACHE{ $ip};
+    }
+    else
+    {
+        my $res = `LANG=C ping -c 1 -w 5 $ip 2>&1`;
+        if ( $res =~ /100% packet loss/g)
+        { 
+            $rc = 1;
+        }
+        else
+        {
+            $rc = 0;
+        }
+        $PING_CACHE{ $ip} = $rc;
+    }
+
+    return ! $rc;    
+}
+ 
+#-------------------------------------------------------------------------------
+
+=head3 my_nets
+    Description:
+        Return a hash ref that contains all subnet and netmask on the mn (or sn). This subroutine can be invoked on both Linux and AIX.
+        
+    Arguments:
+        none.
+        
+    Returns:  
+        Return a hash ref. Each entry will be: <subnet/mask>=><existing ip>;
+        For an example:
+            '192.168.200.0/255.255.255.0' => '192.168.200.246';
+For an example
+        
+    Globals:
+        none
+        
+    Error:
+        none
+        
+    Example:
+        xCAT::NetworkUtils::my_nets().
+    
+    Comments:
+        none
+=cut
+#-----------------------------------------------------------------------
+sub my_nets
+{
+    require xCAT::Table;
+    my $rethash;
+    my @nets;
+    my $v6net;
+    my $v6ip;
+    if ( $^O eq 'aix')
+    {
+        @nets = split /\n/, `/usr/sbin/ifconfig -a`;
+    }
+    else
+    {
+        @nets = split /\n/, `/sbin/ip addr`; #could use ip route, but to match hexnets...
+    }
+    foreach (@nets)
+    {
+        $v6net = '';
+        my @elems = split /\s+/;
+        unless (/^\s*inet/)
+        {
+            next;
+        }
+        my $curnet; my $maskbits;
+        if ( $^O eq 'aix')
+        {
+            if ($elems[1] eq 'inet6')
+            {
+                $v6net=$elems[2];
+                $v6ip=$elems[2];
+                $v6ip =~ s/\/.*//; # ipv6 address 4000::99/64
+                $v6ip =~ s/\%.*//; # ipv6 address ::1%1/128
+            }
+            else
+            {
+                $curnet = $elems[2];
+                $maskbits = formatNetmask( $elems[4], 2, 1);
+            }
+        }
+        else
+        {
+            if ($elems[1] eq 'inet6')
+            {
+                next; #Linux IPv6 TODO, do not return IPv6 networks on Linux for now
+            }
+            ($curnet, $maskbits) = split /\//, $elems[2];
+        }
+        if (!$v6net)
+        {
+            my $curmask  = 2**$maskbits - 1 << (32 - $maskbits);
+            my $nown     = unpack("N", inet_aton($curnet));
+            $nown = $nown & $curmask;
+            my $textnet=inet_ntoa(pack("N",$nown));
+            $textnet.="/$maskbits";
+            $rethash->{$textnet} = $curnet;
+         }
+         else
+         {
+             $rethash->{$v6net} = $v6ip;
+         }
+    }
+
+
+  # now get remote nets
+    my $nettab = xCAT::Table->new("networks");
+    #my $sitetab = xCAT::Table->new("site");
+    #my $master = $sitetab->getAttribs({key=>'master'},'value');
+    #$master = $master->{value};
+    my @masters = xCAT::TableUtils->get_site_attribute("master"); 
+    my $master = $masters[0];
+    my @vnets = $nettab->getAllAttribs('net','mgtifname','mask');
+
+    foreach(@vnets){
+      my $n = $_->{net};
+      my $if = $_->{mgtifname};
+      my $nm = $_->{mask};
+      if (!$n || !$if || $nm)
+      {
+          next; #incomplete network
+      }
+      if ($if =~ /!remote!/) { #only take in networks with special interface
+        $nm = formatNetmask($nm, 0 , 1);
+        $n .="/$nm";
+        #$rethash->{$n} = $if;
+        $rethash->{$n} = $master;
+      }
+    }
+    return $rethash;
+}
+#-------------------------------------------------------------------------------
+
+=head3   my_if_netmap
+   Arguments:
+      none
+   Returns:
+      hash of networks to interface names
+   Globals:
+      none
+   Error:
+      none
+   Comments:
+      none
+=cut
+
+#-------------------------------------------------------------------------------
+sub my_if_netmap
+{
+    my $net;
+    if (scalar(@_))
+    {    #called with the other syntax
+        $net = shift;
+    }
+    my @rtable = split /\n/, `netstat -rn`;
+    if ($?)
+    {
+        return "Unable to run netstat, $?";
+    }
+    my %retmap;
+    foreach (@rtable)
+    {
+        if (/^\D/) { next; }    #skip headers
+        if (/^\S+\s+\S+\s+\S+\s+\S*G/)
+        {
+            next;
+        }                       #Skip networks that require gateways to get to
+        /^(\S+)\s.*\s(\S+)$/;
+        $retmap{$1} = $2;
+    }
+    return \%retmap;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   my_ip_facing
+         Returns my ip address  
+         Linux only
+    Arguments:
+        nodename 
+    Returns:
+    Globals:
+        none
+    Error:
+        none
+    Example:
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub my_ip_facing
+{
+    my $peer = shift;
+    if (@_)
+    {
+        $peer = shift;
+    }
+    return my_ip_facing_aix( $peer) if ( $^O eq 'aix');
+    my $peernumber = inet_aton($peer); #TODO: IPv6 support
+    unless ($peernumber) { return undef; }
+    my $noden = unpack("N", inet_aton($peer));
+    my @nets = split /\n/, `/sbin/ip addr`;
+    foreach (@nets)
+    {
+        my @elems = split /\s+/;
+        unless (/^\s*inet\s/)
+        {
+            next;
+        }
+        (my $curnet, my $maskbits) = split /\//, $elems[2];
+        my $curmask = 2**$maskbits - 1 << (32 - $maskbits);
+        my $curn = unpack("N", inet_aton($curnet));
+        if (($noden & $curmask) == ($curn & $curmask))
+        {
+            return $curnet;
+        }
+    }
+    return undef;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   my_ip_facing_aix
+         Returns my ip address  
+         AIX only
+    Arguments:
+        nodename 
+    Returns:
+    Globals:
+        none
+    Error:
+        none
+    Example:
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub my_ip_facing_aix
+{
+    my $peer = shift;
+    my @nets = `ifconfig -a`;
+    chomp @nets;
+    foreach my $net (@nets)
+    {
+        my ($curnet,$netmask);
+        if ( $net =~ /^\s*inet\s+([\d\.]+)\s+netmask\s+(\w+)\s+broadcast/)
+        {
+            ($curnet,$netmask) = ($1,$2);
+        }
+        elsif ($net =~ /^\s*inet6\s+(.*)$/)
+        {
+            ($curnet,$netmask) = split('/', $1);
+        }
+        else
+        {
+            next;
+        }
+        if (isInSameSubnet($peer, $curnet, $netmask, 2))
+        {
+            return $curnet;
+        }
+    }
+    return undef;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 formatNetmask
+    Description:
+        Transform netmask to one of 3 formats (255.255.255.0, 24, 0xffffff00).
+        
+    Arguments:
+        $netmask: the original netmask
+        $origType: the original netmask type. The valid value can be 0, 1, 2:
+            Type 0: 255.255.255.0
+            Type 1: 24
+            Type 2: 0xffffff00
+        $newType: the new netmask type, valid values can be 0,1,2, as above.
+        
+    Returns:  
+        Return undef if any error. Otherwise return the netmask in new format.
+        
+    Globals:
+        none
+        
+    Error:
+        none
+        
+    Example:
+        xCAT::NetworkUtils::formatNetmask( '24', 1, 0); #return '255.255.255.0'.
+    
+    Comments:
+        none
+=cut
+#-----------------------------------------------------------------------
+sub formatNetmask
+{
+    my $mask = shift;
+    my $origType = shift;
+    my $newType = shift;
+    my $maskn;
+    if ( $origType == 0)
+    {
+        $maskn = unpack("N", inet_aton($mask));
+    }
+    elsif ( $origType == 1)
+    {
+        $maskn = 2**$mask - 1 << (32 - $mask);
+    }
+    elsif( $origType == 2)
+    {
+        $maskn = hex $mask;
+    }
+    else
+    {
+        return undef;
+    }
+
+    if ( $newType == 0)
+    {
+        return inet_ntoa( pack('N', $maskn));
+    }
+    if ( $newType == 1)
+    {
+        my $bin = unpack ("B32", pack("N", $maskn));
+        my @dup = ( $bin =~ /(1{1})0*/g);
+        return scalar ( @dup);
+    }
+    if ( $newType == 2)
+    {
+        return sprintf "0x%1x", $maskn;
+    }
+    return undef;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 isInSameSubnet
+    Description:
+        Check if 2 given IP addresses are in same subnet
+        
+    Arguments:
+        $ip1: the first IP
+        $ip2: the second IP
+        $mask: the netmask, here are 3 possible netmask types, following are examples for these 3 types:
+            Type 0: 255.255.255.0
+            Type 1: 24
+            Type 2: 0xffffff00
+        $masktype: the netmask type, 3 possible values: 0,1,2, as indicated above
+        
+    Returns:  
+        1: they are in same subnet
+        2: not in same subnet
+        
+    Globals:
+        none
+        
+    Error:
+        none
+        
+    Example:
+        xCAT::NetworkUtils::isInSameSubnet( '192.168.10.1', '192.168.10.2', '255.255.255.0', 0);
+    
+    Comments:
+        none
+=cut
+#-----------------------------------------------------------------------
+sub isInSameSubnet
+{
+    my $ip1 = shift;
+    my $ip2 = shift;
+    my $mask = shift;
+    my $maskType = shift;
+
+    $ip1 = xCAT::NetworkUtils->getipaddr($ip1);
+    $ip2 = xCAT::NetworkUtils->getipaddr($ip2);
+
+    if (!defined($ip1) || !defined($ip2))
+    {
+        return undef;
+    }
+
+    if ((($ip1 =~ /\d+\.\d+\.\d+\.\d+/) && ($ip2 !~ /\d+\.\d+\.\d+\.\d+/))
+      ||(($ip1 !~ /\d+\.\d+\.\d+\.\d+/) && ($ip2 =~ /\d+\.\d+\.\d+\.\d+/)))
+    {
+        #ipv4 and ipv6 can not be in the same subnet
+        return undef;
+    }
+
+    if (($ip1 =~ /\d+\.\d+\.\d+\.\d+/) && ($ip2 =~ /\d+\.\d+\.\d+\.\d+/))
+    {
+        my $maskn;
+        if ( $maskType == 0)
+        {
+            $maskn = unpack("N", inet_aton($mask));
+        }
+        elsif ( $maskType == 1)
+        {
+            $maskn = 2**$mask - 1 << (32 - $mask);
+        }
+        elsif( $maskType == 2)
+        {
+            $maskn = hex $mask;
+        }
+        else
+        {
+            return undef;
+        }
+
+        my $ip1n = unpack("N", inet_aton($ip1));
+        my $ip2n = unpack("N", inet_aton($ip2));
+
+        return ( ( $ip1n & $maskn) == ( $ip2n & $maskn) );
+    }
+    else
+    {
+        #ipv6
+        if (($ip1 =~ /\%/) || ($ip2 =~ /\%/))
+        {
+            return undef;
+        }
+        my $netipmodule = eval {require Net::IP;};
+        if ($netipmodule) {
+           my $eip1 = Net::IP::ip_expand_address ($ip1,6);
+           my $eip2 = Net::IP::ip_expand_address ($ip2,6);
+           my $bmask = Net::IP::ip_get_mask($mask,6);
+           my $bip1 = Net::IP::ip_iptobin($eip1,6);
+           my $bip2 = Net::IP::ip_iptobin($eip2,6);
+           if (($bip1 & $bmask) == ($bip2 & $bmask)) {
+               return 1;
+           }
+       } # else, can not check without Net::IP module
+       return undef;
+     }
+}
+#-------------------------------------------------------------------------------
+
+=head3 nodeonmynet - checks to see if node is on any network this server is attached to or remote network potentially managed by this system
+    Arguments:
+       Node name
+    Returns:  1 if node is on the network
+    Globals:
+        none
+    Error:
+        none
+    Example:
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub nodeonmynet
+{
+    require xCAT::Table;
+    my $nodetocheck = shift;
+    if (scalar(@_))
+    {
+        $nodetocheck = shift;
+    }
+
+    my $nodeip = getNodeIPaddress( $nodetocheck );
+    if (!$nodeip)
+    {
+        return 0;
+    }
+    unless ($nodeip =~ /\d+\.\d+\.\d+\.\d+/)
+    {
+        #IPv6
+        if ( $^O eq 'aix')
+        {
+            my @subnets = get_subnet_aix();
+            for my $net_ent (@subnets)
+            {
+                if ($net_ent !~ /-/)
+                {
+                    #ipv4
+                    next;
+                }
+                my ($net, $interface, $mask, $flag) = split/-/ , $net_ent;
+                if (xCAT::NetworkUtils->ishostinsubnet($nodeip, $mask, $net))
+                {
+                    return 1;
+                }
+            }
+
+        } else {
+            my @v6routes = split /\n/,`ip -6 route`;
+            foreach (@v6routes) {
+                if (/via/ or /^unreachable/ or /^fe80::\/64/) {
+                  #only count local ones, remote ones can be caught in next loop
+                   #also, link-local would be a pitfall, 
+                    #since more context than address is
+                     #needed to determine locality
+                    next;
+                }
+                s/ .*//; #remove all after the space
+                if (xCAT::NetworkUtils->ishostinsubnet($nodeip,'',$_)) { #bank on CIDR support
+                    return 1;
+                }
+            }
+        }
+        my $nettab=xCAT::Table->new("networks");
+        my @vnets = $nettab->getAllAttribs('net','mgtifname','mask');
+        foreach (@vnets) {
+            if ((defined $_->{mgtifname}) && ($_->{mgtifname} eq '!remote!'))
+            {
+                if (xCAT::NetworkUtils->ishostinsubnet($nodeip, $_->{mask}, $_->{net}))
+                {
+                    return 1;
+                }
+            }
+        }
+        return 0;
+    }
+    my $noden = unpack("N", inet_aton($nodeip));
+    my @nets;
+    if ($utildata->{nodeonmynetdata} and $utildata->{nodeonmynetdata}->{pid} == $$) {
+        @nets = @{$utildata->{nodeonmynetdata}->{nets}};
+    } else {
+        if ( $^O eq 'aix')
+        {
+            my @subnets = get_subnet_aix();
+            for my $net_ent (@subnets)
+            {
+                if ($net_ent =~ /-/) 
+                {
+                    #ipv6
+                    next;
+                }
+                my @ents = split /:/ , $net_ent;
+                push @nets, $ents[0] . '/' . $ents[2] . ' dev ' . $ents[1];
+            }
+
+        }
+        else
+        {
+            @nets = split /\n/, `/sbin/ip route`;
+        }
+        my $nettab=xCAT::Table->new("networks");
+        my @vnets = $nettab->getAllAttribs('net','mgtifname','mask');
+        foreach (@vnets) {
+            if ((defined $_->{mgtifname}) && ($_->{mgtifname} eq '!remote!'))
+            { #global scoped network
+                my $curm = unpack("N", inet_aton($_->{mask}));
+                my $bits=32;
+                until ($curm & 1)  {
+                    $bits--;
+                    $curm=$curm>>1;
+                }
+                push @nets,$_->{'net'}."/".$bits." dev remote";
+            }
+        }
+        $utildata->{nodeonmynetdata}->{pid}=$$;
+        $utildata->{nodeonmynetdata}->{nets} = \@nets;
+    }
+    foreach (@nets)
+    {
+        my @elems = split /\s+/;
+        unless ($elems[1] =~ /dev/)
+        {
+            next;
+        }
+        (my $curnet, my $maskbits) = split /\//, $elems[0];
+        my $curmask = 2**$maskbits - 1 << (32 - $maskbits);
+        my $curn = unpack("N", inet_aton($curnet));
+        if (($noden & $curmask) == $curn)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   getNodeIPaddress
+    Arguments:
+       Node name  only one at a time 
+    Returns: ip address(s) 
+    Globals:
+        none
+    Error:
+        none
+    Example:   my $c1 = xCAT::NetworkUtils::getNodeIPaddress($nodetocheck);
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub getNodeIPaddress 
+{
+    require xCAT::Table;
+    my $nodetocheck = shift;
+    my $port        = shift;
+    my $nodeip;
+
+    $nodeip = xCAT::NetworkUtils->getipaddr($nodetocheck);
+    if (!$nodeip)
+    {
+        my $hoststab = xCAT::Table->new( 'hosts');
+        my $ent = $hoststab->getNodeAttribs( $nodetocheck, ['ip'] );
+        if ( $ent->{'ip'} ) {
+            $nodeip = $ent->{'ip'};
+        }
+    }
+            
+    if ( $nodeip ) {
+        return $nodeip;
+    } else {
+        return undef;
+    }
+}
+  
+   
+    
+#-------------------------------------------------------------------------------
+
+=head3   thishostisnot
+    returns  0 if host is not the same
+    Arguments:
+       hostname
+    Returns:
+    Globals:
+        none
+    Error:
+        none
+    Example:
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub thishostisnot
+{
+    my $comparison = shift;
+    if (scalar(@_))
+    {
+        $comparison = shift;
+    }
+
+    my @ips;
+    if ( $^O eq 'aix')
+    {
+        @ips = split /\n/, `/usr/sbin/ifconfig -a`;
+    }
+    else
+    {
+        @ips = split /\n/, `/sbin/ip addr`;
+    }
+    my $comp = xCAT::NetworkUtils->getipaddr($comparison);
+    if ($comp)
+    {
+        foreach (@ips)
+        {
+            if (/^\s*inet.?\s+/)
+            {
+                my @ents = split(/\s+/);
+                my $ip   = $ents[2];
+                $ip =~ s/\/.*//;
+                $ip =~ s/\%.*//;
+                if ($ip eq $comp)
+                {
+                    return 0;
+                }
+            }
+        }
+    }
+    return 1;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 gethost_ips  (AIX and Linux)
+     Will use ifconfig to determine all possible ip addresses for the
+	 host it is running on and then gethostbyaddr to get all possible hostnames
+
+     input:
+	 output: array of ipaddress(s)  and hostnames
+	 example:  @ips=xCAT::NetworkUtils->gethost_ips();
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub gethost_ips
+{
+    my ($class) = @_;
+    my $cmd;
+    my @ipaddress;
+    $cmd = "ifconfig" . " -a";
+    $cmd = $cmd . "| grep \"inet\"";
+    my @result = xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message("S", "Error from $cmd\n");
+        exit $::RUNCMD_RC;
+    }
+    foreach my $addr (@result)
+    {
+        my @ip;
+        if (xCAT::Utils->isLinux())
+        {
+            if ($addr =~ /inet6/)
+            {
+               #TODO, Linux ipv6 
+            }
+            else
+            {
+                my ($inet, $addr1, $Bcast, $Mask) = split(" ", $addr);
+                @ip = split(":", $addr1);
+                push @ipaddress, $ip[1];
+            }
+        }
+        else
+        {    #AIX
+            if ($addr =~ /inet6/)
+            {
+               $addr =~ /\s*inet6\s+([\da-fA-F:]+).*\/(\d+)/;
+               my $v6ip = $1;
+               my $v6mask = $2;
+               if ($v6ip)
+               {
+                   push @ipaddress, $v6ip;
+               }
+            }
+            else
+            {
+                my ($inet, $addr1, $netmask, $mask1, $Bcast, $bcastaddr) =
+                  split(" ", $addr);
+                push @ipaddress, $addr1;
+            }
+
+        }
+    }
+    my @names = @ipaddress;
+    foreach my $ipaddr (@names)
+    {
+        my $hostname = xCAT::NetworkUtils->gethostname($ipaddr);
+        if ($hostname)
+        {
+            my @shorthost = split(/\./, $hostname);
+            push @ipaddress, $shorthost[0];
+        }
+    }
+
+    return @ipaddress;
+}
+#-------------------------------------------------------------------------------
+
+=head3 get_subnet_aix 
+    Description:
+        To get present subnet configuration by parsing the output of 'netstat'. Only designed for AIX.
+    Arguments:
+        None
+    Returns:
+        @aix_nrn : An array with entries in format "net:nic:netmask:flag". Following is an example entry:
+            9.114.47.224:en0:27:U
+    Globals:
+        none 
+    Error:
+        none
+    Example:
+         my @nrn =xCAT::NetworkUtils::get_subnet_aix
+    Comments:
+        none
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_subnet_aix
+{
+    my @netstat_res = `/usr/bin/netstat -rn`;
+    chomp @netstat_res;
+    my @aix_nrn;
+    for my $entry ( @netstat_res)
+    {
+#We need to find entries like:
+#Destination        Gateway           Flags   Refs     Use  If   Exp  Groups
+#9.114.47.192/27    9.114.47.205      U         1         1 en0
+#4000::/64          link#4            UCX       1         0 en2      -      - 
+        my ( $net, $netmask, $flag, $nic);
+        if ( $entry =~ /^\s*([\d\.]+)\/(\d+)\s+[\d\.]+\s+(\w+)\s+\d+\s+\d+\s(\w+)/)
+        {
+            ( $net, $netmask, $flag, $nic) = ($1,$2,$3,$4);
+            my @dotsec = split /\./, $net;
+            for ( my $i = 4; $i > scalar(@dotsec); $i--)
+            {
+                $net .= '.0';
+            }
+            push @aix_nrn, "$net:$nic:$netmask:$flag" if ($net ne '127.0.0.0');
+        }
+        elsif ($entry =~ /^\s*([\dA-Fa-f\:]+)\/(\d+)\s+.*?\s+(\w+)\s+\d+\s+\d+\s(\w+)/)
+        {
+            #print "=====$entry====\n";
+            ( $net, $netmask, $flag, $nic) = ($1,$2,$3,$4);
+            # for ipv6, can not use : as the delimiter
+            push @aix_nrn, "$net-$nic-$netmask-$flag" if ($net ne '::')
+        }
+    }
+    return @aix_nrn;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 determinehostname  and ip address(s)
+
+  Used on the service node to figure out what hostname and ip address(s)
+  are valid names and addresses 
+  Input: None
+  Output: ipaddress(s),nodename
+=cut
+
+#-----------------------------------------------------------------------------
+sub determinehostname
+{
+    my $hostname;
+    my $hostnamecmd = "/bin/hostname";
+    my @thostname = xCAT::Utils->runcmd($hostnamecmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {    # could not get hostname
+        xCAT::MsgUtils->message("S",
+                              "Error $::RUNCMD_RC from $hostnamecmd command\n");
+        exit $::RUNCMD_RC;
+    }
+    $hostname = $thostname[0];
+
+    #get all potentially valid abbreviations, and pick the one that is ok
+    #by 'noderange'
+    my @hostnamecandidates;
+    my $nodename;
+    while ($hostname =~ /\./) {
+        push @hostnamecandidates,$hostname;
+        $hostname =~ s/\.[^\.]*//;
+    }
+    push @hostnamecandidates,$hostname;
+    my $checkhostnames = join(',',@hostnamecandidates);
+    my @validnodenames = xCAT::NodeRange::noderange($checkhostnames);
+    unless (scalar @validnodenames) { #If the node in question is not in table, take output literrally.
+        push @validnodenames,$hostnamecandidates[0];
+    }
+    #now, noderange doesn't guarantee the order, so we search the preference order, most to least specific.
+    foreach my $host (@hostnamecandidates) {
+        if (grep /^$host$/,@validnodenames) {
+            $nodename = $host;
+            last;
+        }
+    }
+    my @ips       = xCAT::NetworkUtils->gethost_ips;
+    my @hostinfo  = (@ips, $nodename);
+
+    return @hostinfo;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 toIP 
+
+ IPv4 function to convert hostname to IP address
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub toIP
+{
+
+    if (($_[0] =~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/) || ($_[0] =~ /:/))
+    {
+        return ([0, $_[0]]);
+    }
+    my $ip = xCAT::NetworkUtils->getipaddr($_[0]);
+    if (!$ip)
+    {
+        return ([1, "Cannot Resolve: $_[0]\n"]);
+    }
+    return ([0, $ip]);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    validate_ip
+    Validate list of IPs
+    Arguments:
+        List of IPs
+    Returns:
+        1 - Invalid IP address in the list
+        0 - IP addresses are all valid
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        if (xCAT::NetworkUtils->validate_ip($IP)) {}
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub validate_ip
+{
+    my ($class, @IPs) = @_;
+    foreach (@IPs) {
+        my $ip = $_;
+        #TODO need more check for IPv6 address
+        if ($ip =~ /:/)
+        {
+            return([0]);
+        }
+        ###################################
+        # Length is 4 for IPv4 addresses
+        ###################################
+        my (@octets) = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+        if ( scalar(@octets) != 4 ) {
+            return( [1,"Invalid IP address1: $ip"] );
+        }
+        foreach my $octet ( @octets ) {
+            if (( $octet < 0 ) or ( $octet > 255 )) {
+                return( [1,"Invalid IP address2: $ip"] );
+            }
+        }
+    }
+    return([0]);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   getFacingIP
+       Gets the ip address of the adapter of the localhost that is facing the
+    the given node.
+       Assume it is the same as my_ip_facing...
+    Arguments:
+       The name of the node that is facing the localhost.
+    Returns:
+       The ip address of the adapter that faces the node.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub getFacingIP
+{
+    my ($class, $node) = @_;
+    my $ip;
+    my $cmd;
+    my @ipaddress;
+
+    my $nodeip = inet_ntoa(inet_aton($node));
+    unless ($nodeip =~ /\d+\.\d+\.\d+\.\d+/)
+    {
+        return 0;    #Not supporting IPv6 here IPV6TODO
+    }
+
+    $cmd = "ifconfig" . " -a";
+    $cmd = $cmd . "| grep \"inet \"";
+    my @result = xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message("S", "Error from $cmd\n");
+        exit $::RUNCMD_RC;
+    }
+
+    # split node address
+    my ($n1, $n2, $n3, $n4) = split('\.', $nodeip);
+
+    foreach my $addr (@result)
+    {
+        my $ip;
+        my $mask;
+        if (xCAT::Utils->isLinux())
+        {
+            my ($inet, $addr1, $Bcast, $Mask) = split(" ", $addr);
+            if ((!$addr1) || (!$Mask)) { next; }
+            my @ips   = split(":", $addr1);
+            my @masks = split(":", $Mask);
+            $ip   = $ips[1];
+            $mask = $masks[1];
+        }
+        else
+        {    #AIX
+            my ($inet, $addr1, $netmask, $mask1, $Bcast, $bcastaddr) =
+              split(" ", $addr);
+            if ((!$addr1) && (!$mask1)) { next; }
+            $ip = $addr1;
+            $mask1 =~ s/0x//;
+            $mask =
+              `printf "%d.%d.%d.%d" \$(echo "$mask1" | sed 's/../0x& /g')`;
+        }
+
+        if ($ip && $mask)
+        {
+
+            # split interface IP
+            my ($h1, $h2, $h3, $h4) = split('\.', $ip);
+
+            # split mask
+            my ($m1, $m2, $m3, $m4) = split('\.', $mask);
+
+            # AND this interface IP with the netmask of the network
+            my $a1 = ((int $h1) & (int $m1));
+            my $a2 = ((int $h2) & (int $m2));
+            my $a3 = ((int $h3) & (int $m3));
+            my $a4 = ((int $h4) & (int $m4));
+
+            # AND node IP with the netmask of the network
+            my $b1 = ((int $n1) & (int $m1));
+            my $b2 = ((int $n2) & (int $m2));
+            my $b3 = ((int $n3) & (int $m3));
+            my $b4 = ((int $n4) & (int $m4));
+
+            if (($b1 == $a1) && ($b2 == $a2) && ($b3 == $a3) && ($b4 == $a4))
+            {
+                return $ip;
+            }
+        }
+    }
+
+    xCAT::MsgUtils->message("S", "Cannot find master for the node $node\n");
+    return 0;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    isIpaddr
+
+    returns 1 if parameter is has a valid IP address form.
+
+    Arguments:
+        dot qulaified IP address: e.g. 1.2.3.4
+    Returns:
+        1 - if legal IP address
+        0 - if not legal IP address.
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         if ($ipAddr) { blah; }
+    Comments:
+        Doesn't test if the IP address is on the network,
+        just tests its form.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub isIpaddr
+{
+    my $addr = shift;
+    if (($addr) && ($addr =~ /xCAT::NetworkUtils/))
+    {
+        $addr = shift;
+    }
+
+    unless ( $addr )
+    {
+        return 0;
+    }
+    #print "addr=$addr\n";
+    if ($addr !~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
+    {
+        return 0;
+    }
+
+    if ($1 > 255 || $1 == 0 || $2 > 255 || $3 > 255 || $4 > 255)
+    {
+        return 0;
+    }
+    else
+    {
+        return 1;
+    }
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   getNodeNetworkCfg 
+    Description:
+        Get node network configuration, including "IP, hostname(the nodename),and netmask" by this node's name. 
+
+    Arguments:
+        node: the nodename
+    Returns:
+        Return an array, which contains (IP,hostname,gateway,netmask').
+        undef - Failed to get the network configuration info
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my ($ip,$host,undef,$mask) = xCAT::NetworkUtils::getNodeNetworkCfg('node1');
+    Comments:
+        Presently gateway is always blank. Need to be improved.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub getNodeNetworkCfg
+{
+    my $node = shift;
+
+    my $nets = xCAT::NetworkUtils::my_nets();
+    my $ip   = xCAT::NetworkUtils->getipaddr($node);
+    my $mask = undef;
+    for my $net (keys %$nets)
+    {
+        my $netname;
+        ($netname,$mask) = split /\//, $net;
+        last if ( xCAT::NetworkUtils::isInSameSubnet( $netname, $ip, $mask, 1));
+    }
+    return ($ip, $node, undef, xCAT::NetworkUtils::formatNetmask($mask,1,0));
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   get_hdwr_ip 
+    Description:
+        Get hardware(CEC, BPA) IP from the hosts table, and then /etc/hosts. 
+
+    Arguments:
+        node: the nodename(cec, or bpa)
+    Returns:
+        Return the node IP 
+        -1  - Failed to get the IP.
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my $ip = xCAT::NetworkUtils::get_hdwr_ip('node1');
+    Comments:
+        Used in FSPpower FSPflash, FSPinv.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_hdwr_ip
+{
+    require xCAT::Table;
+    my $node = shift;
+    my $ip   = undef; 
+    my $Rc   = undef;
+
+    my $ip_tmp_res  = xCAT::NetworkUtils::toIP($node);
+    ($Rc, $ip) = @$ip_tmp_res;
+    if ( $Rc ) {
+        my $hosttab  = xCAT::Table->new( 'hosts' );
+        if ( $hosttab) {
+            my $node_ip_hash = $hosttab->getNodeAttribs( $node,[qw(ip)]);
+            $ip = $node_ip_hash->{ip};
+        }
+	
+    }
+     
+    if (!$ip) {
+        return undef;
+    }
+
+    return $ip;
 }
 1;

@@ -1,6 +1,7 @@
 package xCAT::Scope;
 use xCAT::Utils;
 use xCAT::Table;
+use xCAT::ServiceNodeUtils qw(getSNList);
 sub get_broadcast_scope {
    my $req = shift;
    if ($req =~ /xCAT::Scope/) {
@@ -10,8 +11,8 @@ sub get_broadcast_scope {
    if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
     #Exit if the packet has been preprocessed in its history
    my @requests = ({%$req}); #Start with a straight copy to reflect local instance
-   foreach (xCAT::Utils->getSNList()) {
-         if (xCAT::Utils->thishostisnot($_)) {
+   foreach (xCAT::ServiceNodeUtils->getSNList()) {
+         if (xCAT::NetworkUtils->thishostisnot($_)) {
             my $reqcopy = {%$req};
             $reqcopy->{'_xcatdest'} = $_;
             $reqcopy->{_xcatpreprocessed}->[0] = 1; 
@@ -24,7 +25,7 @@ sub get_broadcast_scope {
    #$sitetab->close;
    #if ($ent and $ent->{value}) {
    #   foreach (split /,/,$ent->{value}) {
-   #      if (xCAT::Utils->thishostisnot($_)) {
+   #      if (xCAT::NetworkUtils->thishostisnot($_)) {
    #         my $reqcopy = {%$req};
    #         $reqcopy->{'_xcatdest'} = $_;
    #         push @requests,$reqcopy;

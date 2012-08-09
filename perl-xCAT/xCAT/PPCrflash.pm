@@ -8,6 +8,8 @@ use xCAT::Usage;
 use xCAT::PPCinv;
 use xCAT::DSHCLI;
 use xCAT::Table;
+use xCAT::Utils;
+use xCAT::TableUtils;
 use Getopt::Long;
 use File::Spec;
 use POSIX qw(tmpnam);
@@ -320,7 +322,7 @@ sub preprocess_for_rflash {
     my $request      = shift;
     my $opt = shift;    
     my $callback = $request->{callback}; 
-    my $install_dir = xCAT::Utils->getInstallDir();
+    my $install_dir = xCAT::TableUtils->getInstallDir();
     my $packages_fw = "$install_dir/packages_fw";
     my $c = 0;
     my $packages_d;

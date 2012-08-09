@@ -11,7 +11,9 @@ use xCAT::Usage;
 use Socket;
 use xCAT::PPCdb; 
 use xCAT::MsgUtils qw(verbose_message);
-
+use xCAT::Utils;
+use xCAT::TableUtils;
+use xCAT::NetworkUtils;
 ##########################################
 # Globals
 ##########################################

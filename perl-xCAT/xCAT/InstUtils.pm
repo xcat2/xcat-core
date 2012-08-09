@@ -23,7 +23,7 @@ use File::Path;
 use strict;
 require xCAT::Schema;
 use xCAT::NetworkUtils;
-
+use xCAT::TableUtils;
 #require Data::Dumper;
 #use Data::Dumper;
 require xCAT::NodeRange;
@@ -67,10 +67,10 @@ sub getnimprime
     # the primary NIM master is either specified in the site table
     # or it is the xCAT management node.
 
-    my $nimprime = xCAT::Utils->get_site_Master();
+    my $nimprime = xCAT::TableUtils->get_site_Master();
     #my $sitetab  = xCAT::Table->new('site');
     #(my $et) = $sitetab->getAttribs({key => "nimprime"}, 'value');
-    my @nimprimes = xCAT::Utils->get_site_attribute("nimprime");
+    my @nimprimes = xCAT::TableUtils->get_site_attribute("nimprime");
     my $tmp = $nimprimes[0];
     if (defined($tmp))
     {
@@ -126,7 +126,7 @@ sub myxCATname
 		if (xCAT::Utils->isMN())
 		{
         	# read the site table, master attrib
-        	my $hostname = xCAT::Utils->get_site_Master();
+        	my $hostname = xCAT::TableUtils->get_site_Master();
         	if (($hostname =~ /\d+\.\d+\.\d+\.\d+/) || ($hostname =~ /:/))
         	{
             	$name = xCAT::NetworkUtils->gethostname($hostname);
@@ -750,11 +750,11 @@ sub get_server_nodes
         else
         {
             #  get ip facing node
-			$serv = xCAT::Utils->my_ip_facing($node);
+			$serv = xCAT::NetworkUtils->my_ip_facing($node);
         }
 		chomp $serv;
 
-		if (xCAT::Utils->validate_ip($serv)) {
+		if (xCAT::NetworkUtils->validate_ip($serv)) {
 			push (@{$servernodes{$serv}}, $node);
 		}
     }
@@ -1253,7 +1253,7 @@ sub dolitesetup
 
 	# add aixlitesetup to ..inst_root/aixlitesetup
 	# this will wind up in the root dir on the node ("/")
-	my $install_dir = xCAT::Utils->getInstallDir();
+	my $install_dir = xCAT::TableUtils->getInstallDir();
 	my $cpcmd = "/bin/cp $install_dir/postscripts/aixlitesetup $instrootloc/aixlitesetup; chmod +x $instrootloc/aixlitesetup";
 
 	my $out = xCAT::Utils->runcmd("$cpcmd", -1);

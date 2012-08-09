@@ -8,7 +8,7 @@ use xCAT::Usage;
 use xCAT::NodeRange;
 use xCAT::DBobjUtils;
 use xCAT::FSPUtils;
-
+use xCAT::TableUtils qw(get_site_Master);
 %::QUERY_ATTRS = (
 'savingstatus' => 1,
 'dsavingstatus' => 1,
@@ -251,7 +251,7 @@ sub renergy {
         if( !defined($fsps) ) {
             return ([[$node, "Failed to get the FSPs for the cec $hcphost.", -1]]);
         }
-        #my $hcp_ip = xCAT::Utils::getNodeIPaddress($hcphost);
+        #my $hcp_ip = xCAT::NetworkUtils::getNodeIPaddress($hcphost);
         my $hcp_ip = xCAT::FSPUtils::getIPaddress($request, $hw_type, $hcphost);
         if (!defined($hcp_ip) or ($hcp_ip == -3)) {
             return ([[$node, "Failed to get IP address for $hcphost.", -1]]);
@@ -264,7 +264,7 @@ sub renergy {
         }
     } else {
         # for the case that hcp is hmc or fsp
-        push @hcps_ip, xCAT::Utils::getNodeIPaddress($hcphost);
+        push @hcps_ip, xCAT::NetworkUtils::getNodeIPaddress($hcphost);
     }
 
     if (!$user || !$password) {
@@ -279,7 +279,7 @@ sub renergy {
     }
     $verbose = $tmpv;
 
-    my $master = xCAT::Utils->get_site_Master();
+    my $master = xCAT::TableUtils->get_site_Master();
     my $masterip = xCAT::NetworkUtils->getipaddr($master);
     if ($masterip =~ /:/) { #IPv6, needs fping6 support 
         if (!-x '/usr/bin/fping6')

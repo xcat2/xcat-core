@@ -6,6 +6,7 @@ use Getopt::Long;
 use xCAT::Usage;
 use xCAT::Utils;
 use xCAT::FSPUtils;
+use xCAT::TableUtils;
 use xCAT::PPCcfg;
 #use Data::Dumper;
 #use xCAT::PPCcli;
@@ -224,7 +225,7 @@ sub parse_args {
         my $ppc_cmds_string = &array_to_string(\@ppc_cmds);
         return (usage("Invalid command array: $fsp_cmds_string can not execute with $ppc_cmds_string."));
     } elsif(scalar(@ppc_cmds)) {
-        my @enableASMI = xCAT::Utils->get_site_attribute("enableASMI");
+        my @enableASMI = xCAT::TableUtils->get_site_attribute("enableASMI");
         if (defined($enableASMI[0])) {
             $enableASMI[0] =~ tr/a-z/A-Z/;    # convert to upper
             if (($enableASMI[0] eq "1") || ($enableASMI[0] eq "YES")) {
@@ -871,8 +872,8 @@ sub fsp_api_passwd {
     ############################
     # Get IP address
     ############################
-    #$fsp_ip = xCAT::Utils::get_hdwr_ip($fsp_name);
-    #$fsp_ip = xCAT::Utils::getNodeIPaddress($fsp_name);
+    #$fsp_ip = xCAT::NetworkUtils::get_hdwr_ip($fsp_name);
+    #$fsp_ip = xCAT::NetworkUtils::getNodeIPaddress($fsp_name);
     #$fsp_ip = xCAT::Utils::getIPaddress($fsp_name);
     $fsp_ip = xCAT::FSPUtils::getIPaddress($request, $$attrs[4], $fsp_name );
     if(!defined($fsp_ip) or ($fsp_ip == -3)) {

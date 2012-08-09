@@ -5,7 +5,7 @@ package xCAT::RSYNC;
 
 # cannot use strict
 use base xCAT::DSHRemoteShell;
-
+use xCAT::TableUtils qw(get_site_attribute);
 # Determine if OS is AIX or Linux
 # Configure standard locations of commands based on OS
 
@@ -77,7 +77,7 @@ sub remote_copy_command
     my $usersh=0;
     if ($^O eq 'aix')
     {
-      my @useSSH = xCAT::Utils->get_site_attribute("useSSHonAIX");
+      my @useSSH = xCAT::TableUtils->get_site_attribute("useSSHonAIX");
       if (defined($useSSH[0])) { 
         $useSSH[0] =~ tr/a-z/A-Z/;    # convert to upper
         if (($useSSH[0] eq "0") || ($useSSH[0] eq "NO"))

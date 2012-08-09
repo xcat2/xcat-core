@@ -8,6 +8,7 @@ use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
 use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::MsgUtils;
 use xCAT::LparNetbootExp;
 
@@ -469,7 +470,7 @@ sub rnetboot {
 
     #my $sitetab  = xCAT::Table->new('site');
     #my $vcon = $sitetab->getAttribs({key => "conserverondemand"}, 'value');
-    my @vcons = xCAT::Utils->get_site_attribute("conserverondemand");
+    my @vcons = xCAT::TableUtils->get_site_attribute("conserverondemand");
     my $vcon = $vcons[0]; 
     #if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
     if ( defined($vcon) and $vcon eq "yes" ) {

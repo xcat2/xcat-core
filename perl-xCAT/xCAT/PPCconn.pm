@@ -5,6 +5,7 @@ use strict;
 use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
+use xCAT::NetworkUtils;
 use xCAT::DBobjUtils;
 use xCAT::FSPUtils;
 use xCAT::MsgUtils qw(verbose_message);
@@ -506,8 +507,8 @@ sub mkhwconn
             for my $nn ( @newnodes )
             {
                 my $node_ip;
-                unless ( xCAT::Utils->isIpaddr($nn) ) {
-                    $node_ip = xCAT::Utils::getNodeIPaddress( $nn );
+                unless ( xCAT::NetworkUtils->isIpaddr($nn) ) {
+                    $node_ip = xCAT::NetworkUtils::getNodeIPaddress( $nn );
                 } else {
                     $node_ip = $nn;
                 }
@@ -642,7 +643,7 @@ sub lshwconn
                 {
                     #my $node_ip_hash = $hosttab->getNodeAttribs( $node_name,[qw(ip)]);
                     #$node_ip = $node_ip_hash->{ip};
-                    #$node_ip = xCAT::Utils::getNodeIPaddress( $node_name );
+                    #$node_ip = xCAT::NetworkUtils::getNodeIPaddress( $node_name );
 		    my $d = $node_hash->{$node_name};
                     $node_ip = xCAT::FSPUtils::getIPaddress($request, $$d[4], $node_name );
                 }

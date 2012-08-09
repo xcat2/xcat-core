@@ -8,6 +8,7 @@ use strict;
 use xCAT::Table;
 use xCAT::Utils;
 use xCAT::MsgUtils;
+use xCAT::TableUtils;
 use IO::Select;
 use IO::Handle;
 use Sys::Syslog;
@@ -167,7 +168,7 @@ sub rvlan {
     my $community = "public";
     #$self->{sitetab} = xCAT::Table->new('site');
     #my $tmp = $self->{sitetab}->getAttribs({key=>'snmpc'},'value');
-    my @snmpcs =  xCAT::Utils->get_site_attribute("snmpc");
+    my @snmpcs =  xCAT::TableUtils->get_site_attribute("snmpc");
     my $tmp = $snmpcs[0];
     if ( defined($tmp) ) { $community = $tmp }
     my %args = @_;
@@ -292,7 +293,7 @@ sub refresh_table {
   #$self->{sitetab} = xCAT::Table->new('site');
   #my $tmp = $self->{sitetab}->getAttribs({key=>'snmpc'},'value');
   #if ($tmp and $tmp->{value}) { $community = $tmp->{value} }
-  my @snmpcs =  xCAT::Utils->get_site_attribute("snmpc");
+  my @snmpcs =  xCAT::TableUtils->get_site_attribute("snmpc");
   my $tmp = $snmpcs[0];
   if ( defined($tmp) ) { $community = $tmp }
   else { #Would warn here.. 

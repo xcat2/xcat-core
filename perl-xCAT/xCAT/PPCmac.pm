@@ -6,6 +6,9 @@ use strict;
 use Getopt::Long;
 use Data::Dumper;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
+use xCAT::Utils;
+use xCAT::TableUtils;
+use xCAT::ServiceNodeUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils qw(verbose_message);
 use xCAT::LparNetbootExp;
@@ -90,9 +93,9 @@ sub parse_args {
         if ( exists($opt{S}) ) {
             push @network, $_;
         } else {
-			$server = xCAT::Utils->getSNformattedhash( $node, "xcat", "node", "primary" );
+	    $server = xCAT::ServiceNodeUtils->getSNformattedhash( $node, "xcat", "node", "primary" );
             foreach my $key ( keys %$server ) {
-                my $valid_ip = xCAT::Utils->validate_ip( $key );
+                my $valid_ip = xCAT::NetworkUtils->validate_ip( $key );
                 if ( $valid_ip ) {
                     ###################################################
                     # Service node is returned as hostname, Convert 
@@ -197,7 +200,7 @@ sub parse_args {
             if ( scalar(@network) != 3 ) {
                 return( usage() );
             }
-            my $result = xCAT::Utils->validate_ip( $opt{C}, $opt{G}, $opt{S} );
+            my $result = xCAT::NetworkUtils->validate_ip( $opt{C}, $opt{G}, $opt{S} );
             if ( @$result[0] ) {
                 return(usage( @$result[1] ));
             }
@@ -683,7 +686,7 @@ sub getmacs {
         #my $vcon = $sitetab->getAttribs({key => "conserverondemand"}, 'value');
         #there may be something wrong with the conserverondemand attribute. 
         # Currently, the code is not used. So not fix this time. Just keep it here.
-        my @vcons = xCAT::Utils->get_site_attribute("conserverondemand");
+        my @vcons = xCAT::TableUtils->get_site_attribute("conserverondemand");
         my $vcon = $vcons[0];
         #if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
         if ( defined($vcon) and $vcon eq "yes" ) {
