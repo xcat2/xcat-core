@@ -5,6 +5,7 @@ BEGIN
 }
 use lib "$::XCATROOT/lib/perl";
 use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::SvrUtils;
 use xCAT::Table;
 #use Data::Dumper;
@@ -41,7 +42,7 @@ sub process_request {
 
    #now handle genimage
    my $installroot = "/install";
-   $installroot = xCAT::Utils->getInstallDir();
+   $installroot = xCAT::TableUtils->getInstallDir();
    my $prinic; #TODO be flexible on node primary nic
    my $othernics; #TODO be flexible on node primary nic
    my $netdriver;

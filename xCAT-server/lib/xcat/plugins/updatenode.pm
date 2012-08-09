@@ -15,6 +15,8 @@ use Data::Dumper;
 use xCAT::Utils;
 use xCAT::SvrUtils;
 use xCAT::Usage;
+use xCAT::TableUtils;
+use xCAT::ServiceNodeUtils;
 use xCAT::NetworkUtils;
 use xCAT::InstUtils;
 use Getopt::Long;
@@ -170,7 +172,7 @@ sub preprocess_updatenode
     my $args     = $request->{arg};
     my @requests = ();
 
-    my $installdir = xCAT::Utils->getInstallDir();
+    my $installdir = xCAT::TableUtils->getInstallDir();
 
     # subroutine to display the usage
     sub updatenode_usage
@@ -452,7 +454,7 @@ sub preprocess_updatenode
     }
 
 
-    my $sn = xCAT::Utils->get_ServiceNode(\@nodes, "xcat", "MN");
+    my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@nodes, "xcat", "MN");
     if ($::ERROR_RC)
     {
         my $rsp;
@@ -466,7 +468,7 @@ sub preprocess_updatenode
 
     # for security update, we need to handle the service node first
     my @good_sns = ();
-    my @MNip   = xCAT::Utils->determinehostname;
+    my @MNip   = xCAT::NetworkUtils->determinehostname;
     my @sns = ();
     foreach my $s (keys %$sn) {
 	my @tmp_a=split(',',$s);
@@ -701,7 +703,7 @@ sub updatenode
 
     # Lookup Install dir location at this Mangment Node.
     # XXX: Suppose that compute nodes has the same Install dir location.
-    my $installdir = xCAT::Utils->getInstallDir();
+    my $installdir = xCAT::TableUtils->getInstallDir();
 
     #if the postscripts directory exists then make sure it is 
     # world readable and executable by root 
@@ -1402,7 +1404,7 @@ sub doAIXcopy
     #
 
     # get a list of service nodes for this node list
-    my $sn = xCAT::Utils->get_ServiceNode(\@nodelist, "xcat", "MN");
+    my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@nodelist, "xcat", "MN");
     if ($::ERROR_RC)
     {
         my $rsp;
@@ -2032,7 +2034,7 @@ sub updateAIXsoftware
 			# make sure pkg dir is exported
             if (scalar(@pkglist)) {
 				my $ecmd;
-                my @nfsv4 = xCAT::Utils->get_site_attribute("useNFSv4onAIX");
+                my @nfsv4 = xCAT::TableUtils->get_site_attribute("useNFSv4onAIX");
                 if ($nfsv4[0] && ($nfsv4[0] =~ /1|Yes|yes|YES|Y|y/))
                 {
                     $ecmd = qq~exportfs -i -o vers=4 $pkgdir~;
@@ -2089,7 +2091,7 @@ sub updateAIXsoftware
 
                 	# mount source dir to node
 					my $mcmd;
-					my @nfsv4 = xCAT::Utils->get_site_attribute("useNFSv4onAIX");
+					my @nfsv4 = xCAT::TableUtils->get_site_attribute("useNFSv4onAIX");
 					if ($nfsv4[0] && ($nfsv4[0] =~ /1|Yes|yes|YES|Y|y/))
 					{
 						$mcmd   = qq~mkdir -m 644 -p /xcatmnt; mount -o vers=4 $serv:$pkgdir /xcatmnt~;
@@ -2520,10 +2522,10 @@ sub updateOS {
 	my $rsp; 
 	
 	# Get install directory
-	my $installDIR = xCAT::Utils->getInstallDir();
+	my $installDIR = xCAT::TableUtils->getInstallDir();
 		
 	# Get HTTP server
-	my $http = xCAT::Utils->my_ip_facing($node);
+	my $http = xCAT::NetworkUtils->my_ip_facing($node);
 	if ( !$http ) {
 		push @{$rsp->{data}}, "$node: (Error) Missing HTTP server";
 		xCAT::MsgUtils->message("I", $rsp, $callback);
@@ -2713,7 +2715,7 @@ sub updatenodeappstat
         my $appstat = $args[0];
         my ($apps, $newstatus) = split(/=/,$appstat);
 
-        xCAT::Utils->setAppStatus(\@nodes, $apps, $newstatus);
+        xCAT::TableUtils->setAppStatus(\@nodes, $apps, $newstatus);
 
     }   
     

@@ -16,6 +16,7 @@ use Data::Dumper;   # for debug purpose
 use Getopt::Long;
 use xCAT::MsgUtils;
 use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::SvrUtils;
 use xCAT::Table;
 use File::Path qw(mkpath);
@@ -40,7 +41,7 @@ sub process_request {
         $node = $request->{node}->[0];
     }
 
-    $installroot = xCAT::Utils->getInstallDir();
+    $installroot = xCAT::TableUtils->getInstallDir();
     @ARGV = @{$request->{arg}} if (defined $request->{arg});
     my $argc = scalar @ARGV;
 

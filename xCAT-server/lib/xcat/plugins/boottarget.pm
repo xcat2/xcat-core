@@ -11,6 +11,7 @@ use Thread qw(yield);
 use POSIX qw(WNOHANG nice);
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::MsgUtils;
 use xCAT::Template;
 #use xCAT::Postage;
@@ -46,7 +47,7 @@ sub preprocess_request
     #my $stab = xCAT::Table->new('site');
     #my $sent;
     #($sent) = $stab->getAttribs({key => 'sharedtftp'}, 'value');
-    my @entries =  xCAT::Utils->get_site_attribute("sharedtftp");
+    my @entries =  xCAT::TableUtils->get_site_attribute("sharedtftp");
     my $site_entry = $entries[0];
     unless (   defined($site_entry)
             and ( $site_entry =~ /no/i or $site_entry =~ /0/))
@@ -116,8 +117,8 @@ sub mknetboot
     my @nodes    = @{$req->{node}};
     my $ostab    = xCAT::Table->new('nodetype');
  
-    my $installroot = xCAT::Utils->getInstallDir();
-    my $tftpdir = xCAT::Utils->getTftpDir();
+    my $installroot = xCAT::TableUtils->getInstallDir();
+    my $tftpdir = xCAT::TableUtils->getTftpDir();
 
     my %donetftp=();
     my %oents = %{$ostab->getNodesAttribs(\@nodes,[qw(os arch profile)])};

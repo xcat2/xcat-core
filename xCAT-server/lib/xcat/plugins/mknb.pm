@@ -2,6 +2,7 @@ package xCAT_plugin::mknb;
 use strict;
 use File::Temp qw(tempdir);
 use xCAT::Utils;
+use xCAT::TableUtils;
 use File::Path;
 use File::Copy;
 
@@ -21,25 +22,25 @@ sub process_request {
    my $xcatdport = 3001;
    #if ($sitetab) {
       #my $portent = $sitetab->getAttribs({key=>'defserialport'},'value');
-      my @entries =  xCAT::Utils->get_site_attribute("defserialport");
+      my @entries =  xCAT::TableUtils->get_site_attribute("defserialport");
       my $t_entry = $entries[0];
       if ( defined($t_entry) ) {
          $serialport=$t_entry;
       }
       #$portent = $sitetab->getAttribs({key=>'defserialspeed'},'value');
-      @entries =  xCAT::Utils->get_site_attribute("defserialspeed");
+      @entries =  xCAT::TableUtils->get_site_attribute("defserialspeed");
       $t_entry = $entries[0];
       if ( defined($t_entry) ) {
          $serialspeed=$t_entry;
       }
       #$portent = $sitetab->getAttribs({key=>'defserialflow'},'value');
-      @entries =  xCAT::Utils->get_site_attribute("defserialflow");
+      @entries =  xCAT::TableUtils->get_site_attribute("defserialflow");
       $t_entry = $entries[0];
       if ( defined($t_entry) ) {
          $serialflow=$t_entry;
       }
       #$portent = $sitetab->getAttribs({key=>'xcatdport'},'value');
-      @entries =  xCAT::Utils->get_site_attribute("xcatdport");
+      @entries =  xCAT::TableUtils->get_site_attribute("xcatdport");
       $t_entry = $entries[0];
       if ( defined($t_entry) ) {
          $xcatdport=$t_entry;
@@ -47,7 +48,7 @@ sub process_request {
       #$sitetab->close;
    #}
 
-   my $tftpdir = xCAT::Utils->getTftpDir();
+   my $tftpdir = xCAT::TableUtils->getTftpDir();
    my $arch = $request->{arg}->[0];
    if (! $arch) {
       $callback->({error=>"Need to specify architecture (x86, x86_64 or ppc64)"},{errorcode=>[1]});
@@ -140,7 +141,7 @@ sub process_request {
        system("cd $tempdir; find . | cpio -o -H newc | gzip -9 > $tftpdir/xcat/nbfs.$arch.gz");
    }
    system ("rm -rf $tempdir");
-   my $hexnets = xCAT::Utils->my_hexnets();
+   my $hexnets = xCAT::NetworkUtils->my_hexnets();
    my $normnets = xCAT::Utils->my_nets();
    my $consolecmdline;
    if (defined($serialport) and $serialspeed) {

@@ -30,6 +30,7 @@ use Thread qw(yield);
 use POSIX qw(WNOHANG nice);
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::MsgUtils;
 use xCAT::SvrUtils;
 #use Data::Dumper;
@@ -64,7 +65,7 @@ sub preprocess_request
     #my $stab = xCAT::Table->new('site');
     #my $sent;
     #($sent) = $stab->getAttribs({key => 'sharedtftp'}, 'value');
-    my @entries =  xCAT::Utils->get_site_attribute("sharedtftp");
+    my @entries =  xCAT::TableUtils->get_site_attribute("sharedtftp");
     my $t_entry = $entries[0];
     unless (  defined($t_entry)
             and ($t_entry =~ /no/i or $t_entry =~ /0/))
@@ -140,15 +141,15 @@ sub mknetboot
     my $ostab    = xCAT::Table->new('nodetype');
     #my $sitetab  = xCAT::Table->new('site');
 
-    my $installroot = xCAT::Utils->getInstallDir();
-    my $tftpdir = xCAT::Utils->getTftpDir();
+    my $installroot = xCAT::TableUtils->getInstallDir();
+    my $tftpdir = xCAT::TableUtils->getTftpDir();
 
     my $xcatiport;
 
     #if ($sitetab)
     #{
         #(my $ref) = $sitetab->getAttribs({key => 'xcatiport'}, 'value');
-        my @entries =  xCAT::Utils->get_site_attribute("xcatiport");
+        my @entries =  xCAT::TableUtils->get_site_attribute("xcatiport");
         my $t_entry = $entries[0];
         if ( defined($t_entry) )
         {
@@ -408,7 +409,7 @@ ENDOFAWK
                       );
     }
 
-    #my $rc = xCAT::Utils->create_postscripts_tar();
+    #my $rc = xCAT::TableUtils->create_postscripts_tar();
     #if ( $rc != 0 ) {
     #	xCAT::MsgUtils->message( "S", "Error creating postscripts tar file." );
     #}

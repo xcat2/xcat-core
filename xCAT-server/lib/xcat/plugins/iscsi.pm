@@ -1,6 +1,7 @@
 package xCAT_plugin::iscsi;
 use strict;
 use xCAT::Table;
+use xCAT::TableUtils;
 use Socket;
 use File::Path;
 use File::Basename;
@@ -71,12 +72,12 @@ sub process_request {
    #}
    my $domain;
    #(my $ipent) = $sitetab->getAttribs({key=>'domain'},'value');
-   my @entries =  xCAT::Utils->get_site_attribute("domain");
+   my @entries =  xCAT::TableUtils->get_site_attribute("domain");
    my $t_entry = $entries[0];
    if ( defined($t_entry) ) { $domain = $t_entry; }
    #($ipent) = $sitetab->getAttribs({key=>'iscsidir'},'value');
    my $iscsiprefix;
-   my @entries =  xCAT::Utils->get_site_attribute("iscsidir");
+   my @entries =  xCAT::TableUtils->get_site_attribute("iscsidir");
    my $t_entry = $entries[0];
    if ( defined($t_entry) ) {
       $iscsiprefix = $t_entry;

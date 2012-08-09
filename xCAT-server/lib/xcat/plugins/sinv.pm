@@ -15,7 +15,8 @@ package xCAT_plugin::sinv;
 use strict;
 
 require xCAT::Utils;
-
+require xCAT::TableUtils;
+require xCAT::ServiceNodeUtils;
 require xCAT::MsgUtils;
 require xCAT::SINV;
 use Getopt::Long;
@@ -86,7 +87,7 @@ sub handled_commands
 #  if ($nodes) {
 #    # find service nodes for requested nodes
 #    # build an individual request for each service node
-#    $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
+#    $sn = xCAT::ServiceNodeUtils->get_ServiceNode($nodes, $service, "MN");
 #
 #    # build each request for each service node
 #

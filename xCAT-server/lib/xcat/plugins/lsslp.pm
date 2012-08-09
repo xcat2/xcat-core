@@ -822,7 +822,7 @@ sub get_host_from_url {
     #######################################
     # Extract IP from URL
     #######################################
-    my $nets = xCAT::Utils::my_nets();
+    my $nets = xCAT::NetworkUtils::my_nets();
     my $inc = $globalopt{i};
     my @ips = (exists $attr->{'ip-address'})? @{$attr->{'ip-address'}}: @{$attr->{'ipv4-address'}};
 
@@ -846,7 +846,7 @@ sub get_host_from_url {
         next if ( $tip =~ /:/); #skip IPV6 addresses
         for my $net ( keys %$nets) {
             my ($n,$m) = split /\//,$net;
-            if ( #xCAT::Utils::isInSameSubnet($n, $tip, $m, 1) and
+            if ( #xCAT::NetworkUtils::isInSameSubnet($n, $tip, $m, 1) and
                  xCAT::Utils::isPingable($tip) and (length(inet_aton($tip)) == 4)) {
                 push @validip, $tip;
             }
@@ -1637,7 +1637,7 @@ sub filtersamevlan {
     my $request = shift;
     my $oldhash = shift;
     my $newhash;
-    my $nets = xCAT::Utils::my_nets();
+    my $nets = xCAT::NetworkUtils::my_nets();
     my $validnets;
     for my $net ( keys %$nets) {
         for my $nic ( split /,/, $globalopt{i} ) {
@@ -1651,7 +1651,7 @@ sub filtersamevlan {
             my $ip = $name->{ip};
             for my $net ( keys %$validnets){
                 my ($n,$m) = split /\//,$net;
-                if ( xCAT::Utils::isInSameSubnet( $n, $ip, $m, 1) and xCAT::Utils::isPingable( $ip)) {
+                if ( xCAT::NetworkUtils::isInSameSubnet( $n, $ip, $m, 1) and xCAT::NetworkUtils::isPingable( $ip)) {
                     $newhash->{$name} = ${$oldhash->{$name}}{hostname};
                 }
             }

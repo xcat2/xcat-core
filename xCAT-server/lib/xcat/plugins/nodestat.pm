@@ -22,7 +22,9 @@ use Getopt::Long;
 use Data::Dumper;
 use xCAT::GlobalDef;
 use xCAT::NetworkUtils;
-
+require xCAT::Utils;
+require xCAT::TableUtils;
+require xCAT::ServiceNodeUtils;
 
 my %nodesetstats;
 my %chainhash;
@@ -188,7 +190,7 @@ sub preprocess_request
 	    #my $sitetab = xCAT::Table->new('site');
 	    #if ($sitetab) {
 		#(my $ref) = $sitetab->getAttribs({key => 'useNmapfromMN'}, 'value');
-                my @entries =  xCAT::Utils->get_site_attribute("useNmapfromMN");
+                my @entries =  xCAT::TableUtils->get_site_attribute("useNmapfromMN");
                 my $t_entry = $entries[0];
 		if (defined($t_entry)) {
 		    if ($t_entry =~ /1|yes|YES|Y|y/) { $usenmapfrommn=1; }
@@ -253,7 +255,7 @@ sub preprocess_request
 	#print Dumper(%apps);
 	# find service nodes for requested nodes
 	# build an individual request for each service node
-	my $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
+	my $sn = xCAT::ServiceNodeUtils->get_ServiceNode($nodes, $service, "MN");
 
         #get the member for each group
         my %groups=();
@@ -439,7 +441,7 @@ sub preprocess_request
 
         #mn handles all nmap when useNmapfromMN=1 on the site table
         if (($usenmapfrommn == 1) && (keys(%all_porthash) > 0)) {
-	    my @hostinfo=xCAT::Utils->determinehostname();
+	    my @hostinfo=xCAT::NetworkUtils->determinehostname();
 	    my %iphash=();
 	    foreach(@hostinfo) {$iphash{$_}=1;}
             my $handled=0;
@@ -490,7 +492,7 @@ sub preprocess_request
         #now handle local commands
 	#print "lcmdhash=" . Dumper(%lcmdhash);
         if (keys(%lcmdhash) > 0) {
-	    my @hostinfo=xCAT::Utils->determinehostname();
+	    my @hostinfo=xCAT::NetworkUtils->determinehostname();
 	    my %iphash=();
 	    foreach(@hostinfo) {$iphash{$_}=1;}
             my $handled=0;

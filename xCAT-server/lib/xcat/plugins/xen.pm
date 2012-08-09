@@ -35,6 +35,8 @@ use Time::HiRes qw(gettimeofday sleep usleep);
 use xCAT::DBobjUtils;
 use Getopt::Long;
 use xCAT::SvrUtils;
+use xCAT::TableUtils;
+use xCAT::ServiceNodeUtils;
 
 my %runningstates;
 my $vmmaxp=64;
@@ -630,7 +632,7 @@ sub preprocess_request {
   # find service nodes for requested nodes
   # build an individual request for each service node
   my $service  = "xcat";
-  my $sn = xCAT::Utils->get_ServiceNode($noderange, $service, "MN");
+  my $sn = xCAT::ServiceNodeUtils->get_ServiceNode($noderange, $service, "MN");
 
   # build each request for each service node
 
@@ -768,7 +770,7 @@ sub process_request {
       #my $tmp;
       #if ($sitetab) {
         #($tmp)=$sitetab->getAttribs({'key'=>'vmmaxp'},'value');
-        my @entries =  xCAT::Utils->get_site_attribute("vmmaxp");
+        my @entries =  xCAT::TableUtils->get_site_attribute("vmmaxp");
         my $t_entry = $entries[0];
         if (defined($t_entry)) { $vmmaxp=$t_entry; }
       #}
@@ -819,7 +821,7 @@ sub process_request {
   #my $sitetab = xCAT::Table->new('site');
   #if ($sitetab) {
     #(my $ref) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
-    my @entries =  xCAT::Utils->get_site_attribute("nodestatus");
+    my @entries =  xCAT::TableUtils->get_site_attribute("nodestatus");
     my $t_entry = $entries[0];
     if ( defined($t_entry) ) {
        if ($t_entry =~ /0|n|N/) { $global_check=0; }

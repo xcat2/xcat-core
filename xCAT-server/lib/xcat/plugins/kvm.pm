@@ -22,6 +22,8 @@ use File::Basename qw/fileparse/;
 use File::Path qw/mkpath/;
 use IO::Socket;
 use IO::Select;
+use xCAT::TableUtils;
+use xCAT::ServiceNodeUtils;
 use strict;
 #use warnings;
 my $use_xhrm=0; #xCAT Hypervisor Resource Manager, to satisfy networking and storage prerequisites, default to not using it for the moment
@@ -2326,7 +2328,7 @@ sub preprocess_request {
   # find service nodes for requested nodes
   # build an individual request for each service node
   my $service  = "xcat";
-  my $sn = xCAT::Utils->get_ServiceNode($noderange, $service, "MN");
+  my $sn = xCAT::ServiceNodeUtils->get_ServiceNode($noderange, $service, "MN");
 
   # build each request for each service node
 

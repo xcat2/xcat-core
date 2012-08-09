@@ -3,6 +3,7 @@ package xCAT_plugin::destiny;
 use xCAT::NodeRange;
 use Data::Dumper;
 use xCAT::Utils;
+use xCAT::TableUtils;
 use Sys::Syslog;
 use xCAT::GlobalDef;
 use xCAT::Table;
@@ -29,7 +30,7 @@ my $nonodestatus=0;
 #my $sitetab = xCAT::Table->new('site');
 #if ($sitetab) {
     #(my $ref1) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
-    my @entries =  xCAT::Utils->get_site_attribute("nodestatus");
+    my @entries =  xCAT::TableUtils->get_site_attribute("nodestatus");
     my $site_entry = $entries[0];
     if ( defined($site_entry) ) {
 	if ($site_entry =~ /0|n|N/) { $nonodestatus=1; }
@@ -49,7 +50,7 @@ sub process_request {
   $callback = shift;
   $subreq = shift;
   if (xCAT::Utils->isMN()) {
-      my $result= xCAT::Utils->checkCredFiles($callback);
+      my $result= xCAT::TableUtils->checkCredFiles($callback);
   }
   if ($request->{command}->[0] eq 'getdestiny') {
     getdestiny(0);
@@ -236,10 +237,10 @@ sub setdestiny {
     my $nodehm = xCAT::Table->new('nodehm');
     my $hments = $nodehm->getNodesAttribs(\@nodes,['serialport','serialspeed','serialflow']);
     #(my $portent) = $sitetab->getAttribs({key=>'xcatdport'},'value');
-    my @entries =  xCAT::Utils->get_site_attribute("xcatdport");
+    my @entries =  xCAT::TableUtils->get_site_attribute("xcatdport");
     my $port_entry = $entries[0];
     #(my $mastent) = $sitetab->getAttribs({key=>'master'},'value');
-    my @entries =  xCAT::Utils->get_site_attribute("master");
+    my @entries =  xCAT::TableUtils->get_site_attribute("master");
     my $master_entry = $entries[0];
     my $enthash = $nodetype->getNodesAttribs(\@nodes,[qw(arch)]);
     my $resents = $restab->getNodeAttribs(\@nodes,[qw(xcatmaster)]);
@@ -465,7 +466,7 @@ sub getdestiny {
   my $bpents = $bptab->getNodesAttribs(\@nodes,[qw(kernel initrd kcmdline xcatmaster)]);
   #my $sitetab= xCAT::Table->new('site');
   #(my $sent) = $sitetab->getAttribs({key=>'master'},'value');
-  my @entries =  xCAT::Utils->get_site_attribute("master");
+  my @entries =  xCAT::TableUtils->get_site_attribute("master");
   my $master_value = $entries[0];
 
   my %node_status=();
@@ -521,7 +522,7 @@ sub getdestiny {
     } elsif (defined( $master_value )) {
         $response{imgserver}=$master_value;
     } else {
-       $response{imgserver} = xCAT::Utils->my_ip_facing($node);
+       $response{imgserver} = xCAT::NetworkUtils->my_ip_facing($node);
     }
     
     #collect node status for certain states

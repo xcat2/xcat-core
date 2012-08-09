@@ -11,6 +11,7 @@ use lib "$::XCATROOT/lib/perl";
 use Getopt::Long;
 use File::Path;
 use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::DBobjUtils;
 
 Getopt::Long::Configure("bundling");
@@ -26,8 +27,8 @@ sub process_request {
    my $request = shift;
    my $callback = shift;
    my $doreq = shift;
-   my $installroot = xCAT::Utils->getInstallDir();
-   my $tftproot = xCAT::Utils->getTftpDir();
+   my $installroot = xCAT::TableUtils->getInstallDir();
+   my $tftproot = xCAT::TableUtils->getTftpDir();
 
    my $usage = "\nUsage:\n    rmimage [-h | --help]\n    rmimage [-V | --verbose] -o <OS> -a <architecture> -p <profile>\n    rmimage [-V | --verbose] imagename [--xcatde]";
 

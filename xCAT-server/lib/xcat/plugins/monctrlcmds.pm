@@ -129,7 +129,7 @@ sub preprocess_request
 
      
       my @mon_servers=keys(%$mon_hierachy); 
-      my @hostinfo=xCAT::Utils->determinehostname();
+      my @hostinfo=xCAT::NetworkUtils->determinehostname();
       #print "hostinfo=@hostinfo\n";
       my $isSV=xCAT::Utils->isServiceNode();
       my %iphash=();

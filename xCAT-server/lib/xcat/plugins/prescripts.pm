@@ -8,6 +8,8 @@ use lib "$::XCATROOT/lib/perl";
 use strict;
 require xCAT::Table;
 require xCAT::Utils;
+require xCAT::TableUtils;
+require xCAT::ServiceNodeUtils;
 require xCAT::MsgUtils;
 use Getopt::Long;
 use Sys::Hostname;
@@ -62,12 +64,12 @@ sub preprocess_request
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("pass_through");
     GetOptions('l'  => \$::LOCAL);
-    my $sn = xCAT::Utils->getSNformattedhash($nodes, $service, "MN");
+    my $sn = xCAT::ServiceNodeUtils->getSNformattedhash($nodes, $service, "MN");
     my @requests;
     if ($::LOCAL) { #only handle the local nodes
         #print "process local nodes: @$nodes\n";
         #get its own children only
-	my @hostinfo=xCAT::Utils->determinehostname();
+	my @hostinfo=xCAT::NetworkUtils->determinehostname();
 	my %iphash=();
 	foreach(@hostinfo) {$iphash{$_}=1;}
 
@@ -155,7 +157,7 @@ sub runbeginpre
     my $args     = $request->{arg};
     my $action=$args->[0];
     my $localhostname=hostname();
-    my $installdir = xCAT::Utils->getInstallDir();
+    my $installdir = xCAT::TableUtils->getInstallDir();
  
     my %script_hash=getprescripts($nodes, $action, "begin");
     foreach my $scripts (keys %script_hash) {
@@ -219,7 +221,7 @@ sub runendpre
     my $args= $request->{arg};
     my $action=$args->[0];
     my $localhostname=hostname();
-    my $installdir = xCAT::Utils->getInstallDir();
+    my $installdir = xCAT::TableUtils->getInstallDir();
 
     my %script_hash=getprescripts($nodes, $action, "end");
     foreach my $scripts (keys %script_hash) {

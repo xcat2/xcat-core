@@ -3,6 +3,7 @@ package xCAT_plugin::hosts;
 use strict;
 use warnings;
 use xCAT::Table;
+use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use Data::Dumper;
 use File::Copy;
@@ -117,7 +118,7 @@ sub addotherinterfaces {
     my @itf_pairs=split(/,/, $otherinterfaces);
     foreach (@itf_pairs) {
       my ($itf,$ip)=split(/:/, $_);
-      if ( $ip && xCAT::Utils->isIpaddr($ip) ) {
+      if ( $ip && xCAT::NetworkUtils->isIpaddr($ip) ) {
           if ($itf =~ /^-/ ) {
               $itf = $node.$itf };
           addnode $itf,$ip,'',$domain;
@@ -168,7 +169,7 @@ sub process_request {
   my $lockh;
   #if ($sitetab) {
     #my $dent = $sitetab->getAttribs({key=>'domain'},'value');
-    my @entries =  xCAT::Utils->get_site_attribute("domain");
+    my @entries =  xCAT::TableUtils->get_site_attribute("domain");
     my $t_entry = $entries[0];
     if ( defined($t_entry) ) {
         $domain=$t_entry;
@@ -229,7 +230,7 @@ sub process_request {
           if ($DELNODE) {
               delnode $ref->{node},$ref->{ip},$ref->{hostnames},$domain;
           } else {
-              if ( xCAT::Utils->isIpaddr($ref->{ip}) ) { 
+              if ( xCAT::NetworkUtils->isIpaddr($ref->{ip}) ) { 
                   addnode $ref->{node},$ref->{ip},$ref->{hostnames},$domain;
               }
               if (defined($ref->{otherinterfaces})){
@@ -244,7 +245,7 @@ sub process_request {
       }
     my @hostents = $hoststab->getAllNodeAttribs(['ip','node','hostnames','otherinterfaces']);
     foreach (@hostents) {
-        if ( xCAT::Utils->isIpaddr($_->{ip}) ) {
+        if ( xCAT::NetworkUtils->isIpaddr($_->{ip}) ) {
             addnode $_->{node},$_->{ip},$_->{hostnames},$domain;
         }
         if (defined($_->{otherinterfaces})){

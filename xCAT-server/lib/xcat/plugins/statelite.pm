@@ -13,6 +13,7 @@ use File::Find;
 use Cwd;
 use File::Temp;
 use xCAT::Utils qw(genpassword);
+use xCAT::TableUtils qw(get_site_attribute);
 use xCAT::SvrUtils;
 use Data::Dumper;
 Getopt::Long::Configure("bundling");
@@ -36,7 +37,7 @@ sub process_request {
 
 	#my $sitetab = xCAT::Table->new('site');
 	#my $ent = $sitetab->getAttribs({key=>'installdir'},['value']);
-        my @entries =  xCAT::Utils->get_site_attribute("installdir");
+        my @entries =  xCAT::TableUtils->get_site_attribute("installdir");
         my $t_entry = $entries[0];
 	my $installroot = "/install";
 

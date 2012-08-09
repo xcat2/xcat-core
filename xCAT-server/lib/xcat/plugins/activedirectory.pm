@@ -10,6 +10,7 @@ use Getopt::Long;
 use xCAT::ADUtils;
 use Net::DNS;
 use xCAT::SvrUtils;
+use xCAT::TableUtils;
 use strict;
 
 sub handled_commands { 
@@ -34,7 +35,7 @@ sub process_request {
     #my $sitetab = xCAT::Table->new('site');
     my $domain;
     #$domain = $sitetab->getAttribs({key=>'domain'},['value']);
-    my @domains = xCAT::Utils->get_site_attribute("domain");
+    my @domains = xCAT::TableUtils->get_site_attribute("domain");
     my $tmp = $domains[0];
     if (defined($tmp)) { 
         $domain = $tmp;
@@ -44,7 +45,7 @@ sub process_request {
     #TODO: if multi-domain support implemented, use the domains table to reference between realm and domain  
     #my $server = $sitetab->getAttribs({key=>'directoryserver'},['value']);
     #my $realm = $sitetab->getAttribs({key=>'realm'},['value']);
-    my @directoryservers =  xCAT::Utils->get_site_attribute("directoryserver");
+    my @directoryservers =  xCAT::TableUtils->get_site_attribute("directoryserver");
     my @realms = xCAT::Utils->get_site_attribute("realm");
     my $tmp1 = $realms[0];
     my $server;

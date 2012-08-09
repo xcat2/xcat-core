@@ -10,6 +10,7 @@ use Sys::Syslog;
 use File::Temp qw/tempdir/;
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::SvrUtils;
 use Socket;
 use xCAT::MsgUtils;
@@ -41,7 +42,7 @@ sub process_request
     my $arch     = undef;
     my $path     = undef;
     my $installroot;
-    $installroot = xCAT::Utils->getInstallDir();
+    $installroot = xCAT::TableUtils->getInstallDir();
     if ($request->{command}->[0] eq 'copycd')
     {
         return copycd($request, $callback, $doreq);
@@ -65,7 +66,7 @@ sub mkimage {
 #-If going to /audit, it's more useful than /oobe.  
 #  audit complains about incorrect password on first boot, without any login attempt
 #  audit causes a 'system preparation tool' dialog on first boot that I close
-    my $installroot = xCAT::Utils->getInstallDir();
+    my $installroot = xCAT::TableUtils->getInstallDir();
     my $request = shift;
     my $callback = shift;
     my $doreq = shift;
@@ -125,7 +126,7 @@ sub mkimage {
 }
 
 sub mkwinlinks {
-    my $installroot = xCAT::Utils->getInstallDir(); # for now put this, as it breaks for imagex
+    my $installroot = xCAT::TableUtils->getInstallDir(); # for now put this, as it breaks for imagex
     my $node = shift;
     my $ent = shift;
     my $uuid = shift;
@@ -142,7 +143,7 @@ sub mkwinlinks {
 }
 
 sub winshell {
-    my $installroot = xCAT::Utils->getInstallDir();
+    my $installroot = xCAT::TableUtils->getInstallDir();
     my $request = shift;
     my $script = "cmd";
     my @nodes    = @{$request->{node}};
@@ -208,7 +209,7 @@ ENDAPPLY
 sub mkinstall
 {
     my $installroot;
-    $installroot = xCAT::Utils->getInstallDir();
+    $installroot = xCAT::TableUtils->getInstallDir();
     my $request  = shift;
     my $callback = shift;
     my $doreq    = shift;
@@ -476,7 +477,7 @@ sub copycd
     #if ($sitetab)
     #{
         #(my $ref) = $sitetab->getAttribs({key => installdir}, value);
-        my @entries =  xCAT::Utils->get_site_attribute("installdir");
+        my @entries =  xCAT::TableUtils->get_site_attribute("installdir");
         my $t_entry = $entries[0]; 
         if ( defined($t_entry) )
         {

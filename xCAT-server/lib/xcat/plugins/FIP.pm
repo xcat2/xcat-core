@@ -14,7 +14,9 @@ use Data::Dumper;
 use Getopt::Long;
 use xCAT::MsgUtils;
 use strict;
-
+use xCAT::Utils;
+use xCAT::TableUtils;
+use xCAT::ServiceNodeUtils;
 # options can be bundled up like -vV
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
@@ -109,7 +111,7 @@ sub preprocess_request {
         # build an individual request for each service node
         my $service  = "xcat";
         my @hcps=[$current_ppc_ent->{'hcp'}];
-        my $sn = xCAT::Utils->get_ServiceNode(\@hcps, $service, "MN");
+        my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@hcps, $service, "MN");
         #print Dumper($sn);
         if( keys(%$sn) == 0 )     {
             my $reqcopy = {%$req};

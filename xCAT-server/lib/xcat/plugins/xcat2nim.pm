@@ -16,6 +16,8 @@ use Sys::Hostname;
 use xCAT::NodeRange;
 use xCAT::Schema;
 use xCAT::Utils;
+use xCAT::TableUtils;
+use xCAT::ServiceNodeUtils;
 use xCAT::NetworkUtils;
 use xCAT::DBobjUtils;
 use Data::Dumper;
@@ -107,7 +109,7 @@ sub preprocess_request
 			#   - for the nodes that were provided
 			#  -  to handle node and group objects
 			my $sn;
-			$sn = xCAT::Utils->getSNformattedhash($mynodes, $service, "MN", $type);
+			$sn = xCAT::ServiceNodeUtils->getSNformattedhash($mynodes, $service, "MN", $type);
 			foreach my $snkey (keys %$sn) {
 				my $reqcopy = {%$req};
 				$reqcopy->{node} = $sn->{$snkey};
@@ -303,7 +305,7 @@ if(0) { # only do networks on the management node (NIM primary) for now
 			@servicenodes=split(',', $::SERVERS);
 		} else {
 			# do MN and all servers
-			@servicenodes=xCAT::Utils->getAllSN();
+			@servicenodes=xCAT::ServiceNodeUtils->getAllSN();
 			push(@servicenodes, $nimprime);
 		}
 	}

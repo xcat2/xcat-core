@@ -14,6 +14,7 @@ use Data::Dumper;
 use xCAT::NodeRange qw/noderange abbreviate_noderange/;
 use xCAT::Schema;
 use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::MsgUtils;
 use xCAT::DBobjUtils;
 use Getopt::Long;
@@ -300,7 +301,7 @@ sub noderm
     if (!$nodes) { $noderm_usage->(1); return; }
     #my $sitetab = xCAT::Table->new('site');
     #my $pdhcp = $sitetab->getAttribs({key=>'pruneservices'},['value']);
-    my @entries =  xCAT::Utils->get_site_attribute("pruneservices");
+    my @entries =  xCAT::TableUtils->get_site_attribute("pruneservices");
     my $t_entry = $entries[0];
     if ( defined($t_entry) and $t_entry !~ /n(\z|o)/i) {
         $requestcommand->({command=>['makedhcp'],node=>$nodes,arg=>['-d']});

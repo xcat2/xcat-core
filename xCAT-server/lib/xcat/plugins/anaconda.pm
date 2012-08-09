@@ -11,6 +11,7 @@ use Thread qw(yield);
 use POSIX qw(WNOHANG nice);
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
 use xCAT::SvrUtils;
@@ -57,7 +58,7 @@ sub preprocess_request
     #my $stab = xCAT::Table->new('site');
     #my $sent;
     #($sent) = $stab->getAttribs({key => 'sharedtftp'}, 'value');
-    my @ents = xCAT::Utils->get_site_attribute("sharedtftp");
+    my @ents = xCAT::TableUtils->get_site_attribute("sharedtftp");
     my $site_ent = $ents[0];
     unless (  defined($site_ent)
             and ($site_ent =~ /no/i or $site_ent =~ /0/))
@@ -178,21 +179,21 @@ sub mknetboot
     #if ($sitetab)
     #{
     #    (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
-    my @ents = xCAT::Utils->get_site_attribute("installdir");
+    my @ents = xCAT::TableUtils->get_site_attribute("installdir");
     my $site_ent = $ents[0];
     if ( defined($site_ent) )
     {
         $installroot = $site_ent;
     }
     #    ($ref) = $sitetab->getAttribs({key => 'xcatdport'}, 'value');
-    @ents = xCAT::Utils->get_site_attribute("xcatdport");
+    @ents = xCAT::TableUtils->get_site_attribute("xcatdport");
     $site_ent = $ents[0];
     if ( defined($site_ent) )
     {
         $xcatdport = $site_ent;
     }
     #    ($ref) = $sitetab->getAttribs({key => 'tftpdir'}, 'value');
-    @ents = xCAT::Utils->get_site_attribute("tftpdir");
+    @ents = xCAT::TableUtils->get_site_attribute("tftpdir");
     $site_ent = $ents[0];
     if ( defined($site_ent) )
     {
@@ -582,7 +583,7 @@ sub mknetboot
 		    $kcmdline .= $statemnt ." ";
                     my $xcatmasterip;
                     # if xcatmaster is hostname, convert it to ip address
-                    if (xCAT::Utils->validate_ip($xcatmaster)) {
+                    if (xCAT::NetworkUtils->validate_ip($xcatmaster)) {
                         # Using XCAT=<hostname> will cause problems rc.statelite.ppc.redhat
                         # when trying to run chroot command
                         $xcatmasterip = xCAT::NetworkUtils->getipaddr($xcatmaster);
@@ -795,7 +796,7 @@ sub mknetboot
         );
     }
 
-    #my $rc = xCAT::Utils->create_postscripts_tar();
+    #my $rc = xCAT::TableUtils->create_postscripts_tar();
     #if ( $rc != 0 ) {
     #	xCAT::MsgUtils->message( "S", "Error creating postscripts tar file." );
     #}
@@ -820,14 +821,14 @@ sub mkinstall
     #if ($sitetab)
     #{
     #    (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
-    my @ents = xCAT::Utils->get_site_attribute("installdir");
+    my @ents = xCAT::TableUtils->get_site_attribute("installdir");
     my $site_ent = $ents[0];
     if( defined($site_ent) )    
     {
         $installroot = $site_ent;
     }
     #( $ref) = $sitetab->getAttribs({key => 'tftpdir'}, 'value');
-    @ents = xCAT::Utils->get_site_attribute("tftpdir");
+    @ents = xCAT::TableUtils->get_site_attribute("tftpdir");
     $site_ent = $ents[0];
     if( defined($site_ent) )    
     {
@@ -1298,7 +1299,7 @@ sub mkinstall
                     );
         }
     }
-    #my $rc = xCAT::Utils->create_postscripts_tar();
+    #my $rc = xCAT::TableUtils->create_postscripts_tar();
     #if ($rc != 0)
     #{
     #    xCAT::MsgUtils->message("S", "Error creating postscripts tar file.");
@@ -1319,7 +1320,7 @@ sub copycd
     #if ($sitetab)
     #{
     #    (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
-    my @ents = xCAT::Utils->get_site_attribute("installdir");
+    my @ents = xCAT::TableUtils->get_site_attribute("installdir");
     my $site_ent = $ents[0];
     if( defined($site_ent) )    
     {
@@ -1662,7 +1663,7 @@ sub insert_dd {
     my $driverupdatesrc = shift;
     my $drivers = shift;
 
-    my $install_dir = xCAT::Utils->getInstallDir();
+    my $install_dir = xCAT::TableUtils->getInstallDir();
 
     my $cmd;
        

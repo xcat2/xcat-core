@@ -5,7 +5,9 @@ use Data::Dumper;
 use Sys::Syslog;
 use Socket;
 use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::NetworkUtils;
+use xCAT::ServiceNodeUtils;
 use Getopt::Long;
 
 sub handled_commands
@@ -67,7 +69,7 @@ sub preprocess_request
         return undef;
     }
 
-    my @sn = xCAT::Utils->getSNList();
+    my @sn = xCAT::ServiceNodeUtils->getSNList();
     foreach my $s (@sn)
     {
         my $reqcopy = {%$req};
@@ -172,7 +174,7 @@ sub donets
 			return 1;
 		}
 
-                my $master=xCAT::Utils->get_site_Master();
+                my $master=xCAT::TableUtils->get_site_Master();
                 my $masterip = xCAT::NetworkUtils->getipaddr($master);  
                 if ($masterip =~ /:/) {
                     # do each ethernet interface for ipv6
@@ -278,7 +280,7 @@ sub donets
             		$netmask = $fields[2];
                         if ($fields[6])
                         {
-                            if(xCAT::Utils::isInSameSubnet($fields[6], $ipaddr, $netmask, 0))
+                            if(xCAT::NetworkUtils::isInSameSubnet($fields[6], $ipaddr, $netmask, 0))
                             {
                                 $gateway = $fields[6]; 
                             }

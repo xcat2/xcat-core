@@ -10,6 +10,7 @@ use Sys::Syslog;
 use File::Temp qw/tempdir/;
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::SvrUtils;
 use xCAT::MsgUtils;
@@ -67,13 +68,13 @@ sub mknetboot
     #if ($sitetab)
     #{
         #(my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
-        my @entries =  xCAT::Utils->get_site_attribute("installdir");
+        my @entries =  xCAT::TableUtils->get_site_attribute("installdir");
         my $t_entry = $entries[0];
         if ( defined($t_entry) ) {
             $installroot = $t_entry;
         }
         #($ref) = $sitetab->getAttribs({key => 'xcatdport'}, 'value');
-        @entries =  xCAT::Utils->get_site_attribute("xcatdport");
+        @entries =  xCAT::TableUtils->get_site_attribute("xcatdport");
         $t_entry = $entries[0];
         if ( defined($t_entry) ) {
             $xcatdport = $t_entry;
@@ -594,7 +595,7 @@ sub mkinstall
     my $request  = shift;
     my $callback = shift;
     my $doreq    = shift;
-    my $globaltftpdir = xCAT::Utils->getTftpDir();
+    my $globaltftpdir = xCAT::TableUtils->getTftpDir();
 
     my @nodes    = @{$request->{node}};
     my $node;
@@ -624,7 +625,7 @@ sub mkinstall
     #if ($sitetab)
     #{
         #(my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
-        my @entries =  xCAT::Utils->get_site_attribute("installdir");
+        my @entries =  xCAT::TableUtils->get_site_attribute("installdir");
         my $t_entry = $entries[0];
         if ( defined($t_entry) ) {
             $installroot = $t_entry;
@@ -1017,7 +1018,7 @@ sub mkinstall
                 );
         }
     }
-    #my $rc = xCAT::Utils->create_postscripts_tar();
+    #my $rc = xCAT::TableUtils->create_postscripts_tar();
     #if ($rc != 0)
     #{
     #    xCAT::MsgUtils->message("S", "Error creating postscripts tar file.");
@@ -1044,7 +1045,7 @@ sub copycd
     #{
         #(my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
         #print Dumper($ref);
-        my @entries =  xCAT::Utils->get_site_attribute("installdir");
+        my @entries =  xCAT::TableUtils->get_site_attribute("installdir");
         my $t_entry = $entries[0];
         if ( defined($t_entry) ) {
             $installroot = $t_entry;
@@ -1381,7 +1382,7 @@ sub insert_dd () {
     my $driverupdatesrc = shift;
     my $drivers = shift;
 
-    my $install_dir = xCAT::Utils->getInstallDir();
+    my $install_dir = xCAT::TableUtils->getInstallDir();
 
     my $cmd;
     

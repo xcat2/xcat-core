@@ -16,7 +16,9 @@ use lib "$::XCATROOT/lib/perl";
 use xCAT::Table;
 use Thread qw(yield);
 use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::NetworkUtils;
+use xCAT::ServiceNodeUtils;
 use xCAT::Usage;
 use IO::Socket;
 use IO::Pty; #needed for ssh password login
@@ -3743,7 +3745,7 @@ sub preprocess_request {
   # build an individual request for each service node
   my $service  = "xcat";
   my @mms=keys(%mpa_hash);
-  my $sn = xCAT::Utils->get_ServiceNode(\@mms, $service, "MN");
+  my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@mms, $service, "MN");
 
   # build each request for each service node
   foreach my $snkey (keys %$sn)
@@ -3968,7 +3970,7 @@ sub process_request {
   my $mpatab = xCAT::Table->new('mpa');
   my $mptab = xCAT::Table->new('mp');
   my $tmp;
-  my @entries =  xCAT::Utils->get_site_attribute("blademaxp");
+  my @entries =  xCAT::TableUtils->get_site_attribute("blademaxp");
   my $site_entry = $entries[0];
   if(defined($site_entry)) {
       $blademaxp = $site_entry;
@@ -4693,7 +4695,7 @@ sub network {
         my $result; 
 
         if ($gate) {
-          $result = xCAT::Utils::toIP($gate);
+          $result = xCAT::NetworkUtils::toIP($gate);
           if (@$result[0] == 0) {
             $gateway = @$result[1];
           }
@@ -4726,7 +4728,7 @@ sub network {
         my $result;
 
         if ($gate) {
-          $result = xCAT::Utils::toIP($gate);
+          $result = xCAT::NetworkUtils::toIP($gate);
           if (@$result[0] == 0) {
             $gateway = @$result[1];
           }
@@ -5323,7 +5325,7 @@ sub dompa {
   my @allerrornodes=();
   my $check=0;
   my $global_check=1;
-  my @entries =  xCAT::Utils->get_site_attribute("nodestatus");
+  my @entries =  xCAT::TableUtils->get_site_attribute("nodestatus");
   my $site_entry = $entries[0];
   if(defined($site_entry)) {
       if ($site_entry =~ /0|n|N/) { $global_check=0; }

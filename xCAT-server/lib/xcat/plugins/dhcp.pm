@@ -20,8 +20,10 @@ my $candoipv6 = eval {
 };
 use Sys::Syslog;
 use IPC::Open2;
-use xCAT::NetworkUtils qw/getipaddr/;
 use xCAT::Utils;
+use xCAT::TableUtils;
+use xCAT::NetworkUtils qw/getipaddr/;
+use xCAT::ServiceNodeUtils;
 use xCAT::NodeRange;
 use Fcntl ':flock';
 
@@ -46,7 +48,7 @@ my $vpdhash;
 my $iscsients;
 my $nodetypeents;
 my $chainents;
-my $tftpdir = xCAT::Utils->getTftpDir();
+my $tftpdir = xCAT::TableUtils->getTftpDir();
 use Math::BigInt;
 my $dhcpconffile = $^O eq 'aix' ? '/etc/dhcpsd.cnf' : '/etc/dhcpd.conf'; 
 my %dynamicranges; #track dynamic ranges defined to see if a host that resolves is actually a dynamic address
@@ -385,7 +387,7 @@ sub addnode
 #        } #if 'guess_next_server', inherit from the network provided value... see how this pans out
 #       if ($guess_next_server and $ip and $ip ne "DENIED")
 #       {
-#           $nxtsrv = xCAT::Utils->my_ip_facing($hname);
+#           $nxtsrv = xCAT::NetworkUtils->my_ip_facing($hname);
 #           if ($nxtsrv)
 #           {
 #               $tftpserver = $nxtsrv;
@@ -534,7 +536,7 @@ sub addrangedetection {
     my $begin;
     my $end;
     my $myip;
-    $myip = xCAT::Utils->my_ip_facing($net->{net});
+    $myip = xCAT::NetworkUtils->my_ip_facing($net->{net});
     
     # convert <xcatmaster> to nameserver IP
     if ($net->{nameservers} eq '<xcatmaster>')
@@ -620,7 +622,7 @@ sub addnode_aix
     {
         if ( $dhcpconf[$i] =~ / ([\d\.]+)\/(\d+) ip configuration end/)
         {
-            if (xCAT::Utils::isInSameSubnet( $ip, $1, $2, 1))
+            if (xCAT::NetworkUtils::isInSameSubnet( $ip, $1, $2, 1))
             {
                 $isSubnetFound = 1;
                 $netmask = $2;
@@ -630,7 +632,7 @@ sub addnode_aix
     }
 
 # Format the netmask from AIX format (24) to Linux format (255.255.255.0)
-    my $netmask_linux = xCAT::Utils::formatNetmask( $netmask,1,0);
+    my $netmask_linux = xCAT::NetworkUtils::formatNetmask( $netmask,1,0);
 
     # Create node section
     my @node_section = ();
@@ -715,7 +717,7 @@ sub preprocess_request
     #{
         #my $href;
         #($href) = $sitetab->getAttribs({key => 'disjointdhcps'}, 'value');
-        my @entries =  xCAT::Utils->get_site_attribute("disjointdhcps");
+        my @entries =  xCAT::TableUtils->get_site_attribute("disjointdhcps");
         my $t_entry = $entries[0];
         if (defined($t_entry)) {
 	    $snonly=$t_entry;
@@ -786,10 +788,10 @@ sub preprocess_request
 
     if (($snonly == 1) && (! grep /-n/,@{$req->{arg}})) {
         if (@nodes > 0) {
-	    my $sn_hash =xCAT::Utils->getSNformattedhash(\@nodes,"xcat","MN"); 
+	    my $sn_hash =xCAT::ServiceNodeUtils->getSNformattedhash(\@nodes,"xcat","MN"); 
 	    if ($localonly) {
 		#check if this node is the service node for any input node
-		my @hostinfo=xCAT::Utils->determinehostname();
+		my @hostinfo=xCAT::NetworkUtils->determinehostname();
 		my %iphash=();
 		foreach(@hostinfo) {$iphash{$_}=1;}
 		foreach(keys %$sn_hash) {
@@ -802,7 +804,7 @@ sub preprocess_request
 		    }
 		}
 	    } else {
-		my @sn = xCAT::Utils->getSNList('dhcpserver');
+		my @sn = xCAT::ServiceNodeUtils->getSNList('dhcpserver');
 		if (@sn > 0) { $hasHierarchy=1;}
 
 		foreach(keys %$sn_hash) {
@@ -818,7 +820,7 @@ sub preprocess_request
         $req->{'node'}=\@nodes;
        	@requests = ({%$req});    #Start with a straight copy to reflect local instance
 	unless ($localonly) {
-	    my @sn = xCAT::Utils->getSNList('dhcpserver');
+	    my @sn = xCAT::ServiceNodeUtils->getSNList('dhcpserver');
 	    if (@sn > 0) { $hasHierarchy=1; }
 
 	    foreach my $s (@sn)
@@ -865,10 +867,10 @@ sub process_request
     my $isok=1;
     if (xCAT::Utils->isServiceNode()) {
 	$isok=0;
-	my @hostinfo=xCAT::Utils->determinehostname();
+	my @hostinfo=xCAT::NetworkUtils->determinehostname();
 	my %iphash=();
 	foreach(@hostinfo) {$iphash{$_}=1;}
-	my @sn = xCAT::Utils->getSNList('dhcpserver');
+	my @sn = xCAT::ServiceNodeUtils->getSNList('dhcpserver');
 	foreach my $s (@sn)
 	{
 	    if (exists($iphash{$s})) {
@@ -889,11 +891,11 @@ sub process_request
     #{
         #my $href;
         #($href) = $sitetab->getAttribs({key => 'dhcpinterfaces'}, 'value');
-        my @entries =  xCAT::Utils->get_site_attribute("dhcpinterfaces");
+        my @entries =  xCAT::TableUtils->get_site_attribute("dhcpinterfaces");
         my $t_entry = $entries[0];
         unless ( defined($t_entry) )
         {    #LEGACY: singular keyname for old style site value
-            @entries =  xCAT::Utils->get_site_attribute("dhcpinterface");
+            @entries =  xCAT::TableUtils->get_site_attribute("dhcpinterface");
             $t_entry = $entries[0];
             #($href) = $sitetab->getAttribs({key => 'dhcpinterface'}, 'value');
         }
@@ -913,14 +915,14 @@ sub process_request
                  (my $ngroup,$dhcpif) = split /\|/,$dhcpif;
                  foreach $host (noderange($ngroup)) {
                     $savehost=$host;
-                    unless (xCAT::Utils->thishostisnot($host)) {
+                    unless (xCAT::NetworkUtils->thishostisnot($host)) {
                         $foundself=1;
                         last;
                     }
                  }
                  if (!defined($savehost)) { # host not defined in db,
                                  # probably management node
-                    unless (xCAT::Utils->thishostisnot($ngroup)) {
+                    unless (xCAT::NetworkUtils->thishostisnot($ngroup)) {
                         $foundself=1;
                     }
                  }
@@ -936,26 +938,26 @@ sub process_request
            }
         }
         #($href) = $sitetab->getAttribs({key => 'nameservers'}, 'value');
-        @entries =  xCAT::Utils->get_site_attribute("nameservers");
+        @entries =  xCAT::TableUtils->get_site_attribute("nameservers");
         $t_entry = $entries[0];
         if ( defined($t_entry) ) {
             $sitenameservers = $t_entry;
         }
         #($href) = $sitetab->getAttribs({key => 'ntpservers'}, 'value');
-        @entries =  xCAT::Utils->get_site_attribute("ntpservers");
+        @entries =  xCAT::TableUtils->get_site_attribute("ntpservers");
         $t_entry = $entries[0];
         if ( defined($t_entry) ) {
             $sitentpservers = $t_entry;
         }
         #($href) = $sitetab->getAttribs({key => 'logservers'}, 'value');
-        @entries =  xCAT::Utils->get_site_attribute("logservers");
+        @entries =  xCAT::TableUtils->get_site_attribute("logservers");
         $t_entry = $entries[0];
         if ( defined($t_entry) ) {
             $sitelogservers = $t_entry;
         }
         #($href) = $sitetab->getAttribs({key => 'domain'}, 'value');
         #($href) = $sitetab->getAttribs({key => 'domain'}, 'value');
-        @entries =  xCAT::Utils->get_site_attribute("domain");
+        @entries =  xCAT::TableUtils->get_site_attribute("domain");
         $t_entry = $entries[0];
         unless ( defined($t_entry) )
         {
@@ -1047,7 +1049,7 @@ sub process_request
     }
     if ($^O eq 'aix')
     {
-        @nrn = xCAT::Utils::get_subnet_aix();
+        @nrn = xCAT::NetworkUtils::get_subnet_aix();
     }
     else
     {
@@ -1319,7 +1321,7 @@ sub process_request
         my $ip_hash;
         foreach my $node ( @{$req->{node}} ) {
             #need to change the way of finding IP for nodes
-            my $ifip = xCAT::Utils->isIpaddr($node);
+            my $ifip = xCAT::NetworkUtils->isIpaddr($node);
             if ($ifip)
             {
                 $ip_hash->{ $node} = $node;
@@ -1406,7 +1408,7 @@ sub process_request
             }
             else
             {
-                if  (xCAT::NetworkUtils->getipaddr($_) and not xCAT::Utils->nodeonmynet($_))
+                if  (xCAT::NetworkUtils->getipaddr($_) and not xCAT::NetworkUtils->nodeonmynet($_))
                 {
                     next;
                 }
@@ -1579,7 +1581,7 @@ sub putmyselffirst {
                 my @dnsrvs = split /,/,$srvlist;
                 my @reordered;
                 foreach (@dnsrvs) {
-                    if (xCAT::Utils->thishostisnot($_)) {
+                    if (xCAT::NetworkUtils->thishostisnot($_)) {
                         push @reordered,$_;
                     } else {
                         unshift @reordered,$_;
@@ -1722,7 +1724,7 @@ sub addnet
         my $tftp;
         my $range;
         my $myip;
-        $myip = xCAT::Utils->my_ip_facing($net);
+        $myip = xCAT::NetworkUtils->my_ip_facing($net);
         if ($nettab)
         {
             my $mask_formated = $mask;
@@ -1805,7 +1807,7 @@ sub addnet
             if ($ent and $ent->{dynamicrange})
             {
                 unless ($ent->{dhcpserver}
-                        and xCAT::Utils->thishostisnot($ent->{dhcpserver}))
+                        and xCAT::NetworkUtils->thishostisnot($ent->{dhcpserver}))
                 {    #If specific, only one dhcp server gets a dynamic range
                     $range = $ent->{dynamicrange};
                     $range =~ s/[,-]/ /g;
@@ -2004,7 +2006,7 @@ sub gen_aix_net
                 $gateway = '';
             }
         }
-        if (xCAT::Utils::isInSameSubnet($gateway,$net,$mask,1))
+        if (xCAT::NetworkUtils::isInSameSubnet($gateway,$net,$mask,1))
         {
             push @netent, "    option 3 $gateway\n";
         }

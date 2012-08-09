@@ -3,6 +3,8 @@ package xCAT_plugin::yaboot;
 use Data::Dumper;
 use Sys::Syslog;
 use xCAT::Scope;
+use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
 use File::Path;
@@ -15,7 +17,7 @@ my %normalnodes;
 my $callback;
 my $sub_req;
 my $dhcpconf = "/etc/dhcpd.conf";
-my $globaltftpdir = xCAT::Utils->getTftpDir();
+my $globaltftpdir = xCAT::TableUtils->getTftpDir();
 #my $dhcpver = 3;
 
 my %usage = (
@@ -89,7 +91,7 @@ sub setstate {
   my %nrhash = %{shift()};
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
   if ($kern->{kcmdline} =~ /!myipfn!/) {
-      my $ipfn = xCAT::Utils->my_ip_facing($node);
+      my $ipfn = xCAT::NetworkUtils->my_ip_facing($node);
       unless ($ipfn) {
           my $servicenodes = $nrhash{$node}->[0];
           if ($servicenodes and $servicenodes->{servicenode}) {
@@ -97,7 +99,7 @@ sub setstate {
               foreach my $sn ( @sns ) {
                   # We are in the service node pools, print error if no facing ip.
                   if (xCAT::InstUtils->is_me($sn)) {
-                      my @myself = xCAT::Utils->determinehostname();
+                      my @myself = xCAT::NetworkUtils->determinehostname();
                       my $myname = $myself[(scalar @myself)-1];
                       $callback->(
                           {
@@ -355,7 +357,7 @@ sub preprocess_request {
    #my $stab = xCAT::Table->new('site');
   
    #my $sent = $stab->getAttribs({key=>'sharedtftp'},'value');
-   my @entries =  xCAT::Utils->get_site_attribute("sharedtftp");
+   my @entries =  xCAT::TableUtils->get_site_attribute("sharedtftp");
    my $t_entry = $entries[0];
    if ( defined($t_entry)  and ($t_entry == 0 or $t_entry =~ /no/i)) {
       $req->{'_disparatetftp'}=[1];
@@ -429,7 +431,7 @@ sub process_request {
   if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
    @nodes = ();
    foreach (@rnodes) {
-     if (xCAT::Utils->nodeonmynet($_)) {
+     if (xCAT::NetworkUtils->nodeonmynet($_)) {
         push @nodes,$_;
      } else {
         xCAT::MsgUtils->message("S", "$_: yaboot netboot: stop configuration because of none sharedtftp and not on same network with its xcatmaster.");
@@ -531,7 +533,7 @@ sub process_request {
       #my $sitetab = xCAT::Table->new('site');
       #if ($sitetab) {
           #(my $ref) = $sitetab->getAttribs({key => 'dhcpsetup'}, 'value');
-          my @entries =  xCAT::Utils->get_site_attribute("dhcpsetup");
+          my @entries =  xCAT::TableUtils->get_site_attribute("dhcpsetup");
           my $t_entry = $entries[0];
           if (defined($t_entry) ) {
              if ($t_entry =~ /0|n|N/) { $do_dhcpsetup=0; }

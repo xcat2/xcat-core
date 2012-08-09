@@ -20,7 +20,8 @@ use POSIX;
 require xCAT::Table;
 
 require xCAT::Utils;
-
+require xCAT::TableUtils;
+require xCAT::ServiceNodeUtils;
 require xCAT::MsgUtils;
 use Getopt::Long;
 require xCAT::DSHCLI;
@@ -110,12 +111,12 @@ sub preprocess_request
         # find service nodes for requested nodes
         # build an individual request for each service node
         # find out the names for the Management Node
-        my @MNnodeinfo   = xCAT::Utils->determinehostname;
+        my @MNnodeinfo   = xCAT::NetworkUtils->determinehostname;
         my $MNnodename   = pop @MNnodeinfo;                  # hostname
         my @MNnodeipaddr = @MNnodeinfo;                      # ipaddresses
         $::mnname = $MNnodeipaddr[0];
         $::SNpath;    # syncfile path on the service node
-        $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
+        $sn = xCAT::ServiceNodeUtils->get_ServiceNode($nodes, $service, "MN");
         my @snodes;
         my @snoderange;
 
@@ -151,7 +152,7 @@ sub preprocess_request
             {
 
                 # get the directory on the servicenode to put the  files in
-                my @syndir = xCAT::Utils->get_site_attribute("SNsyncfiledir");
+                my @syndir = xCAT::TableUtils->get_site_attribute("SNsyncfiledir");
                 if ($syndir[0])
                 {
                     $synfiledir = $syndir[0];

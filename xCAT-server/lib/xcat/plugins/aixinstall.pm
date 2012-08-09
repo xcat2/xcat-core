@@ -21,7 +21,9 @@ use xCAT::NodeRange;
 use xCAT::Schema;
 use xCAT::Utils;
 use xCAT::SvrUtils;
+use xCAT::TableUtils;
 use xCAT::NetworkUtils;
+use xCAT::ServiceNodeUtils;
 use xCAT::InstUtils;
 use xCAT::DBobjUtils;
 use XML::Simple;
@@ -162,7 +164,7 @@ sub preprocess_request
 
     #my $sitetab = xCAT::Table->new('site');
     #my $nfsv4entry = $sitetab->getAttribs({'key' => 'useNFSv4onAIX'}, 'value');
-    my @tmp = xCAT::Utils->get_site_attribute("useNFSv4onAIX");
+    my @tmp = xCAT::TableUtils->get_site_attribute("useNFSv4onAIX");
     my $nfsv4entry = $tmp[0];
     if( defined ($nfsv4entry) )
     {
@@ -288,7 +290,7 @@ sub preprocess_request
 		if (scalar(@{$mynodes})) {
         	# set up the requests to go to the service nodes
 			my $snodes;
-			$snodes = xCAT::Utils->getSNformattedhash($mynodes, $service, "MN", $type);
+			$snodes = xCAT::ServiceNodeUtils->getSNformattedhash($mynodes, $service, "MN", $type);
 
         	foreach my $snkey (keys %$snodes)
         	{
@@ -366,7 +368,7 @@ sub preprocess_request
 		my $sn;
 		if ($nodes)
 		{
-			$sn = xCAT::Utils->getSNformattedhash($nodes, $service, "MN");
+			$sn = xCAT::ServiceNodeUtils->getSNformattedhash($nodes, $service, "MN");
 		}
 
         # set up the requests to go to the service nodes
@@ -410,7 +412,7 @@ sub preprocess_request
             # set up the requests to go to the service nodes
             #   all get the same request
 			my $snodes;
-			$snodes = xCAT::Utils->getSNformattedhash($mynodes, $service, "MN", $type);
+			$snodes = xCAT::ServiceNodeUtils->getSNformattedhash($mynodes, $service, "MN", $type);
 			foreach my $snkey (keys %$snodes)
             {
                 my $reqcopy = {%$req};
@@ -511,7 +513,7 @@ sub process_request
     #my $nfsv4entry = $sitetab->getAttribs({'key' => 'useNFSv4onAIX'}, 'value');
     #if($nfsv4entry and defined ($nfsv4entry->{'value'}))
     #{
-    my @nfsv4entries = xCAT::Utils->get_site_attribute("useNFSv4onAIX");
+    my @nfsv4entries = xCAT::TableUtils->get_site_attribute("useNFSv4onAIX");
     my $tmp = $nfsv4entries[0];
     if ( defined($tmp) && $tmp =~ /1|Yes|yes|YES|Y|y/)
     { 
@@ -1468,7 +1470,7 @@ sub spot_updates
     if ($::UPDATE)
     {
         # get list of SNs
-        @allservers = xCAT::Utils->getAllSN();
+        @allservers = xCAT::ServiceNodeUtils->getAllSN();
 
         # we don't want to include the nimprime in the list of SNs
         #  need to compare IPs of nimprime and SN
@@ -1702,8 +1704,8 @@ sub spot_updates
 		#  don't remove spots if SNs are using shared file system
 		#   mkdsklsnode will take care of copying out the updated spot
 		# check the sharedinstall attr
-		#my $sharedinstall=xCAT::Utils->get_site_attribute('sharedinstall');
-		my @sharedinstalls=xCAT::Utils->get_site_attribute('sharedinstall');
+		#my $sharedinstall=xCAT::TableUtils->get_site_attribute('sharedinstall');
+		my @sharedinstalls=xCAT::TableUtils->get_site_attribute('sharedinstall');
 		my $sharedinstall = $sharedinstalls[0];
 		chomp $sharedinstall;
 
@@ -2260,7 +2262,7 @@ sub mknimimage
     my $lpp_source_name;
     my $root_name;
     my $dump_name;
-    my $install_dir = xCAT::Utils->getInstallDir();
+    my $install_dir = xCAT::TableUtils->getInstallDir();
 
     if (defined(@{$::args}))
     {
@@ -2486,7 +2488,7 @@ sub mknimimage
             #my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
             #my $domain = $tmp->{value};
             #$sitetab->close;
-            my @domains = xCAT::Utils->get_site_attribute("domain");
+            my @domains = xCAT::TableUtils->get_site_attribute("domain");
             my $domain = $domains[0];
             if (!$domain)
             {
@@ -2780,7 +2782,7 @@ sub mknimimage
         #my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
         #my $domain = $tmp->{value};
         #$sitetab->close;
-        my @domains = xCAT::Utils->get_site_attribute("domain");
+        my @domains = xCAT::TableUtils->get_site_attribute("domain");
         my $domain = $domains[0];
         if (!$domain)
         {
@@ -3723,7 +3725,7 @@ sub mk_lpp_source
 
     my @lppresources;
     my $lppsrcname;
-    my $install_dir = xCAT::Utils->getInstallDir();
+    my $install_dir = xCAT::TableUtils->getInstallDir();
 
     #
     #  Get a list of the defined lpp_source resources
@@ -4118,7 +4120,7 @@ sub mk_spot
 
     my $spot_name;
     my $currentimage;
-    my $install_dir = xCAT::Utils->getInstallDir();
+    my $install_dir = xCAT::TableUtils->getInstallDir();
 
     if ($::attrres{spot})
     {
@@ -4373,7 +4375,7 @@ sub mk_bosinst_data
     my $bosinst_data_name = $::image_name . "_bosinst_data";
 
 	my @validattrs = ("verbose", "nfs_vers", "nfs_sec", "dest_dir", "group", "source");
-	my $install_dir = xCAT::Utils->getInstallDir();
+	my $install_dir = xCAT::TableUtils->getInstallDir();
 
     if ($attrres{bosinst_data})
     {
@@ -4532,10 +4534,10 @@ sub mk_resolv_conf_file
     #my $sitetab = xCAT::Table->new('site');
     #my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
     #my $domain = $tmp->{value};
-    my @domains = xCAT::Utils->get_site_attribute("domain");
+    my @domains = xCAT::TableUtils->get_site_attribute("domain");
     my $domain = $domains[0];
     #my ($tmp2) = $sitetab->getAttribs({'key' => 'nameservers'}, 'value');
-    my @nameserver = xCAT::Utils->get_site_attribute("nameservers");
+    my @nameserver = xCAT::TableUtils->get_site_attribute("nameservers");
     my $tmp2 = $nameserver[0];
 
     # convert <xcatmaster> to nameserver IP
@@ -4694,13 +4696,13 @@ sub chk_resolv_conf
 	#my $sitetab = xCAT::Table->new('site');
 	#my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
     #my $site_domain = $tmp->{value};
-    my @domains = xCAT::Utils->get_site_attribute("domain");
+    my @domains = xCAT::TableUtils->get_site_attribute("domain");
     my $site_domain = $domains[0];
 
 	#my ($tmp2) = $sitetab->getAttribs({'key' => 'nameservers'}, 'value');
     #my $site_nameservers = $tmp2->{value};
     #$sitetab->close;
-    my @nameserver = xCAT::Utils->get_site_attribute("nameservers");
+    my @nameserver = xCAT::TableUtils->get_site_attribute("nameservers");
     my $site_nameservers = $nameserver[0];
 
 	#  Get a list of the all NIM resources
@@ -4937,7 +4939,7 @@ sub chk_resolv_conf
             my $loc;
 			my @validattrs = ("nfs_vers", "nfs_sec");
 
-   			my $install_dir = xCAT::Utils->getInstallDir();
+   			my $install_dir = xCAT::TableUtils->getInstallDir();
             if ($::opt_l)
             {
 				if ($::opt_l =~ /\/$/)
@@ -5138,7 +5140,7 @@ sub mk_resolv_conf
 	my @validattrs = ("verbose", "nfs_vers", "nfs_sec", "dest_dir", "group", "source");
 
     my $resolv_conf_name = $::image_name . "_resolv_conf";
-    my $install_dir = xCAT::Utils->getInstallDir();
+    my $install_dir = xCAT::TableUtils->getInstallDir();
 
     if ($attrres{resolv_conf})
     {
@@ -5165,10 +5167,10 @@ sub mk_resolv_conf
         #my $sitetab = xCAT::Table->new('site');
         #my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
         #my $domain = $tmp->{value};
-        my @domains = xCAT::Utils->get_site_attribute("domain");
+        my @domains = xCAT::TableUtils->get_site_attribute("domain");
         my $domain = $domains[0];
         #my ($tmp2) = $sitetab->getAttribs({'key' => 'nameservers'}, 'value');
-        my @nameserver = xCAT::Utils->get_site_attribute("nameservers");
+        my @nameserver = xCAT::TableUtils->get_site_attribute("nameservers");
         my $tmp2 = $nameserver[0];
         # convert <xcatmaster> to nameserver IP
         my $nameservers;
@@ -5299,7 +5301,7 @@ sub mk_mksysb
 	my @validattrs = ("verbose", "nfs_vers", "nfs_sec", "dest_dir", "group", "source", "size_preview", "exclude_files", "mksysb_flags", "mk_image");
 
     my $mksysb_name = $::image_name . "_mksysb";
-	my $install_dir = xCAT::Utils->getInstallDir();
+	my $install_dir = xCAT::TableUtils->getInstallDir();
 	
     if ($attrres{mksysb})
     {
@@ -5630,12 +5632,12 @@ sub prermnimimage
 
     # by default, get MN and all servers
     my @allsn = ();
-    my @nlist = xCAT::Utils->list_all_nodes;
+    my @nlist = xCAT::TableUtils->list_all_nodes;
     my $sn;
     my $service = "xcat";
     if (\@nlist)
     {
-        $sn = xCAT::Utils->getSNformattedhash(\@nlist, $service, "MN");
+        $sn = xCAT::ServiceNodeUtils->getSNformattedhash(\@nlist, $service, "MN");
     }
     foreach my $snkey (keys %$sn)
     {
@@ -6522,7 +6524,7 @@ sub mkdumpres
 	my @validattrs = ("dumpsize", "max_dumps", "notify", "snapcollect", "verbose", "nfs_vers", "group");
 
     my $cmd = "/usr/sbin/nim -Fo define -t $type -a server=master ";
-    my $install_dir = xCAT::Utils->getInstallDir();
+    my $install_dir = xCAT::TableUtils->getInstallDir();
 
 	my %cmdattrs;
 
@@ -6625,7 +6627,7 @@ sub mknimres
 	@validattrs = ("nfs_vers", "verbose", "group");
 
     my $cmd = "/usr/sbin/nim -Fo define -t $type -a server=master ";
-    my $install_dir = xCAT::Utils->getInstallDir();
+    my $install_dir = xCAT::TableUtils->getInstallDir();
 
 	my %cmdattrs;
     if ($::NFSv4)
@@ -6858,7 +6860,7 @@ sub updatespot
     }
 
     # copy the script
-    my $install_dir = xCAT::Utils->getInstallDir();
+    my $install_dir = xCAT::TableUtils->getInstallDir();
     my $cpcmd =
       "mkdir -m 644 -p $spot_loc/lpp/bos/inst_root/opt/xcat; cp $install_dir/postscripts/xcataixpost $spot_loc/lpp/bos/inst_root/opt/xcat/xcataixpost; chmod +x $spot_loc/lpp/bos/inst_root/opt/xcat/xcataixpost";
 
@@ -7336,7 +7338,7 @@ sub prenimnodecust
     #
     #  Get the service nodes for this list of nodes
     #
-    my $sn = xCAT::Utils->getSNformattedhash(\@nodelist, "xcat", "MN");
+    my $sn = xCAT::ServiceNodeUtils->getSNformattedhash(\@nodelist, "xcat", "MN");
     if ($::ERROR_RC)
     {
         my $rsp;
@@ -7820,7 +7822,7 @@ sub prenimnodeset
     #my ($tmp) = $sitetab->getAttribs({'key' => 'sharedinstall'}, 'value');
     #my $sharedinstall = $tmp->{value};
     #$sitetab->close;
-    my @sharedinstalls = xCAT::Utils->get_site_attribute("sharedinstall");
+    my @sharedinstalls = xCAT::TableUtils->get_site_attribute("sharedinstall");
     my $sharedinstall = $sharedinstalls[0];
     if (!$sharedinstall) {
         $sharedinstall="no";
@@ -8063,7 +8065,7 @@ sub prenimnodeset
     {    # if we have at least one standalone node
 
         my $createscript = 0;
-        my $install_dir = xCAT::Utils->getInstallDir();
+        my $install_dir = xCAT::TableUtils->getInstallDir();
 
         # see if it already exists
 
@@ -8368,7 +8370,7 @@ sub prenimnodeset
     #   make sure the permission are correct for using and transferring
     #   to the nodes and service nodes.
     #   Also removes /install/postscripts/etc/xcat/cfgloc if found
-    my $result = xCAT::Utils->checkCredFiles($callback);
+    my $result = xCAT::TableUtils->checkCredFiles($callback);
 
     #####################################################
     #
@@ -9028,14 +9030,14 @@ sub doSNcopy2
     my @nodelist    = @$nodes;
     my @nimrestypes = @$restypes;
     my %nodeosi     = %{$nosi};
-    my $install_dir = xCAT::Utils->getInstallDir();
+    my $install_dir = xCAT::TableUtils->getInstallDir();
 
 	my %resinfo;
 
     #
     #  Get a list of nodes for each service node
     #
-    my $sn = xCAT::Utils->getSNformattedhash(\@nodelist, "xcat", "MN", $type);
+    my $sn = xCAT::ServiceNodeUtils->getSNformattedhash(\@nodelist, "xcat", "MN", $type);
     if ($::ERROR_RC)
     {
         my $rsp;
@@ -9219,7 +9221,7 @@ sub doSFScopy
     my @nodelist    = @$nodes;
     my @nimrestypes = @$restypes;
     my %nodeosi     = %{$nosi};  # osimage name for each node
-    my $install_dir = xCAT::Utils->getInstallDir();
+    my $install_dir = xCAT::TableUtils->getInstallDir();
 
 	my $error;
 
@@ -9239,7 +9241,7 @@ sub doSFScopy
 	my @SNlist;
 
 	#  Get a list of nodes for each service node
-    my $sn = xCAT::Utils->getSNformattedhash(\@nodelist, "xcat", "MN", $type);
+    my $sn = xCAT::ServiceNodeUtils->getSNformattedhash(\@nodelist, "xcat", "MN", $type);
     if ($::ERROR_RC)
     {
         my $rsp;
@@ -9335,12 +9337,12 @@ sub doSFScopy
 
 	# by default, get MN and all servers
     my @allsn = ();
-    my @nlist = xCAT::Utils->list_all_nodes;
+    my @nlist = xCAT::TableUtils->list_all_nodes;
     my $snode;
     my $service = "xcat";
     if (\@nlist)
     {
-		$snode = xCAT::Utils->getSNformattedhash(\@nlist, $service, "MN");
+		$snode = xCAT::ServiceNodeUtils->getSNformattedhash(\@nlist, $service, "MN");
     }
     foreach my $sn (keys %$snode) {
 		foreach my $img (@imagenames) {
@@ -9642,7 +9644,7 @@ sub mkdsklsnode
     #my ($tmp) = $sitetab->getAttribs({'key' => 'sharedinstall'}, 'value');
     #my $sharedinstall = $tmp->{value};
     #$sitetab->close;
-    my @sharedinstalls = xCAT::Utils->get_site_attribute("sharedinstall");
+    my @sharedinstalls = xCAT::TableUtils->get_site_attribute("sharedinstall");
     my $sharedinstall = $sharedinstalls[0];
     if (!$sharedinstall) {
         $sharedinstall="no";
@@ -10246,7 +10248,7 @@ sub mkdsklsnode
 				#my ($tmp) = $sitetab->getAttribs({'key' => 'sharedinstall'}, 'value');
 				#my $sharedinstall = $tmp->{value};
 				#$sitetab->close;
-                                my @sharedinstalls = xCAT::Utils->get_site_attribute("sharedinstall");
+                                my @sharedinstalls = xCAT::TableUtils->get_site_attribute("sharedinstall");
                                 my $sharedinstall = $sharedinstalls[0];
 				if (!$sharedinstall) {
 					$sharedinstall="no";
@@ -10317,7 +10319,7 @@ sub mkdsklsnode
                 next;
             }
                         
-            my $tftpdir = xCAT::Utils->getTftpDir();
+            my $tftpdir = xCAT::TableUtils->getTftpDir();
             my $niminfoloc = "$tftpdir/${nodeip}.info";
 
             my $cmd = "cat $niminfoloc | grep 'BASECUST_REMOVAL'";
@@ -10671,7 +10673,7 @@ sub mkdsklsnode
                             	xCAT::MsgUtils->message("E", $rsp, $callback);
                             	next;
                         	}
-                        	my $tftpdir = xCAT::Utils->getTftpDir();
+                        	my $tftpdir = xCAT::TableUtils->getTftpDir();
                         	my $niminfofile = "$tftpdir/${nodeip}.info";
                         	#Update /tftpboot/<node>.info file
                         	my $fscontent;
@@ -10965,7 +10967,7 @@ sub mkdsklsnode
             xCAT::MsgUtils->message("E", $rsp, $callback);
         }
         my $xcatmasterip = xCAT::NetworkUtils->getipaddr((keys %xcatmasterhash)[0]);
-        my @allips = xCAT::Utils->gethost_ips();
+        my @allips = xCAT::NetworkUtils->gethost_ips();
 
         my $snlocal;
         my $snremote;
@@ -11015,7 +11017,7 @@ sub mkdsklsnode
                       {
                             my $ip = $1;
                             my $netmask = $2;
-                            if(xCAT::Utils::isInSameSubnet($xcatmasterip, $ip, $netmask, 2))
+                            if(xCAT::NetworkUtils::isInSameSubnet($xcatmasterip, $ip, $netmask, 2))
                             {
                                 $localip = $ip;
                                 last;
@@ -11053,7 +11055,7 @@ sub mkdsklsnode
                       {
                             my $ip = $1;
                             my $netmask = $2;
-                            if(xCAT::Utils::isInSameSubnet($xcatmasterip, $ip, $netmask, 2))
+                            if(xCAT::NetworkUtils::isInSameSubnet($xcatmasterip, $ip, $netmask, 2))
                             {
                                 $remoteip = $ip;
                                 last;
@@ -11071,7 +11073,7 @@ sub mkdsklsnode
                 $remoteip = xCAT::NetworkUtils->getipaddr($snremote);
               }
 
-                my $install_dir = xCAT::Utils->getInstallDir();
+                my $install_dir = xCAT::TableUtils->getInstallDir();
                 my $scmd = "lsnfsexp -c";
                 my @output = xCAT::Utils->runcmd("$scmd", -1);
                 if ($::RUNCMD_RC != 0)
@@ -11622,7 +11624,7 @@ sub make_SN_resource
         #my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
         #my $domain = $tmp->{value};
         #$sitetab->close;
-        my @domains = xCAT::Utils->get_site_attribute("domain");
+        my @domains = xCAT::TableUtils->get_site_attribute("domain");
         my $domain = $domains[0];
         if (!$domain)
         {

@@ -13,7 +13,9 @@ use Cwd;
 use File::Temp;
 use File::Basename;
 use File::Path;
-use xCAT::Utils qw(genpassword);
+#use xCAT::Utils qw(genpassword);
+use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::SvrUtils;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
@@ -32,7 +34,7 @@ sub process_request {
    my $request = shift;
    my $callback = shift;
    my $doreq = shift;
-   my $installroot = xCAT::Utils->getInstallDir();
+   my $installroot = xCAT::TableUtils->getInstallDir();
 
    @ARGV = @{$request->{arg}};
    my $argc = scalar @ARGV;
@@ -423,7 +425,7 @@ sub copybootscript {
     my $arch = shift;
     my $profile = shift;
     my $callback = shift;
-    my @timezone = xCAT::Utils->get_site_attribute("timezone");
+    my @timezone = xCAT::TableUtils->get_site_attribute("timezone");
 
     if ( -f "$installroot/postscripts/xcatdsklspost") {
 

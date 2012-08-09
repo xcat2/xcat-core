@@ -17,6 +17,8 @@ use lib "$::XCATROOT/lib/perl";
 use strict;
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::TableUtils;
+use xCAT::ServiceNodeUtils;
 use xCAT::Usage;
 use IO::Socket;
 use Thread 'yield';
@@ -363,7 +365,7 @@ sub preprocess_request {
 	# build an individual request for each service node
 	my $service  = "xcat";
 	my @mms=keys(%mpa_hash);
-	my $sn = xCAT::Utils->get_ServiceNode(\@mms, $service, "MN");
+	my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@mms, $service, "MN");
 		
 	# build each request for each service node
 	foreach my $snkey (keys %$sn)
@@ -644,7 +646,7 @@ sub process_request {
 	my $tmp;
 	#if ($sitetab) {
 		#($tmp)=$sitetab->getAttribs({'key'=>'blademaxp'},'value');
-                my @entries =  xCAT::Utils->get_site_attribute("blademaxp");
+                my @entries =  xCAT::TableUtils->get_site_attribute("blademaxp");
                 my $t_entry = $entries[0];
 		if (defined($t_entry)) { $blademaxp=$t_entry; }
 	#}

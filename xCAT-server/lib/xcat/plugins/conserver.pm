@@ -4,6 +4,7 @@ package xCAT_plugin::conserver;
 use strict;
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::TableUtils;
 use Getopt::Long;
 use Sys::Hostname;
 
@@ -55,7 +56,7 @@ sub preprocess_request {
   @ARGV=@exargs;
 
   my $isSN=xCAT::Utils->isServiceNode();
-  my @hostinfo=xCAT::Utils->determinehostname();
+  my @hostinfo=xCAT::NetworkUtils->determinehostname();
   my %iphash=();
   foreach(@hostinfo) { $iphash{$_}=1;}
 
@@ -96,7 +97,7 @@ sub preprocess_request {
   
   
   # get site master
-  my $master=xCAT::Utils->get_site_Master();
+  my $master=xCAT::TableUtils->get_site_Master();
   if (!$master) { $master=hostname(); }
 
   # get conserver for each node
@@ -226,10 +227,10 @@ sub docfheaders {
   #push @$content,"#xCAT BEGIN ACCESS\n";
   push @newheaders,"access * {\n";
   push @newheaders,"  trusted 127.0.0.1;\n";
-  my $master=xCAT::Utils->get_site_Master();
+  my $master=xCAT::TableUtils->get_site_Master();
   push @newheaders, "  trusted $master;\n";
   # trust all the ip addresses configured on this node
-  my @allips = xCAT::Utils->gethost_ips();
+  my @allips = xCAT::NetworkUtils->gethost_ips();
   my @ips = ();
   #remove $xcatmaster and duplicate entries
   foreach my $ip (@allips) {
@@ -260,7 +261,7 @@ sub docfheaders {
   #-- which seems to kill AMMs occasionally
   #my $sitetab  = xCAT::Table->new('site');
   #my $vcon = $sitetab->getAttribs({key => "consoleondemand"}, 'value');
-  my @entries =  xCAT::Utils->get_site_attribute("consoleondemand");
+  my @entries =  xCAT::TableUtils->get_site_attribute("consoleondemand");
   my $site_entry = $entries[0];
   if ( defined($site_entry) and $site_entry eq "yes" ) {
     push @newheaders,"  options ondemand;\n";
@@ -298,7 +299,7 @@ sub makeconservercf {
   docfheaders(\@filecontent);
 
   my $isSN=xCAT::Utils->isServiceNode();
-  my @hostinfo=xCAT::Utils->determinehostname();
+  my @hostinfo=xCAT::NetworkUtils->determinehostname();
   my %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
 
@@ -504,12 +505,12 @@ sub donodeent {
   if (grep(/^$cmeth$/,@cservers)) {
     push @$content," include ".$cfgent->{termserver}.";\n";
     push @$content," port ".$cfgent->{termport}.";\n";
-    if ((!$isSN) && ($cfgent->{conserver}) && xCAT::Utils->thishostisnot($cfgent->{conserver})) { # let the master handle it
+    if ((!$isSN) && ($cfgent->{conserver}) && xCAT::NetworkUtils->thishostisnot($cfgent->{conserver})) { # let the master handle it
       push @$content,"  master ".$cfgent->{conserver}.";\n";
     }
   } else { #a script method...
     push @$content,"  type exec;\n";
-    if ((!$isSN) && ($cfgent->{conserver}) && xCAT::Utils->thishostisnot($cfgent->{conserver})) { # let the master handle it
+    if ((!$isSN) && ($cfgent->{conserver}) && xCAT::NetworkUtils->thishostisnot($cfgent->{conserver})) { # let the master handle it
       push @$content,"  master ".$cfgent->{conserver}.";\n";
     } else { # handle it here
       my $locerror = $isSN ? "PERL_BADLANG=0 " : '';    # on service nodes, often LC_ALL is not set and perl complains

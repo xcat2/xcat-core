@@ -15,7 +15,7 @@ use strict;
 require xCAT::Table;
 
 require xCAT::Utils;
-
+require xCAT::TableUtils;
 require xCAT::MsgUtils;
 use Getopt::Long;
 use Socket;
@@ -253,7 +253,7 @@ sub add_known_host
     if (defined $hostname)
     {
         my $sitedomain;
-        my @domain = xCAT::Utils->get_site_attribute("domain");
+        my @domain = xCAT::TableUtils->get_site_attribute("domain");
         if ($domain[0])
         {
             $sitedomain = $domain[0];

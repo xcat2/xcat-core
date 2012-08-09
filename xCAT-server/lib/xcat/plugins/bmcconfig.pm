@@ -4,6 +4,7 @@ use Data::Dumper;
 use xCAT::Table;
 use xCAT::MsgUtils;
 use xCAT::Utils;
+use xCAT::TableUtils;
 use IO::Select;
 use Socket;
 
@@ -46,7 +47,7 @@ sub net_parms {
     $net =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/ or next; #next if ipv6, TODO: IPv6 support
     my $netnum = ($1<<24)+($2<<16)+($3<<8)+$4;
     if ($gw eq '<xcatmaster>') {
-	$gw=xCAT::Utils->my_ip_facing($ip);
+	$gw=xCAT::NetworkUtils->my_ip_facing($ip);
     }
     if (($ipnum & $masknum)==$netnum) {
       return ($ip,$mask,$gw);
@@ -110,7 +111,7 @@ sub process_request  {
     $password=$tmphash->{password};
   }
   #$tmphash=($sitetable->getAttribs({key=>'genpasswords'},'value'))[0];
-  my @entries =  xCAT::Utils->get_site_attribute("genpasswords");
+  my @entries =  xCAT::TableUtils->get_site_attribute("genpasswords");
   my $site_entry = $entries[0];
   if ($site_entry eq "1" or $site_entry  =~ /y(es)?/i) {
     $password = genpassword(10)."1cA!";

@@ -4,6 +4,8 @@ use strict;
 use warnings;
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::TableUtils;
+use xCAT::ServiceNodeUtils;
 use xCAT::TZUtils;
 use Time::HiRes qw (sleep);
 use xCAT::Template;
@@ -232,7 +234,7 @@ sub preprocess_request {
     my @allnodes;
     push @allnodes,@hyps;
     push @allnodes,@$noderange;
-	my $sn = xCAT::Utils->get_ServiceNode(\@allnodes, $service, "MN");
+	my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@allnodes, $service, "MN");
     #vmtabhash was from when we had vm.host do double duty for hypervisor data
     #$vmtabhash = $vmtab->getNodesAttribs(\@hyps,['host']);
     #We now use hypervisor fields to be unambiguous
@@ -347,13 +349,13 @@ sub process_request {
 	#my $sitetab = xCAT::Table->new('site');
 	#if($sitetab){
 		#(my $ref) = $sitetab->getAttribs({key => 'usehostnamesforvcenter'}, 'value');
-                my @entries =  xCAT::Utils->get_site_attribute("usehostnamesforvcenter");
+                my @entries =  xCAT::TableUtils->get_site_attribute("usehostnamesforvcenter");
                 my $t_entry = $entries[0];
 		if ( defined($t_entry) ) {
 			$usehostnamesforvcenter = $t_entry;
 		}
 		#($ref) = $sitetab->getAttribs({key => 'vcenterautojoin'}, 'value');
-                @entries =  xCAT::Utils->get_site_attribute("vcenterautojoin");
+                @entries =  xCAT::TableUtils->get_site_attribute("vcenterautojoin");
                 $t_entry = $entries[0];
 		if ( defined($t_entry) ) {
                    $vcenterautojoin = $t_entry;
@@ -362,7 +364,7 @@ sub process_request {
                    }
 		}
 		#($ref) = $sitetab->getAttribs({key => 'vmwaredatastoreautomount'}, 'value');
-                @entries =  xCAT::Utils->get_site_attribute("vmwaredatastoreautomount");
+                @entries =  xCAT::TableUtils->get_site_attribute("vmwaredatastoreautomount");
                 $t_entry = $entries[0];
 		if ( defined($t_entry) ) {
 			$datastoreautomount = $t_entry;
@@ -371,7 +373,7 @@ sub process_request {
                     }
 		}
                 #($ref) = $sitetab->getAttribs({key => 'vmwarereconfigonpower'},'value');
-                @entries =  xCAT::Utils->get_site_attribute("vmwarereconfigonpower");
+                @entries =  xCAT::TableUtils->get_site_attribute("vmwarereconfigonpower");
                 $t_entry = $entries[0];
 		if ( defined($t_entry) ) {
                     $reconfigreset=$t_entry;
@@ -4077,7 +4079,7 @@ sub copycd {
 	#my $sitetab = xCAT::Table->new('site');
 	#if($sitetab){
 		#(my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
-                my @entries =  xCAT::Utils->get_site_attribute("installdir");
+                my @entries =  xCAT::TableUtils->get_site_attribute("installdir");
                 my $t_entry = $entries[0];
 		if ( defined($t_entry) ) {
 			$installroot = $t_entry;
@@ -4479,13 +4481,13 @@ sub mkcommonboot {
 	my $installroot = "/install";
 	#if ($sitetab){
 		#(my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
-                my @entries =  xCAT::Utils->get_site_attribute("installdir");
+                my @entries =  xCAT::TableUtils->get_site_attribute("installdir");
                 my $t_entry = $entries[0];
 		if ( defined($t_entry) ) {
                     $installroot = $t_entry;
 		}
 		#($ref) = $sitetab->getAttribs({key => 'tftpdir'}, 'value');
-                @entries =  xCAT::Utils->get_site_attribute("tftpdir");
+                @entries =  xCAT::TableUtils->get_site_attribute("tftpdir");
                 $t_entry = $entries[0];
 		if ( defined($t_entry) ) {
                     $globaltftpdir = $t_entry;

@@ -19,6 +19,8 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use warnings "all";
 use xCAT::Table;
+require xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::SvrUtils;
 my $output_handler;
 my $newiqns;
@@ -57,7 +59,7 @@ sub process_request {
     my @nodes = @{$request->{node}};
     #my $sitetab = xCAT::Table->new('site');
     #(my $dent) = $sitetab->getAttribs({key=>'domain'},'value');
-    my @entries =  xCAT::Utils->get_site_attribute("domain");
+    my @entries =  xCAT::TableUtils->get_site_attribute("domain");
     my $t_entry = $entries[0];
     if ( defined($t_entry) ) {
         $domain = $t_entry;

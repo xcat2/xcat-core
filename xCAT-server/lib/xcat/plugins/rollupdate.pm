@@ -16,6 +16,8 @@ BEGIN
 require xCAT::NodeRange;
 require xCAT::NameRange;
 require xCAT::Table;
+require xCAT::Utils;
+require xCAT::TableUtils;
 require Data::Dumper;
 require Getopt::Long;
 require xCAT::MsgUtils;
@@ -114,7 +116,7 @@ sub preprocess_request {
         return [$req];
     }
 
-    $req->{_xcatdest} = xCAT::Utils->get_site_Master();
+    $req->{_xcatdest} = xCAT::TableUtils->get_site_Master();
     return [$req];
 }
 
@@ -279,7 +281,7 @@ sub processArgs {
 
     #  opt_t not yet supported
     if ( defined($::opt_t) ) {
-        $::test = 1;
+        #$::test = 1;
         $::TEST = 1;
        # my $rsp;
        # push @{ $rsp->{data} }, "The \'-t\' option is not yet implemented.";
@@ -1098,7 +1100,7 @@ my @rcblines;
             # for the status may run before we've had a chance to actually update it
             my $nltab = xCAT::Table->new('nodelist');
             my @nodes = split( /\,/, $nodelist );
-            xCAT::Utils->setAppStatus(\@nodes,"RollingUpdate","update_job_submitted");
+            xCAT::TableUtils->setAppStatus(\@nodes,"RollingUpdate","update_job_submitted");
             # Submit LL reservation
             my $downnodes = "-D";
             if ($::updateall){$downnodes = " ";}
@@ -1201,7 +1203,7 @@ my @rcblines;
             }
             my $nltab = xCAT::Table->new('nodelist');
             my @nodes = split( /\,/, $nodelist );
-            xCAT::Utils->setAppStatus(\@nodes,"RollingUpdate","update_job_submitted");
+            xCAT::TableUtils->setAppStatus(\@nodes,"RollingUpdate","update_job_submitted");
             my $childpid = runrollupdate( { command => ['runrollupdate'],
                                                 arg => [ 'internal','loadleveler', $ugdf ]
                                            });
@@ -2026,7 +2028,7 @@ sub runrollupdate {
 
     my $nltab = xCAT::Table->new('nodelist');
     my @nodes = split( /\,/, $hostlist );    
-    my $appstatus=xCAT::Utils->getAppStatus(\@nodes,"RollingUpdate");
+    my $appstatus=xCAT::TableUtils->getAppStatus(\@nodes,"RollingUpdate");
     foreach my $node (@nodes) {
         unless ( defined($appstatus->{$node})
                  && ( $appstatus->{$node} eq "update_job_submitted" ) )
@@ -2052,7 +2054,7 @@ sub runrollupdate {
     }
 
     # Run prescripts for this update group
-    xCAT::Utils->setAppStatus(\@nodes,"RollingUpdate","running_prescripts");
+    xCAT::TableUtils->setAppStatus(\@nodes,"RollingUpdate","running_prescripts");
     foreach my $psline ( @{ $::DATAATTRS{'prescript'} } ) {
         $psline =~ s/\$NODELIST/$hostlist/g;
         # Run the command
@@ -2082,7 +2084,7 @@ sub runrollupdate {
 
     # Shutdown the nodes
     if ( ! $skipshutdown ) {
-        xCAT::Utils->setAppStatus(\@nodes,"RollingUpdate","shutting_down");
+        xCAT::TableUtils->setAppStatus(\@nodes,"RollingUpdate","shutting_down");
         my $shutdown_cmd;
         if (xCAT::Utils->isAIX()) { $shutdown_cmd = "shutdown -F &"; }
                              else { $shutdown_cmd = "shutdown -h now &"; }
@@ -2141,7 +2143,7 @@ sub runrollupdate {
                             print RULOG localtime()." $::ug_name:  Running command \'$pwroff_cmd\' \n";
                             close (RULOG);
                         }
-                        xCAT::Utils->setAppStatus([$pnode],"RollingUpdate","shutdowntimeout_exceeded__forcing_rpower_off");
+                        xCAT::TableUtils->setAppStatus([$pnode],"RollingUpdate","shutdowntimeout_exceeded__forcing_rpower_off");
                         xCAT::Utils->runxcmd( $pwroff_cmd, $::SUBREQ, -1 );
                     } else {
                         last;
@@ -2158,7 +2160,7 @@ sub runrollupdate {
         } # end not TEST
 
         # Run out-of-band commands for this update group
-        xCAT::Utils->setAppStatus(\@nodes,"RollingUpdate","running_outofbandcmds");
+        xCAT::TableUtils->setAppStatus(\@nodes,"RollingUpdate","running_outofbandcmds");
         foreach my $obline ( @{ $::DATAATTRS{'outofbandcmd'} } ) {
             $obline =~ s/\$NODELIST/$hostlist/g;
             # Run the command
@@ -2237,9 +2239,9 @@ sub runrollupdate {
                 }
             }
 
-            xCAT::Utils->setAppStatus(\@bootnodes,"RollingUpdate","rebooting");
+            xCAT::TableUtils->setAppStatus(\@bootnodes,"RollingUpdate","rebooting");
             if ($bootindex < $numboots) {
-                xCAT::Utils->setAppStatus(\@remaining_nodes,"RollingUpdate","waiting_on_bringuporder");
+                xCAT::TableUtils->setAppStatus(\@remaining_nodes,"RollingUpdate","waiting_on_bringuporder");
             }
             if ( scalar(@rnetboot_nodes) > 0 ) {
                 my $rnb_nodelist = join( ',', @rnetboot_nodes );
@@ -2327,7 +2329,7 @@ sub runrollupdate {
                 }
                 if (@remove_res_LL) {
                     &remove_LL_reservations(\@remove_res_LL);
-                    xCAT::Utils->setAppStatus(\@remove_res_xCAT,"RollingUpdate","update_complete");
+                    xCAT::TableUtils->setAppStatus(\@remove_res_xCAT,"RollingUpdate","update_complete");
                 }
             }
             if ($not_done) {
@@ -2363,7 +2365,7 @@ sub runrollupdate {
                 print RULOG localtime()." ERROR:  bringuptimeout exceeded for the following nodes: \n";
                 print RULOG join(",",@error_nodes);
                 print RULOG "\n";
-                xCAT::Utils->setAppStatus(\@error_nodes,"RollingUpdate","ERROR_bringuptimeout_exceeded");
+                xCAT::TableUtils->setAppStatus(\@error_nodes,"RollingUpdate","ERROR_bringuptimeout_exceeded");
                 if ( @remaining_nodes ) {
                   my @leftover_nodes;
                   foreach my $rn (@remaining_nodes) {
@@ -2375,7 +2377,7 @@ sub runrollupdate {
                     print RULOG localtime()." ERROR:  bringuptimeout exceeded for some nodes in a preceding bringuporder.  The following nodes will not be powered on: \n";
                     print RULOG join(",",@leftover_nodes);
                     print RULOG "\n";
-                    xCAT::Utils->setAppStatus(\@leftover_nodes,"RollingUpdate","ERROR_bringuptimeout_exceeded_for_previous_node");
+                    xCAT::TableUtils->setAppStatus(\@leftover_nodes,"RollingUpdate","ERROR_bringuptimeout_exceeded_for_previous_node");
                   }
                 }
                 close (RULOG);
@@ -2902,7 +2904,7 @@ sub llreconfig {
        my ($sm,$rest) = split(/\./,$m);
        my $xlated_sm = $sm;
        if ( defined ($::XLATED{$sm}) ) { $xlated_sm = $::XLATED{$sm}; }
-       if (xCAT::Utils->thishostisnot($m)) {
+       if (xCAT::NetworkUtils->thishostisnot($m)) {
            push(@llnodes, $xlated_sm) unless $have{$sm}++;
        } else {
            $runlocal=1;

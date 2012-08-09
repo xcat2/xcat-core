@@ -10,6 +10,7 @@ use Sys::Syslog;
 use File::Temp qw/tempdir/;
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::SvrUtils;
 use xCAT::MsgUtils;
 use Data::Dumper;
@@ -827,7 +828,7 @@ sub mkinstall
                     );
         }
     }
-    #my $rc = xCAT::Utils->create_postscripts_tar();
+    #my $rc = xCAT::TableUtils->create_postscripts_tar();
     #if ($rc != 0)
     #{
     #    xCAT::MsgUtils->message("S", "Error creating postscripts tar file.");
@@ -1423,7 +1424,7 @@ sub mknetboot
                       );
     }
 
-    #my $rc = xCAT::Utils->create_postscripts_tar();
+    #my $rc = xCAT::TableUtils->create_postscripts_tar();
     #if ( $rc != 0 ) {
     #	xCAT::MsgUtils->message( "S", "Error creating postscripts tar file." );
     #}

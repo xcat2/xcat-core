@@ -15,7 +15,8 @@ use Sys::Hostname;
 use xCAT::Table;
 
 use xCAT::Utils;
-
+use xCAT::TableUtils;
+use xCAT::ServiceNodeUtils;
 use xCAT::MsgUtils;
 use Getopt::Long;
 1;
@@ -57,7 +58,7 @@ sub preprocess_request
     # find service nodes for requested nodes
     # build an individual request for each service node
     if ($nodes) {
-     $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
+     $sn = xCAT::ServiceNodeUtils->get_ServiceNode($nodes, $service, "MN");
 
       # build each request for each service node
 

@@ -18,6 +18,7 @@ use warnings;
 #use xCAT::Schema;
 #use xCAT::NodeRange qw/noderange abbreviate_noderange/;
 #use xCAT::Utils;
+use xCAT::TableUtils;
 use Data::Dumper;
 use XML::Simple;
 use POSIX qw/strftime/;
@@ -384,7 +385,7 @@ sub get_files{
 	my $xcatroot = "/opt/xcat";
 
 	# get the install root
-	my $installroot = xCAT::Utils->getInstallDir();
+	my $installroot = xCAT::TableUtils->getInstallDir();
 	unless($installroot){
 		$installroot = '/install';
 	}
@@ -841,7 +842,7 @@ sub change_profile {
     my $srcdir=shift;
 
     $data->{profile}=$new_profile;
-    my $installdir = xCAT::Utils->getInstallDir();
+    my $installdir = xCAT::TableUtils->getInstallDir();
     unless($installdir){
 	$installdir = '/install';
     }
@@ -897,7 +898,7 @@ sub check_media {
 	}elsif($data->{media} eq 'required'){
 		my $os = $data->{osvers};
 		my $arch = $data->{osarch};
-		my $installroot = xCAT::Utils->getInstallDir();
+		my $installroot = xCAT::TableUtils->getInstallDir();
 		unless($installroot){
 			$installroot = '/install';
 		}
@@ -1179,7 +1180,7 @@ sub make_files {
     my $os = $data->{osvers};
     my $arch = $data->{osarch};
     my $profile = $data->{profile};
-    my $installroot = xCAT::Utils->getInstallDir();
+    my $installroot = xCAT::TableUtils->getInstallDir();
     unless($installroot){
 	$installroot = '/install';
     }

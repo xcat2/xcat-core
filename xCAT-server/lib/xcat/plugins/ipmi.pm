@@ -20,6 +20,8 @@ use xCAT::IPMI;
 use POSIX qw(ceil floor);
 use Storable qw(store_fd retrieve_fd thaw freeze);
 use xCAT::Utils;
+use xCAT::TableUtils;
+use xCAT::ServiceNodeUtils;
 use xCAT::SvrUtils;
 use xCAT::Usage;
 use Thread qw(yield);
@@ -5563,7 +5565,7 @@ sub preprocess_request {
      if (defined $::XCATSITEVALS{ipmidispatch} and $::XCATSITEVALS{ipmidispatch} =~ /0|n/i) { #no SN indicated, instead do randomize
 	randomizelist($realnoderange);
      } else { # sn is indicated
-	my $bigsnmap = xCAT::Utils->get_ServiceNode($realnoderange, "xcat", "MN");
+	my $bigsnmap = xCAT::ServiceNodeUtils->get_ServiceNode($realnoderange, "xcat", "MN");
      	foreach my $servicenode (keys %$bigsnmap) { #let's also shuffle within each service node responsibliity
 		randomizelist($bigsnmap->{$servicenode})
 	}
@@ -5597,7 +5599,7 @@ sub preprocess_request {
      if (defined $::XCATSITEVALS{ipmidispatch} and $::XCATSITEVALS{ipmidispatch} =~ /0|n/i) {
         $sn = { '!xcatlocal!' => $noderange };
      } else {
-        $sn = xCAT::Utils->get_ServiceNode($noderange, "xcat", "MN");
+        $sn = xCAT::ServiceNodeUtils->get_ServiceNode($noderange, "xcat", "MN");
      }
 
      # build each request for each service node

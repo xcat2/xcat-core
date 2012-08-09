@@ -20,6 +20,8 @@ use lib "$::XCATROOT/lib/perl";
 use strict;
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::TableUtils;
+use xCAT::ServiceNodeUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
 use Getopt::Long;
@@ -182,7 +184,7 @@ sub preprocess_request
 		$callback->($rsp);
 		return 1;
 	    }
-	    my @servicenodes=xCAT::Utils->getSNList();
+	    my @servicenodes=xCAT::ServiceNodeUtils->getSNList();
 
             #print "noderange=@noderange, missednodes=@missednodes, servicenodes=@servicenodes\n"; 
 
@@ -206,7 +208,7 @@ sub preprocess_request
       
             #now find out the service nodes for each node and 
             #send the request to the service node
-	    my $sn_hash = xCAT::Utils->get_ServiceNode(\@noderange, "xcat", "MN");
+	    my $sn_hash = xCAT::ServiceNodeUtils->get_ServiceNode(\@noderange, "xcat", "MN");
     
 	    # build each request for each service node
 	    foreach my $sn (keys %$sn_hash)
@@ -354,7 +356,7 @@ sub process_makeroutes {
 	    }
 	}
 	else { #this is mn, get the routes from the site table
-	    my @mnroutes = xCAT::Utils->get_site_attribute("mnroutenames");
+	    my @mnroutes = xCAT::TableUtils->get_site_attribute("mnroutenames");
 	    if ($mnroutes[0]) {
 		my @a=split(',', $mnroutes[0]);
 		my @badroutes=();
@@ -389,7 +391,7 @@ sub process_makeroutes {
 
     #now let's handle the route creatation and deletion
     my @sns=(); 
-    my $installdir = xCAT::Utils->getInstallDir();
+    my $installdir = xCAT::TableUtils->getInstallDir();
     while (my ($routename, $route_hash) = each(%all_routes)) {
 	if ($route_hash->{process}) {
 	    my ($gw_name, $gw_ip)=xCAT::NetworkUtils->gethostnameandip($route_hash->{gateway});
@@ -425,7 +427,7 @@ sub process_makeroutes {
 
     #not all gateways are service nodes
     my %sn_hash=();
-    my @allSN=xCAT::Utils->getAllSN();
+    my @allSN=xCAT::ServiceNodeUtils->getAllSN();
     my %allSN_hash=();
     foreach(@allSN) {$allSN_hash{$_}=1;}
     foreach my $sn (@sns) {

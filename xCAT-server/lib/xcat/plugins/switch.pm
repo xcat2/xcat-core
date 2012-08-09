@@ -15,6 +15,8 @@ use Sys::Syslog;
 use xCAT::Usage;
 use Storable;
 use xCAT::MellanoxIB;
+require xCAT::TableUtils;
+require xCAT::ServiceNodeUtils;
 
 my $macmap;
 sub handled_commands {
@@ -84,7 +86,7 @@ sub preprocess_request {
       # find service nodes for requested switch
       # build an individual request for each service node
       my $service  = "xcat";
-      my $sn = xCAT::Utils->get_ServiceNode($noderange, $service, "MN");
+      my $sn = xCAT::ServiceNodeUtils->get_ServiceNode($noderange, $service, "MN");
       
       # build each request for each service node
       foreach my $snkey (keys %$sn)

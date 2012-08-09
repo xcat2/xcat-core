@@ -5,6 +5,7 @@ use Net::DNS;
 use File::Path;
 use xCAT::Table;
 use Sys::Hostname;
+use xCAT::TableUtils;
 use xCAT::NetworkUtils qw/getipaddr/;
 use Math::BigInt;
 use MIME::Base64;
@@ -27,7 +28,7 @@ sub handled_commands
 {
     #my $sitetab = xCAT::Table->new('site');
     #my $stab = $sitetab->getAttribs({key=>'dnshandler'},['value']);
-    my @entries =  xCAT::Utils->get_site_attribute("dnshandler");
+    my @entries =  xCAT::TableUtils->get_site_attribute("dnshandler");
     my $site_entry = $entries[0];
     unless ( defined($site_entry)) {
         return {"makedns" => "ddns"};
@@ -242,7 +243,7 @@ sub process_request {
     # check for site.domain     
     #my $sitetab = xCAT::Table->new('site');
     #my $stab = $sitetab->getAttribs({key=>'domain'},['value']);
-    my @entries =  xCAT::Utils->get_site_attribute("domain");
+    my @entries =  xCAT::TableUtils->get_site_attribute("domain");
     my $site_entry = $entries[0];
     unless ( defined($site_entry)) {
         xCAT::SvrUtils::sendmsg([1,"domain not defined in site table"], $callback);
@@ -411,7 +412,7 @@ sub process_request {
     } #do not warn/error here yet, if we can't generate or extract, we'll know later
 
     #$stab =  $sitetab->getAttribs({key=>'forwarders'},['value']);
-    my @entries =  xCAT::Utils->get_site_attribute("forwarders");
+    my @entries =  xCAT::TableUtils->get_site_attribute("forwarders");
     my $site_entry = $entries[0];
     if ( defined($site_entry)) {
         my @forwarders = split /[ ,]/,$site_entry;
@@ -435,11 +436,11 @@ sub process_request {
         #here, we are examining local files to assure that our key is in named.conf, the zones we care about are there, and that if
         #active directory is in use, allow the domain controllers to update specific zones
         #$stab =$sitetab->getAttribs({key=>'directoryprovider'},['value']);
-        @entries =  xCAT::Utils->get_site_attribute("directoryprovider");
+        @entries =  xCAT::TableUtils->get_site_attribute("directoryprovider");
         $site_entry = $entries[0];
         if ( defined($site_entry) and $site_entry eq 'activedirectory') {
             #$stab =$sitetab->getAttribs({key=>'directoryservers'},['value']);
-            @entries =  xCAT::Utils->get_site_attribute("directoryservers");
+            @entries =  xCAT::TableUtils->get_site_attribute("directoryservers");
             $site_entry = $entries[0];
             if ( defined($site_entry)) {
                 my @dservers = split /[ ,]/,$site_entry;
@@ -453,7 +454,7 @@ sub process_request {
             }
         }
         #$stab =$sitetab->getAttribs({key=>'dnsupdaters'},['value']); #allow unsecure updates from these
-        @entries =  xCAT::Utils->get_site_attribute("dnsupdaters");
+        @entries =  xCAT::TableUtils->get_site_attribute("dnsupdaters");
         $site_entry = $entries[0];
         if ( defined($site_entry) ) {
                 my @nservers = split /[ ,]/,$site_entry;
@@ -550,7 +551,7 @@ sub get_zonesdir {
     #    xCAT::MsgUtils->message("E", $rsp, $callback, 1);
     #}
     
-    my @entries =  xCAT::Utils->get_site_attribute("bindzones");
+    my @entries =  xCAT::TableUtils->get_site_attribute("bindzones");
     my $site_entry = $entries[0];
 
     #if ($sitetab) {
@@ -579,7 +580,7 @@ sub get_conf {
     #    xCAT::MsgUtils->message("E", $rsp, $callback, 1);
     #}
     
-    my @entries =  xCAT::Utils->get_site_attribute("bindconf");
+    my @entries =  xCAT::TableUtils->get_site_attribute("bindconf");
     my $site_entry = $entries[0];
 
     #if ($sitetab) {
@@ -602,7 +603,7 @@ sub get_dbdir {
     #    xCAT::MsgUtils->message("E", $rsp, $callback, 1);
     #}
 
-    my @entries =  xCAT::Utils->get_site_attribute("binddir");
+    my @entries =  xCAT::TableUtils->get_site_attribute("binddir");
     my $site_entry = $entries[0];
     #if ($sitetab) {
         #(my $ref) = $sitetab->getAttribs({key => 'binddir'}, 'value');

@@ -20,6 +20,8 @@ use File::Basename;
 use File::Path;
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::TableUtils;
+use xCAT::ServiceNodeUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
 use xCAT::SvrUtils;
@@ -200,7 +202,7 @@ sub process_request
     {
 
         # get all the nodes that use SN1 as the primary service nodes
-        my $pn_hash = xCAT::Utils->getSNandNodes();
+        my $pn_hash = xCAT::ServiceNodeUtils->getSNandNodes();
         foreach my $snlist (keys %$pn_hash)
         {
             if (($snlist =~ /^$::SN1$/) || ($snlist =~ /^$::SN1\,/))
@@ -464,7 +466,7 @@ sub process_request
 
         if ($sn1n)
         {
-            my @ret = xCAT::Utils::toIP($sn1n);
+            my @ret = xCAT::NetworkUtils::toIP($sn1n);
             if ($ret[0]->[0] == 0)
             {
                 $sn1n_ip = $ret[0]->[1];
@@ -558,7 +560,7 @@ sub process_request
     }    # end - foreach node
 
 	# check the sharedinstall attr
-	my $sharedinstall=xCAT::Utils->get_site_attribute('sharedinstall');
+	my $sharedinstall=xCAT::TableUtils->get_site_attribute('sharedinstall');
 	chomp $sharedinstall;
 	if (!$sharedinstall) {
         $sharedinstall="no";

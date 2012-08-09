@@ -6,6 +6,7 @@ use strict;
 use xCAT::Table;
 
 use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 
 use xCAT::MsgUtils;
@@ -78,7 +79,7 @@ sub init_plugin
 
     if ((xCAT::Utils->isServiceNode()) && ( -s "/etc/xcat/cfgloc"))
     {
-        my @nodeinfo   = xCAT::Utils->determinehostname;
+        my @nodeinfo   = xCAT::NetworkUtils->determinehostname;
         my $nodename   = pop @nodeinfo;                    # get hostname
         my @nodeipaddr = @nodeinfo;                        # get ip addresses
         my $service;
@@ -106,7 +107,7 @@ sub init_plugin
         # read the service node table
         # for a list of all functions to setup for this service node
         #
-        my @servicelist = xCAT::Utils->isServiceReq($nodename, \@nodeipaddr);
+        my @servicelist = xCAT::ServiceNodeUtils->isServiceReq($nodename, \@nodeipaddr);
         my $service;
         if ($::RUNCMD_RC == 0)
         {
@@ -272,7 +273,7 @@ sub init_plugin
         {
             print "\n"
               ; # make OK prints look better.  Only need to do this for the 1st service.
-            my @tmp = xCAT::Utils->get_site_attribute("vsftp");   
+            my @tmp = xCAT::TableUtils->get_site_attribute("vsftp");   
 		    if ($tmp[0] && ($tmp[0] !~ /0|NO|No|no|N|n/ )) {         
                 $rc = &setup_FTP();    # setup FTP
             }
@@ -318,7 +319,7 @@ sub setupInstallloc
 {
     my ($nodename) = @_;
     my $rc         = 0;
-    my $installdir = xCAT::Utils->getInstallDir();
+    my $installdir = xCAT::TableUtils->getInstallDir();
     my $installloc;
     my $newinstallloc;
 
@@ -328,7 +329,7 @@ sub setupInstallloc
     my $arch;
     my $nomount = 0;
 
-    my $retdata = xCAT::Utils->readSNInfo($nodename);
+    my $retdata = xCAT::ServiceNodeUtils->readSNInfo($nodename);
     if (ref $retdata and $retdata->{'arch'})
     {    # no error
         $master = $retdata->{'master'};    # management node
@@ -337,7 +338,7 @@ sub setupInstallloc
 
         # read install directory and install location from database,
         # if they exists
-        my @installlocation = xCAT::Utils->get_site_attribute("installloc");
+        my @installlocation = xCAT::TableUtils->get_site_attribute("installloc");
         my $hostname;
         my $path;
         if ($installlocation[0])
@@ -416,7 +417,7 @@ sub setupInstallloc
 
                 # need to  mount the directory
                 my $cmd;
-                my @nfsv4 = xCAT::Utils->get_site_attribute("useNFSv4onAIX");
+                my @nfsv4 = xCAT::TableUtils->get_site_attribute("useNFSv4onAIX");
                 if ($nfsv4[0] && ($nfsv4[0] =~ /1|Yes|yes|YES|Y|y/))
                 {
                     $cmd = "mount -o vers=4,rw,nolock $master:$installloc $installdir";
@@ -575,7 +576,7 @@ sub setup_CONS
     my $os;
     my $arch;
     my $cmd;
-    my $retdata = xCAT::Utils->readSNInfo($nodename);
+    my $retdata = xCAT::ServiceNodeUtils->readSNInfo($nodename);
     if ($retdata->{'arch'})
     {    # no error
         $master = $retdata->{'master'};
@@ -648,7 +649,7 @@ sub setup_DHCP
     #        $snonly=$href->{value};
     #    }
     #}
-    my @hs = xCAT::Utils->get_site_attribute("disjointdhcps");
+    my @hs = xCAT::TableUtils->get_site_attribute("disjointdhcps");
     my $tmp = $hs[0];
     if(defined($tmp)) {
         $snonly = $tmp;
@@ -695,8 +696,8 @@ sub setup_DHCP
      # determine my name
      # get servicenodes and their nodes
      # find the list of nodes serviced
-     my @hostinfo=xCAT::Utils->determinehostname();
-     my $sn_hash =xCAT::Utils->getSNandNodes();
+     my @hostinfo=xCAT::NetworkUtils->determinehostname();
+     my $sn_hash =xCAT::ServiceNodeUtils->getSNandNodes();
      my @nodes;
      my %iphash=();
      my $snkey;
@@ -749,7 +750,7 @@ sub setup_FTP
     # change ftp user id home directory to installdir
     # link installdir
     # restart the daemon
-    my $installdir = xCAT::Utils->getInstallDir();
+    my $installdir = xCAT::TableUtils->getInstallDir();
     if (!(-e $installdir))         # make it
     {
         mkpath($installdir);
@@ -924,7 +925,7 @@ sub setup_NTPsn
     my $ntpcfg = "/etc/ntp.conf";
 
     # read DB for nodeinfo
-    my $retdata = xCAT::Utils->readSNInfo($nodename);
+    my $retdata = xCAT::ServiceNodeUtils->readSNInfo($nodename);
     $master = $retdata->{'master'};
     $os     = $retdata->{'os'};
     $arch   = $retdata->{'arch'};
@@ -970,7 +971,7 @@ sub setup_NTPmn
     my $ntpcfg = "/etc/ntp.conf";
 
     # get timeservers from site table
-    my @ntpservers = xCAT::Utils->get_site_attribute("ntpservers");
+    my @ntpservers = xCAT::TableUtils->get_site_attribute("ntpservers");
     if ($ntpservers[0])
     {
 
@@ -1164,7 +1165,7 @@ sub setup_TFTP
     }
 
     # read DB for nodeinfo
-    my $retdata = xCAT::Utils->readSNInfo($nodename);
+    my $retdata = xCAT::ServiceNodeUtils->readSNInfo($nodename);
     $master = $retdata->{'master'};
     $os     = $retdata->{'os'};
     $arch   = $retdata->{'arch'};
@@ -1187,7 +1188,7 @@ sub setup_TFTP
          # read sharedtftp attribute from site table, if exist
     #my $stab = xCAT::Table->new('site');
     #my $sharedtftp = $stab->getAttribs({key => 'sharedtftp'}, 'value');
-    my @ss = xCAT::Utils->get_site_attribute("sharedtftp");
+    my @ss = xCAT::TableUtils->get_site_attribute("sharedtftp");
     my $sharedtftp = $ss[0];
     if ( defined($sharedtftp) )
     {
@@ -1212,7 +1213,7 @@ sub setup_TFTP
     #$stab->close;
 
     # read tftpdir directory from database
-    $tftpdir = xCAT::Utils->getTftpDir();
+    $tftpdir = xCAT::TableUtils->getTftpDir();
     if (!(-e $tftpdir))
     {
         mkdir($tftpdir);
@@ -1229,7 +1230,7 @@ sub setup_TFTP
 
             # need to  mount the directory
             my $cmd;
-            my @nfsv4 = xCAT::Utils->get_site_attribute("useNFSv4onAIX");
+            my @nfsv4 = xCAT::TableUtils->get_site_attribute("useNFSv4onAIX");
             if ($nfsv4[0] && ($nfsv4[0] =~ /1|Yes|yes|YES|Y|y/))
             {
                 $cmd = " mount -o vers=4,rw,nolock $tftphost:$tftpdir $tftpdir";
@@ -1380,7 +1381,7 @@ sub enable_TFTPhpa
   }
 
   # read tftpdir directory from database
-  my $tftpdir = xCAT::Utils->getTftpDir();
+  my $tftpdir = xCAT::TableUtils->getTftpDir();
   if (!(-e $tftpdir)) {
     mkdir($tftpdir);
   }
