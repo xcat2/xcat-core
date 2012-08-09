@@ -13,6 +13,7 @@ use xCAT::Table;
 use xCAT::MsgUtils;
 use xCAT::NodeRange;
 use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::SvrUtils;
 #use Data::Dumper;
 use File::Basename;
@@ -169,7 +170,7 @@ sub makescript
             else
             {
                 my $sitemaster_value = $value;
-                $value = xCAT::Utils->my_ip_facing($node);
+                $value = xCAT::NetworkUtils->my_ip_facing($node);
                 if ($value eq "0")
                 {
                     $value = $sitemaster_value;
@@ -194,7 +195,7 @@ sub makescript
     push @scriptd, "GROUP=$groups->{groups}\n";
     push @scriptd, "export GROUP\n";
     # read the sshbetweennodes attribute and process
-    my $enablessh=xCAT::Utils->enablessh($node); 
+    my $enablessh=xCAT::TableUtils->enablessh($node); 
     if ($enablessh == 1) {
         push @scriptd, "ENABLESSHBETWEENNODES=YES\n";
         push @scriptd, "export ENABLESSHBETWEENNODES\n";
@@ -496,7 +497,7 @@ sub makescript
     else
     {
         my $stat        = "install";
-        my $installroot = xCAT::Utils->getInstallDir();
+        my $installroot = xCAT::TableUtils->getInstallDir();
         if ($profile)
         {
             my $platform = "rh";

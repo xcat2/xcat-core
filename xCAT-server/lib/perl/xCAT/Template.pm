@@ -9,7 +9,9 @@ use File::Path;
 #use Data::Dumper;
 use Sys::Syslog;
 use xCAT::ADUtils; #to allow setting of one-time machine passwords
-
+use xCAT::Utils;
+use xCAT::TableUtils;
+use xCAT::NetworkUtils;
 BEGIN
 {
       $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
@@ -74,12 +76,12 @@ sub subvars {
   #my $sitetab = xCAT::Table->new('site');
   my $noderestab = xCAT::Table->new('noderes');
   #(my $et) = $sitetab->getAttribs({key=>"master"},'value');
-  my @masters = xCAT::Utils->get_site_attribute("master");
+  my @masters = xCAT::TableUtils->get_site_attribute("master");
   my $tmp = $masters[0];
   if ( defined($tmp) ) {
       $master = $tmp;
   }
-  my $ipfn = xCAT::Utils->my_ip_facing($node);
+  my $ipfn = xCAT::NetworkUtils->my_ip_facing($node);
   if ($ipfn) {
       $master = $ipfn;
   }
@@ -324,7 +326,7 @@ sub machinepassword {
     #}
     my $domain;
     #(my $et) = $sitetab->getAttribs({key=>"domain"},'value');
-    my @domains =  xCAT::Utils->get_site_attribute("domain");
+    my @domains =  xCAT::TableUtils->get_site_attribute("domain");
     my $tmp = $domains[0];
     if (defined($tmp)) {
         $domain = $tmp;
@@ -350,7 +352,7 @@ sub machinepassword {
     }
     #my $server = $sitetab->getAttribs({key=>'directoryserver'},['value']);
     my $server;
-    my @servers = xCAT::Utils->get_site_attribute("directoryserver");
+    my @servers = xCAT::TableUtils->get_site_attribute("directoryserver");
     $tmp = $servers[0];
     if (defined($tmp)) {
         $server = $tmp;
@@ -552,7 +554,7 @@ sub tabdb
     unless($ent and  defined($ent->{$field})) {
       unless ($blankok) {
          if ($field eq "xcatmaster") {
-           my $ipfn = xCAT::Utils->my_ip_facing($node);
+           my $ipfn = xCAT::NetworkUtils->my_ip_facing($node);
            if ($ipfn) {
              return $ipfn;
            }

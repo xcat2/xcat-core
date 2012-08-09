@@ -9,6 +9,7 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 require xCAT::Table;
 require xCAT::Utils;
+require xCAT::TableUtils;
 require xCAT::NetworkUtils;
 use File::Basename;
 use File::Path;
@@ -264,7 +265,7 @@ sub getsynclistfile()
 
   my ($os, $arch, $profile, $inst_type, $imgname) = @_;
 
-  my $installdir = xCAT::Utils->getInstallDir();
+  my $installdir = xCAT::TableUtils->getInstallDir();
 
   # for aix node, use the node figure out the profile, then use the value of
   # profile (osimage name) to get the synclist file path (osimage.synclists)
@@ -565,7 +566,7 @@ sub  update_tables_with_templates
 
   
     #print "osver=$osver, arch=$arch, osname=$osname, genos=$genos\n";
-    my $installroot = xCAT::Utils->getInstallDir();
+    my $installroot = xCAT::TableUtils->getInstallDir();
     #my $sitetab = xCAT::Table->new('site');
     #if ($sitetab) {
     #	(my $ref) = $sitetab->getAttribs({key => "installdir"}, "value");
@@ -573,7 +574,7 @@ sub  update_tables_with_templates
     #       $installroot = $ref->{value};
     #	}
     #}
-    my @installdirs = xCAT::Utils->get_site_attribute("installdir");
+    my @installdirs = xCAT::TableUtils->get_site_attribute("installdir");
     my $tmp = $installdirs[0];
     if ( defined($tmp)) {
        $installroot = $tmp; 
@@ -735,7 +736,7 @@ sub  update_tables_with_diskless_image
     }
   
     #print "osver=$osver, arch=$arch, osname=$osname, genos=$genos, profile=$profile\n";
-    my $installroot = xCAT::Utils->getInstallDir();
+    my $installroot = xCAT::TableUtils->getInstallDir();
     #my $sitetab = xCAT::Table->new('site');
     #if ($sitetab) {
     #	(my $ref) = $sitetab->getAttribs({key => "installdir"}, "value");
@@ -743,7 +744,7 @@ sub  update_tables_with_diskless_image
     #	    $installroot = $ref->{value};
     #	}
     #}
-    my @installdirs = xCAT::Utils->get_site_attribute("installdir");
+    my @installdirs = xCAT::TableUtils->get_site_attribute("installdir");
     my $tmp = $installdirs[0];
     if ( defined($tmp)) {
        $installroot = $tmp; 
@@ -907,7 +908,7 @@ sub get_mac_by_arp ()
     foreach my $n ( @$nodes ) {
         if ( $node->{$n}->{reachable} ) {
             my $output;
-            my $IP = xCAT::Utils::toIP( $n );
+            my $IP = xCAT::NetworkUtils::toIP( $n );
             if ( xCAT::Utils->isAIX() ) {
                 $output = `/usr/sbin/arp -a`;
             } else {
@@ -1054,7 +1055,7 @@ sub subVars {
                                         if($table eq 'site'){
                                                 #$val = $tab->getAttribs( { key => "$col" }, 'value' );
                                                 #$val = $val->{'value'};
-                                                my @vals = xCAT::Utils->get_site_attribute($col);
+                                                my @vals = xCAT::TableUtils->get_site_attribute($col);
                                                 $val = $vals[0];
                                         }else{
                                                 $ent = $tab->getNodeAttribs($node,[$col]);

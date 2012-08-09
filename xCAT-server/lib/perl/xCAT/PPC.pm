@@ -5,6 +5,8 @@ use strict;
 use lib "/opt/xcat/lib/perl";
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::TableUtils;
+use xCAT::ServiceNodeUtils;
 use xCAT::SvrUtils;
 use xCAT::FSPUtils;
 use xCAT::Usage;
@@ -191,7 +193,7 @@ sub process_command {
     # Get site table attributes 
     #######################################
     foreach ( @site ) {
-        my @val = xCAT::Utils->get_site_attribute($_); 
+        my @val = xCAT::TableUtils->get_site_attribute($_); 
         if ( defined($val[0]) ) { 
             $request->{$_} = $val[0]; 
         }
@@ -217,7 +219,7 @@ sub process_command {
         my @allerrornodes=();
     my $check=0;
     my $global_check=1;
-    my @val = xCAT::Utils->get_site_attribute("nodestatus");
+    my @val = xCAT::TableUtils->get_site_attribute("nodestatus");
     if (defined($val[0])) {
             if ($val[0] =~ /0|n|N/) { $global_check=0; }
         }
@@ -1003,7 +1005,7 @@ sub resolve_netwk {
         my $gateway = $nethash{$_}{gateway};
         my $gateway_ip;
         if ( defined( $gateway )) {
-            $ip = xCAT::Utils::toIP( $gateway );
+            $ip = xCAT::NetworkUtils::toIP( $gateway );
             if ( @$ip[0] != 0 ) {
                 send_msg( $request, 1, "$_: Cannot resolve '$gateway'" );
                 next;  
@@ -1021,12 +1023,12 @@ sub resolve_netwk {
         #################################
         # Get server (-S)
         #################################
-        my $server = xCAT::Utils->GetMasterNodeName( $_ );
+        my $server = xCAT::TableUtils->GetMasterNodeName( $_ );
         if ( $server == 1 ) {
             send_msg( $request, 1, "$_: Unable to identify master" );
             next;
         }
-        $ip = xCAT::Utils::toIP( $server );
+        $ip = xCAT::NetworkUtils::toIP( $server );
         if ( @$ip[0] != 0 ) {
             send_msg( $request, 1, "$_: Cannot resolve '$server'" );
             next;  
@@ -1036,7 +1038,7 @@ sub resolve_netwk {
         #################################
         # Get client (-C)
         #################################
-        $ip = xCAT::Utils::toIP( $_ ); 
+        $ip = xCAT::NetworkUtils::toIP( $_ ); 
         if ( @$ip[0] != 0 ) {
             send_msg( $request, 1, "$_: Cannot resolve '$_'" );
             next;  
@@ -1956,14 +1958,14 @@ sub preprocess_request {
             }
         }
 
-        my @masters = xCAT::Utils->get_site_attribute("master");
+        my @masters = xCAT::TableUtils->get_site_attribute("master");
        	#When run mkhwconn/lshwconn/rmhwconn with -T fnm for CNM, it will send the command to CEC/Frame direclty, 
      	#not through the service node if specified.
         if ($req->{command}->[0] =~ /^(mkhwconn|lshwconn|rmhwconn|rpower)$/
 	        && ( $req->{opt}->{T} == 1) )  {
 	        #for fnm
             my $reqcopy = {%$req};
-            #my @masters = xCAT::Utils->get_site_attribute("master");
+            #my @masters = xCAT::TableUtils->get_site_attribute("master");
             if( $masters[0] ) {
                 $reqcopy->{'_xcatdest'} = $masters[0];
                 push @requests,$reqcopy;
@@ -1978,7 +1980,7 @@ sub preprocess_request {
         # build an individual request for each service node
         my $service  = "xcat";
         my @hcps=keys(%hcp_hash);
-        my $sn = xCAT::Utils->get_ServiceNode(\@hcps, $service, "MN");
+        my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@hcps, $service, "MN");
         
         # build each request for each service node
           foreach my $snkey (keys %$sn)
@@ -2002,14 +2004,14 @@ sub preprocess_request {
             if(($req->{command}->[0] eq "rflash") && ( exists( $req->{opt}->{activate} ) ) ) {
                 my $linuxrequired = 0;
                 if ( xCAT::Utils->isLinux() ) {
-                    my @installloc = xCAT::Utils->get_site_attribute("installloc");
+                    my @installloc = xCAT::TableUtils->get_site_attribute("installloc");
                     if (! ($installloc[0])) {
                         $linuxrequired = 1;       
                     }
                 }
                 
                 if ( ($linuxrequired || xCAT::Utils->isAIX()) && ( $masters[0] ne $snkey )) {
-                    my $install_dir = xCAT::Utils->getInstallDir();
+                    my $install_dir = xCAT::TableUtils->getInstallDir();
                     my $cmd = "$::XCATROOT/bin/xdcp $snkey -R  $install_dir/packages_fw $install_dir/";
                     my $result = xCAT::Utils->runcmd("$cmd", -1); 
                     if ($::RUNCMD_RC != 0) {
@@ -2316,7 +2318,7 @@ sub process_request {
                $request->{hwtype} ne 'hmc' &&
                $request_new->{fsp_api} ne '0') {
            if ($request_new->{command} =~ /^(rspconfig|rpower|reventlog)$/){
-               my @enableASMI = xCAT::Utils->get_site_attribute("enableASMI");
+               my @enableASMI = xCAT::TableUtils->get_site_attribute("enableASMI");
                if (defined($enableASMI[0])) {
                    if (($request_new->{command} !~ /^rspconfig$/) || 
                        (ref($request_new->{method} eq 'HASH'))) {
