@@ -7,6 +7,7 @@ use strict;
 use Socket;
 use xCAT::Utils;
 use xCAT::MsgUtils;
+use xCAT::TableUtils;
 # Define remote shell globals from xCAT
 
 our $XCAT_RSH_CMD;
@@ -321,7 +322,7 @@ sub get_xcat_remote_cmds
 {
     # override with site table settings, if they exist 
     my $ssh_setup = 0;
-    my @useSSH = xCAT::Utils->get_site_attribute("useSSHonAIX");
+    my @useSSH = xCAT::TableUtils->get_site_attribute("useSSHonAIX");
     if (defined($useSSH[0])) {
       $useSSH[0] =~ tr/a-z/A-Z/;    # convert to upper 
       if (($useSSH[0] eq "1") || ($useSSH[0] eq "YES"))
@@ -413,7 +414,7 @@ sub get_xcat_node_list
 sub get_xcat_nodegroup_table
 {
     my $node_list = "";
-    my @nodegroups = xCAT::Utils->list_all_node_groups;
+    my @nodegroups = xCAT::TableUtils->list_all_node_groups;
     for my $group (@nodegroups)
     {
         chomp($group);
