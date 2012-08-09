@@ -334,7 +334,7 @@ sub stop {
 
  
     #the identification of this node
-    my @hostinfo=xCAT::Utils->determinehostname();
+    my @hostinfo=xCAT::NetworkUtils->determinehostname();
     my $isSV=xCAT::Utils->isServiceNode();
 
     my %iphash=();
@@ -431,7 +431,7 @@ sub config {
   
  
   #the identification of this node
-  my @hostinfo=xCAT::Utils->determinehostname();
+  my @hostinfo=xCAT::NetworkUtils->determinehostname();
   my $isSV=xCAT::Utils->isServiceNode();
   my %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
@@ -535,7 +535,7 @@ sub deconfig {
   }
  
   #the identification of this node
-  my @hostinfo=xCAT::Utils->determinehostname();
+  my @hostinfo=xCAT::NetworkUtils->determinehostname();
   my $isSV=xCAT::Utils->isServiceNode();
   my %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
@@ -637,7 +637,7 @@ sub startNodeStatusMon {
       return (1, "");	
   }
 
-  my @hostinfo=xCAT::Utils->determinehostname();
+  my @hostinfo=xCAT::NetworkUtils->determinehostname();
   my %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
   if (!$isSV) { $iphash{'noservicenode'}=1;}
@@ -936,7 +936,7 @@ sub getNodeInfo
   my $node=shift;
   my $flag=shift;
 
-  my @hostinfo=xCAT::Utils->determinehostname();
+  my @hostinfo=xCAT::NetworkUtils->determinehostname();
   my %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
 
@@ -1020,7 +1020,7 @@ sub addNodes {
   my $flag=shift;
   print "rmcmon.addNodes mon_nodes=@mon_nodes, flag=$flag\n";
 
-  my @hostinfo=xCAT::Utils->determinehostname();
+  my @hostinfo=xCAT::NetworkUtils->determinehostname();
   my %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
   my $localhostname=hostname();
@@ -1075,7 +1075,7 @@ sub addNodes {
         return (1, "Cannot get nodeid for $ms_host_name"); 
       }
      
-      $result= xCAT::Utils::toIP( $master );
+      $result= xCAT::NetworkUtils::toIP( $master );
       if ( @$result[0] != 0 ) {
         reportError("Cannot resolve $master", $callback);
         return (1, "Cannot resolve $master"); 
@@ -1175,7 +1175,7 @@ sub addNodes {
   #let updatenode command to handle the normal nodes as a bulk
   if (@normal_nodes>0) {
     my $nr=join(',',@normal_nodes);
-    my $install_root = xCAT::Utils->getInstallDir();
+    my $install_root = xCAT::TableUtils->getInstallDir();
 
     #get the fanout value
     my %settings=xCAT_monitoring::monitorctrl->getPluginSettings("rmcmon");
