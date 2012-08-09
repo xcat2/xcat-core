@@ -1,7 +1,7 @@
 start:geninitrd_i_n_o_p
 os:Linux
 cmd:copycds $$ISO
-cmd:$$NETBOOTDIR/genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/initrd.gz
 check:rc==0
