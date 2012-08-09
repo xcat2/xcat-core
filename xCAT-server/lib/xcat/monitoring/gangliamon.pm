@@ -13,6 +13,7 @@ use xCAT::Utils;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use xCAT::MsgUtils;
+use xCAT::TableUtils;
 use strict;
 use warnings;
 1;
@@ -125,7 +126,7 @@ sub start {
         }
 
         # Identification of this node
-        my @hostinfo = xCAT::Utils->determinehostname();
+        my @hostinfo = xCAT::NetworkUtils->determinehostname();
         my $isSV     = xCAT::Utils->isServiceNode();
         my %iphash   = ();
         foreach (@hostinfo) {
@@ -290,7 +291,7 @@ sub confGmond {
     }
 
     # Identification of this node
-    my @hostinfo = xCAT::Utils->determinehostname();
+    my @hostinfo = xCAT::NetworkUtils->determinehostname();
     my $isSV     = xCAT::Utils->isServiceNode();
     my %iphash   = ();
     foreach (@hostinfo) {
@@ -348,7 +349,7 @@ sub confGmond {
 
     if ($scope) {
         my @children;
-        my $install_root = xCAT::Utils->getInstallDir();
+        my $install_root = xCAT::TableUtils->getInstallDir();
         foreach my $key ( keys(%$pPairHash) ) {
             my @key_a = split( ':', $key );
             if ( !$iphash{ $key_a[0] } ) {
@@ -473,7 +474,7 @@ sub confGmetad {
         return ( 1, "" );
     }
 
-    my @hostinfo = xCAT::Utils->determinehostname();
+    my @hostinfo = xCAT::NetworkUtils->determinehostname();
     my $isSV     = xCAT::Utils->isServiceNode();
     my %iphash   = ();
     foreach (@hostinfo) { $iphash{$_} = 1; }
@@ -627,7 +628,7 @@ sub deconfGmond {
         }
 
         # Identification of this node
-        my @hostinfo = xCAT::Utils->determinehostname();
+        my @hostinfo = xCAT::NetworkUtils->determinehostname();
         my $isSV     = xCAT::Utils->isServiceNode();
         my %iphash   = ();
         foreach (@hostinfo) { $iphash{$_} = 1; }
@@ -827,7 +828,7 @@ sub stop {
         }
 
         #identification of this node
-        my @hostinfo = xCAT::Utils->determinehostname();
+        my @hostinfo = xCAT::NetworkUtils->determinehostname();
         my $isSV     = xCAT::Utils->isServiceNode();
         my %iphash   = ();
         foreach (@hostinfo) { $iphash{$_} = 1; }

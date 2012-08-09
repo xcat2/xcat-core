@@ -135,7 +135,7 @@ sub start
 	}
 
 	#identification of this node
-	my @hostinfo=xCAT::Utils->determinehostname();
+	my @hostinfo=xCAT::NetworkUtils->determinehostname();
 	my $isSV=xCAT::Utils->isServiceNode();
 	my %iphash=();	
 	foreach(@hostinfo) {$iphash{$_}=1;}
@@ -299,7 +299,7 @@ sub stop
 
 
            #identification of this node
-           my @hostinfo=xCAT::Utils->determinehostname();
+           my @hostinfo=xCAT::NetworkUtils->determinehostname();
            my $isSV=xCAT::Utils->isServiceNode();
            my %iphash=();
            foreach(@hostinfo) {$iphash{$_}=1;}

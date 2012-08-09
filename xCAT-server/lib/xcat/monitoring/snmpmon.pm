@@ -10,6 +10,7 @@ use strict;
 use IO::File;
 use xCAT::Utils;
 use xCAT::MsgUtils;
+use xCAT::TableUtils;
 use xCAT::NodeRange;
 use xCAT_monitoring::monitorctrl;
 use Sys::Hostname;
@@ -382,7 +383,7 @@ sub configBMC {
   my $ret_val=0;
 
   #the identification of this node
-  my @hostinfo=xCAT::Utils->determinehostname();
+  my @hostinfo=xCAT::NetworkUtils->determinehostname();
   my $isSV=xCAT::Utils->isServiceNode();
   my  %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
@@ -464,7 +465,7 @@ sub configBMC {
       my $ref2=$masterhash{$_};
       if (@$ref2==0) { next;}
       my $nr2=join(',', @$ref2);
-      my @tmp_a=xCAT::Utils::toIP($_);
+      my @tmp_a=xCAT::NetworkUtils::toIP($_);
       my $ptmp=$tmp_a[0];
       if ($ptmp->[0]>0) {
          xCAT::MsgUtils->message('S', "[mon]: Converting to IP: $ptmp->[1]\n"); 
@@ -517,7 +518,7 @@ sub configMPA {
   my $ret_text="";
 
   #the identification of this node
-  my @hostinfo=xCAT::Utils->determinehostname();
+  my @hostinfo=xCAT::NetworkUtils->determinehostname();
   my $isSV=xCAT::Utils->isServiceNode();
   my %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
@@ -611,7 +612,7 @@ sub configMPA {
       my $ref2=$masterhash{$_};
       if (@$ref2==0) { next;}
       my $nr2=join(',', @$ref2);
-      my @tmp_a=xCAT::Utils::toIP($_);
+      my @tmp_a=xCAT::NetworkUtils::toIP($_);
       my $ptmp=$tmp_a[0];
       if ($ptmp->[0]>0) {
          xCAT::MsgUtils->message('S', "[mon]: Converting to IP: $ptmp->[1]\n"); 
@@ -665,7 +666,7 @@ sub configSwitch {
   my $ret_val=0;
 
   #the identification of this node
-  my @hostinfo=xCAT::Utils->determinehostname();
+  my @hostinfo=xCAT::NetworkUtils->determinehostname();
   my $isSV=xCAT::Utils->isServiceNode();
   my  %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
@@ -765,7 +766,7 @@ sub configSwitch {
 		  my @a_temp=split(':',$pairs); 
 		  my $monserver=$a_temp[0];
 		  my $master=$a_temp[1];
-		  my @tmp_a=xCAT::Utils::toIP($master);
+		  my @tmp_a=xCAT::NetworkUtils::toIP($master);
 		  my $ptmp=$tmp_a[0];
 		  if ($ptmp->[0]>0) {
 		      xCAT::MsgUtils->message('S', "[mon]: Converting to IP: $ptmp->[1]\n"); 
@@ -789,7 +790,7 @@ sub configSwitch {
 	  my @a_temp=split(':',$pairs); 
 	  my $monserver=$a_temp[0];
 	  my $master=$a_temp[1];
-	  my @tmp_a=xCAT::Utils::toIP($master);
+	  my @tmp_a=xCAT::NetworkUtils::toIP($master);
 	  my $ptmp=$tmp_a[0];
 	  if ($ptmp->[0]>0) {
 	      xCAT::MsgUtils->message('S', "[mon]: Converting to IP: $ptmp->[1]\n"); 
@@ -839,7 +840,7 @@ sub configSwitch {
 sub configSNMP {
     print "configSNMP called \n";
   my $isSN=xCAT::Utils->isServiceNode();
-  my $master=xCAT::Utils->get_site_Master();
+  my $master=xCAT::TableUtils->get_site_Master();
   my $cmd;
   # now move /usr/share/snmp/snmptrapd.conf to /usr/share/snmp/snmptrapd.conf.orig
   # if it exists.

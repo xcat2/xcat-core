@@ -11,6 +11,7 @@ use xCAT::NodeRange;
 use xCAT::Table;
 use xCAT::MsgUtils;
 use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT_plugin::notification;
 use xCAT_monitoring::montbhandler;
 use Sys::Hostname;
@@ -824,7 +825,7 @@ sub isMonServer {
 
   if (ref($pHash) eq 'ARRAY') { return 0; }
 
-  my @hostinfo=xCAT::Utils->determinehostname();
+  my @hostinfo=xCAT::NetworkUtils->determinehostname();
   my $isSV=xCAT::Utils->isServiceNode();
   my  %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
@@ -883,7 +884,7 @@ sub getNodeMonServerPair {
   my %gnopts;
   if (scalar (@nodes) == 1) {  $gnopts{prefetchcache}=1; } #if only doing one server, it seems probable that this was a Postage type scenario
   my $tabdata = $table2->getNodesAttribs(\@nodes,['monserver', 'servicenode', 'xcatmaster'],%gnopts);
-  my $sitemaster=xCAT::Utils->get_site_attribute('master'); 
+  my $sitemaster=xCAT::TableUtils->get_site_attribute('master'); 
   foreach my $node (@nodes) {
     my $monserver;
     my $monmaster;
@@ -967,7 +968,7 @@ sub getMonHierarchy {
   foreach (@tmp3) {
     $temp_hash3{$_->{node}}=$_;
   }
-  my $sitemaster=xCAT::Utils->get_site_attribute('master');
+  my $sitemaster=xCAT::TableUtils->get_site_attribute('master');
   
   if (@tmp1 > 0) {
     foreach(@tmp1) {

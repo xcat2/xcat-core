@@ -15,6 +15,7 @@ use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use xCAT::MsgUtils;
 use xCAT::DBobjUtils;
+use xCAT::TableUtils;
 use Data::Dumper;
 1;
 
@@ -191,7 +192,7 @@ sub config {
     my $localhostname=hostname();
     
     #the identification of this node
-    my @hostinfo=xCAT::Utils->determinehostname();
+    my @hostinfo=xCAT::NetworkUtils->determinehostname();
     my $isSN=xCAT::Utils->isServiceNode();
     my %iphash=();
     foreach(@hostinfo) {$iphash{$_}=1;}
@@ -422,7 +423,7 @@ sub setup_nagios_cfg_sn {
     #create ncsa the commands
     my $ocsp_command="/usr/lib/nagios/plugins/eventhandler/submit_service_check_result";
     my $ochp_command="/usr/lib/nagios/plugins/eventhandler/submit_host_check_result";
-    my $master=xCAT::Utils->get_site_Master();
+    my $master=xCAT::TableUtils->get_site_Master();
     if (!$master) {
 	my $rc=`grep XCATMASTER /opt/xcat/xcatinfo`;
 	if ($rc && ($rc =~/^XCATMASTER=(.*)/)) {
@@ -560,7 +561,7 @@ sub addNodes {
     my $callback=shift;
     print "nagiosmon.addNodes mon_nodes=@mon_nodes\n";
     
-    my @hostinfo=xCAT::Utils->determinehostname();
+    my @hostinfo=xCAT::NetworkUtils->determinehostname();
     my %iphash=();
     foreach(@hostinfo) {$iphash{$_}=1;}
     my $localhostname=hostname();
@@ -756,7 +757,7 @@ sub removeNodes {
     my $callback=shift;
     print "nagiosmon.removeNodes mon_nodes=@mon_nodes\n";
     
-    my @hostinfo=xCAT::Utils->determinehostname();
+    my @hostinfo=xCAT::NetworkUtils->determinehostname();
     my %iphash=();
     foreach(@hostinfo) {$iphash{$_}=1;}
     my $localhostname=hostname();
@@ -848,7 +849,7 @@ sub addGrandNodes {
     my $callback=shift;
     print "nagiosmon.addGrandNodes\n";
     
-    my @hostinfo=xCAT::Utils->determinehostname();
+    my @hostinfo=xCAT::NetworkUtils->determinehostname();
     my %iphash=();
     foreach(@hostinfo) {$iphash{$_}=1;}
     my $localhostname=hostname();
@@ -1058,7 +1059,7 @@ sub removeGrandNodes {
     my $callback=shift;
     print "nagiosmon.removeGrandNodes\n";
     
-    my @hostinfo=xCAT::Utils->determinehostname();
+    my @hostinfo=xCAT::NetworkUtils->determinehostname();
     my %iphash=();
     foreach(@hostinfo) {$iphash{$_}=1;}
     my $localhostname=hostname();
@@ -1156,7 +1157,7 @@ sub deconfig {
     my $localhostname=hostname();
     
     #the identification of this node
-    my @hostinfo=xCAT::Utils->determinehostname();
+    my @hostinfo=xCAT::NetworkUtils->determinehostname();
     my $isSN=xCAT::Utils->isServiceNode();
     my %iphash=();
     foreach(@hostinfo) {$iphash{$_}=1;}
@@ -1272,7 +1273,7 @@ sub startNodeStatusMon {
       return (1, "");	
   }
 
-  my @hostinfo=xCAT::Utils->determinehostname();
+  my @hostinfo=xCAT::NetworkUtils->determinehostname();
   my %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
   if (!$isSN) { $iphash{'noservicenode'}=1;}

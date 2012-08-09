@@ -301,7 +301,7 @@ sub getMonNodesStatus {
   my $isSV=xCAT::Utils->isServiceNode(); 
   
   #on a service node or on ms, get the nodes that has local host as the server node
-  my @hostinfo=xCAT::Utils->determinehostname();
+  my @hostinfo=xCAT::NetworkUtils->determinehostname();
   my %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
   #if this is mn, include the ones that has no service nodes
