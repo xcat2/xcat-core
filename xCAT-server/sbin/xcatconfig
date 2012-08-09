@@ -1283,7 +1283,7 @@ sub initDB
 
         # switch from bind.pm to ddns.pm
         # give a warning message for the first time
-        my $cmds = "XCATBYPASS=Y $::XCATROOT/sbin/tabdump site|grep dnshandler";
+        my $cmds = "XCATBYPASS=Y $::XCATROOT/sbin/tabdump site 2>/dev/null |grep dnshandler";
         $outref = xCAT::Utils->runcmd("$cmds", -1);
         if ($::RUNCMD_RC != 0)
         {
