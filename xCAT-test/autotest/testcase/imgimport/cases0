@@ -22,7 +22,7 @@ start:imgimport_bundlefile
 os:Linux
 description:imgimport foo.tgz
 cmd:copycds $$ISO
-cmd:$$NETBOOTDIR/genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
 check:rc==0
@@ -46,7 +46,7 @@ start:imgimport_bundlefile_p
 os:Linux
 description:imgimport foo.tgz -p $$CN
 cmd:copycds $$ISO
-cmd:$$NETBOOTDIR/genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
 check:rc==0
@@ -70,7 +70,7 @@ start:imgimport_bundlefile_f
 os:Linux
 description:imgimport foo.tgz -f compute_test
 cmd:copycds $$ISO
-cmd:$$NETBOOTDIR/genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
+cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
 check:rc==0
