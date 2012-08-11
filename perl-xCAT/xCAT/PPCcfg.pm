@@ -903,11 +903,37 @@ sub doresetnet {
             %iphash = ();
             close( $parent );
             $req->{pipe} = $child;
-                            # record verbose info, retry 10 times for the noping situation
-            child_process($grouphashref, $iphashref, $rspdevref, $req, $node );
-                            #push @data, @$result[2];
-
-                # retry time less than 1 min.
+            my $msgs; 
+			my $report;
+			my $time = 0;
+			while (1) {
+			    my $erflag = 0;
+			    $msgs = child_process($grouphashref, $iphashref, $rspdevref, $req, $node );
+                foreach my $port (keys %$msgs){
+                    unless ($msgs->{$port} =~ /successful/) {
+                        $erflag = 1;
+			    	    last;
+			    	}	
+                }
+				if ($erflag) {
+				    $report = ();
+				    foreach my $port1 (keys %$msgs){
+                        $report .= $port1.":".$msgs->{$port1}.";";
+                    }
+				    xCAT::MsgUtils->verbose_message($req, "========> try again, $report");
+				    send_msg( $req, 0, "========> try again, $report");
+				    sleep 3;
+					$time++;
+				} else {
+                    last;
+                }
+                last if ($time > 10);				
+			}		
+			$report = ();
+            foreach my $port (keys %$msgs){
+                $report .= $port.":".$msgs->{$port}.";";
+            }
+            send_msg( $req, 0, "Resetnet result for fsp $node is : $report");
             ####################################
             # Pass result array back to parent
             ####################################
@@ -966,19 +992,14 @@ sub child_process {
             xCAT::MsgUtils->verbose_message( $req, "ping static $ip successfully");
             push @valid_ips, $ip;  # static ip should be used first
             push @portsuccess, $fspport;
-            $msginfo{$fspport} = "successfully";
+            $msginfo{$fspport} = "ping1 successfully";
         } else {
             xCAT::MsgUtils->verbose_message( $req, "ping static $ip failed, need to do resetnet for $fspport");
             push @portneedreset, $fspport;
         }
     }
     if (scalar (@portneedreset) == 0) {
-        my $report;
-        foreach my $port (keys %msginfo){
-            $report .= $port.":".$msginfo{$port}.";";
-        }
-        send_msg( $req, 0, "Resetnet result for fsp $node is : $report");
-        return;
+        return \%msginfo;
     }
     ###########################################
     # Print the result
@@ -994,8 +1015,10 @@ sub child_process {
         }
     }
     if (scalar (@valid_ips) == 0) {
-        send_msg( $req, 0, "Resetnet result for fsp $node is : failed to find valid ip to log on " );
-        return;
+        foreach my $fspport (@ns) {
+		    $msginfo{$fspport} = "failed to find valid ip to log on";
+		}	
+        return \%msginfo;
     }
     my @exp;
     my $goodip;
@@ -1011,8 +1034,10 @@ sub child_process {
     my $msg = "login result is :".join(',', @exp);
     xCAT::MsgUtils->verbose_message( $req, $msg);
     unless ($goodip) {
-        send_msg( $req, 0, "Resetnet result for fsp $node is : Unable to log on, $exp[0]");
-        return;
+        foreach my $fspport (@ns) {
+		    $msginfo{$fspport} = "failed to log on with $exp[0]";
+		}
+        return \%msginfo;
     }
     my %handled;
     my $port;
@@ -1046,7 +1071,7 @@ sub child_process {
 			if ($result) {
 			    my $errcode = ${@$result[0]}{errorcode};
 			    if ( $errcode == 0) {
-			        $msginfo{$port} = "successfully";
+			        $msginfo{$port} = "successful";
 			    } else {
                     my $node = 	${@$result[0]}{node};
            	    	$msginfo{$port} = @{${@{${@$node[0]}{data}}[0]}{contents}}[0];
@@ -1055,7 +1080,7 @@ sub child_process {
 			    $msginfo{$port} = "failed with unknown reason";
 			}	
 		} else {
-            $msginfo{$port} = "successfully";
+            $msginfo{$port} = "ping2 successfully";
         }
     } 
     if ($port) {
@@ -1092,7 +1117,7 @@ sub child_process {
 		if ($result) {
 		    my $errcode = ${@$result[0]}{errorcode};
 		    if ( $errcode == 0) {
-		        $msginfo{$port} = "successfully";
+		        $msginfo{$port} = "successful";
 		    } else {
                 my $node = 	${@$result[0]}{node};
             	$msginfo{$port} = @{${@{${@$node[0]}{data}}[0]}{contents}}[0];
@@ -1102,14 +1127,9 @@ sub child_process {
 		}
     } else {
 	    xCAT::PPCfsp::disconnect( \@exp );
-		$msginfo{$port} = "successfully";
+		$msginfo{$port} = "ping3 successfully";
     }	
-    my $report;
-    foreach my $port (keys %msginfo){
-        $report .= $port.":".$msginfo{$port}.";";
-    }
-    send_msg( $req, 0, "Resetnet result for fsp $node is : $report");
-    return;
+    return \%msginfo;
 }
 
 #############################################
@@ -1311,7 +1331,7 @@ sub connect {
     ##################################
     # Use timeout from site table
     ##################################
-    my $timeout = 15;
+    my $timeout = 10;
     ##################################
     # Get userid/password
     ##################################
