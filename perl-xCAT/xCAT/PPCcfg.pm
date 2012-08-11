@@ -4,6 +4,7 @@ package xCAT::PPCcfg;
 use strict;
 use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
+use xCAT::PPCfsp;
 use xCAT::Usage;
 use Storable qw(freeze thaw);
 use POSIX "WNOHANG";
@@ -849,7 +850,6 @@ sub doresetnet {
     %oihash  = ();
     %machash = ();
     %vpdhash = ();
-    send_msg( $req, 0, "\nStart to reset network..\n" );
     $start = Time::HiRes::gettimeofday();
     my $children = 0;
     $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children--; } };
@@ -903,74 +903,18 @@ sub doresetnet {
             %iphash = ();
             close( $parent );
             $req->{pipe} = $child;
-            my @ns = split /,/, $grouphashref;
-            my $ips ;
-            my $retrytime = 0;
-            while (scalar(@ns)) {
-                foreach my $fspport (@ns) {
-                    my $ip = ${$iphashref->{$fspport}}{tip};
-                    my $rc = system("ping -q -n -c 1 -w 1 $ip > /dev/null");
-                    if ($rc != 0) {
-                        $ip = ${$iphashref->{$fspport}}{sip};
-                        $rc = system("ping -q -n -c 1 -w 1 $ip > /dev/null");
-                        if ($rc != 0) {
-                            xCAT::MsgUtils->verbose_message($req, "$fspport: Ping failed for both ips: ${$iphashref->{$fspport}}{tip}, ${$iphashref->{$fspport}}{sip}. Need to retry for fsp $fspport. Retry $retrytime");
                             # record verbose info, retry 10 times for the noping situation
-                            $retrytime++;
-                            if ($retrytime > 5) {
-                                while (@ns) {
-                                    my $n1 = shift @ns;
-                                    push @data, $n1;
-                                    push @data, 1;
-                                    xCAT::MsgUtils->verbose_message($req, "$n1: Ping failed for both ips: ${$iphashref->{$n1}}{tip}, ${$iphashref->{$n1}}{sip}. Need to retry for fsp $n1. return");
-                                }
-                            }
-                        } else {
-                            xCAT::MsgUtils->verbose_message($req, "$fspport: has got new ip $ip");
-                            my @temp;
-                            foreach my $tn (@ns){
-                                push @temp, $tn unless ($tn eq $fspport);
-                            }
-                            @ns = @temp;
-                            push @data, $fspport;
-                            push @data, 0;
-                        }
-                    } else {
-                        xCAT::MsgUtils->verbose_message($req, "$fspport: Begin to use ip $ip to loggin");
-                        $result = invoke_cmd( $req, $ip, $rspdevref);
-                        xCAT::MsgUtils->verbose_message($req, "$fspport: resetnet result is @$result[0]");
-                        if (@$result[0] == 0) {
-                            my @temp;
-                            foreach my $tn (@ns){
-                                push @temp, $tn unless ($tn eq $fspport);
-                            }
-                            @ns = @temp;
-                            push @data, $fspport;
-                            push @data, 0;
+            child_process($grouphashref, $iphashref, $rspdevref, $req, $node );
                             #push @data, @$result[2];
-                            xCAT::MsgUtils->verbose_message($req, "$fspport: reset successfully for node $fspport");
-                        } else {
-                            xCAT::MsgUtils->verbose_message($req, "$fspport: reset fail for node $fspport, retrying...");
-                        }
-                    }
-                }
 
                 # retry time less than 1 min.
-                my $elapsed = Time::HiRes::gettimeofday() - $start;
-                if ($elapsed > 60) {
-                    while (@ns) {
-                        my $n1 = shift @ns;
-                        push @data, $n1;
-                        push @data, 1;
-                        xCAT::MsgUtils->verbose_message($req, "$n1: ASMI retry failed, return.");
-                    }
-                }
-            }
             ####################################
             # Pass result array back to parent
             ####################################
+            my %data;
+			$data{errorcode} = 0;
             my $out = $req->{pipe};
-            print $out freeze( \@data );
+            print $out freeze( [\%data] );
             print $out "\nENDOFFREEZE6sK4ci\n";
             exit(0);
         } else {
@@ -999,40 +943,173 @@ sub doresetnet {
     my $msg = sprintf( "Total rspconfig Time: %.3f sec\n", $elapsed );
     xCAT::MsgUtils->verbose_message($req, $msg);
 
-    my @failed_node;
-    my @succeed_node;
-    foreach my $ip ( keys %rsp_result ) {
+    return undef;
+}
+sub child_process {
+    my $grouphashref = shift;
+    my $iphashref = shift;
+    my $rspdevref = shift;
+    my $req = shift;
+    my $node = shift;
+    my %msginfo;
+    my @ns = split /,/, $grouphashref;
+    my @valid_ips;
+    my @portneedreset;
+    my @portsuccess;
         #################################
         # Error logging on 
         #################################
-        my $result = $rsp_result{$ip};
-        my $Rc = shift(@$result);
-    
-        if ( $Rc != SUCCESS ) {
-            push @failed_node, $ip;
+    foreach my $fspport (@ns) {
+        my $ip = ${$iphashref->{$fspport}}{sip};
+        my $rc = system("ping -q -n -c 1 -w 1 $ip > /dev/null");
+        if ($rc == 0) {
+            xCAT::MsgUtils->verbose_message( $req, "ping static $ip successfully");
+            push @valid_ips, $ip;  # static ip should be used first
+            push @portsuccess, $fspport;
+            $msginfo{$fspport} = "successfully";
         } else {
-            push @succeed_node, $ip;
+            xCAT::MsgUtils->verbose_message( $req, "ping static $ip failed, need to do resetnet for $fspport");
+            push @portneedreset, $fspport;
         }
     }
-
+    if (scalar (@portneedreset) == 0) {
+        my $report;
+        foreach my $port (keys %msginfo){
+            $report .= $port.":".$msginfo{$port}.";";
+        }
+        send_msg( $req, 0, "Resetnet result for fsp $node is : $report");
+        return;
+    }
     ###########################################
     # Print the result
     ###########################################
-    $result = "\nReset network failed nodes:\n";
-    foreach my $fspport ( @failed_node ) {
-        $result .= $fspport.",";
+    foreach my $fspport (@ns) {
+        my $ip = ${$iphashref->{$fspport}}{tip};
+        my $rc = system("ping -q -n -c 1 -w 1 $ip > /dev/null");
+        if ($rc == 0) {
+            push @valid_ips, $ip;
+            xCAT::MsgUtils->verbose_message( $req, "ping temp $ip successfully");
+        } else {
+            xCAT::MsgUtils->verbose_message( $req, "ping temp $ip failed");
+        }
     }
-    $result .= "\nReset network succeed nodes:\n";
-    foreach my $fspport ( @succeed_node ) {
-        $result .= $fspport.",";
-        xCAT::MsgUtils->verbose_message( $req, "$fspport: Set the otherinterfaces value of $fspport to $iphash{$fspport}{sip} ");
-        $hoststab->setNodeAttribs( $fspport ,{otherinterfaces=> $iphash{$fspport}{sip}} );
+    if (scalar (@valid_ips) == 0) {
+        send_msg( $req, 0, "Resetnet result for fsp $node is : failed to find valid ip to log on " );
+        return;
     }
-    $result .= "\nReset network finished.\n";
-   
-    send_msg( $req, 0, $result );
-   
-    return undef;
+    my @exp;
+    my $goodip;
+    my $retry = 2;
+        foreach my $ip(@valid_ips) {
+            @exp = xCAT::PPCcfg::connect(${$rspdevref->{$ip}}{username},${$rspdevref->{$ip}}{password}, $ip);
+            if ( ref($exp[0]) eq "LWP::UserAgent" ) {
+                $goodip = $ip;
+                xCAT::MsgUtils->verbose_message( $req, "log in successfully with $ip");
+                last;
+            }
+        }
+    my $msg = "login result is :".join(',', @exp);
+    xCAT::MsgUtils->verbose_message( $req, $msg);
+    unless ($goodip) {
+        send_msg( $req, 0, "Resetnet result for fsp $node is : Unable to log on, $exp[0]");
+        return;
+    }
+    my %handled;
+    my $port;
+	if (scalar(@portneedreset) == 2 ) { ## do resetnet for the other port first
+	    $port = $portneedreset[0];
+        my $ip = ${$iphashref->{$port}}{sip};
+		if ($goodip eq $ip) {
+		    $port = $portneedreset[1];
+		} 
+        xCAT::MsgUtils->verbose_message( $req, "begin to reset for port $port.. good ip is $goodip, ip is $ip....................................");
+        my $rc = system("ping -q -n -c 1 -w 1 $ip > /dev/null");
+        unless ($rc == 0) { 
+            $ip = ${$iphashref->{$port}}{tip};
+            $handled{network} = $ip.",".${$rspdevref->{$ip}}{args};
+            my @cmds = ("network=$ip,${$rspdevref->{$ip}}{args}");
+            my %request = (
+                ppcretry    => 1,
+                verbose     => 0,
+                ppcmaxp     => 64,
+                ppctimeout  => 0,
+                fsptimeout  => 0,
+                ppcretry    => 3,
+                maxssh      => 8,
+                arg         => \@cmds,
+                method      => \%handled,
+                command     => 'rspconfig',
+                hwtype      => ${$rspdevref->{$ip}}{type},
+                );
+            xCAT::MsgUtils->verbose_message( $req, "Begin to do reset for $port, nic is $ip");
+            my $result = xCAT::PPCfsp::handler($ip, \%request, \@exp, 1 );	
+			if ($result) {
+			    my $errcode = ${@$result[0]}{errorcode};
+			    if ( $errcode == 0) {
+			        $msginfo{$port} = "successfully";
+			    } else {
+                    my $node = 	${@$result[0]}{node};
+           	    	$msginfo{$port} = @{${@{${@$node[0]}{data}}[0]}{contents}}[0];
+    }
+			} else {
+			    $msginfo{$port} = "failed with unknown reason";
+			}	
+		} else {
+            $msginfo{$port} = "successfully";
+        }
+    } 
+    if ($port) {
+        if ($port eq $portneedreset[0] ) {
+            $port = $portneedreset[1];
+        } else {
+            $port = $portneedreset[0];
+        }
+    } else {
+        $port = $portneedreset[0];
+    }    
+    xCAT::MsgUtils->verbose_message( $req, "begin to reset for port $port......................................");
+    my $ip = ${$iphashref->{$port}}{sip};
+    my $rc = system("ping -q -n -c 1 -w 1 $ip > /dev/null");
+    unless ($rc == 0) { #should be unless!!!!!!!!!!!!!
+        $ip = ${$iphashref->{$port}}{tip};
+        $handled{network} = $ip.",".${$rspdevref->{$ip}}{args};
+        my @cmds = ("network=$ip,${$rspdevref->{$ip}}{args}");
+        my %request = (
+            ppcretry    => 1,
+            verbose     => 0,
+            ppcmaxp     => 64,
+            ppctimeout  => 0,
+            fsptimeout  => 0,
+            ppcretry    => 3,
+            maxssh      => 8,
+            arg         => \@cmds,
+            method      => \%handled,
+            command     => 'rspconfig',
+            hwtype      => ${$rspdevref->{$ip}}{type},
+            );
+        xCAT::MsgUtils->verbose_message( $req, "Begin to do reset for $port, nic is $ip");
+        my $result = xCAT::PPCfsp::handler($ip, \%request, \@exp);	
+		if ($result) {
+		    my $errcode = ${@$result[0]}{errorcode};
+		    if ( $errcode == 0) {
+		        $msginfo{$port} = "successfully";
+		    } else {
+                my $node = 	${@$result[0]}{node};
+            	$msginfo{$port} = @{${@{${@$node[0]}{data}}[0]}{contents}}[0];
+    }
+		} else {
+		    $msginfo{$port} = "failed with unknown reason";
+		}
+    } else {
+	    xCAT::PPCfsp::disconnect( \@exp );
+		$msginfo{$port} = "successfully";
+    }	
+    my $report;
+    foreach my $port (keys %msginfo){
+        $report .= $port.":".$msginfo{$port}.";";
+    }
+    send_msg( $req, 0, "Resetnet result for fsp $node is : $report");
+    return;
 }
 
 #############################################
@@ -1123,68 +1200,20 @@ sub get_rsp_dev
 ##########################################################################
 # Run the forked command and send reply to parent
 ##########################################################################
-sub invoke_cmd {
 
-    my $request  = shift;
-    my $ip       = shift;
-    my $args     = shift;
 
 
     ########################################
     # Telnet (rspconfig) command
     ########################################
-    my $target_dev = $args->{$ip};
     
     ########################################
     # check args
     ########################################
-    unless ($target_dev){
-        send_msg( $request, 1, "invoke_cmd: Can't get the device information about the target $ip" );
-        return;
-    }
     
-    my @cmds;
-    my $result;
-
-    if ($target_dev->{'type'} eq 'mm')
-    {
-        @cmds = (
-                "snmpcfg=enable",
-                "sshcfg=enable",
-                "network_reset=$target_dev->{args}"
-                );
-        xCAT::MsgUtils->verbose_message($request, "rspconfig :doresetnet run xCAT_plugin::blade::clicmds for node:$target_dev->{name},ip:$ip.");
-        $result = xCAT_plugin::blade::clicmds(
-                $ip,
-                $target_dev->{username},
-                $target_dev->{password},
-                0,
-                @cmds );
-    }
-    elsif($target_dev->{'type'} eq 'hmc')
-    {
-        @cmds = ("network_reset=$target_dev->{args}");
-        xCAT::MsgUtils->verbose_message($request, "sshcmds on hmc $ip");
-        xCAT::MsgUtils->verbose_message($request, "rspconfig :doresetnet run xCAT::PPC::sshcmds_on_hmc for node:$target_dev->{name},ip:$ip.");
-        $result = xCAT::PPC::sshcmds_on_hmc(
-                $ip,
-                $target_dev->{username},
-                $target_dev->{password},
-                @cmds );
-    }
-    else #The rest must be fsp or bpa
-    {
-        @cmds = ("network=$ip,$target_dev->{args}");
-        xCAT::MsgUtils->verbose_message($request, "rspconfig :doresetnet run xCAT::PPC::updconf_in_asm for node:$target_dev->{name},ip:$ip.");
-        $result = updconf_in_asm(
-                $ip,
-                $target_dev,
-                @cmds );
-    }
 
 
-    return $result;
-}
+
     
 
 ##########################################################################
@@ -1242,15 +1271,15 @@ sub child_response {
             # rspconfig results
             #############################
             if ( @$responses[0] =~ /^RSPCONFIG6sK4ci$/ ) {
-                shift @$responses;
-                my $ip = @$responses[0];
-                my @rsp1 = (@$responses[1]);
-                $rsp_result{$ip} = \@rsp1;
-				$ip = @$responses[2];
-				if ($ip) {
-                    my @rsp2 = (@$responses[3]);
-                    $rsp_result{$ip} = \@rsp2;
-				}	
+                #shift @$responses;
+                #my $ip = @$responses[0];
+                #my @rsp1 = (@$responses[1]);
+                #$rsp_result{$ip} = \@rsp1;
+                #$ip = @$responses[2];
+                #if ($ip) {
+                #    my @rsp2 = (@$responses[3]);
+                #    $rsp_result{$ip} = \@rsp2;
+                #}
                 next;
             }
             #############################
@@ -1273,22 +1302,19 @@ sub child_response {
 ##########################################################################
 sub connect {
 
-    my $req     = shift;
+    my $username = shift;
+    my $passwd  = shift;
     my $server  = shift;
-    my $verbose = $req->{verbose};
-    my $timeout = $req->{fsptimeout};
+    my $verbose = shift;
     my $lwp_log;
 
     ##################################
     # Use timeout from site table
     ##################################
-    if ( !$timeout ) {
-        $timeout = 30;
-    }
+    my $timeout = 15;
     ##################################
     # Get userid/password
     ##################################
-    my $cred = $req->{$server}{cred};
 
     ##################################
     # Redirect STDERR to variable
@@ -1323,7 +1349,6 @@ sub connect {
     # Set options
     ##################################
     my $url = "https://$server/cgi-bin/cgi?form=2";
-        xCAT::MsgUtils->verbose_message($req, "rspconfig :url for connect is $url \n");
     $ua->cookie_jar( $cookie );
     $ua->timeout( $timeout );
 
@@ -1331,8 +1356,8 @@ sub connect {
     # Submit logon
     ##################################
     my $res = $ua->post( $url,
-       [ user     => @$cred[0],
-         password => @$cred[1],
+       [ user     => $username,
+         password => $passwd,
          lang     => "0",
          submit   => "Log in" ]
     );
@@ -1361,122 +1386,29 @@ sub connect {
         ##############################
         return( $ua,
                 $server,
-                @$cred[0],
+                $username,
                 \$lwp_log );
     }
     ##############################
     # Logon error
     ##############################
     $res = $ua->get( $url );
-
-    if ( !$res->is_success() ) {
-        return( $lwp_log.$res->status_line );
-    }
+    my $err;
+    if ( $res->content =~ /Too many users/i ) {
+        $err = "Too many users";
     ##############################
     # Check for specific failures
     ##############################
-    if ( $res->content =~ /(Invalid user ID or password|Too many users)/i ) {
-        return( $lwp_log.$1 . ". Please check node attribute hcp and its password settings.");
+    }elsif ( $res->content =~ /Invalid user ID or password/i ) {
+        $err = "Invalid user ID or password";
+    }else{
+        $err = "Logon failure with unknown reason";
     }
-    return( $lwp_log."Logon failure" );
 
+    return ($lwp_log.$err);
 }
 
-##########################################################################
-# logon asm and update configuration
-##########################################################################
-sub updconf_in_asm
-{
-    my $ip = shift;
-    my $target_dev = shift;
-    my @cmds = @_;
 
-    eval { require xCAT::PPCfsp };
-    if ( $@ ) {
-        return ([1,@cmds]);
-    }
-
-    my %handled;
-    for my $cmd (@cmds)
-    {
-        if ( $cmd =~ /(.+?)=(.*)/)
-        {
-            my ($command,$value) = ($1,$2);
-            $handled{$command} = $value;
-        }
-    }
-
-    my %request = (
-            ppcretry    => 1,
-            verbose     => 0,
-            ppcmaxp     => 64,
-            ppctimeout  => 0,
-            fsptimeout  => 0,
-            ppcretry    => 3,
-            maxssh      => 8,
-            arg         => \@cmds,
-            method      => \%handled,
-            command     => 'rspconfig',
-            hwtype      => lc($target_dev->{'type'}),
-            );
-
-    my $valid_ip;
-    my @exp;
-    foreach my $individual_ip ( split /,/, $ip ) {
-        ################################
-        # Get userid and password
-        ################################
-        my @cred = ($target_dev->{'username'},$target_dev->{'password'});
-        $request{$individual_ip}{cred} = \@cred;
-        $request{node} = [$individual_ip];
-
-        @exp = xCAT::PPCcfg::connect(\%request, $individual_ip);
-        ####################################
-        # Successfully connected
-        ####################################
-        if ( ref($exp[0]) eq "LWP::UserAgent" ) {
-            $valid_ip = $individual_ip;
-            last;
-        }
-    }
-
-    ####################################
-    # Error connecting
-    ####################################
-    if ( ref($exp[0]) ne "LWP::UserAgent" ) {
-        return ([1,@cmds]);
-    }
-    my $result = xCAT::PPCfsp::handler( $valid_ip, \%request, \@exp );
-    my $RC = shift( @$result);
-    my @data;
-    push @data, @$result[0];
-
-    return ([0, undef, \@data]);
-}
-
-##########################################################################
-# PPing nodes befor loggin the node while doing resetnet
-##########################################################################
-#sub pingnodes {
-#    my $ips = shift;
-#    my @ping = split /,/, $ips;
-#    #my @ping = `pping $ips`;
-#    foreach my $res (@ping) {
-#        #if ($res =~ /(\w+)\:\s+ping/i) {
-#        #    my $ip = $1;
-#        #    return $ip
-#        #}
-#        my $rc = system("ping -q -n -c 1 -w 1 $res > /dev/null");
-#        if ($rc == 0) {
-#           return $res;
-#        }
-#    }
-#    return undef;
-#}
 
 1;
-
-
-
-
 
