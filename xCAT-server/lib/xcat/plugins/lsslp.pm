@@ -615,6 +615,12 @@ sub format_output {
 	}
 	
     ###########################################
+    # filter the result in the same vlan
+    ###########################################
+    if ( exists( $globalopt{i} )) {
+        my $outhash1 = filtersamevlan( $outhash );
+        $outhash = $outhash1;
+    }
     # filter the result and keep the specified nodes
     ###########################################
     if ( scalar(@filternodes)) {
@@ -1634,7 +1640,6 @@ sub filter {
 # Filter nodes not in the user specified vlan
 ##########################################################################
 sub filtersamevlan {
-    my $request = shift;
     my $oldhash = shift;
     my $newhash;
     my $nets = xCAT::NetworkUtils::my_nets();
@@ -1647,12 +1652,12 @@ sub filtersamevlan {
         }
     }
     foreach my $name ( keys %$oldhash ) {
-        if ($name->{type} =~ /^(fsp|bpa)$/) {
-            my $ip = $name->{ip};
+        if (${$oldhash->{$name}}{type} =~ /^(fsp|bpa)$/) {
+            my $ip = ${$oldhash->{$name}}{ip};
             for my $net ( keys %$validnets){
                 my ($n,$m) = split /\//,$net;
-                if ( xCAT::NetworkUtils::isInSameSubnet( $n, $ip, $m, 1) and xCAT::NetworkUtils::isPingable( $ip)) {
-                    $newhash->{$name} = ${$oldhash->{$name}}{hostname};
+                if ( xCAT::Utils::isInSameSubnet( $n, $ip, $m, 1)) {#and xCAT::Utils::isPingable( $ip)) {
+                    $newhash->{$name} = $oldhash->{$name};
                 }
             }
         } else {
