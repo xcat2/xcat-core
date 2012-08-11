@@ -233,11 +233,13 @@ Output is similar to:
   
    Warning: The node Server-8203-E4 has no response.
   
-  device  type-model  serial-number  side  ip-addresses       hostname
-  BPA     9458-100    99201WM        B-1   10.1.255.250       10.1.255.250
-  FSP     9125-F2A    0262652        A-0   192.168.200.16     192.168.200.16
-  FSP     8233-E8B    1000ECP        A-0   192.168.200.19     192.168.200.19
-  CEC     8205-E6B    1040C7P                                 Server-8205-E6B-SN1040C7P
+These nodes defined in database but can't be discovered: f17c00bpcb_b,f17c01bpcb_a,f17c01bpcb_b,f17c02bpcb_a,
+
+device  type-model  serial-number  side  ip-addresses  hostname
+bpa     9458-100    BPCF017        A-0   40.17.0.1     f17c00bpca_a
+bpa     9458-100    BPCF017        B-0   40.17.0.2     f17c00bpcb_a
+
+
 
 8. To find the nodes within the user specified. Please make sure the noderange input have been defined in xCAT database.
 
