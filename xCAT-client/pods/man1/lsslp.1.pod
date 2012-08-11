@@ -229,9 +229,7 @@ CEC     9117-MMB    105EBEP                            Server-9117-MMB-SN105EBEP
 
 Output is similar to:
 
-   Warning: The node Server-8204-E8 has no response.
   
-   Warning: The node Server-8203-E4 has no response.
   
 These nodes defined in database but can't be discovered: f17c00bpcb_b,f17c01bpcb_a,f17c01bpcb_b,f17c02bpcb_a,
 
