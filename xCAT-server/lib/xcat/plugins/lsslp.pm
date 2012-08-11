@@ -515,8 +515,8 @@ sub invoke_dodiscover {
    $arg{Retry} = $maxt;
    $arg{Count} = $globalopt{C} if($globalopt{C});
    $arg{Time} = $globalopt{T} if($globalopt{T});
-
-    my $searchmacsref = xCAT::SLP::dodiscover(%arg);
+   $arg{reqcallback} = $request->{callback} if($request->{callback});
+    my ($searchmacsref,$sendcount,$rsp) = xCAT::SLP::dodiscover(%arg);
 
 
     #########################################
@@ -559,7 +559,7 @@ sub invoke_dodiscover {
     #    $values = \%val_tmp;
     #}
     
-    return $searchmacsref;
+    return ($searchmacsref,$sendcount,$rsp);
 }
 
 
@@ -1585,7 +1585,7 @@ sub process_request {
     #}
     #while (child_response($callback,$fds)) {}
 
-    my $searchmacsref = invoke_dodiscover();
+    my ($searchmacsref,$sendcount,$rspc) = invoke_dodiscover(\%request);
 
     ###########################################
     # Record ending time
@@ -1597,8 +1597,20 @@ sub process_request {
     ###########################################
     # Combined responses from all children
     ###########################################
+    my $num = keys %$searchmacsref;
+	my $min;
+	if ($num < 500) {
+	    $min = "0-1";
+	} elsif (500 < $num and $num < 1000) {
+	    $min = "1-2";
+	} else {
+	    $min = "more than 2";
+    }	
+    #my $start1 = Time::HiRes::gettimeofday();
+    send_msg( \%request, 0, "$sendcount requests with $rspc responses.  Now processing responses.  This will take $min minutes...");
     format_output( \%request, $searchmacsref);
-
+    #my $elapsed1 = Time::HiRes::gettimeofday() - $start1;
+    #send_msg( \%request, 0, "$num nodes takes $elapsed1");
     return( SUCCESS );
 }
 
