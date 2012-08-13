@@ -10,8 +10,8 @@ use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
 use Socket;
 use xCAT::PPCdb; 
-
-
+use xCAT::MsgUtils qw(verbose_message);
+use xCAT::Utils;
 ##########################################
 # Globals
 ##########################################
@@ -50,6 +50,7 @@ sub handler {
     my $server  = shift;
     my $request = shift;
     my $exp     = shift;
+    my $flag    = shift;
 
     #####################################
     # Convert command to correct format
@@ -74,7 +75,9 @@ sub handler {
     #####################################
     # Disconnect from FSP 
     #####################################
-    xCAT::PPCfsp::disconnect( $exp );
+    unless ($flag) {
+        xCAT::PPCfsp::disconnect( $exp );
+    }    
     return( \@outhash );
 
 }
@@ -368,7 +371,10 @@ sub process_cmd {
     # Return error
     ##################################
     if ( !$res->is_success() ) {
-        return( [RC_ERROR,$res->status_line] );
+        my @tmpres = (RC_ERROR, $res->status_line);
+        my @rs;
+        push @rs, \@tmpres;
+        return(\@rs );
     }
     ##################################
     # Build hash of expanded menus
@@ -384,11 +390,15 @@ sub process_cmd {
         ##############################
         my $form = $menu{$cmds{$command}{$_}[0]};
         if ( !defined( $form )) {
-            return( [RC_ERROR,"Cannot find '$cmds{$command}{$_}[0]' menu"] );
+        my @tmpres = (RC_ERROR, "Cannot find '$cmds{$command}{$_}[0]' menu");
+        my @rs;
+        push @rs, \@tmpres;
+        return(\@rs );
         }
         ##################################
         # Run command 
         ##################################
+        xCAT::MsgUtils->verbose_message($request, "$command :$_ for node:$server."); 
         my $res = $cmds{$command}{$_}[1]($exp, $request, $form, \%menu);
         push @$res, $_;
         push @result, $res;
