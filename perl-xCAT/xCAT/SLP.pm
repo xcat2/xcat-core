@@ -41,6 +41,8 @@ sub getmulticasthash {
 sub dodiscover {
 	my %args = @_;
         my $rspcount = 0;
+    my $rspcount1 = 0;
+    my $sendcount = 1;
 	$xid = int(rand(16384))+1;
 	unless ($args{'socket'}) {
 		if ($ip6support) {
@@ -79,6 +81,17 @@ sub dodiscover {
             }
         }
     }
+    # for print information
+    my @printip;
+    foreach my $iface (keys %{$interfaces}) {
+        foreach my $sip (@{$interfaces->{$iface}->{ipv4addrs}}) {
+            my $ip = $sip;
+            $ip =~ s/\/(.*)//;
+            push @printip, $ip;
+        }
+    }
+    my $printinfo = join(",", @printip);  
+    send_message($args{reqcallback}, 0, "Sending SLP request on interfaces: $printinfo ...") if ($args{reqcallback});
 	foreach my $srvtype (@srvtypes) {
 		send_service_request_single(%args,ifacemap=>$interfaces,SrvType=>$srvtype);
 	}
@@ -86,29 +99,31 @@ sub dodiscover {
 	unless ($args{NoWait}) { #in nowait, caller owns the responsibility..
 		#by default, report all respondants within 3 seconds:
 		my $waitforsocket = IO::Select->new();
-		$waitforsocket->add($args{'socket'});
-		my $retrytime = ($args{Retry}>0)?$args{Retry}+1:1;
+        $waitforsocket->add($args{'socket'});
+        my $retrytime = ($args{Retry}>0)?$args{Retry}+1:3;
+        my $retryinterval = ($args{Retry}>0)?$args{Retry}:REQ_INTERVAL;  
+        my $waittime = ($args{Time}>0)?$args{Time}:20; 
         my @peerarray;
 		my @pkgarray;
-		for(my $i = 0; $i < $retrytime; $i++){
-            my $sendcount = 0;
-            my $startinterval = time();
-            my $interval;
-            my $retryinterval = ($args{Retry}>0)?$args{Retry}:REQ_INTERVAL;
-            my $waittime = ($args{Time}>0)?$args{Time}:20;
-		    my $deadline=time()+$waittime;
-            my( $port,$flow,$ip6n,$ip4n,$scope);
-            my $slppacket;
-            my $peername;
-		    while ($deadline > time()) {
-                        while ($waitforsocket->can_read(0)) {
 
-                                my $peer = $args{'socket'}->recv($slppacket,1400,0);
-
-                    push @peerarray, $peer;
-					push @pkgarray, $slppacket;
-                }
-
+        my $startinterval = time();
+        my $interval;
+        my $deadline=time()+$waittime;
+        my( $port,$flow,$ip6n,$ip4n,$scope);
+        my $slppacket;
+        my $peername;
+        while ($deadline > time()) {
+            ########################################
+            # receive untill there is none
+            ########################################
+            while ($waitforsocket->can_read(0)) {
+                my $peer = $args{'socket'}->recv($slppacket,1400,0);
+                push @peerarray, $peer;
+                push @pkgarray, $slppacket;
+            }
+            #######################################
+            # process the packets
+            #######################################
                 for(my $j = 0; $j< scalar(@peerarray); $j++) {
 				    my $pkg = $peerarray[$j];
 					my $slpkg = $pkgarray[$j];
@@ -140,35 +155,60 @@ sub dodiscover {
 		    				$peername .= '%'.$scope;
 		    			}
                         $rspcount++;
+                        $rspcount1++;
 		    			$rethash{$peername} = $result;
 		    			if ($args{Callback}) {
 		    				$args{Callback}->($result);
 		    			}
 		    		}
 		    	}
+            #############################
+            # check if need to return
+            #############################
                 @peerarray = ();
 				@pkgarray = ();
                 $interval = time() -  $startinterval;
                 if ($args{Time} and $args{Count}) {
                     if ($rspcount >= $args{Count} or $interval >= $args{Time}) {
+                        send_message($args{reqcallback}, 0, "Received $rspcount1 responses.") if ($args{reqcallback});
                         last;
                     }
                 }
+            if ($sendcount > $retrytime and $rspcount1 == 0) {
+                send_message($args{reqcallback}, 0, "Received $rspcount1 responses.") if ($args{reqcallback});
+                last;
+            }
+            #########################
+            # send request again
+            #########################
                 if ( $interval >  $retryinterval){#* (2**$sendcount))) { #double time
                     $sendcount++;
                     $startinterval = time();
+                send_message($args{reqcallback}, 0, "Received $rspcount1 responses.") if ($args{reqcallback});  
+                send_message($args{reqcallback}, 0, "Sending SLP request on interfaces: $printinfo ...") if ($args{reqcallback});
 		    	    foreach my $srvtype (@srvtypes) {
 		    	    	send_service_request_single(%args,ifacemap=>$interfaces,SrvType=>$srvtype);
 		    	    }
+                $rspcount1 = 0;
 				}	
 		    }
-		}	
+  
         } #end nowait
 
     foreach my $entry (keys %rethash) {
         handle_new_slp_entity($rethash{$entry})
         }
-        return \%searchmacs;
+    if (xCAT::Utils->isAIX()) {
+        foreach my $iface (keys %{$interfaces}) {
+            foreach my $sip (@{$interfaces->{$iface}->{ipv4addrs}}) {
+                my $ip = $sip;
+                $ip =~ s/\/(.*)//;
+                my $maskbits = $1;
+                my $runcmd = `route delete 239.255.255.253 $ip`;
+            }
+        }   
+    }
+    return (\%searchmacs, $sendcount, $rspcount);
 }
 
 sub process_slp_packet {
@@ -346,9 +386,9 @@ sub send_service_request_single {
 			my $ip = $sip;
 			$ip =~ s/\/(.*)//;
 			my $maskbits = $1;
-            #if (xCAT::Utils->isAIX()) {
-            #    my $runcmd = `route add 239.255.255.253 $ip`;
-            #}
+            if (xCAT::Utils->isAIX()) {
+                my $runcmd = `route add 239.255.255.253 $ip`;
+            }
 			my $ipn = inet_aton($ip); #we are ipv4 only, this is ok
 			my $ipnum=unpack("N",$ipn);
 			$ipnum= $ipnum | (2**(32-$maskbits))-1;
@@ -606,4 +646,18 @@ sub get_ipv6_neighbors {
         }
 }
 
+##########################################################################
+# Invokes the callback with the specified message
+##########################################################################
+sub send_message {
+
+    my $callback = shift;
+    my $ecode   = shift;
+    my $msg     = shift;
+    my %output;
+
+    $output{errorcode} = $ecode;
+    $output{data} = $msg;
+    $callback->( \%output );
+}
 1;
