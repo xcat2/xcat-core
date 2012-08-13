@@ -901,7 +901,7 @@ sub initDB
     # don't use if the address is this machine (Management Node)
     my $forwarders;
     # find out the names for the Management Node
-    my @MNnodeinfo   = xCAT::Utils->determinehostname;
+    my @MNnodeinfo   = xCAT::NetworkUtils->determinehostname;
     my $MNnodename   = pop @MNnodeinfo;                  # hostname
     my @MNnodeipaddr = @MNnodeinfo;                      # ipaddresses
 
