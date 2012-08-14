@@ -10,6 +10,8 @@ use xCAT::NodeRange;
 use Sys::Hostname;
 use Socket;
 use xCAT::Utils;
+use xCAT::TableUtils;
+use xCAT::NetworkUtils;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use xCAT::MsgUtils;
@@ -23,7 +25,7 @@ sub  performance
 	  
            my $noderef=xCAT_monitoring::monitorctrl->getMonHierarchy();
            #identification of this node
-           my @hostinfo=xCAT::Utils->determinehostname();
+           my @hostinfo=xCAT::NetworkUtils->determinehostname();
            #print "hosT:@hostinfo\n";
            my $isSV=xCAT::Utils->isServiceNode();
            #print "is sv is:$isSV \n";

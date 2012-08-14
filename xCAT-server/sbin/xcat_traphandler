@@ -8,6 +8,7 @@ use lib "$::XCATROOT/lib/perl";
 use Sys::Syslog;
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT_plugin::ipmi;
 use xCAT_monitoring::monitorctrl;
@@ -333,7 +334,7 @@ if ($DB) {
     };
   my @a=();
   push(@a, $event);
-  xCAT::Utils->logEventsToDatabase(\@a); 
+  xCAT::TableUtils->logEventsToDatabase(\@a); 
 }
 
 #run user defined commands if needed.

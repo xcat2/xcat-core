@@ -307,7 +307,7 @@ if ($inet6support) {
         close($conn);
         next;
     }
-    my $tftpdir = xCAT::Utils->getTftpDir();
+    my $tftpdir = xCAT::TableUtils->getTftpDir();
     eval {
       alarm(2);
       print $conn "ready\n";
@@ -528,7 +528,7 @@ sleep 0.05;
           $req->{'_xcat_clienthost'}=gethostbyaddr($client,AF_INET);
           $req->{'_xcat_clientip'}=inet_ntoa($client);
           $req->{'_xcat_clientport'}=$sport;
-          if (defined($cmd_handlers{"findme"}) and xCAT::Utils->nodeonmynet(inet_ntoa($client))) { #only discover from ips that appear to be on a managed network
+          if (defined($cmd_handlers{"findme"}) and xCAT::NetworkUtils->nodeonmynet(inet_ntoa($client))) { #only discover from ips that appear to be on a managed network
             xCAT::MsgUtils->message("S","xcatd: Processing discovery request from ".$req->{'_xcat_clientip'});
             $req->{cacheonly}->[0] = 1;
             plugin_command($req,undef,\&build_response);
