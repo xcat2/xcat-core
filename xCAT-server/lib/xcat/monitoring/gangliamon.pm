@@ -510,7 +510,7 @@ sub confGmetad {
     if ( -e "/etc/xCATSN" ) {
         print( OUTFILE "gridname \"$cluster\"\n" );
         print( OUTFILE "data_source \"$cluster\" localhost\n" );
-        my $master = xCAT::Utils->get_site_Master();
+        my $master = xCAT::TableUtils->get_site_Master();
         print( OUTFILE "trusted_hosts $master\n" );
     } else {
         for ( my $j = 0 ; $j < $num ; $j++ ) {
