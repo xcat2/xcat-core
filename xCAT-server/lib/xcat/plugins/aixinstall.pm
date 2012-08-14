@@ -835,21 +835,34 @@ sub nimnodeset
                 push(@nodesfailed, $node);
                 next;
             }
-            # could be diskful
-            # mask, gateway, cosi, root, dump, paging
-            # TODO - need to fix this check for shared_root
-            if (   !$nethash{$node}{'mask'}
-                || !$nethash{$node}{'gateway'}
-                || !$imagehash{$image_name}{spot})
-            {
-                my $rsp;
-                push @{$rsp->{data}},
-                  "$Sname: Missing required information for node \'$node\'.\n";
+
+			my $foundneterror;
+			if (!$nethash{$node}{'mask'} )
+			{
+				my $rsp;
+                push @{$rsp->{data}},"$Sname: Missing network mask for node \'$node\'.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				$foundneterror++;
+			}
+			if (!$nethash{$node}{'gateway'})
+			{
+				my $rsp;
+                push @{$rsp->{data}},"$Sname: Missing network gateway for node \'$node\'.\n";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
-                $error++;
+                $foundneterror++;
+			}	
+			if (!$imagehash{$image_name}{spot})
+			{
+                my $rsp;
+                push @{$rsp->{data}},"$Sname: Missing spot name for osimage \n'$image_name\'.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                $foundneterror++;
+            }
+			if ($foundneterror) {
+				$error++;
                 push(@nodesfailed, $node);
                 next;
-            }
+			}
 
             # set some default values
             # overwrite with cmd line values - if any
@@ -10013,22 +10026,33 @@ sub mkdsklsnode
             # check for required attrs
             if (($type ne "standalone"))
             {
-
-                # could be diskless or dataless
-                # mask, gateway, cosi, root, dump, paging
-                # TODO - need to fix this check for shared_root
-                if (   !$nethash{$node}{'mask'}
-                    || !$nethash{$node}{'gateway'}
-                    || !$imagehash{$image_name}{spot})
-                {
-                    my $rsp;
-                    push @{$rsp->{data}},
-                      "$Sname: Missing required information for node \'$node\'.\n";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    $error++;
-                    push(@nodesfailed, $node);
-                    next;
-                }
+				my $foundneterror;
+				if (!$nethash{$node}{'mask'} )
+				{
+					my $rsp;
+                	push @{$rsp->{data}},"$Sname: Missing network mask for node \'$node\'.\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					$foundneterror++;
+				}
+				if (!$nethash{$node}{'gateway'})
+				{
+					my $rsp;
+                	push @{$rsp->{data}},"$Sname: Missing network gateway for node \'$node\'.\n";
+                	xCAT::MsgUtils->message("E", $rsp, $callback);
+                	$foundneterror++;
+				}	
+				if (!$imagehash{$image_name}{spot})
+				{
+                	my $rsp;
+                	push @{$rsp->{data}},"$Sname: Missing spot name for osimage \n'$image_name\'.\n";
+                	xCAT::MsgUtils->message("E", $rsp, $callback);
+                	$foundneterror++;
+            	}
+				if ($foundneterror) {
+					$error++;
+                	push(@nodesfailed, $node);
+                	next;
+				}
             }
 
             # set some default values
@@ -10144,7 +10168,7 @@ sub mkdsklsnode
                 {
                     my $rsp;
                     push @{$rsp->{data}},
-                      "$Sname: Missing required information for node \'$node\'.\n";
+                      "$Sname: Missing paging resource name for osimage \'$image_name\'.\n";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     $error++;
                     push(@nodesfailed, $node);
