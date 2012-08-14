@@ -1913,7 +1913,7 @@ sub set_netcfg
     elsif ( $inc_ip eq '*')
     {
         $inc_type = 'Static';
-        ($inc_ip, $inc_host, $inc_gateway, $inc_netmask) = xCAT::Utils::getNodeNetworkCfg(@$exp[1]);
+        ($inc_ip, $inc_host, $inc_gateway, $inc_netmask) = xCAT::NetworkUtils::getNodeNetworkCfg(@$exp[1]);
     }
     else
     {

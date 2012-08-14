@@ -137,7 +137,116 @@ sub list_all_node_groups
 
     return @distinctgroups;
 }
+#-------------------------------------------------------------------------------- 	 
+	  	 
+=head3   bldnonrootSSHFiles 	 
+	  	 
+	            Builds authorized_keyfiles for the non-root id 	 
+	            It must not only contain the public keys for the non-root id 	 
+	                    but also the public keys for root 	 
+	  	 
+	         Arguments: 	 
+	               from_userid -current id running xdsh from the command line 	 
+	         Returns: 	 
+	  	 
+	         Globals: 	 
+	               $::CALLBACK 	 
+	         Error: 	 
+	  	 
+	         Example: 	 
+	                 xCAT::TableUtils->bldnonrootSSHFiles; 	 
+	  	 
+	         Comments: 	 
+	                 none 	 
+	  	 
+=cut 	 
+	  	 
+#-------------------------------------------------------------------------------- 	 
+	  	 
+sub bldnonrootSSHFiles 	 
+{ 	 
+    my ($class, $from_userid) = @_; 	 
+    my ($cmd, $rc); 	 
+    my $rsp = {}; 	 
+    if ($::VERBOSE) 	 
+    { 	 
+        $rsp->{data}->[0] = "Building  SSH Keys for $from_userid"; 	 
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK); 	 
+    } 	 
+    my $home     = xCAT::Utils->getHomeDir($from_userid); 	 
+    # Handle non-root userid may not be in /etc/passwd maybe LDAP 	 
+    if (!$home) { 	 
+        $home=`su - $from_userid -c pwd`; 	 
+        chop $home; 	 
+    } 	 
+    my $roothome = xCAT::Utils->getHomeDir("root"); 	 
+    if (xCAT::Utils->isMN()) {    # if on Management Node 	 
+        if (!(-e "$home/.ssh/id_rsa.pub")) 	 
+        { 	 
+            return 1; 	 
+        } 	 
+    } 	 
+    # make tmp directory to hold authorized_keys for node transfer 	 
+    if (!(-e "$home/.ssh/tmp")) { 	 
+        $cmd = " mkdir $home/.ssh/tmp"; 	 
+        xCAT::Utils->runcmd($cmd, 0); 	 
+        $rsp = {}; 	 
+        if ($::RUNCMD_RC != 0) 	 
+        { 	 
+            $rsp->{data}->[0] = "$cmd failed.\n"; 	 
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK); 	 
+            return (1); 	 
 
+        } 	 
+    } 	 
+    # create authorized_key file in tmp directory for transfer 	 
+    if (xCAT::Utils->isMN()) {    # if on Management Node 	 
+        $cmd = " cp $home/.ssh/id_rsa.pub $home/.ssh/tmp/authorized_keys"; 	 
+    } else {  # SN 	 
+        $cmd = " cp $home/.ssh/authorized_keys $home/.ssh/tmp/authorized_keys"; 	 
+    } 	 
+    xCAT::Utils->runcmd($cmd, 0); 	 
+    $rsp = {}; 	 
+    if ($::RUNCMD_RC != 0) 	 
+    { 	 
+        $rsp->{data}->[0] = "$cmd failed.\n"; 	 
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK); 	 
+        return (1); 	 
+
+    } 	 
+    else 	 
+    { 	 
+        chmod 0600, "$home/.ssh/tmp/authorized_keys"; 	 
+        if ($::VERBOSE) 	 
+        { 	 
+            $rsp->{data}->[0] = "$cmd succeeded.\n"; 	 
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK); 	 
+        } 	 
+    } 	 
+    if (xCAT::Utils->isMN()) {    # if on Management Node 	 
+        # if cannot access, warn and continue 	 
+        $rsp = {}; 	 
+        $cmd = "cat $roothome/.ssh/id_rsa.pub >> $home/.ssh/tmp/authorized_keys"; 	 
+        xCAT::Utils->runcmd($cmd, 0); 	 
+        if ($::RUNCMD_RC != 0) 	 
+        { 	 
+            $rsp->{data}->[0] = "Warning: Cannot give $from_userid root ssh authority. \n"; 	 
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK); 	 
+
+        } 	 
+        else 	 
+        { 	 
+            if ($::VERBOSE) 	 
+            { 	 
+                $rsp->{data}->[0] = "$cmd succeeded.\n"; 	 
+                xCAT::MsgUtils->message("I", $rsp, $::CALLBACK); 	 
+            } 	 
+        } 	 
+    } 	 
+
+
+    return (0); 	 
+}
 #--------------------------------------------------------------------------------
 
 =head3   setupSSH
@@ -303,7 +412,7 @@ rmdir \"/tmp/$to_userid\" \n";
     }
     else {    # from_userid is not root
                 # build the authorized key files for non-root user
-            xCAT::Utils->bldnonrootSSHFiles($from_userid);
+            xCAT::TableUtils->bldnonrootSSHFiles($from_userid);
     }
 
     # send the keys to the nodes   for root or some other id
