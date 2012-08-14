@@ -921,7 +921,7 @@ sub doresetnet {
                         $report .= $port1.":".$msgs->{$port1}.";";
                     }
 				    xCAT::MsgUtils->verbose_message($req, "========> try again, $report");
-				    send_msg( $req, 0, "========> try again, $report");
+				    #send_msg( $req, 0, "========> try again, $report");
 				    sleep 3;
 					$time++;
 				} else {
