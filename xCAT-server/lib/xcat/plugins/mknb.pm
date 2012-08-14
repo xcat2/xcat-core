@@ -142,7 +142,7 @@ sub process_request {
    }
    system ("rm -rf $tempdir");
    my $hexnets = xCAT::NetworkUtils->my_hexnets();
-   my $normnets = xCAT::Utils->my_nets();
+   my $normnets = xCAT::NetworkUtils->my_nets();
    my $consolecmdline;
    if (defined($serialport) and $serialspeed) {
        $consolecmdline = "console=tty0 console=ttyS$serialport,$serialspeed";

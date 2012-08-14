@@ -46,7 +46,7 @@ sub process_request {
     #my $server = $sitetab->getAttribs({key=>'directoryserver'},['value']);
     #my $realm = $sitetab->getAttribs({key=>'realm'},['value']);
     my @directoryservers =  xCAT::TableUtils->get_site_attribute("directoryserver");
-    my @realms = xCAT::Utils->get_site_attribute("realm");
+    my @realms = xCAT::TableUtils->get_site_attribute("realm");
     my $tmp1 = $realms[0];
     my $server;
     my $realm;

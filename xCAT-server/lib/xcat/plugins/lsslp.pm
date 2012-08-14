@@ -853,7 +853,7 @@ sub get_host_from_url {
         for my $net ( keys %$nets) {
             my ($n,$m) = split /\//,$net;
             if ( #xCAT::NetworkUtils::isInSameSubnet($n, $tip, $m, 1) and
-                 xCAT::Utils::isPingable($tip) and (length(inet_aton($tip)) == 4)) {
+                 xCAT::NetworkUtils::isPingable($tip) and (length(inet_aton($tip)) == 4)) {
                 push @validip, $tip;
             }
         }
@@ -1668,7 +1668,7 @@ sub filtersamevlan {
             my $ip = ${$oldhash->{$name}}{ip};
             for my $net ( keys %$validnets){
                 my ($n,$m) = split /\//,$net;
-                if ( xCAT::Utils::isInSameSubnet( $n, $ip, $m, 1)) {#and xCAT::Utils::isPingable( $ip)) {
+                if ( xCAT::NetworkUtils::isInSameSubnet( $n, $ip, $m, 1)) {#and xCAT::NetworkUtils::isPingable( $ip)) {
                     $newhash->{$name} = $oldhash->{$name};
                 }
             }
