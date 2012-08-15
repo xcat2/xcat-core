@@ -111,11 +111,13 @@ function submit_request($req, $skipVerify, $opts_array){
 				// Flush output to browser
 				if ($flush) {
 					// Strip HTML tags from output
+					$str = preg_replace('/<errorcode>.*<\/errorcode>/', '', $str);
 					if ($tmp = trim(strip_tags($str))) {
 						// Format the output based on what was given for $flush_format
 						if ($flush_format == "TDB") {
 							format_TBD($tmp);
 						} else {
+						    $tmp = preg_replace('/\n\s*/', "\n", $tmp);
 							// Print out output by default
 							echo '<pre style="font-size: 10px;">' . $tmp . '</pre>';
 							ob_flush();
