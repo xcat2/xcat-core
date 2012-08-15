@@ -1,5 +1,5 @@
 # OS packages that are useful for all IBM HPC products
-#INCLUDE:/opt/xcat/share/xcat/netboot/sles/compute.sles11.x86_64.pkglist#
+#INCLUDE:/opt/xcat/share/xcat/netboot/sles/compute.sles11.pkglist#
 
 systemtap
 kernel-source

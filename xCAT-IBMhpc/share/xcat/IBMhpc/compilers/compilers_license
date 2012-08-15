@@ -16,6 +16,22 @@ if [ $OS != "AIX" ]; then
 
     if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
     #  Being run from a stateful install postscript
+
+       ## Workaround for xlf/vacpp and upc compiler dependceies conflict issue.
+       ## Install a low version of xlmass manually
+       ## Uncomment the following lines for UPC compiler use
+       #INSTALL_DIR='/install'
+       #COMPILERS_DIR='post/otherpkgs/rhels6.2/ppc64/compilers'
+       #mkdir -p /tmp/compilers/
+       #rm -f -R /tmp/compilers/*
+       #cd /tmp/compilers/
+       #wget -l inf -nH -N -r --waitretry=10 --random-wait -T 60 -nH --cut-dirs=6 --reject "index.html*" --no-parent http://$SITEMASTER$INSTALL_DIR/$COMPILERS_DIR/ 2> /tmp/wget.log
+       #if [ -n "`ls xlmass.lib-6.1.0*.rpm 2> /dev/null`" ] ; then
+       #    rpm -ivh --oldpackage xlmass.lib-6.1.0*.rpm
+       #fi
+       #cd $installroot/
+       #rm -f -R /tmp/compilers/
+
        if [ -n "$vacpp_script" ] ; then
            echo 1 | $vacpp_script
        fi
@@ -27,6 +43,13 @@ if [ $OS != "AIX" ]; then
     if [ $NODESETSTATE == "genimage" ]; then
     # Being called from <image>.postinstall script
     # Assume we are on the same machine
+
+       ## Worakround for xlf/vacpp and upc compiler dependceies conflict issue.
+       ## Install a low version of xlmass manually
+       ## Uncomment the following lines for UPC compiler use
+       #cp -p /install/post/otherpkgs/rhels6.2/ppc64/compilers/xlmass.lib-6.1.0*.rpm  $installroot/tmp
+       #chroot $installroot rpm -ivh --oldpackage /tmp/xlmass.lib-6.1.0*.rpm
+
        if [ -n "$vacpp_script" ] ; then
            echo 1 | chroot $installroot /$vacpp_script
        fi

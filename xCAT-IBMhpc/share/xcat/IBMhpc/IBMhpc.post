@@ -1,0 +1,16 @@
+#!/bin/sh
+# Sample postscript for HPC software additional configurations
+# AIX:
+#     TBD
+#
+# Linux: for statefull (full-disk install) and stateless/statelite nodes
+#     For statefull nodes: run as part of IBMhpc.postbootscript.
+#     For stateless/statelite nodes: run as postscript, you will need to 
+#       copy this script to /install/postscripts and specify it to nodes'
+#       postscripts attribute.
+#
+
+
+# BSR configuration on Power 775 cluster. More BSR configuration should 
+# be done by PE postinstall in genimage or postbootscript in statefull install
+#chown root:bsr /dev/bsr*

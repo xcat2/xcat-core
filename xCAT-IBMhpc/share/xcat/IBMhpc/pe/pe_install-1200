@@ -5,18 +5,10 @@
 # For AIX:
 #    TBD
 # For Linux:
-#    - For full-disk installs:
-#        - Copy rpms to node
-#        - Install and accept PE license rpm
-#        - Install PE rpms
-#    - For diskless images:
-#        - Install PE license on MN if not already installed
-#        - Install PE license rpm into image, but DO NOT ACCEPT
-#          (java accept program will hang)
-#        - Copy PE license files from MN into image
-#        - Install PE rpms
 #    - Create a smaller PNSD log file in /tmp 
 #    - Configure poe.limits file
+#    - Generate and store checkpoint key
+#    - BSR support configuration
 
 OS=`uname`
 
@@ -84,14 +76,18 @@ fi
 if [ "$OS" != "AIX" ]; then
     gen_xlf=`grep PE_LATEST_LEVEL $installroot/etc/ppe.cfg | cut -f2 -d ' ' `/mpich2/sbin/xlf_gen_mpimod
     if [ -x $installroot/$gen_xlf ] ; then
-          chroot $installroot $gen_xlf
+          if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
+              $gen_xlf
+          else
+              chroot $installroot $gen_xlf
+          fi
     fi
 fi
 
 #Generate checkpoint key and store it into the image, ckpt script could ust it after boot.
 if [ "$OS" != "AIX" ]; then
-    KEY=$(date | sha1sum | awk '{ print $1 }')
-    # KEY=$(dd if=/dev/random bs=1 | sha1sum | awk '{ print $1 }')
+    #KEY=$(date | sha1sum | awk '{ print $1 }')
+    KEY=$(dd if=/dev/random count=1 2>/dev/null | sha1sum | awk '{print $1}')
     echo $KEY > $installroot/root/.ckpt.key
     chmod 400  $installroot/root/.ckpt.key
 fi
@@ -99,8 +95,26 @@ fi
 
 # BSR configuration, uncomment the following lines to enable BSR configuration on Power Linux cluter.  
 #if [ "$OS" != "AIX" ]; then
-#    chroot $installroot groupadd bsr
-#    chroot $installroot mkdir -p /var/lib/bsr
-#    chroot $installroot chown root:bsr /var/lib/bsr
-#    chroot $installroot chmod g+sw /var/lib/bsr
+#    if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
+#        groupadd bsr
+#        mkdir -p /var/lib/bsr
+#        chown root:bsr /var/lib/bsr
+#        chmod g+sw /var/lib/bsr
+#    else
+#        chroot $installroot groupadd bsr
+#        chroot $installroot mkdir -p /var/lib/bsr
+#        chroot $installroot chown root:bsr /var/lib/bsr
+#        chroot $installroot chmod g+sw /var/lib/bsr
+#    fi
+#fi
+
+
+# pelinks script support, uncomment the following lines and change to the correct pe version that you intend to use.
+#PE_VERSION=1202
+#if [ "$OS" != "AIX" ]; then
+#    if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
+#        MP_CONFIG=$PE_VERSION /opt/ibmhpc/pe$PE_VERSION/ppe.poe/bin/pelinks
+#    else
+#        export MP_CONFIG=$PE_VERSION;chroot $installroot /opt/ibmhpc/pe$PE_VERSION/ppe.poe/bin/pelinks
+#    fi
 #fi

@@ -47,6 +47,7 @@ installroot=$installroot   $hpc/gpfs/gpfs_mmsdrfs
 
 # Run script to accept compiler license
 installroot=$installroot NODESETSTATE=genimage   $hpc/compilers/compilers_license
+#installroot=$installroot NODESETSTATE=genimage   $hpc/compilers/upc_license
 
 
 # Run script to install PE and accept license
@@ -54,7 +55,7 @@ installroot=$installroot pedir=$otherpkgs/pe NODESETSTATE=genimage   $hpc/pe/pe_
 
 
 # Run script to install ESSL and PESSL rpms
-installroot=$installroot essldir=$otherpkgs/essl NODESETSTATE=genimage   $hpc/essl/essl_install
+#installroot=$installroot essldir=$otherpkgs/essl NODESETSTATE=genimage   $hpc/essl/essl_install
 
 
 # Run script to accept LoadLeveler license, install product rpms, 
