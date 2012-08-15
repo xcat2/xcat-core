@@ -101,12 +101,12 @@ else  # assume Linux
     fi
     if [ ! -e $loadlprofile.sh ]; then
         echo "export PATH=\$PATH:$linux_loadl_bin" > $loadlprofile.sh
-        echo "export PATH=\$PATH:$linux_loadl_bin" > $loadlprofile.csh
+        echo "setenv PATH \$PATH:$linux_loadl_bin" > $loadlprofile.csh
         # Turn off LANG support since we did not install other msg catalogs
-        echo 'export LC_CTYPE=POSIX' $loadlprofile.sh
-        echo 'export LC_CTYPE=POSIX' $loadlprofile.csh
-        echo 'export LC_ALL=POSIX' $loadlprofile.sh
-        echo 'export LC_ALL=POSIX' $loadlprofile.csh
+        echo 'export LC_CTYPE=POSIX' > $loadlprofile.sh
+        echo 'setenv LC_CTYPE POSIX' > $loadlprofile.csh
+        echo 'export LC_ALL=POSIX' > $loadlprofile.sh
+        echo 'setenv LC_ALL POSIX' > $loadlprofile.csh
         chmod 744 $loadlprofile.sh
         chmod 744 $loadlprofile.csh
     fi
