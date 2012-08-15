@@ -1198,6 +1198,17 @@ sub parse_responses {
             }
         }
     }
+	trace( $request, "\n\n\nBegin to adjust fsp/bpa's id");
+    foreach my $h ( keys %outhash ) {
+        if(${$outhash{$h}}{type} eq TYPE_CEC or ${$outhash{$h}}{type} eq TYPE_FRAME) {
+		    my @children = split /,/, ${$outhash{$h}}{children};
+			foreach my $child (@children) {
+                ${$outhash{$child}}{fid} = ${$outhash{$h}}{fid};
+                ${$outhash{$child}}{cid} = ${$outhash{$h}}{cid};
+		        trace( $request, "child is $child, fid is ${$outhash{$child}}{fid}, cid is ${$outhash{$child}}{cid}");
+            }
+		}
+    }	
 
     ##########################################################
     # If there is -n flag, skip the matched nodes
