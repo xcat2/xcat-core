@@ -40,7 +40,8 @@ sub handled_commands
 
 =head3  preprocess_request
 
-  Check and setup for hierarchy 
+  Check and setup for hierarchy , if your command must run
+  on service nodes. Otherwise preprocess_request not necessary   
 
 =cut
 
@@ -64,8 +65,7 @@ sub preprocess_request
 
       foreach my $snkey (keys %$sn)
       {
-	my $n=$sn->{$snkey};
-	print "snkey=$snkey, nodes=@$n\n";
+            my $n=$sn->{$snkey};
             my $reqcopy = {%$req};
             $reqcopy->{node} = $sn->{$snkey};
             $reqcopy->{'_xcatdest'} = $snkey;
@@ -73,12 +73,9 @@ sub preprocess_request
             push @requests, $reqcopy;
 
       }
-      return \@requests;
-    } else { # input error
-       my %rsp;
-       $rsp->{data}->[0] = "Input noderange missing. Useage: xCATWorld <noderange> \n";
-      xCAT::MsgUtils->message("I", $rsp, $callback, 0);
-      return 1;
+      return \@requests;  # return requests for all Service nodes
+    } else {
+      return [$req];   # just return original request
     }
 }
 
@@ -95,27 +92,89 @@ sub process_request
 {
 
     my $request  = shift;
-    my $callback = shift;
+    $::CALLBACK = shift;
     my $nodes    = $request->{node};
     my $command  = $request->{command}->[0];
     my $args     = $request->{arg};
     my $envs     = $request->{env};
     my %rsp;
-    my $i = 1;
     my @nodes=@$nodes; 
+    @ARGV = @{$args};    # get arguments
     # do your processing here
     # return info
-    my $host=hostname();
+    Getopt::Long::Configure("posix_default");
+    Getopt::Long::Configure("no_gnu_compat");
+    Getopt::Long::Configure("bundling");
+    my %options = ();
+if (
+        !GetOptions(
+            'h|help'                   => \$options{'help'},
+            'v|version'                => \$options{'version'},
+            'V|Verbose'                => \$options{'verbose'}
+        )
+      )
+    {  
+        xCAT::DSHCLI->usage_dsh;
+        exit 1;
+    }
+    if ($options{'help'})
+    {
+        &usage;
+        exit 0;
+    }
 
+   if ($options{'version'})
+    {
+        my $version = xCAT::Utils->Version();
+        #$version .= "\n";
+        my $rsp={};
+        $rsp->{data}->[0] = $version;        
+        xCAT::MsgUtils->message("I",$rsp,$::CALLBACK, 0);
+        exit 0;
+    }
+ 
+    my $host=hostname();
+    my $rsp={};
     $rsp->{data}->[0] = "Hello World from $host! I can process the following nodes:";
-    xCAT::MsgUtils->message("I", $rsp, $callback, 0);
+    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 0);
     foreach $node (@nodes)
     {
-        $rsp->{data}->[$i] = "$node";
-        $i++;
+        $rsp->{data}->[0] .= "$node\n";
     }
-    xCAT::MsgUtils->message("I", $rsp, $callback, 0);
+    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 0);
     return;
 
 }
+#-------------------------------------------------------------------------------
 
+=head3
+      usage
+
+        puts out  usage message  for help
+
+        Arguments:
+          None
+
+        Returns:
+
+        Globals:
+
+        Error:
+                None
+
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub usage
+{
+## usage message
+      my $usagemsg  = " xCATWorld -h \n xCATWorld -v \n xCATWorld -V \n";
+      $usagemsg .= " xCATWorld  <noderange> ";
+###  end usage mesage
+        my $rsp = {};
+        $rsp->{data}->[0] = $usagemsg;
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+  return;
+} 
