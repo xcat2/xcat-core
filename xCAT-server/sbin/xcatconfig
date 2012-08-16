@@ -1119,7 +1119,7 @@ sub initDB
            $chtabcmds .=
                   "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,aixremoteshell,syncfiles';";
            $chtabcmds .=
-               "$::XCATROOT/sbin/chtab node=service postscripts.postscripts='' postscripts.postbootscripts='servicenode'";
+               "$::XCATROOT/sbin/chtab node=service postscripts.postscripts='servicenode'";
 
         }
 
