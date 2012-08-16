@@ -51,7 +51,7 @@ fi
 if [ $PLTFRM == "Linux" ]
 then
 
-    ib_number=`lspci | grep -i InfiniBand | wc -l` 
+    ib_number=`lspci | grep -iE "(InfiniBand|Mellanox)" | wc -l` 
     loop_number=`expr $ib_number \* 2` 
 
     if [ -f /etc/redhat-release ]
@@ -109,7 +109,7 @@ do
     else
         hostname="$HOST-$nic"
     fi
-
+    `ifconfig $nic up`
     if [ $PLTFRM == "Linux" ]
     then
         ip=`ping -c 3 -I ib$num $hostname | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
