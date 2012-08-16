@@ -1014,7 +1014,36 @@ sub dolitesetup
         }
 	}
 
+	# need list for just this set of nodes!!!
+	my $nrange;
+	my @flist;
+	my @litef;
+	if (scalar(@nodel) > 0)
+    {
+        $nrange = join(',',@nodel);
+    }
 
+	my @flist = xCAT::Utils->runcmd("/opt/xcat/bin/litefile $nrange", -1);
+    if (scalar(@flist) > 0) {
+        foreach my $l (@flist) {
+			my ($j1, $j2, $file) = split /\s+/, $l;
+            push (@litef, $file);
+        }
+    }
+	my $foundras;
+	if (scalar(@litef) > 0) {
+		foreach my $f (@litef) {
+			chomp $f;
+			if (($f eq "/var/adm/ras/") || ($f eq "/var/adm/ras/conslog")) {
+				$foundras++;
+			}
+		}
+	}
+	if ($foundras) {
+		my $rsp;
+		push @{$rsp->{data}}, "One or more nodes is using a persistent \/var\/adm\/ras\/ directory.  \nWhen the nodes boot up you will then have to move the conslog file to a \nlocation outside of the persistent directory. (Leaving the conslog \nfile in a persistent directory can occasionally lead to a deadlock situation.) \nThis can be done by using the xdsh command to run swcons on the \ncluster nodes. \n(Ex. xdsh <noderange> \'\/usr\/sbin\/swcons -p \/tmp\/conslog\') \n";
+		xCAT::MsgUtils->message("W", $rsp, $callback);
+	}
 
 	unless (open(LITETREE, ">$litetreetable"))
     {
