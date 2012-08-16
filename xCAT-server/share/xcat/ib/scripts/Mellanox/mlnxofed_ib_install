@@ -56,19 +56,26 @@ if [ $OS != "AIX" ]; then
         if [[ $OS == sles* ]] || [[ $OS == suse* ]] || [[ -f /etc/SuSE-release ]]; then
             mkdir $installroot/tmp/ofed_install
             cp -r $OFED_DIR $installroot/tmp/ofed_install/
-            mount -t devtmpfs  /dev $installroot/dev/
-            mount -t sysfs  /dev $installroot/sys
-            #chroot $installroot rpm -e --noscripts --allmatches mlnx-ofa_kernel-kmp-default 
+            #mount -t devtmpfs  /dev $installroot/dev/
+            #mount -t sysfs  /sys $installroot/sys
+            #mount -t proc /proc $installroot/proc
+            mount --bind  /dev $installroot/dev/
+            mount --bind  /sys $installroot/sys
+            mount --bind /proc $installroot/proc
+            chroot $installroot rpm -e --noscripts --allmatches mlnx-ofa_kernel-kmp-default 2>/dev/null 
             chroot $installroot perl -x /tmp/ofed_install/ofed/mlnxofedinstall --without-32bit --force
             rm -rf $installroot/tmp/ofed_install
             umount $installroot/dev/
             umount $installroot/sys
+            umount $installroot/proc
         else
             mkdir $installroot/tmp/ofed_install
             cp -r $OFED_DIR $installroot/tmp/ofed_install/ 
             chroot $installroot perl -x /tmp/ofed_install/ofed/mlnxofedinstall --without-32bit --force
             rm -rf $installroot/tmp/ofed_install
         fi
+
+
     fi
 fi
 
