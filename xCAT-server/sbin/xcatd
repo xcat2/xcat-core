@@ -293,16 +293,28 @@ if ($inet6support) {
     @clients = gethostbyaddr($conn->peeraddr,AF_INET);
 }
 
-    my $validclient=0;
-    my $node;
-    foreach my $client (@clients) {
-        $client =~ s/\..*//;
-        ($node) = noderange($client); #ensure this is coming from a node IP at least
-        if ($node) {  #Means the source isn't a valid deal...
-        $validclient=1;
-        last;
-        }
-    }
+	my $validclient=0;
+	my $node;
+	my $domain;
+	my ($tmp) = $sitetab->getAttribs({'key'=>'domain'},'value');
+	if (defined $tmp->{value}) {
+		$domain = $tmp->{value};
+	}
+	foreach my $client (@clients) {
+		$client =~ s/\..*//;
+		if ($domain) {
+			$client =~ s/\.$domain//;
+		} else {
+			$client =~ s/\..*//;
+		}
+		#ensure this is coming from a node IP at least
+		($node) = noderange($client);
+		if ($node) {  #Means the source isn't valid
+			$validclient=1;
+			last;
+		}
+	}
+
     unless ($validclient) {
         close($conn);
         next;
