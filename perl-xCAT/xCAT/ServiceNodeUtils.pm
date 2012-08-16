@@ -26,6 +26,8 @@ use lib "$::XCATROOT/lib/perl";
 
   Input: service nodename
   Output: Masternode, OS and ARCH
+  Example:
+    xCAT::ServiceNodeUtils->readSNInfo;
 =cut
 
 #-----------------------------------------------------------------------------

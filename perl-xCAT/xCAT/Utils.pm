@@ -43,6 +43,67 @@ require DBI;
 our @ISA       = qw(Exporter);
 our @EXPORT_OK = qw(genpassword runcmd3);
 
+# The functions that has been moved to TableUtils.pm
+
+# xCAT::Utils->list_all_nodes ====> xCAT::TableUtils->list_all_nodes
+# xCAT::Utils->list_all_nodegroups ====> xCAT::TableUtils->list_all_nodegroups
+# xCAT::Utils->bldnonrootSSHFiles ====> xCAT::TableUtils->bldnonrootSSHFiles
+# xCAT::Utils->setupSSH ====> xCAT::TableUtils->setupSSH
+# xCAT::Utils->cpSSHFiles ====> xCAT::TableUtils->cpSSHFiles
+# xCAT::Utils->GetNodeOSARCH ====> xCAT::TableUtils->GetNodeOSARCH
+# xCAT::Utils->logEventsToDatabase ====> xCAT::TableUtils->logEventsToDatabase
+# xCAT::Utils->logEventsToTealDatabase ====> xCAT::TableUtils->logEventsToTealDatabase
+# xCAT::Utils->setAppStatus ====> xCAT::TableUtils->setAppStatus
+# xCAT::Utils->getAppStatus ====> xCAT::TableUtils->getAppStatus
+# xCAT::Utils->get_site_attribute ====> xCAT::TableUtils->get_site_attribute
+# xCAT::Utils->getInstallDir ====> xCAT::TableUtils->getInstallDir
+# xCAT::Utils->getTftpDir ====> xCAT::TableUtils->getTftpDir
+# xCAT::Utils->GetMasterNodeName ====> xCAT::TableUtils->GetMasterNodeName
+# xCAT::Utils->create_postscripts_tar ====> xCAT::TableUtils->create_postscripts_tar
+# xCAT::Utils->get_site_Master ====> xCAT::TableUtils->get_site_Master
+# xCAT::Utils->checkCreds ====> xCAT::TableUtils->checkCreds
+# xCAT::Utils->enablessh ====> xCAT::TableUtils->enablessh
+# xCAT::Utils->getrootimage ====> xCAT::TableUtils->getrootimage
+
+
+
+# The functions that has been moved to ServiceNodeUtils.pm
+
+# xCAT::Utils->readSNInfo ====> xCAT::ServiceNodeUtils->readSNInfo
+# xCAT::Utils->isServiceReq ====> xCAT::ServiceNodeUtils->isServiceReq
+# xCAT::Utils->get_AllSN ====> xCAT::ServiceNodeUtils->get_AllSN
+# xCAT::Utils->getSNandNodes ====> xCAT::ServiceNodeUtils->getSNandNodes
+# xCAT::Utils->getSNList ====> xCAT::ServiceNodeUtils->getSNList
+# xCAT::Utils->get_ServiceNode ====> xCAT::ServiceNodeUtils->get_ServiceNode
+# xCAT::Utils->getSNformattedhash ====> xCAT::ServiceNodeUtils->getSNformattedhash
+
+
+
+# The functions that has been moved to NetworkUtils.pm
+
+# xCAT::Utils->classful_networks_for_net_and_mask ====> xCAT::NetworkUtils->classful_networks_for_net_and_mask
+# xCAT::Utils->my_hexnets ====> xCAT::NetworkUtils->my_hexnets
+# xCAT::Utils->get_host_from_ip ====> xCAT::NetworkUtils->get_host_from_ip (shall not be used)
+# xCAT::Utils::isPingable ====> xCAT::NetworkUtils::isPingable
+# xCAT::Utils::my_nets ====> xCAT::NetworkUtils::my_nets
+# xCAT::Utils::my_if_netmap ====> xCAT::NetworkUtils::my_if_netmap
+# xCAT::Utils->my_ip_facing ====> xCAT::NetworkUtils->my_ip_facing
+# xCAT::Utils::formatNetmask ====> xCAT::NetworkUtils::formatNetmask
+# xCAT::Utils::isInSameSubnet ====> xCAT::NetworkUtils::isInSameSubnet
+# xCAT::Utils->nodeonmynet ====> xCAT::NetworkUtils->nodeonmynet
+# xCAT::Utils::getNodeIPaddress ====> xCAT::NetworkUtils::getNodeIPaddress
+# xCAT::Utils->thishostisnot ====> xCAT::NetworkUtils->thishostisnot
+# xCAT::Utils->gethost_ips ====> xCAT::NetworkUtils->gethost_ips
+# xCAT::Utils::get_subnet_aix ===> xCAT::NetworkUtils::get_subnet_aix
+# xCAT::Utils->determinehostname ====> xCAT::NetworkUtils->determinehostname
+# xCAT::Utils::toIP ====> xCAT::NetworkUtils::toIP
+# xCAT::Utils->validate_ip ====> xCAT::NetworkUtils->validate_ip
+# xCAT::Utils->getFacingIP ====> xCAT::NetworkUtils->getFacingIP
+# xCAT::Utils->isIpaddr ====> xCAT::NetworkUtils->isIpaddr
+# xCAT::Utils::getNodeNetworkCfg ====> xCAT::NetworkUtils::getNodeNetworkCfg
+# xCAT::Utils::get_hdwr_ip ====> xCAT::NetworkUtils::get_hdwr_ip
+
+
 
 #--------------------------------------------------------------------------------
 

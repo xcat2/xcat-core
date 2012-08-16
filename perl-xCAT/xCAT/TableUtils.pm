@@ -698,7 +698,7 @@ sub logEventsToDatabase
 {
     require xCAT::Table;
     my $pEvents = shift;
-    if (($pEvents) && ($pEvents =~ /xCAT::Utils/))
+    if (($pEvents) && ($pEvents =~ /xCAT::TableUtils/))
     {
         $pEvents = shift;
     }
@@ -757,7 +757,7 @@ sub logEventsToTealDatabase
 {
     require xCAT::Table;
     my $pEvents = shift;
-    if (($pEvents) && ($pEvents =~ /xCAT::Utils/))
+    if (($pEvents) && ($pEvents =~ /xCAT::TableUtils/))
     {
         $pEvents = shift;
     }
@@ -1445,7 +1445,7 @@ sub checkCredFiles
     Error:
         none
     Example:
-        my $eable = $xCAT::TableUtils::enablessh($node);
+        my $eable = xCAT::TableUtils->enablessh($node);
     Comments:
 
 =cut
@@ -1552,7 +1552,7 @@ sub getrootimage()
   require xCAT::Table;
   my $node = shift;
   my $installdir = xCAT::TableUtils->getInstallDir();
-  if (($node) && ($node =~ /xCAT::Utils/))
+  if (($node) && ($node =~ /xCAT::TableUtils/))	
   {
     $node = shift;
   }

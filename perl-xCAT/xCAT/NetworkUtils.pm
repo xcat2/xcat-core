@@ -700,6 +700,7 @@ sub classful_networks_for_net_and_mask
     Error:
         none
     Example:
+        xCAT::NetworkUtils->my_hexnets
     Comments:
         none
 =cut
@@ -995,6 +996,7 @@ sub my_if_netmap
     Error:
         none
     Example:
+        xCAT::NetworkUtils->my_ip_facing
     Comments:
         none
 =cut
@@ -1257,6 +1259,7 @@ sub isInSameSubnet
     Error:
         none
     Example:
+        xCAT::NetworkUtils->nodeonmynet
     Comments:
         none
 =cut
@@ -1439,6 +1442,7 @@ sub getNodeIPaddress
     Error:
         none
     Example:
+        xCAT::NetworkUtils->thishostisnot
     Comments:
         none
 =cut
