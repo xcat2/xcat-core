@@ -123,8 +123,8 @@ fi
 
 # start xcatd
     chkconfig $apachedaemon on
-    if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
-    	XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd start
+if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
+    	XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd restart
 		/etc/init.d/$apachedaemon reload 
 	fi
     echo "xCATsn is now installed"
