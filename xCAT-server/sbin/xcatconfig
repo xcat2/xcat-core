@@ -1110,7 +1110,7 @@ sub initDB
         if ($::osname eq 'AIX') {  # we don't use otherpkgs on AIX
 
            $chtabcmds .=
-                  "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,aixremoteshell,syncfiles';";
+                  "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,remoteshell,syncfiles';";
            $chtabcmds .=
                "$::XCATROOT/sbin/chtab node=service postscripts.postscripts='servicenode'";
 
@@ -1789,6 +1789,18 @@ sub setuphttp
    are not called by servicenode
 
    ..."servicenode,xcatserver,xcatclient.."... 
+    becomes
+   ..."servicenode,.."... 
+ 
+
+   Any line in the postscripts table that has aixremoteshell, 
+   aixremoteshell will be replaced by remoteshell unless it is
+   already on the line.  remoteshell now calls aixremoteshell, if on an
+   AIX node.  
+
+   ...,"syslog,aixremoteshell,syncfiles",,, 
+   becomes
+   ...,"syslog,remoteshell,syncfiles",,, 
 
 =cut
 
@@ -1802,30 +1814,54 @@ sub cleanupPSTable
    foreach my $entry (@tableentries) {
      my $changeit=0;
      my $node=$entry->{'node'};
-     my $pslist=$entry->{'postscripts'};
+     my $pslist=$entry->{'postscripts'};  # get list of postscripts on the line
      if ($pslist) {
        my $servicenode=0;
+       my $aixremoteshell=0;
+       my $remoteshell=0;
        my $newpslist ="\'";
        my @ps= split(",", $pslist);    
-       # now check is servicenode and xcatclient and/or xcatserver in the list
+       # now check is servicenode and xcatclient and/or xcatserver on the line 
        foreach my $pscript (@ps) {
+         # check for aixremoteshell, need to replace with remoteshell
+         if ($pscript =~ /(^|\|)aixremoteshell($|\|)/i) { 
+            $aixremoteshell=1;
+         }
+         if ($pscript =~ /(^|\|)remoteshell($|\|)/i) { 
+            $remoteshell=1;
+         }
          if ($pscript =~ /(^|\|)servicenode($|\|)/i) { # found servicenode ps
             $newpslist .=$pscript;
             $newpslist .=",";
             $servicenode=1; 
-         } else{  # no service node just put entry on new table
-            if ($servicenode == 0) { 
+         } else{  # process rest of ps list 
+            # if servicenode and aixremoteshell not found on the line go
+            # to the next line
+            if (($servicenode == 0) && ($aixremoteshell ==0)) { 
                $newpslist .=$pscript;
                $newpslist .=",";
-            } else { # servicenode found, do not keep xcatserver/xcatclient 
+          
+            } else {  
+             # servicenode found, do not keep xcatserver/xcatclient or
+             # aixremoteshell, and no remoteshell replace with remoteshell
+             if (($aixremoteshell == 1) && ($remoteshell == 0)) {  
+                $newpslist .="remoteshell,";
+                $changeit=1; # had to replace aixremoteshell 
+                next;
+             }
+             # if already put in remoteshell, then skip any more
+             # occurances of remoteshell on the line 
+             if (($aixremoteshell == 1) && ($remoteshell == 1)) {  
+                next;
+             } 
              if (($pscript =~ /(^|\|)xcatserver($|\|)/i) ||($pscript =~ /(^|\|)xcatclient($|\|)/i))  {
                    $changeit=1; # had to remove xcatserver/xcatclient 
                    next;
-               } else {
+              } else {
                  $newpslist .=$pscript;
                  $newpslist .=",";
-               }
-            }
+              }
+            } # end servicenode processing
          }
        }
        chop $newpslist;
