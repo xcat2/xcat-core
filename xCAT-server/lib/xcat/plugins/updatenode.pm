@@ -365,7 +365,7 @@ sub preprocess_updatenode
             $postscripts = $::RERUNPS;
             my @posts = ();
             if ($postscripts eq "allkeys44444444security") {
-                @posts = ("remoteshell", "aixremoteshell", "servicenode");
+                @posts = ("remoteshell", "servicenode");
             } else {
                 @posts = split(',', $postscripts);
             }
@@ -504,7 +504,7 @@ sub preprocess_updatenode
             my $req_rs = {%$request};
             my $ps;
             if (scalar(@{$AIXnodes})) {
-                $ps = "aixremoteshell,servicenode";
+                $ps = "remoteshell,servicenode";
                 $req_rs->{rerunps}->[0] = "yes";
                 $req_rs->{rerunps4security}->[0] = "yes";
                 $req_rs->{node} = $AIXnodes;
@@ -1142,7 +1142,7 @@ $AIXnodes_nd, $subreq  ) != 0 ) {
         {
            # we have AIX nodes
            if ($orig_postscripts eq "allkeys44444444security") {
-               $postscripts = "aixremoteshell,servicenode";
+               $postscripts = "remoteshell,servicenode";
            } else {
                $postscripts = $orig_postscripts;
            }
