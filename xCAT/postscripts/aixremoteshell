@@ -12,6 +12,12 @@
    login with no password. The default is /bin/rsh and
    /bin/rcp but can be overriden by setting the useSSHonAIX attribute in the 
    site table to yes, in which case we will use ssh/scp.
+   The aixremoteshell postscripts will be called from remoteshell postscript
+   when on an AIX node.  It will input a -d ( for do)  flag, to indicate to run
+   If the flag is not input, the routine will do nothing.  This is to have only
+   remoteshell in the postscripts table whether supporting AIX or Linux,
+   and better support mixed clusters.
+
 =cut
 
 #-----------------------------------------------------------------------------
@@ -30,7 +36,7 @@ my $useSocketSSL=eval { require IO::Socket::SSL; };
 if ($useSocketSSL) {
         require IO::Socket::SSL;
 }
-
+use Getopt::Long;
 my $rc = 0;
 
 # Override from site table
@@ -42,7 +48,20 @@ my $enablesshbetweennodes  = $ENV{'ENABLESSHBETWEENNODES'};
 my $msg;
 my $home;
 my $cmd;
+my $runscript;
 my $username = "root";
+Getopt::Long::Configure("bundling");
+Getopt::Long::Configure("pass_through");
+GetOptions(
+  'd|do' => \$runscript
+);
+#  the postscript only runs if called with -d flag from remoteshell
+unless ($runscript) {
+   my $msg = "aixremoteshell called without -d flag, do nothing.";
+   `logger -t xcat -p local4.err $msg`;
+   exit 0;
+}
+
 my @root = split ':', (`/bin/grep ^$username /etc/passwd 2>&1`);
 $home = $root[5];
 #  root home directory must be root system 
