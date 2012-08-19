@@ -329,8 +329,8 @@ sub preprocess_updatenode
                 {
                     my $rsp;
                     $rsp->{data}->[0] = "Incorrect \'attr=val\' pair - $a\n";
-                    xCAT::MsgUtils->message("E", $rsp, $::callback);
-                    return 3;
+                    xCAT::MsgUtils->message("E", $rsp, $callback,3);
+                    return ;
                 }
     
                 # put attr=val in hash
