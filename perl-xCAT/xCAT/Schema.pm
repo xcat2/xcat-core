@@ -187,13 +187,15 @@ vmmaster => {
     }
 },
 vm => {
-    cols => [qw(node host migrationdest storage storagemodel cfgstore memory cpus nics nicmodel bootorder clockoffset virtflags master vncport textconsole powerstate beacon datacenter guestostype othersettings vidmodel vidproto vidpassword comments disable)],
+    cols => [qw(node mgr host migrationdest template storage storagemodel cfgstore memory cpus nics nicmodel bootorder clockoffset virtflags master vncport textconsole powerstate beacon datacenter cluster guestostype othersettings vidmodel vidproto vidpassword comments disable)],
     keys => [qw(node)],
     table_desc => 'Virtualization parameters',
     descriptions => {
         'node' => 'The node or static group name',
+        'mgr' => 'The function manager for the virtual machine',
         'host' => 'The system that currently hosts the VM',
         'migrationdest' => 'A noderange representing candidate destinations for migration (i.e. similar systems, same SAN, or other criteria that xCAT can use',
+        'template' => 'The template that creating vm will base on',
         'storage' => 'A list of storage files or devices to be used.  i.e. /cluster/vm/<nodename> or nfs://<server>/path/to/folder/',
         'storagemodel' => 'Model of storage devices to provide to guest',
         'cfgstore' => 'Optional location for persistant storage separate of emulated hard drives for virtualization solutions that require persistant store to place configuration data',
@@ -211,7 +213,8 @@ vm => {
                 qcow2 is a sparse, copy-on-write capable format implemented at the virtualization layer rather than the filesystem level
             clonemethod=[qemu-img|reflink]
                 qemu-img allows use of qcow2 to generate virtualization layer copy-on-write
-                reflink uses a generic filesystem facility to clone the files on your behalf, but requires filesystem support such as btrfs ',
+                reflink uses a generic filesystem facility to clone the files on your behalf, but requires filesystem support such as btrfs 
+            placement_affinity=[migratable|user_migratable|pinned]',
         'vncport' => 'Tracks the current VNC display port (currently not meant to be set',
         'textconsole' => 'Tracks the Psuedo-TTY that maps to the serial port or console of a VM',
         'powerstate' => "This flag is used by xCAT to track the last known power state of the VM.",
@@ -219,24 +222,40 @@ vm => {
         'guestostype' => "This allows administrator to specify an identifier for OS to pass through to virtualization stack.  Normally this should be ignored as xCAT will translate from nodetype.os rather than requiring this field be used\n",
         'beacon' => "This flag is used by xCAT to track the state of the identify LED with respect to the VM.",
         'datacenter' => "Optionally specify a datacenter for the VM to exist in (only applicable to VMWare)",
+        'cluster' => 'Specify to the underlying virtualization infrastructure a cluster membership for the hypervisor.',
 	'vidproto' => "Request a specific protocol for remote video access be set up.  For example, spice in KVM.",
 	'vidmodel' => "Model of video adapter to provide to guest.  For example, qxl in KVM",
 	'vidpassword' => "Password to use instead of temporary random tokens for VNC and SPICE access",
     }
 },
 hypervisor => {
-        cols => [qw(node type mgr netmap defaultnet cluster datacenter preferdirect comments disable)],
+        cols => [qw(node type mgr interface netmap defaultnet cluster datacenter preferdirect comments disable)],
         keys => [qw(node)],
         table_desc => 'Hypervisor parameters',
         descriptions => {
             'node' => 'The node or static group name',
             'type' => 'The plugin associated with hypervisor specific commands such as revacuate',
-            mgr => 'The virtualization specific manager of this hypervisor when applicable',
+            'mgr' => 'The virtualization specific manager of this hypervisor when applicable',
+            'interface' => 'The defition of interfaces for the hypervisor. The format is [networkname:interfacename:bootprotocol:IP:netmask:gateway] that split with | for each interface',
             'netmap' => 'Optional mapping of useful names to relevant physical ports.  For example, 10ge=vmnic_16.0&vmnic_16.1,ge=vmnic1 would be requesting two virtual switches to be created, one called 10ge with vmnic_16.0 and vmnic_16.1 bonded, and another simply connected to vmnic1.  Use of this allows abstracting guests from network differences amongst hypervisors',
             'defaultnet' => 'Optionally specify a default network entity for guests to join to if they do not specify.',
             'cluster' => 'Specify to the underlying virtualization infrastructure a cluster membership for the hypervisor.',
             'datacenter' => 'Optionally specify a datacenter for the hypervisor to exist in (only applicable to VMWare)',
             'preferdirect' => 'If a mgr is declared for a hypervisor, xCAT will default to using the mgr for all operations.  If this is field is set to yes or 1, xCAT will prefer to directly communicate with the hypervisor if possible'
+        }
+},
+virtsd => {
+        cols => [qw(node sdtype stype location host cluster datacenter comments disable)],
+        keys => [qw(node)],
+        table_desc => 'The parameters which used to create the Storage Domain',
+        descriptions => {
+            'node' => 'The name of the storage domain',
+            'sdtype' => 'The type of storage domain. Valid values: data, iso, export',
+            'stype' => 'The type of storge. Valid values: nfs, fcp, iscsi, localfs',
+            'location' => 'The path of the storage',
+            'host' => 'For rhev, a hypervisor host needs to be specified to manage the storage domain as SPM (Storage Pool Manager). But the SPM role will be failed over to another host when this host down.',
+            'cluster' => 'A cluster of hosts',
+            'datacenter' => 'A collection for all host, vm that will shared the same storages, networks.',
         }
 },
 websrv => { 
