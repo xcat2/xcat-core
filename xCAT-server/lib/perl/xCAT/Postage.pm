@@ -194,6 +194,7 @@ sub makescript
     
     push @scriptd, "GROUP=$groups->{groups}\n";
     push @scriptd, "export GROUP\n";
+
     # read the sshbetweennodes attribute and process
     my $enablessh=xCAT::TableUtils->enablessh($node); 
     if ($enablessh == 1) {
@@ -368,78 +369,17 @@ sub makescript
     }
 
     #get vlan related items
-    my $vlan;
-    my $swtab = xCAT::Table->new("switch", -create => 0);
-    if ($swtab) {
-	my $tmp = $swtab->getNodeAttribs($node, ['vlan'],prefetchcache=>1);
-	if (defined($tmp) && ($tmp) && $tmp->{vlan})
-	{
-	    $vlan = $tmp->{vlan};
-	    push @scriptd, "VLANID='" . $vlan . "'\n";
-	    push @scriptd, "export VLANID\n";
-	} else {
-	    my $vmtab = xCAT::Table->new("vm", -create => 0);
-	    if ($vmtab) {
-		my $tmp1 = $vmtab->getNodeAttribs($node, ['nics'],prefetchcache=>1);
-		if (defined($tmp1) && ($tmp1) && $tmp1->{nics})
-		{
-		    push @scriptd, "VMNODE='YES'\n";
-		    push @scriptd, "export VMNODE\n";
-		    
-		    my @nics=split(',', $tmp1->{nics});
-		    foreach my $nic (@nics) {
-			if ($nic =~ /^vl([\d]+)$/) {
-			    $vlan = $1;
-			    push @scriptd, "VLANID='" . $vlan . "'\n";
-			    push @scriptd, "export VLANID\n";
-			    last;
-			}
-		    }
-		}
-	    }
-	}
-	
-	if ($vlan) {
-	    my $nwtab=xCAT::Table->new("networks", -create =>0);
-	    if ($nwtab) {
-		my $sent = $nwtab->getAttribs({vlanid=>"$vlan"},'net','mask');
-		my $subnet;
-		my $netmask;
-		if ($sent and ($sent->{net})) {
-		    $subnet=$sent->{net};
-		    $netmask=$sent->{mask};
-		} 
-		if (($subnet) && ($netmask)) {
-		    my $hoststab = xCAT::Table->new("hosts", -create => 0);
-		    if ($hoststab) {
-			my $tmp = $hoststab->getNodeAttribs($node, ['otherinterfaces'],prefetchcache=>1);
-			if (defined($tmp) && ($tmp) && $tmp->{otherinterfaces})
-			{
-			    my $otherinterfaces = $tmp->{otherinterfaces};
-			    my @itf_pairs=split(/,/, $otherinterfaces);
-			    foreach (@itf_pairs) {
-				my ($name,$ip)=split(/:/, $_);
-				if(xCAT::NetworkUtils->ishostinsubnet($ip, $netmask, $subnet)) {
-				    if ($name =~ /^-/ ) {
-					$name = $node.$name;
-				    }
-				    push @scriptd, "VLANHOSTNAME='" . $name . "'\n";
-				    push @scriptd, "export VLANHOSTNAME\n";
-				    push @scriptd, "VLANIP='" . $ip . "'\n";
-				    push @scriptd, "export VLANIP\n";
-				    push @scriptd, "VLANSUBNET='" . $subnet . "'\n";
-				    push @scriptd, "export VLANSUBNET\n";
-				    push @scriptd, "VLANNETMASK='" . $netmask . "'\n";
-				    push @scriptd, "export VLANNETMASK\n";
-				    last;
-				}
-			    }	    
-			}
-		    }
-		}
-	    }
-	}
+    my $module_name="xCAT_plugin::vlan";
+    my @tmp_scriptd=();
+    eval("use $module_name;");
+    if (!$@) {
+      no strict  "refs";
+      if (defined(${$module_name."::"}{getNodeVlanConfData})) {
+	  @tmp_scriptd=${$module_name."::"}{getNodeVlanConfData}->($node);
+      }  
     }
+    @scriptd=(@scriptd,@tmp_scriptd);
+    #print Dumper(@tmp_scriptd);
 
 
     #get monitoring server and other configuration data for monitoring setup on nodes
