@@ -241,7 +241,7 @@ if (&runcmd($chcmd) != 0) {
 if (-f $scriptname) {
   # if called by updatenode do not change TZ 
   if (@ARGV > 0) {
-    if ($ARGV[0] == 1 || $ARGV[0] == 2) {
+    if ($ARGV[0] != 1 &&  $ARGV[0] != 2) {
 	# set the timezone
       my $cmd = "cat $scriptname | grep 'TIMEZONE='";
       &runcmd($cmd);
