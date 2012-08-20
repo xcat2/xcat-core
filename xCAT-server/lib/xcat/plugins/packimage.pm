@@ -306,7 +306,7 @@ sub process_request {
        close($shadow);
        open($shadow,">","$rootimg_dir/etc/shadow");
        unless ($pass =~ /^\$1\$/) {
-          $pass = crypt($pass,'$1$'.genpassword(8));
+          $pass = crypt($pass,'$1$'.xCAT::Utils::genpassword(8));
        }
        print $shadow "root:$pass:13880:0:99999:7:::\n";
        foreach (@shadents) {
