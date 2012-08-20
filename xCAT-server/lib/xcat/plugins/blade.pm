@@ -4247,7 +4247,7 @@ sub clicmds {
   my $errmsg=$@;
   if ($errmsg) {
         if ($errmsg =~ /Known_hosts issue/) {
-            $errmsg = "The entry for $curraddr in known_hosts table is out of date, pls run 'makeknownhosts $curraddr -r' to delete it from known_hosts table.";
+            $errmsg = "The entry for $mpa in known_hosts table is out of date, pls run 'makeknownhosts $mpa -r' to delete it from known_hosts table.";
            push @cfgtext, $errmsg;
            return([1, \@unhandled, $errmsg]);
         }
