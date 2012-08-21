@@ -134,6 +134,28 @@ else
 }
 
 #
+# If the XCATPGPW environment variable is specified,
+# call pgsqlsetup command with -N flag to setup PostgreSQL database.
+# This is a requirement of PCM, it should be done only in install scenario but not update.
+#
+if ($::INITIALINSTALL || $::FORCE)
+{
+    if (($::osname eq 'Linux') && $ENV{'XCATPGPW'})
+    {
+        my $cmd = "XCATPGPW=$ENV{'XCATPGPW'} $::XCATROOT/bin/pgsqlsetup -i -N";
+        my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E', "Could not setup PostgreSQL, falling back to sqlite...");
+            $cmd = "rm -f /etc/xcat/cfgloc";
+            $outref = xCAT::Utils->runcmd("$cmd", -1);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message('E', "Could not fall back to sqlite, where should we go?");
+            }
+        }
+    }
+}
 # To support AIX INUCLIENTS, to support the scenario where the user needs to install xCAT rpms
 # into the INUCLIENT=1 environment, such as AIX diskless node(installing xCAT in AIX NIM SPOT), 
 # or alternative disk installation.
