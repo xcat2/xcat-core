@@ -122,6 +122,7 @@ cp lib/perl/xCAT/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/*
 
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/sles/*.postinstall
+chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/rh/*.postinstall
 
 # For now, don't ship these plugins on AIX to avoid AIX dependency.
 %ifnos linux
