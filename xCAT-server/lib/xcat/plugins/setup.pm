@@ -1037,19 +1037,27 @@ sub writelpar {
 		if ($otherint) {
 			# need to replace each ip addr in otherinterfaces with a regex
 			my @ifs = split(/[\s,]+/, $otherint);
+			my $i = 0;
 			foreach my $if (@ifs) {
+				$i++;
 				my ($nic, $nicip) = split(/:/, $if);
 				if (!isIP($nicip)) { next; }
 				my ($nicbase, $nic2nd, $nic3rd, $nic4th) = $nicip =~/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/;
-				$if = "$nic:$nicbase.($nic2nd+" . '$1' . "-$primstartnum).($nic3rd+" . '$2' . "-$secstartnum).($nic4th+" . '$3' . "-$thirdstartnum)";
+				if ($i == 1) {
+					$if = "$nic:$nicbase.(($nic2nd+" . '$1' . "-$primstartnum).\'.\'.($nic3rd+" . '$2' . "-$secstartnum).\'.\'.($nic4th+" . '$3' . "-$thirdstartnum).\'";
+				} elsif ($i == scalar(@ifs)) {
+					$if = "$nic:$nicbase.\'.($nic2nd+" . '$1' . "-$primstartnum).\'.\'.($nic3rd+" . '$2' . "-$secstartnum).\'.\'.($nic4th+" . '$3' . "-$thirdstartnum))";
+				} else {
+					$if = "$nic:$nicbase.\'.($nic2nd+" . '$1' . "-$primstartnum).\'.\'.($nic3rd+" . '$2' . "-$secstartnum).\'.\'.($nic4th+" . '$3' . "-$thirdstartnum).\'";
+				}
 			}
-            $regex = '|\D+(\d+)\D+(\d+)\D+(\d+)\D*$|' . join(',', @ifs) . '|';
+				$regex = '|\D+(\d+)\D+(\d+)\D+(\d+)\D*$|' . join(',', @ifs) . '|';
 			#print "regex=$regex\n";
 			$hash{otherinterfaces} = $regex;
 			if ($serviceip && isIP($serviceip)) {
 				# same as regular lpar value, except prepend the lpar ip as -hf0
 				my $hf0 = "-hf0:$ipbase.($ip2nd+" . '$1' . "-$primstartnum).($ip3rd+" . '$2' . "-$secstartnum).($ip4th+" . '$3' . "-$thirdstartnum)";
-                my $serviceregex = '|\D+(\d+)\D+(\d+)\D+(\d+)\D*$|' . "$hf0," . join(',', @ifs) . '|';
+				my $serviceregex = '|\D+(\d+)\D+(\d+)\D+(\d+)\D*$|' . "$hf0," . join(',', @ifs) . '|';
 				$servicehash{otherinterfaces} = $serviceregex;
 			}
 		}
