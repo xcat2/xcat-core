@@ -7,9 +7,10 @@
 #               This script is run from the /etc/inittab file on both
 #               diskless and diskfull AIX nodes
 #
-#               It is also run by the updatenode cmd ( -c 1)
+#               It is also run by the updatenode cmd ( -c 1) for -P
+#                updatenode cmd ( -c 5)   for -k
 #                 moncfg command (-c 3)
-#
+#               Install no arguments ( see aixinstall.pm)
 #####################################################
 
 # if AIX - make sure we include perl 5.8.2 in INC path.
@@ -237,8 +238,9 @@ if (&runcmd($chcmd) != 0) {
 	print "$::sdate xcataixpost: Could not change /xcatpost file permissions.\n";
 	print $::LOG_FILE "$::sdate xcataixpost: Could not change /xcatpost file permissions.\n";
 }
-
-if (-f $scriptname) {
+# set TZ only on install
+if (@ARGV==0) {
+  if (-f $scriptname) {
 	# set the timezone
     my $cmd = "cat $scriptname | grep 'TIMEZONE='";
     &runcmd($cmd);
@@ -251,9 +253,10 @@ if (-f $scriptname) {
             my $msg = "$::sdate xcataixpost: Could not set timezone.\n";
             `logger -t xcat -p local4.warning $msg`;
         } else {
-			&runcmd("export TZ=$tz");
-		}
+            &runcmd("export TZ=$tz");
+	}
     }
+  }
 }
 
 # check & run the postscript
