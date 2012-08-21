@@ -154,6 +154,11 @@ if ($::INITIALINSTALL || $::FORCE)
                 xCAT::MsgUtils->message('E', "Could not fall back to sqlite, where should we go?");
             }
         }
+        else
+        {
+            # Init the database
+            $::initDB = 1;
+        }
     }
 }
 # To support AIX INUCLIENTS, to support the scenario where the user needs to install xCAT rpms
