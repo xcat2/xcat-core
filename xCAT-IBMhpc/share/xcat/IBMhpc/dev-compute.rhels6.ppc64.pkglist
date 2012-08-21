@@ -1,0 +1,4 @@
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/IBMhpc.rhels6.ppc64.pkglist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe-1200.rhels6.ppc64.pkglist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/compilers/compilers.rhels6.pkglist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/essl.pkglist#

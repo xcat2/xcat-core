@@ -1,0 +1,7 @@
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/IBMhpc.rhels6.x86_64.exlist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/gpfs/gpfs.exlist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe.exlist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/compilers/compilers.exlist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/essl.exlist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/rsct/rsct.exlist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/loadl/loadl.exlist#
