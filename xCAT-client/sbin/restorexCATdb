@@ -69,7 +69,7 @@ if ($? != 0)
     exit 1;
 }
 # read tables to skip during restore from site.skiptables attribute
-my @output2=xCAT::Utils->get_site_attribute('skiptables');
+my @output2=xCAT::TableUtils->get_site_attribute('skiptables');
 my @skiptbls;
 if (@output2) {
   @skiptbls = split (/\,/,$output2[0]);

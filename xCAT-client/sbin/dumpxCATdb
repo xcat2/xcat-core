@@ -75,7 +75,7 @@ if ($ENV{'XCAT_SKIPTABLES'}) {
   @output2=$ENV{'XCAT_SKIPTABLES'};
 } else {
   # read tables to skip  from site.skiptables attribute
-  @output2=xCAT::Utils->get_site_attribute('skiptables');
+  @output2=xCAT::TableUtils->get_site_attribute('skiptables');
 }
 my @skiptbls;
 if (@output2) {
