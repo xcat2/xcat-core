@@ -98,7 +98,7 @@ sub preprocess_request
         my $rsp = {};
         $rsp->{data}->[0] = "Unsupported command: $command.";
         $callback->($rsp);
-        return \@requests;
+        return ;
     }
 }
 
@@ -209,20 +209,18 @@ sub preprocess_updatenode
                     'P|scripts:s'      => \$::RERUNPS,
                     'k|security'       => \$::SECURITY,
                     'o|os:s'           => \$::OS,
-                    'user=s'           => \$::USER,
-                    'devicetype=s'     => \$::DEVICETYPE,
         )
       )
     {
         &updatenode_usage($callback);
-        return \@requests;
+        return ;
     }
 
     # display the usage if -h or --help is specified
     if ($::HELP)
     {
         &updatenode_usage($callback);
-        return \@requests;
+        return ;
     }
 
     # display the version statement if -v or --verison is specified
@@ -231,37 +229,44 @@ sub preprocess_updatenode
         my $rsp = {};
         $rsp->{data}->[0] = xCAT::Utils->Version();
         $callback->($rsp);
-        return \@requests;
+        return ;
     }
 
     # -c must work with -S for AIX node
     if ($::CMDLINE && !$::SWMAINTENANCE) {
-        &updatenode_usage($callback);
-        return \@requests;
+        my $rsp = {};
+        $rsp->{data}->[0] =
+          "If you specify the -c flag you must specify the -S flag";
+        $callback->($rsp);
+        return ;
     }
     
     # -s must work with -P or -S or --security
     if ($::SETSERVER && !($::SWMAINTENANCE || $::RERUNPS || $::SECURITY)) {
-        &updatenode_usage($callback);
-        return \@requests;
+        my $rsp = {};
+        $rsp->{data}->[0] =
+          "If you specify the -s flag you must specify either the -S or -k or -P
+ flags";
+        $callback->($rsp);
+        return ;
     }
     # -f or -F not both
     if (($::FILESYNC) && ($::SNFILESYNC)) {
-        &updatenode_usage($callback);
-        return \@requests;
+         my $rsp = {};
+        $rsp->{data}->[0] = "You can not specify both the -f and -F flags.";
+        $callback->($rsp);
+        return ;
     }
 
 
-    # --user and --devicetype must work with --security
-    if (($::USER || $::DEVICETYPE) && !($::SECURITY && $::USER && $::DEVICETYPE)) {
-        &updatenode_usage($callback);
-        return \@requests;
-    }
 
     # --security cannot work with -S -P -F
     if ($::SECURITY && ($::SWMAINTENANCE || $::RERUNPS || defined($::RERUNPS))) {
-        &updatenode_usage($callback);
-        return \@requests;
+        my $rsp = {};
+        $rsp->{data}->[0] =
+          "If you use the -k flag, you cannot specify the -S,-P or -F flags.";
+        $callback->($rsp);
+        return ;
     }
 
     # the -P flag is omitted when only postscritps are specified,
@@ -306,9 +311,28 @@ sub preprocess_updatenode
     my $nodes = $request->{node};
     if (!$nodes)
     {
-        &updatenode_usage($callback);
-        return \@requests;
+        my $rsp = {};
+        $rsp->{data}->[0] =
+          "A noderange is required for the updatenode command.";
+        $callback->($rsp);
+        return ;
     }
+    if ($::SECURITY)
+    {
+
+        # check to see if the Management Node is in the noderange and
+        # if it is abort
+        my $mname = xCAT::Utils->noderangecontainsMn(@$nodes);
+        if ($mname)
+        {    # MN in the nodelist
+            my $rsp = {};
+            $rsp->{error}->[0] =
+              "You must not run -K option against the Management Node:$mname.";
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            return;
+        }
+    }
+
 
 	#
     # process @ARGV
@@ -460,7 +484,7 @@ sub preprocess_updatenode
         my $rsp;
         push @{$rsp->{data}}, "Could not get list of xCAT service nodes.";
         xCAT::MsgUtils->message("E", $rsp, $callback);
-        return \@requests;
+        return ;
 
         # return undef; ???
     }
@@ -488,12 +512,6 @@ sub preprocess_updatenode
         my $req_sshkey = {%$request}; 
         $req_sshkey->{node} = \@sns;
         $req_sshkey->{security}->[0] = "yes";
-        if ($::USER) {
-            $req_sshkey->{user}->[0] = $::USER;
-        }
-        if ($::DEVICETYPE) {
-            $req_sshkey->{devicetype}->[0] = $::DEVICETYPE;
-        }
 
         updatenode($req_sshkey, \&updatenode_cb, $subreq);
 
@@ -609,12 +627,6 @@ sub preprocess_updatenode
 
         if (defined($::SECURITY)) {
             $reqcopy->{security}->[0] = "yes";
-            if ($::USER) {
-                $reqcopy->{user}->[0] = $::USER;
-            }
-            if ($::DEVICETYPE) {
-                $reqcopy->{devicetype}->[0] = $::DEVICETYPE;
-            }
         }
         
         #
@@ -756,8 +768,6 @@ sub updatenode
                     'P|scripts:s'      => \$::RERUNPS,
                     'k|security'       => \$::SECURITY,
                     'o|os:s'      	   => \$::OS,
-                    'user=s'           => \$::USER,
-                    'devicetype=s'     => \$::DEVICETYPE,
         )
       )
     {
@@ -986,14 +996,6 @@ $AIXnodes_nd, $subreq  ) != 0 ) {
          
         # generate the arguments
         my @args = ("-K");
-        if ($request->{user}->[0]) {
-            push @args, "--user";
-            push @args, $request->{user}->[0];
-        }
-        if ($request->{devicetype}->[0]) {
-            push @args, "--devicetype";
-            push @args, $request->{devicetype}->[0];
-        }
 
         # remove the host key from known_hosts
         xCAT::Utils->runxcmd(  {
