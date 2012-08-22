@@ -11,6 +11,7 @@ BEGIN
 
 use lib "$::XCATROOT/lib/perl";
 use xCAT::Utils;
+use xCAT::TableUtils;
 use strict;
 use Socket;
 
@@ -20,7 +21,7 @@ if(! $blades) {
   exit; 
 }
 
-my $tftpdir = xCAT::Utils->getTftpDir();
+my $tftpdir = xCAT::TableUtils->getTftpDir();
 
 foreach my $blade (`/opt/xcat/bin/nodels $blades`){
   chomp($blade);

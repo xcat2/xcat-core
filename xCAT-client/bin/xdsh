@@ -18,6 +18,7 @@ use Getopt::Long;
 require xCAT::MsgUtils;
 require xCAT::DSHCLI;
 use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::RemoteShellExp;
 require xCAT::Client;
 my $bname = basename($0);
@@ -270,7 +271,7 @@ sub parse_args_xdsh
 
         # get the directories on the servicenode to put the  files in
         my $defaultsyndir = "/var/xcat/syncfiles";
-        my @syndir        = xCAT::Utils->get_site_attribute("SNsyncfiledir");
+        my @syndir        = xCAT::TableUtils->get_site_attribute("SNsyncfiledir");
         my $synfiledir;
         if ($syndir[0])
         {
@@ -282,7 +283,7 @@ sub parse_args_xdsh
         }
         # for append function
         my $defaultnodesyndir = "/var/xcat/node/syncfiles";
-        my @syndir2       = xCAT::Utils->get_site_attribute("nodesyncfiledir");
+        my @syndir2       = xCAT::TableUtils->get_site_attribute("nodesyncfiledir");
         my $synfiledir2;
         if ($syndir2[0])
         {

@@ -9,6 +9,9 @@ use lib "$::XCATROOT/lib/perl";
 
 use strict;
 use xCAT::Table;
+use xCAT::Utils;
+use xCAT::TableUtils;
+use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
 use Getopt::Long;
 
@@ -69,7 +72,7 @@ if ($hmtab) {
 my $file = "/var/log/consoles/$node";
 
 #if has conserver, goto conserver the execute replaycons command
-my @hostinfo=xCAT::Utils->determinehostname();
+my @hostinfo=xCAT::NetworkUtils->determinehostname();
 my %iphash=();
 foreach(@hostinfo) {$iphash{$_}=1;}
 if (($conserver) && ($iphash{$conserver} != 1)) {

@@ -12,6 +12,7 @@ use strict;
 use lib "$::XCATROOT/lib/perl";
 
 use xCAT::Utils;
+use xCAT::TableUtils;
 use POSIX qw(:signal_h :errno_h :sys_wait_h);
 use IO::Socket::SSL;
 use XML::Simple;
@@ -133,7 +134,7 @@ foreach my $interf (@interfaces) {
 
 sub fping_pping {
 	my $nodes = shift;
-        my $master = xCAT::Utils->get_site_Master();
+        my $master = xCAT::TableUtils->get_site_Master();
         my $masterip = xCAT::NetworkUtils->getipaddr($master);
         if ($masterip =~ /:/) #IPv6, needs fping6 support
         {

@@ -12,6 +12,7 @@ use File::Find;
 use Getopt::Long;
 use Cwd qw(realpath);
 use xCAT::Utils;
+use xCAT::TableUtils;
 #use strict;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
@@ -324,7 +325,7 @@ unless ($onlyinitrd) {
    # ignore any return code
 
    # Add the local repo from MN
-   my $master = xCAT::Utils->get_site_Master();
+   my $master = xCAT::TableUtils->get_site_Master();
    open($aptconfig,">","$rootimg_dir/etc/apt/sources.list");
    print $aptconfig "deb http://$master$installroot/$osver/$arch/ $dist main\n";
    close($aptconfig);
