@@ -74,8 +74,8 @@ if (!($tmp =~ / (--help|-h|-v|--version)/)) {
     $arg = join(',',@tempnr);
     $cmdref->{noderange}->[0]=$arg;
   } else {
-    print "The noderange should be the first argument.\n";
     &updatenode_usage();
+    print "The noderange should be the first argument.\n";
     exit 1;
   }
 }
