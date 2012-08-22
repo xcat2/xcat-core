@@ -94,7 +94,7 @@ if ($::VERSION)
 {
     my $version = xCAT::Utils->Version();
     $version .= "\n";
-    xCAT::MsgUtils->message("N", $version);
+    xCAT::MsgUtils->message("I", $version);
     exit 0;
 }
 if ($::FORCE)
@@ -108,7 +108,7 @@ if ($::FORCE)
     {
         my $warning =
           " The -f flag includes the function for the -i, -u, -k, -s, -c, -d flags. Do not combine with other flags.\n ";
-        xCAT::MsgUtils->message("N", $warning);
+        xCAT::MsgUtils->message("I", $warning);
         exit 1;
     }
 }
@@ -116,7 +116,7 @@ if (($::INITIALINSTALL) && ($::UPDATEINSTALL))
 {
     my $warning =
       " The -i and -u flags may not be input to the command. Use one or the other. \n ";
-    xCAT::MsgUtils->message("N", $warning);
+    xCAT::MsgUtils->message("I", $warning);
     exit 1;
 }
 
