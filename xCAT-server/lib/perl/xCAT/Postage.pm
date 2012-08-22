@@ -205,6 +205,7 @@ sub makescript
         push @scriptd, "export ENABLESSHBETWEENNODES\n";
     }      
 
+    #$masterset =1; ###REMOVE
     if ($masterset == 0)
     {
         my %rsp;
@@ -370,16 +371,17 @@ sub makescript
 
     #get vlan related items
     my $module_name="xCAT_plugin::vlan";
-    my @tmp_scriptd=();
     eval("use $module_name;");
     if (!$@) {
-      no strict  "refs";
-      if (defined(${$module_name."::"}{getNodeVlanConfData})) {
-	  @tmp_scriptd=${$module_name."::"}{getNodeVlanConfData}->($node);
-      }  
+	no strict  "refs";
+	if (defined(${$module_name."::"}{getNodeVlanConfData})) {
+	    my @tmp_scriptd=${$module_name."::"}{getNodeVlanConfData}->($node);
+	    #print Dumper(@tmp_scriptd);
+	    if (@tmp_scriptd > 0) {
+		@scriptd=(@scriptd,@tmp_scriptd);
+	    }
+	}  
     }
-    @scriptd=(@scriptd,@tmp_scriptd);
-    #print Dumper(@tmp_scriptd);
 
 
     #get monitoring server and other configuration data for monitoring setup on nodes
