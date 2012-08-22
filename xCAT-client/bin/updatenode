@@ -99,8 +99,6 @@ if (
                 'P|scripts:s'      => \$::RERUNPS,
                 'k|security'       => \$::SECURITY,
                 'o|os:s'      	   => \$::OS,
-                'user=s'           => \$::USER,
-                'devicetype=s'     => \$::DEVICETYPE,
     )
   ) {
     &updatenode_usage();
