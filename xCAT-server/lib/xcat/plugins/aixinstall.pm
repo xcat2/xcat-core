@@ -419,6 +419,7 @@ sub preprocess_request
                 $reqcopy->{node} = $snodes->{$snkey};
                 $reqcopy->{'_xcatdest'} = $snkey;
 
+
                 push @requests, $reqcopy;
             }
             return \@requests;
@@ -2275,7 +2276,7 @@ sub mknimimage
     my $lpp_source_name;
     my $root_name;
     my $dump_name;
-    my $install_dir = xCAT::TableUtils->getInstallDir();
+	my $install_dir = xCAT::TableUtils->getInstallDir();
 
     if (defined(@{$::args}))
     {
@@ -2292,7 +2293,7 @@ sub mknimimage
     if (
         !GetOptions(
                     'b=s'          => \$::SYSB,
-
+					'c|completeosimage'   => \$::COMPLOS,
                     'D|mkdumpres'  => \$::MKDUMP,
                     'f|force'      => \$::FORCE,
                     'h|help'       => \$::HELP,
@@ -2339,6 +2340,106 @@ sub mknimimage
 		return 1;
 	}
 
+    #
+    # process @ARGV
+    #
+
+    # the first arg should be a noderange - the other should be attr=val
+    #  - put attr=val operands in %::attrres hash
+    while (my $a = shift(@ARGV))
+    {
+        if (!($a =~ /=/))
+        {
+            $::image_name = $a;
+            chomp $::image_name;  # the name of the osimage to create or update
+        }
+        else
+        {
+
+            # if it has an "=" sign its an attr=val - we hope
+            # attr must be a NIM resource type and val must be a resource name
+            my ($attr, $value) = $a =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
+            if (!defined($attr) || !defined($value))
+            {
+                my $rsp;
+                $rsp->{data}->[0] = "Incorrect \'attr=val\' pair - $a\n";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                return 3;
+            }
+
+            # put attr=val in hash
+            $::attrres{$attr} = $value;
+        }
+    }
+
+
+    #  get list of defined xCAT osimage objects
+    my @deflist = undef;
+    @deflist = xCAT::DBobjUtils->getObjectsOfType("osimage");
+
+    # if our image is already defined get the defnition
+    my $is_defined = 0;
+    my %imagedef   = undef;  # the $::image_name definition!
+    if (grep(/^$::image_name$/, @deflist))
+    {
+
+        # get the osimage def
+        my %objtype;
+        $objtype{$::image_name} = 'osimage';
+        %imagedef = xCAT::DBobjUtils->getobjdefs(\%objtype, $callback);
+        if (!(%imagedef))
+        {
+            my $rsp;
+            push @{$rsp->{data}}, "Could not get the xCAT osimage definition for
+ \'$::image_name\'.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+        $is_defined = 1;
+    }
+
+	# determine the NIMTYPE, METHOD, and SHAREDROOT values
+	#	- could be from existing osimage
+	if (!$::NIMTYPE) {
+		if (($imagedef{$::image_name}{nimtype}) && $::COMPLOS)
+        {
+			$::NIMTYPE = $imagedef{$::image_name}{nimtype};
+		} else {
+			if ($::UPDATE) {
+				$::NIMTYPE = "diskless";
+			} else {
+				$::NIMTYPE = "standalone";
+			}
+		}	
+	}
+
+	if (!$::METHOD) {
+		if (($imagedef{$::image_name}{nimmethod}) && $::COMPLOS)
+		{
+			$::METHOD = $imagedef{$::image_name}{nimmethod};
+		} else {
+			if ($::UPDATE) {
+				$::METHOD = "";
+			} else {
+				if (($::NIMTYPE eq "standalone") && !$::METHOD) {
+					$::METHOD = "rte";
+				}		
+			}
+		}
+	}
+
+	if (!$::SHAREDROOT) {
+		if (($imagedef{$::image_name}{shared_root}) && $::COMPLOS) {
+			$::SHAREDROOT++;
+		}
+	}
+
+	if (!$::opt_s) {
+		if (($imagedef{$::image_name}{lpp_source}) && $::COMPLOS) {
+			$::opt_s = $imagedef{$::image_name}{lpp_source};
+		}
+	}
+
     if ($::SHAREDROOT)
     {
         if ($::NIMTYPE ne 'diskless')
@@ -2361,25 +2462,8 @@ sub mknimimage
     my $nimprime = xCAT::InstUtils->getnimprime();
     chomp $nimprime;
 
-    if (!$::UPDATE)
-    {
-
-        # the type is standalone by default
-        if (!$::NIMTYPE)
-        {
-            $::NIMTYPE = "standalone";
-        }
-
-        # the NIM method is rte by default
-        if (($::NIMTYPE eq "standalone") && !$::METHOD)
-        {
-            $::METHOD = "rte";
-        }
-    }
-
     if ($::opt_l)
     {
-
         # This is not a full path
         if ($::opt_l !~ /^\//)
         {
@@ -2388,38 +2472,6 @@ sub mknimimage
             {
                 $::opt_l = $abspath;
             }
-        }
-    }
-
-    #
-    # process @ARGV
-    #
-
-    # the first arg should be a noderange - the other should be attr=val
-    #  - put attr=val operands in %::attrres hash
-    while (my $a = shift(@ARGV))
-    {
-        if (!($a =~ /=/))
-        {
-            $::image_name = $a;
-            chomp $::image_name;
-        }
-        else
-        {
-
-            # if it has an "=" sign its an attr=val - we hope
-            # attr must be a NIM resource type and val must be a resource name
-            my ($attr, $value) = $a =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
-            if (!defined($attr) || !defined($value))
-            {
-                my $rsp;
-                $rsp->{data}->[0] = "Incorrect \'attr=val\' pair - $a\n";
-                xCAT::MsgUtils->message("E", $rsp, $::callback);
-                return 3;
-            }
-
-            # put attr=val in hash
-            $::attrres{$attr} = $value;
         }
     }
 
@@ -2497,12 +2549,8 @@ sub mknimimage
             }
             #2. Configure nfs domain for nfs version 4
             # check site table - get domain attr
-            #my $sitetab = xCAT::Table->new('site');
-            #my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
-            #my $domain = $tmp->{value};
-            #$sitetab->close;
-            my @domains = xCAT::TableUtils->get_site_attribute("domain");
-            my $domain = $domains[0];
+			my @domains = xCAT::TableUtils->get_site_attribute("domain");
+			my $domain = $domains[0];
             if (!$domain)
             {
                 my $rsp;
@@ -2527,8 +2575,7 @@ sub mknimimage
             }
             $nimcmd = qq~stopsrc -g nfs~;
             $nimout =
-              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
-                                    0);
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd, 0);
             sleep 2;
             $nimcmd = qq~startsrc -g nfs~;
             $nimout =
@@ -2586,8 +2633,7 @@ sub mknimimage
             my $linklocaladdr;
             $nimcmd = qq~ifconfig $pif~;
             $nimout =
-              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
-                                    0);
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd, 0);
             foreach my $line (split(/\n/,$nimout))
             {
                 #ignore the address fe80::1%2/64 
@@ -2786,17 +2832,14 @@ sub mknimimage
         }
     }
 
-
     if ($::NFSv4 || ($::UPDATE && ($::attrres{'nfs_vers'} == 4)))
     {
         my $nimcmd = qq~chnfsdom~;
         my $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
-        #my $sitetab = xCAT::Table->new('site');
-        #my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
-        #my $domain = $tmp->{value};
-        #$sitetab->close;
-        my @domains = xCAT::TableUtils->get_site_attribute("domain");
-        my $domain = $domains[0];
+        my $sitetab = xCAT::Table->new('site');
+        my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
+        my $domain = $tmp->{value};
+        $sitetab->close;
         if (!$domain)
         {
             my $rsp;
@@ -2874,32 +2917,6 @@ sub mknimimage
                 return 1;
             }
         }
-    }
-    #
-    #  get list of defined xCAT osimage objects
-    #
-    my @deflist = undef;
-    @deflist = xCAT::DBobjUtils->getObjectsOfType("osimage");
-
-    # if our image is defined get the defnition
-    my $is_defined = 0;
-    my %imagedef   = undef;
-    if (grep(/^$::image_name$/, @deflist))
-    {
-
-        # get the osimage def
-        my %objtype;
-        $objtype{$::image_name} = 'osimage';
-        %imagedef = xCAT::DBobjUtils->getobjdefs(\%objtype, $callback);
-        if (!(%imagedef))
-        {
-            my $rsp;
-            push @{$rsp->{data}}, "Could not get the xCAT osimage definition for
- \'$::image_name\'.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return 1;
-        }
-        $is_defined = 1;
     }
 
     #
@@ -3016,36 +3033,37 @@ sub mknimimage
         }
     }
 
-    #
-    #   if exists and not doing update then remove or return
-    #
-    if ($is_defined)
-    {
-        if ($::FORCE)
-        {
-
-            # remove the existing osimage def and continue
-            my %objhash;
-            $objhash{$::image_name} = "osimage";
-            if (xCAT::DBobjUtils->rmobjdefs(\%objhash) != 0)
-            {
-                my $rsp;
-                push @{$rsp->{data}},
-                  "Could not remove the existing xCAT definition for \'$::image_name\'.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-            }
-        }
-        else
-        {
-
-            # just return with error
-            my $rsp;
-            push @{$rsp->{data}},
-              "The osimage definition \'$::image_name\' already exists.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return 1;
-        }
-    }
+	# don't remove the osimage if the user wants it to be completed
+	if (!$::COMPLOS ) {
+    	#   if exists and not doing update then remove or return
+    	if ($is_defined)
+    	{
+        	if ($::FORCE)
+        	{
+            	# remove the existing osimage def and continue
+            	my %objhash;
+            	$objhash{$::image_name} = "osimage";
+            	if (xCAT::DBobjUtils->rmobjdefs(\%objhash) != 0)
+            	{
+                	my $rsp;
+                	push @{$rsp->{data}},
+                  	"Could not remove the existing xCAT definition for \'$::image_name\'.\n";
+                	xCAT::MsgUtils->message("E", $rsp, $callback);
+            	}
+				#  reset %imagedefs
+				%imagedef   = undef;
+        	}
+        	else
+        	{
+            	# just return with error
+            	my $rsp;
+            	push @{$rsp->{data}},
+              		"The osimage definition \'$::image_name\' already exists.\n";
+            	xCAT::MsgUtils->message("E", $rsp, $callback);
+            	return 1;
+        	}
+    	}
+	}  
 
     #
     #  Get a list of the all defined resources
@@ -3076,7 +3094,8 @@ sub mknimimage
 
             # get the image def
             $objtype{$::opt_i} = 'osimage';
-
+			
+			# get the osimage def for the -i option osimage
             %::imagedef = xCAT::DBobjUtils->getobjdefs(\%objtype, $callback);
             if (!defined(%::imagedef))
             {
@@ -3087,25 +3106,33 @@ sub mknimimage
             }
         }
 
-        # must have a source and a name
-        if (!($::opt_s || $::opt_i) || !defined($::image_name))
-        {
-            my $rsp;
-            push @{$rsp->{data}},
-              "The image name and either the -s or -i option are required.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            &mknimimage_usage($callback);
-            return 1;
-        }
+		if (!$::COMPLOS) {
+        	# must have a source and a name
+        	if (!($::opt_s || $::opt_i) || !defined($::image_name))
+        	{
+            	my $rsp;
+            	push @{$rsp->{data}},
+              		"The image name and either the -s or -i option are required.\n";
+            	xCAT::MsgUtils->message("E", $rsp, $callback);
+            	&mknimimage_usage($callback);
+            	return 1;
+        	}
+		}
 
         #
         # get lpp_source
-
         #
-        $lpp_source_name = &mk_lpp_source(\%::attrres, $callback);
-        chomp $lpp_source_name;
+
+		if (($imagedef{$::image_name}{lpp_source})  && $::COMPLOS)
+		{
+			$lpp_source_name=$imagedef{$::image_name}{lpp_source};
+		} else {
+
+        	$lpp_source_name = &mk_lpp_source(\%::attrres, $callback);
+        	chomp $lpp_source_name;
+		}
         $newres{lpp_source} = $lpp_source_name;
-        if (!defined($lpp_source_name))
+        if (!($lpp_source_name))
         {
 
             # error
@@ -3113,17 +3140,21 @@ sub mknimimage
             push @{$rsp->{data}}, "Could not create lpp_source definition.\n";
             xCAT::MsgUtils->message("E", $rsp, $callback);
             return 1;
-        }
+		}
 
         #
         # spot resource
         #
-
-        $spot_name = &mk_spot($lpp_source_name, \%::attrres, $callback);
+		if (($imagedef{$::image_name}{spot})  && $::COMPLOS)
+		{
+			$spot_name = $imagedef{$::image_name}{spot};
+		} else {
+        	$spot_name = &mk_spot($lpp_source_name, \%::attrres, $callback);
+		}
 
         chomp $spot_name;
         $newres{spot} = $spot_name;
-        if (!defined($spot_name))
+        if (!($spot_name))
         {
             my $rsp;
             push @{$rsp->{data}}, "Could not create spot definition.\n";
@@ -3142,7 +3173,16 @@ sub mknimimage
         #
         my $root_name;
 
-        # check the command line attrs first
+		if (($imagedef{$::image_name}{root})  && $::COMPLOS)
+        {
+			$root_name = $imagedef{$::image_name}{root};
+		}
+		if (($imagedef{$::image_name}{shared_root})  && $::COMPLOS)
+        {
+            $root_name = $imagedef{$::image_name}{shared_root};
+        }
+
+		# check the command line attrs 
         if ($::attrres{root})
         {
             $root_name = $::attrres{root};
@@ -3202,7 +3242,7 @@ sub mknimimage
             }
         }    # end root res
 
-        if ($::SHAREDROOT || ($::imagedef{$::opt_i}{shared_root}))
+        if ($::SHAREDROOT || $::imagedef{$::opt_i}{shared_root} || $imagedef{$::image_name}{shared_root})
         {
             $newres{shared_root} = $root_name;
         }
@@ -3225,139 +3265,141 @@ sub mknimimage
             }
         }
 
-        if ($::dodumpold || $::MKDUMP)
-        {
-            my $dump_name;
-            if ($::attrres{dump})
-            {
-                # if provided then use it
-                $dump_name = $::attrres{dump};
-            }
-            elsif ($::opt_i)
-            {
-                # if one is provided in osimage
-                if ($::imagedef{$::opt_i}{dump})
-                {
-                    $dump_name = $::imagedef{$::opt_i}{dump};
-                }
-            }
-            else
-            {
+		my $dump_name;
+		if ($imagedef{$::image_name}{dump} ) {
+			$dump_name = $imagedef{$::image_name}{dump};
+            $newres{dump} = $dump_name;
+		} else {
+       		if ($::dodumpold || $::MKDUMP)
+        	{
+            	if ($::attrres{dump})
+            	{
+                	# if provided then use it
+                	$dump_name = $::attrres{dump};
+            	}
+            	elsif ($::opt_i)
+            	{
+                	# if one is provided in osimage
+                	if ($::imagedef{$::opt_i}{dump})
+                	{
+                    	$dump_name = $::imagedef{$::opt_i}{dump};
+                	}
+            	}
+            	else
+            	{
 
-                # may need to create new one
-                # all use the same dump res unless another is specified
-                $dump_name = $::image_name . "_dump";
+                	# may need to create new one
+                	# all use the same dump res unless another is specified
+                	$dump_name = $::image_name . "_dump";
 
-                # see if it's already defined
-                if (grep(/^$dump_name$/, @::nimresources))
-                {
-                    my $rsp;
-                    push @{$rsp->{data}},
+                	# see if it's already defined
+                	if (grep(/^$dump_name$/, @::nimresources))
+                	{
+                    	my $rsp;
+                    	push @{$rsp->{data}},
                       "Using existing dump resource named \'$dump_name\'.\n";
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                }
-                else
-                {
+                    	xCAT::MsgUtils->message("I", $rsp, $callback);
+                	}
+                	else
+                	{
 
-                    # create it
-                    my $type = "dump";
-                    if (
-                        &mkdumpres(
+                    	# create it
+                    	my $type = "dump";
+                    	if (
+                        	&mkdumpres(
                                    $dump_name, \%::attrres, $callback, $::opt_l
                         ) != 0
-                      )
-                    {
-                        my $rsp;
-                        push @{$rsp->{data}},
-                          "Could not create a NIM definition for \'$dump_name\'.\n";
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
-                        return 1;
-                    }
-                }
-            }    # end dump res
-            chomp $dump_name;
-            $newres{dump} = $dump_name;
-        }    # end dodump old
+                      	)
+                    	{
+                        	my $rsp;
+                        	push @{$rsp->{data}},
+                          	"Could not create a NIM definition for \'$dump_name\'.\n";
+                        	xCAT::MsgUtils->message("E", $rsp, $callback);
+                        	return 1;
+                    	}
+                	}
+            	}    # end dump res
+            	chomp $dump_name;
+            	$newres{dump} = $dump_name;
+        	}  
+		} # end dump setup
 
         #
         # paging res
         #
         my $paging_name;
+		if ($imagedef{$::image_name}{paging} ) {
+			$paging_name = $imagedef{$::image_name}{paging};
+		}
         if ($::attrres{paging})
         {
 
             # if provided then use it
             $paging_name = $::attrres{paging};
         }
-        if ($::opt_i)
+
+		if (!$paging_name)
         {
+			# use the one from the -i osimage or create a new one
+        	if ($::opt_i)
+        	{
 
-            # if one is provided in osimage
-            if ($::imagedef{$::opt_i}{paging})
-            {
-                $paging_name = $::imagedef{$::opt_i}{paging};
-            }
-        }
-        chomp $paging_name;
+            	# if one is provided in osimage
+            	if ($::imagedef{$::opt_i}{paging})
+            	{
+                	$paging_name = $::imagedef{$::opt_i}{paging};
+            	}
+        	} else {
 
-        if (!$paging_name)
-        {
+            	# create it
+            	# only if type diskless
+            	my $nimtype;
+            	if ($::NIMTYPE)
+            	{
+                	$nimtype = $::NIMTYPE;
+            	}
+            	else
+            	{
+                	$nimtype = "diskless";
+            	}
+            	chomp $nimtype;
 
-            # create it
-            # only if type diskless
-            my $nimtype;
-            if ($::NIMTYPE)
-            {
-                $nimtype = $::NIMTYPE;
-            }
-            else
-            {
-                $nimtype = "diskless";
-            }
-            chomp $nimtype;
+            	if ($nimtype eq "diskless")
+            	{
 
-            if ($nimtype eq "diskless")
-            {
+                	$paging_name = $::image_name . "_paging";
 
-                $paging_name = $::image_name . "_paging";
-
-                # see if it's already defined
-                if (grep(/^$paging_name$/, @::nimresources))
-                {
-                    my $rsp;
-                    push @{$rsp->{data}},
+                	# see if it's already defined
+                	if (grep(/^$paging_name$/, @::nimresources))
+                	{
+                    	my $rsp;
+                    	push @{$rsp->{data}},
                       "Using existing paging resource named \'$paging_name\'.\n";
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                }
-                else
-                {
+                    	xCAT::MsgUtils->message("I", $rsp, $callback);
+                	}
+                	else
+                	{
 
-                    # it doesn't exist so create it
-                    my $type = "paging";
-					my $junk;
-                    if (&mknimres($paging_name, $type, $callback, $::opt_l, $junk, \%::attrres) !=
-                        0)
-                    {
-                        my $rsp;
-                        push @{$rsp->{data}},
-                          "Could not create a NIM definition for \'$paging_name\'.\n";
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
-                        return 1;
-                    }
-                }
-            }
-        }    # end paging res
+                    	# it doesn't exist so create it
+                    	my $type = "paging";
+						my $junk;
+                    	if (&mknimres($paging_name, $type, $callback, $::opt_l, $junk, \%::attrres) != 0)
+                    	{
+                        	my $rsp;
+                        	push @{$rsp->{data}},
+                          		"Could not create a NIM definition for \'$paging_name\'.\n";
+                        	xCAT::MsgUtils->message("E", $rsp, $callback);
+                        	return 1;
+                    	}
+                	}
+            	}
+        	}    # end paging res
+		}
 
         chomp $paging_name;
         $newres{paging} = $paging_name;
 
-        # need to update spot if needed
-        # but put it later, after xcat osimage obj defined since xcatchroot needs it.
-        
-        #
         # end diskless section
-        #
-
     }
     elsif ($::NIMTYPE eq "standalone")
     {
@@ -3367,9 +3409,12 @@ sub mknimimage
         #
         # create bosinst_data
         #
-        $bosinst_data_name = &mk_bosinst_data(\%::attrres, $callback);
-        chomp $bosinst_data_name;
-        $newres{bosinst_data} = $bosinst_data_name;
+		if ($imagedef{$::image_name}{bosinst_data}) 
+		{
+			$bosinst_data_name = $imagedef{$::image_name}{bosinst_data};
+		} else {
+        	$bosinst_data_name = &mk_bosinst_data(\%::attrres, $callback);
+		}
         if (!defined($bosinst_data_name))
         {
             my $rsp;
@@ -3377,61 +3422,69 @@ sub mknimimage
             xCAT::MsgUtils->message("E", $rsp, $callback);
             return 1;
         }
+		chomp $bosinst_data_name;
+		$newres{bosinst_data} = $bosinst_data_name;
 
 		#
 		#  create a dump res if requested
 		#
-        if ($::MKDUMP)
-        {
-            my $dump_name;
-            if ($::attrres{dump})
-            {
-                # if provided then use it
-                $dump_name = $::attrres{dump};
-            }
-            elsif ($::opt_i)
-            {
-                # if one is provided in osimage
-                if ($::imagedef{$::opt_i}{dump})
-                {
-                    $dump_name = $::imagedef{$::opt_i}{dump};
-                }
-            }
-            else
-            {
-                # may need to create new one
-                # all use the same dump res unless another is specified
-                $dump_name = $::image_name . "_dump";
-
-                # see if it's already defined
-                if (grep(/^$dump_name$/, @::nimresources))
-                {
-                    my $rsp;
-                    push @{$rsp->{data}},
-                      "Using existing dump resource named \'$dump_name\'.\n";
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                }
-                else
-                {
-                    # create it
-                    my $type = "dump";
-                    if (
-                        &mkdumpres(
-                                   $dump_name, \%::attrres, $callback, $::opt_l
-                        ) != 0
-                      )
-                    {
-                        my $rsp;
-                        push @{$rsp->{data}},
-                          "Could not create a NIM definition for \'$dump_name\'.\n";
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
-                        return 1;
-                    }
-                }
-            }    # end dump res
-            chomp $dump_name;
+		if ($imagedef{$::image_name}{dump} ) {
+            $dump_name = $imagedef{$::image_name}{dump};
             $newres{dump} = $dump_name;
-        }    # end create dump
+        } else {
+
+        	if ($::MKDUMP)
+        	{
+            	my $dump_name;
+            	if ($::attrres{dump})
+            	{
+                	# if provided then use it
+                	$dump_name = $::attrres{dump};
+            	}
+            	elsif ($::opt_i)
+            	{
+                	# if one is provided in osimage
+                	if ($::imagedef{$::opt_i}{dump})
+                	{
+                    	$dump_name = $::imagedef{$::opt_i}{dump};
+                	}
+            	}
+            	else
+            	{
+                	# may need to create new one
+                	# all use the same dump res unless another is specified
+                	$dump_name = $::image_name . "_dump";
+
+                	# see if it's already defined
+                	if (grep(/^$dump_name$/, @::nimresources))
+                	{
+                    	my $rsp;
+                    	push @{$rsp->{data}},
+                      		"Using existing dump resource named \'$dump_name\'.\n";
+                    	xCAT::MsgUtils->message("I", $rsp, $callback);
+                	}
+                	else
+                	{
+                    	# create it
+                    	my $type = "dump";
+                    	if (
+                        	&mkdumpres(
+                                   $dump_name, \%::attrres, $callback, $::opt_l
+                        	) != 0
+                      	)
+                    	{
+                        	my $rsp;
+                        	push @{$rsp->{data}},
+                          	"Could not create a NIM definition for \'$dump_name\'.\n";
+                        	xCAT::MsgUtils->message("E", $rsp, $callback);
+                        	return 1;
+                    	}
+                	}
+            	}   
+            	chomp $dump_name;
+            	$newres{dump} = $dump_name;
+        	}  
+		} # end create dump
 
         if ($::METHOD eq "rte")
         {
@@ -3454,9 +3507,13 @@ sub mknimimage
             #
             # get lpp_source
             #
-            $lpp_source_name = &mk_lpp_source(\%::attrres, $callback);
-            chomp $lpp_source_name;
-            $newres{lpp_source} = $lpp_source_name;
+			if (($imagedef{$::image_name}{lpp_source}) && $::COMPLOS)
+			{
+				$lpp_source_name=$imagedef{$::image_name}{lpp_source};
+			} else {
+				$lpp_source_name = &mk_lpp_source(\%::attrres, $callback);
+			}
+	
             if (!defined($lpp_source_name))
             {
                 my $rsp;
@@ -3465,11 +3522,11 @@ sub mknimimage
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 return 1;
             }
-
+			chomp $lpp_source_name;
+			$newres{lpp_source} = $lpp_source_name;
         }
         elsif ($::METHOD eq "mksysb")
         {
-
             # need mksysb bosinst_data
             # user provides SPOT
             #  TODO - create SPOT from mksysb
@@ -3492,18 +3549,22 @@ sub mknimimage
         #
         # get spot resource
         #
-        $spot_name = &mk_spot($lpp_source_name, \%::attrres, $callback);
-        chomp $spot_name;
-        $newres{spot} = $spot_name;
+		if (($imagedef{$::image_name}{spot}) && $::COMPLOS)
+        {
+            $spot_name = $imagedef{$::image_name}{spot};
+        } else {
+        	$spot_name = &mk_spot($lpp_source_name, \%::attrres, $callback);
+		}
         if (!defined($spot_name))
         {
-
             my $rsp;
             push @{$rsp->{data}}, "Could not create spot definition.\n";
             xCAT::MsgUtils->message("E", $rsp, $callback);
             return 1;
         }
-    }
+		chomp $spot_name;
+		$newres{spot} = $spot_name;
+    } # end standalone set up
 
     #
     # Put together the osimage def information
@@ -3561,11 +3622,9 @@ sub mknimimage
     #
     if (defined(%::attrres))
     {
-
         # add overlay/any additional from the cmd line if provided
         foreach my $type (keys %::attrres)
         {
-
             # could be comma list!!
             my $include = 1;
             my @reslist = split(/,/, $::attrres{$type});
@@ -3612,7 +3671,6 @@ sub mknimimage
             return 1;
         }
     }    
-
 
 	#
 	# Set root password in diskless images
@@ -3668,7 +3726,6 @@ sub mknimimage
             xCAT::MsgUtils->message("E", $rsp, $callback);
 		}
 		$::VERBOSE = $tmpv;
-
 	}
 
     #
@@ -3962,6 +4019,7 @@ sub mk_lpp_source
                     my $rsp;
                     push @{$rsp->{data}},
                       "\'$::opt_s\' is not a source directory or the name of a NIM lpp_source resource.\n";
+
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     &mknimimage_usage($callback);
                     return undef;
@@ -12768,7 +12826,7 @@ sub mknimimage_usage
       "\tmknimimage [-V] -u osimage_name [attr=val [attr=val ...]]";
     push @{$rsp->{data}}, "or";
     push @{$rsp->{data}},
-      "\tmknimimage [-V] [-f|--force] [-t nimtype] [-m nimmethod]\n\t\t[-r|--sharedroot] [-D|--mkdumpres] [-l <location>]\n\t\t[-s image_source] [-i current_image] [-p|--cplpp] [-t nimtype]\n\t\t[-m nimmethod] [-n mksysbnode] [-b mksysbfile] osimage_name\n\t\t[attr=val [attr=val ...]]\n";
+      "\tmknimimage [-V] [-f|--force] [-t nimtype] [-m nimmethod]\n\t\t[-c|--completeosimage] [-r|--sharedroot] [-D|--mkdumpres]\n\t\t[-l <location>] [-s image_source] [-i current_image]\n\t\t[-p|--cplpp] [-t nimtype] [-m nimmethod] [-n mksysbnode]\n\t\t[-b mksysbfile] osimage_name [attr=val [attr=val ...]]\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
