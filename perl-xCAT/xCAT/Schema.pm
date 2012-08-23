@@ -1818,12 +1818,20 @@ my @nodeattrs = (
 ######################
 #  vm table          #
 ######################
+             {attr_name => 'vmmanager',
+                 tabentry => 'vm.mgr',
+                 access_tabentry => 'vm.node=attr:node',
+                },
 		{attr_name => 'vmhost',
                  tabentry => 'vm.host',
                  access_tabentry => 'vm.node=attr:node',
                 },
 		{attr_name => 'migrationdest',
                  tabentry => 'vm.migrationdest',
+                 access_tabentry => 'vm.node=attr:node',
+                },
+             {attr_name => 'vmtemplate',
+                 tabentry => 'vm.template',
                  access_tabentry => 'vm.node=attr:node',
                 },
 		{attr_name => 'vmstorage',
