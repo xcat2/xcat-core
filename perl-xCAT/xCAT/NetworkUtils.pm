@@ -39,6 +39,73 @@ This program module file, is a set of network utilities used by xCAT commands.
 
 #-------------------------------------------------------------
 
+#-------------------------------------------------------------------------------
+
+=head3  getNodeDomains
+
+		Gets the network domain for a list of nodes
+
+		The domain value comes from the network definition 
+		associated with the node ip address.
+
+		If the network domain is not set then the default is to 
+		use the site.domain value
+
+    Arguments:
+       list of nodes
+    Returns: 
+		error - undef
+		success - hash ref of domains for each node
+    Globals:
+		$::VERBOSE
+    Error:
+    Example:
+     my $nodedomains = xCAT::NetworkUtils->getNodeDomains(\@nodes, $callback);
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub getNodeDomains()
+{
+    my $class    = shift;
+	my $nodes  = shift;
+	my $callback = shift;
+
+	my @nodelist = @$nodes;
+	my %nodedomains;
+
+	# Get the network info for each node
+    my %nethash = xCAT::DBobjUtils->getNetwkInfo(\@nodelist, $callback);
+    if (!(%nethash) && $::VERBOSE)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not get xCAT network definitions for one or more nodes.\n";
+        xCAT::MsgUtils->message("W", $rsp, $callback);
+    }
+
+	# get the site domain value
+	my @domains = xCAT::TableUtils->get_site_attribute("domain");
+	my $sitedomain = $domains[0];
+	if (!$sitedomain && $::VERBOSE)
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "Cannot get a domain value from the cluster site definition.\n";
+		xCAT::MsgUtils->message("W", $rsp, $callback);
+	}
+
+	# for each node - set hash value to network domain or default 
+	#		to site domain 
+	foreach my $node (@nodelist) {
+		if ($nethash{$node}{domain}) {
+			$nodedomains{$node} = $nethash{$node}{domain};
+		} else {
+			$nodedomains{$node} = $sitedomain;
+		}
+	}
+
+	return \%nodedomains;
+}
 
 #-------------------------------------------------------------------------------
 
