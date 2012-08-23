@@ -695,10 +695,13 @@ sub process_request
         my ($var, $value) = split(/=/, $envar, 2);
         $ENV{$var} = $value;
     }
+    # if DSH_FROM_USERID does not exist, set for internal calls
     # if request->{username} exists,  set DSH_FROM_USERID to it
     # override input,  this is what was authenticated
-    if (($request->{username}) && defined($request->{username}->[0])) {
-       $ENV{DSH_FROM_USERID} = $request->{username}->[0];
+    if (!($ENV{'DSH_FROM_USERID'})) {
+      if (($request->{username}) && defined($request->{username}->[0])) {
+         $ENV{DSH_FROM_USERID} = $request->{username}->[0];
+      } 
     } 
     if ($command eq "xdsh")
     {
