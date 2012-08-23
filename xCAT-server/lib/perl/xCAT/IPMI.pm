@@ -13,8 +13,10 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use strict;
 use warnings "all";
+use Time::HiRes qw/time/;
 
 use IO::Socket::INET qw/!AF_INET6 !PF_INET6/;
+my $initialtimeout=0.100;
 
 my $doipv6=eval {
 	require Socket6;
@@ -104,7 +106,6 @@ sub new {
             my $rcvbuf = $socket->sockopt(SO_RCVBUF);
             $maxpending=$rcvbuf/1500; #probably could have maxpending go higher, but just go with typical MTU as a guess
         }
-        $maxpending=128; #TODO: analysis to mitigate this hard limit
         $select->add($socket);
     }
     my $bmc_n;
@@ -129,14 +130,7 @@ sub new {
     } else  {
        $self->{peeraddr} = sockaddr_in($self->{port},$bmc_n);
     }
-    $self->{'sequencenumber'} = 0; #init sequence number
-        $self->{'sequencenumberbytes'} = [0,0,0,0]; #init sequence number
-        $self->{'sessionid'} = [0,0,0,0]; # init session id
-        $self->{'authtype'}=0; # first messages will have auth type of 0
-        $self->{'ipmiversion'}='1.5'; # send first packet as 1.5
-        $self->{'timeout'}=2; #start at a quick timeout, increase on retry
-        $self->{'seqlun'}=0; #the IPMB seqlun combo, increment by 4s
-        $self->{'logged'}=0;
+    $self->init();
     return $self;
 }
 sub login {
@@ -148,6 +142,7 @@ sub login {
     }
     $self->{onlogon} = $args{callback};
     $self->{onlogon_args} = $args{callback_args};
+    $self->{logontries}=5;
     $self->get_channel_auth_cap();
 }
 
@@ -242,14 +237,19 @@ sub session_activated {
                 0x85 => "Invalid session ID",
                 0x86 => $self->{userid}. " is not allowed to be Administrator or Administrator not allowed over network",
                 );
-    my @data = @{$rsp->{data}};
     if ($code) {
         my $errtxt = sprintf("ERROR: Unable to log in to BMC due to code %02xh",$code);
         if ($localcodes{$code}) {
             $errtxt .= " ($localcodes{$code})";
         }
         $self->{onlogon}->($errtxt, $self->{onlogon_args});
+	return;
     }
+    if ($rsp->{error}) { 
+	$self->{onlogon}->($rsp->{error}, $self->{onlogon_args});
+	return;
+    }
+    my @data = @{$rsp->{data}};
     $self->{sessionid} = [splice @data,1,4];
     $self->{sequencenumber}=$data[1]+($data[2]<<8)+($data[3]<<16)+($data[4]<<24);
     $self->{sequencenumberbytes} = [splice @data,1,4];
@@ -365,18 +365,19 @@ sub subcmd {
 
 sub waitforrsp {
     my $self=shift;
+    my %args=@_;
+    
     my $data;
     my $peerport;
     my $peerhost;
     my $timeout; #TODO: code to scan pending objects to find soonest retry deadline
     my $curtime=time();
+    if (defined $args{timeout}) { $timeout =  $args{timeout}; }
     foreach (keys %sessions_waiting) {
-       if  ($sessions_waiting{$_}->{timeout} <= $curtime) { #retry or fail..
-           my $session = $sessions_waiting{$_}->{ipmisession};
-           delete $sessions_waiting{$_};
-           $pendingpackets-=1;
-           $session->timedout();
-           next;
+       if (defined $timeout and $timeout == 0) { last; } #once we get to zero, then there is no lower and anything else is a waste
+       if  ($sessions_waiting{$_}->{timeout} <= $curtime) {
+	   $timeout=0; #this waitforrsp must go as quickly to retry as possible, but give it a chance this iteration to clear without timedout being called
+	   	       #if something defferred entry into waitforrsp so long that there was no chance to check for response, this grants at least one shot at getting data
         }
         if (defined $timeout) {
             if ($timeout < $sessions_waiting{$_}->{timeout}-$curtime) {
@@ -405,22 +406,32 @@ sub waitforrsp {
                                 push @ipmiq,[$peerport,$data];
                         }
                 }
-        }
+	}
+    }
+    foreach (keys %sessions_waiting) { #now that we have given all incoming packets a chance, if some sessions were past due when we entered
+    				      #take timeout response action now
+       if  ($sessions_waiting{$_}->{timeout} <= $curtime) {
+           my $session = $sessions_waiting{$_}->{ipmisession};
+           delete $sessions_waiting{$_};
+           $pendingpackets-=1;
+           $session->timedout();
+           next;
+       }
     }
     return scalar (keys %sessions_waiting);
 }
 
 sub timedout {
     my $self = shift;
-    $self->{timeout} = $self->{timeout}+1;
-    if ($self->{timeout} > 5) { #giveup, really
-        $self->{timeout}=2;
+    $self->{timeout} = $self->{timeout}*2;
+    if ($self->{timeout} > 7) { #giveup, really
+        $self->{timeout}=$initialtimeout;
         my $rsp={};
         $rsp->{error} = "timeout";
         $self->{ipmicallback}->($rsp,$self->{ipmicallback_args});
         return;
     }
-    $self->sendpayload(%{$self->{pendingargs}});
+    $self->sendpayload(%{$self->{pendingargs}},nowait=>1); #do not induce the xmit to wait for packets, just spit it out.  timedout is in a wait-for-packets loop already, so it's fine
 }
 sub route_ipmiresponse {
     my $sockaddr=shift;
@@ -611,6 +622,23 @@ sub send_rakp1 {
     push @payload,@user;
     $self->sendpayload(payload=>\@payload,type=>$payload_types{'rakp1'});
 }
+sub init {
+    my $self = shift;
+    $self->{'sequencenumber'} = 0; #init sequence number
+    $self->{'sequencenumberbytes'} = [0,0,0,0]; #init sequence number
+    $self->{'sessionid'} = [0,0,0,0]; # init session id
+    $self->{'authtype'}=0; # first messages will have auth type of 0
+    $self->{'ipmiversion'}='1.5'; # send first packet as 1.5
+    $self->{'timeout'}=$initialtimeout; #start at a quick timeout, increase on retry
+    $self->{'seqlun'}=0; #the IPMB seqlun combo, increment by 4s
+    $self->{'logged'}=0;
+}
+sub relog {
+   my $self=shift;
+   $self->init();
+   $self->{logontries} -= 1; 
+   $self->get_channel_auth_cap(); 
+}
 
 sub got_rakp4 {
     my $self = shift;
@@ -624,6 +652,10 @@ sub got_rakp4 {
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
+	if (($byte == 0x02 or $byte == 15) and $self->{logontries}) { # 0x02 is 'invalid session id', seems that some ipmi implementations sometimes expire a temporary id before I can respond, start over in such a case
+	    $self->relog();
+	    return; 
+       }
         $self->{onlogon}->("ERROR: $byte code on opening RMCP+ session",$self->{onlogon_args}); #TODO: errors
         return 9;
     }
@@ -660,6 +692,10 @@ sub got_rakp2 {
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
+	if (($byte == 0x02 or $byte == 15) and $self->{logontries}) { # 0x02 is 'invalid session id', seems that some ipmi implementations sometimes expire a temporary id before I can respond, start over in such a case
+	    $self->relog();
+	    return; 
+       }
         $self->{onlogon}->("ERROR: $byte code on opening RMCP+ session",$self->{onlogon_args}); #TODO: errors
         return 9;
     }
@@ -712,6 +748,7 @@ sub parse_ipmi_payload {
     $rsp->{cmd} = shift @payload;
     $rsp->{code} = shift @payload;
     $rsp->{data} = \@payload;
+    $self->{timeout}=$initialtimeout;
     $self->{ipmicallback}->($rsp,$self->{ipmicallback_args});
     return 0;
 }
@@ -811,15 +848,23 @@ sub sendpayload {
             #push integrity data
             }
     }
-    while ($pendingpackets > $maxpending) { #if we hit our ceiling, wait until a slot frees up
-        $self->waitforrsp();
+    unless ($args{nowait}) { #if nowait indicated, the packet will be sent regardless of maxpending
+    			     #primary use case would be retries that should represent no delta to pending sessions in aggregate and therefore couldn't exceed maxpending anywy
+			     #if we did do this on timedout, waitforrsp may recurse, which is a complicated issue.  Theoretically, if waitforrsp protected itself, it 
+			     #would act the same, but best be explicit about nowait if practice does not match theory
+			     #another scenario is if we have urgent payload for a BMC (PET acknowledge, negotiating login if temp session id is very short lived
+	    $self->waitforrsp(timeout=>0); #the intent here is to interrupt outgoing activity to give a chance to respond to incoming data
+	    				   #until we send, the ball is in our court so things are less time critical
+	    while ($pendingpackets > $maxpending) { #if we hit our ceiling, wait until a slot frees up, which can't happen until either a packet is received or someone gives up
+	        $self->waitforrsp();
+	    }
     }
     $socket->send(pack("C*",@msg),0,$self->{peeraddr});
     $sessions_waiting{$self}={};
     $sessions_waiting{$self}->{ipmisession}=$self;
     if ($args{delayxmit}) {
 	$sessions_waiting{$self}->{timeout}=time()+$args{delayxmit};
-	$self->{timeout}=1; #since we are burning one of the retry attempts, start the backoff algorithm faster to make it come out even
+	$self->{timeout}=$initialtimeout/2; #since we are burning one of the retry attempts, start the backoff algorithm faster to make it come out even
 	undef $args{delayxmit};
         return; #don't actually transmit packet, use retry timer to start us off
     } else {
