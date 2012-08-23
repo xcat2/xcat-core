@@ -225,7 +225,7 @@ sub preprocess_request {
     # The dispatch depends on the rhevm. Since the operation is in serial, so no need to use the service node.
     my @requests;
     my @rhevms=keys(%rhevm_hash);
-    my $sn = xCAT::Utils->get_ServiceNode(\@rhevms, 'xcat', "MN");
+    my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@rhevms, 'xcat', "MN");
     foreach my $snkey (keys %$sn){
         my $reqcopy = {%$request};
         $reqcopy->{'_xcatdest'} = $snkey;
