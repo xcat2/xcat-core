@@ -16,7 +16,7 @@ use warnings "all";
 use Time::HiRes qw/time/;
 
 use IO::Socket::INET qw/!AF_INET6 !PF_INET6/;
-my $initialtimeout=0.200;
+my $initialtimeout=0.100;
 
 my $doipv6=eval {
 	require Socket6;
@@ -106,7 +106,6 @@ sub new {
             my $rcvbuf = $socket->sockopt(SO_RCVBUF);
             $maxpending=$rcvbuf/1500; #probably could have maxpending go higher, but just go with typical MTU as a guess
         }
-        $maxpending=128; #TODO: analysis to mitigate this hard limit
         $select->add($socket);
     }
     my $bmc_n;
@@ -131,14 +130,7 @@ sub new {
     } else  {
        $self->{peeraddr} = sockaddr_in($self->{port},$bmc_n);
     }
-    $self->{'sequencenumber'} = 0; #init sequence number
-        $self->{'sequencenumberbytes'} = [0,0,0,0]; #init sequence number
-        $self->{'sessionid'} = [0,0,0,0]; # init session id
-        $self->{'authtype'}=0; # first messages will have auth type of 0
-        $self->{'ipmiversion'}='1.5'; # send first packet as 1.5
-        $self->{'timeout'}=1; #start at a quick timeout, increase on retry
-        $self->{'seqlun'}=0; #the IPMB seqlun combo, increment by 4s
-        $self->{'logged'}=0;
+    $self->init();
     return $self;
 }
 sub login {
@@ -150,6 +142,7 @@ sub login {
     }
     $self->{onlogon} = $args{callback};
     $self->{onlogon_args} = $args{callback_args};
+    $self->{logontries}=5;
     $self->get_channel_auth_cap();
 }
 
@@ -629,6 +622,23 @@ sub send_rakp1 {
     push @payload,@user;
     $self->sendpayload(payload=>\@payload,type=>$payload_types{'rakp1'});
 }
+sub init {
+    my $self = shift;
+    $self->{'sequencenumber'} = 0; #init sequence number
+    $self->{'sequencenumberbytes'} = [0,0,0,0]; #init sequence number
+    $self->{'sessionid'} = [0,0,0,0]; # init session id
+    $self->{'authtype'}=0; # first messages will have auth type of 0
+    $self->{'ipmiversion'}='1.5'; # send first packet as 1.5
+    $self->{'timeout'}=$initialtimeout; #start at a quick timeout, increase on retry
+    $self->{'seqlun'}=0; #the IPMB seqlun combo, increment by 4s
+    $self->{'logged'}=0;
+}
+sub relog {
+   my $self=shift;
+   $self->init();
+   $self->{logontries} -= 1; 
+   $self->get_channel_auth_cap(); 
+}
 
 sub got_rakp4 {
     my $self = shift;
@@ -642,6 +652,10 @@ sub got_rakp4 {
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
+	if ($byte == 0x02 and $self->{logontries}) { # 0x02 is 'invalid session id', seems that some ipmi implementations sometimes expire a temporary id before I can respond, start over in such a case
+	    $self->relog();
+	    return; 
+       }
         $self->{onlogon}->("ERROR: $byte code on opening RMCP+ session",$self->{onlogon_args}); #TODO: errors
         return 9;
     }
@@ -678,6 +692,10 @@ sub got_rakp2 {
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
+	if ($byte == 0x02 and $self->{logontries}) { # 0x02 is 'invalid session id', seems that some ipmi implementations sometimes expire a temporary id before I can respond, start over in such a case
+	    $self->relog();
+	    return; 
+       }
         $self->{onlogon}->("ERROR: $byte code on opening RMCP+ session",$self->{onlogon_args}); #TODO: errors
         return 9;
     }
