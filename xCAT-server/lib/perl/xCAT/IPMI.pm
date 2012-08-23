@@ -652,7 +652,7 @@ sub got_rakp4 {
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
-	if ($byte == 0x02 and $self->{logontries}) { # 0x02 is 'invalid session id', seems that some ipmi implementations sometimes expire a temporary id before I can respond, start over in such a case
+	if (($byte == 0x02 or $byte == 15) and $self->{logontries}) { # 0x02 is 'invalid session id', seems that some ipmi implementations sometimes expire a temporary id before I can respond, start over in such a case
 	    $self->relog();
 	    return; 
        }
@@ -692,7 +692,7 @@ sub got_rakp2 {
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
-	if ($byte == 0x02 and $self->{logontries}) { # 0x02 is 'invalid session id', seems that some ipmi implementations sometimes expire a temporary id before I can respond, start over in such a case
+	if (($byte == 0x02 or $byte == 15) and $self->{logontries}) { # 0x02 is 'invalid session id', seems that some ipmi implementations sometimes expire a temporary id before I can respond, start over in such a case
 	    $self->relog();
 	    return; 
        }
