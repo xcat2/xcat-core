@@ -16,6 +16,7 @@ use xCAT_monitoring::monitorctrl;
 use xCAT::MsgUtils;
 use xCAT::DBobjUtils;
 use xCAT::TableUtils;
+use xCAT::NetworkUtils;
 use Data::Dumper;
 1;
 
@@ -78,7 +79,7 @@ sub start {
     my $inactive_nodes=[];
     if (($scope) && ($noderef)) {
 	my @mon_nodes=@$noderef;
-	my %nodes_status=xCAT::Utils->pingNodeStatus(@mon_nodes); 
+	my %nodes_status=xCAT::NetworkUtils->pingNodeStatus(@mon_nodes); 
 	$inactive_nodes=$nodes_status{$::STATUS_INACTIVE};
 	if (@$inactive_nodes>0) { 
 	    my $error="The following nodes cannot have nrpe started because they are inactive:\n  @$inactive_nodes.";
@@ -141,7 +142,7 @@ sub stop {
     #go to nodes to start nrpe
     if (($scope) && ($noderef)) {
 	my @mon_nodes=@$noderef;
-	my %nodes_status=xCAT::Utils->pingNodeStatus(@mon_nodes); 
+	my %nodes_status=xCAT::NetworkUtils->pingNodeStatus(@mon_nodes); 
 
 	my $active_nodes=$nodes_status{$::STATUS_ACTIVE};
 	if (@$active_nodes > 0) {
@@ -706,7 +707,7 @@ cfg_file=/etc/nagios/objects/mychildren.cfg
     my $inactive_nodes=[];
     if ($scope) { 
 	#print "Configuring the nodes.\n";
-	my %nodes_status=xCAT::Utils->pingNodeStatus(@mon_nodes); 
+	my %nodes_status=xCAT::NetworkUtils->pingNodeStatus(@mon_nodes); 
 	$inactive_nodes=$nodes_status{$::STATUS_INACTIVE};
 	if (@$inactive_nodes>0) { 
 	    my $error="The following nodes cannot be configured because they are inactive:\n  @$inactive_nodes.";

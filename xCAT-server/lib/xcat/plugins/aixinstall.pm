@@ -6897,7 +6897,7 @@ sub updatespot
 
 		# if this has a shared_root resource then
 		#   it might need statelite setup
-		my $sharedinstall=xCAT::Utils->get_site_attribute('sharedinstall');
+		my $sharedinstall=xCAT::TableUtils->get_site_attribute('sharedinstall');
 		chomp $sharedinstall;
 		if ( $sharedinstall eq "sns" ) {
 			my $rc=xCAT::InstUtils->dolitesetup($image, \%imghash, \@nodelist, $callback, $subreq);

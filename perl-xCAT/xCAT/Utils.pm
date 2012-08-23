@@ -33,7 +33,7 @@ eval {
 };
 use warnings "all";
 require xCAT::InstUtils;
-require xCAT::NetworkUtils;
+#require xCAT::NetworkUtils;
 require xCAT::Schema;
 #require Data::Dumper;
 require xCAT::NodeRange;
@@ -94,7 +94,7 @@ our @EXPORT_OK = qw(genpassword runcmd3);
 # xCAT::Utils::getNodeIPaddress ====> xCAT::NetworkUtils::getNodeIPaddress
 # xCAT::Utils->thishostisnot ====> xCAT::NetworkUtils->thishostisnot
 # xCAT::Utils->gethost_ips ====> xCAT::NetworkUtils->gethost_ips
-# xCAT::Utils::get_subnet_aix ===> xCAT::NetworkUtils::get_subnet_aix
+# xCAT::Utils::get_subnet_aix ====> xCAT::NetworkUtils::get_subnet_aix
 # xCAT::Utils->determinehostname ====> xCAT::NetworkUtils->determinehostname
 # xCAT::Utils::toIP ====> xCAT::NetworkUtils::toIP
 # xCAT::Utils->validate_ip ====> xCAT::NetworkUtils->validate_ip
@@ -102,7 +102,7 @@ our @EXPORT_OK = qw(genpassword runcmd3);
 # xCAT::Utils->isIpaddr ====> xCAT::NetworkUtils->isIpaddr
 # xCAT::Utils::getNodeNetworkCfg ====> xCAT::NetworkUtils::getNodeNetworkCfg
 # xCAT::Utils::get_hdwr_ip ====> xCAT::NetworkUtils::get_hdwr_ip
-
+# xCAT::Utils->pingNodeStatus ====> xCAT::NetworkUtils->pingNodeStatus
 
 
 #--------------------------------------------------------------------------------
@@ -2914,44 +2914,6 @@ sub isSELINUX
 #-------------------------------------------------------------------------------
 
 
-#--------------------------------------------------------------------------------
-=head3    pingNodeStatus
-      This function takes an array of nodes and returns their status using fping.
-    Arguments:
-       nodes-- an array of nodes.
-    Returns:
-       a hash that has the node status. The format is: 
-          {alive=>[node1, node3,...], unreachable=>[node4, node2...]}
-=cut
-#--------------------------------------------------------------------------------
-sub pingNodeStatus {
-  my ($class, @mon_nodes)=@_;
-  my %status=();
-  my @active_nodes=();
-  my @inactive_nodes=();
-  if ((@mon_nodes)&& (@mon_nodes > 0)) {
-    #get all the active nodes
-    my $nodes= join(' ', @mon_nodes);
-    my $temp=`fping -a $nodes 2> /dev/null`;
-    chomp($temp);
-    @active_nodes=split(/\n/, $temp);
-
-    #get all the inactive nodes by substracting the active nodes from all.
-    my %temp2;
-    if ((@active_nodes) && ( @active_nodes > 0)) {
-      foreach(@active_nodes) { $temp2{$_}=1};
-        foreach(@mon_nodes) {
-          if (!$temp2{$_}) { push(@inactive_nodes, $_);}
-        }
-    }
-    else {@inactive_nodes=@mon_nodes;}     
-  }
-
-  $status{$::STATUS_ACTIVE}=\@active_nodes;
-  $status{$::STATUS_INACTIVE}=\@inactive_nodes;
- 
-  return %status;
-}
 #-------------------------------------------------------------------------------
 
 =head3   noderangecontainsMN 

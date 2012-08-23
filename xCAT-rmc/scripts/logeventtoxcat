@@ -13,6 +13,7 @@ use strict;
 use Getopt::Std;
 use POSIX qw(strftime);
 use xCAT::Utils;
+use xCAT::TableUtils;
 use xCAT::MsgUtils;
 use IO::File;
 
@@ -97,7 +98,7 @@ if (!$batch) { #handle single event
     }
 }    
 
-my ($rc, $msg)=xCAT::Utils->logEventsToDatabase(\@a);
+my ($rc, $msg)=xCAT::TableUtils->logEventsToDatabase(\@a);
 if ($rc) {
    xCAT::MsgUtils->message('S', "logeventtoxcat:$msg. The condition is $condname. The response is $respname.\n");
 }
