@@ -19,10 +19,15 @@
 #    directories that are needed.
 
 # Usage:  buildcore.sh [attr=value attr=value ...]
-#		PROMOTE=1 - if the attribute "PROMOTE" is specified, means an official dot release.
-#					Otherwise, and snap build is assumed.
-#		PREGA=1 - means this is a branch that has not been released yet, so during the promote, copy the
-#					xcat-core tarball to the SF web site instead of the FRS area.
+#		PROMOTE=1 - if the attribute "PROMOTE" is specified, means an official dot release.  This does not
+#					actually build xcat, just uploads the most recent snap build to https://sourceforge.net/projects/xcat/files/xcat/ .
+#					If not specified, a snap build is assumed, which uploads to https://sourceforge.net/projects/xcat/files/yum/
+#					or https://sourceforge.net/projects/xcat/files/aix/.
+#		PREGA=1 - use this option with PROMOTE=1 on a branch that already has a released dot release, but this build is
+#					a GA candidate build, not to be released yet.  This will result in the tarball being uploaded to
+#					https://sourceforge.net/projects/xcat/files/yum/ or https://sourceforge.net/projects/xcat/files/aix/
+#					(but the tarball file name will be like a released tarball, not a snap build).  When you are ready to
+#					release this build, use PROMOTE=1 without PREGA
 #		BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in prep for a release.
 # 		UP=0 or UP=1 - override the default upload behavior 
 # 		SVNUP=<filename> - control which rpms get built by specifying a coresvnup file

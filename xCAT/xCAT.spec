@@ -30,7 +30,7 @@ Requires: /usr/sbin/dhcpd
 %ifnarch s390x
 Requires: /etc/xinetd.d/tftp
 # yaboot-xcat is pulled in so any MN can manage ppc nodes
-Requires: conserver-xcat yaboot-xcat perl-Net-Telnet fping
+Requires: conserver-xcat yaboot-xcat fping
 %endif
 %ifarch ppc64
 Requires: perl-IO-Stty
