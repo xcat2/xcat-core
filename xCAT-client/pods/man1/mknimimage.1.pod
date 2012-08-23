@@ -8,7 +8,7 @@ B<mknimimage [-h | --help ]>
 
 B<mknimimage [-V] -u osimage_name [attr=val [attr=val ...]]>
 
-B<mknimimage [-V] [-f|--force] [-r|--sharedroot] [-D|--mkdumpres] [-l location] [-s image_source] [-i current_image] [-p|--cplpp] [-t nimtype] [-m nimmethod] [-n mksysbnode] [-b mksysbfile] osimage_name [attr=val [attr=val ...]]>
+B<mknimimage [-V] [-f|--force] [-r|--sharedroot] [-D|--mkdumpres] [-l location] [-c|--completeosimage] [-s image_source] [-i current_image] [-p|--cplpp] [-t nimtype] [-m nimmethod] [-n mksysbnode] [-b mksysbfile] osimage_name [attr=val [attr=val ...]]>
 
 =head1 DESCRIPTION
 
@@ -192,6 +192,10 @@ Note that you may specify multiple "script", "otherpkgs", and "installp_bundle" 
 =item B<-b mksysbfile>
 
 Used to specify the path name of a mksysb file to use when defining a NIM mksysb resource.
+
+=item B<-c|--completeosimage>
+
+Complete the creation of the osimage definition passed in on the command line. This option will use any additonal values passed in on the command line and/or it will attempt to create required resources in order to complete the definition of the xCAT osimage.  For example, if the osimage definition is missing a spot or shared_root resource the command will create those resources and add them to the osimage definition.
 
 =item B<-f|--force>
 
