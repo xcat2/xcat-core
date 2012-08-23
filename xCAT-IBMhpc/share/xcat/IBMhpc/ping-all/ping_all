@@ -1,0 +1,88 @@
+#!/bin/ksh
+
+function do_pings {
+    #set -x 
+
+    integer dest_array_index=0
+    integer total_ping_count=0
+    integer ping_loop_count=0
+    integer tmp_fail_int=0
+    integer total_fails=0
+
+    dest_array_index=0
+    ping_loop_count=ping_loop_count+1
+
+    cat $file | grep -v "^#" |
+    while read input_file_line ; do
+        switch_dest=$( print $input_file_line | awk ' { print $2 } ' )
+        netstat -in | grep -q "$switch_dest "
+        if [[ $? -ne 0 ]] then
+            dest_hostname=$( print $input_file_line | awk ' { print $1 } ' )
+            dest_array_index=dest_array_index+1
+            total_ping_count=total_ping_count+1
+
+            #ping -c 2 $switch_dest | grep "100% packet loss"
+            #echo `hostname` pinging $switch_dest
+            ping -f -c 10 $switch_dest | grep -q "100% packet loss"
+            if [[ $? -eq 0 ]] then
+                total_fails=total_fails+1
+
+                #hack for now to try to clear bad ml0 routes
+                #echo  "`hostname -s`:removing $switch_dest from ml route table to attempt route refresh"
+                /usr/sbin/mltdd_dump -d $switch_dest
+                #remove following comment to print data back to (typically NFS mounted) common dir
+
+                ##### To remove write output to NFS output, you can comment the following line
+                #ping -f -c 10 $switch_dest | grep "100% packet loss"
+
+                ping -f -c 10 $switch_dest | grep "100% packet loss" >> /tmp/ping.all.out
+
+                dest_failures[$dest_array_index]=${dest_failures[dest_array_index]}+1
+                tmp_fail_int=${dest_failures[dest_array_index]}
+                total_fail_rate=$(print "$total_fails/$total_ping_count*100" | bc -l | awk ' { printf(" %4.2f\n", $0 ) } ' )
+                dest_fail_rate=$(print "$tmp_fail_int/$ping_loop_count*100" | bc -l | awk ' { printf(" %4.2f\n", $0 ) } ')
+
+                ##### To remove write output to NFS output, you can comment the following line
+                #print "failure to $dest_hostname $switch_dest total: $total_fail_rate cur: $dest_array_index $dest_fail_rate num_pings: $ping_loop_count"
+
+                print "failure to $dest_hostname $switch_dest total: $total_fail_rate cur: $dest_array_index $dest_fail_rate num_pings: $ping_loop_count" >> /tmp/ping.all.out
+            fi
+
+        fi
+    done
+}
+
+#main
+unset found_flag
+rm /tmp/ping.all.out 2>/dev/null
+
+if [[ -z $1 ]] then
+   file=ping_address_file
+else
+   file=$1
+fi
+
+ifconfig -a  | grep 'inet ' | awk ' { print $2 } ' | grep -v 127.0.0.1 | 
+while read my_address ; do
+    ##print "checking $my_address"
+    grep -q " ${my_address}$" $file
+    if [[ $? -eq 0 ]] then
+        ##print "Found my address: $my_address"
+        integer starting_line=$(grep -n " $my_address$" $file | awk -F ":" ' { print $1 } ' )
+        integer starting_line_minus_1=$starting_line-1
+        tail +${starting_line} $file         >  /tmp/current_ping_address_file
+        head -${starting_line_minus_1} $file >> /tmp/current_ping_address_file
+        file=/tmp/current_ping_address_file 
+        do_pings
+        found_flag=1
+        break
+    fi
+done
+
+if [[ -z $found_flag ]] then
+    print "Unable to find my entry in the $file for host: $(hostname -s)"
+    exit 1
+fi
+
+rm /tmp/current_ping_address_file 2>/dev/null
+exit 0

@@ -1,0 +1,44 @@
+Run as root on the EMS.
+
+This test uses xdsh and uses "lpar" for the node group. Use a different node group if desired.
+
+Note xdsh can leave behind processes if you do a <CNTRL-C> in the middle of a command.  
+To gaurd against results which are messed up by old copies of the ping test, kill
+any leftover ping processes.
+
+
+1)  Create the ping_address_file. This is only required if changes have been made since the last
+    run; e.g., octants deconfigured, ARP entries changed, etc.
+
+    "./create_ping_address_file [interface]"    
+
+    If the "interface" argument is not provided, it defaults to "ml0" as the interface to test.
+
+    Remove any nodes you don't want to run the ping test.
+
+2)  Copy "ping_address_file" to /tmp on each node:
+
+    xdcp lpar -v ping_address_file /tmp
+
+3)  Copy "ping_all" to /tmp on each node:
+
+    xdcp lpar -v ping_all /tmp
+     
+4)  Remove any output files from previous runs:
+
+    xdsh lpar -v "rm /tmp/ping.all.out 2>/dev/null"
+
+5)  Run the ping test:
+
+    "./start_ping_all"
+
+    Each node in the test will write any ping failures to "/tmp/ping.all.out" (local /tmp on each node).
+    (No "ping.all.out" file indicates no ping failures.)
+
+6)  To determine if we have ping failures:
+
+    xdsh lpar -v "ls -l /tmp/ping.all.out 2>/dev/null" | sort -n +5
+
+    If a given set of "ping.all.out" files are the same length, it's likely they will have 
+    duplicate ping failures.
+

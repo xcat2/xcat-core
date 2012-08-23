@@ -1,0 +1,10 @@
+#!/bin/ksh
+if [[ -n $1 ]] then
+    interface=$1
+else 
+    interface=ml0
+fi
+
+xdsh lpar -v "/usr/sbin/ifconfig $interface | grep inet | cut -d':' -f2   | cut -d' ' -f2 | head -2 " | sort -n | tee ping_address_file  
+
+

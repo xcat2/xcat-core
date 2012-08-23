@@ -1,0 +1,4 @@
+#!/bin/ksh
+
+xdsh lpar -v "cd /tmp; ./ping_all ./ping_address_file"
+
