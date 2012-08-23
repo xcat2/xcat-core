@@ -5341,7 +5341,7 @@ sub run_rsync_postscripts
 
        # now remove .post from the postscript file for the compare
        # with the returned file name
-       my($tp,$post) = split(/.post/,$tmppostfile);
+       my($tp,$post) = split(/\.post/,$tmppostfile);
        $tmppostfile = $tp;
        foreach my $line (@rsync_output) {
          my($hostname,$ps) = split(/: /, $line);
