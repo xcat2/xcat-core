@@ -20,7 +20,7 @@
     # tag, to catalog the resources with tag
     # role, for access permission
     # domain, for user/group management
-#TODO handle the functions base on the version
+#TODO: handle the functions base on the version
 #TODO: handle the datacenter and cluster management
 
 
@@ -49,9 +49,6 @@ use HTTP::Request;
 use XML::LibXML;
 
 use xCAT::Table;
-use xCAT::Utils;
-use xCAT::TableUtils;
-use xCAT::ServiceNodeUtils;
 use xCAT::MsgUtils;
 
 sub handled_commands{
@@ -228,7 +225,7 @@ sub preprocess_request {
     # The dispatch depends on the rhevm. Since the operation is in serial, so no need to use the service node.
     my @requests;
     my @rhevms=keys(%rhevm_hash);
-    my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@rhevms, 'xcat', "MN");
+    my $sn = xCAT::Utils->get_ServiceNode(\@rhevms, 'xcat', "MN");
     foreach my $snkey (keys %$sn){
         my $reqcopy = {%$request};
         $reqcopy->{'_xcatdest'} = $snkey;
@@ -404,7 +401,7 @@ sub copycd {
     }
 
     my $installroot = "/install";
-    my @entries =  xCAT::TableUtils->get_site_attribute("installdir");
+    my @entries =  xCAT::Utils->get_site_attribute("installdir");
     my $t_entry = $entries[0];
     if ( defined($t_entry) ) {
         $installroot = $t_entry;
@@ -488,7 +485,7 @@ sub mkinstall {
     my %doneimgs;
 
     my $installdir = "/install";
-    my @ents = xCAT::TableUtils->get_site_attribute("installdir");
+    my @ents = xCAT::Utils->get_site_attribute("installdir");
     my $site_ent = $ents[0];
     if( defined($site_ent) )
     {
@@ -496,7 +493,7 @@ sub mkinstall {
     }
 
     my $tftpdir = "/tftpboot";
-    @ents = xCAT::TableUtils->get_site_attribute("tftpdir");
+    @ents = xCAT::Utils->get_site_attribute("tftpdir");
     $site_ent = $ents[0];
     if( defined($site_ent) )
     {
@@ -720,7 +717,15 @@ sub send_req {
                     $response = $attr;
                     $rc = 5;
                 } elsif ($attr = getAttr($doc, "/action/fault/detail")) {
-                    $response = $attr;
+                    if ($attr eq "[]") {
+                        if ($attr = getAttr($doc, "/action/fault/reason")) {
+                            $response = $attr;
+                        } else {
+                            $response = "failed";
+                        }
+                    } else {
+                        $response = $attr;
+                    }
                     $rc = 5;
                 }
             }
@@ -735,7 +740,7 @@ sub addhost {
     my $callback = shift;
     my $rhevm_hash = shift;
 
-    my @domain = xCAT::TableUtils->get_site_attribute("domain");
+    my @domain = xCAT::Utils->get_site_attribute("domain");
     if (!$domain[0]) {
         my $rsp;
         push @{$rsp->{data}}, "The site.domain must be set to enable the rhev support.";
@@ -1123,6 +1128,7 @@ sub lsve {
 # cfgve -t sd -m <mgr> -o <name> -c
 # cfgve -t sd -m <mgr> -o <name> -a/-g/-s
 # cfgve -t nw -m <mgr> -o < name> -c
+# cfgve -t tpl -m <mgr> -o <name> -r
 # 
 sub cfgve {
     my $callback = shift;
@@ -1207,8 +1213,16 @@ sub cfgve {
                     }
                 }
             }
-        } elsif ($type eq "dc") {
-        
+        } elsif ($type eq "tpl") {
+            if ($remove) {
+                my ($rc, $tplid, $stat, $response) = search_src($ref_rhevm, "templates", "$obj");
+                if ($rc) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$obj: cannot find the template: $obj.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                }
+                generalaction($callback, $ref_rhevm, "/api/templates/$tplid", "DELETE", 1);
+            }
         } elsif ($type eq "nw") {
             if ($create) {
                 # serach datacenter
@@ -1302,17 +1316,20 @@ sub cfghost {
     }
 
     # get the network parameters for the host if requiring to configure the network for host
-    if ($network) {
+    if ($network || $approve) {
         # get the network interface for host
         my $hyptab = xCAT::Table->new('hypervisor',-create=>0);
-        my $hypent = $hyptab->getNodesAttribs($nodes,['interface', 'datacenter']);
+        my $hypent = $hyptab->getNodesAttribs($nodes,['interface', 'datacenter', 'cluster']);
         foreach my $node (@$nodes) {
             if (defined ($hypent->{$node}->[0])) {
                 $hyper{$node}{interface} = $hypent->{$node}->[0]->{interface};
                 $hyper{$node}{datacenter} = $hypent->{$node}->[0]->{datacenter};
             }
             if (!$hyper{$node}{datacenter}) {
-                $hyper{$node}{datacenter} = "default";
+                $hyper{$node}{datacenter} = "Default";
+            }
+            if (!$hyper{$node}{cluster}) {
+                $hyper{$node}{cluster} = "Default";
             }
         }
     }
@@ -1336,16 +1353,25 @@ sub cfghost {
 
                     if ($approve) {
                       if ($hoststat eq "pending_approval") {
+                        # get the id of cluster
+                        my ($rc, $clusterid, $clusterstat) = search_src($ref_rhevm, "clusters", $hyper{$rhevh}{cluster});
+                        if ($rc) {
+                            my $rsp;
+                            push @{$rsp->{data}}, "$rhevh: failed to get cluster: $hyper{$rhevh}{cluster}.";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            next;
+                        }
                         my $approved = 0;
                         # Create the host first
                         my $api = "/api/hosts/$hostid/approve";
                         my $method = "POST";
 
                         # Generate the content
-                        my $content = "<action/>";
+                        my $content = "<action><cluster id=\"$clusterid\"/></action>";
 
                         my $request = genreq($ref_rhevm, $method, $api, $content);
-                        my ($rc, $response) = send_req($ref_rhevm, $request->as_string());
+                        my $response;
+                        ($rc, $response) = send_req($ref_rhevm, $request->as_string());
                         
                         if ($rc) {
                             my $rsp;
@@ -1358,7 +1384,7 @@ sub cfghost {
                             if ($doc ) {
                                 my $attr;
                                 if ($attr = getAttr($doc, "/action/status/state")) {
-                                    if ($attr eq "completed") {
+                                    if ($attr eq "complete") {
                                         $approved = 1;
                                     }
                                 }
@@ -1580,7 +1606,7 @@ sub mkvm {
 
     # Get the attributes for the node from the vm table
     my $vmtab = xCAT::Table->new('vm',-create=>0);
-    my $vment = $vmtab->getNodesAttribs($nodes,['template', 'host', 'cluster', 'virtflags', 'storage', 'storagemodel', 'memory', 'cpus', 'nics', 'nicmodel', 'bootorder']);
+    my $vment = $vmtab->getNodesAttribs($nodes,['template', 'host', 'cluster', 'virtflags', 'storage', 'storagemodel', 'memory', 'cpus', 'nics', 'nicmodel', 'bootorder', 'vidproto']);
 
     # Generate the xml content for add the storage
     # Note: this is an independent action after the vm creating
@@ -1835,7 +1861,7 @@ sub mkvm {
             #Get the storage domain by name
             my ($sdname, $disksize, $disktype) = split(':', $myvment->{storage});
             if ($sdname) {
-                if (waitforcomplete($ref_rhevm, "/api/vms/$vmid", "/vm/status/state=down")) {
+                if (waitforcomplete($ref_rhevm, "/api/vms/$vmid", "/vm/status/state=down", 30)) {
                     my $rsp;
                     push @{$rsp->{data}}, "$node: failed to waiting the vm gets to \"down\" state.";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -1931,7 +1957,7 @@ sub mkvm {
                 push @nics, "rhevm:eth0:yes";
             }
             if (@nics) {
-                if (waitforcomplete($ref_rhevm, "/api/vms/$vmid", "/vm/status/state=down")) {
+                if (waitforcomplete($ref_rhevm, "/api/vms/$vmid", "/vm/status/state=down", 30)) {
                     my $rsp;
                     push @{$rsp->{data}}, "$node: failed to waiting the vm gets to \"down\" state.";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -2669,8 +2695,8 @@ sub cfghypnw {
                 
                 # check the bootprotocol and network parameters, and configure if needed
                 if (defined ($bprotocol) && $bprotocol =~ /^(dhcp|static)$/) {
+                    my $newpro;
                     if ($attr = getAttr($doc, "boot_protocol")) {
-                        my $newpro;
                         if ($attr eq "dhcp") {
                             if ($bprotocol eq "static" ) {
                                 $newpro = "static";
@@ -2695,24 +2721,26 @@ sub cfghypnw {
                                 }
                             }
                         }
+                    } else {
+                        $newpro = $bprotocol;
+                    }
 
-                        # Set the attributes for the nic
-                        $api = "/api/hosts/$hostid/nics/$nicid";
-                        $method = "PUT";
-                        my $content;
-                        if (defined ($newpro) && $newpro eq "dhcp")  {
-                            $content = "<host_nic><boot_protocol>dhcp</boot_protocol></host_nic>";
-                        } elsif (defined ($newpro) && $newpro eq "static")  {
-                            $content = "<host_nic><boot_protocol>static</boot_protocol><ip address=\"$ip\" netmask=\"$nm\" gateway=\"$gw\"/></host_nic>";
-                        }
-                        if (defined ($newpro)) {
-                            my $request = genreq($ref_rhevm, $method, $api, $content);
-                            ($rc, $response) = send_req($ref_rhevm, $request->as_string());
-                            if ($rc) {
-                                my $rsp;
-                                push @{$rsp->{data}}, "$host: $response";
-                                xCAT::MsgUtils->message("E", $rsp, $callback);
-                            }
+                    # Set the attributes for the nic
+                    $api = "/api/hosts/$hostid/nics/$nicid";
+                    $method = "PUT";
+                    my $content;
+                    if (defined ($newpro) && $newpro eq "dhcp")  {
+                        $content = "<host_nic><boot_protocol>dhcp</boot_protocol></host_nic>";
+                    } elsif (defined ($newpro) && $newpro eq "static")  {
+                        $content = "<host_nic><boot_protocol>static</boot_protocol><ip address=\"$ip\" netmask=\"$nm\" gateway=\"$gw\"/></host_nic>";
+                    }
+                    if (defined ($newpro)) {
+                        my $request = genreq($ref_rhevm, $method, $api, $content);
+                        ($rc, $response) = send_req($ref_rhevm, $request->as_string());
+                        if ($rc) {
+                            my $rsp;
+                            push @{$rsp->{data}}, "$host: $response";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
                         }
                     }
                 } else {
@@ -2738,7 +2766,7 @@ sub cfghypnw {
                 }
     
                 if ($netid eq $curnetid) {
-                    generalaction($callback, $ref_rhevm, "/api/hosts/$hostid/commitnetconfi");
+                    generalaction($callback, $ref_rhevm, "/api/hosts/$hostid/commitnetconfig");
                     next;
                 }
                 if ($netid) {
@@ -2746,7 +2774,7 @@ sub cfghypnw {
                         next; 
                     } else {
                          #detach the interface to the network
-                         if (attach($callback, $ref_rhevm, "/api/hosts/$hostid/nics", "network", $nicid, 1)) {
+                         if (attach($callback, $ref_rhevm, "/api/hosts/$hostid/nics/$nicid", "network", $curnetid, 1)) {
                             my $rsp;
                             push @{$rsp->{data}}, "$host: failed to detach $ifname from $netname.";
                             xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -2756,14 +2784,14 @@ sub cfghypnw {
                 } 
         
                 # attach the interface to the network
-                if (attach($callback, $ref_rhevm, "/api/hosts/$hostid/nics", "network", $nicid)) {
+                if (attach($callback, $ref_rhevm, "/api/hosts/$hostid/nics/$nicid", "network", $curnetid)) {
                     my $rsp;
                     push @{$rsp->{data}}, "$host: failed to attach $ifname to $netname.";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     next;
                  }
 
-                 generalaction($callback, $ref_rhevm, "/api/hosts/$hostid/commitnetconfi");
+                 generalaction($callback, $ref_rhevm, "/api/hosts/$hostid/commitnetconfig");
             }
         }
     }
@@ -2980,9 +3008,9 @@ sub attach {
         $content = "<$type id=\"$id\"/>";
     } else {
         if ($detach) {
-            $api = $path."$id/detach";
+            $api = $path."/detach";
         } else {
-            $api = $path."$id/attach";
+            $api = $path."/attach";
         }
         $content = "<action><$type id=\"$id\"/></action>";
     }
@@ -3002,14 +3030,18 @@ sub attach {
         if ($doc ) {
             my $attr;
             if ($attr = getAttr($doc, "/action/status/state")) {
-                if ($attr ne "inactive") {
-                    if (waitforcomplete()) {
-                        return 1;
-                    } else {
-                        return 0;
-                    }
-                } else {
+                if ($type eq "storage_domain") {
+                  if ($attr eq "inactive") {
                     return 0;
+                  } else {
+                    return 1;
+                  }
+                } else {
+                if ($attr eq "complete") {
+                    return 0;
+                  } else {
+                    return 1;
+                  }
                 }
             }
         }
@@ -3022,11 +3054,22 @@ sub generalaction {
     my $callback = shift;
     my $ref_rhevm = shift;
     my $api = shift;
+    my $method = shift;
+    my $norsp = shift;
+
+    unless ($method) {
+        $method = "POST";
+    }
 
     my $content = "<action/>";
-    my $method = "POST";
     my $request = genreq($ref_rhevm, $method, $api, $content);
     my ($rc, $response) = send_req($ref_rhevm, $request->as_string());
+
+    # no need to handle response for DELETE
+    if ($norsp) {
+        return;
+    }
+    
     if ($rc) {
             my $rsp;
             push @{$rsp->{data}}, "$response";
