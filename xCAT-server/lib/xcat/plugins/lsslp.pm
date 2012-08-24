@@ -293,7 +293,7 @@ sub parse_args {
     if ( exists( $opt{t} )) {
        $globalopt{maxtries} = $opt{t};
 
-       if ( $globalopt{maxtries} !~ /^0?[1-9]$/ ) {
+       if ( $globalopt{maxtries} !~ /^\d+$/ ) {
            return( usage( "Invalid command tries (1-9)" ));
        }
     }
@@ -498,7 +498,7 @@ sub invoke_dodiscover {
     }
 	#efix for hmc bug
 	if ($services  =~ /hardware-management-console/)  {
-	     $services = [WILDCARD_SERVICE,HARDWARE_SERVICE,SOFTWARE_SERVICE];
+            $services = [SOFTWARE_SERVICE];
     }		 
 	 
     if ($globalopt{maxtries}) {
