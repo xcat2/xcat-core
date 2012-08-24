@@ -854,6 +854,7 @@ sub doresetnet {
     $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children--; } };
     my $fds = new IO::Select;
     my $callback  = $req->{callback};
+    my $ij = 0;
     foreach my $node ( keys %grouphash) {
         my %iphashfornode;
         my $gc = $grouphash{$node};
@@ -884,6 +885,8 @@ sub doresetnet {
         my $parent;
         my $child;
         pipe $parent, $child;
+        $ij ++; 
+        $ij = int($ij%60);
         my $pid = xCAT::Utils->xfork();
 
         if ( !defined($pid) ) {
@@ -894,6 +897,7 @@ sub doresetnet {
             return undef;
         }
         elsif ( $pid == 0 ) {
+            sleep $ij;
             ###################################
             # Child process, clear memory first
             ###################################
@@ -904,6 +908,7 @@ sub doresetnet {
             $req->{pipe} = $child;
             my $msgs; 
 			my $report;
+            #try and try to avoid the fail that caused by refreshing IP when doing resetnet
 			my $time = 0;
 			while (1) {
 			    my $erflag = 0;
@@ -932,7 +937,7 @@ sub doresetnet {
             foreach my $port (keys %$msgs){
                 $report .= $port.":".$msgs->{$port}.";";
             }
-            send_msg( $req, 0, "Resetnet result for fsp $node is : $report");
+            send_msg( $req, 0, "Resetnet result for $node is : $report");
             ####################################
             # Pass result array back to parent
             ####################################
@@ -970,6 +975,9 @@ sub doresetnet {
 
     return undef;
 }
+##########################################################################
+# child process
+##########################################################################
 sub child_process {
     my $grouphashref = shift;
     my $iphashref = shift;
@@ -981,9 +989,10 @@ sub child_process {
     my @valid_ips;
     my @portneedreset;
     my @portsuccess;
-        #################################
-        # Error logging on 
-        #################################
+
+    ##########################################################
+    # ping static ip firstly, if succesufully, skip resetnet
+    ##########################################################
     foreach my $fspport (@ns) {
         my $ip = ${$iphashref->{$fspport}}{sip};
         my $rc = system("ping -q -n -c 1 -w 1 $ip > /dev/null");
@@ -991,7 +1000,7 @@ sub child_process {
             xCAT::MsgUtils->verbose_message( $req, "ping static $ip successfully");
             push @valid_ips, $ip;  # static ip should be used first
             push @portsuccess, $fspport;
-            $msginfo{$fspport} = "ping1 successfully";
+            $msginfo{$fspport} = "successful";
         } else {
             xCAT::MsgUtils->verbose_message( $req, "ping static $ip failed, need to do resetnet for $fspport");
             push @portneedreset, $fspport;
@@ -1001,7 +1010,7 @@ sub child_process {
         return \%msginfo;
     }
     ###########################################
-    # Print the result
+    # ping temp ip secondary
     ###########################################
     foreach my $fspport (@ns) {
         my $ip = ${$iphashref->{$fspport}}{tip};
@@ -1019,11 +1028,17 @@ sub child_process {
 		}	
         return \%msginfo;
     }
+    #########################################
+    # log on, no retry here
+    #########################################
     my @exp;
     my $goodip;
     my $retry = 2;
         foreach my $ip(@valid_ips) {
             @exp = xCAT::PPCcfg::connect(${$rspdevref->{$ip}}{username},${$rspdevref->{$ip}}{password}, $ip);
+        ####################################
+        # Successfully connected
+        ####################################
             if ( ref($exp[0]) eq "LWP::UserAgent" ) {
                 $goodip = $ip;
                 xCAT::MsgUtils->verbose_message( $req, "log in successfully with $ip");
@@ -1032,6 +1047,9 @@ sub child_process {
         }
     my $msg = "login result is :".join(',', @exp);
     xCAT::MsgUtils->verbose_message( $req, $msg);
+    ####################################
+    # do resetnet
+    ####################################
     unless ($goodip) {
         foreach my $fspport (@ns) {
 		    $msginfo{$fspport} = "failed to log on with $exp[0]";
@@ -1079,7 +1097,7 @@ sub child_process {
 			    $msginfo{$port} = "failed with unknown reason";
 			}	
 		} else {
-            $msginfo{$port} = "ping2 successfully";
+            $msginfo{$port} = "successful";
         }
     } 
     if ($port) {
@@ -1126,7 +1144,7 @@ sub child_process {
 		}
     } else {
 	    xCAT::PPCfsp::disconnect( \@exp );
-		$msginfo{$port} = "ping3 successfully";
+                $msginfo{$port} = "successful";
     }	
     return \%msginfo;
 }
@@ -1216,25 +1234,6 @@ sub get_rsp_dev
 
     return (%$mm,%$hmc,%$fsp,%$bpa);
 }
-##########################################################################
-# Run the forked command and send reply to parent
-##########################################################################
-
-
-
-    ########################################
-    # Telnet (rspconfig) command
-    ########################################
-    
-    ########################################
-    # check args
-    ########################################
-    
-
-
-
-    
-
 ##########################################################################
 # Invokes the callback with the specified message
 ##########################################################################
@@ -1328,12 +1327,9 @@ sub connect {
     my $lwp_log;
 
     ##################################
-    # Use timeout from site table
+    # Use timeout
     ##################################
     my $timeout = 10;
-    ##################################
-    # Get userid/password
-    ##################################
 
     ##################################
     # Redirect STDERR to variable
@@ -1412,12 +1408,15 @@ sub connect {
     # Logon error
     ##############################
     $res = $ua->get( $url );
+    ##############################
+    # Check for specific failures
+    # $res->status_line is like "200 OK"
+    # $res->content is like <!doctype html public "-//W3C//DTD HTML 4.01 Transitional//EN" .....Too many users......</html>
+    # $res->base is like https://41.17.4.2/cgi-bin/cgi?form=2
+    ##############################
     my $err;
     if ( $res->content =~ /Too many users/i ) {
         $err = "Too many users";
-    ##############################
-    # Check for specific failures
-    ##############################
     }elsif ( $res->content =~ /Invalid user ID or password/i ) {
         $err = "Invalid user ID or password";
     }else{
