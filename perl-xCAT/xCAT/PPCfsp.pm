@@ -1787,7 +1787,7 @@ sub get_netcfg
     # Return error
     ##################################
     if ( !defined( $$form )) {
-        return( [RC_ERROR,"'Network Configuration' form not found"] );
+        return( [RC_ERROR,"'Network Configuration' form not found at parse"] );
     } 
 
     ##################################
@@ -1807,14 +1807,15 @@ sub get_netcfg
         $res = $ua->request( $data);
         $$form = HTML::Form->parse( $res->content, $res->base );
         if ( !defined( $$form )) {
-            return( [RC_ERROR,"'Network Configuration' form not found"] );
+            return( [RC_ERROR,"'Network Configuration' form not found at submit"] );
         } 
    } elsif ( $$form->find_input('submit', 'submit', 1) ) {
         my $data = $$form->click('submit');
+        sleep 5;
         $res = $ua->request( $data);
         $$form = HTML::Form->parse( $res->content, $res->base );
         if ( !defined( $$form )) {
-            return( [RC_ERROR,"'Network Configuration' form not found' form not found"] );
+            return( [RC_ERROR,"'Network Configuration' form not found at submit2"] );
         }
         if ( $$form->find_input('ip', 'radio', 1))
         {
@@ -1830,7 +1831,7 @@ sub get_netcfg
             $res = $ua->request( $data);
             $$form = HTML::Form->parse( $res->content, $res->base );
             if ( !defined( $$form )) {
-                return( [RC_ERROR,"'Network Configuration' form not found"] );
+                return( [RC_ERROR,"'Network Configuration' form not found at submit3"] );
             }
         }
      }    
@@ -1991,6 +1992,7 @@ sub set_netcfg
     }
 
     #Click "Continue" button
+    sleep 2;
     my $data = $form->click('save');
     my $res = $ua->request( $data);
     if (!$res->is_success())
