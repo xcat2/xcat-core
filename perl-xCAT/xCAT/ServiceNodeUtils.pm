@@ -181,7 +181,7 @@ sub isServiceReq
     Error:
         1 - error
     Example:
-         @allSN=xCAT::ServiceNodeUtils->get_AllSN
+         @allSN=xCAT::ServiceNodeUtils->getAllSN
     Comments:
         none
 
@@ -683,5 +683,46 @@ sub getSNformattedhash
 		}
 	}
     return \%newsnhash;
+}
+#-----------------------------------------------------------------------------
+
+=head3  
+ 
+    getSNandCPnodes - Take an array of nodes and returns 
+    an array of the service 
+    nodes and an array of the computenode . 
+
+    Arguments:
+       none 
+    Returns:
+		array of Service Nodes and/or array of compute nodesarray of compute nodes       empty array, if none
+    Globals:
+        none
+    Error:
+        1 - error
+    Example:
+         xCAT::ServiceNodeUtils->getSNandCPnodes(\@nodes,\@SN,\@CN);
+    Comments:
+        none
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub getSNandCPnodes 
+{
+   
+    my ($class, $nodes,$sn,$cn) = @_; 
+    my @nodelist = @$nodes;
+    # get the list of all Service nodes
+    @allSN=xCAT::ServiceNodeUtils->getAllSN;
+    foreach $node (@nodelist) {
+      if (grep(/^$node$/, @allSN)) { # it is a SN
+         push (@$sn,$node);
+      } else {  # a CN
+         push (@$cn,$node);
+      }
+    }
+
+    return ; 
 }
 1;
