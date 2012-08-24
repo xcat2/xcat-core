@@ -1256,20 +1256,17 @@ sub xCATdB {
     my $outhash = shift;
 
     ########################################
-    # Update database if the name changed
+    # Begin to collect attributes for each node
     ########################################
-    my %db       = ();
-    my @tabs     = qw(nodelist ppc vpd nodehm nodetype ppcdirect hosts mac mp);
-    foreach ( @tabs ) {
-        $db{$_} = xCAT::Table->new( $_);
-        if ( !$db{$_} ) {
-            return( "Error opening '$_'" );
-        }
-    }
-
-    ########################################
-    # Begin to write each node
-    ########################################
+    my %nodelisthash;
+    my %ppchash;
+    my %vpdhash;
+    my %nodehmhash;
+    my %nodetypehash;
+    my %ppcdirecthash;
+    my %hostshash;
+    my %machash;
+    my %mphash;
     foreach my $nodeentry ( keys %$outhash ) {
         my $type       = ${$outhash->{$nodeentry}}{type};
         my $model      = ${$outhash->{$nodeentry}}{mtm};
@@ -1289,36 +1286,56 @@ sub xCATdB {
         # Write result to every tables,
         ########################################
         if ( $type =~ /^bpa|fsp|cec|frame$/ ) {
-            $db{nodelist}->setNodeAttribs($hostname,{node=>$hostname, groups=>"$type,all", hidden=>$hidden});
-            $db{ppc}->setNodeAttribs($hostname,{node=>$hostname, id=>$id, parent=>$parent, hcp=>$hostname, nodetype=>$globalhwtype{$type}});
-            $db{vpd}->setNodeAttribs($hostname,{mtm=>$model, serial=>$serial, side=>$side});
-            $db{nodehm}->setNodeAttribs($hostname,{mgt=>$globalmgt{$type}});
-            $db{nodetype}->setNodeAttribs($hostname,{nodetype=>$globalnodetype{$type}});
-            $db{hosts}->setNodeAttribs($hostname,{otherinterfaces=>$otherif}) if ($type =~ /fsp|bpa/);
-            $db{mac}->setNodeAttribs($hostname,{mac=>$mac}) if ($type =~ /^fsp|bpa$/);
+            $nodelisthash{$hostname} = {groups=>"$type,all", hidden=>$hidden};
+            $ppchash{$hostname} = {id=>$id, parent=>$parent, hcp=>$hostname, nodetype=>$globalhwtype{$type}};
+            $vpdhash{$hostname} = {mtm=>$model, serial=>$serial, side=>$side};
+            $nodehmhash{$hostname} = {mgt=>$globalmgt{$type}};
+            $nodetypehash{$hostname} = {nodetype=>$globalnodetype{$type}};
+            $hostshash{$hostname} = {otherinterfaces=>$otherif} if ($type =~ /fsp|bpa/);
+            $machash{$hostname} = {mac=>$mac} if ($type =~ /^fsp|bpa$/);           
         } elsif ( $type =~ /^(rsa|mm)$/ ) {
             my @data = ($type, $model, $serial, $side, $ip, $frameid, $cageid, $parent, $mac);
             xCAT::PPCdb::add_systemX( $type, $hostname, \@data );
         } elsif ( $type =~ /^(hmc|ivm)$/ ) {
-            $db{nodelist}->setNodeAttribs($hostname,{node=>$hostname, groups=>"$type,all", hidden=>$hidden});
-            $db{ppc}->setNodeAttribs($hostname,{node=>$hostname, nodetype=>$globalhwtype{$type}});
-            $db{vpd}->setNodeAttribs($hostname,{mtm=>$model, serial=>$serial});
-            $db{nodetype}->setNodeAttribs($hostname,{nodetype=>$globalnodetype{$type}});
-            $db{nodehm}->setNodeAttribs($hostname,{mgt=>$globalmgt{$type}});
-            $db{hosts}->setNodeAttribs($hostname,{ip=>$ip});
-            $db{mac}->setNodeAttribs($hostname,{mac=>$mac});
+            $nodelisthash{$hostname} = {groups=>"$type,all", hidden=>$hidden};
+            $ppchash{$hostname} = {nodetype=>$globalhwtype{$type}};
+            $vpdhash{$hostname} = {mtm=>$model, serial=>$serial};
+            $nodetypehash{$hostname} = {nodetype=>$globalnodetype{$type}};
+            $nodehmhash{$hostname} = {mgt=>$globalmgt{$type}};
+            $hostshash{$hostname} = {ip=>$ip};
+            $machash{$hostname} = {mac=>$mac};
         }elsif ($type =~ /^cmm$/){
-            $db{nodelist}->setNodeAttribs($hostname,{node=>$hostname, groups=>"cmm,all", hidden=>$hidden});
-            $db{vpd}->setNodeAttribs($hostname,{mtm=>$model, serial=>$serial});
-            $db{nodetype}->setNodeAttribs($hostname,{nodetype=>$globalnodetype{$type}});
-            $db{nodehm}->setNodeAttribs($hostname,{mgt=>"blade"});
-            $db{mp}->setNodeAttribs($hostname,{nodetype=>$globalhwtype{$type}, mpa=>$hostname, id=>$side});
-            $db{hosts}->setNodeAttribs($hostname,{otherinterfaces=>$otherif});
+            $nodelisthash{$hostname} = {groups=>"cmm,all", hidden=>$hidden};
+            $vpdhash{$hostname} = {mtm=>$model, serial=>$serial};
+            $nodetypehash{$hostname} = {nodetype=>$globalnodetype{$type}};
+            $nodehmhash{$hostname} = {mgt=>"blade"};
+            $mphash{$hostname} = {nodetype=>$globalhwtype{$type}, mpa=>$hostname, id=>$side};
+            $hostshash{$hostname} = {otherinterfaces=>$otherif};
         }
     }
-    foreach ( @tabs ) {
-        $db{$_}->close();
-    }
+    ########################################
+    # Update database 
+    ########################################
+    my %dbhash;
+    $dbhash{nodelist} = \%nodelisthash, if (%nodelisthash);
+    $dbhash{ppc} = \%ppchash, if (%ppchash);
+    $dbhash{vpd} = \%vpdhash, if (%vpdhash);
+    $dbhash{nodehm} = \%nodehmhash, if (%nodehmhash);
+    $dbhash{nodetype} = \%nodetypehash, if (%nodetypehash);
+    $dbhash{ppcdirect} = \%ppcdirecthash, if (%ppcdirecthash);
+    $dbhash{hosts} = \%hostshash, if (%hostshash);
+    $dbhash{mac} = \%machash, if (%machash);
+    $dbhash{mp} = \%mphash, if (%mphash);
+  
+    
+    for my $tab (keys %dbhash) {
+        my $db = xCAT::Table->new($tab);
+        if ( !$db ) {
+            return( "Error opening $db" );
+        }
+        $db->setNodesAttribs($dbhash{$tab});
+        $db->close();
+    }    
 }
 ##########################################################################
 # Stanza formatting
