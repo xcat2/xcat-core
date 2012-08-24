@@ -48,6 +48,22 @@ $::STATUS_STANDING_BY="standingby";
 $::STATUS_SHELL="shell";
 $::STATUS_DEFINED="defined";
 $::STATUS_UNKNOWN="unknown";
+%::VALID_STATUS_VALUES = (
+	$::STATUS_ACTIVE=>1,
+	$::STATUS_INACTIVE=>1,
+	$::STATUS_INSTALLING=>1,
+	$::STATUS_INSTALLED=>1,
+	$::STATUS_BOOTING=>1,
+	$::STATUS_NETBOOTING=>1,
+	$::STATUS_BOOTED=>1,
+	$::STATUS_POWERING_OFF=>1,
+	$::STATUS_DISCOVERING=>1,
+	$::STATUS_CONFIGURING=>1,
+	$::STATUS_STANDING_BY=>1,
+	$::STATUS_SHELL=>1,
+	$::STATUS_DEFINED=>1,
+	$::STATUS_UNKNOWN=>1,
+);
 
 #defined->[discovering]->[configuring]->[standingby]->installing->[installed]->booting->alive,  defined->[discovering]->[configuring]-[standingby]->netbooting->booted->alive,  alive/unreachable->booting->alive,  powering-off->unreachable, alive->unreachable
 %::NEXT_NODESTAT_VAL=(

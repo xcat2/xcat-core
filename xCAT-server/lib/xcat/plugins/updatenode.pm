@@ -56,6 +56,7 @@ sub handled_commands
     return {
             updatenode     => "updatenode",
             updatenodestat => "updatenode",
+            updatemynodestat => "updatenode",
             updatenodeappstat => "updatenode"
             };
 }
@@ -86,6 +87,10 @@ sub preprocess_request
         return &preprocess_updatenode($request, $callback, $::subreq);
     }
     elsif ($command eq "updatenodestat")
+    {
+        return [$request];
+    }
+    elsif ($command eq "updatemynodestat")
     {
         return [$request];
     }
@@ -134,6 +139,11 @@ sub process_request
     }
     elsif ($command eq "updatenodestat")
     {
+        return updatenodestat($request, $callback);
+    }
+    elsif ($command eq "updatemynodestat")
+    {
+	delete $request->{node}; #the restricted form of this command must be forbidden from specifying other nodes, only can set it's own value
         return updatenodestat($request, $callback);
     }
     elsif ($command eq "updatenodeappstat")
@@ -1322,7 +1332,11 @@ sub updatenodestat
     }
     else
     {
-        if ($request->{node}) { @nodes = ($request->{node}); }
+        if ($request->{node}) { @nodes = ($request->{node}); } 
+        else { #client asking to update its own status...
+		unless (ref $request->{username}) { return; } #TODO: log an attempt without credentials? 
+		@nodes = @{$request->{username}};
+        }
     }
     if (ref($request->{arg}))
     {
@@ -1337,6 +1351,7 @@ sub updatenodestat
     {
         my %node_status = ();
         my $stat        = $args[0];
+        unless ($::VALID_STATUS_VALUES{$stat}) { return; } #don't accept just any string, see GlobalDef for updates
         $node_status{$stat} = [];
         foreach my $node (@nodes)
         {
