@@ -225,7 +225,7 @@ sub preprocess_request {
     # The dispatch depends on the rhevm. Since the operation is in serial, so no need to use the service node.
     my @requests;
     my @rhevms=keys(%rhevm_hash);
-    my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@rhevms, 'xcat', "MN");
+    my $sn = xCAT::Utils->get_ServiceNode(\@rhevms, 'xcat', "MN");
     foreach my $snkey (keys %$sn){
         my $reqcopy = {%$request};
         $reqcopy->{'_xcatdest'} = $snkey;
@@ -340,6 +340,8 @@ sub process_request {
 
     if($command eq 'mkinstall'){
         mkinstall($request, $callback, \%rhevm_hash);
+    } elsif ($command eq "rsetboot") {
+        rsetboot($callback, \%rhevm_hash, $args);
     } elsif ($command eq "addhost") {
         addhost($callback, \%rhevm_hash);
     } elsif ($command eq "cfghost") {
@@ -352,7 +354,9 @@ sub process_request {
         rmhost();
     } elsif ($command eq "lsvm") {
         lsvm($callback, \%rhevm_hash, $args);
-    } elsif ($command eq "mkvm") {
+    } elsif ($command eq "chvm") {
+        chvm($callback, \%rhevm_hash, $nodes, $args);
+    }elsif ($command eq "mkvm") {
         mkvm($callback, \%rhevm_hash, $nodes, $args);
     } elsif ($command eq "rmvm") {
         rmvm($callback, \%rhevm_hash, $args);
@@ -835,6 +839,7 @@ my $display = {
         'used' => ["used"],
         'committed' => ["committed"],
         'storage_format' => ["storage_format"],
+        'status' => ["status/state"],
     },
     'networks' => {
         'description' => ["description"],
@@ -922,6 +927,7 @@ sub displaysrc {
     my $type = shift;
     my $prelead = shift;
     my $criteria = shift;
+    my $individual = shift;
 
     my @output;
     my @displayed;
@@ -932,7 +938,11 @@ sub displaysrc {
     } elsif ($type eq "clusters") {
         $prefix = "/clusters/cluster";
     } elsif ($type eq "storagedomains") {
-        $prefix = "/storage_domains/storage_domain";
+        if ($individual) {
+            $prefix = "/storage_domain";
+        } else {
+            $prefix = "/storage_domains/storage_domain";
+        }
     } elsif ($type eq "networks") {
         $prefix = "/networks/network";
     } elsif ($type eq "hosts") {
@@ -1071,7 +1081,8 @@ sub lsve {
                 unless ($rc) {
                     displaysrc($callback, $ref_rhevm, $response, "clusters", "    ");
                 }
-                ($rc, $id, $stat, $response) = search_src($ref_rhevm, "storagedomains", "datacenter%3D$obj");
+                #($rc, $id, $stat, $response) = search_src($ref_rhevm, "storagedomains", "datacenter%3D$obj");
+                ($rc, $id, $stat, $response) = search_src($ref_rhevm, "datacenters/$dcid/storagedomains:storagedomains");
                 unless ($rc) {
                     displaysrc($callback, $ref_rhevm, $response, "storagedomains", "    ");
                 }
@@ -1136,7 +1147,7 @@ sub cfgve {
     my $args = shift;
     my $nodes = shift;
 
-    my ($type, $objlist, $mgr, $datacenter, $create, $update, $remove, $activate, $deactivate, $attach, $detach);
+    my ($type, $objlist, $mgr, $datacenter, $create, $update, $remove, $activate, $deactivate, $attach, $detach, $force);
     if ($args) {
         @ARGV=@{$args};
         GetOptions('t=s' => \$type,
@@ -1149,7 +1160,8 @@ sub cfgve {
                         's' => \$deactivate,
                         'a' => \$attach,
                         'b' => \$detach,
-                        'r' => \$remove);
+                        'r' => \$remove,
+                        'f' => \$force);
     }
 
     my $rhevm = (keys %{$rhevm_hash})[0];
@@ -1170,7 +1182,7 @@ sub cfgve {
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                     return;
                 }
-            } elsif ($activate || $deactivate || $attach || $detach) {
+            } elsif ($activate || $deactivate || $attach || $detach || $remove) {
                 # get the name of datacenter
                 my $vsdtab = xCAT::Table->new('virtsd',-create=>0);
                 my $vsdent = $vsdtab->getAttribs({'node'=>$obj}, ['datacenter']);
@@ -1211,8 +1223,23 @@ sub cfgve {
                         push @{$rsp->{data}}, "$obj: succeeded.";
                         xCAT::MsgUtils->message("I", $rsp, $callback);
                     }
+                } elsif ($remove) {
+                    if ($force) {
+                        # deactivate the storage domain
+                        activate($callback, $ref_rhevm,"/api/datacenters/$dcid/storagedomains/$sdid", $obj, 1);
+                    
+                        # detach the storage domain to the datacenter
+                        attach($callback, $ref_rhevm,"/api/datacenters/$dcid/storagedomains", "storage_domain", $sdid, 1);
+                    }
+    
+                    if (!deleteSD($callback, $ref_rhevm, "/api/storagedomains/$sdid", $obj)) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "$obj: delete storage domain succeeded.";
+                        xCAT::MsgUtils->message("I", $rsp, $callback);
+                        return;
+                    }
                 }
-            }
+            } 
         } elsif ($type eq "tpl") {
             if ($remove) {
                 my ($rc, $tplid, $stat, $response) = search_src($ref_rhevm, "templates", "$obj");
@@ -1255,6 +1282,15 @@ sub cfgve {
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                     next;
                 }
+            } elsif ($remove) {
+                my ($rc, $nwid, $stat) = search_src($ref_rhevm, "networks", $obj);
+                if ($rc) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$obj: failed to get networks: $obj.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    next;
+                }
+                generalaction($callback, $ref_rhevm, "/api/networks/$nwid", "DELETE", 1);
             }
         } else {
             my $rsp;
@@ -2121,6 +2157,177 @@ sub rmvm {
 
 # Change virtual machine
 sub chvm {
+    my $callback = shift;
+    my $rhevm_hash = shift;
+    my $nodes = shift;
+
+    # Get the mac address for the nodes from the mac table
+    my $mactab = new xCAT::Table('mac',-create=>1);
+
+    # Get the attributes for the nodes from the vm table
+    my $vmtab = xCAT::Table->new('vm',-create=>0);
+    my $vment = $vmtab->getNodesAttribs($nodes,['template', 'host', 'cluster', 'virtflags', 'storage', 'storagemodel', 'memory', 'cpus', 'nics', 'nicmodel', 'bootorder', 'vidproto']);
+
+    foreach my $rhevm (keys %{$rhevm_hash}) {
+        my %node_hyp;
+        my %hostid;
+        my $success = 0;
+        # generate the hash of rhevm which will be used for the action functions
+        my $ref_rhevm = {'name' => $rhevm, 
+                                 'user' => $rhevm_hash->{$rhevm}->{user}, 
+                                 'pw' => $rhevm_hash->{$rhevm}->{pw}};
+    
+        # generate the node that will be handled
+        if (defined $rhevm_hash->{$rhevm}->{host}) {
+            foreach my $rhevh (keys %{$rhevm_hash->{$rhevm}->{host}}) {
+                if (defined $rhevm_hash->{$rhevm}->{host}->{$rhevh}->{node}) {
+                    foreach (@{$rhevm_hash->{$rhevm}->{host}->{$rhevh}->{node}}) {
+                        $node_hyp{$_}{hyp} = $rhevh;
+                        $hostid{$rhevh} = 1;
+                    }
+                }
+            }
+        } elsif (defined $rhevm_hash->{$rhevm}->{node}) {
+            foreach (@{$rhevm_hash->{$rhevm}->{node}}) {
+                $node_hyp{$_}{hyp} = "";
+            }
+        }
+
+        # get the host id
+        # this is used for the case that needs locate vm to a spcific host
+        foreach my $host (keys %hostid) {
+            my ($rc, $id, $stat) = search_src($ref_rhevm, "hosts", $host);
+            if ($rc) {
+                my $rsp;
+                push @{$rsp->{data}}, "Cannot find $host in the rhevm.";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return;
+            }
+            $hostid{$host} = $id;
+        }
+        my @nodes = (keys %node_hyp);
+        my $macmac = $mactab->getNodesAttribs(\@nodes, ['mac']);
+   
+        foreach my $node (@nodes) {
+            my $myvment = $vment->{$node}->[0];
+            unless ($myvment) {
+                my $rsp;
+                push @{$rsp->{data}}, "$node: has NOT entry in vm table.";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                next;
+            }
+            
+            # Check the existence of the node
+            my ($rc, $vmid, $stat) = search_src($ref_rhevm, "vms", $node);
+            if ($rc) {
+                my $rsp;
+                push @{$rsp->{data}}, "$node: virtual machine was not created.";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+                next;
+            }
+            
+            # generate the content
+            my $tplele;
+            if ($myvment->{template}) {
+                $tplele = "<template><name>$myvment->{template}</name></template>";
+            }
+            
+            # configure memory
+            my $memele;
+            if ($myvment->{memory}) {
+                my $memsize = $myvment->{memory};
+                $memsize =~ s/g/000000000/i;
+                $memsize =~ s/m/000000/i;
+                $memele = "<memory>$memsize</memory>";
+            }
+            
+            # set the cpu
+            my $cpuele;
+            if ($myvment->{cpus}) {
+                my ($socketnum, $corenum) = split(':', $myvment->{cpus});
+                unless ($corenum) {$corenum = 1;}
+                $cpuele = "<cpu><topology cores=\"$socketnum\" sockets=\"$corenum\"/></cpu>";
+            }
+            
+            # configure bootorder
+            # there's a bug that sequence is not correct to set two order, so currently just set one
+            my $boele;
+            if ($myvment->{bootorder}) {
+                my ($firstbr, $secbr) = split (',', $myvment->{bootorder});
+                if ($secbr) {
+                    $boele = "<os><boot dev=\"$firstbr\"/><boot dev=\"$secbr\"/><boot/></os>";
+                } else {
+                    $boele = "<os><boot dev=\"$firstbr\"/><boot/></os>";
+                }
+            }
+
+            my $disele;
+            if ($myvment->{vidproto}) {
+                $disele = "<display><type>$myvment->{vidproto}</type></display>";
+            }
+
+            my $affinity;
+            if ($myvment->{virtflags}) {
+                # parse the specific parameters from vm.virtflags
+                my @pairs = split (':', $myvment->{virtflags});
+                foreach my $pair (@pairs) {
+                    my ($name, $value) = split('=', $pair);
+                    if ($name eq "placement_affinity") {
+                        # set the affinity for placement_policy
+                        $affinity = "<affinity>$value</affinity>"
+                    }
+                }
+            }
+
+            my $hostele;
+            if ($myvment->{host}) {
+                $hostele = "<host id=\"$hostid{$myvment->{host}}\"/>";
+            }
+
+            my $placement_policy;
+            if ($affinity) {
+                $placement_policy = "<placement_policy>$hostele$affinity</placement_policy>";
+            } elsif ($hostele) {
+                $affinity = "<affinity>migratable</affinity>";
+                $placement_policy = "<placement_policy>$hostele$affinity</placement_policy>";
+            }
+
+            # set the cluster for the vm
+            my $clusterele;
+            if ($myvment->{cluster}) {
+                $clusterele = "<cluster><name>$myvment->{cluster}</name></cluster>";
+            }
+
+            my $api = "/api/vms/$vmid";
+            my $method = "PUT";
+            
+            my $content = "<vm><type>server</type><name>$node</name>$clusterele$tplele$memele$cpuele$boele$placement_policy$disele</vm>";
+            my $request = genreq($ref_rhevm, $method, $api, $content);
+            my $response;
+            ($rc, $response) = send_req($ref_rhevm, $request->as_string());
+            if ($rc) {
+                my $rsp;
+                push @{$rsp->{data}}, "$node: $response";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                next;
+            } else {
+                my $parser = XML::LibXML->new();
+                my $doc = $parser->parse_string($response);
+                my $state;
+                if ($node eq getAttr($doc, "/vm/name")) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$node: change vm completed.";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                    next;
+                } else {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$node: change vm failed.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    next;
+                }
+            } 
+        }
+    }
 }
 
 # Clone the virtual machine
@@ -2202,6 +2409,103 @@ sub clonevm {
         }
     }
 
+}
+
+# Set the boot sequence for the vm
+sub rsetboot {
+    my $callback = shift;
+    my $rhevm_hash = shift;
+    my $args = shift;
+
+    my ($showstat, $bootdev);
+    if ($args) {
+        my $arg = $args->[0];
+        if ($arg =~ /^stat/) {
+            $showstat = 1;
+        } else {
+            $bootdev = $arg;
+        }
+    } else {
+        $showstat = 1;
+    }
+
+    my ($firstbr, $secbr);
+    if ($bootdev) {
+        ($firstbr, $secbr) = split (',', $bootdev);
+        if (($firstbr && $firstbr !~ /^(network|hd)$/) || ($secbr && $secbr !~ /^(network|hd)$/)) {
+            my $rsp;
+            push @{$rsp->{data}}, "Supported boot device: network, hd";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+    }
+
+    foreach my $rhevm (keys %{$rhevm_hash}) {
+        my @nodes;
+        # generate the hash of rhevm which will be used for the action functions
+        my $ref_rhevm = {'name' => $rhevm, 
+                                 'user' => $rhevm_hash->{$rhevm}->{user}, 
+                                 'pw' => $rhevm_hash->{$rhevm}->{pw}};
+
+        # generate the node that will be handled
+        if (defined $rhevm_hash->{$rhevm}->{host}) {
+            foreach my $rhevh (keys %{$rhevm_hash->{$rhevm}->{host}}) {
+                if (defined $rhevm_hash->{$rhevm}->{host}->{$rhevh}->{node}) {
+                    push @nodes, @{$rhevm_hash->{$rhevm}->{host}->{$rhevh}->{node}};
+                }
+            }
+        } elsif (defined $rhevm_hash->{$rhevm}->{node}) {
+             push @nodes, @{$rhevm_hash->{$rhevm}->{node}};
+        }
+
+        foreach my $node (@nodes) {
+            # Get the ID of vm
+            my ($rc, $vmid, $state, $response) = search_src($ref_rhevm, "vms", $node);
+            if ($rc) {
+                my $rsp;
+                push @{$rsp->{data}}, "$node: node was not defined in the rhevm.";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                next;
+            }
+
+            if ($showstat) {
+                my $parser = XML::LibXML->new();
+                my $doc = $parser->parse_string($response);
+                my @bootdevs = getAttr($doc, "/vms/vm/os/boot", "dev");
+                my $bootlist = join(',', @bootdevs);
+                my $rsp;
+                push @{$rsp->{data}}, "$node: $bootlist";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+                next;
+            }
+
+            # configure bootorder
+            my $boele;
+            if ($secbr) {
+                $boele = "<os><boot dev=\"$firstbr\"/><boot dev=\"$secbr\"/><boot/></os>";
+            } else {
+                $boele = "<os><boot dev=\"$firstbr\"/><boot/></os>";
+            }
+
+            my $api = "/api/vms/$vmid";
+            my $method = "PUT";
+            
+            my $content = "<vm>$boele</vm>";
+            my $request = genreq($ref_rhevm, $method, $api, $content);
+            ($rc, $response) = send_req($ref_rhevm, $request->as_string());
+            if ($rc) {
+                my $rsp;
+                push @{$rsp->{data}}, "$node: $response";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                next;
+            } else {
+                my $rsp;
+                push @{$rsp->{data}}, "$node: set boot order completed.";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+                next;
+            } 
+        }
+    }
 }
 
 #Migrate the virtual machine
@@ -2350,9 +2654,15 @@ sub power {
                 if ($state eq "up" || $state eq "powering_up") {
                     my ($rc, $msg) = power_action($ref_rhevm, $id, 'stop');
                     if (!$rc) {
+                        if (waitforcomplete($ref_rhevm, "/api/vms/$id", "/vm/status/state=down", 30)) {
+                            my $rsp;
+                            push @{$rsp->{data}}, "$node: failed to waiting the vm gets to \"down\" state.";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            next;
+                        }
                         ($rc, $msg) = power_action($ref_rhevm, $id, 'start');
                         if (!$rc) {
-                            $output = "$node: reset";
+                            $output = "$node: $args->[0]";
                         } else {
                             $output = "$node: $msg";
                         }
@@ -2362,7 +2672,7 @@ sub power {
                 } else {
                     my ($rc, $msg) = power_action($ref_rhevm, $id, 'start');
                     if (!$rc) {
-                        $output = "$node: reset";
+                        $output = "$node: $args->[0]";
                     } else {
                         $output = "$node: $msg";
                     }
@@ -2378,13 +2688,24 @@ sub power {
                         $output = "$node: $msg";
                     }
                 }
+            } elsif ($args->[0] eq 'suspend') {
+                if ($state eq "suspended") {
+                    $output = "$node: suspended";
+                } else {
+                    my ($rc, $msg) = power_action($ref_rhevm, $id, 'suspend');
+                    if (!$rc) {
+                        $output = "$node: suspended";
+                    } else {
+                        $output = "$node: $msg";
+                    }
+                }
             } elsif ($args->[0] =~ /^stat/) {
-                if ($state eq "down" || $state eq "powering_down" || $state eq "powered_down") {
+                if ($state eq "down") {
                     $output = "$node: off";
-                } elsif ($state eq "up" || $state eq "powering_up") {
+                } elsif ($state eq "up") {
                     $output = "$node: on";
                 } else {
-                    $output = "$node: unknow";
+                    $output = "$node: $state";
                 }
             }
             my $rsp;
@@ -2911,27 +3232,19 @@ sub mkSD {
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     return 0;
                 }
-                $api = "/api/datacenters/$dcid/storagedomains";
-                $method = "POST";
-                my $content = "<storage_domain id=\"$sdid\"/>";
-                $request = genreq($ref_rhevm, $method, $api, $content);
-                ($rc, $response) = send_req($ref_rhevm, $request->as_string());
-                if ($rc) {
+
+                # attach the storage domain to the datacenter
+                if (attach($callback, $ref_rhevm,"/api/datacenters/$dcid/storagedomains", "storage_domain", $sdid)) {
                     my $rsp;
-                    push @{$rsp->{data}}, "$sd: $response";
+                    push @{$rsp->{data}}, "$sd: failed to attach to datacenter:$dc.";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     return 0;
                 }
 
                 # active the storage domain
-                $api = "/api/datacenters/$dcid/storagedomains/$sdid/activate";
-                $method = "POST";
-                $content = "<action/>";
-                $request = genreq($ref_rhevm, $method, $api, $content);
-                ($rc, $response) = send_req($ref_rhevm, $request->as_string());
-                if ($rc) {
+                if (activate($callback, $ref_rhevm,"/api/datacenters/$dcid/storagedomains/$sdid", $sd)) {
                     my $rsp;
-                    push @{$rsp->{data}}, "$sd: $response";
+                    push @{$rsp->{data}}, "$sd: failed to activate the storage domain.";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     return 0;
                 }
@@ -3001,11 +3314,18 @@ sub attach {
     my $id = shift;
     my $detach = shift;
 
+    my $method = "POST";
     my $api;
     my $content;
     if ($type eq "storage_domain") {
-        $api = $path;
-        $content = "<$type id=\"$id\"/>";
+        if ($detach) {
+            $api = "$path/$id";
+            $method = "DELETE";
+            $content = "";
+        } else {
+            $api = $path;
+            $content = "<$type id=\"$id\"/>";
+        }
     } else {
         if ($detach) {
             $api = $path."/detach";
@@ -3015,33 +3335,35 @@ sub attach {
         $content = "<action><$type id=\"$id\"/></action>";
     }
     
-    my $method = "POST";
+    
     my $request = genreq($ref_rhevm, $method, $api, $content);
 
     my ($rc, $response) = send_req($ref_rhevm, $request->as_string());
     if ($rc) {
-            my $rsp;
-            push @{$rsp->{data}}, "$response";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return 1;
+        # no output for detaching sd from datacenter
+        if ($rc == 2 && $type eq "storage_domain" && $detach) {
+            return 0;
+        }
+        my $rsp;
+        push @{$rsp->{data}}, "$response:$rc";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
     } else {
         my $parser = XML::LibXML->new();
         my $doc = $parser->parse_string($response);
         if ($doc ) {
             my $attr;
-            if ($attr = getAttr($doc, "/action/status/state")) {
-                if ($type eq "storage_domain") {
-                  if ($attr eq "inactive") {
+            if ($type eq "storage_domain") {
+                 if ("inactive" eq getAttr($doc, "/storage_domain/status/state")) {
+                     return 0;
+                 } else {
+                     return 1;
+                 }
+            } else {
+                if ("complete" eq getAttr($doc, "/action/status/state")) {
                     return 0;
-                  } else {
+                 } else {
                     return 1;
-                  }
-                } else {
-                if ($attr eq "complete") {
-                    return 0;
-                  } else {
-                    return 1;
-                  }
                 }
             }
         }
@@ -3071,10 +3393,66 @@ sub generalaction {
     }
     
     if ($rc) {
-            my $rsp;
-            push @{$rsp->{data}}, "$response";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return 1;
+        my $rsp;
+        push @{$rsp->{data}}, "$response";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+}
+
+# delete storage domain
+sub deleteSD {
+    my $callback = shift;
+    my $ref_rhevm = shift;
+    my $path = shift;
+    my $sd = shift;
+
+    # get the attributes for the SD
+    my $vsdtab = xCAT::Table->new('virtsd',-create=>0);
+    my $vsdent = $vsdtab->getAttribs({'node'=>$sd}, ['host']);
+    unless ($vsdent) {
+        my $rsp;
+        push @{$rsp->{data}}, "$sd: cannot find the definition for $sd in the virtsd table.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+    unless ($vsdent->{host}) {
+        my $rsp;
+        push @{$rsp->{data}}, "$sd: a SPM host needs to be specified.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+    
+    # get the id of host
+    my ($rc, $hostid, $stat) = search_src($ref_rhevm, "hosts", $vsdent->{host});
+    if ($rc) {
+        my $rsp;
+        push @{$rsp->{data}}, "$sd: Cannot find the host: $vsdent->{host} for the storag domain.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+    
+    my $method = "DELETE";
+    my $api = $path;
+    my $content;
+
+    $content = "<storage_domain><host id=\"$hostid\"/><format>true</format></storage_domain>";
+
+    my $request = genreq($ref_rhevm, $method, $api, $content);
+    my $response;
+    ($rc, $response) = send_req($ref_rhevm, $request->as_string());
+
+    # no need to handle response for DELETE
+    if ($rc) {
+        # no output for detaching sd from datacenter
+        if ($rc == 2) {
+            return 0;
+        }
+        my $rsp;
+        push @{$rsp->{data}}, "$response";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
     }
 }
 
