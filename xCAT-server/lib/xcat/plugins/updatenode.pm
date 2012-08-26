@@ -826,10 +826,10 @@ sub updatenode
                 push @{$syncfile_node{$synclist}}, $node;
             }
         }
-
         # Check the existence of the synclist file
-        foreach my $synclist (keys %syncfile_node)
-        {
+        if (%syncfile_node) { # there are files to sync defined        
+          foreach my $synclist (keys %syncfile_node)
+          {
             if (!(-r $synclist))
             {
                 my $rsp = {};
@@ -838,11 +838,11 @@ sub updatenode
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 return 1;
             }
-        }
+          }
 
-        # Sync files to the target nodes
-        foreach my $synclist (keys %syncfile_node)
-        {
+          # Sync files to the target nodes
+          foreach my $synclist (keys %syncfile_node)
+          {
             if ($::VERBOSE)
             {
                 my $rsp = {};
@@ -873,10 +873,16 @@ sub updatenode
                       },
                       $callback
                       );
+          }
+          my $rsp = {};
+          $rsp->{data}->[0] = "File synchronization has completed.";
+          $callback->($rsp);
+        } else { # no syncfiles defined
+          my $rsp = {};
+          $rsp->{data}->[0] = "There were no syncfiles defined to process. File synchronization has completed.";
+          $callback->($rsp);
+            
         }
-        my $rsp = {};
-        $rsp->{data}->[0] = "File synchronization has completed.";
-        $callback->($rsp);
     }
 
     if (scalar(@$AIXnodes))
