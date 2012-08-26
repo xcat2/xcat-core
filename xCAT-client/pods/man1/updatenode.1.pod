@@ -6,7 +6,7 @@ B<updatenode> - Update nodes in an xCAT cluster environment.
 
 B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-f>|B<--snsync>] [B<-S>|B<--sw>] [B<-P>|B<--scripts> [B<script1,script2...>]] [B<-s>|B<--sn>] [B<-A>|B<--updateallsw>] [B<-c>|B<--cmdlineonly>] [B<-d alt_source_dir>] [B<attr=val> [B<attr=val...>]]
 
-B<updatenode> B<noderange> [B<-k>|B<--security> [B<--user>] [B<--devicetype>]]
+B<updatenode> B<noderange> [B<-k>|B<--security>]
 
 B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<script1,script2...>]
 
@@ -54,8 +54,7 @@ software you would specify the "-F" and "-S" flags. See the descriptions
 of these flags and examples below.
 
 The flag "-k" (--security) can NOT be used together with "-S", "-P", and "-F"
-flags. The flag "--user" and "--devicetype" ONLY can be used with "-k" flag to
-update the ssh keys for specific device.
+flags.
 
 Note: In a large cluster environment the updating of nodes in an ad hoc 
 manner can quickly get out of hand, leaving the system administrator with 
@@ -225,20 +224,13 @@ The non-root users public ssh keys and root's public ssh keys will be put in
 the authorized_keys* files under the non-root users .ssh directory on the node(s
 ).
 
-Other device types, such as IB switch, are also supported.  The
-device should be defined as a node and nodetype should be defined
-as switch before connecting.
-
-The flags B<--user> and B<--devicetype> can be used to specify the 'user'
-and configuration file to set up the ssh keys for the specific device.
-
 I<Handle the hierarchical scenario>
 
 When update security files for the node which is served by a service node,
 the service node will be updated automatically first, and then the target
 node.
 
-The ca and certificates files are needed for service node to authenticate
+The certificates files are needed for a service node to authenticate
 the ssl connections between the xCAT client and xcatd on the service node,
 and the xcatd's between service node and management node. The files in the
 directories /etc/xcat/cert/ and ~/.xcat/ will be updated.
@@ -295,17 +287,6 @@ Install or update all software contained in the source directory. (AIX only)
 Specifies that the updatenode command should only use software maintenance
 information provided on the command line.  This flag is only valid when
 using AIX software maintenance support.
-
-=item B<--devicetype>
-
-Specify a user-defined device type that references the location
-of relevant device configuration file. The devicetype value must
-correspond to a valid device configuration file under the /var/opt/xcat/
-directory.
-For example, /var/opt/xcat/IBSwitch/Qlogic/config is the configuration
-file location if devicetype is specified as IBSwitch::Qlogic
-
-This flag ONLY can be used with -k and --user.
 
 =item B<-d alt_source_dir>
 
@@ -364,12 +345,6 @@ Specifies that node software should be updated.
 =item B<-s|--sn>
 
 Set the server information stored on the nodes.
-
-=item B<--user>
-
-Specifies a remote user name to login a specific device.
-
-This flag ONLY can be used with -k and --devicetype.
 
 =item B<-v|--version>
 
