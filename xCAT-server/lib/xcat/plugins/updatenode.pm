@@ -805,9 +805,10 @@ sub updatenode
             }
          }
 
-         # Check the existence of the synclist file
-         foreach my $synclist (keys %syncfile_node)
-         {
+         if (%syncfile_node) { # there are files to sync defined
+          # Check the existence of the synclist file
+          foreach my $synclist (keys %syncfile_node)
+          {
             if (!(-r $synclist))
             {
                 my $rsp = {};
@@ -816,8 +817,7 @@ sub updatenode
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 return 1;
             }
-         }
-         if (%syncfile_node) { # there are files to sync defined
+          }
           #Sync files to the target nodes
           foreach my $synclist (keys %syncfile_node)
           {
