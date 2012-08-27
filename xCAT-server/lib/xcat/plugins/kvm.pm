@@ -999,8 +999,10 @@ sub xhrm_satisfy {
 	my $vlanip;
 	my $netmask;
 	my $subnet;
+        my $vlan;
+        my $interface;
 	if ($nic =~ /^vl([\d]+)$/) {
-	    my $vlan=$1;
+	    $vlan=$1;
 	    my $nwtab=xCAT::Table->new("networks", -create =>0);
 	    if ($nwtab) {
 		my $sent = $nwtab->getAttribs({vlanid=>"$vlan"},'net','mask');
@@ -1028,9 +1030,38 @@ sub xhrm_satisfy {
 		}
 	    }
 	}
+
+        #get the nic that vlan tagged 
+        my $swtab = xCAT::Table->new("switch", -create => 0);
+        if ($swtab) {
+	    my $tmp_switch = $swtab->getNodesAttribs([$hyp], ['vlan','interface']);
+	    if (defined($tmp_switch) && (exists($tmp_switch->{$hyp}))) { 
+	        my $tmp_node_array=$tmp_switch->{$hyp};
+	        foreach my $tmp (@$tmp_node_array) {
+		    if (exists($tmp->{vlan})) {
+		        my $vlans = $tmp->{vlan};
+		        foreach my $vlan_tmp (split(',',$vlans)) {
+			    if ($vlan_tmp == $vlan) {
+		                if (exists($tmp->{interface})) {
+			            $interface=$tmp->{interface};
+		                }
+                                last;
+                            }
+		        }
+		    }
+	        }
+	    }
+        }
         
-	#print "nic=$nic\n";
-	$rc |=system("ssh $hyp xHRM bridgeprereq $nic $vlanip $netmask");
+        if (($interface) || ($interface =~ /primary/)) {
+            $interface =~ s/primary(:)?//g;
+        }
+	#print "interface=$interface nic=$nic vlanip=$vlanip netmask=$netmask\n";
+        if ($interface) {
+	    $rc |=system("ssh $hyp xHRM bridgeprereq $interface:$nic $vlanip $netmask");
+        } else {
+            $rc |=system("ssh $hyp xHRM bridgeprereq $nic $vlanip $netmask");
+        }
 
         #TODO: surprise! there is relatively undocumented libvirt capability for this...
         #./tests/interfaceschemadata/ will have to do in lieu of documentation..
