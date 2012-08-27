@@ -655,6 +655,7 @@ sub writechildren2 {
     my $cecend;
     if ($ntype =~ /bpa/) {
         for (my $ii = $framestart; $ii <= $frameend; $ii++) {
+            $ii = int($ii);
             $myip = $vlan1 . '.' . $ii . '.0.1';
             $sidehash{$myip}->{side} = 'A-0';
             push @ipgroup, $myip;
