@@ -1,6 +1,13 @@
 #!/usr/bin/perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::MacMap;
+
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+
 require Exporter;
 our @ISA=qw/Exporter/;
 our @EXPORT_OK=qw/walkoid/;
@@ -174,11 +181,19 @@ sub rvlan {
     #first order of business is to identify the target switches
     my $switchtab=xCAT::Table->new('switch',-create=>0);
     unless ($switchtab) { return; }
-    my $switchents = $switchtab->getNodesAttribs($nodes,[qw/switch port/]);
+    my $switchents = $switchtab->getNodesAttribs($nodes,[qw/switch port interface/]);
     my $node;
     foreach $node (keys %$switchents) {
         my $entry;
         foreach $entry (@{$switchents->{$node}}) {
+            #skip the none primary interface.
+            # The vlaue of the primary interface could be empty, primary or primary:ethx
+	    if (defined($entry->{interface})) {
+		if ($entry->{interface} !~ /primary/) {
+		    next;
+		}
+	    }
+
             $self->{switches}->{$entry->{switch}}->{$entry->{port}} = $node;
         }
     } 
@@ -313,11 +328,17 @@ sub refresh_table {
         }
   }
   my %checked_pairs;
-  my @entries = $self->{switchtab}->getAllNodeAttribs(['node','port','switch']);
+  my @entries = $self->{switchtab}->getAllNodeAttribs(['node','port','switch','interface']);
   #Build hash of switch port names per switch
   $self->{switches} = {};
   foreach my $entry (@entries) {
     if (defined($entry->{switch}) and $entry->{switch} ne "" and defined($entry->{port}) and $entry->{port} ne "") {
+	#skip the none primary interface.
+	# The vlaue of the primary interface could be empty, primary or primary:ethx
+        if (defined($entry->{interface})) {
+	    if ($entry->{interface} !~ /primary/) { next;}
+	}
+
     	if ( !$self->{switches}->{$entry->{switch}}->{$entry->{port}})
         {
             $self->{switches}->{$entry->{switch}}->{$entry->{port}} = $entry->{node};
