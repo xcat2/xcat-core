@@ -593,26 +593,28 @@ sub format_output {
     ###########################################
     # Read table to get exists data
     ###########################################
-    my $errcode = read_from_table();
-    if ($errcode) {
-        send_msg( $request, 0, "Can't open $errcode table" );
-        return;
-    }
+    unless($globalopt{service} =~ /hardware-management-console/) {
+        my $errcode = read_from_table();
+        if ($errcode) {
+            send_msg( $request, 0, "Can't open $errcode table" );
+            return;
+        }
+    }    
     ###########################################
     # Parse responses and add to hash
     ###########################################
     my $outhash = parse_responses( $request, \$length, $searchmacsref );
 
 	#hmc bug efix
-	my $newouthash;
-	if ($globalopt{service} =~ /hardware-management-console/) {
-	    for my $en ( keys %$outhash ) {
-		    if (${$outhash->{$en}}{type} eq 'hmc') {
-			    $newouthash->{$en} = $outhash->{$en};
-			}
-		}		
-	    $outhash =  $newouthash;
-	}
+	#my $newouthash;
+	#if ($globalopt{service} =~ /hardware-management-console/) {
+	#    for my $en ( keys %$outhash ) {
+	#	    if (${$outhash->{$en}}{type} eq 'hmc') {
+	#		    $newouthash->{$en} = $outhash->{$en};
+	#		}
+	#	}		
+	#    $outhash =  $newouthash;
+	#}
 	
     ###########################################
     # filter the result in the same vlan
