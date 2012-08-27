@@ -24,7 +24,7 @@ use File::Basename;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use Socket;
-#use strict;
+use strict;
 my $CALLBACK;
 my $RERUNPS4SECURITY;
 1;
@@ -543,7 +543,7 @@ sub preprocess_updatenode
     foreach my $snkey (keys %$sn)
     {
 
-	my @tmp_a=split(',',$s);
+	my @tmp_a=split(',',$snkey);
 	foreach my $s1 (@tmp_a) {
 	    if ($::SECURITY
 		&& !(grep /^$s1$/, @good_sns)
