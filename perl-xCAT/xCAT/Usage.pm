@@ -384,6 +384,23 @@ Options:
 "Usage:
     rmflexnode [-h|--help|-v|--version]
     rmflexnode <noderange>",
+  "lsve" =>
+"Usage:
+    lsve [-t type] [-m manager] [-o object]
+      -t: dc - 'Data Center', cl - 'Cluster', sd - 'Storage Domain', nw - 'Network', tpm -'Template'
+      -m: FQDN (Fully Qualified Domain Name) of the rhev manager
+      -o: Target object to display",
+ "cfgve" =>
+"Usage:
+    cfgve [-t tpl] [-m manager] [-o object] [-r]
+    cfgve [-t nw] [-m manager] [-o object] [-c -d data center | -r]
+    cfgve [-t sd] [-m manager] [-o object] [-c | -g | -s | -a | -b | -r -f]
+      -t: sd - 'Storage Domain', nw - 'Network', tpl -'Template'
+      -m: FQDN (Fully Qualified Domain Name) of the rhev manager
+      -o: Target object to configure",
+ "cfghost" =>
+"Usage:
+    cfghost noderange [-a | -n | -p | -e | -d | -r -f]",
 );
 my $vers = xCAT::Utils->Version();
 my %version = (

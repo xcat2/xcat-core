@@ -22,6 +22,7 @@
     # domain, for user/group management
 #TODO: handle the functions base on the version
 #TODO: handle the datacenter and cluster management
+#TODO: add the support of iscsi storage domain
 
 
 
@@ -50,6 +51,7 @@ use XML::LibXML;
 
 use xCAT::Table;
 use xCAT::MsgUtils;
+use xCAT::Usage;
 
 sub handled_commands{
     return {
@@ -101,8 +103,16 @@ sub preprocess_request {
 
     if ($extraargs) {
         @ARGV=@{$extraargs};
-        GetOptions("V" => \$verbose); 
+        my $help;
+        GetOptions("V" => \$verbose, 'h|help' => \$help); 
         $global_callback = $callback;
+        if ($help) {
+            my $usage_string = xCAT::Usage->getUsage($command);
+            my $rsp;
+            push @{$rsp->{data}}, $usage_string;
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+            return ();
+        }
     }
 
     # Read the user password for the rhevm
@@ -986,14 +996,8 @@ sub displaysrc {
                     }
                 }
 
-                if ($value =~ /^|.*|$/) {
-                    unless (grep /|$curval|/, $value) {
-                        next;
-                    }
-                } else {
-                    unless ($curval eq $value) {
-                        next;
-                    }
+                unless ($curval eq $value) {
+                    next;
                 }
             }
             
@@ -1089,6 +1093,10 @@ sub lsve {
                 ($rc, $id, $stat, $response) = search_src($ref_rhevm, "networks");
                 unless ($rc) {
                     displaysrc($callback, $ref_rhevm, $response, "networks", "    ", "dc=$dcid");
+                }
+                ($rc, $id, $stat, $response) = search_src($ref_rhevm, "templates", "datacenter%3D$obj");
+                unless ($rc) {
+                    displaysrc($callback, $ref_rhevm, $response, "templates", "    ");
                 }
             }
         } elsif ($type eq "cl") {
@@ -1319,14 +1327,16 @@ sub cfghost {
     my $nodes = shift;
     my $args = shift;
 
-    my ($approve, $network, $power, $activate, $deactivate);
+    my ($approve, $network, $power, $activate, $deactivate, $remove, $force);
     if ($args) {
         @ARGV=@{$args};
         GetOptions('a' => \$approve,
                         'n' => \$network,
                         'p' => \$power,
                         'e' => \$activate,
-                        'd' => \$deactivate);
+                        'd' => \$deactivate,
+                        'r' => \$remove,
+                        'f' => \$force);
     }
 
     # Set the default user:pw for ipmi
@@ -1532,6 +1542,20 @@ sub cfghost {
                             xCAT::MsgUtils->message("E", $rsp, $callback);
                         }
                     } # end of power management configure
+
+                    if ($remove) {
+                        if ($force) {
+                            # deactivate the host anyway
+                            activate($callback, $ref_rhevm,"/api/hosts/$hostid", $rhevh, 1);
+                            if (waitforcomplete($ref_rhevm, "/api/hosts/$hostid", "/host/status/state=maintenance", 30)) {
+                                my $rsp;
+                                push @{$rsp->{data}}, "$rhevh: failed to waiting the host gets to \"maintenance\" state.";
+                                xCAT::MsgUtils->message("E", $rsp, $callback);
+                                next;
+                            }
+                        }
+                        generalaction($callback, $ref_rhevm, "/api/hosts/$hostid", "DELETE", 1);
+                    }
                 }
             } # end of for each host
         }
