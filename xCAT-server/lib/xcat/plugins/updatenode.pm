@@ -24,7 +24,7 @@ use File::Basename;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use Socket;
-use strict;
+#use strict;
 my $CALLBACK;
 my $RERUNPS4SECURITY;
 1;
