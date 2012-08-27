@@ -678,8 +678,9 @@ sub writechildren2 {
         $cecstart = $$cechash{'secondary-start'};
         $cecend = $$cechash{'secondary-end'};
         for (my $ii = $framestart; $ii <= $frameend; $ii++) {
-            for (my $jj = $cecstart; $jj <= $cecend; $jj++) {
-                $ii = int($ii);
+            $ii = int($ii);
+            my $totalcecs = $NUMCECSINFRAME{$ii};
+            for (my $jj = $cecstart; $jj < ($totalcecs+$cecstart); $jj++) {
                 $jj = int($jj);
                 $myip = $vlan1 . '.' . $ii . '.' . $jj . '.1';
                 $sidehash{$myip}->{side} = 'A-0';
