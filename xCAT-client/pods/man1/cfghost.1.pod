@@ -1,0 +1,167 @@
+=head1 NAME
+
+B<cfghost> - Configure the RHEV hosts for a virtual environment.
+
+=head1 SYNOPSIS
+
+B<cfghost> I<noderange> [B<-a>]
+
+B<cfghost> I<noderange> [B<-n>]
+
+B<cfghost> I<noderange> [B<-p>]
+
+B<cfghost> I<noderange> [B<-e>]
+
+B<cfghost> I<noderange> [B<-d>]
+
+B<cfghost> I<noderange> [B<-r> B<-f>]
+
+=head1 DESCRIPTION
+
+The B<cfghost> command can be used to configure the RHEV-h host.
+
+The rhev-h host will register to the rhev-m automatically, but admin needs to 
+approve the host can be added to the 'cluster' with B<-a> flag .
+
+After registering, the network interfaces of host need to be added to the 'network' of 
+RHEV. And the power management for the host should be configured so that
+rhev-m could make proper decision when certain host encountered error.
+
+For each host, an entry should be added to the hypervisor table:
+
+The columns of hypervisor table:
+
+=over 2
+
+B<hypervisor.node> - rhev-h host name.
+
+B<hypervisor.type> - Must be set to 'rhevh'.
+
+B<hypervisor.mgr> - The rhev manager (The FQDN of rhev-m server) for the host.
+
+B<hypervisor.interface> - The configuration for the nics. Refer to B<-n>.
+
+B<hypervisor.cluster> - The cluster that the host will be added to. The 
+default is 'Default' cluster if not specified. 
+
+=back
+
+=head1 OPTIONS
+
+=over 2
+
+=item B<-a>
+Approve the host that to be added to cluster.
+
+Before approve, the status of the host must be 'pending_approval'.
+
+=item B<-n>
+Configure the network interfaces for the host.
+
+Note: This operation only can be run when host is in 'maintenance mode'. 
+Use B<-d> to switch the host to 'maintenance' mode.
+
+The interfaces which configured in hypervisor.interface will be added
+to the network of RHEV.
+
+The format of hypervisor.interface is multiple [network:interfacename:
+protocol:IP:netmask:gateway] sections separated with '|'. For example: 
+[rhevm2:eth0:static:10.1.0.236:255.255.255.0:0.0.0.0].
+
+=over 2
+
+B<network> - The logic network which has been created by 'cfgve -t nw' 
+or the default management network 'rhevm'.
+
+B<interfacename> - Physical network name: 'eth0','eth1'...
+
+B<protocol> - To identify which boot protocol to use for the interface: dhcp 
+or static.
+
+B<IP> - The IP address for the interface.
+
+B<netmask> - The network mask for the interface.
+
+B<gateway> - The gateay for the interface. This field only can be set when 
+the interface is added to 'rhevm' network. 
+
+=back
+
+=item B<-p>
+Configure the power management for the host.
+
+The power management must be configured for the rhev-h host to make the 
+rhev-m to monitor the power status of the host, so that when certain host 
+failed to function, rhev-m will fail over certain role like SPM to other active host.
+
+For rack mounted server, the bmc IP and user:password need to be set for the 
+power management (These parameters are gotten from ipmi table). rhev-m uses the 
+ipmi protocol to get the power status of the host. 
+
+=item B<-e>
+To activate the host.
+
+=item B<-d>
+To deactivate the host to maintenance mode.
+
+=item B<-r>
+To remove hosts from the rhev-m.
+
+The host should be deactivate to maintenance mode before the removing.
+
+=item B<-f>
+It can be used with B<-r> to remove the target object by force.
+
+For removing of host, if B<-f> is specified, the host will be deactivated to maintenance before the removing.
+
+=item B<-h>
+Display usage message.
+
+=back
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occurred.
+
+=head1 EXAMPLES
+
+=over 2
+
+=item 1.
+To approve the host 'host1', enter:
+
+ cfghost host1 -a
+
+=item 2.
+To configure the network interface for the host 'host1', enter:
+
+ cfghost host1 -n
+
+=item 3.
+To configure the power management for the host 'host1', enter:
+
+ cfghost host1 -p
+
+=item 4.
+To activate the host 'host1', enter:
+
+ cfghost host1 -e
+
+=item 5.
+To deactivate the host 'host1', enter:
+
+ cfghost host1 -d
+
+=item 6.
+To remove the host 'host1', enter:
+
+ cfghost host1 -r -f
+ 
+=back
+
+=head1 FILES
+
+/opt/xcat/bin/cfghost
+

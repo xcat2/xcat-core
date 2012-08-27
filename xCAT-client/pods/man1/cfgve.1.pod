@@ -1,0 +1,174 @@
+=head1 NAME
+
+B<cfgve> - Configure the elements for a virtual environment.
+
+=head1 SYNOPSIS
+
+B<cfgve> [B<-t> sd] [B<-m> manager] [B<-o> object] [B<-c> | B<-g> | B<-s> 
+| B<-a> | B<-b> | B<-r> B<-f>]
+
+B<cfgve> [B<-t> nw] [B<-m> manager] [B<-o> object] [B<-c> B<-d> data center 
+| B<-r>]
+
+B<cfgve> [B<-t> tpl] [B<-m> manager] [B<-o> object] [B<-r>]
+
+
+=head1 DESCRIPTION
+
+The B<cfgve> command can be used to configure a virtual environment for 
+'Storage Domain', 'Network' and 'Template' objects.
+
+The mandatory parameter B<-m manager> is used to specify the address of the 
+manager of virtual environment. xCAT needs it to access the RHEV manager.
+
+The mandatory parameter B<-t type> is used to specify the type of the target 
+object.
+
+Basically, B<cfgve> command supports three types of object: B<sd>, B<nw> 
+and B<tpl>. 
+
+=over 3
+
+B<sd>  - The B<create>, B<attach>, B<detach>, B<activate>, 
+B<deactivate> and B<remove> operations are supported.
+
+B<nw>  - The B<create> and B<remove> operations are supported.
+
+B<tpl> - The B<remove> operation is supported.
+
+=back
+
+The mandatory parameter B<-o object> is used to specify which object to configure.
+
+
+=head1 OPTIONS
+
+=over 2
+
+=item B<-t>
+Specify the B<type> of the target object.
+
+Supported types:
+ B<sd>  - Storage Domain
+ B<nw>  - Network
+ B<tpl> - Template
+
+=item B<-m>
+Specify the manager of the virtual environment. 
+
+For RHEV, the FQDN (Fully Qualified Domain Name) of the rhev manager have 
+to be specified.
+
+=item B<-o>
+The name of the target object.
+
+=item B<-d>
+The name of data center.
+
+Specify the 'Data Center' that will be used for the object to be attached to. 
+It is used by <nw> type.
+
+=item B<-c>
+To create the target object.
+
+For creating of B<Storage Domain>, the target storage domain will be created 
+first, then attached to data center and activated.
+
+The parameters that used to create the storage domain are gotten 
+from 'virtsd' table. The detail parameters in the virtsd table:
+
+=over 3
+
+B<virtsd.node> - The name of the storage domain.
+
+B<virtsd.sdtype> - The type of storage domain. Valid value: data, iso, export. 
+Default value is 'data'.
+
+B<virtsd.stype> - The storage type. Currently only 'nfs' is supported.
+
+B<virtsd.location> - The location of the storage. Format: [nfsserver:nfspath]. 
+The NFS export directory must be configured for read write access and must 
+be owned by vdsm:kvm.
+
+B<virtsd.host> - A host must be specified for a storage doamin as SPM 
+(Storage Pool Manager) when initialize the storage domain. The role of SPM 
+may be migrated to other host by rhev-m during the running of the datacenter 
+(For example, when the current SPM encountered issue or going to maintenance 
+status.
+  
+B<virtsd.datacenter> - The storage will be attached to. 'Default' data center 
+is the default value. 
+
+=back
+
+=item B<-g>
+To activate the target object.
+
+=item B<-s>
+To deactivate the target object.
+
+=item B<-a>
+To attach the target object.
+
+=item B<-b>
+To detach the target object.
+
+=item B<-r>
+To remove the target object.
+
+For removing of B<Storage Domain>, the storage space will be formatted after removing.
+
+=item B<-f>
+It can be used with B<-r> to remove the target object by force.
+
+For removing of B<Storage Domain>, if B<-f> is specified, the storage domain will be deactivated and detached from data center before the removing.
+
+=item B<-h>
+Display usage message.
+
+=back
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occurred.
+
+=head1 EXAMPLES
+
+=over 2
+
+=item 1.
+To create the Storage Domain 'sd1', enter:
+
+ cfgve -t sd -m <FQDN of rhev manager> -o sd1 -c
+
+=item 2.
+To deactivate the Storage Domain 'sd1' from data center, enter:
+
+ cfgve -t sd -m <FQDN of rhev manager> -o sd1 -s
+
+=item 3.
+To remove the Storage Domain 'sd1', enter:
+
+ cfgve -t sd -m <FQDN of rhev manager> -o sd1 -r
+
+=item 4.
+To create the network 'nw1', enter:
+
+ cfgve -t nw -m <FQDN of rhev manager> -o nw1 -c
+
+=item 5.
+To remove the template 'tpl01', enter:
+
+ cfgve -t tpl -m <FQDN of rhev manager> -o tpl01 -r
+
+=back
+
+=head1 FILES
+
+/opt/xcat/bin/cfgve
+
+=head1 SEE ALSO
+
+L<lsve(1)|lsve.1>
