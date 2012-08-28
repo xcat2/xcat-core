@@ -54,6 +54,13 @@ sub handled_commands
             nr         => "tabutils",     # not implemented yet
             rnoderange => "tabutils",     # not implemented yet
             tabgrep    => "tabutils",
+            getAllEntries    => "tabutils",
+            getNodesAttribs  => "tabutils",
+            setNodesAttribs1  => "tabutils",
+            delEntries       => "tabutils",
+            getAttribs       => "tabutils",
+            setAttribs       => "tabutils",
+            NodeRange       => "tabutils",
             gennr    => "tabutils"
             };
 }
@@ -139,6 +146,34 @@ sub process_request
     }
     elsif ($command eq "tabch"){
         return tabch($request, $callback);
+    }
+    elsif ($command eq "getAllEntries")
+    {
+        return getAllEntries($request,$callback);
+    }
+    elsif ($command eq "getNodesAttribs")
+    {
+        return getNodesAttribs($request,$callback);
+    }
+    elsif ($command eq "setNodesAttribs1")
+    {
+        return setNodesAttribs1($request,$callback);
+    }
+    elsif ($command eq "delEntries")
+    {
+        return delEntries($request,$callback);
+    }
+    elsif ($command eq "getAttribs")
+    {
+        return getAttribs($request,$callback);
+    }
+    elsif ($command eq "setAttribs")
+    {
+        return setAttribs($request,$callback);
+    }
+    elsif ($command eq "NodeRange")
+    {
+        return NodeRange($request,$callback);
     }
     else
     {
@@ -269,8 +304,8 @@ sub noderm
         $requestcommand->({command=>['makedhcp'],node=>$nodes,arg=>['-d']});
     }
 
-    
 
+    
     # Build the argument list for using the -d option of nodech to do our work for us
     my @tablist = ("-d");
     foreach (keys %{xCAT::Schema::tabspec})
@@ -2200,4 +2235,371 @@ else {
     $tables{$_}->commit;
   }
  }
+}
+
+
+#
+# getAllEntries
+#
+# Read all the rows from the input table name and returns the response, so 
+# that the XML will look like this
+#<xcatrequest>
+#<clienttype>PCM</clienttype>
+#<command>getAllEntries</command>
+#<table>nodelist</table>
+#</xcatrequest>
+
+
+#<xcatresponse>
+#<row>
+#<attr1>value1</attr1>
+#.
+#.
+#.
+#<attrN>valueN</attrN>
+#</row>
+#.
+#.
+#.
+#</xcatresponse>
+#  
+#
+sub getAllEntries
+{
+    my $request      = shift;
+    my $cb = shift;
+    my $command  = $request->{command}->[0];
+    my $tablename    = $request->{table}->[0];
+    my $tab=xCAT::Table->new($tablename);
+    my %rsp;
+    my $recs        =   $tab->getAllEntries("all");
+    unless (@$recs)        # table exists, but is empty.  Show header.
+    {
+	  if (defined($xCAT::Schema::tabspec{$tablename}))
+  	  {
+         my $header = "#";
+	      my @array =@{$xCAT::Schema::tabspec{$tablename}->{cols}};
+         foreach my $arow (@array) {
+           $header .= $arow;
+           $header .= ",";
+         }
+         chop $header;
+         push @{$rsp{row}}, $header;
+	      $cb->(\%rsp);
+	      return;
+	  }
+	}
+    my %noderecs;
+      foreach my $rec (@$recs) { 
+        my %datseg=();
+        foreach my $key (keys %$rec) {
+         #$datseg{$key} = [$rec->{$key}];
+         $datseg{$key} = $rec->{$key};
+        }
+        push @{$noderecs{"row"}}, \%datseg;
+      }
+      push @{$rsp{"row"}}, @{$noderecs{"row"}};
+# for checkin XML created
+#my  $xmlrec=XMLout(\%rsp,RootName=>'xcatresponse',NoAttr=>1,KeyAttr=>[]);
+       $cb->(\%rsp);
+
+        return;
+}
+# getNodesAttribs 
+# Read all the array of  attributes for the noderange  from the input table. 
+# If the <attr>ALL</attr> is input then read all the attributes
+#<xcatrequest>
+#<clienttype>PCM</clienttype>
+#<command>getNodesAttribs</command>
+#<table>nodelist</table>
+#<noderange>blade01-blade02</noderange>
+#<attr>groups</attr>
+#<attr>status</attr>
+#</xcatrequest>
+#
+#<xcatresponse>
+#<node>
+#<name>nodename</name>
+#<attr1>value1</attr1>
+#.
+#.
+#.
+#<attrN>valueN</attrN>
+#</node>
+#.
+#.
+#.
+#</xcatresponse>
+#  
+#
+sub getNodesAttribs 
+{
+    my $request      = shift;
+    my $cb = shift;
+    my $node    = $request->{node};
+    my $command  = $request->{command}->[0];
+    my $tablename    = $request->{table}->[0];
+    my $attr    = $request->{attr};
+    my $tab=xCAT::Table->new($tablename);
+    my @nodes = @$node;
+    my @attrs= @$attr;
+    my %rsp;
+    my %noderecs;
+    if (grep (/ALL/,@attrs)) { # read the  schema and build array of all attrs
+        @attrs=();
+        my $schema = xCAT::Table->getTableSchema($tablename);
+        my $desc = $schema->{descriptions};
+        foreach my $c (@{$schema->{cols}}) {
+           # my $space = (length($c)<7 ? "\t\t" : "\t");
+            push @attrs, $c;
+        }
+    }
+    my $rechash        =   $tab->getNodesAttribs(\@nodes,\@attrs);
+    foreach my $node (@nodes){
+       my %datseg=();
+       $datseg{name} = [$node];
+       my $recs = $rechash->{$node};
+       foreach my $rec (@$recs) { 
+         foreach my $key (keys %$rec) {
+            $datseg{$key} = [$rec->{$key}];
+         }
+         push @{$noderecs{$node}}, \%datseg;
+       }
+       push @{$rsp{"node"}}, @{$noderecs{$node}};
+
+    }
+# for checkin XML created
+#my  $xmlrec=XMLout(\%rsp,RootName=>'xcatresponse',NoAttr=>1,KeyAttr=>[]);
+       $cb->(\%rsp);
+        return;
+}
+
+#
+# setNodesAttribs1 - setNodesAttribs format 1
+# Sets Nodes attributes for noderange for each of the tables supplied      
+# Example of XML in for this routine
+#<xcatrequest>
+#<clienttype>PCM</clienttype>
+#<command>setNodesAttribs1</command>
+#<noderange>blade01-blade02</noderange>
+#<arg>
+#   <table>
+#      <name>nodelist</name>
+#      <attr>
+#         <groups>test</groups>
+#         <comments> This is a another testx</comments>
+#      </attr>
+#   </table>
+#   <table>
+#      <name>nodetype</name>
+#      <attr>
+#         <os>Redhat2</os>
+#         <comments> This is a another testy</comments>
+#      </attr>
+#   </table>
+#</arg>
+#</xcatrequest>
+#    
+sub setNodesAttribs1 
+{
+    my $request      = shift;
+    my $cb = shift;
+    my $node    = $request->{node};   # added by Client.pm
+    my $noderange    = $request->{noderange};
+    my $command  = $request->{command}->[0];
+    my %rsp;
+    my $args = $request->{arg};
+    my $tables= $args->[0]->{table};
+    # take input an build a request for the nodech function
+    my $newrequest;
+    $newrequest->{noderange} = $request->{noderange};
+    $newrequest->{command}->[0] = "nodech";
+    foreach my $table (@$tables) {
+      my $tablename    = $table->{name}->[0];
+      my $tab=xCAT::Table->new($tablename);
+      my %keyhash;
+      my $attrs = $table->{attr}; 
+      foreach my $attrhash (@$attrs) {
+        foreach my $key (keys %$attrhash) {
+          my $tblattr = $tablename;
+          $tblattr .= ".$key=";
+          $tblattr .= $table->{attr}->[0]->{$key}->[0];
+          push (@{$newrequest->{arg}}, $tblattr);
+        }
+      }
+    }
+    if (@$node) {
+      &nodech(\@$node,$newrequest->{arg},$cb,0);
+    } else {
+     my $rsp = {errorcode=>1,error=>"No nodes in noderange"};
+     $cb->(\%rsp);
+    }
+        return;
+}
+#
+# delEntries 
+# Deletes the table entry based on the input attributes      
+# The attributes and AND'd to together to form the delete request
+# DELETE FROM nodelist WHERE ("groups" = "compute1,test" AND "status" = "down")
+# Example of XML in for this routine
+#    
+#<xcatrequest>
+#<clienttype>PCM</clienttype>
+#<command>delEntries</command>
+#<table>
+#      <name>nodelist</name>
+#      <attr>
+#         <groups>compute1,test</groups>
+#         <status>down</status>
+#      </attr>
+#</table>
+#  .
+#  .
+#<table>
+#  .
+#  .
+#  .
+#</table>
+#</xcatrequest>
+# 
+# To delete all entries in a table, you input no attributes
+#<xcatrequest>
+#<clienttype>PCM</clienttype>
+#<command>delEntries</command>
+#<table>
+#      <name>nodelist</name>
+#</table>
+#</xcatrequest>
+
+
+sub delEntries 
+{
+    my $request      = shift;
+    my $cb = shift;
+    my $command  = $request->{command}->[0];
+    my %rsp;
+    my $tables= $request->{table};
+    foreach my $table (@$tables) {
+      my $tablename    = $table->{name}->[0];
+      my $tab=xCAT::Table->new($tablename);
+      my %keyhash;
+      my $attrs = $table->{attr}; 
+      foreach my $attrhash (@$attrs) {
+        foreach my $key (keys %$attrhash) {
+          $keyhash{$key} = $attrhash->{$key}->[0];
+        }
+      }
+      if (%keyhash) {     # delete based on requested attributes
+         $tab->delEntries(\%keyhash);    #Yes, delete *all* entries
+      } else {            # delete all entries
+         $tab->delEntries();    #delete *all* entries
+      }
+      $tab->commit;         #  commit
+    }
+    return;
+}
+# getAttribs 
+# Read all the array of  attributes for the key  from the input table. 
+#<xcatrequest>
+#<clienttype>PCM</clienttype>
+#<command>getAttribs</command>
+#<table>site</table>
+#<keys>
+#  <key>domain</key>
+#</keys>
+#<attr>value</attr>
+#<attr>comments</attr>
+#</xcatrequest>
+#
+#
+#<xcatresponse>
+#<value>{domain value}</value>
+#<comments>This is a comment</comments>
+#</xcatresponse>
+sub getAttribs 
+{
+    my $request      = shift;
+    my $cb = shift;
+    my $command  = $request->{command}->[0];
+    my $tablename = $request->{table}->[0];
+    my $attr   = $request->{attr};
+    my @attrs= @$attr;
+    my $tab=xCAT::Table->new($tablename);
+    my %rsp;
+    my %keyhash;
+    foreach my $k (keys %{$request->{keys}->[0]}) {
+      $keyhash{$k} = $request->{keys}->[0]->{$k}->[0];
+    }
+    my $recs  =   $tab->getAttribs(\%keyhash,\@attrs);
+    
+    if ($recs) {
+      my %attrhash=%$recs;
+      foreach my $k (keys %attrhash) {
+          
+       push @{$rsp{$k}}, $recs->{$k};
+      }
+    }
+       $cb->(\%rsp);
+        return;
+}
+# setAttribs 
+# Set the  attributes for the key(s) input in the table. 
+#<xcatrequest>
+#<clienttype>PCM</clienttype>
+#<command>setAttribs</command>
+#<table>site</table>
+#<keys>
+#  <key>domain</key>
+#</keys>
+#<attr>
+#  <value>cluster.net</value>
+#  <comments>This is a comment</comments>
+#</xcatrequest>
+#
+sub setAttribs 
+{
+    my $request      = shift;
+    my $cb = shift;
+    my $command  = $request->{command}->[0];
+    my $tablename = $request->{table}->[0];
+    my $tab=xCAT::Table->new($tablename);
+    my %rsp;
+    my %keyhash;
+    my %attrhash;
+    foreach my $k (keys %{$request->{keys}->[0]}) {
+      $keyhash{$k} = $request->{keys}->[0]->{$k}->[0];
+    }
+    foreach my $a (keys %{$request->{attr}->[0]}) {
+      $attrhash{$a} = $request->{attr}->[0]->{$a}->[0];
+    }
+    $tab->setAttribs(\%keyhash,\%attrhash);
+        return;
+}
+# noderange 
+# Expands the input noderange into a list of nodes. 
+#<xcatrequest>
+#<clienttype>PCM</clienttype>
+#<command>noderange</command>
+#<noderange>compute1-compute2</noderange>
+#</xcatrequest>
+#<xcatresponse>
+#<node>nodename1</node>
+# .
+# .
+#<node>nodenamern1</node>
+#</xcatresponse>
+sub NodeRange  
+{
+    my $request      = shift;
+    my $cb = shift;
+    my $command  = $request->{command}->[0];
+    my %rsp;
+    my $node=$request->{node}; 
+    my @nodes = @$node;
+    foreach my $node (@nodes){
+      push @{$rsp{"node"}}, $node;
+
+    }
+    $cb->(\%rsp);
+    return;
 }
