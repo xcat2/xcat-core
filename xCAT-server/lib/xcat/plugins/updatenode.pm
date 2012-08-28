@@ -740,6 +740,17 @@ sub updatenode
          xCAT::MsgUtils->message("E", $rsp, $callback);
 
        }
+
+       $cmd="cd $postscripts;tar -czf $postscripts.tgz ."; #print "cmd:$cmd\n";
+       xCAT::Utils->runcmd($cmd, 0);
+       $rsp = {};
+       if ($::RUNCMD_RC != 0)
+       {
+           $rsp->{data}->[0] = "$cmd failed.\n";
+           xCAT::MsgUtils->message("E", $rsp, $callback);  
+       }            
+
+
     }
 
 
@@ -1283,6 +1294,19 @@ $AIXnodes_nd, $subreq  ) != 0 ) {
 			waitpid( $_, 0 );
 		}
 	}
+
+    if (-e "$postscripts.tgz") {
+
+       $cmd="rm $postscripts.tgz"; print "cmd:$cmd\n";
+       xCAT::Utils->runcmd($cmd, 0);
+       $rsp = {};
+       if ($::RUNCMD_RC != 0)
+       {
+           $rsp->{data}->[0] = "$cmd failed.\n";
+           xCAT::MsgUtils->message("E", $rsp, $callback);  
+       }            
+
+    }
 
     return 0;
 }
