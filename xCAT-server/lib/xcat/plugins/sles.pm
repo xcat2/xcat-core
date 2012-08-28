@@ -991,7 +991,7 @@ sub mkinstall
             elsif ($arch =~ /ppc/)
             {
                 if ($profile) {
-                    $kernelpath = "xcat/$os/$arch/profile/inst64";
+                    $kernelpath = "xcat/$os/$arch/$profile/inst64";
                 } else {
                     $kernelpath = "xcat/$os/$arch/inst64";
                 }
