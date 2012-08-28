@@ -2359,10 +2359,10 @@ sub getNodesAttribs
     }
     my $rechash        =   $tab->getNodesAttribs(\@nodes,\@attrs);
     foreach my $node (@nodes){
-       my %datseg=();
-       $datseg{name} = [$node];
        my $recs = $rechash->{$node};
        foreach my $rec (@$recs) { 
+         my %datseg=();
+         $datseg{name} = [$node];
          foreach my $key (keys %$rec) {
             $datseg{$key} = [$rec->{$key}];
          }
