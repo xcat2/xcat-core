@@ -118,18 +118,22 @@ sub submit_request {
   unless ($certfile) { $certfile = $homedir."/.xcat/client-cred.pem"; }
   unless ($cafile) { $cafile  = $homedir."/.xcat/ca.pem"; }
   $xCAT::Client::EXITCODE = 0;    # clear out exit code before invoking the plugin
-$request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
+if (ref($request) eq 'HASH') { # the request is an array, not pure XML
+   $request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
+}
 # If XCATBYPASS is set, invoke the plugin process_request method directly
 # without going through the socket connection to the xcatd daemon
   if ($ENV{XCATBYPASS}) {
      #add current userid to the request
-     if (!(defined($request->{username}))) {
-       $request->{username}->[0] = getpwuid($>);
-     }
-     # only allow root to run
-     unless ($request->{username}->[0] =~ /root/) {
-       print ("WARNING: Only allow root to run XCATBYPASS mode, your current user ID is $request->{username}->[0].\n");
-       return 0;
+     if (ref($request) eq 'HASH') { # the request is an array, not pure XML
+       if (!(defined($request->{username}))) {
+         $request->{username}->[0] = getpwuid($>);
+       }
+       # only allow root to run
+       unless ($request->{username}->[0] =~ /root/) {
+         print ("WARNING: Only allow root to run XCATBYPASS mode, your current user ID is $request->{username}->[0].\n");
+         return 0;
+       }
      }
    # Load plugins from either specified or default dir
     require xCAT::Table;
@@ -211,7 +215,12 @@ $request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
      }
   }
 
-  my $msg=XMLout($request,RootName=>'xcatrequest',NoAttr=>1,KeyAttr=>[]);
+  my $msg;
+  if (ref($request) eq 'HASH') { # the request is an array, not pure XML
+    $msg=XMLout($request,RootName=>'xcatrequest',NoAttr=>1,KeyAttr=>[]);
+  } else { #XML
+    $msg=$request;
+  }
   if ($ENV{XCATXMLTRACE}) { print $msg; }
   if($ENV{XCATXMLWARNING}) {
     validateXML($msg);
@@ -374,6 +383,12 @@ sub plugin_command {
   require xCAT::Table;
 
   $Main::resps={};
+  my $xmlreq;
+  if (ref($req) ne 'HASH') { # the request XML, get an array
+    $xmlreq=$req;   # save the original XML
+    $req = XMLin($xmlreq,SuppressEmpty=>undef,ForceArray=>1) ;
+
+  }
   my @nodes;
   if ($req->{node}) {
     @nodes = @{$req->{node}};
@@ -964,6 +979,11 @@ sub build_response {
 ##########################################
 sub handle_response {
   my $rsp = shift;
+   if ($ENV{'XCATSHOWXML'}) {
+    my  $xmlrec=XMLout($rsp,RootName=>'xcatresponse',NoAttr=>1,KeyAttr=>[]);
+    print "$xmlrec\n";
+   return;
+  }
 #print "in handle_response\n";
   # Handle errors
   if ($rsp->{errorcode}) {
