@@ -2889,7 +2889,9 @@ sub getAllAttribsWhere
 
     Arguments:
                  Table handle
-				 Attribute list
+	         Attribute list
+                 optional hash return style
+                 ( changes the return hash structure format) 
     Returns:
                  Array of attribute values
     Globals:
@@ -2897,7 +2899,8 @@ sub getAllAttribsWhere
     Error:
 
     Example:
-         my @entries = $self->{switchtab}->getAllNodeAttribs(['port','switch']);
+       my @entries = $self->{switchtab}->getAllNodeAttribs(['port','switch']);
+       my @entries = $self->{switchtab}->getAllNodeAttribs(['port','switch'],1);
     Comments:
         none
 
