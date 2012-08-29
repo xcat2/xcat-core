@@ -871,7 +871,8 @@ sub process_request
 	my %SRloc;
 	foreach my $n (@nodes) {
 		my $osimage = $nhash{$n}{'provmethod'};
-		my ($sn, $junk) = split(/,/, $nhash{$n}{'servicenode'});
+		# get the new primary SN
+		my ($sn, $junk) = split(/,/, $sn_hash{$n}{'servicenode'});
 
 		# $sn is name of SN as known by management node
 
@@ -908,6 +909,12 @@ sub process_request
 			# get a list of files from the backup dir
 			my $rcmd = qq~/usr/bin/ls $bkloc 2>/dev/null~;
 
+			if ($::VERBOSE) {
+				my $rsp;
+				push @{$rsp->{data}}, "Running \'$rcmd\' on $s\n";
+				xCAT::MsgUtils->message("I", $rsp, $callback);
+			}
+
 			my $rlist = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $s, $rcmd, 0);
 
 			if ($::RUNCMD_RC != 0)
@@ -941,8 +948,13 @@ sub process_request
 					}
 				}
 				my $ccmd=qq~/usr/bin/cp -p -r $filestring $cdloc 2>/dev/null~;
+				if ($::VERBOSE) {
+					my $rsp;
+					push @{$rsp->{data}}, "Copying files from $bkloc to $cdloc on $s.\n";
+					xCAT::MsgUtils->message("I", $rsp, $callback);
+				}
 
-				my $output = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $s, $rcmd, 0);
+				my $output = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $s, $ccmd, 0);
 				if ($::RUNCMD_RC != 0)
 				{
 					my $rsp;
