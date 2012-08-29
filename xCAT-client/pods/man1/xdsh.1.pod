@@ -99,6 +99,10 @@ DSH_PATH=$PATH
 The  B<-E> flag exports a local environment definition file to each remote
 target. Environment variables specified in this file are defined in the
 remote shell environment before the I<command_list> is executed.
+The definition file should contain entries like the following
+ and be executable.  One environment variable per line.
+  export NEWENVVARIABLE="yes"
+  export ANOTHERENVVARIABLE="yes"
 
 B<COMMAND> B<EXECUTION>:
 
