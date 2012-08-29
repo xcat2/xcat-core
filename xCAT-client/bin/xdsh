@@ -189,6 +189,10 @@ if ($ENV{'DSHEXECUTE'})
 {
     push(@{$cmdref->{env}}, "DSHEXECUTE=$ENV{'DSHEXECUTE'}");
 }
+if ($ENV{'DSH_ENVIRONMENT'})
+{
+    push(@{$cmdref->{env}}, "DSH_ENVIRONMENT=$ENV{'DSH_ENVIRONMENT'}");
+}
 
 xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
 exit $xCAT::Client::EXITCODE;
