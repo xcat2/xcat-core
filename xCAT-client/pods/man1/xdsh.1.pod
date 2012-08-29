@@ -196,9 +196,7 @@ command to use to copy the script file to node targets.
 
 Specifies that the  I<environment_file>  contains  environment
 variable definitions to export to the target before
-executing the  I<command_list>.  The  B<DSH_NODE_RCP>  and  environment
-variables  specify the remote copy command to use to export
-the file to node targets.
+executing the  I<command_list>. 
 
 =item B<--devicetype> I<type_of_device>
 
