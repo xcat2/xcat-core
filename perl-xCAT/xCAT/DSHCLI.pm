@@ -1118,6 +1118,9 @@ sub fork_fanout_dsh
         my $rsp = {};
         $rsp->{data}->[0] = "dsh>  Remote_command_started $user_target";
         $$options{'monitor'} && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        
+        #  execute and remove the /tmp file build which is a copy of the
+        # input -E file
 
         @process_info = xCAT::DSHCore->fork_output($user_target, @dsh_command);
         if ($process_info[0] == -2)
