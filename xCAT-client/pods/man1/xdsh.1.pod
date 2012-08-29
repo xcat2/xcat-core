@@ -98,6 +98,8 @@ DSH_PATH=$PATH
 The  B<-E> flag exports a local environment definition file to each remote
 target. Environment variables specified in this file are defined in the
 remote shell environment before the I<command_list> is executed.
+This is not supported when running xdsh to nodes that are serviced
+by Service Nodes (hierarchy).
 
 B<COMMAND> B<EXECUTION>:
 
@@ -382,6 +384,8 @@ Specify a user-defined device type.  See B<--devicetype> flag.
 Specifies a file that contains environment variable
 definitions to export to the target before executing  the  remote
 command. This variable is overridden by the B<-E> flag.
+This is not supported when running xdsh to nodes that are serviced
+by Service Nodes (hierarchy).
 
 =item B<DSH_FANOUT>
 
