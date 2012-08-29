@@ -990,6 +990,8 @@ sub fork_fanout_dsh
 
             $rsh_config{'command'} = "$$options{'pre-command'}";
             my $tmp_env_file;
+            # for the -E flag here we build and copy the -E env variable
+            # file to the nodes
             if ($$options{'environment'})
             {
                 
@@ -1030,7 +1032,7 @@ sub fork_fanout_dsh
                 $rsp->{data}->[0] =
                   "TRACE:Environment: Exporting File.@env_rcp_command ";
                 $dsh_trace && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
-
+                # copy the Env Variable input file to the nodes
                 my @env_rcp_process =
                   xCAT::DSHCore->fork_no_output($user_target, @env_rcp_command);
                 waitpid($env_rcp_process[0], undef);
