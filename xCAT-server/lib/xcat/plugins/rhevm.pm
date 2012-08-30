@@ -49,6 +49,10 @@ use HTTP::Headers;
 use HTTP::Request;
 use XML::LibXML;
 
+use xCAT::Utils;
+use xCAT::TableUtils;
+use xCAT::ServiceNodeUtils;
+
 use xCAT::Table;
 use xCAT::MsgUtils;
 use xCAT::Usage;
@@ -235,7 +239,7 @@ sub preprocess_request {
     # The dispatch depends on the rhevm. Since the operation is in serial, so no need to use the service node.
     my @requests;
     my @rhevms=keys(%rhevm_hash);
-    my $sn = xCAT::Utils->get_ServiceNode(\@rhevms, 'xcat', "MN");
+    my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@rhevms, 'xcat', "MN");
     foreach my $snkey (keys %$sn){
         my $reqcopy = {%$request};
         $reqcopy->{'_xcatdest'} = $snkey;
@@ -415,7 +419,7 @@ sub copycd {
     }
 
     my $installroot = "/install";
-    my @entries =  xCAT::Utils->get_site_attribute("installdir");
+    my @entries =  xCAT::TableUtils->get_site_attribute("installdir");
     my $t_entry = $entries[0];
     if ( defined($t_entry) ) {
         $installroot = $t_entry;
@@ -499,7 +503,7 @@ sub mkinstall {
     my %doneimgs;
 
     my $installdir = "/install";
-    my @ents = xCAT::Utils->get_site_attribute("installdir");
+    my @ents = xCAT::TableUtils->get_site_attribute("installdir");
     my $site_ent = $ents[0];
     if( defined($site_ent) )
     {
@@ -507,7 +511,7 @@ sub mkinstall {
     }
 
     my $tftpdir = "/tftpboot";
-    @ents = xCAT::Utils->get_site_attribute("tftpdir");
+    @ents = xCAT::TableUtils->get_site_attribute("tftpdir");
     $site_ent = $ents[0];
     if( defined($site_ent) )
     {
@@ -754,7 +758,7 @@ sub addhost {
     my $callback = shift;
     my $rhevm_hash = shift;
 
-    my @domain = xCAT::Utils->get_site_attribute("domain");
+    my @domain = xCAT::TableUtils->get_site_attribute("domain");
     if (!$domain[0]) {
         my $rsp;
         push @{$rsp->{data}}, "The site.domain must be set to enable the rhev support.";
