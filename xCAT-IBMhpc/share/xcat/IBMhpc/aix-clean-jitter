@@ -1,4 +1,9 @@
-#!/bin/ksh
+#!/usr/bin/ksh
+
+#
+# example postscript intended to reduce OS jitter
+#
+
 trap "chmod 774 /etc/rc.tcpip" INT QUIT TERM EXIT
 
 #NB: WANT TO ADD THIS BACK IN AT SOME POINT - SYSTEM HANG DETECTION DEAMON
@@ -26,7 +31,6 @@ rmitab piobe > /dev/null 2>&1
 #qdaemon:23456789:wait:/usr/bin/startsrc -sqdaemon
 rmitab qdaemon > /dev/null 2>&1
 
-#do we really need wpar support now?
 rcwpars:2:once:/etc/rc.wpars > /dev/console 2>&1 # Corrals autostart
 rmitab rcwpars > /dev/null 2>&1
 
@@ -85,15 +89,19 @@ rmitab ctrmc > /dev/null 2>&1
 #dscrset:2:once:/usr/sbin/dscrctl -n -s 30 >/dev/null 2>/dev/console
 
 #to disable sendmail daemon, need to comment the line in /etc/rc.tcpip that begins: start /usr/lib/sendmail
-#As of 11/16/10 John L. re-enable sendmail as some subsystems want to use this for PERCS
-#Unless someone says we need it, it's back off - 4/18/11 John L.
-grep -q "^start /usr/lib/sendmail" /etc/rc.tcpip
-if [[ $? -eq 0 ]] then
-    cat /etc/rc.tcpip | sed 's/^start \/usr\/lib\/sendmail/#start \/usr\/lib\/sendmail/' > /tmp/rc.tcpip.tmpfile.$$
-    cp  -p /etc/rc.tcpip /etc/rc.tcpip.prev 
-    mv  /tmp/rc.tcpip.tmpfile.$$  /etc/rc.tcpip
+# Leave enabled on login nodes
+host `hostname` | grep -qE "l[0-9]+"
+if [[ $? -ne 0 ]]
+then
+
+    grep -q "^start /usr/lib/sendmail" /etc/rc.tcpip
+    if [[ $? -eq 0 ]] then
+	cat /etc/rc.tcpip | sed 's/^start \/usr\/lib\/sendmail/#start \/usr\/lib\/sendmail/' > /tmp/rc.tcpip.tmpfile.$$
+	cp  -p /etc/rc.tcpip /etc/rc.tcpip.prev 
+	mv  /tmp/rc.tcpip.tmpfile.$$  /etc/rc.tcpip
+    fi
+    stopsrc -s sendmail > /dev/null 2>&1
 fi
-stopsrc -s sendmail > /dev/null 2>&1
 
 
 #to disable aixmibd daemon, need to comment the line in /etc/rc.tcpip that begins: start /usr/sbin/aixmibd
@@ -123,20 +131,42 @@ if [[ $? -eq 0 ]] then
 fi
 stopsrc -s snmpmibd > /dev/null 2>&1
 
+#disable the prngd daemon (the random daemon is more efficient)
+stopsrc -s prngd
+
 chmod 774 /etc/rc.tcpip
 
-#try to clean up some cron junk - we only touch the crontab file once (and save a backup)
 if [[ ! -f /var/spool/cron/crontabs/root.before.clean_jitter ]] then
     cp -p /var/spool/cron/crontabs/root /var/spool/cron/crontabs/root.before.clean_jitter
-   
-    grep -v "bin\/pmcfg" /var/spool/cron/crontabs/root |  grep -v "bin\/stcron" | grep -v "bin\/dumpctr" | \
-        grep -v "ras\/dumpcheck" > /var/spool/cron/crontabs/root.after.clean_jitter
+
+    egrep -v "bin\/pmcfg|bin\/stcron|bin\/dumpctr|ras\/dumpcheck|bin\/errclear" /var/spool/cron/crontabs/root > /var/spool/cron/crontabs/root.after.clean_jitter
+
     cp /var/spool/cron/crontabs/root.after.clean_jitter /var/spool/cron/crontabs/root 
 fi
 
-for i in $(ps -efk | grep "topasrec" | grep -v killproc | grep -v grep | awk ' {print $2} ') ; do
-  kill $i
-done
+#for i in $(ps -efk | egrep "\/usr\/sbin\/cron|topasrec" | grep -v grep | awk ' { print $2} ') ; do
+#  kill $i
+#done
+#
+#nohup /usr/sbin/cron > /dev/null 2>&1 &
+
+CRON="/usr/sbin/cron"
+
+# Find PID for cron process - check for exact pattern match on process name and it's parent PID is 1
+CRON_PID=$(ps -ef | grep ${CRON} | grep -v grep | awk '{ if ($NF = "${CRON}" && $3 == "1") { print $2 }}')
+
+if [ -n "${CRON_PID}" ]
+then
+	echo "Killing ${CRON} (${CRON_PID}) to re-read config file(s)"
+	kill ${CRON_PID}
+fi
+
+# Allow time to respawn from inittab
+sleep 1
+
+# Print new cron PID
+CRON_PID=$(ps -ef | grep ${CRON} | grep -v grep | awk '{ if ($NF = "${CRON}" && $3 == "1") { print $2 }}')
+echo "New cron PID is ${CRON_PID}"
 
 ls -l /etc/rc.tcpip
 telinit q
@@ -150,6 +180,7 @@ if [[ $? -ne 0 ]] then
     echo '*  cosched1    18    100    97    10' >> /etc/poe.priority
     echo '*  cosched2    13    100    99.5  10' >> /etc/poe.priority 
     echo '*  cosched3    13    100    99     3' >> /etc/poe.priority
+    echo '*  cosched4    18    100    97     1' >> /etc/poe.priority
     chmod 644 /etc/poe.priority
 fi
 
