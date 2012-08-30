@@ -1297,12 +1297,31 @@ sub tablesHandler {
     }
     elsif (isPut() || isPatch()) {
         my $condition = $q->param('condition');
+        if (!defined $condition) {
+            foreach my $put (@{$queryhash{'putData'}}) {
+                my ($key, $value) = split(/=/, $put, 2);
+                if ($key eq 'condition' && $value) {
+                    $condition = $value;
+                }
+            }
+        }
+
         if (!defined $table || !defined $condition) {
             addPageContent("The table and condition must be specified when adding, changing or deleting an entry");
             sendResponseMsg($STATUS_BAD_REQUEST);
         }
         $request->{command} = 'tabch';
-        if (defined $q->param('delete')) {
+        my $del;
+        if (!defined $q->param('delete')) {
+            foreach my $put (@{$queryhash{'putData'}}) {
+                my ($key, $value) = split(/=/, $put, 2);
+                if ($key eq 'delete') {
+                    $del = 1;
+                }
+            }
+        }
+
+        if (defined $q->param('delete') || defined $del) {
             push @args, '-d';
             push @args, $condition;
             push @args, $table;
