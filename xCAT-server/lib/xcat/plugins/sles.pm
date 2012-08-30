@@ -1338,15 +1338,21 @@ sub copycd
     else
     {
         $callback->({data => "Media copy operation successful"});
-	my @ret=xCAT::SvrUtils->update_tables_with_templates($distname, $arch,$path);
+	my $osdistroname=$distname."-".$arch;
+	my @ret=xCAT::SvrUtils->update_osdistro_table($distname,$arch,$path,$osdistroname);
+        if ($ret[0] != 0) {
+            $callback->({data => "Error when updating the osdistro tables: " . $ret[1]});
+        }	
+
+	my @ret=xCAT::SvrUtils->update_tables_with_templates($distname, $arch,$path,$osdistroname);
         if ($ret[0] != 0) {
 	    $callback->({data => "Error when updating the osimage tables: " . $ret[1]});
 	}
-        my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot",$path);
+        my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot",$path,$osdistroname);
         if ($ret[0] != 0) {
             $callback->({data => "Error when updating the osimage tables for stateless: " . $ret[1]});
         }
-        my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite",$path);
+        my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite",$path,$osdistroname);
         if ($ret[0] != 0) {
             $callback->({data => "Error when updating the osimage tables for statelite: " . $ret[1]});
         }
