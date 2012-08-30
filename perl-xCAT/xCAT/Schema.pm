@@ -624,7 +624,7 @@ notification => {
  },
   },
 osimage => {
- cols => [qw(imagename groups profile imagetype provmethod rootfstype osname osvers osdistro osarch synclists postscripts postbootscripts comments disable)],
+ cols => [qw(imagename groups profile imagetype provmethod rootfstype osdistroname osname osvers osdistro osarch synclists postscripts postbootscripts comments disable)],
  keys => [qw(imagename)],
     table_desc => 'Basic information about an operating system image that can be used to deploy cluster nodes.',
  descriptions => {
@@ -633,6 +633,7 @@ osimage => {
   imagetype => 'The type of operating system image this definition represents (linux,AIX).',
   provmethod => 'The provisioning method for node deployment. The valid values are install, netboot or statelite. It is not used by AIX.',
   rootfstype => 'The filesystem type for the rootfs is used when the provmethod is statelite. The valid values are nfs or ramdisk. The default value is nfs',
+  osdistroname => 'The name of the OS distro definition.  This attribute can be used to specify which OS distro to use, instead of using the osname,osvers,and osarch attributes.',
   profile => 'The node usage category. For example compute, service.',
   osname => 'Operating system name- AIX or Linux.',
   osvers => 'The Linux operating system deployed on this node.  Valid values:  rhels*,rhelc*, rhas*,centos*,SL*, fedora*, sles* (where * is the version #).',
@@ -1179,6 +1180,23 @@ firmware => {
             disable => "Set to 'yes' or '1' to comment out this row.",
         },
     },
+
+osdistro => {
+        cols => [qw(osdistroname basename majorversion minorversion arch type dirpaths comments disable)],
+        keys => [qw(osdistroname)],
+        table_desc => 'Information about all the OS distros in the xCAT cluster',
+        descriptions => {
+            osdistroname => 'Unique name (e.g. rhels6.2-x86_64)',
+            basename => 'The OS base name (e.g. rhels)',
+            majorversion  => 'The OS distro major version.(e.g. 6)',
+            minorversion  => 'The OS distro minor version. (e.g. 2)',
+            arch => 'The OS distro arch (e.g. x86_64)',
+            type => 'Linux or AIX',
+            dirpaths => 'Directory paths where OS distro is store. There could be multiple paths if OS distro has more than one ISO image. (e.g. /install/rhels6.2/x86_64,...)',
+            comments => 'Any user-written notes.',
+            disable => "Set to 'yes' or '1' to comment out this row.",
+        },
+},
 ); # end of tabspec definition
 
 
@@ -1249,6 +1267,7 @@ foreach my $tabname (keys(%xCAT::ExtTab::ext_tabspec)) {
   eventlog => { attrs => [], attrhash => {}, objkey => 'recid' }, 
   auditlog => { attrs => [], attrhash => {}, objkey => 'recid' }, 
   boottarget => { attrs => [], attrhash => {}, objkey => 'bprofile' },
+  osdistro=> { attrs => [], attrhash => {}, objkey => 'osdistroname' },
 );
 
 
@@ -2016,6 +2035,10 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  tabentry => 'osimage.provmethod',
                  access_tabentry => 'osimage.imagename=attr:imagename',
                  },
+ {attr_name => 'osdistroname',
+                 tabentry => 'osimage.osdistroname',
+                 access_tabentry => 'osimage.imagename=attr:imagename',
+                 },
  {attr_name => 'rootfstype',
                  only_if => 'imagetype=linux',
                  tabentry => 'osimage.rootfstype',
@@ -2659,6 +2682,36 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
      },
 );
 
+@{$defspec{osdistro}->{'attrs'}} = (
+        {attr_name => 'osdistroname',
+                tabentry => 'osdistro.osdistroname',
+                access_tabentry => 'osdistro.osdistroname=attr:osdistroname',
+        },
+        {attr_name => 'basename',
+                tabentry => 'osdistro.basename',
+                access_tabentry => 'osdistro.osdistroname=attr:osdistroname',
+        },
+        {attr_name => 'majorversion',
+                tabentry => 'osdistro.majorversion',
+               access_tabentry => 'osdistro.osdistroname=attr:osdistroname',
+        },
+        {attr_name => 'minorversion',
+                tabentry => 'osdistro.minorversion',
+                access_tabentry => 'osdistro.osdistroname=attr:osdistroname',
+        },
+        {attr_name => 'arch',
+                tabentry => 'osdistro.arch',
+                access_tabentry => 'osdistro.osdistroname=attr:osdistroname',
+        },
+        {attr_name => 'type',
+                tabentry => 'osdistro.type',
+                access_tabentry => 'osdistro.osdistroname=attr:osdistroname',
+        },
+        {attr_name => 'dirpaths',
+                tabentry => 'osdistro.dirpaths',
+                access_tabentry => 'osdistro.osdistroname=attr:osdistroname',
+        },
+);
 
 
 ###################################################
