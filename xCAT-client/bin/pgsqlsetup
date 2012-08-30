@@ -211,14 +211,28 @@ if (($odbconly == 0)  && ($xcatrunningpgsql == 0))
 {    # not just updating the odbc  and xcat not already running on pg
     if ($ENV{'XCATPGPW'})    # passwd supplied
     {
+        my $pw=$ENV{'XCATPGPW'};
+        if ($pw =~ m/[^a-zA-Z0-9]/){ # if not alpha-numerid
+          my $warning =
+           "The password in the env variable XCATPGPW is not alpha-numeric.";
+          xCAT::MsgUtils->message("E", $warning);
+          exit 1;
+        }
         $::adminpassword = $ENV{'XCATPGPW'};
     } else { 
     
-      my $msg = "Input the password for xcatadm userid: ";
+      my $msg = "Input the password for xcatadm id: ";
       xCAT::MsgUtils->message('I', "$msg");
       `stty -echo`;
       chop($::adminpassword = <STDIN>);
       `stty echo`;
+      if ($::adminpassword =~ m/[^a-zA-Z0-9]/){ # if not alpha-numerid
+            my $warning =
+            "The input password  is not alpha-numeric. Rerun the command an input an alpha-numeric password.";
+            xCAT::MsgUtils->message("E", $warning);
+            exit 1;
+         }
+ 
    }
 }
 

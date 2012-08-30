@@ -205,20 +205,41 @@ if ($odbconly == 0)
 {    # not just updating the odbc
     if ($ENV{'XCATMYSQLADMIN_PW'})    # input env sets the password
     {
+        my $pw= $ENV{'XCATMYSQLADMIN_PW'};
+        if ($pw =~ m/[^a-zA-Z0-9]/){ # if not alpha-numerid
+           my $warning = 
+           " The password in the env variable XCATMYSQLADMIN_PW is not alpha-numeric.";
+           xCAT::MsgUtils->message("E", $warning);
+           exit 1;
+        }
 
         $::adminpassword = $ENV{'XCATMYSQLADMIN_PW'};
 
     }
     else                              # prompt for password
     {
-        my $msg = "Input the password for xcatadmin in the MySQL database: ";
+        my $msg = "Input the alpha-numberic  password for xcatadmin in the MySQL database: ";
         xCAT::MsgUtils->message('I', "$msg");
         `stty -echo`;
         chop($::adminpassword = <STDIN>);
         `stty echo`;
+
+        if ($::adminpassword =~ m/[^a-zA-Z0-9]/){ # if not alpha-numerid
+            my $warning = 
+            "The input password  is not alpha-numeric. Rerun the command an input an alpha-numeric password.";
+            xCAT::MsgUtils->message("E", $warning);
+            exit 1;
+         }
     }
     if ($ENV{'XCATMYSQLROOT_PW'})     # input env sets the password
     {
+        my $pw= $ENV{'XCATMYSQLROOT_PW'};
+        if ($pw =~ m/[^a-zA-Z0-9]/){ # if not alpha-numerid
+            my $warning = 
+            " The password in the env variable XCATMYSQLROOT_PW is not alpha-numeric.";
+            xCAT::MsgUtils->message("E", $warning);
+            exit 1;
+        }
 
         $::rootpassword = $ENV{'XCATMYSQLROOT_PW'};
 
@@ -231,6 +252,13 @@ if ($odbconly == 0)
         `stty -echo`;
         chop($::rootpassword = <STDIN>);
         `stty echo`;
+        
+        if ($::rootpassword =~ m/[^a-zA-Z0-9]/){ # if not alpha-numerid
+            my $warning = 
+            "The input password  is not alpha-numeric. Rerun the command an input an alpha-numeric password.";
+            xCAT::MsgUtils->message("E", $warning);
+            exit 1;
+         }
 
     }
 }
