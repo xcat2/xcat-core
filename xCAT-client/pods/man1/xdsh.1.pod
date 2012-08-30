@@ -232,7 +232,7 @@ for valid names.
 xdsh will chroot (xcatchroot for AIX) to this path and run the xdsh command against the
 install image.  No other xdsh flags, environment variables apply with 
 this input.  A noderange is not accepted. Only runs on the local host, 
-normally the Management Node. 
+normally the Management Node. The command you run must not prompt for input, the prompt will not be returned to you, and it will appear that xdsh hangs. 
 
 =item B<-K>|B<--ssh-setup>
 
