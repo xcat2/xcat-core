@@ -240,9 +240,9 @@ else
     fi
  
     OIFS=$IFS
-    IFS=$':'
+    IFS=$','
     if ( pmatch "$OSVER" "ubuntu*" ); then
-        IFS=$(printf ':')
+        IFS=$(printf ',')
     fi
 
     array_ospkgdirs=($OSPKGDIR)   
