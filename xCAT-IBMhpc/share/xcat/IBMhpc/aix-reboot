@@ -1,0 +1,8 @@
+#!/bin/ksh
+
+# Cleanly reboots an AIX node
+
+echo "Shutting and rebooting node NOW !!!"
+echo "shutdown -Fr" | at now
+
+exit 0

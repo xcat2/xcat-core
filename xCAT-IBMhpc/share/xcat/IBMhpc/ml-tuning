@@ -1,0 +1,17 @@
+#!/usr/bin/ksh
+
+#
+# example postscript to tune ml interface for improved stability and performance
+#
+
+chdev -l mlt0 -a agg_killtime=-1  2>/dev/null    # allow "agg_interval" and "agg_threshold" to default
+
+# The effect of the above is that complete ml route entries last forever, incomplete entries time out 
+# in 40 seconds, and there are no keepalive probes for complete entries (to reduce OS jitter).
+
+# The following is also recommended to improve balance across hf interfaces (assuming sequential ml 
+# addressing, at least within each drawer). Note that "agg_hash"  must be set PRIOR to the ml interface 
+# being configured. 
+
+chdev -l mlt0 -a agg_hash=2  2>/dev/null
+
