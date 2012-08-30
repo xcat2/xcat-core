@@ -713,7 +713,6 @@ sub security_update_sshkeys
     my @nodes    = @$nodes;
     my $localhostname = hostname();
 
-    # generate the arguments
 
     # remove the host key from known_hosts
     xCAT::Utils->runxcmd(
@@ -1193,79 +1192,11 @@ sub updatenode
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
+        # setup the root ssh keys ( runs xdsh -k) 
 
-        # generate the arguments
-        my @args = ("-K");
+        &security_update_sshkeys
+           ($request, $callback, $subreq, \@$nodes);
 
-        # remove the host key from known_hosts
-        xCAT::Utils->runxcmd(
-                             {
-                              command => ['makeknownhosts'],
-                              node    => \@$nodes,
-                              arg     => ['-r'],
-                             },
-                             $subreq, 0, 1
-                             );
-
-        if ($::VERBOSE)
-        {
-            my $rsp = {};
-            $rsp->{data}->[0] =
-              "  $localhostname: run makeknownhosts to clean known_hosts file for nodes: @$nodes";
-            $callback->($rsp);
-        }
-
-        # call the xdsh -K to set up the ssh keys
-        my @envs = @{$request->{environment}};
-        my $res  =
-          xCAT::Utils->runxcmd(
-                               {
-                                command => ['xdsh'],
-                                node    => \@$nodes,
-                                arg     => \@args,
-                                env     => \@envs,
-                               },
-                               $subreq, 0, 1
-                               );
-
-        if ($::VERBOSE)
-        {
-            my $rsp = {};
-            $rsp->{data}->[0] =
-              "  $localhostname: Internal call command: xdsh -K. nodes = @$nodes, arguments = @args, env = @envs";
-            $rsp->{data}->[1] =
-              "  $localhostname: return messages of last command: @$res";
-            $callback->($rsp);
-        }
-
-        # parse the output of xdsh -K
-        my @failednodes = @$nodes;
-        foreach my $line (@$res)
-        {
-            chomp($line);
-            if ($line =~ /SSH setup failed for the following nodes: (.*)\./)
-            {
-                @failednodes = split(/,/, $1);
-            }
-            elsif ($line =~ /setup is complete/)
-            {
-                @failednodes = ();
-            }
-        }
-
-        my $rsp = {};
-        foreach my $node (@$nodes)
-        {
-            if (grep /^$node$/, @failednodes)
-            {
-                push @{$rsp->{data}}, "$node: Setup ssh keys failed.";
-            }
-            else
-            {
-                push @{$rsp->{data}}, "$node: Setup ssh keys has completed.";
-            }
-        }
-        $callback->($rsp);
     }
 
     #
