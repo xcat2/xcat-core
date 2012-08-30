@@ -1155,7 +1155,7 @@ sub cfgve {
     my $args = shift;
     my $nodes = shift;
 
-    my ($type, $objlist, $mgr, $datacenter, $create, $update, $remove, $activate, $deactivate, $attach, $detach, $force);
+    my ($type, $objlist, $mgr, $datacenter, $create, $update, $remove, $activate, $deactivate, $attach, $detach, $force, $stype, $cputype);
     if ($args) {
         @ARGV=@{$args};
         GetOptions('t=s' => \$type,
@@ -1169,7 +1169,9 @@ sub cfgve {
                         'a' => \$attach,
                         'b' => \$detach,
                         'r' => \$remove,
-                        'f' => \$force);
+                        'f' => \$force,
+                        'k=s' => \$stype,
+                        'p=s' => \$cputype);
     }
 
     my $rhevm = (keys %{$rhevm_hash})[0];
@@ -1300,6 +1302,105 @@ sub cfgve {
                 }
                 generalaction($callback, $ref_rhevm, "/api/networks/$nwid", "DELETE", 1);
             }
+        } elsif ($type eq "dc") {
+            my ($rc, $dcid, $stat, $response) = search_src($ref_rhevm, "datacenters", "$obj");
+            
+            if ($create) {
+                if (!$rc) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$obj: data center has been created.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    next;
+                }
+
+                unless ($stype && $stype =~ /^(nfs|localfs)$/) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$obj: the storage type needs to be specified by -k.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    next;
+                }
+                # create the datacenter
+                my $api = "/api/datacenters";
+                my $method = "POST";
+                my $content = "<data_center><name>$obj</name><storage_type>$stype</storage_type><version minor=\"0\" major=\"3\"/></data_center>";
+                my $request = genreq($ref_rhevm, $method, $api, $content);
+                my $response;
+                ($rc, $response) = send_req($ref_rhevm, $request->as_string());
+                if ($rc) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$obj: $response";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    next;
+                } else {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$obj: succeeded";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                    next;
+                }
+            } elsif ($remove) {
+                if ($rc) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$obj: cannot find the data center.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                }
+                generalaction($callback, $ref_rhevm, "/api/datacenters/$dcid", "DELETE", 1);
+            }
+        } elsif ($type eq "cl") {
+            my ($rc, $clid) = search_src($ref_rhevm, "clusters", "$obj");
+            
+            if ($create) {
+                if (!$rc) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$obj: cluster has been created.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    next;
+                }
+
+                unless ($datacenter) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$obj: the datacenter for the cluster must be specified.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    next;
+                }
+                my $dcid;
+                ($rc, $dcid) = search_src($ref_rhevm, "datacenters", "$datacenter");
+                if ($rc) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$obj: failed to get the datacenter: $datacenter.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    next;
+                }
+
+                unless ($cputype) {
+                    $cputype = "Intel Penryn Family";
+                }
+                
+                # create the datacenter
+                my $api = "/api/clusters";
+                my $method = "POST";
+                my $content = "<cluster><name>$obj</name><data_center id=\"$dcid\"/><cpu id=\"$cputype\"/></cluster>";
+                my $request = genreq($ref_rhevm, $method, $api, $content);
+                my $response;
+                ($rc, $response) = send_req($ref_rhevm, $request->as_string());
+                if ($rc) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$obj: $response";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    next;
+                } else {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$obj: succeeded";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                    next;
+                }
+            } elsif ($remove) {
+                if ($rc) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$obj: cannot find the cluster.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                }
+                generalaction($callback, $ref_rhevm, "/api/clusters/$clid", "DELETE", 1, $force);
+            }
         } else {
             my $rsp;
             push @{$rsp->{data}}, "The type: $type is not supported.";
@@ -1370,6 +1471,7 @@ sub cfghost {
             if (defined ($hypent->{$node}->[0])) {
                 $hyper{$node}{interface} = $hypent->{$node}->[0]->{interface};
                 $hyper{$node}{datacenter} = $hypent->{$node}->[0]->{datacenter};
+                $hyper{$node}{cluster} = $hypent->{$node}->[0]->{cluster};
             }
             if (!$hyper{$node}{datacenter}) {
                 $hyper{$node}{datacenter} = "Default";
@@ -3183,9 +3285,9 @@ sub mkSD {
         return 0;
     }
 
-    unless ($vsdent->{stype} eq 'nfs') {
+    unless ($vsdent->{stype} =~ /^(nfs|localfs)$/) {
         my $rsp;
-        push @{$rsp->{data}}, "$sd: only nfs type is supported now.";
+        push @{$rsp->{data}}, "$sd: supported storage type: nfs, localfs.";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 0;
     }
@@ -3220,9 +3322,15 @@ sub mkSD {
     my $storage_ele = $doc->createElement("storage");
     $root->appendChild($storage_ele);
     $storage_ele->appendTextChild("type", $vsdent->{stype});
+    
     my ($address, $path) = split(':', $vsdent->{location});
-    $storage_ele->appendTextChild("address", $address);
-    $storage_ele->appendTextChild("path", $path);
+    if ($vsdent->{stype} eq "nfs") {
+        $storage_ele->appendTextChild("address", $address);
+        $storage_ele->appendTextChild("path", $path);
+    } elsif ($vsdent->{stype} eq "localfs") {
+        $storage_ele->appendTextChild("path", "/data/images/rhev");
+    }
+
     if ($vsdent->{sdtype}) {
         $root->appendTextChild("type", $vsdent->{sdtype});
     } else {
@@ -3238,13 +3346,17 @@ sub mkSD {
         my $rsp;
         push @{$rsp->{data}}, "$sd: $response";
         xCAT::MsgUtils->message("E", $rsp, $callback);
-        return $rc;
+        return 0;
     } else {
         my $parser = XML::LibXML->new();
         my $doc = $parser->parse_string($response);
         if ($doc ) {
             my $sdid;
             if ($sdid = getAttr($doc, "/storage_domain", "id")) {
+                if ($vsdent->{stype} eq "localfs") {
+                    #return directly
+                    return $sdid;
+                }
                 # attach the storage domain to the datacenter
                 my $dc = $vsdent->{datacenter};
                 unless ($dc) {$dc = "default"};
@@ -3402,12 +3514,16 @@ sub generalaction {
     my $api = shift;
     my $method = shift;
     my $norsp = shift;
+    my $force = shift;
 
     unless ($method) {
         $method = "POST";
     }
 
     my $content = "<action/>";
+    if ($force) {
+        $content = "<action><force>true</force></action>";
+    }
     my $request = genreq($ref_rhevm, $method, $api, $content);
     my ($rc, $response) = send_req($ref_rhevm, $request->as_string());
 
