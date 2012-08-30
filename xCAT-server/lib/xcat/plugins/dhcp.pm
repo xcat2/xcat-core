@@ -65,7 +65,12 @@ my $usingipv6;
 
 # is this ubuntu ?
 if ( $distro =~ /ubuntu.*/ ){
-    $dhcpconffile = '/etc/dhcp3/dhcpd.conf';	
+    if (-e '/etc/dhcp/dhcpd.conf') {
+        $dhcpconffile = '/etc/dhcp/dhcpd.conf';
+    }
+    else {
+        $dhcpconffile = '/etc/dhcp3/dhcpd.conf';	
+    }
 }
 
 sub check_uefi_support {
@@ -1104,7 +1109,7 @@ sub process_request
 #add the active nics to /etc/sysconfig/dhcpd or /etc/default/dhcp3-server(ubuntu)
         my $dhcpver;
 	my %missingfiles = ( "dhcpd"=>1, "dhcpd6"=>1, "dhcp3-server"=>1 );
-        foreach $dhcpver ("dhcpd","dhcpd6","dhcp3-server") {
+        foreach $dhcpver ("dhcpd","dhcpd6","dhcp3-server", "isc-dhcp-server") {
         if (-e "/etc/sysconfig/$dhcpver") {
 		if ($dhcpver eq "dhcpd") {
 		    delete($missingfiles{dhcpd});
@@ -1452,9 +1457,15 @@ sub process_request
         }
         elsif ( $distro =~ /ubuntu.*/)
         {
-            #ubuntu config
-            system("chmod a+r /etc/dhcp3/dhcpd.conf");
-            system("/etc/init.d/dhcp3-server restart");
+            if (-e '/etc/dhcp/dhcpd.conf') {
+                system("chmod a+r /etc/dhcp/dhcpd.conf");
+                system("/etc/init.d/isc-dhcp-server restart");
+            }
+            else {
+                #ubuntu config
+                system("chmod a+r /etc/dhcp3/dhcpd.conf");
+                system("/etc/init.d/dhcp3-server restart");
+            }
         }
         else
         {
