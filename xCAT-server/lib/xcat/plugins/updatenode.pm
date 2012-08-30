@@ -1545,7 +1545,7 @@ sub updatenode
     # finish clean up the tarred  postscript file
     if (-e "$postscripts.tgz") {
 
-       my $cmd="rm $postscripts.tgz"; print "cmd:$cmd\n";
+       my $cmd="rm $postscripts.tgz"; #print "cmd:$cmd\n";
        xCAT::Utils->runcmd($cmd, 0);
        my $rsp = {};
        if ($::RUNCMD_RC != 0)
