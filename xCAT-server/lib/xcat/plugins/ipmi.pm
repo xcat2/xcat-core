@@ -3664,12 +3664,13 @@ sub getaddsensorevent {
         } elsif ($offset == 0x05) {
             $text = "$event_data_3% full";
         }elsif($offset==0x06){
-	    if($event_data_2){
+	    if(defined $event_data_2){
 	    	if(defined($event_data_3) and ($event_data_3 & 0x80 == 0x80)){
 			$text="Vendor-specific processor number:";
 	    	}else{
 	        	$text="Entity Instance number:";
 	   	}
+		$text.=sprintf("%02xh",$event_data_2 & 0xff);
 	    }else{
 		$text="for all Processor sensors";
 	    }
