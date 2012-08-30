@@ -249,13 +249,15 @@ sub gettab
     {
         my $tab = xCAT::Table->new($tabn);
         (my $ent) = $tab->getAttribs(\%keyhash, keys %{$tabhash{$tabn}});
-        foreach my $coln (keys %{$tabhash{$tabn}})
-        {
+        if ($ent) {
+          foreach my $coln (keys %{$tabhash{$tabn}})
+          {
             if ($terse > 0) {
                 $callback->({data => ["" . $ent->{$coln}]});
             } else {
                 $callback->({data => ["$tabn.$coln: " . $ent->{$coln}]});
             }
+          }
         }
         $tab->close;
     }
