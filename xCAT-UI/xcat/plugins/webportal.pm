@@ -234,10 +234,6 @@ sub provzlinux {
     # Set nodetype definitions
     $out = `chtab node=$node noderes.netboot=zvm nodetype.nodetype=osi nodetype.provmethod=install nodetype.os=$os nodetype.arch=$arch nodetype.profile=$profile nodetype.comments="owner:$owner"`;
 
-    # Update hosts table and DNS
-    `makehosts`;
-    `makedns`;
-
     # Create user directory entry replacing LXUSR with user ID
     # Use /opt/zhcp/conf/default.direct on zHCP as the template
     #    USER LXUSR PSWD 512M 1G G
@@ -316,6 +312,10 @@ sub provzlinux {
             $virt_addr = $virt_addr + 1;
         }
     }
+    
+    # Update hosts table and DNS
+    `makehosts`;
+    `makedns`;
 
     # Update DHCP
     `makedhcp -a`;

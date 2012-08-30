@@ -97,7 +97,7 @@ function submit_request($req, $skipVerify, $opts_array){
 
 		// Turn on output buffering
 		ob_start();
-		if ($flush){
+		if ($flush) {
 		    echo str_pad('',1024)."\n";
 		}
 		
