@@ -3586,6 +3586,8 @@ sub getaddsensorevent {
             0x0 => "Vendor mismatch",
             0x1 => "Revision mismatch",
             0x2 => "Processor missing",
+	    0x3 => "Power Supply rating mismatch",
+	    0x4 => "Voltage rating mismatch",
             );
         if ($extra{$event_data_3}) {
             $text = $extra{$event_data_3};
@@ -3661,12 +3663,39 @@ sub getaddsensorevent {
             $text .= sprintf ("type %02xh/offset %02xh",$event_data_2,$event_data_3&0x0F);
         } elsif ($offset == 0x05) {
             $text = "$event_data_3% full";
-        }
+        }elsif($offset==0x06){
+	    if($event_data_2){
+	    	if(defined($event_data_3) and ($event_data_3 & 0x80 == 0x80)){
+			$text="Vendor-specific processor number:";
+	    	}else{
+	        	$text="Entity Instance number:";
+	   	}
+	    }else{
+		$text="for all Processor sensors";
+	    }
+	}
     }
             
 	if($sensor_type == 0x12) {
 		if($offset == 0x03) {
+			my %extra={
+				    0x0 => "Log Entry Action: entry added",
+				    0x1 => "Log Entry Action: entry added because event did not be map to standard IPMI event",
+				    0x2 => "Log Entry Action: entry added along with one or more corresponding SEL entries",
+				    0x3 => "Log Entry Action: log cleared",
+				    0x4 => "Log Entry Action: log disabled",
+				    0x5 => "Log Entry Action: log enabled",
+				  };
+			$text="$text, ".$extra{($event_data_2>>4) & 0x0f};
+			%extra={
+				   0x0 => "Log Type:MCA Log",
+				   0x1 => "Log Type:OEM 1",
+				   0x2 => "Log Type:OEM 2",
+				};
+			$text="$text, ".$extra{($event_data_2) & 0x0f};
+			$text =~ s/^, //;
 		}
+
 		if($offset == 0x04) {
 			if($event_data_2 & 0b00100000) {
 				$text = "$text, NMI";
@@ -3688,7 +3717,21 @@ sub getaddsensorevent {
 			}
 			$text =~ s/^, //;
 		}
-	}
+	        if($offset == 0x05){
+			if($event_data_2 & 0x80){
+				$text="$text, event is second of pair";
+			}elsif($event_data_2 & 0x80==0){
+				$text="$text, event is first of pair";
+			}		
+			if($event_data_2 & 0x0F == 0x1){
+				$text="$text, SDR Timestamp Clock updated";	
+			}elsif($event_data_2 & 0x0F == 0x0){
+				 $text="$text, SEL Timestamp Clock updated";
+			}
+			$text =~ s/^, //;
+		}
+     }
+
     if ($sensor_type == 0x1d && $offset == 0x07) {
         my %causes = (
             0 => "Unknown",
