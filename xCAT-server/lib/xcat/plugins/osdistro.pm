@@ -2,10 +2,10 @@
 #-------------------------------------------------------
 
 =head1
-  xCAT plugin package to handle xCATWorld
+  xCAT plugin package to handle osdistro management
 
    Supported command:
-         xCATWorld->xCATWorld
+         rmosdistro->rmosdistro
 
 =cut
 
@@ -42,52 +42,6 @@ sub handled_commands
 	   };
 }
 
-#-------------------------------------------------------
-
-=head3  preprocess_request
-
-  Check and setup for hierarchy 
-
-
-sub preprocess_request
-{
-    my $req = shift;
-    my $callback  = shift;
-    my %sn;
-    #if already preprocessed, go straight to request
-    if (($req->{_xcatpreprocessed}) and ($req->{_xcatpreprocessed}->[0] == 1) ) { return [$req]; }
-    my $nodes    = $req->{node};
-    my $service  = "xcat";
-
-    # find service nodes for requested nodes
-    # build an individual request for each service node
-    if ($nodes) {
-     $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
-
-      # build each request for each service node
-
-      foreach my $snkey (keys %$sn)
-      {
-	my $n=$sn->{$snkey};
-	print "snkey=$snkey, nodes=@$n\n";
-            my $reqcopy = {%$req};
-            $reqcopy->{node} = $sn->{$snkey};
-            $reqcopy->{'_xcatdest'} = $snkey;
-            $reqcopy->{_xcatpreprocessed}->[0] = 1;
-            push @requests, $reqcopy;
-
-      }
-      return \@requests;
-    } else { # input error
-       my %rsp;
-       $rsp->{data}->[0] = "Input noderange missing. Useage: xCATWorld <noderange> \n";
-      xCAT::MsgUtils->message("I", $rsp, $callback, 0);
-      return 1;
-    }
-}
-=cut
-
-#-------------------------------------------------------
 
 #-------------------------------------------------------
 
@@ -241,9 +195,9 @@ sub mkosdistro
 
 #-------------------------------------------------------
 
-=head3  rmosdistro
+=head3  getOSdistroref
 
-  remove osdistro entry
+  get the refernece of osdistro by osimage
 
 =cut
 
@@ -427,94 +381,6 @@ sub rmosdistro
 =cut
 
 #-------------------------------------------------------
-sub lsosdistro_bak
-{
-
-    my $request  = shift;
-    my $callback = shift;
-    
-    my @clause=();
-    my @result=();
-    my $distname=undef;
-    my $basename=undef;
-    my $majorversion=undef;
-    my $minorversion=undef; 
-    my $osver=undef;
-    my $arch=undef;
-    my $type=undef;
-    my $help=undef;
-    my $stanza=undef;
-
-    if ($request->{arg}) {
-  	     	@ARGV = @{$request->{arg}};
-    }
-  
-    GetOptions(
-    		'n|name=s' => \$distname,
-                'o|osver=s' =>\$osver,
-    		'a|arch=s' => \$arch,
-    		't|type=s' => \$type,
-    		'h|help' => \$help,
-		'z|stanza' => \$stanza,
- 	);
-
-        if ($help) {
-     		 $callback->({info=>"lsosdistro [{-n|--name}=osdistroname] [{-o|--osver}=osver] [{-t|--type}=ostype]  [{-a|--arch}=architecture][-z|--stanza]",errorcode=>[0]});
-     		 return;
-  	}
-        
-
-        if($distname)
-	{
-	    push(@clause,"osdistroname==".$distname);
-	}
-
-        if($arch)
-	{
-	    push(@clause,"arch==".$arch);
-	}
-
-        if($type)
-	{
-	    push(@clause,"type==".$type);
-	}
-
-        if($osver)
-	{
-		($basename,$majorversion,$minorversion) = &parseosver($osver);
-
-        	if($basename)
-		{
-	    		push(@clause,"basename==".$basename);
-		}
-
-        	if($majorversion)
-		{
-	    		push(@clause,"majorversion==".$majorversion);
-		}
-
-        	if($minorversion)
-		{
-	    		push(@clause,"minorversion==".$minorversion);
-		}
-	}
-       
-  	my $tab = xCAT::Table->new('osdistro',-create=>1);
-
-        unless(scalar @clause)
-	{
-			
-   		@result=$tab->getTable;
-	}else
-      	{
-   		@result=$tab->getAllAttribsWhere(\@clause,'ALL');
-     	}
-        $tab->close; 
-        #$callback->({info=>"mkosdistro: $distname  success",errorcode=>[0]});
-        return;
-}
-
-
 
 sub lsosdistro
 {
