@@ -19,7 +19,6 @@ use Exporter;
 our @ISA = qw/Exporter/;
 our @EXPORT_OK = qw/sendmsg/;
 
-
 #-------------------------------------------------------------------------------
   
 
@@ -526,6 +525,7 @@ sub get_imgcapture_exlist_file_name {
         osver
         arch
 	ospkgdir
+	osdistroname
     Returns:
         an array (retcode, errmsg). The first one is the return code. If 0, it means succesful. 
 
@@ -540,6 +540,7 @@ sub  update_tables_with_templates
     }
     my $arch = shift;  #like ppc64, x86, x86_64
     my $ospkgdir=shift;      
+    my $osdistroname=shift;
 
     my $osname=$osver;;  #like sles, rh, centos, windows
     my $ostype="Linux";  #like Linux, Windows
@@ -653,7 +654,8 @@ sub  update_tables_with_templates
 			     osname=>$ostype,
 			     osvers=>$osver,
 			     osarch=>$arch,
-			     synclists=>$synclistfile);
+			     synclists=>$synclistfile,
+			     osdistroname=>$osdistroname);
 		$osimagetab->setAttribs(\%key_col, \%tb_cols);
                 
 		if ($osname !~ /^win/) {
@@ -707,7 +709,8 @@ sub  update_tables_with_diskless_image
     my $arch = shift;  #like ppc64, x86, x86_64
     my $profile = shift;
     my $mode=shift;
-    my $ospkgdir=shift; 
+    my $ospkgdir=shift;
+    my $osdistroname=shift; 
 
     my $provm="netboot";
     if ($mode) { $provm = $mode; } 
@@ -831,7 +834,8 @@ sub  update_tables_with_diskless_image
     			 osname=>$ostype,
     			 osvers=>$osver,
     			 osarch=>$arch,
-    			 synclists=>$synclistfile);
+    			 synclists=>$synclistfile,
+			 osdistroname=>$osdistroname);
     	    $osimagetab->setAttribs(\%key_col, \%tb_cols);
     	    
     	    if ($osname !~ /^win/) {
@@ -1472,5 +1476,142 @@ sub handle_deps()
     }                                                                  
     return $nodeseq; 
 }
+
+
+#-------------------------------------------------------------------------------
+
+=head3   parseosver 
+    parse osver to osdistribution base name,majorversion,minorversion
+    Returns:
+       list (osdistribution base name, majorversion,minorversion)
+    Globals:
+        none
+    Error:
+        none
+    Input:
+        osver
+    Example:
+    ($basename,$majorversion,$minorversion)=xCAT::Utils->parseosver($osver);
+    Comments:
+=cut
+
+#-------------------------------------------------------------------------------
+sub parseosver
+{
+  my $osver=shift;
+
+  if($osver =~ (/(\D+)(\d*)\.*(\d*)/))
+  {
+        return ($1,$2,$3);
+  }
+
+  return ();
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 update_osdistro_table
+       This function is called after copycds. It will update the osdistro table with
+       given osver and arch 
+    Arguments:
+        osver
+        arch
+        ospkgdir
+    Returns:
+        an array (retcode, errmsg). The first one is the return code. If 0, it means succesful. 
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub update_osdistro_table
+{ 
+    my $osver = shift;  #like sle11, rhel5.3 
+    if (($osver) && ($osver =~ /xCAT::SvrUtils/)) {
+        $osver = shift;
+    }
+    my $arch = shift;  #like ppc64, x86, x86_64
+    my $path=shift;
+    my $distname=shift;
+ 
+    my $basename=undef;
+    my $majorversion=undef;
+    my $minorversion=undef;
+	
+    my %keyhash=();
+    my %updates=();
+
+    my $ostype="Linux";  #like Linux, Windows
+    if (($osver =~ /^win/) || ($osver =~ /^imagex/)) {
+        $osver="windows";
+        $ostype="Windows";
+    }
+
+
+   unless($distname){
+	$distname=$osver."-".$arch;
+   }
+     
+    $keyhash{osdistroname}    = $distname;
+
+    $updates{type}=$ostype;
+    if($arch){
+             $updates{arch}    = $arch;
+    }
+
+    if($osver){
+              ($updates{basename},$updates{majorversion},$updates{minorversion}) = &parseosver($osver);
+    }
+
+
+    my $tab = xCAT::Table->new('osdistro',-create=>1);
+
+    unless($tab)
+    {
+          return(1,"failed to open table 'osdistro'!");
+    }
+
+    if($path)
+        {
+              $path =~ s/\/+$//;
+              (my $ref) = $tab->getAttribs(\%keyhash, 'dirpaths');
+              if ($ref and $ref->{dirpaths} )
+               {
+                    unless($ref->{dirpaths} =~ /^($path)\/*,|,($path)\/*,|,($path)\/*$|^($path)\/*$/)
+                    {
+                           $updates{dirpaths}=$ref->{dirpaths}.','.$path;
+                    }
+                }else
+                {
+                        $updates{dirpaths}   = $path;
+                }
+        }
+
+
+        if(%updates)
+        {
+                $tab->setAttribs( \%keyhash,\%updates );
+                $tab->commit;
+        }
+        $tab->close;
+
+        return(0,"osdistro $distname update success");
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 1;
