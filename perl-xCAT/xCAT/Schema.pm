@@ -951,6 +951,9 @@ site => {
    "               rsh/rcp will be setup and used on AIX. Default is yes.\n\n".
    " useNFSv4onAIX:  (yes/1 or no/0). If yes, NFSv4 will be used with NIM. If no,\n".
    "               NFSv3 will be used with NIM. Default is no.\n\n".
+   " usexhrm:  Have xCAT run its xHRM script when booting up KVM guests to set the\n".
+   "           virtual network bridge up correctly. See\n".
+   "           https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Virtualization_with_KVM#Setting_up_a_network_bridge\n\n".
    " vcenterautojoin:  When set to no, the VMWare plugin will not attempt to auto remove\n".
    "                   and add hypervisors while trying to perform operations.  If users\n".
    "                   or tasks outside of xCAT perform the joining this assures xCAT\n".
