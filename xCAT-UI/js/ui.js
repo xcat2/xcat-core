@@ -357,7 +357,7 @@ function createInfoBar(msg) {
 	// Do not change the background color or color! This is handled by the theme
 	// the user selects.
     var infoBar = $('<div class="ui-state-highlight ui-corner-all"></div>').css({
-    	'margin': '5px 0px',
+    	'margin': '5px 0px'
     });
     var icon = $('<span class="ui-icon ui-icon-info"></span>').css({
         'display': 'inline-block',
