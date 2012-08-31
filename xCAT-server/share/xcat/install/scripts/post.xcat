@@ -67,6 +67,7 @@ do
 	sleep $RAND
 done
 echo "INSTALLDIR=$INSTALLDIR" >> /opt/xcat/xcatinfo
+echo "REBOOT=TRUE" >> /opt/xcat/xcatinfo
 cd /xcatpost
 #gunzip xcatpost.tar.gz
 #tar -xvf xcatpost.tar
@@ -115,11 +116,16 @@ ln -s /etc/init.d/xcatpostinit1 /etc/rc5.d/S84xcatpostinit1
 mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatinstallpost#
-chkconfig xcatpostinit1 off
 EOF
 chmod 755 /opt/xcat/xcatinstallpost
 
 chkconfig --add xcatpostinit1
+
+#create the dskls post 
+cat >/opt/xcat/xcatdsklspost << 'EOF'
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatdsklspost#
+EOF
+chmod 755 /opt/xcat/xcatdsklspost
 
 #only run the prebooot scripts here
 TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /xcatpost/mypostscript`

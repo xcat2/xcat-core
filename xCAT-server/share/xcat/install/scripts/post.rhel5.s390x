@@ -76,6 +76,7 @@ do
 			touch /opt/xcat/xcatinfo
 		fi
 		echo "XCATSERVER=$i" > /opt/xcat/xcatinfo
+		echo "REBOOT=TRUE" >> /opt/xcat/xcatinfo
 	    	break
 	fi
 	RAND=$(perl -e 'print int(rand(5)). "\n"')
@@ -129,11 +130,16 @@ mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
 # Install directory variable set by nodeset
 replace_install_dir/postscripts/xcatinstallpost
-chkconfig xcatpostinit1 off
 EOF
 chmod 755 /opt/xcat/xcatinstallpost
 
 chkconfig --add xcatpostinit1
+
+#create the dskls post 
+cat >/opt/xcat/xcatdsklspost << 'EOF'
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatdsklspost#
+EOF
+chmod 755 /opt/xcat/xcatdsklspost
 
 # Only run preboot scripts here
 TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /tmp/mypostscript`

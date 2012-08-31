@@ -86,6 +86,7 @@ do
                 touch /opt/xcat/xcatinfo
             fi
             echo "XCATSERVER=$i" > /opt/xcat/xcatinfo
+            echo "REBOOT=TRUE" >> /opt/xcat/xcatinfo
 	    break
 	fi
 	RAND=$(perl -e 'print int(rand(5)). "\n"')
@@ -135,9 +136,14 @@ ln -s /etc/init.d/xcatpostinit1 /etc/rc2.d/S84xcatpostinit1
 mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatinstallpost#
-rm /etc/rc2.d/S84xcatpostinit1
 EOF
 chmod 755 /opt/xcat/xcatinstallpost
+
+#create the dskls post 
+cat >/opt/xcat/xcatdsklspost << 'EOF'
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatdsklspost#
+EOF
+chmod 755 /opt/xcat/xcatdsklspost
 
 #only run the prebooot scripts here
 TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /tmp/mypostscript`
