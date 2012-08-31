@@ -1797,6 +1797,12 @@ my @nodeattrs = (
                  tabentry => 'mp.id',
                  access_tabentry => 'mp.node=attr:node',
   },
+        {attr_name => 'id',
+                 only_if => 'mgt=ipmi',
+                 tabentry => 'mp.id',
+                 access_tabentry => 'mp.node=attr:node',
+  },
+
 #################
 #  mpa table    #
 #################
