@@ -18,8 +18,6 @@ use xCAT::Utils;
 
 use xCAT::MsgUtils;
 use Getopt::Long;
-my $SUB_REQ_L;
-1;
 
 
 
@@ -36,8 +34,6 @@ Return list of commands handled by this plugin
 sub handled_commands
 {
     return {
-	 	mkosdistro => "osdistro",
-	 	lsosdistro => "osdistro",
 	 	rmosdistro => "osdistro",
 	   };
 }
@@ -58,7 +54,6 @@ sub process_request
     my $request  = shift;
     my $callback = shift;
 
-    $SUB_REQ_L = shift;    
     my $command  = $request->{command}->[0];
     my $args     = $request->{arg};
     my $envs     = $request->{env};
@@ -66,13 +61,7 @@ sub process_request
     # do your processing here
     # return info
 
-    if($command eq "mkosdistro")
-    {
-      &mkosdistro($request,$callback);  
-    }elsif($command eq "lsosdistro")
-    {
-      &lsosdistro($request,$callback);  
-    }elsif($command eq "rmosdistro")
+    if($command eq "rmosdistro")
     {
       &rmosdistro($request,$callback);  
     }
@@ -81,128 +70,19 @@ sub process_request
 
 }
 
-sub parseosver
-{
-  my $osver=shift;
-
-  if($osver =~ (/(\D+)(\d*)\.*(\d*)/))
-  {
-        return ($1,$2,$3);
-  }
-  
-  return ();
-}
-
-
-#-------------------------------------------------------
-
-=head3  mkosdistro
-
-  add/set osdistro entry
-
-=cut
-
-#-------------------------------------------------------
-sub mkosdistro
-{
-
-    my $request  = shift;
-    my $callback = shift;
-    
-    my %keyhash=();
-    my %updates=();
-    my $distname=undef;
-    my $osver=undef;
-    my $arch=undef;
-    my $help=undef;
-    my $force=undef;
-    my $path=undef;
-
-    if ($request->{arg}) {
-  	     	@ARGV = @{$request->{arg}};
-    }
-  
-    GetOptions(
-    		'n|name=s' => \$distname,
-                'o|osver=s' =>\$osver,
-    		'a|arch=s' => \$arch,
-    		'h|help' => \$help,
-		'f|force' => \$force,
-	    	'p|path=s' => \$path
- 	);
-
-        if ($help) {
-     		 $callback->({info=>"mkosdistro [{-n|--name}=osdistroname] [{-o|--osver}=osver] [{-a|--arch}=architecture] [{-p|--path}=ospkgpath]  [-f|--force]",errorcode=>[0]});
-     		 return;
-  	}
-
-
-  	unless ($distname) {
-     		$callback->({error=>"mkosdistro: osdistroname must be specified!",errorcode=>[1]});
-     		return;
-  	}
-
-   	$keyhash{osdistroname}    = $distname;
-
-   	if($arch){
-		$updates{arch}    = $arch;
-	}
-
-	if($osver){
-   		($updates{basename},$updates{majorversion},$updates{minorversion}) = &parseosver($osver);
-   		$updates{type}    ="linux";
-	}
-
-	
-   	my $tab = xCAT::Table->new('osdistro',-create=>1);
-
-   	unless($tab)
-	{
-        	$callback->({error=>"mkosdistro: failed to open table 'osdistro'!",errorcode=>[1]});
-        	return;
-	}
-	
-	if($path)
-	{
-		$path =~ s/\/+$//;
-        	(my $ref) = $tab->getAttribs(\%keyhash, 'dirpaths');
-        	if ($ref and $ref->{dirpaths} )
-        	{
-
-	    		unless($ref->{dirpaths} =~ /^($path)\/*,|,($path)\/*,|,($path)\/*$|^($path)\/*$/)
-			{
-				$updates{dirpaths}=$ref->{dirpaths}.','.$path;	
-			}			   
-				
-        	}else
-		{
-			$updates{dirpaths}   = $path;
-		}
-	}
-
-
-	if(%updates)
-   	{
-		$tab->setAttribs( \%keyhash,\%updates );
-   		$tab->commit;
-	}
-        $tab->close; 
-
-        $callback->({info=>"mkosdistro: $distname  success",errorcode=>[0]});
-        return;
-}
 
 
 #-------------------------------------------------------
 
 =head3  getOSdistroref
 
-  get the refernece of osdistro by osimage
+  check whether the specified osdistro is referenced 
+  by any osimage. if yes, return the string of 
+  osimage names, return undef otherwise 
 
 =cut
 
 #-------------------------------------------------------
-
 sub getOSdistroref
 {	
 	my $osimagetab=shift;
@@ -228,6 +108,7 @@ sub getOSdistroref
 		{
 			$ret=$ret.$_->{'imagename'}.",";
 		}
+		$ret =~ s/,$//;
 	}
 	else
 	{
@@ -243,7 +124,8 @@ sub getOSdistroref
 
 =head3  rmosdistro
 
-  remove osdistro entry
+  remove osdistro,including remove osdistro directory 
+  and entry in osdistro table
 
 =cut
 
@@ -260,8 +142,7 @@ sub rmosdistro
     my $help=undef;
     
     my $osdistropath=undef;	
-	
-
+#an array of all the osdistronames to remove	
     my @OSdistroListToDel=();
 
     if ($request->{arg}) {
@@ -271,77 +152,83 @@ sub rmosdistro
     GetOptions(
 		'h|help'   => \$help,
     		'n|name=s' => \$distname,
-		'f|force'  => \$force
- 	);
+		'f|force'  => \$force,  
+     );
 
-        if ($help) {
+    if ($help) {
      		 $callback->({info=>"rmosdistro [{-n|--name}=osdistroname] [-f|--force]",errorcode=>[0]});
      		 return;
-  	}
+    }
 
 
 
-   	my $osdistrotab = xCAT::Table->new('osdistro',-create=>1);
+    my $osdistrotab = xCAT::Table->new('osdistro',-create=>1);
    	
-   	unless($osdistrotab)
+    unless($osdistrotab)
+    {
+       	$callback->({error=>"rmosdistro: failed to open table 'osdistro'!",errorcode=>[1]});
+       	return;
+    }
+
+
+#if any osdistro has been specified,push it into array;otherwise push all osdistronames 
+    if($distname)
+    {
+	push(@OSdistroListToDel,$distname);
+    }
+    else
+    {
+	my @result=$osdistrotab->getAllAttribs('osdistroname');
+	if(defined(@result) and scalar @result >0)
 	{
-        	$callback->({error=>"rmosdistro: failed to open table 'osdistro'!",errorcode=>[1]});
-        	return;
+		foreach(@result)
+		{
+			push(@OSdistroListToDel,$_->{'osdistroname'});
+		}
+	}		
+    }
+
+    if(scalar @OSdistroListToDel)
+    {
+
+#if -f|--force is not specified,need to open osimage table to check the reference of osdistro  
+	my $osimagetab=undef;
+	unless($force)
+	{
+		$osimagetab=xCAT::Table->new('osimage');
+		unless($osimagetab)
+		{
+              	   $callback->({error=>"rmosdistro: failed to open table 'osimage'!",errorcode=>[1]});
+        	   return;			
+		}
 	}
 
-	if($distname)
+	foreach(@OSdistroListToDel)
 	{
-		push(@OSdistroListToDel,$distname);
-	}
-	else
-	{
-			my @result=$osdistrotab->getAllAttribs('osdistroname');
-			if(defined(@result) and scalar @result >0)
-			{
-				foreach(@result)
-				{
-					push(@OSdistroListToDel,$_->{'osdistroname'});
-				}
-			}		
-	}
 
-	if(scalar @OSdistroListToDel)
-	{
-		my $osimagetab=undef;
+#if -f|--force not specified,check the reference of osdistro,complain if the osdistro is referenced by some osimage
 		unless($force)
 		{
-			$osimagetab=xCAT::Table->new('osimage');
-			unless($osimagetab)
+			my $result=&getOSdistroref($osimagetab,$_);
+		        if($result)
 			{
-                	   $callback->({error=>"rmosdistro: failed to open table 'osimage'!",errorcode=>[1]});
-               		   return;			
-			}
+		            $callback->({error=>"rmosdistro: failed to remove $_, it is referenced by osimages:\n$result\nretry with -f option !",errorcode=>[1]});
+                            next;   
+			}	
 		}
-
-		foreach(@OSdistroListToDel)
+			
+#get "dirpaths" attribute of osdistro to remove the directory, complain if failed to lookup the osdistroname
+                $keyhash{osdistroname}    = $_;
+		my $result=$osdistrotab->getAttribs(\%keyhash,'dirpaths');
+		unless($result)
 		{
-			unless($force)
-			{
-				my $result=&getOSdistroref($osimagetab,$_);
-			        if($result)
-				{
-			            $callback->({error=>"rmosdistro: failed to remove $_, it is referenced by osimages:$result, retry with -f option !",errorcode=>[1]});
-                                    next;   
-				}	
-			}
+                         $callback->({error=>"rmosdistro: $keyhash{osdistroname}  not exist!",errorcode=>[1]});
+                         next;				
+		}
 			
-
-	                $keyhash{osdistroname}    = $_;
-			my $result=$osdistrotab->getAttribs(\%keyhash,'dirpaths');
-			unless($result)
-			{
-                            $callback->({error=>"rmosdistro: $keyhash{osdistroname}  not exist!",errorcode=>[1]});
-                            next;				
-			}
-			
-
-			if($result->{'dirpaths'})
-			{
+#remove the osdistro directories
+		if($result->{'dirpaths'})
+		{
 			   $result->{'dirpaths'} =~ s/,/\ /g;
 			   #$callback->({error=>"rmosdistro: remove $result->{'dirpaths'}  directory!",errorcode=>[0]});
 			   system("rm -rf $result->{'dirpaths'}");
@@ -351,7 +238,8 @@ sub rmosdistro
                                    next;
 				}
 			}
-			
+
+#remove the osdistro entry			
                         $osdistrotab->delEntries(\%keyhash);
    			$osdistrotab->commit;
         		$callback->({info=>"rmosdistro: remove $_ success",errorcode=>[0]});
@@ -371,107 +259,4 @@ sub rmosdistro
 }
 
 
-
-#-------------------------------------------------------
-
-=head3  lsosdistro
-
-  list osdistro entry
-
-=cut
-
-#-------------------------------------------------------
-
-sub lsosdistro
-{
-
-    my $request  = shift;
-    my $callback = shift;
-    
-    my @clause=();
-    my @result=();
-    my $result;
-
-    my $distname=undef;
-    my $basename=undef;
-    my $majorversion=undef;
-    my $minorversion=undef; 
-    my $osver=undef;
-    my $arch=undef;
-    my $type=undef;
-    my $help=undef;
-    my $stanza=undef;
-
-    if ($request->{arg}) {
-  	     	@ARGV = @{$request->{arg}};
-    }
-  
-    GetOptions(
-    		'n|name=s' => \$distname,
-                'o|osver=s' =>\$osver,
-    		'a|arch=s' => \$arch,
-    		't|type=s' => \$type,
-    		'h|help' => \$help,
-		'z|stanza' => \$stanza,
- 	);
-
-        if ($help) {
-     		 $callback->({info=>"lsosdistro [{-n|--name}=osdistroname] [{-o|--osver}=osver] [{-t|--type}=ostype]  [{-a|--arch}=architecture][-z|--stanza]",errorcode=>[0]});
-     		 return;
-  	}
-        
-
-        if($distname)
-	{
-	    push(@clause, '-w');
-	    push(@clause,"osdistroname==".$distname);
-	}
-
-        if($arch)
-	{
-	    push(@clause, '-w');
-	    push(@clause,"arch==".$arch);
-	}
-
-        if($type)
-	{
-	    push(@clause, '-w');
-	    push(@clause,"type==".$type);
-	}
-
-        if($osver)
-	{
-		($basename,$majorversion,$minorversion) = &parseosver($osver);
-
-        	if($basename)
-		{  
-	    		push(@clause, '-w');
-	    		push(@clause,"basename==".$basename);
-		}
-
-        	if($majorversion)
-		{
-	    		push(@clause, '-w');
-	    		push(@clause,"majorversion==".$majorversion);
-		}
-
-        	if($minorversion)
-		{
-	    		push(@clause, '-w');
-	    		push(@clause,"minorversion==".$minorversion);
-		}
-	}
-      
-	push(@clause,"osdistro"); 
-
-	my $ret = xCAT::Utils->runxcmd({ command => ['tabdump'], arg => \@clause}, $SUB_REQ_L, 0, 1);
-
-
-	#print "xxxxx $$ret[1]";
-	foreach my $line(@$ret[1..$#$ret])
-	{
-		$result=$result.$line."\n";	
-	}
-       $callback->({info=>"$result",errorcode=>[0]});
-        return;
-}
+1;
