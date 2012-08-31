@@ -260,19 +260,7 @@ else
     then
 		echo "Running command: ${chroot} /usr/xcatchrootscript\n"
 	fi
-	msg=`${chroot} /usr/xcatchrootscript`
-
-	rc=$?
-
-	echo "\n\n$msg\n\n"
-
-	#if [ ${rc} -ne 0 ]
-	#then 
-	#	error=1
-	#	echo "\nError: The chroot command failed for '$cmd_string'."
-	#	echo "Error: The return code from chroot was '${rc}'\n"
-	#fi
-
+	${chroot} /usr/xcatchrootscript
 
 	# sensitive process has completed
 	${M_CHATTR} -a Rstate=available $spotObj
