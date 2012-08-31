@@ -1558,7 +1558,7 @@ sub update_osdistro_table
     if($arch){
              $updates{arch}    = $arch;
     }
-
+#split $osver to basename,majorversion,minorversion 
     if($osver){
               ($updates{basename},$updates{majorversion},$updates{minorversion}) = &parseosver($osver);
     }
@@ -1577,6 +1577,7 @@ sub update_osdistro_table
               (my $ref) = $tab->getAttribs(\%keyhash, 'dirpaths');
               if ($ref and $ref->{dirpaths} )
                {
+#if $path does not exits in "dirpaths" of osdistro,append the $path delimited with a ",";otherwise keep the original value
                     unless($ref->{dirpaths} =~ /^($path)\/*,|,($path)\/*,|,($path)\/*$|^($path)\/*$/)
                     {
                            $updates{dirpaths}=$ref->{dirpaths}.','.$path;
