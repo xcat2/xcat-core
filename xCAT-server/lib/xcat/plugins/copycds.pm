@@ -105,6 +105,10 @@ sub process_request {
     if ($arch) {
       push @{$newreq->{arg}},("-a",$arch);
     }
+    if (! -l $file) {
+        push @{$newreq->{arg}},("-f",$file);    
+    }
+
     $doreq->($newreq,\&take_answer);
     $::CDMOUNTPATH="";
 

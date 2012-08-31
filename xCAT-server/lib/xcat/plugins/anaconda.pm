@@ -34,7 +34,7 @@ sub handled_commands
     return {
             copycd    => "anaconda",
             mknetboot => "nodetype:os=(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
-            mkinstall => "nodetype:os=(esxi4.1)|(esx[34].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
+            mkinstall => "nodetype:os=(esxi4.1)|(esx[34].*)|(centos.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
             mkstatelite => "nodetype:os=(esx[34].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
 	
             };
