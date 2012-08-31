@@ -212,7 +212,7 @@ ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/slpdiscover
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/cfghost
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/cfgve
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/lsve
-ln -sf ../bin/xcatosdistro  $RPM_BUILD_ROOT/%{prefix}/bin/rmosdistro
+ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/rmosdistro
 
 
 %clean
