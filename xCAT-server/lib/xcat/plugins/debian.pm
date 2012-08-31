@@ -200,7 +200,7 @@ sub copycd
     
     unless (-r $path . "/.disk/info")
     {
-        xCAT::MsgUtils->message("S","The CD doesn't look like a Debian CD, exiting...");
+        #xCAT::MsgUtils->message("S","The CD doesn't look like a Debian CD, exiting...");
         return;
     }
     my $dinfo;
