@@ -8,6 +8,11 @@ hostname $HOSTNAME
 # Master/service node set by nodeset
 export MASTER_IPS=( replace_master )
 export MASTER=replace_master
+export INSTALLDIR=replace_install_dir
+if [ -z "$INSTALLDIR" ]; then
+    INSTALLDIR="/install"
+fi
+
 cd /tmp
 RAND=$(perl -e 'print int(rand(50)). "\n"')
 sleep $RAND
@@ -15,111 +20,111 @@ sleep $RAND
 # Loop through the master/service nodes
 for t in $(seq 1 20)
 do
-	GOTIT=0
-	for i in $MASTER_IPS
-	do
-		# Download postscripts from FTP server
-		wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -t 0 -T 60 ftp://$i/postscripts
-		if [ "$?" = "0" ]; then
-			# Exit if openssl is not executable
-			if [ ! -x /usr/bin/openssl ]; then
-				exit 1
-			fi
-			
-			USEOPENSSLFORXCAT=1
-			export USEOPENSSLFORXCAT
-			
-			# Get xcat server
-			XCATSERVER=$i:3001
-			export XCATSERVER
+    GOTIT=0
+    for i in $MASTER_IPS
+    do
+        # Download postscripts from server
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -e robots=off -nH --cut-dirs=2 --reject "index.html*" --no-parent -t 0 -T 60 http://$i$INSTALLDIR/postscripts/ -P /xcatpost
+        if [ "$?" = "0" ]; then
+            # Exit if openssl is not executable
+            if [ ! -x /usr/bin/openssl ]; then
+                exit 1
+            fi
+            
+            USEOPENSSLFORXCAT=1
+            export USEOPENSSLFORXCAT
+            
+            # Get xcat server
+            XCATSERVER=$i:3001
+            export XCATSERVER
          
-			# Move postscritps into /xcatpost
-			mv $i/postscripts /xcatpost
-			# Remove postscritps
-			rm -rf $i
-			# Make postscripts executable
-			chmod +x /xcatpost/*
+            # Move postscritps into /xcatpost
+            mv $i/postscripts /xcatpost
+            # Remove postscritps
+            rm -rf $i
+            
+            # Make postscripts executable
+            chmod +x /xcatpost/*
 
-			# Get postscript to run on this node from xcat server
-			/xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
-			MYCONT=`grep MASTER /tmp/mypostscript`
-         		MAX_RETRIES=10
-			RETRY=0
-			while [ -z "$MYCONT" ]; do
-				RETRY=$(($RETRY+1))
-				if [ $RETRY -eq $MAX_RETRIES ]
-				then
-					break
-				fi
+            # Get postscript to run on this node from xcat server
+            /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /xcatpost/mypostscript
+            MYCONT=`grep MASTER /xcatpost/mypostscript`
+            MAX_RETRIES=10
+            RETRY=0
+            while [ -z "$MYCONT" ]; do
+                RETRY=$(($RETRY+1))
+                if [ $RETRY -eq $MAX_RETRIES ]
+                then
+                    break
+                fi
 
-				# Sleep a couple of seconds before trying again
-				let SLI=$RANDOM%10+10
-				sleep $SLI
-			
-				# Get postscript to run on this node from xcat server
-				/xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
-				MYCONT=`grep MASTER /tmp/mypostscript`
-			done
+                # Sleep a couple of seconds before trying again
+                let SLI=$RANDOM%10+10
+                sleep $SLI
+            
+                # Get postscript to run on this node from xcat server
+                /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /xcatpost/mypostscript
+                MYCONT=`grep MASTER /xcatpost/mypostscript`
+            done
 
-			# Make executable
-			chmod +x /tmp/mypostscript
-			GOTIT=1
-			break
-		fi
-	done
-	
-	# If postscripts for this node are found
-	if [ "$GOTIT" = "1" ]; then
-		# Save the master/service node to /opt/xcat/xcatinfo file
-		if [ ! -f /opt/xcat/xcatinfo ]; then
-			mkdir -p /opt/xcat
-			touch /opt/xcat/xcatinfo
-		fi
-		echo "XCATSERVER=$i" > /opt/xcat/xcatinfo
-	    	break
-	fi
-	RAND=$(perl -e 'print int(rand(5)). "\n"')
-	sleep $RAND
+            # Make executable
+            chmod +x /xcatpost/mypostscript
+            GOTIT=1
+            break
+        fi
+    done
+    
+    # If postscripts for this node are found
+    if [ "$GOTIT" = "1" ]; then
+        # Save the master/service node to /opt/xcat/xcatinfo file
+        if [ ! -f /opt/xcat/xcatinfo ]; then
+            mkdir -p /opt/xcat
+            touch /opt/xcat/xcatinfo
+        fi
+        echo "XCATSERVER=$i" > /opt/xcat/xcatinfo
+        echo "REBOOT=TRUE" >> /opt/xcat/xcatinfo    
+        break
+    fi
+    RAND=$(perl -e 'print int(rand(5)). "\n"')
+    sleep $RAND
 done
 
 cd /xcatpost
 export PATH=/xcatpost:$PATH
 
-# use the run_ps subroutine to run the postscripts
-TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
+# Use the run_ps subroutine to run the postscripts
+TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
 echo "
-# subroutine used to run postscripts
+# Subroutine used to run postscripts
 run_ps () {
- logdir=\"/var/log/xcat\"
- mkdir -p \$logdir
- logfile=\"/var/log/xcat/xcat.log\"
+    logdir=\"/var/log/xcat\"
+    mkdir -p \$logdir
+    logfile=\"/var/log/xcat/xcat.log\"
  
- if [ -f \$1 ]; then 
-  echo \"Running postscript: \$@\" | tee -a \$logfile
-  ./\$@ 2>&1 1> /tmp/tmp4xcatlog
-  cat /tmp/tmp4xcatlog | tee -a \$logfile
- else
-  echo \"Postscript \$1 does NOT exist.\" | tee -a \$logfile
- fi
+    if [ -f \$1 ]; then 
+        echo \"Running postscript: \$@\" | tee -a \$logfile
+        ./\$@ 2>&1 | tee -a $logfile
+    else
+        echo \"Postscript \$1 does NOT exist.\" | tee -a \$logfile
+    fi
 }
-# subroutine end
+# Subroutine end
 
-" > /tmp/mypostscript
-echo "$TMP" >> /tmp/mypostscript
-TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
-echo "$TMP" > /tmp/mypostscript 
+" > /xcatpost/mypostscript
+echo "$TMP" >> /xcatpost/mypostscript
+TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
+echo "$TMP" > /xcatpost/mypostscript 
 
 
-
-# Save post boot scripts to /tmp/mypostscript.post
-TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /tmp/mypostscript`
-echo "$TMP" > /tmp/mypostscript.post
-chmod 755 /tmp/mypostscript.post
+# Save post boot scripts to /xcatpost/mypostscript.post
+TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /xcatpost/mypostscript`
+echo "$TMP" > /xcatpost/mypostscript.post
+chmod 755 /xcatpost/mypostscript.post
 
 # Create post init
 cat >/etc/init.d/xcatpostinit1 << 'EOF'
 # Install directory variable set by nodeset
-replace_install_dir/postscripts/xcatpostinit1
+$INSTALLDIR/postscripts/xcatpostinit1
 EOF
 # Change permissions
 chmod 755 /etc/init.d/xcatpostinit1
@@ -128,7 +133,7 @@ chmod 755 /etc/init.d/xcatpostinit1
 mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
 # Install directory variable set by nodeset
-replace_install_dir/postscripts/xcatinstallpost
+$INSTALLDIR/postscripts/xcatinstallpost
 chkconfig xcatpostinit1 off
 EOF
 chmod 755 /opt/xcat/xcatinstallpost
@@ -136,9 +141,9 @@ chmod 755 /opt/xcat/xcatinstallpost
 chkconfig --add xcatpostinit1
 
 # Only run preboot scripts here
-TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /tmp/mypostscript`
-echo "$TMP" > /tmp/mypostscript
-/tmp/mypostscript
+TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /xcatpost/mypostscript`
+echo "$TMP" > /xcatpost/mypostscript
+/xcatpost/mypostscript
 
 # Master/service node variable set by nodeset
-updateflag.awk replace_master 3002
+updateflag.awk $MASTER 3002
