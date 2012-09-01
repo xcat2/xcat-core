@@ -67,6 +67,11 @@ if (isset($_GET["cmd"])) {
 			$opts_array = array($opts);
 		}
 	}
+	
+	// Time needed to update /etc/hosts
+	if (strncasecmp($cmd, "makehosts", 9) == 0) {
+		sleep(5);
+	}
 
 	// Submit request and get response
 	$xml = docmd($cmd, $tgt, $args_array, $opts_array);
@@ -78,21 +83,21 @@ if (isset($_GET["cmd"])) {
 	$rsp = array();
 
 	// webrun pping and gangliastatus output needs special handling
-	if(strncasecmp($cmd, "webrun", 6) == 0 && (stristr($args, "pping") || stristr($args, "gangliastatus") || stristr($args, "chtab"))) {
+	if (strncasecmp($cmd, "webrun", 6) == 0 && (stristr($args, "pping") || stristr($args, "gangliastatus") || stristr($args, "chtab"))) {
 		$rsp = extractWebrun($xml);
 	}
 	// nodels output needs special handling
-	else if(strncasecmp($cmd, "nodels", 6) == 0) {
+	else if (strncasecmp($cmd, "nodels", 6) == 0) {
 		// Handle the output the same way as webrun
 		$rsp = extractNodels($xml);
 	}
 	// extnoderange output needs special handling
 	// This command gets the nodes and groups
-	else if(strncasecmp($cmd, "extnoderange", 12) == 0) {
+	else if (strncasecmp($cmd, "extnoderange", 12) == 0) {
 		$rsp = extractExtnoderange($xml);
 	}
 	// Write contents to file
-	else if(strncasecmp($cmd, "write", 4) == 0) {
+	else if (strncasecmp($cmd, "write", 4) == 0) {
 		// Directory should be /var/opt/xcat/profiles
 		// You can write anything to that directory
 		$file = "$tgt";

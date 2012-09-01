@@ -19,6 +19,7 @@ use Getopt::Long;
 use Data::Dumper;
 use xCAT::Table;
 use xCAT::NodeRange;
+use xCAT::zvmUtils;
 use XML::Simple;
 require XML::Parser;
 
@@ -674,6 +675,7 @@ sub clonezlinux {
     $out = `chtab node=$node noderes.netboot=zvm nodetype.nodetype=osi nodetype.provmethod=install nodetype.os=$os nodetype.arch=$arch nodetype.profile=$profile nodetype.comments="owner:$owner"`;
 
     # Update hosts table and DNS
+    sleep(5); # Time needed to update /etc/hosts
     `makehosts`;
     `makedns`;
 
