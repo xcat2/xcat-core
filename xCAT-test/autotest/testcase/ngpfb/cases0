@@ -1,0 +1,141 @@
+#comments:make sure you have compute node definition on your MN
+#this case is just supplement for some commands,after your executing,check output from log
+start:lsslp_cmm
+description:for part of ngp firebird commands
+cmd:makedhcp -n
+check:rc==0
+check:output!=Error
+cmd:lsslp -m -z -s CMM
+check:rc==0
+check:output=~(hwtype=cmm)
+check:output=~(groups=cmm,all)
+end
+
+start:rspconfig_snmp_ssh
+description:rspconfig snmpcfg sshcfg
+cmd:makehosts cmm
+check:rc==0
+cmd:makedns cmm
+check:rc==0
+cmd:rspconfig cmm sshcfg=enable snmpcfg=enable
+check:rc==0
+check:output=~OK
+check:output!=error
+check:output=~OK
+cmd:rspconfig cmm sshcfg
+check:rc==0
+check:output=~enabled
+cmd:rspconfig cmm snmpcfg
+check:rc==0
+check:output=~enabled
+end
+
+start:rscan_cmm
+description:rscan cmm
+cmd:rscan cmm
+check:rc==0
+cmd:rscan cmm -z
+check:rc==0
+check:output=~cmm
+cmd:rscan cmm -u
+check:rc==0
+end
+
+start:rspconfig_network
+cmd:rspconfig $$CN network=*
+check:rc==0
+check:output=~OK
+end
+
+start:rspconfig_textid
+description:rspconfig textid
+cmd:rspconfig $$CN textid=abc123
+check:rc==0
+cmd:sleep 20
+cmd:rspconfig $$CN textid
+check:rc==0
+check:output=~abc123
+check:output=~(\w+)(.*?)\1
+cmd:rspconfig $$CN textid=*
+check:rc==0
+cmd:rspconfig $$CN textid
+check:output!=abc123
+cmd:rspconfig blade textid=*
+check:rc==0
+cmd:sleep 30
+cmd:rspconfig blade textid
+check:rc==0
+check:output=~(\w+)(.*?)\1
+end
+
+start:rspconfig_hwconn
+description:for hwconn
+cmd:rmhwconn $$CN
+check:rc==0
+check:rc!~(state=LINE UP)
+cmd:mkhwconn $$CN -t
+check:rc==0
+cmd:sleep 40
+cmd:lshwconn $$CN
+check:rc==0
+check:output=~(LINE UP)
+cmd:rmhwconn blade
+check:rc==0
+check:rc!~(state=LINE UP)
+cmd:mkhwconn blade -t
+check:rc==0
+cmd:sleep 50
+cmd:lshwconn blade
+check:rc==0
+check:output=~(LINE UP)
+end
+
+start:rpower_bladenode
+description:rpower
+cmd:rpower $$CN off
+check:rc==0
+cmd:sleep 50
+cmd:rpower $$CN state 
+check:rc==0
+cmd:rpower $$CN on
+check:rc==0
+check:output=~Success
+end
+
+start:rspconfig_solcfg
+description:for solcfg
+cmd:rspconfig cmm solcfg=enable
+check:rc==0
+cmd:rspconfig cmm solcfg
+check:output=~enable
+cmd:rspconfig cmm solcfg=disable
+check:rc==0
+cmd:rspconfig cmm solcfg
+check:rc=0
+check:output=~disabled
+check:output!~enable
+end
+
+start:getmacs_d_blade
+description:getmacs
+cmd:makeconservercf 
+check:rc==0
+cmd:chdef $$CN getmac=blade
+cmd:getmacs $$CN -d
+check:rc==0
+check:output=~[a-f0-9A-F]{12}|[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}
+cmd:chdef $$CN installnic=mac
+cmd:getmacs $$CN
+check:rc==0
+check:output=~[a-f0-9A-F]{12}|[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}
+end
+
+start:rinv_firm
+description:check firmware level
+cmd:rinv $$CN firm
+check:rc==0
+cmd:rvitals $$CN all 
+check:rc==0
+check:output=~(Status: Good)
+end
+
