@@ -293,11 +293,11 @@ cp xCAT-wsapi/* $RPM_BUILD_ROOT/%{prefix}/ws
 %if %fsm
 %else
 echo "ScriptAlias /xcatrhevh %{prefix}/ws/xcatrhevh.cgi" > $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
-echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" > $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
+echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
 cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache2 >>  $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
 
 echo "ScriptAlias /xcatrhevh %{prefix}/ws/xcatrhevh.cgi" > $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf
-echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" > $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf
+echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf
 cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.httpd >> $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf
 %endif
 rm -f $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache2
