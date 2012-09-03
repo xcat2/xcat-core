@@ -759,11 +759,30 @@ sub mkinitrd {
     my ($mode) = @_; # statelite or stateless
 
     if($mode eq "statelite") {
-        push @ndrivers, "fscache.ko";
-        push @ndrivers, "sunrpc.ko";
-        push @ndrivers, "lockd.ko";
-        push @ndrivers, "nfs_acl.ko";
         push @ndrivers, "nfs.ko";
+
+        open($moddeps,"<","$rootimg_dir/lib/modules/$kernelver/modules.dep");
+        my @moddeps = <$moddeps>;
+        my @checkdeps = ("nfs.ko");
+        while (scalar @checkdeps) {
+            my $driver = pop @checkdeps;
+            my @lines = grep /\/$driver:/,@moddeps;
+            foreach (@lines) {
+                chomp;
+                s/.*://;
+                s/^\s*//;
+                my @deps = split /\s+/,$_;
+                my $dep;
+                foreach $dep (@deps) {
+                    $dep =~ s/.*\///;
+                    unless (grep { $_ eq $dep } @ndrivers) { #only add if not added
+                        unshift (@checkdeps,$dep); #recursively check dependencies
+                        unshift (@ndrivers,$dep);
+                        print "Added $dep as an autodetected depedency\n";
+                    }
+                }
+            }
+        }
     
         # Additional modules needed on s390x
         if ($arch eq "s390x") {
