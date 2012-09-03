@@ -64,6 +64,7 @@ function submit_request($req, $skipVerify, $opts_array){
 	$rsp = FALSE;
 	$response = '';
 	$cleanexit = 0;
+        $flushtail = '';
 
 	// Determine whether to flush output or not
 	$flush = false;
@@ -110,14 +111,22 @@ function submit_request($req, $skipVerify, $opts_array){
 
 				// Flush output to browser
 				if ($flush) {
+                    $str = $flushtail . $str;
+                    if (preg_match('/[^>]+$/', $str, $matches)){
+                        $flushtail = $matches[0];
+                        $str = preg_replace('/[^>]+$/', '', $str);
+                    }
+                    else{
+                        $flushtail = '';
+                    }
+                    $str = preg_replace('/<errorcode>.*<\/errorcode>/', '', $str);
 					// Strip HTML tags from output
-					$str = preg_replace('/<errorcode>.*<\/errorcode>/', '', $str);
 					if ($tmp = trim(strip_tags($str))) {
 						// Format the output based on what was given for $flush_format
 						if ($flush_format == "TDB") {
 							format_TBD($tmp);
 						} else {
-						    $tmp = preg_replace('/\n\s*/', "\n", $tmp);
+                                                        $tmp = preg_replace('/\n\s*/', "\n", $tmp);
 							// Print out output by default
 							echo '<pre style="font-size: 10px;">' . $tmp . '</pre>';
 							ob_flush();
