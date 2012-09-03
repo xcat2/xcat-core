@@ -649,8 +649,10 @@ sub format_output {
             my $raw = ${$outhash->{$_}}{url};
             $rawhash{$raw} = 1;
         }
-        foreach ( keys %rawhash ) {
-            $result .= "$_\n";
+        foreach my $en ( keys %rawhash ) {
+            if ($en =~ /(\(type.*\))/) {
+                $result .= "$1\n";
+            }
         }
 
         send_msg( $request, 0, $result );
