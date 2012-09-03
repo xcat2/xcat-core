@@ -1,3 +1,4 @@
+var iframeTimer;
 /**
  * Execute when the DOM is fully loaded
  */
@@ -21,19 +22,19 @@ var hmcPlugin = function() {
  */
 hmcPlugin.prototype.getStep = function() {
     return [ 'Basic patterns', 'Supernode', 'More patterns',
-            'Power on hardware', 'Discover frames', 'Management node',
+            'Power on hardware', 'Discover frames', 'Discover hmcs', 'Management node',
             'Discover Rest of Hardware and Update Definitions', 'Create LPARs' ];
 };
 
 hmcPlugin.prototype.getInitFunction = function() {
     return [ powerInitBasicPattern, powerInitSupernode, powerInitSiteTable,
-            powerInitPoweronHardware, powerInitDiscoverFrames, powerInitConfig,
+            powerInitPoweronHardware, powerInitDiscoverFrames, powerInitDiscoverHmc, powerInitConfig,
             powerInitUpdateDefinition, powerInitCreateLpar ];
 };
 
 hmcPlugin.prototype.getNextFunction = function() {
     return [ checkBasicPattern, checkSupernode, checkSiteTable, undefined,
-            checkFrameMtms, undefined, undefined, collectInputValue ];
+            checkFrameMtms, checkHmcMtms, undefined, undefined, collectInputValue ];
 };
 
 /**
@@ -942,13 +943,31 @@ function showSiteArea() {
         url : 'lib/systemcmd.php',
         dataType : 'json',
         data : {
-            cmd : 'ifconfig | grep -E "encap|Mask"'
+            cmd : 'ifconfig | egrep "encap|Mask"'
         },
 
         success : function(data) {
             $('#discoverContentDiv #siteTableStat div').html(
                     'Current network interface configuration:<br/><pre>'
                             + data.rsp + '</pre>');
+            var ipvlan1 = 'addr:' + getDiscoverEnv('vlan1ip') + '\.[0-9]+\.[0-9]+\.[0-9]+';
+            var ipvlan2 = 'addr:' + getDiscoverEnv('vlan2ip') + '\.[0-9]+\.[0-9]+\.[0-9]+';
+            var lines = data.rsp.split('\n');
+            var iparray = new Array();
+            var re1 = new RegExp(ipvlan1,"i");
+            var re2 = new RegExp(ipvlan2,"i");
+            for (var i in lines){
+                var line = lines[i];
+                if (line.match(ipvlan1)){
+                    var temp = re1.exec(line);
+                    iparray.push(temp[0].substr(5));
+                }
+                if (line.match(ipvlan2)){
+                    var temp = re2.exec(line);
+                    iparray.push(temp[0].substr(5));
+                }
+            }
+            setDiscoverEnv('ipfordiscovery', iparray.join(','));
         }
     });
     createDiscoverButtons();
@@ -1035,8 +1054,7 @@ function powerInitPoweronHardware() {
 function powerInitDiscoverFrames() {
     $('#discoverContentDiv').empty();
     $('.tooltip').remove();
-    var showDiv = $('<div style="min-height:360px" id="discoverShow"><h2>'
-            + steps[currentStep] + '</h2>');
+    var showDiv = '<h2>' + steps[currentStep] + '</h2></div><div style="min-height:360px" id="discoverShow">';
     $('#discoverContentDiv').append(showDiv);
     
     //the discover button, use lsslp
@@ -1044,7 +1062,7 @@ function powerInitDiscoverFrames() {
     discoverButton.bind('click', function(){
     	$('#discoverShow').empty();
     	$('#discoverContentDiv button').remove();
-    	$('#discoverShow').append(createStatusBar('framedisc'));
+    	$('#discoverShow').append(createStatusBar('discoverdisc'));
     	$('#discoverShow').append('<center><table><tr><td id="frameTd">'
                 + '</td><td style="width:20px"></td><td id="mtmsTd"></td></tr></table></center>');
     	discoverFrame();
@@ -1056,8 +1074,8 @@ function powerInitDiscoverFrames() {
     importButton.bind('click', function(){
     	$('#discoverShow').empty();
     	$('#discoverContentDiv button').remove();
-    	$('#discoverShow').append(createStatusBar('framedisc'));
-    	$('#framedisc div').html('Use the mtms map file with the format <framename> <mtm> <serial>(frame1 78AC-100 9920032).');
+    	$('#discoverShow').append(createStatusBar('discoverdisc'));
+    	$('#discoverdisc div').html('Use the mtms map file with the format <framename> <mtm> <serial>(frame1 78AC-100 9920032).');
     	$('#discoverShow').append('<center><form action="lib/upload.php" method="post" enctype="multipart/form-data">MTMS map file:'
                 + '<input type="file" name="file"></form></center>');
         $('#discoverShow form').append(createButton('Parse'));
@@ -1071,7 +1089,7 @@ function powerInitDiscoverFrames() {
         var mapArray = getDiscoverEnv('framemtmsmap').split(';');
         for (var i in mapArray) {
             var tempArray = mapArray[i].split(',');
-            showMap(tempArray[0], tempArray[1], 0);
+            showMap(tempArray[0], tempArray[1], 0, 'Frame and MTMS map');
         }
 
         createDiscoverButtons();
@@ -1080,7 +1098,7 @@ function powerInitDiscoverFrames() {
 }
 
 function discoverFrame(){
-	$('#framedisc div').append('Discovering all Frames by lsslp.').append(createLoader());
+	$('#discoverdisc div').append('Discovering all Frames by lsslp.').append(createLoader());
     
     $.ajax({
         url : 'lib/cmd.php',
@@ -1095,7 +1113,7 @@ function discoverFrame(){
         success : function(data) {
             var tempInfo = data.rsp[0];
             if (-1 != tempInfo.indexOf('Error')) {
-                $('#framedisc div').html(tempInfo);
+                $('#discoverdisc div').html(tempInfo);
                 createDiscoverButtons();
                 return;
             }
@@ -1105,7 +1123,7 @@ function discoverFrame(){
             
             // Check the defined number and discovered number
             if (mtmsArray.length != frameArray.length) {
-                $('#framedisc div').html(
+                $('#discoverdisc div').html(
                         'Error: Definded Number is ' + frameArray.length
                                 + ', but lsslp discovered Number is '
                                 + mtmsArray.length
@@ -1114,20 +1132,20 @@ function discoverFrame(){
                 return;
             }
 
-            $('#framedisc div').html(
+            $('#discoverdisc div').html(
                     'Mapping the frame name and mtms which discovered by lsslp.<br\>'
                             + 'Select the frame name, then select the mtms.');
 
             for (var i in frameArray) {
                 $('#frameTd').append(
-                        '<p><input name="frameradio" type="radio" onclick="createMap(this)"><span>'
+                        '<p><input name="frameradio" type="radio" onclick="createMap(this, \'Frame and MTMS map\')"><span>'
                                 + frameArray[i] + '</span></p>');
 
             }
 
             for (var i in mtmsArray) {
                 $('#mtmsTd').append(
-                        '<p><input name="mtmsradio" type="radio" onclick="createMap(this)"><span>'
+                        '<p><input name="mtmsradio" type="radio" onclick="createMap(this, \'Frame and MTMS map\')"><span>'
                                 + mtmsArray[i] + '</span></p>');
             }
 
@@ -1137,8 +1155,20 @@ function discoverFrame(){
 }
 
 function parseMtmsMap(responseText){
-	var frameArray = expandNR(getDiscoverEnv('frameName'));
-	var lines = responseText.split("\n");
+	var typeflag;
+	var nodeArray;
+	if ($('#discoverContentDiv h2').text().toLocaleLowerCase().indexOf('hmc') >= 0){
+		typeflag = 'hmc';
+		nodeArray= expandNR(getDiscoverEnv('hmcName'));
+	}
+	else{
+		typeflag = 'frame';
+		nodeArray= expandNR(getDiscoverEnv('frameName'));
+	}
+	
+	//replace the \r\n for different os file eol format
+	responseText = responseText.replace(/[\r\n]+/g, ";");
+	var lines = responseText.split(";");
 	var temphash = new Object();
 	var nulldefine = '';
 	
@@ -1150,33 +1180,33 @@ function parseMtmsMap(responseText){
 		temphash[tempname] = tempmtm + '-' + tempserial;
 	}
 	
-	for (var i in frameArray){
-		var tempname = frameArray[i];
+	for (var i in nodeArray){
+		var tempname = nodeArray[i];
 		if (!temphash[tempname]){
 			if (!nulldefine){
-				nulldefine += 'tempname';
+				nulldefine += tempname;
 			}
 			else{
-				nulldefine += ', tempname';
+				nulldefine += ',' + tempname;
 			}
 		}
 	}
 	
 	if (nulldefine){
-		$('#framedisc div').html(
+		$('#discoverdisc div').html(
                 'Error: ' + nulldefine + ' was not defined in the map file, please check!');
 		return;
 	}
 	else{
 		for (var i in temphash){
-			showMap(i, temphash[i], 0);
+			showMap(i, temphash[i], 0, 'Frame and MTMS map');
 		}
 	}
 	
 	createDiscoverButtons();
 }
 
-function createMap(obj) {
+function createMap(obj, fieldtitle) {
     var fname = '';
     var mname = '';
 
@@ -1193,16 +1223,16 @@ function createMap(obj) {
     }
 
     $('#discoverShow :checked').parent().remove();
-    showMap(fname, mname, 1);
+    showMap(fname, mname, 1, fieldtitle);
 }
 
-function showMap(fname, mname, deleteflag) {
+function showMap(fname, mname, deleteflag, fieldtitle) {
     var rowClass = '';
     var deleteicon = '';
     if ($('#discoverShow fieldset').size() < 1) {
         $('#discoverShow')
                 .append(
-                        '<fieldset><legend>Frame and MTMS map</legend><center><table></table></center></fieldset>');
+                        '<fieldset><legend>' + fieldtitle + '</legend><center><table></table></center></fieldset>');
     }
 
     if (0 == $('#discoverShow fieldset tr').size() % 2) {
@@ -1292,7 +1322,96 @@ function checkFrameMtms(operType) {
 }
 
 /**
- * Step 7: Create the xcatsetup configure file and run xcatsetup to define all
+ * Step 7: define the hmc mtms map
+ */
+
+function powerInitDiscoverHmc() {
+    $('#discoverContentDiv').empty();
+    $('.tooltip').remove();
+    var showDiv = '<h2>' + steps[currentStep] + '</h2><div style="min-height:360px" id="discoverShow"></div>';
+    $('#discoverContentDiv').append(showDiv);
+    
+    //the discover button, use lsslp
+    var discoverButton = createButton('Discovery by lsslp');
+    discoverButton.bind('click', function(){
+    	
+    });
+    
+    //the import button, use mtms map file
+    var importButton = createButton('Import the mtms map file');
+    importButton.bind('click', function(){
+    	$('#discoverShow').empty();
+    	$('#discoverContentDiv button').remove();
+    	$('#discoverShow').append(createStatusBar('discoverdisc'));
+    	$('#discoverdisc div').html('Use the mtms map file with the format <hmcname> <mtm> <serial>(hmc1 7042CR6 10689EC).');
+    	$('#discoverShow').append('<center><form action="lib/upload.php" method="post" enctype="multipart/form-data">MTMS map file:'
+                + '<input type="file" name="file"></form></center>');
+        $('#discoverShow form').append(createButton('Parse'));
+        $('#discoverShow form').ajaxForm({
+        	success : parseMtmsMap
+        });
+    });
+    $('#discoverShow').append(importButton);
+    
+    if (getDiscoverEnv('hmcmtmsmap')) {
+        var mapArray = getDiscoverEnv('hmcmtmsmap').split(';');
+        for (var i in mapArray) {
+            var tempArray = mapArray[i].split(',');
+            showMap(tempArray[0], tempArray[1], 0, 'HMC and MTMS map');
+        }
+
+        createDiscoverButtons();
+        return;
+    }
+}
+
+function checkHmcMtms(operType){
+	// Check the number of radio button
+    var vpdStr = '';
+    $('#discoverShow .ui-state-error').remove();
+    if (0 < $('#discoverShow :radio').size()) {
+        var warnBar = createWarnBar('Map all of the hmc and mtms.');
+        $('#discoverContentDiv #discoverShow').prepend(warnBar);
+        return false;
+    }
+
+    // Find out all maps
+    var maps = '';
+    $('#discoverShow fieldset tr').each(
+            function() {
+                var hmcname = $(this).children().eq(0).html();
+                var mtms = $(this).children().eq(2).html();
+                var pos = mtms.lastIndexOf('-');
+                var startpos = mtms.indexOf(':');
+
+                maps += (hmcname + ',' + mtms + ';');
+                vpdStr += hmcname + ',' + mtms.substring(startpos + 1, pos) + ',' + mtms.substring(pos + 1) + ':';
+            });
+
+    maps = maps.substr(0, maps.length - 1);
+    vpdStr = vpdStr.substr(0, vpdStr.length - 1);
+    setDiscoverEnv('hmcmtmsmap', maps);
+
+    if ('back' == operType) {
+        return true;
+    }
+
+    // Write the maps into vpd table
+    $.ajax({
+    	url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'webrun',
+            tgt : '',
+            args : 'updatevpd;' + vpdStr,
+            msg : ''
+        }
+    });
+
+	return true;
+}
+/**
+ * Step 8: Create the xcatsetup configure file and run xcatsetup to define all
  * objects in xcat database.
  */
 function powerInitConfig(operType) {
@@ -1325,7 +1444,7 @@ function powerInitConfig(operType) {
     createSetupFile();
 }
 /**
- * Step 7: Create the xcat configure file
+ * Step 8: Create the xcat configure file
  */
 function createSetupFile() {
     var fileContent = '';
@@ -1404,7 +1523,7 @@ function createSetupFile() {
 }
 
 /**
- * Step 7: Run the xcatsetup command
+ * Step 8: Run the xcatsetup command
  */
 function runSetup() {
     $('#setupLine').append(createLoader());
@@ -1428,8 +1547,21 @@ function runSetup() {
     });
 }
 
+function updateFrameHeight(){
+    var frameArray = document.getElementsByTagName('iframe');
+    for (var i = 0;i <  frameArray.length; i++){
+        var tempiframe = document.getElementsByTagName('iframe')[i];
+        tempiframe.height = tempiframe.contentWindow.document.documentElement.scrollHeight;
+    }
+
+    //scroll the status div to the bottom automaticlly
+    var infodiv = document.getElementById('returninfo');
+    infodiv.scrollTop = infodiv.scrollHeight;
+
+    iframeTimer = setTimeout(updateFrameHeight, 2000);
+}
 /**
- * Step 8: Discover all HMC and CEC in the cluster and update into xCAT database
+ * Step 9: Discover all HMC and CEC in the cluster and update into xCAT database
  */
 function powerInitUpdateDefinition(operType) {
     $('#discoverContentDiv').empty();
@@ -1446,9 +1578,7 @@ function powerInitUpdateDefinition(operType) {
     showStr += '<div id="outputinfo"></div><ul>';
     
     showStr += '<li id="hmcLine1"><span class="ui-icon ' + iconClass
-            + '"></span>Discover HMCs.</li>';
-    showStr += '<li id="hmcLine2"><span class="ui-icon ' + iconClass
-            + '"></span>Update HMCs into xCAT database.</li>';
+            + '"></span>Discover and define HMCs into xCAT database..</li>';
     showStr += '<li id="frameLine1"><span class="ui-icon ' + iconClass
             + '"></span>Update Frames into xCAT database.</li>';
     showStr += '<li id="frameLine2"><span class="ui-icon ' + iconClass
@@ -1476,121 +1606,56 @@ function powerInitUpdateDefinition(operType) {
         return;
     }
 
+    iframeTimer = setTimeout(updateFrameHeight, 10000);
     lsslpWriteHMC();
 }
 
 /**
- * Step 8: Write all the lsslp HMC info into database
+ * Step 9: Write all the lsslp HMC info into database
  */
 function lsslpWriteHMC() {
     $('#hmcLine1').append(createLoader());
-    var cmdlink = 'lib/cmd.php?cmd=lsslp&tgt=&args=-s;HMC&msg=&opts=flush';
-    var hmciframe1 = $('<iframe id="hmciframe1"></iframe>').attr('src', cmdlink).css({
+
+	$('#returninfo div').append('<p>Discovere HMCs and define into xCAT database.</p>');
+	var cmdlink = 'lib/cmd.php?cmd=lsslp&tgt=&args=-w;-s;HMC;-t;2;';
+	if (getDiscoverEnv('ipfordiscovery')){
+		cmdlink += '-i;' + getDiscoverEnv('ipfordiscovery') + ';';
+	}
+	cmdlink += '-C;' + expandNR(getDiscoverEnv('hmcName')).length;
+	cmdlink += '&msg=&opts=flush';
+	var hmciframe1 = $('<iframe id="hmciframe1" scrolling="no"></iframe>').attr('src', cmdlink).css({
     	'display': 'block',
         'border': '0px',
         'margin': '10px',
-        'width': '100%',
-        'overflow': 'visible'
+        'width': '100%'
     });
-    
-    hmciframe1.load( function() {
-    	var mapstring = "Add map between hmc and frames into xCAT database<br/>";
-    	//extract the return information from the iframe hmciframe1
-    	var mtmsArray = new Array();
-    	var hmclines = $(document.getElementById('hmciframe1').contentWindow.document.body).text();
-    	var temparray = hmclines.split("\n");
-    	for (var i in temparray){
-    		var line = temparray[i].replace(/(^\s*)|(\s*$)/g, "");
-    		if (line.toLowerCase().indexOf('hmc') >= 0){
-    			line = line.replace(/\s+/g, " ");
-    			var attrs = line.split(" ");
-    			//attrs[1] is mtm, attrs[2] is serial number
-    			mtmsArray.push(attrs[1], attrs[2]);
-    		}
-    	}
-        // modify the page elements
+	$('#returninfo div').append(hmciframe1);
+	
+	hmciframe1.load(function() {
         $('#hmcLine1 img').remove();
         var tempSpan = $('#hmcLine1').find('span');
         tempSpan.removeClass('ui-icon-gear');
         tempSpan.addClass('ui-icon-check');
-        $('#hmcLine2').append(createLoader());
-
-        var hmcArray = expandNR(getDiscoverEnv('hmcName'));
-        var tempPar = '';
-
-        if (hmcArray.length > (mtmsArray.length / 2)) {
-            // Error info
-            $('#hmcLine2 img').remove();
-            var warnBar = createWarnBar('Error: Defined ' + hmcArray.length
-                    + ' HMCs, but discovered ' + mtmsArray.length / 2
-                    + ' HMCs. Please check the configuration.');
-            $('#discoverContentDiv div').prepend(warnBar);
-            createDiscoverButtons();
-            return;
-        }
-
-        // Create the HMC and MTMs pair string
-        for (var i in hmcArray) {
-        	var j = 2 * i;
-            if ('' == tempPar) {
-                tempPar += hmcArray[i] + ',' + mtmsArray[j] + ',' + mtmsArray[j + 1];
-            } else {
-                tempPar += ':' + hmcArray[i] + ',' + mtmsArray[j] + ',' + mtmsArray[j + 1];
-            }
-            mapstring += hmcArray[i] + '<----->' + mtmsArray[j] + '-' + mtmsArray[j + 1] + '<br/>';
-        }
-        
-        $('#returninfo div').append('<p>' + mapstring + '</p>'); 
-
-        // Write MTMs and HMC name pair into vpd table
-        $.ajax({
-            url : 'lib/cmd.php',
-            dataType : 'json',
-            data : {
-                cmd : 'webrun',
-                tgt : '',
-                args : 'updatevpd;' + tempPar,
-                msg : ''
-            },
-            success : function() {
-            	$('#returninfo div').append('<p>Add the discovered HMCs into xCAT database.</p>');
-            	var cmklink2 = 'lib/cmd.php?cmd=lsslp&tgt=&args=-w;-s;HMC&msg=&opts=flush';
-            	var hmciframe2 = $('<iframe id="hmciframe2"></iframe>').attr('src', cmdlink).css({
-                	'display': 'block',
-                    'border': '0px',
-                    'margin': '10px',
-                    'width': '100%',
-                    'overflow': 'visible'
-                });
-            	$('#returninfo div').append(hmciframe2);
-            	
-            	hmciframe2.load(function() {
-                    $('#hmcLine2 img').remove();
-                    var tempSpan = $('#hmcLine2').find('span');
-                    tempSpan.removeClass('ui-icon-gear');
-                    tempSpan.addClass('ui-icon-check');
-                    lsslpWriteFrame();
-                });
-            }
-        });
+        lsslpWriteFrame();
     });
-    
-    $('#returninfo div').append(hmciframe1);
 }
 
 /**
- * Step 8: Write all lsslp frame info into the database
+ * Step 9: Write all lsslp frame info into the database
  */
 function lsslpWriteFrame() {
     $('#frameLine1').append(createLoader());
     $('#returninfo div').append('<p>Write the discovered FRAMES into xCAT Database.</p>');
-    var cmdlink = 'lib/cmd.php?cmd=lsslp&tgt=&args=-w;-s;FRAME&msg=&opts=flush';;
-    var frameiframe1 = $('<iframe id="frameiframe1"></iframe>').attr('src', cmdlink).css({
+    var cmdlink = 'lib/cmd.php?cmd=lsslp&tgt=&args=-w;-s;FRAME;';
+    if (getDiscoverEnv('ipfordiscovery')){
+		cmdlink += '-i;' + getDiscoverEnv('ipfordiscovery');
+	}
+    cmdlink += '&msg=&opts=flush';
+    var frameiframe1 = $('<iframe id="frameiframe1" scrolling="no"></iframe>').attr('src', cmdlink).css({
     	'display': 'block',
         'border': '0px',
         'margin': '10px',
-        'width': '100%',
-        'overflow': 'visible'
+        'width': '100%'
     });
 	$('#returninfo div').append(frameiframe1);
 	
@@ -1604,7 +1669,7 @@ function lsslpWriteFrame() {
 }
 
 /**
- * Step 8: config the frame dhcp and dns
+ * Step 9: config the frame dhcp and dns
  */
 function frameSetup() {
 	$('#frameLine2').append(createLoader());
@@ -1632,18 +1697,17 @@ function frameSetup() {
 }
 
 /**
- * Step 8: reset the networks for frames
+ * Step 9: reset the networks for frames
  */
 function frameReset(){
 	$('#frameLine3').append(createLoader());
 	$('#returninfo div').append('<p>Reset network on FRAMES to get persistent IP.</p>');
-    var cmdlink = 'lib/cmd.php?cmd=rspconfig&tgt=frame&args=--resetnet&msg=&opts=flush';;
-    var frameiframe2 = $('<iframe id="frameiframe2"></iframe>').attr('src', cmdlink).css({
+    var cmdlink = 'lib/cmd.php?cmd=rspconfig&tgt=frame&args=--resetnet&msg=&opts=flush';
+    var frameiframe2 = $('<iframe id="frameiframe2" scrolling="no"></iframe>').attr('src', cmdlink).css({
     	'display': 'block',
         'border': '0px',
         'margin': '10px',
-        'width': '100%',
-        'overflow': 'visible'
+        'width': '100%'
     });
 	$('#returninfo div').append(frameiframe2);
 	frameiframe2.load(function() {
@@ -1656,7 +1720,7 @@ function frameReset(){
 }
 
 /**
- * Step 8: create hardware connection for frames
+ * Step 9: create hardware connection for frames
  */
 function frameHwconn(){
 	$('#frameLine4').append(createLoader());
@@ -1684,18 +1748,21 @@ function frameHwconn(){
 }
 
 /**
- * Step 8: Write all the lsslp cec info into database
+ * Step 9: Write all the lsslp cec info into database
  */
 function lsslpWriteCec() {
     $('#cecLine').append(createLoader());
     $('#returninfo div').append('<p>Discover and write CECs into xCAT Database.</p>');
-    var cmdlink = 'lib/cmd.php?cmd=lsslp&tgt=&args=-s;CEC;-w&msg=&opts=flush';;
-    var ceciframe1 = $('<iframe id="ceciframe1"></iframe>').attr('src', cmdlink).css({
+    var cmdlink = 'lib/cmd.php?cmd=lsslp&tgt=&args=-s;CEC;-w;';
+    if (getDiscoverEnv('ipfordiscovery')){
+		cmdlink += '-i;' + getDiscoverEnv('ipfordiscovery');
+	}
+    cmdlink += '&msg=&opts=flush';
+    var ceciframe1 = $('<iframe id="ceciframe1" scrolling="no"></iframe>').attr('src', cmdlink).css({
     	'display': 'block',
         'border': '0px',
         'margin': '10px',
-        'width': '100%',
-        'overflow': 'visible'
+        'width': '100%'
     });
 	$('#returninfo div').append(ceciframe1);
 	ceciframe1.load(function() {
@@ -1708,7 +1775,7 @@ function lsslpWriteCec() {
 }
 
 /**
- * Step 8: config the cec dhcp and dns
+ * Step 9: config the cec dhcp and dns
  */
 function cecsetup(){
 	$('#cecLine2').append(createLoader());
@@ -1735,18 +1802,17 @@ function cecsetup(){
 }
 
 /**
- * Step 8: reset the networks for cecs
+ * Step 9: reset the networks for cecs
  */
 function cecReset(){
 	$('#cecLine3').append(createLoader());
 	$('#returninfo div').append('<p>Reset network on CECs to get persistent IP.</p>');
-    var cmdlink = 'lib/cmd.php?cmd=rspconfig&tgt=cec&args=--resetnet&msg=&opts=flush';;
-    var ceciframe2 = $('<iframe id="ceciframe2"></iframe>').attr('src', cmdlink).css({
+    var cmdlink = 'lib/cmd.php?cmd=rspconfig&tgt=cec&args=--resetnet&msg=&opts=flush';
+    var ceciframe2 = $('<iframe id="ceciframe2" scrolling="no"></iframe>').attr('src', cmdlink).css({
     	'display': 'block',
         'border': '0px',
         'margin': '10px',
-        'width': '100%',
-        'overflow': 'visible'
+        'width': '100%'
     });
 	$('#returninfo div').append(ceciframe2);
 	ceciframe2.load(function() {
@@ -1759,7 +1825,7 @@ function cecReset(){
 }
 
 /**
- * Step 8: config the cec
+ * Step 9: config the cec
  */
 function cecHwconn(){
 	$('#cecLine4').append(createLoader());
@@ -1780,13 +1846,15 @@ function cecHwconn(){
             tempSpan.removeClass('ui-icon-gear');
             tempSpan.addClass('ui-icon-check');
             $('#returninfo div').append('<p><pre>' + data.rsp.join("\n") + '</pre></p>');
+            clearTimeout(iframeTimer);
+            updateFrameHeight();
             createDiscoverButtons();
         }
     });
 }
 
 /**
- * Step 9: Create LPARs
+ * Step 10: Create LPARs
  */
 function powerInitCreateLpar() {
     $('#discoverContentDiv').empty();
@@ -1810,6 +1878,7 @@ function powerInitCreateLpar() {
 
 function ihCreateLpar(parentDiv) {
     var showStr = 'Partition Rule:<br/>'
+            + 'By default, 1 partition is already created in each octant of each CEC, with all of the octant\'s CPUs and memory assigned to it.  If this is the configuration you want, click Next.  To customize the partition configuration, use one of the rules below.<br/>'
             + 'If all the octants configuration value are same in one CEC,  it will be  " -r  0-7:value".<br/>'
             + 'If the octants use the different configuration value in one cec, it will be "-r 0:value1,1:value2,...7:value7", or "-r 0:value1,1-7:value2".<br/>'
             + 'The octants configuration value for one Octant could be  1, 2, 3, 4, 5 . The meanings of the octants configuration value  are as following:<br/>'
