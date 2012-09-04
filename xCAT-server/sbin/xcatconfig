@@ -416,6 +416,107 @@ if ($::INITIALINSTALL || $::FORCE)
      system("chkconfig dhcpd on");
 
 
+     # Turn off selinux on RedHat
+     if (-f "/etc/redhat-release")
+     {
+         my $rc=xCAT::Utils->isSELINUX();
+         if ($rc != 0)
+         {
+             xCAT::MsgUtils->message('W', "SELINUX is not disabled, disabling it now...");
+             # Disable selinux for running system
+             my $cmd = "echo 0 > /selinux/enforce";
+             my $outref = xCAT::Utils->runcmd("$cmd", 0);
+             if ($::RUNCMD_RC != 0)
+             {
+                xCAT::MsgUtils->message('E', "Failed to disable SELINUX.");
+             }
+             # Disable selinux through reboots
+             my $cmd = "sed -i 's/^SELINUX=.*\$/SELINUX=disabled/' /etc/selinux/config";
+             my $outref = xCAT::Utils->runcmd("$cmd", 0);
+             if ($::RUNCMD_RC != 0)
+             {
+                xCAT::MsgUtils->message('E', "Failed to disable SELINUX.");
+             }
+          }
+     }
+
+     # Configure static ip addresses on the network interfaces
+     if (-f "$::INSTALLDIR/postscripts/hardeths")
+     {
+         my $cmd = "$::INSTALLDIR/postscripts/hardeths";
+         my $outref = xCAT::Utils->runcmd("$cmd", 0);
+         if ($::RUNCMD_RC != 0)
+         {
+             xCAT::MsgUtils->message('E', "Failed to configure static ip addresses");
+         }
+     }
+
+    # Setup ntp server
+    if (-f "/etc/ntp.conf")
+    {
+        my $cmd = "echo 'driftfile /var/lib/ntp/drift' > /etc/ntp.conf; echo 'disable auth' >> /etc/ntp.conf; echo 'restrict 127.0.0.1' >> /etc/ntp.conf; echo 'server  127.127.1.0' >> /etc/ntp.conf; echo 'fudge   127.127.1.0 stratum 10' >> /etc/ntp.conf";
+        my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E', "Failed to update /etc/ntp.conf");
+        }
+
+        my $ntpserv;
+        if (-f "/etc/redhat-release")
+        {
+            $ntpserv = "ntpd";
+        }
+        else
+        {
+            $ntpserv = "ntp";
+        }
+        $cmd = "service $ntpserv restart";
+        $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E', "Failed to start ntp service");
+        }
+        if (-f "/sbin/chkconfig")
+        {
+            $cmd = "chkconfig $ntpserv on";
+            $outref = xCAT::Utils->runcmd("$cmd", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message('E', "Failed to enable ntp service on every boot");
+            }
+        }
+    }
+
+    # Disable firewall
+    my $fwserv;
+    if(-f "/etc/SuSE-release")
+    {
+       $fwserv = "SuSEfirewall2_setup";
+    }
+    elsif(-f "/etc/redhat-release")
+    {
+        $fwserv = "iptables";
+    }
+    else
+    {
+        #Ubuntu: FIXME
+    }
+    if($fwserv)
+    {
+        my $cmd = "service $fwserv stop";
+        my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E', "Failed to stop firewall");
+        }
+        $cmd = "chkconfig $fwserv off";
+        $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E', "Failed to disable firewall on boot");
+        }
+     }
+
      my $linux_note =
       "xCAT is now running, it is recommended to tabedit networks \nand set a dynamic ip address range on any networks where nodes \nare to be discovered. Then, run makedhcp -n to create a new dhcpd \nconfiguration file, and \/etc\/init.d\/dhcpd restart. Either examine sample \nconfiguration templates, or write your own, or specify a value per \nnode with nodeadd or tabedit.";
      xCAT::MsgUtils->message('I', $linux_note);
@@ -921,7 +1022,7 @@ sub initDB
     my $master;
     $master  = xCAT::NetworkUtils->getipaddr($hname);
     if (!$master) {
-        xCAT::MsgUtils->message("E", "Hostname resolution for $hname failed.");
+        xCAT::MsgUtils->message("E", "Hostname resolution for $hname failed, setting the site.master to NORESOLUTION for now, after the xCAT installation is finished, fix this hostname resolution problem, change the site.master to the correct value and then resart xcatd.");
         $master = "NORESOLUTION";
     }
     # get forwarders which are the nameserver entries in /etc/resolv.conf
