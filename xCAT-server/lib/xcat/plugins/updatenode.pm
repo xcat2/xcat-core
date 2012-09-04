@@ -879,14 +879,14 @@ sub updatenode
             xCAT::MsgUtils->message("E", $rsp, $callback);
 
         }
-        $cmd="cd $postscripts;tar -czf $postscripts.tgz ."; #print "cmd:$cmd\n";
-        xCAT::Utils->runcmd($cmd, 0);
-        $rsp = {};
-        if ($::RUNCMD_RC != 0)
-        {
-           $rsp->{data}->[0] = "$cmd failed.\n";
-           xCAT::MsgUtils->message("E", $rsp, $callback);
-        }
+        #$cmd="cd $postscripts;tar -czf $postscripts.tgz ."; #print "cmd:$cmd\n";
+        #xCAT::Utils->runcmd($cmd, 0);
+        #$rsp = {};
+        #if ($::RUNCMD_RC != 0)
+        #{
+        #   $rsp->{data}->[0] = "$cmd failed.\n";
+        #   xCAT::MsgUtils->message("E", $rsp, $callback);
+        #}
 
     }
 
@@ -1474,18 +1474,18 @@ sub updatenode
         }
     }
     # finish clean up the tarred  postscript file
-    if (-e "$postscripts.tgz") {
+    #if (-e "$postscripts.tgz") {
 
-       my $cmd="rm $postscripts.tgz"; #print "cmd:$cmd\n";
-       xCAT::Utils->runcmd($cmd, 0);
-       my $rsp = {};
-       if ($::RUNCMD_RC != 0)
-       {
-           $rsp->{data}->[0] = "$cmd failed.\n";
-           xCAT::MsgUtils->message("E", $rsp, $callback);
-       }
+    #   my $cmd="rm $postscripts.tgz"; #print "cmd:$cmd\n";
+    #   xCAT::Utils->runcmd($cmd, 0);
+    #   my $rsp = {};
+    #   if ($::RUNCMD_RC != 0)
+    #   {
+    #       $rsp->{data}->[0] = "$cmd failed.\n";
+    #       xCAT::MsgUtils->message("E", $rsp, $callback);
+    #   }
 
-    }
+    #}
     return 0;
 }
 #
