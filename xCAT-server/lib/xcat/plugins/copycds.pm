@@ -99,7 +99,7 @@ sub process_request {
 
     mkdir "/mnt/xcat";
 
-    if (system("mount $mntopts $file /mnt/xcat")) {
+    if (system("mount $mntopts '$file' /mnt/xcat")) {
 	$callback->({error=>"copycds was unable to mount $file to /mnt/xcat.",errorcode=>[1]});
       	return;
     }
