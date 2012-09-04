@@ -50,19 +50,19 @@ download_postscripts()
     rc=1 
     while [ 0 -eq 0 ]; do
 	
-        wget -N --waitretry=10 --random-wait -T 60 http://$server$INSTALLDIR/postscripts.tgz  -P /xcatpost 2> /tmp/wget.log
-        rc=$?
+        #wget -N --waitretry=10 --random-wait -T 60 http://$server$INSTALLDIR/postscripts.tgz  -P /xcatpost 2> /tmp/wget.log
+        #rc=$?
         
-	if [ $rc -eq 0 ]; then
-	    return 0;
-        else 
+	#if [ $rc -eq 0 ]; then
+	#    return 0;
+        #else 
             wget -l inf -nH -N -r --waitretry=10 --random-wait -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$server$INSTALLDIR/postscripts/ -P /xcatpost 2> /tmp/wget.log
             rc=$?
         
 	   if [ $rc -eq 0 ]; then
 	       return 0;
            fi
-        fi
+        #fi
 
 	retry=$(($retry+1))
 	if [ $retry -eq $max_retries ]; then
@@ -252,9 +252,9 @@ if grep 'rw /rw tmpfs ' /proc/mounts  >/dev/null 2>&1; then
     ln -sf /etc/rc6.d/K10xcatmounts /etc/rc0.d/K10xcatmounts
 fi
 
-if [ -f /xcatpost/postscripts.tgz ]; then
-    tar xzf /xcatpost/postscripts.tgz -C /xcatpost/ 2>/dev/null 
-fi
+#if [ -f /xcatpost/postscripts.tgz ]; then
+#    tar xzf /xcatpost/postscripts.tgz -C /xcatpost/ 2>/dev/null 
+#fi
 
 chmod +x /xcatpost/*; 
 
