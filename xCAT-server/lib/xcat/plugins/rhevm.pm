@@ -596,8 +596,7 @@ sub mkinstall {
                     $kcmdline .=  " adminpw=$rhevm_hash->{$rhevm}->{host}->{$node}->{adminpw} rootpw=$rhevm_hash->{$rhevm}->{host}->{$node}->{rootpw} ssh_pwauth=1";
             
                     # set the hostname and password of the management server for the node so that node could register to the rhevm automatically.
-                    $kcmdline .= " management_server=$rhevm_hash->{$rhevm}->{name} rhevm_admin_password=";
-                    $kcmdline .= authpw($rhevm_hash->{$rhevm}->{pw});
+                    $kcmdline .= " management_server=$rhevm_hash->{$rhevm}->{name} rhevm_admin_password=$rhevm_hash->{$rhevm}->{host}->{$node}->{rootpw}";                    
             
                     # set the flag update trigger, after installing of rhev-h, this url will be 'wget', xCAT MN will handle this event to run the upfateflag for this rhev-h
                     my $xcatmaster;
