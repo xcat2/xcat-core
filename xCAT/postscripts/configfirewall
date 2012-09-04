@@ -1,0 +1,202 @@
+#!/usr/bin/perl
+
+use strict;
+use Getopt::Long;
+
+Getopt::Long::Configure("bundling");
+$Getopt::Long::ignorecase = 0;
+
+my @allowed_ports = ("22", "53", "80", "443", "873", "3001", "3002");
+
+if(scalar(@ARGV) == 0)
+{
+    &usage();
+    exit 0;
+}
+
+if (
+    !GetOptions(
+                'private=s'     => \$::opt_private,
+                'public=s'  => \$::opt_public,
+                'nat'  => \$::opt_nat,
+                'ports=s'  => \$::opt_ports,
+    )
+  )
+{
+
+    &usage();
+    exit 1;
+}
+
+# Invalid input arguments
+if(scalar(@ARGV) > 0)
+{
+    print "Unknown options @ARGV\n";
+    &usage();
+    exit 1;
+}
+# --private and --public must be used together
+if(($::opt_private && !$::opt_public) || (!$::opt_private && $::opt_public))
+{
+    print "Flags --private and --public must be used together\n";
+    &usage();
+    exit 1;
+}
+
+if ($::opt_nat && (!$::opt_private || !$::opt_public))
+{
+    print "Flags --private and --public must be used with --nat\n";
+    &usage();
+    exit 1;
+}
+
+# Add additional ports into the list
+if ($::opt_ports)
+{
+    my @addports = split /,/, $::opt_ports;
+    foreach my $aport (@addports)
+    {
+        if (!grep (/^$aport$/, @allowed_ports))
+        {
+            push @allowed_ports, $aport;
+        }
+    }
+}
+
+if (-f "/etc/redhat-release")
+{
+    if($::opt_private && $::opt_public)
+    {
+        &setup_ip_forwarding();
+        my $cmd = &generate_iptables_conf($::opt_private, $::opt_public);
+        system($cmd);
+    }
+
+    if ($::opt_nat)
+    {
+        my $cmd = &generate_nat_conf($::opt_private, $::opt_public);
+        system($cmd);
+    }
+
+    # iptables configuration should be persistent through reboots
+    my $cmd = "iptables-save > /etc/sysconfig/iptables";
+    system($cmd);
+
+    # restart iptables
+    $cmd = "service iptables restart";
+    system($cmd);
+
+    # iptables should be stared on reboot
+    $cmd = "chkconfig iptables on";
+    system($cmd);
+}
+elsif (-f "/etc/SuSE-release")
+{
+    my $conffile;
+    my $conf;
+    if($::opt_private && $::opt_public)
+    {
+        &setup_ip_forwarding();
+        $conffile = "/etc/sysconfig/SuSEfirewall2";
+        my @privates = split /,/, $::opt_private;
+        my $privintf = join(' ', @privates);
+        
+        # Configuration content
+        $conf .= "FW_DEV_EXT=\"$::opt_public\"\n";
+        $conf .= "FW_DEV_INT=\"$privintf\"\n";
+        $conf .= "FW_MASQUERADE=\"yes\"\n";
+        $conf .= "FW_PROTECT_FROM_INT=\"no\"\n";
+        $conf .= "FW_MASQ_DEV=\"$::opt_public\"\n";
+        $conf .= "FW_MASQ_NETS=\"0/0\"\n";
+
+        my $ports = join(' ', @allowed_ports);
+        $conf .= "FW_SERVICES_EXT_TCP=\"$ports\"\n";
+        $conf .= "FW_SERVICES_EXT_UDP=\"$ports\"\n";
+        $conf .= "FW_TRUSTED_NETS=\"127.0.0.1 0/0,icmp\"\n";
+    }
+
+    if ($::opt_nat)
+    {
+        $conf .= "FW_ROUTE=\"yes\"\n";
+    }
+    open(CONFFILE, ">>$conffile");
+    print CONFFILE $conf;
+    close(CONFFILE);
+
+    # restart firewall 
+    my $cmd = "service SuSEfirewall2_setup restart";
+    system($cmd);
+
+    # SuSEfirewall2_setup should be stared on reboot
+    $cmd = "chkconfig SuSEfirewall2_setup on";
+    system($cmd);
+}
+else
+{
+    #Ubuntu: FIXME
+}
+
+sub usage()
+{
+        print "Usage:\n    configfirewall --private <private_interfaces> --public <pubic_interface> [--nat] [--ports <ports_allowed>]\n";
+}
+
+sub generate_iptables_conf()
+{
+    my ($privateintf, $publicintf) = @_;
+
+    my $cmd;
+    my @privates = split /,/, $privateintf;
+
+    #General setup
+    $cmd .= "iptables -A INPUT -i lo -j ACCEPT;";
+    $cmd .= "iptables -A INPUT -p icmp -m icmp --icmp-type any -j ACCEPT;";
+    $cmd .= "iptables -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT;";
+
+    # Setup for public interface
+    foreach my $port (@allowed_ports)
+    {
+        $cmd .= "iptables -A INPUT -i $publicintf -m state --state NEW -p tcp --dport $port -j ACCEPT;";
+        $cmd .= "iptables -A INPUT -i $publicintf -m state --state NEW -p udp --dport $port -j ACCEPT;";
+    }
+    # Reject settings for public interface 
+    $cmd .= "iptables -A INPUT -i $publicintf -j REJECT --reject-with icmp-port-unreachable;";
+
+    # Setup for private interfaces
+    foreach my $intf (@privates)
+    {
+        $cmd .= "iptables -A INPUT -i $intf -j ACCEPT;";
+    }
+    return $cmd;
+}
+
+sub setup_ip_forwarding()
+{
+    # Enable ip forwarding
+    my $conf_file="/etc/sysctl.conf";
+    `grep "net.ipv4.ip_forward" $conf_file`;
+    if ($? == 0) {
+        `sed -i "s/^net.ipv4.ip_forward = .*/net.ipv4.ip_forward = 1/" $conf_file`;
+    } else {
+        `echo "net.ipv4.ip_forward = 1" >> $conf_file`;
+    }
+    `sysctl -e -p $conf_file`;
+}
+sub generate_nat_conf()
+{
+    my ($privintf, $pubintf) = @_;
+
+    my $cmd;
+    my @privates = split /,/, $privintf; 
+
+    # Setup forward for public interface
+    $cmd .= "iptables -t nat -A POSTROUTING -o $pubintf -j MASQUERADE;";
+
+    # Setup forward for each private interface
+    foreach my $intf (@privates)
+    {
+        $cmd .= "iptables -A FORWARD -i $intf -j ACCEPT;";
+        $cmd .= "iptables -A FORWARD -i $intf -o $pubintf -m state --state RELATED,ESTABLISHED -j ACCEPT;"; 
+    }
+    return $cmd;
+}
