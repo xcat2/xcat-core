@@ -756,7 +756,7 @@ sub xdsh
 
         for ($j = 0 ; $j < $maxlines ; $j++)
         {
-            if ($i > $arraylen)
+            if ($i >= $arraylen)
             {
                 last;
             }
