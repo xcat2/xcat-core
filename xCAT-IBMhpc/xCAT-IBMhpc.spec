@@ -45,6 +45,10 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/rsct
 
 %ifos linux
 cp -a share/xcat/IBMhpc/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/ping-all/
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/ml-tuning
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/aix-clean-jitter
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/aix-reboot
 chmod -R 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/*
 %else
 cp -hpR share/xcat/IBMhpc/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/
