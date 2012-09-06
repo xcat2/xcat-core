@@ -48,7 +48,7 @@ download_postscripts()
     retry=0
     rc=1 
     while [ 0 -eq 0 ]; do
-	wget -l inf -nH -N -r --waitretry=10 --random-wait -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$server$INSTALLDIR/postscripts/ -P /xcatpost 2> /tmp/wget.log
+	wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$server$INSTALLDIR/postscripts/ -P /xcatpost 2> /tmp/wget.log
         rc=$?
         
 	if [ $rc -eq 0 ]; then
