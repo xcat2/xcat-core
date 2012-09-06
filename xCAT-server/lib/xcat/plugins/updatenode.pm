@@ -286,9 +286,9 @@ sub preprocess_updatenode
         return;
     }
 
-    # the -P flag is omitted when only postscritps are specified,
+    # the -P flag is omitted when only postscripts are specified,
     # so if there are parameters without any flags, it may mean
-    # to re-run the postscripts.
+    # to re-run the postscripts. Except for the -k flag
     if (@ARGV)
     {
 
@@ -362,6 +362,26 @@ sub preprocess_updatenode
             xCAT::MsgUtils->message("E", $rsp, $callback, 1);
             return;
         }
+        # now build a list of all service nodes that are either in the 
+        # noderange or a service node of a node in the noderange
+        # and update there ssh keys and credentials
+        # get computenodes and servicenodes from the noderange
+        my @SN;
+        my @CN;
+        xCAT::ServiceNodeUtils->getSNandCPnodes(\@$nodes,\@SN,\@CN);
+        $::NODEOUT = ();
+        &update_SN_security($request, $callback, $subreq ,\@SN);
+        
+        # are there compute nodes, then we want to change the request to 
+        # just update the compute nodes
+        if (scalar(@CN)) {
+          $request->{node}                  = \@CN;
+          $request->{noderange}             = \@CN;
+          $::RERUNPS = "remoteshell";
+        } else { # no more nodes
+           return;
+        }
+
     }
 
     #
@@ -525,8 +545,7 @@ sub preprocess_updatenode
 
     }
 
-    # for security update, we need to handle the service node first
-    my @good_sns = ();
+    # Get the MN names 
     my @MNip     = xCAT::NetworkUtils->determinehostname;
     my @sns      = ();
     foreach my $s (keys %$sn)
@@ -541,59 +560,7 @@ sub preprocess_updatenode
         }
     }
 
-    if (scalar(@sns) && $::SECURITY)
-    {
-
-        $::CALLBACK = $callback;
-        $::NODEOUT  = ();
-
-        # setup the ssh keys on the service nodes
-        my $req_sshkey = dclone($request);
-        $req_sshkey->{node} = \@sns;
-
-        # update the ssh keys on the servicenodes first
-        &security_update_sshkeys($req_sshkey, \&updatenode_cb, $subreq, \@sns);
-
-        # run the postscripts: remoteshell, servicenode
-        # These are servicenode
-        $::RERUNPS = "remoteshell,servicenode";
-
-        my $req_rs = {%$request};
-        my $ps;
-        $ps                              = $::RERUNPS;
-        $req_rs->{rerunps}->[0]          = "yes";
-        $req_rs->{rerunps4security}->[0] = "yes";
-        $req_rs->{node}                  = \@sns;
-        $req_rs->{noderange}             = \@sns;
-        $req_rs->{postscripts}           = [$ps];
-        updatenode($req_rs, \&updatenode_cb, $subreq);
-
-        # parse the output of update security for sns
-        foreach my $sn (keys %{$::NODEOUT})
-        {
-            if (!grep /^$sn$/, @sns)
-            {
-                next;
-            }
-            if (   (grep /ps ok/, @{$::NODEOUT->{$sn}})
-                && (grep /ssh ok/, @{$::NODEOUT->{$sn}}))
-            {
-                push @good_sns, $sn;
-            }
-        }
-
-        if ($::VERBOSE)
-        {
-            my $rsp;
-            push @{$rsp->{data}},
-              "Update security for following service nodes: @sns.";
-            push @{$rsp->{data}},
-              "  Following service nodes have been updated successfully: @good_sns";
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-        }
-    }
-    #my @allSN=xCAT::ServiceNodeUtils->getAllSN; 
-    # build each request for each node on a  service node
+    # build each request for each node
     foreach my $snkey (keys %$sn)
     {
 
@@ -601,8 +568,8 @@ sub preprocess_updatenode
         foreach my $s1 (@tmp_a)
         {
             if (   $::SECURITY
-                && !(grep /^$s1$/, @good_sns)
-                && !(grep /^$s1$/, @MNip))
+                && !(grep /^$s1$/, @::good_sns) # is it good 
+                && !(grep /^$s1$/, @MNip))  # is the MN
             {
                 my $rsp;
                 push @{$rsp->{data}},
@@ -612,16 +579,16 @@ sub preprocess_updatenode
             }
 
             # remove the service node which have been handled before
-            if ($::SECURITY && (grep /^$s1$/, @MNip))
-            {
-                delete @{$sn->{$snkey}}[@sns];
-                if (scalar(@{$sn->{$snkey}}) == 0)
-                {
-                    next;
-                }
-            }
+            #if ($::SECURITY && (grep /^$s1$/, @MNip))
+            #{
+            #    delete @{$sn->{$snkey}}[@sns];
+            #    if (scalar(@{$sn->{$snkey}}) == 0)
+            #    {
+            #        next;
+            #    }
+            #}
         }
-        # check to see if SN 
+        # build request 
          
         my $reqcopy = {%$request};
         $reqcopy->{node}                   = $sn->{$snkey};
@@ -658,11 +625,6 @@ sub preprocess_updatenode
                 }
             }
         }
-        # This should be compute nodes now
-        if (defined($::SECURITY)){
-         $::RERUNPS = "remoteshell";
-         $postscripts=$::RERUNPS;
-        }
         if (defined($::RERUNPS))
         {
             $reqcopy->{rerunps}->[0] = "yes";
@@ -692,6 +654,103 @@ sub preprocess_updatenode
     return \@requests;
 }
 
+#-------------------------------------------------------------------------------
+
+=head3  update_SN_security 
+
+    process updatenode -k command 
+    determine all the service nodes that must be processed from the
+    input noderange and then update the ssh keys and credentials 
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub update_SN_security
+
+{
+    my $request  = shift;
+    my $callback = shift;
+    my $subreq   = shift;
+    my $servicenodes   = shift;
+    my @SN= @$servicenodes;
+    my $nodes = $request->{node};
+    my @nodes=@$nodes;
+    my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@nodes, "xcat", "MN");
+    if ($::ERROR_RC)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not get list of xCAT service nodes.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return;
+
+    }
+    # take out the Management Node
+    my @MNip     = xCAT::NetworkUtils->determinehostname;
+    my @sns      = ();
+    foreach my $s (keys %$sn)
+    {
+        my @tmp_a = split(',', $s);
+        foreach my $s1 (@tmp_a)
+        {
+            if (!grep (/^$s1$/, @MNip))
+            {
+                push @sns, $s1;
+            }
+        }
+    }
+    # now add any service nodes in the input noderange, we missed
+    foreach my $sn (@SN) {
+      if (!grep (/^$sn$/, @sns))
+      {
+          push @sns, $sn;
+      }
+    }
+    # if we  have any service nodes to process
+    if (scalar(@sns))
+    {
+        # setup the ssh keys on the service nodes
+        # run the postscripts: remoteshell, servicenode
+        # These are all servicenodes
+        $::RERUNPS = "remoteshell,servicenode";
+
+        my $req_rs = {%$request};
+        my $ps;
+        $ps                              = $::RERUNPS;
+        $req_rs->{rerunps}->[0]          = "yes";
+        $req_rs->{security}->[0]          = "yes";
+        $req_rs->{rerunps4security}->[0] = "yes";
+        $req_rs->{node}                  = \@sns;
+        $req_rs->{noderange}             = \@sns;
+        $req_rs->{postscripts}           = [$ps];
+        updatenode($req_rs, $callback, $subreq);
+
+        # parse the output of update security for sns
+        foreach my $sn (keys %{$::NODEOUT})
+        {
+            if (!grep /^$sn$/, @sns)
+            {
+                next;
+            }
+            if (   (grep /ps ok/, @{$::NODEOUT->{$sn}})
+                && (grep /ssh ok/, @{$::NODEOUT->{$sn}}))
+            {
+                push @::good_sns, $sn;
+            }
+        }
+
+        if ($::VERBOSE)
+        {
+            my $rsp;
+            push @{$rsp->{data}},
+              "Update security for following service nodes: @sns.";
+            push @{$rsp->{data}},
+              "  Following service nodes have been updated successfully: @::good_sns";
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+        }
+
+    }
+    return;
+}
 #-------------------------------------------------------------------------------
 
 =head3  security_update_sshkeys 
@@ -813,7 +872,7 @@ sub updatenode_cb
             $node = $1;
             $msg  = $2;
         }
-        if ($msg =~ /Redeliver certificates has completed/)
+        if ($msg =~ /Redeliver security files has completed/)
         {
             push @{$::NODEOUT->{$node}}, "ps ok";
         }
@@ -1390,7 +1449,7 @@ sub updatenode
                                 /Running of postscripts has completed/)
                             {
                                 $output =~
-                                  s/Running of postscripts has completed/Redeliver certificates has completed/;
+                                  s/Running of postscripts has completed/Redeliver security files has completed/;
                                 push @{$rsp->{data}}, $output;
                             }
                             elsif ($output !~
@@ -1512,7 +1571,7 @@ sub getdata
                 if ($output =~ /Running of postscripts has completed/)
                 {
                     $output =~
-                      s/Running of postscripts has completed/Redeliver certificates has completed/;
+                      s/Running of postscripts has completed/Redeliver security files has completed/;
                     push @{$rsp->{$type}}, $output;
                 }
                 elsif ($output !~ /Running postscript|Error loading module/)
