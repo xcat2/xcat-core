@@ -9871,32 +9871,30 @@ sub mkdsklsnode
     #
 	#  not needed if using a shared file system
 	if ($sharedinstall eq "no") {
-		if (!xCAT::InstUtils->is_me($nimprime)) {
-    		my $statelite=0;
-			foreach my $image (@image_names){
-    			if ($imagehash{$image}{shared_root}) {
+    	my $statelite=0;
+		foreach my $image (@image_names){
+    		if ($imagehash{$image}{shared_root}) {
 
-        			# if this has a shared_root resource then
-        			#   it might need statelite setup
+       			# if this has a shared_root resource then
+       			#   it might need statelite setup
 
-					# need list of nodes that use this image only!!!
-					my @osinodes;
-					foreach my $n (@nodelist) {
-						if ($image eq $nodeosi{$n} ) {
-							push @osinodes, $n;
-						}
+				# need list of nodes that use this image only!!!
+				my @osinodes;
+				foreach my $n (@nodelist) {
+					if ($image eq $nodeosi{$n} ) {
+						push @osinodes, $n;
 					}
-
-        			my $rc=xCAT::InstUtils->dolitesetup($image, \%imagehash, \@osinodes, $callback, $subreq);
-        			if ($rc eq 1) { # error
-            			my $rsp;
-            			push @{$rsp->{data}}, qq{Could not complete the statelite setup.};
-            			xCAT::MsgUtils->message("E", $rsp, $callback);
-            			return 1;
-        			}
 				}
-    		}
-		}
+
+       			my $rc=xCAT::InstUtils->dolitesetup($image, \%imagehash, \@osinodes, $callback, $subreq);
+       			if ($rc eq 1) { # error
+           			my $rsp;
+           			push @{$rsp->{data}}, qq{Could not complete the statelite setup.};
+           			xCAT::MsgUtils->message("E", $rsp, $callback);
+           			return 1;
+       			}
+			}
+    	}
 	}
 
 	#
