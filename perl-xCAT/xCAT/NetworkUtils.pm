@@ -2080,4 +2080,179 @@ sub pingNodeStatus {
   return %status;
 }
 
+#-------------------------------------------------------------------------------
+
+=head3  isReservedIP
+      Description : Validate whether specified string is a reseved IPv4 string.
+      Arguments   : ipstr - the string to be validated. 
+      Returns     : 1 - valid reserved String.
+                    0 - invalid reserved String.
+=cut
+
+#-------------------------------------------------------------------------------
+sub isReservedIP
+{
+    my ($class, $ipstr) = @_;
+    my @ipnums = split('\.', $ipstr);
+    if ($ipnums[3] eq "0" || $ipnums[3] eq "255"){
+        return 1;
+    }
+    return 0;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 isValidMAC
+      Description : Validate whether specified string is a MAC string.
+      Arguments   : macstr - the string to be validated. 
+      Returns     : 1 - valid MAC String.
+                    0 - invalid MAC String.
+=cut
+
+#-------------------------------------------------------------------------------
+sub isValidMAC
+{
+    my ($class, $macstr) = @_;
+    if ($macstr =~ /^[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}$/){
+        return 1;
+    }
+    return 0;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 isValidHostname
+      Description : Validate whether specified string is a valid hostname.
+      Arguments   : hostname - the string to be validated. 
+      Returns     : 1 - valid hostname String.
+                    0 - invalid hostname String.
+=cut
+
+#-------------------------------------------------------------------------------
+sub isValidHostname
+{
+    my ($class, $hostname) = @_;
+    if ($hostname =~ /^[\-a-zA-Z0-9]+$/){
+        return 1;
+    }
+    return 0;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 ip_to_int
+      Description : convert an IPv4 string into int.
+      Arguments   : ipstr - the IPv4 string.
+      Returns     : ipint - int number
+=cut
+
+#-------------------------------------------------------------------------------
+sub ip_to_int
+{
+    my ($class, $ipstr) = @_;
+    my $ipint = 0;
+    my @ipnums = split('\.', $ipstr);
+    $ipint += $ipnums[0] << 24;
+    $ipint += $ipnums[1] << 16;
+    $ipint += $ipnums[2] << 8;
+    $ipint += $ipnums[3];
+    return $ipint;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 int_to_ip
+      Description : convert an int into IPv4 String.
+      Arguments   : ipnit - the input int number.
+      Returns     : ipstr - IPv4 String.
+=cut
+
+#-------------------------------------------------------------------------------
+sub int_to_ip
+{
+    my ($class, $ipint) = @_;
+    return inet_ntoa(inet_aton($ipint));
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 get_allips_in_range
+      Description : Get all IPs in a IP range, return in a list. 
+      Arguments   : $startip - start IP address
+                    $endip - end IP address
+                    $increment - increment factor
+                    $reservflag - A flag for whether we exclude reserved ips or not
+      Returns     : IP list in this range.
+      Example     :
+                    my $startip = "192.168.0.1";
+                    my $endip = "192.168.0.100";
+                    xCAT::NetworkUtils->get_allips_in_range($startip, $endip, 1, 1);
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_allips_in_range
+{
+    my $class = shift;
+    my $startip = shift;
+    my $endip = shift;
+    my $increment = shift;
+    my $reservflag = shift;
+    my @iplist;
+
+    my $startipnum = xCAT::NetworkUtils->ip_to_int($startip);
+    my $endipnum = xCAT::NetworkUtils->ip_to_int($endip);
+    while ($startipnum <= $endipnum){
+        my $ip = xCAT::NetworkUtils->int_to_ip($startipnum);
+        $startipnum += $increment;
+        # Not return reserved IPs
+        if ($reservflag){
+            if(xCAT::NetworkUtils->isReservedIP($ip)){
+                next;
+            }
+        }
+        push (@iplist, $ip);
+    }
+    return \@iplist;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 get_all_ips
+      Description : Get all IP addresses from table nics, column nicips.
+      Arguments   : hashref - if not set, will return a reference of list,
+                              if set, will return a reference of hash.
+      Returns     : All IPs reference.
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_all_nicips{
+    my ($class, $hashref) = @_;
+    my %allipshash;
+    my @allipslist;
+
+    my $table = xCAT::Table->new('nics');
+    my @entries = $table->getAllNodeAttribs(['nicips']);
+    foreach (@entries){
+        # $_->{nicips} looks like "eth0:ip1,eth1:ip2,bmc:ip3..."
+        if($_->{nicips}){
+            my @nicandiplist = split(',', $_->{nicips});
+            # Each record in @nicandiplist looks like "eth0:ip1"
+            foreach (@nicandiplist){
+                my @nicandip = split(':', $_);
+                if ($hashref){
+                    $allipshash{$nicandip[1]} = 0;
+                } else{
+                    push (@allipslist, $nicandip[1]);
+                }
+            }
+        }
+    }
+    if ($hashref){
+        return \%allipshash;
+    } else{
+        return \@allipslist;
+    }
+}
+
+
 1;
