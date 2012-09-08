@@ -1276,14 +1276,7 @@ sub updatenode
         if (scalar(@$Linuxnodes))
         {
             my $DBname = xCAT::Utils->get_DBName;
-            if ($orig_postscripts eq "allkeys44444444security")
-            {
-                $postscripts = "remoteshell,servicenode";
-            }
-            else
-            {
-                $postscripts = $orig_postscripts;
-            }
+            $postscripts = $orig_postscripts;
 
             # we have Linux nodes
             my $cmd;
@@ -1369,14 +1362,7 @@ sub updatenode
         {
 
             # we have AIX nodes
-            if ($orig_postscripts eq "allkeys44444444security")
-            {
-                $postscripts = "remoteshell,servicenode";
-            }
-            else
-            {
-                $postscripts = $orig_postscripts;
-            }
+            $postscripts = $orig_postscripts;
 
             # need to pass the name of the server on the xcataixpost cmd line
 
