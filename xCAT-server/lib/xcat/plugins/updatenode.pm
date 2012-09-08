@@ -567,16 +567,18 @@ sub preprocess_updatenode
         my @tmp_a = split(',', $snkey);
         foreach my $s1 (@tmp_a)
         {
-            if (   $::SECURITY
-                && !(grep /^$s1$/, @::good_sns) # is it good 
-                && !(grep /^$s1$/, @MNip))  # is the MN
-            {
-                my $rsp;
-                push @{$rsp->{data}},
-                  "The security update for service node $snkey encountered error, update security for following nodes will be skipped: @{$sn->{$snkey}}";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                next;
-            }
+           # TODO  fix the error handling, right now cause inf loop
+           #  when  getdata and updatenode_cb are registered  LKV 
+           # if (   $::SECURITY
+           #     && !(grep /^$s1$/, @::good_sns) # is it good 
+           #     && !(grep /^$s1$/, @MNip))  # is the MN
+           # {
+           #     my $rsp;
+           #     push @{$rsp->{data}},
+           #       "The security update for service node $snkey encountered error, update security for following nodes will be skipped: @{$sn->{$snkey}}";
+           #     xCAT::MsgUtils->message("E", $rsp, $callback);
+           #     next;
+           # }
 
             # remove the service node which have been handled before
             #if ($::SECURITY && (grep /^$s1$/, @MNip))
