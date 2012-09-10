@@ -2938,11 +2938,11 @@ sub noderangecontainsMn
  # check if any node in the noderange is the Management Node return the
  # name 
  my $mname;
- my $tab = xCAT::Table->new('nodetype');
- my @nodelist=$tab->getAllNodeAttribs(['node','nodetype']);
+ my $tab = xCAT::Table->new('nodelist');
+ my @nodelist=$tab->getAllNodeAttribs(['node','groups']);
  foreach my $n (@nodelist) {
-  if (defined($n->{'nodetype'})) {
-   if ($n->{'nodetype'} eq "mn") {  # this is the MN
+  if (defined($n->{'groups'})) {
+   if ($n->{'groups'} eq "__mgmtnode") {  # this is the MN
       $mname=$n->{'node'};
       last;
    }
