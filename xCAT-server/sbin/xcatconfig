@@ -2030,7 +2030,7 @@ sub setupMNinDB
    my $mnname = `hostname`;
    chomp $mnname;
    $mnname && $mnname =~ s/\..*//; # strip off domain
-   my $chtabcmds = "$::XCATROOT/sbin/chtab node=$mnname nodelist.groups=mn nodetype.nodetype=mn;";
+   my $chtabcmds = "$::XCATROOT/sbin/chtab node=$mnname nodelist.groups=__mgmtnode  nodetype.nodetype=mn;";
    my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
    if ($::RUNCMD_RC != 0)
    {
