@@ -1,0 +1,49 @@
+=head1 NAME
+
+B<rmhypervisor> - Remove the virtualization hosts.
+
+=head1 SYNOPSIS
+
+B<RHEV specific :>
+
+=over 2
+
+B<rmhypervisor> I<noderange> [B<-f>]
+
+=back
+
+=head1 DESCRIPTION
+
+The B<rmhypervisor> command can be used to remove the virtualization host.
+
+=head1 OPTIONS
+
+=over 2
+
+=item B<-f>
+
+If B<-f> is specified, the host will be deactivated to maintenance before the removing.
+
+=back
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occurred.
+
+=head1 EXAMPLES
+
+=over 2
+
+=item 1.
+To remove the host 'host1', enter:
+
+ rmhypervisor host1
+ 
+=back
+
+=head1 FILES
+
+/opt/xcat/bin/rmhypervisor
+
