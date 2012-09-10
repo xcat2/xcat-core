@@ -1138,7 +1138,7 @@ sub mkinstall
         {
 
             #TODO: driver slipstream, targetted for network.
-            unless ($doneimgs{"$os|$arch"})
+            unless ($doneimgs{"$os|$arch|$profile|$tftpdir"})
             {
                 mkpath("$tftpdir/xcat/$os/$arch");
                 if($esxi){
@@ -1155,7 +1155,7 @@ sub mkinstall
                     copy($initrdpath,"$tftppath/initrd.img");
                     &insert_dd($callback, $os, $arch, "$tftppath/initrd.img", $driverupdatesrc, $netdrivers);
                 }
-                $doneimgs{"$os|$arch"} = 1;
+                $doneimgs{"$os|$arch|$profile|$tftpdir"} = 1;
             }
 
             #We have a shot...

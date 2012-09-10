@@ -837,7 +837,7 @@ sub mkinstall
 
 
             #TODO: driver slipstream, targetted for network.
-            unless ($doneimgs{"$os|$arch|$tftpdir"})
+            unless ($doneimgs{"$os|$arch|$profile|$tftpdir"})
             {
                 my $tftppath;
                 if ($profile) {
@@ -861,7 +861,7 @@ sub mkinstall
                     copy("$pkgdir/1/suseboot/inst64", "$tftppath");
                     @dd_drivers = &insert_dd($callback, $os, $arch, "$tftppath/inst64", $driverupdatesrc, $netdrivers);
                 }
-                $doneimgs{"$os|$arch|$tftpdir"} = 1;
+                $doneimgs{"$os|$arch|$profile|$tftpdir"} = 1;
             }
 
             #We have a shot...
