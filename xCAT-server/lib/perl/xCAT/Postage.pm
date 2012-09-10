@@ -697,13 +697,21 @@ sub makescript
 
     if ($setbootfromnet)
     {
-        push @scriptd, "setbootfromnet\n";
+	if (!exists($post_hash{setbootfromnet}))
+	{
+	    $post_hash{setbootfromnet} = 1;
+	    push @scriptd, "setbootfromnet\n";
+	}
     }
 
     # add setbootfromdisk if the nodesetstate is install and arch is ppc64
     if (($nodesetstate) && ($nodesetstate eq "install") && ($arch eq "ppc64"))
     {
-        push @scriptd, "setbootfromdisk\n";
+	if (!exists($post_hash{setbootfromdisk}))
+	{
+	    $post_hash{setbootfromdisk} = 1;
+	    push @scriptd, "setbootfromdisk\n";
+	}
     }
 
     ###Please do not remove or modify this line of code!!! xcatdsklspost depends on it
