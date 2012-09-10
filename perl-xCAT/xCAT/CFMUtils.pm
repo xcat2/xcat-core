@@ -24,15 +24,15 @@ use xCAT::MsgUtils;
 
 =head3 initCFMdir
     Initialize CFM directies and files. The default laout under cfmdir is:
-    .
-    ├── etc
-    │   ├── group.merge
-    │   ├── hosts -> /etc/hosts
-    │   ├── passwd.merge
-    │   └── shadow.merge
-    ├── group.OS
-    ├── passwd.OS
-    └── shadow.OS
+    . 
+    |-- etc
+    | |-- group.merge
+    | |-- hosts -> /etc/hosts
+    | |-- passwd.merge
+    | |-- shadow.merge
+    |-- group.OS
+    |-- passwd.OS
+    |-- shadow.OS
     Note: the *.OS files are the backups for the original /etc/passwd, shadow, group files
 
     Arguments:
