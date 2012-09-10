@@ -25,7 +25,7 @@ The B<xdsh> command runs commands in parallel on remote nodes and/or the Managem
 remote  shell command for each target specified, and returns the output
 from all targets,
 formatted so that command results  from  all  nodes  can  be  managed.
-If the command is to be executed  on the Management Node, it does not use a remote shell command, but uses the local OS copy or shell command. The Management Node must be defined in the xCAT database and have a nodetype of mn. The best way to do this is to use the xcatconfig -m option. 
+If the command is to be executed  on the Management Node, it does not use a remote shell command, but uses the local OS copy or shell command. The Management Node must be defined in the xCAT database. The best way to do this is to use the xcatconfig -m option. 
 The B<xdsh> command is an xCAT Distributed Shell Utility.
 
 
