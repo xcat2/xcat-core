@@ -479,43 +479,10 @@ sub preprocess_updatenode
         return \@requests;
     }
 
-
-    my %insttype_node = ();
-
-    # get the nodes installation type
-    xCAT::SvrUtils->getNodesetStates($nodes, \%insttype_node);
-
-    # figure out the diskless nodes list and non-diskless nodes
-    my @dsklsnodes;
-    my @notdsklsnodes;
-    foreach my $type (keys %insttype_node)
-    {
-        if (   $type eq "netboot"
-            || $type eq "statelite"
-            || $type eq "diskless")
-        {
-            push @dsklsnodes, @{$insttype_node{$type}};
-        }
-        else
-        {
-            push @notdsklsnodes, @{$insttype_node{$type}};
-        }
-    }
-
-    if (defined($::SWMAINTENANCE) && scalar(@dsklsnodes) > 0)
-    {
-        my $rsp;
-        my $outdsklsnodes = join(',', @dsklsnodes);
-        push @{$rsp->{data}},
-          "The updatenode command does not support software maintenance on diskless nodes. The following diskless nodes will be skipped:\n$outdsklsnodes";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-    }
-
     #  - need to consider the mixed cluster case
-    #		- can't depend on the os of the MN - need to split out the AIX
-    #		nodes from the node list which are not diskless
+    #		- can't depend on the os of the MN - need to split out the AIX nodes
     my ($rc, $AIXnodes, $Linuxnodes) =
-      xCAT::InstUtils->getOSnodes(\@notdsklsnodes);
+      xCAT::InstUtils->getOSnodes($nodes);
     my @aixnodes = @$AIXnodes;
 
     # for AIX nodes we need to copy software to SNs first - if needed
@@ -599,32 +566,18 @@ sub preprocess_updatenode
 
         if (defined($::SWMAINTENANCE))
         {
+            $reqcopy->{swmaintenance}->[0] = "yes";
 
-            # skip the diskless nodes
-            my @validnode = ();
-            foreach my $node (@{$sn->{$snkey}})
+            # send along the update info and osimage defs
+            if ($imagedef)
             {
-                if (!grep /^$node$/, @dsklsnodes)
-                {
-                    push @validnode, $node;
-                }
+                xCAT::InstUtils->taghash($imagedef);
+                $reqcopy->{imagedef} = [$imagedef];
             }
-            if (scalar(@validnode) > 0)
+            if ($updateinfo)
             {
-                $reqcopy->{nondsklsnode} = \@validnode;
-                $reqcopy->{swmaintenance}->[0] = "yes";
-
-                # send along the update info and osimage defs
-                if ($imagedef)
-                {
-                    xCAT::InstUtils->taghash($imagedef);
-                    $reqcopy->{imagedef} = [$imagedef];
-                }
-                if ($updateinfo)
-                {
-                    xCAT::InstUtils->taghash($updateinfo);
-                    $reqcopy->{updateinfo} = [$updateinfo];
-                }
+                xCAT::InstUtils->taghash($updateinfo);
+                $reqcopy->{updateinfo} = [$updateinfo];
             }
         }
         if (defined($::RERUNPS))
@@ -908,7 +861,6 @@ sub updatenode
 
     #print Dumper($request);
     my $nodes         = $request->{node};
-    my $nondsklsnodes = $request->{nondsklsnode};
     my $localhostname = hostname();
 
     # in a mixed cluster we could potentially have both AIX and Linux
@@ -1142,7 +1094,7 @@ sub updatenode
         xCAT::MsgUtils->message("I", $rsp, $callback);
 
         my ($rc, $AIXnodes_nd, $Linuxnodes_nd) =
-          xCAT::InstUtils->getOSnodes($nondsklsnodes);
+          xCAT::InstUtils->getOSnodes($nodes);
 
         #
         #   do linux nodes
