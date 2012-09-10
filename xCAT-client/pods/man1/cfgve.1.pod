@@ -4,15 +4,15 @@ B<cfgve> - Configure the elements for a virtual environment.
 
 =head1 SYNOPSIS
 
-B<cfgve> B<-t> dc B<-m> manager B<-o> object [B<-c> | B<-r>]
+B<cfgve> B<-t> dc B<-m> manager B<-o> object [B<-c> B<-k> nfs|localfs | B<-r>]
 
-B<cfgve> B<-t> cl B<-m> manager B<-o> object [B<-c> | B<-r> B<-f>]
+B<cfgve> B<-t> cl B<-m> manager B<-o> object [B<-c> B<-p> cpu type| B<-r> B<-f>]
 
 B<cfgve> B<-t> sd B<-m> manager B<-o> object [B<-c> | B<-g> | B<-s> 
 | B<-a> | B<-b> | B<-r> B<-f>]
 
-B<cfgve> B<-t> nw B<-m> manager B<-o> object [B<-c> B<-d> data center 
-| B<-r>]
+B<cfgve> B<-t> nw B<-m> manager B<-o> object [B<-c> B<-d> data center B<-v> 
+vlan ID | B<-a> | B<-b> | B<-r>]
 
 B<cfgve> B<-t> tpl B<-m> manager B<-o> object [B<-r>]
 
@@ -40,7 +40,7 @@ B<cl> - The B<create> and B<remove> operations are supported.
 B<sd>  - The B<create>, B<attach>, B<detach>, B<activate>, 
 B<deactivate> and B<remove> operations are supported.
 
-B<nw>  - The B<create> and B<remove> operations are supported.
+B<nw>  - The B<create>, B<attach>, B<detach> and B<remove> operations are supported.
 
 B<tpl> - The B<remove> operation is supported.
 
@@ -53,7 +53,8 @@ The mandatory parameter B<-o object> is used to specify which object to configur
 
 =over 2
 
-=item B<-t>
+=item B<-t> I<type>
+
 Specify the B<type> of the target object.
 
 Supported types:
@@ -63,20 +64,42 @@ Supported types:
  B<nw>  - Network
  B<tpl> - Template
 
-=item B<-m>
+=item B<-m> I<manager> 
+
 Specify the manager of the virtual environment. 
 
 For RHEV, the FQDN (Fully Qualified Domain Name) of the rhev manager have 
 to be specified.
 
-=item B<-o>
+=item B<-o> I<object>
+
 The name of the target object.
 
-=item B<-d>
+=item B<-d> I<data center>
+
 The name of data center.
 
 Specify the 'Data Center' that will be used for the object to be attached to. 
 It is used by <nw> type.
+
+=item B<-p> I<cpu type>
+
+To specify the cpu type when creating the cluster.
+B<Intel Penryn Family> is default type.
+
+Supported type: B<Intel Conroe Family>, B<Intel Penryn Family>,
+B<Intel Nehalem Family>, B<Intel Westmere Family>, B<AMD Opteron G1>,
+B<AMD Opteron G2>, B<AMD Opteron G3>
+
+=item B<-k> I<storage type>
+
+To specify the type of the storage type when creating the data center.
+
+Supported type: nfs; localfs.
+
+=item B<-v> I<vlan ID>
+
+To specify the vlan number when creating a network.
 
 =item B<-c>
 To create the target object.
