@@ -62,22 +62,19 @@ sub handled_commands{
         copycd => 'rhevm',
         mkinstall => "nodetype:os=(rhevh.*)",
         rpower => 'nodehm:power,mgt',
-        rsetboot => 'nodehm:power,mgt',
-        rmigrate => 'nodehm:power,mgt',
-        addhost => 'hypervisor:type=(rhelh)',
-        cfghost => 'hypervisor:type=(rhevh)',
+        rsetboot => 'nodehm:mgt',
+        rmigrate => 'nodehm:mgt',
         cfgve => 'rhevm',
         lsve => 'rhevm',
         lsvm => ['hypervisor:type=(rhev.*)','nodehm:mgt'],
         mkvm => 'nodehm:mgt',
         rmvm => 'nodehm:mgt',
         clonevm => 'nodehm:mgt',
-        rmigrate => 'nodehm:mgt',
         #rinv => 'nodehm:mgt',
         chvm => 'nodehm:mgt',
         #rshutdown => "nodetype:os=(rhev.*)",
-        #rmhypervisor => ['hypervisor:type','nodetype:os=(rhev.*)'],
-        #chhypervisor => ['hypervisor:type','nodetype:os=(rhev.*)'],
+        rmhypervisor => ['hypervisor:type','nodetype:os=(rhev.*)'],
+        chhypervisor => ['hypervisor:type','nodetype:os=(rhev.*)'],
         rhevhupdateflag => "nodetype:os=(rhevh.*)",
         getrvidparms => 'nodehm:mgt',
     };
@@ -358,9 +355,12 @@ sub process_request {
         rsetboot($callback, \%rhevm_hash, $args);
     } elsif ($command eq "addhost") {
         addhost($callback, \%rhevm_hash);
-    } elsif ($command eq "cfghost") {
+    } elsif ($command eq "chhypervisor") {
         cfghost($callback, \%rhevm_hash, $nodes, $args);
-    } elsif ($command eq "cfgve") {
+    } elsif ($command eq "rmhypervisor") {
+        push @$args, "-r";
+        cfghost($callback, \%rhevm_hash, $nodes, $args);
+    }elsif ($command eq "cfgve") {
         cfgve($callback, \%rhevm_hash,$args);
     } elsif ($command eq "lsve") {
         lsve($callback, \%rhevm_hash,$args);
@@ -856,6 +856,7 @@ my $display = {
     },
     'networks' => {
         'description' => ["description"],
+        'vlan' => ["vlan", "id"],
         'stp' => ["stp"],
         'state' => ["status/state"],
     },
@@ -1158,13 +1159,14 @@ sub cfgve {
     my $args = shift;
     my $nodes = shift;
 
-    my ($type, $objlist, $mgr, $datacenter, $create, $update, $remove, $activate, $deactivate, $attach, $detach, $force, $stype, $cputype);
+    my ($type, $objlist, $mgr, $datacenter, $cluster, $create, $update, $remove, $activate, $deactivate, $attach, $detach, $force, $stype, $cputype, $vlan);
     if ($args) {
         @ARGV=@{$args};
         GetOptions('t=s' => \$type,
                         'o=s' => \$objlist,
                         'm=s' => \$mgr,
                         'd=s' => \$datacenter,
+                        'l=s' => \$cluster,
                         'c' => \$create,
                         'u' => \$update,
                         'g' => \$activate,
@@ -1174,7 +1176,8 @@ sub cfgve {
                         'r' => \$remove,
                         'f' => \$force,
                         'k=s' => \$stype,
-                        'p=s' => \$cputype);
+                        'p=s' => \$cputype,
+                        'v=s' => \$vlan);
     }
 
     my $rhevm = (keys %{$rhevm_hash})[0];
@@ -1281,6 +1284,9 @@ sub cfgve {
                 my $api = "/api/networks";
                 my $method = "POST";
                 my $content = "<network><name>$obj</name><data_center id=\"$dcid\"/></network>";
+                if ($vlan) {
+                    $content = "<network><name>$obj</name><data_center id=\"$dcid\"/><vlan id=\"$vlan\"/></network>";
+                }
                 my $request = genreq($ref_rhevm, $method, $api, $content);
                 my $response;
                 ($rc, $response) = send_req($ref_rhevm, $request->as_string());
@@ -1304,6 +1310,48 @@ sub cfgve {
                     next;
                 }
                 generalaction($callback, $ref_rhevm, "/api/networks/$nwid", "DELETE", 1);
+            } elsif ($attach || $detach) {
+                unless ($cluster) {
+                    $cluster = "Default";
+                }
+                my ($rc, $clid, $stat, $response) = search_src($ref_rhevm, "clusters", "$cluster");
+                if ($rc) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$obj: cannot find the cluster:$cluster.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    next;
+                }
+
+                my $nwid;
+                ($rc, $nwid, $stat) = search_src($ref_rhevm, "networks", "$obj");
+                if ($rc) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$obj: cannot find the network.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    next;
+                }
+
+                if ($attach) {
+                    my $api = "/api/clusters/$clid/networks";
+                    my $method = "POST";
+                    my $content = "<network id=\"$nwid\"><name>$obj</name></network>";
+                    my $request = genreq($ref_rhevm, $method, $api, $content);
+                    my $response;
+                    ($rc, $response) = send_req($ref_rhevm, $request->as_string());
+                    if ($rc) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "$obj: $response";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        next;
+                    } else {
+                        my $rsp;
+                        push @{$rsp->{data}}, "$obj: succeeded";
+                        xCAT::MsgUtils->message("I", $rsp, $callback);
+                        next;
+                    }
+                } elsif($detach) {
+                    generalaction($callback, $ref_rhevm, "/api/clusters/$clid/networks/$nwid", "DELETE", 1);
+                }
             }
         } elsif ($type eq "dc") {
             my ($rc, $dcid, $stat, $response) = search_src($ref_rhevm, "datacenters", "$obj");
@@ -1771,7 +1819,7 @@ sub mkvm {
 
     # Get the attributes for the node from the vm table
     my $vmtab = xCAT::Table->new('vm',-create=>0);
-    my $vment = $vmtab->getNodesAttribs($nodes,['template', 'host', 'cluster', 'virtflags', 'storage', 'storagemodel', 'memory', 'cpus', 'nics', 'nicmodel', 'bootorder', 'vidproto']);
+    my $vment = $vmtab->getNodesAttribs($nodes,['master', 'host', 'cluster', 'virtflags', 'storage', 'storagemodel', 'memory', 'cpus', 'nics', 'nicmodel', 'bootorder', 'vidproto']);
 
     # Generate the xml content for add the storage
     # Note: this is an independent action after the vm creating
@@ -1910,8 +1958,8 @@ sub mkvm {
             # configure the template
             my $hastpl = 0;
             my $tplele;
-            if ($myvment->{template}) {
-                $tplele = "<template><name>$myvment->{template}</name></template>";
+            if ($myvment->{master}) {
+                $tplele = "<template><name>$myvment->{master}</name></template>";
                 $hastpl = 1;
             } else {
                 $tplele = "<template><name>Blank</name></template>";
@@ -2295,7 +2343,7 @@ sub chvm {
 
     # Get the attributes for the nodes from the vm table
     my $vmtab = xCAT::Table->new('vm',-create=>0);
-    my $vment = $vmtab->getNodesAttribs($nodes,['template', 'host', 'cluster', 'virtflags', 'storage', 'storagemodel', 'memory', 'cpus', 'nics', 'nicmodel', 'bootorder', 'vidproto']);
+    my $vment = $vmtab->getNodesAttribs($nodes,['master', 'host', 'cluster', 'virtflags', 'storage', 'storagemodel', 'memory', 'cpus', 'nics', 'nicmodel', 'bootorder', 'vidproto']);
 
     foreach my $rhevm (keys %{$rhevm_hash}) {
         my %node_hyp;
@@ -2357,8 +2405,8 @@ sub chvm {
             
             # generate the content
             my $tplele;
-            if ($myvment->{template}) {
-                $tplele = "<template><name>$myvment->{template}</name></template>";
+            if ($myvment->{master}) {
+                $tplele = "<template><name>$myvment->{master}</name></template>";
             }
             
             # configure memory
@@ -3142,6 +3190,45 @@ sub cfghypnw {
                 if ($attr = getAttr($doc, "network", "id")) {
                     $netid = $attr;
                 }
+
+                # attach the nic to the network if needed
+                # search the network
+                my $curnetid;
+                ($rc, $curnetid, $stat) = search_src($ref_rhevm, "networks", $netname);
+                if ($rc) {
+                    if ($rc == 11) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "$host: network: $netname does not exist.";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                    } else {
+                        my $rsp;
+                        push @{$rsp->{data}}, "$host: failed to get the network: $netname.";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                    }
+                    next;
+                }
+
+                # detach the nic from current network if old != new
+                if ($netid && ($netid ne $curnetid)) { 
+                     #detach the interface to the network
+                     if (attach($callback, $ref_rhevm, "/api/hosts/$hostid/nics/$nicid", "network", $curnetid, 1)) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "$host: failed to detach $ifname from $netname.";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        next;
+                     }
+                }
+
+                # attach the interface to the network
+                if (!$netid ||($netid ne $curnetid)) {
+                    if (attach($callback, $ref_rhevm, "/api/hosts/$hostid/nics/$nicid", "network", $curnetid)) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "$host: failed to attach $ifname to $netname.";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        next;
+                     }
+                     generalaction($callback, $ref_rhevm, "/api/hosts/$hostid/commitnetconfig");
+                 }
                 
                 # check the bootprotocol and network parameters, and configure if needed
                 if (defined ($bprotocol) && $bprotocol =~ /^(dhcp|static)$/) {
@@ -3191,55 +3278,15 @@ sub cfghypnw {
                             my $rsp;
                             push @{$rsp->{data}}, "$host: $response";
                             xCAT::MsgUtils->message("E", $rsp, $callback);
+                            next;
                         }
                     }
                 } else {
                     my $rsp;
                     push @{$rsp->{data}}, "$host: the boot procotol was not set or invalid.";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
-                }
-
-                # search the network
-                my $curnetid;
-                ($rc, $curnetid, $stat) = search_src($ref_rhevm, "networks", $netname);
-                if ($rc) {
-                    if ($rc == 11) {
-                        my $rsp;
-                        push @{$rsp->{data}}, "$host: network: $netname does not exist.";
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
-                    } else {
-                        my $rsp;
-                        push @{$rsp->{data}}, "$host: failed to get the network: $netname.";
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
-                    }
                     next;
                 }
-    
-                if ($netid eq $curnetid) {
-                    generalaction($callback, $ref_rhevm, "/api/hosts/$hostid/commitnetconfig");
-                    next;
-                }
-                if ($netid) {
-                    if ($netid eq $curnetid) { 
-                        next; 
-                    } else {
-                         #detach the interface to the network
-                         if (attach($callback, $ref_rhevm, "/api/hosts/$hostid/nics/$nicid", "network", $curnetid, 1)) {
-                            my $rsp;
-                            push @{$rsp->{data}}, "$host: failed to detach $ifname from $netname.";
-                            xCAT::MsgUtils->message("E", $rsp, $callback);
-                            next;
-                         }
-                    }
-                } 
-        
-                # attach the interface to the network
-                if (attach($callback, $ref_rhevm, "/api/hosts/$hostid/nics/$nicid", "network", $curnetid)) {
-                    my $rsp;
-                    push @{$rsp->{data}}, "$host: failed to attach $ifname to $netname.";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    next;
-                 }
 
                  generalaction($callback, $ref_rhevm, "/api/hosts/$hostid/commitnetconfig");
             }
@@ -3493,7 +3540,7 @@ sub attach {
         if ($doc ) {
             my $attr;
             if ($type eq "storage_domain") {
-                 if ("inactive" eq getAttr($doc, "/storage_domain/status/state")) {
+                 if (getAttr($doc, "/storage_domain/status/state" =~ /(inactive|active)/)) {
                      return 0;
                  } else {
                      return 1;
