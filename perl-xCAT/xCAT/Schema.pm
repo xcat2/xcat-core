@@ -187,7 +187,7 @@ vmmaster => {
     }
 },
 vm => {
-    cols => [qw(node mgr host migrationdest template storage storagemodel cfgstore memory cpus nics nicmodel bootorder clockoffset virtflags master vncport textconsole powerstate beacon datacenter cluster guestostype othersettings vidmodel vidproto vidpassword comments disable)],
+    cols => [qw(node mgr host migrationdest storage storagemodel cfgstore memory cpus nics nicmodel bootorder clockoffset virtflags master vncport textconsole powerstate beacon datacenter cluster guestostype othersettings vidmodel vidproto vidpassword comments disable)],
     keys => [qw(node)],
     table_desc => 'Virtualization parameters',
     descriptions => {
@@ -195,7 +195,6 @@ vm => {
         'mgr' => 'The function manager for the virtual machine',
         'host' => 'The system that currently hosts the VM',
         'migrationdest' => 'A noderange representing candidate destinations for migration (i.e. similar systems, same SAN, or other criteria that xCAT can use',
-        'template' => 'The template that creating vm will base on',
         'storage' => 'A list of storage files or devices to be used.  i.e. /cluster/vm/<nodename> or nfs://<server>/path/to/folder/',
         'storagemodel' => 'Model of storage devices to provide to guest',
         'cfgstore' => 'Optional location for persistant storage separate of emulated hard drives for virtualization solutions that require persistant store to place configuration data',
@@ -1858,10 +1857,6 @@ my @nodeattrs = (
                  tabentry => 'vm.migrationdest',
                  access_tabentry => 'vm.node=attr:node',
                 },
-             {attr_name => 'vmtemplate',
-                 tabentry => 'vm.template',
-                 access_tabentry => 'vm.node=attr:node',
-                },
 		{attr_name => 'vmstorage',
                  tabentry => 'vm.storage',
                  access_tabentry => 'vm.node=attr:node',
@@ -1896,6 +1891,10 @@ my @nodeattrs = (
                 },
 		{attr_name => 'vmvirtflags',
                  tabentry => 'vm.virtflags',
+                 access_tabentry => 'vm.node=attr:node',
+                },
+		{attr_name => 'vmmaster',
+                 tabentry => 'vm.master',
                  access_tabentry => 'vm.node=attr:node',
                 },
 		{attr_name => 'vmvncport',
