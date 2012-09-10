@@ -34,3 +34,9 @@ fi
 export HOSTNAME=$(host $IP 2>/dev/null | awk '{print $5}' | awk -F. '{print $1}')
 hostname $HOSTNAME
 
+if [ -f /boot/efi/efi/redhat/grub.conf ]; then #RedHat bug, grub.efi corrupts console unless we are careful...
+	sed -i s/^terminal.*// /boot/efi/efi/redhat/grub.conf
+	bootpart=$(sed -e 's/#.*//' /boot/efi/efi/redhat/grub.conf |grep root|grep -v kernel|head -n 1|awk '{print $2}')
+	bootpart="${bootpart%\\n}"
+	sed -i s!^serial.*!splashimage=$bootpart/boot/grub/splash.xpm.gz! /boot/efi/efi/redhat/grub.conf
+fi
