@@ -27,9 +27,9 @@ use xCAT::MsgUtils;
     . 
     |-- etc
     | |-- group.merge
-    | |-- hosts -> /etc/hosts
-    | |-- passwd.merge
-    | |-- shadow.merge
+    | |-- hosts -> /etc/hosts
+    | |-- passwd.merge
+    | |-- shadow.merge
     |-- group.OS
     |-- passwd.OS
     |-- shadow.OS
