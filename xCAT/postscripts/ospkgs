@@ -96,7 +96,7 @@ if [ -z "$OSPKGDIR" ]; then
 	    OSPKGDIR="$OSPKGDIR/1"
     elif ( pmatch "$OSVER" "rhel*" ); then
         OSPKGDIR="$OSPKGDIR/Server"
-    elif ( pmatch "$OSVER" "SL*" ); then
+    elif ( pmatch "$OSVER" "SL5*" ); then
         OSPKGDIR="$OSPKGDIR/SL"
     fi
 fi
