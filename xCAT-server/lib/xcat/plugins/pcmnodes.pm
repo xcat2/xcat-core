@@ -135,8 +135,21 @@ sub parse_args{
 
 =head3  addhost_hostfile
 
-    Description : Create nodes by import hostinfo file.
-    Arguments   : N/A
+    Description : 
+    Create PCM nodes by importing hostinfo file.
+    This sub maps to request "addhost_hostfile", we need to call this command from CLI like following steps:
+    # ln -s /opt/xcat/bin/xcatclientnnr /opt/xcat/bin/addhost_hostfile
+    # addhost_hostfile file=/root/hostinfo.file networkprofile=network_cn imageprofile=rhel63_cn hardwareprofile=ipmi groups=group1,group2 
+    
+    The hostinfo file should be written like: (MAC address is mandatory attribute)
+    # Auto generate hostname for this node entry.
+    __hostname__:
+       mac=11:11:11:11:11:11
+    # Specified hostname node.
+    node01:
+       mac=22:22:22:22:22:22
+
+    After this call finished, the compute node's info will be updated automatically in /etc/hosts, dns config, dhcp config, TFTP config...
 
 =cut
 
@@ -221,12 +234,12 @@ sub addhost_hostfile {
     }
     # call mkdef to create hosts and then call nodemgmt for node management plugins.
     xCAT::MsgUtils->message('S', "[PCM nodes mgmt]call mkdef to create pcm nodes.\n");
-    $request_command->({command=>["mkdef"], stdin=>[$retstr_gen], arg=>['-z']});
+    my $retref = xCAT::Utils->runxcmd({command=>["mkdef"], stdin=>[$retstr_gen], arg=>['-z']}, $request_command, 0, 1);
 
     my @nodelist = keys %hostinfo_dict;
     xCAT::MsgUtils->message('S', "[PCM nodes mgmt]call nodemgmt plugins.\n");
-    $request_command->({command=>["kitcmd_nodemgmt_add"], node=>\@nodelist});
-    $request_command->({command=>["kitcmd_nodemgmt_finished"], node=>\@nodelist});
+    $retref = xCAT::Utils->runxcmd({command=>["kitcmd_nodemgmt_add"], node=>\@nodelist}, $request_command, 0, 1);
+    $retref = xCAT::Utils->runxcmd({command=>["kitcmd_nodemgmt_finished"], node=>\@nodelist}, $request_command, 0, 1);
     setrsp_success(\@nodelist);
 }
 
@@ -234,7 +247,7 @@ sub addhost_hostfile {
 
 =head3  removehost
 
-    Description : Remove nodes.
+    Description : Remove PCM nodes. After nodes removed, their info in /etc/hosts, dhcp, dns... will be removed automatically.
     Arguments   : N/A
 
 =cut
@@ -245,10 +258,10 @@ sub removehost{
     xCAT::MsgUtils->message('S', "[PCM nodes mgmt]Remove PCM nodes.\n");
     # For remove nodes, we should call 'nodemgmt' in front of 'noderm'
     xCAT::MsgUtils->message('S', "[PCM nodes mgmt]call nodemgmt plugins.\n");
-    $request_command->({command=>["kitcmd_nodemgmt_remove"], node=>$nodes});
-    $request_command->({command=>["kitcmd_nodemgmt_finished"], node=>$nodes});
+    my $retref = xCAT::Utils->runxcmd({command=>["kitcmd_nodemgmt_remove"], node=>$nodes}, $request_command, 0, 1);
+    $retref = xCAT::Utils->runxcmd({command=>["kitcmd_nodemgmt_finished"], node=>$nodes}, $request_command, 0, 1);
     xCAT::MsgUtils->message('S', "[PCM nodes mgmt]call noderm to remove nodes.\n");
-    $request_command->({command=>["noderm"], node=>$nodes});
+    $retref = xCAT::Utils->runxcmd({command=>["noderm"], node=>$nodes}, $request_command, 0, 1);
     setrsp_success($nodes);
 }
 
@@ -256,7 +269,7 @@ sub removehost{
 
 =head3  updatehost
 
-    Description : Update host profiles.
+    Description : Update PCM node profiles: imageprofile, networkprofile and hardwareprofile.
     Arguments   : N/A
 
 =cut
@@ -320,8 +333,8 @@ sub updatehost{
     
     # call plugins
     xCAT::MsgUtils->message('S', "[PCM nodes mgmt]call nodemgmt plugins.\n");
-    $request_command->({command=>["kitcmd_nodemgmt_update"], node=>$nodes});
-    $request_command->({command=>["kitcmd_nodemgmt_finished"], node=>$nodes});
+    my $retref = xCAT::Utils->runxcmd({command=>["kitcmd_nodemgmt_update"], node=>$nodes}, $request_command, 0, 1);
+    $retref = xCAT::Utils->runxcmd({command=>["kitcmd_nodemgmt_finished"], node=>$nodes}, $request_command, 0, 1);
     setrsp_success($nodes);
 }
 
