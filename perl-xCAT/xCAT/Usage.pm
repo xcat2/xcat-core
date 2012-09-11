@@ -387,20 +387,25 @@ Options:
   "lsve" =>
 "Usage:
     lsve [-t type] [-m manager] [-o object]
-      -t: dc - 'Data Center', cl - 'Cluster', sd - 'Storage Domain', nw - 'Network', tpm -'Template'
+      -t: dc - 'Data Center', cl - 'Cluster', sd - 'Storage Domain', nw - 'Network', tpl -'Template'
       -m: FQDN (Fully Qualified Domain Name) of the rhev manager
       -o: Target object to display",
  "cfgve" =>
 "Usage:
-    cfgve [-t tpl] [-m manager] [-o object] [-r]
-    cfgve [-t nw] [-m manager] [-o object] [-c -d data center | -r]
-    cfgve [-t sd] [-m manager] [-o object] [-c | -g | -s | -a | -b | -r -f]
+    cfgve -t dc -m manager -o object [-c -k nfs|localfs | -r]
+    cfgve -t cl -m manager -o object [-c -p cpu type | -r -f]
+    cfgve -t sd -m manager -o object [-c | -g | -s | -a | -b | -r -f]
       -t: sd - 'Storage Domain', nw - 'Network', tpl -'Template'
       -m: FQDN (Fully Qualified Domain Name) of the rhev manager
-      -o: Target object to configure",
- "cfghost" =>
+      -o: Target object to configure
+    cfgve -t nw -m manager -o object [-c -d data center -v vlan ID | -a | -b | -r]
+    cfgve -t tpl -m manager -o object [-r]",
+ "chhypervisor" =>
 "Usage:
-    cfghost noderange [-a | -n | -p | -e | -d | -r -f]",
+    chhypervisor noderange [-a | -n | -p | -e | -d | -h]",
+ "rmhypervisor" =>
+"Usage:
+    rmhypervisor noderange [-f | -h]",
 );
 my $vers = xCAT::Utils->Version();
 my %version = (
