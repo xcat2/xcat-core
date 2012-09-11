@@ -334,16 +334,11 @@ sub refresh_table {
         }
   }
   my %checked_pairs;
-  my @entries = $self->{switchtab}->getAllNodeAttribs(['node','port','switch','interface']);
+  my @entries = $self->{switchtab}->getAllNodeAttribs(['node','port','switch']);
   #Build hash of switch port names per switch
   $self->{switches} = {};
   foreach my $entry (@entries) {
     if (defined($entry->{switch}) and $entry->{switch} ne "" and defined($entry->{port}) and $entry->{port} ne "") {
-	#skip the none primary interface.
-	# The vlaue of the primary interface could be empty, primary or primary:ethx
-        if (defined($entry->{interface})) {
-	    if ($entry->{interface} !~ /primary/) { next;}
-	}
 
     	if ( !$self->{switches}->{$entry->{switch}}->{$entry->{port}})
         {
