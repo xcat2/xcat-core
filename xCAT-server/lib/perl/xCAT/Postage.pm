@@ -661,7 +661,7 @@ sub makescript
     # get postscripts for images
     my $osimgname = $provmethod;
 
-    if($osimgname =~ /install|netboot|statelite/){
+    if($osimgname =~ /^install$|^netboot$|^statelite$/){
         $osimgname = "$os-$arch-$provmethod-$profile";
     }
     my $et2 =
