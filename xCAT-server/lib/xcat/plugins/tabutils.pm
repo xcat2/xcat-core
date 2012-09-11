@@ -56,7 +56,7 @@ sub handled_commands
             tabgrep    => "tabutils",
             getAllEntries    => "tabutils",
             getNodesAttribs  => "tabutils",
-            setNodesAttribs1  => "tabutils",
+            setNodesAttribs  => "tabutils",
             delEntries       => "tabutils",
             getAttribs       => "tabutils",
             setAttribs       => "tabutils",
@@ -155,9 +155,9 @@ sub process_request
     {
         return getNodesAttribs($request,$callback);
     }
-    elsif ($command eq "setNodesAttribs1")
+    elsif ($command eq "setNodesAttribs")
     {
-        return setNodesAttribs1($request,$callback);
+        return setNodesAttribs($request,$callback);
     }
     elsif ($command eq "delEntries")
     {
@@ -2377,12 +2377,12 @@ sub getNodesAttribs
 }
 
 #
-# setNodesAttribs1 - setNodesAttribs format 1
+# setNodesAttribs
 # Sets Nodes attributes for noderange for each of the tables supplied      
 # Example of XML in for this routine
 #<xcatrequest>
 #<clienttype>PCM</clienttype>
-#<command>setNodesAttribs1</command>
+#<command>setNodesAttribs</command>
 #<noderange>blade01-blade02</noderange>
 #<arg>
 #   <table>
@@ -2402,7 +2402,7 @@ sub getNodesAttribs
 #</arg>
 #</xcatrequest>
 #    
-sub setNodesAttribs1 
+sub setNodesAttribs 
 {
     my $request      = shift;
     my $cb = shift;
@@ -2418,7 +2418,6 @@ sub setNodesAttribs1
     $newrequest->{command}->[0] = "nodech";
     foreach my $table (@$tables) {
       my $tablename    = $table->{name}->[0];
-      my $tab=xCAT::Table->new($tablename);
       my %keyhash;
       my $attrs = $table->{attr}; 
       foreach my $attrhash (@$attrs) {
