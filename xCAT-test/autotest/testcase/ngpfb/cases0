@@ -130,7 +130,7 @@ check:rc==0
 check:output=~[a-f0-9A-F]{12}|[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}
 end
 
-start:rinv_firm
+start:rinv_firm_ngp
 description:check firmware level
 cmd:rinv $$CN firm
 check:rc==0
