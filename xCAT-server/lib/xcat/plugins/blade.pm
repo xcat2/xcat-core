@@ -4338,7 +4338,7 @@ sub rscanfsp {
     if (/(mm\[\d+\])\s+primary/) {
       # get the type of mm
       @data = $t->cmd("info -T system:$1");
-      if (grep /(Mach type\/model: Chassis Management Module)|(Mach type\/model: CMM)/, @data) {
+      if (grep /(Mach type\/model: Chassis Management Module)|(Mach type\/model: CMM)|(Product Name:.*Chassis Management Module)/, @data) {
         $telnetrscan{'mm'}{'type'} = "cmm";
       }
     }
