@@ -2,6 +2,12 @@
 
 package xCAT::PPCenergy;
 
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+
 use strict;
 use Getopt::Long;
 use xCAT::Usage;
@@ -279,28 +285,80 @@ sub renergy {
     }
     $verbose = $tmpv;
 
-    my $master = xCAT::TableUtils->get_site_Master();
-    my $masterip = xCAT::NetworkUtils->getipaddr($master);
-    if ($masterip =~ /:/) { #IPv6, needs fping6 support 
-        if (!-x '/usr/bin/fping6')
-        {
-            push @return_msg, [$node, "fping6 is not availabe for IPv6 ping.", -1];
-            return \@return_msg;
-        }
-        open (FPING, "fping6 ".join(' ',@hcps_ip). " 2>&1 |") or die("Cannot open fping pipe: $!");
-    } else {
-        open (FPING, "fping ".join(' ',@hcps_ip). " 2>&1 |") or die("Cannot open fping pipe: $!");
-    }
-
     my @pingable_hcp;
-    while (<FPING>) {
-        if ($verbose) {
-            push @return_msg, [$node, $_, 0];
-        }
-        if ($_ =~ /is alive/) {
-            s/ is alive//;
-            push @pingable_hcp, $_;
-        }
+    if (-x '/usr/bin/nmap' or -x '/usr/local/bin/nmap') { #use nmap
+	#print "use nmap\n";
+	if ($verbose) {
+	    push @return_msg, [$node, "Checking ping status using nmap for @hcps_ip", 0];
+	}
+	my %deadnodes;
+	foreach (@hcps_ip) {
+	    $deadnodes{$_}=1;
+	}	 
+	open (NMAP, "nmap -PE --system-dns --send-ip -sP ". join(' ',@hcps_ip) . " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
+	my $node1;
+	my $msg1;
+	while (<NMAP>) {
+	    #print "$_\n";
+	    if (/Host (.*) \((.*)\) appears to be up/) {
+		$node1=$2;
+		unless ($deadnodes{$node1}) {
+		    foreach (keys %deadnodes) {
+			if ($node1 =~ /^$_\./) {
+			    $node1 = $_;
+			    last;
+			}
+		    }
+		}
+		delete $deadnodes{$node1};
+		if ($verbose) {
+		    push @return_msg, [$node, $_, 0];
+		}
+		push(@pingable_hcp, $node1);
+	    } elsif (/Nmap scan report for ([^ ]*) \((.*)\)/) {
+		$node1=$2;
+		$msg1=$_;
+	    } elsif (/Host is up./) {
+		unless ($deadnodes{$node1}) {
+		    foreach (keys %deadnodes) {
+			if ($node1 =~ /^$_\./) {
+			    $node1 = $_;
+			    last;
+			}
+		    }
+		}
+		delete $deadnodes{$node1};
+		if ($verbose) {
+		    push @return_msg, [$node, "$msg1$_", 0];
+		}
+		push(@pingable_hcp, $node1);
+	    }
+	}	
+    } else {
+	#use fping
+	#print "use fping\n";
+	my $master = xCAT::TableUtils->get_site_Master();
+	my $masterip = xCAT::NetworkUtils->getipaddr($master);
+	if ($masterip =~ /:/) { #IPv6, needs fping6 support 
+	    if (!-x '/usr/bin/fping6')
+	    {
+		push @return_msg, [$node, "fping6 is not availabe for IPv6 ping.", -1];
+		return \@return_msg;
+	    }
+	    open (FPING, "fping6 ".join(' ',@hcps_ip). " 2>&1 |") or die("Cannot open fping pipe: $!");
+	} else {
+	    open (FPING, "fping ".join(' ',@hcps_ip). " 2>&1 |") or die("Cannot open fping pipe: $!");
+	}
+	
+	while (<FPING>) {
+	    if ($verbose) {
+		push @return_msg, [$node, $_, 0];
+	    }
+	    if ($_ =~ /is alive/) {
+		s/ is alive//;
+		push @pingable_hcp, $_;
+	    }
+	}
     }
 
     if (!@pingable_hcp) {
