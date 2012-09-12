@@ -33,7 +33,7 @@ Requires: perl-IO-Stty
 # No additional requires for zLinux right now
 %else
 Requires: /etc/xinetd.d/tftp
-Requires: conserver-xcat yaboot-xcat fping
+Requires: conserver-xcat yaboot-xcat 
 %endif
 %endif
 
