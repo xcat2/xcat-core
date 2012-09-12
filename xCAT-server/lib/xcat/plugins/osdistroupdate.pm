@@ -67,8 +67,7 @@ sub handled_commands
 
 
 ##########################################################################
-# Pre-process request from xCat daemon. Send the request to the the service
-# nodes of the HCPs.
+# Pre-process request from xCat daemon. 
 ##########################################################################
 sub preprocess_request {
 
