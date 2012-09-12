@@ -2043,7 +2043,7 @@ sub get_hdwr_ip
 
 #--------------------------------------------------------------------------------
 =head3    pingNodeStatus
-      This function takes an array of nodes and returns their status using fping.
+      This function takes an array of nodes and returns their status using nmap or fping.
     Arguments:
        nodes-- an array of nodes.
     Returns:
@@ -2052,39 +2052,85 @@ sub get_hdwr_ip
 =cut
 #--------------------------------------------------------------------------------
 sub pingNodeStatus {
-  my ($class, @mon_nodes)=@_;
-  my %status=();
-  my @active_nodes=();
-  my @inactive_nodes=();
-  if ((@mon_nodes)&& (@mon_nodes > 0)) {
-    #get all the active nodes
-    my $nodes= join(' ', @mon_nodes);
-    my $temp=`fping -a $nodes 2> /dev/null`;
-    chomp($temp);
-    @active_nodes=split(/\n/, $temp);
+    my ($class, @mon_nodes)=@_;
+    my %status=();
+    my @active_nodes=();
+    my @inactive_nodes=();
+    #print "NetworkUtils->pingNodeStatus called, nodes=@mon_nodes\n";
+    if ((@mon_nodes)&& (@mon_nodes > 0)) {
+	#get all the active nodes
+	my $nodes= join(' ', @mon_nodes);
+	if (-x '/usr/bin/nmap' or -x '/usr/local/bin/nmap') { #use nmap
+	    #print "use nmap\n";
+	    my %deadnodes;
+	    foreach (@mon_nodes) {
+		$deadnodes{$_}=1;
+	    }	 
+	    open (NMAP, "nmap -PE --system-dns --send-ip -sP ". $nodes . " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
+	    my $node;
+	    while (<NMAP>) {
+		if (/Host (.*) \(.*\) appears to be up/) {
+		    $node=$1;
+		    unless ($deadnodes{$node}) {
+			foreach (keys %deadnodes) {
+			    if ($node =~ /^$_\./) {
+				$node = $_;
+				last;
+			    }
+			}
+		    }
+		    delete $deadnodes{$node};
+		    push(@active_nodes, $node);
+		} elsif (/Nmap scan report for ([^ ]*) /) {
+		    $node=$1;
+		} elsif (/Host is up./) {
+		    unless ($deadnodes{$node}) {
+			foreach (keys %deadnodes) {
+			    if ($node =~ /^$_\./) {
+				$node = $_;
+			      last;
+			    }
+			}
+		    }
+		    delete $deadnodes{$node};
+		    push(@active_nodes, $node);
+		}
+	    }
+	    foreach (sort keys %deadnodes) {
+	      push(@inactive_nodes, $_);
+	    }
+	} else { #use fping
+	    #print "use fping\n";
 
-    #get all the inactive nodes by substracting the active nodes from all.
-    my %temp2;
-    if ((@active_nodes) && ( @active_nodes > 0)) {
-      foreach(@active_nodes) { $temp2{$_}=1};
-        foreach(@mon_nodes) {
-          if (!$temp2{$_}) { push(@inactive_nodes, $_);}
-        }
+	    my $temp=`fping -a $nodes 2> /dev/null`;
+	    chomp($temp);
+	    @active_nodes=split(/\n/, $temp);
+	    
+	    #get all the inactive nodes by substracting the active nodes from all.
+	    my %temp2;
+	    if ((@active_nodes) && ( @active_nodes > 0)) {
+		foreach(@active_nodes) { $temp2{$_}=1};
+		foreach(@mon_nodes) {
+		    if (!$temp2{$_}) { push(@inactive_nodes, $_);}
+		}
+	    }
+	    else {@inactive_nodes=@mon_nodes;}
+	}     
     }
-    else {@inactive_nodes=@mon_nodes;}     
-  }
-
-  $status{$::STATUS_ACTIVE}=\@active_nodes;
-  $status{$::STATUS_INACTIVE}=\@inactive_nodes;
- 
-  return %status;
+    
+    $status{$::STATUS_ACTIVE}=\@active_nodes;
+    $status{$::STATUS_INACTIVE}=\@inactive_nodes;
+    #use Data::Dumper;
+    #print Dumper(%status);
+    
+    return %status;
 }
 
 #-------------------------------------------------------------------------------
 
 =head3  isReservedIP
       Description : Validate whether specified string is a reseved IPv4 string.
-      Arguments   : ipstr - the string to be validated. 
+      Arguments   : ipstr - the string to be validated.
       Returns     : 1 - valid reserved String.
                     0 - invalid reserved String.
 =cut
@@ -2104,7 +2150,7 @@ sub isReservedIP
 
 =head3 isValidMAC
       Description : Validate whether specified string is a MAC string.
-      Arguments   : macstr - the string to be validated. 
+      Arguments   : macstr - the string to be validated.
       Returns     : 1 - valid MAC String.
                     0 - invalid MAC String.
 =cut
@@ -2123,7 +2169,7 @@ sub isValidMAC
 
 =head3 isValidHostname
       Description : Validate whether specified string is a valid hostname.
-      Arguments   : hostname - the string to be validated. 
+      Arguments   : hostname - the string to be validated.
       Returns     : 1 - valid hostname String.
                     0 - invalid hostname String.
 =cut
@@ -2177,7 +2223,7 @@ sub int_to_ip
 #-------------------------------------------------------------------------------
 
 =head3 get_allips_in_range
-      Description : Get all IPs in a IP range, return in a list. 
+      Description : Get all IPs in a IP range, return in a list.
       Arguments   : $startip - start IP address
                     $endip - end IP address
                     $increment - increment factor
@@ -2253,6 +2299,7 @@ sub get_all_nicips{
         return \@allipslist;
     }
 }
+
 
 
 1;

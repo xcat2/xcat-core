@@ -12,6 +12,7 @@ use Sys::Hostname;
 use Socket;
 use xCAT::Utils;
 use xCAT::InstUtils;
+use xCAT::NetworkUtils;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use xCAT_monitoring::rmcmetrix;
@@ -210,44 +211,6 @@ sub start {
 }
 
 
-#--------------------------------------------------------------------------------
-=head3    pingNodeStatus
-      This function takes an array of nodes and returns their status using fping.
-    Arguments:
-       nodes-- an array of nodes.
-    Returns:
-       a hash that has the node status. The format is: 
-          {alive=>[node1, node3,...], unreachable=>[node4, node2...]}
-=cut
-#--------------------------------------------------------------------------------
-sub pingNodeStatus {
-  my ($class, @mon_nodes)=@_;
-  my %status=();
-  my @active_nodes=();
-  my @inactive_nodes=();
-  if ((@mon_nodes)&& (@mon_nodes > 0)) {
-    #get all the active nodes
-    my $nodes= join(' ', @mon_nodes);
-    my $temp=`fping -a $nodes 2> /dev/null`;
-    chomp($temp);
-    @active_nodes=split(/\n/, $temp);
-
-    #get all the inactive nodes by substracting the active nodes from all.
-    my %temp2;
-    if ((@active_nodes) && ( @active_nodes > 0)) {
-      foreach(@active_nodes) { $temp2{$_}=1};
-        foreach(@mon_nodes) {
-          if (!$temp2{$_}) { push(@inactive_nodes, $_);}
-        }
-    }
-    else {@inactive_nodes=@mon_nodes;}     
-  }
-
-  $status{$::STATUS_ACTIVE}=\@active_nodes;
-  $status{$::STATUS_INACTIVE}=\@inactive_nodes;
- 
-  return %status;
-}
 
 
 
@@ -1028,7 +991,7 @@ sub addNodes {
   #find in active nodes
   my $inactive_nodes=[];
   if ($scope) { 
-    my %nodes_status=xCAT_monitoring::rmcmon->pingNodeStatus(@mon_nodes); 
+    my %nodes_status=xCAT::NetworkUtils->pingNodeStatus(@mon_nodes); 
     $inactive_nodes=$nodes_status{$::STATUS_INACTIVE};
     #print "active nodes to add:@$active_nodes\ninactive nodes to add: @$inactive_nodes\n";
     if (@$inactive_nodes>0) { 
@@ -1266,7 +1229,7 @@ sub removeNodes {
   #find in active nodes
   my $inactive_nodes=[];
   if ($scope) { 
-    my %nodes_status=xCAT_monitoring::rmcmon->pingNodeStatus(@mon_nodes); 
+    my %nodes_status=xCAT::NetworkUtils->pingNodeStatus(@mon_nodes); 
     $inactive_nodes=$nodes_status{$::STATUS_INACTIVE};
     #print "active nodes to add:@$active_nodes\ninactive nodes to add: @$inactive_nodes\n";
     if (@$inactive_nodes>0) { 

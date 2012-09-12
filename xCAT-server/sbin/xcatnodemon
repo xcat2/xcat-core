@@ -7,6 +7,7 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use xCAT::GlobalDef;
 use xCAT::Table;
+use xCAT::NetworkUtils;
 use xCAT_monitoring::xcatmon;
 #################################################################
 # This script is used as a cron job by the xCAT monitoring plug-in
@@ -30,11 +31,11 @@ my $tmp_node_unknown=$nodes_status_old{unknown};
 
 #get current node status
 my %nodes_status_new1=();
-if ($tmp_node_active) { %nodes_status_new1=pingNodeStatus(@$tmp_node_active);} 
+if ($tmp_node_active) { %nodes_status_new1=xCAT::NetworkUtils->pingNodeStatus(@$tmp_node_active);} 
 my %nodes_status_new2=();
-if ($tmp_node_inactive) {%nodes_status_new2=pingNodeStatus(@$tmp_node_inactive);}
+if ($tmp_node_inactive) {%nodes_status_new2=xCAT::NetworkUtils->pingNodeStatus(@$tmp_node_inactive);}
 my %nodes_status_new3=();
-if ($tmp_node_unknown) { %nodes_status_new3=pingNodeStatus(@$tmp_node_unknown);}
+if ($tmp_node_unknown) { %nodes_status_new3=xCAT::NetworkUtils->pingNodeStatus(@$tmp_node_unknown);}
 
 my $changed1=$nodes_status_new1{$::STATUS_INACTIVE};
 my $changed2=$nodes_status_new2{$::STATUS_ACTIVE};
@@ -66,44 +67,5 @@ if (keys(%node_status) > 0) {
 
 
 
-#--------------------------------------------------------------------------------
-=head3    pingNodeStatus
-      This function takes an array of nodes and returns their status using fping.
-    Arguments:
-       nodes-- an array of nodes.
-    Returns:
-       a hash that has the node status. The format is: 
-          {alive=>[node1, node3,...], unreachable=>[node4, node2...]}
-=cut
-#--------------------------------------------------------------------------------
-sub pingNodeStatus {
-  my @mon_nodes=@_;
-  %status=();
-  my @active_nodes=();
-  my @inactive_nodes=();
-  if ((@mon_nodes)&& (@mon_nodes > 0)) {
-    #get all the active nodes
-    #TODO how to decide the path of fping. how about AIX, does it support fping?
-    my $nodes= join(' ', @mon_nodes);
-    my $temp=`fping -a $nodes 2> /dev/null`;
-    chomp($temp);
-    @active_nodes=split(/\n/, $temp);
 
-    #get all the inactive nodes by substracting the active nodes from all.
-    my %temp2;
-    if ((@active_nodes) && ( @active_nodes > 0)) {
-      foreach(@active_nodes) { $temp2{$_}=1};
-        foreach(@mon_nodes) {
-          if (!$temp2{$_}) { push(@inactive_nodes, $_);}
-        }
-    }
-    else {@inactive_nodes=@mon_nodes;}     
-  }
-
-  
-  $status{$::STATUS_ACTIVE}=\@active_nodes;
-  $status{$::STATUS_INACTIVE}=\@inactive_nodes;
- 
-  return %status;
-}
 

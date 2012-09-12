@@ -8,6 +8,7 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use strict;
 use xCAT::Utils;
+use xCAT::NetworkUtils;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use Sys::Hostname;
@@ -414,7 +415,7 @@ sub getDescription {
     status values for the nodes.   Use  command 'monadd xcatmon -n' and then 
     'monstart xcatmon'  to start monitoring. 
   Settings:
-    ping-interval:  the number of minutes between each fping operation. 
+    ping-interval:  the number of minutes between each nmap/fping operation. 
         The default value is 3.
     apps: a list of comma separated application names whose status will be queried. 
         For how to get the status of each app, look for app name in the key filed 
