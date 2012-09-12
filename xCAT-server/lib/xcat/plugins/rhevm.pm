@@ -1115,7 +1115,7 @@ sub lsve {
                 displaysrc($callback, $ref_rhevm, $response, "networks", "  ", "name=$obj");
             }
         } elsif ($type eq "tpl") {
-            my ($rc, $id, $stat, $response) = search_src($ref_rhevm, "templates", "$obj");
+            my ($rc, $id, $stat, $response) = search_src($ref_rhevm, "templates", "name%3D$obj");
             unless ($rc) {
                 displaysrc($callback, $ref_rhevm, $response, "templates", "");
             }
@@ -1999,7 +1999,7 @@ sub mkvm {
             my $disele;
             if ($myvment->{vidproto}) {
                 $disele = "<display><type>$myvment->{vidproto}</type></display>";
-            } elsif (!$hastpl) {
+            } else {
                 $disele = "<display><type>vnc</type></display>";
             }
 
@@ -2025,7 +2025,10 @@ sub mkvm {
                 $hostele = "<host id=\"$hostid{$myvment->{host}}\"/>";
             }
 
-            my $placement_policy = "<placement_policy>$hostele$affinity</placement_policy>";
+            my $placement_policy;
+            if ($affinity || $hostele) {
+                $placement_policy= "<placement_policy>$hostele$affinity</placement_policy>";
+            }
 
             # set the cluster for the vm
             my $clusterele;
@@ -2173,10 +2176,43 @@ sub mkvm {
                     next;
                 }
             }
+            
+            # if no installnic is specified, set the firstmac to mac.mac
+            my $firstmac;
+            
+            # Search the nic
+            my %oldmac;
+            ($rc, undef, $stat, $response) = search_src($ref_rhevm, "vms:nics", "/$vmid/nics");
+            unless ($rc) {
+                my $parser = XML::LibXML->new();
+                my $doc = $parser->parse_string($response);
+                my @nicnodes = $doc->findnodes("/nics/nic");
+                foreach my $nic (@nicnodes) {
+                    if (defined($nic->findnodes("name"))) {
+                        my $ethname = getAttr($nic, "name");
+                        my $mac = getAttr($nic, "mac", "address");
+                        $oldmac{$ethname} = $mac;
+                        unless($firstmac) {
+                             $firstmac = $mac;
+                        }
+                    }
+                }
+            }
+            
             foreach my $nic (@nics) {
-                $success = 0;
                 # format of nic: [networkname:ifname:installnic]
                 my ($nwname, $ifname, $instnic) = split(':', $nic);
+
+                if (defined($oldmac{$ifname})) {
+                    # The nic has been defined, mostly by clone
+                    if ($instnic) {
+                        $upmac->{$node}->{mac} = $oldmac{$ifname};
+                    }
+                    next;
+                }
+
+                # start the configuring
+                $success = 0;
             
                 my $nwid;
                 ($rc, $nwid, $stat) = search_src($ref_rhevm, "networks", "$nwname");
@@ -2186,6 +2222,7 @@ sub mkvm {
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     next;
                 } 
+
                 $api = "/api/vms/$vmid/nics";
                 $method = "POST";
                 
@@ -2222,7 +2259,10 @@ sub mkvm {
                     my $doc = $parser->parse_string($response);
                     if (defined($doc->findnodes("/nic/mac")->[0])) {
                         my $realmac = $doc->findnodes("/nic/mac")->[0]->getAttribute("address");
-                        if (! $orgmac && $instnic) {
+                        unless($firstmac) {
+                             $firstmac = $realmac;
+                        }
+                        if ($instnic) {
                             $upmac->{$node}->{mac} = $realmac;
                         }
                         
@@ -2240,6 +2280,10 @@ sub mkvm {
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     next;
                 }
+            }
+
+            if (!$upmac->{$node}->{mac} && $firstmac) {
+                $upmac->{$node}->{mac} = $firstmac;
             }
 
             if ($success) {
