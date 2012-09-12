@@ -1123,7 +1123,7 @@ sub setobjdefs
 			        xCAT::MsgUtils->message("W", $rsp, $::callback);
                              } else {
                                 my $rsp;
-			        $rsp->{data}->[0] = "$em is not in the atrribute of \'$attr_name\' for the \'$objname\' definition.";
+			        $rsp->{data}->[0] = "$em is not in the attribute of \'$attr_name\' for the \'$objname\' definition.";
 			        xCAT::MsgUtils->message("W", $rsp, $::callback);
                              }
                         }
