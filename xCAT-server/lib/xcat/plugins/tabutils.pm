@@ -56,6 +56,7 @@ sub handled_commands
             tabgrep    => "tabutils",
             getAllEntries    => "tabutils",
             getNodesAttribs  => "tabutils",
+            getTablesAllNodeAttribs  => "tabutils",
             setNodesAttribs  => "tabutils",
             delEntries       => "tabutils",
             getAttribs       => "tabutils",
@@ -154,6 +155,10 @@ sub process_request
     elsif ($command eq "getNodesAttribs")
     {
         return getNodesAttribs($request,$callback);
+    }
+    elsif ($command eq "getTablesAllNodeAttribs")
+    {
+        return getTablesAllNodeAttribs($request,$callback);
     }
     elsif ($command eq "setNodesAttribs")
     {
@@ -2376,6 +2381,93 @@ sub getNodesAttribs
         return;
 }
 
+# getTablesAllNodeAttribs 
+# Read all all the nodes from the input tables and get the input attribute
+# or get ALL attributes, if the word ALL is used. 
+# If the <attr>ALL</attr> is input then read all the attributes
+#<xcatrequest>
+#<clienttype>PCM</clienttype>
+#<command>getTablesAllNodeAttribs</command>
+#<table>
+#<tablename>nodelist</tablename>
+#<attr>groups</attr>
+#<attr>status</attr>
+#</table>
+#<table>
+#<tablename>nodetype</tablename>
+#<attr>ALL</attr>
+#</table>
+#   .
+#   .
+#   .
+#</xcatrequest>
+#
+#<xcatresponse>
+#<table>
+#<tablename>tablename1</tablename>
+#<node>
+#<name>n1</name>
+#<attr1>value1</attr1>
+#<attr2>value1</attr2>
+#.
+#<attrN>valueN</attrN>
+#</node>
+#</table>
+#   .
+#   .
+#   .
+#</xcatresponse>
+#
+sub getTablesAllNodeAttribs 
+{
+    my $request      = shift;
+    my $cb = shift;
+    my $command  = $request->{command}->[0];
+    my %rsp;
+
+    # process each table in the request 
+    my $tables = $request->{table};
+    foreach my $tabhash (@$tables) { 
+
+      my $tablename    = $tabhash->{tablename}->[0];
+      my $attr    = $tabhash->{attr};
+      my @attrs=@$attr;
+      my $tab=xCAT::Table->new($tablename);
+      my %noderecs;
+      my $recs;
+      # build the table name record
+      @{$noderecs{table}->[0]->{tablename}} = $tablename;
+      # if request for ALL attributes
+      if (grep (/ALL/,@attrs)) { # read the  schema and build array of all attrs
+        @attrs=();
+        my $schema = xCAT::Table->getTableSchema($tablename);
+        my $desc = $schema->{descriptions};
+        foreach my $c (@{$schema->{cols}}) {
+           # my $space = (length($c)<7 ? "\t\t" : "\t");
+            push @attrs, $c;
+        }
+      }
+      # read all the nodes and there attributes in this table
+      my @nodeentries        =   $tab->getAllNodeAttribs(\@attrs);
+      foreach my $node (@nodeentries){
+         # build the node entrys 
+         my %datseg=();
+         $datseg{name} = $node->{node};
+         foreach my $at (@attrs) {
+          # if the attribute has a value and is not the node attribute
+          if (($node->{$at}) && ($at ne "node")) {  
+            $datseg{$at} = $node->{$at};
+          }    
+         }
+         push @{$noderecs{table}->[0]->{node}}, \%datseg;
+      }
+     push @{$rsp{"table"}}, @{$noderecs{table}};
+  } # end of all table processing 
+# for checkin XML created
+#my  $xmlrec=XMLout(\%rsp,RootName=>'xcatresponse',NoAttr=>1,KeyAttr=>[]);
+       $cb->(\%rsp);
+        return;
+}
 #
 # setNodesAttribs
 # Sets Nodes attributes for noderange for each of the tables supplied      
