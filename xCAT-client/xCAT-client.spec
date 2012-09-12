@@ -200,6 +200,7 @@ ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/rmdef
 ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/xcat2nim
 ln -sf ../bin/xdsh $RPM_BUILD_ROOT/%{prefix}/bin/xdcp
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/mknb
+ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/osdistroupdate
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/mkhwconn
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rmhwconn
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/lshwconn
