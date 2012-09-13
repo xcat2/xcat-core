@@ -349,8 +349,6 @@ sub subcmd {
     my @rnl = ($rsaddr,$args{netfn}<<2);
     my @rest = ($rqaddr,$self->{seqlun},$args{command},@{$args{data}});
     my @payload=(@rnl,$self->checksum(@rnl),@rest,$self->checksum(@rest));
-    $self->{seqlun} += 4; #increment by 1<<2
-    $self->{seqlun} &= 0xff; #keep it one byte
     $self->{ipmicallback} = $args{callback};
     $self->{ipmicallback_args} = $args{callback_args};
     my $type = $payload_types{'ipmi'};
@@ -736,11 +734,13 @@ sub parse_ipmi_payload {
     my @payload = @_;
     #for now, just trash the headers, this has been validated to death anyway
     #except seqlun, that one is important
-    if ($payload[4] != ($self->{seqlun} ? $self->{seqlun}-4 : 252)) {
-        print "Successfully didn't get confused by stale response ".$payload[4]." and ".($self->{seqlun}-4)."\n";
+    if ($payload[4] != $self->{seqlun}) {
+        #print "Successfully didn't get confused by stale response ".$payload[4]." and ".($self->{seqlun}-4)."\n";
         hexdump(@payload);
         return 1; #response mismatch
     }
+    $self->{seqlun} += 4; #increment by 1<<2
+    $self->{seqlun} &= 0xff; #keep it one byte
     delete $sessions_waiting{$self}; #deregister self as satisfied, callback will reregister if appropriate
     splice @payload,0,5; #remove rsaddr/netfs/lun/checksum/rq/seq/lun
     pop @payload; #remove checksum
