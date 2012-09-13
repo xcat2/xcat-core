@@ -59,6 +59,7 @@ sub handled_commands
             getAllEntries    => "tabutils",
             getNodesAttribs  => "tabutils",
             getTablesAllNodeAttribs  => "tabutils",
+            getTablesNodeAttribs  => "tabutils",
             setNodesAttribs  => "tabutils",
             delEntries       => "tabutils",
             getAttribs       => "tabutils",
@@ -161,6 +162,10 @@ sub process_request
     elsif ($command eq "getTablesAllNodeAttribs")
     {
         return getTablesAllNodeAttribs($request,$callback);
+    }
+    elsif ($command eq "getTablesNodeAttribs")
+    {
+        return getTablesNodeAttribs($request,$callback);
     }
     elsif ($command eq "setNodesAttribs")
     {
@@ -2375,7 +2380,9 @@ sub getNodesAttribs
          my %datseg=();
          $datseg{name} = [$node];
          foreach my $key (keys %$rec) {
+          if ($key ne "node") { # do not put in the added node attribute 
             $datseg{$key} = [$rec->{$key}];
+          }
          }
          push @{$noderecs{$node}}, \%datseg;
        }
@@ -2388,7 +2395,7 @@ sub getNodesAttribs
         return;
 }
 # getTablesAllNodeAttribs 
-# Read all all the nodes from the input tables and get the input attribute
+# Read  all the nodes from the input tables and get the input attributes
 # or get ALL attributes, if the word ALL is used. 
 # If the <attr>ALL</attr> is input then read all the attributes
 #<xcatrequest>
@@ -2453,7 +2460,7 @@ sub getTablesAllNodeAttribs
             push @attrs, $c;
         }
       }
-      # read all the nodes and there attributes in this table
+      # read all the nodes and their attributes in this table
       my @nodeentries        =   $tab->getAllNodeAttribs(\@attrs);
       foreach my $node (@nodeentries){
          # build the node entrys 
@@ -2475,6 +2482,99 @@ sub getTablesAllNodeAttribs
         return;
 }
 
+# getTablesNodeAttribs 
+# Read the nodes in the noderange from the input tables
+# and get the input attributes
+# or get ALL attributes, if the word ALL is used. 
+# If the <attr>ALL</attr> is input then read all the attributes
+#<xcatrequest>
+#<clienttype>PCM</clienttype>
+#<command>getTablesAllNodeAttribs</command>
+#<noderange>blade01-blade10</noderange>
+#<table>
+#<tablename>nodelist</tablename>
+#<attr>groups</attr>
+#<attr>status</attr>
+#</table>
+#<table>
+#<tablename>nodetype</tablename>
+#<attr>ALL</attr>
+#</table>
+#   .
+#   .
+#   .
+#</xcatrequest>
+#
+#<xcatresponse>
+#<table>
+#<tablename>tablename1</tablename>
+#<node>
+#<name>n1</name>
+#<attr1>value1</attr1>
+#<attr2>value1</attr2>
+#.
+#<attrN>valueN</attrN>
+#</node>
+#</table>
+#   .
+#   .
+#   .
+#</xcatresponse>
+#
+sub getTablesNodeAttribs 
+{
+    my $request      = shift;
+    my $cb = shift;
+    my $command  = $request->{command}->[0];
+    my %rsp;
+
+    # process each table in the request 
+    my $tables = $request->{table};
+    my $node    = $request->{node};
+    my @nodes=@$node;
+    foreach my $tabhash (@$tables) { 
+
+      my $tablename    = $tabhash->{tablename}->[0];
+      my $attr    = $tabhash->{attr};
+      my @attrs=@$attr;
+      my $tab=xCAT::Table->new($tablename);
+      my %noderecs;
+      my $recs;
+      # build the table name record
+      @{$noderecs{table}->[0]->{tablename}} = $tablename;
+      # if request for ALL attributes
+      if (grep (/ALL/,@attrs)) { # read the  schema and build array of all attrs
+        @attrs=();
+        my $schema = xCAT::Table->getTableSchema($tablename);
+        my $desc = $schema->{descriptions};
+        foreach my $c (@{$schema->{cols}}) {
+           # my $space = (length($c)<7 ? "\t\t" : "\t");
+            push @attrs, $c;
+        }
+      }
+      # read the nodes and their attributes in this table
+      my $rechash        =   $tab->getNodesAttribs(\@nodes,\@attrs);
+      foreach my $node (@nodes){
+       my $recs = $rechash->{$node};
+       foreach my $rec (@$recs) { 
+         my %datseg=();
+         $datseg{name} = [$node];
+         foreach my $key (keys %$rec) {
+          if ($key ne "node") { # do not put in the added node attribute 
+            $datseg{$key} = [$rec->{$key}];
+          }
+         }
+         push @{$noderecs{table}->[0]->{node}}, \%datseg;
+       }
+
+      }
+     push @{$rsp{"table"}}, @{$noderecs{table}};
+  } # end of all table processing 
+# for checkin XML created
+#my  $xmlrec=XMLout(\%rsp,RootName=>'xcatresponse',NoAttr=>1,KeyAttr=>[]);
+       $cb->(\%rsp);
+        return;
+}
 #
 # setNodesAttribs - setNodesAttribs
 # Sets Nodes attributes for noderange for each of the tables supplied      
