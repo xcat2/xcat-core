@@ -12,9 +12,9 @@ require_once "$TOPDIR/lib/jsonwrapper.php";
  * @return The xCAT response.  Replies are in the form of JSON
  */
 if (isset($_POST["table"])) {
-	// HTTP POST requests
-	$tab = $_POST["table"];
-	$cont = $_POST["cont"];
+    // HTTP POST requests
+    $tab = $_POST["table"];
+    $cont = $_POST["cont"];
 }
 
 // Create xCAT request
@@ -31,46 +31,46 @@ $usernode->addChild('password', getpassword());
 // Go through each table row
 $first = 0;
 foreach($cont as $line){
-	if($first == 0){
-		// The 1st line is the table header
-		// It does not need special processing
-		// Create string containing all array elements
-		$str = implode(",", $line);
-		$request->addChild('data', $str);
+    if($first == 0){
+        // The 1st line is the table header
+        // It does not need special processing
+        // Create string containing all array elements
+        $str = implode(",", $line);
+        $request->addChild('data', $str);
 
-		$first = 1;
-		continue;
-	}
+        $first = 1;
+        continue;
+    }
 
-	// Go through each column
-	foreach ($line as &$col){
-		// If the column does begins and end with a quote
-		// Change quotes to &quot;
-		if(!empty($col) && !preg_match('/^".*"$/', $col)) {
-			$col = '&quot;' . $col . '&quot;';
-		}
-	}
+    // Go through each column
+    foreach ($line as &$col){
+        // If the column does begins and end with a quote
+        // Change quotes to &quot;
+        if(!empty($col) && !preg_match('/^".*"$/', $col)) {
+            $col = '&quot;' . $col . '&quot;';
+        }
+    }
 
-	// Sort line
-	ksort($line, SORT_NUMERIC);
-	$keys = array_keys($line);
-	$max = count($line) - 1;
-	if ($keys[$max] != $max){
-		for ($i = 0; $i <= $keys[$max]; $i++) {
-			if (!isset($line[$i])) {
-				$line[$i]='';
-			}
-		}
-		ksort($line, SORT_NUMERIC);
-	}
+    // Sort line
+    ksort($line, SORT_NUMERIC);
+    $keys = array_keys($line);
+    $max = count($line) - 1;
+    if ($keys[$max] != $max){
+        for ($i = 0; $i <= $keys[$max]; $i++) {
+            if (!isset($line[$i])) {
+                $line[$i]='';
+            }
+        }
+        ksort($line, SORT_NUMERIC);
+    }
 
-	// Create string containing all array elements
-	$str = implode(",", $line);
-	// Replace " with &quot;
-	$str = str_replace('"', '&quot;', $str);
-	// Replace ' with &apos;
-	$str = str_replace("'", '&apos;', $str);
-	$request->addChild('data', $str);
+    // Create string containing all array elements
+    $str = implode(",", $line);
+    // Replace " with &quot;
+    $str = str_replace('"', '&quot;', $str);
+    // Replace ' with &apos;
+    $str = str_replace("'", '&apos;', $str);
+    $request->addChild('data', $str);
 }
 
 // Run command
