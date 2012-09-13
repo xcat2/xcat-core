@@ -59,7 +59,7 @@ sub handled_commands
             getAllEntries    => "tabutils",
             getNodesAttribs  => "tabutils",
             getTablesAllNodeAttribs  => "tabutils",
-            getTablesNodeAttribs  => "tabutils",
+            getTablesNodesAttribs  => "tabutils",
             setNodesAttribs  => "tabutils",
             delEntries       => "tabutils",
             getAttribs       => "tabutils",
@@ -163,9 +163,9 @@ sub process_request
     {
         return getTablesAllNodeAttribs($request,$callback);
     }
-    elsif ($command eq "getTablesNodeAttribs")
+    elsif ($command eq "getTablesNodesAttribs")
     {
-        return getTablesNodeAttribs($request,$callback);
+        return getTablesNodesAttribs($request,$callback);
     }
     elsif ($command eq "setNodesAttribs")
     {
@@ -2482,14 +2482,14 @@ sub getTablesAllNodeAttribs
         return;
 }
 
-# getTablesNodeAttribs 
+# getTablesNodesAttribs 
 # Read the nodes in the noderange from the input tables
 # and get the input attributes
 # or get ALL attributes, if the word ALL is used. 
 # If the <attr>ALL</attr> is input then read all the attributes
 #<xcatrequest>
 #<clienttype>PCM</clienttype>
-#<command>getTablesAllNodeAttribs</command>
+#<command>getTablesNodesAttribs</command>
 #<noderange>blade01-blade10</noderange>
 #<table>
 #<tablename>nodelist</tablename>
@@ -2521,7 +2521,7 @@ sub getTablesAllNodeAttribs
 #   .
 #</xcatresponse>
 #
-sub getTablesNodeAttribs 
+sub getTablesNodesAttribs 
 {
     my $request      = shift;
     my $cb = shift;
