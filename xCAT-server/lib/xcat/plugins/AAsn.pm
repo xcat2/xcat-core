@@ -1415,7 +1415,7 @@ sub enable_TFTPhpa
         push @newcfgfile, $_;
       }
     } elsif (/^\s*disable\s*=/ && !/^\s*disable\s*=\s*yes/) {
-      # enable the tftp by handling the entry 'disable = xx'
+      # disable the tftp by handling the entry 'disable = yes'
       my $newcfg = $_;
       $newcfg =~ s/=.*$/= yes/;
       push @newcfgfile, $newcfg;
@@ -1464,23 +1464,9 @@ sub enable_TFTPhpa
             }
         }
     }
-# /usr/sbin/in.tftpd -V
-# tftp-hpa 0.49, with remap, with tcpwrappers
-#
-
-    
-
-
-     
-    # start xinetd
-    #my $rc = xCAT::Utils->startService("xinetd");
-    #if ($rc != 0)
-    #{
-    #  xCAT::MsgUtils->message("S", " Failed to start xinetd.");
-    #  return 1;
-    #}
-    #xCAT::MsgUtils->message("S", " The tftp-hpa has been reconfigured.");
   }
+
+  # get the version of TCP/IP protocol 
   my $protocols;
   my $v4only="-4 ";
   open($protocols,"<","/proc/net/protocols");
@@ -1495,13 +1481,21 @@ sub enable_TFTPhpa
     } else {
 	$v4only="";
     }
+
+    # get the tftpflags which set by customer
+    my $tftpflags = xCAT::Utils->get_site_attribute("tftpflags");
+    my $startcmd = "/usr/sbin/in.tftpd $v4only -v -l -s $tftpdir -m /etc/tftpmapfile4xcat.conf";
+    if ($tftpflags) {
+        $startcmd = "/usr/sbin/in.tftpd $v4only $tftpflags";
+    }
+    
     if (-x "/usr/sbin/in.tftpd") {
 	system("killall in.tftpd"); #xinetd can leave behind blocking tftp servers even if it won't start new ones
         my @tftpprocs=`ps axf|grep -v grep|grep in.tftpd`;
 	while (@tftpprocs) {
 		sleep 0.1;
 	}
-    	system("/usr/sbin/in.tftpd $v4only -v -l -s /tftpboot -m /etc/tftpmapfile4xcat.conf");
+    	system("$startcmd");
     }
 
   return 0;

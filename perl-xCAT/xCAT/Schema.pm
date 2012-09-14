@@ -934,6 +934,8 @@ site => {
    "              mgmt node.\n\n".
    " timezone:  (e.g. America/New_York)\n\n".
    " tftpdir:  tftp directory path. Default is /tftpboot\n\n".
+   " tftpflags:  The flags that used to start tftpd. Default is \'-v -l -s /tftpboot \n".
+   "               -m /etc/tftpmapfile4xcat.conf\' if tftplfags is not set\n\n".
    " useNmapfromMN:  When set to yes, nodestat command should obtain the node status\n".
    "                 using nmap (if available) from the management node instead of the\n".
    "                 service node. This will improve the performance in a flat network.\n\n".
