@@ -48,6 +48,7 @@ $::STATUS_STANDING_BY="standingby";
 $::STATUS_SHELL="shell";
 $::STATUS_DEFINED="defined";
 $::STATUS_UNKNOWN="unknown";
+$::STATUS_FAILED="failed";
 %::VALID_STATUS_VALUES = (
 	$::STATUS_ACTIVE=>1,
 	$::STATUS_INACTIVE=>1,
@@ -63,6 +64,7 @@ $::STATUS_UNKNOWN="unknown";
 	$::STATUS_SHELL=>1,
 	$::STATUS_DEFINED=>1,
 	$::STATUS_UNKNOWN=>1,
+        $::STATUS_FAILED=>1,
 );
 
 #defined->[discovering]->[configuring]->[standingby]->installing->[installed]->booting->alive,  defined->[discovering]->[configuring]-[standingby]->netbooting->booted->alive,  alive/unreachable->booting->alive,  powering-off->unreachable, alive->unreachable
