@@ -34,7 +34,20 @@ fi
 DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' /xcatpost/mypostscript.post`
 echo "$DHCP_TMP" > /xcatpost/mypostscript.post
 
-echo "updateflag.awk \$MASTER 3002 \"installstatus booted\"" >> /xcatpost/mypostscript.post
+CNS=`grep NODESTATUS= /xcatpost/mypostscript.post |awk -F = '{print $2}'`
+if [ -z "$CNS" ] || [ "$CNS" != "'0'" -a   "$CNS" != "'N'"  -a  "$CNS" != "'n'" ]; then
+#update the node status during the postbootscript running
+#TMP=`sed "/postbootscripts-start-here/ i\updateflag.awk \\$MASTER 3002 \\"installstatus configuring\\"" /xcatpost/mypostscript.post`
+#echo "$TMP"> /xcatpost/mypostscript.post
+
+echo "
+if [ \"\$return_value\" -eq \"0\" ]; then
+   updateflag.awk \$MASTER 3002 \"installstatus booted\"
+else
+   updateflag.awk \$MASTER 3002 \"installstatus failed\"
+fi
+" >> /xcatpost/mypostscript.post
+fi
 
 chmod +x /xcatpost/mypostscript.post
 if [ -x /xcatpost/mypostscript.post ];then
