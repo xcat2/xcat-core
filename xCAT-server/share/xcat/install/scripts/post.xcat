@@ -4,6 +4,7 @@
 export MASTER_IP="#XCATVAR:XCATMASTER#"
 export MASTER_IPS="#XCATVAR:XCATMASTER#"
 export MASTER="#XCATVAR:XCATMASTER#"
+export NODESTATUS="#XCATVAR:NODESTATUS#"
 export INSTALLDIR=#TABLE:site:key=installdir:value#
 if [ -z "$INSTALLDIR" ]; then
     INSTALLDIR="/install"
@@ -77,8 +78,11 @@ export PATH=/xcatpost:$PATH
 # use the run_ps subroutine to run the postscripts
 TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
 echo "
+# global value to store the running status of the postbootscripts,the value is non-zero if one postbootscript failed
+return_value=0
 # subroutine used to run postscripts
 run_ps () {
+ local ret_local=0
  logdir=\"/var/log/xcat\"
  mkdir -p \$logdir
  logfile=\"/var/log/xcat/xcat.log\"
@@ -88,9 +92,16 @@ run_ps () {
   #./\$@ 2>&1 1> /tmp/tmp4xcatlog
   #cat /tmp/tmp4xcatlog | tee -a \$logfile
   ./\$@ 2>&1 | tee -a $logfile
+  ret_local=\${PIPESTATUS[0]}
+  if [ \"\$ret_local\" -ne \"0\" ]; then
+     return_value=\$ret_local
+  fi
  else
   echo "\"\`date\` Postscript \$1 does NOT exist.\"" | tee -a \$logfile
+  return_value=-1
  fi
+
+ return 0
 }
 # subroutine end
 
@@ -138,7 +149,9 @@ export ARCH=#TABLE:nodetype:THISNODE:arch#
 addsiteyum
 sed -i 's/^serial/#serial/' /boot/grub/grub.conf
 sed -i 's/^terminal/#terminal/' /boot/grub/grub.conf
-updateflag.awk $MASTER 3002
+if [ -z "$NODESTATUS" ] || [ "$NODESTATUS" != "0" -a   "$NODESTATUS" != "N"  -a  "$NODESTATUS" != "n" ]; then
+	updateflag.awk $MASTER 3002
+fi
 cd /
 #rm -Rf /xcatpost
 #rm -f /xcatpost/mypostscript
