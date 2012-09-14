@@ -368,8 +368,11 @@ fi
 # use the run_ps subroutine to run the postscripts
 TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
 echo "
+# global value to store the running status of the postbootscripts,the value is non-zero if one postbootscript failed
+return_value=0
 # subroutine used to run postscripts
 run_ps () {
+ local ret_local=0
  logdir=\"/var/log/xcat\"
  mkdir -p \$logdir
  logfile=\"/var/log/xcat/xcat.log\"
@@ -379,9 +382,16 @@ run_ps () {
   #./\$@ 2>&1 1> /tmp/tmp4xcatlog
   #cat /tmp/tmp4xcatlog | tee -a \$logfile
   ./\$@ 2>&1 | tee -a $logfile
+  ret_local=\${PIPESTATUS[0]}
+  if [ \"\$ret_local\" -ne \"0\" ]; then
+     return_value=\$ret_local
+  fi
  else
   echo \"\`date\` Postscript \$1 does NOT exist.\" | tee -a \$logfile
+  return_value=-1
  fi
+
+ return 0
 }
 # subroutine end
 
@@ -394,7 +404,15 @@ if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ]; then
   #notify the server that we are done with netbooting
   CNS=`grep NODESTATUS= /xcatpost/mypostscript |awk -F = '{print $2}'`
   if [ -z "$CNS" ] || [ "$CNS" != "'0'" -a   "$CNS" != "'N'"  -a  "$CNS" != "'n'" ]; then
-      echo "updateflag.awk \$MASTER 3002 \"installstatus booted\"" >> /xcatpost/mypostscript
+# TMP=`sed "/postscripts-start-here/ i\updateflag.awk \\$MASTER 3002 \\"installstatus configuring\\"" /xcatpost/mypostscript`
+#       echo "$TMP"> /xcatpost/mypostscript
+        echo "
+if [ \"\$return_value\" -eq \"0\" ]; then
+   updateflag.awk \$MASTER 3002 \"installstatus booted\"
+else
+   updateflag.awk \$MASTER 3002 \"installstatus failed\"
+fi
+        " >> /xcatpost/mypostscript
   fi
 fi
 
