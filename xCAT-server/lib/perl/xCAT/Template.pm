@@ -126,17 +126,14 @@ sub subvars {
       # handle empty and non-empty $pkglistfile's
 
       if (open PKGLISTFILE, "<$pkglistfile") {
-        my $pkglist = <PKGLISTFILE>;
-        chomp $pkglist;
-
-        # substitute space-delimited package list
-        $inc =~ s/#INCLUDE_DEFAULT_PKGLIST_PRESEED#/$pkglist/g;
-
+        my $pkglist = '';
         # append preseed directive lines
         while (<PKGLISTFILE>) {
-          $inc .= $_;
+          chomp $_;
+          $pkglist .= " " . $_;
         }
 
+        $inc =~ s/#INCLUDE_DEFAULT_PKGLIST_PRESEED#/$pkglist/g;
         close PKGLISTFILE;
       }
     } else {
