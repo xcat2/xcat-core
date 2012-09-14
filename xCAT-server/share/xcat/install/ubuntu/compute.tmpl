@@ -97,7 +97,7 @@ tasksel tasksel/first multiselect standard
 # gawk required for the xCAT scripts to work
 # Otherwise it installs mawk, which doesn't work
 
-d-i pkgsel/include string openssh-server ntp gawk #INCLUDE_DEFAULT_PKGLIST_PRESEED#
+d-i pkgsel/include string openssh-server ntp gawk nfs-common snmpd #INCLUDE_DEFAULT_PKGLIST_PRESEED#
 
 d-i debian-installer/allow_unauthenticated string true
 d-i pkgsel/update-policy select none
