@@ -101,7 +101,7 @@ sub process_request {
 
     if (system("mount $mntopts '$file' /mnt/xcat")) {
 	eval { $callback->({error=>"copycds was unable to mount $file to /mnt/xcat.",errorcode=>[1]}) };
-        system("umount -l /mnt/xcat")) {
+        system("umount -l /mnt/xcat"); 
       	return;
     }
     eval {
