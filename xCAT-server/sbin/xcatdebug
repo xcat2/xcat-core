@@ -49,6 +49,11 @@ if (
     exit 1;
 }
 
+if ($^O !~ /^linux/i) {
+  print "xcatdebug command only supports Linux Operating System.\n";
+  exit 1;
+}
+
 if (!($::FUNC || $::DEBUG)) {
   print "$usage";
   exit 1;

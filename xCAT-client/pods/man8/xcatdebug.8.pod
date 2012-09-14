@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<xcatdebug> - Enable or disable the trace facilities for xCAT.
+B<xcatdebug> - Enable or disable the trace facilities for xCAT. (Only supports Linux Operating System)
 
 B<xcatdebug> { [B<-f enable|disable> [B<-c configuration file | subroutine list>]] | [ B<-d enable |disable>]}
 
