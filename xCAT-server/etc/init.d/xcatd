@@ -76,7 +76,8 @@ restart)
   fi
   $STATUS > /dev/null 2>&1
   if [ "$?" = "0" ]; then
-    if ! nodels --version |grep -q 'Version 2.6'; then  #upgrade or downgrade from another major release, stop it just in case
+    ver=`nodels --version`
+    if [[ $ver < "Version 2.6" ]]; then # force to stop xcatd first when update from version earlier than 2.6
         $0 stop
     fi
   fi
@@ -89,7 +90,8 @@ reload)
   fi
   $STATUS > /dev/null 2>&1
   if [ "$?" = "0" ]; then
-    if ! nodels --version |grep -q 'Version 2.6'; then  #upgrade or downgrade from another major release, stop it just in case
+    ver=`nodels --version`
+    if [[ $ver < "Version 2.6" ]]; then # force to stop xcatd first when update from version earlier than 2.6
         $0 stop
     fi
   fi
