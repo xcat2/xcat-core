@@ -60,6 +60,7 @@ sub handled_commands
             getNodesAttribs  => "tabutils",
             getTablesAllNodeAttribs  => "tabutils",
             getTablesNodesAttribs  => "tabutils",
+            getTablesAllRowAttribs  => "tabutils",
             setNodesAttribs  => "tabutils",
             delEntries       => "tabutils",
             getAttribs       => "tabutils",
@@ -166,6 +167,10 @@ sub process_request
     elsif ($command eq "getTablesNodesAttribs")
     {
         return getTablesNodesAttribs($request,$callback);
+    }
+    elsif ($command eq "getTablesAllRowAttribs")
+    {
+        return getTablesAllRowAttribs($request,$callback);
     }
     elsif ($command eq "setNodesAttribs")
     {
@@ -2308,19 +2313,18 @@ sub getAllEntries
 	      return;
 	  }
 	}
-    my %noderecs;
-      foreach my $rec (@$recs) { 
+   my %noderecs;
+   foreach my $rec (@$recs) { 
         my %datseg=();
         foreach my $key (keys %$rec) {
-         #$datseg{$key} = [$rec->{$key}];
          $datseg{$key} = $rec->{$key};
         }
         push @{$noderecs{"row"}}, \%datseg;
-      }
-      push @{$rsp{"row"}}, @{$noderecs{"row"}};
-# for checkin XML created
-#my  $xmlrec=XMLout(\%rsp,RootName=>'xcatresponse',NoAttr=>1,KeyAttr=>[]);
-       $cb->(\%rsp);
+   }
+   push @{$rsp{"row"}}, @{$noderecs{"row"}};
+   # for checkin XML created
+   #my  $xmlrec=XMLout(\%rsp,RootName=>'xcatresponse',NoAttr=>1,KeyAttr=>[]);
+   $cb->(\%rsp);
 
         return;
 }
@@ -2574,6 +2578,100 @@ sub getTablesNodesAttribs
 #my  $xmlrec=XMLout(\%rsp,RootName=>'xcatresponse',NoAttr=>1,KeyAttr=>[]);
        $cb->(\%rsp);
         return;
+}
+# getTablesALLRowAttribs 
+# Read  all the rows from the input non-Node key'd
+# tables and get the input attributes
+# or get ALL attributes, if the word ALL is used. 
+#<xcatrequest>
+#<clienttype>PCM</clienttype>
+#<command>getTablesALLRowAttribs</command>
+#<table>
+#<tablename>osimage</tablename>
+#<attr>imagename</attr>
+#<attr>synclists</attr>
+#</table>
+#<table>
+#<tablename>linuximage</tablename>
+#<attr>ALL</attr>
+#</table>
+#   .
+#   .
+#   .
+#</xcatrequest>
+#
+#<xcatresponse>
+#<table>
+#<tablename>osimage</tablename>
+#<row>
+#<synclists>value1</synclists>
+#</row>
+#<row>
+#.
+#.
+#</row>
+#</table>
+#<table>
+#<tablename>linuximage</tablename>
+#<row>
+#<imagename>value</imagename>
+#<template>value</template>
+#.
+#.
+#</row>
+#<row>
+#.
+#.
+#</row>
+#</table>
+#</xcatresponse>
+#.
+#.
+#
+sub getTablesAllRowAttribs 
+{
+    my $request      = shift;
+    my $cb = shift;
+    my $command  = $request->{command}->[0];
+    my %rsp;
+
+    # process each table in the request 
+    my $tables = $request->{table};
+    foreach my $tabhash (@$tables) { 
+
+      my $tablename    = $tabhash->{tablename}->[0];
+      my $attr    = $tabhash->{attr};
+      my @attrs=@$attr;
+      my $tab=xCAT::Table->new($tablename);
+      my %noderecs;
+      # build the table name record
+      @{$noderecs{table}->[0]->{tablename}} = $tablename;
+      # if request for ALL attributes
+      if (grep (/ALL/,@attrs)) { # read the  schema and build array of all attrs
+        @attrs=();
+        my $schema = xCAT::Table->getTableSchema($tablename);
+        my $desc = $schema->{descriptions};
+        foreach my $c (@{$schema->{cols}}) {
+           # my $space = (length($c)<7 ? "\t\t" : "\t");
+            push @attrs, $c;
+        }
+      }
+      # read all the attributes in this table
+      my @recs        =   $tab->getAllAttribs(@attrs);
+      my %tblrecs;
+      foreach my $rec (@recs) { 
+         my %datseg=();
+         foreach my $key (keys %$rec) {
+           $datseg{$key} = $rec->{$key};
+         }
+         push @{$tblrecs{table}->[0]->{row}}, \%datseg;
+      }
+      push @{$rsp{"table"}}, @{$tblrecs{table}};
+    } # end of all table processing 
+    # for checkin XML created
+   # my  $xmlrec=XMLout(\%rsp,RootName=>'xcatresponse',NoAttr=>1,KeyAttr=>[]);
+    $cb->(\%rsp);
+    return;
 }
 #
 # setNodesAttribs - setNodesAttribs
