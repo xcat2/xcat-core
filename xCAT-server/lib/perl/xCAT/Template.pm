@@ -94,6 +94,12 @@ sub subvars {
   }
   $ENV{XCATMASTER}=$master;
 
+  my @nodestatus = xCAT::TableUtils->get_site_attribute("nodestatus");
+  my $tmp=$nodestatus[0];
+  if( defined($tmp)  ){
+	$ENV{NODESTATUS}=$tmp;
+  }
+
   #replace the env with the right value so that correct include files can be found
   $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
 
