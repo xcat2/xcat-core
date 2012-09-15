@@ -161,8 +161,13 @@ sub logout {
     }
     $self->{noretry}=1;
     $self->subcmd(netfn=>0x6,command=>0x3c,data=>$self->{sessionid},callback=>\&logged_out,callback_args=>$self);
+    $self->{logged}=0; #seeing as how we are going to take it on faith the logout happened, do the callback now
+    if ( $self->{onlogout}) { 
+        $self->{onlogout}->("SUCCESS",$self->{onlogout_args});
+    }
 }
 sub logged_out {
+    return;
     my $rsp = shift;
     my $self = shift;
     if (defined $rsp->{code} and $rsp->{code} == 0) { 
