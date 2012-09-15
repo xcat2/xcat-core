@@ -6,7 +6,7 @@ B<mkdsklsnode> - Use this xCAT command to define and initialize AIX/NIM diskless
 
 B<mkdsklsnode [-h|--help ]>
 
-B<mkdsklsnode [-V|--verbose] [-f|--force] [-n|--newname] [-i osimage_name] [-l location] [-u|--updateSN] [-k|--skipsync] [-p|--primarySN] [-b|--backupSN] [-S|--setuphanfs] noderange [attr=val [attr=val ...]]>
+B<mkdsklsnode [-V|--verbose] [-f|--force] [-n|--newname] [-i osimage_name] [-l location] [-u|--updateSN] [-k|--skipsync] [-p|--primarySN] [-b|--backupSN] [-S|--setuphanfs] [-r|--resonly] noderange [attr=val [attr=val ...]]>
 
 =head1 DESCRIPTION
 
@@ -123,6 +123,10 @@ Create a new NIM machine object name for the xCAT node. Use the naming conventio
 
 When using backup service nodes only update the primary.  The default is to update both the primary and backup service nodes.
 
+=item B<-r|--resonly>
+
+Use this option if you wish to copy osimages to the service nodes and define the local resources BUT do not wish to define the local NIM client definitions. This option is only valid when the xCAT "site" definition attribute "sharedinstall" is set to "sns" (using xCAT HASN support).  You run the mkdslsnode command as you normally would but include the "-r" option.  You can run the same command without the "-r" option to define the NIM clients on the service nodes.
+
 =item B<-S|--setuphanfs>
 
 Setup NFSv4 replication between the primary service nodes and backup service nodes to provide high availability NFS for the compute nodes. This option only exports the /install directory with NFSv4 replication settings, the data synchronization between the primary service nodes and backup service nodes needs to be taken care of through some mechanism.
@@ -182,6 +186,12 @@ B<mkdsklsnode -i 61dskls clstrn29 psize=128 sparse_paging=yes>
 Initialize an xCAT node called "node02" as an AIX diskless node.  Create a new NIM machine definition name with the osimage as an extension to the xCAT node name.
 
 B<mkdsklsnode -n -i 61spot node02>
+
+=item 5
+
+In an HASN environment, replicate NIM resources listed in an osimage definiton on remote service nodes without creating NIM client definitions.
+
+B<mkdsklsnode -S -r -b compute>
 
 =back
 
