@@ -4448,6 +4448,7 @@ sub sensor_was_read {
     my $sessdata = shift;
     if ($rsp->{error}) {
         xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
+	return;
     }
     if ($rsp->{code}) {
         my $text = $codes{$rsp->{code}};
