@@ -320,7 +320,9 @@ sub open_rmcpplus_request {
     my $self = shift;
     $self->{'authtype'}=6;
     $self->{sidm} = [0x15,0x58,0x25,0x7a];
-    my @payload = (0x1f,#message tag, TODO: could be random
+    unless ($self->{rmcptag}) { $self->{rmcptag} = 1; } 
+    $self->{rmcptag}+=1;
+    my @payload = ($self->{rmcptag},#message tag,
             0, #requested privilege role, 0 is highest allowed
             0,0, #reserved
             0x15,0x58,0x25,0x7a, #we only have to sweat one session, so no need to generate
@@ -433,7 +435,15 @@ sub timedout {
         $self->{ipmicallback}->($rsp,$self->{ipmicallback_args});
         return;
     }
-    $self->sendpayload(%{$self->{pendingargs}},nowait=>1); #do not induce the xmit to wait for packets, just spit it out.  timedout is in a wait-for-packets loop already, so it's fine
+    if ($self->{sessionestablishmentcontext} == STATE_OPENSESSION) { #in this particular case, we want to craft a new rmcp session request with a new client side session id, to aid in distinguishing retry from new
+        $self->open_rmcpplus_request();
+    } elsif ($self->{sessionestablishmentcontext} == STATE_EXPECTINGRAKP2) { #in this particular case, we want to craft a new rmcp session request with a new client side session id, to aid in distinguishing retry from new
+    	$self->send_rakp1();
+    } elsif ($self->{sessionestablishmentcontext} == STATE_EXPECTINGRAKP4) { #in this particular case, we want to craft a new rmcp session request with a new client side session id, to aid in distinguishing retry from new
+	$self->relog();
+    } else {
+    	$self->sendpayload(%{$self->{pendingargs}},nowait=>1); #do not induce the xmit to wait for packets, just spit it out.  timedout is in a wait-for-packets loop already, so it's fine
+    }
 }
 sub route_ipmiresponse {
     my $sockaddr=shift;
@@ -582,7 +592,7 @@ sub got_rmcp_response {
 	#we would ignore an RMCP+ open session response if we are not in an IPMI2 negotiation, so we have to have *some* state that isn't established for this to be kosher
         return 9; #now's not the time for this response, ignore it
     }
-    unless ($byte == 0x1f) {
+    unless ($byte == $self->{rmcptag}) { #make sure this rmcp response is specifically the last one we sent.... we don't want to happily proceed with the risk a retry request blew up our temp session id without letting us know
         return 9;
     }
     $byte = shift @data;
@@ -597,7 +607,6 @@ sub got_rmcp_response {
     }
     splice @data,0,5;
     $self->{pendingsessionid} = [splice @data,0,4];
-    $self->{sessionestablishmentcontext} = STATE_EXPECTINGRAKP2;
     #TODO: if we retried, and the first answer comes back but the second answer is dropped, log in will fail as we do not know our correct session id
     #basically, we would have to retry open session requested until RAKP2 *confirmed* good
     $self->send_rakp1();
@@ -607,7 +616,8 @@ sub got_rmcp_response {
 sub send_rakp3 {
     #TODO: this is the point where OPEN RMCP SESSION REQUEST should have retry stopped, not send_rakp1 
     my $self = shift;
-    my @payload = (0x1f,0,0,0,@{$self->{pendingsessionid}});
+    $self->{rmcptag}+=1;
+    my @payload = ($self->{rmcptag},0,0,0,@{$self->{pendingsessionid}});
     my @user = unpack("C*",$self->{userid});
     push @payload,unpack("C*",hmac_sha1(pack("C*",@{$self->{remoterandomnumber}},@{$self->{sidm}},4,scalar @user,@user),$self->{password}));
     $self->sendpayload(payload=>\@payload,type=>$payload_types{'rakp3'});
@@ -615,7 +625,8 @@ sub send_rakp3 {
 
 sub send_rakp1 {
     my $self = shift;
-    my @payload = (0x1f,0,0,0,@{$self->{pendingsessionid}});
+    $self->{rmcptag}+=1;
+    my @payload = ($self->{rmcptag},0,0,0,@{$self->{pendingsessionid}});
     $self->{randomnumber}=[];
     foreach (1..16) {
         my $randomnumber = int(rand(255));
@@ -626,6 +637,7 @@ sub send_rakp1 {
     my @user = unpack("C*",$self->{userid});
     push @payload,scalar @user;
     push @payload,@user;
+    $self->{sessionestablishmentcontext} = STATE_EXPECTINGRAKP2;
     $self->sendpayload(payload=>\@payload,type=>$payload_types{'rakp1'});
 }
 sub init {
@@ -653,7 +665,7 @@ sub got_rakp4 {
     unless ($self->{sessionestablishmentcontext} == STATE_EXPECTINGRAKP4) { #ignore rakp4 unless we are explicitly expecting RAKP4
         return 9; #now's not the time for this response, ignore it
     }
-    unless ($byte == 0x1f) {
+    unless ($byte == $self->{rmcptag}) { #make sure this rmcp response is specifically the last one we sent.... we don't want to happily proceed with the risk a retry request blew up our temp session id without letting us know
         return 9;
     }
     $byte = shift @data;
@@ -675,7 +687,8 @@ sub got_rakp4 {
     my @expectauthcode = unpack("C*",hmac_sha1(pack("C*",@{$self->{randomnumber}},@{$self->{pendingsessionid}},@{$self->{remoteguid}}),$self->{sik}));
     foreach  (@expectauthcode[0..11]) {
         unless ($_ == (shift @data)) {
-            $self->{onlogon}->("ERROR: failure in final rakp exchange message",$self->{onlogon_args});
+	    #we'll just ignore this transgression...... *this time*
+            #$self->{onlogon}->("ERROR: failure in final rakp exchange message",$self->{onlogon_args});
             return 9;
         }
     }
@@ -701,7 +714,7 @@ sub got_rakp2 {
         #the reason being that if an old rakp1 retry actually made it and we were just too aggressive, then a previous rakp2 is invalidated and invalid session id or the integrity check value is bad
         return 9; #now's not the time for this response, ignore it
     }
-    unless ($byte == 0x1f) {
+    unless ($byte == $self->{rmcptag}) { #make sure this rmcp response is specifically the last one we sent.... we don't want to happily proceed with the risk a retry request blew up our temp session id without letting us know
         return 9;
     }
     $byte = shift @data;
