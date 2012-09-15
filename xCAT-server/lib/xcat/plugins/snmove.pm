@@ -114,6 +114,7 @@ sub process_request
                     'd|dest=s'        => \$::SN2,       # dest SN akb MN
                     'D|destn=s'       => \$::SN2N,      # dest SN akb node
                     'l|liteonly'     => \$::SLonly,    # update statelite only!
+					'n|noretarget'    => \$::NORETARGET,  # no dump retarget
                     'P|postscripts=s' => \$::POST,      # postscripts to be run
                     'i|ignorenodes'   => \$::IGNORE,
                     'V|verbose'       => \$::VERBOSE,
@@ -945,6 +946,15 @@ sub process_request
 						$filestring .= "$bkloc/$file ";
 					}
 				}
+
+                if (!$filestring) {
+					my $rsp;
+					push @{$rsp->{data}}, "No backup client_data files for node $nd in $bkloc. Current client data files in $cdloc should be checked to avoid boot errors.\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					$error++;
+					next;
+				}
+
 				my $ccmd=qq~/usr/bin/cp -p -r $filestring $cdloc 2>/dev/null~;
 
 				if ($::VERBOSE) {
@@ -957,7 +967,7 @@ sub process_request
 				if ($::RUNCMD_RC != 0)
 				{
 					my $rsp;
-					push @{$rsp->{data}}, "Could not copy files to $cdloc.\n";
+					push @{$rsp->{data}}, "Could not copy\n$filestring\n\tto $cdloc.\n";
 					xCAT::MsgUtils->message("E", $rsp, $callback);
 					$error++;
 				}
@@ -971,12 +981,14 @@ sub process_request
 	#
 	if ((!$::IGNORE) && ($::isaix) && ($sharedinstall eq "sns")) {
 
-		if (&dump_retarget($callback, \@nodes, $sub_req) != 0)
-		{
-			my $rsp;
-			push @{$rsp->{data}}, "One or more errors occured while attemping to re-target the dump device on cluster nodes.\n";
-			xCAT::MsgUtils->message("E", $rsp, $callback);
-			$error++;
+		if (!$::NORETARGET) {
+			if (&dump_retarget($callback, \@nodes, $sub_req) != 0)
+			{
+				my $rsp;
+				push @{$rsp->{data}}, "One or more errors occured while attemping to re-target the dump device on cluster nodes.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				$error++;
+			}
 		}
 	}
 
