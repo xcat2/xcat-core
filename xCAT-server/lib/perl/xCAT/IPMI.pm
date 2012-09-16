@@ -427,12 +427,14 @@ sub waitforrsp {
 
 sub timedout {
     my $self = shift;
+    $self->{nowait}=1;
     $self->{timeout} = $self->{timeout}*2;
     if ($self->{timeout} > 7) { #giveup, really
         $self->{timeout}=$initialtimeout;
         my $rsp={};
         $rsp->{error} = "timeout";
         $self->{ipmicallback}->($rsp,$self->{ipmicallback_args});
+    	$self->{nowait}=0;
         return;
     }
     if ($self->{sessionestablishmentcontext} == STATE_OPENSESSION) { #in this particular case, we want to craft a new rmcp session request with a new client side session id, to aid in distinguishing retry from new
@@ -444,6 +446,7 @@ sub timedout {
     } else {
     	$self->sendpayload(%{$self->{pendingargs}},nowait=>1); #do not induce the xmit to wait for packets, just spit it out.  timedout is in a wait-for-packets loop already, so it's fine
     }
+   $self->{nowait}=0;
 }
 sub route_ipmiresponse {
     my $sockaddr=shift;
@@ -878,7 +881,7 @@ sub sendpayload {
             #push integrity data
             }
     }
-    unless ($args{nowait}) { #if nowait indicated, the packet will be sent regardless of maxpending
+    unless ($args{nowait} or $self->{nowait}) { #if nowait indicated, the packet will be sent regardless of maxpending
     			     #primary use case would be retries that should represent no delta to pending sessions in aggregate and therefore couldn't exceed maxpending anywy
 			     #if we did do this on timedout, waitforrsp may recurse, which is a complicated issue.  Theoretically, if waitforrsp protected itself, it 
 			     #would act the same, but best be explicit about nowait if practice does not match theory
