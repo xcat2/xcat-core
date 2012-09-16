@@ -159,6 +159,7 @@ sub logout {
         if ( $self->{onlogout}) { $self->{onlogout}->("SUCCESS",$self->{onlogout_args}); }
         return;
     }
+    $self->{noretry}=1;
     $self->subcmd(netfn=>0x6,command=>0x3c,data=>$self->{sessionid},callback=>\&logged_out,callback_args=>$self);
 }
 sub logged_out {
@@ -429,6 +430,7 @@ sub timedout {
     my $self = shift;
     $self->{nowait}=1;
     $self->{timeout} = $self->{timeout}*2;
+    if ($self->{noretry}) { return; }
     if ($self->{timeout} > 7) { #giveup, really
         $self->{timeout}=$initialtimeout;
         my $rsp={};
