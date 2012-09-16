@@ -17,6 +17,10 @@ use Time::HiRes qw/time/;
 
 use IO::Socket::INET qw/!AF_INET6 !PF_INET6/;
 my $initialtimeout=0.100;
+use constant STATE_OPENSESSION=>1;
+use constant STATE_EXPECTINGRAKP2=>2;
+use constant STATE_EXPECTINGRAKP4=>3;
+use constant STATE_ESTABLISHED=>4;
 
 my $doipv6=eval {
 	require Socket6;
@@ -327,7 +331,7 @@ sub open_rmcpplus_request {
         } else {
             push @payload,(2,0,0,8,0,0,0,0);
         }
-    $self->{sessionestablishmentcontext} = 'opensession';
+    $self->{sessionestablishmentcontext} = STATE_OPENSESSION;
     $self->sendpayload(payload=>\@payload,type=>$payload_types{'rmcpplusopenreq'});
 }
 
@@ -574,7 +578,8 @@ sub got_rmcp_response {
     my $self = shift;
     my @data = @_;
     my $byte = shift @data;
-    unless ($self->{sessionestablishmentcontext} eq 'opensession') {
+    unless ($self->{sessionestablishmentcontext} and $self->{sessionestablishmentcontext} != STATE_ESTABLISHED) {
+	#we would ignore an RMCP+ open session response if we are not in an IPMI2 negotiation, so we have to have *some* state that isn't established for this to be kosher
         return 9; #now's not the time for this response, ignore it
     }
     unless ($byte == 0x1f) {
@@ -592,12 +597,15 @@ sub got_rmcp_response {
     }
     splice @data,0,5;
     $self->{pendingsessionid} = [splice @data,0,4];
-    $self->{sessionestablishmentcontext} = 'rakp2';
+    $self->{sessionestablishmentcontext} = STATE_EXPECTINGRAKP2;
+    #TODO: if we retried, and the first answer comes back but the second answer is dropped, log in will fail as we do not know our correct session id
+    #basically, we would have to retry open session requested until RAKP2 *confirmed* good
     $self->send_rakp1();
     return 0;
 }
 
 sub send_rakp3 {
+    #TODO: this is the point where OPEN RMCP SESSION REQUEST should have retry stopped, not send_rakp1 
     my $self = shift;
     my @payload = (0x1f,0,0,0,@{$self->{pendingsessionid}});
     my @user = unpack("C*",$self->{userid});
@@ -642,7 +650,7 @@ sub got_rakp4 {
     my $self = shift;
     my @data = @_;
     my $byte = shift @data;
-    unless ($self->{sessionestablishmentcontext} eq 'rakp4') {
+    unless ($self->{sessionestablishmentcontext} == STATE_EXPECTINGRAKP4) { #ignore rakp4 unless we are explicitly expecting RAKP4
         return 9; #now's not the time for this response, ignore it
     }
     unless ($byte == 0x1f) {
@@ -650,8 +658,14 @@ sub got_rakp4 {
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
-	if (($byte == 0x02 or $byte == 15) and $self->{logontries}) { # 0x02 is 'invalid session id', seems that some ipmi implementations sometimes expire a temporary id before I can respond, start over in such a case
-	    $self->relog();
+	if (($byte == 0x02 or $byte == 15) and $self->{logontries}) { # most likely scenario (if correct password) is that a retry earlier in the process invalided the flow this packet came in on, ignore it and hope the retries all sort out
+            #the biggest risk: that we did not receive the correct rakp2, so the prudent thing to be doing in this time interval would be retrying RAKP1...
+            #ipmi2 session negotiation is a bit weird in how retries can corrupt state and we effectively should be rewinding a bit...
+	    #TODO: think about retry logic hard to decide how many packets we can retry
+	    #thought: can we match a failed RAKP2 to the last RAKP1 we transmitted?  If we can, and we see the last RAKP1 was in fact the one this response is for, that
+	    #would definitely mean we should rewinnd to open session rquest..
+	    #ditto for rakp4, if we can confirm rakp is for the last transmitted rakp3, then we need to rewind to send_rakp1...
+	    #$self->relog();
 	    return; 
        }
         $self->{onlogon}->("ERROR: $byte code on opening RMCP+ session",$self->{onlogon_args}); #TODO: errors
@@ -672,7 +686,7 @@ sub got_rakp4 {
     }
     $self->{sequencenumber}=1;
     $self->{sequencenumberbytes}=[1,0,0,0];
-    $self->{sessionestablishmentcontext} = 'done'; #will move on to relying upon session sequence number
+    $self->{sessionestablishmentcontext} = STATE_ESTABLISHED; #will move on to relying upon session sequence number
     $self->set_admin_level();
     return 0;
 }
@@ -682,7 +696,9 @@ sub got_rakp2 {
     my $self=shift;
     my @data = @_;
     my $byte = shift @data;
-    unless ($self->{sessionestablishmentcontext} eq 'rakp2') {
+    unless ($self->{sessionestablishmentcontext} >= STATE_EXPECTINGRAKP2 and $self->{sessionestablishmentcontext} != STATE_ESTABLISHED) {
+        #we will bail out unless the state is either EXPECTINGRAKP2 or EXPECTINGRAKP4.  
+        #the reason being that if an old rakp1 retry actually made it and we were just too aggressive, then a previous rakp2 is invalidated and invalid session id or the integrity check value is bad
         return 9; #now's not the time for this response, ignore it
     }
     unless ($byte == 0x1f) {
@@ -690,8 +706,9 @@ sub got_rakp2 {
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
-	if (($byte == 0x02 or $byte == 15) and $self->{logontries}) { # 0x02 is 'invalid session id', seems that some ipmi implementations sometimes expire a temporary id before I can respond, start over in such a case
-	    $self->relog();
+	if ($byte == 0x02) { #invalid session id is almost certainly because a retry on rmcp+ open session response rendered our session id invalid, ignore this in the hope that we'll get an answer for our retry that invalidated us..
+	    #$self->relog();
+		#TODO: probably should disable RAKP1 retry here...  high likelihood that we'll just spew a bad RAKP1 and Open Session Request retry would be more appropriate to try to discern a valid session id
 	    return; 
        }
         $self->{onlogon}->("ERROR: $byte code on opening RMCP+ session",$self->{onlogon_args}); #TODO: errors
@@ -724,7 +741,7 @@ sub got_rakp2 {
         my @aeskey = unpack("C*",$self->{k2});
         $self->{aeskey} = pack("C*",(splice @aeskey,0,16));
     }
-    $self->{sessionestablishmentcontext} = 'rakp4';
+    $self->{sessionestablishmentcontext} = STATE_EXPECTINGRAKP4;
     $self->send_rakp3();
     return 0;
 }
