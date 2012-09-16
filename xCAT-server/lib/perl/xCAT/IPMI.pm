@@ -21,6 +21,17 @@ use constant STATE_OPENSESSION=>1;
 use constant STATE_EXPECTINGRAKP2=>2;
 use constant STATE_EXPECTINGRAKP4=>3;
 use constant STATE_ESTABLISHED=>4;
+#my $ipmidbg;
+#open($ipmidbg,">","/tmp/ipmidbg");
+#sub dprint {
+#	return;
+#	my $self = shift;
+#	foreach (@_) { 
+#		foreach (split /\n/,$_) {
+#			print $ipmidbg $self->{bmc}.": ".$_."\n";
+#		}
+#	}
+#}
 
 my $doipv6=eval {
 	require Socket6;
@@ -325,13 +336,16 @@ sub got_channel_auth_cap {
 sub open_rmcpplus_request {
     my $self = shift;
     $self->{'authtype'}=6;
-    $self->{sidm} = [0x15,0x58,0x25,0x7a];
+    unless ($self->{localsid}) { $self->{localsid}=358098297; } #this is an arbitrary number of no significance
+    $self->{localsid}+1; #new session ID if we are relogging
+    my @sidbytes = unpack("C4",pack("N",$self->{localsid}));
+    $self->{sidm} = \@sidbytes;
     unless ($self->{rmcptag}) { $self->{rmcptag} = 1; } 
     $self->{rmcptag}+=1;
     my @payload = ($self->{rmcptag},#message tag,
             0, #requested privilege role, 0 is highest allowed
             0,0, #reserved
-            0x15,0x58,0x25,0x7a, #we only have to sweat one session, so no need to generate
+	    @sidbytes,
             0,0,0,8,1,0,0,0, #table 13-17, request sha
             1,0,0,8,1,0,0,0); #sha integrity
         if ($aessupport) { 
@@ -433,6 +447,9 @@ sub waitforrsp {
 
 sub timedout {
     my $self = shift;
+    unless (ref $self->{pendingargs}) {
+    	return;
+    }
     $self->{nowait}=1;
     $self->{timeout} = $self->{timeout}*2;
     if ($self->{noretry}) { return; }
@@ -446,10 +463,12 @@ sub timedout {
     }
     if ($self->{sessionestablishmentcontext} == STATE_OPENSESSION) { #in this particular case, we want to craft a new rmcp session request with a new client side session id, to aid in distinguishing retry from new
         $self->open_rmcpplus_request();
+#experimintation has showed rakp1 and 3 are best done with a straightforward retry, not something fancy...
+#stale rakp3 in a ipmi2 implementation that can't handle it will be detected through rmcp status code rather than assuming we must start over.
     } elsif ($self->{sessionestablishmentcontext} == STATE_EXPECTINGRAKP2) { #in this particular case, we want to craft a new rmcp session request with a new client side session id, to aid in distinguishing retry from new
-    	$self->send_rakp1();
+    	$self->relog();
     } elsif ($self->{sessionestablishmentcontext} == STATE_EXPECTINGRAKP4) { #in this particular case, we want to craft a new rmcp session request with a new client side session id, to aid in distinguishing retry from new
-	$self->relog();
+    	$self->relog();
     } else {
     	$self->sendpayload(%{$self->{pendingargs}},nowait=>1); #do not induce the xmit to wait for packets, just spit it out.  timedout is in a wait-for-packets loop already, so it's fine
     }
@@ -543,10 +562,8 @@ sub handle_ipmi_packet {
                    return 3; #authcode bad, pretend it never existed
                 }
             }
-            unless ($rsp[2] == 0x15 and 
-                    $rsp[3] == 0x58 and
-                    $rsp[4] == 0x25 and
-                    $rsp[5] == 0x7a) {
+	    my $thissid = unpack("N",pack("C*",$rsp[2],$rsp[3],$rsp[4],$rsp[5]));
+            unless ($thissid==$self->{localsid}) {
                 return 1; #this response does not match our current session id, ignore it
             }
             my $remsequencenumber=$rsp[6]+$rsp[7]>>8+$rsp[8]>>16+$rsp[9]>>24;
@@ -652,6 +669,7 @@ sub send_rakp1 {
 }
 sub init {
     my $self = shift;
+    $self->{sessionestablishmentcontext} = 0;
     $self->{'sequencenumber'} = 0; #init sequence number
     $self->{'sequencenumberbytes'} = [0,0,0,0]; #init sequence number
     $self->{'sessionid'} = [0,0,0,0]; # init session id
@@ -680,7 +698,13 @@ sub got_rakp4 {
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
-	if (($byte == 0x02 or $byte == 15) and $self->{logontries}) { # most likely scenario (if correct password) is that a retry earlier in the process invalided the flow this packet came in on, ignore it and hope the retries all sort out
+	if (($byte == 0x02) and $self->{logontries}) {
+	    #ok, turns out an IPMI2 device may optimistically assume that since it has transmitted RAKP4, it's done with this whole RAKP exchange, thus 
+	    #code 2 can happen....  To workaround this, code 2 is taken as a cue to start over if we haven't got an rakp2 yet
+	    $self->relog();
+        }
+	if (($byte == 0x02 or $byte == 15) and $self->{logontries}) { # most likely scenario is that a retry earlier in the process invalided the flow this packet came in on, ignore it and hope the retries all sort out
+	    #UPDATE: turns out open rmcp session request shenanigans were to blame, rakp2 straight retransmits seems safe
             #the biggest risk: that we did not receive the correct rakp2, so the prudent thing to be doing in this time interval would be retrying RAKP1...
             #ipmi2 session negotiation is a bit weird in how retries can corrupt state and we effectively should be rewinding a bit...
 	    #TODO: think about retry logic hard to decide how many packets we can retry
@@ -749,7 +773,7 @@ sub got_rakp2 {
     #Data now represents authcode.. sha1 only..
     my @user = unpack("C*",$self->{userid});
     my $ulength = scalar @user;
-    my $hmacdata = pack("C*",(0x15,0x58,0x25,0x7a,@{$self->{pendingsessionid}},@{$self->{randomnumber}},@{$self->{remoterandomnumber}},@{$self->{remoteguid}},4,$ulength,@user));
+    my $hmacdata = pack("C*",(@{$self->{sidm}},@{$self->{pendingsessionid}},@{$self->{randomnumber}},@{$self->{remoterandomnumber}},@{$self->{remoteguid}},4,$ulength,@user));
     my @expectedhash = (unpack("C*",hmac_sha1($hmacdata,$self->{password})));
     foreach (0..(scalar(@expectedhash)-1)) {
         if ($expectedhash[$_] != $data[$_]) {
@@ -782,6 +806,7 @@ sub parse_ipmi_payload {
     $self->{seqlun} += 4; #increment by 1<<2
     $self->{seqlun} &= 0xff; #keep it one byte
     delete $sessions_waiting{$self}; #deregister self as satisfied, callback will reregister if appropriate
+    delete $self->{pendingargs};
     splice @payload,0,5; #remove rsaddr/netfs/lun/checksum/rq/seq/lun
     pop @payload; #remove checksum
     my $rsp;
