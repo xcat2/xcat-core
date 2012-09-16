@@ -1495,7 +1495,7 @@ sub enable_TFTPhpa
     }
 
     # get the tftpflags which set by customer
-    my $tftpflags = xCAT::Utils->get_site_attribute("tftpflags");
+    my $tftpflags = xCAT::TableUtils->get_site_attribute("tftpflags");
     my $startcmd = "/usr/sbin/in.tftpd $v4only -v -l -s $tftpdir -m /etc/tftpmapfile4xcat.conf";
     if ($tftpflags) {
         $startcmd = "/usr/sbin/in.tftpd $v4only $tftpflags";
