@@ -337,7 +337,7 @@ sub open_rmcpplus_request {
     my $self = shift;
     $self->{'authtype'}=6;
     unless ($self->{localsid}) { $self->{localsid}=358098297; } #this is an arbitrary number of no significance
-    $self->{localsid}+1; #new session ID if we are relogging
+    $self->{localsid}+=1; #new session ID if we are relogging
     my @sidbytes = unpack("C4",pack("N",$self->{localsid}));
     $self->{sidm} = \@sidbytes;
     unless ($self->{rmcptag}) { $self->{rmcptag} = 1; } 
