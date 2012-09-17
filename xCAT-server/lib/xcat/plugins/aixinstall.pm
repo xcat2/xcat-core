@@ -11756,11 +11756,20 @@ sub mkdsklsnode
 
         if (scalar(keys %xcatmasterhash) ne 1)
         {
-            $setuphanfserr++;
-            my $rsp;
-            my $xcatmasterstr = join(',', keys %xcatmasterhash);
-            push @{$rsp->{data}}, "There are more than one xcatmaster for the nodes, the xcatmasters are $xcatmasterstr.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
+            my %masteriphash = ();
+            foreach my $master (keys %xcatmasterhash)
+            {
+                my $xcatmasterip = xCAT::NetworkUtils->getipaddr($master);
+                $masteriphash{$xcatmasterip} = 1;
+            }
+            if (scalar(keys %masteriphash) ne 1)
+            {
+                $setuphanfserr++;
+                my $rsp;
+                my $xcatmasterstr = join(',', keys %xcatmasterhash);
+                push @{$rsp->{data}}, "There are more than one xcatmaster for the nodes, the xcatmasters are $xcatmasterstr.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+            }
         }
         my $xcatmasterip = xCAT::NetworkUtils->getipaddr((keys %xcatmasterhash)[0]);
         my @allips = xCAT::Utils->gethost_ips();
