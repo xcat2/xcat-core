@@ -40,7 +40,7 @@ If B<-f> is specified, the host will be deactivated to maintenance before the re
 To remove the host 'host1', enter:
 
  rmhypervisor host1
- 
+
 =back
 
 =head1 FILES

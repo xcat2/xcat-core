@@ -147,7 +147,7 @@ To activate the host 'host1', enter:
 To deactivate the host 'host1', enter:
 
  chhypervisor host1 -d
- 
+
 =back
 
 =head1 FILES
