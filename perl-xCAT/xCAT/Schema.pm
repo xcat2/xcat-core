@@ -1895,7 +1895,7 @@ my @nodeattrs = (
                  tabentry => 'vm.virtflags',
                  access_tabentry => 'vm.node=attr:node',
                 },
-		{attr_name => 'vmmaster',
+                {attr_name => 'vmmaster',
                  tabentry => 'vm.master',
                  access_tabentry => 'vm.node=attr:node',
                 },
@@ -1910,6 +1910,29 @@ my @nodeattrs = (
 		{attr_name => 'vmbeacon',
                  tabentry => 'vm.beacon',
                  access_tabentry => 'vm.node=attr:node',
+                },
+             {attr_name => 'vmcluster',
+                 tabentry => 'vm.cluster',
+                 access_tabentry => 'vm.node=attr:node',
+                },
+######################
+#  hypervisor table      #
+######################
+             {attr_name => 'hosttype',
+                 tabentry => 'hypervisor.type',
+                 access_tabentry => 'hypervisor.node=attr:node',
+                },
+             {attr_name => 'hostinterface',
+                 tabentry => 'hypervisor.interface',
+                 access_tabentry => 'hypervisor.node=attr:node',
+                },
+             {attr_name => 'hostmanager',
+                 tabentry => 'hypervisor.mgr',
+                 access_tabentry => 'hypervisor.node=attr:node',
+                },
+             {attr_name => 'hostcluster',
+                 tabentry => 'hypervisor.cluster',
+                 access_tabentry => 'hypervisor.node=attr:node',
                 },
 ######################
 #  websrv table      #

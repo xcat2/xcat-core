@@ -406,6 +406,9 @@ Options:
  "rmhypervisor" =>
 "Usage:
     rmhypervisor noderange [-f | -h]",
+ "clonevm" =>
+"Usage:
+    clonevm noderange [-t createmaster -f | -b basemaster -d | -h]",
 );
 my $vers = xCAT::Utils->Version();
 my %version = (
@@ -430,7 +433,12 @@ my %version = (
     "lsflexnode" => "$vers",
     "mkflexnode" => "$vers",
     "rmflexnode" => "$vers",
-    "nodeset" => "$vers"
+    "nodeset" => "$vers",
+    "lsve" => "$vers",
+    "cfgve" => "$vers",
+    "chhypervisor" => "$vers",
+    "rmhypervisor" => "$vers",
+    "clonevm" => "$vers",
 );
 
 #--------------------------------------------------------------------------------
