@@ -196,7 +196,17 @@ sub setupAIXsn
 	# check if /install/postscripts is in /etc/exports
     if (&runcmd("/bin/cat /etc/exports 2>/dev/null | grep '$installdir/postscripts ' >/dev/null 2>&1")  != 0) {
         # if not add it and make sure it is exported
-        if (&runcmd("echo '$installdir/postscripts -ro' >> /etc/exports; exportfs -a") !=0 ) {
+        my $res;
+        if ($ENV{'USENFSV4ONAIX'} && ($ENV{'USENFSV4ONAIX'} =~ /1|Yes|yes|YES|Y|y/))
+        {
+            $res = &runcmd("echo '$installdir/postscripts -vers=3:4,ro' >> /etc/exports; exportfs -a");
+        }
+        else
+        {
+            $res = &runcmd("echo '$installdir/postscripts -ro' >> /etc/exports; exportfs -a");
+        }
+        if ($res != 0)
+        {
             $msg = "$::sdate servicenode: Could not update the /etc/exports file.\n";
             `logger -t xcat -p local4.warning  $msg`;
         }
