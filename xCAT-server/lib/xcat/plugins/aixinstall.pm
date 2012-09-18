@@ -13244,7 +13244,6 @@ sub rmdsklsnode
 
     foreach my $node (@nodelist)
     {
-
         my $nodename;
         my $name;
         ($name = $node) =~ s/\..*$//;    # always use short hostname
@@ -13269,135 +13268,147 @@ sub rmdsklsnode
 			next;
         }
 
-        # see if the node is running
-
-		my $badmstate;
-        my $badnodestat;
+		# see if the node is running
 		# check BOTH Mstate and nodestat
+		my $nimMstate;
+		my $runstatus;
 
 		# check NIM Mstate for node
 		my $mstate = xCAT::InstUtils->get_nim_attr_val($nodename, "Mstate", $callback, $Sname, $subreq);
-        if ($mstate && (!($mstate =~ /currently running/)) ) {
-			$badmstate++;
+		if ($mstate && ($mstate =~ /currently running/) ) {
+			# NIM thinks the node is running
+			$nimMstate++;
 		}
 
-        # check xCAT nodelist.status for the node
-        if ($nlhash && $nlhash->{$name}->[0]->{'status'} ne 'booted')
-		{
-			$badnodestat++;
+		# check xCAT nodelist.status for the node
+		if ($nlhash && ($nlhash->{$name}->[0]->{'status'} eq 'booted') || ($nlhash->{$name}->[0]->{'status'} eq 'alive') ) {
+			$runstatus++;
 		}
 
-		if (!$badmstate && !$badnodestat) 
-        {
-			# if REMDEF then skip the node shut down
-          if (!$::REMDEF)
-          {
-            if ($::FORCE)
-            {
-                if ($::VERBOSE)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Shutting down node \'$name\'";
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                }
+		#  do we think the node is running?
+		my $noderunning = 0;
 
-                # shut down the node
-                my $scmd = "shutdown -F &";
-                my $output;
-                $output =
-                  xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $name, $scmd, 0);
-            }
-            else
-            {
-                # don't remove the def
-                my $rsp;
-                push @{$rsp->{data}},
-                  "The node \'$name\' is currently running. Use the -f flag to force the removal of the NIM client definition.";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                $error++;
-                push(@nodesfailed, $nodename);
-                next;
-            }
-		  } # end - if not REMDEF
-        }
+		# ???  one or the other or both?
+		if ($nimMstate || $runstatus) {
+    		$noderunning++;
+		}
 
-        if ($::VERBOSE)
-        {
-            my $rsp;
-            push @{$rsp->{data}}, "Resetting NIM client node \'$nodename\'";
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-        }
+		# if node is running then try to shut it down or give error
+		if ( $noderunning ) {
+			# REMDEF means just remove the client def 
+			#	- don't try to shut down
+          	if (!$::REMDEF)
+          	{
+            	if ($::FORCE)
+            	{
+                	if ($::VERBOSE)
+                	{
+                    	my $rsp;
+                    	push @{$rsp->{data}}, "Shutting down node \'$name\'";
+                    	xCAT::MsgUtils->message("I", $rsp, $callback);
+					}
 
-        # nim -Fo reset c75m5ihp05_53Lcosi
-        my $cmd = "nim -Fo reset -a force=yes $nodename  >/dev/null 2>&1";
-        my $output;
+                	# shut down the node
+                	my $scmd = "shutdown -F &";
+                	my $output;
+                	$output =
+                  		xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $name, $scmd, 0);
+					# assume the node is down now
+					$noderunning = 0;
+            	}
+            	else
+            	{
+                	# don't remove the def
+                	my $rsp;
+                	push @{$rsp->{data}},
+                  		"The node \'$name\' is currently running. Use the -f flag to force the removal of the NIM client definition.";
+                	xCAT::MsgUtils->message("E", $rsp, $callback);
+                	$error++;
+                	push(@nodesfailed, $nodename);
+                	next;
+            	}
+		  	} # end - if not REMDEF
+        } # end of if running shut down
 
-        $output = xCAT::Utils->runcmd("$cmd", -1);
-        if ($::RUNCMD_RC != 0)
-        {
-            my $rsp;
-            if ($::VERBOSE)
-            {
-                push @{$rsp->{data}},
-                  "Could not reset the NIM machine definition for \'$nodename\'.\n";
-                push @{$rsp->{data}}, "$output";
-            }
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            $error++;
-            push(@nodesfailed, $nodename);
-            next;
-        }
+		# if not running or REMDEF then do the remove of the client def
+		if (!$noderunning || $::REMDEF) {
+        	if ($::VERBOSE)
+        	{
+            	my $rsp;
+            	push @{$rsp->{data}}, "Resetting NIM client node \'$nodename\'";
+            	xCAT::MsgUtils->message("I", $rsp, $callback);
+        	}
 
-        if ($::VERBOSE)
-        {
-            my $rsp;
-            push @{$rsp->{data}},
-              "Deallocating resources for NIM node \'$nodename\'";
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-        }
+        	# nim -Fo reset c75m5ihp05_53Lcosi
+        	my $cmd = "nim -Fo reset $nodename  >/dev/null 2>&1";
+        	my $output;
 
-        $cmd = "nim -Fo deallocate -a subclass=all $nodename  >/dev/null 2>&1";
-        $output = xCAT::Utils->runcmd("$cmd", -1);
-        if ($::RUNCMD_RC != 0)
-        {
-            my $rsp;
-            if ($::VERBOSE)
-            {
-                push @{$rsp->{data}},
-                  "Could not deallocate resources for the NIM machine definition \'$nodename\'.\n";
-                push @{$rsp->{data}}, "$output";
-            }
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            $error++;
-            push(@nodesfailed, $nodename);
-            next;
-        }
+        	$output = xCAT::Utils->runcmd("$cmd", -1);
+        	if ($::RUNCMD_RC != 0)
+        	{
+            	my $rsp;
+            	if ($::VERBOSE)
+            	{
+                	push @{$rsp->{data}},
+                  		"Could not reset the NIM machine definition for \'$nodename\'.\n";
+                	push @{$rsp->{data}}, "$output";
+            	}
+            	xCAT::MsgUtils->message("E", $rsp, $callback);
+            	$error++;
+            	push(@nodesfailed, $nodename);
+            	next;
+        	}
 
-        if ($::VERBOSE)
-        {
-            my $rsp;
-            push @{$rsp->{data}},
-              "Removing the NIM definition for NIM node \'$nodename\'";
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-        }
+        	if ($::VERBOSE)
+        	{
+            	my $rsp;
+            	push @{$rsp->{data}},
+              		"Deallocating resources for NIM node \'$nodename\'";
+            	xCAT::MsgUtils->message("I", $rsp, $callback);
+        	}
 
-        $cmd = "nim -Fo remove $nodename  >/dev/null 2>&1";
-        $output = xCAT::Utils->runcmd("$cmd", -1);
-        if ($::RUNCMD_RC != 0)
-        {
-            my $rsp;
-            if ($::VERBOSE)
-            {
-                push @{$rsp->{data}},
-                  "Could not remove the NIM machine definition \'$nodename\'.\n";
-                push @{$rsp->{data}}, "$output";
-            }
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            $error++;
-            push(@nodesfailed, $nodename);
-            next;
-        }
+        	$cmd = "nim -Fo deallocate -a subclass=all $nodename  >/dev/null 2>&1";
+        	$output = xCAT::Utils->runcmd("$cmd", -1);
+        	if ($::RUNCMD_RC != 0)
+        	{
+            	my $rsp;
+            	if ($::VERBOSE)
+            	{
+                	push @{$rsp->{data}},
+                  		"Could not deallocate resources for the NIM machine definition \'$nodename\'.\n";
+                	push @{$rsp->{data}}, "$output";
+            	}
+            	xCAT::MsgUtils->message("E", $rsp, $callback);
+            	$error++;
+            	push(@nodesfailed, $nodename);
+            	next;
+        	}
 
+        	if ($::VERBOSE)
+        	{
+            	my $rsp;
+            	push @{$rsp->{data}},
+              		"Removing the NIM definition for NIM node \'$nodename\'";
+            	xCAT::MsgUtils->message("I", $rsp, $callback);
+        	}
+
+        	$cmd = "nim -Fo remove $nodename  >/dev/null 2>&1";
+        	$output = xCAT::Utils->runcmd("$cmd", -1);
+        	if ($::RUNCMD_RC != 0)
+        	{
+            	my $rsp;
+            	if ($::VERBOSE)
+            	{
+                	push @{$rsp->{data}},
+                  		"Could not remove the NIM machine definition \'$nodename\'.\n";
+                	push @{$rsp->{data}}, "$output";
+            	}
+            	xCAT::MsgUtils->message("E", $rsp, $callback);
+            	$error++;
+            	push(@nodesfailed, $nodename);
+            	next;
+        	}
+		}
     }    # end - for each node
 
 	#   restore tftpboot and bootptab files
