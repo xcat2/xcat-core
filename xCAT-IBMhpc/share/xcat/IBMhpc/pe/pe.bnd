@@ -1,20 +1,13 @@
 # AIX bundle package list for PE
 
 # POE
-I:ppe.poe
-I:ppe.pdb
+I:ppe.rte
 #I:ppe.man
 I:ppe.loc.license
 
 # needed on login node
-#I:ppe.hpct
+#I:ppedev.hpct
 
 # LAPI
 I:rsct.lapi
 #I:rsct.sci
-
-# MetaCluster (checkpoint/restore)
-I:mcr.rte
-I:mdcr
-
-
