@@ -278,7 +278,6 @@ cp etc/init.d/xcatd $RPM_BUILD_ROOT/etc/init.d
 %endif
 #TODO: the next has to me moved to postscript, to detect /etc/xcat vs /etc/opt/xcat
 mkdir -p $RPM_BUILD_ROOT/etc/xcat
-cp etc/xcat/postscripts.rules $RPM_BUILD_ROOT/etc/xcat/
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server
