@@ -22,23 +22,16 @@ I:xlsmp.rte
 # AIX bundle package list for PE
 
 # POE
-I:ppe.poe
-I:ppe.pdb
+I:ppe.rte
 #I:ppe.man
 I:ppe.loc.license
 
 # needed on login node
-#I:ppe.hpct
+#I:ppedev.hpct
 
 # LAPI
 I:rsct.lapi
 #I:rsct.sci
-
-# MetaCluster (checkpoint/restore)
-I:mcr.rte
-I:mdcr
-
-
 
 # AIX bundle file for ESSL and PESSL packages
 
@@ -53,11 +46,7 @@ I:essl.loc.license
 
 # PESSL
 I:pessl.rte.up
-I:pessl.rte.smp
-I:pessl.rte.rs1
 I:pessl.rte.mp
-I:pessl.rte.hv
-I:pessl.rte.common
 I:pessl.rte
 I:pessl.msg.en_US
 #I:pessl.msg.En_US

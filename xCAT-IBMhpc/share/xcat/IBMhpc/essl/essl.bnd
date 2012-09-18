@@ -11,14 +11,18 @@ I:essl.loc.license
 
 # PESSL
 I:pessl.rte.up
-I:pessl.rte.smp
-I:pessl.rte.rs1
 I:pessl.rte.mp
-# If you are using PESSL 4.1.0 or beyond, comment pessl.rte.hv out, it's not needed.
-I:pessl.rte.hv
-I:pessl.rte.common
 I:pessl.rte
 I:pessl.msg.en_US
+
+# If you are using PESSL 4.1.0 or beyond, comment pessl.rte.hv out, it's not needed.
+#I:pessl.rte.hv
+
+# If you are using PESSL 4.2.0 or beyond, comment pessl.rte.smp,pessl.rte.rs1,and pessl.rte.common, they have been built into pessl.rte.up and pessl.rte.mp
+#I:pessl.rte.common
+#I:pessl.rte.smp
+#I:pessl.rte.rs1
+
 #I:pessl.msg.En_US
 #I:pessl.man.en_US
 I:pessl.loc.license
