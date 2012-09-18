@@ -17,6 +17,7 @@ if ($^O =~ /^aix/i) {
 }
 
 use lib "$::XCATROOT/lib/perl";
+use strict;
 #-----------------------------------------------------------------------------
 
 =head3 readSNInfo
@@ -173,7 +174,8 @@ sub isServiceReq
     Returns an array of all service nodes from service node table 
 
     Arguments:
-       none 
+       ALL"  - will also return the management node in the array, if
+        if has been defined in the servicenode table 
     Returns:
 		array of Service Nodes or empty array, if none
     Globals:
@@ -181,7 +183,8 @@ sub isServiceReq
     Error:
         1 - error
     Example:
-         @allSN=xCAT::ServiceNodeUtils->getAllSN
+         @SN=xCAT::ServiceNodeUtils->getAllSN
+         @allSN=xCAT::ServiceNodeUtils->getAllSN("ALL")
     Comments:
         none
 
@@ -190,7 +193,8 @@ sub isServiceReq
 #-----------------------------------------------------------------------------
 sub getAllSN
 {
-
+   
+    my ($class, $options) = @_;
     require xCAT::Table;
     # reads all nodes from the service node table
     my @servicenodes;
@@ -205,7 +209,21 @@ sub getAllSN
     my @nodes = $servicenodetab->getAllNodeAttribs(['tftpserver']);
     foreach my $nodes (@nodes)
     {
-        push @servicenodes, $nodes->{node};
+          push @servicenodes, $nodes->{node};
+    }
+    # if did not input "ALL" and there is a MN, remove it
+    my @newservicenodes;
+    if ((!defined($options)) || ($options ne "ALL")) {   
+       my $mname = xCAT::Utils->noderangecontainsMn(@servicenodes);
+       if ($mname) { # if there is a MN
+        foreach my $nodes (@servicenodes) {
+           if ($mname ne ($nodes)){
+              push @newservicenodes, $nodes;
+           }
+        }
+        $servicenodetab->close;
+        return @newservicenodes;  # return without the MN in the array
+       }
     }
     $servicenodetab->close;
     return @servicenodes;
@@ -714,8 +732,8 @@ sub getSNandCPnodes
     my ($class, $nodes,$sn,$cn) = @_; 
     my @nodelist = @$nodes;
     # get the list of all Service nodes
-    @allSN=xCAT::ServiceNodeUtils->getAllSN;
-    foreach $node (@nodelist) {
+    my @allSN=xCAT::ServiceNodeUtils->getAllSN;
+    foreach my $node (@nodelist) {
       if (grep(/^$node$/, @allSN)) { # it is a SN
          push (@$sn,$node);
       } else {  # a CN
