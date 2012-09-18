@@ -101,12 +101,20 @@ sub preprocess_request {
     if ($extraargs) {
         @ARGV=@{$extraargs};
         my $help;
-        GetOptions("V" => \$verbose, 'h|help' => \$help); 
+        my $ver;
+        GetOptions("V" => \$verbose, 'h|help' => \$help, 'v|version' => \$ver); 
         $global_callback = $callback;
         if ($help) {
             my $usage_string = xCAT::Usage->getUsage($command);
             my $rsp;
             push @{$rsp->{data}}, $usage_string;
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+            return ();
+        }
+        if ($ver) {
+            my $ver_string = xCAT::Usage->getVersion($command);
+            my $rsp;
+            push @{$rsp->{data}}, $ver_string;
             xCAT::MsgUtils->message("I", $rsp, $callback);
             return ();
         }
@@ -1027,7 +1035,7 @@ sub displaysrc {
                     }
                 } else {
                     my $value = getAttr($node, $display->{$type}->{$name}->[0], $display->{$type}->{$name}->[1]);
-                    if (defined ($value)) {
+                    if ($value) {
                         push @output, $prelead."  ".$name.": ".$value;
                     }
                 }
@@ -1072,6 +1080,8 @@ sub lsve {
     my @objs;
     if ($objs) {
         @objs = split (',', $objs);
+    } else {
+        push @objs, 'xxxxxx_all_objs';
     }
     foreach my $obj (@objs) {
         if ($type eq "dc") {
@@ -1080,23 +1090,25 @@ sub lsve {
                 displaysrc($callback, $ref_rhevm, $response, "datacenters", "");
                 my $dcid = $id;
 
-                # Display the cluster, storagedomain, network if requiring to display datacenter
-                ($rc, $id, $stat, $response) = search_src($ref_rhevm, "clusters", "datacenter%3D$obj");
-                unless ($rc) {
-                    displaysrc($callback, $ref_rhevm, $response, "clusters", "    ");
-                }
-                #($rc, $id, $stat, $response) = search_src($ref_rhevm, "storagedomains", "datacenter%3D$obj");
-                ($rc, $id, $stat, $response) = search_src($ref_rhevm, "datacenters/$dcid/storagedomains:storagedomains");
-                unless ($rc) {
-                    displaysrc($callback, $ref_rhevm, $response, "storagedomains", "    ");
-                }
-                ($rc, $id, $stat, $response) = search_src($ref_rhevm, "networks");
-                unless ($rc) {
-                    displaysrc($callback, $ref_rhevm, $response, "networks", "    ", "dc=$dcid");
-                }
-                ($rc, $id, $stat, $response) = search_src($ref_rhevm, "templates", "datacenter%3D$obj");
-                unless ($rc) {
-                    displaysrc($callback, $ref_rhevm, $response, "templates", "    ");
+                if ($obj ne 'xxxxxx_all_objs') {
+                    # Display the cluster, storagedomain, network if requiring to display datacenter
+                    ($rc, $id, $stat, $response) = search_src($ref_rhevm, "clusters", "datacenter%3D$obj");
+                    unless ($rc) {
+                        displaysrc($callback, $ref_rhevm, $response, "clusters", "    ");
+                    }
+                    #($rc, $id, $stat, $response) = search_src($ref_rhevm, "storagedomains", "datacenter%3D$obj");
+                    ($rc, $id, $stat, $response) = search_src($ref_rhevm, "datacenters/$dcid/storagedomains:storagedomains");
+                    unless ($rc) {
+                        displaysrc($callback, $ref_rhevm, $response, "storagedomains", "    ");
+                    }
+                    ($rc, $id, $stat, $response) = search_src($ref_rhevm, "networks");
+                    unless ($rc) {
+                        displaysrc($callback, $ref_rhevm, $response, "networks", "    ", "dc=$dcid");
+                    }
+                    ($rc, $id, $stat, $response) = search_src($ref_rhevm, "templates", "datacenter%3D$obj");
+                    unless ($rc) {
+                        displaysrc($callback, $ref_rhevm, $response, "templates", "    ");
+                    }
                 }
             }
         } elsif ($type eq "cl") {
@@ -1112,10 +1124,14 @@ sub lsve {
         } elsif ($type eq "nw") {
             my ($rc, $id, $stat, $response) = search_src($ref_rhevm, "networks");
             unless ($rc) {
-                displaysrc($callback, $ref_rhevm, $response, "networks", "  ", "name=$obj");
+                if ($obj eq 'xxxxxx_all_objs') {
+                    displaysrc($callback, $ref_rhevm, $response, "networks", "  ");
+                } else {
+                    displaysrc($callback, $ref_rhevm, $response, "networks", "  ", "name=$obj");
+                }
             }
         } elsif ($type eq "tpl") {
-            my ($rc, $id, $stat, $response) = search_src($ref_rhevm, "templates", "name%3D$obj");
+            my ($rc, $id, $stat, $response) = search_src($ref_rhevm, "templates", "$obj");
             unless ($rc) {
                 displaysrc($callback, $ref_rhevm, $response, "templates", "");
             }
@@ -1389,6 +1405,7 @@ sub cfgve {
                     my $rsp;
                     push @{$rsp->{data}}, "$obj: cannot find the data center.";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
+                    next;
                 }
                 generalaction($callback, $ref_rhevm, "/api/datacenters/$dcid", "DELETE", 1);
             }
@@ -1445,6 +1462,7 @@ sub cfgve {
                     my $rsp;
                     push @{$rsp->{data}}, "$obj: cannot find the cluster.";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
+                    next;
                 }
                 generalaction($callback, $ref_rhevm, "/api/clusters/$clid", "DELETE", 1, $force);
             }
@@ -1693,7 +1711,7 @@ sub cfghost {
                     } # end of power management configure
 
                     if ($remove) {
-                        if ($force) {
+                        if ($force && ($hoststat ne "maintenance")) {
                             # deactivate the host anyway
                             activate($callback, $ref_rhevm,"/api/hosts/$hostid", $rhevh, 1);
                             if (waitforcomplete($ref_rhevm, "/api/hosts/$hostid", "/host/status/state=maintenance", 30)) {
@@ -2086,6 +2104,7 @@ sub mkvm {
                     my $rsp;
                     push @{$rsp->{data}}, "Could not get the storage domain $sdname.";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
+                    next;
                 } 
 
                 if ($sdid) {
@@ -2144,7 +2163,7 @@ sub mkvm {
                         }
                         if ($state =~ /fail/i) {
                             my $rsp;
-                            push @{$rsp->{data}}, "$node: failed to add the disk.";
+                            push @{$rsp->{data}}, "$node: Add disk failed for virtual machine";
                             xCAT::MsgUtils->message("E", $rsp, $callback);
                             next;
                         }
@@ -2793,7 +2812,7 @@ sub rmigrate {
                 my $parser = XML::LibXML->new();
                 my $doc = $parser->parse_string($response);
                 if ($doc->findnodes("/action/status/state")->[0]) {
-                    my $state = $doc->findnodes("/template/status/state")->[0]->textContent();
+                    my $state = $doc->findnodes("/action/status/state")->[0]->textContent();
         
                     my $rsp;
                     push @{$rsp->{data}}, "$node: migrated to $host: $state.";
@@ -2988,8 +3007,16 @@ sub search_src {
             # is a path
             $api = "/api/$container".$node;
             $ispath = 1;
-        } else {
+        } elsif ($node =~ /\%3d/) {
             $api = "/api/$container?search=$node";
+        } elsif ($node eq "xxxxxx_all_objs") {
+            $api = "/api/$container";
+        }else {
+            $api = "/api/$container?search=name%3D$node";
+            if ($type eq "hosts") {
+                #append the domain for the hypervisor
+                $api .= "*";
+            }
         }
     } else {
         $api = "/api/$container";
@@ -3226,15 +3253,19 @@ sub cfghypnw {
                 }
 
                 # get the network
-                my $netid;
+                my $oldnetname;
+                my $oldnetid;
                 if ($attr = getAttr($doc, "network", "id")) {
-                    $netid = $attr;
+                    $oldnetid = $attr;
+                }
+                if ($attr = getAttr($doc, "network/name")) {
+                    $oldnetname = $attr;
                 }
 
                 # attach the nic to the network if needed
                 # search the network
-                my $curnetid;
-                ($rc, $curnetid, $stat) = search_src($ref_rhevm, "networks", $netname);
+                my $newnetid;
+                ($rc, $newnetid, $stat) = search_src($ref_rhevm, "networks", $netname);
                 if ($rc) {
                     if ($rc == 11) {
                         my $rsp;
@@ -3249,9 +3280,19 @@ sub cfghypnw {
                 }
 
                 # detach the nic from current network if old != new
-                if ($netid && ($netid ne $curnetid)) { 
+                if (($oldnetname && ($oldnetname ne $netname))
+                  ||($oldnetid && ($oldnetid ne $newnetid))) { 
+                     unless ($oldnetid) {
+                         ($rc, $oldnetid, $stat) = search_src($ref_rhevm, "networks", $oldnetname);
+                         if ($rc) {
+                            my $rsp;
+                            push @{$rsp->{data}}, "$host: failed to get the network: $oldnetname.";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            next;
+                         }
+                     }
                      #detach the interface to the network
-                     if (attach($callback, $ref_rhevm, "/api/hosts/$hostid/nics/$nicid", "network", $curnetid, 1)) {
+                     if (attach($callback, $ref_rhevm, "/api/hosts/$hostid/nics/$nicid", "network", $oldnetid, 1)) {
                         my $rsp;
                         push @{$rsp->{data}}, "$host: failed to detach $ifname from $netname.";
                         xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -3260,8 +3301,9 @@ sub cfghypnw {
                 }
 
                 # attach the interface to the network
-                if (!$netid ||($netid ne $curnetid)) {
-                    if (attach($callback, $ref_rhevm, "/api/hosts/$hostid/nics/$nicid", "network", $curnetid)) {
+                if ((!$oldnetname || ($oldnetname ne $netname))
+                  && (!$oldnetid || ($oldnetid ne $newnetid))) {
+                    if (attach($callback, $ref_rhevm, "/api/hosts/$hostid/nics/$nicid", "network", $newnetid)) {
                         my $rsp;
                         push @{$rsp->{data}}, "$host: failed to attach $ifname to $netname.";
                         xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -3368,7 +3410,7 @@ sub mkSD {
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 0;
     }
-    unless ($vsdent->{stype} && $vsdent->{location}) {
+    unless ($vsdent->{stype} && (($vsdent->{stype} eq "localfs") || $vsdent->{location})) {
         my $rsp;
         push @{$rsp->{data}}, "$sd: the sdtype and location need to be specified.";
         xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -3460,19 +3502,22 @@ sub mkSD {
                 }
 
                 # attach the storage domain to the datacenter
-                if (attach($callback, $ref_rhevm,"/api/datacenters/$dcid/storagedomains", "storage_domain", $sdid)) {
+                if (attach($callback, $ref_rhevm, "/api/datacenters/$dcid/storagedomains", "storage_domain", $sdid)) {
                     my $rsp;
                     push @{$rsp->{data}}, "$sd: failed to attach to datacenter:$dc.";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     return 0;
                 }
 
-                # active the storage domain
-                if (activate($callback, $ref_rhevm,"/api/datacenters/$dcid/storagedomains/$sdid", $sd)) {
-                    my $rsp;
-                    push @{$rsp->{data}}, "$sd: failed to activate the storage domain.";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    return 0;
+                # Check the state of the storage domain
+                if (checkstat($callback, $ref_rhevm, "storage_domain", "/api/datacenters/$dcid/storagedomains/$sdid") ne "active") {
+                    # active the storage domain
+                    if (activate($callback, $ref_rhevm,"/api/datacenters/$dcid/storagedomains/$sdid", $sd)) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "$sd: failed to activate the storage domain.";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        return 0;
+                    }
                 }
                 
                 return $sdid;
@@ -3580,7 +3625,7 @@ sub attach {
         if ($doc ) {
             my $attr;
             if ($type eq "storage_domain") {
-                 if (getAttr($doc, "/storage_domain/status/state" =~ /(inactive|active)/)) {
+                 if (getAttr($doc, "/storage_domain/status/state") =~ /(inactive|active)/) {
                      return 0;
                  } else {
                      return 1;
@@ -3618,7 +3663,7 @@ sub generalaction {
     my ($rc, $response) = send_req($ref_rhevm, $request->as_string());
 
     # no need to handle response for DELETE
-    if ($norsp) {
+    if ($norsp && !$response) {
         return;
     }
     
@@ -3628,6 +3673,30 @@ sub generalaction {
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
+}
+
+# Check the state of a object
+sub checkstat {
+    my $callback = shift;
+    my $ref_rhevm = shift;
+    my $type = shift;
+    my $api = shift;
+
+    my $request = genreq($ref_rhevm, "GET", $api, "");
+    my ($rc, $response) = send_req($ref_rhevm, $request->as_string());
+    if ($rc) {
+        return "";
+    } else {
+        my $parser = XML::LibXML->new();
+        my $doc = $parser->parse_string($response);
+        if ($doc ) {
+            if ($type eq "storage_domain") {
+                 return getAttr($doc, "/storage_domain/status/state")
+            } 
+        }
+    }
+
+    return "";
 }
 
 # delete storage domain
