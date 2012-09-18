@@ -290,6 +290,9 @@ sub getSNandNodes
 
     Arguments:
        Servicename ( xcat,tftpserver,dhcpserver,conserver,etc) 
+       If no servicename, returns all Servicenodes
+       "ALL" argument means you also want the MN returned. It can be in the 
+       servicenode list.  If no "ALL", take out the MN if it is there. 
     Returns:
 	  Array of service node names 
     Globals:
@@ -298,7 +301,9 @@ sub getSNandNodes
         1 - error  
     Example:
          $sn= xCAT::ServiceNodeUtils->getSNList($servicename) { blah; }
+         $sn= xCAT::ServiceNodeUtils->getSNList($servicename,"ALL") { blah; }
          $sn= xCAT::ServiceNodeUtils->getSNList() { blah; }
+         $sn= xCAT::ServiceNodeUtils->getSNList("","ALL") { blah; }
     Comments:
         none
 
@@ -308,7 +313,7 @@ sub getSNandNodes
 sub getSNList
 {
     require xCAT::Table;
-    my ($class, $service) = @_;
+    my ($class, $service,$options) = @_;
 
     # reads all nodes from the service node table
     my @servicenodes;
@@ -340,6 +345,19 @@ sub getSNList
                 }
             }
         }
+    }
+    # if did not input "ALL" and there is a MN, remove it
+    my @newservicenodes;
+    if ((!defined($options)) || ($options ne "ALL")) {   
+       my $mname = xCAT::Utils->noderangecontainsMn(@servicenodes);
+       if ($mname) { # if there is a MN
+        foreach my $nodes (@servicenodes) {
+           if ($mname ne ($nodes)){
+              push @newservicenodes, $nodes;
+           }
+        }
+        return @newservicenodes;  # return without the MN in the array
+       }
     }
 
     return @servicenodes;
