@@ -6719,7 +6719,7 @@ sub update_dd_boot
                         if (!$dontupdt4)
                         {
                             print DDBOOT "#Write tmp file to create remote paging device\n";
-                            print DDBOOT "echo \"CuDv:\" >> /swapnfs\n";
+                            print DDBOOT "echo \"CuDv:\" > /swapnfs\n";
                             print DDBOOT "echo \"name = \$SWAPDEV\" >> /swapnfs\n";
                             print DDBOOT "echo \"status = 0\" >> /swapnfs\n";
                             print DDBOOT "echo \"chgstatus = 1\" >> /swapnfs\n";
@@ -6732,6 +6732,10 @@ sub update_dd_boot
                         $l =~ s/tmp\/swapnfs/swapnfs/g;
                         print DDBOOT $l;
                         print DDBOOT "\n                        rm -f /swapnfs\n";
+                    }
+                    elsif ($l =~ /echo "CuDv:" >> \/swapnfs/ )
+                    {
+                        print DDBOOT "echo \"CuDv:\" > /swapnfs\n";
                     } else {
                         if ($l =~ /tmp\/swapnfs/)
                         {
