@@ -7229,6 +7229,10 @@ sub update_dd_boot
                         $l =~ s/tmp\/swapnfs/swapnfs/g;
                         print DDBOOT $l;
                         print DDBOOT "\n                        rm -f /swapnfs\n";
+                    }
+                    elsif ($l =~ /echo "CuDv:" >> \/swapnfs/ )
+                    {
+                        print DDBOOT "echo \"CuDv:\" > /swapnfs\n";
                     } else {
                         if ($l =~ /tmp\/swapnfs/)
                         {
