@@ -3007,7 +3007,7 @@ sub search_src {
             # is a path
             $api = "/api/$container".$node;
             $ispath = 1;
-        } elsif ($node =~ /\%3d/) {
+        } elsif ($node =~ /\%3D/) {
             $api = "/api/$container?search=$node";
         } elsif ($node eq "xxxxxx_all_objs") {
             $api = "/api/$container";
