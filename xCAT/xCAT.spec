@@ -133,6 +133,9 @@ cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 
 
 %post
+# create dir for the current pid
+mkdir -p /var/run/xcat
+
 %ifnos linux
 . /etc/profile
 %else
@@ -142,6 +145,16 @@ cp -f $RPM_INSTALL_PREFIX0/share/xcat/scripts/xHRM /install/postscripts/
 if [ "$1" = "1" ]; then #Only if installing for the first time..
 $RPM_INSTALL_PREFIX0/sbin/xcatconfig -i
 else
+if [ -r "/tmp/xcat/installservice.pid" ]; then
+  mv /tmp/xcat/installservice.pid /var/run/xcat/installservice.pid
+fi
+if [ -r "/tmp/xcat/udpservice.pid" ]; then
+  mv /tmp/xcat/udpservice.pid /var/run/xcat/udpservice.pid
+fi
+if [ -r "/tmp/xcat/mainservice.pid" ]; then
+  mv /tmp/xcat/mainservice.pid /var/run/xcat/mainservice.pid
+fi
+
 $RPM_INSTALL_PREFIX0/sbin/xcatconfig -u
 fi
 exit 0
