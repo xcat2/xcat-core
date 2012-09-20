@@ -986,7 +986,12 @@ sub updatenode
 
             if ($synclist)
             {
-                push @{$syncfile_node{$synclist}}, $node;
+               # this can be a comma separated list of multiple
+               # syncfiles
+               my @sl = split(',',$synclist);
+               foreach my $s (@sl){
+                   push @{$syncfile_node{$s}}, $node;
+               }
             }
         }
 
