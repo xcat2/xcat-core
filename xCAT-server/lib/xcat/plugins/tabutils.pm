@@ -2798,7 +2798,8 @@ sub delEntries
     return;
 }
 # getAttribs 
-# Read all the array of  attributes for the key  from the input table. 
+# Read and returns array of  attributes for the key  from the input table. 
+#  and attributes input.  Use "ALL" in the <attr>ALL</attr> for all attributes 
 #<xcatrequest>
 #<clienttype>PCM</clienttype>
 #<command>getAttribs</command>
@@ -2826,6 +2827,16 @@ sub getAttribs
     my $tab=xCAT::Table->new($tablename);
     my %rsp;
     my %keyhash;
+    # if request for ALL attributes
+    if (grep (/ALL/,@attrs)) { # read the  schema and build array of all attrs
+        @attrs=();
+        my $schema = xCAT::Table->getTableSchema($tablename);
+        my $desc = $schema->{descriptions};
+        foreach my $c (@{$schema->{cols}}) {
+           # my $space = (length($c)<7 ? "\t\t" : "\t");
+            push @attrs, $c;
+        }
+    }
     foreach my $k (keys %{$request->{keys}->[0]}) {
       $keyhash{$k} = $request->{keys}->[0]->{$k}->[0];
     }
