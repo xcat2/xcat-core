@@ -6,6 +6,7 @@
 
    Supported command:
          xCATWorld->xCATWorld
+         xCATWorld->xCATWorld
 
 =cut
 
