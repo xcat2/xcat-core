@@ -11668,7 +11668,7 @@ sub mkdsklsnode
 					}
 
 					if ($filestring) {
-						my $ccmd=qq~/usr/bin/cp -p -r $filestring $bkloc 2>/dev/null~;
+						my $ccmd=qq~/usr/bin/cp -p $filestring $bkloc 2>/dev/null~;
 						my $output = xCAT::Utils->runcmd("$ccmd", -1);
 						if ($::RUNCMD_RC != 0)
 						{
