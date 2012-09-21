@@ -398,7 +398,7 @@ Options:
       -t: sd - 'Storage Domain', nw - 'Network', tpl -'Template'
       -m: FQDN (Fully Qualified Domain Name) of the rhev manager
       -o: Target object to configure
-    cfgve -t nw -m manager -o object [-c -d data center -v vlan ID | -a | -b | -r]
+    cfgve -t nw -m manager -o object [-c -d data center -n vlan ID | -a -l cluster| -b | -r]
     cfgve -t tpl -m manager -o object [-r]",
  "chhypervisor" =>
 "Usage:
