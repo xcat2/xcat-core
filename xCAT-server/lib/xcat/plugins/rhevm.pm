@@ -1769,7 +1769,8 @@ sub lsvm {
                     }
                 }
             }
-        } elsif (defined $rhevm_hash->{$rhevm}->{node}) {
+        }
+        if (defined $rhevm_hash->{$rhevm}->{node}) {
             push @vms, @{$rhevm_hash->{$rhevm}->{node}};
         }
 
@@ -1924,7 +1925,8 @@ sub mkvm {
                     }
                 }
             }
-        } elsif (defined $rhevm_hash->{$rhevm}->{node}) {
+        }
+        if (defined $rhevm_hash->{$rhevm}->{node}) {
             foreach (@{$rhevm_hash->{$rhevm}->{node}}) {
                 $node_hyp{$_}{hyp} = "";
             }
@@ -2341,7 +2343,8 @@ sub rmvm {
                     push @nodes, @{$rhevm_hash->{$rhevm}->{host}->{$rhevh}->{node}};
                 }
             }
-        } elsif (defined $rhevm_hash->{$rhevm}->{node}) {
+        }
+        if (defined $rhevm_hash->{$rhevm}->{node}) {
              push @nodes, @{$rhevm_hash->{$rhevm}->{node}};
         }
 
@@ -2422,7 +2425,8 @@ sub chvm {
                     }
                 }
             }
-        } elsif (defined $rhevm_hash->{$rhevm}->{node}) {
+        }
+        if (defined $rhevm_hash->{$rhevm}->{node}) {
             foreach (@{$rhevm_hash->{$rhevm}->{node}}) {
                 $node_hyp{$_}{hyp} = "";
             }
@@ -2594,7 +2598,8 @@ sub clonevm {
                     push @nodes, @{$rhevm_hash->{$rhevm}->{host}->{$rhevh}->{node}};
                 }
             }
-        } elsif (defined $rhevm_hash->{$rhevm}->{node}) {
+        }
+        if (defined $rhevm_hash->{$rhevm}->{node}) {
              push @nodes, @{$rhevm_hash->{$rhevm}->{node}};
         }
     }
@@ -2689,7 +2694,8 @@ sub rsetboot {
                     push @nodes, @{$rhevm_hash->{$rhevm}->{host}->{$rhevh}->{node}};
                 }
             }
-        } elsif (defined $rhevm_hash->{$rhevm}->{node}) {
+        }
+        if (defined $rhevm_hash->{$rhevm}->{node}) {
              push @nodes, @{$rhevm_hash->{$rhevm}->{node}};
         }
 
@@ -2772,7 +2778,8 @@ sub rmigrate {
                     push @nodes, @{$rhevm_hash->{$rhevm}->{host}->{$rhevh}->{node}};
                 }
             }
-        } elsif (defined $rhevm_hash->{$rhevm}->{node}) {
+        }
+        if (defined $rhevm_hash->{$rhevm}->{node}) {
              push @nodes, @{$rhevm_hash->{$rhevm}->{node}};
         }
 
@@ -2847,7 +2854,8 @@ sub power {
                     push @nodes, @{$rhevm_hash->{$rhevm}->{host}->{$rhevh}->{node}};
                 }
             }
-        } elsif (defined $rhevm_hash->{$rhevm}->{node}) {
+        }
+        if (defined $rhevm_hash->{$rhevm}->{node}) {
              push @nodes, @{$rhevm_hash->{$rhevm}->{node}};
         }
 
@@ -3819,7 +3827,8 @@ sub getrvidparms {
                     push @nodes, @{$rhevm_hash->{$rhevm}->{host}->{$rhevh}->{node}};
                 }
             }
-        } elsif (defined $rhevm_hash->{$rhevm}->{node}) {
+        }
+        if (defined $rhevm_hash->{$rhevm}->{node}) {
              push @nodes, @{$rhevm_hash->{$rhevm}->{node}};
         }
 
