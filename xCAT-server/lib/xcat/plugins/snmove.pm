@@ -863,118 +863,136 @@ sub process_request
 	# 
 	# restore .client_data files on the new SN
 	#
-  if ( ($::isaix) && ($sharedinstall eq "sns") ){
 
-	# first get the shared_root locations for each SN and osimage 
-	my $nimtab = xCAT::Table->new('nimimage');
-	my %SRloc;
-	foreach my $n (@nodes) {
-		my $osimage = $nhash{$n}{'provmethod'};
-		# get the new primary SN
-		my ($sn, $junk) = split(/,/, $sn_hash{$n}{'servicenode'});
+  	if ( ($::isaix) && ($sharedinstall eq "sns") ){
 
-		# $sn is name of SN as known by management node
+		# first get the shared_root locations for each SN and osimage 
+		my $nimtab = xCAT::Table->new('nimimage');
+		my %SRloc;
+		foreach my $n (@nodes) {
+			my $osimage = $nhash{$n}{'provmethod'};
+			# get the new primary SN
+			my ($sn, $junk) = split(/,/, $sn_hash{$n}{'servicenode'});
 
-		if (!$SRloc{$sn}{$osimage})  {
+			# $sn is name of SN as known by management node
+			if (!$SRloc{$sn}{$osimage})  {
 
-			my $SRn = $nimtab->getAttribs({'imagename' => $osimage}, 'shared_root');
-			my $SRname=$SRn->{shared_root};
+				my $SRn = $nimtab->getAttribs({'imagename' => $osimage}, 'shared_root');
+				my $SRname=$SRn->{shared_root};
 
-			if ($SRname) {
-				my $srloc = xCAT::InstUtils->get_nim_attr_val($SRname, 'location', $callback, $nimprime, $sub_req);
-
-				$SRloc{$sn}{$osimage}=$srloc;
+				if ($SRname) {
+					my $srloc = xCAT::InstUtils->get_nim_attr_val($SRname, 'location', $callback, $nimprime, $sub_req);
+					$SRloc{$sn}{$osimage}=$srloc;
+				}
 			}
 		}
-	}
-	$nimtab->close();
+		$nimtab->close();
 
-	# now try to restore any backup client data
+		# need a list of nodes for each SN
+    	#  - the nodes that have this SN as their primary SN
+    	my %SNnodes;
+    	my $nrtab = xCAT::Table->new('noderes');
+    	my $nrhash;
+    	if ($nrtab)
+    	{
+        	$nrhash = $nrtab->getNodesAttribs(\@nodes, ['xcatmaster', 'servicenode']);
+    	}
+		$nrtab->close();
 
-	# for each service node
-	foreach my $s (keys %SRloc) {
+    	foreach my $node (@nodes)
+    	{
+        	my ($snode, $junk) = (split /,/, $nrhash->{$node}->[0]->{'servicenode'});
+        	push(@{$SNnodes{$snode}}, $node);
+    	}
 
-		# for each osimage on that SN
-		foreach my $osi (keys %{$SRloc{$s}}) {
+		# now try to restore any backup client data
 
-			# set the names of the .client_data and backup directories
-			my $sloc = $SRloc{$s}{$osi};
-			# ex. /install/nim/shared_root/71Bdskls_shared_root
+		# for each service node
+		foreach my $s (keys %SRloc) {
 
-			my $cdloc = "$sloc/etc/.client_data";
-			my $snbk = "$s" . "_" . "$osi";
-			my $bkloc = "$sloc/$snbk/.client_data";
+			# for each osimage on that SN
+			foreach my $osi (keys %{$SRloc{$s}}) {
 
-			# get a list of files from the backup dir
-			my $rcmd = qq~/usr/bin/ls $bkloc 2>/dev/null~;
+				# set the names of the .client_data and backup directories
+				my $sloc = $SRloc{$s}{$osi};
+				# ex. /install/nim/shared_root/71Bdskls_shared_root
 
-			if ($::VERBOSE) {
-				my $rsp;
-				push @{$rsp->{data}}, "Running \'$rcmd\' on $s\n";
-				xCAT::MsgUtils->message("I", $rsp, $callback);
-			}
+				my $cdloc = "$sloc/etc/.client_data";
+				my $snbk = "$s" . "_" . "$osi";
+				my $bkloc = "$sloc/$snbk/.client_data";
 
-			my $rlist = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $s, $rcmd, 0);
-
-			if ($::RUNCMD_RC != 0)
-			{
-				my $rsp;
-				push @{$rsp->{data}}, "Could not list contents of $bkloc.\n";
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-				$error++;
-			}
-
-			# restore file on node by node basis
-			#	we don't want all the files!
-			#	- just the ones we are moving
-			foreach my $nd (@nodes) {
-
-				$nd =~ s/\..*$//;
-
-				# for each file in $bkloc
-				my $filestring = "";
-				foreach my $f ( split(/\n/, $rlist) ){
-					my $junk;
-					my $file;
-					if ($f =~ /:/) {
-						($junk, $file) = split(/:/, $f);
-					}
-					$file =~ s/\s*//g;    # remove blanks
-
-					# if file contains node name then copy it
-					if ($file =~ /$nd/) {
-						$filestring .= "$bkloc/$file ";
-					}
-				}
-
-                if (!$filestring) {
-					my $rsp;
-					push @{$rsp->{data}}, "No backup client_data files for node $nd in $bkloc. Current client data files in $cdloc should be checked to avoid boot errors.\n";
-					xCAT::MsgUtils->message("E", $rsp, $callback);
-					$error++;
-					next;
-				}
-
-				my $ccmd=qq~/usr/bin/cp -p -r $filestring $cdloc 2>/dev/null~;
+				# get a list of files from the backup dir
+				my $rcmd = qq~/usr/bin/ls $bkloc 2>/dev/null~;
 
 				if ($::VERBOSE) {
 					my $rsp;
-					push @{$rsp->{data}}, "Copying files from $bkloc to $cdloc on $s.\n";
+					push @{$rsp->{data}}, "Running \'$rcmd\' on $s\n";
 					xCAT::MsgUtils->message("I", $rsp, $callback);
 				}
 
-				my $output = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $s, $ccmd, 0);
+				my $rlist = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $s, $rcmd, 0);
+
 				if ($::RUNCMD_RC != 0)
 				{
 					my $rsp;
-					push @{$rsp->{data}}, "Could not copy\n$filestring\n\tto $cdloc.\n";
+					push @{$rsp->{data}}, "Could not list contents of $bkloc.\n";
 					xCAT::MsgUtils->message("E", $rsp, $callback);
 					$error++;
 				}
+
+				# restore files on node by node basis
+				#	we don't want all the files!
+				# we need to process only the nodes that have this SN as
+            	#   their primary
+            	my @nodelist = @{$SNnodes{$s}};
+
+				foreach my $nd (@nodelist) {
+					$nd =~ s/\..*$//;
+					# for each file in $bkloc
+					my $filestring = "";
+					foreach my $f ( split(/\n/, $rlist) ){
+						my $junk;
+						my $file;
+						if ($f =~ /:/) {
+							($junk, $file) = split(/:/, $f);
+						}
+						$file =~ s/\s*//g;    # remove blanks
+
+						# if file contains node name then copy it
+						if ($file =~ /$nd/) {
+							$filestring .= "$bkloc/$file ";
+						}
+					}
+
+                	if (!$filestring) {
+						my $rsp;
+						push @{$rsp->{data}}, "No backup client_data files for node $nd in $bkloc. Current client data files in $cdloc should be checked to avoid boot errors.\n";
+						xCAT::MsgUtils->message("E", $rsp, $callback);
+						$error++;
+						next;
+					}
+
+					my $ccmd=qq~/usr/bin/cp -p $filestring $cdloc~;
+
+					if ($::VERBOSE) {
+						my $rsp;
+						push @{$rsp->{data}}, "Running \'$ccmd\' on $s.\n";
+						xCAT::MsgUtils->message("I", $rsp, $callback);
+					}
+
+					my $output = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $s, $ccmd, 0);
+					if ($::RUNCMD_RC != 0)
+					{
+						my $rsp;
+						push @{$rsp->{data}}, "Could not copy\n$filestring\n\tto $cdloc.\n";
+						push @{$rsp->{data}}, "Command output:\n$output\n";
+						xCAT::MsgUtils->message("E", $rsp, $callback);
+						$error++;
+					}
+				}
 			}
 		}
-	}
-  }
+  	}
 
 	#
 	# - retarget the iscsi dump device to the new server for the nodes
