@@ -11,8 +11,8 @@ B<cfgve> B<-t> cl B<-m> manager B<-o> object [B<-c> B<-p> cpu type| B<-r> B<-f>]
 B<cfgve> B<-t> sd B<-m> manager B<-o> object [B<-c> | B<-g> | B<-s> 
 | B<-a> | B<-b> | B<-r> B<-f>]
 
-B<cfgve> B<-t> nw B<-m> manager B<-o> object [B<-c> B<-d> data center B<-v> 
-vlan ID | B<-a> | B<-b> | B<-r>]
+B<cfgve> B<-t> nw B<-m> manager B<-o> object [B<-c> B<-d> data center B<-n> 
+vlan ID | B<-a> B<-l> cluster | B<-b> | B<-r>]
 
 B<cfgve> B<-t> tpl B<-m> manager B<-o> object [B<-r>]
 
@@ -53,53 +53,11 @@ The mandatory parameter B<-o object> is used to specify which object to configur
 
 =over 2
 
-=item B<-t> I<type>
+=item B<-a>
+To attach the target object.
 
-Specify the B<type> of the target object.
-
-Supported types:
- B<dc>  - Data Center
- B<cl>  - Cluster
- B<sd>  - Storage Domain
- B<nw>  - Network
- B<tpl> - Template
-
-=item B<-m> I<manager> 
-
-Specify the manager of the virtual environment. 
-
-For RHEV, the FQDN (Fully Qualified Domain Name) of the rhev manager have 
-to be specified.
-
-=item B<-o> I<object>
-
-The name of the target object.
-
-=item B<-d> I<data center>
-
-The name of data center.
-
-Specify the 'Data Center' that will be used for the object to be attached to. 
-It is used by <nw> type.
-
-=item B<-p> I<cpu type>
-
-To specify the cpu type when creating the cluster.
-B<Intel Penryn Family> is default type.
-
-Supported type: B<Intel Conroe Family>, B<Intel Penryn Family>,
-B<Intel Nehalem Family>, B<Intel Westmere Family>, B<AMD Opteron G1>,
-B<AMD Opteron G2>, B<AMD Opteron G3>
-
-=item B<-k> I<storage type>
-
-To specify the type of the storage type when creating the data center.
-
-Supported type: nfs; localfs.
-
-=item B<-v> I<vlan ID>
-
-To specify the vlan number when creating a network.
+=item B<-b>
+To detach the target object.
 
 =item B<-c>
 To create the target object.
@@ -130,36 +88,82 @@ B<virtsd.host> - A host must be specified for a storage doamin as SPM
 may be migrated to other host by rhev-m during the running of the datacenter 
 (For example, when the current SPM encountered issue or going to maintenance 
 status.
-  
+
 B<virtsd.datacenter> - The storage will be attached to. 'Default' data center 
 is the default value. 
 
 =back
 
-=item B<-g>
-To activate the target object.
+=item B<-d> I<data center>
 
-=item B<-s>
-To deactivate the target object.
+The name of data center.
 
-=item B<-a>
-To attach the target object.
-
-=item B<-b>
-To detach the target object.
-
-=item B<-r>
-To remove the target object.
-
-For removing of B<Storage Domain>, the storage space will be formatted after removing.
+Specify the 'Data Center' that will be used for the object to be attached to. 
+It is used by <nw> type.
 
 =item B<-f>
 It can be used with B<-r> to remove the target object by force.
 
 For removing of B<Storage Domain>, if B<-f> is specified, the storage domain will be deactivated and detached from data center before the removing.
 
+=item B<-g>
+To activate the target object.
+
 =item B<-h>
 Display usage message.
+
+=item B<-k> I<storage type>
+
+To specify the type of the storage type when creating the data center.
+
+Supported type: nfs; localfs.
+
+=item B<-l> I<cluster>
+
+Specify the cluster for the network to attach to.
+
+=item B<-m> I<manager> 
+
+Specify the manager of the virtual environment. 
+
+For RHEV, the FQDN (Fully Qualified Domain Name) of the rhev manager have 
+to be specified.
+
+=item B<-n> I<vlan ID>
+
+To specify the vlan number when creating a network.
+
+=item B<-o> I<object>
+
+The name of the target object.
+
+=item B<-p> I<cpu type>
+
+To specify the cpu type when creating the cluster.
+B<Intel Penryn Family> is default type.
+
+Supported type: B<Intel Conroe Family>, B<Intel Penryn Family>,
+B<Intel Nehalem Family>, B<Intel Westmere Family>, B<AMD Opteron G1>,
+B<AMD Opteron G2>, B<AMD Opteron G3>
+
+=item B<-r>
+To remove the target object.
+
+For removing of B<Storage Domain>, the storage space will be formatted after removing.
+
+=item B<-s>
+To deactivate the target object.
+
+=item B<-t> I<type>
+
+Specify the B<type> of the target object.
+
+Supported types:
+ B<dc>  - Data Center
+ B<cl>  - Cluster
+ B<sd>  - Storage Domain
+ B<nw>  - Network
+ B<tpl> - Template
 
 =back
 
