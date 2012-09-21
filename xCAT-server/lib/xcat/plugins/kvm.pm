@@ -1518,7 +1518,7 @@ sub chvm {
         foreach $store (split /\|/, $confdata->{vm}->{$node}->[0]->{storage}) {
             $store =~ s/,.*//;
             $store =~ s/=.*//;
-            if ($store =~ /^nfs:\/\//) {
+            if (($store =~ /^nfs:\/\//) || ($store =~ /^dir:\/\//)) {
                 my %disks = %{get_multiple_paths_by_url(url=>$store,node=>$node)};
                 foreach (keys %disks) {
                     $useddisks{$disks{$_}->{device}}=1;
@@ -1604,7 +1604,7 @@ sub chvm {
               }
               $vmxml=$dom->get_xml_description();
             } elsif ($confdata->{kvmnodedata}->{$node}->[0]->{xml}) { 
-                my $vmxml=$confdata->{kvmnodedata}->{$node}->[0]->{xml};
+                $vmxml=$confdata->{kvmnodedata}->{$node}->[0]->{xml};
                 my $disknode = $parser->parse_balanced_chunk($xml);
                 my $vmdoc = $parser->parse_string($vmxml);
                 my $devicesnode = $vmdoc->findnodes("/domain/devices")->[0];
