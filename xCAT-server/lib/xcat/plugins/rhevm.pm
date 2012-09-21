@@ -1193,7 +1193,7 @@ sub cfgve {
                         'f' => \$force,
                         'k=s' => \$stype,
                         'p=s' => \$cputype,
-                        'v=s' => \$vlan);
+                        'n=s' => \$vlan);
     }
 
     my $rhevm = (keys %{$rhevm_hash})[0];
