@@ -20,22 +20,15 @@ object.
 Basically, B<lsve> command supports three types of object: B<dc>, B<cl>, B<sd>, B<nw> 
 and B<tpl>. 
 
-The mandatory parameter B<-o object> is used to specify which object to list.
+The parameter B<-o object> is used to specify which object to list. If no B<-o> is specified,
+all the objects with the B<-t> type will be displayed.
 
 =head1 OPTIONS
 
 =over 2
 
-=item B<-t>
-Specify the B<type> of the target object.
-
-Supported types:
- B<dc>  - Data Center (For type of 'dc', all the elements belongs to the data 
-   center will be listed.)
- B<cl>  - Cluster
- B<sd>  - Storage Domain
- B<nw>  - Network
- B<tpl> - Template
+=item B<-h>
+Display usage message.
 
 =item B<-m>
 Specify the manager of the virtual environment. 
@@ -45,8 +38,17 @@ For RHEV, the FQDN (Fully Qualified Domain Name) of the rhev manager have to be 
 =item B<-o>
 The target object to display.
 
-=item B<-h>
-Display usage message.
+=item B<-t>
+Specify the B<type> of the target object.
+
+Supported types:
+ B<dc>  - Data Center (For type of 'dc', all the elements belongs to the data 
+   center will be listed.)
+ B<cl>  - Cluster
+ B<sd>  - Storage Domain (To get the status of Storage Doamin, show it from 
+   I<data center> it attached to.
+ B<nw>  - Network
+ B<tpl> - Template
 
 =back
 
