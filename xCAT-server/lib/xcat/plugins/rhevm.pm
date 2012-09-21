@@ -406,8 +406,7 @@ sub copycd {
     @ARGV = @{$request->{arg}};
     GetOptions( 'n=s' => \$distname,
                 'a=s' => \$arch,
-                'p=s' => \$path,
-                'm=s' => \$mntpath,
+                'p=s' => \$mntpath,
                 'f=s' => \$file,
               );
 
@@ -1189,7 +1188,7 @@ sub cfgve {
                         'f' => \$force,
                         'k=s' => \$stype,
                         'p=s' => \$cputype,
-                        'v=s' => \$vlan);
+                        'n=s' => \$vlan);
     }
 
     my $rhevm = (keys %{$rhevm_hash})[0];
