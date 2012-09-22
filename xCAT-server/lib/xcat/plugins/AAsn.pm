@@ -271,10 +271,9 @@ sub init_plugin
         # $rc = &setup_NTPmn();  # setup NTP on the Management Node
         if (xCAT::Utils->isLinux())
         {
-            print "\n"
-              ; # make OK prints look better.  Only need to do this for the 1st service.
             my @tmp = xCAT::TableUtils->get_site_attribute("vsftp");   
 		    if ($tmp[0] && ($tmp[0] !~ /0|NO|No|no|N|n/ )) {         
+                print "\n";    # make OK prints look better.  Only need to do this for the 1st service.
                 $rc = &setup_FTP();    # setup FTP
             }
             #enable the tftp-hpa for MN

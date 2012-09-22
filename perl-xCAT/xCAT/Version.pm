@@ -38,7 +38,7 @@ use strict;
 sub Version
 {
 
-    #The following tag tells the build script where to append build info
+    #The following tags tells the build script where to append build info
     my $version = shift;
     if ($version eq 'short')
     {

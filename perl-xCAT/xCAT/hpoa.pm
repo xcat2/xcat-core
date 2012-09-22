@@ -14,7 +14,7 @@ package xCAT::hpoa;
 
 use strict;
 
-use SOAP::Lite;
+#use SOAP::Lite;	# hpblade.pm requires SOAP::Lite before requiring hpoa.pm, so we can check for SOAP::Lite dynamically
 use vars qw(@ISA);
 @ISA = qw(SOAP::Lite);
 

@@ -27,6 +27,8 @@ Requires: xCAT-server xCAT-client perl-DBD-SQLite
 Requires: httpd nfs-utils nmap bind perl-XML-Parser perl(CGI)
 # On RHEL this pulls in dhcp, on SLES it pulls in dhcp-server
 Requires: /usr/sbin/dhcpd
+# On RHEL this pulls in openssh-server, on SLES it pulls in openssh
+Requires: /usr/bin/ssh
 %ifnarch s390x
 Requires: /etc/xinetd.d/tftp
 # yaboot-xcat is pulled in so any MN can manage ppc nodes

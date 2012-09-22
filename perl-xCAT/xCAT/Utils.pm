@@ -528,12 +528,9 @@ sub isLinux
 #-------------------------------------------------------------------------------
 sub Version
 {
-
-    #The following tag tells the build script where to append build info
     my $version = shift;
     $version = xCAT::Version->Version();
     return $version;
-
 }
 
 #-------------------------------------------------------------------------------

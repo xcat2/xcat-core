@@ -30,7 +30,7 @@ use Net::SSLeay qw(die_now die_if_ssl_error);
 use Data::Dumper;
 use POSIX "WNOHANG";
 use Getopt::Long;
-use xCAT::hpoa;
+#use xCAT::hpoa;	# require this dynamically below instead
 
 sub handled_commands {
 	return {
@@ -326,6 +326,14 @@ sub preprocess_request {
 		$request = {};
 		return;
 	}   
+
+	# require SOAP::Lite for hpoa.pm so we can do it dynamically
+	my $soapsupport = eval { require SOAP::Lite; };
+	unless ($soapsupport) { #Still no SOAP::Lite module
+      $callback->({error=>"SOAP::Lite perl module missing.  Install perl-SOAP-Lite before running HP blade commands.",errorcode=>[42]});
+      return [];
+	}
+	require xCAT::hpoa;
 		
 	#get the MMs for the nodes for the nodes in order to figure out which service nodes to send the requests to
 	my $mptab = xCAT::Table->new("mp");
@@ -600,6 +608,15 @@ sub process_request {
 	unless ($command) {
 		return; #Empty request
 	}
+
+	# require SOAP::Lite for hpoa.pm so we can do it dynamically
+	my $soapsupport = eval { require SOAP::Lite; };
+	unless ($soapsupport) { #Still no SOAP::Lite module
+      $callback->({error=>"SOAP::Lite perl module missing.  Install perl-SOAP-Lite before running HP blade commands.",errorcode=>[42]});
+      return [];
+	}
+	require xCAT::hpoa;
+
 	if (ref($request->{arg})) {
 		@exargs = @{$request->{arg}};
 	} else {

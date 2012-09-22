@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 use strict;
 use CGI qw/:standard/;
-use JSON;
+#use JSON;		# require this dynamically later on so that installations that do not use xcatws.cgi do not need perl-JSON
 use Data::Dumper;
 
 #added the line:
@@ -103,6 +103,15 @@ if ($queryhash{'format'}) {
         addPageContent("The format '$format' is not valid");
         sendResponseMsg($STATUS_BAD_REQUEST);
     }
+
+	if ($format eq 'json') {
+		# require JSON dynamically and let them know if it is not installed
+		my $jsoninstalled = eval { require JSON; };
+		unless ($jsoninstalled) {
+		   addPageContent($q->p("JSON perl module missing.  Install perl-JSON before using the xCAT REST web services API."));
+		   sendResponseMsg($STATUS_SERVICE_UNAVAILABLE);
+		}
+	}
 }
 
 my $XCAT_PATH = '/opt/xcat/bin';
