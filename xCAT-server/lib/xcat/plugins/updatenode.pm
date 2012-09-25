@@ -473,6 +473,16 @@ sub preprocess_updatenode
         push @requests, $reqcopy;
     }
 
+    # If -F  or -f then,  call CFMUtils  to check if any PCM CFM data is to be 
+    # built for the node.   This will also create the synclists attribute in 
+    # the osimage for each node in the noderange
+    if (($::FILESYNC) || ($::SNFILESYNC)) {
+      # determine the list of osimages names in the noderange to pass into
+      # the CFMUtils
+      my @imagenames=xCAT::TableUtils->getimagenames(\@nodes);
+      # Now here we will call CFMUtils
+    }
+
     # if  not -S or -P or --security
     unless (defined($::SWMAINTENANCE) || defined($::RERUNPS) || $::SECURITY)
     {
