@@ -18,6 +18,7 @@ if ($^O =~ /^aix/i) {
 
 use lib "$::XCATROOT/lib/perl";
 use strict;
+require xCAT::Table;
 #-----------------------------------------------------------------------
 
 =head3
@@ -41,7 +42,6 @@ use strict;
 #------------------------------------------------------------------------
 sub list_all_nodes
 {
-    require xCAT::Table;
     my @nodes;
     my @nodelist;
     my $nodelisttab;
@@ -85,7 +85,6 @@ sub list_all_nodes
 #------------------------------------------------------------------------
 sub list_all_node_groups
 {
-    require xCAT::Table;
     my @grouplist;
     my @grouplist2;
     my @distinctgroups;
@@ -630,7 +629,6 @@ sub cpSSHFiles
 #-------------------------------------------------------------------------------
 sub GetNodeOSARCH
 {
-    require xCAT::Table;
     my ($class, $node) = @_;
     my $noderestab = xCAT::Table->new('noderes');
     my $typetab    = xCAT::Table->new('nodetype');
@@ -697,7 +695,6 @@ sub GetNodeOSARCH
 #-------------------------------------------------------------------------------
 sub logEventsToDatabase
 {
-    require xCAT::Table;
     my $pEvents = shift;
     if (($pEvents) && ($pEvents =~ /xCAT::TableUtils/))
     {
@@ -756,7 +753,6 @@ sub logEventsToDatabase
 #-------------------------------------------------------------------------------
 sub logEventsToTealDatabase
 {
-    require xCAT::Table;
     my $pEvents = shift;
     if (($pEvents) && ($pEvents =~ /xCAT::TableUtils/))
     {
@@ -809,7 +805,6 @@ sub logEventsToTealDatabase
 
 sub setAppStatus
 {
-    require xCAT::Table;
 
     my ($class, $nodes_ref, $application, $status) = @_;
     my @nodes = @$nodes_ref;
@@ -887,7 +882,6 @@ sub setAppStatus
 
 sub getAppStatus
 {
-    require xCAT::Table;
 
     my ($class, $nodes_ref, $application) = @_;
     my @nodes = @$nodes_ref;
@@ -942,7 +936,6 @@ sub getAppStatus
 #------------------------------------------------------------------------
 sub get_site_attribute
 {
-    require xCAT::Table;
     my ($class, $attr) = @_;
     
     my $values;
@@ -1071,7 +1064,6 @@ sub getTftpDir
 #-------------------------------------------------------------------------------
 sub GetMasterNodeName
 {
-    require xCAT::Table;
     my ($class, $node) = @_;
     my $master;
     my $noderestab = xCAT::Table->new('noderes');
@@ -1191,7 +1183,6 @@ sub get_site_Master
     if ($::XCATSITEVALS{master}) {
         return $::XCATSITEVALS{master};
     }
-    require xCAT::Table;
     my $Master;
     my $sitetab = xCAT::Table->new('site');
     (my $et) = $sitetab->getAttribs({key => "master"}, 'value');
@@ -1456,7 +1447,6 @@ sub checkCredFiles
 sub enablessh 
 {
 
-    require xCAT::Table;
     my ($class, $node) = @_;
     my $enablessh=1;
     if (xCAT::Utils->isSN($node)) 
@@ -1468,19 +1458,9 @@ sub enablessh
 
         # if not a service node we need to check, before enabling
         my $values;
-	#if (keys %::XCATSITEVALS) {
-	#	$values=$::XCATSITEVALS{sshbetweennodes};
-	#} else {
-	#        my $sitetab    = xCAT::Table->new('site');
-	#        my $attr = "sshbetweennodes";
-	#        my $ref = $sitetab->getAttribs({key => $attr}, 'value');
-	#        if ($ref) {
-        #    	   $values = $ref->{value};
-	#        }
- 	#}
         my @vals = xCAT::TableUtils->get_site_attribute("sshbetweennodes");
         $values = $vals[0];
-	if ($values) {
+        if ($values) {
             my @groups = split(/,/, $values);
             if (grep(/^ALLGROUPS$/, @groups))
             {
@@ -1550,7 +1530,6 @@ sub enablessh
 
 sub getrootimage()
 {
-  require xCAT::Table;
   my $node = shift;
   my $installdir = xCAT::TableUtils->getInstallDir();
   if (($node) && ($node =~ /xCAT::TableUtils/))	
@@ -1577,5 +1556,56 @@ sub getrootimage()
   } else {
     # For AIX
   }
+}
+#-----------------------------------------------------------------------------
+
+
+=head3 getimagenames
+    Get an array of osimagenames that correspond to the input node array; 
+
+    Arguments:
+     Array of nodes 
+    Returns:
+      array of all the osimage names that are the provmethod for the nodes 
+      undef - no osimage names 
+    Globals:
+        none
+    Error:
+    Example:
+         my @imagenames=xCAT::TableUtils->getimagenames(\@nodes);
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub getimagenames()
+{
+  my ($class, $nodes)=@_;
+  my @nodelist = @$nodes;
+   my $nodetab = xCAT::Table->new('nodetype');
+    my $images  =
+      $nodetab->getNodesAttribs(\@nodelist, ['node', 'provmethod', 'profile']);
+    my @imagenames;
+    foreach my $node (@nodelist)
+    {
+        my $imgname;
+        if ($images->{$node}->[0]->{provmethod})
+        {
+            $imgname = $images->{$node}->[0]->{provmethod};
+        }
+        elsif ($images->{$node}->[0]->{profile})
+        {
+            $imgname = $images->{$node}->[0]->{profile};
+        }
+        # if the node has an image
+        if ($imgname) {
+          if (!grep(/^$imgname$/, @imagenames)) # not already on the list
+          {
+             push @imagenames, $imgname;   # add to the array
+          }
+        }
+    }
+    $nodetab->close;
+    return @imagenames;
 }
 1;
