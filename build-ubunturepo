@@ -127,13 +127,13 @@ then
     echo "#################################"
 
     if [ -d $repo_xcat_core_path ]; then
-    	rm -rdf $repo_xcat_core_path
+    	rm -rf $repo_xcat_core_path
     fi
     mkdir -p $repo_xcat_core_path/conf
 
     find . -iname '*.deb' -exec mv {} $repo_xcat_core_path \;
 
-    rm -rdf debs/
+    rm -rf debs/
     cd $CMD_PATH
 
     rm -rf $repo_xcat_core_path/conf/distributions
@@ -209,7 +209,7 @@ then
     echo "################################"
     echo "# Creating xcat-dep repository #"
     echo "################################"
-    rm -rdf $repo_xcat_dep_path
+    rm -rf $repo_xcat_dep_path
     mkdir -p $repo_xcat_dep_path/conf
     find $xcat_dep_path -iname '*.deb' -exec cp {} $repo_xcat_dep_path \;
 
@@ -258,7 +258,7 @@ fi   ### if [ "$d_flag" -a "$a_flag"]
 
 if [ -z "$local_flag" ]                 # delete the temp repo after upload is done
 then
-    rm -rdf ./gsa-repo_temp
+    rm -rf ./gsa-repo_temp
 fi
 
 exit 0
