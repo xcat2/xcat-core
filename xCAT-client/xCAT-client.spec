@@ -216,6 +216,7 @@ ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/lsve
 ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/rmosdistro
 ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/addkit
 ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/rmkit
+ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/lskmodules
 
 
 %clean
