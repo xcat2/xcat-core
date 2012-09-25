@@ -171,6 +171,15 @@ sub process_request {
        }
    }
 
+    #before generating rootimg.gz, copy $installroot/postscripts into the image at /xcatpost
+    if( -e "$rootimg_dir/xcatpost" ) {  
+        system("rm -rf $rootimg_dir/xcatpost");
+    }
+
+    system("mkdir -p $rootimg_dir/xcatpost");
+    system("cp -r $installroot/postscripts/* $rootimg_dir/xcatpost/");
+
+
     # before generating rootimg.gz or rootimg.sfs, need to switch the rootimg to stateless mode if necessary
     my $rootimg_status = 0; # 0 means stateless mode, while 1 means statelite mode
     $rootimg_status = 1 if (-f "$rootimg_dir/.statelite/litefile.save");

@@ -163,6 +163,15 @@ sub process_request {
 	# - profile
 	$callback->({info=>["going to modify $rootimg_dir"]});
 
+        #copy $installroot/postscripts into the image at /xcatpost
+        if( -e "$rootimg_dir/xcatpost" ) {
+            system("rm -rf $rootimg_dir/xcatpost");
+        }
+
+        system("mkdir -p $rootimg_dir/xcatpost");
+        system("cp -r $installroot/postscripts/* $rootimg_dir/xcatpost/");
+ 
+
         #get the root password for the node 
 	my $passtab = xCAT::Table->new('passwd');
 	if ($passtab) {
