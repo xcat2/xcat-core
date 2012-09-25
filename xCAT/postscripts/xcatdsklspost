@@ -118,7 +118,7 @@ fi
 if [ ! -d /tmp/postage ]; then
     mkdir -p /tmp/postage
 fi
-rm -R -f /xcatpost/*
+#rm -R -f /xcatpost/*
 rm -R -f /tmp/postage/*
 
 #here we get all the postscripts.  Please do not change this behaviour because some scripts depend on others
