@@ -76,7 +76,7 @@ sub process_request {
         $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodelist}, $request_command, 0, 1);
         $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist, arg=>['-n']}, $request_command, 0, 1);
         # Work around for makedns bug, it will set umask to 0007.
-        umask(0022);
+        #umask(0022);
         $retref = xCAT::Utils->runxcmd({command=>["makekdhcp"], node=>$nodelist}, $request_command, 0, 1);
         $retref = xCAT::Utils->runxcmd({command=>["makeknownhosts"], node=>$nodelist}, $request_command, 0, 1);
         my $firstnode = (@$nodelist)[0];
@@ -93,14 +93,14 @@ sub process_request {
         $retref = xCAT::Utils->runxcmd({command=>["makekdhcp"], node=>$nodelist, arg=>['-d']}, $request_command, 0, 1);
         $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist, arg=>['-d']}, $request_command, 0, 1);
         # Work around for makedns bug, it will set umask to 0007.
-        umask(0022);
+        #umask(0022);
         $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodelist, arg=>['-d']}, $request_command, 0, 1);
     }
     elsif ($command eq 'kitcmd_nodemgmt_update'){
         $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodelist}, $request_command, 0, 1);
         $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist, arg=>['-n']}, $request_command, 0, 1);
         # Work around for makedns bug, it will set umask to 0007.
-        umask(0022);
+        #umask(0022);
         $retref = xCAT::Utils->runxcmd({command=>["makekdhcp"], node=>$nodelist}, $request_command, 0, 1);
         $retref = xCAT::Utils->runxcmd({command=>["makeknownhosts"], node=>$nodelist}, $request_command, 0, 1);
         my $firstnode = (@$nodelist)[0];
@@ -114,7 +114,7 @@ sub process_request {
         $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodelist}, $request_command, 0, 1);
         $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist, arg=>['-n']}, $request_command, 0, 1);
         # Work around for makedns bug, it will set umask to 0007.
-        umask(0022);
+        #umask(0022);
         $retref = xCAT::Utils->runxcmd({command=>["makekdhcp"], node=>$nodelist}, $request_command, 0, 1);
         $retref = xCAT::Utils->runxcmd({command=>["makeknownhosts"], node=>$nodelist}, $request_command, 0, 1);
     }

@@ -199,7 +199,7 @@ sub get_reverse_zones_for_entity {
 sub process_request {
     my $request = shift;
     $callback = shift;
-    umask 0007;
+    my $oldmask = umask(0007);
     my $ctx = {};
     my @nodes=();
     my $hadargs=0;
@@ -223,6 +223,7 @@ sub process_request {
             )) {
             #xCAT::SvrUtils::sendmsg([1,"TODO: makedns Usage message"], $callback);
             makedns_usage($callback);
+            umask($oldmask);
             return;
         }
     }
@@ -230,12 +231,14 @@ sub process_request {
     if ($help)
     {
         makedns_usage($callback);
+        umask($oldmask);
         return;
     }
 
     if ($deletemode && (!$request->{node}->[0]))
     {
         makedns_usage($callback);
+        umask($oldmask);
         return;
     }
     
@@ -247,6 +250,7 @@ sub process_request {
     my $site_entry = $entries[0];
     unless ( defined($site_entry)) {
         xCAT::SvrUtils::sendmsg([1,"domain not defined in site table"], $callback);
+        umask($oldmask);
         return;
     }
     $ctx->{domain} = $site_entry;
@@ -266,6 +270,7 @@ sub process_request {
         if ($::RUNCMD_RC != 0)
         {
             xCAT::SvrUtils::sendmsg([1,"You are using -e flag to update DNS records to an external DNS server, please ensure /etc/resolv.conf existing and pointed to this external DNS server."], $callback);
+            umask($oldmask);
             return;
         }
    }
@@ -290,6 +295,7 @@ sub process_request {
 	if ($deletemode) {
 		#when this was permitted, it really ruined peoples' days
 		xCAT::SvrUtils::sendmsg([1,"makedns -d without noderange or -a is not supported"],$callback); 
+        umask($oldmask);
 		return;
 	}
         #legacy behavior, read from /etc/hosts
@@ -392,6 +398,7 @@ sub process_request {
             } elsif ($_->{net} =~ /\./) {
                 $numbits=32;
             } else {
+                umask($oldmask);
                 die "Network ".$_->{net}." appears to be malformed in networks table";
             }
             $maskn = Math::BigInt->new("0b".("1"x$maskbits).("0"x($numbits-$maskbits)));
@@ -537,6 +544,7 @@ sub process_request {
     add_or_delete_records($ctx);
 
     xCAT::SvrUtils::sendmsg("DNS setup is completed", $callback);
+    umask($oldmask);
 }
 
 sub get_zonesdir {
