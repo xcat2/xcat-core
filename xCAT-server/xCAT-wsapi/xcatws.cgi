@@ -108,8 +108,7 @@ if ($queryhash{'format'}) {
 		# require JSON dynamically and let them know if it is not installed
 		my $jsoninstalled = eval { require JSON; };
 		unless ($jsoninstalled) {
-           $format = 'html';
-		   addPageContent($q->p("JSON perl module missing.  Install perl-JSON before using the xCAT REST web services API."));
+           addPageContent('{"data":"JSON perl module missing.  Install perl-JSON before using the xCAT REST web services API."}');
 		   sendResponseMsg($STATUS_SERVICE_UNAVAILABLE);
 		}
 	}
