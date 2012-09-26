@@ -19,7 +19,7 @@ require xCAT::TableUtils;
 require Data::Dumper;
 require Getopt::Long;
 require xCAT::MsgUtils;
-use File::Path qw(make_path remove_tree);
+use File::Path qw(mkpath rmtree);
 use File::Basename qw(basename);
 use Text::Balanced qw(extract_bracketed);
 use Safe;
@@ -485,7 +485,7 @@ sub set_sources {
        my $outab = xCAT::Table->new('osdistroupdate');
        foreach my $ou (split( ',', $::opt_u)) {
           my ($ou_entry) = $outab->getAttribs({'osupdatename'=>$ou},('dirpath'));
-          if ( !($ou_entry) ) {
+          if ( !($ou_entry) || !(defined($ou_entry->{'dirpath'})) ) {
               if ($::VERBOSE) {
                 my $rsp;
                 push @{ $rsp->{data} }, "No dirpath attribute for osdistroupdate $ou found.  Skipping.";
@@ -557,20 +557,20 @@ sub mods_in_rpm {
  
 
   my $tmp_path = "/tmp/lskmodules_expanded_rpm";
-  make_path($tmp_path);
+  mkpath($tmp_path);
   if (-r $krpm) {
      if (system ("cd $tmp_path; rpm2cpio $krpm | cpio -idum *.ko")) {
          my $rsp;
          push @{ $rsp->{data} }, "Unable to extract files from the rpm $krpm.";
          xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
-         remove_tree($tmp_path);
+         rmtree($tmp_path);
          return;
      }
   } else {
      my $rsp;
      push @{ $rsp->{data} }, "Unable to read rpm $krpm.";
      xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
-     remove_tree($tmp_path);
+     rmtree($tmp_path);
      return;
   }
  
@@ -586,7 +586,7 @@ sub mods_in_rpm {
       $modlist{$name} = $desc;
   }
   
-  remove_tree($tmp_path);
+  rmtree($tmp_path);
 
   return %modlist;
 
@@ -620,14 +620,14 @@ sub mods_in_img {
   my %modlist;
 
   my $mnt_path = "/tmp/lskmodules_mnt";
-  make_path($mnt_path);
+  mkpath($mnt_path);
 
   my $rc = system ("mount -o loop $img_file $mnt_path");
   if ($rc) {
      my $rsp;
      push @{ $rsp->{data} }, "Mount of driver disk image $img_file failed";
      xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
-     remove_tree($mnt_path);
+     rmtree($mnt_path);
      return;
   }
 
@@ -644,7 +644,7 @@ sub mods_in_img {
   }
   
   $rc = system ("umount $mnt_path");
-  remove_tree($mnt_path);
+  rmtree($mnt_path);
 
   return %modlist;
 }
