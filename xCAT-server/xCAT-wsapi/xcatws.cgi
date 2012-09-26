@@ -15,7 +15,7 @@ use Data::Dumper;
 
 #turn on or off the debugging output
 my $DEBUGGING = 0;
-my $VERSION   = "2.7";
+my $VERSION   = "2.8";
 
 my $q           = CGI->new;
 my $url         = $q->url;
@@ -108,6 +108,7 @@ if ($queryhash{'format'}) {
 		# require JSON dynamically and let them know if it is not installed
 		my $jsoninstalled = eval { require JSON; };
 		unless ($jsoninstalled) {
+           $format = 'text/html';
 		   addPageContent($q->p("JSON perl module missing.  Install perl-JSON before using the xCAT REST web services API."));
 		   sendResponseMsg($STATUS_SERVICE_UNAVAILABLE);
 		}
