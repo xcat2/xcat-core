@@ -767,10 +767,12 @@ sub nimnodeset
     # if this isn't the NIM primary then make sure the local NIM defs
     #   have been created etc.
     #
+    my $sharedinstall = "no";
     if (!xCAT::InstUtils->is_me($nimprime))
     {
         &make_SN_resource($callback,   \@nodelist, \@image_names,
-                          \%imagehash, \%lochash,  \%nethash);
+                          \%imagehash, \%lochash,  \%nethash, \%nimhash,
+                          $sharedinstall, $Sname, $subreq);
     }
 
     #
