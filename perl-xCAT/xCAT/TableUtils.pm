@@ -630,12 +630,11 @@ sub cpSSHFiles
 sub GetNodeOSARCH
 {
     my ($class, $node) = @_;
-    my $noderestab = xCAT::Table->new('noderes');
-    #my $typetab    = xCAT::Table->new('nodetype');
-    unless ($noderestab)
+    my $typetab    = xCAT::Table->new('nodetype');
+    unless ($typetab)
     {
         xCAT::MsgUtils->message('S',
-                                "Unable to open noderes or nodetype table.\n");
+                                "Unable to open nodetype table.\n");
         return 1;
     }
     my $et = $typetab->getNodeAttribs($node, ['os', 'arch']);
