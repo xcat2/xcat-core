@@ -1066,19 +1066,12 @@ sub GetMasterNodeName
     my ($class, $node) = @_;
     my $master;
     my $noderestab = xCAT::Table->new('noderes');
-    #my $typetab    = xCAT::Table->new('nodetype');
     unless ($noderestab)
     {
         xCAT::MsgUtils->message('S',
-                                "Unable to open noderes or nodetype table.\n");
+                                "Unable to open noderes  table.\n");
         return 1;
     }
-    #my $sitetab = xCAT::Table->new('site');
-    #(my $et) = $sitetab->getAttribs({key => "master"}, 'value');
-    #if ($et and $et->{value})
-    #{
-    #    $master = $et->{value};
-    #}
     my @masters = xCAT::TableUtils->get_site_attribute("master"); 
     $master = $masters[0];
     
@@ -1090,15 +1083,11 @@ sub GetMasterNodeName
     unless ($master)
     {
         xCAT::MsgUtils->message('S', "Unable to identify master for $node.\n");
-        #$sitetab->close;
         $noderestab->close;
-        #$typetab->close;
         return 1;
     }
 
-    #$sitetab->close;
     $noderestab->close;
-    #$typetab->close;
     return $master;
 }
 
