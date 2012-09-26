@@ -24,7 +24,7 @@ use xCAT::MsgUtils;
 #-----------------------------------------------------------------------------
 
 =head3 initCFMdir
-    Initialize CFM directies and files. The default laout under cfmdir is:
+    Initialize CFM directories and files. The default layout under cfmdir is:
     . 
     |-- etc
     | |-- group.merge
@@ -126,7 +126,7 @@ sub updateUserInfo {
     if (! -d $cfmdir)
     {
         my $rsp = {};
-        $rsp->{error}->[0] = "The CFM directory($cfmdir) is not existing.";
+        $rsp->{error}->[0] = "The CFM directory($cfmdir) does not exist.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
     }
@@ -135,7 +135,7 @@ sub updateUserInfo {
     if (! @osfiles)
     {
         my $rsp = {};
-        $rsp->{data}->[0] = "Skip to update the /etc/passwd, shadow, group merge files under the CFM directory.";
+        $rsp->{data}->[0] = " Updating the /etc/passwd, shadow, group merge files under the CFM directory.";
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         return 0;
     }
@@ -221,7 +221,7 @@ sub setCFMSynclistFile {
     my $cfmsynclist = "/install/osimages/$img/synclist.cfm";
 
     # get the cfmdir and synclists attributes
-    my $osimage_t = xCAT::Table->new('osimage', -create=>1, -autocommit=>0);
+    my $osimage_t = xCAT::Table->new('osimage');
     my $records = $osimage_t->getAttribs({imagename=>$img}, 'cfmdir', 'synclists');
     if ($records)
     {
@@ -258,7 +258,6 @@ sub setCFMSynclistFile {
 
     # Set the synclist file
     $osimage_t->setAttribs({imagename=>$img}, {'synclists' => $synclists});
-    $osimage_t->commit;
     
     return $cfmdir;   
 }
@@ -267,7 +266,7 @@ sub setCFMSynclistFile {
 #-----------------------------------------------------------------------------
 
 =head3 updateCFMSynclistFile
-    Update the synlist file(/install/osimages/<imagename>/synclist.cfm) for CFM function. 
+    Update the synclist file(/install/osimages/<imagename>/synclist.cfm) for CFM function. 
     It will recursively scan the files under cfmdir directory and then add them to CFM synclist file.
     Note:
     The files with suffix ".append" will be appended to the dest file(records in "APPEND:" section).
@@ -313,7 +312,7 @@ sub updateCFMSynclistFile {
     if (!@osimgs)
     {
         my $rsp = {};
-        $rsp->{error}->[0] = "Not osimage names specified to process.";
+        $rsp->{error}->[0] = "No osimage names specified to process.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
     }
@@ -328,7 +327,7 @@ sub updateCFMSynclistFile {
             if (! -d $cfmdir)
             {
                 my $rsp = {};
-                $rsp->{error}->[0] = "The CFM directory($cfmdir) is not existing.";
+                $rsp->{error}->[0] = "The CFM directory($cfmdir) does not exist.";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                 return 1;
             }
@@ -467,7 +466,7 @@ sub setCFMPkglistFile {
     my $cfmpkglist = "/install/osimages/$img/pkglist.cfm";
 
     # get the pkglist files
-    my $linuximage_t = xCAT::Table->new('linuximage', -create=>1, -autocommit=>0);
+    my $linuximage_t = xCAT::Table->new('linuximage');
     my $records = $linuximage_t->getAttribs({imagename => $img}, 'pkglist');
     if ($records)
     {
@@ -500,7 +499,6 @@ sub setCFMPkglistFile {
 
     # Set the pkglist attribute for linuximage
     $linuximage_t->setAttribs({imagename => $img}, {'pkglist' => $pkglists});
-    $linuximage_t->commit;
     
     return 0;   
 }
