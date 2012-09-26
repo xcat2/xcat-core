@@ -16,6 +16,7 @@ use File::Find;
 use Getopt::Long;
 use Data::Dumper;
 use File::Basename;
+use xCAT::Table;
 use xCAT::Utils;
 use xCAT::MsgUtils;
 1;
@@ -125,7 +126,7 @@ sub updateUserInfo {
     if (! -d $cfmdir)
     {
         my $rsp = {};
-        $rsp->{error}->[0] = "The CFM directory is not initialized.";
+        $rsp->{error}->[0] = "The CFM directory($cfmdir) is not existing.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
     }
@@ -134,9 +135,9 @@ sub updateUserInfo {
     if (! @osfiles)
     {
         my $rsp = {};
-        $rsp->{error}->[0] = "The default CFM files are not initialized.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-        return 1;
+        $rsp->{data}->[0] = "Skip to update the /etc/passwd, shadow, group merge files under the CFM directory.";
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        return 0;
     }
 
     foreach my $file (@userfiles)
@@ -193,10 +194,81 @@ sub updateUserInfo {
     return 0;
 }
 
+
+#-----------------------------------------------------------------------------
+=head3 setCFMSynclistFile
+    Set osimage synclists attribute for CFM function, the CMF synclist file is:
+    /install/osimages/<imagename>/synclist.cfm
+
+    Arguments:
+      $imagename - the specified osimage name
+    Returns:
+      It returns the cfmdir path if it is defined for an osimage object
+    Globals:
+      $::CALLBACK
+    Error:
+      none
+    Example:
+      my $cfmdir = xCAT::CFMUtils->setCFMSynclistFile($imagename);
+      if ($cfmdir) { # update the CFM synclist file }
+=cut
+#-----------------------------------------------------------------------------
+sub setCFMSynclistFile {
+    my ($class, $img) = @_;
+
+    my $cfmdir = "";
+    my $synclists = "";
+    my $cfmsynclist = "/install/osimages/$img/synclist.cfm";
+
+    # get the cfmdir and synclists attributes
+    my $osimage_t = xCAT::Table->new('osimage', -create=>1, -autocommit=>0);
+    my $records = $osimage_t->getAttribs({imagename=>$img}, 'cfmdir', 'synclists');
+    if ($records)
+    {
+        if ($records->{'cfmdir'}) {$cfmdir = $records->{'cfmdir'}}
+        if ($records->{'synclists'}) {$synclists = $records->{'synclists'}}
+    } else 
+    {
+        my $rsp = {};
+        $rsp->{error}->[0] = "Can not get cfmdir and synclists attributes, the osimage table may not been initialized.";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return $cfmdir;
+    }
+
+    my $found = 0;
+    my $index = 0;
+    if ($synclists)
+    {
+        my @lists = split(/,/, $synclists); # the synclists is a comma separated list
+        foreach my $synclist (@lists)
+        {
+            if ($synclist eq $cfmsynclist) # find the synclist configuration for CFM
+            {
+                $found = 1;
+                last;
+            }
+            $index += 1;
+        }
+        if ($cfmdir and !$found) { $synclists = "$synclists,$cfmsynclist"; } # add CFM synclist to the list
+        if ($found and !$cfmdir) { $synclists = join(',', delete $lists[$index]); } # remove CFM synclist from the list
+    } else
+    {
+        if ($cfmdir) { $synclists = $cfmsynclist; }
+    }
+
+    # Set the synclist file
+    $osimage_t->setAttribs({imagename=>$img}, {'synclists' => $synclists});
+    $osimage_t->commit;
+    
+    return $cfmdir;   
+}
+
+
 #-----------------------------------------------------------------------------
 
-=head3 updateSynclistFile
-    Update the synlist file. It will recursively scan the files under cfmdir directory and then add them to synclist file.
+=head3 updateCFMSynclistFile
+    Update the synlist file(/install/osimages/<imagename>/synclist.cfm) for CFM function. 
+    It will recursively scan the files under cfmdir directory and then add them to CFM synclist file.
     Note:
     The files with suffix ".append" will be appended to the dest file(records in "APPEND:" section).
     The files with suffix ".merge" will be merged to the dest file(records in "MERGE:" section).
@@ -220,8 +292,7 @@ sub updateUserInfo {
 	<cfmdir>/etc/passwd.merge -> /etc/passwd
 
     Arguments:
-      $synclist - the path for synclist file
-      $cfmdir - the path for CFM directory
+      \@imagenames - reference to the osimage names array
     Returns:
       0 - update successfully
       1 - update failed
@@ -230,124 +301,217 @@ sub updateUserInfo {
     Error:
       none
     Example:
-      my $ret = CAT::CFMUtils->updateSynclistFile($synclist, $cfmdir);
+      my $ret = CAT::CFMUtils->updateCFMSynclistFile(\@imagenames);
 
 =cut
 
 #-----------------------------------------------------------------------------
-sub updateSynclistFile {
-    my ($class, $synclist, $cfmdir) = @_;
+sub updateCFMSynclistFile {
+    my ($class, $imgs) = @_;
 
-    if (! -d $cfmdir)
+    my @osimgs = @$imgs;
+    if (!@osimgs)
     {
         my $rsp = {};
-        $rsp->{error}->[0] = "The CFM directory is not initialized.\n";
+        $rsp->{error}->[0] = "Not osimage names specified to process.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
     }
 
-    # update /etc/passwd, shadow, group merge files
-    my $ret = xCAT::CFMUtils->updateUserInfo($cfmdir);
-    if ($ret)
+    foreach my $osimg (@osimgs)
     {
-        my $rsp = {};
-        $rsp->{error}->[0] = "Update /etc/passwd, shadow, group merge files failed.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-    }
-
-    # get the user specified records in synclist file
-    my ($synced_ref, $append_ref, $execute_ref, $executealways_ref, $merge_ref) = getUserSynclistRecords($synclist, $cfmdir);
-    my @synced = @$synced_ref;
-    my @append = @$append_ref;
-    my @execute = @$execute_ref;
-    my @executealways = @$executealways_ref;
-    my @merge = @$merge_ref;
-
-    # recursively list the files under cfm directory 
-    my @files = ();
-    find ( sub { push @files, $File::Find::name if (! -d) }, $cfmdir);
-
-    my $fp;
-    open($fp, '>', $synclist);
-    my @mergefiles = ();
-    my @appendfiles = ();
-    foreach my $file (@files)
-    {
-        my $name = basename($file);
-        #TODO: find a better way to get the suffix
-        my $suffix = ($name =~ m/([^.]+)$/)[0];
-        my $dest = substr($file, length($cfmdir));
-        if ($suffix eq "OS") # skip the backup files
+        my $cfmdir = "";
+        $cfmdir = xCAT::CFMUtils->setCFMSynclistFile($osimg);
+        if ($cfmdir)
         {
-            next;
-        } elsif ($suffix eq "merge") # merge file
-        {
-            push(@mergefiles, $file);
-        } elsif ($suffix eq "append") { # append file
-            push(@appendfiles, $file); 
-        } else { # output the syncing files maintained by CFM
-            print $fp "$file -> $dest\n";
+            my $cfmsynclist = "/install/osimages/$osimg/synclist.cfm";
+            if (! -d $cfmdir)
+            {
+                my $rsp = {};
+                $rsp->{error}->[0] = "The CFM directory($cfmdir) is not existing.";
+                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+                return 1;
+            }
+            # check the cfmsynclist file and it's parent directory
+            if (! -d dirname($cfmsynclist))
+            {
+                mkpath dirname($cfmsynclist);
+            }
+            if (! -e $cfmsynclist)
+            {
+                system("touch $cfmsynclist");
+            }
+
+            # update /etc/passwd, shadow, group merge files
+            my $ret = xCAT::CFMUtils->updateUserInfo($cfmdir);
+            if ($ret)
+            {
+                my $rsp = {};
+                $rsp->{error}->[0] = "Update /etc/passwd, shadow, group merge files failed.";
+                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+            }
+
+            # get the user specified records in synclist file
+            my ($synced_ref, $append_ref, $execute_ref, $executealways_ref, $merge_ref) = getUserSynclistRecords($cfmsynclist, $cfmdir);
+            my @synced = @$synced_ref;
+            my @append = @$append_ref;
+            my @execute = @$execute_ref;
+            my @executealways = @$executealways_ref;
+            my @merge = @$merge_ref;
+
+            # recursively list the files under cfm directory 
+            my @files = ();
+            find ( sub { push @files, $File::Find::name if (! -d) }, $cfmdir);
+            if (!@files) # not files under cfm directory, skip to next loop 
+            {
+                next;
+            }
+
+            my $fp;
+            open($fp, '>', $cfmsynclist);
+            my @mergefiles = ();
+            my @appendfiles = ();
+            foreach my $file (@files)
+            {
+                my $name = basename($file);
+                #TODO: find a better way to get the suffix
+                my $suffix = ($name =~ m/([^.]+)$/)[0];
+                my $dest = substr($file, length($cfmdir));
+                if ($suffix eq "OS") # skip the backup files
+                {
+                    next;
+                } elsif ($suffix eq "merge") # merge file
+                {
+                    push(@mergefiles, $file);
+                } elsif ($suffix eq "append") { # append file
+                    push(@appendfiles, $file); 
+                } else { # output the syncing files maintained by CFM
+                    print $fp "$file -> $dest\n";
+                }
+            }
+            # output the user specified records for syncing
+            foreach my $file (@synced)
+            {
+                print $fp "$file\n";
+            }
+
+            # output the APPEND records maintained by CFM
+            print $fp "\n\nAPPEND:\n";
+            foreach my $file (@appendfiles)
+            { 
+                my $dest = substr($file, length($cfmdir), length($file) - length(".append") - length($cfmdir));
+                print $fp "$file -> $dest\n";
+            }
+            # output the user specified APPEND records
+            foreach my $file (@append)
+            {
+                print $fp "$file\n";
+            }
+
+            # output the EXECUTE records
+            print $fp "\n\nEXECUTE:\n";
+            foreach my $file (@execute)
+            {
+                print $fp "$file\n";
+            }
+
+            # output the EXECUTEALWAYS records
+            print $fp "\n\nEXECUTEALWAYS:\n";
+            foreach my $file (@executealways)
+            {
+                print $fp "$file\n";
+            }
+
+            # output the MERGE records maintianed by CFM
+            print $fp "\n\nMERGE:\n";
+            foreach my $file (@mergefiles)
+            {
+                my $dest = substr($file, length($cfmdir), length($file) - length(".merge") - length($cfmdir));
+                print $fp "$file -> $dest\n";
+            }
+            # output the user specified MERGE records
+            foreach my $file (@merge)
+            {
+                print $fp "$file\n";
+            }
+            
+            # close the file 
+            close($fp);   
         }
     }
-    # output the user specified records for syncing
-    foreach my $file (@synced)
-    {
-        print $fp "$file\n";
-    }
-
-    # output the APPEND records maintained by CFM
-    print $fp "\n\nAPPEND:\n";
-    foreach my $file (@appendfiles)
-    { 
-        my $dest = substr($file, length($cfmdir), length($file) - length(".append") - length($cfmdir));
-        print $fp "$file -> $dest\n";
-    }
-    # output the user specified APPEND records
-    foreach my $file (@append)
-    {
-        print $fp "$file\n";
-    }
-
-    # output the EXECUTE records
-    print $fp "\n\nEXECUTE:\n";
-    foreach my $file (@execute)
-    {
-        print $fp "$file\n";
-    }
-
-    # output the EXECUTEALWAYS records
-    print $fp "\n\nEXECUTEALWAYS:\n";
-    foreach my $file (@executealways)
-    {
-        print $fp "$file\n";
-    }
-
-    # output the MERGE records maintianed by CFM
-    print $fp "\n\nMERGE:\n";
-    foreach my $file (@mergefiles)
-    {
-        my $dest = substr($file, length($cfmdir), length($file) - length(".merge") - length($cfmdir));
-        print $fp "$file -> $dest\n";
-    }
-    # output the user specified MERGE records
-    foreach my $file (@merge)
-    {
-        print $fp "$file\n";
-    }
-    
-    # close the file 
-    close($fp);   
  
     return 0;
 }
 
 #-----------------------------------------------------------------------------
+=head3 setCFMPkglistFile
+    Set the pkglist attribute of linuximage object for CFM function
 
-=head3 updateOSpkglistFile
+    Arguments:
+      $imagename - the specified linuximage name
+    Returns:
+      0 - update successfully
+      1 - update failed
+    Globals:
+      $::CALLBACK
+    Error:
+      none
+    Example:
+      my $ret = xCAT::CFMUtils->setCFMPkglistFile($imagename);
+=cut
+#-----------------------------------------------------------------------------
+sub setCFMPkglistFile {
+    my ($class, $img) = @_;
+
+    my $pkglists = "";
+    my $cfmpkglist = "/install/osimages/$img/pkglist.cfm";
+
+    # get the pkglist files
+    my $linuximage_t = xCAT::Table->new('linuximage', -create=>1, -autocommit=>0);
+    my $records = $linuximage_t->getAttribs({imagename => $img}, 'pkglist');
+    if ($records)
+    {
+        if ($records->{'pkglist'}) { $pkglists = $records->{'pkglist'}; }
+    } else 
+    {
+        my $rsp = {};
+        $rsp->{error}->[0] = "Can not get pkglist attribute, the linuximage table may not been initialized.";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 1;
+    }
+
+    my $found = 0;
+    if ($pkglists)
+    {
+        foreach my $pkglist (split(/,/, $pkglists))
+        {
+            if ($pkglist eq $cfmpkglist) 
+            {
+                $found = 1;
+                last;
+            }
+        }
+        # The pkglist file for CFM is found, return directly 
+        if (!$found) { $pkglists = "$pkglists,$cfmpkglist"; } 
+    } else 
+    {
+        $pkglists = $cfmpkglist;
+    }
+
+    # Set the pkglist attribute for linuximage
+    $linuximage_t->setAttribs({imagename => $img}, {'pkglist' => $pkglists});
+    $linuximage_t->commit;
+    
+    return 0;   
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 updateCFMPkglistFile
     Update the ospkglist file
 
     Arguments:
-      $ospkglist - the path for ospkglist file
+      $imagename - the specified linuximage name
       @curospkgs - the currently selected OS packages list
     Returns:
       0 - update successfully
@@ -357,17 +521,38 @@ sub updateSynclistFile {
     Error:
       none
     Example:
-      my $ret = CAT::CFMUtils->updateOSpkglistFile($ospkglist, @cur_selected_pkgs);
+      my $ret = CAT::CFMUtils->updateCFMPkglistFile($imagename, @cur_selected_pkgs);
 
 =cut
 
 #-----------------------------------------------------------------------------
-sub updateOSpkglistFile {
-    my ($class, $ospkglist, $ospkgs) = @_;
+sub updateCFMPkglistFile {
+    my ($class, $img, $ospkgs) = @_;
+     
     my @cur_selected = @$ospkgs;
+    my $cfmpkglist = "/install/osimages/$img/pkglist.cfm";
+
+    my $ret = xCAT::CFMUtils->setCFMPkglistFile($img);
+    if ($ret)
+    {
+        my $rsp = {};
+        $rsp->{error}->[0] = "Set pkglist attribute for CFM failed.";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 1;
+    }
+
+    # check the cfmpkglist file and it's parent directory
+    if (! -d dirname($cfmpkglist))
+    {
+        mkpath dirname($cfmpkglist);
+    }
+    if (! -e $cfmpkglist)
+    {
+        system("touch $cfmpkglist");
+    }
 
     # get previous selected and removed OS packages list from pkglist file
-    my ($pre_selected_ref, $pre_removed_ref) = xCAT::CFMUtils->getPreOSpkgsList($ospkglist);
+    my ($pre_selected_ref, $pre_removed_ref) = xCAT::CFMUtils->getPreOSpkgsList($cfmpkglist);
     my @pre_selected = @$pre_selected_ref;
     my @pre_removed = @$pre_removed_ref;
 
@@ -384,7 +569,7 @@ sub updateOSpkglistFile {
 
     # update the pkglist file
     my $fp;
-    open($fp, '>', $ospkglist);
+    open($fp, '>', $cfmpkglist);
     # the pacakges be installed
     if (@cur_selected)
     {
@@ -662,8 +847,8 @@ sub trim {
 
     Arguments:
       $flag - "U"/"I"/"D"
-      @array1
-      @array2
+      \@array1 - reference to an arrary
+      \@array2 - reference to an arrary
     Returns:
       @union/@intersection/@difference
     Globals:
@@ -671,7 +856,7 @@ sub trim {
     Error:
       none
     Example:
-      my @array = xCAT::CFMUtils->arrayops(@array1, @array2);
+      my @array = xCAT::CFMUtils->arrayops(\@array1, \@array2);
 
 =cut
 
