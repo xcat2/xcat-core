@@ -353,6 +353,40 @@ sub set_sources {
 
   my $installdir = xCAT::TableUtils->getInstallDir;
   my @sources;
+  my %src_data;
+
+
+# OS images (osimage.driverupdatesrc)
+  if ( defined($::opt_i) ) {
+       my $litab = xCAT::Table->new('linuximage');
+       foreach my $li (split( ',', $::opt_i)) {
+          my ($li_entry) = $litab->getAttribs({'imagename'=>$li},('driverupdatesrc'));
+          if ( !($li_entry) ) {
+              if ($::VERBOSE) {
+                my $rsp;
+                push @{ $rsp->{data} }, "No driverupdatesrc attribute for osimage $li found.  Skipping. ";
+                xCAT::MsgUtils->message( "W", $rsp, $::CALLBACK );
+              }
+              next;
+          }
+          foreach my $dus (split( ',', $li_entry->{'driverupdatesrc'})) {
+              my $base_dus = basename($dus);
+              if ( defined ($src_data{$base_dus}) ) {
+                  if ($::VERBOSE) {
+                    my $rsp;
+                    push @{ $rsp->{data} }, "Duplicate source $base_dus found in input.  Skipping $dus entry in osimage &li driverupdatesrc.  Using from $src_data{$base_dus}{'sourcemsg'} instead.";
+                    xCAT::MsgUtils->message( "W", $rsp, $::CALLBACK );
+                  }
+                  next;
+              } else {
+                 $src_data{$base_dus}{'sourcemsg'}="osimage $li driverupdatesrc entry $dus";
+                 $src_data{$base_dus}{'source'}=$dus;
+              }
+          }
+       }
+       $litab->close;
+  }
+
 
 # Kit Components (kitcomp.driverpacks)
   if ( defined($::opt_c) ) {
@@ -361,39 +395,37 @@ sub set_sources {
        foreach my $kc (split( ',', $::opt_c)) {
           my ($kc_entry) = $kctab->getAttribs({'kitcompname'=>$kc},('kitreponame','driverpacks'));
           if ( !($kc_entry) ) {
-              my $rsp;
-              push @{ $rsp->{data} }, "No driverpacks attribute for kitcomponent $kc found.  Skipping.";
-              xCAT::MsgUtils->message( "W", $rsp, $::CALLBACK );
+              if ($::VERBOSE) {
+                my $rsp;
+                push @{ $rsp->{data} }, "No driverpacks attribute for kitcomponent $kc found.  Skipping.";
+                xCAT::MsgUtils->message( "W", $rsp, $::CALLBACK );
+              }
               next;
           } 
           my ($kr_entry) = $krtab->getAttribs({'kitreponame'=>$kc_entry->{'kitreponame'}},('kitrepodir'));
           if ( !($kr_entry) ) {
-              my $rsp;
-              push @{ $rsp->{data} }, "Kitrepo $kc_entry->{'kitreponame' } not found in database.  Error in kitcomponent definition for $kc.  Skipping.";
-              xCAT::MsgUtils->message( "W", $rsp, $::CALLBACK );
+              if ($::VERBOSE) {
+                my $rsp;
+                push @{ $rsp->{data} }, "Kitrepo $kc_entry->{'kitreponame'} not found in database.  Error in kitcomponent definition for $kc.  Skipping.";
+                xCAT::MsgUtils->message( "W", $rsp, $::CALLBACK );
+              }
               next;
           }
           foreach my $dp (split( ',', $kc_entry->{'driverpacks'})) {
-              push @sources, $kr_entry->{'kitrepodir'}.'/'.$dp;
+              if ( defined ($src_data{$dp})) {
+                  if ($::VERBOSE) {
+                    my $rsp;
+                    push @{ $rsp->{data} }, "Duplicate source $dp found in input.  Skipping kitcomponent $kc driverpack entry $dp.  Using from $src_data{$dp}{'sourcemsg'} instead.";
+                    xCAT::MsgUtils->message( "W", $rsp, $::CALLBACK );
+                  }
+                  next;
+              } else {
+                 $src_data{$dp}{'sourcemsg'}="kitcomponent $kc, kitrepo $kc_entry->{'kitreponame'}";
+                 $src_data{$dp}{'source'}=$kr_entry->{'kitrepodir'}.'/'.$dp;
+              }
           }
        }
        $kctab->close;
-  }
-
-# OS images (osimage.driverupdatesrc)
-  if ( defined($::opt_i) ) {
-       my $litab = xCAT::Table->new('linuximage');
-       foreach my $li (split( ',', $::opt_i)) {
-          my ($li_entry) = $litab->getAttribs({'imagename'=>$li},('driverupdatesrc'));
-          if ( !($li_entry) ) {
-              my $rsp;
-              push @{ $rsp->{data} }, "No driverupdatesrc attribute for osimage $li found.  Skipping. ";
-              xCAT::MsgUtils->message( "W", $rsp, $::CALLBACK );
-              next;
-          }
-          push @sources, split( ',', $li_entry->{'driverupdatesrc'});
-       }
-       $litab->close;
   }
 
 # OS distro 
@@ -408,19 +440,39 @@ sub set_sources {
               $arch = "x86" if ($arch =~ /i.86$/);
               my $dirpath = $installdir.'/'.$od.'/'.$arch;      
               if (!(-e $dirpath)) {
-                  my $rsp;
-                  push @{ $rsp->{data} }, "No dirpaths attribute for osdistro $od found.  Skipping. ";
-                  xCAT::MsgUtils->message( "W", $rsp, $::CALLBACK );
+                  if ($::VERBOSE) {
+                    my $rsp;
+                    push @{ $rsp->{data} }, "No dirpaths attribute for osdistro $od found.  Skipping. ";
+                    xCAT::MsgUtils->message( "W", $rsp, $::CALLBACK );
+                  }
                   next;
               }
-              my @kernel_rpms = grep{ /\/kernel-\d+/ } <$dirpath/Packages/kernel-*>;
-              push @sources, @kernel_rpms;
+              my @kernel_rpms = `find $dirpath -name kernel-*.rpm`;
+              foreach my $krpm (@kernel_rpms) {
+                  chomp($krpm);
+                  my $base_krpm = basename($krpm);
+                  if ( ! defined ($src_data{$base_krpm}) ) {
+                      $src_data{$base_krpm}{'sourcemsg'}="osdistro $od default rpm $krpm";
+                      $src_data{$base_krpm}{'source'}=$krpm;
+                  }
+              }
           } else {
               foreach my $dirpath (split( ',', $od_entry->{'dirpaths'})){
-                  my @kernel_rpms = grep{ /\/kernel-\d+/ } <$dirpath/Packages/kernel-*>;
-                  if (@kernel_rpms) {
-                      push @sources, @kernel_rpms;
-                  } 
+                  my @kernel_rpms = `find $dirpath -name kernel-*.rpm`;
+                  foreach my $krpm (@kernel_rpms) {
+                      chomp($krpm);
+                      my $base_krpm = basename($krpm);
+                      if ( defined ($src_data{$base_krpm}) ) {
+                          if ($::VERBOSE) {
+                            my $rsp;
+                            push @{ $rsp->{data} }, "Duplicate source $base_krpm found in input.  Skipping $krpm in osdistro $od.  Using from $src_data{$base_krpm}{'sourcemsg'} instead.";
+                            xCAT::MsgUtils->message( "W", $rsp, $::CALLBACK );
+                          }
+                          next;
+                      } 
+                      $src_data{$base_krpm}{'sourcemsg'}="osdistro $od rpm $krpm";
+                      $src_data{$base_krpm}{'source'}=$krpm;
+                  }
               }
           }
        }
@@ -434,20 +486,37 @@ sub set_sources {
        foreach my $ou (split( ',', $::opt_u)) {
           my ($ou_entry) = $outab->getAttribs({'osupdatename'=>$ou},('dirpath'));
           if ( !($ou_entry) ) {
-              my $rsp;
-              push @{ $rsp->{data} }, "No dirpath attribute for osdistroupdate $ou found.  Skipping.";
-              xCAT::MsgUtils->message( "W", $rsp, $::CALLBACK );
+              if ($::VERBOSE) {
+                my $rsp;
+                push @{ $rsp->{data} }, "No dirpath attribute for osdistroupdate $ou found.  Skipping.";
+                xCAT::MsgUtils->message( "W", $rsp, $::CALLBACK );
+              }
               next;
           } 
           my $dirpath = $ou_entry->{'dirpath'};
-          my @kernel_rpms = grep{ /\/kernel-\d+/ } <$dirpath/kernel-*>;
-          if (@kernel_rpms) {
-              push @sources, @kernel_rpms;
-          } 
+          my @kernel_rpms = `find $dirpath -name kernel-*.rpm`;
+          foreach my $krpm (@kernel_rpms) {
+              chomp($krpm);
+              my $base_krpm = basename($krpm);
+              if ( defined ($src_data{$base_krpm}) ) {
+                  if ($::VERBOSE) {
+                    my $rsp;
+                    push @{ $rsp->{data} }, "Duplicate source $base_krpm found in input.  Skipping $krpm in osdistroupdate $ou.  Using from $src_data{$base_krpm}{'sourcemsg'} instead.";
+                    xCAT::MsgUtils->message( "W", $rsp, $::CALLBACK );
+                  }
+                  next;
+              }
+              $src_data{$base_krpm}{'sourcemsg'}="osdistroupdate $ou rpm $krpm";
+              $src_data{$base_krpm}{'source'}=$krpm;
+          }
        }
        $outab->close;
   }
 
+
+  foreach my $base_source (keys %src_data){
+      push @sources, $src_data{$base_source}{'source'};
+  }
 
   if ($::VERBOSE && @sources) {
         my $rsp;
@@ -511,7 +580,7 @@ sub mods_in_rpm {
       my $name = basename($ko);
       my $desc = `modinfo -d $ko`;
       chomp ($desc);
-      if ( $desc =~ /^\w*$/ ) {
+      if ( $desc =~ /^\s*$/ ) {
           $desc = "  ";     
       }
       $modlist{$name} = $desc;
