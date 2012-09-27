@@ -189,6 +189,7 @@ vmmaster => {
 vm => {
     cols => [qw(node mgr host migrationdest storage storagemodel cfgstore memory cpus nics nicmodel bootorder clockoffset virtflags master vncport textconsole powerstate beacon datacenter cluster guestostype othersettings vidmodel vidproto vidpassword comments disable)],
     keys => [qw(node)],
+    tablespace =>'XCATTBS32K',
     table_desc => 'Virtualization parameters',
     descriptions => {
         'node' => 'The node or static group name',
@@ -235,7 +236,7 @@ hypervisor => {
             'node' => 'The node or static group name',
             'type' => 'The plugin associated with hypervisor specific commands such as revacuate',
             'mgr' => 'The virtualization specific manager of this hypervisor when applicable',
-            'interface' => 'The defition of interfaces for the hypervisor. The format is [networkname:interfacename:bootprotocol:IP:netmask:gateway] that split with | for each interface',
+            'interface' => 'The definition of interfaces for the hypervisor. The format is [networkname:interfacename:bootprotocol:IP:netmask:gateway] that split with | for each interface',
             'netmap' => 'Optional mapping of useful names to relevant physical ports.  For example, 10ge=vmnic_16.0&vmnic_16.1,ge=vmnic1 would be requesting two virtual switches to be created, one called 10ge with vmnic_16.0 and vmnic_16.1 bonded, and another simply connected to vmnic1.  Use of this allows abstracting guests from network differences amongst hypervisors',
             'defaultnet' => 'Optionally specify a default network entity for guests to join to if they do not specify.',
             'cluster' => 'Specify to the underlying virtualization infrastructure a cluster membership for the hypervisor.',
@@ -257,6 +258,7 @@ virtsd => {
             'datacenter' => 'A collection for all host, vm that will shared the same storages, networks.',
         }
 },
+
 websrv => { 
     cols => [qw(node port username password comments disable)],
     keys => [qw(node)],
@@ -442,7 +444,7 @@ mp => {
  },
   },
 mpa => {
-    cols => [qw(mpa username password comments disable)],
+    cols => [qw(mpa username password displayname slots urlpath comments disable)],
 	keys => [qw(mpa username)],
     nodecol => "mpa",
     table_desc => 'Contains info about each Management Module and how to access it.',
@@ -450,13 +452,17 @@ mpa => {
   mpa => 'Hostname of the management module.',
   username => 'Userid to use to access the management module.  If not specified, the key=blade row in the passwd table is used as the default.',
   password => 'Password to use to access the management module.  If not specified, the key=blade row in the passwd table is used as the default.',
+  displayname => 'Alternative name for BladeCenter chassis. Only used by PCM.',
+  slots => 'The number of available slots in the chassis.',
+  urlpath => 'URL path for the Chassis web interface. The full URL is built as follows: <hostname>/<urlpath> ',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
   },
 networks => {
-    cols => [qw(netname net mask mgtifname gateway dhcpserver tftpserver nameservers ntpservers logservers dynamicrange nodehostname ddnsdomain vlanid domain comments disable)],
+    cols => [qw(netname net mask mgtifname gateway dhcpserver tftpserver nameservers ntpservers logservers dynamicrange staticrange staticrangeincrement nodehostname ddnsdomain vlanid domain  comments disable)],
     keys => [qw(net mask)],
+    tablespace =>'XCATTBS16K',
     table_desc => 'Describes the networks in the cluster and info necessary to set up nodes on that network.',
  descriptions => {
   netname => 'Name used to identify this network definition.',
@@ -470,6 +476,8 @@ networks => {
   ntpservers => 'The ntp servers for this network.  Used in creating the DHCP network definition.  Assumed to be the DHCP server if not set.',
   logservers => 'The log servers for this network.  Used in creating the DHCP network definition.  Assumed to be the DHCP server if not set.',
   dynamicrange => 'The IP address range used by DHCP to assign dynamic IP addresses for requests on this network.  This should not overlap with entities expected to be configured with static host declarations, i.e. anything ever expected to be a node with an address registered in the mac table.',
+  staticrange => 'The IP address range used to dynamically assign static IPs to newly discovered nodes.  This should not overlap with the dynamicrange nor overlap with entities that were manually assigned static IPs.  The format for the attribute value is:    <startip>-<endip>.',
+  statusrangeincrement=> 'The increment value used when getting the next available IP in the staticrange.',
   nodehostname => 'A regular expression used to specify node name to network-specific hostname.  i.e. "/\z/-secondary/" would mean that the hostname of "n1" would be n1-secondary on this network.  By default, the nodename is assumed to equal the hostname, followed by nodename-interfacename.',
   ddnsdomain => 'A domain to be combined with nodename to construct FQDN for DDNS updates induced by DHCP.  This is not passed down to the client as "domain"',
   vlanid => 'The vlan ID if this network is within a vlan.',
@@ -479,13 +487,14 @@ networks => {
  },
   },
 nodegroup => {
- cols => [qw(groupname grouptype members wherevals comments disable)],
+ cols => [qw(groupname grouptype members membergroups  wherevals comments disable)],
  keys => [qw(groupname)],
     table_desc => 'Contains group definitions, whose membership is dynamic depending on characteristics of the node.',
  descriptions => {
   groupname => 'Name of the group.',
   grouptype => 'The only current valid value is dynamic.  We will be looking at having the object def commands working with static group definitions in the nodelist table.',
   members => 'The value of the attribute is not used, but the attribute is necessary as a place holder for the object def commands.  (The membership for static groups is stored in the nodelist table.)',
+  membergroups => 'This attribute stores a comma-separated list of nodegroups that this nodegroup refers to. This attribute is only used by PCM.',
   wherevals => 'A list of "attr*val" pairs that can be used to determine the members of a dynamic group, the delimiter is "::" and the operator * can be ==, =~, != or !~.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
@@ -513,25 +522,27 @@ nodehm => {
  },
   },
 nodelist => {
-    cols => [qw(node groups status statustime appstatus appstatustime primarysn hidden comments disable)],
+    cols => [qw(node groups status statustime appstatus appstatustime primarysn hidden updatestatus updatestatustime comments disable)],
     keys => [qw(node)],
-    tablespace =>'XCATTBS16K',
+    tablespace =>'XCATTBS32K',
     table_desc => "The list of all the nodes in the cluster, including each node's current status and what groups it is in.",
     descriptions => {
      node => 'The hostname of a node in the cluster.',
-     groups => "A comma-delimited list of groups this node is a member of.  Group names are arbitrary, except all nodes should be part of the 'all' group.",
+     groups => "A comma-delimited list of groups this node is a member of.  Group names are arbitrary, except all nodes should be part of the 'all' group. Internal group names are designated by using __<groupname>.  For example, __Unmanaged, could be the internal name for a group of nodes that is not managed by xCAT. Admins should avoid using the __ characters when defining their groups.",
      status => 'The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, netbooting, booted, discovering, configuring, installing, alive, standingby, powering-off, unreachable. If blank, defined is assumed. The possible status change sequenses are: For installaton: defined->[discovering]->[configuring]->[standingby]->installing->booting->booted->[alive],  For diskless deployment: defined->[discovering]->[configuring]->[standingby]->netbooting->booted->[alive],  For booting: [alive/unreachable]->booting->[alive],  For powering off: [alive]->powering-off->[unreachable], For monitoring: alive->unreachable. Discovering and configuring are for x Series dicovery process. Alive and unreachable are set only when there is a monitoring plug-in start monitor the node status for xCAT. Please note that the status values will not reflect the real node status if you change the state of the node from outside of xCAT (i.e. power off the node using HMC GUI).',
      statustime => "The data and time when the status was updated.",
      appstatus => "A comma-delimited list of application status. For example: 'sshd=up,ftp=down,ll=down'",
      appstatustime =>'The date and time when appstatus was updated.',
      primarysn => 'Not used currently. The primary servicenode, used by this node.',
+     hidden => "Used to hide fsp and bpa definitions, 1 means not show them when running lsdef and nodels",
+     updatestatus => "The current node update status. TODO:need to define list of states and state transitions.",
+     updatestatustime => "The date and time when the updatestatus was updated.",
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
-     hidden => "Used to hide fsp and bpa definitions, 1 means not show them when running lsdef and nodels",
     },
   },
 nodepos => {
-    cols => [qw(node rack u chassis slot room comments disable)],
+    cols => [qw(node rack u chassis slot room height comments disable)],
     keys => [qw(node)],
     tablespace =>'XCATTBS16K',
     table_desc => 'Contains info about the physical location of each node.  Currently, this info is not used by xCAT, and therefore can be in whatevery format you want.  It will likely be used in xCAT in the future.',
@@ -541,7 +552,8 @@ nodepos => {
   u => 'The vertical position of the node in the frame',
   chassis => 'The BladeCenter chassis the blade is in.',
   slot => 'The slot number of the blade in the chassis.',
-  room => 'The room the node is in.',
+  room => 'The room where the node is located.',
+  height => 'The server height in U(s).',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -564,7 +576,6 @@ noderes => {
   primarynic => 'The network adapter on the node that will be used for xCAT management, the primarynic can be set to the network adapter name or the mac address or the keyword "mac" which means that the network interface specified by the mac address in the mac table  will be used.  Default is eth0.',
   discoverynics => 'If specified, force discovery to occur on specific network adapters only, regardless of detected connectivity.  Syntax can be simply "eth2,eth3" to restrict discovery to whatever happens to come up as eth2 and eth3, or by driver name such as "bnx2:0,bnx2:1" to specify the first two adapters managed by the bnx2 driver',
   cmdinterface => 'Not currently used.',
-  #defnetname => 'The host (or ip) by which a node should be addressed (i.e. in psh/pscp). By default, nodename is assumed to be equal to this',
   xcatmaster => 'The hostname of the xCAT service node (as known by this node).  This acts as the default value for nfsserver and tftpserver, if they are not set.  If xcatmaster is not set, the node will use whoever responds to its boot request as its master.  For the directed bootp case for POWER, it will use the management node if xcatmaster is not set.',
   current_osimage => 'Not currently used.  The name of the osimage data object that represents the OS image currently deployed on this node.',
   next_osimage => 'Not currently used.  The name of the osimage data object that represents the OS image that will be installed on the node the next time it is deployed.',
@@ -623,35 +634,48 @@ notification => {
  },
   },
 osimage => {
- cols => [qw(imagename groups profile imagetype provmethod rootfstype osdistroname osname osvers osdistro osarch synclists postscripts postbootscripts comments disable)],
+ cols => [qw(imagename groups profile imagetype desc provmethod rootfstype osdistroname osupdatename cfmdir osname osvers osdistro osarch synclists postscripts postbootscripts serverrole isdeletable kitcomponents  comments disable)],
  keys => [qw(imagename)],
-    table_desc => 'Basic information about an operating system image that can be used to deploy cluster nodes.',
+ tablespace =>'XCATTBS32K',
+ table_desc => 'Basic information about an operating system image that can be used to deploy cluster nodes.',
+ types => {
+	osupdatename => 'VARCHAR(1024)',   
+ },
  descriptions => {
   imagename => 'The name of this xCAT OS image definition.',
   groups => 'A comma-delimited list of image groups of which this image is a member.  Image groups can be used in the litefile and litetree table instead of a single image name. Group names are arbitrary.',
   imagetype => 'The type of operating system image this definition represents (linux,AIX).',
-  provmethod => 'The provisioning method for node deployment. The valid values are install, netboot or statelite. It is not used by AIX.',
+  desc => 'OS Image Description .',
+  provmethod => 'The provisioning method for node deployment. The valid values are install, netboot,statelite,boottarget,dualboot. If boottarget is set, you must set linuximage.boottarget to the name of the boottarget definition. It is not used by AIX.',
   rootfstype => 'The filesystem type for the rootfs is used when the provmethod is statelite. The valid values are nfs or ramdisk. The default value is nfs',
   osdistroname => 'The name of the OS distro definition.  This attribute can be used to specify which OS distro to use, instead of using the osname,osvers,and osarch attributes.',
+  osupdatename => 'A comma-separated list of OS distro updates to apply to this osimage.',
+  cfmdir => 'CFM directory name for PCM. Set to /install/osimage/<osimage name>/cfmdir by PCM. ',
   profile => 'The node usage category. For example compute, service.',
   osname => 'Operating system name- AIX or Linux.',
   osvers => 'The Linux operating system deployed on this node.  Valid values:  rhels*,rhelc*, rhas*,centos*,SL*, fedora*, sles* (where * is the version #).',
-  osdistro => 'Not used.',
+  osdistro => 'The name of the OS distro definition.  This attribute should be used to specify which OS distro to use, instead of using the osname, osvers, and osarch attributes.',
   osarch => 'The hardware architecture of this node.  Valid values: x86_64, ppc64, x86, ia64.',
-  synclists => 'The fully qualified name of a file containing a list of files to synchronize on the nodes.',
+  synclists => 'The fully qualified name of a file containing a list of files to synchronize on the nodes. Can be a comma separated list of multiple synclist files.',
   postscripts => 'Comma separated list of scripts that should be run on this image after diskfull installation or diskless boot. For installation of RedHat, CentOS, Fedora, the scripts will be run before the reboot. For installation of SLES, the scripts will be run after the reboot but before the init.d process. For diskless deployment, the scripts will be run at the init.d time, and xCAT will automatically add the list of scripts from the postbootscripts attribute to run after postscripts list. For installation of AIX, the scripts will run after the reboot and acts the same as the postbootscripts attribute.  For AIX, use the postbootscripts attribute. Support will be added in the future for  the postscripts attribute to run the scripts before the reboot in AIX. ',
   postbootscripts => 'Comma separated list of scripts that should be run on this after diskfull installation or diskless boot. On AIX these scripts are run during the processing of /etc/inittab.  On Linux they are run at the init.d time. xCAT automatically adds the scripts in the xcatdefaults.postbootscripts attri bute to run first in the list.',
+  serverrole => 'The role of the server created by this osimage.  Default roles: mgtnode, servicenode, compute.',
+  isdeletable => 'A flag to indicate whether this image profile can be deleted.  This attribute is only used by PCM.',
+  kitcomponents => 'List of Kit Component IDs assigned to this OS Image definition.',
   comments => 'Any user-written notes.',
   disable => "Set to 'yes' or '1' to comment out this row.",
  },
   },
 linuximage  => {
- cols => [qw(imagename template pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir kerneldir nodebootif otherifce netdrivers kernelver krpmver permission dump crashkernelsize partitionfile driverupdatesrc comments disable)],
+ cols => [qw(imagename template boottarget addkcmdline pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir kerneldir nodebootif otherifce netdrivers kernelver krpmver permission dump crashkernelsize partitionfile driverupdatesrc comments disable)],
  keys => [qw(imagename)],
-    table_desc => 'Information about a Linux operating system image that can be used to deploy cluster nodes.',
+ tablespace =>'XCATTBS32K',
+ table_desc => 'Information about a Linux operating system image that can be used to deploy cluster nodes.',
  descriptions => {
   imagename => 'The name of this xCAT OS image definition.',
   template => 'The fully qualified name of the template file that is used to create the kick start file for diskful installation.',
+  boottarget => 'The name of the boottarget definition.  When this attribute is set, xCAT will use the kernel, initrd and kernel params defined in the boottarget definition instead of the default.',
+   addkcmdline=> 'User specified arguments to be passed to the kernel.  The user arguments are appended to xCAT.s default kernel arguments.   This attribute is ignored if linuximage.boottarget is set.',
   pkglist => 'The fully qualified name of the file that stores the distro  packages list that will be included in the image.',
   pkgdir => 'The name of the directory where the distro packages are stored.',
   otherpkglist => 'The fully qualified name of the file that stores non-distro package lists that will be included in the image.',
@@ -762,7 +786,7 @@ ppchcp => {
  },
   },
 servicenode => {
-    cols => [qw(node nameserver dhcpserver tftpserver nfsserver conserver monserver ldapserver ntpserver ftpserver nimserver ipforward comments disable)],
+    cols => [qw(node nameserver dhcpserver tftpserver nfsserver conserver monserver ldapserver ntpserver ftpserver nimserver ipforward dhcpinterfaces comments disable)],
     keys => [qw(node)],
     table_desc => 'List of all Service Nodes and services that will be set up on the Service Node.',
  descriptions => {
@@ -778,6 +802,7 @@ servicenode => {
   ftpserver => 'Do we set up a ftp server on this service node? Not supported on AIX Valid values:yes or 1, no or 0. If yes, configure and start vsftpd.  (You must manually install vsftpd on the service nodes before this.) If no or 0, it does not change the current state of the service. xCAT is not using ftp for compute nodes provisioning or any other xCAT features, so this attribute can be set to 0 if the ftp service will not be used for other purposes',
   nimserver => 'Not used. Do we set up a NIM server on this service node? Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.',
   ipforward => 'Do we set up ip forwarding on this service node? Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.',
+  dhcpinterfaces => 'The network interfaces DHCP server should listen on for the target node. This attribute can be used for management node and service nodes.  If defined, it will override the values defined in site.dhcpinterfaces.',
 
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
@@ -949,12 +974,12 @@ site => {
    "                 using nmap (if available) from the management node instead of the\n".
    "                 service node. This will improve the performance in a flat network.\n\n".
    " useSSHonAIX:  (yes/1 or no/0). If yes, ssh/scp will be setup and used. If no,\n".
-   "               rsh/rcp will be setup and used on AIX. Default is yes.\n\n".
-   " useNFSv4onAIX:  (yes/1 or no/0). If yes, NFSv4 will be used with NIM. If no,\n".
-   "               NFSv3 will be used with NIM. Default is no.\n\n".
    " usexhrm:  Have xCAT run its xHRM script when booting up KVM guests to set the\n".
    "           virtual network bridge up correctly. See\n".
    "           https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Virtualization_with_KVM#Setting_up_a_network_bridge\n\n".
+   "               rsh/rcp will be setup and used on AIX. Default is yes.\n\n".
+   " useNFSv4onAIX:  (yes/1 or no/0). If yes, NFSv4 will be used with NIM. If no,\n".
+   "               NFSv3 will be used with NIM. Default is no.\n\n".
    " vcenterautojoin:  When set to no, the VMWare plugin will not attempt to auto remove\n".
    "                   and add hypervisors while trying to perform operations.  If users\n".
    "                   or tasks outside of xCAT perform the joining this assures xCAT\n".
@@ -1183,10 +1208,42 @@ firmware => {
             comments => 'Any user-written notes.',
             disable => "Set to 'yes' or '1' to comment out this row.",
         },
-    },
+},
 
+nics => {
+        cols => [qw(node nicips  nichostnamesuffixes nictypes niccustomscripts nicnetworks comments disable)], 
+        keys => [qw(node)],
+        tablespace =>'XCATTBS16K',
+        table_desc => 'Stores NIC details.',
+        descriptions => {
+            node => 'The node or group name.',
+            nicips => 'Comma-separated list of IP addresses per NIC. <nic1>:<ip1>,<nic2>:<ip2>,..., e.g eth0:10.0.0.100,eth1:11.0.0.100 The primary IP address must also be stored in the hosts.ip attribute.',
+            nichostnamesuffixes  => 'Comma-separated list of hostname suffixes per NIC. <nic1>:<ext1>,<nic2>:<ext2>,... e.g. eth0:-eth0,ib0:-ib0.',
+            nictypes => 'Comma-separated list of NIC types per NIC. Used for information purposes. <nic1>:<type1>,<nic2>:<type2>, e.g. eth0:Ethernet,ib0:Infiniband', 
+            niccustomscripts => 'Comma-separated list of custom scripts per NIC.  <nic1>:<script1>,<nic2>:<script2>, e.g. eth0:configeth eth0, ib0:configib ib0
+.',
+            nicnetworks => 'Comma-separated list of networks connected to each NIC.<nic1>:<network1>,<nic2>:<network2>, eth0: 10_0_0_0-255_255_0_0, ib0: 11_0_0_0-255_255_0_0
+',
+            comments => 'Any user-written notes.',
+            disable => "Set to 'yes' or '1' to comment out this row.",
+        },
+},
+rack => {
+        cols => [qw(rackname displayname num height room comments disable)], 
+        keys => [qw(rackname)],
+        table_desc => 'Rack information.',
+        descriptions => {
+            rackname => 'The rack name.',
+            displayname => 'Alternative name for rack. Only used by PCM.',
+            num => 'The rack number.',
+            height => 'Number of units which can be stored in the rack.',
+            room => 'The room in which the rack is located.',
+            comments => 'Any user-written notes.',
+            disable => "Set to 'yes' or '1' to comment out this row.",
+        },
+},
 osdistro => {
-        cols => [qw(osdistroname basename majorversion minorversion arch type dirpaths comments disable)],
+        cols => [qw(osdistroname basename majorversion minorversion arch type dirpaths comments disable)], 
         keys => [qw(osdistroname)],
         table_desc => 'Information about all the OS distros in the xCAT cluster',
         descriptions => {
@@ -1201,7 +1258,77 @@ osdistro => {
             disable => "Set to 'yes' or '1' to comment out this row.",
         },
 },
+osdistroupdate => {
+        cols => [qw(osupdatename osdistroname dirpath downloadtime comments disable)], 
+        keys => [qw(osupdatename)],
+        table_desc => 'Information about the OS distro updates in the xCAT cluster',
+        descriptions => {
+            osupdatename => 'Name of OS update. (e.g. rhn-update1)',
+            osdistroname => 'The OS distro name to update. (e.g. rhels)',
+            dirpath => 'Path to where OS distro update is stored. (e.g. /install/osdistroupdates/rhels6.2-x86_64-20120716-update) ',
+            downloadtime => 'The timestamp when OS distro update was downloaded..',
+            comments => 'Any user-written notes.',
+            disable => "Set to 'yes' or '1' to comment out this row.",
+        },
+},
+kit => {
+        cols => [qw(kitname basename desc version ostype isinternal kitdeployparams kitdir comments disable)], 
+        keys => [qw(kitname)],
+        table_desc => 'This table stores all kits added to the xCAT cluster.',
+        descriptions => {
+            kitname => 'The unique generated kit name, when kit is added to the cluster.',
+            basename => 'The kit base name',
+            version => 'The kit version',
+            ostype => 'The kit OS type.  Linux or AIX.',
+            isinternal => 'A flag to indicated if the Kit is internally used.',
+            kitdeployparams => 'The file containing the default deployment parameters for this Kit.  These parameters are added to the OS Image definition.s list of deployment parameters when one or more Kit Components from this Kit are added to the OS Image.',
+            kitdir => 'The path to Kit Installation directory on the Mgt Node.',
+            comments => 'Any user-written notes.',
+            disable => "Set to 'yes' or '1' to comment out this row.",
+        },
+},
+kitrepo => {
+        cols => [qw(kitreponame kitname osbasename osmajorversion osminorversion osarch compat_osbasenames kitrepodir comments disable)], 
+        keys => [qw(kitreponame)],
+        table_desc => 'This table stores all kits added to the xCAT cluster.',
+        descriptions => {
+            kitreponame => 'The unique generated kit repo package name, when kit is added to the cluster.',
+            kitname => 'The Kit name which this Kit Package Repository belongs to.',
+            osbasenames => 'The OS distro name which this repository is based on.',
+            osmajorversion => 'The OS distro major version which this repository is based on.',
+            osminorversion => 'The OS distro minor version which this repository is based on. If this attribute is not set, it means that this repo applies to all minor versions.',
+            osarch => 'The OS distro arch which this repository is based on.',
+            compat_osbasenames => 'List of compatible OS base names.',
+            kitrepodir => 'The path to Kit Repository directory on the Mgt Node.',
+            comments => 'Any user-written notes.',
+            disable => "Set to 'yes' or '1' to comment out this row.",
+        },
+},
+kitcomponent => {
+        cols => [qw(kitcompname desc kitname kitreponame basename version release serverroles kitpkgdeps driverpacks kitcompdeps postbootscripts exlist comments disable)], 
+        keys => [qw(kitcompname)],
+        tablespace =>'XCATTBS16K',
+        table_desc => 'This table stores all kit components added to the xCAT cluster.',
+        descriptions => {
+            kitcompname => 'The unique Kit Component name. It is auto-generated when the parent Kit is added to the cluster.',
+            desc => 'The Kit component description.',
+            kitname => 'The Kit name which this Kit Component belongs to.',
+            kitreponame => 'The Kit Package Repository name which this Kit Component belongs to.',
+            basename => 'Kit Component basename.',
+            version => 'Kit Component version.',
+            release => 'Kit Component release.',
+            serverroles => 'The types of servers that this Kit Component can install on.  Valid types are: mgtnode, servicenode, compute',
+            kitpkgdeps => 'Comma-separated list of packages that this kit component depends on.',
+            driverpacks => 'Comma-separated List of driver package names. These must be full names like: pkg1-1.0-1.x86_64.rpm.',
+            kitcompdeps  => 'Comma-separated list of kit components that this kit component depends on.',
+            postbootscripts  => 'Comma-separated list of postbootscripts that will run during the node boot.',
+            exlist  => 'Exclude list file containing the files/directories to exclude when building a diskless image.',
+            comments => 'Any user-written notes.',
+            disable => "Set to 'yes' or '1' to comment out this row.",
+        },
+},
 ); # end of tabspec definition
+
 
 
 
@@ -1271,6 +1398,10 @@ foreach my $tabname (keys(%xCAT::ExtTab::ext_tabspec)) {
   eventlog => { attrs => [], attrhash => {}, objkey => 'recid' }, 
   auditlog => { attrs => [], attrhash => {}, objkey => 'recid' }, 
   boottarget => { attrs => [], attrhash => {}, objkey => 'bprofile' },
+  kit => { attrs => [], attrhash => {}, objkey => 'kitname' },
+  kitrepo => { attrs => [], attrhash => {}, objkey => 'kitreponame' },
+  kitcomponent => { attrs => [], attrhash => {}, objkey => 'kitcompname' },
+  rack => { attrs => [], attrhash => {}, objkey => 'rackname' },
   osdistro=> { attrs => [], attrhash => {}, objkey => 'osdistroname' },
 );
 
@@ -1423,6 +1554,10 @@ my @nodeattrs = (
   },
 	{attr_name => 'setupnim',
                  tabentry => 'servicenode.nimserver',
+                 access_tabentry => 'servicenode.node=attr:node',
+  },
+	{attr_name => 'dhcpinterfaces',
+                 tabentry => 'servicenode.dhcpinterfaces',
                  access_tabentry => 'servicenode.node=attr:node',
   },
 ######################
@@ -1820,6 +1955,21 @@ my @nodeattrs = (
                  tabentry => 'mpa.password',
                  access_tabentry => 'mpa.mpa=attr:node',
   },
+        {attr_name => 'displayname',
+                 only_if => 'nodetype=mm',
+                 tabentry => 'mpa.displayname',
+                 access_tabentry => 'mpa.mpa=attr:node',
+  },
+        {attr_name => 'slots',
+                 only_if => 'nodetype=mm',
+                 tabentry => 'mpa.slots',
+                 access_tabentry => 'mpa.mpa=attr:node',
+  },
+        {attr_name => 'urlpath',
+                 only_if => 'nodetype=mm',
+                 tabentry => 'mpa.urlpath',
+                 access_tabentry => 'mpa.mpa=attr:node',
+  },
 ######################
 #  nodepos table     #
 ######################
@@ -1844,6 +1994,33 @@ my @nodeattrs = (
                  tabentry => 'nodepos.room',
                  access_tabentry => 'nodepos.node=attr:node',
   },
+        {attr_name => 'height',
+                 tabentry => 'nodepos.height',
+                 access_tabentry => 'nodepos.node=attr:node',
+  },
+####################
+#  nics table  #
+####################
+        {attr_name => 'nicips',
+                tabentry => 'nics.nicips',
+                access_tabentry => 'nics.node=attr:node',
+        },
+        {attr_name => 'nichostnamesuffixes',
+                tabentry => 'nics.nichostnamesuffixes',
+                access_tabentry => 'nics.node=attr:node',
+        },
+        {attr_name => 'nictypes',
+                tabentry => 'nics.nictypes',
+                access_tabentry => 'nics.node=attr:node',
+        },
+        {attr_name => 'niccustomscripts',
+                tabentry => 'nics.niccustomscripts',
+                access_tabentry => 'nics.node=attr:node',
+        },
+        {attr_name => 'nicnetworks',
+                tabentry => 'nics.nicnetworks',
+                access_tabentry => 'nics.node=attr:node',
+        },
 ######################
 #  vm table          #
 ######################
@@ -1851,47 +2028,47 @@ my @nodeattrs = (
                  tabentry => 'vm.mgr',
                  access_tabentry => 'vm.node=attr:node',
                 },
-		{attr_name => 'vmhost',
+                {attr_name => 'vmhost',
                  tabentry => 'vm.host',
                  access_tabentry => 'vm.node=attr:node',
                 },
-		{attr_name => 'migrationdest',
+                {attr_name => 'migrationdest',
                  tabentry => 'vm.migrationdest',
                  access_tabentry => 'vm.node=attr:node',
                 },
-		{attr_name => 'vmstorage',
+                {attr_name => 'vmstorage',
                  tabentry => 'vm.storage',
                  access_tabentry => 'vm.node=attr:node',
                 },
-		{attr_name => 'vmstoragemodel',
+                {attr_name => 'vmstoragemodel',
                  tabentry => 'vm.storagemodel',
                  access_tabentry => 'vm.node=attr:node',
                 },
-		{attr_name => 'vmcfgstore',
+                {attr_name => 'vmcfgstore',
                  tabentry => 'vm.cfgstore',
                  access_tabentry => 'vm.node=attr:node',
                 },
-		{attr_name => 'vmmemory',
+                {attr_name => 'vmmemory',
                  tabentry => 'vm.memory',
                  access_tabentry => 'vm.node=attr:node',
                 },
-		{attr_name => 'vmcpus',
+                {attr_name => 'vmcpus',
                  tabentry => 'vm.cpus',
                  access_tabentry => 'vm.node=attr:node',
                 },
-		{attr_name => 'vmnics',
+                {attr_name => 'vmnics',
                  tabentry => 'vm.nics',
                  access_tabentry => 'vm.node=attr:node',
                 },
-		{attr_name => 'vmnicnicmodel',
+                {attr_name => 'vmnicnicmodel',
                  tabentry => 'vm.nicmodel',
                  access_tabentry => 'vm.node=attr:node',
                 },
-		{attr_name => 'vmbootorder',
+                {attr_name => 'vmbootorder',
                  tabentry => 'vm.bootorder',
                  access_tabentry => 'vm.node=attr:node',
                 },
-		{attr_name => 'vmvirtflags',
+                {attr_name => 'vmvirtflags',
                  tabentry => 'vm.virtflags',
                  access_tabentry => 'vm.node=attr:node',
                 },
@@ -1899,38 +2076,38 @@ my @nodeattrs = (
                  tabentry => 'vm.master',
                  access_tabentry => 'vm.node=attr:node',
                 },
-		{attr_name => 'vmvncport',
+                {attr_name => 'vmvncport',
                  tabentry => 'vm.vncport',
                  access_tabentry => 'vm.node=attr:node',
                 },
-		{attr_name => 'vmtextconsole',
+                {attr_name => 'vmtextconsole',
                  tabentry => 'vm.textconsole',
                  access_tabentry => 'vm.node=attr:node',
                 },
-		{attr_name => 'vmbeacon',
+                {attr_name => 'vmbeacon',
                  tabentry => 'vm.beacon',
                  access_tabentry => 'vm.node=attr:node',
                 },
-             {attr_name => 'vmcluster',
+                {attr_name => 'vmcluster',
                  tabentry => 'vm.cluster',
                  access_tabentry => 'vm.node=attr:node',
                 },
 ######################
 #  hypervisor table      #
 ######################
-             {attr_name => 'hosttype',
+                {attr_name => 'hosttype',
                  tabentry => 'hypervisor.type',
                  access_tabentry => 'hypervisor.node=attr:node',
                 },
-             {attr_name => 'hostinterface',
+                {attr_name => 'hostinterface',
                  tabentry => 'hypervisor.interface',
                  access_tabentry => 'hypervisor.node=attr:node',
                 },
-             {attr_name => 'hostmanager',
+                {attr_name => 'hostmanager',
                  tabentry => 'hypervisor.mgr',
                  access_tabentry => 'hypervisor.node=attr:node',
                 },
-             {attr_name => 'hostcluster',
+                {attr_name => 'hostcluster',
                  tabentry => 'hypervisor.cluster',
                  access_tabentry => 'hypervisor.node=attr:node',
                 },
@@ -2010,7 +2187,7 @@ my @nodeattrs = (
         {attr_name => 'node',
                  tabentry => 'nodelist.node',
                  access_tabentry => 'nodelist.node=attr:node',
-   },
+             },
         {attr_name => 'groups',
                  tabentry => 'nodelist.groups',
                  access_tabentry => 'nodelist.node=attr:node',
@@ -2035,14 +2212,22 @@ my @nodeattrs = (
                  tabentry => 'nodelist.primarysn',
                  access_tabentry => 'nodelist.node=attr:node',
              },
-		{attr_name => 'usercomment',
-                 tabentry => 'nodelist.comments',
-                 access_tabentry => 'nodelist.node=attr:node',
-             },
 		{attr_name => 'hidden',
                  tabentry => 'nodelist.hidden',
                  access_tabentry => 'nodelist.node=attr:node',
              },             
+		{attr_name => 'updatestatus',
+                 tabentry => 'nodelist.updatestatus',
+                 access_tabentry => 'nodelist.node=attr:node',
+             },             
+		{attr_name => 'updatestatustime',
+                 tabentry => 'nodelist.updatestatustime',
+                 access_tabentry => 'nodelist.node=attr:node',
+             },             
+		{attr_name => 'usercomment',
+                 tabentry => 'nodelist.comments',
+                 access_tabentry => 'nodelist.node=attr:node',
+             },
           );
 
 # add on the node attrs from other tables
@@ -2064,12 +2249,24 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  tabentry => 'osimage.imagetype',
                  access_tabentry => 'osimage.imagename=attr:imagename',
                  },
+ {attr_name => 'desc',
+                 tabentry => 'osimage.desc',
+                 access_tabentry => 'osimage.imagename=attr:imagename',
+                 },
  {attr_name => 'provmethod',
                  tabentry => 'osimage.provmethod',
                  access_tabentry => 'osimage.imagename=attr:imagename',
                  },
  {attr_name => 'osdistroname',
                  tabentry => 'osimage.osdistroname',
+                 access_tabentry => 'osimage.imagename=attr:imagename',
+                 },
+ {attr_name => 'osupdatename',
+                 tabentry => 'osimage.osupdatename',
+                 access_tabentry => 'osimage.imagename=attr:imagename',
+                 },
+ {attr_name => 'cfmdir',
+                 tabentry => 'osimage.cfmdir',
                  access_tabentry => 'osimage.imagename=attr:imagename',
                  },
  {attr_name => 'rootfstype',
@@ -2109,12 +2306,38 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  tabentry => 'osimage.postbootscripts',
                  access_tabentry => 'osimage.imagename=attr:imagename',
                  },
+ {attr_name => 'osdistroupdates',
+                 tabentry => 'osimage.osdistroupdates',
+                 access_tabentry => 'osimage.imagename=attr:imagename',
+                 },
+ {attr_name => 'serverrole',
+                 tabentry => 'osimage.serverrole',
+                 access_tabentry => 'osimage.imagename=attr:imagename',
+                 },
+ {attr_name => 'isdeletable',
+                 tabentry => 'osimage.isdeletable',
+                 access_tabentry => 'osimage.imagename=attr:imagename',
+                 },
+ {attr_name => 'kitcomponents',
+                 tabentry => 'osimage.kitcomponents',
+                 access_tabentry => 'osimage.imagename=attr:imagename',
+                 },
 ####################
 # linuximage table#
 ####################
  {attr_name => 'template',
                  only_if => 'imagetype=linux',
                  tabentry => 'linuximage.template',
+                 access_tabentry => 'linuximage.imagename=attr:imagename',
+                }, 
+ {attr_name => 'boottarget',
+                 only_if => 'imagetype=linux',
+                 tabentry => 'linuximage.boottarget',
+                 access_tabentry => 'linuximage.imagename=attr:imagename',
+                }, 
+ {attr_name => 'addkcmdline',
+                 only_if => 'imagetype=linux',
+                 tabentry => 'linuximage.addkcmdline',
                  access_tabentry => 'linuximage.imagename=attr:imagename',
                 }, 
  {attr_name => 'pkglist',
@@ -2384,7 +2607,6 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  tabentry => 'networks.ddnsdomain',
                  access_tabentry => 'networks.netname=attr:netname',
   },
-
         {attr_name => 'vlanid',
                  tabentry => 'networks.vlanid',
                  access_tabentry => 'networks.netname=attr:netname',
@@ -2393,11 +2615,44 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  tabentry => 'networks.domain',
                  access_tabentry => 'networks.netname=attr:netname',
   },
+  		{attr_name => 'staticrange',
+                 tabentry => 'networks.staticrange',
+                 access_tabentry => 'networks.netname=attr:netname',
+  },
+  		{attr_name => 'staticrangeincrement',
+                 tabentry => 'networks.staticrangeincrement',
+                 access_tabentry => 'networks.netname=attr:netname',
+  },
  {attr_name => 'usercomment',
                  tabentry => 'networks.comments',
                  access_tabentry => 'networks.netname=attr:netname',
                 },
              );
+####################
+#  rack table      #
+####################
+@{$defspec{rack}->{'attrs'}} = (
+        {attr_name => 'rackname',
+                tabentry => 'rack.rackname',
+                access_tabentry => 'rack.rackname=attr:rackname',
+        },
+        {attr_name => 'displayname',
+                tabentry => 'rack.displayname',
+                access_tabentry => 'rack.rackname=attr:rackname',
+        },
+        {attr_name => 'num',
+                tabentry => 'rack.num',
+                access_tabentry => 'rack.rackname=attr:rackname',
+        },
+        {attr_name => 'height',
+                tabentry => 'rack.height',
+                access_tabentry => 'rack.rackname=attr:rackname',
+        },
+        {attr_name => 'room',
+                tabentry => 'rack.room',
+                access_tabentry => 'rack.rackname=attr:rackname',
+        },
+   );
 #########################
 #  route data object  #
 #########################
@@ -2470,8 +2725,12 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
          tabentry => 'nodegroup.grouptype',
    access_tabentry => 'nodegroup.groupname=attr:groupname',
    },
-        {attr_name => 'members',
+ {attr_name => 'members',
                  tabentry => 'nodegroup.members',
+                 access_tabentry => 'nodegroup.groupname=attr:groupname',
+                 },
+ {attr_name => 'membergroups',
+                 tabentry => 'nodegroup.membergroups',
                  access_tabentry => 'nodegroup.groupname=attr:groupname',
                  },
  {attr_name => 'wherevals',
@@ -2650,6 +2909,11 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
 );
 
 
+#############################
+#  auditlog object #
+#############################
+#   auditlog table    #
+#############################
 
 @{$defspec{auditlog}->{'attrs'}} = (
         {attr_name => 'recid',
@@ -2698,6 +2962,11 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
                  },
 );
 
+#############################
+#  firmware object #
+#############################
+#    firmware table    #
+#############################
 
 @{$defspec{firmware}->{'attrs'}} =
 (
@@ -2714,7 +2983,9 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
         access_tabentry => 'firmware.file=attr:cfgfile',
      },
 );
-
+#############################
+#  osdistro object #
+#############################
 @{$defspec{osdistro}->{'attrs'}} = (
         {attr_name => 'osdistroname',
                 tabentry => 'osdistro.osdistroname',
@@ -2736,6 +3007,7 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
                 tabentry => 'osdistro.arch',
                 access_tabentry => 'osdistro.osdistroname=attr:osdistroname',
         },
+
         {attr_name => 'type',
                 tabentry => 'osdistro.type',
                 access_tabentry => 'osdistro.osdistroname=attr:osdistroname',
@@ -2746,6 +3018,145 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
         },
 );
 
+#############################
+#  kit object #
+#############################
+#     kit table    #
+#############################
+@{$defspec{kit}->{'attrs'}} = (
+        {attr_name => 'kitname',
+                 tabentry => 'kit.kitname',
+                 access_tabentry => 'kit.kitname=attr:kitname',
+        },
+        {attr_name => 'name',
+                 tabentry => 'kit.name',
+                 access_tabentry => 'kit.kitname=attr:kitname',
+        },
+        {attr_name => 'desc',
+                 tabentry => 'kit.desc',
+                 access_tabentry => 'kit.kitname=attr:kitname',
+        },
+        {attr_name => 'version',
+                 tabentry => 'kit.version',
+                 access_tabentry => 'kit.kitname=attr:kitname',
+        },
+        {attr_name => 'ostype',
+                 tabentry => 'kit.ostype',
+                 access_tabentry => 'kit.kitname=attr:kitname',
+        },
+        {attr_name => 'isinternal',
+                 tabentry => 'kit.isinternal',
+                 access_tabentry => 'kit.kitname=attr:kitname',
+        },
+        {attr_name => 'kitdeployparams',
+                 tabentry => 'kit.kitdeployparams',
+                 access_tabentry => 'kit.kitname=attr:kitname',
+        },
+
+);
+#############################
+#  kitrepo object #
+#############################
+#     kitrepo table    #
+#############################
+@{$defspec{kitrepo}->{'attrs'}} = (
+        {attr_name => 'kitreponame',
+                 tabentry => 'kitrepo.kitreponame',
+                 access_tabentry => 'kitrepo.kitreponame=attr:kitreponame',
+        },
+        {attr_name => 'kitname',
+                 tabentry => 'kitrepo.kitname',
+                 access_tabentry => 'kitrepo.kitreponame=attr:kitreponame',
+        },
+        {attr_name => 'osname',
+                 tabentry => 'kitrepo.osname',
+                 access_tabentry => 'kitrepo.kitreponame=attr:kitreponame',
+        },
+        {attr_name => 'osmajorversion',
+                 tabentry => 'kitrepo.osmajorversion',
+                 access_tabentry => 'kitrepo.kitreponame=attr:kitreponame',
+        },
+        {attr_name => 'osminorversion',
+                 tabentry => 'kitrepo.osminorversion',
+                 access_tabentry => 'kitrepo.kitreponame=attr:kitreponame',
+        },
+        {attr_name => 'osarch',
+                 tabentry => 'kitrepo.osarch',
+                 access_tabentry => 'kitrepo.kitreponame=attr:kitreponame',
+        },
+        {attr_name => 'compat_osbasenames',
+                tabentry => 'kitrepo.compat_osbasenames',
+                 access_tabentry => 'kitrepo.kitreponame=attr:kitreponame',
+        },
+        {attr_name => 'kitrepodir',
+                tabentry => 'kitrepo.kitrepodir',
+                 access_tabentry => 'kitrepo.kitreponame=attr:kitreponame',
+        },
+
+);
+#############################
+#############################
+#  kitcomponent object #
+#############################
+#     kitcomponent table    #
+#############################
+@{$defspec{kitcomponent}->{'attrs'}} = (
+        {attr_name => 'kitcompname',
+                 tabentry => 'kitcomponent.kitcompname',
+                 access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
+        },
+        {attr_name => 'desc',
+                 tabentry => 'kitcomponent.desc',
+                 access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
+        },
+        {attr_name => 'kitname',
+                 tabentry => 'kitcomponent.kitname',
+                 access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
+        },
+        {attr_name => 'kitreponame',
+                 tabentry => 'kitcomponent.kitrepoid',
+                 access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
+        },
+        {attr_name => 'basename',
+                 tabentry => 'kitcomponent.basename',
+                 access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
+        },
+        {attr_name => 'version',
+                 tabentry => 'kitcomponent.version',
+                 access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
+        },
+        {attr_name => 'release',
+                 tabentry => 'kitcomponent.release',
+                 access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
+        },
+        {attr_name => 'serverroles',
+                 tabentry => 'kitcomponent.serverroles',
+                 access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
+        },
+        {attr_name => 'kitpkgdeps',
+                 tabentry => 'kitcomponent.kitpkgdeps',
+                 access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
+        },
+        {attr_name => 'driverpacks',
+                 tabentry => 'kitcomponent.driverpacks',
+                 access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
+        },
+        {attr_name => 'kitcompdeps',
+                 tabentry => 'kitcomponent.kitcompdeps',
+                 access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
+        },
+        {attr_name => 'postbootscripts',
+                 tabentry => 'kitcomponent.postbootscripts',
+                 access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
+        },
+        {attr_name => 'exlist',
+                 tabentry => 'kitcomponent.exlist',
+                 access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
+        },
+
+);
+
+###################################################
 
 ###################################################
 # adding user defined external defspec
