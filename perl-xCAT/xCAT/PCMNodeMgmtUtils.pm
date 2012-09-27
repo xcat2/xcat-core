@@ -6,6 +6,7 @@ use warnings;
 use Socket;
 use File::Path qw/mkpath/;
 use File::Temp qw/tempfile/;
+use Fcntl qw(:flock);
 require xCAT::Table;
 require xCAT::TableUtils;
 require xCAT::NodeRange;
@@ -67,6 +68,7 @@ sub get_allocable_staticips_innet
 =head3 genhosts_with_numric_tmpl
       Description : Generate numric hostnames using numric template name.
       Arguments   : $format - The hostname format string..
+                    $rank - The start number.
       Returns     : numric hostname list
       Example     : 
               calling  genhosts_with_numric_tmpl("compute#NNnode") will return a list like:
@@ -76,10 +78,10 @@ sub get_allocable_staticips_innet
 #-------------------------------------------------------------------------------
 sub genhosts_with_numric_tmpl
 {
-    my ($class, $format) = @_;
+    my ($class, $format, $rank) = @_;
 
     my ($prefix, $appendix, $len) = xCAT::PCMNodeMgmtUtils->split_hostname($format, 'N');
-    return xCAT::PCMNodeMgmtUtils->gen_numric_hostnames($prefix, $appendix, $len);
+    return xCAT::PCMNodeMgmtUtils->gen_numric_hostnames($prefix, $appendix, $len, $rank);
 }
 
 #-------------------------------------------------------------------------------
@@ -139,10 +141,13 @@ sub split_hostname
 #-------------------------------------------------------------------------------
 sub gen_numric_hostnames
 {
-    my ($class, $prefix, $appendix, $len) = @_;
+    my ($class, $prefix, $appendix, $len, $rank) = @_;
     my @hostnames;
+    my $cnt = 0;
 
-    my $cnt=0;
+    if ($rank){
+        $cnt = $rank;
+    } 
     my $maxnum = 10 ** $len;
     while($cnt < $maxnum)
     {
@@ -392,39 +397,56 @@ sub get_allnode_singleattrib_hash
 #-------------------------------------------------------------------------------
 
 =head3 acquire_lock
-      Description : Create lock file for node management plugin so that there is 
-                    no multi node mamangement plugins running.
-                    The file content will be the pid of the plugin running process.
-                    Once the plugin process terminated abnormally and lock file not removed,
-                    next time node management plugin runs, it will read the lock file 
-                    and check whether this process is running or not. If not, 
-                    just remove this lock file and create a new one.
-      Arguments   : N/A
-      Returns     : 1 - create lock success.
-                    0 - failed, there may be a node management process running.
+      Description : Create lock file for PCM plugins so that there is 
+                    no multi instance of plugins running at same time.
+                    The lock file content will be the pid of the plugin running process.
+                    Using perl's flock to achive this.
+                    Note: we can not judge whether PCM discovering is running or only 
+                          through acquire_lock("nodemgmt")
+                          We must also call is_discover_started() 
+      Arguments   : action name: for example: nodemgmt, imageprofile...etc We'll generate
+                    a lock file named as /var/lock/pcm/$action.
+      Returns     : -1 - Acquire lock failed.
+                    fh of lock file - the filehandler of lock file.
 =cut
 
 #-------------------------------------------------------------------------------
 sub acquire_lock
 {
-    my $lockfile = "/var/lock/pcm/nodemgmt";
+    my $class = shift;
+    my $action = shift;
     my $lockdir = "/var/lock/pcm";
-    mkdir "$lockdir", 0755 unless -d "$lockdir";
+    my $lockfile = "$lockdir/$action";
 
-    if (-e $lockfile) {
-        open LOCKFILE, "<$lockfile";
-        my @lines = <LOCKFILE>;
-        my $pid = $lines[0];
-        if (-d "/proc/$pid") {
-            return 0;
-        } else{
-            # the process already not exists, remove lock file.
-            File::Path->rmtree($lockfile);
-        }
+    mkdir "$lockdir", 0755 unless -d "$lockdir";
+    open my $fh, ">$lockfile";
+    # use flock, non-blocking mode while acquiring a lock.
+    my $lockret = flock($fh, LOCK_EX|LOCK_NB);
+    if(! $lockret){
+        close $fh;
+        return -1;
     }
-    open LOCKFILE, ">$lockfile";
-    print LOCKFILE $$;
-    close LOCKFILE;
+
+    print $fh $$;
+    return $fh;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 is_discover_started
+      Description : Judge whether PCM discovering is running or not.
+      Arguments   : NA
+      Returns     : 1 - Discover is running
+                    0 - Discover is not started.
+=cut
+
+#-------------------------------------------------------------------------------
+sub is_discover_started
+{
+    my @sitevalues = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
+    if (! $sitevalues[0]){
+        return 0;
+    }
     return 1;
 }
 
@@ -432,23 +454,18 @@ sub acquire_lock
 
 =head3 release_lock
       Description : Release lock for node management process.
-      Arguments   : N/A
-      Returns     : N/A
+      Arguments   : fh - the lock file handler.
+      Returns     : return value of flock.
+                    True - release lock succeed.
+                    False - release lock failed.
 =cut
 
 #-------------------------------------------------------------------------------
 sub release_lock
 {
-    my $lockfile = "/var/lock/pcm/nodemgmt";
-    if (-e $lockfile){
-        open LOCKFILE, "<$lockfile";
-        my @lines = <LOCKFILE>;
-        my $pid = $lines[0];
-        close LOCKFILE;
-        if ($pid ne $$){
-            File::Path->rmtree($lockfile);
-        }
-    }
+    my $class = shift;
+    my $lockfh = shift;
+    return flock($lockfh, LOCK_UN|LOCK_NB);
 }
 
 #-------------------------------------------------------------------------------

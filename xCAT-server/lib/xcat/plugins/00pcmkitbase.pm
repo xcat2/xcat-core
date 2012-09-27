@@ -70,56 +70,95 @@ sub process_request {
     
     my $nodelist = $request->{node};
     my $retref;
+    my $rsp;
 
     if($command eq 'kitcmd_nodemgmt_add')
     {
+        $rsp->{info}->[0] = "[PCM nodes mgmt]Updating hosts entries";
+        $::CALLBACK->($rsp);
         $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodelist}, $request_command, 0, 1);
-        $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist, arg=>['-n']}, $request_command, 0, 1);
+        $rsp->{info}->[0] = "[PCM nodes mgmt]Updating DNS entries";
+        $::CALLBACK->($rsp);
+        $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist}, $request_command, 0, 1);
         # Work around for makedns bug, it will set umask to 0007.
         #umask(0022);
+        $rsp->{info}->[0] = "[PCM nodes mgmt]Update DHCP entries";
+        $::CALLBACK->($rsp);
         $retref = xCAT::Utils->runxcmd({command=>["makekdhcp"], node=>$nodelist}, $request_command, 0, 1);
+        $rsp->{info}->[0] = "[PCM nodes mgmt]Update known hosts";
+        $::CALLBACK->($rsp);
         $retref = xCAT::Utils->runxcmd({command=>["makeknownhosts"], node=>$nodelist}, $request_command, 0, 1);
         my $firstnode = (@$nodelist)[0];
         my $profileref = xCAT::PCMNodeMgmtUtils->get_nodes_profiles([$firstnode]);
         my %profilehash = %$profileref;
         if (exists $profilehash{$firstnode}{"ImageProfile"}){
+            $rsp->{info}->[0] = "[PCM nodes mgmt]Update nodes' boot settings";
+            $::CALLBACK->($rsp);
             $retref = xCAT::Utils->runxcmd({command=>["nodeset"], node=>$nodelist, arg=>['osimage='.$profilehash{$firstnode}{"ImageProfile"}]}, $request_command, 0, 1);
         }
 
     }
     elsif ($command eq 'kitcmd_nodemgmt_remove'){
         $retref = xCAT::Utils->runxcmd({command=>["nodeset"], node=>$nodelist, arg=>['offline']}, $request_command, 0, 1);
+        $rsp->{info}->[0] = "[PCM nodes mgmt]Update known hosts";
+        $::CALLBACK->($rsp);
         $retref = xCAT::Utils->runxcmd({command=>["makeknownhosts"], node=>$nodelist, arg=>['-r']}, $request_command, 0, 1);
+        $rsp->{info}->[0] = "[PCM nodes mgmt]Update DHCP entries";
+        $::CALLBACK->($rsp);
         $retref = xCAT::Utils->runxcmd({command=>["makekdhcp"], node=>$nodelist, arg=>['-d']}, $request_command, 0, 1);
+        $rsp->{info}->[0] = "[PCM nodes mgmt]Updating DNS entries";
+        $::CALLBACK->($rsp);
         $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist, arg=>['-d']}, $request_command, 0, 1);
         # Work around for makedns bug, it will set umask to 0007.
         #umask(0022);
+        $rsp->{info}->[0] = "[PCM nodes mgmt]Updating hosts entries";
+        $::CALLBACK->($rsp);
         $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodelist, arg=>['-d']}, $request_command, 0, 1);
     }
     elsif ($command eq 'kitcmd_nodemgmt_update'){
+        $rsp->{info}->[0] = "[PCM nodes mgmt]Updating hosts entries";
+        $::CALLBACK->($rsp);
         $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodelist}, $request_command, 0, 1);
-        $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist, arg=>['-n']}, $request_command, 0, 1);
+        $rsp->{info}->[0] = "[PCM nodes mgmt]Updating DNS entries";
+        $::CALLBACK->($rsp);
+        $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist}, $request_command, 0, 1);
         # Work around for makedns bug, it will set umask to 0007.
         #umask(0022);
+        $rsp->{info}->[0] = "[PCM nodes mgmt]Update DHCP entries";
+        $::CALLBACK->($rsp);
         $retref = xCAT::Utils->runxcmd({command=>["makekdhcp"], node=>$nodelist}, $request_command, 0, 1);
+        $rsp->{info}->[0] = "[PCM nodes mgmt]Update known hosts";
+        $::CALLBACK->($rsp);
         $retref = xCAT::Utils->runxcmd({command=>["makeknownhosts"], node=>$nodelist}, $request_command, 0, 1);
         my $firstnode = (@$nodelist)[0];
         my $profileref = xCAT::PCMNodeMgmtUtils->get_nodes_profiles([$firstnode]);
         my %profilehash = %$profileref;
         if (exists $profilehash{$firstnode}{"ImageProfile"}){
+            $rsp->{info}->[0] = "[PCM nodes mgmt]Update nodes' boot settings";
+            $::CALLBACK->($rsp);
             $retref = xCAT::Utils->runxcmd({command=>["nodeset"], node=>$nodelist, arg=>['osimage='.$profilehash{$firstnode}{"ImageProfile"}]}, $request_command, 0, 1);
         }
     }
     elsif ($command eq 'kitcmd_nodemgmt_refresh'){
+        $rsp->{info}->[0] = "[PCM nodes mgmt]Updating hosts entries";
+        $::CALLBACK->($rsp);
         $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodelist}, $request_command, 0, 1);
-        $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist, arg=>['-n']}, $request_command, 0, 1);
+        $rsp->{info}->[0] = "[PCM nodes mgmt]Updating DNS entries";
+        $::CALLBACK->($rsp);
+        $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist}, $request_command, 0, 1);
         # Work around for makedns bug, it will set umask to 0007.
         #umask(0022);
+        $rsp->{info}->[0] = "[PCM nodes mgmt]Update DHCP entries";
+        $::CALLBACK->($rsp);
         $retref = xCAT::Utils->runxcmd({command=>["makekdhcp"], node=>$nodelist}, $request_command, 0, 1);
+        $rsp->{info}->[0] = "[PCM nodes mgmt]Update known hosts";
+        $::CALLBACK->($rsp);
         $retref = xCAT::Utils->runxcmd({command=>["makeknownhosts"], node=>$nodelist}, $request_command, 0, 1);
     }
     elsif ($command eq 'kitcmd_nodemgmt_finished')
     {
+        $rsp->{info}->[0] = "[PCM nodes mgmt]Updating conserver configuration files";
+        $::CALLBACK->($rsp);
         $retref = xCAT::Utils->runxcmd({command=>["makeconservercf"]}, $request_command, 0, 1);
     }
     else
