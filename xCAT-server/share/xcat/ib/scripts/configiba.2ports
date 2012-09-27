@@ -82,9 +82,11 @@ else
     #for (( num = 0; num < loop_number; num++ ))
     while [ $num -lt $loop_number ]
     do
-          num1=`expr $num % 2`
-          `rmdev -d -l ib$num`
-          `rmdev -d -l ml$num1`
+          num0=`expr $num \* 2`
+          num1=`expr $num0 + 1`
+          `rmdev -d -l ib$num0 >/dev/null 2>&1`
+          `rmdev -d -l ib$num1 >/dev/null 2>&1`
+          `rmdev -d -l ml$num >/dev/null 2>&1`
           num=`expr $num + 1`
     done
     
@@ -92,6 +94,7 @@ else
     loop_number=`expr $ib_number \* 2` 
 
 fi
+
 
 
 HOST=`hostname -s`

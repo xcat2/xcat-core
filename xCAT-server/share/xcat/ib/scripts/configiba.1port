@@ -87,9 +87,13 @@ else
     #for (( num = 0; num < loop_number; num++ ))
     while [ $num -lt $loop_number ]
     do
-          num1=`expr $num % 2`
-          `rmdev -d -l ib$num`
-          `rmdev -d -l ml$num1`
+          `rmdev -d -l ib$num >/dev/null 2>&1`
+          n=`expr $num % 2`
+          if [ $n == 1 ]
+          then
+               mlnum=`expr $num / 2`
+              `rmdev -d -l ml$mlnum >/dev/null 2>&1`
+          fi
           num=`expr $num + 1`
     done
     
