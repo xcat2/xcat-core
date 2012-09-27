@@ -20,6 +20,7 @@ use xCAT::TableUtils;
 use xCAT::ServiceNodeUtils;
 use xCAT::NetworkUtils;
 use xCAT::InstUtils;
+use xCAT::CFMUtils;
 use Getopt::Long;
 use xCAT::GlobalDef;
 use Sys::Hostname;
@@ -481,6 +482,17 @@ sub preprocess_updatenode
       # the CFMUtils
       my @imagenames=xCAT::TableUtils->getimagenames(\@nodes);
       # Now here we will call CFMUtils
+      $::CALLBACK=$callback;
+      my $rc=0;
+      #$rc=xCAT::CFMUtils->updateCFMSynclistFile(\@imagenames);
+      if ($rc !=0) { 
+        my $rsp = {};
+        $rsp->{data}->[0] =
+           "The call to CFMUtils to build synclist returned an errorcode=$rc.";
+        $callback->($rsp);
+        return;
+     
+      }
     }
 
     # if  not -S or -P or --security
