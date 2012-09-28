@@ -134,10 +134,13 @@ sub updateUserInfo {
     my @osfiles = glob("$cfmdir/*.OS");
     if (! @osfiles)
     {
-        my $rsp = {};
-        $rsp->{data}->[0] = " Updating the /etc/passwd, shadow, group merge files under the CFM directory.";
-        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-        return 0;
+        if ($::VERBOSE)
+	{
+            my $rsp = {};
+            $rsp->{data}->[0] = "Skip to update the /etc/passwd, shadow, group merge files under the CFM directory.";
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+            return 0;
+        }
     }
 
     foreach my $file (@userfiles)
@@ -229,14 +232,23 @@ sub setCFMSynclistFile {
         if ($records->{'synclists'}) {$synclists = $records->{'synclists'}}
     } else 
     {
-        my $rsp = {};
-        $rsp->{error}->[0] = "Can not get cfmdir and synclists attributes, the osimage table may not been initialized.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-        return $cfmdir;
+	if ($::VERBOSE)
+	{
+            my $rsp = {};
+            $rsp->{data}->[0] = "There are no records for cfmdir and synclists attribute in the osimage:$img. There is nothing to process.";
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+            return;
+	}
+    }
+
+    # no cfmdir defined, return directly
+    if (!$cfmdir)
+    {
+        return;
     }
 
     my $found = 0;
-    my $index = 0;
+    my $index = 0; 
     if ($synclists)
     {
         my @lists = split(/,/, $synclists); # the synclists is a comma separated list
@@ -249,16 +261,26 @@ sub setCFMSynclistFile {
             }
             $index += 1;
         }
-        if ($cfmdir and !$found) { $synclists = "$synclists,$cfmsynclist"; } # add CFM synclist to the list
-        if ($found and !$cfmdir) { $synclists = join(',', delete $lists[$index]); } # remove CFM synclist from the list
+        if ($cfmdir and !$found)
+        {
+            # the CFM synclist is not defined, append it to $synclists
+            $synclists = "$synclists,$cfmsynclist"; 
+            # set the synclists attribute 
+            $osimage_t->setAttribs({imagename=>$img}, {'synclists' => $synclists});
+        } 
+        if ($found and !$cfmdir) 
+        {
+            # the cfmdir is disabled, but the CFM synclist file is defined, remove it from $synclists
+            $synclists = join(',', delete $lists[$index]);
+            $osimage_t->setAttribs({imagename=>$img}, {'synclists' => $synclists});
+        } 
     } else
     {
+        # no synclists defined, set it to CFM synclist file
         if ($cfmdir) { $synclists = $cfmsynclist; }
+        $osimage_t->setAttribs({imagename=>$img}, {'synclists' => $synclists});
     }
 
-    # Set the synclist file
-    $osimage_t->setAttribs({imagename=>$img}, {'synclists' => $synclists});
-    
     return $cfmdir;   
 }
 
@@ -473,10 +495,12 @@ sub setCFMPkglistFile {
         if ($records->{'pkglist'}) { $pkglists = $records->{'pkglist'}; }
     } else 
     {
-        my $rsp = {};
-        $rsp->{error}->[0] = "Can not get pkglist attribute, the linuximage table may not been initialized.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-        return 1;
+        if ($::VERBOSE)
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] = "There are no records for pkglist attribute in the linuximage:$img. There is nothing to process.";
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        }
     }
 
     my $found = 0;
@@ -484,22 +508,26 @@ sub setCFMPkglistFile {
     {
         foreach my $pkglist (split(/,/, $pkglists))
         {
-            if ($pkglist eq $cfmpkglist) 
+            if ($pkglist eq $cfmpkglist) # the pkglist file for CFM is found, exit the loop 
             {
                 $found = 1;
                 last;
             }
         }
-        # The pkglist file for CFM is found, return directly 
-        if (!$found) { $pkglists = "$pkglists,$cfmpkglist"; } 
+        # the pkglist file for CFM is not found, append it to $pkglits 
+        if (!$found) 
+        {
+            $pkglists = "$pkglists,$cfmpkglist"; 
+            # set the pkglist attribute for linuximage
+            $linuximage_t->setAttribs({imagename => $img}, {'pkglist' => $pkglists});
+        } 
     } else 
     {
+        # the pkglist file for linuximage is not defined, set it to $cfmpkglist
         $pkglists = $cfmpkglist;
+        $linuximage_t->setAttribs({imagename => $img}, {'pkglist' => $pkglists});
     }
 
-    # Set the pkglist attribute for linuximage
-    $linuximage_t->setAttribs({imagename => $img}, {'pkglist' => $pkglists});
-    
     return 0;   
 }
 
