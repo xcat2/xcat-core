@@ -159,8 +159,6 @@ sub remote_copy_command
             my @src_file =
               @{$$config{'destDir_srcFile'}{$dest_dir}{'same_dest_name'}};
 
-            #Remove a file from the list if it does not exist
-            #@src_file = map { $_ if -e $_; } @src_file;
             my $src_file_list = join ' ', @src_file;
             if ($src_file_list)
             {
@@ -176,7 +174,7 @@ sub remote_copy_command
               %{$$config{'destDir_srcFile'}{$dest_dir}{'diff_dest_name'}};
             foreach my $src_file_diff_dest (keys %diff_dest_hash)
             {
-                next if !-e $src_file_diff_dest;
+
                 my $diff_basename = $diff_dest_hash{$src_file_diff_dest};
                 print RSCYCCMDFILE
                   "$exec_path $sync_opt $src_file_diff_dest $dest_user_host:$dest_dir/$diff_basename\n";
