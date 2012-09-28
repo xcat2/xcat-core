@@ -909,7 +909,7 @@ site => {
    " nimprime :   The name of NIM server, if not set default is the AIX MN.
               If Linux MN, then must be set for support of mixed cluster (TBD).\n\n".
    " nodestatus:  If set to 'n', the nodelist.status column will not be updated during\n".
-   "              the node deployment, node discovery and power operations.\n\n".
+   "              the node deployment, node discovery and power operations. The default is to update.\n\n".
    " ntpservers:  A comma delimited list of NTP servers for the cluster - often the\n".
    "              xCAT management node.\n\n".
    " syspowerinterval:  For system p CECs, this is the number of seconds the rpower\n".
