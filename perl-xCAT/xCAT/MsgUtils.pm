@@ -133,7 +133,8 @@ This program module file, supports the xcat messaging and logging
 
                 D - DATA  goes to STDOUT
                 E - error.  This type of message will be sent to STDERR.
-                I - informational  goes to STDOUT
+                si - informational status info (sinfo)
+                I - informational  goes to STDOUT 
                 N - Node informational  goes to STDOUT
                 S - Message will be logged to syslog ( severe error)
                      Note S can be combined with other flags for example
@@ -209,11 +210,13 @@ This program module file, supports the xcat messaging and logging
      $rsp->{node}->[0]->{data}->[0] ="mydata";
      xCAT::MsgUtils->message("N", $rsp, $callback);
 
-
-
       my $rsp = {};
 		$rsp->{info}->[0] = "No hosts in node list\n";
 	    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+
+      my $rsp = {};
+		$rsp->{sinfo}->[0] = "No hosts in node list\n";
+	    xCAT::MsgUtils->message("IS", $rsp, $::CALLBACK);
 
 
       my $rsp = {};
@@ -271,7 +274,7 @@ sub message
     my $call_back = shift;    # optional
     my $exitcode  = shift;    # optional
 
-    # should be I, D, E, S, SA ,LS, W , L,N
+    # should be I,IS, D, E, S, SA ,LS, W , L,N
     #  or S(I, D, E, S, W, L,N)
     #
     # if new SA option need to split syslog messages from auditlog entry
@@ -353,6 +356,7 @@ sub message
         my $sevkey;
         if    ($sev =~ /D/) { $sevkey = 'data'; }
         elsif ($sev =~ /N/) { $sevkey = 'node'; }
+        elsif ($sev =~ /IS/) { $sevkey = 'sinfo'; }
         elsif ($sev =~ /I/) { $sevkey = 'info'; }
         elsif ($sev =~ /W/) { $sevkey = 'warning'; }
         elsif ($sev =~ /E/)
