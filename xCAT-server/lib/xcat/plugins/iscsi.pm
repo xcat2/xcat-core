@@ -148,10 +148,10 @@ sub process_request {
          $targname = "iqn.$year-$month.$domain:$node";
          $iscsitab->setNodeAttribs($node,{target=>$targname});
       }
-      system("tgtadm --mode target --op delete --tid ".get_tid($node)." -T $targname");
-      my $rc = system("tgtadm --mode target --op new --tid ".get_tid($node)." -T $targname");
+      system("tgtadm --lld iscsi --mode target --op delete --tid ".get_tid($node)." -T $targname");
+      my $rc = system("tgtadm --lld iscsi --mode target --op new --tid ".get_tid($node)." -T $targname");
       if ($rc) {
-         $rsp{error}=["tgtadm --mode target --op new --tid ".get_tid($node)." -T $targname returned $rc"];
+         $rsp{error}=["tgtadm --lld iscsi --mode target --op new --tid ".get_tid($node)." -T $targname returned $rc"];
          if ($rc == 27392) {
             push @{$rsp{error}},"This likely indicates the need to do /etc/init.d/tgtd start";
          }
@@ -160,17 +160,17 @@ sub process_request {
          %rsp=(name=>[$node]);
          next;
       }
-      $rc = system("tgtadm --mode logicalunit --op new --tid ".get_tid($node)." --lun 1 --backing-store $fileloc --device-type disk");
+      $rc = system("tgtadm --lld iscsi --mode logicalunit --op new --tid ".get_tid($node)." --lun 1 --backing-store $fileloc --device-type disk");
       if ($rc) {
-         $rsp{error}=["tgtadm --mode logicalunit --op new --tid ".get_tid($node)." --lun 1 --backing-store $fileloc returned $rc"];
+         $rsp{error}=["tgtadm --lld iscsi mode logicalunit --op new --tid ".get_tid($node)." --lun 1 --backing-store $fileloc returned $rc"];
          $rsp{errorcode} = [1];
          $callback->({node=>[\%rsp]}); 
          %rsp=(name=>[$node]);
          next;
       }
-      $rc = system("tgtadm --mode target --op bind --tid ".get_tid($node)." -I ".inet_ntoa(inet_aton($node)));
+      $rc = system("tgtadm --lld iscsi --mode target --op bind --tid ".get_tid($node)." -I ".inet_ntoa(inet_aton($node)));
       if ($rc) {
-         $rsp{error}=["tgtadm --mode target --op bind --tid ".get_tid($node)." -I ".inet_ntoa(inet_aton($node)) . " returned $rc"];
+         $rsp{error}=["tgtadm --lld iscsi --mode target --op bind --tid ".get_tid($node)." -I ".inet_ntoa(inet_aton($node)) . " returned $rc"];
          $rsp{errorcode} = [1];
          $callback->({node=>[\%rsp]}); 
          %rsp=(name=>[$node]);
