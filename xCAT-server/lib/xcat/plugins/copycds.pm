@@ -101,7 +101,8 @@ sub process_request {
 
     if (system("mount $mntopts '$file' /mnt/xcat")) {
 	eval { $callback->({error=>"copycds was unable to mount $file to /mnt/xcat.",errorcode=>[1]}) };
-        system("umount -l /mnt/xcat"); 
+        chdir("/");
+        system("umount /mnt/xcat"); 
       	return;
     }
     eval {
@@ -146,7 +147,8 @@ sub process_request {
     chdir($existdir);
     while (wait() > 0) { yield(); } #Make sure all children exit before trying umount
     };
-    system("umount -l /mnt/xcat");
+    chdir("/");
+    system("umount /mnt/xcat");
     unless ($identified) {
        $callback->({error=>["copycds could not identify the ISO supplied, you may wish to try -n <osver>"],errorcode=>[1]});
     }
