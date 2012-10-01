@@ -385,6 +385,9 @@ sub updateCFMSynclistFile {
             }
 
             # get the user specified records in synclist file
+            # LKV  should all no user records in the file.  It should be
+            # created new each call.  Remove this routine and all associated
+            # processing of user records
             my ($synced_ref, $append_ref, $execute_ref, $executealways_ref, $merge_ref) = getUserSynclistRecords($cfmsynclist, $cfmdir);
             my @synced = @$synced_ref;
             my @append = @$append_ref;
@@ -652,6 +655,7 @@ sub updateCFMPkglistFile {
 
 =head3 getUserSynclistRecords
     Get the user specified records from synclist file.
+    LKV: This routine should be removed.  There will be no user records
 
     Arguments:
       $synclist - the path for synclist file
