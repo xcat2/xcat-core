@@ -4212,7 +4212,7 @@ sub copycd {
         }
         if ($::CDMOUNTPATH) {
             chdir("/");
-            system("umount -l $::CDMOUNTPATH");
+            system("umount $::CDMOUNTPATH");
         }
     };
     my $KID;
@@ -4765,11 +4765,12 @@ sub cpNetbootImages {
             
             if(system("cp /mnt/xcat/* $destDir/")){
                 xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents to $destDir"], $output_handler);
-                system("umount -l /mnt/xcat");
+				chdir("/");
+                system("umount /mnt/xcat");
                 return;
             }
             chdir("/tmp");
-            system("umount -l /mnt/xcat");
+            system("umount /mnt/xcat");
             print "tempDir: $tmpDir\n";
             system("rm -rf $tmpDir");
             } elsif (-r "$srcDir/cim.vgz" and -r "$srcDir/vmkernel.gz" and -r "$srcDir/vmkboot.gz" and -r "$srcDir/sys.vgz") {
