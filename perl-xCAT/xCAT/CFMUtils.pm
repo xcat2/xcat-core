@@ -123,21 +123,24 @@ sub updateUserInfo {
 
     my @userfiles = ("/etc/passwd", "/etc/shadow", "/etc/group");
 
-    if (! -d $cfmdir)
-    {
-        my $rsp = {};
-        $rsp->{error}->[0] = "The CFM directory($cfmdir) does not exist.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-        return 1;
-    }
+    # LKV:checked before the call , no need to check again
+    #if (! -d $cfmdir)
+    #{
+    #    my $rsp = {};
+    #    $rsp->{error}->[0] = "The CFM directory($cfmdir) does not exist.";
+    #    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+    #    return 1;
+    #}
 
     my @osfiles = glob("$cfmdir/*.OS");
-    if (! @osfiles)
+    if (!@osfiles)
     {
         if ($::VERBOSE)
-	{
+        {
             my $rsp = {};
-            $rsp->{data}->[0] = "Skip to update the /etc/passwd, shadow, group merge files under the CFM directory.";
+            $rsp->{data}->[0] =
+    "Skiping the update of the /etc/passwd, shadow, group merge
+     files under the CFM directory.";
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
             return 0;
         }
@@ -150,6 +153,7 @@ sub updateUserInfo {
         my $backup = basename($file).".OS";
 
         # get the records from /etc/passwd, shadow, group file and backup
+        # and all the files from /install/osimages/$imgname/cfmdir directory  
         foreach my $userinfo ($file, "$cfmdir/$backup") 
         {
             my $fp;
@@ -178,7 +182,8 @@ sub updateUserInfo {
         }
 
         # update the merge file
-        my $mergefile = $cfmdir."/".$file.".merge";
+       # LKV my $mergefile = $cfmdir."/".$file.".merge";
+        my $mergefile = $cfmdir.$file.".merge";
         my @diff = xCAT::CFMUtils->arrayops("D", \@newrecords, \@oldrecords);
         # output the diff to merge files
         if (@diff)
@@ -219,8 +224,8 @@ sub updateUserInfo {
 sub setCFMSynclistFile {
     my ($class, $img) = @_;
 
-    my $cfmdir = "";
-    my $synclists = "";
+    my $cfmdir;
+    my $synclists;
     my $cfmsynclist = "/install/osimages/$img/synclist.cfm";
 
     # get the cfmdir and synclists attributes
@@ -230,15 +235,14 @@ sub setCFMSynclistFile {
     {
         if ($records->{'cfmdir'}) {$cfmdir = $records->{'cfmdir'}}
         if ($records->{'synclists'}) {$synclists = $records->{'synclists'}}
-    } else 
-    {
-	if ($::VERBOSE)
-	{
+    } else {
+      if ($::VERBOSE)
+	   {
             my $rsp = {};
             $rsp->{data}->[0] = "There are no records for cfmdir and synclists attribute in the osimage:$img. There is nothing to process.";
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
             return;
-	}
+	   }
     }
 
     # no cfmdir defined, return directly
@@ -251,31 +255,37 @@ sub setCFMSynclistFile {
     my $index = 0; 
     if ($synclists)
     {
-        my @lists = split(/,/, $synclists); # the synclists is a comma separated list
+        # the synclists is a comma separated list
+        my @lists = split(/,/, $synclists);
         foreach my $synclist (@lists)
         {
-            if ($synclist eq $cfmsynclist) # find the synclist configuration for CFM
+            # find the synclist configuration for CFM
+            if ($synclist eq $cfmsynclist) 
             {
                 $found = 1;
                 last;
             }
             $index += 1;
         }
-        if ($cfmdir and !$found)
+        if ($found == 0)
         {
             # the CFM synclist is not defined, append it to $synclists
             $synclists = "$synclists,$cfmsynclist"; 
             # set the synclists attribute 
             $osimage_t->setAttribs({imagename=>$img}, {'synclists' => $synclists});
-        } 
-        if ($found and !$cfmdir) 
-        {
-            # the cfmdir is disabled, but the CFM synclist file is defined, remove it from $synclists
-            $synclists = join(',', delete $lists[$index]);
-            $osimage_t->setAttribs({imagename=>$img}, {'synclists' => $synclists});
-        } 
-    } else
-    {
+        }
+        # LKV: we don't get here because we return if no $cfmdir 
+        # but CFM synclist file should not be there if no $cfmdir, whatever
+        # removes cfmdir attribute must also clean up synclist file.  This 
+        # maybe should be in a cleanupscript
+        # if ($found and !$cfmdir) 
+        # {
+          # the cfmdir is disabled, but the CFM synclist file 
+          #is defined, remove it from $synclists
+         #    $synclists = join(',', delete $lists[$index]);
+         #    $osimage_t->setAttribs({imagename=>$img}, {'synclists' => $synclists});
+         #} 
+    } else {
         # no synclists defined, set it to CFM synclist file
         if ($cfmdir) { $synclists = $cfmsynclist; }
         $osimage_t->setAttribs({imagename=>$img}, {'synclists' => $synclists});
@@ -341,35 +351,37 @@ sub updateCFMSynclistFile {
 
     foreach my $osimg (@osimgs)
     {
-        my $cfmdir = "";
+        my $cfmdir;
         $cfmdir = xCAT::CFMUtils->setCFMSynclistFile($osimg);
-        if ($cfmdir)
+        if ($cfmdir)   # check for /install/osiamges/$osimg/cfmdir
         {
             my $cfmsynclist = "/install/osimages/$osimg/synclist.cfm";
             if (! -d $cfmdir)
             {
-                my $rsp = {};
-                $rsp->{error}->[0] = "The CFM directory($cfmdir) does not exist.";
-                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-                return 1;
+                # skip this one go on to the next  image, nothing to do for 
+                # CFMUtils in this image
+                next;
             }
-            # check the cfmsynclist file and it's parent directory
-            if (! -d dirname($cfmsynclist))
-            {
-                mkpath dirname($cfmsynclist);
-            }
-            if (! -e $cfmsynclist)
-            {
-                system("touch $cfmsynclist");
-            }
+            # LKV :check the cfmsynclist file and it's parent directory
+            # already verified cfmdir exists
+            #if (! -d dirname($cfmsynclist))
+            #{
+            #    mkpath dirname($cfmsynclist);
+            #}
+            #if (! -e $cfmsynclist)   # no need to touch the file
+            #{
+            #    system("touch $cfmsynclist");
+            #}
 
             # update /etc/passwd, shadow, group merge files
             my $ret = xCAT::CFMUtils->updateUserInfo($cfmdir);
-            if ($ret)
+            if ($ret !=0 )
             {
                 my $rsp = {};
-                $rsp->{error}->[0] = "Update /etc/passwd, shadow, group merge files failed.";
+                $rsp->{error}->[0] = 
+                "Update /etc/passwd, shadow, group merge files failed.";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+                return 1;
             }
 
             # get the user specified records in synclist file
@@ -395,7 +407,7 @@ sub updateCFMSynclistFile {
             foreach my $file (@files)
             {
                 my $name = basename($file);
-                #TODO: find a better way to get the suffix
+                #TODO: find a better way to get the suffix 
                 my $suffix = ($name =~ m/([^.]+)$/)[0];
                 my $dest = substr($file, length($cfmdir));
                 if ($suffix eq "OS") # skip the backup files
@@ -415,9 +427,11 @@ sub updateCFMSynclistFile {
             {
                 print $fp "$file\n";
             }
-
-            # output the APPEND records maintained by CFM
-            print $fp "\n\nAPPEND:\n";
+            #  LKV: Only put EXECUTE, EXECUTEALWAYS, etc if there are files
+            if (@appendfiles  || @append ) {
+            #  print $fp "\n\nAPPEND:\n";
+              print $fp "APPEND:\n";
+            }
             foreach my $file (@appendfiles)
             { 
                 my $dest = substr($file, length($cfmdir), length($file) - length(".append") - length($cfmdir));
@@ -429,28 +443,41 @@ sub updateCFMSynclistFile {
                 print $fp "$file\n";
             }
 
-            # output the EXECUTE records
-            print $fp "\n\nEXECUTE:\n";
+            # output the EXECUTE records , if there are any
+            # LKV need to add check 
+            if (@execute) {
+              #print $fp "\n\nEXECUTE:\n";
+              print $fp "EXECUTE:\n";
+            }
             foreach my $file (@execute)
             {
                 print $fp "$file\n";
             }
-
             # output the EXECUTEALWAYS records
-            print $fp "\n\nEXECUTEALWAYS:\n";
+            if (@executealways){
+              #print $fp "\n\nEXECUTEALWAYS:\n";
+              print $fp "EXECUTEALWAYS:\n";
+            }
             foreach my $file (@executealways)
             {
                 print $fp "$file\n";
             }
 
-            # output the MERGE records maintianed by CFM
-            print $fp "\n\nMERGE:\n";
+            if (@mergefiles || @merge){
+            # output the MERGE records maintained by CFM
+               #print $fp "\n\nMERGE:\n";
+               print $fp "MERGE:\n";
+            }
             foreach my $file (@mergefiles)
             {
                 my $dest = substr($file, length($cfmdir), length($file) - length(".merge") - length($cfmdir));
                 print $fp "$file -> $dest\n";
             }
             # output the user specified MERGE records
+            #LKV:  you can only merge the /etc/passwd, /etc/shadow
+            # and /etc/groups.   No other files are supported. 
+            # If you have merge files for these three files,  the admin should
+            # not be allowed to also have merge files.    
             foreach my $file (@merge)
             {
                 print $fp "$file\n";
