@@ -38,9 +38,9 @@ sub handled_commands
 {
     return {
             copycd    => "anaconda",
-            mknetboot => "nodetype:os=(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
-            mkinstall => "nodetype:os=(esxi4.1)|(esx[34].*)|(centos.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
-            mkstatelite => "nodetype:os=(esx[34].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
+            mknetboot => "nodetype:os=(ol.*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
+            mkinstall => "nodetype:os=(esxi4.1)|(esx[34].*)|(ol.*)|(centos.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
+            mkstatelite => "nodetype:os=(esx[34].*)|(ol.*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
 	
             };
 }
@@ -1351,6 +1351,7 @@ sub copycd
         and $distname !~ /^centos/
         and $distname !~ /^fedora/
         and $distname !~ /^SL/
+        and $distname !~ /^ol/
         and $distname !~ /^rh/)
     {
 
@@ -1382,6 +1383,13 @@ sub copycd
         unless ($distname)
         {
             $distname =$xCAT::data::discinfo::distnames{$did};
+        }
+    }
+    elsif ($desc =~ /^Oracle Linux (\d)\.(\d)/)
+    {
+        unless ($distname)
+        {
+            $distname = "ol$1.$2";
         }
     }
     elsif ($desc =~ /^Final$/)
@@ -1612,6 +1620,10 @@ sub getplatform {
     elsif ($os =~ /SL.*/)
     {
         $platform = "SL";
+    }
+    elsif ($os =~ /ol.*/)
+    {
+        $platform = "ol";
     }
 
     return $platform;
