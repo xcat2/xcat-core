@@ -116,6 +116,7 @@ sub process_request
                     'd|dest=s'        => \$::SN2,       # dest SN akb MN
                     'D|destn=s'       => \$::SN2N,      # dest SN akb node
                     'l|liteonly'     => \$::SLonly,    # update statelite only!
+					'n|noretarget'    => \$::NORETARGET,  # no dump retarget
                     'P|postscripts=s' => \$::POST,      # postscripts to be run
                     'i|ignorenodes'   => \$::IGNORE,
                     'V|verbose'       => \$::VERBOSE,
@@ -890,6 +891,23 @@ sub process_request
 	}
 	$nimtab->close();
 
+	# need a list of nodes for each SN
+	#  - the nodes that have this SN as their primary SN
+	my %SNnodes;
+	my $nrtab = xCAT::Table->new('noderes');
+	my $nrhash;
+	if ($nrtab)
+	{
+		$nrhash = $nrtab->getNodesAttribs(\@nodes, ['xcatmaster', 'servicenode']);
+	}
+	$nrtab->close();
+
+	foreach my $node (@nodes)
+	{
+		my ($snode, $junk) = (split /,/, $nrhash->{$node}->[0]->{'servicenode'});
+																						push(@{$SNnodes{$snode}}, $node);
+	}
+
 	# now try to restore any backup client data
 
 	# for each service node
@@ -927,8 +945,11 @@ sub process_request
 
 			# restore file on node by node basis
 			#	we don't want all the files!
-			#	- just the ones we are moving
-			foreach my $nd (@nodes) {
+			# we need to process only the nodes that have this SN as
+			#   their primary
+			my @nodelist = @{$SNnodes{$s}};
+
+			foreach my $nd (@nodelist) {
 
 				$nd =~ s/\..*$//;
 
@@ -947,10 +968,19 @@ sub process_request
 						$filestring .= "$bkloc/$file ";
 					}
 				}
-				my $ccmd=qq~/usr/bin/cp -p -r $filestring $cdloc 2>/dev/null~;
+
+				if (!$filestring) {
+					my $rsp;
+					push @{$rsp->{data}}, "No backup client_data files for node $nd in $bkloc. Current client data files in $cdloc should be checked to avoid boot errors.\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					$error++;
+					next;
+				}
+
+				my $ccmd=qq~/usr/bin/cp -p $filestring $cdloc 2>/dev/null~;
 				if ($::VERBOSE) {
 					my $rsp;
-					push @{$rsp->{data}}, "Copying files from $bkloc to $cdloc on $s.\n";
+					push @{$rsp->{data}}, "Running \'$ccmd\' on $s.\n";
 					xCAT::MsgUtils->message("I", $rsp, $callback);
 				}
 
@@ -958,7 +988,8 @@ sub process_request
 				if ($::RUNCMD_RC != 0)
 				{
 					my $rsp;
-					push @{$rsp->{data}}, "Could not copy files to $cdloc.\n";
+					push @{$rsp->{data}}, "Could not copy\n$filestring\n\tto $cdloc.\n";
+					push @{$rsp->{data}}, "Command output:\n$output\n";
 					xCAT::MsgUtils->message("E", $rsp, $callback);
 					$error++;
 				}
@@ -972,13 +1003,15 @@ sub process_request
 	#
 	if ((!$::IGNORE) && ($::isaix) && ($sharedinstall eq "sns")) {
 
-		if (&dump_retarget($callback, \@nodes, $sub_req) != 0)
-		{
-			my $rsp;
-			push @{$rsp->{data}}, "One or more errors occured while attemping to re-target the dump device on cluster nodes.\n";
-			xCAT::MsgUtils->message("E", $rsp, $callback);
-			$error++;
-		}
+		if (!$::NORETARGET) {
+			if (&dump_retarget($callback, \@nodes, $sub_req) != 0)
+			{
+				my $rsp;
+				push @{$rsp->{data}}, "One or more errors occured while attemping to re-target the dump device on cluster nodes.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				$error++;
+			}
+		}	
 	}
 
     #
