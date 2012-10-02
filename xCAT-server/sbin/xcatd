@@ -189,16 +189,19 @@ if (xCAT::Utils->isMN()) {
     `$::XCATROOT/sbin/runsqlcmd`;
 }
 
-
+my $startupchild;
+my $startupparent;
 sub daemonize {
   chdir('/');
   umask 0022;
   my $pid;
+  socketpair($startupparent,$startupchild,AF_UNIX,SOCK_STREAM,PF_UNSPEC);
   if (! defined($pid = xCAT::Utils->xfork)) {
     xCAT::MsgUtils->message("S","Can't fork: $!");
     die;
   }
   if ($pid) {
+    close($startupparent); # the launcher only wants to examing startupchild
     if ($pidfile) {
       open(PFILE, '>', $pidfile);
       print PFILE $pid;
@@ -206,10 +209,18 @@ sub daemonize {
     } else {
       xCAT::MsgUtils->message("S","xCATd starting as PID $pid");
     }
+    my $result=<$startupchild>;
+    chomp($result);
+    unless ($result) { exit (1); } 
+    if ($result ne "SUCCESS") {
+      xCAT::MsgUtils->message("S","xCATd failed to start: $result");
+      exit(1);
+    }
     exit;
   }
+  close($startupchild); # only want child to report up to parent...
   if (! open STDIN, '/dev/null') {
-    xCAT::MsgUtils->message("S","Can't read /dev/null: $!");
+    print $startupparent "Can't read /dev/null: $!\n";
     die;
   }
   open STDOUT, '>/dev/null';
@@ -218,6 +229,7 @@ sub daemonize {
   $progname = \$0;
   if (! setsid) {
     xCAT::MsgUtils->message("S","Can't start new session");
+    print $startupparent "Can't start new session\n";
     die;
   }
 }
@@ -852,8 +864,16 @@ unless ($listener) {
   }
   xCAT::MsgUtils->message("S","xCAT service unable to open SSL services on $port: $!");
   closelog();
+  if ($startupparent) { 
+     print $startupparent "Unable to perform socket takeover from existing xCAT instance\n";
+  }
   die "ERROR:Unable to start xCAT service on port $port.";
 }
+if ($startupparent) { 
+   print $startupparent "SUCCESS\n";
+}
+
+
 #only write to pid file if we have listener, listener ownership serves as lock to protect integrity
 open($mainpidfile,">","/var/run/xcat/mainservice.pid"); #if here, everyone else has unlinked mainservicepid or doesn't care
 print $mainpidfile $$;
