@@ -360,6 +360,8 @@ sub updateCFMSynclistFile {
             {
                 # skip this one go on to the next  image, nothing to do for 
                 # CFMUtils in this image
+                # LKV: if you need to remove the synclist.cfm from the synclist
+                # attribute, you need to do it here.
                 next;
             }
             # LKV :check the cfmsynclist file and it's parent directory
