@@ -409,6 +409,12 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	            fi
 	            echo "enabled=1" >> $REPOFILE
 	            echo "gpgcheck=0" >> $REPOFILE
+                if [ $hasyum -eq 1 ]; then
+                    yum clean all
+                fi
+                if [ $haszypper -eq 1 ]; then
+                    zypper --non-interactive refresh
+                fi
 		elif [ $hasapt -eq 1 ] ; then
 		    REPOFILE="$repo_base/xCAT-otherpkgs$index.list"
 		    
@@ -471,13 +477,14 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 
     #now update all the existing rpms
     if [ $hasyum -eq 1 ]; then 
-        echo "yum -y upgrade"
-        result=`yum -y upgrade 2>&1`
-        logger -p local4.info -t xcat "$result"
-        if [ $? -ne 0 ]; then 
-	    logger -p local4.info -t xcat "otherpkgs: $result"
-        fi
-        echo "$result"
+        #echo "yum -y upgrade"
+        #result=`yum -y upgrade 2>&1`
+        #logger -p local4.info -t xcat "$result"
+        #if [ $? -ne 0 ]; then 
+	    #logger -p local4.info -t xcat "otherpkgs: $result"
+        #fi
+        #echo "$result"
+        echo "result"
     elif [ $haszypper -eq 1 ]; then
         echo "zypper --non-interactive update --auto-agree-with-license"
 	result=`zypper --non-interactive update --auto-agree-with-license 2>&1`
