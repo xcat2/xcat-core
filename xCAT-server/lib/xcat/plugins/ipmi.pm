@@ -4135,19 +4135,19 @@ sub did_led {
 		if ($returnd[2]) { # != 0) {
 			#It's on...
 			if ($returnd[6] == 4) {
-				xCAT::SvrUtils::sendmsg(sprintf("BIOS or admininstrator has %s lit",getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")),$callback,$sessdata->{node},%allerrornodes);
+				xCAT::SvrUtils::sendmsg(sprintf("BIOS or admininstrator has %s lit",getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds",$sdr)),$callback,$sessdata->{node},%allerrornodes);
             $sessdata->{activeleds}=1;
 			}
 			elsif ($returnd[6] == 3) {
-				xCAT::SvrUtils::sendmsg(sprintf("A user has manually requested LED 0x%04x (%s) be active",$sdr->led_id,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")),$callback,$sessdata->{node},%allerrornodes);
+				xCAT::SvrUtils::sendmsg(sprintf("A user has manually requested LED 0x%04x (%s) be active",$sdr->led_id,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds",$sdr)),$callback,$sessdata->{node},%allerrornodes);
             $sessdata->{activeleds}=1;
 			}
 			elsif ($returnd[6] == 1 && $sdr->led_id !=0) {
-				xCAT::SvrUtils::sendmsg(sprintf("LED 0x%02x%02x (%s) active to indicate LED 0x%02x%02x (%s) is active",$led_id_ms,$led_id_ls,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds"),$returnd[4],$returnd[5],getsensorname($mfg_id,$prod_id,($returnd[4]<<8)+$returnd[5],"ibmleds")),$callback,$sessdata->{node},%allerrornodes);
+				xCAT::SvrUtils::sendmsg(sprintf("LED 0x%02x%02x (%s) active to indicate LED 0x%02x%02x (%s) is active",$led_id_ms,$led_id_ls,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds",$sdr),$returnd[4],$returnd[5],getsensorname($mfg_id,$prod_id,($returnd[4]<<8)+$returnd[5],"ibmleds")),$callback,$sessdata->{node},%allerrornodes);
             $sessdata->{activeleds}=1;
 			}
 			elsif ($sdr->led_id ==0 and $led_id_ms == 0 and $led_id_ls == 0) {
-				xCAT::SvrUtils::sendmsg(sprintf("LED 0x0000 (%s) active to indicate system error condition.",getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")),$callback,$sessdata->{node},%allerrornodes);
+				xCAT::SvrUtils::sendmsg(sprintf("LED 0x0000 (%s) active to indicate system error condition.",getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds",$sdr)),$callback,$sessdata->{node},%allerrornodes);
             $sessdata->{activeleds}=1;
 				if ($returnd[6] == 1 and $returnd[4] == 0xf and $returnd[5] == 0xff) {
 					$sessdata->{doled} = [$returnd[4],$returnd[5]];
@@ -4173,7 +4173,7 @@ sub did_led {
             if ($led_id_ms == 0xf and $led_id_ls == 0xff) { 
  	           xCAT::SvrUtils::sendmsg(sprintf("LED active to indicate Sensor 0x%02x (%s) error.",$sensor_num,$sensor_desc),$callback,$sessdata->{node},%allerrornodes);
             } else {
-               xCAT::SvrUtils::sendmsg(sprintf("LED %02x%02x active to indicate Sensor 0x%02x (%s) error.",$led_id_ms,$led_id_ls,$sensor_num,$sensor_desc),$callback,$sessdata->{node},%allerrornodes);
+               xCAT::SvrUtils::sendmsg(sprintf("LED %02x%02x (%s) active to indicate Sensor 0x%02x (%s) error.",$led_id_ms,$led_id_ls,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds",$sdr),$sensor_num,$sensor_desc),$callback,$sessdata->{node},%allerrornodes);
             }
             $sessdata->{activeleds}=1;
 		        } else { #an LED is on for some other reason
@@ -5027,6 +5027,10 @@ sub parse_sdr { #parse sdr data, then cann initsdr_withreserveation to advance t
 			} else {
 				$sdr->led_id(($sdr_data[12]<<8)+$sdr_data[13]);
 			}
+			if (scalar(@sdr_data) > 17) { #well what do you know, we have an ascii description, probably...
+				my $id = unpack("Z*",pack("C*",@sdr_data[16..$#sdr_data]));
+				if ($id) { $sdr->id_string($id); }
+			}
 			#$sdr->led_id_ms($sdr_data[13]);
 			#$sdr->led_id_ls($sdr_data[12]);
 			$sdr->sensor_number(sprintf("%04x",$sdr->led_id));
@@ -5108,6 +5112,7 @@ sub getsensorname
 	my $prodid = shift;
 	my $sensor = shift;
 	my $file = shift;
+	my $sdr = shift;
 
 	my $mfg;
 	my $prod;
@@ -5116,6 +5121,7 @@ sub getsensorname
 	my $name="";
 
     if ($file and $file eq "ibmleds") {
+	    if ($sdr and $sdr->id_string ne "LED") { return $sdr->id_string; } # this is preferred mechanism
             if ($xCAT::data::ibmleds::leds{"$mfgid,$prodid"}->{$sensor}) {
               return $xCAT::data::ibmleds::leds{"$mfgid,$prodid"}->{$sensor}. " LED";
             } elsif ($ndebug) {
