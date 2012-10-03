@@ -21,6 +21,7 @@ use constant STATE_OPENSESSION=>1;
 use constant STATE_EXPECTINGRAKP2=>2;
 use constant STATE_EXPECTINGRAKP4=>3;
 use constant STATE_ESTABLISHED=>4;
+use constant STATE_FAILED=>4;
 #my $ipmidbg;
 #open($ipmidbg,">","/tmp/ipmidbg");
 #sub dprint {
@@ -460,6 +461,8 @@ sub timedout {
         $self->{ipmicallback}->($rsp,$self->{ipmicallback_args});
     	$self->{nowait}=0;
         return;
+    } elsif ($self->{sessionestablishmentcontext} == STATE_FAILED) {
+	return;
     }
     if ($self->{sessionestablishmentcontext} == STATE_OPENSESSION) { #in this particular case, we want to craft a new rmcp session request with a new client side session id, to aid in distinguishing retry from new
         $self->open_rmcpplus_request();
@@ -777,6 +780,7 @@ sub got_rakp2 {
     my @expectedhash = (unpack("C*",hmac_sha1($hmacdata,$self->{password})));
     foreach (0..(scalar(@expectedhash)-1)) {
         if ($expectedhash[$_] != $data[$_]) {
+	    $self->{sessionestablishmentcontext}=STATE_FAILED;
             $self->{onlogon}->("ERROR: Incorrect password provided",$self->{onlogon_args});
             return 9;
         }
