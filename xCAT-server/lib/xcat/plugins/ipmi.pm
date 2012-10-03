@@ -2955,7 +2955,7 @@ sub decodealert {
     my %sdr_hash = %{$sessdata->{sdr_hash}};
 	foreach $key (keys %sdr_hash) {
 		my $sdr = $sdr_hash{$key};
-		if($sdr->sensor_number == $sensor_num) {
+		if($sdr->sensor_number == $sensor_num  and $sdr->rec_type != 192 and $sdr->rec_type != 17) {
 			$sensor_desc = $sdr_hash{$key}->id_string;
 			if($sdr->rec_type == 0x01) {
 				last;
@@ -4166,7 +4166,7 @@ sub did_led {
                 my %sdr_hash = %{$sessdata->{sdr_hash}};
 			        foreach my $key (keys %sdr_hash) {
 					my $osdr = $sdr_hash{$key};
-			                if($osdr->sensor_number == $sensor_num) {
+			                if($osdr->sensor_number == $sensor_num  and $osdr->rec_type != 192 and $osdr->rec_type != 17) {
 			                        $sensor_desc = $sdr_hash{$key}->id_string;
 			                        if($osdr->rec_type == 0x01) {
 		                                	last;
