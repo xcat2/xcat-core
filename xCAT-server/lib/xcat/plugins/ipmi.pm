@@ -5769,7 +5769,7 @@ sub process_request {
 
 
   if ($command eq 'rpower') {
-    if (($global_check) && ($extrargs->[0] ne 'stat') && ($extrargs->[0] ne 'status') && ($extrargs->[0] ne 'state') && ($extargs->[0] ne 'suspend') && ($extargs->[0] ne 'wake')) { 
+    if (($global_check) && ($extrargs->[0] ne 'stat') && ($extrargs->[0] ne 'status') && ($extrargs->[0] ne 'state') && ($extrargs->[0] ne 'suspend') && ($extrargs->[0] ne 'wake')) { 
       $check=1; 
       my @allnodes=();
       foreach (@donargs) { push(@allnodes, $_->[0]); }
