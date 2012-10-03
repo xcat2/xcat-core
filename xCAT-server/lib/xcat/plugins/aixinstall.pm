@@ -8392,7 +8392,7 @@ sub prenimnodeset
 		}
 
         # Define the required resources on the SNs
-         my $rc = &defSNres($callback, \@nodelist, \%imghash, \%lochash, \%nodeosi, \%nimhash, $subreq, $type);
+        $rc = &defSNres($callback, \@nodelist, \%imghash, \%lochash, \%nodeosi, \%nimhash, $subreq, $type);
         if ($rc != 0 ) {
             my $rsp;
             push @{$rsp->{data}}, "Could not define NIM resources on service nod
@@ -9525,7 +9525,7 @@ sub define_SN_resource
 
     # get a list of NIM resources defined on this SN
 	my @nimresources;
-    my $cmd =
+    $cmd =
             qq~/usr/sbin/lsnim -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null
 ~;
     my $nimres =
@@ -14074,7 +14074,7 @@ sub update_spot_sw
                	my $rsp;
                	push @{$rsp->{data}}, "Could not open $tmp_emgr for reading.\n";
                	xCAT::MsgUtils->message("E", $rsp, $callback);
-               	$error++;
+               	return 1;
            	} else {
            		my @elist = <EFILE>;
            		close(EFILE);
@@ -14083,7 +14083,7 @@ sub update_spot_sw
            		if ($rc)
            		{
                		#failed to update RPM
-               		$error++;
+               		return 1;
            		}
             
            		# remove tmp file
@@ -14098,7 +14098,7 @@ sub update_spot_sw
                		push @{$rsp->{data}},
                  			"Could not run command: $cmd.\n";
                		xCAT::MsgUtils->message("E", $rsp, $callback);
-               		$error++;
+               		return 1;
            		}
 			}
 		}
@@ -14110,7 +14110,7 @@ sub update_spot_sw
                	my $rsp;
               	push @{$rsp->{data}}, "Could not open $tmp_rpm for reading.\n";
                	xCAT::MsgUtils->message("E", $rsp, $callback);
-               	$error++;
+               	return 1;
            	} else {
 
            		my @rlist = <RFILE>;
@@ -14120,7 +14120,7 @@ sub update_spot_sw
            		if ($rc)
            		{
                		#failed to update RPM
-               		$error++;
+               		return 1;
            		}
             
            		# remove tmp file
@@ -14135,7 +14135,7 @@ sub update_spot_sw
                		push @{$rsp->{data}},
                  			"Could not run command: $cmd.\n";
                		xCAT::MsgUtils->message("E", $rsp, $callback);
-               		$error++;
+               		return 1;
            		}
 			}
 		}
@@ -14704,6 +14704,7 @@ sub update_spot_installp
         my $rsp;
         push @{$rsp->{data}},
           "Could not install installp packages in SPOT $spotname.\n";
+		push @{$rsp->{data}}, "Command output:\n\n$output\n\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
@@ -14711,6 +14712,7 @@ sub update_spot_installp
     if ($::VERBOSE)
     {
         my $rsp;
+		push @{$rsp->{data}}, "Command output:\n\n$output\n\n";
         push @{$rsp->{data}}, "Completed Installing installp filesets in SPOT $spotname.\n";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }    
@@ -14842,14 +14844,12 @@ sub update_spot_rpm
     	{
 			$error++;
 			my $rsp;
-			#   push @{$rsp->{data}}, "\n\'$output\'\n";
+			push @{$rsp->{data}}, "Command output:\n\n$output\n\n";
 			xCAT::MsgUtils->message("E", $rsp, $callback);
-    	}
-
-		if ($::VERBOSE)
+    	} elsif ($::VERBOSE)
 		{
 			my $rsp;
-			push @{$rsp->{data}}, "$output\n";
+			push @{$rsp->{data}}, "Command output:\n\n$output\n\n";
 			xCAT::MsgUtils->message("I", $rsp, $callback);
 		}
 	}
@@ -14938,16 +14938,14 @@ sub update_spot_epkg
         my $rsp;
         push @{$rsp->{data}},
           "Could not install the interim fix in SPOT $spotname.\n";
-
 		push @{$rsp->{data}}, "One or more errors occurred while trying to install interim fix packages in $spotname.\n";
-        push @{$rsp->{data}}, "\n\'$output\'\n";
+		push @{$rsp->{data}}, "Command output:\n\n$output\n\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
-    }
-
-    if ($::VERBOSE)
+    } elsif ($::VERBOSE)
     {
         my $rsp;
+		push @{$rsp->{data}}, "Command output:\n\n$output\n\n";
         push @{$rsp->{data}}, "Completed Installing the interim fixes in SPOT $spotname.\n";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }    
