@@ -3939,6 +3939,7 @@ sub mk_lpp_source
 			# don't need source since the lpp dirs/file have already 
 			#	been created in the location
 
+
             $output = xCAT::Utils->runcmd("$lpp_cmd", -1);
             if ($::RUNCMD_RC != 0)
             {
@@ -6383,6 +6384,7 @@ sub chkFSspace
     #
     #  see if we need to increase the size of the fs
     #
+
     my $space_needed;
     if ($size >= $free_space)
     {
@@ -8962,6 +8964,7 @@ sub copyres2
 		my $reqsize = xCAT::Utils->runcmd("$ducmd", -1);
 		if ($::RUNCMD_RC != 0)
 		{
+
 			my $rsp;
 			push @{$rsp->{data}}, "Could not run: \'$ducmd\'\n";
 			if ($::VERBOSE)
@@ -14781,13 +14784,15 @@ sub update_spot_installp
         my $rsp;
         push @{$rsp->{data}},
           "Could not install installp packages in SPOT $spotname.\n";
+		push @{$rsp->{data}}, "Command output:\n\n$output\n\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
-    }
+    } 
 
     if ($::VERBOSE)
     {
         my $rsp;
+		push @{$rsp->{data}}, "Command output:\n\n$output\n\n";
         push @{$rsp->{data}}, "Completed Installing installp filesets in SPOT $spotname.\n";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }    
@@ -14919,14 +14924,12 @@ sub update_spot_rpm
     	{
 			$error++;
 			my $rsp;
-			#   push @{$rsp->{data}}, "\n\'$output\'\n";
+			push @{$rsp->{data}}, "Command output:\n\n$output\n\n";
 			xCAT::MsgUtils->message("E", $rsp, $callback);
-    	}
-
-		if ($::VERBOSE)
+    	} elsif ($::VERBOSE)
 		{
 			my $rsp;
-			push @{$rsp->{data}}, "$output\n";
+			push @{$rsp->{data}}, "Command output:\n\n$output\n\n";
 			xCAT::MsgUtils->message("I", $rsp, $callback);
 		}
 	}
@@ -15015,18 +15018,16 @@ sub update_spot_epkg
         my $rsp;
         push @{$rsp->{data}},
           "Could not install the interim fix in SPOT $spotname.\n";
-
 		push @{$rsp->{data}}, "One or more errors occurred while trying to install interim fix packages in $spotname.\n";
-        push @{$rsp->{data}}, "\n\'$output\'\n";
+		push @{$rsp->{data}}, "Command output:\n\n$output\n\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
-    }
-
-    if ($::VERBOSE)
-    {
-        my $rsp;
-        push @{$rsp->{data}}, "Completed Installing the interim fixes in SPOT $spotname.\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
+    } elsif ($::VERBOSE)
+   	{
+       	my $rsp;
+       	push @{$rsp->{data}}, "Completed Installing the interim fixes in SPOT $spotname.\n";
+		push @{$rsp->{data}}, "Command output:\n\n$output\n\n";
+       	xCAT::MsgUtils->message("I", $rsp, $callback);
     }    
 
     return 0;
