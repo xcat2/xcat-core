@@ -3939,7 +3939,6 @@ sub mk_lpp_source
 			# don't need source since the lpp dirs/file have already 
 			#	been created in the location
 
-
             $output = xCAT::Utils->runcmd("$lpp_cmd", -1);
             if ($::RUNCMD_RC != 0)
             {
@@ -6384,7 +6383,6 @@ sub chkFSspace
     #
     #  see if we need to increase the size of the fs
     #
-
     my $space_needed;
     if ($size >= $free_space)
     {
@@ -8964,7 +8962,6 @@ sub copyres2
 		my $reqsize = xCAT::Utils->runcmd("$ducmd", -1);
 		if ($::RUNCMD_RC != 0)
 		{
-
 			my $rsp;
 			push @{$rsp->{data}}, "Could not run: \'$ducmd\'\n";
 			if ($::VERBOSE)
@@ -14163,7 +14160,7 @@ sub update_spot_sw
            		if ($rc)
            		{
                		#failed to update RPM
-               		$error++;
+					return 1;
            		}
             
            		# remove tmp file
@@ -14178,7 +14175,7 @@ sub update_spot_sw
                		push @{$rsp->{data}},
                  			"Could not run command: $cmd.\n";
                		xCAT::MsgUtils->message("E", $rsp, $callback);
-               		$error++;
+               		return 1;
            		}
 			}
 		}
@@ -14190,7 +14187,7 @@ sub update_spot_sw
                	my $rsp;
               	push @{$rsp->{data}}, "Could not open $tmp_rpm for reading.\n";
                	xCAT::MsgUtils->message("E", $rsp, $callback);
-               	$error++;
+               	return 1;
            	} else {
 
            		my @rlist = <RFILE>;
@@ -14200,7 +14197,7 @@ sub update_spot_sw
            		if ($rc)
            		{
                		#failed to update RPM
-               		$error++;
+               		return 1;
            		}
             
            		# remove tmp file
@@ -14215,7 +14212,7 @@ sub update_spot_sw
                		push @{$rsp->{data}},
                  			"Could not run command: $cmd.\n";
                		xCAT::MsgUtils->message("E", $rsp, $callback);
-               		$error++;
+               		return 1;
            		}
 			}
 		}
