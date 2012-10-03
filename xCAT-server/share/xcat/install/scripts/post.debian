@@ -86,7 +86,6 @@ do
                 touch /opt/xcat/xcatinfo
             fi
             echo "XCATSERVER=$i" > /opt/xcat/xcatinfo
-            echo "REBOOT=TRUE" >> /opt/xcat/xcatinfo
 	    break
 	fi
 	RAND=$(perl -e 'print int(rand(5)). "\n"')
