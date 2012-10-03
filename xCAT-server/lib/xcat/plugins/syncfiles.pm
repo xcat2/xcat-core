@@ -94,12 +94,15 @@ sub syncfiles {
     xCAT::MsgUtils->message("S", "Cannot find synclist file for the $node");
     return 0;
   }
-
-  # call the xdcp plugin to handle the syncfile operation
-  my $args = ["-F", "$$synclist{$node}"];
-  my $env = ["DSH_RSYNC_FILE=$$synclist{$node}"];
-  $subreq->({command=>['xdcp'], node=>[$node], arg=>$args, env=>$env}, $callback);
-
+  # this can be a comma separated list of multiple
+  # syncfiles
+  my @sl = split(',',$$synclist{$node});
+  foreach my $synclistfile (@sl) { 
+    # call the xdcp plugin to handle the syncfile operation
+    my $args = ["-F", "$synclistfile"];
+    my $env = ["DSH_RSYNC_FILE=$synclistfile"];
+    $subreq->({command=>['xdcp'], node=>[$node], arg=>$args, env=>$env}, $callback);
+  }
   return 1;
 }
 
