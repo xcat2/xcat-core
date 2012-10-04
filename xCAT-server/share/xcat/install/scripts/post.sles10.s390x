@@ -151,10 +151,11 @@ mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
 # Install directory variable is set by nodeset
 $INSTALLDIR/postscripts/xcatinstallpost
-chkconfig xcatpostinit1 off
 EOF
 # Change permissions
 chmod 755 /opt/xcat/xcatinstallpost
+
+chkconfig --add xcatpostinit1
 
 #create the dskls post 
 cat >/opt/xcat/xcatdsklspost << 'EOF'

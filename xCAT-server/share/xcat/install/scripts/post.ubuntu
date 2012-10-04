@@ -144,7 +144,6 @@ ln -s /etc/init.d/xcatpostinit1 /etc/rc2.d/S84xcatpostinit1
 mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatinstallpost#
-rm /etc/rc2.d/S84xcatpostinit1
 EOF
 chmod 755 /opt/xcat/xcatinstallpost
 
