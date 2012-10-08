@@ -22,7 +22,7 @@ B<xdsh> [B<-h> | B<-V> | B<-q>]
 =head1 B<DESCRIPTION>
 
 The B<xdsh> command runs commands in parallel on remote nodes and/or the Management Node.   The B<xdsh> command issues  a
-remote  shell command for each target specified, and returns the output
+remote shell command for each target specified, and returns the output
 from all targets,
 formatted so that command results  from  all  nodes  can  be  managed.
 If the command is to be executed  on the Management Node, it does not use a remote shell command, but uses the local OS copy or shell command. The Management Node must be defined in the xCAT database. The best way to do this is to use the xcatconfig -m option. 
