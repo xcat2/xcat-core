@@ -160,8 +160,6 @@ sub preprocess_request
         $::IPv6 = 1;
     }
 
-    #my $sitetab = xCAT::Table->new('site');
-    #my $nfsv4entry = $sitetab->getAttribs({'key' => 'useNFSv4onAIX'}, 'value');
     my @tmp = xCAT::TableUtils->get_site_attribute("useNFSv4onAIX");
     my $nfsv4entry = $tmp[0];
     if( defined ($nfsv4entry) )
@@ -508,18 +506,12 @@ sub process_request
         xCAT::MsgUtils->message("E", $rsp, $callback);
     }
         
-    #my $sitetab = xCAT::Table->new('site');
-    #my $nfsv4entry = $sitetab->getAttribs({'key' => 'useNFSv4onAIX'}, 'value');
-    #if($nfsv4entry and defined ($nfsv4entry->{'value'}))
-    #{
     my @nfsv4entries = xCAT::TableUtils->get_site_attribute("useNFSv4onAIX");
     my $tmp = $nfsv4entries[0];
     if ( defined($tmp) && $tmp =~ /1|Yes|yes|YES|Y|y/)
     { 
         $::NFSv4 = 1;
     }
-    #}
-    #$sitetab->close;
 
     # figure out which cmd and call the subroutine to process
     if ($command eq "mkdsklsnode")
@@ -778,6 +770,7 @@ sub nimnodeset
     #
 
 	my $RChash;
+
     $RChash = &chk_resolv_conf($callback, \%objhash, \@nodelist, \%nethash, \%imagehash, \%attrs, \%nodeosi, $subreq);
     if ( !$RChash ){
         my $rsp;
@@ -1711,7 +1704,6 @@ sub spot_updates
 		#  don't remove spots if SNs are using shared file system
 		#   mkdsklsnode will take care of copying out the updated spot
 		# check the sharedinstall attr
-		#my $sharedinstall=xCAT::TableUtils->get_site_attribute('sharedinstall');
 		my @sharedinstalls=xCAT::TableUtils->get_site_attribute('sharedinstall');
 		my $sharedinstall = $sharedinstalls[0];
 		chomp $sharedinstall;
@@ -4595,12 +4587,8 @@ sub mk_resolv_conf_file
     my $fullname = "$loc/resolv.conf";
 
     # check site table - get domain, nameservers attr
-    #my $sitetab = xCAT::Table->new('site');
-    #my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
-    #my $domain = $tmp->{value};
     my @domains = xCAT::TableUtils->get_site_attribute("domain");
     my $domain = $domains[0];
-    #my ($tmp2) = $sitetab->getAttribs({'key' => 'nameservers'}, 'value');
     my @nameserver = xCAT::TableUtils->get_site_attribute("nameservers");
     my $tmp2 = $nameserver[0];
 
@@ -4615,8 +4603,6 @@ sub mk_resolv_conf_file
     {
         $nameservers = $tmp2;
     }
-
-   #$sitetab->close;
 
     # if set then create file
     if ($domain && $nameservers)
@@ -5538,6 +5524,7 @@ sub mk_mksysb
 sub prermnimimage
 {
     my $callback = shift;
+	my $sub_req = shift;
 
     my @servicenodes = ();    # pass back list of service nodes
     my %imagedef;             # pass back image def hash
@@ -5724,6 +5711,58 @@ sub prermnimimage
         @servicenodes = @allsn;
     }
 
+	# get the sharedinstall value
+	my $sharedinstall=xCAT::Utils->get_site_attribute('sharedinstall');
+	chomp $sharedinstall;
+
+	#	- if shared file system then we need to remove resources 
+	#		from a target SN first
+	#   - this avoids contention issues with NIM removing resources
+	#       on the rest of the SNs
+	if ( $sharedinstall eq "sns" ) {
+
+		#	- get a target SN and see if it is available
+		# pick a SN and make sure it is available
+		my $targetsn;
+		foreach $sn (@servicenodes) {
+			# pick something other than the management node
+			if (!xCAT::InstUtils->is_me($sn) ) {
+				my $snIP = xCAT::Utils::getNodeIPaddress($sn);
+				if(!defined $snIP) {
+					next;
+				}
+				if (xCAT::Utils::isPingable($snIP)) {
+					$targetsn=$sn;
+					last;
+				}
+			}
+		}
+
+		if ($targetsn) {
+			# remove these osimage resources on the SN
+			my $rc = &rmnimres($callback, \%imagedef, $targetsn, $image_name, \@allsn, $sub_req);
+
+			if ($rc != 0)
+			{
+				my $rsp;
+				push @{$rsp->{data}}, "One or more errors occurred when trying to remove the xCAT osimage definition \'$image_name\' and the related NIM resources.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				return 1;
+			}
+		}
+
+		#  remove targetsn from the sn list?????
+		my @tmpsn;
+		foreach my $s (@servicenodes) 
+		{
+			if ($s ne $targetsn) {
+				push(@tmpsn, $s);
+			}
+		}	
+		@servicenodes = @tmpsn;
+	}
+
+
     #
     # remove the osimage def - if requested
     #
@@ -5750,6 +5789,217 @@ sub prermnimimage
 
     return (0, \%imagedef, \@servicenodes, \@allsn);
 }
+
+#----------------------------------------------------------------------------
+
+=head3   rmnimres
+
+		Remove the specified NIM resources from the specified service node
+
+        Returns:
+                0 - OK
+                1 - error
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub rmnimres
+{
+	my $callback = shift;
+    my $imaghash = shift;
+    my $targetsn = shift; 
+	my $osimage	 = shift;
+	my $snall    = shift;
+    my $subreq   = shift;
+
+	my %imagedef;
+    if ($imaghash)
+    {
+        %imagedef = %{$imaghash};
+    }
+
+	my @allsn;
+	if ($snall) {
+		@allsn = @$snall;
+	}
+
+    #
+    #  Get a list of all nim resource types
+	#		(can do this on local system)
+    #
+    my $cmd =
+      qq~/usr/sbin/lsnim -P -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
+    my @nimrestypes = xCAT::Utils->runcmd("$cmd", -1);
+    if ($::RUNCMD_RC != 0)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not get NIM resource types.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+    #
+    #  Get a list of the all the nim resources defined on the SN
+    #
+    $cmd =
+      qq~/usr/sbin/lsnim -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
+    my @nimresources = ();
+	my $out = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $targetsn, $cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not get NIM resource definitions from $targetsn.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+	foreach my $line ( split(/\n/, $out)) {
+		$line =~ s/$targetsn:\s+//;
+		push(@nimresources, $line);
+	}
+
+    # foreach attr in the image def
+    my $error;
+    foreach my $attr (sort(keys %{$imagedef{$osimage}}))
+    {
+        chomp $attr;
+
+        if (!grep(/^$attr$/, @nimrestypes))
+        {
+            next;
+        }
+
+		# don't remove lpp_source resource unless they specify delete
+		if ( ($attr eq 'lpp_source')  && !$::DELETE)
+		{
+			next;
+		}
+
+        my @res_list;
+        my $res_name = $imagedef{$osimage}{$attr};
+        chomp $res_name;
+
+        unless($res_name)
+        {
+            next;
+        }
+
+        if ($attr eq 'script')
+        {
+            foreach (split /,/, $res_name)
+            {
+                chomp $_;
+                push @res_list, $_;
+            }
+        }
+        elsif ($attr eq 'installp_bundle')
+        {
+            foreach (split /,/, $res_name)
+            {
+                chomp $_;
+                push @res_list, $_;
+            }
+        }
+        else
+        {
+            push @res_list, $res_name;
+        }
+
+        foreach my $resname (@res_list)
+        {
+
+            # if it's a defined resource name we can try to remove it
+            if ($resname && grep(/^$resname$/, @nimresources))
+            {
+
+                # is it allocated?
+                my $alloc_count;
+				foreach my $sn (@allsn)
+				{
+					my $acount = xCAT::InstUtils->get_nim_attr_val($resname, "alloc_count",$callback, $sn, $subreq);
+					if ($acount != 0)
+					{
+						my $rsp;
+						push @{$rsp->{data}}, "The resource named \'$resname\' is currently allocated on $sn.\n";
+						xCAT::MsgUtils->message("I", $rsp, $callback);
+						$alloc_count++;
+					}
+				}
+
+                if (defined($alloc_count) && ($alloc_count != 0))
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "The resource named \'$resname\' will not be removed.\n";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+					$error++;
+                    next;
+                }
+
+                my $loc;
+                if ($::DELETE)
+                {
+
+                    # just use the NIM location value to remove these
+                    if (   ($attr eq "lpp_source")
+                        || ($attr eq "bosinst_data")
+                        || ($attr eq "script")
+                        || ($attr eq "installp_bundle")
+                        || ($attr eq "root")
+                        || ($attr eq "shared_root")
+                        || ($attr eq "paging"))
+                    {
+                        $loc = xCAT::InstUtils->get_nim_attr_val($resname, 'location', $callback, $targetsn, $subreq);
+                    }
+
+                    #  need the directory name to remove these
+                    if (($attr eq "resolv_conf") || ($attr eq "spot"))
+                    {
+                        my $tmp = xCAT::InstUtils->get_nim_attr_val($resname, 'location', $callback, $targetsn, $subreq);
+                        $loc = dirname($tmp);
+                    }
+                }
+
+                # try to remove it
+                my $cmd = "nim -Fo remove $resname";
+
+                my $output;
+				$output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $targetsn,  $cmd, 0);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Could not remove the NIM resource $resname on $targetsn.\n";
+                    push @{$rsp->{data}}, "$output";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    $error++;
+                    next;
+                }
+                else
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Removed the NIM resource named \'$resname\' on $targetsn\n";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
+
+                if ($::DELETE)
+                {
+                    if ($loc)
+                    {
+                        my $cmd = qq~/usr/bin/rm -R $loc~;
+                        my $output = xCAT::Utils->runcmd("$cmd", -1);
+						$output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $targetsn,  $cmd, 0);
+                    }
+                }
+            }
+        }
+    }
+
+    if ($error)
+    {
+        return 1;
+    }
+	return 0;
+}
+
 
 #----------------------------------------------------------------------------
 
@@ -9069,7 +9319,7 @@ sub copyres2
 			$cpcmd = qq~$::XCATROOT/bin/prsync -o "rlHpEAogDz" $resloc  $SNlist:$dir 2>/dev/null~;
 		}
 
-#		if ($::VERBOSE)
+		if ($::VERBOSE)
 		{
 			my $rsp;
 			push @{$rsp->{data}}, "Copying NIM resource $res to service nodes.\n";
@@ -12541,10 +12791,6 @@ sub make_SN_resource
             xCAT::MsgUtils->message("E", $rsp, $callback);
             return 1;
         }
-        #my $sitetab = xCAT::Table->new('site');
-        #my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
-        #my $domain = $tmp->{value};
-        #$sitetab->close;
         my @domains = xCAT::TableUtils->get_site_attribute("domain");
         my $domain = $domains[0];
         if (!$domain)
@@ -13607,7 +13853,7 @@ sub rmdsklsnode_usage
     push @{$rsp->{data}}, "\trmdsklsnode [-h | --help ]";
     push @{$rsp->{data}}, "or";
     push @{$rsp->{data}},
-      "\trmdsklsnode [-V|--verbose] [-f|--force] {-i image_name}\n\t\t[-p|--primarySN] [-b|--backupSN]  noderange";
+      "\trmdsklsnode [-V|--verbose] [-f|--force] [-r|--remdef]\n\t\t{-i image_name} [-p|--primarySN] [-b|--backupSN]  noderange";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
@@ -14151,7 +14397,7 @@ sub update_spot_sw
                	my $rsp;
                	push @{$rsp->{data}}, "Could not open $tmp_emgr for reading.\n";
                	xCAT::MsgUtils->message("E", $rsp, $callback);
-               	$error++;
+               	return 1;
            	} else {
            		my @elist = <EFILE>;
            		close(EFILE);
