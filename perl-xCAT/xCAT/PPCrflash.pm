@@ -157,10 +157,15 @@ sub parse_args {
     #--activate's value only can be concurrent and disruptive
     ################################
     if(exists($opt{activate})) {
-        if( ($opt{activate} ne "deferred") && ($opt{activate} ne "disruptive")) {
-            return (usage("--activate's value can only be deferred or disruptive"));
-        }
-
+        if (defined($request->{mgt}) && ($request->{mgt} =~ /xCAT::FSP/i)) {
+            if (($opt{activate} ne "deferred") && ($opt{activate} ne "disruptive")) {
+                return (usage("--activate's value can only be deferred or disruptive"));
+            }
+        } else {
+            if( ($opt{activate} ne "concurrent") && ($opt{activate} ne "disruptive")) {
+                return (usage("--activate's value can only be disruptive or concurrent"));
+            }
+        }  
         if(!exists( $opt{d} )) {
             $opt{d} = "/tmp";
         }
@@ -538,8 +543,8 @@ sub get_lic_filenames {
     #    }
         } else {
         $msg = $msg . "Upgrade $mtms!";
-            if($activate !~ /^(disruptive|deferred)$/) {
-                $msg = "Option --activate's value shouldn't be $activate, and it must be disruptive or deferred";
+            if($activate !~ /^(disruptive|concurrent)$/) {
+                $msg = "Option --activate's value shouldn't be $activate, and it must be disruptive or concurrent";
                 return ("", "","", $msg, -1);
             }
         } 
