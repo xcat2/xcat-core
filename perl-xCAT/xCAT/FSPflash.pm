@@ -44,7 +44,11 @@ sub dpush {
 # Parse the command line for options and operands 
 ##########################################################################
 sub parse_args {
-    xCAT::PPCrflash::parse_args(@_);
+    my $req = shift; 
+    $req->{mgt} = __PACKAGE__;
+    my $opt = xCAT::PPCrflash::parse_args($req);
+    delete($req->{mgt});
+    return $opt;
 }
 
 ##########################################################################
