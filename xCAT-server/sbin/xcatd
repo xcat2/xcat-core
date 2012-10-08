@@ -871,6 +871,7 @@ unless ($listener) {
 }
 if ($startupparent) { 
    print $startupparent "SUCCESS\n";
+   close($startupparent);
 }
 
 
