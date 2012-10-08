@@ -123,27 +123,16 @@ sub updateUserInfo {
 
     my @userfiles = ("/etc/passwd", "/etc/shadow", "/etc/group");
 
-    # LKV:checked before the call , no need to check again
-    #if (! -d $cfmdir)
-    #{
-    #    my $rsp = {};
-    #    $rsp->{error}->[0] = "The CFM directory($cfmdir) does not exist.";
-    #    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-    #    return 1;
-    #}
-
     my @osfiles = glob("$cfmdir/*.OS");
     if (!@osfiles)
     {
         if ($::VERBOSE)
         {
             my $rsp = {};
-            $rsp->{data}->[0] =
-    "Skiping the update of the /etc/passwd, shadow, group merge
-     files under the CFM directory.";
+            $rsp->{data}->[0] = "Skiping the update of the /etc/passwd, shadow, group merge files under the CFM directory.";
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-            return 0;
         }
+	return 0;
     }
 
     foreach my $file (@userfiles)
@@ -182,8 +171,7 @@ sub updateUserInfo {
         }
 
         # update the merge file
-       # LKV my $mergefile = $cfmdir."/".$file.".merge";
-        my $mergefile = $cfmdir.$file.".merge";
+        my $mergefile = $cfmdir."/".$file.".merge";
         my @diff = xCAT::CFMUtils->arrayops("D", \@newrecords, \@oldrecords);
         # output the diff to merge files
         if (@diff)
@@ -236,13 +224,13 @@ sub setCFMSynclistFile {
         if ($records->{'cfmdir'}) {$cfmdir = $records->{'cfmdir'}}
         if ($records->{'synclists'}) {$synclists = $records->{'synclists'}}
     } else {
-      if ($::VERBOSE)
-	   {
+        if ($::VERBOSE)
+        {
             my $rsp = {};
             $rsp->{data}->[0] = "There are no records for cfmdir and synclists attribute in the osimage:$img. There is nothing to process.";
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-            return;
-	   }
+        }
+        return;
     }
 
     # no cfmdir defined, return directly
@@ -274,17 +262,6 @@ sub setCFMSynclistFile {
             # set the synclists attribute 
             $osimage_t->setAttribs({imagename=>$img}, {'synclists' => $synclists});
         }
-        # LKV: we don't get here because we return if no $cfmdir 
-        # but CFM synclist file should not be there if no $cfmdir, whatever
-        # removes cfmdir attribute must also clean up synclist file.  This 
-        # maybe should be in a cleanupscript
-        # if ($found and !$cfmdir) 
-        # {
-          # the cfmdir is disabled, but the CFM synclist file 
-          #is defined, remove it from $synclists
-         #    $synclists = join(',', delete $lists[$index]);
-         #    $osimage_t->setAttribs({imagename=>$img}, {'synclists' => $synclists});
-         #} 
     } else {
         # no synclists defined, set it to CFM synclist file
         if ($cfmdir) { $synclists = $cfmsynclist; }
@@ -358,22 +335,15 @@ sub updateCFMSynclistFile {
             my $cfmsynclist = "/install/osimages/$osimg/synclist.cfm";
             if (! -d $cfmdir)
             {
-                # skip this one go on to the next  image, nothing to do for 
+                # skip this one go on to the next image, nothing to do for 
                 # CFMUtils in this image
-                # LKV: if you need to remove the synclist.cfm from the synclist
-                # attribute, you need to do it here.
                 next;
             }
-            # LKV :check the cfmsynclist file and it's parent directory
-            # already verified cfmdir exists
-            #if (! -d dirname($cfmsynclist))
-            #{
-            #    mkpath dirname($cfmsynclist);
-            #}
-            #if (! -e $cfmsynclist)   # no need to touch the file
-            #{
-            #    system("touch $cfmsynclist");
-            #}
+            # create the parent directory of CFM synclist file
+            if (! -d dirname($cfmsynclist))
+            {
+                mkpath dirname($cfmsynclist);
+            }
 
             # update /etc/passwd, shadow, group merge files
             my $ret = xCAT::CFMUtils->updateUserInfo($cfmdir);
@@ -385,17 +355,6 @@ sub updateCFMSynclistFile {
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                 return 1;
             }
-
-            # get the user specified records in synclist file
-            # LKV  should all no user records in the file.  It should be
-            # created new each call.  Remove this routine and all associated
-            # processing of user records
-            my ($synced_ref, $append_ref, $execute_ref, $executealways_ref, $merge_ref) = getUserSynclistRecords($cfmsynclist, $cfmdir);
-            my @synced = @$synced_ref;
-            my @append = @$append_ref;
-            my @execute = @$execute_ref;
-            my @executealways = @$executealways_ref;
-            my @merge = @$merge_ref;
 
             # recursively list the files under cfm directory 
             my @files = ();
@@ -427,65 +386,29 @@ sub updateCFMSynclistFile {
                     print $fp "$file -> $dest\n";
                 }
             }
-            # output the user specified records for syncing
-            foreach my $file (@synced)
-            {
-                print $fp "$file\n";
-            }
-            #  LKV: Only put EXECUTE, EXECUTEALWAYS, etc if there are files
-            if (@appendfiles  || @append ) {
-            #  print $fp "\n\nAPPEND:\n";
-              print $fp "APPEND:\n";
+
+            # output the APPEND records maintained by CFM
+            if (@appendfiles) {
+                print $fp "APPEND:\n";
             }
             foreach my $file (@appendfiles)
             { 
                 my $dest = substr($file, length($cfmdir), length($file) - length(".append") - length($cfmdir));
                 print $fp "$file -> $dest\n";
             }
-            # output the user specified APPEND records
-            foreach my $file (@append)
-            {
-                print $fp "$file\n";
-            }
 
-            # output the EXECUTE records , if there are any
-            # LKV need to add check 
-            if (@execute) {
-              #print $fp "\n\nEXECUTE:\n";
-              print $fp "EXECUTE:\n";
-            }
-            foreach my $file (@execute)
-            {
-                print $fp "$file\n";
-            }
-            # output the EXECUTEALWAYS records
-            if (@executealways){
-              #print $fp "\n\nEXECUTEALWAYS:\n";
-              print $fp "EXECUTEALWAYS:\n";
-            }
-            foreach my $file (@executealways)
-            {
-                print $fp "$file\n";
-            }
-
-            if (@mergefiles || @merge){
             # output the MERGE records maintained by CFM
-               #print $fp "\n\nMERGE:\n";
-               print $fp "MERGE:\n";
+            if (@mergefiles) {
+                print $fp "MERGE:\n";
             }
             foreach my $file (@mergefiles)
             {
+                my @userfiles = ("/etc/passwd", "/etc/shadow", "/etc/group");
                 my $dest = substr($file, length($cfmdir), length($file) - length(".merge") - length($cfmdir));
-                print $fp "$file -> $dest\n";
-            }
-            # output the user specified MERGE records
-            #LKV:  you can only merge the /etc/passwd, /etc/shadow
-            # and /etc/groups.   No other files are supported. 
-            # If you have merge files for these three files,  the admin should
-            # not be allowed to also have merge files.    
-            foreach my $file (@merge)
-            {
-                print $fp "$file\n";
+                # only /etc/passwd, /etc/shadow, /etc/groups merging is supported
+                if (grep(/$dest/, @userfiles)) {		
+                    print $fp "$file -> $dest\n";
+                }
             }
             
             # close the file 
@@ -599,14 +522,10 @@ sub updateCFMPkglistFile {
         return 1;
     }
 
-    # check the cfmpkglist file and it's parent directory
+    # check the parent directory of cfmpkglist file
     if (! -d dirname($cfmpkglist))
     {
         mkpath dirname($cfmpkglist);
-    }
-    if (! -e $cfmpkglist)
-    {
-        system("touch $cfmpkglist");
     }
 
     # get previous selected and removed OS packages list from pkglist file
@@ -650,136 +569,6 @@ sub updateCFMPkglistFile {
     close($fp);
 
     return 0;
-}
-
-
-#-----------------------------------------------------------------------------
-
-=head3 getUserSynclistRecords
-    Get the user specified records from synclist file.
-    LKV: This routine should be removed.  There will be no user records
-
-    Arguments:
-      $synclist - the path for synclist file
-      $cfmdir - the path for CFM directory
-    Returns:
-      refs for synced, appened, execute, executealways and merge records arrays
-    Globals:
-      none
-    Error:
-      none
-    Example:
-      my ($synced_ref, $append_ref, $execute_ref, $executealways_ref, $merge_ref) = xCAT::CFMUtils->getUserSynclistRecords($synclist, $cfmdir);
-      my @synced = @$synced_ref;
-      my @append = @$append_ref;
-      my @execute = @$execute_ref;
-      my @executealways = @$executealways_ref;
-      my @merge = @$merge_ref;
-
-=cut
-
-#----------------------------------------------------------------------------- 
-sub getUserSynclistRecords {
-    my ($class, $synclist, $cfmdir) = @_;
-
-    my @records = ();
-    # flags to identify the record for APPEND, EXECUTE, EXECUTEALWAYS, MERGE
-    my $isappend = 0;
-    my $isexecute = 0;
-    my $isexecutealways = 0;
-    my $ismerge = 0;
-    # lists for syncing files, APPEND, EXECUTE, EXECUTEALWAYS, MERGE records
-    my @synced = ();
-    my @append = ();
-    my @execute = ();
-    my @executealways = ();
-    my @merge = ();
-
-    my $synclistfp;
-    open($synclistfp, $synclist);
-    while (<$synclistfp>)
-    {
-        my $line = xCAT::CFMUtils->trim($_);
-        if (($line =~ /^#/) || ($line =~ /^\s*$/ ))
-        { #comment line or blank line
-            next;
-        } else 
-        {
-            if ($line =~ /^$cfmdir/) 
-            { # remove the records maintained by CFM
-                next;
-            } else
-            {
-                push @records, $line;
-            }
-        }
-    }
-    close($synclistfp);
-
-    # list the records
-    foreach my $record (@records)
-    {
-       if ($record eq "APPEND:") # set flag for APPEND records
-       {
-           $isappend = 1;
-           $isexecute = 0;
-           $isexecutealways = 0;
-           $ismerge = 0;
-           next;
-       }
-       if ($record eq "EXECUTE:") # set flag for EXECUTE records
-       {
-           $isexecute = 1;
-           $isappend = 0;
-           $isexecutealways = 0;
-           $ismerge = 0;
-           next;
-       }
-       if ($record eq "EXECUTEALWAYS:") # set flag for EXECUTEALWAYS records
-       {
-           $isexecutealways = 1;
-           $isappend = 0;
-           $isexecute = 0;
-           $ismerge = 0;
-           next;
-       }
-       if ($record eq "MERGE:") # set flag for MERGE records
-       {
-           $ismerge = 1;
-           $isappend = 0;
-           $isexecute = 0;
-           $isexecutealways = 0;
-           next;
-       }
- 
-       if (! ($isappend || $isexecute || $isexecutealways || $ismerge)) 
-       { # syncing file record
-           push @synced, $record; 
-           next;
-       }
-       if ($isappend && ! ($isexecute || $isexecutealways || $ismerge))
-       { # APPEND record
-           push @append, $record;
-           next;
-       }
-       if ($isexecute && ! ($isappend || $isexecutealways || $ismerge))
-       { # EXECUTE record
-           push @execute, $record;
-           next;
-       }
-       if ($isexecutealways && ! ($isappend || $isexecute || $ismerge))
-       { # EXECUTEALWAYS record
-           push @executealways, $record;
-           next;
-       }
-       if ($ismerge && ! ($isappend || $isexecute || $isexecutealways))
-       { # MERGE record
-           push @merge, $record;
-           next;
-       }
-    }
-
-    return (\@synced, \@append, \@execute, \@executealways, \@merge);
 }
 
 #-----------------------------------------------------------------------------
