@@ -639,7 +639,7 @@ sub process_request_nmap {
    my @nodesetnodes=();
    foreach my $ip6 (0,1) { #first pass, ipv4, second pass ipv6
    if ($ip6 and scalar(@ip6s)) {
-   open($fping,"nmap -6 -PS -n --send-ip -p $ports,3001 ".join(' ',@ip6s). " 2> /dev/null|") or die("Can't start nmap: $!");
+   open($fping,"nmap -6 -PS$ports,3001 -n --send-ip -p $ports,3001 ".join(' ',@ip6s). " 2> /dev/null|") or die("Can't start nmap: $!");
    } elsif (not $ip6 and scalar(@ips)) {
    open($fping,"nmap -PE -n --send-ip -p $ports,3001 ".join(' ',@ips). " 2> /dev/null|") or die("Can't start nmap: $!");
    } else { next; }
