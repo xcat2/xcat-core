@@ -3,13 +3,12 @@
 
 =head1
 
-    xCAT plugin to support PCM node management
-    These commands are designed to be called by PCM GUI.
+    xCAT plugin to support Profiled nodes management
     
 =cut
 
 #-------------------------------------------------------
-package xCAT_plugin::pcmnodes;
+package xCAT_plugin::profilednodes;
 
 use strict;
 use warnings;
@@ -19,7 +18,7 @@ require xCAT::Utils;
 require xCAT::TableUtils;
 require xCAT::NetworkUtils;
 require xCAT::MsgUtils;
-require xCAT::PCMNodeMgmtUtils;
+require xCAT::ProfiledNodeUtils;
 
 # Globals.
 # These 2 global variables are for storing the parse result of hostinfo file.
@@ -57,14 +56,14 @@ my %args_dict;
 #-------------------------------------------------------
 sub handled_commands {
     return {
-        addhost_hostfile   => 'pcmnodes',
-        addhost_discover     => 'pcmnodes',
-        removehost     => 'pcmnodes',
-        updatehost     => 'pcmnodes',
-        pcmdiscover_start => 'pcmnodes',
-        pcmdiscover_stop => 'pcmnodes',
-        pcmdiscover_nodels => 'pcmnodes',
-        findme => 'pcmnodes',
+        nodeimport => 'profilednodes',
+        nodepurge => 'profilednodes',
+        nodechprofile => 'profilednodes',
+        noderefresh =>  'profilednodes',
+        nodediscoverstart => 'profilednodes',
+        nodediscoverstop => 'profilednodes',
+        nodediscoverls => 'profilednodes',
+        findme => 'profilednodes',
     };
 }
 
@@ -88,39 +87,41 @@ sub process_request {
     $args = $request->{arg};
 
 
-    my $lockfh = xCAT::PCMNodeMgmtUtils->acquire_lock("nodemgmt");
+    my $lockfh = xCAT::ProfiledNodeUtils->acquire_lock("nodemgmt");
     if ($lockfh == -1){
         setrsp_errormsg("Can not acquire lock, some process is operating node related actions.");
         return;
     }
 
     # These commands should make sure no discover is running.
-    if (grep{ $_ eq $command} ("addhost_hostfile", "removehost", "updatehost")){
-        my $discover_running = xCAT::PCMNodeMgmtUtils->is_discover_started();
+    if (grep{ $_ eq $command} ("nodeimport", "nodepurge", "nodechprofile")){
+        my $discover_running = xCAT::ProfiledNodeUtils->is_discover_started();
         if ($discover_running){
-            setrsp_errormsg("Can not run command $command as PCM discover is running.");
-            xCAT::PCMNodeMgmtUtils->release_lock($lockfh);
+            setrsp_errormsg("Can not run command $command as profiled nodes discover is running.");
+            xCAT::ProfiledNodeUtils->release_lock($lockfh);
             return;
         }
     }
 	
-    if ($command eq "addhost_hostfile"){
-        addhost_hostfile()
-    } elsif ($command eq "removehost"){
-    	removehost();
-    } elsif ($command eq "updatehost"){
-    	updatehost();
-    } elsif ($command eq "pcmdiscover_start"){
-        pcmdiscover_start();
-    } elsif ($command eq "pcmdiscover_nodels"){
-        pcmdiscover_nodels();
+    if ($command eq "nodeimport"){
+        nodeimport()
+    } elsif ($command eq "nodepurge"){
+    	nodepurge();
+    } elsif ($command eq "nodechprofile"){
+    	nodechprofile();
+    } elsif ($command eq "noderefresh"){
+    	noderefresh();
+    } elsif ($command eq "nodediscoverstart"){
+        nodediscoverstart();
+    } elsif ($command eq "nodediscoverstop"){
+        nodediscoverstop();
     } elsif ($command eq "findme"){
         findme();
-    } elsif ($command eq "pcmdiscover_stop"){
-        pcmdiscover_stop();
+    } elsif ($command eq "nodediscoverls"){
+        nodediscoverls();
     }
 
-    xCAT::PCMNodeMgmtUtils->release_lock($lockfh);
+    xCAT::ProfiledNodeUtils->release_lock($lockfh);
 }
 
 #-------------------------------------------------------
@@ -159,13 +160,13 @@ sub parse_args{
 
 #-------------------------------------------------------
 
-=head3  addhost_hostfile
+=head3 nodeimport 
 
     Description : 
-    Create PCM nodes by importing hostinfo file.
-    This sub maps to request "addhost_hostfile", we need to call this command from CLI like following steps:
-    # ln -s /opt/xcat/bin/xcatclientnnr /opt/xcat/bin/addhost_hostfile
-    # addhost_hostfile file=/root/hostinfo.file networkprofile=network_cn imageprofile=rhel63_cn hardwareprofile=ipmi groups=group1,group2 
+    Create profiled nodes by importing hostinfo file.
+    This sub maps to request "nodeimport", we need to call this command from CLI like following steps:
+    # ln -s /opt/xcat/bin/xcatclientnnr /opt/xcat/bin/nodeimport
+    # nodeimport file=/root/hostinfo.file networkprofile=network_cn imageprofile=rhel63_cn hardwareprofile=ipmi groups=group1,group2 
     
     The hostinfo file should be written like: (MAC address is mandatory attribute)
     # Auto generate hostname for this node entry.
@@ -180,10 +181,10 @@ sub parse_args{
 =cut
 
 #-------------------------------------------------------
-sub addhost_hostfile {
+sub nodeimport{
 
     # Parse arges.
-    setrsp_infostr("[PCM nodes mgmt]Import PCM nodes through hostinfo file.");
+    setrsp_infostr("Import profiled nodes through hostinfo file.");
     my $retstr = parse_args();
     if ($retstr){
         setrsp_errormsg($retstr);
@@ -211,12 +212,12 @@ sub addhost_hostfile {
     }
 
     # Get database records: all hostnames, all ips, all racks...
-    setrsp_infostr("[PCM nodes mgmt]Getting database records.");
-    my $recordsref = xCAT::PCMNodeMgmtUtils->get_allnode_singleattrib_hash('nodelist', 'node');
+    setrsp_infostr("Getting database records.");
+    my $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('nodelist', 'node');
     %allhostnames = %$recordsref;
-    $recordsref = xCAT::PCMNodeMgmtUtils->get_allnode_singleattrib_hash('ipmi', 'bmc');
+    $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('ipmi', 'bmc');
     %allbmcips = %$recordsref;
-    $recordsref = xCAT::PCMNodeMgmtUtils->get_allnode_singleattrib_hash('mac', 'mac');
+    $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('mac', 'mac');
     %allmacs = %$recordsref;
     # MAC records looks like: "01:02:03:04:05:0E!node5│01:02:03:05:0F!node6-eth1". We want to get the real mac addres.
     foreach (keys %allmacs){
@@ -226,7 +227,7 @@ sub addhost_hostfile {
             $allmacs{$macstr} = 0;
         }
     }
-    $recordsref = xCAT::PCMNodeMgmtUtils->get_allnode_singleattrib_hash('hosts', 'ip');
+    $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('hosts', 'ip');
     %allinstallips = %$recordsref;
     $recordsref = xCAT::NetworkUtils->get_all_nicips(1);
     %allips = %$recordsref;
@@ -235,13 +236,13 @@ sub addhost_hostfile {
     %allips = (%allips, %allbmcips, %allinstallips);
 
     #TODO: can not use getallnode to get rack infos.
-    #$recordsref = xCAT::PCMNodeMgmtUtils->get_allnode_singleattrib_hash('rack', 'rackname');
+    #$recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('rack', 'rackname');
     %allracks = ();
-    $recordsref =  xCAT::PCMNodeMgmtUtils->get_all_chassis(1);
+    $recordsref =  xCAT::ProfiledNodeUtils->get_all_chassis(1);
     %allchassis = %$recordsref;
 
     # Generate temporary hostnames for hosts entries in hostfile. 
-    setrsp_infostr("[PCM nodes mgmt]Generate temporary hostnames.");
+    setrsp_infostr("Generate temporary hostnames.");
     my ($retcode_read, $retstr_read) = read_and_generate_hostnames($args_dict{'file'});
     if ($retcode_read != 0){
         setrsp_errormsg($retstr_read);
@@ -249,7 +250,7 @@ sub addhost_hostfile {
     }
 
     # Parse and validate the hostinfo string. The real hostnames will be generated here.
-    setrsp_infostr("[PCM nodes mgmt]Parsing hostinfo string and validate it.");
+    setrsp_infostr("Parsing hostinfo string and validate it.");
     my ($hostinfo_dict_ref, $invalid_records_ref) = parse_hosts_string($retstr_read);
     my %hostinfo_dict = %$hostinfo_dict_ref;
     my @invalid_records = @$invalid_records_ref;
@@ -263,60 +264,78 @@ sub addhost_hostfile {
     }
 
     # Create the real hostinfo string in stanza file format.
-    setrsp_infostr("[PCM nodes mgmt]Generating new hostinfo string.");
+    setrsp_infostr("Generating new hostinfo string.");
     my ($retcode_gen, $retstr_gen) = gen_new_hostinfo_string(\%hostinfo_dict);
     unless ($retcode_gen){
         setrsp_errormsg($retstr_gen);
         return;
     }
     # call mkdef to create hosts and then call nodemgmt for node management plugins.
-    setrsp_infostr("[PCM nodes mgmt]call mkdef to create pcm nodes.");
+    setrsp_progress("call mkdef to create nodes.");
     my $retref = xCAT::Utils->runxcmd({command=>["mkdef"], stdin=>[$retstr_gen], arg=>['-z']}, $request_command, 0, 1);
 
     my @nodelist = keys %hostinfo_dict;
-    setrsp_infostr("[PCM nodes mgmt]call nodemgmt plugins.");
-    $retref = xCAT::Utils->runxcmd({command=>["kitcmd_nodemgmt_add"], node=>\@nodelist}, $request_command, 0, 1);
-    $retref = xCAT::Utils->runxcmd({command=>["kitcmd_nodemgmt_finished"], node=>\@nodelist}, $request_command, 0, 1);
+    setrsp_progress("call nodemgmt plugins.");
+    $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>\@nodelist}, $request_command, 0, 1);
+    $retref = xCAT::Utils->runxcmd({command=>["kitnodefinished"], node=>\@nodelist}, $request_command, 0, 1);
     setrsp_success(\@nodelist);
 }
 
 #-------------------------------------------------------
 
-=head3  removehost
+=head3  nodepurge
 
-    Description : Remove PCM nodes. After nodes removed, their info in /etc/hosts, dhcp, dns... will be removed automatically.
+    Description : Remove nodes. After nodes removed, their info in /etc/hosts, dhcp, dns... will be removed automatically.
     Arguments   : N/A
 
 =cut
 
 #-------------------------------------------------------
-sub removehost{
+sub nodepurge{
     my $nodes   = $request->{node};
-    setrsp_infostr("[PCM nodes mgmt]Remove PCM nodes.");
+    setrsp_infostr("Purging nodes.");
     # For remove nodes, we should call 'nodemgmt' in front of 'noderm'
-    setrsp_infostr("[PCM nodes mgmt]call nodemgmt plugins.");
-    my $retref = xCAT::Utils->runxcmd({command=>["kitcmd_nodemgmt_remove"], node=>$nodes}, $request_command, 0, 1);
-    $retref = xCAT::Utils->runxcmd({command=>["kitcmd_nodemgmt_finished"], node=>$nodes}, $request_command, 0, 1);
-    setrsp_infostr("[PCM nodes mgmt]call noderm to remove nodes.");
+    setrsp_infostr("Call kit node plugins.");
+    my $retref = xCAT::Utils->runxcmd({command=>["kitnoderemove"], node=>$nodes}, $request_command, 0, 1);
+    $retref = xCAT::Utils->runxcmd({command=>["kitnodefinished"], node=>$nodes}, $request_command, 0, 1);
+    setrsp_infostr("Call noderm to remove nodes.");
     $retref = xCAT::Utils->runxcmd({command=>["noderm"], node=>$nodes}, $request_command, 0, 1);
     setrsp_success($nodes);
 }
 
 #-------------------------------------------------------
 
-=head3  updatehost
+=head3  noderefresh
 
-    Description : Update PCM node profiles: imageprofile, networkprofile and hardwareprofile.
+    Description : Re-Call kit plugins for node management
+    Arguments   : N/A
+
+=cut
+
+#------------------------------------------------------
+sub noderefresh
+{
+    my $nodes   = $request->{node};
+    my $retref = xCAT::Utils->runxcmd({command=>["kitnoderefresh"], node=>$nodes}, $request_command, 0, 1);
+    $retref = xCAT::Utils->runxcmd({command=>["kitnodefinished"], node=>$nodes}, $request_command, 0, 1);
+    setrsp_success($nodes);
+}
+
+#-------------------------------------------------------
+
+=head3  nodechprofile
+
+    Description : Update node profiles: imageprofile, networkprofile and hardwareprofile.
     Arguments   : N/A
 
 =cut
 
 #-------------------------------------------------------
-sub updatehost{
+sub nodechprofile{
     my $nodes   = $request->{node};
     my %updated_groups;
 
-    setrsp_infostr("[PCM nodes mgmt]Update PCM nodes settings.");
+    setrsp_infostr("Update nodes' profile settings.");
     # Parse arges.
     my $retstr = parse_args();
     if ($retstr){
@@ -333,7 +352,7 @@ sub updatehost{
     }
 
     # Get current templates for all nodes.
-    setrsp_infostr("[PCM nodes mgmt]Read database to get groups for all nodes.");
+    setrsp_infostr("Read database to get groups for all nodes.");
     my %groupdict;
     my $nodelstab = xCAT::Table->new('nodelist');
     my $nodeshashref = $nodelstab->getNodesAttribs($nodes, ['groups']);
@@ -362,23 +381,23 @@ sub updatehost{
     }
     
     #update DataBase.
-    setrsp_infostr("[PCM nodes mgmt]Update database records.");
+    setrsp_infostr("Update database records.");
     my $nodetab = xCAT::Table->new('nodelist',-create=>1);
     $nodetab->setNodesAttribs(\%updatenodeshash);
     $nodetab->close();
     
     # call plugins
-    setrsp_infostr("[PCM nodes mgmt]call nodemgmt plugins.");
-    my $retref = xCAT::Utils->runxcmd({command=>["kitcmd_nodemgmt_update"], node=>$nodes}, $request_command, 0, 1);
-    $retref = xCAT::Utils->runxcmd({command=>["kitcmd_nodemgmt_finished"], node=>$nodes}, $request_command, 0, 1);
+    setrsp_infostr("Call nodemgmt plugins.");
+    my $retref = xCAT::Utils->runxcmd({command=>["kitnodeupdate"], node=>$nodes}, $request_command, 0, 1);
+    $retref = xCAT::Utils->runxcmd({command=>["kitnodefinished"], node=>$nodes}, $request_command, 0, 1);
     setrsp_success($nodes);
 }
 
 #-------------------------------------------------------
 
-=head3  pcmdiscover_start
+=head3 nodediscoverstart 
 
-    Description : Start PCM discovery. If already started, return a failure.
+    Description : Start profiled nodes discovery. If already started, return a failure.
                   User should specify networkprofile, hardwareprofile, 
                   imageprofile, hostnameformat, rack, chassis, height and u so
                   that node's IP address will be generated automatcially 
@@ -392,9 +411,9 @@ sub updatehost{
 =cut
 
 #-------------------------------------------------------
-sub pcmdiscover_start{
+sub nodediscoverstart{
     # Parse arges.
-    setrsp_infostr("[PCM nodes mgmt]PCM discovery started.");
+    setrsp_infostr("Profiled nodes discovery started.");
     my $retstr = parse_args();
     if ($retstr){
         setrsp_errormsg($retstr);
@@ -419,7 +438,7 @@ sub pcmdiscover_start{
     # Read DB to confirm the discover is not started yet. 
     my @sitevalues = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
     if ($sitevalues[0]){
-        setrsp_errormsg("PCM node discovery already started.");
+        setrsp_errormsg("Profiled nodes discovery already started.");
         return;
     }
 
@@ -439,20 +458,20 @@ sub pcmdiscover_start{
 
 #-------------------------------------------------------
 
-=head3  pcmdiscover_stop
+=head3  nodediscoverstop
 
-    Description : Stop PCM auto discover. This action will remove the 
+    Description : Stop profiled nodes auto discover. This action will remove the 
                   dababase flags.
     Arguments   : N/A
 
 =cut
 
 #------------------------------------------------------
-sub pcmdiscover_stop{
+sub nodediscoverstop{
     # Read DB to confirm the discover is started. 
     my @sitevalues = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
     if (! $sitevalues[0]){
-        setrsp_errormsg("PCM node discovery not started yet.");
+        setrsp_errormsg("Profiled nodes discovery not started yet.");
         return;
     }
 
@@ -474,20 +493,20 @@ sub pcmdiscover_stop{
 
 #-------------------------------------------------------
 
-=head3  pcmdiscover_nodels
+=head3  nodediscoverls
 
-    Description : List all discovered PCM nodes.
+    Description : List all discovered profiled nodes.
     Arguments   : N/A
 
 =cut
 
 #-------------------------------------------------------
-sub pcmdiscover_nodels{
+sub nodediscoverls{
     # Read DB to confirm the discover is started. 
     my @sitevalues = ();
     @sitevalues = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
     if (! $sitevalues[0]){
-        setrsp_errormsg("PCM node discovery not started yet.");
+        setrsp_errormsg("Profiled nodes discovery not started yet.");
         return;
     }
 
@@ -497,22 +516,23 @@ sub pcmdiscover_nodels{
     my $nodelisttab = xCAT::Table->new("nodelist");
     my $statusref = $nodelisttab->getNodesAttribs(\@nodes, ['status']);
 
-    my %rsp = ();
-    my %rspentry = ();
+    my $rspentry;
+    my $i = 0;
     foreach (@nodes){
         if (! $_){
             next;
         }
-        $rspentry{"node"} = $_;
+        $rspentry->{info}->[$i]->{"node"} = $_;
         #TODO: get provisioning mac.
-        $rspentry{"mac"} = $macsref->{$_}->[0]->{"mac"};
+        $rspentry->{info}->[$i]->{"mac"} = $macsref->{$_}->[0]->{"mac"};
 
         if ($statusref->{$_}->[0]){
-            $rspentry{"status"} = $statusref->{$_}->[0];
+            $rspentry->{info}->[$i]->{"status"} = $statusref->{$_}->[0];
         } else{
-            $rspentry{"status"} = "defined";
+            $rspentry->{info}->[$i]->{"status"} = "defined";
         }
-        $callback->(\%rspentry);
+        $callback->($rspentry);
+        $i++;
     }
 }
 
@@ -522,19 +542,19 @@ sub pcmdiscover_nodels{
 
     Description : The default interface for node discovery. 
                   We must implement this method so that 
-                  PCM nodes's findme request can be answered 
-                  while PCM discovery is running.
+                  profiled nodes's findme request can be answered 
+                  while profiled nodes discovery is running.
     Arguments   : N/A
 
 =cut
 
 #-------------------------------------------------------
 sub findme{
-    xCAT::MsgUtils->message('S', "[PCM nodes mgmt]PCM discover: Start.\n");
+    xCAT::MsgUtils->message('S', "Profield nodes discover: Start.\n");
     # Read DB to confirm the discover is started. 
     my @sitevalues = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
     if (! @sitevalues){
-        setrsp_errormsg("PCM node discovery not started yet.");
+        setrsp_errormsg("Profiled nodes discovery not started yet.");
         return;
     }
 
@@ -551,12 +571,12 @@ sub findme{
 
     # Get database records: all hostnames, all ips, all racks...
     # To improve performance, we should initalize a daemon later??
-    xCAT::MsgUtils->message('S', "[PCM nodes mgmt]PCM discover: Getting database records.\n");
-    my $recordsref = xCAT::PCMNodeMgmtUtils->get_allnode_singleattrib_hash('nodelist', 'node');
+    xCAT::MsgUtils->message('S', "Getting database records.\n");
+    my $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('nodelist', 'node');
     %allhostnames = %$recordsref;
-    $recordsref = xCAT::PCMNodeMgmtUtils->get_allnode_singleattrib_hash('ipmi', 'bmc');
+    $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('ipmi', 'bmc');
     %allbmcips = %$recordsref;
-    $recordsref = xCAT::PCMNodeMgmtUtils->get_allnode_singleattrib_hash('mac', 'mac');
+    $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('mac', 'mac');
     %allmacs = %$recordsref;
     foreach (keys %allmacs){
         my @hostentries = split(/\|/, $_);
@@ -565,17 +585,17 @@ sub findme{
             $allmacs{$macstr} = 0;
         }
     }
-    $recordsref = xCAT::PCMNodeMgmtUtils->get_allnode_singleattrib_hash('hosts', 'ip');
+    $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('hosts', 'ip');
     %allinstallips = %$recordsref;
     $recordsref = xCAT::NetworkUtils->get_all_nicips(1);
     %allips = %$recordsref;
     # Merge all BMC IPs and install IPs into allips.
     %allips = (%allips, %allbmcips, %allinstallips);
 
-    #$recordsref = xCAT::PCMNodeMgmtUtils->get_allnode_singleattrib_hash('rack', 'rackname');
+    #$recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('rack', 'rackname');
     #%allracks = %$recordsref;
     %allracks = ();
-    $recordsref =  xCAT::PCMNodeMgmtUtils->get_all_chassis(1);
+    $recordsref =  xCAT::ProfiledNodeUtils->get_all_chassis(1);
     %allchassis = %$recordsref;
 
     my @enabledparams = ('networkprofile', 'hardwareprofile', 'imageprofile', 'hostnameformat', 'rack', 'chassis', 'u', 'height', 'rank');
@@ -599,16 +619,8 @@ sub findme{
             setrsp_errormsg("Specified rack $args_dict{'rack'} not defined");
             return;
         }
-    }else{
-        # set default rack.
-        #TODO : how to set default rack.
     }
-    if (!exists $args_dict{'u'}){
-        $args_dict{'u'} = 1;
-    }
-    if (!exists $args_dict{'height'}){
-        $args_dict{'height'} = 1;
-    }
+
     # chassis jdugement.
     if (exists $args_dict{'chassis'}){
         if (! exists $allchassis{$args_dict{'chassis'}}){
@@ -619,7 +631,7 @@ sub findme{
 
     # Get discovered client IP and MAC
     my $ip = $request->{'_xcat_clientip'};
-    xCAT::MsgUtils->message('S', "[PCM nodes mgmt]PCM discover: _xcat_clientip is $ip.\n");
+    xCAT::MsgUtils->message('S', "Profield nodes discover: _xcat_clientip is $ip.\n");
     my $mac = '';
     my $arptable = `/sbin/arp -n`;
     my @arpents = split /\n/,$arptable;
@@ -630,10 +642,10 @@ sub findme{
         }
     }
     if (! $mac){
-        setrsp_errormsg("[PCM nodes mgmt]PCM discover: Can not get mac address of this node.");
+        setrsp_errormsg("Profiled nodes discover: Can not get mac address of this node.");
         return;
     }
-    xCAT::MsgUtils->message('S', "[PCM nodes mgmt]PCM discover: mac is $mac.\n");
+    xCAT::MsgUtils->message('S', "Profiled nodes discover: mac is $mac.\n");
     if ( exists $allmacs{$mac}){
         setrsp_errormsg("Discovered MAC $mac already exists in database.");
         return;
@@ -648,10 +660,16 @@ sub findme{
             $raw_hostinfo_str .= "  $key=$args_dict{$key}\n";
         }
     }
+    if (exists $args_dict{'u'} and exists $args_dict{'height'}){
+        # increase start unit automatically.
+        $args_dict{'u'} = $args_dict{'u'} + $args_dict{'height'};
+    }
+
+
     my ($hostinfo_dict_ref, $invalid_records_ref) = parse_hosts_string($raw_hostinfo_str);
     my %hostinfo_dict = %$hostinfo_dict_ref;
     # Create the real hostinfo string in stanza file format.
-    xCAT::MsgUtils->message('S', "[PCM nodes mgmt]PCM discover: Generating new hostinfo string.\n");
+    xCAT::MsgUtils->message('S', "Profiled nodes discover: Generating new hostinfo string.\n");
     my ($retcode_gen, $retstr_gen) = gen_new_hostinfo_string($hostinfo_dict_ref);
     unless ($retcode_gen){
         setrsp_errormsg($retstr_gen);
@@ -659,18 +677,18 @@ sub findme{
     }
 
     # call mkdef to create hosts and then call nodemgmt for node management plugins.
-    xCAT::MsgUtils->message('S', "[PCM nodes mgmt]call mkdef to create pcm nodes.\n");
+    xCAT::MsgUtils->message('S', "Call mkdef to create nodes.\n");
     my $retref = xCAT::Utils->runxcmd({command=>["mkdef"], stdin=>[$retstr_gen], arg=>['-z']}, $request_command, 0, 1);
     # increase unit automatically.
     $args_dict{'u'} = $args_dict{'u'} + $args_dict{'height'};
 
     my @nodelist = keys %hostinfo_dict;
-    xCAT::MsgUtils->message('S', "[PCM nodes mgmt]call nodemgmt plugins.\n");
-    $retref = xCAT::Utils->runxcmd({command=>["kitcmd_nodemgmt_add"], node=>\@nodelist}, $request_command, 0, 1);
-    $retref = xCAT::Utils->runxcmd({command=>["kitcmd_nodemgmt_finished"], node=>\@nodelist}, $request_command, 0, 1);
+    xCAT::MsgUtils->message('S', "Call nodemgmt plugins.\n");
+    $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>\@nodelist}, $request_command, 0, 1);
+    $retref = xCAT::Utils->runxcmd({command=>["kitnodefinished"], node=>\@nodelist}, $request_command, 0, 1);
 
     # call discover to notify client.
-    xCAT::MsgUtils->message('S', "[PCM nodes mgmt]call discovered request.\n");
+    xCAT::MsgUtils->message('S', "Call discovered request.\n");
     $request->{"command"} = ["discovered"];
     $request->{"node"} = \@nodelist;
     $retref = xCAT::Utils->runxcmd($request, $request_command, 0, 1);
@@ -729,13 +747,13 @@ sub gen_new_hostinfo_string{
 
     # Get free ips list for all networks in network profile.
     my @allknownips = keys %allips;
-    my $netprofileattrsref = xCAT::PCMNodeMgmtUtils->get_netprofile_nic_attrs($args_dict{'networkprofile'});
+    my $netprofileattrsref = xCAT::ProfiledNodeUtils->get_netprofile_nic_attrs($args_dict{'networkprofile'});
     my %netprofileattr = %$netprofileattrsref;
     my %freeipshash;
     foreach (keys %netprofileattr){
         my $netname = $netprofileattr{$_}{'network'};
         if($netname and (! exists $freeipshash{$netname})) {
-            $freeipshash{$netname} = xCAT::PCMNodeMgmtUtils->get_allocable_staticips_innet($netname, \@allknownips);
+            $freeipshash{$netname} = xCAT::ProfiledNodeUtils->get_allocable_staticips_innet($netname, \@allknownips);
         }
     }
 
@@ -747,7 +765,7 @@ sub gen_new_hostinfo_string{
     my $installnic = $nodereshash{'installnic'};
 
     # Get node's provisioning method
-    my $provmethod = xCAT::PCMNodeMgmtUtils->get_imageprofile_prov_method($args_dict{'imageprofile'});
+    my $provmethod = xCAT::ProfiledNodeUtils->get_imageprofile_prov_method($args_dict{'imageprofile'});
 
     # compose the stanza string for hostinfo file.
     my $hostsinfostr = "";
@@ -831,7 +849,7 @@ sub read_and_generate_hostnames{
     my $hostfile = shift;
 
     # Get 10000 temprary hostnames.
-    my $freehostnamesref = xCAT::PCMNodeMgmtUtils->gen_numric_hostnames("TMPHOSTS","", 4);
+    my $freehostnamesref = xCAT::ProfiledNodeUtils->gen_numric_hostnames("TMPHOSTS","", 4);
     # Auto generate hostnames for "__hostname__" entries.
     open(HOSTFILE, $hostfile);
     my $filecontent = join("", <HOSTFILE>); 
@@ -874,7 +892,7 @@ sub parse_hosts_string{
 
     my $nameformat = $args_dict{'hostnameformat'};
 
-    my $nameformattype = xCAT::PCMNodeMgmtUtils->get_hostname_format_type($nameformat);
+    my $nameformattype = xCAT::ProfiledNodeUtils->get_hostname_format_type($nameformat);
     my %freehostnames;
 
     # Parse hostinfo file string.
@@ -914,7 +932,7 @@ sub parse_hosts_string{
                     push @invalid_records, ["__hostname__", "No rack info specified. Do specify it because the nameformat contains rack info."];
                     next;
                 }
-                $numricformat = xCAT::PCMNodeMgmtUtils->rackformat_to_numricformat($nameformat, $::FILEATTRS{$_}{"rack"});
+                $numricformat = xCAT::ProfiledNodeUtils->rackformat_to_numricformat($nameformat, $::FILEATTRS{$_}{"rack"});
             } else{
                 # pure numric hostname format
                 $numricformat = $nameformat;
@@ -926,7 +944,7 @@ sub parse_hosts_string{
                 if (exists($args_dict{'rank'})){
                     $rank = $args_dict{'rank'};
                 }
-                $freehostnames{$numricformat} = xCAT::PCMNodeMgmtUtils->genhosts_with_numric_tmpl($numricformat, $rank);
+                $freehostnames{$numricformat} = xCAT::ProfiledNodeUtils->genhosts_with_numric_tmpl($numricformat, $rank);
             }
             my $hostnamelistref = $freehostnames{$numricformat};
             my $nexthostname = shift @$hostnamelistref;
@@ -1053,10 +1071,11 @@ sub setrsp_invalidrecords
     
     # The total number of invalid records.
     $rsp->{error} = "Some error records detected";
-    $rsp->{invalid_records_num} = scalar @$recordsref;
+    $rsp->{errorcode} = 1;
+    $rsp->{data}->{invalid_records_num} = scalar @$recordsref;
 
     # We write details of invalid records into a file.
-    my ($fh, $filename) = xCAT::PCMNodeMgmtUtils->get_output_filename();
+    my ($fh, $filename) = xCAT::ProfiledNodeUtils->get_output_filename();
     foreach (@$recordsref){
     	my @erroritem = @$_;
         print $fh "nodename $erroritem[0], error: $erroritem[1]\n";
@@ -1064,7 +1083,7 @@ sub setrsp_invalidrecords
     close $fh;
     # Tells the URL of the details file.
     xCAT::MsgUtils->message('S', "Detailed response info placed in file: http://$master/$filename\n");
-    $rsp->{details} = "http://$master/$filename";
+    $rsp->{data}->{details} = "http://$master/$filename";
     $callback->($rsp);
 }
 
@@ -1083,7 +1102,8 @@ sub setrsp_errormsg
     my $errormsg = shift;
     my $rsp;
     xCAT::MsgUtils->message('S', "$errormsg\n");
-    $rsp->{error}->[0] = $errormsg;
+    $rsp->{error} = $errormsg;
+    $rsp->{errorcode} = 1;
     $callback->($rsp);
 }
 
@@ -1102,9 +1122,29 @@ sub setrsp_infostr
     my $infostr = shift;
     my $rsp;
     xCAT::MsgUtils->message('S', "$infostr\n");
-    $rsp->{info}->[0] = $infostr;
+    $rsp->{data} = $infostr;
     $callback->($rsp);
 }
+
+#-------------------------------------------------------
+
+=head3  setrsp_progress
+    
+    Description : Set response for running progress
+    Arguments   : progress: the progress string.
+
+=cut
+
+#-------------------------------------------------------
+sub setrsp_progress
+{
+    my $progress = shift;
+    my $rsp;
+    xCAT::MsgUtils->message('S', "$progress");
+    $rsp->{sinfo} = $progress;
+    $callback->($rsp);
+}
+
 
 
 #-------------------------------------------------------
@@ -1124,15 +1164,15 @@ sub setrsp_success
     my $master=xCAT::TableUtils->get_site_Master();
     
     # The total number of success nodes.
-    $rsp->{success_nodes_num} = scalar @$recordsref;
-    my ($fh, $filename) = xCAT::PCMNodeMgmtUtils->get_output_filename();
+    $rsp->{data}->{success_nodes_num} = scalar @$recordsref;
+    my ($fh, $filename) = xCAT::ProfiledNodeUtils->get_output_filename();
     foreach (@$recordsref){
         print $fh "success: $_\n";
     }
     close $fh;
     # Tells the URL of the details file.
     xCAT::MsgUtils->message('S', "Detailed response info placed in file: http://$master/$filename\n");
-    $rsp->{details} = "http://$master/$filename";
+    $rsp->{data}->{details} = "http://$master/$filename";
     $callback->($rsp);
 }
 1;

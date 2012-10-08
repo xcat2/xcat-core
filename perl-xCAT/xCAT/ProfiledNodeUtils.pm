@@ -1,5 +1,5 @@
 # IBM(c) 2012 EPL license http://www.eclipse.org/legal/epl-v10.html
-package xCAT::PCMNodeMgmtUtils;
+package xCAT::ProfiledNodeUtils;
 
 use strict;
 use warnings;
@@ -15,11 +15,11 @@ require xCAT::NetworkUtils;
 
 #--------------------------------------------------------------------------------
 
-=head1    xCAT::PCMNodeMgmtkUtils
+=head1    xCAT::ProfiledNodeUtils
 
 =head2    Package Description
 
-This program module file, is a set of PCM node management utilities.
+This program module file, is a set of node management utilities for Profile based nodes.
 
 =cut
 
@@ -80,8 +80,8 @@ sub genhosts_with_numric_tmpl
 {
     my ($class, $format, $rank) = @_;
 
-    my ($prefix, $appendix, $len) = xCAT::PCMNodeMgmtUtils->split_hostname($format, 'N');
-    return xCAT::PCMNodeMgmtUtils->gen_numric_hostnames($prefix, $appendix, $len, $rank);
+    my ($prefix, $appendix, $len) = xCAT::ProfiledNodeUtils->split_hostname($format, 'N');
+    return xCAT::ProfiledNodeUtils->gen_numric_hostnames($prefix, $appendix, $len, $rank);
 }
 
 #-------------------------------------------------------------------------------
@@ -200,9 +200,11 @@ sub get_hostname_format_type{
 
 #-------------------------------------------------------------------------------
 sub rackformat_to_numricformat{
-    my ($class, $format, $racknum) = @_;
-    my ($prefix, $appendix, $len) = xCAT::PCMNodeMgmtUtils->split_hostname($format, 'R');
+    my ($class, $format, $rackname) = @_;
+    my ($prefix, $appendix, $len) = xCAT::ProfiledNodeUtils->split_hostname($format, 'R');
 
+    my $objhash = xCAT::DBojbutils->getobjdefs({$rackname, "rack"});
+    my $racknum = $objhash->{$rackname}->{"num"};
     my $maxnum = 10 ** $len;
     my $fullnum = $maxnum + $racknum;
     return $prefix.(substr $fullnum, 1).$appendix;
@@ -280,7 +282,7 @@ sub get_netprofile_nic_attrs{
 sub get_netprofile_bmcnet{
     my ($class, $netprofilename) = @_;
 
-    my $netprofile_nicshash_ref = xCAT::PCMNodeMgmtUtils->get_netprofile_nic_attrs($netprofilename);
+    my $netprofile_nicshash_ref = xCAT::ProfiledNodeUtils->get_netprofile_nic_attrs($netprofilename);
     my %netprofile_nicshash = %$netprofile_nicshash_ref;
     if (exists $netprofile_nicshash{'bmc'}{"network"}){
         return $netprofile_nicshash{'bmc'}{"network"}
@@ -301,7 +303,7 @@ sub get_netprofile_bmcnet{
 sub get_netprofile_provisionnet{
     my ($class, $netprofilename) = @_;
 
-    my $netprofile_nicshash_ref = xCAT::PCMNodeMgmtUtils->get_netprofile_nic_attrs($netprofilename);
+    my $netprofile_nicshash_ref = xCAT::ProfiledNodeUtils->get_netprofile_nic_attrs($netprofilename);
     my %netprofile_nicshash = %$netprofile_nicshash_ref;
     my $restab = xCAT::Table->new('noderes');
     my $installnicattr = $restab->getNodeAttribs($netprofilename, ['installnic']);
@@ -318,7 +320,7 @@ sub get_netprofile_provisionnet{
 #-------------------------------------------------------------------------------
 
 =head3 get_output_filename
-      Description : Generate a temp file name for placing output details for PCM node management operations.
+      Description : Generate a temp file name for placing output details for profiled node management operations.
                     We make this file generated under /install/ so that clients can access it through http.
       Arguments   : N/A
       Returns     : A temp filename placed under /install/pcm/work/
@@ -344,8 +346,8 @@ sub get_output_filename
                              if set, return a hash ref.
       Returns     : ref for node list.
       Example     : 
-                    my $arrayref = xCAT::PCMNodeMgmtUtils->get_all_chassis();
-                    my $hashref = xCAT::PCMNodeMgmtUtils->get_all_chassis(1);
+                    my $arrayref = xCAT::ProfiledNodeUtils->get_all_chassis();
+                    my $hashref = xCAT::ProfiledNodeUtils->get_all_chassis(1);
 =cut
 
 #-------------------------------------------------------------------------------
@@ -397,12 +399,12 @@ sub get_allnode_singleattrib_hash
 #-------------------------------------------------------------------------------
 
 =head3 acquire_lock
-      Description : Create lock file for PCM plugins so that there is 
+      Description : Create lock file for plugins so that there is 
                     no multi instance of plugins running at same time.
                     The lock file content will be the pid of the plugin running process.
                     Using perl's flock to achive this.
-                    Note: we can not judge whether PCM discovering is running or only 
-                          through acquire_lock("nodemgmt")
+                    Note: we can not judge whether profiled nodes discovering is running 
+                          or not only through acquire_lock("nodemgmt")
                           We must also call is_discover_started() 
       Arguments   : action name: for example: nodemgmt, imageprofile...etc We'll generate
                     a lock file named as /var/lock/pcm/$action.
@@ -434,7 +436,7 @@ sub acquire_lock
 #-------------------------------------------------------------------------------
 
 =head3 is_discover_started
-      Description : Judge whether PCM discovering is running or not.
+      Description : Judge whether profiled nodes discovering is running or not.
       Arguments   : NA
       Returns     : 1 - Discover is running
                     0 - Discover is not started.
@@ -467,6 +469,32 @@ sub release_lock
     my $lockfh = shift;
     return flock($lockfh, LOCK_UN|LOCK_NB);
 }
+
+#-------------------------------------------------------------------------------
+
+=head3 is_locked
+      Description : Try to see whether current command catagory is locked or not.
+      Arguments   : action - command catagory
+      Returns     : 
+                    1 - current command catagory already locked.
+                    0 - not locked yet.
+=cut
+
+#-------------------------------------------------------------------------------
+sub is_locked
+{
+    my $class = shift;
+    my $action = shift;
+
+    my $lock = xCAT::ProfiledNodeUtils->acquire_lock($action);
+    if ($lock == -1){
+        return 1;
+    }
+
+    xCAT::ProfiledNodeUtils->release_lock($lock);
+    return 0;
+}
+
 
 #-------------------------------------------------------------------------------
 
