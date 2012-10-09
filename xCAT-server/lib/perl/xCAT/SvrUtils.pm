@@ -313,7 +313,7 @@ sub getsynclistfile()
     }
 
     return \%node_syncfile;
-  }
+  } # end isAIX
 
   # if does not specify the $node param, default consider for genimage command
   if ($nodes) {
@@ -326,14 +326,14 @@ sub getsynclistfile()
     }
     my $nodetype_v = $nodetype_t->getNodesAttribs($nodes, ['profile','os','arch','provmethod']);
 
-    foreach my $node (@$nodes) {
-      my $provmethod=$nodetype_v->{$node}->[0]->{'provmethod'};
-      if (($provmethod) && ( $provmethod ne "install") && ($provmethod ne "netboot") && ($provmethod ne "statelite")) {
-	  # get the syncfiles base on the osimage
 	  my $osimage_t = xCAT::Table->new('osimage');
 	  unless ($osimage_t) {
 	      return ;
 	  }
+    foreach my $node (@$nodes) {
+      my $provmethod=$nodetype_v->{$node}->[0]->{'provmethod'};
+      if (($provmethod) && ( $provmethod ne "install") && ($provmethod ne "netboot") && ($provmethod ne "statelite")) {
+	  # get the syncfiles base on the osimage
 	  my $synclist = $osimage_t->getAttribs({imagename=>$provmethod}, 'synclists');
 	  if ($synclist && $synclist->{'synclists'}) {
 	      $node_syncfile{$node} = $synclist->{'synclists'};
@@ -1601,18 +1601,66 @@ sub update_osdistro_table
 
 }
 
+#-----------------------------------------------------------------------------
+
+
+=head3 getpostbootscripts
+    Get the  the postbootscript list for the Linux nodes as defined in
+    the osimage table postbootscripts attribute 
+
+    Arguments:
+      $nodes - array of nodes
+    Returns:
+      reference of a hash of node=>postbootscripts comma separated list
+    Globals:
+        none
+    Error:
+    Example:
+         my $node_postbootscripts=xCAT::SvrUtils->getpostbootscripts($nodes);
+    Comments:
+        none
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+
+sub getpostbootscripts()
+{
+  my $nodes = shift;
+  if (($nodes) && ($nodes =~ /xCAT::SvrUtils/))
+  {
+    $nodes = shift;
+  }
+  my %node_postbootscript = ();
+  my %osimage_postbootscript = ();
 
 
 
+	# get the profile attributes for the nodes
+	my $nodetype_t = xCAT::Table->new('nodetype');
+	unless ($nodetype_t) {
+	    return ;
+   }
+	my $nodetype_v = $nodetype_t->getNodesAttribs($nodes, ['provmethod']);
+   my @osimages;	
+   my $osimage_t = xCAT::Table->new('osimage');
+   unless ($osimage_t) {
+      return ;
+   }
+	foreach my $node (@$nodes) {
+	    my $provmethod=$nodetype_v->{$node}->[0]->{'provmethod'};
+	    if (($provmethod) && ( $provmethod ne "install") && ($provmethod ne "netboot") && ($provmethod ne "statelite")) {
+       # then get the postbootscripts from the osimage
+          my $postbootscripts = $osimage_t->getAttribs({imagename=>$provmethod}, 'postbootscripts');
+          if ($postbootscripts && $postbootscripts->{'postbootscripts'}) {
+           $node_postbootscript{$node} = $postbootscripts->{'postbootscripts'};
+          }
+        }
 
-
-
-
-
-
-
-
-
-
+	    
+   }
+   return \%node_postbootscript;
+  }
 
 1;
