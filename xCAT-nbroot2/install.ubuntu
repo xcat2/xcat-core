@@ -1,5 +1,6 @@
 #!/bin/sh
 echo $drivers
+version12=`awk '{print $2}' /etc/issue | grep 12`
 dracut_install wget openssl tar ipmitool cpio gzip lsmod ethtool modprobe touch echo cut wc
 dracut_install netstat # broadcom update requires
 dracut_install uniq # mellanox update requires
@@ -11,11 +12,22 @@ dracut_install mkswap df brctl vconfig ifenslave ssh-keygen scp clear dhclient l
 dracut_install lldptool /lib64/libnss_dns-2.12.1.so /lib64/libnss_dns.so.2
 dracut_install poweroff ntpq ntpd hwclock date /usr/share/terminfo/x/xterms /etc/nsswitch.conf /etc/services
 dracut_install /usr/sbin/rsyslogd /etc/protocols umount /usr/bin/dpkg /usr/bin/rpm /usr/lib/rpm/rpmrc
-dracut_install chmod /lib/libc.so.6 /lib/ld-linux.so.2 /lib/libdl.so.2 /lib/libm.so.6 /sbin/route /sbin/ifconfig /usr/bin/head /etc/debian_version /etc/lsb-release ping tr lsusb /usr/share/hwdata/usb.ids #ibm fw wrapper requirements
-dracut_install dmidecode /usr/lib64/libstdc++.so.6 #uxspi prereqs, but will use dmidecode to improve decision on loading ipmi_si
-dracut_install dmidecode /usr/lib64/libstdc++.so.5 #broadcom firmware update links against old lib
-dracut_install /lib/libpthread.so.0 #32 bit lib because UXSPI will not ship a native 64 bit build
-dracut_install /usr/lib/libldap-2.4.so.2 /usr/lib/liblber-2.4.so.2 /usr/lib64/libsasl2.so.2 #uxspi has incurred these...
+if [ -n $version12 ];then
+    dracut_install /lib/x86_64-linux-gnu/libdl.so.2 /lib32/libm.so.6
+    dracut_install dmidecode /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+    dracut_install dmidecode /usr/lib/x86_64-linux-gnu/libstdc++.so.5
+    dracut_install /lib32/libpthread.so.0
+    dracut_install /usr/lib/x86_64-linux-gnu/libldap-2.4.so.2 /usr/lib/x86_64-linux-gnu/liblber-2.4.so.2 /usr/lib/x86_64-linux-gnu/libsasl2.so.2
+    dracut_install /lib32/libc.so.6
+else
+    dracut_install /lib/libdl.so.2 /lib/libm.so.6
+    dracut_install dmidecode /usr/lib64/libstdc++.so.6
+    dracut_install dmidecode /usr/lib64/libstdc++.so.5
+    dracut_install /lib/libpthread.so.0 #32 bit lib because UXSPI will not ship a native 64 bit build
+    dracut_install /usr/lib/libldap-2.4.so.2 /usr/lib/liblber-2.4.so.2 /usr/lib64/libsasl2.so.2 #uxspi has incurred these...
+    dracut_install /lib/libc.so.6
+fi
+dracut_install chmod /lib/ld-linux.so.2 /sbin/route /sbin/ifconfig /usr/bin/head /etc/debian_version /etc/lsb-release ping tr lsusb /usr/share/hwdata/usb.ids #ibm fw wrapper requirements
 dracut_install /usr/share/zoneinfo/posix/Zulu
 dracut_install /usr/share/zoneinfo/posix/GMT-0
 dracut_install /usr/share/zoneinfo/posix/Europe/Istanbul
@@ -609,7 +621,12 @@ inst "$moddir/99-imm.rules" "/etc/udev/rules.d/99-imm.rules"
 inst "$moddir/98-mlx.rules" "/etc/udev/rules.d/98-mlx.rules"
 inst "$moddir/setupimmnic" "/sbin/setupimmnic"
 inst "$moddir/loadmlxeth" "/sbin/loadmlxeth"
-dracut_install /sbin/rpc.statd /sbin/sm-notify /etc/netconfig portmap /etc/host.conf /usr/sbin/rpc.idmapd
+if [ -n $version12 ];then
+dracut_install rpcbind
+else
+dracut_install portmap
+fi
+dracut_install /sbin/rpc.statd /sbin/sm-notify /etc/netconfig /etc/host.conf /usr/sbin/rpc.idmapd
 dracut_install ps free find #debug 
 inst_dir /var/lib/nfs 
 inst_dir /var/lib/nfs/statd/sm 
@@ -635,4 +652,8 @@ dracut_install /usr/lib/rsyslog/imtcp.so
 dracut_install /usr/lib/rsyslog/lmnet.so
 #dracut_install /usr/lib/rsyslog/lmstrmsrv.so
 dracut_install /usr/lib/rsyslog/imuxsock.so
+if [ -n $version12 ];then
+dracut_install /lib/libnfsidmap/nsswitch.so
+else
 dracut_install /usr/lib64/libnfsidmap/nsswitch.so
+fi
