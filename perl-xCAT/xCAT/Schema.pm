@@ -2434,6 +2434,11 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  tabentry => 'linuximage.driverupdatesrc',
                  access_tabentry => 'linuximage.imagename=attr:imagename',
                 },
+ {attr_name => 'usercomment',
+                 only_if => 'imagetype=linux',
+                 tabentry => 'linuximage.comments',
+                 access_tabentry => 'linuximage.imagename=attr:imagename',
+                 },
 ####################
 # nimimage table#
 ####################
