@@ -484,7 +484,7 @@ sub preprocess_updatenode
       # Now here we will call CFMUtils
       $::CALLBACK=$callback;
       my $rc=0;
-      #$rc=xCAT::CFMUtils->updateCFMSynclistFile(\@imagenames);
+      $rc=xCAT::CFMUtils->updateCFMSynclistFile(\@imagenames);
       if ($rc !=0) { 
         my $rsp = {};
         $rsp->{data}->[0] =
