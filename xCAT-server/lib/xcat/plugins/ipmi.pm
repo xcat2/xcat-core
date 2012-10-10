@@ -1682,10 +1682,119 @@ sub got_bmc_fw_info {
    	$fru->value($mprom);
    	$sessdata->{fru_hash}->{mprom} = $fru;
     if ($isanimm) {
-        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0,0,0,0],callback=>\&get_uefi_version_with_fmapi,callback_args=>$sessdata);
+        #$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0,0,0,0],callback=>\&get_uefi_version_with_fmapi,callback_args=>$sessdata);
+	get_imm_property(property=>"/v2/bios/build_id",callback=>\&got_bios_buildid,sessdata=>$sessdata);
     } else {
         initfru_with_mprom($sessdata);
     }
+}
+sub got_bios_buildid {
+   my %res = @_;
+   my $sessdata = $res{sessdata};
+   if ($res{data}) {
+        $sessdata->{biosbuildid} = $res{data};
+	get_imm_property(property=>"/v2/bios/build_version",callback=>\&got_bios_version,sessdata=>$sessdata);
+   } else {
+        initfru_with_mprom($sessdata);
+   }
+}
+sub got_bios_version {
+   my %res = @_;
+   my $sessdata = $res{sessdata};
+   if ($res{data}) {
+        $sessdata->{biosbuildversion} = $res{data};
+	get_imm_property(property=>"/v2/bios/build_date",callback=>\&got_bios_date,sessdata=>$sessdata);
+   } else {
+        initfru_with_mprom($sessdata);
+   }
+}
+sub got_bios_date {
+   my %res = @_;
+   my $sessdata = $res{sessdata};
+   if ($res{data}) {
+        $sessdata->{biosbuilddate} = $res{data};
+	my $fru = FRU->new();
+	$fru->rec_type("bios,uefi,firmware");
+	$fru->desc("UEFI Version");
+	$fru->value($sessdata->{biosbuildversion}." (".$sessdata->{biosbuildid}." ".$sessdata->{biosbuilddate}.")");
+	$sessdata->{fru_hash}->{uefi} = $fru;
+	get_imm_property(property=>"/v2/fpga/build_id",callback=>\&got_fpga_buildid,sessdata=>$sessdata);
+   } else {
+        initfru_with_mprom($sessdata);
+   }
+}
+sub got_fpga_buildid {
+   my %res = @_;
+   my $sessdata = $res{sessdata};
+   if ($res{data}) {
+        $sessdata->{fpgabuildid} = $res{data};
+	get_imm_property(property=>"/v2/fpga/build_version",callback=>\&got_fpga_version,sessdata=>$sessdata);
+   } else {
+        initfru_with_mprom($sessdata);
+   }
+}
+sub got_fpga_version {
+   my %res = @_;
+   my $sessdata = $res{sessdata};
+   if ($res{data}) {
+        $sessdata->{fpgabuildversion} = $res{data};
+	get_imm_property(property=>"/v2/fpga/build_date",callback=>\&got_fpga_date,sessdata=>$sessdata);
+   } else {
+        initfru_with_mprom($sessdata);
+   }
+}
+sub got_fpga_date {
+   my %res = @_;
+   my $sessdata = $res{sessdata};
+   if ($res{data}) {
+        $sessdata->{fpgabuilddate} = $res{data};
+	my $fru = FRU->new();
+	$fru->rec_type("fpga,firmware");
+	$fru->desc("FPGA Version");
+	$fru->value($sessdata->{fpgabuildversion}." (".$sessdata->{fpgabuildid}." ".$sessdata->{fpgabuilddate}.")");
+	$sessdata->{fru_hash}->{fpga} = $fru;
+   }
+   initfru_with_mprom($sessdata);
+}
+sub get_imm_property {
+   my %args = @_;
+   my @getpropertycommand;
+   my $sessdata = $args{sessdata};
+   $sessdata->{property_callback} = $args{callback};
+   @getpropertycommand = unpack("C*",$args{property});
+   my $length = 0b10000000 | (scalar @getpropertycommand);#use length to store tlv
+	unshift @getpropertycommand,$length;
+	#command also needs the overall length
+	$length = (scalar @getpropertycommand);
+	unshift @getpropertycommand,$length&0xff;
+	unshift @getpropertycommand,($length>>8)&0xff;
+	unshift @getpropertycommand,0; #the actual 'get proprety' command is 0.
+        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xc4,data=>\@getpropertycommand,callback=>\&got_imm_property,callback_args=>$sessdata);
+
+}
+sub got_imm_property {
+    if (check_rsp_errors(@_)) {
+        return;
+    }
+    my $rsp = shift;
+    my $sessdata = shift;
+    my @data = @{$rsp->{data}};
+    my $propval = shift @data;
+    my %res;
+    $res{sessdata}=$sessdata;
+    if ($propval == 0) { #success
+    	shift @data; #discard payload size
+    	shift @data; #discard payload size
+	while (@data) {
+		my $tlv = shift @data;
+		if ($tlv & 0b10000000) {
+			$tlv = $tlv & 0b1111111;
+			my @val = splice(@data,0,$tlv);
+			$res{data}= unpack("Z*",pack("C*",@val));
+		}
+	}
+   }
+   $sessdata->{property_callback}->(%res);
 }
 sub get_uefi_version_with_fmapi {
     if (check_rsp_errors(@_)) {
