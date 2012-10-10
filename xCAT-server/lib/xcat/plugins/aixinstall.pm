@@ -7250,16 +7250,19 @@ sub update_dd_boot
 
 			# statelite directory to mount
 			SLDIR=`echo \$SLLINE | /usr/bin/awk -F'|' '{print \$3}'`
+			
+			cp /SPOT/usr/bin/mkdir /usr/bin
+			/usr/bin/mkdir -p /slmnt
 
-			$::MOUNT \${SLSERV}:\${SLDIR} /tmp
+			$::MOUNT \${SLSERV}:\${SLDIR} /slmnt
 
 			# - get the persistent version of basecust from the server
-			if [ -f /tmp/\${SHOST}/etc/basecust  ]; then
-				cp -p /tmp/\${SHOST}/etc/basecust /etc
+			if [ -f /slmnt/\${SHOST}/etc/basecust  ]; then
+				cp -p /slmnt/\${SHOST}/etc/basecust /etc
 				cp /SPOT/usr/lib/boot/restbase /usr/sbin
 				cp /SPOT/usr/bin/uncompress /usr/bin
 			fi
-			umount /tmp
+			umount /slmnt
 		fi
 	fi
 			\n\n~;
@@ -7271,14 +7274,14 @@ sub update_dd_boot
 		# if we found a statelite directory - above
 		if [ -n "\${SLDIR}" ]
 		then
+			# need to mount persistent basecust to RAM FS
+			cp /SPOT/usr/bin/mkdir /usr/bin
+			/usr/bin/mkdir -p /slmnt
+			$::MOUNT  -o rw \${SLSERV}:\${SLDIR} /slmnt
+			/usr/bin/touch /etc/basecust
+			SHOST=`echo \${NIM_HOSTNAME} | cut -d . -f 1`
 			# if we have a basecust file
-			if [ -f /tmp/\${SHOST}/etc/basecust  ]; then
-				# need to mount persistent basecust to RAM FS
-				cp /SPOT/usr/bin/mkdir /usr/bin
-				/usr/bin/mkdir -p /slmnt
-				mount -o rw \${SLSERV}:\${SLDIR} /slmnt
-				/usr/bin/touch /etc/basecust
-				SHOST=`echo \${NIM_HOSTNAME} | cut -d . -f 1`
+			if [ -f /slmnt/\${SHOST}/etc/basecust  ]; then
 				mount /slmnt/\${SHOST}/etc/basecust /etc/basecust
 			fi
 		fi
@@ -13631,8 +13634,7 @@ sub rmdsklsnode
         	if ($::VERBOSE)
         	{
             	my $rsp;
-            	push @{$rsp->{data}},
-              		"Deallocating resources for NIM node \'$nodename\'";
+            	push @{$rsp->{data}}, "Deallocating resources for NIM node \'$nodename\'";
             	xCAT::MsgUtils->message("I", $rsp, $callback);
         	}
 
@@ -13819,7 +13821,7 @@ sub mknimimage_usage
       "\tmknimimage [-V] -u osimage_name [attr=val [attr=val ...]]";
     push @{$rsp->{data}}, "or";
     push @{$rsp->{data}},
-      "\tmknimimage [-V] [-f|--force] [-t nimtype] [-m nimmethod]\n\t\t[-r|--sharedroot] [-D|--mkdumpres] [-l <location>]\n\t\t[-s image_source] [-i current_image] [-p|--cplpp] [-t nimtype]\n\t\t[-m nimmethod] [-n mksysbnode] [-b mksysbfile] osimage_name\n\t\t[attr=val [attr=val ...]]\n";
+      "\tmknimimage [-V] [-f|--force] [-t nimtype] [-m nimmethod]\n\t\t[-r|--sharedroot] [-D|--mkdumpres] [-l <location>]\n\t\t[-s image_source] [-i current_image] [-p|--cplpp]\n\t\t[-n mksysbnode] [-b mksysbfile] osimage_name\n\t\t[attr=val [attr=val ...]]\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
