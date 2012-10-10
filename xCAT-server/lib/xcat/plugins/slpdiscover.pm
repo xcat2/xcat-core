@@ -225,7 +225,7 @@ sub setupIMM {
 					-output_record_separator=>"\r",
 					Timeout=>15,
 					Errmode=>'return',
-					Prompt=>'/MYIMM> $/');
+					Prompt=>'/> $/');
 	if ($ssh and $ssh->atprompt) { #we are in and good to issue commands
 		$ssh->cmd("users -1 -n ".$args{username}." -p ".$args{password}." -a super"); #this gets ipmi going
 		foreach my $ip (@ips) {
