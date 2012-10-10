@@ -304,25 +304,29 @@ sub lskmodules {
 
     # Get the list of kernel modules in each rpm/img file
     foreach my $source (@sources) {
-        my %modlist;
+        my @modlist;
         if ( $source =~ /^dud:/ ) {
            $source =~ s/^dud://;
-           %modlist = &mods_in_img($source);
+           @modlist = &mods_in_img($source);
         } else {
            $source =~ s/^rpm://;
-           %modlist = &mods_in_rpm($source);
+           @modlist = &mods_in_rpm($source);
         }
 
         # Return the module list for this rpm/img file
         my $rsp={};
-        foreach my $mn (keys %modlist) {
+        foreach my $mn (@modlist) {
            if ($::opt_x) {
-               push @{ $rsp->{data} }, '<module> <name> '.$mn.' </name> <description> '.$modlist{$mn}.' </description> </module>';
+               my %data_entry;
+               $data_entry{module}->{name}=$mn->{name};
+               $data_entry{module}->{description}=$mn->{description};
+               push @{ $rsp->{data} }, \%data_entry;
            } else {
-               push @{ $rsp->{data} }, $mn.': '.$modlist{$mn};
+               push @{ $rsp->{data} }, $mn->{name}.': '.$mn->{description};
            }
         }
-        xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+        #xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+        $::CALLBACK->($rsp);
 
     }
 
@@ -354,6 +358,7 @@ sub set_sources {
   my $installdir = xCAT::TableUtils->getInstallDir;
   my @sources;
   my %src_data;
+  my $order=1;
 
 
 # OS images (osimage.driverupdatesrc)
@@ -381,6 +386,7 @@ sub set_sources {
               } else {
                  $src_data{$base_dus}{'sourcemsg'}="osimage $li driverupdatesrc entry $dus";
                  $src_data{$base_dus}{'source'}=$dus;
+                 $src_data{$base_dus}{'order'}=$order++;
               }
           }
        }
@@ -422,63 +428,12 @@ sub set_sources {
               } else {
                  $src_data{$dp}{'sourcemsg'}="kitcomponent $kc, kitrepo $kc_entry->{'kitreponame'}";
                  $src_data{$dp}{'source'}=$kr_entry->{'kitrepodir'}.'/'.$dp;
+                 $src_data{$dp}{'order'}=$order++;
               }
           }
        }
        $kctab->close;
   }
-
-# OS distro 
-  if ( defined($::opt_o) ) {
-       my $odtab = xCAT::Table->new('osdistro');
-       foreach my $od (split( ',', $::opt_o)) {
-          my ($od_entry) = $odtab->getAttribs({'osdistroname'=>$od},('dirpaths'));
-          if ( !($od_entry) ) {
-              # try building dirpath from distro_name/local_arch
-              my $arch = `uname -m`;
-              chomp($arch);
-              $arch = "x86" if ($arch =~ /i.86$/);
-              my $dirpath = $installdir.'/'.$od.'/'.$arch;      
-              if (!(-e $dirpath)) {
-                  if ($::VERBOSE) {
-                    my $rsp;
-                    push @{ $rsp->{data} }, "No dirpaths attribute for osdistro $od found.  Skipping. ";
-                    xCAT::MsgUtils->message( "W", $rsp, $::CALLBACK );
-                  }
-                  next;
-              }
-              my @kernel_rpms = `find $dirpath -name kernel-*.rpm`;
-              foreach my $krpm (@kernel_rpms) {
-                  chomp($krpm);
-                  my $base_krpm = basename($krpm);
-                  if ( ! defined ($src_data{$base_krpm}) ) {
-                      $src_data{$base_krpm}{'sourcemsg'}="osdistro $od default rpm $krpm";
-                      $src_data{$base_krpm}{'source'}=$krpm;
-                  }
-              }
-          } else {
-              foreach my $dirpath (split( ',', $od_entry->{'dirpaths'})){
-                  my @kernel_rpms = `find $dirpath -name kernel-*.rpm`;
-                  foreach my $krpm (@kernel_rpms) {
-                      chomp($krpm);
-                      my $base_krpm = basename($krpm);
-                      if ( defined ($src_data{$base_krpm}) ) {
-                          if ($::VERBOSE) {
-                            my $rsp;
-                            push @{ $rsp->{data} }, "Duplicate source $base_krpm found in input.  Skipping $krpm in osdistro $od.  Using from $src_data{$base_krpm}{'sourcemsg'} instead.";
-                            xCAT::MsgUtils->message( "W", $rsp, $::CALLBACK );
-                          }
-                          next;
-                      } 
-                      $src_data{$base_krpm}{'sourcemsg'}="osdistro $od rpm $krpm";
-                      $src_data{$base_krpm}{'source'}=$krpm;
-                  }
-              }
-          }
-       }
-       $odtab->close;
-  }
-
 
 # OS distro update
   if ( defined($::opt_u) ) {
@@ -508,13 +463,68 @@ sub set_sources {
               }
               $src_data{$base_krpm}{'sourcemsg'}="osdistroupdate $ou rpm $krpm";
               $src_data{$base_krpm}{'source'}=$krpm;
+              $src_data{$base_krpm}{'order'}=$order++;
           }
        }
        $outab->close;
   }
 
+# OS distro 
+  if ( defined($::opt_o) ) {
+       my $odtab = xCAT::Table->new('osdistro');
+       foreach my $od (split( ',', $::opt_o)) {
+          my ($od_entry) = $odtab->getAttribs({'osdistroname'=>$od},('dirpaths'));
+          if ( !($od_entry) ) {
+              # try building dirpath from distro_name/local_arch
+              my $arch = `uname -m`;
+              chomp($arch);
+              $arch = "x86" if ($arch =~ /i.86$/);
+              my $dirpath = $installdir.'/'.$od.'/'.$arch;      
+              if (!(-e $dirpath)) {
+                  if ($::VERBOSE) {
+                    my $rsp;
+                    push @{ $rsp->{data} }, "No dirpaths attribute for osdistro $od found.  Skipping. ";
+                    xCAT::MsgUtils->message( "W", $rsp, $::CALLBACK );
+                  }
+                  next;
+              }
+              my @kernel_rpms = `find $dirpath -name kernel-*.rpm`;
+              foreach my $krpm (@kernel_rpms) {
+                  chomp($krpm);
+                  my $base_krpm = basename($krpm);
+                  if ( ! defined ($src_data{$base_krpm}) ) {
+                      $src_data{$base_krpm}{'sourcemsg'}="osdistro $od default rpm $krpm";
+                      $src_data{$base_krpm}{'source'}=$krpm;
+                      $src_data{$base_krpm}{'order'}=$order++;
+                  }
+              }
+          } else {
+              foreach my $dirpath (split( ',', $od_entry->{'dirpaths'})){
+                  my @kernel_rpms = `find $dirpath -name kernel-*.rpm`;
+                  foreach my $krpm (@kernel_rpms) {
+                      chomp($krpm);
+                      my $base_krpm = basename($krpm);
+                      if ( defined ($src_data{$base_krpm}) ) {
+                          if ($::VERBOSE) {
+                            my $rsp;
+                            push @{ $rsp->{data} }, "Duplicate source $base_krpm found in input.  Skipping $krpm in osdistro $od.  Using from $src_data{$base_krpm}{'sourcemsg'} instead.";
+                            xCAT::MsgUtils->message( "W", $rsp, $::CALLBACK );
+                          }
+                          next;
+                      } 
+                      $src_data{$base_krpm}{'sourcemsg'}="osdistro $od rpm $krpm";
+                      $src_data{$base_krpm}{'source'}=$krpm;
+                      $src_data{$base_krpm}{'order'}=$order++;
+                  }
+              }
+          }
+       }
+       $odtab->close;
+  }
 
-  foreach my $base_source (keys %src_data){
+
+
+  foreach my $base_source (sort {$src_data{$a}{'order'} <=> $src_data{$b}{'order'}} keys %src_data){
       push @sources, $src_data{$base_source}{'source'};
   }
 
@@ -553,7 +563,7 @@ sub set_sources {
 sub mods_in_rpm {
 
   my $krpm = shift;
-  my %modlist;
+  my @modlist;
  
 
   my $tmp_path = "/tmp/lskmodules_expanded_rpm";
@@ -576,6 +586,7 @@ sub mods_in_rpm {
  
   my @ko_files = `find $tmp_path -name *.ko`;
   foreach my $ko (@ko_files) {
+      my %mod;
       chomp($ko);
       my $name = basename($ko);
       my $desc = `modinfo -d $ko`;
@@ -583,12 +594,14 @@ sub mods_in_rpm {
       if ( $desc =~ /^\s*$/ ) {
           $desc = "  ";     
       }
-      $modlist{$name} = $desc;
+      $mod{name} = $name;
+      $mod{description} = $desc;
+      push (@modlist, \%mod);
   }
   
   rmtree($tmp_path);
 
-  return %modlist;
+  return @modlist;
 
 }
 
@@ -617,7 +630,7 @@ sub mods_in_rpm {
 sub mods_in_img {
 
   my $img_file = shift;
-  my %modlist;
+  my @modlist;
 
   my $mnt_path = "/tmp/lskmodules_mnt";
   mkpath($mnt_path);
@@ -633,6 +646,7 @@ sub mods_in_img {
 
   my @ko_files = `find $mnt_path -name *.ko`;
   foreach my $ko (@ko_files) {
+      my %mod;
       chomp($ko);
       my $name = basename($ko);
       my $desc = `modinfo -d $ko`;
@@ -640,13 +654,15 @@ sub mods_in_img {
       if ( $desc =~ /^\w*$/ ) {
           $desc = "  ";     
       }
-      $modlist{$name} = $desc;
+      $mod{name} = $name;
+      $mod{description} = $desc;
+      push (@modlist, \%mod);
   }
   
   $rc = system ("umount $mnt_path");
   rmtree($mnt_path);
 
-  return %modlist;
+  return @modlist;
 }
 
 1;
