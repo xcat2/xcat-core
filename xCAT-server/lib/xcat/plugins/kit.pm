@@ -61,13 +61,13 @@ sub process_request
     my $command  = $request->{command}->[0];
 
     if ($command eq "addkit"){
-            return addkit($request, $callback);
+        return addkit($request, $callback);
     } elsif ($command eq "rmkit"){
-            return rmkit($request, $callback);
+        return rmkit($request, $callback);
     } elsif ($command eq "addkitcomp"){
         return addkitcomp($request, $callback);
     } elsif ($command eq "rmkitcomp"){
-            return rmkitcomp($request, $callback);
+        return rmkitcomp($request, $callback);
     } else{
             $callback->({error=>["Error: $command not found in this module."],errorcode=>[1]});
             #return (1, "$command not found);
@@ -274,8 +274,9 @@ sub assign_to_osimage
     my $callback = shift;
     my $tabs = shift;
 
-    (my $kitcomptable) = $tabs->{kitcomponent}->getAttribs({kitcompname=> $kitcomp}, 'kitname', 'kitreponame', 'basename', 'kitpkgdeps', 'exlist', 'postbootscripts');
+    (my $kitcomptable) = $tabs->{kitcomponent}->getAttribs({kitcompname=> $kitcomp}, 'kitname', 'kitreponame', 'basename', 'kitpkgdeps', 'exlist', 'postbootscripts', 'driverpacks');
     (my $osimagetable) = $tabs->{osimage}->getAttribs({imagename=> $osimage}, 'postbootscripts', 'kitcomponents');
+    (my $linuximagetable) = $tabs->{linuximage}->getAttribs({imagename=> $osimage}, 'exlist', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
  
     # Adding postbootscrits to osimage.postbootscripts
     if ( $kitcomptable and $kitcomptable->{postbootscripts} ){
@@ -298,8 +299,6 @@ sub assign_to_osimage
             
         }
     }
-
-    (my $linuximagetable) = $tabs->{linuximage}->getAttribs({imagename=> $osimage}, 'exlist', 'otherpkglist', 'otherpkgdir');
 
     # Adding kit component's repodir to osimage.otherpkgdir
     if ( $kitcomptable and $kitcomptable->{kitreponame} ) {
@@ -347,21 +346,21 @@ sub assign_to_osimage
 
 
         # Adding kit component exlist file to KIT_COMPONENTS.exlist file
-        mkpath("$installdir/kits/custom/$osimage/");
-        if ( -e "$installdir/kits/custom/$osimage/KIT_COMPONENTS.exlist" ) {
-            if (open(EXLIST, "<", "$installdir/kits/custom/$osimage/KIT_COMPONENTS.exlist")) {
+        mkpath("$installdir/osimages/$osimage/kits/");
+        if ( -e "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist" ) {
+            if (open(EXLIST, "<", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist")) {
                 @lines = <EXLIST>;
                 close(EXLIST);
                 if($::VERBOSE){
-                    $callback->({data=>["\nReading kit component exlist file $installdir/kits/custom/$osimage/KIT_COMPONENTS.exlist\n"]});
+                    $callback->({data=>["\nReading kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist\n"]});
                 }
             } else {
-                $callback->({error => ["Could not open kit component exlist file $installdir/kits/custom/$osimage/KIT_COMPONENTS.exlist"],errorcode=>[1]});
+                $callback->({error => ["Could not open kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist"],errorcode=>[1]});
                 return 1;
             }
         }
         unless ( grep(/^#INCLUDE:$kitdir\/other_files\/$exlistfile#$/ , @lines) ) {
-            if (open(NEWEXLIST, ">>", "$installdir/kits/custom/$osimage/KIT_COMPONENTS.exlist")) {
+            if (open(NEWEXLIST, ">>", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist")) {
                 
                 print NEWEXLIST "#INCLUDE:$kitdir/other_files/$exlistfile#\n"; 
                 close(NEWEXLIST);
@@ -374,16 +373,16 @@ sub assign_to_osimage
                 my $match = 0;
                 my @exlists= split ',', $linuximagetable->{exlist};
                 foreach my $exlist ( @exlists ) {
-                    if ( $exlist =~ /^$installdir\/kits\/custom\/$osimage\/KIT_COMPONENTS.exlist$/ ) {
+                    if ( $exlist =~ /^$installdir\/osimages\/$osimage\/kits\/KIT_COMPONENTS.exlist$/ ) {
                         $match = 1;
                         last;
                     }
                 }
                 unless ( $match ) {
-                    $linuximagetable->{exlist} = $linuximagetable->{exlist} . ',' . "$installdir/kits/custom/$osimage/KIT_COMPONENTS.exlist";
+                    $linuximagetable->{exlist} = $linuximagetable->{exlist} . ',' . "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist";
                 }
             } else {
-                $linuximagetable->{exlist} = "$installdir/kits/custom/$osimage/KIT_COMPONENTS.exlist";
+                $linuximagetable->{exlist} = "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist";
             }
 
         }
@@ -411,16 +410,16 @@ sub assign_to_osimage
 
         # Creating kit deployparams file
         my @lines;
-        mkpath("$installdir/kits/custom/$osimage/");
-        if ( -e "$installdir/kits/custom/$osimage/KIT_DEPLOY_PARAMS.otherpkgs.pkglist" ) {
-            if (open(DEPLOYPARAM, "<", "$installdir/kits/custom/$osimage/KIT_DEPLOY_PARAMS.otherpkgs.pkglist")) {
+        mkpath("$installdir/osimages/$osimage/kits/");
+        if ( -e "$installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist" ) {
+            if (open(DEPLOYPARAM, "<", "$installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist")) {
                 @lines = <DEPLOYPARAM>;
                 close(DEPLOYPARAM);
                 if($::VERBOSE){
-                    $callback->({data=>["\nReading kit deployparams file $installdir/kits/custom/$osimage/KIT_DEPLOY_PARAMS.otherpkgs.pkglist\n"]});
+                    $callback->({data=>["\nReading kit deployparams file $installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist\n"]});
                 }
             } else {
-                $callback->({error => ["Could not open kit deployparams file $installdir/kits/custom/$osimage/KIT_DEPLOY_PARAMS.otherpkgs.pkglist"],errorcode=>[1]});
+                $callback->({error => ["Could not open kit deployparams file $installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist"],errorcode=>[1]});
                 return 1;
             }
         }
@@ -442,7 +441,7 @@ sub assign_to_osimage
         }
 
         # Write the missing lines to kit deployparams file
-        if (open(NEWDEPLOYPARAM, ">>", "$installdir/kits/custom/$osimage/KIT_DEPLOY_PARAMS.otherpkgs.pkglist")) {
+        if (open(NEWDEPLOYPARAM, ">>", "$installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist")) {
             print NEWDEPLOYPARAM @l;
             close(NEWDEPLOYPARAM);
         }
@@ -453,16 +452,16 @@ sub assign_to_osimage
                 my $match = 0;
                 my @otherpkglists= split ',', $linuximagetable->{otherpkglist};
                 foreach my $otherpkglist ( @otherpkglists ) {
-                    if ( $otherpkglist =~ /^$installdir\/kits\/custom\/$osimage\/KIT_DEPLOY_PARAMS.otherpkgs.pkglist$/ ) {
+                    if ( $otherpkglist =~ /^$installdir\/osimages\/$osimage\/kits\/KIT_DEPLOY_PARAMS.otherpkgs.pkglist$/ ) {
                         $match = 1;
                         last;
                     }
                 }
                 unless ( $match ) {
-                    $linuximagetable->{otherpkglist} = $linuximagetable->{otherpkglist} . ',' . "$installdir/kits/custom/$osimage/KIT_DEPLOY_PARAMS.otherpkgs.pkglist";
+                    $linuximagetable->{otherpkglist} = $linuximagetable->{otherpkglist} . ',' . "$installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist";
                 }
             } else {
-                $linuximagetable->{otherpkglist} = "$installdir/kits/custom/$osimage/KIT_DEPLOY_PARAMS.otherpkgs.pkglist";
+                $linuximagetable->{otherpkglist} = "$installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist";
             }
         }
 
@@ -475,21 +474,21 @@ sub assign_to_osimage
         my $basename = $kitcomptable->{basename};
 
         # Adding kit component basename to KIT_COMPONENTS.otherpkgs.pkglist file
-        mkpath("$installdir/kits/custom/$osimage/");
-        if ( -e "$installdir/kits/custom/$osimage/KIT_COMPONENTS.otherpkgs.pkglist" ) {
-            if (open(OTHERPKGLIST, "<", "$installdir/kits/custom/$osimage/KIT_COMPONENTS.otherpkgs.pkglist")) {
+        mkpath("$installdir/osimages/$osimage/kits");
+        if ( -e "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist" ) {
+            if (open(OTHERPKGLIST, "<", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist")) {
                 @lines = <OTHERPKGLIST>;
                 close(OTHERPKGLIST);
                 if($::VERBOSE){
-                    $callback->({data=>["\nReading kit component otherpkg file $installdir/kits/custom/$osimage/KIT_COMPONENTS.otherpkgs.pkglist\n"]});
+                    $callback->({data=>["\nReading kit component otherpkg file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist\n"]});
                 }
             } else {
-                $callback->({error => ["Could not open kit component otherpkg file $installdir/kits/custom/$osimage/KIT_COMPONENTS.otherpkgs.pkglist"],errorcode=>[1]});
+                $callback->({error => ["Could not open kit component otherpkg file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist"],errorcode=>[1]});
                 return 1;
             }
         }
         unless ( grep(/^$basename$/, @lines) ) {
-            if (open(NEWOTHERPKGLIST, ">>", "$installdir/kits/custom/$osimage/KIT_COMPONENTS.otherpkgs.pkglist")) {
+            if (open(NEWOTHERPKGLIST, ">>", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist")) {
 
                 print NEWOTHERPKGLIST "$basename\n";
                 close(NEWOTHERPKGLIST);
@@ -502,69 +501,65 @@ sub assign_to_osimage
                 my $match = 0;
                 my @otherpkglists= split ',', $linuximagetable->{otherpkglist};
                 foreach my $otherpkglist ( @otherpkglists ) {
-                    if ( $otherpkglist =~ /^$installdir\/kits\/custom\/$osimage\/KIT_COMPONENTS.otherpkgs.pkglist$/ ) {
+                    if ( $otherpkglist =~ /^$installdir\/osimages\/$osimage\/kits\/KIT_COMPONENTS.otherpkgs.pkglist$/ ) {
                         $match = 1;
                         last;
                     }
                 }
                 unless ( $match ) {
-                    $linuximagetable->{otherpkglist} = $linuximagetable->{otherpkglist} . ',' . "$installdir/kits/custom/$osimage/KIT_COMPONENTS.otherpkgs.pkglist";
+                    $linuximagetable->{otherpkglist} = $linuximagetable->{otherpkglist} . ',' . "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist";
                 }
             } else {
-                $linuximagetable->{otherpkglist} = "$installdir/kits/custom/$osimage/KIT_COMPONENTS.otherpkgs.pkglist";
+                $linuximagetable->{otherpkglist} = "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist";
             }
 
         }
 
         # Remove this component basename and pkgnames from KIT_RMPKGS.otherpkg.pkglist
+        my @lines = ();
+        my @kitpkgdeps = ();
+        my @l = ();
         if ( $kitcomptable->{kitpkgdeps} ) {
-            my @lines;
-            if ( -e "$installdir/kits/custom/$osimage/KIT_RMPKGS.otherpkgs.pkglist" ) {
-                if (open(RMOTHERPKGLIST, "<", "$installdir/kits/custom/$osimage/KIT_RMPKGS.otherpkgs.pkglist")) {
+            if ( -e "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist" ) {
+                if (open(RMOTHERPKGLIST, "<", "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist")) {
                     @lines = <RMOTHERPKGLIST>;
                     close(RMOTHERPKGLIST);
                     if($::VERBOSE){
-                        $callback->({data=>["\nReading kit component rmpkgs file $installdir/kits/custom/$osimage/KIT_RMPKGS.otherpkgs.pkglist\n"]});
+                        $callback->({data=>["\nReading kit component rmpkgs file $installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist\n"]});
                     }
                 } else {
-                    $callback->({error => ["Could not open kit component rmpkgs file $installdir/kits/custom/$osimage/KIT_RMPKGS.otherpkgs.pkglist"],errorcode=>[1]});
+                    $callback->({error => ["Could not open kit component rmpkgs file $installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist"],errorcode=>[1]});
                     return 1;
                 }
             }
 
-            my @l;
-            my @kitpkgdeps = split ',', $kitcomptable->{kitpkgdeps}; 
-            my $changed = 0;
-            foreach my $line ( @lines ) {
-                chomp $line;
-                my $matched = 0;
-                foreach my $kitpkgdep ( @kitpkgdeps ) {
-                    if ( $line =~ /^-$kitpkgdep$/ ) {
-                        $matched = 1;
-                        $changed = 1;
-                        last;
-                    }
-                }
+            @kitpkgdeps = split ',', $kitcomptable->{kitpkgdeps}; 
 
-                if ( $line =~ /^-$basename$/ ) {
+        }
+
+        push @kitpkgdeps, $basename;
+
+        my $changed = 0;
+        foreach my $line ( @lines ) {
+            chomp $line;
+            my $matched = 0;
+            foreach my $kitpkgdep ( @kitpkgdeps ) {
+                if ( $line =~ /^-$kitpkgdep$/ ) {
                     $matched = 1;
                     $changed = 1;
-                }
-
-                unless ( $matched ) {
-                    push @l, "$line\n";
+                    last;
                 }
             }
-
-            if ( scalar(@l) and $changed ) {
-                if (open(RMPKGLIST, ">", "$installdir/kits/custom/$osimage/KIT_RMPKGS.otherpkgs.pkglist")) {
-                    print RMPKGLIST @l;
-                    close(RMPKGLIST);
-                }
+            unless ( $matched ) {
+                push @l, "$line\n";
             }
-        } else {
-            $callback->({error => ["Could not open kit component table and read basename for kit component $kitcomp"],errorcode=>[1]});
-            return 1;
+        }
+
+        if ( $changed ) {
+            if (open(RMPKGLIST, ">", "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist")) {
+                print RMPKGLIST @l;
+                close(RMPKGLIST);
+            }
         }
 
     } else {
@@ -572,7 +567,45 @@ sub assign_to_osimage
         return 1;
     }
 
-    #TODO: adding driverpacks
+    # Now writing kit component to osimage.kitcomponents
+    if($::VERBOSE){
+        $callback->({data=>["\nAdding this kitcomponent to osimage.kitcomponents\n"]});
+    }
+    if ( $osimagetable ) {
+        if ( $osimagetable->{kitcomponents} ){
+            $osimagetable->{kitcomponents} = join( ',', $osimagetable->{kitcomponents}, $kitcomp);
+        } else {
+            $osimagetable->{kitcomponents} = $kitcomp;
+        }
+    }
+
+    # Adding driverpacks
+
+    if ( $linuximagetable and $linuximagetable->{driverupdatesrc} ) {
+        if ( $kitcomptable and $kitcomptable->{driverpacks} ) {
+            my @driverpacks = split ',', $kitcomptable->{driverpacks};
+            my @driverupdatesrcs = split ',', $linuximagetable->{driverupdatesrc};
+
+            my @newdriverupdatesrcs = @driverupdatesrcs;
+
+            foreach  my $driverpack ( @driverpacks ) {
+                my $matched = 0;
+                    foreach my $driverupdatesrc ( @driverupdatesrcs ) {
+                    if ( $driverpack eq $driverupdatesrc ) {
+                        $matched = 1;
+                        last;
+                    }
+                }
+
+                unless ( $matched ) {
+                    push @newdriverupdatesrcs, $driverpack;
+                }
+            }
+
+            my $newdriverupdatesrc = join ',', @newdriverupdatesrcs;
+            $linuximagetable->{driverupdatesrc} = $newdriverupdatesrc;
+        }
+    }    
     
 
     # Write linuximage table with all the above udpates.
@@ -1284,7 +1317,7 @@ sub addkitcomp
         # Check if this component is existing in osimage.kitcomponents
         foreach my $oskitcomp ( @oskitcomps ) {
             if ( $kitcomp eq $oskitcomp ) {
-                $callback->({data=>["kit component $kitcomp is already in osimage $osimage"]});
+                $callback->({data=>["$kitcomp kit component is already in osimage $osimage"]});
                 $catched = 1;
                 last;
             } 
@@ -1343,7 +1376,501 @@ sub addkitcomp
 #-------------------------------------------------------
 sub rmkitcomp
 {
- 
+
+    my $request = shift;
+    my $callback = shift;
+    my $kitdir;
+    my $rc;
+
+    my $xusage = sub {
+        my %rsp;
+        push@{ $rsp{data} }, "rmkitcomp: remove kit component from osimage";
+        push@{ $rsp{data} }, "Usage: ";
+        push@{ $rsp{data} }, "\trmkitcomp [-h|--help]";
+        push@{ $rsp{data} }, "\trmkitcomp [-u|--uninstall] [-f|--force] [-V|--verbose] -i <osimage> <kitcompname_list>";
+        $callback->(\%rsp);
+    };
+
+    unless(defined($request->{arg})){ $xusage->(1); return; }
+    @ARGV = @{$request->{arg}};
+    if($#ARGV eq -1){
+            $xusage->(1);
+            return;
+    }
+
+
+    GetOptions(
+            'h|help' => \$help,
+            'V|verbose' => \$::VERBOSE,
+            'u|uninstall' => \$uninstall,
+            'f|force' => \$force,
+            'i=s' => \$osimage
+    );
+
+    if($help){
+            $xusage->(0);
+            return;
+    }
+
+    my %tabs = ();
+    my @tables = qw(kit kitrepo kitcomponent osimage osdistro linuximage);
+    foreach my $t ( @tables ) {
+        $tabs{$t} = xCAT::Table->new($t,-create => 1,-autocommit => 1);
+
+        if ( !exists( $tabs{$t} )) {
+            $callback->({error => ["Could not open xCAT table $t\n"],errorcode=>[1]});
+            return 1;
+        }
+    }
+
+
+    # Check if all the kitcomponents are existing before processing
+
+    my %kitcomps;
+    my $des = shift @ARGV;
+    my @kitcomponents = split ',', $des;
+    foreach my $kitcomponent (@kitcomponents) {
+
+        # Check if it is a kitcompname or basename
+        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $kitcomponent}, 'kitname', 'kitpkgdeps', 'postbootscripts', 'kitreponame', 'exlist', 'basename', 'driverpacks');
+        if ( $kitcomptable and $kitcomptable->{'kitname'}){
+            $kitcomps{$kitcomponent}{name} = $kitcomponent;
+            $kitcomps{$kitcomponent}{kitname} = $kitcomptable->{kitname};
+            $kitcomps{$kitcomponent}{kitpkgdeps} = $kitcomptable->{kitpkgdeps};
+            $kitcomps{$kitcomponent}{basename} = $kitcomptable->{basename};
+            $kitcomps{$kitcomponent}{exlist} = $kitcomptable->{exlist};
+            $kitcomps{$kitcomponent}{postbootscripts} = $kitcomptable->{postbootscripts};
+            $kitcomps{$kitcomponent}{kitreponame} = $kitcomptable->{kitreponame};
+            $kitcomps{$kitcomponent}{driverpacks} = $kitcomptable->{driverpacks};
+        } else {
+            my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcomponent'", 'kitcompname' , 'version', 'release');
+            unless (@entries) {
+                $callback->({error => ["$kitcomponent kitcomponent does not exist\n"],errorcode=>[1]});
+                return 1;
+            }
+
+            my $highest = get_highest_version('kitcompname', 'version', 'release', @entries);
+            $kitcomps{$highest}{name} = $highest;
+            (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $highest}, 'kitname', 'kitpkgdeps', 'postbootscripts', 'kitreponame', 'exlist', 'basename', 'driverpacks');
+            $kitcomps{$highest}{kitname} = $kitcomptable->{kitname};
+            $kitcomps{$highest}{kitpkgdeps} = $kitcomptable->{kitpkgdeps};
+            $kitcomps{$highest}{basename} = $kitcomptable->{basename};
+            $kitcomps{$highest}{exlist} = $kitcomptable->{exlist};
+            $kitcomps{$highest}{postbootscripts} = $kitcomptable->{postbootscripts};
+            $kitcomps{$highest}{kitreponame} = $kitcomptable->{kitreponame};
+            $kitcomps{$highest}{driverpacks} = $kitcomptable->{driverpacks};
+        }
+    }
+
+    # Check if the kitcomponents are existing in osimage.kitcomponents attribute.
+
+    (my $osimagetable) = $tabs{osimage}->getAttribs({imagename => $osimage}, 'kitcomponents', 'postbootscripts');
+    if ( !$osimagetable or !$osimagetable->{'kitcomponents'} ){
+        $callback->({error => ["$osimage osimage does not exist or not includes any kit components\n"],errorcode=>[1]});
+        return 1;
+    }
+    my @osikitcomps = split ',', $osimagetable->{'kitcomponents'};
+    foreach my $osikitcomp ( @osikitcomps ) {
+        if ( exists($kitcomps{$osikitcomp}) ) {
+            $kitcomps{$osikitcomp}{matched} = 1;
+        }
+    } 
+    my $invalidkitcomp = '';
+    foreach my $kitcomp ( keys %kitcomps) {
+        if ( !$kitcomps{$kitcomp}{matched} ) {
+            if ( !$invalidkitcomp ) {
+                $invalidkitcomp = $kitcomp;
+            } else {
+                $invalidkitcomp = join(',', $invalidkitcomp, $kitcomp);
+            }
+        }
+    }
+
+    if ( $invalidkitcomp ) {
+        $callback->({error => ["$invalidkitcomp kit components are not assigned to osimage $osimage\n"],errorcode=>[1]});;
+        return 1;
+    }
+
+    # Now check if there is any other kitcomponent depending on this one.
+
+    foreach my $kitcomponent (keys %kitcomps) {
+        foreach my $osikitcomp ( @osikitcomps ) {
+            (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $osikitcomp}, 'kitcompdeps');
+            if ( $kitcomptable and $kitcomptable->{'kitcompdeps'} ) {
+                my @kitcompdeps = split(',', $kitcomptable->{'kitcompdeps'});
+                foreach my $kitcompdep (@kitcompdeps) {
+
+                    # Get the kit component full name from basename.
+                    my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcompdep'", 'kitcompname' , 'version', 'release');
+                    unless (@entries) {
+                        $callback->({error => ["$kitcompdeps kitcomponent basename does not exist\n"],errorcode=>[1]});
+                         return 1;
+                    }
+
+                    my $kitcompdepname = get_highest_version('kitcompname', 'version', 'release', @entries);
+
+                    if ( ($kitcomponent eq $kitcompdepname) and !$force and !exists($kitcomps{$osikitcomp}) ) {
+                        # There is other kitcomponent depending on this one and there is no --force option
+                        $callback->({error => ["$osikitcomp kitcomponent is still depending on this kitcomponent $kitcomponent\n"],errorcode=>[1]});;
+                        return 1;
+                    }
+                }
+            }
+        }
+    }
+
+
+    # Remove each kitcomponent from osimage.
+
+    my @newosikitcomps;
+    foreach my $osikitcomp ( @osikitcomps ) {
+        my $match = 0;
+        foreach my $kitcomponent (keys %kitcomps) {
+            if ( $kitcomponent eq $osikitcomp ) {
+                $match = 1;
+                last;
+            }
+        }
+        if (!$match) {
+            push @newosikitcomps, $osikitcomp;
+        }
+    }
+
+    my $newosikitcomp = join ',', @newosikitcomps;
+    $osimagetable->{'kitcomponents'} = $newosikitcomp; 
+
+
+    # Remove kitcomponent.postbootscripts from osimage.postbootscripts.
+
+    my @osimagescripts;
+    my @newosimagescripts;
+    if ( $osimagetable and $osimagetable->{'postbootscripts'} ){
+        @osimagescripts = split( ',', $osimagetable->{'postbootscripts'} );
+    }
+
+    foreach my $osimagescript (@osimagescripts) {
+        my $match = 0;
+        foreach my $kitcomponent (keys %kitcomps) {
+            my @kitcompscripts = split( ',', $kitcomps{$kitcomponent}{postbootscripts} );
+            foreach my $kitcompscript ( @kitcompscripts ) {
+                if ( $osimagescript eq $kitcompscript ) {
+                    $match = 1;
+                    last;
+                }
+            }
+
+            last if ($match);
+        }
+
+        if (!$match) {
+            push @newosimagescripts, $osimagescript
+        }
+    }
+
+    my $newosimagescript = join ',', @newosimagescripts;
+    $osimagetable->{'postbootscripts'} = $newosimagescript;
+
+    # Remove symlink from osimage.otherpkgdir.
+
+    (my $linuximagetable) = $tabs{linuximage}->getAttribs({imagename=> $osimage}, 'exlist', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
+    if ( $linuximagetable and $linuximagetable->{otherpkgdir} ) {
+
+        my $otherpkgdir = $linuximagetable->{otherpkgdir};
+        foreach my $kitcomponent (keys %kitcomps) {
+            if ( $kitcomps{$kitcomponent}{kitreponame} ) {
+                if ( -d "$otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}" ) {
+                    system("rm -rf $otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}");
+                }
+            }
+        }
+    }
+
+
+    # Remove kitcomponent exlist,otherpkglist and deploy_params from osimage
+
+    my $installdir = xCAT::TableUtils->getInstallDir();
+    unless($installdir){
+        $installdir = '/install';
+    }
+    $installdir =~ s/\/$//;
+
+
+    foreach my $kitcomponent (keys %kitcomps) {
+
+        if ( !exists($kitcomps{$kitcomponent}{kitname}) ) {
+            $callback->({error => ["Could not find kit object for kitcomponent $kitcomponent"],errorcode=>[1]});
+            return 1;
+        } 
+
+        # Reading kitdir
+        my $kitdir = '';
+        my $exlistfile = '';
+        my $kitname = $kitcomps{$kitcomponent}{kitname};
+        (my $kittable) = $tabs{kit}->getAttribs({kitname=> $kitname}, 'kitdir', 'kitdeployparams');
+
+
+        # Removing exlist
+
+        if ( $linuximagetable and $linuximagetable->{exlist} ) {
+            my $match = 0;
+            my @exlists= split ',', $linuximagetable->{exlist};
+            foreach my $exlist ( @exlists ) {
+                if ( $exlist =~ /^$installdir\/osimages\/$osimage\/kits\/KIT_COMPONENTS.exlist$/ ) {
+                    $match = 1;
+                    last;
+                }
+            }
+    
+            my @lines = ();
+            if ( $match and -e "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist" ) {
+                if (open(EXLIST, "<", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist")) {
+                    @lines = <EXLIST>;
+                    if($::VERBOSE){
+                        $callback->({data=>["\nReading kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist\n"]});
+                    }
+                } else {
+                    $callback->({error => ["Could not open kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist"],errorcode=>[1]});
+                    return 1;
+                }
+
+                if ( $kittable and $kittable->{kitdir} ) {
+                    $kitdir = $kittable->{kitdir};
+                }
+
+                if ( exists($kitcomps{$kitcomponent}{exlist}) ) {
+                    $exlistfile = $kitcomps{$kitcomponent}{exlist};
+                }
+
+                my @newlines = ();
+                foreach my $line ( @lines ) {
+                    if ( $line =~ /^#INCLUDE:$kitdir\/other_files\/$exlistfile#$/ ) {
+                        next;
+                    }
+                    push @newlines, $line;
+                }
+                if (open(NEWEXLIST, ">", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist")) {
+                    print NEWEXLIST @newlines;
+                    close(NEWEXLIST);
+                }
+
+            }
+        }
+            
+        # Removing otherpkglist
+
+        if ( $linuximagetable and $linuximagetable->{otherpkglist} ) {
+            my $match = 0;
+            my @lines = ();
+
+            my @otherpkglists = split ',', $linuximagetable->{otherpkglist};
+            foreach my $otherpkglist ( @otherpkglists ) {
+                if ( $otherpkglist =~ /^$installdir\/osimages\/$osimage\/kits\/KIT_COMPONENTS.otherpkgs.pkglist$/ ) {
+                    $match = 1;
+                    last;
+                }
+            }
+
+            if ( $match and -e "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist" ) {
+                if (open(OTHERPKGLIST, "<", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist")) {
+                    @lines = <OTHERPKGLIST>;
+                    if($::VERBOSE){
+                        $callback->({data=>["\nReading kit component otherpkg pkglist $installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist\n"]});
+                    }
+                } else {
+                    $callback->({error => ["Could not open kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist"],errorcode=>[1]});
+                    return 1;
+                }
+
+                my $basename = '';
+                if ( exists($kitcomps{$kitcomponent}{basename}) ) {
+                    $basename = $kitcomps{$kitcomponent}{basename};
+
+                    my @newlines = ();
+                    foreach my $line ( @lines ) {
+                        if ( $line =~ /^$basename$/ ) {
+                            next;
+                        }
+                        push @newlines, $line;
+                    }
+
+                    if (open(NEWOTHERPKGLIST, ">", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist")) {
+                        print NEWOTHERPKGLIST @newlines;
+                        close(NEWOTHERPKGLIST);
+                    }
+                }
+            }
+
+            # Add this component basename and pkgnames to KIT_RMPKGS.otherpkg.pkglist
+            if ( $uninstall ) {
+                my @lines = ();
+
+                mkpath("$installdir/osimages/$osimage/kits/");
+
+                if ( -e "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist" ) {
+                    if (open(RMOTHERPKGLIST, "<", "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist")) {
+                        @lines = <RMOTHERPKGLIST>;
+                        close(RMOTHERPKGLIST);
+                        if($::VERBOSE){
+                            $callback->({data=>["\nReading kit component rmpkgs file $installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist\n"]});
+                        }
+                    } else {
+                        $callback->({error => ["Could not open kit component rmpkgs file $installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist"],errorcode=>[1]});
+                        return 1;
+                    }
+                }
+
+                my @l = @lines;
+                my $basename = '';
+                my @kitpkgdeps = ();
+
+                if ( exists($kitcomps{$kitcomponent}{basename}) ) {
+                    $basename = $kitcomps{$kitcomponent}{basename};
+                } else {
+                    $callback->({error => ["Could not open kit component table and read basename for kit component $kitcomp"],errorcode=>[1]});
+                    return 1;
+                }
+
+                if ( exists($kitcomps{$kitcomponent}{kitpkgdeps}) ) {
+                    @kitpkgdeps = split ',', $kitcomps{$kitcomponent}{kitpkgdeps};
+                }
+
+                push @kitpkgdeps, $basename;
+
+                foreach my $kitpkgdep ( @kitpkgdeps ) {
+                    my $matched = 0;
+                    foreach my $line ( @lines ) {
+                        chomp $line;
+                        if ( $line =~ /^-$kitpkgdep$/ ) {
+                            $matched = 1;
+                            last;
+                        }
+                    }
+
+                    unless ( $matched ) {
+                        push @l, "-$kitpkgdep\n";
+                    }
+
+                }
+
+                if (open(RMPKGLIST, ">", "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist")) {
+                    print RMPKGLIST @l;
+                    close(RMPKGLIST);
+                }
+
+            }
+
+        }
+
+        # Removing deploy parameters
+
+        if ( $kittable and $kittable->{kitdeployparams} and $kittable->{kitdir} ) {
+
+            my $kitdir = $kittable->{kitdir};
+            my $kitdeployfile = $kittable->{kitdeployparams};
+
+            # Check if there is other kitcomponent in the same kit.
+            my $match = 0;
+            if ( exists($kitcomps{$kitcomponent}{kitname}) ) {
+                my $kitname = $kitcomps{$kitcomponent}{kitname};
+
+                foreach my $osikitcomp ( @osikitcomps ) {
+                    (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname=> $osikitcomp}, 'kitname');
+                    
+                    if ( $kitcomptable and $kitcomptable->{kitname} and $kitcomptable->{kitname} eq $kitname and !exists($kitcomps{$osikitcomp}{name}) ) {
+                        $match = 1;
+                        last;
+                    }
+                }
+
+                unless ( $match ) {
+                    my @contents = ();;
+                    if ( -e "$kitdir/other_files/$kitdeployfile" ) {
+                        if (open(KITDEPLOY, "<", "$kitdir/other_files/$kitdeployfile") ) {
+                            @contents = <KITDEPLOY>;
+                            close(KITDEPLOY);
+                            if($::VERBOSE){
+                                $callback->({data=>["\nReading kit deployparams from $kitdir/other_files/$kitdeployfile\n"]});
+                            }
+                        } else {
+                            $callback->({error => ["Could not open kit deployparams file $kitdir/other_files/$kitdeployfile"],errorcode=>[1]});
+                        }
+                    }
+
+                    my @lines = ();
+                    if ( -e "$installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist" ) {
+                        if (open(DEPLOYPARAM, "<", "$installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist")) {
+                            @lines = <DEPLOYPARAM>;
+                            close(DEPLOYPARAM);
+                            if($::VERBOSE){
+                                $callback->({data=>["\nReading kit deployparams file $installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist\n"]});
+                            }
+                        } else {
+                           $callback->({error => ["Could not open kit deployparams file $installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist"],errorcode=>[1]});
+                            return 1;
+                        }
+                    }
+
+                    my @newcontents = ();
+                    foreach my $line ( @lines ) {
+                        my $found = 0;
+                        foreach my $content ( @contents ) {
+                            if ( $line =~ /$content/ ) {
+                                $found = 1;
+                                last;
+                            }
+                        }
+
+                        unless ( $found ) {
+                            push @newcontents, $line;
+                        }
+                    }
+
+                    # Write the updated lines to kit deployparams file
+                    if (open(NEWDEPLOYPARAM, ">", "$installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist")) {
+                        print NEWDEPLOYPARAM @newcontents;
+                        close(NEWDEPLOYPARAM);
+                    }
+                }
+            }
+        }        
+
+
+        # Remove driverpacks from linuximage
+
+        if ( $linuximagetable and $linuximagetable->{driverupdatesrc} ) {
+            if ( exists($kitcomps{$kitcomponent}{driverpacks}) ) {
+                my @driverpacks = split ',', $kitcomps{$kitcomponent}{driverpacks};
+                my @driverupdatesrcs = split ',', $linuximagetable->{driverupdatesrc};
+
+                my @newdriverupdatesrcs = ();
+
+                foreach my $driverupdatesrc ( @driverupdatesrcs ) {
+                    my $matched = 0;
+                    foreach  my $driverpack ( @driverpacks ) {
+                        if ( $driverpack eq $driverupdatesrc ) {
+                            $matched = 1;
+                            last;
+                        }
+                    }
+
+                    unless ( $matched ) {
+                        push @newdriverupdatesrcs, $driverupdatesrc;
+                    }
+                }
+
+                my $newdriverupdatesrc = join ',', @newdriverupdatesrcs;
+                $linuximagetable->{driverupdatesrc} = $newdriverupdatesrc;
+            }
+        }
+    }
+
+
+    # Write linuximage table with all the above udpates.
+    $tabs{linuximage}->setAttribs({imagename => $osimage }, \%{$linuximagetable} );
+
+    # Write osimage table with all the above udpates.
+    $tabs{osimage}->setAttribs({imagename => $osimage }, \%{$osimagetable} );
+
 }
 
 1;
