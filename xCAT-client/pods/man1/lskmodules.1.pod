@@ -53,6 +53,7 @@ Return the output with XML tags.  The data is returned as:
     <name> xxx.ko </name>
     <description> this is module xxx </description>
   </module>
+This option is intended for use by other programs.  The XML will not be displayed.  To view the returned XML, set the XCATSHOWXML=yes environment variable before running this command.
 
 =item B<-V|--verbose>
 
