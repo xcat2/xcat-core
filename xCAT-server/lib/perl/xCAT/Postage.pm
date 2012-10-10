@@ -790,54 +790,64 @@ sub get_envlist
 =head3   get_pkglist_text
 
         read the pkglist file, expand it and return the content.
+        the "pkglist file" input can be a comma-separated list of
+           fully-qualified files
+
 =cut
 
 #-----------------------------------------------------------------------------
 sub get_pkglist_tex
 {
-    my $pkglist   = shift;
-    my @otherpkgs = ();
-    my $pkgtext;
-    if (open(FILE1, "<$pkglist"))
+    my $allfiles_pkglist   = shift;
+    my $allfiles_pkgtext;
+    foreach my $pkglist (split(/,/, $allfiles_pkglist))
     {
-        while (readline(FILE1))
+        my $pkgtext;
+        my @otherpkgs = ();
+        if (open(FILE1, "<$pkglist"))
         {
-            chomp($_);    #remove newline
-            s/\s+$//;     #remove trailing spaces
-            s/^\s*//;     #remove leading blanks
-            next if /^\s*$/;    #-- skip empty lines
-            next
-              if (   /^\s*#/
-                  && !/^\s*#INCLUDE:[^#^\n]+#/
-                  && !/^\s*#NEW_INSTALL_LIST#/
-                  && !/^\s*#ENV:[^#^\n]+#/);    #-- skip comments
-            if (/^@(.*)/)
-            {    #for groups that has space in name
-                my $save = $1;
-                if ($1 =~ / /) { $_ = "\@" . $save; }
-            }
-            push(@otherpkgs, $_);
-        }
-        close(FILE1);
-    }
-    if (@otherpkgs > 0)
-    {
-        $pkgtext = join(',', @otherpkgs);
-
-        #handle the #INCLUDE# tag recursively
-        my $idir         = dirname($pkglist);
-        my $doneincludes = 0;
-        while (not $doneincludes)
-        {
-            $doneincludes = 1;
-            if ($pkgtext =~ /#INCLUDE:[^#^\n]+#/)
+            while (readline(FILE1))
             {
-                $doneincludes = 0;
-                $pkgtext =~ s/#INCLUDE:([^#^\n]+)#/includefile($1,$idir)/eg;
+                chomp($_);    #remove newline
+                s/\s+$//;     #remove trailing spaces
+                s/^\s*//;     #remove leading blanks
+                next if /^\s*$/;    #-- skip empty lines
+                next
+                  if (   /^\s*#/
+                      && !/^\s*#INCLUDE:[^#^\n]+#/
+                      && !/^\s*#NEW_INSTALL_LIST#/
+                      && !/^\s*#ENV:[^#^\n]+#/);    #-- skip comments
+                if (/^@(.*)/)
+                {    #for groups that has space in name
+                    my $save = $1;
+                    if ($1 =~ / /) { $_ = "\@" . $save; }
+                }
+                push(@otherpkgs, $_);
+            }
+            close(FILE1);
+        }
+        if (@otherpkgs > 0)
+        {
+            $pkgtext = join(',', @otherpkgs);
+
+            #handle the #INCLUDE# tag recursively
+            my $idir         = dirname($pkglist);
+            my $doneincludes = 0;
+            while (not $doneincludes)
+            {
+                $doneincludes = 1;
+                if ($pkgtext =~ /#INCLUDE:[^#^\n]+#/)
+                {
+                    $doneincludes = 0;
+                    $pkgtext =~ s/#INCLUDE:([^#^\n]+)#/includefile($1,$idir)/eg;
+                }
             }
         }
+        $allfiles_pkgtext = $allfiles_pkgtext.",".$pkgtext;
     }
-    return $pkgtext;
+    $allfiles_pkgtext =~ s/^(,)+//;
+    $allfiles_pkgtext =~ s/(,)+$//;
+    return $allfiles_pkgtext;
 }
 
 #----------------------------------------------------------------------------
@@ -870,6 +880,11 @@ sub includefile
               && !/^\s*#INCLUDE:[^#^\n]+#/
               && !/^\s*#NEW_INSTALL_LIST#/
               && !/^\s*#ENV:[^#^\n]+#/);   #-- skip comments
+        if (/^@(.*)/)
+        {    #for groups that has space in name
+            my $save = $1;
+            if ($1 =~ / /) { $_ = "\@" . $save; }
+        }
         push(@text, $_);
     }
 
