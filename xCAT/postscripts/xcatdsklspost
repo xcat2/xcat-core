@@ -269,7 +269,7 @@ if [ -x /usr/bin/openssl ]; then
      export USEOPENSSLFORXCAT
 fi
 
-/xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /xcatpost/mypostscript; 
+/xcatpost/getpostscript.awk | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /xcatpost/mypostscript; 
 MYCONT=`grep MASTER /xcatpost/mypostscript`
 #echo "MYCONT=$MYCONT"
 #if getpostscript.awk fails, the postscript will fall into infinit loop
@@ -280,14 +280,17 @@ while [ -z "$MYCONT" ]; do
     RETRY=$(($RETRY+1))
     if [ $RETRY -eq $MAX_RETRIES ]
     then
-        break
+#        break
+    	 echo "xcatdsklspost: failed to getpostscript from $XCATSERVER"
+	 logger -t xcat -p local4.err "xcatdsklspost: failed to getpostscript from $XCATSERVER"
+         exit 1
     fi
 
     #SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
     #SLI=$((10 + $SLI))
     #sleep $SLI
     
-    /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /xcatpost/mypostscript;
+    /xcatpost/getpostscript.awk | egrep  '<data>'  | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /xcatpost/mypostscript;
     MYCONT=`grep MASTER /xcatpost/mypostscript`
     if [ ! -z "$MYCONT" ]; then
         break;
@@ -339,6 +342,9 @@ if [ "$MODE" = "6" ]; then
   #remove all the postscripts
   TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /xcatpost/mypostscript`
   echo "$TMP" > /xcatpost/mypostscript
+ 
+  #TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /xcatpost/mypostscript.post`
+  #echo "$TMP" > /xcatpost/mypostscript.post
   fi
 fi
 
@@ -354,6 +360,9 @@ if [ "XX$POSTSCRIPTS" != "XX" ]; then
   #add requested postscripts in
   echo "$POSTSCRIPTS" | tr "," "\n" >> /xcatpost/mypostscript
   echo "# postscripts-end-here" >> /xcatpost/mypostscript
+  
+
+  
 fi
 
 #ADDSITEYUM is set by post.rh and post.rh.iscsi for full installtion
@@ -386,6 +395,7 @@ run_ps () {
   if [ \"\$ret_local\" -ne \"0\" ]; then
      return_value=\$ret_local
   fi
+  echo \"Postscript: \$@ exited with code \$ret_local\"
  else
   echo \"\`date\` Postscript \$1 does NOT exist.\" | tee -a \$logfile
   return_value=-1
@@ -426,9 +436,28 @@ if [ "$CLEANUPXCATPOST" = "'1'" ] || [ "$CLEANUPXCATPOST" = "'yes'" ]; then
   echo "rm -rf /xcatpost/*" >> /xcatpost/mypostscript
 fi
 
+
+
+if [ "$MODE" = "1" ] || [ "$MODE" = "2" ] || [ "$MODE" = "5" ]; then
+  #notify the server that we are done with updatenode
+  CNS=`grep NODESTATUS= /xcatpost/mypostscript |awk -F = '{print $2}'`
+  if [ -z "$CNS" ] || [ "$CNS" != "'0'" -a   "$CNS" != "'N'"  -a  "$CNS" != "'n'" ]; then
+        echo "
+if [ \"\$return_value\" -eq \"0\" ]; then
+   updateflag.awk \$MASTER 3002 \"updatestatus synced\"
+else
+   updateflag.awk \$MASTER 3002 \"updatestatus out-of-sync\"
+fi
+        " >> /xcatpost/mypostscript
+  fi
+  
+  echo "exit \$return_value" >> /xcatpost/mypostscript
+fi
+
 chmod +x /xcatpost/mypostscript
 if [ -x /xcatpost/mypostscript ];then
    /xcatpost/mypostscript
+   VRET_POST=$?   
 fi
 #rm -f /xcatpost/mypostscript
 
@@ -437,3 +466,4 @@ if [ "$MODE" = "1" ] || [ "$MODE" = "2" ] || [ "$MODE" = "5" ]; then
   echo "returned from postscript"
 fi
 
+exit $VRET_POST

@@ -60,7 +60,8 @@ sub handled_commands
             updatenode        => "updatenode",
             updatenodestat    => "updatenode",
             updatemynodestat  => "updatenode",
-            updatenodeappstat => "updatenode"
+            updatenodeappstat => "updatenode",
+            updatenodeupdatestat => "updatenode"
             };
 }
 
@@ -98,6 +99,10 @@ sub preprocess_request
         return [$request];
     }
     elsif ($command eq "updatenodeappstat")
+    {
+        return [$request];
+    }
+    elsif ($command eq "updatenodeupdatestat")
     {
         return [$request];
     }
@@ -153,6 +158,10 @@ sub process_request
     elsif ($command eq "updatenodeappstat")
     {
         return updatenodeappstat($request, $callback);
+    }
+    elsif ($command eq "updatenodeupdatestat")
+    {
+        return updatenodeupdatestat($request, $callback);
     }
     else
     {
@@ -341,6 +350,8 @@ sub preprocess_updatenode
     }
 
     my $nodes = $request->{node};
+
+
     if (!$nodes)
     {
         my $rsp = {};
@@ -494,6 +505,7 @@ sub preprocess_updatenode
      
       }
     }
+
 
     # if  not -S or -P or --security
     unless (defined($::SWMAINTENANCE) || defined($::RERUNPS) || $::SECURITY)
@@ -884,7 +896,7 @@ sub updatenode
     #print Dumper($request);
     my $nodes         = $request->{node};
     my $localhostname = hostname();
-
+    #xCAT::TableUtils->setUpdateStatus($nodes,$::STATUS_SYNCING);
     # in a mixed cluster we could potentially have both AIX and Linux
     #	nodes provided on the command line ????
     my ($rc, $AIXnodes, $Linuxnodes) = xCAT::InstUtils->getOSnodes($nodes);
@@ -1333,7 +1345,6 @@ sub updatenode
                           },
                           \&getdata
                           );
-
             }
         }
 
@@ -1618,6 +1629,64 @@ sub updatenodestat
     return 0;
 }
 
+#-------------------------------------------------------------------------------
+
+=head3   updatenodeupdatestat
+
+update the nodelist.updatestatus and nodelist.updatestatustime during updatenode
+
+    Arguments:
+    Returns:
+        0 - for success.
+        1 - for error.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub updatenodeupdatestat
+{
+    my $request  = shift;
+    my $callback = shift;
+    my @nodes    = ();
+    my @args     = ();
+    if (ref($request->{node}))
+    {
+        @nodes = @{$request->{node}};
+    }
+    else
+    {
+        if ($request->{node}) { @nodes = ($request->{node}); }
+        else
+        {    #client asking to update its own status...
+            unless (ref $request->{username})
+            {
+                return;
+            }    #TODO: log an attempt without credentials?
+            @nodes = @{$request->{username}};
+        }
+    }
+    if (ref($request->{arg}))
+    {
+        @args = @{$request->{arg}};
+    }
+    else
+    {
+        @args = ($request->{arg});
+    }
+
+    if ((@nodes > 0) && (@args > 0))
+    {
+        my $stat        = $args[0];
+        unless ($::VALID_STATUS_VALUES{$stat})
+        {
+            return;
+        }    #don't accept just any string, see GlobalDef for updates
+
+	xCAT::TableUtils->setUpdateStatus(\@nodes,$stat);        
+    }
+
+    return 0;
+}
 #-------------------------------------------------------------------------------
 
 =head3   doAIXcopy

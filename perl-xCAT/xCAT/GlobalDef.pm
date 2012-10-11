@@ -33,6 +33,12 @@ $::NODETYPE_PPC="ppc";
 $::NODETYPE_ZVM="zvm";
 $::NODETYPE_MP="mp";
 
+#valid values for nodelist.updatestatus
+$::STATUS_SYNCING="syncing";
+$::STATUS_OUT_OF_SYNC="out-of-sync";
+$::STATUS_SYNCED="synced";
+
+
 # valid values for nodelist.status columns or other status 
 $::STATUS_ACTIVE="alive";
 $::STATUS_INACTIVE="unreachable";
@@ -65,6 +71,10 @@ $::STATUS_FAILED="failed";
 	$::STATUS_DEFINED=>1,
 	$::STATUS_UNKNOWN=>1,
         $::STATUS_FAILED=>1,
+
+	$::STATUS_SYNCING=>1,
+	$::STATUS_OUT_OF_SYNC=>1,
+	$::STATUS_SYNCED=>1,
 );
 
 #defined->[discovering]->[configuring]->[standingby]->installing->[installed]->booting->alive,  defined->[discovering]->[configuring]-[standingby]->netbooting->booted->alive,  alive/unreachable->booting->alive,  powering-off->unreachable, alive->unreachable

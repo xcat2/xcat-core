@@ -854,6 +854,70 @@ sub setAppStatus
 
 }
 
+#-------------------------------------------------------------------------------
+
+=head3  setUpdateStatus
+    Description:
+        Set the updatestatus  attribute for a list of nodes during "updatenode"
+    Arguments:
+        @nodes
+        $status
+    Returns:
+        none
+        
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        xCAT::TableUtils->setUpdateStatus(\@nodes,$status);
+    Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub setUpdateStatus
+{
+    require xCAT::Table;
+
+
+    my ($class, $nodes_ref, $status) = @_;
+    my @nodes = @$nodes_ref;
+
+
+
+    #get current local time to set in Updatestatustime attribute
+    my (
+        $sec,  $min,  $hour, $mday, $mon,
+        $year, $wday, $yday, $isdst
+        )
+        = localtime(time);
+    my $currtime = sprintf("%02d-%02d-%04d %02d:%02d:%02d",
+                           $mon + 1, $mday, $year + 1900,
+                           $hour, $min, $sec);
+
+    my $nltab = xCAT::Table->new('nodelist');
+    if($nltab){
+		if(@nodes>0){
+		   my %updates;
+
+	           $updates{'updatestatus'} = $status;
+                   $updates{'updatestatustime'} = $currtime;
+        	   my $where_clause;
+        	   my $dbname=xCAT::Utils->get_DBName() ;
+        	   if ($dbname eq 'DB2') {
+             		$where_clause="\"node\" in ('" . join("','", @nodes) . "')";
+        	   } else {
+             		$where_clause="node in ('" . join("','", @nodes) . "')";
+        	   }
+                   print "$where_clause";
+        	   $nltab->setAttribsWhere($where_clause, \%updates );                   
+	        }
+              $nltab->close;	
+	}
+   return;
+}
 
 #-------------------------------------------------------------------------------
 
