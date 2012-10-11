@@ -1058,7 +1058,7 @@ sub check_rsp_errors { #TODO: pass in command-specfic error code translation tab
 	}
     if ($rsp->{code}) { #ipmi error
         if ($codes{$rsp->{code}}) {
-            xCAT::SvrUtils::sendmsg([1,$codes{$rsp->{code}}],$callback);
+            xCAT::SvrUtils::sendmsg([1,$codes{$rsp->{code}}],$callback,$sessdata->{node},%allerrornodes);
         } else {
              xCAT::SvrUtils::sendmsg([1,sprintf("Unknown error code %02xh",$rsp->{code})],$callback,$sessdata->{node},%allerrornodes);
         }
