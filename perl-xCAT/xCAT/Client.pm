@@ -425,7 +425,7 @@ sub plugin_command {
                                           #a static global, it grabs all nodes rather than some
             $useglobals = -1; #If they tried to specify anything, don't use the default global handlers at all
             unless (@nodes) {
-              $handler_hash{$sent->{value}} = 1;
+              $handler_hash{$::XCATSITEVALS{$sitekey}} = 1;
               $usesiteglobal = 1;
             }
             foreach (@nodes) { #Specified a specific plugin, not a table lookup
