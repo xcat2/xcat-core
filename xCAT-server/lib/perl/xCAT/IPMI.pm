@@ -371,10 +371,9 @@ sub checksum {
 sub subcmd {
     my $self = shift;
     my %args = @_;
-    my $rqaddr=0x81; #see section 5.5 of ipmi2 spec, rqsa by old code 
     my $rsaddr=0x20; #figrue 13-4, rssa by old code
     my @rnl = ($rsaddr,$args{netfn}<<2);
-    my @rest = ($rqaddr,$self->{seqlun},$args{command},@{$args{data}});
+    my @rest = ($self->{rqaddr},$self->{seqlun},$args{command},@{$args{data}});
     my @payload=(@rnl,$self->checksum(@rnl),@rest,$self->checksum(@rest));
     $self->{ipmicallback} = $args{callback};
     $self->{ipmicallback_args} = $args{callback_args};
@@ -680,6 +679,16 @@ sub init {
     $self->{'ipmiversion'}='1.5'; # send first packet as 1.5
     $self->{'timeout'}=$initialtimeout; #start at a quick timeout, increase on retry
     $self->{'seqlun'}=0; #the IPMB seqlun combo, increment by 4s
+    $self->{rqaddr}=0x81; #Per table '5-4' system sofware ids in the ipmi spec, we are allowed 0x81-0x8d software ids
+			  #A problem with ipmi is that chatty commands (rinv) can mistake stale data for new if sequence number overflows
+			  #for example, if 'get firmware information' command is retried, and happens to have sequence number 4,
+			  #64 transactions later a reply to the retry comes up, the data is passed into the callback function because of ambiguity introduced by the
+			  #overflowed sequence number
+			  #to mitigate this, we will iterate rqaddr every time the seqlun counter overflows
+			  #of course, this still means that rqaddr will, itself, overflow, but it mitigates things because:
+			  #448 instead of 64 transactions are now required before ambiguity is possible
+			  #A stale reply has to come in after the conversation has advanced at least 448 transactions, meaning longer delay on extraneous reply before this is a problem
+			  #even if a stale reply comes in at *about* the right time, it has to match an exact multiple of 448 instead of 64, which is significantly less likely.
     $self->{'logged'}=0;
 }
 sub relog {
@@ -802,13 +811,21 @@ sub parse_ipmi_payload {
     my @payload = @_;
     #for now, just trash the headers, this has been validated to death anyway
     #except seqlun, that one is important
-    if ($payload[4] != $self->{seqlun}) {
+    if ($payload[4] != $self->{seqlun} or $payload[0] != $self->{rqaddr}) {
+	#both sequence number and arqaddr must match, because we are using rqaddr to extend the sequence number
         #print "Successfully didn't get confused by stale response ".$payload[4]." and ".($self->{seqlun}-4)."\n";
-        hexdump(@payload);
+        #hexdump(@payload);
         return 1; #response mismatch
     }
     $self->{seqlun} += 4; #increment by 1<<2
-    $self->{seqlun} &= 0xff; #keep it one byte
+    if ($self->{seqlun} > 0xff) { #overflow case
+	    if ($self->{rqaddr} == 0x8d) { #rqaddr itself is forced to overflow
+		$self->{rqaddr}=0x81;
+            } else {
+		$self->{rqaddr}+=2; #table 5-4 demands rqaddr be odd for software ids, so we must increment by 2
+            }
+	    $self->{seqlun} &= 0xff; #keep it one byte
+    }
     delete $sessions_waiting{$self}; #deregister self as satisfied, callback will reregister if appropriate
     delete $self->{pendingargs};
     splice @payload,0,5; #remove rsaddr/netfs/lun/checksum/rq/seq/lun
