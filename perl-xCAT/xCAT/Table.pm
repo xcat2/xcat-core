@@ -2104,6 +2104,8 @@ sub _refresh_cache { #if cache exists, force a rebuild, leaving reference counts
                     #   (uses stale nodelist data and misses new nodes, the error)
                     #1st noderange finishes
                     #2nd noderange finishes
+    } else { #even if a cache is not in use *right this second*, we need to mark any cached data that may exist as invalid, do so by suggesting the cache is from 1970
+	if ($self->{_cachestamp}) { $self->{_cachestamp}=0; }
     }
     return;
 }
