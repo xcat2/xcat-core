@@ -682,6 +682,7 @@ sub makescript
     my $defscripts = $et->{'postscripts'};
     if ($defscripts)
     {
+        push @scriptd, "# defaults-postscripts-start-here\n";
 
         foreach my $n (split(/,/, $defscripts))
         {
@@ -691,6 +692,7 @@ sub makescript
                 push @scriptd, $n . "\n";
             }
         }
+        push @scriptd, "# defaults-postscripts-end-here\n";
     }
     
     # get postscripts for images
@@ -704,6 +706,8 @@ sub makescript
     $ps = $et2->{'postscripts'};
     if ($ps)
     {
+        push @scriptd, "# osimage-postscripts-start-here\n";
+
         foreach my $n (split(/,/, $ps))
         {
             if (!exists($post_hash{$n}))
@@ -712,6 +716,7 @@ sub makescript
                 push @scriptd, $n . "\n";
             }
         }
+        push @scriptd, "# osimage-postscripts-end-here\n";
     }
 
     # get postscripts for node specific
@@ -720,6 +725,7 @@ sub makescript
     $ps = $et1->{'postscripts'};
     if ($ps)
     {
+        push @scriptd, "# node-postscripts-start-here\n";
         foreach my $n (split(/,/, $ps))
         {
             if (!exists($post_hash{$n}))
@@ -728,15 +734,16 @@ sub makescript
                 push @scriptd, $n . "\n";
             }
         }
+        push @scriptd, "# node-postscripts-end-here\n";
     }
 
     if ($setbootfromnet)
     {
-	if (!exists($post_hash{setbootfromnet}))
-	{
+      if (!exists($post_hash{setbootfromnet}))
+	   {
 	    $post_hash{setbootfromnet} = 1;
 	    push @scriptd, "setbootfromnet\n";
-	}
+   	}
     }
 
     # add setbootfromdisk if the nodesetstate is install and arch is ppc64
@@ -759,6 +766,7 @@ sub makescript
     my $defscripts    = $et->{'postbootscripts'};
     if ($defscripts)
     {
+        push @scriptd, "# defaults-postbootscripts-start-here\n";
         foreach my $n (split(/,/, $defscripts))
         {
             if (!exists($postboot_hash{$n}))
@@ -767,12 +775,14 @@ sub makescript
                 push @scriptd, $n . "\n";
             }
         }
+        push @scriptd, "# defaults-postbootscripts-end-here\n";
     }
 
     # get postbootscripts for image
     my $ips = $et2->{'postbootscripts'};
     if ($ips)
     {
+        push @scriptd, "# osimage-postbootscripts-start-here\n";
         foreach my $n (split(/,/, $ips))
         {
             if (!exists($postboot_hash{$n}))
@@ -781,6 +791,7 @@ sub makescript
                 push @scriptd, $n . "\n";
             }
         }
+        push @scriptd, "# osimage-postbootscripts-end-here\n";
     }
 
 
@@ -788,6 +799,7 @@ sub makescript
     $ps = $et1->{'postbootscripts'};
     if ($ps)
     {
+        push @scriptd, "# node-postbootscripts-start-here\n";
         foreach my $n (split(/,/, $ps))
         {
             if (!exists($postboot_hash{$n}))
@@ -796,6 +808,7 @@ sub makescript
                 push @scriptd, $n . "\n";
             }
         }
+        push @scriptd, "# node-postbootscripts-end-here\n";
     }
 
     ###Please do not remove or modify this line of code!!! xcatdsklspost depends on it
