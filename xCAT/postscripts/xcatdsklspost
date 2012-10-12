@@ -384,17 +384,17 @@ fi
 #when a diskfull reboot mode 
 if [ "$MODE" = "6" ]; then
   # remove the post scripts so that they are not run on reboot
-  TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /xcatpost/mypostscript`
+  TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" /xcatpost/mypostscript`
   echo "$TMP" > /xcatpost/mypostscript
   # get the RUNBOOTSCRIPTS site variable
   if [ -f /xcatpost/mypostscript ]; then
     RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript |cut -d= -f2`
   fi
 
-  # if admdin did not requested running of post boot scripts - then remove PBS
+  # if admin did not requested running of post boot scripts - then remove PBS
   if [ "$RUNBOOTSCRIPTS" != "'yes'" ]; then
   #remove all the postscripts
-  TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /xcatpost/mypostscript`
+  TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" /xcatpost/mypostscript`
   echo "$TMP" > /xcatpost/mypostscript
  
   #TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /xcatpost/mypostscript.post`
@@ -405,10 +405,10 @@ fi
 # postscript name is specified with the updatenode
 if [ "XX$POSTSCRIPTS" != "XX" ]; then
   #remove all the postbootscripts
-  TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /xcatpost/mypostscript`
+  TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" /xcatpost/mypostscript`
   echo "$TMP" > /xcatpost/mypostscript
   #remove all the postscripts
-  TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /xcatpost/mypostscript`
+  TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" /xcatpost/mypostscript`
   echo "$TMP" > /xcatpost/mypostscript
   echo "# postscripts-start-here" >> /xcatpost/mypostscript
   #add requested postscripts in
