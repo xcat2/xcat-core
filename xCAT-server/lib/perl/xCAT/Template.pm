@@ -709,6 +709,7 @@ sub subvars_for_mypostscript {
 
   my $masterhash = getMasters($nodes);
 
+
   ## nfsserver,installnic,primarynic
   my $attribsfromnoderes = getNoderes($nodes);
 
@@ -740,8 +741,10 @@ sub subvars_for_mypostscript {
           $allattribsfromsitetable =~ s/MASTER=([^\n]+)\n/MASTER=$master\n/; 
       } 
 
-      # ENABLESSHBETWEENNODES
        
+      #get the node type, service node or compute node
+      my $nodetype = getNodeType($node);
+
       ## nfsserver,installnic,primarynic
       my ($nfsserver, $installnic, $primarynic, $route_vars);
 
@@ -866,6 +869,7 @@ sub subvars_for_mypostscript {
   $inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
   $inc =~ s/#NODE#/$node/eg;
   $inc =~ s/\$NODE/$node/eg;
+  $inc =~ s/#NTYPE#/$nodetype/eg;
   $inc =~ s/#NFSSERVER#/$nfsserver/eg;
   $inc =~ s/#INSTALLNIC#/$installnic/eg;
   $inc =~ s/#PRIMARYNIC#/$primarynic/eg;
@@ -1071,6 +1075,29 @@ sub subroutine
 
    return $result;
 }
+
+
+sub getNodeType
+{
+
+    my $node = shift;
+    my $result;
+
+    # see if this is a service or compute node?
+    if (xCAT::Utils->isSN($node))
+    {
+        $result="service";
+    }
+    else
+    {
+        $result="compute";
+    }
+
+    return $result;
+}
+
+
+
 
 sub getVlanItems
 {
