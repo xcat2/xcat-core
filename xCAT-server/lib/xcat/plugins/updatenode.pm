@@ -926,16 +926,13 @@ sub updatenode
             xCAT::MsgUtils->message("E", $rsp, $callback);
 
         }
-        #$cmd="cd $postscripts;tar -czf $postscripts.tgz ."; #print "cmd:$cmd\n";
-        #xCAT::Utils->runcmd($cmd, 0);
-        #$rsp = {};
-        #if ($::RUNCMD_RC != 0)
-        #{
-        #   $rsp->{data}->[0] = "$cmd failed.\n";
-        #   xCAT::MsgUtils->message("E", $rsp, $callback);
-        #}
 
     }
+
+    #if precreatemypostscripts=1, create each mypostscript for each node
+    require xCAT::Postage;
+    xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq);        
+
 
     # convert the hashes back to the way they were passed in
     my $flatreq = xCAT::InstUtils->restore_request($request, $callback);
