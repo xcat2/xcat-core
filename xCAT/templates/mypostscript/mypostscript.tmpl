@@ -1,0 +1,137 @@
+
+## beginning of all attributes from the site table
+
+#SITE_TABLE_ALL_ATTRIBS_EXPORT#
+
+## end of all attributes from the site table
+
+## One variable:
+## There is a complex loglic to get the value of variable, and 
+## if there is one subroutine in one module, 
+## mark it as the following syntax.
+
+ENABLESSHBETWEENNODES=#Subroutine:xCAT::Template::enablesshbetweennodes:$NODE#
+export ENABLESSHBETWEENNODES
+
+
+NODE=#NODE#
+export NODE
+
+## nfsserver,installnic,primarynic
+NFSSERVER=#NFSSERVER#
+export NFSSERVER
+INSTALLNIC=#INSTALLNIC#
+export INSTALLNIC
+PRIMARYNIC=#INSTALLNIC#
+export PRIMARYNIC
+## examples:
+## NFSSERVER=9.114.34.108
+## export NFSSERVER
+## INSTALLNIC=mac
+## export INSTALLNIC
+## PRIMARYNIC=mac
+## export PRIMARYNIC
+
+## The number of the variables is uncertain. In some case, it will be blank.
+## Complex logic
+## The syntax will be #FLAG#.
+#ROUTES_VARS_EXPORT#
+
+## The details will be as follows or blank.
+## NODEROUTENAMES=$NODE_routenames
+## export NODEROUTENAMES
+## ...
+
+## osver, arch, profile export
+OSVER=#TABLE:nodetype:$NODE:os#
+export OSVER
+ARCH=#TABLE:nodetype:$NODE:arch#
+export ARCH
+PROFILE=#TABLE:nodetype:$NODE:profile#
+export PROFILE
+
+
+PATH=`dirname $0`:$PATH
+export PATH
+
+NODESETSTATE=#Subroutine:xCAT::Postage::getnodesetstate:$NODE#
+export NODESETSTATE
+
+UPDATENODE=0
+export UPDATENODE
+
+NTYPE=#NTYPE#
+export NTYPE
+
+MACADDRESS=#TABLE:mac:$NODE:mac#
+export MACADDRESS
+
+## vlan related items. It may not be configured by the users. 
+#VLAN_VARS_EXPORT#
+
+## the details of VLAN_VARS_EXPORT will be looked like:
+## VMNODE='YES'
+## export VMNODE
+## VLANID=vlan1...
+## export VLANID 
+## VLANHOSTNAME=..
+## ..
+
+## get monitoring server and other configuration data for monitoring setup on nodes
+#MONITORING_VARS_EXPORT#
+
+## the details will be looked like as follows
+## MONSERVER=9.114.34.108
+## export MONSERVER
+## MONMASTER=9.114.34.108
+## export MONMASTER
+
+## get the osimage related variables, such as ospkgdir, ospkgs ...
+#OSIMAGE_VARS_EXPORT#
+## examples:
+## OSPKGDIR=/install/rhels6.2/ppc64
+## export OSPKGDIR
+## OSPKGS='bash,nfs-utils,openssl,dhclient,kernel,openssh-server,openssh-clients,busybox,wget,rsyslog,dash,vim-minimal,ntp,rsyslog,rpm,rsync,ppc64-utils,iputils,dracut,dracut-network,e2fsprogs,bc,lsvpd,irqbalance,procps,yum'
+## export OSPKGS
+
+
+
+## get the diskless networks information. There may be no information.
+#NETWORK_FOR_DISKLESS_EXPORT#
+
+## examples of NETWORK_FOR_DISKLESS_EXPORT
+## the details will be looked like:
+## NETMASK=255.255.255.0
+## export NETMASK
+## GATEWAY=9.114.34.108
+## 
+
+
+##
+## Notice:  The following flag postscripts-start-here could not be deleted from the template!!!
+
+# postscripts-start-here
+#INCLUDE_POSTSCRIPTS_LIST#
+## the details will be looked like:
+## for diskless / updatenode
+## run_ps syslog
+## run_ps remoteshell
+## run_ps syncfiles
+
+## for diskful
+## syslog
+## remoteshell
+## syncfiles
+
+
+
+## Notice:  The following flag postscripts-end-here could not be deleted from the template!!!
+# postscripts-end-here
+
+## Notice:  The following flag postbootscripts-start-here could not be deleted from the template!!!
+# postbootscripts-start-here
+
+#INCLUDE_POSTBOOTSCRIPTS_LIST#
+
+## Notice:  The following flag postbootscripts-end-here could not be deleted from the template!!!
+# postbootscripts-end-here
