@@ -11,6 +11,7 @@ require xCAT::Table;
 require xCAT::TableUtils;
 require xCAT::NodeRange;
 require xCAT::NetworkUtils;
+require xCAT::DBobjUtils;
 
 
 #--------------------------------------------------------------------------------
@@ -203,8 +204,8 @@ sub rackformat_to_numricformat{
     my ($class, $format, $rackname) = @_;
     my ($prefix, $appendix, $len) = xCAT::ProfiledNodeUtils->split_hostname($format, 'R');
 
-    my $objhash = xCAT::DBojbutils->getobjdefs({$rackname, "rack"});
-    my $racknum = $objhash->{$rackname}->{"num"};
+    my %objhash = xCAT::DBobjUtils->getobjdefs({$rackname, "rack"});
+    my $racknum = $objhash{$rackname}{"num"};
     my $maxnum = 10 ** $len;
     my $fullnum = $maxnum + $racknum;
     return $prefix.(substr $fullnum, 1).$appendix;
@@ -344,7 +345,7 @@ sub get_output_filename
       Description : Get all chassis in system.
       Arguments   : hashref: if not set, return a array ref.
                              if set, return a hash ref.
-      Returns     : ref for node list.
+      Returns     : ref for chassis list.
       Example     : 
                     my $arrayref = xCAT::ProfiledNodeUtils->get_all_chassis();
                     my $hashref = xCAT::ProfiledNodeUtils->get_all_chassis(1);
@@ -365,6 +366,45 @@ sub get_all_chassis
         return \%chassishash;
     } else{
         return \@chassis;
+    }
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 get_all_rack
+      Description : Get all rack in system.
+      Arguments   : hashref: if not set, return a array ref.
+                             if set, return a hash ref.
+      Returns     : ref for rack list.
+      Example     : 
+                    my $arrayref = xCAT::ProfiledNodeUtils->get_all_rack();
+                    my $hashref = xCAT::ProfiledNodeUtils->get_all_rack(1);
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_all_rack
+{
+    my $class = shift;
+    my $hashref = shift;
+    my %rackhash = ();
+    my @racklist = ();
+
+    my $racktab = xCAT::Table->new('rack');
+    my @racks = $racktab->getAllAttribs(('rackname'));
+    foreach (@racks){
+        if($_->{'rackname'}){
+            if ($hashref){
+                $rackhash{$_->{'rackname'}} = 1;
+            }else {
+                push @racklist, $_->{'rackname'};
+            }
+        }
+    }
+   
+    if ($hashref){
+        return \%rackhash;
+    }else{
+        return \@racklist;
     }
 }
 

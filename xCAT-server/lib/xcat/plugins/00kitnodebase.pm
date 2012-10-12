@@ -119,6 +119,9 @@ sub process_request {
         $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist}, $request_command, 0, 1);
 
         setrsp_progress("Update DHCP entries");
+        $retref = xCAT::Utils->runxcmd({command=>["makedhcp"], node=>$nodelist, arg=>['-d']}, $request_command, 0, 1);
+        # we should restart dhcp so that the node's records in /var/lib/dhcpd/dhcpd.lease can be clean up and re-generate.
+        system("/etc/init.d/dhcpd restart");
         $retref = xCAT::Utils->runxcmd({command=>["makedhcp"], node=>$nodelist}, $request_command, 0, 1);
 
         setrsp_progress("Update known hosts");
@@ -167,9 +170,7 @@ sub process_request {
 sub setrsp_progress
 {
     my $msg = shift;
-    my $rsp;
-    $rsp->{sinfo} = $msg;
-    $::CALLBACK->($rsp);
+    xCAT::MsgUtils->message('S', "$msg");
 }
 
 1;

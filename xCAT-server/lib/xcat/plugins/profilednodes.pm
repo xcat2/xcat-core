@@ -63,6 +63,8 @@ sub handled_commands {
         nodediscoverstart => 'profilednodes',
         nodediscoverstop => 'profilednodes',
         nodediscoverls => 'profilednodes',
+        nodeaddunmged => 'profilednodes',
+        nodechmac => 'profilednodes',
         findme => 'profilednodes',
     };
 }
@@ -81,7 +83,7 @@ sub process_request {
 
     $request = shift;
     $callback = shift;
-    $::CALLBACK = $callback;
+    #$::CALLBACK = $callback;
     $request_command = shift;
     $command = $request->{command}->[0];
     $args = $request->{arg};
@@ -94,7 +96,7 @@ sub process_request {
     }
 
     # These commands should make sure no discover is running.
-    if (grep{ $_ eq $command} ("nodeimport", "nodepurge", "nodechprofile")){
+    if (grep{ $_ eq $command} ("nodeimport", "nodepurge", "nodechprofile", "nodeaddunmged", "nodechmac")){
         my $discover_running = xCAT::ProfiledNodeUtils->is_discover_started();
         if ($discover_running){
             setrsp_errormsg("Can not run command $command as profiled nodes discover is running.");
@@ -119,6 +121,10 @@ sub process_request {
         findme();
     } elsif ($command eq "nodediscoverls"){
         nodediscoverls();
+    } elsif ($command eq "nodeaddunmged"){
+        nodeaddunmged();
+    } elsif ($command eq "nodechmac"){
+        nodechmac();
     }
 
     xCAT::ProfiledNodeUtils->release_lock($lockfh);
@@ -184,7 +190,7 @@ sub parse_args{
 sub nodeimport{
 
     # Parse arges.
-    setrsp_infostr("Import profiled nodes through hostinfo file.");
+    xCAT::MsgUtils->message('S', "Import profiled nodes through hostinfo file.");
     my $retstr = parse_args();
     if ($retstr){
         setrsp_errormsg($retstr);
@@ -212,7 +218,7 @@ sub nodeimport{
     }
 
     # Get database records: all hostnames, all ips, all racks...
-    setrsp_infostr("Getting database records.");
+    xCAT::MsgUtils->message('S', "Getting database records.");
     my $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('nodelist', 'node');
     %allhostnames = %$recordsref;
     $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('ipmi', 'bmc');
@@ -236,13 +242,13 @@ sub nodeimport{
     %allips = (%allips, %allbmcips, %allinstallips);
 
     #TODO: can not use getallnode to get rack infos.
-    #$recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('rack', 'rackname');
-    %allracks = ();
+    $recordsref = xCAT::ProfiledNodeUtils->get_all_rack(1);
+    %allracks = %$recordsref;
     $recordsref =  xCAT::ProfiledNodeUtils->get_all_chassis(1);
     %allchassis = %$recordsref;
 
     # Generate temporary hostnames for hosts entries in hostfile. 
-    setrsp_infostr("Generate temporary hostnames.");
+    xCAT::MsgUtils->message('S', "Generate temporary hostnames.");
     my ($retcode_read, $retstr_read) = read_and_generate_hostnames($args_dict{'file'});
     if ($retcode_read != 0){
         setrsp_errormsg($retstr_read);
@@ -250,7 +256,7 @@ sub nodeimport{
     }
 
     # Parse and validate the hostinfo string. The real hostnames will be generated here.
-    setrsp_infostr("Parsing hostinfo string and validate it.");
+    xCAT::MsgUtils->message('S', "Parsing hostinfo string and validate it.");
     my ($hostinfo_dict_ref, $invalid_records_ref) = parse_hosts_string($retstr_read);
     my %hostinfo_dict = %$hostinfo_dict_ref;
     my @invalid_records = @$invalid_records_ref;
@@ -264,13 +270,14 @@ sub nodeimport{
     }
 
     # Create the real hostinfo string in stanza file format.
-    setrsp_infostr("Generating new hostinfo string.");
+    xCAT::MsgUtils->message('S', "Generating new hostinfo string.");
     my ($retcode_gen, $retstr_gen) = gen_new_hostinfo_string(\%hostinfo_dict);
     unless ($retcode_gen){
         setrsp_errormsg($retstr_gen);
         return;
     }
     # call mkdef to create hosts and then call nodemgmt for node management plugins.
+    setrsp_progress("Import nodes started.");
     setrsp_progress("call mkdef to create nodes.");
     my $retref = xCAT::Utils->runxcmd({command=>["mkdef"], stdin=>[$retstr_gen], arg=>['-z']}, $request_command, 0, 1);
 
@@ -278,6 +285,7 @@ sub nodeimport{
     setrsp_progress("call nodemgmt plugins.");
     $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>\@nodelist}, $request_command, 0, 1);
     $retref = xCAT::Utils->runxcmd({command=>["kitnodefinished"], node=>\@nodelist}, $request_command, 0, 1);
+    setrsp_progress("Import nodes success.");
     setrsp_success(\@nodelist);
 }
 
@@ -293,13 +301,14 @@ sub nodeimport{
 #-------------------------------------------------------
 sub nodepurge{
     my $nodes   = $request->{node};
-    setrsp_infostr("Purging nodes.");
+    xCAT::MsgUtils->message('S', "Purging nodes.");
     # For remove nodes, we should call 'nodemgmt' in front of 'noderm'
-    setrsp_infostr("Call kit node plugins.");
+    setrsp_progress("Call kit node plugins.");
     my $retref = xCAT::Utils->runxcmd({command=>["kitnoderemove"], node=>$nodes}, $request_command, 0, 1);
     $retref = xCAT::Utils->runxcmd({command=>["kitnodefinished"], node=>$nodes}, $request_command, 0, 1);
-    setrsp_infostr("Call noderm to remove nodes.");
+    setrsp_progress("Call noderm to remove nodes.");
     $retref = xCAT::Utils->runxcmd({command=>["noderm"], node=>$nodes}, $request_command, 0, 1);
+    setrsp_progress("Purge nodes success.");
     setrsp_success($nodes);
 }
 
@@ -335,7 +344,7 @@ sub nodechprofile{
     my $nodes   = $request->{node};
     my %updated_groups;
 
-    setrsp_infostr("Update nodes' profile settings.");
+    xCAT::MsgUtils->message('S', "Update nodes' profile settings.");
     # Parse arges.
     my $retstr = parse_args();
     if ($retstr){
@@ -352,7 +361,7 @@ sub nodechprofile{
     }
 
     # Get current templates for all nodes.
-    setrsp_infostr("Read database to get groups for all nodes.");
+    setrsp_progress("Read database to get groups for all nodes.");
     my %groupdict;
     my $nodelstab = xCAT::Table->new('nodelist');
     my $nodeshashref = $nodelstab->getNodesAttribs($nodes, ['groups']);
@@ -362,6 +371,9 @@ sub nodechprofile{
         my @groups;
         my $attrshashref = $nodeshash{$_}[0];
         my %attrshash = %$attrshashref;
+        # Update node's status to defined
+        $updatenodeshash{$_}{'status'} = 'defined';
+        # Update node's groups (profiles) info.
         if ($attrshash{'groups'}){
             @groups = split(/,/, $attrshash{'groups'});
 
@@ -381,16 +393,164 @@ sub nodechprofile{
     }
     
     #update DataBase.
-    setrsp_infostr("Update database records.");
+    setrsp_progress("Update database records.");
     my $nodetab = xCAT::Table->new('nodelist',-create=>1);
     $nodetab->setNodesAttribs(\%updatenodeshash);
     $nodetab->close();
     
     # call plugins
-    setrsp_infostr("Call nodemgmt plugins.");
+    setrsp_progress("Call nodemgmt plugins.");
     my $retref = xCAT::Utils->runxcmd({command=>["kitnodeupdate"], node=>$nodes}, $request_command, 0, 1);
     $retref = xCAT::Utils->runxcmd({command=>["kitnodefinished"], node=>$nodes}, $request_command, 0, 1);
+    setrsp_progress("Update node's profile success");
     setrsp_success($nodes);
+}
+
+
+#-------------------------------------------------------
+
+=head3 nodeaddunmged
+
+    Description : Create a node with hostname and ip address specified.
+                  This node will belong to group "__Unmanaged".
+                  Host file /etc/hosts will be updated automatically.
+    Arguments   : N/A
+
+=cut
+
+#-------------------------------------------------------
+sub nodeaddunmged
+{
+    xCAT::MsgUtils->message("Adding a unmanaged node.");
+    # Parse arges.
+    my $retstr = parse_args();
+    if ($retstr){
+        setrsp_errormsg($retstr);
+        return;
+    }
+
+    # Make sure the specified parameters are valid ones.
+    my @enabledparams = ('hostname', 'ip');
+    foreach my $argname (keys %args_dict){
+        if (! grep{ $_ eq $argname} @enabledparams){
+            setrsp_errormsg("Illegal attribute $argname specified.");
+            return;
+        }
+    }
+    # Mandatory arguments.
+    foreach (('hostname','ip')){
+        if(! exists($args_dict{$_})){
+            setrsp_errormsg("Mandatory parameter $_ not specified.");
+            return;
+        }
+    }
+    
+    # validate the IP address
+    my $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('ipmi', 'bmc');
+    %allbmcips = %$recordsref;
+    $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('hosts', 'ip');
+    %allinstallips = %$recordsref;
+    $recordsref = xCAT::NetworkUtils->get_all_nicips(1);
+    %allips = %$recordsref;
+
+    %allips = (%allips, %allbmcips, %allinstallips);
+
+    if (exists $allips{$args_dict{'ip'}}){
+        setrsp_errormsg("Specified IP address $args_dict{'ip'} conflicts with IPs in database");
+        return;
+    }elsif((xCAT::NetworkUtils->validate_ip($args_dict{'ip'}))[0][0] ){
+        setrsp_errormsg("Specified IP address $args_dict{'ip'} is invalid");
+        return;
+    }elsif(xCAT::NetworkUtils->isReservedIP($args_dict{'ip'})){
+        setrsp_errormsg("Specified IP address $args_dict{'ip'} is invalid");
+        return;
+    }
+
+    # validate hostname.
+    $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('nodelist', 'node');
+    %allhostnames = %$recordsref;
+    if (exists $allhostnames{$args_dict{'hostname'}}){
+        setrsp_errormsg("Specified hostname $args_dict{'hostname'} conflicts with records in database");
+        return;
+    }
+    if (! xCAT::NetworkUtils->isValidHostname($args_dict{'hostname'})){
+        setrsp_errormsg("Specified hostname: $args_dict{'hostname'} is invalid");
+        return;
+    }
+
+    # run nodeadd to create node records.
+    my $retref = xCAT::Utils->runxcmd({command=>["nodeadd"], arg=>[$args_dict{"hostname"}, "groups=__Unmanaged", "hosts.ip=$args_dict{'ip'}"]}, $request_command, 0, 1);
+    $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>[$args_dict{"hostname"}]}, $request_command, 0, 1);
+    setrsp_infostr("Create unmanaged node success");
+}
+
+#-------------------------------------------------------
+
+=head3 nodechmac
+
+    Description : Change node's provisioning NIC's MAC address.
+                  And then call kits plugins for nodes.
+    Arguments   : N/A
+
+=cut
+
+#-------------------------------------------------------
+sub nodechmac
+{
+    xCAT::MsgUtils->message("Replacing node's mac address.");
+    # Parse arges.
+    my $nodelist = $request->{node};
+    my $hostname = $nodelist->[0];
+    my $retstr = parse_args();
+    if ($retstr){
+        setrsp_errormsg($retstr);
+        return;
+    }
+
+    # Make sure the specified parameters are valid ones.
+    my @enabledparams = ('mac');
+    foreach my $argname (keys %args_dict){
+        if (! grep{ $_ eq $argname} @enabledparams){
+            setrsp_errormsg("Illegal attribute $argname specified.");
+            return;
+        }
+    }
+    # Mandatory arguments.
+    foreach (('mac')){
+        if(! exists($args_dict{$_})){
+            setrsp_errormsg("Mandatory parameter $_ not specified.");
+            return;
+        }
+    }
+    # Validate MAC address
+    my $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('mac', 'mac');
+    %allmacs = %$recordsref;
+    foreach (keys %allmacs){
+        my @hostentries = split(/\|/, $_);
+        foreach my $hostandmac ( @hostentries){
+            my ($macstr, $machostname) = split("!", $hostandmac);
+            $allmacs{$macstr} = 0;
+        }
+    }
+    if (exists $allmacs{$args_dict{"mac"}}){
+        setrsp_errormsg("Specified MAC address $args_dict{'mac'} conflicts with MACs in database");
+        return;
+    } elsif(! xCAT::NetworkUtils->isValidMAC($args_dict{'mac'})){
+        setrsp_errormsg("Specified MAC address $args_dict{'mac'} is invalid");
+        return;
+    }
+
+    # Update database records.
+    setrsp_progress("Updating database records");
+    my $mactab = xCAT::Table->new('mac',-create=>1);
+    $mactab->setNodeAttribs($hostname, {mac=>$args_dict{'mac'}});
+    $mactab->close();
+
+    # Call Plugins.
+    setrsp_progress("Calling kit plugins");
+    my $retref = xCAT::Utils->runxcmd({command=>["kitnodeupdate"], node=>[$hostname]}, $request_command, 0, 1);
+    $retref = xCAT::Utils->runxcmd({command=>["kitnodefinished"], node=>[$hostname]}, $request_command, 0, 1);
+    setrsp_progress("Change node's mac success");
 }
 
 #-------------------------------------------------------
@@ -413,14 +573,14 @@ sub nodechprofile{
 #-------------------------------------------------------
 sub nodediscoverstart{
     # Parse arges.
-    setrsp_infostr("Profiled nodes discovery started.");
+    xCAT::MsgUtils->message("Profiled nodes discovery started.");
     my $retstr = parse_args();
     if ($retstr){
         setrsp_errormsg($retstr);
         return;
     }
 
-    my @enabledparams = ('networkprofile', 'hardwareprofile', 'imageprofile', 'hostnameformat', 'rank', 'rack', 'chassis', 'height', 'u');
+    my @enabledparams = ('networkprofile', 'hardwareprofile', 'imageprofile', 'hostnameformat', 'rank', 'rack', 'chassis', 'height', 'unit');
     foreach my $argname (keys %args_dict){
         if (! grep{ $_ eq $argname} @enabledparams){
             setrsp_errormsg("Illegal attribute $argname specified.");
@@ -431,6 +591,58 @@ sub nodediscoverstart{
     foreach my $key ('networkprofile', 'imageprofile', 'hostnameformat'){
         if (! exists $args_dict{$key}){
             setrsp_errormsg("argument $key must be specified");
+            return;
+        }
+    }
+
+    my $recordsref = xCAT::ProfiledNodeUtils->get_all_rack(1);
+    %allracks = %$recordsref;
+    $recordsref =  xCAT::ProfiledNodeUtils->get_all_chassis(1);
+    %allchassis = %$recordsref;
+    # check rack
+    if (exists $args_dict{'rack'}){
+        if (! exists $allracks{$args_dict{'rack'}}){
+            setrsp_errormsg("Specified rack $args_dict{'rack'} not defined");
+            return;
+        }
+        # rack must be specified with chassis or unit + height.
+        if (exists $args_dict{'chassis'}){
+        } else{
+            # We set default value for height and u if rack specified
+            if(! exists $args_dict{'height'}){$args_dict{'height'} = 1}
+            if(! exists $args_dict{'unit'}){$args_dict{'unit'} = 1}
+        }
+    }
+
+    # chassis jdugement.
+    if (exists $args_dict{'chassis'}){
+        if (! exists  $args_dict{'rack'}){
+            setrsp_errormsg("Argument chassis must be used together with rack");
+            return;
+        }
+
+        if (! exists $allchassis{$args_dict{'chassis'}}){
+            setrsp_errormsg("Specified chassis $args_dict{'chassis'} not defined");
+            return;
+        }
+        if (exists $args_dict{'unit'} or exists $args_dict{'height'}){
+            setrsp_errormsg("Argument chassis can not be specified together with unit or height");
+            return;
+        }
+    }
+   
+    # height and u must be valid numbers.
+    if (exists $args_dict{'unit'}){
+        # Not a valid number.
+        if (!($args_dict{'unit'} =~ /^\d+$/)){
+            setrsp_errormsg("Specified unit $args_dict{'u'} is a invalid number");
+            return;
+        }
+    }
+    if (exists $args_dict{'height'}){
+        # Not a valid number.
+        if (!($args_dict{'height'} =~ /^\d+$/)){
+            setrsp_errormsg("Specified height $args_dict{'height'} is a invalid number");
             return;
         }
     }
@@ -453,7 +665,7 @@ sub nodediscoverstart{
     my $sitetab = xCAT::Table->new('site',-create=>1);
     $sitetab->setAttribs({"key" => "__PCMDiscover"}, {"value" => "$valuestr"});
     $sitetab->close();
-
+    setrsp_infostr("Profiled node's discover started");
 }
 
 #-------------------------------------------------------
@@ -469,6 +681,7 @@ sub nodediscoverstart{
 #------------------------------------------------------
 sub nodediscoverstop{
     # Read DB to confirm the discover is started. 
+    xCAT::MsgUtils->message("Stopping profiled node's discover.");
     my @sitevalues = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
     if (! $sitevalues[0]){
         setrsp_errormsg("Profiled nodes discovery not started yet.");
@@ -489,6 +702,7 @@ sub nodediscoverstop{
         # There are some nodes discvoered.
         my $retref = xCAT::Utils->runxcmd({command=>["rmdef"], arg=>["-t", "group", "-o", "__PCMDiscover"]}, $request_command, 0, 1);
     }
+    setrsp_infostr("Profiled node's discover stopped");
 }
 
 #-------------------------------------------------------
@@ -523,8 +737,17 @@ sub nodediscoverls{
             next;
         }
         $rspentry->{info}->[$i]->{"node"} = $_;
-        #TODO: get provisioning mac.
-        $rspentry->{info}->[$i]->{"mac"} = $macsref->{$_}->[0]->{"mac"};
+        # Only get the MAC address of provisioning NIC.
+        my @hostentries = split(/\|/, $macsref->{$_}->[0]->{"mac"});
+        foreach my $hostandmac ( @hostentries){
+            if (! $hostandmac){
+                next;
+            }
+            if(index($hostandmac, "!")  == -1){
+                $rspentry->{info}->[$i]->{"mac"} = $hostandmac;
+                last;
+            }
+        }
 
         if ($statusref->{$_}->[0]){
             $rspentry->{info}->[$i]->{"status"} = $statusref->{$_}->[0];
@@ -592,42 +815,10 @@ sub findme{
     # Merge all BMC IPs and install IPs into allips.
     %allips = (%allips, %allbmcips, %allinstallips);
 
-    #$recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('rack', 'rackname');
-    #%allracks = %$recordsref;
-    %allracks = ();
+    $recordsref = xCAT::ProfiledNodeUtils->get_all_rack(1);
+    %allracks = %$recordsref;
     $recordsref =  xCAT::ProfiledNodeUtils->get_all_chassis(1);
     %allchassis = %$recordsref;
-
-    my @enabledparams = ('networkprofile', 'hardwareprofile', 'imageprofile', 'hostnameformat', 'rack', 'chassis', 'u', 'height', 'rank');
-    foreach my $argname (keys %args_dict){
-        if (! grep{ $_ eq $argname} @enabledparams){
-            setrsp_errormsg("Illegal attribute $argname specified.");
-            return;
-        }
-    }
-    # mandatory arguments.
-    foreach my $key ('networkprofile', 'imageprofile', 'hostnameformat'){
-        if (! exists $args_dict{$key}){
-            setrsp_errormsg("argument $key must be specified");
-            return;
-        }
-    }
-
-    # set default value for rack, startunit and height if not specified.
-    if (exists $args_dict{'rack'}){
-        if (! exists $allracks{$args_dict{'rack'}}){
-            setrsp_errormsg("Specified rack $args_dict{'rack'} not defined");
-            return;
-        }
-    }
-
-    # chassis jdugement.
-    if (exists $args_dict{'chassis'}){
-        if (! exists $allchassis{$args_dict{'chassis'}}){
-            setrsp_errormsg("Specified chassis $args_dict{'chassis'} not defined");
-            return;
-        }
-    }
 
     # Get discovered client IP and MAC
     my $ip = $request->{'_xcat_clientip'};
@@ -655,14 +846,25 @@ sub findme{
     # it will detect this and arrange a real hostname for it.
     my $raw_hostinfo_str = "TMPHOSTS9999:\n  mac=$mac\n";
     # Append rack, chassis, unit, height into host info string.
-    foreach my $key ('rack', 'chassis', 'u', 'height'){
+    foreach my $key ('rack', 'chassis', 'unit', 'height'){
         if(exists($args_dict{$key})){
             $raw_hostinfo_str .= "  $key=$args_dict{$key}\n";
         }
     }
-    if (exists $args_dict{'u'} and exists $args_dict{'height'}){
+    if (exists $args_dict{'unit'} and exists $args_dict{'height'}){
         # increase start unit automatically.
-        $args_dict{'u'} = $args_dict{'u'} + $args_dict{'height'};
+        $args_dict{'unit'} = $args_dict{'unit'} + $args_dict{'height'};
+        # save discover args into table site.
+        my $valuestr = "";
+        foreach (keys %args_dict){
+            if($args_dict{$_}){
+                $valuestr .= "$_:$args_dict{$_},";
+            }
+        }
+
+        my $sitetab = xCAT::Table->new('site',-create=>1);
+        $sitetab->setAttribs({"key" => "__PCMDiscover"}, {"value" => "$valuestr"});
+        $sitetab->close();
     }
 
 
@@ -679,8 +881,6 @@ sub findme{
     # call mkdef to create hosts and then call nodemgmt for node management plugins.
     xCAT::MsgUtils->message('S', "Call mkdef to create nodes.\n");
     my $retref = xCAT::Utils->runxcmd({command=>["mkdef"], stdin=>[$retstr_gen], arg=>['-z']}, $request_command, 0, 1);
-    # increase unit automatically.
-    $args_dict{'u'} = $args_dict{'u'} + $args_dict{'height'};
 
     my @nodelist = keys %hostinfo_dict;
     xCAT::MsgUtils->message('S', "Call nodemgmt plugins.\n");
@@ -1021,22 +1221,22 @@ sub validate_node_entry{
             }
             # rack must be specified with chassis or unit + height.
             if (exists $node_entry{"chassis"}){
-            } elsif (exists $node_entry{"height"} and exists $node_entry{"u"}){
+            } elsif (exists $node_entry{"height"} and exists $node_entry{"unit"}){
             } else {
-                return "Rack must be specified together with chassis or height + u ";
+                return "Rack must be specified together with chassis or height + unit ";
             }
         }elsif ($_ eq "chassis"){
             if (not exists $allchassis{$node_entry{$_}}){
                 return "Specified chassis $node_entry{$_} not defined";
             }
             # Chassis must not be specified with unit and height.
-            if (exists $node_entry{"height"} and exists $node_entry{"u"}){
-                return "Chassis should not be specified together with height + u";
+            if (exists $node_entry{"height"} or exists $node_entry{"unit"}){
+                return "Chassis should not be specified together with height or unit";
             }
-        }elsif ($_ eq "u"){
+        }elsif ($_ eq "unit"){
             # Not a valid number.
             if (!($node_entry{$_} =~ /^\d+$/)){
-                return "Specified u $node_entry{$_} is a invalid number";
+                return "Specified unit $node_entry{$_} is a invalid number";
             }
         }elsif ($_ eq "height"){
             # Not a valid number.
@@ -1081,6 +1281,8 @@ sub setrsp_invalidrecords
         print $fh "nodename $erroritem[0], error: $erroritem[1]\n";
     }
     close $fh;
+    #make it readable for http.
+    system("chmod +r $filename");
     # Tells the URL of the details file.
     xCAT::MsgUtils->message('S', "Detailed response info placed in file: http://$master/$filename\n");
     $rsp->{data}->{details} = "http://$master/$filename";
@@ -1170,6 +1372,8 @@ sub setrsp_success
         print $fh "success: $_\n";
     }
     close $fh;
+    #make it readable for http.
+    system("chmod +r $filename");
     # Tells the URL of the details file.
     xCAT::MsgUtils->message('S', "Detailed response info placed in file: http://$master/$filename\n");
     $rsp->{data}->{details} = "http://$master/$filename";
