@@ -263,7 +263,7 @@ sub makescript
             push @{$rsp->{data}},
               "No os or arch setting in nodetype table for $node.\n";
             xCAT::MsgUtils->message("E", $rsp, $callback);
-            return undef;
+            #return undef;
         }
     }
 
