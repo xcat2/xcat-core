@@ -197,7 +197,13 @@ sub setdestiny {
 	    return;
         }
     }
-      
+  
+    # if precreatemypostscripts=1, create each mypostscript for each node
+    # otherwise, create it during installation /updatenode
+    require xCAT::Postage;
+    xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq);        
+ 
+    
 #print Dumper($req); 
     $errored=0;
     $subreq->({command=>["mk$state"],
