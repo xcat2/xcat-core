@@ -322,7 +322,6 @@ if(0) { # only do networks on the management node (NIM primary) for now
     	}
 	}
 }
-
 	return (0, \@nodelist, \@servicenodes, $type);
 }
 
@@ -693,6 +692,9 @@ sub x2n
 
 	$::msgstr = "$::Sname: ";
 
+	my $nimprime = xCAT::InstUtils->getnimprime();
+	chomp $nimprime;
+
     # process the command line
     $rc = &processArgs($callback);
     if ($rc != 0)
@@ -720,6 +722,7 @@ sub x2n
 	my @networks;
 	my @groups;
 	foreach my $obj (keys %::objhash) {
+
 		if ($::objtype{$obj} eq 'node') {
 			push(@nodes, $obj);
 		} elsif ($::objtype{$obj} eq 'network') {
@@ -742,6 +745,17 @@ sub x2n
 	if (scalar(@nodes)) {
 		foreach my $objname (@nodes) {
 
+			# does this node belong to this server?
+			my $nimmaster = $nimprime;
+			if ($::objhash{$objname}{servicenode}) {
+				my $sn2;
+				($nimmaster, $sn2) = split(/,/, $::objhash{$objname}{servicenode});
+			}
+
+			if (!xCAT::InstUtils->is_me($nimmaster)) {
+				next;
+			}
+
 			if ($::opt_l || $::opt_r) {
 
 				if (&rm_or_list_nim_object($objname, $::objtype{$objname}, $callback)) {
@@ -749,13 +763,13 @@ sub x2n
                		$error++;
 				}
            	} else {
+
 				if (mkclientdef($objname, $callback)) {
            			# could not create client definition
 					$error++;
            		}
 			}
-			next;
-		}
+		} # end for each node
 	}
 
 	# NIM network definitions
