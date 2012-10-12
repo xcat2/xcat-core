@@ -75,6 +75,48 @@ download_postscripts()
     return $rc
 }
 
+download_mypostscript()
+{
+    server=$1
+    if [ -z $server ]; then
+	return 1;
+    fi
+     
+    if [ -f /opt/xcat/xcatinfo ]; then
+       TFTPDIR=`grep 'TFTPDIR' /opt/xcat/xcatinfo |cut -d= -f2`
+    fi
+    if [ -z "$TFTPDIR" ]; then
+    TFTPDIR="/tftpboot"
+    fi
+    max_retries=2
+    retry=0
+    rc=1
+ 
+    node=`hostname`
+
+    while [ 0 -eq 0 ]; do
+	
+        wget -N --waitretry=10 --random-wait -T 60 http://$server$TFTPDIR/mypostscripts/mypostscript.$node  -P /xcatpost 2> /tmp/wget.log
+        rc=$?
+        
+	if [ $rc -eq 0 ]; then
+           mv /xcatpost/mypostscript.$node /xcatpost/mypostscript
+	   return 0;
+        fi
+
+	retry=$(($retry+1))
+	if [ $retry -eq $max_retries ]; then
+            break
+	fi
+
+	SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*5)}')
+        sleep $SLI
+    done
+    return $rc
+}
+
+
+
 # parse the arguments
 ARGNUM=$#;
 if [ -z $1 ]; then
@@ -243,6 +285,13 @@ else # for common mode
 
 fi # finish the postscripts download
 
+
+rm -rf /xcatpost/mypostscript
+
+download_mypostscript $SIP
+
+
+
 if grep 'rw /rw tmpfs ' /proc/mounts  >/dev/null 2>&1; then
     touch /var/lock/subsys/xcatmounts
     echo '#!/bin/bash' > /etc/rc6.d/K10xcatmounts
@@ -268,6 +317,9 @@ if [ -x /usr/bin/openssl ]; then
      USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
      export USEOPENSSLFORXCAT
 fi
+
+
+if [ ! -x /xcatpost/mypostscript ]; then
 
 /xcatpost/getpostscript.awk | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /xcatpost/mypostscript; 
 MYCONT=`grep MASTER /xcatpost/mypostscript`
@@ -296,6 +348,8 @@ while [ -z "$MYCONT" ]; do
         break;
     fi
 done
+
+fi
 
 #save the MASTER into the xcatinfo file for node deployment case, 
 #for updatenode case, only save it when -M is specified
