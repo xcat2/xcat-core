@@ -92,6 +92,33 @@ sub writescript
     close($script);
     chmod 0755, $scriptfile;
 }
+ 
+
+sub create_mypostscript_or_not {
+  my $request = shift;
+  my $callback = shift;
+  my $subreq = shift;
+  my $nodes  = $request->{node};
+
+  my $tftpdir = xCAT::TableUtils::getTftpDir();
+  system("rm -rf $tftpdir/mypostscripts");
+    #if precreatemypostscripts=1, create each mypostscript for each node
+  my @entries =  xCAT::TableUtils->get_site_attribute("precreatemypostscripts");
+  if ($entries[0] ) {
+        $entries[0] =~ tr/a-z/A-Z/;
+        if ($entries[0] =~ /^(1|YES)$/ ) { 
+            require xCAT::Postage;
+            my $state;
+            if ($request->{scripttype}) { $state = $request->{scripttype}->[0];}
+            xCAT::Postage::makescript($nodes, $state, $callback);   
+        }
+  }
+
+}
+
+
+
+
 
 #----------------------------------------------------------------------------
 
@@ -117,6 +144,14 @@ sub makescript
     my $node         = shift;
     my $nodesetstate = shift;    # install or netboot
     my $callback     = shift;
+
+    #create the mypostscript for each node once according to the template
+    if(ref($node) eq "ARRAY") {
+        require xCAT::Template;
+        xCAT::Template->subvars_for_mypostscript($node, $nodesetstate, $callback);    
+        return;
+    }
+
 
     my @scriptd;
     my ($master, $ps, $os, $arch, $profile);
