@@ -12860,7 +12860,7 @@ sub make_SN_resource
     } # end if $::NFSv4
 
     # make sure we have the NIM networks defs etc we need for these nodes
-	if (&checkNIMnetworks($callback, \@nodelist, \%nethash, $Sname, $subreq) !=
+	if (&checkNIMnetworks($callback, \@nodelist, \%nethash, $SNname, $subreq) !=
 0)
     {
         return 1;
