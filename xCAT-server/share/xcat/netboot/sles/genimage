@@ -171,7 +171,7 @@ foreach (split /,/,$netdriver) {
     
 # Do not include qeth module here
 # This module is included later on
-    unless ( $_ =~ m/qeth/i ) {
+unless ( $_ =~ m/qeth/i ) {
 	push @ndrivers, $_;
     }
 }
@@ -349,7 +349,7 @@ unless ($onlyinitrd) {
    #mkpath("$rootimg_dir/var/lib/yum");
    my $yumcmd;
    if($osver =~ /sles11/ && $osver_host == 11) {
-       $yumcmd = "zypper -R $rootimg_dir $non_interactive install -l "; #add -l for SLES11
+       $yumcmd = "zypper -R $rootimg_dir $non_interactive install -l --no-recommends "; #add -l for SLES11
    }else {
        $yumcmd = "zypper -R $rootimg_dir $non_interactive install ";
    }
@@ -441,13 +441,13 @@ unless ($onlyinitrd) {
        {
            print "$envlist $yumcmd -t pattern $group_pkgnames\n";
            $rc = system("$envlist $yumcmd -t pattern $group_pkgnames");
-	   $rc = $rc >> 8;
-	   if (($rc) && ($rc != '104')) { 
-	       print "zypper invocation failed with rc: $rc\n";
-	       exit 1;
-	   }
+           $rc = $rc >> 8;
+           if (($rc) && ($rc != '104')) { 
+              print "zypper invocation failed with rc: $rc\n";
+              exit 1;
+           }
        }
-}
+   }
 
    foreach $pass (sort (keys(%extra_hash))) {
        #remove the packages that are specified in the otherpkgs.list files with leading '-'
@@ -714,7 +714,9 @@ foreach my $dd (@dd_drivers) {
     }
     print "Added driver $dd from driver update disk or driver rpm.\n";
 }
-@ndrivers = (@new_order, @ndrivers);
+if (@new_order) {
+    @ndrivers = (@new_order, @ndrivers);
+}
 
 open($moddeps,"<","$rootimg_dir/lib/modules/$kernelver/modules.dep");
 my @moddeps = <$moddeps>;
@@ -752,25 +754,28 @@ mkinitrd("stateless");
 
 
 sub getlibs {
-	my $file = shift;
-	my $liblist = `chroot $rootimg_dir ldd $file`;
-	my @libs = split/\n/,$liblist;
-	my @return;
-	foreach (@libs) {
-      unless (/=>/) {
-         (my $wjnk, my $lib,my $jnk) = split /\s+/,$_,3;
-         $lib =~ s/^\///;
-         $libhash{$lib}=1;
-         next;
-      }
-		(my $temp1,my $temp2) = split />/,$_,2;
-		(my $whitespace,$temp1,$temp2) = split /\s+/,$temp2,4;
-		unless ($temp1 =~ /\//) {
-			next;
-		}
-      $temp1 =~ s/^\///;
-		$libhash{$temp1}=1;
-   }
+    my $file = shift;
+    my $liblist = `chroot $rootimg_dir ldd $file`;
+    if ($liblist =~ /not a dynamic executable/) {
+        return;
+    }
+    my @libs = split/\n/,$liblist;
+    my @return;
+    foreach (@libs) {
+        unless (/=>/) {
+            (my $wjnk, my $lib,my $jnk) = split /\s+/,$_,3;
+            $lib =~ s/^\///;
+            $libhash{$lib}=1;
+            next;
+        }
+        (my $temp1,my $temp2) = split />/,$_,2;
+        (my $whitespace,$temp1,$temp2) = split /\s+/,$temp2,4;
+        unless ($temp1 =~ /\//) {
+            next;
+        }
+        $temp1 =~ s/^\///;
+        $libhash{$temp1}=1;
+    }
 }
 
 sub mkinitrd {
@@ -881,9 +886,9 @@ echo '
 
 EOS1
 
-	print $inifile "mount -t proc /proc /proc\n";
-	print $inifile "mount -t sysfs /sys /sys\n";
-    print $inifile "mount -o mode=0755 -t tmpfs /dev /dev\n";
+   print $inifile "mount -t proc /proc /proc\n";
+   print $inifile "mount -t sysfs /sys /sys\n";
+   print $inifile "mount -o mode=0755 -t tmpfs /dev /dev\n";
    print $inifile "mkdir /dev/pts\n";
    print $inifile "mount -t devpts -o gid=5,mode=620 /dev/pts /dev/pts\n";
    print $inifile "mkdir /dev/shm\n";
@@ -1315,47 +1320,56 @@ END
    push @filestoadd,keys %libhash;
 
    find(\&isnetdriver, <$rootimg_dir/lib/modules/$kernelver/*>);
+   my $pathonrootimage = "$rootimg_dir/tmpfiles";
+   my $pathinrootimage = "/tmpfiles";
+   mkpath($pathonrootimage);
    foreach (@filestoadd) {
       if (ref($_)) {
          #print "$_->[0], $_->[1]\n";
-         my $srcpath = "$rootimg_dir/".$_->[0];
+         my $srcfile = $_->[0];
+         system("chroot $rootimg_dir cp $srcfile $pathinrootimage");
+         my $srcpath = "$pathonrootimage/".basename($_->[0]);
          if (-f "$customdir/".$_->[0]) {
             $srcpath="$customdir/".$_->[0];
          } elsif (-f "$pathtofiles/".$_->[0]) {
             $srcpath="$pathtofiles/".$_->[0];
          }
+         mkpath(dirname("/tmp/xcatinitrd.$$/".$_->[1]));
          copy($srcpath,"/tmp/xcatinitrd.$$/".$_->[1]);
          chmod 0755,"/tmp/xcatinitrd.$$/".$_->[1];
       } else {
          #print "$_\n";
-         my $srcpath = "$rootimg_dir/$_";
+         system("chroot $rootimg_dir cp $_ $pathinrootimage");
+         my $srcpath = "$pathonrootimage/".basename($_);
          if (-f "$customdir/$_") {
             $srcpath = "$customdir/$_";
          } elsif (-f "$pathtofiles/$_") {
             $srcpath = "$pathtofiles/$_";
          }
+         mkpath(dirname("/tmp/xcatinitrd.$$/$_"));
          copy("$srcpath","/tmp/xcatinitrd.$$/$_");
          chmod 0755,"/tmp/xcatinitrd.$$/".$_;
       }
    }
+   rmtree($pathonrootimage);
 
-        #copy conf files needed by nfs mount in sles11.2
-        if($osver_host == 11)
-        {
-        system("cp -r $rootimg_dir/etc/protocols /tmp/xcatinitrd.$$/etc/");
-        system("cp -r $rootimg_dir/etc/netconfig /tmp/xcatinitrd.$$/etc/");
-        }
-
-
-	# Copy udev libraries
-	system("mkdir -p /tmp/xcatinitrd.$$/etc/udev");
-	system("mkdir -p /tmp/xcatinitrd.$$/lib/firmware");
-	system("cp -r $rootimg_dir/etc/udev/* /tmp/xcatinitrd.$$/etc/udev");
-	system("cp -r $rootimg_dir/bin/uname /tmp/xcatinitrd.$$/bin/");
-        if ( -d "$rootimg_dir/lib/firmware/" ) {
-    	    system("cp -r $rootimg_dir/lib/firmware/* /tmp/xcatinitrd.$$/lib/firmware");
-        }
-	system("cp -r $rootimg_dir/usr/bin/killall /tmp/xcatinitrd.$$/usr/bin");
+   #copy conf files needed by nfs mount in sles11.2
+   if($osver_host == 11)
+   {
+      system("cp -r $rootimg_dir/etc/protocols /tmp/xcatinitrd.$$/etc/");
+      system("cp -r $rootimg_dir/etc/netconfig /tmp/xcatinitrd.$$/etc/");
+   }
+   
+   
+   # Copy udev libraries
+   system("mkdir -p /tmp/xcatinitrd.$$/etc/udev");
+   system("mkdir -p /tmp/xcatinitrd.$$/lib/firmware");
+   system("cp -r $rootimg_dir/etc/udev/* /tmp/xcatinitrd.$$/etc/udev");
+   system("cp -r $rootimg_dir/bin/uname /tmp/xcatinitrd.$$/bin/");
+   if ( -d "$rootimg_dir/lib/firmware/" ) {
+       system("cp -r $rootimg_dir/lib/firmware/* /tmp/xcatinitrd.$$/lib/firmware");
+   }
+   system("cp -r $rootimg_dir/usr/bin/killall /tmp/xcatinitrd.$$/usr/bin");
 	
 	# Copy rules for network adapter
 	#my $name = `cat /etc/sysconfig/network/ifcfg-$prinic | grep NAME`;
@@ -1372,8 +1386,8 @@ END
     #	    system("cp -r /etc/udev/rules.d/*persistent-net.rules /tmp/xcatinitrd.$$/etc/udev/rules.d");
     #}
 	
-	system("mkdir -p /tmp/xcatinitrd.$$/lib/udev");
-	system("cp -r $rootimg_dir/lib/udev/* /tmp/xcatinitrd.$$/lib/udev");
+   system("mkdir -p /tmp/xcatinitrd.$$/lib/udev");
+   system("cp -r $rootimg_dir/lib/udev/* /tmp/xcatinitrd.$$/lib/udev");
 
    #copy("$rootimg_dir/lib/modules/*d","/tmp/xcatinitrd.$$/$_");
    system("cd /tmp/xcatinitrd.$$/bin/; ln -sf bash sh");	#neccessary for SLES11
@@ -1466,14 +1480,14 @@ sub generic_post { # This function is meant to leave the image in a state approx
         close($cfgfile);
     }
    
-	# securetty not needed on s390x
-	if ($arch ne "s390x") {
-   		open( $cfgfile, ">>", "$rootimg_dir/etc/securetty" );
-   		print $cfgfile "ttyS0\n";
-   		print $cfgfile "ttyS1\n";
-   		print $cfgfile "console\n";
-   		close($cfgfile);
-   	}
+    # securetty not needed on s390x
+    if ($arch ne "s390x") {
+        open( $cfgfile, ">>", "$rootimg_dir/etc/securetty" );
+        print $cfgfile "ttyS0\n";
+        print $cfgfile "ttyS1\n";
+        print $cfgfile "console\n";
+        close($cfgfile);
+    }
    
     my @passwd;
     open($cfgfile,"<","$rootimg_dir/etc/passwd");
@@ -1611,7 +1625,7 @@ sub load_dd()
     chomp(@rpm_list);
 
     unless (@dd_list || @rpm_list ) {
-        return undef;
+        return ();
     }
 
     # Create the work space, it should be cleaned at end of genimage

@@ -1,4 +1,8 @@
 #!/usr/bin/env perl
+
+# The possible files which getting from local OS that may affect he genimage cross distor level 
+#    /proc/self/oom_adj
+
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
@@ -438,7 +442,9 @@ foreach my $dd (@dd_drivers) {
     }
     print "Added driver $dd from driver update disk or driver rpm.\n";
 }
-@ndrivers = (@new_order, @ndrivers);
+if (@new_order) {
+    @ndrivers = (@new_order, @ndrivers);
+}
 
 open($moddeps,"<","$rootimg_dir/lib/modules/$kernelver/modules.dep");
 my @moddeps = <$moddeps>;
@@ -656,24 +662,27 @@ if ($dracutmode) {
 }
 
 sub getlibs {
-	my $file = shift;
-	my $liblist = `chroot $rootimg_dir ldd $file`;
-	my @libs = split/\n/,$liblist;
-	my @return;
-	foreach (@libs) {
-      unless (/=>/) {
-         (my $wjnk, my $lib,my $jnk) = split /\s+/,$_,3;
-         $lib =~ s/^\///;
-         $libhash{$lib}=1;
-         next;
-      }
-		(my $temp1,my $temp2) = split />/,$_,2;
-		(my $whitespace,$temp1,$temp2) = split /\s+/,$temp2,4;
-		unless ($temp1 =~ /\//) {
-			next;
-		}
-      $temp1 =~ s/^\///;
-      $libhash{$temp1}=1;
+    my $file = shift;
+    my $liblist = `chroot $rootimg_dir ldd $file`;
+    if ($liblist =~ /not a dynamic executable/) {
+        return;
+    }
+    my @libs = split/\n/,$liblist;
+    my @return;
+    foreach (@libs) {
+        unless (/=>/) {
+            (my $wjnk, my $lib,my $jnk) = split /\s+/,$_,3;
+            $lib =~ s/^\///;
+            $libhash{$lib}=1;
+            next;
+        }
+        (my $temp1,my $temp2) = split />/,$_,2;
+        (my $whitespace,$temp1,$temp2) = split /\s+/,$temp2,4;
+        unless ($temp1 =~ /\//) {
+            next;
+        }
+        $temp1 =~ s/^\///;
+        $libhash{$temp1}=1;
    }
 }
 
@@ -1296,11 +1305,15 @@ EOMS
    push @filestoadd,keys %libhash;
 
    find(\&isnetdriver, <$rootimg_dir/lib/modules/$kernelver/*>);
-
+   my $pathonrootimage = "$rootimg_dir/tmpfiles";
+   my $pathinrootimage = "/tmpfiles";
+   mkpath($pathonrootimage);
    foreach (@filestoadd) {
       if (ref($_)) {
-	  #print "$_->[0], $_->[1]\n";
-         my $srcpath = "$rootimg_dir/".$_->[0];
+         #print "$_->[0], $_->[1]\n";
+         my $srcfile = $_->[0];
+         system("chroot $rootimg_dir cp $srcfile $pathinrootimage");
+         my $srcpath = "$pathonrootimage/".basename($_->[0]);
          if (-f "$customdir/".$_->[0]) {
             $srcpath="$customdir/".$_->[0];
          } elsif (-f "$pathtofiles/".$_->[0]) {
@@ -1310,8 +1323,9 @@ EOMS
          copy($srcpath,"/tmp/xcatinitrd.$$/".$_->[1]);
          chmod 0755,"/tmp/xcatinitrd.$$/".$_->[1];
       } else {
-          #print "$_\n";
-         my $srcpath = "$rootimg_dir/$_";
+         #print "$_\n";
+         system("chroot $rootimg_dir cp $_ $pathinrootimage");
+         my $srcpath = "$pathonrootimage/".basename($_);
          if (-f "$customdir/$_") {
             $srcpath = "$customdir/$_";
          } elsif (-f "$pathtofiles/$_") {
@@ -1322,28 +1336,29 @@ EOMS
          chmod 0755,"/tmp/xcatinitrd.$$/".$_;
       }
    }
+   rmtree($pathonrootimage);
 
-	# Copy udev and network scripts into initrd for s390x, which also works for other platforms
-	# udev
-	system("mkdir -p /tmp/xcatinitrd.$$/etc/udev");
-	system("cp -r $rootimg_dir/etc/udev/* /tmp/xcatinitrd.$$/etc/udev");
-	system("mkdir -p /tmp/xcatinitrd.$$/lib/udev");
-	system("cp -r $rootimg_dir/lib/udev/* /tmp/xcatinitrd.$$/lib/udev");
-	system("mkdir -p /tmp/xcatinitrd.$$/proc/self");
-	system("cp -r /proc/self/oom_adj /tmp/xcatinitrd.$$/proc/self");
-	
-	# Network related scripts
-	system("mkdir -p /tmp/xcatinitrd.$$/etc/sysconfig");
-	system("cp -r $rootimg_dir/etc/sysconfig/* /tmp/xcatinitrd.$$/etc/sysconfig");
-	system("mkdir -p /tmp/xcatinitrd.$$/sbin");
-	system("cp -r $rootimg_dir/sbin/* /tmp/xcatinitrd.$$/sbin");
-	system("mkdir -p /tmp/xcatinitrd.$$/lib/modules/$kernelver");
-	system("cp -r $rootimg_dir/lib/modules/$kernelver/modules.dep /tmp/xcatinitrd.$$/lib/modules/$kernelver/modules.dep");
-	system("mkdir -p /tmp/xcatinitrd.$$/etc/init.d");
-	system("cp -r $rootimg_dir/etc/init.d/* /tmp/xcatinitrd.$$/etc/init.d");
-	system("mkdir -p /tmp/xcatinitrd.$$/lib64");
-	system("cp -r $rootimg_dir/lib64/* /tmp/xcatinitrd.$$/lib64");
-	system("mkdir -p /tmp/xcatinitrd.$$/var/run/netreport");
+   # Copy udev and network scripts into initrd for s390x, which also works for other platforms
+   # udev
+   system("mkdir -p /tmp/xcatinitrd.$$/etc/udev");
+   system("cp -r $rootimg_dir/etc/udev/* /tmp/xcatinitrd.$$/etc/udev");
+   system("mkdir -p /tmp/xcatinitrd.$$/lib/udev");
+   system("cp -r $rootimg_dir/lib/udev/* /tmp/xcatinitrd.$$/lib/udev");
+   system("mkdir -p /tmp/xcatinitrd.$$/proc/self");
+   system("cp -r /proc/self/oom_adj /tmp/xcatinitrd.$$/proc/self");
+   
+   # Network related scripts
+   system("mkdir -p /tmp/xcatinitrd.$$/etc/sysconfig");
+   system("cp -r $rootimg_dir/etc/sysconfig/* /tmp/xcatinitrd.$$/etc/sysconfig");
+   system("mkdir -p /tmp/xcatinitrd.$$/sbin");
+   system("cp -r $rootimg_dir/sbin/* /tmp/xcatinitrd.$$/sbin");
+   system("mkdir -p /tmp/xcatinitrd.$$/lib/modules/$kernelver");
+   system("cp -r $rootimg_dir/lib/modules/$kernelver/modules.dep /tmp/xcatinitrd.$$/lib/modules/$kernelver/modules.dep");
+   system("mkdir -p /tmp/xcatinitrd.$$/etc/init.d");
+   system("cp -r $rootimg_dir/etc/init.d/* /tmp/xcatinitrd.$$/etc/init.d");
+   system("mkdir -p /tmp/xcatinitrd.$$/lib64");
+   system("cp -r $rootimg_dir/lib64/* /tmp/xcatinitrd.$$/lib64");
+   system("mkdir -p /tmp/xcatinitrd.$$/var/run/netreport");
 	
    #copy("$rootimg_dir/lib/modules/*d","/tmp/xcatinitrd.$$/$_");
    system("cd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|gzip -9 -c - > $destdir/initrd-$mode.gz");
@@ -1368,12 +1383,6 @@ sub isnetdriver {
       }
    }
 }
-      	
-
-
-
-
-
 
 sub postscripts {
    generic_post();
