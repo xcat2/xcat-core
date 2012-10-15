@@ -708,7 +708,12 @@ sub subvars_for_mypostscript {
   $allattribsfromsitetable = getAllAttribsFromSiteTab();
 
   my $masterhash = getMasters($nodes);
-
+  
+  ## os, arch, profile, provemethod
+  my $typehash = getTypeVars($nodes, $callback);
+  if( !defined($typehash)) { 
+     return;
+  }
 
   ## nfsserver,installnic,primarynic
   my $attribsfromnoderes = getNoderes($nodes);
@@ -811,20 +816,7 @@ sub subvars_for_mypostscript {
     #  for #OSIMAGE_VARS_EXPORT# 
     if (!$nodesetstate) { $nodesetstate = xCAT::Postage::getnodesetstate($node); }
 
-    my $typetab    = xCAT::Table->new('nodetype');
-    my $et =
-      $typetab->getNodeAttribs($node, ['os', 'arch', 'profile', 'provmethod'],prefetchcache=>1);
-    if ($^O =~ /^linux/i)
-    {
-        unless ($et and $et->{'os'} and $et->{'arch'})
-        {
-            my $rsp;
-            push @{$rsp->{data}},
-              "No os or arch setting in nodetype table for $node.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return undef;
-        }
-    }
+    my $et = $typehash->{$node};
     $provmethod = $et->{'provmethod'};
     $os = $et->{'os'};
     $arch = $et->{'arch'};
@@ -854,8 +846,8 @@ sub subvars_for_mypostscript {
 
 
   #ok, now do everything else..
-  $inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
-  $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
+  #$inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
+  #$inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
   $inc =~ s/#SITE_TABLE_ALL_ATTRIBS_EXPORT#/$allattribsfromsitetable/eg; 
   $inc =~ s/#TABLE:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3)/eg; 
   $inc =~ s/#ROUTES_VARS_EXPORT#/$route_vars/eg; 
@@ -866,9 +858,12 @@ sub subvars_for_mypostscript {
   $inc =~ s/#INCLUDE_POSTSCRIPTS_LIST#/$postscripts/eg; 
   $inc =~ s/#INCLUDE_POSTBOOTSCRIPTS_LIST#/$postbootscripts/eg; 
   
-  $inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
+  #$inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
   $inc =~ s/#NODE#/$node/eg;
   $inc =~ s/\$NODE/$node/eg;
+  $inc =~ s/#OSVER#/$os/eg;
+  $inc =~ s/#ARCH#/$arch/eg;
+  $inc =~ s/#PROFILE#/$profile/eg;
   $inc =~ s/#NTYPE#/$nodetype/eg;
   $inc =~ s/#NFSSERVER#/$nfsserver/eg;
   $inc =~ s/#INSTALLNIC#/$installnic/eg;
@@ -959,11 +954,6 @@ sub getNoderes
 
      my $noderestab = xCAT::Table->new('noderes');
        
-     ## nfsserver,installnic,primarynic
-     my ($nfsserver, $installnic, $primarynic, $route_vars);
-      
-     my $noderestab = xCAT::Table->new('noderes');
-      
      my $ethash =
         $noderestab->getNodesAttribs($nodes,
                                   ['nfsserver', 'installnic', 'primarynic','routenames'],prefetchcache=>1);
@@ -979,6 +969,45 @@ sub getNoderes
       }
      
      return \%nodereshash; 
+}
+
+
+sub getTypeVars
+{
+     my $nodes    = shift;
+     my $callback = shift;
+     my %typehash;
+
+     my $typetab = xCAT::Table->new('nodetype');
+       
+     my $ethash =
+      $typetab->getNodesAttribs($nodes, ['os', 'arch', 'profile', 'provmethod'],prefetchcache=>1);
+
+     if ($ethash ){
+          foreach my $node (@$nodes) {
+              if( defined( $ethash->{$node}->[0]) ) {
+                  $typehash{$node}{os} = $ethash->{$node}->[0]->{os};
+                  $typehash{$node}{arch} = $ethash->{$node}->[0]->{arch};
+
+                 if ($^O =~ /^linux/i)
+                 {
+                      unless ($typehash{$node}{'os'} and $typehash{$node}{'arch'})
+                      {
+                          my $rsp;
+                          push @{$rsp->{data}},
+                               "No os or arch setting in nodetype table for $node.\n";
+                               xCAT::MsgUtils->message("E", $rsp, $callback);
+                               return undef;
+                       }
+                  }
+
+
+                  $typehash{$node}{profile} = $ethash->{$node}->[0]->{profile};
+              }
+          }  
+      }
+     
+     return \%typehash; 
 }
 
 
