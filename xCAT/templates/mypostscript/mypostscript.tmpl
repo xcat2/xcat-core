@@ -43,11 +43,11 @@ export PRIMARYNIC
 ## ...
 
 ## osver, arch, profile export
-OSVER=#TABLE:nodetype:$NODE:os#
+OSVER=#OSVER#
 export OSVER
-ARCH=#TABLE:nodetype:$NODE:arch#
+ARCH=#ARCH#
 export ARCH
-PROFILE=#TABLE:nodetype:$NODE:profile#
+PROFILE=#PROFILE#
 export PROFILE
 
 
@@ -113,15 +113,9 @@ export MACADDRESS
 # postscripts-start-here
 #INCLUDE_POSTSCRIPTS_LIST#
 ## the details will be looked like:
-## for diskless / updatenode
 ## run_ps syslog
 ## run_ps remoteshell
 ## run_ps syncfiles
-
-## for diskful
-## syslog
-## remoteshell
-## syncfiles
 
 
 
