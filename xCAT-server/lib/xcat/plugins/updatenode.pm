@@ -464,11 +464,22 @@ sub preprocess_updatenode
                 {
                     my $rsp = {};
                     $rsp->{data}->[0] =
-                      "The postcript $installdir/postscripts/$aa[0] does not exist.";
+                      "The postscript $installdir/postscripts/$aa[0] does not exist.";
                     $callback->($rsp);
                     return;
                 }
               }
+            }  else { 
+               # can only input one internal postscript  on call
+               # updatenode -P defaults-postscripts-start-here
+               my $arraySize = @posts;
+               if ($arraySize > 1) {  # invalid
+                  my $rsp = {};
+                  $rsp->{data}->[0] =
+                      "Only one internal postscript can be used with -P. Postscripts input were as follows:$postscripts";
+                  $callback->($rsp);
+                  return;
+               }
             }
        }
     }
