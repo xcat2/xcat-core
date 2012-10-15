@@ -115,6 +115,17 @@ download_mypostscript()
     return $rc
 }
 
+# pmatch determines if 1st argument string is matched by 2nd argument pattern
+
+pmatch ()
+{
+  case $1 in
+    $2) return 0;;  # zero return code means string matched by pattern
+  esac
+
+  return 1          # non-zero return code means string not matched by pattern
+}
+
 
 
 # parse the arguments
@@ -403,22 +414,94 @@ if [ "$MODE" = "6" ]; then
 fi
 
 # postscript name is specified with the updatenode
-if [ "XX$POSTSCRIPTS" != "XX" ]; then
-  #remove all the postbootscripts
-  TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" /xcatpost/mypostscript`
-  echo "$TMP" > /xcatpost/mypostscript
-  #remove all the postscripts
-  TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" /xcatpost/mypostscript`
-  echo "$TMP" > /xcatpost/mypostscript
-  echo "# postscripts-start-here" >> /xcatpost/mypostscript
-  #add requested postscripts in
-  echo "$POSTSCRIPTS" | tr "," "\n" >> /xcatpost/mypostscript
-  echo "# postscripts-end-here" >> /xcatpost/mypostscript
-  
+#cp /xcatpost/mypostscript /xcatpost/mypostscript.backup
+# if the list has a postscript named *start-here* then we must rebuild the
+# mypostscript file with only the matching *start-here stanza. 
 
+
+if ( pmatch $POSTSCRIPTS  "*start-here*" ); then
+  if ( pmatch $POSTSCRIPTS  "*osimage-postbootscripts-start-here" ); then
+  # remove all sections but the osimage-postbootscripts section
+    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" /xcatpost/mypostscript`
+    echo "$TMP" > /xcatpost/mypostscript
+    TMP=`sed "/# defaults-postbootscripts-start-here/,/# defaults-postbootscripts-end-here/ d" /xcatpost/mypostscript`
+    echo "$TMP" > /xcatpost/mypostscript
+    TMP=`sed "/# node-postbootscripts-start-here/,/# node-postbootscripts-end-here/ d" /xcatpost/mypostscript`
+    echo "$TMP" > /xcatpost/mypostscript
+  fi
+  if ( pmatch $POSTSCRIPTS  "*postscripts-start-here" ); then
+    #remove all the postbootscripts 
+    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" /xcatpost/mypostscript`
+    echo "$TMP" > /xcatpost/mypostscript
+    
+  fi
+  if ( pmatch $POSTSCRIPTS  "*postbootscripts-start-here" ); then
+    #remove all the postscripts 
+    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" /xcatpost/mypostscript`
+    echo "$TMP" > /xcatpost/mypostscript
+    
+  fi
+  if ( pmatch $POSTSCRIPTS  "*defaults-postscripts-start-here" ); then
+  # remove all sections but the defaults-postscripts section
+    TMP=`sed "/# osimage-postscripts-start-here/,/# osimage-postscripts-end-here/ d" /xcatpost/mypostscript`
+    echo "$TMP" > /xcatpost/mypostscript
+    TMP=`sed "/# node-postscripts-start-here/,/# node-postscripts-end-here/ d" /xcatpost/mypostscript`
+    echo "$TMP" > /xcatpost/mypostscript
+    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" /xcatpost/mypostscript`
+    echo "$TMP" > /xcatpost/mypostscript
+  fi
   
+  if ( pmatch $POSTSCRIPTS  "*node-postscripts-start-here" ); then
+  # remove all sections but the node-postscripts section
+    TMP=`sed "/# osimage-postscripts-start-here/,/# osimage-postscripts-end-here/ d" /xcatpost/mypostscript`
+    echo "$TMP" > /xcatpost/mypostscript
+    TMP=`sed "/# defaults-postscripts-start-here/,/# defaults-postscripts-end-here/ d" /xcatpost/mypostscript`
+    echo "$TMP" > /xcatpost/mypostscript
+    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" /xcatpost/mypostscript`
+    echo "$TMP" > /xcatpost/mypostscript
+  fi
+
+  if ( pmatch $POSTSCRIPTS  "*defaults-postbootscripts-start-here" ); then
+  # remove all sections but the defaults-postbootscripts section
+    TMP=`sed "/# osimage-postbootscripts-start-here/,/# osimage-postbootscripts-end-here/ d" /xcatpost/mypostscript`
+    echo "$TMP" > /xcatpost/mypostscript
+    TMP=`sed "/# node-postbootscripts-start-here/,/# node-postbootscripts-end-here/ d" /xcatpost/mypostscript`
+    echo "$TMP" > /xcatpost/mypostscript
+    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" /xcatpost/mypostscript`
+    echo "$TMP" > /xcatpost/mypostscript
+  fi
+  
+  
+  if ( pmatch $POSTSCRIPTS  "*node-postbootscripts-start-here" ); then
+  # remove all sections but the node-postbootscripts section
+    TMP=`sed "/# osimage-postbootscripts-start-here/,/# osimage-postbootscripts-end-here/ d" /xcatpost/mypostscript`
+    echo "$TMP" > /xcatpost/mypostscript
+    TMP=`sed "/# defaults-postbootscripts-start-here/,/# defaults-postbootscripts-end-here/ d" /xcatpost/mypostscript`
+    echo "$TMP" > /xcatpost/mypostscript
+    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" /xcatpost/mypostscript`
+    echo "$TMP" > /xcatpost/mypostscript
+  fi
+   
+   
+# check to see if input postscript list is not empty. If there is a list
+# remove the built postscripts and only add the ones for the list.
+else
+   if [ "XX$POSTSCRIPTS" != "XX" ]; then
+    #remove all the postbootscripts, and replace with list provided 
+    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" /xcatpost/mypostscript`
+    echo "$TMP" > /xcatpost/mypostscript
+    #remove all the postscripts
+    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" /xcatpost/mypostscript`
+    echo "$TMP" > /xcatpost/mypostscript
+    echo "# postscripts-start-here" >> /xcatpost/mypostscript
+    #add requested postscripts in
+    echo "$POSTSCRIPTS" | tr "," "\n" >> /xcatpost/mypostscript
+    echo "# postscripts-end-here" >> /xcatpost/mypostscript
+  
+  fi
 fi
 
+#cp /xcatpost/mypostscript /xcatpost/mypostscript.backup2
 #ADDSITEYUM is set by post.rh and post.rh.iscsi for full installtion
 #if [[ "$ADDSITEYUM" = "1" ]]; then
 #  TMP=`sed "/postscripts-start-here/ a addsiteyum" /xcatpost/mypostscript`
