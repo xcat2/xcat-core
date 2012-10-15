@@ -4,11 +4,11 @@
 
 # To handle cases like running this via sudo, get the home dir properly
 os=`uname`
-if [ "$os" == "Linux" ]; then 
+if [ "$os" = "Linux" ]; then 
     HOME=`getent passwd $(whoami)|cut -d: -f 6`
     export HOME
 fi
-if [ "$os" == "AIX" ]; then
+if [ "$os" = "AIX" ]; then
     HOME=`lsuser -a home $(whoami)|cut -d= -f 2`
     export HOME
 fi
