@@ -943,9 +943,9 @@ site => {
    "              through HMC. It only takes effect on the hardware control commands\n".
    "              through HMC. Default is 0.\n\n".
    " precreatemypostscripts: (yes/1 or no/0, only for Linux).Default is no. If yes, it will  \n".
-   "              instruct xcat at nodeset and updatenode time to query the db once for\n".
+   "              instruct xCAT at nodeset and updatenode time to query the db once for\n".
    "              all of the nodes passed into the cmd and create the mypostscript file\n".
-   "              for each node, and put them in a directory in tftpdir(such as: /tftpboot)\n".
+   "              for each node, and put them in a directory of tftpdir(such as: /tftpboot)\n".
    "              If no, it will not generate the mypostscript file in the tftpdir.\n\n".
    " pruneservices:  Whether to enable service pruning when noderm is run (i.e.\n".
    "                 removing DHCP entries when noderm is executed)\n\n".
