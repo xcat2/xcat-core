@@ -442,6 +442,10 @@ sub preprocess_updatenode
     }
 
     # handle the validity of postscripts
+    # check to see if they exist except for the internal xCAT
+    # postscripts-start-here,postbootscripts-start-here,
+    # defaults-postbootscripts-start-here, osimage-postbootscripts-start-here,
+    # etc 
     if (defined($::RERUNPS))
     {
         if ($::RERUNPS eq "")
@@ -452,9 +456,9 @@ sub preprocess_updatenode
         {
             $postscripts = $::RERUNPS;
             my @posts = split(',', $postscripts);
-
-            foreach (@posts)
-            {
+            if (!grep(/start-here/, @posts)) {  
+              foreach (@posts)
+              {
                 my @aa = split(' ', $_);
                 if (!-e "$installdir/postscripts/$aa[0]")
                 {
@@ -464,8 +468,9 @@ sub preprocess_updatenode
                     $callback->($rsp);
                     return;
                 }
+              }
             }
-        }
+       }
     }
 
     # If -F or -f  option specified, sync files to the noderange or their
