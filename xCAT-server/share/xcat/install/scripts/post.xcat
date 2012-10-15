@@ -6,9 +6,15 @@ export MASTER_IPS="#XCATVAR:XCATMASTER#"
 export MASTER="#XCATVAR:XCATMASTER#"
 export NODESTATUS="#XCATVAR:NODESTATUS#"
 export INSTALLDIR=#TABLE:site:key=installdir:value#
+export TFTPDIR=#TABLE:site:key=tftpdir:value#
 if [ -z "$INSTALLDIR" ]; then
     INSTALLDIR="/install"
 fi
+if [ -z "$TFTPDIR" ]; then
+
+    TFTPDIR="/tftpboot"
+fi
+
 cd /tmp
 RAND=$(perl -e 'print int(rand(50)). "\n"')
 sleep $RAND
@@ -21,6 +27,13 @@ do
       wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -e robots=off -nH --cut-dirs=2 --reject "index.html*" --no-parent -t 0 -T 60 http://$i$INSTALLDIR/postscripts/ -P /xcatpost
 		if [ "$?" = "0" ]
 		then
+
+         rm -rf /xcatpost/mypostscript
+         export NODE=#TABLE:nodelist:THISNODE:node#
+         wget -N --waitretry=10 --random-wait -T 60 http://$i$TFTPDIR/mypostscripts/mypostscript.$NODE  -P /xcatpost 2> /tmp/wget.log
+         mv /xcatpost/mypostscript.$NODE /xcatpost/mypostscript
+         #cp -f /xcatpost/mypostscript.$NODE /xcatpost/mypostscript
+
          if [ ! -x /usr/bin/openssl ]; then #Stop if no openssl to help the next bit
             exit 1
          fi
@@ -30,6 +43,10 @@ do
          export XCATSERVER
          mv $i/postscripts /xcatpost
          rm -rf $i
+
+         # If mypostscript doesn't exit, we will get it through getpostscript.awk
+         if [ ! -x /xcatpost/mypostscript ]; then
+
          chmod +x /xcatpost/*
          /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /xcatpost/mypostscript
          MYCONT=`grep MASTER /xcatpost/mypostscript`
@@ -48,6 +65,7 @@ do
             MYCONT=`grep MASTER /xcatpost/mypostscript`
          done
 
+         fi
             
          chmod +x /xcatpost/mypostscript
 			GOTIT=1
