@@ -695,6 +695,9 @@ sub x2n
 
 	$::msgstr = "$::Sname: ";
 
+	my $nimprime = xCAT::InstUtils->getnimprime();
+	chomp $nimprime;
+
     # process the command line
     $rc = &processArgs($callback);
     if ($rc != 0)
@@ -744,6 +747,17 @@ sub x2n
 	if (scalar(@nodes)) {
 		foreach my $objname (@nodes) {
 
+			# does this node belong to this server?
+			my $nimmaster = $nimprime;
+			if ($::objhash{$objname}{servicenode}) {
+				my $sn2;
+				($nimmaster, $sn2) = split(/,/, $::objhash{$objname}{servicenode});
+			}
+
+			if (!xCAT::InstUtils->is_me($nimmaster)) {
+				next;
+			}
+
 			if ($::opt_l || $::opt_r) {
 
 				if (&rm_or_list_nim_object($objname, $::objtype{$objname}, $callback)) {
@@ -756,8 +770,7 @@ sub x2n
 					$error++;
            		}
 			}
-			next;
-		}
+		} # end for each node
 	}
 
 	# NIM network definitions
