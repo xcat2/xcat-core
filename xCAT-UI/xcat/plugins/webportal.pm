@@ -19,7 +19,6 @@ use Getopt::Long;
 use Data::Dumper;
 use xCAT::Table;
 use xCAT::NodeRange;
-use xCAT::zvmUtils;
 use XML::Simple;
 require XML::Parser;
 

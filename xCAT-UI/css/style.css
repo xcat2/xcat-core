@@ -365,7 +365,6 @@ legend {
 
 /*--- jQuery datatable ---*/
 .dataTables_wrapper {
-	overflow: auto;
 	width: auto;
 	margin: 10px auto;
 	-moz-border-radius: 3px;
