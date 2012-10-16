@@ -12,6 +12,25 @@
 
 OS=`uname`
 
+# On AIX, need to correctly configure LAPI kernel extensions on a 
+# diskless node boot
+# (added for PE 1.2 and newer releases)
+if [ "$OS" == "AIX" ]; then
+  if [ "$NODESETSTATE" = "netboot" -o \
+       "$NODESETSTATE" = "statelite" -o \
+       "$NODESETSTATE" = "diskless" -o \
+       "$NODESETSTATE" = "dataless" ]; then 
+       # Unconfigure any existing LAPI kernel extension
+       if [ -x /etc/methods/ucfgzcmem ] ; then
+           /etc/methods/ucfgzcmem 
+       fi
+       # Configure the LAPI kernel extension at the latest level
+       if [ -x /etc/methods/cfgzcmem ] ; then
+           /etc/methods/cfgzcmem 
+       fi
+  fi
+fi
+
 # Configure the PNSD.cfg to use a smaller log so it doesn't use so much memory
 # for a stateless image.  Normally, pnsd creates this file if it does not 
 # exist, but it will not fill it in if it does exist.
