@@ -1,14 +1,14 @@
-#!/bin/sh
+#!/bin/sh -x
 
 # Provide serial console access to nodes
 
 # To handle cases like running this via sudo, get the home dir properly
 os=`uname`
-if [ "$os" = "Linux" ]; then 
+if [ "$os" == "Linux" ]; then 
     HOME=`getent passwd $(whoami)|cut -d: -f 6`
     export HOME
 fi
-if [ "$os" = "AIX" ]; then
+if [ "$os" == "AIX" ]; then
     HOME=`lsuser -a home $(whoami)|cut -d= -f 2`
     export HOME
 fi
@@ -21,7 +21,7 @@ if [ -z "$1" ] || [ "$1" = "-h"  ]; then
     exit 0
 fi
 if [ "$1" = "-v"  ]; then
-    echo "Version 2.1"
+    echo "Version 2.8"
     exit 0
 fi
 
@@ -36,44 +36,101 @@ if [ -n "$3" ] && [ "$3" = "-s" ]; then
     CONSERVER=$2
 fi
 
-if [ -n "$2" ] && [ "$2" = "-f" ]; then
-    FORCE=-f
+if [ -n "$2" ]; then
+    if [ "$2" = "-f" ]; then
+	FORCE=-f
+    else
+	if [ "$2" = "-s" ]; then
+	    FORCE=-s
+	else
+	    CONSERVER=$2
+	fi
+    fi
 fi
 
-#console spy mode
-if [ -n "$2" ] && [ "$2" = "-s" ]; then
-    FORCE=-s
-fi
-
-if [ -z "$CONSERVER" ]; then
+if [ -f "/usr/bin/console" ] || [ -f "/bin/console" ]; then
+    #use conserver
+    if [ -z "$CONSERVER" ]; then
         CONSERVER=`nodels $1 nodehm.conserver 2>/dev/null | awk -F: '{print $2}' | tr -d ' '`
-fi
-
-if [ -z "$CONSERVER" ]; then
+    fi
+    
+    if [ -z "$CONSERVER" ]; then
 	CONSERVER=$XCATHOST
-fi
-if [ -z "$CONSERVER" ]; then
+    fi
+    if [ -z "$CONSERVER" ]; then
 	CONSERVER=localhost
-fi
-#NOTE: IPv6 is not good with the below if going by IP, needs more sophisticated
-#parsing
-CONSERVER=`echo $CONSERVER|cut -d: -f 1`
+    fi
+    #NOTE: IPv6 is not good with the below if going by IP, needs more sophisticated
+    #parsing
+    CONSERVER=`echo $CONSERVER|cut -d: -f 1`
 
-#Detect console support of SSL, only fixup consolerc if encryption is detected
-if ! console -h 2>&1 | grep "encryption not compiled" > /dev/null; then
-    if [ ! -f $HOME/.consolerc ]; then
+    #Detect console support of SSL, only fixup consolerc if encryption is detected
+    if ! console -h 2>&1 | grep "encryption not compiled" > /dev/null; then
+	if [ ! -f $HOME/.consolerc ]; then
 	    echo 'config * {' > $HOME/.consolerc
 	    echo "	port 782;" >> $HOME/.consolerc
 	    echo "	sslenabled yes;" >> $HOME/.consolerc
 	    echo "	sslauthority $HOME/.xcat/ca.pem;" >> $HOME/.consolerc
 	    echo "	sslcredentials $HOME/.xcat/client-cred.pem;" >> $HOME/.consolerc
 	    echo '}' >> $HOME/.consolerc
+	fi
+    else
+        # ssl is not enabled, comment out the ssl settings in .consolerc
+	if [ -f $HOME/.consolerc ]; then
+            sed -i 's/\Wssl/#ssl/1' $HOME/.consolerc
+	fi
     fi
-else
-    # ssl is not enabled, comment out the ssl settings in .consolerc
-    if [ -f $HOME/.consolerc ]; then
-        sed -i 's/\Wssl/#ssl/1' $HOME/.consolerc
+
+    exec console $FORCE -M $CONSERVER $1
+else 
+    if [[ "$FORCE" == "-s" ]]; then
+	echo "Read-only mode is not supported, please run rcons without -s option."
+	exit 1
+    fi
+    #deal with consoles directly
+    output=`nodels $1 nodehm.conserver nodehm.cons nodehm.mgt 2>&1` 
+    if [ $? -ne 0 ]; then
+	echo "$output"
+	exit 1
+    fi 
+
+    if [ -z "$CONSERVER" ]; then  
+	CONSERVER=`echo "$output"|grep nodehm.conserver|cut -d: -f3|tr -d ' \n'`
+    fi
+    CONS=`echo "$output" |grep nodehm.cons|cut -d: -f3 | tr -d ' \n'`
+    if [ -z "$CONS" ]; then
+	CONS=`echo "$output"|grep nodehm.mgt|cut -d: -f3 | tr -d ' \n'`
+    fi
+    if [ -z "$CONS" ]; then
+	echo "Error: nodehm.mgt or nodehm.cons for node $1 not setup."
+	exit 1;
+    fi
+    #echo "CONS=$CONS CONSERSRVER=$CONSERVER"
+
+    # check if others are using the console
+    if [[ -n $CONSERVER ]]; then
+        ssh $CONSERVER ps -ef |grep $1 |grep -v grep |grep "$XCATROOT/share/xcat/cons" > /dev/null
+    else 
+        ps -ef |grep $1 |grep -v grep |grep "$XCATROOT/share/xcat/cons" > /dev/null
+    fi
+    if [ $? -eq 0 ]; then
+        if [[ "$FORCE" == "-f" ]] ; then
+           echo "Only one console can be run at a time for a node. Other consoles will be closed."
+        else
+           echo "Only one console can be run at a time for a node. Please close other consoles or run rcons with -f option."
+           exit 1;
+        fi
+    fi
+
+    echo "**** Enter ~? for help *****"
+    if [ -z "$XCATROOT" ]; then
+        cmdpath="/opt/xcat/share/xcat/cons"	
+    else
+        cmdpath="$XCATROOT/share/xcat/cons"
+    fi
+    if [ -z "$CONSERVER" ]; then
+        exec $cmdpath/$CONS $1
+    else
+        exec ssh -t  $CONSERVER "$cmdpath/$CONS $1"
     fi
 fi
-
-exec console $FORCE -M $CONSERVER $1
