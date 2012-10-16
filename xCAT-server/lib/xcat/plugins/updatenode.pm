@@ -2078,14 +2078,14 @@ sub doAIXcopy
 			{
 				my $rsp;
 				push @{$rsp->{data}}, "Copying $srcdir to $dir on service node $snkey.\n";
-			xCAT::MsgUtils->message("I", $rsp, $callback);
-
-            # make sure the dir exists on the service node
-            #  also make sure it's writeable by all
-            my $mkcmd = qq~/usr/bin/mkdir -p $dir~;
-            my $output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snkey, $mkcmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {
+		      xCAT::MsgUtils->message("I", $rsp, $callback);
+         }
+         # make sure the dir exists on the service node
+         #  also make sure it's writeable by all
+         my $mkcmd = qq~/usr/bin/mkdir -p $dir~;
+         my $output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snkey, $mkcmd, 0);
+         if ($::RUNCMD_RC != 0)
+         {
                 my $rsp;
                 push @{$rsp->{data}},
                   "Could not create directories on $snkey.\n";
@@ -2095,7 +2095,7 @@ sub doAIXcopy
                 }
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 next;
-            }
+         }
 
 			# sync source files to SN
 			my $cpcmd = qq~$::XCATROOT/bin/prsync -o "rlHpEAogDz" $srcdir $snkey:$dir 2>/dev/null~;
