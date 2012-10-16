@@ -1015,98 +1015,8 @@ sub updatenode
     #
     #  handle file synchronization
     #
-
-    if (($request->{FileSyncing} && $request->{FileSyncing}->[0] eq "yes")
-        || (
-            (   $request->{SNFileSyncing}
-             && $request->{SNFileSyncing}->[0] eq "yes")))
-    {
-        my %syncfile_node      = ();
-        my %syncfile_rootimage = ();
-        my $node_syncfile      = xCAT::SvrUtils->getsynclistfile($nodes);
-        foreach my $node (@$nodes)
-        {
-            my $synclist = $$node_syncfile{$node};
-
-            if ($synclist)
-            {
-               # this can be a comma separated list of multiple
-               # syncfiles
-               my @sl = split(',',$synclist);
-               foreach my $s (@sl){
-                   push @{$syncfile_node{$s}}, $node;
-               }
-            }
-        }
-
-        # Check the existence of the synclist file
-        if (%syncfile_node)
-        {    # there are files to sync defined
-            foreach my $synclist (keys %syncfile_node)
-            {
-                if (!(-r $synclist))
-                {
-                    my $rsp = {};
-                    $rsp->{data}->[0] =
-                      "The Synclist file $synclist which specified for certain node does NOT existed.";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    return 1;
-                }
-            }
-
-            # Sync files to the target nodes
-            foreach my $synclist (keys %syncfile_node)
-            {
-                if ($::VERBOSE)
-                {
-                    my $rsp = {};
-                    if ($request->{FileSyncing}->[0] eq "yes")
-                    {    # sync nodes
-                        $rsp->{data}->[0] =
-                          "  $localhostname: Internal call command: xdcp -F $synclist";
-                    }
-                    else
-                    {    # sync SN
-                        $rsp->{data}->[0] =
-                          "  $localhostname: Internal call command: xdcp -s -F $synclist";
-                    }
-                    $callback->($rsp);
-                }
-                my $args;
-                my $env;
-                if ($request->{FileSyncing}->[0] eq "yes")
-                {        # sync nodes
-                    $args = ["-F", "$synclist"];
-                    $env = ["DSH_RSYNC_FILE=$synclist"];
-                }
-                else
-                {        # sync SN only
-                    $args = ["-s", "-F", "$synclist"];
-                    $env = ["DSH_RSYNC_FILE=$synclist", "RSYNCSNONLY=1"];
-                }
-                $subreq->(
-                          {
-                           command => ['xdcp'],
-                           node    => $syncfile_node{$synclist},
-                           arg     => $args,
-                           env     => $env
-                          },
-                          $callback
-                          );
-            }
-            my $rsp = {};
-            $rsp->{data}->[0] = "File synchronization has completed.";
-            $callback->($rsp);
-        }
-        else
-        {    # no syncfiles defined
-            my $rsp = {};
-            $rsp->{data}->[0] =
-              "There were no syncfiles defined to process. File synchronization has completed.";
-            $callback->($rsp);
-
-        }
-    }
+    &updatenodesyncfiles($request,$subreq,$callback);
+ 
 
     if (scalar(@$AIXnodes))
     {
@@ -1535,6 +1445,122 @@ sub updatenode
     #}
     return 0;
 }
+
+
+#-------------------------------------------------------------------------------
+
+=head3  updatenodesyncfiles
+
+    Arguments: request
+    Returns:
+        0 - for success.
+        1 - for error.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub updatenodesyncfiles
+{
+    my $request  = shift;
+    my $subreq  = shift;
+    my $callback = shift;
+    my $nodes         = $request->{node};
+    my $localhostname = hostname();
+    if (($request->{FileSyncing} && $request->{FileSyncing}->[0] eq "yes")
+        || (
+            (   $request->{SNFileSyncing}
+             && $request->{SNFileSyncing}->[0] eq "yes")))
+    {
+        my %syncfile_node      = ();
+        my %syncfile_rootimage = ();
+        my $node_syncfile      = xCAT::SvrUtils->getsynclistfile($nodes);
+        foreach my $node (@$nodes)
+        {
+            my $synclist = $$node_syncfile{$node};
+
+            if ($synclist)
+            {
+               # this can be a comma separated list of multiple
+               # syncfiles
+               my @sl = split(',',$synclist);
+               foreach my $s (@sl){
+                   push @{$syncfile_node{$s}}, $node;
+               }
+            }
+        }
+
+        # Check the existence of the synclist file
+        if (%syncfile_node)
+        {    # there are files to sync defined
+            foreach my $synclist (keys %syncfile_node)
+            {
+                if (!(-r $synclist))
+                {
+                    my $rsp = {};
+                    $rsp->{data}->[0] =
+                      "The Synclist file $synclist which specified for certain node does NOT existed.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return 1;
+                }
+            }
+
+            # Sync files to the target nodes
+            foreach my $synclist (keys %syncfile_node)
+            {
+                if ($::VERBOSE)
+                {
+                    my $rsp = {};
+                    if ($request->{FileSyncing}->[0] eq "yes")
+                    {    # sync nodes
+                        $rsp->{data}->[0] =
+                          "  $localhostname: Internal call command: xdcp -F $synclist";
+                    }
+                    else
+                    {    # sync SN
+                        $rsp->{data}->[0] =
+                          "  $localhostname: Internal call command: xdcp -s -F $synclist";
+                    }
+                    $callback->($rsp);
+                }
+                my $args;
+                my $env;
+                if ($request->{FileSyncing}->[0] eq "yes")
+                {        # sync nodes
+                    $args = ["-F", "$synclist"];
+                    $env = ["DSH_RSYNC_FILE=$synclist"];
+                }
+                else
+                {        # sync SN only
+                    $args = ["-s", "-F", "$synclist"];
+                    $env = ["DSH_RSYNC_FILE=$synclist", "RSYNCSNONLY=1"];
+                }
+                $subreq->(
+                          {
+                           command => ['xdcp'],
+                           node    => $syncfile_node{$synclist},
+                           arg     => $args,
+                           env     => $env
+                          },
+                          $callback
+                          );
+            }
+            my $rsp = {};
+            $rsp->{data}->[0] = "File synchronization has completed.";
+            $callback->($rsp);
+        }
+        else
+        {    # no syncfiles defined
+            my $rsp = {};
+            $rsp->{data}->[0] =
+              "There were no syncfiles defined to process. File synchronization has completed.";
+            $callback->($rsp);
+
+        }
+    }
+
+   return;
+}
+
 #
 # Handles the return from running xcatdsklspost 
 #
