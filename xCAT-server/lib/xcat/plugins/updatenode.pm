@@ -1084,17 +1084,104 @@ sub updatenode
     # handle the running of cust scripts
     #
 
-    if ($request->{rerunps} && $request->{rerunps}->[0] eq "yes")
-    {
-        my $postscripts      = "";
-        my $orig_postscripts = "";
-        if (($request->{postscripts}) && ($request->{postscripts}->[0]))
-        {
-            $orig_postscripts = $request->{postscripts}->[0];
-        }
+    if ($request->{rerunps} && $request->{rerunps}->[0] eq "yes") {
+      &updatenoderunps($request,$subreq,$callback);
+    }
 
-        if (scalar(@$Linuxnodes))
+    #
+    # Handle updating OS
+    #
+    if ($request->{os} && $request->{os}->[0] eq "yes")
+    {
+        my $os = $::OS;
+
+        # Process ID for xfork()
+        my $pid;
+
+        # Child process IDs
+        my @children;
+
+        # Go through each node
+        foreach my $node (@$nodes)
         {
+            $pid = xCAT::Utils->xfork();
+
+            # Parent process
+            if ($pid)
+            {
+                push(@children, $pid);
+            }
+
+            # Child process
+            elsif ($pid == 0)
+            {
+
+                # Update OS
+                updateOS($callback, $node, $os);
+
+                # Exit process
+                exit(0);
+            }
+            else
+            {
+
+                # Ran out of resources
+                die "Error: Could not fork\n";
+            }
+        }    # End of foreach
+
+        # Wait for all processes to end
+        foreach (@children)
+        {
+            waitpid($_, 0);
+        }
+    }
+    # finish clean up the tarred  postscript file
+    #if (-e "$postscripts.tgz") {
+
+    #   my $cmd="rm $postscripts.tgz"; #print "cmd:$cmd\n";
+    #   xCAT::Utils->runcmd($cmd, 0);
+    #   my $rsp = {};
+    #   if ($::RUNCMD_RC != 0)
+    #   {
+    #       $rsp->{data}->[0] = "$cmd failed.\n";
+    #       xCAT::MsgUtils->message("E", $rsp, $callback);
+    #   }
+
+    #}
+    return 0;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3  updatenodesyncfiles  - performs node rsync  updatenode -F
+
+    Arguments: request
+    Returns:
+        0 - for success.
+        1 - for error.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub updatenoderunps
+{
+    my $request  = shift;
+    my $subreq  = shift;
+    my $callback = shift;
+    my $nodes         = $request->{node};
+    my $localhostname = hostname();
+    my $installdir = xCAT::TableUtils->getInstallDir();
+    my ($rc, $AIXnodes, $Linuxnodes) = xCAT::InstUtils->getOSnodes($nodes);
+    my $postscripts      = "";
+    my $orig_postscripts = "";
+    if (($request->{postscripts}) && ($request->{postscripts}->[0]))
+    {
+           $orig_postscripts = $request->{postscripts}->[0];
+    }
+
+    if (scalar(@$Linuxnodes))
+    {
             $postscripts = $orig_postscripts;
 
             # we have Linux nodes
@@ -1288,72 +1375,9 @@ sub updatenode
                                  $subreq, 0, 1
                                  );
         }
-    }
 
-    #
-    # Handle updating OS
-    #
-    if ($request->{os} && $request->{os}->[0] eq "yes")
-    {
-        my $os = $::OS;
-
-        # Process ID for xfork()
-        my $pid;
-
-        # Child process IDs
-        my @children;
-
-        # Go through each node
-        foreach my $node (@$nodes)
-        {
-            $pid = xCAT::Utils->xfork();
-
-            # Parent process
-            if ($pid)
-            {
-                push(@children, $pid);
-            }
-
-            # Child process
-            elsif ($pid == 0)
-            {
-
-                # Update OS
-                updateOS($callback, $node, $os);
-
-                # Exit process
-                exit(0);
-            }
-            else
-            {
-
-                # Ran out of resources
-                die "Error: Could not fork\n";
-            }
-        }    # End of foreach
-
-        # Wait for all processes to end
-        foreach (@children)
-        {
-            waitpid($_, 0);
-        }
-    }
-    # finish clean up the tarred  postscript file
-    #if (-e "$postscripts.tgz") {
-
-    #   my $cmd="rm $postscripts.tgz"; #print "cmd:$cmd\n";
-    #   xCAT::Utils->runcmd($cmd, 0);
-    #   my $rsp = {};
-    #   if ($::RUNCMD_RC != 0)
-    #   {
-    #       $rsp->{data}->[0] = "$cmd failed.\n";
-    #       xCAT::MsgUtils->message("E", $rsp, $callback);
-    #   }
-
-    #}
-    return 0;
+    return;
 }
-
 
 #-------------------------------------------------------------------------------
 
@@ -1392,9 +1416,9 @@ sub updatenodesyncfiles
             }
      }
 
-      # Check the existence of the synclist file
-      if (%syncfile_node)
-      {    # there are files to sync defined
+     # Check the existence of the synclist file
+     if (%syncfile_node)
+     {    # there are files to sync defined
             foreach my $synclist (keys %syncfile_node)
             {
                 if (!(-r $synclist))
@@ -1458,7 +1482,7 @@ sub updatenodesyncfiles
               "There were no syncfiles defined to process. File synchronization has completed.";
             $callback->($rsp);
 
-        }
+      }
 
    return;
 }
@@ -1492,11 +1516,11 @@ sub updatenodesoftware
     my ($rc, $AIXnodes_nd, $Linuxnodes_nd) =
           xCAT::InstUtils->getOSnodes($nodes);
 
-        #
-        #   do linux nodes
-        #
-        if (scalar(@$Linuxnodes_nd))
-        {    # we have a list of linux nodes
+    #
+    #   do linux nodes
+    #
+    if (scalar(@$Linuxnodes_nd))
+    {    # we have a list of linux nodes
             my $cmd;
 
             # get server names as known by the nodes
@@ -1580,7 +1604,7 @@ sub updatenodesoftware
                 #		xCAT::MsgUtils->message("E", $rsp, $callback);;
                 return 1;
             }
-        }
+     }
 
    return;
 }
