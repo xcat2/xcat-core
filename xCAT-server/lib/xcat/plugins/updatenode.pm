@@ -57,10 +57,10 @@ my $RERUNPS4SECURITY;
 sub handled_commands
 {
     return {
-            updatenode        => "updatenode",
-            updatenodestat    => "updatenode",
-            updatemynodestat  => "updatenode",
-            updatenodeappstat => "updatenode",
+            updatenode           => "updatenode",
+            updatenodestat       => "updatenode",
+            updatemynodestat     => "updatenode",
+            updatenodeappstat    => "updatenode",
             updatenodeupdatestat => "updatenode"
             };
 }
@@ -351,7 +351,6 @@ sub preprocess_updatenode
 
     my $nodes = $request->{node};
 
-
     if (!$nodes)
     {
         my $rsp = {};
@@ -374,24 +373,28 @@ sub preprocess_updatenode
             xCAT::MsgUtils->message("E", $rsp, $callback, 1);
             return;
         }
-        # now build a list of all service nodes that are either in the 
+
+        # now build a list of all service nodes that are either in the
         # noderange or a service node of a node in the noderange
         # and update there ssh keys and credentials
         # get computenodes and servicenodes from the noderange
         my @SN;
         my @CN;
-        xCAT::ServiceNodeUtils->getSNandCPnodes(\@$nodes,\@SN,\@CN);
+        xCAT::ServiceNodeUtils->getSNandCPnodes(\@$nodes, \@SN, \@CN);
         $::NODEOUT = ();
-        &update_SN_security($request, $callback, $subreq ,\@SN);
-        
-        # are there compute nodes, then we want to change the request to 
+        &update_SN_security($request, $callback, $subreq, \@SN);
+
+        # are there compute nodes, then we want to change the request to
         # just update the compute nodes
-        if (scalar(@CN)) {
-          $request->{node}                  = \@CN;
-          $request->{noderange}             = \@CN;
-          $::RERUNPS = "remoteshell";
-        } else { # no more nodes
-           return;
+        if (scalar(@CN))
+        {
+            $request->{node}      = \@CN;
+            $request->{noderange} = \@CN;
+            $::RERUNPS            = "remoteshell";
+        }
+        else
+        {    # no more nodes
+            return;
         }
 
     }
@@ -445,7 +448,7 @@ sub preprocess_updatenode
     # check to see if they exist except for the internal xCAT
     # postscripts-start-here,postbootscripts-start-here,
     # defaults-postbootscripts-start-here, osimage-postbootscripts-start-here,
-    # etc 
+    # etc
     if (defined($::RERUNPS))
     {
         if ($::RERUNPS eq "")
@@ -456,32 +459,37 @@ sub preprocess_updatenode
         {
             $postscripts = $::RERUNPS;
             my @posts = split(',', $postscripts);
-            if (!grep(/start-here/, @posts)) {  
-              foreach (@posts)
-              {
-                my @aa = split(' ', $_);
-                if (!-e "$installdir/postscripts/$aa[0]")
+            if (!grep(/start-here/, @posts))
+            {
+                foreach (@posts)
                 {
+                    my @aa = split(' ', $_);
+                    if (!-e "$installdir/postscripts/$aa[0]")
+                    {
+                        my $rsp = {};
+                        $rsp->{data}->[0] =
+                          "The postscript $installdir/postscripts/$aa[0] does not exist.";
+                        $callback->($rsp);
+                        return;
+                    }
+                }
+            }
+            else
+            {
+
+                # can only input one internal postscript  on call
+                # updatenode -P defaults-postscripts-start-here
+                my $arraySize = @posts;
+                if ($arraySize > 1)
+                {    # invalid
                     my $rsp = {};
                     $rsp->{data}->[0] =
-                      "The postscript $installdir/postscripts/$aa[0] does not exist.";
+                      "Only one internal postscript can be used with -P. Postscripts input were as follows:$postscripts";
                     $callback->($rsp);
                     return;
                 }
-              }
-            }  else { 
-               # can only input one internal postscript  on call
-               # updatenode -P defaults-postscripts-start-here
-               my $arraySize = @posts;
-               if ($arraySize > 1) {  # invalid
-                  my $rsp = {};
-                  $rsp->{data}->[0] =
-                      "Only one internal postscript can be used with -P. Postscripts input were as follows:$postscripts";
-                  $callback->($rsp);
-                  return;
-               }
             }
-       }
+        }
     }
 
     # If -F or -f  option specified, sync files to the noderange or their
@@ -501,27 +509,30 @@ sub preprocess_updatenode
         push @requests, $reqcopy;
     }
 
-    # If -F  or -f then,  call CFMUtils  to check if any PCM CFM data is to be 
-    # built for the node.   This will also create the synclists attribute in 
+    # If -F  or -f then,  call CFMUtils  to check if any PCM CFM data is to be
+    # built for the node.   This will also create the synclists attribute in
     # the osimage for each node in the noderange
-    if (($::FILESYNC) || ($::SNFILESYNC)) {
-      # determine the list of osimages names in the noderange to pass into
-      # the CFMUtils
-      my @imagenames=xCAT::TableUtils->getimagenames(\@nodes);
-      # Now here we will call CFMUtils
-      $::CALLBACK=$callback;
-      my $rc=0;
-      $rc=xCAT::CFMUtils->updateCFMSynclistFile(\@imagenames);
-      if ($rc !=0) { 
-        my $rsp = {};
-        $rsp->{data}->[0] =
-           "The call to CFMUtils to build synclist returned an errorcode=$rc.";
-        $callback->($rsp);
-        return;
-     
-      }
-    }
+    if (($::FILESYNC) || ($::SNFILESYNC))
+    {
 
+        # determine the list of osimages names in the noderange to pass into
+        # the CFMUtils
+        my @imagenames = xCAT::TableUtils->getimagenames(\@nodes);
+
+        # Now here we will call CFMUtils
+        $::CALLBACK = $callback;
+        my $rc = 0;
+        $rc = xCAT::CFMUtils->updateCFMSynclistFile(\@imagenames);
+        if ($rc != 0)
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] =
+              "The call to CFMUtils to build synclist returned an errorcode=$rc.";
+            $callback->($rsp);
+            return;
+
+        }
+    }
 
     # if  not -S or -P or --security
     unless (defined($::SWMAINTENANCE) || defined($::RERUNPS) || $::SECURITY)
@@ -531,8 +542,7 @@ sub preprocess_updatenode
 
     #  - need to consider the mixed cluster case
     #		- can't depend on the os of the MN - need to split out the AIX nodes
-    my ($rc, $AIXnodes, $Linuxnodes) =
-      xCAT::InstUtils->getOSnodes($nodes);
+    my ($rc, $AIXnodes, $Linuxnodes) = xCAT::InstUtils->getOSnodes($nodes);
     my @aixnodes = @$AIXnodes;
 
     # for AIX nodes we need to copy software to SNs first - if needed
@@ -559,9 +569,9 @@ sub preprocess_updatenode
 
     }
 
-    # Get the MN names 
-    my @MNip     = xCAT::NetworkUtils->determinehostname;
-    my @sns      = ();
+    # Get the MN names
+    my @MNip = xCAT::NetworkUtils->determinehostname;
+    my @sns  = ();
     foreach my $s (keys %$sn)
     {
         my @tmp_a = split(',', $s);
@@ -581,18 +591,19 @@ sub preprocess_updatenode
         my @tmp_a = split(',', $snkey);
         foreach my $s1 (@tmp_a)
         {
-           # TODO  fix the error handling, right now cause inf loop
-           #  when  getdata and updatenode_cb are registered  LKV 
-           # if (   $::SECURITY
-           #     && !(grep /^$s1$/, @::good_sns) # is it good 
-           #     && !(grep /^$s1$/, @MNip))  # is the MN
-           # {
-           #     my $rsp;
-           #     push @{$rsp->{data}},
-           #       "The security update for service node $snkey encountered error, update security for following nodes will be skipped: @{$sn->{$snkey}}";
-           #     xCAT::MsgUtils->message("E", $rsp, $callback);
-           #     next;
-           # }
+
+            # TODO  fix the error handling, right now cause inf loop
+            #  when  getdata and updatenode_cb are registered  LKV
+            # if (   $::SECURITY
+            #     && !(grep /^$s1$/, @::good_sns) # is it good
+            #     && !(grep /^$s1$/, @MNip))  # is the MN
+            # {
+            #     my $rsp;
+            #     push @{$rsp->{data}},
+            #       "The security update for service node $snkey encountered error, update security for following nodes will be skipped: @{$sn->{$snkey}}";
+            #     xCAT::MsgUtils->message("E", $rsp, $callback);
+            #     next;
+            # }
 
             # remove the service node which have been handled before
             #if ($::SECURITY && (grep /^$s1$/, @MNip))
@@ -604,8 +615,9 @@ sub preprocess_updatenode
             #    }
             #}
         }
-        # build request 
-         
+
+        # build request
+
         my $reqcopy = {%$request};
         $reqcopy->{node}                   = $sn->{$snkey};
         $reqcopy->{'_xcatdest'}            = $snkey;
@@ -670,14 +682,15 @@ sub preprocess_updatenode
 sub update_SN_security
 
 {
-    my $request  = shift;
-    my $callback = shift;
-    my $subreq   = shift;
-    my $servicenodes   = shift;
-    my @SN= @$servicenodes;
-    my $nodes = $request->{node};
-    my @nodes=@$nodes;
+    my $request      = shift;
+    my $callback     = shift;
+    my $subreq       = shift;
+    my $servicenodes = shift;
+    my @SN           = @$servicenodes;
+    my $nodes        = $request->{node};
+    my @nodes        = @$nodes;
     my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@nodes, "xcat", "MN");
+
     if ($::ERROR_RC)
     {
         my $rsp;
@@ -686,9 +699,10 @@ sub update_SN_security
         return;
 
     }
+
     # take out the Management Node
-    my @MNip     = xCAT::NetworkUtils->determinehostname;
-    my @sns      = ();
+    my @MNip = xCAT::NetworkUtils->determinehostname;
+    my @sns  = ();
     foreach my $s (keys %$sn)
     {
         my @tmp_a = split(',', $s);
@@ -700,16 +714,20 @@ sub update_SN_security
             }
         }
     }
+
     # now add any service nodes in the input noderange, we missed
-    foreach my $sn (@SN) {
-      if (!grep (/^$sn$/, @sns))
-      {
-          push @sns, $sn;
-      }
+    foreach my $sn (@SN)
+    {
+        if (!grep (/^$sn$/, @sns))
+        {
+            push @sns, $sn;
+        }
     }
+
     # if we  have any service nodes to process
     if (scalar(@sns))
     {
+
         # setup the ssh keys on the service nodes
         # run the postscripts: remoteshell, servicenode
         # These are all servicenodes
@@ -719,7 +737,7 @@ sub update_SN_security
         my $ps;
         $ps                              = $::RERUNPS;
         $req_rs->{rerunps}->[0]          = "yes";
-        $req_rs->{security}->[0]          = "yes";
+        $req_rs->{security}->[0]         = "yes";
         $req_rs->{rerunps4security}->[0] = "yes";
         $req_rs->{node}                  = \@sns;
         $req_rs->{noderange}             = \@sns;
@@ -753,6 +771,7 @@ sub update_SN_security
     }
     return;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3  security_update_sshkeys 
@@ -767,13 +786,12 @@ sub update_SN_security
 sub security_update_sshkeys
 
 {
-    my $request  = shift;
-    my $callback = shift;
-    my $subreq   = shift;
-    my $nodes    = shift;
-    my @nodes    = @$nodes;
+    my $request       = shift;
+    my $callback      = shift;
+    my $subreq        = shift;
+    my $nodes         = shift;
+    my @nodes         = @$nodes;
     my $localhostname = hostname();
-
 
     # remove the host key from known_hosts
     xCAT::Utils->runxcmd(
@@ -909,6 +927,7 @@ sub updatenode
     #print Dumper($request);
     my $nodes         = $request->{node};
     my $localhostname = hostname();
+
     #xCAT::TableUtils->setUpdateStatus($nodes,$::STATUS_SYNCING);
     # in a mixed cluster we could potentially have both AIX and Linux
     #	nodes provided on the command line ????
@@ -944,8 +963,7 @@ sub updatenode
 
     #if precreatemypostscripts=1, create each mypostscript for each node
     require xCAT::Postage;
-    xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq);        
-
+    xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq);
 
     # convert the hashes back to the way they were passed in
     my $flatreq = xCAT::InstUtils->restore_request($request, $callback);
@@ -1020,7 +1038,7 @@ sub updatenode
             (   $request->{SNFileSyncing}
              && $request->{SNFileSyncing}->[0] eq "yes")))
     {
-       &updatenodesyncfiles($request,$subreq,$callback);
+        &updatenodesyncfiles($request, $subreq, $callback);
     }
 
     if (scalar(@$AIXnodes))
@@ -1052,7 +1070,7 @@ sub updatenode
     #
     if ($request->{swmaintenance} && $request->{swmaintenance}->[0] eq "yes")
     {
-      &updatenodesoftware($request,$subreq,$callback,$imgdefs,$updates);
+        &updatenodesoftware($request, $subreq, $callback, $imgdefs, $updates);
     }
 
     #
@@ -1073,10 +1091,10 @@ sub updatenode
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
-        # setup the root ssh keys ( runs xdsh -k) 
 
-        &security_update_sshkeys
-           ($request, $callback, $subreq, \@$nodes);
+        # setup the root ssh keys ( runs xdsh -k)
+
+        &security_update_sshkeys($request, $callback, $subreq, \@$nodes);
 
     }
 
@@ -1084,8 +1102,9 @@ sub updatenode
     # handle the running of cust scripts
     #
 
-    if ($request->{rerunps} && $request->{rerunps}->[0] eq "yes") {
-      &updatenoderunps($request,$subreq,$callback);
+    if ($request->{rerunps} && $request->{rerunps}->[0] eq "yes")
+    {
+        &updatenoderunps($request, $subreq, $callback);
     }
 
     #
@@ -1136,6 +1155,7 @@ sub updatenode
             waitpid($_, 0);
         }
     }
+
     # finish clean up the tarred  postscript file
     #if (-e "$postscripts.tgz") {
 
@@ -1166,215 +1186,214 @@ sub updatenode
 #-----------------------------------------------------------------------------
 sub updatenoderunps
 {
-    my $request  = shift;
-    my $subreq  = shift;
-    my $callback = shift;
+    my $request       = shift;
+    my $subreq        = shift;
+    my $callback      = shift;
     my $nodes         = $request->{node};
     my $localhostname = hostname();
-    my $installdir = xCAT::TableUtils->getInstallDir();
+    my $installdir    = xCAT::TableUtils->getInstallDir();
     my ($rc, $AIXnodes, $Linuxnodes) = xCAT::InstUtils->getOSnodes($nodes);
     my $postscripts      = "";
     my $orig_postscripts = "";
+
     if (($request->{postscripts}) && ($request->{postscripts}->[0]))
     {
-           $orig_postscripts = $request->{postscripts}->[0];
+        $orig_postscripts = $request->{postscripts}->[0];
     }
 
     if (scalar(@$Linuxnodes))
     {
-            $postscripts = $orig_postscripts;
+        $postscripts = $orig_postscripts;
 
-            # we have Linux nodes
-            my $cmd;
+        # we have Linux nodes
+        my $cmd;
 
-            # get server names as known by the nodes
-            my %servernodes =
-              %{xCAT::InstUtils->get_server_nodes($callback, \@$Linuxnodes)};
+        # get server names as known by the nodes
+        my %servernodes =
+          %{xCAT::InstUtils->get_server_nodes($callback, \@$Linuxnodes)};
 
-            # it's possible that the nodes could have diff server names
-            # do all the nodes for a particular server at once
-            foreach my $snkey (keys %servernodes)
-            {
-                my $nodestring = join(',', @{$servernodes{$snkey}});
-                my $args;
-                my $mode;
-                if (   $request->{rerunps4security}
-                    && $request->{rerunps4security}->[0] eq "yes")
-                {
-
-                    # for updatenode --security
-                    $mode = "5";
-                }
-                else
-                {
-
-                    # for updatenode -P
-                    $mode = "1";
-                }
-                my $args1;
-                if ($::SETSERVER)
-                {
-                    $args1 = [
-                        "-s",
-                        "-v",
-                        "-e",
-                        "$installdir/postscripts/xcatdsklspost $mode -M $snkey '$postscripts'"
-                        ];
-
-                }
-                else
-                {
-
-                    $args1 = [
-                        "-s",
-                        "-v",
-                        "-e",
-                        "$installdir/postscripts/xcatdsklspost $mode -m $snkey '$postscripts'"
-                        ];
-                }
-
-                if ($::VERBOSE)
-                {
-                    my $rsp = {};
-                    $rsp->{data}->[0] =
-                      "  $localhostname: Internal call command: xdsh $nodestring "
-                      . join(' ', @$args1);
-                    $callback->($rsp);
-                }
-
-                $CALLBACK = $callback;
-                if ($request->{rerunps4security})
-                {
-                    $RERUNPS4SECURITY = $request->{rerunps4security}->[0];
-                }
-                else
-                {
-                    $RERUNPS4SECURITY = "";
-                }
-                $subreq->(
-                          {
-                           command           => ["xdsh"],
-                           node              => $servernodes{$snkey},
-                           arg               => $args1,
-                           _xcatpreprocessed => [1]
-                          },
-                          \&getdata
-                          );
-            }
-        }
-
-        if (scalar(@$AIXnodes))
+        # it's possible that the nodes could have diff server names
+        # do all the nodes for a particular server at once
+        foreach my $snkey (keys %servernodes)
         {
-
-            # we have AIX nodes
-            $postscripts = $orig_postscripts;
-
-            # need to pass the name of the server on the xcataixpost cmd line
-
-            # get server names as known by the nodes
-            my %servernodes =
-              %{xCAT::InstUtils->get_server_nodes($callback, \@$AIXnodes)};
-
-            # it's possible that the nodes could have diff server names
-            # do all the nodes for a particular server at once
-            foreach my $snkey (keys %servernodes)
+            my $nodestring = join(',', @{$servernodes{$snkey}});
+            my $args;
+            my $mode;
+            if (   $request->{rerunps4security}
+                && $request->{rerunps4security}->[0] eq "yes")
             {
-                my $nodestring = join(',', @{$servernodes{$snkey}});
-                my $cmd;
-                my $mode;
-                if (   $request->{rerunps4security}
-                    && $request->{rerunps4security}->[0] eq "yes")
-                {
 
-                    # for updatenode --security
-                    $mode = "5";
-                }
-                else
-                {
+                # for updatenode --security
+                $mode = "5";
+            }
+            else
+            {
 
-                    # for updatenode -P
-                    $mode = "1";
-                }
+                # for updatenode -P
+                $mode = "1";
+            }
+            my $args1;
+            if ($::SETSERVER)
+            {
+                $args1 = [
+                    "-s",
+                    "-v",
+                    "-e",
+                    "$installdir/postscripts/xcatdsklspost $mode -M $snkey '$postscripts'"
+                    ];
 
-                if ($::SETSERVER)
-                {
-                    $cmd =
-                      "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -v -e $installdir/postscripts/xcataixpost -M $snkey -c $mode '$postscripts' 2>&1";
-                }
-                else
-                {
-                    $cmd =
-                      "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -v -e $installdir/postscripts/xcataixpost -m $snkey -c $mode '$postscripts' 2>&1";
-                }
+            }
+            else
+            {
 
-                if ($::VERBOSE)
-                {
-                    my $rsp = {};
-                    $rsp->{data}->[0] =
-                      "  $localhostname: Internal call command: $cmd";
-                    $callback->($rsp);
-                }
+                $args1 = [
+                    "-s",
+                    "-v",
+                    "-e",
+                    "$installdir/postscripts/xcatdsklspost $mode -m $snkey '$postscripts'"
+                    ];
+            }
 
-                if (!open(CMD, "$cmd |"))
+            if ($::VERBOSE)
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] =
+                  "  $localhostname: Internal call command: xdsh $nodestring "
+                  . join(' ', @$args1);
+                $callback->($rsp);
+            }
+
+            $CALLBACK = $callback;
+            if ($request->{rerunps4security})
+            {
+                $RERUNPS4SECURITY = $request->{rerunps4security}->[0];
+            }
+            else
+            {
+                $RERUNPS4SECURITY = "";
+            }
+            $subreq->(
+                      {
+                       command           => ["xdsh"],
+                       node              => $servernodes{$snkey},
+                       arg               => $args1,
+                       _xcatpreprocessed => [1]
+                      },
+                      \&getdata
+                      );
+        }
+    }
+
+    if (scalar(@$AIXnodes))
+    {
+
+        # we have AIX nodes
+        $postscripts = $orig_postscripts;
+
+        # need to pass the name of the server on the xcataixpost cmd line
+
+        # get server names as known by the nodes
+        my %servernodes =
+          %{xCAT::InstUtils->get_server_nodes($callback, \@$AIXnodes)};
+
+        # it's possible that the nodes could have diff server names
+        # do all the nodes for a particular server at once
+        foreach my $snkey (keys %servernodes)
+        {
+            my $nodestring = join(',', @{$servernodes{$snkey}});
+            my $cmd;
+            my $mode;
+            if (   $request->{rerunps4security}
+                && $request->{rerunps4security}->[0] eq "yes")
+            {
+
+                # for updatenode --security
+                $mode = "5";
+            }
+            else
+            {
+
+                # for updatenode -P
+                $mode = "1";
+            }
+
+            if ($::SETSERVER)
+            {
+                $cmd =
+                  "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -v -e $installdir/postscripts/xcataixpost -M $snkey -c $mode '$postscripts' 2>&1";
+            }
+            else
+            {
+                $cmd =
+                  "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -v -e $installdir/postscripts/xcataixpost -m $snkey -c $mode '$postscripts' 2>&1";
+            }
+
+            if ($::VERBOSE)
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] =
+                  "  $localhostname: Internal call command: $cmd";
+                $callback->($rsp);
+            }
+
+            if (!open(CMD, "$cmd |"))
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] = "$localhostname: Cannot run command $cmd";
+                $callback->($rsp);
+            }
+            else
+            {
+                my $rsp = {};
+                while (<CMD>)
                 {
-                    my $rsp = {};
-                    $rsp->{data}->[0] =
-                      "$localhostname: Cannot run command $cmd";
-                    $callback->($rsp);
-                }
-                else
-                {
-                    my $rsp = {};
-                    while (<CMD>)
+                    my $output = $_;
+                    chomp($output);
+                    $output =~ s/\\cM//;
+                    if ($output =~ /returned from postscript/)
                     {
-                        my $output = $_;
-                        chomp($output);
-                        $output =~ s/\\cM//;
-                        if ($output =~ /returned from postscript/)
+                        $output =~
+                          s/returned from postscript/Running of postscripts has completed./;
+                    }
+                    if (   $request->{rerunps4security}
+                        && $request->{rerunps4security}->[0] eq "yes")
+                    {
+                        if ($output =~ /Running of postscripts has completed/)
                         {
                             $output =~
-                              s/returned from postscript/Running of postscripts has completed./;
+                              s/Running of postscripts has completed/Redeliver security files has completed/;
+                            push @{$rsp->{data}}, $output;
                         }
-                        if (   $request->{rerunps4security}
-                            && $request->{rerunps4security}->[0] eq "yes")
+                        elsif ($output !~
+                               /Running postscript|Error loading module/)
                         {
-                            if ($output =~
-                                /Running of postscripts has completed/)
-                            {
-                                $output =~
-                                  s/Running of postscripts has completed/Redeliver security files has completed/;
-                                push @{$rsp->{data}}, $output;
-                            }
-                            elsif ($output !~
-                                   /Running postscript|Error loading module/)
-                            {
-                                push @{$rsp->{data}}, $output;
-                            }
-                        }
-                        elsif ($output !~ /Error loading module/)
-                        {
-                            push @{$rsp->{data}}, "$output";
+                            push @{$rsp->{data}}, $output;
                         }
                     }
-                    close(CMD);
-                    $callback->($rsp);
+                    elsif ($output !~ /Error loading module/)
+                    {
+                        push @{$rsp->{data}}, "$output";
+                    }
                 }
+                close(CMD);
+                $callback->($rsp);
             }
         }
-        if (   $request->{rerunps4security}
-            && $request->{rerunps4security}->[0] eq "yes")
-        {
+    }
+    if (   $request->{rerunps4security}
+        && $request->{rerunps4security}->[0] eq "yes")
+    {
 
-            # clean the know_hosts
-            xCAT::Utils->runxcmd(
-                                 {
-                                  command => ['makeknownhosts'],
-                                  node    => \@$nodes,
-                                  arg     => ['-r'],
-                                 },
-                                 $subreq, 0, 1
-                                 );
-        }
+        # clean the know_hosts
+        xCAT::Utils->runxcmd(
+                             {
+                              command => ['makeknownhosts'],
+                              node    => \@$nodes,
+                              arg     => ['-r'],
+                             },
+                             $subreq, 0, 1
+                             );
+    }
 
     return;
 }
@@ -1393,99 +1412,102 @@ sub updatenoderunps
 #-----------------------------------------------------------------------------
 sub updatenodesyncfiles
 {
-    my $request  = shift;
-    my $subreq  = shift;
-    my $callback = shift;
-    my $nodes         = $request->{node};
-    my $localhostname = hostname();
+    my $request            = shift;
+    my $subreq             = shift;
+    my $callback           = shift;
+    my $nodes              = $request->{node};
+    my $localhostname      = hostname();
     my %syncfile_node      = ();
     my %syncfile_rootimage = ();
     my $node_syncfile      = xCAT::SvrUtils->getsynclistfile($nodes);
     foreach my $node (@$nodes)
     {
-            my $synclist = $$node_syncfile{$node};
+        my $synclist = $$node_syncfile{$node};
 
-            if ($synclist)
+        if ($synclist)
+        {
+
+            # this can be a comma separated list of multiple
+            # syncfiles
+            my @sl = split(',', $synclist);
+            foreach my $s (@sl)
             {
-               # this can be a comma separated list of multiple
-               # syncfiles
-               my @sl = split(',',$synclist);
-               foreach my $s (@sl){
-                   push @{$syncfile_node{$s}}, $node;
-               }
+                push @{$syncfile_node{$s}}, $node;
             }
-     }
+        }
+    }
 
-     # Check the existence of the synclist file
-     if (%syncfile_node)
-     {    # there are files to sync defined
-            foreach my $synclist (keys %syncfile_node)
+    # Check the existence of the synclist file
+    if (%syncfile_node)
+    {    # there are files to sync defined
+        foreach my $synclist (keys %syncfile_node)
+        {
+            if (!(-r $synclist))
             {
-                if (!(-r $synclist))
-                {
-                    my $rsp = {};
-                    $rsp->{data}->[0] =
-                      "The Synclist file $synclist which specified for certain node does NOT existed.";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    return 1;
-                }
+                my $rsp = {};
+                $rsp->{data}->[0] =
+                  "The Synclist file $synclist which specified for certain node does NOT existed.";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
             }
+        }
 
-            # Sync files to the target nodes
-            foreach my $synclist (keys %syncfile_node)
+        # Sync files to the target nodes
+        foreach my $synclist (keys %syncfile_node)
+        {
+            if ($::VERBOSE)
             {
-                if ($::VERBOSE)
-                {
-                    my $rsp = {};
-                    if ($request->{FileSyncing}->[0] eq "yes")
-                    {    # sync nodes
-                        $rsp->{data}->[0] =
-                          "  $localhostname: Internal call command: xdcp -F $synclist";
-                    }
-                    else
-                    {    # sync SN
-                        $rsp->{data}->[0] =
-                          "  $localhostname: Internal call command: xdcp -s -F $synclist";
-                    }
-                    $callback->($rsp);
-                }
-                my $args;
-                my $env;
+                my $rsp = {};
                 if ($request->{FileSyncing}->[0] eq "yes")
-                {        # sync nodes
-                    $args = ["-F", "$synclist"];
-                    $env = ["DSH_RSYNC_FILE=$synclist"];
+                {    # sync nodes
+                    $rsp->{data}->[0] =
+                      "  $localhostname: Internal call command: xdcp -F $synclist";
                 }
                 else
-                {        # sync SN only
-                    $args = ["-s", "-F", "$synclist"];
-                    $env = ["DSH_RSYNC_FILE=$synclist", "RSYNCSNONLY=1"];
+                {    # sync SN
+                    $rsp->{data}->[0] =
+                      "  $localhostname: Internal call command: xdcp -s -F $synclist";
                 }
-                $subreq->(
-                          {
-                           command => ['xdcp'],
-                           node    => $syncfile_node{$synclist},
-                           arg     => $args,
-                           env     => $env
-                          },
-                          $callback
-                          );
+                $callback->($rsp);
             }
-            my $rsp = {};
-            $rsp->{data}->[0] = "File synchronization has completed.";
-            $callback->($rsp);
+            my $args;
+            my $env;
+            if ($request->{FileSyncing}->[0] eq "yes")
+            {        # sync nodes
+                $args = ["-F", "$synclist"];
+                $env = ["DSH_RSYNC_FILE=$synclist"];
+            }
+            else
+            {        # sync SN only
+                $args = ["-s", "-F", "$synclist"];
+                $env = ["DSH_RSYNC_FILE=$synclist", "RSYNCSNONLY=1"];
+            }
+            $subreq->(
+                      {
+                       command => ['xdcp'],
+                       node    => $syncfile_node{$synclist},
+                       arg     => $args,
+                       env     => $env
+                      },
+                      $callback
+                      );
         }
-        else
-        {    # no syncfiles defined
-            my $rsp = {};
-            $rsp->{data}->[0] =
-              "There were no syncfiles defined to process. File synchronization has completed.";
-            $callback->($rsp);
+        my $rsp = {};
+        $rsp->{data}->[0] = "File synchronization has completed.";
+        $callback->($rsp);
+    }
+    else
+    {    # no syncfiles defined
+        my $rsp = {};
+        $rsp->{data}->[0] =
+          "There were no syncfiles defined to process. File synchronization has completed.";
+        $callback->($rsp);
 
-      }
+    }
 
-   return;
+    return;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3  updatenodesoftware  - software updates  updatenode -S
@@ -1500,117 +1522,116 @@ sub updatenodesyncfiles
 #-----------------------------------------------------------------------------
 sub updatenodesoftware
 {
-    my $request  = shift;
-    my $subreq  = shift;
-    my $callback = shift;
-    my $imgdefs = shift;
-    my $updates = shift;
+    my $request       = shift;
+    my $subreq        = shift;
+    my $callback      = shift;
+    my $imgdefs       = shift;
+    my $updates       = shift;
     my $nodes         = $request->{node};
-    my $installdir = xCAT::TableUtils->getInstallDir();
+    my $installdir    = xCAT::TableUtils->getInstallDir();
     my $localhostname = hostname();
     my $rsp;
     push @{$rsp->{data}},
-          "Performing software maintenance operations. This could take a while.\n";
+      "Performing software maintenance operations. This could take a while.\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
 
     my ($rc, $AIXnodes_nd, $Linuxnodes_nd) =
-          xCAT::InstUtils->getOSnodes($nodes);
+      xCAT::InstUtils->getOSnodes($nodes);
 
     #
     #   do linux nodes
     #
     if (scalar(@$Linuxnodes_nd))
     {    # we have a list of linux nodes
+        my $cmd;
+
+        # get server names as known by the nodes
+        my %servernodes =
+          %{xCAT::InstUtils->get_server_nodes($callback, \@$Linuxnodes_nd)};
+
+        # it's possible that the nodes could have diff server names
+        # do all the nodes for a particular server at once
+        foreach my $snkey (keys %servernodes)
+        {
+            my $nodestring = join(',', @{$servernodes{$snkey}});
             my $cmd;
-
-            # get server names as known by the nodes
-            my %servernodes =
-              %{xCAT::InstUtils->get_server_nodes($callback, \@$Linuxnodes_nd)};
-
-            # it's possible that the nodes could have diff server names
-            # do all the nodes for a particular server at once
-            foreach my $snkey (keys %servernodes)
+            if ($::SETSERVER)
             {
-                my $nodestring = join(',', @{$servernodes{$snkey}});
-                my $cmd;
-                if ($::SETSERVER)
-                {
-                    $cmd =
-                      "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -v -e $installdir/postscripts/xcatdsklspost 2 -M $snkey ospkgs,otherpkgs 2>&1";
+                $cmd =
+                  "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -v -e $installdir/postscripts/xcatdsklspost 2 -M $snkey ospkgs,otherpkgs 2>&1";
 
-                }
-                else
-                {
+            }
+            else
+            {
 
-                    $cmd =
-                      "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -v -e $installdir/postscripts/xcatdsklspost 2 -m $snkey ospkgs,otherpkgs 2>&1";
-                }
-
-                if ($::VERBOSE)
-                {
-                    my $rsp = {};
-                    $rsp->{data}->[0] =
-                      "  $localhostname: Internal call command: $cmd";
-                    $callback->($rsp);
-                }
-
-                if ($cmd && !open(CMD, "$cmd |"))
-                {
-                    my $rsp = {};
-                    $rsp->{data}->[0] =
-                      "$localhostname: Cannot run command $cmd";
-                    $callback->($rsp);
-                }
-                else
-                {
-                    while (<CMD>)
-                    {
-                        my $rsp    = {};
-                        my $output = $_;
-                        chomp($output);
-                        $output =~ s/\\cM//;
-                        if ($output =~ /returned from postscript/)
-                        {
-                            $output =~
-                              s/returned from postscript/Running of Software Maintenance has completed./;
-                        }
-                        $rsp->{data}->[0] = "$output";
-                        $callback->($rsp);
-                    }
-                    close(CMD);
-                }
+                $cmd =
+                  "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -v -e $installdir/postscripts/xcatdsklspost 2 -m $snkey ospkgs,otherpkgs 2>&1";
             }
 
+            if ($::VERBOSE)
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] =
+                  "  $localhostname: Internal call command: $cmd";
+                $callback->($rsp);
+            }
+
+            if ($cmd && !open(CMD, "$cmd |"))
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] = "$localhostname: Cannot run command $cmd";
+                $callback->($rsp);
+            }
+            else
+            {
+                while (<CMD>)
+                {
+                    my $rsp    = {};
+                    my $output = $_;
+                    chomp($output);
+                    $output =~ s/\\cM//;
+                    if ($output =~ /returned from postscript/)
+                    {
+                        $output =~
+                          s/returned from postscript/Running of Software Maintenance has completed./;
+                    }
+                    $rsp->{data}->[0] = "$output";
+                    $callback->($rsp);
+                }
+                close(CMD);
+            }
         }
 
-        #
-        #   do AIX nodes
-        #
+    }
 
-        if (scalar(@$AIXnodes_nd))
+    #
+    #   do AIX nodes
+    #
+
+    if (scalar(@$AIXnodes_nd))
+    {
+
+        # update the software on an AIX node
+        if (
+            &updateAIXsoftware(
+                               $callback, \%::attrres,  $imgdefs,
+                               $updates,  $AIXnodes_nd, $subreq
+            ) != 0
+          )
         {
 
-            # update the software on an AIX node
-            if (
-                &updateAIXsoftware(
-                                   $callback, \%::attrres,  $imgdefs,
-                                   $updates,  $AIXnodes_nd, $subreq
-                ) != 0
-              )
-            {
+            #		my $rsp;
+            #		push @{$rsp->{data}},  "Could not update software for AIX nodes \'@$AIXnodes\'.";
+            #		xCAT::MsgUtils->message("E", $rsp, $callback);;
+            return 1;
+        }
+    }
 
-                #		my $rsp;
-                #		push @{$rsp->{data}},  "Could not update software for AIX nodes \'@$AIXnodes\'.";
-                #		xCAT::MsgUtils->message("E", $rsp, $callback);;
-                return 1;
-            }
-     }
-
-   return;
+    return;
 }
 
 #
-# Handles the return from running xcatdsklspost 
+# Handles the return from running xcatdsklspost
 #
 sub getdata
 {
@@ -1760,17 +1781,18 @@ sub updatenodeupdatestat
 
     if ((@nodes > 0) && (@args > 0))
     {
-        my $stat        = $args[0];
+        my $stat = $args[0];
         unless ($::VALID_STATUS_VALUES{$stat})
         {
             return;
         }    #don't accept just any string, see GlobalDef for updates
 
-	xCAT::TableUtils->setUpdateStatus(\@nodes,$stat);        
+        xCAT::TableUtils->setUpdateStatus(\@nodes, $stat);
     }
 
     return 0;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3   doAIXcopy
@@ -2139,27 +2161,34 @@ sub doAIXcopy
                 }
             }
 
-			# get the dir names to copy to
-			my $srcdir;
-			if ($::ALTSRC) {
-				$srcdir = "$imagedef{$img}{alt_loc}";
-			} else {
-				$srcdir = "$imagedef{$img}{lpp_loc}";
-			}
-			my $dir = dirname($srcdir);
+            # get the dir names to copy to
+            my $srcdir;
+            if ($::ALTSRC)
+            {
+                $srcdir = "$imagedef{$img}{alt_loc}";
+            }
+            else
+            {
+                $srcdir = "$imagedef{$img}{lpp_loc}";
+            }
+            my $dir = dirname($srcdir);
 
-			if ($::VERBOSE)
-			{
-				my $rsp;
-				push @{$rsp->{data}}, "Copying $srcdir to $dir on service node $snkey.\n";
-		      xCAT::MsgUtils->message("I", $rsp, $callback);
-         }
-         # make sure the dir exists on the service node
-         #  also make sure it's writeable by all
-         my $mkcmd = qq~/usr/bin/mkdir -p $dir~;
-         my $output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snkey, $mkcmd, 0);
-         if ($::RUNCMD_RC != 0)
-         {
+            if ($::VERBOSE)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "Copying $srcdir to $dir on service node $snkey.\n";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            }
+
+            # make sure the dir exists on the service node
+            #  also make sure it's writeable by all
+            my $mkcmd  = qq~/usr/bin/mkdir -p $dir~;
+            my $output =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snkey, $mkcmd,
+                                    0);
+            if ($::RUNCMD_RC != 0)
+            {
                 my $rsp;
                 push @{$rsp->{data}},
                   "Could not create directories on $snkey.\n";
@@ -2169,36 +2198,46 @@ sub doAIXcopy
                 }
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 next;
-         }
+            }
 
-			# sync source files to SN
-			my $cpcmd = qq~$::XCATROOT/bin/prsync -o "rlHpEAogDz" $srcdir $snkey:$dir 2>/dev/null~;
-			$output=xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime,$cpcmd, 0);
-			if ($::RUNCMD_RC != 0)
-			{
-				my $rsp;
-				push @{$rsp->{data}}, "Could not copy $srcdir to $dir for service node $snkey.\n";
-				push @{$rsp->{data}}, "Output from command: \n\n$output\n\n";
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-				return (1);
-			}
+            # sync source files to SN
+            my $cpcmd =
+              qq~$::XCATROOT/bin/prsync -o "rlHpEAogDz" $srcdir $snkey:$dir 2>/dev/null~;
+            $output =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime,
+                                    $cpcmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "Could not copy $srcdir to $dir for service node $snkey.\n";
+                push @{$rsp->{data}}, "Output from command: \n\n$output\n\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return (1);
+            }
 
-			# run inutoc in remote installp dir
-			my $installpsrcdir;
-			if ($::ALTSRC) {
-				$installpsrcdir = $srcdir;
-			} else {
-				$installpsrcdir = "$srcdir/installp/ppc";
-			}
-			my $icmd = qq~cd $installpsrcdir; /usr/sbin/inutoc .~;
-			my $output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snkey, $icmd, 0);
-			if ($::RUNCMD_RC != 0)
-			{
-				my $rsp;
-				push @{$rsp->{data}}, "Could not run inutoc for $installpsrcdir on $snkey\n";
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-			}
-        } # end for each osimage
+            # run inutoc in remote installp dir
+            my $installpsrcdir;
+            if ($::ALTSRC)
+            {
+                $installpsrcdir = $srcdir;
+            }
+            else
+            {
+                $installpsrcdir = "$srcdir/installp/ppc";
+            }
+            my $icmd   = qq~cd $installpsrcdir; /usr/sbin/inutoc .~;
+            my $output =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snkey, $icmd,
+                                    0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "Could not run inutoc for $installpsrcdir on $snkey\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+            }
+        }    # end for each osimage
     }    # end - for each service node
     return (0, \%imagedef, \%nodeupdateinfo);
 }
