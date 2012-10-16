@@ -1095,7 +1095,6 @@ sub updatenode
 
         if (scalar(@$Linuxnodes))
         {
-            my $DBname = xCAT::Utils->get_DBName;
             $postscripts = $orig_postscripts;
 
             # we have Linux nodes
