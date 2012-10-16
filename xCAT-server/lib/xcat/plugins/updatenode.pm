@@ -549,9 +549,6 @@ sub preprocess_updatenode
         }
     }
 
-    # when specified -S or -P or --security
-    # find service nodes for requested nodes
-    # build an individual request for each service node
     my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@nodes, "xcat", "MN");
     if ($::ERROR_RC)
     {
@@ -1778,7 +1775,7 @@ sub doAIXcopy
     {
 
         my $sip = xCAT::NetworkUtils->getipaddr($snkey);
-        chomp $ip;
+        chomp $sip;
         if ($ip eq $sip)
         {
             next;
@@ -2068,30 +2065,25 @@ sub doAIXcopy
                 }
             }
 
-            # get the dir names to copy to
-            my $rpm_srcdir;
-            my $instp_srcdir;
-            my $emgr_srcdir;
-            if ($::ALTSRC)
-            {
-                $rpm_srcdir   = "$imagedef{$img}{alt_loc}";
-                $instp_srcdir = "$imagedef{$img}{alt_loc}";
-                $emgr_srcdir  = "$imagedef{$img}{alt_loc}";
-            }
-            else
-            {
-                $rpm_srcdir   = "$imagedef{$img}{lpp_loc}/RPMS/ppc";
-                $instp_srcdir = "$imagedef{$img}{lpp_loc}/installp/ppc";
-                $emgr_srcdir  = "$imagedef{$img}{lpp_loc}/emgr/ppc";
-            }
+			# get the dir names to copy to
+			my $srcdir;
+			if ($::ALTSRC) {
+				$srcdir = "$imagedef{$img}{alt_loc}";
+			} else {
+				$srcdir = "$imagedef{$img}{lpp_loc}";
+			}
+			my $dir = dirname($srcdir);
+
+			if ($::VERBOSE)
+			{
+				my $rsp;
+				push @{$rsp->{data}}, "Copying $srcdir to $dir on service node $snkey.\n";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
 
             # make sure the dir exists on the service node
             #  also make sure it's writeable by all
-            my $mkcmd =
-              qq~/usr/bin/mkdir -p $rpm_srcdir; chmod 777 $rpm_srcdir; /usr/bin/mkdir -p $instp_srcdir; chmod 777 $instp_srcdir; /usr/bin/mkdir -p $emgr_srcdir; chmod 777 $emgr_srcdir~;
-            my $output =
-              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snkey, $mkcmd,
-                                    0);
+            my $mkcmd = qq~/usr/bin/mkdir -p $dir~;
+            my $output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snkey, $mkcmd, 0);
             if ($::RUNCMD_RC != 0)
             {
                 my $rsp;
@@ -2105,89 +2097,34 @@ sub doAIXcopy
                 next;
             }
 
-            # copy  all the packages
-            foreach my $pkg (@pkglist)
-            {
-                my $rcpargs;
-                my $srcfile;
-                if (($pkg =~ /^R:/) || ($pkg =~ /\.rpm/))
-                {
-                    my ($junk, $pname);
-                    if ($pkg =~ /:/)
-                    {
-                        ($junk, $pname) = split(/:/, $pkg);
-                    }
-                    else
-                    {
-                        $pname = $pkg;
-                    }
+			# sync source files to SN
+			my $cpcmd = qq~$::XCATROOT/bin/prsync -o "rlHpEAogDz" $srcdir $snkey:$dir 2>/dev/null~;
+			$output=xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime,$cpcmd, 0);
+			if ($::RUNCMD_RC != 0)
+			{
+				my $rsp;
+				push @{$rsp->{data}}, "Could not copy $srcdir to $dir for service node $snkey.\n";
+				push @{$rsp->{data}}, "Output from command: \n\n$output\n\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				return (1);
+			}
 
-                    # use rpm location
-                    $rcpargs = ["$rpm_srcdir/$pname", "$rpm_srcdir"];
-
-                }
-                elsif (($pkg =~ /^E:/) || ($pkg =~ /epkg\.Z/))
-                {
-
-                    my ($junk, $pname);
-                    if ($pkg =~ /:/)
-                    {
-                        ($junk, $pname) = split(/:/, $pkg);
-                    }
-                    else
-                    {
-                        $pname = $pkg;
-                    }
-                    $rcpargs = ["$emgr_srcdir/$pname", "$emgr_srcdir"];
-                }
-                else
-                {
-                    my $pname;
-                    my $junk;
-                    if ($pkg =~ /:/)
-                    {
-                        ($junk, $pname) = split(/:/, $pkg);
-                    }
-                    else
-                    {
-                        $pname = $pkg;
-                    }
-
-                    # use installp loc
-                    my @allfiles    = glob "$instp_srcdir/$pname*";
-                    my $sourcefiles = "";
-                    foreach my $file (@allfiles)
-                    {
-                        $sourcefiles .= "$file ";
-                    }
-                    $rcpargs = [$sourcefiles, "$instp_srcdir"];
-                }
-
-                if ($::VERBOSE)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Copying files to $snkey.\n";
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                }
-
-                my $output =
-                  xCAT::Utils->runxcmd(
-                                       {
-                                        command => ["xdcp"],
-                                        node    => [$snkey],
-                                        arg     => $rcpargs
-                                       },
-                                       $subreq, -1, 0
-                                       );
-
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Could not copy $pkg to $snkey.\n";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                }
-            }
-        }
+			# run inutoc in remote installp dir
+			my $installpsrcdir;
+			if ($::ALTSRC) {
+				$installpsrcdir = $srcdir;
+			} else {
+				$installpsrcdir = "$srcdir/installp/ppc";
+			}
+			my $icmd = qq~cd $installpsrcdir; /usr/sbin/inutoc .~;
+			my $output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snkey, $icmd, 0);
+			if ($::RUNCMD_RC != 0)
+			{
+				my $rsp;
+				push @{$rsp->{data}}, "Could not run inutoc for $installpsrcdir on $snkey\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+			}
+        } # end for each osimage
     }    # end - for each service node
     return (0, \%imagedef, \%nodeupdateinfo);
 }
