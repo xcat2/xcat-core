@@ -1015,8 +1015,13 @@ sub updatenode
     #
     #  handle file synchronization
     #
-    &updatenodesyncfiles($request,$subreq,$callback);
- 
+    if (($request->{FileSyncing} && $request->{FileSyncing}->[0] eq "yes")
+        || (
+            (   $request->{SNFileSyncing}
+             && $request->{SNFileSyncing}->[0] eq "yes")))
+    {
+       &updatenodesyncfiles($request,$subreq,$callback);
+    }
 
     if (scalar(@$AIXnodes))
     {
@@ -1047,104 +1052,8 @@ sub updatenode
     #
     if ($request->{swmaintenance} && $request->{swmaintenance}->[0] eq "yes")
     {
-        my $rsp;
-        push @{$rsp->{data}},
-          "Performing software maintenance operations. This could take a while.\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
-
-        my ($rc, $AIXnodes_nd, $Linuxnodes_nd) =
-          xCAT::InstUtils->getOSnodes($nodes);
-
-        #
-        #   do linux nodes
-        #
-        if (scalar(@$Linuxnodes_nd))
-        {    # we have a list of linux nodes
-            my $cmd;
-
-            # get server names as known by the nodes
-            my %servernodes =
-              %{xCAT::InstUtils->get_server_nodes($callback, \@$Linuxnodes_nd)};
-
-            # it's possible that the nodes could have diff server names
-            # do all the nodes for a particular server at once
-            foreach my $snkey (keys %servernodes)
-            {
-                my $nodestring = join(',', @{$servernodes{$snkey}});
-                my $cmd;
-                if ($::SETSERVER)
-                {
-                    $cmd =
-                      "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -v -e $installdir/postscripts/xcatdsklspost 2 -M $snkey ospkgs,otherpkgs 2>&1";
-
-                }
-                else
-                {
-
-                    $cmd =
-                      "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -v -e $installdir/postscripts/xcatdsklspost 2 -m $snkey ospkgs,otherpkgs 2>&1";
-                }
-
-                if ($::VERBOSE)
-                {
-                    my $rsp = {};
-                    $rsp->{data}->[0] =
-                      "  $localhostname: Internal call command: $cmd";
-                    $callback->($rsp);
-                }
-
-                if ($cmd && !open(CMD, "$cmd |"))
-                {
-                    my $rsp = {};
-                    $rsp->{data}->[0] =
-                      "$localhostname: Cannot run command $cmd";
-                    $callback->($rsp);
-                }
-                else
-                {
-                    while (<CMD>)
-                    {
-                        my $rsp    = {};
-                        my $output = $_;
-                        chomp($output);
-                        $output =~ s/\\cM//;
-                        if ($output =~ /returned from postscript/)
-                        {
-                            $output =~
-                              s/returned from postscript/Running of Software Maintenance has completed./;
-                        }
-                        $rsp->{data}->[0] = "$output";
-                        $callback->($rsp);
-                    }
-                    close(CMD);
-                }
-            }
-
-        }
-
-        #
-        #   do AIX nodes
-        #
-
-        if (scalar(@$AIXnodes_nd))
-        {
-
-            # update the software on an AIX node
-            if (
-                &updateAIXsoftware(
-                                   $callback, \%::attrres,  $imgdefs,
-                                   $updates,  $AIXnodes_nd, $subreq
-                ) != 0
-              )
-            {
-
-                #		my $rsp;
-                #		push @{$rsp->{data}},  "Could not update software for AIX nodes \'@$AIXnodes\'.";
-                #		xCAT::MsgUtils->message("E", $rsp, $callback);;
-                return 1;
-            }
-        }
-    }    # end sw maint section
+      &updatenodesoftware($request,$subreq,$callback,$imgdefs,$updates);
+    }
 
     #
     # handle of setting up ssh keys
@@ -1449,7 +1358,7 @@ sub updatenode
 
 #-------------------------------------------------------------------------------
 
-=head3  updatenodesyncfiles
+=head3  updatenodesyncfiles  - performs node rsync  updatenode -F
 
     Arguments: request
     Returns:
@@ -1466,16 +1375,11 @@ sub updatenodesyncfiles
     my $callback = shift;
     my $nodes         = $request->{node};
     my $localhostname = hostname();
-    if (($request->{FileSyncing} && $request->{FileSyncing}->[0] eq "yes")
-        || (
-            (   $request->{SNFileSyncing}
-             && $request->{SNFileSyncing}->[0] eq "yes")))
+    my %syncfile_node      = ();
+    my %syncfile_rootimage = ();
+    my $node_syncfile      = xCAT::SvrUtils->getsynclistfile($nodes);
+    foreach my $node (@$nodes)
     {
-        my %syncfile_node      = ();
-        my %syncfile_rootimage = ();
-        my $node_syncfile      = xCAT::SvrUtils->getsynclistfile($nodes);
-        foreach my $node (@$nodes)
-        {
             my $synclist = $$node_syncfile{$node};
 
             if ($synclist)
@@ -1487,11 +1391,11 @@ sub updatenodesyncfiles
                    push @{$syncfile_node{$s}}, $node;
                }
             }
-        }
+     }
 
-        # Check the existence of the synclist file
-        if (%syncfile_node)
-        {    # there are files to sync defined
+      # Check the existence of the synclist file
+      if (%syncfile_node)
+      {    # there are files to sync defined
             foreach my $synclist (keys %syncfile_node)
             {
                 if (!(-r $synclist))
@@ -1556,7 +1460,128 @@ sub updatenodesyncfiles
             $callback->($rsp);
 
         }
-    }
+
+   return;
+}
+#-------------------------------------------------------------------------------
+
+=head3  updatenodesoftware  - software updates  updatenode -S
+
+    Arguments: request, subreq,callback,imgdefs,updates
+    Returns:
+        0 - for success.
+        1 - for error.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub updatenodesoftware
+{
+    my $request  = shift;
+    my $subreq  = shift;
+    my $callback = shift;
+    my $imgdefs = shift;
+    my $updates = shift;
+    my $nodes         = $request->{node};
+    my $installdir = xCAT::TableUtils->getInstallDir();
+    my $localhostname = hostname();
+    my $rsp;
+    push @{$rsp->{data}},
+          "Performing software maintenance operations. This could take a while.\n";
+    xCAT::MsgUtils->message("I", $rsp, $callback);
+
+    my ($rc, $AIXnodes_nd, $Linuxnodes_nd) =
+          xCAT::InstUtils->getOSnodes($nodes);
+
+        #
+        #   do linux nodes
+        #
+        if (scalar(@$Linuxnodes_nd))
+        {    # we have a list of linux nodes
+            my $cmd;
+
+            # get server names as known by the nodes
+            my %servernodes =
+              %{xCAT::InstUtils->get_server_nodes($callback, \@$Linuxnodes_nd)};
+
+            # it's possible that the nodes could have diff server names
+            # do all the nodes for a particular server at once
+            foreach my $snkey (keys %servernodes)
+            {
+                my $nodestring = join(',', @{$servernodes{$snkey}});
+                my $cmd;
+                if ($::SETSERVER)
+                {
+                    $cmd =
+                      "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -v -e $installdir/postscripts/xcatdsklspost 2 -M $snkey ospkgs,otherpkgs 2>&1";
+
+                }
+                else
+                {
+
+                    $cmd =
+                      "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -v -e $installdir/postscripts/xcatdsklspost 2 -m $snkey ospkgs,otherpkgs 2>&1";
+                }
+
+                if ($::VERBOSE)
+                {
+                    my $rsp = {};
+                    $rsp->{data}->[0] =
+                      "  $localhostname: Internal call command: $cmd";
+                    $callback->($rsp);
+                }
+
+                if ($cmd && !open(CMD, "$cmd |"))
+                {
+                    my $rsp = {};
+                    $rsp->{data}->[0] =
+                      "$localhostname: Cannot run command $cmd";
+                    $callback->($rsp);
+                }
+                else
+                {
+                    while (<CMD>)
+                    {
+                        my $rsp    = {};
+                        my $output = $_;
+                        chomp($output);
+                        $output =~ s/\\cM//;
+                        if ($output =~ /returned from postscript/)
+                        {
+                            $output =~
+                              s/returned from postscript/Running of Software Maintenance has completed./;
+                        }
+                        $rsp->{data}->[0] = "$output";
+                        $callback->($rsp);
+                    }
+                    close(CMD);
+                }
+            }
+
+        }
+
+        #
+        #   do AIX nodes
+        #
+
+        if (scalar(@$AIXnodes_nd))
+        {
+
+            # update the software on an AIX node
+            if (
+                &updateAIXsoftware(
+                                   $callback, \%::attrres,  $imgdefs,
+                                   $updates,  $AIXnodes_nd, $subreq
+                ) != 0
+              )
+            {
+
+                #		my $rsp;
+                #		push @{$rsp->{data}},  "Could not update software for AIX nodes \'@$AIXnodes\'.";
+                #		xCAT::MsgUtils->message("E", $rsp, $callback);;
+                return 1;
+            }
+        }
 
    return;
 }
