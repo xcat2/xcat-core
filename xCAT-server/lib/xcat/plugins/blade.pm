@@ -4568,8 +4568,6 @@ sub passwd {
         }
         return ([1, @data]);
     }
-    # setting the password expire time to 0, never expired
-    $t->cmd("accseccfg -pe 0 -T system:$mm"); 
     
     $mpatab->setAttribs({mpa=>$mpa,username=>$user},{password=>$pass});
     if ($user eq "USERID") {

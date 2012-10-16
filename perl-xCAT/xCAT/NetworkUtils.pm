@@ -429,6 +429,11 @@ sub ishostinsubnet {
     if ($ip =~ /:/) {#ipv6
         $numbits=128;
     }
+    # IPv6 subnet with netmask postfix like /64
+    if ($subnet =~ /\//)
+    {
+        $subnet =~ s/\/.*$//;
+    }
     if ($mask) {
 	if ($mask =~ /\//) {
 	    $mask =~ s/^\///;
