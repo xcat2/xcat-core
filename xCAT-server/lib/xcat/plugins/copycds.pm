@@ -8,6 +8,8 @@ use Thread qw(yield);
 use Data::Dumper;
 use Getopt::Long;
 use File::Basename;
+use File::Spec;
+use Digest::MD5 qw(md5_hex);
 use Cwd;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
@@ -97,18 +99,25 @@ sub process_request {
        return;
     }
 
-    mkdir "/mnt/xcat";
+#let the MD5 Digest of isofullpath as the default mount point of the iso
+    my $isofullpath=File::Spec->rel2abs($file);
+    my $mntpath=File::Spec->catpath("" ,$::CDMOUNTPATH,md5_hex($isofullpath)); 
+    
+    system("mkdir -p $mntpath");
+    system("umount $mntpath >/dev/null 2>&1");
+     
 
-    if (system("mount $mntopts '$file' /mnt/xcat")) {
-	eval { $callback->({error=>"copycds was unable to mount $file to /mnt/xcat.",errorcode=>[1]}) };
-        chdir("/");
-        system("umount /mnt/xcat"); 
+
+    if (system("mount $mntopts '$file' $mntpath")) {
+	eval { $callback->({error=>"copycds was unable to mount $file to $mntpath.",errorcode=>[1]}) };
+	chdir("/"); 
+        system("umount -l $mntpath"); 
       	return;
     }
     eval {
     my $newreq = dclone($request);
     $newreq->{command}= [ 'copycd' ]; #Note the singular, it's different
-    $newreq->{arg} = ["-m","/mnt/xcat"];
+    $newreq->{arg} = ["-m",$mntpath];
 
     if($path)
     {
@@ -142,13 +151,14 @@ sub process_request {
     }
 
     $doreq->($newreq,\&take_answer);
-    $::CDMOUNTPATH="";
+    #$::CDMOUNTPATH="";
 
     chdir($existdir);
     while (wait() > 0) { yield(); } #Make sure all children exit before trying umount
     };
-    chdir("/");
-    system("umount /mnt/xcat");
+    chdir("/");;
+    system("umount -l $mntpath");
+    system("rm -rf $mntpath");
     unless ($identified) {
        $callback->({error=>["copycds could not identify the ISO supplied, you may wish to try -n <osver>"],errorcode=>[1]});
     }
