@@ -899,7 +899,7 @@ sub mkinstall
 		    if (!$linuximagetab) {
 			$linuximagetab=xCAT::Table->new('linuximage', -create=>1);
 		    }
-		    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkgdir', 'pkglist', 'partitionfile');
+		    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkgdir', 'pkglist', 'partitionfile', 'driverupdatesrc', 'netdrivers');
 		    if ($ref1) {
 			if ($ref1->{'template'}) {
 			    $img_hash{$imagename}->{template}=$ref1->{'template'};
@@ -910,9 +910,9 @@ sub mkinstall
 			if ($ref1->{'pkglist'}) {
 			    $img_hash{$imagename}->{pkglist}=$ref1->{'pkglist'};
 			}
-            if ($ref1->{'partitionfile'}) {
-                $img_hash{$imagename}->{partitionfile} = $ref1->{'partitionfile'};
-            }
+			if ($ref1->{'partitionfile'}) {
+			    $img_hash{$imagename}->{partitionfile} = $ref1->{'partitionfile'};
+			}
 			if ($ref1->{'driverupdatesrc'}) {
 			    $img_hash{$imagename}->{driverupdatesrc}=$ref1->{'driverupdatesrc'};
 			}
@@ -1691,6 +1691,7 @@ sub insert_dd {
     my @dd_list;
     my @rpm_list;
     my @driver_list;
+    my $Injectalldriver;
 
     my @rpm_drivers;
 
@@ -1717,6 +1718,10 @@ sub insert_dd {
     }
 
     foreach (split /,/,$drivers) {
+        if (/^allupdate$/) {
+            $Injectalldriver = 1;
+            next;
+        }
         unless (/\.ko$/) {
             s/$/.ko/;
         }
@@ -1726,8 +1731,8 @@ sub insert_dd {
     chomp(@dd_list);
     chomp(@rpm_list);
     
-    unless (@dd_list || @rpm_list ) {
-        return undef;
+    unless (@dd_list || (@rpm_list && ($Injectalldriver || @driver_list))) {
+        return ();
     }
 
     # Create the tmp dir for dd hack
@@ -1737,7 +1742,7 @@ sub insert_dd {
     # dracut + drvier rpm
     # !dracut + driver rpm
     # !dracut + driver disk
-    if (!<$install_dir/$os/$arch/Packages/dracut*> || @rpm_list) {
+    if (!<$install_dir/$os/$arch/Packages/dracut*> || (@rpm_list && ($Injectalldriver || @driver_list))) {
         mkpath "$dd_dir/initrd_img"; # The dir for the new initrd
 
         # unzip the initrd image
@@ -1747,7 +1752,7 @@ sub insert_dd {
             my $rsp;
             push @{$rsp->{data}}, "Handle the driver update disk failed. Could not gunzip the initial initrd.";
             xCAT::MsgUtils->message("E", $rsp, $callback);
-            return undef;
+            return ();
         }
     
         # Extract the files from original initrd
@@ -1757,10 +1762,10 @@ sub insert_dd {
             my $rsp;
             push @{$rsp->{data}}, "Handle the driver update disk failed. Could not extract files from the initial initrd.";
             xCAT::MsgUtils->message("E", $rsp, $callback);
-            return undef;
+            return ();
         }
 
-        if (@rpm_list) {
+        if (@rpm_list && ($Injectalldriver || @driver_list)) {
             # Extract the files from rpm to the tmp dir
             mkpath "$dd_dir/rpm";
             foreach my $rpm (@rpm_list) {
@@ -1790,7 +1795,7 @@ sub insert_dd {
             # For dracut mode, only copy the drivers from rpm packages to the /lib/modules/<kernel>
             # The driver disk will be handled that append the whole disk to the orignial initrd
 
-            if (@rpm_list) {
+            if (@rpm_list && ($Injectalldriver || @driver_list)) {
                 # Copy the firmware to the rootimage
                 if (-d "$dd_dir/rpm/lib/firmware") {
                     if (! -d "$dd_dir/initrd_img/lib") {
@@ -1878,7 +1883,7 @@ sub insert_dd {
                 my $rsp;
                 push @{$rsp->{data}}, "Handle the driver update disk failed. Could not gunzip modules.cgz from the initial initrd.";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
-                return undef;
+                return ();
             }
         
             my @modinfo = ();
@@ -1892,7 +1897,7 @@ sub insert_dd {
                     my $rsp;
                     push @{$rsp->{data}}, "Handle the driver update disk failed. Could not mount the driver update disk.";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
-                    return undef;
+                    return ();
                 }
     
                 $cmd = "cd $dd_dir/dd_modules; gunzip -c $dd_dir/mnt/modules.cgz | cpio -id";
@@ -1903,7 +1908,7 @@ sub insert_dd {
                     push @{$rsp->{data}}, "Handle the driver update disk failed. Could not gunzip the modules.cgz from the driver update disk.";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     system("umount -f $dd_dir/mnt");
-                    return undef;
+                    return ();
                 }
         
                 # Copy all the driver files out
@@ -1967,7 +1972,7 @@ sub insert_dd {
                     push @{$rsp->{data}}, "Handle the driver update disk failed. Could not unmount the driver update disk.";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     system("umount -f $dd_dir/mnt");
-                    return undef;
+                    return ();
                 }
     
                 # Clean the env
@@ -1978,7 +1983,7 @@ sub insert_dd {
             }
 
             # Merge the drviers from rpm packages to the initrd
-            if (@rpm_list) {
+            if (@rpm_list && ($Injectalldriver || @driver_list)) {
                 # Copy the firmware to the rootimage
                 if (-d "$dd_dir/rpm/lib/firmware") {
                     if (! -d "$dd_dir/initrd_img/lib") {
@@ -2034,7 +2039,7 @@ sub insert_dd {
                           }
                       }
                     }
-                  } else {
+                  } elsif ($Injectalldriver) {
                     # copy all the drviers to the initrd
                     if (-d "$dd_dir/rpm/lib/modules/$kernelver") {
                         find(\&get_all_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
@@ -2148,7 +2153,7 @@ sub insert_dd {
                 my $rsp;
                 push @{$rsp->{data}}, "Handle the driver update disk failed. Could not pack the hacked modules.cgz.";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
-                return undef;
+                return ();
             }
         } # End of non dracut
     
@@ -2159,7 +2164,7 @@ sub insert_dd {
             my $rsp;
             push @{$rsp->{data}}, "Handle the driver update disk failed. Could not pack the hacked initrd.";
             xCAT::MsgUtils->message("E", $rsp, $callback);
-            return undef;
+            return ();
         }
     
         copy ("$dd_dir/initrd.img", $img);
@@ -2175,7 +2180,7 @@ sub insert_dd {
         		my $rsp;
 		        push @{$rsp->{data}}, "Merging multiple driver disks requires createrepo and mkisofs utilities";
 		        xCAT::MsgUtils->message("E", $rsp, $callback);
-		        return undef;
+		        return ();
 		}
 		mkpath("$dd_dir/newddimg");
 		mkpath("$dd_dir/tmpddmnt");
@@ -2223,7 +2228,7 @@ sub insert_dd {
     }
     if (@driver_list) {
         push @{$rsp->{data}}, "Inserted the drivers:".join(',', sort(@rpm_drivers))." from driver packages.";
-    } elsif (@rpm_list) {
+    } elsif (@rpm_list && ($Injectalldriver || @driver_list)) {
          push @{$rsp->{data}}, "Inserted the drivers from driver packages:".join(',', sort(@rpm_list)).".";
     }
     xCAT::MsgUtils->message("I", $rsp, $callback);

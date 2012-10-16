@@ -157,10 +157,24 @@ unless ($osver and $profile) {
 
 my @ndrivers;
 if ($netdriver) {
+    foreach (split /,/,$netdriver) {
+        if (/^allupdate$/) {
+            next;
+        }
+       unless (/\.ko$/) {
+          s/$/.ko/;
+       }
+       next if (/^$/);
+       push @ndrivers, $_;
+    }
+    
     if ( ($updates{'netdrivers'} ne $netdriver) and ($tempfile) ) {
         $updates{'netdrivers'} = $netdriver;
     }
-} else {
+}
+
+# Use the default list if not specified
+unless (@ndrivers) {
     if ($arch eq 'x86' or $arch eq 'x86_64') {
         @ndrivers = qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx_en virtio_net/;
     } elsif ($arch eq 'ppc64') {
@@ -168,13 +182,6 @@ if ($netdriver) {
     } elsif ($arch eq 's390x') {   
     	@ndrivers = qw/qdio ccwgroup/;
     }
-}
-foreach (split /,/,$netdriver) {
-   unless (/\.ko$/) {
-      s/$/.ko/;
-   }
-   next if (/^$/);
-   push @ndrivers, $_;
 }
 
 foreach (@ndrivers) {
@@ -440,8 +447,13 @@ foreach my $dd (@dd_drivers) {
     unless (grep { $_ eq $dd} @ndrivers) {
         push @new_order, $dd;
     }
-    print "Added driver $dd from driver update disk or driver rpm.\n";
+    print "Added driver $dd from driver update disk or driver rpm\n";
 }
+
+foreach my $driver (@ndrivers) {
+    print "Added driver $driver from root image\n";
+}
+
 if (@new_order) {
     @ndrivers = (@new_order, @ndrivers);
 }
@@ -1561,6 +1573,7 @@ sub load_dd ()
     my @rpm_list;
     my @driver_list;
 
+    my $Injectalldriver;
     my @rpm_drivers;
 
     # Parse the parameters to the the source of Driver update disk and Driver rpm, and driver list as well
@@ -1585,6 +1598,10 @@ sub load_dd ()
     }
 
     foreach (split /,/,$netdriver) {
+        if (/^allupdate$/) {
+            $Injectalldriver = 1;
+            next;
+        }
         unless (/\.ko$/) {
             s/$/.ko/;
         }
@@ -1595,7 +1612,7 @@ sub load_dd ()
     chomp(@dd_list);
     chomp(@rpm_list);
 
-    unless (@dd_list || @rpm_list ) {
+    unless (@dd_list || (@rpm_list && ($Injectalldriver || @driver_list))) {
         return ();
     }
 
@@ -1679,53 +1696,71 @@ sub load_dd ()
     }
 
     # Loading the drivers from rpm packages
-    if (@rpm_list) {
-        if (@rpm_list) {
-            # Extract the files from rpm to the tmp dir
-            mkpath "$dd_dir/rpm";
-            foreach my $rpm (@rpm_list) {
-                if (-r $rpm) {
-                    if (system ("cd $dd_dir/rpm; rpm2cpio $rpm | cpio -idum")) {
-                        print "Error: Cannot extract the files from the rpm $rpm.\n";
-                    }
-                } else {
-                    print "Error: Cannot read the rpm $rpm.\n";
+    if (@rpm_list && ($Injectalldriver || @driver_list)) {
+        # Extract the files from rpm to the tmp dir
+        mkpath "$dd_dir/rpm";
+        foreach my $rpm (@rpm_list) {
+            if (-r $rpm) {
+                if (system ("cd $dd_dir/rpm; rpm2cpio $rpm | cpio -idum")) {
+                    print "Error: Cannot extract the files from the rpm $rpm.\n";
                 }
-            }
-            # Copy the firmware to the rootimage
-            if (-d "$dd_dir/rpm/lib/firmware") {
-                system ("cp -rf $dd_dir/rpm/lib/firmware $rootimg_dir/lib");
-            }
-            # Copy the drivers to the rootimage
-            if (-d "$dd_dir/rpm/lib/modules/$kernelver") {
-              if (@driver_list) {
-                foreach my $driver (@driver_list) {
-                  $driver_name = $driver;
-                  $real_path = "";
-                  find(\&get_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
-                  if ($real_path && $real_path =~ m!$dd_dir/rpm(/lib/modules/$kernelver/.*?)[^\/]*$!) {
-                      if (! -d "$rootimg_dir$1") {
-                          mkpath "$rootimg_dir$1";
-                      }
-                      system ("cp -rf $real_path $rootimg_dir$1");
-                      push @rpm_drivers, $driver;
-                  } else {
-                      print "Error: cannot find the driver $driver from the driver rpms\n";
-                  }
-                }
-              } else {
-                # copy all the drviers to the rootimage
-                system ("cp -rf $dd_dir/rpm/lib/modules/$kernelver $rootimg_dir/lib/modules/");
-                find(\&get_all_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
-                foreach (@all_real_path) {
-                  if (basename($_) =~ /\.ko$/) {
-                      push @rpm_drivers, basename($_);
-                  }
-                }
-              }
             } else {
-              print "Warning: cannot find the kernel $kernelver from drvier rpms\n";
+                print "Error: Cannot read the rpm $rpm.\n";
             }
+        }
+        # Copy the firmware to the rootimage
+        if (-d "$dd_dir/rpm/lib/firmware") {
+            system ("cp -rf $dd_dir/rpm/lib/firmware $rootimg_dir/lib");
+        }
+        # Copy the drivers to the rootimage
+        if (-d "$dd_dir/rpm/lib/modules/$kernelver") {
+          if (@driver_list) {
+            foreach my $driver (@driver_list) {
+              $driver_name = $driver;
+              $real_path = "";
+              find(\&get_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
+              if ($real_path && $real_path =~ m!$dd_dir/rpm(/lib/modules/$kernelver/.*?)[^\/]*$!) {
+                  # remove the old one if existing
+                  @all_real_path = ();
+                  find(\&get_all_path, <$rootimg_dir/lib/modules/$kernelver/*>);
+                  foreach (@all_real_path) {
+                      if (-r $_) {
+                          unlink ($_);
+                      }
+                  }
+                  
+                  if (! -d "$rootimg_dir$1") {
+                      mkpath "$rootimg_dir$1";
+                  }
+                  system ("cp -rf $real_path $rootimg_dir$1");
+                  push @rpm_drivers, $driver;
+              } else {
+                  print "Error: cannot find the driver $driver from the driver rpms\n";
+              }
+            }
+          } elsif ($Injectalldriver) {
+            # copy all the drviers to the rootimage
+            find(\&get_all_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
+            my @all_drivers = @all_real_path;
+            foreach my $new_driver (@all_drivers) {
+              if (basename($new_driver) =~ /\.ko$/) {
+                  # remove the old one if existing
+                  $driver_name = basename($new_driver);
+                  @all_real_path = ();
+                  find(\&get_all_path, <$rootimg_dir/lib/modules/$kernelver/*>);
+                  foreach my $old_driver (@all_real_path) {
+                      if (-r $old_driver) {
+                          unlink ($old_driver);
+                      }
+                  }
+                  push @rpm_drivers, basename($new_driver);
+              }
+            }
+            
+            system ("cp -rf $dd_dir/rpm/lib/modules/$kernelver $rootimg_dir/lib/modules/");
+          }
+        } else {
+          print "Warning: cannot find the kernel $kernelver from drvier rpms\n";
         }
 
         push @dd_drivers, @rpm_drivers;

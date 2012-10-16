@@ -634,8 +634,8 @@ sub mkinstall
 
     my %doneimgs;
     require xCAT::Template; #only used here, load so memory can be COWed
-            # Define a variable for driver update list
-            my @dd_drivers;
+    # Define a variable for driver update list
+    my @dd_drivers;
     foreach $node (@nodes)
     {
         my $os;
@@ -1395,6 +1395,7 @@ sub insert_dd () {
     my @dd_list;
     my @rpm_list;
     my @driver_list;
+    my $Injectalldriver;
 
     my @rpm_drivers;
 
@@ -1421,6 +1422,10 @@ sub insert_dd () {
     }
 
     foreach (split /,/,$drivers) {
+        if (/^allupdate$/) {
+            $Injectalldriver = 1;
+            next;
+        }
         unless (/\.ko$/) {
             s/$/.ko/;
         }
@@ -1430,8 +1435,8 @@ sub insert_dd () {
     chomp(@dd_list);
     chomp(@rpm_list);
     
-    unless (@dd_list || @rpm_list ) {
-        return undef;
+    unless (@dd_list || (@rpm_list && ($Injectalldriver || @driver_list))) {
+        return ();
     }
 
     # Create the tmp dir for dd hack
@@ -1443,7 +1448,7 @@ sub insert_dd () {
     # Unzip the original initrd
     # This only needs to be done for ppc or handling the driver rpm
     # For the driver disk against x86, append the driver disk to initrd directly
-    if ($arch =~/ppc/ || @rpm_list) {
+    if ($arch =~/ppc/ || (@rpm_list && ($Injectalldriver || @driver_list))) {
         if ($arch =~ /ppc/) {
             $cmd = "gunzip --quiet -c $pkgdir/1/suseboot/initrd64 > $dd_dir/initrd";
         } elsif ($arch =~ /x86/) {
@@ -1468,7 +1473,7 @@ sub insert_dd () {
         }
 
         # Start to load the drivers from rpm packages
-        if (@rpm_list) {
+        if (@rpm_list && ($Injectalldriver || @driver_list)) {
             # Extract the files from rpm to the tmp dir
             mkpath "$dd_dir/rpm";
             foreach my $rpm (@rpm_list) {
@@ -1531,7 +1536,7 @@ sub insert_dd () {
                       }
                   }
                 }
-              } else {
+              } elsif ($Injectalldriver) {
                 # copy all the drviers to the initrd
                 if (-d "$dd_dir/rpm/lib/modules/$kernelver") {
                     $cmd = "cp -rf $dd_dir/rpm/lib/modules/$kernelver $dd_dir/initrd_img/lib/modules/";
@@ -1587,7 +1592,7 @@ sub insert_dd () {
     $cmd = "gzip -f $dd_dir/initrd";
     xCAT::Utils->runcmd($cmd, -1);
 
-    if ($arch =~/ppc/ || @rpm_list) {
+    if ($arch =~/ppc/ || (@rpm_list && ($Injectalldriver || @driver_list))) {
         if ($arch =~/ppc/) {
             # make sure the src kernel existed
             $cmd = "gunzip -c $pkgdir/1/suseboot/linux64.gz > $dd_dir/kernel";
@@ -1626,7 +1631,7 @@ sub insert_dd () {
     }
     if (@driver_list) {
         push @{$rsp->{data}}, "Inserted the drivers:".join(',', sort(@rpm_drivers))." from driver packages.";
-    } elsif (@rpm_list) {
+    } elsif (@rpm_list && ($Injectalldriver || @driver_list)) {
          push @{$rsp->{data}}, "Inserted the drivers from driver packages:".join(',', sort(@rpm_list)).".";
     }
     xCAT::MsgUtils->message("I", $rsp, $callback);
