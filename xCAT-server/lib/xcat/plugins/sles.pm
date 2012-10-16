@@ -1229,9 +1229,9 @@ sub copycd
        foreach(@cpiopid){
           kill 2, $_; 
        }
-       if ($::CDMOUNTPATH) {
+       if ($mntpath) {
             chdir("/");
-            system("umount $::CDMOUNTPATH");
+            system("umount $mntpath");
        }
     };
     my $kid;
