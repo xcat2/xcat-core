@@ -4479,8 +4479,6 @@ sub passwd {
             return ([1, @data]);
         }
     }
-    # setting the password expire time to 0, never expired
-    $t->cmd("accseccfg -pe 0 -T system:$mm");
 
     @data = ();
     my $snmp_cmd = "users -n $user -ap sha -pp des -ppw $pass -T system:$mm";
