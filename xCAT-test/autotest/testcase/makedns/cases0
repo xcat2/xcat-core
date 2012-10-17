@@ -16,126 +16,62 @@ end
 
 start:makedns_d_node
 description:makedns -d nodename
-cmd:cp -r /etc/hosts /etc/hosts.backup
-check:rc==0
-cmd:echo "10.1.1.1 testnodedns" >> /etc/hosts
-cmd:mkdef -t node -o testnodedns groups=compute
-check:rc==0
-cmd:chdef -t network -o testnet net="10.1.1.0" mask="255.255.255.0"
-check:rc==0
 cmd:makedns -n 
 check:rc==0
-cmd:nslookup testnodedns
-check:rc==0
-check:output=~(10.1.1.1)
-cmd:makedns -d testnodedns
+cmd:nslookup $$CN
+check:output!~(server can't find $$CN)
+cmd:makedns -d $$CN 
 check:rc==0
 check:output=~(Completed updating zones)
-cmd:nslookup testnodedns
-check:rc==0
-check:rc=~(server can't find testnodedns)
-cmd:rmdef -t node -o testnodedns
-cmd:rmdef -t network -o testnet
-cmd:cp -r /etc/hosts.backup /etc/hosts
-cmd:rm -f /etc/hosts.backup
+check:output=~(DNS setup is completed)
+cmd:nslookup $$CN
+check:output=~(server can't find $$CN)
 end
 
 start:makedns_node
 description:makedns nodename
-cmd:cp -r /etc/hosts /etc/hosts.backup
+cmd:makedns -d $$CN
+check:rc=0
+cmd:nslookup $$CN
+check:output=~(server can't find $$CN)
+cmd:makedns $$CN 
 check:rc==0
-cmd:echo "10.1.1.1 testnodedns" >> /etc/hosts
-cmd:mkdef -t node -o testnodedns groups=compute
-check:rc==0
-cmd:chdef -t network -o testnet net="10.1.1.0" mask="255.255.255.0"
-check:rc==0
-cmd:makedns testnodedns
-check:rc==0
-cmd:nslookup testnodedns
-check:rc==0
-check:output=~(10.1.1.1)
-cmd:makedns -d testnodedns
-cmd:rmdef -t node -o testnodedns
-cmd:rmdef -t network -o testnet
-cmd:cp -r /etc/hosts.backup /etc/hosts
-cmd:rm -f /etc/hosts.backup
+check:output=~(Completed updating zones)
+check:output=~(DNS setup is completed)
+cmd:nslookup $$CN 
+check:output!~(server can't find $$CN)
 end
 
 
 
 start:makedns_n
-description:makedns,check /var/named 
-cmd:cp -r /etc/hosts /etc/hosts.backup
-check:rc==0
-cmd:echo "10.1.1.1 testnodedns" >> /etc/hosts
-cmd:mkdef -t node -o testnodedns groups=compute
-check:rc==0
-cmd:chdef -t network -o testnet net="10.1.1.0" mask="255.255.255.0"
-check:rc==0
+description:makedns
+cmd:makedns -d $$CN
+cmd:nslookup $$CN
+check:output=~(server can't find $$CN)
 cmd:makedns -n
 check:rc==0
-cmd:nslookup testnodedns
-check:rc==0
-check:output=~(10.1.1.1)
-cmd:ls /var/named 2>&1 |grep db.10.1.1 || ls /var/lib/named 2>&1 |grep db.10.1.1
-check:rc==0
-check:output=~(db.10.1.1)
-check:output=~(db.10.1.1.jnl)
-cmd:makedns -d testnodedns
-cmd:rmdef -t node -o testnodedns
-cmd:rmdef -t network -o testnet
-cmd:cp -r /etc/hosts.backup /etc/hosts
-cmd:rm -f /etc/hosts.backup
+check:output=~(Completed updating zones)
+check:output=~(DNS setup is completed)
+cmd:nslookup $$CN
+check:output!~(server can't find $$CN)
 end
 
-start:makedns_n_node
-description:makedns_n_node 
-cmd:cp -r /etc/hosts /etc/hosts.backup
-check:rc==0
-cmd:echo "10.1.1.1 testnodedns" >> /etc/hosts
-cmd:mkdef -t node -o testnodedns groups=compute
-check:rc==0
-cmd:chdef -t network -o testnet net="10.1.1.0" mask="255.255.255.0"
-check:rc==0
-cmd:makedns -n testnodedns
-check:rc==0
-cmd:ls /var/named 2>&1 |grep db.10.1.1 || ls /var/lib/named 2>&1 |grep db.10.1.1
-check:rc==0
-check:output=~(db.10.1.1)
-check:output=~(db.10.1.1.jnl)
-check:rc==0
-cmd:makedns -d testnodedns
-cmd:rmdef -t node -o testnodedns
-cmd:rmdef -t network -o testnet
-cmd:cp -r /etc/hosts.backup /etc/hosts
-cmd:rm -f /etc/hosts.backup
-end
 
 start:makedns
-description:makedns,check /var/named
+description:makedns
 os:Linux
-cmd:cp -r /etc/hosts /etc/hosts.backup
+cmd:makedns -d $$CN
 check:rc==0
-cmd:echo "10.1.1.1 testnodedns" >> /etc/hosts
-cmd:mkdef -t node -o testnodedns groups=compute
-check:rc==0
-cmd:chdef -t network -o testnet net="10.1.1.0" mask="255.255.255.0"
-check:rc==0
+cmd:nslookup $$CN
+check:output=~(server can't find $$CN)
 cmd:makedns
 check:rc==0
+check:output=~(Completed updating zones)
+check:output=~(DNS setup is completed)
 cmd:service named stop
 cmd:service named start
-cmd:nslookup testnodedns
-check:rc==0
-check:output=~(10.1.1.1)
-cmd:ls /var/named 2>&1 |grep db.10.1.1 || ls /var/lib/named 2>&1 |grep db.10.1.1
-check:rc==0
-check:output=~(db.10.1.1)
-check:output=~(db.10.1.1.jnl)
-cmd:makedns -d testnodedns
-cmd:rmdef -t node -o testnodedns
-cmd:rmdef -t network -o testnet
-cmd:cp -r /etc/hosts.backup /etc/hosts
-cmd:rm -f /etc/hosts.backup
+cmd:nslookup $$CN 
+check:output!~(server can't find $$CN)
 end
 
