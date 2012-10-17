@@ -518,6 +518,7 @@ sub parse_args_xdcp
                     'h|help'           => \$options{'help'},
                     'i|rootimg=s'      => \$options{'rootimg'},
                     'l|user=s'         => \$options{'user'},
+                    'm|monitor'                => \$options{'monitor'},
                     'n|nodes=s'        => \$options{'nodes'},
                     'o|node-options=s' => \$options{'node-options'},
                     'q|show-config'    => \$options{'show-config'},
