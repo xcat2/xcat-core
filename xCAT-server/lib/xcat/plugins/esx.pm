@@ -4210,9 +4210,9 @@ sub copycd {
         foreach(@cpiopid){
             kill 2, $_;
         }
-        if ($mntpath) {
+        if ($path) {
             chdir("/");
-            system("umount $mntpath");
+            system("umount $path");
         }
     };
     my $KID;
