@@ -236,7 +236,7 @@ sub execute_dcp
                 push @targets_finished, $user_target;
             }
             
-            # return list of   bad  nodes and good ones
+            # return list of   badnodes and goodnodes
             if ($$options{'monitor'}) {
               foreach my $badnode (@targets_failed) {
                  my $rsp={};
@@ -248,6 +248,22 @@ sub execute_dcp
                  my $rsp={};
                  $rsp->{data}->[0] =
                  "dsh>  Remote_command_successful $goodnode";
+                 xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+              }
+            }
+            # return node status, note must be using runxcmd to 
+            # process this field
+            if ($$options{'nodestatus'}) {
+              foreach my $badnode (@targets_failed) {
+                 my $rsp={};
+                 $rsp->{data}->[0] =
+                 "$badnode: Remote_command_failed";
+                 xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+              }
+              foreach my $goodnode (@targets_finished) {
+                 my $rsp={};
+                $rsp->{data}->[0] =
+                 "$goodnode: Remote_command_successful";
                  xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
               }
             }
@@ -3674,6 +3690,7 @@ sub parse_and_run_dsh
             'V|version'                => \$options{'version'},
 
             'devicetype|devicetype=s'    => \$options{'devicetype'},
+            'nodestatus|nodestatus' => \$options{'nodestatus'},            
             'command-name|commandName=s' => \$options{'command-name'},
             'command-description|commandDescription=s' =>
               \$options{'command-description'},
@@ -4109,6 +4126,7 @@ sub parse_and_run_dcp
                     'T|trace'          => \$options{'trace'},
                     'V|version'        => \$options{'version'},
                     'devicetype=s'     => \$options{'devicetype'},
+                    'nodestatus|nodestatus' => \$options{'nodestatus'},            
                     'X:s'              => \$options{'ignore_env'}
         )
       )
