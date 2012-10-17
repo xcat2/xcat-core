@@ -85,6 +85,9 @@ sub execute_dcp
 
     $::dsh_command = 'dcp';
 
+    my $rsp = {};
+    $rsp->{data}->[0] = "dsh>  Dcp_process_id $$";
+    $$options{'monitor'} && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     my $result = xCAT::DSHCLI->config_dcp($options);
     $result && (return $result);
 
@@ -220,7 +223,7 @@ sub execute_dcp
             delete $error_buffers{$user_target};
 
             my $exit_code = $targets_buffered{$user_target}{'exit-code'};
-
+            
             if ($exit_code != 0)
             {
                 push @targets_failed, $user_target;
@@ -232,7 +235,22 @@ sub execute_dcp
             {
                 push @targets_finished, $user_target;
             }
-
+            
+            # return list of   bad  nodes and good ones
+            if ($$options{'monitor'}) {
+              foreach my $badnode (@targets_failed) {
+                 my $rsp={};
+                 $rsp->{data}->[0] =
+                 "dsh>  Remote_command_failed $badnode";
+                 xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+              }
+              foreach my $goodnode (@targets_finished) {
+                 my $rsp={};
+                 $rsp->{data}->[0] =
+                 "dsh>  Remote_command_successful $goodnode";
+                 xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+              }
+            }
             delete $targets_buffered{$user_target};
         }
 
@@ -3984,7 +4002,7 @@ sub usage_dcp
     my $usagemsg1 = " xdcp -h \n xdcp -q\n xdcp -V \n xdcp <noderange>\n";
     my $usagemsg2 = "      [-B bypass] [-c] [-f fanout] [-l user_ID]\n";
     my $usagemsg3 =
-      "      [-o options] [-p] [-P] [-q] [-Q] [-r node_remote_copy]\n";
+      "      [-m] [-o options] [-p] [-P] [-q] [-Q] [-r node_remote_copy]\n";
     my $usagemsg4 =
       "      [-R] [-t timeout] [-T] [-X environment variables] [-v] \n";
     my $usagemsg5  = "      source_file... target_path\n";
@@ -4075,6 +4093,7 @@ sub parse_and_run_dcp
                     'F|File=s'         => \$options{'File'},
                     'h|help'           => \$options{'help'},
                     'l|user=s'         => \$options{'user'},
+                    'm|monitor'                => \$options{'monitor'},
                     'o|node-options=s' => \$options{'node-options'},
                     'q|show-config'    => \$options{'show-config'},
                     'p|preserve'       => \$options{'preserve'},
