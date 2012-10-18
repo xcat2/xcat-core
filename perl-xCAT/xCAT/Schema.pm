@@ -2666,6 +2666,10 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                 tabentry => 'rack.room',
                 access_tabentry => 'rack.rackname=attr:rackname',
         },
+        {attr_name => 'usercomment',
+                 tabentry => 'rack.comments',
+                 access_tabentry => 'rack.rackname=attr:rackname',
+        },
    );
 #########################
 #  route data object  #
