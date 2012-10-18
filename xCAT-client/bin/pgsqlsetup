@@ -162,8 +162,7 @@ if ($::RUNCMD_RC != 0)
     xCAT::MsgUtils->message("E", " $cmd failed. $message");
     exit(1);
 }
-# check if 9.X release,  setup different
-# check if 9.X release,  setup different
+# check if 9.X release not built by us is installed,  setup different
 if  (grep(/postgresql9/, @output)) {  # postgresql 9.x
  # figure out which 9.x release  and build path
  my @parseout= split(/\-/, $output[0]);
@@ -769,7 +768,29 @@ sub pgstart
             xCAT::MsgUtils->message("E", " $cmd failed.");
             exit(1);
         }
-    }
+        # check to see if running before continuing
+        my $retries =0;
+        my $pgstarted =0;
+        while ($retries < 3) {
+          $retries++;
+          if (defined($::postgres9)) { # set to the PTF level of postgresql 9.X
+            $cmd = "service postgresql-9.$::postgres9 status";
+          } else {
+            $cmd = "service postgresql status";
+          }
+          my @status=xCAT::Utils->runcmd($cmd, -1);
+          if (grep(/running/, @status)) {
+            $pgstarted=1;
+            last;
+          }
+          sleep 10;
+        }
+        if ($pgstarted ==0) {  # failed to started
+              xCAT::MsgUtils->message("E", " service postgresql start failed.");
+              exit(1);
+            
+        } 
+    } # end linux
 
 }
 
