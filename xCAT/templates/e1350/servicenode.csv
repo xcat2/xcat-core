@@ -1,0 +1,2 @@
+#node,nameserver,dhcpserver,tftpserver,nfsserver,conserver,monserver,ldapserver,ntpserver,ftpserver,nimserver,ipforward,comments,disable
+"service","1","1","1","1","1"

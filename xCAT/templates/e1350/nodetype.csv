@@ -1,2 +1,2 @@
-#node,os,arch,profile,comments,disable
+#node,os,arch,profile,provmethod,supportedarchs,nodetype,comments,disable
 "compute",,,"compute",,
