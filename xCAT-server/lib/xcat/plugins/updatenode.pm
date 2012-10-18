@@ -1499,9 +1499,9 @@ sub updatenodesyncfiles
              } 
            
         }
-       # put a new call to the updatenodestatus routine here
+       # put a call to a new routine here to process the output 
        # input the $output array and $callback
-       # the updatenode status routine should do the following
+       # the new  routine should do the following
        #
        # foreach my $line (@$output) {
        #  if line contains   Remote_command_successful or
