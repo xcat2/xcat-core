@@ -1453,6 +1453,7 @@ sub updatenodesyncfiles
         }
 
         # Sync files to the target nodes
+        my $output; 
         foreach my $synclist (keys %syncfile_node)
         {
             if ($::VERBOSE)
@@ -1474,23 +1475,50 @@ sub updatenodesyncfiles
             my $env;
             if ($request->{FileSyncing}->[0] eq "yes")
             {        # sync nodes
-                $args = ["-F", "$synclist"];
+                $args = ["--nodestatus","-F", "$synclist"];
                 $env = ["DSH_RSYNC_FILE=$synclist"];
             }
             else
             {        # sync SN only
-                $args = ["-s", "-F", "$synclist"];
+                $args = ["-s", "--nodestatus","-F", "$synclist"];
                 $env = ["DSH_RSYNC_FILE=$synclist", "RSYNCSNONLY=1"];
             }
-            $subreq->(
-                      {
-                       command => ['xdcp'],
-                       node    => $syncfile_node{$synclist},
-                       arg     => $args,
-                       env     => $env
-                      },
-                      $callback
-                      );
+           $output =
+             xCAT::Utils->runxcmd(
+                   {
+                     command => ["xdcp"],
+                     node    => $syncfile_node{$synclist},
+                     arg     => $args,
+                     env     => $env
+                   },
+                   $subreq, -1,1);
+
+             if ($::RUNCMD_RC != 0)
+             {  
+                 my $rc=0;
+             } 
+           
+        }
+       # put a new call to the updatenodestatus routine here
+       # input the $output array and $callback
+       # the updatenode status routine should do the following
+       #
+       # foreach my $line (@$output) {
+       #  if line contains   Remote_command_successful or
+       #             Remote_command_failed
+       #  then
+       #     update the status in the nodelist table for the node that is
+       #     on the line (rra000-m: Remote_command_successful)
+       #  else
+       #     return the line as output to the client
+       #     $rsp->{data}->[0] = $line;
+       #     $callback->($rsp);
+
+       # remove the next 5 lines.
+        my $rsp = {};
+        foreach my $line (@$output) {
+          $rsp->{data}->[0] = $line;
+          $callback->($rsp);
         }
         my $rsp = {};
         $rsp->{data}->[0] = "File synchronization has completed.";
