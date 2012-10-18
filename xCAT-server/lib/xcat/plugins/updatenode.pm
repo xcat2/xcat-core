@@ -1174,7 +1174,7 @@ sub updatenode
 
 #-------------------------------------------------------------------------------
 
-=head3  updatenodesyncfiles  - performs node rsync  updatenode -F
+=head3  updatenoderunps  - performs updatenode -P
 
     Arguments: request
     Returns:
