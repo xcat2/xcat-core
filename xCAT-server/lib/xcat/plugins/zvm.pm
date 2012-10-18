@@ -535,6 +535,27 @@ sub removeVM {
     # Delete user entry
     $out = `ssh $hcp "$::DIR/smcli Image_Delete_DM -T $userId -e 1"`;
     xCAT::zvmUtils->printLn( $callback, "$node: $out" );
+    
+    # Go through each pool and free zFCP devices belonging to node
+    my @pools = split("\n", `ssh $hcp "ls $::ZFCPPOOL"`);
+    my $pool;
+    my @luns;
+    my $update;
+    my $expression;
+    foreach (@pools) {
+    	$pool = xCAT::zvmUtils->replaceStr( $_, ".conf", "" );
+    	
+        @luns = split("\n", `ssh $hcp "cat $::ZFCPPOOL/$_" | egrep -i $node`);
+        foreach (@luns) {
+            # Update entry: status,wwpn,lun,size,owner,channel,tag
+            my @info = split(',', $_);   
+            $update = "free,$info[1],$info[2],$info[3],,,";
+            $expression = "'s#" . $_ . "#" .$update . "#i'";
+            $out = `ssh $hcp "sed --in-place -e $expression $::ZFCPPOOL/$pool.conf"`;
+        }
+        
+        xCAT::zvmUtils->printLn($callback, "$node: Updating FCP device pool $pool... Done");
+    }
 
     # Check for errors
     my $rc = xCAT::zvmUtils->checkOutput( $callback, $out );
@@ -708,7 +729,7 @@ sub changeVM {
         }
     }
     
-    # addzfcp2pool [pool] [status] [wwpn] [lun] [size] [owner]
+    # addzfcp2pool [pool] [status] [wwpn] [lun] [size] [owner (optional)]
     elsif ( $args->[0] eq "--addzfcp2pool" ) {
         # zFCP disk pool located on zHCP at /var/opt/zhcp/zfcp/{pool}.conf 
         # Entries contain: status,wwpn,lun,size,owner,channel,tag
@@ -751,6 +772,7 @@ sub changeVM {
         if (!(`ssh $hcp "test -e $::ZFCPPOOL/$pool.conf && echo Exists"`)) {                
             # Create pool configuration file 
             $out = `ssh $hcp "echo '#status,wwpn,lun,size,owner,channel,tag' > $::ZFCPPOOL/$pool.conf"`;
+            xCAT::zvmUtils->printLn( $callback, "$node: New zFCP device pool $pool created" );
         }
 
         # Do not update if the LUN already exists
@@ -761,6 +783,7 @@ sub changeVM {
         
         # Update file with given WWPN, LUN, size, and owner
         $out = `ssh $hcp "echo \"$status,$wwpn,$lun,$size,$owner,,\" >> $::ZFCPPOOL/$pool.conf"`;
+        xCAT::zvmUtils->printLn( $callback, "$node: Adding zFCP device to $pool pool... Done" );
     }
     
     # addnic [address] [type] [device count]
@@ -908,7 +931,7 @@ sub changeVM {
                     $sizeFound = $info[3];
                     $wwpn = $info[1];
                     $lun = $info[2];
-                } elsif ($info[3] >= $size) {
+                } elsif (!$sizeFound && $info[3] >= $size) {
                     $sizeFound = $info[3];
                     $wwpn = $info[1];
                     $lun = $info[2];            
@@ -1453,23 +1476,34 @@ sub changeVM {
             return;
         }
         
-        # Make sure WWPN and LUN do not have 0x prefix
-        $lun = xCAT::zvmUtils->replaceStr($lun, "0x", "");
+        my @luns;
+        if ($lun =~ m/,/i) {
+        	@luns = split( ',', $lun );
+        } else {
+        	push(@luns, $lun);
+        }
         
         # Find disk pool (create one if non-existent)
         if (!(`ssh $hcp "test -e $::ZFCPPOOL/$pool.conf && echo Exists"`)) {                
             xCAT::zvmUtils->printLn( $callback, "$node: (Error) zFCP pool does not exist" );
             return;
         }
-
-        # Do not update if LUN does not exists
-        if (!(`ssh $hcp "cat $::ZFCPPOOL/$pool.conf" | grep $lun`)) {
-            xCAT::zvmUtils->printLn( $callback, "$node: (Error) zFCP device does not exists" );
-            return;
+            
+        # Go through each LUN
+        foreach (@luns) {
+	        # Make sure WWPN and LUN do not have 0x prefix
+	        $_ = xCAT::zvmUtils->replaceStr($_, "0x", "");
+	        
+	        # Do not update if LUN does not exists
+	        if (!(`ssh $hcp "cat $::ZFCPPOOL/$pool.conf" | grep $_`)) {
+	            xCAT::zvmUtils->printLn( $callback, "$node: (Error) zFCP device $_ does not exists" );
+	            return;
+	        }
+	        
+	        # Update file with given WWPN, LUN, size, and owner
+	        $out = `ssh $hcp "sed --in-place -e /$_/d $::ZFCPPOOL/$pool.conf"`;
+	        xCAT::zvmUtils->printLn( $callback, "$node: Removing zFCP device $_ from $pool pool... Done");
         }
-        
-        # Update file with given WWPN, LUN, size, and owner
-        $out = `ssh $hcp "sed --in-place -e /$lun/d $::ZFCPPOOL/$pool.conf"`;
     }
     
     # removedisk [virtual address]
@@ -2316,7 +2350,7 @@ sub listVM {
         # Go through each zFCP pool
         my @pools = split("\n", `ssh $hcp "ls $::ZFCPPOOL"`);
         foreach (@pools) {
-            $_ = uc(xCAT::zvmUtils->replaceStr( $_, ".conf", "" ));
+            $_ = xCAT::zvmUtils->replaceStr( $_, ".conf", "" );
             $out .= "$_\n";
         }
     }
