@@ -554,7 +554,9 @@ sub removeVM {
             $out = `ssh $hcp "sed --in-place -e $expression $::ZFCPPOOL/$pool.conf"`;
         }
         
-        xCAT::zvmUtils->printLn($callback, "$node: Updating FCP device pool $pool... Done");
+        if (@luns) {
+            xCAT::zvmUtils->printLn($callback, "$node: Updating FCP device pool $pool... Done");
+        }
     }
 
     # Check for errors
@@ -837,7 +839,7 @@ sub changeVM {
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
     
-    # addzfcp [pool] [device address] [size] [tag] [wwpn] [lun]
+    # addzfcp [pool] [device address] [loaddev (0 or 1)] [size] [tag (optional)] [wwpn (optional)] [lun (optional)]
     elsif ( $args->[0] eq "--addzfcp" ) {
         # Find a free disk in the pool
         # zFCP devices are contained in /var/opt/zhcp/zfcp/<pool-name>.conf
@@ -845,13 +847,19 @@ sub changeVM {
         my $device = $args->[2];
                 
         my $argsSize = @{$args};
-        if ($argsSize < 4 || $argsSize > 7) {
+        if ($argsSize < 5 || $argsSize > 8) {
             xCAT::zvmUtils->printLn( $callback, "$node: (Error) Wrong number of parameters" );
             return;
         }
         
+        my $loaddev = int($args->[3]);
+        if ($loaddev != 0 && $loaddev != 1) {
+        	xCAT::zvmUtils->printLn( $callback, "$node: (Error) The loaddev can be 0 or 1" );
+            return;
+        }
+        
         # Size can be M(egabytes) or G(igabytes)
-        my $size = $args->[3];
+        my $size = $args->[4];
         if ($size =~ m/G/i) {
             # Convert to MegaBytes
             $size =~ s/\D//g;
@@ -865,7 +873,7 @@ sub changeVM {
         
         # Tag specifies what to replace in the autoyast/kickstart template, e.g. $root_device$
         # This argument is optional
-        my $tag = $args->[4];
+        my $tag = $args->[5];
         
         # Check if WWPN and LUN are given
         my $wwpn;
@@ -873,8 +881,8 @@ sub changeVM {
         my $useWwpnLun = 0;
         if ($argsSize == 7) {
             $useWwpnLun = 1;            
-            $wwpn = $args->[5];
-            $lun = $args->[6];
+            $wwpn = $args->[6];
+            $lun = $args->[7];
             
             # Make sure WWPN and LUN do not have 0x prefix
             $wwpn = xCAT::zvmUtils->replaceStr($wwpn, "0x", "");
@@ -1029,6 +1037,13 @@ sub changeVM {
         }
         
         xCAT::zvmUtils->printLn($callback, "$node: Adding FCP device... Done");
+        
+        # Set loaddev statement in directory entry
+        if ($loaddev) {
+        	$out = `chvm $node --setloaddev $wwpn $lun`;
+        	xCAT::zvmUtils->printLn($callback, "$out");
+        }
+        
         $out = "";
     }
 

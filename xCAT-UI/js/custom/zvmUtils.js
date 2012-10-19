@@ -363,7 +363,7 @@ function updateZProvisionNewStatus(data) {
     // Parse ajax response
     var rsp = data.rsp;
     var args = data.msg.split(';');
-    var cmd = args[0].replace('cmd=', '');
+    var lastCmd = args[0].replace('cmd=', '');
     var out2Id = args[1].replace('out=', '');
     
     // IDs for status bar, tab, and loader
@@ -374,16 +374,50 @@ function updateZProvisionNewStatus(data) {
     var node = $('#' + tabId + ' input[name=nodeName]').val();
 
     /**
-     * (2) Update /etc/hosts
+     * (2) Create user entry
      */
-    if (cmd == 'nodeadd') {
-        // If there was an error, do not continue
-        if (rsp.length) {
+    if (lastCmd == 'nodeadd') {
+    	if (rsp.length) {
             $('#' + loaderId).hide();
             $('#' + statBarId).find('div').append('<pre>(Error) Failed to create node definition</pre>');
         } else {
-            $('#' + statBarId).find('div').append('<pre>Node definition created for ' + node + '</pre>');
-            $.ajax( {
+        	$('#' + statBarId).find('div').append('<pre>Node definition created for ' + node + '</pre>');
+            
+	        // Write ajax response to status bar
+	        var prg = writeRsp(rsp, '');    
+	        $('#' + statBarId).find('div').append(prg);
+	        
+	        // Create user entry
+	        var userEntry = $('#' + tabId + ' textarea').val();
+	        $.ajax( {
+	            url : 'lib/zCmd.php',
+	            dataType : 'json',
+	            data : {
+	                cmd : 'mkvm',
+	                tgt : node,
+	                args : '',
+	                att : userEntry,
+	                msg : 'cmd=mkvm;out=' + out2Id
+	            },
+	
+	            success : updateZProvisionNewStatus
+	        });
+        }
+    }
+    
+    /**
+     * (3) Update /etc/hosts
+     */
+    else if (lastCmd == 'mkvm') {
+    	// Write ajax response to status bar
+        var prg = writeRsp(rsp, '');    
+        $('#' + statBarId).find('div').append(prg);
+        
+    	// If there was an error, quit
+        if (containErrors(prg.html())) {
+            $('#' + loaderId).hide();
+        } else {
+            $.ajax({
                 url : 'lib/cmd.php',
                 dataType : 'json',
                 data : {
@@ -399,16 +433,16 @@ function updateZProvisionNewStatus(data) {
     }
 
     /**
-     * (3) Update DNS
+     * (4) Update DNS
      */
-    else if (cmd == 'makehosts') {
-        // If there was an error, do not continue
+    else if (lastCmd == 'makehosts') {
+        // If there was an error, quit
         if (rsp.length) {
             $('#' + loaderId).hide();
             $('#' + statBarId).find('div').append('<pre>(Error) Failed to update /etc/hosts</pre>');
         } else {
             $('#' + statBarId).find('div').append('<pre>/etc/hosts updated</pre>');
-            $.ajax( {
+            $.ajax({
                 url : 'lib/cmd.php',
                 dataType : 'json',
                 data : {
@@ -424,71 +458,17 @@ function updateZProvisionNewStatus(data) {
     }
 
     /**
-     * (4) Create user entry
-     */
-    else if (cmd == 'makedns') {        
-        // Reset number of tries
-        $.cookie('tries4' + tabId, 0);
-
-        // Write ajax response to status bar
-        var prg = writeRsp(rsp, '');    
-        $('#' + statBarId).find('div').append(prg);
-        
-        // Create user entry
-        var userEntry = $('#' + tabId + ' textarea').val();
-        $.ajax( {
-            url : 'lib/zCmd.php',
-            dataType : 'json',
-            data : {
-                cmd : 'mkvm',
-                tgt : node,
-                args : '',
-                att : userEntry,
-                msg : 'cmd=mkvm;out=' + out2Id
-            },
-
-            success : updateZProvisionNewStatus
-        });
-    }
-
-    /**
      * (5) Add disk
      */
-    else if (cmd == 'mkvm') {        
+    else if (lastCmd == 'makedns') {        
         // Write ajax response to status bar
         var prg = writeRsp(rsp, '');    
         $('#' + statBarId).find('div').append(prg);
 
-        // If there was an error, try again
-        if (prg.html().indexOf('Error') > -1) {
-            var tries = parseInt($.cookie('tries4' + tabId));
-            if (tries < 2) {
-                $('#' + statBarId).find('div').append('<pre>Trying again...</pre>');
-                tries++;
-                $.cookie('tries4' + tabId, tries);
-
-                // Create user entry
-                var userEntry = $('#' + tabId + ' textarea').val();
-                $.ajax( {
-                    url : 'lib/zCmd.php',
-                    dataType : 'json',
-                    data : {
-                        cmd : 'mkvm',
-                        tgt : node,
-                        args : '',
-                        att : userEntry,
-                        msg : 'cmd=mkvm;out=' + out2Id
-                    },
-
-                    success : updateZProvisionNewStatus
-                });
-            } else {
-                $('#' + loaderId).hide();
-            }
+        // If there was an error, quit
+        if (containErrors(prg.html())) {
+            $('#' + loaderId).hide();
         } else {
-            // Reset number of tries
-            $.cookie('tries4' + tabId, 0);
-
             // Set cookie for number of disks
             var diskRows = $('#' + tabId + ' table:eq(0):visible tbody tr');
             $.cookie('disks2add' + out2Id, diskRows.length);
@@ -514,9 +494,9 @@ function updateZProvisionNewStatus(data) {
                             + blkSize + ';' + size + ';' + mode + ';' + password + ';'
                             + password + ';' + password;
                     }
-
+                    
                     // Attach disk to node
-                    $.ajax( {
+                    $.ajax({
                         url : 'lib/cmd.php',
                         dataType : 'json',
                         data : {
@@ -529,228 +509,120 @@ function updateZProvisionNewStatus(data) {
                         success : updateZProvisionNewStatus
                     });
                 }
-            } else {
-                $('#' + loaderId).hide();
-            }
-        }
-    }
-    
-    /**
-     * (6) Add zFCP devices
-     */
-    else if (cmd == 'chvm-disk') {        
-        // Write ajax response to status bar
-        var prg = writeRsp(rsp, '');    
-        $('#' + statBarId).find('div').append(prg);
-
-        // If there was an error, try again
-        if (prg.html().indexOf('Error') > -1) {
-        	$('#' + loaderId).hide();
-
-            var tries = parseInt($.cookie('tries4' + tabId));
-            if (tries < 2) {
-                $('#' + statBarId).find('div').append('<pre>Trying again...</pre>');
-                tries++;
-                $.cookie('tries4' + tabId, tries);
-
-                // Set cookie for number of disks
-                var diskRows = $('#' + tabId + ' table:visible tbody tr');    
-                $.cookie('disks2add' + out2Id, diskRows.length);
-                if (diskRows.length > 0) {
-                    for ( var i = 0; i < diskRows.length; i++) {
-                        var diskArgs = diskRows.eq(i).find('td');
-                        var type = diskArgs.eq(1).find('select').val();
-                        var address = diskArgs.eq(2).find('input').val();
-                        var size = diskArgs.eq(3).find('input').val();
-                        var mode = diskArgs.eq(4).find('select').val();
-                        var pool = diskArgs.eq(5).find('select').val();
-                        var password = diskArgs.eq(6).find('input').val();
-                        
-                        // Create ajax arguments
-                        var args = '';
-                        if (type == '3390') {
-                            args = '--add' + type + ';' + pool + ';' + address
-                                + ';' + size + ';' + mode + ';' + password + ';'
-                                + password + ';' + password;
-                        } else if (type == '9336') {
-                            var blkSize = '512';
-                            args = '--add' + type + ';' + pool + ';' + address + ';' 
-                                + blkSize + ';' + size + ';' + mode + ';' + password + ';'
-                                + password + ';' + password;
-                        }
-
-                        // Attach disk to node
-                        $.ajax( {
-                            url : 'lib/cmd.php',
-                            dataType : 'json',
-                            data : {
-                                cmd : 'chvm',
-                                tgt : node,
-                                args : args,
-                                msg : 'cmd=chvm-disk;out=' + out2Id
-                            },
-
-                            success : updateZProvisionNewStatus
-                        });
-                    }
-                } else {
-                    $('#' + loaderId).hide();
-                }
-            } else {
-                $('#' + loaderId).hide();
-            }
-        } else {
-            // Reset number of tries
-            $.cookie('tries4' + tabId, 0);
+            } 
             
-            // Set cookie for number of disks
-            // One less disk to add
-            var disks2add = $.cookie('disks2add' + out2Id);
-            disks2add--;            
-            $.cookie('disks2add' + out2Id, disks2add);
-                        
-            if (disks2add < 1) {
-	            // Set cookie for number of zFCP devices
-	            var zfcpRows = $('#' + tabId + ' table:eq(1):visible tbody tr');
-	            $.cookie('zfcp2add' + out2Id, zfcpRows.length);
-	            if (zfcpRows.length > 0) {
-	                for ( var i = 0; i < zfcpRows.length; i++) {
-	                    var diskArgs = zfcpRows.eq(i).find('td');
-	                    var address = diskArgs.eq(1).find('input').val();
-	                    var size = diskArgs.eq(2).find('input').val();
-	                    var pool = diskArgs.eq(3).find('select').val();
-	                    var tag = diskArgs.eq(4).find('input').val();
-	                    var portName = diskArgs.eq(5).find('input').val();
-	                    var unitNo = diskArgs.eq(6).find('input').val();
-	                    
-	                    // Create ajax arguments
-	                    var args = '--addzfcp;' + pool + ';' + address + ';' + size;
-	                    if (tag && tag != "null") {
-	                        args += ';' + tag;
-	                    } if (portName && tag != "null") {
-	                        args += ';' + portName;
-	                    } if (unitNo && tag != "null") {
-	                        args += ';' + unitNo;
-	                    }
-	
-	                    // Attach zFCP device to node
-	                    $.ajax( {
-	                        url : 'lib/cmd.php',
-	                        dataType : 'json',
-	                        data : {
-	                            cmd : 'chvm',
-	                            tgt : node,
-	                            args : args,
-	                            msg : 'cmd=chvm-zfcp;out=' + out2Id
-	                        },
-	
-	                        success : updateZProvisionNewStatus
-	                    });
-	                }
-	            } else {
-	                $('#' + loaderId).hide();
-	            }
-            }
-        }
-    }
-    
-    /**
-     * (7) Set operating system for given node
-     */
-    else if (cmd == 'chvm-zfcp') {
-        // Write ajax response to status bar
-        var prg = writeRsp(rsp, '');    
-        $('#' + statBarId).find('div').append(prg);
-
-        // If there was an error, try again
-        if (prg.html().indexOf('Error') > -1) {
-            $('#' + loaderId).hide();
-
-            var tries = parseInt($.cookie('tries4' + tabId));
-            if (tries < 2) {
-                $('#' + statBarId).find('div').append('<pre>Trying again...</pre>');
-                tries++;
-                $.cookie('tries4' + tabId, tries);
-
-                var zfcpRows = $('#' + tabId + ' table:eq(1):visible tbody tr');
-                $.cookie('zfcp2add' + out2Id, zfcpRows.length);
-                if (zfcpRows.length > 0) {
-                    for ( var i = 0; i < zfcpRows.length; i++) {
-                        var diskArgs = zfcpRows.eq(i).find('td');
-                        var address = diskArgs.eq(1).find('input').val();
-                        var size = diskArgs.eq(2).find('input').val();
-                        var pool = diskArgs.eq(3).find('select').val();
-                        var tag = diskArgs.eq(4).find('input').val();
-                        var portName = diskArgs.eq(5).find('input').val();
-                        var unitNo = diskArgs.eq(6).find('input').val();
-                        
-                        // Create ajax arguments
-                        var args = '--addzfcp;' + pool + ';' + address + ';' + size;
-                        if (tag && tag != "null") {
-                            args += ';' + tag;
-                        } if (portName && tag != "null") {
-                            args += ';' + portName;
-                        } if (unitNo && tag != "null") {
-                            args += ';' + unitNo;
-                        }
-
-                        // Attach zFCP device to node
-                        $.ajax( {
-                            url : 'lib/cmd.php',
-                            dataType : 'json',
-                            data : {
-                                cmd : 'chvm',
-                                tgt : node,
-                                args : args,
-                                msg : 'cmd=chvm-zfcp;out=' + out2Id
-                            },
-
-                            success : updateZProvisionNewStatus
-                        });
+            // Set cookie for number of zFCP devices
+            var zfcpRows = $('#' + tabId + ' table:eq(1):visible tbody tr');
+            $.cookie('zfcp2add' + out2Id, zfcpRows.length);
+            if (zfcpRows.length > 0) {
+            	for ( var i = 0; i < zfcpRows.length; i++) {
+                    var diskArgs = zfcpRows.eq(i).find('td');
+                    var address = diskArgs.eq(1).find('input').val();
+                    var size = diskArgs.eq(2).find('input').val();
+                    var pool = diskArgs.eq(3).find('select').val();
+                    var tag = diskArgs.eq(4).find('input').val();
+                    var portName = diskArgs.eq(5).find('input').val();
+                    var unitNo = diskArgs.eq(6).find('input').val();
+                    
+                    // This is either true or false
+                    var loaddev = diskArgs.eq(7).find('input').attr('checked');
+                    if (loaddev) {
+                    	loaddev = "1";
+                    } else {
+                    	loaddev = "0";
+                    }                   
+                    
+                    // Create ajax arguments
+                    var args = '--addzfcp;' + pool + ';' + address + ';' + loaddev + ';' + size;
+                    if (tag && tag != "null") {
+                        args += ';' + tag;
+                    } if (portName && tag != "null") {
+                        args += ';' + portName;
+                    } if (unitNo && tag != "null") {
+                        args += ';' + unitNo;
                     }
-                } else {
-                    $('#' + loaderId).hide();
+
+                    // Attach zFCP device to node
+                    $.ajax( {
+                        url : 'lib/cmd.php',
+                        dataType : 'json',
+                        data : {
+                            cmd : 'chvm',
+                            tgt : node,
+                            args : args,
+                            msg : 'cmd=chvm-zfcp;out=' + out2Id
+                        },
+
+                        success : updateZProvisionNewStatus
+                    });
                 }
-            } else {
-                $('#' + loaderId).hide();
             }
-        } else {
-            // Reset number of tries
-            $.cookie('tries4' + tabId, 0);  
             
-            // Set cookie for number of disks
-            // One less disk to add
+            // Done if no disks to add
             var zfcp2add = $.cookie('zfcp2add' + out2Id);
-            zfcp2add--;            
-            $.cookie('zfcp2add' + out2Id, zfcp2add);
-                        
-            if (zfcp2add < 1) {                
+            var zfcp2add = $.cookie('zfcp2add' + out2Id);
+            if (disks2add < 1 && zfcp2add < 1) {
+                $('#' + loaderId).hide();
+            }
+        }
+    }
+    
+    /**
+     * (6) Set operating system for given node
+     */
+    else if (lastCmd == 'chvm-disk' || lastCmd == 'chvm-zfcp') {
+        // Write ajax response to status bar
+        var prg = writeRsp(rsp, '');    
+        $('#' + statBarId).find('div').append(prg);
+
+        // If there was an error, quit
+        if (containErrors(prg.html())) {
+            $('#' + loaderId).hide();
+        } else {
+        	// Set cookie for number of disks
+            // One less disk to add
+        	var disks2add = $.cookie('disks2add' + out2Id);
+        	if (lastCmd == 'chvm-disk') {
+	            if (disks2add > 0) {
+	            	disks2add--;            
+	            	$.cookie('disks2add' + out2Id, disks2add);
+	            }
+        	}
+            
+        	var zfcp2add = $.cookie('zfcp2add' + out2Id);
+        	if (lastCmd == 'chvm-zfcp') {	            
+	            if (zfcp2add > 0) {
+	            	zfcp2add--;
+	            	$.cookie('zfcp2add' + out2Id, zfcp2add);
+	            }
+        	}
+            
+        	// Only set operating system if there are no more disks to add
+            if (zfcp2add < 1 && disks2add < 1) {                
                 // If an operating system image is given
-            	var osImage = $('#' + tabId + ' input[name=os]:visible').val();
+            	var osImage = $('#' + tabId + ' select[name=os]:visible').val();
                 if (osImage) {
                 	// Get operating system, architecture, provision method, and profile
-                    var tmp = osImage.split('-');                    
+                    var tmp = osImage.split('-');
                     var os = tmp[0];
                     var arch = tmp[1];
                     var profile = tmp[3];
 
                     // If the last disk is added
-                    if (disks2add < 1) {
-                        $.ajax( {
-                            url : 'lib/cmd.php',
-                            dataType : 'json',
-                            data : {
-                                cmd : 'nodeadd',
-                                tgt : '',
-                                args : node + ';noderes.netboot=zvm;nodetype.os='
-                                    + os + ';nodetype.arch=' + arch
-                                    + ';nodetype.profile=' + profile,
-                                msg : 'cmd=noderes;out=' + out2Id
-                            },
+                    $.ajax({
+                        url : 'lib/cmd.php',
+                        dataType : 'json',
+                        data : {
+                            cmd : 'nodeadd',
+                            tgt : '',
+                            args : node + ';noderes.netboot=zvm;nodetype.os='
+                                + os + ';nodetype.arch=' + arch
+                                + ';nodetype.profile=' + profile,
+                            msg : 'cmd=noderes;out=' + out2Id
+                        },
 
-                            success : updateZProvisionNewStatus
-                        });
-                    }
+                        success : updateZProvisionNewStatus
+                    });
                 } else {
                     $('#' + loaderId).hide();
                 }
@@ -759,9 +631,9 @@ function updateZProvisionNewStatus(data) {
     }
 
     /**
-     * (8) Update DHCP
+     * (7) Update DHCP
      */
-    else if (cmd == 'noderes') {
+    else if (lastCmd == 'noderes') {
         // If there was an error, do not continue
         if (rsp.length) {
             $('#' + loaderId).hide();
@@ -784,9 +656,9 @@ function updateZProvisionNewStatus(data) {
     }
 
     /**
-     * (9) Prepare node for boot
+     * (8) Prepare node for boot
      */
-    else if (cmd == 'makedhcp') {        
+    else if (lastCmd == 'makedhcp') {        
         // Prepare node for boot
         $.ajax( {
             url : 'lib/cmd.php',
@@ -803,16 +675,16 @@ function updateZProvisionNewStatus(data) {
     }
 
     /**
-     * (10) Boot node to network
+     * (9) Boot node to network
      */
-    else if (cmd == 'nodeset') {
+    else if (lastCmd == 'nodeset') {
         // Write ajax response to status bar
         var prg = writeRsp(rsp, '');    
         $('#' + statBarId).find('div').append(prg);
         
         // If there was an error
         // Do not continue
-        if (prg.html().indexOf('Error') > -1) {
+        if (containErrors(prg.html())) {
             $('#' + loaderId).hide();
         } else {
             $.ajax( {
@@ -831,9 +703,9 @@ function updateZProvisionNewStatus(data) {
     }
 
     /**
-     * (11) Done
+     * (10) Done
      */
-    else if (cmd == 'rnetboot') {
+    else if (lastCmd == 'rnetboot') {
         // Write ajax response to status bar
         var prg = writeRsp(rsp, '');    
         $('#' + statBarId).find('div').append(prg);
@@ -900,7 +772,7 @@ function updateZProvisionExistingStatus(data) {
         $('#' + statBarId).find('div').append(prg);
 
         // If there was an error, do not continue
-        if (prg.html().indexOf('Error') > -1) {
+        if (containErrors(prg.html())) {
             var loaderId = 'zProvisionLoader' + inst;
             $('#' + loaderId).remove();
             return;
@@ -3345,19 +3217,18 @@ function createZProvisionNew(inst) {
     // Create operating system image input
     var os = $('<div></div>');
     var osLabel = $('<label for="os">Operating system image:</label>');
-    var osInput = $('<input type="text" name="os" title="You must give the operating system to install on this node or node range, e.g. rhel5.5-s390x-install-compute"/>');
-    // Get image names on focus
-    osInput.one('focus', function(){
-        var imageNames = $.cookie('imagenames');
-        if (imageNames) {
-            // Turn on auto complete
-            $(this).autocomplete({
-                source: imageNames.split(',')
-            });
-        }
-    });
+    var osSelect = $('<select name="os"></select>');
+    osSelect.append($('<option value=""></option>'));
+    
+    var imageNames = $.cookie('imagenames').split(',');
+    if (imageNames) {
+    	imageNames.sort();
+    	for (var i in imageNames) {
+    		osSelect.append($('<option value="' + imageNames[i] + '">' + imageNames[i] + '</option>'));
+    	}
+    }
     os.append(osLabel);
-    os.append(osInput);
+    os.append(osSelect);
     osAttr.append(os);
 
     // Create user entry input
@@ -3370,7 +3241,7 @@ function createZProvisionNew(inst) {
         
         // Get objects for HCP, user ID, and OS
         var userId = $('#' + thisTabId + ' input[name=userId]');
-        var os = $('#' + thisTabId + ' input[name=os]');
+        var os = $('#' + thisTabId + ' select[name=os]');
         
         // Get default user entry when clicked
         if ($(this).attr('checked')) {                                    
@@ -3545,7 +3416,7 @@ function createZProvisionNew(inst) {
     var zfcpDiv = $('<div class="provision"></div>');
     var zfcpLabel = $('<label>zFCP:</label>');
     var zfcpTable = $('<table></table>');
-    var zfcpHeader = $('<thead class="ui-widget-header"> <th><th>Address</th> <th>Size</th> <th>Pool</th> <th>Tag</th> <th>Port Name</th> <th>Unit #</th></thead>');
+    var zfcpHeader = $('<thead class="ui-widget-header"> <th><th>Address</th> <th>Size</th> <th>Pool</th> <th>Tag</th> <th>Port Name</th> <th>Unit #</th> <th>LOADDEV</th></thead>');
     // Adjust header width
     zfcpHeader.find('th').css( {
         'width' : '80px'
@@ -3610,6 +3481,10 @@ function createZProvisionNew(inst) {
         // Create device unit number
         var zfcpUnitNo = $('<td><input type="text" name="zfcpUnitNo" title="Optional. You can give the logical unit number for the device."/></td>');
         zfcpRow.append(zfcpUnitNo);
+        
+        // Create LOADDEV checkbox
+        var zfcpLoaddev = $('<td><input type="radio" name="zfcpLoaddev" title="Optional. You can specify this device as to be loaded as a result of a guest IPL from SCSI disk."/></td>');
+        zfcpRow.append(zfcpLoaddev);
 
         zfcpBody.append(zfcpRow);
         
@@ -3673,9 +3548,8 @@ function createZProvisionNew(inst) {
         // Check disks and zFCP devices
         var inputs = $('#' + thisTabId + ' input:visible');
         for ( var i = 0; i < inputs.length; i++) {
-            // Do not check OS or disk password
+            // Do not check some inputs
             if (!inputs.eq(i).val() 
-                && inputs.eq(i).attr('name') != 'os'
                 && inputs.eq(i).attr('type') != 'password'
             	&& inputs.eq(i).attr('name') != 'zfcpTag'
                 && inputs.eq(i).attr('name') != 'zfcpPortName'
@@ -3684,6 +3558,16 @@ function createZProvisionNew(inst) {
                 ready = false;
             } else {
                 inputs.eq(i).css('border', 'solid #BDBDBD 1px');
+            }
+        }
+        
+        var selects = $('#' + thisTabId + ' select:visible');
+        for ( var i = 0; i < selects.length; i++) {
+            if (!selects.eq(i).val() && selects.eq(i).attr('name') != 'os') {
+            	selects.eq(i).css('border', 'solid #FF0000 1px');
+                ready = false;
+            } else {
+            	selects.eq(i).css('border', 'solid #BDBDBD 1px');
             }
         }
 
@@ -3711,7 +3595,7 @@ function createZProvisionNew(inst) {
         }
 
         // If no operating system is specified, create only user entry
-        os = $('#' + thisTabId + ' input[name=os]:visible');
+        os = $('#' + thisTabId + ' select[name=os]:visible');
         
         // Check number of disks
         var diskRows = $('#' + thisTabId + ' table tr');
