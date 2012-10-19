@@ -226,6 +226,13 @@ sub execute_dcp
             
             if ($exit_code != 0)
             {
+                # report error status  --nodestatus
+                if ($$options{'nodestatus'}) {
+                   my $rsp={};
+                  $rsp->{data}->[0] =
+                  "$user_target: Remote_command_failed, error_code=$exit_code";
+                   xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                }
                 push @targets_failed, $user_target;
                 push @{$dsh_target_status{'failed'}}, $user_target;
 
@@ -233,6 +240,12 @@ sub execute_dcp
 
             else
             {
+                if ($$options{'nodestatus'}) {
+                   my $rsp={};
+                  $rsp->{data}->[0] =
+                  "$user_target: Remote_command_successful";
+                   xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                }
                 push @targets_finished, $user_target;
             }
             
@@ -248,22 +261,6 @@ sub execute_dcp
                  my $rsp={};
                  $rsp->{data}->[0] =
                  "dsh>  Remote_command_successful $goodnode";
-                 xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-              }
-            }
-            # return node status, note must be using runxcmd to 
-            # process this field
-            if ($$options{'nodestatus'}) {
-              foreach my $badnode (@targets_failed) {
-                 my $rsp={};
-                 $rsp->{data}->[0] =
-                 "$badnode: Remote_command_failed";
-                 xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-              }
-              foreach my $goodnode (@targets_finished) {
-                 my $rsp={};
-                $rsp->{data}->[0] =
-                 "$goodnode: Remote_command_successful";
                  xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
               }
             }
@@ -612,10 +609,14 @@ sub _execute_dsh
             if ($exit_code != 0)
             {
 
-                #$rsp->{data}->[0] =
-                # " $user_target remote Command return code = $exit_code.";
-                #xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 1);
-
+                # report error status  --nodestatus
+                if ($$options{'nodestatus'}) {
+                   my $rsp={};
+                  $rsp->{data}->[0] =
+                  "$user_target: Remote_command_failed, error_code=$exit_code";
+                   xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                }
+                # for monitoring -m
                 my $rsp = {};
                 $rsp->{error}->[0] = "dsh>  Remote_command_failed $user_target";
                 $$options{'monitor'}
@@ -634,6 +635,14 @@ sub _execute_dsh
             {
                 if ($target_rc != 0)
                 {
+                   # report error status  --nodestatus
+                   if ($$options{'nodestatus'}) {
+                     my $rsp={};
+                     $rsp->{data}->[0] =
+                   "$user_target: Remote_command_failed, error_code=$target_rc";
+                     xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                   }
+                    # if monitoring
                     $rsp={};
                     $rsp->{error}->[0] =
                       "dsh>  Remote_command_failed $user_target";
@@ -647,10 +656,19 @@ sub _execute_dsh
 
                 elsif (!defined($target_rc) && !$dsh_cmd_background && ($::DSH_MELLANOX_SWITCH==0))
                 {
+                   # report error status  --nodestatus
+                   if ($$options{'nodestatus'}) {
+                     my $rsp={};
+                     $rsp->{data}->[0] =
+                   "$user_target: Remote_command_failed, error_code=???";
+                     xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                   }
+
                     $rsp={};
                     $rsp->{error}->[0] =
                       " A return code for the command run on the host $user_target was not received.";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+
                     my $rsp = {};
                     $rsp->{error}->[0] =
                       "dsh>  Remote_command_failed $user_target";
@@ -662,8 +680,14 @@ sub _execute_dsh
                       if !$signal_interrupt_flag;
                 }
 
-                else
+                else   # it worked
                 {
+                   if ($$options{'nodestatus'}) {
+                    my $rsp={};
+                    $rsp->{data}->[0] =
+                    "$user_target: Remote_command_successful";
+                     xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                    }
                     $rsp={};
                     $rsp->{data}->[0] =
                       "dsh>  Remote_command_successful $user_target";
