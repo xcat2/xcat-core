@@ -843,9 +843,12 @@ site => {
    " defserialport:  The default serial port - currently only used by mknb.\n\n".
    " defserialspeed:  The default serial speed - currently only used by mknb.\n\n".
    " dhcpinterfaces:  The network interfaces DHCP should listen on.  If it is the same\n".
-   "                  for all nodes, use simple comma-separated list of NICs.  To\n".
+   "                  for all nodes, use a simple comma-separated list of NICs.  To\n".
    "                  specify different NICs for different nodes:\n".
-   "                       mn|eth1,eth2;service|bond0.\n\n".
+   "                       xcatmn|eth1,eth2;service|bond0.\n".
+   "                  In this example xcatmn is the name of the xCAT MN, and DHCP there\n".
+   "                  should listen on eth1 and eth2.  On all of the nodes in group\n".
+   "                  'service' DHCP should listen on the bond0 nic.\n\n".
    " dhcpsetup:  If set to 'n', it will skip the dhcp setup process in the nodeset cmd.\n\n".
    " dhcplease:  The lease time for the dhcp client. The default value is 43200.\n\n".
    " disjointdhcps:  If set to '1', the .leases file on a service node only contains\n".

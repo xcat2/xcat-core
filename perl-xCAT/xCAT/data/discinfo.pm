@@ -1,16 +1,15 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# You can get copycds to recognize new distro DVDs/ISOs (so that you do not have to specify -n and -a)
+# by adding the disc ids to the %distnames hash below.  Follow the syntax carefully.
+# Reload xcatd to have it take affect (service xcatd reload).
+
 package xCAT::data::discinfo;
-#BEGIN
-#{
-#  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
-#}
 
 require Exporter;
 @ISA=qw(Exporter);
 @EXPORT=qw();
 @EXPORT_OK=qw(distnames numdiscs);
-
-
 
 
 %distnames = (
@@ -77,10 +76,5 @@ my %numdiscs = (
                 "1178480581.024704" => 3
                 );
 
-
-#sub handled_commands
-#{
-#	return;
-#};
 
 	1;
