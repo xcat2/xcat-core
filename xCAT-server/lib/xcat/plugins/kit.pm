@@ -40,6 +40,7 @@ sub handled_commands
             rmkit => "kit",
             addkitcomp => "kit",
             rmkitcomp => "kit",
+            chkkitcomp => "kit",
 	   };
 }
 
@@ -68,6 +69,8 @@ sub process_request
         return addkitcomp($request, $callback);
     } elsif ($command eq "rmkitcomp"){
         return rmkitcomp($request, $callback);
+    } elsif ($command eq "chkkitcomp"){
+        return chkkitcomp($request, $callback);
     } else{
             $callback->({error=>["Error: $command not found in this module."],errorcode=>[1]});
             #return (1, "$command not found);
@@ -260,7 +263,7 @@ sub comp_word
 
 #-------------------------------------------------------
 
-=head3 addkit
+=head3 assign_to_osimage
 
   Assign a kit component to osimage
 
@@ -275,7 +278,7 @@ sub assign_to_osimage
     my $tabs = shift;
 
     (my $kitcomptable) = $tabs->{kitcomponent}->getAttribs({kitcompname=> $kitcomp}, 'kitname', 'kitreponame', 'basename', 'kitpkgdeps', 'exlist', 'postbootscripts', 'driverpacks');
-    (my $osimagetable) = $tabs->{osimage}->getAttribs({imagename=> $osimage}, 'postbootscripts', 'kitcomponents');
+    (my $osimagetable) = $tabs->{osimage}->getAttribs({imagename=> $osimage}, 'osarch', 'postbootscripts', 'kitcomponents');
     (my $linuximagetable) = $tabs->{linuximage}->getAttribs({imagename=> $osimage}, 'exlist', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
  
     # Adding postbootscrits to osimage.postbootscripts
@@ -681,6 +684,7 @@ sub addkit
     my $des = shift @ARGV;
 
     my @kits = split ',', $des;
+    my @kitnames;
     foreach my $kit (@kits) {
 
         # extract the Kit to kitdir
@@ -871,30 +875,16 @@ sub addkit
             $callback->({error => ["Failed to copy plugins from $kitdir/plugins/ to $::XCATROOT/lib/perl/xCAT_plugin\n"],errorcode=>[1]});
         }
 
-
-        $callback->({data=>["\nKit $kit was successfully added."]});
+        push @kitnames, $kit;
     }
+
+    my $kitlist = join ',', @kitnames;
+    $callback->({data=>["\nKit $kitlist was successfully added."]});
 
     # Issue xcatd reload to load the new plugins
     system("/etc/init.d/xcatd reload");
 
 }
-
-#-------------------------------------------------------
-
-=head3 rmkit
-
-  Remove auto-generated files and their name from persistant file.
-
-=cut
-
-#-------------------------------------------------------
-sub rm_gen_file
-{
-    my $kitcomponent = shift;
-
-}
-
 
 
 #-------------------------------------------------------
@@ -991,11 +981,8 @@ sub rmkit
             if($::VERBOSE){
                 $callback->({data=>["Removing kit components from osimage.kitcomponents"]});
             }
-            my @newkitcomponents;
+
             foreach my $entry (@entries) {
-
-                my $catched = 0;
-
                 # Check osimage.kitcomponents
                 my @kitcomponents = split ',', $entry->{kitcomponents};
                 foreach my $kitcomponent ( @kitcomponents ) {
@@ -1012,25 +999,10 @@ sub rmkit
                             }
 
                             # Remove this component from osimage.kitcomponents. Mark here.
-                            $catched = 1; 
-                        } else {
-                            push @newkitcomponents, $kitcomponent;
+                            system("rmkitcomp -f -u -i $entry->{imagename} $kitcompname"); 
                         }
                     }
                 }
-
-
-                # Some kitcomponents attributes changed, set it back to DB.
-
-                if ( $catched ) {
-                    my $newnewkitcomponent = join ',', @newkitcomponents;
-                    $tabs{osimage}->setAttribs({imagename => $entry->{imagename} }, {kitcomponents => "$newnewkitcomponent"} );
-                }
-
-                # Check if this kit component generated files has been put to osimage.exlist,osimage.otherpkglist.
-                # Don't need to check -f option again, it should have returned if no -f option while checking osimage.kitcomponents.
-#                rm_gen_files();
-
             }
         }
 
@@ -1185,9 +1157,10 @@ sub addkitcomp
     foreach my $kitcomponent (@kitcomponents) {
 
         # Check if it is a kitcompname or basename
-        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $kitcomponent}, 'kitname');
-        if ( $kitcomptable and $kitcomptable->{'kitname'}){
+        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $kitcomponent}, 'kitname', 'basename');
+        if ( $kitcomptable and $kitcomptable->{'basename'}){
             $kitcomps{$kitcomponent}{name} = $kitcomponent;
+            $kitcomps{$kitcomponent}{basename} = $kitcomptable->{'basename'};
         } else {
             my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcomponent'", 'kitcompname' , 'version', 'release');
             unless (@entries) {
@@ -1197,6 +1170,7 @@ sub addkitcomp
             
             my $highest = get_highest_version('kitcompname', 'version', 'release', @entries);
             $kitcomps{$highest}{name} = $highest;
+            $kitcomps{$highest}{basename} = $kitcomponent;
         }
     }
 
@@ -1227,7 +1201,7 @@ sub addkitcomp
     }
 
     foreach my $kitcomp ( keys %kitcomps ) {
-        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $kitcomp}, 'kitname', 'kitreponame', 'serverroles');
+        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $kitcomp}, 'kitname', 'kitreponame', 'serverroles', 'kitcompdeps');
         if ( $kitcomptable and $kitcomptable->{'kitname'} and $kitcomptable->{'kitreponame'}) {
 
             # Read serverroles from kitcomponent table 
@@ -1302,13 +1276,54 @@ sub addkitcomp
             return 1;
         }
 
-        #TODO add checks to kit components' dependencies.
+        if ( $kitcomptable and $kitcomptable->{'kitcompdeps'} ) {
+            my @kitcompdeps = split ',', $kitcomptable->{'kitcompdeps'};
+            foreach my $kitcompdep ( @kitcompdeps ) {
+                my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcompdep'", 'kitcompname' , 'version', 'release');
+                unless (@entries) {
+                    $callback->({error => ["Cannot find any matched kit component for kit component $kitcomp dependency $kitcompdep\n"],errorcode=>[1]});
+                    return 1;
+                }
 
+                my $highest = get_highest_version('kitcompname', 'version', 'release', @entries);
+
+                if ( $adddeps ) {
+                    if ( !$kitcomps{$highest}{name} ) {
+                        $kitcomps{$highest}{name} = $highest;
+                    }
+                } else {
+
+                    my $catched = 0;
+                    if ( $osimagetable and $osimagetable->{'kitcomponents'}) {
+                        my @oskitcomps = split ',', $osimagetable->{'kitcomponents'};
+                        foreach my $oskitcomp ( @oskitcomps ) {
+                            if ( $highest eq $oskitcomp ) {
+                                $catched =  1;
+                                last;
+                            }
+                        }
+                    }
+
+                    foreach my $k ( keys %kitcomps ) {
+                        if ( $kitcomps{$k}{basename} and $kitcompdep eq $kitcomps{$k}{basename} ) {
+                            $catched =  1;
+                            last;
+                        }
+                    }
+
+                    if ( !$catched ) {
+                        $callback->({error => ["kit component dependency $highest for kit component $kitcomp is not existing in osimage or specified in command option\n"],errorcode=>[1]});
+                        return 1;
+                    }
+                }
+            }
+        }
     }
     
     # Now assign each component to the osimage
 
     my @kitcomps;
+    my @oskitcomps;
     my $catched = 0;
     if ( $osimagetable and $osimagetable->{'kitcomponents'}) {
         @oskitcomps = split ',', $osimagetable->{'kitcomponents'};
@@ -1461,7 +1476,6 @@ sub rmkitcomp
             $kitcomps{$highest}{driverpacks} = $kitcomptable->{driverpacks};
         }
     }
-
     # Check if the kitcomponents are existing in osimage.kitcomponents attribute.
 
     (my $osimagetable) = $tabs{osimage}->getAttribs({imagename => $osimage}, 'kitcomponents', 'postbootscripts');
@@ -1497,13 +1511,14 @@ sub rmkitcomp
         foreach my $osikitcomp ( @osikitcomps ) {
             (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $osikitcomp}, 'kitcompdeps');
             if ( $kitcomptable and $kitcomptable->{'kitcompdeps'} ) {
+
                 my @kitcompdeps = split(',', $kitcomptable->{'kitcompdeps'});
                 foreach my $kitcompdep (@kitcompdeps) {
 
                     # Get the kit component full name from basename.
                     my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcompdep'", 'kitcompname' , 'version', 'release');
                     unless (@entries) {
-                        $callback->({error => ["$kitcompdeps kitcomponent basename does not exist\n"],errorcode=>[1]});
+                        $callback->({error => ["$kitcompdep kitcomponent basename does not exist\n"],errorcode=>[1]});
                          return 1;
                     }
 
@@ -1870,6 +1885,213 @@ sub rmkitcomp
 
     # Write osimage table with all the above udpates.
     $tabs{osimage}->setAttribs({imagename => $osimage }, \%{$osimagetable} );
+
+}
+
+#-------------------------------------------------------
+
+=head3  chkkitcomp 
+
+    Check if the kit components fits to osimage
+
+=cut
+
+#-------------------------------------------------------
+sub chkkitcomp
+{
+    my $request = shift;
+    my $callback = shift;
+
+    my $xusage = sub {
+        my %rsp;
+        push@{ $rsp{data} }, "chkkitcomp: Check if kit component fits to osimage";
+        push@{ $rsp{data} }, "Usage: ";
+        push@{ $rsp{data} }, "\tchkkitcomp [-h|--help]";
+        push@{ $rsp{data} }, "\tchkkitcomp [-o|--overwrite] [-V|--verbose] -i <osimage> <kitcompname_list>";
+        $callback->(\%rsp);
+    };
+
+    unless(defined($request->{arg})){ $xusage->(1); return; }
+    @ARGV = @{$request->{arg}};
+    if($#ARGV eq -1){
+            $xusage->(1);
+            return;
+    }
+
+
+    GetOptions(
+            'h|help' => \$help,
+            'V|verbose' => \$::VERBOSE,
+            'o|overwrite' => \$overwrite,
+            'i=s' => \$osimage
+    );
+
+    if($help){
+            $xusage->(0);
+            return;
+    }
+
+    my %tabs = ();
+    my @tables = qw(kit kitrepo kitcomponent osimage osdistro linuximage);
+    foreach my $t ( @tables ) {
+        $tabs{$t} = xCAT::Table->new($t,-create => 1,-autocommit => 1);
+
+        if ( !exists( $tabs{$t} )) {
+            $callback->({error => ["Could not open xCAT table $t\n"],errorcode=>[1]});
+            return 1;
+        }
+    }
+
+    # Check if all the kitcomponents are existing before processing
+
+    my %kitcomps;
+    my %kitcompbasename;
+    my $des = shift @ARGV;
+    my @kitcomponents = split ',', $des;
+    foreach my $kitcomponent (@kitcomponents) {
+
+        # Check if it is a kitcompname or basename
+        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $kitcomponent}, 'kitname', 'kitcompdeps', 'kitpkgdeps', 'kitreponame', 'basename', 'serverroles');
+        if ( $kitcomptable and $kitcomptable->{'kitname'}){
+            $kitcomps{$kitcomponent}{name} = $kitcomponent;
+            $kitcomps{$kitcomponent}{kitname} = $kitcomptable->{kitname};
+            $kitcomps{$kitcomponent}{kitpkgdeps} = $kitcomptable->{kitpkgdeps};
+            $kitcomps{$kitcomponent}{kitcompdeps} = $kitcomptable->{kitcompdeps};
+            $kitcomps{$kitcomponent}{basename} = $kitcomptable->{basename};
+            $kitcomps{$kitcomponent}{kitreponame} = $kitcomptable->{kitreponame};
+            $kitcomps{$kitcomponent}{serverroles} = $kitcomptable->{serverroles};
+            $kitcompbasename{$kitcomptable->{basename}} = 1;
+        } else {
+            my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcomponent'", 'kitcompname' , 'version', 'release');
+            unless (@entries) {
+                $callback->({error => ["$kitcomponent kitcomponent does not exist\n"],errorcode=>[1]});
+                return 1;
+            }
+
+            my $highest = get_highest_version('kitcompname', 'version', 'release', @entries);
+            $kitcomps{$highest}{name} = $highest;
+            (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $highest}, 'kitname', 'kitpkgdeps', 'kitcompdeps', 'kitreponame', 'basename', 'serverroles');
+            $kitcomps{$highest}{kitname} = $kitcomptable->{kitname};
+            $kitcomps{$highest}{kitpkgdeps} = $kitcomptable->{kitpkgdeps};
+            $kitcomps{$highest}{kitcompdeps} = $kitcomptable->{kitcompdeps};
+            $kitcomps{$highest}{basename} = $kitcomptable->{basename};
+            $kitcomps{$highest}{kitreponame} = $kitcomptable->{kitreponame};
+            $kitcomps{$highest}{serverroles} = $kitcomptable->{serverroles};
+            $kitcompbasename{$kitcomponent} = 1;
+        }
+    }
+
+    # Verify if the kitcomponents fitting to the osimage or not.
+    my %os;
+    my $osdistrotable;
+    (my $osimagetable) = $tabs{osimage}->getAttribs({imagename=> $osimage}, 'osdistroname', 'serverrole', 'kitcomponents');
+    if ( $osimagetable and $osimagetable->{'osdistroname'}){
+        ($osdistrotable) = $tabs{osdistro}->getAttribs({osdistroname=> $osimagetable->{'osdistroname'}}, 'basename', 'majorversion', 'minorversion', 'arch', 'type');
+        if ( !$osdistrotable or !$osdistrotable->{basename} ) {
+            $callback->({error => ["$osdistroname osdistro does not exist\n"],errorcode=>[1]});
+            return 1;
+        }
+
+        # Read basename,majorversion,minorversion,arch,type, from osdistro table
+        $os{$osimage}{basename} = lc($osdistrotable->{basename});
+        $os{$osimage}{majorversion} = lc($osdistrotable->{majorversion});
+        $os{$osimage}{minorversion} = lc($osdistrotable->{minorversion});
+        $os{$osimage}{arch} = lc($osdistrotable->{arch});
+        $os{$osimage}{type} = lc($osdistrotable->{type});
+
+        # Read serverrole from osimage.
+        $os{$osimage}{serverrole} = lc($osimagetable->{'serverrole'});
+
+    } else {
+        $callback->({error => ["$osimage osimage does not exist or not saticified\n"],errorcode=>[1]});
+        return 1;
+    }
+
+    my @kitcompnames;
+    foreach my $kitcomp ( keys %kitcomps ) {
+        if ( $kitcomps{$kitcomp}{kitname} and $kitcomps{$kitcomp}{kitreponame}) { 
+
+            # Read ostype from kit table
+            (my $kittable) = $tabs{kit}->getAttribs({kitname => $kitcomps{$kitcomp}{kitname}}, 'ostype');
+            if ( $kittable and $kittable->{ostype} ) {
+                $kitcomps{$kitcomp}{ostype} = lc($kittable->{ostype});
+            } else {
+                $callback->({error => ["$kitcomp ostype does not exist\n"],errorcode=>[1]});
+                return 1;
+            }
+
+            # Read osbasename, osmajorversion,osminorversion,osarch,compat_osbasenames from kitrepo table
+            (my $kitrepotable) = $tabs{kitrepo}->getAttribs({kitreponame => $kitcomps{$kitcomp}{kitreponame}}, 'osbasename', 'osmajorversion', 'osminorversion', 'osarch', 'compat_osbasenames');
+            if ($kitrepotable and $kitrepotable->{osbasename} and $kitrepotable->{osmajorversion} and $kitrepotable->{osarch}) {
+                if ($kitrepotable->{compat_osbasenames}) {
+                    $kitcomps{$kitcomp}{osbasename} = lc($kitrepotable->{osbasename}) . ',' . lc($kitrepotable->{compat_osbasenames});
+                } else {
+                    $kitcomps{$kitcomp}{osbasename} = lc($kitrepotable->{osbasename});
+                }
+
+                $kitcomps{$kitcomp}{osmajorversion} = lc($kitrepotable->{osmajorversion});
+                $kitcomps{$kitcomp}{osminorversion} = lc($kitrepotable->{osminorversion});
+                $kitcomps{$kitcomp}{osarch} = lc($kitrepotable->{osarch});
+            } else {
+                $callback->({error => ["$kitcomp osbasename,osmajorversion,osminorversion or osarch does not exist\n"],errorcode=>[1]});
+                return 1;
+            }
+
+        }  else {
+            $callback->({error => ["$kitcomp kitname $kitcomptable->{'kitname'} or kitrepo name $kitcomptable->{'kitreponame'} or serverroles $kitcomps{$kitcomp}{serverroles} does not exist.\n"],errorcode=>[1]});
+            return 1;
+        }
+
+        # Validate each attribute in kitcomp.
+        my $catched = 0;
+        my @osbasename = split ',', $kitcomps{$kitcomp}{osbasename};
+        foreach (@osbasename) {
+            if ( $os{$osimage}{basename} eq $_ ) {
+                $catched = 1;
+            }
+        }
+        unless ( $catched ) {
+            $callback->({error => ["kit component $kitcomp doesn't fit to osimage $osimage with attribute OS \n"],errorcode=>[1]});
+            return 1;
+        }
+
+        if ( $os{$osimage}{majorversion} ne $kitcomps{$kitcomp}{osmajorversion} ) {
+            $callback->({error => ["kit component $kitcomp doesn't fit to osimage $osimage with attribute majorversion\n"],errorcode=>[1]});
+            return 1;
+        }
+
+        if ( $os{$osimage}{minorversion} and ($os{$osimage}{minorversion} ne $kitcomps{$kitcomp}{osminorversion}) ) {
+            $callback->({error => ["kit component $kitcomp doesn't fit to osimage $osimage with attribute minorversion\n"],errorcode=>[1]});
+            return 1;
+        }
+
+        if ( $os{$osimage}{arch} ne $kitcomps{$kitcomp}{osarch} ) {
+            $callback->({error => ["kit component $kitcomp doesn't fit to osimage $osimage with attribute arch\n"],errorcode=>[1]});
+            return 1;
+        }
+
+        if ( $os{$osimage}{type} ne $kitcomps{$kitcomp}{ostype} ) {
+            $callback->({error => ["kit component $kitcomp doesn't fit to osimage $osimage with attribute type\n"],errorcode=>[1]});
+            return 1;
+        }
+
+        if ( $os{$osimage}{serverrole} and ($os{$osimage}{serverrole} ne $kitcomps{$kitcomp}{serverroles}) ) {
+            $callback->({error => ["kit component $kitcomp doesn't fit to osimage $osimage with attribute serverrole\n"],errorcode=>[1]});
+            return 1;
+        }
+
+        # Check if this kit component's dependencies are in the kitcomponent list.
+        if ( $kitcomps{$kitcomp}{kitcompdeps} and !exists( $kitcompbasename{ $kitcomps{$kitcomp}{kitcompdeps} } ) ) {
+            $callback->({error => ["kit component $kitcomp dependency $kitcomps{$kitcomp}{kitcompdeps} doesn't existing\n"],errorcode=>[1]});
+            return 1;
+        }
+
+        push @kitcompnames, $kitcomp;
+    }
+
+    my $kitcompnamelist = join ',', @kitcompnames;
+
+    $callback->({data=>["\nKit components $kitcompnamelist fit to osimage $osimage\n"]});    
 
 }
 
