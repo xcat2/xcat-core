@@ -227,6 +227,8 @@ sub execute_dcp
             if ($exit_code != 0)
             {
                 # report error status  --nodestatus
+                # Note the message below for node status must
+                # not be NLS translated.  Code depends on the English. 
                 if ($$options{'nodestatus'}) {
                    my $rsp={};
                   $rsp->{data}->[0] =
@@ -240,6 +242,8 @@ sub execute_dcp
 
             else
             {
+                # Note the message below for node status must
+                # not be NLS translated.  Code depends on the English. 
                 if ($$options{'nodestatus'}) {
                    my $rsp={};
                   $rsp->{data}->[0] =
@@ -609,6 +613,8 @@ sub _execute_dsh
             if ($exit_code != 0)
             {
 
+                # Note the message below for node status must
+                # not be NLS translated.  Code depends on the English. 
                 # report error status  --nodestatus
                 if ($$options{'nodestatus'}) {
                    my $rsp={};
@@ -635,6 +641,8 @@ sub _execute_dsh
             {
                 if ($target_rc != 0)
                 {
+                  # Note the message below for node status must
+                  # not be NLS translated.  Code depends on the English. 
                    # report error status  --nodestatus
                    if ($$options{'nodestatus'}) {
                      my $rsp={};
@@ -657,6 +665,8 @@ sub _execute_dsh
                 elsif (!defined($target_rc) && !$dsh_cmd_background && ($::DSH_MELLANOX_SWITCH==0))
                 {
                    # report error status  --nodestatus
+                  # Note the message below for node status must
+                  # not be NLS translated.  Code depends on the English. 
                    if ($$options{'nodestatus'}) {
                      my $rsp={};
                      $rsp->{data}->[0] =
@@ -682,6 +692,8 @@ sub _execute_dsh
 
                 else   # it worked
                 {
+                  # Note the message below for node status must
+                  # not be NLS translated.  Code depends on the English. 
                    if ($$options{'nodestatus'}) {
                     my $rsp={};
                     $rsp->{data}->[0] =
