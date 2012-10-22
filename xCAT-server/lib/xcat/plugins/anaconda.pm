@@ -1142,7 +1142,7 @@ sub mkinstall
             {
                 mkpath("$tftpdir/xcat/$os/$arch");
                 if($esxi){
-                    copyesxiboot($pkgdir, "$tftpdir/xcat/$os/$arch");		
+                    copyesxiboot($pkgdir, "$tftpdir/xcat/$os/$arch",osver=>$os);		
                 }else{
                     my $tftppath;
                     if ($profile) {
@@ -1637,10 +1637,13 @@ sub getplatform {
 sub copyesxiboot {
     my $srcdir = shift;
     my $targetdir = shift;
+    my %args=@_;
+    my $os='esxi';
+    if ($args{osver}) { $os=$args{osver} }
     # this just does the same thing that the stateless version does.
     unless(-f "$targetdir/mod.tgz"){
 	require xCAT_plugin::esx;
-        xCAT_plugin::esx::makecustomizedmod('esxi', $targetdir);
+        xCAT_plugin::esx::makecustomizedmod($os, $targetdir);
     }
     my @files = qw(mboot.c32 vmkboot.gz vmkernel.gz sys.vgz cim.vgz ienviron.vgz install.vgz);
     foreach my $f (@files){
