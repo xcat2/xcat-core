@@ -59,24 +59,33 @@ sub process_request
     my $request  = shift;
     my $callback = shift;
 
-    my $command  = $request->{command}->[0];
-
-    if ($command eq "addkit"){
-        return addkit($request, $callback);
-    } elsif ($command eq "rmkit"){
-        return rmkit($request, $callback);
-    } elsif ($command eq "addkitcomp"){
-        return addkitcomp($request, $callback);
-    } elsif ($command eq "rmkitcomp"){
-        return rmkitcomp($request, $callback);
-    } elsif ($command eq "chkkitcomp"){
-        return chkkitcomp($request, $callback);
-    } else{
-            $callback->({error=>["Error: $command not found in this module."],errorcode=>[1]});
-            #return (1, "$command not found);
+    my $lock = xCAT::Utils->acquire_lock("kit", 1);
+    unless ($lock){
+        $callback->({error=>["Can not acquire lock, another process is running."],errorcode=>[1]});
+        return 1;
     }
 
-    return;
+    my $command  = $request->{command}->[0];
+    my $rc;
+
+    if ($command eq "addkit"){
+        $rc = addkit($request, $callback);
+    } elsif ($command eq "rmkit"){
+        $rc = rmkit($request, $callback);
+    } elsif ($command eq "addkitcomp"){
+        $rc = addkitcomp($request, $callback);
+    } elsif ($command eq "rmkitcomp"){
+        $rc = rmkitcomp($request, $callback);
+    } elsif ($command eq "chkkitcomp"){
+        $rc = chkkitcomp($request, $callback);
+    } else{
+        $callback->({error=>["Error: $command not found in this module."],errorcode=>[1]});
+        xCAT::Utils->release_lock($lock, 1);
+        return 1;
+    }
+
+    xCAT::Utils->release_lock($lock, 1);
+    return $rc;
 
 }
 
@@ -634,8 +643,7 @@ sub addkit
     my $request = shift;
     my $callback = shift;
 
-
-    my $kitdir;
+    my $path;
     my $rc;
     my %kithash;
     my %kitrepohash;
@@ -661,7 +669,7 @@ sub addkit
     GetOptions(
             'h|help' => \$help,
             'V|verbose' => \$::VERBOSE,
-            'p|path=s' => \$kitdir
+            'p|path=s' => \$path,
     );
 
     if($help){
@@ -687,6 +695,9 @@ sub addkit
     my @kitnames;
     foreach my $kit (@kits) {
 
+        my $kitdir = '';
+        my $kittmpdir = '';
+
         # extract the Kit to kitdir
         my $installdir = xCAT::TableUtils->getInstallDir();
         unless($installdir){
@@ -701,52 +712,35 @@ sub addkit
             $kit = "$dir/$kit";
         }
 
-        unless(-r $kit){
+        unless (-r $kit) {
             $callback->({error => ["Can not find $kit"],errorcode=>[1]});
             return;
         }
 
 
-        if (!$kitdir) {
-            $kitdir = $installdir . "/kits";
-        }
-        if($::VERBOSE){
-            $callback->({data=>["Create Kit directory $kitdir"]});
-        }
-
-        $kitdir =~ s/\/$//;
-        mkdir($kitdir);
-
         if(-d "$kit") {
             # This is a directory.
             # TODO: check if this is a valid kit directory.
 
-            if($::VERBOSE){
-                $callback->({data=>["Copying Kit from $kit to $kitdir"]});
-                $rc = system("cp -rfv $kit $kitdir");
-            } else {
-                $rc = system("cp -rf $kit $kitdir");
-            }
-
-            $basename = basename($kit);
+            $kittmpdir = $kit;
         } else {
             # should be a tar.bz2 file
-            if($::VERBOSE){
-                $callback->({data=>["Extract Kit $kit to $kitdir"]});
-                $rc = system("tar jxvf $kit -C $kitdir");
-            } else {
-                $rc = system("tar jxf $kit -C $kitdir");
-            }
 
-            # Need discussion of how to get dirname from kit tarball file.  For example, how to get kit-test from kit-test.tar.bz2.
-            # Remove the tar.bz2 directly or extract it to a clean dir and get its name? 
             $basename = basename($kit);
             $basename =~ s/.tar.bz2//;
+            $kittmpdir = "/tmp/" . $basename;
+            chmod(0666, "$kittmpdir/*");
+
+            system("rm -rf $kittmpdir");
+
+            if($::VERBOSE){
+                $callback->({data=>["Extract Kit $kit to /tmp"]});
+                $rc = system("tar jxvf $kit -C /tmp");
+            } else {
+                $rc = system("tar jxf $kit -C /tmp");
+            }
+
         }
-
-
-        $kitdir = $kitdir ."/". $basename;
-        chmod(0666, "$kitdir/*");
 
 
         if($rc){
@@ -755,14 +749,14 @@ sub addkit
 
         # Read kit info from kit.conf
         my @lines;
-        if (open(KITCONF, "<$kitdir/$kitconf")) {
+        if (open(KITCONF, "<$kittmpdir/$kitconf")) {
             @lines = <KITCONF>;
             close(KITCONF);
             if($::VERBOSE){
-                $callback->({data=>["\nReading kit configuration file $kitdir/$kitconf\n"]});
+                $callback->({data=>["\nReading kit configuration file $kittmpdir/$kitconf\n"]});
             }
         } else {
-            $callback->({error => ["Could not open kit configuration file $kitdir/$kitconf\n"],errorcode=>[1]});
+            $callback->({error => ["Could not open kit configuration file $kittmpdir/$kitconf\n"],errorcode=>[1]});
             return 1;
         }
 
@@ -796,7 +790,6 @@ sub addkit
             if ( $sec =~ /KIT$/) {
                 if ( $key =~ /kitname/ ) {
                     $kitname = $value;
-                    $kithash{$kitname}{kitdir} = $kitdir;
                 } else {
                     $kithash{$kitname}{$key} = $value;
                 }
@@ -820,31 +813,48 @@ sub addkit
 
         #TODO:  add check to see the the attributes name are acceptable by xCAT DB.
         #TODO: need to check if the files are existing or not, like exlist,
-        # Write to DB
-        if($::VERBOSE){
-            $callback->({data=>["Writing kit configuration into xCAT DB\n"]});
-        }
 
         unless (keys %kithash) {
-            $callback->({error => ["Failed to add kit because there is no kit.conf or kit.conf is empty"],errorcode=>[1]});
+            $callback->({error => ["Failed to add kit because kit.conf is invalid"],errorcode=>[1]});
             return 1;
         }
 
-        foreach my $kitname (keys %kithash) { 
-            $tabs{kit}->setAttribs({kitname => $kitname }, \%{$kithash{$kitname}} );
+        (my $ref1) = $tabs{kit}->getAttribs({kitname => $kitname}, 'basename');
+        if ( $ref1 and $ref1->{'basename'}){
+            $callback->({error => ["Failed to add kit $kitname because it is already existing"],errorcode=>[1]});
+            return 1;
         }
 
-        foreach my $kitreponame (keys %kitrepohash) {
-            $tabs{kitrepo}->setAttribs({kitreponame => $kitreponame }, \%{$kitrepohash{$kitreponame}} );
+        $callback->({data=>["Adding Kit $kitname"]});
+
+        # Moving kits from tmp directory to kitdir
+        if (!$path) {
+            $kitdir = $installdir . "/kits";
+        } else {
+            $kitdir = $path;
         }
 
-        foreach my $kitcompname (keys %kitcomphash) {
-            $tabs{kitcomponent}->setAttribs({kitcompname => $kitcompname }, \%{$kitcomphash{$kitcompname}} );
+        $kitdir =~ s/\/$//;
+        $kitdir = $kitdir . "/" . $kitname;
+
+        if($::VERBOSE){
+            $callback->({data=>["Create Kit directory $kitdir"]});
+        }
+        mkpath($kitdir);
+
+        # Set kitdir
+        $kithash{$kitname}{kitdir} = $kitdir;
+
+        if($::VERBOSE){
+            $callback->({data=>["\nCopying Kit from $kittmpdir to $kitdir"]});
+            $rc = system("cp -rfv $kittmpdir/* $kitdir");
+        } else {
+            $rc = system("cp -rf $kittmpdir/* $kitdir");
         }
 
         # Coying scripts to /installdir/postscripts/
         if($::VERBOSE){
-            $callback->({data=>["Copying kit scripts from $kitdir/other_files/ to $installdir/postscripts"]});
+            $callback->({data=>["\nCopying kit scripts from $kitdir/other_files/ to $installdir/postscripts"]});
         }
         my @script = split ',', $scripts;
         foreach (@script) {
@@ -859,6 +869,7 @@ sub addkit
 
         if($rc){
             $callback->({error => ["Failed to copy scripts from $kitdir/scripts/ to $installdir/postscripts\n"],errorcode=>[1]});
+            return 1;
         }
 
         # Copying plugins to /opt/xcat/lib/perl/xCAT_plugin/
@@ -873,6 +884,24 @@ sub addkit
 
         if($rc){
             $callback->({error => ["Failed to copy plugins from $kitdir/plugins/ to $::XCATROOT/lib/perl/xCAT_plugin\n"],errorcode=>[1]});
+            return 1;
+        }
+
+        # Write to DB
+        if($::VERBOSE){
+            $callback->({data=>["\nWriting kit configuration into xCAT DB"]});
+        }
+
+        foreach my $kitname (keys %kithash) {
+            $tabs{kit}->setAttribs({kitname => $kitname }, \%{$kithash{$kitname}} );
+        }
+
+        foreach my $kitreponame (keys %kitrepohash) {
+            $tabs{kitrepo}->setAttribs({kitreponame => $kitreponame }, \%{$kitrepohash{$kitreponame}} );
+        }
+
+        foreach my $kitcompname (keys %kitcomphash) {
+            $tabs{kitcomponent}->setAttribs({kitcompname => $kitcompname }, \%{$kitcomphash{$kitcompname}} );
         }
 
         push @kitnames, $kit;
@@ -967,8 +996,11 @@ sub rmkit
 
     # Remove each kit
     my @entries = $tabs{'osimage'}->getAllAttribs( 'imagename', 'kitcomponents' );
+    my @kitlist;
 
     foreach my $kitname (keys %kitnames) {
+
+        $callback->({data=>["Removing kit $kitname"]});
 
         # Remove osimage.kitcomponents.
 
@@ -1083,9 +1115,12 @@ sub rmkit
         # Remove kit
         $tabs{kit}->delEntries({kitname => $kitname});
 
-        $callback->({data=>["Kit $kitname was successfully removed."]});
+        push @kitlist, $kitname;
 
     }
+
+    my $kits = join ',', @kitlist;
+    $callback->({data=>["Kit $kits was successfully removed."]});
 
     # Issue xcatd reload to load the new plugins
     system("/etc/init.d/xcatd reload");
@@ -1151,6 +1186,10 @@ sub addkitcomp
 
     # Check if all the kitcomponents are existing before processing
 
+    if($::VERBOSE){
+        $callback->({data=>["Checking if kitcomponents are valid"]});
+    }
+
     my %kitcomps;
     my $des = shift @ARGV;
     my @kitcomponents = split ',', $des;
@@ -1175,6 +1214,11 @@ sub addkitcomp
     }
 
     # Verify if the kitcomponents fitting to the osimage or not.
+
+    if($::VERBOSE){
+        $callback->({data=>["Verifying if kitcomponents fit to osimage"]});
+    }
+
     my %os;
     my $osdistrotable;
     (my $osimagetable) = $tabs{osimage}->getAttribs({imagename=> $osimage}, 'osdistroname', 'serverrole', 'kitcomponents');
@@ -1318,17 +1362,30 @@ sub addkitcomp
                 }
             }
         }
+
+        if($::VERBOSE){
+            $callback->({data=>["kitcomponent $kitcomp fits to osimage $osimage"]});
+        }
     }
     
     # Now assign each component to the osimage
 
+    if($::VERBOSE){
+        $callback->({data=>["Assigning kitcomponent to osimage"]});
+    }
+
     my @kitcomps;
     my @oskitcomps;
     my $catched = 0;
+    my @kitlist;
+
     if ( $osimagetable and $osimagetable->{'kitcomponents'}) {
         @oskitcomps = split ',', $osimagetable->{'kitcomponents'};
     }
+
     foreach my $kitcomp ( keys %kitcomps ) {
+
+        $callback->({data=>["Assigning kit component $kitcomp to osimage $osimage"]});
         # Check if this component is existing in osimage.kitcomponents
         foreach my $oskitcomp ( @oskitcomps ) {
             if ( $kitcomp eq $oskitcomp ) {
@@ -1375,9 +1432,11 @@ sub addkitcomp
             my $rc = assign_to_osimage( $osimage, $kitcomp, $callback, \%tabs);                
         }
             
+        push @kitlist, $kitcomp;
     }
 
-
+    my $kitnames = join ',', @kitlist;
+    $callback->({data=>["Kit components $kitnames were added to osimage $osimage successfully"]});
 }
 
 #-------------------------------------------------------
@@ -1440,6 +1499,10 @@ sub rmkitcomp
 
 
     # Check if all the kitcomponents are existing before processing
+
+    if($::VERBOSE){
+        $callback->({data=>["Checking if kitcomponents are valid"]});
+    }
 
     my %kitcomps;
     my $des = shift @ARGV;
@@ -1609,8 +1672,10 @@ sub rmkitcomp
     }
     $installdir =~ s/\/$//;
 
-
+    my @kitlist;
     foreach my $kitcomponent (keys %kitcomps) {
+
+        $callback->({data=>["Removing kitcomponent $kitcomponent from osimage $osimage"]});
 
         if ( !exists($kitcomps{$kitcomponent}{kitname}) ) {
             $callback->({error => ["Could not find kit object for kitcomponent $kitcomponent"],errorcode=>[1]});
@@ -1877,8 +1942,13 @@ sub rmkitcomp
                 $linuximagetable->{driverupdatesrc} = $newdriverupdatesrc;
             }
         }
+
+        push @kitlist, $kitcomponent;
+
     }
 
+    my $kitcompnames = join ',', @kitlist;
+    $callback->({data=>["kitcomponents $kitcompnames were removed from osimage $osimage successfully"]});
 
     # Write linuximage table with all the above udpates.
     $tabs{linuximage}->setAttribs({imagename => $osimage }, \%{$linuximagetable} );
