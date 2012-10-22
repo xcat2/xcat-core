@@ -3052,9 +3052,7 @@ sub bld_resolve_nodes_hash
 
     # find out if we have an MN in the list, local cp and sh will be used
     # not remote shell
-    my $tab = xCAT::Table->new('nodetype');
-    my $type = $tab->getNodesAttribs(\@target_list,['nodetype']);
- 
+    my $mname = xCAT::Utils->noderangecontainsMn(@target_list);
     foreach my $target (@target_list)
     {
 
@@ -3063,9 +3061,11 @@ sub bld_resolve_nodes_hash
         my $localhost;
         my $user;
         my $context = "XCAT";
-        my $nodetype=$type->{$target}->[0]->{nodetype};
-        if ($type->{$target}->[0]->{nodetype} eq "mn") {
-          $localhost=$target;
+        # check to see if this node is the Management Node
+        if ($mname) {
+          if ($mname eq $target) {
+            $localhost=$target;
+          }
         }
         my %properties = (
                           'hostname'   => $hostname,
