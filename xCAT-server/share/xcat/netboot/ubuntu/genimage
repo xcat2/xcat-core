@@ -641,7 +641,11 @@ if ($dracutmode) {
     mkinitrd_dracut("statelite");
     mkinitrd_dracut("stateless");
 } else {
+    my @drivers; # backup  of @ndrivers
+    push @drivers, @ndrivers;
     mkinitrd("statelite");
+    @ndrivers=();
+    push @ndrivers, @drivers;
     mkinitrd("stateless");
 }
 
