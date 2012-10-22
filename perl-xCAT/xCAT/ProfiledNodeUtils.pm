@@ -213,62 +213,75 @@ sub rackformat_to_numricformat{
 
 #-------------------------------------------------------------------------------
 
-=head3 get_netprofile_nic_attrs
-      Description : Get networkprofile's NIC attributes and return a dict.
-      Arguments   : $netprofilename - network profile name.
-      Returns     : A hash %netprofileattrs for network profile attributes.
-                    keys of %netprofileattrs are nics names, like: ib0, eth0, bmc...
-                    values of %netprofileattrs are attributes of a specific nic, like:
+=head3 get_nodes_nic_attrs
+      Description : Get nodes NIC attributes and return a dict.
+      Arguments   : $nodelist - nodes list ref.
+      Returns     : A hash ref of %nicsattrs for node's nics attributes.
+                    keys of %nicsattrs are node names.
+                    values of %nicsattrs are nics attrib ref.
+                    For each nic attrib ref, the keys are nic names, like: ib0, eth0, bmc...
+                    values are attributes of a specific nic, like:
                         type : nic type
                         hostnamesuffix: hostname suffix
                         customscript: custom script for this nic
                         network: network name for this nic
+                        ip: ip address of this nic.
 =cut
 
 #-------------------------------------------------------------------------------
-sub get_netprofile_nic_attrs{
+sub get_nodes_nic_attrs{
     my $class = shift;
-    my $netprofilename = shift;
+    my $nodes = shift;
 
     my $nicstab = xCAT::Table->new( 'nics');
-    my $entry = $nicstab->getNodeAttribs("$netprofilename", ['nictypes', 'nichostnamesuffixes', 'niccustomscripts', 'nicnetworks']);
+    my $entry = $nicstab->getNodesAttribs($nodes, ['nictypes', 'nichostnamesuffixes', 'niccustomscripts', 'nicnetworks']);
 
-    my %netprofileattrs;
+    my %nicsattrs;
     my @nicattrslist;
 
-    if ($entry->{'nictypes'}){
-        @nicattrslist = split(",", $entry->{'nictypes'});
-        foreach (@nicattrslist){
-            my @nicattrs = split(":", $_);
-            $netprofileattrs{$nicattrs[0]}{'type'} = $nicattrs[1];
+    foreach my $node (@$nodes){
+        if ($entry->{$node}->[0]->{'nictypes'}){
+            @nicattrslist = split(",", $entry->{$node}->[0]->{'nictypes'});
+            foreach (@nicattrslist){
+                my @nicattrs = split(":", $_);
+                $nicsattrs{$node}{$nicattrs[0]}{'type'} = $nicattrs[1];
+            }
+        }
+
+        if($entry->{$node}->[0]->{'nichostnamesuffixes'}){
+            @nicattrslist = split(",", $entry->{$node}->[0]->{'nichostnamesuffixes'});
+            foreach (@nicattrslist){
+                my @nicattrs = split(":", $_);
+                $nicsattrs{$node}{$nicattrs[0]}{'hostnamesuffix'} = $nicattrs[1];
+            }
+        }
+
+        if($entry->{$node}->[0]->{'niccustomscripts'}){
+            @nicattrslist = split(",", $entry->{$node}->[0]->{'niccustomscripts'});
+            foreach (@nicattrslist){
+                my @nicattrs = split(":", $_);
+                $nicsattrs{$node}{$nicattrs[0]}{'customscript'} = $nicattrs[1];
+            }
+        }
+
+        if($entry->{$node}->[0]->{'nicnetworks'}){
+            @nicattrslist = split(",", $entry->{$node}->[0]->{'nicnetworks'});
+            foreach (@nicattrslist){
+                my @nicattrs = split(":", $_);
+                $nicsattrs{$node}{$nicattrs[0]}{'network'} = $nicattrs[1];
+            }
+        }
+
+        if($entry->{$node}->[0]->{'nicips'}){
+            @nicattrslist = split(",", $entry->{$node}->[0]->{'nicips'});
+            foreach (@nicattrslist){
+                my @nicattrs = split(":", $_);
+                $nicsattrs{$node}{$nicattrs[0]}{'ip'} = $nicattrs[1];
+            }
         }
     }
 
-    if($entry->{'nichostnamesuffixes'}){
-        @nicattrslist = split(",", $entry->{'nichostnamesuffixes'});
-        foreach (@nicattrslist){
-            my @nicattrs = split(":", $_);
-            $netprofileattrs{$nicattrs[0]}{'hostnamesuffix'} = $nicattrs[1];
-        }
-    }
-
-    if($entry->{'niccustomscripts'}){
-        @nicattrslist = split(",", $entry->{'niccustomscripts'});
-        foreach (@nicattrslist){
-            my @nicattrs = split(":", $_);
-            $netprofileattrs{$nicattrs[0]}{'customscript'} = $nicattrs[1];
-        }
-    }
-
-    if($entry->{'nicnetworks'}){
-        @nicattrslist = split(",", $entry->{'nicnetworks'});
-        foreach (@nicattrslist){
-            my @nicattrs = split(":", $_);
-            $netprofileattrs{$nicattrs[0]}{'network'} = $nicattrs[1];
-        }
-    }
-
-    return \%netprofileattrs;
+    return \%nicsattrs;
 }
 
 #-------------------------------------------------------------------------------
@@ -438,43 +451,6 @@ sub get_allnode_singleattrib_hash
 
 #-------------------------------------------------------------------------------
 
-=head3 acquire_lock
-      Description : Create lock file for plugins so that there is 
-                    no multi instance of plugins running at same time.
-                    The lock file content will be the pid of the plugin running process.
-                    Using perl's flock to achive this.
-                    Note: we can not judge whether profiled nodes discovering is running 
-                          or not only through acquire_lock("nodemgmt")
-                          We must also call is_discover_started() 
-      Arguments   : action name: for example: nodemgmt, imageprofile...etc We'll generate
-                    a lock file named as /var/lock/pcm/$action.
-      Returns     : -1 - Acquire lock failed.
-                    fh of lock file - the filehandler of lock file.
-=cut
-
-#-------------------------------------------------------------------------------
-sub acquire_lock
-{
-    my $class = shift;
-    my $action = shift;
-    my $lockdir = "/var/lock/pcm";
-    my $lockfile = "$lockdir/$action";
-
-    mkdir "$lockdir", 0755 unless -d "$lockdir";
-    open my $fh, ">$lockfile";
-    # use flock, non-blocking mode while acquiring a lock.
-    my $lockret = flock($fh, LOCK_EX|LOCK_NB);
-    if(! $lockret){
-        close $fh;
-        return -1;
-    }
-
-    print $fh $$;
-    return $fh;
-}
-
-#-------------------------------------------------------------------------------
-
 =head3 is_discover_started
       Description : Judge whether profiled nodes discovering is running or not.
       Arguments   : NA
@@ -491,50 +467,6 @@ sub is_discover_started
     }
     return 1;
 }
-
-#-------------------------------------------------------------------------------
-
-=head3 release_lock
-      Description : Release lock for node management process.
-      Arguments   : fh - the lock file handler.
-      Returns     : return value of flock.
-                    True - release lock succeed.
-                    False - release lock failed.
-=cut
-
-#-------------------------------------------------------------------------------
-sub release_lock
-{
-    my $class = shift;
-    my $lockfh = shift;
-    return flock($lockfh, LOCK_UN|LOCK_NB);
-}
-
-#-------------------------------------------------------------------------------
-
-=head3 is_locked
-      Description : Try to see whether current command catagory is locked or not.
-      Arguments   : action - command catagory
-      Returns     : 
-                    1 - current command catagory already locked.
-                    0 - not locked yet.
-=cut
-
-#-------------------------------------------------------------------------------
-sub is_locked
-{
-    my $class = shift;
-    my $action = shift;
-
-    my $lock = xCAT::ProfiledNodeUtils->acquire_lock($action);
-    if ($lock == -1){
-        return 1;
-    }
-
-    xCAT::ProfiledNodeUtils->release_lock($lock);
-    return 0;
-}
-
 
 #-------------------------------------------------------------------------------
 

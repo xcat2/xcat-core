@@ -76,15 +76,19 @@ sub process_request {
     {
         setrsp_progress("Updating hosts entries");
         $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodelist}, $request_command, 0, 1);
+        log_cmd_return($retref);
 
         setrsp_progress("Updating DNS entries");
         $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist}, $request_command, 0, 1);
+        log_cmd_return($retref);
 
         setrsp_progress("Update DHCP entries");
         $retref = xCAT::Utils->runxcmd({command=>["makedhcp"], node=>$nodelist}, $request_command, 0, 1);
+        log_cmd_return($retref);
 
         setrsp_progress("Update known hosts");
         $retref = xCAT::Utils->runxcmd({command=>["makeknownhosts"], node=>$nodelist}, $request_command, 0, 1);
+        log_cmd_return($retref);
 
         my $firstnode = (@$nodelist)[0];
         my $profileref = xCAT::ProfiledNodeUtils->get_nodes_profiles([$firstnode]);
@@ -92,65 +96,82 @@ sub process_request {
         if (exists $profilehash{$firstnode}{"ImageProfile"}){
             setrsp_progress("Update nodes' boot settings");
             $retref = xCAT::Utils->runxcmd({command=>["nodeset"], node=>$nodelist, arg=>['osimage='.$profilehash{$firstnode}{"ImageProfile"}]}, $request_command, 0, 1);
+            log_cmd_return($retref);
         }
 
     }
     elsif ($command eq 'kitnoderemove'){
         setrsp_progress("Update nodes' boot settings");
         $retref = xCAT::Utils->runxcmd({command=>["nodeset"], node=>$nodelist, arg=>['offline']}, $request_command, 0, 1);
+        log_cmd_return($retref);
 
         setrsp_progress("Update known hosts");
         $retref = xCAT::Utils->runxcmd({command=>["makeknownhosts"], node=>$nodelist, arg=>['-r']}, $request_command, 0, 1);
+        log_cmd_return($retref);
 
         setrsp_progress("Update DHCP entries");
         $retref = xCAT::Utils->runxcmd({command=>["makedhcp"], node=>$nodelist, arg=>['-d']}, $request_command, 0, 1);
+        log_cmd_return($retref);
 
         setrsp_progress("Updating DNS entries");
         $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist, arg=>['-d']}, $request_command, 0, 1);
+        log_cmd_return($retref);
 
         setrsp_progress("Updating hosts entries");
         $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodelist, arg=>['-d']}, $request_command, 0, 1);
+        log_cmd_return($retref);
     }
     elsif ($command eq 'kitnodeupdate'){
         setrsp_progress("Updating hosts entries");
         $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodelist}, $request_command, 0, 1);
+        log_cmd_return($retref);
 
         setrsp_progress("Updating DNS entries");
         $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist}, $request_command, 0, 1);
+        log_cmd_return($retref);
 
         setrsp_progress("Update DHCP entries");
         $retref = xCAT::Utils->runxcmd({command=>["makedhcp"], node=>$nodelist, arg=>['-d']}, $request_command, 0, 1);
+        log_cmd_return($retref);
         # we should restart dhcp so that the node's records in /var/lib/dhcpd/dhcpd.lease can be clean up and re-generate.
         system("/etc/init.d/dhcpd restart");
         $retref = xCAT::Utils->runxcmd({command=>["makedhcp"], node=>$nodelist}, $request_command, 0, 1);
+        log_cmd_return($retref);
 
         setrsp_progress("Update known hosts");
         $retref = xCAT::Utils->runxcmd({command=>["makeknownhosts"], node=>$nodelist}, $request_command, 0, 1);
+        log_cmd_return($retref);
         my $firstnode = (@$nodelist)[0];
         my $profileref = xCAT::ProfiledNodeUtils->get_nodes_profiles([$firstnode]);
         my %profilehash = %$profileref;
         if (exists $profilehash{$firstnode}{"ImageProfile"}){
             setrsp_progress("Update nodes' boot settings");
             $retref = xCAT::Utils->runxcmd({command=>["nodeset"], node=>$nodelist, arg=>['osimage='.$profilehash{$firstnode}{"ImageProfile"}]}, $request_command, 0, 1);
+            log_cmd_return($retref);
         }
     }
     elsif ($command eq 'kitnoderefresh'){
         setrsp_progress("Updating hosts entries");
         $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodelist}, $request_command, 0, 1);
+        log_cmd_return($retref);
 
         setrsp_progress("Updating DNS entries");
         $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist}, $request_command, 0, 1);
+        log_cmd_return($retref);
 
         setrsp_progress("Update DHCP entries");
         $retref = xCAT::Utils->runxcmd({command=>["makedhcp"], node=>$nodelist}, $request_command, 0, 1);
+        log_cmd_return($retref);
 
         setrsp_progress("Update known hosts");
         $retref = xCAT::Utils->runxcmd({command=>["makeknownhosts"], node=>$nodelist}, $request_command, 0, 1);
+        log_cmd_return($retref);
     }
     elsif ($command eq 'kitnodefinished')
     {
         setrsp_progress("Updating conserver configuration files");
         $retref = xCAT::Utils->runxcmd({command=>["makeconservercf"]}, $request_command, 0, 1);
+        log_cmd_return($retref);
     }
     else
     {
@@ -171,6 +192,31 @@ sub setrsp_progress
 {
     my $msg = shift;
     xCAT::MsgUtils->message('S', "$msg");
+}
+
+#-------------------------------------------------------
+
+=head3  log_cmd_return
+
+       Description:  Log commands return ref into log files.
+       Args: $return - command return ref.
+
+=cut
+
+#-------------------------------------------------------
+sub log_cmd_return
+{
+    my $return = shift;
+    my $returnmsg = ();
+    if ($return){
+        foreach (@$return){
+            $returnmsg .= "$_\n";
+        }
+    }
+    
+    if($returnmsg){
+        xCAT::MsgUtils->message('S', "$returnmsg");
+    }
 }
 
 1;

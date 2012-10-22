@@ -2069,14 +2069,18 @@ sub osver
 =head3 acquire_lock
     Get a lock on an arbirtrary named resource.  For now, this is only across the scope of one service node/master node, an argument may be added later if/when 'global' locks are supported. This call will block until the lock is free.
     Arguments:
-        A string name for the lock to acquire
+        lock_name: A string name for the lock to acquire
+        nonblock_mode: Whether this is a non-blocking call or not. (1 non-blocking, 0 = blocking)
     Returns:
         false on failure
         A reference for the lock being held.
 =cut
 
 sub acquire_lock {
+    my $class = shift;
     my $lock_name = shift;
+    my $nonblock_mode = shift;
+
     use File::Path;
     mkpath("/var/lock/xcat/");
     use Fcntl ":flock";
@@ -2084,7 +2088,14 @@ sub acquire_lock {
     $tlock->{path}="/var/lock/xcat/".$lock_name;
     open($tlock->{fd},">",$tlock->{path}) or return undef;
     unless ($tlock->{fd}) { return undef; }
-    flock($tlock->{fd},LOCK_EX) or return undef;
+
+    if ($nonblock_mode){
+        flock($tlock->{fd},LOCK_EX|LOCK_NB) or return undef;
+    } else{
+        flock($tlock->{fd},LOCK_EX) or return undef;
+    }
+    print {$tlock->{fd}} $$;
+    $tlock->{fd}->autoflush(1);
     return $tlock;
 }
         
@@ -2092,17 +2103,51 @@ sub acquire_lock {
 =head3 release_lock
     Release an acquired lock
     Arguments:
-        reference to lock
+        tlock: reference to lock
+        nonblock_mode: Whether this is a non-blocking call or not.
     Returns:
         false on failure, true on success
 =cut
 
 sub release_lock {
+    my $class = shift;
     my $tlock = shift;
+    my $nonblock_mode = shift;
+
     unlink($tlock->{path});
-    flock($tlock->{fd},LOCK_UN);
+    if($nonblock_mode){
+        flock($tlock->{fd},LOCK_UN|LOCK_NB);
+    } else{
+        flock($tlock->{fd},LOCK_UN);
+    }
     close($tlock->{fd});
 }
+
+#-------------------------------------------------------------------------------
+
+=head3 is_locked
+      Description : Try to see whether current command catagory is locked or not.
+      Arguments   : action - command catagory
+      Returns     :
+                    1 - current command catagory already locked.
+                    0 - not locked yet.
+=cut
+
+#-------------------------------------------------------------------------------
+sub is_locked
+{
+    my $class = shift;
+    my $action = shift;
+
+    my $lock = xCAT::Utils->acquire_lock($action, 1);
+    if (! $lock){
+        return 1;
+    }
+
+    xCAT::Utils->release_lock($lock, 1);
+    return 0;
+}
+
 
 #----------------------------------------------------------------------------
 
@@ -2951,7 +2996,5 @@ sub noderangecontainsMn
    return ;
  }
 }
-
-
 
 1;
