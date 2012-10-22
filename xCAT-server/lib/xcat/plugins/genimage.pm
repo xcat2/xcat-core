@@ -65,6 +65,7 @@ sub process_request {
    my $permission; #the permission works only for statelite mode currently
    my $krpmver;
    my $interactive;
+   my $onlyinitrd;
    my $tempfile;
 
    GetOptions(
@@ -82,6 +83,7 @@ sub process_request {
        'kerneldir=s' => \$kerneldir,   
        'permission=s' => \$permission,
        'interactive' => \$interactive,
+       'onlyinitrd' => \$onlyinitrd,
        'tempfile=s' => \$tempfile,
        );
 
@@ -288,6 +290,7 @@ sub process_request {
    if ($permission) { $cmd .= " --permission $permission"; }
    if ($kerneldir) { $cmd .= " --kerneldir $kerneldir"; }
    if ($interactive) { $cmd .= " --interactive" }
+   if ($onlyinitrd) { $cmd .= " --onlyinitrd" }
    
    if ($srcdir) { $cmd .= " --srcdir $srcdir";}
    if ($pkglist) { $cmd .= " --pkglist $pkglist";}
