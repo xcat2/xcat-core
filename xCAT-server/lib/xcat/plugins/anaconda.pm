@@ -1487,6 +1487,7 @@ sub copyesxiboot {
     my $targetdir = shift;
     # this just does the same thing that the stateless version does.
     unless(-f "$targetdir/mod.tgz"){
+	require xCAT_plugin::esx;
         xCAT_plugin::esx::makecustomizedmod('esxi', $targetdir);
     }
     my @files = qw(mboot.c32 vmkboot.gz vmkernel.gz sys.vgz cim.vgz ienviron.vgz install.vgz);
