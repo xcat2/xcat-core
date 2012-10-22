@@ -192,8 +192,7 @@ sub setupIMM {
 	my $node = shift;
 	my %args = @_;
 	my $slpdata = $args{slpdata};
-	my $ipmitab = xCAT::Table->new('ipmi',-create=>0);
-	unless ($ipmitab) { die "ipmi settings required to set up imm in xCAT" }
+	my $ipmitab = xCAT::Table->new('ipmi',-create=>1);
 	my $ient = $ipmitab->getNodeAttribs($node,[qw/bmc bmcid/],prefetchcache=>1);
 	my $newaddr;
 	if ($ient) {
@@ -204,15 +203,27 @@ sub setupIMM {
 		} #skip configuration, we already know this one
 		$newaddr = $ient->{bmc};
 	}
-	my @ips;
-	if ($newaddr) {
+	my @ips=();
+        my $autolla=0;
+	if ($newaddr and not $newaddr =~ /^fe80:.*%.*/) {
 		@ips = xCAT::NetworkUtils::getipaddr($newaddr,GetAllAddresses=>1);
+	} else {
+		if ($args{curraddr} =~ /^fe80:.*%.*/) {  #if SLP were able to glean an LLA out of this, let's just roll with that result
+			$ipmitab->setNodeAttribs($node,{bmc=>$args{curraddr}});
+			$autolla=1; 
+		}
 	}
-	if (!@ips) {
+	if (not scalar @ips and not $autolla) {
 		sendmsg(":Cannot find the IP attribute for bmc",$callback,$node);
 		return;
 	}
-	sendmsg(":Configuration of ".$node."[".join(',',@ips)."] commencing, configuration may take a few minutes to take effect",$callback);
+        my $targips;
+        if (scalar(@ips)) { 
+		$targips = join(',',@ips);
+	} elsif ($autolla) {
+		$targips=$args{curraddr};
+	}
+	sendmsg(":Configuration of ".$node."[$targips] commencing, configuration may take a few minutes to take effect",$callback);
 	my $child = fork();
 	if ($child) { return; }
 	unless (defined $child) { die "error spawining process" }
