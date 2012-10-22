@@ -720,6 +720,67 @@ sub getSNformattedhash
 	}
     return \%newsnhash;
 }
+
+#----------------------------------------------------------------------------
+
+=head3  getAIXSNinterfaces
+
+	Get a list of ip addresses for each service node in a list
+
+	Arguments:
+		list of service nodes
+	Returns:
+		hash of ips for each service node
+	Globals:
+		none
+	Error:
+		none
+	Example:
+		my $sni = xCAT::ServiceNodeUtils->getAIXSNinterfaces(\@servlist, $callback, $subreq);
+
+	Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub getAIXSNinterfaces
+{
+    my ($class, $list, $callback, $sub_req) = @_;
+
+    my @snlist = @$list;
+    my %SNinterfaces;
+
+    # get all the possible IPs for the node I'm running on
+    my $ifcmd = "/usr/sbin/ifconfig -a | grep 'inet ' ";
+    foreach my $sn (@snlist)
+    {
+        my $SNIP;
+        my $out = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $sn, $ifcmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {
+			my $rsp;
+			push @{$rsp->{data}}, "Could not get IP addresses from service node $sn.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+            next;
+        }
+
+		my @result;
+		foreach my $line ( split(/\n/, $out)) {
+			$line =~ s/$sn:\s+//;
+			push(@result, $line);
+		}
+
+		foreach my $int (@result) {
+			my ($inet, $SNIP, $str) = split(" ", $int);
+			chomp $SNIP;
+			$SNIP =~ s/\/.*//; # ipv6 address 4000::99/64
+			$SNIP =~ s/\%.*//; # ipv6 address ::1%1/128
+            push(@{$SNinterfaces{$sn}}, $SNIP);
+        }
+    } # end foreach SN
+   	return \%SNinterfaces;
+}
+
 #-----------------------------------------------------------------------------
 
 =head3  
