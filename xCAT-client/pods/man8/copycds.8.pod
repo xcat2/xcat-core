@@ -1,7 +1,6 @@
-
 =head1 NAME
 
-B<copycds> - Copies Linux distributions and service levels from CDs/DVDs to install directory.
+B<copycds> - Copies Linux distributions and service levels from DVDs/ISOs to the xCAT /install directory.
 
 =head1 SYNOPSIS
 
@@ -9,15 +8,11 @@ B<copycds> [{B<-n|--name|--osver>}=I<distroname>] [{B<-a|--arch>}=I<architecture
 
 B<copycds> [B<-h>|B<--help>]
 
-
 =head1 DESCRIPTION
 
-The B<copycds> command copies all contents of Distribution CDs/DVDs or Service Pack CDs/DVDs to the install directory as
-designated in the B<site> table attribute: B<installdir>.  The B<copycds> command can copy from one or more ISO files,
-or from the CD/DVD device path.  If xCAT doesn't recognize the signature of the CD/DVD (e.g. in the .discinfo
-file), you must specify the -n and -a options.  This is sometimes the case for distros that have very
-recently been released, and the xCAT code hasn't been updated for it yet.
+The B<copycds> command copies all contents of Distribution DVDs/ISOs or Service Pack DVDs/ISOs to a destination directory. The destination directory will be formed from the B<installdir> site attribute and the distro name and architecture, for example: /install/rhels6.3/x86_64. The B<copycds> command can copy from one or more ISO files, or the CD/DVD device path.
 
+You can get xCAT to recognize new DVDs/ISOs by adding them to /opt/xcat/lib/perl/xCAT/data/discinfo.pm and reloading xcatd (service xcatd reload).
 
 =head1 OPTIONS
 
@@ -25,14 +20,13 @@ recently been released, and the xCAT code hasn't been updated for it yet.
 
 =item {B<-n|--name|--osver>}=I<distroname>
 
-The linux distro name and version that the ISO/DVD contains.  Examples:  rhels5.3, centos5.1, fedora9.
+The linux distro name and version that the ISO/DVD contains.  Examples:  rhels6.3, sles11.2, fedora9.  Note the 's' in rhels6.3 which denotes the Server version of RHEL, which is typically used.
 
 =item {B<-a|--arch>}=I<architecture>]
 
-The architecture of the linux distro on the ISO/DVD.  Examples:  x86, x86_64, ppc64.
+The architecture of the linux distro on the ISO/DVD.  Examples:  x86, x86_64, ppc64, s390x.
 
 =back
-
 
 =head1 EXAMPLES
 
@@ -40,24 +34,23 @@ The architecture of the linux distro on the ISO/DVD.  Examples:  x86, x86_64, pp
 
 =item *
 
-To copy the RPMs from a set of ISOs that represent the CDs of a distro:
+To copy the RPMs from a set of ISOs that represent the DVDs of a distro:
 
-B<copycds cd1.iso cd2.iso cd3.iso>
+ copycds dvd1.iso dvd2.iso
 
 =item *
 
 To copy the RPMs from a physical DVD:
 
-B<copycds /dev/dvd>
+ copycds /dev/dvd
 
 =item *
 
 To copy the RPMs from a DVD ISO of a very recently released distro:
 
-B<copycds -n rhels5.3 -a x86_64 dvd.iso>
+ copycds -n rhels5.3 -a x86_64 dvd.iso
 
 =back
-
 
 =head1 SEE ALSO
 

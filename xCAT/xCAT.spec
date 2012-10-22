@@ -25,13 +25,10 @@ Requires: xCAT-server xCAT-client perl-DBD-SQLite
 
 %ifos linux
 Requires: dhcp httpd nfs-utils expect nmap bind perl-XML-Parser vsftpd perl(CGI)
-Requires: /etc/xinetd.d/tftp
 %ifnarch s390x
+Requires: /etc/xinetd.d/tftp
 # yaboot-xcat is pulled in so any MN can manage ppc nodes
 Requires: conserver-xcat yaboot-xcat perl-Net-Telnet fping
-%endif
-%ifarch ppc64
-Requires: perl-IO-Stty
 %endif
 %endif
 
