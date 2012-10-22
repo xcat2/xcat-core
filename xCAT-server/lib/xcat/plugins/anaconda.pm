@@ -1613,6 +1613,10 @@ sub getplatform {
     {
 	$platform = "fedora";
     }
+    elsif ($os =~ /esxi.*/)
+    {
+	$platform = "esxi";
+    }
     elsif ($os =~ /esx.*/)
     {
 	$platform = "esx";
