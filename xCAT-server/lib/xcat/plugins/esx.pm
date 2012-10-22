@@ -4090,7 +4090,7 @@ sub copycd {
         }
         close(LINE);
         if ($product and $version) {
-            $distname = $product.$version;
+            unless ($distname) { $distname = $product.$version; }
             $found = 1;
         }
     } elsif (-r $path . "/README" and -r $path . "/open_source_licenses.txt" and -d $path . "/VMware") { #Candidate to be ESX 3.5
@@ -4099,7 +4099,7 @@ sub copycd {
             if (/VMware ESX Server 3.5\s*$/) {
                 $darch ='x86';
                 $arch = 'x86';
-                $distname = 'esx3.5';
+                unless ($distname) { $distname = 'esx3.5'; }
                 $found = 1;
                 last;
             }
@@ -4115,9 +4115,11 @@ sub copycd {
             chomp($line);
             if($line =~ /VMware ESXi(?: version)? 4\.(\d+)/){
                 $darch = "x86_64";
+				unless ($distname) { 
                 $distname = "esxi4";
                 if ($1) {
                     $distname .= '.'.$1;
+                }
                 }
                 $found = 1;
                 if( $arch and $arch ne $darch){
@@ -4139,7 +4141,7 @@ sub copycd {
             if (/ThinESX Installer/) {
                 $darch = 'x86';
                 $arch='x86';
-                $distname='esxi3.5';
+                unless ($distname) { $distname='esxi3.5'; }
                 $found=1;
                 last;
             }
@@ -4151,14 +4153,14 @@ sub copycd {
 		if (/VMware ESXi 5\.0/) {
 			$darch="x86_64";
 			$arch="x86_64";
-			$distname='esxi5';
+			unless ($distname) { $distname='esxi5'; }
 			$found=1;
 			last;
 		}
 		if (/VMware ESXi 5\.1/) {
 			$darch="x86_64";
 			$arch="x86_64";
-			$distname='esxi5.1';
+			unless ($distname) { $distname='esxi5.1'; }
 			$found=1;
 			last;
 		}
