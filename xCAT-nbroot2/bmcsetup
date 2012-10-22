@@ -57,6 +57,8 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
 	    	let idev=idev-1
 	    done
         fi
+    elif [ "$XPROD" == "291" ]; then
+        LOCKEDUSERS=1
     else
         IBMFAM=`ipmitool raw 0x3a 0x50 |head -n 1| awk '{print $1 $2 $3 $4}'`
         if [ "$IBMFAM" == "59554f4f" ]; then
