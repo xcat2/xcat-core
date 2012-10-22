@@ -747,6 +747,7 @@ sub mkinitrd {
         push @ndrivers, "sunrpc.ko";
         push @ndrivers, "lockd.ko";
         push @ndrivers, "nfs_acl.ko";
+        push @ndrivers, "auth_rpcgss.ko";
         push @ndrivers, "nfs.ko";
     
         # Additional modules needed on s390x
