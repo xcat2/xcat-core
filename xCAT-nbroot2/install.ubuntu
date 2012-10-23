@@ -9,10 +9,11 @@ dracut_install mount.nfs sshd vi reboot lspci parted screen mkfs mkfs.ext4 mkfs.
 dracut_install efibootmgr
 #dracut_install libvirtd /usr/share/libvirt/cpu_map.xml /usr/bin/qemu-img /usr/libexec/qemu-kvm
 dracut_install mkswap df brctl vconfig ifenslave ssh-keygen scp clear dhclient lldpad
-dracut_install lldptool /lib64/libnss_dns-2.12.1.so /lib64/libnss_dns.so.2
+dracut_install lldptool 
 dracut_install poweroff ntpq ntpd hwclock date /usr/share/terminfo/x/xterms /etc/nsswitch.conf /etc/services
 dracut_install /usr/sbin/rsyslogd /etc/protocols umount /usr/bin/dpkg /usr/bin/rpm /usr/lib/rpm/rpmrc
 if [ -n $version12 ];then
+    dracut_install /lib/x86_64-linux-gnu/libnss_dns-2.15.so /lib/x86_64-linux-gnu/libnss_dns.so.2
     dracut_install /lib/x86_64-linux-gnu/libdl.so.2 /lib32/libm.so.6
     dracut_install dmidecode /usr/lib/x86_64-linux-gnu/libstdc++.so.6
     dracut_install dmidecode /usr/lib/x86_64-linux-gnu/libstdc++.so.5
@@ -20,6 +21,7 @@ if [ -n $version12 ];then
     dracut_install /usr/lib/x86_64-linux-gnu/libldap-2.4.so.2 /usr/lib/x86_64-linux-gnu/liblber-2.4.so.2 /usr/lib/x86_64-linux-gnu/libsasl2.so.2
     dracut_install /lib32/libc.so.6
 else
+    dracut_install /lib64/libnss_dns-2.12.1.so /lib64/libnss_dns.so.2
     dracut_install /lib/libdl.so.2 /lib/libm.so.6
     dracut_install dmidecode /usr/lib64/libstdc++.so.6
     dracut_install dmidecode /usr/lib64/libstdc++.so.5
