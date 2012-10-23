@@ -4,7 +4,7 @@
 #
 # if on the Management Node, exit
 if [ -e /etc/xCATMN ]; then
-	logger -t xcat -p local4.info "Running on the Management Node ,  exiting "
+	logger -t xcat -p local4.info "remoteshell:Running on the Management Node ,  exiting "
    exit 0
 fi
 #  Linux or if AIX call aixremoteshell -d 
