@@ -58,33 +58,48 @@ sub process_request
 
     my $request  = shift;
     my $callback = shift;
+    my $request_command = shift;
 
-    my $lock = xCAT::Utils->acquire_lock("kit", 1);
-    unless ($lock){
-        $callback->({error=>["Can not acquire lock, another process is running."],errorcode=>[1]});
-        return 1;
+    my $lock;
+    my $locked = xCAT::Utils->is_locked("kit", 1);
+    if ( !locked ) {
+        $lock = xCAT::Utils->acquire_lock("kit", 1);
+        unless ($lock){
+            $callback->({error=>["Can not acquire lock."],errorcode=>[1]});
+            return 1;
+        }    
+    } else {
+        if ( $::PID and $::PID != $$ ) {
+            $callback->({error=>["Can not acquire lock, another process is running."],errorcode=>[1]});
+            return 1;
+        }
+
+        $::PID = $$;
     }
+
 
     my $command  = $request->{command}->[0];
     my $rc;
 
     if ($command eq "addkit"){
-        $rc = addkit($request, $callback);
+        $rc = addkit($request, $callback, $request_command);
     } elsif ($command eq "rmkit"){
-        $rc = rmkit($request, $callback);
+        $rc = rmkit($request, $callback, $request_command);
     } elsif ($command eq "addkitcomp"){
-        $rc = addkitcomp($request, $callback);
+        $rc = addkitcomp($request, $callback, $request_command);
     } elsif ($command eq "rmkitcomp"){
-        $rc = rmkitcomp($request, $callback);
+        $rc = rmkitcomp($request, $callback, $request_command);
     } elsif ($command eq "chkkitcomp"){
-        $rc = chkkitcomp($request, $callback);
+        $rc = chkkitcomp($request, $callback, $request_command);
     } else{
         $callback->({error=>["Error: $command not found in this module."],errorcode=>[1]});
         xCAT::Utils->release_lock($lock, 1);
         return 1;
     }
 
-    xCAT::Utils->release_lock($lock, 1);
+    if ( $lock ) {
+        xCAT::Utils->release_lock($lock, 1);
+    }
     return $rc;
 
 }
@@ -666,6 +681,7 @@ sub addkit
 {
     my $request = shift;
     my $callback = shift;
+    my $request_command = shift;
 
     my $path;
     my $rc;
@@ -827,8 +843,9 @@ sub addkit
             } elsif ( $sec =~ /KITCOMPONENT$/ ) {
                 if ( $key =~ /kitcompname/ ) {
                     $kitcompname = $value;
-                } elsif ( $key =~ /postboot/ ) {
+                } elsif ( $key =~ /postbootscripts/ ) {
                     $scripts = $scripts . ',' . $value;
+                    $kitcomphash{$kitcompname}{$key} = $value;
                 } else {
                     $kitcomphash{$kitcompname}{$key} = $value;
                 }
@@ -953,6 +970,7 @@ sub rmkit
 {
     my $request = shift;
     my $callback = shift;
+    my $request_command = shift;
     my $kitdir;
     my $rc;
 
@@ -1055,7 +1073,11 @@ sub rmkit
                             }
 
                             # Remove this component from osimage.kitcomponents. Mark here.
-                            system("rmkitcomp -f -u -i $entry->{imagename} $kitcompname"); 
+                            my $ret = xCAT::Utils->runxcmd({ command => ['rmkitcomp'], arg => ['-f','-u','-i',$entry->{imagename}, $kitcompname] }, $request_command, 0, 1);
+                            if ( $::RUNCMD_RC ) {
+                                $callback->({error => ["ret=$ret,Failed to remove kit component $kitcomponent from $entry->{imagename}\n"],errorcode=>[1]});
+                                return 1;
+                            }
                         }
                     }
                 }
@@ -1164,6 +1186,7 @@ sub addkitcomp
 {
     my $request = shift;
     my $callback = shift;
+    my $request_command = shift;
     my $kitdir;
     my $rc;
 
@@ -1306,82 +1329,86 @@ sub addkitcomp
             return 1; 
         }
 
-        # Validate each attribute in kitcomp.
-        my $catched = 0;
-        my @osbasename = split ',', $kitcomps{$kitcomp}{osbasename}; 
-        foreach (@osbasename) {
-            if ( $os{$osimage}{basename} eq $_ ) {
-                $catched = 1;
-            }
-        }
-        unless ( $catched ) {
-            $callback->({error => ["osimage $osimage doesn't fit to kit component $kitcomp with attribute OS \n"],errorcode=>[1]});
-            return 1;
-        }
+        if ( !$force ) {
 
-        if ( $os{$osimage}{majorversion} ne $kitcomps{$kitcomp}{osmajorversion} ) {
-            $callback->({error => ["osimage $osimage doesn't fit to kit component $kitcomp with attribute majorversion\n"],errorcode=>[1]});
-            return 1;
-        }
-
-        if ( $os{$osimage}{minorversion} and ($os{$osimage}{minorversion} ne $kitcomps{$kitcomp}{osminorversion}) ) {
-            $callback->({error => ["osimage $osimage doesn't fit to kit component $kitcomp with attribute minorversion\n"],errorcode=>[1]});
-            return 1;
-        }
-
-        if ( $os{$osimage}{arch} ne $kitcomps{$kitcomp}{osarch} ) {
-            $callback->({error => ["osimage $osimage doesn't fit to kit component $kitcomp with attribute arch\n"],errorcode=>[1]});
-            return 1;
-        }
-
-        if ( $os{$osimage}{type} ne $kitcomps{$kitcomp}{ostype} ) {
-            $callback->({error => ["osimage $osimage doesn't fit to kit component $kitcomp with attribute type\n"],errorcode=>[1]});
-            return 1;
-        }
-
-        if ( $os{$osimage}{serverrole} and ($os{$osimage}{serverrole} ne $kitcomps{$kitcomp}{serverroles}) ) {
-            $callback->({error => ["osimage $osimage doesn't fit to kit component $kitcomp with attribute serverrole\n"],errorcode=>[1]});
-            return 1;
-        }
-
-        if ( $kitcomptable and $kitcomptable->{'kitcompdeps'} ) {
-            my @kitcompdeps = split ',', $kitcomptable->{'kitcompdeps'};
-            foreach my $kitcompdep ( @kitcompdeps ) {
-                my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcompdep'", 'kitcompname' , 'version', 'release');
-                unless (@entries) {
-                    $callback->({error => ["Cannot find any matched kit component for kit component $kitcomp dependency $kitcompdep\n"],errorcode=>[1]});
-                    return 1;
+            # Validate each attribute in kitcomp.
+            my $catched = 0;
+            my @osbasename = split ',', $kitcomps{$kitcomp}{osbasename}; 
+            foreach (@osbasename) {
+                if ( $os{$osimage}{basename} eq $_ ) {
+                    $catched = 1;
                 }
+            }
 
-                my $highest = get_highest_version('kitcompname', 'version', 'release', @entries);
+            unless ( $catched ) {
+                $callback->({error => ["osimage $osimage doesn't fit to kit component $kitcomp with attribute OS \n"],errorcode=>[1]});
+                return 1;
+            }
 
-                if ( $adddeps ) {
-                    if ( !$kitcomps{$highest}{name} ) {
-                        $kitcomps{$highest}{name} = $highest;
+            if ( $os{$osimage}{majorversion} ne $kitcomps{$kitcomp}{osmajorversion} ) {
+                $callback->({error => ["osimage $osimage doesn't fit to kit component $kitcomp with attribute majorversion\n"],errorcode=>[1]});
+                return 1;
+            }
+
+            if ( $os{$osimage}{minorversion} and ($os{$osimage}{minorversion} ne $kitcomps{$kitcomp}{osminorversion}) ) {
+                $callback->({error => ["osimage $osimage doesn't fit to kit component $kitcomp with attribute minorversion\n"],errorcode=>[1]});
+                return 1;
+            }
+
+            if ( $os{$osimage}{arch} ne $kitcomps{$kitcomp}{osarch} ) {
+                $callback->({error => ["osimage $osimage doesn't fit to kit component $kitcomp with attribute arch\n"],errorcode=>[1]});
+                return 1;
+            }
+
+            if ( $os{$osimage}{type} ne $kitcomps{$kitcomp}{ostype} ) {
+                $callback->({error => ["osimage $osimage doesn't fit to kit component $kitcomp with attribute type\n"],errorcode=>[1]});
+                return 1;
+            }
+
+            if ( $os{$osimage}{serverrole} and ($os{$osimage}{serverrole} ne $kitcomps{$kitcomp}{serverroles}) ) {
+                $callback->({error => ["osimage $osimage doesn't fit to kit component $kitcomp with attribute serverrole\n"],errorcode=>[1]});
+                return 1;
+            }
+
+            if ( $kitcomptable and $kitcomptable->{'kitcompdeps'} ) {
+                my @kitcompdeps = split ',', $kitcomptable->{'kitcompdeps'};
+                foreach my $kitcompdep ( @kitcompdeps ) {
+                    my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcompdep'", 'kitcompname' , 'version', 'release');
+                    unless (@entries) {
+                        $callback->({error => ["Cannot find any matched kit component for kit component $kitcomp dependency $kitcompdep\n"],errorcode=>[1]});
+                        return 1;
                     }
-                } else {
 
-                    my $catched = 0;
-                    if ( $osimagetable and $osimagetable->{'kitcomponents'}) {
-                        my @oskitcomps = split ',', $osimagetable->{'kitcomponents'};
-                        foreach my $oskitcomp ( @oskitcomps ) {
-                            if ( $highest eq $oskitcomp ) {
+                    my $highest = get_highest_version('kitcompname', 'version', 'release', @entries);
+
+                    if ( $adddeps ) {
+                        if ( !$kitcomps{$highest}{name} ) {
+                            $kitcomps{$highest}{name} = $highest;
+                        }
+                    } else {
+
+                        my $catched = 0;
+                        if ( $osimagetable and $osimagetable->{'kitcomponents'}) {
+                            my @oskitcomps = split ',', $osimagetable->{'kitcomponents'};
+                            foreach my $oskitcomp ( @oskitcomps ) {
+                                if ( $highest eq $oskitcomp ) {
+                                    $catched =  1;
+                                    last;
+                                }
+                            }
+                        }
+
+                        foreach my $k ( keys %kitcomps ) {
+                            if ( $kitcomps{$k}{basename} and $kitcompdep eq $kitcomps{$k}{basename} ) {
                                 $catched =  1;
                                 last;
                             }
                         }
-                    }
 
-                    foreach my $k ( keys %kitcomps ) {
-                        if ( $kitcomps{$k}{basename} and $kitcompdep eq $kitcomps{$k}{basename} ) {
-                            $catched =  1;
-                            last;
+                        if ( !$catched ) {
+                            $callback->({error => ["kit component dependency $highest for kit component $kitcomp is not existing in osimage or specified in command option\n"],errorcode=>[1]});
+                            return 1;
                         }
-                    }
-
-                    if ( !$catched ) {
-                        $callback->({error => ["kit component dependency $highest for kit component $kitcomp is not existing in osimage or specified in command option\n"],errorcode=>[1]});
-                        return 1;
                     }
                 }
             }
@@ -1443,7 +1470,11 @@ sub addkitcomp
                     my $rc = compare_version($oskitcomptable,$kitcomptable,'kitcompname', 'version', 'release');
                     if ( $rc == 1 ) {
                         $callback->({data=>["Upgrading kit component $oskitcomp to $kitcomp"]});
-                        system("rmkitcomp -f -u -i $osimage $kitcomp");
+                        my $ret = xCAT::Utils->runxcmd({ command => ['rmkitcomp'], arg => ['-f','-u','-i',$osimage, $kitcomp] }, $request_command, -2, 1);
+                        if ( !$ret ) {
+                            $callback->({error => ["Failed to remove kit component $kitcomp from $osimage\n"],errorcode=>[1]});
+                            return 1;
+                        }
                         $add = 1;
                     } elsif ( $rc == 0 ) {
                         $callback->({data=>["Do nothing since kit component $oskitcomp in osimage $osimage has the same basename/version and release with kit component $kitcomp."]});
@@ -1479,6 +1510,7 @@ sub rmkitcomp
 
     my $request = shift;
     my $callback = shift;
+    my $request_command = shift;
     my $kitdir;
     my $rc;
 
@@ -1997,6 +2029,7 @@ sub chkkitcomp
 {
     my $request = shift;
     my $callback = shift;
+    my $request_command = shift;
 
     my $xusage = sub {
         my %rsp;
