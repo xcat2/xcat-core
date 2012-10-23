@@ -292,21 +292,45 @@ sub assign_to_osimage
  
     # Adding postbootscrits to osimage.postbootscripts
     if ( $kitcomptable and $kitcomptable->{postbootscripts} ){
-        if ( $osimagetable ){
-            if ( $osimagetable->{postbootscripts} ) {
-                my $match = 0;
-                my @scripts = split ',', $osimagetable->{postbootscripts};
-                foreach my $script ( @scripts ) {
-                    if ( $kitcomptable->{postbootscripts} =~ /^$script$/ ) {
-                        $match = 1;
-                        last;
+        my @kitcompscripts = split ',', $kitcomptable->{postbootscripts};
+        foreach my $kitcompscript ( @kitcompscripts ) {
+
+            my $formatedkitcomp = "KIT_".$kitcompscript;
+
+            if ( $osimagetable ) {
+                if ( $osimagetable->{postbootscripts} ){
+                    my $match = 0;
+                    my $added = 0;
+                    my @newscripts;
+                    my @scripts = split ',', $osimagetable->{postbootscripts};
+                    foreach my $script ( @scripts ) {
+                        if ( $script =~ /^$formatedkitcomp$/ ) {
+                            $match = 1;
+                            last;
+                        }
+
+                        if ( $script !~ /^BASEXCAT_/ and $script !~ /^KIT_/ ) {
+                            unless ( $added ) {
+                                push @newscripts, $formatedkitcomp;
+                                $added = 1;
+                            }
+                        }
+
+
+                        push @newscripts, $script;
+
                     }
+
+                    if ( $match ) {
+                        next;
+                    }
+
+                    my $osimagescripts = join ',', @newscripts;
+                    $osimagetable->{postbootscripts} = $osimagescripts;
+                } else {
+                    $osimagetable->{postbootscripts} = $formatedkitcomp;
                 }
-                unless ( $match ) {
-                    $osimagetable->{postbootscripts} = $osimagetable->{postbootscripts} . ',' . $kitcomptable->{postbootscripts};
-                }
-            } else {
-                $osimagetable->{postbootscripts} = $kitcomptable->{postbootscripts};
+
             }
             
         }
@@ -1383,7 +1407,9 @@ sub addkitcomp
         @oskitcomps = split ',', $osimagetable->{'kitcomponents'};
     }
 
-    foreach my $kitcomp ( keys %kitcomps ) {
+    my @newkitcomps = keys %kitcomps;
+    foreach ( keys %kitcomps ) {
+        my $kitcomp = shift @newkitcomps;
 
         $callback->({data=>["Assigning kit component $kitcomp to osimage $osimage"]});
         # Check if this component is existing in osimage.kitcomponents
@@ -1631,7 +1657,7 @@ sub rmkitcomp
         foreach my $kitcomponent (keys %kitcomps) {
             my @kitcompscripts = split( ',', $kitcomps{$kitcomponent}{postbootscripts} );
             foreach my $kitcompscript ( @kitcompscripts ) {
-                if ( $osimagescript eq $kitcompscript ) {
+                if ( $osimagescript =~ /^KIT_$kitcompscript$/ ) {
                     $match = 1;
                     last;
                 }
