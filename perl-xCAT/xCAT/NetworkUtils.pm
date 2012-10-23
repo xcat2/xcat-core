@@ -488,6 +488,35 @@ sub setup_ip_forwarding
     return 0;
 }
 
+#-----------------------------------------------------------------------------
+
+=head3 setup_ipv6_forwarding
+
+    Sets up ipv6 forwarding on localhost
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub setup_ipv6_forwarding
+{
+    my ($class, $enable)=@_;
+    if (xCAT::Utils->isLinux()) {
+        my $conf_file="/etc/sysctl.conf";
+        `grep "net.ipv6.conf.all.forwarding" $conf_file`;
+        if ($? == 0) {
+            `sed -i "s/^net.ipv6.conf.all.forwarding = .*/net.ipv6.conf.all.forwarding = $enable/" $conf_file`;
+        } else {
+            `echo "net.ipv6.conf.all.forwarding = $enable" >> $conf_file`;
+        }
+        `sysctl -e -p $conf_file`;
+    }
+    else
+    {  
+        `no -o ip6forwarding=$enable`;
+    }
+    return 0;
+}
+
 #-------------------------------------------------------------------------------
 
 =head3  prefixtomask
