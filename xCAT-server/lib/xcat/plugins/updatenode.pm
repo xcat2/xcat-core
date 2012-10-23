@@ -1437,6 +1437,11 @@ sub updatenodesyncfiles
         }
     }
 
+#array of nodes failed to sync
+    my @failednodes=();
+#array of successfully synced nodes 
+    my @successfulnodes=();
+  
     # Check the existence of the synclist file
     if (%syncfile_node)
     {    # there are files to sync defined
@@ -1462,12 +1467,12 @@ sub updatenodesyncfiles
                 if ($request->{FileSyncing}->[0] eq "yes")
                 {    # sync nodes
                     $rsp->{data}->[0] =
-                      "  $localhostname: Internal call command: xdcp -F $synclist";
+                      "  $localhostname: Internal call command: xdcp ". join(" ",@{$syncfile_node{$synclist}})." -F $synclist";
                 }
                 else
                 {    # sync SN
                     $rsp->{data}->[0] =
-                      "  $localhostname: Internal call command: xdcp -s -F $synclist";
+                      "  $localhostname: Internal call command: xdcp ".join(" ",@{$syncfile_node{$synclist}})." -s -F $synclist";
                 }
                 $callback->($rsp);
             }
@@ -1497,29 +1502,60 @@ sub updatenodesyncfiles
              {  
                  my $rc=0;
              } 
-           
-        }
-       # put a call to a new routine here to process the output 
-       # input the $output array and $callback
-       # the new  routine should do the following
-       #
-       # foreach my $line (@$output) {
-       #  if line contains   Remote_command_successful or
-       #             Remote_command_failed
-       #  then
-       #     update the status in the nodelist table for the node that is
-       #     on the line (rra000-m: Remote_command_successful)
-       #  else
-       #     return the line as output to the client
-       #     $rsp->{data}->[0] = $line;
-       #     $callback->($rsp);
 
+             if ($::VERBOSE)
+	     {
+                my $rsp = {};
+                $rsp->{data}->[0] =
+                join("\n",@$output);
+                $callback->($rsp);
+	     }
+
+	     foreach my $line (@$output) {
+	     	if($line =~ /^\s*(\S+)\s*:\s*Remote_command_successful/)
+		{
+			push(@successfulnodes,$1);
+		}
+             elsif($line =~ /^\s*(\S+)\s*:\s*Remote_command_failed/)
+		{
+			push(@failednodes,$1);
+		}	
+	  }
+	}
+
+#a node that failed to sync one synclistfile is deemed a failed node      
+	{
+		my %m=();
+		my %n=();
+
+		for(@failednodes)
+		{
+		  $m{$_}++;
+		}
+
+		for(@successfulnodes)
+		{
+		  $m{$_}++ || $n{$_}++;
+		}
+	
+		@successfulnodes=keys %n;
+	}
+
+
+#set the nodelist.updatestatus according to the xdcp result
+	if(@successfulnodes >0)
+	{
+	     
+             xCAT::Utils->runxcmd(
+                   {
+                     command => ["updatenodeupdatestat"],
+                     node    => \@successfulnodes,
+                     arg     => ["synced"],
+                   },
+                   $subreq, -1,1);	
+	}
+	
        # remove the next 5 lines.
-        my $rsp = {};
-        foreach my $line (@$output) {
-          $rsp->{data}->[0] = $line;
-          $callback->($rsp);
-        }
         my $rsp = {};
         $rsp->{data}->[0] = "File synchronization has completed.";
         $callback->($rsp);
@@ -1753,6 +1789,7 @@ sub updatenodestat
         $node_status{$stat} = [];
         foreach my $node (@nodes)
         {
+
             my $pa = $node_status{$stat};
             push(@$pa, $node);
         }
