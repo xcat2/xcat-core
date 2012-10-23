@@ -26,7 +26,6 @@ lib/xcat/dsh/Context/* opt/xcat/xdsh/Context
 
 lib/xcat/shfunctions opt/xcat/lib
 etc/init.d/xcatd etc/init.d
-etc/xcat/postscripts.rules etc/xcat/
 xCAT-wsapi/* opt/xcat/ws/
 
 LICENSE.html opt/xcat/share/doc/packages/xCAT-server
