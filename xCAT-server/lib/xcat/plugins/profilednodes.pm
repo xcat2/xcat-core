@@ -812,9 +812,9 @@ sub nodediscoverstop{
 sub nodediscoverstatus{
     my $discover_running = xCAT::ProfiledNodeUtils->is_discover_started();
     if($discover_running){
-        setrsp_infostr("Profiled nodes discover is running");
+        setrsp_progress("Profiled nodes discover is running");
     }else{
-        setrsp_infostr("Profiled nodes discover not started");
+        setrsp_progress("Profiled nodes discover not started");
     }
 }
 
