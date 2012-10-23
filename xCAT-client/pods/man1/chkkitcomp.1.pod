@@ -1,0 +1,65 @@
+=head1 NAME
+
+B<chkkitcomp> - Check if kit component fits to osimage.
+
+=head1 SYNOPSIS
+
+B<chkkitcomp> [-h|--help]
+
+B<chkkitcomp> [-o|--overwrite] [-V|--verbose] -i <osimage> <kitcompname_list>
+
+=head1 DESCRIPTION
+
+The B<chkkitcomp> command will check if the kit components are fitting to the osimage or not.  This command will ignore the current osimage.kitcomponents setting, and just to check if the kitcompname_list in the cmdline is fitting to the osimage by osversion/ostype/osarch/ and kit component dependencies.
+
+=head1 OPTIONS
+
+B<-o|--overwrite>
+
+Fully replace the kit component list in osimage.kitcomponents with <kitcompname_list>.
+
+B<-h|--help>
+
+Display usage message.
+
+B<-V|--verbose>
+
+Verbose mode.
+
+B<-i <osimage>>
+
+osimage name that is used for checking if kit components are fitting to it.
+
+B<kitcompname_list>
+
+A comma-delimited list of valid full kit component names or kit component basenames that are to be checking to the osimage.
+
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occurred.
+
+=head1 EXAMPLES
+
+1. To check if a kit component is fitting to an osimage
+
+chkkitcomp -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
+
+Output is similar to:
+
+Kit components comp-test1-1.0-1-rhels-6.2-ppc64 fit to osimage rhels6.2-ppc64-netboot-compute
+
+3. To check if a kit component is fitting to an osimage and write the current kitcompname_list specified in command line to osimage.kitcomponents attribute. 
+
+chkkitcomp -o -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
+
+Output is similar to:
+
+kitcomponents comp-test1-1.0-1-rhels-6.2-ppc64 were removed from osimage rhels6.2-ppc64-netboot-compute successfully
+
+
+=head1 SEE ALSO
+
+L<addkit(1)|addkit.1>, L<rmkit(1)|rmkit.1>, L<addkitcomp(1)|addkitcomp.1>, L<rmkitcomp(1)|rmkitcomp.1>

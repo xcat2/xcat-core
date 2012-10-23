@@ -1,0 +1,83 @@
+=head1 NAME
+
+B<addkitcomp> - Assign kit components to osimage.
+
+=head1 SYNOPSIS
+
+B<addkitcomp> [-h|--help]
+
+B<addkitcomp> [-a|--adddeps] [-f|--force] [-V|--verbose] -i <osimage> <kitcompname_list>
+
+=head1 DESCRIPTION
+
+The B<addkitcomp> command will assign kit components to osimage. The kit component meta rpm, package rpm and deploy parameters will be added to osimage's otherpkg.pkglist and postbootscripts will be added to osimages's postbootscripts attribute.
+
+=head1 OPTIONS
+
+B<-a|--adddeps>
+
+Assign kitcomponent dependencies to the osimage.
+
+B<-h|--help>
+
+Display usage message.
+
+B<-V|--verbose>
+
+Verbose mode.
+
+B<-f|--force>
+
+Add kit component to osimage even if there is a mismatch in OS, version, arch, serverrole, or kitcompdeps
+
+B<-i <osimage>>
+
+osimage name that kit component is assigning to
+
+B<kitcompname_list>
+
+A comma-delimited list of valid full kit component names or kit component basenames that are to be added to the osimage.
+
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occurred.
+
+=head1 EXAMPLES
+
+1. To assign a kit component to osimage
+
+addkitcomp -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
+
+Output is similar to:
+
+Assigning kit component comp-test1-1.0-1-rhels-6.2-ppc64 to osimage rhels6.2-ppc64-netboot-compute
+Kit components comp-test1-1.0-1-rhels-6.2-ppc64 were added to osimage rhels6.2-ppc64-netboot-compute successfully
+
+2. To assign a kit component to osimage with its dependency.
+
+addkitcomp -a -i rhels6.2-ppc64-netboot-compute comp-test2-1.0-1-rhels-6.2-ppc64
+
+Output is similar to:
+
+Assigning kit component comp-test1-1.0-1-rhels-6.0-ppc64 to osimage rhels6.2-ppc64-netboot-compute
+Assigning kit component comp-test2-1.0-1-rhels-6.2-ppc64 to osimage rhels6.2-ppc64-netboot-compute
+Kit components comp-test1-1.0-1-rhels-6.0-ppc64,comp-test2-1.0-1-rhels-6.2-ppc64 were added to osimage rhels6.2-ppc64-netboot-compute successfully
+
+3. To assign a kit component to osimage with incompatable osarch, osversion or ostype.
+
+addkitcomp -f -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
+
+Output is similar to:
+
+Assigning kit component comp-test1-1.0-1-rhels-6.2-ppc64 to osimage rhels6.2-ppc64-netboot-compute
+Kit components comp-test1-1.0-1-rhels-6.2-ppc64 were added to osimage rhels6.2-ppc64-netboot-compute successfully
+
+
+=head1 SEE ALSO
+
+L<addkit(1)|addkit.1>, L<rmkit(1)|rmkit.1>, L<rmkitcomp(1)|rmkitcomp.1>, L<chkkitcomp(1)|chkkitcomp.1>
+
+

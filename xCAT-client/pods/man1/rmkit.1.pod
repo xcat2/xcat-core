@@ -1,0 +1,68 @@
+=head1 NAME
+
+Usage:
+        rmkit [-h|--help]
+        rmkit [-f|--force] [-V|--verbose] <kitlist>] 
+
+
+B<addkit> - Remove Kits from xCAT
+
+=head1 SYNOPSIS
+
+B<addkit> [-h|--help]
+
+B<addkit> [-V|--verbose] [-f|--force] <kitlist>
+
+=head1 DESCRIPTION
+
+The B<rmkit> command removes kits on the xCAT management node from kit names.
+
+=head1 OPTIONS
+
+B<-h|--help>
+
+Display usage message.
+
+B<-V|--verbose>
+
+Verbose mode.
+
+B<-f|--force>
+
+Remove this kit even there is any component in this kit is listed by osimage.kitcomponents.  If this option is not specified, this kit will not be removed if any kit components listed in an osimage.kitcomponents
+
+B<kitlist>
+
+a comma delimited list of kits that are to be removed from the xCAT cluster.  Each entry can be a kitname or kit basename. For kit basename, rmkit command will remove all the kits that have that kit basename.
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occurred.
+
+=head1 EXAMPLES
+
+1. To remove two kits from tarball files.
+
+rmkit kit-test1,kit-test2
+
+Output is similar to:
+
+Kit kit-test1-1.0-Linux,kit-test2-1.0-Linux was successfully removed.
+
+2. To remove two kits from tarball files even the kit components in them are still being used by osimages.
+
+rmkit kit-test1,kit-test2 --force
+
+Output is similar to:
+
+Kit kit-test1-1.0-Linux,kit-test2-1.0-Linux was successfully removed.
+
+
+=head1 SEE ALSO
+
+L<addkit(1)|addkit.1>, L<addkitcomp(1)|addkitcomp.1>, L<rmkitcomp(1)|rmkitcomp.1>, L<chkkitcomp(1)|chkkitcomp.1>
+
+
+~
