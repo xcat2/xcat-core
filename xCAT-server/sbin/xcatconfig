@@ -517,6 +517,32 @@ if ($::INITIALINSTALL || $::FORCE)
         }
      }
 
+     # Enable ip forwarding. In most cases,
+     # the MN itself will act as the default gateway for the compute nodes,
+     # ip forwarding is required for a network gateway
+     xCAT::NetworkUtils->setup_ip_forwarding(1);
+
+     # Enable ipv6 forwarding,
+     # only if there are IPv6 networks in the networks table
+     my $ipv6net = 0;
+     my $ntab = xCAT::Table->new('networks');
+     if ($ntab)
+     {
+         foreach my $enet (@{$ntab->getAllEntries()})
+         {
+             if ($enet->{'net'} =~ /:/)
+             {
+                 $ipv6net = 1;
+             }
+         }
+         $ntab->close();
+      }
+      if ($ipv6net)
+      {
+          xCAT::NetworkUtils->setup_ipv6_forwarding(1);
+      }
+
+
      my $linux_note =
       "xCAT is now running, it is recommended to tabedit networks \nand set a dynamic ip address range on any networks where nodes \nare to be discovered. Then, run makedhcp -n to create a new dhcpd \nconfiguration file, and \/etc\/init.d\/dhcpd restart. Either examine sample \nconfiguration templates, or write your own, or specify a value per \nnode with nodeadd or tabedit.";
      xCAT::MsgUtils->message('I', $linux_note);
