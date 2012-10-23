@@ -1231,12 +1231,24 @@ nics => {
         table_desc => 'Stores NIC details.',
         descriptions => {
             node => 'The node or group name.',
-            nicips => 'Comma-separated list of IP addresses per NIC. <nic1>:<ip1>,<nic2>:<ip2>,..., e.g eth0:10.0.0.100,eth1:11.0.0.100 The primary IP address must also be stored in the hosts.ip attribute.',
-            nichostnamesuffixes  => 'Comma-separated list of hostname suffixes per NIC. <nic1>:<ext1>,<nic2>:<ext2>,... e.g. eth0:-eth0,ib0:-ib0.',
+            nicips => 'Comma-separated list of IP addresses per NIC. To specify one ip address per NIC:
+                    <nic1>:<ip1>,<nic2>:<ip2>,..., for example, eth0:10.0.0.100,ib0:11.0.0.100
+                To specify multiple ip addresses per NIC:
+                    <nic1>:<ip1>|<ip2>,<nic2>:<ip1>|<ip2>,..., for example, eth0:10.0.0.100|fd55::214:5eff:fe15:849b,ib0:11.0.0.100|2001::214:5eff:fe15:849a
+                Note: The primary IP address must also be stored in the hosts.ip attribute. The nichostnamesuffixes should specify one hostname suffix for each ip address.',
+            nichostnamesuffixes  => 'Comma-separated list of hostname suffixes per NIC. 
+                        If only one ip address is associated with each NIC:
+                            <nic1>:<ext1>,<nic2>:<ext2>,..., for example, eth0:-eth0,ib0:-ib0
+                        If multiple ip addresses are associcated with each NIC:
+                            <nic1>:<ext1>|<ext2>,<nic2>:<ext1>|<ext2>,..., for example,  eth0:-eth0|-eth0-ipv6,ib0:-ib0|-ib0-ipv6.',
             nictypes => 'Comma-separated list of NIC types per NIC. Used for information purposes. <nic1>:<type1>,<nic2>:<type2>, e.g. eth0:Ethernet,ib0:Infiniband', 
             niccustomscripts => 'Comma-separated list of custom scripts per NIC.  <nic1>:<script1>,<nic2>:<script2>, e.g. eth0:configeth eth0, ib0:configib ib0
 .',
-            nicnetworks => 'Comma-separated list of networks connected to each NIC.<nic1>:<network1>,<nic2>:<network2>, eth0: 10_0_0_0-255_255_0_0, ib0: 11_0_0_0-255_255_0_0
+            nicnetworks => 'Comma-separated list of networks connected to each NIC.
+                If only one ip address is associated with each NIC:
+                    <nic1>:<network1>,<nic2>:<network2>, for example, eth0: 10_0_0_0-255_255_0_0, ib0: 11_0_0_0-255_255_0_0
+                If multiple ip addresses are associated with each NIC:
+                    <nic1>:<network1>|<network2>,<nic2>:<network1>|<network2>, for example, eth0: 10_0_0_0-255_255_0_0|fd55:faaf:e1ab:336::/64, ib0: 11_0_0_0-255_255_0_0|2001:db8:1:0::/64
 ',
             comments => 'Any user-written notes.',
             disable => "Set to 'yes' or '1' to comment out this row.",
