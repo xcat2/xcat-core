@@ -10248,7 +10248,7 @@ sub define_SN_resource
 			my $output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $Snode, $ckcmd, 0);
 			if ($::RUNCMD_RC != 0)
 			{
-				# if ($::VERBOSE) {
+				#if ($::VERBOSE) {
 				if (0) {
 					my $rsp;
 					push @{$rsp->{data}}, "$Snode: Could not run $ckcmd.\n";
@@ -12002,252 +12002,301 @@ sub mkdsklsnode
 
     if ($::SETUPHANFS)
     {
-		# get a list of all the cluster nodes 
-		#	- we need SN info for the whole cluster
-		my @nodel = xCAT::DBobjUtils->getObjectsOfType('node');
-
-		# we need a list of all SNs 
-		#  - TBD - could we just get the "members" of the "service" group?
-		my @allSN;
-		my ($npname, $npip) = xCAT::NetworkUtils->gethostnameandip($nimprime); 
-		my $asn = xCAT::Utils->getSNformattedhash(\@nodel, "xcat", "MN");
-		foreach my $sn (keys %$asn) {
-			# we don't want to include the nimprime in the list of SNs
-			my ($sname, $snip) = xCAT::NetworkUtils->gethostnameandip($sn);
-
-			if ($snip eq $npip) {
-				next;
-			}
-
-			if (!grep(/^$sn$/, @allSN)) {
-				push @allSN, $sn;
-			}
-		}
-
-		#  Get a list of nodes for each primary service node
-        #  	- for these we can get the xcatmaster value from node definitions
-		#	- if a SN is not currently listed as a primary then we don't 
-		#	have the xcatmaster value for it!! - we'll have to try to get
-		# 	it from the SN remotely
-        my $sn = xCAT::Utils->getSNformattedhash(\@nodel, "xcat", "MN", "primary");
-        if ($::ERROR_RC)
+        # Determine the service nodes pair
+        my %snhash = ();  #  keys are all SNs listed in node object defs
+        my %xcatmasterhash = ();
+        my $setuphanfserr = 0;
+        foreach my $tnode (@nodelist)
         {
+            # Use hash for performance consideration
+            my $sns = $objhash{$tnode}{'servicenode'};
+            my @snarray = split(/,/, $sns);
+            foreach my $sn (@snarray)
+            {
+                $snhash{$sn} = 1;
+            }
+
+            my $xcatmaster = $objhash{$tnode}{'xcatmaster'};
+            $xcatmasterhash{$xcatmaster} = 1;
+        }
+        if (scalar(keys %snhash) ne 2)
+        {
+            $setuphanfserr++;
             my $rsp;
-            push @{$rsp->{data}}, "Could not get a list of xCAT service nodes.";
+            my $snstr = join(',', keys %snhash);
+            push @{$rsp->{data}}, "Could not determine the service nodes pair, the service nodes are $snstr.\n";
             xCAT::MsgUtils->message("E", $rsp, $callback);
-            $error++;
         }
 
-		# find the xcatmaster values for each servicenode value
-		#   by checking a node definition in each SN node list
-		my $restab = xCAT::Table->new('noderes');
+        if (scalar(keys %xcatmasterhash) ne 1)
+        {
+            my %masteriphash = ();
+            foreach my $master (keys %xcatmasterhash)
+            {
+                my $xcatmasterip = xCAT::NetworkUtils->getipaddr($master);
+                $masteriphash{$xcatmasterip} = 1;
+            }
+            if (scalar(keys %masteriphash) ne 1)
+            {
+                $setuphanfserr++;
+                my $rsp;
+                my $xcatmasterstr = join(',', keys %xcatmasterhash);
+                push @{$rsp->{data}}, "There are more than one xcatmaster for the nodes, the xcatmasters are $xcatmasterstr.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+            }
+        }
 
-		my %xmast;
-		my $testnode;
-		# get the xcatmaster values corresponding to all the primary SNs
-		foreach my $snode (keys %$sn) {
-            my @nodes = @{$sn->{$snode}};
-			my $nlhash = $restab->getNodesAttribs(\@nodes, ['xcatmaster']);
-			foreach my $n (@nodes) {
-				if ($nlhash->{$n}->[0]->{'xcatmaster'} ) {
-					$xmast{$snode} = xCAT::NetworkUtils->getipaddr($nlhash->{$n}->[0]->{'xcatmaster'});
-					
-					# save one of the node names for later
-					$testnode = $n;
-					last;
-				}
-			}
-		}
-		$restab->close();
+        my $xcatmasterip = xCAT::NetworkUtils->getipaddr((keys %xcatmasterhash)[0]);
+		# get local host ips
+        my @allips = xCAT::Utils->gethost_ips();
 
-		# make sure we have an xmast value for every SN!!!!!!!!
-		foreach my $s (@allSN) {
-			if (!$xmast{$s} ) {
-				my $foundit;
-				# if we don't have a xcatmaster value for this SN
-				#	we'll have to try to fetch it from the SN itself
+        my $snlocal;
+        my $snremote;
+		# get the local and remote hostname
+        foreach my $snhost (keys %snhash)
+        {
+            my $snip = xCAT::NetworkUtils->getipaddr($snhost); 
 
-				# see if it's pingable
-				if (!xCAT::Utils::isPingable($s)) {
-					my $rsp;
-					push @{$rsp->{data}}, "Could not contact $s to get a list of IP addresses.\n";
-					xCAT::MsgUtils->message("E", $rsp, $callback);
-					$error++;
-					next;
-				}
+            if (grep(/^$snip$/, @allips))
+            {
+                $snlocal = $snhost;
+            }
+            else
+            {
+                $snremote = $snhost;
+            }
+        }
 
-				# get the network info for test node
-				my @testnodes;
-				push @testnodes, $testnode;
-				my %nethash = xCAT::DBobjUtils->getNetwkInfo(\@testnodes);
+        if (!$snlocal || !$snremote)
+        {
+            $setuphanfserr++;
+            my $rsp;
+            my $snstr = join(',', keys %snhash);
+            push @{$rsp->{data}}, "Wrong service nodes pair: $snstr\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+        }
 
-				my @servlist;
-				push @servlist, $s;
-        		my $sint = &getAIXSNinterfaces(\@servlist, $callback, $subreq);
-        		my %sni = %$sint;		
-
-				# check each interface on the service node
-            	foreach my $IP (@{$sni{$s}})
-            	{
-					# if IP is in same subnet as the testnode then that's
-					#		the one we want
-					if ( xCAT::NetworkUtils->ishostinsubnet( $IP, $nethash{$testnode}{mask}, $nethash{$testnode}{net}) ) {
-						$xmast{$s}=$IP;
-						$foundit++;
-						last;
+        if (!$setuphanfserr)
+        {
+            my $localip;
+            # Get the ip address on the local service node
+            my $lscmd = "ifconfig -a | grep 'inet '";
+            my $out = xCAT::Utils->runcmd("$lscmd", -1);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                "Could not run command: $lscmd on node $snlocal.\n";
+                xCAT::MsgUtils->message("W", $rsp, $callback);
+            }
+            else
+            {
+                foreach my $line (split(/\n/, $out))
+                {
+                     $line =~ /inet\s+(.*?)\s+netmask\s+(.*?)\s+/;
+                     #$1 is ip address, $2 is netmask
+                      if ($1 && $2)
+                      {
+                            my $ip = $1;
+                            my $netmask = $2;
+                            if(xCAT::Utils::isInSameSubnet($xcatmasterip, $ip, $netmask, 2))
+                            {
+                                $localip = $ip;
+                                last;
+                            }
+                      }
+                 }
+             }
+             if (!$localip)
+             {
+             	my $rsp;
+               	push @{$rsp->{data}},
+               	"Could not find an ip address in the samesubnet with xcatmaster ip $xcatmasterip on node $snlocal, falling back to service node $snlocal.\n";
+              	xCAT::MsgUtils->message("W", $rsp, $callback);
+                $localip = xCAT::NetworkUtils->getipaddr($snlocal);
+             }
+            
+            my $remoteip;
+            # Get the ip address on the remote service node
+            $lscmd = qq~ifconfig -a | grep 'inet '~;
+	    $out = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snremote, $lscmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+             	my $rsp;
+               	push @{$rsp->{data}},
+               	"Could not run command: $lscmd against node $snremote.\n";
+              	xCAT::MsgUtils->message("W", $rsp, $callback);
+            }
+            else
+            {
+                foreach my $line (split(/\n/, $out))
+                {
+                     $line =~ /inet\s+(.*?)\s+netmask\s+(.*?)\s+/;
+                     #$1 is ip address, $2 is netmask
+                      if ($1 && $2)
+                      {
+                            my $ip = $1;
+                            my $netmask = $2;
+                            if(xCAT::Utils::isInSameSubnet($xcatmasterip, $ip, $netmask, 2))
+                            {
+                                $remoteip = $ip;
+                                last;
+                            }
+                        }
 					}
-				}
-				if (!$foundit) {
-					my $rsp;
-                    push @{$rsp->{data}}, "Could not determine a remote IP address for $s.\n";
+              	}
+
+              	if (!$remoteip)
+              	{
+             		my $rsp;
+               		push @{$rsp->{data}},
+               		"Could not find an ip address in the samesubnet with xcatmaster ip $xcatmasterip on node $snremote, falling back to service node $snremote.\n";
+              		xCAT::MsgUtils->message("W", $rsp, $callback);
+                	$remoteip = xCAT::NetworkUtils->getipaddr($snremote);
+              	}
+
+				my $install_dir = xCAT::Utils->getInstallDir();
+				my $scmd = "lsnfsexp -c";
+				my @output = xCAT::Utils->runcmd("$scmd", -1);
+				if ($::RUNCMD_RC != 0)
+				{
+                   	my $rsp;
+                    push @{$rsp->{data}}, "Could not list nfs exports on $Sname.\n";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     $error++;
-				} 
-			}
-		} # end foreah SN		
+                }
+                my $needexport = 1;
+				my $replicastr;
+                foreach my $line (@output)
+                {
+                    next if ($line =~ /^#/);
+                    my ($directory,$anonuid,$public,$versions,$exname,$refer,$replica,$allother) = split(':', $line);
+					if ($directory eq $install_dir) {
+						if ($replica) {
 
-		my $install_dir = xCAT::Utils->getInstallDir();
+							# get $replicastr 
+							my @replist = split(/,/, $replica);
+							my ($dir, $repip);
+							my $foundlocalip;
+							my $foundremoteip;
+							foreach my $rep (@replist) {
+								($dir, $repip) = split(/@/, $rep);
 
-		my $scmd = "lsnfsexp -c";
-		my @output = xCAT::Utils->runcmd("$scmd", -1);
-		if ($::RUNCMD_RC != 0)
-		{
-			my $rsp;
-			push @{$rsp->{data}}, "Could not list nfs exports on $Sname.\n";
-			xCAT::MsgUtils->message("E", $rsp, $callback);
-			$error++;
-		}
+								if ($remoteip eq $repip)  {
+									$foundremoteip++;
+								}
+								if ($localip eq $repip)  {
+                                	$foundlocalip++;
+                            	}
 
-		my $needexport = 1;
-		foreach my $line (@output)
-		{
-			next if ($line =~ /^#/);
-			my ($directory,$anonuid,$public,$versions,$exname,$refer,$replica,$allother) = split(':', $line);
+								if ($foundlocalip && $foundremoteip) {
+									$needexport = 0;
+									last;
+								}
 
-			# don't want to unexport if there are already replicas listed
-			if (($directory eq $install_dir) && ($replica))
-			{
-				$needexport = 0;
-				last;
-			}
+								if (($remoteip ne $repip) && ($localip ne $repip)) {
+									$replicastr .= ":$dir\@$repip";
+								}
+							}
 
-			if ($directory =~ /^$install_dir/)
-			{
-				my $scmd = "rmnfsexp -d $directory";
-				my $output = xCAT::Utils->runcmd("$scmd", -1);
-				if ($::RUNCMD_RC != 0)
-				{
-					my $rsp;
-					push @{$rsp->{data}}, "Could not unexport NFS directory $directory on $Sname.\n";
-					xCAT::MsgUtils->message("E", $rsp, $callback);
-					$error++;
-				}
-			}
-		}
+                    	} else {
+                        	my $scmd = "rmnfsexp -d $directory";
+                        	my $output = xCAT::Utils->runcmd("$scmd", -1);
+                        	if ($::RUNCMD_RC != 0)
+                        	{
+                            	my $rsp;
+                            	push @{$rsp->{data}}, "Could not unexport NFS directory $directory on $Sname.\n";
+                            	xCAT::MsgUtils->message("E", $rsp, $callback);
+                            	$error++;
+							}
+                        }
+                    }
+                }
 
-		if ($needexport)
-		{
-			# Setup NFSv4 replication
-			{
-				my $rsp;
-				push @{$rsp->{data}}, "Setting up NFSv4 replication on $Sname.\n";
-				xCAT::MsgUtils->message("I", $rsp, $callback);
-			}
+                if ($needexport)
+                {
 
-			$scmd = "exportfs -ua";
-			my $output = xCAT::Utils->runcmd("$scmd", -1);
-			if ($::RUNCMD_RC != 0)
-			{
-				my $rsp;
-				push @{$rsp->{data}}, "Could not un-exportfs on $Sname.\n";
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-				$error++;
-			}
+					# Setup NFSv4 replication
+                	if ($::VERBOSE)
+                	{
+                    	my $rsp;
+                    	push @{$rsp->{data}}, "Setting up NFSv4 replication on $Sname.\n";
+                    	xCAT::MsgUtils->message("I", $rsp, $callback);
+                	}
 
-			$scmd = "chnfs -R on";
-			$output = xCAT::Utils->runcmd("$scmd", -1);
-			if ($::RUNCMD_RC != 0)
-			{
-				my $rsp;
-				push @{$rsp->{data}}, "Could not enable NFSv4 replication on $Sname.\n";
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-				$error++;
-			}
+					# if no replicas
+					my $scmd;
+				  	if (!$replicastr) { 
 
-			$scmd = "stopsrc -g nfs";
-			$output = xCAT::Utils->runcmd("$scmd", -1);
-			if ($::RUNCMD_RC != 0)
-			{
-				my $rsp;
-				push @{$rsp->{data}}, "Could not stop nfs group on $Sname.\n";
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-				$error++;
-			}
+                    	$scmd = "exportfs -ua";
+                    	my $output = xCAT::Utils->runcmd("$scmd", -1);
+                    	if ($::RUNCMD_RC != 0)
+                    	{
+                        	my $rsp;
+                        	push @{$rsp->{data}}, "Could not un-exportfs on $Sname.\n";
+                        	xCAT::MsgUtils->message("E", $rsp, $callback);
+                        	$error++;
+                    	}
 
-			$scmd = "startsrc -g nfs";
-			$output = xCAT::Utils->runcmd("$scmd", -1);
-			if ($::RUNCMD_RC != 0)
-			{
-				my $rsp;
-				push @{$rsp->{data}}, "Could not stop nfs group on $Sname.\n";
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-				$error++;
-			}
+                    	$scmd = "chnfs -R on";
+                    	$output = xCAT::Utils->runcmd("$scmd", -1);
+                    	if ($::RUNCMD_RC != 0)
+                    	{
+                        	my $rsp;
+                        	push @{$rsp->{data}}, "Could not enable NFSv4 replication on $Sname.\n";
+                        	xCAT::MsgUtils->message("E", $rsp, $callback);
+                        	$error++;
+                    	}
 
-			$scmd = "exportfs -a";
-			$output = xCAT::Utils->runcmd("$scmd", -1);
-			if ($::RUNCMD_RC != 0)
-			{
-				my $rsp;
-				push @{$rsp->{data}}, "Could not exportfs on $Sname.\n";
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-				$error++;
-			}
+                    	$scmd = "stopsrc -g nfs";
+                    	$output = xCAT::Utils->runcmd("$scmd", -1);
+                    	if ($::RUNCMD_RC != 0)
+                    	{
+                        	my $rsp;
+                        	push @{$rsp->{data}}, "Could not stop nfs group on $Sname.\n";
+                        	xCAT::MsgUtils->message("E", $rsp, $callback);
+                        	$error++;
+                    	}
 
-			# figure out the local IP and remote IPs
-			my $localip;
-			my @remIPs;
-			foreach my $snode (@allSN) {
-				if ($xmast{$snode} ) {
-					my $xmIP = xCAT::NetworkUtils->getipaddr($xmast{$snode});
-					if (xCAT::InstUtils->is_me($snode)) {
-						$localip = $xmIP;
-					} else {
-						push @remIPs, $xmIP;
+                    	$scmd = "startsrc -g nfs";
+                    	$output = xCAT::Utils->runcmd("$scmd", -1);
+                    	if ($::RUNCMD_RC != 0)
+                    	{
+                        	my $rsp;
+                        	push @{$rsp->{data}}, "Could not stop nfs group on $Sname.\n";
+                        	xCAT::MsgUtils->message("E", $rsp, $callback);
+                        	$error++;
+                    	}
+
+                    	$scmd = "exportfs -a";
+                    	$output = xCAT::Utils->runcmd("$scmd", -1);
+                    	if ($::RUNCMD_RC != 0)
+                    	{
+                        	my $rsp;
+                        	push @{$rsp->{data}}, "Could not exportfs on $Sname.\n";
+                        	xCAT::MsgUtils->message("E", $rsp, $callback);
+                        	$error++;
+                    	}
+
+                   		$scmd = "mknfsexp -d $install_dir -B -v 4 -g $install_dir\@$localip:$install_dir\@$remoteip -x -t rw -r '*'";
+				  	} else {
+
+						$scmd = "chnfsexp -d $install_dir -B -v 4 -g $install_dir\@$localip:$install_dir\@$remoteip$replicastr -x -t rw -r '*'";
+
 					}
-				} else {
-					my $rsp;
-					push @{$rsp->{data}}, "Could not determine a remote IP address for service node $snode.\n";
-					xCAT::MsgUtils->message("E", $rsp, $callback);
-					$error++;
-				}
-			}
 
-			if ($localip && (scalar(@remIPs) > 0) ) {
+                    my $output = xCAT::Utils->runcmd("$scmd", -1);
+                    if ($::RUNCMD_RC != 0)
+                    {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Could not export directory $install_dir with NFSv4 replication settings on $Sname.\n";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        $error++;
+                    }
 
-				# build mknfsexp cmd
-				# we need to add al theSN remote IPs to the exports file!!
-				$scmd = "mknfsexp -d $install_dir -B -v 4 -g $install_dir\@$localip";
-				foreach my $rip (@remIPs) {
-					$scmd .= ":$install_dir\@$rip";
-				}
-				$scmd .= " -x -t rw -r '*'";
-				$output = xCAT::Utils->runcmd("$scmd", -1);
-				if ($::RUNCMD_RC != 0)
-				{
-					my $rsp;
-					push @{$rsp->{data}}, "Could not export directory $install_dir with NFSv4 replication settings on $Sname.\n";
-					xCAT::MsgUtils->message("E", $rsp, $callback);
-					$error++;
-				}
-			} else {
-				my $rsp;
-				push @{$rsp->{data}}, "Could not export directory $install_dir with NFSv4 replication settings on $Sname.\n";
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-				$error++;
-			}
-		} # end if $needexport
-	} # end if $::SETUPHANFS
+                } # end if $needexport
+            } # end else
+    } # end if $::SETUPHANFS
 
     #
     # process any errors
@@ -12309,68 +12358,6 @@ sub mkdsklsnode
 
 
     return  $retcode;
-}
-
-#----------------------------------------------------------------------------
-
-=head3  getAIXSNinterfaces
-
-	Get a list of ip addresses for each service node in a list
-
-	Arguments:
-		list of service nodes
-	Returns:
-		hash of ips for each service node
-	Globals:
-		none
-	Error:
-		none
-	Example:
-		my $sni = getAIXSNinterfaces(\@servlist, $callback, $subreq);
-
-	Comments:
-
-		NOTICE:  This routine will be moved to a plugin in the next release!
-					(xCAT 2.8)
-=cut
-
-#-----------------------------------------------------------------------------
-sub getAIXSNinterfaces
-{
-    my ($list, $callback, $sub_req) = @_;
-
-    my @snlist = @$list;
-    my %SNinterfaces;
-
-    # get all the possible IPs for the node I'm running on
-    my $ifcmd = "/usr/sbin/ifconfig -a | grep 'inet ' ";
-    foreach my $sn (@snlist)
-    {
-        my $SNIP;
-        my $out = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $sn, $ifcmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-			my $rsp;
-			push @{$rsp->{data}}, "Could not get IP addresses from service node $sn.\n";
-			xCAT::MsgUtils->message("E", $rsp, $callback);
-            next;
-        }
-
-		my @result;
-		foreach my $line ( split(/\n/, $out)) {
-			$line =~ s/$sn:\s+//;
-			push(@result, $line);
-		}
-
-		foreach my $int (@result) {
-			my ($inet, $SNIP, $str) = split(" ", $int);
-			chomp $SNIP;
-			$SNIP =~ s/\/.*//; # ipv6 address 4000::99/64
-			$SNIP =~ s/\%.*//; # ipv6 address ::1%1/128
-            push(@{$SNinterfaces{$sn}}, $SNIP);
-        }
-    } # end foreach SN
-   	return \%SNinterfaces;
 }
 
 #----------------------------------------------------------------------------
@@ -13331,7 +13318,7 @@ sub make_SN_resource
 			my $output = xCAT::Utils->runcmd("$ckcmd", -1);
 			if ($::RUNCMD_RC != 0)
 			{
-			#	if ($::VERBOSE) {
+				#if ($::VERBOSE) {
 				if (0) {
 					my $rsp;
 					push @{$rsp->{data}}, "Could not run $ckcmd.\n";
