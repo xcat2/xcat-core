@@ -919,8 +919,10 @@ site => {
    "              the node deployment, node discovery and power operations. The default is to update.\n\n".
    " ntpservers:  A comma delimited list of NTP servers for the cluster - often the\n".
    "              xCAT management node.\n\n".
-   " runbootscripts:  If set to 'yes' the scripts listed in the osimage and postscripts tables\n".
-   "                 postbootscripts attribute will be run at each reboot of the node.\n\n".
+   " runbootscripts:  If set to 'yes' the scripts listed in the postbootscripts\n".
+   "                  attribute in the osimage and postscripts tables will be run during\n".
+   "                  each reboot of stateful (diskful) nodes. This attribute has no\n".
+   "                  effect on stateless and statelite nodes.\n\n".
    " syspowerinterval:  For system p CECs, this is the number of seconds the rpower\n".
    "                 command will wait between performing the action for each CEC.\n".
    "                 For system x IPMI servers, this is the number of seconds the\n".

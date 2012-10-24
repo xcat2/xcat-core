@@ -906,8 +906,8 @@ sub populate_site_hash {
 
 
 ##########################################
-# handle_response is a default callback that can be passed into submit_response()
-# It is invoked repeatedly by submit_response() to print out the data returned by
+# handle_response is a default callback that can be passed into submit_request()
+# It is invoked repeatedly by submit_request() to print out the data returned by
 # the plugin.
 #
 # The normal flow is:

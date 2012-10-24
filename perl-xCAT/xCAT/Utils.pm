@@ -964,16 +964,18 @@ sub runcmd
       my $errout;
       open (PIPE, "$cmd |");
       while (<PIPE>) {
+        push @$outref, $_;
+        chomp;      # get rid of the newline, because the client will add one
         if ($::CALLBACK){
            $rsp->{data}->[0] = $_;
            $::CALLBACK->($rsp);
         } else {
           xCAT::MsgUtils->message("D", "$_");
         }
-        $output .= $_;
+        #$output .= $_;
       }
       # store the return string
-      push  @$outref,$output;   
+      #push  @$outref,$output;   
     }
 
     # now if not streaming process errors 
