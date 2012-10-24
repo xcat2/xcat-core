@@ -741,8 +741,8 @@ sub nodediscoverstart{
     }
 
     # Read DB to confirm the discover is not started yet. 
-    my @sitevalues = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
-    if ($sitevalues[0]){
+    my $discover_running = xCAT::ProfiledNodeUtils->is_discover_started();
+    if ($discover_running){
         setrsp_errormsg("Profiled nodes discovery already started.");
         return;
     }
@@ -775,8 +775,8 @@ sub nodediscoverstart{
 sub nodediscoverstop{
     # Read DB to confirm the discover is started. 
     xCAT::MsgUtils->message("Stopping profiled node's discover.");
-    my @sitevalues = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
-    if (! $sitevalues[0]){
+    my $discover_running = xCAT::ProfiledNodeUtils->is_discover_started();
+    if (! $discover_running){
         setrsp_errormsg("Profiled nodes discovery not started yet.");
         return;
     }
@@ -830,9 +830,8 @@ sub nodediscoverstatus{
 #-------------------------------------------------------
 sub nodediscoverls{
     # Read DB to confirm the discover is started. 
-    my @sitevalues = ();
-    @sitevalues = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
-    if (! $sitevalues[0]){
+    my $discover_running = xCAT::ProfiledNodeUtils->is_discover_started();
+    if (! $discover_running){
         setrsp_errormsg("Profiled nodes discovery not started yet.");
         return;
     }
@@ -889,7 +888,7 @@ sub findme{
     xCAT::MsgUtils->message('S', "Profield nodes discover: Start.\n");
     # Read DB to confirm the discover is started. 
     my @sitevalues = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
-    if (! @sitevalues){
+    if (! $sitevalues[0]){
         setrsp_errormsg("Profiled nodes discovery not started yet.");
         return;
     }
