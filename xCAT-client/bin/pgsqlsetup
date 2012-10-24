@@ -771,14 +771,15 @@ sub pgstart
         # check to see if running before continuing
         my $retries =0;
         my $pgstarted =0;
+        if (defined($::postgres9)) { # set to the PTF level of postgresql 9.X
+            $cmd = "service postgresql-9.$::postgres9 status";
+        } else {
+            $cmd = "service postgresql status";
+        }
         while ($retries < 30) {
           $retries++;
-          if (defined($::postgres9)) { # set to the PTF level of postgresql 9.X
-            $cmd = "service postgresql-9.$::postgres9 status";
-          } else {
-            $cmd = "service postgresql status";
-          }
           my @status=xCAT::Utils->runcmd($cmd, -1);
+          #my @status=xCAT::Utils->runcmd($cmd, 0);
           if (grep(/running/, @status)) {
             $pgstarted=1;
             last;
@@ -928,7 +929,7 @@ sub setupxcatdb
         my $errmsg = $result[1];
         $pgsql->soft_close();
         xCAT::MsgUtils->message("E",
-                               "Failed creating xcatadm id. $errmsg");
+                               "Failed creating xcatadm id.");
         exit(1);
 
     }
