@@ -1565,6 +1565,7 @@ sub changeVM {
         my $ping = `pping $node`;
         if (!($ping =~ m/noping/i)) {
             # Delete WWPN and LUN from sysfs
+            $device = lc($device);
             $out = `ssh $node "echo 0x$lun > /sys/bus/ccw/drivers/zfcp/0.0.$device/0x$wwpn/unit_remove"`;
             
             # Get source node OS
