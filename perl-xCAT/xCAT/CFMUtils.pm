@@ -93,7 +93,7 @@ sub initCFMdir
         my $merge = $file.".merge";
         if (! -e "$cfmdir/$merge")
         {
-            system("touch $cfmdir/$merge");
+            xCAT::Utils->runcmd("touch $cfmdir/$merge", -1);
         }
     }
 }
@@ -534,7 +534,7 @@ sub updateCFMPkglistFile {
     my @pre_removed = @$pre_removed_ref;
 
     # get diff between previous and current selected OS packages lists    
-    my @diff = xCAT::CFMUtils->getOSpkgsDiff(\@pre_selected, \@cur_selected);
+    my @diff = xCAT::CFMUtils->getPkgsDiff(\@pre_selected, \@cur_selected);
  
     # merge the diff to previous removed OS packages list
     my @all_removed = xCAT::CFMUtils->arrayops("U", \@pre_removed, \@diff);
@@ -623,12 +623,12 @@ sub getPreOSpkgsList {
 
 #-----------------------------------------------------------------------------
 
-=head3 getOSpkgsDiff
-    Get the differences between previous and current OS packages list
+=head3 getPkgsDiff
+    Get the differences between previous and current packages list
 
     Arguments:
-      @pre - previous selected OS packages list
-      @cur - current selected OS packages list
+      @pre - previous selected packages list
+      @cur - current selected packages list
     Returns:
       @diff - the differencen list
     Globals:
@@ -636,12 +636,12 @@ sub getPreOSpkgsList {
     Error:
       none
     Example:
-      my @diff = xCAT::CFMUtils->getOSpkgsDiff(\@pre_selected, \@cur_selected);
+      my @diff = xCAT::CFMUtils->getPkgsDiff(\@pre_selected, \@cur_selected);
 
 =cut
 
 #-----------------------------------------------------------------------------
-sub getOSpkgsDiff {
+sub getPkgsDiff {
     my ($class, $pre, $cur) = @_;
 
     # get the intersection firstly
