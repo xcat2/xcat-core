@@ -609,6 +609,48 @@ sub runpostgrescmd
 
 
 }
+#-----------------------------------------------------------------------------
+
+=head3   runpgcmd_chkoutput  
+
+	
+  Run a commmand as the postgres id 
+  Input: command
+  Output: return code 
+  Note: this version checks for specific error conditions
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub runpgcmd_chkoutput
+{
+    my $orgcmd = shift;
+    my $rc =0;
+    my $cmd =  "\'";
+    $cmd .= $orgcmd;
+    $cmd .= ' 2>&1';
+    $cmd .=  "\'";
+    
+    my $retries=0;
+    while ($retries < 6) {
+       $retries++;
+       my @output =`su - postgres -c $cmd`;
+       if (grep(/could not connect to database postgres/, @output)) {
+          sleep 5;
+          $rc=1
+       } else {
+         $rc=0;
+         foreach my $line (@output) {
+           print "$line \n";
+         }
+         last;
+       }
+    }
+    return $rc; 
+
+
+}
+
 
 #-----------------------------------------------------------------------------
 
@@ -856,11 +898,13 @@ sub setupxcatdb
     } else {  #Linux
       $cmd = "$::pgcmddir/createdb  $::dbname ";
     }
-    &runpostgrescmd($cmd);
-    if ($? > 0) {
+    # We need to check the output, because sometimes
+    # postmaster daemon is not ready at this point to create the database
+    my $rc = &runpgcmd_chkoutput($cmd);
+    if ($rc > 0) {
         xCAT::MsgUtils->message("E",
                                "Failed creating the $::dbname database");
-        #exit(1);
+        exit(1);
     }
 
     if ($::osname eq 'AIX')
