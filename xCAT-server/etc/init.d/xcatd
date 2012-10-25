@@ -77,7 +77,7 @@ restart)
   $STATUS > /dev/null 2>&1
   if [ "$?" = "0" ]; then
     ver=`nodels --version`
-    if [[ $ver < "Version 2.6" ]]; then # force to stop xcatd first when update from version earlier than 2.6
+    if [ "$ver" \< "Version 2.6" ]; then # force to stop xcatd first when update from version earlier than 2.6
         $0 stop
     fi
   fi
