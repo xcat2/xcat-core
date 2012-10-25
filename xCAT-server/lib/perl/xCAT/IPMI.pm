@@ -16,7 +16,7 @@ use warnings "all";
 use Time::HiRes qw/time/;
 
 use IO::Socket::INET qw/!AF_INET6 !PF_INET6/;
-my $initialtimeout=0.100;
+my $initialtimeout=0.809;
 use constant STATE_OPENSESSION=>1;
 use constant STATE_EXPECTINGRAKP2=>2;
 use constant STATE_EXPECTINGRAKP4=>3;
@@ -451,7 +451,7 @@ sub timedout {
     	return;
     }
     $self->{nowait}=1;
-    $self->{timeout} = $self->{timeout}*2;
+    $self->{timeout} = $self->{timeout}*1.5;
     if ($self->{noretry}) { return; }
     if ($self->{timeout} > 7) { #giveup, really
         $self->{timeout}=$initialtimeout;
@@ -819,11 +819,12 @@ sub parse_ipmi_payload {
     }
     $self->{seqlun} += 4; #increment by 1<<2
     if ($self->{seqlun} > 0xff) { #overflow case
-	    if ($self->{rqaddr} == 0x8d) { #rqaddr itself is forced to overflow
-		$self->{rqaddr}=0x81;
-            } else {
-		$self->{rqaddr}+=2; #table 5-4 demands rqaddr be odd for software ids, so we must increment by 2
-            }
+	#Problem with rqaddr iteration strategy to get more sequence numbers, changing swid invalidates reservation ids for some BMCs...
+	 #   if ($self->{rqaddr} == 0x8d) { #rqaddr itself is forced to overflow
+	#	$self->{rqaddr}=0x81;
+         #   } else {
+	#	$self->{rqaddr}+=2; #table 5-4 demands rqaddr be odd for software ids, so we must increment by 2
+            #}
 	    $self->{seqlun} &= 0xff; #keep it one byte
     }
     delete $sessions_waiting{$self}; #deregister self as satisfied, callback will reregister if appropriate
@@ -950,7 +951,7 @@ sub sendpayload {
     $sessions_waiting{$self}->{ipmisession}=$self;
     if ($args{delayxmit}) {
 	$sessions_waiting{$self}->{timeout}=time()+$args{delayxmit};
-	$self->{timeout}=$initialtimeout/2; #since we are burning one of the retry attempts, start the backoff algorithm faster to make it come out even
+	$self->{timeout}=$initialtimeout/1.5; #since we are burning one of the retry attempts, start the backoff algorithm faster to make it come out even
 	undef $args{delayxmit};
         return; #don't actually transmit packet, use retry timer to start us off
     } else {
