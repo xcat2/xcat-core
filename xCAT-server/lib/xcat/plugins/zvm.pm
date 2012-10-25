@@ -937,6 +937,7 @@ sub changeVM {
             }
             
             # Set WWPN and LUN in sysfs
+            $device = lc($device);
             $out .= `ssh $node "echo 0x$wwpn > /sys/bus/ccw/drivers/zfcp/0.0.$device/port_add"`;
             $out .= `ssh $node "echo 0x$lun > /sys/bus/ccw/drivers/zfcp/0.0.$device/0x$wwpn/unit_add"`;
             
