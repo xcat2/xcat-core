@@ -1424,6 +1424,7 @@ function openAddZfcpDialog(node, hcp) {
     addZfcpForm.append(info);
     addZfcpForm.append('<div><label for="diskNode">Node:</label><input type="text" readonly="readonly" name="diskNode" value="' + node + '"/></div>');
     addZfcpForm.append('<div><label for="diskAddress">Disk address:</label><input type="text" name="diskAddress"/></div>');
+    addZfcpForm.append('<div><label for="diskLoaddev">LOADDEV:</label><input type="checkbox" name="diskLoaddev"/></div>');
     addZfcpForm.append('<div><label for="diskSize">Disk size:</label><input type="text" name="diskSize"/></div>');
     
     // Create drop down for disk pool
@@ -1470,6 +1471,7 @@ function openAddZfcpDialog(node, hcp) {
                 // Get inputs
                 var node = $(this).find('input[name=diskNode]').val();
                 var address = $(this).find('input[name=diskAddress]').val();
+                var loaddev = $(this).find('input[name=diskLoaddev]');
                 var size = $(this).find('input[name=diskSize]').val();
                 var pool = $(this).find('select[name=diskPool]').val();
                 var tag = $(this).find('select[name=diskTag]').val();
@@ -1481,7 +1483,14 @@ function openAddZfcpDialog(node, hcp) {
                     var warn = createWarnBar('Please provide a value for each missing field.');
                     warn.prependTo($(this));
                 } else {
-                    var args = '--addzfcp;' + pool + ';' + address + ';' + size;
+                	if (loaddev.attr('checked')) {
+                		loaddev = 1;
+                	} else {
+                		loaddev = 0;
+                	}
+
+                	var args = '--addzfcp;' + pool + ';' + address + ';' + loaddev + ';' + size;
+                	
                     if (tag && tag != "null") {
                         args += ';' + tag;
                     } if (portName && tag != "null") {
