@@ -632,9 +632,10 @@ sub runpgcmd_chkoutput
     $cmd .=  "\'";
     
     my $retries=0;
+    my @output;
     while ($retries < 6) {
        $retries++;
-       my @output =`su - postgres -c $cmd`;
+       @output =`su - postgres -c $cmd`;
        if (grep(/could not connect to database postgres/, @output)) {
           sleep 5;
           $rc=1
@@ -645,6 +646,11 @@ sub runpgcmd_chkoutput
          }
          last;
        }
+    }
+    if ($rc == 1) {   # print out the postgresql connect failure
+         foreach my $line (@output) {
+           print "$line \n";
+         }
     }
     return $rc; 
 
