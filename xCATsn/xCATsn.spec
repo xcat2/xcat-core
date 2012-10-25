@@ -15,27 +15,26 @@ Source1: xcat.conf
 Source2: license.tar.gz
 Source3: xCATSN 
 Provides: xCATsn = %{version}
-Requires: xCAT-server xCAT-client perl-xCAT perl-DBD-SQLite 
-
-%ifos linux
-Requires: perl-XML-Parser
-%endif
+Requires: xCAT-server xCAT-client perl-DBD-SQLite 
 
 Conflicts: xCAT
 
 %ifos linux
 # yaboot-xcat is pulled in so any SN can manage ppc nodes
-Requires: dhcp httpd nfs-utils nmap bind perl-XML-Parser
+Requires: httpd nfs-utils nmap bind
+# On RHEL this pulls in dhcp, on SLES it pulls in dhcp-server
+Requires: /usr/sbin/dhcpd
+# On RHEL this pulls in openssh-server, on SLES it pulls in openssh
+Requires: /usr/bin/ssh
 %ifnarch s390x
 Requires: /etc/xinetd.d/tftp
+# yaboot-xcat is pulled in so any MN can manage ppc nodes
 Requires: conserver-xcat yaboot-xcat 
 %endif
 %endif
 
 %ifarch i386 i586 i686 x86 x86_64
-# All versions of the nb rpms are pulled in so an x86 MN can manage nodes of any arch.
-# The nb rpms are used for dhcp-based discovery, and flashing, so for now we do not need them on a ppc MN.
-Requires: xCAT-nbroot-oss-x86 xCAT-nbroot-core-x86 xCAT-nbkernel-x86 xCAT-nbroot-oss-x86_64 xCAT-nbroot-core-x86_64 xCAT-nbkernel-x86_64 xCAT-nbroot-oss-ppc64 xCAT-nbroot-core-ppc64 xCAT-nbkernel-ppc64 syslinux
+Requires: syslinux xCAT-genesis-x86_64 elilo-xcat
 Requires: ipmitool-xcat >= 1.8.9
 Requires: xnba-undi syslinux-xcat
 %endif

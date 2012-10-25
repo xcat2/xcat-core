@@ -20,7 +20,7 @@ AutoReqProv: no
 # also need to fix Requires for AIX
 %ifos linux
 BuildArch: noarch
-Requires: perl-IO-Socket-SSL perl-XML-Simple
+Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser
 Obsoletes: atftp-xcat
 %endif
 

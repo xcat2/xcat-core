@@ -24,7 +24,7 @@ Conflicts: xCATsn
 Requires: xCAT-server xCAT-client perl-DBD-SQLite
 
 %ifos linux
-Requires: httpd nfs-utils nmap bind perl-XML-Parser perl(CGI)
+Requires: httpd nfs-utils nmap bind perl(CGI)
 # On RHEL this pulls in dhcp, on SLES it pulls in dhcp-server
 Requires: /usr/sbin/dhcpd
 # On RHEL this pulls in openssh-server, on SLES it pulls in openssh
@@ -37,8 +37,6 @@ Requires: conserver-xcat yaboot-xcat
 %endif
 
 %ifarch i386 i586 i686 x86 x86_64
-# All versions of the nb rpms are pulled in so an x86 MN can manage nodes of any arch.
-# The nb rpms are used for dhcp-based discovery, and flashing, so for now we do not need them on a ppc MN.
 Requires: syslinux xCAT-genesis-x86_64 elilo-xcat
 Requires: ipmitool-xcat >= 1.8.9
 Requires: xnba-undi syslinux-xcat
