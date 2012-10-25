@@ -689,6 +689,17 @@ sub init {
 			  #448 instead of 64 transactions are now required before ambiguity is possible
 			  #A stale reply has to come in after the conversation has advanced at least 448 transactions, meaning longer delay on extraneous reply before this is a problem
 			  #even if a stale reply comes in at *about* the right time, it has to match an exact multiple of 448 instead of 64, which is significantly less likely.
+			  #I abandoned this strategy, but leaving it documented for posterity.  The issue is that some operations don't like the client changing software id
+			  #midstream (notably SDR reservations).
+			  #ipmi spec does contain some guidance in the BT section of the spec 'Using the Seq Field'.  There is guidance elsewhere about sequence numbers higher than 8 beyond current
+			  #but I'm not sure if thet means 'session sequence number' or 'seq', which are very very different.
+			  #one tangible recommendation is for the combination of command+seq+netfn to be unique, which can certainly help, so we should track netfn and command to make sure response
+			  #matches at least the expected command and netfn.
+			  #additionally, it looks like we could implement a sort of 'taboo' sequence number scheme.  When we ascertain that we are retrying, we flag the current sequence number to be 
+			  #'taboo' in the future.  When the time comes to increment sequence number, we mark the current combination of command+netfn+seq as 'taboo'
+			  #should circumstances suggest that we are about to transmit a packet with a taboo combination, we bump sequence number until no longer taboo, no more than 8 bumps.
+			  #if we should incur 7 bumps, clear the taboo list and continue on, hoping for best (pessimistically assuming the spec means seq number or that someone could at least interpret it that way)
+			  #I'll implement this later...
     $self->{'logged'}=0;
 }
 sub relog {
