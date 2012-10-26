@@ -147,7 +147,7 @@ sub makescript
 
     #create the mypostscript for each node once according to the template
     if(ref($node) eq "ARRAY") {
-        require xCAT::Template;
+        require xCAT::Template;   
         xCAT::Template->subvars_for_mypostscript($node, $nodesetstate, $callback);    
         return;
     }
@@ -184,7 +184,7 @@ sub makescript
     # for them in the post install file
     my $attribute;
     my $value;
-    my $masterset = 0;
+    my $masterset = 0; 
     foreach (keys(%::XCATSITEVALS))    # export the attribute
     {
         $attribute = $_;
@@ -958,16 +958,21 @@ sub getnodesetstate
 sub net_parms
 {
     my $ip = shift;
+    my $nets = shift;
     $ip = xCAT::NetworkUtils->getipaddr($ip);
     if (!$ip)
     {
         xCAT::MsgUtils->message("S", "Unable to resolve $ip");
         return undef;
     }
-    my $nettab = xCAT::Table->new('networks');
-    unless ($nettab) { return undef }
-    my @nets = $nettab->getAllAttribs('net', 'mask', 'gateway');
-    foreach (@nets)
+ 
+    if(!defined($nets) ) {  
+        my $nettab = xCAT::Table->new('networks');
+        unless ($nettab) { return undef }
+        my @tmp_nets = $nettab->getAllAttribs('net', 'mask', 'gateway'); 
+        $nets = \@tmp_nets;
+    }
+    foreach (@$nets)
     {
         my $net  = $_->{'net'};
         my $mask = $_->{'mask'};
