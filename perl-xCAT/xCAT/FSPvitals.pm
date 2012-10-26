@@ -69,21 +69,42 @@ sub enumerate_lcds {
     my $power_status_prefix = "Current Power Status:";
     my $Rc;
     my @refcode;
-    my $c;
+    my $c = 0;
  
     my $values = xCAT::FSPUtils::fsp_api_action ($request, $name, $d, $action); 
     $Rc =  @$values[2];
     my $data = @$values[1];
+    my $t_n = @$values[0];
     if( $Rc != 0 ) {
-        my @names = split(/,/, $name);
-        my @t_data = split(/\n\n/, $data); 
+        my @names = split(/,/, $t_n);
+        my @t_data = split(/\n/, $data); 
         foreach my $n (@names) {
             if( $data =~ /$n/ ) {
                 chomp $t_data[$c];
-                push @refcode,[$n, "$prefix $t_data[$c]", $Rc];
-                if( $only_lcds == 0) {
-                    push @refcode,[$n, "$power_status_prefix $t_data[$c]", $Rc];
-                }
+                #push @refcode,[$n, "$prefix $t_data[$c]", $Rc];
+                if($t_data[$c] =~ /Error/ ) {
+                    if( $only_lcds == 0) {
+                        push @refcode,[$n, "$power_status_prefix $t_data[$c]", $Rc];
+                    }
+                    push @refcode,[$n, "$prefix $t_data[$c]", $Rc];
+                } else {
+                    if( $only_lcds == 0) {
+
+                        # get power status
+                        if( $data =~ /1\|/) {
+                            push @refcode, [$n, "$power_status_prefix on", $Rc] ;
+                        } else {
+                            push @refcode, [$n, "$power_status_prefix off", $Rc];
+                        }
+                    }
+
+                    # get lcd value
+                    if( $t_data[$c] =~ /1\|(\w[\w\s]*)/) {
+                        push @refcode, [$n, "$prefix $1", $Rc] ;
+                    } else {
+                        push @refcode, [$n, "$prefix blank", $Rc];
+                    }
+                } 
                 $c++;
             } else {
                 push @refcode, [$n, "$prefix $data", $Rc];
