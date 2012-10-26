@@ -1017,7 +1017,7 @@ sub rmkit
         push@{ $rsp{data} }, "Usage: ";
         push@{ $rsp{data} }, "\trmkit [-h|--help]";
         push@{ $rsp{data} }, "\trmkit [-f|--force] <kitlist>] [-V]";
-        $callback->(\%rsp);
+        xCAT::MsgUtils->message( "I", \%rsp, $callback );
     };
 
     unless(defined($request->{arg})){ $xusage->(1); return; }
@@ -1045,7 +1045,9 @@ sub rmkit
         $tabs{$t} = xCAT::Table->new($t,-create => 1,-autocommit => 1);
 
         if ( !exists( $tabs{$t} )) {
-            $callback->({error => ["Could not open xCAT table $t\n"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "Could not open xCAT table $t";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
     }
@@ -1064,7 +1066,9 @@ sub rmkit
         } else {
             my @entries = $tabs{kit}->getAllAttribsWhere( "basename = '$kit'", 'kitname' );
             unless (@entries) {
-                $callback->({error => ["Kit $kit could not be found in DB $t\n"],errorcode=>[1]});
+                my %rsp;
+                push@{ $rsp{data} }, "Kit $kit could not be found in DB $t";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
             foreach my $entry (@entries) {
@@ -1079,7 +1083,9 @@ sub rmkit
 
     foreach my $kitname (keys %kitnames) {
 
-        $callback->({data=>["Removing kit $kitname"]});
+        my %rsp;
+        push@{ $rsp{data} }, "Removing kit $kitname";
+        xCAT::MsgUtils->message( "I", \%rsp, $callback );
 
         # Remove osimage.kitcomponents.
 
@@ -1090,7 +1096,9 @@ sub rmkit
         if (defined(@entries) && (@entries > 0)) {  
 
             if($::VERBOSE){
-                $callback->({data=>["Removing kit components from osimage.kitcomponents"]});
+                my %rsp;
+                push@{ $rsp{data} }, "Removing kit components from osimage.kitcomponents";
+                xCAT::MsgUtils->message( "I", \%rsp, $callback );
             }
 
             foreach my $entry (@entries) {
@@ -1105,14 +1113,18 @@ sub rmkit
                         # Remove this component from osimage.kitcomponents if -f option.
                         if ("$kitcompname" =~ /^$kitcomponent$/) {
                             unless ($force) {
-                                $callback->({error => ["Failed to remove kit component $kitcomponent because:$kitcomponent is being used by osimage $entry->{imagename}\n"],errorcode=>[1]});
+                                my %rsp;
+                                push@{ $rsp{data} }, "Failed to remove kit component $kitcomponent because:$kitcomponent is being used by osimage $entry->{imagename}";
+                                xCAT::MsgUtils->message( "E", \%rsp, $callback );
                                 return 1;
                             }
 
                             # Remove this component from osimage.kitcomponents. Mark here.
                             my $ret = xCAT::Utils->runxcmd({ command => ['rmkitcomp'], arg => ['-f','-u','-i',$entry->{imagename}, $kitcompname] }, $request_command, 0, 1);
                             if ( $::RUNCMD_RC ) {
-                                $callback->({error => ["ret=$ret,Failed to remove kit component $kitcomponent from $entry->{imagename}\n"],errorcode=>[1]});
+                                my %rsp;
+                                push@{ $rsp{data} }, "Failed to remove kit component $kitcomponent from $entry->{imagename}";
+                                xCAT::MsgUtils->message( "E", \%rsp, $callback );
                                 return 1;
                             }
                         }
@@ -1130,8 +1142,11 @@ sub rmkit
 
             # remove kit plugins from /opt/xcat/lib/perl/xCAT_plugin
             if($::VERBOSE){
-                $callback->({data=>["Removing kit plugins from $::XCATROOT/lib/perl/xCAT_plugin/"]});
+                my %rsp;
+                push@{ $rsp{data} }, "Removing kit plugins from $::XCATROOT/lib/perl/xCAT_plugin/";
+                xCAT::MsgUtils->message( "I", \%rsp, $callback );
             }
+
             opendir($dir, $kitdir."/plugins");
             my @files = readdir($dir);
             foreach my $file (@files) {
@@ -1147,7 +1162,9 @@ sub rmkit
 
 
             if($::VERBOSE){
-                $callback->({data=>["Removing kit scripts from /install/postscripts/"]});
+                my %rsp;
+                push@{ $rsp{data} }, "Removing kit scripts from /install/postscripts/";
+                xCAT::MsgUtils->message( "I", \%rsp, $callback );
             }
             # remove kit scripts from /install/postscripts/
             my $installdir = xCAT::TableUtils->getInstallDir();
@@ -1171,7 +1188,9 @@ sub rmkit
 
             # remove kitdir from /install/kits/
             if($::VERBOSE){
-                $callback->({data=>["Removing kitdir from installdir"]});
+                my %rsp;
+                push@{ $rsp{data} }, "Removing kitdir from installdir";
+                xCAT::MsgUtils->message( "I", \%rsp, $callback );
                 system("rm -rfv $kitdir");
             } else {
                 system("rm -rf $kitdir");
@@ -1180,7 +1199,9 @@ sub rmkit
 
 
         if($::VERBOSE){
-            $callback->({data=>["Removing kit from xCAT DB"]});
+            my %rsp;
+            push@{ $rsp{data} }, "Removing kit from xCAT DB";
+            xCAT::MsgUtils->message( "I", \%rsp, $callback );
         }
         # Remove kitcomponent 
         foreach my $kitcomp ( @kitcomphash ) {
@@ -1203,7 +1224,9 @@ sub rmkit
     }
 
     my $kits = join ',', @kitlist;
-    $callback->({data=>["Kit $kits was successfully removed."]});
+    my %rsp;
+    push@{ $rsp{data} }, "Kit $kits was successfully removed.";
+    xCAT::MsgUtils->message( "I", \%rsp, $callback );
 
     # Issue xcatd reload to load the new plugins
     system("/etc/init.d/xcatd reload");
@@ -1233,7 +1256,7 @@ sub addkitcomp
         push@{ $rsp{data} }, "Usage: ";
         push@{ $rsp{data} }, "\taddkitcomp [-h|--help]";
         push@{ $rsp{data} }, "\taddkitcomp [-a|--adddeps] [-f|--force] [-V|--verbose] -i <osimage> <kitcompname_list>";
-        $callback->(\%rsp);
+        xCAT::MsgUtils->message( "I", \%rsp, $callback );
     };
 
     unless(defined($request->{arg})){ $xusage->(1); return; }
@@ -1263,7 +1286,9 @@ sub addkitcomp
         $tabs{$t} = xCAT::Table->new($t,-create => 1,-autocommit => 1);
 
         if ( !exists( $tabs{$t} )) {
-            $callback->({error => ["Could not open xCAT table $t\n"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "Could not open xCAT table $t";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
     }
@@ -1271,7 +1296,9 @@ sub addkitcomp
     # Check if all the kitcomponents are existing before processing
 
     if($::VERBOSE){
-        $callback->({data=>["Checking if kitcomponents are valid"]});
+        my %rsp;
+        push@{ $rsp{data} }, "Checking if kitcomponents are valid";
+        xCAT::MsgUtils->message( "I", \%rsp, $callback );
     }
 
     my %kitcomps;
@@ -1287,7 +1314,9 @@ sub addkitcomp
         } else {
             my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcomponent'", 'kitcompname' , 'version', 'release');
             unless (@entries) {
-                $callback->({error => ["$kitcomponent kitcomponent does not exist\n"],errorcode=>[1]});
+                my %rsp;
+                push@{ $rsp{data} }, "$kitcomponent kitcomponent does not exist";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
             
@@ -1300,7 +1329,9 @@ sub addkitcomp
     # Verify if the kitcomponents fitting to the osimage or not.
 
     if($::VERBOSE){
-        $callback->({data=>["Verifying if kitcomponents fit to osimage"]});
+        my %rsp;
+        push@{ $rsp{data} }, "Verifying if kitcomponents fit to osimage";
+        xCAT::MsgUtils->message( "I", \%rsp, $callback );
     }
 
     my %os;
@@ -1309,7 +1340,9 @@ sub addkitcomp
     if ( $osimagetable and $osimagetable->{'osdistroname'}){
         ($osdistrotable) = $tabs{osdistro}->getAttribs({osdistroname=> $osimagetable->{'osdistroname'}}, 'basename', 'majorversion', 'minorversion', 'arch', 'type');
         if ( !$osdistrotable or !$osdistrotable->{basename} ) {
-            $callback->({error => ["$osdistroname osdistro does not exist\n"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "$osdistroname osdistro does not exist";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         } 
 
@@ -1324,7 +1357,9 @@ sub addkitcomp
         $os{$osimage}{serverrole} = lc($osimagetable->{'serverrole'});
 
     } else {
-        $callback->({error => ["$osimage osimage does not exist or not saticified\n"],errorcode=>[1]});
+        my %rsp;
+        push@{ $rsp{data} }, "$osimage osimage does not exist or not saticified";
+        xCAT::MsgUtils->message( "E", \%rsp, $callback );
         return 1;
     }
 
@@ -1340,7 +1375,9 @@ sub addkitcomp
             if ( $kittable and $kittable->{ostype} ) {
                 $kitcomps{$kitcomp}{ostype} = lc($kittable->{ostype});
             } else {
-                $callback->({error => ["$kitcomptable->{'kitname'} ostype does not exist\n"],errorcode=>[1]});
+                my %rsp;
+                push@{ $rsp{data} }, "$kitcomptable->{'kitname'} ostype does not exist";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
 
@@ -1357,13 +1394,17 @@ sub addkitcomp
                 $kitcomps{$kitcomp}{osminorversion} = lc($kitrepotable->{osminorversion});
                 $kitcomps{$kitcomp}{osarch} = lc($kitrepotable->{osarch});
             } else {
-                $callback->({error => ["$kitcomp osbasename,osmajorversion,osminorversion or osarch does not exist\n"],errorcode=>[1]});
+                my %rsp;
+                push@{ $rsp{data} }, "$kitcomp osbasename,osmajorversion,osminorversion or osarch does not exist";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
                             
         }  else {
-            $callback->({error => ["$kitcomp kitname or kitrepo name does not exist\n"],errorcode=>[1]});
-            return 1; 
+            my %rsp;
+            push@{ $rsp{data} }, "$kitcomp kitname or kitrepo name does not exist";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            return 1;
         }
 
         if ( !$force ) {
@@ -1378,32 +1419,44 @@ sub addkitcomp
             }
 
             unless ( $catched ) {
-                $callback->({error => ["osimage $osimage doesn't fit to kit component $kitcomp with attribute OS \n"],errorcode=>[1]});
+                my %rsp;
+                push@{ $rsp{data} }, "osimage $osimage doesn't fit to kit component $kitcomp with attribute OS";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
 
             if ( $os{$osimage}{majorversion} ne $kitcomps{$kitcomp}{osmajorversion} ) {
-                $callback->({error => ["osimage $osimage doesn't fit to kit component $kitcomp with attribute majorversion\n"],errorcode=>[1]});
+                my %rsp;
+                push@{ $rsp{data} }, "osimage $osimage doesn't fit to kit component $kitcomp with attribute majorversion";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
 
             if ( $os{$osimage}{minorversion} and ($os{$osimage}{minorversion} ne $kitcomps{$kitcomp}{osminorversion}) ) {
-                $callback->({error => ["osimage $osimage doesn't fit to kit component $kitcomp with attribute minorversion\n"],errorcode=>[1]});
+                my %rsp;
+                push@{ $rsp{data} }, "osimage $osimage doesn't fit to kit component $kitcomp with attribute minorversion";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
 
             if ( $os{$osimage}{arch} ne $kitcomps{$kitcomp}{osarch} ) {
-                $callback->({error => ["osimage $osimage doesn't fit to kit component $kitcomp with attribute arch\n"],errorcode=>[1]});
+                my %rsp;
+                push@{ $rsp{data} }, "osimage $osimage doesn't fit to kit component $kitcomp with attribute arch";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
 
             if ( $os{$osimage}{type} ne $kitcomps{$kitcomp}{ostype} ) {
-                $callback->({error => ["osimage $osimage doesn't fit to kit component $kitcomp with attribute type\n"],errorcode=>[1]});
+                my %rsp;
+                push@{ $rsp{data} }, "osimage $osimage doesn't fit to kit component $kitcomp with attribute type";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
 
             if ( $os{$osimage}{serverrole} and ($os{$osimage}{serverrole} ne $kitcomps{$kitcomp}{serverroles}) ) {
-                $callback->({error => ["osimage $osimage doesn't fit to kit component $kitcomp with attribute serverrole\n"],errorcode=>[1]});
+                my %rsp;
+                push@{ $rsp{data} }, "osimage $osimage doesn't fit to kit component $kitcomp with attribute serverrole";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
 
@@ -1412,7 +1465,9 @@ sub addkitcomp
                 foreach my $kitcompdep ( @kitcompdeps ) {
                     my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcompdep'", 'kitcompname' , 'version', 'release');
                     unless (@entries) {
-                        $callback->({error => ["Cannot find any matched kit component for kit component $kitcomp dependency $kitcompdep\n"],errorcode=>[1]});
+                        my %rsp;
+                        push@{ $rsp{data} }, "Cannot find any matched kit component for kit component $kitcomp dependency $kitcompdep";
+                        xCAT::MsgUtils->message( "E", \%rsp, $callback );
                         return 1;
                     }
 
@@ -1443,7 +1498,9 @@ sub addkitcomp
                         }
 
                         if ( !$catched ) {
-                            $callback->({error => ["kit component dependency $highest for kit component $kitcomp is not existing in osimage or specified in command option\n"],errorcode=>[1]});
+                            my %rsp;
+                            push@{ $rsp{data} }, "kit component dependency $highest for kit component $kitcomp is not existing in osimage or specified in command line";
+                            xCAT::MsgUtils->message( "E", \%rsp, $callback );
                             return 1;
                         }
                     }
@@ -1452,14 +1509,18 @@ sub addkitcomp
         }
 
         if($::VERBOSE){
-            $callback->({data=>["kitcomponent $kitcomp fits to osimage $osimage"]});
+            my %rsp;
+            push@{ $rsp{data} }, "kitcomponent $kitcomp fits to osimage $osimage";
+            xCAT::MsgUtils->message( "I", \%rsp, $callback );
         }
     }
     
     # Now assign each component to the osimage
 
     if($::VERBOSE){
-        $callback->({data=>["Assigning kitcomponent to osimage"]});
+        my %rsp;
+        push@{ $rsp{data} }, "Assigning kitcomponent to osimage";
+        xCAT::MsgUtils->message( "I", \%rsp, $callback );
     }
 
     my @kitcomps;
@@ -1475,11 +1536,15 @@ sub addkitcomp
     foreach ( keys %kitcomps ) {
         my $kitcomp = shift @newkitcomps;
 
-        $callback->({data=>["Assigning kit component $kitcomp to osimage $osimage"]});
+        my %rsp;
+        push@{ $rsp{data} }, "Assigning kit component $kitcomp to osimage $osimage";
+        xCAT::MsgUtils->message( "I", \%rsp, $callback );
         # Check if this component is existing in osimage.kitcomponents
         foreach my $oskitcomp ( @oskitcomps ) {
             if ( $kitcomp eq $oskitcomp ) {
-                $callback->({data=>["$kitcomp kit component is already in osimage $osimage"]});
+                my %rsp;
+                push@{ $rsp{data} }, "$kitcomp kit component is already in osimage $osimage";
+                xCAT::MsgUtils->message( "I", \%rsp, $callback );
                 $catched = 1;
                 last;
             } 
@@ -1494,30 +1559,42 @@ sub addkitcomp
                 # Compare this kit component's basename with basenames in osimage.kitcomponents
                 (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $kitcomp}, 'basename', 'version', 'release');
                 if ( !$kitcomptable or !$kitcomptable->{'basename'} ) {
-                    $callback->({error => ["$kitcomp kit component does not have basename"],errorcode=>[1]});
+                    my %rsp;
+                    push@{ $rsp{data} }, "$kitcomp kit component does not have basename";
+                    xCAT::MsgUtils->message( "E", \%rsp, $callback );
                     return 1;
                 }
                 (my $oskitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $oskitcomp}, 'basename', 'version', 'release');
                 if ( !$oskitcomptable or !$oskitcomptable->{'basename'} ) {
-                    $callback->({error => ["$oskitcomp kit component does not have basename"],errorcode=>[1]});
+                    my %rsp;
+                    push@{ $rsp{data} }, "$oskitcomp kit component does not have basename";
+                    xCAT::MsgUtils->message( "I", \%rsp, $callback );
                     next;
                 }
 
                 if ( $kitcomptable->{'basename'} eq $oskitcomptable->{'basename'} ) {
                     my $rc = compare_version($oskitcomptable,$kitcomptable,'kitcompname', 'version', 'release');
                     if ( $rc == 1 ) {
-                        $callback->({data=>["Upgrading kit component $oskitcomp to $kitcomp"]});
+                        my %rsp;
+                        push@{ $rsp{data} }, "Upgrading kit component $oskitcomp to $kitcomp";
+                        xCAT::MsgUtils->message( "I", \%rsp, $callback );
                         my $ret = xCAT::Utils->runxcmd({ command => ['rmkitcomp'], arg => ['-f','-u','-i',$osimage, $kitcomp] }, $request_command, -2, 1);
                         if ( !$ret ) {
-                            $callback->({error => ["Failed to remove kit component $kitcomp from $osimage\n"],errorcode=>[1]});
+                            my %rsp;
+                            push@{ $rsp{data} }, "Failed to remove kit component $kitcomp from $osimage";
+                            xCAT::MsgUtils->message( "E", \%rsp, $callback );
                             return 1;
                         }
                         $add = 1;
                     } elsif ( $rc == 0 ) {
-                        $callback->({data=>["Do nothing since kit component $oskitcomp in osimage $osimage has the same basename/version and release with kit component $kitcomp."]});
+                        my %rsp;
+                        push@{ $rsp{data} }, "Do nothing since kit component $oskitcomp in osimage $osimage has the same basename/version and release with kit component $kitcomp";
+                        xCAT::MsgUtils->message( "I", \%rsp, $callback );
                         next;
                     } else {
-                        $callback->({error => ["kit component $oskitcomp is already in osimage $osimage, and has a newer release/version than $kitcomp.  Downgrading kit component is not supported"],errorcode=>[1]});
+                        my %rsp;
+                        push@{ $rsp{data} }, "kit component $oskitcomp is already in osimage $osimage, and has a newer release/version than $kitcomp.  Downgrading kit component is not supported";
+                        xCAT::MsgUtils->message( "E", \%rsp, $callback );
                         return 1;
                     }
                 }
@@ -1530,7 +1607,11 @@ sub addkitcomp
     }
 
     my $kitnames = join ',', @kitlist;
-    $callback->({data=>["Kit components $kitnames were added to osimage $osimage successfully"]});
+    my %rsp;
+    push@{ $rsp{data} }, "Kit components $kitnames were added to osimage $osimage successfully";
+    xCAT::MsgUtils->message( "I", \%rsp, $callback );
+
+    return;
 }
 
 #-------------------------------------------------------
@@ -1557,7 +1638,7 @@ sub rmkitcomp
         push@{ $rsp{data} }, "Usage: ";
         push@{ $rsp{data} }, "\trmkitcomp [-h|--help]";
         push@{ $rsp{data} }, "\trmkitcomp [-u|--uninstall] [-f|--force] [-V|--verbose] -i <osimage> <kitcompname_list>";
-        $callback->(\%rsp);
+        xCAT::MsgUtils->message( "I", \%rsp, $callback );
     };
 
     unless(defined($request->{arg})){ $xusage->(1); return; }
@@ -1587,7 +1668,10 @@ sub rmkitcomp
         $tabs{$t} = xCAT::Table->new($t,-create => 1,-autocommit => 1);
 
         if ( !exists( $tabs{$t} )) {
-            $callback->({error => ["Could not open xCAT table $t\n"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "Could not open xCAT table $t";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            return 1;
             return 1;
         }
     }
@@ -1596,7 +1680,9 @@ sub rmkitcomp
     # Check if all the kitcomponents are existing before processing
 
     if($::VERBOSE){
-        $callback->({data=>["Checking if kitcomponents are valid"]});
+        my %rsp;
+        push@{ $rsp{data} }, "Checking if kitcomponents are valid";
+        xCAT::MsgUtils->message( "I", \%rsp, $callback );
     }
 
     my %kitcomps;
@@ -1618,7 +1704,9 @@ sub rmkitcomp
         } else {
             my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcomponent'", 'kitcompname' , 'version', 'release');
             unless (@entries) {
-                $callback->({error => ["$kitcomponent kitcomponent does not exist\n"],errorcode=>[1]});
+                my %rsp;
+                push@{ $rsp{data} }, "$kitcomponent kitcomponent does not exist";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
 
@@ -1638,7 +1726,9 @@ sub rmkitcomp
 
     (my $osimagetable) = $tabs{osimage}->getAttribs({imagename => $osimage}, 'kitcomponents', 'postbootscripts');
     if ( !$osimagetable or !$osimagetable->{'kitcomponents'} ){
-        $callback->({error => ["$osimage osimage does not exist or not includes any kit components\n"],errorcode=>[1]});
+        my %rsp;
+        push@{ $rsp{data} }, "$osimage osimage does not exist or not includes any kit components";
+        xCAT::MsgUtils->message( "E", \%rsp, $callback );
         return 1;
     }
     my @osikitcomps = split ',', $osimagetable->{'kitcomponents'};
@@ -1659,7 +1749,9 @@ sub rmkitcomp
     }
 
     if ( $invalidkitcomp ) {
-        $callback->({error => ["$invalidkitcomp kit components are not assigned to osimage $osimage\n"],errorcode=>[1]});;
+        my %rsp;
+        push@{ $rsp{data} }, "$invalidkitcomp kit components are not assigned to osimage $osimage";
+        xCAT::MsgUtils->message( "E", \%rsp, $callback );
         return 1;
     }
 
@@ -1676,15 +1768,19 @@ sub rmkitcomp
                     # Get the kit component full name from basename.
                     my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcompdep'", 'kitcompname' , 'version', 'release');
                     unless (@entries) {
-                        $callback->({error => ["$kitcompdep kitcomponent basename does not exist\n"],errorcode=>[1]});
-                         return 1;
+                        my %rsp;
+                        push@{ $rsp{data} }, "kitcomponent $kitcompdep basename does not exist";
+                        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                        return 1;
                     }
 
                     my $kitcompdepname = get_highest_version('kitcompname', 'version', 'release', @entries);
 
                     if ( ($kitcomponent eq $kitcompdepname) and !$force and !exists($kitcomps{$osikitcomp}) ) {
                         # There is other kitcomponent depending on this one and there is no --force option
-                        $callback->({error => ["$osikitcomp kitcomponent is still depending on this kitcomponent $kitcomponent\n"],errorcode=>[1]});;
+                        my %rsp;
+                        push@{ $rsp{data} }, "Failed to remove kitcomponent $kitcomponent because $osikitcomp is still depending on it.  Use -f option to remove it anyway";
+                        xCAT::MsgUtils->message( "E", \%rsp, $callback );
                         return 1;
                     }
                 }
@@ -1770,10 +1866,14 @@ sub rmkitcomp
     my @kitlist;
     foreach my $kitcomponent (keys %kitcomps) {
 
-        $callback->({data=>["Removing kitcomponent $kitcomponent from osimage $osimage"]});
+        my %rsp;
+        push@{ $rsp{data} }, "Removing kitcomponent $kitcomponent from osimage $osimage";
+        xCAT::MsgUtils->message( "I", \%rsp, $callback );
 
         if ( !exists($kitcomps{$kitcomponent}{kitname}) ) {
-            $callback->({error => ["Could not find kit object for kitcomponent $kitcomponent"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "Could not find kit object for kitcomponent $kitcomponent";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         } 
 
@@ -1801,10 +1901,14 @@ sub rmkitcomp
                 if (open(EXLIST, "<", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist")) {
                     @lines = <EXLIST>;
                     if($::VERBOSE){
-                        $callback->({data=>["\nReading kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist\n"]});
+                        my %rsp;
+                        push@{ $rsp{data} }, "Reading kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist";
+                        xCAT::MsgUtils->message( "I", \%rsp, $callback );
                     }
                 } else {
-                    $callback->({error => ["Could not open kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist"],errorcode=>[1]});
+                    my %rsp;
+                    push@{ $rsp{data} }, "Could not open kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist";
+                    xCAT::MsgUtils->message( "E", \%rsp, $callback );
                     return 1;
                 }
 
@@ -1849,10 +1953,14 @@ sub rmkitcomp
                 if (open(OTHERPKGLIST, "<", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist")) {
                     @lines = <OTHERPKGLIST>;
                     if($::VERBOSE){
-                        $callback->({data=>["\nReading kit component otherpkg pkglist $installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist\n"]});
+                        my %rsp;
+                        push@{ $rsp{data} }, "Reading kit component otherpkg pkglist $installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist";
+                        xCAT::MsgUtils->message( "I", \%rsp, $callback );
                     }
                 } else {
-                    $callback->({error => ["Could not open kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist"],errorcode=>[1]});
+                    my %rsp;
+                    push@{ $rsp{data} }, "Could not open kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist";
+                    xCAT::MsgUtils->message( "E", \%rsp, $callback );
                     return 1;
                 }
 
@@ -1886,10 +1994,14 @@ sub rmkitcomp
                         @lines = <RMOTHERPKGLIST>;
                         close(RMOTHERPKGLIST);
                         if($::VERBOSE){
-                            $callback->({data=>["\nReading kit component rmpkgs file $installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist\n"]});
+                            my %rsp;
+                            push@{ $rsp{data} }, "Reading kit component rmpkgs file $installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist";
+                            xCAT::MsgUtils->message( "I", \%rsp, $callback );
                         }
                     } else {
-                        $callback->({error => ["Could not open kit component rmpkgs file $installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist"],errorcode=>[1]});
+                        my %rsp;
+                        push@{ $rsp{data} }, "Could not open kit component rmpkgs file $installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist";
+                        xCAT::MsgUtils->message( "E", \%rsp, $callback );
                         return 1;
                     }
                 }
@@ -1901,7 +2013,9 @@ sub rmkitcomp
                 if ( exists($kitcomps{$kitcomponent}{basename}) ) {
                     $basename = $kitcomps{$kitcomponent}{basename};
                 } else {
-                    $callback->({error => ["Could not open kit component table and read basename for kit component $kitcomp"],errorcode=>[1]});
+                    my %rsp;
+                    push@{ $rsp{data} }, "Could not open kit component table and read basename for kit component $kitcomp";
+                    xCAT::MsgUtils->message( "E", \%rsp, $callback );
                     return 1;
                 }
 
@@ -1964,10 +2078,15 @@ sub rmkitcomp
                             @contents = <KITDEPLOY>;
                             close(KITDEPLOY);
                             if($::VERBOSE){
-                                $callback->({data=>["\nReading kit deployparams from $kitdir/other_files/$kitdeployfile\n"]});
+                                my %rsp;
+                                push@{ $rsp{data} }, "Reading kit deployparams from $kitdir/other_files/$kitdeployfile";
+                                xCAT::MsgUtils->message( "I", \%rsp, $callback );
                             }
                         } else {
-                            $callback->({error => ["Could not open kit deployparams file $kitdir/other_files/$kitdeployfile"],errorcode=>[1]});
+                            my %rsp;
+                            push@{ $rsp{data} }, "Could not open kit deployparams file $kitdir/other_files/$kitdeployfile";
+                            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                            return 1;
                         }
                     }
 
@@ -1977,10 +2096,14 @@ sub rmkitcomp
                             @lines = <DEPLOYPARAM>;
                             close(DEPLOYPARAM);
                             if($::VERBOSE){
-                                $callback->({data=>["\nReading kit deployparams file $installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist\n"]});
+                                my %rsp;
+                                push@{ $rsp{data} }, "Reading kit deployparams file $installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist";
+                                xCAT::MsgUtils->message( "I", \%rsp, $callback );
                             }
                         } else {
-                           $callback->({error => ["Could not open kit deployparams file $installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist"],errorcode=>[1]});
+                            my %rsp;
+                            push@{ $rsp{data} }, "Could not open kit deployparams file $installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist";
+                            xCAT::MsgUtils->message( "E", \%rsp, $callback );
                             return 1;
                         }
                     }
@@ -2043,7 +2166,9 @@ sub rmkitcomp
     }
 
     my $kitcompnames = join ',', @kitlist;
-    $callback->({data=>["kitcomponents $kitcompnames were removed from osimage $osimage successfully"]});
+    my %rsp;
+    push@{ $rsp{data} }, "kitcomponents $kitcompnames were removed from osimage $osimage successfully";
+    xCAT::MsgUtils->message( "I", \%rsp, $callback );
 
     # Write linuximage table with all the above udpates.
     $tabs{linuximage}->setAttribs({imagename => $osimage }, \%{$linuximagetable} );
@@ -2051,6 +2176,7 @@ sub rmkitcomp
     # Write osimage table with all the above udpates.
     $tabs{osimage}->setAttribs({imagename => $osimage }, \%{$osimagetable} );
 
+    return;
 }
 
 #-------------------------------------------------------
@@ -2074,7 +2200,7 @@ sub chkkitcomp
         push@{ $rsp{data} }, "Usage: ";
         push@{ $rsp{data} }, "\tchkkitcomp [-h|--help]";
         push@{ $rsp{data} }, "\tchkkitcomp [-o|--overwrite] [-V|--verbose] -i <osimage> <kitcompname_list>";
-        $callback->(\%rsp);
+        xCAT::MsgUtils->message( "I", \%rsp, $callback );
     };
 
     unless(defined($request->{arg})){ $xusage->(1); return; }
@@ -2103,7 +2229,9 @@ sub chkkitcomp
         $tabs{$t} = xCAT::Table->new($t,-create => 1,-autocommit => 1);
 
         if ( !exists( $tabs{$t} )) {
-            $callback->({error => ["Could not open xCAT table $t\n"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "Could not open xCAT table $t";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
     }
@@ -2130,7 +2258,9 @@ sub chkkitcomp
         } else {
             my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcomponent'", 'kitcompname' , 'version', 'release');
             unless (@entries) {
-                $callback->({error => ["$kitcomponent kitcomponent does not exist\n"],errorcode=>[1]});
+                my %rsp;
+                push@{ $rsp{data} }, "$kitcomponent kitcomponent does not exist";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
 
@@ -2154,7 +2284,9 @@ sub chkkitcomp
     if ( $osimagetable and $osimagetable->{'osdistroname'}){
         ($osdistrotable) = $tabs{osdistro}->getAttribs({osdistroname=> $osimagetable->{'osdistroname'}}, 'basename', 'majorversion', 'minorversion', 'arch', 'type');
         if ( !$osdistrotable or !$osdistrotable->{basename} ) {
-            $callback->({error => ["$osdistroname osdistro does not exist\n"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "$osdistroname osdistro does not exist";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
 
@@ -2169,7 +2301,9 @@ sub chkkitcomp
         $os{$osimage}{serverrole} = lc($osimagetable->{'serverrole'});
 
     } else {
-        $callback->({error => ["$osimage osimage does not exist or not saticified\n"],errorcode=>[1]});
+        my %rsp;
+        push@{ $rsp{data} }, "$osimage osimage does not exist or not saticified";
+        xCAT::MsgUtils->message( "E", \%rsp, $callback );
         return 1;
     }
 
@@ -2182,7 +2316,9 @@ sub chkkitcomp
             if ( $kittable and $kittable->{ostype} ) {
                 $kitcomps{$kitcomp}{ostype} = lc($kittable->{ostype});
             } else {
-                $callback->({error => ["$kitcomp ostype does not exist\n"],errorcode=>[1]});
+                my %rsp;
+                push@{ $rsp{data} }, "$kitcomp ostype does not exist";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
 
@@ -2199,12 +2335,16 @@ sub chkkitcomp
                 $kitcomps{$kitcomp}{osminorversion} = lc($kitrepotable->{osminorversion});
                 $kitcomps{$kitcomp}{osarch} = lc($kitrepotable->{osarch});
             } else {
-                $callback->({error => ["$kitcomp osbasename,osmajorversion,osminorversion or osarch does not exist\n"],errorcode=>[1]});
+                my %rsp;
+                push@{ $rsp{data} }, "$kitcomp osbasename,osmajorversion,osminorversion or osarch does not exist";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
 
         }  else {
-            $callback->({error => ["$kitcomp kitname $kitcomptable->{'kitname'} or kitrepo name $kitcomptable->{'kitreponame'} or serverroles $kitcomps{$kitcomp}{serverroles} does not exist.\n"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "$kitcomp kitname $kitcomptable->{'kitname'} or kitrepo name $kitcomptable->{'kitreponame'} or serverroles $kitcomps{$kitcomp}{serverroles} does not exist";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
 
@@ -2217,38 +2357,52 @@ sub chkkitcomp
             }
         }
         unless ( $catched ) {
-            $callback->({error => ["kit component $kitcomp doesn't fit to osimage $osimage with attribute OS \n"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "kit component $kitcomp doesn't fit to osimage $osimage with attribute OS";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
 
         if ( $os{$osimage}{majorversion} ne $kitcomps{$kitcomp}{osmajorversion} ) {
-            $callback->({error => ["kit component $kitcomp doesn't fit to osimage $osimage with attribute majorversion\n"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "kit component $kitcomp doesn't fit to osimage $osimage with attribute majorversion";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
 
         if ( $os{$osimage}{minorversion} and ($os{$osimage}{minorversion} ne $kitcomps{$kitcomp}{osminorversion}) ) {
-            $callback->({error => ["kit component $kitcomp doesn't fit to osimage $osimage with attribute minorversion\n"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "kit component $kitcomp doesn't fit to osimage $osimage with attribute minorversion";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
 
         if ( $os{$osimage}{arch} ne $kitcomps{$kitcomp}{osarch} ) {
-            $callback->({error => ["kit component $kitcomp doesn't fit to osimage $osimage with attribute arch\n"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "kit component $kitcomp doesn't fit to osimage $osimage with attribute arch";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
 
         if ( $os{$osimage}{type} ne $kitcomps{$kitcomp}{ostype} ) {
-            $callback->({error => ["kit component $kitcomp doesn't fit to osimage $osimage with attribute type\n"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "kit component $kitcomp doesn't fit to osimage $osimage with attribute type";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
 
         if ( $os{$osimage}{serverrole} and ($os{$osimage}{serverrole} ne $kitcomps{$kitcomp}{serverroles}) ) {
-            $callback->({error => ["kit component $kitcomp doesn't fit to osimage $osimage with attribute serverrole\n"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "kit component $kitcomp doesn't fit to osimage $osimage with attribute serverrole";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
 
         # Check if this kit component's dependencies are in the kitcomponent list.
         if ( $kitcomps{$kitcomp}{kitcompdeps} and !exists( $kitcompbasename{ $kitcomps{$kitcomp}{kitcompdeps} } ) ) {
-            $callback->({error => ["kit component $kitcomp dependency $kitcomps{$kitcomp}{kitcompdeps} doesn't existing\n"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "kit component $kitcomp dependency $kitcomps{$kitcomp}{kitcompdeps} doesn't exist";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
 
@@ -2257,8 +2411,11 @@ sub chkkitcomp
 
     my $kitcompnamelist = join ',', @kitcompnames;
 
-    $callback->({data=>["\nKit components $kitcompnamelist fit to osimage $osimage\n"]});    
+    my %rsp;
+    push@{ $rsp{data} }, "Kit components $kitcompnamelist fit to osimage $osimage";
+    xCAT::MsgUtils->message( "I", \%rsp, $callback );
 
+    return;
 }
 
 1;
