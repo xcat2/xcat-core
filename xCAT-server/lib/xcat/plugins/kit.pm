@@ -695,8 +695,9 @@ sub addkit
         push@{ $rsp{data} }, "Usage: ";
         push@{ $rsp{data} }, "\taddkit [-h|--help]";
         push@{ $rsp{data} }, "\taddkit [-p|--path <path>] <kitlist>] [-V]";
-        $callback->(\%rsp);
+        xCAT::MsgUtils->message( "I", \%rsp, $callback );
     };
+
 
     unless(defined($request->{arg})){ $xusage->(1); return; }
     @ARGV = @{$request->{arg}};
@@ -723,7 +724,9 @@ sub addkit
         $tabs{$t} = xCAT::Table->new($t,-create => 1,-autocommit => 1);
 
         if ( !exists( $tabs{$t} )) {
-            $callback->({error => ["Could not open xCAT table $t\n"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "Could not open xCAT table $t";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
     }
@@ -753,8 +756,10 @@ sub addkit
         }
 
         unless (-r $kit) {
-            $callback->({error => ["Can not find $kit"],errorcode=>[1]});
-            return;
+            my %rsp;
+            push@{ $rsp{data} }, "Can not find $kit";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            return 1;
         }
 
 
@@ -774,7 +779,9 @@ sub addkit
             system("rm -rf $kittmpdir");
 
             if($::VERBOSE){
-                $callback->({data=>["Extract Kit $kit to /tmp"]});
+                my %rsp;
+                push@{ $rsp{data} }, "Extract Kit $kit to /tmp";
+                xCAT::MsgUtils->message( "I", \%rsp, $callback );
                 $rc = system("tar jxvf $kit -C /tmp");
             } else {
                 $rc = system("tar jxf $kit -C /tmp");
@@ -784,7 +791,10 @@ sub addkit
 
 
         if($rc){
-            $callback->({error => ["Failed to extract Kit $kit, (Maybe there was no space left?)"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "Failed to extract Kit $kit, (Maybe there was no space left?";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            return 1;
         }
 
         # Read kit info from kit.conf
@@ -793,10 +803,14 @@ sub addkit
             @lines = <KITCONF>;
             close(KITCONF);
             if($::VERBOSE){
-                $callback->({data=>["\nReading kit configuration file $kittmpdir/$kitconf\n"]});
+                my %rsp;
+                push@{ $rsp{data} }, "Reading kit configuration file $kittmpdir/$kitconf";
+                xCAT::MsgUtils->message( "I", \%rsp, $callback );
             }
         } else {
-            $callback->({error => ["Could not open kit configuration file $kittmpdir/$kitconf\n"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "Could not open kit configuration file $kittmpdir/$kitconf";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
 
@@ -856,17 +870,23 @@ sub addkit
         #TODO: need to check if the files are existing or not, like exlist,
 
         unless (keys %kithash) {
-            $callback->({error => ["Failed to add kit because kit.conf is invalid"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "Failed to add kit because kit.conf is invalid";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
 
         (my $ref1) = $tabs{kit}->getAttribs({kitname => $kitname}, 'basename');
         if ( $ref1 and $ref1->{'basename'}){
-            $callback->({error => ["Failed to add kit $kitname because it is already existing"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "Failed to add kit $kitname because it is already existing";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
 
-        $callback->({data=>["Adding Kit $kitname"]});
+        my %rsp;
+        push@{ $rsp{data} }, "Adding Kit $kitname";
+        xCAT::MsgUtils->message( "I", \%rsp, $callback );
 
         # Moving kits from tmp directory to kitdir
         if (!$path) {
@@ -879,7 +899,9 @@ sub addkit
         $kitdir = $kitdir . "/" . $kitname;
 
         if($::VERBOSE){
-            $callback->({data=>["Create Kit directory $kitdir"]});
+            my %rsp;
+            push@{ $rsp{data} }, "Create Kit directory $kitdir";
+            xCAT::MsgUtils->message( "I", \%rsp, $callback );
         }
         mkpath($kitdir);
 
@@ -887,7 +909,9 @@ sub addkit
         $kithash{$kitname}{kitdir} = $kitdir;
 
         if($::VERBOSE){
-            $callback->({data=>["\nCopying Kit from $kittmpdir to $kitdir"]});
+            my %rsp;
+            push@{ $rsp{data} }, "Copying Kit from $kittmpdir to $kitdir";
+            xCAT::MsgUtils->message( "I", \%rsp, $callback );
             $rc = system("cp -rfv $kittmpdir/* $kitdir");
         } else {
             $rc = system("cp -rf $kittmpdir/* $kitdir");
@@ -895,7 +919,9 @@ sub addkit
 
         # Coying scripts to /installdir/postscripts/
         if($::VERBOSE){
-            $callback->({data=>["\nCopying kit scripts from $kitdir/other_files/ to $installdir/postscripts"]});
+            my %rsp;
+            push@{ $rsp{data} }, "Copying kit scripts from $kitdir/other_files/ to $installdir/postscripts";
+            xCAT::MsgUtils->message( "I", \%rsp, $callback );
         }
         my @script = split ',', $scripts;
         foreach (@script) {
@@ -909,7 +935,9 @@ sub addkit
         }
 
         if($rc){
-            $callback->({error => ["Failed to copy scripts from $kitdir/scripts/ to $installdir/postscripts\n"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "Failed to copy scripts from $kitdir/scripts/ to $installdir/postscripts";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
 
@@ -917,20 +945,27 @@ sub addkit
         chmod(644, "$kitdir/plugins/*");
 
         if($::VERBOSE){
-            $callback->({data=>["\nCopying kit plugins from $kitdir/plugins/ to $::XCATROOT/lib/perl/xCAT_plugin"]});
+            my %rsp;
+            push@{ $rsp{data} }, "Copying kit plugins from $kitdir/plugins/ to $::XCATROOT/lib/perl/xCAT_plugin";
+            xCAT::MsgUtils->message( "I", \%rsp, $callback );
+
             $rc = system("cp -rfv $kitdir/plugins/* $::XCATROOT/lib/perl/xCAT_plugin/");
         } else {
             $rc = system("cp -rf $kitdir/plugins/* $::XCATROOT/lib/perl/xCAT_plugin/");
         }
 
         if($rc){
-            $callback->({error => ["Failed to copy plugins from $kitdir/plugins/ to $::XCATROOT/lib/perl/xCAT_plugin\n"],errorcode=>[1]});
+            my %rsp;
+            push@{ $rsp{data} }, "Failed to copy plugins from $kitdir/plugins/ to $::XCATROOT/lib/perl/xCAT_plugin";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
 
         # Write to DB
         if($::VERBOSE){
-            $callback->({data=>["\nWriting kit configuration into xCAT DB"]});
+            my %rsp;
+            push@{ $rsp{data} }, "Writing kit configuration into xCAT DB";
+            xCAT::MsgUtils->message( "I", \%rsp, $callback );
         }
 
         foreach my $kitname (keys %kithash) {
@@ -949,7 +984,9 @@ sub addkit
     }
 
     my $kitlist = join ',', @kitnames;
-    $callback->({data=>["\nKit $kitlist was successfully added."]});
+    my %rsp;
+    push@{ $rsp{data} }, "Kit $kitlist was successfully added.";
+    xCAT::MsgUtils->message( "I", \%rsp, $callback );
 
     # Issue xcatd reload to load the new plugins
     system("/etc/init.d/xcatd reload");
