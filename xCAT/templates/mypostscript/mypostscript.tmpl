@@ -17,13 +17,19 @@ export ENABLESSHBETWEENNODES
 NODE=#NODE#
 export NODE
 
-## nfsserver,installnic,primarynic
-NFSSERVER=#NFSSERVER#
+## nfsserver,installnic,primarynic,routenames from the noderes tab
+NFSSERVER=#TABLE:noderes:$NODE:nfsserver#
 export NFSSERVER
-INSTALLNIC=#INSTALLNIC#
+INSTALLNIC=#TABLE:noderes:$NODE:installnic#
 export INSTALLNIC
-PRIMARYNIC=#INSTALLNIC#
+PRIMARYNIC=#TABLE:noderes:$NODE:primarynic#
 export PRIMARYNIC
+
+MASTER=#TABLE:noderes:$NODE:xcatmaster#
+export MASTER
+
+NODEROUTENAMES=#TABLE:noderes:$NODE:routenames#
+export NODEROUTENAMES
 ## examples:
 ## NFSSERVER=9.114.34.108
 ## export NFSSERVER
@@ -43,12 +49,14 @@ export PRIMARYNIC
 ## ...
 
 ## osver, arch, profile export
-OSVER=#OSVER#
+OSVER=#TABLE:nodetype:$NODE:os#
 export OSVER
-ARCH=#ARCH#
+ARCH=#TABLE:nodetype:$NODE:arch#
 export ARCH
-PROFILE=#PROFILE#
+PROFILE=#TABLE:nodetype:$NODE:profile#
 export PROFILE
+PROVMETHOD=#TABLE:nodetype:$NODE:provmethod#
+export PROVMETHOD
 
 
 PATH=`dirname $0`:$PATH
@@ -109,15 +117,9 @@ export MACADDRESS
 
 ##
 ## Notice:  The following flag postscripts-start-here could not be deleted from the template!!!
-
 # postscripts-start-here
+
 #INCLUDE_POSTSCRIPTS_LIST#
-## the details will be looked like:
-## run_ps syslog
-## run_ps remoteshell
-## run_ps syncfiles
-
-
 
 ## Notice:  The following flag postscripts-end-here could not be deleted from the template!!!
 # postscripts-end-here
