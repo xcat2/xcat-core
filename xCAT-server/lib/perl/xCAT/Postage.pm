@@ -999,4 +999,220 @@ sub net_parms
         );
 }
 
+
+sub getScripts
+{
+
+    my $nodes = shift;
+    my $image_hash = shift;
+    my %script_hash;    #used to reduce duplicates
+ 
+   
+    my $posttab    = xCAT::Table->new('postscripts');
+    my $ostab    = xCAT::Table->new('osimage');
+    # get the xcatdefaults entry in the postscripts table
+    my $et        =
+      $posttab->getAttribs({node => "xcatdefaults"},
+                           'postscripts', 'postbootscripts');
+    $script_hash{default_post} = $et->{'postscripts'}; 
+    $script_hash{default_postboot} = $et->{'postbootscripts'}; 
+     
+   
+    my @et2 = $ostab->getAllAttribs('imagename', 'postscripts', 'postbootscripts', 'osvers','osarch','profile','provmethod','synclists');
+    if( @et2 ) {
+          foreach my $tmp_et2 (@et2) {
+               my $imagename= $tmp_et2->{imagename};
+               $script_hash{osimage_post}{$imagename}= $tmp_et2->{postscripts};
+               $script_hash{osimage_postboot}{$imagename} = $tmp_et2->{postbootscripts};
+               $image_hash->{$imagename}->{osvers} = $tmp_et2->{osvers}; 
+               $image_hash->{$imagename}->{osarch} = $tmp_et2->{osarch}; 
+               $image_hash->{$imagename}->{profile} = $tmp_et2->{profile}; 
+               $image_hash->{$imagename}->{provmethod} = $tmp_et2->{provmethod}; 
+               $image_hash->{$imagename}->{synclists} = $tmp_et2->{synclists}; 
+          }
+    }
+
+    my $et1 = $posttab->getNodesAttribs($nodes, 'postscripts', 'postbootscripts');
+   
+    if( $et1 ) {
+        foreach my $node (@$nodes) {
+            if( $et1->{$node}->[0] ) {
+                $script_hash{node_post}{$node}=$et1->{$node}->[0]->{postscripts};
+                $script_hash{node_postboot}{$node}=$et1->{$node}->[0]->{postbootscripts};
+            }
+        } 
+    }
+
+
+    return \%script_hash;
+}
+
+sub getPostScripts
+{
+
+    my $node        = shift;
+    my $osimgname = shift;
+    my $script_hash = shift;
+    my $setbootfromnet = shift;
+    my $nodesetstate = shift;
+    my $arch = shift;
+    my $result;
+    my $ps;
+    my %post_hash = ();    #used to reduce duplicates
+    my $defscripts;
+    
+    if( defined($script_hash) && defined($script_hash->{default_post}) ) {
+        $defscripts = $script_hash->{default_post};
+    }
+    if ($defscripts)
+    {
+        $result .= "# defaults-postscripts-start-here\n";
+
+        foreach my $n (split(/,/, $defscripts))
+        {
+            if (!exists($post_hash{$n}))
+            {
+                $post_hash{$n} = 1;
+                $result .= $n . "\n";
+            }
+        }
+        $result .=  "# defaults-postscripts-end-here\n";
+    }
+    
+    # get postscripts for images
+    
+    if(defined($script_hash) && defined($script_hash->{osimage_post} ) && defined ($script_hash->{osimage_post}->{$osimgname})) {
+        $ps = $script_hash->{osimage_post}->{$osimgname}; 
+    }
+    if ($ps)
+    {
+        $result .= "# osimage-postscripts-start-here\n";
+
+        foreach my $n (split(/,/, $ps))
+        {
+            if (!exists($post_hash{$n}))
+            {
+                $post_hash{$n} = 1;
+                $result .= $n . "\n";
+            }
+        }
+
+        $result .=  "# osimage-postscripts-end-here\n";
+    }
+
+    # get postscripts for node specific
+    if(defined($script_hash) && defined($script_hash->{node_post} ) && defined ($script_hash->{node_post}->{$node})) {
+        $ps = $script_hash->{node_post}->{$node}; 
+    }
+
+    if ($ps)
+    {
+        $result .= "# node-postscripts-start-here\n";
+        foreach my $n (split(/,/, $ps))
+        {
+            if (!exists($post_hash{$n}))
+            {
+                $post_hash{$n} = 1;
+                $result .= $n . "\n";
+            }
+        }
+        $result .= "# node-postscripts-end-here\n";
+    }
+
+   
+    if ($setbootfromnet)
+    {
+        $result .=  "setbootfromnet\n";
+    }
+
+    # add setbootfromdisk if the nodesetstate is install and arch is ppc64
+    if (($nodesetstate) && ($nodesetstate eq "install") && ($arch eq "ppc64"))
+    {
+        $result .=  "setbootfromdisk\n";
+    }
+
+
+    return $result;
+}
+
+
+sub getPostbootScripts
+{
+
+    my $node = shift;
+    my $osimgname = shift;
+    my $script_hash = shift;
+    my $result;
+    my $ps;
+    
+   if( !defined($script_hash)) {
+       return;
+   }
+   
+    my %postboot_hash = ();                         #used to reduce duplicates
+    my $defscripts;
+   
+    if( defined($script_hash->{default_postboot}) ) {
+        $defscripts = $script_hash->{default_postboot};
+    }
+
+    if ($defscripts)
+    {
+        $result .=  "# defaults-postbootscripts-start-here\n";
+        foreach my $n (split(/,/, $defscripts))
+        {
+            if (!exists($postboot_hash{$n}))
+            {
+                $postboot_hash{$n} = 1;
+                $result .=   $n . "\n";
+            }
+        }
+        $result .= "# defaults-postbootscripts-end-here\n";
+    }
+
+    # get postbootscripts for image
+    my $ips; 
+    if(defined($script_hash->{osimage_postboot} ) && defined ($script_hash->{osimage_post}->{$osimgname})) {
+        $ips = $script_hash->{osimage_postboot}->{$osimgname}; 
+    }
+
+    if ($ips)
+    {
+        $result .= "# osimage-postbootscripts-start-here\n";
+        foreach my $n (split(/,/, $ips))
+        {
+            if (!exists($postboot_hash{$n}))
+            {
+                $postboot_hash{$n} = 1;
+                $result .=  $n . "\n";
+            }
+        }
+        $result .= "# osimage-postbootscripts-end-here\n";
+    }
+
+
+    # get postscripts
+    if(defined($script_hash->{node_postboot} ) && defined ($script_hash->{node_postboot}->{$node})) {
+        $ps = $script_hash->{node_postboot}->{$node}; 
+    }
+    if ($ps)
+    {
+        $result .= "# node-postbootscripts-start-here\n";
+        foreach my $n (split(/,/, $ps))
+        {
+            if (!exists($postboot_hash{$n}))
+            {
+                $postboot_hash{$n} = 1;
+                $result .=  $n . "\n";
+            }
+        }
+        $result .= "# node-postbootscripts-end-here\n";
+    }
+
+    return $result;
+}
+
+
+
+
 1;
