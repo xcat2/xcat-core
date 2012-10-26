@@ -79,78 +79,81 @@ sub include_file
 }
 
 sub get_package_names {
-   my $plist_file_name=shift;
+   my $plist_file_list=shift;
    my %pkgnames=();
    my @tmp_array=();
 
+   my @plist_file_names = split ',', $plist_file_list;
+   foreach my $plist_file_name ( @plist_file_names ) {
+       if ($plist_file_name && -r $plist_file_name) {
+           my $pkgfile;
+           open($pkgfile,"<","$plist_file_name");
+           while (<$pkgfile>) {
+               chomp;
+               s/\s+$//;   #remove trailing white spaces
+               next if /^\s*$/; #-- skip empty lines
+               next
+               if (   /^\s*#/
+                    && !/^\s*#INCLUDE:[^#^\n]+#/
+                    && !/^\s*#NEW_INSTALL_LIST#/
+                    && !/^\s*#ENV:[^#^\n]+#/);    #-- skip comments
+               push(@tmp_array,$_);
+            }
+            close($pkgfile);
 
-   if ($plist_file_name && -r $plist_file_name) {
-     my $pkgfile;
-     open($pkgfile,"<","$plist_file_name");
-     while (<$pkgfile>) {
-        chomp;
-	s/\s+$//;   #remove trailing white spaces
-	next if /^\s*$/; #-- skip empty lines
-        next
-           if (   /^\s*#/
-               && !/^\s*#INCLUDE:[^#^\n]+#/
-               && !/^\s*#NEW_INSTALL_LIST#/
-               && !/^\s*#ENV:[^#^\n]+#/);    #-- skip comments
-	push(@tmp_array,$_);
-     }
-     close($pkgfile);
-
-     if ( @tmp_array > 0) {
-        my $pkgtext=join(',',@tmp_array);
-        #handle the #INLCUDE# tag recursively
-        my $idir = dirname($plist_file_name);
-        my $doneincludes=0;
-	while (not $doneincludes) {
-	    $doneincludes=1;
-	    if ($pkgtext =~ /#INCLUDE:[^#^\n]+#/) {
-		$doneincludes=0;
-		$pkgtext =~ s/#INCLUDE:([^#^\n]+)#/include_file($1,$idir)/eg;
-	    }
-	}
-     
-        #print "pkgtext=$pkgtext\n";
-	my @tmp=split(',', $pkgtext);
-        my $pass=1;
-	foreach (@tmp) {
-	    my $idir;
-	    if (/^--/) {	
-		$idir="POST_REMOVE";   #line starts with -- means the package should be removed after otherpkgs are installed
-		s/^--//;
-            } elsif  (/^-/) {
-		$idir="PRE_REMOVE"; #line starts with single - means the package should be removed before otherpkgs are installed
-		s/^-//;
-            } elsif  (/^#NEW_INSTALL_LIST#/) {
-                $pass++;
-                next;
-            } elsif (/^#ENV:([^#^\n]+)#/) {
-                my $pa=$pkgnames{$pass}{ENVLIST};
-                my $env = $1;
-                if (exists($pkgnames{$pass}{ENVLIST})){
-                    push(@$pa,$env);
-                } else {
-                    $pkgnames{$pass}{ENVLIST} = [$env];
+            if ( @tmp_array > 0) {
+                 my $pkgtext=join(',',@tmp_array);
+                 #handle the #INLCUDE# tag recursively
+                 my $idir = dirname($plist_file_name);
+                 my $doneincludes=0;
+                 while (not $doneincludes) {
+                     $doneincludes=1;
+                     if ($pkgtext =~ /#INCLUDE:[^#^\n]+#/) {
+                        $doneincludes=0;
+                        $pkgtext =~ s/#INCLUDE:([^#^\n]+)#/include_file($1,$idir)/eg;
+                    }
                 }
-                next;
-            } elsif  (/^#/) {
-                # ignore all other comment lines
-                next;
-            } else { 
-		$idir=dirname($_); 
-	    }
-	    my $fn=basename($_);
-	    if (exists($pkgnames{$pass}{$idir})) {
-		my $pa=$pkgnames{$pass}{$idir};
-		push(@$pa, $fn);
-	    } else {
-		$pkgnames{$pass}{$idir}=[$fn];
-	    }
-	}
-     }
+     
+                #print "pkgtext=$pkgtext\n";
+                my @tmp=split(',', $pkgtext);
+                my $pass=1;
+                foreach (@tmp) {
+                    my $idir;
+                    if (/^--/) {	
+                        $idir="POST_REMOVE";   #line starts with -- means the package should be removed after otherpkgs are installed
+                        s/^--//;
+                    } elsif  (/^-/) {
+                        $idir="PRE_REMOVE"; #line starts with single - means the package should be removed before otherpkgs are installed
+                        s/^-//;
+                    } elsif  (/^#NEW_INSTALL_LIST#/) {
+                        $pass++;
+                        next;
+                    } elsif (/^#ENV:([^#^\n]+)#/) {
+                        my $pa=$pkgnames{$pass}{ENVLIST};
+                        my $env = $1;
+                        if (exists($pkgnames{$pass}{ENVLIST})){
+                            push(@$pa,$env);
+                        } else {
+                            $pkgnames{$pass}{ENVLIST} = [$env];
+                        }
+                        next;
+                    } elsif  (/^#/) {
+                        # ignore all other comment lines
+                        next;
+                    } else { 
+                        $idir=dirname($_); 
+                    }
+                    my $fn=basename($_);
+                    if (exists($pkgnames{$pass}{$idir})) {
+                        my $pa=$pkgnames{$pass}{$idir};
+                        push(@$pa, $fn);
+                    } else {
+                        $pkgnames{$pass}{$idir}=[$fn];
+                    }
+            
+	        }
+            }
+       }
    }
 
    return %pkgnames;

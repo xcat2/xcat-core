@@ -519,10 +519,11 @@ sub assign_to_osimage
     }
 
     # Adding kit component basename to osimage.otherpkgs.pkglist
-    if ( $kitcomptable and $kitcomptable->{basename} ) {
+    if ( $kitcomptable and $kitcomptable->{basename} and $kitcomptable->{kitreponame} ) {
 
         my @lines;
         my $basename = $kitcomptable->{basename};
+        my $kitreponame = $kitcomptable->{kitreponame};
 
         # Adding kit component basename to KIT_COMPONENTS.otherpkgs.pkglist file
         mkpath("$installdir/osimages/$osimage/kits");
@@ -538,10 +539,10 @@ sub assign_to_osimage
                 return 1;
             }
         }
-        unless ( grep(/^$basename$/, @lines) ) {
+        unless ( grep(/^$kitreponame\/$basename$/, @lines) ) {
             if (open(NEWOTHERPKGLIST, ">>", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist")) {
 
-                print NEWOTHERPKGLIST "$basename\n";
+                print NEWOTHERPKGLIST "$kitreponame/$basename\n";
                 close(NEWOTHERPKGLIST);
             }
         }
@@ -595,7 +596,7 @@ sub assign_to_osimage
             chomp $line;
             my $matched = 0;
             foreach my $kitpkgdep ( @kitpkgdeps ) {
-                if ( $line =~ /^-$kitpkgdep$/ ) {
+                if ( $line =~ /^-$kitreponame\/$kitpkgdep$/ ) {
                     $matched = 1;
                     $changed = 1;
                     last;
@@ -1968,12 +1969,13 @@ sub rmkitcomp
                 }
 
                 my $basename = '';
-                if ( exists($kitcomps{$kitcomponent}{basename}) ) {
+                if ( exists($kitcomps{$kitcomponent}{basename}) and exists($kitcomps{$kitcomponent}{kitreponame})) {
                     $basename = $kitcomps{$kitcomponent}{basename};
+                    my $kitreponame = $kitcomps{$kitcomponent}{kitreponame};
 
                     my @newlines = ();
                     foreach my $line ( @lines ) {
-                        if ( $line =~ /^$basename$/ ) {
+                        if ( $line =~ /^$kitreponame\/$basename$/ ) {
                             next;
                         }
                         push @newlines, $line;
@@ -2011,10 +2013,12 @@ sub rmkitcomp
 
                 my @l = @lines;
                 my $basename = '';
+                my $kitreponame = '';
                 my @kitpkgdeps = ();
 
-                if ( exists($kitcomps{$kitcomponent}{basename}) ) {
+                if ( exists($kitcomps{$kitcomponent}{basename}) and exists($kitcomps{$kitcomponent}{kitreponame}) ) {
                     $basename = $kitcomps{$kitcomponent}{basename};
+                    $kitreponame = $kitcomps{$kitcomponent}{kitreponame};
                 } else {
                     my %rsp;
                     push@{ $rsp{data} }, "Could not open kit component table and read basename for kit component $kitcomp";
@@ -2032,14 +2036,14 @@ sub rmkitcomp
                     my $matched = 0;
                     foreach my $line ( @lines ) {
                         chomp $line;
-                        if ( $line =~ /^-$kitpkgdep$/ ) {
+                        if ( $line =~ /^-$kitreponame\/$kitpkgdep$/ ) {
                             $matched = 1;
                             last;
                         }
                     }
 
                     unless ( $matched ) {
-                        push @l, "-$kitpkgdep\n";
+                        push @l, "-$kitreponame/$kitpkgdep\n";
                     }
 
                 }
