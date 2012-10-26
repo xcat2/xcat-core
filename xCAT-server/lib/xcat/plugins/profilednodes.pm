@@ -1002,15 +1002,6 @@ sub findme{
     }
 
     my @nodelist = keys %hostinfo_dict;
-    xCAT::MsgUtils->message('S', "Call nodemgmt plugins.\n");
-    $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>\@nodelist}, $request_command, 0, 1);
-    $retstr = get_cmd_return($retref);
-    xCAT::MsgUtils->message('S', "The return message of running kitnodeadd: $retstr");
-
-    $retref = xCAT::Utils->runxcmd({command=>["kitnodefinished"], node=>\@nodelist}, $request_command, 0, 1);
-    $retstr = get_cmd_return($retref);
-    xCAT::MsgUtils->message('S', "The return message of running kitnodefinished: $retstr");
-
 
     # call discover to notify client.
     xCAT::MsgUtils->message('S', "Call discovered request.\n");
@@ -1023,6 +1014,15 @@ sub findme{
     if ($::RUNCMD_RC != 0){
         xCAT::MsgUtils->message('S', "Warning: Failed to run command discovered for mac $mac. Details: $retstr");
     }
+
+    xCAT::MsgUtils->message('S', "Call nodemgmt plugins.\n");
+    $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>\@nodelist}, $request_command, 0, 1);
+    $retstr = get_cmd_return($retref);
+    xCAT::MsgUtils->message('S', "The return message of running kitnodeadd: $retstr");
+
+    $retref = xCAT::Utils->runxcmd({command=>["kitnodefinished"], node=>\@nodelist}, $request_command, 0, 1);
+    $retstr = get_cmd_return($retref);
+    xCAT::MsgUtils->message('S', "The return message of running kitnodefinished: $retstr");
 
     # Set discovered flag.
     my $nodegroupstr = $hostinfo_dict{$nodelist[0]}{"groups"};
