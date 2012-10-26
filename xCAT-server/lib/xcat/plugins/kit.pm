@@ -850,7 +850,6 @@ sub addkit
             } elsif ( $sec =~ /KITREPO$/ ) {    
                 if ( $key =~ /kitreponame/ ) {
                     $kitreponame = $value;
-                    $kitrepohash{$kitreponame}{kitrepodir} = $kitdir."/repos/".$kitreponame;
                 } else {
                     $kitrepohash{$kitreponame}{$key} = $value;
                 }
@@ -905,8 +904,12 @@ sub addkit
         }
         mkpath($kitdir);
 
-        # Set kitdir
+        # Set kitdir and kitrepodir
         $kithash{$kitname}{kitdir} = $kitdir;
+
+        foreach my $kitreponame ( keys %kitrepohash ) {
+            $kitrepohash{$kitreponame}{kitrepodir} = $kitdir."/repos/".$kitreponame;
+        }
 
         if($::VERBOSE){
             my %rsp;
