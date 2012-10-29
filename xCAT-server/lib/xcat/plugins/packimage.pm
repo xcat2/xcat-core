@@ -241,41 +241,44 @@ sub process_request {
     my $excludestr = "find . -xdev ";
     my $includestr;
     if ($exlistloc) {
-        my $exlist;
-        my $excludetext;
-        open($exlist,"<",$exlistloc);
-        system("echo -n > $xcat_packimg_tmpfile");
-        while (<$exlist>) {
-    	    $excludetext .= $_;
-        }   
-        close($exlist);
+        my @excludeslist = split ',', $exlistloc;
+        foreach my $exlistlocname ( @excludeslist ) {
+            my $exlist;
+            my $excludetext;
+            open($exlist,"<",$exlistlocname);
+            system("echo -n > $xcat_packimg_tmpfile");
+            while (<$exlist>) {
+                $excludetext .= $_;
+            }   
+            close($exlist);
       
-        #handle the #INLCUDE# tag recursively
-        my $idir = dirname($exlistloc);
-        my $doneincludes=0;
-        while (not $doneincludes) {
-            $doneincludes=1;
-            if ($excludetext =~ /#INCLUDE:[^#^\n]+#/) {
-               	$doneincludes=0;
-        	    $excludetext =~ s/#INCLUDE:([^#^\n]+)#/include_file($1,$idir)/eg;                 
-	        }
+            #handle the #INLCUDE# tag recursively
+            my $idir = dirname($exlistlocname);
+            my $doneincludes=0;
+            while (not $doneincludes) {
+                $doneincludes=1;
+                if ($excludetext =~ /#INCLUDE:[^#^\n]+#/) {
+                    $doneincludes=0;
+                    $excludetext =~ s/#INCLUDE:([^#^\n]+)#/include_file($1,$idir)/eg;                 
+                }
 
-	    }
+            }
 
-	    my @tmp=split("\n", $excludetext);
-	    foreach (@tmp) {
-	        chomp $_;
-            s/\s*#.*//;      #-- remove comments 
-            next if /^\s*$/; #-- skip empty lines
-            if (/^\+/) {
-		        s/^\+//; #remove '+'	
-		        $includestr .= "-path '". $_ ."' -o ";                
-            } else { 
-		        s/^\-//;  #remove '-' if any
-		        $excludestr .= "'!' -path '".$_."' -a ";
-	        }
+            my @tmp=split("\n", $excludetext);
+            foreach (@tmp) {
+                chomp $_;
+                s/\s*#.*//;      #-- remove comments 
+                next if /^\s*$/; #-- skip empty lines
+                if (/^\+/) {
+                    s/^\+//; #remove '+'	
+                    $includestr .= "-path '". $_ ."' -o ";                
+                } else { 
+                    s/^\-//;  #remove '-' if any
+                    $excludestr .= "'!' -path '".$_."' -a ";
+                }
+            }
         }
-   }
+    }
 
     # the files specified for statelite should be excluded
     my @excludeStatelite = ("./etc/init.d/statelite", "./etc/rc.sysinit.backup", "./.statelite*", "./.default*", "./.statebackup*");
