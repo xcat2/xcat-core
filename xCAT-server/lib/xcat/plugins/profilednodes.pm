@@ -220,6 +220,13 @@ sub nodeimport{
         return;
     }
 
+    # validate hostnameformat:
+    my $nameformattype = xCAT::ProfiledNodeUtils->get_hostname_format_type($args_dict{'hostnameformat'});
+    if ($nameformattype eq "unknown"){
+        setrsp_errormsg("Invalid hostname format: $args_dict{'hostnameformat'}");
+        return;
+    }
+
     # Get database records: all hostnames, all ips, all racks...
     xCAT::MsgUtils->message('S', "Getting database records.");
     my $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('nodelist', 'node');
@@ -673,7 +680,7 @@ sub nodediscoverstart{
         return;
     }
 
-    my @enabledparams = ('networkprofile', 'hardwareprofile', 'imageprofile', 'hostnameformat', 'rank', 'rack', 'chassis', 'height', 'unit');
+    my @enabledparams = ('networkprofile', 'hardwareprofile', 'imageprofile', 'hostnameformat', 'rank', 'rack', 'chassis', 'height', 'unit', 'groups');
     foreach my $argname (keys %args_dict){
         if (! grep{ $_ eq $argname} @enabledparams){
             setrsp_errormsg("Illegal attribute $argname specified.");
@@ -686,6 +693,13 @@ sub nodediscoverstart{
             setrsp_errormsg("argument $key must be specified");
             return;
         }
+    }
+
+    # validate hostnameformat:
+    my $nameformattype = xCAT::ProfiledNodeUtils->get_hostname_format_type($args_dict{'hostnameformat'});
+    if ($nameformattype eq "unknown"){
+        setrsp_errormsg("Invalid hostname format: $args_dict{'hostnameformat'}");
+        return;
     }
 
     my $recordsref = xCAT::ProfiledNodeUtils->get_all_rack(1);
@@ -744,6 +758,19 @@ sub nodediscoverstart{
     my $discover_running = xCAT::ProfiledNodeUtils->is_discover_started();
     if ($discover_running){
         setrsp_errormsg("Profiled nodes discovery already started.");
+        return;
+    }
+
+    # Make sure provisioning network has a dynamic range.
+    my $provnet = xCAT::ProfiledNodeUtils->get_netprofile_provisionnet($args_dict{networkprofile});
+    if (! $provnet){
+        setrsp_errormsg("No provisioning network defined for network profile.");
+        return;
+    }
+    my $networkstab = xCAT::Table->new("networks");
+    my $netentry = ($networkstab->getAllAttribsWhere("netname = '$provnet'", 'ALL'))[0];
+    if (! $netentry->{'dynamicrange'}){
+        setrsp_errormsg("No dynamicrange defined for the provisioning network.");
         return;
     }
 
@@ -1136,6 +1163,7 @@ sub gen_new_hostinfo_string{
         if (exists $args_dict{'networkprofile'}){$hostinfo_dict{$item}{"groups"} .= ",".$args_dict{'networkprofile'}}
         if (exists $args_dict{'imageprofile'}){$hostinfo_dict{$item}{"groups"} .= ",".$args_dict{'imageprofile'}}
         if (exists $args_dict{'hardwareprofile'}){$hostinfo_dict{$item}{"groups"} .= ",".$args_dict{'hardwareprofile'}}
+        if (exists $args_dict{'groups'}){$hostinfo_dict{$item}{"groups"} .= ",".$args_dict{'groups'}}
         
         # Update BMC records.
         if (exists $netprofileattr{"bmc"}){
@@ -1184,6 +1212,8 @@ sub read_and_generate_hostnames{
     # Auto generate hostnames for "__hostname__" entries.
     open(HOSTFILE, $hostfile);
     my $filecontent = join("", <HOSTFILE>); 
+    # Convert windows txt file into unix format.
+    $filecontent =~ s/\cM\cJ/\n/g;
     while ((index $filecontent, "__hostname__:") >= 0){
     	my $nexthost = shift @$freehostnamesref;
     	# no more valid hostnames to assign.
@@ -1401,7 +1431,7 @@ sub setrsp_invalidrecords
     
     # The total number of invalid records.
     $rsp->{error} = "Some error records detected";
-    $rsp->{errorcode} = 1;
+    $rsp->{errorcode} = 2;
     $rsp->{invalid_records_num} = scalar @$recordsref;
 
     # We write details of invalid records into a file.

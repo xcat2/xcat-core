@@ -184,7 +184,10 @@ sub get_hostname_format_type{
         $type = "rack";
     } elsif ($nidx >= 0){
         $type = "numric";
+    } else{
+        $type = "unknown";
     }
+
     return $type;
 }
 
@@ -296,7 +299,7 @@ sub get_nodes_nic_attrs{
 sub get_netprofile_bmcnet{
     my ($class, $netprofilename) = @_;
 
-    my $netprofile_nicshash_ref = xCAT::ProfiledNodeUtils->get_netprofile_nic_attrs($netprofilename);
+    my $netprofile_nicshash_ref = xCAT::ProfiledNodeUtils->get_nodes_nic_attrs($netprofilename)->{$netprofilename};
     my %netprofile_nicshash = %$netprofile_nicshash_ref;
     if (exists $netprofile_nicshash{'bmc'}{"network"}){
         return $netprofile_nicshash{'bmc'}{"network"}
@@ -317,7 +320,7 @@ sub get_netprofile_bmcnet{
 sub get_netprofile_provisionnet{
     my ($class, $netprofilename) = @_;
 
-    my $netprofile_nicshash_ref = xCAT::ProfiledNodeUtils->get_netprofile_nic_attrs($netprofilename);
+    my $netprofile_nicshash_ref = xCAT::ProfiledNodeUtils->get_nodes_nic_attrs([$netprofilename])->{$netprofilename};
     my %netprofile_nicshash = %$netprofile_nicshash_ref;
     my $restab = xCAT::Table->new('noderes');
     my $installnicattr = $restab->getNodeAttribs($netprofilename, ['installnic']);
