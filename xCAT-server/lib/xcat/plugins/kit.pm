@@ -841,6 +841,10 @@ sub addkit
                 ($key,$value) = split /=/, $line;
             }
 
+            # Remove spaces in each lines.
+            $key =~s/^\s+|\s+$//g;
+            $value =~s/^\s+|\s+$//g;
+
             # Add each attribute to different hash.
             if ( $sec =~ /KIT$/) {
                 if ( $key =~ /kitname/ ) {
