@@ -782,13 +782,49 @@ sub makescript
     my $ips = $et2->{'postbootscripts'};
     if ($ips)
     {
+        my @xcatscripts;
+        my @kitscripts;
+        my @userscripts;
         push @scriptd, "# osimage-postbootscripts-start-here\n";
         foreach my $n (split(/,/, $ips))
+        {
+`echo $n > /tmp/scrips`;
+            if ( $n =~ /^BASEXCAT_/ )
+            {
+                push @xcatscripts, $n. "\n";
+            }
+            elsif ( $n =~ /^KIT_/ )
+            {
+                push @kitscripts, $n. "\n";
+            }
+            else
+            {
+                push @userscripts, $n. "\n";
+            }
+        }
+        foreach my $n (@xcatscripts)
         {
             if (!exists($postboot_hash{$n}))
             {
                 $postboot_hash{$n} = 1;
-                push @scriptd, $n . "\n";
+                push @scriptd, $n;
+            }
+        }
+
+        foreach my $n (@kitscripts)
+        {
+            if (!exists($postboot_hash{$n}))
+            {
+                $postboot_hash{$n} = 1;
+                push @scriptd, $n;
+            }
+        }
+        foreach my $n (@userscripts)
+        {
+            if (!exists($postboot_hash{$n}))
+            {
+                $postboot_hash{$n} = 1;
+                push @scriptd, $n;
             }
         }
         push @scriptd, "# osimage-postbootscripts-end-here\n";
