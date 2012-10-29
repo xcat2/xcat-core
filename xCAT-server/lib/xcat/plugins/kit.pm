@@ -1440,7 +1440,7 @@ sub addkitcomp
                 return 1;
             }
 
-            if ( $os{$osimage}{minorversion} and ($os{$osimage}{minorversion} ne $kitcomps{$kitcomp}{osminorversion}) ) {
+            if ( $kitcomps{$kitcomp}{osminorversion} and ($os{$osimage}{minorversion} ne $kitcomps{$kitcomp}{osminorversion}) ) {
                 my %rsp;
                 push@{ $rsp{data} }, "osimage $osimage doesn't fit to kit component $kitcomp with attribute minorversion";
                 xCAT::MsgUtils->message( "E", \%rsp, $callback );
@@ -2381,7 +2381,7 @@ sub chkkitcomp
             return 1;
         }
 
-        if ( $os{$osimage}{minorversion} and ($os{$osimage}{minorversion} ne $kitcomps{$kitcomp}{osminorversion}) ) {
+        if ( $kitcomps{$kitcomp}{osminorversion} and ($os{$osimage}{minorversion} ne $kitcomps{$kitcomp}{osminorversion}) ) {
             my %rsp;
             push@{ $rsp{data} }, "kit component $kitcomp doesn't fit to osimage $osimage with attribute minorversion";
             xCAT::MsgUtils->message( "E", \%rsp, $callback );
