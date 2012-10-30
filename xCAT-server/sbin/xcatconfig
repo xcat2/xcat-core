@@ -2045,7 +2045,7 @@ sub cleanupPSTable
 
 =head3   setupMNinDB 
 	
-   Will add the management node to the database with group=__mgmtnode  
+   Will add/replace the management node to the database with group=__mgmtnode  
 
 
 =cut
@@ -2056,6 +2056,29 @@ sub setupMNinDB
    my $mnname = `hostname`;
    chomp $mnname;
    $mnname && $mnname =~ s/\..*//; # strip off domain
+
+   # check to see if MN already defined in the database
+   my $cmds = "XCATBYPASS=Y $::XCATROOT/bin/nodels __mgmtnode";
+   my $mn = xCAT::Utils->runcmd("$cmds", 0);
+   if ($::RUNCMD_RC != 0)
+   {
+      xCAT::MsgUtils->message('E', "Could run $cmds.");
+      return;
+   }
+   my $chtabcmds;
+   if (($mn) && ($mn ne $mnname)) {   # remove the old one 
+      $chtabcmds = "$::XCATROOT/sbin/chtab -d node=$mn nodelist;";
+      my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
+      if ($::RUNCMD_RC != 0)
+      {
+        xCAT::MsgUtils->message('E', "Could not run $chtabcmds.");
+        return;
+      }
+      
+   } else {   # already defined correctly
+       return;
+   }
+   # now add a new one
    my $chtabcmds = "$::XCATROOT/sbin/chtab node=$mnname nodelist.groups=__mgmtnode;";
    my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
    if ($::RUNCMD_RC != 0)
