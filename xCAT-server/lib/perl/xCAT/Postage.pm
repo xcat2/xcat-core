@@ -788,7 +788,6 @@ sub makescript
         push @scriptd, "# osimage-postbootscripts-start-here\n";
         foreach my $n (split(/,/, $ips))
         {
-`echo $n > /tmp/scrips`;
             if ( $n =~ /^BASEXCAT_/ )
             {
                 push @xcatscripts, $n. "\n";
