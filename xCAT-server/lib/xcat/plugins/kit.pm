@@ -569,27 +569,23 @@ sub assign_to_osimage
 
         # Remove this component basename and pkgnames from KIT_RMPKGS.otherpkg.pkglist
         my @lines = ();
-        my @kitpkgdeps = ();
-        my @l = ();
-        if ( $kitcomptable->{kitpkgdeps} ) {
-            if ( -e "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist" ) {
-                if (open(RMOTHERPKGLIST, "<", "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist")) {
-                    @lines = <RMOTHERPKGLIST>;
-                    close(RMOTHERPKGLIST);
-                    if($::VERBOSE){
-                        $callback->({data=>["\nReading kit component rmpkgs file $installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist\n"]});
-                    }
-                } else {
-                    $callback->({error => ["Could not open kit component rmpkgs file $installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist"],errorcode=>[1]});
-                    return 1;
-                }
-            }
 
-            @kitpkgdeps = split ',', $kitcomptable->{kitpkgdeps}; 
-
-        }
-
+        my @kitpkgdeps = split ',', $kitcomptable->{kitpkgdeps}; 
         push @kitpkgdeps, $basename;
+
+        my @l = ();
+        if ( -e "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist" ) {
+            if (open(RMOTHERPKGLIST, "<", "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist")) {
+                @lines = <RMOTHERPKGLIST>;
+                close(RMOTHERPKGLIST);
+                if($::VERBOSE){
+                    $callback->({data=>["\nReading kit component rmpkgs file $installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist\n"]});
+                }
+            } else {
+                $callback->({error => ["Could not open kit component rmpkgs file $installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist"],errorcode=>[1]});
+                return 1;
+            }
+        }
 
         my $changed = 0;
         foreach my $line ( @lines ) {
@@ -2036,6 +2032,7 @@ sub rmkitcomp
 
                 push @kitpkgdeps, $basename;
 
+                my $update = 0;
                 foreach my $kitpkgdep ( @kitpkgdeps ) {
                     my $matched = 0;
                     foreach my $line ( @lines ) {
@@ -2048,15 +2045,30 @@ sub rmkitcomp
 
                     unless ( $matched ) {
                         push @l, "-$kitreponame/$kitpkgdep\n";
+                        $update = 1;
                     }
 
                 }
 
-                if (open(RMPKGLIST, ">", "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist")) {
+                if ( $update and open(RMPKGLIST, ">", "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist") ) {
                     print RMPKGLIST @l;
                     close(RMPKGLIST);
                 }
 
+                if ( $linuximagetable and $linuximagetable->{otherpkglist} ) {
+                    my $match = 0;
+                    my @otherpkglists= split ',', $linuximagetable->{otherpkglist};
+                    foreach my $otherpkglist ( @otherpkglists ) {
+                        if ( $otherpkglist =~ /^$installdir\/osimages\/$osimage\/kits\/KIT_RMPKGS.otherpkgs.pkglist$/ ) {
+                            $match = 1;
+                            last;
+                        }
+                    }
+
+                    if ( !$match and -e "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist" ) {
+                        $linuximagetable->{otherpkglist} = $linuximagetable->{otherpkglist} . ",$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist"
+                    }
+                }
             }
 
         }
