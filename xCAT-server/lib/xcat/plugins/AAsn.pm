@@ -1504,7 +1504,11 @@ sub enable_TFTPhpa
     if (-x "/usr/sbin/in.tftpd") {
 	system("killall in.tftpd"); #xinetd can leave behind blocking tftp servers even if it won't start new ones
     if ($distro =~ /ubuntu.*/i){
-        system("stop tftpd-hpa");
+        sleep 1;
+        my @checkproc=`ps axf|grep -v grep|grep in.tftpd`;
+        if (@checkproc){
+            system("stop tftpd-hpa");
+        }
     }
     my @tftpprocs=`ps axf|grep -v grep|grep in.tftpd`;
 	while (@tftpprocs) {
