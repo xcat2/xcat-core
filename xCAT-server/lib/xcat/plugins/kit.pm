@@ -592,7 +592,7 @@ sub assign_to_osimage
             chomp $line;
             my $matched = 0;
             foreach my $kitpkgdep ( @kitpkgdeps ) {
-                if ( $line =~ /^-$kitreponame\/$kitpkgdep$/ ) {
+                if ( $line =~ /^-$kitpkgdep$/ ) {
                     $matched = 1;
                     $changed = 1;
                     last;
@@ -2037,14 +2037,14 @@ sub rmkitcomp
                     my $matched = 0;
                     foreach my $line ( @lines ) {
                         chomp $line;
-                        if ( $line =~ /^-$kitreponame\/$kitpkgdep$/ ) {
+                        if ( $line =~ /^-$kitpkgdep$/ ) {
                             $matched = 1;
                             last;
                         }
                     }
 
                     unless ( $matched ) {
-                        push @l, "-$kitreponame/$kitpkgdep\n";
+                        push @l, "-$kitpkgdep\n";
                         $update = 1;
                     }
 
