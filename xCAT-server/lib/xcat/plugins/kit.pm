@@ -2222,7 +2222,7 @@ sub chkkitcomp
         push@{ $rsp{data} }, "chkkitcomp: Check if kit component fits to osimage";
         push@{ $rsp{data} }, "Usage: ";
         push@{ $rsp{data} }, "\tchkkitcomp [-h|--help]";
-        push@{ $rsp{data} }, "\tchkkitcomp [-o|--overwrite] [-V|--verbose] -i <osimage> <kitcompname_list>";
+        push@{ $rsp{data} }, "\tchkkitcomp [-V|--verbose] -i <osimage> <kitcompname_list>";
         xCAT::MsgUtils->message( "I", \%rsp, $callback );
     };
 
@@ -2237,7 +2237,6 @@ sub chkkitcomp
     GetOptions(
             'h|help' => \$help,
             'V|verbose' => \$::VERBOSE,
-            'o|overwrite' => \$overwrite,
             'i=s' => \$osimage
     );
 
