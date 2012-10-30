@@ -714,6 +714,8 @@ sub nodediscoverstart{
         }
         # rack must be specified with chassis or unit + height.
         if (exists $args_dict{'chassis'}){
+            setrsp_errormsg("Argument chassis can not be used together with rack");
+            return;
         } else{
             # We set default value for height and u if rack specified
             if(! exists $args_dict{'height'}){$args_dict{'height'} = 1}
@@ -723,11 +725,6 @@ sub nodediscoverstart{
 
     # chassis jdugement.
     if (exists $args_dict{'chassis'}){
-        if (! exists  $args_dict{'rack'}){
-            setrsp_errormsg("Argument chassis must be used together with rack");
-            return;
-        }
-
         if (! exists $allchassis{$args_dict{'chassis'}}){
             setrsp_errormsg("Specified chassis $args_dict{'chassis'} not defined");
             return;
@@ -740,6 +737,11 @@ sub nodediscoverstart{
    
     # height and u must be valid numbers.
     if (exists $args_dict{'unit'}){
+        # unit must be specified together with rack.
+        if (! exists $args_dict{'rack'}){
+            setrsp_errormsg("Argument unit must be specified together with rack");
+            return;
+        }
         # Not a valid number.
         if (!($args_dict{'unit'} =~ /^\d+$/)){
             setrsp_errormsg("Specified unit $args_dict{'u'} is a invalid number");
@@ -747,6 +749,11 @@ sub nodediscoverstart{
         }
     }
     if (exists $args_dict{'height'}){
+        # unit must be specified together with rack.
+        if (! exists $args_dict{'rack'}){
+            setrsp_errormsg("Argument height must be specified together with rack");
+            return;
+        }
         # Not a valid number.
         if (!($args_dict{'height'} =~ /^\d+$/)){
             setrsp_errormsg("Specified height $args_dict{'height'} is a invalid number");
@@ -1377,17 +1384,18 @@ sub validate_node_entry{
             #TODO: xCAT switch discovery enhance: verify whether switch exists.
         }elsif ($_ eq "port"){
         }elsif ($_ eq "rack"){
-            if (not exists $allracks{$node_entry{$_}}){
+            if (! exists $allracks{$node_entry{$_}}){
                 return "Specified rack $node_entry{$_} not defined";
             }
             # rack must be specified with chassis or unit + height.
             if (exists $node_entry{"chassis"}){
+                return "Rack can not be specified together with chassis";
             } elsif (exists $node_entry{"height"} and exists $node_entry{"unit"}){
             } else {
                 return "Rack must be specified together with chassis or height + unit ";
             }
         }elsif ($_ eq "chassis"){
-            if (not exists $allchassis{$node_entry{$_}}){
+            if (! exists $allchassis{$node_entry{$_}}){
                 return "Specified chassis $node_entry{$_} not defined";
             }
             # Chassis must not be specified with unit and height.
@@ -1395,11 +1403,17 @@ sub validate_node_entry{
                 return "Chassis should not be specified together with height or unit";
             }
         }elsif ($_ eq "unit"){
+            if (! exists $node_entry{"rack"}){
+                return "Unit must be specified together with rack";
+            }
             # Not a valid number.
             if (!($node_entry{$_} =~ /^\d+$/)){
                 return "Specified unit $node_entry{$_} is a invalid number";
             }
         }elsif ($_ eq "height"){
+            if (! exists $node_entry{"chassis"}){
+                return "Chassis must be specified together with rack";
+            }
             # Not a valid number.
             if (!($node_entry{$_} =~ /^\d+$/)){
                 return "Specified height $node_entry{$_} is a invalid number";
