@@ -1072,6 +1072,7 @@ sub runcmd
 
 	   reference to output
 
+
    Returns:
 	   see below
    Globals:
@@ -1091,11 +1092,18 @@ sub runcmd
              number > 0:    Display error msg and exit with the given code
 
    Example:
+      return output as reference to an array
 		my $outref = xCAT::Utils->runxcmd($cmd,$sub_req, -2, 1);
+      
+      return response structure from plugin 
+		my $outref = xCAT::Utils->runxcmd($cmd,$sub_req, -2, 2);
 
    Comments:
-		   If refoutput is true, then the output will be returned as a
+		   If refoutput is 1, then the output will be returned as a
 		   reference to an array for efficiency.
+
+		   If refoutput is 2, then the response structure will be returned  
+         as output.  runxcmd will not parse the request structure.
 
 		   Do not use the scalar string input for xdsh unless you are running
 		   a simple single-word command.  When building your request hash,
@@ -1169,9 +1177,20 @@ sub runxcmd
         }
         push(@{$req->{arg}}, @cmdargs);
     }
-    $subreq->($req, \&runxcmd_output);
+    # call the plugin
+    if (defined ($refoutput)) {
+      if ($refoutput != 2)  {
+        $subreq->($req, \&runxcmd_output);
+      } else {  # do not parse return from plugin
+         $subreq->($req, \&runxcmd_output2); 
+      }
+    } else { 
+        $subreq->($req, \&runxcmd_output);
+    }
+   
     $::CALLBACK = $save_CALLBACK;    # in case the subreq call changed it
     my $outref = $::xcmd_outref;
+    
     if ($::RUNCMD_RC)
     {
         my $displayerror = 1;
@@ -1216,17 +1235,23 @@ sub runxcmd
             $xCAT::Utils::errno = 29;
         }
     }
-    if ($refoutput)
+    if ((defined($refoutput)) && ($refoutput == 1))
+        # output is reference to array
     {
         chomp(@$outref);
         return $outref;
     }
-    elsif (wantarray)
+    elsif ((defined($refoutput)) && ($refoutput == 2))
+       # output is structure returned from plugin
+    {
+        return $outref;
+    }
+    elsif (wantarray)   # array
     {
         chomp(@$outref);
         return @$outref;
     }
-    else
+    else   # string
     {
         my $line = join('', @$outref);
         chomp $line;
@@ -1300,12 +1325,15 @@ sub runxcmd_output
         }
     }
 
-    #  		my $i=0;
-    #	    foreach my $line ($resp->{info}->[$i]) {
-    #	      push (@dshresult, $line);
-    #	      $i++;
-    #	    }
     return 0;
+}
+# runxcmd_output2 -- Internal subroutine for runxcmd to capture the output
+#	from the xCAT daemon subrequest call. Returns output unparsed.
+sub runxcmd_output2
+{
+    my $resp = shift;
+    $::xcmd_outref = $resp;
+    return 0 ;
 }
 
 #--------------------------------------------------------------------------------
