@@ -587,17 +587,17 @@ sub mkinstall {
                         } else {
                             $ksdev = $ent->{primarynic};
                         }
-                    } else {
-                        my $rsp;
-                        push @{$rsp->{data}}, "No network interface was set: installnic, primarynic";
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
                     }
                     
                     # set the storage parameters
                     $kcmdline .= " storage_init";
                     
                     # set the bootif
-                    $kcmdline .= " BOOTIF=$ksdev ip=dhcp";
+		    if ($ksdev) { 
+                    	$kcmdline .= " BOOTIF=$ksdev ip=dhcp";
+	            } else { #let boot firmware fill it in
+                    	$kcmdline .= " ip=dhcp";
+		    }
             
                     # set the passwd for admin and root
                     $kcmdline .=  " adminpw=$rhevm_hash->{$rhevm}->{host}->{$node}->{adminpw} rootpw=$rhevm_hash->{$rhevm}->{host}->{$node}->{rootpw} ssh_pwauth=1";
