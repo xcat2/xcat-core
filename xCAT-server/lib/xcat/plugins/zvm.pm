@@ -191,8 +191,12 @@ sub process_request {
 
             # Child process
             elsif ( $pid == 0 ) {
-                inventoryVM( $callback, $_, $args );
-
+                if (xCAT::zvmUtils->isHypervisor($_)) {
+                    inventoryHypervisor( $callback, $_, $args );
+                } else {
+                	inventoryVM( $callback, $_, $args );
+                }
+                
                 # Exit process
                 exit(0);
             }
@@ -209,13 +213,13 @@ sub process_request {
     elsif ( $command eq "mkvm" ) {
 
         # Determine if the argument is a node
-        my $clone = 'FALSE';
+        my $clone = 0;
         if ( $args->[0] ) {
             $clone = xCAT::zvmUtils->isZvmNode( $args->[0] );
         }
 
         #*** Clone virtual server ***
-        if ( $clone eq 'TRUE' ) {
+        if ( $clone ) {
             cloneVM( $callback, \@nodes, $args );
         }
 
@@ -581,8 +585,8 @@ sub removeVM {
     my $update;
     my $expression;
     foreach (@pools) {
-    	$pool = xCAT::zvmUtils->replaceStr( $_, ".conf", "" );
-    	
+        $pool = xCAT::zvmUtils->replaceStr( $_, ".conf", "" );
+        
         @luns = split("\n", `ssh $hcp "cat $::ZFCPPOOL/$_" | egrep -i $node`);
         foreach (@luns) {
             # Update entry: status,wwpn,lun,size,owner,channel,tag
@@ -759,7 +763,7 @@ sub changeVM {
         
         # Translate QDIO or Hipersocket into correct type
         if ($type =~m/QDIO/i) {
-        	$type = 2;
+            $type = 2;
         } elsif ($type =~m/HIPER/i) {
             $type = 1;
         } 
@@ -811,7 +815,7 @@ sub changeVM {
         
         my $loaddev = int($args->[3]);
         if ($loaddev != 0 && $loaddev != 1) {
-        	xCAT::zvmUtils->printLn( $callback, "$node: (Error) The loaddev can be 0 or 1" );
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) The loaddev can be 0 or 1" );
             return;
         }
         
@@ -998,8 +1002,8 @@ sub changeVM {
         
         # Set loaddev statement in directory entry
         if ($loaddev) {
-        	$out = `chvm $node --setloaddev $wwpn $lun`;
-        	xCAT::zvmUtils->printLn($callback, "$out");
+            $out = `chvm $node --setloaddev $wwpn $lun`;
+            xCAT::zvmUtils->printLn($callback, "$out");
         }
         
         $out = "";
@@ -1413,7 +1417,7 @@ sub changeVM {
     
     # removezfcpfrompool [pool] [lun]
     elsif ( $args->[0] eq "--removezfcpfrompool" ) {
-    	# This is no longer supported in chvm. Using chhypervisor instead.
+        # This is no longer supported in chvm. Using chhypervisor instead.
         changeHypervisor( $callback, $node, $args );
     }
     
@@ -1616,7 +1620,7 @@ sub changeVM {
 
     # resetsmapi
     elsif ( $args->[0] eq "--resetsmapi" ) {
-    	# This is no longer supported in chvm. Using chhypervisor instead.
+        # This is no longer supported in chvm. Using chhypervisor instead.
         changeHypervisor( $callback, $node, $args );
     }
     
@@ -1631,7 +1635,7 @@ sub changeVM {
         
         my $parms = "''";
         if ($args->[3]) {
-        	$parms = $args->[3];
+            $parms = $args->[3];
         }
 
         $out = `ssh $hcp "$::DIR/smcli Image_IPL_Set_DM -T $userId -s $trgt -l $loadparms -p $parms"`;
@@ -2059,7 +2063,7 @@ sub inventoryVM {
     my $str = "";
     
     # Check if node is pingable
-    if (`nodestat $node | egrep -i "noping"`) {
+    if (`pping $node | egrep -i "noping"`) {
         $str = "$node: (Error) Host is unreachable";
         xCAT::zvmUtils->printLn( $callback, "$str" );
         return;
@@ -3003,7 +3007,7 @@ sub clone {
     # It is Ok not have a password
     my $tgtPw = "''";
     if ($inputs{"pw"}) {
-    	$tgtPw = $inputs{"pw"};
+        $tgtPw = $inputs{"pw"};
     }
 
     # Set IP address
@@ -5478,7 +5482,7 @@ sub changeHypervisor {
                 $out .= "$_\n";
             }
         } else {
-        	xCAT::zvmUtils->printLn( $callback, "$node: (Error) Query supported on active, free, offline, or agent devices" );
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Query supported on active, free, offline, or agent devices" );
         }
     }
     
@@ -5501,10 +5505,69 @@ sub changeHypervisor {
     
     # Only print if there is content
     if ($out) {
-    	$out = xCAT::zvmUtils->appendHostname( $node, $out );
-    	chomp($out);
+        $out = xCAT::zvmUtils->appendHostname( $node, $out );
+        chomp($out);
         xCAT::zvmUtils->printLn( $callback, "$out" );
     }
 
+    return;
+}
+
+#-------------------------------------------------------
+
+=head3   inventoryHypervisor
+
+    Description : Get hardware and software inventory of a given hypervisor
+    Arguments   :   Node
+                    Type of inventory (config|all)
+    Returns     : Nothing
+    Example     : inventoryHypervisor($callback, $node, $args);
+    
+=cut
+
+#-------------------------------------------------------
+sub inventoryHypervisor {
+
+    # Get inputs
+    my ( $callback, $node, $args ) = @_;
+    
+    # Output string
+    my $str = "";
+    
+    # Get node properties from 'zvm' table
+    my @propNames = ( 'hcp' );
+    my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
+
+    # Get zHCP
+    my $hcp = $propVals->{'hcp'};
+    if ( !$hcp ) {
+        xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node zHCP" );
+        return;
+    }
+
+    # Load VMCP module
+    xCAT::zvmCPUtils->loadVmcp($hcp);
+
+    # Get configuration
+    if ( $args->[0] eq 'config' ) {
+    	
+    	# Create output string
+        $str .= "z/VM Host: " . uc($node) . "\n";
+        $str .= "zHCP: $hcp\n";
+    } elsif ( $args->[0] eq 'all' ) {
+
+        # Create output string
+        $str .= "z/VM Host: " . uc($node) . "\n";
+        $str .= "zHCP: $hcp\n";
+    } else {
+        $str = "$node: (Error) Option not supported";
+        xCAT::zvmUtils->printLn( $callback, "$str" );
+        return;
+    }
+
+    # Append hostname (e.g. pokdev61) in front
+    $str = xCAT::zvmUtils->appendHostname( $node, $str );
+
+    xCAT::zvmUtils->printLn( $callback, "$str" );
     return;
 }

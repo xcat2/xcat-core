@@ -310,25 +310,19 @@ sub isZvmNode {
     # Get inputs
     my ( $class, $node ) = @_;
 
-    # zVM guest ID
-    my $id;
-
     # Look in 'zvm' table
     my $tab = xCAT::Table->new( 'zvm', -create => 1, -autocommit => 0 );
 
     my @results = $tab->getAllAttribsWhere( "node like '%" . $node . "%'", 'userid' );
     foreach (@results) {
 
-        # Get userID
-        $id = $_->{'userid'};
-
         # Return 'TRUE' if given node is in the table
-        if ($id) {
-            return ('TRUE');
+        if ($_->{'userid'}) {
+            return 1;
         }
     }
 
-    return ('FALSE');
+    return 0;
 }
 
 #-------------------------------------------------------
@@ -1203,14 +1197,14 @@ sub getOsVersion {
 
 #-------------------------------------------------------
 sub getZfcpInfo {
-	# Get inputs
+    # Get inputs
     my ( $class, $node ) = @_;
     
     # Get zFCP device info
     my $info = `ssh -o ConnectTimeout=2 $node "lszfcp -D"`;
     my @zfcp = split("\n", $info);
     if (!$info || $info =~ m/No zfcp support/i) {
-    	return;
+        return;
     }
     
     # Get SCSI device and their attributes
@@ -1226,12 +1220,12 @@ sub getZfcpInfo {
     my $size;
     
     foreach (@zfcp) {
-    	@args = split(" ", $_);
-    	$id = $args[1];
-    	@args = split("/", $args[0]);
-    	
-    	$device = $args[0];
-    	$wwpn = $args[1];
+        @args = split(" ", $_);
+        $id = $args[1];
+        @args = split("/", $args[0]);
+        
+        $device = $args[0];
+        $wwpn = $args[1];
         $lun = $args[2];
         
         # Make sure WWPN and LUN do not have 0x prefix
@@ -1254,4 +1248,37 @@ sub getZfcpInfo {
 
     $info = xCAT::zvmUtils->tabStr($info);
     return ($info);
+}
+
+#-------------------------------------------------------
+
+=head3   isHypervisor
+
+    Description : Determines if a given node is in the 'hypervisor' table
+    Arguments   : Node
+    Returns     :   1   Node exists
+                    0   Node does not exists
+    Example     : my $out = xCAT::zvmUtils->isHypervisor($node);
+    
+=cut
+
+#-------------------------------------------------------
+sub isHypervisor {
+
+    # Get inputs
+    my ( $class, $node ) = @_;
+    
+    # Look in 'zvm' table
+    my $tab = xCAT::Table->new( "hypervisor", -create => 1, -autocommit => 0 );
+
+    my @results = $tab->getAllAttribsWhere( "node like '%" . $node . "%'", 'type' );
+    foreach (@results) {
+        
+        # Return 'TRUE' if given node is in the table
+        if ($_->{"type"} eq "zvm") {
+            return 1;
+        }
+    }
+
+    return 0;
 }
