@@ -1095,14 +1095,14 @@ sub runcmd
       return output as reference to an array
 		my $outref = xCAT::Utils->runxcmd($cmd,$sub_req, -2, 1);
       
-      return response structure from plugin 
+      return response hash from plugin 
 		my $outref = xCAT::Utils->runxcmd($cmd,$sub_req, -2, 2);
 
    Comments:
 		   If refoutput is 1, then the output will be returned as a
 		   reference to an array for efficiency.
 
-		   If refoutput is 2, then the response structure will be returned  
+		   If refoutput is 2, then the response hash will be returned  
          as output.  runxcmd will not parse the request structure.
 
 		   Do not use the scalar string input for xdsh unless you are running
