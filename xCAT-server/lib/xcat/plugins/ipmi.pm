@@ -16,6 +16,7 @@ use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use xCAT::SPD qw/decode_spd/;
 use xCAT::IPMI;
+my %needbladeinv;
 
 use POSIX qw(ceil floor);
 use Storable qw(store_fd retrieve_fd thaw freeze);
@@ -28,6 +29,7 @@ use HTTP::Request::Common;
 my $iem_support;
 my $vpdhash;
 my %allerrornodes=();
+my $immdetected=0;
 
 eval {
     require IBM::EnergyManager;
@@ -1489,7 +1491,7 @@ sub inv {
         $subcommand = "all";
     }
 	if($subcommand eq "all") {
-		@types = qw(model serial deviceid mprom guid misc hw asset firmware);
+		@types = qw(model serial deviceid mprom guid misc hw asset firmware mac);
 	}
 	elsif($subcommand eq "asset") {
         $sessdata->{skipotherfru}=1;
@@ -1554,6 +1556,9 @@ sub fru_initted {
             }
         }
 	}
+	if ($sessdata->{isite} and (grep {$_ eq "mac"} @types)) {
+		$needbladeinv{$_}="mac";
+        }
 }
 
 sub add_textual_fru {
@@ -1679,6 +1684,7 @@ sub got_bmc_fw_info {
    	$fru->desc("BMC Firmware");
    	$fru->value($mprom);
    	$sessdata->{fru_hash}->{mprom} = $fru;
+    $sessdata->{isanimm}=$isanimm;
     if ($isanimm) {
         #$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0,0,0,0],callback=>\&get_uefi_version_with_fmapi,callback_args=>$sessdata);
 	get_imm_property(property=>"/v2/bios/build_id",callback=>\&got_bios_buildid,sessdata=>$sessdata);
@@ -2105,6 +2111,31 @@ sub initfru_zero {
         }
     	$sessdata->{fru_hash}->{$frudex++} = $fru;
     }
+    if ($fruhash->{board}->{frunum}) {
+	$fru = FRU->new();
+	$fru->rec_type("misc");
+	$fru->desc("Board FRU Number");
+	$fru->value($fruhash->{board}->{frunum});
+	$sessdata->{fru_hash}->{$frudex++} = $fru;
+    }
+    if ($fruhash->{board}->{revision}) {
+	$fru = FRU->new();
+	$fru->rec_type("misc");
+	$fru->desc("Board Revision");
+	$fru->value($fruhash->{board}->{revision});
+	$sessdata->{fru_hash}->{$frudex++} = $fru;
+    }
+    if ($fruhash->{board}->{macaddrs}) {
+	my $macindex=1;
+	foreach my $mac (@{$fruhash->{board}->{macaddrs}}) {
+		$fru = FRU->new();
+		$fru->rec_type("mac");
+		$fru->desc("MAC Address $macindex");
+		$macindex++;
+		$fru->value($mac);
+		$sessdata->{fru_hash}->{$frudex++} = $fru;
+	}
+    }
     if ($fruhash->{board}->{name}->{value}) {
 	    $fru = FRU->new();
     	$fru->rec_type("misc");
@@ -2416,7 +2447,9 @@ sub add_fruhash {
         $fruhash = decode_spd(@{$sessdata->{currfrudata}});
     } else {
             my $err;
+	    $immdetected=$sessdata->{isanimm}; #pass by global, evil, but practical this time
             ($err,$fruhash) = parsefru($sessdata->{currfrudata});
+	    $immdetected=0; #revert state of global 
             if ($err) {
 		my $fru = FRU->new();
         if ($sessdata->{currfrutype} and $sessdata->{currfrutype} eq 'dimm') {
@@ -2738,6 +2771,24 @@ sub parseboard {
         }
         $idx+=$currsize;
         ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+    }
+    if ($immdetected) { #we can understand more specifically some of the extra fields...
+	$boardinf{frunum}=$boardinf{extra}->[0]->{value};
+	$boardinf{revision}=$boardinf{extra}->[4]->{value};
+	#time to process the mac field...
+	my $macdata = $boardinf{extra}->[6]->{value};
+        my $macstring = "1";
+	while ($macstring !~ /00:00:00:00:00:00/) {
+		my @currmac = splice @$macdata,0,6;
+		unless ((scalar @currmac) == 6) {
+			last;
+		}
+		$macstring = sprintf("%02x:%02x:%02x:%02x:%02x:%02x",@currmac);
+		if ($macstring !~ /00:00:00:00:00:00/) { 
+			push @{$boardinf{macaddrs}},$macstring;
+		}
+	}
+	delete $boardinf{extra};
     }
     return \%boardinf;
 }
@@ -5937,6 +5988,14 @@ sub process_request {
         }
     }
     while (xCAT::IPMI->waitforrsp()) { yield };
+    if (keys %needbladeinv) {
+	#ok, we have some inventory data that, for now, suggests blade plugin to getdata from blade plugin
+#	my @bladenodes = keys %needbladeinv;
+#	$request->{arg}=['mac'];
+#        $request->{node}=\@bladenodes;
+#	require xCAT_plugin::blade;
+#	xCAT_plugin::blade::process_request($request,$callback);
+    }
 ####return;
 ####while ($sub_fds->count > 0 and $children > 0) {
 ####  my $handlednodes={};
