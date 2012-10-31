@@ -910,7 +910,7 @@ sub setUpdateStatus
         	   } else {
              		$where_clause="node in ('" . join("','", @nodes) . "')";
         	   }
-                   print "$where_clause";
+                  # print "$where_clause";
         	   $nltab->setAttribsWhere($where_clause, \%updates );                   
 	        }
               $nltab->close;	
