@@ -89,6 +89,14 @@ sub process_request {
     $command = $request->{command}->[0];
     $args = $request->{arg};
 
+    # There is no need to acquire lock for command nodediscoverstatus and nodediscoverls.
+    if ($command eq "nodediscoverstatus"){
+        nodediscoverstatus();
+        return;
+    } elsif ($command eq "nodediscoverls"){
+        nodediscoverls();
+        return;
+    }
 
     my $lock = xCAT::Utils->acquire_lock("nodemgmt", 1);
     if (! $lock){
@@ -107,7 +115,7 @@ sub process_request {
     }
 	
     if ($command eq "nodeimport"){
-        nodeimport()
+        nodeimport();
     } elsif ($command eq "nodepurge"){
     	nodepurge();
     } elsif ($command eq "nodechprofile"){
@@ -118,12 +126,8 @@ sub process_request {
         nodediscoverstart();
     } elsif ($command eq "nodediscoverstop"){
         nodediscoverstop();
-    } elsif ($command eq "nodediscoverstatus"){
-        nodediscoverstatus();
     } elsif ($command eq "findme"){
         findme();
-    } elsif ($command eq "nodediscoverls"){
-        nodediscoverls();
     } elsif ($command eq "nodeaddunmged"){
         nodeaddunmged();
     } elsif ($command eq "nodechmac"){
