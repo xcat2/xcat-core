@@ -879,7 +879,6 @@ sub setAppStatus
 
 sub setUpdateStatus
 {
-    require xCAT::Table;
 
 
     my ($class, $nodes_ref, $status) = @_;
