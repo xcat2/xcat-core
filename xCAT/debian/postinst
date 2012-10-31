@@ -20,10 +20,21 @@ set -e
 
 case "$1" in
     configure)
+         #make dir for the current pid
+         mkdir -p /var/run/xcat
 	 cp -f /opt/xcat/share/xcat/scripts/xHRM /install/postscripts/
 	. /etc/profile.d/xcat.sh
 	if [ -f /tmp/xCAT_upgrade ]
 	then
+            if [ -r "/tmp/xcat/installservice.pid" ]; then
+                mv /tmp/xcat/installservice.pid /var/run/xcat/installservice.pid
+            fi
+            if [ -r "/tmp/xcat/udpservice.pid" ]; then
+                mv /tmp/xcat/udpservice.pid /var/run/xcat/udpservice.pid
+            fi
+            if [ -r "/tmp/xcat/mainservice.pid" ]; then
+                mv /tmp/xcat/mainservice.pid /var/run/xcat/mainservice.pid
+            fi
 	    xcatconfig -u
 	    rm /tmp/xCAT_upgrade
 	else
