@@ -1154,6 +1154,7 @@ sub runxcmd
     }
 
     $::xcmd_outref = [];
+    %::xcmd_outref_hash = ();
     my $req;
     if (ref($cmd) eq "HASH")
     {
@@ -1178,18 +1179,21 @@ sub runxcmd
         push(@{$req->{arg}}, @cmdargs);
     }
     # call the plugin
+    my $outref;
     if (defined ($refoutput)) {
       if ($refoutput != 2)  {
         $subreq->($req, \&runxcmd_output);
-      } else {  # do not parse return from plugin
+        $outref = $::xcmd_outref;
+      } else {  # return response hash 
          $subreq->($req, \&runxcmd_output2); 
+         $outref = $::xcmd_outref_hash;
       }
     } else { 
         $subreq->($req, \&runxcmd_output);
+         $outref = $::xcmd_outref;
     }
    
     $::CALLBACK = $save_CALLBACK;    # in case the subreq call changed it
-    my $outref = $::xcmd_outref;
     
     if ($::RUNCMD_RC)
     {
@@ -1259,11 +1263,19 @@ sub runxcmd
     }
 }
 
-# runxcmd_output -- Internal subroutine for runxcmd to capture the output
-#	from the xCAT daemon subrequest call
-#	Note - only basic info, data, and error responses returned
-#	For more complex node or other return structures, you will need
-#	to write your own wrapper to subreq instead of using runxcmd.
+#-------------------------------------------------------------------------------
+
+=head3    runxcmd_output
+
+   Internal subroutine for runxcmd to capture the output
+	from the xCAT daemon subrequest call
+	Note - only basic info, data, and error responses returned
+	For more complex node or other return structures, you will need
+	to write your own wrapper to subreq instead of using runxcmd.
+
+=cut
+
+#-------------------------------------------------------------------------------
 sub runxcmd_output
 {
     my $resp = shift;
@@ -1327,12 +1339,56 @@ sub runxcmd_output
 
     return 0;
 }
-# runxcmd_output2 -- Internal subroutine for runxcmd to capture the output
-#	from the xCAT daemon subrequest call. Returns output unparsed.
+#-------------------------------------------------------------------------------
+
+=head3    runxcmd_output2
+
+ Internal subroutine for runxcmd to capture the output
+	from the xCAT daemon subrequest call. Returns the response hash 
+=cut
+
+#-------------------------------------------------------------------------------
 sub runxcmd_output2
 {
     my $resp = shift;
-    $::xcmd_outref = $resp;
+    if (defined($resp->{info}))
+    {
+        push  @{$::xcmd_outref_hash->{info}},  @{$resp->{info}};
+    }
+    if (defined($resp->{sinfo}))
+    {
+        push  @{$::xcmd_outref_hash->{sinfo}},  @{$resp->{sinfo}};
+    }
+    if (defined($resp->{data}))
+    {
+        push  @{$::xcmd_outref_hash->{data}},  @{$resp->{data}};
+    }
+    if (defined($resp->{node}))
+    {
+        push  @{$::xcmd_outref_hash->{node}},  @{$resp->{node}};
+    }
+    if (defined($resp->{error}))
+    {
+        push  @{$::xcmd_outref_hash->{error}},  @{$resp->{error}};
+        $::RUNCMD_RC = 1;
+    }
+    if (defined($resp->{errorcode}))
+    {
+        if (ref($resp->{errorcode}) eq 'ARRAY')
+        {
+            push  @{$::xcmd_outref_hash->{errorcode}},  @{$resp->{errorcode}};
+            foreach my $ecode (@{$resp->{errorcode}})
+            {
+                $::RUNCMD_RC |= $ecode;
+            }
+        }
+        else
+        {
+
+            # assume it is a non-reference scalar
+            $::RUNCMD_RC |= $resp->{errorcode};
+        }
+    }
     return 0 ;
 }
 
