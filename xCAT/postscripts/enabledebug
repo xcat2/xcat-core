@@ -1,6 +1,5 @@
 #!/bin/ksh
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
-#egan@us.ibm.com
 #(C)IBM Corp
 #
 echo "$0: the OS version is $OSVER" | logger -t xcat -p local4.info

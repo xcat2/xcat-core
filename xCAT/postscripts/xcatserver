@@ -1,6 +1,5 @@
 #!/bin/sh
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
-#egan@us.ibm.com
 #(C)IBM Corp
 # This scripts transfers the cfgloc files and the xCAT credentials from
 # the Management Node to the Service Node on Linux.
