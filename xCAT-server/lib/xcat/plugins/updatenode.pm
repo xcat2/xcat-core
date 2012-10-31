@@ -1426,7 +1426,7 @@ sub updatenodesyncfiles
 
         if ($synclist)
         {
-
+        
             # this can be a comma separated list of multiple
             # syncfiles
             my @sl = split(',', $synclist);
@@ -1437,9 +1437,9 @@ sub updatenodesyncfiles
         }
     }
 
-#array of nodes failed to sync
+    #array of nodes failed to sync
     my @failednodes=();
-#array of successfully synced nodes 
+    #array of successfully synced nodes 
     my @successfulnodes=();
   
     # Check the existence of the synclist file
@@ -1500,65 +1500,49 @@ sub updatenodesyncfiles
 
              if ($::RUNCMD_RC != 0)
              {  
-                 my $rc=0;
+                 my $rc=0;   # LKV fix this
              } 
 
-             if ($::VERBOSE)
-	     {
-                my $rsp = {};
-                $rsp->{data}->[0] =
-                join("\n",@$output);
-                $callback->($rsp);
-	     }
-
-	     foreach my $line (@$output) {
-	     	if($line =~ /^\s*(\S+)\s*:\s*Remote_command_successful/)
-		{
-			push(@successfulnodes,$1);
-		}
+           my @userinfo=();
+           # determine if the sync was successful or not
+	        foreach my $line (@$output) {
+	     	    if($line =~ /^\s*(\S+)\s*:\s*Remote_command_successful/)
+		       {
+               my ($node,$info) = split (/:/, $line);
+		   	   push(@successfulnodes,$node);
+		       }
              elsif($line =~ /^\s*(\S+)\s*:\s*Remote_command_failed/)
-		{
-			push(@failednodes,$1);
-		}	
-	  }
-	}
-
-#a node that failed to sync one synclistfile is deemed a failed node      
-	{
-		my %m=();
-		my %n=();
-
-		for(@failednodes)
-		{
-		  $m{$_}++;
-		}
-
-		for(@successfulnodes)
-		{
-		  $m{$_}++ || $n{$_}++;
-		}
-	
-		@successfulnodes=keys %n;
-	}
-
-
-#set the nodelist.updatestatus according to the xdcp result
-	if(@successfulnodes >0)
-	{
+		       {
+               my ($node,$info)= split (/:/, $line);
+			      push(@failednodes,$node);
+		       }	
+             else  
+		       {
+			      push(@userinfo,$line);   # user data
+		       }	
+	        }
+           # output user data 
+           if (@userinfo) {
+            foreach my $line (@userinfo) {
+             my $rsp = {};
+             $rsp->{data}->[0] = $line;
+             $callback->($rsp);
+	          }
+	        }
+	     }
+	        
+       #set the nodelist.updatestatus according to the xdcp result
+	    if(@successfulnodes)
+	    {
 	     
-             xCAT::Utils->runxcmd(
-                   {
-                     command => ["updatenodeupdatestat"],
-                     node    => \@successfulnodes,
-                     arg     => ["synced"],
-                   },
-                   $subreq, -1,1);	
-	}
-	
-       # remove the next 5 lines.
-        my $rsp = {};
-        $rsp->{data}->[0] = "File synchronization has completed.";
-        $callback->($rsp);
+            my $stat="synced";
+            xCAT::TableUtils->setUpdateStatus(\@successfulnodes, $stat);
+                      
+	    }
+   	
+       my $rsp = {};
+       $rsp->{data}->[0] = "File synchronization has completed.";
+       $callback->($rsp);
     }
     else
     {    # no syncfiles defined
