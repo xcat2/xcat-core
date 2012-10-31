@@ -4211,6 +4211,10 @@ sub clicmds {
                         push @cfgtext,"The current account password has expired, please modify it first";
          		return ([1,\@unhandled,"Management module refuses requested password as insufficiently secure, try another password"]);
 		}
+  		$t->waitfor(match=>"/system> /");
+		$t->cmd("accseccfg -rc 0 -pe 0 -pi 0 -ct 0 -lp 0 -lf 0 -T system:mm[1]");
+  		$t->waitfor(match=>"/system> /");
+		$t->cmd("accseccfg -rc 0 -pe 0 -pi 0 -ct 0 -lp 0 -lf 0 -T system:mm[2]");
 	}
   	$t->waitfor(match=>"/system> /");
   } elsif (not $t) {#ssh failed.. fallback to a telnet attempt for older AMMs with telnet disabled by default

@@ -238,6 +238,7 @@ sub setupIMM {
 					Errmode=>'return',
 					Prompt=>'/> $/');
 	if ($ssh and $ssh->atprompt) { #we are in and good to issue commands
+		$ssh->cmd("accseccfg -pe 0 -rc 0 -ci 0 -lf 0 -lp 0"); #disable the more insane password rules, this isn't by and large a human used interface
 		$ssh->cmd("users -1 -n ".$args{username}." -p ".$args{password}." -a super"); #this gets ipmi going
 		foreach my $ip (@ips) {
 			if ($ip =~ /:/) { 
