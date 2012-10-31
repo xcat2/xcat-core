@@ -310,7 +310,7 @@ sub assign_to_osimage
         my @kitcompscripts = split ',', $kitcomptable->{postbootscripts};
         foreach my $kitcompscript ( @kitcompscripts ) {
 
-            my $formatedkitcomp = "KIT_".$kitcompscript;
+            my $formatedkitcomp = $kitcompscript;
 
             if ( $osimagetable ) {
                 if ( $osimagetable->{postbootscripts} ){
@@ -1826,7 +1826,7 @@ sub rmkitcomp
         foreach my $kitcomponent (keys %kitcomps) {
             my @kitcompscripts = split( ',', $kitcomps{$kitcomponent}{postbootscripts} );
             foreach my $kitcompscript ( @kitcompscripts ) {
-                if ( $osimagescript =~ /^KIT_$kitcompscript$/ ) {
+                if ( $osimagescript =~ /^$kitcompscript$/ ) {
                     $match = 1;
                     last;
                 }
