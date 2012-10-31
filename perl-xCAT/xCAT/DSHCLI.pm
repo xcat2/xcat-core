@@ -5442,6 +5442,16 @@ sub run_rsync_postscripts
     }
     # now if we have postscripts to run, run xdsh
     my $out;
+
+    # if we were called with runxcmd, like by updatenode
+    # need to save the runxcmd buffer 
+    # $::xcmd_outref
+    my $save_xcmd_outref;
+    if ($::xcmd_outref) { # this means we were called with runxcmd
+     $save_xcmd_outref = $::xcmd_outref;
+    }
+    # my $ranaps=0;   # did we run a postscript
+
     foreach  my $ps ( keys %{$$dshparms{'postscripts'}}) {
         my @nodes;
         push (@nodes, @{$$dshparms{'postscripts'}{$ps}}); 
@@ -5451,7 +5461,6 @@ sub run_rsync_postscripts
          my $tmpp=$syncdir . $ps;
          $ps=$tmpp;
         }
-         
          $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
                                     node    => \@nodes,
                                     arg     => [ "-e", $ps ]
@@ -5460,9 +5469,20 @@ sub run_rsync_postscripts
                 push(@newoutput, $r);
 
         }
-
-
+        #     $ranaps=1;
     }
+    # restore the runxcmd buffer
+    if ($save_xcmd_outref) { # this means we were called with runxcmd
+     $::xcmd_outref = $save_xcmd_outref;
+    }
+    # TODO, will we ever need to merge
+    # if we ran a postscript and we were run
+    # using runxcmd, and there was previous output in the 
+    # runxcmd buffer and we have output from the postscript
+    # then we have to merge the outputs
+    #if (($ranaps == 1) && ($save_xcmd_outref) && ($::xcmd_outref) ) {
+    #  &mergeoutput($save_xcmd_outref);
+    #}
     return @newoutput;
 }
 #-------------------------------------------------------------------------------
@@ -5753,6 +5773,14 @@ sub run_always_rsync_postscripts
     }
     # now if we have postscripts to run, run xdsh
     my $out;
+
+    # if we were called with runxcmd, like by updatenode
+    # need to save the runxcmd buffer 
+    # $::xcmd_outref
+    my $save_xcmd_outref;
+    if ($::xcmd_outref) { # this means we were called with runxcmd
+     $save_xcmd_outref = $::xcmd_outref;
+    }
     foreach  my $ps ( keys %{$$dshparms{'postscripts'}}) {
         my @nodes;
         push (@nodes, @{$$dshparms{'postscripts'}{$ps}}); 
@@ -5773,6 +5801,10 @@ sub run_always_rsync_postscripts
         }
 
 
+    }
+    # restore the runxcmd buffer
+    if ($save_xcmd_outref) { # this means we were called with runxcmd
+     $::xcmd_outref = $save_xcmd_outref;
     }
     return @newoutput;
 }
