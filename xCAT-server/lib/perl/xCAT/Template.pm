@@ -1651,6 +1651,9 @@ sub  collect_all_attribs_for_tables_in_template
             my $ent;
             my $bynode=0;
             if ($key eq "THISNODE" or $key eq '$NODE') {
+                if( $tabname =~ /^noderes$/ ) {
+                    @attribs = (@attribs, "netboot", "tftpdir"); ## add the attribs which will be needed in other place.
+                } 
                 $ent = $tabh->getNodesAttribs($nodes,@attribs);
                 if ($ent) {
                     foreach my $node (@$nodes) {
