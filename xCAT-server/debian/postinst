@@ -21,7 +21,6 @@ set -e
 case "$1" in
     configure)
 	. /etc/profile.d/xcat.sh
-	xcatconfig -i -d
     if [ ! -e "/etc/rc0.d/K60xcatd" ];then
         update-rc.d xcatd start 85 3 4 5 . stop 60 0 1 2 6 .
     else
