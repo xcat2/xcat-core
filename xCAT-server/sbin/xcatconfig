@@ -2120,15 +2120,20 @@ sub startnamedonboot
     else
     {
         #chkconfig
-        my $cmd = "/sbin/chkconfig named on";
+        my $serv = "named";
+        my $cmd = "/sbin/chkconfig $serv on";
+        if ( xCAT::Utils->osver() =~ /ubuntu.*/i){
+            $serv = "bind9";
+            $cmd = "update-rc.d $serv enable";
+        }
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message("E", "Could not enable named.");
+            xCAT::MsgUtils->message("E", "Could not enable $serv.");
         }
         else
         {
-            xCAT::MsgUtils->message("I", "named has been enabled on boot.");
+            xCAT::MsgUtils->message("I", "$serv has been enabled on boot.");
         }
     }
 }
