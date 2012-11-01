@@ -3980,10 +3980,17 @@ sub nodeSet {
             xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Specify the mask, gateway, and nameservers for the subnet in the networks table" );
             return;
         }
-        
-        @propNames = ( 'nfsserver' );
+
+        @propNames = ( 'nfsserver', 'xcatmaster' );
         $propVals = xCAT::zvmUtils->getNodeProps( 'noderes', $node, @propNames );
         my $nfs = $propVals->{'nfsserver'};
+        my $xcatmaster = $propVals->{'xcatmaster'};
+            
+        # Use noderes.xcatmaster instead of site.master if it is given
+        if ( $xcatmaster ) {
+            $master = $xcatmaster;
+        }
+    
         if ( !$nfs ) {
             $nfs = $master;
         }
@@ -4381,7 +4388,9 @@ END
 
             # Get mdisk virtual address
             my @mdisks = xCAT::zvmUtils->getMdisks( $callback, $node );
+            @mdisks = sort(@mdisks);
             my $dasd   = "";
+            my $devices = "";
             my $i      = 0;
             foreach (@mdisks) {
                 $i     = $i + 1;
@@ -4395,8 +4404,15 @@ END
                 }
             }
             
+            # Character limit of 50 in parm file for DASD parameter
+            if (length($dasd) > 50) {
+            	@words = split( ',', $dasd );
+            	$dasd = $words[0] . "-" . $words[@words - 1];
+            }
+            
             # Get dedicated virtual address
             my @dedicates = xCAT::zvmUtils->getDedicates( $callback, $node );
+            @dedicates = sort(@dedicates);            
             $i = 0;
             foreach (@dedicates) {
                 $i = $i + 1;
@@ -4404,10 +4420,21 @@ END
 
                 # Do not put a comma at the end of the last disk address
                 if ( $i == @dedicates ) {
-                    $dasd = $dasd . "0.0.$words[1]";
+                    $devices = $devices . "0.0.$words[1]";
                 } else {
-                    $dasd = $dasd . "0.0.$words[1],";
+                    $devices = $devices . "0.0.$words[1],";
                 }
+            }
+            
+            # Character limit of 50 in parm file for DASD parameter
+            if (length($devices) > 50) {
+                @words = split( ',', $devices );
+                $devices = $words[0] . "-" . $words[@words - 1];
+            }
+            
+            # Concat dedicated devices and DASD together
+            if ($devices) {
+            	$dasd = $dasd . "," . $devices;
             }
 
             # Create parmfile -- Limited to 80 characters/line, maximum of 11 lines
@@ -4428,8 +4455,8 @@ END
             $parms = $parmHeader . "\n";
             $parms = $parms . "ks=$ks\n";
             $parms = $parms . "RUNKS=1 cmdline\n";
-            $parms = $parms . "DASD=$dasd HOSTNAME=$hostname\n";
-            $parms = $parms . "NETTYPE=$netType IPADDR=$hostIP\n";
+            $parms = $parms . "DASD=$dasd\n";
+            $parms = $parms . "HOSTNAME=$hostname NETTYPE=$netType IPADDR=$hostIP\n";
             $parms = $parms . "SUBCHANNELS=$readChannel,$writeChannel,$dataChannel\n";
             $parms = $parms . "NETWORK=$network NETMASK=$mask\n";
             $parms = $parms . "SEARCHDNS=$domain BROADCAST=$broadcast\n";
