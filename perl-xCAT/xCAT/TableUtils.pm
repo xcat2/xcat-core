@@ -1500,12 +1500,19 @@ sub enablessh
 
     my ($class, $node) = @_;
     my $enablessh=1;
-    if (xCAT::Utils->isSN($node)) 
-    {
-             $enablessh=1;   # service nodes always enabled
-    }
-    else
-    {
+    
+    if( defined(%::GLOBAL_SN_HASH) ) {
+        if ($::GLOBAL_SN_HASH{$node} == 1) {
+            $enablessh=1;   # service nodes always enabled
+
+        } 
+    } else { 
+        if (xCAT::Utils->isSN($node)) 
+        {
+            $enablessh=1;   # service nodes always enabled
+        }
+        else
+       {
 
         # if not a service node we need to check, before enabling
         my $values;
@@ -1544,14 +1551,14 @@ sub enablessh
                     }
                 }
             }
-        }
-        else
-        {    # does not exist, set default
+         }
+         else
+         {    # does not exist, set default
             $enablessh=1;
 
-        }
+         }
+       }
     }
-
     return $enablessh;
 
 }
