@@ -634,7 +634,7 @@ function loadNodes(data) {
     $('#nodesTab').append(info);
 
     // Create action bar
-    var actionBar = $('<div class="actionBar"></div>');
+    var actionBar = $('<div class="actionBar"></div>').css("width", "290px");
 
     /**
      * Create menu for actions to perform against a given node
@@ -877,7 +877,7 @@ function loadNodes(data) {
     powerCol.unbind('click');
     monitorCol.unbind('click');
     commentCol.unbind('click');
-            
+    
     // Create enough space for loader to be displayed
     // Center align power, ping, and comments
     $('#' + nodesTableId + ' td:nth-child(3),td:nth-child(4),td:nth-child(5)').css({
@@ -1204,7 +1204,7 @@ function addNodes2Table(data) {
                 break;
             }
         }
-                
+        
         // Get node status
         var status = '';
         if (attrs[node]['status']){
@@ -1212,7 +1212,7 @@ function addNodes2Table(data) {
         }
         
         rows[nodeRowPos][headersCol['status']] = status;
-                
+        
         // Go through each header
         for (var key in headersCol) {
             // Do not put comments and status in twice
@@ -1231,7 +1231,7 @@ function addNodes2Table(data) {
         // This is done after datatable is updated because
         // you cannot insert an object using fnUpdate()
         var comments = attrs[node]['usercomment'];
-                
+        
         // If no comments exists, show 'No comments' and
         // set icon image source
         var iconSrc;
@@ -1241,7 +1241,7 @@ function addNodes2Table(data) {
         } else {
             iconSrc = 'images/nodes/ui-icon-comment.png';
         }
-                
+        
         // Create icon for node comments
         var tipID = node + 'Tip';
         var commentsCol = $('#' + node).parent().parent().find('td').eq(5);
@@ -1261,7 +1261,7 @@ function addNodes2Table(data) {
         icon.tooltip({
             position: "center right",
             offset: [-2, 10],
-            effect: "fade",    
+            effect: "fade",
             opacity: 0.8,
             relative: true,
             delay: 500
