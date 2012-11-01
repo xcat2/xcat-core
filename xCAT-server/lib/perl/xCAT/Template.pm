@@ -515,7 +515,15 @@ sub tabdb
    
    
    if( defined(%::GLOBAL_TAB_HASH) && defined( $::GLOBAL_TAB_HASH{$table}) && defined( $::GLOBAL_TAB_HASH{$table}{$key}) ) {
-        return $::GLOBAL_TAB_HASH{$table}{$key}{$field};
+        if( defined($::GLOBAL_TAB_HASH{$table}{$key}{$field}) ) {
+             return $::GLOBAL_TAB_HASH{$table}{$key}{$field};
+        } else {
+             my $msg;
+             if( $field !~ /^(routenames)$/) {
+                 $msg="\necho \"Warning! The $table.$field was NOT got. Please Check the node defintion and the template file mypostscript.tmpl. If the attribute will be used in your scripts, you need to define it on the Management Node firstly. If the attribute will not be used, you can ignore this message\"";
+             }
+             return $msg;
+        }
    }
 
     my $tabh = xCAT::Table->new($table);
@@ -763,7 +771,7 @@ sub subvars_for_mypostscript {
   #%::GLOBAL_TAB_HASH = ();
   my $rc = collect_all_attribs_for_tables_in_template(\%table, $nodes, $callback);
   if($rc == -1) {
-     return;
+     #return;
   }
 
   #print Dumper(\%::GLOBAL_TAB_HASH);
@@ -942,65 +950,6 @@ sub subvars_for_mypostscript {
   return 0;
 }
 
-sub getMasterFromNoderes
-{
-     my $node = shift;
-     my $value;
- 
-     my $noderestab = xCAT::Table->new('noderes');
-     # if node has service node as master then override site master
-     my $et = $noderestab->getNodeAttribs($node, ['xcatmaster'],prefetchcache=>1);
-     if ($et and defined($et->{'xcatmaster'}))
-     {
-           $value = $et->{'xcatmaster'};
-     }
-     else
-     {
-           my $sitemaster_value = $value;
-           $value = xCAT::NetworkUtils->my_ip_facing($node);
-           if ($value eq "0")
-           {
-                $value = $sitemaster_value;
-           }
-      }
-      
-      return $value;
-
-}
-
-sub getMasters
-{
-     my $nodes = shift;
-     my %masterhash;
-
-     my $noderestab = xCAT::Table->new('noderes');
-     # if node has service node as master then override site master
-     my $ethash = $noderestab->getNodesAttribs($nodes, ['xcatmaster'],prefetchcache=>1);
-     
-     
-     if ($ethash) {
-         foreach my $node (@$nodes) {
-             if( $ethash->{$node}->[0] ) {
-                  $masterhash{$node} = $ethash->{$node}->[0]->{xcatmaster};    
-             }
-
-             if ( ! exists($masterhash{$node}))
-             {
-                  my $value;
-                  $value = xCAT::NetworkUtils->my_ip_facing($node);
-                  if ($value eq "0")
-                  {
-                      undef($value);
-                  }
-                  $masterhash{$node} = $value;
-             }
-         }
- 
-     } 
-     #print Dumper(\%masterhash); 
-     return \%masterhash; 
-}
-
 sub getservicenode
 {
     # reads all nodes from the service node table
@@ -1021,84 +970,6 @@ sub getservicenode
 
     return 0; 
 }
-
-
-sub getNoderes
-{
-     my $nodes = shift;
-     my %nodereshash;
-
-     my $noderestab = xCAT::Table->new('noderes');
-       
-     my $ethash =
-        $noderestab->getNodesAttribs($nodes,
-                                  ['nfsserver', 'installnic', 'primarynic','routenames', 'xcatmaster'],prefetchcache=>1);
-     if ($ethash ){
-          foreach my $node (@$nodes) {
-              if( defined( $ethash->{$node}->[0]) ) {
-                  $nodereshash{$node}{nfsserver} = $ethash->{$node}->[0]->{nfsserver};
-                  $nodereshash{$node}{installnic} = $ethash->{$node}->[0]->{installnic};
-                  $nodereshash{$node}{primarynic} = $ethash->{$node}->[0]->{primarynic};
-                  $nodereshash{$node}{routenames} = $ethash->{$node}->[0]->{routenames};
-                  $nodereshash{$node}{xcatmaster} = $ethash->{$node}->[0]->{xcatmaster};
-                  
-                  if ( ! exists($nodereshash{$node}{xcatmaster}))
-                  {
-                      my $value;
-                      $value = xCAT::NetworkUtils->my_ip_facing($node);
-                      if ($value eq "0")
-                      {
-                          undef($value);
-                      }
-                      $nodereshash{$node}{xcatmaster} = $value;
-                  }
-             } 
-         } 
-     }
-     
-     return \%nodereshash; 
-}
-
-
-sub getTypeVars
-{
-     my $nodes    = shift;
-     my $callback = shift;
-     my %typehash;
-
-     my $typetab = xCAT::Table->new('nodetype');
-       
-     my $ethash =
-      $typetab->getNodesAttribs($nodes, ['os', 'arch', 'profile', 'provmethod'],prefetchcache=>1);
-
-     if ($ethash ){
-          foreach my $node (@$nodes) {
-              if( defined( $ethash->{$node}->[0]) ) {
-                  $typehash{$node}{os} = $ethash->{$node}->[0]->{os};
-                  $typehash{$node}{arch} = $ethash->{$node}->[0]->{arch};
-
-                 if ($^O =~ /^linux/i)
-                 {
-                      unless ($typehash{$node}{'os'} and $typehash{$node}{'arch'})
-                      {
-                          my $rsp;
-                          push @{$rsp->{data}},
-                               "No os or arch setting in nodetype table for $node.\n";
-                               xCAT::MsgUtils->message("E", $rsp, $callback);
-                               return undef;
-                       }
-                  }
-
-
-                  $typehash{$node}{profile} = $ethash->{$node}->[0]->{profile};
-                  $typehash{$node}{provmethod} = $ethash->{$node}->[0]->{provmethod};
-              }
-          }  
-      }
-     
-     return \%typehash; 
-}
-
 
 sub getAllAttribsFromSiteTab {
     
