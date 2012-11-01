@@ -19,7 +19,7 @@ use xCAT::IPMI;
 my %needbladeinv;
 
 use POSIX qw(ceil floor);
-use Storable qw(store_fd retrieve_fd thaw freeze);
+use Storable qw(nstore_fd retrieve_fd thaw freeze);
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::ServiceNodeUtils;
@@ -31,7 +31,7 @@ use HTTP::Request::Common;
 my $iem_support;
 my $vpdhash;
 my %allerrornodes=();
-my $immdetected=0;
+my $global_sessdata;
 
 eval {
     require IBM::EnergyManager;
@@ -94,7 +94,7 @@ my $cache_dir = "/var/cache/xcat";
 use xCAT::data::ibmleds;
 use xCAT::data::ipmigenericevents;
 use xCAT::data::ipmisensorevents;
-my $cache_version = 3;
+my $cache_version = 4;
 my %sdr_caches; #store sdr cachecs in memory indexed such that identical nodes do not hit the disk multiple times
 
 #my $status_noop="XXXno-opXXX";
@@ -329,6 +329,7 @@ struct SDR => {
 	led_id		=> '$',
     fru_type  => '$',
     fru_subtype  => '$',
+    fru_oem  => '$',
 };
 
 struct FRU => {
@@ -356,6 +357,7 @@ sub decode_fru_locator { #Handle fru locator records
     $sdr->id_string(pack("C*",@locator[17..17+$idlen-1]));
     $sdr->fru_type($locator[11]);
     $sdr->fru_subtype($locator[12]);
+    $sdr->fru_oem($locator[15]);
 
     return $sdr;
 }
@@ -2360,9 +2362,9 @@ sub add_fruhash {
         $fruhash = decode_spd(@{$sessdata->{currfrudata}});
     } else {
             my $err;
-	    $immdetected=$sessdata->{isanimm}; #pass by global, evil, but practical this time
+	    $global_sessdata=$sessdata; #pass by global, evil, but practical this time
             ($err,$fruhash) = parsefru($sessdata->{currfrudata});
-	    $immdetected=0; #revert state of global 
+	    $global_sessdata=undef; #revert state of global 
             if ($err) {
 		my $fru = FRU->new();
         if ($sessdata->{currfrutype} and $sessdata->{currfrutype} eq 'dimm') {
@@ -2685,7 +2687,7 @@ sub parseboard {
         $idx+=$currsize;
         ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
     }
-    if ($immdetected) { #we can understand more specifically some of the extra fields...
+    if ($global_sessdata->{isanimm}) { #we can understand more specifically some of the extra fields...
 	$boardinf{frunum}=$boardinf{extra}->[0]->{value};
 	$boardinf{revision}=$boardinf{extra}->[4]->{value};
 	#time to process the mac field...
@@ -4904,17 +4906,17 @@ sub  initsdr_withrepinfo {
 	my $fw_rev2=$sessdata->{firmware_rev2};
     #TODO: beware of dynamic SDR contents
 
-	my $cache_file = "$cache_dir/sdr_$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2.$cache_version";
+	my $cache_file = "$cache_dir/sdr_$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2";
     $sessdata->{sdrcache_file} = $cache_file;
 	if($enable_cache eq "yes") {
-        if ($sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2.$cache_version"}) {
-            $sessdata->{sdr_hash} = $sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2.$cache_version"};
+        if ($sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2"}) {
+            $sessdata->{sdr_hash} = $sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2"};
             on_bmc_connect("SUCCESS",$sessdata); #retry bmc_connect since sdr_cache is validated
             return; #don't proceed to slow load
         } else {
     		my $rc = loadsdrcache($sessdata,$cache_file);
     		if($rc == 0) {
-                $sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2.$cache_version"} = $sessdata->{sdr_hash};
+                $sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2"} = $sessdata->{sdr_hash};
                 on_bmc_connect("SUCCESS",$sessdata); #retry bmc_connect since sdr_cache is validated
                 return; #don't proceed to slow load
     		}
@@ -5008,7 +5010,7 @@ sub start_sdr_record {
         return;
 	}
 
-	$sessdata->{sdr_data} = [0,0,0,$sdr_ver,$sdr_type,$sessdata->{curr_sdr_len}];
+	$sessdata->{sdr_data} = [0,0,0,$sdr_ver,$sdr_type,$sessdata->{curr_sdr_len}]; #seems that an extra zero is prepended to allow other code to do 1 based counting out of laziness to match our index to the spec indicated index
 	$sessdata->{sdr_offset} = 5;
     my $offset=5; #why duplicate? to make for shorter typing
 	my $numbytes = 22;
@@ -5572,9 +5574,12 @@ sub storsdrcache {
 
 	flock($fh,LOCK_EX) || return(1);
 
+	my $hdr;
+        $hdr->{xcat_sdrcacheversion} = $cache_version;
+	nstore_fd($hdr,$fh);
 	foreach $key (keys %{$sessdata->{sdr_hash}}) {
 		my $r = $sessdata->{sdr_hash}->{$key};
-		store_fd($r,$fh);
+		nstore_fd($r,$fh);
 	}
 
 	close($fh);
@@ -5592,6 +5597,9 @@ sub loadsdrcache {
 	if(!open($fh,"<$file")) {
 		return(1);
 	}
+	$r = retrieve_fd($fh);
+        unless ($r) { close($fh); return 1; }
+        unless ($r->{xcat_sdrcacheversion} and $r->{xcat_sdrcacheversion} == $cache_version) { close($fh); return 1; } #version mismatch
 
 	flock($fh,LOCK_SH) || return(1);
 
