@@ -593,6 +593,7 @@ sub preprocess_updatenode
         {
 
             # TODO  fix the error handling, right now cause inf loop
+            # should use the new --nodestatus capability
             #  when  getdata and updatenode_cb are registered  LKV
             # if (   $::SECURITY
             #     && !(grep /^$s1$/, @::good_sns) # is it good
@@ -866,42 +867,6 @@ sub security_update_sshkeys
     return;
 }
 
-#--------------------------------------------------------------------------------
-
-=head3   updatenode_cb
-
-    A callback function which is used to handle the output of updatenode function
-    when run updatenode --secruity for service node inside 
-
-=cut
-
-#-----------------------------------------------------------------------------
-sub updatenode_cb
-{
-    my $resp = shift;
-
-    # call the original callback function
-    $::CALLBACK->($resp);
-
-    foreach my $line (@{$resp->{data}})
-    {
-        my $node;
-        my $msg;
-        if ($line =~ /(.*):(.*)/)
-        {
-            $node = $1;
-            $msg  = $2;
-        }
-        if ($msg =~ /Redeliver security files has completed/)
-        {
-            push @{$::NODEOUT->{$node}}, "ps ok";
-        }
-        elsif ($msg =~ /Setup ssh keys has completed/)
-        {
-            push @{$::NODEOUT->{$node}}, "ssh ok";
-        }
-    }
-}
 
 #--------------------------------------------------------------------------------
 
