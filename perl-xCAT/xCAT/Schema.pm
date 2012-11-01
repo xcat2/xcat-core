@@ -922,7 +922,9 @@ site => {
    " runbootscripts:  If set to 'yes' the scripts listed in the postbootscripts\n".
    "                  attribute in the osimage and postscripts tables will be run during\n".
    "                  each reboot of stateful (diskful) nodes. This attribute has no\n".
-   "                  effect on stateless and statelite nodes.\n\n".
+   "                  effect on stateless and statelite nodes. Please run the following\n" .
+   "                  command after you change the value of this attribute: \n".
+   "                  'updatenode <nodes> -P setuppostbootscripts'\n\n".
    " syspowerinterval:  For system p CECs, this is the number of seconds the rpower\n".
    "                 command will wait between performing the action for each CEC.\n".
    "                 For system x IPMI servers, this is the number of seconds the\n".

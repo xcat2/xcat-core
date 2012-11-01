@@ -139,16 +139,16 @@ cat >/etc/init.d/xcatpostinit1 << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatpostinit1#
 EOF
 chmod 755 /etc/init.d/xcatpostinit1
-ln -s /etc/init.d/xcatpostinit1 /etc/rc3.d/S84xcatpostinit1
-ln -s /etc/init.d/xcatpostinit1 /etc/rc4.d/S84xcatpostinit1
-ln -s /etc/init.d/xcatpostinit1 /etc/rc5.d/S84xcatpostinit1
+ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc3.d/S84xcatpostinit1
+ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc4.d/S84xcatpostinit1
+ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc5.d/S84xcatpostinit1
 mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatinstallpost#
 EOF
 chmod 755 /opt/xcat/xcatinstallpost
 
-chkconfig --add xcatpostinit1
+chkconfig xcatpostinit1 on
 
 #create the dskls post 
 cat >/opt/xcat/xcatdsklspost << 'EOF'
