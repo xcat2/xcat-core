@@ -220,6 +220,16 @@ ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/addkitcomp
 ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/rmkitcomp
 ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/chkkitcomp
 ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/lskmodules
+ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/nodeimport
+ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/nodediscoverstart
+ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/nodediscoverstop
+ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/nodediscoverls
+ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/nodediscoverstatus
+ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/nodeaddunmged
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/nodepurge
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/nodechprofile
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/noderefresh
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/nodechmac
 
 
 %clean

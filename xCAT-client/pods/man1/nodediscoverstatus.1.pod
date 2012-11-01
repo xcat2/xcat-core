@@ -1,0 +1,37 @@
+=head1 NAME
+
+B<nodediscoverstatus> -  Detect whether Profiled nodes discovery is running or not.
+
+=head1 SYNOPSIS
+
+B<nodediscoverstatus> [-h| --help │ -v │ --version]
+
+B<nodediscoverstatus> 
+
+=head1 DESCRIPTION
+
+The B<nodediscoverstatus> Detect whether Profiled nodes discovery is running or not.
+
+=head1 OPTIONS
+
+B<-h|--help>
+
+Display usage message.
+
+B<-v|--version>
+
+Command Version.
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occured.
+
+=head1 EXAMPLES
+
+nodediscoverstatus 
+
+=head1 SEE ALSO
+
+L<nodediscoverstart(1)|nodediscoverstart.1>, L<nodediscoverls(1)|nodediscoverls.1>, L<nodediscoverstatus(1)|nodediscoverstop.1>

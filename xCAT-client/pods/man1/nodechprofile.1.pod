@@ -1,0 +1,62 @@
+=head1 NAME
+
+B<nodechprofile> - Update node profiles for profiled nodes.
+
+=head1 SYNOPSIS
+
+B<nodechprofile> [-h| --help │ -v │ --version]
+
+B<nodechprofile> <noderange> [imageprofile=<imageprofile>] [networkprofile=<networkprofile>] [hardwareprofile=<hardwareprofile>]
+
+=head1 DESCRIPTION
+
+The B<nodechprofile> command update following profiles for nodes: imageprofile, networkprofile and hardwareprofile. After profiles for nodes changed, the node's status will be changed to "defined", which means we must reinstall them.
+
+Changing imageprofile will change node's os or provisioning related settings.
+
+Changing networkprofile will change node's network settings. And, B<nodechprofile> will be able to update node's IP address automatically.
+
+Changing hardwareprofile will change node's hardware settings: BMC, FSP...etc.
+
+=head1 OPTIONS
+
+B<-h|--help>
+
+Display usage message.
+
+B<-v|--version>
+
+Command Version.
+
+B<noderange>
+
+The nodes to be removed.
+
+B<imageprofile=<imageprofile>>
+
+The new image profile name. If there is a group named "__ImageProfile_imgprofile", then "imgprofile" is the image profile name. A image profile defines provisioning method, os info, kit info, provisioning params...etc for nodes.
+
+B<networkprofile=<networkprofile>>
+
+The network profile name. If there is a group named "__NetworkProfile_netprofile", then "netprofile" is the network profile name. A network profile defines networks, nics, routes...etc for nodes.
+
+B<hardwareprofile=<hardwareprofile>>
+
+The hardware profile name. If there is a group named "__HardwareProfile_hwprofile", then "hwprofile" is the hardware profile name. A harddware profile defines hardware management related info like: IPMI, HMC, CEC, CMM...etc for nodes.
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occured.
+
+=head1 EXAMPLES
+
+nodechprofile compute-000,compute-001 imageprofile=rhels6.3_packaged
+
+nodechprofile compute-000 imageprofile=rhels6.3_packaged networkprofile=default_cn hardwareprofile=default_ipmi
+
+=head1 SEE ALSO
+
+L<nodepurge(1)|nodepurge.1>, L<noderefresh(1)|noderefresh.1>, L<nodeimport(1)|nodeimport.1>, L<noderange(3)|noderange.3>
+

@@ -1,0 +1,45 @@
+=head1 NAME
+
+B<nodeaddunmged> - Create a un-managed node with hostname and ip address specified.
+
+=head1 SYNOPSIS
+
+B<nodeaddunmged> [-h| --help │ -v │ --version]
+
+B<nodeaddunmged> hostname=<hostname> ip=<ip>
+
+=head1 DESCRIPTION
+
+The B<nodeaddunmged> command will add nodes into group __Unmanaged. And we just need to specify hostname and IP for this node.
+
+=head1 OPTIONS
+
+B<-h|--help>
+
+Display usage message.
+
+B<-v|--version>
+
+Command Version.
+
+B<hostname=<hostname>>
+
+The hostname of the unmanaged node.
+
+B<ip=<ip>>
+
+The IP address of the unmanaged node.
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occured.
+
+=head1 EXAMPLES
+
+nodeaddunmged hostname=unmanaged01 ip=192.168.1.100
+
+=head1 SEE ALSO
+
+

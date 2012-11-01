@@ -1,0 +1,37 @@
+=head1 NAME
+
+B<nodediscoverstop> - Stop profiled nodes auto discover.
+
+=head1 SYNOPSIS
+
+B<nodediscoverstop> [-h| --help │ -v │ --version]
+
+B<nodediscoverstop> 
+
+=head1 DESCRIPTION
+
+The B<nodediscoverstop> command stops profiled nodes discover and the new booted nodes will not be discovered as profiled nodes any more.
+
+=head1 OPTIONS
+
+B<-h|--help>
+
+Display usage message.
+
+B<-v|--version>
+
+Command Version.
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occured.
+
+=head1 EXAMPLES
+
+nodediscoverstop 
+
+=head1 SEE ALSO
+
+L<nodediscoverstart(1)|nodediscoverstart.1>, L<nodediscoverls(1)|nodediscoverls.1>, L<nodediscoverstatus(1)|nodediscoverstatus.1>

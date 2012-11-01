@@ -12,6 +12,7 @@ package xCAT_plugin::profilednodes;
 
 use strict;
 use warnings;
+use Getopt::Long qw(:config no_ignore_case);
 require xCAT::Table;
 require xCAT::DBobjUtils;
 require xCAT::Utils;
@@ -150,7 +151,7 @@ sub process_request {
 #-----------------------------------------------------
 
 sub parse_args{
-    foreach my $arg (@$args){
+    foreach my $arg (@ARGV){
         my @argarray = split(/=/,$arg);
         my $arglen = @argarray;
         if ($arglen > 2){
@@ -169,6 +170,69 @@ sub parse_args{
         }
     }
     return undef;
+}
+
+sub validate_args{
+    my $helpmsg = shift;
+    my $enabledparamsref = shift;
+    my $mandatoryparamsref = shift;
+
+    my $help;
+    my $ver;
+
+    @ARGV = ();
+    if($args) {
+        @ARGV = @$args;
+    }
+    GetOptions(
+        'h|help' => \$help,
+        'V|verbose' => \$::VERBOSE,
+        'v|version' => \$ver,
+    );
+
+    if($help){
+        setrsp_infostr($helpmsg);
+        return 0;
+    }
+
+    if($ver){
+        my $version = xCAT::Utils->Version();
+        my $versionmsg = "$command : $version";
+        setrsp_infostr($versionmsg);
+        return 0;
+    }
+    
+    my $parseret = parse_args();
+    if ($parseret){
+        setrsp_errormsg($parseret);
+        return 0;
+    }
+
+    # Make sure the specified parameters are valid ones.
+    my @enabledparams = ();
+    if($enabledparamsref){
+        @enabledparams = @$enabledparamsref;
+    }
+    foreach my $argname (keys %args_dict){
+        if (! grep{ $_ eq $argname} @enabledparams){
+            setrsp_errormsg("Illegal attribute $argname specified.");
+            return 0;
+        }
+    }
+
+    # Mandatory arguments.
+    my @mandatoryparams = ();
+    if ($mandatoryparamsref){
+        @mandatoryparams = @$mandatoryparamsref;
+    }
+    foreach (@mandatoryparams){
+        if(! exists($args_dict{$_})){
+            setrsp_errormsg("Mandatory parameter $_ not specified.");
+            return 0;
+        }
+    }
+
+    return 1;
 }
 
 #-------------------------------------------------------
@@ -198,25 +262,19 @@ sub nodeimport{
 
     # Parse arges.
     xCAT::MsgUtils->message('S', "Import profiled nodes through hostinfo file.");
-    my $retstr = parse_args();
-    if ($retstr){
-        setrsp_errormsg($retstr);
-        return;
-    }
-    # Make sure the specified parameters are valid ones.
+
+    my $helpmsg = "nodeimport: create profiled nodes by importing hostinfo file.
+Usage: 
+\tnodeimport file=<hostinfo file> networkprofile=<networkprofile> imageprofile=<imageprofile> hostnameformat=<hostnameformat> [hardwareprofile=<hardwareprofile>] [groups=<groups>]
+\tnodeimport [-h|--help] 
+\tnodeimport {-v|--version}";
+
     my @enabledparams = ('file', 'groups', 'networkprofile', 'hardwareprofile', 'imageprofile', 'hostnameformat');
-    foreach my $argname (keys %args_dict){
-        if (! grep{ $_ eq $argname} @enabledparams){
-            setrsp_errormsg("Illegal attribute $argname specified.");
-            return;
-        }
-    }
-    # Mandatory arguments.
-    foreach (('file','networkprofile', 'imageprofile', 'hostnameformat')){
-        if(! exists($args_dict{$_})){
-            setrsp_errormsg("Mandatory parameter $_ not specified.");
-            return;
-        }
+    my @mandatoryparams = ('file','networkprofile', 'imageprofile', 'hostnameformat');
+
+    my $ret = validate_args($helpmsg, \@enabledparams, \@mandatoryparams);
+    if (! $ret){
+        return;
     }
 
     if(! (-e $args_dict{'file'})){
@@ -299,7 +357,7 @@ sub nodeimport{
     setrsp_progress("call mkdef to create nodes.");
     my $warnstr = "";
     my $retref = xCAT::Utils->runxcmd({command=>["mkdef"], stdin=>[$retstr_gen], arg=>['-z']}, $request_command, 0, 1);
-    $retstr = get_cmd_return($retref);
+    my $retstr = get_cmd_return($retref);
     xCAT::MsgUtils->message('S', "The return message of running mkdef: $retstr");
     # runxcmd failed.
     if ($::RUNCMD_RC != 0){
@@ -343,6 +401,18 @@ sub nodepurge{
     xCAT::MsgUtils->message('S', "Purging nodes.");
     # For remove nodes, we should call 'nodemgmt' in front of 'noderm'
     setrsp_progress("Call kit node plugins.");
+
+    my $helpmsg = "nodepurge: Remove nodes from database, also remove them from system configuration.
+Usage: 
+\tnodepurge <noderange>
+\tnodepurge [-h|--help] 
+\tnodepurge {-v|--version}";
+
+    my $ret = validate_args($helpmsg);
+    if (! $ret){
+        return;
+    }
+
     my $warnstr = "";
     my $retref = xCAT::Utils->runxcmd({command=>["kitnoderemove"], node=>$nodes}, $request_command, 0, 1);
     my $retstr = get_cmd_return($retref);
@@ -384,6 +454,17 @@ sub nodepurge{
 sub noderefresh
 {
     my $nodes   = $request->{node};
+    my $helpmsg = "noderefresh: Re-Call kit plugins for profiled nodes
+Usage: 
+\tnoderefresh <noderange>
+\tnoderefresh [-h|--help] 
+\tnoderefresh {-v|--version}";
+
+    my $ret = validate_args($helpmsg);
+    if (! $ret){
+        return;
+    }
+
     my $retref = xCAT::Utils->runxcmd({command=>["kitnoderefresh"], node=>$nodes}, $request_command, 0, 1);
     my $retstr = get_cmd_return($retref);
     xCAT::MsgUtils->message('S', "The return message of running kitnoderefresh: $retstr");
@@ -412,24 +493,21 @@ sub noderefresh
 #-------------------------------------------------------
 sub nodechprofile{
     my $nodes   = $request->{node};
-    my %updated_groups;
-
     xCAT::MsgUtils->message('S', "Update nodes' profile settings.");
-    # Parse arges.
-    my $retstr = parse_args();
-    if ($retstr){
-        setrsp_errormsg($retstr);
+
+    my $helpmsg = "nodechprofile: Update node profiles for profiled nodes.
+Usage: 
+\tnodechprofile <noderange> [networkprofile=<networkprofile>] [imageprofile=<imageprofile>] [hardwareprofile=<hardwareprofile>]
+\tnodechprofile [-h|--help] 
+\tnodechprofile {-v|--version}"; 
+
+    my @enabledparams = ('networkprofile', 'hardwareprofile', 'imageprofile');
+    my $ret = validate_args($helpmsg, \@enabledparams);
+    if (! $ret){
         return;
     }
-    # Make sure the specified parameters are valid ones.
-    my @enabledparams = ('networkprofile', 'hardwareprofile', 'imageprofile');
-    foreach my $argname (keys %args_dict){
-        if (! grep{ $_ eq $argname} @enabledparams){
-            setrsp_errormsg("Illegal attribute $argname specified.");
-            return;
-        }
-    }
 
+    my %updated_groups;
     # Get current templates for all nodes.
     setrsp_progress("Read database to get groups for all nodes.");
     my %groupdict;
@@ -447,7 +525,7 @@ sub nodechprofile{
         if ($attrshash{'groups'}){
             @groups = split(/,/, $attrshash{'groups'});
 
-            my $groupsref;
+            my $groupsref = [];
             # Replace the old template name with new specified ones in args_dict
             if(exists $args_dict{'networkprofile'}){
                 $groupsref = replace_item_in_array(\@groups, "NetworkProfile", $args_dict{'networkprofile'});
@@ -471,7 +549,7 @@ sub nodechprofile{
     # call plugins
     setrsp_progress("Call nodemgmt plugins.");
     my $retref = xCAT::Utils->runxcmd({command=>["kitnodeupdate"], node=>$nodes}, $request_command, 0, 1);
-    $retstr = get_cmd_return($retref);
+    my $retstr = get_cmd_return($retref);
     xCAT::MsgUtils->message('S', "The return message of running kitnodeupdate: $retstr");
     if ($::RUNCMD_RC != 0){
         setrsp_progress("Warning: failed to call some kit commands. Details: $retstr");
@@ -503,27 +581,16 @@ sub nodechprofile{
 sub nodeaddunmged
 {
     xCAT::MsgUtils->message("Adding a unmanaged node.");
-    # Parse arges.
-    my $retstr = parse_args();
-    if ($retstr){
-        setrsp_errormsg($retstr);
-        return;
-    }
+    my $helpmsg = "nodeaddunmged: Create a un-managed node with hostname and ip address specified.
+Usage: 
+\tnodeaddunmged hostname<hostname> ip=<ip>
+\tnodeaddunmged [-h|--help] 
+\tnodeaddunmged {-v|--version}";
 
-    # Make sure the specified parameters are valid ones.
     my @enabledparams = ('hostname', 'ip');
-    foreach my $argname (keys %args_dict){
-        if (! grep{ $_ eq $argname} @enabledparams){
-            setrsp_errormsg("Illegal attribute $argname specified.");
-            return;
-        }
-    }
-    # Mandatory arguments.
-    foreach (('hostname','ip')){
-        if(! exists($args_dict{$_})){
-            setrsp_errormsg("Mandatory parameter $_ not specified.");
-            return;
-        }
+    my $ret = validate_args($helpmsg, \@enabledparams, \@enabledparams);
+    if (! $ret){
+        return;
     }
     
     # validate the IP address
@@ -561,7 +628,7 @@ sub nodeaddunmged
 
     # run nodeadd to create node records.
     my $retref = xCAT::Utils->runxcmd({command=>["nodeadd"], arg=>[$args_dict{"hostname"}, "groups=__Unmanaged", "hosts.ip=$args_dict{'ip'}"]}, $request_command, 0, 1);
-    $retstr = get_cmd_return($retref);
+    my $retstr = get_cmd_return($retref);
     xCAT::MsgUtils->message('S', "The return message of running nodeadd: $retstr");
     if ($::RUNCMD_RC != 0){
         setrsp_errormsg("Failed to call nodeadd to create node. Details: $retstr");
@@ -591,30 +658,21 @@ sub nodeaddunmged
 sub nodechmac
 {
     xCAT::MsgUtils->message("Replacing node's mac address.");
-    # Parse arges.
-    my $nodelist = $request->{node};
-    my $hostname = $nodelist->[0];
-    my $retstr = parse_args();
-    if ($retstr){
-        setrsp_errormsg($retstr);
+    my $helpmsg = "nodechmac: Update a profiled node's provisioning NIC's MAC address.
+Usage: 
+\tnodechmac <node> mac=<mac>
+\tnodechmac [-h|--help] 
+\tnodechmac  {-v|--version}";
+
+    my @enabledparams = ('mac');
+    my $ret = validate_args($helpmsg, \@enabledparams, \@enabledparams);
+    if (! $ret){
         return;
     }
 
-    # Make sure the specified parameters are valid ones.
-    my @enabledparams = ('mac');
-    foreach my $argname (keys %args_dict){
-        if (! grep{ $_ eq $argname} @enabledparams){
-            setrsp_errormsg("Illegal attribute $argname specified.");
-            return;
-        }
-    }
-    # Mandatory arguments.
-    foreach (('mac')){
-        if(! exists($args_dict{$_})){
-            setrsp_errormsg("Mandatory parameter $_ not specified.");
-            return;
-        }
-    }
+    my $nodelist = $request->{node};
+    my $hostname = $nodelist->[0];
+
     # Validate MAC address
     my $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('mac', 'mac');
     %allmacs = %$recordsref;
@@ -642,7 +700,7 @@ sub nodechmac
     # Call Plugins.
     setrsp_progress("Calling kit plugins");
     my $retref = xCAT::Utils->runxcmd({command=>["kitnodeupdate"], node=>[$hostname]}, $request_command, 0, 1);
-    $retstr = get_cmd_return($retref);
+    my $retstr = get_cmd_return($retref);
     xCAT::MsgUtils->message('S', "The return message of running kitnodeupdate: $retstr");
     if ($::RUNCMD_RC != 0){
         setrsp_progress("Warning: failed to call kit commands. Details: $retstr");
@@ -676,27 +734,20 @@ sub nodechmac
 
 #-------------------------------------------------------
 sub nodediscoverstart{
-    # Parse arges.
     xCAT::MsgUtils->message("Profiled nodes discovery started.");
-    my $retstr = parse_args();
-    if ($retstr){
-        setrsp_errormsg($retstr);
-        return;
-    }
+
+    my $helpmsg = "nodediscoverstart: Start profiled nodes discovery.
+Usage: 
+\tnodediscoverstart networkprofile=<networkprofile> imageprofile=<imageprofile> hostnameformat=<hostnameformat> [hardwareprofile=<hardwareprofile>] [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>] [rank=rank]
+\tnodediscoverstart [-h|--help] 
+\tnodediscoverstart {-v|--version}
+";
 
     my @enabledparams = ('networkprofile', 'hardwareprofile', 'imageprofile', 'hostnameformat', 'rank', 'rack', 'chassis', 'height', 'unit', 'groups');
-    foreach my $argname (keys %args_dict){
-        if (! grep{ $_ eq $argname} @enabledparams){
-            setrsp_errormsg("Illegal attribute $argname specified.");
-            return;
-        }
-    }
-    # mandatory arguments.
-    foreach my $key ('networkprofile', 'imageprofile', 'hostnameformat'){
-        if (! exists $args_dict{$key}){
-            setrsp_errormsg("argument $key must be specified");
-            return;
-        }
+    my @mandatoryparams = ('networkprofile', 'imageprofile', 'hostnameformat');
+    my $ret = validate_args($helpmsg, \@enabledparams, \@mandatoryparams);
+    if (! $ret){
+        return;
     }
 
     # validate hostnameformat:
@@ -811,6 +862,18 @@ sub nodediscoverstart{
 
 #------------------------------------------------------
 sub nodediscoverstop{
+
+    my $helpmsg = "nodediscoverstop: Stop profiled nodes auto discover.
+Usage: 
+\tnodediscoverstop
+\tnodediscoverstop [-h|--help] 
+\tnodediscoverstop {-v|--version}";
+
+    my $ret = validate_args($helpmsg);
+    if (! $ret){
+        return;
+    }
+
     # Read DB to confirm the discover is started. 
     xCAT::MsgUtils->message("Stopping profiled node's discover.");
     my $discover_running = xCAT::ProfiledNodeUtils->is_discover_started();
@@ -848,6 +911,18 @@ sub nodediscoverstop{
 
 #-------------------------------------------------------
 sub nodediscoverstatus{
+
+    my $helpmsg = "nodediscoverstatus: Detect whether Profiled nodes discovery is running or not.
+Usage: 
+\tnodediscoverstatus
+\tnodediscoverstatus [-h|--help] 
+\tnodediscoverstatus {-v|--version}";
+    
+    my $ret = validate_args($helpmsg);
+    if (! $ret){
+        return;
+    }
+
     my $discover_running = xCAT::ProfiledNodeUtils->is_discover_started();
     if($discover_running){
         setrsp_progress("Profiled nodes discover is running");
@@ -867,6 +942,17 @@ sub nodediscoverstatus{
 
 #-------------------------------------------------------
 sub nodediscoverls{
+    my $helpmsg = "nodediscoverls: List all discovered profiled nodes.
+Usage: 
+\tnodediscoverls
+\tnodediscoverls [-h|--help] 
+\tnodediscoverls {-v|--version}";
+
+    my $ret = validate_args($helpmsg);
+    if (! $ret){
+        return;
+    }
+
     # Read DB to confirm the discover is started. 
     my $discover_running = xCAT::ProfiledNodeUtils->is_discover_started();
     if (! $discover_running){

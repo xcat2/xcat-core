@@ -1,0 +1,155 @@
+=head1 NAME
+
+B<nodeimport> - Create profiled nodes by importing hostinfo file.
+
+=head1 SYNOPSIS
+
+B<nodeimport> [-h| --help │ -v │ --version]
+
+B<nodeimport> file=<hostinfo file> networkprofile=<networkprofile> imageprofile=<imageprofile> hostnameformat=<hostnameformat> [hardwareprofile=<hardwareprofile>] [groups=<groups>]
+
+=head1 DESCRIPTION
+
+The B<nodeimport> command creates nodes by importing a hostinfo file which is following stanza format. In this hostinfo file, we can define node's hostname, ip, mac, and host location infomation like rack, chassis, start unit, server height...etc
+
+After nodes imported, the configuration files related with these nodes will be updated automatically. For example: /etc/hosts, dns configuration, dhcp configuration. And the kits node plugins will also be triggered automatically to update kit related configuration/services.
+
+=head1 OPTIONS
+
+B<-h|--help>
+
+Display usage message.
+
+B<-v|--version>
+
+Command Version.
+
+B<file=<hostinfo file>>
+
+The full path of the hostinfo file.
+
+B<networkprofile=<networkprofile>>
+
+The network profile name. If there is a group named "__NetworkProfile_netprofile", then "netprofile" is the network profile name. A network profile defines networks, nics, routes...etc for imported nodes.
+
+B<imageprofile=<imageprofile>>
+
+The image profile name. If there is a group named "__ImageProfile_imgprofile", then "imgprofile" is the image profile name. A image profile defines provisioning method, os info, kit info, provisioning params...etc for imported nodes.
+
+B<hardwareprofile=<hardwareprofile>>
+
+The hardware profile name. If there is a group named "__HardwareProfile_hwprofile", then "hwprofile" is the hardware profile name. A harddware profile defines hardware management related info like: IPMI, HMC, CEC, CMM...etc for imported nodes.
+
+B<hostnameformat=<hostnameformat>>
+
+The hostname format for generating hostnames for nodes if the hostname for a node is specified as "__hostname__" in hostinfo file.
+Following hostname format types are supported:
+
+B<prefix#NNNappendix>
+
+For example: 
+    If hostname format is compute-#NN, then node's hostname will be generated automatically like: compute-00, compute-01, ...compute-99
+    If hostname format is blade#NNN-x64, then node's hostname will be generated automatically like: blade001-x64, blade002-x64, ..., blade999-x64
+
+B<prefix#RRand#NNappendix>
+
+For example:
+    If hostname format is compute-#RR-#NN, then nodes which placed in a rack which rack number is 2 will be generated with hostnames like: compute-02-00, compute-02-01, ..., compute-02-99. And nodes which placed in another rack wich rack number is 5 will be generated with hostnames like: compute-05-00, compute-05-01, ..., compute-05-99.
+    If hostname format is node-#NN-in-#RR, then hostnames for nodes in rack with rack number 1 will be: node-00-in-01, node-01-in-01, ..., node-99-in-01. And hostnames for nodes in rack with rack number 2 will be: node-00-in-02, node-01-in-02, ..., node-99-in-02.
+
+B<groups=<groups>>
+
+The groups which the imported nodes will belong to.
+
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occured while validating parameters.
+
+2  An error has occured while parsing hostinfo file.
+
+
+=head1 EXAMPLES
+
+An example for importing profiled nodes.
+1. Run "tabdump nodegroups" to get all groups and find out which ones are avaiable profiles. Then run "lsdef -t group <groupname>" to get the detailed info for these profiles. like:
+  # tabdump nodegroup
+  #groupname,grouptype,members,membergroups,wherevals,comments,disable
+  "compute","static",,,,,
+  "__HardwareProfile_default_ipmi","static","static",,,,
+  "__NetworkProfile_default_mn","static","static",,,,
+  "__NetworkProfile_default_cn","static",,,,,
+  "__ImageProfile_rhels6.2-x86_64-install-compute","static","static",,,,
+   
+  # lsdef -t group __NetworkProfile_default_cn
+  Object name: __NetworkProfile_default_cn
+      grouptype=static
+      installnic=eth0
+      members=compute-000,compute-001
+      netboot=xnba
+      nichostnamesuffixes=eth0:-eth0
+      nicnetworks=eth0:provision
+      nictypes=eth0:Ethernet
+      primarynic=eth0
+
+2. Prepare a hostinfo file looks like:
+
+# hostinfo begin
+
+__hostname__:
+   mac=b8:ac:6f:37:59:24
+   ip=192.168.1.20
+   chassis=chassis01
+
+__hostname__:
+   mac=b8:ac:6f:37:59:25
+   ip=192.168.1.20
+   rack=rack01
+   height=1
+   unit=2
+
+# hostinfo end.
+
+Here, we are going to import 2 nodes, and about each line of this file:
+__hostname__:  - Mandatory item
+   Description: The hostname for the node. 
+       If you want to specify the hostname for this node, just write like: "compute-001:"
+       If you want the hostname auto generated from hostnameformat, just write like: "__hostname__:"
+
+mac=<mac str>  - Mandatory item
+  Description: Specify the node's provisioning nic's MAC address
+
+ip=<ip str>  - Optional item
+   Description: Specify the node's provisioing IP address.
+                If not specify this item,  node's provisioning IP will be generated automatically according to NetworkProfile.
+
+rack=<rack name> - Optional item
+   Description: node location info. Specify the rack name which this node will be placed into.
+                If not specify this item, there will be no node location info set for this node.
+                this item must be specified together with height + unit.
+ 
+chasiss=<chassis name> - Optional item
+   Description: node location info, for blade(or PureFlex) only. Specify the chasiss name which this blade will be placed into.
+                this item can not be specified together with rack.
+
+height=<chassis name> - Optional item
+   Description: node location info, for rack server only. Specify the server height number, in U.
+                this item must be specified together with rack and unit.
+
+unit=<unit name> - Optional item
+   Description: node location info, for rack server only. Specify the node's start unit number in rack, in U.
+                this item must be specified together with rack and height.
+
+3. Run nodeimport command:
+  nodeimport file=/root/hostinfo.txt networkprofile=default_cn imageprofile=rhels6.3_packaged hostnameformat=compute-#NNN
+
+4. After node import succeeds, we'll get 2 nodes created, And node's configurations like dhcp, dns, /etc/hosts will be updated automatically too.
+
+5. Reboot the nodes, they will be provisioned automatically.
+
+=head1 SEE ALSO
+
+L<nodepurge(1)|nodepurge.1>, L<nodechprofile(1)|nodechprofile.1>, L<noderefresh(1)|noderefresh.1>
+

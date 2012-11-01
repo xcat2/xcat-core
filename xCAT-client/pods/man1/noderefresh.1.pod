@@ -1,0 +1,42 @@
+=head1 NAME
+
+B<noderefresh> - Re-Call kit plugins for profiled nodes
+
+=head1 SYNOPSIS
+
+B<noderefresh> [-h| --help │ -v │ --version]
+
+B<noderefresh> <noderange>
+
+=head1 DESCRIPTION
+
+The B<noderefresh> command will just call kit plugins for profiled nodes, in-order to refresh node's related configurations/services.
+
+=head1 OPTIONS
+
+B<-h|--help>
+
+Display usage message.
+
+B<-v|--version>
+
+Command Version.
+
+B<noderange>
+
+The nodes to be updated.
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occured.
+
+=head1 EXAMPLES
+
+noderefresh compute-000,compute-001
+
+=head1 SEE ALSO
+
+L<nodeimport(1)|nodeimport.1>, L<nodechprofile(1)|nodechprofile.1>, L<nodepurge(1)|nodepurge.1>, L<noderange(3)|noderange.3>
+

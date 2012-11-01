@@ -1,0 +1,95 @@
+=head1 NAME
+
+B<nodediscoverstart> - Start profiled nodes discovery.
+
+=head1 SYNOPSIS
+
+B<nodediscoverstart> [-h| --help │ -v │ --version]
+
+B<nodediscoverstart> networkprofile=<networkprofile> imageprofile=<imageprofile> hostnameformat=<hostnameformat> [hardwareprofile=<hardwareprofile>] [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>] [rank=rank]
+
+=head1 DESCRIPTION
+
+The B<nodediscoverstart> command starts profiled nodes discovery.
+
+Once profiled nodes discovery started, admin can bootup nodes which want to be provisioned with PXE. These nodes will be able to discovered automatically. The nodes' settings like hostname and IP address will be assigned automatically according to specified profiles.
+
+After nodes discovered, the configuration files related with these nodes will be updated automatically. For example: /etc/hosts, dns configuration, dhcp configuration. And the kits node plugins will also be triggered automatically to update kit related configuration/services.
+
+=head1 OPTIONS
+
+B<-h|--help>
+
+Display usage message.
+
+B<-v|--version>
+
+Command Version.
+
+B<networkprofile=<networkprofile>>
+
+The network profile name. If there is a group named "__NetworkProfile_netprofile", then "netprofile" is the network profile name. A network profile defines networks, nics, routes...etc for imported nodes.
+
+B<imageprofile=<imageprofile>>
+
+The image profile name. If there is a group named "__ImageProfile_imgprofile", then "imgprofile" is the image profile name. A image profile defines provisioning method, os info, kit info, provisioning params...etc for imported nodes.
+
+B<hardwareprofile=<hardwareprofile>>
+
+The hardware profile name. If there is a group named "__HardwareProfile_hwprofile", then "hwprofile" is the hardware profile name. A harddware profile defines hardware management related info like: IPMI, HMC, CEC, CMM...etc for imported nodes.
+
+B<hostnameformat=<hostnameformat>>
+
+The hostname format for generating hostnames for nodes if the hostname for a node is specified as "__hostname__" in hostinfo file.
+Following hostname format types are supported:
+
+B<prefix#NNNappendix>
+
+For example:
+    If hostname format is compute-#NN, then node's hostname will be generated automatically like: compute-00, compute-01, ...compute-99
+    If hostname format is blade#NNN-x64, then node's hostname will be generated automatically like: blade001-x64, blade002-x64, ..., blade999-x64
+
+B<prefix#RRand#NNappendix>
+
+For example:
+    If hostname format is compute-#RR-#NN, then nodes which placed in a rack which rack number is 2 will be generated with hostnames like: compute-02-00, compute-02-01, ..., compute-02-99. And nodes which placed in another rack wich rack number is 5 will be generated with hostnames like: compute-05-00, compute-05-01, ..., compute-05-99.
+    If hostname format is node-#NN-in-#RR, then hostnames for nodes in rack with rack number 1 will be: node-00-in-01, node-01-in-01, ..., node-99-in-01. And hostnames for nodes in rack with rack number 2 will be: node-00-in-02, node-01-in-02, ..., node-99-in-02.
+
+B<groups=<groups>>
+
+The groups which the imported nodes will belong to.
+
+B<rack=<rack name>> 
+
+node location info. Specify the rack name which this node will be placed into. 
+ 
+B<chasiss=<chassis name>>
+
+node location info, for blade(or PureFlex) only. Specify the chasiss name which this blade will be placed into. This item can not be specified together with rack.
+
+B<height=<chassis name>>
+
+node location info, for rack server only. Specify the server height number, in U. This item must be specified together with rack. If not specified, the default value is 1.
+
+B<unit=<unit name>>
+
+node location info, for rack server only. Specify the node's start unit number in rack, in U. This item must be specified together with rack. If not specified, the default value is 1.
+
+B<rank=<rank>>
+
+Defines the start number in hostname format. If hostname format specified like "compute#NNN" and rank is set to 5, then hostnames of discovered nodes will be named as: "compute005, compute006, ..."
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occured.
+
+=head1 EXAMPLES
+
+nodediscoverstart networkprofile=default_cn imageprofile=rhels6.3_packaged hostnameformat=compute#NNN
+
+=head1 SEE ALSO
+
+L<nodediscoverstop(1)|nodediscoverstop.1>, L<nodediscoverls(1)|nodediscoverls.1>, L<nodediscoverstatus(1)|nodediscoverstatus.1>
+

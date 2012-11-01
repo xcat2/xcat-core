@@ -1,0 +1,37 @@
+=head1 NAME
+
+B<nodediscoverls> -  List all discovered profiled nodes
+
+=head1 SYNOPSIS
+
+B<nodediscoverls> [-h| --help │ -v │ --version]
+
+B<nodediscoverls> 
+
+=head1 DESCRIPTION
+
+The B<nodediscoverls> List all discovered profiled nodes at current discover period.
+
+=head1 OPTIONS
+
+B<-h|--help>
+
+Display usage message.
+
+B<-v|--version>
+
+Command Version.
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occured.
+
+=head1 EXAMPLES
+
+nodediscoverls
+
+=head1 SEE ALSO
+
+L<nodediscoverstart(1)|nodediscoverstart.1>, L<nodediscoverstatus(1)|nodediscoverstatus.1>, L<nodediscoverstop(1)|nodediscoverstop.1>
