@@ -648,6 +648,8 @@ sub mknetboot
                 if ($mac !~ /:/) {
                    $mac =~s/(..)(..)(..)(..)(..)(..)/$1:$2:$3:$4:$5:$6/;
                 }
+		$mac =~ s/!.*//; #remove multi-interface mac information
+		$mac =~ s/\|.*//;
 #            } else {
 #                $callback->({ error=>[ qq{In the "mac" table, the "|" delimited string of "macaddress!hostname" format is not supported by "nodeset <nr> netboot|statelite if installnic/primarynic is set".}], errorcode=>[1]});
 #                return;
