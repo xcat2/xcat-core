@@ -670,6 +670,10 @@ sub get_replacement {
                             see what db attrs will be needed. The  %::GLOBAL_TAB_HASH will store all
                             the db attrs needed. And the format of value setting looks like:
                             $::GLOBAL_TAB_HASH{$tabname}{$key}{$attrib} = $value;
+        %::GLOBAL_SN_HASH: getservicenode() will get all the nodes in the servicenode table. And the 
+                            result will store in the %::GLOBAL_SN_HASH. The fortmac of the value setting
+                            looks like:
+                            $::GLOBAL_SN_HASH{$servicenod1} = 1;
                         
     Error:
         none
@@ -688,6 +692,7 @@ my $profile;
 my $arch;
 my $provmethod;
 %::GLOBAL_TAB_HASH = ();
+%::GLOBAL_SN_HASH = ();
 
 sub subvars_for_mypostscript { 
   my $self         = shift;
@@ -782,7 +787,8 @@ sub subvars_for_mypostscript {
 
   my $tftpdir = xCAT::TableUtils::getTftpDir();
 
-  my $snhash = getservicenode();
+  getservicenode();
+  #print Dumper(\%::GLOBAL_SN_HASH);
 
   foreach my $n (@$nodes ) {
       $node = $n; 
@@ -813,7 +819,7 @@ sub subvars_for_mypostscript {
       } 
        
       #get the node type, service node or compute node
-      my $nodetype = getNodeType($node, $snhash);
+      my $nodetype = getNodeType($node);
 
 
       my $noderesent;
@@ -997,7 +1003,6 @@ sub getMasters
 
 sub getservicenode
 {
-    my %snhash;
     # reads all nodes from the service node table
     my $servicenodetab = xCAT::Table->new('servicenode');
     unless ($servicenodetab)    # no  servicenode table
@@ -1011,10 +1016,10 @@ sub getservicenode
     foreach my $n (@nodes)
     {
         my $node = $n->{node};
-        $snhash{$node}=1
+        $::GLOBAL_SN_HASH{$node}=1
     }
 
-    return \%snhash; 
+    return 0; 
 }
 
 
@@ -1174,11 +1179,10 @@ sub getNodeType
 {
 
     my $node   = shift;
-    my $snhash = shift;
     my $result;
 
     # see if this is a service or compute node?
-    if ($snhash->{$node} == 1)
+    if ($::GLOBAL_SN_HASH{$node} == 1)
     {
         $result="service";
     }
