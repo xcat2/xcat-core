@@ -901,18 +901,14 @@ sub setUpdateStatus
 		if(@nodes>0){
 		   my %updates;
 
-	           $updates{'updatestatus'} = $status;
-                   $updates{'updatestatustime'} = $currtime;
-        	   my $where_clause;
-        	   my $dbname=xCAT::Utils->get_DBName() ;
-        	   if ($dbname eq 'DB2') {
-             		$where_clause="\"node\" in ('" . join("','", @nodes) . "')";
-        	   } else {
-             		$where_clause="node in ('" . join("','", @nodes) . "')";
-        	   }
-                  # print "$where_clause";
-        	   $nltab->setAttribsWhere($where_clause, \%updates );                   
-	        }
+                   foreach my $node (@nodes)
+                   {
+                        $updates{$node}{'updatestatus'} = $status;
+                        $updates{$node}{'updatestatustime'} = $currtime;
+                   }
+
+                   $nltab->setNodesAttribs(\%updates);
+ 		}
               $nltab->close;	
 	}
    return;
