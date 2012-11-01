@@ -1441,7 +1441,7 @@ sub updatenodesyncfiles
     my @failednodes=();
     #array of successfully synced nodes 
     my @successfulnodes=();
-  
+    my $numberofsynclists=0; 
     # Check the existence of the synclist file
     if (%syncfile_node)
     {    # there are files to sync defined
@@ -1461,6 +1461,7 @@ sub updatenodesyncfiles
         my $output; 
         foreach my $synclist (keys %syncfile_node)
         {
+            $numberofsynclists++; 
             if ($::VERBOSE)
             {
                 my $rsp = {};
@@ -1530,7 +1531,23 @@ sub updatenodesyncfiles
 	          }
 	        }
 	     }
-	        
+	    # if we have more than 1 synclist file, then we need
+       # to fix up the list of what failed and what succeeded
+       # If either failed the node is marked failed
+       if ($numberofsynclists > 1) { 
+         my %m=();
+         my %n=();
+
+         for(@failednodes)
+         {
+            $m{$_}++;
+         }
+         for(@successfulnodes)
+         {
+              $m{$_}++ || $n{$_}++;
+         }
+         @successfulnodes=keys %n;
+       }
        #set the nodelist.updatestatus according to the xdcp result
 	    if(@successfulnodes)
 	    {
