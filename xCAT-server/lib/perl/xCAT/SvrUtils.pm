@@ -160,24 +160,37 @@ sub get_nodeset_state
 
     my $state = "undefined";
     my $tftpdir;
+    my $boottype;
+    if( defined(%::GLOBAL_TAB_HASH) && defined($::GLOBAL_TAB_HASH{noderes}) && defined($::GLOBAL_TAB_HASH{noderes}{$node}) ) {
+        $tftpdir = $::GLOBAL_TAB_HASH{noderes}{$node}{tftpdir};
+        $boottype = $::GLOBAL_TAB_HASH{noderes}{$node}{netboot};
+        
+    } else {
+        #get boot type (pxe, yaboot or aixinstall)  for the node
+        my $noderestab = xCAT::Table->new('noderes', -create => 0);
+        my $ent = $noderestab->getNodeAttribs($node, [qw(netboot tftpdir)],%gnopts);
 
-    #get boot type (pxe, yaboot or aixinstall)  for the node
-    my $noderestab = xCAT::Table->new('noderes', -create => 0);
-    my $ent = $noderestab->getNodeAttribs($node, [qw(netboot tftpdir)],%gnopts);
+        #get tftpdir from the noderes table, if not defined get it from site talbe
+        if ($ent && $ent->{tftpdir}) {
+	    $tftpdir=$ent->{tftpdir};
+        }
+        if (!$tftpdir) {
+	    if ($::XCATSITEVALS{tftpdir}) { 
+	        $tftpdir=$::XCATSITEVALS{tftpdir};
+	    }
+        }
 
-    #get tftpdir from the noderes table, if not defined get it from site talbe
-    if ($ent && $ent->{tftpdir}) {
-	$tftpdir=$ent->{tftpdir};
+        if ($ent && $ent->{netboot})
+        {
+            $boottype = $ent->{netboot};
+        }
+
+
     }
-    if (!$tftpdir) {
-	if ($::XCATSITEVALS{tftpdir}) { 
-	    $tftpdir=$::XCATSITEVALS{tftpdir};
-	}
-    }
 
-    if ($ent && $ent->{netboot})
+    if ( defined($boottype) )
     {
-        my $boottype = $ent->{netboot};
+        #my $boottype = $ent->{netboot};
 
         #get nodeset state from corresponding files
         if ($boottype eq "pxe")
@@ -212,7 +225,7 @@ sub get_nodeset_state
         require xCAT_plugin::aixinstall;
         $state = xCAT_plugin::aixinstall::getNodesetState($node);
     }
-
+    
     #get the nodeset state from the chain table as a backup.
     if ($state eq "undefined")
     {
