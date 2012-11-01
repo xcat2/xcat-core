@@ -1,0 +1,1996 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#
+
+#-----------------------------------------------------------------------------
+
+=head1   buildkit 
+
+ xCAT/PCM Kit Build utilities
+
+    usage: buildkit [-h|-v] [command [-V]]
+
+    This tool is used to create and build a new Kit.
+
+    The options are:
+        -h                - Provide usage info.
+        -v                - Provide the version info.
+        command           - Several commands are supported. See the list below.
+        -V                - Verbose mode. Outputs additional debug messages.
+
+    Supported commands:
+     create <kit basename> - creates a new Kit with the specified basename
+     chkconfig             - checks the Kit build file
+     buildrepo <reponame>  - builds the specified Kit package repository 
+     listrepo              - lists the Kit package repositories in the Kit
+                             build file, and their build status
+     cleanrepo <reponame>  - deletes the build files for the specified Kit
+                             package repository
+     cleanrepo all         - deletes the build files for all Kit package 
+                             repositories
+     buildtar              - builds the Kit tarfile
+     cleantar              - deletes the Kit deployment directory and Kit
+     cleanall               - equivalent to buildrepo cleanrepo all and
+                                            buildrepo cleantar
+
+This script is designed to run on a non-xCAT system so that Kits can be
+built on any product build machine.
+
+=cut
+
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    $::XCATDIR  = $ENV{'XCATDIR'}  ? $ENV{'XCATDIR'}  : '/etc/xcat';
+    $::XCATSHARE = $::XCATROOT.'/share/xcat';
+}
+
+if ($^O =~ /^aix/i) {
+        print "ERROR - buildkit is not supported on AIX \n";
+        exit 1;
+# if AIX - make sure we include perl 5.8.2 in INC path.
+#       Needed to find perl dependencies shipped in deps tarball.
+#	unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
+}
+
+use lib "$::XCATROOT/lib/perl";
+require xCAT::Version;
+require xCAT::BuildKitUtils;
+use Getopt::Long;
+use Expect;
+use Socket;
+use strict;
+use Cwd;
+use File::Path;
+use File::Basename;
+
+
+#-----------------------------------------------------------------------------
+# Main
+
+$::progname = "buildkit";
+$::buildkit_conf = "buildkit.conf";
+$::kit_conf = "kit.conf";
+$::workdir = cwd();
+$::full_buildkit_conf = $::workdir."/".$::buildkit_conf;
+$::build_dir = $::workdir."/build";
+$::deploy_dir = $::build_dir; #kitname appended by validate_bldkitconf routine
+%::buildkit_def = ( 
+     kit => { basename => {
+               description=>'The kit base name (e.g., kit-lsf)',
+               value_desc=>'Must be: Generic Name String',
+               mandatory=>1,
+               cp_to_kitconfig=>1},
+              desc => {
+               description=>'The kit description',
+               value_desc=>'any string',
+               mandatory=>0,
+               cp_to_kitconfig=>1},
+              version => {
+               description=>'The kit version (e.g., 9.0)',
+               value_desc=>'Must be: Generic Name String',
+               mandatory=>1,
+               cp_to_kitconfig=>1},
+              ostype => {
+               description=>'The kit OS type (e.g., Linux)',
+               value_desc=>'Must be: OS Type String',
+               mandatory=>1,
+               cp_to_kitconfig=>1},
+              isinternal=> {
+               description=>'Flag to say if this Kit is used for internal use only.  It is only used for information purposes.',
+               value_desc=>'Must be: empty string or boolean string',
+               mandatory=>0,
+               cp_to_kitconfig=>1},
+              kitdeployparams=> {
+               description=>'The path to the Kit Deployment Parameters file.',
+               value_desc=>'Must be: empty string or relative path string',
+               mandatory=>0,
+               base_dir=>'other_files',
+               cp_to_kitconfig=>2} }, # 2 = rename with KIT_KITNAME_ on cp
+    kitrepo => {kitrepoid => {
+               description=>'The Kit Package Repository ID.  (e.g., rhels-6.2-x86_64)',
+               value_desc=>'Must be: Generic Name String, unique in kit',
+               mandatory=>1,
+               cp_to_kitconfig=>0},
+              osbasename => {
+               description=>'The OS distro base name (e.g., rhels)',
+               value_desc=>'Must be OS Name String',
+               mandatory=>1,
+               cp_to_kitconfig=>1},
+              osmajorversion => {
+               description=>'The OS distro major version (e.g., 6)',
+               value_desc=>'Must be Generic Number String',
+               mandatory=>1,
+               cp_to_kitconfig=>1},
+              osminorversion => {
+               description=>'The OS distro minor version (e.g., 3)',
+               value_desc=>'Must be Generic Number String',
+               mandatory=>0,
+               cp_to_kitconfig=>1},
+              osarch => {
+               description=>'The OS distro architecture (e.g., x86_64)',
+               value_desc=>'Must be OS Arch String',
+               mandatory=>1,
+               cp_to_kitconfig=>1},
+              compat_osbasenames => {
+               description=>'Comma-separated list of compatible OS base names. ',
+               value_desc=>'Must be Empty String or list of OS Name Strings',
+               mandatory=>0,
+               cp_to_kitconfig=>1} },
+    kitcomponent => {basename => {
+               description=>'The component name.  It is used as the meta-package name.',
+               value_desc=>'any string',
+               mandatory=>1,
+               cp_to_kitconfig=>1},
+              desc => {
+               description=>'The component description.  The description is added to the meta-package.',
+               value_desc=>'any string',
+               mandatory=>0,
+               cp_to_kitconfig=>1},
+              version => {
+               description=>'The component version (e.g., 9.0).  It is used as the meta-package version.',
+               value_desc=>'any string',
+               mandatory=>1,
+               cp_to_kitconfig=>1},
+              release => {
+               description=>'The component release number (e.g., 1).  It is used as the meta-package release number.',
+               value_desc=>'any string',
+               mandatory=>1,
+               cp_to_kitconfig=>1},
+              serverroles => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>1,
+               cp_to_kitconfig=>1},
+              kitrepoid => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>1,
+               cp_to_kitconfig=>0},
+              kitcompdeps => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>0,
+               cp_to_kitconfig=>1},
+              ospkgdeps => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>0,
+               cp_to_kitconfig=>0},
+              kitpkgdeps => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>0,
+               cp_to_kitconfig=>1},
+              non_native_pkgs => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>0,
+               cp_to_kitconfig=>0},
+              driverpacks => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>0,
+               cp_to_kitconfig=>1},
+              exlist => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>0,
+               base_dir=>'other_files',
+               cp_to_kitconfig=>2},
+              preinstall => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>0,
+               cp_to_kitconfig=>0},
+              postinstall => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>0,
+               cp_to_kitconfig=>0},
+              preuninstall => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>0,
+               cp_to_kitconfig=>0},
+              postuninstall => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>0,
+               cp_to_kitconfig=>0},
+              preupgrade => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>0,
+               cp_to_kitconfig=>0},
+              postupgrade => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>0,
+               cp_to_kitconfig=>0},
+              postbootscripts => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>0,
+               base_dir=>'scripts',
+               cp_to_kitconfig=>2} },
+    kitpackage => {filename => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>1,
+               cp_to_kitconfig=>0},
+              kitrepoid => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>1,
+               cp_to_kitconfig=>0},
+              rpm_spec => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>0,
+               cp_to_kitconfig=>0},
+              rpm_srcdir => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>0,
+               cp_to_kitconfig=>0},
+              rpm_srctarball => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>0,
+               cp_to_kitconfig=>0},
+              rpm_srpm => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>0,
+               cp_to_kitconfig=>0},
+              rpm_prebuiltdir => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>0,
+               cp_to_kitconfig=>0}}
+);
+
+
+my $args = join ' ', @ARGV;
+$::command = "$0 $args";
+Getopt::Long::Configure("bundling");
+$Getopt::Long::ignorecase = 0;
+
+# parse the options
+if (
+    !GetOptions(
+                'h|help'       => \$::HELP,
+                'v|version'    => \$::VERSION,
+                'V|verbose'    => \$::VERBOSE,
+    )
+  )
+{
+    &usage;
+    exit(1);
+}
+
+# display the usage if -h or --help is specified
+if ($::HELP)
+{
+    &usage;
+    exit(0);
+}
+
+# display the version statement if -v or --version is specified
+if ($::VERSION)
+{
+    my $version = xCAT::Version->Version();
+    print "$version \n"; 
+    exit 0;
+}
+
+my $arg=shift(@ARGV);
+if ( ! $arg ) {
+   &usage;
+   exit (0);
+}
+
+while ($arg) {
+    my $command = $arg;
+    $command =~ tr/A-Z/a-z/;   # convert to lowercase
+    if ( $command eq 'create' ) { 
+        $::KIT_CREATE=shift(@ARGV); 
+        if ( ! $::KIT_CREATE ) {
+          print "kit basename not specified for buildkit create command \n";
+          &usage;
+          exit 1;
+        }
+    } elsif ( $command eq 'chkconfig' ) {
+        $::KIT_CHKCONFIG=1;
+    } elsif ( $command eq 'buildrepo' ) {
+        $::KIT_BUILDREPO=shift(@ARGV);
+        if ( ! $::KIT_BUILDREPO ) {
+          print "kit package repository name not specified for buildkit buildrepo command \n";
+          &usage;
+          exit 1;
+        }
+    } elsif ( $command eq 'listrepo' ) {
+        $::KIT_LISTREPO=1;
+    } elsif ( $command eq 'cleanrepo' ) {
+        $::KIT_CLEANREPO=shift(@ARGV);
+        if ( ! $::KIT_CLEANREPO ) {
+          print "kit package repository name not specified for buildkit cleanrepo command \n";
+          &usage;
+          exit 1;
+        }
+    } elsif ( $command eq 'buildtar' ) {
+        $::KIT_BUILDTAR=1;
+    } elsif ( $command eq 'cleantar' ) {
+        $::KIT_CLEANTAR=1;
+    } elsif ( $command eq 'cleanall' ) {
+        $::KIT_CLEANALL=1;
+    } else {
+        print "buildkit command $arg not recognized \n";
+        &usage;
+        exit (1); 
+    } 
+    $arg=shift(@ARGV);
+}
+
+my $rc = 0;
+if ( $::KIT_CREATE ) {
+   $rc = &kit_create;
+}
+if ( $::KIT_CHKCONFIG ) {
+   unless ($rc = &kit_chkconfig) { 
+       print "No errors were found in Kit Build File $::full_buildkit_conf. \n";
+   }
+}
+if ( $::KIT_BUILDREPO ) {
+   unless ($rc = &kit_chkconfig) { $rc = &kit_buildrepo; }
+}
+if ( $::KIT_LISTREPO ) {
+   unless ($rc = &kit_chkconfig) { $rc = &kit_listrepo; }
+}
+if ( $::KIT_CLEANREPO ) {
+   unless ($rc = &kit_chkconfig) { $rc = &kit_cleanrepo; }
+}
+if ( $::KIT_BUILDTAR ) {
+   unless ($rc = &kit_chkconfig) { $rc = &kit_buildtar; }
+}
+if ( $::KIT_CLEANTAR ) {
+   unless ($rc = &kit_chkconfig) { $rc = &kit_cleantar; }
+}
+if ( $::KIT_CLEANALL ) {
+   unless ($rc = &kit_chkconfig) { $rc = &kit_cleanall; }
+}
+
+
+
+exit $rc;
+
+#####################################
+#  subroutines
+#####################################
+
+#-----------------------------------------------------------------------------
+
+=head3    usage 
+	
+	Displays message for -h option
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub usage
+{
+   print "  
+    usage: buildkit [-h|-v] [command [-V]]                                    
+                                                                              
+    This tool is used to create and build a new Kit.                          
+                                                                              
+    The options are:                                                          
+        -h         - Provide usage info.                                      
+        -v         - Provide the version info.                                
+        command    - Several commands are supported. See the list below.      
+        -V         - Verbose mode. Outputs additional debug messages.         
+                                                                              
+    Supported commands:                                                       
+     create <kit basename> - creates a new Kit with the specified basename    
+     chkconfig             - checks the Kit build file                        
+     listrepo              - lists the Kit package repositories in the Kit    
+                             build file, and their build status               
+     buildrepo <reponame>  - builds the specified Kit package repository      
+     cleanrepo <reponame>  - deletes the build files for the specified Kit    
+                             package repository                               
+     cleanrepo all         - deletes the build files for all Kit package      
+                             repositories                                     
+     buildtar              - builds the Kit tarfile                           
+     cleantar              - deletes the Kit deployment directory and Kit     
+                             tarfile                                        \n";
+
+}
+
+#-----------------------------------------------------------------------------
+
+=head3    kit_create
+	
+   buildkit create
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub kit_create
+
+{
+    # create Kit directory in pwd
+    my $kitname=$::KIT_CREATE;
+    my $kitdir=$::workdir."/$kitname";
+    if ( -d $kitdir ) {
+        print "Another directory alredy exists with the name $kitname in the current working directory.  Not able to create new Kit directory $kitdir. \n";
+        exit 1;
+    }
+    if ( ! mkdir($kitdir) ) {
+       print "Error creating Kit directory $kitdir.  Verify that the current user has write privileges in the current working directory. \n";
+       exit 1;
+    }
+
+    # Recursive copy the shipped template directory to the Kit directory
+    if ( system("cp -fRp $::XCATSHARE/kits/kit_template/* $kitdir") ) {
+        # non-zero return from system call
+        print "Error copying sample Kit template files from $::XCAT_SHARE/kits/kit_template to $kitdir \n";
+        exit 1;
+     }        
+
+    if (&edit_bldkitconf($kitdir."/".$::buildkit_conf,$kitname)) {
+        exit 1;    
+    }
+
+    print "Kit template for $kitname created in $kitdir directory \n";
+}
+
+#-----------------------------------------------------------------------------
+
+=head3    kit_chkconfig
+	
+   buildkit chkconfig
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub kit_chkconfig
+
+{
+    my $bldkitconf = $::full_buildkit_conf;
+
+    my $chkrc = &load_bldkitconf($bldkitconf);
+    if ( $chkrc != 0 ) { return 1; };
+
+    $chkrc = &validate_bldkitconf();
+    if ( $chkrc != 0 ) { return 1; };
+
+    return 0;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3    kit_buildrepo
+	
+   buildkit buildrepo
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub kit_buildrepo
+
+{
+
+    my $rc = 0;
+    my $repoid = $::KIT_BUILDREPO;
+    $repoid =~ s/\s+//g;
+    my $repodir = $::build_dir."/kit_repodir";
+    my $srcdir =  $::workdir."/source_packages/";
+    
+    # find the repo
+    my $found = 0;
+    foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
+        if ( $kr->{kitrepoid} eq $repoid ) {
+            $found = 1;
+            if ( &validate_os($kr)) {
+                print "The buildrepo operation will continue, but errors may occur.  You may need to run this command on a host with the same OS.\n";
+            }
+            $repodir .= "/$kr->{kitreponame}";
+            last;
+        }
+    }
+    if (! $found) {
+        print "The specified Kit Package Repository \"$repoid\" does not exist in the Kit Build File. \n";
+        return 1;
+    }
+
+    # Create repo build directory
+    if ( (! -d $repodir) && (! mkpath($repodir)) ) {
+       print "Error creating build repository directory $repodir.\n";
+       return 1;
+    } 
+
+    # Build kitpackages first
+    foreach my  $kp (@{$::bldkit_config->{kitpackage}{entries}}) {
+        # For this kitrepo?
+        my $found = 0;
+        foreach my $kprid (split(/,/, $kp->{kitrepoid})) {
+          $kprid =~ s/\s+//g;
+          if ($repoid eq $kprid) {
+              $found = 1;
+              last;                    
+          }
+        }
+        if (!$found) { next; }
+
+        # is this package already built?
+        my $rpm = "$repodir/$kp->{filename}";
+        if ( -r $rpm) { next; }
+
+        if ($::VERBOSE) { print "building kitpackage $kp->{filename} \n";}
+        # determine build method
+        if (defined($kp->{rpm_prebuiltdir})) {
+            # simply copy the file to the build directory
+            my $full_prebuiltrpm = $srcdir.$kp->{rpm_prebuiltdir}."/".$kp->{filename};
+            if (system("cp -fp $full_prebuiltrpm $repodir")) {
+            # non-zero return from system call
+                print "Error copying prebuilt rpm $kp->{filename} to Kit Build directory. \n";
+                return 1;
+            }
+        } elsif (defined($kp->{rpm_srpm})) {
+            # run rpmbuild --rebuild on the source rpm
+            print "SKIPPING BUILD FOR KIT PACKAGE   $kp->{filename} \n";
+            print "TBD - only buildrepo for prebuilt rpms is available at this time \n\n";
+        } elsif (defined($kp->{rpm_srctarball}) && 
+                 defined($kp->{rpm_spec}) ) {
+            # run rpmbuild
+            print "SKIPPING BUILD FOR KIT PACKAGE   $kp->{filename} \n";
+            print "TBD - only buildrepo for prebuilt rpms is available at this time \n\n";
+        } elsif (defined($kp->{rpm_srcdir}) && 
+                 defined($kp->{rpm_spec}) ) {
+            # build tarfile and run rpmbuild
+            print "SKIPPING BUILD FOR KIT PACKAGE   $kp->{filename} \n";
+            print "TBD - only buildrepo for prebuilt rpms is available at this time \n\n";
+        } else {
+            print "Cannot determine build method for Kit Package $kp->{filename}.  Verify that your Kit Build File is correct. \n";
+            return 1;
+        }
+    }
+    
+    # Build kitcomponent metapackages
+    foreach my  $kc (@{$::bldkit_config->{kitcomponent}{entries}}) {
+        # Check if this kitcomponent is in the requested repo 
+        if ($repoid ne $kc->{kitrepoid}) { next; }
+        
+        # Check if already built
+        my $rpm = "$repodir/".&comppkgname($kc);
+        if (-r $rpm) { next; }
+
+        # Build it
+        if ($::VERBOSE) { print "building kitcomponet metapackage for $kc->{basename} \n";}
+        if (&build_kitcomp($kc)) { 
+            print "Error building kitcomponent metapackage for $kc->{basename} \n";
+            return 1;
+        }
+    }
+
+    # run createrepo
+    if ( system("createrepo $repodir") ) {
+        print "Error building the repository meta-data with the createrepo command \n";
+        return 1;
+    }
+
+    return 0;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3    kit_listrepo
+	
+   buildkit listrepo
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub kit_listrepo
+
+{
+    # print "Kit Repository:  Status \n";
+    foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
+        my $rc = 0;
+        my $status = "NOT DONE";
+        unless ($rc = &validate_repo($kr)) {$status = "DONE";}
+        print "$kr->{kitrepoid}:  $status \n";
+    }
+
+   return 0;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3    kit_cleanrepo
+	
+   buildkit cleanrepo
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub kit_cleanrepo
+
+{
+    my $repoid = $::KIT_CLEANREPO;
+    my $tmp_repoid = $repoid;
+    $tmp_repoid =~ tr/A-Z/a-z/;   # convert to lowercase
+
+    if (($tmp_repoid eq 'all') ) { 
+          if ( system("rm -Rf $::build_dir/kit_repodir/* ") ) {
+              print "Error removing contents of $::build_dir/kit_repodir \n";
+              return 1;
+          } else {
+              print "Contents of $::build_dir/kit_repodir has been successfully removed. \n";
+          }
+    } else {
+        foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
+          if ($repoid eq $kr->{kitrepoid}) {
+            my $repodir = $::build_dir.'/kit_repodir/'.$kr->{kitreponame}; 
+            if ( -d $repodir ){
+              if ( system("rm -Rf $repodir ") ) {
+                  print "Error removing directory $repodir \n";
+                  return 1;
+              } else {
+                  print "Kit repository $kr->{kitrepoid} has been removed. \n";
+              }
+            } else {
+              print "Kit repository $kr->{kitrepoid} directory $repodir does not exist.  Nothing to remove for this repository. \n";
+            }
+            last; 
+          }
+        }
+    }
+    if ( -d "$::workdir/rpmbuild" ) {
+        system("rm -Rf $::workdir/rpmbuild "); 
+    }
+    if ( -d "$::workdir/tmp" ) {
+        system("rm -Rf $::workdir/tmp ");
+    }
+
+    return 0;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3    kit_buildtar
+	
+   buildkit buildtar
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub kit_buildtar
+
+{
+
+    foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
+        if (&validate_repo($kr)) {
+            print "Kit Repository $kr->{kitrepoid} not built.  Run: \n";
+            print "    buildkit buildrepo $kr->{kitrepoid}          \n";
+            return 1;
+        }
+    }
+    if (&create_kitconf) {
+        print "Error creating kit configuration file \n";
+        return 1;
+    }
+
+    if (&create_builddir) {
+        print "Error creating kit build directory contents \n";
+        return 1;
+    }
+
+    if (! -d "$::deploy_dir/repos") {
+        symlink "$::build_dir/kit_repodir","$::deploy_dir/repos";
+    }
+    # build the tarfile
+    my $kitname = $::bldkit_config->{kit}{entries}[0]->{kitname};
+    my $tarfile = $::build_dir."/".$kitname.".tar.gz";
+    if ( system("cd $::build_dir; tar -czhf $tarfile $kitname/*") ) {
+         print "Error building tarfile $tarfile \n";
+         return 1;
+    }
+    print "Kit tar file $tarfile successfully built \n";
+    
+}
+
+#-----------------------------------------------------------------------------
+
+=head3    kit_cleantar
+	
+   buildkit cleantar
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub kit_cleantar
+
+{
+
+    print "running buildkit cleantar... \n";
+    my $kitname = $::bldkit_config->{kit}{entries}[0]->{kitname};
+    my $tarfile = $::build_dir."/".$kitname.".tar.gz";
+    if ( -r $tarfile ) {
+        if ( system("rm -f $tarfile ") ) {
+            print "Error removing kit tar file $tarfile \n";
+        } else {
+            print "Kit tar file $tarfile has been successfully removed \n";
+        }
+    }
+    if ( -d $::deploy_dir ) {
+        if ( system("rm -Rf $::deploy_dir ") ) {
+            print "Error removing contents of $::deploy_dir \n";
+        } else {
+            print "All $::deploy_dir contents have been successfully removed \n";
+        }
+    }
+    if ( -d "$::workdir/rpmbuild" ) {
+        system("rm -Rf $::workdir/rpmbuild ");
+    }
+    if ( -d "$::workdir/tmp" ) {
+        system("rm -Rf $::workdir/tmp ");
+    }
+    
+
+}
+
+
+#-----------------------------------------------------------------------------
+
+=head3    kit_cleanall
+	
+   buildkit cleanall
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub kit_cleanall
+
+{
+
+    print "running buildkit cleanall... \n";
+    if ( -d $::build_dir ) {
+        if ( system("rm -Rf $::build_dir/* ") ) {
+            print "Error removing contents of $::build_dir \n";
+        } else {
+            print "All $::build_dir contents have been successfully removed \n";
+        }
+    }
+    if ( -d "$::workdir/rpmbuild" ) {
+        system("rm -Rf $::workdir/rpmbuild ");
+    }
+    if ( -d "$::workdir/tmp" ) {
+        system("rm -Rf $::workdir/tmp ");
+    }
+
+}
+
+#-----------------------------------------------------------------------------
+
+=head3    edit_bldkitconf
+	
+   edit the shipped template buildkit.conf file to insert initial values
+   for the new kit
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub edit_bldkitconf
+
+{
+
+    my $bldkitconf = shift;
+    my $kitname = shift;
+
+    # read in the buildkit.conf file
+    my $CF;
+    unless ( open( $CF, "<", $bldkitconf ) ) {
+        print  "The Kit build file $bldkitconf does not exist. \n";
+        return 1;
+    }
+    if ($::VERBOSE) {
+        print "Reading kit configuration file $bldkitconf \n";
+    }
+    my @lines = <$CF>;
+    close $CF;
+
+    my $osinfo = xCAT::BuildKitUtils->osver();
+    my $kitrepoid = $osinfo;
+    $kitrepoid =~ s/\,//;
+    my ($osbasename,$osmore) = split(/\,/, $osinfo);
+    my ($osmajorversion,$osminorversion) = split(/\./, $osmore);
+    my $osarch=`uname -p`;
+    my $kitcomponent_basename = $kitname."_compute";
+
+    for (@lines) {
+        s/<<<INSERT_kitbasename_HERE>>>/$kitname/;
+        s/<<<INSERT_kitrepoid_HERE>>>/$kitrepoid/;
+        s/<<<INSERT_osbasename_HERE>>>/$osbasename/;
+        s/<<<INSERT_osmajorversion_HERE>>>/$osmajorversion/;
+        s/<<<INSERT_osminorversion_HERE>>>/$osminorversion/;
+        s/<<<INSERT_osarch_HERE>>>/$osarch/;
+        s/<<<INSERT_kitcomponent_basename_HERE>>>/$kitcomponent_basename/;
+    }
+
+    # Write the buildkit.conf back out
+    my $NCF;
+    unless ( open( $NCF, ">$bldkitconf" ) ) {
+        return 1;
+    }
+    if ($::VERBOSE) {
+        print "Inserted initial values into $bldkitconf \n";
+    }
+    print $NCF @lines;
+    close($NCF);
+    
+    return 0;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3    load_bldkitconf
+	
+   load the kitbuild.conf file into a global data structure and 
+   verify that the general syntax is correct.
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+
+sub load_bldkitconf
+
+{
+    my $bldkitconf = shift;
+
+  
+    # read in the buildkit.conf file
+    my $CF;
+    unless ( open( $CF, "<", $bldkitconf ) ) {
+        print  "The Kit build file $bldkitconf does not exist. \n";
+        return 1;
+    }
+    if ($::VERBOSE) {
+        print "Reading kit configuration file $bldkitconf \n";
+    }
+    my @lines = <$CF>;
+    close $CF;
+
+    my $current_section = 'no section';
+    my %current_entry;
+    my $syntax_error = '';
+    my $bad_line = '';
+    my $line_number = 0;
+    foreach my $l (@lines) {
+        $line_number++;
+        # skip blank and comment lines
+        next if ( $l =~ /^\s*$/ || $l =~ /^\s*#/ );
+
+        # process a real line
+        # new section?
+        if ( $l =~ /^\s*(\w+)\s*:/ ) {
+           my $section = $1;
+           if ( defined( $::buildkit_def{$section} ) ) {
+               if (($section eq 'kit') &&
+                   ($::bldkit_config->{$section}{'exists'})) {
+                   $syntax_error = "More than one \"$section:\" section exists ";
+                   $bad_line = $l;
+                   last;
+               } 
+               $::bldkit_config->{$section}{'exists'} = 1;
+               push ( @{ $::bldkit_config->{$current_section}{'entries'} }, {%current_entry});
+               $current_section = $section;
+               undef %current_entry;
+               next;
+           }
+        }
+        if ( $l =~ /^\s*(\w+)\s*=\s*(.*)\s*/ ) {
+            my $attr = $1;
+            my $val  = $2;
+            my $orig_attr = $attr;
+            my $orig_val  = $val;
+            $attr =~ s/^\s*//;       # Remove any leading whitespace
+            $attr =~ s/\s*$//;       # Remove any trailing whitespace
+            $attr =~ tr/A-Z/a-z/;    # Convert to lowercase
+            $val  =~ s/^\s*//;
+            $val  =~ s/\s*$//;
+
+            if ( defined( $::buildkit_def{$current_section}{$attr} ) ) {
+                $current_entry{$attr} = $val; 
+            } else {
+                if ( $current_section eq 'no section' ) {
+                     $syntax_error = "No section specified for attribute $attr.";
+                } else {
+                    my $valid_attrs = join (', ', (keys (%{$::buildkit_def{$current_section}})));
+                    $syntax_error = "Attribute \"$attr\" is not valid for section \"$current_section\". Valid attributes are: $valid_attrs.\n";
+                }
+                $bad_line = $l;
+                last;
+           }
+
+        } else {
+            $syntax_error = "Invalid line format";
+            $bad_line = $l;
+            last;
+ 
+        }
+    }
+
+    # Need at least one kit and one kitrepo section
+    if (! $syntax_error) {
+        if ( !($::bldkit_config->{'kit'}{'exists'})) {
+            $syntax_error = "No \"kit:\" section found.  At least one section required. ";
+            $bad_line = '<end of file>';
+        } elsif ( !($::bldkit_config->{'kitrepo'}{'exists'})) {
+            $syntax_error = "No \"kitrepo:\" section found.  At least one section required. ";
+            $bad_line = '<end of file>';
+        } else {
+            push ( @{ $::bldkit_config->{$current_section}{'entries'} }, {%current_entry});
+        }
+    }
+
+    if ($syntax_error) {
+        print "Error processing file $bldkitconf \n";
+        print "Syntax error found on line $line_number:\n";
+        print "$bad_line \n";
+        print "$syntax_error \n";
+        print "\n";
+        print "The Kit build file does not have the correct format. \n";
+        print "The format should be: \n";
+        print "    <section name>:   \n";
+        print "        <attr>=<val>  \n";
+        print "        <attr>=<val>  \n";
+        print "        ...           \n";
+        print "    <section name>:   \n";
+        print "        <attr>=<val>  \n";
+        print "        <attr>=<val>  \n";
+        print "        ...           \n";
+        print "The valid section names are: kit, kitrepo, kitcomponent, kitpackages. \n";
+        print "There must be exactly one kit, and must be at least one kitrepo section. \n";
+        return 1;
+    }
+
+    # Check for mandatory attributes
+    foreach my $s (keys %{$::bldkit_config}) {
+      if (! defined($::buildkit_def{$s}) ) { next;}
+      foreach my $se (@{$::bldkit_config->{$s}{entries}}) {
+        foreach my $a (keys %{$::buildkit_def{$s}}) {
+          if (( $::buildkit_def{$s}{$a}->{mandatory} ) &&
+              ( ! defined ($se->{$a}) ) ) {
+            print "The \"$a\" mandadory attribute must be defined in the \"$s\" section of the Kit build file \n";
+            return 1;
+          }
+        }
+      }
+    }
+
+use Data::Dumper;
+#print Dumper($::bldkit_config);
+
+    return 0;
+
+}
+
+
+#-----------------------------------------------------------------------------
+
+=head3    validate_bldkitconf
+	
+   validate the loaded buildkit configuration data
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub validate_bldkitconf
+
+{
+    my $kitname = $::bldkit_config->{kit}{entries}[0]->{basename};
+    my $full_kitname = $kitname;
+    $full_kitname .= '-'.$::bldkit_config->{kit}{entries}[0]->{version};
+    $full_kitname .= '-'.$::bldkit_config->{kit}{entries}[0]->{ostype};
+    $::bldkit_config->{kit}{entries}[0]->{kitname} = $full_kitname;
+    $::deploy_dir .= "/".$full_kitname;
+
+    # Make sure each kit kitdeployparams file exists
+    if (defined($::bldkit_config->{kit}{entries}[0]->{kitdeployparams})){ 
+       my $kd_file = $::workdir."/other_files/".$::bldkit_config->{kit}{entries}[0]->{kitdeployparams};
+       if (! -r $kd_file ) {
+           print "Kit Deployment Parameters file $kd_file does not exist or is not readable\n";
+           return 1;
+      }
+      if (&edit_deployparams($kd_file,1)) { return 1;}
+    }
+   
+    # Make sure each kitrepo has unique distro info
+    my $kr_count = scalar @{$::bldkit_config->{kitrepo}{entries}};
+    if ($kr_count > 1) {
+        foreach my $kri (0..$kr_count-2) {
+          foreach my $kri2 ($kri+1..$kr_count-1) {
+            my $kr  = $::bldkit_config->{kitrepo}{entries}[$kri];
+            my $kr2 = $::bldkit_config->{kitrepo}{entries}[$kri2];
+            if ( $kr->{kitrepoid} eq $kr2->{kitrepoid} ) { 
+               print "There are two or more kitrepo sections with the same kitrepoid \"$kr->{kitrepoid}\". \n";
+               return 1;
+            }
+            if ( ($kr->{osbasename} eq $kr2->{osbasename}) &&
+                 ($kr->{osmajorversion} eq $kr2->{osmajorversion}) &&
+                 ($kr->{osarch} eq $kr2->{osarch}) ) {
+                 if( ( defined ($kr->{osminorversion}) &&
+                       defined ($kr2->{osminorversion}) &&
+                       ($kr->{osminorversion} eq $kr2->{osminorversion}) ) ||
+                      ( !  defined ($kr->{osminorversion}) &&
+                        !  defined ($kr2->{osminorversion}) ) ) { 
+                    print "There are two or more kitrepo sections which are defined with the same OS name, major/minor version, and architecture. \n";
+                    return 1;
+                 }
+            }
+          }
+        }
+    }
+   
+    # Make sure each kitcomponent has unique basename
+    my $kc_count = scalar @{$::bldkit_config->{kitcomponent}{entries}};
+    if ($kc_count > 1) {
+        foreach my $kci (0..$kc_count-2) {
+          foreach my $kci2 ($kci+1..$kc_count-1) {
+            if ( $::bldkit_config->{kitcomponent}{entries}[$kci]->{basename}
+              eq $::bldkit_config->{kitcomponent}{entries}[$kci2]->{basename} ) {
+                print "There are two or more kitcomponent sections which are defined with the same basename \"$::bldkit_config->{kitcomponent}{entries}[$kci]->{basename}\". \n";
+                return 1;
+            }
+          }
+        }
+    }
+   
+    #  Kitrepo checks
+    foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
+        my $reponame = $full_kitname;
+        $reponame .= '_'.$kr->{osbasename};
+        $reponame .= '-'.$kr->{osmajorversion};
+        if (defined($kr->{osminorversion})){
+          $reponame .= '.'.$kr->{osminorversion};
+        }
+        $reponame .= '-'.$kr->{osarch};
+        $kr->{kitreponame} = $reponame;
+    }
+   
+    #  Kitcomponent checks
+    foreach my $kc (@{$::bldkit_config->{kitcomponent}{entries}}) {
+        # Make sure all kitcomponent kitrepoids are defined
+        my $found = 0;
+        my %repo;
+        foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
+            if ($kc->{kitrepoid} eq $kr->{kitrepoid}) { 
+                $found = 1;
+                %repo = %{$kr}; 
+                $kc->{kitreponame} = $kr->{kitreponame};
+                push (@{$kr->{packages}}, &comppkgname($kc,$kr));
+                last;                    
+            }
+        }
+        if ( ! $found ) {
+            print "Kit Repository \"$kc->{kitrepoid}\" required by the Kit Component \"$kc->{basename}\" not defined in the Kit Build file.\n";
+            return 1;
+        }
+        # Create full kitcomponent name
+        my $compname = $kc->{basename};
+        $compname .= '-'.$kc->{version};
+        $compname .= '-'.$kc->{release};
+        $compname .= '-'.$repo{osbasename};
+        $compname .= '-'.$repo{osmajorversion};
+        if ( defined($repo{osminorversion}) ) {
+            $compname .= '.'.$repo{osminorversion};
+        }
+        $compname .= '-'.$repo{osarch};
+        $kc->{kitcompname} = $compname;
+        # Make sure all kitcomponent kitpkgdeps are defined
+        if (defined($kc->{kitpkgdeps})) {
+          foreach my $d (split(/,/, $kc->{kitpkgdeps})) {
+            $d =~ s/\s+//g;
+            $d =~ s/^([\w\.\-]+)[<>=]*.*$/$1/;
+            my $found = 0;
+            foreach my $kp (@{$::bldkit_config->{kitpackage}{entries}}) {
+              if ( $kp->{filename} =~ /^$d[\.\-]/ ) {
+                foreach my $kprid (split(/,/, $kp->{kitrepoid})) {
+                  $kprid =~ s/\s+//g;
+                  if ($kc->{kitrepoid} eq $kprid) {
+                      $found = 1;
+                      last;                    
+                  }
+                }
+              }
+              if ($found) { last; }
+            }
+            if ( !$found ) {
+                print "Kit Package \"$d\" required by the Kit Component \"$kc->{basename}\" was not found in the Kit Component\'s repository \"$kc->{kitrepoid}\".\n";
+                return 1;
+           }
+          }
+        }
+        # Make sure all kitcomponent driverpacks are defined
+        if (defined($kc->{driverpacks})) {
+          my @drvs = split(/,/, $kc->{driverpacks});
+          foreach my $d (@drvs) {
+            $d =~ s/\s+//g;
+            my $found = 0;
+            foreach my $kp (@{$::bldkit_config->{kitpackage}{entries}}) {
+              if ( $kp->{filename} eq $d ) {
+                foreach my $kprid (split(/,/, $kp->{kitrepoid})) {
+                  $kprid =~ s/\s+//g;
+                  if ($kc->{kitrepoid} eq $kprid) {
+                    $found = 1;
+                    last;                    
+                  }
+                }
+              }
+              if ($found) { last; }
+            }
+            if ( !$found ) {
+                print "Driver package \"$d\" required by the Kit Component \"$kc->{basename}\" was not found in the Kit Component\'s repository \"$kc->{kitrepoid}\".\n";
+                return 1;
+           }
+        }
+      }
+      # Make sure files exist
+      if (defined($kc->{exlist})){ 
+         my $ck_file = $::workdir."/other_files/".$kc->{exlist};
+         if (! -r $ck_file ) {
+             print "Exclude List file $ck_file defined in Kit Componenet \"$kc->{basename}\" does not exist or is not readable\n";
+             return 1;
+        }
+      }
+      if (defined($kc->{preinstall})){ 
+         my $ck_file = $::workdir."/scripts/".$kc->{preinstall};
+         if (! -r $ck_file ) {
+             print "Pre-Install script $ck_file defined in Kit Componenet \"$kc->{basename}\" does not exist or is not readable\n";
+             return 1;
+        }
+      }
+      if (defined($kc->{postinstall})){ 
+         my $ck_file = $::workdir."/scripts/".$kc->{postinstall};
+         if (! -r $ck_file ) {
+             print "Post-Install script $ck_file defined in Kit Componenet \"$kc->{basename}\" does not exist or is not readable\n";
+             return 1;
+        }
+      }
+      if (defined($kc->{preuninstall})){ 
+         my $ck_file = $::workdir."/scripts/".$kc->{preuninstall};
+         if (! -r $ck_file ) {
+             print "Pre-Uninstall script $ck_file defined in Kit Componenet \"$kc->{basename}\" does not exist or is not readable\n";
+             return 1;
+        }
+      }
+      if (defined($kc->{postuninstall})){ 
+         my $ck_file = $::workdir."/scripts/".$kc->{postuninstall};
+         if (! -r $ck_file ) {
+             print "Post-Uninstall script $ck_file defined in Kit Componenet \"$kc->{basename}\" does not exist or is not readable\n";
+             return 1;
+        }
+      }
+      if (defined($kc->{preupgrade})){ 
+         my $ck_file = $::workdir."/scripts/".$kc->{preupgrade};
+         if (! -r $ck_file ) {
+             print "Pre-Upgrade script $ck_file defined in Kit Componenet \"$kc->{basename}\" does not exist or is not readable\n";
+             return 1;
+        }
+      }
+      if (defined($kc->{posupgrade})){ 
+         my $ck_file = $::workdir."/scripts/".$kc->{postupgrade};
+         if (! -r $ck_file ) {
+             print "Post-Upgrade script $ck_file defined in Kit Componenet \"$kc->{basename}\" does not exist or is not readable\n";
+             return 1;
+        }
+      }
+      if (defined($kc->{postbootscripts})){ 
+         foreach my $script (split(/\,/, $kc->{postbootscripts})){
+           $script =~ s/\s+//g;
+           my $ck_file = $::workdir."/scripts/".$script;
+           if (! -r $ck_file ) {
+             print "Postboot script $ck_file defined in Kit Componenet \"$kc->{basename}\" does not exist or is not readable\n";
+             return 1;
+          }
+        }
+      }
+    }
+   
+    #  Kitpackage checks
+    foreach my $kp (@{$::bldkit_config->{kitpackage}{entries}}) {
+      # Make sure all kitpackage kitrepoids are defined
+      foreach my $kprid (split(/,/, $kp->{kitrepoid})) {
+          my $found = 0;
+          $kprid =~ s/\s+//g;
+          foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
+            if ($kprid eq $kr->{kitrepoid}) { 
+              $found = 1;
+              push (@{$kr->{packages}}, $kp->{filename});
+              last;                    
+            }
+          }
+          if ( ! $found ) {
+            print "Kit Repository \"$kprid\" required by the Kit Package \"$kp->{filename}\" is not defined in the Kit Build file.\n";
+            return 1;
+          }
+      }
+      # determine if valid build method
+      if (defined($kp->{rpm_prebuiltdir})) {
+         if ((defined($kp->{rpm_srpm})) ||
+             (defined($kp->{rpm_srctarball})) ||
+             (defined($kp->{rpm_spec})) ||
+             (defined($kp->{rpm_srcdir})) ) {
+             print "Cannot determine build method for Kit Package $kp->{filename}.  Conflicting attributes were specified.\n";
+            return 1; 
+         }
+      } elsif (defined($kp->{rpm_srpm})) {
+         if ((defined($kp->{rpm_prebuiltdir})) ||
+             (defined($kp->{rpm_srctarball})) ||
+             (defined($kp->{rpm_spec})) ||
+             (defined($kp->{rpm_srcdir})) ) {
+             print "Cannot determine build method for Kit Package $kp->{filename}.  Conflicting attributes were specified.\n";
+            return 1; 
+         }
+      } elsif (defined($kp->{rpm_srctarball}) && 
+               defined($kp->{rpm_spec}) ) {
+         if ((defined($kp->{rpm_prebuiltdir})) ||
+             (defined($kp->{rpm_srpm})) ||
+             (defined($kp->{rpm_srcdir})) ) {
+             print "Cannot determine build method for Kit Package $kp->{filename}.  Conflicting attributes were specified.\n";
+            return 1; 
+         }
+      } elsif (defined($kp->{rpm_srcdir}) && 
+               defined($kp->{rpm_spec}) ) {
+         if ((defined($kp->{rpm_prebuiltdir})) ||
+             (defined($kp->{rpm_srpm})) ||
+             (defined($kp->{rpm_srctarball})) ) {
+             print "Cannot determine build method for Kit Package $kp->{filename}.  Conflicting attributes were specified.\n";
+            return 1; 
+         }
+      } else {
+          print "Cannot determine build method for Kit Package $kp->{filename}.  Verify that your Kit Build File is correct. \n";
+          return 1;
+      }
+      # Make sure files exist
+      if (defined($kp->{rpm_spec})){ 
+         my $ck_file = $::workdir."/source_packages/".$kp->{rpm_spec};
+         if (! -r $ck_file ) {
+             print "RPM spec file $ck_file defined in Kit Package \"$kp->{filename}\" does not exist or is not readable\n";
+             return 1;
+        }
+      }
+      if (defined($kp->{rpm_srcdir})){ 
+         my $ck_dir = $::workdir."/source_packages/".$kp->{rpm_srcdir};
+         if (! -d $ck_dir ) {
+             print "RPM source directory $ck_dir defined in Kit Package \"$kp->{filename}\" does not exist or is not readable\n";
+             return 1;
+        }
+      }
+      if (defined($kp->{rpm_srctarball})){ 
+         my $ck_file = $::workdir."/source_packages/".$kp->{rpm_srctarball};
+         if (! -r $ck_file ) {
+             print "RPM source tarfile $ck_file defined in Kit Package \"$kp->{filename}\" does not exist or is not readable\n";
+             return 1;
+        }
+      }
+      if (defined($kp->{rpm_srpm})){ 
+         my $ck_file = $::workdir."/source_packages/".$kp->{rpm_srpm};
+         if (! -r $ck_file ) {
+             print "Source RPM $ck_file defined in Kit Package \"$kp->{filename}\" does not exist or is not readable\n";
+             return 1;
+        }
+      }
+      if (defined($kp->{rpm_prebuiltdir})){ 
+        my $ck_dir = $::workdir."/source_packages/".$kp->{rpm_prebuiltdir};
+        if (! -d $ck_dir ) {
+            print "Pre-built RPM directory $ck_dir defined in Kit Package \"$kp->{filename}\" does not exist or is not readable\n";
+            return 1;
+        }
+        my $ck_file = $ck_dir."/".$kp->{filename};
+        if (! -r $ck_file ) {
+            print "Pre-built rpm $ck_file defined in Kit Package \"$kp->{filename}\" does not exist or is not readable\n";
+            return 1;
+        }
+      }
+    }
+#use Data::Dumper;
+#print Dumper($::bldkit_config->{kitrepo});
+    return 0;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3    comppkgname
+	
+   build a metapkg rpm filename for this kitcomponent
+      input:  kitcomponent hash
+              kitrepo hash that this kitcomponent belongs to
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub comppkgname
+
+{
+    my $comp = shift;
+  #  my $repo = shift;  
+
+ my $pkgname = $comp->{basename};
+    $pkgname .= '-'.$comp->{version};
+    $pkgname .= '-'.$comp->{release};
+    $pkgname .= '.noarch.rpm';
+  #  $pkgname .= '-'.$repo->{osmajorversion};
+  #  if (defined($repo->{osminorversion})) {
+  #    $pkgname .= '.'.$repo->{osminorversion};
+  #  }
+  #  $pkgname .= '-'.$repo->{osarch};
+  #  $pkgname .= '.rpm';
+
+    return $pkgname;
+}
+
+
+#-----------------------------------------------------------------------------
+
+=head3    validate_repo
+	
+   validate whether a kit repo has been built
+   input:  repo hash
+   returns rc:
+            0 - repo status is DONE
+            1 - repo status is NOT DONE
+  verbose mode displays message for first rpm not built
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub validate_repo
+
+{
+    my $repo = shift;
+
+    my $repodir = $::build_dir."/kit_repodir/".$repo->{kitreponame};
+    if ( ! -d $repodir ) {
+        if ($::VERBOSE) {
+            print "\n$repodir does not exist.  No rpms have been built for this kitrepo. \n";
+        }
+        return 1;
+    }
+ 
+    foreach my $pkg (@{$repo->{packages}}){
+        my $pkg_filename = $repodir.'/'.$pkg;
+        if (! -r $pkg_filename) {
+            if ($::VERBOSE) {
+                print "\nFile $pkg in directory $repodir does not exist or is not readable. \n";
+            }
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+
+#-----------------------------------------------------------------------------
+
+=head3    validate_os
+	
+   validate whether a kit repo matches the current OS
+   input:  repo hash
+   returns rc:
+            0 - match
+            1 - no match
+  verbose mode displays message for mismatch details
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub validate_os
+
+{
+    my $repo = shift;
+
+    my $osinfo = xCAT::BuildKitUtils->osver();
+    my ($osbasename,$osmore) = split(/\,/, $osinfo);
+    my ($osmajorversion,$osminorversion) = split(/\./, $osmore);
+    my $osarch=`uname -p`;
+    chomp($osarch);
+    $osinfo =~ s/\,//;
+    my $repo_osinfo = "$repo->{osbasename}$repo->{osmajorversion}";
+    if (defined($repo->{osminorversion})){
+        $repo_osinfo .= ".$repo->{osminorversion}";
+    }
+    $repo_osinfo .= "-$repo->{osarch} ";
+    my $mismatch_msg = "The local host is running $osinfo-$osarch.  This does not match the Kit Repository \"$repo->{kitrepoid}\" data:  $repo_osinfo";
+    if (defined($repo->{compat_osbasenames})){
+        $mismatch_msg .= " or the compatible OS distros: $repo->{compat_osbasenames} ";
+    }
+
+
+    my $compat_match = 0;
+    if ($repo->{osbasename} ne $osbasename) {
+        if (defined($repo->{compat_osbasenames})){
+            foreach my $cos (split(/,/, $repo->{compat_osbasenames})) {
+                if ($cos eq $osbasename) {
+                    $compat_match = 1;
+                    last;
+                }
+            }
+        }
+        if (!$compat_match) {
+            print "$mismatch_msg \n";
+            if ($::VERBOSE) {
+                print "\n Local OS basename $osbasename does not match repository.\n";
+            }
+            return 1;
+        }
+    }
+    if ( ($repo->{osmajorversion} ne $osmajorversion) &&
+         (!$compat_match) ) {
+        print "$mismatch_msg \n";
+        if ($::VERBOSE) {
+            print "\n Local OS major version $osmajorversion does not match repository.\n";
+        }
+        return 1;
+    }
+    if (defined($repo->{osminorversion})) {
+        if ( ($repo->{osminorversion} ne $osminorversion) &&
+             (!$compat_match) ) {
+            print "$mismatch_msg \n";
+            if ($::VERBOSE) {
+                print "\n Local OS minor version $osminorversion does not match repository.\n";
+            }
+            return 1;
+        }
+    }
+    if ($repo->{osarch} ne $osarch) {
+        print "$mismatch_msg \n";
+        if ($::VERBOSE) {
+            print "\n Local OS arch $osarch does not match repository.\n";
+        }
+        return 1;
+    }
+    
+    return 0;
+}
+
+
+#-----------------------------------------------------------------------------
+
+=head3    build_kitcomp
+	
+   build a metapkg rpm for this kitcomponent
+      input:  kitcomponent hash
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub build_kitcomp
+
+{
+    my $comp = shift;
+    my %repo;
+    my $rpmbuild_dir = $::workdir."/rpmbuild";
+
+    # find the kitrepo hash for this component
+    foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
+        if ($comp->{kitrepoid} eq $kr->{kitrepoid}) { 
+            %repo = %{$kr}; 
+            last;                    
+        }
+    }
+ 
+    # Create spec file for this kit component
+    if ( &gen_kitcomp_spec($comp,\%repo) ) { return 1; }
+
+    # run the rpmbuild command
+    my $curdir = $::workdir;
+    my $cmd = "rm -Rf $curdir/rpmbuild";
+    system($cmd);
+    my $avoiderr = $rpmbuild_dir."/BUILDROOT/".$comp->{basename};
+    $avoiderr .= "-$comp->{version}-$comp->{release}.$repo{osarch}";
+    mkpath($avoiderr);
+
+    my $specfile = $::workdir."/tmp/$comp->{basename}.spec";
+    $cmd = "rpmbuild --define \"_topdir $rpmbuild_dir\" -ba $specfile";
+    if (!$::VERBOSE) {
+        $cmd .= ' --quiet ';
+    }
+    if ( system($cmd) ) {
+        print "Error running rpmbuild command for kit component $comp->{basename} meta package\n";
+        return 1;
+    }
+    my $repodir = $::build_dir."/kit_repodir/".$repo{kitreponame};
+    my @built_rpms = `find $rpmbuild_dir/RPMS -name *.rpm`;
+    foreach my $rpm (@built_rpms) {
+        chomp($rpm);
+        if ( system ("cp -fp $rpm $repodir") ) {
+            print "Error copying rpm $rpm to build repo directory $repodir \n";
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3    gen_kitcomp_spec
+	
+   generate the rpm spec file for the kitcomponent  metapkg rpm 
+      input:  kitcomponent hash
+              kitrepo hash
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub gen_kitcomp_spec
+
+{
+    my $comp = shift;
+    my $repo = shift;
+    my $scriptdir =  $::workdir."/scripts/";
+    my $tmpdir =  $::workdir."/tmp/";
+
+    # read in the template spec file
+    my $spec_template = $::XCATSHARE."/kits/kitcomponent.spec.template";
+    my $SF;
+    unless ( open( $SF, "<", $spec_template ) ) {
+        print  "Error attempting to open the xCAT Kit Component template file $spec_template. \n";
+        return 1;
+    }
+    if ($::VERBOSE) {
+        print "Reading the xCAT Kit Component template file $spec_template. \n";
+    }
+    my @lines = <$SF>;
+    close $SF;
+
+
+    my $kitname = $::bldkit_config->{kit}{entries}[0]->{basename};
+    my ($prescript,$postscript,$preupscript,$postupscript,$preunscript,$postunscript) = ' ';
+    if (defined($comp->{preinstall})) {
+        $prescript = &load_script("$scriptdir$comp->{preinstall}"); }
+    if (defined($comp->{postinstall})) {
+        $postscript = &load_script("$scriptdir$comp->{postinstall}"); }
+    if (defined($comp->{preupgrade})) {
+        $preupscript = &load_script("$scriptdir$comp->{preupgrade}"); }
+    if (defined($comp->{postupgrade})) {
+        $postupscript = &load_script("$scriptdir$comp->{postupgrade}"); }
+    if (defined($comp->{preuninstall})) {
+        $preunscript = &load_script("$scriptdir$comp->{preuninstall}"); }
+    if (defined($comp->{postuninstall})) {
+        $postunscript = &load_script("$scriptdir$comp->{postuninstall}"); }
+   
+    for (@lines) {
+        s/<<<INSERT_kitbasename_HERE>>>/$kitname/;
+        s/<<<INSERT_kitcomponent_basename_HERE>>>/$comp->{basename}/;
+        s/<<<INSERT_kitcomponent_version_HERE>>>/$comp->{version}/;
+        s/<<<INSERT_kitcomponent_release_HERE>>>/$comp->{release}/;
+        s/<<<INSERT_kitcomponent_ospkgdeps_HERE>>>/$comp->{ospkgdeps}/;
+        s/<<<INSERT_kitcomponent_kitpkgdeps_HERE>>>/$comp->{kitpkgdeps}/;
+        s/<<<INSERT_kitcomponent_kitcompdeps_HERE>>>/$comp->{kitcompdeps}/;
+        s/<<<INSERT_kitcomponent_desc_HERE>>>/$comp->{desc}/;
+        s/<<<INSERT_kitcomponent_preinstall_script_HERE>>>/$prescript/;
+        s/<<<INSERT_kitcomponent_postinstall_script_HERE>>>/$postscript/;
+        s/<<<INSERT_kitcomponent_preupgrade_script_HERE>>>/$preupscript/;
+        s/<<<INSERT_kitcomponent_postupgrade_script_HERE>>>/$postupscript/;
+        s/<<<INSERT_kitcomponent_preuninstall_script_HERE>>>/$preunscript/;
+        s/<<<INSERT_kitcomponent_postuninstall_script_HERE>>>/$postunscript/;
+    }
+
+    # Write the generated spec file 
+    my $joined_lines = join("\n",@lines);
+    @lines = split(/\\n/,$joined_lines);
+    mkpath($tmpdir);
+    my $NSF;
+    unless ( open( $NSF, ">$tmpdir/$comp->{basename}.spec" ) ) {
+        return 1;
+    }
+    if ($::VERBOSE) {
+        print "Created kitcomponent spec file $tmpdir/$comp->{basename}.spec \n";
+    }
+    print $NSF @lines;
+    close($NSF);
+
+    return 0;
+}
+
+
+#-----------------------------------------------------------------------------
+
+=head3    load_script
+	
+   load a kitcomponent script into a single return string 
+     with imbedded newline chars
+      input:  fullpath of scriptname
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub load_script
+
+{
+    my $scriptname = shift;
+    my $SF;
+    unless ( open( $SF, "<", $scriptname ) ) {
+        print  "Error attempting to open the file $scriptname. \n";
+        return;
+    }
+    if ($::VERBOSE) {
+        print "Reading the file $scriptname. \n";
+    }
+    my @lines = <$SF>;
+    close $SF;
+
+    my $script_contents = join('\n', @lines);
+    return $script_contents;
+}
+
+
+
+#-----------------------------------------------------------------------------
+
+=head3    create_kitconf
+	
+  Create the kit configuration file to put into the kit tar file.
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub create_kitconf
+
+{
+
+    # Build kit config file entries from buildkit config input
+    my $kitname = $::bldkit_config->{kit}{entries}[0]->{kitname};
+    foreach my $s (keys %{$::bldkit_config}) {
+      if (! defined($::buildkit_def{$s}) ) { next;}
+      if ( $s eq 'kitpackage' ) { next; }
+      my $li = 0;
+      foreach my $se (@{$::bldkit_config->{$s}{entries}}) {
+        $::kit_config->{$s}{entries}[$li]->{kitname} = $kitname;
+        # copy all defined attrs over
+        foreach my $a (keys %{$::buildkit_def{$s}}) {
+          if (( $::buildkit_def{$s}{$a}->{cp_to_kitconfig} eq '1' ) &&
+              ( defined ($se->{$a}) ) ) {
+            $::kit_config->{$s}{entries}[$li]->{$a} = $se->{$a}  
+          }
+          if (( $::buildkit_def{$s}{$a}->{cp_to_kitconfig} eq '2' ) &&
+              ( defined ($se->{$a}) ) ) {
+            my $prefix = "$kitname";
+            if ( $s eq 'kitcomponent' ) {
+                $prefix = "$::bldkit_config->{$s}{entries}[$li]->{kitcompname}";
+                if ($a eq 'postbootscripts') {
+                    $prefix = "KIT_".$prefix;
+                }
+            }
+            if ( !($::kit_config->{$s}{entries}[$li]->{$a} = 
+                    &cp_to_builddir($se->{$a},$::workdir.'/'.$::buildkit_def{$s}{$a}->{base_dir},$prefix)) ) {
+              return 1;
+            }
+          }
+        }
+        # Handle special attrs
+        if ( $s eq 'kitrepo' ) {
+            $::kit_config->{$s}{entries}[$li]->{kitreponame} = 
+                    $se->{kitreponame};
+        } elsif ( $s eq 'kitcomponent' ) {
+            $::kit_config->{$s}{entries}[$li]->{kitcompname} = 
+                    $se->{kitcompname};
+            $::kit_config->{$s}{entries}[$li]->{kitreponame} = 
+                    $se->{kitreponame};
+        }
+        $li++;
+      }
+    }
+
+    #  Write Kit Config File
+    my @lines;
+    my $li=0;
+    $lines[$li++] = "# Kit Configuration File for $kitname generated by buildkit\n";
+    $lines[$li++] = "# ".localtime()."\n"; 
+    foreach my $s ('kit','kitrepo','kitcomponent') {
+      foreach my $se (@{$::kit_config->{$s}{entries}}) {
+        $lines[$li++] = "$s: \n";
+        foreach my $a (keys %{$se}) {
+            $lines[$li++] = "    $a = $se->{$a} \n";
+        }
+      }
+    }
+
+    my $full_kit_conf = $::deploy_dir."/".$::kit_conf;
+    my $NCF;
+    unless ( open( $NCF, ">$full_kit_conf" ) ) {
+        return 1;
+    }
+    if ($::VERBOSE) {
+        print "Wrote new kit configuration file $full_kit_conf \n";
+    }
+    print $NCF @lines;
+    close($NCF);
+
+
+    return 0;
+
+}
+
+#-----------------------------------------------------------------------------
+
+=head3    cp_to_builddir
+	
+   Copy specified files into the build directory renaming as indicated
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub cp_to_builddir
+
+{
+
+    my $files = shift;
+    my $from_dir = shift;
+    my $prefix = shift;
+
+    my $copied_files;
+    my $other_files = $::deploy_dir."/other_files";
+    if ( (! -d $other_files) && (! mkpath($other_files)) ) { 
+        print "Error creating build directory $other_files.\n";
+        return;
+    }
+    foreach my $file (split(/\,/, $files)) {
+        $file =~ s/\s+//g;
+        my $from_file = $from_dir."/".$file;
+        my $from_file_base = basename($file); 
+        my $to_file_base = $prefix."_".$from_file_base;
+        my $to_file = $other_files."/".$to_file_base;
+        if ( system("cp -fp $from_file $to_file") ) {
+            # non-zero return from system call
+            print "Error copying file $from_file to build directory $other_files \n";
+            return;
+         }        
+        $copied_files .= ",$to_file_base";
+    }
+    $copied_files =~ s/^\,//;
+    return $copied_files;
+
+}
+
+#-----------------------------------------------------------------------------
+
+=head3    create_builddir
+	
+   Create the build directory and copy in all required files for building
+   the kit tar file.
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub create_builddir
+
+{
+    my $kitname = $::bldkit_config->{kit}{entries}[0]->{kitname};
+
+    # Note:
+    #    - repos already created and validated
+    #    - kit.conf file already created
+    #    - exlists, postbootscripts, and deployparams already copied
+
+    # copy plugins to build dir and edit to insert correct plugin and kit names
+    my $plugin_dir = $::deploy_dir."/plugins";
+    if ( -d "$::workdir/plugins" ) {
+        if ( (! -d $plugin_dir) && (! mkpath($plugin_dir)) ) { 
+            print "Error creating build directory $plugin_dir.\n";
+            return 1;
+        }
+        
+        foreach my $plugin (<$::workdir/plugins/*.pm>){
+            my $plugin_base = basename($plugin);
+            my $to_plugin = $plugin_dir."/".$kitname."_".$plugin_base;
+            if ( system("cp -fp $plugin $to_plugin") ) {
+                # non-zero return from system call
+                print "Error copying plugin file $plugin to build directory $plugin_dir \n";
+                return 1;
+            }
+            if (&edit_plugin($to_plugin)) { return 1;} 
+        }
+    }        
+ 
+    
+
+    # copy docs to build dir
+    if ( -d "$::workdir/docs" ) {
+        if ( system("cp -fRp $::workdir/docs $::deploy_dir") ) {
+            # non-zero return from system call
+            print "Error copying doc files $::workdir/docs to build directory $::deploy_dir \n";
+            return 1;
+        }
+    }        
+ 
+    # Edit deploy params file to make sure correct format for xCAT
+    if (defined($::kit_config->{kit}{entries}[0]->{kitdeployparams})){ 
+        my $kd_file = $::deploy_dir."/other_files/".$::kit_config->{kit}{entries}[0]->{kitdeployparams};
+        if (&edit_deployparams($kd_file)) { return 1;} 
+    }
+    
+
+    return 0;
+
+}
+
+
+#-----------------------------------------------------------------------------
+
+=head3    edit_deployparams
+	
+   Edit the kit deployment parameters to make sure it has correct
+   syntax for xCAT otherpkglist support 
+   
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub edit_deployparams
+
+{
+    my $file = shift; 
+    my $validate_only = shift;
+
+    # read in the file
+    my $DF;
+    unless ( open( $DF, "<", $file ) ) {
+        print  "The Kit deployment parameters file $file could not be read. \n";
+        return 1;
+    }
+    my @lines = <$DF>;
+    close $DF;
+
+    # Edit the files
+    my $changed = 0;
+    my @new_lines;
+    my $ln = 0;
+    foreach my $l (@lines) {
+        $ln++;
+        # skip blank lines
+        if ( $l =~ /^\s*$/ ) {
+            push (@new_lines, $l);
+            next;
+        } 
+        # #ENV lines
+        $l =~ s/^\s+//;             # compress leading blanks
+        if ( $l =~ /^\#ENV\:/ ) {
+            if ( !($l =~ /\#\s*$/) ) { 
+               chomp $l;
+               $l .= "#\n"; 
+               $changed = 1;
+            }
+            push (@new_lines, $l);
+            next;
+        }
+        # skip all other comments
+        if ( $l =~ /^\s*#/ ) {
+            push (@new_lines, $l);
+            next;
+        } 
+        #  Add #ENV if not specified
+        if ( $l =~ /^\w*\s*\=/ ) {
+            chomp $l;
+            $l = "#ENV: $l #";
+            $changed = 1;
+            push (@new_lines, $l);
+            next;
+        }
+        # Syntax error 
+        print "Syntax error in kit deployment parameters file $file \n";
+        print "line $ln:  \n";
+        print "$l \n";
+        return 1;
+    }
+
+    # Write the file back out
+    if ($changed && !$validate_only) {
+        my $NDF;
+        unless ( open( $NDF, ">$file" ) ) {
+            return 1;
+        }
+        if ($::VERBOSE) {
+            print "Editted kit deployment parameters file $file \n";
+        }
+        print $NDF @lines;
+        close($NDF);
+    }
+
+    return 0;
+}
+
+
+
+#-----------------------------------------------------------------------------
+
+=head3    edit_plugin
+	
+   Edit the kit plugin file to insert the full kit name
+   
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub edit_plugin
+
+{
+    my $file = shift; 
+    my $kitname = $::bldkit_config->{kit}{entries}[0]->{kitname};
+
+    # read in the file
+    my $PF;
+    unless ( open( $PF, "<", $file ) ) {
+        print  "The Kit plugin file $file could not be read. \n";
+        return 1;
+    }
+    my @lines = <$PF>;
+    close $PF;
+
+    for (@lines) {
+        s/<<<buildkit_WILL_INSERT_kitname_HERE>>>/$kitname/g;
+    }
+
+    # Write the plugin back out
+    my $NPF;
+    unless ( open( $NPF, ">$file" ) ) {
+        return 1;
+    }
+    if ($::VERBOSE) {
+        print "Inserted kitname values into $file \n";
+    }
+    print $NPF @lines;
+    close($NPF);
+
+    return 0;
+}
+
+
+

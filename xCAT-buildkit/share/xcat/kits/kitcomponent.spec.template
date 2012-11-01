@@ -1,0 +1,48 @@
+Summary: Kit <<<INSERT_kitbasename_HERE>>> Component <<<INSERT_kitcomponent_basename_HERE>>> metapackage
+Name: <<<INSERT_kitcomponent_basename_HERE>>>
+Version: <<<INSERT_kitcomponent_version_HERE>>>
+Release: <<<INSERT_kitcomponent_release_HERE>>>
+License: EPL
+BuildArch: noarch
+Requires:   <<<INSERT_kitcomponent_ospkgdeps_HERE>>>,<<<INSERT_kitcomponent_kitpkgdeps_HERE>>>,<<<INSERT_kitcomponent_kitcompdeps_HERE>>>
+
+%description
+<<<INSERT_kitcomponent_desc_HERE>>>
+
+%prep
+%build
+%install
+
+%clean
+rm -rf $RPM_BUILD_ROOT
+
+%files
+%defattr(-,root,root)
+
+%changelog
+
+%pre
+if [ "$1" = "1" ] ; then
+<<<INSERT_kitcomponent_preinstall_script_HERE>>>
+   
+
+elif [ "$1" = "2" ] ; then
+<<<INSERT_kitcomponent_preupgrade_script_HERE>>>
+
+fi
+
+%post
+if [ "$1" = "1" ] ; then
+<<<INSERT_kitcomponent_postinstall_script_HERE>>>
+
+elif [ "$1" = "2" ] ; then
+<<<INSERT_kitcomponent_postupgrade_script_HERE>>>
+
+fi
+
+%preun
+<<<INSERT_kitcomponent_preuninstall_script_HERE>>>
+
+%postun
+<<<INSERT_kitcomponent_postuninstall_script_HERE>>>
+
