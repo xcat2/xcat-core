@@ -32,9 +32,9 @@ function makenoarch {
 
 
 
-# Make one of the following rpms: xCAT, xCATsn
+# Make one of the following rpms: xCAT, xCATsn, xCAT-buildkit
 function makexcat {
-	if [ "$OSNAME" != "AIX" -a -z "$2" ]; then
+	if [ "$OSNAME" != "AIX" -a "$1" != "xCAT-buildkit" -a -z "$2" ]; then
 		echo 'Usage: makerpm <RPMname> <arch> [<embedded-system>]'
 		exit 1
 	fi
@@ -68,24 +68,34 @@ function makexcat {
 		RC=$?
 	else	# linux
 		ARCH="$2"
-		cd `dirname $0`/$RPMNAME
+		TARGET="--target $ARCH"
 
 		if [ "$RPMNAME" = "xCAT" ]; then
+			cd `dirname $0`/$RPMNAME
 			tar --exclude .svn --exclude upflag -czf $RPMROOT/SOURCES/postscripts.tar.gz  postscripts LICENSE.html
 			tar --exclude .svn -czf $RPMROOT/SOURCES/prescripts.tar.gz  prescripts
 			tar --exclude .svn -czf $RPMROOT/SOURCES/templates.tar.gz templates
 			cp xcat.conf $RPMROOT/SOURCES
 			cp xCATMN $RPMROOT/SOURCES
-		else	# xCATsn
+			cd - >/dev/null
+		elif [ "$RPMNAME" = "xCATsn" ]; then
+			cd `dirname $0`/$RPMNAME
 			tar --exclude .svn -czf $RPMROOT/SOURCES/license.tar.gz LICENSE.html
 			cp xcat.conf $RPMROOT/SOURCES
 			cp xCATSN $RPMROOT/SOURCES
+			cd - >/dev/null
+		elif [ "$RPMNAME" = "xCAT-buildkit" ]; then
+			ARCH="noarch"
+			TARGET=""
+			tar --exclude .svn --exclude xCAT-buildkit.spec -czf $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz $RPMNAME
+		else	# do not recognize rpm
+			echo "Unrecognized rpm: $RPMNAME"
+			exit 2
 		fi
 
-		cd - >/dev/null
 		rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/$ARCH/$RPMNAME-$VER*rpm
 		echo "Building $RPMROOT/RPMS/$ARCH/$RPMNAME-$VER-snap*.$ARCH.rpm $EMBEDTXT..."
-		rpmbuild $QUIET -ba $RPMNAME/$RPMNAME.spec --target $ARCH
+		rpmbuild $QUIET -ba $RPMNAME/$RPMNAME.spec $TARGET
 		RC=$?
 	fi
 }
@@ -115,7 +125,7 @@ function makenbroot {
 
 
 
-# Make the xCAT-nbroot-core rpm
+# Make the xCAT-genesis rpm
 function makegenesis {
 	DIR="xCAT-nbroot2"
 	RPMNAME="$1"
@@ -172,7 +182,7 @@ else	# linux
 fi
 
 
-if [ "$1" = "xCAT" -o "$1" = "xCATsn" ]; then
+if [ "$1" = "xCAT" -o "$1" = "xCATsn" -o "$1" = "xCAT-buildkit" ]; then
 	exportEmbed $3
 	makexcat $1 $2
 elif [ "$1" = "xCAT-nbroot" -o "$1" = "xCAT-nbroot-core" ]; then

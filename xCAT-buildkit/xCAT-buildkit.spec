@@ -43,9 +43,13 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT
 
 %ifos linux
 cp -aR share/xcat/kits/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/kits/
-chmod -R 644 $RPM_BUILD_ROOT/%{prefix}/share/xcat/kits/*
+#chmod -R 644 $RPM_BUILD_ROOT/%{prefix}/share/xcat/kits/*
+find $RPM_BUILD_ROOT/%{prefix}/share/xcat/kits -type d -exec chmod 755 {} \;
+find $RPM_BUILD_ROOT/%{prefix}/share/xcat/kits -type f -exec chmod 644 {} \;
 cp -a lib/perl/xCAT/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT
-chmod -R 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/*
+#chmod -R 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/*
+find $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT -type d -exec chmod 755 {} \;
+find $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT -type f -exec chmod 644 {} \;
 cp -a bin/* $RPM_BUILD_ROOT/%{prefix}/bin/
 chmod -R 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
 %else
@@ -59,8 +63,10 @@ chmod -R 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-buildkit
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-buildkit
-chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-buildkit/*
-echo $RPM_BUILD_ROOT %{prefix}
+#chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-buildkit/*
+find $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-buildkit -type d -exec chmod 755 {} \;
+find $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-buildkit -type f -exec chmod 644 {} \;
+#echo $RPM_BUILD_ROOT %{prefix}
 
 %clean
 rm -rf $RPM_BUILD_ROOT

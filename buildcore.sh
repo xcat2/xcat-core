@@ -175,9 +175,10 @@ fi
 
 # Build the rest of the noarch rpms
 for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit; do
+	if [ "$EMBED" = "zvm" -a "$rpmname" != "xCAT-server" -a "$rpmname" != "xCAT-UI" ]; then continue; fi		# for zvm embedded env only need to build server and UI
+	if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-buildkit" ]; then continue; fi		# do not build xCAT-buildkit on aix
 	if $GREP $rpmname $SVNUP || [ "$BUILDALL" == 1 ]; then
 		UPLOAD=1
-		if [ "$EMBED" = "zvm" -a "$rpmname" != "xCAT-server" -a "$rpmname" != "xCAT-UI" ]; then continue; fi		# for embedded envs only need to build server special
 		maker $rpmname
 	fi
 	if [ "$OSNAME" = "AIX" ]; then
