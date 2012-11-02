@@ -18,7 +18,7 @@ B<getmacs> I<noderange> [B<-V>| B<--verbose>] [B<-f>] [B<-d>] [B<--arp>] | [B<-D
 
 =head2 blade specific:
 
-B<getmacs> I<noderange> [B<-V>| B<--verbose>] [B<-d>] [B<--arp>]
+B<getmacs> I<noderange> [B<-V>| B<--verbose>] [B<-d>] [B<--arp>] [B<-i> I<ethN>|I<enN>]
 
 =head1 DESCRIPTION
 
@@ -32,7 +32,7 @@ Note: If network adapters are physically assigned to LPARs, getmacs cannot read 
 
 For IBM Flex Compute Node (Compute Node for short) specific:
 
-Note: If "B<-d>" is specified, all the MAC of the blades will be displayed. Otherwise, the number of MAC address that the 'installnic' attribute of the blade specified will be write to mac table.
+Note: If "B<-d>" is specified, all the MAC of the blades will be displayed. If no option specified, the first MAC address of the blade will be written to mac table.
 
 =head1 OPTIONS
 
@@ -87,6 +87,10 @@ Command Version.
 B<-V>         
 
 Verbose output.
+
+B<-i>
+
+Specify the interface whose mac address will be collected and written into mac table. If 4 mac addresses are returned by option '-d', they all are the mac addresses of the blade. The N can start from 0(map to the eth0 of the blade) to 3. If 5 mac addresses are returned, the 1st mac address must be the mac address of the blade's FSP, so the N will start from 1(map to the eth0 of the blade) to 4. 
 
 
 =head1 RETURN VALUE
