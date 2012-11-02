@@ -252,17 +252,18 @@ sub add_known_host
 
     if (defined $hostname)
     {
-        my $sitedomain;
-        my @domain = xCAT::TableUtils->get_site_attribute("domain");
-        if ($domain[0])
-        {
-            $sitedomain = $domain[0];
-        }
+        my $hostdomain;
+		my @hosts;
+		push (@hosts, $hostname);
+		my $nd = xCAT::NetworkUtils->getNodeDomains(\@hosts);
+		my %nodedomains = %$nd;
+		$hostdomain = $nodedomains{$hostname};
+
         $line = "\"";
         $line .= "$hostname,";
-        if ($sitedomain)
+        if ($hostdomain)
         {
-            $line .= "$hostname.$sitedomain,";
+            $line .= "$hostname.$hostdomain,";
         }
         $line .= "$ip_address";
         $line .= " ";
