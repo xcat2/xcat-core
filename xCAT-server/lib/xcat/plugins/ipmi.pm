@@ -1495,7 +1495,7 @@ sub inv {
         $subcommand = "all";
     }
 	if($subcommand eq "all") {
-		@types = qw(model serial deviceid mprom guid misc hw asset firmware mac);
+		@types = qw(model serial deviceid mprom guid misc hw asset firmware mac wwn);
 	}
 	elsif($subcommand eq "asset") {
         $sessdata->{skipotherfru}=1;
@@ -2051,6 +2051,17 @@ sub initfru_zero {
 		$sessdata->{fru_hash}->{$frudex++} = $fru;
 	}
     }
+    if ($fruhash->{board}->{wwns}) {
+	my $macindex=1;
+	foreach my $mac (@{$fruhash->{board}->{wwns}}) {
+		$fru = FRU->new();
+		$fru->rec_type("wwn");
+		$fru->desc("WWN $macindex");
+		$macindex++;
+		$fru->value($mac);
+		$sessdata->{fru_hash}->{$frudex++} = $fru;
+	}
+    }
     if ($fruhash->{board}->{name}->{value}) {
 	    $fru = FRU->new();
     	$fru->rec_type("misc");
@@ -2435,7 +2446,22 @@ sub readcurrfrudevice {
         shift @data;
         push @{$sessdata->{currfrudata}},@data;
         if ($sessdata->{currfrudone}) {
-            add_fruhash($sessdata);
+	    if ($sessdata->{isite}) {
+		#IBM OEM command, d0,51,0 further qualifies the command name, we'll first take a stop at block 0, offset 2, one byte, to get VPD version number
+		#command structured as:
+		#d0,51,0 = command set identifier
+		#lsb of offset
+		#msb of offset
+		#address type (1 for fru id)
+		#address (fru id for our use)
+		#1 - fixed value
+		#lsb - size
+		#msb - size
+		#vpd_base_specivication_ver2.x
+    		$sessdata->{ipmisession}->subcmd(netfn=>0x2e,command=>0x51,data=>[0xd0,0x51,0,0x2,0x0,1,$sessdata->{currfruid},1,1,0],callback=>\&got_vpd_version,callback_args=>$sessdata);
+	    } else {
+            	add_fruhash($sessdata);
+	    }
             return;
         }
     }
@@ -2450,6 +2476,94 @@ sub readcurrfrudevice {
     }
     $sessdata->{currfruchunk}=$chunk;
     $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x11,data=>[$sessdata->{currfruid},$ls,$ms,$chunk],callback=>\&readcurrfrudevice,callback_args=>$sessdata);
+}
+
+sub got_vpd_version {
+    my $rsp = shift;
+    my $sessdata = shift;
+        unless ($rsp and not $rsp->{error} and $rsp->{code} == 0 and $rsp->{data}->[5] == 2) { #unless the query was successful and major vpd version was 2
+												#short over to adding the fru hash as-is
+            	add_fruhash($sessdata);
+		return;
+        }
+	#making it this far, we have affirmative confirmation of ibm oem vpd data, time to chase component mac, wwpn, and maybe mezz firmware
+	#will need:
+	#	block 0, offset 0c8h use the offset to add to block 1 offsets (usually 400h), denoting as $blone
+	#       block 1, $blone+6 - 216 bytes: 6 sets of 36 byte version information (TODO)
+	#	block 1, $blone+0x1d0: port type first 4 bits protocol, last 3 bits addressing
+	#	block 1, $blone+0x240: 64 bytes, up to 8 sets of addresses, mac is left aligned
+	#	block 1, $blone+0x300: if mac+wwn, grab wwn
+        $sessdata->{ipmisession}->subcmd(netfn=>0x2e,command=>0x51,data=>[0xd0,0x51,0,0xc8,0x0,1,$sessdata->{currfruid},1,2,0],callback=>\&got_vpd_block1,callback_args=>$sessdata);
+}
+sub got_vpd_block1 {
+    my $rsp = shift;
+    my $sessdata = shift;
+    unless ($rsp and not $rsp->{error} and $rsp->{code} == 0) { # if this should go wonky, jump ahead
+            	add_fruhash($sessdata);
+		return;
+    }
+    $sessdata->{vpdblock1offset}=$rsp->{data}->[5]<<8+$rsp->{data}->[6];
+    my $ptoffset = $sessdata->{vpdblock1offset} + 0x1d0;
+    $sessdata->{ipmisession}->subcmd(netfn=>0x2e,command=>0x51,data=>[0xd0,0x51,0,$ptoffset&0xff,$ptoffset>>8,1,$sessdata->{currfruid},1,1,0],callback=>\&got_portaddr_type,callback_args=>$sessdata);
+}
+sub got_portaddr_type {
+    my $rsp = shift;
+    my $sessdata = shift;
+    unless ($rsp and not $rsp->{error} and $rsp->{code} == 0) { # if this should go wonky, jump ahead
+            	add_fruhash($sessdata);
+		return;
+    }
+    my $addrtype = $rsp->{data}->[5] & 0b111;
+    if ($addrtype == 0b101) { 
+	$sessdata->{needmultiaddr}=1;
+	$sessdata->{curraddrtype}="mac";
+    } elsif ($addrtype == 0b1) {
+	$sessdata->{curraddrtype}="mac";
+    } elsif ($addrtype == 0b10) {
+	$sessdata->{curraddrtype}="wwn";
+    } else { #for now, skip polling addresses I haven't examined directly
+            	add_fruhash($sessdata);
+		return;
+    }
+    my $addroffset = $sessdata->{vpdblock1offset} + 0x240;
+    $sessdata->{ipmisession}->subcmd(netfn=>0x2e,command=>0x51,data=>[0xd0,0x51,0,$addroffset&0xff,$addroffset>>8,1,$sessdata->{currfruid},1,64,0],callback=>\&got_vpd_addresses,callback_args=>$sessdata);
+
+    
+}
+sub got_vpd_addresses { 
+    my $rsp = shift;
+    my $sessdata = shift;
+    unless ($rsp and not $rsp->{error} and $rsp->{code} == 0) { # if this should go wonky, jump ahead
+            	add_fruhash($sessdata);
+		return;
+    }
+    my @addrdata = @{$rsp->{data}};
+    splice @addrdata,0,5; # remove the header info
+        my $macstring = "1";
+	while ($macstring !~ /^00:00:00:00:00:00/) {
+		my @currmac = splice @addrdata,0,8;
+		unless ((scalar @currmac) == 8) {
+			last;
+		}
+		$macstring = sprintf("%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",@currmac);
+		if ($macstring =~ /^00:00:00:00:00:00:00:00/) { 
+			last;
+		}
+		if ($sessdata->{curraddrtype} eq "mac") {
+			$macstring =~ s/:..:..$//;
+			push @{$sessdata->{currmacs}},$macstring;
+		} elsif ($sessdata->{curraddrtype} eq "wwn") {
+			push @{$sessdata->{currwwns}},$macstring;
+		}
+	}
+	if ($sessdata->{needmultiaddr}) {
+		$sessdata->{needmultiaddr}=0;
+		$sessdata->{curraddrtype}="wwn";
+    		my $addroffset = $sessdata->{vpdblock1offset} + 0x300;
+    		$sessdata->{ipmisession}->subcmd(netfn=>0x2e,command=>0x51,data=>[0xd0,0x51,0,$addroffset&0xff,$addroffset>>8,1,$sessdata->{currfruid},1,64,0],callback=>\&got_vpd_addresses,callback_args=>$sessdata);
+		return;
+	}
+         	add_fruhash($sessdata);
 }
 
 sub parsefru {
@@ -2504,6 +2618,15 @@ sub parsefru {
         $currsize=($bytes->[$curridx+1])*8;
         @currarea=@{$bytes}[$curridx..($curridx+$currsize-1)];
         $fruhash->{board} = parseboard(@currarea);
+    }
+    if (ref $global_sessdata->{currmacs}) {
+	$fruhash->{board}->{macaddrs}=[];
+	push @{$fruhash->{board}->{macaddrs}},@{$global_sessdata->{currmacs}};
+	delete $global_sessdata->{currmacs}; # consume the accumulated mac addresses to avoid afflicting subsequent fru
+    }
+    if (ref $global_sessdata->{currwwns}) {
+	push @{$fruhash->{board}->{wwns}},@{$global_sessdata->{currwwns}};
+	delete $global_sessdata->{currwwns}; # consume wwns
     }
     if ($bytes->[4]) { #Product info area present, will probably be thoroughly modified
         $curridx=$bytes->[4]*8;
@@ -2693,7 +2816,7 @@ sub parseboard {
 	#time to process the mac field...
 	my $macdata = $boardinf{extra}->[6]->{value};
         my $macstring = "1";
-	while ($macstring !~ /00:00:00:00:00:00/) {
+	while ($macstring !~ /00:00:00:00:00:00/ and not ref $global_sessdata->{currmacs}) {
 		my @currmac = splice @$macdata,0,6;
 		unless ((scalar @currmac) == 6) {
 			last;
@@ -2704,7 +2827,7 @@ sub parseboard {
 		}
 	}
 	delete $boardinf{extra};
-    }
+    } 
     return \%boardinf;
 }
 sub parsechassis {
