@@ -65,17 +65,10 @@ sub process_request {
    }
    my $iscsitab = xCAT::Table->new('iscsi'); 
    my @nodes = @{$request->{node}};
-   #my $sitetab = xCAT::Table->new('site');
-   #unless ($sitetab) {
-   #   $callback->({error=>"Fatal error opening site table",errorcode=>[1]});
-   #   return;
-   #}
-   my $domain;
-   #(my $ipent) = $sitetab->getAttribs({key=>'domain'},'value');
-   my @entries =  xCAT::TableUtils->get_site_attribute("domain");
-   my $t_entry = $entries[0];
-   if ( defined($t_entry) ) { $domain = $t_entry; }
-   #($ipent) = $sitetab->getAttribs({key=>'iscsidir'},'value');
+
+   my $nd = xCAT::NetworkUtils->getNodeDomains(\@nodes);
+   my %nodedomains = %{$nd};
+
    my $iscsiprefix;
    my @entries =  xCAT::TableUtils->get_site_attribute("iscsidir");
    my $t_entry = $entries[0];
@@ -145,6 +138,7 @@ sub process_request {
          my @date = localtime;
          my $year = 1900+$date[5];
          my $month = $date[4];
+		 my $domain = $nodedomains{$node};
          $targname = "iqn.$year-$month.$domain:$node";
          $iscsitab->setNodeAttribs($node,{target=>$targname});
       }
