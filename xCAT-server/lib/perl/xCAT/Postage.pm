@@ -101,7 +101,6 @@ sub create_mypostscript_or_not {
   my $nodes  = $request->{node};
 
   my $tftpdir = xCAT::TableUtils::getTftpDir();
-  system("rm -rf $tftpdir/mypostscripts");
     #if precreatemypostscripts=1, create each mypostscript for each node
   my @entries =  xCAT::TableUtils->get_site_attribute("precreatemypostscripts");
   if ($entries[0] ) {
@@ -112,7 +111,13 @@ sub create_mypostscript_or_not {
             if ($request->{scripttype}) { $state = $request->{scripttype}->[0];}
             xCAT::Postage::makescript($nodes, $state, $callback);   
         }
-  }
+  } else {
+       #if the site.precreatemypostscripts=0, we will remove the mypostscript.$n
+       foreach my $n (@$nodes ) {
+               unlink("$tftpdir/mypostscripts/mypostscript.$n");
+       }  
+    }
+
 
 }
 
