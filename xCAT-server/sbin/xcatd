@@ -308,11 +308,12 @@ if ($inet6support) {
 	my $validclient=0;
 	my $node;
 	my $domain;
-	my ($tmp) = $sitetab->getAttribs({'key'=>'domain'},'value');
-	if (defined $tmp->{value}) {
-		$domain = $tmp->{value};
-	}
+
+	my $nd = xCAT::NetworkUtils->getNodeDomains(\@clients);
+	my %nodedomains = %{$nd};
+
 	foreach my $client (@clients) {
+		$domain = $nodedomains{$client};
 		$client =~ s/\..*//;
 		if ($domain) {
 			$client =~ s/\.$domain//;
@@ -967,18 +968,23 @@ until ($quit) {
       $peername=undef;
     }
     populate_site_hash();
-    $domain = $::XCATSITEVALS{domain};
-
+    
 if ($inet6support) {
     $peerhost = gethostbyaddr($connection->peeraddr,AF_INET6);
 } else {
     $peerhost = gethostbyaddr($connection->peeraddr,AF_INET);
 }
 
-
     unless ($peerhost) { $peerhost = gethostbyaddr($connection->peeraddr,AF_INET); }
     $peerfqdn=$peerhost;
     my $peerhostorg=$peerhost;  # save original with domain for validation
+
+	my @hosts;
+	push (@hosts, $peerhost);
+	my $nd = xCAT::NetworkUtils->getNodeDomains(\@hosts);
+	my %nodedomains = %$nd;
+	$domain = $nodedomains{$peerhost};
+
     if ($domain) {
         # strip off domain if set
         $peerhost && $peerhost =~ s/\.$domain\.*$//;
