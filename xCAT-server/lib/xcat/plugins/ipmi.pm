@@ -1572,6 +1572,7 @@ sub add_textual_fru {
     my $subcategory = shift;
     my $types = shift;
     my $sessdata = shift;
+    my %args = @_;
 
     if ($parsedfru->{$category} and $parsedfru->{$category}->{$subcategory}) {
         my $fru;
@@ -1582,10 +1583,16 @@ sub add_textual_fru {
         } else {
             @subfrus = ($parsedfru->{$category}->{$subcategory})
         }
+	my $index=0;
         foreach (@subfrus) {
+	    $index++;
             $fru = FRU->new();
             $fru->rec_type($types);
+	    if ($args{addnumber}) {  
+            $fru->desc($description." ".$index);
+		} else {
             $fru->desc($description);
+		}
             if (not ref $_) {
                 $fru->value($_);
             } else {
@@ -1613,6 +1620,8 @@ sub add_textual_frus {
     add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacturer",$category,"manufacturer",$type,$sessdata);
     add_textual_fru($parsedfru,$desc." ".$categorydesc."Serial Number",$category,"serialnumber",$type,$sessdata);
     add_textual_fru($parsedfru,$desc." ".$categorydesc."Version",$category,"version",$type,$sessdata);
+    add_textual_fru($parsedfru,$desc." ".$categorydesc."MAC Address",$category,"macaddrs","mac",$sessdata,addnumber=>1);
+    add_textual_fru($parsedfru,$desc." ".$categorydesc."WWN",$category,"wwns","wwn",$sessdata,addnumber=>1);
     add_textual_fru($parsedfru,$desc." ".$categorydesc."",$category,"name",$type,$sessdata);
     if ($parsedfru->{$category}->{builddate}) {
         add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacture Date",$category,"builddate",$type,$sessdata);
