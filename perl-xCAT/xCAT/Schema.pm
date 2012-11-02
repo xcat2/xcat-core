@@ -450,7 +450,7 @@ mpa => {
     table_desc => 'Contains info about each Management Module and how to access it.',
  descriptions => {
   mpa => 'Hostname of the management module.',
-  username => 'Userid to use to access the management module.  If not specified, the key=blade row in the passwd table is used as the default.',
+  username => 'Userid to use to access the management module.',
   password => 'Password to use to access the management module.  If not specified, the key=blade row in the passwd table is used as the default.',
   displayname => 'Alternative name for BladeCenter chassis. Only used by PCM.',
   slots => 'The number of available slots in the chassis. For PCM, this attribute is used to store the number of slots in the following format:  <slot rows>,<slot columns>,<slot orientation>  Where:
