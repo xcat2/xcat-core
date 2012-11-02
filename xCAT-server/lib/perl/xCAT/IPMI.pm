@@ -383,6 +383,8 @@ sub subcmd {
     if ($self->{confalgo}) {
         $type = $type | 0b10000000; #add secrecy
     }
+    $self->{expectedcmd}=$args{command};
+    $self->{expectednetfn}=$args{netfn}+1;
     $self->sendpayload(payload=>\@payload,type=>$type,delayxmit=>$args{delayxmit});
 }
 
@@ -807,7 +809,7 @@ sub parse_ipmi_payload {
     my @payload = @_;
     #for now, just trash the headers, this has been validated to death anyway
     #except seqlun, that one is important
-    if ($payload[4] != $self->{seqlun} or $payload[0] != $self->{rqaddr}) {
+    unless ($payload[4] == $self->{seqlun} and $payload[0] == $self->{rqaddr} and $payload[1]>>2 == $self->{expectednetfn} and $payload[5] == $self->{expectedcmd} ) {
 	#both sequence number and arqaddr must match, because we are using rqaddr to extend the sequence number
         #print "Successfully didn't get confused by stale response ".$payload[4]." and ".($self->{seqlun}-4)."\n";
         #hexdump(@payload);
