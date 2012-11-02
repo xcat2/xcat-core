@@ -25,6 +25,7 @@ use xCAT::SvrUtils;
 my $output_handler;
 my $newiqns;
 my $domain;
+my %nodedomains;
 my $iscsitab;
 my $nodetypeinfo;
 
@@ -57,17 +58,10 @@ sub process_request {
         return;
     }
     my @nodes = @{$request->{node}};
-    #my $sitetab = xCAT::Table->new('site');
-    #(my $dent) = $sitetab->getAttribs({key=>'domain'},'value');
-    my @entries =  xCAT::TableUtils->get_site_attribute("domain");
-    my $t_entry = $entries[0];
-    if ( defined($t_entry) ) {
-        $domain = $t_entry;
-        $domain = join(".",reverse(split(/\./,$domain)));
-    } else {
-        xCAT::SvrUtils::sendmsg([1,"Cannot determine domain name for iqn generation from site table"], $output_handler);
-        return;
-    }
+
+	my $nd = xCAT::NetworkUtils->getNodeDomains(\@nodes);
+	%nodedomains = %{$nd};
+
     my $nodetype =xCAT::Table->new('nodetype',-create=>0);
     unless ($nodetype) {
         xCAT::SvrUtils::sendmsg([1,"ONTAP plugin requires nodetype table to be populated"], $output_handler);
@@ -115,6 +109,15 @@ sub build_lunmap {
     foreach $node (@nodes) {
         $tgr = undef;
         $iqn = $iscsicfg{$controller}->{$node}->{iname};
+
+		$domain = $nodedomains{$node};
+		if ( $domain ) {
+			$domain = join(".",reverse(split(/\./,$domain)));
+		} else {
+			xCAT::SvrUtils::sendmsg([1,"Cannot determine domain name for iqn generation"], $output_handler);
+			next;  # ????
+		}
+
         unless ($iqn) { #We must control client iqn, ONTAP acls require it
             $newiqns->{$node} = sprintf("iqn.%d-%02d.%s:%s-initiator",$year,$month,$domain,$node);
             $iqn = $newiqns->{$node};
