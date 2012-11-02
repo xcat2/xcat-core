@@ -711,7 +711,7 @@ sub subvars_for_mypostscript {
   $tmplerr=undef; #clear tmplerr since we are starting fresh
   my %namedargs = @_; #further expansion of this function will be named arguments, should have happened sooner.
 
-  my $installroot =
+  my $installroot; 
   my @entries =  xCAT::TableUtils->get_site_attribute("installdir"); 
   if($entries[0]) {
        $installroot = $entries[0];
@@ -797,6 +797,11 @@ sub subvars_for_mypostscript {
 
   getservicenode();
   #print Dumper(\%::GLOBAL_SN_HASH);
+  #
+  my $scriptdir = "$tftpdir/mypostscripts/";
+  if( ! (-d $scriptdir )) {
+      mkdir($scriptdir,0777);
+  }
 
   foreach my $n (@$nodes ) {
       $node = $n; 
@@ -804,7 +809,7 @@ sub subvars_for_mypostscript {
       my $script;
       my $scriptfile; 
       $scriptfile = "$tftpdir/mypostscripts/mypostscript.$node";
-      mkpath(dirname($scriptfile));
+      #mkpath(dirname($scriptfile));
       open($script, ">$scriptfile");
 
       unless ($script)
