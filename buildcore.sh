@@ -174,7 +174,7 @@ if [ "$OSNAME" = "AIX" ]; then
 fi
 
 # Build the rest of the noarch rpms
-for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-build; do
+for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit; do
 	if $GREP $rpmname $SVNUP || [ "$BUILDALL" == 1 ]; then
 		UPLOAD=1
 		if [ "$EMBED" = "zvm" -a "$rpmname" != "xCAT-server" -a "$rpmname" != "xCAT-UI" ]; then continue; fi		# for embedded envs only need to build server special
