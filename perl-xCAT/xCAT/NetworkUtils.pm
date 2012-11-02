@@ -70,29 +70,16 @@ sub getNodeDomains()
 {
     my $class    = shift;
 	my $nodes  = shift;
-	my $callback = shift;
 
 	my @nodelist = @$nodes;
 	my %nodedomains;
 
 	# Get the network info for each node
     my %nethash = xCAT::DBobjUtils->getNetwkInfo(\@nodelist, $callback);
-    if (!(%nethash) && $::VERBOSE)
-    {
-        my $rsp;
-        push @{$rsp->{data}}, "Could not get xCAT network definitions for one or more nodes.\n";
-        xCAT::MsgUtils->message("W", $rsp, $callback);
-    }
 
 	# get the site domain value
 	my @domains = xCAT::TableUtils->get_site_attribute("domain");
 	my $sitedomain = $domains[0];
-	if (!$sitedomain && $::VERBOSE)
-	{
-		my $rsp;
-		push @{$rsp->{data}}, "Cannot get a domain value from the cluster site definition.\n";
-		xCAT::MsgUtils->message("W", $rsp, $callback);
-	}
 
 	# for each node - set hash value to network domain or default 
 	#		to site domain 
