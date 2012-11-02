@@ -1617,6 +1617,7 @@ sub add_textual_frus {
     add_textual_fru($parsedfru,$desc." ".$categorydesc."Part Number",$category,"partnumber",$type,$sessdata);
     add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacturer",$category,"manufacturer",$type,$sessdata);
     add_textual_fru($parsedfru,$desc." ".$categorydesc."Serial Number",$category,"serialnumber",$type,$sessdata);
+    add_textual_fru($parsedfru,$desc." ".$categorydesc."FRU Number",$category,"frunum",$type,$sessdata);
     add_textual_fru($parsedfru,$desc." ".$categorydesc."Version",$category,"version",$type,$sessdata);
     add_textual_fru($parsedfru,$desc." ".$categorydesc."MAC Address",$category,"macaddrs","mac",$sessdata,addnumber=>1);
     add_textual_fru($parsedfru,$desc." ".$categorydesc."WWN",$category,"wwns","wwn",$sessdata,addnumber=>1);
