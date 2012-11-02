@@ -997,10 +997,8 @@ function setOSImageCookies(data) {
         
         // Only save install boot
         if (provMethod.indexOf('install') > -1) {
-            if (!osComments) {
-                osComments = "No descritption";
-                imageNames.push(osImage + ':' + osComments);
-            } else {
+            if (osComments) {
+            	// Only enable images where description and selectable comments exist
                 // Set default description and selectable
                 selectable = "no";
                 desc = "No description";
