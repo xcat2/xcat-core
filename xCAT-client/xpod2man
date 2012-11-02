@@ -163,17 +163,15 @@ EOS1
 
 # extract the summary for each cmd from its man page
 foreach my $manpage (@_) {
-	my ($sectionnum) = $manpage =~ /\.(\d+)\.pod$/;
+	my ($cmd, $sectionnum) = $manpage =~ /([^\/]+)\.(\d+)\.pod$/;
 	# Suck in the whole file, then we will parse it.
 	open(MANPAGE, "$manpage") or die "Error: could not open $manpage for reading.\n";
 	my @contents = <MANPAGE>;
 	my $wholemanpage = join('', @contents);
 	close(MANPAGE);
 	# This regex matches: optional space, =head1, space, title, space, cmd, space, description, newline
-	my ($cmd, $description) = $wholemanpage =~ /^\s*=head1\s+\S+\s+(\S+)\s+(.+?)\n/si;
-	if (!defined($cmd)) { print "Warning: $manpage is not in a recognized structure.  It will be ignored.\n"; next; }
+	my ($description) = $wholemanpage =~ /^\s*=head1\s+\S+\s+\S+\s+(.+?)\n/si;
 	if (!defined($description)) { print "Warning: $manpage does not have a description for $cmd.  It will be ignored.\n"; next; }
-	$cmd =~ s/^.<(.+)>$/$1/;		# if the cmd name has pod formatting around it, strip it off
 	$description =~ s/^-\s*//;		# if the description has a leading hypen, strip it off
 	print FILE "\n=item L<$cmd($sectionnum)|$cmd.$sectionnum>\n\n".$description."\n";
 }

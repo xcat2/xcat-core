@@ -1,17 +1,12 @@
 =head1 NAME
 
-Usage:
-        rmkit [-h|--help]
-        rmkit [-f|--force] [-V|--verbose] <kitlist>] 
-
-
-B<addkit> - Remove Kits from xCAT
+B<rmkit> - Remove Kits from xCAT
 
 =head1 SYNOPSIS
 
-B<addkit> [-h|--help]
+B<rmkit> [-h|--help]
 
-B<addkit> [-V|--verbose] [-f|--force] <kitlist>
+B<rmkit> [-V|--verbose] [-f|--force] <kitlist>
 
 =head1 DESCRIPTION
 
