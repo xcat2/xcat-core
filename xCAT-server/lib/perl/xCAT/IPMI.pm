@@ -830,6 +830,9 @@ sub parse_ipmi_payload {
         #hexdump(@payload);
         return 1; #response mismatch
     }
+    #set to impossible values to reflect the fact we expect *no* command/nnetfn at the moment
+    $self->{expectednetfn}=0x1ff;
+    $self->{expectedcmd}=0x1ff;
     $self->{seqlun} += 4; #increment by 1<<2
     if ($self->{seqlun} > 0xff) { #overflow case
 	#Problem with rqaddr iteration strategy to get more sequence numbers, changing swid invalidates reservation ids for some BMCs...
