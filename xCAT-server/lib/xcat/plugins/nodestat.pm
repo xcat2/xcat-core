@@ -656,7 +656,7 @@ sub process_request_nmap {
 	      }
 	      $appsd =~ s/,$//;
 	      my $target=$currnode;
-	      if ($hostsents{$target} and $target = $hostsents{$target}->[0]->{ip}) { $target = $hostsents{$target}->[0]->{ip}; }
+	      if ($hostsents{$target} and $hostsents{$target}->[0]->{ip}) { $target = $hostsents{$target}->[0]->{ip}; }
 
               if ($status or ($installquerypossible and $status = installer_query($target))) { #pingable, but no *clue* as to what the state may be
                   $ret->{$currnode}->{'status'}="ping";
