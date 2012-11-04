@@ -16,7 +16,7 @@ use warnings "all";
 use Time::HiRes qw/time/;
 
 use IO::Socket::INET qw/!AF_INET6 !PF_INET6/;
-my $initialtimeout=0.809;
+my $initialtimeout=1.0;
 use constant STATE_OPENSESSION=>1;
 use constant STATE_EXPECTINGRAKP2=>2;
 use constant STATE_EXPECTINGRAKP4=>3;
@@ -44,6 +44,7 @@ use IO::Select;
 #use Data::Dumper;
 use Digest::MD5 qw/md5/;
 my $pendingpackets=0;
+my %tabooseq;
 my $maxpending; #determined dynamically based on rcvbuf detection
 my $ipmi2support = eval {
     require Digest::SHA1;
@@ -371,6 +372,15 @@ sub checksum {
 sub subcmd {
     my $self = shift;
     my %args = @_;
+    $self->{expectedcmd}=$args{command};
+    $self->{expectednetfn}=$args{netfn}+1;
+    my $seqincrement=7;
+    while ($tabooseq{$self->{expectednetfn}}->{$self->{expectedcmd}}->{$self->{seqlun}} and $seqincrement) { #avoid using a seqlun formerly marked 'taboo', but don't advance by more than 7, just in case
+	   $tabooseq{$self->{expectednetfn}}->{$self->{expectedcmd}}->{$self->{seqlun}}--; #forgive a taboo lun over time...
+	    $self->{seqlun} += 4; #increment by 1<<2
+            $self->{seqlun} &= 0xff; #make sure we don't get too large a seqlun
+	    $seqincrement--; #assure seq number doesn't go beyond 7 even if it means going taboo, one enhancement would be to pick the *least* taboo instead of just giving up
+    }
     my $rsaddr=0x20; #figrue 13-4, rssa by old code
     my @rnl = ($rsaddr,$args{netfn}<<2);
     my @rest = ($self->{rqaddr},$self->{seqlun},$args{command},@{$args{data}});
@@ -384,8 +394,6 @@ sub subcmd {
     if ($self->{confalgo}) {
         $type = $type | 0b10000000; #add secrecy
     }
-    $self->{expectedcmd}=$args{command};
-    $self->{expectednetfn}=$args{netfn}+1;
     $self->sendpayload(payload=>\@payload,type=>$type,delayxmit=>$args{delayxmit});
 }
 
@@ -453,9 +461,9 @@ sub timedout {
     	return;
     }
     $self->{nowait}=1;
-    $self->{timeout} = $self->{timeout}*1.5;
+    $self->{timeout} += 0.5+(0.5*rand()); #$self->{timeout}*2;
     if ($self->{noretry}) { return; }
-    if ($self->{timeout} > 7) { #giveup, really
+    if ($self->{timeout} > 5) { #giveup, really
         $self->{timeout}=$initialtimeout;
         my $rsp={};
         $rsp->{error} = "timeout";
@@ -474,6 +482,7 @@ sub timedout {
     } elsif ($self->{sessionestablishmentcontext} == STATE_EXPECTINGRAKP4) { #in this particular case, we want to craft a new rmcp session request with a new client side session id, to aid in distinguishing retry from new
     	$self->relog();
     } else {
+        $self->{hasretried}=1; #remember that we have retried at the moment
     	$self->sendpayload(%{$self->{pendingargs}},nowait=>1); #do not induce the xmit to wait for packets, just spit it out.  timedout is in a wait-for-packets loop already, so it's fine
     }
    $self->{nowait}=0;
@@ -830,6 +839,10 @@ sub parse_ipmi_payload {
         #hexdump(@payload);
         return 1; #response mismatch
     }
+    if ($self->{hasretried}) { #if we sent this out multiple times, mark the sequence as taboo
+	$self->{hasretried}=0;
+	$tabooseq{$self->{expectednetfn}}->{$self->{expectedcmd}}->{$self->{seqlun}}=16; #consider a lun taboo for 16 overflow cycles 
+    }
     #set to impossible values to reflect the fact we expect *no* command/nnetfn at the moment
     $self->{expectednetfn}=0x1ff;
     $self->{expectedcmd}=0x1ff;
@@ -967,7 +980,7 @@ sub sendpayload {
     $sessions_waiting{$self}->{ipmisession}=$self;
     if ($args{delayxmit}) {
 	$sessions_waiting{$self}->{timeout}=time()+$args{delayxmit};
-	$self->{timeout}=$initialtimeout/1.5; #since we are burning one of the retry attempts, start the backoff algorithm faster to make it come out even
+	$self->{timeout}=$initialtimeout/2; #since we are burning one of the retry attempts, start the backoff algorithm faster to make it come out even
 	undef $args{delayxmit};
         return; #don't actually transmit packet, use retry timer to start us off
     } else {
