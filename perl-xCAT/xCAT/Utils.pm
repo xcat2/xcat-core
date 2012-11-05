@@ -3070,7 +3070,8 @@ sub noderangecontainsMn
  my @nodelist=$tab->getAllNodeAttribs(['node','groups']);
  foreach my $n (@nodelist) {
   if (defined($n->{'groups'})) {
-   if ($n->{'groups'} eq "__mgmtnode") {  # this is the MN
+   my @groups=split(",",$n->{'groups'});
+   if ((grep (/__mgmtnode/,@groups))) {  # this is the MN
       $mname=$n->{'node'};
       last;
    }
