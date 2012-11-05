@@ -606,7 +606,7 @@ Usage:
     if (exists $allips{$args_dict{'ip'}}){
         setrsp_errormsg("Specified IP address $args_dict{'ip'} conflicts with IPs in database");
         return;
-    }elsif((xCAT::NetworkUtils->validate_ip($args_dict{'ip'}))[0][0] ){
+    }elsif((xCAT::NetworkUtils->validate_ip($args_dict{'ip'}))[0]->[0] ){
         setrsp_errormsg("Specified IP address $args_dict{'ip'} is invalid");
         return;
     }elsif(xCAT::NetworkUtils->isReservedIP($args_dict{'ip'})){
@@ -1462,7 +1462,7 @@ sub validate_node_entry{
         }elsif ($_ eq "ip"){
             if (exists $allips{$node_entry{$_}}){
                 return "Specified IP address $node_entry{$_} conflicts with IPs in database or hostinfo file";
-            }elsif((xCAT::NetworkUtils->validate_ip($node_entry{$_}))[0][0] ){
+            }elsif((xCAT::NetworkUtils->validate_ip($node_entry{$_}))[0]->[0] ){
                 return "Specified IP address $node_entry{$_} is invalid";
             }elsif(xCAT::NetworkUtils->isReservedIP($node_entry{$_})){
                 return "Specified IP address $node_entry{$_} is invalid";
