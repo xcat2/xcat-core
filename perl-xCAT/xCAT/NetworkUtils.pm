@@ -75,7 +75,7 @@ sub getNodeDomains()
 	my %nodedomains;
 
 	# Get the network info for each node
-    my %nethash = xCAT::DBobjUtils->getNetwkInfo(\@nodelist, $callback);
+    my %nethash = xCAT::DBobjUtils->getNetwkInfo(\@nodelist);
 
 	# get the site domain value
 	my @domains = xCAT::TableUtils->get_site_attribute("domain");
