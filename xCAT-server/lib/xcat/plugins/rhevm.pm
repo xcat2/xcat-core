@@ -3844,12 +3844,7 @@ sub getrvidparms {
             $consparam{method} = 'kvm';
         
             # get the attributes for vm
-            my $api = "/api/vms?search=$node";
-            my $method = "GET";
-            my $content = "";
-        
-            my $request = genreq($ref_rhevm, $method, $api, $content);
-            my ($rc, $response) = send_req($ref_rhevm, $request->as_string());
+            my ($rc, undef, undef, $response) = search_src($ref_rhevm, "vms", "$node");
         
             my $vmid;
             my $rsp;
@@ -3880,11 +3875,11 @@ sub getrvidparms {
             }
         
             # get the password ticket for the external program to accesss the VNC
-            $api = "/api/vms/$vmid/ticket";
-            $method = "POST";
-            $content = "<action><ticket><expiry>120</expiry></ticket></action>";
+            my $api = "/api/vms/$vmid/ticket";
+            my $method = "POST";
+            my $content = "<action><ticket><expiry>120</expiry></ticket></action>";
         
-            $request = genreq($ref_rhevm, $method, $api, $content);
+            my $request = genreq($ref_rhevm, $method, $api, $content);
             ($rc, $response) = send_req($ref_rhevm, $request->as_string());
         
             if ($rc) {
