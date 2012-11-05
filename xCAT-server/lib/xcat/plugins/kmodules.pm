@@ -314,7 +314,7 @@ sub lskmodules {
         }
 
         # Return the module list for this rpm/img file
-        my $rsp={};
+        my $rsp;
         foreach my $mn (@modlist) {
            if ($::opt_x) {
                my %data_entry;
@@ -326,7 +326,9 @@ sub lskmodules {
            }
         }
         #xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
-        $::CALLBACK->($rsp);
+        if ( $rsp ) { 
+            $::CALLBACK->($rsp);
+        }
 
     }
 
@@ -569,7 +571,7 @@ sub mods_in_rpm {
   my $tmp_path = "/tmp/lskmodules_expanded_rpm";
   mkpath($tmp_path);
   if (-r $krpm) {
-     if (system ("cd $tmp_path; rpm2cpio $krpm | cpio -idum *.ko")) {
+     if (system ("cd $tmp_path; rpm2cpio $krpm | cpio -idum *.ko > /dev/null 2>&1 ; cd - > /dev/null 2>&1")) {
          my $rsp;
          push @{ $rsp->{data} }, "Unable to extract files from the rpm $krpm.";
          xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
