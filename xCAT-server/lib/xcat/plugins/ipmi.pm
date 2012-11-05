@@ -1698,7 +1698,6 @@ sub got_bmc_fw_info {
    	$sessdata->{fru_hash}->{mprom} = $fru;
     $sessdata->{isanimm}=$isanimm;
     if ($isanimm) {
-        #$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0,0,0,0],callback=>\&get_uefi_version_with_fmapi,callback_args=>$sessdata);
 	get_imm_property(property=>"/v2/bios/build_id",callback=>\&got_bios_buildid,sessdata=>$sessdata);
     } else {
         initfru_with_mprom($sessdata);
@@ -1811,121 +1810,6 @@ sub got_imm_property {
 	}
    }
    $sessdata->{property_callback}->(%res);
-}
-sub get_uefi_version_with_fmapi {
-    if (check_rsp_errors(@_)) {
-        return;
-    }
-    my $rsp = shift;
-    my $sessdata = shift;
-    my @data = @{$rsp->{data}};
-    unless ($data[2] == 0 and $data[3] = 3 and $data[4]==0x12 and $data[5]==2) { #we support this major version only 
-        initfru_with_mprom($sessdata);
-        return;
-    }
-    $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[1,0,0,5,0x84,0x62,0x69,0x6f,0x73],callback=>\&get_uefi_version_with_xid,callback_args=>$sessdata);
-}
-
-sub get_uefi_version_with_xid {
-    if (check_rsp_errors(@_)) {
-        return;
-    }
-    my $rsp = shift;
-    my $sessdata = shift;
-    my @data = @{$rsp->{data}};
-    if ($data[2] != 0 or $data[3] != 5 or $data[4] != 0x44) {
-        xCAT::SvrUtils::sendmsg([1,"Error1 retrieving UEFI build version"],$callback,$sessdata->{node},%allerrornodes);
-        return;
-    }
-    splice @data,0,5;
-    $sessdata->{fmapixid} = \@data;
-    $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[3,0,0,0xa,0x44,@{$sessdata->{fmapixid}},0x84,0x62,0x69,0x6f,0x73],callback=>\&waitfor_openxid,callback_args=>$sessdata);
-}
-
-sub waitfor_openxid {
-    if (check_rsp_errors(@_)) {
-        return;
-    }
-    my $rsp = shift;
-    my $sessdata = shift;
-    my @data = @{$rsp->{data}};
-    if ($data[2] != 0) {
-        xCAT::SvrUtils::sendmsg([1,"Error2 retrieving UEFI build version"],$callback,$sessdata->{node},%allerrornodes);
-        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x4,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_closed,callback_args=>$sessdata);
-        return;
-    }
-    if ((scalar @data) > 4 and $data[5] == 0x40) { #ready to proceed
-        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0xa,0,0,0xf,0x44,@{$sessdata->{fmapixid}},0x87,0x62,0x75,0x69,0x6C,0x64,0x69,0x64,0x11,0x52],callback=>\&got_uefi_buildid,callback_args=>$sessdata);
-    } else {
-        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x9,0,0,0x5,0x44,@{$sessdata->{fmapixid}}],callback=>\&waitfor_openxid,callback_args=>$sessdata);
-    }
-}
-sub got_uefi_buildid {
-    if (check_rsp_errors(@_)) {
-        return;
-    }
-    my $rsp = shift;
-    my $sessdata = shift;
-    my @data = @{$rsp->{data}};
-    if ($data[2] != 0) {
-        xCAT::SvrUtils::sendmsg([1,"Error3 retrieving UEFI build version"],$callback,$sessdata->{node},%allerrornodes);
-        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x4,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_closed,callback_args=>$sessdata);
-        return;
-    }
-    my $buildsize = $data[4]&0x7f;
-    my @buildid = splice @data,5,$buildsize;
-    $sessdata->{biosbuildid} = pack("C*",@buildid);
-    $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0xa,0,0,0x14,0x44,@{$sessdata->{fmapixid}},0x8c,0x62,0x75,0x69,0x6C,0x64,0x76,0x65,0x72,0x73,0x69,0x6F,0x6E,0x11,0x52],callback=>\&got_uefi_buildversion,callback_args=>$sessdata);
-}
-sub got_uefi_buildversion {
-    if (check_rsp_errors(@_)) {
-        return;
-    }
-    my $rsp = shift;
-    my $sessdata = shift;
-    my @data = @{$rsp->{data}};
-    if ($data[2] != 0) {
-        xCAT::SvrUtils::sendmsg([1,"Error4 retrieving UEFI build version"],$callback,$sessdata->{node},%allerrornodes);
-        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x4,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_closed,callback_args=>$sessdata);
-        return;
-    }
-    my $buildsize = $data[4]&0x7f;
-    my @buildid = splice @data,5,$buildsize;
-    $sessdata->{biosbuildversion} = pack("C*",@buildid);
-    $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0xa,0,0,0x11,0x44,@{$sessdata->{fmapixid}},0x89,0x62,0x75,0x69,0x6C,0x64,0x64,0x61,0x74,0x65,0x11,0x52],callback=>\&got_uefi_builddate,callback_args=>$sessdata);
-}
-sub got_uefi_builddate {
-    if (check_rsp_errors(@_)) {
-        return;
-    }
-    my $rsp = shift;
-    my $sessdata = shift;
-    my @data = @{$rsp->{data}};
-    if ($data[2] != 0) {
-        xCAT::SvrUtils::sendmsg([1,"Error5 retrieving UEFI build version"],$callback,$sessdata->{node},%allerrornodes);
-        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x4,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_closed,callback_args=>$sessdata);
-        return;
-    }
-    my $buildsize = $data[4]&0x7f;
-    my @buildid = splice @data,5,$buildsize;
-    $sessdata->{biosbuilddate} = pack("C*",@buildid);
-    my $bver = $sessdata->{biosbuildversion}." (".$sessdata->{biosbuildid}." ".$sessdata->{biosbuilddate}.")";
-    my $fru = FRU->new();
-   	$fru->rec_type("bios,uefi,firmware");
-   	$fru->desc("UEFI Version");
-   	$fru->value($bver);
-    $sessdata->{fru_hash}->{uefi} = $fru;
-    $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x4,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_closed,callback_args=>$sessdata);
-}
-sub fmapi_xid_closed {
-    my $rsp = shift;
-    my $sessdata=shift;
-    $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x2,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_destroyed,callback_args=>$sessdata);
-}
-sub fmapi_xid_destroyed {
-    my $rsp = shift;
-    my $sessdata = shift;
-    initfru_with_mprom($sessdata);
 }
 
 sub initfru_withguid {
