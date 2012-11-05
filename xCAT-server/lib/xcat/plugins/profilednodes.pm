@@ -13,6 +13,7 @@ package xCAT_plugin::profilednodes;
 use strict;
 use warnings;
 use Getopt::Long qw(:config no_ignore_case);
+use Data::Dumper;
 require xCAT::Table;
 require xCAT::DBobjUtils;
 require xCAT::Utils;
@@ -356,29 +357,26 @@ Usage:
     setrsp_progress("Import nodes started.");
     setrsp_progress("call mkdef to create nodes.");
     my $warnstr = "";
-    my $retref = xCAT::Utils->runxcmd({command=>["mkdef"], stdin=>[$retstr_gen], arg=>['-z']}, $request_command, 0, 1);
-    my $retstr = get_cmd_return($retref);
-    xCAT::MsgUtils->message('S', "The return message of running mkdef: $retstr");
+    my $retref = xCAT::Utils->runxcmd({command=>["mkdef"], stdin=>[$retstr_gen], arg=>['-z']}, $request_command, 0, 2);
+    my $retstrref = parse_runxcmd_ret($retref);
     # runxcmd failed.
     if ($::RUNCMD_RC != 0){
-        setrsp_progress("Warning: failed to import some nodes into db."); 
-        $warnstr = "Warning: failed to import some nodes into db while running mkdef. details: $retstr";
+        $warnstr = "Warning: failed to import some nodes into db while running mkdef.";
+        setrsp_progress($warnstr); 
+        if ($retstrref->[1]) {
+            $warnstr .= "Details: $retstrref->[1]";
+        }
     }
 
     my @nodelist = keys %hostinfo_dict;
     setrsp_progress("call nodemgmt plugins.");
-    $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>\@nodelist}, $request_command, 0, 1);
-    $retstr = get_cmd_return($retref);
-    xCAT::MsgUtils->message('S', "The return message of running kitnodeadd: $retstr");
+    $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>\@nodelist}, $request_command, 0, 2);
+    $retstrref = parse_runxcmd_ret($retref);
     if ($::RUNCMD_RC != 0){
-        $warnstr .= "Warning: failed to run command kitnodeadd. details: $retstr";
-    }
-
-    $retref = xCAT::Utils->runxcmd({command=>["kitnodefinished"], node=>\@nodelist}, $request_command, 0, 1);
-    $retstr = get_cmd_return($retref);
-    xCAT::MsgUtils->message('S', "The return message of running kitnodefinished: $retstr");
-    if ($::RUNCMD_RC != 0){
-        $warnstr .= "Warning: failed to run command kitnodefinished. details: $retstr";
+        $warnstr .= "Warning: failed to run command kitnodeadd.";
+        if ($retstrref->[1]) {
+            $warnstr .= "Details: $retstrref->[1]";
+        }
     }
 
     setrsp_progress("Import nodes success.");
@@ -414,28 +412,26 @@ Usage:
     }
 
     my $warnstr = "";
-    my $retref = xCAT::Utils->runxcmd({command=>["kitnoderemove"], node=>$nodes}, $request_command, 0, 1);
-    my $retstr = get_cmd_return($retref);
-    xCAT::MsgUtils->message('S', "The return message of running kitnoderemove: $retstr");
+    my $retref = xCAT::Utils->runxcmd({command=>["kitnoderemove"], node=>$nodes}, $request_command, 0, 2);
+    my $retstrref = parse_runxcmd_ret($retref);
     # runxcmd failed.
     if ($::RUNCMD_RC != 0){
-        setrsp_progress("Warning: failed to call some kit commands.");
-        $warnstr = "Warning: failed to call command kitnoderemove. details: $retstr";
+        setrsp_progress("Warning: failed to call command kitnoderemove.");
+        $warnstr .= "Warning: failed to call command kitnoderemove.";
+        if ($retstrref->[1]) {
+            $warnstr .= "Details: $retstrref->[1]";
+        }
     }
-    $retref = xCAT::Utils->runxcmd({command=>["kitnodefinished"], node=>$nodes}, $request_command, 0, 1);
-    $retstr = get_cmd_return($retref);
-    xCAT::MsgUtils->message('S', "The return message of running kitnodefinished: $retstr");
-    if ($::RUNCMD_RC != 0){
-        setrsp_progress("Warning: failed to call some kit commands.");
-        $warnstr = "Warning: failed to call command kitnodefinished. details: $retstr";
-    }
+
     setrsp_progress("Call noderm to remove nodes.");
-    $retref = xCAT::Utils->runxcmd({command=>["noderm"], node=>$nodes}, $request_command, 0, 1);
-    $retstr = get_cmd_return($retref);
-    xCAT::MsgUtils->message('S', "The return message of running noderm: $retstr");
+    $retref = xCAT::Utils->runxcmd({command=>["noderm"], node=>$nodes}, $request_command, 0, 2);
+    $retstrref = parse_runxcmd_ret($retref);
     if ($::RUNCMD_RC != 0){
-        setrsp_progress("Warning: failed to call noderm to remove some nodes.");
-        $warnstr = "Warning: failed to call command noderm to remove some nodes. details: $retstr";
+        setrsp_progress("Warning: failed to call command noderm to remove some nodes.");
+        $warnstr .= "Warning: failed to call command noderm to remove some nodes.";
+        if ($retstrref->[1]) {
+            $warnstr .= "Details: $retstrref->[1]";
+        }
     }
     setrsp_progress("Purge nodes success.");
     setrsp_success($nodes, $warnstr);
@@ -465,18 +461,11 @@ Usage:
         return;
     }
 
-    my $retref = xCAT::Utils->runxcmd({command=>["kitnoderefresh"], node=>$nodes}, $request_command, 0, 1);
-    my $retstr = get_cmd_return($retref);
-    xCAT::MsgUtils->message('S', "The return message of running kitnoderefresh: $retstr");
+    my $retref = xCAT::Utils->runxcmd({command=>["kitnoderefresh"], node=>$nodes}, $request_command, 0, 2);
+    my $retstrref = parse_runxcmd_ret($retref);
     # runxcmd failed.
     if ($::RUNCMD_RC != 0){
-        setrsp_progress("Warning: failed to call some kit commands. Details: $retstr");
-    }
-    $retref = xCAT::Utils->runxcmd({command=>["kitnodefinished"], node=>$nodes}, $request_command, 0, 1);
-    $retstr = get_cmd_return($retref);
-    xCAT::MsgUtils->message('S', "The return message of running kitnodefinished: $retstr");
-    if ($::RUNCMD_RC != 0){
-        setrsp_progress("Warning: failed to call some kit commands. Details: $retstr");
+        setrsp_progress("Warning: failed to call some kit commands.");
     }
     setrsp_success($nodes);
 }
@@ -548,19 +537,12 @@ Usage:
     
     # call plugins
     setrsp_progress("Call nodemgmt plugins.");
-    my $retref = xCAT::Utils->runxcmd({command=>["kitnodeupdate"], node=>$nodes}, $request_command, 0, 1);
-    my $retstr = get_cmd_return($retref);
-    xCAT::MsgUtils->message('S', "The return message of running kitnodeupdate: $retstr");
+    my $retref = xCAT::Utils->runxcmd({command=>["kitnodeupdate"], node=>$nodes}, $request_command, 0, 2);
+    my $retstrref = parse_runxcmd_ret($retref);
     if ($::RUNCMD_RC != 0){
-        setrsp_progress("Warning: failed to call some kit commands. Details: $retstr");
+        setrsp_progress("Warning: failed to call some kit commands.");
     }
 
-    $retref = xCAT::Utils->runxcmd({command=>["kitnodefinished"], node=>$nodes}, $request_command, 0, 1);
-    $retstr = get_cmd_return($retref);
-    xCAT::MsgUtils->message('S', "The return message of running kitnodefinished: $retstr");
-    if ($::RUNCMD_RC != 0){
-        setrsp_progress("Warning: failed to call some kit commands. Details: $retstr");
-    }
     setrsp_progress("Update node's profile success");
     setrsp_success($nodes);
 }
@@ -627,18 +609,16 @@ Usage:
     }
 
     # run nodeadd to create node records.
-    my $retref = xCAT::Utils->runxcmd({command=>["nodeadd"], arg=>[$args_dict{"hostname"}, "groups=__Unmanaged", "hosts.ip=$args_dict{'ip'}"]}, $request_command, 0, 1);
-    my $retstr = get_cmd_return($retref);
-    xCAT::MsgUtils->message('S', "The return message of running nodeadd: $retstr");
+    my $retref = xCAT::Utils->runxcmd({command=>["nodeadd"], arg=>[$args_dict{"hostname"}, "groups=__Unmanaged", "hosts.ip=$args_dict{'ip'}"]}, $request_command, 0, 2);
+    my $retstrref = parse_runxcmd_ret($retref);
     if ($::RUNCMD_RC != 0){
-        setrsp_errormsg("Failed to call nodeadd to create node. Details: $retstr");
+        setrsp_errormsg("Failed to call nodeadd to create node.");
         return;
     }
-    $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>[$args_dict{"hostname"}]}, $request_command, 0, 1);
-    $retstr = get_cmd_return($retref);
-    xCAT::MsgUtils->message('S', "The return message of running makehosts: $retstr");
+    $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>[$args_dict{"hostname"}]}, $request_command, 0, 2);
+    $retstrref = parse_runxcmd_ret($retref);
     if ($::RUNCMD_RC != 0){
-        setrsp_progress("Warning: failed to call makehosts. Details: $retstr");
+        setrsp_progress("Warning: failed to call makehosts.");
     }
 
     setrsp_infostr("Create unmanaged node success");
@@ -699,19 +679,12 @@ Usage:
 
     # Call Plugins.
     setrsp_progress("Calling kit plugins");
-    my $retref = xCAT::Utils->runxcmd({command=>["kitnodeupdate"], node=>[$hostname]}, $request_command, 0, 1);
-    my $retstr = get_cmd_return($retref);
-    xCAT::MsgUtils->message('S', "The return message of running kitnodeupdate: $retstr");
+    my $retref = xCAT::Utils->runxcmd({command=>["kitnodeupdate"], node=>[$hostname]}, $request_command, 0, 2);
+    my $retstrref = parse_runxcmd_ret($retref);
     if ($::RUNCMD_RC != 0){
-        setrsp_progress("Warning: failed to call kit commands. Details: $retstr");
+        setrsp_progress("Warning: failed to call kit commands.");
     }
 
-    $retref = xCAT::Utils->runxcmd({command=>["kitnodefinished"], node=>[$hostname]}, $request_command, 0, 1);
-    $retstr = get_cmd_return($retref);
-    xCAT::MsgUtils->message('S', "The return message of running kitnodefinished: $retstr");
-    if ($::RUNCMD_RC != 0){
-        setrsp_progress("Warning: failed to call kit commands. Details: $retstr");
-    }
     setrsp_progress("Change node's mac success");
 }
 
@@ -894,7 +867,7 @@ Usage:
     my @nodes = xCAT::NodeRange::noderange('__PCMDiscover');
     if (@nodes){
         # There are some nodes discvoered.
-        my $retref = xCAT::Utils->runxcmd({command=>["rmdef"], arg=>["-t", "group", "-o", "__PCMDiscover"]}, $request_command, 0, 1);
+        my $retref = xCAT::Utils->runxcmd({command=>["rmdef"], arg=>["-t", "group", "-o", "__PCMDiscover"]}, $request_command, 0, 2);
     }
     setrsp_infostr("Profiled node's discover stopped");
 }
@@ -1116,9 +1089,8 @@ sub findme{
 
     # call mkdef to create hosts and then call nodemgmt for node management plugins.
     xCAT::MsgUtils->message('S', "Call mkdef to create nodes.\n");
-    my $retref = xCAT::Utils->runxcmd({command=>["mkdef"], stdin=>[$retstr_gen], arg=>['-z']}, $request_command, 0, 1);
-    my $retstr = get_cmd_return($retref);
-    xCAT::MsgUtils->message('S', "The return message of running mkdef: $retstr");
+    my $retref = xCAT::Utils->runxcmd({command=>["mkdef"], stdin=>[$retstr_gen], arg=>['-z']}, $request_command, 0, 2);
+    my $retstrref = parse_runxcmd_ret($retref);
     # runxcmd failed.
     if ($::RUNCMD_RC != 0){
         setrsp_errormsg($retstr_gen);
@@ -1131,22 +1103,12 @@ sub findme{
     xCAT::MsgUtils->message('S', "Call discovered request.\n");
     $request->{"command"} = ["discovered"];
     $request->{"node"} = \@nodelist;
-    $retref = xCAT::Utils->runxcmd($request, $request_command, 0, 1);
-    $retstr = get_cmd_return($retref);
-    xCAT::MsgUtils->message('S', "The return message of running discovered: $retstr");
-    # runxcmd failed.
-    if ($::RUNCMD_RC != 0){
-        xCAT::MsgUtils->message('S', "Warning: Failed to run command discovered for mac $mac. Details: $retstr");
-    }
+    $retref = xCAT::Utils->runxcmd($request, $request_command, 0, 2);
+    $retstrref = parse_runxcmd_ret($retref);
 
     xCAT::MsgUtils->message('S', "Call nodemgmt plugins.\n");
-    $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>\@nodelist}, $request_command, 0, 1);
-    $retstr = get_cmd_return($retref);
-    xCAT::MsgUtils->message('S', "The return message of running kitnodeadd: $retstr");
-
-    $retref = xCAT::Utils->runxcmd({command=>["kitnodefinished"], node=>\@nodelist}, $request_command, 0, 1);
-    $retstr = get_cmd_return($retref);
-    xCAT::MsgUtils->message('S', "The return message of running kitnodefinished: $retstr");
+    $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>\@nodelist}, $request_command, 0, 2);
+    $retstrref = parse_runxcmd_ret($retref);
 
     # Set discovered flag.
     my $nodegroupstr = $hostinfo_dict{$nodelist[0]}{"groups"};
@@ -1648,24 +1610,35 @@ sub setrsp_success
 }
 
 #-----------------------------------------------------
-=head3  get_cmd_return
+=head3  parse_runxcmd_ret
 
-    Description : Get return of runxcmd and compose a string.
+    Description : Get return of runxcmd and convert it into strings.
     Arguments   : The return reference of runxcmd
+    Return:     : [$outstr, $errstr], A reference of list, placing standard output and standard error message.
 
 =cut
 
 #-----------------------------------------------------
-sub get_cmd_return
+sub parse_runxcmd_ret
 {
-    my $return = shift;
-    my $returnmsg = ();
-    if ($return){
-        foreach (@$return){
-            $returnmsg .= "$_\n";
+    my $retref = shift;
+    
+    my $msglistref;
+    my $outstr = "";
+    my $errstr = "";
+    if ($retref){
+        if($retref->{data}){
+            $msglistref = $retref->{data};
+            $outstr = Dumper(@$msglistref);
+            xCAT::MsgUtils->message('S',"Command standard output: $outstr");
+        }
+        if($retref->{error}){
+            $msglistref = $retref->{error};
+            $errstr =  Dumper(@$msglistref);
+            xCAT::MsgUtils->message('S',"Command error output: $errstr");
         }
     }
-    return $returnmsg;
+    return [$outstr, $errstr];
 }
 
 1;
