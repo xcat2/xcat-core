@@ -215,7 +215,7 @@ sub subvars {
         if ($scriptflag){
             #for redhat/sl/centos/kvm/fedora
             if ($inc =~ /#XCAT_PARTITION_START#/) {
-                my $tempstr = "%inlcude /tmp/partitionfile\n";
+                my $tempstr = "%include /tmp/partitionfile\n";
                 $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$tempstr/;
                 #modify the content in the file, and write into %pre part
                 $partcontent = "cat > /tmp/partscript << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
