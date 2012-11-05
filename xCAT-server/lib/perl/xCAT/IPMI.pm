@@ -21,7 +21,7 @@ use constant STATE_OPENSESSION=>1;
 use constant STATE_EXPECTINGRAKP2=>2;
 use constant STATE_EXPECTINGRAKP4=>3;
 use constant STATE_ESTABLISHED=>4;
-use constant STATE_FAILED=>4;
+use constant STATE_FAILED=>5;
 #my $ipmidbg;
 #open($ipmidbg,">","/tmp/ipmidbg");
 #sub dprint {
