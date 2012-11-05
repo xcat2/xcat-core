@@ -16,7 +16,7 @@ use warnings "all";
 use Time::HiRes qw/time/;
 
 use IO::Socket::INET qw/!AF_INET6 !PF_INET6/;
-my $initialtimeout=1.0;
+my $initialtimeout=0.5;
 use constant STATE_OPENSESSION=>1;
 use constant STATE_EXPECTINGRAKP2=>2;
 use constant STATE_EXPECTINGRAKP4=>3;
@@ -460,10 +460,10 @@ sub timedout {
     	return;
     }
     $self->{nowait}=1;
-    $self->{timeout} += 0.5+(0.5*rand()); #$self->{timeout}*2;
+    $self->{timeout} += 1; #$self->{timeout}*2;
     if ($self->{noretry}) { return; }
     if ($self->{timeout} > 5) { #giveup, really
-        $self->{timeout}=$initialtimeout;
+        $self->{timeout}=$initialtimeout+(0.5*rand());
         my $rsp={};
         $rsp->{error} = "timeout";
         $self->{ipmicallback}->($rsp,$self->{ipmicallback_args});
@@ -685,7 +685,7 @@ sub init {
     $self->{'sessionid'} = [0,0,0,0]; # init session id
     $self->{'authtype'}=0; # first messages will have auth type of 0
     $self->{'ipmiversion'}='1.5'; # send first packet as 1.5
-    $self->{'timeout'}=$initialtimeout; #start at a quick timeout, increase on retry
+    $self->{'timeout'}=$initialtimeout+(0.5*rand()); #start at a quick timeout, increase on retry
     $self->{'seqlun'}=0; #the IPMB seqlun combo, increment by 4s
     $self->{rqaddr}=0x81; #Per table '5-4' system sofware ids in the ipmi spec, we are allowed 0x81-0x8d software ids
 			  #A problem with ipmi is that chatty commands (rinv) can mistake stale data for new if sequence number overflows
@@ -849,7 +849,7 @@ sub parse_ipmi_payload {
     $rsp->{cmd} = shift @payload;
     $rsp->{code} = shift @payload;
     $rsp->{data} = \@payload;
-    $self->{timeout}=$initialtimeout;
+    $self->{timeout}=$initialtimeout+(0.5*rand());
     $self->{ipmicallback}->($rsp,$self->{ipmicallback_args});
     return 0;
 }
@@ -965,7 +965,7 @@ sub sendpayload {
     $sessions_waiting{$self}->{ipmisession}=$self;
     if ($args{delayxmit}) {
 	$sessions_waiting{$self}->{timeout}=time()+$args{delayxmit};
-	$self->{timeout}=$initialtimeout/2; #since we are burning one of the retry attempts, start the backoff algorithm faster to make it come out even
+	$self->{timeout}=($initialtimeout+(0.5*rand()))/2; #since we are burning one of the retry attempts, start the backoff algorithm faster to make it come out even
 	undef $args{delayxmit};
         return; #don't actually transmit packet, use retry timer to start us off
     } else {
