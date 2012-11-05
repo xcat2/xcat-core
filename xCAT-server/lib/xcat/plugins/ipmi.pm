@@ -1698,7 +1698,8 @@ sub got_bmc_fw_info {
    	$sessdata->{fru_hash}->{mprom} = $fru;
     $sessdata->{isanimm}=$isanimm;
     if ($isanimm) {
-	get_imm_property(property=>"/v2/bios/build_id",callback=>\&got_bios_buildid,sessdata=>$sessdata);
+	#get_imm_property(property=>"/v2/bios/build_id",callback=>\&got_bios_buildid,sessdata=>$sessdata);
+	check_for_ite(sessdata=>$sessdata);
     } else {
         initfru_with_mprom($sessdata);
     }
@@ -1771,6 +1772,32 @@ sub got_fpga_date {
    }
    initfru_with_mprom($sessdata);
 }
+sub check_for_ite {
+   my %args = @_;
+   my @getpropertycommand;
+   my $sessdata = $args{sessdata};
+   $sessdata->{property_callback} = \&got_ite_check; #$args{callback};
+   @getpropertycommand = unpack("C*","/v2/cmm/");
+   my $length = 0b10000000 | (scalar @getpropertycommand);#use length to store tlv
+	unshift @getpropertycommand,$length;
+	#command also needs the overall length
+	$length = (scalar @getpropertycommand);
+	unshift @getpropertycommand,0; #do not recurse, though it's not going to matter anyway since we are just checking for the existence of the category
+	unshift @getpropertycommand,$length&0xff;
+	unshift @getpropertycommand,($length>>8)&0xff;
+	unshift @getpropertycommand,2; #get all properties command,
+        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xc4,data=>\@getpropertycommand,callback=>\&got_imm_property,callback_args=>$sessdata);
+}
+sub got_ite_check {
+   my %res = @_;
+   my $sessdata = $res{sessdata};
+   if ($res{ccode} == 9) { #success, end of tree means an ITE, remember this
+	$sessdata->{isite}=1;
+   } else {
+	$sessdata->{isite}=0;
+   }
+   get_imm_property(property=>"/v2/bios/build_id",callback=>\&got_bios_buildid,sessdata=>$sessdata);
+}
 sub get_imm_property {
    my %args = @_;
    my @getpropertycommand;
@@ -1785,7 +1812,6 @@ sub get_imm_property {
 	unshift @getpropertycommand,($length>>8)&0xff;
 	unshift @getpropertycommand,0; #the actual 'get proprety' command is 0.
         $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xc4,data=>\@getpropertycommand,callback=>\&got_imm_property,callback_args=>$sessdata);
-
 }
 sub got_imm_property {
     if (check_rsp_errors(@_)) {
@@ -1797,6 +1823,7 @@ sub got_imm_property {
     my $propval = shift @data;
     my %res;
     $res{sessdata}=$sessdata;
+    $res{ccode}=$propval;
     if ($propval == 0) { #success
     	shift @data; #discard payload size
     	shift @data; #discard payload size
