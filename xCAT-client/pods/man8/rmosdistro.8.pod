@@ -5,7 +5,7 @@ B<rmosdistro> - remove OS Distro
 
 =head1 SYNOPSIS
 
-B<rmosdistro> [{B<-n|--name>}=I<osdistroname>] [B<-f|--force>]
+B<rmosdistro> [B<-a>|B<--all>] [B<-f|--force>] B<osdistroname>  [B<osdistroname2 ...>]
 
 
 B<rmosdistro> [B<-h>|B<--help>]
@@ -13,16 +13,21 @@ B<rmosdistro> [B<-h>|B<--help>]
 
 =head1 DESCRIPTION
 
-The B<rmosdistro> command is an command to support PCM OS Distro management. It removes the specified OS Distro that was created by B<copycds>. If no osdistroname specified, all entries will be deleted. If the specified OS Distro is referenced by some osimage, B<[-f|force]> can be used to remove it. 
+The B<rmosdistro> command removes the specified OS Distro that was created by B<copycds>. To delete all OS Distro entries, please specify B<[-a|--all]>. If the specified OS Distro is referenced by some osimage, B<[-f|force]> can be used to remove it. 
+
+
+=head1 ARGUMENTS
+
+The OS Distro names to delete, delimited by blank space. 
 
 
 =head1 OPTIONS
 
 =over 6
 
-=item {B<-n|--name>}=I<osdistroname>
+=item {B<-a|--all>}
 
-The OSDistro name to remove. If not specified, try to delete all the OS Distros.
+If specified, try to delete all the OS Distros.
 
 =item {B<-f|--force>}
 
@@ -49,9 +54,9 @@ Nonzero:
 
 =item *
 
-To remove OS Distro "rhels6.2-ppc64":
+To remove OS Distro "rhels6.2-ppc64" and "sles11.2-ppc64":
 
-B<rmosdistro rhels6.2-ppc64>
+B<rmosdistro rhels6.2-ppc64 sles11.2-ppc64>
 
 =item *
 
@@ -63,7 +68,7 @@ B<rmosdistro -f rhels6.2-ppc64>
 
 To remove all OS Distros:
 
-B<rmosdistro>
+B<rmosdistro -a>
 
 
 =back

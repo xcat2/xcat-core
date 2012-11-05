@@ -18,7 +18,7 @@ use xCAT::Utils;
 
 use xCAT::MsgUtils;
 use Getopt::Long;
-
+use Data::Dumper;
 
 
 #-------------------------------------------------------
@@ -136,8 +136,7 @@ sub rmosdistro
     my $request  = shift;
     my $callback = shift;
         
-    my %keyhash=();
-    my $distname=undef;
+    my $all=undef;
     my $force=undef;
     my $help=undef;
     
@@ -148,22 +147,32 @@ sub rmosdistro
     if ($request->{arg}) {
   	     	@ARGV = @{$request->{arg}};
     }
-  
+
+
     GetOptions(
 		'h|help'   => \$help,
-    		'n|name=s' => \$distname,
+    		'a|all'    => \$all,
 		'f|force'  => \$force,  
      );
 
+
     if ($help) {
-     		 $callback->({info=>"rmosdistro [{-n|--name}=osdistroname] [-f|--force]",errorcode=>[0]});
+     		 $callback->({info=>"rmosdistro [{-a|--all}] [-f|--force] [osdistroname] ...",errorcode=>[0]});
      		 return;
     }
 
-
+    unless($all)
+    {
+	unless(scalar @ARGV)
+	{
+     		$callback->({info=>"please specify osdistroname to remove, or specify \"-a|--all\" to remove all osdistros ",errorcode=>[1]});
+     		return;
+        }
+        #if any osdistro has been specified,push it into array	
+	push(@OSdistroListToDel,@ARGV);
+    }
 
     my $osdistrotab = xCAT::Table->new('osdistro',-create=>1);
-   	
     unless($osdistrotab)
     {
        	$callback->({error=>"rmosdistro: failed to open table 'osdistro'!",errorcode=>[1]});
@@ -171,12 +180,8 @@ sub rmosdistro
     }
 
 
-#if any osdistro has been specified,push it into array;otherwise push all osdistronames 
-    if($distname)
-    {
-	push(@OSdistroListToDel,$distname);
-    }
-    else
+    #if -a or --all is specified,push all the osdistronames to the array to delete  
+    if($all) 
     {
 	my @result=$osdistrotab->getAllAttribs('osdistroname');
 	if(defined(@result) and scalar @result >0)
@@ -190,8 +195,7 @@ sub rmosdistro
 
     if(scalar @OSdistroListToDel)
     {
-
-#if -f|--force is not specified,need to open osimage table to check the reference of osdistro  
+        #if -f|--force is not specified,need to open osimage table to check the reference of osdistro  
 	my $osimagetab=undef;
 	unless($force)
 	{
@@ -199,6 +203,7 @@ sub rmosdistro
 		unless($osimagetab)
 		{
               	   $callback->({error=>"rmosdistro: failed to open table 'osimage'!",errorcode=>[1]});
+		   $osdistrotab->close();	
         	   return;			
 		}
 	}
@@ -206,7 +211,7 @@ sub rmosdistro
 	foreach(@OSdistroListToDel)
 	{
 
-#if -f|--force not specified,check the reference of osdistro,complain if the osdistro is referenced by some osimage
+		#if -f|--force not specified,check the reference of osdistro,complain if the osdistro is referenced by some osimage
 		unless($force)
 		{
 			my $result=&getOSdistroref($osimagetab,$_);
@@ -217,8 +222,8 @@ sub rmosdistro
 			}	
 		}
 			
-#get "dirpaths" attribute of osdistro to remove the directory, complain if failed to lookup the osdistroname
-                $keyhash{osdistroname}    = $_;
+		#get "dirpaths" attribute of osdistro to remove the directory, complain if failed to lookup the osdistroname
+                my %keyhash=('osdistroname' => $_,);
 		my $result=$osdistrotab->getAttribs(\%keyhash,'dirpaths');
 		unless($result)
 		{
@@ -226,7 +231,7 @@ sub rmosdistro
                          next;				
 		}
 			
-#remove the osdistro directories
+		#remove the osdistro directories
 		if($result->{'dirpaths'})
 		{
 			   $result->{'dirpaths'} =~ s/,/\ /g;
@@ -237,20 +242,20 @@ sub rmosdistro
 			           $callback->({error=>"rmosdistro: failed to remove $keyhash{osdistroname}  directory!",errorcode=>[1]});
                                    next;
 				}
-			}
+		}
 
-#remove the osdistro entry			
-                        $osdistrotab->delEntries(\%keyhash);
-   			$osdistrotab->commit;
-        		$callback->({info=>"rmosdistro: remove $_ success",errorcode=>[0]});
+		#remove the osdistro entry			
+                $osdistrotab->delEntries(\%keyhash);
+   		$osdistrotab->commit;
+        	$callback->({info=>"rmosdistro: remove $_ success",errorcode=>[0]});
 				
-		}
+	}
 
-		if($osimagetab)
-		{
-			$osimagetab->close;
-		}
-	}	
+	if($osimagetab)
+	{
+		$osimagetab->close;
+	}
+   }	
 
 
         $osdistrotab->close; 
