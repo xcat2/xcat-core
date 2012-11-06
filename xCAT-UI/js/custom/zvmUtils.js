@@ -1965,7 +1965,7 @@ function getDiskPool(data) {
  * @param data HTTP request data
  */
 function getZfcpPool(data) {
-    if (data.rsp) {
+    if (data.rsp.length) {
         var hcp = data.msg;
         var pools = data.rsp[0].split(hcp + ': ');
 
@@ -1989,6 +1989,9 @@ function getZfcpPool(data) {
                 });
             } // End of if
         } // End of for
+    } else {
+    	// Load empty table
+    	loadZfcpPoolTable(null);
     }
 }
 
@@ -2119,11 +2122,11 @@ function loadDiskPoolTable(data) {
 
                     success : getDiskPool
                 });
-            }    
+            }
         });
         
         // Create action bar
-        var actionBar = $('<div id="zvmResourceActions" class="actionBar"></div>');
+        var actionBar = $('<div id="zvmResourceActions" class="actionBar"></div>').css("width", "400px");
         
         // Create an action menu
         var actionsMenu = createMenu([addLnk, removeLnk, refreshLnk]);
@@ -2163,10 +2166,13 @@ function loadZfcpPoolTable(data) {
     var panelId = 'zfcpResource';
     $('#' + panelId).find('img[src="images/loader.gif"]').remove();
     
-    var args = data.msg.split(';');
-    var hcp = args[0].replace('hcp=', '');
-    var pool = args[1].replace('pool=', '');
-    var tmp = data.rsp[0].split(hcp + ': ');
+    var args, hcp, pool, tmp;
+    if (data) {
+        args = data.msg.split(';');
+        hcp = args[0].replace('hcp=', '');
+        pool = args[1].replace('pool=', '');
+        tmp = data.rsp[0].split(hcp + ': ');
+    }
 
     // Resource tab ID    
     var info = $('#' + panelId).find('.ui-state-highlight');
@@ -2196,11 +2202,13 @@ function loadZfcpPoolTable(data) {
         setZfcpDataTable(dTable);
     }
 
-    // Skip index 0 and 1 because it contains nothing
-    for ( var i = 2; i < tmp.length; i++) {
-        tmp[i] = jQuery.trim(tmp[i]);
-        var diskAttrs = tmp[i].split(',');
-        dTable.fnAddData( [ '<input type="checkbox" name="' + pool + '-' + diskAttrs[2] + '"/>', hcp, pool, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3], diskAttrs[4], diskAttrs[5], diskAttrs[6] ]);
+    if (data) {
+        // Skip index 0 and 1 because it contains nothing
+        for ( var i = 2; i < tmp.length; i++) {
+            tmp[i] = jQuery.trim(tmp[i]);
+            var diskAttrs = tmp[i].split(',');
+            dTable.fnAddData( [ '<input type="checkbox" name="' + pool + '-' + diskAttrs[2] + '"/>', hcp, pool, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3], diskAttrs[4], diskAttrs[5], diskAttrs[6] ]);
+        }
     }
     
     // Create actions menu
@@ -2252,7 +2260,7 @@ function loadZfcpPoolTable(data) {
         });
         
         // Create action bar
-        var actionBar = $('<div id="zFcpResourceActions" class="actionBar"></div>');
+        var actionBar = $('<div id="zFcpResourceActions" class="actionBar"></div>').css("width", "400px");
         
         // Create an action menu
         var actionsMenu = createMenu([addLnk, removeLnk, refreshLnk]);
@@ -4069,7 +4077,7 @@ function configProfilePanel(panelId) {
     });
     
     // Create action bar
-    var actionBar = $('<div class="actionBar"></div>');
+    var actionBar = $('<div class="actionBar"></div>').css("width", "400px");
     
     // Create a profile
     var createLnk = $('<a>Create</a>');

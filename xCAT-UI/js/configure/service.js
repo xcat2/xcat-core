@@ -178,7 +178,7 @@ function loadUserTable(data) {
     });
 
     // Create action bar
-    var actionBar = $('<div class="actionBar"></div>');
+    var actionBar = $('<div class="actionBar"></div>').css("width", "400px");
     
     var createLnk = $('<a>Create</a>');
     createLnk.click(function() {
@@ -687,7 +687,7 @@ function configImagePanel(data) {
     });
     
     // Create action bar
-    var actionBar = $('<div class="actionBar"></div>');
+    var actionBar = $('<div class="actionBar"></div>').css("width", "400px");
     
     // Create a profile
     var createLnk = $('<a>Create</a>');
@@ -1193,7 +1193,7 @@ function configGroupPanel(data) {
     });
     
     // Create action bar
-    var actionBar = $('<div class="actionBar"></div>');
+    var actionBar = $('<div class="actionBar"></div>').css("width", "400px");
     
     // Create a group
     var createLnk = $('<a>Create</a>');

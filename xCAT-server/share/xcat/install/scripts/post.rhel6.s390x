@@ -136,9 +136,9 @@ $INSTALLDIR/postscripts/xcatinstallpost
 EOF
 chmod 755 /opt/xcat/xcatinstallpost
 
-chkconfig --add xcatpostinit1
+chkconfig xcatpostinit1 on
 
-#create the dskls post 
+# Create the dskls post 
 cat >/opt/xcat/xcatdsklspost << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatdsklspost#
 EOF
