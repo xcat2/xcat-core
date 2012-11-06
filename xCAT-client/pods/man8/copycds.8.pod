@@ -31,11 +31,11 @@ The architecture of the linux distro on the ISO/DVD.  Examples:  x86, x86_64, pp
 
 =item {B<-p|--path>}=I<ospkgpath>
 
-The destination directory to which the contents of ISO/DVD will be copied. When this option is not specified, the default destination directory will be formed from the B<installdir> site attribute and the distro name and architecture, for example: /install/rhel6.3/x86_64. This option is only supported distributions of sles and redhat.
+The destination directory to which the contents of ISO/DVD will be copied. When this option is not specified, the default destination directory will be formed from the B<installdir> site attribute and the distro name and architecture, for example: /install/rhel6.3/x86_64. This option is only supported distributions of sles,redhat and windows.
 
 =item {B<-i|--inspection>}
 
-Check whether xCAT can recognize the DVDs/ISOs in the argument list, but do not copy the disc. Displays the os distribution name, architecture and disc no of each recognized DVD/ISO. This option only supported for distributions of sles and redhat.
+Check whether xCAT can recognize the DVDs/ISOs in the argument list, but do not copy the disc. Displays the os distribution name, architecture and disc no of each recognized DVD/ISO. This option only supported for distributions of sles,redhat and windows.
 
 =back
 

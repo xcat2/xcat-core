@@ -471,6 +471,11 @@ sub copycd
     my $callback = shift;
     my $doreq    = shift;
     my $distname = "";
+    my $arch;
+    my $path;
+    my $mntpath=undef;
+    my $inspection=undef;
+    
     my $installroot;
     $installroot = "/install";
     #my $sitetab = xCAT::Table->new('site');
@@ -489,21 +494,22 @@ sub copycd
     GetOptions(
                'n=s' => \$distname,
                'a=s' => \$arch,
-               'm=s' => \$path
+               'p=s' => \$path,
+               'm=s' => \$mntpath,
+               'i'   => \$inspection
                );
-    unless ($path)
+    unless ($mntpath)
     {
 
-        #this plugin needs $path...
+        #this plugin needs $mntpath...
         return;
     }
     if ($distname and $distname !~ /^win.*/)
     {
-
         #If they say to call it something other than win<something>, give up?
         return;
     }
-    if (-d $path . "/sources/6.0.6000.16386_amd64" and -r $path . "/sources/install.wim")
+    if (-d $mntpath . "/sources/6.0.6000.16386_amd64" and -r $mntpath . "/sources/install.wim")
     {
         $darch = x86_64;
         unless ($distname) {
@@ -511,8 +517,8 @@ sub copycd
         }
     }
     # add support for Win7
-    if(-r $path . "/sources/idwbinfo.txt"){
-	open(DBNAME, $path . "/sources/idwbinfo.txt");
+    if(-r $mntpath . "/sources/idwbinfo.txt"){
+	open(DBNAME, $mntpath . "/sources/idwbinfo.txt");
 	while(<DBNAME>){
 		if(/BuildArch=amd64/){
 			$darch = "x86_64";
@@ -523,7 +529,7 @@ sub copycd
 	}
 	close(DBNAME);
     }
-    if (-r $path . "/sources/install_Windows Server 2008 R2 SERVERENTERPRISE.clg") {
+    if (-r $mntpath . "/sources/install_Windows Server 2008 R2 SERVERENTERPRISE.clg") {
         $distname = "win2k8r2";
     }
     unless ($distname)
@@ -548,25 +554,48 @@ sub copycd
             return;
         }
     }
+
+    if($inspection)
+    {
+            $callback->(
+                {
+                 info =>
+                   "DISTNAME:$distname\n"."ARCH:$arch\n"
+                }
+                );
+            return;
+    }
+
     %{$request} = ();    #clear request we've got it.
 
+    my $defaultpath="$installroot/$distname/$arch";
+    unless($path)
+    {
+        $path=$defaultpath;
+    }
+
     $callback->(
-         {data => "Copying media to $installroot/$distname/$arch/$discnumber"});
+         {data => "Copying media to $path"});
     my $omask = umask 0022;
-    mkpath("$installroot/$distname/$arch");
+    if(-l $path)
+    {
+        unlink($path);
+    }
+    mkpath("$path");
     umask $omask;
+
     my $rc;
     $SIG{INT} =  $SIG{TERM} = sub { 
        foreach(@cpiopid){
           kill 2, $_; 
        }
-       if ($path) {
+       if ($mntpath) {
             chdir("/");
-            system("umount $path");
+            system("umount $mntpath");
        }
     };
     my $kid;
-    chdir $path;
+    chdir $mntpath;
     my $numFiles = `find . -print | wc -l`;
     my $child = open($kid,"|-");
     unless (defined $child) {
@@ -582,7 +611,7 @@ sub copycd
        close($kid);
        $rc = $?;
     } else {
-        my $c = "nice -n 20 cpio -vdump $installroot/$distname/$arch";
+        my $c = "nice -n 20 cpio -vdump $path";
         my $k2 = open(PIPE, "$c 2>&1 |") ||
            $callback->({error => "Media copy operation fork failure"});
 	push @cpiopid, $k2;
@@ -597,7 +626,30 @@ sub copycd
         }
         exit;
     }
-    chmod 0755, "$installroot/$distname/$arch";
+    chmod 0755, "$path";
+    unless($path =~ /^($defaultpath)/)
+    {
+        mkpath($defaultpath);
+        if(-d $defaultpath)
+        {
+                rmtree($defaultpath);
+        }
+        else
+        {
+                unlink($defaultpath);
+        }
+
+        my $hassymlink = eval { symlink("",""); 1 };
+        if ($hassymlink) {
+                symlink($path,$defaultpath);
+        }else
+        {
+                link($path,$defaultpath);
+        }
+
+    }
+
+
     if ($rc != 0)
     {
         $callback->({error => "Media copy operation failed, status $rc"});
@@ -605,7 +657,13 @@ sub copycd
     else
     {
         $callback->({data => "Media copy operation successful"});
-	my @ret=xCAT::SvrUtils->update_tables_with_templates($distname, $arch);
+        my $osdistroname=$distname."-".$arch;
+        my @ret=xCAT::SvrUtils->update_osdistro_table($distname,$arch,$path,$osdistroname);
+        if ($ret[0] != 0) {
+            $callback->({data => "Error when updating the osdistro tables: " . $ret[1]});
+        }
+
+	my @ret=xCAT::SvrUtils->update_tables_with_templates($distname, $arch,$path);
         if ($ret[0] != 0) {
 	    $callback->({data => "Error when updating the osimage tables: " . $ret[1]});
 	}
