@@ -617,7 +617,7 @@ function updateSelectNodeDiv() {
  */
 function createActionMenu() {
     // Create action bar
-    var actionBar = $('<div class="actionBar"></div>').css("width", "290px");
+    var actionBar = $('<div class="actionBar"></div>').css("width", "400px");
 
     // Power on
     var powerOnLnk = $('<a>Power on</a>');

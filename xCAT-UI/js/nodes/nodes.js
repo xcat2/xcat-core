@@ -634,7 +634,7 @@ function loadNodes(data) {
     $('#nodesTab').append(info);
 
     // Create action bar
-    var actionBar = $('<div class="actionBar"></div>').css("width", "290px");
+    var actionBar = $('<div class="actionBar"></div>').css("width", "400px");
 
     /**
      * Create menu for actions to perform against a given node
