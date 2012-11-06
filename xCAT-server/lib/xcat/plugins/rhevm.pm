@@ -904,6 +904,7 @@ my $display = {
         'stateless' => ["stateless"],
         'placement_policy' => ["placement_policy/affinity"],
         'memory_guaranteed' => ["memory_policy/guaranteed"],
+        'host' => ["host", "id", "hosts", "/host/name"],
     },
     'templates' => {
         'memory' => ["memory"],
@@ -1996,7 +1997,7 @@ sub mkvm {
             if ($myvment->{cpus}) {
                 my ($socketnum, $corenum) = split(':', $myvment->{cpus});
                 unless ($corenum) {$corenum = 1;}
-                $cpuele = "<cpu><topology cores=\"$socketnum\" sockets=\"$corenum\"/></cpu>";
+                $cpuele = "<cpu><topology cores=\"$corenum\" sockets=\"$socketnum\"/></cpu>";
             } elsif (!$hastpl) {
                 $cpuele = "<cpu><topology cores=\"1\" sockets=\"1\"/></cpu>"
             }
@@ -2485,7 +2486,7 @@ sub chvm {
             if ($myvment->{cpus}) {
                 my ($socketnum, $corenum) = split(':', $myvment->{cpus});
                 unless ($corenum) {$corenum = 1;}
-                $cpuele = "<cpu><topology cores=\"$socketnum\" sockets=\"$corenum\"/></cpu>";
+                $cpuele = "<cpu><topology cores=\"$corenum\" sockets=\"$socketnum\"/></cpu>";
             }
             
             # configure bootorder
@@ -2806,7 +2807,7 @@ sub rmigrate {
             my $api = "/api/vms/$vmid/migrate";
             my $method = "POST";
             
-            my $content = "<action><host id=\"$hostid\"/></action>";
+            my $content = "<action><host id=\"$hostid\"/><force>true</force></action>";
             my $request = genreq($ref_rhevm, $method, $api, $content);
             my $response;
             ($rc, $response) = send_req($ref_rhevm, $request->as_string());
@@ -3044,7 +3045,11 @@ sub search_src {
             if ($type eq "vms") {
                 $idstr = "/vms/vm";
             } elsif ($type eq "hosts") {
-                $idstr = "/hosts/host";
+                if ($individual) {
+                    $idstr = "/host";
+                } else {
+                    $idstr = "/hosts/host";
+                }
             } elsif ($type eq "templates") {
                 $idstr = "/templates/template";
             } elsif ($type eq "storagedomains") {
