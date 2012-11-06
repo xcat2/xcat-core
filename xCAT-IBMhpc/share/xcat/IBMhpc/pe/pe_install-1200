@@ -111,7 +111,6 @@ if [ "$OS" != "AIX" ]; then
     chmod 400  $installroot/root/.ckpt.key
 fi
 
-
 # BSR configuration, uncomment the following lines to enable BSR configuration on Power Linux cluter.  
 #if [ "$OS" != "AIX" ]; then
 #    if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
