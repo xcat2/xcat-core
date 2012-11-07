@@ -1463,7 +1463,7 @@ sub validate_node_entry{
                 return "Specified unit $node_entry{$_} is a invalid number";
             }
         }elsif ($_ eq "height"){
-            if (! exists $node_entry{"racl"}){
+            if (! exists $node_entry{"rack"}){
                 return "Height must be specified together with rack";
             }
             # Not a valid number.
