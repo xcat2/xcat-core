@@ -719,8 +719,8 @@ sub kit_buildtar
     }
     # build the tarfile
     my $kitname = $::bldkit_config->{kit}{entries}[0]->{kitname};
-    my $tarfile = $::build_dir."/".$kitname.".tar.gz";
-    if ( system("cd $::build_dir; tar -czhf $tarfile $kitname/*") ) {
+    my $tarfile = $::build_dir."/".$kitname.".tar.bz2";
+    if ( system("cd $::build_dir; tar -cjhf $tarfile $kitname/*") ) {
          print "Error building tarfile $tarfile \n";
          return 1;
     }
@@ -744,7 +744,7 @@ sub kit_cleantar
 
     print "running buildkit cleantar... \n";
     my $kitname = $::bldkit_config->{kit}{entries}[0]->{kitname};
-    my $tarfile = $::build_dir."/".$kitname.".tar.gz";
+    my $tarfile = $::build_dir."/".$kitname.".tar.bz2";
     if ( -r $tarfile ) {
         if ( system("rm -f $tarfile ") ) {
             print "Error removing kit tar file $tarfile \n";
