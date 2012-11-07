@@ -768,16 +768,12 @@ sub nimnodeset
     #
     # See if we need to create a resolv_conf resource
     #
-
-	my $RChash;
-
-    $RChash = &chk_resolv_conf($callback, \%objhash, \@nodelist, \%nethash, \%imagehash, \%attrs, \%nodeosi, $subreq);
-    if ( !$RChash ){
-        my $rsp;
-        push @{$rsp->{data}}, "Could not check NIM resolv_conf resource.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
+    my %resolv_conf_hash = &chk_resolv_conf($callback, \%objhash, \@nodelist, \%nethash, \%imagehash, \%attrs, \%nodeosi, $subreq);
+    if ( !%resolv_conf_hash ){
+        #my $rsp;
+        #push @{$rsp->{data}}, "Could not check NIM resolv_conf resource.\n";
+        #xCAT::MsgUtils->message("E", $rsp, $callback);
     }
-    my %resolv_conf_hash = %{$RChash};
 
     #
     #  Get a list of all nim resource types
@@ -4692,7 +4688,7 @@ sub mk_resolv_conf_file
 
         Returns:
                 - undef
-                - ptr to hash of resolv_conf resource names
+                - hash of resolv_conf resource names
 =cut
 
 #-----------------------------------------------------------------------------
@@ -5158,7 +5154,7 @@ sub chk_resolv_conf
             } # end if $create_res
 	} # end foreach node
 
-	return \%resolv_conf_hash;
+	return %resolv_conf_hash;
 }
 
 #----------------------------------------------------------------------------
@@ -10968,14 +10964,12 @@ sub mkdsklsnode
 	#
     # See if we need to create a resolv_conf resource
     #
-	my $RChash;
-	$RChash = &chk_resolv_conf($callback, \%objhash, \@nodelist, \%nethash, \%imagehash, \%attrs, \%nodeosi, $subreq); 
-	if ( !$RChash ){
-        my $rsp;
-        push @{$rsp->{data}}, "Could not check NIM resolv_conf resource.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
+	my %resolv_conf_hash = &chk_resolv_conf($callback, \%objhash, \@nodelist, \%nethash, \%imagehash, \%attrs, \%nodeosi, $subreq); 
+	if ( !%resolv_conf_hash ){
+        #my $rsp;
+        #push @{$rsp->{data}}, "Could not check NIM resolv_conf resource.\n";
+        #xCAT::MsgUtils->message("E", $rsp, $callback);
     }
-	my %resolv_conf_hash = %{$RChash};
 
     #
     # define and initialize the diskless/dataless nodes
@@ -12655,14 +12649,13 @@ sub checkNIMnetworks
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 return 1;
             }
-			$ifone =~ s/$target:\s+//;
-            chomp $ifone;
 
 			my $junk1;
 			my $junk2;
 			my $adapterhost;
 			my @ifcontent = split('\n',$ifone);
 			foreach my $line (@ifcontent) {
+				$line =~ s/$target:\s+//;
 				next if ($line =~ /^#/);
 				($junk1, $junk2, $adapterhost) = split(':', $line);
 				last;
