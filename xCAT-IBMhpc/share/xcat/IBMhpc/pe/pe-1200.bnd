@@ -2,7 +2,6 @@
 
 # POE
 #I:ppe.man
-I:ppe.openshmem
 I:ppe.rte
 I:ppe.loc.license
 
