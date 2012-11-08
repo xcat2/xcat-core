@@ -4,7 +4,7 @@ B<copycds> - Copies Linux distributions and service levels from DVDs/ISOs to the
 
 =head1 SYNOPSIS
 
-B<copycds> [{B<-n|--name|--osver>}=I<distroname>] [{B<-a|--arch>}=I<architecture>] [{B<-p|--path>}=I<ospkgpath>] {I<iso>|I<device-path>} ...
+B<copycds> [{B<-n|--name|--osver>}=I<distroname>] [{B<-a|--arch>}=I<architecture>] [{B<-p|--path>}=I<ospkgpath>] [B<-o>|B<--noosimage>]  {I<iso>|I<device-path>} ...
 
 B<copycds> [B<-i>|B<--inspection>] {I<iso>|I<device-path>}
 
@@ -36,6 +36,10 @@ The destination directory to which the contents of ISO/DVD will be copied. When 
 =item {B<-i|--inspection>}
 
 Check whether xCAT can recognize the DVDs/ISOs in the argument list, but do not copy the disc. Displays the os distribution name, architecture and disc no of each recognized DVD/ISO. This option only supported for distributions of sles,redhat and windows.
+
+=item {B<-o|--noosimage>}
+
+Do not create the default osimages based on the osdistro copied in. By default, copycds will create a set of osimages based on the osdistro.
 
 =back
 

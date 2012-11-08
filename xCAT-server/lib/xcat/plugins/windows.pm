@@ -475,6 +475,7 @@ sub copycd
     my $path;
     my $mntpath=undef;
     my $inspection=undef;
+    my $noosimage=undef;
     
     my $installroot;
     $installroot = "/install";
@@ -496,7 +497,8 @@ sub copycd
                'a=s' => \$arch,
                'p=s' => \$path,
                'm=s' => \$mntpath,
-               'i'   => \$inspection
+               'i'   => \$inspection,
+               'o'   => \$noosimage,
                );
     unless ($mntpath)
     {
@@ -662,10 +664,12 @@ sub copycd
         if ($ret[0] != 0) {
             $callback->({data => "Error when updating the osdistro tables: " . $ret[1]});
         }
-
-	my @ret=xCAT::SvrUtils->update_tables_with_templates($distname, $arch,$path);
-        if ($ret[0] != 0) {
-	    $callback->({data => "Error when updating the osimage tables: " . $ret[1]});
+	
+	unless($noosimage){
+	    my @ret=xCAT::SvrUtils->update_tables_with_templates($distname, $arch,$path,$osdistroname);
+	    if ($ret[0] != 0) {
+	          $callback->({data => "Error when updating the osimage tables: " . $ret[1]});
+	    }
 	}
    }
 }

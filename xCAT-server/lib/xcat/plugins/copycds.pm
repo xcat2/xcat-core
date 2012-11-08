@@ -40,7 +40,8 @@ sub process_request {
   my $arch = undef;
   my $help = undef;
   my $inspection=undef;
-  my $path=undef;	 
+  my $path=undef;	
+  my $noosimage=undef;
 
   $identified=0;
   $::CDMOUNTPATH="/mnt/xcat";
@@ -54,10 +55,11 @@ sub process_request {
     'a|arch=s' => \$arch,
     'h|help' => \$help,
     'i|inspection' => \$inspection,
-    'p|path=s' => \$path 
+    'p|path=s' => \$path, 
+    'o|noosimage' => \$noosimage, 
  );
   if ($help) {
-     $callback->({info=>"copycds [{-p|--path}=path] [{-n|--name|--osver}=distroname] [{-a|--arch}=architecture] [-i|--inspection] 1st.iso [2nd.iso ...]."});    
+     $callback->({info=>"copycds [{-p|--path}=path] [{-n|--name|--osver}=distroname] [{-a|--arch}=architecture] [-i|--inspection] [{-o|--noosimage}] 1st.iso [2nd.iso ...]."});    
      return;
   }
   if ($arch and $arch =~ /i.86/) {
@@ -146,8 +148,14 @@ sub process_request {
       push @{$newreq->{arg}},("-a",$arch);
       }
     }
+
     if (! -l $file) {
         push @{$newreq->{arg}},("-f",$file);    
+    }
+
+
+    if ($noosimage) {
+        push @{$newreq->{arg}},("-o");    
     }
 
     $doreq->($newreq,\&take_answer);

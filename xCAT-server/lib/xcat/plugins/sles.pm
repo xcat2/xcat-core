@@ -1037,6 +1037,7 @@ sub copycd
     my $path;
     my $mntpath=undef;
     my $inspection=undef;
+    my $noosimage=undef;
 
 
     $installroot = "/install";
@@ -1058,7 +1059,8 @@ sub copycd
                'a=s' => \$arch,
                'm=s' => \$mntpath,
 	       'i'   => \$inspection,
-               'p=s' => \$path
+               'p=s' => \$path,
+	       'o'   => \$noosimage,
                );
     unless ($mntpath)
     {
@@ -1342,23 +1344,24 @@ sub copycd
 	my @ret=xCAT::SvrUtils->update_osdistro_table($distname,$arch,$path,$osdistroname);
         if ($ret[0] != 0) {
             $callback->({data => "Error when updating the osdistro tables: " . $ret[1]});
-        }	
+        }
+	
+	unless($noosimage){
+   	   my @ret=xCAT::SvrUtils->update_tables_with_templates($distname, $arch,$path,$osdistroname);
+	   if ($ret[0] != 0) {
+	       $callback->({data => "Error when updating the osimage tables: " . $ret[1]});
+	   }
+           
+	   my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot",$path,$osdistroname);
+	   if ($ret[0] != 0) {
+	       $callback->({data => "Error when updating the osimage tables for stateless: " . $ret[1]});
+	   }
 
-#	my @ret=xCAT::SvrUtils->update_tables_with_templates($distname, $arch,$path,$osdistroname);
-	my @ret=xCAT::SvrUtils->update_tables_with_templates($distname, $arch,$path);
-        if ($ret[0] != 0) {
-	    $callback->({data => "Error when updating the osimage tables: " . $ret[1]});
+           my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite",$path,$osdistroname);
+	   if ($ret[0] != 0) {
+	       $callback->({data => "Error when updating the osimage tables for statelite: " . $ret[1]});
+	   }
 	}
-#        my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot",$path,$osdistroname);
-        my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot",$path);
-        if ($ret[0] != 0) {
-            $callback->({data => "Error when updating the osimage tables for stateless: " . $ret[1]});
-        }
-#        my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite",$path,$osdistroname);
-        my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite",$path);
-        if ($ret[0] != 0) {
-            $callback->({data => "Error when updating the osimage tables for statelite: " . $ret[1]});
-        }
     }
 }
 
