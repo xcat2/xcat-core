@@ -810,9 +810,8 @@ sub pgstart
         } else {
           $cmd = "service postgresql start";
         }
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
+        system($cmd);
+        if ($? > 0) {
             xCAT::MsgUtils->message("E", " $cmd failed.");
             exit(1);
         }
@@ -827,7 +826,6 @@ sub pgstart
         while ($retries < 30) {
           $retries++;
           my @status=xCAT::Utils->runcmd($cmd, -1);
-          #my @status=xCAT::Utils->runcmd($cmd, 0);
           if (grep(/running/, @status)) {
             $pgstarted=1;
             last;
