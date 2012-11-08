@@ -597,7 +597,7 @@ sub process_request_nmap {
    foreach (@nodes) {
 	$unknownnodes{$_}=1;
 	my $ip = undef;
-	if ($hostsents{$_}) { 
+	if (($hostsents{$_}) && ($hostsents{$_}->[0]->{ip})) { 
 		$ip = $hostsents{$_}->[0]->{ip};
             	$nodebyip{$ip} = $_;
 	        $ip = xCAT::NetworkUtils->getipaddr($ip);
@@ -699,7 +699,7 @@ sub process_request_nmap {
           if (/^PORT/) { next; }
           ($port,$state) = split;
           if ($port and $port =~ /^(\d*)\// and $state eq 'open') {
-              if ($1 eq "3001" and $chainhash{$currnode}->[0]->{currstate} =~ /^install/) {
+              if ($1 eq "3001" and defined($chainhash{$currnode}->[0]->{currstate}) and $chainhash{$currnode}->[0]->{currstate} =~ /^install/) {
                 $installquerypossible=1; #It is possible to actually query node
               } elsif ($1 ne "3001") {
                 $states{$portservices{$1}}=1;
