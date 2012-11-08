@@ -111,6 +111,11 @@ if [ "$OS" != "AIX" ]; then
     chmod 400  $installroot/root/.ckpt.key
 fi
 
+# Ensure that the /etc/security/privcmds file has a complte set of entries.
+if [ "$OS" == "AIX" ]; then
+    /usr/sbin/trustchk -ry ALL >/dev/null 2>&1
+fi
+
 # BSR configuration, uncomment the following lines to enable BSR configuration on Power Linux cluter.  
 #if [ "$OS" != "AIX" ]; then
 #    if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
