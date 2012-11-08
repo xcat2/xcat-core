@@ -287,15 +287,21 @@ sub deconfig {
         my $Location_code;
         my $RID;
         my $TYPE;
-        if(ref($node->{GARDRECORD}) ne "ARRAY") {
+        my $dres;
+        if (ref($node->{GARDRECORD}) eq "ARRAY") {
+            $dres = $node->{GARDRECORD};
+        } elsif (ref($node->{GARDRECORD}) eq "HASH") {
+            push @$dres, $node->{GARDRECORD};
+        } else {
            push @result,[$name,"NO Deconfigured resources", 0];
            return( \@result );
         }
         push @result,[$name,"Deconfigured resources", 0];
         push @result,[$name,"Location_code                RID   Call_Out_Method    Call_Out_Hardware_State   TYPE", 0];
         push @result,[$name,"$node->{Location_code}         $node->{RID}", 0];
-        foreach my $unit(@{$node->{GARDRECORD}}) {
 
+        #foreach my $unit(@{$node->{GARDRECORD}}) {
+        foreach my $unit(@$dres) {
 		while (my ($key, $unit3) = each(%$unit) ) {
 
                    if($key eq "GARDUNIT") {
