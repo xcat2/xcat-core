@@ -607,7 +607,10 @@ sub mknetboot
         } elsif ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{primarynic} and $reshash->{$node}->[0]->{primarynic} ne "mac") {
             $useifname=1;
             $kcmdline .= "ifname=".$reshash->{$node}->[0]->{primarynic}.":";
-        }
+        }elsif($osver =~ /^rhels5/ and $arch=~/^ppc/){
+            #for rhels5-ppc, is we specify installnic="mac",boot device cannot be found during netboot
+            $useifname=1;
+	}
         #else { #no, we autodetect and don't presume anything
         #    $kcmdline .="eth0:";
         #    print "eth0 is used as the default booting network devices...\n";
