@@ -19,6 +19,9 @@ Requires: xCAT-server xCAT-client perl-DBD-SQLite
 
 Conflicts: xCAT
 
+%define pcm %(if [ "$pcm" = "1" ];then echo 1; else echo 0; fi)
+%define notpcm %(if [ "$pcm" = "1" ];then echo 0; else echo 1; fi)
+
 %ifos linux
 # yaboot-xcat is pulled in so any SN can manage ppc nodes
 Requires: httpd nfs-utils nmap bind
@@ -29,14 +32,22 @@ Requires: /usr/bin/ssh
 %ifnarch s390x
 Requires: /etc/xinetd.d/tftp
 # yaboot-xcat is pulled in so any MN can manage ppc nodes
-Requires: conserver-xcat yaboot-xcat 
+Requires: yaboot-xcat 
+%if %notpcm
+# PCM does not use or ship conserver
+Requires: conserver-xcat
+%endif
 %endif
 %endif
 
 %ifarch i386 i586 i686 x86 x86_64
 Requires: syslinux xCAT-genesis-x86_64 elilo-xcat
 Requires: ipmitool-xcat >= 1.8.9
-Requires: xnba-undi syslinux-xcat
+Requires: xnba-undi
+%if %notpcm
+# PCM does not need or ship syslinux-xcat
+Requires: syslinux-xcat
+%endif
 %endif
 
 %description

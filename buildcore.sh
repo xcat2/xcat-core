@@ -39,6 +39,14 @@
 UPLOADUSER=bp-sawyers
 FRS=/home/frs/project/x/xc/xcat
 
+# These are the rpms that should be built for each kind of xcat build
+ALLBUILD="perl-xCAT xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit xCAT xCATsn"
+ZVMBUILD="perl-xCAT xCAT-server xCAT-UI"
+ZVMLINK="xCAT-client xCAT xCATsn"
+PCMBUILD="xCAT xCATsn"
+PCMLINK="perl-xCAT xCAT-client xCAT-server xCAT-buildkit"
+#TODO: should add FSM build here
+
 # Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
 for i in $*; do
 	# upper case the variable name
@@ -83,8 +91,24 @@ else
 fi
 
 # Set variables based on which type of build we are doing
-if [ -n "$EMBED" ]; then EMBEDDIR="/$EMBED"
-else EMBEDDIR=""; fi
+if [ -n "$EMBED" ]; then
+	EMBEDDIR="/$EMBED"
+	if [ "$EMBED" = "zvm" ]; then
+		EMBEDBUILD=$ZVMBUILD
+		EMBEDLINK=$ZVMLINK
+	elif [ "$EMBED" = "pcm" ]; then
+		EMBEDBUILD=$PCMBUILD
+		EMBEDLINK=$PCMLINK
+	else
+		echo "Error: EMBED setting $EMBED not recognized."
+		exit 2
+	fi
+else
+	EMBEDDIR=""
+	EMBEDBUILD=$ALLBUILD
+	EMBEDLINK=""
+fi
+
 XCATCORE="xcat-core"		# core-snap is a sym link to xcat-core
 echo "svn --quiet up Version"
 svn --quiet up Version
@@ -149,7 +173,7 @@ if ! $GREP 'At revision' $SVNUP; then
 	SOMETHINGCHANGED=1
 fi
 
-# Process for making most of the rpms
+# Function for making the noarch rpms
 function maker {
 	rpmname="$1"
 	./makerpm $rpmname "$EMBED"
@@ -165,8 +189,10 @@ function maker {
 
 # If anything has changed, we should always rebuild perl-xCAT
 if [ $SOMETHINGCHANGED == 1 -o "$BUILDALL" == 1 ]; then		# Use to be:  $GREP perl-xCAT $SVNUP; then
-	UPLOAD=1
-	maker perl-xCAT
+	if [[ " $EMBEDBUILD " = *\ perl-xCAT\ * ]]; then
+		UPLOAD=1
+		maker perl-xCAT
+	fi
 fi
 if [ "$OSNAME" = "AIX" ]; then
 	# For the 1st one we overwrite, not append
@@ -175,7 +201,8 @@ fi
 
 # Build the rest of the noarch rpms
 for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit; do
-	if [ "$EMBED" = "zvm" -a "$rpmname" != "xCAT-server" -a "$rpmname" != "xCAT-UI" ]; then continue; fi		# for zvm embedded env only need to build server and UI
+	#if [ "$EMBED" = "zvm" -a "$rpmname" != "xCAT-server" -a "$rpmname" != "xCAT-UI" ]; then continue; fi		# for zvm embedded env only need to build server and UI
+	if [[ " $EMBEDBUILD " != *\ $rpmname\ * ]]; then continue; fi
 	if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-buildkit" ]; then continue; fi		# do not build xCAT-buildkit on aix
 	if $GREP $rpmname $SVNUP || [ "$BUILDALL" == 1 ]; then
 		UPLOAD=1
@@ -188,26 +215,28 @@ for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xC
 	fi
 done
 
-if [ "$OSNAME" != "AIX" -a "$EMBED" != "zvm" ]; then
-	if grep -v nbroot2 $SVNUP|$GREP xCAT-nbroot || [ "$BUILDALL" == 1 ]; then
-		UPLOAD=1
-		ORIGFAILEDRPMS="$FAILEDRPMS"
-		for arch in x86_64 x86 ppc64; do
-			./makerpm xCAT-nbroot-core $arch
-			if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-nbroot-core-$arch"; fi
-		done
-		if [ "$FAILEDRPMS" = "$ORIGFAILEDRPMS" ]; then	# all succeeded
-			rm -f $DESTDIR/xCAT-nbroot-core*rpm
-			rm -f $SRCDIR/xCAT-nbroot-core*rpm
-			mv $source/RPMS/noarch/xCAT-nbroot-core-*rpm $DESTDIR
-			mv $source/SRPMS/xCAT-nbroot-core-*rpm $SRCDIR
-		fi
-	fi
-fi
+# We are not building nbroot any more.  Instead, we manually build xCAT-genesis and put it in xcat-dep.
+#if [ "$OSNAME" != "AIX" -a "$EMBED" != "zvm" ]; then
+#	if grep -v nbroot2 $SVNUP|$GREP xCAT-nbroot || [ "$BUILDALL" == 1 ]; then
+#		UPLOAD=1
+#		ORIGFAILEDRPMS="$FAILEDRPMS"
+#		for arch in x86_64 x86 ppc64; do
+#			./makerpm xCAT-nbroot-core $arch
+#			if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-nbroot-core-$arch"; fi
+#		done
+#		if [ "$FAILEDRPMS" = "$ORIGFAILEDRPMS" ]; then	# all succeeded
+#			rm -f $DESTDIR/xCAT-nbroot-core*rpm
+#			rm -f $SRCDIR/xCAT-nbroot-core*rpm
+#			mv $source/RPMS/noarch/xCAT-nbroot-core-*rpm $DESTDIR
+#			mv $source/SRPMS/xCAT-nbroot-core-*rpm $SRCDIR
+#		fi
+#	fi
+#fi
 
 # Build the xCAT and xCATsn rpms for all platforms
 for rpmname in xCAT xCATsn; do
-	if [ "$EMBED" = "zvm" ]; then break; fi
+	#if [ "$EMBED" = "zvm" ]; then break; fi
+	if [[ " $EMBEDBUILD " != *\ $rpmname\ * ]]; then continue; fi
 	if [ $SOMETHINGCHANGED == 1 -o "$BUILDALL" == 1 ]; then		# used to be:  if $GREP -E "^[UAD] +$rpmname/" $SVNUP; then
 		UPLOAD=1
 		ORIGFAILEDRPMS="$FAILEDRPMS"
@@ -235,17 +264,24 @@ if [ "$OSNAME" = "AIX" ]; then
 fi
 
 # Make sym links in the embed subdirs for the rpms we do not have to build special
-cd $DESTDIR
-if [ "$EMBED" = "zvm" ]; then
+if [ -n "$EMBED" ]; then
+	cd $DESTDIR
 	maindir="../../$XCATCORE"
-	rm -f xCAT-client-$SHORTSHORTVER*rpm
-	ln -s $maindir/xCAT-client-$SHORTSHORTVER*rpm .
-	rm -f xCAT-$SHORTSHORTVER*rpm
-	ln -s $maindir/xCAT-$SHORTSHORTVER*.s390x.rpm .
-	rm -f xCATsn-$SHORTSHORTVER*rpm
-	ln -s $maindir/xCATsn-$SHORTSHORTVER*.s390x.rpm .
+	for rpmname in $EMBEDLINK; do
+		if [ "$rpmname" = "xCAT" -o "$rpmname" = "xCATsn" ]; then
+			if [ "$EMBED" = "zvm" ]; then
+				echo "Creating link for $rpmname-$SHORTSHORTVER"'*.s390x.rpm'
+				rm -f $rpmname-$SHORTSHORTVER*rpm
+				ln -s $maindir/$rpmname-$SHORTSHORTVER*.s390x.rpm .
+			fi
+		else
+			echo "Creating link for $rpmname-$SHORTSHORTVER"'*rpm'
+			rm -f $rpmname-$SHORTSHORTVER*rpm
+			ln -s $maindir/$rpmname-$SHORTSHORTVER*rpm .
+		fi
+	done
+	cd - >/dev/null
 fi
-cd - >/dev/null
 
 
 # Decide if anything was built or not
