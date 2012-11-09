@@ -2000,8 +2000,8 @@ sub preprocess_request {
         # build an individual request for each service node
         my $service  = "xcat";
         my @hcps=keys(%hcp_hash);
-        my $sn; 
-        my @dfmdispatch = xCAT::Utils->get_site_attribute("dfmdispatch");
+        my $sn;
+        my @dfmdispatch = xCAT::Utils->get_site_attribute("hdctldispatch");
         if (defined($dfmdispatch[0]) and ($dfmdispatch[0] =~ /0|n/i)) {
             if ($masters[0]) {
                 push @{$sn->{$masters[0]}}, @hcps;
