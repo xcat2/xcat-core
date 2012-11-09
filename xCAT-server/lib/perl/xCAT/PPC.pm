@@ -2000,8 +2000,19 @@ sub preprocess_request {
         # build an individual request for each service node
         my $service  = "xcat";
         my @hcps=keys(%hcp_hash);
-        my $sn = xCAT::Utils->get_ServiceNode(\@hcps, $service, "MN");
-        
+        my $sn; 
+        my @dfmdispatch = xCAT::Utils->get_site_attribute("dfmdispatch");
+        if (defined($dfmdispatch[0]) and ($dfmdispatch[0] =~ /0|n/i)) {
+            if ($masters[0]) {
+                push @{$sn->{$masters[0]}}, @hcps;
+            } else {
+                $callback->({data=>["The value of the attribute master in the site table is NOT set"]});
+                $req = {};
+                return;
+            }
+        } else {
+            $sn = xCAT::Utils->get_ServiceNode(\@hcps, $service, "MN");
+        }
         # build each request for each service node
           foreach my $snkey (keys %$sn)
           {

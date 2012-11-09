@@ -848,6 +848,8 @@ site => {
    "              match the path in the installdir attribute.\n\n".
    " ipmidispatch:  Whether or not to send ipmi hw control operations to the service\n".
    "                node of the target compute nodes. Default is 'y'.\n\n".
+   " dfmdispatch:  Whether or not to send DFM hw control operations to the service\n".
+   "                node of the target compute nodes. Default is 'y'.\n\n".
    " ipmimaxp:  The max # of processes for ipmi hw ctrl. The default is 64. Currently,\n".
    "            this is only used for HP hw control.\n\n".
    " ipmiretries:  The # of retries to use when communicating with BMCs. Default is 3.\n\n".
