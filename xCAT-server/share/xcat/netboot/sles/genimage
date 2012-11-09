@@ -1552,7 +1552,8 @@ sub generic_post { # This function is meant to leave the image in a state approx
 
     copy("$installroot/postscripts/xcatpostinit", "$rootimg_dir/etc/init.d/xcatpostinit");
     chmod(0755, "$rootimg_dir/etc/init.d/xcatpostinit");
-    system("chroot $rootimg_dir insserv gettyset xcatpostinit");
+    #insserv with -f option to ignore the dependency on sles10.4
+    system("chroot $rootimg_dir insserv -f network sshd gettyset xcatpostinit");
 
     my $rc = system("grep sshd $rootimg_dir/etc/init.d/.depend.start | grep TARGETS");
     if ($rc) {
