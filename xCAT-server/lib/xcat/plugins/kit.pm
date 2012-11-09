@@ -691,6 +691,7 @@ sub addkit
         push@{ $rsp{data} }, "addkit: add Kits into xCAT from a list of tarball file or directory which have the same structure with tarball file";
         push@{ $rsp{data} }, "Usage: ";
         push@{ $rsp{data} }, "\taddkit [-h|--help]";
+        push@{ $rsp{data} }, "\taddkit [-i|--inspection] <kitlist>]";
         push@{ $rsp{data} }, "\taddkit [-p|--path <path>] <kitlist>] [-V]";
         xCAT::MsgUtils->message( "I", \%rsp, $callback );
     };
@@ -707,6 +708,7 @@ sub addkit
     GetOptions(
             'h|help' => \$help,
             'V|verbose' => \$::VERBOSE,
+            'i|inspection' => \$inspection,
             'p|path=s' => \$path,
     );
 
@@ -871,9 +873,19 @@ sub addkit
 
         unless (keys %kithash) {
             my %rsp;
-            push@{ $rsp{data} }, "Failed to add kit because kit.conf is invalid";
+            push@{ $rsp{data} }, "Failed to add kit $kit because kit.conf is invalid";
             xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
+        }
+
+        if ( $inspection ) {
+            my %rsp;
+            push@{ $rsp{data} }, "kitname=$kitname";
+            push@{ $rsp{data} }, "    desc=$kithash{$kitname}{desc}";
+            push@{ $rsp{data} }, "    version=$kithash{$kitname}{version}";
+            push@{ $rsp{data} }, "    ostype=$kithash{$kitname}{ostype}";
+            xCAT::MsgUtils->message( "I", \%rsp, $callback );
+            next;
         }
 
         (my $ref1) = $tabs{kit}->getAttribs({kitname => $kitname}, 'basename');
@@ -946,16 +958,19 @@ sub addkit
         }
 
         # Copying plugins to /opt/xcat/lib/perl/xCAT_plugin/
-        chmod(644, "$kitdir/plugins/*");
+        if ( -d "$kitdir/plugins/" ) {
 
-        if($::VERBOSE){
-            my %rsp;
-            push@{ $rsp{data} }, "Copying kit plugins from $kitdir/plugins/ to $::XCATROOT/lib/perl/xCAT_plugin";
-            xCAT::MsgUtils->message( "I", \%rsp, $callback );
+            chmod(644, "$kitdir/plugins/*");
 
-            $rc = system("cp -rfv $kitdir/plugins/* $::XCATROOT/lib/perl/xCAT_plugin/");
-        } else {
-            $rc = system("cp -rf $kitdir/plugins/* $::XCATROOT/lib/perl/xCAT_plugin/");
+            if($::VERBOSE){
+                my %rsp;
+                push@{ $rsp{data} }, "Copying kit plugins from $kitdir/plugins/ to $::XCATROOT/lib/perl/xCAT_plugin";
+                xCAT::MsgUtils->message( "I", \%rsp, $callback );
+
+                $rc = system("cp -rfv $kitdir/plugins/* $::XCATROOT/lib/perl/xCAT_plugin/");
+            } else {
+                $rc = system("cp -rf $kitdir/plugins/* $::XCATROOT/lib/perl/xCAT_plugin/");
+            }
         }
 
         if($rc){
@@ -987,14 +1002,15 @@ sub addkit
         push @kitnames, $kit;
     }
 
-    my $kitlist = join ',', @kitnames;
-    my %rsp;
-    push@{ $rsp{data} }, "Kit $kitlist was successfully added.";
-    xCAT::MsgUtils->message( "I", \%rsp, $callback );
+    unless ( $inspection ) {
+        my $kitlist = join ',', @kitnames;
+        my %rsp;
+        push@{ $rsp{data} }, "Kit $kitlist was successfully added.";
+        xCAT::MsgUtils->message( "I", \%rsp, $callback );
 
-    # Issue xcatd reload to load the new plugins
-    system("/etc/init.d/xcatd reload");
-
+        # Issue xcatd reload to load the new plugins
+        system("/etc/init.d/xcatd reload");
+    }
 }
 
 
@@ -2115,6 +2131,9 @@ sub rmkitcomp
 
                     my @lines = ();
                     if ( -e "$installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist" ) {
+
+                        system("cp $installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist $installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist.orig");
+
                         if (open(DEPLOYPARAM, "<", "$installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist")) {
                             @lines = <DEPLOYPARAM>;
                             close(DEPLOYPARAM);
