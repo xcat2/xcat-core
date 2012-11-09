@@ -24,7 +24,9 @@ Requires: perl-XML-Parser
 Conflicts: xCAT
 
 %ifos linux
-Requires: dhcp httpd nfs-utils expect nmap fping bind perl-XML-Parser vsftpd
+Requires: httpd nfs-utils expect nmap fping bind perl-XML-Parser vsftpd
+# On RHEL this pulls in dhcp, on SLES it pulls in dhcp-server
+Requires: /usr/sbin/dhcpd
 %ifnarch s390x
 Requires: /etc/xinetd.d/tftp
 # yaboot-xcat is pulled in so any SN can manage ppc nodes
