@@ -210,7 +210,7 @@ if ((!$imagename) && (!$os)){
     
     chomp($os);
 }
-print "  OS: $os\n";
+if ($os) { print "  OS: $os\n"; }
 
 
 
@@ -280,7 +280,7 @@ if ((!$imagename) && (!$profile)){
 	}
     }
 }
-print  "  Profile: $profile\n";
+if ($profile) { print  "  Profile: $profile\n"; }
 
 # get the interface
 if ((!$imagename) && (!$interface)){
@@ -309,7 +309,7 @@ if ((!$imagename) && (!$interface)){
 	}
     }
 }
-print "  Interface: $interface\n";
+if ($interface) { print "  Interface: $interface\n"; }
 
     
 
