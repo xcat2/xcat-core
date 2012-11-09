@@ -682,9 +682,6 @@ sub addkit
 
     my $path;
     my $rc;
-    my %kithash;
-    my %kitrepohash;
-    my %kitcomphash;
 
     my $xusage = sub {
         my %rsp;
@@ -735,10 +732,14 @@ sub addkit
 
     my @kits = split ',', $des;
     my @kitnames;
+    my $hasplugin = 0;
     foreach my $kit (@kits) {
 
         my $kitdir = '';
         my $kittmpdir = '';
+        my %kithash;
+        my %kitrepohash;
+        my %kitcomphash;
 
         # extract the Kit to kitdir
         my $installdir = xCAT::TableUtils->getInstallDir();
@@ -818,6 +819,8 @@ sub addkit
         my $kitreponame;
         my $kitcompname;
         my $scripts;
+        my $kitrepoid = 0;
+        my $kitcompid = 0;
         foreach my $line (@lines) {
             # Read through each line of kit.conf.
             my $key, $value;
@@ -845,25 +848,15 @@ sub addkit
 
             # Add each attribute to different hash.
             if ( $sec =~ /KIT$/) {
-                if ( $key =~ /kitname/ ) {
-                    $kitname = $value;
-                } else {
-                    $kithash{$kitname}{$key} = $value;
-                }
+                $kithash{$key} = $value;
             } elsif ( $sec =~ /KITREPO$/ ) {    
-                if ( $key =~ /kitreponame/ ) {
-                    $kitreponame = $value;
-                } else {
-                    $kitrepohash{$kitreponame}{$key} = $value;
-                }
+                $kitrepohash{$kitrepoid}{$key} = $value;
             } elsif ( $sec =~ /KITCOMPONENT$/ ) {
-                if ( $key =~ /kitcompname/ ) {
-                    $kitcompname = $value;
-                } elsif ( $key =~ /postbootscripts/ ) {
+                if ( $key =~ /postbootscripts/ ) {
                     $scripts = $scripts . ',' . $value;
-                    $kitcomphash{$kitcompname}{$key} = $value;
+                    $kitcomphash{$kitcompid}{$key} = $value;
                 } else {
-                    $kitcomphash{$kitcompname}{$key} = $value;
+                    $kitcomphash{$kitcompid}{$key} = $value;
                 }
             }
         }
@@ -880,24 +873,24 @@ sub addkit
 
         if ( $inspection ) {
             my %rsp;
-            push@{ $rsp{data} }, "kitname=$kitname";
-            push@{ $rsp{data} }, "    desc=$kithash{$kitname}{desc}";
-            push@{ $rsp{data} }, "    version=$kithash{$kitname}{version}";
-            push@{ $rsp{data} }, "    ostype=$kithash{$kitname}{ostype}";
+            push@{ $rsp{data} }, "kitname=$kithash{kitname}";
+            push@{ $rsp{data} }, "    desc=$kithash{desc}";
+            push@{ $rsp{data} }, "    version=$kithash{version}";
+            push@{ $rsp{data} }, "    ostype=$kithash{ostype}";
             xCAT::MsgUtils->message( "I", \%rsp, $callback );
             next;
         }
 
-        (my $ref1) = $tabs{kit}->getAttribs({kitname => $kitname}, 'basename');
+        (my $ref1) = $tabs{kit}->getAttribs({kitname => $kithash{kitname}}, 'basename');
         if ( $ref1 and $ref1->{'basename'}){
             my %rsp;
-            push@{ $rsp{data} }, "Failed to add kit $kitname because it is already existing";
+            push@{ $rsp{data} }, "Failed to add kit $kithash{kitname} because it is already existing";
             xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
 
         my %rsp;
-        push@{ $rsp{data} }, "Adding Kit $kitname";
+        push@{ $rsp{data} }, "Adding Kit $kithash{kitname}";
         xCAT::MsgUtils->message( "I", \%rsp, $callback );
 
         # Moving kits from tmp directory to kitdir
@@ -908,7 +901,7 @@ sub addkit
         }
 
         $kitdir =~ s/\/$//;
-        $kitdir = $kitdir . "/" . $kitname;
+        $kitdir = $kitdir . "/" . $kithash{kitname};
 
         if($::VERBOSE){
             my %rsp;
@@ -918,10 +911,10 @@ sub addkit
         mkpath($kitdir);
 
         # Set kitdir and kitrepodir
-        $kithash{$kitname}{kitdir} = $kitdir;
+        $kithash{kitdir} = $kitdir;
 
-        foreach my $kitreponame ( keys %kitrepohash ) {
-            $kitrepohash{$kitreponame}{kitrepodir} = $kitdir."/repos/".$kitreponame;
+        foreach my $kitrepoid ( keys %kitrepohash ) {
+            $kitrepohash{$kitrepoid}{kitrepodir} = $kitdir."/repos/".$kitrepohash{$kitrepoid}{kitreponame};
         }
 
         if($::VERBOSE){
@@ -962,14 +955,19 @@ sub addkit
 
             chmod(644, "$kitdir/plugins/*");
 
-            if($::VERBOSE){
-                my %rsp;
-                push@{ $rsp{data} }, "Copying kit plugins from $kitdir/plugins/ to $::XCATROOT/lib/perl/xCAT_plugin";
-                xCAT::MsgUtils->message( "I", \%rsp, $callback );
+            opendir($dir,"$kitdir/plugins/");
+            if ( grep { ($_ ne '.') && ($_ ne '..') } readdir($dir) ) {
+                if($::VERBOSE){
+                    my %rsp;
+                    push@{ $rsp{data} }, "Copying kit plugins from $kitdir/plugins/ to $::XCATROOT/lib/perl/xCAT_plugin";
+                    xCAT::MsgUtils->message( "I", \%rsp, $callback );
 
-                $rc = system("cp -rfv $kitdir/plugins/* $::XCATROOT/lib/perl/xCAT_plugin/");
-            } else {
-                $rc = system("cp -rf $kitdir/plugins/* $::XCATROOT/lib/perl/xCAT_plugin/");
+                    $rc = system("cp -rfv $kitdir/plugins/* $::XCATROOT/lib/perl/xCAT_plugin/");
+                } else {
+                    $rc = system("cp -rf $kitdir/plugins/* $::XCATROOT/lib/perl/xCAT_plugin/");
+                }
+
+                $hasplugin = 1;
             }
         }
 
@@ -987,19 +985,17 @@ sub addkit
             xCAT::MsgUtils->message( "I", \%rsp, $callback );
         }
 
-        foreach my $kitname (keys %kithash) {
-            $tabs{kit}->setAttribs({kitname => $kitname }, \%{$kithash{$kitname}} );
+        $tabs{kit}->setAttribs({kitname => $kithash{kitname} }, \%kithash );
+
+        foreach my $kitrepoid (keys %kitrepohash) {
+            $tabs{kitrepo}->setAttribs({kitreponame => $kitrepohash{$kitrepoid}{kitreponame} }, \%{$kitrepohash{$kitrepoid}} );
         }
 
-        foreach my $kitreponame (keys %kitrepohash) {
-            $tabs{kitrepo}->setAttribs({kitreponame => $kitreponame }, \%{$kitrepohash{$kitreponame}} );
+        foreach my $kitcompid (keys %kitcomphash) {
+            $tabs{kitcomponent}->setAttribs({kitcompname => $kitcomphash{$kitcompid}{kitcompname} }, \%{$kitcomphash{$kitcompid}} );
         }
 
-        foreach my $kitcompname (keys %kitcomphash) {
-            $tabs{kitcomponent}->setAttribs({kitcompname => $kitcompname }, \%{$kitcomphash{$kitcompname}} );
-        }
-
-        push @kitnames, $kit;
+        push @kitnames, $kithash{kitname};
     }
 
     unless ( $inspection ) {
@@ -1008,8 +1004,10 @@ sub addkit
         push@{ $rsp{data} }, "Kit $kitlist was successfully added.";
         xCAT::MsgUtils->message( "I", \%rsp, $callback );
 
-        # Issue xcatd reload to load the new plugins
-        system("/etc/init.d/xcatd reload");
+        if ( $hasplugin ) {
+            # Issue xcatd reload to load the new plugins
+            system("/etc/init.d/xcatd reload");
+        }
     }
 }
 
@@ -1100,6 +1098,7 @@ sub rmkit
     # Remove each kit
     my @entries = $tabs{'osimage'}->getAllAttribs( 'imagename', 'kitcomponents' );
     my @kitlist;
+    my $hasplugin;
 
     foreach my $kitname (keys %kitnames) {
 
@@ -1169,6 +1168,9 @@ sub rmkit
 
             opendir($dir, $kitdir."/plugins");
             my @files = readdir($dir);
+            if ( grep { ($_ ne '.') && ($_ ne '..') } @files ) {
+                $hasplugin = 1;
+            }
             foreach my $file (@files) {
                 if ($file eq '.' or $file eq '..') { next; }
                 if ( -e "$::XCATROOT/lib/perl/xCAT_plugin/$file" ) {
@@ -1248,8 +1250,10 @@ sub rmkit
     push@{ $rsp{data} }, "Kit $kits was successfully removed.";
     xCAT::MsgUtils->message( "I", \%rsp, $callback );
 
-    # Issue xcatd reload to load the new plugins
-    system("/etc/init.d/xcatd reload");
+    if ( $hasplugin ) {
+        # Issue xcatd reload to load the new plugins
+        system("/etc/init.d/xcatd reload");
+    }
 
 }
 
