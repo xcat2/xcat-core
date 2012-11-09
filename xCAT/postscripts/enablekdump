@@ -96,36 +96,89 @@ if [ ! -z "$DUMP" ]; then
     else
 	MOUNTPATH="/var/tmp"
     fi 
-    /bin/mount $KDIP:$KDPATH $MOUNTPATH
 
     if [ "$KDPROTO" = "nfs" ]; then
 	if (pmatch $OSVER "sles*") || (pmatch $OSVER "suse*") || [ -f /etc/SuSE-release ]; then
-	    KDTEMPPATH=${KDPATH//\//\\\/}
-	    KDTEMPPATH="nfs:\/\/${KDIP}${KDTEMPPATH}\/${NODE}"
-	    sed -i "s/^KDUMP_SAVEDIR=.*$/KDUMP_SAVEDIR=\"${KDTEMPPATH}\"/" /etc/sysconfig/kdump
-            sed -i "s/^KDUMP_COPY_KERNEL=.*$/KDUMP_COPY_KERNEL=\"no\"/" /etc/sysconfig/kdump
-            sed -i "s/^KDUMP_PRESCRIPT=.*$/KDUMP_PRESCRIPT=\"\/tmp\/createdir\"/" /etc/sysconfig/kdump
-            sed -i "s/^KDUMP_REQUIRED_PROGRAMS=.*$/KDUMP_REQUIRED_PROGRAMS=\"\/tmp\/createdir\"/" /etc/sysconfig/kdump
-            TEMPDELAY=$(($RANDOM%30))
-            #work around for the kdump on sles 11.2
-            echo "/bin/mkdir -p /root/tmp/" > /tmp/createdir
-            #following 5 lines is the work around for kdump on multiply nodes
-            echo "/bin/sleep ${TEMPDELAY}" >> /tmp/createdir
-            echo "/bin/mount -o nolock ${KDIP}:${KDPATH} /tmp" >> /tmp/createdir
-            echo "/bin/mkdir -p /tmp/${NODE}" >> /tmp/createdir
-            echo "/bin/sleep ${TEMPDELAY}" >> /tmp/createdir
-            echo "/bin/umount /tmp" >> /tmp/createdir
-            /bin/chmod 777 /tmp/createdir    
-            #change the mount and remount shell scripts' name, workaround for kdump on stateless node
-            oldmount=`ls /lib/mkinitrd/boot/*-mount.sh`
-            oldremount=`ls /lib/mkinitrd/boot/*-remount.sh`
-            mv $oldmount ${oldmount}.bak
-            mv $oldremount ${oldremount}.bak
-	    /etc/init.d/boot.kdump restart
-            mv ${oldmount}.bak $oldmount
-            mv ${oldremount}.bak $oldremount
+            if (pmatch $OSVER "*10*"); then
+                #run mkinitrd to generater the kdump-init base
+                /sbin/mkinitrd -m "nfs nfs be2net e1000e ibmveth igb firmware_class tg3 e1000"
+                /bin/mkdir -p /var/tmp/tempinit
+                cd /boot/
+                KDUMPINIT=`ls initrd-*-kdump`
+                /bin/cp /boot/${KDUMPINIT} /var/tmp/tempinit/
+                #change to the /var/tmp/tempinit/ directory
+                cd /var/tmp/tempinit/
+                /bin/zcat ${KDUMPINIT} | /bin/cpio -id
+                /bin/rm -f ${KDUMPINIT}
+                mkdir -p ./var/lib/dhcpcd/
+                /bin/cp -r /lib/* ./lib/
+                /bin/cp "/sbin/ifconfig" "./bin/"
+                /bin/cp "/usr/bin/clear" "./bin/"
+                /bin/cp "/bin/touch" "./bin/"
+                /bin/cp "/bin/grep" "./bin/"
+                /bin/cp "/sbin/dhcpcd" "./bin/"
+                /bin/cp "/sbin/ip" "./bin/"
+                /bin/cp "/bin/awk" "./bin/"
+                /bin/cp "/bin/makedumpfile" "./bin/"
+
+                #modify the original init to support dump to an nfs server
+                cat > ./bin/dumpfile << EOF
+#!/bin/bash
+if [ -e /proc/vmcore ];then
+    /bin/touch /var/lib/dhcpcd/dhcpcd-$ETHX.info
+    /bin/dhcpcd $ETHX
+    while ! /bin/ifconfig | /bin/grep inet; do
+        echo -e "Failed to acquire address, retrying"
+        /bin/sleep 2
+        /bin/dhcpcd $ETHX
+    done
+
+    HOSTNAME=`hostname`
+
+    /bin/mkdir /mnt
+    /bin/mount -t nfs -o nolock ${KDIP}:${KDPATH} /mnt
+    /bin/makedumpfile -c /proc/vmcore /mnt/$HOSTNAME
+    /bin/umount -l /mnt
+    /sbin/reboot -d -f
+fi
+EOF
+                chmod a+x ./bin/dumpfile
+                /bin/sed -i "s/^# No multipath support/ \/bin\/dumpfile\n/" ./init
+                /bin/rm -f /boot/${KDUMPINIT}
+                /usr/bin/find . | cpio -H newc -o|gzip -9 -c - > /boot/${KDUMPINIT}
+                cd /
+                /bin/rm -rf "/var/tmp/tempinit"
+                service kdump restart
+            else
+                /bin/mount -o nolock $KDIP:$KDPATH $MOUNTPATH
+	        KDTEMPPATH=${KDPATH//\//\\\/}
+	        KDTEMPPATH="nfs:\/\/${KDIP}${KDTEMPPATH}\/${NODE}"
+	        sed -i "s/^KDUMP_SAVEDIR=.*$/KDUMP_SAVEDIR=\"${KDTEMPPATH}\"/" /etc/sysconfig/kdump
+                sed -i "s/^KDUMP_COPY_KERNEL=.*$/KDUMP_COPY_KERNEL=\"no\"/" /etc/sysconfig/kdump
+                sed -i "s/^KDUMP_PRESCRIPT=.*$/KDUMP_PRESCRIPT=\"\/tmp\/createdir\"/" /etc/sysconfig/kdump
+                sed -i "s/^KDUMP_REQUIRED_PROGRAMS=.*$/KDUMP_REQUIRED_PROGRAMS=\"\/tmp\/createdir\"/" /etc/sysconfig/kdump
+                TEMPDELAY=$(($RANDOM%30))
+                #work around for the kdump on sles 11.2
+                echo "/bin/mkdir -p /root/tmp/" > /tmp/createdir
+                #following 5 lines is the work around for kdump on multiply nodes
+                echo "/bin/sleep ${TEMPDELAY}" >> /tmp/createdir
+                echo "/bin/mount -o nolock ${KDIP}:${KDPATH} /tmp" >> /tmp/createdir
+                echo "/bin/mkdir -p /tmp/${NODE}" >> /tmp/createdir
+                echo "/bin/sleep ${TEMPDELAY}" >> /tmp/createdir
+                echo "/bin/umount /tmp" >> /tmp/createdir
+                /bin/chmod 777 /tmp/createdir    
+                #change the mount and remount shell scripts' name, workaround for kdump on stateless node
+                oldmount=`ls /lib/mkinitrd/boot/*-mount.sh`
+                oldremount=`ls /lib/mkinitrd/boot/*-remount.sh`
+                mv $oldmount ${oldmount}.bak
+                mv $oldremount ${oldremount}.bak
+	        /etc/init.d/boot.kdump restart
+                mv ${oldmount}.bak $oldmount
+                mv ${oldremount}.bak $oldremount
+            fi
 	else
 	    if (pmatch $OSVER "fedora*") || (pmatch $OSVER "rhel6*") || (pmatch $OSVER "rhels6*") || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ];then
+                /bin/mount -o nolock $KDIP:$KDPATH $MOUNTPATH
 		echo "net $KDIP:$KDPATH" > /etc/kdump.conf
                 echo "link_delay 180" >> /etc/kdump.conf
 		/etc/init.d/kdump restart
