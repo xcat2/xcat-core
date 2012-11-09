@@ -43,9 +43,12 @@ FRS=/home/frs/project/x/xc/xcat
 ALLBUILD="perl-xCAT xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit xCAT xCATsn"
 ZVMBUILD="perl-xCAT xCAT-server xCAT-UI"
 ZVMLINK="xCAT-client xCAT xCATsn"
-PCMBUILD="xCAT xCATsn"
+PCMBUILD="xCAT"
 PCMLINK="perl-xCAT xCAT-client xCAT-server xCAT-buildkit"
-#TODO: should add FSM build here
+# Note: for FSM, the FlexCAT rpm is built separately from gsa/git
+FSMBUILD="perl-xCAT xCAT-client xCAT-server"
+FSMLINK=""
+# If you add more embed cases, also change the if [ -n "$EMBED" ]... below
 
 # Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
 for i in $*; do
@@ -99,6 +102,9 @@ if [ -n "$EMBED" ]; then
 	elif [ "$EMBED" = "pcm" ]; then
 		EMBEDBUILD=$PCMBUILD
 		EMBEDLINK=$PCMLINK
+	elif [ "$EMBED" = "fsm" ]; then
+		EMBEDBUILD=$FSMBUILD
+		EMBEDLINK=$FSMLINK
 	else
 		echo "Error: EMBED setting $EMBED not recognized."
 		exit 2
@@ -264,7 +270,7 @@ if [ "$OSNAME" = "AIX" ]; then
 fi
 
 # Make sym links in the embed subdirs for the rpms we do not have to build special
-if [ -n "$EMBED" ]; then
+if [ -n "$EMBED" -a -n "$EMBEDLINK" ]; then
 	cd $DESTDIR
 	maindir="../../$XCATCORE"
 	for rpmname in $EMBEDLINK; do
