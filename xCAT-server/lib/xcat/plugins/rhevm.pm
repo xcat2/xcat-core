@@ -21,7 +21,6 @@
     # role, for access permission
     # domain, for user/group management
 #TODO: handle the functions base on the version
-#TODO: handle the datacenter and cluster management
 #TODO: add the support of iscsi storage domain
 
 
@@ -2095,91 +2094,95 @@ sub mkvm {
             }
     
             #Add the disk for the vm from storage domain
-            #Get the storage domain by name
-            my ($sdname, $disksize, $disktype) = split(':', $myvment->{storage});
-            if ($sdname) {
-                if (waitforcomplete($ref_rhevm, "/api/vms/$vmid", "/vm/status/state=down", 30)) {
-                    my $rsp;
-                    push @{$rsp->{data}}, "$node: failed to waiting the vm gets to \"down\" state.";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    next;
-                }
-                $success = 0;
-                my $sdid;
-                ($rc, $sdid, $stat) = search_src($ref_rhevm, "storagedomains", $sdname);
-                if ($rc) {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Could not get the storage domain $sdname.";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    next;
-                } 
-
-                if ($sdid) {
-                    $api = "/api/vms/$vmid/disks";
-                    $method = "POST";
-                    
-                    # generate the content
-                    if ($disktype) {
-                        $disktype_t->setData($disktype);
-                        if ($disktype eq "system") {
-                            $diskboot_t->setData("true");
-                        } else {
-                            $diskboot_t->setData("false");
-                        }
-                    } else {
-                        $disktype_t->setData("system");
-                        $diskboot_t->setData("true");
-                    }
-                    # set the size of disk
-                    if ($disksize) {
-                        $disksize =~ s/g/000000000/i;
-                        $disksize =~ s/m/000000/i;
-                    } else {
-                        $disksize = "5000000000"; #5G is default
-                    }
-                    $sdid_ele->setAttribute("id", $sdid);
-                    $sdsize_t->setData($disksize);
-
-                    # set the interface type and format for disk
-                    if ($myvment->{storagemodel}) {
-                        my ($iftype,$iffmt) = split(':', $myvment->{storagemodel});
-                        $sdif_t->setData($iftype);
-                        $sdfm_t->setData($iffmt);
-                    } else {
-                        $sdif_t->setData("virtio");
-                        $sdfm_t->setData("cow");
-                    }
-    
-                    $request = genreq($ref_rhevm, $method, $api, $adds->toString());
-                    ($rc, $response) = send_req($ref_rhevm, $request->as_string());
-                    if (!$rc) {
-                        my $parser = XML::LibXML->new();
-                        my $doc = $parser->parse_string($response);
-                        if (defined($doc->findnodes("/fault")->[0])) {
-                            my $rsp;
-                            push @{$rsp->{data}}, "$node: Add disk failed for virtual machine";
-                            if ($doc->findnodes("/fault/detail")->[0]) {
-                                push @{$rsp->{data}}, $doc->findnodes("/fault/detail")->[0]->textContent();
-                            }
-                            xCAT::MsgUtils->message("E", $rsp, $callback);
-                            next;
-                        }
-                        my $state;
-                        if (defined($doc->findnodes("/disk/creation_status/state")->[0])) {
-                            $state = $doc->findnodes("/disk/creation_status/state")->[0]->textContent();
-                        }
-                        if ($state =~ /fail/i) {
-                            my $rsp;
-                            push @{$rsp->{data}}, "$node: Add disk failed for virtual machine";
-                            xCAT::MsgUtils->message("E", $rsp, $callback);
-                            next;
-                        }
-                        $success = 1;
-                    } else {
+            my @disklist = split ('\|', $myvment->{storage});
+                foreach (@disklist) {
+                my ($sdname, $disksize, $disktype) = split(':', $_);
+                if ($sdname) {
+                    if (waitforcomplete($ref_rhevm, "/api/vms/$vmid", "/vm/status/state=down", 30)) {
                         my $rsp;
-                        push @{$rsp->{data}}, $response;
+                        push @{$rsp->{data}}, "$node: failed to waiting the vm gets to \"down\" state.";
                         xCAT::MsgUtils->message("E", $rsp, $callback);
                         next;
+                    }
+                    $success = 0;
+    
+                    #Get the storage domain by name
+                    my $sdid;
+                    ($rc, $sdid, $stat) = search_src($ref_rhevm, "storagedomains", $sdname);
+                    if ($rc) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Could not get the storage domain $sdname.";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        next;
+                    } 
+    
+                    if ($sdid) {
+                        $api = "/api/vms/$vmid/disks";
+                        $method = "POST";
+                        
+                        # generate the content
+                        if ($disktype) {
+                            $disktype_t->setData($disktype);
+                            if ($disktype eq "system") {
+                                $diskboot_t->setData("true");
+                            } else {
+                                $diskboot_t->setData("false");
+                            }
+                        } else {
+                            $disktype_t->setData("system");
+                            $diskboot_t->setData("true");
+                        }
+                        # set the size of disk
+                        if ($disksize) {
+                            $disksize =~ s/g/000000000/i;
+                            $disksize =~ s/m/000000/i;
+                        } else {
+                            $disksize = "5000000000"; #5G is default
+                        }
+                        $sdid_ele->setAttribute("id", $sdid);
+                        $sdsize_t->setData($disksize);
+    
+                        # set the interface type and format for disk
+                        if ($myvment->{storagemodel}) {
+                            my ($iftype,$iffmt) = split(':', $myvment->{storagemodel});
+                            $sdif_t->setData($iftype);
+                            $sdfm_t->setData($iffmt);
+                        } else {
+                            $sdif_t->setData("virtio");
+                            $sdfm_t->setData("cow");
+                        }
+        
+                        $request = genreq($ref_rhevm, $method, $api, $adds->toString());
+                        ($rc, $response) = send_req($ref_rhevm, $request->as_string());
+                        if (!$rc) {
+                            my $parser = XML::LibXML->new();
+                            my $doc = $parser->parse_string($response);
+                            if (defined($doc->findnodes("/fault")->[0])) {
+                                my $rsp;
+                                push @{$rsp->{data}}, "$node: Add disk failed for virtual machine";
+                                if ($doc->findnodes("/fault/detail")->[0]) {
+                                    push @{$rsp->{data}}, $doc->findnodes("/fault/detail")->[0]->textContent();
+                                }
+                                xCAT::MsgUtils->message("E", $rsp, $callback);
+                                next;
+                            }
+                            my $state;
+                            if (defined($doc->findnodes("/disk/creation_status/state")->[0])) {
+                                $state = $doc->findnodes("/disk/creation_status/state")->[0]->textContent();
+                            }
+                            if ($state =~ /fail/i) {
+                                my $rsp;
+                                push @{$rsp->{data}}, "$node: Add disk failed for virtual machine";
+                                xCAT::MsgUtils->message("E", $rsp, $callback);
+                                next;
+                            }
+                            $success = 1;
+                        } else {
+                            my $rsp;
+                            push @{$rsp->{data}}, $response;
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            next;
+                        }
                     }
                 }
             }
