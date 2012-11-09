@@ -623,7 +623,8 @@ sub mknetboot
         # which is used for dracut
         # the redhat5.x os will ignore it
         my $useifname=0;
-
+        #for rhels5.x-ppc64, if installnic="mac", BOOTIF=<mac> should be appended 
+        my $usemac=0;
         if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{installnic} and $reshash->{$node}->[0]->{installnic} ne "mac") {
             $useifname=1;
             $kcmdline .= "ifname=".$reshash->{$node}->[0]->{installnic} . ":";
@@ -633,14 +634,20 @@ sub mknetboot
         } elsif ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{primarynic} and $reshash->{$node}->[0]->{primarynic} ne "mac") {
             $useifname=1;
             $kcmdline .= "ifname=".$reshash->{$node}->[0]->{primarynic}.":";
-        }
+        }else{
+	    if($osver =~ /rhels5/ and $arch=~ /ppc/)
+	    {
+     		$usemac=1;	
+	    }
+	}
         #else { #no, we autodetect and don't presume anything
         #    $kcmdline .="eth0:";
         #    print "eth0 is used as the default booting network devices...\n";
         #}
         # append the mac address
         my $mac;
-        if( $useifname && $machash->{$node}->[0] && $machash->{$node}->[0]->{'mac'}) {
+	
+        if( $usemac ||  $useifname && $machash->{$node}->[0] && $machash->{$node}->[0]->{'mac'}) {
             # TODO: currently, only "mac" attribute with classic style is used, the "|" delimited string of "macaddress!hostname" format is not used
             $mac = $machash->{$node}->[0]->{'mac'};
 #            if ( (index($mac, "|") eq -1) and (index($mac, "!") eq -1) ) {
@@ -670,7 +677,7 @@ sub mknetboot
         } elsif ( $reshash->{$node}->[0] and $reshash->{$node}->[0]->{primarynic} and $reshash->{$node}->[0]->{primarynic} ne "mac") {
             $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{primarynic} . " ";
         } else {
-            if ( $useifname && $mac) {
+            if ( $usemac || $useifname && $mac) {
                 $kcmdline .= "BOOTIF=" . $mac . " ";
             }
         }
