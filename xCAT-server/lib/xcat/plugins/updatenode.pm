@@ -1464,10 +1464,6 @@ sub updatenodesyncfiles
                    },
                    $subreq, -1,1);
 
-             if ($::RUNCMD_RC != 0)
-             {  
-                 my $rc=0;   # LKV fix this
-             } 
 
            my @userinfo=();
            # determine if the sync was successful or not
