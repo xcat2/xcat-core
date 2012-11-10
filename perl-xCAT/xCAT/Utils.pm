@@ -1068,9 +1068,12 @@ sub runcmd
 
 	   reference to xCAT daemon sub_req routine
 
-	   exitcode  
+	   exitcode   - see definitions below
 
-	   reference to output
+	   refoutput - type of output to build
+         Not set - array
+          1 -  reference to an array
+          2 -  returns the response hash as received from the plugin.   
 
 
    Returns:
@@ -1083,7 +1086,7 @@ sub runcmd
       Normally, if there is an error running the cmd,it will display the
 		error and exit with the cmds exit code, unless exitcode
 		is given one of the following values:
-            0:     display error msg, DO NOT exit on error, but set
+         0:     display error msg, DO NOT exit on error, but set
 					$::RUNCMD_RC to the exit code.
 			-1:     DO NOT display error msg and DO NOT exit on error, but set
 				    $::RUNCMD_RC to the exit code.
@@ -1095,15 +1098,18 @@ sub runcmd
       return output as reference to an array
 		my $outref = xCAT::Utils->runxcmd($cmd,$sub_req, -2, 1);
       
-      return response hash from plugin 
-		my $outref = xCAT::Utils->runxcmd($cmd,$sub_req, -2, 2);
+      return response hash from plugin .  Will not display error msg for any
+      exit_code setting. 
+		my $outref = xCAT::Utils->runxcmd($cmd,$sub_req, -1, 2);
 
    Comments:
 		   If refoutput is 1, then the output will be returned as a
 		   reference to an array for efficiency.
 
 		   If refoutput is 2, then the response hash will be returned  
-         as output.  runxcmd will not parse the request structure.
+         as output.  runxcmd will not parse the request structure, nor
+         will it display the error message despite the exit_code setting.
+         The caller will need to display the error.
 
 		   Do not use the scalar string input for xdsh unless you are running
 		   a simple single-word command.  When building your request hash,
@@ -1198,6 +1204,14 @@ sub runxcmd
     if ($::RUNCMD_RC)
     {
         my $displayerror = 1;
+
+        # Do not display error for  refoutput=2
+        # we do not parse the returned structure
+        if (defined ($refoutput)) {
+          if ($refoutput == 2)  {
+             $displayerror = 0;
+          }
+        }
         my $rc;
         if (defined($exitcode) && length($exitcode) && $exitcode != -2)
         {
@@ -1208,6 +1222,7 @@ sub runxcmd
             elsif ($exitcode <= 0)
             {
                 $rc = '';            # if zero or negative, do not exit
+                
                 if ($exitcode < 0) { $displayerror = 0; }
             }
         }
@@ -1215,6 +1230,7 @@ sub runxcmd
         {
             $rc = $::RUNCMD_RC;
         }    # if exitcode not specified, use cmd exit code
+
         if ($displayerror)
         {
             my $rsp = {};
