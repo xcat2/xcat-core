@@ -36,7 +36,13 @@ Requires: /usr/bin/ssh
 Requires: /etc/xinetd.d/tftp
 # yaboot-xcat is pulled in so any MN can manage ppc nodes
 Requires: yaboot-xcat
+%endif
+%endif
+
+# The aix rpm cmd forces us to do this outside of ifos type stmts
 %if %notpcm
+%ifos linux
+%ifnarch s390x
 # PCM does not use or ship conserver
 Requires: conserver-xcat
 %endif
@@ -47,7 +53,10 @@ Requires: conserver-xcat
 Requires: syslinux xCAT-genesis-x86_64 elilo-xcat
 Requires: ipmitool-xcat >= 1.8.9
 Requires: xnba-undi
+%endif
+
 %if %notpcm
+%ifarch i386 i586 i686 x86 x86_64
 # PCM does not need or ship syslinux-xcat
 Requires: syslinux-xcat
 %endif
