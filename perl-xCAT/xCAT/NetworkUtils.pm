@@ -412,12 +412,18 @@ sub linklocaladdr {
 #-------------------------------------------------------------------------------
 sub ishostinsubnet {
     my ($class, $ip, $mask, $subnet) = @_;
+
+    #safe guard
+    if (!defined($ip) || !defined($mask) || !defined($subnet))
+    {
+        return 0;
+    }
     my $numbits=32;
     if ($ip =~ /:/) {#ipv6
         $numbits=128;
     }
     # IPv6 subnet with netmask postfix like /64
-    if ($subnet =~ /\//)
+    if ($subnet && ($subnet =~ /\//))
     {
         $subnet =~ s/\/.*$//;
     }
@@ -429,7 +435,7 @@ sub ishostinsubnet {
 	        $mask=getipaddr($mask,GetNumber=>1);
 	}
     } else {  #CIDR notation supported
-        if ($subnet =~ /\//) { 
+        if ($subnet && ($subnet =~ /\//)) { 
             ($subnet,$mask) = split /\//,$subnet,2;
             $mask=Math::BigInt->new("0b".("1"x$mask).("0"x($numbits-$mask)));
         } else {
