@@ -888,7 +888,8 @@ site => {
    " ipmidispatch:  Whether or not to send ipmi hw control operations to the service\n".
    "                node of the target compute nodes. Default is 'y'.\n\n".
    " hwctrldispatch:  Whether or not to send hw control operations to the service\n".
-   "                node of the target nodes. Default is 'y'.\n\n".
+   "                  node of the target nodes. Default is 'y'.(At present, this attribute\n".
+   "                  is only used for IBM Flex System)\n\n".
    " ipmimaxp:  The max # of processes for ipmi hw ctrl. The default is 64. Currently,\n".
    "            this is only used for HP hw control.\n\n".
    " ipmiretries:  The # of retries to use when communicating with BMCs. Default is 3.\n\n".
