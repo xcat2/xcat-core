@@ -145,6 +145,13 @@ ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc5.d/S84xcatpostinit1
 mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatinstallpost#
+if [ -f /xcatpost/mypostscript.post ]; then
+    RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript.post |cut -d= -f2`
+fi
+if [ "$RUNBOOTSCRIPTS" != "'yes'" ]; then
+    chkconfig xcatpostinit1 off
+fi
+echo "REBOOT=TRUE" >> /opt/xcat/xcatinfi
 EOF
 chmod 755 /opt/xcat/xcatinstallpost
 

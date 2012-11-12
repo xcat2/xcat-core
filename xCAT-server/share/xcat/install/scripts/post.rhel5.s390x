@@ -134,6 +134,13 @@ mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
 # Install directory variable set by nodeset
 $INSTALLDIR/postscripts/xcatinstallpost
+if [ -f /xcatpost/mypostscript.post ]; then
+    RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript.post |cut -d= -f2`
+fi
+if [ "$RUNBOOTSCRIPTS" != "'yes'" ]; then
+    chkconfig xcatpostinit1 off
+fi
+echo "REBOOT=TRUE" >> /opt/xcat/xcatinf
 EOF
 chmod 755 /opt/xcat/xcatinstallpost
 
