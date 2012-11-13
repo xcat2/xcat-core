@@ -81,7 +81,7 @@ $::deploy_dir = $::build_dir; #kitname appended by validate_bldkitconf routine
                value_desc=>'Must be: Generic Name String',
                mandatory=>1,
                cp_to_kitconfig=>1},
-              desc => {
+              description => {
                description=>'The kit description',
                value_desc=>'any string',
                mandatory=>0,
@@ -142,7 +142,7 @@ $::deploy_dir = $::build_dir; #kitname appended by validate_bldkitconf routine
                value_desc=>'any string',
                mandatory=>1,
                cp_to_kitconfig=>1},
-              desc => {
+              description => {
                description=>'The component description.  The description is added to the meta-package.',
                value_desc=>'any string',
                mandatory=>0,
@@ -1608,7 +1608,7 @@ sub gen_kitcomp_spec
         s/<<<INSERT_kitcomponent_ospkgdeps_HERE>>>/$comp->{ospkgdeps}/;
         s/<<<INSERT_kitcomponent_kitpkgdeps_HERE>>>/$comp->{kitpkgdeps}/;
         s/<<<INSERT_kitcomponent_kitcompdeps_HERE>>>/$comp->{kitcompdeps}/;
-        s/<<<INSERT_kitcomponent_desc_HERE>>>/$comp->{desc}/;
+        s/<<<INSERT_kitcomponent_desc_HERE>>>/$comp->{description}/;
         s/<<<INSERT_kitcomponent_preinstall_script_HERE>>>/$prescript/;
         s/<<<INSERT_kitcomponent_postinstall_script_HERE>>>/$postscript/;
         s/<<<INSERT_kitcomponent_preupgrade_script_HERE>>>/$preupscript/;
