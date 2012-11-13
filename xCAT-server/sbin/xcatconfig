@@ -2058,32 +2058,32 @@ sub setupMNinDB
    $mnname && $mnname =~ s/\..*//; # strip off domain
 
    # check to see if MN already defined in the database
-   my $cmds = "XCATBYPASS=Y $::XCATROOT/bin/nodels __mgmtnode";
-   my $mn = xCAT::Utils->runcmd("$cmds", 0);
-   if ($::RUNCMD_RC != 0)
+   my $cmds ="XCATBYPASS=Y $::XCATROOT/sbin/tabdump nodelist | grep  __mgmtnode";
+   my $output = xCAT::Utils->runcmd("$cmds", -1);
+   if ($::RUNCMD_RC == 0)  # found a management node defined
    {
-      xCAT::MsgUtils->message('E', "Could run $cmds.");
-      return;
-   }
-   my $chtabcmds;
-   if (($mn) && ($mn ne $mnname)) {   # remove the old one 
-      $chtabcmds = "$::XCATROOT/sbin/chtab -d node=$mn nodelist;";
-      my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
-      if ($::RUNCMD_RC != 0)
-      {
-        xCAT::MsgUtils->message('E', "Could not run $chtabcmds.");
-        return;
-      }
+      my $chtabcmds;
+      my @mn = split(",", $output);  
+      $mn[0] =~ s/"//g;   # remove the quotes
+      if  ($mn[0] ne $mnname) {   # remove the old, if not current 
+        $chtabcmds = "$::XCATROOT/sbin/chtab -d node=$mn[0] nodelist;";
+        my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+          xCAT::MsgUtils->message('E', "Could not run $chtabcmds.");
+          return;
+        }
       
-   } else {   # already defined correctly
-       return;
+      } else {   # already defined correctly
+         return;
+      }
    }
    # now add a new one
    my $chtabcmds = "$::XCATROOT/sbin/chtab node=$mnname nodelist.groups=__mgmtnode;";
    my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
    if ($::RUNCMD_RC != 0)
    {
-      xCAT::MsgUtils->message('E', "Could not add $mnname to the dateabase.");
+      xCAT::MsgUtils->message('E', "Could not add $mnname to the database.");
    }
    else
    {
