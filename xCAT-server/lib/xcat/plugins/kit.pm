@@ -874,7 +874,7 @@ sub addkit
         if ( $inspection ) {
             my %rsp;
             push@{ $rsp{data} }, "kitname=$kithash{kitname}";
-            push@{ $rsp{data} }, "    desc=$kithash{desc}";
+            push@{ $rsp{data} }, "    description=$kithash{description}";
             push@{ $rsp{data} }, "    version=$kithash{version}";
             push@{ $rsp{data} }, "    ostype=$kithash{ostype}";
             xCAT::MsgUtils->message( "I", \%rsp, $callback );
