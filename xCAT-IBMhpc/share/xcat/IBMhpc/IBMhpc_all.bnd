@@ -30,7 +30,7 @@ I:ppe.loc.license
 #I:ppedev.hpct
 
 # LAPI
-I:rsct.lapi
+#I:rsct.lapi
 #I:rsct.sci
 
 # AIX bundle file for ESSL and PESSL packages
