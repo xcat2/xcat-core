@@ -2,6 +2,11 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT::DSHCLI;
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
 
 use File::Basename;
 
@@ -662,7 +667,7 @@ sub _execute_dsh
                       if !$signal_interrupt_flag;
                 }
 
-                elsif (!defined($target_rc) && !$dsh_cmd_background && ($::DSH_MELLANOX_SWITCH==0))
+                elsif (!defined($target_rc) && !$dsh_cmd_background && ($::DSH_MELLANOX_SWITCH==0) && ($$options{'devicetype'}!~ /EthSwitch/))
                 {
                    # report error status  --nodestatus
                   # Note the message below for node status must
@@ -976,6 +981,32 @@ sub fork_fanout_dsh
       )
       = @_;
 
+    #get username and passeword for ether net switches (EthSwitch type)
+    if ($$options{'devicetype'} =~ /EthSwitch/) {
+        if (@$targets_waiting > 0) {
+            if ($ENV{'DSH_REMOTE_PASSWORD'}) {
+                foreach my $t (keys(%$resolved_targets)) {
+                    $resolved_targets->{$t}->{'password'}=$ENV{'DSH_REMOTE_PASSWORD'};
+                    $resolved_targets->{$t}->{'user'}=$$options{'user'};
+                }
+            } else {
+                #get user name and password  from the switches table
+                 my $switchestab=xCAT::Table->new('switches',-create=>0);
+
+                 my $switchents = $switchestab->getNodesAttribs($targets_waiting,[qw/switch sshusername sshpassword/]);
+                 foreach my $entry (values %$switchents) {
+                    my $switch=$entry->[0]->{switch};
+                    if (defined($entry->[0]->{sshusername})) {
+                        $resolved_targets->{$switch}->{'user'}=$entry->[0]->{sshusername};
+                    }
+                    if (defined($entry->[0]->{sshpassword})) {
+                        $resolved_targets->{$switch}->{'password'}=$entry->[0]->{sshpassword};
+                    }
+                }
+            }
+        }
+    }
+
     while (@$targets_waiting
            && (keys(%$targets_active) < $$options{'fanout'}))
     {
@@ -1040,6 +1071,12 @@ sub fork_fanout_dsh
                   || $$target_properties{'remote-shell'}
                   || $$options{'node-rsh-defaults'}{$context};
                 ($remote_shell =~ /\/ssh$/) && ($rsh_extension = 'SSH');
+
+                if ($$options{'devicetype'} =~ /EthSwitch/) {
+                    $remote_shell = "$::XCATROOT/sbin/rshell_api";
+                    $rsh_extension='RShellAPI';
+                    $rsh_config{'password'}=$$target_properties{'password'};
+                }
 
                 # will not set -n for any command,  causing problems
                 # with running xdsh to install rpms and start xcatd on AIX

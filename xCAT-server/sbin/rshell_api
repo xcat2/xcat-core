@@ -1,0 +1,33 @@
+#!/usr/bin/env perl
+# IBM(c) 2012 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+
+use lib "$::XCATROOT/lib/perl";
+use Getopt::Long;
+use xCAT::RShellAPI;
+
+Getopt::Long::Configure("require_order");
+Getopt::Long::Configure("no_pass_through");
+
+my $username;
+my $passwd;
+my $help;
+
+if (!GetOptions(
+  'l|loginname=s' => \$username,
+  'p|password=s' => \$passwd,
+  'h|help' => \$help,
+  ) || $help || scalar(@ARGV)<2 ) {
+  print "Usage: rshell_api [-l <user>] [-p <passwrd>] <node> <command>\n";
+  exit;
+}
+
+my $node = $ARGV[0];
+
+xCAT::RShellAPI::run_remote_shell_api($node, $username, $passwd, @ARGV[1 .. $#ARGV]); 
+
+exit 0;
