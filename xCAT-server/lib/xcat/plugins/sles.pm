@@ -1128,7 +1128,7 @@ sub copycd
                     close($content);
                     foreach (@contents) {
                         if (/^VERSION/) {
-                            my @verpair = split;
+                            my @verpair = split /\s+|-/;
                             $detdistname = "sles".$verpair[1];
                             unless ($distname) { $distname = $detdistname; }
                         }
