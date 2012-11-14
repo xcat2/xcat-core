@@ -3592,7 +3592,6 @@ sub mknimimage
         }
     }    
 
-
 	#
 	# Set root password in diskless images
 	#
@@ -3616,38 +3615,35 @@ sub mknimimage
                 $method = $et->{'cryptmethod'};
             }
 		}
-	}
+		if ($rootpw) {
+			if ( $::VERBOSE) {
+				my $rsp;
+				$rsp->{data}->[0] = "Setting the root password in the spot \'$spot_name\'\n";
+				xCAT::MsgUtils->message("I", $rsp, $callback);
+			}
 
-	if ($rootpw) {
-		if ( $::VERBOSE) {
-			my $rsp;
-			$rsp->{data}->[0] = "Setting the root password in the spot \'$spot_name\'\n";
-			xCAT::MsgUtils->message("I", $rsp, $callback);
+			chomp $rootpw;
+			my $pwcmd;
+			if ($method) {
+				$pwcmd = qq~$::XCATROOT/bin/xcatchroot -i $spot_name "/usr/bin/echo root:$rootpw | /usr/bin/chpasswd -e -c" >/dev/null 2>&1~;
+			} else {
+				$pwcmd = qq~$::XCATROOT/bin/xcatchroot -i $spot_name "/usr/bin/echo root:$rootpw | /usr/bin/chpasswd -c" >/dev/null 2>&1~;
+			}
 
-		}
-
-		chomp $rootpw;
-		my $pwcmd;
-		if ($method) {
-			$pwcmd = qq~$::XCATROOT/bin/xcatchroot -i $spot_name "/usr/bin/echo root:$rootpw | /usr/bin/chpasswd -e -c" >/dev/null 2>&1~;
-		} else {
-			$pwcmd = qq~$::XCATROOT/bin/xcatchroot -i $spot_name "/usr/bin/echo root:$rootpw | /usr/bin/chpasswd -c" >/dev/null 2>&1~;
-		}
-
-		# secure passwd in verbose mode
-		my $tmpv = $::VERBOSE;
-		$::VERBOSE = 0;
+			# secure passwd in verbose mode
+			my $tmpv = $::VERBOSE;
+			$::VERBOSE = 0;
 	
-		my $out = xCAT::Utils->runcmd("$pwcmd", -1);
-		if ($::RUNCMD_RC != 0)
-		{
-			my $rsp;
-            push @{$rsp->{data}}, "Unable to set root password.";
-			push @{$rsp->{data}}, "$out\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
+			my $out = xCAT::Utils->runcmd("$pwcmd", -1);
+			if ($::RUNCMD_RC != 0)
+			{
+				my $rsp;
+            	push @{$rsp->{data}}, "Unable to set root password.";
+				push @{$rsp->{data}}, "$out\n";
+            	xCAT::MsgUtils->message("E", $rsp, $callback);
+			}
+			$::VERBOSE = $tmpv;
 		}
-		$::VERBOSE = $tmpv;
-
 	}
 
     #
