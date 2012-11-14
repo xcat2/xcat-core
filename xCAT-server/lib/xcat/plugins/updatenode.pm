@@ -1139,7 +1139,7 @@ sub updatenode
 
 #-------------------------------------------------------------------------------
 
-=head3  updatenoderunps  - performs updatenode -P
+=head3  updatenoderunps  - run postscripts or the updatenode -P option 
 
     Arguments: request
     Returns:
@@ -1201,6 +1201,7 @@ sub updatenoderunps
             if ($::SETSERVER)
             {
                 $args1 = [
+                    "--nodestatus",
                     "-s",
                     "-v",
                     "-e",
@@ -1212,6 +1213,7 @@ sub updatenoderunps
             {
 
                 $args1 = [
+                    "--nodestatus",
                     "-s",
                     "-v",
                     "-e",
@@ -1285,12 +1287,12 @@ sub updatenoderunps
             if ($::SETSERVER)
             {
                 $cmd =
-                  "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -v -e $installdir/postscripts/xcataixpost -M $snkey -c $mode '$postscripts' 2>&1";
+                  "XCATBYPASS=Y $::XCATROOT/bin/xdsh --nodestatus $nodestring -s -v -e $installdir/postscripts/xcataixpost -M $snkey -c $mode '$postscripts' 2>&1";
             }
             else
             {
                 $cmd =
-                  "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -v -e $installdir/postscripts/xcataixpost -m $snkey -c $mode '$postscripts' 2>&1";
+                  "XCATBYPASS=Y $::XCATROOT/bin/xdsh --nodestatus $nodestring -s -v -e $installdir/postscripts/xcataixpost -m $snkey -c $mode '$postscripts' 2>&1";
             }
 
             if ($::VERBOSE)
@@ -1402,10 +1404,6 @@ sub updatenodesyncfiles
         }
     }
 
-    #array of nodes failed to sync
-    my @failednodes=();
-    #array of successfully synced nodes 
-    my @successfulnodes=();
     my $numberofsynclists=0; 
     # Check the existence of the synclist file
     if (%syncfile_node)
@@ -1464,57 +1462,22 @@ sub updatenodesyncfiles
                    },
                    $subreq, -1,1);
 
-
-           my @userinfo=();
-           # determine if the sync was successful or not
-	        foreach my $line (@$output) {
-	     	    if($line =~ /^\s*(\S+)\s*:\s*Remote_command_successful/)
-		       {
-               my ($node,$info) = split (/:/, $line);
-		   	   push(@successfulnodes,$node);
-		       }
-             elsif($line =~ /^\s*(\S+)\s*:\s*Remote_command_failed/)
-		       {
-               my ($node,$info)= split (/:/, $line);
-			      push(@failednodes,$node);
-		       }	
-             else  
-		       {
-			      push(@userinfo,$line);   # user data
-		       }	
-	        }
-           # output user data 
-           if (@userinfo) {
-            foreach my $line (@userinfo) {
-             my $rsp = {};
-             $rsp->{data}->[0] = $line;
-             $callback->($rsp);
-	          }
-	        }
+           # build the list of good and bad nodes
+           &buildnodestatus(\@$output,$callback);
 	     }
-	    # if we have more than 1 synclist file, then we need
-       # to fix up the list of what failed and what succeeded
-       # If either failed the node is marked failed
-       if ($numberofsynclists > 1) { 
-         my %m=();
-         my %n=();
-
-         for(@failednodes)
-         {
-            $m{$_}++;
-         }
-         for(@successfulnodes)
-         {
-              $m{$_}++ || $n{$_}++;
-         }
-         @successfulnodes=keys %n;
-       }
        #set the nodelist.updatestatus according to the xdcp result
-	    if(@successfulnodes)
+	    if(@::SUCCESSFULLNODES)
 	    {
 	     
             my $stat="synced";
-            xCAT::TableUtils->setUpdateStatus(\@successfulnodes, $stat);
+            xCAT::TableUtils->setUpdateStatus(\@::SUCCESSFULLNODES, $stat);
+                      
+	    }
+	    if(@::FAILEDNODES)
+	    {
+	     
+            my $stat="notsynced";
+            xCAT::TableUtils->setUpdateStatus(\@::FAILEDNODES, $stat);
                       
 	    }
    	
@@ -1533,7 +1496,64 @@ sub updatenodesyncfiles
 
     return;
 }
+#-------------------------------------------------------------------------------
 
+=head3  buildnodestatus - Takes the output of the updatenode run
+        and builds a global array of good node and one of bad node
+        output the remaining user info
+
+    Arguments: output,callback
+    Globals @::GOODNODES,  @::BADNODES 
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub buildnodestatus
+{
+    my $output       = shift;
+    my $callback      = shift;
+    my @userinfo=();
+    # determine if the sync was successful or not
+	 foreach my $line (@$output) {
+	   if($line =~ /^\s*(\S+)\s*:\s*Remote_command_successful/)
+	   {
+         my ($node,$info) = split (/:/, $line);
+		   push(@::SUCCESSFULLNODES,$node);
+	   }
+      elsif($line =~ /^\s*(\S+)\s*:\s*Remote_command_failed/)
+	   {
+         my ($node,$info)= split (/:/, $line);
+	      push(@::FAILEDNODES,$node);
+	   }	
+      else  
+	   {
+	      push(@userinfo,$line);   # user data
+	   }	
+	 }
+    # output user data 
+    if (@userinfo) {
+        foreach my $line (@userinfo) {
+           my $rsp = {};
+           $rsp->{data}->[0] = $line;
+           $callback->($rsp);
+	     }
+	 }
+    #If in failed remove from succeeded and make sure no duplicates
+    my %m=();
+    my %n=();
+
+    for(@::FAILEDNODES)
+    {
+       $m{$_}++;
+    }
+    for(@::SUCCESSFULLNODES)
+    {
+        $m{$_}++ || $n{$_}++;
+    }
+    @::SUCCESSFULLNODES=keys %n;
+
+  return;
+}
 #-------------------------------------------------------------------------------
 
 =head3  updatenodesoftware  - software updates  updatenode -S
