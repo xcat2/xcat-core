@@ -25,7 +25,7 @@ for i in `/bin/cat /proc/cmdline`; do
         MACX=`/sbin/ip link show $ETHX | /bin/grep ether | /bin/awk '{print $2}'`
         break
     elif [ "$KEY" = "BOOTIF" ]; then
-        MACX=`/bin/echo $i | /bin/awk -F= '{print $2}'`
+        MACX=`/bin/echo $i | /bin/awk -F= '{print $2}'|sed -e s/^01-// -e s/-/:/g`
         ETHX=`/sbin/ifconfig | /bin/grep -i $MACX | /bin/awk '{print $1}'`
         break
     fi
@@ -101,7 +101,11 @@ if [ ! -z "$DUMP" ]; then
 	if (pmatch $OSVER "sles*") || (pmatch $OSVER "suse*") || [ -f /etc/SuSE-release ]; then
             if (pmatch $OSVER "*10*"); then
                 #run mkinitrd to generater the kdump-init base
-                /sbin/mkinitrd -m "nfs nfs be2net e1000e ibmveth igb firmware_class tg3 e1000"
+                if (pmatch $ARCH "x86*"); then
+                    /sbin/mkinitrd -m "nfs tg3 bnx2 bnx2x e1000 e1000e igb mlx_en be2net af_packet firmware_class"
+                else
+                    /sbin/mkinitrd -m "nfs be2net e1000e ibmveth igb firmware_class tg3 e1000"
+                fi
                 /bin/mkdir -p /var/tmp/tempinit
                 cd /boot/
                 KDUMPINIT=`ls initrd-*-kdump`
@@ -111,27 +115,43 @@ if [ ! -z "$DUMP" ]; then
                 /bin/zcat ${KDUMPINIT} | /bin/cpio -id
                 /bin/rm -f ${KDUMPINIT}
                 mkdir -p ./var/lib/dhcpcd/
-                /bin/cp -r /lib/* ./lib/
-                /bin/cp "/sbin/ifconfig" "./bin/"
-                /bin/cp "/usr/bin/clear" "./bin/"
-                /bin/cp "/bin/touch" "./bin/"
-                /bin/cp "/bin/grep" "./bin/"
-                /bin/cp "/sbin/dhcpcd" "./bin/"
-                /bin/cp "/sbin/ip" "./bin/"
-                /bin/cp "/bin/awk" "./bin/"
-                /bin/cp "/bin/makedumpfile" "./bin/"
+                mkdir -p ./lib/udev/devices/
+                /bin/cp -r /lib/udev/devices/* ./lib/udev/devices/
+                for file in "/sbin/ifconfig /usr/bin/clear /bin/touch /bin/grep /sbin/dhcpcd /sbin/ip /bin/awk /bin/makedumpfile"
+                do
+                    for line in `ldd $file`
+                    do
+                        if [ ${line:0:1} = "/"  ]; then
+                            line=`echo $line | grep -v :`
+                            if [ $line ];then
+                                if [ ! -e .$line ];then
+                                    /bin/cp -L  $line .$line
+                                fi
+                            fi
+                        fi
+                    done
+                    /bin/cp $file "./bin/" 
+                 done
 
                 #modify the original init to support dump to an nfs server
                 cat > ./bin/dumpfile << EOF
 #!/bin/bash
 if [ -e /proc/vmcore ];then
     /bin/touch /var/lib/dhcpcd/dhcpcd-$ETHX.info
-    /bin/dhcpcd $ETHX
-    while ! /bin/ifconfig | /bin/grep inet; do
-        echo -e "Failed to acquire address, retrying"
-        /bin/sleep 2
+    for i in 1 2 3 4 5 6 7 8 9 10
+    do
         /bin/dhcpcd $ETHX
+        /bin/sleep 2
+        temp=\`/bin/ifconfig | /bin/grep inet\`
+        if [ -n "\$temp" ]; then
+            break
+        fi
+        echo -e "Failed to acquire address, retrying"
     done
+
+    if [ -z "\$temp" ];then
+        exit
+    fi
 
     HOSTNAME=`hostname`
 
