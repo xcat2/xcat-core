@@ -113,7 +113,7 @@ sub process_request {
     if (system("mount $mntopts '$file' $mntpath")) {
 	eval { $callback->({error=>"copycds was unable to mount $file to $mntpath.",errorcode=>[1]}) };
 	chdir("/"); 
-        system("umount -l $mntpath"); 
+        system("umount  $mntpath"); 
       	return;
     }
     eval {
@@ -165,7 +165,7 @@ sub process_request {
     while (wait() > 0) { yield(); } #Make sure all children exit before trying umount
     };
     chdir("/");;
-    system("umount -l $mntpath");
+    system("umount  $mntpath");
     system("rm -rf $mntpath");
     unless ($identified) {
        $callback->({error=>["copycds could not identify the ISO supplied, you may wish to try -n <osver>"],errorcode=>[1]});
