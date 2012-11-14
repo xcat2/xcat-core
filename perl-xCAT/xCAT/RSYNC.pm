@@ -145,7 +145,7 @@ sub remote_copy_command
         if ($localhost == 1) { # running to the MN from the MN
             print RSCYCCMDFILE
               "/bin/mkdir -p $dest_dir_list\n";
-        } else {  # not running to another node 
+        } else {  #  running to another node 
           if ($usersh == 0) { # using ssh
             print RSCYCCMDFILE
               "/usr/bin/ssh  $dest_user_host '/bin/mkdir -p $dest_dir_list'\n";
@@ -176,8 +176,14 @@ sub remote_copy_command
             {
 
                 my $diff_basename = $diff_dest_hash{$src_file_diff_dest};
-                print RSCYCCMDFILE
+                # if  localhost do not put in hostname:
+                if ($localhost == 1) { # running to the MN from the MN (local)
+                  print RSCYCCMDFILE
+                  "$exec_path $sync_opt $src_file_diff_dest $dest_dir/$diff_basename\n";
+                } else { # running remote
+                  print RSCYCCMDFILE
                   "$exec_path $sync_opt $src_file_diff_dest $dest_user_host:$dest_dir/$diff_basename\n";
+                }
             }
 
         }
