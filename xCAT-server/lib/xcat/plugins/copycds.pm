@@ -44,7 +44,7 @@ sub process_request {
   my $noosimage=undef;
 
   $identified=0;
-  $::CDMOUNTPATH="/mnt/xcat";
+  $::CDMOUNTPATH="/var/run/xcat/mountpoint";
   my $existdir = getcwd;
 
   if ($request->{arg}) {
