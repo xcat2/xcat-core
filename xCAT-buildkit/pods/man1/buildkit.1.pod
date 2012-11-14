@@ -184,10 +184,15 @@ To clean up all kit build files, including a previously built kit tar file, run
 =head1 FILES
 
 /opt/xcat/bin/buildkit
+
 /opt/xcat/share/xcat/kits/kit_template
+
 /opt/xcat/share/xcat/kits/kitcomponent.spec.template
+
 <cwd>/buildkit.conf
+
 <cwd>/build/I<kitname>/kit.conf
+
 <cwd>/build/I<kitname>.tar.bz2
 
 
