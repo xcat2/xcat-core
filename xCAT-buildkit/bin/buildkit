@@ -424,7 +424,10 @@ sub usage
                              repositories                                     
      buildtar              - builds the Kit tarfile                           
      cleantar              - deletes the Kit deployment directory and Kit     
-                             tarfile                                        \n";
+                             tarfile                   
+     cleanall              - equivalent to buildrepo cleanrepo all and
+                                            buildrepo cleantar \n";
+
 
 }
 
@@ -883,7 +886,7 @@ sub load_bldkitconf
     # read in the buildkit.conf file
     my $CF;
     unless ( open( $CF, "<", $bldkitconf ) ) {
-        print  "The Kit build file $bldkitconf does not exist. \n";
+        print  "The Kit build file $bldkitconf does not exist in the current directory. \n";
         return 1;
     }
     if ($::VERBOSE) {
