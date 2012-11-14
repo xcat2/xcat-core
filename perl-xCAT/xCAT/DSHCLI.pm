@@ -556,7 +556,7 @@ sub _execute_dsh
                       );
             }
         }
-
+        # This is only if you are not streaming ( -s)
         my @targets_buffered_keys = sort keys(%targets_buffered);
 
         foreach my $user_target (@targets_buffered_keys)
@@ -1528,7 +1528,7 @@ sub buffer_error
 #----------------------------------------------------------------------------
 
 =head3
-        stream_output
+        stream_output - Running xdsh with the -s option
 
         For a given list of targets with output available, this routine writes
         output from the targets STDOUT pipe handles directly to STDOUT as soon
@@ -1623,6 +1623,15 @@ sub stream_output
 
                 if ($exit_code != 0)
                 {
+                    # report error status  --nodestatus
+                    # Note the message below for node status must
+                    # not be NLS translated.  Code depends on the English. 
+                    if ($$options{'nodestatus'}) {
+                         my $rsp={};
+                         $rsp->{data}->[0] =
+                         "$user_target: Remote_command_failed, error_code=$exit_code";
+                          xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                    }
                     my $rsp = {};
                     $rsp->{error}->[0] =
                       "$user_target remote shell had error code: $exit_code";
@@ -1645,6 +1654,15 @@ sub stream_output
                 {
                     if ($target_rc != 0)
                     {
+                       # report error status  --nodestatus
+                       # Note the message below for node status must
+                       # not be NLS translated.  Code depends on the English. 
+                       if ($$options{'nodestatus'}) {
+                         my $rsp={};
+                         $rsp->{data}->[0] =
+                         "$user_target: Remote_command_failed, error_code=$$target_properties{'target-rc'}";
+                          xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                       }
 
                         my $rsp = {};
                         $rsp->{error}->[0] =
@@ -1662,6 +1680,16 @@ sub stream_output
 
                     elsif (!defined($target_rc))
                     {
+                       # report error status  --nodestatus
+                       # Note the message below for node status must
+                       # not be NLS translated.  Code depends on the English. 
+                       if ($$options{'nodestatus'}) {
+                         my $rsp={};
+                         $rsp->{data}->[0] =
+                         "$user_target: Remote_command_failed, error_code=???";
+                          xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                       }
+
 
                         my $rsp = {};
                         $rsp->{error}->[0] =
@@ -1677,8 +1705,18 @@ sub stream_output
                         push @$targets_failed, $user_target;
                     }
 
-                    else
+                    else   #  xdsh -s worked
                     {
+                       # report error status  --nodestatus
+                       # Note the message below for node status must
+                       # not be NLS translated.  Code depends on the English. 
+                       if ($$options{'nodestatus'}) {
+                         my $rsp={};
+                         $rsp->{data}->[0] =
+                         "$user_target: Remote_command_successful";
+                          xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                       }
+
 
                         my $rsp = {};
                         $rsp->{data}->[0] =
@@ -1797,6 +1835,15 @@ sub stream_error
 
                 if ($exit_code != 0)
                 {
+                   # report error status  --nodestatus
+                   # Note the message below for node status must
+                   # not be NLS translated.  Code depends on the English. 
+                   if ($$options{'nodestatus'}) {
+                      my $rsp={};
+                      $rsp->{data}->[0] =
+                      "$user_target: Remote_command_failed, error_code=$exit_code";
+                      xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                    }
                     my $rsp = {};
                     $rsp->{error}->[0] =
                       " $user_target remote shell had exit code $exit_code.";
@@ -1819,6 +1866,15 @@ sub stream_error
                 {
                     if ($target_rc != 0)
                     {
+                      # report error status  --nodestatus
+                      # Note the message below for node status must
+                      # not be NLS translated.  Code depends on the English. 
+                      if ($$options{'nodestatus'}) {
+                         my $rsp={};
+                         $rsp->{data}->[0] =
+                         "$user_target: Remote_command_failed, error_code=$$target_properties{'target-rc'}";
+                         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                       }
 
                         my $rsp = {};
                         $rsp->{error}->[0] =
@@ -1836,6 +1892,16 @@ sub stream_error
 
                     elsif (!defined($target_rc) && ($::DSH_MELLANOX_SWITCH==0))
                     {
+                      # report error status  --nodestatus
+                      # Note the message below for node status must
+                      # not be NLS translated.  Code depends on the English. 
+                      if ($$options{'nodestatus'}) {
+                         my $rsp={};
+                         $rsp->{data}->[0] =
+                         "$user_target: Remote_command_failed, error_code=???}";
+                         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                       }
+
 
                         my $rsp = {};
                         $rsp->{error}->[0] =
@@ -1853,6 +1919,16 @@ sub stream_error
 
                     else
                     {
+                      # report error status  --nodestatus
+                      # Note the message below for node status must
+                      # not be NLS translated.  Code depends on the English. 
+                      if ($$options{'nodestatus'}) {
+                         my $rsp={};
+                         $rsp->{data}->[0] =
+                         "$user_target: Remote_command_successful";
+                         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                      }
+
 
                         my $rsp = {};
                         $rsp->{data}->[0] =
