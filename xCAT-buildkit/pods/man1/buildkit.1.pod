@@ -1,0 +1,197 @@
+=head1 NAME
+
+B<buildkit> - build a product Kit to package software for installation in an xCAT cluster.
+
+
+=head1 SYNOPSIS
+
+B<buildkit> [B<-V> | B<--verbose>] B<create> I<kit_basename>
+
+B<buildkit> [B<-V> | B<--verbose>] B<chkconfig>
+
+B<buildkit> [B<-V> | B<--verbose>] B<listrepo>
+
+B<buildkit> [B<-V> | B<--verbose>] B<buildrepo> I<repo_name>
+
+B<buildkit> [B<-V> | B<--verbose>] B<cleanrepo> {I<repo_name> | B<all>}
+
+B<buildkit> [B<-V> | B<--verbose>] B<buildtar>
+
+B<buildkit> [B<-V> | B<--verbose>] B<cleantar>
+
+B<buildkit> [B<-V> | B<--verbose>] B<cleanall>
+
+B<command> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
+
+
+=head1 DESCRIPTION
+
+The B<buildkit> command is a collection of utilities to package a product as a Kit that can be installed on an xCAT cluster.  A Kit is a tarfile containing the product software packages, configuration and control information, and install and customization scripts.
+
+You will need to run the buildkit command several times with different subcommands to step through the process of building a kit:
+
+=over 4
+
+=item 1.
+
+cd to your work directory
+
+=item 2.
+
+Create a template directory for your kit:
+
+   buildkit create I<kit_basename>
+
+=item 3.
+
+cd to the new template directory:
+
+   cd kit_basename
+
+=item 4.
+
+Edit the buildkit configuration file for your kit:
+
+   vi buildkit.conf
+
+=item 5.
+
+Create all required files, scripts, plugins, and packages for your kit.
+
+=item 6.
+
+Validate your kit build configuration, fixing any errors that are reported:
+
+    buildkit chkconfig
+
+=item 7.
+
+List the repos defined in your buildkit configuration file:
+
+    buildkit listrepo
+
+=item 8.
+
+For each reponame listed, build the repository.  Note that if you need to build repositories for OS distributions or versions that do not match the current system, you may need to copy your kit template directory to an appropriate server to build that repository, and then copy the results back to your main build server.
+
+     buildkit buildrepo repo_name 
+
+=item 9.
+
+Build the kit tar file:
+
+     buildkit buildtar
+
+
+=back
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-v|--version>
+
+Command Version.
+
+=back
+
+=head1 SUB-COMMANDS
+
+=over 10
+
+=item  B<create> I<kit_basename>
+
+Creates a new kit build directory structure for kit I<kit_basename> in the current directory.  The sample kit files from /opt/xcat/share/xcat/kits/kit_template are copied over, and the <cwd>/I<kit_basename>/buildkit.conf is modified for the specified I<kit_basename>.
+
+=item  B<chkconfig>
+
+Reads the buildkit.conf file from the current directory, verifies that the file syntax is correct and that all specified files exist. 
+
+=item  B<listrepo> 
+
+Reads the buildkit.conf file from the current directory, lists all Kit package repositories listed in the file, and reports the build status for each repository.
+
+=item  B<buildrepo> I<repo_name>
+
+Reads the buildkit.conf file from the current directory, and builds the specified Kit package repository.  The built packages are placed in the directory <cwd>/build/kit_repodir/I<repo_name>.
+
+=item  B<cleanrepo> {I<repo_name> | B<all>}
+
+Reads the buildkit.conf file from the current directory, and deletes all the package files and package meta data files from the <cwd>/build/kit_repodir/I<repo_name> directory.  If B<all> is specified, all kit repository files are deleted.
+
+=item  B<buildtar> 
+
+Reads the buildkit.conf file from the current directory, validates that all kit repositories have been built, and builds the Kit tar file <cwd>/build/I<kitname>.tar.bz2.
+
+=item  B<cleantar> 
+
+Reads the buildkit.conf file from the current directory, deletes the Kit tar <cwd>/build/I<kitname>.tar.bz2, and deletes all files in the build work directory <cwd>/build/I<kitname>.
+
+=item  B<cleanall>
+
+Equivalent to running B<buildkit cleanrepo all> and B<buildkit cleantar>.
+
+=back
+
+
+=head1 RETURN VALUE
+
+=over 3
+
+=item 0
+
+The command completed successfully.
+
+=item 1
+
+An error has occurred.
+
+=back
+
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To create the sample kit shipped with the xCAT-buildkit rpm on a RHELS 6.3 server and naming it B<mykit>, run the following commands:
+
+   cd /home/myuserid/kits
+   buildkit create mykit
+   cd mykit
+   vi buildkit.conf
+   buildkit chkconfig
+   buildkit listrepo
+   buildkit buildrepo rhels6.3
+   buildkit buildtar
+
+=item 2.
+
+To clean up a kit repository directory after build failures on a RHELS 6.3 server to prepare for a new kit repository build, run:
+
+   buildkit cleanrepo rhels6.3
+
+=item 3.
+
+To clean up all kit build files, including a previously built kit tar file, run
+
+   buildkit cleanall
+
+=back
+
+
+=head1 FILES
+
+/opt/xcat/bin/buildkit
+/opt/xcat/share/xcat/kits/kit_template
+/opt/xcat/share/xcat/kits/kitcomponent.spec.template
+<cwd>/buildkit.conf
+<cwd>/build/I<kitname>/kit.conf
+<cwd>/build/I<kitname>.tar.bz2
+
+
+=head1 SEE ALSO
+
+
+

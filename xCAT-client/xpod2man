@@ -91,8 +91,9 @@ sub createDummyPods {
 		}
 	}
 	
-	# Also add xcattest.1.pod, because the xcat.1.pod summary page refers to it
+	# Also add xcattest.1.pod and buildkit.1.pod, because the xcat.1.pod summary page refers to it
 	push @dummyPods, "$poddir/man1/xcattest.1.pod";
+	push @dummyPods, "$poddir/man1/buildkit.1.pod";
 	
 	# Create these empty files
 	print "Creating empty linked-to files: ", join(', ', @dummyPods), "\n";
@@ -176,8 +177,10 @@ foreach my $manpage (@_) {
 	print FILE "\n=item L<$cmd($sectionnum)|$cmd.$sectionnum>\n\n".$description."\n";
 }
 
-# Artificially add the xcattest cmd, because the xCAT-test rpm will add this
+# Artificially add the xcattest and buildkit cmds, 
+#  because the xCAT-test and xCAT-buildkit rpms will add these
 print FILE "\n=item L<xcattest(1)|xcattest.1>\n\nRun automated xCAT test cases.\n";
+print FILE "\n=item L<buildkit(1)|buildkit.1>\n\nBuild product software kits to be installed in an xCAT cluster.\n";
 
 	print FILE <<"EOS3";
 

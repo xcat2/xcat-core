@@ -35,11 +35,28 @@ xCAT-buildkit provides the buildkit tool and sample kit files to build an xCAT k
 %prep
 %setup -q -n xCAT-buildkit
 %build
+# Convert pods to man pages and html pages
+mkdir -p share/man/man1
+mkdir -p share/doc/man1
+pod2man pods/man1/buildkit.1.pod > share/man/man1/buildkit.1
+pod2html pods/man1/buildkit.1.pod > share/doc/man1/buildkit.1.html
+
+
+
 %install
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/kits
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/bin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man1
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man1
+
+# These were built dynamically in the build phase
+cp share/man/man1/* $RPM_BUILD_ROOT/%{prefix}/share/man/man1
+chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man1/*
+cp share/doc/man1/* $RPM_BUILD_ROOT/%{prefix}/share/doc/man1
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man1/*
+
 
 %ifos linux
 cp -aR share/xcat/kits/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/kits/
