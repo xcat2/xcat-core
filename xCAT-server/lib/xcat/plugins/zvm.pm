@@ -5424,8 +5424,9 @@ sub changeHypervisor {
         $out = "Resetting SMAPI... Done";
     }
     
-    # Get disk pool names
+    # diskpoolnames
     elsif ( $args->[0] eq "--diskpoolnames" ) {
+    	# Get disk pool names
         # If the cache directory does not exist
         if (!(`ssh $hcp "test -d $cache && echo Exists"`)) {
             # Create cache directory
@@ -5456,8 +5457,9 @@ sub changeHypervisor {
         $out = `ssh $hcp "cat $file"`;
     }
     
-    # Get zFCP disk pool names
+    # zfcppoolnames
     elsif ( $args->[0] eq "--zfcppoolnames") {
+    	# Get zFCP disk pool names
         # Go through each zFCP pool
         my @pools = split("\n", `ssh $hcp "ls $::ZFCPPOOL"`);
         foreach (@pools) {
@@ -5466,8 +5468,9 @@ sub changeHypervisor {
         }
     }
 
-    # Get disk pool configuration
+    # diskpool [pool] [all|free|used]
     elsif ( $args->[0] eq "--diskpool" ) {
+    	# Get disk pool configuration
         my $pool  = $args->[1];
         my $space = $args->[2];
 
@@ -5481,8 +5484,9 @@ sub changeHypervisor {
         }
     }
     
-    # Get zFCP disk pool configuration
+    # zfcppool [pool] [space]
     elsif ( $args->[0] eq "--zfcppool" ) {
+    	# Get zFCP disk pool configuration
         my $pool  = lc($args->[1]);
         my $space = $args->[2];
 
@@ -5494,7 +5498,7 @@ sub changeHypervisor {
         }
     }
     
-    # Get FCP channels
+    # fcpchannels [active|free|offline|agent]
     elsif ( $args->[0] eq "--fcpchannels" ) {
         # Display the status of real FCP Adapter devices
         # i.e. query fcp active|free|offline|agent
@@ -5513,16 +5517,27 @@ sub changeHypervisor {
         }
     }
     
-    # Get network names
+    # getnetworknames
     elsif ( $args->[0] eq "--getnetworknames" ) {
         $out = xCAT::zvmCPUtils->getNetworkNames($hcp);
     }
 
-    # Get network
+    # getnetwork [name]
     elsif ( $args->[0] eq "--getnetwork" ) {
         my $netName = $args->[1];
 
         $out = xCAT::zvmCPUtils->getNetwork( $hcp, $netName );
+    }
+    
+    # smapi [api] [args]
+    elsif ( $args->[0] eq "--smapi" ) {
+        # Invoke SMAPI API directly through zHCP smcli
+        my $str = "@{$args}";
+        $str =~ s/$args->[0]//g;
+        $str = xCAT::zvmUtils->trimStr($str);
+
+        # Pass arguments directly to smcli
+        $out = `ssh $hcp "$::DIR/smcli $str"`;
     }
     
     # Otherwise, print out error
