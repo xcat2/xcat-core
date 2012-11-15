@@ -888,7 +888,8 @@ sub updatenode
     my $request  = shift;
     my $callback = shift;
     my $subreq   = shift;
-
+    @::SUCCESSFULLNODES=();
+    @::FAILEDNODES=();
     #print Dumper($request);
     my $nodes         = $request->{node};
     my $localhostname = hostname();
@@ -1134,6 +1135,21 @@ sub updatenode
     #   }
 
     #}
+    # update the node status, this is done when -F -S -P are run
+	 if(@::SUCCESSFULLNODES)
+	 {
+	     
+            my $stat="synced";
+            xCAT::TableUtils->setUpdateStatus(\@::SUCCESSFULLNODES, $stat);
+                      
+	 }
+	 if(@::FAILEDNODES)
+	 {
+	     
+            my $stat="out-of-sync";
+            xCAT::TableUtils->setUpdateStatus(\@::FAILEDNODES, $stat);
+                      
+	 }
     return 0;
 }
 
@@ -1312,9 +1328,10 @@ sub updatenoderunps
             else
             {
                 my $rsp = {};
+                my $output;
                 while (<CMD>)
                 {
-                    my $output = $_;
+                    $output = $_;
                     chomp($output);
                     $output =~ s/\\cM//;
                     if ($output =~ /returned from postscript/)
@@ -1343,6 +1360,9 @@ sub updatenoderunps
                     }
                 }
                 close(CMD);
+               # # build the list of good and bad nodes
+               # &buildnodestatus(\@$output,$callback);
+                # return information 
                 $callback->($rsp);
             }
         }
@@ -1465,21 +1485,6 @@ sub updatenodesyncfiles
            # build the list of good and bad nodes
            &buildnodestatus(\@$output,$callback);
 	     }
-       #set the nodelist.updatestatus according to the xdcp result
-	    if(@::SUCCESSFULLNODES)
-	    {
-	     
-            my $stat="synced";
-            xCAT::TableUtils->setUpdateStatus(\@::SUCCESSFULLNODES, $stat);
-                      
-	    }
-	    if(@::FAILEDNODES)
-	    {
-	     
-            my $stat="out-of-sync";
-            xCAT::TableUtils->setUpdateStatus(\@::FAILEDNODES, $stat);
-                      
-	    }
    	
        my $rsp = {};
        $rsp->{data}->[0] = "File synchronization has completed.";
