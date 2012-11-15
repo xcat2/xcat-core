@@ -114,8 +114,12 @@ if [ ! -z "$DUMP" ]; then
                 cd /var/tmp/tempinit/
                 /bin/zcat ${KDUMPINIT} | /bin/cpio -id
                 /bin/rm -f ${KDUMPINIT}
-                mkdir -p ./var/lib/dhcpcd/
-                mkdir -p ./lib/udev/devices/
+                /bin/mkdir -p ./var/lib/dhcpcd/
+                /bin/mkdir -p ./lib/udev/devices/
+                if (pmatch $ARCH "ppc*"); then
+                    /bin/mkdir -p ./lib/power6/
+                    /bin/mkdir -p ./lib/power7/
+                fi
                 /bin/cp -r /lib/udev/devices/* ./lib/udev/devices/
                 for file in "/sbin/ifconfig /usr/bin/clear /bin/touch /bin/grep /sbin/dhcpcd /sbin/ip /bin/awk /bin/makedumpfile"
                 do
