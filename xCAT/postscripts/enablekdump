@@ -161,6 +161,9 @@ if [ -e /proc/vmcore ];then
 
     /bin/mkdir /mnt
     /bin/mount -t nfs -o nolock ${KDIP}:${KDPATH} /mnt
+    if [ -e /mnt/$HOSTNAME ];then
+        /bin/rm -f /mnt/$HOSTNAME
+    fi
     /bin/makedumpfile -c /proc/vmcore /mnt/$HOSTNAME
     /bin/umount -l /mnt
     /sbin/reboot -d -f
