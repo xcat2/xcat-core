@@ -310,25 +310,19 @@ sub isZvmNode {
     # Get inputs
     my ( $class, $node ) = @_;
 
-    # zVM guest ID
-    my $id;
-
     # Look in 'zvm' table
     my $tab = xCAT::Table->new( 'zvm', -create => 1, -autocommit => 0 );
 
     my @results = $tab->getAllAttribsWhere( "node like '%" . $node . "%'", 'userid' );
     foreach (@results) {
 
-        # Get userID
-        $id = $_->{'userid'};
-
         # Return 'TRUE' if given node is in the table
-        if ($id) {
-            return ('TRUE');
+        if ($_->{'userid'}) {
+            return 1;
         }
     }
 
-    return ('FALSE');
+    return 0;
 }
 
 #-------------------------------------------------------
@@ -722,7 +716,7 @@ sub getUserEntryWODisk {
         return;
     }
 
-    my $out = `ssh $hcp "$dir/getuserentry $userId" | grep -v "MDISK"`;
+    my $out = `ssh $hcp "$dir/smcli Image_Query_DM -T $userId" | sed '\$d' | grep -v "MDISK"`;
 
     # Create a file to save output
     open( DIRENTRY, ">$file" );
@@ -1111,12 +1105,12 @@ sub getUserProfile {
         if ( $curTime > $fileTime + $interval ) {
 
             # Get user profiles and save it in a file
-            $out = `ssh $hcp "$hcpDir/getuserprofile $profile > $file"`;
+            $out = `ssh $hcp "$hcpDir/smcli Profile_Query_DM -T $profile > $file"`;
         }
     } else {
 
         # Get user profiles and save it in a file
-        $out = `ssh $hcp "$hcpDir/getuserprofile $profile > $file"`;
+        $out = `ssh $hcp "$hcpDir/smcli Profile_Query_DM -T $profile > $file"`;
     }
 
     # Return the file contents
@@ -1188,4 +1182,103 @@ sub getOsVersion {
     }
 
     return xCAT::zvmUtils->trimStr($os);
+}
+
+#-------------------------------------------------------
+
+=head3   getZfcpInfo
+
+    Description : Get the zFCP device info
+    Arguments   : Node
+    Returns     : zFCP device info
+    Example     : my $info = xCAT::zvmUtils->getZfcpInfo($node);
+    
+=cut
+
+#-------------------------------------------------------
+sub getZfcpInfo {
+    # Get inputs
+    my ( $class, $node ) = @_;
+    
+    # Get zFCP device info
+    my $info = `ssh -o ConnectTimeout=2 $node "lszfcp -D"`;
+    my @zfcp = split("\n", $info);
+    if (!$info || $info =~ m/No zfcp support/i) {
+        return;
+    }
+    
+    # Get SCSI device and their attributes
+    my $scsi = `ssh -o ConnectTimeout=2 $node "lsscsi"`;
+    $info = "";
+        
+    my @args;
+    my $tmp;
+    my $id;
+    my $device;
+    my $wwpn;
+    my $lun;
+    my $size;
+    
+    foreach (@zfcp) {
+        @args = split(" ", $_);
+        $id = $args[1];
+        @args = split("/", $args[0]);
+        
+        $device = $args[0];
+        $wwpn = $args[1];
+        $lun = $args[2];
+        
+        # Make sure WWPN and LUN do not have 0x prefix
+        $wwpn = xCAT::zvmUtils->replaceStr($wwpn, "0x", "");
+        $lun = xCAT::zvmUtils->replaceStr($lun, "0x", "");
+        
+        # Find the device name
+        $tmp = `echo "$scsi" | egrep -i $id`;
+        $tmp = substr($tmp, index($tmp, "/dev/"));
+        chomp($tmp);
+        
+        # Find the size in MiB
+        $size = `ssh -o ConnectTimeout=2 $node "sg_readcap $tmp" | egrep -i "Device size:"`;
+        $size =~ s/Device size: //g;
+        @args = split(",", $size);
+        $size = xCAT::zvmUtils->trimStr($args[1]);
+
+        $info .= "Device: $device  WWPN: 0x$wwpn  LUN: 0x$lun  Size: $size\n";
+    }
+
+    $info = xCAT::zvmUtils->tabStr($info);
+    return ($info);
+}
+
+#-------------------------------------------------------
+
+=head3   isHypervisor
+
+    Description : Determines if a given node is in the 'hypervisor' table
+    Arguments   : Node
+    Returns     :   1   Node exists
+                    0   Node does not exists
+    Example     : my $out = xCAT::zvmUtils->isHypervisor($node);
+    
+=cut
+
+#-------------------------------------------------------
+sub isHypervisor {
+
+    # Get inputs
+    my ( $class, $node ) = @_;
+    
+    # Look in 'zvm' table
+    my $tab = xCAT::Table->new( "hypervisor", -create => 1, -autocommit => 0 );
+
+    my @results = $tab->getAllAttribsWhere( "node like '%" . $node . "%'", 'type' );
+    foreach (@results) {
+        
+        # Return 'TRUE' if given node is in the table
+        if ($_->{"type"} eq "zvm") {
+            return 1;
+        }
+    }
+
+    return 0;
 }

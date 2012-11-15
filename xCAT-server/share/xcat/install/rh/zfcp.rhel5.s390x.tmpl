@@ -1,0 +1,32 @@
+# Kickstart file
+
+install
+url --url replace_url
+key --skip
+lang en_US.UTF-8
+network --bootproto dhcp
+rootpw replace_rootpw
+firewall --disabled 
+authconfig --enableshadow --enablemd5
+selinux --enforcing
+timezone --utc America/New_York
+bootloader --location=mbr --driveorder=sda --append=" crashkernel=auto"
+reboot
+key --skip
+
+# Define zFCP channel devices
+# The order determines the drive name, such as sda, sdb, etc.
+replace_root_device
+
+# Removes partitions from the devices
+clearpart --all --drives=sda
+
+# Create root partition and swap space
+part / --fstype=ext3 --size=100 --grow --ondisk=sda
+part swap --recommended --ondisk=sda
+
+# Install software packages
+%packages
+replace_software_packages
+
+%post

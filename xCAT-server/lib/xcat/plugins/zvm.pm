@@ -45,6 +45,7 @@ sub handled_commands {
         nodeset  => 'noderes:netboot',
         getmacs  => 'nodehm:getmac,mgt',
         rnetboot => 'nodehm:mgt',
+        chhypervisor => ['hypervisor:type', 'nodetype:os=(zvm.*)'],
     };
 }
 
@@ -129,6 +130,9 @@ sub process_request {
 
     # Directory where executables are on zHCP
     $::DIR = "/opt/zhcp/bin";
+    
+    # Directory where zFCP disk pools are on zHCP
+    $::ZFCPPOOL = "/var/opt/zhcp/zfcp";
 
     # Process ID for xfork()
     my $pid;
@@ -185,8 +189,12 @@ sub process_request {
 
             # Child process
             elsif ( $pid == 0 ) {
-                inventoryVM( $callback, $_, $args );
-
+                if (xCAT::zvmUtils->isHypervisor($_)) {
+                    inventoryHypervisor( $callback, $_, $args );
+                } else {
+                	inventoryVM( $callback, $_, $args );
+                }
+                
                 # Exit process
                 exit(0);
             }
@@ -203,13 +211,13 @@ sub process_request {
     elsif ( $command eq "mkvm" ) {
 
         # Determine if the argument is a node
-        my $clone = 'FALSE';
+        my $clone = 0;
         if ( $args->[0] ) {
             $clone = xCAT::zvmUtils->isZvmNode( $args->[0] );
         }
 
         #*** Clone virtual server ***
-        if ( $clone eq 'TRUE' ) {
+        if ( $clone ) {
             cloneVM( $callback, \@nodes, $args );
         }
 
@@ -452,6 +460,43 @@ sub process_request {
             }
         }    # End of foreach
     }    # End of case
+    
+    #*** Configure the virtualization hosts ***
+    elsif ( $command eq "chhypervisor" ) {
+        foreach (@nodes) {
+            $pid = xCAT::Utils->xfork();
+
+            # Parent process
+            if ($pid) {
+                push( @children, $pid );
+            }
+
+            # Child process
+            elsif ( $pid == 0 ) {
+                changeHypervisor( $callback, $_, $args );
+
+                # Exit process
+                exit(0);
+            }
+            else {
+
+                # Ran out of resources
+                die "Error: Could not fork\n";
+            }
+
+            # Handle 10 nodes at a time, else you will get errors
+            if ( !( @children % 10 ) ) {
+
+                # Wait for all processes to end
+                foreach (@children) {
+                    waitpid( $_, 0 );
+                }
+
+                # Clear children
+                @children = ();
+            }
+        }    # End of foreach
+    }    # End of case
 
     #*** Update the node (no longer supported) ***
     elsif ( $command eq "updatenode" ) {
@@ -491,7 +536,7 @@ sub process_request {
 
 =head3   removeVM
 
-    Description  : Delete the user entry from user directory
+    Description  : Delete the user from user directory
     Arguments    : Node to remove
     Returns      : Nothing
     Example      : removeVM($callback, $node);
@@ -508,7 +553,7 @@ sub removeVM {
     my @propNames = ( 'hcp', 'userid' );
     my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
 
-    # Get HCP
+    # Get zHCP
     my $hcp = $propVals->{'hcp'};
     if ( !$hcp ) {
         xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node HCP" );
@@ -525,12 +570,34 @@ sub removeVM {
     $userId =~ tr/a-z/A-Z/;
 
     # Power off user ID
-    my $out = `ssh $hcp "$::DIR/stopvs $userId"`;
-    xCAT::zvmUtils->printLn( $callback, "$node: $out" );
+    my $out = `ssh $hcp "$::DIR/smcli Image_Deactivate -T $userId -f IMMED"`;
 
     # Delete user entry
-    $out = `ssh $hcp "$::DIR/deletevs $userId"`;
+    $out = `ssh $hcp "$::DIR/smcli Image_Delete_DM -T $userId -e 1"`;
     xCAT::zvmUtils->printLn( $callback, "$node: $out" );
+    
+    # Go through each pool and free zFCP devices belonging to node
+    my @pools = split("\n", `ssh $hcp "ls $::ZFCPPOOL"`);
+    my $pool;
+    my @luns;
+    my $update;
+    my $expression;
+    foreach (@pools) {
+        $pool = xCAT::zvmUtils->replaceStr( $_, ".conf", "" );
+        
+        @luns = split("\n", `ssh $hcp "cat $::ZFCPPOOL/$_" | egrep -i $node`);
+        foreach (@luns) {
+            # Update entry: status,wwpn,lun,size,owner,channel,tag
+            my @info = split(',', $_);   
+            $update = "free,$info[1],$info[2],$info[3],,,";
+            $expression = "'s#" . $_ . "#" .$update . "#i'";
+            $out = `ssh $hcp "sed --in-place -e $expression $::ZFCPPOOL/$pool.conf"`;
+        }
+        
+        if (@luns) {
+            xCAT::zvmUtils->printLn($callback, "$node: Updating FCP device pool $pool... Done");
+        }
+    }
 
     # Check for errors
     my $rc = xCAT::zvmUtils->checkOutput( $callback, $out );
@@ -559,34 +626,11 @@ sub removeVM {
 
 =head3   changeVM
 
-     Description  : Change a virtual machine's configuration
-     Arguments    :  Node
-                     Option
-         
-     Options supported:
-        * add3390 [disk pool] [device address] [cylinders] [mode]    [read password] [write password] [multi password]
-        * add3390active [device address] [mode]
-        * add9336 [disk pool] [virtual device] [block size] [mode] [blocks] [read password] [write password] [multi password]
-        * addnic [address] [type] [device count]
-        * addprocessor [address]
-        * addvdisk [userID] [device address] [size]
-        * connectnic2guestlan [address] [lan] [owner]
-        * connectnic2vswitch [address] [vswitch]
-        * copydisk [target address] [source node] [source address]
-        * dedicatedevice [virtual device] [real device] [mode]
-        * deleteipl
-        * formatdisk [disk address] [multi password]
-        * disconnectnic [address]
-        * grantvswitch [VSwitch]
-        * removedisk [virtual device]
-        * removenic [address]
-        * removeprocessor [address]
-        * replacevs [user directory entry]
-        * setipl [ipl target] [load parms] [parms]
-        * setpassword [password]
-         
-    Returns     : Nothing
-    Example     : changeVM($callback, $node, $args);
+    Description  : Change a virtual machine's configuration
+    Arguments    : Node
+                   Option         
+    Returns      : Nothing
+    Example      : changeVM($callback, $node, $args);
          
 =cut
 
@@ -600,7 +644,7 @@ sub changeVM {
     my @propNames = ( 'hcp', 'userid' );
     my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
 
-    # Get HCP
+    # Get zHCP
     my $hcp = $propVals->{'hcp'};
     if ( !$hcp ) {
         xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node HCP" );
@@ -615,28 +659,43 @@ sub changeVM {
     }
     # Capitalize user ID
     $userId =~ tr/a-z/A-Z/;
+    
+    # Get zHCP user ID
+    my $hcpUserId = xCAT::zvmCPUtils->getUserId($hcp);
+    $hcpUserId =~ tr/a-z/A-Z/;
 
     # Output string
     my $out = "";
 
-    # add3390 [disk pool] [device address] [cylinders] [mode] [read password] [write password] [multi password]
-    # [read password] [write password] [multi password] are optional
+    # add3390 [disk pool] [device address] [cylinders] [mode] [read password (optional)] [write password (optional)] [multi password (optional)]
     if ( $args->[0] eq "--add3390" ) {
         my $pool    = $args->[1];
         my $addr    = $args->[2];
         my $cyl     = $args->[3];
         my $mode    = $args->[4];
-        my $readPw  = $args->[5];
-        my $writePw = $args->[6];
-        my $multiPw = $args->[7];
-
+        
+        my $readPw  = "''";
+        if ($args->[5]) {
+            $readPw = $args->[5];
+        }
+        
+        my $writePw = "''";
+        if ($args->[6]) {
+            $writePw = $args->[6];
+        }
+        
+        my $multiPw = "''";
+        if ($args->[7]) {
+            $multiPw = $args->[7];
+        }
+        
         # Add to directory entry
-        $out = `ssh $hcp "$::DIR/add3390 $userId $pool $addr $cyl $mode $readPw $writePw $multiPw"`;
+        $out = `ssh $hcp "$::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $readPw -W $writePw -M $multiPw"`;
         
         # Add to active configuration
         my $ping = `pping $node`;
         if (!($ping =~ m/noping/i)) {
-            $out .= `ssh $hcp "$::DIR/add3390active $userId $addr $mode"`;
+            $out .= `ssh $hcp "$::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode"`;
         }
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
@@ -646,60 +705,46 @@ sub changeVM {
         my $addr = $args->[1];
         my $mode = $args->[2];
 
-        $out = `ssh $hcp "$::DIR/add3390active $userId $addr $mode"`;
+        $out = `ssh $hcp "$::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode"`;
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
-    # add9336 [disk pool] [virtual device address] [block size] [blocks] [mode] [read password] [write password] [multi password]
-    # [read password] [write password] [multi password] are optional
+    # add9336 [disk pool] [virtual device address] [blocks] [mode] [read password (optional)] [write password (optional)] [multi password (optional)]
     elsif ( $args->[0] eq "--add9336" ) {
         my $pool    = $args->[1];
         my $addr    = $args->[2];
-        my $blksize = $args->[3];
-        my $blks    = $args->[4];
-        my $mode    = $args->[5];
-        my $readPw  = $args->[6];
-        my $writePw = $args->[7];
-        my $multiPw = $args->[8];
+        my $blks    = $args->[3];
+        my $mode    = $args->[4];
+        
+        my $readPw  = "''";
+        if ($args->[5]) {
+            $readPw = $args->[5];
+        }
+        
+        my $writePw = "''";
+        if ($args->[6]) {
+            $writePw = $args->[6];
+        }
+        
+        my $multiPw = "''";
+        if ($args->[7]) {
+            $multiPw = $args->[7];
+        }
 
-        $out = `ssh $hcp "$::DIR/add9336 $userId $pool $addr $blksize $blks $mode $readPw $writePw $multiPw"`;
+        $out = `ssh $hcp "$::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t 9336 -a AUTOG -r $pool -u 2 -z $blks -m $mode -f 1 -R $readPw -W $writePw -M $multiPw"`;
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
     # adddisk2pool [function] [region] [volume] [group]
     elsif ( $args->[0] eq "--adddisk2pool" ) {
-        my $funct   = $args->[1];
-        my $region  = $args->[2];
-        my $volume  = "";
-        my $group   = "";
-        
-        # Create an array for regions
-        my @regions;
-        if ( $region =~ m/,/i ) {
-            @regions = split( ',', $region );
-        } else {
-            push( @regions, $region );
-        }
-        
-        my $tmp;
-        foreach (@regions) {
-            $_ = xCAT::zvmUtils->trimStr($_);
-            
-            # Define region as full volume and add to group
-            if ($funct eq "4") {
-                $volume = $args->[3];
-                $group  = $args->[4];
-                $tmp = `ssh $hcp "$::DIR/adddisk2pool $funct $_ $volume $group"`;
-            }
-            
-            # Add existing region to group
-            elsif($funct eq "5") {
-                $group = $args->[3];
-                $tmp = `ssh $hcp "$::DIR/adddisk2pool $funct $_ $group"`;
-            }
-            
-            $out .= xCAT::zvmUtils->appendHostname( $node, $tmp );
-        }
+        # This is no longer supported in chvm. Using chhypervisor instead.
+        changeHypervisor( $callback, $node, $args );
+    }
+    
+    # addzfcp2pool [pool] [status] [wwpn] [lun] [size] [owner (optional)]
+    elsif ( $args->[0] eq "--addzfcp2pool" ) {
+        # This is no longer supported in chvm. Using chhypervisor instead.
+        changeHypervisor( $callback, $node, $args );
     }
     
     # addnic [address] [type] [device count]
@@ -713,18 +758,24 @@ sub changeVM {
         if (!($ping =~ m/noping/i)) {
             $out = `ssh $node "vmcp define nic $addr type $type"`;
         }
+        
+        # Translate QDIO or Hipersocket into correct type
+        if ($type =~m/QDIO/i) {
+            $type = 2;
+        } elsif ($type =~m/HIPER/i) {
+            $type = 1;
+        } 
 
         # Add to directory entry
-        $out .= `ssh $hcp "$::DIR/addnic $userId $addr $type $devcount"`;
+        $out .= `ssh $hcp "$::DIR/smcli Virtual_Network_Adapter_Create_DM -T $userId -v $addr -a $type -n $devcount"`;
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
-    # addprocessor [type] address]
+    # addprocessor [address]
     elsif ( $args->[0] eq "--addprocessor" ) {
-        my $type = $args->[1];
-        my $addr = $args->[2];
+        my $addr = $args->[1];
 
-        $out = `ssh $hcp "$::DIR/addprocessor $userId $type $addr"`;
+        $out = `ssh $hcp "$::DIR/smcli Image_CPU_Define_DM -T $userId -v $addr -b 0 -d 1 -y 0"`;
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
@@ -741,9 +792,219 @@ sub changeVM {
     elsif ( $args->[0] eq "--addvdisk" ) {
         my $addr = $args->[1];
         my $size = $args->[2];
+        my $mode = $args->[3];
 
-        $out = `ssh $hcp "$::DIR/addvdisk $userId $addr $size"`;
+        $out = `ssh $hcp "$::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t FB-512 -a V-DISK -r NONE -u 2 -z $size -m $mode -f 0"`;
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
+    }
+    
+    # addzfcp [pool] [device address] [loaddev (0 or 1)] [size] [tag (optional)] [wwpn (optional)] [lun (optional)]
+    elsif ( $args->[0] eq "--addzfcp" ) {
+        # Find a free disk in the pool
+        # zFCP devices are contained in /var/opt/zhcp/zfcp/<pool-name>.conf
+        my $pool = lc($args->[1]);
+        my $device = $args->[2];
+                
+        my $argsSize = @{$args};
+        if ($argsSize < 5 || $argsSize > 8) {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Wrong number of parameters" );
+            return;
+        }
+        
+        my $loaddev = int($args->[3]);
+        if ($loaddev != 0 && $loaddev != 1) {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) The loaddev can be 0 or 1" );
+            return;
+        }
+        
+        # Size can be M(egabytes) or G(igabytes)
+        my $size = $args->[4];
+        if ($size =~ m/G/i) {
+            # Convert to MegaBytes
+            $size =~ s/\D//g;
+            $size = int($size) * 1024
+        } elsif ($size =~ m/M/i || !$size) {
+            # Do nothing
+        } else {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Size not recognized.  Size can be M(egabytes) or G(igabytes)." );
+            return;
+        }
+        
+        # Tag specifies what to replace in the autoyast/kickstart template, e.g. $root_device$
+        # This argument is optional
+        my $tag = $args->[5];
+        
+        # Check if WWPN and LUN are given
+        my $wwpn;
+        my $lun;
+        my $useWwpnLun = 0;
+        if ($argsSize == 7) {
+            $useWwpnLun = 1;            
+            $wwpn = $args->[6];
+            $lun = $args->[7];
+            
+            # Make sure WWPN and LUN do not have 0x prefix
+            $wwpn = xCAT::zvmUtils->replaceStr($wwpn, "0x", "");
+            $lun = xCAT::zvmUtils->replaceStr($lun, "0x", "");
+        }
+                
+        # Find disk pool (create one if non-existent)
+        if (!(`ssh $hcp "test -d $::ZFCPPOOL && echo Exists"`)) {
+            # Create pool directory
+            $out = `ssh $hcp "mkdir -p $::ZFCPPOOL"`;
+        }
+
+        if (!(`ssh $hcp "test -e $::ZFCPPOOL/$pool.conf && echo Exists"`)) {
+            if (!$useWwpnLun) {
+                xCAT::zvmUtils->printLn( $callback, "$node: (Error) Device pool does not exist" );
+                return;
+            }
+
+            # Create pool configuration file 
+            # Update file with given WWPN and LUN
+            $out = `ssh $hcp "echo '#status,wwpn,lun,size,owner,channel,tag' > $::ZFCPPOOL/$pool.conf"`;
+            $out = `ssh $hcp "echo \"free,$wwpn,$lun,,,,\" >> $::ZFCPPOOL/$pool.conf"`;
+        }
+
+        my $sizeFound = "*";
+        my @info;
+            
+        # Find a suitable pair of WWPN and LUN in device pool based on requested size
+        # Sample pool configuration file:
+        #   #status,wwpn,lun,size,owner,channel,tag
+        #     used,1000000000000000,2000000000000110,8g,ihost1,1a23,$root_device$
+        #     free,1000000000000000,2000000000000111,,,,
+        #     free,1230000000000000,2000000000000112,,,,
+        if (!$useWwpnLun) {
+            my @devices = split("\n", `ssh $hcp "cat $::ZFCPPOOL/$pool.conf" | egrep -i free`);            
+            $sizeFound = 0;
+            foreach (@devices) {
+                @info = split(',', $_);
+                    
+                # Check if the size is sufficient
+                if ($info[3] =~ m/G/i) {
+                    # Convert to MegaBytes
+                    $info[3] =~ s/\D//g;
+                    $info[3] = int($info[3]) * 1024
+                } elsif ($info[3] =~ m/M/i) {
+                    # Do nothing
+                    $info[3] =~ s/\D//g;
+                } else {
+                    next;
+                }                
+                    
+                # Find optimal disk based on requested size
+                if ($sizeFound && $info[3] >= $size && $info[3] < $sizeFound) {
+                    $sizeFound = $info[3];
+                    $wwpn = $info[1];
+                    $lun = $info[2];
+                } elsif (!$sizeFound && $info[3] >= $size) {
+                    $sizeFound = $info[3];
+                    $wwpn = $info[1];
+                    $lun = $info[2];            
+                }
+            }
+        }
+        
+        if (!$wwpn && !$lun) {
+            xCAT::zvmUtils->printLn($callback, "$node: (Error) A suitable device could not be found");
+            return;
+        }
+        xCAT::zvmUtils->printLn($callback, "$node: Using device with WWPN/LUN of $wwpn/$lun");
+        
+        # Make sure channel has a length of 4 
+        while (length($device) < 4) {
+            $device = "0" . $device;
+        }
+                        
+        # Get user directory entry
+        my $userEntry = `ssh $hcp "$::DIR/smcli Image_Query_DM -T $userId" | sed '\$d'`;
+        
+        # Find DEDICATE statement in the entry
+        my $dedicate = `echo "$userEntry" | egrep -i "DEDICATE $device"`;
+        if (!$dedicate) {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) No dedicated device found" );
+            return;
+        }                
+                
+        # Configure FCP inside node (if online)
+        my $ping = `pping $node`;
+        if (!($ping =~ m/noping/i)) {
+           
+            # Online device
+            $out = xCAT::zvmUtils->disableEnableDisk($callback, $node, "-e", "0.0." . $device);
+            if (xCAT::zvmUtils->checkOutput( $callback, $out ) == -1) {
+                xCAT::zvmUtils->printLn($callback, "$node: $out");
+                return;
+            }
+            
+            # Set WWPN and LUN in sysfs
+            $device = lc($device);
+            $out .= `ssh $node "echo 0x$wwpn > /sys/bus/ccw/drivers/zfcp/0.0.$device/port_add"`;
+            $out .= `ssh $node "echo 0x$lun > /sys/bus/ccw/drivers/zfcp/0.0.$device/0x$wwpn/unit_add"`;
+            
+            # Get source node OS
+            my $os = xCAT::zvmUtils->getOsVersion($node);
+            
+            # Set WWPN and LUN in configuration files
+            #   RHEL: /etc/zfcp.conf
+            #   SLES 10: /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-*
+            #   SLES 11: /etc/udev/rules.d/51-zfcp*
+            my $tmp;
+            if ( $os =~ m/sles10/i ) {
+                $out = `ssh $node "zfcp_host_configure 0.0.$device 1"`;
+                $out = `ssh $node "zfcp_disk_configure 0.0.$device $wwpn $lun 1"`;
+                xCAT::zvmUtils->printLn($callback, "$node: $out");
+                
+                $out = `ssh $node "echo 0x$wwpn:0x$lun >> /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-0.0.$device"`;
+            } elsif ( $os =~ m/sles11/i ) {   
+                $out = `ssh $node "zfcp_disk_configure 0.0.$device $wwpn $lun 1"`;
+                xCAT::zvmUtils->printLn($callback, "$node: $out");
+                
+                $tmp = "'ACTION==\"add\", KERNEL==\"rport-*\", ATTR{port_name}==\"0x$wwpn\", SUBSYSTEMS==\"ccw\", KERNELS==\"0.0.$device\", ATTR{[ccw/0.0.$device]0x$wwpn/unit_add}=\"0x$lun\"'";
+                $tmp = xCAT::zvmUtils->replaceStr($tmp, '"', '\\"');
+                $out = `ssh $node "echo $tmp >> /etc/udev/rules.d/51-zfcp-0.0.$device.rules"`;
+            } elsif ( $os =~ m/rhel/i ) {
+                $tmp = "'" . "0.0.$device 0x$wwpn 0x$lun" . "'";
+                $out = `ssh $node "echo $tmp >> /etc/zfcp.conf"`;
+                
+                if ($os =~ m/rhel6/i) {
+                    $out = `ssh $node "echo add > /sys/bus/ccw/devices/0.0.$device/uevent"`;
+                }
+            }
+            
+            xCAT::zvmUtils->printLn($callback, "$node: Configuring FCP device to be persistent... Done");
+        }
+        
+        # Mark WWPN and LUN as used and set the owner/channel
+        # This config file keeps track of the owner of each device, which is useful in nodeset
+        $size = $size . "M";
+        my $select = `ssh $hcp "cat $::ZFCPPOOL/$pool.conf" | grep $lun`;
+        chomp($select);
+        if ($select) {
+            @info = split(',', $select);
+            if (!$info[3]) {
+                $info[3] = $size;
+            }
+            
+            # Entry order: status,wwpn,lun,size,owner,channel,tag
+            my $update = "used,$wwpn,$lun,$info[3],$node,$device,$tag";
+            my $expression = "'s#" . $select . "#" .$update . "#i'";
+            $out = `ssh $hcp "sed --in-place -e $expression $::ZFCPPOOL/$pool.conf"`;
+        } else {
+            # Insert device entry into file
+            $out = `ssh $hcp "echo \"used,$wwpn,$lun,$size,$node,$device,$tag\" >> $::ZFCPPOOL/$pool.conf"`;
+        }
+        
+        xCAT::zvmUtils->printLn($callback, "$node: Adding FCP device... Done");
+        
+        # Set loaddev statement in directory entry
+        if ($loaddev) {
+            $out = `chvm $node --setloaddev $wwpn $lun`;
+            xCAT::zvmUtils->printLn($callback, "$out");
+        }
+        
+        $out = "";
     }
 
     # connectnic2guestlan [address] [lan] [owner]
@@ -755,31 +1016,32 @@ sub changeVM {
         # Connect to LAN in active configuration
         my $ping = `pping $node`;
         if (!($ping =~ m/noping/i)) {
-            $out = `ssh $node "vmcp couple $addr to $owner $lan"`;
+            $out = `ssh $hcp "$::DIR/smcli Virtual_Network_Adapter_Connect_LAN -T $userId -v $addr -l $lan -o $owner"`;
         }
         
-        $out .= `ssh $hcp "$::DIR/connectnic2guestlan $userId $addr $lan $owner"`;
+        $out .= `ssh $hcp "$::DIR/smcli Virtual_Network_Adapter_Connect_LAN_DM -T $userId -v $addr -n $lan -o $owner"`;
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
-    # connectnic2vswitch [address] [vswitch]
+    # connectnic2vswitch [address] [VSwitch]
     elsif ( $args->[0] eq "--connectnic2vswitch" ) {
         my $addr    = $args->[1];
         my $vswitch = $args->[2];
 
         # Grant access to VSWITCH for Linux user
-        $out = "Granting access to VSWITCH for $userId\n  ";
-        $out .= `ssh $hcp "vmcp set vswitch $vswitch grant $userId"`;
+        $out = xCAT::zvmCPUtils->grantVSwitch( $callback, $hcp, $userId, $vswitch );
+        xCAT::zvmUtils->printLn( $callback, "$node: Granting VSwitch ($vswitch) access for $userId... $out" );
 
+        # Connect to VSwitch in directory entry
+        $out = `ssh $hcp "$::DIR/smcli Virtual_Network_Adapter_Connect_Vswitch_DM -T $userId -v $addr -n $vswitch"`;
+                
         # Connect to VSwitch in active configuration
         my $ping = `pping $node`;
         if (!($ping =~ m/noping/i)) {
-            $out .= `ssh $node "vmcp couple $addr to system $vswitch"`;
+            $out .= `ssh $hcp "$::DIR/smcli Virtual_Network_Adapter_Connect_Vswitch -T $userId -v $addr -n $vswitch"`;
         }
         
-        # Connect to VSwitch in directory entry
-        $out .= `ssh $hcp "$::DIR/connectnic2vswitch $userId $addr $vswitch"`;
-        $out = xCAT::zvmUtils->appendHostname( $node, $out );    
+        $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
     # copydisk [target address] [source node] [source address]
@@ -1015,14 +1277,24 @@ sub changeVM {
         my $vaddr = $args->[1];
         my $raddr = $args->[2];
         my $mode  = $args->[3];
-
-        $out = `ssh $hcp "$::DIR/dedicatedevice $userId $vaddr $raddr $mode"`;
-        $out = xCAT::zvmUtils->appendHostname( $node, $out );
+        
+        # Dedicate device to directory entry
+        $out = `ssh $hcp "$::DIR/smcli Image_Device_Dedicate_DM -T $userId -v $vaddr -r $raddr -o $mode"`;
+        xCAT::zvmUtils->printLn( $callback, "$node: $out" );
+        
+        # Dedicate device to active configuration
+        my $ping = `pping $node`;
+        if (!($ping =~ m/noping/i)) {
+            $out = `ssh $hcp "$::DIR/smcli Image_Device_Dedicate -T $userId -v $vaddr -r $raddr -o $mode"`;
+            xCAT::zvmUtils->printLn( $callback, "$node: $out" );
+        }
+        
+        $out = "";
     }
 
     # deleteipl
     elsif ( $args->[0] eq "--deleteipl" ) {
-        $out = `ssh $hcp "$::DIR/deleteipl $userId"`;
+        $out = `ssh $hcp "$::DIR/smcli Image_IPL_Delete_DM -T $userId"`;
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
@@ -1124,51 +1396,30 @@ sub changeVM {
         my $vsw = $args->[1];
 
         $out = xCAT::zvmCPUtils->grantVSwitch( $callback, $hcp, $userId, $vsw );
-        $out = xCAT::zvmUtils->appendHostname( $node, $out );
+        $out = xCAT::zvmUtils->appendHostname( $node, "Granting VSwitch ($_) access for $userId... $out" );
     }
 
     # disconnectnic [address]
     elsif ( $args->[0] eq "--disconnectnic" ) {
         my $addr = $args->[1];
 
-        $out = `ssh $hcp "$::DIR/disconnectnic $userId $addr"`;
+        $out = `ssh $hcp "$::DIR/smcli Virtual_Network_Adapter_Disconnect_DM -T $userId -v $addr"`;
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
     # removediskfrompool [function] [region] [group]
     elsif ( $args->[0] eq "--removediskfrompool" ) {
-        my $funct  = $args->[1];
-        my $region = $args->[2];
-        my $group  = "";
-        
-        # Create an array for regions
-        my @regions;
-        if ( $region =~ m/,/i ) {
-            @regions = split( ',', $region );
-        } else {
-            push( @regions, $region );
-        }
-
-        my $tmp;
-        foreach ( @regions ) {
-            $_ = xCAT::zvmUtils->trimStr($_);
-            
-            # Remove region from group | Remove entire group        
-            if ($funct eq "2" || $funct eq "7") {
-                $group  = $args->[3];
-                $tmp = `ssh $hcp "$::DIR/removediskfrompool $funct $_ $group"`;
-            } 
-            
-            # Remove region | Remove region from all groups
-            elsif ($funct eq "1" || $funct eq "3") {
-                $tmp = `ssh $hcp "$::DIR/removediskfrompool $funct $_"`;
-            }
-            
-            $out .= xCAT::zvmUtils->appendHostname( $node, $tmp );
-        }
+        # This is no longer supported in chvm. Using chhypervisor instead.
+        changeHypervisor( $callback, $node, $args );
     }
     
-    # removedisk [virtual device address]
+    # removezfcpfrompool [pool] [lun]
+    elsif ( $args->[0] eq "--removezfcpfrompool" ) {
+        # This is no longer supported in chvm. Using chhypervisor instead.
+        changeHypervisor( $callback, $node, $args );
+    }
+    
+    # removedisk [virtual address]
     elsif ( $args->[0] eq "--removedisk" ) {
         my $addr = $args->[1];
         
@@ -1180,7 +1431,7 @@ sub changeVM {
         }
 
         # Remove from user directory entry
-        $out = `ssh $hcp "$::DIR/removemdisk $userId $addr"`;
+        $out = `ssh $hcp "$::DIR/smcli Image_Disk_Delete_DM -T $userId -v $addr -e 0"`;
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
@@ -1195,7 +1446,7 @@ sub changeVM {
         }
 
         # Remove from user directory entry
-        $out = `ssh $hcp "$::DIR/removenic $userId $addr"`;
+        $out = `ssh $hcp "$::DIR/smcli Virtual_Network_Adapter_Delete_DM -T $userId -v $addr"`;
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
@@ -1204,8 +1455,143 @@ sub changeVM {
         my $addr = $args->[1];
         
         # Remove from user directory entry
-        $out = `ssh $hcp "$::DIR/removeprocessor $userId $addr"`;
+        $out = `ssh $hcp "$::DIR/smcli Image_CPU_Delete_DM -T $userId -v $addr"`;
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
+    }
+    
+    # removeloaddev [wwpn] [lun]
+    elsif ( $args->[0] eq "--removeloaddev" ) {
+        my $wwpn = $args->[1];
+        my $lun = $args->[2];
+        
+        xCAT::zvmUtils->printLn($callback, "$node: Removing LOADDEV directory statements");
+        
+        # Make sure WWPN and LUN do not have 0x prefix
+        $wwpn = xCAT::zvmUtils->replaceStr( $wwpn, "0x", "" );
+        $lun = xCAT::zvmUtils->replaceStr( $lun, "0x", "" );
+        
+        # Get user directory entry
+        my $updateEntry = 0;
+        my $userEntryFile = "/tmp/$node.txt";
+        my $userEntry = `ssh $hcp "$::DIR/smcli Image_Query_DM -T $userId" | sed '\$d'`;
+        chomp($userEntry);
+        if (!$wwpn && !$lun) {
+            # If no WWPN or LUN is provided, delete all LOADDEV statements
+            `echo "$userEntry" | grep -v "LOADDEV" > $userEntryFile`;
+            $updateEntry = 1;
+        } else {
+            
+            # Delete old directory entry file
+            `rm -rf $userEntryFile`;
+            
+            # Remove LOADDEV PORTNAME and LUN statements in directory entry            
+            my @lines = split( '\n', $userEntry );
+            foreach (@lines) {
+                # Check if LOADDEV PORTNAME and LUN statements are in the directory entry
+                if ($_ =~ m/LOADDEV PORTNAME $wwpn/i) {
+                    $updateEntry = 1;
+                    next;
+                } elsif ($_ =~ m/LOADDEV LUN $lun/i) {
+                    $updateEntry = 1;
+                    next;
+                } else {
+                    # Write directory entry to file            
+                    `echo "$_" >> $userEntryFile`;
+                }
+            }
+        }
+        
+        # Replace user directory entry (if necessary)
+        if ($updateEntry) {
+            $out = `chvm $node --replacevs $userEntryFile`;
+            xCAT::zvmUtils->printLn($callback, "$out");
+            
+            # Delete directory entry file
+            `rm -rf $userEntryFile`;
+        } else {
+            xCAT::zvmUtils->printLn($callback, "$node: No changes required in the directory entry");
+        }
+        
+        $out = "";
+    }
+    
+    # removezfcp [device address] [wwpn] [lun]
+    elsif ( $args->[0] eq "--removezfcp" ) {
+        my $device = $args->[1];
+        my $wwpn = $args->[2];
+        my $lun = $args->[3];
+                
+        my $argsSize = @{$args};
+        if ($argsSize != 4) {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Wrong number of parameters" );
+            return;
+        }
+                
+        # Make sure WWPN and LUN do not have 0x prefix
+        $wwpn = xCAT::zvmUtils->replaceStr($wwpn, "0x", "");
+        $lun = xCAT::zvmUtils->replaceStr($lun, "0x", "");
+        
+        # Make sure channel has a length of 4 
+        while (length($device) < 4) {
+            $device = "0" . $device;
+        }
+        
+        # Update device pool
+        my $update;
+        my $expression;
+        
+        # Go through each pool
+        # It is okay not to find the LUN in a device pool.  xCAT should 
+        # continue to delete device from node.
+        my @pools = split("\n", `ssh $hcp "ls $::ZFCPPOOL"`);
+        my $pool;
+        my $tmp;
+        foreach (@pools) {
+            $tmp = `ssh $hcp "cat $::ZFCPPOOL/$_" | egrep -i $lun`;
+            chomp($tmp);
+            if ($tmp) {
+                # Mark WWPN and LUN as free and delete owner/channel
+                $pool = xCAT::zvmUtils->replaceStr( $_, ".conf", "" );
+                
+                # Update entry: status,wwpn,lun,size,owner,channel,tag
+                my @info = split(',', $tmp);   
+                $update = "free,$wwpn,$lun,$info[3],,,";
+                $expression = "'s#" . $tmp . "#" .$update . "#i'";
+                $out = `ssh $hcp "sed --in-place -e $expression $::ZFCPPOOL/$pool.conf"`;
+                
+                xCAT::zvmUtils->printLn($callback, "$node: Updating FCP device pool... Done");
+            }
+        }
+        
+        # De-configure SCSI over FCP inside node (if online)
+        my $ping = `pping $node`;
+        if (!($ping =~ m/noping/i)) {
+            # Delete WWPN and LUN from sysfs
+            $device = lc($device);
+            $out = `ssh $node "echo 0x$lun > /sys/bus/ccw/drivers/zfcp/0.0.$device/0x$wwpn/unit_remove"`;
+            
+            # Get source node OS
+            my $os = xCAT::zvmUtils->getOsVersion($node);
+            
+            # Delete WWPN and LUN from configuration files
+            #   RHEL: /etc/zfcp.conf
+            #   SLES 10: /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-*
+            #   SLES 11: /etc/udev/rules.d/51-zfcp*
+            if ( $os =~ m/sles10/i ) {
+                $expression = "/$lun/d";
+                $out = `ssh $node "sed --in-place -e $expression /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-0.0.$device"`;
+            } elsif ( $os =~ m/sles11/i ) {
+                $expression = "/$lun/d";
+                $out = `ssh $node "sed --in-place -e $expression /etc/udev/rules.d/51-zfcp-0.0.$device.rules"`;
+            } elsif ( $os =~ m/rhel/i ) {
+                $expression = "/$lun/d";
+                $out = `ssh $node "sed --in-place -e $expression /etc/zfcp.conf"`;
+            }
+            
+            xCAT::zvmUtils->printLn($callback, "$node: De-configuring FCP device on host... Done");
+        }
+        
+        $out = "";
     }
 
     # replacevs [file]
@@ -1223,8 +1609,7 @@ sub changeVM {
             # Replace user directory entry
             $out = `ssh $hcp "$::DIR/replacevs $userId $file"`;
             $out = xCAT::zvmUtils->appendHostname( $node, $out );
-        }
-        else {
+        } else {
             xCAT::zvmUtils->printLn( $callback, "$node: (Error) No directory entry file specified" );
             xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Specify a text file containing the updated directory entry" );
             return;
@@ -1233,26 +1618,25 @@ sub changeVM {
 
     # resetsmapi
     elsif ( $args->[0] eq "--resetsmapi" ) {
-        # Assuming zVM 6.1 or older
-        # Force each worker machine off
-        my @workers = ('VSMWORK1', 'VSMWORK2', 'VSMWORK3', 'VSMREQIN', 'VSMREQIU');
-        foreach ( @workers ) {
-            $out = `ssh $hcp "vmcp force $_ logoff immediate"`;
-        }
-                
-        # Log on VSMWORK1
-        $out = `ssh $hcp "vmcp xautolog VSMWORK1"`;
-        
-        $out = "$node: Resetting SMAPI... Done";
+        # This is no longer supported in chvm. Using chhypervisor instead.
+        changeHypervisor( $callback, $node, $args );
     }
     
     # setipl [ipl target] [load parms] [parms]
     elsif ( $args->[0] eq "--setipl" ) {
-        my $trgt      = $args->[1];
-        my $loadparms = $args->[2];
-        my $parms     = $args->[3];
+        my $trgt = $args->[1];
+        
+        my $loadparms = "''";
+        if ($args->[2]) {
+            $loadparms = $args->[2];
+        }
+        
+        my $parms = "''";
+        if ($args->[3]) {
+            $parms = $args->[3];
+        }
 
-        $out = `ssh $hcp "$::DIR/setipl $userId $trgt $loadparms $parms"`;
+        $out = `ssh $hcp "$::DIR/smcli Image_IPL_Set_DM -T $userId -s $trgt -l $loadparms -p $parms"`;
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
@@ -1260,8 +1644,98 @@ sub changeVM {
     elsif ( $args->[0] eq "--setpassword" ) {
         my $pw = $args->[1];
 
-        $out = `ssh $hcp "$::DIR/setpassword $userId $pw"`;
+        $out = `ssh $hcp "$::DIR/smcli Image_Password_Set_DM -T $userId -p $pw"`;
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
+    }
+    
+    # setloaddev [wwpn] [lun]
+    elsif ( $args->[0] eq "--setloaddev" ) {
+        my $wwpn = $args->[1];
+        my $lun = $args->[2];
+        
+        if (!$wwpn || !$lun) {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Wrong number of parameters" );
+            return;
+        }
+        
+        # Make sure WWPN and LUN do not have 0x prefix
+        $wwpn = xCAT::zvmUtils->replaceStr( $wwpn, "0x", "" );
+        $lun = xCAT::zvmUtils->replaceStr( $lun, "0x", "" );
+            
+        xCAT::zvmUtils->printLn($callback, "$node: Setting LOADDEV directory statements");
+                
+        # Get user directory entry
+        my $userEntry = `ssh $hcp "$::DIR/smcli Image_Query_DM -T $userId" | sed '\$d'`;
+        
+        # Delete old directory entry file
+        my $userEntryFile = "/tmp/$node.txt";
+        `rm -rf $userEntryFile`;
+        
+        # Append LOADDEV PORTNAME and LUN statements in directory entry
+        # These statements go before DEDICATE statements
+        my $containsPortname = 0;
+        my $containsLun = 0;
+        my $updateEntry = 0;
+        my @lines = split( '\n', $userEntry );
+        foreach (@lines) {
+            # Check if LOADDEV PORTNAME and LUN statements are in the directory entry
+            # This should be hit before any DEDICATE statements
+            if ($_ =~ m/LOADDEV PORTNAME $wwpn/i) {
+                $containsPortname = 1;
+            } if ($_ =~ m/LOADDEV LUN $lun/i) {
+                $containsLun = 1;
+            }
+            
+            if ($_ =~ m/DEDICATE/i) {
+                # Append LOADDEV PORTNAME statement
+                if (!$containsPortname) {
+                    `echo "LOADDEV PORTNAME $wwpn" >> $userEntryFile`;
+                    $containsPortname = 1;
+                    $updateEntry = 1;
+                }
+                    
+                # Append LOADDEV LUN statement
+                if (!$containsLun) {
+                    `echo "LOADDEV LUN $lun" >> $userEntryFile`;
+                    $containsLun = 1;
+                    $updateEntry = 1;
+                }
+            }
+            
+            # Write directory entry to file
+            `echo "$_" >> $userEntryFile`;
+        }
+        
+        # Replace user directory entry (if necessary)
+        if ($updateEntry) {
+            $out = `chvm $node --replacevs $userEntryFile`;
+            xCAT::zvmUtils->printLn( $callback, "$out");
+            
+            # Delete directory entry file
+            `rm -rf $userEntryFile`;
+        } else {
+            xCAT::zvmUtils->printLn($callback, "$node: No changes required in the directory entry");
+        }
+        
+        $out = "";
+    }
+    
+    # undedicatedevice [virtual device]
+    elsif ( $args->[0] eq "--undedicatedevice" ) {
+        my $vaddr = $args->[1];
+
+        # Undedicate device in directory entry
+        $out = `ssh $hcp "$::DIR/smcli Image_Device_Undedicate_DM -T $userId -v $vaddr"`;
+        xCAT::zvmUtils->printLn( $callback, "$node: $out" );
+        
+        # Undedicate device in active configuration
+        my $ping = `pping $node`;
+        if (!($ping =~ m/noping/i)) {
+            $out = `ssh $hcp "$::DIR/smcli Image_Device_Undedicate -T $userId -v $vaddr"`;
+            xCAT::zvmUtils->printLn( $callback, "$node: $out" );
+        }
+        
+        $out = "";
     }
 
     # Otherwise, print out error
@@ -1269,7 +1743,10 @@ sub changeVM {
         $out = "$node: (Error) Option not supported";
     }
 
-    xCAT::zvmUtils->printLn( $callback, "$out" );
+    # Only print if there is content
+    if ($out) {
+        xCAT::zvmUtils->printLn( $callback, "$out" );
+    }
     return;
 }
 
@@ -1295,7 +1772,7 @@ sub powerVM {
     my @propNames = ( 'hcp', 'userid' );
     my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
 
-    # Get HCP
+    # Get zHCP
     my $hcp = $propVals->{'hcp'};
     if ( !$hcp ) {
         xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node HCP" );
@@ -1316,13 +1793,13 @@ sub powerVM {
 
     # Power on virtual server
     if ( $args->[0] eq 'on' ) {
-        $out = `ssh $hcp "$::DIR/startvs $userId"`;
+        $out = `ssh $hcp "$::DIR/smcli Image_Activate -T $userId"`;
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
     }
 
     # Power off virtual server
     elsif ( $args->[0] eq 'off' ) {
-        $out = `ssh $hcp "$::DIR/stopvs $userId"`;
+        $out = `ssh $hcp "$::DIR/smcli Image_Deactivate -T $userId -f IMMED"`;
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
     }
     
@@ -1331,7 +1808,7 @@ sub powerVM {
         $out = `ssh -o ConnectTimeout=10 $node "shutdown -h now"`;
         sleep(90);    # Wait 1.5 minutes before logging user off
         
-        $out = `ssh $hcp "$::DIR/stopvs $userId"`;
+        $out = `ssh $hcp "$::DIR/smcli Image_Deactivate -T $userId -f IMMED"`;
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
     }
 
@@ -1352,7 +1829,7 @@ sub powerVM {
     # Reset a virtual server
     elsif ( $args->[0] eq 'reset' ) {
 
-        $out = `ssh $hcp "$::DIR/stopvs $userId"`;
+        $out = `ssh $hcp "$::DIR/smcli Image_Deactivate -T $userId -f IMMED"`;
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
 
         # Wait for output
@@ -1360,7 +1837,7 @@ sub powerVM {
             # Do nothing
         }
 
-        $out = `ssh $hcp "$::DIR/startvs $userId"`;
+        $out = `ssh $hcp "$::DIR/smcli Image_Activate -T $userId"`;
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
     }
     else {
@@ -1421,7 +1898,7 @@ sub scanVM {
 
     # Print output string
     # [Node name]:
-    #    objtype=node
+    #   objtype=node
     #   id=[userID]
     #   arch=[Architecture]
     #   hcp=[HCP node name]
@@ -1490,7 +1967,7 @@ sub scanVM {
             'nodetype'  =>     'zvm',
             'parent'    =>     $lpar
         );
-        xCAT::zvmUtils->setNodeProps( 'zvm', $host, \%propHash );
+        xCAT::zvmUtils->setNodeProps( 'zvm', lc($host), \%propHash );
     }
         
     # Search for nodes managed by given zHCP
@@ -1533,7 +2010,7 @@ sub scanVM {
                 'hcp'       => $hcp,
                 'userid'    => $id,
                 'nodetype'  => 'vm',
-                'parent'    => $host
+                'parent'    => lc($host)
             );                        
             xCAT::zvmUtils->setNodeProps( 'zvm', $node, \%propHash );
             
@@ -1584,8 +2061,8 @@ sub inventoryVM {
     my $str = "";
     
     # Check if node is pingable
-    if (`nodestat $node | egrep -i "noping"`) {
-    	$str = "$node: (Error) Host is unreachable";
+    if (`pping $node | egrep -i "noping"`) {
+        $str = "$node: (Error) Host is unreachable";
         xCAT::zvmUtils->printLn( $callback, "$str" );
         return;
     }
@@ -1642,8 +2119,7 @@ sub inventoryVM {
         $str .= "Privileges: \n$priv\n";
         $str .= "Total Memory: $memory\n";
         $str .= "Processors: \n$proc\n";
-    }
-    elsif ( $args->[0] eq 'all' ) {
+    } elsif ( $args->[0] eq 'all' ) {
 
         # Get z/VM host for specified node
         my $host = xCAT::zvmCPUtils->getHost($node);
@@ -1668,6 +2144,9 @@ sub inventoryVM {
 
         # Get NICs configuration
         my $nic = xCAT::zvmCPUtils->getNic($node);
+        
+        # Get zFCP device info
+        my $zfcp = xCAT::zvmUtils->getZfcpInfo($node);
 
         # Create output string
         $str .= "z/VM UserID: $userId\n";
@@ -1679,9 +2158,11 @@ sub inventoryVM {
         $str .= "Total Memory: $memory\n";
         $str .= "Processors: \n$proc\n";
         $str .= "Disks: \n$storage\n";
+        if ($zfcp) {
+            $str .= "zFCP: \n$zfcp\n";
+        }
         $str .= "NICs: \n$nic\n";
-    }
-    else {
+    } else {
         $str = "$node: (Error) Option not supported";
         xCAT::zvmUtils->printLn( $callback, "$str" );
         return;
@@ -1699,15 +2180,8 @@ sub inventoryVM {
 =head3   listVM
 
     Description : Show the info for a given node
-    Arguments   :   Node
-                    Option
-     
-     Options supported:
-         * getnetworknames
-         * getnetwork [networkname]
-         * diskpoolnames
-         * diskpool [pool name] [space (free or used)]
-        
+    Arguments   : Node
+                  Option        
     Returns     : Nothing
     Example     : listVM($callback, $node);
     
@@ -1746,69 +2220,50 @@ sub listVM {
 
     # Get disk pool names
     if ( $args->[0] eq "--diskpoolnames" ) {
-        # If the cache directory does not exist
-        if (!(`ssh $hcp "test -d $cache && echo Exists"`)) {
-            # Create cache directory
-            $out = `ssh $hcp "mkdir -p $cache"`;
-        }
-        
-        my $file = "$cache/diskpoolnames";
-        
-        # If a cache for disk pool names exists
-        if (`ssh $hcp "ls $file"`) {
-            # Get current Epoch
-            my $curTime = time();
-            # Get time of last change as seconds since Epoch
-            my $fileTime = xCAT::zvmUtils->trimStr(`ssh $hcp "stat -c %Z $file"`);
-            
-            # If the current time is greater than 5 minutes of the file timestamp
-            my $interval = 300;        # 300 seconds = 5 minutes * 60 seconds/minute
-            if ($curTime > $fileTime + $interval) {
-                # Get disk pool names and save it in a file
-                $out = `ssh $hcp "$::DIR/getdiskpoolnames $userId > $file"`;
-            }
-        } else {
-            # Get disk pool names and save it in a file
-            $out = `ssh $hcp "$::DIR/getdiskpoolnames $userId > $file"`;
-        }
-        
-        # Print out the file contents
-        $out = `ssh $hcp "cat $file"`;
+        # This is no longer supported in lsvm. Using chhypervisor instead.
+        changeHypervisor( $callback, $node, $args );
+    }
+    
+    # Get zFCP disk pool names
+    elsif ( $args->[0] eq "--zfcppoolnames") {
+        # This is no longer supported in lsvm. Using chhypervisor instead.
+        changeHypervisor( $callback, $node, $args );
     }
 
     # Get disk pool configuration
     elsif ( $args->[0] eq "--diskpool" ) {
-        my $pool  = $args->[1];
-        my $space = $args->[2];
-
-        if ($space eq "all") {
-            $out = `ssh $hcp "$::DIR/getdiskpool $userId $pool free"`;
-            
-            # Delete 1st line which is header
-            $out .= `ssh $hcp "$::DIR/getdiskpool $userId $pool used" | sed 1d`;
-        } else {
-            $out = `ssh $hcp "$::DIR/getdiskpool $userId $pool $space"`;
-        }
+        # This is no longer supported in lsvm. Using chhypervisor instead.
+        changeHypervisor( $callback, $node, $args );
     }
-
+    
+    # Get zFCP disk pool configuration
+    elsif ( $args->[0] eq "--zfcppool" ) {
+        # This is no longer supported in lsvm. Using chhypervisor instead.
+        changeHypervisor( $callback, $node, $args );
+    }
+    
+    # Get FCP channels
+    elsif ( $args->[0] eq "--fcpchannels" ) {
+        # This is no longer supported in lsvm. Using chhypervisor instead.
+        changeHypervisor( $callback, $node, $args );
+    }
+    
     # Get network names
     elsif ( $args->[0] eq "--getnetworknames" ) {
-        $out = xCAT::zvmCPUtils->getNetworkNames($hcp);
+        # This is no longer supported in lsvm. Using chhypervisor instead.
+        changeHypervisor( $callback, $node, $args );
     }
 
     # Get network
     elsif ( $args->[0] eq "--getnetwork" ) {
-        my $netName = $args->[1];
-
-        $out = xCAT::zvmCPUtils->getNetwork( $hcp, $netName );
+        # This is no longer supported in lsvm. Using chhypervisor instead.
+        changeHypervisor( $callback, $node, $args );
     }
 
     # Get user entry
     elsif ( !$args->[0] ) {
-        $out = `ssh $hcp "$::DIR/getuserentry $userId"`;
-    }
-
-    else {
+        $out = `ssh $hcp "$::DIR/smcli Image_Query_DM -T $userId" | sed '\$d'`;
+    } else {
         $out = "$node: (Error) Option not supported";
     }
 
@@ -1842,7 +2297,7 @@ sub makeVM {
     my @propNames = ( 'hcp', 'userid' );
     my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
 
-    # Get HCP
+    # Get zHCP
     my $hcp = $propVals->{'hcp'};
     if ( !$hcp ) {
         xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node HCP" );
@@ -1998,7 +2453,7 @@ sub makeVM {
         $out = `scp $userEntry $target:$userEntry`;
 
         # Create virtual server
-        $out = `ssh $hcp "$::DIR/createvs $userId $userEntry"`;
+        $out = `ssh $hcp "$::DIR/smcli Image_Create_DM -T $userId -f $userEntry"`;
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
 
         # Check output
@@ -2011,9 +2466,8 @@ sub makeVM {
             # Grant access to VSwitch for Linux user
             # GuestLan do not need permissions
             foreach (@vswId) {
-                xCAT::zvmUtils->printLn( $callback, "$node: Granting VSwitch ($_) access for $userId" );
                 $out = xCAT::zvmCPUtils->grantVSwitch( $callback, $hcp, $userId, $_ );
-                xCAT::zvmUtils->printLn( $callback, "$node: $out" );
+                xCAT::zvmUtils->printLn( $callback, "$node: Granting VSwitch ($_) access for $userId... $out" );
             }
 
             # Remove user entry file (on zHCP)
@@ -2238,7 +2692,7 @@ sub cloneVM {
 
             # Wait before next try
             sleep(5);
-        }    # End of while ( $try > 0 )
+        } # End of while ( $try > 0 )
 
         # If source disk is not linked
         if ( $out =~ m/not linked/i ) {
@@ -2252,8 +2706,7 @@ sub cloneVM {
 
         # Enable source disk
         $out = xCAT::zvmUtils->disableEnableDisk( $callback, $srcHcp, "-e", $linkAddr );
-
-    }    # End of foreach (@srcDisks)
+    } # End of foreach (@srcDisks)
 
     # Get the networks the HCP is on
     my @hcpNets = xCAT::zvmCPUtils->getNetworkNamesArray($srcHcp);
@@ -2295,6 +2748,7 @@ sub cloneVM {
             xCAT::zvmUtils->printLn( $callback, "$_: (Error) No suitable network device found in user directory entry" );
             xCAT::zvmUtils->printLn( $callback, "$_: (Solution) Verify that the node has one of the following network devices: @hcpNets" );
         }
+        
         return;
     }
 
@@ -2342,7 +2796,7 @@ sub cloneVM {
         $out = `ssh -o ConnectTimeout=10 $sourceNode "shutdown -h now"`;
         sleep(90);    # Wait 1.5 minutes before logging user off
         
-        $out = `ssh $srcHcp "$::DIR/stopvs $sourceId"`;
+        $out = `ssh $srcHcp "$::DIR/smcli Image_Deactivate -T $sourceId -f IMMED"`;
         foreach (@nodes) {
             xCAT::zvmUtils->printLn( $callback, "$_: $out" );
         }
@@ -2360,7 +2814,6 @@ sub cloneVM {
 
             # Child process
             elsif ( $pid == 0 ) {
-
                 clone(
                     $callback, $_, $args, \@srcDisks, \%srcLinkAddr, \%srcDiskSize, \%srcDiskType, 
                     $hcpNicAddr, $hcpNetName, \@srcVswitch, $srcOs, $srcMac, $srcRootPartAddr, $srcIfcfg, 
@@ -2373,7 +2826,6 @@ sub cloneVM {
 
             # End of elsif
             else {
-
                 # Ran out of resources
                 die "Error: Could not fork\n";
             }
@@ -2417,7 +2869,7 @@ sub cloneVM {
     }
 
     # Turn back on source node
-    $out = `ssh $srcHcp "$::DIR/startvs $sourceId"`;
+    $out = `ssh $srcHcp "$::DIR/smcli Image_Activate -T $sourceId"`;
     foreach (@nodes) {
         xCAT::zvmUtils->printLn( $callback, "$_: $out" );
     }
@@ -2551,7 +3003,10 @@ sub clone {
 
     # Get multi password
     # It is Ok not have a password
-    my $tgtPw = $inputs{"pw"};
+    my $tgtPw = "''";
+    if ($inputs{"pw"}) {
+        $tgtPw = $inputs{"pw"};
+    }
 
     # Set IP address
     my $sourceIp = xCAT::zvmUtils->getIp($sourceNode);
@@ -2584,8 +3039,7 @@ sub clone {
         $macId     = $propVals->{'mac'};
         $macId     = xCAT::zvmUtils->replaceStr( $macId, ":", "" );
         $macId     = substr( $macId, 6 );
-    }
-    else {
+    } else {
         xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Missing target MAC address" );
         return;
     }
@@ -2635,14 +3089,13 @@ sub clone {
     while ( $try > 0 ) {
         if ( $try > 4 ) {
             xCAT::zvmUtils->printLn( $callback, "$tgtNode: Creating user directory entry" );
-        }
-        else {
+        } else {
             xCAT::zvmUtils->printLn( $callback, "$tgtNode: Trying again ($try) to create user directory entry" );
         }
-        $out = `ssh $hcp "$::DIR/createvs $tgtUserId $userEntry"`;
+        $out = `ssh $hcp "$::DIR/smcli Image_Create_DM -T $tgtUserId -f $userEntry"`;
 
         # Check if user entry is created
-        $out = `ssh $hcp "$::DIR/getuserentry $tgtUserId"`;
+        $out = `ssh $hcp "$::DIR/smcli Image_Query_DM -T $tgtUserId" | sed '\$d'`;
         $rc  = xCAT::zvmUtils->checkOutput( $callback, $out );
 
         if ( $rc == -1 ) {
@@ -2651,8 +3104,7 @@ sub clone {
             sleep(5);
 
             $try = $try - 1;
-        }
-        else {
+        } else {
             last;
         }
     }
@@ -2721,11 +3173,10 @@ sub clone {
                 # Add ECKD disk
                 if ( $try > 4 ) {
                     xCAT::zvmUtils->printLn( $callback, "$tgtNode: Adding minidisk ($addr)" );
-                }
-                else {
+                } else {
                     xCAT::zvmUtils->printLn( $callback, "$tgtNode: Trying again ($try) to add minidisk ($addr)" );
                 }
-                $out = `ssh $hcp "$::DIR/add3390 $tgtUserId $pool $addr $cyl $mode $tgtPw $tgtPw $tgtPw"`;
+                $out = `ssh $hcp "$::DIR/smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw"`;
 
                 # Check output
                 $rc = xCAT::zvmUtils->checkOutput( $callback, $out );
@@ -2736,8 +3187,7 @@ sub clone {
 
                     # One less try
                     $try = $try - 1;
-                }
-                else {
+                } else {
 
                     # If output is good, exit loop
                     last;
@@ -2764,11 +3214,10 @@ sub clone {
                 # Add FBA disk
                 if ( $try > 9 ) {
                     xCAT::zvmUtils->printLn( $callback, "$tgtNode: Adding minidisk ($addr)" );
-                }
-                else {
+                } else {
                     xCAT::zvmUtils->printLn( $callback, "$tgtNode: Trying again ($try) to add minidisk ($addr)" );
                 }
-                $out = `ssh $hcp "$::DIR/add9336 $tgtUserId $pool $addr $blkSize $blks $mode $tgtPw $tgtPw $tgtPw"`;
+                $out = `ssh $hcp "$::DIR/smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 9336 -a AUTOG -r $pool -u 1 -z $blks -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw"`;
 
                 # Check output
                 $rc = xCAT::zvmUtils->checkOutput( $callback, $out );
@@ -2779,8 +3228,7 @@ sub clone {
 
                     # One less try
                     $try = $try - 1;
-                }
-                else {
+                } else {
 
                     # If output is good, exit loop
                     last;
@@ -2802,7 +3250,7 @@ sub clone {
     while ( $try > 0 ) {
 
         # Get disks within user entry
-        $out = `ssh $hcp "$::DIR/getuserentry $tgtUserId" | grep "MDISK"`;
+        $out = `ssh $hcp "$::DIR/smcli Image_Query_DM -T $tgtUserId" | sed '\$d' | grep "MDISK"`;
         @disks = split( '\n', $out );
         xCAT::zvmUtils->printLn( $callback, "$tgtNode: Disks added (" . @tgtDisks . "). Disks in user entry (" . @disks . ")" );
 
@@ -2811,8 +3259,7 @@ sub clone {
 
             # Wait before trying again
             sleep(5);
-        }
-        else {
+        } else {
             last;
         }
     }
@@ -2869,8 +3316,7 @@ sub clone {
                 sleep(5);
 
                 $try = $try - 1;
-            }
-            else {
+            } else {
                 last;
             }
         }    # End of while ( $try > 0 )
@@ -2914,8 +3360,7 @@ sub clone {
                 xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Flashcopy lock is enabled" );
                 xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Solution) Remove lock by deleting /tmp/.flashcopy_lock on the zHCP. Use caution!" );
                 return;
-            }
-            else {
+            } else {
 
                 # Enable lock
                 $out = `ssh $hcp "touch /tmp/.flashcopy_lock"`;
@@ -3076,8 +3521,7 @@ EOM"`;
                 # Red Hat only
                 $out = `ssh $hcp "cat $ifcfgPath" | grep -v "MACADDR" > /tmp/$networkFile`;
                 $out = `echo "MACADDR='$targetMac'" >> /tmp/$networkFile`;
-            }
-            else {
+            } else {
 
                 # SUSE only
                 $out = `ssh $hcp "cat $ifcfgPath" | grep -v "LLADDR" | grep -v "UNIQUE" > /tmp/$networkFile`;
@@ -3172,7 +3616,7 @@ EOM"`;
 
     # Power on target virtual server
     xCAT::zvmUtils->printLn( $callback, "$tgtNode: Powering on" );
-    $out = `ssh $hcp "$::DIR/startvs $tgtUserId"`;
+    $out = `ssh $hcp "$::DIR/smcli Image_Activate -T $tgtUserId"`;
 
     # Check for error
     $rc = xCAT::zvmUtils->checkOutput( $callback, $out );
@@ -3222,13 +3666,13 @@ sub nodeSet {
     $userId =~ tr/a-z/A-Z/;
 
     # Get install directory and domain from site table
-    my @entries =  xCAT::Utils->get_site_attribute("installdir");
+    my @entries =  xCAT::TableUtils->get_site_attribute("installdir");
     my $installDir = $entries[0];
-    @entries = xCAT::Utils->get_site_attribute("domain");
+    @entries = xCAT::TableUtils->get_site_attribute("domain");
     my $domain = $entries[0];
-    @entries = xCAT::Utils->get_site_attribute("master");
+    @entries = xCAT::TableUtils->get_site_attribute("master");
     my $master = $entries[0];
-    @entries = xCAT::Utils->get_site_attribute("xcatdport");
+    @entries = xCAT::TableUtils->get_site_attribute("xcatdport");
     my $xcatdPort = $entries[0];
 
     # Get node OS, arch, and profile from 'nodetype' table
@@ -3348,7 +3792,7 @@ sub nodeSet {
         my $i;
         
         # Search directory entry for network name
-        my $userEntry = `ssh $hcp "$::DIR/getuserentry $userId"`;
+        my $userEntry = `ssh $hcp "$::DIR/smcli Image_Query_DM -T $userId" | sed '\$d'`;
         $out = `echo "$userEntry" | grep "NICDEF"`;
         my @lines = split( '\n', $out );
         
@@ -3449,21 +3893,18 @@ sub nodeSet {
         # Generate read, write, and data channels
         my $readChannel = "0.0." . ( sprintf('%X', $channel + 0) );
         if ( length($readChannel) < 8 ) {
-
             # Prepend a zero
             $readChannel = "0.0.0" . ( sprintf('%X', $channel + 0) );
         }
 
         my $writeChannel = "0.0." . ( sprintf('%X', $channel + 1) );
         if ( length($writeChannel) < 8 ) {
-
             # Prepend a zero
             $writeChannel = "0.0.0" . ( sprintf('%X', $channel + 1) );
         }
 
         my $dataChannel = "0.0." . ( sprintf('%X', $channel + 2) );
         if ( length($dataChannel) < 8 ) {
-
             # Prepend a zero
             $dataChannel = "0.0.0" . ( sprintf('%X', $channel + 2) );
         }
@@ -3504,8 +3945,7 @@ sub nodeSet {
 
                 # Exit loop
                 last;
-            }
-            else {
+            } else {
                 $network = "";
             }
         }
@@ -3538,12 +3978,19 @@ sub nodeSet {
             xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Specify the mask, gateway, and nameservers for the subnet in the networks table" );
             return;
         }
-        
-        @propNames = ( 'nfsserver' );
+
+        @propNames = ( 'nfsserver', 'xcatmaster' );
         $propVals = xCAT::zvmUtils->getNodeProps( 'noderes', $node, @propNames );
         my $nfs = $propVals->{'nfsserver'};
+        my $xcatmaster = $propVals->{'xcatmaster'};
+            
+        # Use noderes.xcatmaster instead of site.master if it is given
+        if ( $xcatmaster ) {
+            $master = $xcatmaster;
+        }
+    
         if ( !$nfs ) {
-        	$nfs = $master;
+            $nfs = $master;
         }
         
         # Combine NFS server and installation directory, e.g. 10.0.0.1/install
@@ -3610,8 +4057,7 @@ sub nodeSet {
             $customTmpl = "$installDir/custom/install/sles/" . $node . "." . $profile . ".tmpl";
             if ( -e "$installDir/custom/install/sles/$tmpl" ) {
                 $out = `cp $installDir/custom/install/sles/$tmpl $customTmpl`;
-            }
-            else {
+            } else {
                 xCAT::zvmUtils->printLn( $callback, "$node: (Error) An autoyast template does not exist for $os in $installDir/custom/install/sles/. Please create one." );
                 return;
             }
@@ -3665,6 +4111,70 @@ sub nodeSet {
             $out =
 `sed --in-place -e "s,replace_host_address,$hostIP,g" \ -e "s,replace_long_name,$hostname,g" \ -e "s,replace_short_name,$node,g" \ -e "s,replace_domain,$domain,g" \ -e "s,replace_hostname,$node,g" \ -e "s,replace_nameserver,$nameserver,g" \ -e "s,replace_broadcast,$broadcast,g" \ -e "s,replace_device,$device,g" \ -e "s,replace_ipaddr,$hostIP,g" \ -e "s,replace_lladdr,$mac,g" \ -e "s,replace_netmask,$mask,g" \ -e "s,replace_network,$network,g" \ -e "s,replace_ccw_chan_ids,$chanIds,g" \ -e "s,replace_ccw_chan_mode,FOOBAR,g" \ -e "s,replace_gateway,$gateway,g" \ -e "s,replace_root_password,$passwd,g" \ -e "s,replace_nic_addr,$readChannel,g" \ -e "s,replace_master,$master,g" \ -e "s,replace_install_dir,$installDir,g" $customTmpl`;
 
+            # Attach SCSI FCP devices (if any)
+            # Go through each pool
+            # Find the SCSI device belonging to host
+            my @pools = split("\n", `ssh $hcp "ls $::ZFCPPOOL"`);
+            my $hasZfcp = 0;
+            my $entry;
+            my $zfcpSection = "";
+            foreach (@pools) {
+                $entry = `ssh $hcp "cat $::ZFCPPOOL/$_" | egrep -i $userId`;
+                chomp($entry);
+                if (!$entry) {
+                    next;
+                }
+                
+                # Go through each zFCP device
+                my @device = split('\n', $entry);
+                foreach (@device) {                        
+                    # Each entry contains: status,wwpn,lun,size,owner,channel,tag
+                    @tmp = split(',', $_);
+                    my $wwpn = $tmp[1];
+                    my $lun = $tmp[2];
+                    my $device = $tmp[5];
+                    my $tag = $tmp[6];
+                                  
+                    # Make sure WWPN and LUN do not have 0x prefix
+                    $wwpn = xCAT::zvmUtils->replaceStr($wwpn, "0x", "");
+                    $lun = xCAT::zvmUtils->replaceStr($lun, "0x", "");
+        
+                    # Make sure channel has a length of 4 
+                    while (length($device) < 4) {
+                        $device = "0" . $device;
+                    }
+        
+                    # Find tag in template and attach SCSI device associated with it
+                    $out = `sed --in-place -e "s#$tag#/dev/disk/by-path/ccw-0.0.$device-zfcp-0x$wwpn:0x$lun#i" $customTmpl`;
+                    
+                    # Generate <zfcp> section
+                    $zfcpSection .= <<END;
+      <listentry>\\
+        <controller_id>0.0.$device</controller_id>\\
+        <fcp_lun>0x$lun</fcp_lun>\\
+        <wwpn>0x$wwpn</wwpn>\\
+      </listentry>\\
+END
+                    $hasZfcp = 1;
+                }
+            }
+            
+            if ($hasZfcp) {
+                # Insert <zfcp> device list 
+                my $find = 'replace_zfcp';
+                my $replace = <<END;
+    <devices config:type="list">\\
+END
+                $replace .= $zfcpSection;
+                $replace .= <<END;
+    </devices>\\
+END
+                my $expression = "'s#" . $find . "#" .$replace . "#i'";
+                $out = `sed --in-place -e $expression $customTmpl`;
+
+                xCAT::zvmUtils->printLn($callback, "$node: Inserting FCP devices into template... Done");
+            }
+            
             # Read sample parmfile in /install/sles10.2/s390x/1/boot/s390x/
             $sampleParm = "$installDir/$os/s390x/1/boot/s390x/parmfile";
             open( SAMPLEPARM, "<$sampleParm" );
@@ -3702,8 +4212,7 @@ sub nodeSet {
             # Set layer in autoyast profile
             if ( $layer == 2 ) {
                 $parms = $parms . "Broadcast=$broadcast Layer2=1 OSAHWaddr=$mac\n";
-            }
-            else {
+            } else {
                 $parms = $parms . "Broadcast=$broadcast Layer2=0\n";
             }
 
@@ -3774,8 +4283,7 @@ sub nodeSet {
             $customTmpl = "$installDir/custom/install/rh/" . $node . "." . $profile . ".tmpl";
             if ( -e "$installDir/custom/install/rh/$tmpl" ) {
                 $out = `cp $installDir/custom/install/rh/$tmpl $customTmpl`;
-            }
-            else {
+            } else {
                 xCAT::zvmUtils->printLn( $callback, "$node: (Error) An kickstart template does not exist for $os in $installDir/custom/install/rh/" );
                 return;
             }
@@ -3809,6 +4317,52 @@ sub nodeSet {
             $out =
 `sed --in-place -e "s,replace_url,$url,g" \ -e "s,replace_ip,$hostIP,g" \ -e "s,replace_netmask,$mask,g" \ -e "s,replace_gateway,$gateway,g" \ -e "s,replace_nameserver,$nameserver,g" \ -e "s,replace_hostname,$hostname,g" \ -e "s,replace_rootpw,$passwd,g" \ -e "s,replace_master,$master,g" \ -e "s,replace_install_dir,$installDir,g" $customTmpl`;
 
+            # Attach SCSI FCP devices (if any)
+            # Go through each pool
+            # Find the SCSI device belonging to host
+            my @pools = split("\n", `ssh $hcp "ls $::ZFCPPOOL"`);
+            my $hasZfcp = 0;
+            my $entry;
+            my $zfcpSection = "";
+            foreach (@pools) {
+                $entry = `ssh $hcp "cat $::ZFCPPOOL/$_" | egrep -i $userId`;
+                chomp($entry);
+                if (!$entry) {
+                    next;
+                }
+                
+                # Go through each zFCP device
+                my @device = split('\n', $entry);
+                foreach (@device) {             
+                    # Each entry contains: status,wwpn,lun,size,owner,channel,tag
+                    @tmp = split(',', $_);
+                    my $wwpn = $tmp[1];
+                    my $lun = $tmp[2];
+                    my $device = $tmp[5];
+                    my $tag = $tmp[6];
+                                  
+                    # Make sure WWPN and LUN do not have 0x prefix
+                    $wwpn = xCAT::zvmUtils->replaceStr($wwpn, "0x", "");
+                    $lun = xCAT::zvmUtils->replaceStr($lun, "0x", "");
+        
+                    # Make sure channel has a length of 4 
+                    while (length($device) < 4) {
+                        $device = "0" . $device;
+                    }
+
+                    # Create zfcp section
+                    $zfcpSection = "zfcp --devnum 0.0.$device --wwpn 0x$wwpn --fcplun 0x$lun" . '\n';
+                    
+                    # Look for replace_zfcp keyword in template and replace it
+                    $out = `sed --in-place -e "s,$tag,$zfcpSection,i" $customTmpl`; 
+                    $hasZfcp = 1;
+                }
+            }
+            
+            if ($hasZfcp) {
+                xCAT::zvmUtils->printLn($callback, "$node: Inserting FCP devices into template... Done");
+            }
+            
             # Read sample parmfile in /install/rhel5.3/s390x/images
             $sampleParm = "$installDir/$os/s390x/images/generic.prm";
             open( SAMPLEPARM, "<$sampleParm" );
@@ -3832,7 +4386,9 @@ sub nodeSet {
 
             # Get mdisk virtual address
             my @mdisks = xCAT::zvmUtils->getMdisks( $callback, $node );
+            @mdisks = sort(@mdisks);
             my $dasd   = "";
+            my $devices = "";
             my $i      = 0;
             foreach (@mdisks) {
                 $i     = $i + 1;
@@ -3846,8 +4402,15 @@ sub nodeSet {
                 }
             }
             
+            # Character limit of 50 in parm file for DASD parameter
+            if (length($dasd) > 50) {
+            	@words = split( ',', $dasd );
+            	$dasd = $words[0] . "-" . $words[@words - 1];
+            }
+            
             # Get dedicated virtual address
             my @dedicates = xCAT::zvmUtils->getDedicates( $callback, $node );
+            @dedicates = sort(@dedicates);            
             $i = 0;
             foreach (@dedicates) {
                 $i = $i + 1;
@@ -3855,10 +4418,21 @@ sub nodeSet {
 
                 # Do not put a comma at the end of the last disk address
                 if ( $i == @dedicates ) {
-                    $dasd = $dasd . "0.0.$words[1]";
+                    $devices = $devices . "0.0.$words[1]";
                 } else {
-                    $dasd = $dasd . "0.0.$words[1],";
+                    $devices = $devices . "0.0.$words[1],";
                 }
+            }
+            
+            # Character limit of 50 in parm file for DASD parameter
+            if (length($devices) > 50) {
+                @words = split( ',', $devices );
+                $devices = $words[0] . "-" . $words[@words - 1];
+            }
+            
+            # Concat dedicated devices and DASD together
+            if ($devices) {
+            	$dasd = $dasd . "," . $devices;
             }
 
             # Create parmfile -- Limited to 80 characters/line, maximum of 11 lines
@@ -3879,8 +4453,8 @@ sub nodeSet {
             $parms = $parmHeader . "\n";
             $parms = $parms . "ks=$ks\n";
             $parms = $parms . "RUNKS=1 cmdline\n";
-            $parms = $parms . "DASD=$dasd HOSTNAME=$hostname\n";
-            $parms = $parms . "NETTYPE=$netType IPADDR=$hostIP\n";
+            $parms = $parms . "DASD=$dasd\n";
+            $parms = $parms . "HOSTNAME=$hostname NETTYPE=$netType IPADDR=$hostIP\n";
             $parms = $parms . "SUBCHANNELS=$readChannel,$writeChannel,$dataChannel\n";
             $parms = $parms . "NETWORK=$network NETMASK=$mask\n";
             $parms = $parms . "SEARCHDNS=$domain BROADCAST=$broadcast\n";
@@ -3889,8 +4463,7 @@ sub nodeSet {
             # Set layer in kickstart profile
             if ( $layer == 2 ) {
                 $parms = $parms . "PORTNAME=$portName PORTNO=$portNo LAYER2=1 MACADDR=$mac\n";
-            }
-            else {
+            } else {
                 $parms = $parms . "PORTNAME=$portName PORTNO=$portNo LAYER2=0\n";
             }
 
@@ -3947,8 +4520,7 @@ sub nodeSet {
 
             xCAT::zvmUtils->printLn( $callback, "$node: Kernel, parm, and initrd punched to reader.  Ready for boot." );
         }
-    }
-    elsif ( $action eq "statelite" ) {
+    } elsif ( $action eq "statelite" ) {
 
         # Get node group from 'nodelist' table
         @propNames = ('groups');
@@ -3977,10 +4549,8 @@ sub nodeSet {
 
         # If parmfile exists
         if ( -e $parmFile ) {
-
             # Do nothing
-        }
-        else {
+        } else {
             xCAT::zvmUtils->printLn( $callback, "$node: Creating parmfile" );
 
             my $sampleParm;
@@ -3994,8 +4564,7 @@ sub nodeSet {
                     xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing $installDir/$os/s390x/1/boot/s390x/parmfile" );
                     return;
                 }
-            }
-            elsif ( $os =~ m/rhel/i ) {
+            } elsif ( $os =~ m/rhel/i ) {
                 if ( -e "$installDir/$os/s390x/images/generic.prm" ) {
                     # Read sample parmfile in /install/rhel5.3/s390x/images
                     $sampleParm = "$installDir/$os/s390x/images/generic.prm";
@@ -4090,8 +4659,7 @@ sub nodeSet {
         }
 
         xCAT::zvmUtils->printLn( $callback, "$node: Kernel, parm, and initrd punched to reader.  Ready for boot." );
-    }
-    else {
+    } else {
         xCAT::zvmUtils->printLn( $callback, "$node: (Error) Option not supported" );
         return;
     }
@@ -4249,15 +4817,7 @@ sub netBoot {
     }
 
     # Boot node
-    my $out = `ssh $hcp "$::DIR/startvs $userId"`;
-    my $rc = xCAT::zvmUtils->checkOutput( $callback, $out );
-    if ( $rc == -1 ) {
-        xCAT::zvmUtils->printLn( $callback, "$node: (Error) Boot failed" );
-        return;
-    }
-    else {
-        xCAT::zvmUtils->printLn( $callback, "$node: $out" );
-    }
+    my $out = `ssh $hcp "$::DIR/smcli Image_Activate -T $userId"`;
 
     # IPL when virtual server is online
     sleep(5);
@@ -4272,12 +4832,8 @@ sub netBoot {
 =head3   updateNode (No longer supported)
 
     Description : Update node
-    Arguments   :   Node
-                    Option
-                    
-    Options supported:
-         * release [updated version]
-         
+    Arguments   : Node
+                  Option         
     Returns     : Nothing
     Example     : updateNode($callback, $node, $args);
     
@@ -4310,7 +4866,7 @@ sub updateNode {
     $userId =~ tr/a-z/A-Z/;
 
     # Get install directory
-    my @entries = xCAT::Utils->get_site_attribute("installdir");
+    my @entries = xCAT::TableUtils->get_site_attribute("installdir");
     my $installDir = $entries[0];
 
     # Get host IP and hostname from /etc/hosts
@@ -4413,8 +4969,7 @@ sub updateNode {
             # Update
             $out = `ssh $node "rug up -y"`;
             xCAT::zvmUtils->printLn( $callback, "$node: $out" );
-        }
-        else {
+        } else {
 
             # Red Hat Enterprise Linux path - ftp://10.0.0.1/rhel5.4/s390x/Server/
             $path = "http://$nfs/install/$version/s390x/Server/";
@@ -4434,8 +4989,7 @@ sub updateNode {
                 # Upgrade
                 $out = `ssh $node "yum upgrade -y"`;
                 xCAT::zvmUtils->printLn( $callback, "$node: $out" );
-            }
-            else {
+            } else {
 
                 # Create repository
                 $out = `ssh $node "echo [$version] >> /etc/yum.repos.d/file.repo"`;
@@ -4640,5 +5194,405 @@ sub listTree {
             } # End of foreach zVM
         } # End of foreach LPAR
     } # End of foreach CEC
+    return;
+}
+
+#-------------------------------------------------------
+
+=head3   changeHypervisor
+
+    Description : Configure the virtualization hosts
+    Arguments   :   Node
+                    Arguments
+    Returns     : Nothing
+    Example     : changeHypervisor($callback, $node, $args);
+    
+=cut
+
+#-------------------------------------------------------
+sub changeHypervisor {
+
+    # Get inputs
+    my ( $callback, $node, $args ) = @_;
+    
+    # Set cache directory
+    my $cache = '/var/opt/zhcp/cache';
+
+    # Get node properties from 'zvm' table
+    my @propNames = ( 'hcp' );
+    my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
+
+    # Get zHCP
+    my $hcp = $propVals->{'hcp'};
+    if ( !$hcp ) {
+        xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node HCP" );
+        return;
+    }
+    
+    # Get zHCP user ID
+    my $hcpUserId = xCAT::zvmCPUtils->getUserId($hcp);
+    $hcpUserId =~ tr/a-z/A-Z/;
+    
+    # Output string
+    my $out = "";
+        
+    # adddisk2pool [function] [region] [volume] [group]
+    if ( $args->[0] eq "--adddisk2pool" ) {
+        my $funct   = $args->[1];
+        my $region  = $args->[2];
+        my $volume  = "";
+        my $group   = "";
+        
+        # Create an array for regions
+        my @regions;
+        if ( $region =~ m/,/i ) {
+            @regions = split( ',', $region );
+        } else {
+            push( @regions, $region );
+        }
+        
+        my $tmp;
+        foreach (@regions) {
+            $_ = xCAT::zvmUtils->trimStr($_);
+            
+            # Define region as full volume and add to group
+            if ($funct eq "4") {
+                $volume = $args->[3];
+                $group  = $args->[4];
+                $tmp = `ssh $hcp "$::DIR/smcli Image_Volume_Space_Define_DM -T $hcpUserId -f $funct -g $_ -v $volume -p $group -y 0"`;
+            }
+            
+            # Add existing region to group
+            elsif($funct eq "5") {
+                $group = $args->[3];
+                $tmp = `ssh $hcp "$::DIR/smcli Image_Volume_Space_Define_DM -T $hcpUserId -f $funct -g $_ -p $group -y 0"`;
+            }
+            
+            $out .= $tmp;
+        }
+    }
+    
+    # addzfcp2pool [pool] [status] [wwpn] [lun] [size] [owner (optional)]
+    elsif ( $args->[0] eq "--addzfcp2pool" ) {
+        # zFCP disk pool located on zHCP at /var/opt/zhcp/zfcp/{pool}.conf 
+        # Entries contain: status,wwpn,lun,size,owner,channel,tag
+        my $pool = $args->[1];
+        my $status = $args->[2];
+        my $wwpn = $args->[3];
+        my $lun = $args->[4];
+        my $size = $args->[5];
+        
+        my $argsSize = @{$args};
+        if ($argsSize < 6 || $argsSize > 7) {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Wrong number of parameters" );
+            return;
+        }
+        
+        # Size can be M(egabytes) or G(igabytes)
+        if ($size =~ m/G/i || $size =~ m/M/i || !$size) {
+            # Do nothing
+        } else {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Size not recognized.  Size can be M(egabytes) or G(igabytes)." );
+            return;
+        }
+        
+        # Make sure WWPN and LUN do not have 0x prefix
+        $wwpn = xCAT::zvmUtils->replaceStr($wwpn, "0x", "");
+        $lun = xCAT::zvmUtils->replaceStr($lun, "0x", "");
+        
+        # Optional parameter
+        my $owner = "";
+        if ($argsSize == 7) {
+            $owner = $args->[6];
+        }
+
+        # Find disk pool (create one if non-existent)
+        if (!(`ssh $hcp "test -d $::ZFCPPOOL && echo Exists"`)) {
+            # Create pool directory
+            $out = `ssh $hcp "mkdir -p $::ZFCPPOOL"`;
+        }
+        
+        if (!(`ssh $hcp "test -e $::ZFCPPOOL/$pool.conf && echo Exists"`)) {                
+            # Create pool configuration file 
+            $out = `ssh $hcp "echo '#status,wwpn,lun,size,owner,channel,tag' > $::ZFCPPOOL/$pool.conf"`;
+            xCAT::zvmUtils->printLn( $callback, "$node: New zFCP device pool $pool created" );
+        }
+
+        # Do not update if the LUN already exists
+        if (`ssh $hcp "cat $::ZFCPPOOL/$pool.conf" | grep $lun`) {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) zFCP device already exists" );
+            return;
+        }
+        
+        # Update file with given WWPN, LUN, size, and owner
+        $out = `ssh $hcp "echo \"$status,$wwpn,$lun,$size,$owner,,\" >> $::ZFCPPOOL/$pool.conf"`;
+        xCAT::zvmUtils->printLn( $callback, "$node: Adding zFCP device to $pool pool... Done" );
+        $out = "";
+    }
+    
+    # removediskfrompool [function] [region] [group]
+    elsif ( $args->[0] eq "--removediskfrompool" ) {
+        my $funct  = $args->[1];
+        my $region = $args->[2];
+        my $group  = "";
+        
+        # Create an array for regions
+        my @regions;
+        if ( $region =~ m/,/i ) {
+            @regions = split( ',', $region );
+        } else {
+            push( @regions, $region );
+        }
+
+        my $tmp;
+        foreach ( @regions ) {
+            $_ = xCAT::zvmUtils->trimStr($_);
+            
+            # Remove region from group | Remove entire group        
+            if ($funct eq "2" || $funct eq "7") {
+                $group  = $args->[3];
+                $tmp = `ssh $hcp "$::DIR/smcli Image_Volume_Space_Remove_DM -T $hcpUserId -f $funct -r $_ -g $group"`;
+            } 
+            
+            # Remove region | Remove region from all groups
+            elsif ($funct eq "1" || $funct eq "3") {
+                $tmp = `ssh $hcp "$::DIR/smcli Image_Volume_Space_Remove_DM -T $hcpUserId -f $funct -r $_"`;
+            }
+            
+            $out .= $tmp;
+        }
+    }
+    
+    # removezfcpfrompool [pool] [lun]
+    elsif ( $args->[0] eq "--removezfcpfrompool" ) {
+        my $pool = $args->[1];
+        my $lun = $args->[2];
+        
+        my $argsSize = @{$args};
+        if ($argsSize != 3) {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Wrong number of parameters" );
+            return;
+        }
+        
+        my @luns;
+        if ($lun =~ m/,/i) {
+            @luns = split( ',', $lun );
+        } else {
+            push(@luns, $lun);
+        }
+        
+        # Find disk pool (create one if non-existent)
+        if (!(`ssh $hcp "test -e $::ZFCPPOOL/$pool.conf && echo Exists"`)) {                
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) zFCP pool does not exist" );
+            return;
+        }
+            
+        # Go through each LUN
+        foreach (@luns) {
+            # Make sure WWPN and LUN do not have 0x prefix
+            $_ = xCAT::zvmUtils->replaceStr($_, "0x", "");
+            
+            # Do not update if LUN does not exists
+            if (!(`ssh $hcp "cat $::ZFCPPOOL/$pool.conf" | grep $_`)) {
+                xCAT::zvmUtils->printLn( $callback, "$node: (Error) zFCP device $_ does not exists" );
+                return;
+            }
+            
+            # Update file with given WWPN, LUN, size, and owner
+            $out = `ssh $hcp "sed --in-place -e /$_/d $::ZFCPPOOL/$pool.conf"`;
+            xCAT::zvmUtils->printLn( $callback, "$node: Removing zFCP device $_ from $pool pool... Done" );
+        }
+        $out = "";
+    }
+    
+    # resetsmapi
+    elsif ( $args->[0] eq "--resetsmapi" ) {
+        # This is no longer supported in chvm. Using chhypervisor instead.
+        changeHypervisor( $callback, $node, $args );
+        
+        # Assuming zVM 6.1 or older
+        # Force each worker machine off
+        my @workers = ('VSMWORK1', 'VSMWORK2', 'VSMWORK3', 'VSMREQIN', 'VSMREQIU');
+        foreach ( @workers ) {
+            $out = `ssh $hcp "vmcp force $_ logoff immediate"`;
+        }
+                
+        # Log on VSMWORK1
+        $out = `ssh $hcp "vmcp xautolog VSMWORK1"`;        
+        $out = "Resetting SMAPI... Done";
+    }
+    
+    # Get disk pool names
+    elsif ( $args->[0] eq "--diskpoolnames" ) {
+        # If the cache directory does not exist
+        if (!(`ssh $hcp "test -d $cache && echo Exists"`)) {
+            # Create cache directory
+            $out = `ssh $hcp "mkdir -p $cache"`;
+        }
+        
+        my $file = "$cache/diskpoolnames";
+        
+        # If a cache for disk pool names exists
+        if (`ssh $hcp "ls $file"`) {
+            # Get current Epoch
+            my $curTime = time();
+            # Get time of last change as seconds since Epoch
+            my $fileTime = xCAT::zvmUtils->trimStr(`ssh $hcp "stat -c %Z $file"`);
+            
+            # If the current time is greater than 5 minutes of the file timestamp
+            my $interval = 300;        # 300 seconds = 5 minutes * 60 seconds/minute
+            if ($curTime > $fileTime + $interval) {
+                # Get disk pool names and save it in a file
+                $out = `ssh $hcp "$::DIR/getdiskpoolnames $hcpUserId > $file"`;
+            }
+        } else {
+            # Get disk pool names and save it in a file
+            $out = `ssh $hcp "$::DIR/getdiskpoolnames $hcpUserId > $file"`;
+        }
+        
+        # Print out the file contents
+        $out = `ssh $hcp "cat $file"`;
+    }
+    
+    # Get zFCP disk pool names
+    elsif ( $args->[0] eq "--zfcppoolnames") {
+        # Go through each zFCP pool
+        my @pools = split("\n", `ssh $hcp "ls $::ZFCPPOOL"`);
+        foreach (@pools) {
+            $_ = xCAT::zvmUtils->replaceStr( $_, ".conf", "" );
+            $out .= "$_\n";
+        }
+    }
+
+    # Get disk pool configuration
+    elsif ( $args->[0] eq "--diskpool" ) {
+        my $pool  = $args->[1];
+        my $space = $args->[2];
+
+        if ($space eq "all" || !$space) {
+            $out = `ssh $hcp "$::DIR/getdiskpool $hcpUserId $pool free"`;
+            
+            # Delete 1st line which is header
+            $out .= `ssh $hcp "$::DIR/getdiskpool $hcpUserId $pool used" | sed 1d`;
+        } else {
+            $out = `ssh $hcp "$::DIR/getdiskpool $hcpUserId $pool $space"`;
+        }
+    }
+    
+    # Get zFCP disk pool configuration
+    elsif ( $args->[0] eq "--zfcppool" ) {
+        my $pool  = lc($args->[1]);
+        my $space = $args->[2];
+
+        if ($space eq "all" || !$space) {
+            $out = `ssh $hcp "cat $::ZFCPPOOL/$pool.conf"`;
+        } else {
+            $out = "#status,wwpn,lun,size,owner,channel,tag\n";
+            $out = `ssh $hcp "cat $::ZFCPPOOL/$pool.conf" | egrep -i $space`;
+        }
+    }
+    
+    # Get FCP channels
+    elsif ( $args->[0] eq "--fcpchannels" ) {
+        # Display the status of real FCP Adapter devices
+        # i.e. query fcp active|free|offline|agent
+        my $space = $args->[1];        
+        if ($space eq "active" || $space eq "free" || $space eq "offline" || $space eq "agent") {
+            $out = `ssh $hcp "vmcp q fcp $space"`;
+            my @channels = split( ",", $out );
+            $out = "";
+            foreach (@channels) {
+                $_ =~ s/^\s+//;
+                $_ =~ s/\s+$//;
+                $out .= "$_\n";
+            }
+        } else {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Query supported on active, free, offline, or agent devices" );
+        }
+    }
+    
+    # Get network names
+    elsif ( $args->[0] eq "--getnetworknames" ) {
+        $out = xCAT::zvmCPUtils->getNetworkNames($hcp);
+    }
+
+    # Get network
+    elsif ( $args->[0] eq "--getnetwork" ) {
+        my $netName = $args->[1];
+
+        $out = xCAT::zvmCPUtils->getNetwork( $hcp, $netName );
+    }
+    
+    # Otherwise, print out error
+    else {
+        xCAT::zvmUtils->printLn( $callback, "$node: (Error) Option not supported" );
+    }
+    
+    # Only print if there is content
+    if ($out) {
+        $out = xCAT::zvmUtils->appendHostname( $node, $out );
+        chomp($out);
+        xCAT::zvmUtils->printLn( $callback, "$out" );
+    }
+
+    return;
+}
+
+#-------------------------------------------------------
+
+=head3   inventoryHypervisor
+
+    Description : Get hardware and software inventory of a given hypervisor
+    Arguments   :   Node
+                    Type of inventory (config|all)
+    Returns     : Nothing
+    Example     : inventoryHypervisor($callback, $node, $args);
+    
+=cut
+
+#-------------------------------------------------------
+sub inventoryHypervisor {
+
+    # Get inputs
+    my ( $callback, $node, $args ) = @_;
+    
+    # Output string
+    my $str = "";
+    
+    # Get node properties from 'zvm' table
+    my @propNames = ( 'hcp' );
+    my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
+
+    # Get zHCP
+    my $hcp = $propVals->{'hcp'};
+    if ( !$hcp ) {
+        xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node zHCP" );
+        return;
+    }
+
+    # Load VMCP module
+    xCAT::zvmCPUtils->loadVmcp($hcp);
+
+    # Get configuration
+    if ( $args->[0] eq 'config' ) {
+    	
+    	# Create output string
+        $str .= "z/VM Host: " . uc($node) . "\n";
+        $str .= "zHCP: $hcp\n";
+    } elsif ( $args->[0] eq 'all' ) {
+
+        # Create output string
+        $str .= "z/VM Host: " . uc($node) . "\n";
+        $str .= "zHCP: $hcp\n";
+    } else {
+        $str = "$node: (Error) Option not supported";
+        xCAT::zvmUtils->printLn( $callback, "$str" );
+        return;
+    }
+
+    # Append hostname (e.g. pokdev61) in front
+    $str = xCAT::zvmUtils->appendHostname( $node, $str );
+
+    xCAT::zvmUtils->printLn( $callback, "$str" );
     return;
 }
