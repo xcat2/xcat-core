@@ -1476,7 +1476,7 @@ sub updatenodesyncfiles
 	    if(@::FAILEDNODES)
 	    {
 	     
-            my $stat="notsynced";
+            my $stat="out-of-sync";
             xCAT::TableUtils->setUpdateStatus(\@::FAILEDNODES, $stat);
                       
 	    }
