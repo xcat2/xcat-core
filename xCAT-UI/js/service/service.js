@@ -559,7 +559,7 @@ function loadNodesTable(data) {
     });
     
     // Create action bar
-    var actionBar = $('<div class="actionBar"></div>');
+    var actionBar = $('<div class="actionBar"></div>').css('width', '370px');
     
     // Prepend menu to datatable
     var actionsLnk = $('<a>Actions</a>');
