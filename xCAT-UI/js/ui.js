@@ -1056,3 +1056,18 @@ function getNodesChecked(datatableId) {
 
     return tgts;
 }
+
+/**
+ * Check if return message contains errors
+ * 
+ * @param msg Return message
+ * @return 0  If return message contains no errors
+ *        -1  If return message contains errors
+ */
+function containErrors(msg) {
+    if (msg.indexOf('Failed') > -1 || msg.indexOf('Error') > -1) {
+    	return -1;
+    } else {
+    	return 0;
+    }
+}

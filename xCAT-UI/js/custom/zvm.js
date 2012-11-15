@@ -209,7 +209,7 @@ zvmPlugin.prototype.loadServiceInventory = function(data) {
     var inv = data.rsp[0].split(node + ':');
 
     // Create array of property keys
-    var keys = new Array('userId', 'host', 'os', 'arch', 'hcp', 'priv', 'memory', 'proc', 'disk', 'nic');
+    var keys = new Array('userId', 'host', 'os', 'arch', 'hcp', 'priv', 'memory', 'proc', 'disk', 'zfcp', 'nic');
 
     // Create hash table for property names
     var attrNames = new Object();
@@ -222,6 +222,7 @@ zvmPlugin.prototype.loadServiceInventory = function(data) {
     attrNames['memory'] = 'Total Memory:';
     attrNames['proc'] = 'Processors:';
     attrNames['disk'] = 'Disks:';
+    attrNames['zfcp'] = 'zFCP:';
     attrNames['nic'] = 'NICs:';
 
     // Create hash table for node attributes
@@ -269,7 +270,10 @@ zvmPlugin.prototype.loadServiceInventory = function(data) {
      */
     fieldSet = $('<fieldset id="' + node + '_monitor"></fieldset>');
     legend = $('<legend>Monitoring [<a style="font-weight: normal; color: blue; text-decoration: none;">Refresh</a>]</legend>');    
-    fieldSet.append(legend);
+    fieldSet.append(legend);    
+//    var info = createInfoBar('No data available');
+//    fieldSet.append(info.css('width', '300px'));
+    
     getMonitorMetrics(node);
     
     // Refresh monitoring charts on-click
@@ -456,6 +460,51 @@ zvmPlugin.prototype.loadServiceInventory = function(data) {
 
             dasdTable.append(dasdBody);
             item.append(dasdTable);
+        }
+        
+        /**
+         * zFCP section
+         */
+        else if (keys[k] == 'zfcp') {
+            // Create a label - Property name
+            label = $('<label>' + attrNames[keys[k]].replace(':', '') + '</label>');
+            item.append(label);
+
+            // Create a table to hold NIC data
+            var zfcpTable = $('<table></table>');
+            var zfcpBody = $('<tbody></tbody>');
+            
+            // Table columns - Virtual device, Adapter Type, Port Name, # of Devices, MAC Address, and LAN Name
+            var zfcpTabRow = $('<thead class="ui-widget-header"> <th>Virtual Device #</th> <th>Port Name</th> <th>Unit Number</th> <th>Size</th></thead>');
+            zfcpTable.append(zfcpTabRow);
+            var zfcpVDev, zfcpPortName, zfcpLun, zfcpSize;
+
+            // Loop through each zFCP device
+            if (attrs[keys[k]]) {
+	            for (l = 0; l < attrs[keys[k]].length; l++) {
+	                if (attrs[keys[k]][l]) {
+	                    args = attrs[keys[k]][l].split(' ');
+	    
+	                    // Get zFCP virtual device, port name (WWPN), unit number (LUN), and size
+	                    zfcpVDev = $('<td>' + args[1].replace('0.0.', '') + '</td>');
+	                    zfcpPortName = $('<td>' + args[4] + '</td>');
+	                    zfcpLun = $('<td>' + args[7] + '</td>');
+	                    zfcpSize = $('<td>' + args[args.length - 2] + ' ' + args[args.length - 1] + '</td>');
+	    
+	                    // Create a new row for each zFCP device
+	                    zfcpTabRow = $('<tr></tr>');
+	                    zfcpTabRow.append(zfcpVDev);
+	                    zfcpTabRow.append(zfcpPortName);
+	                    zfcpTabRow.append(zfcpLun);
+	                    zfcpTabRow.append(zfcpSize);
+	    
+	                    zfcpBody.append(zfcpTabRow);
+	                }
+	            }
+            }
+
+            zfcpTable.append(zfcpBody);
+            item.append(zfcpTable);
         }
 
         /**
@@ -934,7 +983,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
     statBar.hide();
 
     // Create array of property keys
-    var keys = new Array('userId', 'host', 'os', 'arch', 'hcp', 'priv', 'memory', 'proc', 'disk', 'nic');
+    var keys = new Array('userId', 'host', 'os', 'arch', 'hcp', 'priv', 'memory', 'proc', 'disk', 'zfcp', 'nic');
 
     // Create hash table for property names
     var attrNames = new Object();
@@ -947,6 +996,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
     attrNames['memory'] = 'Total Memory:';
     attrNames['proc'] = 'Processors:';
     attrNames['disk'] = 'Disks:';
+    attrNames['zfcp'] = 'zFCP:';
     attrNames['nic'] = 'NICs:';
 
     // Create hash table for node attributes
@@ -1143,6 +1193,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
                     // Open dialog to confirm
                     var confirmDialog = $('<div><p>Are you sure you want to remove this processor?</p></div>');                   
                     confirmDialog.dialog({
+                    	title: "Confirm",
                         modal: true,
                         width: 300,
                         buttons: {
@@ -1249,6 +1300,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
                     // Open dialog to confirm
                     var confirmDialog = $('<div><p>Are you sure you want to remove this disk?</p></div>');                   
                     confirmDialog.dialog({
+                    	title: "Confirm",
                         modal: true,
                         width: 300,
                         buttons: {
@@ -1315,6 +1367,100 @@ zvmPlugin.prototype.loadInventory = function(data) {
 
             item.append(dasdTable);
         }
+        
+        /**
+         * zFCP section
+         */
+        else if (keys[k] == 'zfcp') {
+            // Create a label - Property name
+            label = $('<label>' + attrNames[keys[k]].replace(':', '') + '</label>');
+            item.append(label);
+
+            // Create a table to hold NIC data
+            var zfcpTable = $('<table></table>');
+            var zfcpBody = $('<tbody></tbody>');
+            var zfcpFooter = $('<tfoot></tfoot>');
+
+            /**
+             * Remove zFCP
+             */
+            contextMenu = [ {
+                'Remove' : function(menuItem, menu) {
+                    var addr = $(this).text();
+                    var portName = $(this).parents('tr').find('td:eq(1)').text();
+                    var unitNo = $(this).parents('tr').find('td:eq(2)').text();
+                    
+                    // Open dialog to confirm
+                    var confirmDialog = $('<div><p>Are you sure you want to remove this zFCP device?</p></div>');                   
+                    confirmDialog.dialog({
+                    	title: "Confirm",
+                        modal: true,
+                        width: 300,
+                        buttons: {
+                            "Ok": function(){
+                            	removeZfcp(node, addr, portName, unitNo);
+                                $(this).dialog("close");
+                            },
+                            "Cancel": function() {
+                                $(this).dialog("close");
+                            }
+                        }
+                    });
+                }
+            } ];
+
+            // Table columns - Virtual device, Adapter Type, Port Name, # of Devices, MAC Address, and LAN Name
+            var zfcpTabRow = $('<thead class="ui-widget-header"> <th>Virtual Device #</th> <th>Port Name</th> <th>Unit Number</th> <th>Size</th></thead>');
+            zfcpTable.append(zfcpTabRow);
+            var zfcpVDev, zfcpPortName, zfcpLun, zfcpSize;
+
+            // Loop through each zFCP device
+            if (attrs[keys[k]]) {
+	            for (l = 0; l < attrs[keys[k]].length; l++) {
+	                if (attrs[keys[k]][l]) {
+	                    args = attrs[keys[k]][l].split(' ');
+	    
+	                    // Get zFCP virtual device, port name (WWPN), unit number (LUN), and size
+	                    zfcpVDev = $('<td></td>');
+	                    zfcpLink = $('<a>' + args[1].replace('0.0.', '') + '</a>');
+	    
+	                    // Append context menu to link
+	                    zfcpLink.contextMenu(contextMenu, {
+	                        theme : 'vista'
+	                    });
+	                    zfcpVDev.append(zfcpLink);
+	    
+	                    zfcpPortName = $('<td>' + args[4] + '</td>');
+	                    zfcpLun = $('<td>' + args[7] + '</td>');
+	                    zfcpSize = $('<td>' + args[args.length - 2] + ' ' + args[args.length - 1] + '</td>');
+	    
+	                    // Create a new row for each zFCP device
+	                    zfcpTabRow = $('<tr></tr>');
+	                    zfcpTabRow.append(zfcpVDev);
+	                    zfcpTabRow.append(zfcpPortName);
+	                    zfcpTabRow.append(zfcpLun);
+	                    zfcpTabRow.append(zfcpSize);
+	    
+	                    zfcpBody.append(zfcpTabRow);
+	                }
+	            }
+            }
+
+            zfcpTable.append(zfcpBody);
+
+            /**
+             * Add zFCP device
+             */
+            var addZfcpLink = $('<a>Add zFCP</a>');
+            addZfcpLink.bind('click', function(event) {
+                var hcp = attrs['hcp'][0].split('.');
+                openAddZfcpDialog(node, hcp[0]);
+            });
+            zfcpFooter.append(addZfcpLink);
+            zfcpTable.append(zfcpFooter);
+
+            item.append(zfcpTable);
+        }
 
         /**
          * NIC section
@@ -1339,6 +1485,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
                     // Open dialog to confirm
                     var confirmDialog = $('<div><p>Are you sure you want to remove this NIC?</p></div>');                   
                     confirmDialog.dialog({
+                    	title: "Confirm",
                         modal: true,
                         width: 300,
                         buttons: {
@@ -1381,7 +1528,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
                     args = attrs[keys[k]][l + 1].split(' ');
                     nicLanName = $('<td>' + args[args.length - 2] + ' ' + args[args.length - 1] + '</td>');
     
-                    // Create a new row for each DASD
+                    // Create a new row for each NIC
                     nicTabRow = $('<tr></tr>');
                     nicTabRow.append(nicVDev);
                     nicTabRow.append(nicType);

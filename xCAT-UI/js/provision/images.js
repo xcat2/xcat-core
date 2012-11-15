@@ -209,7 +209,7 @@ function loadImages(data) {
     });
     
     // Actions
-    var actionBar = $('<div class="actionBar"></div>');
+    var actionBar = $('<div class="actionBar"></div>').css("width", "370px");
     var advancedLnk = '<a>Advanced</a>';
     var advancedMenu = createMenu([copyCDLnk, generateLnk]);
 
@@ -236,8 +236,8 @@ function loadImages(data) {
      * Enable editable columns
      */
     
-    // Do not make 1st column editable
-    $('#' + imgTableId + ' td:not(td:nth-child(1))').editable(
+    // Do not make 1st or 2nd columns editable
+    $('#' + imgTableId + ' td:not(td:nth-child(1),td:nth-child(2))').editable(
         function(value, settings) {    
             // Get column index
             var colPos = this.cellIndex;
@@ -1030,6 +1030,7 @@ function openEditImagePage(tgtImage) {
 
     // Create an input for each definable attribute
     var div, label, input, value;
+    var attrIndex = 0;
     // Set node attribute
     origAttrs[tgtImage]['imagename'] = tgtImage;
     for (var key in defAttrs) {
@@ -1044,7 +1045,21 @@ function openEditImagePage(tgtImage) {
         // Create label and input for attribute
         div = $('<div></div>').css('display', 'inline');
         label = $('<label>' + key + ':</label>').css('vertical-align', 'middle');
-        input = $('<input type="text" id="' + key + '" value="' + value + '" title="' + defAttrs[key] + '"/>').css('margin-top', '5px');
+        input = $('<input type="text" id="' + key + '" value="' + value + '" title="' + defAttrs[key] + '"/>').css({
+            'margin-top': '5px',
+            'float': 'none',
+            'width': 'inherit'
+        });
+        
+        // There is an element called groups that will override the defaults for the groups attribute.
+        // Hence, the input must have use CSS to override the float and width.
+        
+        // Split attributes into 3 per row
+        if (attrIndex > 0 && !(attrIndex % 3)) {
+            div.css('display', 'inline-block');
+        }
+        
+        attrIndex++;
         
         // Create server browser
         switch (key) {
@@ -1177,8 +1192,7 @@ function openEditImagePage(tgtImage) {
             $(this).css('border-color', 'blue');
         });
         
-        div.append(label);
-        div.append(input);
+        div.append(label, input);
         setPropsForm.append(div);
     }
     
