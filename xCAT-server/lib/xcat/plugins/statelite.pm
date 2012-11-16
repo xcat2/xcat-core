@@ -21,6 +21,7 @@ Getopt::Long::Configure("pass_through");
 
 my $cmdname = "liteimg";
 my $statedir = ".statelite";
+my $lddir = ".sllocal";
 my $verbose = "0";
 sub handled_commands {
 	return {
@@ -269,6 +270,13 @@ sub process_request {
     # the directory/file in litefile table must be the absolute path ("/***")
     foreach my $entry (@$listNew) {
         my @tmp = split (/\s+/, $entry);
+
+        # check the validity of the option
+        if ($tmp[1] !~ /^(tmpfs|persistent|localdisk|rw|link|tmpfs,rw|link,ro|link,persistent|link,con)$/) {
+            $callback->({error=>[qq{ $tmp[2] has invalid option. The valid options: tmpfs persistent localdisk rw link tmpfs,rw link,ro link,persistent link,con}], errorcode=>[1]});
+            return;
+        }
+
         unless ($tmp[2] =~ m{^/}) {
             $callback->({error=>[qq{ $tmp[2] is not one absolute path. }], errorcode=>[1]});
             return;
@@ -547,6 +555,12 @@ sub liteMe {
     }
     unless ( -d "$rootimg_dir/$statedir/tmpfs" ) {
         xCAT::Utils->runcmd("mkdir -p $rootimg_dir/$statedir/tmpfs", 0, 1);
+    }
+
+    # ceate the dir for local disk mount point
+    unless (-d "$rootimg_dir/$lddir") {
+        $callback->({info=>["creating $rootimg_dir/$lddir"]});
+        xCAT::Utils->runcmd("mkdir -p $rootimg_dir/$lddir", 0, 1);
     }
 
     foreach my $line (keys %{$hashNewRef}) {

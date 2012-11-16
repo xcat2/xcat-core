@@ -232,6 +232,7 @@ sub mknetboot
         my $crashkernelsize;
         my $rootfstype; 
         my $tftpdir;
+        my $cfgpart;
         if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{tftpdir}) {
 		$tftpdir = $reshash->{$node}->[0]->{tftpdir};
         } else {
@@ -257,7 +258,7 @@ sub mknetboot
                     if (!$linuximagetab) {
                 	    $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
                     }
-                    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'rootimgdir', 'nodebootif', 'dump', 'crashkernelsize'); 
+                    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'rootimgdir', 'nodebootif', 'dump', 'crashkernelsize', 'partitionfile'); 
                     if (($ref1) && ($ref1->{'rootimgdir'})) {
                 	    $img_hash{$imagename}->{rootimgdir}=$ref1->{'rootimgdir'};
                     }
@@ -272,6 +273,27 @@ sub mknetboot
                     if (($ref1) && ($ref1->{'crashkernelsize'})) {
                         $img_hash{$imagename}->{crashkernelsize} = $ref1->{'crashkernelsize'};
                     }
+                    if ($ref1 && $ref1->{'partitionfile'}) {
+                        # check the validity of the partition configuration file
+                        if ($ref1->{'partitionfile'} =~ /^s:(.*)/) {
+                            # the configuration file is a script
+                            if (-r $1) {
+                                $img_hash{$imagename}->{'cfgpart'} = "yes";
+                            }
+                        } else {
+                            if (open (FILE, "<$ref1->{'partitionfile'}")) {
+                                while (<FILE>) {
+                                    if (/enable=yes/) {
+                                        $img_hash{$imagename}->{'cfgpart'} = "yes";
+                                        last;
+                                    }
+                                }
+                            }
+                            close (FILE);
+                        }
+              
+                        $img_hash{$imagename}->{'partfile'} = $ref1->{'partitionfile'};
+                    }
                 } else {
                     $callback->(
                         {error     => ["The os image $imagename does not exists on the osimage table for $node"],
@@ -279,15 +301,14 @@ sub mknetboot
                     next;
                 }
             }
-	        my $ph=$img_hash{$imagename};
+            my $ph=$img_hash{$imagename};
             
-	        $osver = $ph->{osver};
-	        $arch  = $ph->{osarch};
-	        $profile = $ph->{profile};
+            $osver = $ph->{osver};
+            $arch  = $ph->{osarch};
+            $profile = $ph->{profile};
 
             $rootfstype = $ph->{rootfstype};
-
-	        $rootimgdir=$ph->{rootimgdir};
+            $rootimgdir=$ph->{rootimgdir};
             unless ($rootimgdir) {
                 $rootimgdir="$installroot/netboot/$osver/$arch/$profile";
             }
@@ -295,6 +316,7 @@ sub mknetboot
             $nodebootif = $ph->{nodebootif};
             $crashkernelsize = $ph->{crashkernelsize};
             $dump = $ph->{dump};
+            $cfgpart = $ph->{'cfgpart'};
 	    }
         else {
             $osver = $ent->{os};
@@ -331,12 +353,31 @@ sub mknetboot
                 $linuximagetab = xCAT::Table->new('linuximage');
             }
             if ( $linuximagetab ) {
-                (my $ref1) = $linuximagetab->getAttribs({imagename => $imgname}, 'dump', 'crashkernelsize');
+                (my $ref1) = $linuximagetab->getAttribs({imagename => $imgname}, 'dump', 'crashkernelsize', 'partitionfile');
                 if($ref1 and $ref1->{'dump'})  {
                     $dump = $ref1->{'dump'};
                 }
                 if($ref1 and $ref1->{'crashkernelsize'})  {
                     $crashkernelsize = $ref1->{'crashkernelsize'};
+                }
+                if($ref1 and $ref1->{'partitionfile'})  {
+                    # check the validity of the partition configuration file
+                    if ($ref1->{'partitionfile'} =~ /^s:(.*)/) {
+                        # the configuration file is a script
+                        if (-r $1) {
+                            $cfgpart = "yes";
+                        }
+                    } else {
+                        if (-r $ref1->{'partitionfile'} && open (FILE, "<$ref1->{'partitionfile'}")) {
+                            while (<FILE>) {
+                                if (/enable=yes/) {
+                                    $cfgpart = "yes";
+                                    last;
+                                }
+                            }
+                        }
+                        close (FILE);
+                    }
                 }
             } else {
                 $callback->(
@@ -754,6 +795,11 @@ sub mknetboot
                     $kcmdline .= " crashkernel=128M dump=$dump ";
                 }
             }
+        }
+
+        # add the cmdline parameters for handling the local disk for stateless
+        if ($cfgpart eq "yes") {
+            $kcmdline .= " PARTITION";
         }
 
         # add the addkcmdline attribute  to the end

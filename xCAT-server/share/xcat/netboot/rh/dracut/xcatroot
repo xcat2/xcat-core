@@ -119,6 +119,7 @@ elif [ -r /rootimg-statelite.gz ]; then
     done
   fi
 
+  $NEWROOT/etc/init.d/localdisk
   $NEWROOT/etc/init.d/statelite
   fastboot=yes
   export fastboot

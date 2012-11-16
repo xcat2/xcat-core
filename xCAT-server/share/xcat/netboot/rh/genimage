@@ -618,6 +618,7 @@ unless (-f "$cwd/../add-on/statelite/rc.statelite") {
 }
 
 system("cp $cwd/../add-on/statelite/rc.statelite $rootimg_dir/etc/init.d/statelite");
+system("cp $cwd/../add-on/statelite/rc.localdisk $rootimg_dir/etc/init.d/localdisk");
 # also need to add this file:
 # may have already been made into a symbolic link, if so ignore it
 
@@ -710,7 +711,9 @@ sub mkinitrd_dracut {
     chmod($perm&07777, "$dracutmpath/check");
 
     foreach (@ndrivers) { s/\.ko$//; }
-
+    # Add drivers to support local disk
+    push @ndrivers, "ext3";
+    push @ndrivers, "ext4";
     my $add_drivers = join(' ', @ndrivers);
     my $DRACUTCONF;
 

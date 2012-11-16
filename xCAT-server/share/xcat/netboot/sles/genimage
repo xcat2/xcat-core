@@ -688,6 +688,7 @@ unless( -r "$pathtofiles/../add-on/statelite/rc.statelite") {
     exit;
 }
 system("cp $pathtofiles/../add-on/statelite/rc.statelite $rootimg_dir/etc/init.d/statelite");
+system("cp $pathtofiles/../add-on/statelite/rc.localdisk $rootimg_dir/etc/init.d/localdisk");
 
 # the dhcp client information stores in the directory "/var/lib/dhcpcd/"
 unless(-l "$rootimg_dir/var/lib/dhcpcd") {
@@ -729,6 +730,9 @@ foreach my $driver (@ndrivers) {
 if (@new_order) {
     @ndrivers = (@new_order, @ndrivers);
 }
+
+# add drivers for local disk support
+push @ndrivers, ("ext3.ko", "virtio_pci.ko", "virtio_blk.ko", "ata_piix.ko", "libata.ko", "scsi_mod.ko", "ibmvscsi.ko", "megaraid_sas.ko", "pcieport.ko", "scsi_mod.ko", "sd_mod.ko");
 
 open($moddeps,"<","$rootimg_dir/lib/modules/$kernelver/modules.dep");
 my @moddeps = <$moddeps>;
@@ -941,6 +945,10 @@ EOS1
 
     # Start udev
 	print $inifile <<EOMS;
+
+PATH="\$PATH:/usr/sbin:/sbin"
+export PATH
+
 # Start udev to find devices attached to node
 # This script can be found in /lib/mkinitrd
 echo "Creating device nodes with udev"
@@ -1009,16 +1017,6 @@ done
 ip addr add dev lo 127.0.0.1/8
 ip link set lo up
 cd /
-EOMS
-
-# udevd needed by s390x for networking
-# but for other type of machine, udevd will affect the start of devices which detected
-#  after the chroot, so kill it after the working of network device
-if ($arch ne "s390x") {
-    print $inifile "killall -9 udevd\n";
-}
-
-print $inifile <<EOMS;    
 for i in `cat /proc/cmdline`; do
    KEY=`echo \$i |awk -F= '{print \$1}'`
    if [ "\$KEY" == 'imgurl' ]; then
@@ -1187,9 +1185,22 @@ fi
         shell
     done 
 
+    # try to configure the local disk
+    echo "Get to enable localdisk"
+    \$NEWROOT/etc/init.d/localdisk
+
     # do all the mounts:
     \$NEWROOT/etc/init.d/statelite
-    
+EOMS
+
+    # udevd needed by s390x for networking
+    # but for other type of machine, udevd will affect the start of devices which detected
+    #  after the chroot, so kill it before the switching root 
+    if ($arch ne "s390x") {
+       print $inifile "\n    killall -9 udevd\n";
+    }
+
+    print $inifile <<EOMS;    
     # give the debug shell just before we go if specified!
     grep '\(shell\)' /proc/cmdline > /dev/null && shell
     
@@ -1259,6 +1270,14 @@ sleep 5
 EOMS
    print $inifile "  exit\n";
    print $inifile "fi\n";
+
+   # udevd needed by s390x for networking
+   # but for other type of machine, udevd will affect the start of devices which detected
+   #  after the chroot, so kill it before the switching root
+   if ($arch ne "s390x") {
+      print $inifile "killall -9 udevd\n";
+   }
+
    print $inifile "cd /\n";
    print $inifile "mkdir \$NEWROOT/var/lib/dhcpcd/\n";	#neccessary for SLES11, not sure for SLES10
    print $inifile "cp /var/lib/dhcpcd/* \$NEWROOT/var/lib/dhcpcd/\n";
@@ -1293,7 +1312,7 @@ END
      }
    }
     if($mode eq "statelite") {
-        foreach ("sbin/ifconfig", "usr/bin/clear","usr/bin/touch","bin/hostname","usr/bin/egrep","bin/ln","bin/ls","usr/bin/dirname","usr/bin/expr","usr/bin/chroot","usr/bin/grep","bin/cpio","bin/sleep","bin/mount","bin/umount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed","usr/bin/wc", "bin/sed","sbin/udevd", "usr/bin/readlink") {
+        foreach ("sbin/ifconfig", "usr/bin/clear","usr/bin/touch","bin/hostname","usr/bin/egrep","bin/ln","bin/ls","usr/bin/dirname","usr/bin/expr","usr/bin/chroot","usr/bin/grep","bin/cpio","bin/sleep","bin/mount","bin/umount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed","usr/bin/wc", "bin/sed","sbin/udevd", "usr/bin/readlink", "usr/sbin/parted", "sbin/mke2fs", "sbin/mkswap", "sbin/swapon", "bin/chmod", "usr/bin/bc") {
             getlibs($_); 
             push @filestoadd,$_;
         } 

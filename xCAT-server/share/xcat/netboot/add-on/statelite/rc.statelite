@@ -15,6 +15,7 @@ SYNCLIST="${MNTDIR}/$SL/litefile" 	# the list of files to sync
 TREEMOUNT="${MNTDIR}/$SL/mnt"  	# where I mount all the trees.
 TMPFS="${MNTDIR}/$SL/tmpfs"
 DEFAULT="${MNTDIR}/.default"
+LOCAL="${MNTDIR}/.sllocal"
 LOG="${MNTDIR}/${SL}/statelite.log"
 ELIST=[]    # entry list, each entry will contain the type and the path
 declare -a CLIST 
@@ -385,6 +386,33 @@ ProcessType () {
             if [ "$isChild" = "0" ]; then
                 echo "mount --bind ${TMPFS}${2} ${MNTDIR}${ORIG}" >>$LOG
                 /bin/mount --bind ${TMPFS}${2} ${MNTDIR}${ORIG}>>$LOG 2>&1           
+            fi
+            ;;
+       localdisk)
+            ORIG=`echo ${2} |  /bin/sed -e 's/\/$//'`
+            TARGET=`echo ${1}`
+
+            if [ ! -d ${LOCAL}${PPATH} ] && [ ! -L ${LOCAL}${PPATH} ]; then
+                /bin/mkdir -p ${LOCAL}${PPATH}
+                echo "mkdir -p ${LOCAL}${PPATH}" >>$LOG
+            fi
+
+            # check it is a dir or file
+            if [ -d ${1} ]; then
+                if [ ! -d ${LOCAL}${2} ]; then
+                    /bin/cp -r -a ${1} ${LOCAL}${PPATH}
+                    echo "cp -r -a ${1} ${LOCAL}${PPATH}" >>$LOG
+                fi
+            else
+                if [ ! -f ${LOCAL}${2} ]; then
+                    /bin/cp -r -a ${1} ${LOCAL}${2}
+                    echo "cp -r -a ${1} ${LOCAL}${2}" >>$LOG
+                fi
+            fi
+
+            if [ "$isChild" = "0" ]; then
+                echo "mount --bind ${LOCAL}${2} ${MNTDIR}${ORIG}" >>$LOG
+                /bin/mount --bind ${LOCAL}${2} ${MNTDIR}${ORIG}>>$LOG 2>&1
             fi
             ;;
        rw)         # the default option, same as "tmpfs" and "NULL"
