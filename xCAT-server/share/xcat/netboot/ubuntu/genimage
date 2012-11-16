@@ -966,7 +966,6 @@ if [ -z "\$IFACE" ]; then
 fi
 
 export IFACE=\$IFACE
-echo network --device \$IFACE --bootproto dhcp >> /bin/netstart
 
 netstart \$IFACE
 while ! ifconfig | grep inet; do
@@ -1237,7 +1236,7 @@ EOMS
 
    open($inifile,">"."/tmp/xcatinitrd.$$/bin/netstart");
    print $inifile "#!/sbin/sh\n";
-   print $inifile "udhcpc -n -q -i $prinic\n";
+   print $inifile "udhcpc -n -q -i \${1}\n";
    close($inifile);
 
    open($inifile,">"."/tmp/xcatinitrd.$$/usr/share/udhcpc/default.script");
