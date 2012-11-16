@@ -206,11 +206,17 @@ executing the  I<command_list>.
 
 Specify a user-defined device type that references the location
 of relevant device configuration file. The devicetype value must
-correspond to a valid device configuration file under the /var/opt/xcat/
-directory.
-For example, /var/opt/xcat/IBSwitch/Qlogic/config is the configuration
-file location if devicetype is specified as IBSwitch::Qlogic
-/var/opt/xcat/IBSwitch/Mellanox/config is the configuration file location if the devicetype is specified as IBSwitch::Mellanox.
+correspond to a valid device configuration file.
+xCAT ships some default configuration files
+for Ethernet switches and and IB switches under 
+/opt/xcat/share/xcat/devicetype directory. If you want to overwrite
+any of the configuration files, please copy it to /var/opt/xcat/
+directory and cutomize it. 
+For example, <base>/IBSwitch/Qlogic/config is the configuration
+file location if devicetype is specified as IBSwitch::Qlogic.
+xCAT will first search config file using /var/opt/xcat/ as the base. 
+If not found, it will search for it using  
+/opt/xcat/share/xcat/devicetype/ as the base.
 
 =item B<-f>|B<--fanout> I<fanout_value>
 
@@ -516,7 +522,7 @@ B<xdsh> I<servicenoderange -c >
 
 =item *
 
-To define the IB switch as a node and to set up the SSH keys for IB switch 
+To define the QLogic IB switch as a node and to set up the SSH keys for IB switch 
 B<qswitch> with device configuration file
 B</var/opt/xcat/IBSwitch/Qlogic/config> and user name B<username>, Enter
 
@@ -533,13 +539,23 @@ B<xcatconfig -m>
 =item *
 
 To define the Mellanox switch as a node and run a command to show the ssh keys. 
-B<mswitch> with device configuration file
-
-B</var/opt/xcat/IBSwitch/Mellanox/config> and user name B<username>, Enter
+B<mswitch> with and user name B<username>, Enter
 
 B<chdef> I<-t node -o mswitch groups=all nodetype=switch>
 
 B<xdsh> I<mswitch -l admin --devicetype IBSwitch::Mellanox  'enable;configure terminal;show ssh server host-keys'>
+
+=item *
+
+To define a BNT Ethernet switch as a node and run a command to create a new vlan with vlan id 3 on the switch.
+
+B<chdef> I<myswitch groups=all>
+
+B<tabch> I<switch=myswitch switches.sshusername=admin switches.sshpassword=passw0rd>
+  where <admin> and <passw0rd> can be SSH or Telnet user name and password for the switch.
+
+<xdsh> I<myswitch --devicetype EthSwitch::BNT 'enable;configure terminal;vlan 3;end;show vlan'> 
+
 
 =back
 
