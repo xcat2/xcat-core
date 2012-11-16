@@ -1714,6 +1714,18 @@ sub getdata
         {
             chomp($output);
             $output =~ s/\\cM//;
+            if($output =~ /^\s*(\S+)\s*:\s*Remote_command_successful/)
+            {
+              my ($node,$info) = split (/:/, $output);
+              push(@::SUCCESSFULLNODES,$node);
+            }
+            if($output =~ /^\s*(\S+)\s*:\s*Remote_command_failed/)
+            {
+              my ($node,$info) = split (/:/, $output);
+              push(@::FAILEDNODES,$node);
+            }
+
+
             if ($output =~ /returned from postscript/)
             {
                 $output =~
@@ -1732,7 +1744,7 @@ sub getdata
                     push @{$rsp->{$type}}, "$output";
                 }
             }
-            elsif ($output !~ /Error loading module/)
+            if (($output !~ (/Error loading module/)) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_successful/) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_failed/))
             {
                 push @{$rsp->{$type}}, "$output";
             }
