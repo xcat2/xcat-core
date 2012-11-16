@@ -1,0 +1,280 @@
+#! /bin/sh
+
+MNTDIR="/sysroot"
+
+PARTLOG=/tmp/partlog
+PARTFILE=/tmp/partition
+SCRIPTFILE=/tmp/partscript
+
+disk=0
+localspace=0
+swapspace=0
+partnum=0
+
+isscript=0
+isformat=0
+
+# Get the xCAT server from kernel parameter
+for i in `cat /proc/cmdline`; do
+    KEY=`echo $i | awk -F= '{print $1}'`
+    if [ x"$KEY" = x"XCAT" ]; then
+        XCATSERVER=`echo $i | awk -F= '{print $2}'`
+    elif [ x"$KEY" = x"PARTITION" ]; then
+        DOPART="yes"
+    fi
+done
+
+if [ x"$DOPART" != x"yes" ]; then
+    # do nothing
+    echo "local disk: do nothing"
+    exit 0
+fi
+
+if [ x$XCATSERVER = x ]; then
+    echo "Error: Cannot find the xCAT server to configure local disk."
+    exit 1
+fi
+
+xCATCmd () {
+# $1 is the xCAT server
+# $2 is the command
+    arch=`uname -m`
+    if [ x$arch = x"ppc64" ]; then
+        echo "<xcatrequest>\n<command>${2}</command>\n</xcatrequest>" | /usr/sbin/chroot ${MNTDIR} /usr/bin/openssl s_client -quiet -connect ${1} -rand /bin/nice 2>/dev/null
+    else
+        echo "<xcatrequest>\n<command>${2}</command>\n</xcatrequest>" | LD_LIBRARY_PATH=${MNTDIR}/lib64:${MNTDIR}/usr/lib64 ${MNTDIR}/usr/bin/openssl s_client -quiet -connect ${1} -rand /bin/nice 2>/dev/null
+    fi
+}
+
+doconfigure () {
+    # run the configure script
+    if [ $isscript -eq 1 ]; then
+        # run the script
+        chmod +x $SCRIPTFILE
+        $SCRIPTFILE
+        exit 0
+    fi
+
+    if [ x"$enable" != x"yes" ]; then
+        exit 1
+    fi
+    if [ $disk -eq 1 ]; then
+        if [ x"$enablepart" != x"yes" ]; then
+            return
+        fi
+        if [ ! -r $dev ]; then
+            echo "Error: Cannot find the device $dev"
+            exit 1
+        fi
+        if [ ! -r "/sbin/parted" -a ! "/usr/sbin/parted" ]; then
+            echo "Error: Cannot get parted command to do the partitioning for local disk"
+            exit 1
+        fi
+
+        # remove all the partitions on the device
+        # the output of parted -l -s -m should like
+        #BYT;
+        ##/dev/sda:73.4GB:scsi:512:512:msdos:IBM-ESXS ST373455SS;
+        ##1:1049kB:72.3GB:72.3GB:ext4::boot;
+        ##2:72.3GB:73.4GB:1073MB:linux-swap(v1)::;
+
+        `parted -lsm > $PARTLOG`
+        getpart=0
+        while read PLINE
+        do
+            msg=`echo $PLINE | grep 'unrecognised disk label'`
+            if [ x"$msg" != x ]; then
+                devname=`echo $PLINE | awk -F' ' '{print $2}' | sed -e "s/://g"`
+            
+                if [ x$devname = x"$dev" ]; then
+                    #create the label
+                    `parted -s $dev mklabel msdos`
+                fi
+            fi
+        done <  $PARTLOG
+
+        `parted -lsm > $PARTLOG`
+        
+        partinfo=`parted -lsm`
+        # Verbose message
+        echo "Original partition list"
+        echo $partinfo
+        
+        getpart=0
+        while read PLINE
+        do
+            name=`echo $PLINE | awk -F: '{print $1}'`
+            if [ x"$name" = x"BYT;" ]; then
+                if [ $getpart -eq 1 ]; then
+                    #getpart=0
+                    break
+                fi
+            fi
+            if [ x"$name" = x"$dev" ]; then
+                getpart=1
+                localdisksize=`echo $PLINE | awk -F: '{print $2}'`
+                echo "localdisk: $localdisk - $localdisksize"
+            elif [  $getpart -eq 1 -a x$name != "x" -a x$name != x"Error" ]; then
+                if [ x$clear != x ]; then
+                    `parted $dev rm $name >/dev/null`
+                    echo "Remove the partion $name"
+                    sleep 1
+                else
+                    partnum=`expr $partnum + 1`
+                fi
+            fi
+        done < $PARTLOG 
+
+        if [ $getpart -eq 0 ]; then
+            echo "Error: Cannot get partition information for $dev"
+            exit 1
+        fi
+
+        # make the partition
+        parts=`echo $parts | sed -e 's/ //g' | sed -e 's/,/ /g'`
+        endpoint=0
+        for part in $parts
+        do
+            if echo $part | grep '-'; then
+                # should be format 10G-20G
+                start=`echo $part |awk -F- '{print $1}'`
+                end=`echo $part |awk -F- '{print $2}'`
+                echo "Create partition $start - $end"
+                `parted -s $dev mkpart primary $start $end > /dev/null`
+                sleep 1
+            else
+                # should be a number which is the percentage of the total
+                # compute the space depend on the size of disk
+                ldsize=`echo $localdisksize | sed "s/\([0-9\.]*\).*/\1/"`
+                ldunit=`echo $localdisksize | sed "s/[0-9\.]*//" | sed "s/\(.\).*/\1/"`
+                partsize=`echo "$ldsize * $part" | bc`
+                partsize=`echo "$partsize / 100" | bc`
+                start=$endpoint$ldunit
+                endpoint=`expr $endpoint + $partsize`
+                end=$endpoint$ldunit
+                echo "Create partition $start - $end: $fstype"
+                `parted -s $dev mkpart primary $start $end > /dev/null`
+                sleep 1
+            fi
+
+            # create the filesystem
+            if [ x$fstype = x ]; then
+                fstype=ext3
+            fi
+            partnum=`expr $partnum + 1`
+            partdev=$dev$partnum
+            echo "Create filesystem $fstype on $partdev"
+            `mke2fs -q $partdev -t $fstype > /dev/null`
+            sleep 1
+        done
+    elif [ $localspace -eq 1 ]; then
+        if [ x$fstype = x ]; then
+            fstype=ext3
+        fi
+        echo "Mount $dev to /.sllocal with $fstype"
+        `mount -t $fstype $dev $MNTDIR/.sllocal`
+    elif [ $swapspace -eq 1 ]; then
+        echo "Create swap on $dev"
+        `mkswap $dev > /dev/null`
+        echo "Enable swap on $dev"
+        `swapon $dev`
+    fi
+}
+
+xCATCmd $XCATSERVER getpartition \
+    | sed  -e 's/<[^>]*>//g' \
+    | egrep -v '^ *$' \
+    | egrep -v '^#.*$' \
+    | sed -e 's/^ *//' \
+    > $PARTFILE
+
+MAX_RETRIES=15
+RETRY=0
+while [ ! -s $PARTFILE ]; do
+    # the file is empty, we should retry several times
+    RETRY=$(( $RETRY+1 ))
+    if [ $RETRY -eq $MAX_RETRIES ]; then
+        echo "Error: Cannot get the partition configuration file from xCAT server."
+        exit 1
+    fi
+
+    SLI=$(( $RANDOM%50 ))
+    sleep $SLI
+
+    xCATCmd $XCATSERVER getpartition \
+        | sed  -e 's/<[^>]*>//g' \
+        | egrep -v '^ *$' \
+        | sed -e 's/^ *//' \
+        > $PARTFILE
+done
+
+# Parse the argument from the partition file
+while read LINE
+do
+    if [ x$firstline = x ]; then
+        firstline=$LINE
+        # the format of first line should be: type=script|format
+        key=`echo \$firstline |awk -F= '{print \$1}'`
+        if [ x$key != x"type" ]; then
+            echo "Error: Cannot recognize the format of the parition configuration file."
+            exit 1
+        fi
+        value=`echo \$firstline |awk -F= '{print \$2}'`
+        if [ x$value = x"script" ]; then
+            isscript=1
+        elif [ x$value = x"format" ]; then
+            isformat=1
+        fi
+        continue
+    fi
+    if [ $isscript -eq 1 ]; then
+        echo $LINE | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" >> $SCRIPTFILE
+    elif [ $isformat -eq 1 ]; then
+        # parse the attributes for the partition configuration
+        if [ x$LINE = x"[disk]" ]; then
+            doconfigure
+            disk=1
+            partnum=0
+            localspace=0
+            swapspace=0
+            fstype=""
+            dev=""
+            clear=""
+            parts=""
+        elif [ x$LINE = x"[localspace]" ]; then
+            doconfigure
+            disk=0
+            localspace=1
+            swapspace=0
+            dev=""
+            fstype=""
+        elif [ x$LINE = x"[swapspace]" ]; then
+            doconfigure
+            disk=0
+            localspace=0
+            swapspace=1
+            dev=""
+        else
+            key=`echo \$LINE |awk -F= '{print \$1}'`
+            value=`echo \$LINE |awk -F= '{print \$2}'`
+            if [ x$key = x"dev" ]; then
+                dev=$value
+            elif [ x$key = x"clear" ]; then
+                clear=$value
+            elif [ x$key = x"parts" ]; then
+                parts=$value
+            elif [ x$key = x"fstype" ]; then
+                fstype=$value
+            elif [ x$key = x"enable" ]; then
+                enable=$value
+                if [ x$enable != x"yes" ]; then
+                    exit 1
+                fi
+            elif [ x$key = x"enablepart" ]; then
+                enablepart=$value
+            fi 
+        fi
+    fi
+done <  $PARTFILE
+doconfigure
+
