@@ -1502,15 +1502,17 @@ sub updatenodesyncfiles
     return;
 }
 #-------------------------------------------------------------------------------
-
 =head3  buildnodestatus - Takes the output of the updatenode run
-        and builds a global array of good node and one of bad node
-        output the remaining user info
+        and builds a global array of successfull nodes  and one of failed nodes
+        and then outputs the remaining user info
+        If output null , then it just checks that the @::SUCCESSFULLNODES
+        does not contain @::FAILEDNODES and removes them if it does.
 
     Arguments: output,callback
-    Globals @::GOODNODES,  @::BADNODES 
+    Globals @::SUCCESSFULLNODES,  @::FAILEDNODES
 
 =cut
+
 
 #-----------------------------------------------------------------------------
 sub buildnodestatus
@@ -1543,7 +1545,7 @@ sub buildnodestatus
            $callback->($rsp);
 	     }
 	 }
-    #If in failed remove from succeeded and make sure no duplicates
+    #If a failed node is in the SUCCESSFULLNODES array remove it. 
     my %m=();
     my %n=();
 
@@ -1680,10 +1682,14 @@ sub updatenodesoftware
 
     return;
 }
+#-------------------------------------------------------------------------------
 
-#
-# Handles the return from running xcatdsklspost
-#
+=head3  getdata  - This is the local callback that handles the response from
+        the xdsh streaming calls when running postscripts and software
+        updates
+
+=cut
+#-------------------------------------------------------------------------------
 sub getdata
 {
     no strict;
