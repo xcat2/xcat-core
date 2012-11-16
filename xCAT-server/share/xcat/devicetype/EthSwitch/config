@@ -1,0 +1,11 @@
+#This is a configuration file for running xdsh again ethernet switches.
+#If the switch type is not defined, you can create a subdirctory for that
+#type of switch. For example, for cisco swith, create a subdirectory
+# called "Cisco" under EthSwitch. copy this config file there. And 
+#put the command that disables the paging in pre-command
+#pre-command=terminal lenth 0;
+[main]
+ssh-setup-command=
+[xdsh]
+pre-command=NULL
+post-command=NULL

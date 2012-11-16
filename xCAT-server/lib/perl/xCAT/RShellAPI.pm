@@ -23,7 +23,7 @@ use xCAT::MsgUtils;
         	A command array for the ssh command with the appropriate
         	arguments as defined in the $config hash table
 =cut
-#####################################################
+##################################################### 
 sub remote_shell_command {
 	my ( $class, $config, $exec_path ) = @_;
 
@@ -51,6 +51,23 @@ sub remote_shell_command {
 	return @command;
 }
 
+##################################################################
+=head3
+        run_remote_shell_api
+
+        This routine tried ssh then telnet to logon to a node and
+        run a sequence of commands. 
+        Arguments:
+        	$node - node name
+        	$user - user login name
+                $passed - user login password
+                $cmds - a list of commands seperated by semicolon.
+        Returns:
+        	[error code, output]
+                error code: 0 sucess
+                            non-zero: failed. the output contains the error message.
+=cut
+#########################################################################
 sub run_remote_shell_api { 
     require xCAT::SSHInteract;
     my $node=shift;
@@ -58,9 +75,13 @@ sub run_remote_shell_api {
     my $passwd=shift;
     my $args = join(" ", @_);
     my $t;
+    my $prompt='.*[\>\#\$]$';
+    my $more_prompt='(.*key to continue.*|--More--\s*$)';
+    my $verbose=0;
+    my $output;
 
-    if(0) {
-	print "start SSH session...\n";
+    eval {
+	$output="start SSH session...\n";
 	$t = new  xCAT::SSHInteract(
 	    -username=>$user,
 	    -password=>$passwd,
@@ -69,112 +90,212 @@ sub run_remote_shell_api {
 	    -output_record_separator=>"\r",
 	    Timeout=>5, 
 	    Errmode=>'return',
-	    Prompt=>'/.*[\>\#]$/',
+	    Prompt=>"/$prompt/",
 	    );
     };
     my $errmsg=$@;
     $errmsg =~ s/ at (.*) line (\d)+//g;
-    print "$errmsg\n"; 
+    $output.="$errmsg\n";
 
     my $rc=1;
     if (not $t) {#ssh failed.. fallback to a telnet attempt
-	print "start Telnet session...\n";
+	$output.="start Telnet session...\n";
 	require Net::Telnet;
 	$t = new Net::Telnet(
 	    Timeout=>5, 
 	    Errmode=>'return',
-	    Prompt=>'/.*[\>\#]$/',
+	    Prompt=>"/$prompt/",
 	    );
 	$rc = $t->open($node);
 	if ($rc) {
             my $pw_tried=0;
+            my $login_done=0;
 	    my ($prematch, $match)= $t->waitfor(Match => '/login[: ]*$/i',
 						Match => '/username[: ]*$/i',
 						Match => '/password[: ]*$/i',
+						Match => "/$prompt/",
 						Errmode => "return");
-	    if (($match =~ /username[: ]*$/i) || ($match =~ /login[: ]*$/i )) {
+	    if ($verbose) {
+		print "1. prematch=$prematch\n match=$match\n";
+	    }
+            if ($match =~ /$prompt/) {
+ 		$login_done=1;
+	    } elsif (($match =~ /username[: ]*$/i) || ($match =~ /login[: ]*$/i )) {
 		# user name
 		if ($user) {
 		    if (! $t->put(String => "$user\n",
 				  Errmode => "return")) {
-			print "login disconnected\n";
-			return [1, "login disconnected"];
+			$output.="login disconnected\n";
+			return [1, $output];
 		    }
 		} else {
-		    print "Username is required.\n";
-		    return [1, "Username is required."];
+		    $output.="Username is required.\n";
+		    return [1, $output];
 		}
 	    } elsif ($match =~ /password[: ]*$/i) {
 		if ($passwd) {
 		    $pw_tried=1;
 		    if (! $t->put(String => "$passwd\n",
 				  Errmode => "return")) {
-			print "login disconnected\n";
-			return [1, "login disconnected"];
+			$output.="Login disconnected\n";
+			return [1, $output];
 		    }
 		} else {
-		    print "password is required.\n";
-		    return [1, "Passwordis required."];
+		    $output.="Password is required.\n";
+		    return [1, $output];
 		}
 	    }
-	    
-	    ($prematch, $match)= $t->waitfor(Match => '/login[: ]*$/i',
+	   
+            if (!$login_done) {
+		($prematch, $match)= $t->waitfor(Match => '/login[: ]*$/i',
 					     Match => '/username[: ]*$/i',
 					     Match => '/password[: ]*$/i',
+					     Match => "/$prompt/",
 					     Errmode => "return");
 	
-	    if (($match =~ /username[: ]*$/i) || ($match =~ /login[: ]*$/i )) {
-		print "Incorrect username.\n";
-		return [1, "Incorrect username."];
-	    } elsif ($match =~ /password[: ]*$/i) {
-		if ($pw_tried) { 
-		    print "Incorrect password.\n";
-		    return [1, "Incorrect password."];
+		if ($verbose) {
+		    print "2. prematch=$prematch\n match=$match\n";
 		}
-		if ($passwd) {
-		    if (! $t->put(String => "$passwd\n",
-				  Errmode => "return")) {
-			print "login disconnected\n";
-			return [1, "login disconnected"];
+		if ($match =~ /$prompt/) {
+		    $login_done=1;
+		} elsif (($match =~ /username[: ]*$/i) || ($match =~ /login[: ]*$/i )) {
+		    $output.="Incorrect username.\n";
+		    return [1, $output];
+		} elsif ($match =~ /password[: ]*$/i) {
+		    if ($pw_tried) { 
+			$output.="Incorrect password.\n";
+			return [1, $output];
 		    }
-		} else {
-		    print "password is required.\n";
-		    return [1, "Passwordis required."];
+		    if ($passwd) {
+			if (! $t->put(String => "$passwd\n",
+				      Errmode => "return")) {
+			    $output.="Login disconnected\n";
+			    return [1, $output];
+			}
+		    } else {
+			$output.="Password is required.\n";
+			return [1, $output];
+		    }
+		}
+		
+		if (!login_done) {
+		    #Wait for command prompt
+		    ($prematch, $match) = $t->waitfor(Match => '/login[: ]*$/i',
+						      Match => '/username[: ]*$/i',
+						      Match => '/password[: ]*$/i',
+						      Match => "/$prompt/",
+						      Errmode => "return");
+		    if ($verbose) {
+			print "3. prematch=$prematch\n match=$match\n";
+		    }
+		    
+		    if ($match =~ /$prompt/) {
+			$login_done=1;
+		    } elsif ($match =~ /login[: ]*$/i or $match =~ /username[: ]*$/i or $match =~ /password[: ]*$/i) {
+			$output.="Login failed: bad login name or password\n";
+			return [1, $output];
+		    } else {
+			if ($t->errmsg) {
+			    $output.= $t->errmsg . "\n";
+			    return [1, $output];
+			    
+			}
+		    }
 		}
 	    }
-
-
-	    #Wait for command prompt
-	    ($prematch, $match) = $t->waitfor(Match => '/login[: ]*$/i',
-						 Match => '/username[: ]*$/i',
-						 Match => '/password[: ]*$/i',
-						 Match => '/\>/',
-						 Errmode => "return");
-		
-            #print "prematch=$prematch, match=$match\n";
-	    if ($match =~ /login[: ]*$/i or $match =~ /username[: ]*$/i or $match =~ /password[: ]*$/i) {
-		print "login failed: bad login name or password\n";
-		return [1, "login failed: bad login name or password"];
-   	    }
 	}
     }
     if (!$rc) {
-        print "Error: " . $t->errmsg . "\n";
-	return([1, $t->errmsg]);
+        $output.=$t->errmsg . "\n";
+	return [1, $output];
     }
 
     $rc = 0;
-    my $output;
+    my $try_more=0;
     my @cmd_array=split(';', $args);
+    
     foreach my $cmd (@cmd_array) {
-	#my @data = $t->cmd($cmd);
-	my @data= $t->cmd(String =>$cmd);
-        $output .= "command:$cmd\n@data\n";
-        print "command:$cmd\n@data\n";
+	if ($verbose) {
+	    print "command:$cmd\n";
+	}
+	while (1) {
+	    if ($try_more) {                 
+                #This is for second and consequent pages.
+		#if the user disables the paging, then this code will never run.
+                #To disable paging (which is recommended), 
+                #they need to add a command before any other commands
+                #For Cisco switch: terminal length 0
+                #For BNT switch: terminal-length 0
+                #For example: 
+                #   xdsh <swname> --type EthSwitch "terminal length 0;show vlan"
+		if (! $t->put(String => " ",
+			      Errmode => "return")) {
+		    $output.="Command $cmd failed: " . $t->errmsg() . "\n";
+		    return [1, $output];
+		}
+		if ($verbose) {
+		    my $lastline=$t->lastline();
+		    print "---lastline=$lastline\n";
+		}
+		($prematch, $match) = $t->waitfor(Match => "/$more_prompt/",
+						  Match => "/$prompt/",
+						  Errmode => "return",
+						  Timeout=>3);
+	    } else {
+                # for the first page which may contian all
+		if (! $t->put(String => "$cmd\n",
+			      Errmode => "return")) {
+		    $output.="Command $cmd failed." . $t->errmsg() . "\n";
+		    return [1, $output];
+		}
+		if ($verbose) {
+		    my $lastline=$t->lastline();
+		    print "lastline=$lastline\n";
+		}
+		($prematch, $match) = $t->waitfor(Match => "/$more_prompt/",
+						  Match => "/$prompt/",
+						  Match => '/password:\s*$/i',
+						  Errmode => "return",
+						  Timeout=>3);
+	    }
+
+	    if ($verbose) {
+		print "-----prematch=$prematch\nmatch=$match\n";
+            }
+
+            my $error=$t->errmsg();
+	    if ($error) {
+		$output.="Command $cmd failed: $error\n";
+		return [1, $output];
+	    }
+            
+            # remove the first line
+            if ($try_more) {
+		my @data=split("\n", $prematch);
+		shift @data;
+		#shift @data;
+		#shift @data;
+		$prematch=join("\n", @data);
+		#add a newline at the end if not there
+		my $lastchar=substr($prematch, -1, 1);
+		if ($lastchar ne "\n") {
+		    $prematch .= "\n";
+		}
+	    }
+	    $output .= $prematch;
+
+	    if ($match =~ /$more_prompt/i) {
+		$try_more=1;
+	    } else {
+		last;
+	    }
+	}
     }
     $t->close();
     return [0, $output];
 }
+
+
 
 
 

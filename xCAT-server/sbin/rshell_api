@@ -28,6 +28,13 @@ if (!GetOptions(
 
 my $node = $ARGV[0];
 
-xCAT::RShellAPI::run_remote_shell_api($node, $username, $passwd, @ARGV[1 .. $#ARGV]); 
+my $output =xCAT::RShellAPI::run_remote_shell_api($node, $username, $passwd, @ARGV[1 .. $#ARGV]); 
+my $rc=0;
+my $data;
+if ($output && (@$output > 1)) {
+    $rc=$output->[0];
+    $data=$output->[1];
+}
 
-exit 0;
+print "$data";
+exit $rc;

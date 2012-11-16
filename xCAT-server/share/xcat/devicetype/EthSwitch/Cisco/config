@@ -1,5 +1,5 @@
 [main]
 ssh-setup-command=
 [xdsh]
-pre-command=NULL
+pre-command=terminal length 0;
 post-command=NULL

@@ -1228,6 +1228,7 @@ sub fork_fanout_dsh
         
         #  execute and remove the /tmp file build which is a copy of the
         # input -E file
+        #print "Command=@dsh_command\n";
 
         @process_info = xCAT::DSHCore->fork_output($user_target, @dsh_command);
         if ($process_info[0] == -2)
@@ -1876,10 +1877,10 @@ sub stream_error
                          xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
                        }
 
-                      #  my $rsp = {};
-                      #  $rsp->{error}->[0] =
-                      #    "$user_target remote command had return code $$target_properties{'target-rc'}";
-                      #  xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+                        #my $rsp = {};
+                        #$rsp->{error}->[0] =
+                        #  "$user_target remote command had return code $$target_properties{'target-rc'}";
+                        #xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
                         my $rsp = {};
                         $rsp->{error}->[0] =
@@ -2248,40 +2249,42 @@ sub config_dsh
     if ($$options{'devicetype'})
     {
         $ENV{'DEVICETYPE'} = $$options{'devicetype'};
-        my $devicepath = $$options{'devicetype'};
-        $devicepath =~ s/::/\//g;
+        my $devicename = $$options{'devicetype'};
+        $devicename =~ s/::/\//g;
 
         my $rsp = {};
-        $rsp->{data}->[0] = "Processing $devicepath device type";
+        $rsp->{data}->[0] = "Processing $devicename device type";
         $dsh_trace && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
-        # process the config file 
-          
-          $devicepath = "/var/opt/xcat/" . $devicepath . "/config";
-
-          # Get configuration from $::XCATDEVCFGDIR
-          # used for QLogic and Mellanox
-          if (-e $devicepath)
-          {
-             my $deviceconf = get_config($devicepath);
-
-             # Get all dsh section configuration
-             foreach my $entry (keys %{$$deviceconf{'xdsh'}})
-             {
+        # process the config file. check /var/opt/xcat/... first, if the config
+        # file is not found, goto /opt/xcat/share/devicetype
+	my $devicepath = "/var/opt/xcat/" . $devicename . "/config"; 
+	if (! -e $devicepath) {
+	    $devicepath="$::XCATROOT/share/xcat/devicetype/" . $devicename . "/config";
+	}
+	# Get configuration from $::XCATDEVCFGDIR
+	# used for QLogic and Mellanox
+	if (-e $devicepath)
+	{
+	    my $deviceconf = get_config($devicepath);
+	    
+	    # Get all dsh section configuration
+	    foreach my $entry (keys %{$$deviceconf{'xdsh'}})
+	    {
                 my $value = $$deviceconf{'xdsh'}{$entry};
                 if ($value)
                 {
                     $$options{$entry} = $value;
                 }
-
-             }
-         }
-         else
-         {
+		
+	    }
+	}
+	else
+	{
             my $rsp = {};
             $rsp->{error}->[0] = "EMsgMISSING_DEV_CFG";
             xCAT::MsgUtils->message('E', $rsp, $::CALLBACK);
-         }
+	}
     }
 
     !$$options{'node-rsh'}
@@ -4080,10 +4083,15 @@ sub parse_and_run_dsh
         if (defined $options{'devicetype'})
         {
             $ENV{'DEVICETYPE'} = $options{'devicetype'};
-            my $devicepath = $options{'devicetype'};
-            $devicepath =~ s/::/\//g;
-            $devicepath = "/var/opt/xcat/" . $devicepath . "/config";
-            if (-e $devicepath)
+            my $devicename = $options{'devicetype'};
+            $devicename =~ s/::/\//g;
+            my $devicepath = "/var/opt/xcat/" . $devicename . "/config";
+            # go to backup directory if the config file 
+            # cannot be found under /var/opt/xcat/...
+            if (! -e $devicepath) { 
+		$devicepath="$::XCATROOT/share/xcat/devicetype/" . $devicename . "/config";
+	    }
+	    if (-e $devicepath) 
             {
                 my $deviceconf = get_config($devicepath);
 
