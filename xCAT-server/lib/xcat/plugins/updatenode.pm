@@ -1597,6 +1597,7 @@ sub updatenodesoftware
     my $installdir    = xCAT::TableUtils->getInstallDir();
     my $localhostname = hostname();
     my $rsp;
+    $CALLBACK = $callback;
     push @{$rsp->{data}},
       "Performing software maintenance operations. This could take a while.\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
@@ -1621,51 +1622,55 @@ sub updatenodesoftware
         {
             my $nodestring = join(',', @{$servernodes{$snkey}});
             my $cmd;
+            my $args1;
             if ($::SETSERVER)
             {
-                $cmd =
-                  "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -v -e $installdir/postscripts/xcatdsklspost 2 -M $snkey ospkgs,otherpkgs 2>&1";
+               $cmd =
+                  "$installdir/postscripts/xcatdsklspost 2 -M $snkey 'ospkgs,otherpkgs'" ;
+             $args1 = [
+                    "--nodestatus",
+                    "-s",
+                    "-v",
+                    "-e",
+                    "$cmd"
+                    ];
+
+
 
             }
             else
             {
 
                 $cmd =
-                  "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -v -e $installdir/postscripts/xcatdsklspost 2 -m $snkey ospkgs,otherpkgs 2>&1";
+                  "$installdir/postscripts/xcatdsklspost 2 -m $snkey 'ospkgs,otherpkgs'";
+             $args1 = [
+                    "--nodestatus",
+                    "-s",
+                    "-v",
+                    "-e",
+                    "$cmd"
+                    ];
             }
 
             if ($::VERBOSE)
             {
                 my $rsp = {};
                 $rsp->{data}->[0] =
-                  "  $localhostname: Internal call command: $cmd";
+                  "  $localhostname: Internal call command: xdsh $nodestring "
+                  . join(' ', @$args1);
                 $callback->($rsp);
             }
+            $subreq->(
+                      {
+                       command           => ["xdsh"],
+                       node              => $servernodes{$snkey},
+                       arg               => $args1,
+                       _xcatpreprocessed => [1]
+                      },
+                      \&getdata2
+                      );
 
-            if ($cmd && !open(CMD, "$cmd |"))
-            {
-                my $rsp = {};
-                $rsp->{data}->[0] = "$localhostname: Cannot run command $cmd";
-                $callback->($rsp);
-            }
-            else
-            {
-                while (<CMD>)
-                {
-                    my $rsp    = {};
-                    my $output = $_;
-                    chomp($output);
-                    $output =~ s/\\cM//;
-                    if ($output =~ /returned from postscript/)
-                    {
-                        $output =~
-                          s/returned from postscript/Running of Software Maintenance has completed./;
-                    }
-                    $rsp->{data}->[0] = "$output";
-                    $callback->($rsp);
-                }
-                close(CMD);
-            }
+
         }
 
     }
@@ -1698,8 +1703,7 @@ sub updatenodesoftware
 #-------------------------------------------------------------------------------
 
 =head3  getdata  - This is the local callback that handles the response from
-        the xdsh streaming calls when running postscripts and software
-        updates
+        the xdsh streaming calls when running postscripts
 
 =cut
 #-------------------------------------------------------------------------------
@@ -1745,6 +1749,50 @@ sub getdata
                 }
             }
             if (($output !~ (/Error loading module/)) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_successful/) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_failed/))
+            {
+                push @{$rsp->{$type}}, "$output";
+            }
+        }
+    }
+    $CALLBACK->($rsp);
+}
+#-------------------------------------------------------------------------------
+
+=head3  getdata2  - This is the local callback that handles the response from
+        the xdsh streaming calls when running software updates 
+
+=cut
+#-------------------------------------------------------------------------------
+sub getdata2
+{
+    no strict;
+    my $response = shift;
+    my $rsp;
+    foreach my $type (keys %$response)
+    {
+        foreach my $output (@{$response->{$type}})
+        {
+            chomp($output);
+            $output =~ s/\\cM//;
+            if($output =~ /^\s*(\S+)\s*:\s*Remote_command_successful/)
+            {
+              my ($node,$info) = split (/:/, $output);
+              push(@::SUCCESSFULLNODES,$node);
+            }
+            if($output =~ /^\s*(\S+)\s*:\s*Remote_command_failed/)
+            {
+              my ($node,$info) = split (/:/, $output);
+              push(@::FAILEDNODES,$node);
+            }
+
+
+            if ($output =~ /returned from postscript/)
+            {
+                $output =~
+                   s/returned from postscript/Running of Software Maintenance has completed./;
+
+            }
+            if (($output !~ /^\s*(\S+)\s*:\s*Remote_command_successful/) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_failed/))
             {
                 push @{$rsp->{$type}}, "$output";
             }
