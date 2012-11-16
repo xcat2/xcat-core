@@ -1876,10 +1876,10 @@ sub stream_error
                          xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
                        }
 
-                        my $rsp = {};
-                        $rsp->{error}->[0] =
-                          "$user_target remote command had return code $$target_properties{'target-rc'}";
-                        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+                      #  my $rsp = {};
+                      #  $rsp->{error}->[0] =
+                      #    "$user_target remote command had return code $$target_properties{'target-rc'}";
+                      #  xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
                         my $rsp = {};
                         $rsp->{error}->[0] =
