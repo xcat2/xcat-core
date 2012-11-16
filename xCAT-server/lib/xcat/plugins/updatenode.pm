@@ -1136,6 +1136,8 @@ sub updatenode
 
     #}
     # update the node status, this is done when -F -S -P are run
+    # make sure the nodes only appear in one array good or bad 
+    &cleanstatusarrays;  
 	 if(@::SUCCESSFULLNODES)
 	 {
 	     
@@ -1505,8 +1507,6 @@ sub updatenodesyncfiles
 =head3  buildnodestatus - Takes the output of the updatenode run
         and builds a global array of successfull nodes  and one of failed nodes
         and then outputs the remaining user info
-        If output null , then it just checks that the @::SUCCESSFULLNODES
-        does not contain @::FAILEDNODES and removes them if it does.
 
     Arguments: output,callback
     Globals @::SUCCESSFULLNODES,  @::FAILEDNODES
@@ -1545,7 +1545,21 @@ sub buildnodestatus
            $callback->($rsp);
 	     }
 	 }
-    #If a failed node is in the SUCCESSFULLNODES array remove it. 
+
+  return;
+}
+#-------------------------------------------------------------------------------
+=head3  cleanstatusarrays
+    Makes sure no Failed nodes are in the successfull nodes list
+    Removes dups
+    Globals @::SUCCESSFULLNODES,  @::FAILEDNODES
+
+=cut
+
+
+#-----------------------------------------------------------------------------
+sub cleanstatusarrays 
+{
     my %m=();
     my %n=();
 
@@ -1558,7 +1572,6 @@ sub buildnodestatus
         $m{$_}++ || $n{$_}++;
     }
     @::SUCCESSFULLNODES=keys %n;
-
   return;
 }
 #-------------------------------------------------------------------------------
