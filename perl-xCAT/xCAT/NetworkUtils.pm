@@ -2213,6 +2213,26 @@ sub isValidHostname
 
 #-------------------------------------------------------------------------------
 
+=head3 isValidFQDN
+      Description : Validate whether specified string is a valid FQDN.
+      Arguments   : hostname - the string to be validated.
+      Returns     : 1 - valid hostname FQDN.
+                    0 - invalid hostname FQDN.
+=cut
+
+#-------------------------------------------------------------------------------
+sub isValidFQDN
+{
+    my ($class, $hostname) = @_;
+    if ($hostname =~ /^[\-\.a-zA-Z0-9]+$/){
+        return 1;
+    }
+    return 0;
+}
+
+
+#-------------------------------------------------------------------------------
+
 =head3 ip_to_int
       Description : convert an IPv4 string into int.
       Arguments   : ipstr - the IPv4 string.

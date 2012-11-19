@@ -603,7 +603,7 @@ Usage:
         setrsp_errormsg("Specified hostname $args_dict{'hostname'} conflicts with records in database");
         return;
     }
-    if (! xCAT::NetworkUtils->isValidHostname($args_dict{'hostname'})){
+    if (! xCAT::NetworkUtils->isValidFQDN($args_dict{'hostname'})){
         setrsp_errormsg("Specified hostname: $args_dict{'hostname'} is invalid");
         return;
     }
