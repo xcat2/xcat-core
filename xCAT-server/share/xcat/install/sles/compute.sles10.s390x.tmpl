@@ -44,80 +44,6 @@
         </resource>
         <sysfs_bus_id>0.0.0100</sysfs_bus_id>
       </listentry>
-      
-      <!-- Dasd attached at 0300 -->
-      <listentry>
-        <bus>None</bus>
-        <bus_hwcfg>none</bus_hwcfg>
-        <channel>0.0.0300</channel>
-        <dev_name>/dev/dasdb</dev_name>
-        <dev_names config:type="list">
-          <listentry>/dev/dasdb</listentry>
-          <listentry>/dev/disk/by-path/ccw-0.0.0300</listentry>
-        </dev_names>
-        <device>DASD</device>
-        <driver>io_subchannel</driver>
-        <drivers config:type="list">
-          <listentry>
-            <active config:type="boolean">true</active>
-            <modprobe config:type="boolean">true</modprobe>
-            <modules config:type="list">
-              <module_entry config:type="list">
-                <listentry>dasd_fba_mod</listentry>
-                <listentry></listentry>
-              </module_entry>
-            </modules>
-          </listentry>
-        </drivers>
-        <formatted config:type="boolean">true</formatted>
-        <partition_info>/dev/dasdb1</partition_info>
-        <resource>
-          <disk_log_geo config:type="list">
-            <listentry>
-              <heads config:type="integer">16</heads>
-              <sectors config:type="integer">128</sectors>
-            </listentry>
-          </disk_log_geo>
-        </resource>
-        <sysfs_bus_id>0.0.0300</sysfs_bus_id>
-      </listentry>
-      
-      <!-- Dasd attached at 0301 -->
-      <listentry>
-        <bus>None</bus>
-        <bus_hwcfg>none</bus_hwcfg>
-        <channel>0.0.0301</channel>
-        <dev_name>/dev/dasdc</dev_name>
-        <dev_names config:type="list">
-          <listentry>/dev/dasdc</listentry>
-          <listentry>/dev/disk/by-path/ccw-0.0.0301</listentry>
-        </dev_names>
-        <device>DASD</device>
-        <driver>io_subchannel</driver>
-        <drivers config:type="list">
-          <listentry>
-            <active config:type="boolean">true</active>
-            <modprobe config:type="boolean">true</modprobe>
-            <modules config:type="list">
-              <module_entry config:type="list">
-                <listentry>dasd_fba_mod</listentry>
-                <listentry></listentry>
-              </module_entry>
-            </modules>
-          </listentry>
-        </drivers>
-        <formatted config:type="boolean">true</formatted>
-        <partition_info>/dev/dasdc1</partition_info>
-        <resource>
-          <disk_log_geo config:type="list">
-            <listentry>
-              <heads config:type="integer">16</heads>
-              <sectors config:type="integer">128</sectors>
-            </listentry>
-          </disk_log_geo>
-        </resource>
-        <sysfs_bus_id>0.0.0301</sysfs_bus_id>
-      </listentry>
     </devices>
   </dasd>
   
@@ -385,19 +311,6 @@
         <module>dasd_eckd_mod</module>
         <options></options>
       </module_entry>
-            
-      <module_entry>
-        <device>dasd-bus-ccw-0.0.0300</device>
-        <module>dasd_fba_mod</module>
-        <options></options>
-      </module_entry>
-      
-      <module_entry>
-        <device>dasd-bus-ccw-0.0.0301</device>
-        <module>dasd_fba_mod</module>
-        <options></options>
-      </module_entry>
-      
       <module_entry>
         <ccw_chan_ids>replace_ccw_chan_ids</ccw_chan_ids>
         <ccw_chan_mode>replace_ccw_chan_mode</ccw_chan_mode>
@@ -445,50 +358,23 @@
       <partitions config:type="list">
         <partition>
           <create config:type="boolean">true</create>
+          <filesystem config:type="symbol">swap</filesystem>
+          <format config:type="boolean">true</format>
+          <mount>swap</mount>
+          <mountby config:type="symbol">path</mountby>
+          <partition_id config:type="integer">131</partition_id>
+          <partition_nr config:type="integer">1</partition_nr>
+          <partition_type>primary</partition_type>
+          <size>512M</size>
+        </partition>
+        <partition>
+          <create config:type="boolean">true</create>
           <filesystem config:type="symbol">ext3</filesystem>
           <format config:type="boolean">true</format>
           <mount>/</mount>
           <mountby config:type="symbol">path</mountby>
           <partition_id config:type="integer">131</partition_id>
-          <partition_nr config:type="integer">1</partition_nr>
-          <partition_type>primary</partition_type>
-          <size>max</size>
-        </partition>
-      </partitions>
-      <use>all</use>
-    </drive>
-            
-    <!-- Swap space -->
-    <drive>
-      <device>/dev/dasdb</device>
-      <partitions config:type="list">
-        <partition>
-          <create config:type="boolean">true</create>
-          <filesystem config:type="symbol">swap</filesystem>
-          <format config:type="boolean">true</format>
-          <mount>swap</mount>
-          <mountby config:type="symbol">path</mountby>
-          <partition_id config:type="integer">131</partition_id>
-          <partition_nr config:type="integer">1</partition_nr>
-          <partition_type>primary</partition_type>
-          <size>max</size>
-        </partition>
-      </partitions>
-      <use>all</use>
-    </drive>
-    
-    <!-- Swap space -->
-    <drive>
-      <device>/dev/dasdc</device>
-      <partitions config:type="list">
-        <partition>
-          <create config:type="boolean">true</create>
-          <filesystem config:type="symbol">swap</filesystem>
-          <format config:type="boolean">true</format>
-          <mount>swap</mount>
-          <mountby config:type="symbol">path</mountby>
-          <partition_id config:type="integer">131</partition_id>
-          <partition_nr config:type="integer">1</partition_nr>
+          <partition_nr config:type="integer">2</partition_nr>
           <partition_type>primary</partition_type>
           <size>max</size>
         </partition>
@@ -547,7 +433,7 @@
       replace_software_packages
     </packages>
   </software>
-    
+  
   
   <!-- Time zone -->
   <timezone>
