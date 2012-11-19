@@ -79,8 +79,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/scripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/netboot/sles
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/netboot/rh
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/scripts/Mellanox
-mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/scripts/QLogic
-mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/EthSwitch
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/devicetype
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/xdsh/Context
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/samples
@@ -123,7 +122,7 @@ cp share/xcat/cons/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
 cp -r share/xcat/ib/scripts/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/scripts
 cp share/xcat/ib/netboot/sles/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/netboot/sles
 cp share/xcat/ib/netboot/rh/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/netboot/rh
-cp share/xcat/EthSwitch/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/EthSwitch
+cp -r share/xcat/devicetype/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/devicetype
 
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/*
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/scripts/*
