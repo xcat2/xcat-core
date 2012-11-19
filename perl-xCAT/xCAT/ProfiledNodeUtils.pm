@@ -70,6 +70,7 @@ sub get_allocable_staticips_innet
       Description : Generate numric hostnames using numric template name.
       Arguments   : $format - The hostname format string..
                     $rank - The start number.
+                    $amount - The total hostname number to be generated.
       Returns     : numric hostname list
       Example     : 
               calling  genhosts_with_numric_tmpl("compute#NNnode") will return a list like:
@@ -79,10 +80,10 @@ sub get_allocable_staticips_innet
 #-------------------------------------------------------------------------------
 sub genhosts_with_numric_tmpl
 {
-    my ($class, $format, $rank) = @_;
+    my ($class, $format, $rank, $amount) = @_;
 
     my ($prefix, $appendix, $len) = xCAT::ProfiledNodeUtils->split_hostname($format, 'N');
-    return xCAT::ProfiledNodeUtils->gen_numric_hostnames($prefix, $appendix, $len, $rank);
+    return xCAT::ProfiledNodeUtils->gen_numric_hostnames($prefix, $appendix, $len, $rank, $amount);
 }
 
 #-------------------------------------------------------------------------------
@@ -133,6 +134,8 @@ sub split_hostname
       Arguments   : $prefix - The prefix string of the hostname.
                     $appendix - The appendix string of the hostname.
                     $len - the numric number length in hostname.
+                    $rank - the start number for numric part
+                    $amount - the amount of hostnames to be generated.
       Returns     : numric hostname list
       Example     : 
               calling  gen_numric_hostnames("compute", "node",2) will return a list like:
@@ -142,7 +145,7 @@ sub split_hostname
 #-------------------------------------------------------------------------------
 sub gen_numric_hostnames
 {
-    my ($class, $prefix, $appendix, $len, $rank) = @_;
+    my ($class, $prefix, $appendix, $len, $rank, $amount) = @_;
     my @hostnames;
     my $cnt = 0;
 
@@ -155,6 +158,9 @@ sub gen_numric_hostnames
         my $fullnum = $maxnum + $cnt;
         my $hostname = $prefix.(substr $fullnum, 1).$appendix;
         push (@hostnames, $hostname);
+        if ($amount && (@hostnames == $amount)){
+            last;
+        }
         $cnt++;
     }
     return \@hostnames;
@@ -177,13 +183,25 @@ sub gen_numric_hostnames
 sub get_hostname_format_type{
     my ($class, $format) =  @_;
     my $type;
+    my ($prefix, $appendix, $rlen, $nlen);
 
     my $ridx = index $format, "#R";
     my $nidx = index $format, "#N";
     if ($ridx >= 0){
-        $type = "rack";
+        ($prefix, $appendix, $rlen) = xCAT::ProfiledNodeUtils->split_hostname($format, 'R');
+        ($prefix, $appendix, $nlen) = xCAT::ProfiledNodeUtils->split_hostname($format, 'N');
+        if ($rlen >= 10 || $nlen >= 10){
+            $type = "unknown";
+        } else{
+            $type = "rack";
+        }
     } elsif ($nidx >= 0){
-        $type = "numric";
+        ($prefix, $appendix, $nlen) = xCAT::ProfiledNodeUtils->split_hostname($format, 'N');
+        if ($nlen >= 10){
+            $type = "unknown";
+        } else{
+            $type = "numric";
+        }
     } else{
         $type = "unknown";
     }

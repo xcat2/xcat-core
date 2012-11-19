@@ -608,15 +608,20 @@ Usage:
         return;
     }
 
-    # run nodeadd to create node records.
-    my $retref = xCAT::Utils->runxcmd({command=>["nodeadd"], arg=>[$args_dict{"hostname"}, "groups=__Unmanaged", "hosts.ip=$args_dict{'ip'}"]}, $request_command, 0, 2);
+    my %updatenodeshash = ();
+    $updatenodeshash{$args_dict{'hostname'}}{'ip'} = $args_dict{'ip'};
+    my $hoststab = xCAT::Table->new('hosts',-create=>1);
+    $hoststab->setNodesAttribs(\%updatenodeshash);
+    $hoststab->close();
+
+    %updatenodeshash = ();
+    $updatenodeshash{$args_dict{'hostname'}}{'groups'} = "__Unmanaged";
+    my $nodetab = xCAT::Table->new('nodelist',-create=>1);
+    $nodetab->setNodesAttribs(\%updatenodeshash);
+    $nodetab->close();
+
+    my $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>[$args_dict{"hostname"}]}, $request_command, 0, 2);
     my $retstrref = parse_runxcmd_ret($retref);
-    if ($::RUNCMD_RC != 0){
-        setrsp_errormsg("Failed to call nodeadd to create node.");
-        return;
-    }
-    $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>[$args_dict{"hostname"}]}, $request_command, 0, 2);
-    $retstrref = parse_runxcmd_ret($retref);
     if ($::RUNCMD_RC != 0){
         setrsp_progress("Warning: failed to call makehosts.");
     }
@@ -1330,6 +1335,11 @@ sub parse_hosts_string{
         }
     }
     # Verify each node entry.
+    my $rank = 0; 
+    if (exists($args_dict{'rank'})){
+        $rank = $args_dict{'rank'};
+    }
+
     foreach (keys %::FILEATTRS){
         my $errmsg = validate_node_entry($_, $::FILEATTRS{$_});
         if ($errmsg) {
@@ -1359,16 +1369,30 @@ sub parse_hosts_string{
             }
 
             # Generate hostnames based on numric hostname format.
+            my $hostnamelistref;
             if (! exists $freehostnames{$numricformat}){
-                my $rank = 0;
-                if (exists($args_dict{'rank'})){
-                    $rank = $args_dict{'rank'};
+                $hostnamelistref = xCAT::ProfiledNodeUtils->genhosts_with_numric_tmpl($numricformat, $rank, 10000);
+                $rank = $rank + 10000;
+                if (! @$hostnamelistref){
+                    push @invalid_records, ["__hostname__", "Can not generate sufficient hostnames from hostname format."];
+                    last;
+                }else{
+                    $freehostnames{$numricformat} = $hostnamelistref;
                 }
-                $freehostnames{$numricformat} = xCAT::ProfiledNodeUtils->genhosts_with_numric_tmpl($numricformat, $rank);
             }
-            my $hostnamelistref = $freehostnames{$numricformat};
+
+            $hostnamelistref = $freehostnames{$numricformat};
             my $nexthostname = shift @$hostnamelistref;
             while (exists $allhostnames{$nexthostname}){
+                if (! @$hostnamelistref){
+                    $hostnamelistref = xCAT::ProfiledNodeUtils->genhosts_with_numric_tmpl($numricformat, $rank, 10000);
+                    $rank = $rank + 10000;
+                    if(! @$hostnamelistref){
+                        push @invalid_records, ["__hostname__", "Can not generate sufficient hostnames from hostname format."];
+                        last;
+                    }
+                }
+
                 $nexthostname = shift @$hostnamelistref;
             }
             $hostinfo_dict{$nexthostname} = $::FILEATTRS{$_};
