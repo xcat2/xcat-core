@@ -28,6 +28,8 @@ my $pathtofiles=dirname($0);
 my $fullpath=realpath($pathtofiles);
 my $name = basename($0);
 my $onlyinitrd=0;
+
+#that this method of calling genimage is no longer used
 if ($name =~ /geninitrd/) {
    $onlyinitrd=1;
 }
@@ -81,6 +83,7 @@ GetOptions(
    'postinstall=s' => \$postinstall_filename,  #internal flag
    'rootimgdir=s' => \$destdir,   #internal flag
    'interactive' =>\$prompt, 
+   'onlyinitrd' =>\$onlyinitrd, 
 );
 
 if (@ARGV > 0) {

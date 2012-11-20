@@ -39,7 +39,7 @@ my $krpmver;
 my $kerneldir;
 my $mode;
 my $interactive;
-
+my $onlyinitrd;
 #-----------------------------------------------------------------------------
 
 =head3 print_usage   - usage message
@@ -51,8 +51,8 @@ sub print_usage
 {
     print "Usage:\n";
     print "    genimage\n\n";
-    print '    genimage  -o <osver> [-a <arch>] -p <profile> -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-m statelite] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>] [--interactive]'."\n\n";
-    print '    genimage [-o <osver>] [-a <arch>] [-p <profile>] [-i <nodebootif>] [-n <nodenetdrivers>] [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-m statelite] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>] [--interactive] <imagename>'."\n\n";
+    print '    genimage  -o <osver> [-a <arch>] -p <profile> -i <nodebootif> -n <nodenetdrivers> [--onlyinitrd]  [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-m statelite] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>] [--interactive]'."\n\n";
+    print '    genimage [-o <osver>] [-a <arch>] [-p <profile>] [-i <nodebootif>] [-n <nodenetdrivers>] [--onlyinitrd]  [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-m statelite] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>] [--interactive] <imagename>'."\n\n";
     print "      --permission is used for statelite only\n";
     print "      -g is used for SLES only\n\n";
     print "      -m is used for urbuntu, debian and fedora12 only\n\n";
@@ -60,6 +60,7 @@ sub print_usage
     print "    genimage\n";
     print "    genimage --interactive\n";
     print "    genimage -i eth0 -n tg3 -o sles11 -p compute\n";
+    print "    genimage -i eth0 -n tg3 -o sles11 -p compute --onlyinitrd\n";
     print "    genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute --interactive\n";
     print "    genimage -i eth0 -n tg3,bnx2 -o sles11 -p compute\n";
     print "    genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot --permission 777\n";
@@ -82,6 +83,7 @@ if (!GetOptions(
 	 'permission=s' => \$permission,
 	 'kerneldir=s' => \$kerneldir, 
          'interactive' => \$interactive,  
+	 'onlyinitrd' => \$onlyinitrd,
 	 'h|help' => \$help,
 	 'v|version' => \$version,
 )) {
@@ -386,6 +388,10 @@ push @arg, "$tempfile";
 
 if ($interactive) {
     push @arg, "--interactive";
+}
+
+if ($onlyinitrd) {
+    push @arg, "--onlyinitrd";
 }
 
 my $cmdref;
