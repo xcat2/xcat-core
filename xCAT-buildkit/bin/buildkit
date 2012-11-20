@@ -22,6 +22,7 @@
      create <kit basename> - creates a new Kit with the specified basename
      chkconfig             - checks the Kit build file
      buildrepo <reponame>  - builds the specified Kit package repository 
+     buildrepo all         - builds all the Kit package repositories
      listrepo              - lists the Kit package repositories in the Kit
                              build file, and their build status
      cleanrepo <reponame>  - deletes the build files for the specified Kit
@@ -30,8 +31,12 @@
                              repositories
      buildtar              - builds the Kit tarfile
      cleantar              - deletes the Kit deployment directory and Kit
-     cleanall               - equivalent to buildrepo cleanrepo all and
-                                            buildrepo cleantar
+     cleanall               - equivalent to buildkit cleanrepo all and
+                                            buildkit cleantar
+     addpkgs -p <packagedir> <kit tarfile>
+                           - used by customer to add external product
+                             packages when they are not built into the 
+                             shipped kit tar file
 
 This script is designed to run on a non-xCAT system so that Kits can be
 built on any product build machine.
@@ -61,6 +66,7 @@ use Expect;
 use Socket;
 use strict;
 use Cwd;
+use Cwd 'abs_path';
 use File::Path;
 use File::Basename;
 
@@ -268,6 +274,11 @@ $::deploy_dir = $::build_dir; #kitname appended by validate_bldkitconf routine
                description=>'tbd',
                value_desc=>'any string',
                mandatory=>0,
+               cp_to_kitconfig=>0},
+              isexternalpkg => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>0,
                cp_to_kitconfig=>0}}
 );
 
@@ -283,6 +294,7 @@ if (
                 'h|help'       => \$::HELP,
                 'v|version'    => \$::VERSION,
                 'V|verbose'    => \$::VERBOSE,
+                'p|pkgdir=s'   => \$::PKGDIR,
     )
   )
 {
@@ -345,6 +357,18 @@ while ($arg) {
         $::KIT_CLEANTAR=1;
     } elsif ( $command eq 'cleanall' ) {
         $::KIT_CLEANALL=1;
+    } elsif ( $command eq 'addpkgs' ) {
+        $::KIT_ADDPKGS=shift(@ARGV);
+        if (!($::KIT_ADDPKGS)){
+            print "Missing parameter:  <kit tarfile>  must be specified with \'buildkit addpkgs\' \n";
+            &usage;
+            exit (1); 
+        }
+        if (!($::PKGDIR)){
+            print "Missing option:  -p <pkgdir> must be specified with \'buildkit addpkgs\' \n";
+            &usage;
+            exit (1); 
+        }
     } else {
         print "buildkit command $arg not recognized \n";
         &usage;
@@ -362,11 +386,11 @@ if ( $::KIT_CHKCONFIG ) {
        print "No errors were found in Kit Build File $::full_buildkit_conf. \n";
    }
 }
-if ( $::KIT_BUILDREPO ) {
-   unless ($rc = &kit_chkconfig) { $rc = &kit_buildrepo; }
-}
 if ( $::KIT_LISTREPO ) {
    unless ($rc = &kit_chkconfig) { $rc = &kit_listrepo; }
+}
+if ( $::KIT_BUILDREPO ) {
+   unless ($rc = &kit_chkconfig) { $rc = &kit_buildrepo; }
 }
 if ( $::KIT_CLEANREPO ) {
    unless ($rc = &kit_chkconfig) { $rc = &kit_cleanrepo; }
@@ -380,6 +404,7 @@ if ( $::KIT_CLEANTAR ) {
 if ( $::KIT_CLEANALL ) {
    unless ($rc = &kit_chkconfig) { $rc = &kit_cleanall; }
 }
+if ( $::KIT_ADDPKGS ) { $rc = &kit_addpkgs; }
 
 
 
@@ -418,6 +443,7 @@ sub usage
      listrepo              - lists the Kit package repositories in the Kit    
                              build file, and their build status               
      buildrepo <reponame>  - builds the specified Kit package repository      
+     buildrepo all         - builds all the Kit package repositories      
      cleanrepo <reponame>  - deletes the build files for the specified Kit    
                              package repository                               
      cleanrepo all         - deletes the build files for all Kit package      
@@ -425,8 +451,12 @@ sub usage
      buildtar              - builds the Kit tarfile                           
      cleantar              - deletes the Kit deployment directory and Kit     
                              tarfile                   
-     cleanall              - equivalent to buildrepo cleanrepo all and
-                                            buildrepo cleantar \n";
+     cleanall              - equivalent to buildkit cleanrepo all and
+                                            buildkit cleantar
+     addpkgs -p <pkgdir> <kit tarfile> 
+                           - add product package rpms to a shipped tarfile
+                             named kitname.NEEDS_PRODUCT_PKGS.tar.bz2
+     \n";
 
 
 }
@@ -483,6 +513,7 @@ sub kit_create
 sub kit_chkconfig
 
 {
+    if ( $::CHKCONFIG_DONE ) { return 0; }
     my $bldkitconf = $::full_buildkit_conf;
 
     my $chkrc = &load_bldkitconf($bldkitconf);
@@ -491,6 +522,7 @@ sub kit_chkconfig
     $chkrc = &validate_bldkitconf();
     if ( $chkrc != 0 ) { return 1; };
 
+    $::CHKCONFIG_DONE=1;
     return 0;
 }
 
@@ -510,6 +542,34 @@ sub kit_buildrepo
 
     my $rc = 0;
     my $repoid = $::KIT_BUILDREPO;
+    $repoid =~ s/\s+//g;
+    $repoid =~ tr/A-Z/a-z/;   # convert to lowercase
+    if ( $repoid ne 'all' ) { 
+        return &kit_buildrepo1($::KIT_BUILDREPO);   
+    } else {
+        foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
+            if ( &kit_buildrepo1($kr->{kitrepoid}) ) { return 1; }
+        }
+    }
+
+}
+
+#-----------------------------------------------------------------------------
+
+=head3    kit_buildrepo1
+	
+          
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub kit_buildrepo1
+
+{
+
+    my $rc = 0;
+    my $repoid = shift;
     $repoid =~ s/\s+//g;
     my $repodir = $::build_dir."/kit_repodir";
     my $srcdir =  $::workdir."/source_packages/";
@@ -556,6 +616,7 @@ sub kit_buildrepo
 
         if ($::VERBOSE) { print "building kitpackage $kp->{filename} \n";}
         # determine build method
+        if ($kp->{isexternalpkg} eq 'yes') { next; }
         if (defined($kp->{rpm_prebuiltdir})) {
             # simply copy the file to the build directory
             my $full_prebuiltrpm = $srcdir.$kp->{rpm_prebuiltdir}."/".$kp->{filename};
@@ -721,8 +782,10 @@ sub kit_buildtar
         symlink "$::build_dir/kit_repodir","$::deploy_dir/repos";
     }
     # build the tarfile
+    my $extpkgs = '';
+    if ($::HAVE_EXTERNAL_PKG) { $extpkgs = '.NEED_PRODUCT_PKGS'; }
     my $kitname = $::bldkit_config->{kit}{entries}[0]->{kitname};
-    my $tarfile = $::build_dir."/".$kitname.".tar.bz2";
+    my $tarfile = $::build_dir."/".$kitname.$extpkgs.".tar.bz2";
     if ( system("cd $::build_dir; tar -cjhf $tarfile $kitname/*") ) {
          print "Error building tarfile $tarfile \n";
          return 1;
@@ -1235,6 +1298,63 @@ sub validate_bldkitconf
    
     #  Kitpackage checks
     foreach my $kp (@{$::bldkit_config->{kitpackage}{entries}}) {
+      # determine if valid build method
+      if ( (defined($kp->{isexternalpkg}))  ||
+           (defined($kp->{rpm_prebuiltdir})) ) {
+         if ((defined($kp->{rpm_srpm})) ||
+             (defined($kp->{rpm_srctarball})) ||
+             (defined($kp->{rpm_spec})) ||
+             (defined($kp->{rpm_srcdir})) ) {
+             print "Cannot determine build method for Kit Package $kp->{filename}.  Conflicting attributes were specified.\n";
+             return 1; 
+         }
+         if ( !(defined($kp->{isexternalpkg})) ) { $kp->{isexternalpkg} = 'no'; }
+         my $orig_isext = $kp->{isexternalpkg};
+         $kp->{isexternalpkg} =~ s/\s+//g;
+         $kp->{isexternalpkg} =~ tr/A-Z/a-z/;   # convert to lowercase
+         if ( $kp->{isexternalpkg} eq '0' ) { $kp->{isexternalpkg} = 'no'; }
+         if ( $kp->{isexternalpkg} eq '1' ) { $kp->{isexternalpkg} = 'yes'; }
+         if ( ( $kp->{isexternalpkg} ne 'yes' ) &&
+              ( $kp->{isexternalpkg} ne 'no'  ) ) {
+             print "Error in definition for Kit Package $kp->{filename}.  Invalid attribute value \'isexternalpkg=$orig_isext\'.  Valid values are \'no\'|\'0\' or \'yes\'|\'1\'.\n";
+             return 1; 
+         }
+         if ( ( $kp->{isexternalpkg} eq 'yes' ) ) {
+             $::HAVE_EXTERNAL_PKG=1;
+         }
+         if ( ( $kp->{isexternalpkg} eq 'yes' ) &&
+              (defined($kp->{rpm_prebuiltdir})) ) {
+             print "Error in definition for Kit Package $kp->{filename}.  Do not specify \'isexternalpkg=$orig_isext\' with 'rpm_prebuiltdir'.\n";
+             return 1; 
+         }
+      } elsif (defined($kp->{rpm_srpm})) {
+         if ((defined($kp->{rpm_prebuiltdir})) ||
+             (defined($kp->{rpm_srctarball})) ||
+             (defined($kp->{rpm_spec})) ||
+             (defined($kp->{rpm_srcdir})) ) {
+             print "Cannot determine build method for Kit Package $kp->{filename}.  Conflicting attributes were specified.\n";
+             return 1; 
+         }
+      } elsif (defined($kp->{rpm_srctarball}) && 
+               defined($kp->{rpm_spec}) ) {
+         if ((defined($kp->{rpm_prebuiltdir})) ||
+             (defined($kp->{rpm_srpm})) ||
+             (defined($kp->{rpm_srcdir})) ) {
+             print "Cannot determine build method for Kit Package $kp->{filename}.  Conflicting attributes were specified.\n";
+             return 1; 
+         }
+      } elsif (defined($kp->{rpm_srcdir}) && 
+               defined($kp->{rpm_spec}) ) {
+         if ((defined($kp->{rpm_prebuiltdir})) ||
+             (defined($kp->{rpm_srpm})) ||
+             (defined($kp->{rpm_srctarball})) ) {
+             print "Cannot determine build method for Kit Package $kp->{filename}.  Conflicting attributes were specified.\n";
+             return 1; 
+         }
+      } else {
+          print "Cannot determine build method for Kit Package $kp->{filename}.  Verify that your Kit Build File is correct. \n";
+          return 1;
+      }
       # Make sure all kitpackage kitrepoids are defined
       foreach my $kprid (split(/,/, $kp->{kitrepoid})) {
           my $found = 0;
@@ -1242,7 +1362,10 @@ sub validate_bldkitconf
           foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
             if ($kprid eq $kr->{kitrepoid}) { 
               $found = 1;
-              push (@{$kr->{packages}}, $kp->{filename});
+              $kp->{kitreponame}.=",".$kr->{kitreponame};
+              if ( !( $kp->{isexternalpkg} eq 'yes' ) ) {
+                push (@{$kr->{packages}}, $kp->{filename});
+              }
               last;                    
             }
           }
@@ -1251,43 +1374,7 @@ sub validate_bldkitconf
             return 1;
           }
       }
-      # determine if valid build method
-      if (defined($kp->{rpm_prebuiltdir})) {
-         if ((defined($kp->{rpm_srpm})) ||
-             (defined($kp->{rpm_srctarball})) ||
-             (defined($kp->{rpm_spec})) ||
-             (defined($kp->{rpm_srcdir})) ) {
-             print "Cannot determine build method for Kit Package $kp->{filename}.  Conflicting attributes were specified.\n";
-            return 1; 
-         }
-      } elsif (defined($kp->{rpm_srpm})) {
-         if ((defined($kp->{rpm_prebuiltdir})) ||
-             (defined($kp->{rpm_srctarball})) ||
-             (defined($kp->{rpm_spec})) ||
-             (defined($kp->{rpm_srcdir})) ) {
-             print "Cannot determine build method for Kit Package $kp->{filename}.  Conflicting attributes were specified.\n";
-            return 1; 
-         }
-      } elsif (defined($kp->{rpm_srctarball}) && 
-               defined($kp->{rpm_spec}) ) {
-         if ((defined($kp->{rpm_prebuiltdir})) ||
-             (defined($kp->{rpm_srpm})) ||
-             (defined($kp->{rpm_srcdir})) ) {
-             print "Cannot determine build method for Kit Package $kp->{filename}.  Conflicting attributes were specified.\n";
-            return 1; 
-         }
-      } elsif (defined($kp->{rpm_srcdir}) && 
-               defined($kp->{rpm_spec}) ) {
-         if ((defined($kp->{rpm_prebuiltdir})) ||
-             (defined($kp->{rpm_srpm})) ||
-             (defined($kp->{rpm_srctarball})) ) {
-             print "Cannot determine build method for Kit Package $kp->{filename}.  Conflicting attributes were specified.\n";
-            return 1; 
-         }
-      } else {
-          print "Cannot determine build method for Kit Package $kp->{filename}.  Verify that your Kit Build File is correct. \n";
-          return 1;
-      }
+      $kp->{kitreponame} =~ s/^,//;
       # Make sure files exist
       if (defined($kp->{rpm_spec})){ 
          my $ck_file = $::workdir."/source_packages/".$kp->{rpm_spec};
@@ -1728,12 +1815,24 @@ sub create_kitconf
       }
     }
 
+    # Handle external packages
+    if ($::HAVE_EXTERNAL_PKG) {
+      foreach my $kp (@{$::bldkit_config->{kitpackage}{entries}}) {
+        if ($kp->{isexternalpkg} eq 'yes') { 
+           my %current_entry;
+           $current_entry{filename} = $kp->{filename};
+           $current_entry{kitreponame} = $kp->{kitreponame};
+           push ( @{ $::kit_config->{EXTERNALPKG}{'entries'} }, {%current_entry});
+        }
+      }
+    }
+
     #  Write Kit Config File
     my @lines;
     my $li=0;
     $lines[$li++] = "# Kit Configuration File for $kitname generated by buildkit\n";
     $lines[$li++] = "# ".localtime()."\n"; 
-    foreach my $s ('kit','kitrepo','kitcomponent') {
+    foreach my $s ('kit','kitrepo','kitcomponent','EXTERNALPKG') {
       foreach my $se (@{$::kit_config->{$s}{entries}}) {
         $lines[$li++] = "$s: \n";
         foreach my $a (keys %{$se}) {
@@ -1993,6 +2092,152 @@ sub edit_plugin
     close($NPF);
 
     return 0;
+}
+
+
+#-----------------------------------------------------------------------------
+
+=head3    kit_addpkgs
+	
+   buildkit addpkgs
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub kit_addpkgs
+
+{
+    # add RPM pkgs to an existing kit tarfile 
+    my $kittarfile=$::KIT_ADDPKGS;
+    my $rpmdir = $::PKGDIR;
+    my $kitname = basename($kittarfile);
+    $kitname =~ s/.tar.bz2$//;
+    $kitname =~ s/.NEED_PRODUCT_PKGS$//;
+    my $tmpdir = "/tmp/buildkit_workdir/$kitname";
+
+    if ( !(-r $kittarfile) ) {
+        print  "The Kit tar file $kittarfile could not be read. \n";
+        return 1;
+    }
+    $kittarfile = abs_path($kittarfile);
+    if ( !(-d $rpmdir) ) {
+        print  "The package directory $rpmdir could not be read. \n";
+        return 1;
+    }
+
+    # Create work directory
+    if ( (! -d $tmpdir) && (! mkpath($tmpdir)) ) {
+       print "Error creating temporary work directory $tmpdir\n";
+       return 1;
+    } 
+
+    if ( system("cd $tmpdir; tar -jxf $kittarfile ") ) {
+         print "Error extracting tarfile $kittarfile \n";
+         # Cleanup
+         system ("rm -Rf /tmp/buildkit_workdir");
+         return 1;
+    }
+
+    my $tmp_kit_conf = $tmpdir."/".$kitname."/kit.conf";
+    # read in the file
+    my $CKF;
+    unless ( open( $CKF, "<", $tmp_kit_conf ) ) {
+        print  "The Kit configuration file $tmp_kit_conf could not be read or was not included in the kit tar file. \n";
+        # Cleanup
+        system ("rm -Rf /tmp/buildkit_workdir");
+        return 1;
+    }
+    my @lines = <$CKF>;
+    close $CKF;
+
+    my $extpkg_section = 0;
+    my $ext_filename = '';
+    my $ext_reponames = '';
+    my $attr;
+    my %create_repodata_list;
+    foreach my $l (@lines) {
+        # skip blank and comment lines
+        next if ( $l =~ /^\s*$/ || $l =~ /^\s*#/ );
+        if ( $l =~ /^\s*EXTERNALPKG:/ ) {
+           $extpkg_section = 1;
+           $ext_filename = '';
+           $ext_reponames = '';           
+           next;
+        }
+        if ( $extpkg_section ) {
+          if ( $l =~ /^\s*(\w+)\s*=\s*(.*)\s*/ ) {
+            my $attr = $1;
+            my $val  = $2;
+            my $orig_attr = $attr;
+            my $orig_val  = $val;
+            $attr =~ s/^\s*//;       # Remove any leading whitespace
+            $attr =~ s/\s*$//;       # Remove any trailing whitespace
+            $attr =~ tr/A-Z/a-z/;    # Convert to lowercase
+            $val  =~ s/^\s*//;
+            $val  =~ s/\s*$//;
+            if ($attr eq 'filename') { 
+              $ext_filename = $val;
+            } elsif ($attr eq 'kitreponame') { 
+              $ext_reponames = $val; 
+            } else { 
+              next;
+            }
+            if ( ($ext_filename ne '') && ($ext_reponames ne '') ){
+              my $fromfile = $rpmdir."/".$ext_filename;
+              if ( !(-r $fromfile) ){
+                print  "The product package file $ext_filename could not be read from the package directory $rpmdir. \n";
+                # Cleanup
+                system ("rm -Rf /tmp/buildkit_workdir");
+                return 1;
+              }
+              foreach my $repo (split(/,/, $ext_reponames)) {
+                my $repodir = $tmpdir."/".$kitname."/repos/".$repo;
+                if ( ! -d ($repodir) && (! mkpath($repodir)) ) {
+                  print "Error creating repository directory $repodir\n";
+                  # Cleanup
+                  system ("rm -Rf /tmp/buildkit_workdir");
+                  return 1;
+                }
+                if (system("cp -fp $fromfile $repodir")) {
+                  print "Error copying package file $fromfile to $repodir \n";
+                  # Cleanup
+                  system ("rm -Rf /tmp/buildkit_workdir");
+                  return 1;
+                }
+                $create_repodata_list{$repodir}=1;
+              }
+            }
+          } else { 
+            $extpkg_section = 0;
+            next;
+          }
+        }
+    }
+ 
+    # Run createrepo for each updated directory
+    foreach my $repo (keys(%create_repodata_list)) {
+      if (system("createrepo $repo")) {
+        print "Error running createrpo command for $repo \n";
+        # Cleanup
+        system ("rm -Rf /tmp/buildkit_workdir");
+        return 1;
+      }
+    }
+
+    # Create new tar file in current directory
+    my $new_tarfile = $::workdir.'/'.$kitname.'.tar.bz2';
+    if ( system("cd $tmpdir; tar -cjhf $new_tarfile $kitname/*") ) {
+         print "Error building tarfile $new_tarfile \n";
+         # Cleanup
+         system ("rm -Rf /tmp/buildkit_workdir");
+         return 1;
+    }
+    print "Kit tar file $new_tarfile successfully built \n";
+  
+    # Cleanup
+    system ("rm -Rf /tmp/buildkit_workdir");
+
 }
 
 

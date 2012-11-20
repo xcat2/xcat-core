@@ -11,7 +11,7 @@ B<buildkit> [B<-V> | B<--verbose>] B<chkconfig>
 
 B<buildkit> [B<-V> | B<--verbose>] B<listrepo>
 
-B<buildkit> [B<-V> | B<--verbose>] B<buildrepo> I<repo_name>
+B<buildkit> [B<-V> | B<--verbose>] B<buildrepo> {I<repo_name> | B<all>}
 
 B<buildkit> [B<-V> | B<--verbose>] B<cleanrepo> {I<repo_name> | B<all>}
 
@@ -20,6 +20,8 @@ B<buildkit> [B<-V> | B<--verbose>] B<buildtar>
 B<buildkit> [B<-V> | B<--verbose>] B<cleantar>
 
 B<buildkit> [B<-V> | B<--verbose>] B<cleanall>
+
+B<buildkit> [B<-V> | B<--verbose>] B<addpkgs> I<kit_tarfile> {B<-p> | B<--pkgdir>} I<package_directory>
 
 B<command> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
 
@@ -111,9 +113,9 @@ Reads the buildkit.conf file from the current directory, verifies that the file 
 
 Reads the buildkit.conf file from the current directory, lists all Kit package repositories listed in the file, and reports the build status for each repository.
 
-=item  B<buildrepo> I<repo_name>
+=item  B<buildrepo> {I<repo_name> | B<all>}
 
-Reads the buildkit.conf file from the current directory, and builds the specified Kit package repository.  The built packages are placed in the directory <cwd>/build/kit_repodir/I<repo_name>.
+Reads the buildkit.conf file from the current directory, and builds the specified Kit package repository.  The built packages are placed in the directory <cwd>/build/kit_repodir/I<repo_name>.  If B<all> is specified, all kit repositories are built.
 
 =item  B<cleanrepo> {I<repo_name> | B<all>}
 
@@ -130,6 +132,10 @@ Reads the buildkit.conf file from the current directory, deletes the Kit tar <cw
 =item  B<cleanall>
 
 Equivalent to running B<buildkit cleanrepo all> and B<buildkit cleantar>.
+
+=item  B<addpkgs> I<kit_tarfile> {B<-p> | B<--pkgdir>} I<package_directory>
+
+Add product package rpms to a previously built kit tar file.  This is used for product kits that are built and shipped separately from the product packages.
 
 =back
 
