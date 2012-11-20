@@ -772,6 +772,15 @@ sub addkit
             # should be a tar.bz2 file
 
             $basename = basename($kit);
+            # If this kit was built without rpms, user will need to
+            # run buildkit addpkgs to add the rpms to the kit tarfile
+            # before addkit can be run
+            if ( $basename =~ /.NEED_PRODUCT_PKGS.tar.bz2/ ) {
+                my %rsp;
+                push@{ $rsp{data} }, "This kit tar file was built without product packages.  You will need to separately obtain your product packages, install the xCAT-buildkit rpm, and run the   buildkit addpkgs   command to add the rpms to the $kit file.";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                return 1;
+            }
             $basename =~ s/.tar.bz2//;
             $kittmpdir = "/tmp/" . $basename;
             chmod(0666, "$kittmpdir/*");
