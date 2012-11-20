@@ -3252,6 +3252,7 @@ sub delEntries
         $stmt->execute(@stargs);
         $stmt->finish;
     
+        $self->_refresh_cache(); #cache is invalid, refresh
         #notify the interested parties
         if ($notif == 1)
         {
