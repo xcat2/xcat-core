@@ -299,7 +299,11 @@ sub handle_dbc_request {
             $opentables{$tablename}->{$autocommit} = xCAT::Table->new(@args);
         }
         if ($opentables{$tablename}->{$autocommit}) {
-            return 1;
+	   if ($opentables{$tablename}->{$autocommit^1}) {
+               $opentables{$tablename}->{$autocommit}->{cachepeer}=$opentables{$tablename}->{$autocommit^1};
+               $opentables{$tablename}->{$autocommit^1}->{cachepeer}=$opentables{$tablename}->{$autocommit};
+           }
+           return 1;
         } else {
             return 0;
         }
@@ -311,6 +315,10 @@ sub handle_dbc_request {
             $opentables{$tablename}->{$autocommit} = xCAT::Table->new($tablename,-create=>0,-autocommit=>$autocommit);
             unless ($opentables{$tablename}->{$autocommit}) {
                 return undef;
+            }
+	    if ($opentables{$tablename}->{$autocommit^1}) {
+               $opentables{$tablename}->{$autocommit}->{cachepeer}=$opentables{$tablename}->{$autocommit^1};
+               $opentables{$tablename}->{$autocommit^1}->{cachepeer}=$opentables{$tablename}->{$autocommit};
             }
         }
     }
@@ -2096,6 +2104,7 @@ sub getNodesAttribs {
 
 sub _refresh_cache { #if cache exists, force a rebuild, leaving reference counts alone
     my $self = shift; #dbworker check not currently required
+    if ($self->{cachepeer}->{_cachestamp}) { $self->{cachepeer}->{_cachestamp}=0; }
     if ($self->{_use_cache}) { #only do things if cache is set up
         $self->_build_cache(1); #for now, rebuild the whole thing.
                     #in the future, a faster cache update may be possible
