@@ -2156,9 +2156,13 @@ sub kit_addpkgs
     my $ext_reponames = '';
     my $attr;
     my %create_repodata_list;
+    my @new_lines;
     foreach my $l (@lines) {
         # skip blank and comment lines
-        next if ( $l =~ /^\s*$/ || $l =~ /^\s*#/ );
+        if ( $l =~ /^\s*$/ || $l =~ /^\s*#/ ) {
+            push(@new_lines, $l);
+            next;
+        }
         if ( $l =~ /^\s*EXTERNALPKG:/ ) {
            $extpkg_section = 1;
            $ext_filename = '';
@@ -2210,10 +2214,22 @@ sub kit_addpkgs
             }
           } else { 
             $extpkg_section = 0;
+            push(@new_lines, $l);
             next;
           }
+        } else {
+            push(@new_lines, $l);
         }
     }
+
+
+    # Re-write kit.conf with EXTERNALPKG sections removed
+    my $NCF;
+    unless ( open( $NCF, ">$tmp_kit_conf" ) ) {
+        return 1;
+    }
+    print $NCF @new_lines;
+    close($NCF);
  
     # Run createrepo for each updated directory
     foreach my $repo (keys(%create_repodata_list)) {
