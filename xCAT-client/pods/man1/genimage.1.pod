@@ -210,7 +210,7 @@ x86_64 and place it in the
 
 To regenerate the initrd for a fedora8 image for a compute node architecture x86_64 and place it in the /install/netboot/fedora8/x86_64/compute/rootimg directory:  change directory to /opt/xcat/share/xcat/netboot/fedora and run:
 
-  geninitrd -i eth0 -n tg3,bnx2 -o fedora8 -p compute
+  genimage --onlyinitrd -i eth0 -n tg3,bnx2 -o fedora8 -p compute
 
 =back
 
