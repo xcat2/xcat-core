@@ -527,7 +527,11 @@ sub copycd
 		} elsif (/BuildBranch=win7_rtm/){
 			$distname = "win7";
 		} elsif (/BuildBranch=win8_rtm/){
-			$distname = "win8";
+			if (-r $mntpath . "/sources/background_cli.bmp") {
+				$distname = "win8";
+			} elsif (-r  $mntpath . "/sources/background_svr.bmp") {
+				$distname = "win2012";
+			}
 		}
 	}
 	close(DBNAME);
