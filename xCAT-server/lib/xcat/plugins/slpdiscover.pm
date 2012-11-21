@@ -84,7 +84,11 @@ sub process_request {
 	$callback = shift;
 	$docmd = shift;
 	%searchmacs=();
-	my $srvtypes = [ qw/service:management-hardware.IBM:chassis-management-module service:management-hardware.IBM:management-module service:management-hardware.IBM:integrated-management-module2/ ];
+	my $srvtypes = [ qw/service:management-hardware.IBM:chassis-management-module/ ];
+	xCAT::SLP::dodiscover(SrvTypes=>$srvtypes,Callback=>\&handle_new_slp_entity);
+	$srvtypes = [ qw/service:management-hardware.IBM:management-module/ ];
+	xCAT::SLP::dodiscover(SrvTypes=>$srvtypes,Callback=>\&handle_new_slp_entity);
+	$srvtypes = [ qw/service:management-hardware.IBM:integrated-management-module2/ ];
 	xCAT::SLP::dodiscover(SrvTypes=>$srvtypes,Callback=>\&handle_new_slp_entity);
 	
 	my $mpatab=xCAT::Table->new("mpa",-create=>0);
