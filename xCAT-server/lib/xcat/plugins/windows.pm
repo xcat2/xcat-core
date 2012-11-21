@@ -530,7 +530,18 @@ sub copycd
 			if (-r $mntpath . "/sources/background_cli.bmp") {
 				$distname = "win8";
 			} elsif (-r  $mntpath . "/sources/background_svr.bmp") {
-				$distname = "win2012";
+				if (-r $mntpath . "/sources/EI.CFG") {
+					my $eicfg;
+					open($eicfg,"<", $mntpath . "/sources/EI.CFG");
+					my $eiline = <$eicfg>;
+					$eiline = <$eicfg>;
+					if ($eiline =~ /Hyper/) {
+						$distname = "winhv2012";
+					}
+				} 
+				unless ($distname) {
+					$distname = "win2012";
+				}
 			}
 		}
 	}
