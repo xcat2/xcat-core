@@ -346,7 +346,14 @@ sub do_blade_setup {
 				sendmsg([1,"Failed to set up Management module due to Incorrect Password (You may try the environment variables XCAT_CURRENTUSER and/or XCAT_CURRENTPASS to try a different value)"],$callback,$nodename);
 				return 0;
 			}
-			sendmsg([$result->[0],$result->[2]],$callback,$nodename);
+			my $errors = $result->[2];
+			if (ref $errors) { 
+				foreach my $error (@$errors) {
+					sendmsg([$result->[0],$error],$callback,$nodename);
+				}
+			} else {
+				sendmsg([$result->[0],$result->[2]],$callback,$nodename);
+			}
 			return 0;
 		}
 	}
