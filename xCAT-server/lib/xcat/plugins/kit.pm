@@ -771,31 +771,33 @@ sub addkit
         } else {
             # should be a tar.bz2 file
 
-            $basename = basename($kit);
-            # If this kit was built without rpms, user will need to
-            # run buildkit addpkgs to add the rpms to the kit tarfile
-            # before addkit can be run
-            if ( $basename =~ /.NEED_PRODUCT_PKGS.tar.bz2/ ) {
-                my %rsp;
-                push@{ $rsp{data} }, "This kit tar file was built without product packages.  You will need to separately obtain your product packages, install the xCAT-buildkit rpm, and run the   buildkit addpkgs   command to add the rpms to the $kit file.";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
-                return 1;
-            }
-            $basename =~ s/.tar.bz2//;
-            $kittmpdir = "/tmp/" . $basename;
-            chmod(0666, "$kittmpdir/*");
-
-            system("rm -rf $kittmpdir");
-
+            system("rm -rf /tmp/tmpkit/");
+            mkpath("/tmp/tmpkit/");
+            
             if($::VERBOSE){
                 my %rsp;
                 push@{ $rsp{data} }, "Extract Kit $kit to /tmp";
                 xCAT::MsgUtils->message( "I", \%rsp, $callback );
-                $rc = system("tar jxvf $kit -C /tmp");
+                $rc = system("tar jxvf $kit -C /tmp/tmpkit/");
             } else {
-                $rc = system("tar jxf $kit -C /tmp");
+                $rc = system("tar jxf $kit -C /tmp/tmpkit/");
             }
 
+            opendir($dir,"/tmp/tmpkit/");
+            my @files = readdir($dir);
+
+            foreach my $file ( @files ) {
+                next if ( $file eq '.' || $file eq '..' );
+                $kittmpdir = "/tmp/tmpkit/$file";
+                last;
+            }
+
+            if ( !$kittmpdir ) {
+                my %rsp;
+                push@{ $rsp{data} }, "Could not find extracted kit in /tmp/tmpkit";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                return 1;
+            }
         }
 
 
@@ -843,9 +845,11 @@ sub addkit
                 next;
             } elsif ($line =~ /kitrepo:/) {
                 $sec = "KITREPO";
+                $kitrepoid = $kitrepoid + 1;
                 next;
             } elsif ($line =~ /kitcomponent:/) {
                 $sec = "KITCOMPONENT";
+                $kitcompid = $kitcompid + 1;
                 next;
             } else {
                 ($key,$value) = split /=/, $line;
