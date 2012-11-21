@@ -134,7 +134,7 @@ sub setstate {
   unless (-d "$tftpdir/etc") {
      mkpath("$tftpdir/etc");
   }
-
+  my $nodemac;
   my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( [$node] );
   if ( $client_nethash{$node}{mgtifname} =~ /hf/ ) {
     my $mactab = xCAT::Table->new('mac');
@@ -190,6 +190,7 @@ sub setstate {
             }
 
             if ($mac =~ /:/) {
+              $nodemac = $mac;
               my $tmp = $mac;
               $tmp =~ s/(..):(..):(..):(..):(..):(..)/$1-$2-$3-$4-$5-$6/g;
               my $pname = "25-" . $tmp;
@@ -258,6 +259,7 @@ sub setstate {
       if ($ment and $ment->{mac}) {
         my @macs = split(/\|/,$ment->{mac});
         foreach (@macs) {
+           $nodemac = $_;
            if (/!(.*)/) {
               my $ipaddr = xCAT::NetworkUtils->getipaddr($1);
               if ($ipaddr) {
@@ -276,6 +278,13 @@ sub setstate {
       link($tftpdir."/etc/".$node,$tftpdir."/etc/".$pname);
     }
   }
+  if ($nodemac =~ /:/) {
+      my $tmp = $nodemac;
+      $tmp =~ s/(..):(..):(..):(..):(..):(..)/$1-$2-$3-$4-$5-$6/g;
+      my $pname = "yaboot.conf-" . $tmp;
+      unlink($tftpdir."/".$pname);
+      link($tftpdir."/etc/".$node,$tftpdir."/".$pname); 
+  }      
 }
   
 
@@ -497,12 +506,14 @@ sub process_request {
   my $machash=$mactab->getNodesAttribs(\@nodes,['mac']);
   my $nrtab=xCAT::Table->new('noderes',-create=>1);
   my $nrhash=$nrtab->getNodesAttribs(\@nodes,['servicenode']);
+  my $typetab=xCAT::Table->new('nodetype',-create=>1);
+  my $typehash=$typetab->getNodesAttribs(\@nodes,['os']);
   my $rc;
   my $errstr;
 
+  my $tftpdir;
   foreach (@nodes) {
     my %response;
-    my $tftpdir;
     if ($nodereshash->{$_} and $nodereshash->{$_}->[0] and $nodereshash->{$_}->[0]->{tftpdir}) {
        $tftpdir =  $nodereshash->{$_}->[0]->{tftpdir};
     } else {
@@ -520,12 +531,87 @@ sub process_request {
         $callback->(\%response);
       }
     }
-  }
+  }# end of foreach node    
 
   my @normalnodeset = keys %normalnodes;
   my @breaknetboot=keys %breaknetbootnodes;
   #print "yaboot:inittime=$inittime; normalnodeset=@normalnodeset; breaknetboot=@breaknetboot\n";
+    my %oshash;
+    for my $nn (@normalnodeset){
+        #record the os version for node
+        my $ent = $typehash->{$nn}->[0]; 
+        my $os = $ent->{'os'};
+        push @{$oshash{$os}}, $nn;
+        
+    }
+    foreach my $os (keys %oshash) {
+        my $osv;
+        my $osn;
+        my $osm;
+        if ($os =~ /(\D+)(\d+)\.(\d+)/) {
+            $osv = $1;
+            $osn = $2;
+            $osm = $3;
+        
+        } elsif ($os =~ /(\D+)(\d+)/){
+            $osv = $1;
+            $osn = $2;
+            $osm = 0;   
+        }
+        if (($osv =~ /rh/ and int($osn) < 6) or 
+            ($osv =~ /sles/ and int($osn) < 11)) {
+            # check if xcat-yaboot installed
+            my $yf = $tftpdir . "/yaboot";
+            unless (-e $yf) {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "stop configuration because xcat-yaboot need to be installed for $os.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);       
+                return; 
+              }
+        } elsif (($osv =~ /rh/ and int($osn) >= 6) or
+                 ($osv =~ /sles/ and int($osn) >= 11)) {
+            # copy yaboot from cn's repository
+            my $cmd = '/usr/bin/rsync';
+            if (!-f $cmd || !-x $cmd) {  
+                my $rsp;
+                push @{$rsp->{data}},
+                  "stop configuration because rsync does not exist or is not executable.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);            
+                return;
+           }      
+              my $yabootpath = $tftpdir."/yb/".$os;
+              mkpath $yabootpath;     
 
+            my $yabootfile;   
+            if ($os =~ /sles/) {
+                my $installdir = $::XCATSITEVALS{'installdir'} ? $::XCATSITEVALS{'installdir'} : "/install";
+                $yabootfile = $installdir."/".$os."/ppc64/1/suseboot/yaboot";
+            } elsif ($os =~ /rh/){
+                my $installdir = $::XCATSITEVALS{'installdir'} ? $::XCATSITEVALS{'installdir'} : "/install";
+                $yabootfile = $installdir."/".$os."/ppc64/ppc/chrp/yaboot";
+            }  
+            unless (-e "$yabootfile") {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "stop configuration because Unable to find the os shipped yaboot file.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return; 
+              }          
+
+            $cmd = $cmd." ".$yabootfile." ".$yabootpath; #???
+            ($rc,$errstr) = xCAT::Utils->runcmd($cmd, 0);
+            if ($rc)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "stop configuration because $synccmd failed.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+               return; 
+            } 
+        }
+    } #end of foreach oshash
+  
   #Don't bother to try dhcp binding changes if sub_req not passed, i.e. service node build time
   unless (($args[0] eq 'stat') || ($inittime) || ($args[0] eq 'offline')) {
       #dhcp stuff
@@ -541,22 +627,61 @@ sub process_request {
       #}
 
       if ($do_dhcpsetup) {
-         if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command, only change local settings if already farmed
-	     $sub_req->({command=>['makedhcp'],arg=>['-l'],
-		        node=>\@normalnodeset},$callback);
-         } else {
-	     $sub_req->({command=>['makedhcp'],
-		      node=>\@normalnodeset},$callback);
-         }
-         if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
-	     $sub_req->({command=>['makedhcp'],
-		      node=>\@breaknetboot,
-		      arg=>['-l','-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
-         } else {
-	     $sub_req->({command=>['makedhcp'],
-		      node=>\@breaknetboot,
-		      arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
-         }
+        if (%oshash) {
+            foreach my $osentry (keys %oshash) {
+                my $osv;
+                my $osn;
+                my $osm;
+                if ($osentry =~ /(\D+)(\d+)\.(\d+)/) {
+                    $osv = $1;
+                    $osn = $2;
+                    $osm = $3;
+                
+                } elsif ($osentry =~ /(\D+)(\d+)/){
+                    $osv = $1;
+                    $osn = $2;
+                    $osm = 0;   
+                }
+                if (($osv =~ /rh/ and int($osn) >= 6) or 
+                    ($osv =~ /sles/ and int($osn) >= 11)) {
+                    my $fpath = "/yb/". $osentry."/yaboot"; 
+                    if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+                    $sub_req->({command=>['makedhcp'],
+                         node=>\@{$oshash{$osentry}},
+                         arg=>['-l','-s','filename = \"'.$fpath.'\";']},$callback);
+                    } else {
+                    $sub_req->({command=>['makedhcp'],
+                         node=>\@{$oshash{$osentry}},
+                         arg=>['-s','filename = \"'.$fpath.'\";']},$callback);
+                    }
+                } else {
+                    if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command, only change local settings if already farmed
+                    $sub_req->({command=>['makedhcp'],arg=>['-l'],
+                           node=>\@{$oshash{$osentry}}},$callback);
+                    } else {
+                    $sub_req->({command=>['makedhcp'],
+                         node=>\@{$oshash{$osentry}}},$callback);
+                    }
+                }
+            }
+        } else {
+            if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command, only change local settings if already farmed
+            $sub_req->({command=>['makedhcp'],arg=>['-l'],
+                   node=>\@normalnodeset},$callback);
+            } else {
+            $sub_req->({command=>['makedhcp'],
+                 node=>\@normalnodeset},$callback);
+            }
+        }
+        if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+            $sub_req->({command=>['makedhcp'],
+             node=>\@breaknetboot,
+             arg=>['-l','-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
+        } else {
+            $sub_req->({command=>['makedhcp'],
+             node=>\@breaknetboot,
+             arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
+        }
      }
   }
   
