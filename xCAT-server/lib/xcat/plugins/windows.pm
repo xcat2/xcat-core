@@ -524,9 +524,10 @@ sub copycd
 	while(<DBNAME>){
 		if(/BuildArch=amd64/){
 			$darch = "x86_64";
-		}
-		if(/BuildBranch=win7_rtm/){
+		} elsif (/BuildBranch=win7_rtm/){
 			$distname = "win7";
+		} elsif (/BuildBranch=win8_rtm/){
+			$distname = "win8";
 		}
 	}
 	close(DBNAME);
