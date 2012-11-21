@@ -11,3 +11,4 @@ ntp
 rsyslog
 rsync
 busybox-static
+gawk
