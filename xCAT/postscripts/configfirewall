@@ -136,6 +136,8 @@ else
     #Ubuntu: FIXME
 }
 
+exit 0;
+
 sub usage()
 {
         print "Usage:\n    configfirewall --private <private_interfaces> --public <pubic_interface> [--nat] [--ports <ports_allowed>]\n";
