@@ -25,6 +25,8 @@ for i in $(echo #TABLE:site:key=nameservers:value# | tr ',' ' ')
 do
 	echo "nameserver $i"
 done >>/etc/resolv.conf
+#change the soft link /bin/sh to /bin/bash
+ln -sf /bin/bash /bin/sh
 #
 # Run xCAT post install
 #
