@@ -37,6 +37,7 @@ use Socket;
 my $master = $ENV{'MASTER'};
 my $mhost;
 my $shortmaster;
+my $returnval=0;
 if ($master =~ /\d+\.\d+\.\d+\.\d+/)
 {
 	my $packedaddr = inet_aton($master);
@@ -77,7 +78,7 @@ if (-f "/.rhosts") {
 	runcmd("mv /.rhost /.rhost.orig");
 }
 
-exit 0;
+exit $returnval;
 
 sub runcmd {
 	my $cmd = shift @_;
@@ -86,6 +87,7 @@ sub runcmd {
 	my $rc = $? >> 8;
 	if ($rc) {
 		system("logger -t xcat -p local4.err 'confignimsh: command $cmd failed with rc $rc: " . join('',@output) . "'");
+                $returnval=$rc;
 		exit $rc;
 	}
 }
