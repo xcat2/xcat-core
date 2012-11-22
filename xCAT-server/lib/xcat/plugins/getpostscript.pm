@@ -81,7 +81,9 @@ sub process_request
     if ($request->{scripttype}) { $state = $request->{scripttype}->[0];}
 
     require xCAT::Postage;
-    my @scriptcontents = xCAT::Postage::makescript($client,$state,$callback);
+    #my @scriptcontents = xCAT::Postage::makescript($client,$state,$callback); # the original method
+    my @scriptcontents = xCAT::Postage::makescript([$client],$state,$callback);  # the new method, use the template
+
     if (scalar(@scriptcontents)) {
        $rsp->{data} = \@scriptcontents;
     }
