@@ -423,7 +423,7 @@ exit 0;
 #					and write it to a file 
 #
 #####################################################
-sub  getmypost {
+sub  getmypost_orig {
 	
 	my $port = "3001";
 
@@ -495,6 +495,88 @@ sub  getmypost {
     close $remote;
     return 0;
 }
+
+sub  getmypost {
+
+    my $port = "3001";
+	# open a socket to request credentials
+    my $remote = IO::Socket::SSL->new(
+        PeerAddr => $servnode,
+        PeerPort  => $port,
+        Proto    => 'tcp',
+    );
+
+	unless ($remote) {
+        print "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
+        print $::LOG_FILE "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
+        return 1;
+    }
+
+    # request must be in XML format
+    print $remote "<xcatrequest>\n";
+    print $remote "   <command>getpostscript</command>\n";
+    print $remote "</xcatrequest>\n";
+
+    # get reponse in XML format
+    my $response='';
+    my $rsp;
+    while (<$remote>) {
+	$response .= $_;
+	if ($response =~ m/<\/xcatresponse>/) {
+		$rsp = eval { XMLin($response,SuppressEmpty=>undef,ForceArray=>1) };
+		if ($rsp->{serverdone}) {
+			last;			
+		}
+	}
+    }
+
+    close $remote;
+        
+    my $TFTPDIR;
+    if( !defined($TFTPDIR) ) {
+        $TFTPDIR="/tftpboot";
+    }
+       
+    `mkdir -p /xcatpost; cd /xcatpost; tftp -o $scriptname $servnode $TFTPDIR/mypostscripts/mypostscript.$::shorthost`;
+    # `wget -N --waitretry=10 --random-wait -T 60 http://$servnode$TFTPDIR/mypostscripts/mypostscript.$::shorthost  -P /xcatpost 2>> /tmp/wget.log;  mv /xcatpost/mypostscript.$::shorthost $scriptname`;
+
+    if(!( -f $scriptname)) {
+        print "$::sdate  xcataixpost: Cold not get the $scriptname from /$servnode$TFTPDIR/mypostscripts/ on \'$servnode\'\n";
+        print $::LOG_FILE "$::sdate  xcataixpost: could not get the $scriptname from /$servnode$TFTPDIR/mypostscripts/ on \'$servnode\'\n";
+        return 1;
+
+    }
+
+    my $content;
+    if (!open($content, "<", $scriptname) ) {
+        print "$::sdate  xcataixpost: Could not open $scriptname.\n";
+        print $::LOG_FILE "$::sdate  xcataixpost: Could not open $scriptname.\n";
+        close $content;
+        return 1;
+    }
+    while (<$content>) {
+        my $line = $_; 
+        $line =~ s/^\s+//; 
+	if ($line =~ /=/) {
+	   my ($attr, $val) = $line =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
+           if( defined( $attr ) ) {
+	       if ($attr eq 'ROOTPW') {
+	           $::ROOTPW=$val;
+	       }
+	       if ($attr eq 'CRYPTMETHOD') {
+	           $::CRYPTMETHOD=$val;
+	       }
+           }
+        }
+    } 
+    
+    close $content;
+    return 0;
+
+}
+
+
+
 
 ############################################################
 #
