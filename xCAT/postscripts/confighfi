@@ -14,6 +14,8 @@
 PLTFRM=`uname`
 NETMASK=255.0.0.0
 
+RETURNVAL=0
+
 # bond-mld binary is shipped seperately, admin should adjust the following PATH 
 # to where bond-mld binary is. 
 PATH=$PATH:/usr/local/sbin/
@@ -49,10 +51,12 @@ ONBOOT=yes
             ifup hf0
         else
             logger -t xcat -p local4.err "confighfi: cannot resolve hostname $name-hf0"
+            RETURNVAL=-1
         fi
     elif [[ -z "$NTYPE" ]]
     then
         logger -t xcat -p local4.err "confighfi: cannot read node type definition"
+        RETURNVAL=-1
     fi
 
     # Configure hf0-hf<n> interfaces one by one.
@@ -74,6 +78,7 @@ ONBOOT=yes
             ifup hf$i
         else
             logger -t xcat -p local4.err "confighfi: cannot resolve hostname $name-hf$i"
+            RETURNVAL=-1
         fi
     done
 
@@ -121,10 +126,12 @@ else
             mkhfi -i hf0 -a $CLIENT_IP -m $NETMASK
         else
             logger -t xcat -p local4.err "confighfi: cannot resolve hostname $name-hf0"
+            RETURNVAL=-1
         fi
     elif [[ -z "$NTYPE" ]]
     then
         logger -t xcat -p local4.err "confighfi: cannot read node type definition"
+        RETURNVAL=-1
     fi
 
     for i in 1 2 3
@@ -136,6 +143,7 @@ else
             mkhfi -i hf$i -a $CLIENT_IP -m $NETMASK
         else
             logger -t xcat -p local4.err "confighfi: cannot resolve hostname $name-hf$i"
+            RETURNVAL=-1
         fi
 
     done
@@ -158,6 +166,9 @@ else
         chdev -l ml0 -a netaddr=$CLIENT_IP -a netmask=$NETMASK -a state=up
     else
         logger -t xcat -p local4.err "confighfi: cannot resolve hostname $name-ml0"
+        RETURNVAL=-1
     fi
 
 fi
+
+exit $RETURNVAL
