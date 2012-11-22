@@ -2,7 +2,7 @@
 cd `dirname $0`
 if [ ! -d repos/$OSVER/$ARCH ];  then
    logger -t xcat -p local4.err "addsiteyum: repos/$OSVER/$ARCH is not a directory"
-   exit;
+   exit -1;
 fi
 for i in repos/$OSVER/$ARCH/*
 do
@@ -13,3 +13,5 @@ do
    TARGFILE=`echo $TARGFILE|sed -e s/.tmpl$/.repo/`
    sed -e s!#INSTSERVER#!$MASTER! $i > /etc/yum.repos.d/$TARGFILE
 done
+
+exit 0
