@@ -205,4 +205,3 @@ create_FS_AIX(){
 # main
 create_FS $FS1
 
-exit $?
