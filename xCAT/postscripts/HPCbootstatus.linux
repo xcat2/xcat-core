@@ -24,7 +24,7 @@ if [ -f /opt/xcat/xcatinfo ]; then
     fi
 else
     echo "xCAT management server IP can't be determined.\nexiting..."
-    exit
+    exit -1
 fi
 
 # add HPCbootstatus.linuxinit to /etc/init.d for diskful node reboot
@@ -94,9 +94,13 @@ while [ true ]; do
         let COUNT=$COUNT+1
     fi
 
-    if [ $COUNT = $ITEMNUM ] || [ $PASSED -gt $TIMEOUT ]; then
-		exit
-	fi
+    if [ $COUNT = $ITEMNUM ]; then
+	exit 0
+    fi
+
+    if [ $PASSED -gt $TIMEOUT ]; then
+        exit 1
+    fi
 
     let PASSED=$PASSED+$INTERVAL
     sleep $INTERVAL
@@ -104,3 +108,4 @@ while [ true ]; do
 	
 done
 
+exit 0
