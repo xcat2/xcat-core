@@ -78,22 +78,19 @@ download_postscripts()
 download_mypostscript()
 {
     server=$1
+    TFTPDIR=$2
     if [ -z $server ]; then
 	return 1;
     fi
-     
-    if [ -f /opt/xcat/xcatinfo ]; then
-       TFTPDIR=`grep 'TFTPDIR' /opt/xcat/xcatinfo |cut -d= -f2`
-    fi
     if [ -z "$TFTPDIR" ]; then
-    TFTPDIR="/tftpboot"
+        TFTPDIR="/tftpboot"
     fi
     max_retries=2
     retry=0
     rc=1
  
-    node=`hostname`
 
+    node=`hostname`
     while [ 0 -eq 0 ]; do
 	
         wget -N --waitretry=10 --random-wait -T 60 http://$server$TFTPDIR/mypostscripts/mypostscript.$node  -P /xcatpost 2>> /tmp/wget.log
@@ -149,6 +146,11 @@ else
       fi
       if [ $ARGNUM -gt 3 ]; then
         POSTSCRIPTS=$4
+      fi
+      if [ $ARGNUM -gt 4 ]; then
+        if [ $5 = "--tftp" ]; then
+          TFTPDIR=$6
+        fi 
       fi
       ;;
     3|4|6) MODE=$1;;
@@ -299,7 +301,7 @@ fi # finish the postscripts download
 
 rm -rf /xcatpost/mypostscript
 
-download_mypostscript $SIP
+download_mypostscript $SIP $TFTPDIR 
 
 
 
@@ -335,7 +337,6 @@ if [ ! -x /xcatpost/mypostscript ]; then
 #/xcatpost/getpostscript.awk | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /xcatpost/mypostscript; 
 /xcatpost/getpostscript.awk > /dev/null 
 node=`hostname`
-echo "$node\n"
 wget -N --waitretry=10 --random-wait -T 60 http://$server$TFTPDIR/mypostscripts/mypostscript.$node  -P /xcatpost 2>> /tmp/wget.log
 rc=$?
 if [ $rc -eq 0 ]; then
