@@ -59,10 +59,12 @@ unless ($useSocketSSL) {
 #  the -c means redo the copy of scripts from the server
 Getopt::Long::Configure("no_pass_through");
 $Getopt::Long::ignorecase = 0;
-if (!GetOptions('copy|c' => \$::opt_c, 'm=s' => \$::opt_m, 'M=s' => \$::opt_M))
+if (!GetOptions('copy|c' => \$::opt_c, 'm=s' => \$::opt_m, 'M=s' => \$::opt_M, 'tftp=s'=> \$::opt_tftpdir))
 {    # Gather options
         exit 1;
 }
+
+my $TFTPDIR=$::opt_tftpdir;
 
 # get hostname
 $::shorthost = `hostname -s`;
@@ -529,10 +531,40 @@ sub  getmypost {
 		}
 	}
     }
+    #close $remote;
+   
+    #$remote = IO::Socket::SSL->new(
+    #    PeerAddr => $servnode,
+    #    PeerPort  => $port,
+    #    Proto    => 'tcp',
+    #);
+    
+    if (! defined($TFTPDIR) ) {
+        print $remote "<xcatrequest>\n";
+        print $remote "   <command>gettab</command>\n";
+        print $remote "   <arg>key=tftpdir</arg>\n";
+        print $remote "   <arg>site.value</arg>\n";
+        print $remote "</xcatrequest>\n";
 
+        while (<$remote>) {
+	    $response .= $_;  
+	    if ($response =~ m/<\/xcatresponse>/) {
+		$rsp = eval { XMLin($response,SuppressEmpty=>undef,ForceArray=>1) };
+                print Dumper($rsp);
+		if ( ref($rsp) eq "HASH" && exists ( $rsp->{serverdone}) ) {
+                        undef($response);
+                        next;
+			#last;			
+		}
+  	        
+                $TFTPDIR=$rsp;  
+                last;
+
+	    }
+        }
+    }
     close $remote;
         
-    my $TFTPDIR;
     if( !defined($TFTPDIR) ) {
         $TFTPDIR="/tftpboot";
     }
@@ -541,7 +573,7 @@ sub  getmypost {
     # `wget -N --waitretry=10 --random-wait -T 60 http://$servnode$TFTPDIR/mypostscripts/mypostscript.$::shorthost  -P /xcatpost 2>> /tmp/wget.log;  mv /xcatpost/mypostscript.$::shorthost $scriptname`;
 
     if(!( -f $scriptname)) {
-        print "$::sdate  xcataixpost: Cold not get the $scriptname from /$servnode$TFTPDIR/mypostscripts/ on \'$servnode\'\n";
+        print "$::sdate  xcataixpost: Cold not get the $scriptname from $TFTPDIR/mypostscripts/ on \'$servnode\'\n";
         print $::LOG_FILE "$::sdate  xcataixpost: could not get the $scriptname from /$servnode$TFTPDIR/mypostscripts/ on \'$servnode\'\n";
         return 1;
 
