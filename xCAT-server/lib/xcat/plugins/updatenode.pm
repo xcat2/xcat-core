@@ -1175,6 +1175,7 @@ sub updatenoderunps
     my $nodes         = $request->{node};
     my $localhostname = hostname();
     my $installdir    = xCAT::TableUtils->getInstallDir();
+    my $tftpdir       = xCAT::TableUtils->getTftpDir();
     my ($rc, $AIXnodes, $Linuxnodes) = xCAT::InstUtils->getOSnodes($nodes);
     my $postscripts      = "";
     my $orig_postscripts = "";
@@ -1223,7 +1224,7 @@ sub updatenoderunps
                     "-s",
                     "-v",
                     "-e",
-                    "$installdir/postscripts/xcatdsklspost $mode -M $snkey '$postscripts'"
+                    "$installdir/postscripts/xcatdsklspost $mode -M $snkey '$postscripts' --tftp $tftpdir"
                     ];
 
             }
@@ -1235,7 +1236,7 @@ sub updatenoderunps
                     "-s",
                     "-v",
                     "-e",
-                    "$installdir/postscripts/xcatdsklspost $mode -m $snkey '$postscripts'"
+                    "$installdir/postscripts/xcatdsklspost $mode -m $snkey '$postscripts' --tftp $tftpdir"
                     ];
             }
 
@@ -1305,12 +1306,12 @@ sub updatenoderunps
             if ($::SETSERVER)
             {
                 $cmd =
-                  "XCATBYPASS=Y $::XCATROOT/bin/xdsh --nodestatus $nodestring -s -v -e $installdir/postscripts/xcataixpost -M $snkey -c $mode '$postscripts' 2>&1";
+                  "XCATBYPASS=Y $::XCATROOT/bin/xdsh --nodestatus $nodestring -s -v -e $installdir/postscripts/xcataixpost -M $snkey -c $mode --tftp $tftpdir '$postscripts' 2>&1";
             }
             else
             {
                 $cmd =
-                  "XCATBYPASS=Y $::XCATROOT/bin/xdsh --nodestatus $nodestring -s -v -e $installdir/postscripts/xcataixpost -m $snkey -c $mode '$postscripts' 2>&1";
+                  "XCATBYPASS=Y $::XCATROOT/bin/xdsh --nodestatus $nodestring -s -v -e $installdir/postscripts/xcataixpost -m $snkey -c $mode --tftp $tftpdir '$postscripts' 2>&1";
             }
 
             if ($::VERBOSE)
@@ -1595,6 +1596,7 @@ sub updatenodesoftware
     my $updates       = shift;
     my $nodes         = $request->{node};
     my $installdir    = xCAT::TableUtils->getInstallDir();
+    my $tftpdir       = xCAT::TableUtils->getTftpDir();
     my $localhostname = hostname();
     my $rsp;
     $CALLBACK = $callback;
@@ -1626,7 +1628,7 @@ sub updatenodesoftware
             if ($::SETSERVER)
             {
                $cmd =
-                  "$installdir/postscripts/xcatdsklspost 2 -M $snkey 'ospkgs,otherpkgs'" ;
+                  "$installdir/postscripts/xcatdsklspost 2 -M $snkey 'ospkgs,otherpkgs' --tftp $tftpdir" ;
              $args1 = [
                     "--nodestatus",
                     "-s",
@@ -1642,7 +1644,7 @@ sub updatenodesoftware
             {
 
                 $cmd =
-                  "$installdir/postscripts/xcatdsklspost 2 -m $snkey 'ospkgs,otherpkgs'";
+                  "$installdir/postscripts/xcatdsklspost 2 -m $snkey 'ospkgs,otherpkgs' --tftp $tftpdir";
              $args1 = [
                     "--nodestatus",
                     "-s",
