@@ -558,8 +558,8 @@ sub get_imageprofile_prov_method
     my $entry = ($nodetypestab->getAllAttribsWhere("node = '$imgprofilename'", 'ALL' ))[0];
     my $osimgname = $entry->{'provmethod'};
 
-    my $osimgtab = xCAT::Table->new('osimage');
-    my $osimgentry = ($osimgtab->getAllAttribsWhere("imagename = '$osimgname'", 'ALL' ))[0];
-    return $osimgentry->{'provmethod'};
+    #my $osimgtab = xCAT::Table->new('osimage');
+    #my $osimgentry = ($osimgtab->getAllAttribsWhere("imagename = '$osimgname'", 'ALL' ))[0];
+    #return $osimgentry->{'provmethod'};
 }
 
