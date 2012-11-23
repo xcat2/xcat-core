@@ -43,6 +43,7 @@ use Getopt::Long;
 use xCAT::SvrUtils;
 use xCAT::FSPUtils;
 my $indiscover=0;
+my $vitals_info = undef; #used by 'rvitals <node> all' to show lcds info for Firebird blade
 
 sub handled_commands {
   return {
@@ -3253,7 +3254,26 @@ sub bladecmd {
   } elsif ($command eq "rpower") {
     return power(@args);
   } elsif ($command eq "rvitals") {
-    return vitals(@args);
+    my ($rc, @result) = vitals(@args);
+    if (defined($vitals_info) and defined($vitals_info->{$currnode})) {
+        my $attr = $vitals_info->{$currnode};
+        my $fsp_api = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
+        my $cmd = "$fsp_api -a query_lcds -T 0 -t 0:$$attr[3]:$$attr[0]:$currnode: 2>&1";
+        my $res = xCAT::Utils->runcmd($cmd, -1);
+        if ($res !~ /error/i) {
+            my @array = split(/\n/, $res);
+            foreach my $a(@array) {
+                my ($name, $data) = split(/:/,$a);
+                if ($data =~ /1\|(\w[\w\s]*)/) {
+                    push @result, "Current LCD: $1";
+                } else {
+                    push @result, "Current LCD: blank";
+                }
+            }
+        }
+    }
+    return ($rc, @result);
+    #return vitals(@args);
   } elsif ($command =~ /r[ms]preset/) {
     return resetmp(@args);
   } elsif ($command eq "rspconfig") {
@@ -5304,7 +5324,11 @@ sub dompa {
       xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
     }
   }
-
+  if ($command eq "rvitals") {
+      if ((scalar(@$args) ==1 and $args->[0] eq '') or grep (/all/,@$args)) {
+          $vitals_info = &get_blades_for_mpa($mpa);
+      }
+  }
 
   foreach $node (sort (keys %{$mpahash->{$mpa}->{nodes}})) {
     $curn = $node;
