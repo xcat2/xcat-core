@@ -10,4 +10,4 @@ case $OSVER in
 	rh*)
 		;;
 esac
-
+exit 0
