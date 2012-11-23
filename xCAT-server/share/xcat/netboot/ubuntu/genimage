@@ -1529,13 +1529,17 @@ sub generic_post { #This function is meant to leave the image in a state approxi
 
          close($cfgfile);
 
+         #ubuntu default run level is 2
          chmod(0755,"$rootimg_dir/etc/init.d/gettyset");
-         system("cd $rootimg_dir/etc/rc3.d; ln -sf ../init.d/gettyset S60gettyset");
+         system("cd $rootimg_dir/etc/rc2.d; ln -sf ../init.d/gettyset S60gettyset");
       }
 		
       copy("$installroot/postscripts/xcatpostinit", "$rootimg_dir/etc/init.d/xcatpostinit");
       chmod(0755, "$rootimg_dir/etc/init.d/xcatpostinit");
-      system("cd $rootimg_dir/etc/rc3.d; ln -sf ../init.d/xcatpostinit S61xcatpostinit");
+      system("cd $rootimg_dir/etc/rc2.d; ln -sf ../init.d/xcatpostinit S61xcatpostinit");
+      
+      #change the /bin/sh link to /bin/bash
+      system("cd $rootimg_dir/bin/; ln -sf bash sh");
    }
 } 
 
