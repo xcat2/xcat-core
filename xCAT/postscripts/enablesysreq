@@ -16,3 +16,4 @@ case "$OSVER" in
 		;;
 esac
 
+exit 0
