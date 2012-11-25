@@ -25,7 +25,7 @@ logger -t xcat -p local4.info "xcatserver call with -d. getting credentials and 
 
 if [ ! -x /usr/bin/openssl ]; then
    logger -t xcat -p local4.err "$0: /usr/bin/openssl is not executable"
-   exit 0
+   exit -1
 fi
 USEOPENSSLFORXCAT=1
 export USEOPENSSLFORXCAT
