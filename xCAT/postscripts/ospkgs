@@ -163,7 +163,7 @@ array_get_element ()
 ##
 
 
-
+RETURNVAL=0
 
 debug=0
 
@@ -182,8 +182,8 @@ if [ -z "$UPDATENODE" ] || [ $UPDATENODE -ne 1 ]; then
 fi 
 
 if [ -z "$OSPKGS" ]; then 
-  echo "$0: no extra rpms to install"
-  exit 0
+   echo "$0: no extra rpms to install"
+   exit 0
 fi
 
 
@@ -387,7 +387,7 @@ if ( pmatch "$OSVER" "sles10*" ); then
     if [ $? -ne 0 ]; then 
 	logger -t xcat -p local4.info "rug update -y --agree-to-third-party-licences\n    $result"
         echo "ospkgs: rug update -y --agree-to-third-party-licences"
-		echo "    $result"
+	echo "    $result"
     else
 	if [ $debug -ne 0 ]; then
 	    echo "rug update -y --agree-to-third-party-licences"
@@ -401,6 +401,7 @@ if ( pmatch "$OSVER" "sles10*" ); then
 	cmd="$ENVLIST rug install -y --agree-to-third-party-licences -t pattern $groups"
 	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
+            RETURNVAL=$?
 	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
@@ -417,6 +418,7 @@ if ( pmatch "$OSVER" "sles10*" ); then
 	cmd="$ENVLIST rug install -y --agree-to-third-party-licences $pkgs"
 	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
+            RETURNVAL=$?
 	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
@@ -433,6 +435,7 @@ if ( pmatch "$OSVER" "sles10*" ); then
 	cmd="$ENVLIST rug remove -y $pkgs_d"
 	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
+            RETURNVAL=$?
 	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
@@ -542,6 +545,7 @@ elif ( pmatch "$OSVER" "sles11*" ); then
 	cmd="$ENVLIST zypper install -y --auto-agree-with-licenses -t pattern $groups"
 	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
+            RETURNVAL=$?
 	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
@@ -558,6 +562,7 @@ elif ( pmatch "$OSVER" "sles11*" ); then
 	cmd="$ENVLIST zypper install -y --auto-agree-with-licenses $pkgs"
 	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
+            RETURNVAL=$?
 	    logger -t xcat -p local4.info "ospkgs: $cmd    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
@@ -574,6 +579,7 @@ elif ( pmatch "$OSVER" "sles11*" ); then
 	cmd="$ENVLIST zypper remove -y $pkgs_d"
 	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
+            RETURNVAL=$?
 	    logger -t xcat -p local4.info "ospkgs: $cmd    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
@@ -615,6 +621,9 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
 		command="$ENVLIST apt-get -q -y --force-yes install $groups"
 		echo "=== $command"
 		eval $command
+                if [ $? -ne 0 ]; then
+                   RETURNVAL=$?
+                fi
 	fi
 
 	# install packages
@@ -622,6 +631,9 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
 		command="$ENVLIST apt-get -q -y --force-yes install $pkgs"
 		echo "=== $command"
 		eval $command
+                if [ $? -ne 0 ]; then
+                   RETURNVAL=$?
+                fi
 	fi
 
 	# remove packages
@@ -629,6 +641,9 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
 		command="$ENVLIST apt-get -y remove $pkgs_d"
 		echo "=== $command"
 		eval $command
+                if [ $? -ne 0 ]; then
+                   RETURNVAL=$?
+                fi
 	fi
 else 
     #check if yum is installed
@@ -709,6 +724,7 @@ else
 	cmd="echo $groups| $ENVLIST xargs yum -y groupinstall"
 	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
+            RETURNVAL=$?
 	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
@@ -725,6 +741,7 @@ else
 	cmd="$ENVLIST yum -y install $pkgs"
 	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
+            RETURNVAL=$?
 	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
@@ -741,6 +758,7 @@ else
 	cmd="$ENVLIST yum -y remove $pkgs_d"
 	result=`eval $cmd 2>&1`
 	if [ $? -ne 0 ]; then 
+            RETURNVAL=$?
 	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
@@ -753,6 +771,6 @@ else
     fi
 fi
 
-exit 0
+exit $RETURNVAL
 
 
