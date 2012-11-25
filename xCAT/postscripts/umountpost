@@ -3,5 +3,8 @@
 #(C)IBM Corp
 #
 
-umount /post 2>&1 | logger -t xcat
+result=`umount /post 2>&1`
+returncode=$?
+logger -t xcat -p local4.info $result
+exit $returncode
 
