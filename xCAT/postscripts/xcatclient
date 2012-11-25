@@ -23,6 +23,7 @@ if [ ! -x /usr/bin/openssl ]; then #Unless we have openssl stup
    exit 0
 fi
 USEOPENSSLFORXCAT=1 #Declare 2.3 style SSL
+RETURNVAL=0
 export USEOPENSSLFORXCAT
    allowcred.awk &
    CREDPID=$!
@@ -44,9 +45,11 @@ export USEOPENSSLFORXCAT
    else
      ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/xcat_client_cred`
      logger -t xCAT -p local4.err xcat_client_cred Error: $ERR_MSG
+     RETURNVAL=-1
    fi
    rm /tmp/xcat_client_cred
 
    chmod 600 /root/.xcat/client-cred.pem
    cp _xcat/ca.pem /root/.xcat/ca.pem
-   kill -9 $CREDPID
+   kill -9 $CREDPIDi
+   exit $RETURNVAL
