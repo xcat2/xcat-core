@@ -13,5 +13,8 @@ POST_DIR=$(tabdb $NODERESTAB $RESNAME $noderes_install_dir)/$POSTDIR
 
 logger -t xcat -p local4.info "Install: mounting /post"
 mkdir /post 2>&1 | logger -t xcat -p local4.info
-mount -r -o nolock $NFS:$POST_DIR /post 2>&1 | logger -t xcat -p local4.info
+result=`mount -r -o nolock $NFS:$POST_DIR /post 2>&1`
+RETURNCODE=$?
+logger -t xcat -p local4.info $result
+exit $RETURNCODE
 
