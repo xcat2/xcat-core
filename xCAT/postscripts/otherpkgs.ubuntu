@@ -76,6 +76,7 @@ logger -t xcat  -p local4.info "OTHERPKGDIR=$OTHERPKGDIR"
 #check if the node has yum or zypper installed, it will try yum first, then zypper and last rpm 
 # for rpm based machines, or check if apt is installed, then it will use apt then dpkg 
 
+RETURNVAL=0
 hasrpm=0
 hasyum=0  
 haszypper=0        
@@ -317,6 +318,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
             result=`yum -y remove $repo_pkgs_preremove 2>&1`
             logger -t xcat  -p local4.info "$result"
             if [ $? -ne 0 ]; then 
+		RETURNVAL=$?
 	        logger -t xcat  -p local4.info "otherpkgs: $result"
             fi
             echo "$result"
@@ -325,6 +327,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	    result=`zypper remove -y $repo_pkgs_preremove 2>&1`
             logger -t xcat  -p local4.info "$result"
 	    if [ $? -ne 0 ]; then 
+		RETURNVAL=$?
                 logger -t xcat  -p local4.info "otherpkgs: $result"
 	    fi
             echo "$result"
@@ -336,6 +339,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         result=`$sremovecommand $plain_pkgs_preremove 2>&1`
         logger -t xcat  -p local4.info "$result"
         if [ $? -ne 0 ]; then 
+	    RETURNVAL=$?
 	    logger -t xcat  -p local4.info "otherpkgs $result"
         fi
         echo "$result"
@@ -349,6 +353,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
             result=`yum -y install $repo_pkgs 2>&1`
 	    logger -t xcat  -p local4.info "$result"
             if [ $? -ne 0 ]; then 
+	        RETURNVAL=$?
                 logger -t xcat  -p local4.info "otherpkgs: $result"
             fi
             echo "$result"
@@ -357,6 +362,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	    result=`zypper install -y $repo_pkgs 2>&1`
             logger -t xcat  -p local4.info "$result"
 	    if [ $? -ne 0 ]; then 
+	        RETURNVAL=$?
                 logger -t xcat  -p local4.info "otherpkgs: $result"
 	    fi
             echo "$result"
@@ -371,6 +377,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	    result=`apt-get -q -y --force-yes install $repo_pkgs 2>&1`
 	    logger -t xcat  -p local4.info "$result"
 	    if [ $? -ne 0 ]; then 
+	        RETURNVAL=$?
                 logger -t xcat  -p local4.info "otherpkgs: $result"
 	    fi
             echo "$result"
@@ -422,6 +429,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
             result=`yum -y remove $repo_pkgs_postremove 2>&1`
             logger -t xcat  -p local4.info "$result"
             if [ $? -ne 0 ]; then 
+	        RETURNVAL=$?
                 logger -t xcat  -p local4.info  "otherpkgs: $result"
             fi
             echo "$result"
@@ -430,6 +438,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	    result=`zypper remove -y $repo_pkgs_postremove 2>&1`
             logger -t xcat  -p local4.info  "$result"
 	    if [ $? -ne 0 ]; then 
+	        RETURNVAL=$?
                 logger -t xcat  -p local4.info "otherpkgs: $result"
     	    fi
             echo "$result"
@@ -438,6 +447,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
             result=`apt-get -y remove $repo_pkgs_postremove 2>&1`
             logger -t xcat  -p local4.info "$result"
             if [ $? -ne 0 ]; then 
+	        RETURNVAL=$?
                 logger -t xcat  -p local4.info "otherpkgs: $result"
             fi
             echo "$result"
@@ -449,6 +459,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         result=`$sremovecommand $plain_pkgs_postremove 2>&1`
         logger -t xcat  -p local4.info "$result"
         if [ $? -ne 0 ]; then 
+	    RETURNVAL=$?
        	    logger -t xcat  -p local4.info "otherpkgs $result"
         fi
         echo "$result"
@@ -457,5 +468,5 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     let op_index=$op_index+1
 done
 
-exit 0
+exit $RETURNVAL
 
