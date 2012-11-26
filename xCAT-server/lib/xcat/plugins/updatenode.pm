@@ -2869,7 +2869,7 @@ sub updateAIXsoftware
                     {
                         my $rsp;
                         push @{$rsp->{data}},
-                          "Could not run installp command.\n";
+                          "Could not run installp command: \'$inpcmd\'.\n";
                         foreach my $o (@$output)
                         {
                             push @{$rsp->{data}}, "$o";
