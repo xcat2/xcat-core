@@ -261,9 +261,18 @@ sub provzlinux {
         # Read XML file
         my $data = $xml->XMLin($tmpl);
         
-        my $devices = $data->{'dasd'}->{'devices'}->{'listentry'};
-        foreach (@$devices) {
-    
+        my $devices_ref = $data->{'dasd'}->{'devices'}->{'listentry'};
+        my @devices;
+        
+        if (ref($devices_ref) eq 'HASH') {
+        	# In the case of 1 device in the listentry, push hash into array
+        	push(@devices, $devices_ref);
+        } else {
+        	# Listentry is an array reference
+        	@devices = @$devices_ref;
+        }
+        
+        foreach (@devices) {
             # Get disk virtual address and disk type
             $type = $_->{'drivers'}->{'listentry'}->{'modules'}->{'module_entry'}->{'listentry'};
             $virt_addr = $_->{'sysfs_bus_id'};
