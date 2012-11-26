@@ -20,6 +20,36 @@ B<chhypervisor> I<noderange> [B<-d>]
 
 =back
 
+B<zVM specific :>
+
+=over 2
+
+B<chhypervisor> I<noderange> [B<--adddisk2pool> I<function> I<region> I<volume> I<group>]
+
+B<chhypervisor> I<noderange> [B<--addzfcp2pool> I<pool> I<status> I<wwpn> I<lun> I<size> I<owner>]
+
+B<chhypervisor> I<noderange> [B<--diskpoolnames>]
+
+B<chhypervisor> I<noderange> [B<--fcpchannels> I<state>]
+
+B<chhypervisor> I<noderange> [B<--getnetworknames>]
+
+B<chhypervisor> I<noderange> [B<--getnetwork> I<name>]
+
+B<chhypervisor> I<noderange> [B<--removediskfrompool> I<function> I<region> I<group>]
+
+B<chhypervisor> I<noderange> [B<--removezfcpfrompool> I<pool> I<lun>]
+
+B<chhypervisor> I<noderange> [B<--resetsmapi>]
+
+B<chhypervisor> I<noderange> [B<--smapi> I<function> I<arguments>]
+
+B<chhypervisor> I<noderange> [B<--zfcppoolnames>]
+
+B<chhypervisor> I<noderange> [B<--zfcppool> I<pool> I<space>]
+
+=back
+
 =head1 DESCRIPTION
 
 The B<chhypervisor> command can be used to configure the RHEV-h host.
@@ -31,15 +61,17 @@ After registering, the network interfaces of host need to be added to the 'netwo
 RHEV. And the power management for the host should be configured so that
 rhev-m could make proper decision when certain host encountered error.
 
+The B<chhypervisor> command can also be used to configure the zVM host.
+
 For each host, an entry should be added to the hypervisor table:
 
 The columns of hypervisor table:
 
 =over 2
 
-B<hypervisor.node> - rhev-h host name.
+B<hypervisor.node> - rhev-h host name or zVM host name.
 
-B<hypervisor.type> - Must be set to 'rhevh'.
+B<hypervisor.type> - Must be set to 'rhevh' or 'zvm'.
 
 B<hypervisor.mgr> - The rhev manager (The FQDN of rhev-m server) for the host.
 
@@ -51,6 +83,8 @@ default is 'Default' cluster if not specified.
 =back
 
 =head1 OPTIONS
+
+=head2 RHEV specific :
 
 =over 2
 
@@ -113,6 +147,75 @@ Display usage message.
 
 =back
 
+=head2 zVM specific :
+
+=over 2
+
+=item B<chhypervisor> I<noderange> [B<--adddisk2pool> I<function> I<region> I<volume> I<group>]
+
+Add a disk to a disk pool defined in the EXTENT CONTROL. Function type can be 
+either: (4) Define region as full volume and add to group OR (5) Add existing 
+region to group. If the volume already exists in the EXTENT CONTROL, use 
+function 5. If the volume does not exist in the EXTENT CONTROL, but is attached
+to SYSTEM, use function 4.
+
+=item B<chhypervisor> I<noderange> [B<--addzfcp2pool> I<pool> I<status> I<wwpn> I<lun> I<size> I<owner>]
+
+Add a zFCP device to a device pool defined in xCAT. The device must have been 
+carved up in the storage controller and configured with a WWPN/LUN before it 
+can be added to the xCAT storage pool. z/VM does not have the ability to 
+communicate directly with the storage controller to carve up disks dynamically.
+
+=item B<chhypervisor> I<noderange> [B<--diskpoolnames>]
+
+List the disk pool names available.
+
+=item B<chhypervisor> I<noderange> [B<--fcpchannels> I<state>]
+
+List the state of real FCP adapter devices.
+
+=item B<chhypervisor> I<noderange> [B<--getnetworknames>]
+
+List the defined network names available for a given host.
+
+=item B<chhypervisor> I<noderange> [B<--getnetwork> I<name>]
+
+List the configuration for a given network.
+
+=item B<chhypervisor> I<noderange> [B<--removediskfrompool> I<function> I<region> I<group>]
+
+Remove a disk from a disk pool defined in the EXTENT CONTROL. Function type can 
+be either: (1) Remove region, (2) Remove region from group, (3) Remove region 
+from all groups, OR (7) Remove entire group .
+
+=item B<chhypervisor> I<noderange> [B<--removezfcpfrompool> I<pool> I<lun>]
+
+Remove a zFCP device from a device pool defined in xCAT.
+
+=item B<chhypervisor> I<noderange> [B<--resetsmapi>]
+
+Reset z/VM SMAPI, assuming the SMAPI worker machines to reset are: VSMWORK1, 
+VSMWORK2, VSMWORK3, VSMREQIN, and VSMREQIU.
+
+=item B<chhypervisor> I<noderange> [B<--smcli> I<function> I<arguments>]
+
+Execute a SMAPI function. A list of APIs supported can be found by using the 
+help flag, e.g. chhypervisor pokdev61 --smcli -h. Specific arguments associated 
+with a SMAPI function can be found by using the help flag for the function, 
+e.g. chhypervisor pokdev61 --smcli Image_Query_DM -h. Only z/VM 5.4 SMAPI 
+functions are supported at this time. Additional SMAPI functions will be added 
+in subsequent zHCP versions.
+
+=item B<chhypervisor> I<noderange> [B<--zfcppoolnames>]
+
+List the zFCP device pool names available.
+
+=item B<chhypervisor> I<noderange> [B<--zfcppool> I<pool> I<space>]
+
+List the devices in a given zFCP device pool. Space can be either: free or used.
+
+=back
+
 =head1 RETURN VALUE
 
 0  The command completed successfully.
@@ -120,6 +223,8 @@ Display usage message.
 1  An error has occurred.
 
 =head1 EXAMPLES
+
+=head2 RHEV specific :
 
 =over 2
 
@@ -147,6 +252,77 @@ To activate the host 'host1', enter:
 To deactivate the host 'host1', enter:
 
  chhypervisor host1 -d
+
+=back
+
+=head2 zVM specific :
+
+=over 2
+
+=item 1.
+To add a disk to a disk pool defined in the EXTENT CONTROL, enter:
+  
+ chhypervisor pokdev61 --adddisk2pool 4 DM1234 DM1234 POOL1
+   
+=item 2.
+To add a zFCP device to a device pool defined in xCAT, enter:
+
+ chhypervisor pokdev61 --addzfcp2pool zfcp1 free 500501234567C890 4012345600000000 8G
+
+=item 3.
+To remove a region from a group in the EXTENT CONTROL, enter:
+
+ chhypervisor pokdev61 --removediskfrompool 2 DM1234 POOL1
+ 
+=item 4.
+To remove a zFCP device from a device pool defined in xCAT, enter:
+
+ chhypervisor pokdev61 --removezfcpfrompool zfcp1 4012345600000000
+ 
+=item 5.
+To reset z/VM SMAPI, enter:
+
+ chhypervisor pokdev61 --resetsmapi
+ 
+=item 6.
+To list the disk pool names available, enter:
+
+ chhypervisor pokdev61 --diskpoolnames
+ 
+=item 7.
+To list the configuration for a given disk pool, enter:
+
+ chhypervisor pokdev61 --diskpool POOL1 free
+ 
+=item 8.
+To list the zFCP device pool names available, enter:
+
+ chhypervisor pokdev61 --zfcppoolnames
+ 
+=item 9.
+To list the devices in a given zFCP device pool, enter:
+
+ chhypervisor pokdev61 --zfcppool zfcp1
+ 
+=item 10.
+To list the state of real FCP adapter devices, enter:
+
+ chhypervisor pokdev61 --fcpchannels free
+ 
+=item 11.
+To list the defined network names available for a given node, enter:
+
+ chhypervisor pokdev61 --getnetworknames
+ 
+=item 12.
+To list the configuration for a given network, enter:
+
+ chhypervisor pokdev61 --getnetwork GLAN1
+ 
+=item 13.
+To execute a SMAPI function (Image_Query_DM), enter:
+
+ chhypervisor pokdev61 --smcli Image_Query_DM -T LNX3
 
 =back
 
