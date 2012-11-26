@@ -1077,10 +1077,25 @@ sub getrvidparms_imm2 {
 	my $sessdata = shift;
     #wvid should be a possiblity, time to do the http...
     my $browser = LWP::UserAgent->new();
+	if ($sessdata->{ipmisession}->{bmc} =~ /^fe80/ and $sessdata->{ipmisession}->{bmc} =~ /%/) {
+        xCAT::SvrUtils::sendmsg ([1,"wvid not supported with IPv6 LLA addressing mode"],$callback,$sessdata->{node},%allerrornodes);
+        return;
+	}
+	my $host = $sessdata->{ipmisession}->{bmc};
+        my $ip6mode=0;
+	if ($host =~ /:/) { $ip6mode=1; $host = "[".$host."]"; }
     my $message = "user=".$sessdata->{ipmisession}->{userid}."&password=".$sessdata->{ipmisession}->{password}."&SessionTimeout=1200";
     $browser->cookie_jar({});
-    my $baseurl = "http://".$sessdata->{ipmisession}->{bmc}."/";
-    my $response = $browser->request(POST $baseurl."data/login",Referer=>"http://".$sessdata->{ipmisession}->{bmc}."/designs/imm/index.php",'Content-Type'=>"application/x-www-form-urlencoded",Content=>$message);
+    $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0; #TODO: for standalone IMMs, automate CSR retrieval and granting at setup itme
+					    #for flex, grab the CA from each CMM and store in a way accessible to this command
+					    #for now, accept the MITM risk no worse than http, the intent being feature parity
+					    #with http: for envs with https only, like Flex
+    my $baseurl = "https://$host/";
+    my $response = $browser->request(POST $baseurl."data/login",Referer=>"https://$host/designs/imm/index.php",'Content-Type'=>"application/x-www-form-urlencoded",Content=>$message);
+    if ($response->code == 500) {
+       $baseurl = "http://$host/";
+       $response = $browser->request(POST $baseurl."data/login",Referer=>"http://$host/designs/imm/index.php",'Content-Type'=>"application/x-www-form-urlencoded",Content=>$message);
+    }
     my $sessionid;
     unless ($response->content =~ /\"ok\"?(.*)/ and $response->content =~ /\"authResult\":\"0\"/) {
         xCAT::SvrUtils::sendmsg ([1,"Server returned unexpected data"],$callback,$sessdata->{node},%allerrornodes);
@@ -1092,7 +1107,8 @@ sub getrvidparms_imm2 {
     	$response = $browser->request(GET $baseurl."data/logout");
 	return;
     }
-    $response = $browser->request(GET $baseurl."designs/imm/viewer(".$sessdata->{ipmisession}->{bmc}.'@0@'.time().'@1@0@1@jnlp)');
+    $response = $browser->request(GET $baseurl."designs/imm/viewer(".$sessdata->{ipmisession}->{bmc}.'@'.$ip6mode.'@'.time().'@1@0@1@jnlp)');
+     #arguments are host, then ipv6 or not, then timestamp, then whether to encrypte or not, singleusermode, finally 'notwin32'
     my $jnlp = $response->content;
     $response = $browser->request(GET $baseurl."data/logout");
     my $currnode = $sessdata->{node};
