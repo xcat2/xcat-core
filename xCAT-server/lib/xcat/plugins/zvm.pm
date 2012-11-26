@@ -5529,8 +5529,8 @@ sub changeHypervisor {
         $out = xCAT::zvmCPUtils->getNetwork( $hcp, $netName );
     }
     
-    # smapi [api] [args]
-    elsif ( $args->[0] eq "--smapi" ) {
+    # smcli [api] [args]
+    elsif ( $args->[0] eq "--smcli" ) {
         # Invoke SMAPI API directly through zHCP smcli
         my $str = "@{$args}";
         $str =~ s/$args->[0]//g;
