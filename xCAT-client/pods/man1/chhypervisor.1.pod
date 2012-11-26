@@ -28,6 +28,8 @@ B<chhypervisor> I<noderange> [B<--adddisk2pool> I<function> I<region> I<volume> 
 
 B<chhypervisor> I<noderange> [B<--addzfcp2pool> I<pool> I<status> I<wwpn> I<lun> I<size> I<owner>]
 
+B<chhypervisor> I<noderange> [B<--diskpool> I<name>]
+
 B<chhypervisor> I<noderange> [B<--diskpoolnames>]
 
 B<chhypervisor> I<noderange> [B<--fcpchannels> I<state>]
