@@ -33,6 +33,9 @@ sub check_tofix {
 		  fix_directory($File::Find::name);
 		}
 		generate_repo($File::Find::name);
+   }   
+   elsif($File::Find::name =~ /\/RPM-GPG-KEY/){
+                qx(rpm --import $File::Find::name);
    }
 }
 sub generate_repo
