@@ -828,7 +828,7 @@ sub subvars_for_mypostscript {
       my $master = $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster};
      
       if( !defined($master) ) {
-          $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} = $::XCATSITEVALS{MASTER};
+          $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} = $::XCATSITEVALS{master};
       } 
        
       #get the node type, service node or compute node
