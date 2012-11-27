@@ -126,6 +126,49 @@ chmod 755 /tmp/foo.py
 
 /tmp/foo.py >/foo.log 2>&1 &
 #time to ascertain fstype and PReP/UEFI/legacy
+#also, find first available block device (sda or vda likely)
+#TODO: pick a likely non-SAN target if possible
+shopt -s nullglob
+for disk in /dev/vd*[^0-9];do
+	if [ -z "$firstdirectdisk" ]; then firstdirectdisk=$disk; fi #remember first disk as a guess of medium resort
+	eddname=$(/lib/udev/edd_id $disk 2> /dev/null)
+	if [ ! -z "$eddname" -a "$eddname" = "int13_dev80" ]; then
+		instdisk=$disk
+		break
+	fi
+done
+if [ -z "$instdisk" ]; then
+	for disk in /dev/sd*[^0-9]; do
+		eddname=$(/lib/udev/edd_id $disk 2> /dev/null)
+		if [ ! -z "$eddname" -a "$eddname" = "int13_dev80" ]; then
+			instdisk=$disk
+			break
+		fi
+		currdriver=`udevadm info --attribute-walk --name $disk |grep DRIVERS|grep -v '""'|grep -v '"sd"'|head -n 1|sed -e 's/[^"]*"//' -e 's/"//'`
+		case "$currdriver" in 
+		"ata_piix4"|"PMC MaxRAID"|"ahci"|"megaraid_sas") #certainly direct
+			if [ -z "$firstdirectdisk" ]; then firstdirectdisk=$disk; fi #remember first disk as a guess of medium resort
+			;;
+		"mptsas"|"mpt2sas") #*PROBABLY* not SAN, but SAS SAN is possible
+			if [ -z "$probablyfirstdirectdisk" ]; then probablyfirstdirectdisk=$disk; fi #remember first disk as a guess of medium resort
+			;;
+		*)
+			if [ -z "$firstdisk" ]; then firstdisk=$disk; fi #remember first disk as a guess of medium resort
+			;;
+		esac
+	done
+fi
+if [ -z "$instdisk" ]; then
+	if [ ! -z "$firstdirectdisk" ]; then 
+		instdisk=$firstdirectdisk 
+	elif [ ! -z "$probablyfirstdirectdisk" ]; then
+		instdisk=$probablyfirstdirectdisk 
+	elif [ ! -z "$firstdisk" ]; then
+		instdisk=$firstdisk 
+	fi
+fi
+		
+
 modprobe ext4 >& /dev/null
 modprobe ext4dev >& /dev/null
 if grep ext4dev /proc/filesystems > /dev/null; then
@@ -136,13 +179,14 @@ else
 	FSTYPE=ext3
 fi
 if [ `uname -m` = "ppc64" ]; then
-	echo 'part None --fstype "PPC PReP Boot" --size 8' >> /tmp/partitioning 
+	echo 'part None --fstype "PPC PReP Boot" --ondisk $instdisk --size 8' >> /tmp/partitioning 
 fi
 if [ -d /sys/firmware/efi ]; then 
-	echo 'part /boot/efi --size 50 --fstype vfat' >> /tmp/partitioning
+	echo 'part /boot/efi --size 50 --ondisk $instdisk --fstype vfat' >> /tmp/partitioning
 fi
 
 #TODO: ondisk detection, /dev/disk/by-id/edd-int13_dev80 for legacy maybe, and no idea about efi.  at least maybe blacklist SAN if mptsas/mpt2sas/megaraid_sas seen...
-echo "part swap --size 1024" >> /tmp/partitioning
-echo "part / --size 1 --grow --fstype $FSTYPE" >> /tmp/partitioning
+echo "part boot --size 256 --fstype ext3 --ondisk $instdisk" >> /tmp/partitioning
+echo "part swap --recommended --ondisk $instdisk" >> /tmp/partitioning
+echo "part / --size 1 --grow --ondisk $instdisk --fstype $FSTYPE" >> /tmp/partitioning
 	
