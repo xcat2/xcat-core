@@ -19,7 +19,7 @@ use xCAT::Utils;
 use xCAT::MsgUtils;
 use Getopt::Long;
 use Data::Dumper;
-
+use xCAT::Yum;
 
 #-------------------------------------------------------
 
@@ -224,7 +224,7 @@ sub rmosdistro
 			
 		#get "dirpaths" attribute of osdistro to remove the directory, complain if failed to lookup the osdistroname
                 my %keyhash=('osdistroname' => $_,);
-		my $result=$osdistrotab->getAttribs(\%keyhash,'dirpaths');
+		my $result=$osdistrotab->getAttribs(\%keyhash,'dirpaths','basename','majorversion','minorversion','arch');
 		unless($result)
 		{
                          $callback->({error=>"rmosdistro: $keyhash{osdistroname}  not exist!",errorcode=>[1]});
@@ -244,6 +244,17 @@ sub rmosdistro
 				}
 		}
 
+		
+		#remove the repo template
+                my @ents = xCAT::TableUtils->get_site_attribute("installdir");
+                my $site_ent = $ents[0];
+		my $installroot;
+                if( defined($site_ent) )
+                {
+                    $installroot = $site_ent;
+                }
+		xCAT::Yum->remove_yumrepo($installroot,$result->{basename}.$result->{majorversion}.(defined($result->{minorversion})?'.'.$result->{minorversion}:$result->{minorversion}),$result->{arch});	
+	
 		#remove the osdistro entry			
                 $osdistrotab->delEntries(\%keyhash);
    		$osdistrotab->commit;
