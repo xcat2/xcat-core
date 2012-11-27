@@ -26,6 +26,16 @@ sub localize_yumrepo {
      close($yumrepofile);
 }
 
+
+sub remove_yumrepo {
+    my $self = shift;
+    my $installroot = shift;
+    $distname = shift;
+    $arch = shift;
+
+    rmtree("$installroot/postscripts/repos/$distname/$arch/");
+}
+
 sub check_tofix {
    if (-d $File::Find::name and $File::Find::name =~ /\/repodata$/) {
 		if($distname =~ /rhels5/)
@@ -33,11 +43,13 @@ sub check_tofix {
 		  fix_directory($File::Find::name);
 		}
 		generate_repo($File::Find::name);
-   }   
+   }
    elsif($File::Find::name =~ /\/RPM-GPG-KEY/){
-                qx(rpm --import $File::Find::name);
+   		qx(rpm --import $File::Find::name);
    }
 }
+
+
 sub generate_repo
 {
     #write local-repository.tmpl
