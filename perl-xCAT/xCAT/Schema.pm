@@ -820,10 +820,12 @@ site => {
   # Do not put description text past column 88, so it displays well in a 100 char wide window.
   # ----------------------------------------------------------------------------------|----------
   key => "Attribute Name:  Description\n\n".
-   " auditskipcmds: List of commands that will not be written to the auditlog table.\n".
+   " auditskipcmds: List of commands and/or client types that will not be written to the auditlog table.\n".
    "                'ALL' means all cmds will be skipped. If attribute is null, all\n".
-   "                commands will be written.\n".
-   "                For example: tabdump,nodels,lsdef will not log those cmds.\n\n".
+   "                commands will be written.\n". 
+   "                clienttype:web would skip all commands from the web client\n". 
+   "                For example: tabdump,nodels,clienttype:web \n".
+   "                will not log tabdump,nodels and any web client commands.\n\n".
    " blademaxp:  The maximum number of concurrent processes for blade hardware control.\n\n".
    " cleanupxcatpost:  (yes/1 or no/0). Set to 'yes' or '1' to clean up the /xcatpost\n".
    "                   directory on the stateless and statelite nodes after the\n".
