@@ -214,7 +214,14 @@ sub validate {
           if (grep(/$request->{command}->[0]/, @skipcmds)) {  # skip the command 
              $skip = 1;
           }
+          # if skip clienttype clienttype:value
+          my $client="clienttype:";
+          $client .= $request->{clienttype}->[0];
+          if (grep(/$client/, @skipcmds)) { #skip the client 
+             $skip = 1;
+          }
         }
+        
       }
       @$deferredmsgargs=(); #should be redundant, but just in case
       if (($request->{command}->[0] ne "getpostscript") && ($request->{command}->[0] ne "getcredentials") && ($skip == 0)) {
