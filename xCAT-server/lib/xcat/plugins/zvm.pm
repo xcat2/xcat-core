@@ -194,7 +194,7 @@ sub process_request {
                 if (xCAT::zvmUtils->isHypervisor($_)) {
                     inventoryHypervisor( $callback, $_, $args );
                 } else {
-                	inventoryVM( $callback, $_, $args );
+                    inventoryVM( $callback, $_, $args );
                 }
                 
                 # Exit process
@@ -2007,21 +2007,25 @@ sub scanVM {
         
         # Save node attributes
         if ($write2db) {
-            # Save to 'zvm' table
-            %propHash = (
-                'hcp'       => $hcp,
-                'userid'    => $id,
-                'nodetype'  => 'vm',
-                'parent'    => lc($host)
-            );                        
-            xCAT::zvmUtils->setNodeProps( 'zvm', $node, \%propHash );
             
-            # Save to 'nodetype' table
-            %propHash = (
-                'arch'  => $arch,
-                'os'    => $os
-            );                        
-            xCAT::zvmUtils->setNodeProps( 'nodetype', $node, \%propHash );
+            # Do not save if node = host
+            if (!(lc($host) eq lc($node))) {                
+                # Save to 'zvm' table
+                %propHash = (
+                    'hcp'       => $hcp,
+                    'userid'    => $id,
+                    'nodetype'  => 'vm',
+                    'parent'    => lc($host)
+                );                        
+                xCAT::zvmUtils->setNodeProps( 'zvm', $node, \%propHash );
+                
+                # Save to 'nodetype' table
+                %propHash = (
+                    'arch'  => $arch,
+                    'os'    => $os
+                );                        
+                xCAT::zvmUtils->setNodeProps( 'nodetype', $node, \%propHash );
+            }
         }
         
         # Create output string
@@ -4406,8 +4410,8 @@ END
             
             # Character limit of 50 in parm file for DASD parameter
             if (length($dasd) > 50) {
-            	@words = split( ',', $dasd );
-            	$dasd = $words[0] . "-" . $words[@words - 1];
+                @words = split( ',', $dasd );
+                $dasd = $words[0] . "-" . $words[@words - 1];
             }
             
             # Get dedicated virtual address
@@ -4434,7 +4438,7 @@ END
             
             # Concat dedicated devices and DASD together
             if ($devices) {
-            	$dasd = $dasd . "," . $devices;
+                $dasd = $dasd . "," . $devices;
             }
 
             # Create parmfile -- Limited to 80 characters/line, maximum of 11 lines
@@ -5426,7 +5430,7 @@ sub changeHypervisor {
     
     # diskpoolnames
     elsif ( $args->[0] eq "--diskpoolnames" ) {
-    	# Get disk pool names
+        # Get disk pool names
         # If the cache directory does not exist
         if (!(`ssh $hcp "test -d $cache && echo Exists"`)) {
             # Create cache directory
@@ -5459,7 +5463,7 @@ sub changeHypervisor {
     
     # zfcppoolnames
     elsif ( $args->[0] eq "--zfcppoolnames") {
-    	# Get zFCP disk pool names
+        # Get zFCP disk pool names
         # Go through each zFCP pool
         my @pools = split("\n", `ssh $hcp "ls $::ZFCPPOOL"`);
         foreach (@pools) {
@@ -5470,7 +5474,7 @@ sub changeHypervisor {
 
     # diskpool [pool] [all|free|used]
     elsif ( $args->[0] eq "--diskpool" ) {
-    	# Get disk pool configuration
+        # Get disk pool configuration
         my $pool  = $args->[1];
         my $space = $args->[2];
 
@@ -5486,7 +5490,7 @@ sub changeHypervisor {
     
     # zfcppool [pool] [space]
     elsif ( $args->[0] eq "--zfcppool" ) {
-    	# Get zFCP disk pool configuration
+        # Get zFCP disk pool configuration
         my $pool  = lc($args->[1]);
         my $space = $args->[2];
 
@@ -5592,8 +5596,8 @@ sub inventoryHypervisor {
 
     # Get configuration
     if ( $args->[0] eq 'config' ) {
-    	
-    	# Create output string
+        
+        # Create output string
         $str .= "z/VM Host: " . uc($node) . "\n";
         $str .= "zHCP: $hcp\n";
     } elsif ( $args->[0] eq 'all' ) {
