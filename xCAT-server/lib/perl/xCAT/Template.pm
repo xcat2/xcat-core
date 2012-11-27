@@ -899,7 +899,7 @@ sub subvars_for_mypostscript {
 
     
     my $osimgname = $provmethod;
-    if($osimgname =~ /install|netboot|statelite/){
+    if($osimgname =~ /^(install|netboot|statelite)$/){
          $osimgname = "$os-$arch-$provmethod-$profile";
     }
              
