@@ -1086,6 +1086,7 @@ sub getrvidparms_imm2 {
 	if ($host =~ /:/) { $ip6mode=1; $host = "[".$host."]"; }
     my $message = "user=".$sessdata->{ipmisession}->{userid}."&password=".$sessdata->{ipmisession}->{password}."&SessionTimeout=1200";
     $browser->cookie_jar({});
+    my $httpport=443;
     $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0; #TODO: for standalone IMMs, automate CSR retrieval and granting at setup itme
 					    #for flex, grab the CA from each CMM and store in a way accessible to this command
 					    #for now, accept the MITM risk no worse than http, the intent being feature parity
@@ -1093,6 +1094,7 @@ sub getrvidparms_imm2 {
     my $baseurl = "https://$host/";
     my $response = $browser->request(POST $baseurl."data/login",Referer=>"https://$host/designs/imm/index.php",'Content-Type'=>"application/x-www-form-urlencoded",Content=>$message);
     if ($response->code == 500) {
+	$httpport=80;
        $baseurl = "http://$host/";
        $response = $browser->request(POST $baseurl."data/login",Referer=>"http://$host/designs/imm/index.php",'Content-Type'=>"application/x-www-form-urlencoded",Content=>$message);
     }
@@ -1110,6 +1112,11 @@ sub getrvidparms_imm2 {
     $response = $browser->request(GET $baseurl."designs/imm/viewer(".$sessdata->{ipmisession}->{bmc}.'@'.$ip6mode.'@'.time().'@1@0@1@jnlp)');
      #arguments are host, then ipv6 or not, then timestamp, then whether to encrypte or not, singleusermode, finally 'notwin32'
     my $jnlp = $response->content;
+    unless ($jnlp) { #ok, might be the newer syntax...
+    	$response = $browser->request(GET $baseurl."designs/imm/viewer(".$sessdata->{ipmisession}->{bmc}.'@'.$httpport.'@'.$ip6mode.'@'.time().'@1@0@1@jnlp'.'@USERID@0@0@0@0'.')');
+     	#arguments are host, then ipv6 or not, then timestamp, then whether to encrypte or not, singleusermode, finally 'notwin32'
+    	$jnlp = $response->content;
+    }
     $response = $browser->request(GET $baseurl."data/logout");
     my $currnode = $sessdata->{node};
     $jnlp =~ s!argument>title=.*Video Viewer</argument>!argument>title=$currnode wvid</argument>!;
