@@ -1212,7 +1212,7 @@ sub getPostbootScripts
 
     # get postbootscripts for image
     my $ips; 
-    if(defined($script_hash->{osimage_postboot} ) && defined ($script_hash->{osimage_post}->{$osimgname})) {
+    if(defined($script_hash->{osimage_postboot} ) && defined ($script_hash->{osimage_postboot}->{$osimgname})) {
         $ips = $script_hash->{osimage_postboot}->{$osimgname}; 
     }
 
