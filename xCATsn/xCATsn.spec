@@ -34,6 +34,9 @@ Requires: /etc/xinetd.d/tftp
 # yaboot-xcat is pulled in so any MN can manage ppc nodes
 Requires: yaboot-xcat 
 %endif
+%ifarch ppc64
+Requires: perl-IO-Stty
+%endif
 %endif
 
 # The aix rpm cmd forces us to do this outside of ifos type stmts
