@@ -338,6 +338,8 @@ sub assign_to_osimage
 
                     if ( $match ) {
                         next;
+                    } elsif ( !$added ) {
+                        push @newscripts, $formatedkitcomp;
                     }
 
                     my $osimagescripts = join ',', @newscripts;
