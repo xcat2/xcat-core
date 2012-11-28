@@ -1416,6 +1416,15 @@ sub get_path ()
     }
 }
 
+# callback subroutine for 'find' command to return the path for all the matches
+my @all_real_path;
+sub get_all_path ()
+{
+    if ($File::Find::name =~ /\/$driver_name/) {
+        push @all_real_path, $File::Find::name;
+    }
+}
+
 # Get the driver disk or driver rpm from the osimage.driverupdatesrc
 # The valid value: dud:/install/dud/dd.img,rpm:/install/rpm/d.rpm, if missing the tag: 'dud'/'rpm'
 # the 'rpm' is default.
@@ -1538,6 +1547,24 @@ sub insert_dd () {
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
             }
+
+            # To skip the conflict of files that some rpm uses the xxx.ko.new as the name of the driver
+            # Change it back to xxx.ko here
+            $driver_name = "\*ko.new";
+            @all_real_path = ();
+            find(\&get_all_path, <$dd_dir/rpm/*>);
+            foreach my $file (@all_real_path) {
+                my $newname = $file;
+                $newname =~ s/\.new$//;
+                $cmd = "mv -f $file $newname";
+                xCAT::Utils->runcmd($cmd, -1);
+                if ($::RUNCMD_RC != 0) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Handle the driver update failed. Could not rename $file.";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
+            }
+
             
             # Copy the firmware to the rootimage
             if (-d "$dd_dir/rpm/lib/firmware") {
@@ -1568,11 +1595,13 @@ sub insert_dd () {
                   $driver_name = $driver;
                   $real_path = "";
                   find(\&get_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
-                  if ($real_path && $real_path =~ m!$dd_dir/rpm(/lib/modules/$kernelver/.*?)[^\/]*$!) {
-                      if (! -d "$dd_dir/initrd_img$1") {
-                          mkpath "$dd_dir/initrd_img$1";
+                  #if ($real_path && $real_path =~ m!$dd_dir/rpm(/lib/modules/$kernelver/.*?)[^\/]*$!) {
+                  # NOTE: for the initrd of sles that the drivers are put in the /lib/modules/$kernelver/initrd/
+                  if ($real_path && $real_path =~ m!$dd_dir/rpm/lib/modules/$kernelver/!) {
+                      if (! -d "$dd_dir/initrd_img/lib/modules/$kernelver/initrd") {
+                          mkpath "$dd_dir/initrd_img/lib/modules/$kernelver/initrd";
                       }
-                      $cmd = "cp -rf $real_path $dd_dir/initrd_img$1";
+                      $cmd = "cp -rf $real_path $dd_dir/initrd_img/lib/modules/$kernelver/initrd";
                       xCAT::Utils->runcmd($cmd, -1);
                       if ($::RUNCMD_RC != 0) {
                           my $rsp;
@@ -1585,18 +1614,27 @@ sub insert_dd () {
                 }
               } elsif ($Injectalldriver) {
                 # copy all the drviers to the initrd
-                if (-d "$dd_dir/rpm/lib/modules/$kernelver") {
-                    $cmd = "cp -rf $dd_dir/rpm/lib/modules/$kernelver $dd_dir/initrd_img/lib/modules/";
-                    xCAT::Utils->runcmd($cmd, -1);
-                    if ($::RUNCMD_RC != 0) {
-                        my $rsp;
-                        push @{$rsp->{data}}, "Handle the driver update failed. Could not copy /lib/modules/$kernelver to the initrd.";
-                        xCAT::MsgUtils->message("I", $rsp, $callback);
-                    }
-                } else {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Handle the driver update failed. Could not find /lib/modules/$kernelver from the driver rpms.";
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                $driver_name = "\*\.ko";
+                @all_real_path = ();
+                find(\&get_all_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
+                foreach $real_path (@all_real_path) {
+                  #if ($real_path && $real_path =~ m!$dd_dir/rpm(/lib/modules/$kernelver/.*?)[^\/]*$!) {
+                  # NOTE: for the initrd of sles that the drivers are put in the /lib/modules/$kernelver/initrd/
+                  if ($real_path && $real_path =~ m!$dd_dir/rpm/lib/modules/$kernelver/!) {
+                      if (! -d "$dd_dir/initrd_img/lib/modules/$kernelver/initrd") {
+                          mkpath "$dd_dir/initrd_img/lib/modules/$kernelver/initrd";
+                      }
+                      $cmd = "cp -rf $real_path $dd_dir/initrd_img/lib/modules/$kernelver/initrd";
+                      my $driver = basename($real_path);
+                      xCAT::Utils->runcmd($cmd, -1);
+                      if ($::RUNCMD_RC != 0) {
+                          my $rsp;
+                          push @{$rsp->{data}}, "Handle the driver update failed. Could not copy driver $driver to the initrd.";
+                          xCAT::MsgUtils->message("I", $rsp, $callback);
+                      } else {
+                          push @rpm_drivers, $driver;
+                      }
+                  }
                 }
             }
     
