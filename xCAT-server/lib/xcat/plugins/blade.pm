@@ -1563,10 +1563,23 @@ sub rscan {
 
     my ($k3,$u3);
     $k3->{node}   = $name;
+    my $append;
     if ($type eq "ppcblade") {
-      $u3->{groups} = "blade,all";
+      $append = "blade";
     } else {
-      $u3->{groups} = $type.",all";
+      $append = $type;
+    }
+    $u3->{groups} = $append.",all";
+    my $tmp_groups = $db{nodelist}->getNodeAttribs($name,['groups']);
+    if (defined($tmp_groups) and defined($tmp_groups->{groups})) {
+       $u3->{groups} = $tmp_groups->{groups};
+       my @groups_array = split /,/,$tmp_groups->{groups};
+       if (!grep(/^$append$/, @groups_array)) {
+           $u3->{groups} .= ",$append";
+       }
+       if (!grep(/^all$/, @groups_array)) {
+           $u3->{groups} .= ",all"; 
+       }
     }
     $db{nodelist}->setAttribs($k3,$u3);
     $db{nodelist}{commit} = 1;
