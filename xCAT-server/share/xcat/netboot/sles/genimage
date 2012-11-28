@@ -1806,6 +1806,21 @@ sub load_dd()
                 print "Error: Cannot read the rpm $rpm.\n";
             }
         }
+
+        # To skip the conflict of files that some rpm uses the xxx.ko.new as the name of the driver
+        # Change it back to xxx.ko here
+        $driver_name = "\*ko.new";
+        @all_real_path = ();
+        find(\&get_all_path, <$dd_dir/rpm/*>);
+        foreach my $file (@all_real_path) {
+            my $newname = $file;
+            $newname =~ s/\.new$//;
+            if (system ("mv -f $file $newname")) {
+                print "Error: Could not rename $file\n";
+
+            }
+        }
+
         # Copy the firmware to the rootimage
         if (-d "$dd_dir/rpm/lib/firmware") {
             system ("cp -rf $dd_dir/rpm/lib/firmware $rootimg_dir/lib");
