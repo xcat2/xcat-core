@@ -88,7 +88,7 @@ sub run_remote_shell_api {
 	    -host=>$node,
 	    -nokeycheck=>1,
 	    -output_record_separator=>"\r",
-	    Timeout=>5, 
+	    Timeout=>10, 
 	    Errmode=>'return',
 	    Prompt=>"/$prompt/",
 	    );
@@ -102,7 +102,7 @@ sub run_remote_shell_api {
 	$output.="start Telnet session...\n";
 	require Net::Telnet;
 	$t = new Net::Telnet(
-	    Timeout=>5, 
+	    Timeout=>10, 
 	    Errmode=>'return',
 	    Prompt=>"/$prompt/",
 	    );
@@ -218,6 +218,7 @@ sub run_remote_shell_api {
 	if ($verbose) {
 	    print "command:$cmd\n";
 	}
+        
 	while (1) {
 	    if ($try_more) {                 
                 #This is for second and consequent pages.
@@ -240,7 +241,7 @@ sub run_remote_shell_api {
 		($prematch, $match) = $t->waitfor(Match => "/$more_prompt/",
 						  Match => "/$prompt/",
 						  Errmode => "return",
-						  Timeout=>3);
+						  Timeout=>10);
 	    } else {
                 # for the first page which may contian all
 		if (! $t->put(String => "$cmd\n",
@@ -256,7 +257,7 @@ sub run_remote_shell_api {
 						  Match => "/$prompt/",
 						  Match => '/password:\s*$/i',
 						  Errmode => "return",
-						  Timeout=>3);
+						  Timeout=>10);
 	    }
 
 	    if ($verbose) {
