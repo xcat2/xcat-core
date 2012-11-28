@@ -102,7 +102,7 @@ sub process_request {
 
     my $lock = xCAT::Utils->acquire_lock("nodemgmt", 1);
     if (! $lock){
-        setrsp_errormsg("Can not acquire lock, some process is operating node related actions.");
+        setrsp_errormsg("Cannot acquire lock, another process is already running.");
         return;
     }
 
@@ -110,7 +110,7 @@ sub process_request {
     if (grep{ $_ eq $command} ("nodeimport", "nodepurge", "nodechprofile", "nodeaddunmged", "nodechmac")){
         my $discover_running = xCAT::ProfiledNodeUtils->is_discover_started();
         if ($discover_running){
-            setrsp_errormsg("Can not run command $command as profiled nodes discover is running.");
+            setrsp_errormsg("Cannot run the $command command, the node discovery process is already running.");
             xCAT::Utils->release_lock($lock, 1);
             return;
         }
@@ -156,7 +156,7 @@ sub parse_args{
         my @argarray = split(/=/,$arg);
         my $arglen = @argarray;
         if ($arglen > 2){
-            return "Illegal arg $arg specified.";
+            return "Illegal argument $arg specified.";
         }
 
         # translate the profile names into real group names in db.
@@ -228,7 +228,7 @@ sub validate_args{
     }
     foreach (@mandatoryparams){
         if(! exists($args_dict{$_})){
-            setrsp_errormsg("Mandatory parameter $_ not specified.");
+            setrsp_errormsg("You must specify the $_ option.");
             return 0;
         }
     }
@@ -279,14 +279,14 @@ Usage:
     }
 
     if(! (-e $args_dict{'file'})){
-        setrsp_errormsg("The hostinfo file not exists.");
+        setrsp_errormsg("Node information file does not exist.");
         return;
     }
 
     # validate hostnameformat:
     my $nameformattype = xCAT::ProfiledNodeUtils->get_hostname_format_type($args_dict{'hostnameformat'});
     if ($nameformattype eq "unknown"){
-        setrsp_errormsg("Invalid hostname format: $args_dict{'hostnameformat'}");
+        setrsp_errormsg("Invalid node name format: $args_dict{'hostnameformat'}");
         return;
     }
 
@@ -324,7 +324,7 @@ Usage:
     xCAT::MsgUtils->message('S', "Generate temporary hostnames.");
     my ($retcode_read, $retstr_read) = read_and_generate_hostnames($args_dict{'file'});
     if ($retcode_read != 0){
-        setrsp_progress("Validate hostinfo file failed");
+        setrsp_progress("Failed to validate node information file.");
         setrsp_errormsg($retstr_read);
         return;
     }
@@ -335,13 +335,13 @@ Usage:
     my %hostinfo_dict = %$hostinfo_dict_ref;
     my @invalid_records = @$invalid_records_ref;
     if (@invalid_records){
-        setrsp_progress("Validate hostinfo file failed");
+        setrsp_progress("Failed to validate node information file.");
         setrsp_invalidrecords(\@invalid_records);
         return;
     }
     unless (%hostinfo_dict){
-        setrsp_progress("Validate hostinfo file failed");
-        setrsp_errormsg("No valid host records found in hostinfo file.");
+        setrsp_progress("Failed to validate node information file.");
+        setrsp_errormsg("Cannot find node records in node information file.");
         return;
     }
 
@@ -349,19 +349,19 @@ Usage:
     xCAT::MsgUtils->message('S', "Generating new hostinfo string.");
     my ($retcode_gen, $retstr_gen) = gen_new_hostinfo_string(\%hostinfo_dict);
     unless ($retcode_gen){
-        setrsp_progress("Validate hostinfo file failed");
+        setrsp_progress("Failed to validate node information file.");
         setrsp_errormsg($retstr_gen);
         return;
     }
     # call mkdef to create hosts and then call nodemgmt for node management plugins.
-    setrsp_progress("Import nodes started.");
-    setrsp_progress("call mkdef to create nodes.");
+    setrsp_progress("Importing nodes...");
+    setrsp_progress("Creating nodes...");
     my $warnstr = "";
     my $retref = xCAT::Utils->runxcmd({command=>["mkdef"], stdin=>[$retstr_gen], arg=>['-z']}, $request_command, 0, 2);
     my $retstrref = parse_runxcmd_ret($retref);
     # runxcmd failed.
     if ($::RUNCMD_RC != 0){
-        $warnstr = "Warning: failed to import some nodes into db while running mkdef.";
+        $warnstr = "Warning: failed to import some nodes.";
         setrsp_progress($warnstr); 
         if ($retstrref->[1]) {
             $warnstr .= "Details: $retstrref->[1]";
@@ -369,7 +369,7 @@ Usage:
     }
 
     my @nodelist = keys %hostinfo_dict;
-    setrsp_progress("call nodemgmt plugins.");
+    setrsp_progress("Configuring nodes...");
     $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>\@nodelist}, $request_command, 0, 2);
     $retstrref = parse_runxcmd_ret($retref);
     if ($::RUNCMD_RC != 0){
@@ -379,7 +379,7 @@ Usage:
         }
     }
 
-    setrsp_progress("Import nodes success.");
+    setrsp_progress("Imported nodes.");
     #TODO: get the real nodelist here.
     setrsp_success(\@nodelist, $warnstr);
 }
@@ -398,9 +398,9 @@ sub nodepurge{
     my $nodes   = $request->{node};
     xCAT::MsgUtils->message('S', "Purging nodes.");
     # For remove nodes, we should call 'nodemgmt' in front of 'noderm'
-    setrsp_progress("Call kit node plugins.");
+    setrsp_progress("Configuring nodes...");
 
-    my $helpmsg = "nodepurge: Remove nodes from database, also remove them from system configuration.
+    my $helpmsg = "nodepurge: Removes nodes from database and system configuration.
 Usage: 
 \tnodepurge <noderange>
 \tnodepurge [-h|--help] 
@@ -416,24 +416,24 @@ Usage:
     my $retstrref = parse_runxcmd_ret($retref);
     # runxcmd failed.
     if ($::RUNCMD_RC != 0){
-        setrsp_progress("Warning: failed to call command kitnoderemove.");
-        $warnstr .= "Warning: failed to call command kitnoderemove.";
+        setrsp_progress("Warning: failed to call kitnoderemove command.");
+        $warnstr .= "Warning: failed to call kitnoderemove command.";
         if ($retstrref->[1]) {
             $warnstr .= "Details: $retstrref->[1]";
         }
     }
 
-    setrsp_progress("Call noderm to remove nodes.");
+    setrsp_progress("Removing nodes...");
     $retref = xCAT::Utils->runxcmd({command=>["noderm"], node=>$nodes}, $request_command, 0, 2);
     $retstrref = parse_runxcmd_ret($retref);
     if ($::RUNCMD_RC != 0){
-        setrsp_progress("Warning: failed to call command noderm to remove some nodes.");
-        $warnstr .= "Warning: failed to call command noderm to remove some nodes.";
+        setrsp_progress("Warning: Cannot remove all nodes. The noderm command failed to remove some of the nodes.");
+        $warnstr .= "Warning: Cannot remove all nodes. The noderm command failed to remove some of the nodes.";
         if ($retstrref->[1]) {
             $warnstr .= "Details: $retstrref->[1]";
         }
     }
-    setrsp_progress("Purge nodes success.");
+    setrsp_progress("Removed all nodes.");
     setrsp_success($nodes, $warnstr);
 }
 
@@ -450,7 +450,7 @@ Usage:
 sub noderefresh
 {
     my $nodes   = $request->{node};
-    my $helpmsg = "noderefresh: Re-Call kit plugins for profiled nodes
+    my $helpmsg = "noderefresh: Calls kit plugins for the nodes in the profile.
 Usage: 
 \tnoderefresh <noderange>
 \tnoderefresh [-h|--help] 
@@ -465,7 +465,7 @@ Usage:
     my $retstrref = parse_runxcmd_ret($retref);
     # runxcmd failed.
     if ($::RUNCMD_RC != 0){
-        setrsp_progress("Warning: failed to call some kit commands.");
+        setrsp_progress("Warning: Failed to call kit commands.");
     }
     setrsp_success($nodes);
 }
@@ -498,7 +498,7 @@ Usage:
 
     my %updated_groups;
     # Get current templates for all nodes.
-    setrsp_progress("Read database to get groups for all nodes.");
+    setrsp_progress("Getting all node groups from the database...");
     my %groupdict;
     my $nodelstab = xCAT::Table->new('nodelist');
     my $nodeshashref = $nodelstab->getNodesAttribs($nodes, ['groups']);
@@ -530,20 +530,20 @@ Usage:
     }
     
     #update DataBase.
-    setrsp_progress("Update database records.");
+    setrsp_progress("Updating database records...");
     my $nodetab = xCAT::Table->new('nodelist',-create=>1);
     $nodetab->setNodesAttribs(\%updatenodeshash);
     $nodetab->close();
     
     # call plugins
-    setrsp_progress("Call nodemgmt plugins.");
+    setrsp_progress("Configuring nodes...");
     my $retref = xCAT::Utils->runxcmd({command=>["kitnodeupdate"], node=>$nodes}, $request_command, 0, 2);
     my $retstrref = parse_runxcmd_ret($retref);
     if ($::RUNCMD_RC != 0){
-        setrsp_progress("Warning: failed to call some kit commands.");
+        setrsp_progress("Warning: failed to call kit commands.");
     }
 
-    setrsp_progress("Update node's profile success");
+    setrsp_progress("Updated the image/network/hardware profiles used by nodes.");
     setrsp_success($nodes);
 }
 
@@ -563,7 +563,7 @@ Usage:
 sub nodeaddunmged
 {
     xCAT::MsgUtils->message("Adding a unmanaged node.");
-    my $helpmsg = "nodeaddunmged: Create a un-managed node with hostname and ip address specified.
+    my $helpmsg = "nodeaddunmged: Creates an unmanaged node specifying the node name and IP address
 Usage: 
 \tnodeaddunmged hostname<hostname> ip=<ip>
 \tnodeaddunmged [-h|--help] 
@@ -586,13 +586,13 @@ Usage:
     %allips = (%allips, %allbmcips, %allinstallips);
 
     if (exists $allips{$args_dict{'ip'}}){
-        setrsp_errormsg("Specified IP address $args_dict{'ip'} conflicts with IPs in database");
+        setrsp_errormsg("The specified IP address $args_dict{'ip'} already exists in the IP address database. You must use a different IP address.");
         return;
     }elsif((xCAT::NetworkUtils->validate_ip($args_dict{'ip'}))[0]->[0] ){
-        setrsp_errormsg("Specified IP address $args_dict{'ip'} is invalid");
+        setrsp_errormsg("The specified IP address $args_dict{'ip'} is invalid. You must use a valid IP address.");
         return;
     }elsif(xCAT::NetworkUtils->isReservedIP($args_dict{'ip'})){
-        setrsp_errormsg("Specified IP address $args_dict{'ip'} is invalid");
+        setrsp_errormsg("The specified IP address $args_dict{'ip'} is invalid. You must use a valid IP address.");
         return;
     }
 
@@ -600,11 +600,11 @@ Usage:
     $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('nodelist', 'node');
     %allhostnames = %$recordsref;
     if (exists $allhostnames{$args_dict{'hostname'}}){
-        setrsp_errormsg("Specified hostname $args_dict{'hostname'} conflicts with records in database");
+        setrsp_errormsg("The specified node name $args_dict{'hostname'} already exists. You must use a different node name.");
         return;
     }
     if (! xCAT::NetworkUtils->isValidFQDN($args_dict{'hostname'})){
-        setrsp_errormsg("Specified hostname: $args_dict{'hostname'} is invalid");
+        setrsp_errormsg("The specified node name $args_dict{'hostname'} is invalid. You must use a valid node name.");
         return;
     }
 
@@ -623,10 +623,10 @@ Usage:
     my $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>[$args_dict{"hostname"}]}, $request_command, 0, 2);
     my $retstrref = parse_runxcmd_ret($retref);
     if ($::RUNCMD_RC != 0){
-        setrsp_progress("Warning: failed to call makehosts.");
+        setrsp_progress("Warning: failed to update /etc/hosts for unmanaged node.");
     }
 
-    setrsp_infostr("Create unmanaged node success");
+    setrsp_infostr("Created unmanaged node.");
 }
 
 #-------------------------------------------------------
@@ -643,7 +643,7 @@ Usage:
 sub nodechmac
 {
     xCAT::MsgUtils->message("Replacing node's mac address.");
-    my $helpmsg = "nodechmac: Update a profiled node's provisioning NIC's MAC address.
+    my $helpmsg = "nodechmac: updates the MAC address for a provisioning network interface.
 Usage: 
 \tnodechmac <node> mac=<mac>
 \tnodechmac [-h|--help] 
@@ -669,28 +669,28 @@ Usage:
         }
     }
     if (exists $allmacs{$args_dict{"mac"}}){
-        setrsp_errormsg("Specified MAC address $args_dict{'mac'} conflicts with MACs in database");
+        setrsp_errormsg("The specified MAC address $args_dict{'mac'} already exists. You must use a different MAC address.");
         return;
     } elsif(! xCAT::NetworkUtils->isValidMAC($args_dict{'mac'})){
-        setrsp_errormsg("Specified MAC address $args_dict{'mac'} is invalid");
+        setrsp_errormsg("The specified MAC address $args_dict{'mac'} is invalid. You must use a valid MAC address.");
         return;
     }
 
     # Update database records.
-    setrsp_progress("Updating database records");
+    setrsp_progress("Updating database...");
     my $mactab = xCAT::Table->new('mac',-create=>1);
     $mactab->setNodeAttribs($hostname, {mac=>$args_dict{'mac'}});
     $mactab->close();
 
     # Call Plugins.
-    setrsp_progress("Calling kit plugins");
+    setrsp_progress("Configuring nodes...");
     my $retref = xCAT::Utils->runxcmd({command=>["kitnodeupdate"], node=>[$hostname]}, $request_command, 0, 2);
     my $retstrref = parse_runxcmd_ret($retref);
     if ($::RUNCMD_RC != 0){
         setrsp_progress("Warning: failed to call kit commands.");
     }
 
-    setrsp_progress("Change node's mac success");
+    setrsp_progress("Updated MAC address.");
 }
 
 #-------------------------------------------------------
@@ -731,7 +731,7 @@ Usage:
     # validate hostnameformat:
     my $nameformattype = xCAT::ProfiledNodeUtils->get_hostname_format_type($args_dict{'hostnameformat'});
     if ($nameformattype eq "unknown"){
-        setrsp_errormsg("Invalid hostname format: $args_dict{'hostnameformat'}");
+        setrsp_errormsg("Invalid node name format: $args_dict{'hostnameformat'}");
         return;
     }
 
@@ -742,12 +742,12 @@ Usage:
     # check rack
     if (exists $args_dict{'rack'}){
         if (! exists $allracks{$args_dict{'rack'}}){
-            setrsp_errormsg("Specified rack $args_dict{'rack'} not defined");
+            setrsp_errormsg("Specified rack $args_dict{'rack'} is not defined");
             return;
         }
         # rack must be specified with chassis or unit + height.
         if (exists $args_dict{'chassis'}){
-            setrsp_errormsg("Argument chassis can not be used together with rack");
+            setrsp_errormsg("Specified chassis cannot be used with rack.");
             return;
         } else{
             # We set default value for height and u if rack specified
@@ -759,11 +759,11 @@ Usage:
     # chassis jdugement.
     if (exists $args_dict{'chassis'}){
         if (! exists $allchassis{$args_dict{'chassis'}}){
-            setrsp_errormsg("Specified chassis $args_dict{'chassis'} not defined");
+            setrsp_errormsg("Specified chassis $args_dict{'chassis'} is not defined.");
             return;
         }
         if (exists $args_dict{'unit'} or exists $args_dict{'height'}){
-            setrsp_errormsg("Argument chassis can not be specified together with unit or height");
+            setrsp_errormsg("Specified chassis cannot be used with unit or height.");
             return;
         }
     }
@@ -772,24 +772,24 @@ Usage:
     if (exists $args_dict{'unit'}){
         # unit must be specified together with rack.
         if (! exists $args_dict{'rack'}){
-            setrsp_errormsg("Argument unit must be specified together with rack");
+            setrsp_errormsg("Specified unit must also include specified rack");
             return;
         }
         # Not a valid number.
         if (!($args_dict{'unit'} =~ /^\d+$/)){
-            setrsp_errormsg("Specified unit $args_dict{'u'} is a invalid number");
+            setrsp_errormsg("Specified unit $args_dict{'u'} is invalid");
             return;
         }
     }
     if (exists $args_dict{'height'}){
         # unit must be specified together with rack.
         if (! exists $args_dict{'rack'}){
-            setrsp_errormsg("Argument height must be specified together with rack");
+            setrsp_errormsg("Specified height must include specified rack.");
             return;
         }
         # Not a valid number.
         if (!($args_dict{'height'} =~ /^\d+$/)){
-            setrsp_errormsg("Specified height $args_dict{'height'} is a invalid number");
+            setrsp_errormsg("Specified height $args_dict{'height'} is invalid.");
             return;
         }
     }
@@ -804,13 +804,13 @@ Usage:
     # Make sure provisioning network has a dynamic range.
     my $provnet = xCAT::ProfiledNodeUtils->get_netprofile_provisionnet($args_dict{networkprofile});
     if (! $provnet){
-        setrsp_errormsg("No provisioning network defined for network profile.");
+        setrsp_errormsg("Provisioning network not defined for network profile.");
         return;
     }
     my $networkstab = xCAT::Table->new("networks");
     my $netentry = ($networkstab->getAllAttribsWhere("netname = '$provnet'", 'ALL'))[0];
     if (! $netentry->{'dynamicrange'}){
-        setrsp_errormsg("No dynamicrange defined for the provisioning network.");
+        setrsp_errormsg("Dynamic IP address range not defined for provisioning network.");
         return;
     }
 
@@ -841,7 +841,7 @@ Usage:
 #------------------------------------------------------
 sub nodediscoverstop{
 
-    my $helpmsg = "nodediscoverstop: Stop profiled nodes auto discover.
+    my $helpmsg = "nodediscoverstop: stops node auto-discovery.
 Usage: 
 \tnodediscoverstop
 \tnodediscoverstop [-h|--help] 
@@ -856,7 +856,7 @@ Usage:
     xCAT::MsgUtils->message("Stopping profiled node's discover.");
     my $discover_running = xCAT::ProfiledNodeUtils->is_discover_started();
     if (! $discover_running){
-        setrsp_errormsg("Profiled nodes discovery not started yet.");
+        setrsp_errormsg("Node discovery for all nodes using profiles is not started.");
         return;
     }
 
@@ -874,7 +874,7 @@ Usage:
         # There are some nodes discvoered.
         my $retref = xCAT::Utils->runxcmd({command=>["rmdef"], arg=>["-t", "group", "-o", "__PCMDiscover"]}, $request_command, 0, 2);
     }
-    setrsp_infostr("Profiled node's discover stopped");
+    setrsp_infostr("Node discovery for all nodes using profiles stopped.");
 }
 
 
@@ -890,7 +890,7 @@ Usage:
 #-------------------------------------------------------
 sub nodediscoverstatus{
 
-    my $helpmsg = "nodediscoverstatus: Detect whether Profiled nodes discovery is running or not.
+    my $helpmsg = "nodediscoverstatus: detects if node discovery is running.
 Usage: 
 \tnodediscoverstatus
 \tnodediscoverstatus [-h|--help] 
@@ -903,9 +903,9 @@ Usage:
 
     my $discover_running = xCAT::ProfiledNodeUtils->is_discover_started();
     if($discover_running){
-        setrsp_progress("Profiled nodes discover is running");
+        setrsp_progress("Node discovery for all nodes using profiles is running");
     }else{
-        setrsp_progress("Profiled nodes discover not started");
+        setrsp_progress("Node discovery for all nodes using profiles is not started");
     }
 }
 
@@ -920,7 +920,7 @@ Usage:
 
 #-------------------------------------------------------
 sub nodediscoverls{
-    my $helpmsg = "nodediscoverls: List all discovered profiled nodes.
+    my $helpmsg = "nodediscoverls: lists all discovered nodes using profiles.
 Usage: 
 \tnodediscoverls
 \tnodediscoverls [-h|--help] 
@@ -934,7 +934,7 @@ Usage:
     # Read DB to confirm the discover is started. 
     my $discover_running = xCAT::ProfiledNodeUtils->is_discover_started();
     if (! $discover_running){
-        setrsp_errormsg("Profiled nodes discovery not started yet.");
+        setrsp_errormsg("Node discovery process is not running.");
         return;
     }
 
@@ -1202,7 +1202,7 @@ sub gen_new_hostinfo_string{
             }
             my $nextip = shift @$freeipsref;
             if (!$nextip){
-                return 0, "No sufficient IP address in network $netname for interface $_";
+                return 0, "There are no more IP addresses available in the static network range of network $netname for interface $_";
             }else{
                 $ipshash{$_} = $nextip;
                 $allips{$nextip} = 0;
@@ -1219,7 +1219,7 @@ sub gen_new_hostinfo_string{
             if (exists $ipshash{$installnic}){
                 $hostinfo_dict{$item}{"ip"} = $ipshash{$installnic};
             }else{
-                return 0, "No sufficient IP address for interface $installnic";
+                return 0, "There are no more IP addresses available in the static network range for interface $installnic";
             }
         }
         $hostinfo_dict{$item}{"objtype"} = "node";
@@ -1237,7 +1237,7 @@ sub gen_new_hostinfo_string{
             if (exists $ipshash{"bmc"}){
                 $hostinfo_dict{$item}{"bmc"} = $ipshash{"bmc"};
             } else{
-                return 0, "No sufficient IP addresses for BMC";
+                return 0, "There are no more IP addresses available in the static network range for the BMC network.";
             }
         } else{
             $hostinfo_dict{$item}{"chain"} = $provmethod;
@@ -1282,7 +1282,7 @@ sub read_and_generate_hostnames{
     	my $nexthost = shift @$freehostnamesref;
     	# no more valid hostnames to assign.
     	if (! $nexthost){
-            return 1, "Can not generate hostname automatically: No more valid hostnames available .";
+            return 1, "Failed to generate a node name. There are no more valid node names available.";
     	}
     	# This hostname already specified in hostinfo file.
     	if ((index $filecontent, "$nexthost:") >= 0){
@@ -1359,7 +1359,7 @@ sub parse_hosts_string{
             # Need convert hostname format into numric format first.
             if ($nameformattype eq "rack"){
                 if (! exists $::FILEATTRS{$_}{"rack"}){
-                    push @invalid_records, ["__hostname__", "No rack info specified. Do specify it because the nameformat contains rack info."];
+                    push @invalid_records, ["__hostname__", "Rack information is not specified. You must enter the required rack information."];
                     next;
                 }
                 $numricformat = xCAT::ProfiledNodeUtils->rackformat_to_numricformat($nameformat, $::FILEATTRS{$_}{"rack"});
@@ -1423,35 +1423,35 @@ sub validate_node_entry{
 
     # duplicate hostname found in hostinfo file.
     if (exists $allhostnames{$node_name}) {
-        return "Specified hostname $node_name conflicts with database records.";
+        return "Node name $node_name already exists. You must use a new node name.";
     }
     # Must specify either MAC or switch + port.
     if (exists $node_entry{"mac"} || 
         exists $node_entry{"switch"} && exists $node_entry{"port"}){
     } else{
-        return "Neither MAC nor switch + port specified";
+        return "MAC address, switch and port is not specified. You must specify the MAC address or switch and port.";
     }
 
     if (! xCAT::NetworkUtils->isValidHostname($node_name)){
-        return "Specified hostname: $node_name is invalid";
+        return "Node name: $node_name is invalid. You must use a valid node name.";
     }
     # validate each single value.
     foreach (keys %node_entry){
         if ($_ eq "mac"){
             if (exists $allmacs{$node_entry{$_}}){
-                return "Specified MAC address $node_entry{$_} conflicts with MACs in database or hostinfo file";
+                return "MAC address $node_entry{$_} already exists in the database or in the nodeinfo file. You must use a new MAC address.";
             }elsif(! xCAT::NetworkUtils->isValidMAC($node_entry{$_})){
-                return "Specified MAC address $node_entry{$_} is invalid";
+                return "MAC address $node_entry{$_} is invalid. You must use a valid MAC address. ";
             }else{
                 $allmacs{$node_entry{$_}} = 0;
             }
         }elsif ($_ eq "ip"){
             if (exists $allips{$node_entry{$_}}){
-                return "Specified IP address $node_entry{$_} conflicts with IPs in database or hostinfo file";
+                return "IP address $node_entry{$_} already exists in the database or in the nodeinfo file.";
             }elsif((xCAT::NetworkUtils->validate_ip($node_entry{$_}))[0]->[0] ){
-                return "Specified IP address $node_entry{$_} is invalid";
+                return "IP address $node_entry{$_} is invalid. You must use a valid IP address.";
             }elsif(xCAT::NetworkUtils->isReservedIP($node_entry{$_})){
-                return "Specified IP address $node_entry{$_} is invalid";
+                return "IP address $node_entry{$_} is invalid. You must use a valid IP address.";
             }else {
                 #push the IP into allips list.
                 $allips{$node_entry{$_}} = 0;
@@ -1461,38 +1461,38 @@ sub validate_node_entry{
         }elsif ($_ eq "port"){
         }elsif ($_ eq "rack"){
             if (! exists $allracks{$node_entry{$_}}){
-                return "Specified rack $node_entry{$_} not defined";
+                return "Specified rack $node_entry{$_} is not defined";
             }
             # rack must be specified with chassis or unit + height.
             if (exists $node_entry{"chassis"}){
-                return "Rack can not be specified together with chassis";
+                return "Specified rack cannot be used with chassis.";
             } elsif (exists $node_entry{"height"} and exists $node_entry{"unit"}){
             } else {
-                return "Rack must be specified together with chassis or height + unit ";
+                return "Specified rack must also specify the chassis or the height and unit.";
             }
         }elsif ($_ eq "chassis"){
             if (! exists $allchassis{$node_entry{$_}}){
-                return "Specified chassis $node_entry{$_} not defined";
+                return "Specified chassis $node_entry{$_} is not defined";
             }
             # Chassis must not be specified with unit and height.
             if (exists $node_entry{"height"} or exists $node_entry{"unit"}){
-                return "Chassis should not be specified together with height or unit";
+                return "Specified chassis cannot be used with height or unit.";
             }
         }elsif ($_ eq "unit"){
             if (! exists $node_entry{"rack"}){
-                return "Unit must be specified together with rack";
+                return "Specified unit must be used with rack.";
             }
             # Not a valid number.
             if (!($node_entry{$_} =~ /^\d+$/)){
-                return "Specified unit $node_entry{$_} is a invalid number";
+                return "Specified unit $node_entry{$_} is invalid";
             }
         }elsif ($_ eq "height"){
             if (! exists $node_entry{"rack"}){
-                return "Height must be specified together with rack";
+                return "Height must be used with rack";
             }
             # Not a valid number.
             if (!($node_entry{$_} =~ /^\d+$/)){
-                return "Specified height $node_entry{$_} is a invalid number";
+                return "Specified height $node_entry{$_} is invalid";
             }
         }else{
            return "Invalid attribute $_ specified";
@@ -1520,7 +1520,7 @@ sub setrsp_invalidrecords
     my $rsp;
     
     # The total number of invalid records.
-    $rsp->{error} = "Some error records detected";
+    $rsp->{error} = "Errors found in nodeinfo file";
     $rsp->{errorcode} = 2;
     $rsp->{invalid_records_num} = scalar @$recordsref;
 
