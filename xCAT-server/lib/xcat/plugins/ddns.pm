@@ -932,7 +932,12 @@ sub update_namedconf {
     for my $l  (@newnamed) { print $newnameconf $l; }
     flock($newnameconf,LOCK_UN);
     close($newnameconf);
-    chown (scalar(getpwnam('root')),scalar(getgrnam('named')),$namedlocation);
+    if ( $distro =~ /ubuntu.*/ ){
+        chown (scalar(getpwnam('root')),scalar(getgrnam('bind')),$namedlocation);
+    }
+    else{
+        chown (scalar(getpwnam('root')),scalar(getgrnam('named')),$namedlocation);
+    }
 }
 
 sub add_or_delete_records {
