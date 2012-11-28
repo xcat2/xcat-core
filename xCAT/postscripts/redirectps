@@ -11,7 +11,7 @@
 if (!$ENV{'NFSSERVER'})
 {
     `logger -t xcat -p local4.err "environment variable does not exist, exiting..."`;
-     exit;
+     exit -1;
 }
 
 my $nfsserver = $ENV{'NFSSERVER'};
@@ -87,8 +87,10 @@ sub runcmd
                 $errmsg .= $err;
             }
             `logger -t xcat  -p local4.err "$errmsg"`;
-             exit;
+             exit -1;
         }
     }
     return $rc;
 }
+
+exit 0;
