@@ -200,9 +200,9 @@ zvmPlugin.prototype.loadServiceInventory = function(data) {
     
     // Do not continue if error is found
     if (data.rsp[0].indexOf('Error') > -1) {
-    	var warn = createWarnBar(data.rsp[0]);
-    	$('#' + tabId).append(warn);
-    	return;
+        var warn = createWarnBar(data.rsp[0]);
+        $('#' + tabId).append(warn);
+        return;
     }
     
     // Get node inventory
@@ -481,26 +481,26 @@ zvmPlugin.prototype.loadServiceInventory = function(data) {
 
             // Loop through each zFCP device
             if (attrs[keys[k]]) {
-	            for (l = 0; l < attrs[keys[k]].length; l++) {
-	                if (attrs[keys[k]][l]) {
-	                    args = attrs[keys[k]][l].split(' ');
-	    
-	                    // Get zFCP virtual device, port name (WWPN), unit number (LUN), and size
-	                    zfcpVDev = $('<td>' + args[1].replace('0.0.', '') + '</td>');
-	                    zfcpPortName = $('<td>' + args[4] + '</td>');
-	                    zfcpLun = $('<td>' + args[7] + '</td>');
-	                    zfcpSize = $('<td>' + args[args.length - 2] + ' ' + args[args.length - 1] + '</td>');
-	    
-	                    // Create a new row for each zFCP device
-	                    zfcpTabRow = $('<tr></tr>');
-	                    zfcpTabRow.append(zfcpVDev);
-	                    zfcpTabRow.append(zfcpPortName);
-	                    zfcpTabRow.append(zfcpLun);
-	                    zfcpTabRow.append(zfcpSize);
-	    
-	                    zfcpBody.append(zfcpTabRow);
-	                }
-	            }
+                for (l = 0; l < attrs[keys[k]].length; l++) {
+                    if (attrs[keys[k]][l]) {
+                        args = attrs[keys[k]][l].split(' ');
+        
+                        // Get zFCP virtual device, port name (WWPN), unit number (LUN), and size
+                        zfcpVDev = $('<td>' + args[1].replace('0.0.', '') + '</td>');
+                        zfcpPortName = $('<td>' + args[4] + '</td>');
+                        zfcpLun = $('<td>' + args[7] + '</td>');
+                        zfcpSize = $('<td>' + args[args.length - 2] + ' ' + args[args.length - 1] + '</td>');
+        
+                        // Create a new row for each zFCP device
+                        zfcpTabRow = $('<tr></tr>');
+                        zfcpTabRow.append(zfcpVDev);
+                        zfcpTabRow.append(zfcpPortName);
+                        zfcpTabRow.append(zfcpLun);
+                        zfcpTabRow.append(zfcpSize);
+        
+                        zfcpBody.append(zfcpTabRow);
+                    }
+                }
             }
 
             zfcpTable.append(zfcpBody);
@@ -720,8 +720,8 @@ zvmPlugin.prototype.loadClonePage = function(node) {
                 if (!inputs.eq(i).val()
                     && inputs.eq(i).attr('name') != 'diskPw'
                     && inputs.eq(i).attr('name') != 'diskPool'
-                	&& inputs.eq(i).attr('name') != 'ip'
-            		&& inputs.eq(i).attr('name') != 'hostname') {
+                    && inputs.eq(i).attr('name') != 'ip'
+                    && inputs.eq(i).attr('name') != 'hostname') {
                     inputs.eq(i).css('border', 'solid #FF0000 1px');
                     ready = false;
                 } else {
@@ -964,10 +964,10 @@ zvmPlugin.prototype.loadInventory = function(data) {
     // Check for error
     var error = false;
     if (data.rsp[0].indexOf('Error') > -1) {
-    	error = true;
-    	
-    	var warn = createWarnBar(data.rsp[0]);
-    	$('#' + tabId).append(warn);    	
+        error = true;
+        
+        var warn = createWarnBar(data.rsp[0]);
+        $('#' + tabId).append(warn);        
     }
     
     // Get node inventory
@@ -1002,7 +1002,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
     // Create hash table for node attributes
     var attrs;
     if (!error) {
-    	attrs = getAttrs(keys, attrNames, inv);
+        attrs = getAttrs(keys, attrNames, inv);
     }
     
     // Create division to hold user entry
@@ -1063,7 +1063,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 
     // Do not continue if error
     if (error) {
-    	return;
+        return;
     }
         
     /**
@@ -1083,7 +1083,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
         // Create a label - Property name
         label = $('<label>' + attrNames[keys[k]] + '</label>');
         item.append(label);
-	    
+        
         for (var l = 0; l < attrs[keys[k]].length; l++) {
             // Create a input - Property value(s)
             // Handle each property uniquely
@@ -1123,7 +1123,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
             label = $('<label>' + attrNames[keys[k]].replace(':', '') + '</label>');
             item.append(label);
             
-        	// Loop through each line
+            // Loop through each line
             for (l = 0; l < attrs[keys[k]].length; l++) {
                 // Create a new list item for each line
                 hwItem = $('<li></li>');
@@ -1193,7 +1193,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
                     // Open dialog to confirm
                     var confirmDialog = $('<div><p>Are you sure you want to remove this processor?</p></div>');                   
                     confirmDialog.dialog({
-                    	title: "Confirm",
+                        title: "Confirm",
                         modal: true,
                         width: 300,
                         buttons: {
@@ -1300,7 +1300,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
                     // Open dialog to confirm
                     var confirmDialog = $('<div><p>Are you sure you want to remove this disk?</p></div>');                   
                     confirmDialog.dialog({
-                    	title: "Confirm",
+                        title: "Confirm",
                         modal: true,
                         width: 300,
                         buttons: {
@@ -1393,12 +1393,12 @@ zvmPlugin.prototype.loadInventory = function(data) {
                     // Open dialog to confirm
                     var confirmDialog = $('<div><p>Are you sure you want to remove this zFCP device?</p></div>');                   
                     confirmDialog.dialog({
-                    	title: "Confirm",
+                        title: "Confirm",
                         modal: true,
                         width: 300,
                         buttons: {
                             "Ok": function(){
-                            	removeZfcp(node, addr, portName, unitNo);
+                                removeZfcp(node, addr, portName, unitNo);
                                 $(this).dialog("close");
                             },
                             "Cancel": function() {
@@ -1416,34 +1416,34 @@ zvmPlugin.prototype.loadInventory = function(data) {
 
             // Loop through each zFCP device
             if (attrs[keys[k]]) {
-	            for (l = 0; l < attrs[keys[k]].length; l++) {
-	                if (attrs[keys[k]][l]) {
-	                    args = attrs[keys[k]][l].split(' ');
-	    
-	                    // Get zFCP virtual device, port name (WWPN), unit number (LUN), and size
-	                    zfcpVDev = $('<td></td>');
-	                    zfcpLink = $('<a>' + args[1].replace('0.0.', '') + '</a>');
-	    
-	                    // Append context menu to link
-	                    zfcpLink.contextMenu(contextMenu, {
-	                        theme : 'vista'
-	                    });
-	                    zfcpVDev.append(zfcpLink);
-	    
-	                    zfcpPortName = $('<td>' + args[4] + '</td>');
-	                    zfcpLun = $('<td>' + args[7] + '</td>');
-	                    zfcpSize = $('<td>' + args[args.length - 2] + ' ' + args[args.length - 1] + '</td>');
-	    
-	                    // Create a new row for each zFCP device
-	                    zfcpTabRow = $('<tr></tr>');
-	                    zfcpTabRow.append(zfcpVDev);
-	                    zfcpTabRow.append(zfcpPortName);
-	                    zfcpTabRow.append(zfcpLun);
-	                    zfcpTabRow.append(zfcpSize);
-	    
-	                    zfcpBody.append(zfcpTabRow);
-	                }
-	            }
+                for (l = 0; l < attrs[keys[k]].length; l++) {
+                    if (attrs[keys[k]][l]) {
+                        args = attrs[keys[k]][l].split(' ');
+        
+                        // Get zFCP virtual device, port name (WWPN), unit number (LUN), and size
+                        zfcpVDev = $('<td></td>');
+                        zfcpLink = $('<a>' + args[1].replace('0.0.', '') + '</a>');
+        
+                        // Append context menu to link
+                        zfcpLink.contextMenu(contextMenu, {
+                            theme : 'vista'
+                        });
+                        zfcpVDev.append(zfcpLink);
+        
+                        zfcpPortName = $('<td>' + args[4] + '</td>');
+                        zfcpLun = $('<td>' + args[7] + '</td>');
+                        zfcpSize = $('<td>' + args[args.length - 2] + ' ' + args[args.length - 1] + '</td>');
+        
+                        // Create a new row for each zFCP device
+                        zfcpTabRow = $('<tr></tr>');
+                        zfcpTabRow.append(zfcpVDev);
+                        zfcpTabRow.append(zfcpPortName);
+                        zfcpTabRow.append(zfcpLun);
+                        zfcpTabRow.append(zfcpSize);
+        
+                        zfcpBody.append(zfcpTabRow);
+                    }
+                }
             }
 
             zfcpTable.append(zfcpBody);
@@ -1485,7 +1485,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
                     // Open dialog to confirm
                     var confirmDialog = $('<div><p>Are you sure you want to remove this NIC?</p></div>');                   
                     confirmDialog.dialog({
-                    	title: "Confirm",
+                        title: "Confirm",
                         modal: true,
                         width: 300,
                         buttons: {
@@ -1692,12 +1692,40 @@ zvmPlugin.prototype.addNode = function() {
     var addNodeForm = $('<div id="addZvm" class="form"></div>');
     var info = createInfoBar('Add a z/VM node range');
     addNodeForm.append(info);
-    addNodeForm.append('<div><label>Node range:</label><input type="text" name="node"/></div>');
-    addNodeForm.append('<div><label>User ID range:</label><input type="text" name="userId"/></div>');
-    addNodeForm.append('<div><label>IP address range (optional):</label><input name="ip" type="text"></div>');
-    addNodeForm.append('<div><label>Hostname range (optional):</label><input name="hostname" type="text"></div>');
-    addNodeForm.append('<div><label>Hardware control point:</label><input type="text" name="hcp"/></div>');
-    addNodeForm.append('<div><label>Groups:</label><input type="text" name="groups"/></div>');
+    
+    // Create provision type drop down
+    var type = $('<div></div>');
+    var typeLabel = $('<label>Type:</label>');
+    var typeSelect = $('<select type="text" name="type"></select>');
+    typeSelect.append('<option value="vm" selected="selected">VM</option>');
+    typeSelect.append('<option value="host">Host</option>');
+    type.append(typeLabel);
+    type.append(typeSelect);
+    addNodeForm.append(type);
+        
+    addNodeForm.append('<div><label>Node range *:</label><input type="text" name="node"/></div>');
+    addNodeForm.append('<div><label>User ID range *:</label><input type="text" name="userId"/></div>');
+    addNodeForm.append('<div><label>Hardware control point *:</label><input type="text" name="hcp"/></div>');
+    addNodeForm.append('<div><label>Groups *:</label><input type="text" name="groups"/></div>');
+    addNodeForm.append('<div><label>Operating system *:</label><input type="text" name="os"/></div>');
+    addNodeForm.append('<div><label>IP address range:</label><input name="ip" type="text"></div>');
+    addNodeForm.append('<div><label>Hostname range:</label><input name="hostname" type="text"></div>');
+    addNodeForm.append('<div><label>* required</label></div>');
+    
+    // OS field only required for hosts
+    addNodeForm.find('input[name=os]').parent().hide();
+    
+    // Toggle user Id on select
+    typeSelect.change(function(){
+        var selected = $(this).val();
+        if (selected == 'host') {
+        	addNodeForm.find('input[name=userId]').parent().toggle();
+        	addNodeForm.find('input[name=os]').parent().toggle();
+        } else {
+        	addNodeForm.find('input[name=userId]').parent().toggle();
+        	addNodeForm.find('input[name=os]').parent().toggle();
+        }
+    });
     
     // Open form as a dialog
     addNodeForm.dialog({
@@ -1710,213 +1738,166 @@ zvmPlugin.prototype.addNode = function() {
                 $(this).find('.ui-state-error').remove();
                 
                 // Get inputs
+                var type = $(this).find('select[name=type]').val();
                 var nodeRange = $(this).find('input[name=node]').val();
                 var ipRange = $(this).find('input[name=ip]').val();
                 var hostnameRange = $(this).find('input[name=hostname]').val();
-                var userIdRange = $(this).find('input[name=userId]').val();                
+                var userIdRange = $(this).find('input[name=userId]').val();
+                var os = $(this).find('input[name=os]').val();
                 var group = $(this).find('input[name=groups]').val();
                 var hcp = $(this).find('input[name=hcp]').val();
-                        
-                // Show warning message if inputs are not complete
-                if (!nodeRange || !userIdRange || !group || !hcp) {
-                    var warn = createWarnBar('Please provide a value for each missing field!');
-                    warn.prependTo($(this));
+                
+                // Check required fields
+                if (type == 'host') {
+                	if (!nodeRange || !os || !group || !hcp) {
+                        var warn = createWarnBar('Please provide a value for each missing field!');
+                        warn.prependTo($(this));
+                        return;
+                	}
                 } else {
-                    // Check node range and user ID range
-                    // Range can be given as gpok10-gpok20, gpok[10-20], or gpok10+10
-                    var errMsg = '';
-                    var ready = true;
-                    if (nodeRange.indexOf('-') > -1 || userIdRange.indexOf('-') > -1) {
-                        if (nodeRange.indexOf('-') < 0 || userIdRange.indexOf('-') < 0) {
-                            errMsg = errMsg + 'A user ID range and node range needs to be given. ';
+                	if (!nodeRange || !userIdRange || !group || !hcp) {
+                        var warn = createWarnBar('Please provide a value for each missing field!');
+                        warn.prependTo($(this));
+                        return;
+                	}
+                }
+                
+                // Check node range and user ID range
+                // Range can be given as gpok10-gpok20, gpok[10-20], or gpok10+10
+                var errMsg = '';
+                var ready = true;
+                if (nodeRange.indexOf('-') > -1 || userIdRange.indexOf('-') > -1) {
+                    if (nodeRange.indexOf('-') < 0 || userIdRange.indexOf('-') < 0) {
+                        errMsg = errMsg + 'A user ID range and node range needs to be given. ';
+                        ready = false;
+                    } else {
+                        var tmp = nodeRange.split('-');
+
+                        // Get starting index
+                        var nodeStart = parseInt(tmp[0].match(/\d+/));
+                        // Get ending index
+                        var nodeEnd = parseInt(tmp[1].match(/\d+/));
+
+                        tmp = userIdRange.split('-');
+
+                        // Get starting index
+                        var userIdStart = parseInt(tmp[0].match(/\d+/));
+                        // Get ending index
+                        var userIdEnd = parseInt(tmp[1].match(/\d+/));
+                        
+                        var ipStart = "", ipEnd = "";
+                        if (ipRange != "" && ipRange != null) {
+                            tmp = ipRange.split('-');
+                            
+                            // Get starting IP address
+                            ipStart = tmp[0].substring(tmp[0].lastIndexOf(".") + 1);
+                            // Get ending IP address
+                            ipEnd = tmp[1].substring(tmp[1].lastIndexOf(".") + 1);
+                        }
+                        
+                        var hostnameStart = "", hostnameEnd = "";
+                        if (hostnameRange != "" && hostnameRange != null) {
+                            tmp = hostnameRange.split('-');
+        
+                            // Get starting hostname
+                            hostnameStart = parseInt(tmp[0].substring(0, tmp[0].indexOf(".")).match(/\d+/));
+                            // Get ending hostname
+                            hostnameEnd = parseInt(tmp[1].substring(0, tmp[1].indexOf(".")).match(/\d+/));
+                        }
+                            
+                        // If starting and ending index do not match
+                        if (!(nodeStart == userIdStart) || !(nodeEnd == userIdEnd)) {
+                            errMsg = errMsg + 'The node range and user ID range does not match. ';
                             ready = false;
-                        } else {
-                            var tmp = nodeRange.split('-');
-    
-                            // Get starting index
-                            var nodeStart = parseInt(tmp[0].match(/\d+/));
-                            // Get ending index
-                            var nodeEnd = parseInt(tmp[1].match(/\d+/));
-    
-                            tmp = userIdRange.split('-');
-    
-                            // Get starting index
-                            var userIdStart = parseInt(tmp[0].match(/\d+/));
-                            // Get ending index
-                            var userIdEnd = parseInt(tmp[1].match(/\d+/));
-                            
-                            var ipStart = "", ipEnd = "";
-                            if (ipRange) {
-                                tmp = ipRange.split('-');
-                                
-                                // Get starting IP address
-                                ipStart = tmp[0].substring(tmp[0].lastIndexOf(".") + 1);
-                                // Get ending IP address
-                                ipEnd = tmp[1].substring(tmp[1].lastIndexOf(".") + 1);
-                            }
-                            
-                            var hostnameStart = "", hostnameEnd = "";
-                            if (hostnameRange) {
-                                tmp = hostnameRange.split('-');
-            
-                                // Get starting hostname
-                                hostnameStart = parseInt(tmp[0].substring(0, tmp[0].indexOf(".")).match(/\d+/));
-                                // Get ending hostname
-                                hostnameEnd = parseInt(tmp[1].substring(0, tmp[1].indexOf(".")).match(/\d+/));
-                            }
-                                
-                            // If starting and ending index do not match
-                            if (!(nodeStart == userIdStart) || !(nodeEnd == userIdEnd)) {
-                                errMsg = errMsg + 'The node range and user ID range does not match. ';
-                                ready = false;
-                            }
-                            
-                            // If an IP address range is given and the starting and ending index do not match
-                            if (ipRange && !(nodeStart == ipStart) || !(nodeEnd == ipEnd)) {
-                                errMsg = errMsg + 'The node range and IP address range does not match. ';
-                                ready = false;
-                            }
-                            
-                            // If a hostname range is given and the starting and ending index do not match
-                            if (hostnameRange && !(nodeStart == hostnameStart) || !(nodeEnd == hostnameEnd)) {
-                                errMsg = errMsg + 'The node range and hostname range does not match. ';
-                                ready = false;
-                            }
+                        }
+                        
+                        // If an IP address range is given and the starting and ending index do not match
+                        if (ipRange != "" && ipRange != null && (!(nodeStart == ipStart) || !(nodeEnd == ipEnd))) {
+                            errMsg = errMsg + 'The node range and IP address range does not match. ';
+                            ready = false;
+                        }
+                        
+                        // If a hostname range is given and the starting and ending index do not match
+                        if (hostnameRange != "" && hostnameRange != null && (!(nodeStart == hostnameStart) || !(nodeEnd == hostnameEnd))) {
+                            errMsg = errMsg + 'The node range and hostname range does not match. ';
+                            ready = false;
                         }
                     }
-                                        
-                    // If there are no errors
-                    if (ready) {
-                        $('#addZvm').append(createLoader());
+                }
+                                    
+                // If there are no errors
+                if (ready) {
+                    $('#addZvm').append(createLoader());
+                    
+                    // Change dialog buttons
+                    $('#addZvm').dialog('option', 'buttons', {
+                        'Close':function(){
+                            $('#addZvm').dialog('close');
+                        }
+                    });
+                    
+                    // If a node range is given
+                    if (nodeRange.indexOf('-') > -1 && userIdRange.indexOf('-') > -1) {
+                        var tmp = nodeRange.split('-');
+                
+                        // Get node base name
+                        var nodeBase = tmp[0].match(/[a-zA-Z]+/);
+                        // Get starting index
+                        var nodeStart = parseInt(tmp[0].match(/\d+/));
+                        // Get ending index
+                        var nodeEnd = parseInt(tmp[1].match(/\d+/));
+                
+                        tmp = userIdRange.split('-');
+                
+                        // Get user ID base name
+                        var userIdBase = tmp[0].match(/[a-zA-Z]+/);
                         
-                        // Change dialog buttons
-                        $('#addZvm').dialog('option', 'buttons', {
-                            'Close':function(){
-                                $('#addZvm').dialog('close');
-                            }
-                        });
+                        var ipBase = "";
+                        if (ipRange != "" && ipRange != null) {
+                            tmp = ipRange.split('-');
+                            
+                            // Get network base
+                            ipBase = tmp[0].substring(0, tmp[0].lastIndexOf(".") + 1);
+                        }
                         
-                        // If a node range is given
-                        if (nodeRange.indexOf('-') > -1 && userIdRange.indexOf('-') > -1) {
-                            var tmp = nodeRange.split('-');
-                    
-                            // Get node base name
-                            var nodeBase = tmp[0].match(/[a-zA-Z]+/);
-                            // Get starting index
-                            var nodeStart = parseInt(tmp[0].match(/\d+/));
-                            // Get ending index
-                            var nodeEnd = parseInt(tmp[1].match(/\d+/));
-                    
-                            tmp = userIdRange.split('-');
-                    
-                            // Get user ID base name
-                            var userIdBase = tmp[0].match(/[a-zA-Z]+/);
+                        var domain = "";
+                        if (hostnameRange != "" && hostnameRange != null) {
+                            tmp = hostnameRange.split('-');
+                        
+                            // Get domain name
+                            domain = tmp[0].substring(tmp[0].indexOf("."));
+                        }
+                
+                        // Loop through each node in the node range
+                        for ( var i = nodeStart; i <= nodeEnd; i++) {
+                            var node = nodeBase + i.toString();
+                            var userId = userIdBase + i.toString();
+                            var inst = i + '/' + nodeEnd;
+                
+                            var args = "";
+                            if (type == 'host') {
+                            	args = node + ';zvm.hcp=' + hcp
+	                                + ';nodehm.mgt=zvm;hypervisor.type=zvm;groups=' + group
+	                                + ';nodetype.os=' + os;
+                            } else {
+                            	args = node + ';zvm.hcp=' + hcp
+	                                + ';zvm.userid=' + userId
+	                                + ';nodehm.mgt=zvm' + ';groups=' + group;
+                            }                            
                             
-                            var ipBase = "";
-                            if (ipRange) {
-                                tmp = ipRange.split('-');
-                                
-                                // Get network base
-                                ipBase = tmp[0].substring(0, tmp[0].lastIndexOf(".") + 1);
+                            if (ipRange != "" && ipRange != null) {
+                                var ip = ipBase + i.toString();
+                                args += ';hosts.ip=' + ip;
                             }
                             
-                            var domain = "";
-                            if (hostnameRange) {
-                                tmp = hostnameRange.split('-');
-                            
-                                // Get domain name
-                                domain = tmp[0].substring(tmp[0].indexOf("."));
+                            if (hostnameRange != "" && hostnameRange != null) {
+                                var hostname = node + domain;
+                                args += ';hosts.hostnames=' + hostname;
                             }
-                    
-                            // Loop through each node in the node range
-                            for ( var i = nodeStart; i <= nodeEnd; i++) {
-                                var node = nodeBase + i.toString();
-                                var userId = userIdBase + i.toString();
-                                var inst = i + '/' + nodeEnd;
-                    
-                                var args = node + ';zvm.hcp=' + hcp
-                                    + ';zvm.userid=' + userId
-                                    + ';nodehm.mgt=zvm' + ';groups=' + group;
-                                
-                                if (ipRange) {
-                                    var ip = ipBase + i.toString();
-                                    args += ';hosts.ip=' + ip;
-                                }
-                                
-                                if (hostnameRange) {
-                                    var hostname = node + domain;
-                                    args += ';hosts.hostnames=' + hostname;
-                                }
-                                
-                                /**
-                                 * (1) Define node
-                                 */
-                                $.ajax( {
-                                    url : 'lib/cmd.php',
-                                    dataType : 'json',
-                                    data : {
-                                        cmd : 'nodeadd',
-                                        tgt : '',
-                                        args : args,
-                                        msg : 'cmd=addnewnode;inst=' + inst + ';noderange=' + nodeRange
-                                    },
-                    
-                                    /**
-                                     * Return function on successful AJAX call
-                                     * 
-                                     * @param data
-                                     *            Data returned from HTTP request
-                                     * @return Nothing
-                                     */
-                                    success : function (data) {
-                                        // Get ajax response
-                                        var rsp = data.rsp;
-                                        var args = data.msg.split(';');
-                    
-                                        // Get instance returned and node range
-                                        var inst = args[1].replace('inst=', '');                        
-                                        var nodeRange = args[2].replace('noderange=', '');
-                                        
-                                        // If the last node was added
-                                        var tmp = inst.split('/');
-                                        if (tmp[0] == tmp[1]) {
-                                            // Update /etc/hosts
-                                            $.ajax({
-                                                url : 'lib/cmd.php',
-                                                dataType : 'json',
-                                                data : {
-                                                    cmd : 'makehosts',
-                                                    tgt : '',
-                                                    args : '',
-                                                    msg : ''
-                                                }
-                                            });
-                                            
-                                            // Remove loader
-                                            $('#addZvm img').remove();
-                                            
-                                            // If there was an error, do not continue
-                                            if (rsp.length) {
-                                                $('#addZvm').prepend(createWarnBar('Failed to create node definitions'));
-                                            } else {
-                                                $('#addZvm').prepend(createInfoBar('Node definitions created for ' + nodeRange));
-                                            }
-                                        }
-                                    }
-                                });
-                            }
-                        } else {
-                            var args = nodeRange + ';zvm.hcp=' + hcp
-                                + ';zvm.userid=' + userIdRange
-                                + ';nodehm.mgt=zvm' + ';groups=' + group;
                             
-                            if (ipRange)
-                                args += ';hosts.ip=' + ipRange;
-                            
-                            if (hostnameRange)
-                                args += ';hosts.hostnames=' + hostnameRange;
-                            
-                            // Only one node to add
+                            /**
+                             * (1) Define node
+                             */
                             $.ajax( {
                                 url : 'lib/cmd.php',
                                 dataType : 'json',
@@ -1924,9 +1905,9 @@ zvmPlugin.prototype.addNode = function() {
                                     cmd : 'nodeadd',
                                     tgt : '',
                                     args : args,
-                                    msg : 'cmd=addnewnode;node=' + nodeRange
+                                    msg : 'cmd=addnewnode;inst=' + inst + ';noderange=' + nodeRange
                                 },
-                    
+                
                                 /**
                                  * Return function on successful AJAX call
                                  * 
@@ -1938,38 +1919,110 @@ zvmPlugin.prototype.addNode = function() {
                                     // Get ajax response
                                     var rsp = data.rsp;
                                     var args = data.msg.split(';');
-                                    var node = args[1].replace('node=', '');
+                
+                                    // Get instance returned and node range
+                                    var inst = args[1].replace('inst=', '');                        
+                                    var nodeRange = args[2].replace('noderange=', '');
                                     
-                                    // Update /etc/hosts
-                                    $.ajax({
-                                        url : 'lib/cmd.php',
-                                        dataType : 'json',
-                                        data : {
-                                            cmd : 'makehosts',
-                                            tgt : '',
-                                            args : '',
-                                            msg : ''
+                                    // If the last node was added
+                                    var tmp = inst.split('/');
+                                    if (tmp[0] == tmp[1]) {
+                                        // Update /etc/hosts
+                                        $.ajax({
+                                            url : 'lib/cmd.php',
+                                            dataType : 'json',
+                                            data : {
+                                                cmd : 'makehosts',
+                                                tgt : '',
+                                                args : '',
+                                                msg : ''
+                                            }
+                                        });
+                                        
+                                        // Remove loader
+                                        $('#addZvm img').remove();
+                                        
+                                        // If there was an error, do not continue
+                                        if (rsp.length) {
+                                            $('#addZvm').prepend(createWarnBar('Failed to create node definitions'));
+                                        } else {
+                                            $('#addZvm').prepend(createInfoBar('Node definitions created for ' + nodeRange));
                                         }
-                                    });
-                                    
-                                    // Remove loader
-                                    $('#addZvm img').remove();
-                                    
-                                    // If there was an error, do not continue
-                                    if (rsp.length) {
-                                        $('#addZvm').prepend(createWarnBar('Failed to create node definitions'));
-                                    } else {
-                                        $('#addZvm').prepend(createInfoBar('Node definitions created for ' + node));
                                     }
                                 }
                             });
                         }
-                    } else {
-                        // Show warning message
-                        var warn = createWarnBar(errMsg);
-                        warn.prependTo($(this));
-                    }        
-                } // End of else
+                    } else {                        
+                        var args = "";
+                        if (type == 'host') {
+                        	args = nodeRange + ';zvm.hcp=' + hcp
+                                + ';nodehm.mgt=zvm;hypervisor.type=zvm;groups=' + group
+                                + ';nodetype.os=' + os;
+                        } else {
+                        	args = nodeRange + ';zvm.hcp=' + hcp
+	                            + ';zvm.userid=' + userIdRange
+	                            + ';nodehm.mgt=zvm' + ';groups=' + group;
+                        } 
+                        
+                        if (ipRange)
+                            args += ';hosts.ip=' + ipRange;
+                        
+                        if (hostnameRange)
+                            args += ';hosts.hostnames=' + hostnameRange;
+                        
+                        // Only one node to add
+                        $.ajax( {
+                            url : 'lib/cmd.php',
+                            dataType : 'json',
+                            data : {
+                                cmd : 'nodeadd',
+                                tgt : '',
+                                args : args,
+                                msg : 'cmd=addnewnode;node=' + nodeRange
+                            },
+                
+                            /**
+                             * Return function on successful AJAX call
+                             * 
+                             * @param data
+                             *            Data returned from HTTP request
+                             * @return Nothing
+                             */
+                            success : function (data) {
+                                // Get ajax response
+                                var rsp = data.rsp;
+                                var args = data.msg.split(';');
+                                var node = args[1].replace('node=', '');
+                                
+                                // Update /etc/hosts
+                                $.ajax({
+                                    url : 'lib/cmd.php',
+                                    dataType : 'json',
+                                    data : {
+                                        cmd : 'makehosts',
+                                        tgt : '',
+                                        args : '',
+                                        msg : ''
+                                    }
+                                });
+                                
+                                // Remove loader
+                                $('#addZvm img').remove();
+                                
+                                // If there was an error, do not continue
+                                if (rsp.length) {
+                                    $('#addZvm').prepend(createWarnBar('Failed to create node definitions'));
+                                } else {
+                                    $('#addZvm').prepend(createInfoBar('Node definitions created for ' + node));
+                                }
+                            }
+                        });
+                    }
+                } else {
+                    // Show warning message
+                    var warn = createWarnBar(errMsg);
+                    warn.prependTo($(this));
+                }
             },
             "Cancel": function(){
                 $(this).dialog( "close" );
