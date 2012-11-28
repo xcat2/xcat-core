@@ -1815,7 +1815,39 @@ sub insert_dd {
         mkpath "$dd_dir/initrd_img"; # The dir for the new initrd
 
         # unzip the initrd image
-        $cmd = "gunzip -c $img > $dd_dir/initrd";
+        $cmd = "file $img";
+        my $initrdfmt;
+        my @format = xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            my $rsp;
+            push @{$rsp->{data}}, "Could not get the format of the initrd.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return ();
+        }
+
+        if ( grep (/gzip compressed data/, @format)) {
+            $initrdfmt = "gzip";
+        } elsif ( grep (/LZMA compressed data/, @format)) {
+            $initrdfmt = "lzma";
+        } else {
+            my $rsp;
+            push @{$rsp->{data}}, "Could not handle the format of the initrd.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return ();
+        }
+        
+
+        if ($initrdfmt eq "gzip") {
+            $cmd = "gunzip -c $img > $dd_dir/initrd";
+        } elsif ($initrdfmt eq "lzma") {
+            if (! -x "/usr/bin/lzma") {
+                my $rsp;
+                push @{$rsp->{data}}, "The format of initrd for the target node is \'lzma\', but this management node has not lzma command.";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return ();
+            }
+            $cmd = "xzcat $img > $dd_dir/initrd";
+        }
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0) {
             my $rsp;
@@ -1840,6 +1872,7 @@ sub insert_dd {
             foreach my $rpm (@rpm_list) {
                 if (-r $rpm) {
                     $cmd = "cd $dd_dir/rpm; rpm2cpio $rpm | cpio -idum";
+                    #$cmd = "rpm -i --quiet --nodeps --force --ignorearch --ignoreos --nosignature --root $dd_dir/rpm $rpm";
                     xCAT::Utils->runcmd($cmd, -1);
                     if ($::RUNCMD_RC != 0) {
                         my $rsp;
@@ -1849,6 +1882,24 @@ sub insert_dd {
                 } else {
                     my $rsp;
                     push @{$rsp->{data}}, "Handle the driver update failed. Could not read the rpm $rpm.";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
+            }
+
+            # To skip the conflict of files that some rpm uses the xxx.ko.new as the name of the driver
+            # Change it back to xxx.ko here
+            $driver_name = "\*ko.new";
+            @all_real_path = ();
+            find(\&get_all_path, <$dd_dir/rpm/*>);
+            foreach my $file (@all_real_path) {
+print "$file\n";
+                my $newname = $file;
+                $newname =~ s/\.new$//;
+                $cmd = "mv -f $file $newname";
+                xCAT::Utils->runcmd($cmd, -1);
+                if ($::RUNCMD_RC != 0) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Handle the driver update failed. Could not move $file.";
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
             }
@@ -2227,7 +2278,12 @@ sub insert_dd {
         } # End of non dracut
     
         # Repack the initrd
-        $cmd = "cd $dd_dir/initrd_img; find .|cpio -H newc -o|gzip -9 -c - > $dd_dir/initrd.img";
+        if ($initrdfmt eq "gzip") {
+            $cmd = "cd $dd_dir/initrd_img; find .|cpio -H newc -o|gzip -9 -c - > $dd_dir/initrd.img";
+        } elsif ($initrdfmt eq "lzma") {
+            $cmd = "cd $dd_dir/initrd_img; find .|cpio -H newc -o|lzma -C crc32 -9 > $dd_dir/initrd.img";
+        }
+        
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0) {
             my $rsp;
