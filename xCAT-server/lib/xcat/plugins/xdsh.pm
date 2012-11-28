@@ -279,7 +279,7 @@ sub process_servicenodes_xdcp
         if (!-f $::syncsnfile)
         {    # syncfile does not exist,  quit
             my $rsp = {};
-            $rsp->{data}->[0] = "File:$::syncsnfile does not exist.";
+            $rsp->{error}->[0] = "File:$::syncsnfile does not exist.";
             xCAT::MsgUtils->message("E", $rsp, $callback, 1);
             return (1);    # process no service nodes
         }
@@ -473,7 +473,7 @@ sub process_servicenodes_xdsh
         if (!-f $::dshexecute)
         {    # -e file  does not exist,  quit
             my $rsp = {};
-            $rsp->{data}->[0] = "File:$::dshexecute does not exist.";
+            $rsp->{error}->[0] = "File:$::dshexecute does not exist.";
             xCAT::MsgUtils->message("E", $rsp, $callback, 1);
             return (1);    # process no service nodes
         }
@@ -717,7 +717,7 @@ sub process_request
         else
         {
             my $rsp = {};
-            $rsp->{data}->[0] =
+            $rsp->{error}->[0] =
               "Unknown command $command.  Cannot process the command.";
             xCAT::MsgUtils->message("E", $rsp, $callback, 1);
             return;
