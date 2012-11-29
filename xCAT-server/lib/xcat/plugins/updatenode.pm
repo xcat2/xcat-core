@@ -1306,12 +1306,12 @@ sub updatenoderunps
             if ($::SETSERVER)
             {
                 $cmd =
-                  "XCATBYPASS=Y $::XCATROOT/bin/xdsh  $nodestring  -s -v -e $installdir/postscripts/xcataixpost -M $snkey -c $mode --tftp $tftpdir '$postscripts' 2>&1";
+                  "$::XCATROOT/bin/xdsh  $nodestring  -s -v -e $installdir/postscripts/xcataixpost -M $snkey -c $mode --tftp $tftpdir '$postscripts' 2>&1";
             }
             else
             {
                 $cmd =
-                  "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring  -s -v -e $installdir/postscripts/xcataixpost -m $snkey -c $mode --tftp $tftpdir '$postscripts' 2>&1";
+                  "$::XCATROOT/bin/xdsh $nodestring  -s -v -e $installdir/postscripts/xcataixpost -m $snkey -c $mode --tftp $tftpdir '$postscripts' 2>&1";
             }
 
             if ($::VERBOSE)
