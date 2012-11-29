@@ -460,7 +460,8 @@ unlink "/tmp/genimage.$$.yum.conf";
 if (-d "$rootimg_dir/usr/share/dracut") {
     $dracutmode = 1;
     # get dracut version
-    my $dracutver = `rpm -R $rootimg_dir -qi dracut | grep Version | awk -F' ' '{print \$3}'`;
+    my $dracutver = `rpm --root $rootimg_dir -qi dracut | grep Version | awk -F' ' '{print \$3}'`;
+    chomp($dracutver);
     if ($dracutver =~ /^\d\d\d$/) {
         if ($dracutver >= "009") {
             $dracutdir = "dracut_009";
