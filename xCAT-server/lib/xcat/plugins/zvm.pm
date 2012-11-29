@@ -4726,7 +4726,7 @@ sub getMacs {
     xCAT::zvmCPUtils->loadVmcp($node);
 
     # Get xCat MN Lan/VSwitch name
-    my $out = `vmcp q v nic | egrep -i "VSWITCH|LAN"`;
+    my $out = `ssh -o ConnectTimeout=5 $hcp "vmcp q v nic" | egrep -i "VSWITCH|LAN"`;
     my @lines = split( '\n', $out );
     my @words;
 
