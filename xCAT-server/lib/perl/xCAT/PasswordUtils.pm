@@ -1,9 +1,24 @@
 package xCAT::PasswordUtils;
+use xCAT::Table;
 my $ipmiuser = "USERID"; # default username to apply if nothing specified
 my $ipmipass = "PASSW0RD"; # default password to apply if nothing specified
 my $bladeuser = "USERID"; # default username to apply if nothing specified
 my $bladepass = "PASSW0RD"; # default password to apply if nothing specified
+# Picks the IPMI authentication to use with or deploy to a BMC
+# mandatory arguments:
+# noderange: a list reference to nodes (e..g. ["node1","node2"])
+# optional parameters:
+# ipmihash: a prefetched hash reference of relevant ipmi table data
+# mphash: a prefetched hash of relevent mp table
+# RETURNS:
+# A hash reference with usernames and passwords, e.g.: { 'node1' => { 'username' => 'admin', 'password' => 'reallysecure' }, 'node2' => { 'username' => 'admin', 'password' => 'reallysecure' } }  
 sub getIPMIAuth {
+#the algorithm intended is as follows:
+#Should the target have a valid ipmi.username/ipmi.password, that is preferred above all else
+#Otherwise, if it is a blade topology, then synchronize with the management module password parameters in mpa by default
+#if still not defined, but it is a blade topology, then use 'blade' passwd table values
+#if still not defined, use 'ipmi' table values
+#if still not defined, use the defaults hardcoded into this file
 	my %args = @_;
 	my $noderange = $args{noderange};
 	my $ipmihash = $args{ipmihash};
@@ -32,7 +47,7 @@ sub getIPMIAuth {
 		}
 	}
 	my $mpatab;
-        if ($mphash) { $mpatab = xCAT::Table->new('mp',-create=>0); }
+        if ($mphash) { $mpatab = xCAT::Table->new('mpa',-create=>0); }
 	my %mpaauth;
 	foreach $node (@$noderange) {
 		$authmap{$node}->{username}=$ipmiuser;
@@ -42,19 +57,20 @@ sub getIPMIAuth {
 			if ($bladepass) { $authmap{$node}->{password}=$bladepass; }
 			my $mpa = $mphash->{$node}->[0]->{mpa};
 			if (not $mpaauth{$mpa} and $mpatab) { 
-				my $mpaent = $mpatab->getNodeAttribs($mpa,[qw/username password/],prefetchcache=>1);
-				if (ref $mpaent and $mpaent->[0]->{username}) { $mpaauth{$mpa}->{username} = $mpaent->[0]->{username} }
-				if (ref $mpaent and $mpaent->[0]->{password}) { $mpaauth{$mpa}->{password} = $mpaent->[0]->{password} }
+				my $mpaent = $mpatab->getNodeAttribs($mpa,[qw/username password/],prefetchcache=>1); #TODO: this might make more sense to do as one retrieval, oh well
+				if (ref $mpaent and $mpaent->{username}) { $mpaauth{$mpa}->{username} = $mpaent->{username} }
+				if (ref $mpaent and $mpaent->{password}) { $mpaauth{$mpa}->{password} = $mpaent->{password} }
 				 $mpaauth{$mpa}->{checked} = 1;  #remember we already looked this up, to save lookup time even if search was fruitless
 			}
-			if ($mpaauth{$mpa}->{username}) {  $authmap{$node}->{username} = $mpa->{username} }
-			if ($mpaauth{$mpa}->{password}) {  $authmap{$node}->{password} = $mpa->{password} }
+			if ($mpaauth{$mpa}->{username}) {  $authmap{$node}->{username} = $mpaauth{$mpa}->{username} }
+			if ($mpaauth{$mpa}->{password}) {  $authmap{$node}->{password} = $mpaauth{$mpa}->{password} }
 		} 
 		unless (ref $ipmihash and ref $ipmihash->{$node}) { 
 			next;
 		}
 		if ($ipmihash->{$node}->[0]->{username}) {   $authmap{$node}->{username}=$ipmihash->{$node}->[0]->{username} }
-		if ($ipmihash->{$node}->[0]->{password}) {   $authmap{$node}->{username}=$ipmihash->{$node}->[0]->{password} }
+		if ($ipmihash->{$node}->[0]->{password}) {   $authmap{$node}->{password}=$ipmihash->{$node}->[0]->{password} }
 	}
+	return \%authmap;
 }
 	

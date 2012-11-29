@@ -16,6 +16,7 @@ use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use xCAT::SPD qw/decode_spd/;
 use xCAT::IPMI;
+use xCAT::PasswordUtils;
 my %needbladeinv;
 
 use POSIX qw(ceil floor);
@@ -5954,14 +5955,6 @@ sub process_request {
         if ($::XCATSITEVALS{ipmitimeout}) { $ipmitimeout = $::XCATSITEVALS{ipmitimeout} };
         if ($::XCATSITEVALS{ipmiretries}) { $ipmitrys = $::XCATSITEVALS{ipmitretries} };
         if ($::XCATSITEVALS{ipmisdrcache}) { $enable_cache = $::XCATSITEVALS{ipmisdrcache} };
-	my $passtab = xCAT::Table->new('passwd');
-	if ($passtab) {
-		($tmp)=$passtab->getAttribs({'key'=>'ipmi'},'username','password');
-		if (defined($tmp)) { 
-			$ipmiuser = $tmp->{username};
-			$ipmipass = $tmp->{password};
-		}
-	}
 
     #my @threads;
     my @donargs=();
@@ -5970,17 +5963,16 @@ sub process_request {
         $vpdhash = $vpdtab->getNodesAttribs($noderange,[qw(serial mtm asset)]);
     }
 	my $ipmihash = $ipmitab->getNodesAttribs($noderange,['bmc','username','password']) ;
+	my $authdata = xCAT::PasswordUtils::getIPMIAuth(noderange=>$noderange,ipmihash=>$ipmihash);
 	foreach(@$noderange) {
 		my $node=$_;
-		my $nodeuser=$ipmiuser;
-		my $nodepass=$ipmipass;
+		my $nodeuser=$authdata->{$node}->{username};
+		my $nodepass=$authdata->{$node}->{password};
 		my $nodeip = $node;
 		my $ent;
 		if (defined($ipmitab)) {
 			$ent=$ipmihash->{$node}->[0];
 			if (ref($ent) and defined $ent->{bmc}) { $nodeip = $ent->{bmc}; }
-			if (ref($ent) and defined $ent->{username}) { $nodeuser = $ent->{username}; }
-			if (ref($ent) and defined $ent->{password}) { $nodepass = $ent->{password}; }
 		}
 	if ($nodeip =~ /,/ and grep ({ $_ eq $request->{command}->[0] } qw/rinv reventlog rvitals rspconfig/)) { #multi-node x3950 X5, for example
 		my $bmcnum=1;
