@@ -52,8 +52,10 @@ sub setupIMM {
 		return;
 	}
         my $targips;
+        my $sship = $args{curraddr};
         if (scalar(@ips)) { 
 		$targips = join(',',@ips);
+		unless ($sship) { $sship = $ips[0]; }
 	} elsif ($autolla) {
 		$targips=$args{curraddr};
 	}
@@ -65,7 +67,7 @@ sub setupIMM {
 	#ok, with all ip addresses in hand, time to enable IPMI and set all the ip addresses (still static only, TODO: dhcp
 	my $ssh = new xCAT::SSHInteract(-username=>$args{cliusername},
 					-password=>$args{clipassword},
-					-host=>$args{curraddr},
+					-host=>$sship,
 					-nokeycheck=>1,
 					-output_record_separator=>"\r",
 					Timeout=>15,
