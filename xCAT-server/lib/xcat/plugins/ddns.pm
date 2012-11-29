@@ -1024,18 +1024,35 @@ sub add_or_delete_records {
                 $update->sign_tsig("xcat_key",$ctx->{privkey});
                 $numreqs=300;
                 my $reply = $resolver->send($update);
-                if ($reply && ($reply->header->rcode ne 'NOERROR')) {
-                    xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode], $callback);
+                if ($reply)
+                {
+                    if ($reply->header->rcode ne 'NOERROR')
+                    {
+                        xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode], $callback);
+                    }
                 }
+                else
+                {
+                    xCAT::SvrUtils::sendmsg([1,"No reply received when sending DNS update to zone $zone"], $callback);
+                }
+                
                 $update =  Net::DNS::Update->new($zone); #new empty request
             }
         }
         if ($numreqs != 300) { #either no entries at all to begin with or a perfect multiple of 300
             $update->sign_tsig("xcat_key",$ctx->{privkey});
             my $reply = $resolver->send($update);
-            if ($reply && ($reply->header->rcode ne 'NOERROR')) {
-                 xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode], $callback);
-            }
+                if ($reply)
+                {
+                    if ($reply->header->rcode ne 'NOERROR')
+                    {
+                        xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode], $callback);
+                    }
+                }
+                else
+                {
+                    xCAT::SvrUtils::sendmsg([1,"No reply received when sending DNS update to zone $zone"], $callback);
+                }
             
             # sometimes resolver does not work if the update zone request sent so quick
             sleep 1;
