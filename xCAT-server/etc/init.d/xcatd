@@ -136,6 +136,11 @@ start)
     exit
   fi
   echo -n "Starting xCATd "
+  #/var/run/ is a symlink on /run and that's just a tmpfs mount created on boot on ubuntu. 
+  #if there is not this directory, create first 
+  if [ ! -d /var/run/xcat ];then
+    mkdir -p /var/run/xcat
+  fi
   #xcatroot=`head -n1 /etc/profile.d/xcat.sh`
   #export $xcatroot
   # When this script is invoked via the service cmd on RH, it doesn't have PATH
