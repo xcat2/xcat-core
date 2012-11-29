@@ -197,14 +197,14 @@ sub process_request {
 sub setupIMM {
 	my $node = shift;
 	my %args = @_;
-	my $slpdata = $args{slpdata};
+	my $nodedata = $args{nodedata};
 	my $ipmitab = xCAT::Table->new('ipmi',-create=>1);
 	my $ient = $ipmitab->getNodeAttribs($node,[qw/bmc bmcid/],prefetchcache=>1);
 	my $ipmiauthmap = xCAT::PasswordUtils::getIPMIAuth(noderange=>[$node]);
 	my $newaddr;
 	if ($ient) {
 		my $bmcid=$ient->{bmcid};
-		if ($bmcid and $slpdata->{macaddress} =~ /$bmcid/) { 
+		if ($bmcid and $nodedata->{macaddress} =~ /$bmcid/) { 
 			sendmsg("The IMM has been configured (ipmi.bmcid). Skipped.",$callback, $node);
 			return; 
 		} #skip configuration, we already know this one
@@ -258,7 +258,7 @@ sub setupIMM {
 			}
 		}
 		$ssh->close();
-		$ipmitab->setNodeAttribs($node,{bmcid=>$slpdata->{macaddress}});
+		$ipmitab->setNodeAttribs($node,{bmcid=>$nodedata->{macaddress}});
 	}
 	exit(0);
 }
@@ -280,7 +280,7 @@ sub configure_hosted_elements {
 			}
 			if ($doneaddrs{$node}) { next; }
 			$doneaddrs{$node}=1;
-			setupIMM($node,slpdata=>$immdata,curraddr=>$addr,cliusername=>$user,clipassword=>$pass);
+			setupIMM($node,nodedata=>$immdata,curraddr=>$addr,cliusername=>$user,clipassword=>$pass);
 		} else {
 			sendmsg(": Ignoring target in bay $slot, no node found with mp.mpa/mp.id matching",$callback,$cmm);
 		}
