@@ -134,6 +134,8 @@ sub process_request {
 
 	
 	my $mptab = xCAT::Table->new('mp');
+        my $nodecandidates;
+        
 	if ($mptab) {
 		my @mpents = $mptab->getAllNodeAttribs(['node','mpa','id']);
 		foreach (@mpents) {
@@ -198,6 +200,7 @@ sub setupIMM {
 	my $slpdata = $args{slpdata};
 	my $ipmitab = xCAT::Table->new('ipmi',-create=>1);
 	my $ient = $ipmitab->getNodeAttribs($node,[qw/bmc bmcid/],prefetchcache=>1);
+	my $ipmiauthmap = xCAT::PasswordUtils::getIPMIAuth(noderange=>[$node]);
 	my $newaddr;
 	if ($ient) {
 		my $bmcid=$ient->{bmcid};
@@ -233,8 +236,8 @@ sub setupIMM {
 	unless (defined $child) { die "error spawining process" }
 	
 	#ok, with all ip addresses in hand, time to enable IPMI and set all the ip addresses (still static only, TODO: dhcp
-	my $ssh = new xCAT::SSHInteract(-username=>$args{username},
-					-password=>$args{password},
+	my $ssh = new xCAT::SSHInteract(-username=>$args{cliusername},
+					-password=>$args{clipassword},
 					-host=>$args{curraddr},
 					-nokeycheck=>1,
 					-output_record_separator=>"\r",
@@ -243,7 +246,7 @@ sub setupIMM {
 					Prompt=>'/> $/');
 	if ($ssh and $ssh->atprompt) { #we are in and good to issue commands
 		$ssh->cmd("accseccfg -pe 0 -rc 0 -ci 0 -lf 0 -lp 0"); #disable the more insane password rules, this isn't by and large a human used interface
-		$ssh->cmd("users -1 -n ".$args{username}." -p ".$args{password}." -a super"); #this gets ipmi going
+		$ssh->cmd("users -1 -n ".$ipmiauthmap->{$node}->{username}." -p ".$ipmiauthmap->{$node}->{password}." -a super"); #this gets ipmi going
 		foreach my $ip (@ips) {
 			if ($ip =~ /:/) { 
 				$ssh->cmd("ifconfig eth0 -ipv6static enable -i6 $ip");
@@ -277,7 +280,7 @@ sub configure_hosted_elements {
 			}
 			if ($doneaddrs{$node}) { next; }
 			$doneaddrs{$node}=1;
-			setupIMM($node,slpdata=>$immdata,curraddr=>$addr,username=>$user,password=>$pass);
+			setupIMM($node,slpdata=>$immdata,curraddr=>$addr,cliusername=>$user,clipassword=>$pass);
 		} else {
 			sendmsg(": Ignoring target in bay $slot, no node found with mp.mpa/mp.id matching",$callback,$cmm);
 		}
