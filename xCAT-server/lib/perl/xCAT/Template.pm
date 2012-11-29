@@ -520,7 +520,8 @@ sub tabdb
         } else {
              my $msg;
              if( $field !~ /^(routenames)$/) {
-                 $msg="\necho \"Warning! The $table.$field was NOT got. Please Check the node defintion and the template file mypostscript.tmpl. If the attribute will be used in your scripts, you need to define it on the Management Node firstly. If the attribute will not be used, you can ignore this message\"";
+             #if( $blankok != 1) {
+                 #$msg="\necho \"Warning! The $table.$field was NOT got. Please Check the node defintion and the template file mypostscript.tmpl. If the attribute will be used in your scripts, you need to define it on the Management Node firstly. If the attribute will not be used, you can ignore this message\"";
              }
              return $msg;
         }
@@ -753,12 +754,14 @@ sub subvars_for_mypostscript {
   #First load input into memory..
   while (<$inh>) {
       $t_inc.=$_;
+      #if( $_ =~ /#TABLE:([^:]+):([^:]+):([^#]+)#/ || $_ =~ /#TABLE:([^:]+):([^:]+):([^#]+):BLANKOKAY#/) {
       if( $_ =~ /#TABLE:([^:]+):([^:]+):([^#]+)#/ ) {
            my $tabname=$1;
            my $key=$2;
            my $attrib = $3;
            $table{$tabname}{$key}{$attrib} = 1;
       }
+
   }
 
   close($inh);
@@ -935,6 +938,7 @@ sub subvars_for_mypostscript {
   $inc =~ s/#NODE#/$node/eg;
   $inc =~ s/\$NODE/$node/eg;
   $inc =~ s/#SITE_TABLE_ALL_ATTRIBS_EXPORT#/$allattribsfromsitetable/eg; 
+  #$inc =~ s/#TABLE:([^:]+):([^:]+):([^:]+):BLANKOKAY#/tabdb($1,$2,$3,1)/eg; 
   $inc =~ s/#TABLE:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3)/eg; 
   $inc =~ s/#ROUTES_VARS_EXPORT#/$route_vars/eg; 
   $inc =~ s/#VLAN_VARS_EXPORT#/$vlan_vars/eg; 
@@ -948,7 +952,18 @@ sub subvars_for_mypostscript {
   $inc =~ s/#NTYPE#/$nodetype/eg;
   $inc =~ s/#Subroutine:([^:]+)::([^:]+)::([^:]+):([^#]+)#/subroutine($1,$2,$3,$4)/eg;
 
- 
+  #$inc =~ s/^([^#]+)=[\s]*export $1//eg;
+  #remove the variable which equal blank.
+  my @lines = split("\n", $inc);  
+  my $line;
+  foreach $line ( @lines ) {
+      if( $line =~ /^([^#]+)=[\s]*$/ ) {
+         my $key=$1; 
+          $inc  =~  s/$key=([\s\n]+)//g;
+          $inc  =~  s/export $key//g;
+      } 
+  } 
+
   print $script $inc;    
   close($script_fp{$node});
   }
