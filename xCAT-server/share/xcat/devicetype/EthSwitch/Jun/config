@@ -1,0 +1,6 @@
+#configuration file for Juniper switches
+[main]
+ssh-setup-command=
+[xdsh]
+pre-command=set cli screen-length 0;
+post-command=NULL

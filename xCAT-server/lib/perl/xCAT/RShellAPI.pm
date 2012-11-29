@@ -8,6 +8,7 @@ BEGIN
 }
 use lib "$::XCATROOT/lib/perl";
 use xCAT::MsgUtils;
+#use Data::Dumper;
 
 #######################################################
 =head3
@@ -37,6 +38,9 @@ sub remote_shell_command {
 	}
 	
         my @tmp;
+	if ( $$config{'trace'} ) {
+	    push @command, "-v";
+	}
 	if ($$config{'user'} && ($$config{'user'}  !~ /^none$/i)) {
 	    @tmp=split(' ', "-l $$config{'user'}");
 	    push @command, @tmp;
@@ -73,11 +77,11 @@ sub run_remote_shell_api {
     my $node=shift;
     my $user=shift;
     my $passwd=shift;
+    my $verbose=shift;
     my $args = join(" ", @_);
     my $t;
-    my $prompt='.*[\>\#\$]$';
-    my $more_prompt='(.*key to continue.*|--More--\s*$)';
-    my $verbose=0;
+    my $prompt='.*[\>\#\$]\s*$';
+    my $more_prompt='(.*key to continue.*|.*--More--\s*|.*--\(more.*\)--.*$)';
     my $output;
 
     eval {
@@ -98,7 +102,23 @@ sub run_remote_shell_api {
     $output.="$errmsg\n";
 
     my $rc=1;
-    if (not $t) {#ssh failed.. fallback to a telnet attempt
+    if ($t) {
+	#Wait for command prompt
+	my ($prematch, $match) = $t->waitfor(Match => '/login[: ]*$/i',
+					     Match => '/username[: ]*$/i',
+					     Match => '/password[: ]*$/i',
+					     Match => "/$prompt/",
+					     Errmode => "return");
+	if ($verbose) {
+	    print "0. prematch=$prematch\n match=$match\n";
+	}
+
+	if ($match !~ /$prompt/) {
+	    return [1, $output];
+	}
+
+    } else {
+        #ssh failed.. fallback to a telnet attempt
 	$output.="start Telnet session...\n";
 	require Net::Telnet;
 	$t = new Net::Telnet(
@@ -178,7 +198,7 @@ sub run_remote_shell_api {
 		    }
 		}
 		
-		if (!login_done) {
+		if (!$login_done) {
 		    #Wait for command prompt
 		    ($prematch, $match) = $t->waitfor(Match => '/login[: ]*$/i',
 						      Match => '/username[: ]*$/i',
@@ -205,6 +225,7 @@ sub run_remote_shell_api {
 	    }
 	}
     }
+
     if (!$rc) {
         $output.=$t->errmsg . "\n";
 	return [1, $output];
@@ -238,7 +259,7 @@ sub run_remote_shell_api {
 		    my $lastline=$t->lastline();
 		    print "---lastline=$lastline\n";
 		}
-		($prematch, $match) = $t->waitfor(Match => "/$more_prompt/",
+		($prematch, $match) = $t->waitfor(Match => "/$more_prompt/i",
 						  Match => "/$prompt/",
 						  Errmode => "return",
 						  Timeout=>10);
@@ -253,7 +274,7 @@ sub run_remote_shell_api {
 		    my $lastline=$t->lastline();
 		    print "lastline=$lastline\n";
 		}
-		($prematch, $match) = $t->waitfor(Match => "/$more_prompt/",
+		($prematch, $match) = $t->waitfor(Match => "/$more_prompt/i",
 						  Match => "/$prompt/",
 						  Match => '/password:\s*$/i',
 						  Errmode => "return",
@@ -266,17 +287,17 @@ sub run_remote_shell_api {
 
             my $error=$t->errmsg();
 	    if ($error) {
-		$output.="Command $cmd failed: $error\n";
-		return [1, $output];
+	    	$output.="Command $cmd failed: $error\n";
+	    	return [1, $output];
 	    }
             
-            # remove the first line
+            # 
             if ($try_more) {
-		my @data=split("\n", $prematch);
-		shift @data;
+		#my @data=split("\n", $prematch);
 		#shift @data;
 		#shift @data;
-		$prematch=join("\n", @data);
+		#shift @data;
+		#$prematch=join("\n", @data);
 		#add a newline at the end if not there
 		my $lastchar=substr($prematch, -1, 1);
 		if ($lastchar ne "\n") {

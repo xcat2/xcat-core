@@ -1076,6 +1076,9 @@ sub fork_fanout_dsh
                     $remote_shell = "$::XCATROOT/sbin/rshell_api";
                     $rsh_extension='RShellAPI';
                     $rsh_config{'password'}=$$target_properties{'password'};
+                    if ($$options{'trace'}) {
+			$rsh_config{'trace'}=1;
+		    }
                 }
 
                 # will not set -n for any command,  causing problems
