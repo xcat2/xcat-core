@@ -130,7 +130,8 @@ fi
 if [ -f /etc/xCATMN ]; then
   rm  /etc/xCATMN
 fi
-
+fi
+# for install or upgrade restart the daemon
 %ifos linux
 if [ -e "/etc/redhat-release" ]; then
     apachedaemon='httpd'
@@ -143,14 +144,14 @@ fi
 if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
     	XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd restart
 		/etc/init.d/$apachedaemon reload 
-	fi
+fi
     echo "xCATsn is now installed"
 %else
 # start xcatd on  AIX
   XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/restartxcatd 
+    echo "xCATsn is now installed"
 
 %endif
-fi
 
 %clean
 
