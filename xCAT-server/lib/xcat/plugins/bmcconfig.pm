@@ -5,6 +5,7 @@ use xCAT::Table;
 use xCAT::MsgUtils;
 use xCAT::Utils;
 use xCAT::PasswordUtils;
+use xCAT::IMMUtils;
 use xCAT::TableUtils;
 use IO::Select;
 use Socket;
@@ -129,6 +130,10 @@ sub process_request  {
 	     xCAT::MsgUtils->message('S',"Unable to determine IP, netmask, username, and/or pasword for $sbmc, ensure that host resolution is working.  Best guess parameters would have been: IP: '$ip', netmask: '$mask', username: '$username', password: '$password'",  );
 	     $callback->({error=>["Invalid table configuration for bmcconfig"],errorcode=>[1]});
 	     return 1;
+	  }
+	  if ($request->{command}->[0] eq 'remoteimmsetup') {
+	     xCAT::IMMUtils::setupIMM($node,cliusername=>$username,clipassword=>$password,callback=>$callback);
+             return;
 	  }
 	  my $response={bmcip=>$ip,netmask=>$mask,gateway=>$gw,username=>$username,password=>$password};
 	  if (defined $bmcport) {
