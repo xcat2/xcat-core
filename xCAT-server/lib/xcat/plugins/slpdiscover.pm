@@ -4,6 +4,7 @@ use xCAT::SvrUtils qw/sendmsg/;
 use xCAT::SLP;
 use xCAT::NetworkUtils;
 use xCAT::SSHInteract;
+use xCAT::IMMUtils;
 use xCAT::MacMap;
 use xCAT_plugin::bmcconfig;
 my $defaultbladeuser;
@@ -194,75 +195,6 @@ sub process_request {
 	$mactab->setNodesAttribs(\%macuphash);
 }
 
-sub setupIMM {
-	my $node = shift;
-	my %args = @_;
-	my $nodedata = $args{nodedata};
-	my $ipmitab = xCAT::Table->new('ipmi',-create=>1);
-	my $ient = $ipmitab->getNodeAttribs($node,[qw/bmc bmcid/],prefetchcache=>1);
-	my $ipmiauthmap = xCAT::PasswordUtils::getIPMIAuth(noderange=>[$node]);
-	my $newaddr;
-	if ($ient) {
-		my $bmcid=$ient->{bmcid};
-		if ($bmcid and $nodedata->{macaddress} =~ /$bmcid/) { 
-			sendmsg("The IMM has been configured (ipmi.bmcid). Skipped.",$callback, $node);
-			return; 
-		} #skip configuration, we already know this one
-		$newaddr = $ient->{bmc};
-	}
-	my @ips=();
-        my $autolla=0;
-	if ($newaddr and not $newaddr =~ /^fe80:.*%.*/) {
-		@ips = xCAT::NetworkUtils::getipaddr($newaddr,GetAllAddresses=>1);
-	} else {
-		if ($args{curraddr} =~ /^fe80:.*%.*/) {  #if SLP were able to glean an LLA out of this, let's just roll with that result
-			$ipmitab->setNodeAttribs($node,{bmc=>$args{curraddr}});
-			$autolla=1; 
-		}
-	}
-	if (not scalar @ips and not $autolla) {
-		sendmsg(":Cannot find the IP attribute for bmc",$callback,$node);
-		return;
-	}
-        my $targips;
-        if (scalar(@ips)) { 
-		$targips = join(',',@ips);
-	} elsif ($autolla) {
-		$targips=$args{curraddr};
-	}
-	sendmsg(":Configuration of ".$node."[$targips] commencing, configuration may take a few minutes to take effect",$callback);
-	my $child = fork();
-	if ($child) { return; }
-	unless (defined $child) { die "error spawining process" }
-	
-	#ok, with all ip addresses in hand, time to enable IPMI and set all the ip addresses (still static only, TODO: dhcp
-	my $ssh = new xCAT::SSHInteract(-username=>$args{cliusername},
-					-password=>$args{clipassword},
-					-host=>$args{curraddr},
-					-nokeycheck=>1,
-					-output_record_separator=>"\r",
-					Timeout=>15,
-					Errmode=>'return',
-					Prompt=>'/> $/');
-	if ($ssh and $ssh->atprompt) { #we are in and good to issue commands
-		$ssh->cmd("accseccfg -pe 0 -rc 0 -ci 0 -lf 0 -lp 0"); #disable the more insane password rules, this isn't by and large a human used interface
-		$ssh->cmd("users -1 -n ".$ipmiauthmap->{$node}->{username}." -p ".$ipmiauthmap->{$node}->{password}." -a super"); #this gets ipmi going
-		foreach my $ip (@ips) {
-			if ($ip =~ /:/) { 
-				$ssh->cmd("ifconfig eth0 -ipv6static enable -i6 $ip");
-			} else {
-				(my $sip,my $mask,my $gw) = xCAT_plugin::bmcconfig::net_parms($ip);
-				my $cmd = "ifconfig eth0 -c static -i $ip -s $mask";
-				if ($gw) { $cmd .= " -g $gw"; }
-				$ssh->cmd($cmd);
-			}
-		}
-		$ssh->close();
-		$ipmitab->setNodeAttribs($node,{bmcid=>$nodedata->{macaddress}});
-	}
-	exit(0);
-}
-
 sub configure_hosted_elements {
 	my $cmm = shift;
 	my $uuid=$flexchassisuuid{$cmm};
@@ -280,7 +212,7 @@ sub configure_hosted_elements {
 			}
 			if ($doneaddrs{$node}) { next; }
 			$doneaddrs{$node}=1;
-			setupIMM($node,nodedata=>$immdata,curraddr=>$addr,cliusername=>$user,clipassword=>$pass);
+			xCAT::IMMUtils::setupIMM($node,nodedata=>$immdata,curraddr=>$addr,cliusername=>$user,clipassword=>$pass,callback=>$callback);
 		} else {
 			sendmsg(": Ignoring target in bay $slot, no node found with mp.mpa/mp.id matching",$callback,$cmm);
 		}
