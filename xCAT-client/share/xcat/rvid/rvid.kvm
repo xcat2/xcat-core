@@ -9,6 +9,10 @@ if [ ! -z "$rvid_virturi" -a ! -z "$rvid_virtname" ]; then
 fi
 myport=${rvid_vidport#*:}
 if [ $rvid_vidproto = "vnc" ];then
+    if [ ! -x "/usr/bin/vncviewer" ]; then
+        echo "Error: vncviewer could not be found and needed for this VM." >&2;
+        exit 1
+    fi
 	let myport=myport-5900;
 	export VNC_VIA_CMD='/usr/bin/ssh -o BatchMode=yes -f -L "$L":"$H":"$R" "$G" sleep 20'
 	(
