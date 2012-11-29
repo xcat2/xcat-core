@@ -1093,11 +1093,17 @@ sub rmkit
 
         # Check if it is a kitname or basename
 
-        (my $ref1) = $tabs{kit}->getAttribs({kitname => $kit}, 'basename');
+        (my $ref1) = $tabs{kit}->getAttribs({kitname => $kit}, 'basename', 'isinternal');
         if ( $ref1 and $ref1->{'basename'}){
+            if ( $ref1->{'isinternal'} and !$force ) {
+                my %rsp;
+                push@{ $rsp{data} }, "Kit $kit with isinterval attribute cannot be remoed";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                return 1;
+            }
             $kitnames{$kit} = 1;
         } else {
-            my @entries = $tabs{kit}->getAllAttribsWhere( "basename = '$kit'", 'kitname' );
+            my @entries = $tabs{kit}->getAllAttribsWhere( "basename = '$kit'", 'kitname', 'isinternal');
             unless (@entries) {
                 my %rsp;
                 push@{ $rsp{data} }, "Kit $kit could not be found in DB $t";
@@ -1105,6 +1111,12 @@ sub rmkit
                 return 1;
             }
             foreach my $entry (@entries) {
+                if ( $entry->{'isinternal'} and !$force ) {
+                    my %rsp;
+                    push@{ $rsp{data} }, "Kit $entry->{kitname} with isinterval attribute cannot be remoed";
+                    xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                    return 1;
+                }
                 $kitnames{$entry->{kitname}} = 1;
             }
         }
