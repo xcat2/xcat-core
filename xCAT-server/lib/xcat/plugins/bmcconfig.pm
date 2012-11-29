@@ -4,6 +4,7 @@ use Data::Dumper;
 use xCAT::Table;
 use xCAT::MsgUtils;
 use xCAT::Utils;
+use xCAT::PasswordUtils;
 use xCAT::TableUtils;
 use IO::Select;
 use Socket;
@@ -11,6 +12,7 @@ use Socket;
 sub handled_commands {
     return {
           getbmcconfig => 'bmcconfig',
+	  remoteimmsetup => 'bmcconfig',
         };
 }
 
@@ -95,44 +97,27 @@ sub process_request  {
   }
   #my $sitetable = xCAT::Table->new('site');
   my $ipmitable = xCAT::Table->new('ipmi');
-  my $passtable = xCAT::Table->new('passwd');
   my $tmphash;
-  my $username = 'USERID';
+  my $username;
   my $gennedpassword=0;
   my $bmc;
-  my $password = 'PASSW0RD';
-  if ($passtable) { ($tmphash)=$passtable->getAttribs({key=>'ipmi'},'username','password'); }
-  #Check for generics, can grab for both user and pass with a query
-  #since they cannot be in disparate records in passwd tab
-  if ($tmphash->{username}) { 
-    $username=$tmphash->{username};
-  }
-  if ($tmphash->{password}) { #It came for free with the last query
-    $password=$tmphash->{password};
-  }
-  #$tmphash=($sitetable->getAttribs({key=>'genpasswords'},'value'))[0];
-  my @entries =  xCAT::TableUtils->get_site_attribute("genpasswords");
-  my $site_entry = $entries[0];
-  if ($site_entry eq "1" or $site_entry  =~ /y(es)?/i) {
+  my $password;
+  $tmphash=$ipmitable->getNodesAttribs([$node],['bmc','username','bmcport','password','taggedvlan']);
+  my $authmap = xCAT::PasswordUtils::getIPMIAuth(noderange=>[$node],ipmihash=>$tmphash);
+  if ($::XCATSITEVALS{genpasswords} eq "1" or $::XCATSITEVALS{genpasswords}  =~ /y(es)?/i) {
     $password = genpassword(10)."1cA!";
     $gennedpassword=1;
-    $tmphash=$ipmitable->getNodeAttribs($node,['bmc','username','bmcport','taggedvlan']);
   } else {
-    $tmphash=$ipmitable->getNodeAttribs($node,['bmc','username','bmcport','password','taggedvlan']);
-    if ($tmphash->{password}) {
-      $password = $tmphash->{password};
-    }
+    $password = $authmap->{$node}->{password};
   }
   my $bmcport;
-  if (defined $tmphash->{bmcport}) {
-      $bmcport = $tmphash->{bmcport};
+  if (defined $tmphash->{$node}->[0]->{bmcport}) {
+      $bmcport = $tmphash->{$node}->[0]->{bmcport};
   }
-  if ($tmphash->{bmc} ) {
-    $bmc=$tmphash->{bmc};
+  if ($tmphash->{$node}->[0]->{bmc} ) {
+    $bmc=$tmphash->{$node}->[0]->{bmc};
   }
-  if ($tmphash->{username}) {
-    $username = $tmphash->{username};
-  }
+  $username = $authmap->{$node}->{username};
   unless (defined $bmc) {
      xCAT::MsgUtils->message('S',"Unable to identify bmc for $node, refusing to give config data");
      $callback->({error=>["Invalid table configuration for bmcconfig"],errorcode=>[1]});
@@ -141,7 +126,7 @@ sub process_request  {
   foreach my $sbmc (split /,/,$bmc) {
 	  (my $ip,my $mask,my $gw) = net_parms($sbmc);
 	  unless ($ip and $mask and $username and $password) {
-	     xCAT::MsgUtils->message('S',"Unable to determine IP, netmask, username, and/or pasword for $sbmc, ensure that host resolution is working.  Best guess parameters would have been: IP: '$ip', netmask: '$netmask', username: '$username', password: '$password'",  );
+	     xCAT::MsgUtils->message('S',"Unable to determine IP, netmask, username, and/or pasword for $sbmc, ensure that host resolution is working.  Best guess parameters would have been: IP: '$ip', netmask: '$mask', username: '$username', password: '$password'",  );
 	     $callback->({error=>["Invalid table configuration for bmcconfig"],errorcode=>[1]});
 	     return 1;
 	  }
@@ -149,8 +134,8 @@ sub process_request  {
 	  if (defined $bmcport) {
 	      $response->{bmcport}=$bmcport;
 	  }
-	  if (defined $tmphash->{taggedvlan}) {
-	      $response->{taggedvlan}=$tmphash->{taggedvlan};
+	  if (defined $tmphash->{$node}->[0]->{taggedvlan}) {
+	      $response->{taggedvlan}=$tmphash->{$node}->[0]->{taggedvlan};
 	  }
   	$callback->($response);
   }
