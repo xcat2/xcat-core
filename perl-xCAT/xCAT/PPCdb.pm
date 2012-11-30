@@ -1167,7 +1167,7 @@ sub read_from_table {
     my %typehash;
     my %iphash;
     my %vpdhash;
-    if ( !defined(%::OLD_DATA_CACHE))
+    if ( !(%::OLD_DATA_CACHE))
     {
         # find out all the existed nodes' ipaddresses
         my $hoststab  = xCAT::Table->new('hosts');
