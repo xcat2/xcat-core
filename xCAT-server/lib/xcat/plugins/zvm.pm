@@ -5410,10 +5410,7 @@ sub changeHypervisor {
     }
     
     # resetsmapi
-    elsif ( $args->[0] eq "--resetsmapi" ) {
-        # This is no longer supported in chvm. Using chhypervisor instead.
-        changeHypervisor( $callback, $node, $args );
-        
+    elsif ( $args->[0] eq "--resetsmapi" ) {        
         # Assuming zVM 6.1 or older
         # Force each worker machine off
         my @workers = ('VSMWORK1', 'VSMWORK2', 'VSMWORK3', 'VSMREQIN', 'VSMREQIU');
