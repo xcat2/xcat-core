@@ -4528,7 +4528,7 @@ sub get_blades_for_mpa {
   my @nodearray = $mptab->getAttribs({mpa=>$mpa,nodetype=>"blade"}, qw(node));
   my @blades = ();
   my $nodesattrs;
-  if (!defined(@nodearray)) {
+  if (!(@nodearray)) {
     return (\%blades_hash);
   } else {
       foreach (@nodearray) {
