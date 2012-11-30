@@ -1302,73 +1302,58 @@ sub updatenoderunps
                 # for updatenode -P
                 $mode = "1";
             }
-
+            my $args1;
             if ($::SETSERVER)
             {
-                $cmd =
-                  "$::XCATROOT/bin/xdsh  $nodestring  -s -v -e $installdir/postscripts/xcataixpost -M $snkey -c $mode --tftp $tftpdir '$postscripts' 2>&1";
+            
+              $args1 = [
+                    "--nodestatus",
+                    "-s",
+                    "-v",
+                    "-e",
+                    "$installdir/postscripts/xcataixpost  -M $snkey -c $mode --tftp $tftpdir '$postscripts'"
+                    ];
             }
             else
             {
-                $cmd =
-                  "$::XCATROOT/bin/xdsh $nodestring  -s -v -e $installdir/postscripts/xcataixpost -m $snkey -c $mode --tftp $tftpdir '$postscripts' 2>&1";
+                $args1 = [
+                    "--nodestatus",
+                    "-s",
+                    "-v",
+                    "-e",
+                    "$installdir/postscripts/xcataixpost -m $snkey -c $mode  --tftp $tftpdir '$postscripts' "
+                    ];
+              
             }
 
             if ($::VERBOSE)
             {
-                my $rsp = {};
-                $rsp->{data}->[0] =
-                  "  $localhostname: Internal call command: $cmd";
-                $callback->($rsp);
+               my $rsp = {};
+               $rsp->{data}->[0] =
+                 "  $localhostname: Internal call command: xdsh $nodestring "
+                 . join(' ', @$args1);
+               $callback->($rsp);
             }
-
-            if (!open(CMD, "$cmd |"))
+            $CALLBACK = $callback;
+            if ($request->{rerunps4security})
             {
-                my $rsp = {};
-                $rsp->{data}->[0] = "$localhostname: Cannot run command $cmd";
-                $callback->($rsp);
+                $RERUNPS4SECURITY = $request->{rerunps4security}->[0];
             }
             else
             {
-                my $rsp = {};
-                my $output;
-                while (<CMD>)
-                {
-                    $output = $_;
-                    chomp($output);
-                    $output =~ s/\\cM//;
-                    if ($output =~ /returned from postscript/)
-                    {
-                        $output =~
-                          s/returned from postscript/Running of postscripts has completed./;
-                    }
-                    if (   $request->{rerunps4security}
-                        && $request->{rerunps4security}->[0] eq "yes")
-                    {
-                        if ($output =~ /Running of postscripts has completed/)
-                        {
-                            $output =~
-                              s/Running of postscripts has completed/Redeliver security files has completed/;
-                            push @{$rsp->{data}}, $output;
-                        }
-                        elsif ($output !~
-                               /Running postscript|Error loading module/)
-                        {
-                            push @{$rsp->{data}}, $output;
-                        }
-                    }
-                    elsif ($output !~ /Error loading module/)
-                    {
-                        push @{$rsp->{data}}, "$output";
-                    }
-                }
-                close(CMD);
-               # # build the list of good and bad nodes
-               # &buildnodestatus(\@$output,$callback);
-                # return information 
-                $callback->($rsp);
+                $RERUNPS4SECURITY = "";
             }
+            $subreq->(
+                      {
+                       command           => ["xdsh"],
+                       node              => $servernodes{$snkey},
+                       arg               => $args1,
+                       _xcatpreprocessed => [1]
+                      },
+                      \&getdata
+                      );
         }
+
     }
     if (   $request->{rerunps4security}
         && $request->{rerunps4security}->[0] eq "yes")
