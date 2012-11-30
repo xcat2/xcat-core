@@ -4134,7 +4134,6 @@ sub process_request {
     my $pass=$bladepass;
     my $ent;
     if (defined($mpatab)) {
-      #($ent)=$mpatab->getNodeSpecAttribs($mpa, {username=>"USERID"},qw(username password));
       my @user_array = $mpatab->getNodeAttribs($mpa, qw(username password));
       foreach my $entry (@user_array) {
           if ($entry->{username}) {
@@ -4582,7 +4581,6 @@ sub passwd {
   }
   my $mpatab = xCAT::Table->new('mpa');
   if ($mpatab) {
-    #my ($ent)=$mpatab->getNodeSpecAttribs($mpa, {username=>$user},qw(password));
     my ($ent)=$mpatab->getAttribs({mpa=>$mpa, username=>$user},qw(password));
     #my $oldpass = 'PASSW0RD';
     #if (defined($ent->{password})) {$oldpass = $ent->{password}};
