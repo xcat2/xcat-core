@@ -60,7 +60,7 @@ sub preprocess_request {
       my $switchestab=xCAT::Table->new('switches',-create=>0);
       my @all_switches;
       my @tmp=$switchestab->getAllAttribs(('switch'));
-      if (defined(@tmp) && (@tmp > 0)) {
+      if (@tmp && (@tmp > 0)) {
 	  foreach(@tmp) {
 	      my @switches_tmp=noderange($_->{switch});
 	      if (@switches_tmp==0) { push @switches_tmp, $_->{switch}; }
