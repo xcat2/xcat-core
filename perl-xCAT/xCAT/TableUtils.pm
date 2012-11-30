@@ -1497,7 +1497,7 @@ sub enablessh
     my ($class, $node) = @_;
     my $enablessh=1;
     
-    if( defined(%::GLOBAL_SN_HASH) ) {
+    if( %::GLOBAL_SN_HASH ) {
         if ($::GLOBAL_SN_HASH{$node} == 1) {
             $enablessh=1;   # service nodes always enabled
 
