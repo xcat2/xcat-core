@@ -175,7 +175,7 @@ sub setstate {
               }
               if ($kern and $kern->{kcmdline}) {
                 my $kcmdline = $kern->{kcmdline};
-                $kcmdline =~ s/(.*ifname=.*):@macs->[0].*( netdev.*)/$1:$mac$2/g;
+                $kcmdline =~ s/(.*ifname=.*):@macs[0].*( netdev.*)/$1:$mac$2/g;
                 print $pcfg "\tappend=\"".$kcmdline."\"\n";
               }
               close($pcfg);
