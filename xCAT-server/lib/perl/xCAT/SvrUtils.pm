@@ -161,7 +161,7 @@ sub get_nodeset_state
     my $state = "undefined";
     my $tftpdir;
     my $boottype;
-    if( defined(%::GLOBAL_TAB_HASH) && defined($::GLOBAL_TAB_HASH{noderes}) && defined($::GLOBAL_TAB_HASH{noderes}{$node}) ) {
+    if( %::GLOBAL_TAB_HASH && defined($::GLOBAL_TAB_HASH{noderes}) && defined($::GLOBAL_TAB_HASH{noderes}{$node}) ) {
         $tftpdir = $::GLOBAL_TAB_HASH{noderes}{$node}{tftpdir};
         $boottype = $::GLOBAL_TAB_HASH{noderes}{$node}{netboot};
         
