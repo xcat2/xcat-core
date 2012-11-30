@@ -27,13 +27,13 @@ use xCAT::MsgUtils;
     Initialize CFM directories and files. The default layout under cfmdir is:
     . 
     |-- etc
-    | |-- group.merge
+    | |-- group.merge -> /etc/group.merge
     | |-- hosts -> /etc/hosts
-    | |-- passwd.merge
-    | |-- shadow.merge
-    |-- group.OS
-    |-- passwd.OS
-    |-- shadow.OS
+    | |-- passwd.merge -> /etc/passwd.merge
+    | |-- shadow.merge -> /etc/shadow.merge
+    |-- group.OS -> /etc/group.OS
+    |-- passwd.OS -> /etc/passwd.OS
+    |-- shadow.OS -> /etc/shadow.OS
     Note: the *.OS files are the backups for the original /etc/passwd, shadow, group files
 
     Arguments:
@@ -61,21 +61,27 @@ sub initCFMdir
     # the /etc/passwd, shadow, group files will be merged 
     my @userfiles = ("/etc/passwd", "/etc/shadow", "/etc/group");
 
+    # create the cfmdir
     if (! -d $cfmdir)
     {
         mkpath $cfmdir;
     }
 
-    # backup original /etc/passwd, shadow, group files
+    # backup the OS files and create links under cfmdir
     foreach my $file (@userfiles)
     {
-        my $backup = basename($file).".OS";
-        if (! -e "$cfmdir/$backup")
+        my $backup = $file.".OS";
+        if (! -e $backup)
         {
-            copy($file, "$cfmdir/$backup");
+            copy($file, $backup);
+        }
+
+        if (! -e "$cfmdir/".basename($backup))
+        {
+            symlink($backup, "$cfmdir/".basename($backup));
         }
     }
-   
+
     # Initialize CFM directory and related files
     if (! -d "$cfmdir/etc")
     {
@@ -87,13 +93,18 @@ sub initCFMdir
     {
         symlink($file, "$cfmdir/$file");
     }
-    # touch the merge files for /etc/passwd, shadow, group
+    # touch and link the merge files for /etc/passwd, shadow, group
     foreach my $file (@userfiles)
     {
         my $merge = $file.".merge";
+        if (! -e "$merge")
+        {
+            xCAT::Utils->runcmd("touch $merge", -1);
+        }
+
         if (! -e "$cfmdir/$merge")
         {
-            xCAT::Utils->runcmd("touch $cfmdir/$merge", -1);
+            symlink($merge, "$cfmdir/$merge");
         }
     }
 }
@@ -104,7 +115,7 @@ sub initCFMdir
     Update the /etc/passwd, shadow, group merge files under specified CFM directory
 
     Arguments:
-      $cfmdir
+      $cfmdir - CFM directory for osimage      
     Returns:
       0 - update successfully
       1 - update failed
@@ -141,7 +152,7 @@ sub updateUserInfo {
         my @newrecords = ();
         my $backup = basename($file).".OS";
 
-        # get the records from /etc/passwd, shadow, group file and backup
+        # get the records from /etc/passwd, shadow, group file and backup files(.OS files)
         # and all the files from /install/osimages/$imgname/cfmdir directory  
         foreach my $userinfo ($file, "$cfmdir/$backup") 
         {
@@ -174,16 +185,16 @@ sub updateUserInfo {
         my $mergefile = $cfmdir."/".$file.".merge";
         my @diff = xCAT::CFMUtils->arrayops("D", \@newrecords, \@oldrecords);
         # output the diff to merge files
+        my $fp;
+        open($fp, '>', $mergefile);
         if (@diff)
         {
-            my $fp;
-            open($fp, '>', $mergefile);
             for my $record (@diff)
             {
                print $fp "$record\n";
             }
-            close ($fp);
         }
+        close ($fp);
         
     }
 
