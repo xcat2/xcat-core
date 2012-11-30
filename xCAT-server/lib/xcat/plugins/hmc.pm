@@ -160,7 +160,7 @@ sub gethmccon {
 	    $host = $att->{hcp};
 	}
 	my @cred = xCAT::PPCdb::credentials( $host, $hwtype );
-	if ( !defined(@cred) )
+	if ( !(@cred) )
 	{
         $rsp->{node}->[0]->{error}=["Can't username and passwd for the hmc"];
         $rsp->{node}->[0]->{errorcode}=[1];			   
