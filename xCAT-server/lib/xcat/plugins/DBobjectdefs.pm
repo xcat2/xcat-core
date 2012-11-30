@@ -1800,7 +1800,7 @@ sub defch
                 my @finalattrs = keys %{$::FINALATTRS{$obj}};
                 push @finalattrs, 'grouptype';
                 %grphash = xCAT::DBobjUtils->getobjdefs(\%objhash, 0, \@finalattrs);
-                if (!defined(%grphash))
+                if (!(%grphash))
                 {
                     my $rsp;
                     $rsp->{data}->[0] =
@@ -2464,7 +2464,7 @@ sub defls
         }
 
         %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash, $::VERBOSE, \@neededattrs);
-        if (!defined(%myhash))
+        if (!(%myhash))
         {
             my $rsp;
             $rsp->{data}->[0] = "Could not get xCAT object definitions.";
@@ -2481,7 +2481,7 @@ sub defls
         %objhash = %::ObjTypeHash;
 
         %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash, $::VERBOSE, \@neededattrs);
-        if (!defined(%myhash))
+        if (!(%myhash))
         {
             my $rsp;
             $rsp->{data}->[0] = "Could not get xCAT object definitions.";
@@ -2522,7 +2522,7 @@ sub defls
             }
 
             %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash);
-            if (!defined(%myhash))
+            if (!(%myhash))
             {
                 my $rsp;
                 $rsp->{data}->[0] = "Could not get xCAT object definitions.";
@@ -2535,7 +2535,7 @@ sub defls
         {
 
             %myhash = xCAT::DBobjUtils->getobjdefs(\%::AllObjTypeHash, $::VERBOSE);
-            if (!defined(%myhash))
+            if (!(%myhash))
             {
                 my $rsp;
                 $rsp->{data}->[0] = "Could not get xCAT object definitions.";
@@ -2550,7 +2550,7 @@ sub defls
         }
     } # end - if specify all
 
-    if (!defined(%myhash))
+    if (!(%myhash))
     {
         my $rsp;
         $rsp->{data}->[0] = "Could not find any objects to display.";
@@ -2650,7 +2650,7 @@ sub defls
         my $xcatdefaultsps;
         my $xcatdefaultspbs;
         my @TableRowArray = xCAT::DBobjUtils->getDBtable('postscripts');
-        if (defined(@TableRowArray))
+        if (@TableRowArray)
         {
             foreach my $tablerow (@TableRowArray)
             {
@@ -3171,7 +3171,7 @@ sub defrm
 
         # need to get object defs from DB
         %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash);
-        if (!defined(%myhash))
+        if (!(%myhash))
         {
             $error = 1;
         }
@@ -3221,7 +3221,7 @@ sub defrm
             $ghash{$obj} = 'group';
             my @attrs = ('grouptype', 'wherevals');
             my %grphash = xCAT::DBobjUtils->getobjdefs(\%ghash, 0, \@attrs);
-            if (!defined(%grphash))
+            if (!(%grphash))
             {
                 my $rsp;
                 $rsp->{data}->[0] =
@@ -3259,7 +3259,7 @@ sub defrm
             # Performance: Only call getobjdefs once
             my @attrs = ('groups');
                 %nodehash = xCAT::DBobjUtils->getobjdefs(\%nhash, 0, \@attrs);
-                if (!defined(%nodehash))
+                if (!(%nodehash))
                 {
                     my $rsp;
                 my @nodes = keys %nhash;
