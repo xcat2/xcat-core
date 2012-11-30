@@ -785,7 +785,7 @@ sub preprocess_nodes {
     ##########################################
     if ( $request->{command} eq "rnetboot"  || $request->{command} eq "rbootseq"  ) { 
         $netwk = resolve_netwk( $request, $noderange );
-        if ( !defined( %$netwk )) {
+        if ( !( %$netwk )) {
             return undef;
         }
     }
@@ -1421,7 +1421,7 @@ sub handle_find_hw_children {
         return undef;
     }
     my @nodearray = $vpdtab->getAttribs({serial=>$mtms->{serial}, mtm=>$mtms->{mtm}}, qw(node side)); # need regx
-    if (!defined(@nodearray)) {
+    if (!(@nodearray)) {
         return undef;
     }
     my @tempnodes;
