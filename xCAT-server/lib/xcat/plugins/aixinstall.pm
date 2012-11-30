@@ -3078,7 +3078,7 @@ sub mknimimage
 			
 			# get the osimage def for the -i option osimage
             %::imagedef = xCAT::DBobjUtils->getobjdefs(\%objtype, $callback);
-            if (!defined(%::imagedef))
+            if (!(%::imagedef))
             {
                 my $rsp;
                 push @{$rsp->{data}}, "Could not get xCAT image definition.\n";
@@ -3601,7 +3601,7 @@ sub mknimimage
     #
     # overwrite with anything provided on the command line
     #
-    if (defined(%::attrres))
+    if (%::attrres)
     {
         # add overlay/any additional from the cmd line if provided
         foreach my $type (keys %::attrres)
