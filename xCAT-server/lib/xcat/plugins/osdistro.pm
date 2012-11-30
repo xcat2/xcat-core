@@ -184,7 +184,7 @@ sub rmosdistro
     if($all) 
     {
 	my @result=$osdistrotab->getAllAttribs('osdistroname');
-	if(defined(@result) and scalar @result >0)
+	if(@result and scalar @result >0)
 	{
 		foreach(@result)
 		{
