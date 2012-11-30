@@ -720,7 +720,7 @@ sub read_from_table {
     my %ppchash;
     my %iphash;
 
-    if ( !defined(%::OLD_DATA_CACHE))
+    if ( !(%::OLD_DATA_CACHE))
     {
         #find out all the existed nodes
         my $nodelisttab  = xCAT::Table->new('nodelist');
