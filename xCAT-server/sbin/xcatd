@@ -227,7 +227,7 @@ my $socket;
   my $retry=1;
   $SIG{USR2} = sub { 
 	if ($socket) { #do not mess with pid file except when we still have  the socket.
-      	unlink("/tmp/xcat/installservice.pid"); close($socket); $quit=1; 
+      	unlink("/var/run/xcat/installservice.pid"); close($socket); $quit=1; 
        xCAT::MsgUtils->message("S","xcatd install monitor $$ quiescing");
 	}
 	};
@@ -242,7 +242,7 @@ my $socket;
                                      ReuseAddr => 1,
                                      Listen => 8192);
 	}
-  if (not $socket and open($installpidfile,"<","/tmp/xcat/installservice.pid")) { #if we couldn't get the socket, go to pid to figure out current owner
+  if (not $socket and open($installpidfile,"<","/var/run/xcat/installservice.pid")) { #if we couldn't get the socket, go to pid to figure out current owner
 			#TODO: lsof or similar may be a more accurate measure
       my $pid = <$installpidfile>;
       if ($pid) {
@@ -273,7 +273,7 @@ sleep 0.05; #up to 50 ms outage possible
     die;
   }
    #we have the socket, now we claim the pid file as our own
-  open($installpidfile,">","/tmp/xcat/installservice.pid"); #if here, everyone else has unlinked installservicepid or doesn't care
+  open($installpidfile,">","/var/run/xcat/installservice.pid"); #if here, everyone else has unlinked installservicepid or doesn't care
   print $installpidfile $$;
   close($installpidfile);
   until ($quit) {
@@ -432,10 +432,10 @@ if ($inet6support) {
       }
     }
   }
-  if (open($installpidfile,"<","/tmp/xcat/installservice.pid")) {
+  if (open($installpidfile,"<","/var/run/xcat/installservice.pid")) {
       my $pid = <$installpidfile>;
       if ($pid == $$) { #if our pid, unlink the file, otherwise, we managed to see the pid after someone else created it
-          unlink("/tmp/xcat/installservice.pid");
+          unlink("/var/run/xcat/installservice.pid");
       }
       close($installpidfile);
   }
@@ -457,7 +457,7 @@ sub do_udp_service { #This function opens up a UDP port
   $SIG{USR2} = sub { 
 	if ($socket) {
 		#only clear out pid file when we still have socket.
-      		unlink("/tmp/xcat/udpservice.pid"); close($socket); $quit=1; $socket=0;
+      		unlink("/var/run/xcat/udpservice.pid"); close($socket); $quit=1; $socket=0;
        		xCAT::MsgUtils->message("S","xcatd udp service $$ quiescing");
 	}
 	};
@@ -470,7 +470,7 @@ sub do_udp_service { #This function opens up a UDP port
                                      Proto     => 'udp',
 	                                     Domain => AF_INET);
 	}
-  if (not $socket and open($udppidfile,"<","/tmp/xcat/udpservice.pid")) {
+  if (not $socket and open($udppidfile,"<","/var/run/xcat/udpservice.pid")) {
       my $pid = <$udppidfile>;
       if ($pid) {
           $retry=100; #grace period for old instance to get out of the way, 5 seconds
@@ -500,7 +500,7 @@ sleep 0.05;
     die "Unable to start UDP on $port";
   }
   #only take udp pid if we get the socket
-  open($udppidfile,">","/tmp/xcat/udpservice.pid"); #if here, everyone else has unlinked udpservicepid or doesn't care
+  open($udppidfile,">","/var/run/xcat/udpservice.pid"); #if here, everyone else has unlinked udpservicepid or doesn't care
   print $udppidfile $$;
   close($udppidfile);
   $select->add($socket);
@@ -574,10 +574,10 @@ sleep 0.05;
         exit 1;
     }
   }
-  if (open($udppidfile,"<","/tmp/xcat/udpservice.pid")) {
+  if (open($udppidfile,"<","/var/run/xcat/udpservice.pid")) {
       my $pid = <$udppidfile>;
       if ($pid == $$) { #if our pid, unlink the file, otherwise, we managed to see the pid after someone else created it
-          unlink("/tmp/xcat/udpservice.pid");
+          unlink("/var/run/xcat/udpservice.pid");
       }
       close($udppidfile);
   }
@@ -794,7 +794,7 @@ my $listener;
 my $mainpidfile;
 $SIG{USR2} = sub { 
 	if ($listener) {
-	      unlink("/tmp/xcat/mainservice.pid"); close($listener); $quit=1; $listener=0; 
+	      unlink("/var/run/xcat/mainservice.pid"); close($listener); $quit=1; $listener=0; 
 	       xCAT::MsgUtils->message("S","xcatd main service $$ quiescing");
 	}
 };
@@ -811,7 +811,7 @@ $SIG{USR2} = sub {
             Reuse => 1,
             );
     }
-  if (not $listener and open($mainpidfile,"<","/tmp/xcat/mainservice.pid")) {
+  if (not $listener and open($mainpidfile,"<","/var/run/xcat/mainservice.pid")) {
       my $pid = <$mainpidfile>;
       if ($pid) {
           $retry=100; #grace period for old instance to get out of the way, 5 seconds
@@ -851,7 +851,7 @@ unless ($listener) {
   die "ERROR:Unable to start xCAT service on port $port.";
 }
 #only write to pid file if we have listener, listener ownership serves as lock to protect integrity
-open($mainpidfile,">","/tmp/xcat/mainservice.pid"); #if here, everyone else has unlinked mainservicepid or doesn't care
+open($mainpidfile,">","/var/run/xcat/mainservice.pid"); #if here, everyone else has unlinked mainservicepid or doesn't care
 print $mainpidfile $$;
 close($mainpidfile);
 closelog();
@@ -954,10 +954,10 @@ if ($inet6support) {
   $sslclients++; #THROTTLE
   $cnnection->close();
 }
-  if (open($mainpidfile,"<","/tmp/xcat/mainservice.pid")) {
+  if (open($mainpidfile,"<","/var/run/xcat/mainservice.pid")) {
       my $pid = <$mainpidfile>;
       if ($pid == $$) { #if our pid, unlink the file, otherwise, we managed to see the pid after someone else created it
-          unlink("/tmp/xcat/mainservice.pid");
+          unlink("/var/run/xcat/mainservice.pid");
       }
       close($mainpidfile);
   }
