@@ -1139,7 +1139,7 @@ sub rmkit
         my $kitcompnames;
         my @kitcomphash = $tabs{kitcomponent}->getAllAttribsWhere( "kitname = '$kitname'", 'kitcompname');
 
-        if (defined(@entries) && (@entries > 0)) {  
+        if (@entries && (@entries > 0)) {  
 
             if($::VERBOSE){
                 my %rsp;
