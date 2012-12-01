@@ -122,9 +122,19 @@ pmatch ()
 
   return 1          # non-zero return code means string not matched by pattern
 }
-
-
-
+# check if on AIX node
+if [ ! `uname` = Linux ]; then
+  # if we don't have xcataixpost on the node, get it
+  #if [ ! -f /xcatpost/xcataixpost  ]; then
+  #  if [ ! -d /xcatpost ]; then
+  #    mkdir -p /xcatpost; 
+  #  fi
+  #fi
+  logger -t xCAT -p local4.err "Running xcataixpost $*";
+  MYDIR=`dirname $0`
+  exec $MYDIR/xcataixpost $*
+  exit
+fi
 # parse the arguments
 ARGNUM=$#;
 if [ -z $1 ]; then
@@ -158,11 +168,11 @@ else
 fi
 
 
-if [ ! `uname` = Linux ]; then
-   MYDIR=`dirname $0`
-   exec $MYDIR/xcatdsklspost.aix
-   exit
-fi
+#if [ ! `uname` = Linux ]; then
+#   MYDIR=`dirname $0`
+#   exec $MYDIR/xcatdsklspost.aix
+#   exit
+#fi
 #SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
 #sleep $SLI
 
