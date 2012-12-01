@@ -214,7 +214,8 @@ if ( !(-f "/xcatpost/xcataixpost") || $::opt_c ) {
 	my $cpcmd;
 
 	if ((@ARGV==0) || ($ARGV[0] != 2)) {
-    	$cpcmd = "cp -p -R /xcatmnt/* /xcatpost 2>/dev/null";
+    	#$cpcmd = "cp -p -R /xcatmnt/* /xcatpost 2>/dev/null";
+    	$cpcmd = "/usr/bin/rsync -Lprogtz /xcatmnt/* /xcatpost 2>/dev/null";
 	} else {
     	# when argv[1]=2, there is only one postscript file,
     	#   user wants only download it to save time
