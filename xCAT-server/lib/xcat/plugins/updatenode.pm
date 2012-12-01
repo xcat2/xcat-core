@@ -1176,7 +1176,6 @@ sub updatenoderunps
     my $localhostname = hostname();
     my $installdir    = xCAT::TableUtils->getInstallDir();
     my $tftpdir       = xCAT::TableUtils->getTftpDir();
-    my ($rc, $AIXnodes, $Linuxnodes) = xCAT::InstUtils->getOSnodes($nodes);
     my $postscripts      = "";
     my $orig_postscripts = "";
 
@@ -1194,8 +1193,6 @@ sub updatenoderunps
                              $subreq, 0, 1
                              );
 
-    if (scalar(@$Linuxnodes))
-    {
         $postscripts = $orig_postscripts;
 
         # we have Linux nodes
@@ -1203,7 +1200,7 @@ sub updatenoderunps
 
         # get server names as known by the nodes
         my %servernodes =
-          %{xCAT::InstUtils->get_server_nodes($callback, \@$Linuxnodes)};
+          %{xCAT::InstUtils->get_server_nodes($callback, \@$nodes)};
 
         # it's possible that the nodes could have diff server names
         # do all the nodes for a particular server at once
@@ -1277,92 +1274,8 @@ sub updatenoderunps
                       \&getdata
                       );
         }
-    }
-
-    if (scalar(@$AIXnodes))
-    {
-
-        # we have AIX nodes
-        $postscripts = $orig_postscripts;
 
 
-        # get server names as known by the nodes
-        my %servernodes =
-          %{xCAT::InstUtils->get_server_nodes($callback, \@$AIXnodes)};
-
-        # it's possible that the nodes could have diff server names
-        # do all the nodes for a particular server at once
-        foreach my $snkey (keys %servernodes)
-        {
-            my $nodestring = join(',', @{$servernodes{$snkey}});
-            my $cmd;
-            my $mode;
-            if (   $request->{rerunps4security}
-                && $request->{rerunps4security}->[0] eq "yes")
-            {
-
-                # for updatenode --security
-                $mode = "5";
-            }
-            else
-            {
-
-                # for updatenode -P
-                $mode = "1";
-            }
-            my $args1;
-            if ($::SETSERVER)
-            {
-            
-              $args1 = [
-                    "--nodestatus",
-                    "-s",
-                    "-v",
-                    "-e",
-                    "$installdir/postscripts/xcatdsklspost  -M $snkey -c $mode --tftp $tftpdir '$postscripts'"
-                    ];
-            }
-            else
-            {
-                $args1 = [
-                    "--nodestatus",
-                    "-s",
-                    "-v",
-                    "-e",
-                    "$installdir/postscripts/xcatdsklspost -m $snkey -c $mode  --tftp $tftpdir '$postscripts' "
-                    ];
-              
-            }
-
-            if ($::VERBOSE)
-            {
-               my $rsp = {};
-               $rsp->{data}->[0] =
-                 "  $localhostname: Internal call command: xdsh $nodestring "
-                 . join(' ', @$args1);
-               $callback->($rsp);
-            }
-            $CALLBACK = $callback;
-            if ($request->{rerunps4security})
-            {
-                $RERUNPS4SECURITY = $request->{rerunps4security}->[0];
-            }
-            else
-            {
-                $RERUNPS4SECURITY = "";
-            }
-            $subreq->(
-                      {
-                       command           => ["xdsh"],
-                       node              => $servernodes{$snkey},
-                       arg               => $args1,
-                       _xcatpreprocessed => [1]
-                      },
-                      \&getdata
-                      );
-        }
-
-    }
     if (   $request->{rerunps4security}
         && $request->{rerunps4security}->[0] eq "yes")
     {
