@@ -1184,6 +1184,15 @@ sub updatenoderunps
     {
         $orig_postscripts = $request->{postscripts}->[0];
     }
+    # copy xcataixpost down for any AIX nodes
+    xCAT::Utils->runxcmd(
+                             {
+                              command => ['xdcp'],
+                              node    => \@$nodes,
+                              arg     => ['/install/postscripts/xcataixpost','/tmp/xcataixpost'],
+                             },
+                             $subreq, 0, 1
+                             );
 
     if (scalar(@$Linuxnodes))
     {
@@ -1276,7 +1285,6 @@ sub updatenoderunps
         # we have AIX nodes
         $postscripts = $orig_postscripts;
 
-        # need to pass the name of the server on the xcataixpost cmd line
 
         # get server names as known by the nodes
         my %servernodes =
@@ -1311,7 +1319,7 @@ sub updatenoderunps
                     "-s",
                     "-v",
                     "-e",
-                    "$installdir/postscripts/xcataixpost  -M $snkey -c $mode --tftp $tftpdir '$postscripts'"
+                    "$installdir/postscripts/xcatdsklspost  -M $snkey -c $mode --tftp $tftpdir '$postscripts'"
                     ];
             }
             else
@@ -1321,7 +1329,7 @@ sub updatenoderunps
                     "-s",
                     "-v",
                     "-e",
-                    "$installdir/postscripts/xcataixpost -m $snkey -c $mode  --tftp $tftpdir '$postscripts' "
+                    "$installdir/postscripts/xcatdsklspost -m $snkey -c $mode  --tftp $tftpdir '$postscripts' "
                     ];
               
             }
