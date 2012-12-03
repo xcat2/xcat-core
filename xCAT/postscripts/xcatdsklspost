@@ -598,18 +598,6 @@ fi
 
 
 if [ "$MODE" = "1" ] || [ "$MODE" = "2" ] || [ "$MODE" = "5" ]; then
-  #notify the server that we are done with updatenode
-  CNS=`grep NODESTATUS= /xcatpost/mypostscript |awk -F = '{print $2}'`
-  if [ -z "$CNS" ] || [ "$CNS" != "'0'" -a   "$CNS" != "'N'"  -a  "$CNS" != "'n'" ]; then
-        echo "
-if [ \"\$return_value\" -eq \"0\" ]; then
-   updateflag.awk \$MASTER 3002 \"updatestatus synced\"
-else
-   updateflag.awk \$MASTER 3002 \"updatestatus out-of-sync\"
-fi
-        " >> /xcatpost/mypostscript
-  fi
-  
   echo "exit \$return_value" >> /xcatpost/mypostscript
 fi
 
