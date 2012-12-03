@@ -1232,7 +1232,7 @@ sub gen_new_hostinfo_string{
         # Update BMC records.
         if (exists $netprofileattr{"bmc"}){
             $hostinfo_dict{$item}{"mgt"} = "ipmi";
-            $hostinfo_dict{$item}{"chain"} = 'runcmd=bmcsetup,'.$provmethod;
+            $hostinfo_dict{$item}{"chain"} = 'runcmd=bmcsetup,osimage='.$provmethod;
 
             if (exists $ipshash{"bmc"}){
                 $hostinfo_dict{$item}{"bmc"} = $ipshash{"bmc"};
@@ -1240,7 +1240,7 @@ sub gen_new_hostinfo_string{
                 return 0, "There are no more IP addresses available in the static network range for the BMC network.";
             }
         } else{
-            $hostinfo_dict{$item}{"chain"} = $provmethod;
+            $hostinfo_dict{$item}{"chain"} = 'osimage='.$provmethod;
         }
  
         # Generate the hostinfo string.
