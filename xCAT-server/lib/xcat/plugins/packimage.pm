@@ -460,11 +460,6 @@ sub copybootscript {
         return 1;
     }
 
-    # the following block might need to be removed as xcatdsklspost.aix may no longer be used
-    if ( -f "$installroot/postscripts/xcatdsklspost.aix") {
-       copy ("$installroot/postscripts/xcatdsklspost.aix", "$rootimg_dir/opt/xcat/xcatdsklspost.aix");
-       chmod(0755,"$rootimg_dir/opt/xcat/xcatdsklspost.aix");
-    }
 
 	#if ( -f "$installroot/postscripts/xcatpostinit") {
         # copy the linux diskless init script to the image
