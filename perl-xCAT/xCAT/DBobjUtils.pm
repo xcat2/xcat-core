@@ -16,6 +16,7 @@ require xCAT::Table;
 require xCAT::Utils;
 require xCAT::MsgUtils;
 require xCAT::NetworkUtils;
+require xCAT::ServiceNodeUtils;
 use strict;
 
 #  IPv6 not yet implemented - need Socket6
@@ -1956,15 +1957,11 @@ sub getNetwkInfo
                                     if (xCAT::Utils->isMN() && !$nethash{$node}{'gateway'})
                                     {
                                         # does not have ip address in this subnet,
-                                        # use the node attribute 'xcatmaster'
-                                        my $noderestab = xCAT::Table->new('noderes');
-                                        my $et = $noderestab->getNodeAttribs($node, ['xcatmaster']);
-                                        if ($et and defined($et->{'xcatmaster'}))
-                                        {
-                                            my $value = $et->{'xcatmaster'};
-                                            $nethash{$node}{'gateway'} = xCAT::NetworkUtils->getipaddr($value);
-                                        }
-                                        $noderestab->close();
+                                        # use the node attribute 'xcatmaster' or site.master
+                                        my @nodes = ("$node");
+                                        my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@nodes,"xcat","Node");
+                                        my $snkey = (keys %{$sn})[0];
+                                        $nethash{$node}{'gateway'} = xCAT::NetworkUtils->getipaddr($snkey);
                                     }
                                 
                                 }
