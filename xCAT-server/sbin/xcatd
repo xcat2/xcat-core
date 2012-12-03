@@ -354,29 +354,11 @@ if ($inet6support) {
           #}
           close($conn);
         } elsif ($text =~ /installstatus/) {
-	  my @tmpa=split(' ', $text);
+	      my @tmpa=split(' ', $text);
           for (my $i = 1; $i <= @tmpa-1; $i++) {
             my $newstat=$tmpa[$i];
             my %request = (
               command => [ 'updatenodestat' ],
-              node => [ $node ],
-              arg => [ "$newstat" ],
-              );
-            #node should be blocked, race condition may occur otherwise
-            #my $pid=xCAT::Utils->xfork();
-            #unless ($pid) { #fork off the nodeset and potential slowness
-              plugin_command(\%request,undef,\&build_response);
-            #   exit(0);
-            #}
-          }
-          close($conn);
-        } elsif ($text =~ /updatestatus/) {
-#update nodelist.updatestatus according to the message from cn
-	  my @tmpa=split(' ', $text);
-          for (my $i = 1; $i <= @tmpa-1; $i++) {
-            my $newstat=$tmpa[$i];
-            my %request = (
-              command => [ 'updatenodeupdatestat' ],
               node => [ $node ],
               arg => [ "$newstat" ],
               );
