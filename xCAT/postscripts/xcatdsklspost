@@ -168,11 +168,6 @@ else
 fi
 
 
-#if [ ! `uname` = Linux ]; then
-#   MYDIR=`dirname $0`
-#   exec $MYDIR/xcatdsklspost.aix
-#   exit
-#fi
 #SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
 #sleep $SLI
 
