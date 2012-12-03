@@ -42,7 +42,7 @@ cd to your work directory
 
 Create a template directory for your kit:
 
-   buildkit create I<kit_basename>
+   buildkit create kit_basename
 
 =item 3.
 
