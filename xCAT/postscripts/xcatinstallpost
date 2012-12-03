@@ -6,8 +6,6 @@
 #################################################################
 
 if [ ! `uname` = Linux ]; then
-   MYDIR=`dirname $0`
-   #exec $MYDIR/xcatdsklspost.aix
    logger -t xcat -p local4.err "$0: the OS name is not Linux"
    exit
 fi
