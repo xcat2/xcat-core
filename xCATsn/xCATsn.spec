@@ -110,6 +110,17 @@ fi
 %endif
 
 %post
+# create dir for the current pid and move the original ones from /tmp/xcat to /var/run/xcat
+mkdir -p /var/run/xcat
+if [ -r "/tmp/xcat/installservice.pid" ]; then
+  mv /tmp/xcat/installservice.pid /var/run/xcat/installservice.pid
+fi
+if [ -r "/tmp/xcat/udpservice.pid" ]; then
+  mv /tmp/xcat/udpservice.pid /var/run/xcat/udpservice.pid
+fi
+if [ -r "/tmp/xcat/mainservice.pid" ]; then
+  mv /tmp/xcat/mainservice.pid /var/run/xcat/mainservice.pid
+fi
 
 if [ "$1" = "1" ]; then #Only if installing for the first time..
 
