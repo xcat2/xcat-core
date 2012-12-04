@@ -3515,7 +3515,7 @@ sub mknimimage
             #
             # get mksysb resource
             #
-            $mksysb_name = &mk_mksysb(\%::attrres, $callback);
+            $mksysb_name = &mk_mksysb(\%::attrres, $callback, $subreq);
             chomp $mksysb_name;
             $newres{mksysb} = $mksysb_name;
             if (!defined($mksysb_name))
@@ -3676,37 +3676,36 @@ sub mknimimage
                 $method = $et->{'cryptmethod'};
             }
 		}
-	}
 
-	if ($rootpw) {
-		if ( $::VERBOSE) {
-			my $rsp;
-			$rsp->{data}->[0] = "Setting the root password in the spot \'$spot_name\'\n";
-			xCAT::MsgUtils->message("I", $rsp, $callback);
+		if ($rootpw) {
+			if ( $::VERBOSE) {
+				my $rsp;
+				$rsp->{data}->[0] = "Setting the root password in the spot \'$spot_name\'\n";
+				xCAT::MsgUtils->message("I", $rsp, $callback);
+			}
 
-		}
+			chomp $rootpw;
+			my $pwcmd;
+			if ($method) {
+				$pwcmd = qq~$::XCATROOT/bin/xcatchroot -i $spot_name "/usr/bin/echo root:$rootpw | /usr/bin/chpasswd -e -c" >/dev/null 2>&1~;
+			} else {
+				$pwcmd = qq~$::XCATROOT/bin/xcatchroot -i $spot_name "/usr/bin/echo root:$rootpw | /usr/bin/chpasswd -c" >/dev/null 2>&1~;
+			}
 
-		chomp $rootpw;
-		my $pwcmd;
-		if ($method) {
-			$pwcmd = qq~$::XCATROOT/bin/xcatchroot -i $spot_name "/usr/bin/echo root:$rootpw | /usr/bin/chpasswd -e -c" >/dev/null 2>&1~;
-		} else {
-			$pwcmd = qq~$::XCATROOT/bin/xcatchroot -i $spot_name "/usr/bin/echo root:$rootpw | /usr/bin/chpasswd -c" >/dev/null 2>&1~;
-		}
-
-		# secure passwd in verbose mode
-		my $tmpv = $::VERBOSE;
-		$::VERBOSE = 0;
+			# secure passwd in verbose mode
+			my $tmpv = $::VERBOSE;
+			$::VERBOSE = 0;
 	
-		my $out = xCAT::Utils->runcmd("$pwcmd", -1);
-		if ($::RUNCMD_RC != 0)
-		{
-			my $rsp;
-            push @{$rsp->{data}}, "Unable to set root password.";
-			push @{$rsp->{data}}, "$out\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
+			my $out = xCAT::Utils->runcmd("$pwcmd", -1);
+			if ($::RUNCMD_RC != 0)
+			{
+				my $rsp;
+            	push @{$rsp->{data}}, "Unable to set root password.";
+				push @{$rsp->{data}}, "$out\n";
+            	xCAT::MsgUtils->message("E", $rsp, $callback);
+			}
+			$::VERBOSE = $tmpv;
 		}
-		$::VERBOSE = $tmpv;
 	}
 
     #
@@ -5338,11 +5337,14 @@ sub mk_mksysb
 {
 	my $attrs    = shift;
     my $callback = shift;
+	my $sub_req = shift;
 
 	my %attrres;
 	if ($attrs) {
 		%attrres = %{$attrs};
 	}
+
+	my $snode;
 
 	my @validattrs = ("verbose", "nfs_vers", "nfs_sec", "dest_dir", "group", "source", "size_preview", "exclude_files", "mksysb_flags", "mk_image");
 
@@ -5371,10 +5373,46 @@ sub mk_mksysb
         {
 
             # create the mksysb definition
+			my $rsp;
+			push @{$rsp->{data}},  "Creating a NIM mksysb resource called \'$mksysb_name\'.  This could take a while.\n";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
 
             if ($::MKSYSBNODE)
             {
 
+				# get the server for the node
+				my $nrtab = xCAT::Table->new('noderes');
+				my @nodes;
+				push @nodes, $::MKSYSBNODE;
+
+				my $nrhash;
+				if ($nrtab)
+				{
+					$nrhash = $nrtab->getNodesAttribs(\@nodes, ['servicenode']);
+				}
+
+				my ($remote_server, $junk) = (split /,/, $nrhash->{$::MKSYSBNODE}->[0]->{'servicenode'});
+				$nrtab->close();
+	
+				my $nimprime = xCAT::InstUtils->getnimprime();
+				chomp $nimprime;
+
+				if ($remote_server) {
+					$snode = $remote_server;
+				} else {
+					$snode = $nimprime;
+				}
+				chomp $snode;
+
+				# do we have a seperate service node to handle
+				my $doSN;
+				my $nimprimeip = xCAT::NetworkUtils->getipaddr($nimprime);
+                my $snodeip = xCAT::NetworkUtils->getipaddr($snode);
+                if ($nimprimeip ne $snodeip) {
+					$doSN++;
+				}
+
+				# get the location for the new resource
                 my $loc;
                 if ($::opt_l)
                 {
@@ -5385,13 +5423,40 @@ sub mk_mksysb
                     $loc = "$install_dir/nim/mksysb/$::image_name";
                 }
 
+				# create the nim command
+				my $location = "$loc/$mksysb_name";
+                my $nimcmd = "/usr/sbin/nim -Fo define -t mksysb -a server=master ";
+                # check for relevant cmd line attrs
+                my %cmdattrs;
+                if ( ($::NFSv4) && (!$attrres{nfs_vers}) )
+                {
+                    $cmdattrs{nfs_vers}=4;
+                }
+
+                if (%attrres) {
+                    foreach my $attr (keys %attrres) {
+                        if (grep(/^$attr$/, @validattrs) ) {
+                            $cmdattrs{$attr} = $attrres{$attr};
+                        }
+                    }
+                }
+				if (%cmdattrs) {
+                    foreach my $attr (keys %cmdattrs) {
+                        $nimcmd .= "-a $attr=$cmdattrs{$attr} ";
+                    }
+                }
+
+                $nimcmd .= " -a location=$location -a mk_image=yes -a source=$::MKSYSBNODE $mksysb_name 2>&1";
+
                 # create resource location for mksysb image
                 my $cmd = "/usr/bin/mkdir -p $loc";
-                my $output = xCAT::Utils->runcmd("$cmd", -1);
-                if ($::RUNCMD_RC != 0)
+
+				# create a local dir on nimprime
+				my $output=xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nimprime, $cmd, 0);
+				if ($::RUNCMD_RC != 0)
                 {
                     my $rsp;
-                    push @{$rsp->{data}}, "Could not create $loc.\n";
+                    push @{$rsp->{data}}, "Could not create $loc on $nimprime.\n";
                     if ($::VERBOSE)
                     {
                         push @{$rsp->{data}}, "$output\n";
@@ -5400,64 +5465,155 @@ sub mk_mksysb
                     return undef;
                 }
 
-                # check the file system space needed
-                # about 1800 MB for a mksysb image???
-                my $sysbsize = 1800;
-                if (&chkFSspace($loc, $sysbsize, $callback) != 0)
-                {
 
-                    # error
-                    return undef;
-                }
+				# if $snode is not nimprime then create dir on snode
+				if ($doSN) {
+					$output=xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $snode, $cmd, 0);
+					if ($::RUNCMD_RC != 0)
+                	{
+                    	my $rsp;
+                    	push @{$rsp->{data}}, "Could not create $loc on $snode.\n";
+                    	if ($::VERBOSE)
+                    	{
+                        	push @{$rsp->{data}}, "$output\n";
+                    	}
+                    	xCAT::MsgUtils->message("E", $rsp, $callback);
+                    	return undef;
+                	}
+				}
 
-                my $rsp;
-                push @{$rsp->{data}},
-                  "Creating a NIM mksysb resource called \'$mksysb_name\'.  This could take a while.\n";
-                xCAT::MsgUtils->message("I", $rsp, $callback);
-
-                # create sys backup from remote node and define res
-                my $location = "$loc/$mksysb_name";
-                my $nimcmd = "/usr/sbin/nim -Fo define -t mksysb -a server=master ";
-
-				# check for relevant cmd line attrs
-				my %cmdattrs;
-				if ( ($::NFSv4) && (!$attrres{nfs_vers}) )
+				# check if the res is already defined on $snode
+				#  Get a list of all defined resources
+				$cmd = qq~/usr/sbin/lsnim -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
+				my $reslist = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $snode, $cmd, 0);
+				if ($::RUNCMD_RC != 0)
 				{
-					$cmdattrs{nfs_vers}=4;
+					my $rsp;
+					push @{$rsp->{data}}, "Could not get NIM resource definitions on $snode.";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					return undef;
+				}
+				my @nimres;
+				foreach my $res (split(/\n/, $reslist )) {
+					$res =~ s/$snode:\s+//;
+					chomp $res;
+					push @nimres, $res;
 				}
 
-				if (%attrres) {
-					foreach my $attr (keys %attrres) {
-						if (grep(/^$attr$/, @validattrs) ) {
-							$cmdattrs{$attr} = $attrres{$attr};
-						}
-					}
+				if (grep(/^$mksysb_name$/, @nimres))
+				{
+					# error if it is
+					my $rsp;
+					push @{$rsp->{data}}, "The $mksysb_name resource is already defined on $snode.\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					return undef;
+				}
+				else
+				{
+					# otherwise create it
+
+					# check the file system space needed
+					# about 1800 MB for a mksysb image???
+					# can't really predict how big it could be 1G, 6G ??
+					# TBD - maybe check size of / on target node???
+#					if (&chkFS($loc, $sysbsize, $snode, $sub_req, $callback) != 0) {
+#						# error
+#						my $rsp;
+#						push @{$rsp->{data}}, "Insufficient space available for $loc on $snode.\n";
+#						xCAT::MsgUtils->message("E", $rsp, $callback);
+#					}
+
+					# create the mksysb image of a node - run the command on
+					# 	the NIM master for the node
+
+					$output=xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $snode, $nimcmd, 0);
+                	if ($::RUNCMD_RC != 0)
+                	{
+                    	my $rsp;
+                    	push @{$rsp->{data}},
+                      		"Could not define mksysb resource named \'$mksysb_name\' on $snode.\n";
+                    	if ($::VERBOSE)
+                    	{
+                        	push @{$rsp->{data}}, "$output\n";
+                    	}
+                    	xCAT::MsgUtils->message("E", $rsp, $callback);
+                    	return undef;
+                	}
 				}
 
-				if (%cmdattrs) {
-					foreach my $attr (keys %cmdattrs) {
-						$nimcmd .= "-a $attr=$cmdattrs{$attr} ";
-					}
-				}
+				# if this service node is not the nimprime (management node)
+				#	then copy the mksysb to the nimprime and define it there.
+				if ($doSN) {  # we have a seperate SN
 
-				$nimcmd .= " -a location=$location -a mk_image=yes -a source=$::MKSYSBNODE $mksysb_name 2>&1";
-                $output = xCAT::Utils->runcmd("$nimcmd", -1);
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}},
-                      "Could not define mksysb resource named \'$mksysb_name\'.\n";
-                    if ($::VERBOSE)
+					# check space on nimprime
+					my $sysbsize = 1800;
+					# can't really predict how big it could be 1G, 6G ??
+#                    if (&chkFS($loc, $sysbsize, $nimprime, $sub_req, $callback) != 0) {
+#                        # error
+#                        my $rsp;
+#                        push @{$rsp->{data}}, "Insufficient space available for $loc on $nimprime.\n";
+#                        xCAT::MsgUtils->message("E", $rsp, $callback);
+#                    }
+
+					# xdsh to SN and xdcp to nimprime
+					my $dcpcmd = "/opt/xcat/bin/xdcp $snode -P $location $loc";
+					$output=xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nimprime, $dcpcmd, 0);
+					if ($::RUNCMD_RC != 0)
                     {
-                        push @{$rsp->{data}}, "$output\n";
+                        my $rsp;
+                        push @{$rsp->{data}}, "Could not copy $location from $snode to $nimprime.\n";
+                        if ($::VERBOSE)
+                        {
+                            push @{$rsp->{data}}, "$output\n";
+                        }
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        return undef;
                     }
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    return undef;
-                }
 
+					# change the file name $mksysb_name._snode -> $mksysb_name
+					my $newname = "$loc/$mksysb_name";
+					my $oldname = "$loc/$mksysb_name._$snode";
+					my $mvcmd = "/bin/mv $oldname $newname 2>&1";
+					$output=xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nimprime, $mvcmd, 0);
+                    if ($::RUNCMD_RC != 0)
+                    {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Could not rename $oldname to $newname on $nimprime.\n";
+                        if ($::VERBOSE)
+                        {
+                            push @{$rsp->{data}}, "$output\n";
+                        }
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        return undef;
+                    }
+
+					# now define it on the nimprime
+					my $mkcmd;
+					if ($::NFSv4)
+					{
+						$mkcmd = "/usr/sbin/nim -Fo define -t mksysb -a server=master -a nfs_vers=4 -a location=$location $mksysb_name 2>&1";
+					}
+					else
+					{
+						$mkcmd = "/usr/sbin/nim -Fo define -t mksysb -a server=master -a location=$location $mksysb_name 2>&1";
+					}
+					$output=xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nimprime, $mkcmd, 0);
+					if ($::RUNCMD_RC != 0)
+					{
+						my $rsp;
+						push @{$rsp->{data}}, "Could not define mksysb resource named \'$mksysb_name\' on $nimprime.\n";
+						if ($::VERBOSE)
+						{
+							push @{$rsp->{data}}, "$output\n";
+						}
+						xCAT::MsgUtils->message("E", $rsp, $callback);
+						return undef;
+					}
+				}
             }
             elsif ($::SYSB)
             {
+				# we have a mksysb file - so just define the NIM resource
                 if ($::SYSB !~ /^\//)
                 {    #relative path
                     $::SYSB = xCAT::Utils->full_path($::SYSB, $::cwd);
@@ -5497,7 +5653,6 @@ sub mk_mksysb
             }
         }
     }
-
     return $mksysb_name;
 }
 
@@ -6655,6 +6810,78 @@ sub chkFSspace
     }
     return 0;
 }
+
+#----------------------------------------------------------------------------
+
+=head3  chkFS
+
+    See if there is enough space in file systems. If not try to increase
+    the size. (Works for remote systems)
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - error
+=cut
+
+#-----------------------------------------------------------------------------
+sub chkFS
+{
+    my $location = shift;
+    my $size     = shift;
+	my $target = shift;
+	my $sub_req = shift;
+	my $callback = shift;
+
+	# get free space
+    # ex. 1971.06 (Free MB)
+    my $dfcmd = qq~/usr/bin/df -m $location | /usr/bin/awk '(NR==2){print \$3":"\$7}'~;
+
+	my $output = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $target, $dfcmd, 0);
+	if ($::RUNCMD_RC != 0)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not run: \'$dfcmd\' on $target.\n";
+        if ($::VERBOSE)
+        {
+            push @{$rsp->{data}}, "$output";
+        }
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+	# strip off target name if any
+	$output =~ s/$target:\s+//;
+	my ($free_space, $FSname) = split(':', $output);
+
+	#
+    #  see if we need to increase the size of the fs
+    #
+    my $space_needed;
+    if ($size >= $free_space)
+    {
+        $space_needed = int($size - $free_space);
+        my $addsize  = $space_needed + 100;
+        my $sizeattr = "-a size=+$addsize" . "M";
+        my $chcmd    = "/usr/sbin/chfs $sizeattr $FSname";
+
+        my $output;
+        $output = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $target, $chcmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            my $rsp;
+            push @{$rsp->{data}}, "Could not increase file system size for \'$FSname\' on $target. Additonal $addsize MB is needed.\n";
+            if ($::VERBOSE)
+            {
+				push @{$rsp->{data}}, "$output";
+            }
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+    }
+    return 0;
+}
+
 
 #----------------------------------------------------------------------------
 
