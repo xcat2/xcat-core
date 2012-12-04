@@ -1193,6 +1193,8 @@ sub copycd
 	    
         }
     }
+  
+    closedir($dirh);
 
     unless ($distname and $discnumber)
     {
@@ -1268,15 +1270,24 @@ sub copycd
          {data => "Copying media to $ospkgpath"});
 
     my $rc;
-    $SIG{INT} =  $SIG{TERM} = sub { 
+
+    $SIG{INT} =  $SIG{TERM} = sub {
        foreach(@cpiopid){
-          kill 2, $_; 
-       }
-       if ($mntpath) {
+          kill 15, $_;
+          use POSIX ":sys_wait_h";
+          my $kid=0;
+          do {
+                $kid = waitpid($_, WNOHANG);
+          } while $kid != $_;
+      }
+      if ($mntpath) {
             chdir("/");
             system("umount $mntpath");
-       }
+            system("rm -rf $mntpath");
+      }
+       exit;
     };
+
     my $kid;
     chdir $mntpath;
     my $numFiles = `find . -print | wc -l`;
@@ -1288,6 +1299,7 @@ sub copycd
     if ($child) {
        push @cpiopid,$child;
        my @finddata = `find .`;
+       chdir("/");
        for (@finddata) {
           print $kid $_;
        }
@@ -1297,6 +1309,7 @@ sub copycd
         my $c = "nice -n 20 cpio -vdump $ospkgpath";
         my $k2 = open(PIPE, "$c 2>&1 |") ||
            $callback->({error => "Media copy operation fork failure"});
+        chdir("/");
 	push @cpiopid, $k2;
         my $copied = 0;
         my ($percent, $fout);
