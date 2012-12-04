@@ -119,6 +119,18 @@ sub process_request  {
     $bmc=$tmphash->{$node}->[0]->{bmc};
   }
   $username = $authmap->{$node}->{username};
+  my $cliusername;
+  if ($authmap->{$node}->{cliusername}) {
+	$cliusername = $authmap->{$node}->{cliusername};
+  } else {
+	$cliusername = $username;
+  }
+  my $clipassword;
+  if ($authmap->{$node}->{clipassword}) {
+	$clipassword = $authmap->{$node}->{clipassword};
+  } else {
+	$clipassword = $password;
+  }
   unless (defined $bmc) {
      xCAT::MsgUtils->message('S',"Unable to identify bmc for $node, refusing to give config data");
      $callback->({error=>["Invalid table configuration for bmcconfig"],errorcode=>[1]});
@@ -132,7 +144,7 @@ sub process_request  {
 	     return 1;
 	  }
 	  if ($request->{command}->[0] eq 'remoteimmsetup') {
-	     xCAT::IMMUtils::setupIMM($node,cliusername=>$username,clipassword=>$password,callback=>$callback);
+	     xCAT::IMMUtils::setupIMM($node,cliusername=>$cliusername,clipassword=>$clipassword,username=>$username,password=>$password,callback=>$callback);
              return;
 	  }
 	  my $response={bmcip=>$ip,netmask=>$mask,gateway=>$gw,username=>$username,password=>$password};
