@@ -53,8 +53,8 @@ sub getIPMIAuth {
 		$authmap{$node}->{username}=$ipmiuser;
 		$authmap{$node}->{password}=$ipmipass;
 		if ($mphash and ref $mphash->{$node} and $mphash->{$node}->[0]->{mpa}) { #this appears to be a Flex or similar config, tend to use blade credentials
-			if ($bladeuser) { $authmap{$node}->{username}=$bladeuser; }
-			if ($bladepass) { $authmap{$node}->{password}=$bladepass; }
+			if ($bladeuser) { $authmap{$node}->{username}=$bladeuser; $authmap{$node}->{cliusername}=$bladeuser;}
+			if ($bladepass) { $authmap{$node}->{password}=$bladepass; $authmap{$node}->{clipassword}=$bladepass;}
 			my $mpa = $mphash->{$node}->[0]->{mpa};
 			if (not $mpaauth{$mpa} and $mpatab) { 
 				my $mpaent = $mpatab->getNodeAttribs($mpa,[qw/username password/],prefetchcache=>1); #TODO: this might make more sense to do as one retrieval, oh well
@@ -62,8 +62,8 @@ sub getIPMIAuth {
 				if (ref $mpaent and $mpaent->{password}) { $mpaauth{$mpa}->{password} = $mpaent->{password} }
 				 $mpaauth{$mpa}->{checked} = 1;  #remember we already looked this up, to save lookup time even if search was fruitless
 			}
-			if ($mpaauth{$mpa}->{username}) {  $authmap{$node}->{username} = $mpaauth{$mpa}->{username} }
-			if ($mpaauth{$mpa}->{password}) {  $authmap{$node}->{password} = $mpaauth{$mpa}->{password} }
+			if ($mpaauth{$mpa}->{username}) {  $authmap{$node}->{username} = $mpaauth{$mpa}->{username}; $authmap{$node}->{cliusername}=$mpaauth{$mpa}->{username}; }
+			if ($mpaauth{$mpa}->{password}) {  $authmap{$node}->{password} = $mpaauth{$mpa}->{password} ;  $authmap{$node}->{clipassword}=$mpaauth{$mpa}->{password} }
 		} 
 		unless (ref $ipmihash and ref $ipmihash->{$node}) { 
 			next;
