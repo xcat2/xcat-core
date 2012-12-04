@@ -22,7 +22,8 @@ Display usage message.
 
 =item B<-V> 
 
-Verbose mode
+Verbose mode.  This will cause tabprune to display the records that are being deleted from the table, in case
+you want to redirect them to a file to archive them.
 
 =item B<-a>
 
