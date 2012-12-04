@@ -57,9 +57,16 @@ unless ($useSocketSSL) {
 # Process the command line...
 #
 #  the -c means redo the copy of scripts from the server
+my $idir;     
+my $nfsv4;
 Getopt::Long::Configure("no_pass_through");
 $Getopt::Long::ignorecase = 0;
-if (!GetOptions('copy|c' => \$::opt_c, 'm=s' => \$::opt_m, 'M=s' => \$::opt_M, 'tftp=s'=> \$::opt_tftpdir))
+if (!GetOptions('copy|c' => \$::opt_c,
+ 'm=s' => \$::opt_m,
+ 'M=s' => \$::opt_M,
+ 'tftp=s'=> \$::opt_tftpdir,
+ 'installdir=s'=> \$idir,
+ 'nfsv4=s'=> \$nfsv4))
 {    # Gather options
         exit 1;
 }
