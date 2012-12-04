@@ -1664,9 +1664,6 @@ my @nodeattrs = (
                  access_tabentry => 'nodehm.node=attr:node',
   },
 
-###
-# TODO:  is nodehm.conserver used anywhere?  I couldn't find any code references
-###
         {attr_name => 'conserver',
                  tabentry => 'nodehm.conserver',
                  access_tabentry => 'nodehm.node=attr:node',
