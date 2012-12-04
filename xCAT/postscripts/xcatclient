@@ -51,5 +51,5 @@ export USEOPENSSLFORXCAT
 
    chmod 600 /root/.xcat/client-cred.pem
    cp _xcat/ca.pem /root/.xcat/ca.pem
-   kill -9 $CREDPIDi
+   kill -9 $CREDPID
    exit $RETURNVAL
