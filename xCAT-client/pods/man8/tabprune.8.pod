@@ -20,6 +20,10 @@ The tabprune command is used to delete records from the auditlog,eventlog,isnm_p
 
 Display usage message.
 
+=item B<-V> 
+
+Verbose mode
+
 =item B<-a>
 
 Remove all records.
@@ -34,7 +38,7 @@ Remove the number of records input.
 
 =item B<-p> I<percent>
 
-Remove the percentage of records input.
+Remove the number of records input.
 
 =item B<-d> I<number of days>
 
