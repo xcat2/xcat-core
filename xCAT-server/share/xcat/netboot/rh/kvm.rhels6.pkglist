@@ -14,3 +14,6 @@ rpm
 rsync
 libvirt
 qemu-kvm
+e2fsprogs
+parted
+bc

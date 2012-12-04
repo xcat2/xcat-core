@@ -41,3 +41,5 @@ bc
 lsvpd
 irqbalance
 procps
+e2fsprogs
+parted

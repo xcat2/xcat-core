@@ -12,3 +12,7 @@ dracut-network
 lsvpd
 irqbalance
 procps
+rpm
+e2fsprogs
+parted
+bc
