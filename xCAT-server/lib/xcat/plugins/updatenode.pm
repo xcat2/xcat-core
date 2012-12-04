@@ -1178,24 +1178,23 @@ sub updatenoderunps
     my $tftpdir       = xCAT::TableUtils->getTftpDir();
     my $postscripts      = "";
     my $orig_postscripts = "";
+    # For AIX nodes check NFS
+    my $nfsv4;
+    my @nfsv4 =
+      xCAT::TableUtils->get_site_attribute("useNFSv4onAIX");
+      if ($nfsv4[0] && ($nfsv4[0] =~ /1|Yes|yes|YES|Y|y/)) {
+         $nfsv4 = "yes";
+      } else {
+         $nfsv4 = "no";
+      }
+        
 
-    if (($request->{postscripts}) && ($request->{postscripts}->[0]))
-    {
+      if (($request->{postscripts}) && ($request->{postscripts}->[0]))
+      {
         $orig_postscripts = $request->{postscripts}->[0];
-    }
-    # copy xcataixpost down for any AIX nodes
-    xCAT::Utils->runxcmd(
-                             {
-                              command => ['xdcp'],
-                              node    => \@$nodes,
-                              arg     => ['/install/postscripts/xcataixpost','/tmp/xcataixpost'],
-                             },
-                             $subreq, 0, 1
-                             );
-
+      }
         $postscripts = $orig_postscripts;
 
-        # we have Linux nodes
         my $cmd;
 
         # get server names as known by the nodes
@@ -1223,6 +1222,8 @@ sub updatenoderunps
                 $mode = "1";
             }
             my $args1;
+            # Note order of parameters to xcatdsklspost 
+            #is important and cannot be changed
             if ($::SETSERVER)
             {
                 $args1 = [
@@ -1230,7 +1231,7 @@ sub updatenoderunps
                     "-s",
                     "-v",
                     "-e",
-                    "$installdir/postscripts/xcatdsklspost $mode -M $snkey '$postscripts' --tftp $tftpdir"
+                    "$installdir/postscripts/xcatdsklspost $mode -M $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4"
                     ];
 
             }
@@ -1242,7 +1243,7 @@ sub updatenoderunps
                     "-s",
                     "-v",
                     "-e",
-                    "$installdir/postscripts/xcatdsklspost $mode -m $snkey '$postscripts' --tftp $tftpdir"
+                    "$installdir/postscripts/xcatdsklspost $mode -m $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4"
                     ];
             }
 
