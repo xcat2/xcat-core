@@ -803,6 +803,10 @@ sub processArgs
         # for every type of data object get the list of defined objects
         foreach my $t (keys %{xCAT::Schema::defspec})
         {
+            # exclude the auditlog and eventlog,
+            # the auditlog and eventlog tables might be very big
+            # use lsdef -t auditlog or lsdef -t eventlog instead
+            if (($t eq 'auditlog') || ($t eq 'eventlog')) { next; }
 
             $::objectsfrom_opta = 1;
 

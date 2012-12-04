@@ -396,13 +396,13 @@ sub getobjdefs
                     xCAT::MsgUtils->message("E", $rsp, $::callback);	
                 }
             }
-        } elsif ($objtype eq 'auditlog') {
-            # Special case for auditlog
-            # All the auditlog attributes are in auditlog table,
+        } elsif (($objtype eq 'auditlog') || ($objtype eq 'eventlog')) {
+            # Special case for auditlog/eventlog
+            # All the auditlog/eventlog attributes are in auditlog/eventlog table,
             # Do not need to read the table multiple times for each attribute.
-            # The auditlog is likely be very big over time,
+            # The auditlog/eventlog is likely be very big over time,
             # performance is a big concern with the general logic
-            my @TableRowArray = xCAT::DBobjUtils->getDBtable('auditlog');
+            my @TableRowArray = xCAT::DBobjUtils->getDBtable($objtype);
             foreach my $objname (sort @{$type_obj{$objtype}}) {
                 if (@TableRowArray)
                 {
@@ -418,7 +418,7 @@ sub getobjdefs
                                 if (defined($entry->{$k}) ) {
                                     $foundinfo++;
                                     if ($verbose == 1) {
-                                        $objhash{$objname}{$k} = "$entry->{$k}\t(Table:auditlog - Key:$k)";
+                                        $objhash{$objname}{$k} = "$entry->{$k}\t(Table:$objtype - Key:$k)";
                                     } else {
                                         $objhash{$objname}{$k} = $entry->{$k};
                                     }
@@ -426,7 +426,7 @@ sub getobjdefs
                             }
                             if ($foundinfo)
                             {
-                                $objhash{$objname}{'objtype'} = 'auditlog';
+                                $objhash{$objname}{'objtype'} = $objtype;
                             }
                             # There should not be multiple entries with the same recid
                             last;
