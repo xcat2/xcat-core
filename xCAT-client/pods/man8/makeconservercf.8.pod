@@ -10,6 +10,8 @@ B<makeconservercf> [B<-V|--verbose>] [B<-l|--local>]
 
 B<makeconservercf> [B<-V|--verbose>] [B<-c|--conserver>] I<noderange>
 
+B<makeconservercf> [B<-V|--verbose>] I<noderange> [B<-t|--trust>] I<hosts>
+
 B<makeconservercf> [B<-h|--help|-v|--version>]
 
 
@@ -43,6 +45,11 @@ is set for nodes, the conserver gets set up only on the management node.
 
 Only run B<makeconservercf> locally and create the local /etc/conserver.cf.  The default is to also
 run it on all service nodes, if there are any.
+
+=item B<-t|--trust> I<hosts>
+
+Add additional trusted hosts into /etc/conserver.cf. The I<hosts> are comma separated list of
+ip addresses or host names. 
 
 =item B<-v|--version>
 

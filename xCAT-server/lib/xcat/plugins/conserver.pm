@@ -241,6 +241,16 @@ sub docfheaders {
           push @ips,$ip;
       }
   }
+  if ($::TRUSTED_HOST)
+  {
+      my @trusted_host = (split /,/, $::TRUSTED_HOST);
+      foreach my $tip (@trusted_host)
+      {
+          if(!grep(/^$tip$/, @ips)) {
+              push @ips,$tip;
+          }
+      }
+  }
   if(scalar(@ips) > 0) {
       my $ipstr = join(',', @ips);
       push @newheaders, "  trusted $ipstr;\n";
@@ -285,7 +295,9 @@ sub makeconservercf {
   $Getopt::Long::ignorecase=0;
   #$Getopt::Long::pass_through=1;
   my $delmode;
-  GetOptions('d|delete'  => \$delmode);
+  GetOptions('d|delete'  => \$delmode,
+             't|trust=s' => \$::TRUSTED_HOST
+            );
   my $nodes = $req->{node};
   my $svboot=0;
   if (exists($req->{svboot})) { $svboot=1;}
