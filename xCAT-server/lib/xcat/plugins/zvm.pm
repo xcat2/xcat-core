@@ -3670,13 +3670,13 @@ sub nodeSet {
     $userId =~ tr/a-z/A-Z/;
 
     # Get install directory and domain from site table
-    my @entries =  xCAT::TableUtils->get_site_attribute("installdir");
+    my @entries =  xCAT::Utils->get_site_attribute("installdir");
     my $installDir = $entries[0];
-    @entries = xCAT::TableUtils->get_site_attribute("domain");
+    @entries = xCAT::Utils->get_site_attribute("domain");
     my $domain = $entries[0];
-    @entries = xCAT::TableUtils->get_site_attribute("master");
+    @entries = xCAT::Utils->get_site_attribute("master");
     my $master = $entries[0];
-    @entries = xCAT::TableUtils->get_site_attribute("xcatdport");
+    @entries = xCAT::Utils->get_site_attribute("xcatdport");
     my $xcatdPort = $entries[0];
 
     # Get node OS, arch, and profile from 'nodetype' table
@@ -4870,7 +4870,7 @@ sub updateNode {
     $userId =~ tr/a-z/A-Z/;
 
     # Get install directory
-    my @entries = xCAT::TableUtils->get_site_attribute("installdir");
+    my @entries = xCAT::Utils->get_site_attribute("installdir");
     my $installDir = $entries[0];
 
     # Get host IP and hostname from /etc/hosts
