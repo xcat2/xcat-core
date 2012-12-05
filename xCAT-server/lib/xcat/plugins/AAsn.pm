@@ -1469,6 +1469,9 @@ sub enable_TFTPhpa
   # get the version of TCP/IP protocol 
   my $protocols;
   my $v4only="-4 ";
+  if (xCAT::Utils->osver() =~ /^sle[sc]10/) {
+      $v4only = "";
+  }
   open($protocols,"<","/proc/net/protocols");
   if ($protocols) {
 	my $line;
