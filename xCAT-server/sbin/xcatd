@@ -1245,6 +1245,7 @@ sub plugin_command {
         die; 
       }
       if ($child == 0) {
+        setpgrp(0,0);
         if ($parfd) {  #If xCAT is doing multiple requests in same communication PID, things would get unfortunate otherwise
             $parent_fd = $parfd;
         }
@@ -1988,7 +1989,7 @@ sub relay_fds { #Relays file descriptors from pipes to children to the SSL socke
           print "Aborting...";
          foreach (keys %plugin_children) {
             print "Sending INT to $_\n";
-            kill 15, $_;
+            kill -15, $_;
          }
          foreach my $cin ($fds->handles) {
             print $cin "die\n";
