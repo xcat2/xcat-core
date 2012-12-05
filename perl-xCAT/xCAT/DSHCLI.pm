@@ -3257,9 +3257,19 @@ sub verify_targets
             foreach my $user_target (@targets)
             {
                 my $rsp = {};
+
                 $rsp->{error}->[0] =
                   "$user_target is not responding. No command will be issued to this host.";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+                # report error status  --nodestatus
+                # Note the message below for node status must
+                # not be NLS translated.  Code depends on the English. 
+                if ($$options{'nodestatus'}) {
+                   my $rsp={};
+                  $rsp->{data}->[0] =
+                  "$user_target: Remote_command_failed";
+                   xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                }
 
                 my $rsp = {};
                 $rsp->{error}->[0] =
