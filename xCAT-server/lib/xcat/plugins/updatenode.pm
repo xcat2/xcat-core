@@ -1679,6 +1679,7 @@ sub getdata2
     my $rsp;
     foreach my $type (keys %$response)
     {
+        my $alreadyinstalled=0;
         foreach my $output (@{$response->{$type}})
         {
             chomp($output);
@@ -1688,10 +1689,17 @@ sub getdata2
               my ($node,$info) = split (/:/, $output);
               push(@::SUCCESSFULLNODES,$node);
             }
+            # check for already installed, this is not an error
+            if($output =~ /^\s*(\S+)\s*:\s*already installed/)
+            {
+              $alreadyinstalled = 1; 
+            }
             if($output =~ /^\s*(\S+)\s*:\s*Remote_command_failed/)
             {
-              my ($node,$info) = split (/:/, $output);
-              push(@::FAILEDNODES,$node);
+              if ($alreadyinstalled == 0) { # not an already install error 
+                my ($node,$info) = split (/:/, $output);
+                push(@::FAILEDNODES,$node);
+              } 
             }
 
 
