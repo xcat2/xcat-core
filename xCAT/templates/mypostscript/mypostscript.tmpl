@@ -14,7 +14,7 @@ ENABLESSHBETWEENNODES=#Subroutine:xCAT::Template::enablesshbetweennodes:$NODE#
 export ENABLESSHBETWEENNODES
 
 
-NODE=#NODE#
+NODE=$NODE
 export NODE
 
 ## nfsserver,installnic,primarynic,routenames from the noderes tab
@@ -68,7 +68,7 @@ export NODESETSTATE
 UPDATENODE=0
 export UPDATENODE
 
-NTYPE=#NTYPE#
+NTYPE=$NTYPE
 export NTYPE
 
 MACADDRESS=#TABLE:mac:$NODE:mac#
