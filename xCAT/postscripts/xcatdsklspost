@@ -149,12 +149,12 @@ else
           TFTPDIR=$6
         fi 
       fi
-      if [ $ARGNUM -gt 5 ]; then
+      if [ $ARGNUM -gt 6 ]; then
         if [ $7 = "--installdir" ]; then
           INSTALLDIR=$8
         fi 
       fi
-      if [ $ARGNUM -gt 6 ]; then
+      if [ $ARGNUM -gt 8 ]; then
         if [ $9 = "--nfsv4" ]; then
           NFSV4=$10
         fi 
