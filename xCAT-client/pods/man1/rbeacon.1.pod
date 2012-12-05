@@ -5,12 +5,15 @@ B<rbeacon> - Turns beacon on/off/blink or gives status of a node or noderange.
 
 =head1 SYNOPSIS
 
+B<rbeacon> [B<-h>|B<--help>|B<-v>|B<--version>]
+
+=head2 BMC/MPA specific:
+
+B<rbeacon> I<noderange> {B<on>|B<off>}
+
+=head2 Blade specific:
+
 B<rbeacon> I<noderange> {B<on>|B<blink>|B<off>|B<stat>}
-
-B<rbeacon> [B<-h>|B<--help>]
-
-B<rbeacon> {B<-v>|B<--version>}
-
 
 =head1 DESCRIPTION
 
