@@ -935,8 +935,8 @@ sub subvars_for_mypostscript {
   #ok, now do everything else..
   #$inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
   #$inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
-  $inc =~ s/#NODE#/$node/eg;
-  $inc =~ s/\$NODE/$node/eg;
+  #$inc =~ s/#NODE#/$node/eg;
+  $inc =~ s/#\$NODE#/$node/eg;
   $inc =~ s/#SITE_TABLE_ALL_ATTRIBS_EXPORT#/$allattribsfromsitetable/eg; 
   #$inc =~ s/#TABLE:([^:]+):([^:]+):([^:]+):BLANKOKAY#/tabdb($1,$2,$3,1)/eg; 
   $inc =~ s/#TABLE:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3)/eg; 
@@ -949,7 +949,7 @@ sub subvars_for_mypostscript {
   $inc =~ s/#INCLUDE_POSTBOOTSCRIPTS_LIST#/$postbootscripts/eg; 
   
   #$inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
-  $inc =~ s/#NTYPE#/$nodetype/eg;
+  $inc =~ s/#\$NTYPE#/$nodetype/eg;
   $inc =~ s/#Subroutine:([^:]+)::([^:]+)::([^:]+):([^#]+)#/subroutine($1,$2,$3,$4)/eg;
 
   #$inc =~ s/^([^#]+)=[\s]*export $1//eg;
