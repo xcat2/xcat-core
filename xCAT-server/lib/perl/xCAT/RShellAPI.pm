@@ -27,6 +27,7 @@ use xCAT::MsgUtils;
 ##################################################### 
 sub remote_shell_command {
 	my ( $class, $config, $exec_path ) = @_;
+	#print Dumper($config);
 
 	my @command = ();
 
@@ -42,8 +43,19 @@ sub remote_shell_command {
 	    push @command, "-v";
 	}
 	if ($$config{'user'} && ($$config{'user'}  !~ /^none$/i)) {
-	    @tmp=split(' ', "-l $$config{'user'}");
-	    push @command, @tmp;
+	    my $username=$$config{'user'};
+	    my $telnet=0;
+	    if ($username =~ /^(tn:)(.*)$/) {
+		$telnet=1;
+		$username=$2;
+	    }
+	    if ($telnet) {
+		push @command, "-t";
+	    }
+	    if ($username) {
+		@tmp=split(' ', "-l $username");
+		push @command, @tmp;
+	    }
 	}
 	if ($$config{'password'} && ($$config{'password'} !~ /^none$/i)) {
 	    @tmp=split(' ', "-p $$config{'password'}");
@@ -77,29 +89,33 @@ sub run_remote_shell_api {
     my $node=shift;
     my $user=shift;
     my $passwd=shift;
+    my $telnet=shift;
     my $verbose=shift;
     my $args = join(" ", @_);
     my $t;
     my $prompt='.*[\>\#\$]\s*$';
     my $more_prompt='(.*key to continue.*|.*--More--\s*|.*--\(more.*\)--.*$)';
     my $output;
+    my $errmsg;
 
-    eval {
-	$output="start SSH session...\n";
-	$t = new  xCAT::SSHInteract(
-	    -username=>$user,
-	    -password=>$passwd,
-	    -host=>$node,
-	    -nokeycheck=>1,
-	    -output_record_separator=>"\r",
-	    Timeout=>10, 
-	    Errmode=>'return',
-	    Prompt=>"/$prompt/",
-	    );
-    };
-    my $errmsg=$@;
-    $errmsg =~ s/ at (.*) line (\d)+//g;
-    $output.="$errmsg\n";
+    if (!$telnet) { 
+	eval {
+	    $output="start SSH session...\n";
+	    $t = new  xCAT::SSHInteract(
+		-username=>$user,
+		-password=>$passwd,
+		-host=>$node,
+		-nokeycheck=>1,
+		-output_record_separator=>"\r",
+		Timeout=>10, 
+		Errmode=>'return',
+		Prompt=>"/$prompt/",
+		);
+	};
+	$errmsg=$@;
+	$errmsg =~ s/ at (.*) line (\d)+//g;
+	$output.="$errmsg\n";
+    }
 
     my $rc=1;
     if ($t) {
