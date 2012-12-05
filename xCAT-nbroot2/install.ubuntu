@@ -12,7 +12,7 @@ dracut_install mkswap df brctl vconfig ifenslave ssh-keygen scp clear dhclient l
 dracut_install lldptool 
 dracut_install poweroff ntpq ntpd hwclock date /usr/share/terminfo/x/xterms /etc/nsswitch.conf /etc/services
 dracut_install /usr/sbin/rsyslogd /etc/protocols umount /usr/bin/dpkg /usr/bin/rpm /usr/lib/rpm/rpmrc
-if [ -n $version12 ];then
+if [ $version12 ];then
     dracut_install /lib/x86_64-linux-gnu/libnss_dns-2.15.so /lib/x86_64-linux-gnu/libnss_dns.so.2
     dracut_install /lib/x86_64-linux-gnu/libdl.so.2 /lib32/libm.so.6
     dracut_install dmidecode /usr/lib/x86_64-linux-gnu/libstdc++.so.6
@@ -623,7 +623,7 @@ inst "$moddir/99-imm.rules" "/etc/udev/rules.d/99-imm.rules"
 inst "$moddir/98-mlx.rules" "/etc/udev/rules.d/98-mlx.rules"
 inst "$moddir/setupimmnic" "/sbin/setupimmnic"
 inst "$moddir/loadmlxeth" "/sbin/loadmlxeth"
-if [ -n $version12 ];then
+if [ $version12 ];then
 dracut_install rpcbind
 else
 dracut_install portmap
@@ -654,7 +654,7 @@ dracut_install /usr/lib/rsyslog/imtcp.so
 dracut_install /usr/lib/rsyslog/lmnet.so
 #dracut_install /usr/lib/rsyslog/lmstrmsrv.so
 dracut_install /usr/lib/rsyslog/imuxsock.so
-if [ -n $version12 ];then
+if [ $version12 ];then
 dracut_install /lib/libnfsidmap/nsswitch.so
 else
 dracut_install /usr/lib64/libnfsidmap/nsswitch.so
