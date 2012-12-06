@@ -874,12 +874,15 @@ sub vitals {
   my $tmp;
 
   if ( defined $slot and $slot > 0) {	#-- querying some blade
-
     if (grep /watt/,@vitems) {
-       if ($slot < 8) {
-        $tmp = $session->get(["1.3.6.1.4.1.2.3.51.2.2.10.2.1.1.7.".($slot+16)]);
+       if ($mpatype eq 'cmm') {
+           $tmp = $session->get(["1.3.6.1.4.1.2.3.51.2.2.10.2.1.1.7.".($slot+24)]);
        } else {
-        $tmp = $session->get(["1.3.6.1.4.1.2.3.51.2.2.10.3.1.1.7.".($slot+9)]);
+           if ($slot < 8) {
+               $tmp = $session->get(["1.3.6.1.4.1.2.3.51.2.2.10.2.1.1.7.".($slot+16)]);
+           } else {
+               $tmp = $session->get(["1.3.6.1.4.1.2.3.51.2.2.10.3.1.1.7.".($slot+9)]);
+           }
        }
        unless ($tmp =~ /Not Readable/) {
          if ($tmp =~ /(\d+)W/) {
