@@ -1,4 +1,4 @@
-%define version	2.7.3
+%define version	2.8
 %ifarch i386 i586 i686 x86
 %define tarch x86
 %endif
@@ -9,7 +9,7 @@
 %define tarch ppc64
 %endif
 BuildArch: noarch
-%define name	xCAT-genesis-%{tarch}
+%define name	xCAT-genesis-base-%{tarch}
 %define __spec_install_post :
 %define debug_package %{nil}
 %define __prelink_undo_cmd %{nil}
@@ -28,13 +28,14 @@ License: Various (see individual packages for details)
 Vendor: IBM Corp.
 Summary: xCAT Genesis netboot image
 URL:	 http://xcat.org
-Source1: xCAT-genesis-%{tarch}.tar.bz2
+Source1: xCAT-genesis-base-%{tarch}.tar.bz2
 
 Buildroot: %{_localstatedir}/tmp/xCAT-genesis
 Packager: IBM Corp.
 
 %Description
 xCAT genesis (Genesis Enhanced Netboot Environment for System Information and Servicing) is a small, embedded-like environment for xCAT's use in discovery and management actions when interaction with an OS is infeasible.
+This package comprises the base platform with most of the xCAT specific behavior left to xCAT-genesis-scripts package.
 %Prep
 
 
