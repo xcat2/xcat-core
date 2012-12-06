@@ -883,12 +883,16 @@ sub vitals {
 
     if (grep /watt/,@vitems) {
        my $tmp_oid = "1.3.6.1.4.1.2.3.51.2.2.10.2.1.1.7.";
-       if ($slot < 8) {
-        $tmp_oid .= ($slot+16);
-        #$tmp = $session->get(["1.3.6.1.4.1.2.3.51.2.2.10.2.1.1.7.".($slot+16)]);
+       if ($mpatype eq 'cmm') {
+           $tmp_oid .= ($slot+24);
        } else {
-        $tmp_oid .= ($slot+9);
-        #$tmp = $session->get(["1.3.6.1.4.1.2.3.51.2.2.10.3.1.1.7.".($slot+9)]);
+           if ($slot < 8) {
+               $tmp_oid .= ($slot+16);
+               #$tmp = $session->get(["1.3.6.1.4.1.2.3.51.2.2.10.2.1.1.7.".($slot+16)]);
+           } else {
+               $tmp_oid = "1.3.6.1.4.1.2.3.51.2.2.10.3.1.1.7.".($slot+9);
+               #$tmp = $session->get(["1.3.6.1.4.1.2.3.51.2.2.10.3.1.1.7.".($slot+9)]);
+           }
        }
        $tmp = $session->get([$tmp_oid]);
        unless ($tmp =~ /Not Readable/) {
