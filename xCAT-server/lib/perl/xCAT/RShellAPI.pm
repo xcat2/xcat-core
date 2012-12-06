@@ -42,20 +42,12 @@ sub remote_shell_command {
 	if ( $$config{'trace'} ) {
 	    push @command, "-v";
 	}
+	if ( $$config{'remotecmdproto'} &&  ($$config{'remotecmdproto'} =~ /^telnet$/)) {
+	    push @command, "-t";
+	}
 	if ($$config{'user'} && ($$config{'user'}  !~ /^none$/i)) {
-	    my $username=$$config{'user'};
-	    my $telnet=0;
-	    if ($username =~ /^(tn:)(.*)$/) {
-		$telnet=1;
-		$username=$2;
-	    }
-	    if ($telnet) {
-		push @command, "-t";
-	    }
-	    if ($username) {
-		@tmp=split(' ', "-l $username");
-		push @command, @tmp;
-	    }
+	    @tmp=split(' ', "-l $$config{'user'}");
+	    push @command, @tmp;
 	}
 	if ($$config{'password'} && ($$config{'password'} !~ /^none$/i)) {
 	    @tmp=split(' ', "-p $$config{'password'}");
@@ -97,10 +89,12 @@ sub run_remote_shell_api {
     my $more_prompt='(.*key to continue.*|.*--More--\s*|.*--\(more.*\)--.*$)';
     my $output;
     my $errmsg;
+    my $ssh_tried=0;
 
     if (!$telnet) { 
 	eval {
 	    $output="start SSH session...\n";
+	    $ssh_tried=1;
 	    $t = new  xCAT::SSHInteract(
 		-username=>$user,
 		-password=>$passwd,
@@ -135,6 +129,9 @@ sub run_remote_shell_api {
 
     } else {
         #ssh failed.. fallback to a telnet attempt
+	if ($ssh_tried) {
+	    $output.="Warning: SSH failed, will try Telnet. Please set switches.protocol=telnet next time if you wish to use telnet directly.\n";
+	}
 	$output.="start Telnet session...\n";
 	require Net::Telnet;
 	$t = new Net::Telnet(

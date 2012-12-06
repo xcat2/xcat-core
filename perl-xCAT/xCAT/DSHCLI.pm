@@ -993,7 +993,7 @@ sub fork_fanout_dsh
                 #get user name and password  from the switches table
                  my $switchestab=xCAT::Table->new('switches',-create=>0);
 
-                 my $switchents = $switchestab->getNodesAttribs($targets_waiting,[qw/switch sshusername sshpassword/]);
+                 my $switchents = $switchestab->getNodesAttribs($targets_waiting,[qw/switch sshusername sshpassword protocol/]);
                  foreach my $entry (values %$switchents) {
                     my $switch=$entry->[0]->{switch};
                     if (defined($entry->[0]->{sshusername})) {
@@ -1001,6 +1001,9 @@ sub fork_fanout_dsh
                     }
                     if (defined($entry->[0]->{sshpassword})) {
                         $resolved_targets->{$switch}->{'password'}=$entry->[0]->{sshpassword};
+                    }
+                    if (defined($entry->[0]->{protocol})) {
+                        $resolved_targets->{$switch}->{'remotecmdproto'}=$entry->[0]->{protocol};
                     }
                 }
             }
@@ -1076,6 +1079,9 @@ sub fork_fanout_dsh
                     $remote_shell = "$::XCATROOT/sbin/rshell_api";
                     $rsh_extension='RShellAPI';
                     $rsh_config{'password'}=$$target_properties{'password'};
+		    if ($$target_properties{'remotecmdproto'}) {
+			$rsh_config{'remotecmdproto'}=$$target_properties{'remotecmdproto'};
+		    }
                     if ($$options{'trace'}) {
 			$rsh_config{'trace'}=1;
 		    }
