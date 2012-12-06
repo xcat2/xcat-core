@@ -1673,7 +1673,7 @@ sub defch
                 {
                     my $rsp;
                     $rsp->{data}->[0] =
-                      "\'$attr\' is not a valid attribute name for for an object type of \'$::objtype\'.";
+                      "\'$attr\' is not a valid attribute name for an object type of \'$::objtype\'.";
                     $rsp->{data}->[1] = "Skipping to the next attribute.";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
                     $error = 1;
@@ -2282,7 +2282,7 @@ sub setFINALattrs
 
                     my $rsp;
                     $rsp->{data}->[0] =
-                      "\'$attr\' is not a valid attribute name for for an object type of \'$::objtype\'.";
+                      "\'$attr\' is not a valid attribute name for an object type of \'$::objtype\'.";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
                     $error = 1;
                     next;
@@ -2733,6 +2733,18 @@ sub defls
     # for each type
     foreach my $type (@::clobjtypes)
     {
+       # Check if -i specifies valid attributes
+       # get the data type definition from Schema.pm
+       my %validattrslist;
+       if ($::opt_i)
+       {
+           my $datatype = $xCAT::Schema::defspec{$type};
+           foreach my $this_attr (sort @{$datatype->{'attrs'}})
+           {
+               my $a = $this_attr->{attr_name};
+               $validattrslist{$a} = 1;
+           }
+        }
 
         my %defhash;
 
@@ -2807,10 +2819,32 @@ sub defls
         my @attrlist;
         if (($type ne 'site') && ($type ne 'monitoring'))
         {
-            # get the list of all attrs for this type object
+            # -i is specified
             if (scalar(@::AttrList) > 0) {
-                @attrlist = @::AttrList;
+                foreach my $attr (@::AttrList)
+                {
+                    # For site and monitoring, does not check if -i attributes are valid
+                    if (($type eq 'site') || ($type eq 'monitoring'))
+                    {
+                        @attrlist = @::AttrList;
+                    } else {
+                        if (defined($validattrslist{$attr}))
+                        {
+                            if (!grep(/^$attr$/, @attrlist))
+                            {
+                                push @attrlist, $attr;
+                            }
+                        } else {
+                            my $rsp;
+                            $rsp->{data}->[0] =
+                                "\'$attr\' is not a valid attribute name for an object type of \'$type\'.";
+                            xCAT::MsgUtils->message("E", $rsp, $::callback);
+                            next;
+                        }
+                   }
+                }
             } else {
+                # get the list of all attrs for this type object
                 # get the data type  definition from Schema.pm
                 my $datatype =
                   $xCAT::Schema::defspec{$type};
