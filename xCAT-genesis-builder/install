@@ -589,7 +589,6 @@ dracut_install /usr/share/zoneinfo/posix/NZ
 dracut_install /usr/share/zoneinfo/posix/PRC
 dracut_install /usr/share/zoneinfo/posix/Chile/EasterIsland
 dracut_install /usr/share/zoneinfo/posix/Chile/Continental
-dracut_install /usr/share/zoneinfo/posix/Factory
 inst "$moddir/xcatroot" "/sbin/xcatroot"
 inst "$moddir/restart" "/bin/restart"
 inst "$moddir/dhclient.conf" "/etc/dhclient.conf"

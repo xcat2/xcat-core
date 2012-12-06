@@ -8,5 +8,6 @@ zcat /tmp/xcatgenesis.$$.rfs|cpio -dumi
 cp /boot/vmlinuz-`uname -r` /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/kernel
 cd -
 cd /tmp/xcatgenesis.$$
-tar jcf ~/rpmbuild/SOURCES/xCAT-genesis-`uname -m`.tar.bz2 opt
-rpmbuild -ba $DIR/xCAT-genesis.spec 
+tar jcf ~/rpmbuild/SOURCES/xCAT-genesis-base-`uname -m`.tar.bz2 opt
+rpmbuild -ba $DIR/xCAT-genesis-base.spec 
+rm -rf /usr/share/dracut/modules.d/97xcat
