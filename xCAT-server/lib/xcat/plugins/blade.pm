@@ -3827,7 +3827,11 @@ sub filter_nodes{
         push @{$mpnodes}, @ngpfsp;
       }
     } elsif ($cmd eq "rvitals") {
-        push @{$mpnodes}, @ngpfsp;
+        if (@args && (grep /^lcds$/,@args)) {
+            push @{$fspnodes}, @ngpfsp;
+        } else {
+            push @{$mpnodes}, @ngpfsp;
+        }
     } else {
       push @{$fspnodes}, @ngpfsp;
     }
