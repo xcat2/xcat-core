@@ -143,8 +143,16 @@ sub setdestiny {
   } elsif ($state =~ /^install[=\$]/ or $state eq 'install' or $state =~ /^netboot[=\$]/ or $state eq 'netboot' or $state eq "image" or $state eq "winshell" or $state =~ /^osimage/ or $state =~ /^statelite/) {
     chomp($state);
     my $target;
+    my $action;
     if ($state =~ /=/) {
         ($state,$target) = split /=/,$state,2;
+         if ($target =~ /:/) {
+             ($target, $action) = split /:/,$target,2;
+         }
+    } else {
+        if ($state =~ /:/) {
+             ($state, $action) = split /:/,$state,2;
+         }
     }
     my $nodetypetable = xCAT::Table->new('nodetype', -create=>1);
     if ($state ne 'osimage') {
@@ -235,6 +243,16 @@ sub setdestiny {
 	#statelite
       unless ($state =~ /^netboot|^statelite/) { $chaintab->setNodeAttribs($_,{currchain=>"boot"}); };
     }
+
+    if ($action eq "reboot4deploy") {
+      # this action is used in the discovery process for deployment of the node
+      # e.g. set chain.chain to 'osimage=rhels6.2-x86_64-netboot-compute:reboot4deploy'
+      # Set the status of the node to be 'installing' or 'netbooting'
+      my %newnodestatus;
+      my $newstat=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState($state, "rpower");
+      $newnodestatus{$newstat}=$req->{node};
+      xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
+    }
   } elsif ($state eq "shell" or $state eq "standby" or $state =~ /^runcmd/ or $state =~ /^runimage/) {
     $restab=xCAT::Table->new('noderes',-create=>1);
     my $bootparms=xCAT::Table->new('bootparams',-create=>1);
@@ -303,8 +321,8 @@ sub setdestiny {
                                    kcmdline => $kcmdline."xcatd=$master:$xcatdport"});
       }
     }
-	}elsif ($state eq "offline"){
-		1;
+  } elsif ($state eq "offline") {
+      1;
   } elsif (!($state eq "boot")) { 
       $callback->({error=>["Unknown state $state requested"],errorcode=>[1]});
       return;
