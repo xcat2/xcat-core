@@ -494,7 +494,7 @@ sub _execute_dsh
             $rsp->{error}->[0] =
               " Timed out waiting for response from child processes for the following nodes. Terminating the child processes. ";
             $rsp->{error}->[1] = " @active_list";
-            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
             @targets_failed = keys(%targets_active);
 
             &handle_signal_dsh('INT', 2);
@@ -588,7 +588,7 @@ sub _execute_dsh
                         xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
                         $rsp = {};
                         push @{$rsp->{error}}, @{$error_buffers{$user_target}};
-                        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+                        xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
                     }
                 }
                 else
@@ -603,7 +603,7 @@ sub _execute_dsh
                     xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
                     $rsp = {};
                     push @{$rsp->{error}}, @{$error_buffers{$user_target}};
-                    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+                    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
 
                 }
             }
@@ -631,7 +631,7 @@ sub _execute_dsh
                 my $rsp = {};
                 $rsp->{error}->[0] = "dsh>  Remote_command_failed $user_target";
                 $$options{'monitor'}
-                  && xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+                  && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
                 if (!grep(/$user_target/, @targets_failed))
                 {    # not already in list
 
@@ -660,7 +660,7 @@ sub _execute_dsh
                     $rsp->{error}->[0] =
                       "dsh>  Remote_command_failed $user_target";
                     $$options{'monitor'}
-                      && xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+                      && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 1);
 
                     push @targets_failed, $user_target;
                     push @{$dsh_target_status{'failed'}}, $user_target
@@ -1910,7 +1910,7 @@ sub stream_error
                         my $rsp = {};
                         $rsp->{error}->[0] =
                           "A return code for the command run on $user_target was not received.";
-                        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+                        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
                         my $rsp = {};
                         $rsp->{error}->[0] =
@@ -2348,7 +2348,7 @@ sub config_dsh
     {
         my $rsp = {};
         $rsp->{error}->[0] = "File: $$options{'environment'} is empty.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         $$options{'environment'} = undef;
     }
 
@@ -3257,13 +3257,12 @@ sub verify_targets
             foreach my $user_target (@targets)
             {
                 my $rsp = {};
-
                 $rsp->{error}->[0] =
                   "$user_target is not responding. No command will be issued to this host.";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                 # report error status  --nodestatus
                 # Note the message below for node status must
-                # not be NLS translated.  Code depends on the English. 
+                # not be NLS translated.  Code depends on the English.
                 if ($$options{'nodestatus'}) {
                    my $rsp={};
                   $rsp->{data}->[0] =
@@ -3613,7 +3612,7 @@ sub ignoreEnv
         $env = join ",", @env_not_valid;
         my $rsp = {};
         $rsp->{error}->[0] = "Invalid Environment Variable: $env";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         return;
     }
     for $env (@dsh_valid_env)
