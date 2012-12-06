@@ -59,7 +59,7 @@ sub handled_commands {
     getrvidparms => 'nodehm:mgt',
     rvitals => 'nodehm:mgt=blade|fsp',
     rinv => 'nodehm:mgt',
-    rbeacon => 'nodehm:mgt',
+    rbeacon => 'nodehm:mgt=blade|fsp',
     rspreset => 'nodehm:mgt',
     rspconfig => 'nodehm:mgt=blade|fsp', # Get into blade.pm for rspconfig if mgt equals blade or fsp
     rbootseq => 'nodehm:mgt',
@@ -5324,7 +5324,7 @@ sub dompa {
   }
   # Only telnet commands
   unless ( @$args ) {
-    if($command ne "getmacs"){
+    if(($command ne "getmacs") && ($command ne "rbeacon")){
       return;
     }
   }
