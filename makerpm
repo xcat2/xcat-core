@@ -147,8 +147,8 @@ function makegenesisscripts {
 
 	RPMNAME="$1"
 	ARCH="$2"
-	cd `dirname $0`/$DIR
-	tar --exclude .svn -cjf $RPMROOT/SOURCES/$RPMNAME.tar.bz2 .
+	cd `dirname $0`/
+	tar --exclude .svn -cjf $RPMROOT/SOURCES/$RPMNAME.tar.bz2 $DIR
 	cp LICENSE.html $RPMROOT/BUILD
 	cp $RPMNAME.spec $RPMROOT/SOURCES
 	cd - >/dev/null
