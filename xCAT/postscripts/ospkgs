@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh 
 # IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
@@ -101,6 +101,16 @@ if [ -z "$OSPKGDIR" ]; then
     fi
 fi
 
+default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
+if [ $OSPKGDIR == $default_pkgdir ]; then
+    if ( pmatch "$OSVER" "rhels5*" ); then
+        if [ $ARCH == "x86_64" ]; then
+            OSPKGDIR="$OSPKGDIR/Server"
+        fi
+    fi
+fi
+
+
 if [ "$SDKDIR" != "" ]; then 
     if [ $mounted -eq 0 ]; then
         SDKDIR="$NFSSERVER/$SDKDIR"
@@ -108,11 +118,12 @@ if [ "$SDKDIR" != "" ]; then
 fi
     
 if [ $mounted -eq 0 ]; then
-    OSPKGDIR_NO_PREFIX=${OSPKGDIR#$INSTALLDIR}
+    #OSPKGDIR_NO_PREFIX=${OSPKGDIR#$INSTALLDIR}
 
-    if [ "$OSPKGDIR" != "$OSPKGDIR_NO_PREFIX" ]; then
-        OSPKGDIR="$NFSSERVER/$OSPKGDIR_NO_PREFIX"
-    fi
+    #if [ "$OSPKGDIR" != "$OSPKGDIR_NO_PREFIX" ]; then
+    #    OSPKGDIR="$NFSSERVER/$OSPKGDIR_NO_PREFIX"
+    #fi
+    OSPKGDIR="$NFSSERVER/$OSPKGDIR"
 fi
 
 logger -t xcat "NFSSERVER=$NFSSERVER"
