@@ -18,6 +18,7 @@ Epoch: 1
 AutoReq: false
 Prefix: /opt/xcat
 AutoProv: false
+Obsoletes: xCAT-genesis-%{tarch}
 
 
 

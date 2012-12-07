@@ -29,7 +29,8 @@ License: EPL
 Vendor: IBM Corp
 Summary: xCAT Genesis netboot image - Core content
 URL:	 http://xcat.org
-Source1: xCAT-genesis-scripts-%{tarch}.tar.bz2
+Source1: xCAT-genesis-scripts-%{version}.tar.bz2
+Requires: xCAT-genesis-base-%{tarch}
 
 Buildroot: %{_localstatedir}/tmp/xCAT-genesis
 Packager: IBM Corp.
@@ -47,6 +48,9 @@ rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT
 cd $RPM_BUILD_ROOT
 tar jxf %{SOURCE1}
+mkdir -p opt/xcat/share/xcat/netboot/genesis/x86_64/
+mv xCAT-genesis-scripts opt/xcat/share/xcat/netboot/genesis/x86_64/fs
+rm opt/xcat/share/xcat/netboot/genesis/x86_64/fs/*.spec
 cd -
 
 
@@ -60,4 +64,4 @@ fi
 
 %Files
 %defattr(-,root,root)
-/
+/opt/xcat/share/xcat/netboot/genesis/x86_64/fs
