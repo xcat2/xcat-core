@@ -12,7 +12,7 @@ use xCAT_plugin::hmc;
 sub handled_commands {
   return {
       rpower    => 'nodehm:power,mgt',
-      reventlog => 'nodehm:mgt',
+      #reventlog => 'nodehm:mgt',
       rspconfig => 'nodehm:mgt',
       mkhwconn  => 'nodehm:mgt',
       rmhwconn  => 'nodehm:mgt',
