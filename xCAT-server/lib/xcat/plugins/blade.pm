@@ -59,7 +59,7 @@ sub handled_commands {
     rspreset => 'nodehm:mgt',
     rspconfig => 'nodehm:mgt=blade|fsp', # Get into blade.pm for rspconfig if mgt equals blade or fsp
     rbootseq => 'nodehm:mgt',
-    reventlog => 'nodehm:mgt',
+    reventlog => 'nodehm:mgt=blade|fsp',
     switchblade => 'nodehm:mgt',
     renergy => 'nodehm:mgt',
     lsflexnode => 'blade',
@@ -400,16 +400,19 @@ sub eventlog { #Tried various optimizations, but MM seems not to do bulk-request
       my $text=$5;
       my $matchstring;
       if ($slot > 0) {
-        $matchstring=sprintf("BLADE_%02d",$slot);
+        #$matchstring=sprintf("BLADE_%02d",$slot);
+        $matchstring=sprintf("NODE_%02d",$slot);
       } else {
-        $matchstring="^(?!BLADE).*";
+        #$matchstring="^(?!BLADE).*";
+        $matchstring="^(?!NODE).*";
       }
       if ($source =~ m/$matchstring$/i) { #MM guys changed their minds on capitalization
         $numentries++;
         unshift @output,"$sev:$date $time $text"; #unshift to get it in a sane order
       } else {
           foreach (@moreslots) {
-            $matchstring=sprintf("BLADE_%02d",$_);
+            #$matchstring=sprintf("BLADE_%02d",$_);
+            $matchstring=sprintf("NODE_%02d",$_);
             if ($source =~ m/$matchstring$/i) { #MM guys changed their minds on capitalization
                 $numentries++;
                 unshift @output,"$sev:$date $time $text"; #unshift to get it in a sane order
