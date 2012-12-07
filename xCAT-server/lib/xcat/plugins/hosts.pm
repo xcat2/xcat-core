@@ -16,6 +16,9 @@ my $OTHERNAMESFIRST;
 my $ADDNAMES;
 my $MACTOLINKLOCAL;
 
+
+#############   TODO - add return code checking !!!!!
+
 my %usage =
   (makehosts =>
     "Usage: makehosts <noderange> [-d] [-n] [-l] [-a] [-o] [-m]\n       makehosts -h",
@@ -63,11 +66,15 @@ sub addnode
 
     my $othernames = shift;
     my $domain     = shift;
+	my $nics  	   = shift;
     my $idx        = 0;
     my $foundone   = 0;
 
+	# if this ip was already added then just see if the entry 
+
     while ($idx <= $#hosts)
     {
+
         if (   $hosts[$idx] =~ /^${ip}\s/
             or $hosts[$idx] =~ /^\d+\.\d+\.\d+\.\d+\s+${node}[\s\.r]/)
         {
@@ -77,7 +84,22 @@ sub addnode
             }
             else
             {
-                $hosts[$idx] = build_line($ip, $node, $domain, $othernames);
+				# we found a matching entry in the hosts list
+				if ($nics) {
+					# we're processing the nics table and we found an
+					#   existing entry for this ip so just add this
+					#	node name as an alias for the existing entry
+					my ($hip, $hnode, $hdom, $hother)= split(/ /, $hosts[$idx]);
+
+					# at this point "othernames", if any is just a space
+					#	delimited list - so just add the node name to the list
+					$othernames .= " $node";
+					$hosts[$idx] = build_line($ip, $hnode, $domain, $othernames);
+				} else {
+					# otherwise just try to completely update the existing
+					#	entry
+                	$hosts[$idx] = build_line($ip, $node, $domain, $othernames);
+				}
             }
             $foundone = 1;
         }
@@ -99,6 +121,8 @@ sub build_line
     my @n_names    = ();
     if (defined $othernames)
     {
+		# the "hostnames" attribute can be a list delimited by 
+		#	either a comma or a space
         @o_names = split(/,| /, $othernames);
     }
     my $longname;
@@ -169,6 +193,7 @@ sub process_request
 
     my $req      = shift;
     my $callback = shift;
+
     my $HELP;
     my $REMOVE;
 
@@ -230,6 +255,11 @@ sub process_request
             my $bakname = "/etc/hosts.xcatbak";
             copy("/etc/hosts", $bakname);
         }
+
+
+		#  the contents of the /etc/hosts file is saved in the @hosts array
+		#	the @hosts elements are updated and used to re-create the 
+		#	/etc/hosts file at the end by the writeout subroutine.
         open($lockh, ">", "/tmp/xcat/hostsfile.lock");
         flock($lockh, LOCK_EX);
         my $rconf;
@@ -260,7 +290,8 @@ sub process_request
                 }
                 my $linklocal = xCAT::NetworkUtils->linklocaladdr($mac);
 
-                $domain = &getIPdomain($linklocal, $callback);
+				my $netn;
+                ($domain, $netn) = &getIPdomain($linklocal, $callback);
 
                 if ($::DELNODE)
                 {
@@ -281,7 +312,9 @@ sub process_request
             {
 
                 my $ref = $hostscache->{$_}->[0];
-                $domain = &getIPdomain($ref->{ip}, $callback);
+
+				my $netn;
+                ($domain, $netn) = &getIPdomain($ref->{ip}, $callback);
 
                 if ($::DELNODE)
                 {
@@ -303,7 +336,6 @@ sub process_request
 
         # do the other node nics - if any
         &donics($req->{node}, $callback);
-
     }
     else
     {
@@ -321,7 +353,8 @@ sub process_request
 
             push @allnodes, $_->{node};
 
-            $domain = &getIPdomain($_->{ip});
+			my $netn;
+           ($domain, $netn) = &getIPdomain($_->{ip});
 
             if (xCAT::NetworkUtils->isIpaddr($_->{ip}))
             {
@@ -446,13 +479,24 @@ sub donics
             # get domain from network def
 			my $nt = $nettab->getAttribs({ netname => "$nichash{$nic}{netwrk}"}, 'domain');
 
+			# look up the domain as a check or if it's not provided
+			my ($nicdomain, $netn) = &getIPdomain($nichash{$nic}{nicip}, $callback);
+			if ($nt->{domain}) {
+				if($nichash{$nic}{netwrk} ne $netn) {
+					my $rsp;
+					push @{$rsp->{data}}, "The xCAT network name listed for \'$nichostname\' is \'$nichash{$nic}{netwrk}\' however the nic IP address \'$nichash{$nic}{nicip}\' seems to be in the \'$netn\' network.\nIf there is an error then makes corrections to the database definitions and re-run this command.\n"; 
+					xCAT::MsgUtils->message("W", $rsp, $callback);
+				}
+				$nicdomain = $nt->{domain};
+			}
+
             if ($::DELNODE)
             {
-                delnode $nichostname, $nichash{$nic}{nicip}, '', $nt->{domain};
+                delnode $nichostname, $nichash{$nic}{nicip}, '', $nicdomain;
             }
             else
             {
-                addnode $nichostname, $nichash{$nic}{nicip}, '', $nt->{domain};
+                addnode $nichostname, $nichash{$nic}{nicip}, '', $nicdomain, 1;
             }
         }    # end for each nic
     }    # end for each node
@@ -474,7 +518,7 @@ sub donics
                node IP
 				callback
         Returns:
-            domain name - ok
+            domain and netname - ok
             1 - error
 
         Globals:
@@ -503,7 +547,7 @@ sub getIPdomain
         my $net = $enet->{'net'};
         if (xCAT::NetworkUtils->ishostinsubnet($nodeIP, $NM, $net))
         {
-            return $enet->{'domain'};
+            return ($enet->{'domain'}, $enet->{'netname'});
             last;
         }
     }
