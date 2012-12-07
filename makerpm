@@ -127,7 +127,7 @@ function makenbroot {
 
 # Make the xCAT-genesis rpm
 function makegenesis {
-	DIR="xCAT-nbroot2"
+	DIR="xCAT-genesis-builder"
 	RPMNAME="$1"
 	cd `dirname $0`/$DIR
 	tar --exclude .svn -cjf $RPMROOT/SOURCES/$RPMNAME.tar.bz2 .
@@ -136,6 +136,24 @@ function makegenesis {
 	cd - >/dev/null
 	rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
 	echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm $EMBEDTXT..."
+	rpmbuild $QUIET -ba $DIR/$RPMNAME.spec
+}
+function makegenesisscripts {
+	DIR="xCAT-genesis-scripts"
+	if [ -z "$2" ]; then
+		echo 'Usage: makerpm xCAT-genesis-scripts <arch> [<embedded-system>]'
+		exit 1
+	fi
+
+	RPMNAME="$1"
+	ARCH="$2"
+	cd `dirname $0`/$DIR
+	tar --exclude .svn -cjf $RPMROOT/SOURCES/$RPMNAME.tar.bz2 .
+	cp LICENSE.html $RPMROOT/BUILD
+	cp $RPMNAME.spec $RPMROOT/SOURCES
+	cd - >/dev/null
+	rm -f $RPMROOT/SRPMS/$RPMNAME-$ARCH-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$ARCH-$VER*rpm
+	echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$ARCH-$VER-snap*.noarch.rpm $EMBEDTXT..."
 	rpmbuild $QUIET -ba $DIR/$RPMNAME.spec
 }
 
@@ -191,6 +209,9 @@ elif [ "$1" = "xCAT-nbroot" -o "$1" = "xCAT-nbroot-core" ]; then
 elif [ "$1" = "xCAT-genesis-builder" ]; then
 	exportEmbed $3
 	makegenesis $1 $2
+elif [ "$1" = "xCAT-genesis-scripts" ]; then
+	exportEmbed $3
+	makegenesisscripts $1 $2
 else	# must be one of the noarch rpms
 	exportEmbed $2
 	makenoarch $1
