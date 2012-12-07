@@ -19,6 +19,8 @@ use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::ServiceNodeUtils;
+use xCAT::PasswordUtils;
+use xCAT::IMMUtils;
 use xCAT::Usage;
 use IO::Socket;
 use IO::Pty; #needed for ssh password login
@@ -3971,8 +3973,8 @@ sub process_request {
   } else {
     @exargs = ($request->{arg});
   }
+  $CALLBACK = $callback;
   if (grep /-V|--verbose/, @exargs) {
-      $CALLBACK = $callback;
       $verbose_cmd = $command;
   }
 
@@ -4214,12 +4216,12 @@ sub clicmds {
   my @unhandled;
   my %handled = ();
   my $result;
-  my @tcmds = qw(snmpcfg sshcfg network swnet pd1 pd2 textid network_reset rscanfsp initnetwork solcfg userpassword USERID);
+  my @tcmds = qw(snmpcfg sshcfg network swnet pd1 pd2 textid network_reset rscanfsp initnetwork solcfg userpassword USERID updateBMC);
   verbose_message("start deal with $mptype CLI options:@{$args{cmds}}.");
   # most of these commands should be able to be done
   # through SNMP, but they produce various errors.
   foreach my $cmd (@{$args{cmds}}) {
-    if ($cmd =~ /^swnet|pd1|pd2|sshcfg|rscanfsp|USERID|userpassword|=/) {
+    if ($cmd =~ /^swnet|pd1|pd2|sshcfg|rscanfsp|USERID|userpassword|updateBMC|=/) {
       if (($cmd =~ /^textid/) and ($nodeid > 0)) {
         push @unhandled,$cmd;
         next;
@@ -4236,6 +4238,16 @@ sub clicmds {
         next;
     }
     push @unhandled,$cmd;
+  }
+
+  # the option 'updateBMC' and 'USERID' can only work together when specified value for 'updateBMC', otherwise we shall only run 'rspconfig cmm updateBMC' to update BMC passwords associate with this cmm.
+  if (defined($handled{updateBMC}) and !($handled{USERID})) {
+      push @cfgtext, "'updateBMC' mush work with 'USERID'";
+      return([1, \@unhandled, ""]);
+  } 
+  if (exists($handled{updateBMC}) and !defined($handled{updateBMC}) and $handled{USERID}) {
+      push @cfgtext, "No value specified for 'updateBMC'";
+      return([1, \@unhandled, ""]);
   }
   unless (%handled) {
     verbose_message("no option needed to be handled with $mptype CLI.");
@@ -4368,6 +4380,8 @@ sub clicmds {
   @data = ();
 
   my $reset;
+  my $cmm_modified = 0;
+  my $bmc_modified = 0;
   foreach (keys %handled) {
     if (/^snmpcfg/)     { $result = snmpcfg($t,$handled{$_},$user,$pass,$mm); }
     elsif (/^sshcfg$/)  { $result = sshcfg($t,$handled{$_},$user,$mm); }
@@ -4379,8 +4393,24 @@ sub clicmds {
     elsif (/^rscanfsp$/)  { $result = rscanfsp($t,$mpa,$handled{$_},$mm); }
     elsif (/^solcfg$/)  { $result = solcfg($t,$handled{$_},$mm); }
     elsif (/^network_reset$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid,1); $reset=1; }
-    elsif (/^(USERID)$/) {$result = passwd($t, $mpa, $1, "=".$handled{$_}, $promote_pass, $mm);}
+    elsif (/^(USERID)$/ and !$cmm_modified) {$result = passwd($t, $mpa, $1, "=".$handled{$_}, $promote_pass, $mm); $cmm_modified = 1;}
     elsif (/^userpassword$/) {$result = passwd($t, $mpa, $1, $handled{$_}, $promote_pass, $mm);}
+    if((/^updateBMC$/ or ($cmm_modified)) and !($bmc_modified)) {
+        unless (defined($handled{updateBMC}) and $handled{updateBMC} =~ /(0|n|no)/i) {
+        if (defined($handled{updateBMC}) and !$cmm_modified) {
+            $result = passwd($t, $mpa, $1, "=".$handled{USERID}, $promote_pass, $mm);
+            $cmm_modified = 1;
+        }
+        verbose_message("start update password for all BMCs.");
+        my $start = Time::HiRes::gettimeofday();
+        updateBMC($mpa,$user,$promote_pass);
+        verbose_message("Finish update password for all BMCs.");
+        my $slp = Time::HiRes::gettimeofday() - $start;
+        my $msg = sprintf("The main process time slp: %.3f sec", $slp);
+        verbose_message($msg);
+        }
+        $bmc_modified = 1;
+    }
     if (!defined($result)) {next;}
     push @data, "$_: @$result";
     $Rc |= shift(@$result);
@@ -4572,6 +4602,25 @@ sub get_blades_for_mpa {
       verbose_message("values for node:$node, value:@values.");
   }
   return (\%blades_hash);
+}
+
+sub updateBMC {
+    my $mpa = shift;
+    my $user = shift;
+    my $pass = shift;
+    my $mptab = xCAT::Table->new('mp');
+    my $nttab = xCAT::Table->new('nodetype');
+    if ($mptab) {
+        my @mpents = $mptab->getAllNodeAttribs(['node','mpa','id']);
+        foreach (@mpents) {
+            my $node = $_->{node};
+            my $arch = $nttab->getNodeAttribs($node, ['arch']);
+            if ($_->{mpa} and $_->{id} and defined($arch) and $arch->{arch} !~ /ppc/)  {
+                xCAT::IMMUtils::setupIMM($node,skipbmcidcheck=>1,skipnetconfig=>1,cliusername=>$user,clipassword=>$pass,callback=>$CALLBACK);
+            }
+        } 
+    } 
+    return ;
 }
 
 sub passwd {
