@@ -2738,42 +2738,27 @@ sub updateAIXsoftware
                     if ($::VERBOSE)
                     {
                         my $rsp;
-                        push @{$rsp->{data}}, "Running: \'$inpcmd\'.\n";
+                        push @{$rsp->{data}}, "Running: xdsh -s -v  \'$inpcmd\'.\n";
                         xCAT::MsgUtils->message("I", $rsp, $callback);
                     }
 
-                    my $output =
-                      xCAT::Utils->runxcmd(
-                                           {
-                                            command => ["xdsh"],
-                                            node    => \@nodes,
-                                            arg     => [$inpcmd]
-                                           },
-                                           $subreq, -1, 1
-                                           );
+                   my  $args1 = [
+                        "--nodestatus",
+                        "-s",
+                        "-v",
+                        "$inpcmd"
+                   ];
 
-                    if ($::RUNCMD_RC != 0)
-                    {
-                        my $rsp;
-                        push @{$rsp->{data}},
-                          "Could not run installp command: \'$inpcmd\'.\n";
-                        foreach my $o (@$output)
-                        {
-                            push @{$rsp->{data}}, "$o";
-                        }
-                        xCAT::MsgUtils->message("I", $rsp, $callback);
-                        $error++;
+                   $subreq->(
+                           {
+                            command           => ["xdsh"],
+                            node              => \@nodes,
+                            arg               => $args1,
+                            _xcatpreprocessed => [1]
+                           },
+                           \&getdata2
+                         );
 
-                    }
-                    elsif ($::VERBOSE)
-                    {
-                        my $rsp;
-                        foreach my $o (@$output)
-                        {
-                            push @{$rsp->{data}}, "$o";
-                        }
-                        xCAT::MsgUtils->message("I", $rsp, $callback);
-                    }
                 }
 
                 #
@@ -2959,36 +2944,25 @@ sub updateAIXsoftware
                         push @{$rsp->{data}}, "Running: \'$rcmd\'.\n";
                         xCAT::MsgUtils->message("I", $rsp, $callback);
                     }
+                   # install the rpms
+                   my  $args1 = [
+                        "--nodestatus",
+                        "-s",
+                        "-v",
+                        "$rcmd"
+                   ];
 
-                    my $output =
-                      xCAT::Utils->runxcmd(
-                        {command => ["xdsh"], node => \@nodes, arg => [$rcmd]},
-                        $subreq, -1, 1);
+                   $subreq->(
+                           {
+                            command           => ["xdsh"],
+                            node              => \@nodes,
+                            arg               => $args1,
+                            _xcatpreprocessed => [1]
+                           },
+                           \&getdata2
+                         );
 
-                    if (($::RUNCMD_RC != 0) && (!$::ALLSW))
-                    {
-                        my $rsp;
-                        push @{$rsp->{data}}, "Could not install RPMs.\n";
-                        foreach my $o (@$output)
-                        {
-                            push @{$rsp->{data}}, "$o";
-                        }
-                        xCAT::MsgUtils->message("I", $rsp, $callback);
-                        $error++;
-                    }
-                    elsif ($::VERBOSE)
-                    {
 
-                        # should we always give output??
-                        #   could get gobs of unwanted output in some cases
-                        my $rsp;
-                        push @{$rsp->{data}}, "Command output:\n";
-                        foreach my $o (@$output)
-                        {
-                            push @{$rsp->{data}}, "$o";
-                        }
-                        xCAT::MsgUtils->message("I", $rsp, $callback);
-                    }
                 }
             }
 
