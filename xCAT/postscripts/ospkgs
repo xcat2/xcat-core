@@ -1,4 +1,4 @@
-#!/bin/sh  
+#!/bin/sh 
 # IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
@@ -251,13 +251,81 @@ else
     index=0
     for dir in  ${array_ospkgdirs[@]}  
     do
+         
         if [ $mounted -eq 0 ]; then
             OSPKGDIR="$OSPKGDIR"  
             ospkgdir="$NFSSERVER$dir"
             array_set_element os_path $index $ospkgdir
+         
+            if ( pmatch "$OSVER" "rhel*" ); then
+                default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
+                if [ $dir == $default_pkgdir ]; then
+            
+          
+                    if ( pmatch "$OSVER" "rhels6*" ); then
+
+                        if [ $ARCH == "x86_64" ]; then
+                            for arg in "Server" "OSPKGDIR/ScalableFileSystem" "HighAvailability" "ResilientStorage" "LoadBalancer" 
+                            do
+                                ospkgdir="$NFSSERVER$dir/$arg"
+                                index=$(expr $index + 1)          
+                                array_set_element os_path $index $ospkgdir
+                            done
+                        fi               
+
+                    elif ( pmatch "$OSVER" "rhels5*" ); then
+                         ospkgdir="$NFSSERVER$dir/Server"
+                         array_set_element os_path $index $ospkgdir
+               
+                         if [ $ARCH == "x86_64" ]; then
+                             for arg in "Cluster" "ClusterStorage"
+                             do
+                                 ospkgdir="$NFSSERVER$dir/$arg"
+                                 index=$(expr $index + 1)          
+                                 array_set_element os_path $index $ospkgdir
+                             done
+                         fi   # x86_64
+                    fi # if...elif..fi
+              fi  # eq default_pkgdir
+          fi    # match rhel*
+
         else
             OSPKGDIR="$NFSSERVER$OSPKGDIR"  
             array_set_element os_path $index $dir
+          
+            if ( pmatch "$OSVER" "rhel*" ); then
+                default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
+                if [ $dir == $default_pkgdir ]; then
+            
+          
+                    if ( pmatch "$OSVER" "rhels6*" ); then
+
+                        if [ $ARCH == "x86_64" ]; then
+                            for arg in "Server" "OSPKGDIR/ScalableFileSystem" "HighAvailability" "ResilientStorage" "LoadBalancer" 
+                            do
+                                ospkgdir="$NFSSERVER$dir/$arg"
+                                index=$(expr $index + 1)          
+                                array_set_element os_path $index $ospkgdir
+                            done
+                        fi               
+
+                    elif ( pmatch "$OSVER" "rhels5*" ); then
+                         ospkgdir="$NFSSERVER$dir/Server"
+                         array_set_element os_path $index $ospkgdir
+               
+                         if [ $ARCH == "x86_64" ]; then
+                             for arg in "Cluster" "ClusterStorage"
+                             do
+                                 ospkgdir="$NFSSERVER$dir/$arg"
+                                 index=$(expr $index + 1)          
+                                 array_set_element os_path $index $ospkgdir
+                             done
+                         fi   # x86_64
+                    fi # if...elif..fi
+              fi  # eq default_pkgdir
+          fi    # match rhel*
+
+
         fi
         
         index=$(expr $index + 1)          
@@ -683,6 +751,10 @@ else
         while [ $i -lt $SUM ]; do 
            REPOFILE="/etc/yum.repos.d/$OSVER-path$i.repo"
            OSPKGDIR=$(array_get_element os_path $i)
+
+#           default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
+           
+
            if [ ! -f $REPOFILE ]; then
 	       echo "[$OSVER-path$i]" > $REPOFILE
 	       echo "name=$OSVER-path$i" >> $REPOFILE
