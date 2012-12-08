@@ -2043,7 +2043,7 @@ sub config_dcp
 
         my $rsp = {};
         $rsp->{error}->[0] =
-          "Context file $::CONTEXT_DIR$$options{'context'}.pm does not exist.";
+          "Context file XCAT.pm does not exist.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return ++$result;
     }
