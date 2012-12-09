@@ -135,10 +135,10 @@ to the template.
 =item B<-c>|B<--command>
 
 The xdsh or rinv command that will be run. The command should be enclosed in 
-double quotes to insure correct shell interpretation.
+double quotes to insure correct shell interpretation. This parameter must only contain, the node range or the image path (Linux) or spot name for AIX. It cannot be used to set additional input flags to xdsh or rinv (for example -s,-T,-e).  See examples below.
 
 B<Note:> do not add the | xdshcoll to the command,
-it is automatically added by sinv.
+it is automatically added by sinv.  sinv also automatically sets the -v flag for xdsh. 
 
 =item B<-f>|B<--file>
 
@@ -238,6 +238,20 @@ B<sinv> I<-c "xdsh node1-node4 lslpp -l | grep bos.adt"  -s node1 -e -p /tmp/sin
 
 Note: the /tmp/sinv.template file must be empty, otherwise it will be used
 as an admin generated template.
+
+=item *
+
+To execute B<sinv> on the Linux osimage defined for cn1. This uses cn1 as
+the seed node, to generate the sinv.template, 
+using the exact match option, generating one additional template, enter:
+
+B<sinv> I<-c "xdsh -i /install/netboot/rhels6/ppc64/test_ramdisk_statelite/rootimg cat /etc/hosts"  -s cn1 -e -t1 -p /tmp/sinv.template  -o /tmp/sinv.output> 
+
+=item *
+
+To execute B<sinv> on the AIX NIM 611dskls spot and compare /etc/hosts to compute1 node, run the following:
+
+B<sinv> I<-c "xdsh -i 611dskls  cat /etc/hosts"  -s compute1 -e -t1 -p /tmp/sinv.template  -o /tmp/sinv.output> 
 
 =back
 
