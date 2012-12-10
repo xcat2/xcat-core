@@ -1043,16 +1043,6 @@ sub plugin_command {
        $req->{emptynoderange} = [1];
     }
    
-    if(@nodes == 0) {
-        my $rsp = {errorcode=>1,error=>"NO node or noderange specified"};
-        $rsp->{serverdone} = {};
-        if ($sock) {
-            print $sock XMLout($rsp,RootName=>'xcatresponse' ,NoAttr=>1);
-        }
-        return ($rsp);
-
-     }
-
   }
   if (@nodes) { $req->{node} = \@nodes; }
   my %unhandled_nodes;
