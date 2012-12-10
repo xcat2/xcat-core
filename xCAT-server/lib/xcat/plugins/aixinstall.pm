@@ -5863,7 +5863,7 @@ sub prermnimimage
     }
 
 	# get the sharedinstall value
-	my $sharedinstall=xCAT::Utils->get_site_attribute('sharedinstall');
+	my $sharedinstall=xCAT::TableUtils->get_site_attribute('sharedinstall');
 	chomp $sharedinstall;
 
 	#	- if shared file system then we need to remove resources 
