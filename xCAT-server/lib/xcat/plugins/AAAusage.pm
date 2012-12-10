@@ -61,6 +61,16 @@ sub preprocess_request {
      $exargs[0] = "--help";  # force help if no args
   }
 
+  # rflash: -p flag is to specify a directory, which will be parsed as a node range with regular expression
+  # stop the rflash command without noderange
+  # rflash -p /tmp/test  --activate disruptive
+  # where the /tmp/test will be treated as noderange with regular expression
+  # this is a general issue for the xcatclient commands, if with a flag can be followed by directory
+  # however, rflash is the only one we can think of for now.
+  if(!$noderange and $command eq "rflash") {
+      $exargs[0] = "--help";
+  }
+
   my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
   if ($usage_string) {
     $callback->({data=>[$usage_string]});
