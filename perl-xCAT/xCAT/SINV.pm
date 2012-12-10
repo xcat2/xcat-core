@@ -60,9 +60,10 @@ sub usage
       " -p <template path> [-o output file ] [-t <template count>]\n";
     my $usagemsg4 = "      [-r remove templates] [-s <seednode>]\n";
     my $usagemsg5 = "      [-e exactmatch] [-i ignore] [-V verbose]\n";
+    my $usagemsg5A = "      [-l userid] [--devicetype type_of_device]\n";
     my $usagemsg6 = "      {-c <command>  | -f <command file>}";
     my $usagemsg .= $usagemsg1 .= $usagemsg1a .= $usagemsg3 .= $usagemsg4 .=
-      $usagemsg5 .= $usagemsg6;
+      $usagemsg5 .= $usagemsg5A .= $usagemsg6;
 ###  end usage mesage
 
     my $rsp = {};
@@ -110,6 +111,8 @@ sub parse_and_run_sinv
                     's|seed=s'      => \$options{'seed_node'},
                     'e|exactmatch'  => \$options{'exactmatch'},
                     'i|ignorefirst' => \$options{'ignorefirst'},
+                    'l|user=s'      => \$options{'user'},
+                    'devicetype|devicetype=s'    => \$options{'devicetype'}, 
                     'c|cmd=s'       => \$options{'sinv_cmd'},
                     'f|file=s'      => \$options{'sinv_cmd_file'},
                     'v|version'     => \$options{'version'},
@@ -198,14 +201,36 @@ sub parse_and_run_sinv
     # strip off the program and the noderange
     #
     my @nodelist  = ();
-    my @cmdparts  = split(' ', $cmd);
+    my @cmdparts  = ();
+    if ($options{'devicetype'}) {  
+      # must split different because devices have commands with spaces
+      @cmdparts  = split(' ', $cmd,3);
+    } else {
+      @cmdparts  = split(' ', $cmd);
+    }
     my $cmdtype   = shift @cmdparts;
     my $noderange = shift @cmdparts;
     my @cmd       = ();
-    if ($noderange =~ /^-/)
+    if ($noderange =~ /^-/)  # if imageupdate not node
     {    # no noderange
         push @cmd, $noderange;    #  put flag back on command
     }
+    # root is sending the command
+    my @envs;
+    # if -l user id supplied
+    if ($options{'user'}) {
+       push @cmd,"-l";
+       push @cmd,$options{'user'};
+       push @envs,"DSH_TO_USERID=$options{'user'}";
+    }
+    # if device type supplied
+    if ($options{'devicetype'}) {
+       push @cmd,"--devicetype";
+       my $switchtype = $options{'devicetype'};
+       $switchtype =~ s/::/\//g;
+       push @cmd,$switchtype;
+    }
+ 
     foreach my $part (@cmdparts)
     {
 
@@ -471,6 +496,7 @@ sub parse_and_run_sinv
                    {
                     command => [$cmdtype],
                     node    => \@seed,
+                    env     => [@envs],
                     arg     => [@cmd]
                    },
                    \&$cmdoutput
@@ -500,6 +526,7 @@ sub parse_and_run_sinv
                {
                 command => [$cmdtype],
                 node    => \@nodelist,
+                env     => [@envs],
                 arg     => [@cmd]
                },
                \&$cmdoutput
