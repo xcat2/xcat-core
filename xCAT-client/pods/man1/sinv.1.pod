@@ -241,17 +241,18 @@ as an admin generated template.
 
 =item *
 
-To execute B<sinv> on the Linux osimage defined for cn1. This uses cn1 as
-the seed node, to generate the sinv.template, 
-using the exact match option, generating one additional template, enter:
+To execute B<sinv> on the Linux osimage defined for cn1.  First build a template from the /etc/hosts on the node. Then run sinv to compare. 
+B<xdsh> I<cn1 "cat /etc/hosts" | xdshcoll > /tmp/sinv2/template" 
 
-B<sinv> I<-c "xdsh -i /install/netboot/rhels6/ppc64/test_ramdisk_statelite/rootimg cat /etc/hosts"  -s cn1 -e -t1 -p /tmp/sinv.template  -o /tmp/sinv.output> 
+B<sinv> I<-c "xdsh -i /install/netboot/rhels6/ppc64/test_ramdisk_statelite/rootimg cat /etc/hosts"  -e -t1 -p /tmp/sinv.template  -o /tmp/sinv.output> 
 
 =item *
 
 To execute B<sinv> on the AIX NIM 611dskls spot and compare /etc/hosts to compute1 node, run the following:
 
-B<sinv> I<-c "xdsh -i 611dskls  cat /etc/hosts"  -s compute1 -e -t1 -p /tmp/sinv.template  -o /tmp/sinv.output> 
+B<xdsh> I<compute1 "cat /etc/hosts" | xdshcoll > /tmp/sinv2/template" 
+
+B<sinv> I<-c "xdsh -i 611dskls  cat /etc/hosts" -e -t1 -p /tmp/sinv.template  -o /tmp/sinv.output> 
 
 =back
 
