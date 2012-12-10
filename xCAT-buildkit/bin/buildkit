@@ -655,7 +655,7 @@ sub kit_buildrepo1
         if (-r $rpm) { next; }
 
         # Build it
-        if ($::VERBOSE) { print "building kitcomponet metapackage for $kc->{basename} \n";}
+        if ($::VERBOSE) { print "building kitcomponent metapackage for $kc->{basename} \n";}
         if (&build_kitcomp($kc)) { 
             print "Error building kitcomponent metapackage for $kc->{basename} \n";
             return 1;
@@ -1131,15 +1131,28 @@ sub validate_bldkitconf
         }
     }
    
-    # Make sure each kitcomponent has unique basename
+    # Make sure each kitcomponent has unique basename/repoid
+    # If same basename, make sure version/release are same, too
     my $kc_count = scalar @{$::bldkit_config->{kitcomponent}{entries}};
     if ($kc_count > 1) {
         foreach my $kci (0..$kc_count-2) {
           foreach my $kci2 ($kci+1..$kc_count-1) {
             if ( $::bldkit_config->{kitcomponent}{entries}[$kci]->{basename}
               eq $::bldkit_config->{kitcomponent}{entries}[$kci2]->{basename} ) {
-                print "There are two or more kitcomponent sections which are defined with the same basename \"$::bldkit_config->{kitcomponent}{entries}[$kci]->{basename}\". \n";
-                return 1;
+              if ( $::bldkit_config->{kitcomponent}{entries}[$kci]->{kitrepoid}
+                eq $::bldkit_config->{kitcomponent}{entries}[$kci2]->{kitrepoid} ) {
+
+                  print "Two or more kitcomponents are defined with the same basename \"$::bldkit_config->{kitcomponent}{entries}[$kci]->{basename}\" and the same repoid \"$::bldkit_config->{kitcomponent}{entries}[$kci]->{kitrepoid}\". \n";
+                  return 1;
+              }
+              if ( ($::bldkit_config->{kitcomponent}{entries}[$kci]->{version}
+                ne $::bldkit_config->{kitcomponent}{entries}[$kci2]->{version}) ||
+                   ($::bldkit_config->{kitcomponent}{entries}[$kci]->{release}
+                ne $::bldkit_config->{kitcomponent}{entries}[$kci2]->{release}) 
+ ) {
+                  print "Two or more kitcomponents are defined with the same basename \"$::bldkit_config->{kitcomponent}{entries}[$kci]->{basename}\" but with different version or release. \n";
+                  return 1;
+              }
             }
           }
         }
