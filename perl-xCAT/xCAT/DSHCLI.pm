@@ -283,6 +283,10 @@ sub execute_dcp
                         \@targets_waiting, \%targets_active
                         );
     }
+    if (scalar(@targets_failed) > 0)
+    {
+          $::DCP_NODES_FAILED = join ",", @targets_failed;
+    }
 
     return (scalar(@targets_failed) + scalar(keys(%unresolved_targets)));
 }
@@ -395,13 +399,11 @@ sub execute_dsh
     @targets_failed =
       xCAT::DSHCLI->_execute_dsh($options, \%resolved_targets,
                                  \%unresolved_targets, \%context_targets);
-    if ($::DSH_API)
+    if (scalar(@targets_failed) > 0)
     {
-        if (scalar(@targets_failed) > 0)
-        {
-            $::DSH_API_NODES_FAILED = join ",", @targets_failed;
-        }
+          $::DSH_NODES_FAILED = join ",", @targets_failed;
     }
+
     return (scalar(@targets_failed) + scalar(keys(%unresolved_targets)));
 }
 
