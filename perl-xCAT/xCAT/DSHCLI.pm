@@ -589,7 +589,7 @@ sub _execute_dsh
                         push @{$rsp->{data}}, @{$output_buffers{$user_target}};
                         xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
                         $rsp = {};
-                        push @{$rsp->{error}}, @{$error_buffers{$user_target}};
+                        push @{$rsp->{data}}, @{$error_buffers{$user_target}};
                         xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
                     }
                 }
@@ -604,7 +604,7 @@ sub _execute_dsh
                     push @{$rsp->{data}}, @{$output_buffers{$user_target}};
                     xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
                     $rsp = {};
-                    push @{$rsp->{error}}, @{$error_buffers{$user_target}};
+                    push @{$rsp->{data}}, @{$error_buffers{$user_target}};
                     xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
 
                 }
@@ -659,7 +659,7 @@ sub _execute_dsh
                    }
                     # if monitoring
                     $rsp={};
-                    $rsp->{error}->[0] =
+                    $rsp->{data}->[0] =
                       "dsh>  Remote_command_failed $user_target";
                     $$options{'monitor'}
                       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 1);
@@ -1916,7 +1916,7 @@ sub stream_error
 
 
                         my $rsp = {};
-                        $rsp->{error}->[0] =
+                        $rsp->{data}->[0] =
                           "A return code for the command run on $user_target was not received.";
                         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
@@ -2355,7 +2355,7 @@ sub config_dsh
     if ($$options{'environment'} && (-z $$options{'environment'}))
     {
         my $rsp = {};
-        $rsp->{error}->[0] = "File: $$options{'environment'} is empty.";
+        $rsp->{data}->[0] = "File: $$options{'environment'} is empty.";
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         $$options{'environment'} = undef;
     }
@@ -3619,7 +3619,7 @@ sub ignoreEnv
     {
         $env = join ",", @env_not_valid;
         my $rsp = {};
-        $rsp->{error}->[0] = "Invalid Environment Variable: $env";
+        $rsp->{data}->[0] = "Invalid Environment Variable: $env";
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         return;
     }
@@ -3916,9 +3916,11 @@ sub parse_and_run_dsh
     # this was determined in the xdsh client code, because non-root user
     # actions must be taken there.  For those calling xdsh plugin, default
     # is root
-    if (!($ENV{'DSH_TO_USERID'}))
+    if (!($ENV{'DSH_TO_USERID'})) # env first
     {
-        $options{'user'} = "root";
+       if (!($options{'user'})) {  # -l second
+        $options{'user'} = "root";   # default
+       }
     }
     else
     {
@@ -4501,7 +4503,7 @@ sub parse_and_run_dcp
      if (!-f $options{'File'}) 
      {
             my $rsp = ();
-            $rsp->{data}->[0] = "File:$syncfile does not exist.";
+            $rsp->{error}->[0] = "File:$syncfile does not exist.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
      }
@@ -4556,7 +4558,7 @@ sub parse_and_run_dcp
                 if ($::RUNCMD_RC != 0)
                 {
                     my $rsp = {};
-                    $rsp->{data}->[0] = "Command: $cmd failed.";
+                    $rsp->{error}->[0] = "Command: $cmd failed.";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                 }
               }
