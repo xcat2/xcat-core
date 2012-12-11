@@ -408,7 +408,7 @@ sub message
                 return;
             }
 
-            if ($exitcode)
+            if (defined($exitcode))
             {
                 push @{$rsp->{errorcode}}, $exitcode;
             }
