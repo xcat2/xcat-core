@@ -589,8 +589,8 @@ sub _execute_dsh
                         push @{$rsp->{data}}, @{$output_buffers{$user_target}};
                         xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
                         $rsp = {};
-                        push @{$rsp->{data}}, @{$error_buffers{$user_target}};
-                        xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+                        push @{$rsp->{error}}, @{$error_buffers{$user_target}};
+                        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK,0);
                     }
                 }
                 else
@@ -604,8 +604,8 @@ sub _execute_dsh
                     push @{$rsp->{data}}, @{$output_buffers{$user_target}};
                     xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
                     $rsp = {};
-                    push @{$rsp->{data}}, @{$error_buffers{$user_target}};
-                    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+                    push @{$rsp->{error}}, @{$error_buffers{$user_target}};
+                    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK,0);
 
                 }
             }
