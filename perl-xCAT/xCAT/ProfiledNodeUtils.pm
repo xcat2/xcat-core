@@ -228,6 +228,10 @@ sub rackformat_to_numricformat{
     my %objhash = xCAT::DBobjUtils->getobjdefs({$rackname, "rack"});
     my $racknum = $objhash{$rackname}{"num"};
     my $maxnum = 10 ** $len;
+    if ($racknum >= $maxnum ){
+        return undef;
+    }
+
     my $fullnum = $maxnum + $racknum;
     return $prefix.(substr $fullnum, 1).$appendix;
 }

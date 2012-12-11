@@ -1340,29 +1340,42 @@ sub parse_hosts_string{
         $rank = $args_dict{'rank'};
     }
 
-    foreach (keys %::FILEATTRS){
-        my $errmsg = validate_node_entry($_, $::FILEATTRS{$_});
+    my $provnet = xCAT::ProfiledNodeUtils->get_netprofile_provisionnet($args_dict{networkprofile});
+    my @allknownips = keys %allips;
+    my $freeprovipsref = xCAT::ProfiledNodeUtils->get_allocable_staticips_innet($provnet);
+ 
+    foreach my $attr (keys %::FILEATTRS){
+        my $errmsg = validate_node_entry($attr, $::FILEATTRS{$attr});
+        # Check whether specified IP is in our prov network, static range.
+        if ($::FILEATTRS{$attr}->{'ip'}){
+            unless (grep{ $_ eq $::FILEATTRS{$attr}->{'ip'}} @$freeprovipsref){
+                $errmsg .= "Specified IP address $::FILEATTRS{$attr}->{'ip'} not in static range of provision network $provnet";
+            }
+        }
         if ($errmsg) {
-            if ($_=~ /^TMPHOSTS/){
+            if ($attr =~ /^TMPHOSTS/){
                 push @invalid_records, ["__hostname__", $errmsg];
             } else{
-                push @invalid_records, [$_, $errmsg];
+                push @invalid_records, [$attr, $errmsg];
             }
             next;
         }
 
         # We need generate hostnames for this entry.
-        if ($_=~ /^TMPHOSTS/)
+        if ($attr =~ /^TMPHOSTS/)
         {
             # rack + numric hostname format, we must specify rack in node's definition.
             my $numricformat;
             # Need convert hostname format into numric format first.
             if ($nameformattype eq "rack"){
-                if (! exists $::FILEATTRS{$_}{"rack"}){
+                if (! exists $::FILEATTRS{$attr}{"rack"}){
                     push @invalid_records, ["__hostname__", "Rack information is not specified. You must enter the required rack information."];
                     next;
                 }
-                $numricformat = xCAT::ProfiledNodeUtils->rackformat_to_numricformat($nameformat, $::FILEATTRS{$_}{"rack"});
+                $numricformat = xCAT::ProfiledNodeUtils->rackformat_to_numricformat($nameformat, $::FILEATTRS{$attr}{"rack"});
+                if(! $numricformat){
+                    push @invalid_records, ["__hostname__", "The rack number of rack $::FILEATTRS{$attr}{'rack'} does not match hostname format $nameformat"];
+                }
             } else{
                 # pure numric hostname format
                 $numricformat = $nameformat;
@@ -1383,7 +1396,7 @@ sub parse_hosts_string{
 
             $hostnamelistref = $freehostnames{$numricformat};
             my $nexthostname = shift @$hostnamelistref;
-            while (exists $allhostnames{$nexthostname}){
+            while ( (! $nexthostname) || exists $allhostnames{$nexthostname}){
                 if (! @$hostnamelistref){
                     $hostnamelistref = xCAT::ProfiledNodeUtils->genhosts_with_numric_tmpl($numricformat, $rank, 10000);
                     $rank = $rank + 10000;
@@ -1395,9 +1408,9 @@ sub parse_hosts_string{
 
                 $nexthostname = shift @$hostnamelistref;
             }
-            $hostinfo_dict{$nexthostname} = $::FILEATTRS{$_};
+            $hostinfo_dict{$nexthostname} = $::FILEATTRS{$attr};
         } else{
-            $hostinfo_dict{$_} = $::FILEATTRS{$_};
+            $hostinfo_dict{$attr} = $::FILEATTRS{$attr};
         }
     }
     return (\%hostinfo_dict, \@invalid_records);
@@ -1420,38 +1433,39 @@ sub validate_node_entry{
     my $node_name = shift;
     my $node_entry_ref = shift;
     my %node_entry = %$node_entry_ref;
+    my $errmsg = "";
 
     # duplicate hostname found in hostinfo file.
     if (exists $allhostnames{$node_name}) {
-        return "Node name $node_name already exists. You must use a new node name.";
+        $errmsg .= "Node name $node_name already exists. You must use a new node name.\n";
     }
     # Must specify either MAC or switch + port.
     if (exists $node_entry{"mac"} || 
         exists $node_entry{"switch"} && exists $node_entry{"port"}){
     } else{
-        return "MAC address, switch and port is not specified. You must specify the MAC address or switch and port.";
+        $errmsg .= "MAC address, switch and port is not specified. You must specify the MAC address or switch and port.\n";
     }
 
     if (! xCAT::NetworkUtils->isValidHostname($node_name)){
-        return "Node name: $node_name is invalid. You must use a valid node name.";
+        $errmsg .= "Node name: $node_name is invalid. You must use a valid node name.\n";
     }
     # validate each single value.
     foreach (keys %node_entry){
         if ($_ eq "mac"){
             if (exists $allmacs{$node_entry{$_}}){
-                return "MAC address $node_entry{$_} already exists in the database or in the nodeinfo file. You must use a new MAC address.";
+                $errmsg .= "MAC address $node_entry{$_} already exists in the database or in the nodeinfo file. You must use a new MAC address.\n";
             }elsif(! xCAT::NetworkUtils->isValidMAC($node_entry{$_})){
-                return "MAC address $node_entry{$_} is invalid. You must use a valid MAC address. ";
+                $errmsg .= "MAC address $node_entry{$_} is invalid. You must use a valid MAC address.\n";
             }else{
                 $allmacs{$node_entry{$_}} = 0;
             }
         }elsif ($_ eq "ip"){
             if (exists $allips{$node_entry{$_}}){
-                return "IP address $node_entry{$_} already exists in the database or in the nodeinfo file.";
+                $errmsg .= "IP address $node_entry{$_} already exists in the database or in the nodeinfo file.\n";
             }elsif((xCAT::NetworkUtils->validate_ip($node_entry{$_}))[0]->[0] ){
-                return "IP address $node_entry{$_} is invalid. You must use a valid IP address.";
+                $errmsg .= "IP address $node_entry{$_} is invalid. You must use a valid IP address.\n";
             }elsif(xCAT::NetworkUtils->isReservedIP($node_entry{$_})){
-                return "IP address $node_entry{$_} is invalid. You must use a valid IP address.";
+                $errmsg .= "IP address $node_entry{$_} is invalid. You must use a valid IP address.\n";
             }else {
                 #push the IP into allips list.
                 $allips{$node_entry{$_}} = 0;
@@ -1461,46 +1475,46 @@ sub validate_node_entry{
         }elsif ($_ eq "port"){
         }elsif ($_ eq "rack"){
             if (! exists $allracks{$node_entry{$_}}){
-                return "Specified rack $node_entry{$_} is not defined";
+                $errmsg .= "Specified rack $node_entry{$_} is not defined\n";
             }
             # rack must be specified with chassis or unit + height.
             if (exists $node_entry{"chassis"}){
-                return "Specified rack cannot be used with chassis.";
+                $errmsg .= "Specified rack cannot be used with chassis.\n";
             } elsif (exists $node_entry{"height"} and exists $node_entry{"unit"}){
             } else {
-                return "Specified rack must also specify the chassis or the height and unit.";
+                $errmsg .= "Specified rack must also specify the chassis or the height and unit.\n";
             }
         }elsif ($_ eq "chassis"){
             if (! exists $allchassis{$node_entry{$_}}){
-                return "Specified chassis $node_entry{$_} is not defined";
+                $errmsg .= "Specified chassis $node_entry{$_} is not defined\n";
             }
             # Chassis must not be specified with unit and height.
             if (exists $node_entry{"height"} or exists $node_entry{"unit"}){
-                return "Specified chassis cannot be used with height or unit.";
+                $errmsg .= "Specified chassis cannot be used with height or unit.\n";
             }
         }elsif ($_ eq "unit"){
             if (! exists $node_entry{"rack"}){
-                return "Specified unit must be used with rack.";
+                $errmsg .= "Specified unit must be used with rack.\n";
             }
             # Not a valid number.
             if (!($node_entry{$_} =~ /^\d+$/)){
-                return "Specified unit $node_entry{$_} is invalid";
+                $errmsg .= "Specified unit $node_entry{$_} is invalid\n";
             }
         }elsif ($_ eq "height"){
             if (! exists $node_entry{"rack"}){
-                return "Height must be used with rack";
+                $errmsg .= "Height must be used with rack\n";
             }
             # Not a valid number.
             if (!($node_entry{$_} =~ /^\d+$/)){
-                return "Specified height $node_entry{$_} is invalid";
+                $errmsg .= "Specified height $node_entry{$_} is invalid\n";
             }
         }else{
-           return "Invalid attribute $_ specified";
+           $errmsg .= "Invalid attribute $_ specified\n";
         }
     }
     # push hostinfo into global dicts.
     $allhostnames{$node_name} = 0;
-    return undef;
+    return $errmsg;
 }
 
 
@@ -1528,7 +1542,7 @@ sub setrsp_invalidrecords
     my ($fh, $filename) = xCAT::ProfiledNodeUtils->get_output_filename();
     foreach (@$recordsref){
     	my @erroritem = @$_;
-        print $fh "nodename $erroritem[0], error: $erroritem[1]\n";
+        print $fh "nodename $erroritem[0], error:\n$erroritem[1]\n";
     }
     close $fh;
     #make it readable for http.
