@@ -406,6 +406,29 @@ unless ($onlyinitrd) {
    postscripts(); #run 'postscripts'
 }
 
+#get the rpm version, if the rpm version is different then the db verison may change.
+my $mnrpmver = `rpm --version | awk  '{print \$3}'`;
+my $cnrpmver = `chroot $rootimg_dir rpm --version | awk '{print \$3}'`;
+if ( $mnrpmver ne $cnrpmver ){
+    #fine all db file witch should be rebuided
+    my $filelist = `file $rootimg_dir/var/lib/rpm/* | grep 'Berkeley DB' | awk -F : '{print \$1}'`;
+
+    my @files = split '\n', $filelist;
+
+    system("rm -rf $rootimg_dir/var/lib/rpm/__db*");
+    foreach  my $file ( @files ){
+        my $filename = basename($file);
+        #dump the db file to a normal test file with the db_dump on the mn
+        system("db_dump $file > $rootimg_dir/tmp/$filename.dbtmp9");
+        unlink("$rootimg_dir/var/lib/rpm/$filename");
+        #chroot to the rootimage and run db_load
+        system(" chroot $rootimg_dir db_load -f /tmp/$filename.dbtmp9 /var/lib/rpm/$filename");
+    }
+    system("rm -rf $rootimg_dir/tmp/*.dbtmp9");
+    #rebuild rpm db file in rootimage for cn
+    system(" chroot $rootimg_dir rpm --rebuilddb");
+}
+
 # Default to the first kernel found in the install image if nothing specified explicitly.
 # A more accurate guess than whatever the image build server happens to be running
 # If specified, that takes precedence.
