@@ -13,6 +13,7 @@ package xCAT_plugin::webportal;
 use strict;
 require xCAT::Utils;
 require xCAT::MsgUtils;
+require xCAT::zvmUtils;
 require xCAT::DBobjUtils;
 require IO::Socket::INET;
 use Getopt::Long;
