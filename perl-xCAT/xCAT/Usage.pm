@@ -379,7 +379,7 @@ Options:
 "Usage:
    Common:
       nodeset [-h|--help|-v|--version]
-      nodeset <noderange> [install|shell|boot|runcmd=bmcsetup|netboot|iscsiboot|osimage=<imagename>|statelite|offline]",
+      nodeset <noderange> [install|shell|boot|runcmd=bmcsetup|netboot|iscsiboot|osimage[=<imagename>]|statelite|offline]",
   "rmflexnode" =>
 "Usage:
     rmflexnode [-h|--help|-v|--version]
