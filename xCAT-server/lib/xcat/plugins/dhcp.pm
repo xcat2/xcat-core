@@ -889,11 +889,23 @@ sub process_request
 	return;  
     }
 
-    #my $sitetab = xCAT::Table->new('site');
+    my $servicenodetab = xCAT::Table->new('servicenode');
+    my @nodeinfo   = xCAT::Utils->determinehostname;
+    my $nodename   = pop @nodeinfo;                    # get hostname
+    my $dhcpinterfaces = $servicenodetab->getNodeAttribs($nodename, ['dhcpinterfaces']);
+
     my %activenics;
     my $querynics = 1;
-    #if ($sitetab)
-    #{
+
+    if ( xCAT::Utils->isServiceNode() and $dhcpinterfaces and $dhcpinterfaces->{dhcpinterfaces} ) {
+        my @dhcpifs = split ',', $dhcpinterfaces->{dhcpinterfaces};
+        foreach my $nic ( @dhcpifs ) {
+             $activenics{$nic} = 1;
+             $querynics = 0;
+        }
+    }
+    else
+    {
         #my $href;
         #($href) = $sitetab->getAttribs({key => 'dhcpinterfaces'}, 'value');
         my @entries =  xCAT::TableUtils->get_site_attribute("dhcpinterfaces");
@@ -972,7 +984,7 @@ sub process_request
             return;
         }
         $domain = $t_entry;
-    #}
+    }
 
     @dhcpconf = ();
     @dhcp6conf = ();
