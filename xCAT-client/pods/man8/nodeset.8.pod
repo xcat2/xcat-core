@@ -4,7 +4,7 @@ B<nodeset> - set the boot state for a noderange
 
 =head1 B<Synopsis>
 
-B<nodeset> [I<noderange>] [I<boot>|I<install>|I<stat>|I<iscsiboot>|I<netboot>|I<statelite>|I<offline>|I<runcmd=bmcsetup>|I<osimage=<imagename>>]
+B<nodeset> [I<noderange>] [I<boot>|I<install>|I<stat>|I<iscsiboot>|I<netboot>|I<statelite>|I<offline>|I<runcmd=bmcsetup>|I<osimage[=<imagename>]>]
 
 B<nodeset> [I<-h>|I<--help>|I<-v>|I<--version>]
 
@@ -59,9 +59,9 @@ Prepare server for deploying statelite nodes. Statelite provides an efficient an
 
 Cleanup the current pxe/tftp boot configuration files for the nodes requested
 
-=item B<osimage=<imagename>>
+=item B<osimage>|B<osimage=<imagename>>
 
-Prepare server for installing a node using the sepcified os image. The os image is defined in the I<osimage> table and I<linuximage> table.  
+Prepare server for installing a node using the sepcified os image. The os image is defined in the I<osimage> table and I<linuximage> table. If the <imagename> is omitted, the image name will be obtained from I<nodetype.provmethod> for the node.  
 
 =item B<stat>
 
