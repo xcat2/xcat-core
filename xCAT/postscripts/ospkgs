@@ -265,7 +265,7 @@ else
                     if ( pmatch "$OSVER" "rhels6*" ); then
 
                         if [ $ARCH == "x86_64" ]; then
-                            for arg in "Server" "OSPKGDIR/ScalableFileSystem" "HighAvailability" "ResilientStorage" "LoadBalancer" 
+                            for arg in "Server" "ScalableFileSystem" "HighAvailability" "ResilientStorage" "LoadBalancer" 
                             do
                                 ospkgdir="$NFSSERVER$dir/$arg"
                                 index=$(expr $index + 1)          
@@ -301,7 +301,7 @@ else
                     if ( pmatch "$OSVER" "rhels6*" ); then
 
                         if [ $ARCH == "x86_64" ]; then
-                            for arg in "Server" "OSPKGDIR/ScalableFileSystem" "HighAvailability" "ResilientStorage" "LoadBalancer" 
+                            for arg in "Server" "ScalableFileSystem" "HighAvailability" "ResilientStorage" "LoadBalancer" 
                             do
                                 ospkgdir="$NFSSERVER$dir/$arg"
                                 index=$(expr $index + 1)          

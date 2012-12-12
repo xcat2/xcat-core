@@ -482,26 +482,17 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         echo "yum -y upgrade"
         result=`yum -y upgrade 2>&1`
         logger -p local4.info -t xcat "$result"
-        if [ $? -ne 0 ]; then 
-	    #logger -p local4.info -t xcat "otherpkgs: $result"
-        fi
         echo "result"
     elif [ $haszypper -eq 1 ]; then
         echo "zypper --non-interactive update --auto-agree-with-license"
 	result=`zypper --non-interactive update --auto-agree-with-license 2>&1`
         logger -p local4.info -t xcat "$result"
-	if [ $? -ne 0 ]; then 
-            logger -p local4.info -t xcat "otherpkgs: $result"
-	fi
         echo "$result"
 	elif [ $hasapt -eq 1 ]; then
 		apt_get_update_if_repos_changed $REPOFILE
 		echo "apt-get -y upgrade"
 		result=`apt-get -y upgrade 2>&1`
 		logger -p local4.info -t xcat "$result"
-		if [ $? -ne 0 ]; then 
-			logger -p local4.info -t xcat "otherpkgs: $result"
-		fi
 		echo "$result"
     fi     
 
@@ -514,30 +505,27 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         if [ $hasyum -eq 1 ]; then 
             echo "$envlist yum -y remove $repo_pkgs_preremove"
             result=`eval $envlist yum -y remove $repo_pkgs_preremove 2>&1`
-            logger -p local4.info -t xcat "$result"
             if [ $? -ne 0 ]; then
                 RETURNVAL=$? 
-	        logger -p local4.info -t xcat "otherpkgs: $result"
             fi
+            logger -p local4.info -t xcat "$result"
             echo "$result"
         elif [ $haszypper -eq 1 ]; then
             echo "$envlist zypper remove -y $repo_pkgs_preremove"
 	    result=`eval $envlist zypper remove -y $repo_pkgs_preremove 2>&1`
-            logger -p local4.info -t xcat "$result"
 	    if [ $? -ne 0 ]; then 
                 RETURNVAL=$? 
-                logger -p local4.info -t xcat "otherpkgs: $result"
 	    fi
+            logger -p local4.info -t xcat "$result"
             echo "$result"
 	elif [ $hasapt -eq 1 ]; then
   	    apt_get_update_if_repos_changed $REPOFILE
 	    echo "apt-get -y remove $repo_pkgs_preremove"
 	    result=`apt-get -y remove $repo_pkgs_preremove 2>&1`
-            logger -p local4.info -t xcat "$result"
             if [ $? -ne 0 ]; then 
                 RETURNVAL=$? 
-                logger -p local4.info -t xcat "otherpkgs: $result"
             fi
+            logger -p local4.info -t xcat "$result"
             echo "$result"
         fi
     fi 
@@ -545,11 +533,10 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     if [ "$plain_pkgs_preremove" != "" ]; then 
         echo "$envlist $sremovecommand $plain_pkgs_preremove" 
         result=`eval $envlist $sremovecommand $plain_pkgs_preremove 2>&1`
-        logger -p local4.info -t xcat "$result"
         if [ $? -ne 0 ]; then 
             RETURNVAL=$? 
-	    logger -p local4.info -t xcat "otherpkgs $result"
         fi
+        logger -p local4.info -t xcat "$result"
         echo "$result"
     fi
 
@@ -559,20 +546,18 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         if [ $hasyum -eq 1 ]; then 
             echo "$envlist yum -y install $repo_pkgs"
             result=`eval $envlist yum -y install $repo_pkgs 2>&1`
-	    logger -p local4.info -t xcat "$result"
             if [ $? -ne 0 ]; then 
                 RETURNVAL=$? 
-                logger -p local4.info -t xcat "otherpkgs: $result"
             fi
+	    logger -p local4.info -t xcat "$result"
             echo "$result"
         elif [ $haszypper -eq 1 ]; then
             echo "$envlist zypper install -y $repo_pkgs"
 	    result=`eval $envlist zypper install -y $repo_pkgs 2>&1`
-            logger -p local4.info -t xcat "$result"
 	    if [ $? -ne 0 ]; then 
                 RETURNVAL=$? 
-                logger -p local4.info -t xcat "otherpkgs: $result"
 	    fi
+            logger -p local4.info -t xcat "$result"
             echo "$result"
             #remove the repos
             #old_repo=`zypper lr -u |grep xcat-otherpkgs | cut -f2 -d '|'`
@@ -584,11 +569,10 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 		apt_get_update_if_repos_changed $REPOFILE
 	    echo "$envlist apt-get -q -y --force-yes install $repo_pkgs"
 	    result=`eval $envlist apt-get -q -y --force-yes install $repo_pkgs 2>&1`
-	    logger -p local4.info -t xcat "$result"
 	    if [ $? -ne 0 ]; then 
                 RETURNVAL=$? 
-                logger -p local4.info -t xcat "otherpkgs: $result"
 	    fi
+	    logger -p local4.info -t xcat "$result"
             echo "$result"
         fi
     fi 
@@ -617,11 +601,10 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 
         echo "$envlist $supdatecommand $plain_pkgs" 
         result=`eval $envlist $supdatecommand $plain_pkgs 2>&1`
-        logger -p local4.info -t xcat "$result"
         if [ $? -ne 0 ]; then 
             RETURNVAL=$? 
-	    logger -p local4.info -t xcat "otherpkgs $result"
         fi
+        logger -p local4.info -t xcat "$result"
         echo "$result"
     
         if [ $mounted -eq 0 ]; then
@@ -637,30 +620,27 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         if [ $hasyum -eq 1 ]; then 
             echo "$envlist yum -y remove $repo_pkgs_postremove"
             result=`eval $envlist yum -y remove $repo_pkgs_postremove 2>&1`
-            logger -p local4.info -t xcat "$result"
             if [ $? -ne 0 ]; then 
                 RETURNVAL=$? 
-                logger -p local4.info -t xcat "otherpkgs: $result"
             fi
+            logger -p local4.info -t xcat "$result"
             echo "$result"
         elif [ $haszypper -eq 1 ]; then
             echo "$envlist zypper remove -y $repo_pkgs_postremove"
 	    result=`eval $envlist zypper remove -y $repo_pkgs_postremove 2>&1`
-            logger -p local4.info -t xcat "$result"
 	    if [ $? -ne 0 ]; then 
                 RETURNVAL=$? 
-                logger -p local4.info -t xcat "otherpkgs: $result"
     	    fi
+            logger -p local4.info -t xcat "$result"
             echo "$result"
         elif [ $hasapt -eq 1 ]; then 
             apt_get_update_if_repos_changed $REPOFILE
             echo "$envlist apt-get -y remove $repo_pkgs_postremove"
             result=`eval $envlist apt-get -y remove $repo_pkgs_postremove 2>&1`
-            logger -p local4.info  -t xcat "$result"
             if [ $? -ne 0 ]; then 
                 RETURNVAL=$? 
-                logger -p local4.info -t xcat "otherpkgs: $result"
             fi
+            logger -p local4.info  -t xcat "$result"
             echo "$result"
         fi
     fi 
@@ -668,11 +648,10 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     if [ "$plain_pkgs_postremove" != "" ]; then 
         echo "$envlist $sremovecommand $plain_pkgs_postremove" 
         result=`eval $envlist $sremovecommand $plain_pkgs_postremove 2>&1`
-        logger -p local4.info -t xcat "$result"
         if [ $? -ne 0 ]; then 
             RETURNVAL=$? 
-       	    logger -p local4.info -t xcat "otherpkgs $result"
         fi
+        logger -p local4.info -t xcat "$result"
         echo "$result"
     fi
 
