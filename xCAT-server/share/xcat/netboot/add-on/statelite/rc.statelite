@@ -539,3 +539,7 @@ ResolveLinks
 #cp -r -a ${DEFAULT}/* /.snapshot/tmpfs/
 # foo
 
+# Copy the fake network interface configuration file to /etc/sysconfig/network to handle
+# the issue of reboot nfs-based statelite
+/bin/cp /tmp/ifcfg-* $MNTDIR/etc/sysconfig/network
+
