@@ -26,6 +26,8 @@ B<rspconfig> I<noderange> B<garp>={I<time>}
 
 B<rspconfig> I<noderange> {B<sshcfg>|B<snmpcfg>|B<pd1>|B<pd2>|B<network>|B<swnet>|B<ntp>|B<textid>|B<frame>}
 
+B<rspconfig> I<noderange> B<USERID>={B<newpasswd>} B<updateBMC>={B<y>|B<n>}
+
 B<rspconfig> I<noderange> B<sshcfg>={B<enable>|B<disable>}
 
 B<rspconfig> I<noderange> B<snmpcfg>={B<enable>|B<disable>}
@@ -104,9 +106,6 @@ B<rspconfig> I<noderange> B<solcfg>={B<enable>|B<disable>}
 
 B<rspconfig> I<noderange> B<textid>={B<*|textid>}
 
-B<rspconfig> I<noderange> B<HMC>={B<newpasswd>}
-
-B<rspconfig> I<noderange> B<USERID>={B<newpasswd>}
 
 B<rspconfig> I<noderange> B<cec_off_policy>={B<poweroff>|B<stayon>}
 
@@ -423,13 +422,9 @@ Enter the current time in UTC (Coordinated Universal Time) format.
 
 Set the blade or MPA textid. When using '*', the textid used is the node name specified on the command-line. Note that when specifying an actual textid, only a single node can be specified in the noderange.
 
-=item B<HMC>={I<newpasswd>}
+=item B<USERID>={I<newpasswd>} B<updateBMC>={I<y|n>}
 
-Change the password of the userid B<HMC> for CMM in NGP environment.
-
-=item B<USERID>={I<newpasswd>}
-
-Change the password of the userid B<USERID> for CMM in NGP environment.
+Change the password of the userid B<USERID> for CMM in NGP environment. The option I<updateBMC> can be used to specify whether updating the password of BMCs that connected to the speified CMM. The value is 'y' by default which means whenever updating the password of CMM, the password of BMCs will be also updated. Note that there will be several seconds needed before this command complete.
 
 =item B<--resetnet>
 
