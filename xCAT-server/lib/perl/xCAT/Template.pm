@@ -702,6 +702,7 @@ my $arch;
 my $provmethod;
 %::GLOBAL_TAB_HASH = ();
 %::GLOBAL_SN_HASH = ();
+%::GLOBAL_TABDUMP_HASH = ();
 
 sub subvars_for_mypostscript { 
   my $self         = shift;
@@ -751,6 +752,8 @@ sub subvars_for_mypostscript {
   my $inc;
   my $t_inc;
   my %table;
+  my @tabs;
+  my %dump_results;
   #First load input into memory..
   while (<$inh>) {
       $t_inc.=$_;
@@ -761,6 +764,13 @@ sub subvars_for_mypostscript {
            my $attrib = $3;
            $table{$tabname}{$key}{$attrib} = 1;
       }
+
+     if( $_ =~ /^tabdump\(([\w]+)\)/) {
+           my $tabname = $1;
+           if( $tabname !~ /^(auditlog|bootparams|chain|deps|domain|eventlog|firmware|hypervisor|iscsi|kvm_nodedata|mac|nics|ipmi|mp|ppc|ppcdirect|site|websrv|zvm|statelite|rack|hosts|prodkey|switch|node)/) {
+               push @tabs, $tabname;
+           }
+     }
 
   }
 
@@ -778,6 +788,10 @@ sub subvars_for_mypostscript {
   }
 
   #print Dumper(\%::GLOBAL_TAB_HASH);
+
+  #print Dumper(\@tabs); 
+  dump_all_attribs_in_tabs(\@tabs,\%::GLOBAL_TABDUMP_HASH, $callback);
+  #print Dumper(\%::GLOBAL_TABDUMP_HASH);
 
   my %script_fp;    
   my $allattribsfromsitetable;
@@ -936,7 +950,7 @@ sub subvars_for_mypostscript {
   #$inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
   #$inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
   #$inc =~ s/#NODE#/$node/eg;
-  $inc =~ s/#\$NODE#/$node/eg;
+  $inc =~ s/\$NODE/$node/eg;
   $inc =~ s/#SITE_TABLE_ALL_ATTRIBS_EXPORT#/$allattribsfromsitetable/eg; 
   #$inc =~ s/#TABLE:([^:]+):([^:]+):([^:]+):BLANKOKAY#/tabdb($1,$2,$3,1)/eg; 
   $inc =~ s/#TABLE:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3)/eg; 
@@ -949,7 +963,8 @@ sub subvars_for_mypostscript {
   $inc =~ s/#INCLUDE_POSTBOOTSCRIPTS_LIST#/$postbootscripts/eg; 
   
   #$inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
-  $inc =~ s/#\$NTYPE#/$nodetype/eg;
+  $inc =~ s/\$NTYPE/$nodetype/eg;
+  $inc =~ s/tabdump\(([\w]+)\)/tabdump($1)/eg;
   $inc =~ s/#Subroutine:([^:]+)::([^:]+)::([^:]+):([^#]+)#/subroutine($1,$2,$3,$4)/eg;
 
   #$inc =~ s/^([^#]+)=[\s]*export $1//eg;
@@ -1605,6 +1620,72 @@ sub  collect_all_attribs_for_tables_in_template
   }
 
 
+}
+
+sub dump_all_attribs_in_tabs 
+{
+   my $tabs     = shift;
+   my $result   = shift;
+   my $callback = shift;   
+
+   my $rsp;
+   my $tab;
+   foreach $tab (@$tabs) {
+       my $ptab = xCAT::Table->new("$tab"); 
+       unless ($ptab) {
+           push @{$rsp->{data}},
+              "Unable to open $tab table";
+           xCAT::MsgUtils->message("E", $rsp, $callback);
+           return undef;
+       }
+
+
+       my $tabdetails = xCAT::Table->getTableSchema($tab);
+       my $cols = $tabdetails->{cols};
+  
+       my $recs = $ptab->getAllEntries();  
+       my $sum = @$recs;
+       $tab =~ tr/a-z/A-Z/;
+       my $res = "$tab"."_LINES=$sum\n";  
+       $res .= "export $tab"."_LINES\n";
+       my $num = 0;
+       my $rec;
+       foreach $rec (@$recs) {
+           my $attrib;
+           $num++;  
+           my $values;       
+           my $t; 
+           foreach $attrib (@$cols) {
+               my $val = $rec->{$attrib};
+               # We use "||" as the delimiter of the attribute=value pair in each line.
+               # Uses could put special characters in the comments attribute.
+               # So we put the comments attribute as the last in the list.
+               # The parsing could consider everything after "comments=" as the comments value, regardless of whether or not it had "||" in it.
+               if( $attrib =~ /^comments$/) {
+                   $t = $val;   
+               } else {
+                   $values .="$attrib=$val||";
+                   if( $attrib =~ /^disable$/) {
+                       $values .="comments=$t";   
+                   }
+               }                 
+           } 
+           $values="$tab"."_LINE$num=\'$values\'\n";
+           $values .="export $tab"."_LINE$num\n";
+           $res .= $values;     
+       }
+       $tab =~ tr/A-Z/a-z/;
+       $result->{$tab} = $res;
+   }  
+
+}
+
+sub tabdump
+{
+    my $tab =shift;
+    my $value= $::GLOBAL_TABDUMP_HASH{$tab};
+
+    return $value;
 }
 
 
