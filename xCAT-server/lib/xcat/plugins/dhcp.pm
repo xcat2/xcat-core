@@ -890,7 +890,7 @@ sub process_request
     }
 
     my $servicenodetab = xCAT::Table->new('servicenode');
-    my @nodeinfo   = xCAT::Utils->determinehostname;
+    my @nodeinfo   = xCAT::NetworkUtils->determinehostname;
     my $nodename   = pop @nodeinfo;                    # get hostname
     my $dhcpinterfaces = $servicenodetab->getNodeAttribs($nodename, ['dhcpinterfaces']);
 
