@@ -100,10 +100,6 @@ else
 
 foreach my $sarg (@SaveARGV)
 {
-     if (($bname eq "xdcp") && ($sarg !~ /^-/) && ( $sarg !~ /^\//)) 
-    {
-        $sarg = xCAT::Utils->full_path($sarg);
-    }
     push(@{$cmdref->{arg}}, $sarg);
 }
 
