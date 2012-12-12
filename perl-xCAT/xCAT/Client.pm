@@ -25,10 +25,12 @@ if ($inet6support) {
    $inet6support = eval { require IO::Socket::SSL; IO::Socket::SSL->import('inet6'); 1;};
 }
 
-# Is IPv6 enabled on the MN or xCAT client at all?
-my $ipv6enabled = `ip addr | grep inet6`;
-if (!$ipv6enabled) {
-    $inet6support = 0;
+if ($^O =~ /^linux/i) {
+    # Is IPv6 enabled on the MN or xcat client node at all?
+    my $ipv6enabled = `ip addr | grep inet6`;
+    if (!$ipv6enabled) {
+        $inet6support = 0;
+    }
 }
 
 unless ($inet6support) {
