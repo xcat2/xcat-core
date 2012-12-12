@@ -569,3 +569,7 @@ if grep --quiet --no-messages "Dummy resolv.conf" "$MNTDIR/etc/resolv.conf"; the
 /bin/cat /etc/resolv.conf > $MNTDIR/etc/resolv.conf
 fi
 
+# Copy the fake network interface configuration file to /etc/sysconfig/network to handle
+# the issue of reboot nfs-based statelite
+/bin/cp /tmp/ifcfg-* $MNTDIR/etc/sysconfig/network
+

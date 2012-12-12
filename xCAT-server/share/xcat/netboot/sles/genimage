@@ -1014,6 +1014,11 @@ while ! ifconfig | grep inet; do
     sleep 1
     netstart \$IFACE
 done
+# Add a fake interface configuration file for the boot interface to skip the
+# ifdown of the interface during the reboot/shutdown to skip the fs broken of
+# nfs based file system
+echo "STARTMODE=nfsroot" > /tmp/ifcfg-\$IFACE
+
 ip addr add dev lo 127.0.0.1/8
 ip link set lo up
 cd /
@@ -1288,7 +1293,7 @@ EOMS
    close($inifile);
    open($inifile,">"."/tmp/xcatinitrd.$$/bin/netstart");
    print $inifile "#!/bin/bash \n";
-   print $inifile "dhcpcd \${1}\n";
+   print $inifile "dhcpcd \${1} -p\n";
 
    #-- Bring other NICs up in /bin/netstart in initrd for NIC failover
    foreach (split /,/,$othernics) {
