@@ -5318,6 +5318,10 @@ sub dompa {
         push @cfgtext, "Hardware type $mptype is not supported. Valid types(mm,cmm).\n";
         $rc = 1;
         $args = [];
+      } elsif ($mpa ne $node && grep /updateBMC/, @exargs) {
+        push @cfgtext, "The option updateBMC only supported for the CMM";
+        $rc = 1;
+        $args = [];
       } else {
         $result = clicmds($mpa,$user,$pass,$node,$slot,cmds=>\@exargs);
         $rc |= @$result[0];
