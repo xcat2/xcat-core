@@ -24,6 +24,8 @@ in the xCAT database.
 =item B<-a|--all>
 
 Display all definitions.
+For performance consideration, the auditlog and eventlog objects will not be listed.
+To list auditlog or eventlog objects, use lsdef -t auditlog or lsdef -t eventlog instead.
 
 =item B<-c|--compress>
 
