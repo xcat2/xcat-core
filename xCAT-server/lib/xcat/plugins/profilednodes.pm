@@ -37,6 +37,8 @@ my %allinstallips;
 my %allnicips;
 my %allracks;
 my %allchassis;
+# The array of all chassis which is special CMM 
+my %allcmmchassis;
 
 # Define parameters for xcat requests.
 my $request;
@@ -289,6 +291,16 @@ Usage:
         setrsp_errormsg("Invalid node name format: $args_dict{'hostnameformat'}");
         return;
     }
+    
+    # Validate if profile consistent
+    my $imageprofile = $args_dict{'imageprofile'};
+    my $networkprofile = $args_dict{'networkprofile'};
+    my $hardwareprofile = $args_dict{'hardwareprofile'};
+    my ($returncode, $errmsg) = xCAT::ProfiledNodeUtils->check_profile_consistent($imageprofile, $networkprofile, $hardwareprofile);
+    if (not $returncode) {
+        setrsp_errormsg($errmsg);
+        return;
+    }
 
     # Get database records: all hostnames, all ips, all racks...
     xCAT::MsgUtils->message('S', "Getting database records.");
@@ -298,6 +310,11 @@ Usage:
     %allbmcips = %$recordsref;
     $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('mac', 'mac');
     %allmacs = %$recordsref;
+    
+    # Get all FSP ip address
+    $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('ppc', 'hcp');
+    my %allfspips = %$recordsref;
+
     # MAC records looks like: "01:02:03:04:05:0E!node5│01:02:03:05:0F!node6-eth1". We want to get the real mac addres.
     foreach (keys %allmacs){
         my @hostentries = split(/\|/, $_);
@@ -312,13 +329,15 @@ Usage:
     %allips = %$recordsref;
 
     # Merge all BMC IPs and install IPs into allips.
-    %allips = (%allips, %allbmcips, %allinstallips);
+    %allips = (%allips, %allbmcips, %allinstallips, %allfspips);
 
     #TODO: can not use getallnode to get rack infos.
     $recordsref = xCAT::ProfiledNodeUtils->get_all_rack(1);
     %allracks = %$recordsref;
     $recordsref =  xCAT::ProfiledNodeUtils->get_all_chassis(1);
     %allchassis = %$recordsref;
+    $recordsref =  xCAT::ProfiledNodeUtils->get_all_chassis(1,'cmm');
+    %allcmmchassis = %$recordsref;
 
     # Generate temporary hostnames for hosts entries in hostfile. 
     xCAT::MsgUtils->message('S', "Generate temporary hostnames.");
@@ -1188,10 +1207,10 @@ sub gen_new_hostinfo_string{
 
     # Get node's provisioning method
     my $provmethod = xCAT::ProfiledNodeUtils->get_imageprofile_prov_method($args_dict{'imageprofile'});
-
+    
     # compose the stanza string for hostinfo file.
     my $hostsinfostr = "";
-    foreach my $item (keys %hostinfo_dict){
+    foreach my $item (keys %hostinfo_dict){       
         # Generate IPs for all interfaces.
         my %ipshash;
         foreach (keys %netprofileattr){
@@ -1229,8 +1248,8 @@ sub gen_new_hostinfo_string{
         if (exists $args_dict{'hardwareprofile'}){$hostinfo_dict{$item}{"groups"} .= ",".$args_dict{'hardwareprofile'}}
         if (exists $args_dict{'groups'}){$hostinfo_dict{$item}{"groups"} .= ",".$args_dict{'groups'}}
         
-        # Update BMC records.
-        if (exists $netprofileattr{"bmc"}){
+        $hostinfo_dict{$item}{"chain"} = 'osimage='.$provmethod;
+        if (exists $netprofileattr{"bmc"}){ # Update BMC records.
             $hostinfo_dict{$item}{"mgt"} = "ipmi";
             $hostinfo_dict{$item}{"chain"} = 'runcmd=bmcsetup,osimage='.$provmethod;
 
@@ -1239,8 +1258,15 @@ sub gen_new_hostinfo_string{
             } else{
                 return 0, "There are no more IP addresses available in the static network range for the BMC network.";
             }
-        } else{
-            $hostinfo_dict{$item}{"chain"} = 'osimage='.$provmethod;
+        } elsif (exists $netprofileattr{"fsp"}){ # Update FSP records
+            $hostinfo_dict{$item}{"mgt"} = "fsp";
+            $hostinfo_dict{$item}{"mpa"}= $hostinfo_dict{$item}{"chassis"};
+            
+            if (exists $ipshash{"fsp"}){
+                $hostinfo_dict{$item}{"hcp"} = $ipshash{"fsp"};
+            } else{
+                return 0, "No sufficient IP addresses for FSP";
+            }
         }
  
         # Generate the hostinfo string.
@@ -1449,6 +1475,10 @@ sub validate_node_entry{
     if (! xCAT::NetworkUtils->isValidHostname($node_name)){
         $errmsg .= "Node name: $node_name is invalid. You must use a valid node name.\n";
     }
+    
+    # validate if node use FSP network
+    my $is_fsp = xCAT::ProfiledNodeUtils->is_fsp_node($args_dict{'networkprofile'});
+    
     # validate each single value.
     foreach (keys %node_entry){
         if ($_ eq "mac"){
@@ -1492,6 +1522,17 @@ sub validate_node_entry{
             if (exists $node_entry{"height"} or exists $node_entry{"unit"}){
                 $errmsg .= "Specified chassis cannot be used with height or unit.\n";
             }
+            # Check if this chassis is CMM. If it is, must specify slotid
+            if (exists $allcmmchassis{$node_entry{$_}}){
+                if (not exists $node_entry{"slotid"}){
+                    $errmsg .= "Specified CMM Chassis must be used with sloid";
+                }
+            }else {
+                # If the specific chassis is not CMM chassis, but network is fsp
+                if ($is_fsp) {
+                    $errmsg .= "Specified FSP network must be used with CMM chassis."
+                }
+            }
         }elsif ($_ eq "unit"){
             if (! exists $node_entry{"rack"}){
                 $errmsg .= "Specified unit must be used with rack.\n";
@@ -1507,6 +1548,14 @@ sub validate_node_entry{
             # Not a valid number.
             if (!($node_entry{$_} =~ /^\d+$/)){
                 $errmsg .= "Specified height $node_entry{$_} is invalid\n";
+            }
+        }elsif ($_ eq "slotid"){
+            if (not exists $node_entry{"chassis"}){
+                $errmsg .= "Specified slotid must be used with chassis";
+            }
+            # Not a valid number.
+            if (!($node_entry{$_} =~ /^[1-9]\d*$/)){
+                $errmsg .= "Specified slotid $node_entry{$_} is invalid";
             }
         }else{
            $errmsg .= "Invalid attribute $_ specified\n";

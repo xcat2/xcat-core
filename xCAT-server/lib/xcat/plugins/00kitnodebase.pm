@@ -99,10 +99,26 @@ sub process_request {
             log_cmd_return($retref);
         }
 
+        my $isfsp = xCAT::ProfiledNodeUtils->is_fsp_node([$firstnode]);
+        if ($isfsp) {
+            setrsp_progress("Updating FSP's IP address");
+            $retref = xCAT::Utils->runxcmd({command=>["rspconfig"], node=>$nodelist, arg=>['network=*']}, $request_command, 0, 2);
+            log_cmd_return($retref);
+            
+            my $cmmref = xCAT::ProfiledNodeUtils->get_nodes_cmm($nodelist);
+            my @cmmchassis = keys %$cmmref;
+            setrsp_progress("Update node's some attributes through 'rscan -u'");
+            $retref = xCAT::Utils->runxcmd({command=>["rscan"], node=>\@cmmchassis, arg=>['-u']}, $request_command, 0, 2);
+            log_cmd_return($retref);
+                        
+            setrsp_progress("Sets up connections for nodes to FSP");
+            $retref = xCAT::Utils->runxcmd({command=>["mkhwconn"], node=>$nodelist, arg=>['-t']}, $request_command, 0, 2);
+            log_cmd_return($retref);
+        }
+        
         setrsp_progress("Updating conserver configuration files");
         $retref = xCAT::Utils->runxcmd({command=>["makeconservercf"], node=>$nodelist}, $request_command, 0, 2);
         log_cmd_return($retref);
-
     }
     elsif ($command eq 'kitnoderemove'){
         setrsp_progress("Updating conserver configuration files");

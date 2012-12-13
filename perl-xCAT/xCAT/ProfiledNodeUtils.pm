@@ -383,10 +383,14 @@ sub get_output_filename
       Description : Get all chassis in system.
       Arguments   : hashref: if not set, return a array ref.
                              if set, return a hash ref.
+                    type   : "all", get all chassis, 
+                             "cmm", get all chassis whose type is cmm
+                    if type not specify, it is 'all'
       Returns     : ref for chassis list.
       Example     : 
                     my $arrayref = xCAT::ProfiledNodeUtils->get_all_chassis();
                     my $hashref = xCAT::ProfiledNodeUtils->get_all_chassis(1);
+                    my $hashref = xCAT::ProfiledNodeUtils->get_all_chassis(1, 'cmm');
 =cut
 
 #-------------------------------------------------------------------------------
@@ -394,9 +398,14 @@ sub get_all_chassis
 {
     my $class = shift;
     my $hashref = shift;
+    my $type = shift;
     my %chassishash;
+    my %chassistype = ('all' => '__Chassis', 'cmm' => '__Chassis_IBM_Flex_chassis');
 
-    my @chassis = xCAT::NodeRange::noderange('__Chassis');
+    if (not $type) {
+        $type = 'all';
+    }
+    my @chassis = xCAT::NodeRange::noderange($chassistype{$type});
     if ($hashref){
         foreach (@chassis){
             $chassishash{$_} = 1;
@@ -567,3 +576,153 @@ sub get_imageprofile_prov_method
     #return $osimgentry->{'provmethod'};
 }
 
+#-------------------------------------------------------------------------------
+
+=head3 check_profile_consistent
+      Description : Check if three profile consistent
+      Arguments   : $imageprofile - image profile name
+                    $networkprofile - network profile name
+                    $hardwareprofile - harware profile name
+      Returns     : returncode, errmsg - consistent
+                    returncode=1 - consistent
+                    returncode=0 - not consistent
+=cut
+
+#-------------------------------------------------------------------------------
+sub check_profile_consistent{
+    my $class = shift;
+    my $imageprofile = shift;
+    my $networkprofile = shift;
+    my $hardwareprofile = shift;
+    
+    # Profile consistent keys, arch=>netboot,  mgt=>nictype
+    my %profile_dict = ('x86' => 'xnba','x86_64' => 'xnba', 'ppc64' => 'yaboot',
+                        'fsp' => 'FSP', 'ipmi' => 'BMC');
+                        
+    # Get Imageprofile arch
+    my $nodetypetab = xCAT::Table->new('nodetype');
+    my $nodetypeentry = $nodetypetab->getNodeAttribs($imageprofile, ['arch']);
+    my $arch = $nodetypeentry->{'arch'};
+    $nodetypetab->close();
+    
+    # Get networkprofile netboot and installnic
+    my $noderestab = xCAT::Table->new('noderes');
+    my $noderesentry = $noderestab->getNodeAttribs($networkprofile, ['netboot', 'installnic']);
+    my $netboot = $noderesentry->{'netboot'};
+    my $installnic = $noderesentry->{'installnic'}; 
+    $noderestab->close();
+    
+    # Get networkprofile nictypes
+    my $netprofile_nicshash_ref = xCAT::ProfiledNodeUtils->get_nodes_nic_attrs([$networkprofile])->{$networkprofile};
+    my %netprofile_nicshash = %$netprofile_nicshash_ref;
+    my $nictype = undef;
+    foreach (keys %netprofile_nicshash) {
+        my $value = $netprofile_nicshash{$_}{'type'};
+        if (($value eq 'FSP') or ($value eq 'BMC')) {
+            $nictype = $value;
+        }
+    }
+    
+    #Get hardwareprofile mgt
+    my $nodehmtab = xCAT::Table->new('nodehm');
+    my $mgtentry = $nodehmtab->getNodeAttribs($hardwareprofile, ['mgt']);  
+    my $mgt = undef;
+    $mgt = $mgtentry->{'mgt'} if ($mgtentry->{'mgt'});
+    $nodehmtab->close();
+    
+    # Check if exists provision network
+    if (not ($installnic and exists $netprofile_nicshash{$installnic}{"network"})){
+        return 0, "Provisioning network not defined for network profile."
+    }
+
+    # Check if imageprofile is consistent with networkprofile
+    if ($profile_dict{$arch} ne $netboot) {
+        return 0, "Imageprofile's arch is not consistent with networkprofile's netboot."
+    }
+    
+    # Check if networkprofile is consistent with hardwareprofile
+    if (not $hardwareprofile) { # Not define hardwareprofile
+        if (not $nictype) {  # Networkprofile is not fsp or bmc
+            return 1, "";
+        }elsif ($nictype eq 'FSP' or $nictype eq 'BMC') {
+            return 0, "$nictype networkprofile must use with hardwareprofile.";
+        }
+    }
+        
+    if (not $nictype and $mgt) { 
+        # define hardwareprofile, not define fsp or bmc networkprofile
+        return 0, "$profile_dict{$mgt} hardwareprofile must use with $profile_dict{$mgt} networkprofile.";
+    }
+    
+    if ($profile_dict{$mgt} ne $nictype) {
+        # Networkprofile's nictype is not consistent with hadrwareprofile's mgt
+        return 0, "Networkprofile's nictype is not consistent with hardwareprofile's mgt.";
+    }
+    
+    return 1, "";
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 is_fsp_node
+      Description : Judge whether nodes use fsp.
+      Arguments   : $node - node name
+      Returns     : 1 - Use fsp
+                    0 - Not use fsp
+=cut
+
+#-------------------------------------------------------------------------------
+sub is_fsp_node
+{
+    my $class = shift;
+    my $node = shift;
+    my $nicstab = xCAT::Table->new('nics');
+    my $entry = $nicstab->getNodeAttribs($node, ['nictypes']);
+    $nicstab->close();
+ 
+    if ($entry->{'nictypes'}){
+        my @nicattrslist = split(",", $entry->{'nictypes'});
+        foreach (@nicattrslist){
+            my @nicattrs = split(":", $_);
+            if ($nicattrs[1] eq 'FSP'){
+                return 1;
+            }
+        }
+    }
+
+    return 0;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 get_nodes_cmm
+      Description : Get the CMM of nodelist 
+      Arguments   : $nodelist - the ref of node list array
+      Returns     : $cmm - the ref of hash like
+                    {
+                      "cmm1" => 1,
+                      "cmm2" => 1                          
+                    }
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_nodes_cmm
+{
+    my $class = shift;
+    my $nodelistref = shift;
+    my @nodes = @$nodelistref;
+    my %returncmm;
+    
+    my $mptab = xCAT::Table->new('mp');
+    my $entry = $mptab->getNodesAttribs($nodelistref, ['mpa']);
+    $mptab->close();
+    
+    foreach (@nodes) {
+        my $mpa = $entry->{$_}->[0]->{'mpa'};
+        if ($mpa and not exists $returncmm{$mpa}){
+            $returncmm{$mpa} = 1;
+        }
+    }
+    
+    return \%returncmm
+}
