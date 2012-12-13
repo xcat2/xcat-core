@@ -539,40 +539,12 @@ sub  getmypost {
 		}
 	}
     }
-    #close $remote;
-   
-    #$remote = IO::Socket::SSL->new(
-    #    PeerAddr => $servnode,
-    #    PeerPort  => $port,
-    #    Proto    => 'tcp',
-    #);
-    
-    if (! defined($TFTPDIR) ) {
-        print $remote "<xcatrequest>\n";
-        print $remote "   <command>gettab</command>\n";
-        print $remote "   <arg>key=tftpdir</arg>\n";
-        print $remote "   <arg>site.value</arg>\n";
-        print $remote "</xcatrequest>\n";
-
-        while (<$remote>) {
-	    $response .= $_;  
-	    if ($response =~ m/<\/xcatresponse>/) {
-		$rsp = eval { XMLin($response,SuppressEmpty=>undef,ForceArray=>1) };
-                print Dumper($rsp);
-		if ( ref($rsp) eq "HASH" && exists ( $rsp->{serverdone}) ) {
-                        undef($response);
-                        next;
-			#last;			
-		}
-  	        
-                $TFTPDIR=$rsp;  
-                last;
-
-	    }
-        }
-    }
     close $remote;
-        
+   
+    # If the tftpdir is not /tftpboot, 
+    # should use the -s flag to specify the tftpdir.
+    # using gettab to get the tftpdir from MN/SN is not efficient
+    # and has problem with sending multiple commands through one socket connection
     if( !defined($TFTPDIR) ) {
         $TFTPDIR="/tftpboot";
     }
