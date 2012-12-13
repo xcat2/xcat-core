@@ -488,7 +488,7 @@ B<xdsh> I<node1,node2  -o"-v -t" ps>
 To execute the commands contained in B<myfile> in the B<XCAT>
 context on several node targets, with a fanout of B<1>, enter:
 
-B<xdsh> I<node1,node2 -C XCAT -f 1 -e myfile>
+B<xdsh> I<node1,node2 -f 1 -e myfile>
 
 
 =item *
