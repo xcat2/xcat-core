@@ -457,6 +457,29 @@ sub get_all_rack
 
 #-------------------------------------------------------------------------------
 
+=head3 get_racks_for_chassises
+      Description : Get rack info for a chassis list.
+      Arguments   : $chassislistref - chassis list reference.
+      Returns     : A dict ref. keys are chassis name, values are rack name for each chassis.
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_racks_for_chassises
+{
+    my $class = shift;
+    my $chassislistref = shift;
+    my %rackinfodict = ();
+
+    my $nodepostab = xCAT::Table->new('nodepos');
+    my $racksref = $nodepostab->getNodesAttribs($chassislistref, ['rack']);
+    foreach (@$chassislistref){
+        $rackinfodict{$_} = $racksref->{$_}->[0]->{'rack'};
+    }
+    return \%rackinfodict;
+}
+
+#-------------------------------------------------------------------------------
+
 =head3 get_allnode_singleattrib_hash
       Description : Get all records of a column from a table, then return a hash.
                     The return hash's keys are the records of this attribute 

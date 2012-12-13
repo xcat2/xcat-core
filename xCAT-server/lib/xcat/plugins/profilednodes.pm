@@ -709,6 +709,20 @@ Usage:
         setrsp_progress("Warning: failed to call kit commands.");
     }
 
+    # Update node's status.
+    setrsp_progress("Updating node status...");
+    my $nodelisttab = xCAT::Table->new('nodelist',-create=>1);
+    my (
+      $sec,  $min,  $hour, $mday, $mon,
+      $year, $wday, $yday, $isdst
+    ) = localtime(time);
+    my $currtime = sprintf("%02d-%02d-%04d %02d:%02d:%02d",
+                         $mon + 1, $mday, $year + 1900,
+                         $hour, $min, $sec);
+
+    $nodelisttab->setNodeAttribs($hostname, {status=>'defined', statustime=>$currtime});
+    $nodelisttab->close();
+
     setrsp_progress("Updated MAC address.");
 }
 
@@ -1370,6 +1384,10 @@ sub parse_hosts_string{
     my @allknownips = keys %allips;
     my $freeprovipsref = xCAT::ProfiledNodeUtils->get_allocable_staticips_innet($provnet);
  
+    # get all chassis's rack info.
+    my @chassislist = keys %allchassis;
+    my $chassisrackref = xCAT::ProfiledNodeUtils->get_racks_for_chassises(\@chassislist);
+
     foreach my $attr (keys %::FILEATTRS){
         my $errmsg = validate_node_entry($attr, $::FILEATTRS{$attr});
         # Check whether specified IP is in our prov network, static range.
@@ -1377,6 +1395,11 @@ sub parse_hosts_string{
             unless (grep{ $_ eq $::FILEATTRS{$attr}->{'ip'}} @$freeprovipsref){
                 $errmsg .= "Specified IP address $::FILEATTRS{$attr}->{'ip'} not in static range of provision network $provnet";
             }
+        }
+
+        # Set rack info for blades too.
+        if ($::FILEATTRS{$attr}->{'chassis'}){
+            $::FILEATTRS{$attr}->{'rack'} = $chassisrackref->{$::FILEATTRS{$attr}->{'chassis'}};
         }
         if ($errmsg) {
             if ($attr =~ /^TMPHOSTS/){
