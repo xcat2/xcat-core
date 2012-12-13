@@ -159,6 +159,99 @@ no strict;
 use strict;
 }
 
+
+#---------------------------------------------------------------------------
+
+=head3
+        fork_output_for_commands
+
+        Forks a process for the given command array and returns the process
+        ID for the forked process and references to all I/O pipes for STDOUT
+        and STDERR. In the child process, it will invoke the xCAT::DSHCore->fork_no_output()
+        for the first command which is a no-output command and waitpid(). And then execute 
+        the left commands in the child process.
+
+        Arguments:
+        	$fork_id - unique identifer to use for tracking the forked process
+        	@command - command and parameter array to execute in the forkec process
+
+        Returns:
+        	$pid - process identifer for the forked process
+                
+        Globals:
+        	None
+    
+        Error:
+        	None
+    
+        Example:
+        	$pid = xCAT::DSHCore->fork_output_for_commands('hostname1PID', @command_array);
+
+        Comments:
+
+=cut
+
+#---------------------------------------------------------------------------
+
+
+sub fork_output_for_commands
+{
+    my ($class, $fork_id, @commands) = @_;
+no strict;
+    my $pid;
+    my %pipes = ();
+
+    my $rout_fh = "rout_$fork_id";
+    my $rerr_fh = "rerr_$fork_id";
+    my $wout_fh = "wout_$fork_id";
+    my $werr_fh = "werr_$fork_id";
+
+    (pipe($rout_fh, $wout_fh) == -1) && return (-1, undef);
+    (pipe($rerr_fh, $werr_fh) == -1) && return (-2, undef);
+
+    if ($pid = fork)
+    {
+        close($wout_fh);
+        close($werr_fh);
+    }
+
+    elsif (defined $pid)
+    {
+        close($rout_fh);
+        close($rerr_fh);
+
+        !(open(STDOUT, ">&$wout_fh")) && return (-5, undef);
+        !(open(STDERR, ">&$werr_fh")) && return (-6, undef);
+
+        select(STDOUT);
+        $| = 1;
+        select(STDERR);
+        $| = 1;
+         
+        my $command0 = $commands[0];       
+        my @exe_command0_process = xCAT::DSHCore->fork_no_output($fork_id, @$command0); 
+        waitpid($exe_command0_process[0], undef);
+        
+        my $t_command = $commands[1];
+        my @command = @$t_command;
+        if (!(exec {$command[0]} @command))
+        {
+            return (-4, undef);
+        }
+
+    }
+    else
+    {
+        return (-3, undef);
+    }
+
+    return ($pid, *$rout_fh, *$rerr_fh, *$wout_fh, *$werr_fh);
+use strict;
+}
+
+
+
+
 #---------------------------------------------------------------------------
 
 =head3

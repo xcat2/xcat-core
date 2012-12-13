@@ -1017,6 +1017,7 @@ sub fork_fanout_dsh
     {
         my $user_target       = shift @$targets_waiting;
         my $target_properties = $$resolved_targets{$user_target};
+        my @commands;
         my $localShell        =
           ($$options{'syntax'} eq 'csh') ? '/bin/csh' : '/bin/sh';
         my @dsh_command = ($localShell, '-c');
@@ -1151,9 +1152,10 @@ sub fork_fanout_dsh
                   "TRACE:Environment: Exporting File.@env_rcp_command ";
                 $dsh_trace && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
                 # copy the Env Variable input file to the nodes
-                my @env_rcp_process =
-                  xCAT::DSHCore->fork_no_output($user_target, @env_rcp_command);
-                waitpid($env_rcp_process[0], undef);
+                #my @env_rcp_process =
+                #  xCAT::DSHCore->fork_no_output($user_target, @env_rcp_command);
+                #waitpid($env_rcp_process[0], undef);
+                push @commands, \@env_rcp_command;
             }
             my $tmp_cmd_file;
             if ($$options{'execute'})
@@ -1200,9 +1202,10 @@ sub fork_fanout_dsh
                 $rsp->{data}->[0] =
                   "TRACE:Execute: Exporting File:@exe_rcp_command";
                 $dsh_trace && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
-                my @exe_rcp_process =
-                  xCAT::DSHCore->fork_no_output($user_target, @exe_rcp_command);
-                waitpid($exe_rcp_process[0], undef);
+                #my @exe_rcp_process =
+                #  xCAT::DSHCore->fork_no_output($user_target, @exe_rcp_command);
+                #waitpid($exe_rcp_process[0], undef);
+                push @commands, \@exe_rcp_command;
             }
 
             else
@@ -1241,7 +1244,9 @@ sub fork_fanout_dsh
         # input -E file
         #print "Command=@dsh_command\n";
 
-        @process_info = xCAT::DSHCore->fork_output($user_target, @dsh_command);
+        #@process_info = xCAT::DSHCore->fork_output($user_target, @dsh_command);
+        push (@commands, \@dsh_command);  #print Dumper(\@commands);
+        @process_info = xCAT::DSHCore->fork_output_for_commands($user_target, @commands); 
         if ($process_info[0] == -2)
         {
             my $rsp = {};
