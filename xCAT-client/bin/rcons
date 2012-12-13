@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh -x
 
 # Provide serial console access to nodes
 
@@ -97,7 +97,7 @@ else
     if [ -z "$CONSERVER" ]; then  
 	CONSERVER=`echo "$output"|grep nodehm.conserver|cut -d: -f3|tr -d ' \n'`
     fi
-    CONS=`echo "$output" |grep nodehm.cons|cut -d: -f3 | tr -d ' \n'`
+    CONS=`echo "$output" |grep /nodehm.cons$/|cut -d: -f3 | tr -d ' \n'`
     if [ -z "$CONS" ]; then
 	CONS=`echo "$output"|grep nodehm.mgt|cut -d: -f3 | tr -d ' \n'`
     fi
@@ -105,7 +105,7 @@ else
 	echo "Error: nodehm.mgt or nodehm.cons for node $1 not setup."
 	exit 1;
     fi
-    #echo "CONS=$CONS CONSERSRVER=$CONSERVER"
+    #echo "CONS=$CONS CONSERVER=$CONSERVER"
 
     # check if others are using the console
     if [[ -n $CONSERVER ]]; then
