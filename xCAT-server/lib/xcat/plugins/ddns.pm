@@ -715,7 +715,12 @@ sub update_zones {
             }
             flock($zonehdl,LOCK_UN);
             close($zonehdl);
-            chown(scalar(getpwnam('named')),scalar(getgrnam('named')),$dbdir."/db.$zonefilename");
+            if ( $distro =~ /ubuntu.*/ ){
+                chown(scalar(getpwnam('root')),scalar(getgrnam('bind')),$dbdir."/db.$zonefilename");
+            }
+            else{
+                chown(scalar(getpwnam('named')),scalar(getgrnam('named')),$dbdir."/db.$zonefilename");
+            }
             $ctx->{restartneeded}=1;
         }
     }
