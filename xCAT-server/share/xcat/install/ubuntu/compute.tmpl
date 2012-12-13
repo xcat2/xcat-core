@@ -33,7 +33,8 @@ d-i mirror/http/proxy string
 # This creates a small /boot partition, suitable
 # swap, and uses the rest of the space for the root partition:
 
-d-i partman-auto/method strng regular
+d-i partman-auto/method string regular
+d-i partman-auto/disk string /dev/sda
 d-i partman-lvm/device_remove_lvm boolean true
 d-i partman-md/device_remove_md boolean true
 
