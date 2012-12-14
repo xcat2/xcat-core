@@ -1204,6 +1204,7 @@ sub plugin_command {
       }
      }
   }
+  my %xcatresponses = ( xcatresponse => [] );
   $plugin_numchildren=0;
   %plugin_children=();
   # save the old signal
@@ -1213,6 +1214,61 @@ sub plugin_command {
   if ($sock) { 
     $check_fds = new IO::Select;
   }  
+  # Multiple plugins for one command
+  # $req->{sequential} is 0 by default
+  if (defined($req->{sequential}) && $req->{sequential}->[0]) {
+      # PCM case, executing plugins sequentially in alphabetic order
+      $parent_fd = 0;
+      foreach (sort(keys %handler_hash)) {
+        my $modname = $_;
+        $Main::resps={};
+        if (-r $plugins_dir."/".$modname.".pm") {
+          require $plugins_dir."/".$modname.".pm";
+          $plugin_numchildren++;
+            my $oldprogname=$$progname;
+            $$progname=$oldprogname.": $modname instance";
+            unless ($handler_hash{$_} == 1) {
+    	       #ok, if nodes have numbers, this sorts them numerically... roughly..
+    	       #if node doesn't, then it spews a message, need to fix
+              my @nodes = sort {($a =~ /(\d+)/)[0] <=> ($b =~ /(\d+)/)[0] || $a cmp $b } (keys %{$handler_hash{$_}});
+              $req->{node}=\@nodes;
+            }
+            no strict  "refs";
+            eval { #REMOVEEVALFORDEBUG
+            if ($dispatch_requests) {
+    	        dispatch_request($req,$callback,$modname);
+            } else {
+               $SIG{CHLD}='DEFAULT';
+               ${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
+            }
+            $$progname=$oldprogname;
+            }; #REMOVEEVALFORDEBUG
+            if ($@) { #We are still alive, should be alive, but yet we have an error.  This means we are in the case of 'do_request' or something similar.  Forward up the death since our communication channel is intact..
+                xCAT::MsgUtils->message("S", "$@");
+                die $@;
+            }
+        } else {
+          my $pm_name = $plugins_dir."/".$modname.".pm";
+          if (ref $handler_hash{$_}) {
+              foreach my $node (keys %{$handler_hash{$_}}) {
+                if ($sock) {
+                 print $sock XMLout({node=>[{name=>[$node],data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]}]},NoAttr=>1,RootName=>'xcatresponse');
+                } else {
+                 $callback->({node=>[{name=>[$node],data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]}]});
+                }
+              }
+          } else {
+              if ($sock) {
+               print $sock XMLout({data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]},NoAttr=>1,RootName=>'xcatresponse');
+              } else {
+               $callback->({data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]});
+              }
+          }
+        }
+      push @{$xcatresponses{xcatresponse}}, $Main::resps;        
+      }
+  } else {
+      # executing plugins parallel
   foreach (keys %handler_hash) {
     my $modname = $_;
     my $shouldbealivepid=$$;
@@ -1313,6 +1369,7 @@ sub plugin_command {
       }
     }
   }
+  }
   unless ($sock) { 
     # restore the old signal
     $SIG{CHLD} = $old_sig_chld;
@@ -1321,7 +1378,6 @@ sub plugin_command {
 
   if (@deferredmsgargs) { xCAT::MsgUtils->message(@deferredmsgargs) };
   @deferredmsgargs=();
-  my %xcatresponses = ( xcatresponse => [] );
   my $nextxmittime = time()+1;
   while (($plugin_numchildren > 0) and ($check_fds->count > 0)) { #this tracks end of useful data from children much more closely
     relay_fds($check_fds,$xcatresponses{xcatresponse});
