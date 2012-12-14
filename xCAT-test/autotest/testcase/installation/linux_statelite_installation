@@ -1,4 +1,4 @@
-start:Linux_statelite_installation_flat
+start:Linux_statelite_installation_flat_ppc64
 os:Linux
 cmd:makedns -n
 check:rc==0
@@ -55,6 +55,16 @@ check:rc==0
 cmd:liteimg -p compute -a __GETNODEATTR($$CN,arch)__ -o  __GETNODEATTR($$CN,os)__ -t ramdisk
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
+check:rc==0
+cmd:rnetboot $$CN
+check:rc==0
+cmd:sleep 400
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:nodeset $$CN osimage
 check:rc==0
 cmd:rnetboot $$CN
 check:rc==0
