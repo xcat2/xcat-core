@@ -179,10 +179,13 @@ else
     USERSLOT=2
 fi
 if [ "$ISITE" = 1 ]; then
+    allowcred.awk &
+    CREDPID=$!
     while ! remoteimmsetup
     do
         echo "Waiting for xCAT remote configuration of service processor via CMM.."
     done
+    kill $CREDPID
 fi
 CURRENTUSER=`ipmitool -d $idev user list $LANCHAN|grep ^$USERSLOT|awk '{print $2}'`
 DISABLEUSERS=`echo 1 2 3 4|sed -e s/$USERSLOT//`
