@@ -23,7 +23,7 @@ echo "<xcatrequest>
 <bmcmac>$BMCMAC</bmcmac>
 </xcatrequest>" > /tmp/bmcreq.xml
 rm /tmp/remsetup.xml
-while [ ! -f /tmp/remsetup.xml ] || grep error /tmp/ipmicfg.xml; do
+while [ ! -f /tmp/remsetup.xml ] || grep error /tmp/remsetup.xml; do
 	if [ -f /tmp/remsetup.xml ]; then
 		timer=60
 		while [ $timer -gt 0 ]; do
@@ -35,9 +35,9 @@ while [ ! -f /tmp/remsetup.xml ] || grep error /tmp/ipmicfg.xml; do
 	echo -en "                                                         \r";
 	
 	if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
-		cat /tmp/bmcreq.xml | openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $XCATDEST -quiet 2> /dev/null > /tmp/ipmicfg.xml
+		cat /tmp/bmcreq.xml | openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $XCATDEST -quiet 2> /dev/null > /tmp/remsetup.xml
 	else
-		cat /tmp/bmcreq.xml | openssl s_client -connect $XCATDEST -quiet 2> /dev/null > /tmp/ipmicfg.xml
+		cat /tmp/bmcreq.xml | openssl s_client -connect $XCATDEST -quiet 2> /dev/null > /tmp/remsetup.xml
 	fi
 done
 rm /tmp/bmcreq.xml
