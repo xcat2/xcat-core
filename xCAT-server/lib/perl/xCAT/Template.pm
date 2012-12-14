@@ -1091,7 +1091,7 @@ sub getNodeType
     my $result;
    
     if ( $node =~ /^$mn$/) {
-        $result="mn";
+        $result="MN";
         return $result;
     }
     # see if this is a service or compute node?
