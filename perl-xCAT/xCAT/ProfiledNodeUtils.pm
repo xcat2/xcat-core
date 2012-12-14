@@ -618,6 +618,20 @@ sub check_profile_consistent{
     my $networkprofile = shift;
     my $hardwareprofile = shift;
     
+    # Check the profiles are existing in DB.
+    my @nodegrps = xCAT::TableUtils->list_all_node_groups();
+    unless(grep{ $_ eq $imageprofile} @nodegrps){
+        return 0, "Image profile not defined in DB."
+    }
+    unless(grep{ $_ eq $networkprofile} @nodegrps){
+        return 0, "Network profile not defined in DB."
+    }
+    if ($hardwareprofile){
+        unless(grep{ $_ eq $hardwareprofile} @nodegrps){
+            return 0, "Hardware profile not defined in DB."
+        }
+    }
+
     # Profile consistent keys, arch=>netboot,  mgt=>nictype
     my %profile_dict = ('x86' => 'xnba','x86_64' => 'xnba', 'ppc64' => 'yaboot',
                         'fsp' => 'FSP', 'ipmi' => 'BMC');

@@ -761,11 +761,22 @@ Usage:
         return;
     }
 
+    my ($returncode, $errmsg) = xCAT::ProfiledNodeUtils->check_profile_consistent($args_dict{'imageprofile'}, $args_dict{'networkprofile'}, $args_dict{'hardwareprofile'});
+    if (not $returncode) {
+        setrsp_errormsg($errmsg);
+        return;
+    }
+
     # validate hostnameformat:
     my $nameformattype = xCAT::ProfiledNodeUtils->get_hostname_format_type($args_dict{'hostnameformat'});
     if ($nameformattype eq "unknown"){
         setrsp_errormsg("Invalid node name format: $args_dict{'hostnameformat'}");
         return;
+    }elsif($nameformattype eq 'rack'){
+        if ((! exists $args_dict{'rack'}) && (! exists $args_dict{'chassis'})){
+            setrsp_errormsg("Specify rack/chassis as node name format includes rack info.");
+            return;
+        }
     }
 
     my $recordsref = xCAT::ProfiledNodeUtils->get_all_rack(1);
