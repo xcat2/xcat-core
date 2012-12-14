@@ -227,13 +227,14 @@ no strict;
         $| = 1;
         select(STDERR);
         $| = 1;
-         
-        my $command0 = $commands[0];       
-        my @exe_command0_process = xCAT::DSHCore->fork_no_output($fork_id, @$command0); 
-        waitpid($exe_command0_process[0], undef);
-        
-        my $t_command = $commands[1];
-        my @command = @$t_command;
+        if ( @commands > 1 )  {
+            my $command0 = shift(@commands);       
+            my @exe_command0_process = xCAT::DSHCore->fork_no_output($fork_id, @$command0); 
+            waitpid($exe_command0_process[0], undef);
+        }
+       
+        my $t_command = shift(@commands);
+        my @command = @$t_command; 
         if (!(exec {$command[0]} @command))
         {
             return (-4, undef);
