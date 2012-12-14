@@ -700,6 +700,7 @@ my $os;
 my $profile;
 my $arch;
 my $provmethod;
+my $mn;
 %::GLOBAL_TAB_HASH = ();
 %::GLOBAL_SN_HASH = ();
 %::GLOBAL_TABDUMP_HASH = ();
@@ -712,7 +713,7 @@ sub subvars_for_mypostscript {
   #my $tmpl          = shift;  #tmplfile  default: "/opt/xcat/share/xcat/templates/mypostscript/mypostscript.tmpl" customized: /install/postscripts/mypostscript.tmpl 
   $tmplerr=undef; #clear tmplerr since we are starting fresh
   my %namedargs = @_; #further expansion of this function will be named arguments, should have happened sooner.
-
+ 
   my $installroot; 
   my @entries =  xCAT::TableUtils->get_site_attribute("installdir"); 
   if($entries[0]) {
@@ -749,6 +750,8 @@ sub subvars_for_mypostscript {
      return;
   }
 
+  $mn = xCAT::Utils->noderangecontainsMn(@$nodes);
+
   my $inc;
   my $t_inc;
   my %table;
@@ -757,7 +760,7 @@ sub subvars_for_mypostscript {
   #First load input into memory..
   while (<$inh>) {
       $t_inc.=$_;
-      #if( $_ =~ /#TABLE:([^:]+):([^:]+):([^#]+)#/ || $_ =~ /#TABLE:([^:]+):([^:]+):([^#]+):BLANKOKAY#/) {
+
       if( $_ =~ /#TABLE:([^:]+):([^:]+):([^#]+)#/ ) {
            my $tabname=$1;
            my $key=$2;
@@ -775,6 +778,8 @@ sub subvars_for_mypostscript {
   }
 
   close($inh);
+
+    
 
   ##
   #   $Tabname_hash{$key}{$attrib}=value
@@ -842,7 +847,12 @@ sub subvars_for_mypostscript {
       ##attributes from site tab
       #
       #my $master = $attribsfromnoderes->{$node}->{xcatmaster};
-      my $master = $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster};
+      my $master;
+      my $noderesent;
+      if( defined( $::GLOBAL_TAB_HASH{noderes}) && defined( $::GLOBAL_TAB_HASH{noderes}{$node}) ) {
+          $master = $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster};
+          $noderesent = $::GLOBAL_TAB_HASH{noderes}{$node};
+      }
      
       if( !defined($master) ) {
           $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} = $::XCATSITEVALS{master};
@@ -851,13 +861,6 @@ sub subvars_for_mypostscript {
       #get the node type, service node or compute node
       my $nodetype = getNodeType($node);
 
-
-      my $noderesent;
-      
-      if(exists($::GLOBAL_TAB_HASH{noderes}{$node})) {
-          $noderesent = $::GLOBAL_TAB_HASH{noderes}{$node};
-      }
- 
       #print Dumper($noderesent);
       #routes 
       my $route_vars;
@@ -1086,7 +1089,11 @@ sub getNodeType
 
     my $node   = shift;
     my $result;
-
+   
+    if ( $node =~ /^$mn$/) {
+        $result="mn";
+        return $result;
+    }
     # see if this is a service or compute node?
     if ($::GLOBAL_SN_HASH{$node} == 1)
     {
