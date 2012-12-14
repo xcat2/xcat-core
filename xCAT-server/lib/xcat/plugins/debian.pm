@@ -411,7 +411,7 @@ sub mkinstall
     my %osents = %{$ostab->getNodesAttribs(\@nodes, ['profile', 'os', 'arch', 'provmethod'])};
     my %rents =
               %{$restab->getNodesAttribs(\@nodes,
-                                     ['nfsserver', 'primarynic', 'installnic'])};
+                                     ['xcatmaster', 'nfsserver', 'primarynic', 'installnic'])};
     my %hents = 
               %{$hmtab->getNodesAttribs(\@nodes,
                                      ['serialport', 'serialspeed', 'serialflow'])};
@@ -674,11 +674,17 @@ sub mkinstall
 #                                      'serialport', 'serialspeed', 'serialflow'
 #                                     ]
 #                                     );
-            unless ($ent and $ent->{nfsserver})
+            my $instserver;
+            if ($ent and $ent->{xcatmaster}){
+                $instserver = $ent->{xcatmaster};
+            }
+            else{
+                $instserver = '!myipfn!';
+            }
+
+            if ($ent and $ent->{nfsserver})
             {
-                $callback->({error => ["No noderes.nfsserver defined for " . $node],
-                             errorcode => [1]});
-                next;
+                $instserver = $ent->{nfsserver};
             }
 	        #if ($platform eq "ubuntu"){
             #    my $kcmdline =
@@ -689,7 +695,7 @@ sub mkinstall
             #} else 
 	    #{
             my $kcmdline = "nofb utf8 auto url=http://"
-                  . $ent->{nfsserver}
+                  . $instserver
                   . "$installroot/autoinst/"
                   . $node;
 	    #}
