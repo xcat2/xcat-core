@@ -660,7 +660,7 @@ elif ( pmatch "$OSVER" "sles11*" ); then
     fi
 elif ( pmatch "$OSVER" "ubuntu*" ); then
 	# verify dpkg is installed
-	result=`which dpkg`
+	result=`dpkg --version`
 	if [ $? -ne 0 ]; then
 		echo "Please install dpkg on $NODE."
 		exit 1

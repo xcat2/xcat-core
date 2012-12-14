@@ -272,7 +272,7 @@ hasdpkg=0
 supdatecommand="rpm -Uvh --replacepkgs"
 sremovecommand="rpm -ev"
 
-result=`which rpm`
+result=`rpm --version`
 if [ $? -eq 0 ]; then
     hasrpm=1
     result=`rpm -q yum`
@@ -285,7 +285,7 @@ if [ $? -eq 0 ]; then
         fi
     fi 
 else
-    result=`which dpkg`
+    result=`dpkg --version`
     if [ $? -eq 0 ]; then
         hasdpkg=1
 	supdatecommand="dpkg -i"
