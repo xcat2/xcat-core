@@ -1,4 +1,5 @@
 
+       $changeF=1;
 #-------------------------------------------------------
 
 =head1
@@ -103,6 +104,14 @@ sub preprocess_request
             $::dshexecute = $cmd[0];      # This is the executable file 
         }
     }
+    # if xdcp need to make sure request has full path to input files 
+    if ($command eq "xdcp") {
+      $req = &parse_xdcp_cmd($req);
+    }
+    # if xdsh need to make sure request has full path to input files 
+   #if ($command eq "xdsh") {
+   #  $req = &parse_xdsh_cmd($req);
+   #}
 
     # there are nodes in the xdsh command, not xdsh  to an image
     if ($nodes)
@@ -242,6 +251,135 @@ sub preprocess_request
         return [$req];
     }
     return \@requests;
+}
+#-------------------------------------------------------
+
+=head3 parse_xdcp_cmd 
+  Check to see if full path on file(s) input to the command
+  If not add currentpath to the file in the argument 
+=cut
+
+#-------------------------------------------------------
+sub parse_xdcp_cmd 
+{
+   my $req=shift;
+   my $args=$req->{arg};   # argument
+   my $orgargarraySize = @{$args};  # get the size of the arg array
+   my $currpath=$req->{cwd}->[0]; # current path when command was executed
+   @ARGV = @{$args};    # get arguments
+
+   my @SaveARGV=@ARGV;  # save the original argument list
+   my $newarg;
+   my %options = ();
+   Getopt::Long::Configure("posix_default");
+   Getopt::Long::Configure("no_gnu_compat");
+   Getopt::Long::Configure("bundling");
+
+   if (
+       !GetOptions(
+                   'f|fanout=i'       => \$options{'fanout'},
+                   'F|File=s'         => \$options{'File'},
+                   'h|help'           => \$options{'help'},
+                   'i|rootimg=s'      => \$options{'rootimg'},
+                   'l|user=s'         => \$options{'user'},
+                   'n|nodes=s'        => \$options{'nodes'},
+                   'o|node-options=s' => \$options{'node-options'},
+                   'q|show-config'    => \$options{'show-config'},
+                   'p|preserve'       => \$options{'preserve'},
+                   'r|c|node-rcp=s'   => \$options{'node-rcp'},
+                   's'                => \$options{'rsyncSN'},
+                   't|timeout=i'      => \$options{'timeout'},
+                   'v|verify'         => \$options{'verify'},
+                   'B|bypass'         => \$options{'bypass'},
+                   'Q|silent'         => \$options{'silent'},
+                   'P|pull'           => \$options{'pull'},
+                   'R|recursive'      => \$options{'recursive'},
+                   'T|trace'          => \$options{'trace'},
+                   'V|version'        => \$options{'version'},
+                   'X:s'              => \$options{'ignore_env'}
+       )
+     )
+   {
+       xCAT::DSHCLI->usage_dcp;
+       exit 1;
+   }
+   my $changedfile=0;
+   # check to see if -F option and if there is, is the 
+   # input file fully defined path
+   # This can be a command separated list of synclists
+   my $newfile;
+   if (defined($options{'File'})) { 
+     if ($options{'File'} !~ /^\//) {  # not a full path
+       $newfile = xCAT::Utils->full_path($options{'File'},$currpath);
+       $changedfile=1;
+     } else { # it is a full path
+       $newfile =$options{'File'};
+     }
+     # now need to go through the original argument list and replace the file 
+     # after the -F flag, if a file was changed
+     my @newarg;
+     my $updatefile=0;
+     my $arglength =0;
+     if ($changedfile == 1) {
+      foreach my $arg (@SaveARGV) {
+        if ($updatefile ==1) {  # found the file to change
+          push @newarg,$newfile;
+          $updatefile =0;
+          next;   # skip the old entry
+        }
+        if ($arg !~ /^-F/) {
+          push @newarg,$arg; 
+        } else { 
+          # if -F there are two format.  -Ffile in one element or -F file
+          # in two elements of the array
+          $arglength= length ($arg);   
+          if ($arglength <=2) {  # this is the -F file format
+            push @newarg,$arg;
+            $updatefile=1;
+          }  else {  # this is the -Ffile format
+            my $n="-F";
+            $n .=$newfile;
+            push @newarg,$n;
+            $updatefile =0;
+          } 
+        }
+      }
+      #put the new argument list on the request
+      @{$req->{arg}}= @newarg;
+     
+     
+     }
+   } # end -F option
+
+
+   # For xdcp ......   file1 file2 command 
+   # what is left in the argument are the  files to copy
+   # each from and to file needs to be checked if relative or expanded path
+   # If not expanded, it needs to have current path added
+   $changedfile =0;   # resetting this but there should be only -F or a list
+                      # or files for xdcp, not both 
+   my @newfiles;
+   my $leftoverargsize=@ARGV;
+   if (@ARGV > 0) {
+    foreach my $file (@ARGV) {
+      if ($file !~ /^\//) { # not full path
+       $file = xCAT::Utils->full_path($file,$currpath);
+       $changedfile=1;
+      }
+      push @newfiles,$file;      
+    }
+   }
+   # if had to add the path to a file, then need to rebuild the 
+   # request->{args} array 
+   if ($changedfile == 1) {
+     my $offset=$orgargarraySize  - $leftoverargsize ;
+     # offset is where we start updating
+     foreach my $file (@newfiles) {
+        $req->{arg}->[$offset] = $file;
+        $offset ++
+     }
+   }
+   return $req;
 }
 
 #-------------------------------------------------------
