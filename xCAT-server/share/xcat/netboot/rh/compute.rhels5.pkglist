@@ -13,3 +13,4 @@ ntp
 sysklogd
 rpm
 rsync
+db4-utils
