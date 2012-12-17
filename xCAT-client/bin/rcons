@@ -1,4 +1,4 @@
-#!/bin/sh -x
+#!/bin/sh 
 
 # Provide serial console access to nodes
 
