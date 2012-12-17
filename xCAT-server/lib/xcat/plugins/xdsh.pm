@@ -296,6 +296,7 @@ sub parse_xdcp_cmd
                    'R|recursive'      => \$options{'recursive'},
                    'T|trace'          => \$options{'trace'},
                    'V|version'        => \$options{'version'},
+                   'nodestatus|nodestatus' => \$options{'nodestatus'},
                    'X:s'              => \$options{'ignore_env'}
        )
      )
