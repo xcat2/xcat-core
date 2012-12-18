@@ -329,11 +329,17 @@ sub parse_args_xdsh
         xCAT::DSHCLI->show_dsh_config;
         exit 0;
     }
-    # -if -e flag, execute script have to do special processing for hierarchy
-    # in the plugin 
-    if ($options{'execute'})
-    {
-        $ENV{'DSHEXECUTE'} = join ' ', @ARGV;    # execute script 
+    my $executescript;
+    #check for full path to file
+    if ($options{execute})
+    {  
+        # this can be a file + parameters
+        $executescript = join ' ', @ARGV;
+        if ($executescript !~ /^\//) {
+          #relative path
+          $executescript = xCAT::Utils->full_path($executescript);
+        }
+        $ENV{'DSHEXECUTE'} = $executescript;    # execute script 
     }
 
     # find out who is the current user running xdsh
