@@ -109,9 +109,9 @@ sub preprocess_request
       $req = &parse_xdcp_cmd($req);
     }
     # if xdsh need to make sure request has full path to input files 
-   #if ($command eq "xdsh") {
-   #  $req = &parse_xdsh_cmd($req);
-   #}
+    if ($command eq "xdsh") {
+     $req = &parse_xdsh_cmd($req);
+    }
 
     # there are nodes in the xdsh command, not xdsh  to an image
     if ($nodes)
@@ -269,7 +269,6 @@ sub parse_xdcp_cmd
    @ARGV = @{$args};    # get arguments
 
    my @SaveARGV=@ARGV;  # save the original argument list
-   my $newarg;
    my %options = ();
    Getopt::Long::Configure("posix_default");
    Getopt::Long::Configure("no_gnu_compat");
@@ -307,7 +306,6 @@ sub parse_xdcp_cmd
    my $changedfile=0;
    # check to see if -F option and if there is, is the 
    # input file fully defined path
-   # This can be a command separated list of synclists
    my $newfile;
    if (defined($options{'File'})) { 
      if ($options{'File'} !~ /^\//) {  # not a full path
@@ -383,6 +381,96 @@ sub parse_xdcp_cmd
    return $req;
 }
 
+#-------------------------------------------------------
+
+=head3 parse_xdsh_cmd 
+  Check to see if full path on file(s) input to the command
+  If not add currentpath to the file in the argument 
+=cut
+
+#-------------------------------------------------------
+sub parse_xdsh_cmd 
+{
+   my $req=shift;
+   my $args=$req->{arg};   # argument
+   my $currpath=$req->{cwd}->[0]; # current path when command was executed
+   my $orgargarraySize = @{$args};  # get the size of the arg array
+   @ARGV = @{$args};    # get arguments
+
+   my @SaveARGV=@ARGV;  # save the original argument list
+   my %options = ();
+   Getopt::Long::Configure("posix_default");
+   Getopt::Long::Configure("no_gnu_compat");
+   Getopt::Long::Configure("bundling");
+
+   if (
+        !GetOptions(
+            'e|execute'                => \$options{'execute'},
+            'f|fanout=i'               => \$options{'fanout'},
+            'h|help'                   => \$options{'help'},
+            'l|user=s'                 => \$options{'user'},
+            'm|monitor'                => \$options{'monitor'},
+            'o|node-options=s'         => \$options{'node-options'},
+            'q|show-config'            => \$options{'show-config'},
+            'r|node-rsh=s'             => \$options{'node-rsh'},
+            'i|rootimg=s'              => \$options{'rootimg'},
+            's|stream'                 => \$options{'streaming'},
+            't|timeout=i'              => \$options{'timeout'},
+            'v|verify'                 => \$options{'verify'},
+            'z|exit-status'            => \$options{'exit-status'},
+            'B|bypass'                 => \$options{'bypass'},
+            'c|cleanup'                => \$options{'cleanup'},
+            'E|environment=s'          => \$options{'environment'},
+            'I|ignore-sig|ignoresig=s' => \$options{'ignore-signal'},
+            'K|keysetup'               => \$options{'ssh-setup'},
+            'L|no-locale'              => \$options{'no-locale'},
+            'Q|silent'                 => \$options{'silent'},
+            'S|syntax=s'               => \$options{'syntax'},
+            'T|trace'                  => \$options{'trace'},
+            'V|version'                => \$options{'version'},
+
+            'devicetype=s'               => \$options{'devicetype'},
+            'nodestatus|nodestatus' => \$options{'nodestatus'},
+            'command-name|commandName=s' => \$options{'command-name'},
+            'command-description|commandDescription=s' =>
+              \$options{'command-description'},
+            'X:s' => \$options{'ignore_env'}
+
+       )
+     )
+   {
+       xCAT::DSHCLI->usage_dsh;
+       exit 1;
+   }
+   # elements left in the array after the parse
+   # these are the script and it's arguments
+   my $leftoverargsize=@ARGV;
+   my $changedfile=0;
+   # check to see if -e option
+   # change  file to fully defined path
+   my @executecmd = @ARGV;
+   if (defined($options{'execute'})) { 
+     # this can be the script name + parms
+     if ($executecmd[0] !~ /^\//) {  # not a full path in the script name
+       $executecmd[0] = xCAT::Utils->full_path($executecmd[0],$currpath);
+       $changedfile=1;
+     }
+     # if had to add the path to the script, then need to rebuild the 
+     # request->{args} array 
+     if ($changedfile == 1) {
+       my $offset=$orgargarraySize  - $leftoverargsize ;
+       # offset is where we start updating
+       foreach my $file (@executecmd) {
+        $req->{arg}->[$offset] = $file;
+        $offset ++
+       }
+     }
+     
+     
+   } # end -e option
+
+   return $req;
+}
 #-------------------------------------------------------
 
 =head3  process_servicenodes_xdcp
