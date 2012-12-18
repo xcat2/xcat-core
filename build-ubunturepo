@@ -143,7 +143,7 @@ then
 Origin: xCAT internal repository
 Label: xcat-core bazaar repository
 Codename: $dist
-Architectures: i386 amd64 
+Architectures: amd64 
 Components: main
 Description: Repository automatically genereted conf 
 
