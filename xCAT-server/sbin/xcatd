@@ -1218,6 +1218,7 @@ sub plugin_command {
   # $req->{sequential} is 0 by default
   if (defined($req->{sequential}) && $req->{sequential}->[0]) {
       # PCM case, executing plugins sequentially in alphabetic order
+      my $old_parent_fd = $parent_fd;
       $parent_fd = 0;
       foreach (sort(keys %handler_hash)) {
         my $modname = $_;
@@ -1267,6 +1268,7 @@ sub plugin_command {
         }
       push @{$xcatresponses{xcatresponse}}, $Main::resps;        
       }
+    $parent_fd = $old_parent_fd;
   } else {
       # executing plugins parallel
   foreach (keys %handler_hash) {
@@ -1304,6 +1306,7 @@ sub plugin_command {
         if ($parfd) {  #If xCAT is doing multiple requests in same communication PID, things would get unfortunate otherwise
             $parent_fd = $parfd;
         }
+        my $org_parent_fd = $parent_fd;
         my $oldprogname=$$progname;
         $$progname=$oldprogname.": $modname instance";
         if ($sock) { close $pfd; }
@@ -1322,6 +1325,7 @@ sub plugin_command {
            ${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
         }
         $$progname=$oldprogname;
+        $parent_fd = $org_parent_fd;
         if ($sock) { 
           close($parent_fd);
           xexit(0);
