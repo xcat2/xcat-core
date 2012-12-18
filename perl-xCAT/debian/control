@@ -2,7 +2,7 @@ Source: perl-xcat
 Section: libs
 Priority: extra
 Maintainer: Arif Ali <aali@ocf.co.uk>
-Build-Depends: debhelper (>= 5), libsoap-lite-perl
+Build-Depends: debhelper (>= 5), libsoap-lite-perl, libdbi-perl
 Standards-Version: 3.7.2
 
 Package: perl-xcat
