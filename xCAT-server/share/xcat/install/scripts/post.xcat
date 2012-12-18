@@ -86,7 +86,7 @@ run_ps () {
   echo "\"\`date\` Running postscript: \$@\"" | tee -a \$logfile
   #./\$@ 2>&1 1> /tmp/tmp4xcatlog
   #cat /tmp/tmp4xcatlog | tee -a \$logfile
-  ./\$@ 2>&1 | tee -a $logfile
+  ./\$@ 2>&1 | tee -a \$logfile
  else
   echo "\"\`date\` Postscript \$1 does NOT exist.\"" | tee -a \$logfile
  fi
