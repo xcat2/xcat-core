@@ -203,8 +203,11 @@ unless ($onlyinitrd) {
        }
 
        my $ent = $linuximagetab->getAttribs({'imagename' => "$imagename"}, ['pkgdir']);
-       my $pkgdir = $ent->{'pkgdir'};
-       my @pkgdirs = split(",", $pkgdir);
+       my $pkgdir = $ent->{'pkgdir'};  
+       if( !defined($pkgdir) ) {
+           $pkgdir = "$installroot/$osver/$arch/";
+       }
+       my @pkgdirs = split(",", $pkgdir); 
        my $dir;
        foreach $dir (@pkgdirs) {
            find(\&isyumdir, <$dir/>);
