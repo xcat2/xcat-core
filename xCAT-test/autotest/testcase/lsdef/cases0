@@ -107,9 +107,9 @@ cmd:rmdef -t network testnetwork
 end
 
 start:lsdef_t_w
-cmd:mkdef -t node -o testnode11-testnode21 cons=hmc groups=all
+cmd:mkdef -t node -o testnode11,testnode21 cons=hmc groups=all
 check:rc==0
-cmd:mkdef -t node -o testnode31-testnode41 cons=ipmi groups=linux
+cmd:mkdef -t node -o testnode31,testnode41 cons=ipmi groups=linux
 check:rc==0
 cmd:lsdef -t node -w cons==ipmi
 check:rc==0
