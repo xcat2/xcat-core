@@ -1164,7 +1164,9 @@ sub process_request
             print DBG_FD $syscfg_dhcpd;
             close DBG_FD;
         }elsif (-e "/etc/default/$dhcpver") { #ubuntu
-	    delete($missingfiles{dhcpd});
+	    delete($missingfiles{"dhcpd"});
+            #dhcpd and dhcpd6 use the same configure file
+            delete($missingfiles{"dhcpd6"});
 	    delete($missingfiles{"dhcp3-server"});
         	 open DHCPD_FD, "/etc/default/$dhcpver";
             my $syscfg_dhcpd = "";
