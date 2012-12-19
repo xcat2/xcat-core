@@ -9,6 +9,7 @@ do
    if [ ! -r "$i" ]; then
       continue
    fi
+   rm -rf /etc/yum.repos.d/*
    TARGFILE=`basename $i`
    TARGFILE=`echo $TARGFILE|sed -e s/.tmpl$/.repo/`
    sed -e s!#INSTSERVER#!$MASTER! $i > /etc/yum.repos.d/$TARGFILE
