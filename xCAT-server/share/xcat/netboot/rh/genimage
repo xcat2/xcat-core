@@ -16,7 +16,7 @@ use File::Find;
 use Getopt::Long;
 use Cwd qw(realpath);
 use File::Temp qw/mkdtemp/;
-
+use xCAT::Table;
 use FindBin;
 use lib "$FindBin::Bin/../imgutils";
 use imgutils;
@@ -194,12 +194,34 @@ foreach (@ndrivers) {
 
 unless ($onlyinitrd) {
    @yumdirs=();
-   find(\&isyumdir, <$installroot/$osver/$arch/>);
+
+   if( $imagename ) {
+       my $linuximagetab    = xCAT::Table->new('linuximage');
+       unless ($linuximagetab){
+           print "Unable to open linuximage table";
+           exit 1;
+       }
+
+       my $ent = $linuximagetab->getAttribs({'imagename' => "$imagename"}, ['pkgdir']);
+       my $pkgdir = $ent->{'pkgdir'};
+       my @pkgdirs = split(",", $pkgdir);
+       my $dir;
+       foreach $dir (@pkgdirs) {
+           find(\&isyumdir, <$dir/>);
+           if (!grep /$dir/, @yumdirs) {
+               print "The repository for $dir should be created before running the genimge. Try to run [createrepo $dir].\n";
+           }
+       }
+
+   } else {
+        find(\&isyumdir, <$installroot/$osver/$arch/>);
+   }
+
    # Add the dir for kernel rpm to be installed
    if ($kernelver) {
       find(\&isyumdir, <$kerneldir/>);
       if (!grep /$kerneldir/, @yumdirs) {
-         print "The repository for $kerneldir should be created before running the geniamge. Try to run [createrepo $kerneldir].\n";
+         print "The repository for $kerneldir should be created before running the genimge. Try to run [createrepo $kerneldir].\n";
       }
    }
    unless (scalar(@yumdirs)) {
@@ -217,8 +239,6 @@ unless ($onlyinitrd) {
    $repnum-=1;
    close($yumconfig);
    mkpath "$rootimg_dir/etc";
-
-
 
    my $fd;
    open($fd,">>","$rootimg_dir/etc/fstab");
