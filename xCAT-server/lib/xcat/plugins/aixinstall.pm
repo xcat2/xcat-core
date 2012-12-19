@@ -2033,6 +2033,7 @@ sub chkosimage
 	# get epkg files
 	my $ecmd = qq~/usr/bin/ls $emgr_srcdir 2>/dev/null~;
 	my @elist = xCAT::Utils->runcmd("$ecmd", -1);
+
 	foreach my $f (@elist) {
 		if (($f =~ /epkg\.Z/)) {
 			if (!grep(/^$f$/, @srclist)) {
@@ -4738,17 +4739,29 @@ sub chk_resolv_conf
     chomp $nimprime;
 
 	# get site domain and nameservers values
-	#my $sitetab = xCAT::Table->new('site');
-	#my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
-    #my $site_domain = $tmp->{value};
     my @domains = xCAT::TableUtils->get_site_attribute("domain");
     my $site_domain = $domains[0];
 
-	#my ($tmp2) = $sitetab->getAttribs({'key' => 'nameservers'}, 'value');
-    #my $site_nameservers = $tmp2->{value};
-    #$sitetab->close;
     my @nameserver = xCAT::TableUtils->get_site_attribute("nameservers");
     my $site_nameservers = $nameserver[0];
+
+	# get a list of all domains listed in xCAT network defs
+	my @alldomains;
+	my $nettab = xCAT::Table->new("networks");
+	my @doms = $nettab->getAllAttribs('domain');
+	foreach(@doms){
+		if ($_->{domain}) {
+			push (@alldomains, $_->{domain});
+		}
+	}
+	$nettab->close;
+
+	# add the site domain
+	if ($site_domain) {
+		if (!grep(/^$site_domain$/, @alldomains)) {
+			push (@alldomains, $site_domain);
+		}
+	}
 
 	#  Get a list of the all NIM resources
     #
@@ -5030,8 +5043,18 @@ sub chk_resolv_conf
 			#
 			# add domain
 			#
-			# add the domain
-			$cmd = qq~echo "search $domain" > $filename~;
+			# add all the domains from site and network defs
+			#
+			chomp $domain;
+			my $domainstring = "$domain";
+			foreach my $dom (@alldomains) {
+				chomp $dom;
+                if ($dom ne $domain){
+					$domainstring .= " $dom";
+				}
+			}
+
+			$cmd = qq~echo "search $domainstring" > $filename~;
        		$output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $Sname, $cmd, 0);
        		if ($::RUNCMD_RC != 0)
        		{
