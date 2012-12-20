@@ -230,6 +230,7 @@ CEC     9117-MMB    105EBEP                            Server-9117-MMB-SN105EBEP
 Output is similar to:
 
 These nodes defined in database but can't be discovered: f17c00bpcb_b,f17c01bpcb_a,f17c01bpcb_b,f17c02bpcb_a,
+
 device  type-model  serial-number  side  ip-addresses  hostname
 bpa     9458-100    BPCF017        A-0   40.17.0.1     f17c00bpca_a
 bpa     9458-100    BPCF017        B-0   40.17.0.2     f17c00bpcb_a
