@@ -127,7 +127,7 @@ unless ($arch) {
 
 $srcdir="$installroot/$osver/$arch" unless ($srcdir);
 $updates{'pkgdir'} = $srcdir if ($tempfile);
-$srcdir = $srcdir . "/1";
+#$srcdir = $srcdir . "/1";
 
 $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch" unless ($srcdir_otherpkgs); 
 $updates{'otherpkgdir'} = $srcdir_otherpkgs if ($tempfile);
@@ -246,19 +246,34 @@ unless ($onlyinitrd) {
    if (!$prompt) { $non_interactive="--non-interactive --no-gpg-checks"; }
 
    if($osver_host == 11) {#zypper in SLES11 is different
-       if(-e "$rootimg_dir/etc/zypp/repos.d/$osver.repo") {
-	   system("rm -rf $rootimg_dir/etc/zypp/repos.d/$osver.repo");
+
+       system("rm -rf $rootimg_dir/etc/zypp/repos.d/$osver-*.repo");
+       my @pkgdirs = split(",", $srcdir); 
+       my $dir;
+       my $i = 0; 
+       # To support multiple paths for osimage.pkgdir
+       foreach $dir (@pkgdirs) {
+           if( -d "$dir/1") {
+               $dir .= "/1"; 
+           }
+           system("zypper -R $rootimg_dir $non_interactive ar file:$dir $osver-$i");
+           $i++;
        }
-       system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir $osver");
-       if(-e "$rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo") {
-           system("rm -rf $rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo");
-       }
+
+       #if(-e "$rootimg_dir/etc/zypp/repos.d/$osver.repo") {
+       #    system("rm -rf $rootimg_dir/etc/zypp/repos.d/$osver.repo");
+       #}
+       #system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir $osver");
+       #if(-e "$rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo") {
+       #    system("rm -rf $rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo");
+       #}
        my $srcdir_sdk  = "$installroot/$osver/$arch/sdk1";
        if ( -e "$srcdir_sdk") {
            system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir_sdk ${osver}sdk");
        }
 
    }else {
+           $srcdir = $srcdir . "/1";
 	   system("zypper -R $rootimg_dir $non_interactive sa file:$srcdir");
    }
 
