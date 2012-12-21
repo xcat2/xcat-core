@@ -72,7 +72,7 @@ do
             #/xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /xcatpost/mypostscript
             /xcatpost/getpostscript.awk > /dev/null
             wget -N --waitretry=10 --random-wait -T 60 http://$i$TFTPDIR/mypostscripts/mypostscript.$NODE  -P /xcatpost 2>> /tmp/wget.log
-            mv /xcatpost/mypostscript.$node /xcatpost/mypostscript
+            mv /xcatpost/mypostscript.$NODE /xcatpost/mypostscript
 
             MYCONT=`grep MASTER /xcatpost/mypostscript`
          done
