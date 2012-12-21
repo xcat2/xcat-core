@@ -74,6 +74,15 @@ sub parse_args {
         return(usage( "Invalid Argument: $ARGV[0]" ));
     }
     ####################################
+    # Check -o argument 
+    ####################################
+    if ( exists($opt{o}) ) {
+        unless (exists($opt{D})){
+            return(usage( "The -o flag must be used with -D flag" ));
+        }
+    
+    }
+    ####################################
     # Check argument for ping test
     ####################################
     if ( exists($opt{D}) ) {
