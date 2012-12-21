@@ -99,10 +99,10 @@ if($restore){
     &uninit;
 }
 &log_this("\nxCAT automated test finished at " . scalar(localtime()));
-&log_this("Please check results in the $resultdir, \nand see $resultdir/failedcases.$timestamp file for failed cases.\nsee $resultdir/performace.report.$timestamp file for time consumption");
+&log_this("Please check results in the $resultdir, \nand see $resultdir/failedcases.$timestamp file for failed cases.\nsee $resultdir/performance.report.$timestamp file for time consumption");
 close(LOG);
 close(LOG_ERR);
-my $reportfile="$resultdir/performace.report.$timestamp";
+my $reportfile="$resultdir/performance.report.$timestamp";
 my $tmpreport="$resultdir/xcattest.log.$timestamp";
 &getreport($tmpreport,$reportfile);
 exit 0;
