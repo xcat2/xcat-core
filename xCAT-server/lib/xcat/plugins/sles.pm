@@ -823,6 +823,13 @@ sub mkinstall
                       );
             next;
         }
+      
+        
+        #To support multiple paths for osimage.pkgdir. We require the first value of osimage.pkgdir
+        # should be the os base pkgdir.
+        my @srcdirs = split(",", $pkgdir);
+        $pkgdir = $srcdirs[0];
+
 
         #Call the Template class to do substitution to produce a kickstart file in the autoinst dir
         my $tmperr;
