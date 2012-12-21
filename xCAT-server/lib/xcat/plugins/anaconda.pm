@@ -1144,6 +1144,11 @@ sub mkinstall
         }
         #my $installdir="/install"; #TODO: not hardcode installdir
         #my $tftpdir = "/tftpboot";
+         
+        #To support multiple paths for osimage.pkgdir. We require the first value of osimage.pkgdir
+        # should be the os base pkgdir.
+        my @srcdirs = split(",", $pkgdir);
+        $pkgdir = $srcdirs[0];
 
         # create the node-specific post scripts
         #mkpath "/install/postscripts/";
