@@ -533,18 +533,22 @@ sub get_lic_filenames {
     #############
     if($fff ne $2) {
         $upgrade_required = 1;
+        if($activate ne "disruptive") {
+            $msg = "Option --activate's value should be 'disruptive'";
+            return ("", "","", $msg, -1);
+        }
     } else {
 
-        if(($pns eq $1) && ($4 <= $active_level)) {
-        $msg = $msg. "Upgrade $mtms $activate!";
-    #    if($activate ne "concurrent") {
-    #        $msg = "Option --actviate's value should be disruptive";
-    #        return ("", "","", $msg, -1);
-    #    }
+        if(($pns eq $1) && ($3 > $active_level) && ($4 <= $active_level)) {
+            $msg = $msg. "Upgrade $mtms $activate!";
+            if($activate ne "concurrent") {
+                $msg = "Option --actviate's value should be 'concurrent'";
+                return ("", "","", $msg, -1);
+            }
         } else {
-        $msg = $msg . "Upgrade $mtms!";
-            if($activate !~ /^(disruptive|concurrent)$/) {
-                $msg = "Option --activate's value shouldn't be $activate, and it must be disruptive or concurrent";
+            $msg = $msg . "Upgrade $mtms!";
+            if($activate ne "disruptive") {
+                $msg = "Option --activate's value should be 'disruptive'";
                 return ("", "","", $msg, -1);
             }
         } 
