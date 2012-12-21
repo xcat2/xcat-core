@@ -107,7 +107,8 @@ sub setdestiny {
 		$state = $stents{$_}->[0]->{currstate};
 		$state =~ s/ .*//;
 		#get the osimagename if nodetype.provmethod has osimage specified
-		if (($sninit ==1) && (($state eq 'install') || ($state eq 'netboot') || ($state eq 'statelite'))) {
+		#use it for both sninit and genesis operating
+		if (($state eq 'install') || ($state eq 'netboot') || ($state eq 'statelite')) {
 		    my $osimage=$ntents{$_}->[0]->{provmethod};
 		    if (($osimage) && ($osimage ne 'install') && ($osimage ne 'netboot') && ($osimage ne 'statelite')) {
 			$state="osimage=$osimage"; 
