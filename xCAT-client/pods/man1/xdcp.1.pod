@@ -297,9 +297,7 @@ messages to standard output during execution to each target.
 
 Verifies each target before executing any  remote  commands
 on  the target. If a target is not responding, execution of
-remote commands for the target is canceled. When  specified
-with the B<-i> flag, the user is prompted to retry the
-verification request.
+remote commands for the target is canceled. 
 
 =item B<-V>|B<--version>
 
