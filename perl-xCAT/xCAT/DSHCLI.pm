@@ -285,7 +285,8 @@ sub execute_dcp
     }
     if (scalar(@targets_failed) > 0)
     {
-          $::DCP_NODES_FAILED = join ",", @targets_failed;
+          #$::DCP_NODES_FAILED = join ",", @targets_failed;
+          @::DCP_NODES_FAILED =  @targets_failed;
     }
 
     return (scalar(@targets_failed) + scalar(keys(%unresolved_targets)));
@@ -401,7 +402,8 @@ sub execute_dsh
                                  \%unresolved_targets, \%context_targets);
     if (scalar(@targets_failed) > 0)
     {
-          $::DSH_NODES_FAILED = join ",", @targets_failed;
+         # $::DSH_NODES_FAILED = join ",", @targets_failed;
+          @::DSH_NODES_FAILED = @targets_failed;
     }
 
     return (scalar(@targets_failed) + scalar(keys(%unresolved_targets)));
