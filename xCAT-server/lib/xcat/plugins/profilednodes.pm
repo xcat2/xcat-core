@@ -1077,6 +1077,8 @@ sub findme{
     %allracks = %$recordsref;
     $recordsref =  xCAT::ProfiledNodeUtils->get_all_chassis(1);
     %allchassis = %$recordsref;
+    $recordsref =  xCAT::ProfiledNodeUtils->get_all_chassis(1,'cmm');
+    %allcmmchassis = %$recordsref;
 
     # Get discovered client IP and MAC
     my $ip = $request->{'_xcat_clientip'};
@@ -1124,7 +1126,12 @@ sub findme{
         $sitetab->setAttribs({"key" => "__PCMDiscover"}, {"value" => "$valuestr"});
         $sitetab->close();
     }
-
+    # For auto discovering PureFlex (x) nodes, set slotid attribute by default.
+    if (exists $args_dict{'chassis'}){
+        if(exists $allcmmchassis{$args_dict{'chassis'}}){
+            $raw_hostinfo_str .= " slotid=1\n";
+        }
+    }
 
     my ($hostinfo_dict_ref, $invalid_records_ref) = parse_hosts_string($raw_hostinfo_str);
     my %hostinfo_dict = %$hostinfo_dict_ref;
