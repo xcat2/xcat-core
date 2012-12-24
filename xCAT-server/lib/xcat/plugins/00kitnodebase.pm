@@ -91,11 +91,14 @@ sub process_request {
         log_cmd_return($retref);
 
         my $firstnode = (@$nodelist)[0];
-        my $profileref = xCAT::ProfiledNodeUtils->get_nodes_profiles([$firstnode]);
-        my %profilehash = %$profileref;
-        if (exists $profilehash{$firstnode}{"ImageProfile"}){
+        my $chaintab = xCAT::Table->new("chain");
+        my $chainref = $chaintab->getNodeAttribs($firstnode, ['chain']);
+        my $chainstr = $chainref->{'chain'};
+        my @chainarray = split(",", $chainstr);
+
+        if ($chainarray[0]){
             setrsp_progress("Update nodes' boot settings");
-            $retref = xCAT::Utils->runxcmd({command=>["nodeset"], node=>$nodelist, arg=>['osimage='.$profilehash{$firstnode}{"ImageProfile"}]}, $request_command, 0, 2);
+            $retref = xCAT::Utils->runxcmd({command=>["nodeset"], node=>$nodelist, arg=>[$chainarray[0]]}, $request_command, 0, 2);
             log_cmd_return($retref);
         }
 

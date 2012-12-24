@@ -1232,7 +1232,10 @@ sub gen_new_hostinfo_string{
 
     # Get node's provisioning method
     my $provmethod = xCAT::ProfiledNodeUtils->get_imageprofile_prov_method($args_dict{'imageprofile'});
-    
+
+    # Check whether this is Power env.
+    my $is_fsp = xCAT::ProfiledNodeUtils->is_fsp_node($args_dict{'networkprofile'});
+
     # compose the stanza string for hostinfo file.
     my $hostsinfostr = "";
     foreach my $item (keys %hostinfo_dict){       
@@ -1272,6 +1275,19 @@ sub gen_new_hostinfo_string{
         if (exists $args_dict{'imageprofile'}){$hostinfo_dict{$item}{"groups"} .= ",".$args_dict{'imageprofile'}}
         if (exists $args_dict{'hardwareprofile'}){$hostinfo_dict{$item}{"groups"} .= ",".$args_dict{'hardwareprofile'}}
         if (exists $args_dict{'groups'}){$hostinfo_dict{$item}{"groups"} .= ",".$args_dict{'groups'}}
+
+        # xCAT limitation: slotid attribute only for power, id is for x.
+        if ((exists $hostinfo_dict{$item}{"slotid"}) && (! $is_fsp) ){
+            $hostinfo_dict{$item}{"id"} = $hostinfo_dict{$item}{"slotid"};
+            delete($hostinfo_dict{$item}{"slotid"});
+        }
+        # generage mpa attribute for blades managed by CMM.
+        if (exists $hostinfo_dict{$item}{"chassis"}){
+            my $chassisname = $hostinfo_dict{$item}{"chassis"};
+            if(exists $allcmmchassis{$chassisname}){
+                $hostinfo_dict{$item}{"mpa"} = $chassisname;
+            }
+        }
         
         $hostinfo_dict{$item}{"chain"} = 'osimage='.$provmethod;
         if (exists $netprofileattr{"bmc"}){ # Update BMC records.
