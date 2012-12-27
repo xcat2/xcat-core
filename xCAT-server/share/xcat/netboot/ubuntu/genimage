@@ -303,11 +303,12 @@ unless ($onlyinitrd) {
         }
     }
 
-    mount_chroot($rootimg_dir);
+    print("Mount /proc, /dev, /sys, pkgdir and otherpkgdir to the rootimg.\n");
+    mount_chroot($rootimg_dir, $srcdir_otherpkgs, $srcdir);
 
     # Add the local repo from MN temporarily for apt-get update/upgrade
     open($aptconfig,">","$rootimg_dir/etc/apt/sources.list");
-    print $aptconfig "deb file://$installroot/$osver/$arch/ $dist main\n";
+    print $aptconfig "deb file:///mnt/pkgdir/ $dist main\n";
     close($aptconfig);
 
    #Now let's handle extra packages
@@ -323,12 +324,12 @@ unless ($onlyinitrd) {
     my %extrapkgnames; 
 
     if (keys(%extra_hash) > 0) {
-      open($aptconfig,">>","$rootimg_dir/etc/apt/sources.list.d/genimage.$$.apt.list");
+      open($aptconfig,">","$rootimg_dir/etc/apt/sources.list.d/genimage.apt.list");
       my $index=1;
       foreach $pass (sort (keys(%extra_hash))) {
         foreach (keys(%{$extra_hash{$pass}})) {
             if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
-            print $aptconfig "deb file://$srcdir_otherpkgs/$_ . /";
+            print $aptconfig "deb file:///mnt/otherpkgdir/ ./";
             $index++;
             my $pa=$extra_hash{$pass}{$_};
             $extrapkgnames{$pass} .= " " . join(' ', @$pa);
@@ -354,8 +355,6 @@ unless ($onlyinitrd) {
           }
 
           # mount /proc file system since several packages need it.
-          print "mount /proc file system\nchroot $rootimg_dir /bin/mount -t proc proc /proc\n";
-          system("chroot $rootimg_dir /bin/mount -t proc proc /proc");
 
           # install extra packages
           my $aptgetcmd_base = $aptgetcmd;
@@ -380,10 +379,6 @@ unless ($onlyinitrd) {
 	      print "No Packages marked for install\n";
           }
 
-          # umount /proc file system that just mounted
-          print "umount /proc file system\nchroot $rootimg_dir /bin/umount /proc\n";
-          system("chroot $rootimg_dir /bin/umount /proc");
-	
           # remove the packages that are specified in the otherpkgs.list files with leading '--'
           if (exists ($extra_hash{$pass}{'POST_REMOVE'})) {
               my $pa=$extra_hash{$pass}{'POST_REMOVE'};
@@ -401,6 +396,7 @@ unless ($onlyinitrd) {
    # needed when running genimage again after updating software in repositories
    my $aptgetcmd_update = $yumcmd_base . " upgrade  ";
    $rc = system("$aptgetcmd_update");
+   print("Umount /proc, /dev, /sys, pkgdir and otherpkgdir to the rootimg.\n");
    umount_chroot($rootimg_dir);
    # ignore any return code
 
@@ -1529,15 +1525,16 @@ sub generic_post { #This function is meant to leave the image in a state approxi
 
          close($cfgfile);
 
-         #ubuntu default run level is 2
+         #the ubuntu default run level is 2
          chmod(0755,"$rootimg_dir/etc/init.d/gettyset");
          system("cd $rootimg_dir/etc/rc2.d; ln -sf ../init.d/gettyset S60gettyset");
       }
 		
       copy("$installroot/postscripts/xcatpostinit", "$rootimg_dir/etc/init.d/xcatpostinit");
+      #the ubuntu default run level is 2
       chmod(0755, "$rootimg_dir/etc/init.d/xcatpostinit");
       system("cd $rootimg_dir/etc/rc2.d; ln -sf ../init.d/xcatpostinit S61xcatpostinit");
-      
+
       #change the /bin/sh link to /bin/bash
       system("cd $rootimg_dir/bin/; ln -sf bash sh");
    }
@@ -1658,11 +1655,17 @@ sub load_dd ()
 
 sub mount_chroot {
    my $rootimage_dir = shift;
-   mkdir("$rootimage_dir/install");
+   my $otherpkgdir = shift;
+   my $pkgdir = shift;
+   mkdir("$rootimage_dir/mnt/pkgdir");
+   mkdir("$rootimage_dir/mnt/otherpkgdir");
    system("mount -o bind /dev $rootimage_dir/dev");
    system("mount -o bind /proc $rootimage_dir/proc");
    system("mount -o bind /sys $rootimage_dir/sys");
-   system("mount -o bind /install $rootimage_dir/install");
+   system("mount -o bind $pkgdir $rootimage_dir/mnt/pkgdir");
+   if ($otherpkgdir){
+      system("mount -o bind $otherpkgdir $rootimage_dir/mnt/otherpkgdir");
+   }
 }
 
 sub umount_chroot {
@@ -1670,8 +1673,10 @@ sub umount_chroot {
    system("umount $rootimage_dir/dev");
    system("umount $rootimage_dir/proc");
    system("umount $rootimage_dir/sys");
-   system("umount $rootimage_dir/install");
-   rmdir("$rootimage_dir/install");
+   system("umount $rootimage_dir/mnt/pkgdir");
+   system("umount $rootimage_dir/mnt/otherpkgdir");
+   rmdir("$rootimage_dir/mnt/pkgdir");
+   rmdir("$rootimage_dir/mnt/otherpkgdir");
 }
 
 sub usage {
