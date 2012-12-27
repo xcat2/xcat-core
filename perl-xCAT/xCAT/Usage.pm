@@ -262,7 +262,7 @@ my %usage = (
     "lsslp" =>
 "Usage: lsslp [-h|--help|-v|--version]
        lsslp [<noderange>][-V|--verbose][-i ip[,ip..]][-w][-r|-x|-z][-n][-I][-s FRAME|CEC|MM|IVM|RSA|HMC|CMM]
-             [-t tries][--vpdtable][-C counts][-T timeout]",
+             [-t tries][--vpdtable][-C counts][-T timeout][--flexdiscover]",
   "rflash" =>
 "Usage: 
     rflash [ -h|--help|-v|--version]
