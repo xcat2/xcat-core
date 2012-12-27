@@ -311,6 +311,14 @@ sub processArgs
         return 2;
     }
 
+    # -a and -t cannot be used together
+    if ($::opt_a && $::opt_t) {
+        my $rsp;
+        $rsp->{data}->[0] = "The flags \'-a'\ and \'-t'\ cannot be used together.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 2;
+    }
+
     # -l and -s cannot be used together
     if ($::opt_l && $::opt_s) {
         my $rsp;
