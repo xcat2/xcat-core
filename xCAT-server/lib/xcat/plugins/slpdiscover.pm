@@ -83,6 +83,10 @@ sub handle_new_slp_entity {
 sub process_request {
 	my $request = shift;
 	$callback = shift;
+    # Since slpdiscover has been merged into lsslp,
+    # it will return here.
+    sendmsg("Warning: Slpdiscover has been merged to lsslp. Please use lsslp --flexdiscover. \nUse man lsslp to see more details. ",$callback);
+    return;
 	$docmd = shift;
 	%searchmacs=();
 	my $srvtypes = [ qw/service:management-hardware.IBM:chassis-management-module/ ];
