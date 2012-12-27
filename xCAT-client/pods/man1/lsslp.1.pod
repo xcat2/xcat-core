@@ -274,6 +274,16 @@ e114ngmm1:
         otherinterfaces=70.0.0.30
         hwtype=cmm
 
+
+10. To do discovery and hardware configuration for CMM and blade.
+   lsslp --flexdiscover
+
+cmm01: Found service:management-hardware.IBM:chassis-management-module at address 70.0.0.7
+cmm01: Ignoring target in bay 7, no node found with mp.mpa/mp.id matching
+cmm01: Ignoring target in bay 8, no node found with mp.mpa/mp.id matching
+Configuration of cmm01node05[70.0.0.16] commencing, configuration may take a few minutes to take effect
+
+
 =head1 FILES
 
 /opt/xcat/bin/lsslp
