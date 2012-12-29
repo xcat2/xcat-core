@@ -8,7 +8,10 @@
 #####################################################
 
 package xCAT_plugin::DBobjectdefs;
-
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
 use xCAT::NodeRange;
 use xCAT::Schema;
 use xCAT::DBobjUtils;
@@ -16,6 +19,7 @@ use Data::Dumper;
 use Getopt::Long;
 use xCAT::MsgUtils;
 use xCAT::Utils;
+use xCAT::SvrUtils;
 use strict;
 
 # options can be bundled up like -vV
@@ -2593,6 +2597,18 @@ sub defls
             my %nodeosimgname;
             my %imghash;
             my %imglist;
+            my %tmpprofilelist;
+
+            # get the site.installdir for osimage searching with nodes prvomethod= install/netboot/statelite
+            # it might not be used at all, but should not do this for each node
+            my $installroot = "/install";
+            my @ents = xCAT::TableUtils->get_site_attribute("installdir");
+            my $site_ent = $ents[0];
+            if ( defined($site_ent) )
+            {
+                $installroot = $site_ent;
+            }
+
             foreach my $obj (keys %myhash)
             {
                 if ($myhash{$obj}{'objtype'} eq 'node')
@@ -2606,10 +2622,148 @@ sub defls
                     }
                     else
                     {
+                        # prvomethod = install/netboot/statelite,
+                        # search /opt/xcat/share/xcat/<provmethod/<platform> 
+                        # and /install/custom/<provmethod/<platform>
+                        my $profile = $myhash{$obj}{'profile'};
+                        my $os = $myhash{$obj}{'os'};
+                        my $arch = $myhash{$obj}{'arch'};
+                        my $provmethod = $myhash{$obj}{'provmethod'};
+
+                        # tmp hash for performance considerations,
+                        # do not search paths for each node.
+                        if (defined($tmpprofilelist{$os}{$arch}{$provmethod}{$profile}))
+                        {
+                            $nodeosimagehash{$obj}{'template'} = $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'template'};
+                            $nodeosimagehash{$obj}{'pkglist'} = $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'pkglist'};
+                            $nodeosimagehash{$obj}{'otherpkglist'} = $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'otherpkglist'};
+                            $nodeosimagehash{$obj}{'postinstall'} = $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'postinstall'};
+                            $nodeosimagehash{$obj}{'extlist'} = $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'extlist'};
+                            $nodeosimagehash{$obj}{'synclists'} = $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'synclists'};
+                            $nodeosimagehash{$obj}{'pkgdir'} = $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'pkgdir'};
+                            $nodeosimagehash{$obj}{'otherpkgdir'} = $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'otherpkgdir'};
+                            $nodeosimagehash{$obj}{'rootimgdir'} = $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'rootimgdir'};
+                            $nodeosimagehash{$obj}{'osvers'} = $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'osvers'};
+                            $nodeosimagehash{$obj}{'osarch'} = $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'osarch'};
+                            $nodeosimagehash{$obj}{'imagetype'} = $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'imagetype'};
+                            $nodeosimagehash{$obj}{'osname'} = $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'osname'};
+                            $nodeosimagehash{$obj}{'profile'} = $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'profile'};
+                            $nodeosimagehash{$obj}{'provmethod'} = $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'provmethod'};
+                            next;
+                        }
                         if ($myhash{$obj}{'os'} && $myhash{$obj}{'arch'} 
                            && $myhash{$obj}{'provmethod'} && $myhash{$obj}{'profile'})
                         {
-                            $osimagename = "$myhash{$obj}{'os'}-$myhash{$obj}{'arch'}-$myhash{$obj}{'provmethod'}-$myhash{$obj}{'profile'}";
+                            #$osimagename = "$myhash{$obj}{'os'}-$myhash{$obj}{'arch'}-$myhash{$obj}{'provmethod'}-$myhash{$obj}{'profile'}";
+                            my $platform = xCAT::SvrUtils->getplatform($myhash{$obj}{'os'});
+                            my $pm = $myhash{$obj}{'provmethod'};
+                            if ($pm eq 'statelite') { $pm = 'netboot'; }
+                            my $custpath = "$installroot/custom/$pm/$platform";
+                            my $defpath = "$::XCATROOT/share/xcat/$pm/$platform";
+
+                            $nodeosimagehash{$obj}{'osvers'} = $os;
+                            $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'osvers'} = $os;
+                            $nodeosimagehash{$obj}{'osarch'} = $arch;
+                            $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'osarch'} = $arch;
+                            $nodeosimagehash{$obj}{'imagetype'} = "linux";
+                            $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'imagetype'} = "linux";
+                            $nodeosimagehash{$obj}{'osname'} = "Linux";
+                            $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'osname'} = "Linux";
+                            $nodeosimagehash{$obj}{'profile'} = $profile;
+                            $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'profile'} = $profile;
+                            $nodeosimagehash{$obj}{'provmethod'} = $provmethod;
+                            $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'provmethod'} = $provmethod;
+                                
+                            # pkgdir both diskful and diskless
+			                $nodeosimagehash{$obj}{'pkgdir'} = "$installroot/$os/$arch";
+			                $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'pkgdir'} = "$installroot/$os/$arch";
+                            # rootimgdir only for diskless
+			                if (($provmethod eq 'netboot') || ($provmethod eq 'statelite'))
+			                {
+			                   $nodeosimagehash{$obj}{'rootimgdir'} = "$installroot/netboot/$os/$arch/$profile";
+			                   $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'rootimgdir'} = "$installroot/netboot/$os/$arch/$profile";
+			                }
+                            # otherpkgdir for both diskful and diskless
+			                $nodeosimagehash{$obj}{'otherpkgdir'} = "$installroot/post/otherpkgs/$os/$arch";
+			                $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'otherpkgdir'} = "$installroot/post/otherpkgs/$os/$arch";
+
+                            # template file only for diskful
+			                if ($provmethod eq 'install')
+                            {
+                                my $tmplfile = xCAT::SvrUtils->get_tmpl_file_name($custpath, $profile, $os, $arch, $os);
+                                if (!$tmplfile)
+                                {
+                                    $tmplfile = xCAT::SvrUtils->get_tmpl_file_name($defpath, $profile, $os, $arch, $os);
+                                }
+                                if ($tmplfile)
+                                {
+                                    $nodeosimagehash{$obj}{'template'} = $tmplfile;
+                                    $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'template'} = $tmplfile;
+                                }
+                            }
+                            # pkglist for both diskful and diskless
+                            my $pkglistfile = xCAT::SvrUtils->get_pkglist_file_name($custpath, $profile, $os, $arch, $os);
+                            if (!$pkglistfile)
+                            {
+                                $pkglistfile = xCAT::SvrUtils->get_pkglist_file_name($defpath, $profile, $os, $arch, $os);
+                            }
+                            if ($pkglistfile)
+                            {
+                                $nodeosimagehash{$obj}{'pkglist'} = $pkglistfile;
+                                $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'pkglist'} = $pkglistfile;
+                            }
+                            #otherpkglist for both diskful and diskless
+                            my $otherpkgsfile = xCAT::SvrUtils->get_otherpkgs_pkglist_file_name($custpath, $profile, $os, $arch);
+                            if (!$otherpkgsfile)
+                            {
+                                $otherpkgsfile = xCAT::SvrUtils->get_otherpkgs_pkglist_file_name($defpath, $profile, $os, $arch);
+                            }
+                            if ($otherpkgsfile)
+                            {
+                                $nodeosimagehash{$obj}{'otherpkglist'} = $otherpkgsfile;
+                                $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'otherpkglist'} = $otherpkgsfile;
+                            }
+                            # postinstall and exlist only for diskless
+			                if (($provmethod eq 'netboot') || ($provmethod eq 'statelite'))
+                            {
+                                # Get postinstall file
+                                my $postfile = xCAT::SvrUtils->get_postinstall_file_name($custpath, $profile, $os, $arch);
+                                if (!$postfile)
+                                {
+                                    $postfile = xCAT::SvrUtils->get_postinstall_file_name($defpath, $profile, $os, $arch);
+                                }
+                                if ($postfile)
+                                {
+                                    $nodeosimagehash{$obj}{'postinstall'} = $postfile;
+                                    $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'postinstall'} = $postfile;
+                                }
+                                # Get exclude list
+                                my $extfile = xCAT::SvrUtils->get_exlist_file_name($custpath, $profile, $os, $arch);
+                                if (!$extfile)
+                                {
+                                    $extfile = xCAT::SvrUtils->get_exlist_file_name($defpath, $profile, $os, $arch);
+                                }
+                                if ($extfile)
+                                {
+                                    $nodeosimagehash{$obj}{'extlist'} = $extfile;
+                                    $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'extlist'} = $extfile;
+                                }
+                            }
+                            # Get synclist
+                            my $synclist = xCAT::SvrUtils->getsynclistfile(undef, $os, $arch, $profile, $provmethod);
+                            if ($synclist)
+                            {
+                                $nodeosimagehash{$obj}{'synclists'} = $synclist;
+                                $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'synclists'} = $synclist;
+                            }
+                        }
+                        else
+                        {
+                            my $rsp;
+                            $rsp->{data}->[0] =
+                            "Missing attributes for node $obj, check the node attributes \'os\', \'arch\',\'profile\' and \'provmethod\'.";
+                            xCAT::MsgUtils->message("E", $rsp, $::callback);
+                            next;
                         }
                     }
                     # do not call xCAT::DBobjUtils->getobjdefs for each object
@@ -3014,10 +3168,6 @@ sub defls
                         {
                             foreach my $attr (keys %{$nodeosimagehash{$obj}})
                             {
-                                if (($attr eq "osname") || ($attr eq "osarch") || ($attr eq "osvers"))
-                                {
-                                    next;
-                                }
                                 if($nodeosimagehash{$obj}{$attr})
                                 {
                                     push (@{$rsp_info->{data}}, "    $attr=$nodeosimagehash{$obj}{$attr}");

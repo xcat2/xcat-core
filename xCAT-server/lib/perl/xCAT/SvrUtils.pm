@@ -1676,4 +1676,80 @@ sub getpostbootscripts()
    return \%node_postbootscript;
   }
 
+#-------------------------------------------------------------------------------
+
+=head3   getplatform
+       Translate the os to platform name.
+       Use this subroutine to replace the getplatform subroutines in different plugins.
+    Arguments:
+        os: like rhels6.3 or sles11.2
+    Returns:
+        platform: like rh and sles
+    Example:
+         my $platform = xCAT::SvrUtils->getplatform($os);
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub getplatform {
+    my $os = shift;  #like sles11.1, rhels6.3
+    if (($os) && ($os =~ /xCAT::SvrUtils/)) {
+        $os = shift;
+    }
+
+    my $platform;
+    if ($os =~ /rh.*/) 
+    {
+	$platform = "rh";
+    }
+    elsif ($os =~ /sles.*/) 
+    {
+	$platform = "sles";
+    }
+    elsif ($os =~ /suse.*/) 
+    {
+	$platform = "suse";
+    }
+    elsif ($os =~ /centos.*/)
+    {
+	$platform = "centos";
+    }
+    elsif ($os =~ /fedora.*/)
+    {
+	$platform = "fedora";
+    }
+    elsif ($os =~ /esxi.*/)
+    {
+	$platform = "esxi";
+    }
+    elsif ($os =~ /esx.*/)
+    {
+	$platform = "esx";
+    }
+    elsif ($os =~ /SL.*/)
+    {
+        $platform = "SL";
+    }
+    elsif ($os =~ /ol.*/)
+    {
+        $platform = "ol";
+    }
+    elsif ($os =~ /debian.*/) {
+        $platform = "debian";
+    }
+    elsif ($os =~ /ubuntu.*/){
+        $platform = "ubuntu";
+    }
+    elsif ($os =~ /AIX.*/)
+    {
+        $platform = "AIX";
+    }
+    elsif ($os =~ /win.*/)
+    {
+        $platform = "windows";
+    }
+
+    return $platform;
+}
 1;
