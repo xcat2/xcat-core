@@ -14,6 +14,7 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 Source1: xcat.conf
 Source2: license.tar.gz
 Source3: xCATSN 
+Source5: templates.tar.gz
 Provides: xCATsn = %{version}
 Requires: xCAT-server xCAT-client perl-DBD-SQLite 
 
@@ -79,7 +80,6 @@ tar -xf license.tar
 %build
 
 %install
-
 %ifos linux
 mkdir -p $RPM_BUILD_ROOT/etc/apache2/conf.d
 mkdir -p $RPM_BUILD_ROOT/etc/httpd/conf.d/
@@ -91,10 +91,23 @@ cp %{SOURCE3} $RPM_BUILD_ROOT/etc/xCATSN
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
+
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/
+cd $RPM_BUILD_ROOT/%{prefix}/share/xcat/
+tar zxf %{SOURCE5}
+
 %else
 mkdir -p $RPM_BUILD_ROOT/etc/
 mkdir -p $RPM_BUILD_ROOT/opt/xcat/
 cp %{SOURCE3} $RPM_BUILD_ROOT/etc/xCATSN
+
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/
+cd $RPM_BUILD_ROOT/%{prefix}/share/xcat/
+cp %{SOURCE5} $RPM_BUILD_ROOT/%{prefix}/share/xcat
+gunzip -f templates.tar.gz
+tar -xf templates.tar
+rm templates.tar
+
 %endif
 
 %pre
