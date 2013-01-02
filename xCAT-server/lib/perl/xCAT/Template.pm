@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+use xCAT::TZUtils;
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT::Template;
@@ -185,6 +186,7 @@ sub subvars {
   $inc =~ s/#INCLUDE_PTRNLIST:([^#^\n]+)#/includefile($1,0,2)/eg;
   $inc =~ s/#INCLUDE_RMPKGLIST:([^#^\n]+)#/includefile($1,0,3)/eg;
   $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
+  $inc =~ s/#WINTIMEZONE#/xCAT::TZUtils::get_wintimezone()/e;
   $inc =~ s/#HOSTNAME#/$node/g;
 
   my $nrtab = xCAT::Table->new("noderes");
