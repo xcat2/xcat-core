@@ -226,6 +226,7 @@ sub preprocess_updatenode
                     'v|version'     => \$::VERSION,
                     'V|verbose'     => \$::VERBOSE,
                     'F|sync'        => \$::FILESYNC,
+                    'l|user:s'      => \$::USER,
                     'f|snsync'      => \$::SNFILESYNC,
                     'S|sw'          => \$::SWMAINTENANCE,
                     's|sn'          => \$::SETSERVER,
@@ -1218,6 +1219,12 @@ sub updatenoderunps
                     "$installdir/postscripts/xcatdsklspost $mode -m $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4"
                     ];
             }
+            # if -l username input
+            if (defined($::USER)){ # need to add the -l username
+              unshift(@$args1, "$::USER");
+              unshift(@$args1, "-l");
+            }
+
 
             if ($::VERBOSE)
             {
@@ -1531,6 +1538,11 @@ sub updatenodesoftware
                     "-e",
                     "$cmd"
                     ];
+            }
+            # if -l username input
+            if (defined($::USER)){ # need to add the -l username
+              unshift(@$args1, "$::USER");
+              unshift(@$args1, "-l");
             }
 
             if ($::VERBOSE)
