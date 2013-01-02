@@ -78,6 +78,26 @@ my %payload_types = ( #help readability in certain areas of code by specifying p
     'rakp3' => 0x14,
     'rakp4' => 0x15,
     );
+my %rmcp_codes = ( #human friendly translations of rmcp+ code numbers
+	1 => "Insufficient resources to create new session (wait for existing sessions to timeout)",
+	2 => "Invalid Session ID", #this shouldn't occur...
+	3 => "Invalid payload type",#shouldn't occur..
+	4 => "Invalid authentication algorithm", #if this happens, we need to enhance our mechanism for detecting supported auth algorithms
+	5 => "Invalid integrity algorithm", #same as above
+	6 => "No matching authentication payload",
+	7 => "No matching integrity payload",
+	8 => "Inactive Session ID", #this suggests the session was timed out while trying to negotiate, shouldn't happen
+	9 => "Invalid role", 
+	0xa => "Unauthorised role or privilege level requested",
+	0xb => "Insufficient resources to create a session at the requested role",
+	0xc => "Invalid username length",
+	0xd => "Unauthorized name",
+	0xe => "Unauthorized GUID",
+	0xf => "Invalid integrity check value",
+	0x10 => "Invalid confidentiality algorithm",
+	0x11 => "No cipher suite match with proposed security algorithms",
+	0x12 => "Illegal or unrecognized parameter", #have never observed this, would most likely mean a bug in xCAT or IPMI device
+);
 my $socket; #global socket for all sessions to share.  Fun fun
 my $select = IO::Select->new();
 
@@ -637,7 +657,11 @@ sub got_rmcp_response {
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
-        $self->{onlogon}->("ERROR: $byte code on opening RMCP+ session",$self->{onlogon_args}); #TODO: errors
+	if ($rmcp_codes{$byte}) {
+        	$self->{onlogon}->("ERROR: ".$rmcp_codes{$byte},$self->{onlogon_args}); #TODO: errors
+	} else { 
+        	$self->{onlogon}->("ERROR: $byte code on opening RMCP+ session",$self->{onlogon_args}); #TODO: errors
+	}
         return 9;
     }
     $byte = shift @data;
@@ -748,7 +772,11 @@ sub got_rakp4 {
 	    #$self->relog();
 	    return; 
        }
-        $self->{onlogon}->("ERROR: $byte code on opening RMCP+ session",$self->{onlogon_args}); #TODO: errors
+	if ($rmcp_codes{$byte}) {
+        	$self->{onlogon}->("ERROR: ".$rmcp_codes{$byte},$self->{onlogon_args}); #TODO: errors
+	} else {
+	        $self->{onlogon}->("ERROR: $byte code on opening RMCP+ session",$self->{onlogon_args}); #TODO: errors
+	}
         return 9;
     }
     splice @data,0,6; #discard reserved bytes and session id
@@ -792,7 +820,11 @@ sub got_rakp2 {
 		#TODO: probably should disable RAKP1 retry here...  high likelihood that we'll just spew a bad RAKP1 and Open Session Request retry would be more appropriate to try to discern a valid session id
 	    return; 
        }
-        $self->{onlogon}->("ERROR: $byte code on opening RMCP+ session",$self->{onlogon_args}); #TODO: errors
+	if ($rmcp_codes{$byte}) {
+        	$self->{onlogon}->("ERROR: ".$rmcp_codes{$byte},$self->{onlogon_args}); #TODO: errors
+	} else {
+	        $self->{onlogon}->("ERROR: $byte code on opening RMCP+ session",$self->{onlogon_args}); #TODO: errors
+	}
         return 9;
     }
     splice @data,0,6; # throw away reserved bytes, and session id, might need to check
