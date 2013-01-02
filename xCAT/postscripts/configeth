@@ -4,27 +4,156 @@
 # Sample xCAT post script for configuring eth1 based on eth0 settings and
 # some conventions. 
 # This scripts works for both diskfull installs, diskless boots on AIX or Linux.
-# To use, change the settings of the following variables at the top of this script:
-#    $nic_num - set this to the interface number, e.g. 1 for eth1 or en1
-#    $netmask - the netmask that should be used when ifconfig'ing this NIC
+# the nic is passed as the only argument. All other required attributes are
+# passed in as environment variables. These are set in mypostscript.tmpl as follows:
+#
+# NICNODE - the name of the node minus the NICHOSTNAMESUFFIXES
+# NICIPS  - the ip address for this nic
+# NICHOSTNAMESUFFIXES - the suffix to combine with the NICNODE for the hostname
+# NICTYPES - for configeth - this must be ethernet
+# NICCUSTOMSCRIPTS - parsed in confignics to invoke this script if set. (not used here)
+# NICNETWORKS - the network this nic is attached to. Must also verify this network is 
+#               set in the networks table.
+# 
 
 use strict;
 use Socket;
 
-# Set these 2 variables appropriately for your cluster
-my $nic_num = 1;
-my $netmask = '255.255.255.0';
+my $nic = shift(@ARGV);
+my $nicips = $ENV{NICIPS};
+my $nicnetworks = $ENV{NICNETWORKS};
+my $nichostnamesuffixes = $ENV{NICHOSTNAMESUFFIXES};
+my $nicnetworks = $ENV{NICNETWORKS};
+my $nicnode = $ENV{NICNODE};
 
-my $nic;
-if ($^O =~ /^aix/i) {
-    $nic = "en$nic_num";
-} else {
-    $nic = "eth$nic_num";
+my $suffix = '';
+my $netmask = '';
+my $ipaddr = '';
+my $nic_num = '';
+my $subnet = '';
+
+system("logger -t xcat -p local4.err  'configeth: NIC:                  $nic.'");
+system("logger -t xcat -p local4.err  'configeth: NICNETWORKS:          $nicnetworks.'");
+system("logger -t xcat -p local4.err  'configeth: NICIPS:               $nicips.'");
+system("logger -t xcat -p local4.err  'configeth: NICHOSTNAMESUFFIXES:  $nichostnamesuffixes.'");
+
+# Set these 2 variables appropriately for your cluster
+
+# get netmask from the NICNETWORKS env varr: eth0:1_0_0_0-255_255_0_0,eth1:1_1_0_0-255_255_0_0.
+foreach my $networks (split(/,/,$nicnetworks)) {
+    my @network = split(/:/,$networks);
+    if (@network[0] eq $nic) {
+        @network[1] =~ s/_/./g;
+        my @net_info = split(/-/,@network[1]);
+        $subnet = @net_info[0];
+        $netmask = @net_info[1];
+    }
 }
+
+# get ipaddress from $nicips: eth0:1.0.0.1,eth1:1.1.1.1
+foreach my $ips (split(/,/,$nicips)) {
+    my @ip = split(/:/,$ips);
+    if (@ip[0] eq $nic ) {
+        $ipaddr = @ip[1];
+    }
+}
+
+# get nic suffix to create hostname: eth0:-eth0,eth1:-eth1
+foreach my $suffixes (split(/,/,$nichostnamesuffixes)) {
+    my @nic_suffix = split(/:/,$suffixes);
+    if (@nic_suffix[0] eq $nic ) {
+        $suffix = @nic_suffix[1];
+    }
+}
+
+# the complete NIC (i.e. eth0, en1) is passed in as an argument. 
+# Check it is correct for the OS.
+# aix form is en1. linux is eth1.
+#if ($^O =~ /^aix/i) {
+#    $nic = ;
+#} else {
+#    $nic = "eth$nic_num";
+#}
 
 # Usually do not have to set this...
 my $gateway;
 #$gateway = '1.2.3.254';
+
+
+my $hostname = "$nicnode$suffix";
+#my $ip = &getipaddr($hostname);
+#if (!$ip) { system("logger -t xcat -p local4.err  'configeth: cannot resolve $hostname.'"); exit 1; }
+
+if ($^O =~ /^aix/i) { 
+        if ($ipaddr =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/) {
+            runcmd("chdev -l '$nic' -a netaddr=$ipaddr -a netmask=$netmask -a state='up'");
+#        } else { #ipv6
+#            runcmd("autoconf6 -6i en$nic_num");
+        }
+}
+elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /sles|suse/i)) || (-f "/etc/SuSE-release")) { 
+	# Write the info to the ifcfg file
+	my $dir = "/etc/sysconfig/network";
+	if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat -p local4.err 'configeth: cannot open $dir/ifcfg-$nic.'"); exit 1; }
+	# Not sure what is really REQUIRED from below -- copied the eth file from
+	# the system
+	print FILE "BOOTPROTO=\'static\'\n";
+	print FILE "BROADCAST=\'\'\n";
+	print FILE "ETHTOOL_OPTIONS=\'\'\n";
+	print FILE "IPADDR=\'".$ipaddr."\'\n";
+	print FILE "MTU=\'\'\n";
+	print FILE "NAME=\'\'\n";
+	print FILE "NETMASK=\'".$netmask."\'\n";
+	print FILE "NETWORK=\'".$subnet."\'\n";
+	print FILE "REMOTE_IPADDR=\'\'\n";
+	print FILE "STARTMODE=\'onboot\'\n";
+	print FILE "UNIQUE=\'\'\n";
+	print FILE "USERCONTROL=\'no\'\n";
+	print FILE "_nm_name=\'static-0\'\n";
+
+	close FILE;
+	runcmd("ifup $nic");
+
+}
+else {
+	# Write the info to the ifcfg file
+	my $dir = "/etc/sysconfig/network-scripts";
+	if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat -p local4.err 'configeth: cannot open $dir/ifcfg-$nic.'"); exit 1; }
+	print FILE "DEVICE=$nic\n";
+	print FILE "BOOTPROTO=none\n";
+	print FILE "IPADDR=$ipaddr\n";
+	print FILE "NETMASK=$netmask\n";
+	if (defined($gateway)) { print FILE "GATEWAY=$gateway\n"; }
+	print FILE "ONBOOT=yes\n";
+	close FILE;
+
+	runcmd("$dir/ifup $nic");
+
+}
+system("logger -t xcat -p local4.info 'configeth: successfully configured $nic.'");
+
+exit 0;
+
+sub runcmd {
+	my $cmd = shift @_;
+	$cmd .= ' 2>&1';
+	my @output = `$cmd`;
+	my $rc = $? >> 8;
+	if ($rc) {
+		system("logger -t xcat -p local4.err 'configeth: command $cmd failed with rc $rc: " . join('',@output) . "'");
+		my $errout= "configeth: command $cmd failed with rc $rc.";
+                echo $errout;
+		exit $rc;
+	}
+}
+
+#$master=$ENV{MASTER};
+#if ($^O =~ /^aix/i) { }
+#elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /fedora/i)) || (-f "/etc/fedora-release")) { }
+#elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /sles|suse/i)) || (-f "/etc/SuSE-release")) { }
+#$result=`grep "^SYSLOG_DAEMON=" $sysconfig 2>&1`;
+#`logger -t xcat "Install: syslog setup"`;
+
 
 # Take primary node name, add "-eth1" for linux and "-en1" for AIX  and 
 #	then reverse resolve to get what ip should be
@@ -54,112 +183,6 @@ sub getipaddr()
          return inet_ntoa(inet_aton($iporhost))
     }
 }
-
-my $host = `echo $ENV{NODE} |sed "s/-hf[0-9]//g"`;
-chomp($host);
-my $hostname = "$host-$nic";
-my $ip = &getipaddr($hostname);
-if (!$ip) { system("logger -t xcat -p local4.err  'configeth: cannot resolve $hostname.'"); exit 1; }
-
-if ($^O =~ /^aix/i) { 
-        if ($ip =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/) {
-            runcmd("chdev -l 'en$nic_num' -a netaddr=$ip -a netmask=$netmask -a state='up'");
-        } else { #ipv6
-            runcmd("autoconf6 -6i en$nic_num");
-        }
-}
-elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /sles|suse/i)) || (-f "/etc/SuSE-release")) { 
-	# Write the info to the ifcfg file
-	my $dir = "/etc/sysconfig/network";
-	if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat -p local4.err 'configeth: cannot open $dir/ifcfg-$nic.'"); exit 1; }
-	# Not sure what is really REQUIRED from below -- copied the eth file from
-	# the system
-	print FILE "BOOTPROTO=\'static\'\n";
-	print FILE "BROADCAST=\'\'\n";
-	print FILE "ETHTOOL_OPTIONS=\'\'\n";
-	print FILE "IPADDR=\'".$ip."\'\n";
-	print FILE "MTU=\'\'\n";
-	print FILE "NAME=\'\'\n";
-	print FILE "NETMASK=\'".$netmask."\'\n";
-	print FILE "NETWORK=\'\'\n";
-	print FILE "REMOTE_IPADDR=\'\'\n";
-	print FILE "STARTMODE=\'onboot\'\n";
-	print FILE "UNIQUE=\'\'\n";
-	print FILE "USERCONTROL=\'no\'\n";
-	print FILE "_nm_name=\'static-0\'\n";
-
-	close FILE;
-	runcmd("ifup $nic");
-
-        my $nic = 'eth0';
-        # make file for eth0, too
-	if (! -f "$dir/ifcfg-$nic") {
-	    my $hostname = "$ENV{NODE}";
-	    my $ip = &getipaddr($hostname);
-	    if (!$ip) { system("logger -t xcat -p local4.err 'configeth: cannot resolve $hostname.'"); exit 1; }
-	    
-	    # Write the info to the ifcfg file
-	    my $dir = "/etc/sysconfig/network";
-	    if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat -p local4.err  'configeth: cannot open $dir/ifcfg-$nic.'"); exit 1; }
-	    # Not sure what is really REQUIRED from below -- copied the eth file from
-	    # the system
-	    print FILE "BOOTPROTO=\'static\'\n";
-	    print FILE "BROADCAST=\'\'\n";
-	    print FILE "ETHTOOL_OPTIONS=\'\'\n";
-	    print FILE "IPADDR=\'".$ip."\'\n";
-	    print FILE "MTU=\'\'\n";
-	    print FILE "NAME=\'\'\n";
-	    print FILE "NETMASK=\'".$netmask."\'\n";
-	    print FILE "NETWORK=\'\'\n";
-	    print FILE "REMOTE_IPADDR=\'\'\n";
-	    print FILE "STARTMODE=\'onboot\'\n";
-	    print FILE "UNIQUE=\'\'\n";
-	    print FILE "USERCONTROL=\'no\'\n";
-	    print FILE "_nm_name=\'static-0\'\n";
-	    
-	    close FILE;
-	    runcmd("ifup $nic");
-	}
-}
-else {
-	# Write the info to the ifcfg file
-	my $dir = "/etc/sysconfig/network-scripts";
-	if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat -p local4.err 'configeth: cannot open $dir/ifcfg-$nic.'"); exit 1; }
-	print FILE "DEVICE=$nic\n";
-	print FILE "BOOTPROTO=none\n";
-	print FILE "IPADDR=$ip\n";
-	print FILE "NETMASK=$netmask\n";
-	if (defined($gateway)) { print FILE "GATEWAY=$gateway\n"; }
-	print FILE "ONBOOT=yes\n";
-	close FILE;
-
-	runcmd("$dir/ifup $nic");
-}
-system("logger -t xcat -p local4.info 'configeth: successfully configured $nic.'");
-
-exit 0;
-
-sub runcmd {
-	my $cmd = shift @_;
-	$cmd .= ' 2>&1';
-	my @output = `$cmd`;
-	my $rc = $? >> 8;
-	if ($rc) {
-		system("logger -t xcat -p local4.err 'configeth: command $cmd failed with rc $rc: " . join('',@output) . "'");
-		my $errout= "configeth: command $cmd failed with rc $rc.";
-                echo $errout;
-		exit $rc;
-	}
-}
-
-#$master=$ENV{MASTER};
-#if ($^O =~ /^aix/i) { }
-#elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /fedora/i)) || (-f "/etc/fedora-release")) { }
-#elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /sles|suse/i)) || (-f "/etc/SuSE-release")) { }
-#$result=`grep "^SYSLOG_DAEMON=" $sysconfig 2>&1`;
-#`logger -t xcat "Install: syslog setup"`;
-
-
 
 
 

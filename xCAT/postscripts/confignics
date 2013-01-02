@@ -1,0 +1,66 @@
+#!/usr/bin/perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# confignics postscript for configuring additional ethernet and ib NIC adapters. 
+# This module parses NIC environment variables containing data from the nics table
+# for the specific node i.e.:
+# NICNODE             - the node name
+# NICIPS              - comma separated list of ips per NIC
+# NICHOSTNAMESUFFIXES - comma spearated list of hostname suffixes per NIC
+# NICTYPES            - ethernet or infiniband
+# NICCUSTOMSCRIPTS    - script to configure nic, i.e. configeth or configib
+# NICNETWORKS         - network and subnetmask for the adapter.
+
+use strict;
+use Socket;
+
+my $nicips = $ENV{NICIPS};
+my $niccustomscripts = $ENV{NICCUSTOMSCRIPTS};
+my $nictypes = $ENV{NICTYPES};
+my $xcatpostdir = "/xcatpost";
+system("logger -t xcat -p local4.info 'confignics: CUSTOMSCRIPTS: $niccustomscripts .'");
+
+# niccustomscripts specifies which NICS need to be configured. 
+# and which script to use to configure it.
+# Strip NIC and customscript and then call the custom script with the NIC
+# it is up to the custom script to verify information passed in NIC env vars.
+# i.e. if customscript is "eth1:configeth eth1, eth2:configeth2"
+# then first get eth1 for the nic and "configeth eth1" for the command to run"
+# the do the same for eth2.
+# the NIC environment variables will still be set for the customscript to use.
+
+if ( defined $niccustomscripts && length $niccustomscripts > 0 ) {
+
+    foreach my $customscript (split(/,/,$niccustomscripts)) {
+
+        my @script = split(/:/,$customscript);
+        runcmd("$xcatpostdir/@script[1]");
+        system("logger -t xcat -p local4.info 'confignics: executed custom script: @script[1] '");
+    }
+}
+else {
+    # determine nic from nictypes and get the nictype. Invoke configeth or configiba based on nictype.
+    # i.e. $nictypes = "eth1:ethernet,eth2:ethernet"
+    foreach my $nic_type (split(/,/,$nictypes)) {
+        my @nic_and_type = split(/:/,$nic_type);
+        if ("ETHERNET" eq uc(@nic_and_type[1])) {
+            runcmd("$xcatpostdir/configeth @nic_and_type[0]");
+            system("logger -t xcat -p local4.info 'confignics: executed script: configeth @nic_and_type[0] '");
+        }
+    }
+}
+exit 0;
+
+sub runcmd {
+	my $cmd = shift @_;
+	$cmd .= ' 2>&1';
+	my @output = `$cmd`;
+	my $rc = $? >> 8;
+	if ($rc) {
+		system("logger -t xcat -p local4.err 'confignics: command $cmd failed with rc $rc: " . join('',@output) . "'");
+		my $errout= "confignics: command $cmd failed with rc $rc.";
+#      echo $errout;
+		exit $rc;
+	}
+}
+
