@@ -49,9 +49,6 @@ else
 Getopt::Long::Configure("posix_default");
 Getopt::Long::Configure("no_gnu_compat");
 Getopt::Long::Configure("bundling");
-#GetOptions('h|help'    => \$::HELP,
-#             'v|version' => \$::VERSION);
-# display the usage if -h or --help is specified
 
 my $tmp=" ".join(' ', @ARGV);
 if (!($tmp =~ / (--help|-h|-v|--version)/)) {
@@ -81,9 +78,7 @@ if (!($tmp =~ / (--help|-h|-v|--version)/)) {
 }
 
 push (@{$cmdref->{arg}}, @ARGV);
-
-# if trying to update security, get the password 
-# to access the target node firstly
+# check the syntax
 if (
     !GetOptions(
 				'A|updateallsw'    => \$::ALLSW,
@@ -94,6 +89,7 @@ if (
                 'V|verbose'        => \$::VERBOSE,
                 'F|sync'           => \$::FILESYNC,
                 'f|snsync'         => \$::SNFILESYNC,
+                'l|user:s'         => \$::USER,
                 'S|sw'             => \$::SWMAINTENANCE,
                 's|sn'             => \$::SETSERVER,
                 'P|scripts:s'      => \$::RERUNPS,
@@ -110,6 +106,13 @@ if ($::HELP)
   &updatenode_usage();
   exit 0;
 }
+# disable -l option for now
+if ($::USER)
+{
+     my $msg = "-l option is not currently supported.";
+     xCAT::MsgUtils->message("E", $msg);
+     exit 1;
+}
 
 # display the version statement if -v or --verison is specified
 if ($::VERSION)
@@ -124,11 +127,12 @@ if (($::FILESYNC) && ($::SNFILESYNC)){  # only one
      exit 1;
 } 
 
-
+# determine who is running the command on the client and who we will run as 
+# on the node
 my $current_userid = getpwuid($>);
 $ENV{DSH_FROM_USERID} = $current_userid;
 my $to_userid;
-if ($::USER)
+if ($::USER)   # entered -l
 {
     $to_userid = $::USER;
 }
@@ -138,6 +142,7 @@ else
 }
 $ENV{DSH_TO_USERID} = $to_userid;
 
+# if -k then we have to get the password
 if ($::SECURITY) {
     my $msg;
     if (!($ENV{'DSH_REMOTE_PASSWORD'}))
