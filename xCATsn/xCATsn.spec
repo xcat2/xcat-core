@@ -139,6 +139,11 @@ fi
 		/etc/init.d/$apachedaemon reload 
 	fi
     echo "xCATsn is now installed"
+%else
+# start xcatd on  AIX
+  XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/restartxcatd
+    echo "xCATsn is now installed"
+
 %endif
 fi
 
