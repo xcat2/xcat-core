@@ -18,7 +18,7 @@ export ENABLESSHBETWEENNODES
 ## And <TABLENAME> also couldn't be log related tables.
 ## The site table is used so frequent that the <TABLENAME> couldn't be the site table.
 ## And if the key is the node, you should use #TABLE...# instead of tabdump().
-## And each attribute=value pair will be delimited  by '||' .
+## And each attribute=value pair will be delimited  by "||" .
 ## We may put special characters in the comments attribute. 
 ## So the comments attribute will be put as the last in the list,
 ## and the parsing should be more carefull.   
@@ -124,6 +124,28 @@ export MACADDRESS
 ## export NETMASK
 ## GATEWAY=9.114.34.108
 ## 
+
+# NIC related attributes for the node for confignics postscript
+NICNODE=#TABLE:nics:$NODE:node#
+export NICNODE
+
+NICIPS=#TABLE:nics:$NODE:nicips#
+export NICIPS
+
+NICHOSTNAMESUFFIXES=#TABLE:nics:$NODE:nichostnamesuffixes#
+export NICHOSTNAMESUFFIXES
+
+NICTYPES=#TABLE:nics:$NODE:nictypes#
+export NICTYPES
+
+NICCUSTOMSCRIPTS="#TABLE:nics:$NODE:niccustomscripts#"
+export NICCUSTOMSCRIPTS
+
+NICNETWORKS=#TABLE:nics:$NODE:nicnetworks#
+export NICNETWORKS
+
+#NICCOMMENTS=#TABLE:nics:$NODE:comments#
+#export NICCOMMENTS
 
 
 ##
