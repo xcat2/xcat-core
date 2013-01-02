@@ -185,7 +185,7 @@ sub subvars {
   $inc =~ s/#INCLUDE_PTRNLIST:([^#^\n]+)#/includefile($1,0,2)/eg;
   $inc =~ s/#INCLUDE_RMPKGLIST:([^#^\n]+)#/includefile($1,0,3)/eg;
   $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
-  $inc =~ s/#HOSTNAME#/$node/eg;
+  $inc =~ s/#HOSTNAME#/$node/g;
 
   my $nrtab = xCAT::Table->new("noderes");
   my $tftpserver = $nrtab->getNodeAttribs($node, ['tftpserver']);
