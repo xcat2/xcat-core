@@ -214,9 +214,20 @@ sub preprocess_request
                 # if it is not being service by the MN
                 if (!grep(/$snkey/, @MNnodeipaddr))
                 {
-
-                    # if it is a good SN, one ready to service the nodes
-                    if (grep(/$snkey/, @::good_SN))
+                    #if it is a good SN, one ready to service the nodes
+                    # split if a pool
+                    # if one in the pool is good, send the command to the
+                    # daemon
+                    my @sn_list = split ',', $snkey;
+                    my $goodsn=0;
+                    foreach my $sn (@sn_list) {
+                      if (grep(/$sn/, @::good_SN)) {
+                         $goodsn=1;
+                         last;
+                      }
+                    }
+                    # found a good service node
+                    if ($goodsn == 1) 
                     {
                         my $noderequests =
                             &process_nodes($req, $sn, $snkey,$synfiledir);
