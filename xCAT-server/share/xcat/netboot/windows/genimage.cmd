@@ -33,6 +33,7 @@ if [%ARCH%] EQU [amd64]  copy %SystemDrive%\WinPE_%SUFFIX%\media\Boot\BCD.%SUFFI
 
 
 dism /mount-image /imagefile:%SystemDrive%\WinPE_%SUFFIX%\media\Sources\boot.wim /index:1 /mountdir:%SystemDrive%\WinPE_%SUFFIX%\mount
+cd /d %retpath%
 copy startnet.cmd %SystemDrive%\WinPE_%SUFFIX%\mount\Windows\system32
 copy getnextserver.exe %SystemDrive%\WinPE_%SUFFIX%\mount\Windows\system32
 rem copy "%SystemDrive%\Program Files\Windows AIK\Tools\%ARCH%\imagex.exe" %SystemDrive%\WinPE_%SUFFIX%\mount\Windows\system32
