@@ -27,7 +27,7 @@ sub handled_commands
 {
     return {
             copycd    => "windows",
-            mkinstall => "nodetype:os=(win.*|imagex)",
+            mkinstall => "nodetype:os=(hyperv.*|win.*|imagex)",
             mkwinshell => "windows",
             mkimage => "nodetype:os=imagex",
             };
@@ -506,7 +506,7 @@ sub copycd
         #this plugin needs $mntpath...
         return;
     }
-    if ($distname and $distname !~ /^win.*/)
+    if ($distname and $distname !~ /^win.*/ and $distname !~ /^hyperv.*/)
     {
         #If they say to call it something other than win<something>, give up?
         return;
@@ -536,7 +536,7 @@ sub copycd
 					my $eiline = <$eicfg>;
 					$eiline = <$eicfg>;
 					if ($eiline =~ /Hyper/) {
-						$distname = "winhv2012";
+						$distname = "hyperv2012";
 					}
 				} 
 				unless ($distname) {

@@ -91,7 +91,7 @@ sub check_uefi_support {
 			}
 		}
 	}
-	if ($ntent->{os} =~ /win/) { #UEFI support is a tad different, need to punt..
+	if ($ntent->{os} =~ /^win/ or $ntent->{os} =~ /^hyperv/) { #UEFI support is a tad different, need to punt..
 		return 2;
 	}
 	return 1;
