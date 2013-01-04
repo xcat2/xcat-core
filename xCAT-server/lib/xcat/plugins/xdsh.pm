@@ -757,46 +757,60 @@ sub process_servicenodes_xdsh
                 print TMPFILE "$::dshexecute -> $destination\n";
         close TMPFILE;
         chmod 0755, $tmpsyncfile;
+
+        # build array of all service nodes , this is to cover pools where
+        # an entry might actually be a comma separated list
+        my @sn = ();
         foreach my $node (@snodes)
         {
-
-            # sync the file to the SN /var/xcat/syncfiles directory
-            # (site.SNsyncfiledir) 
-            # xdcp <sn> -s -F <tmpsyncfile>
-  
-            my @sn = ();
             # handle multiple servicenodes for one node
             my @sn_list = split ',', $node;
             foreach my $snode (@sn_list) {
              push @sn, $snode;
             }
 
-            # don't use runxcmd, because can go straight to process_request,
-            # these are all service nodes. Also servicenode is taken from
-            # the noderes table and may not be the same name as in the nodelist
-            # table, for example may be an ip address.
-            # here on the MN
-            my $addreq;
-            $addreq->{'_xcatdest'}  = $::mnname;
-            $addreq->{node}         = \@sn;
-            $addreq->{noderange}    = \@sn;
-            $addreq->{arg}->[0]     = "-s";
-            $addreq->{arg}->[1]     = "-F";
-            $addreq->{arg}->[2]     = $tmpsyncfile;
-            $addreq->{command}->[0] = "xdcp";
-            $addreq->{cwd}->[0]     = $req->{cwd}->[0];
-            $addreq->{env}          = $req->{env};
-            &process_request($addreq, $callback, $sub_req);
+        }
+        @::good_SN = @sn;  # initialize all good
+        # sync the file to the SN /var/xcat/syncfiles directory
+        # (site.SNsyncfiledir) 
+        # xdcp <sn> -s -F <tmpsyncfile>
+  
+         
+        # don't use runxcmd, because can go straight to process_request,
+        # these are all service nodes. Also servicenode is taken from
+        # the noderes table and may not be the same name as in the nodelist
+        # table, for example may be an ip address.
+        # here on the MN
+        my $addreq;
+        $addreq->{'_xcatdest'}  = $::mnname;
+        $addreq->{node}         = \@sn;
+        $addreq->{noderange}    = \@sn;
+        $addreq->{arg}->[0]     = "-v";
+        $addreq->{arg}->[1]     = "-s";
+        $addreq->{arg}->[2]     = "-F";
+        $addreq->{arg}->[3]     = $tmpsyncfile;
+        $addreq->{command}->[0] = "xdcp";
+        $addreq->{cwd}->[0]     = $req->{cwd}->[0];
+        $addreq->{env}          = $req->{env};
+        &process_request($addreq, $callback, $sub_req);
 
-            if ($::FAILED_NODES == 0)
+        if ($::FAILED_NODES == 0)
+        {
+          @::good_SN = @sn;   # all servicenodes were sucessful 
+        }
+        else
+        {
+          @::bad_SN = @::DCP_NODES_FAILED;
+          # remove all failing nodes from the good list
+          my @tmpgoodnodes;
+          foreach my $gnode (@::good_SN) {
+            if (!grep(/$gnode/,@::bad_SN ))  # if not a bad node
             {
-                push @::good_SN, $node;
+               push @tmpgoodnodes, $gnode;
             }
-            else
-            {
-                push @::bad_SN, $node;
-            }
-        }    # end foreach good servicenode
+          }
+          @::good_SN = @tmpgoodnodes;
+        }
         # remove the tmp syncfile
         `/bin/rm $tmpsyncfile`;
 
