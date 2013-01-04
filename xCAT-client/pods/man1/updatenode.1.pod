@@ -161,7 +161,7 @@ database table using the xCAT tabedit command.
 Scripts can  be run on both diskless and diskfull nodes.
 
 To run all the customization scripts that have been designated 
-for the nodes, (in the "postscripts" attribute), type:
+for the nodes, (in the "postscripts and postbootscripts" attributes), type:
 
   updatenode <noderange> -P
 
@@ -175,13 +175,13 @@ To run a list of scripts, type:
 
 where p1 p2 are the parameters for script1. 
 
-The flag '-P' can be omitted when only postscripts parameters are
+The flag '-P' can be omitted when only scripts names  are
 specified.
 
 Note: script1,script2 may or may not be designated as scripts to 
 automatically run on the node. However, if you want script1 and 
 script2 to get invoked next time the nodes are deployed then make sure 
-to add them to the "postscripts" attribute in the database for the nodes. 
+to add them to the "postscripts/postbootscripts" attribute in the database for the nodes. 
 
 =head2 Update security
 
@@ -334,7 +334,7 @@ Update the ca and credentials to the service nodes.  Never run this command to t
 
 =item B<-P|--scripts>
 
-Specifies that postscripts should be run on the nodes. 
+Specifies that postscripts and postbootscripts should be run on the nodes. 
 updatenode -P syncfiles is not supported.  The syncfiles postscript can only
 be run during install.  You should use updatenode <noderange> -F instead. 
 
@@ -374,7 +374,7 @@ To perform all updatenode features for the Linux nodes in the group
 
 B<updatenode compute>
 
-The command will: run any scripts listed in the nodes "postscripts" 
+The command will: run any scripts listed in the nodes "postscripts and postbootscripts" 
 attribute, install or update any software indicated in the 
 /install/custom/install/<ostype>/profile.otherpkgs.pkglist (refer to the 
 B<To install or update software part>), synchronize any files indicated by 
@@ -382,7 +382,7 @@ the synclist files specified in the osimage "synclists" attribute.
 
 =item 2
 
-To run postscripts and file synchronization only on the node
+To run postscripts,postbootscripts and file synchronization only on the node
 "clstrn01":
 
 B<updatenode clstrn01 -F -P>
@@ -401,7 +401,7 @@ B<updatenode clstrn01 -F>
 
 =item 4
 
-To run the postscripts which indicated in the postscripts attribute on 
+To run the postscripts and postbootscripts  indicated in the postscripts and postbootscripts attributes on 
 the node "clstrn01":
 
 B<updatenode clstrn01 -P>
@@ -414,7 +414,7 @@ B<cp script1,script2 /install/postscripts>
 
 B<updatenode clstrn01 -P "script1 p1 p2,script2">
 
-Since flag '-P' can be omitted when only postscripts parameters are specified, 
+Since flag '-P' can be omitted when only script names are specified, 
 the following command is equivalent:
 
 B<updatenode clstrn01 "script1 p1 p2,script2">
