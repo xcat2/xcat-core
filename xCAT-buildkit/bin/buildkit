@@ -1854,6 +1854,11 @@ sub create_kitconf
       }
     }
 
+    if ( (! -d $::deploy_dir) && (! mkpath($::deploy_dir)) ) {
+        print "Error creating build directory $::deploy_dir.\n";
+        return;
+    }
+
     my $full_kit_conf = $::deploy_dir."/".$::kit_conf;
     my $NCF;
     unless ( open( $NCF, ">$full_kit_conf" ) ) {
