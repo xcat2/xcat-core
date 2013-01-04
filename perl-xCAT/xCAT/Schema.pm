@@ -1251,7 +1251,7 @@ nics => {
                             <nic1>:<ext1>,<nic2>:<ext2>,..., for example, eth0:-eth0,ib0:-ib0
                         If multiple ip addresses are associcated with each NIC:
                             <nic1>:<ext1>|<ext2>,<nic2>:<ext1>|<ext2>,..., for example,  eth0:-eth0|-eth0-ipv6,ib0:-ib0|-ib0-ipv6.',
-            nictypes => 'Comma-separated list of NIC types per NIC. Used for information purposes. <nic1>:<type1>,<nic2>:<type2>, e.g. eth0:Ethernet,ib0:Infiniband', 
+            nictypes => 'Comma-separated list of NIC types per NIC. <nic1>:<type1>,<nic2>:<type2>, e.g. eth0:Ethernet,ib0:Infiniband', 
             niccustomscripts => 'Comma-separated list of custom scripts per NIC.  <nic1>:<script1>,<nic2>:<script2>, e.g. eth0:configeth eth0, ib0:configib ib0
 .',
             nicnetworks => 'Comma-separated list of networks connected to each NIC.
