@@ -23,59 +23,72 @@ my $nic = shift(@ARGV);
 my $nicips = $ENV{NICIPS};
 my $nicnetworks = $ENV{NICNETWORKS};
 my $nichostnamesuffixes = $ENV{NICHOSTNAMESUFFIXES};
-my $nicnetworks = $ENV{NICNETWORKS};
 my $nicnode = $ENV{NICNODE};
+my $net_cnt = $ENV{NETWORKS_LINES};
 
 my $suffix = '';
-my $netmask = '';
+my $netmask;
 my $ipaddr = '';
 my $nic_num = '';
-my $subnet = '';
+my $subnet;
+my $nic_net;
 
-system("logger -t xcat -p local4.err  'configeth: NIC:                  $nic.'");
-system("logger -t xcat -p local4.err  'configeth: NICNETWORKS:          $nicnetworks.'");
-system("logger -t xcat -p local4.err  'configeth: NICIPS:               $nicips.'");
-system("logger -t xcat -p local4.err  'configeth: NICHOSTNAMESUFFIXES:  $nichostnamesuffixes.'");
+system("logger -t xcat -p local4.err  'configeth: NIC:                  $nic'");
+system("logger -t xcat -p local4.err  'configeth: NICNETWORKS:          $nicnetworks'");
+system("logger -t xcat -p local4.err  'configeth: NICIPS:               $nicips'");
+system("logger -t xcat -p local4.err  'configeth: NICHOSTNAMESUFFIXES:  $nichostnamesuffixes'");
 
-# Set these 2 variables appropriately for your cluster
-
-# get netmask from the NICNETWORKS env varr: eth0:1_0_0_0-255_255_0_0,eth1:1_1_0_0-255_255_0_0.
+# get network or networks for this nic from NICNETWORKS: eth0:1_0_0_0-255_255_0_0,eth1:1_1_0_0
 foreach my $networks (split(/,/,$nicnetworks)) {
-    my @network = split(/:/,$networks);
-    if (@network[0] eq $nic) {
-        @network[1] =~ s/_/./g;
-        my @net_info = split(/-/,@network[1]);
-        $subnet = @net_info[0];
-        $netmask = @net_info[1];
+    my @net = split(/:/,$networks);
+    if ($net[0] eq $nic) {
+        $nic_net = $net[1];
+        last;
     }
+}
+
+
+# Find the matching network for the nic
+my $cnt = 1;
+my $net_info;
+
+while ( $cnt <= $net_cnt ) {
+    $net_info = $ENV{"NETWORKS_LINE$cnt"};
+    if ( $net_info =~ /^netname=$nic_net\|\|/ ) {
+        $net_info =~ /net=([^\|]*)\|\|/;
+        $subnet = $1;
+        $net_info =~ /mask=([^\|]*)\|\|/;
+        $netmask = $1;
+	$cnt = $net_cnt + 1;
+    } 
+    else {
+        $cnt +=1 ; 
+    }
+}
+
+# check that there is a subnet and netmask set
+if ( !(length($subnet) > 0) || !(length($subnet) > 0) ) {
+    system("logger -t xcat -p local4.err  'configeth: network subnet or netmask not set.'");
+    exit 1;
 }
 
 # get ipaddress from $nicips: eth0:1.0.0.1,eth1:1.1.1.1
 foreach my $ips (split(/,/,$nicips)) {
     my @ip = split(/:/,$ips);
-    if (@ip[0] eq $nic ) {
-        $ipaddr = @ip[1];
+    if ($ip[0] eq $nic ) {
+        $ipaddr = $ip[1];
     }
 }
 
 # get nic suffix to create hostname: eth0:-eth0,eth1:-eth1
 foreach my $suffixes (split(/,/,$nichostnamesuffixes)) {
     my @nic_suffix = split(/:/,$suffixes);
-    if (@nic_suffix[0] eq $nic ) {
-        $suffix = @nic_suffix[1];
+    if ($nic_suffix[0] eq $nic ) {
+        $suffix = $nic_suffix[1];
     }
 }
 
-# the complete NIC (i.e. eth0, en1) is passed in as an argument. 
-# Check it is correct for the OS.
-# aix form is en1. linux is eth1.
-#if ($^O =~ /^aix/i) {
-#    $nic = ;
-#} else {
-#    $nic = "eth$nic_num";
-#}
-
-# Usually do not have to set this...
+#  Do we really need to set gateway or is there a route that needs to be set
 my $gateway;
 #$gateway = '1.2.3.254';
 
