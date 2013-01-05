@@ -65,7 +65,7 @@ my $usingipv6;
 
 # is this ubuntu ?
 if ( $distro =~ /ubuntu.*/ ){
-    if (-e '/etc/dhcp/dhcpd.conf') {
+    if (-e '/etc/dhcp/') {
         $dhcpconffile = '/etc/dhcp/dhcpd.conf';
     }
     else {
