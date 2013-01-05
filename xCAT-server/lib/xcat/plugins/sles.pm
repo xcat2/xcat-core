@@ -100,6 +100,22 @@ sub mknetboot
     my $reshash = $restab->getNodesAttribs(\@nodes, ['primarynic', 'tftpserver', 'tftpdir', 'xcatmaster', 'nfsserver', 'nfsdir', 'installnic']);
 
     my %donetftp=();
+    # Warning message for nodeset <noderange> install/netboot/statelite
+    foreach my $knode (keys %{$ntents})
+    {
+        my $ent = $ntents->{$knode}->[0];
+        if ($ent && $ent->{provmethod}
+            && (($ent->{provmethod} eq 'install') || ($ent->{provmethod} eq 'netboot') || ($ent->{provmethod} eq 'statelite')))
+        {
+            $callback->(
+                        {
+                         warning => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated. They should continue to work in this release, but have not been tested as carefully, and some new functions are not available with these options.  For full function and support, use \"nodeset <noderange> osimage=<osimage_name>\" instead."],
+                        }
+                        );
+        # Do not print this warning message multiple times
+        last;
+        }
+    }
     foreach my $node (@nodes)
     {
         my $osver;
@@ -677,6 +693,24 @@ sub mkinstall
     require xCAT::Template; #only used here, load so memory can be COWed
     # Define a variable for driver update list
     my @dd_drivers;
+
+    # Warning message for nodeset <noderange> install/netboot/statelite
+    foreach my $knode (keys %{$ntents})
+    {
+        my $ent = $ntents->{$knode}->[0];
+        if ($ent && $ent->{provmethod}
+            && (($ent->{provmethod} eq 'install') || ($ent->{provmethod} eq 'netboot') || ($ent->{provmethod} eq 'statelite')))
+        {
+            $callback->(
+                        { 
+                         warning => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated. They should continue to work in this release, but have not been tested as carefully, and some new functions are not available with these options.  For full function and support, use \"nodeset <noderange> osimage=<osimage_name>\" instead."],
+                        }
+                        );
+        # Do not print this warning message multiple times
+        last;
+        }
+    }
+
     foreach $node (@nodes)
     {
         my $os;
