@@ -30,7 +30,7 @@ fi
 XCAT_VERSION=`cat Version`
 TRUNK_REVISION=`svnversion | cut -d ":" -f1`
 CUR_DATE=`date +%Y%m%d`
-VERSION="$XCAT_VERSION$PKG_LOCATION-rev$TRUNK_REVISION-$CUR_DATE"
+VERSION="${XCAT_VERSION}-${PKG_LOCATION}${CUR_DATE}"
 
 function makedeb {
 	SRC_ROOT=$1
@@ -48,7 +48,7 @@ function makedeb {
 	do
         	DIR=`echo ${DEBIAN_DIR} | sed -e 's/[/]debian$//'`
         	cd ${DIR}
-		dch -v $VERSION -c debian/changelog "$BUILD_STRING"
+		dch -v $VERSION -b -c debian/changelog "$BUILD_STRING"
         	dpkg-buildpackage
 		cd -
         	RC=$?
