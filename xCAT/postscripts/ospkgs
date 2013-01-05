@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh  
 # IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
@@ -252,83 +252,70 @@ else
     for dir in  ${array_ospkgdirs[@]}  
     do
          
+        default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
+        OSPKGDIR="$OSPKGDIR" 
         if [ $mounted -eq 0 ]; then
-            OSPKGDIR="$OSPKGDIR"  
+            #OSPKGDIR="$OSPKGDIR" 
             ospkgdir="$NFSSERVER$dir"
-            array_set_element os_path $index $ospkgdir
-         
-            if ( pmatch "$OSVER" "rhel*" ); then
-                default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
-                if [ $dir == $default_pkgdir ]; then
-            
-          
-                    if ( pmatch "$OSVER" "rhels6*" ); then
-
-                        if [ $ARCH == "x86_64" ]; then
-                            for arg in "Server" "ScalableFileSystem" "HighAvailability" "ResilientStorage" "LoadBalancer" 
-                            do
-                                ospkgdir="$NFSSERVER$dir/$arg"
-                                index=$(expr $index + 1)          
-                                array_set_element os_path $index $ospkgdir
-                            done
-                        fi               
-
-                    elif ( pmatch "$OSVER" "rhels5*" ); then
-                         ospkgdir="$NFSSERVER$dir/Server"
-                         array_set_element os_path $index $ospkgdir
-               
-                         if [ $ARCH == "x86_64" ]; then
-                             for arg in "Cluster" "ClusterStorage"
-                             do
-                                 ospkgdir="$NFSSERVER$dir/$arg"
-                                 index=$(expr $index + 1)          
-                                 array_set_element os_path $index $ospkgdir
-                             done
-                         fi   # x86_64
-                    fi # if...elif..fi
-              fi  # eq default_pkgdir
-          fi    # match rhel*
-
-        else
-            OSPKGDIR="$NFSSERVER$OSPKGDIR"  
-            array_set_element os_path $index $dir
-          
-            if ( pmatch "$OSVER" "rhel*" ); then
-                default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
-                if [ $dir == $default_pkgdir ]; then
-            
-          
-                    if ( pmatch "$OSVER" "rhels6*" ); then
-
-                        if [ $ARCH == "x86_64" ]; then
-                            for arg in "Server" "ScalableFileSystem" "HighAvailability" "ResilientStorage" "LoadBalancer" 
-                            do
-                                ospkgdir="$NFSSERVER$dir/$arg"
-                                index=$(expr $index + 1)          
-                                array_set_element os_path $index $ospkgdir
-                            done
-                        fi               
-
-                    elif ( pmatch "$OSVER" "rhels5*" ); then
-                         ospkgdir="$NFSSERVER$dir/Server"
-                         array_set_element os_path $index $ospkgdir
-               
-                         if [ $ARCH == "x86_64" ]; then
-                             for arg in "Cluster" "ClusterStorage"
-                             do
-                                 ospkgdir="$NFSSERVER$dir/$arg"
-                                 index=$(expr $index + 1)          
-                                 array_set_element os_path $index $ospkgdir
-                             done
-                         fi   # x86_64
-                    fi # if...elif..fi
-              fi  # eq default_pkgdir
-          fi    # match rhel*
-
-
+        else 
+            ospkgdir="$dir"
         fi
         
-        index=$(expr $index + 1)          
+        # for the os base pkg dir(default_pkgdir) , there are some special cases.
+        # (1)for rhels6, there is one repodata in the os base dir; so keep it here, and handle the other cases below
+        # (2)for sles, we should specified the baseurl should be ./install/sles11/ppc64/1
+        # (3)for SL5, we should append the /SL
+        # (4) for other os, we just keep it here.
+        # For other pkg paths, we just keep it here.
+        if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
+            if ( pmatch "$OSVER" "sles*" ); then
+                OSPKGDIR="$OSPKGDIR/1"
+                ospkgdir="$ospkgdir/1"
+            elif ( pmatch "$OSVER" "SL5*" ); then
+                OSPKGDIR="$OSPKGDIR/SL"
+                ospkgdir="$ospkgdir/SL"
+            fi
+        fi
+        array_set_element os_path $index $ospkgdir
+         
+        if ( pmatch "$OSVER" "rhel*" ); then
+            #default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
+            if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
+          
+                if ( pmatch "$OSVER" "rhels6*" ); then
+                   if [ $ARCH == "ppc64" ]; then
+                       ospkgdir="$ospkgdir/Server"
+                       index=$(expr $index + 1)          
+                       array_set_element os_path $index $ospkgdir
+                   fi               
+ 
+                   if [ $ARCH == "x86_64" ]; then
+                        for arg in "Server" "ScalableFileSystem" "HighAvailability" "ResilientStorage" "LoadBalancer" 
+                        do
+                            ospkgdir="$ospkgdir/$arg"
+                            index=$(expr $index + 1)          
+                            array_set_element os_path $index $ospkgdir
+                        done
+                    fi               
+
+                elif ( pmatch "$OSVER" "rhels5*" ); then
+                     # for rhels5, the repodata is in ./Server, ./Cluster, ./CusterStorage, not in ./
+                     ospkgdir="$ospkgdir/Server"
+                     array_set_element os_path $index $ospkgdir
+               
+                     if [ $ARCH == "x86_64" ]; then
+                         for arg in "Cluster" "ClusterStorage"
+                         do
+                             ospkgdir="$ospkgdir/$arg"
+                             index=$(expr $index + 1)          
+                             array_set_element os_path $index $ospkgdir
+                         done
+                     fi   # x86_64
+                fi # if...elif..fi
+             fi  # eq default_pkgdir
+          fi    # match rhel*
+
+          index=$(expr $index + 1)          
             
     done    
 
@@ -589,7 +576,7 @@ elif ( pmatch "$OSVER" "sles11*" ); then
 	fi
     fi
     
-    result=`zypper --non-interactive refresh 2>&1` 
+    result=`zypper --non-interactive --no-gpg-checks refresh 2>&1` 
     if [ $debug -ne 0 ]; then
 	echo "zypper --non-interactive refresh"
 	echo $result
