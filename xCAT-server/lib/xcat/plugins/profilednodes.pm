@@ -1640,9 +1640,9 @@ sub setrsp_invalidrecords
     my $rsp;
     
     # The total number of invalid records.
-    $rsp->{error} = "Errors found in nodeinfo file";
-    $rsp->{errorcode} = 2;
-    $rsp->{invalid_records_num} = scalar @$recordsref;
+    $rsp->{error} = ["Errors found in nodeinfo file"];
+    $rsp->{errorcode} = [2];
+    $rsp->{invalid_records_num}->[0] = scalar @$recordsref;
 
     # We write details of invalid records into a file.
     my ($fh, $filename) = xCAT::ProfiledNodeUtils->get_output_filename();
@@ -1655,7 +1655,7 @@ sub setrsp_invalidrecords
     system("chmod +r $filename");
     # Tells the URL of the details file.
     xCAT::MsgUtils->message('S', "Detailed response info placed in file: $filename\n");
-    $rsp->{details} = $filename;
+    $rsp->{details} = [$filename];
     $callback->($rsp);
 }
 
@@ -1674,8 +1674,8 @@ sub setrsp_errormsg
     my $errormsg = shift;
     my $rsp;
     xCAT::MsgUtils->message('S', "$errormsg\n");
-    $rsp->{error} = $errormsg;
-    $rsp->{errorcode} = 1;
+    $rsp->{error} = [$errormsg];
+    $rsp->{errorcode} = [1];
     $callback->($rsp);
 }
 
@@ -1694,7 +1694,7 @@ sub setrsp_infostr
     my $infostr = shift;
     my $rsp;
     xCAT::MsgUtils->message('S', "$infostr\n");
-    $rsp->{data} = $infostr;
+    $rsp->{data} = [$infostr];
     $callback->($rsp);
 }
 
@@ -1713,7 +1713,7 @@ sub setrsp_progress
     my $progress = shift;
     my $rsp;
     xCAT::MsgUtils->message('S', "$progress");
-    $rsp->{info} = $progress;
+    $rsp->{info} = [$progress];
     $callback->($rsp);
 }
 
@@ -1736,7 +1736,7 @@ sub setrsp_success
     my $rsp;
     
     # The total number of success nodes.
-    $rsp->{success_nodes_num} = scalar @$recordsref;
+    $rsp->{success_nodes_num}->[0] = scalar @$recordsref;
     my ($fh, $filename) = xCAT::ProfiledNodeUtils->get_output_filename();
     foreach (@$recordsref){
         print $fh "success: $_\n";
@@ -1749,7 +1749,7 @@ sub setrsp_success
     system("chmod +r $filename");
     # Tells the URL of the details file.
     xCAT::MsgUtils->message('S', "Detailed response info placed in file: $filename\n");
-    $rsp->{details} = $filename;
+    $rsp->{details} = [$filename];
     $callback->($rsp);
 }
 
