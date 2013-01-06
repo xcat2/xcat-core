@@ -17,7 +17,15 @@ build:
 	mkdir -p /usr/share/dracut/modules.d/97xcat
 	cp -r * /usr/share/dracut/modules.d/97xcat
 	rm -rf /usr/share/dracut/modules.d/97xcat/debian
-	mv /usr/share/dracut/modules.d/97xcat/install.ubuntu /usr/share/dracut/modules.d/97xcat/install
+	version=`head -n 1 /etc/issue | awk '{print $$1}'`;if [ $$version = 'Debian' ]; then\
+	    mkdir -p /usr/lib/dracut/modules.d/97xcat;\
+	    cp -r * /usr/lib/dracut/modules.d/97xcat;\
+	    rm -rf /usr/lib/dracut/modules.d/97xcat/debian;\
+	    mv /usr/share/dracut/modules.d/97xcat/install.debian /usr/share/dracut/modules.d/97xcat/install; \
+	    mv /usr/lib/dracut/modules.d/97xcat/install.debian /usr/lib/dracut/modules.d/97xcat/install; \
+	else\
+	    mv /usr/share/dracut/modules.d/97xcat/install.ubuntu /usr/share/dracut/modules.d/97xcat/install;\
+	fi
 	mkdir -p $(buildroot)/opt/xcat/share/xcat/netboot/genesis/$(DEB_BUILD_GNU_CPU)/fs 
 	dracut -m "xcat base" -f /tmp/xcatgenesis.tmp.rfs
 	(cd $(buildroot)/opt/xcat/share/xcat/netboot/genesis/$(DEB_BUILD_GNU_CPU)/fs/ && zcat /tmp/xcatgenesis.tmp.rfs|cpio -dumi)
