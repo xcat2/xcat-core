@@ -11,7 +11,6 @@ package xCAT_plugin::getpostscript;
 use xCAT::Utils;
 use xCAT::MsgUtils;
 use xCAT::NodeRange;
-
 1;
 
 #-------------------------------------------------------
@@ -55,7 +54,7 @@ sub process_request
     my @nodes=@$nodes; 
     # do your processing here
     # return info
-
+    
     if($command eq 'postage'){
         return postage($nodes, $callback);
     }
@@ -81,9 +80,13 @@ sub process_request
     if ($request->{scripttype}) { $state = $request->{scripttype}->[0];}
 
     require xCAT::Postage;
-    #my @scriptcontents = xCAT::Postage::makescript($client,$state,$callback); # the original method
-    my @scriptcontents = xCAT::Postage::makescript([$client],$state,$callback);  # the new method, use the template
-
+    my $args = $request->{arg};
+    if( defined($args) && grep(/version2/, @$args)) {
+        my @scriptcontents = xCAT::Postage::makescript([$client],$state,$callback);  # the new method, use the template
+    } else {
+        #print "client:$client\n";
+        my @scriptcontents = xCAT::Postage::makescript($client,$state,$callback); # the original method
+    }
     if (scalar(@scriptcontents)) {
        $rsp->{data} = \@scriptcontents;
     }
