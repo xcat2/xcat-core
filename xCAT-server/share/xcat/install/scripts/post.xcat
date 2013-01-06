@@ -50,7 +50,7 @@ do
          chmod +x /xcatpost/*
          #/xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /xcatpost/mypostscript
          
-         /xcatpost/getpostscript.awk > /dev/null
+         /xcatpost/getpostscript.awk version2 > /dev/null
          wget -N --waitretry=10 --random-wait -T 60 http://$i$TFTPDIR/mypostscripts/mypostscript.$NODE  -P /xcatpost 2>> /tmp/wget.log
          rc=$?
          if [ "$rc" = "0" ]; then
@@ -70,7 +70,7 @@ do
             let SLI=$RANDOM%10+10
             sleep $SLI
             #/xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /xcatpost/mypostscript
-            /xcatpost/getpostscript.awk > /dev/null
+            /xcatpost/getpostscript.awk version2 > /dev/null
             wget -N --waitretry=10 --random-wait -T 60 http://$i$TFTPDIR/mypostscripts/mypostscript.$NODE  -P /xcatpost 2>> /tmp/wget.log
             mv /xcatpost/mypostscript.$NODE /xcatpost/mypostscript
 
