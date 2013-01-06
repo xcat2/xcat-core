@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh  
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #####################################################
 #
@@ -75,22 +75,25 @@ download_postscripts()
     return $rc
 }
 
+
 download_mypostscript()
 {
     server=$1
-    TFTPDIR=$2
+    node=$2
+    max_retries=$3
+    TFTPDIR=$4
     if [ -z $server ]; then
 	return 1;
     fi
     if [ -z "$TFTPDIR" ]; then
         TFTPDIR="/tftpboot"
     fi
-    max_retries=2
-    retry=0
+    #max_retries=2
+    #retry=0
     rc=1
  
 
-    node=`hostname`
+    #node=`hostname`
     while [ 0 -eq 0 ]; do
 	
         wget -N --waitretry=10 --random-wait -T 60 http://$server$TFTPDIR/mypostscripts/mypostscript.$node  -P /xcatpost 2>> /tmp/wget.log
@@ -111,6 +114,8 @@ download_mypostscript()
     done
     return $rc
 }
+
+
 
 # pmatch determines if 1st argument string is matched by 2nd argument pattern
 
@@ -320,7 +325,9 @@ fi # finish the postscripts download
 
 rm -rf /xcatpost/mypostscript
 
-download_mypostscript $SIP $TFTPDIR 
+node=`hostname`
+max_retries=2
+download_mypostscript $SIP $node $max_retries $TFTPDIR 
 
 
 
@@ -350,17 +357,14 @@ if [ -x /usr/bin/openssl ]; then
      export USEOPENSSLFORXCAT
 fi
 
-
+# if the mypostscript isn't got by download_mypostscript, we assume that it wasn't generated.
+# So generate it firstly.
 if [ ! -x /xcatpost/mypostscript ]; then
 
 #/xcatpost/getpostscript.awk | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /xcatpost/mypostscript; 
-/xcatpost/getpostscript.awk > /dev/null 
-node=`hostname`
-wget -N --waitretry=10 --random-wait -T 60 http://$server$TFTPDIR/mypostscripts/mypostscript.$node  -P /xcatpost 2>> /tmp/wget.log
-rc=$?
-if [ $rc -eq 0 ]; then
-    mv /xcatpost/mypostscript.$node /xcatpost/mypostscript
-fi
+/xcatpost/getpostscript.awk version2 > /dev/null 
+max_retries=1
+download_mypostscript $SIP $node $max_retries $TFTPDIR 
 
 MYCONT=`grep MASTER /xcatpost/mypostscript`
 #echo "MYCONT=$MYCONT"
@@ -383,13 +387,10 @@ while [ -z "$MYCONT" ]; do
     #sleep $SLI
     
     #/xcatpost/getpostscript.awk | egrep  '<data>'  | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /xcatpost/mypostscript;
-    /xcatpost/getpostscript.awk > /dev/null
-    wget -N --waitretry=10 --random-wait -T 60 http://$server$TFTPDIR/mypostscripts/mypostscript.$node  -P /xcatpost 2>> /tmp/wget.log
-    rc=$?
-    if [ $rc -eq 0 ]; then
-        mv /xcatpost/mypostscript.$node /xcatpost/mypostscript
-    fi
-
+    /xcatpost/getpostscript.awk version2 > /dev/null
+    max_retries=1
+    download_mypostscript $SIP $node $max_retries $TFTPDIR
+ 
     MYCONT=`grep MASTER /xcatpost/mypostscript`
     if [ ! -z "$MYCONT" ]; then
         break;
