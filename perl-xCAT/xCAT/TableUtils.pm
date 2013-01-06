@@ -101,7 +101,7 @@ sub list_all_node_groups
             my @groupnames = split ",", $gnames;
             foreach my $groupname (@groupnames)
             {
-                if (!grep(/$groupname/, @distinctgroups))
+                if (!grep(/^$groupname$/, @distinctgroups))
                 {    # not already in list
                     push @distinctgroups, $groupname;
                 }
@@ -123,7 +123,7 @@ sub list_all_node_groups
          foreach my $group (@grouplist)
          {
              my $groupname = $group->{groupname};
-             if (!grep(/$groupname/, @distinctgroups))
+             if (!grep(/^$groupname$/, @distinctgroups))
              {    # not already in list
                  push @distinctgroups, $groupname;
              }
