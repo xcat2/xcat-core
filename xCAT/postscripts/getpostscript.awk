@@ -5,13 +5,15 @@ BEGIN {
         } else {
             server = "/inet/tcp/0/127.0.0.1/400"
         }
-
-
+        
         quit = "no"
-
 
         print "<xcatrequest>" |& server
         print "   <command>getpostscript</command>" |& server
+        if ( ARGV[1] ) {
+            args = sprintf("   <arg>%s</arg>", ARGV[1])
+            print args |& server
+        }
         print "</xcatrequest>" |& server
 
         start = 0
