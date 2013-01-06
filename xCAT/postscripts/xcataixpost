@@ -525,6 +525,7 @@ sub  getmypost {
     # request must be in XML format
     print $remote "<xcatrequest>\n";
     print $remote "   <command>getpostscript</command>\n";
+    print $remote "   <arg>version2</arg>\n";
     print $remote "</xcatrequest>\n";
 
     # get reponse in XML format
