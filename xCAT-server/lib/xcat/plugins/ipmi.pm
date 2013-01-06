@@ -5918,6 +5918,10 @@ sub getipmicons {
     $ipmicons->{node}->[0]->{bmcuser}->[0]=$argr->[2];
     $ipmicons->{node}->[0]->{bmcpass}->[0]=$argr->[3];
     my $ipmisess =  xCAT::IPMI->new(bmc=>$argr->[1],userid=>$argr->[2],password=>$argr->[3]);
+    if ($ipmisess->{error}) {
+        xCAT::SvrUtils::sendmsg([1,$ipmisess->{error}],$cb,$argr->[0],%allerrornodes);
+        return;
+    } 
     $ipmisess->{ipmicons} = $ipmicons;
     $ipmisess->{cb} = $cb;
     $ipmisess->subcmd(netfn=>0x6,command=>0x38,data=>[0x0e,0x04],callback=>\&got_channel_auth_cap_foripmicons,callback_args=>$ipmisess);
