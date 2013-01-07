@@ -672,8 +672,8 @@ sub setup_DHCP
 
     my $distro = xCAT::Utils->osver();
     my $serv = "dhcpd";
-    if ( $distro =~ /ubuntu.*/ ){
-        $serv = "dhcp3-server";	
+    if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
+        $serv = "isc-dhcp-server";	
     }
 
     my $rc = xCAT::Utils->startService($serv);
@@ -800,7 +800,7 @@ sub setup_DNS
 
     my $distro = xCAT::Utils->osver();
     my $serv = "named";
-    if ( $distro =~ /ubuntu.*/ ){
+    if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
         $serv = "bind9";
     }
 
@@ -1398,7 +1398,7 @@ sub enable_TFTPhpa
   }
 
   my $distro = xCAT::Utils->osver();
-  if ($distro !~ /ubuntu.*/i){
+  if ($distro !~ /ubuntu.*/i && $distro !~ /debian.*/i ){
     if (! open (FILE, "</etc/xinetd.d/tftp")) {
       xCAT::MsgUtils->message("S", "ERROR: Cannot open /etc/xinetd.d/tftp.");
       return 1;
@@ -1512,6 +1512,14 @@ sub enable_TFTPhpa
         my @checkproc=`ps axf|grep -v grep|grep in.tftpd`;
         if (@checkproc){
             system("stop tftpd-hpa");
+        }
+    }
+
+    if ($distro =~ /debian.*/i){
+        sleep 1;
+        my @checkproc=`ps axf|grep -v grep|grep in.tftpd`;
+        if (@checkproc){
+            system("service tftpd-hpa stop");
         }
     }
     my @tftpprocs=`ps axf|grep -v grep|grep in.tftpd`;
