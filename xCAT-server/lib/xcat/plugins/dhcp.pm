@@ -1469,7 +1469,7 @@ sub process_request
         {
             restart_dhcpd_aix();
         }
-        elsif ( $distro =~ /ubuntu.*/)
+        elsif ( $distro =~ /ubuntu.*/ || $distro =~ /debian.*/i)
         {
             if (-e '/etc/dhcp/dhcpd.conf') {
                 system("chmod a+r /etc/dhcp/dhcpd.conf");
