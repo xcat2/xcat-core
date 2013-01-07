@@ -284,31 +284,31 @@ else
           
                 if ( pmatch "$OSVER" "rhels6*" ); then
                    if [ $ARCH == "ppc64" ]; then
-                       ospkgdir="$ospkgdir/Server"
+                       ospkgdir_ok="$ospkgdir/Server"
                        index=$(expr $index + 1)          
-                       array_set_element os_path $index $ospkgdir
+                       array_set_element os_path $index $ospkgdir_ok
                    fi               
  
                    if [ $ARCH == "x86_64" ]; then
                         for arg in "Server" "ScalableFileSystem" "HighAvailability" "ResilientStorage" "LoadBalancer" 
                         do
-                            ospkgdir="$ospkgdir/$arg"
+                            ospkgdir_ok="$ospkgdir/$arg"
                             index=$(expr $index + 1)          
-                            array_set_element os_path $index $ospkgdir
+                            array_set_element os_path $index $ospkgdir_ok
                         done
                     fi               
 
                 elif ( pmatch "$OSVER" "rhels5*" ); then
                      # for rhels5, the repodata is in ./Server, ./Cluster, ./CusterStorage, not in ./
-                     ospkgdir="$ospkgdir/Server"
-                     array_set_element os_path $index $ospkgdir
+                     ospkgdir_ok="$ospkgdir/Server"
+                     array_set_element os_path $index $ospkgdir_ok
                
                      if [ $ARCH == "x86_64" ]; then
                          for arg in "Cluster" "ClusterStorage"
                          do
-                             ospkgdir="$ospkgdir/$arg"
+                             ospkgdir_ok="$ospkgdir/$arg"
                              index=$(expr $index + 1)          
-                             array_set_element os_path $index $ospkgdir
+                             array_set_element os_path $index $ospkgdir_ok
                          done
                      fi   # x86_64
                 fi # if...elif..fi
