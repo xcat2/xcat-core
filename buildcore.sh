@@ -266,7 +266,6 @@ done
 
 if [ "$OSNAME" = "AIX" ]; then
 	echo "rpm -Uvh xCAT-$SHORTSHORTVER*rpm" >> $DESTDIR/instxcat
-	echo "rpm -Uvh xCAT-rmc-$SHORTSHORTVER*rpm" >> $DESTDIR/instxcat
 fi
 
 # Make sym links in the embed subdirs for the rpms we do not have to build special
