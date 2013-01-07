@@ -263,7 +263,7 @@ for rpmname in xCAT xCATsn; do
 		fi
 	fi
 done
-
+# no longer put in xCAT-rmc
 if [ "$OSNAME" = "AIX" ]; then
 	echo "rpm -Uvh xCAT-$SHORTSHORTVER*rpm" >> $DESTDIR/instxcat
 fi
