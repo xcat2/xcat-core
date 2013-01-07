@@ -573,6 +573,7 @@ sub kit_buildrepo1
     $repoid =~ s/\s+//g;
     my $repodir = $::build_dir."/kit_repodir";
     my $srcdir =  $::workdir."/source_packages/";
+    my $basedir = $repodir;
     
     # find the repo
     my $found = 0;
@@ -598,6 +599,11 @@ sub kit_buildrepo1
     } 
 
     # Build kitpackages first
+    my $kitrepohash;
+    foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
+        $kitrepohash->{$kr->{kitrepoid}} = $kr->{kitreponame};
+    }
+
     foreach my  $kp (@{$::bldkit_config->{kitpackage}{entries}}) {
         # For this kitrepo?
         my $found = 0;
@@ -614,16 +620,38 @@ sub kit_buildrepo1
         my $rpm = "$repodir/$kp->{filename}";
         if ( -r $rpm) { next; }
 
+        my $kprid;
+        my $rpm_built;
+        foreach $kprid (split(/,/, $kp->{kitrepoid})) {
+            if ($repoid eq $kprid) {
+                next;
+            }
+            if ( (-d "$basedir/$kitrepohash->{$kprid}") and (-f "$basedir/$kitrepohash->{$kprid}/$kp->{filename}") ) {
+                $rpm_built = $kitrepohash->{$kprid};
+                last;
+            }
+        }
+              
+
         if ($::VERBOSE) { print "building kitpackage $kp->{filename} \n";}
         # determine build method
         if ($kp->{isexternalpkg} eq 'yes') { next; }
         if (defined($kp->{rpm_prebuiltdir})) {
             # simply copy the file to the build directory
             my $full_prebuiltrpm = $srcdir.$kp->{rpm_prebuiltdir}."/".$kp->{filename};
-            if (system("cp -fp $full_prebuiltrpm $repodir")) {
-            # non-zero return from system call
-                print "Error copying prebuilt rpm $kp->{filename} to Kit Build directory. \n";
-                return 1;
+
+            if ( $rpm_built ) {
+                if (system("cd $repodir;ln -sf ../$rpm_built/$kp->{filename} $kp->{filename}")) {
+                    # non-zero return from system call
+                    print "Error create symlink for prebuilt rpm $kp->{filename} to Kit Build directory. \n";
+                    return;
+                }
+            } else {
+                if (system("cp -fp $full_prebuiltrpm $repodir")) {
+                    # non-zero return from system call
+                    print "Error copying prebuilt rpm $kp->{filename} to Kit Build directory. \n";
+                    return 1;
+                }
             }
         } elsif (defined($kp->{rpm_srpm})) {
             # run rpmbuild --rebuild on the source rpm
