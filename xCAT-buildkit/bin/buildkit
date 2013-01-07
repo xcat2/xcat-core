@@ -1813,7 +1813,7 @@ sub create_kitconf
                 }
             }
             if ( !($::kit_config->{$s}{entries}[$li]->{$a} = 
-                    &cp_to_builddir($se->{$a},$::workdir.'/'.$::buildkit_def{$s}{$a}->{base_dir},$prefix)) ) {
+                    &cp_to_builddir($a,$se->{$a},$::workdir.'/'.$::buildkit_def{$s}{$a}->{base_dir},$prefix)) ) {
               return 1;
             }
           }
@@ -1893,6 +1893,7 @@ sub cp_to_builddir
 
 {
 
+    my $type = shift;
     my $files = shift;
     my $from_dir = shift;
     my $prefix = shift;
@@ -1915,6 +1916,10 @@ sub cp_to_builddir
             return;
          }        
         $copied_files .= ",$to_file_base";
+ 
+        if ($type eq 'postbootscripts') {
+            system("chmod 755 $to_file");
+        }
     }
     $copied_files =~ s/^\,//;
     return $copied_files;
