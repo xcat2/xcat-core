@@ -149,8 +149,8 @@ function makegenesisscripts {
 	ARCH="$2"
 	cd `dirname $0`/
 	tar --exclude .svn -cjf $RPMROOT/SOURCES/$RPMNAME.tar.bz2 $DIR
-	cp LICENSE.html $RPMROOT/BUILD
-	cp $RPMNAME.spec $RPMROOT/SOURCES
+	cp $DIR/LICENSE.html $RPMROOT/BUILD
+	cp $DIR/$RPMNAME.spec $RPMROOT/SOURCES
 	cd - >/dev/null
 	rm -f $RPMROOT/SRPMS/$RPMNAME-$ARCH-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$ARCH-$VER*rpm
 	echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$ARCH-$VER-snap*.noarch.rpm $EMBEDTXT..."
