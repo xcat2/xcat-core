@@ -52,6 +52,7 @@ tar jxf %{SOURCE1}
 mkdir -p opt/xcat/share/xcat/netboot/genesis/x86_64/
 mv xCAT-genesis-scripts opt/xcat/share/xcat/netboot/genesis/x86_64/fs
 rm opt/xcat/share/xcat/netboot/genesis/x86_64/fs/*.spec
+rm opt/xcat/share/xcat/netboot/genesis/x86_64/fs/LICENSE.html
 cd -
 
 
