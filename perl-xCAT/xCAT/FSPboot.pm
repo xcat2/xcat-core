@@ -215,7 +215,7 @@ sub rnetboot {
     my $options = $request->{opt};
     my $hwtype  = @$exp[2];
     my $result;
-    my $name;
+    my $name    = $request->{node};
     my $callback = $request->{callback};
     #####################################
     # Get node data 
@@ -238,6 +238,13 @@ sub rnetboot {
         C => $o->{client},
         m => $o->{mac}
     );
+    #####################################
+    # Parse node range
+    #####################################
+    if ($name =~ /ARRAY/) {
+        $name = join(',', @$name);
+    }
+
     #####################################
     # Strip colons from mac address 
     #####################################
