@@ -24,7 +24,7 @@ use File::Copy;
 use File::Temp qw/mkdtemp/;
 use File::Find;
 use File::Basename;
-
+use Digest::MD5 qw(md5_hex);
 use Socket;
 
 use strict;
@@ -1427,6 +1427,7 @@ sub copycd
     my $mntpath=undef;
     my $inspection=undef;
     my $noosimage=undef;
+    my $nonoverwrite=undef;
 
     @ARGV = @{$request->{arg}};
     GetOptions(
@@ -1436,6 +1437,7 @@ sub copycd
                'm=s' => \$mntpath,
                'i'   => \$inspection,
                'o'   => \$noosimage,
+               'w'   => \$nonoverwrite,   
                );
     unless ($mntpath)
     {
@@ -1575,6 +1577,56 @@ sub copycd
         $path=$defaultpath;
     }
 
+    #tranverse the directory structure of the os media and get the fingerprint     
+    my @filelist=();
+    find(
+         {
+          "wanted"   => sub{s/$mntpath/\./;push(@filelist,$_);},
+          "no_chdir" => 1,
+          "follow"   => 0,
+         },
+         $mntpath
+        );
+    my @sortedfilelist=sort @filelist;
+    my $fingerprint=md5_hex(join("",@sortedfilelist));
+
+    #check whether the os media has already been copied in
+    my $disccopiedin=0;
+    my $osdistroname=$distname."-".$arch;
+    my $tabosdistro=xCAT::Table->new('osdistro',-create=>1);
+    if($tabosdistro)
+    {
+       my %keyhash=();
+       $keyhash{osdistroname} = $osdistroname;
+       my $ref = undef;
+       $ref=$tabosdistro->getAttribs(\%keyhash, 'dirpaths');
+       if ($ref and $ref->{dirpaths} )
+       {
+          my @dirpaths=split(',',$ref->{dirpaths});
+          foreach(@dirpaths)
+          {
+             if(0 == system("grep -E "."\"\\<$fingerprint\\>\""."  $_"."/.fingerprint"))
+             {
+	       $disccopiedin=1;
+               if($nonoverwrite)
+               {
+                  $callback->(
+                              {
+                              info  =>
+                 	              ["The disc iso has already been copied in!"]}	       
+		             );
+                  $tabosdistro->close();
+	          return;
+	       }
+	       last;
+             }
+         }
+      }
+     }
+    $tabosdistro->close();
+
+
+
     $callback->({data => "Copying media to $path"});
     my $omask = umask 0022;
     if(-l $path)
@@ -1595,9 +1647,10 @@ sub copycd
             system("umount $mntpath");
         }
     };
+
     my $KID;
     chdir $mntpath;
-    my $numFiles = `find . -print | wc -l`;
+    my $numFiles = scalar(@sortedfilelist);
     my $child = open($KID, "|-");
     unless (defined $child)
     {
@@ -1607,10 +1660,10 @@ sub copycd
     if ($child)
     {
         push @cpiopid, $child;
-        my @finddata = `find .`;
-        for (@finddata)
+	chdir("/");
+        for (@sortedfilelist)
         {
-            print $KID $_;
+            print $KID $_."\n";
         }
         close($KID);
         $rc = $?;
@@ -1619,8 +1672,7 @@ sub copycd
     {
         nice 10;
         my $c = "nice -n 20 cpio -vdump $path";
-        my $k2 = open(PIPE, "$c 2>&1 |") || 
-           $callback->({error => "Media copy operation fork failure"}); 
+        my $k2 = open(PIPE, "$c 2>&1 |") || exit(1); 
         push @cpiopid, $k2;
         my $copied = 0;
         my ($percent, $fout);
@@ -1631,12 +1683,31 @@ sub copycd
           $callback->({sinfo => "$fout"});
           ++$copied;
         }	
-        exit;
-    }
-
+        if($copied == $numFiles)
+        {
+                #media copy success		
+		exit(0);
+	}
+	else
+        {
+                #media copy failed		
+                exit(1);
+        }
+}    
     #my $rc = system("cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch");
     #my $rc = system("cd $path;rsync -a . $installroot/$distname/$arch/");
     chmod 0755, "$path";
+
+    #append the fingerprint to the .fingerprint file to indicate that the os media has been copied in    
+    unless($disccopiedin)
+    {
+	my $ret=open(my $fpd,">>","$path/.fingerprint");
+	if($ret){
+        	print $fpd "$fingerprint,";
+        	close($fpd);
+	}
+    }
+
 
     unless($path =~ /^($defaultpath)/)
     {
@@ -1661,17 +1732,15 @@ sub copycd
     }
 
     require xCAT::Yum;
-	
-	xCAT::Yum->localize_yumrepo($installroot, $distname, $arch);
+    xCAT::Yum->localize_yumrepo($installroot, $distname, $arch);
     
-	if ($rc != 0)
+    if ($rc != 0)
     {
         $callback->({error => "Media copy operation failed, status $rc"});
     }
     else
     {
         $callback->({data => "Media copy operation successful"});
-        my $osdistroname=$distname."-".$arch;
         my @ret=xCAT::SvrUtils->update_osdistro_table($distname,$arch,$path,$osdistroname);
         if ($ret[0] != 0) {
             $callback->({data => "Error when updating the osdistro tables: " . $ret[1]});
