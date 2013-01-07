@@ -116,13 +116,13 @@ if [ $NTYPE = service ]; then
 fi
 
 if [ "$(uname -s)" = "Linux" ]; then
-  if ( pmatch $OSVER "fedora*" ) || ( pmatch $OSVER "rhels5*" ) || ( pmatch $OSVER "rhel6*" ) || ( pmatch $OSVER "rhels6*" ) || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ] || ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ); then
+  if ( pmatch $OSVER "fedora*" ) || ( pmatch $OSVER "rhels5*" ) || ( pmatch $OSVER "rhel6*" ) || ( pmatch $OSVER "rhels6*" ) || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ] || ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
     if [ -e /etc/rsyslog.conf ]; then
       conf_file="/etc/rsyslog.conf"
       sysconfig="/etc/sysconfig/rsyslog"
       init="/etc/init.d/rsyslog"
       isRsyslog=1
-      if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ); then
+      if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
         sysconfig="/etc/default/rsyslog"
       fi
     fi
@@ -241,7 +241,7 @@ else
     
     #Ubuntu doesn't have sysconfig 
     # so configuring the MN to receive UDP connections here.
-    if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ); then
+    if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
       egrep \('^\$UDPServerRun 514'\|'^\$ModLoad imudp'\) $conf_file > /dev/null 2>&1;
       if [ $? -eq 1 ]; then
         echo "\$ModLoad imudp" >> $conf_file;
@@ -278,7 +278,7 @@ else
       if [ $isLinux -eq 0 ]; then
         echo "*.debug @$master" >> $conf_file
       else
-        if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ); then
+        if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
           echo "\$ModLoad imuxsock" >> $conf_file
           echo "*.* @$master" >> $conf_file
         else
