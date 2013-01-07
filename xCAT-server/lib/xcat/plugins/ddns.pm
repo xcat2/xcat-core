@@ -20,7 +20,7 @@ my $distro = xCAT::Utils->osver();
 
 my $service="named";
 # is this ubuntu ?
-if ( $distro =~ /ubuntu.*/ ){
+if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
     $service = "bind9";	
 }
 
@@ -575,7 +575,7 @@ sub get_zonesdir {
 sub get_conf {
     my $conf="/etc/named.conf";
     # is this ubuntu ?
-    if ( $distro =~ /ubuntu.*/ ){
+    if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
         $conf="/etc/bind/named.conf";
     }
 
@@ -715,7 +715,7 @@ sub update_zones {
             }
             flock($zonehdl,LOCK_UN);
             close($zonehdl);
-            if ( $distro =~ /ubuntu.*/ ){
+            if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
                 chown(scalar(getpwnam('root')),scalar(getgrnam('bind')),$dbdir."/db.$zonefilename");
             }
             else{
@@ -937,7 +937,7 @@ sub update_namedconf {
     for my $l  (@newnamed) { print $newnameconf $l; }
     flock($newnameconf,LOCK_UN);
     close($newnameconf);
-    if ( $distro =~ /ubuntu.*/ ){
+    if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
         chown (scalar(getpwnam('root')),scalar(getgrnam('bind')),$namedlocation);
     }
     else{
