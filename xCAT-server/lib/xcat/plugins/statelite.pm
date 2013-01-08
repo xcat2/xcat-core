@@ -273,7 +273,7 @@ sub process_request {
 
         # check the validity of the option
         if ($tmp[1] !~ /^(tmpfs|persistent|localdisk|rw|ro|con|link|tmpfs,rw|link,ro|link,persistent|link,con)$/) {
-            $callback->({error=>[qq{ $tmp[2] has invalid option. The valid options: tmpfs persistent localdisk rw link tmpfs,rw link,ro link,persistent link,con}], errorcode=>[1]});
+            $callback->({error=>[qq{ $tmp[2] has invalid option. The valid options: tmpfs persistent localdisk rw ro con link tmpfs,rw link,ro link,persistent link,con}], errorcode=>[1]});
             return;
         }
 
