@@ -7,9 +7,14 @@ set ARCH=%1%
 if [%ARCH%] EQU [x86] set SUFFIX=32
 if [%ARCH%] EQU [amd64] set SUFFIX=64
 if [%SUFFIX%] EQU [] goto :errorbadargs
+::Configuration section
+::the drive to use for holding the image
+set defdrive=%SystemDrive%
+::location where Windows PE from ADK install is located
+set adkpedir="%defdrive%\Program Files (x86)\Windows Kits\8.0\Assessment and Deployment Kit\Windows Preinstallation Environment"
 
 if exist %SystemDrive%\WinPE_%SUFFIX% rd %SystemDrive%\WinPE_%SUFFIX% /s /q
-cd "%SystemDrive%\Program Files (x86)\Windows Kits\8.0\Assessment and Deployment Kit\Windows Preinstallation Environment\"
+cd "%adkpedir%"
 set retpath=%cd%
 call copype.cmd %ARCH% %SystemDrive%\WinPE_%SUFFIX%
 cd /d %retpath%
@@ -37,14 +42,14 @@ cd /d %retpath%
 copy startnet.cmd %SystemDrive%\WinPE_%SUFFIX%\mount\Windows\system32
 copy getnextserver.exe %SystemDrive%\WinPE_%SUFFIX%\mount\Windows\system32
 rem copy "%SystemDrive%\Program Files\Windows AIK\Tools\%ARCH%\imagex.exe" %SystemDrive%\WinPE_%SUFFIX%\mount\Windows\system32
-dism /Image:%SystemDrive%\WinPE_%SUFFIX%\mount /add-package /packagepath:"%SystemDrive%\Program Files (x86)\Windows Kits\8.0\Assessment and Deployment Kit\Windows Preinstallation Environment\amd64\WinPE_OCs\WinPE-WMI.cab"
-dism /Image:%SystemDrive%\WinPE_%SUFFIX%\mount /add-package /packagepath:"%SystemDrive%\Program Files (x86)\Windows Kits\8.0\Assessment and Deployment Kit\Windows Preinstallation Environment\amd64\WinPE_OCs\WinPE-Scripting.cab"
-dism /Image:%SystemDrive%\WinPE_%SUFFIX%\mount /add-package /packagepath:"%SystemDrive%\Program Files (x86)\Windows Kits\8.0\Assessment and Deployment Kit\Windows Preinstallation Environment\amd64\WinPE_OCs\WinPE-RNDIS.cab"
-dism /Image:%SystemDrive%\WinPE_%SUFFIX%\mount /add-package /packagepath:"%SystemDrive%\Program Files (x86)\Windows Kits\8.0\Assessment and Deployment Kit\Windows Preinstallation Environment\amd64\WinPE_OCs\WinPE-NetFX4.cab"
-dism /Image:%SystemDrive%\WinPE_%SUFFIX%\mount /add-package /packagepath:"%SystemDrive%\Program Files (x86)\Windows Kits\8.0\Assessment and Deployment Kit\Windows Preinstallation Environment\amd64\WinPE_OCs\WinPE-PowerShell3.cab"
-dism /Image:%SystemDrive%\WinPE_%SUFFIX%\mount /add-package /packagepath:"%SystemDrive%\Program Files (x86)\Windows Kits\8.0\Assessment and Deployment Kit\Windows Preinstallation Environment\amd64\WinPE_OCs\WinPE-DismCmdlets.cab"
-dism /Image:%SystemDrive%\WinPE_%SUFFIX%\mount /add-package /packagepath:"%SystemDrive%\Program Files (x86)\Windows Kits\8.0\Assessment and Deployment Kit\Windows Preinstallation Environment\amd64\WinPE_OCs\WinPE-StorageWMI.cab"
-dism /Image:%SystemDrive%\WinPE_%SUFFIX%\mount /add-package /packagepath:"%SystemDrive%\Program Files (x86)\Windows Kits\8.0\Assessment and Deployment Kit\Windows Preinstallation Environment\amd64\WinPE_OCs\WinPE-WDS-Tools.cab"
+dism /Image:%SystemDrive%\WinPE_%SUFFIX%\mount /add-package /packagepath:"%adkpedir%\amd64\WinPE_OCs\WinPE-WMI.cab"
+dism /Image:%SystemDrive%\WinPE_%SUFFIX%\mount /add-package /packagepath:"%adkpedir%\amd64\WinPE_OCs\WinPE-Scripting.cab"
+dism /Image:%SystemDrive%\WinPE_%SUFFIX%\mount /add-package /packagepath:"%adkpedir%\amd64\WinPE_OCs\WinPE-RNDIS.cab"
+dism /Image:%SystemDrive%\WinPE_%SUFFIX%\mount /add-package /packagepath:"%adkpedir%\amd64\WinPE_OCs\WinPE-NetFX4.cab"
+dism /Image:%SystemDrive%\WinPE_%SUFFIX%\mount /add-package /packagepath:"%adkpedir%\amd64\WinPE_OCs\WinPE-PowerShell3.cab"
+dism /Image:%SystemDrive%\WinPE_%SUFFIX%\mount /add-package /packagepath:"%adkpedir%\amd64\WinPE_OCs\WinPE-DismCmdlets.cab"
+dism /Image:%SystemDrive%\WinPE_%SUFFIX%\mount /add-package /packagepath:"%adkpedir%\WinPE_OCs\WinPE-StorageWMI.cab"
+dism /Image:%SystemDrive%\WinPE_%SUFFIX%\mount /add-package /packagepath:"%adkpedir%\amd64\WinPE_OCs\WinPE-WDS-Tools.cab"
 copy %SystemDrive%\WinPE_%SUFFIX%\mount\Windows\Boot\PXE\pxeboot.n12 %SystemDrive%\WinPE_%SUFFIX%\media\Boot\pxeboot.0
 copy %SystemDrive%\WinPE_%SUFFIX%\mount\Windows\Boot\PXE\wdsmgfw.efi %SystemDrive%\WinPE_%SUFFIX%\media\Boot\wdsmgfw.efi
 copy %SystemDrive%\WinPE_%SUFFIX%\mount\Windows\Boot\EFI\bootmgfw.efi %SystemDrive%\WinPE_%SUFFIX%\media\Boot\bootmgfw.efi
