@@ -257,6 +257,13 @@ sub process_request {
     # the directory/file in litefile table must be the absolute path ("/***")
     foreach my $entry (@$listNew) {
         my @tmp = split (/\s+/, $entry);
+
+        # check the validity of the option
+        if ($tmp[1] !~ /^(tmpfs|persistent|localdisk|rw|ro|con|link|tmpfs,rw|link,ro|link,persistent|link,con)$/) {
+            $callback->({error=>[qq{ $tmp[2] has invalid option. The valid options: tmpfs persistent localdisk rw ro con link tmpfs,rw link,ro link,persistent link,con}], errorcode=>[1]});
+            return;
+        }
+
         unless ($tmp[2] =~ m{^/}) {
             $callback->({error=>[qq{ $tmp[2] is not one absolute path. }], errorcode=>[1]});
             return;
