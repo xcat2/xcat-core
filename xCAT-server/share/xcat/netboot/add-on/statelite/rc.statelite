@@ -22,6 +22,17 @@ declare -a CLIST
 declare -a PLIST 
 
 ME=`hostname -s`
+MAX=30
+TRIES=1
+while [ x$ME = x ];do
+    TRIES=$[ $TRIES+1 ]
+    if [ $TRIES -eq $MAX ]; then
+        echo "Can NOT get the hostname of the node. System will fail to enable the persistent files.">/dev/console
+        break
+    fi
+    sleep 1
+    ME=`hostname -s`
+done
 
 PERSISTENT="${MNTDIR}/$SL/persistent/$ME"
 
