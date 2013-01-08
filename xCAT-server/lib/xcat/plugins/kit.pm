@@ -1387,7 +1387,7 @@ sub addkitcomp
 
     my %os;
     my $osdistrotable;
-    (my $osimagetable) = $tabs{osimage}->getAttribs({imagename=> $osimage}, 'osdistroname', 'serverrole', 'kitcomponents');
+    (my $osimagetable) = $tabs{osimage}->getAttribs({imagename=> $osimage}, 'osdistroname', 'serverrole', 'kitcomponents', 'osname', 'osvers', 'osarch');
     if ( $osimagetable and $osimagetable->{'osdistroname'}){
         ($osdistrotable) = $tabs{osdistro}->getAttribs({osdistroname=> $osimagetable->{'osdistroname'}}, 'basename', 'majorversion', 'minorversion', 'arch', 'type');
         if ( !$osdistrotable or !$osdistrotable->{basename} ) {
