@@ -247,11 +247,11 @@ for rpmname in xCAT xCATsn; do
 		UPLOAD=1
 		ORIGFAILEDRPMS="$FAILEDRPMS"
 		if [ "$OSNAME" = "AIX" ]; then
-			./makerpm $rpmname
+			./makerpm $rpmname "$EMBED"
 			if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname"; fi
 		else
 			for arch in x86_64 i386 ppc64 s390x; do
-				./makerpm $rpmname $arch
+				./makerpm $rpmname $arch "$EMBED"
 				if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname-$arch"; fi
 			done
 		fi
