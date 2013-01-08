@@ -440,6 +440,7 @@ if ( pmatch "$OSVER" "sles10*" ); then
 
     result=`rug update -y --agree-to-third-party-licences`
     if [ $? -ne 0 ]; then 
+        RETURNVAL=$?
 	logger -t xcat -p local4.info "rug update -y --agree-to-third-party-licences\n    $result"
         echo "ospkgs: rug update -y --agree-to-third-party-licences"
 	echo "    $result"
@@ -585,6 +586,7 @@ elif ( pmatch "$OSVER" "sles11*" ); then
     #upgrade the all existing rpms
     result=`zypper --non-interactive update --auto-agree-with-licenses`
     if [ $? -ne 0 ]; then 
+        RETURNVAL=$?
 	logger -t xcat -p local4.info  "ospkgs: zypper --non-interactive update --auto-agree-with-licenses\n    $result"
 	echo "ospkgs: zypper --non-interactive update --auto-agree-with-licenses"
 	echo "    $result"
@@ -667,7 +669,10 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
 	# upgrade existing packages
 	command="apt-get -y upgrade"
 	echo "=== $command"
-	$command
+	eval $command
+        if [ $? -ne 0 ]; then
+           RETURNVAL=$?
+        fi
 
 	# install groups (NOTE: It's not clear rpm-like "groups" are supported by dpkg/apt,
 	# but keeping this here doesn't really hurt. Anything that looks like a group will
@@ -768,6 +773,7 @@ else
     #upgrade the existing rpms
     result=`yum -y upgrade 2>&1`
     if [ $? -ne 0 ]; then 
+        RETURNVAL=$?
 	logger -t xcat -p local4.info "ospkgs: yum -y upgrade\n    $result"
 	echo "ospkgs: yum -y upgrade"
 	echo "    $result"
