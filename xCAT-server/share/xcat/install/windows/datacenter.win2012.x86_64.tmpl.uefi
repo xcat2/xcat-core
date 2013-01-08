@@ -21,7 +21,7 @@
                         <CreatePartition>
                             <Order>1</Order>
                             <Type>EFI</Type>
-                            <Size>50</Size>
+                            <Size>260</Size>
                         </CreatePartition>
                         <CreatePartition>
                             <Order>2</Order>

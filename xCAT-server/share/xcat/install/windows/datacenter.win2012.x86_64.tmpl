@@ -20,16 +20,6 @@
                     <CreatePartitions>
                         <CreatePartition>
                             <Order>1</Order>
-                            <Type>EFI</Type>
-                            <Size>50</Size>
-                        </CreatePartition>
-                        <CreatePartition>
-                            <Order>2</Order>
-                            <Type>MSR</Type>
-                            <Size>128</Size>
-                        </CreatePartition>
-                        <CreatePartition>
-                            <Order>3</Order>
                             <Type>Primary</Type>
                             <Extend>true</Extend>
                         </CreatePartition>
@@ -55,8 +45,6 @@
             </ImageInstall>
             <UserData>
                 <AcceptEula>true</AcceptEula>
-                <FullName>xCAT USER</FullName>
-                <Organization>xCAT</Organization>
             	#WINPRODKEY:win2012.datacenter#
             </UserData>
         </component>

@@ -21,7 +21,7 @@
                         <CreatePartition>
                             <Order>1</Order>
                             <Type>EFI</Type>
-                            <Size>50</Size>
+                            <Size>260</Size>
                         </CreatePartition>
                         <CreatePartition>
                             <Order>2</Order>
@@ -55,8 +55,6 @@
             </ImageInstall>
             <UserData>
                 <AcceptEula>true</AcceptEula>
-                <FullName>xCAT USER</FullName>
-                <Organization>xCAT</Organization>
             	#WINPRODKEY:win2012.standard#
             </UserData>
         </component>
