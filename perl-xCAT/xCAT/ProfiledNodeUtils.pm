@@ -763,3 +763,78 @@ sub get_nodes_cmm
     
     return \%returncmm
 }
+
+#-------------------------------------------------------------------------------
+
+=head3 parse_nodeinfo_file
+    Description: Parse node info file content. And put node info into 2 global
+                 vals: @::profiledNodeObjNames and %::profiledNodeAttrs.
+                 @::profiledNodeObjNames: recording all nodes' names.
+                 %::profiledNodeAttrs: recording all nodes' attributes.
+    Arguments: $filedata: node info file content string.
+    Returns: ($retcode, $msgstr).
+              $retcode = 1. Parse success, the format of this file is OK.
+              $retcode = 0. Parse failed, there are some errors in this file.
+                            Detailed errors will be set in $msgstr.
+=cut
+
+#-------------------------------------------------------------------------------
+sub parse_nodeinfo_file
+{
+    my($class, $filedata) = @_;
+    @::profiledNodeObjNames = ();
+    %::profiledNodeAttrs = ();
+
+    my @lines = split /\n/, $filedata;
+    my $obj_found = 0;
+    my ($objname, $append);
+
+    foreach my $line (@lines){
+        # skip blank and comment lines
+        next if ($line =~ /^\s*$/ || $line =~ /^\s*#/);
+
+        # The line ends with :
+        if (grep(/:\s*$/, $line)){
+            ($objname, $append) = split(/:/, $line);
+            $objname =~ s/^\s*//;    # Remove any leading whitespace
+            $objname =~ s/\s*$//;    # Remove any trailing whitespace
+
+            # OK we've found one object.
+            if ($objname){
+                $obj_found = 1;
+                push(@::profiledNodeObjNames, $objname);
+            }else{
+                return 0, "No node name defined in line \'$line\'";
+            }
+        } # The line has =
+        elsif (($line =~ /^\s*(.*?)\s*=\s*(.*)\s*/)){
+            # No one object clarified yet. So this file format is illegal.
+            if (! $obj_found){
+                return 0, "No node defined before line \'$line\'";
+            }
+
+            my $attr = $1;
+            my $val  = $2;
+            $attr =~ s/^\s*//;    # Remove any leading whitespace
+            $attr =~ s/\s*$//;    # Remove any trailing whitespace
+            $val  =~ s/^\s*//;
+            $val  =~ s/\s*$//;
+
+            # remove spaces and quotes
+            $val =~ s/^\s*"\s*//;
+            $val =~ s/\s*"\s*$//;
+
+            if($attr && $val){
+                $::profiledNodeAttrs{$objname}{$attr} = $val;
+            }else{
+                return 0, "Line \'$line\' does not contain a valid key and value";
+            }
+
+        } #invalid line.
+        else{
+            return 0, "Invalid Line \'$line\' found";
+        }
+    }
+    return 1, "";
+}
+

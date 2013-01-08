@@ -15,7 +15,6 @@ use warnings;
 use Getopt::Long qw(:config no_ignore_case);
 use Data::Dumper;
 require xCAT::Table;
-require xCAT::DBobjUtils;
 require xCAT::Utils;
 require xCAT::TableUtils;
 require xCAT::NetworkUtils;
@@ -24,9 +23,9 @@ require xCAT::ProfiledNodeUtils;
 
 # Globals.
 # These 2 global variables are for storing the parse result of hostinfo file.
-# These 2 global varialbes are set in lib xCAT::DBobjUtils->readFileInput.
-#%::FILEATTRS;     
-#@::fileobjnames;
+# These 2 global varialbes are set in lib xCAT::ProfiledNodeUtils->parse_nodeinfo_file.
+#%::profiledNodeAttrs;
+#@::profiledNodeObjNames;
 
 # All database records.
 my %allhostnames;
@@ -347,10 +346,16 @@ Usage:
         setrsp_errormsg($retstr_read);
         return;
     }
+    my ($parse_ret, $parse_str) = xCAT::ProfiledNodeUtils->parse_nodeinfo_file($retstr_read);
+    if (! $parse_ret){
+        setrsp_progress("Failed to validate node information file.");
+        setrsp_errormsg($parse_str);
+        return;
+    }
 
     # Parse and validate the hostinfo string. The real hostnames will be generated here.
     xCAT::MsgUtils->message('S', "Parsing hostinfo string and validate it.");
-    my ($hostinfo_dict_ref, $invalid_records_ref) = parse_hosts_string($retstr_read);
+    my ($hostinfo_dict_ref, $invalid_records_ref) = validate_node_entries();
     my %hostinfo_dict = %$hostinfo_dict_ref;
     my @invalid_records = @$invalid_records_ref;
     if (@invalid_records){
@@ -1133,7 +1138,9 @@ sub findme{
         }
     }
 
-    my ($hostinfo_dict_ref, $invalid_records_ref) = parse_hosts_string($raw_hostinfo_str);
+    xCAT::ProfiledNodeUtils->parse_nodeinfo_file($raw_hostinfo_str);
+
+    my ($hostinfo_dict_ref, $invalid_records_ref) = validate_node_entries();
     my %hostinfo_dict = %$hostinfo_dict_ref;
     # Create the real hostinfo string in stanza file format.
     xCAT::MsgUtils->message('S', "Profiled nodes discover: Generating new hostinfo string.\n");
@@ -1374,18 +1381,17 @@ sub read_and_generate_hostnames{
 
 #-------------------------------------------------------
 
-=head3  parse_hosts_string
+=head3  validate_node_entries
     
-    Description : Parse the hostinfo string and validate it.
-    Arguments   : filecontent - The content of hostinfo file.
+    Description : Validate the node entrie and generate proper attributes.
+    Arguments   : N/A
     Returns     : (hostinfo_dict, invalid_records)
                   hostinfo_dict -  Reference of hostinfo dict. Key are hostnames and values is an attributes dict.
                   invalid_records - Reference of invalid records list.
 =cut    
         
 #-------------------------------------------------------
-sub parse_hosts_string{
-    my $filecontent = shift;
+sub validate_node_entries{
     my %hostinfo_dict;
     my @invalid_records;
 
@@ -1394,14 +1400,11 @@ sub parse_hosts_string{
     my $nameformattype = xCAT::ProfiledNodeUtils->get_hostname_format_type($nameformat);
     my %freehostnames;
 
-    # Parse hostinfo file string.
-    xCAT::DBobjUtils->readFileInput($filecontent);
-
     # Record duplicated items.
-    # We should go through list @::fileobjnames first as  %::FILEATTRS is just a hash, 
+    # We should go through list @::profiledNodeObjNames first as  %::profiledNodeAttrs is just a hash, 
     # it not tells whether there are some duplicated hostnames in the hostinfo string.
     my %hostnamedict;
-    foreach my $hostname (@::fileobjnames){
+    foreach my $hostname (@::profiledNodeObjNames){
         if (exists $hostnamedict{$hostname}){
             push @invalid_records, [$hostname, "Duplicated hostname defined"];
         } else{
@@ -1422,18 +1425,18 @@ sub parse_hosts_string{
     my @chassislist = keys %allchassis;
     my $chassisrackref = xCAT::ProfiledNodeUtils->get_racks_for_chassises(\@chassislist);
 
-    foreach my $attr (keys %::FILEATTRS){
-        my $errmsg = validate_node_entry($attr, $::FILEATTRS{$attr});
+    foreach my $attr (keys %::profiledNodeAttrs){
+        my $errmsg = validate_node_entry($attr, $::profiledNodeAttrs{$attr});
         # Check whether specified IP is in our prov network, static range.
-        if ($::FILEATTRS{$attr}->{'ip'}){
-            unless (grep{ $_ eq $::FILEATTRS{$attr}->{'ip'}} @$freeprovipsref){
-                $errmsg .= "Specified IP address $::FILEATTRS{$attr}->{'ip'} not in static range of provision network $provnet";
+        if ($::profiledNodeAttrs{$attr}->{'ip'}){
+            unless (grep{ $_ eq $::profiledNodeAttrs{$attr}->{'ip'}} @$freeprovipsref){
+                $errmsg .= "Specified IP address $::profiledNodeAttrs{$attr}->{'ip'} not in static range of provision network $provnet";
             }
         }
 
         # Set rack info for blades too.
-        if ($::FILEATTRS{$attr}->{'chassis'}){
-            $::FILEATTRS{$attr}->{'rack'} = $chassisrackref->{$::FILEATTRS{$attr}->{'chassis'}};
+        if ($::profiledNodeAttrs{$attr}->{'chassis'}){
+            $::profiledNodeAttrs{$attr}->{'rack'} = $chassisrackref->{$::profiledNodeAttrs{$attr}->{'chassis'}};
         }
         if ($errmsg) {
             if ($attr =~ /^TMPHOSTS/){
@@ -1451,13 +1454,13 @@ sub parse_hosts_string{
             my $numricformat;
             # Need convert hostname format into numric format first.
             if ($nameformattype eq "rack"){
-                if (! exists $::FILEATTRS{$attr}{"rack"}){
+                if (! exists $::profiledNodeAttrs{$attr}{"rack"}){
                     push @invalid_records, ["__hostname__", "Rack information is not specified. You must enter the required rack information."];
                     next;
                 }
-                $numricformat = xCAT::ProfiledNodeUtils->rackformat_to_numricformat($nameformat, $::FILEATTRS{$attr}{"rack"});
+                $numricformat = xCAT::ProfiledNodeUtils->rackformat_to_numricformat($nameformat, $::profiledNodeAttrs{$attr}{"rack"});
                 if(! $numricformat){
-                    push @invalid_records, ["__hostname__", "The rack number of rack $::FILEATTRS{$attr}{'rack'} does not match hostname format $nameformat"];
+                    push @invalid_records, ["__hostname__", "The rack number of rack $::profiledNodeAttrs{$attr}{'rack'} does not match hostname format $nameformat"];
                 }
             } else{
                 # pure numric hostname format
@@ -1491,9 +1494,9 @@ sub parse_hosts_string{
 
                 $nexthostname = shift @$hostnamelistref;
             }
-            $hostinfo_dict{$nexthostname} = $::FILEATTRS{$attr};
+            $hostinfo_dict{$nexthostname} = $::profiledNodeAttrs{$attr};
         } else{
-            $hostinfo_dict{$attr} = $::FILEATTRS{$attr};
+            $hostinfo_dict{$attr} = $::profiledNodeAttrs{$attr};
         }
     }
     return (\%hostinfo_dict, \@invalid_records);
