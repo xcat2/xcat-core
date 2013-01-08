@@ -1,0 +1,39 @@
+PowerVM provisioning Toolkit
+
+The list of resources related:
+Files:
+    configcec.pm
+    configvios
+    installsshforvios
+    vios.conf
+    xcataixpost.patch
+RPMs:
+    bash-3.2-1.aix5.2.ppc.rpm
+    perl-IO-Socket-SSL-1.33-1.aix6.1.ppc.rpm
+    perl-Net_SSLeay.pm-1.30-2.aix6.1.ppc.rpm
+Image:
+    ios_mksysb.img
+Document:
+    powerVM steps.odt
+
+
+
+Before provisioning, run the following commands to move resources to target position.
+cp configcec.pm /opt/xcat/lib/perl/xCAT_plugin/
+cp xcataixpost.patch configvios vios.conf installsshforvios /install/postscripts
+cp bash-3.2-1.aix5.2.ppc.rpm perl-IO-Socket-SSL-1.33-1.aix6.1.ppc.rpm perl-Net_SSLeay.pm-1.30-2.aix6.1.ppc.rpm /install/postscripts/packages
+cd /install/postscripts
+patch -p0 < xcataixpost.patch
+cd /opt/xcat/bin
+ln -s xcatclient configcec
+
+Then follow the steps on PowerVM Steps.odt to deploy partitions. 
+Note: After configuring VIOS before configuring LPAR, run "patch -p0 < xcataixpost.patch" again.
+
+
+
+
+
+
+
+
