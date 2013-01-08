@@ -35,6 +35,8 @@ my $USAGE="Usage: ppping [-i|--interface interfaces] [-d|--debug] [-V|--verbose]
        ppping  -v|--version\n"; 
 
 # Parse the options
+require Getopt::Long;
+Getopt::Long::Configure ("bundling");
 if(!GetOptions(
       'h|help'     => \$::HELP,
       'v|version'  => \$::VERSION,
