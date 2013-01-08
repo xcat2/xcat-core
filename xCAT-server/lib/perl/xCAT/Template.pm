@@ -1,6 +1,7 @@
 #!/usr/bin/perl
-use xCAT::TZUtils;
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+use xCAT::TZUtils;
+use xCAT::WinUtils;
 
 package xCAT::Template;
 use strict;
@@ -186,7 +187,8 @@ sub subvars {
   $inc =~ s/#INCLUDE_PTRNLIST:([^#^\n]+)#/includefile($1,0,2)/eg;
   $inc =~ s/#INCLUDE_RMPKGLIST:([^#^\n]+)#/includefile($1,0,3)/eg;
   $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
-  $inc =~ s/#WINTIMEZONE#/xCAT::TZUtils::get_wintimezone()/e;
+  $inc =~ s/#WINTIMEZONE#/xCAT::TZUtils::get_wintimezone()/eg;
+  $inc =~ s/#WINPRODKEY:([^#]+)#/get_win_prodkey($1)/eg;
   $inc =~ s/#HOSTNAME#/$node/g;
 
   my $nrtab = xCAT::Table->new("noderes");
@@ -256,6 +258,18 @@ sub subvars {
   close($outh);
   return 0;
 }
+sub get_win_prodkey {
+	my $osvariant = shift;
+	my $keytab = xCAT::Table->new("prodkey",-create=>0);
+	my $keyent = $keytab->getAttribs({product=>$osvariant},"key");
+	if ($keyent) { 
+		return "<ProductKey><WillShowUI>OnError</WillShowUI><Key>".$keyent->{key}."</Key></ProductKey>";
+	}
+	if ($xCAT::WinUtils::kmskeymap{$osvariant}) {
+		return "<ProductKey><WillShowUI>OnError</WillShowUI><Key>".$xCAT::WinUtils::kmskeymap{$osvariant}."</Key></ProductKey>";
+	}
+	return ""; #in the event that we have no specified key and no KMS key, then try with no key, user may have used some other mechanism 
+} 
 
 sub esxipv6setup {
  if ($::XCATSITEVALS{managedaddressmode} ne "autoula") { return ""; } # blank unless autoula
