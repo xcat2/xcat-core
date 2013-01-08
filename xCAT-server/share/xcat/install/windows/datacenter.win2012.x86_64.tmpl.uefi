@@ -20,6 +20,16 @@
                     <CreatePartitions>
                         <CreatePartition>
                             <Order>1</Order>
+                            <Type>EFI</Type>
+                            <Size>50</Size>
+                        </CreatePartition>
+                        <CreatePartition>
+                            <Order>2</Order>
+                            <Type>MSR</Type>
+                            <Size>128</Size>
+                        </CreatePartition>
+                        <CreatePartition>
+                            <Order>3</Order>
                             <Type>Primary</Type>
                             <Extend>true</Extend>
                         </CreatePartition>
@@ -33,12 +43,12 @@
                 <OSImage>
                     <InstallTo>
                         <DiskID>0</DiskID>
-                        <PartitionID>1</PartitionID>
+                        <PartitionID>3</PartitionID>
                     </InstallTo>
                     <InstallFrom>
                         <MetaData wcm:action="add">
                             <Key>/IMAGE/NAME</Key>
-                            <Value>Hyper-V Server 2012 SERVERHYPERCORE</Value>
+                            <Value>Windows Server 2012 SERVERDATACENTER</Value>
                         </MetaData>
                     </InstallFrom>
                 </OSImage>

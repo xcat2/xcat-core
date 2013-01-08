@@ -126,5 +126,4 @@
     </settings>
     <settings pass="auditSystem">
     </settings>
-    <cpi:offlineImage cpi:source="wim:i:/win2k8r2/x86_64/sources/install.wim#Hyper-V Server 2012 SERVERHYPERCORE" xmlns:cpi="urn:schemas-microsoft-com:cpi" />
 </unattend>
