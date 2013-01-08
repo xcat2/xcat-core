@@ -114,7 +114,7 @@ cp share/xcat/ca/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/ca
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/xcat/ca/*
 
 cp share/xcat/scripts/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
-cp share/xcat/tools/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
+cp -r share/xcat/tools/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
 cp share/xcat/rollupdate/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/rollupdate
 cp share/xcat/installp_bundles/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/installp_bundles
 cp share/xcat/image_data/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/image_data
