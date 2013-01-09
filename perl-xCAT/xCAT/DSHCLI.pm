@@ -1212,6 +1212,11 @@ sub fork_fanout_dsh
 
             else
             {
+                # add sudo  for non-root users this is from updatenode -l
+               if ($$options{'sudo'}) {
+                $rsh_config{'command'} .= "sudo ";
+                $rsh_config{'sudo'} = "sudo ";
+               }
                 $rsh_config{'command'} .=
                   "$$options{'command'}$$options{'post-command'}";
             }
@@ -3758,7 +3763,7 @@ sub usage_dsh
     my $usagemsg3 = "      [-l user_ID] [-L]  ";
     my $usagemsg4 = "[-m] [-o options][-q] [-Q] [-r remote_shell]
       [-i image] [-s] [-S ksh | csh] [-t timeout]\n";
-    my $usagemsg5 = "      [-T] [-X environment variables] [-v] [-z]\n";
+    my $usagemsg5 = "      [-T] [-X environment variables] [-v] [-z] [--sudo]\n";
     my $usagemsg6 = "      <command_list>";
     my $usagemsg .= $usagemsg1 .= $usagemsg1a .= $usagemsg2 .= $usagemsg3 .=
       $usagemsg4 .= $usagemsg5 .= $usagemsg6;
@@ -3870,6 +3875,7 @@ sub parse_and_run_dsh
 
             'devicetype|devicetype=s'    => \$options{'devicetype'},
             'nodestatus|nodestatus' => \$options{'nodestatus'},            
+            'sudo|sudo' => \$options{'sudo'},            
             'command-name|commandName=s' => \$options{'command-name'},
             'command-description|commandDescription=s' =>
               \$options{'command-description'},
