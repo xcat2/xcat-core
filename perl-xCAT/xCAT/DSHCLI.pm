@@ -1084,12 +1084,12 @@ sub fork_fanout_dsh
                     $remote_shell = "$::XCATROOT/sbin/rshell_api";
                     $rsh_extension='RShellAPI';
                     $rsh_config{'password'}=$$target_properties{'password'};
-		    if ($$target_properties{'remotecmdproto'}) {
-			$rsh_config{'remotecmdproto'}=$$target_properties{'remotecmdproto'};
-		    }
-                    if ($$options{'trace'}) {
-			$rsh_config{'trace'}=1;
-		    }
+		            if ($$target_properties{'remotecmdproto'}) {
+			            $rsh_config{'remotecmdproto'}=$$target_properties{'remotecmdproto'};
+		            }
+                  if ($$options{'trace'}) {
+	         		  $rsh_config{'trace'}=1;
+		            }
                 }
 
                 # will not set -n for any command,  causing problems
@@ -1162,7 +1162,8 @@ sub fork_fanout_dsh
             my $tmp_cmd_file;
             if ($$options{'execute'})
             {
-
+                # first build the scp command to copy the file to execute
+                # down to the node into /tmp/*.dsh
                 my $rsp = {};
                 $rsp->{data}->[0] = "TRACE: Execute option specified.";
                 $dsh_trace && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
@@ -1172,6 +1173,12 @@ sub fork_fanout_dsh
 
                 my ($exe_cmd, @args) = @{$$options{'execute'}};
                 my $chmod_cmd = "";
+                # now build the xdsh of the file buffer
+                # add sudo  for non-root users
+                if ($$options{'sudo'}) {
+                  $rsh_config{'command'} .= "sudo ";
+                  $rsh_config{'sudo'} = "sudo ";
+                }
                 $rsh_config{'command'} .=
                   "$chmod_cmd $tmp_cmd_file @args$$options{'post-command'}";
                 $exe_rcp_config{'src-file'}  = $exe_cmd;
@@ -1212,7 +1219,7 @@ sub fork_fanout_dsh
 
             else
             {
-                # add sudo  for non-root users this is from updatenode -l
+                # add sudo  for non-root users
                if ($$options{'sudo'}) {
                 $rsh_config{'command'} .= "sudo ";
                 $rsh_config{'sudo'} = "sudo ";
@@ -1226,7 +1233,7 @@ sub fork_fanout_dsh
             }
             if ($$options{'execute'})
             {
-                $rsh_config{'command'} .= ";rm $tmp_cmd_file";
+                $rsh_config{'command'} .= ";rm $tmp_cmd_file"; 
             }
 
             #eval "require RemoteShell::$rsh_extension";
