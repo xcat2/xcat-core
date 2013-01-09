@@ -1,0 +1,14 @@
+./opt/ibmcmp/msg/*
++./opt/ibmcmp/msg/en_US*
+
+./opt/ibmcmp/vac/*/crt/include*
+./opt/ibmcmp/vac/*/include*
+./opt/ibmcmp/vac/*/msg/*
++./opt/ibmcmp/vac/*/msg/en_US*
+./opt/ibmcmp/vac/*/lap/LI_*
+./opt/ibmcmp/vac/*/lap/LA_*
+./opt/ibmcmp/vac/*/lap/license/*.txt
+
+./opt/ibmcmp/vacpp/*/include*
+./opt/ibmcmp/vacpp/*/msg/*
++./opt/ibmcmp/vacpp/*/msg/en_US*

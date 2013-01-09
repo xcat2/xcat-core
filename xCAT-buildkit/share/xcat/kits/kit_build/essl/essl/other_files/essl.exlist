@@ -1,0 +1,6 @@
+./opt/ibmmath/essl/*/FFTW3/include*
+./opt/ibmmath/essl/*/include*
+./opt/ibmmath/essl/*/lap/license/*.txt
+./opt/ibmmath/essl/*/lap/LI_*
+./opt/ibmmath/essl/*/lap/LA_*
+

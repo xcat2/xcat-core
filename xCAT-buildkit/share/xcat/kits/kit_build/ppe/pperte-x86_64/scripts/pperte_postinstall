@@ -1,0 +1,37 @@
+#!/bin/sh 
+#
+#
+# For Linux:
+#    - Create a smaller PNSD log file in /tmp 
+#    - Configure poe.limits file
+#    - Generate and store checkpoint key
+#    - BSR support configuration
+
+# Configure the PNSD.cfg to use a smaller log so it doesn't use so much memory
+# for a stateless image.  Normally, pnsd creates this file if it does not 
+# exist, but it will not fill it in if it does exist.
+if [ ! -f /etc/PNSD.cfg ]; then
+    echo "log_file = /tmp/serverlog" >  /etc/PNSD.cfg
+    echo "log_file_size = 2097152"   >> /etc/PNSD.cfg
+    echo "socket_file = /tmp/PNSD"   >> /etc/PNSD.cfg
+else
+    /bin/sed -i 's/log_file_size = .*/log_file_size = 2097152/g'  /etc/PNSD.cfg
+    if [ -f "/proc/cmdline" ]; then
+      stopsrc -s pnsd
+      startsrc -s pnsd
+    fi
+fi
+
+# Configure the poe.limits file
+if [ ! -f /etc/poe.limits ]; then
+    echo "MP_POE_LAUNCH=all" > /etc/poe.limits
+else
+    /bin/sed -i 's/MP_POE_LAUNCH=.*/MP_POE_LAUNCH=all/g'  /etc/poe.limits
+fi
+
+
+# POE requires rsh to be running
+  /bin/sed -i 's/disable.*/disable = no/g'  /etc/xinetd.d/rsh
+  if [ -f "/proc/cmdline" ]; then
+     service xinetd restart
+  fi
