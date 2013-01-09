@@ -147,6 +147,7 @@ function makegenesisscripts {
 
 	RPMNAME="$1"
 	ARCH="$2"
+	TARGET="--target $ARCH"
 	cd `dirname $0`/
 	tar --exclude .svn -cjf $RPMROOT/SOURCES/$RPMNAME.tar.bz2 $DIR
 	cp $DIR/LICENSE.html $RPMROOT/BUILD
@@ -154,7 +155,7 @@ function makegenesisscripts {
 	cd - >/dev/null
 	rm -f $RPMROOT/SRPMS/$RPMNAME-$ARCH-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$ARCH-$VER*rpm
 	echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$ARCH-$VER-snap*.noarch.rpm $EMBEDTXT..."
-	rpmbuild $QUIET -ba $DIR/$RPMNAME.spec
+	rpmbuild $QUIET -ba $DIR/$RPMNAME.spec $TARGET
 }
 
 
@@ -207,8 +208,8 @@ elif [ "$1" = "xCAT-nbroot" -o "$1" = "xCAT-nbroot-core" ]; then
 	exportEmbed $3
 	makenbroot xCAT-nbroot-core $2
 elif [ "$1" = "xCAT-genesis-builder" ]; then
-	exportEmbed $3
-	makegenesis $1 $2
+	exportEmbed $2
+	makegenesis $1
 elif [ "$1" = "xCAT-genesis-scripts" ]; then
 	exportEmbed $3
 	makegenesisscripts $1 $2

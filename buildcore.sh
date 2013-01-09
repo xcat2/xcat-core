@@ -40,11 +40,11 @@ UPLOADUSER=bp-sawyers
 FRS=/home/frs/project/x/xc/xcat
 
 # These are the rpms that should be built for each kind of xcat build
-ALLBUILD="perl-xCAT xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit xCAT xCATsn"
+ALLBUILD="perl-xCAT xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit xCAT xCATsn xCAT-genesis-scripts"
 ZVMBUILD="perl-xCAT xCAT-server xCAT-UI"
 ZVMLINK="xCAT-client xCAT xCATsn"
 PCMBUILD="xCAT"
-PCMLINK="perl-xCAT xCAT-client xCAT-server xCAT-buildkit"
+PCMLINK="perl-xCAT xCAT-client xCAT-server xCAT-buildkit xCAT-genesis-scripts"
 # Note: for FSM, the FlexCAT rpm is built separately from gsa/git
 FSMBUILD="perl-xCAT xCAT-client xCAT-server"
 FSMLINK=""
@@ -221,23 +221,24 @@ for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xC
 	fi
 done
 
-# We are not building nbroot any more.  Instead, we manually build xCAT-genesis and put it in xcat-dep.
-#if [ "$OSNAME" != "AIX" -a "$EMBED" != "zvm" ]; then
-#	if grep -v nbroot2 $SVNUP|$GREP xCAT-nbroot || [ "$BUILDALL" == 1 ]; then
-#		UPLOAD=1
-#		ORIGFAILEDRPMS="$FAILEDRPMS"
-#		for arch in x86_64 x86 ppc64; do
-#			./makerpm xCAT-nbroot-core $arch
-#			if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-nbroot-core-$arch"; fi
-#		done
-#		if [ "$FAILEDRPMS" = "$ORIGFAILEDRPMS" ]; then	# all succeeded
-#			rm -f $DESTDIR/xCAT-nbroot-core*rpm
-#			rm -f $SRCDIR/xCAT-nbroot-core*rpm
-#			mv $source/RPMS/noarch/xCAT-nbroot-core-*rpm $DESTDIR
-#			mv $source/SRPMS/xCAT-nbroot-core-*rpm $SRCDIR
-#		fi
-#	fi
-#fi
+# Build xCAT-genesis-scripts for xcat-core.  xCAT-genesis-base gets built by hand and put in xcat-dep.
+# The mknb cmd combines them at install time.
+if [ "$OSNAME" != "AIX" ]; then
+	if [[ " $EMBEDBUILD " = *\ xCAT-genesis-scripts\ * ]]; then
+		if $GREP xCAT-genesis-scripts $SVNUP || [ "$BUILDALL" == 1 ]; then
+			UPLOAD=1
+			ORIGFAILEDRPMS="$FAILEDRPMS"
+			./makerpm xCAT-genesis-scripts x86_64 "$EMBED"
+			if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-x86_64"; fi
+			if [ "$FAILEDRPMS" = "$ORIGFAILEDRPMS" ]; then	# all succeeded
+				rm -f $DESTDIR/xCAT-genesis-scripts*rpm
+				rm -f $SRCDIR/xCAT-genesis-scripts*rpm
+				mv $source/RPMS/noarch/xCAT-genesis-scripts-*rpm $DESTDIR
+				mv $source/SRPMS/xCAT-genesis-scripts-*rpm $SRCDIR
+			fi
+		fi
+	fi
+fi
 
 # Build the xCAT and xCATsn rpms for all platforms
 for rpmname in xCAT xCATsn; do
