@@ -1520,23 +1520,27 @@ sub updatenodesoftware
             {
                $cmd =
                   "$installdir/postscripts/xcatdsklspost 2 -M $snkey 'ospkgs,otherpkgs' --tftp $tftpdir" ;
-             $args1 = [
-                    "--nodestatus",
-                    "-s",
-                    "-v",
-                    "-e",
-                    "$cmd"
-                    ];
 
 
 
             }
             else
             {
-
                 $cmd =
                   "$installdir/postscripts/xcatdsklspost 2 -m $snkey 'ospkgs,otherpkgs' --tftp $tftpdir";
-             $args1 = [
+            }
+            # build xdsh command
+            if (defined($::USER)){ # non-root user 
+              $args1 = [
+                    "--nodestatus",
+                    "--sudo",
+                    "-s",
+                    "-v",
+                    "-e",
+                    "$cmd"
+                    ];
+            } else {  # root
+              $args1 = [
                     "--nodestatus",
                     "-s",
                     "-v",
