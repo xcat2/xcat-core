@@ -7,7 +7,7 @@ B<xdsh> - Concurrently runs remote commands on multiple nodes (Management Node, 
 B<xdsh> I<noderange> [B<-B> I<bypass>]  [B<--devicetype> I<type_of_device>] [B<-e>] [B<-E> I<environment_file>]  [B<-f> I<fanout>]
 [B<-L>]  [B<-l>  I<userID>]   [B<-m>]   [B<-o>
 I<node_options>] [B<-Q>] [B<-r> I<node_remote_shell>] [B<-s>] [B<-S> B<csh>|B<ksh>] [B<-t> I<timeout>]
-[B<-T>] [B<-v>] [B<-X> I<env_list>] [B<-z>] [B<--sudo] I<command_list>
+[B<-T>] [B<-v>] [B<-X> I<env_list>] [B<-z>] [B<--sudo>] I<command_list>
 
 B<xdsh> I<noderange>  [B<-K>] 
 
