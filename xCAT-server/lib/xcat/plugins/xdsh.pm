@@ -441,6 +441,7 @@ sub parse_xdsh_cmd
 
             'devicetype=s'               => \$options{'devicetype'},
             'nodestatus|nodestatus' => \$options{'nodestatus'},
+            'sudo|sudo' => \$options{'sudo'},
             'command-name|commandName=s' => \$options{'command-name'},
             'command-description|commandDescription=s' =>
               \$options{'command-description'},
