@@ -7,7 +7,7 @@ B<xdsh> - Concurrently runs remote commands on multiple nodes (Management Node, 
 B<xdsh> I<noderange> [B<-B> I<bypass>]  [B<--devicetype> I<type_of_device>] [B<-e>] [B<-E> I<environment_file>]  [B<-f> I<fanout>]
 [B<-L>]  [B<-l>  I<userID>]   [B<-m>]   [B<-o>
 I<node_options>] [B<-Q>] [B<-r> I<node_remote_shell>] [B<-s>] [B<-S> B<csh>|B<ksh>] [B<-t> I<timeout>]
-[B<-T>] [B<-v>] [B<-X> I<env_list>] [B<-z>] I<command_list>
+[B<-T>] [B<-v>] [B<-X> I<env_list>] [B<-z>] [B<--sudo] I<command_list>
 
 B<xdsh> I<noderange>  [B<-K>] 
 
@@ -311,6 +311,20 @@ to be completed on a target before returning output.
 Specifies the shell syntax to be used on the remote target.
 If not specified, the B<ksh> syntax is used.
 
+=item B<--sudo>|B<--sudo>
+
+Adding the --sudo flag to the xdsh command will have xdsh run sudo before
+running the command.  This is particular useful when using the -e option.
+This is required when you input -l with a non-root user id and want that id
+to be able to run as root on the node.  The non-root userid will must be 
+previously defined as an xCAT user, see process for defining non-root ids in
+xCAT and setting up for using xdsh.  The userid sudo setup will have 
+to be done by the admin on the node.  This includes, allowing all commands that
+you would like to run with xdsh by using visudo to edit the /etc/sudoers file
+ and disabling tty requirement by commenting out or removing this line in the /etc/sudoes file "#Defaults    requiretty". 
+
+
+
 =item B<-t>|B<--timeout> I<timeout>
 
 Specifies the time, in seconds, to wait for output from any
@@ -556,6 +570,12 @@ B<tabch> I<switch=myswitch switches.sshusername=admin switches.sshpassword=passw
 
 <xdsh> I<myswitch --devicetype EthSwitch::BNT 'enable;configure terminal;vlan 3;end;show vlan'> 
 
+=item *
+
+To run xdsh with the non-root userid "user1" that has been setup as an xCAT userid and with sudo on node1 and node2 to run as root, do the following, see xCAT doc on Granting_Users_xCAT_privileges:
+
+
+B<xdsh> I<node1,node2 --sudo -l user1 "cat /etc/passwd">
 
 =back
 
