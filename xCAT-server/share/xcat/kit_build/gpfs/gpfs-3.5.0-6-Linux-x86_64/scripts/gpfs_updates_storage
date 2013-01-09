@@ -1,0 +1,84 @@
+#!/bin/sh
+
+# 
+# Sample script to install and configure GPFS 
+# For AIX:
+#    Assumes the GPFS filesets and updates were installed using 
+#    xCAT bundle files or some other mechanism. This script does not
+#    install additional software.
+#    It will do the following:
+#      - create /var/mmfs/etc/nsddevices that simply returns 0 
+#      - add GPFS paths to profile
+# For Linux:
+#    Assumes the base GPFS rpms were installed with the xCAT 'otherpkgs'
+#    postscript (stateful install) or with the otherpkgs processing of
+#    genimage (stateless/statelite install).  This script will install any
+#    gpfs update rpms that exist on the xCAT management node in the 
+#    /install/post/gpfs_updates directory.
+#    This is necessary because the GPFS updates can ONLY be installed
+#    after the base rpms have been installed, and the update rpms cannot
+#    exist in any rpm repositories used by xCAT otherpkgs processing
+#    since they will confuse rpm tools such as zypper and yum.
+#    This script will also do the following:
+#      - create /var/mmfs/etc/nsddevices that simply returns 0
+#      - add GPFS paths to profile
+
+OS=`uname`
+INSTALL_DIR='/install'
+UPDATES_DIR='post/otherpkgs/gpfs_updates'
+
+if [ $OS != "AIX" ]; then
+    if [ -f "/proc/cmdline" ]; then
+    #  Being run from a stateful install postscript
+    #  Copy rpms directly from the xCAT management node and install        
+        mkdir -p /tmp/gpfs_updates
+        rm -f -R /tmp/gpfs_updates/*
+        cd /tmp/gpfs_updates
+#        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=3 ftp://$SITEMASTER/$UPDATES_DIR/*.rpm 2> /tmp/wget.log
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=4 --reject "index.html*"  --no-parent http://$SITEMASTER$INSTALL_DIR/$UPDATES_DIR/ 2> /tmp/wget.log
+        if [ -n "`ls *.rpm 2> /dev/null`" ] ; then
+            rpm -Uvh *.rpm
+        fi
+        cd /
+        rm -f -R /tmp/gpfs_updates
+    fi
+fi  
+
+## Create an empty nsddevices script for GPFS 
+## This assumes that the node is NOT an NSD server
+#if [ $OS != "AIX" ]; then
+#    # Create the script on the node
+#    mkdir -p /var/mmfs/etc
+#    echo 'return 0' > /var/mmfs/etc/nsddevices
+#    chmod 744 /var/mmfs/etc/nsddevices
+#fi
+
+
+# Add GPFS path to profile
+if [ $OS != "AIX" ]; then
+    gpfsprofile=/etc/profile.d/gpfs
+    if [ ! -f "/proc/cmdline" ]; then
+       gpfsprofile=$gpfsprofile
+    fi
+    if [ ! -e $gpfsprofile.sh ]; then
+        echo 'export PATH=$PATH:/usr/lpp/mmfs/bin' > $gpfsprofile.sh
+        echo 'setenv PATH $PATH:/usr/lpp/mmfs/bin' > $gpfsprofile.csh
+        # Turn off LANG support since we did not install other msg catalogs
+        echo 'export LC_CTYPE=POSIX' >> $gpfsprofile.sh
+        echo 'setenv LC_CTYPE POSIX' >> $gpfsprofile.csh
+        echo 'export LC_ALL=POSIX' >> $gpfsprofile.sh
+        echo 'setenv LC_ALL POSIX' >> $gpfsprofile.csh
+        chmod 744 $gpfsprofile.sh
+        chmod 744 $gpfsprofile.csh
+    fi
+fi
+
+# If you are using a shared home directory stored in GPFS,
+#   create the symbolic link
+#
+# GPFSHOME=/gpfs/home
+# HOMEDIR=/u
+# ln -s $GPFSHOME $HOMEDIR
+
+
+

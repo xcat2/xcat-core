@@ -1,0 +1,11 @@
+./opt/ibmhpc/lapi/include*
+./opt/ibmhpc/lapi/pnsd/include*
+./opt/ibmhpc/lapi/samples*
+
+./opt/ibmhpc/ppe.poe/include*
+./opt/ibmhpc/ppe.poe/man/*
+./opt/ibmhpc/ppe.poe/samples*
+./opt/ibmhpc/hal/include*
+./etc/opt/ibmhpc/license/*.txt
+
+

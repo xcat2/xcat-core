@@ -1,0 +1,15 @@
+#!/bin/sh
+# xCAT postscript to configure GPFS on a stateless node.
+# Before booting nodes with this postscript, gpfs must be up and configured correctly on the node
+# pointed to by the -p flag below.  The $MASTER environment variable will be set by xCAT to
+# the service node or management node of this booting node.  If you want the nodes to get their
+# GPFS configuration from a different node, replace $MASTER with that IP address.
+cmd="/usr/lpp/mmfs/bin/mmsdrrestore -p $MASTER -R /usr/bin/scp"
+$cmd > /dev/null 2>&1
+if [[ $? != 0 ]]
+then
+        echo "mmsdrrestore failed!"
+        exit 2
+else
+        echo "mmsdrrestore succeeded"
+
