@@ -1205,15 +1205,25 @@ sub updatenoderunps
                $runpscmd  =
                     "$installdir/postscripts/xcatdsklspost $mode -m $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4"
             }
-  
-            $args1 = [
+            # if non-root userid ask xdsh to use sudo
+            if (defined($::USER)){ # non-root user 
+              $args1 = [
+               "--nodestatus",
+               "--sudo",
+               "-s",
+               "-v",
+               "-e",
+               "$runpscmd"
+              ];
+            } else {   # running as root
+              $args1 = [
                "--nodestatus",
                "-s",
                "-v",
                "-e",
                "$runpscmd"
-            ];
-
+              ];
+           }
             # if -l username input
             if (defined($::USER)){ # need to add the -l username
               unshift(@$args1, "$::USER");
