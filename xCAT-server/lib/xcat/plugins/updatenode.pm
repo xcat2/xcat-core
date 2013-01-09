@@ -1197,28 +1197,23 @@ sub updatenoderunps
             my $args1;
             # Note order of parameters to xcatdsklspost 
             #is important and cannot be changed
-            if ($::SETSERVER)
-            {
-                $args1 = [
-                    "--nodestatus",
-                    "-s",
-                    "-v",
-                    "-e",
-                    "$installdir/postscripts/xcatdsklspost $mode -M $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4"
-                    ];
-
-            }
-            else
-            {
-
-                $args1 = [
-                    "--nodestatus",
-                    "-s",
-                    "-v",
-                    "-e",
+            my $runpscmd;
+            if ($::SETSERVER){
+               $runpscmd  =
+                    "$installdir/postscripts/xcatdsklspost $mode -M $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4";
+            } else {
+               $runpscmd  =
                     "$installdir/postscripts/xcatdsklspost $mode -m $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4"
-                    ];
             }
+  
+            $args1 = [
+               "--nodestatus",
+               "-s",
+               "-v",
+               "-e",
+               "$runpscmd"
+            ];
+
             # if -l username input
             if (defined($::USER)){ # need to add the -l username
               unshift(@$args1, "$::USER");
