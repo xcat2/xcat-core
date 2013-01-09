@@ -187,16 +187,20 @@ sub get_hostname_format_type{
 
     my $ridx = index $format, "#R";
     my $nidx = index $format, "#N";
+    my $simpname = "";
     if ($ridx >= 0){
         ($prefix, $appendix, $rlen) = xCAT::ProfiledNodeUtils->split_hostname($format, 'R');
-        ($prefix, $appendix, $nlen) = xCAT::ProfiledNodeUtils->split_hostname($format, 'N');
-        if ($rlen >= 10 || $nlen >= 10){
+        $simpname = $prefix."0".$appendix;
+        ($prefix, $appendix, $nlen) = xCAT::ProfiledNodeUtils->split_hostname($simpname, 'N');
+        $simpname = $prefix."0".$appendix;
+        if ($rlen >= 10 || $nlen >= 10 || $nlen == 0){
             $type = "unknown";
         } else{
             $type = "rack";
         }
     } elsif ($nidx >= 0){
         ($prefix, $appendix, $nlen) = xCAT::ProfiledNodeUtils->split_hostname($format, 'N');
+        $simpname = $prefix."0".$appendix;
         if ($nlen >= 10){
             $type = "unknown";
         } else{
@@ -204,6 +208,12 @@ sub get_hostname_format_type{
         }
     } else{
         $type = "unknown";
+    }
+    # validate whether hostname format includes other invalid characters.
+    if ($type ne "unknown"){
+        if (! xCAT::NetworkUtils->isValidHostname($simpname)){
+            $type = "unknown";
+        }
     }
 
     return $type;

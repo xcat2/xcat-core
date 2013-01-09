@@ -2205,7 +2205,7 @@ sub isValidMAC
 sub isValidHostname
 {
     my ($class, $hostname) = @_;
-    if ($hostname =~ /^[\-a-zA-Z0-9]+$/){
+    if ($hostname =~ /^[a-z0-9][\-a-z0-9]+[a-z0-9]$/){
         return 1;
     }
     return 0;
@@ -2224,7 +2224,7 @@ sub isValidHostname
 sub isValidFQDN
 {
     my ($class, $hostname) = @_;
-    if ($hostname =~ /^[\-\.a-zA-Z0-9]+$/){
+    if ($hostname =~ /^[a-z0-9][\.\-a-z0-9]+[a-z0-9]$/){
         return 1;
     }
     return 0;

@@ -1269,12 +1269,6 @@ sub gen_new_hostinfo_string{
                 $allips{$nextip} = 0;
             }
         }
-        my $nicips = "";
-        foreach(keys %ipshash){ 
-            $nicips = "$_:$ipshash{$_},$nicips";
-        }
-        $hostinfo_dict{$item}{"nicips"} = $nicips;
-
         # Generate IP address if no IP specified.
         if (! exists $hostinfo_dict{$item}{"ip"}) {
             if (exists $ipshash{$installnic}){
@@ -1283,6 +1277,14 @@ sub gen_new_hostinfo_string{
                 return 0, "There are no more IP addresses available in the static network range for interface $installnic";
             }
         }
+ 
+        my $nicips = $installnic.":".$hostinfo_dict{$item}{"ip"};
+        foreach(keys %ipshash){
+            if ( $_ eq $installnic ) {next;}
+            $nicips = "$_:$ipshash{$_},$nicips";
+        }
+        $hostinfo_dict{$item}{"nicips"} = $nicips;
+
         $hostinfo_dict{$item}{"objtype"} = "node";
         $hostinfo_dict{$item}{"groups"} = "__Managed";
         if (exists $args_dict{'networkprofile'}){$hostinfo_dict{$item}{"groups"} .= ",".$args_dict{'networkprofile'}}
