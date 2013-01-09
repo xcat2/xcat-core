@@ -1006,6 +1006,19 @@ sub is_lsb_ubuntu
     return 0;                   # return "false"
 }
 
+sub is_debian
+{
+    if ( -e "/etc/debian_version" && -e "/etc/issue"){
+        open(my $relfile, "<", "/etc/issue");
+        my $line = <$relfile>;
+        close($relfile);
+        if ( $line =~ /debian.*/i ){
+            return 1;
+        }
+    }
+    return 0;
+}
+
 # on Ubuntu need to painstakingly compare /etc/localtime with files under
 # /usr/share/zoneinfo since /etc/localtime # isn't always a symbolic link
 sub discover_timezone_ubuntu
@@ -1117,7 +1130,7 @@ sub initDB
             $tz =
               `grep ^ZONE /etc/sysconfig/clock|cut -d= -f 2|sed -e 's/"//g'`;
         }
-        elsif ( is_lsb_ubuntu() )
+        elsif ( is_lsb_ubuntu() || is_debian() )
         {
             $tz = discover_timezone_ubuntu;
         }
@@ -1913,7 +1926,7 @@ sub setuphttp
     # enable httpd
     if (-e "/etc/init.d/apache2")
     {
-        if (is_lsb_ubuntu()) 
+        if (is_lsb_ubuntu() || is_debian() ) 
         {   # for ubuntu
             $cmd = "/usr/sbin/update-rc.d apache2 enable";
         }
@@ -2124,7 +2137,7 @@ sub startnamedonboot
         #chkconfig
         my $serv = "named";
         my $cmd = "/sbin/chkconfig $serv on";
-        if ( xCAT::Utils->osver() =~ /ubuntu.*/i){
+        if ( is_lsb_ubuntu() || is_debian() ){
             $serv = "bind9";
             $cmd = "update-rc.d $serv enable";
         }
