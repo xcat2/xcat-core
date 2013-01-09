@@ -106,10 +106,15 @@ if ($::HELP)
   &updatenode_usage();
   exit 0;
 }
-# disable -l option for now
-if ($::USER)
+if (($::USER) && ($::SECURITY))
 {
-     my $msg = "-l option is not currently supported.";
+     my $msg = "-l option is not allowed with -k option.";
+     xCAT::MsgUtils->message("E", $msg);
+     exit 1;
+}
+if (($::USER) && (($::FILESYNC) || ($::SNFILESYNC)))
+{
+     my $msg = "-l option is not allowed with -F or -f options.";
      xCAT::MsgUtils->message("E", $msg);
      exit 1;
 }
