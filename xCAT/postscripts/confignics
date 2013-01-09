@@ -18,7 +18,8 @@ my $nicips = $ENV{NICIPS};
 my $niccustomscripts = $ENV{NICCUSTOMSCRIPTS};
 my $nictypes = $ENV{NICTYPES};
 my $xcatpostdir = "/xcatpost";
-system("logger -t xcat -p local4.info 'confignics: CUSTOMSCRIPTS: $niccustomscripts .'");
+my %cust_script_nics = ();
+system("logger -t xcat -p local4.info 'confignics: CUSTOMSCRIPTS: $niccustomscripts '");
 
 # niccustomscripts specifies which NICS need to be configured. 
 # and which script to use to configure it.
@@ -27,25 +28,25 @@ system("logger -t xcat -p local4.info 'confignics: CUSTOMSCRIPTS: $niccustomscri
 # i.e. if customscript is "eth1:configeth eth1, eth2:configeth2"
 # then first get eth1 for the nic and "configeth eth1" for the command to run"
 # the do the same for eth2.
-# the NIC environment variables will still be set for the customscript to use.
 
 if ( defined $niccustomscripts && length $niccustomscripts > 0 ) {
 
     foreach my $customscript (split(/,/,$niccustomscripts)) {
 
-        my @script = split(/:/,$customscript);
-        runcmd("$xcatpostdir/@script[1]");
-        system("logger -t xcat -p local4.info 'confignics: executed custom script: @script[1] '");
+        my @script = split(/!/,$customscript);
+        $cust_script_nics{$script[0]} = 1;
+        runcmd("$xcatpostdir/$script[1]");
+        system("logger -t xcat -p local4.info 'confignics: executed custom script: $script[1] '");
     }
-}
-else {
-    # determine nic from nictypes and get the nictype. Invoke configeth or configiba based on nictype.
+} else {
+
+# first determine nic from nicips and get the nictype. Invoke configeth or configiba based on nictype.
     # i.e. $nictypes = "eth1:ethernet,eth2:ethernet"
     foreach my $nic_type (split(/,/,$nictypes)) {
-        my @nic_and_type = split(/:/,$nic_type);
-        if ("ETHERNET" eq uc(@nic_and_type[1])) {
-            runcmd("$xcatpostdir/configeth @nic_and_type[0]");
-            system("logger -t xcat -p local4.info 'confignics: executed script: configeth @nic_and_type[0] '");
+        my @nic_and_type = split(/!/,$nic_type);
+        if ("ETHERNET" eq uc($nic_and_type[1])) {
+            runcmd("$xcatpostdir/configeth $nic_and_type[0]");
+            system("logger -t xcat -p local4.info 'confignics: executed script: configeth $nic_and_type[0] '");
         }
     }
 }
