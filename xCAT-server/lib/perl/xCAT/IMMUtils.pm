@@ -1,6 +1,7 @@
 package xCAT::IMMUtils;
 use xCAT::SvrUtils qw/sendmsg/;
 use xCAT::SSHInteract;
+use xCAT_plugin::bmcconfig;
 #For IMMs, there are a few contexts where setup is most sensibly done remotely via CLI automation, or must be done remotely.
 #If slp driven discovery, this is the sensible path pretty much in all scenarios (rack and flex)
 #for bmcsetup, it still makes sense for IBM Flex system servers where the server is forbidden from manipulation local authentication
