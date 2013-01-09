@@ -59,7 +59,6 @@ if ($^O =~ /^aix/i) {
 }
 
 use lib "$::XCATROOT/lib/perl";
-require xCAT::Version;
 require xCAT::BuildKitUtils;
 use Getopt::Long;
 use Expect;
@@ -239,6 +238,12 @@ $::deploy_dir = $::build_dir; #kitname appended by validate_bldkitconf routine
                value_desc=>'any string',
                mandatory=>0,
                base_dir=>'scripts',
+               cp_to_kitconfig=>2},
+              genimage_postinstall => {
+               description=>'tbd',
+               value_desc=>'any string',
+               mandatory=>0,
+               base_dir=>'scripts',
                cp_to_kitconfig=>2} },
     kitpackage => {filename => {
                description=>'tbd',
@@ -312,8 +317,7 @@ if ($::HELP)
 # display the version statement if -v or --version is specified
 if ($::VERSION)
 {
-    my $version = xCAT::Version->Version();
-    print "$version \n"; 
+    print "The version option is not supported for this command.  Query the xCAT-buildkit rpm for version information. \n"; 
     exit 0;
 }
 
@@ -1318,10 +1322,17 @@ sub validate_bldkitconf
              return 1;
         }
       }
-      if (defined($kc->{posupgrade})){ 
+      if (defined($kc->{postupgrade})){ 
          my $ck_file = $::workdir."/scripts/".$kc->{postupgrade};
          if (! -r $ck_file ) {
              print "Post-Upgrade script $ck_file defined in Kit Componenet \"$kc->{basename}\" does not exist or is not readable\n";
+             return 1;
+        }
+      }
+      if (defined($kc->{genimage_postinstall})){ 
+         my $ck_file = $::workdir."/scripts/".$kc->{genimage_postinstall};
+         if (! -r $ck_file ) {
+             print "genimage_postinstall script $ck_file defined in Kit Componenet \"$kc->{basename}\" does not exist or is not readable\n";
              return 1;
         }
       }
@@ -1640,6 +1651,7 @@ sub build_kitcomp
     my $comp = shift;
     my %repo;
     my $rpmbuild_dir = $::workdir."/rpmbuild";
+    my $tmpdir = $::workdir."/tmp/$comp->{basename}";
 
     # find the kitrepo hash for this component
     foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
@@ -1652,6 +1664,7 @@ sub build_kitcomp
     # Create spec file for this kit component
     if ( &gen_kitcomp_spec($comp,\%repo) ) { return 1; }
 
+
     # run the rpmbuild command
     my $curdir = $::workdir;
     my $cmd = "rm -Rf $curdir/rpmbuild";
@@ -1661,11 +1674,30 @@ sub build_kitcomp
     mkpath($avoiderr);
 
     my $specfile = $::workdir."/tmp/$comp->{basename}.spec";
-    $cmd = "rpmbuild --define \"_topdir $rpmbuild_dir\" -ba $specfile";
-    if (!$::VERBOSE) {
-        $cmd .= ' --quiet ';
+    my $rpmbuild_cmd = "rpmbuild --define \"_topdir $rpmbuild_dir\" -ba $specfile";
+
+    # Copy in any non-native packages
+    if (defined($comp->{non_native_pkgs}) ) {
+        mkpath($tmpdir);
+        mkpath("$rpmbuild_dir/SOURCES");
+        my $sourcedir = $::workdir."/source_packages";
+        foreach my $pkg_file (split(/,/, $comp->{non_native_pkgs})) {
+            $cmd = "cp -p $sourcedir/$pkg_file $tmpdir";
+            if ( system($cmd) ) {
+                print "Error copying non-native package file $sourcedir/$pkg_file to $tmpdir\n";
+                return 1;
+            }
+        }
+        $cmd = "cd $tmpdir/..; tar -czf $rpmbuild_dir/SOURCES/$comp->{basename}.tar.gz $comp->{basename}";   
+        if ( system($cmd) ) {
+            print "Error creating tarfile $rpmbuild_dir/SOURCES/$comp->{basename}.tar from $sourcedir/*";
+            return 1;
+        }
     }
-    if ( system($cmd) ) {
+    if (!$::VERBOSE) {
+        $rpmbuild_cmd .= ' --quiet ';
+    }
+    if ( system($rpmbuild_cmd) ) {
         print "Error running rpmbuild command for kit component $comp->{basename} meta package\n";
         return 1;
     }
@@ -1717,7 +1749,9 @@ sub gen_kitcomp_spec
 
 
     my $kitname = $::bldkit_config->{kit}{entries}[0]->{basename};
-    my ($prescript,$postscript,$preupscript,$postupscript,$preunscript,$postunscript) = ' ';
+    my $kitcompname = $comp->{kitcompname};
+
+    my ($prescript,$postscript,$preupscript,$postupscript,$preunscript,$postunscript,$nonnativepkgs,$sourcetar,$setup,$files) = ' ';
     if (defined($comp->{preinstall})) {
         $prescript = &load_script("$scriptdir$comp->{preinstall}"); 
         $prescript = "if [ \"\$1\" = \"1\" ] ; then\n" . $prescript . "\nfi";}
@@ -1734,8 +1768,18 @@ sub gen_kitcomp_spec
         $preunscript = &load_script("$scriptdir$comp->{preuninstall}"); }
     if (defined($comp->{postuninstall})) {
         $postunscript = &load_script("$scriptdir$comp->{postuninstall}"); }
+    if (defined($comp->{non_native_pkgs})) {
+        $nonnativepkgs = '\n';
+        $nonnativepkgs .= "mkdir -p \$RPM_BUILD_ROOT/opt/xcat/kits/$kitname/$kitcompname \n";
+        $nonnativepkgs .= "cp -a * \$RPM_BUILD_ROOT/opt/xcat/kits/$kitname/$kitcompname  \n";
+        $sourcetar = "Source: $comp->{basename}.tar.gz";
+        $setup = "\%setup -q -n $comp->{basename}";
+        $files = "/opt/xcat/kits";
+    }
+
 
     for (@lines) {
+        chomp;
         s/<<<INSERT_kitbasename_HERE>>>/$kitname/;
         s/<<<INSERT_kitcomponent_basename_HERE>>>/$comp->{basename}/;
         s/<<<INSERT_kitcomponent_version_HERE>>>/$comp->{version}/;
@@ -1744,6 +1788,10 @@ sub gen_kitcomp_spec
         s/<<<INSERT_kitcomponent_kitpkgdeps_HERE>>>/$comp->{kitpkgdeps}/;
         s/<<<INSERT_kitcomponent_kitcompdeps_HERE>>>/$comp->{kitcompdeps}/;
         s/<<<INSERT_kitcomponent_desc_HERE>>>/$comp->{description}/;
+        s/<<<INSERT_kitcomponent_non_native_pkgs_HERE>>>/$nonnativepkgs/;
+        s/<<<INSERT_kitcomponent_sourcetar_HERE>>>/$sourcetar/;
+        s/<<<INSERT_kitcomponent_setup_HERE>>>/$setup/;
+        s/<<<INSERT_kitcomponent_files_HERE>>>/$files/;
         s/<<<INSERT_kitcomponent_preinstall_script_HERE>>>/$prescript/;
         s/<<<INSERT_kitcomponent_postinstall_script_HERE>>>/$postscript/;
         s/<<<INSERT_kitcomponent_preupgrade_script_HERE>>>/$preupscript/;
@@ -1836,7 +1884,8 @@ sub create_kitconf
             my $prefix = "$kitname";
             if ( $s eq 'kitcomponent' ) {
                 $prefix = "$::bldkit_config->{$s}{entries}[$li]->{kitcompname}";
-                if ($a eq 'postbootscripts') {
+                if (($a eq 'postbootscripts') ||
+                    ($a eq 'genimage_postinstall')) {
                     $prefix = "KIT_".$prefix;
                 }
             }

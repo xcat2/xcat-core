@@ -6,18 +6,25 @@ License: EPL
 BuildArch: noarch
 Requires:   <<<INSERT_kitcomponent_ospkgdeps_HERE>>>,<<<INSERT_kitcomponent_kitpkgdeps_HERE>>>,<<<INSERT_kitcomponent_kitcompdeps_HERE>>>
 
+<<<INSERT_kitcomponent_sourcetar_HERE>>>
+BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
+
 %description
 <<<INSERT_kitcomponent_desc_HERE>>>
 
 %prep
+<<<INSERT_kitcomponent_setup_HERE>>>
 %build
 %install
+<<<INSERT_kitcomponent_non_native_pkgs_HERE>>>
+
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root)
+<<<INSERT_kitcomponent_files_HERE>>>
 
 %changelog
 
