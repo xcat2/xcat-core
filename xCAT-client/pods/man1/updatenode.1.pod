@@ -4,7 +4,7 @@ B<updatenode> - Update nodes in an xCAT cluster environment.
 
 =head1 SYNOPSIS
 
-B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-f>|B<--snsync>] [B<-S>|B<--sw>] [B<-P>|B<--scripts> [B<script1,script2...>]] [B<-s>|B<--sn>] [B<-A>|B<--updateallsw>] [B<-c>|B<--cmdlineonly>] [B<-d alt_source_dir>] [B<attr=val> [B<attr=val...>]]
+B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-f>|B<--snsync>] [B<-S>|B<--sw>]  [B<-l>  I<userID>]  [B<-P>|B<--scripts> [B<script1,script2...>]] [B<-s>|B<--sn>] [B<-A>|B<--updateallsw>] [B<-c>|B<--cmdlineonly>] [B<-d alt_source_dir>] [B<attr=val> [B<attr=val...>]]
 
 B<updatenode> B<noderange> [B<-k>|B<--security>]
 
@@ -332,6 +332,14 @@ Display usage message.
 Update the ssh keys and host keys for the service nodes and compute nodes;
 Update the ca and credentials to the service nodes.  Never run this command to the Management Node, it will take down xcatd. 
 
+=item B<-l>|B<--user> I<user_ID>
+
+Specifies a remote user name to use for remote command exe-
+cution. The non-root userid will must be
+previously defined as an xCAT user, see process for defining non-root ids in
+xCAT and setting up for using xdsh.  The userid sudo setup will have
+to be done by the admin on the node.  See the document Granting_Users_xCAT_privileges. 
+
 =item B<-P|--scripts>
 
 Specifies that postscripts and postbootscripts should be run on the nodes. 
@@ -532,6 +540,12 @@ B<updatenode node01 -k>
 To update the service nodes with the files to be synchronized to node group compute: 
 
 B<updatenode compute -f>
+
+=item 21 
+
+To run updatenode with the non-root userid "user1" that has been setup as an xCAT userid and with sudo on node1  to run as root, do the following, see xCAT doc on Granting_Users_xCAT_privileges:
+
+B<updatenode node1 -l user1 -P syslog>
 
 =back
 
