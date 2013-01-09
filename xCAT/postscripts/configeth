@@ -60,7 +60,12 @@ while ( $cnt <= $net_cnt ) {
 # eth0:1_0_0_0-255_255_0_0|network2,eth1:1_1_0_0
 # create array of networks for this nic
 foreach my $nic_networks (split(/,/,$nicnetworks)) {
-    my @net = split(/!/,$nic_networks);
+    my @net = ();
+    if ( $nic_networks =~ /!/ ) {
+        @net = split(/!/,$nic_networks);
+    } else {
+        @net = split(/:/,$nic_networks);
+    }
     if ($net[0] eq $nic) {
         @nic_nets = split(/\|/,$net[1]);
         last;
@@ -70,7 +75,12 @@ foreach my $nic_networks (split(/,/,$nicnetworks)) {
 # get all nic ipaddress from $nicips: i.e. eth0:1.0.0.1|2.0.0.1,eth1:1.1.1.1
 # Then get all ips for this specific nic, i.e. eth0.
 foreach my $ips (split(/,/,$nicips)) {
-    my @ip = split(/!/,$ips);
+    my @ip = ();
+    if ( $ips =~ /!/ ) {
+        @ip = split(/!/,$ips);
+    } else {
+        @ip = split(/:/,$ips);
+    }
     if ($ip[0] eq $nic ) {
         @nic_ips = split(/\|/,$ip[1]);
     }
