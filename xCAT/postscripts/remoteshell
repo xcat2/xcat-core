@@ -158,7 +158,7 @@ fi
 # start up the sshd for syncfiles postscript to do the sync work
 logger -t xCAT -p local4.info "start up sshd"
 
-if [[ $OSVER == ubuntu* ]]
+if [[ $OSVER == ubuntu* || $OSVER == debian* ]]
 then
     if [ ! -d /var/run/sshd ]
     then
