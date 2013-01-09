@@ -543,9 +543,11 @@ B<updatenode compute -f>
 
 =item 21 
 
-To run updatenode with the non-root userid "user1" that has been setup as an xCAT userid and with sudo on node1  to run as root, do the following, see xCAT doc on Granting_Users_xCAT_privileges:
+To run updatenode with the non-root userid "user1" that has been setup as an xCAT userid  with sudo on node1  to run as root, do the following:
+See  Granting_Users_xCAT_privileges for required sudo setup.
 
 B<updatenode node1 -l user1 -P syslog>
+
 
 =back
 

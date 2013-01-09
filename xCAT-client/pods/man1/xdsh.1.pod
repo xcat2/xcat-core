@@ -320,9 +320,9 @@ to be able to run as root on the node.  The non-root userid will must be
 previously defined as an xCAT user, see process for defining non-root ids in
 xCAT and setting up for using xdsh.  The userid sudo setup will have 
 to be done by the admin on the node.  This includes, allowing all commands that
-you would like to run with xdsh by using visudo to edit the /etc/sudoers file
- and disabling tty requirement by commenting out or removing this line in the /etc/sudoes file "#Defaults    requiretty". 
-See the document Granting_Users_xCAT_privileges.
+you would like to run with xdsh by using visudo to edit the /etc/sudoers file.
+You must disabl ssh tty requirements by commenting out or removing this line in the /etc/sudoes file "#Defaults    requiretty". 
+See the document Granting_Users_xCAT_privileges for sudo setup requirements.
 
 
 =item B<-t>|B<--timeout> I<timeout>
