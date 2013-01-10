@@ -34,6 +34,7 @@ my $idir;
 my $node;
 my %loggedrealms;
 my $lastmachinepassdata;
+my $localadminenabled; #indicate whether Windows template has local logins enabled or not
 my %tab_replacement=(
      "noderes:nfsserver"=>"noderes:xcatmaster",
      "noderes:tftpserver"=>"noderes:xcatmaster",
@@ -190,6 +191,8 @@ sub subvars {
   $inc =~ s/#WINTIMEZONE#/xCAT::TZUtils::get_wintimezone()/eg;
   $inc =~ s/#WINPRODKEY:([^#]+)#/get_win_prodkey($1)/eg;
   $inc =~ s/#WINADJOIN#/windows_join_data()/eg;
+  $inc =~ s/#WINACCOUNTDATA#/windows_account_data()/eg;
+  $inc =~ s/#WINDISABLENULLADMIN#/windows_disable_null_admin()/eg;
   $inc =~ s/#HOSTNAME#/$node/g;
 
   my $nrtab = xCAT::Table->new("noderes");
@@ -258,6 +261,39 @@ sub subvars {
   print $outh $inc;
   close($outh);
   return 0;
+}
+sub windows_disable_null_admin { 
+#in the event where windows_account_data has not set an administrator user, we explicitly disable the administrator user 
+	unless ($localadminenabled) {
+		return '
+                <RunSynchronousCommand wcm:action=\"add\">
+                       <Order>100</Order>
+                       <Path>cmd /c %systemroot%\system32\net.exe user Administrator /active:no</Path>
+               </RunSynchronousCommand>
+';
+	}
+	return "";
+}
+sub windows_account_data { 
+#this will add domain accounts if configured to be in active directory
+#it will also put in an administrator password for local account, *if* specified
+	my $passtab = xCAT::Table->new('passwd',-create=>0);
+	my $useraccountxml="";
+	$localadminenabled=0;
+	if ($passtab) {
+		my $passent = $passtab->getAttribs({key=>"system",username=>"Administrator"},['password']);
+		if ($passent and $passent->{password}) {
+			$useraccountxml="<AdministratorPassword>\n<Value>".$passent->{password}."</Value>\n<PlainText>true</PlainText>\n</AdministratorPassword>\n";
+			$useraccountxml.="<!-- Plaintext=false would only protect against the most cursory over the shoulder glance, this implementation opts not to even give the illusion of privacy by only doing plaintext. -->\n";
+			$localadminenabled=1;
+		}
+	}
+			
+	unless ($::XCATSITEVALS{directoryprovider} eq "activedirectory" and $::XCATSITEVALS{domain}) {
+		return $useraccountxml;
+	}
+	$useraccountxml.="<DomainAccounts><DomainAccountList>\n<DomainAccount wcm:action=\"add\">\n<Group>Administrators</Group>\n<Name>Domain Admins</Name>\n</DomainAccount>\n<Domain>".$::XCATSITEVALS{domain}."</Domain>\n</DomainAccountList>\n</DomainAccounts>\n";
+		return $useraccountxml;
 }
 #this will examine table data, decide *if* a Microsoft-Windows-UnattendedJoin is warranted
 #there are two variants in how to proceed:
