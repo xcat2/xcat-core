@@ -187,6 +187,8 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/vbox.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/aixinstall.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/slpdiscover.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/remoteimmsetup.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/IMMUtils.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/RShellAPI.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/bmcconfig.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/bpa.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/esx.pm
@@ -228,6 +230,8 @@ rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/esxi/xcatsplash
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/fedora*
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/imgutils
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/rh
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/ol
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/devicetype
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/SL
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/sles
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/suse
@@ -236,6 +240,7 @@ rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/ubuntu
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/windows
 
 rm $RPM_BUILD_ROOT/%{prefix}/sbin/stopstartxcatd
+rm $RPM_BUILD_ROOT/%{prefix}/sbin/rshell_api
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpblade.pm
 rm $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/detect_dhcpd
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/AAsn.pm
@@ -260,6 +265,8 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ivm.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/lsslp.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/slpdiscover.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/remoteimmsetup.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/IMMUtils.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/RShellAPI.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/pxe.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/toolscenter.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xcat2nim.pm
