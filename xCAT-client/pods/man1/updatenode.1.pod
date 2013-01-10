@@ -334,11 +334,11 @@ Update the ca and credentials to the service nodes.  Never run this command to t
 
 =item B<-l>|B<--user> I<user_ID>
 
-Specifies a remote user name to use for remote command exe-
-cution. The non-root userid will must be
-previously defined as an xCAT user, see process for defining non-root ids in
-xCAT and setting up for using xdsh.  The userid sudo setup will have
-to be done by the admin on the node.  See the document Granting_Users_xCAT_privileges. 
+Specifies a non-root user name to use for remote command execution. This option is only available when running postscripts (-P) for 
+AIX and Linux and updating software (-S) for Linux only. 
+The non-root userid  must be previously defined as an xCAT user. 
+The userid sudo setup will have to be done by the admin on the node.
+See the document Granting_Users_xCAT_privileges for required xcat/sudo setup. 
 
 =item B<-P|--scripts>
 
