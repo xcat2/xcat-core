@@ -128,11 +128,11 @@ sub mknetboot
         my $crashkernelsize;
         my $rootfstype;
         my $cfgpart;
+        my $imagename; # set it if running of 'nodeset osimage=xxx'
 	
         my $ent= $ntents->{$node}->[0];
         if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
-            my $imagename=$ent->{provmethod};
-            #print "imagename=$imagename\n";
+            $imagename=$ent->{provmethod};
             if (!exists($img_hash{$imagename})) {
                 if (!$osimagetab) {
                     $osimagetab=xCAT::Table->new('osimage', -create=>1);
@@ -367,33 +367,49 @@ sub mknetboot
         }
 
 
-        mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-
-        #TODO: only copy if newer...
-        unless ($donetftp{$osver,$arch,$profile,$tftpdir}) {
-            copy("$rootimgdir/kernel", "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-            if ($statelite) {
-                copy("$rootimgdir/initrd-statelite.gz", "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-            } else {
-                copy("$rootimgdir/initrd-stateless.gz", "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+        # Copy the boot resource to /tftpboot and check to only copy once
+        my $docopy = 0;
+        my $tftppath;
+        my $rtftppath; # the relative tftp path without /tftpboot/
+        if ($imagename) {
+            $tftppath = "$tftpdir/xcat/osimage/$imagename";
+            $rtftppath = "xcat/osimage/$imagename";
+            unless ($donetftp{$imagename}) {
+                $docopy = 1;
+                $donetftp{$imagename} = 1;
             }
-            $donetftp{$osver,$arch,$profile,$tftpdir} = 1;
+        } else {
+            $tftppath = "/$tftpdir/xcat/netboot/$osver/$arch/$profile/";
+            $rtftppath = "xcat/netboot/$osver/$arch/$profile/";
+            unless ($donetftp{$osver,$arch,$profile,$tftpdir}) {
+                $docopy = 1;
+                $donetftp{$osver,$arch,$profile,$tftpdir} = 1;
+            }
+        }
+
+        if ($docopy) {
+            mkpath("$tftppath");
+            copy("$rootimgdir/kernel", "$tftppath");
+            if ($statelite) {
+                copy("$rootimgdir/initrd-statelite.gz", "$tftppath");
+            } else {
+                copy("$rootimgdir/initrd-stateless.gz", "$tftppath");
+            }
         }
 
         if ($statelite) {
-            unless ( -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/kernel" 
-                    and -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/initrd-statelite.gz") {
+            unless ( -r "$tftppath/kernel" and -r "$tftppath/initrd-statelite.gz" ) {
                 $callback->({
-                    error=>[qq{copying to /$tftpdir/xcat/netboot/$osver/$arch/$profile failed}],
+                    error=>[qq{copying to $tftppath failed}],
                     errorcode=>[1]
                 });
                 next;
             }
         } else {
-            unless ( -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/kernel" 
-                    and -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/initrd-stateless.gz") {
+            unless ( -r "$tftppath/kernel" 
+                    and -r "$tftppath/initrd-stateless.gz") {
                 $callback->({
-                    error=>[qq{copying to /$tftpdir/xcat/netboot/$osver/$arch/$profile failed}],
+                    error=>[qq{copying to $tftppath failed}],
                     errorcode=>[1]
                 });
                 next;
@@ -599,8 +615,8 @@ sub mknetboot
             $kcmdline .= " PARTITION";
         }
 
-        my $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-stateless.gz";
-        $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-statelite.gz" if ($statelite);
+        my $initrdstr = "$rtftppath/initrd-stateless.gz";
+        $initrdstr = "$rtftppath/initrd-statelite.gz" if ($statelite);
 
         if($statelite)
         {
@@ -615,7 +631,7 @@ sub mknetboot
         $bptab->setNodeAttribs(
             $node,
             {
-            kernel => "xcat/netboot/$osver/$arch/$profile/kernel",
+            kernel => "$rtftppath/kernel",
             initrd => $initrdstr,
             kcmdline => $kcmdline
             });
@@ -689,7 +705,7 @@ sub mkinstall
         }
     #}
 
-    my %doneimgs;
+    my %donetftp;
     require xCAT::Template; #only used here, load so memory can be COWed
     # Define a variable for driver update list
     my @dd_drivers;
@@ -718,23 +734,23 @@ sub mkinstall
         my $profile;
         my $tmplfile;
         my $pkgdir;
-	my $pkglistfile;
+        my $pkglistfile;
         my $osinst;
         my $ent = $ntents->{$node}->[0];
-	my $plat = "";
+        my $plat = "";
         my $tftpdir;
         my $partfile;
         my $netdrivers;
         my $driverupdatesrc;
- 	if ($resents->{$node} and $resents->{$node}->[0]->{tftpdir}) {
+        my $imagename; # set it if running of 'nodeset osimage=xxx'
+        if ($resents->{$node} and $resents->{$node}->[0]->{tftpdir}) {
 	   $tftpdir = $resents->{$node}->[0]->{tftpdir};
         } else {
 	   $tftpdir = $globaltftpdir;
         }
 
         if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
-	    my $imagename=$ent->{provmethod};
-	    #print "imagename=$imagename\n";
+	    $imagename=$ent->{provmethod};
 	    if (!exists($img_hash{$imagename})) {
 		if (!$osimagetab) {
 		    $osimagetab=xCAT::Table->new('osimage', -create=>1);
@@ -864,7 +880,6 @@ sub mkinstall
         my @srcdirs = split(",", $pkgdir);
         $pkgdir = $srcdirs[0];
 
-
         #Call the Template class to do substitution to produce a kickstart file in the autoinst dir
         my $tmperr;
         if (-r "$tmplfile")
@@ -916,17 +931,29 @@ sub mkinstall
             or ($arch =~ /ppc/ and -r "$pkgdir/1/suseboot/inst64")
           )
         {
-
-
             #TODO: driver slipstream, targetted for network.
-            unless ($doneimgs{"$os|$arch|$profile|$tftpdir"})
-            {
-                my $tftppath;
-                if ($profile) {
-                    $tftppath = "/$tftpdir/xcat/$os/$arch/$profile";
-                } else {
-                    $tftppath = "/$tftpdir/xcat/$os/$arch";
+            
+            # Copy the install resource to /tftpboot and check to only copy once
+            my $docopy = 0;
+            my $tftppath;
+            my $rtftppath; # the relative tftp path without /tftpboot/
+            if ($imagename) {
+                $tftppath = "/$tftpdir/xcat/osimage/$imagename";
+                $rtftppath = "xcat/osimage/$imagename";
+                unless ($donetftp{$imagename}) {
+                    $docopy = 1;
+                    $donetftp{$imagename} = 1;
                 }
+            } else {
+                $tftppath = "/$tftpdir/xcat/$os/$arch/$profile";
+                $rtftppath = "xcat/$os/$arch/$profile";
+                unless ($donetftp{"$os|$arch|$profile|$tftpdir"}) {
+                    $docopy = 1;
+                    $donetftp{"$os|$arch|$profile|$tftpdir"} = 1;
+                }
+            }
+            
+            if ($docopy) {
                 mkpath("$tftppath");
                 if ($arch =~ /x86_64/)
                 {
@@ -943,7 +970,6 @@ sub mkinstall
                     copy("$pkgdir/1/suseboot/inst64", "$tftppath");
                     @dd_drivers = &insert_dd($callback, $os, $arch, "$tftppath/inst64", $driverupdatesrc, $netdrivers);
                 }
-                $doneimgs{"$os|$arch|$profile|$tftpdir"} = 1;
             }
 
             #We have a shot...
@@ -963,11 +989,11 @@ sub mkinstall
             my $kcmdline =
                 "quiet autoyast=$httpmethod://"
               . $netserver . ":" . $httpport
-              . "/install/autoinst/"
+              . "$installroot/autoinst/"
               . $node
               . " install=$httpmethod://"
               . $netserver . ":" . $httpport
-              . "/install/$os/$arch/1";
+              . "$pkgdir/1";
 
             my $netdev = "";
             if ($ent->{installnic})
@@ -1054,13 +1080,8 @@ sub mkinstall
             
             if ($arch =~ /x86/)
             {
-                if ($profile) {
-                    $kernelpath = "xcat/$os/$arch/$profile/linux";
-                    $initrdpath = "xcat/$os/$arch/$profile/initrd";
-                } else {
-                    $kernelpath = "xcat/$os/$arch/linux";
-                    $initrdpath = "xcat/$os/$arch/initrd";
-                }
+                $kernelpath = "$rtftppath/linux";
+                $initrdpath = "$rtftppath/initrd";
                 $bptab->setNodeAttribs(
                                         $node,
                                         {
@@ -1072,11 +1093,7 @@ sub mkinstall
             }
             elsif ($arch =~ /ppc/)
             {
-                if ($profile) {
-                    $kernelpath = "xcat/$os/$arch/$profile/inst64";
-                } else {
-                    $kernelpath = "xcat/$os/$arch/inst64";
-                }
+                $kernelpath = "$rtftppath/inst64";
                 $bptab->setNodeAttribs(
                                         $node,
                                         {
