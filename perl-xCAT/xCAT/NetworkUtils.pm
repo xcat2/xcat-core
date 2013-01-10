@@ -2330,8 +2330,14 @@ sub get_all_nicips{
         if($_->{nicips}){
             my @nicandiplist = split(',', $_->{nicips});
             # Each record in @nicandiplist looks like "eth0:ip1"
+			# delimiter has been changed to use "!"  in xCAT 2.8
             foreach (@nicandiplist){
-                my @nicandip = split(':', $_);
+				my @nicandip;
+				if ($_  =~ /!/) {
+					@nicandip = split('!', $_);
+				} else {
+					@nicandip = split(':', $_);
+				}
                 if ($hashref){
                     $allipshash{$nicandip[1]} = 0;
                 } else{
