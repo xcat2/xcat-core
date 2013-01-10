@@ -1,4 +1,4 @@
-%define version	2.7.3
+%define version	2.7.7
 %ifarch i386 i586 i686 x86
 %define tarch x86
 %endif
