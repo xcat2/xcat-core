@@ -33,7 +33,7 @@ my $field;
 my $idir;
 my $node;
 my %loggedrealms;
-my $lastmachinepass;
+my $lastmachinepassdata;
 my %tab_replacement=(
      "noderes:nfsserver"=>"noderes:xcatmaster",
      "noderes:tftpserver"=>"noderes:xcatmaster",
@@ -53,7 +53,7 @@ sub subvars {
   my $partitionfile=shift;
   my %namedargs = @_; #further expansion of this function will be named arguments, should have happened sooner.
   unless ($namedargs{reusemachinepass}) {
-	$lastmachinepass="";
+	$lastmachinepassdata->{password}="";
   }
 
   my $outh;
@@ -189,6 +189,7 @@ sub subvars {
   $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
   $inc =~ s/#WINTIMEZONE#/xCAT::TZUtils::get_wintimezone()/eg;
   $inc =~ s/#WINPRODKEY:([^#]+)#/get_win_prodkey($1)/eg;
+  $inc =~ s/#WINADJOIN#/windows_join_data()/eg;
   $inc =~ s/#HOSTNAME#/$node/g;
 
   my $nrtab = xCAT::Table->new("noderes");
@@ -258,6 +259,37 @@ sub subvars {
   close($outh);
   return 0;
 }
+#this will examine table data, decide *if* a Microsoft-Windows-UnattendedJoin is warranted
+#there are two variants in how to proceed:
+#-Hide domain administrator from node: xCAT will use MACHINEPASSWORD to do joining to AD.  Currently requires SSL be enabled on DC.  Samba 4 TODO
+#-Provide domain administrator credentials, avoiding the SSL scenario.  This is by default forbidden as it is high risk for exposing sensitive credentials.
+# Also populate MachineObjectOU 
+sub windows_join_data {
+	unless ($::XCATSITEVALS{directoryprovider} eq "activedirectory" and $::XCATSITEVALS{domain}) {
+		return "";
+	}
+	#we are still here, meaning configuration has a domain and activedirectory set, probably want to join..
+	#TODO: provide a per-node 'disable' so that non-AD could be mixed into a nominally AD environment
+	my $adinfo = machinepassword(wantref=>1); #TODO: needs rearranging in non prejoin case
+	my $prejoin =1; #todo: variant without prejoin for TLS-free
+	my $componentxml = '<component name="Microsoft-Windows-UnattendedJoin" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'."\n<Identification>\n<JoinDomain>".$adinfo->{domain}."</JoinDomain>\n";
+	if ($adinfo->{ou}) {
+		$componentxml .= "<MachineObjectOU>".$adinfo->{ou}."</MachineObjectOU>\n";
+	}
+	if ($prejoin) {
+		#a note, MS is incorrect when they document unsecure join as " UnsecureJoin is performed, by using a null session with a pre-existing account. This means there is no authentication to the domain controller when configuring the machine account; it is done anonymously".
+		#the more informative bit is http://technet.microsoft.com/en-us/library/cc730845%28v=ws.10%29.aspx which says of 'securejoin': this method is actually less secure because the credentials reside in the ImageUnattend.xml file in plain text.  
+		#xCAT is generating a one-time password that is kept as limited as is feasible for the deployment strategy
+		#in theory, a domain join will either fail of the one-time password is compromised and changed, or domain
+		#join will invalidate any 'snooped' one time password
+		$componentxml .= "<MachinePassword>".$adinfo->{password}."</MachinePassword>\n<UnsecureJoin>true</UnsecureJoin>\n";
+	} else { #this is the pass-through credentials case, currrently inaccessible until TODO, this must be used 
+		#with care as used incorrectly, an LDAP manager account is at high risk of compromise
+		$componentxml .= "<Credentials><Domain>".$adinfo->{domain}."</Domain>\n<Username>".$adinfo->{adminuser}."</Username>\n<Password>".$adinfo->{adminpass}."</Password>\n</Credentials>\n";
+	}
+	$componentxml .= "</Identification>\n</component>\n";
+		
+}
 sub get_win_prodkey {
 	my $osvariant = shift;
 	my $keytab = xCAT::Table->new("prodkey",-create=>0);
@@ -323,12 +355,17 @@ sub autoulaaddress {
 }
 
 sub machinepassword {
-    if ($lastmachinepass) { #note, this should only happen after another call
+    my %funargs = @_;
+    if ($lastmachinepassdata->{password}) { #note, this should only happen after another call
 			    #to subvars that does *not* request reuse
 			    #the issue being avoiding reuse in the installmonitor case
 			    #subvars function clears this if appropriate
-	return $lastmachinepass;
+	if ($funargs{wantref}) { 
+		return $lastmachinepassdata;
+	}
+	return $lastmachinepassdata->{password};
     }
+    my $passdata;
     my $domaintab = xCAT::Table->new('domain');
     $ENV{HOME}='/etc/xcat';
     $ENV{LDAPRC}='ad.ldaprc';
@@ -339,6 +376,7 @@ sub machinepassword {
             $ou = $ouent->{ou};
         }
     }
+    $passdata->{ou}=$ou;
     #my $sitetab = xCAT::Table->new('site');
     #unless ($sitetab) {
     #    return "ERROR: unable to open site table"; 
@@ -352,6 +390,7 @@ sub machinepassword {
     } else {
         return "ERROR: no domain set in site table";
     }
+    $passdata->{domain}=$domain;
     my $realm = uc($domain);
     $realm =~ s/\.$//;
     $realm =~ s/^\.//;
@@ -391,6 +430,7 @@ sub machinepassword {
             return;
         }
     }
+    $passdata->{dc} = $server;
     my %args = (
         node => $node,
         dnsdomain => $domain,
@@ -402,7 +442,11 @@ sub machinepassword {
     if ($data->{error}) { 
         return "ERROR: ".$data->{error};
     } else {
-	$lastmachinepass=$data->{password};
+	$passdata->{password}=$data->{password};
+	$lastmachinepassdata=$passdata;
+	if ($funargs{wantref}) { 
+		return $passdata;
+	}
         return $data->{password};
     }
 }
