@@ -173,7 +173,12 @@ sub addotherinterfaces
     my @itf_pairs = split(/,/, $otherinterfaces);
     foreach (@itf_pairs)
     {
-        my ($itf, $ip) = split(/:/, $_);
+		my ($itf, $ip); 
+		if ($_  =~ /!/) {
+			($itf, $ip) = split(/!/, $_);
+		} else {
+        	($itf, $ip) = split(/:/, $_);
+		}
         if ($ip && xCAT::NetworkUtils->isIpaddr($ip))
         {
             if ($itf =~ /^-/)
@@ -447,23 +452,42 @@ sub donics
             next;
         }
 
-        #  $et->{nicips} looks like "eth0:ip1,eth1:ip2,bmc:ip3..."
+		# delimiter could be ":" or "!"  
+        #  old $et->{nicips} looks like "eth0:ip1,eth1:ip2,bmc:ip3..."
+		# OR new $et->{nicips} looks like "eth0!ip1,eth1!ip2,bmc!ip3..."
         my @nicandiplist = split(',', $et->{'nicips'});
         foreach (@nicandiplist)
         {
-            my ($nicname, $nicip) = split(':', $_);
+			my ($nicname, $nicip);
+
+			# if it contains a "!" then split on "!"
+			if ($_  =~ /!/) {
+				($nicname, $nicip) = split('!', $_);
+			} else {
+            	($nicname, $nicip) = split(':', $_);
+			}
             $nichash{$nicname}{nicip} = $nicip;
         }
         my @nicandsufx = split(',', $et->{'nichostnamesuffixes'});
         foreach (@nicandsufx)
         {
-            my ($nicname, $nicsufx) = split(':', $_);
+			my ($nicname, $nicsufx);
+			if ($_  =~ /!/) {
+				($nicname, $nicsufx) = split('!', $_);
+			} else {
+            	($nicname, $nicsufx) = split(':', $_);
+			}
             $nichash{$nicname}{nicsufx} = $nicsufx;
         }
         my @nicandnetwrk = split(',', $et->{'nicnetworks'});
         foreach (@nicandnetwrk)
         {
-            my ($nicname, $netwrk) = split(':', $_);
+			my ($nicname, $netwrk);
+			if ($_  =~ /!/) {
+				($nicname, $netwrk) = split('!', $_);
+			} else {
+            	($nicname, $netwrk) = split(':', $_);
+			}
             $nichash{$nicname}{netwrk} = $netwrk;
         }
 
