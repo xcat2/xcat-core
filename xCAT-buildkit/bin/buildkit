@@ -1673,7 +1673,7 @@ sub build_kitcomp
     $avoiderr .= "-$comp->{version}-$comp->{release}.$repo{osarch}";
     mkpath($avoiderr);
 
-    my $specfile = $::workdir."/tmp/$comp->{basename}.spec";
+    my $specfile = $::workdir."/tmp/$comp->{kitrepoid}-$comp->{basename}.spec";
     my $rpmbuild_cmd = "rpmbuild --define \"_topdir $rpmbuild_dir\" -ba $specfile";
 
     # Copy in any non-native packages
@@ -1805,7 +1805,7 @@ sub gen_kitcomp_spec
     @lines = split(/\\n/,$joined_lines);
     mkpath($tmpdir);
     my $NSF;
-    unless ( open( $NSF, ">$tmpdir/$comp->{basename}.spec" ) ) {
+    unless ( open( $NSF, ">$tmpdir/$comp->{kitrepoid}-$comp->{basename}.spec" ) ) {
         return 1;
     }
     if ($::VERBOSE) {
@@ -1877,7 +1877,19 @@ sub create_kitconf
         foreach my $a (keys %{$::buildkit_def{$s}}) {
           if (( $::buildkit_def{$s}{$a}->{cp_to_kitconfig} eq '1' ) &&
               ( defined ($se->{$a}) ) ) {
-            $::kit_config->{$s}{entries}[$li]->{$a} = $se->{$a}  
+            if ( $s eq 'kitcomponent' ) {
+                if ($a eq 'kitpkgdeps') {
+                    my $value;
+                    foreach my $d (split(/,/, $se->{$a})) {
+                        $d =~ s/\s+//g;
+                        $d =~ s/^([\w\.\-]+)[<>=]*.*$/$1/;            
+                        $value .= "$d,";
+                    }
+                    $value =~ s/,$//;
+                    $se->{$a} = $value;
+                }
+            }
+            $::kit_config->{$s}{entries}[$li]->{$a} = $se->{$a};
           }
           if (( $::buildkit_def{$s}{$a}->{cp_to_kitconfig} eq '2' ) &&
               ( defined ($se->{$a}) ) ) {
