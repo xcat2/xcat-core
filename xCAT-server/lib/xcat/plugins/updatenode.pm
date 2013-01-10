@@ -1879,6 +1879,12 @@ sub doAIXcopy
     {
         %attrvals = %{$av};
     }
+    if (defined($::USER)){ # not supported on AIX
+     		my $rsp;
+         $rsp->{error}->[0] = " The -l option is not supported on AIX";
+     		xCAT::MsgUtils->message("E", $rsp, $callback);;
+         return 1;
+    } 
 
     # get the NIM primary server name
     my $nimprime = xCAT::InstUtils->getnimprime();
