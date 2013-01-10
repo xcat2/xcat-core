@@ -278,7 +278,12 @@ sub get_nodes_nic_attrs{
         if ($entry->{$node}->[0]->{'nictypes'}){
             @nicattrslist = split(",", $entry->{$node}->[0]->{'nictypes'});
             foreach (@nicattrslist){
-                my @nicattrs = split(":", $_);
+				my @nicattrs;
+				if ($_  =~ /!/) {
+					@nicattrs = split("!", $_);
+				} else {
+					@nicattrs = split(":", $_);
+				}
                 $nicsattrs{$node}{$nicattrs[0]}{'type'} = $nicattrs[1];
             }
         }
@@ -286,7 +291,12 @@ sub get_nodes_nic_attrs{
         if($entry->{$node}->[0]->{'nichostnamesuffixes'}){
             @nicattrslist = split(",", $entry->{$node}->[0]->{'nichostnamesuffixes'});
             foreach (@nicattrslist){
-                my @nicattrs = split(":", $_);
+				my @nicattrs;
+				if ($_  =~ /!/) {
+					@nicattrs = split("!", $_);
+				} else {
+					@nicattrs = split(":", $_);
+				}
                 $nicsattrs{$node}{$nicattrs[0]}{'hostnamesuffix'} = $nicattrs[1];
             }
         }
@@ -294,7 +304,12 @@ sub get_nodes_nic_attrs{
         if($entry->{$node}->[0]->{'niccustomscripts'}){
             @nicattrslist = split(",", $entry->{$node}->[0]->{'niccustomscripts'});
             foreach (@nicattrslist){
-                my @nicattrs = split(":", $_);
+				my @nicattrs;
+				if ($_  =~ /!/) {
+					@nicattrs = split("!", $_);
+				} else {
+					@nicattrs = split(":", $_);
+				}
                 $nicsattrs{$node}{$nicattrs[0]}{'customscript'} = $nicattrs[1];
             }
         }
@@ -302,7 +317,12 @@ sub get_nodes_nic_attrs{
         if($entry->{$node}->[0]->{'nicnetworks'}){
             @nicattrslist = split(",", $entry->{$node}->[0]->{'nicnetworks'});
             foreach (@nicattrslist){
-                my @nicattrs = split(":", $_);
+				my @nicattrs;
+				if ($_  =~ /!/) {
+					@nicattrs = split("!", $_);
+				} else {
+					@nicattrs = split(":", $_);
+				}
                 $nicsattrs{$node}{$nicattrs[0]}{'network'} = $nicattrs[1];
             }
         }
@@ -310,7 +330,12 @@ sub get_nodes_nic_attrs{
         if($entry->{$node}->[0]->{'nicips'}){
             @nicattrslist = split(",", $entry->{$node}->[0]->{'nicips'});
             foreach (@nicattrslist){
-                my @nicattrs = split(":", $_);
+				my @nicattrs;
+				if ($_  =~ /!/) {
+					@nicattrs = split("!", $_);
+				} else {
+					@nicattrs = split(":", $_);
+				}
                 $nicsattrs{$node}{$nicattrs[0]}{'ip'} = $nicattrs[1];
             }
         }
@@ -730,7 +755,12 @@ sub is_fsp_node
     if ($entry->{'nictypes'}){
         my @nicattrslist = split(",", $entry->{'nictypes'});
         foreach (@nicattrslist){
-            my @nicattrs = split(":", $_);
+			my @nicattrs;
+			if ($_  =~ /!/) {
+				@nicattrs = split("!", $_);
+			} else {
+				@nicattrs = split(":", $_);
+			}
             if ($nicattrs[1] eq 'FSP'){
                 return 1;
             }
