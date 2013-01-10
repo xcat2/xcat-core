@@ -57,9 +57,10 @@ cd -
 
 
 %post
-if [ "$1" == "2" ]; then #only on upgrade, as on install it's probably not going to work...
+if [ "$1" == "2" -o -e /opt/xcat/sbin/mknb ]; then #only on upgrade, or if the rest of xcat is already installed
 	if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
    		. /etc/profile.d/xcat.sh
+   		echo mknb %{tarch}...
    		mknb %{tarch}
    	fi
 fi
