@@ -25,23 +25,27 @@ for i in $(echo #TABLE:site:key=nameservers:value# | tr ',' ' ')
 do
 	echo "nameserver $i"
 done >>/etc/resolv.conf
-export HOSTNAME=$(host $IP 2>/dev/null | awk '{print $5}' | awk -F. '{print $1}')
-hostname $HOSTNAME
+#change the soft link /bin/sh to /bin/bash
+ln -sf /bin/bash /bin/sh
 #
 # Run xCAT post install
 #
 export MASTER_IP="#XCATVAR:XCATMASTER#"
 export MASTER_IPS="#XCATVAR:XCATMASTER#"
 export MASTER="#XCATVAR:XCATMASTER#"
+export INSTALLDIR=#TABLE:site:key=installdir:value#
+if [ -z "$INSTALLDIR" ]; then
+    INSTALLDIR="/install"
+fi
 cd /tmp
 RAND=$(perl -e 'print int(rand(50)). "\n"')
 sleep $RAND
-for t in $(seq 1 20)
+for j in $(seq 1 20)
 do
 	GOTIT=0
 	for i in $MASTER_IPS
 	do
-      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -t 0 -T 60 ftp://$i/postscripts
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -e robots=off -nH --cut-dirs=2 --reject "index.html*" --no-parent -t 0 -T 60 http://$i$INSTALLDIR/postscripts/ -P /xcatpost
 		#wget --wait=10 --random-wait --waitretry=10 --retry-connrefused -t 0 -T 60 http://$i/install/autoinst/xcatpost.tar.gz
 		if [ "$?" = "0" ]
 		then
@@ -55,8 +59,8 @@ do
          mv $i/postscripts /xcatpost
          rm -rf $i
          chmod +x /xcatpost/*
-         /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
-         MYCONT=`grep MASTER /tmp/mypostscript`
+         /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /xcatpost/mypostscript
+         MYCONT=`grep MASTER /xcatpost/mypostscript`
          MAX_RETRIES=10
          RETRY=0
          while [ -z "$MYCONT" ]; do
@@ -68,12 +72,12 @@ do
 
             let SLI=$RANDOM%10+10
             sleep $SLI
-            /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
-            MYCONT=`grep MASTER /tmp/mypostscript`
+            /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /xcatpost/mypostscript
+            MYCONT=`grep MASTER /xcatpost/mypostscript`
          done
 
             
-         chmod +x /tmp/mypostscript
+         chmod +x /xcatpost/mypostscript
 			GOTIT=1
 			break
 		fi
@@ -97,8 +101,13 @@ cd /xcatpost
 #/xcatpost/#TABLE:nodelist:THISNODE:node#
 export PATH=/xcatpost:$PATH
 
+#save the postboot scripts to /var/tmp/mypostscript.post
+#
+#  mypostscript.post must survive a reboot.  Traditionally, xCAT has put mypostscript.post in /tmp.
+#  However, Ubuntu cleans /tmp on reboot.  So, for Ubuntu, /var/tmp is used instead.
+
 # use the run_ps subroutine to run the postscripts
-TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
+TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
 echo "
 # subroutine used to run postscripts
 run_ps () {
@@ -107,24 +116,26 @@ run_ps () {
  logfile=\"/var/log/xcat/xcat.log\"
  
  if [ -f \$1 ]; then 
-  echo \"Running postscript: \$@\" | tee -a \$logfile
-  ./\$@ 2>&1 1> /tmp/tmp4xcatlog
-  cat /tmp/tmp4xcatlog | tee -a \$logfile
+  echo "\"\`date\` Running postscript: \$@\"" | tee -a \$logfile
+  #./\$@ 2>&1 1> /tmp/tmp4xcatlog
+  #cat /tmp/tmp4xcatlog | tee -a \$logfile
+  ./\$@ 2>&1 | tee -a $logfile
  else
-  echo \"Postscript \$1 does NOT exist.\" | tee -a \$logfile
+   echo "\"\`date\` Postscript \$1 does NOT exist.\"" | tee -a \$logfile
  fi
 }
 # subroutine end
 
-" > /tmp/mypostscript
-echo "$TMP" >> /tmp/mypostscript
-TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
-echo "$TMP" > /tmp/mypostscript 
+" > /xcatpost/mypostscript
+echo "$TMP" >> /xcatpost/mypostscript
+TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
+echo "$TMP" > /xcatpost/mypostscript 
 
-#save the postboot scripts to /tmp/mypostscript.post
-TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /tmp/mypostscript`
-echo "$TMP" > /tmp/mypostscript.post
-chmod 755 /tmp/mypostscript.post
+
+
+TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /xcatpost/mypostscript`
+echo "$TMP" > /xcatpost/mypostscript.post
+chmod 755 /xcatpost/mypostscript.post
 
 #create the post init 
 cat >/etc/init.d/xcatpostinit1 << 'EOF'
@@ -135,32 +146,29 @@ ln -s /etc/init.d/xcatpostinit1 /etc/rc2.d/S84xcatpostinit1
 mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatinstallpost#
-if [ "$RUNBOOTSCRIPTS" != "yes" ]; then
-    chkconfig xcatpostinit1 off
-fi
-EOF
-chmod 755 /opt/xcat/xcatinstallpost
-
-#create the dskls post 
-cat >/opt/xcat/xcatdsklspost << 'EOF'
-#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatdsklspost#
 if [ -f /xcatpost/mypostscript.post ]; then
     RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript.post |cut -d= -f2`
 fi
 if [ "$RUNBOOTSCRIPTS" != "'yes'" ]; then
     chkconfig xcatpostinit1 off
 fi
-echo "REBOOT=TRUE" >> /opt/xcat/xcatinfo 
+echo "REBOOT=TRUE" >> /opt/xcat/xcatinf
 EOF
-chmod 755 /opt/xcat/xcatdsklspost
+chmod 755 /opt/xcat/xcatinstallpost
 
 chkconfig --add xcatpostinit1
 
-#only run the prebooot scripts here
-TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /tmp/mypostscript`
-echo "$TMP" > /tmp/mypostscript
+#create the dskls post 
+cat >/opt/xcat/xcatdsklspost << 'EOF'
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatdsklspost#
+EOF
+chmod 755 /opt/xcat/xcatdsklspost
 
-/tmp/mypostscript
+#only run the prebooot scripts here
+TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /xcatpost/mypostscript`
+echo "$TMP" > /xcatpost/mypostscript
+
+/xcatpost/mypostscript
 export NODE=#TABLE:nodelist:THISNODE:node#
 export OSVER=#TABLE:nodetype:THISNODE:os#
 export ARCH=#TABLE:nodetype:THISNODE:arch#
