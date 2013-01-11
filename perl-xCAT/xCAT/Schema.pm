@@ -711,7 +711,7 @@ passwd => {
   key => 'The type of component this user/pw is for.  Valid values: blade (management module), ipmi (BMC), system (nodes), omapi (DHCP), hmc, ivm, cec, frame, switch.',
   username => 'The default userid for this type of component',
   password => 'The default password for this type of component',
-  cryptmethod => 'Indicates the method that was used to encrypt the password attribute.  On AIX systems, if a value is provided for this attribute it indicates that the passwword attribute is encrypted.  If the cryptmethod value is not set it indicates the password is a simple string value. On Linux systems, the cryyptmethod is not supported however the code attempts to auto-discover MD5 encrypted passwords.',
+  cryptmethod => 'Indicates the method that was used to encrypt the password attribute.  On AIX systems, if a value is provided for this attribute it indicates that the passwword attribute is encrypted.  If the cryptmethod value is not set it indicates the password is a simple string value. On Linux systems, the cryyptmethod is not supported however the code attempts to auto-discover MD5 encrypted passowrds.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -1235,31 +1235,36 @@ firmware => {
 },
 
 nics => {
-        cols => [qw(node nicips  nichostnamesuffixes nictypes niccustomscripts nicnetworks comments disable)], 
+        cols => [qw(node nicips  nichostnamesuffixes nictypes niccustomscripts nicnetworks nicaliases comments disable)], 
         keys => [qw(node)],
         tablespace =>'XCATTBS16K',
         table_desc => 'Stores NIC details.',
         descriptions => {
             node => 'The node or group name.',
             nicips => 'Comma-separated list of IP addresses per NIC. To specify one ip address per NIC:
-                    <nic1>:<ip1>,<nic2>:<ip2>,..., for example, eth0:10.0.0.100,ib0:11.0.0.100
+                    <nic1>!<ip1>,<nic2>!<ip2>,..., for example, eth0!10.0.0.100,ib0!11.0.0.100
                 To specify multiple ip addresses per NIC:
-                    <nic1>:<ip1>|<ip2>,<nic2>:<ip1>|<ip2>,..., for example, eth0:10.0.0.100|fd55::214:5eff:fe15:849b,ib0:11.0.0.100|2001::214:5eff:fe15:849a
+                    <nic1>!<ip1>|<ip2>,<nic2>!<ip1>|<ip2>,..., for example, eth0!10.0.0.100|fd55::214:5eff:fe15:849b,ib0!11.0.0.100|2001::214:5eff:fe15:849a
                 Note: The primary IP address must also be stored in the hosts.ip attribute. The nichostnamesuffixes should specify one hostname suffix for each ip address.',
             nichostnamesuffixes  => 'Comma-separated list of hostname suffixes per NIC. 
                         If only one ip address is associated with each NIC:
-                            <nic1>:<ext1>,<nic2>:<ext2>,..., for example, eth0:-eth0,ib0:-ib0
+                            <nic1>!<ext1>,<nic2>!<ext2>,..., for example, eth0!-eth0,ib0!-ib0
                         If multiple ip addresses are associcated with each NIC:
-                            <nic1>:<ext1>|<ext2>,<nic2>:<ext1>|<ext2>,..., for example,  eth0:-eth0|-eth0-ipv6,ib0:-ib0|-ib0-ipv6.',
-            nictypes => 'Comma-separated list of NIC types per NIC. <nic1>:<type1>,<nic2>:<type2>, e.g. eth0:Ethernet,ib0:Infiniband', 
-            niccustomscripts => 'Comma-separated list of custom scripts per NIC.  <nic1>:<script1>,<nic2>:<script2>, e.g. eth0:configeth eth0, ib0:configib ib0
+                            <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!-eth0|-eth0-ipv6,ib0!-ib0|-ib0-ipv6.',
+            nictypes => 'Comma-separated list of NIC types per NIC. <nic1>!<type1>,<nic2>!<type2>, e.g. eth0!Ethernet,ib0!Infiniband', 
+            niccustomscripts => 'Comma-separated list of custom scripts per NIC.  <nic1>!<script1>,<nic2>!<script2>, e.g. eth0!configeth eth0, ib0!configib ib0
 .',
             nicnetworks => 'Comma-separated list of networks connected to each NIC.
                 If only one ip address is associated with each NIC:
-                    <nic1>:<network1>,<nic2>:<network2>, for example, eth0: 10_0_0_0-255_255_0_0, ib0: 11_0_0_0-255_255_0_0
+                    <nic1>!<network1>,<nic2>!<network2>, for example, eth0!10_0_0_0-255_255_0_0, ib0!11_0_0_0-255_255_0_0
                 If multiple ip addresses are associated with each NIC:
-                    <nic1>:<network1>|<network2>,<nic2>:<network1>|<network2>, for example, eth0: 10_0_0_0-255_255_0_0|fd55:faaf:e1ab:336::/64, ib0: 11_0_0_0-255_255_0_0|2001:db8:1:0::/64
+                    <nic1>!<network1>|<network2>,<nic2>!<network1>|<network2>, for example, eth0!10_0_0_0-255_255_0_0|fd55:faaf:e1ab:336::/64,ib0!11_0_0_0-255_255_0_0|2001:db8:1:0::/64
 ',
+            nicaliases => 'Comma-separated list of aliases for each NIC.
+
+            Format: eth0!<alias>,eth1!<alias1>|<alias2>
+            For example: eth0!moe,eth1!larry|curly',
+			
             comments => 'Any user-written notes.',
             disable => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -2059,6 +2064,10 @@ my @nodeattrs = (
                 tabentry => 'nics.nicnetworks',
                 access_tabentry => 'nics.node=attr:node',
         },
+		{attr_name => 'nicaliases',
+				tabentry => 'nics.nicaliases',
+				access_tabentry => 'nics.node=attr:node',
+		},
 ######################
 #  vm table          #
 ######################
