@@ -1829,7 +1829,7 @@ sub wrapJson {
     my $data = shift;
     my $json;
     $json->{'data'} = $data;
-    addPageContent(to_json($json));
+    addPageContent(JSON::to_json($json));
 }
 
 sub wrapHtml {
