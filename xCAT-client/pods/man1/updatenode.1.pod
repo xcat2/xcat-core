@@ -338,7 +338,9 @@ Specifies a non-root user name to use for remote command execution. This option 
 AIX and Linux and updating software (-S) for Linux only. 
 The non-root userid  must be previously defined as an xCAT user. 
 The userid sudo setup will have to be done by the admin on the node.
+This is not supported in a hiearchical cluster, that is the node is serviced by a service node. 
 See the document Granting_Users_xCAT_privileges for required xcat/sudo setup. 
+
 
 =item B<-P|--scripts>
 
