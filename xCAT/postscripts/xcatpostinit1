@@ -36,7 +36,7 @@ start)
     REBOOT=`grep 'REBOOT' /opt/xcat/xcatinfo |cut -d= -f2`
   fi
   # if the xcatdsklspost file exists and this is a reboot - run xcatdsklspost with a mode of 6
-  if [ "$REBOOT" = "TRUE" -a -r /opt/xcat/xcatdsklspost ]; then
+  if [ "$REBOOT" = "TRUE" ] && [ -r /opt/xcat/xcatdsklspost ]; then
         /opt/xcat/xcatdsklspost 6
   else
     # run /opt/xcat/xcatinstallpost
