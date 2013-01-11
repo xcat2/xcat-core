@@ -89,5 +89,24 @@ chmod 755 /tmp/foo.sh
 
 /tmp/foo.sh >/tmp/foo.log 2>&1 &
 
+
+
+if [ -d /sys/firmware/efi ]; then
+    echo "ubuntu-efi ::" > /tmp/partitioning
+    echo "    512 512 1024 fat16" >> /tmp/partitioning
+    echo "    $iflabel{ gpt } $reusemethod{ } method{ efi } format{ }" >> /tmp/partitioning
+    echo "    ." >> /tmp/partitioning
+else
+    echo "ubuntu-boot ::" > /tmp/partitioning
+    echo "100 50 100 ext3" >> /tmp/partitioning
+    echo "    $primary{ } $bootable{ } method{ format } format{ } use_filesystem{ } filesystem{ ext3 } mountpoint{ /boot }" >> /tmp/partitioning
+    echo "    ." >> /tmp/partitioning
+fi
+echo "500 10000 1000000000 ext3" >> /tmp/partitioning
+echo "    method{ format } format{ } use_filesystem{ } filesystem{ ext3 } mountpoint{ / }" >> /tmp/partitioning
+echo "    ." >> /tmp/partitioning
+echo "2048 512 300% linux-swap" >> /tmp/partitioning
+echo "    method{ swap } format{ }" >> /tmp/partitioning
+echo "    ." >> /tmp/partitioning
 exit 0
 
