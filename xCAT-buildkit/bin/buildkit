@@ -1238,7 +1238,7 @@ sub validate_bldkitconf
             $d =~ s/^([\w\.\-]+)[<>=]*.*$/$1/;
             my $found = 0;
             foreach my $kp (@{$::bldkit_config->{kitpackage}{entries}}) {
-              if ( $kp->{filename} =~ /^$d[\.\-]/ ) {
+              if ( $kp->{filename} =~ /^$d[\.\-]?/ ) {
                 foreach my $kprid (split(/,/, $kp->{kitrepoid})) {
                   $kprid =~ s/\s+//g;
                   if ($kc->{kitrepoid} eq $kprid) {
@@ -2304,8 +2304,8 @@ sub kit_addpkgs
               next;
             }
             if ( ($ext_filename ne '') && ($ext_reponames ne '') ){
-              my $fromfile = $rpmdir."/".$ext_filename;
-              if ( !(-r $fromfile) ){
+              my $fromfile = $rpmdir."/".$ext_filename."*";
+              if ( system("ls $fromfile") ){
                 print  "The product package file $ext_filename could not be read from the package directory $rpmdir. \n";
                 # Cleanup
                 system ("rm -Rf /tmp/buildkit_workdir");
