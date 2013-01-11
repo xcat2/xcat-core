@@ -168,6 +168,7 @@ EOF
 chmod 755 /opt/xcat/xcatinstallpost
 
 chkconfig --add xcatpostinit1
+chkconfig xcatpostinit1 on
 
 #create the dskls post 
 cat >/opt/xcat/xcatdsklspost << 'EOF'
