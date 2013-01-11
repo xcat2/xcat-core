@@ -1306,6 +1306,7 @@ sub tablesHandler {
     }
     elsif (isPut() || isPatch()) {
         my $condition = $q->param('condition');
+        my @vals;
         if (!defined $condition) {
             foreach my $put (@{$queryhash{'putData'}}) {
                 my ($key, $value) = split(/=/, $put, 2);
@@ -1313,6 +1314,12 @@ sub tablesHandler {
                     $condition = $value;
                 }
             }
+            foreach my $put (@{$queryhash{'putData'}}) {
+                my ($key, $value) = split(/=/, $put, 2);
+                if ($key eq 'value') {
+                    push(@vals, $value);
+                }
+	     }
         }
 
         if (!defined $table || !defined $condition) {
@@ -1337,8 +1344,13 @@ sub tablesHandler {
         }
         else {
             push @args, $condition;
-            for ($q->param('value')) {
-                push @args, "$table.$_";
+            if ($q->param('value')) {
+                for ($q->param('value')) {
+                    push @args, "$table.$_";
+                }
+            }
+            else {
+                @args = (@args, @vals);
             }
         }
     }
