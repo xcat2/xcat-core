@@ -32,7 +32,8 @@ my @dhcpconf; #Hold DHCP config file contents to be written back.
 my @dhcp6conf; #ipv6 equivalent
 my @nrn;      # To hold output of networks table to be consulted throughout process
 my @nrn6; #holds ip -6 route output on Linux, yeah, name doesn't make much sense now..
-my $domain;
+my $site_domain;
+my @alldomains;
 my $omshell;
 my $omshell6; #separate session to DHCPv6 instance of dhcp
 my $statements;    #Hold custom statements to be slipped into host declarations
@@ -552,9 +553,9 @@ sub addrangedetection {
     {
         $netcfgs{$net->{net}}->{nameservers} = $net->{nameservers};
     }
-    
     $netcfgs{$net->{net}}->{ddnsdomain} = $net->{ddnsdomain};
-    $netcfgs{$net->{net}}->{domain} = $domain; #TODO: finer grained domains
+	$netcfgs{$net->{net}}->{domain} = $net->{domain};
+
     unless ($netcfgs{$net->{net}}->{nameservers}) {
         # convert <xcatmaster> to nameserver IP
         if ($::XCATSITEVALS{nameservers} eq '<xcatmaster>')
@@ -717,17 +718,11 @@ sub preprocess_request
 
   
     my $snonly=0;
-    #my $sitetab = xCAT::Table->new('site');
-    #if ($sitetab)
-    #{
-        #my $href;
-        #($href) = $sitetab->getAttribs({key => 'disjointdhcps'}, 'value');
-        my @entries =  xCAT::TableUtils->get_site_attribute("disjointdhcps");
-        my $t_entry = $entries[0];
-        if (defined($t_entry)) {
+	my @entries =  xCAT::TableUtils->get_site_attribute("disjointdhcps");
+	my $t_entry = $entries[0];
+	if (defined($t_entry)) {
 	    $snonly=$t_entry;
 	}
-    #}
     my @requests=();
     my $hasHierarchy=0;
 
@@ -906,15 +901,12 @@ sub process_request
     }
     else
     {
-        #my $href;
-        #($href) = $sitetab->getAttribs({key => 'dhcpinterfaces'}, 'value');
         my @entries =  xCAT::TableUtils->get_site_attribute("dhcpinterfaces");
         my $t_entry = $entries[0];
         unless ( defined($t_entry) )
         {    #LEGACY: singular keyname for old style site value
             @entries =  xCAT::TableUtils->get_site_attribute("dhcpinterface");
             $t_entry = $entries[0];
-            #($href) = $sitetab->getAttribs({key => 'dhcpinterface'}, 'value');
         }
         if ( defined($t_entry) )
         #syntax should be like host|ifname1,ifname2;host2|ifname3,ifname2 etc or simply ifname,ifname2
@@ -954,36 +946,34 @@ sub process_request
               }
            }
         }
-        #($href) = $sitetab->getAttribs({key => 'nameservers'}, 'value');
         @entries =  xCAT::TableUtils->get_site_attribute("nameservers");
         $t_entry = $entries[0];
         if ( defined($t_entry) ) {
             $sitenameservers = $t_entry;
         }
-        #($href) = $sitetab->getAttribs({key => 'ntpservers'}, 'value');
         @entries =  xCAT::TableUtils->get_site_attribute("ntpservers");
         $t_entry = $entries[0];
         if ( defined($t_entry) ) {
             $sitentpservers = $t_entry;
         }
-        #($href) = $sitetab->getAttribs({key => 'logservers'}, 'value');
         @entries =  xCAT::TableUtils->get_site_attribute("logservers");
         $t_entry = $entries[0];
         if ( defined($t_entry) ) {
             $sitelogservers = $t_entry;
         }
-        #($href) = $sitetab->getAttribs({key => 'domain'}, 'value');
-        #($href) = $sitetab->getAttribs({key => 'domain'}, 'value');
         @entries =  xCAT::TableUtils->get_site_attribute("domain");
         $t_entry = $entries[0];
+
         unless ( defined($t_entry) )
         {
-            $callback->(
-                 {error => ["No domain defined in site tabe"], errorcode => [1]}
-                 );
-            return;
-        }
-        $domain = $t_entry;
+		# this may not be an error
+        #    $callback->(
+        #         {error => ["No domain defined in site tabe"], errorcode => [1]}
+        #         );
+        #    return;
+        } else {
+			$site_domain = $t_entry;
+		}
     }
 
     @dhcpconf = ();
@@ -1057,7 +1047,26 @@ sub process_request
         }
     }
 	my $nettab = xCAT::Table->new("networks");
-	my @vnets = $nettab->getAllAttribs('net','mgtifname','mask','dynamicrange','nameservers','ddnsdomain');
+	my @vnets = $nettab->getAllAttribs('net','mgtifname','mask','dynamicrange','nameservers','ddnsdomain', 'domain');
+
+	# get a list of all domains listed in xCAT network defs
+	#       - include the site domain - if any
+    my $nettab = xCAT::Table->new("networks");
+    my @doms = $nettab->getAllAttribs('domain');
+    foreach(@doms){
+        if ($_->{domain}) {
+            push (@alldomains, $_->{domain});
+        }
+    }
+    $nettab->close;
+
+    # add the site domain
+    if ($site_domain) {
+		if (!grep(/^$site_domain$/, @alldomains)) {
+        	push (@alldomains, $site_domain);
+		}
+    }
+
     foreach (@vnets) {
         if ($_->{net} =~ /:/) { #IPv6 detected
             $usingipv6=1;
@@ -1092,7 +1101,6 @@ sub process_request
 		my $n = $_->{net};
 		my $if = $_->{mgtifname};
 		my $nm = $_->{mask};
-		#$callback->({data => ["array of nets $n : $if : $nm"]});
         if ($if =~ /!remote!/ and $n !~ /:/) { #only take in networks with special interface, but only v4 for now
     		push @nrn, "$n:$if:$nm";
         }
@@ -1118,9 +1126,9 @@ sub process_request
     
     if ( $^O ne 'aix')
     {
-#add the active nics to /etc/sysconfig/dhcpd or /etc/default/dhcp3-server(ubuntu)
+		#add the active nics to /etc/sysconfig/dhcpd or /etc/default/dhcp3-server(ubuntu)
         my $dhcpver;
-	my %missingfiles = ( "dhcpd"=>1, "dhcpd6"=>1, "dhcp3-server"=>1 );
+		my %missingfiles = ( "dhcpd"=>1, "dhcpd6"=>1, "dhcp3-server"=>1 );
         foreach $dhcpver ("dhcpd","dhcpd6","dhcp3-server", "isc-dhcp-server") {
         if (-e "/etc/sysconfig/$dhcpver") {
 		if ($dhcpver eq "dhcpd") {
@@ -1164,11 +1172,11 @@ sub process_request
             print DBG_FD $syscfg_dhcpd;
             close DBG_FD;
         }elsif (-e "/etc/default/$dhcpver") { #ubuntu
-	    delete($missingfiles{"dhcpd"});
+			delete($missingfiles{"dhcpd"});
             #dhcpd and dhcpd6 use the same configure file
             delete($missingfiles{"dhcpd6"});
-	    delete($missingfiles{"dhcp3-server"});
-        	 open DHCPD_FD, "/etc/default/$dhcpver";
+			delete($missingfiles{"dhcp3-server"});
+			open DHCPD_FD, "/etc/default/$dhcpver";
             my $syscfg_dhcpd = "";
             my $found = 0;
             my $dhcpd_key = "INTERFACES";
@@ -1662,6 +1670,20 @@ sub addnet6
     #phase 3 will include whatever is required to do Netboot6.  That might be in the october timeframe for lack of implementations to test
     #boot url/param (rfc 59070)
     push @netent, "    option domain-name \"".$netcfgs{$net}->{domain}."\";\n";
+	#  add domain-search
+	# We want something like "option domain-search "foo.com", "bar.com";"
+	my $domainstring = qq~"$netcfgs{$net}->{domain}"~;
+	foreach my $dom (@alldomains) {
+		chomp $dom;
+		if ($dom ne $netcfgs{$net}->{domain}){
+			$domainstring .= qq~, "$dom"~;
+		}
+	}
+
+	if ($netcfgs{$net}->{domain}) {
+		push @netent, "    option domain-search  $domainstring;\n";
+	}
+
     my $nameservers = $netcfgs{$net}->{nameservers};
     if ($nameservers and $nameservers =~ /:/) {
         push @netent,"    nameservers ".$netcfgs{$net}->{nameservers}.";\n";
@@ -1677,7 +1699,7 @@ sub addnet6
             push @netent, "    ddns-domainname \"".$ddnsdomain."\";\n";
             push @netent, "    zone $ddnsdomain. {\n";
         } else {
-    push @netent, "    zone $domain. {\n";
+			push @netent, "    zone $netcfgs{$net}->{domain}. {\n";
         }
     push @netent, "       primary $ddnserver; key xcat_key; \n";
     push @netent, "    }\n";
@@ -1700,6 +1722,7 @@ sub addnet
     my $net  = shift;
     my $mask = shift;
     my $nic;
+	my $domain;
     my $firstoctet = $net;
     $firstoctet =~ s/^(\d+)\..*/$1/;
     if ($net eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239)) {
@@ -1757,9 +1780,10 @@ sub addnet
             {
                 $mask_formated = inet_ntoa(pack("N", 2**$mask - 1 << (32 - $mask)));
             }
+
             my ($ent) =
               $nettab->getAttribs({net => $net, mask => $mask_formated},
-                    qw(tftpserver nameservers ntpservers logservers gateway dynamicrange dhcpserver));
+                    qw(tftpserver nameservers ntpservers logservers gateway dynamicrange dhcpserver domain));
             if ($ent and $ent->{ntpservers}) {
                 $ntpservers = $ent->{ntpservers};
             } elsif ($sitentpservers) {
@@ -1770,6 +1794,19 @@ sub addnet
             } elsif ($sitelogservers) {
                 $logservers = $sitelogservers;
             }
+			if ($ent and $ent->{domain}) {
+				$domain = $ent->{domain};
+			} elsif ($site_domain)  {
+				$domain = $site_domain;
+			} else {
+				$callback->(
+					{
+					warning => [
+						"No $net specific entry for domain, and no domain defined in site table."
+					]
+					});
+			}
+
             if ($ent and $ent->{nameservers})
             {
                 $nameservers = $ent->{nameservers};
@@ -1917,6 +1954,21 @@ sub addnet
             push @netent, "    option domain-name \"$domain\";\n";
             push @netent, "    option domain-name-servers  $nameservers;\n";
         }
+
+		#  add domain-search
+		# We want something like "option domain-search "foo.com", "bar.com";"
+		my $domainstring = qq~"$domain"~;
+		foreach my $dom (@alldomains) {
+			chomp $dom;
+			if ($dom ne $domain){
+				$domainstring .= qq~, "$dom"~;
+			}
+		}
+
+		if ($domain) {
+			push @netent, "    option domain-search  $domainstring;\n";
+		}
+
         my $ddnserver = $nameservers;
         $ddnserver =~ s/,.*//;
         my $ddnsdomain;
