@@ -136,7 +136,7 @@ sub process_request
 sub using_dracut
 {
     my $os = shift;
-    if ($os =~ /(rhels|rhel)(\d+)/) {
+    if ($os =~ /(rhels|rhel|centos)(\d+)/) {
         if ($2 >= 6) {
           return 1;
         }
