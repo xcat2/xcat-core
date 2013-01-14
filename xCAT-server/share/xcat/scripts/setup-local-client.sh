@@ -51,7 +51,7 @@ done
 mkdir -p $USERHOME/.xcat
 cd $USERHOME/.xcat
 openssl genrsa -out client-key.pem 2048
-openssl req -config $XCATCADIR/openssl.cnf -new -key client-key.pem -out client-req.pem -subj "/CN=$CNA"
+openssl req -config $XCATCADIR/openssl.cnf -new -key client-key.pem -out client-req.pem -extensions usr_crt -subj "/CN=$CNA"
 cp client-req.pem  $XCATDIR/ca/root.csr
 cd -
 cd $XCATDIR/ca

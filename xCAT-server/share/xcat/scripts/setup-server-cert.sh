@@ -23,7 +23,7 @@ fi
 mkdir -p $XCATDIR/cert
 cd $XCATDIR/cert
 openssl genrsa -out server-key.pem 2048
-openssl req -config $XCATCADIR/openssl.cnf -new -key server-key.pem -out server-req.pem -subj "/CN=$CNA"
+openssl req -config $XCATCADIR/openssl.cnf -new -key server-key.pem -out server-req.pem -extensions server -subj "/CN=$CNA"
 cp server-req.pem  $XCATDIR/ca/`hostname`.csr
 cd -
 cd $XCATDIR/ca
@@ -33,7 +33,7 @@ cd $XCATDIR/ca
 #   - call cmds directly instead - seems safe
 # make sign
 
-openssl ca -config openssl.cnf -in `hostname`.csr -out `hostname`.cert
+openssl ca -config openssl.cnf -in `hostname`.csr -out `hostname`.cert -extensions server
 if [ -f `hostname`.cert ]; then
     rm `hostname`.csr
 fi

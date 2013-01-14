@@ -30,5 +30,5 @@ sed -e "s@##XCATCADIR##@$XCATCADIR@" $XCATROOT/share/xcat/ca/openssl.cnf.tmpl > 
 cp $XCATROOT/share/xcat/ca/Makefile $XCATCADIR/
 cd $XCATCADIR
 make init
-openssl req -nodes -config openssl.cnf -days 2650 -x509 -newkey rsa:2048 -out ca-cert.pem -outform PEM -subj /CN="$CNA"
+openssl req -nodes -config openssl.cnf -days 7300 -x509 -newkey rsa:2048 -out ca-cert.pem -extensions v3_ca -outform PEM -subj /CN="$CNA"
 cd -
