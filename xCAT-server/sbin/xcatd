@@ -109,6 +109,9 @@ GetOptions(
   'foreground|f' => \$foreground
 );
 
+unless ($pidfile) {
+  $pidfile = "/var/run/xcatd.pid";
+}
 
 #start syslog if it is not up
 if (xCAT::Utils->isLinux()) {
