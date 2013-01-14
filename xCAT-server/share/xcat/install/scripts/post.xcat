@@ -167,7 +167,11 @@ fi
 EOF
 chmod 755 /opt/xcat/xcatinstallpost
 
-chkconfig --add xcatpostinit1
+export OSVER=#TABLE:nodetype:THISNODE:os#
+if [[ $OSVER == sles* ]]; then
+    /sbin/insserv -p /etc/init.d xcatpostinit1
+fi
+#chkconfig --add xcatpostinit1
 chkconfig xcatpostinit1 on
 
 #create the dskls post 
@@ -182,7 +186,6 @@ echo "$TMP" > /xcatpost/mypostscript
 
 /xcatpost/mypostscript
 export NODE=#TABLE:nodelist:THISNODE:node#
-export OSVER=#TABLE:nodetype:THISNODE:os#
 export ARCH=#TABLE:nodetype:THISNODE:arch#
 addsiteyum
 sed -i 's/^serial/#serial/' /boot/grub/grub.conf
