@@ -597,7 +597,8 @@ sub genpassword {
 sub crydb
 {
     my $result = tabdb(@_);
-    unless ($result =~ /^\$1\$/) {
+    # 1 - MD5, 5 - SHA256, 6 - SHA512
+    unless (($result =~ /^\$1\$/) || ($result =~ /^\$5\$/) || ($result =~ /^\$6\$/)) {
         $result = crypt($result,'$1$'.genpassword(8));
     }
     return $result;

@@ -187,7 +187,8 @@ sub process_request {
 		my @shadents = <$shadow>;
 		close($shadow);
 		open($shadow,">","$rootimg_dir/etc/shadow");
-		unless ($pass =~ /^\$1\$/) {
+                # 1 - MD5, 5 - SHA256, 6 - SHA512
+		unless (($pass =~ /^\$1\$/) || ($pass =~ /^\$5\$/) || ($pass =~ /^\$6\$/)) {
 		    $pass = crypt($pass,'$1$'.genpassword(8));
 		}
 		print $shadow "root:$pass:13880:0:99999:7:::\n";
