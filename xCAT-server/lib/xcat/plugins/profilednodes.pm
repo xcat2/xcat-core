@@ -111,7 +111,15 @@ sub process_request {
     if (grep{ $_ eq $command} ("nodeimport", "nodepurge", "nodechprofile", "nodeaddunmged", "nodechmac")){
         my $discover_running = xCAT::ProfiledNodeUtils->is_discover_started();
         if ($discover_running){
-            setrsp_errormsg("Cannot run the $command command, the node discovery process is already running.");
+            my %errormsg_dict = (
+                'nodeimport' => 'import nodes',
+                'nodepurge' => 'remove nodes',
+                'nodechprofile' => 'change profiles',
+                'nodeaddunmged' => 'add devices',
+                'nodechmac' => 'change MAC address'
+            );  
+                
+            setrsp_errormsg("Cannot $errormsg_dict{$command} while node discovery is running.");
             xCAT::Utils->release_lock($lock, 1);
             return;
         }
