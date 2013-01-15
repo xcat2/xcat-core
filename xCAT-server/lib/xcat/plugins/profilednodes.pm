@@ -428,10 +428,6 @@ Usage:
 #-------------------------------------------------------
 sub nodepurge{
     my $nodes   = $request->{node};
-    xCAT::MsgUtils->message('S', "Purging nodes.");
-    # For remove nodes, we should call 'nodemgmt' in front of 'noderm'
-    setrsp_progress("Configuring nodes...");
-
     my $helpmsg = "nodepurge: Removes nodes from database and system configuration.
 Usage: 
 \tnodepurge <noderange>
@@ -442,6 +438,14 @@ Usage:
     if (! $ret){
         return;
     }
+    if (! $nodes){
+        setrsp_infostr($helpmsg);
+        return;
+    }
+
+    xCAT::MsgUtils->message('S', "Purging nodes.");
+    # For remove nodes, we should call 'nodemgmt' in front of 'noderm'
+    setrsp_progress("Configuring nodes...");
 
     my $warnstr = "";
     my $retref = xCAT::Utils->runxcmd({command=>["kitnoderemove"], node=>$nodes, sequential=>[1]}, $request_command, 0, 2);
@@ -488,6 +492,10 @@ Usage:
 \tnoderefresh [-h|--help] 
 \tnoderefresh {-v|--version}";
 
+    if (! $nodes){
+        setrsp_infostr($helpmsg);
+        return;
+    }
     my $ret = validate_args($helpmsg);
     if (! $ret){
         return;
@@ -514,13 +522,15 @@ Usage:
 #-------------------------------------------------------
 sub nodechprofile{
     my $nodes   = $request->{node};
-    xCAT::MsgUtils->message('S', "Update nodes' profile settings.");
-
     my $helpmsg = "nodechprofile: Update node profiles for profiled nodes.
 Usage: 
 \tnodechprofile <noderange> [networkprofile=<networkprofile>] [imageprofile=<imageprofile>] [hardwareprofile=<hardwareprofile>]
 \tnodechprofile [-h|--help] 
 \tnodechprofile {-v|--version}"; 
+    if (! $nodes){
+        setrsp_infostr($helpmsg);
+        return;
+    }
 
     my @enabledparams = ('networkprofile', 'hardwareprofile', 'imageprofile');
     my $ret = validate_args($helpmsg, \@enabledparams);
@@ -528,6 +538,7 @@ Usage:
         return;
     }
 
+    xCAT::MsgUtils->message('S', "Update nodes' profile settings.");
     my %updated_groups;
     # Get current templates for all nodes.
     setrsp_progress("Getting all node groups from the database...");
