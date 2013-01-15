@@ -1009,7 +1009,8 @@ sub add_or_delete_records {
     }
     my $zone;
     foreach $zone (keys %{$ctx->{updatesbyzone}}) {
-        my $resolver = Net::DNS::Resolver->new(nameservers=>[$ctx->{nsmap}->{$zone}]);
+    	  my $ip = xCAT::NetworkUtils->getipaddr($ctx->{nsmap}->{$zone});
+        my $resolver = Net::DNS::Resolver->new(nameservers=>[$ip]);
         my $entry;
         my $numreqs = 300; # limit to 300 updates in a payload, something broke at 644 on a certain sample, choosing 300 for now
         my $update = Net::DNS::Update->new($zone);
