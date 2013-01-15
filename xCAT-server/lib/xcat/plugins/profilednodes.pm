@@ -1297,10 +1297,10 @@ sub gen_new_hostinfo_string{
             }
         }
  
-        my $nicips = $installnic.":".$hostinfo_dict{$item}{"ip"};
+        my $!icips = $installnic."!".$hostinfo_dict{$item}{"ip"};
         foreach(keys %ipshash){
             if ( $_ eq $installnic ) {next;}
-            $nicips = "$_:$ipshash{$_},$nicips";
+            $nicips = "$_!$ipshash{$_},$nicips";
         }
         $hostinfo_dict{$item}{"nicips"} = $nicips;
 
