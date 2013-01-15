@@ -793,8 +793,9 @@ sub security_update_sshkeys
     if ($::VERBOSE)
     {
         my $rsp = {};
+        # not display password in verbose mode.
         $rsp->{data}->[0] =
-          "  $localhostname: Internal call command: xdsh -K. nodes = @$nodes, arguments = @args, env = @envs";
+          "  $localhostname: Internal call command: xdsh -K. nodes = @$nodes, arguments = @args, env = xxxxxx";
         $rsp->{data}->[1] =
           "  $localhostname: return messages of last command: @$res";
         $callback->($rsp);
