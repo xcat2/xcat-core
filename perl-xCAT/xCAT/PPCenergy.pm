@@ -377,17 +377,23 @@ sub renergy {
         # Generate the url path for CIM communication
         chomp($hcp);
         my $url_path = "https://"."$user".":"."$password"."\@"."$hcp".":5989";
+
+        # Not display password in command outupt.
+        my $display_url_path = "https://"."$user".":"."xxxxxx"."\@"."$hcp".":5989";
             
         # Execute the request
         my $cmd = "";
+        my $display_cmd = "";
         if ($opt->{'set'}) {
             $cmd = "$::CIM_CLIENT_PATH $verb_arg -u $url_path -n $cec_name -o $opt->{'set'}";
+            $display_cmd = "$::CIM_CLIENT_PATH $verb_arg -u $display_url_path -n $cec_name -o $opt->{'set'}";
         } elsif ($opt->{'query'}) {
             $cmd = "$::CIM_CLIENT_PATH $verb_arg -u $url_path -n $cec_name -o $opt->{'query'}";
+            $display_cmd = "$::CIM_CLIENT_PATH $verb_arg -u $display_url_path -n $cec_name -o $opt->{'query'}";
         }
         
         if ($verbose) {
-            push @noerr_msg, [$node, "Run following command: $cmd", 0];
+            push @noerr_msg, [$node, "Run following command: $display_cmd", 0];
         }
     
         # Disable the CHID signal before run the command. Otherwise the 
