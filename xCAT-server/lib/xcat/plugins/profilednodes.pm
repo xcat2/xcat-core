@@ -634,20 +634,17 @@ Usage:
     }elsif((xCAT::NetworkUtils->validate_ip($args_dict{'ip'}))[0]->[0] ){
         setrsp_errormsg("The specified IP address $args_dict{'ip'} is invalid. You must use a valid IP address.");
         return;
-    }elsif(xCAT::NetworkUtils->isReservedIP($args_dict{'ip'})){
-        setrsp_errormsg("The specified IP address $args_dict{'ip'} is invalid. You must use a valid IP address.");
-        return;
     }
 
     # validate hostname.
     $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('nodelist', 'node');
     %allhostnames = %$recordsref;
     if (exists $allhostnames{$args_dict{'hostname'}}){
-        setrsp_errormsg("The specified node name $args_dict{'hostname'} already exists. You must use a different node name.");
+        setrsp_errormsg("The specified device name $args_dict{'hostname'} already exists. You must use a different device name.");
         return;
     }
     if (! xCAT::NetworkUtils->isValidFQDN($args_dict{'hostname'})){
-        setrsp_errormsg("The specified node name $args_dict{'hostname'} is invalid. You must use a valid node name.");
+        setrsp_errormsg("The specified device name $args_dict{'hostname'} is invalid. You must use a valid device name.");
         return;
     }
 
@@ -1297,7 +1294,7 @@ sub gen_new_hostinfo_string{
             }
         }
  
-        my $!icips = $installnic."!".$hostinfo_dict{$item}{"ip"};
+        my $nicips = $installnic."!".$hostinfo_dict{$item}{"ip"};
         foreach(keys %ipshash){
             if ( $_ eq $installnic ) {next;}
             $nicips = "$_!$ipshash{$_},$nicips";
@@ -1574,8 +1571,6 @@ sub validate_node_entry{
             if (exists $allips{$node_entry{$_}}){
                 $errmsg .= "IP address $node_entry{$_} already exists in the database or in the nodeinfo file.\n";
             }elsif((xCAT::NetworkUtils->validate_ip($node_entry{$_}))[0]->[0] ){
-                $errmsg .= "IP address $node_entry{$_} is invalid. You must use a valid IP address.\n";
-            }elsif(xCAT::NetworkUtils->isReservedIP($node_entry{$_})){
                 $errmsg .= "IP address $node_entry{$_} is invalid. You must use a valid IP address.\n";
             }else {
                 #push the IP into allips list.

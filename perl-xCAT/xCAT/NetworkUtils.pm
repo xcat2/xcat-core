@@ -2155,26 +2155,6 @@ sub pingNodeStatus {
 
 #-------------------------------------------------------------------------------
 
-=head3  isReservedIP
-      Description : Validate whether specified string is a reseved IPv4 string.
-      Arguments   : ipstr - the string to be validated.
-      Returns     : 1 - valid reserved String.
-                    0 - invalid reserved String.
-=cut
-
-#-------------------------------------------------------------------------------
-sub isReservedIP
-{
-    my ($class, $ipstr) = @_;
-    my @ipnums = split('\.', $ipstr);
-    if ($ipnums[3] eq "0" || $ipnums[3] eq "255"){
-        return 1;
-    }
-    return 0;
-}
-
-#-------------------------------------------------------------------------------
-
 =head3 isValidMAC
       Description : Validate whether specified string is a MAC string.
       Arguments   : macstr - the string to be validated.
@@ -2274,12 +2254,11 @@ sub int_to_ip
       Arguments   : $startip - start IP address
                     $endip - end IP address
                     $increment - increment factor
-                    $reservflag - A flag for whether we exclude reserved ips or not
       Returns     : IP list in this range.
       Example     :
                     my $startip = "192.168.0.1";
                     my $endip = "192.168.0.100";
-                    xCAT::NetworkUtils->get_allips_in_range($startip, $endip, 1, 1);
+                    xCAT::NetworkUtils->get_allips_in_range($startip, $endip, 1);
 =cut
 
 #-------------------------------------------------------------------------------
@@ -2289,7 +2268,6 @@ sub get_allips_in_range
     my $startip = shift;
     my $endip = shift;
     my $increment = shift;
-    my $reservflag = shift;
     my @iplist;
 
     my $startipnum = xCAT::NetworkUtils->ip_to_int($startip);
@@ -2297,12 +2275,6 @@ sub get_allips_in_range
     while ($startipnum <= $endipnum){
         my $ip = xCAT::NetworkUtils->int_to_ip($startipnum);
         $startipnum += $increment;
-        # Not return reserved IPs
-        if ($reservflag){
-            if(xCAT::NetworkUtils->isReservedIP($ip)){
-                next;
-            }
-        }
         push (@iplist, $ip);
     }
     return \@iplist;
