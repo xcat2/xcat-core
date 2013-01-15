@@ -1273,7 +1273,11 @@ sub restorexcatdb
 
     # restore it
     my $cmd = "XCATBYPASS=1 XCATCFG=\"$xcatcfg\" restorexCATdb -p $::backupdir";
+    # secure passwords in verbose mode
+    my $tmpv = $::VERBOSE;
+    $::VERBOSE = 0;
     xCAT::Utils->runcmd($cmd, 0);
+    $::VERBOSE = $tmpv;
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message("E", " restorexCATdb -p $::backupdir failed.");
