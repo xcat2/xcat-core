@@ -1552,6 +1552,8 @@ sub generic_post { #This function is meant to leave the image in a state approxi
          print $cfgfile "        FLOWFLAG=\"-h\"\n";
          print $cfgfile "     fi\n";
          print $cfgfile "     if [ -x /sbin/initctl ]; then\n";	# Upstart style
+                                 # The syntax of next line is not correct, that means it does NOthing. (rh6 and higher)
+                                 # And it should NOT work for rh6 and higher, otherwise it will cauase multiple agetty for ttySx
          print $cfgfile "        initctl emit --no-wait fedora.serial-console-available \$COTTY \$COSPEED\n";
          print $cfgfile "     else\n";
          print $cfgfile "       echo xco:2345:respawn:/sbin/agetty \$FLOWFLAG \$COTTY \$COSPEED xterm >> /etc/inittab\n";
