@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 minixcatd.awk &
 PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|grep -v "PUBLIC KEY"`
 PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
@@ -93,11 +93,88 @@ fi
 if [ "$SERIAL" != "unknown" ]; then
 	echo "<serial>$SERIAL</serial>" >> /tmp/discopacket
 fi
-for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://`; do
+#so we have some cases where DMI table explictly records every function number, and some where only first function is enumerated
+#so for each onboard device, we record it.  If it is also the first function, we'll seek out other function numbers and append
+#if that other function number does not show up in its own dmi type 41 record
+for onboard in `dmidecode -t 41|egrep '(Type:|Bus Address)'|grep -A1 Ethernet|grep -v Ethernet|sed -e 's/.*Address: //'`; do
+	obdevs=("${obdevs[@]}" $onboard)
+	if [ ${onboard#*.}=0 ]; then
+		truncslot=${onboard%.*}
+		for obslot in `grep $truncslot /sys/class/net/*/device/uevent|sed -e s/.*=//`; do
+			if ! dmidecode -t 41|grep $obslot > /dev/null; then
+				obdevs=("${obdevs[@]}" $obslot)
+			fi
+		done
+	fi
+done
+		
+#TODO: downed nics, also examine /sys/bus/pci/*/ for more network class devices that might not have driver suppert
+for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://|grep -v usb0`; do
+	FIRMDESC=""
+	ONBOARDINDEX=""
 	DRIVER=`grep DRIVER /sys/class/net/$dev/device/uevent|awk -F= '{print $2}'`
+	PCI_SLOT=`grep PCI_SLOT_NAME /sys/class/net/$dev/device/uevent|awk -F= '{print $2}'`
 	ADDRESS=`ip address show dev $dev|grep "inet "|grep global|awk '{print $2}'`
 	MAC=`ip link show dev $dev|grep ether|awk '{print $2}'| tr /a-f/ /A-F/`
-	echo "<mac>$DRIVER|$dev|$MAC|$ADDRESS</mac>" >> /tmp/discopacket
+	if [ ! -z "$PCI_SLOT" ]; then
+	SLOTNAME=`dmidecode -t 9|egrep '(Designation|Address)'|grep -B1 $PCI_SLOT|grep Designation|sed -e 's/.*Designation:[ 	]*//'`
+	if [ -z "$SLOTNAME" ]; then #check for on board device
+		index=1
+		for s in ${obdevs[@]}; do
+			if [ "$s" = "$PCI_SLOT" ]; then
+				ONBOARDINDEX=$index
+				break
+			fi
+			index=$((index+1))
+		done
+		if [ ! -z "$ONBOARDINDEX" ]; then
+			FIRMDESC=`dmidecode -t 41|egrep '(Designation|Address)' |grep -B 1 $PCI_SLOT|grep Designation|sed -e 's/.*: //'`
+			if [ -z "$FIRMDESC" ]; then
+				SHORTPCISLOT=${PCI_SLOT%.*}
+				FIRMDESC=`dmidecode -t 41|egrep '(Designation|Address)' |grep -B 1 $SHORTPCISLOT|grep Designation|sed -e 's/.*: //'`
+			fi
+			SLOTNAME="Onboard Ethernet $ONBOARDINDEX"
+		fi
+	fi
+	fi
+	#echo "<mac>$DRIVER|$dev|$MAC|$ADDRESS</mac>" >> /tmp/discopacket
+	echo "<nic>" >> /tmp/discopacket
+	echo "	<devname>$dev</devname" >> /tmp/discopacket
+	echo "	<driver>$DRIVER</driver>" >> /tmp/discopacket
+	if [ ! -z "$ADDRESS" ]; then
+		echo "	<ip4address>$ADDRESS</ip4address>" >> /tmp/discopacket
+	fi
+	echo "	<hwaddr>$MAC</hwaddr>" >> /tmp/discopacket
+	if [ ! -z "$PCI_SLOT" ]; then
+		echo "	<pcidev>$PCI_SLOT</pcidev>" >> /tmp/discopacket
+	fi
+	if [ ! -z "$SLOTNAME" ]; then 
+		echo "	<location>$SLOTNAME</location>" >> /tmp/discopacket
+	fi
+	if [ ! -z "$ONBOARDINDEX" ]; then 
+		echo "	<onboardeth>$ONBOARDINDEX</onboardeth>" >> /tmp/discopacket
+	fi
+	if [ ! -z "$FIRMDESC" ]; then
+		echo "	<firmdesc>$FIRMDESC</firmdesc>" >> /tmp/discopacket
+	fi
+	myswitch=`lldptool -n -i $dev -t -V sysName|grep -v 'System Name TLV'|sed -e 's/^	*//'`
+	if [ ! -z "$myswitch" -a "$myswitch" != "Agent instance for device not found" ]; then
+		echo "	<switchname>$myswitch</switchname>" >> /tmp/discopacket
+	fi
+	for switchaddr in `lldptool -i $dev -n -t -V mngAddr|grep IP|sed -e 's/.*:.//'`; do
+		if [ "$switchaddr" = "Agent instance for device not found" ]; then break; fi
+		echo "	<switchaddr>$switchaddr</switchaddr>" >> /tmp/discopacket
+	done
+	myswitchdesc=`lldptool -n -i $dev -t -V sysDesc|grep -v 'System Description TLV'|sed -e 's/^	*//'`
+	if [ ! -z "$myswitchdesc" -a "$myswitchdesc" != "Agent instance for device not found" ]; then	
+		echo "	<switchdesc>$myswitchdesc</switchdesc>" >> /tmp/discopacket
+	fi
+	myport=`lldptool -n -i $dev -t -V portDesc|grep -v 'Port Description TLV'|sed -e 's/^	*//'`
+	if [ ! -z "$myport" -a "$myswitchdesc" != "Agent instance for device not found" ]; then	
+		echo "	<switchport>$myport</switchport>" >> /tmp/discopacket
+	fi
+		
+	echo "</nic>" >> /tmp/discopacket
 done
 echo "<xcatpubkey>$PUBKEY</xcatpubkey>" >> /tmp/discopacket #this is not secure to use by itself, switch sourced pubkey for security
 echo "<sha512sig>" >> /tmp/discopacket
