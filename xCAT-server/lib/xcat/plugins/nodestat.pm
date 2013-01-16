@@ -855,12 +855,9 @@ sub process_request_remote_command {
            my @apps=split(',', $cmdhash{$tmp_cmds});
 	   my $index=0;
            foreach my $cmd (@cmds) {
-               my $nodes_string=join(',', @nodes);
-               #print "XCATBYPASS=Y xdsh $nodes_string $cmd\n";
-	       my $ret=`XCATBYPASS=Y xdsh $nodes_string $cmd`; 
-	       if ($ret) {
-		   my @ret_array=split('\n', $ret);
-                   foreach(@ret_array) {
+               my @ret=xCAT::InstUtils->xcmd($callback,$doreq,"xdsh",\@nodes,$cmd,1);
+               if (@ret) {
+                   foreach(@ret) {
                        my @a=split(':', $_, 2);
                        chomp($a[1]); #remove newline
 		       $a[1] =~ s/^\s+//; #remove leading white spaces
