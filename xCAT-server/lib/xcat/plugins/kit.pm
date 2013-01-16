@@ -301,9 +301,126 @@ sub assign_to_osimage
     my $callback = shift;
     my $tabs = shift;
 
-    (my $kitcomptable) = $tabs->{kitcomponent}->getAttribs({kitcompname=> $kitcomp}, 'kitname', 'kitreponame', 'basename', 'kitpkgdeps', 'exlist', 'postbootscripts', 'driverpacks');
-    (my $osimagetable) = $tabs->{osimage}->getAttribs({imagename=> $osimage}, 'osarch', 'postbootscripts', 'kitcomponents');
-    (my $linuximagetable) = $tabs->{linuximage}->getAttribs({imagename=> $osimage}, 'exlist', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
+    (my $kitcomptable) = $tabs->{kitcomponent}->getAttribs({kitcompname=> $kitcomp}, 'kitname', 'kitreponame', 'basename', 'kitpkgdeps', 'exlist', 'genimage_postinstall','postbootscripts', 'driverpacks');
+    (my $osimagetable) = $tabs->{osimage}->getAttribs({imagename=> $osimage}, 'provmethod', 'osarch', 'postbootscripts', 'kitcomponents');
+    (my $linuximagetable) = $tabs->{linuximage}->getAttribs({imagename=> $osimage}, 'rootimgdir', 'exlist', 'postintall', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
+
+    # Reading installdir.
+    my $installdir = xCAT::TableUtils->getInstallDir();
+    unless($installdir){
+        $installdir = '/install';
+    }
+    $installdir =~ s/\/$//;
+
+    # Create osimage direcotry to save kit tmp files
+    mkpath("$installdir/osimages/$osimage/kits/");
+
+    # Adding genimage_postinstall script to linuximage.postintall attribute for diskless image or osimage.postbootscripts for diskfull image.
+    if ( $kitcomptable and $kitcomptable->{genimage_postinstall} ){
+        my @kitcompscripts = split ',', $kitcomptable->{genimage_postinstall};
+        foreach my $kitcompscript ( @kitcompscripts ) {
+            if ( $osimagetable ) {
+                my $otherpkgdir;
+                my $rootimgdir;
+                if ( $linuximagetable and $linuximagetable->{otherpkgdir} ) {
+                    $otherpkgdir = $linuximagetable->{otherpkgdir};
+                } else {
+                    $callback->({error => ["Could not read otherpkgdir from osimage $osimage"],errorcode=>[1]});
+                    return 1;
+                }
+
+                if ( $osimagetable->{provmethod} =~ /install/ ) {
+                    # for diskfull node
+                    my $match = 0;
+                    my @scripts = split ',', $osimagetable->{postbootscripts};
+                    foreach my $script ( @scripts ) {
+                         if ( $script =~ /^KIT_$osimage.postbootscripts/ ) {
+                             $match = 1;
+                             last;
+                         }
+                    }
+
+                    if ( !-e "$installdir/postscripts/KIT_$osimage.postbootscripts" ) {
+                        if (open(FILE, ">", "$installdir/postscripts/KIT_$osimage.postbootscripts")) {
+                            print FILE "#!/bin/sh\n\n";
+                            close(FILE);
+                            chmod(755,"$installdir/postscripts/KIT_$osimage.postbootscripts");
+                        }
+                    }
+
+                    my @postbootlines;
+                    if (open(POSTBOOTSCRIPTS, "<", "$installdir/postscripts/KIT_$osimage.postbootscripts")) {
+                        @postbootlines = <POSTBOOTSCRIPTS>;
+                        close(POSTBOOTSCRIPTS);
+                        if($::VERBOSE){
+                            $callback->({data=>["\nCreating osimage postbootscripts file $installdir/postscripts/KIT_$osimage.postbootscripts"]});
+                        } 
+                    }
+
+                    unless ( grep(/$kitcompscript/ , @postbootlines ) ) {
+                        if (open(NEWLIST, ">>", "$installdir/postscripts/KIT_$osimage.postbootscripts")) {
+                            print NEWLIST "otherpkgdir=$otherpkgdir $kitcompscript\n";
+                            close(NEWLIST);
+                        }
+                    }
+
+                    if ( !$match ) {
+                        $osimagetable->{postbootscripts} = $osimagetable->{postbootscripts} . ",KIT_$osimage.postbootscripts";
+                        $osimagetable->{postbootscripts} =~ s/^,//;
+                    }
+
+                } else {
+                    # for diskless node
+
+                    if ( $linuximagetable and $linuximagetable->{rootimgdir} ) {
+                        $rootimgdir = $linuximagetable->{rootimgdir}."/rootimg";
+                    } else {
+                        $callback->({error => ["Could not read rootimgdir from osimage $osimage"],errorcode=>[1]});
+                        return 1;
+                    }
+
+                    if ( !-e "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall" ) {
+                        if (open(FILE, ">", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall")) {
+                            print FILE "#!/bin/sh\n\n";
+                            close(FILE);
+                            chmod(0755,"$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall");
+                        }
+                    }
+
+                    my @postinstalllines;
+                    if (open(POSTINSTALL, "<", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall")) {
+                        @postinstalllines = <POSTINSTALL>;
+                        close(POSTINSTALL);
+        
+                        if($::VERBOSE){
+                           $callback->({data=>["\nReading osimage postinstall scripts file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall"]});
+                        }
+                    }
+
+                    unless ( grep(/$kitcompscript/ , @postinstalllines ) ) {
+                        if (open(NEWLIST, ">>", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall")) {
+                            print NEWLIST "installroot=$rootimgdir otherpkgdir=$otherpkgdir $installdir/postscripts/$kitcompscript\n";
+                            close(NEWLIST);
+                        }
+                    }
+
+                    my $match = 0;
+                    my @scripts = split ',', $linuximagetable->{postinstall};
+                    foreach my $script ( @scripts ) {
+                        if ( $script =~ /KIT_COMPONENTS.postinstall/ ) {
+                            $match = 1;
+                            last;
+                        }
+                    }
+
+                    if ( !$match ) {
+                        $linuximagetable->{postinstall} =  $linuximagetable->{postinstall} . ",$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall";
+                    }
+                    $linuximagetable->{postinstall} =~ s/^,//;
+                }
+            }
+        }
+    }
  
     # Adding postbootscrits to osimage.postbootscripts
     if ( $kitcomptable and $kitcomptable->{postbootscripts} ){
@@ -376,13 +493,6 @@ sub assign_to_osimage
             return 1;
         }
     }
-
-    my $installdir = xCAT::TableUtils->getInstallDir();
-    unless($installdir){
-        $installdir = '/install';
-    }
-    $installdir =~ s/\/$//;
-
 
     # Reading kitdir
     my $kittable;
@@ -867,7 +977,7 @@ sub addkit
             } elsif ( $sec =~ /KITREPO$/ ) {    
                 $kitrepohash{$kitrepoid}{$key} = $value;
             } elsif ( $sec =~ /KITCOMPONENT$/ ) {
-                if ( $key =~ /postbootscripts/ ) {
+                if ( $key =~ /postbootscripts/ or $key =~ /genimage_postinstall/ ) {
                     $scripts = $scripts . ',' . $value;
                     $kitcomphash{$kitcompid}{$key} = $value;
                 } else {
@@ -1137,7 +1247,7 @@ sub rmkit
 
         # Find all the components in this kit.
         my $kitcompnames;
-        my @kitcomphash = $tabs{kitcomponent}->getAllAttribsWhere( "kitname = '$kitname'", 'kitcompname');
+        my @kitcomphash = $tabs{kitcomponent}->getAllAttribsWhere( "kitname = '$kitname'", 'kitcompname', 'postbootscripts', 'genimage_postinstall');
 
         if (@entries && (@entries > 0)) {  
 
@@ -1222,8 +1332,13 @@ sub rmkit
             }
             $installdir =~ s/\/$//;
 
-            opendir($dir, $kitdir."/scripts");
-            my @files = readdir($dir);
+            my $scripts;
+            foreach my $kitcomp ( @kitcomphash ) {
+                $scripts = $scripts.",".$kitcomp->{postbootscripts} if ( $kitcomp->{postbootscripts} );
+                $scripts = $scripts.",".$kitcomp->{genimage_postinstall} if ( $kitcomp->{genimage_postinstall} );
+            }
+            $scripts =~ s/^,//;
+            my @files = split /,/, $scripts;
             foreach my $file (@files) {
                 if ($file eq '.' or $file eq '..') { next; }
                 if ( -e "$installdir/postscripts/$file" ) {
@@ -1616,9 +1731,8 @@ sub addkitcomp
             if ( $kitcomp eq $oskitcomp ) {
                 my %rsp;
                 push@{ $rsp{data} }, "$kitcomp kit component is already in osimage $osimage";
-                xCAT::MsgUtils->message( "I", \%rsp, $callback );
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 $catched = 1;
-                last;
             } 
         }
 
@@ -1763,7 +1877,7 @@ sub rmkitcomp
     foreach my $kitcomponent (@kitcomponents) {
 
         # Check if it is a kitcompname or basename
-        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $kitcomponent}, 'kitname', 'kitpkgdeps', 'postbootscripts', 'kitreponame', 'exlist', 'basename', 'driverpacks');
+        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $kitcomponent}, 'kitname', 'kitpkgdeps', 'postbootscripts', 'genimage_postinstall', 'kitreponame', 'exlist', 'basename', 'driverpacks');
         if ( $kitcomptable and $kitcomptable->{'kitname'}){
             $kitcomps{$kitcomponent}{name} = $kitcomponent;
             $kitcomps{$kitcomponent}{kitname} = $kitcomptable->{kitname};
@@ -1773,6 +1887,7 @@ sub rmkitcomp
             $kitcomps{$kitcomponent}{postbootscripts} = $kitcomptable->{postbootscripts};
             $kitcomps{$kitcomponent}{kitreponame} = $kitcomptable->{kitreponame};
             $kitcomps{$kitcomponent}{driverpacks} = $kitcomptable->{driverpacks};
+            $kitcomps{$kitcomponent}{genimage_postinstall} = $kitcomptable->{genimage_postinstall};
         } else {
             my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcomponent'", 'kitcompname' , 'version', 'release');
             unless (@entries) {
@@ -1784,7 +1899,7 @@ sub rmkitcomp
 
             my $highest = get_highest_version('kitcompname', 'version', 'release', @entries);
             $kitcomps{$highest}{name} = $highest;
-            (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $highest}, 'kitname', 'kitpkgdeps', 'postbootscripts', 'kitreponame', 'exlist', 'basename', 'driverpacks');
+            (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $highest}, 'kitname', 'kitpkgdeps', 'postbootscripts', 'genimage_postinstall', 'kitreponame', 'exlist', 'basename', 'driverpacks');
             $kitcomps{$highest}{kitname} = $kitcomptable->{kitname};
             $kitcomps{$highest}{kitpkgdeps} = $kitcomptable->{kitpkgdeps};
             $kitcomps{$highest}{basename} = $kitcomptable->{basename};
@@ -1792,14 +1907,22 @@ sub rmkitcomp
             $kitcomps{$highest}{postbootscripts} = $kitcomptable->{postbootscripts};
             $kitcomps{$highest}{kitreponame} = $kitcomptable->{kitreponame};
             $kitcomps{$highest}{driverpacks} = $kitcomptable->{driverpacks};
+            $kitcomps{$highest}{genimage_postinstall} = $kitcomptable->{genimage_postinstall};
         }
     }
     # Check if the kitcomponents are existing in osimage.kitcomponents attribute.
 
-    (my $osimagetable) = $tabs{osimage}->getAttribs({imagename => $osimage}, 'kitcomponents', 'postbootscripts');
+    (my $osimagetable) = $tabs{osimage}->getAttribs({imagename => $osimage}, 'kitcomponents', 'postbootscripts', 'provmethod');
     if ( !$osimagetable or !$osimagetable->{'kitcomponents'} ){
         my %rsp;
         push@{ $rsp{data} }, "$osimage osimage does not exist or not includes any kit components";
+        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+        return 1;
+    }
+
+    if ( !$osimagetable->{'provmethod'} ){
+        my %rsp;
+        push@{ $rsp{data} }, "$osimage osimage is missing provmethod";
         xCAT::MsgUtils->message( "E", \%rsp, $callback );
         return 1;
     }
@@ -1861,6 +1984,14 @@ sub rmkitcomp
     }
 
 
+    # Reading installdir
+    my $installdir = xCAT::TableUtils->getInstallDir();
+    unless($installdir){
+        $installdir = '/install';
+    }
+    $installdir =~ s/\/$//;
+
+
     # Remove each kitcomponent from osimage.
 
     my @newosikitcomps;
@@ -1881,7 +2012,7 @@ sub rmkitcomp
     $osimagetable->{'kitcomponents'} = $newosikitcomp; 
 
 
-    # Remove kitcomponent.postbootscripts from osimage.postbootscripts.
+    # Remove kitcomponent.postbootscripts and kitcomponent.genimage_postinstall from osimage.postbootscripts.
 
     my @osimagescripts;
     my @newosimagescripts;
@@ -1904,7 +2035,40 @@ sub rmkitcomp
         }
 
         if (!$match) {
-            push @newosimagescripts, $osimagescript
+            push @newosimagescripts, $osimagescript;
+        }
+
+        #Remove genimage_postinstall from osimage.postbootscripts 
+        if ( $osimagescript =~ /KIT_$osimage.postbootscripts/ and -e "$installdir/postscripts/KIT_$osimage.postbootscripts" ) {
+            foreach my $kitcomponent (keys %kitcomps) {
+
+                my @postbootlines;
+                my @newlines;
+                if (open(POSTBOOTSCRIPTS, "<", "$installdir/postscripts/KIT_$osimage.postbootscripts")) {
+                    @postbootlines = <POSTBOOTSCRIPTS>;
+                    close(POSTBOOTSCRIPTS);
+                }
+
+                my $match = 0;
+                my @kitcompscripts = split( ',', $kitcomps{$kitcomponent}{genimage_postinstall} );
+                foreach my $line ( @postbootlines ) {
+                    foreach my $kitcompscript ( @kitcompscripts ) {
+                        if ( grep(/$kitcompscript/, $line) ) {
+                            $match = 1;
+                        }
+                    }
+
+                    if ( !$match ) {
+                        push @newlines, $line;
+                    }
+                }
+
+                # Now write the new postbootscripts file.
+                if (open(NEWEXLIST, ">", "$installdir/postscripts/KIT_$osimage.postbootscripts")) {
+                    print NEWEXLIST @newlines;
+                    close(NEWEXLIST);
+                }
+            }
         }
     }
 
@@ -1913,7 +2077,7 @@ sub rmkitcomp
 
     # Remove symlink from osimage.otherpkgdir.
 
-    (my $linuximagetable) = $tabs{linuximage}->getAttribs({imagename=> $osimage}, 'exlist', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
+    (my $linuximagetable) = $tabs{linuximage}->getAttribs({imagename=> $osimage}, 'postinstall', 'exlist', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
     if ( $linuximagetable and $linuximagetable->{otherpkgdir} ) {
 
         my $otherpkgdir = $linuximagetable->{otherpkgdir};
@@ -1926,14 +2090,47 @@ sub rmkitcomp
         }
     }
 
+    # Remove genimage_postinstall from linuximage table
+    if ( $linuximagetable->{postinstall} ) {
+        my @scripts = split ',', $linuximagetable->{postinstall};
+        foreach my $script ( @scripts ) {
+            if ( $script =~ /KIT_COMPONENTS.postinstall/ and -e "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall" ) {
+
+                foreach my $kitcomponent (keys %kitcomps) {
+
+                    my @postinstalllines;
+                    my @newlines;
+                    if (open(POSTINSTALLSCRIPTS, "<", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall") ) { 
+                        @postinstalllines = <POSTINSTALLSCRIPTS>;
+                        close(POSTINSTALLSCRIPTS);
+                    }
+
+                    my @kitcompscripts = split( ',', $kitcomps{$kitcomponent}{genimage_postinstall} );
+                    foreach my $line ( @postinstalllines ) {
+                        my $match = 0;
+                        foreach my $kitcompscript ( @kitcompscripts ) {
+
+                            if ( grep(/$kitcompscript/, $line) ) {
+                                $match = 1;
+                                last;
+                            }
+                        }
+                        if ( !$match ) {
+                            push @newlines, $line;
+                        }
+                    }
+
+                    # Now write the new postbootscripts file.
+                    if (open(NEWEXLIST, ">", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall")) {
+                        print NEWEXLIST @newlines;
+                        close(NEWEXLIST);
+                    }
+                }
+            }
+        }
+    }
 
     # Remove kitcomponent exlist,otherpkglist and deploy_params from osimage
-
-    my $installdir = xCAT::TableUtils->getInstallDir();
-    unless($installdir){
-        $installdir = '/install';
-    }
-    $installdir =~ s/\/$//;
 
     my @kitlist;
     foreach my $kitcomponent (keys %kitcomps) {
