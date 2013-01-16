@@ -208,6 +208,13 @@ exit $xCAT::Client::EXITCODE;
 sub parse_args_xdsh
 {
     my $snodes = shift;
+    # test to see if any parameters were entered
+    my $arraysize=@ARGV;
+    if ($arraysize ==0) {
+        my $msg= "No parameters were supplied on the xdsh command. Run xdsh -h";
+        xCAT::MsgUtils->message("E", $msg);
+        exit 1;
+    }
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
     Getopt::Long::Configure("bundling");
@@ -509,6 +516,13 @@ sub parse_args_xdsh
 #-----------------------------------------------------------------------------
 sub parse_args_xdcp
 {
+    # if not parms input error out
+    my $arraysize=@ARGV;
+    if ($arraysize ==0) {
+        my $msg= "No parameters were supplied on the xdcp command. Run xdcp -h";
+        xCAT::MsgUtils->message("E", $msg);
+        exit 1;
+    }
 
     my %options = ();
     Getopt::Long::Configure("posix_default");
