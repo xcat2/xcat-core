@@ -730,7 +730,7 @@ sub mkinstall
 	    #{
             my $kcmdline = "nofb utf8 auto url=http://"
                   . $instserver
-                  . "$installroot/autoinst/"
+                  . "/install/autoinst/"
                   . $node;
 	    #}
 	       
