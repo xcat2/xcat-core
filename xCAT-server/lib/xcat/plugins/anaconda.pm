@@ -1299,7 +1299,7 @@ sub mkinstall
 	       $httpprefix =~ s/^$installroot/\/install/;
 	    }
             my $kcmdline =
-                "quiet repo=$httpmethod://$instserver:$httpport$pkgdir ks=$httpmethod://"
+                "quiet repo=$httpmethod://$instserver:$httpport$httpprefix ks=$httpmethod://"
               . $instserver . ":". $httpport
               . "/install/autoinst/"
               . $node;

@@ -370,7 +370,7 @@ sub imagesHandler {
             addPageContent("Invalid Parameters");
             sendResponseMsg($STATUS_BAD_REQUEST);
         }
-        $entries = decode_json $q->param('POSTDATA');
+        $entries = JSON::decode_json($q->param('POSTDATA'));
         if (scalar(@$entries) < 1) {
             addPageContent("No set attribute was supplied.");
             sendResponseMsg($STATUS_BAD_REQUEST);
@@ -686,10 +686,10 @@ sub networksHandler {
 
         push @{$request->{arg}}, '-t', 'network', '-o', $netname;
         if (defined($q->param('PUTDATA'))) {
-            $entries = decode_json $q->param('PUTDATA');
+            $entries = JSON::decode_json($q->param('PUTDATA'));
         }
         elsif (defined($q->param('POSTDATA'))) {
-            $entries = decode_json $q->param('PUTDATA');
+            $entries = JSON::decode_json($q->param('PUTDATA'));
         }
         else {
             addPageContent("No Field and Value map was supplied.");
@@ -833,7 +833,7 @@ sub nodesHandler {
                     
             }
             else {
-                @entries = decode_json $q->param('PUTDATA');
+                @entries = JSON::decode_json($q->param('PUTDATA'));
                 if (scalar(@entries) < 1) {
                     addPageContent("No set attribute was supplied.");
                     sendResponseMsg($STATUS_BAD_REQUEST);
@@ -992,7 +992,7 @@ sub nodesHandler {
         push @args, "-o", $noderange;
 
         if ($q->param('POSTDATA')) {
-            my $entries = decode_json $q->param('POSTDATA');
+            my $entries = JSON::decode_json($q->param('POSTDATA'));
             if (scalar($entries) < 1) {
                 addPageContent("No Field and Value map was supplied.");
                 sendResponseMsg($STATUS_BAD_REQUEST);
@@ -1243,7 +1243,7 @@ sub siteHandler {
                 }
 		} else {
 			if ($q->param('PUTDATA')) {
-				my $entries = decode_json $q->param('PUTDATA');
+				my $entries = JSON::decode_json($q->param('PUTDATA'));
 				foreach (@$entries) {
 					push @{$request->{arg}}, $_;
 				}
@@ -1695,7 +1695,7 @@ sub vmsHandler {
         }
 
         #collect all parameters from the postdata
-        my $entries = decode_json $q->param('PUTDATA');
+        my $entries = JSON::decode_json($q->param('PUTDATA'));
         if (scalar(@$entries) < 1) {
             addPageContent("No set attribute was supplied.");
             sendResponseMsg($STATUS_BAD_REQUEST);
@@ -1756,7 +1756,7 @@ sub vmsHandler {
     elsif (isPut()) {
         $request->{command} = 'chvm';
         if ($q->param('PUTDATA')) {
-            my $entries = decode_json $q->param('PUTDATA');
+            my $entries = JSON::decode_json($q->param('PUTDATA'));
             if (scalar(@$entries) < 1) {
                 addPageContent("No Field and Value map was supplied.");
                 sendResponseMsg($STATUS_BAD_REQUEST);
