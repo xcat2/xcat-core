@@ -1292,10 +1292,16 @@ sub mkinstall
 	    	$instserver=$ent->{nfsserver};
 	    }
 
+	    my $httpprefix=$pkgdir;
+	    if ($installroot =~ /\/$/) {
+	       $httpprefix =~ s/^$installroot/\/install\//;
+	    } else {
+	       $httpprefix =~ s/^$installroot/\/install/;
+	    }
             my $kcmdline =
                 "quiet repo=$httpmethod://$instserver:$httpport$pkgdir ks=$httpmethod://"
               . $instserver . ":". $httpport
-              . "$installroot/autoinst/"
+              . "/install/autoinst/"
               . $node;
             if ($maxmem) {
                 $kcmdline.=" mem=$maxmem";
