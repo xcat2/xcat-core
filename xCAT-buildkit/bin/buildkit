@@ -1330,11 +1330,14 @@ sub validate_bldkitconf
         }
       }
       if (defined($kc->{genimage_postinstall})){ 
-         my $ck_file = $::workdir."/scripts/".$kc->{genimage_postinstall};
+        foreach my $script (split(/\,/, $kc->{genimage_postinstall})){
+         $script =~ s/\s+//g;
+         my $ck_file = $::workdir."/scripts/".$script; 
          if (! -r $ck_file ) {
              print "genimage_postinstall script $ck_file defined in Kit Componenet \"$kc->{basename}\" does not exist or is not readable\n";
              return 1;
-        }
+         }
+       }
       }
       if (defined($kc->{postbootscripts})){ 
          foreach my $script (split(/\,/, $kc->{postbootscripts})){
