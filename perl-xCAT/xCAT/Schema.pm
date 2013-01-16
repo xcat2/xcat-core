@@ -1347,7 +1347,7 @@ kitrepo => {
         },
 },
 kitcomponent => {
-        cols => [qw(kitcompname description kitname kitreponame basename version release serverroles kitpkgdeps driverpacks kitcompdeps postbootscripts exlist comments disable)], 
+        cols => [qw(kitcompname description kitname kitreponame basename version release serverroles kitpkgdeps driverpacks kitcompdeps postbootscripts genimage_postinstall exlist comments disable)], 
         keys => [qw(kitcompname)],
         tablespace =>'XCATTBS16K',
         table_desc => 'This table stores all kit components added to the xCAT cluster.',
@@ -1364,6 +1364,7 @@ kitcomponent => {
             driverpacks => 'Comma-separated List of driver package names. These must be full names like: pkg1-1.0-1.x86_64.rpm.',
             kitcompdeps  => 'Comma-separated list of kit components that this kit component depends on.',
             postbootscripts  => 'Comma-separated list of postbootscripts that will run during the node boot.',
+            genimage_postinstall => 'Comma-separated list of postinstall scripts that will run during the genimage.',
             exlist  => 'Exclude list file containing the files/directories to exclude when building a diskless image.',
             comments => 'Any user-written notes.',
             disable => "Set to 'yes' or '1' to comment out this row.",
