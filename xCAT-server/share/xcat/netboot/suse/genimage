@@ -383,11 +383,19 @@ if (!$imagename) {
     } 
 }
 
-if (($postinstall_filename) && (-x $postinstall_filename)) {
-    my $rc = system($postinstall_filename, $rootimg_dir,$osver,$arch,$profile);
-    if($rc) {
-        print "postinstall script failed\n";
-        exit 1;
+if ( $postinstall_filename ) {
+
+    my @postinstalls = split /,/, $postinstall_filename;
+    foreach my $postinstall ( split /,/, $postinstall_filename ) {
+        if ( !-x $postinstall ) {
+            print "postinstall script $postinstall is not executable\n";
+            exit 1;
+        }
+        my $rc = system($postinstall, $rootimg_dir,$osver,$arch,$profile);
+        if($rc) {
+            print "postinstall script $postinstall failed\n";
+            exit 1;
+        }
     }
 }
 

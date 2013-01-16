@@ -501,14 +501,20 @@ unless ($imagename) {
     }
 } 
 
-if (($postinstall_filename) && (-x $postinstall_filename)) {
+if ( $postinstall_filename ) {
 
     $updates{'postinstall'} = $postinstall_filename if ($tempfile);
 
-    my $rc = system($postinstall_filename, $rootimg_dir,$osver,$arch,$profile);
-    if($rc) {
-        print "postinstall script failed\n";
-        exit 1;
+    foreach my $postinstall ( split /,/, $postinstall_filename ) {
+        if ( !-x $postinstall ) {
+            print "postinstall script $postinstall is not executable\n";
+            exit 1;
+        }
+        my $rc = system($postinstall, $rootimg_dir,$osver,$arch,$profile);
+        if($rc) {
+            print "postinstall script $postinstall failed\n";
+            exit 1;
+        }
     }
 }
 

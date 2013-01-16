@@ -537,7 +537,7 @@ unless ($imagename) {
     }
 } 
 
-if (($postinstall_filename) && (-x $postinstall_filename)) {
+if ( $postinstall_filename ) {
 
     #For Mellonax IB script. In diskless image, the uname -r not returning the rootimg level, 
     #because the "uname -r" only returns the version of the kernel in use
@@ -567,10 +567,16 @@ EOS_UNAME
 
     $updates{'postinstall'} = $postinstall_filename if ($tempfile);
 
-    my $rc = system($postinstall_filename, $rootimg_dir,$osver,$arch,$profile);
-    if($rc) {
-        print "postinstall script failed\n";
-        exit 1;
+    foreach my $postinstall ( split /,/, $postinstall_filename ) {
+        if ( !-x $postinstall ) {
+            print "postinstall script $postinstall is not executable\n";
+            exit 1;
+        }
+        my $rc = system($postinstall, $rootimg_dir,$osver,$arch,$profile);
+        if($rc) {
+            print "postinstall script $postinstall failed\n";
+            exit 1;
+        }
     }
     # restore the orig uname
     system("mv $rootimg_dir/bin/orig_uname $rootimg_dir/bin/uname");
