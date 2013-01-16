@@ -986,14 +986,20 @@ sub mkinstall
             {
 		$netserver = $ent->{nfsserver};
             }
+            my $httpprefix = $pkgdir;
+	    if ($installroot =~ /\/$/) { #must prepend /install/
+		$httpprefix =~ s/^$installroot/\/install\//;
+	    } else {
+		$httpprefix =~ s/^$installroot/\/install/;
+            }
             my $kcmdline =
                 "quiet autoyast=$httpmethod://"
               . $netserver . ":" . $httpport
-              . "$installroot/autoinst/"
+              . "/install/autoinst/"
               . $node
               . " install=$httpmethod://"
               . $netserver . ":" . $httpport
-              . "$pkgdir/1";
+              . "$httpprefix/1";
 
             my $netdev = "";
             if ($ent->{installnic})
