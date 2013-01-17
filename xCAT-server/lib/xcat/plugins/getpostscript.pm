@@ -81,11 +81,12 @@ sub process_request
 
     require xCAT::Postage;
     my $args = $request->{arg};
+    my @scriptcontents;
     if( defined($args) && grep(/version2/, @$args)) {
-        my @scriptcontents = xCAT::Postage::makescript([$client],$state,$callback);  # the new method, use the template
+        @scriptcontents = xCAT::Postage::makescript([$client],$state,$callback);  # the new method, use the template
     } else {
         #print "client:$client\n";
-        my @scriptcontents = xCAT::Postage::makescript($client,$state,$callback); # the original method
+        @scriptcontents = xCAT::Postage::makescript($client,$state,$callback); # the original method
     }
     if (scalar(@scriptcontents)) {
        $rsp->{data} = \@scriptcontents;
