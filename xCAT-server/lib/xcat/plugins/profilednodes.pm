@@ -1551,7 +1551,9 @@ sub validate_node_entry{
     }
 
     if (! xCAT::NetworkUtils->isValidHostname($node_name)){
-        $errmsg .= "Node name: $node_name is invalid. You must use a valid node name.\n";
+        unless ($node_name =~ /^TMPHOSTS/){
+            $errmsg .= "Node name: $node_name is invalid. You must use a valid node name.\n";
+        }
     }
     
     # validate if node use FSP network
