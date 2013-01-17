@@ -922,12 +922,27 @@ sub subvars_for_mypostscript {
       mkdir($scriptdir,0777);
   }
 
+  my $postfix;  
+  my @entries =  xCAT::TableUtils->get_site_attribute("precreatemypostscripts");
+  if ($entries[0] ) {
+      $entries[0] =~ tr/a-z/A-Z/;
+      if ($entries[0] !~ /^(1|YES)$/ ) {
+          $postfix="tmp";
+      }   
+  } else {
+      $postfix="tmp";
+  }
+
   foreach my $n (@$nodes ) {
       $node = $n; 
       $inc = $t_inc;
       my $script;
       my $scriptfile; 
-      $scriptfile = "$tftpdir/mypostscripts/mypostscript.$node";
+      if( defined( $postfix ) ) {
+          $scriptfile = "$tftpdir/mypostscripts/mypostscript.$node.tmp";
+      } else { 
+          $scriptfile = "$tftpdir/mypostscripts/mypostscript.$node";
+      }
       #mkpath(dirname($scriptfile));
       open($script, ">$scriptfile");
 
