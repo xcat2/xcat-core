@@ -23,6 +23,7 @@ case "$1" in
 	. /etc/profile.d/xcat.sh
     if [ ! -e "/etc/rc0.d/K60xcatd" ];then
         update-rc.d xcatd start 85 2 3 4 5 . stop 60 0 1 6 .
+        update-rc.d xcatd enable 2
     else
 	    update-rc.d xcatd enable
     fi
