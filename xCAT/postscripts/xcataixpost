@@ -549,8 +549,8 @@ sub  getmypost {
     if( !defined($TFTPDIR) ) {
         $TFTPDIR="/tftpboot";
     }
-       
-    `mkdir -p /xcatpost; cd /xcatpost; tftp -o $scriptname $servnode $TFTPDIR/mypostscripts/mypostscript.$::shorthost`;
+
+    `mkdir -p /xcatpost; cd /xcatpost; tftp -o $scriptname $servnode $TFTPDIR/mypostscripts/mypostscript.$::shorthost.tmp`;
     # `wget -N --waitretry=10 --random-wait -T 60 http://$servnode$TFTPDIR/mypostscripts/mypostscript.$::shorthost  -P /xcatpost 2>> /tmp/wget.log;  mv /xcatpost/mypostscript.$::shorthost $scriptname`;
 
     if(!( -f $scriptname)) {
