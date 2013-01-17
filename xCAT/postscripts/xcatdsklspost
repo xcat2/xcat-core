@@ -80,8 +80,9 @@ download_mypostscript()
 {
     server=$1
     node=$2
-    max_retries=$3
-    TFTPDIR=$4
+    postfix=$3
+    max_retries=$4
+    TFTPDIR=$5
     if [ -z $server ]; then
 	return 1;
     fi
@@ -95,15 +96,23 @@ download_mypostscript()
 
     #node=`hostname`
     while [ 0 -eq 0 ]; do
-	
-        wget -N --waitretry=10 --random-wait -T 60 http://$server$TFTPDIR/mypostscripts/mypostscript.$node  -P /xcatpost 2>> /tmp/wget.log
-        rc=$?
-        
-	if [ $rc -eq 0 ]; then
-           mv /xcatpost/mypostscript.$node /xcatpost/mypostscript
-	   return 0;
-        fi
+        if [ $postfix -eq 0 ]; then	
+            wget -N --waitretry=10 --random-wait -T 60 http://$server$TFTPDIR/mypostscripts/mypostscript.$node  -P /xcatpost 2>> /tmp/wget.log
+            rc=$?
+            if [ $rc -eq 0 ]; then
+                mv /xcatpost/mypostscript.$node /xcatpost/mypostscript
+	        return 0;
+            fi
 
+        elif [ $postfix -eq 1 ];then
+            wget -N --waitretry=10 --random-wait -T 60 http://$server$TFTPDIR/mypostscripts/mypostscript.$node.tmp  -P /xcatpost 2>> /tmp/wget.log
+            rc=$?
+            if [ $rc -eq 0 ]; then
+                mv /xcatpost/mypostscript.$node.tmp /xcatpost/mypostscript
+	        return 0;
+            fi
+        fi
+        
 	retry=$(($retry+1))
 	if [ $retry -eq $max_retries ]; then
             break
@@ -327,7 +336,8 @@ rm -rf /xcatpost/mypostscript
 
 node=`hostname`
 max_retries=2
-download_mypostscript $SIP $node $max_retries $TFTPDIR 
+postfix=0
+download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR 
 
 
 
@@ -364,7 +374,8 @@ if [ ! -x /xcatpost/mypostscript ]; then
 #/xcatpost/getpostscript.awk | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /xcatpost/mypostscript; 
 /xcatpost/getpostscript.awk version2 > /dev/null 
 max_retries=1
-download_mypostscript $SIP $node $max_retries $TFTPDIR 
+postfix=1
+download_mypostscript $SIP $node $max_retries $postfix $TFTPDIR 
 
 MYCONT=`grep MASTER /xcatpost/mypostscript`
 #echo "MYCONT=$MYCONT"
@@ -389,7 +400,8 @@ while [ -z "$MYCONT" ]; do
     #/xcatpost/getpostscript.awk | egrep  '<data>'  | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /xcatpost/mypostscript;
     /xcatpost/getpostscript.awk version2 > /dev/null
     max_retries=1
-    download_mypostscript $SIP $node $max_retries $TFTPDIR
+    postfix=1
+    download_mypostscript $SIP $node $max_retries $postfix $TFTPDIR
  
     MYCONT=`grep MASTER /xcatpost/mypostscript`
     if [ ! -z "$MYCONT" ]; then
