@@ -1466,7 +1466,8 @@ sub validate_bldkitconf
             return 1;
         }
         my $ck_file = $ck_dir."/".$kp->{filename};
-        if (! -r $ck_file ) {
+        if ( system("ls $ck_file > /dev/null") ) {
+#        if (! -r $ck_file ) {
             print "Pre-built rpm $ck_file defined in Kit Package \"$kp->{filename}\" does not exist or is not readable\n";
             return 1;
         }
@@ -1540,7 +1541,8 @@ sub validate_repo
  
     foreach my $pkg (@{$repo->{packages}}){
         my $pkg_filename = $repodir.'/'.$pkg;
-        if (! -r $pkg_filename) {
+        if ( system("ls $pkg_filename > /dev/null") ) {
+#        if (! -r $pkg_filename) {
             if ($::VERBOSE) {
                 print "\nFile $pkg in directory $repodir does not exist or is not readable. \n";
             }
@@ -2307,8 +2309,8 @@ sub kit_addpkgs
               next;
             }
             if ( ($ext_filename ne '') && ($ext_reponames ne '') ){
-              my $fromfile = $rpmdir."/".$ext_filename."*";
-              if ( system("ls $fromfile") ){
+              my $fromfile = $rpmdir."/".$ext_filename;
+              if ( system("ls $fromfile > /dev/null") ){
                 print  "The product package file $ext_filename could not be read from the package directory $rpmdir. \n";
                 # Cleanup
                 system ("rm -Rf /tmp/buildkit_workdir");
