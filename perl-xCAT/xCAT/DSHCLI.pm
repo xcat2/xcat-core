@@ -1154,10 +1154,10 @@ sub fork_fanout_dsh
                   "TRACE:Environment: Exporting File.@env_rcp_command ";
                 $dsh_trace && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
                 # copy the Env Variable input file to the nodes
-                #my @env_rcp_process =
-                #  xCAT::DSHCore->fork_no_output($user_target, @env_rcp_command);
-                #waitpid($env_rcp_process[0], undef);
-                push @commands, \@env_rcp_command;
+                my @env_rcp_process =
+                  xCAT::DSHCore->fork_no_output($user_target, @env_rcp_command);
+                waitpid($env_rcp_process[0], undef);
+                #push @commands, \@env_rcp_command;
             }
             my $tmp_cmd_file;
             if ($$options{'execute'})
