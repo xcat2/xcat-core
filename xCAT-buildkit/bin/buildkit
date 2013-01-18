@@ -1676,7 +1676,7 @@ sub build_kitcomp
     my $comp = shift;
     my %repo;
     my $rpmbuild_dir = $::workdir."/rpmbuild";
-    my $tmpdir = $::workdir."/tmp/$comp->{kitreponame}-$comp->{kitcompname}";
+    my $tmpdir = $::workdir."/tmp/$comp->{kitcompname}";
 
     # find the kitrepo hash for this component
     foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
@@ -1708,7 +1708,7 @@ sub build_kitcomp
     # Read the kit component meta rpm name
     my $kcmetaname = comppkgname($comp);
  
-    my $specfile = $::workdir."/tmp/$comp->{kitreponame}-$comp->{kitcompname}.spec";
+    my $specfile = $::workdir."/tmp/$comp->{kitcompname}.spec";
     my $rpmbuild_cmd = "rpmbuild --define \"_topdir $rpmbuild_dir\" -ba $specfile";
 
     # Copy in any non-native packages
@@ -1735,10 +1735,12 @@ sub build_kitcomp
                 return 1;
             }
         }
-        $cmd = "cd $tmpdir/..; tar -czf $rpmbuild_dir/SOURCES/$comp->{kitreponame}-$comp->{kitcompname}.tar.gz $comp->{kitreponame}-$comp->{kitcompname}";   
-        if ( system($cmd) ) {
-            print "Error creating tarfile $rpmbuild_dir/SOURCES/$comp->{kitreponame}-$comp->{kitcompname}.tar from $sourcedir/*";
-            return 1;
+        if ( !$::NON_NATIVE_PKGS->{$comp->{kitcompname}}{$kcmetaname} ) {
+            $cmd = "cd $tmpdir/..;mv $comp->{kitcompname} $comp->{basename}; tar -czf $rpmbuild_dir/SOURCES/$comp->{basename}.tar.gz $comp->{basename};mv $comp->{basename} $comp->{kitcompname}";   
+            if ( system($cmd) ) {
+                print "Error creating tarfile $rpmbuild_dir/SOURCES/$comp->{kitreponame}-$comp->{kitcompname}.tar from $sourcedir/*";
+                return 1;
+            }
         }
     }
     if (!$::VERBOSE) {
@@ -1854,7 +1856,7 @@ sub gen_kitcomp_spec
     @lines = split(/\\n/,$joined_lines);
     mkpath($tmpdir);
     my $NSF;
-    unless ( open( $NSF, ">$tmpdir/$comp->{kitreponame}-$comp->{kitcompname}.spec" ) ) {
+    unless ( open( $NSF, ">$tmpdir/$comp->{kitcompname}.spec" ) ) {
         return 1;
     }
     if ($::VERBOSE) {
@@ -1993,6 +1995,7 @@ sub create_kitconf
             $current_entry{filename} = $value;
             $current_entry{kitcompname} = $kc->{kitcompname};
             $current_entry{basename} = $kc->{basename};
+            $current_entry{kitreponame} = $kc->{kitreponame};
             push ( @{ $::kit_config->{NONNATIVEPKGS}{'entries'} }, {%current_entry});
           }
         }
@@ -2149,12 +2152,12 @@ sub create_builddir
             }
         }
         mkpath("$::deploy_dir/tmp/");
-        my $cmd = "cp -fRp $::workdir/tmp/$kitrepo-$comp.spec $::deploy_dir/tmp/$comp.spec";
+        my $cmd = "cp -fRp $::workdir/tmp/$comp.spec $::deploy_dir/tmp/$comp.spec";
         if ( system("$cmd") ) {
             print "Error copying kitcomponent spec $::workdir/tmp/$kitrepo-$comp.spec to build directory $::deploy_dir \n";
             return 1;
         }
-        $cmd = "cp -fRp $::workdir/tmp/$kitrepo-$comp $::deploy_dir/tmp/$comp";
+        $cmd = "cp -fRp $::workdir/tmp/$comp $::deploy_dir/tmp/$comp";
         if ( system("$cmd") ) {
             print "Error copying kitcomponent meta rpm build file $::workdir/tmp/$kitrepo-$comp to build directory $::deploy_dir \n";
             return 1;
@@ -2362,6 +2365,7 @@ sub kit_addpkgs
     my $non_native_filename = '';
     my $non_native_kitcompname = '';
     my $non_native_basename = '';
+    my $non_native_kitreponame = '';
     my $attr;
     my %create_repodata_list;
     my @new_lines;
@@ -2385,6 +2389,7 @@ sub kit_addpkgs
             $non_native_filename = '';
             $non_native_kitcompname = '';
             $non_native_basename = '';
+            $non_native_kitreponame = '';
         }
 
         if ( $extpkg_section ) {
@@ -2450,10 +2455,15 @@ sub kit_addpkgs
               $non_native_kitcompname = $val;
             } elsif ($attr eq 'basename') {
               $non_native_basename = $val;
+            } elsif ($attr eq 'kitreponame') {
+              $non_native_kitreponame = $val;
             } else {
               next;
             }
-            if ( ($non_native_filename ne '') && ($non_native_kitcompname ne '') && ($non_native_basename ne '')) {
+            if ( ($non_native_filename ne '') 
+                 && ($non_native_kitcompname ne '') 
+                 && ($non_native_basename ne '') 
+                 && ($non_native_kitreponame ne '')) {
               my $fromfile = $rpmdir."/".$non_native_filename;
               if ( system("ls $fromfile > /dev/null") ){
                 print  "The product package file $ext_filename could not be read from the package directory $rpmdir. \n";
@@ -2516,6 +2526,18 @@ sub kit_addpkgs
                 print "Error running rpmbuild command for kit component $non_native_basename meta package\n";
                 return 1;
               }
+
+              # Copy the built meta rpm to repo
+              my $repodir = $tmpdir."/".$kitname."/repos/".$non_native_kitreponame;
+              my @built_rpms = `find $rpmbuild_dir/RPMS -name *.rpm`;
+              foreach my $rpm (@built_rpms) {
+                chomp($rpm);
+                if ( system ("cp -fp $rpm $repodir") ) {
+                  print "Error copying rpm $rpm to build repo directory $repodir \n";
+                  return 1;
+                }
+              }
+              $create_repodata_list{$repodir}=1;
             } 
           }
         
@@ -2525,7 +2547,7 @@ sub kit_addpkgs
     }
 
 
-    # Re-write kit.conf with EXTERNALPKG sections removed
+    # Re-write kit.conf with EXTERNALPKG and NONNATIVEPKGS sections removed
     my $NCF;
     unless ( open( $NCF, ">$tmp_kit_conf" ) ) {
         return 1;
@@ -2533,6 +2555,12 @@ sub kit_addpkgs
     print $NCF @new_lines;
     close($NCF);
  
+    # Clean up RPMBUILD and tmp in kit directory
+    my $cmd = "rm -Rf $tmpdir/$kitname/tmp";
+    system("$cmd");
+    $cmd = "rm -Rf $tmpdir/$kitname/rpmbuild";
+    system("$cmd");
+
     # Run createrepo for each updated directory
     foreach my $repo (keys(%create_repodata_list)) {
       if (system("createrepo $repo")) {
