@@ -1697,6 +1697,13 @@ sub build_kitcomp
     my $avoiderr = $rpmbuild_dir."/BUILDROOT/".$comp->{basename};
     $avoiderr .= "-$comp->{version}-$comp->{release}.$repo{osarch}";
     mkpath($avoiderr);
+    $avoiderr = $rpmbuild_dir."/BUILD/";
+    mkpath($avoiderr);
+    $avoiderr = $rpmbuild_dir."/SRPMS/";
+    mkpath($avoiderr);
+    $avoiderr = $rpmbuild_dir."/RPMS/noarch/";
+    mkpath($avoiderr);
+
 
     # Read the kit component meta rpm name
     my $kcmetaname = comppkgname($comp);
@@ -2479,6 +2486,15 @@ sub kit_addpkgs
               my $rpmbuild_dir = $tmpdir."/".$kitname."/rpmbuild";
               my $cmd = "rm -Rf $rpmbuild_dir";
               system($cmd);
+
+              my $avoiderr = $rpmbuild_dir."/BUILDROOT/";
+              mkpath($avoiderr);
+              $avoiderr = $rpmbuild_dir."/BUILD/";
+              mkpath($avoiderr);
+              $avoiderr = $rpmbuild_dir."/SRPMS/";
+              mkpath($avoiderr);
+              $avoiderr = $rpmbuild_dir."/RPMS/noarch/";
+              mkpath($avoiderr);
               
               unless ( open( SF, "<", $spec ) ) {
                 print  "Error attempting to open spec $spec of kitcomponent $non_native_basename. \n";
@@ -2487,7 +2503,7 @@ sub kit_addpkgs
 
 
               mkpath("$rpmbuild_dir/SOURCES");
-              $cmd = "cd $source_dir/..;mv $non_native_kitcompname $non_native_basename; tar -czf $rpmbuild_dir/SOURCES/$non_native_basename.tar.gz $non_native_kitcompname;mv $non_native_basename $non_native_kitcompname;";
+              $cmd = "cd $source_dir/..;mv $non_native_kitcompname $non_native_basename; tar -czf $rpmbuild_dir/SOURCES/$non_native_basename.tar.gz $non_native_basename;mv $non_native_basename $non_native_kitcompname;";
               if ( system($cmd) ) {
                 print "Error creating tarfile $rpmbuild_dir/SOURCES/$non_native_basename.tar from $source_dir/*";
                 return 1;
