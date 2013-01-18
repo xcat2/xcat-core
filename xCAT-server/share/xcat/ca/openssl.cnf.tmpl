@@ -162,7 +162,7 @@ nsCertType			= server, client, objsign
 nsComment			= "OpenSSL Generated Server Certificate"
 subjectKeyIdentifier=hash
 authorityKeyIdentifier=keyid,issuer
-keyUsage = digiatalSignature,KeyAgreement
+keyUsage = digitalSignature,keyAgreement
 extendedKeyUsage = serverAuth
 
 [ usr_cert ]
@@ -173,7 +173,7 @@ extendedKeyUsage = serverAuth
 # requires this to avoid interpreting an end user certificate as a CA.
 
 basicConstraints=CA:FALSE
-keyUsage = digiatalSignature,KeyAgreement
+keyUsage = digitalSignature,keyAgreement
 extendedKeyUsage = clientAuth
 
 # Here are some examples of the usage of nsCertType. If it is omitted
