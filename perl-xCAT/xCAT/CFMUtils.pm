@@ -544,6 +544,17 @@ sub updateCFMPkglistFile {
     my @pre_selected = @$pre_selected_ref;
     my @pre_removed = @$pre_removed_ref;
 
+    # get the #INCLUDE file from cfmpkglist file
+    my @incfiles = xCAT::CFMUtils->getIncludefiles($cfmpkglist);
+    # get the packages list in the #INCLUDE files
+    my @basepkgs = ();
+    foreach my $inc (@incfiles)
+    {
+        my ($selected_ref, $removed_ref) = xCAT::CFMUtils->getPreOSpkgsList($inc);
+        my @selected = @$selected_ref;
+        @basepkgs = xCAT::CFMUtils->arrayops("U", \@basepkgs, \@selected);
+    }
+
     # get diff between previous and current selected OS packages lists    
     my @diff = xCAT::CFMUtils->getPkgsDiff(\@pre_selected, \@cur_selected);
  
@@ -555,13 +566,20 @@ sub updateCFMPkglistFile {
     my @rollback = xCAT::CFMUtils->arrayops("I", \@all_removed, \@cur_selected);
     my @cur_removed = xCAT::CFMUtils->arrayops("D", \@all_removed, \@rollback);
 
+    # remove the BASE packages from selected pakages
+    @basepkgs = xCAT::CFMUtils->arrayops("I", \@basepkgs, \@cur_selected);
+    @cur_selected = xCAT::CFMUtils->arrayops("D", \@cur_selected, \@basepkgs);
+
     # update the pkglist file
     my $fp;
     open($fp, '>', $cfmpkglist);
+    foreach my $inc (@incfiles)
+    {
+        print $fp "#INCLUDE:$inc#\n";
+    }
     # the pacakges be installed
     if (@cur_selected)
     {
-        print $fp "#The OS packages be installed:\n";
         foreach my $pkg (@cur_selected)
         {
             print $fp "$pkg\n";
@@ -570,7 +588,6 @@ sub updateCFMPkglistFile {
     # the packages be removed
     if (@cur_removed)
     {
-        print $fp "#The OS packages be removed:\n";
         foreach my $pkg (@cur_removed)
         {
             print $fp "-$pkg\n";
@@ -607,27 +624,44 @@ sub getPreOSpkgsList {
     my ($class, $pkglist) = @_;
     my @selected = ();
     my @removed = ();
+    my @pkglistfiles = ();
 
-    my $pkglistfp;
-    open($pkglistfp, $pkglist);
-    while (<$pkglistfp>)
+    # get the #INCLUDE file from cfmpkglist file
+    my @incfiles = xCAT::CFMUtils->getIncludefiles($pkglist);
+    foreach my $inc (@incfiles)
     {
-        my $line = xCAT::CFMUtils->trim($_);
-        if (($line =~ /^#/) || ($line =~ /^\s*$/ ))
-        { #comment line or blank line
-            next;
-        } else
+        push @pkglistfiles, $inc;
+    }
+    # assume the #INCLUDE file includes the BASE packages
+    push @pkglistfiles, $pkglist;
+
+    foreach my $file (@pkglistfiles)
+    {
+        my $pkglistfp;
+        open($pkglistfp, xCAT::CFMUtils->trim($file));
+        while (<$pkglistfp>)
         {
-            if ($line =~ /^-/)
-            { # the package be removed
-                push @removed, substr($line, 1);
+            my $line = xCAT::CFMUtils->trim($_);
+            if (($line =~ /^#/) || ($line =~ /^\s*$/ ))
+            { #comment line or blank line
+                next;
             } else
-            { # the package be installed
-                push @selected, $line;
-            } 
-        }
-    }    
-    close($pkglistfp);
+            {
+                if ($line =~ /^-/)
+                { # the package be removed
+                    push @removed, substr($line, 1);
+                } else
+                { # the package be installed
+                    push @selected, $line;
+                } 
+            }
+        }    
+        close($pkglistfp);
+    }
+
+    # delete the removed packages from selected list
+    my @intersection = xCAT::CFMUtils->arrayops("I", \@removed, \@selected);
+    @selected = xCAT::CFMUtils->arrayops("D", \@selected, \@intersection);
 
     return (\@selected, \@removed);
 }
@@ -663,6 +697,51 @@ sub getPkgsDiff {
     #print Dumper(@diff);
 
     return @diff;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 getIncludefiles 
+    Get the #INCLUDE files from the given file 
+
+    Arguments:
+      $file - the given file
+    Returns:
+      @files - the #INCLUDE files list
+    Globals:
+      none
+    Error:
+      none
+    Example:
+      my @diff = xCAT::CFMUtils->getIncludefiles($file);
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub getIncludefiles {
+    my ($class, $file) = @_;
+    my @files = ();
+
+    my $fp;
+    open($fp, $file);
+    while (<$fp>)
+    {
+        my $line = xCAT::CFMUtils->trim($_);
+        if ($line =~ /^\s*$/)
+        { # blank line
+            next;
+        }
+        # find the #INCLUDE line
+        if ($line =~ /^\s*#INCLUDE:[^#^\n]+#/)
+        {
+            #print "The line is: [$line]\n";
+            my $incfile = substr($line, length("#INCLUDE:"), length($line)-length("#INCLUDE:")-1);
+            push @files, $incfile;
+        }
+    }
+    close($fp);
+
+    return @files;
 }
 
 #-----------------------------------------------------------------------------
