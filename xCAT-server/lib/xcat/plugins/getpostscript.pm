@@ -65,9 +65,10 @@ sub process_request
       $client = $request->{'_xcat_clienthost'}->[0];
     }
 
+    my $origclient = $client;
     if ($client) { ($client) = noderange($client) };
     unless ($client) { #Not able to do identify the host in question
-       xCAT::MsgUtils->message("S","Received getpostscript from $client, which couldn't be correlated to a node (domain mismatch?)");
+       xCAT::MsgUtils->message("S","Received getpostscript from $origclient, which couldn't be correlated to a node (domain mismatch?)");
       return;
     }
     my $state;
