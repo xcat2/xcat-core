@@ -56,14 +56,20 @@ rm opt/xcat/share/xcat/netboot/genesis/x86_64/fs/LICENSE.html
 cd -
 
 
+# Since this rpm is being installed/updated, we need to run mknb to combine it with
+# xCAT-genesis-base-x86_64, but mknb will not work during an initial install of xcat
+# until the xCAT meta pkg has run xcatconfig or xCATsn has started xcatd.  Use of a trigger
+# allows us to tell those pkgs to run the code below after they run their %post scriptlets.
+# (If xCAT or xCATsn is installed already, this trigger will run when xCAT-genesis-scripts
+# is installed/updated.)
+
 %post
-if [ "$1" == "2" -o -e /opt/xcat/sbin/mknb ]; then #only on upgrade, or if the rest of xcat is already installed
-	if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
-   		. /etc/profile.d/xcat.sh
-   		echo mknb %{tarch}...
-   		mknb %{tarch}
-   	fi
-fi
+# Touch this file to tell the xCAT and xCATsn rpms that when they install/update they
+# should run mknb.  Tried to use rpm triggers, but in several cases the trigger would
+# get run multiple times.
+#echo "touching /etc/xcat/genesis-scripts-updated"
+touch /etc/xcat/genesis-scripts-updated
+
 
 %Files
 %defattr(-,root,root)

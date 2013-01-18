@@ -405,9 +405,6 @@ if ($::INITIALINSTALL || $::FORCE)
         }
      }
 
-     # run mknb - only needed for Intel platforms for now
-     &mknb;
-
      # makenetworks and setup http
      &makenetworks;
      &setuphttp;
@@ -548,6 +545,7 @@ if ($::INITIALINSTALL || $::FORCE)
      my $linux_note =
       "xCAT is now running, it is recommended to tabedit networks \nand set a dynamic ip address range on any networks where nodes \nare to be discovered. Then, run makedhcp -n to create a new dhcpd \nconfiguration file, and \/etc\/init.d\/dhcpd restart. Either examine sample \nconfiguration templates, or write your own, or specify a value per \nnode with nodeadd or tabedit.";
      xCAT::MsgUtils->message('I', $linux_note);
+
    } else { #AIX
      # makenetworks
      &makenetworks;
@@ -558,6 +556,11 @@ if ($::INITIALINSTALL || $::FORCE)
    }
 
 }    #End - more - Linux-only config
+
+# Run mknb to put xCAT-genesis-scripts-x86_64 and xCAT-genesis-base-x86_64 together and in /tftpboot
+if (($::INITIALINSTALL || $::UPDATEINSTALL) && $::osname eq 'Linux') {
+  &mknb;
+}
 
 END
 {
@@ -1838,32 +1841,30 @@ sub setupLinuxexports
 
 =head3    mknb 
 	
-    creates a network boot root image on Linux 
+   Creates a network boot root image on Linux 
+   Run mknb to put xCAT-genesis-scripts-x86_64 and xCAT-genesis-base-x86_64 together and in /tftpboot
 
 =cut
 
 #-----------------------------------------------------------------------------
 sub mknb
 {
-    if ($::arch eq "x86_64" || $::arch eq "x86")
-    {
-        foreach my $ar (qw(x86_64))
-        {
-            my $cmd = "XCATBYPASS=Y $::XCATROOT/sbin/mknb $ar";
-            my $outref = xCAT::Utils->runcmd("$cmd", 0);
-            if ($::RUNCMD_RC != 0)
-            {
-                xCAT::MsgUtils->message('E',
-                          "The mknb $ar command returned error: $::RUNCMD_RC.");
-            }
-            else
-            {
-                xCAT::MsgUtils->message('I',
-                                "The mknb $ar command completed successfully.");
-            }
-        }
+  # The xCAT-genesis-scripts.spec file touches /etc/xcat/genesis-scripts-updated so we know to run
+  # mknb here.
+  if ($::arch eq "x86_64" && (-f '/etc/xcat/genesis-scripts-updated') ) {
+    unlink '/etc/xcat/genesis-scripts-updated';
+    my $cmd = "$::XCATROOT/sbin/mknb $::arch";
+    xCAT::MsgUtils->message('I', "Running '$cmd', triggered by the installation/update of xCAT-genesis-scripts-x86_64 ...");
+    #my $outref = xCAT::Utils->runcmd("$cmd", 0);
+    system($cmd);
+    if ($? != 0) {
+      my $rc = $? >> 8;
+      xCAT::MsgUtils->message('E', "The 'mknb $::arch' command returned error code: $rc.");
     }
-
+    else {
+      xCAT::MsgUtils->message('I', "The 'mknb $::arch' command completed successfully.");
+    }
+  }
 }
 
 #-----------------------------------------------------------------------------

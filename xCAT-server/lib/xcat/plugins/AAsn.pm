@@ -1248,19 +1248,19 @@ sub setup_TFTP
     }
     else
     {                         #if not mounting, have to regenerate....
-                              #first, run mknb to get nbfs and such going?
         my $cmdref;
-        use xCAT_plugin::mknb;
-        for my $architecture ("ppc64", "x86", "x86_64")
-        {
-            unless (-d "$::XCATROOT/share/xcat/netboot/$architecture")
-            {
-                next;
-            }
-            $cmdref->{command}->[0] = "mknb";
-            $cmdref->{arg}->[0]     = $architecture;
-            $doreq->($cmdref, \&xCAT::Client::handle_response);
-        }
+        # mknb is now run in xCATsn.spec
+        #use xCAT_plugin::mknb;
+        #for my $architecture ("ppc64", "x86", "x86_64")
+        #{
+        #    unless (-d "$::XCATROOT/share/xcat/netboot/$architecture")
+        #    {
+        #        next;
+        #    }
+        #    $cmdref->{command}->[0] = "mknb";
+        #    $cmdref->{arg}->[0]     = $architecture;
+        #    $doreq->($cmdref, \&xCAT::Client::handle_response);
+        #}
 
         #now, run nodeset enact on
         my $mactab = xCAT::Table->new('mac');

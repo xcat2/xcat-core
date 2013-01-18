@@ -1,13 +1,47 @@
+# Build the xCAT-genesis-base rpm on a host system.
+# Option 1:  install the xCAT-genesis-builder rpm (that includes this file) on a system installed with
+#            the distro you want to use to build xCAT-genesis-base.
+# Option 2:  untar the root file system of the distro you want to use and then chroot into it and copy
+#            this whole dir into it somewhere (like /tmp).
+# Then run this script.  The optional 1st arg should be mcp if you are building against mcp.
+HOSTOS="$1"
 DIR=`dirname $0`
-mkdir -p /usr/share/dracut/modules.d/97xcat
-cp $DIR/* /usr/share/dracut/modules.d/97xcat
+DIR=`realpath $DIR`
+
+# get the input files for dracut in the right place
+DRACUTMODDIR=/usr/share/dracut/modules.d/97xcat
+mkdir -p $DRACUTMODDIR
+cp $DIR/* $DRACUTMODDIR
+if [ "$HOSTOS" = "mcp" ]; then
+	mv -f $DRACUTMODDIR/install.$HOSTOS $DRACUTMODDIR/install
+	mv -f $DRACUTMODDIR/installkernel.$HOSTOS $DRACUTMODDIR/installkernel
+fi
 mkdir -p /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/fs 
+
+# run dracut
+echo Creating the initramfs in /tmp/xcatgenesis.$$.rfs using dracut ...
 dracut -m "xcat base" -f /tmp/xcatgenesis.$$.rfs
+
+echo Expanding the initramfs into /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/fs ...
 cd /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/fs 
 zcat /tmp/xcatgenesis.$$.rfs|cpio -dumi
-cp /boot/vmlinuz-`uname -r` /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/kernel
+
+# add the kernel
+if [ "$HOSTOS" = "mcp" ]; then
+	echo Adding kernel /boot/vmlinuz-* ...
+	cp /boot/vmlinuz-* /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/kernel
+else
+	echo Adding kernel /boot/vmlinuz-`uname -r` ...
+	cp /boot/vmlinuz-`uname -r` /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/kernel
+fi
 cd -
+
+# create tar file
+echo Tarring /tmp/xcatgenesis.$$/opt into ~/rpmbuild/SOURCES/xCAT-genesis-base-`uname -m`.tar.bz2 ...
 cd /tmp/xcatgenesis.$$
 tar jcf ~/rpmbuild/SOURCES/xCAT-genesis-base-`uname -m`.tar.bz2 opt
+
+# build the rpm
+echo Building xCAT-genesis-base rpm from ~/rpmbuild/SOURCES/xCAT-genesis-base-`uname -m`.tar.bz2 and $DIR/xCAT-genesis-base.spec ...
 rpmbuild -ba $DIR/xCAT-genesis-base.spec 
-rm -rf /usr/share/dracut/modules.d/97xcat
+rm -rf $DRACUTMODDIR

@@ -56,7 +56,7 @@ Requires: conserver-xcat
 %endif
 
 %ifarch i386 i586 i686 x86 x86_64
-Requires: syslinux xCAT-genesis-x86_64 elilo-xcat
+Requires: syslinux xCAT-genesis-scripts-x86_64 elilo-xcat
 Requires: ipmitool-xcat >= 1.8.9
 Requires: xnba-undi
 %endif

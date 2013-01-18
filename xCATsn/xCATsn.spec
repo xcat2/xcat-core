@@ -51,7 +51,7 @@ Requires: conserver-xcat
 %endif
 
 %ifarch i386 i586 i686 x86 x86_64
-Requires: syslinux xCAT-genesis-x86_64 elilo-xcat
+Requires: syslinux xCAT-genesis-scripts-x86_64 elilo-xcat
 Requires: ipmitool-xcat >= 1.8.9
 Requires: xnba-undi
 %endif
@@ -176,6 +176,23 @@ fi
     echo "xCATsn is now installed"
 
 %endif
+
+# Run mknb if xCAT-genesis-scripts-x86_64 changed
+%ifos linux
+# prevent running it during install into chroot image and only run it if xCAT-genesis-scripts-x86_64
+# was recently updated.
+if [ -f "/proc/cmdline" -a -f "/etc/xcat/genesis-scripts-updated" ]; then
+  rm -f /etc/xcat/genesis-scripts-updated
+  # On the SN do not run mknb if we are sharing /tftpboot with the MN
+  SHAREDTFTP=`/opt/xcat/sbin/tabdump site | grep sharedtftp | cut -d'"' -f 4`
+  if [ "$SHAREDTFTP" != "1" ]; then
+      . /etc/profile.d/xcat.sh
+      echo Running '"'mknb %{tarch}'"', triggered by the installation/update of xCAT-genesis-scripts-x86_64 ...
+      mknb %{tarch}
+    fi
+fi
+%endif
+
 
 %clean
 
