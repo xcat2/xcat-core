@@ -12,13 +12,15 @@ use MIME::Base64;
 use xCAT::SvrUtils;
 use Socket;
 use Fcntl qw/:flock/;
-#This is a rewrite of DNS management using nsupdate rather than direct zone mangling
+
+# This is a rewrite of DNS management using nsupdate rather than 
+#	direct zone mangling
 
 my $callback;
 my $distro = xCAT::Utils->osver();
 
-
 my $service="named";
+
 # is this ubuntu ?
 if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
     $service = "bind9";	
@@ -26,8 +28,6 @@ if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
 
 sub handled_commands
 {
-    #my $sitetab = xCAT::Table->new('site');
-    #my $stab = $sitetab->getAttribs({key=>'dnshandler'},['value']);
     my @entries =  xCAT::TableUtils->get_site_attribute("dnshandler");
     my $site_entry = $entries[0];
     unless ( defined($site_entry)) {
@@ -142,7 +142,6 @@ sub get_reverse_zones_for_entity {
     my $tvar;
     my @revs;
     foreach $tvar (@tvars) {
-    #if ($tvar = getipaddr($node,GetNumber=>1)) { #This is an assignment, we are testing and storing the value in one shot
         foreach my $net (keys %{$ctx->{nets}}) {
             if ($ctx->{nets}->{$net}->{netn} == ($tvar & $ctx->{nets}->{$net}->{mask})) {
                 if ($net =~ /\./) { #IPv4/IN-ADDR.ARPA case.
@@ -243,9 +242,8 @@ sub process_request {
     }
     
     $ctx->{deletemode}=$deletemode;
+
     # check for site.domain     
-    #my $sitetab = xCAT::Table->new('site');
-    #my $stab = $sitetab->getAttribs({key=>'domain'},['value']);
     my @entries =  xCAT::TableUtils->get_site_attribute("domain");
     my $site_entry = $entries[0];
     unless ( defined($site_entry)) {
@@ -285,7 +283,8 @@ sub process_request {
      
     my $networkstab = xCAT::Table->new('networks',-create=>0);
     unless ($networkstab) { xCAT::SvrUtils::sendmsg([1,'Unable to enumerate networks, try to run makenetworks'], $callback); }
-    my @networks = $networkstab->getAllAttribs('net','mask','ddnsdomain');
+
+	my @networks = $networkstab->getAllAttribs('net','mask','ddnsdomain','domain','nameservers');
 
     if ($request->{node}) { #we have a noderange to process
         @nodes = @{$request->{node}};
@@ -305,20 +304,23 @@ sub process_request {
         my @contents = <$hostsfile>;
         flock($hostsfile,LOCK_UN);
         close($hostsfile);
-        my $domain = $ctx->{domain};
-        unless ($domain =~ /^\./) { $domain = '.'.$domain; }
+		my $domain;
         my $addr;
         my $name;
         my $canonical;
         my $aliasstr;
         my @aliases;
         my $names;
+		my @hosts;
+		my %nodehash;
+
         foreach (@contents) {
             chomp; #no newline
             s/#.*//; #strip comments;
             s/^[ \t\n]*//; #remove leading whitespace
             next unless ($_); #skip empty lines
             ($addr,$names) = split /[ \t]+/,$_,2;
+
             if ($addr !~ /^\d+\.\d+\.\d+\.\d+$/ and $addr !~ /^[abcdef0123456789:]+$/) {
                 xCAT::SvrUtils::sendmsg(":Ignoring line $_ in /etc/hosts, address seems malformed.", $callback);
                 next;
@@ -327,6 +329,25 @@ sub process_request {
                 xCAT::SvrUtils::sendmsg(":Ignoring line $_ in /etc/hosts, names  $names contain invalid characters (valid characters include a through z, numbers and the '-', but not '_'", $callback);
                 next;
             }
+
+			my ($host, $ip) = xCAT::NetworkUtils->gethostnameandip($addr);
+			push @hosts, $host;
+			$nodehash{$addr}{names}=$names;
+			$nodehash{$addr}{host}=$host;
+		}
+
+		# get the domains for each node - one call for all nodes in hosts file
+		my $nd = xCAT::NetworkUtils->getNodeDomains(\@hosts);
+		my %nodedomains = %$nd;
+
+		foreach my $n (keys %nodehash) {
+			$addr=$n;
+			$names=$nodehash{$n}{names};
+			# - need domain for this node
+			my $host = $nodehash{$n}{host};
+			$domain=$nodedomains{$host};
+			unless ($domain =~ /^\./) { $domain = '.'.$domain; }
+
             ($canonical,$aliasstr)  = split /[ \t]+/,$names,2;
             if ($aliasstr) {
                 @aliases= split /[ \t]+/,$aliasstr;
@@ -341,7 +362,8 @@ sub process_request {
             unless ($canonical =~ /$domain/) {
                 $canonical.=$domain;
             }
-            unless ($canonical =~ /\.\z/) { $canonical .= '.' } #for only the sake of comparison, ensure consistant dot suffix
+			# for only the sake of comparison, ensure consistant dot suffix
+            unless ($canonical =~ /\.\z/) { $canonical .= '.' }
             foreach my $alias (@aliases) {
                 unless ($alias =~ /$domain/) {
                     $alias .= $domain;
@@ -352,11 +374,13 @@ sub process_request {
                 if ($alias eq $canonical) {
                     next;
                 }
-                $ctx->{aliases}->{$node}->{$alias}=1; #remember alias for CNAM records later
+				# remember alias for CNAM records later
+                $ctx->{aliases}->{$node}->{$alias}=1;
             }
 
             # exclude the nodes not belong to any nets defined in networks table
-            # because only the nets defined in networks table will be add zones later.
+            # 	because only the nets defined in networks table will be add 
+			#	zones later.
             my $found = 0;
             foreach (@networks)
             {
@@ -380,6 +404,7 @@ sub process_request {
             }
         }
     }
+
     my $hoststab = xCAT::Table->new('hosts',-create=>0);
     if ($hoststab) {
         $ctx->{hoststab} = $hoststab->getNodesAttribs(\@nodes,['ip']);
@@ -404,6 +429,7 @@ sub process_request {
             $maskn = Math::BigInt->new("0b".("1"x$maskbits).("0"x($numbits-$maskbits)));
         }
         $ctx->{nets}->{$_->{net}}->{mask} = $maskn;
+
         my $net = $_->{net};
         $net =~ s/\/.*//;
         $ctx->{nets}->{$_->{net}}->{netn} = getipaddr($net,GetNumber=>1);
@@ -418,15 +444,20 @@ sub process_request {
         $ctx->{privkey} = $pent->{password};
     } #do not warn/error here yet, if we can't generate or extract, we'll know later
 
-    #$stab =  $sitetab->getAttribs({key=>'forwarders'},['value']);
     my @entries =  xCAT::TableUtils->get_site_attribute("forwarders");
     my $site_entry = $entries[0];
     if ( defined($site_entry)) {
         my @forwarders = split /[ ,]/,$site_entry;
         $ctx->{forwarders}=\@forwarders;
     }
-    $ctx->{zonestotouch}->{$ctx->{domain}}=1;
 
+    $ctx->{zonestotouch}->{$ctx->{domain}}=1;
+	foreach (@networks) {
+		if ($_->{domain}) {
+			$ctx->{zonestotouch}->{$_->{domain}}=1;
+		}
+	}
+	
     xCAT::SvrUtils::sendmsg("Getting reverse zones, this may take several minutes for a large cluster.", $callback);
     
     foreach (@nodes) {
@@ -439,19 +470,27 @@ sub process_request {
     }
     xCAT::SvrUtils::sendmsg("Completed getting reverse zones.", $callback);
     
-    if (1) { #TODO: function to detect and return 1 if the master server is DNS SOA for all the zones we care about
-        #here, we are examining local files to assure that our key is in named.conf, the zones we care about are there, and that if
-        #active directory is in use, allow the domain controllers to update specific zones
-        #$stab =$sitetab->getAttribs({key=>'directoryprovider'},['value']);
+    if (1) { 
+		#TODO: function to detect and return 1 if the master server is 
+		#	DNS SOA for all the zones we care about here, we are examining 
+        #   files to assure that our key is in named.conf, the zones we 
+		#	care about are there, and that if active directory is in use,
+        #  	 allow the domain controllers to update specific zones
         @entries =  xCAT::TableUtils->get_site_attribute("directoryprovider");
         $site_entry = $entries[0];
         if ( defined($site_entry) and $site_entry eq 'activedirectory') {
-            #$stab =$sitetab->getAttribs({key=>'directoryservers'},['value']);
             @entries =  xCAT::TableUtils->get_site_attribute("directoryservers");
             $site_entry = $entries[0];
             if ( defined($site_entry)) {
                 my @dservers = split /[ ,]/,$site_entry;
                 $ctx->{adservers} = \@dservers;
+
+				############################
+				# - should this include all domains?
+				# - multi-domains not supported with activedirectory
+				#  	- TODO in future release
+				###################
+
                 $ctx->{adzones} = {
                     "_msdcs.". $ctx->{domain} => 1,
                     "_sites.". $ctx->{domain} => 1,
@@ -460,7 +499,7 @@ sub process_request {
                 };
             }
         }
-        #$stab =$sitetab->getAttribs({key=>'dnsupdaters'},['value']); #allow unsecure updates from these
+
         @entries =  xCAT::TableUtils->get_site_attribute("dnsupdaters");
         $site_entry = $entries[0];
         if ( defined($site_entry) ) {
@@ -487,6 +526,7 @@ sub process_request {
         $ctx->{dbdir} = get_dbdir();
         $ctx->{zonesdir} = get_zonesdir();
         chmod 0775, $ctx->{dbdir}; # assure dynamic dns can actually execute against the directory
+
         update_namedconf($ctx); 
         update_zones($ctx);
 
@@ -535,12 +575,15 @@ sub process_request {
     #now we stick to Net::DNS style updates, with TSIG if possible.  TODO: kerberized (i.e. Windows) DNS server support, maybe needing to use nsupdate -g....
     if ($external)
     {
-        $ctx->{resolver} = Net::DNS::Resolver->new(); # based on /etc/resolv.conf
+		# based on /etc/resolv.conf
+        $ctx->{resolver} = Net::DNS::Resolver->new(); 
     }
     else
     {
-        $ctx->{resolver} = Net::DNS::Resolver->new(nameservers=>['127.0.0.1']); # default to localhost
+		# default to localhost
+        $ctx->{resolver} = Net::DNS::Resolver->new(nameservers=>['127.0.0.1']); 
     }
+
     add_or_delete_records($ctx);
 
     xCAT::SvrUtils::sendmsg("DNS setup is completed", $callback);
@@ -550,53 +593,30 @@ sub process_request {
 sub get_zonesdir {
     my $ZonesDir = get_dbdir();
 
-    #my $sitetab = xCAT::Table->new('site');
-
-    #unless ($sitetab)
-    #{
-    #    my $rsp = {};
-    #    $rsp->{data}->[0] = "No site table found.\n";
-    #    xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-    #}
-    
     my @entries =  xCAT::TableUtils->get_site_attribute("bindzones");
     my $site_entry = $entries[0];
 
-    #if ($sitetab) {
-    #    my ($ref) = $sitetab->getAttribs({key => 'bindzones'}, 'value');
-        if ( defined($site_entry) ) {
-            $ZonesDir= $site_entry;
-        }
-    #}
+	if ( defined($site_entry) ) {
+		$ZonesDir= $site_entry;
+	}
 
     return "$ZonesDir";
 }
 
 sub get_conf {
     my $conf="/etc/named.conf";
+
     # is this ubuntu ?
-    if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
+	if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
         $conf="/etc/bind/named.conf";
     }
 
-    #my $sitetab = xCAT::Table->new('site');
-
-    #unless ($sitetab)
-    #{
-    #    my $rsp = {};
-    #    $rsp->{data}->[0] = "No site table found.\n";
-    #    xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-    #}
-    
     my @entries =  xCAT::TableUtils->get_site_attribute("bindconf");
     my $site_entry = $entries[0];
 
-    #if ($sitetab) {
-        #my ($ref) = $sitetab->getAttribs({key => 'bindconf'}, 'value');
-        if ( defined($site_entry) ) {
-            $conf= $site_entry;
-        }
-    #}
+	if ( defined($site_entry) ) {
+		$conf= $site_entry;
+	}
 
     return "$conf";
 }
@@ -604,21 +624,11 @@ sub get_conf {
 sub get_dbdir {
     my $DBDir;
 
-    #my $sitetab = xCAT::Table->new('site');
-    #unless ($sitetab) {
-    #    my $rsp = {};
-    #    $rsp->{data}->[0] = "No site table found.\n";
-    #    xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-    #}
-
     my @entries =  xCAT::TableUtils->get_site_attribute("binddir");
     my $site_entry = $entries[0];
-    #if ($sitetab) {
-        #(my $ref) = $sitetab->getAttribs({key => 'binddir'}, 'value');
-        if ( defined($site_entry) ) {
-            $DBDir = $site_entry;
-        }
-    #}
+	if ( defined($site_entry) ) {
+		$DBDir = $site_entry;
+	}
 
     if ( -d "$DBDir" ) {
         return "$DBDir"
@@ -656,12 +666,19 @@ sub update_zones {
     my $ctx = shift;
     my $currzone;
     my $dbdir = $ctx->{dbdir};
-    my $domain = $ctx->{domain};
     my $name = hostname;
     my $node = $name;
 
+	# get the domain for the node - which is the local hostname
+	my ($host, $nip) = xCAT::NetworkUtils->gethostnameandip($node);
+	my @hosts;
+	push (@hosts, $host);
+	my $nd = xCAT::NetworkUtils->getNodeDomains(\@hosts);
+	my %nodedomains = %$nd;
+	my $domain = $nodedomains{$host};
+
     xCAT::SvrUtils::sendmsg("Updating zones.", $callback);
-    
+
     unless ($domain =~ /^\./) {
         $domain = '.'.$domain;
     }
@@ -690,8 +707,9 @@ sub update_zones {
     push @neededzones,keys %{$ctx->{adzones}};
     my ($sec, $min, $hour, $mday, $mon, $year, $rest) = localtime(time);
     my $serial = ($mday * 100) + (($mon + 1) * 10000) + (($year + 1900) * 1000000);
+
     foreach $currzone (@neededzones) {
-        my $zonefilename = $currzone;
+		my $zonefilename = $currzone;
         if ($currzone =~ /IN-ADDR\.ARPA/) {
             $currzone =~ s/\.IN-ADDR\.ARPA.*//;
             my @octets = split/\./,$currzone;
@@ -715,7 +733,7 @@ sub update_zones {
             }
             flock($zonehdl,LOCK_UN);
             close($zonehdl);
-            if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
+			if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
                 chown(scalar(getpwnam('root')),scalar(getgrnam('bind')),$dbdir."/db.$zonefilename");
             }
             else{
@@ -727,8 +745,6 @@ sub update_zones {
     xCAT::SvrUtils::sendmsg("Completed updating zones.", $callback);
 }
 
-
-
 sub update_namedconf {
     my $ctx = shift;
     my $namedlocation = get_conf();
@@ -737,6 +753,7 @@ sub update_namedconf {
     my $gotoptions=0;
     my $gotkey=0;
     my %didzones;
+
     if (-r $namedlocation) {
         my @currnamed=();
         open($nameconf,"<",$namedlocation);
@@ -928,7 +945,7 @@ sub update_namedconf {
             }
         }
     }
-        
+
     my $newnameconf;
     open($newnameconf,">>",$namedlocation);
     flock($newnameconf,LOCK_EX);
@@ -937,7 +954,7 @@ sub update_namedconf {
     for my $l  (@newnamed) { print $newnameconf $l; }
     flock($newnameconf,LOCK_UN);
     close($newnameconf);
-    if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
+	if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
         chown (scalar(getpwnam('root')),scalar(getgrnam('bind')),$namedlocation);
     }
     else{
@@ -961,10 +978,14 @@ sub add_or_delete_records {
     }
     my $node;
     my @ips;
-    my $domain = $ctx->{domain}; # store off for lazy typing and possible local mangling
-    unless ($domain =~ /^\./) { $domain = '.'.$domain; } #example.com becomes .example.com for consistency
+
     $ctx->{nsmap} = {}; #will store a map to known NS records to avoid needless redundant queries to sort nodes into domains
     $ctx->{updatesbyzone}={}; #sort all updates into their respective zones for bulk update for fewer DNS transactions
+
+	# get node domains
+	my $nd = xCAT::NetworkUtils->getNodeDomains(\@{$ctx->{nodes}});
+	my %nodedomains = %{$nd};
+
     foreach $node (@{$ctx->{nodes}}) {
         my $name = $node;
 
@@ -973,9 +994,11 @@ sub add_or_delete_records {
             next;
         }
 
+		my $domain = $nodedomains{$node};
+		unless ($domain =~ /^\./) { $domain = '.'.$domain; }
+
         unless ($name =~ /$domain/) { $name .= $domain } # $name needs to represent fqdn, but must preserve $node as a nodename for cfg lookup
-        #if (domaintab->{$node}->[0]->{domain) { $domain = domaintab->{$node}->[0]->{domain) }  
-        #above is TODO draft of how multi-domain support could come into play
+
         if ($ctx->{hoststab} and $ctx->{hoststab}->{$node} and $ctx->{hoststab}->{$node}->[0]->{ip}) {
             @ips = ($ctx->{hoststab}->{$node}->[0]->{ip});
         } else {
@@ -1007,13 +1030,15 @@ sub add_or_delete_records {
             $ctx->{currrevname}=$ip;
             my $tmpdm;
             unless ($domain =~ /\.$/) { $tmpdm = $domain.'.'; } #example.com becomes example.com.
+
             find_nameserver_for_dns($ctx,$revzone);
             find_nameserver_for_dns($ctx,$tmpdm);
         }
     }
     my $zone;
     foreach $zone (keys %{$ctx->{updatesbyzone}}) {
-    	  my $ip = xCAT::NetworkUtils->getipaddr($ctx->{nsmap}->{$zone});
+		my $ip = xCAT::NetworkUtils->getipaddr($ctx->{nsmap}->{$zone});
+
         my $resolver = Net::DNS::Resolver->new(nameservers=>[$ip]);
         my $entry;
         my $numreqs = 300; # limit to 300 updates in a payload, something broke at 644 on a certain sample, choosing 300 for now
@@ -1088,7 +1113,7 @@ sub find_nameserver_for_dns {
             }
         }
     }
-    
+
     if (defined $ctx->{aliases}->{$node}) {
     	foreach (keys %{$ctx->{aliases}->{$node}}) {
     		push @rrcontent, "$_ IN CNAME $name";
@@ -1125,6 +1150,7 @@ sub find_nameserver_for_dns {
                }
            }
        }
+
        if ($ctx->{nsmap}->{$zone}) {  #we have a nameserver for this zone, therefore this zone is one to update
            push @{$ctx->{updatesbyzone}->{$zone}},@rrcontent;
            last;
