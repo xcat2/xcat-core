@@ -3,10 +3,10 @@
 
 # xCAT post script for configuring ib adaptors.
 # The following are a sample of the env used:
-# IBNICS=ib0,ib1
+# NIC_IBNICS=ib0,ib1
+# NIC_IBAPORTS=1 (or 2)
 # OSVER=sles11.1
-# NIC related attributes for the node for confignics postscript
-# NICNODE=dxm360m4n04
+# NICNODE=dxm360m4n04 
 # NICIPS='eth0!10.1.34.242,ib1!15.0.1.242,ib2!15.0.2.242'
 # NICHOSTNAMESUFFIXES='eth1!-eth1,ib1!-ib1,ib2!-ib2'
 # NICTYPES='eth1!ethernet,ib1!infiniband,ib2!infiniband'
@@ -17,9 +17,11 @@
 # NETWORKS_LINE3='netname=ib3||net=15.0.3.0||mask=255.255.255.0||mgtifname=||gateway=||dhcpserver=||tftpserver=||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||disable=||comments='
 
 
-#This is the number of ports for each ib adpator. It is decided by the user
-#The valid values are 1 or 2.  
+#This is the number of ports for each ib adpator.
 portnum=1
+if [ -n "NIC_IBAPORTS" ]; then
+    portnum=$NIC_IBAPORTS
+fi
 
 # pmatch determines if 1st argument string is matched by 2nd argument pattern
 pmatch ()
@@ -54,7 +56,7 @@ convert_netmask_to_cidr() {
 }
  
 
-if [ -z "$IBNICS" ]; then
+if [ -z "$NIC_IBNICS" ]; then
     echo "nothing to do."
 fi
 
@@ -159,7 +161,7 @@ fi
 
 HOST=`hostname -s`
 goodnics=""
-for nic in `echo "$IBNICS" | tr "," "\n"`
+for nic in `echo "$NIC_IBNICS" | tr "," "\n"`
 do 
     #Get nic ip 
     nicip=""
