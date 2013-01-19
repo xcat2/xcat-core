@@ -11,11 +11,11 @@ dracut_install mkswap df brctl vconfig ifenslave ssh-keygen scp clear dhclient l
 #dracut_install /lib/x86_64-linux-gnu/libnss_dns-2.13.so /lib/x86_64-linux-gnu/libnss_dns.so.2
 dracut_install poweroff ntpq ntpd hwclock date /lib/terminfo/x/xterm /etc/nsswitch.conf /etc/services
 dracut_install /usr/sbin/rsyslogd /etc/protocols umount /usr/bin/rpm /usr/lib/rpm/rpmrc
-dracut_install chmod /lib/ld-linux.so.2 /lib/x86_64-linux-gnu/libdl.so.2 /lib/x86_64-linux-gnu/libc.so.6 /sbin/route /sbin/ifconfig /usr/bin/head /etc/issue /etc/debian_version  ping tr lsusb /usr/share/hwdata/usb.ids #ibm fw wrapper requirements
-dracut_install dmidecode /usr/lib/x86_64-linux-gnu/libstdc++.so.6 #uxspi prereqs, but will use dmidecode to improve decision on loading ipmi_si
+dracut_install chmod /lib/ld-linux.so.2 /lib/libdl.so.2 /lib/libc.so.6 /sbin/route /sbin/ifconfig /usr/bin/head /etc/issue /etc/debian_version  ping tr lsusb /usr/share/hwdata/usb.ids #ibm fw wrapper requirements
+dracut_install dmidecode /usr/lib/libstdc++.so.6 #uxspi prereqs, but will use dmidecode to improve decision on loading ipmi_si
 dracut_install dmidecode /usr/lib/libstdc++.so.5 #broadcom firmware update links against old lib
-dracut_install /lib/x86_64-linux-gnu/libpthread.so.0 #32 bit lib because UXSPI will not ship a native 64 bit build
-dracut_install /lib/libncurses.so.5.7 /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.17 /lib/x86_64-linux-gnu/libgcc_s.so.1 /lib/x86_64-linux-gnu/libtinfo.so.5.9
+dracut_install /lib/libpthread.so.0 #32 bit lib because UXSPI will not ship a native 64 bit build
+dracut_install /lib/libncurses.so.5.7 /usr/lib/libstdc++.so.6.0.13 /lib/libgcc_s.so.1 /lib/libncurses.so.5.7
 dracut_install /usr/lib/libldap-2.4.so.2 /usr/lib/liblber-2.4.so.2 /usr/lib/libsasl2.so.2 #uxspi has incurred these...
 dracut_install /usr/share/zoneinfo/posix/Zulu
 dracut_install /usr/share/zoneinfo/posix/GMT-0
