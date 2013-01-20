@@ -14,7 +14,7 @@
 . /etc/lsb-release
 
 # Supported distributions
-dists="maverick natty oneiric precise"
+dists="maverick natty oneiric precise "
 
 a_flag=            # automatic flag - only update if repo was updated
 c_flag=            # xcat-core (trunk-delvel) path
@@ -52,7 +52,7 @@ do
 done
 shift $(($OPTIND - 1))
 
-if [ -z "$c_flag" ]
+if [ -z "$c_flag" -a -z "$d_flag" ]
 then
     printf "Usage: %s -c <core_trunk_path> [-d <dep_trunk_path>] { -l <local-repo_path> | [-u <gsa_id> -p <gsa_passwd>] } [-a]\n" $(basename $0) >&2
     echo "-a        Automatic: update only if there's any update on repo"
@@ -112,7 +112,7 @@ then
 else
     update_core=1
 fi
-if [ "$update_core" ]
+if [ "$c_flag" -a "$update_core" ]
 then
     echo "###############################"
     echo "# Building xcat-core packages #"
