@@ -43,12 +43,6 @@ do
 done
 shift $(($OPTIND - 1))
 
-if [ -z "$c_flag" ]
-then
-    printf "Usage: %s -c <core_trunk_path> [-d <dep_trunk_path>] -l <local-repo_path> [-a]\n" $(basename $0) >&2
-    echo "-a        Automatic: update only if there's any update on repo"
-    exit 2
-fi
 if [ ! -d $xcat_core_path ]
 then
     printf "%s: No such directory\n" "$xcat_core_path" >&2
@@ -89,7 +83,7 @@ then
 else
     update_core=1
 fi
-if [ "$update_core" ]
+if [ "$c_flag" -a "$update_core" ]
 then
     echo "###############################"
     echo "# Building xcat-core packages #"
