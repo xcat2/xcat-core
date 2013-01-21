@@ -819,7 +819,7 @@ sub kit_buildtar
 
     # build the tarfile
     my $extpkgs = '';
-    if ($::HAVE_EXTERNAL_PKG or defined($::NON_NATIVE_PKG)) { $extpkgs = '.NEED_PRODUCT_PKGS'; }
+    if ($::HAVE_EXTERNAL_PKG or $::HAVE_NON_NATIVE_PKGS) { $extpkgs = '.NEED_PRODUCT_PKGS'; }
     my $kitname = $::bldkit_config->{kit}{entries}[0]->{kitname};
     my $tarfile = $::build_dir."/".$kitname.$extpkgs.".tar.bz2";
     if ( system("cd $::build_dir; tar -cjhf $tarfile $kitname/*") ) {
@@ -1737,6 +1737,7 @@ sub build_kitcomp
         }
         if ( !$::NON_NATIVE_PKGS->{$comp->{kitcompname}}{$kcmetaname} ) {
             $cmd = "cd $tmpdir/..;mv $comp->{kitcompname} $comp->{basename}; tar -czf $rpmbuild_dir/SOURCES/$comp->{basename}.tar.gz $comp->{basename};mv $comp->{basename} $comp->{kitcompname}";   
+            $::HAVE_NON_NATIVE_PKGS = 1;
             if ( system($cmd) ) {
                 print "Error creating tarfile $rpmbuild_dir/SOURCES/$comp->{kitreponame}-$comp->{kitcompname}.tar from $sourcedir/*";
                 return 1;
