@@ -21,6 +21,9 @@ NIM resolv_conf resource will be created and allocated to the nodes.
 
 The "domain" and "nameservers" attributes can be set in either the xCAT "network" definition used by the nodes or in the xCAT cluster "site" definition. The setting in the "network" definition will take priority.
 
+The "search" field of the resolv.conf file will contain a list all the domains
+listed in the xCAT network definitions and the xCAT site definiton.
+
 The "nameservers" value can either be set to a specific IP address or the "<xcatmaster>" key word.  The "<xcatmaster>" key word means that the value of the "xcatmaster" attribute of the node definition will be used in the /etc/resolv.conf file.  (I.e.  The name of the install server as known by the node.)
 
 You can set the "domain" and "nameservers" attributes by using the B<chdef> command.  For example:
