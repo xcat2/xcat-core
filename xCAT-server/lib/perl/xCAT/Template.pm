@@ -307,7 +307,10 @@ sub windows_join_data {
 	#we are still here, meaning configuration has a domain and activedirectory set, probably want to join..
 	#TODO: provide a per-node 'disable' so that non-AD could be mixed into a nominally AD environment
 	my $adinfo = machinepassword(wantref=>1); #TODO: needs rearranging in non prejoin case
-	my $prejoin =1; #todo: variant without prejoin for TLS-free
+	my $prejoin =1; 
+	if (defined $::XCATSITEVALS{prejoinactivedirectory} and not  $::XCATSITEVALS{prejoinactivedirectory} ) {
+		$prejoin = 0;
+	}
 	my $componentxml = '<component name="Microsoft-Windows-UnattendedJoin" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'."\n<Identification>\n<JoinDomain>".$adinfo->{domain}."</JoinDomain>\n";
 	if ($adinfo->{ou}) {
 		$componentxml .= "<MachineObjectOU>".$adinfo->{ou}."</MachineObjectOU>\n";

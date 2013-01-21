@@ -61,7 +61,7 @@ statelite => {
 #seriously evaluate wider support of multi-domain environments, will leave them 
 #commented rather than tempt people to try with an expectation that it could work.
 domain => {
-    cols => [qw(node ou comments disable)],
+    cols => [qw(node ou authdomain comments disable)],
     keys => ['node'],
     table_desc => 'Mapping of nodes to domain attributes',
     descriptions => {
@@ -69,6 +69,7 @@ domain => {
 #        domain => 'The name of the domain it is a member of, such as "example.com".  Defaults to domain value from the site table',
 # the above column is unimplemented by anything, so leave it out for this pass
         ou => 'For an LDAP described machine account (i.e. Active Directory), the orginaztional unit to place the system.  If not set, defaults to cn=Computers,dc=your,dc=domain',
+	authdomain => 'If a node should participate in an AD domain or Kerberos realm distinct from domain indicated in site, this field can be used to specify that',
 		comments => 'Any user-written notes.',
 		disable => "Set to 'yes' or '1' to comment out this row.",      
 	},
