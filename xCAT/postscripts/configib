@@ -112,7 +112,6 @@ fi
 #clean up existing ib nic configrations
 if [ $PLTFRM == "Linux" ]
 then
-
     if [ -f /etc/redhat-release ]
     then
         OS_name="redhat"
@@ -131,35 +130,18 @@ then
     else
          dir="/etc/sysconfig/network-scripts"
     fi
-    `rm -f $dir/ifcfg-ib*`
+    for nic in `echo "$NIC_IBNICS" | tr "," "\n"`
+    do     
+	`rm -f $dir/ifcfg-$nic`
+    done
 else
-    loop_number=`lsdev | grep "IP over Infiniband Network Interface" | wc -l`
-
-    num=0
-    while [ $num -lt $loop_number ]
-    do
-	if [ "$portnum" == "1" ]; then
-            `rmdev -d -l ib$num >/dev/null 2>&1`
-            n=`expr $num % 2`
-            if [ $n == 1 ]
-            then
-		mlnum=`expr $num / 2`
-		`rmdev -d -l ml$mlnum >/dev/null 2>&1`
-            fi
-	else
-            num0=`expr $num \* 2`
-            num1=`expr $num0 + 1`
-            `rmdev -d -l ib$num0 >/dev/null 2>&1`
-            `rmdev -d -l ib$num1 >/dev/null 2>&1`
-            `rmdev -d -l ml$num >/dev/null 2>&1`
-	fi
-        num=`expr $num + 1`
+    for nic in `echo "$NIC_IBNICS" | tr "," "\n"`
+    do     
+	`rmdev -d -l $nic >/dev/null 2>&1`
     done
 fi
 
 
-
-HOST=`hostname -s`
 goodnics=""
 for nic in `echo "$NIC_IBNICS" | tr "," "\n"`
 do 
