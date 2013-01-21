@@ -44,7 +44,7 @@ ALLBUILD="perl-xCAT xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-te
 ZVMBUILD="perl-xCAT xCAT-server xCAT-UI"
 ZVMLINK="xCAT-client xCAT xCATsn"
 PCMBUILD="xCAT"
-PCMLINK="perl-xCAT xCAT-client xCAT-server xCAT-buildkit xCAT-genesis-scripts"
+PCMLINK="perl-xCAT xCAT-client xCAT-server xCAT-buildkit xCAT-genesis-scripts-x86_64"
 # Note: for FSM, the FlexCAT rpm is built separately from gsa/git
 FSMBUILD="perl-xCAT xCAT-client xCAT-server"
 FSMLINK=""
