@@ -616,7 +616,7 @@ sub tabdb
    
    if( %::GLOBAL_TAB_HASH && defined( $::GLOBAL_TAB_HASH{$table}) && defined( $::GLOBAL_TAB_HASH{$table}{$key}) ) {
         if( defined($::GLOBAL_TAB_HASH{$table}{$key}{$field}) ) {
-             return $::GLOBAL_TAB_HASH{$table}{$key}{$field};
+             return "'".$::GLOBAL_TAB_HASH{$table}{$key}{$field}."'";
         } else {
              my $msg;
              if( $field !~ /^(routenames)$/) {
@@ -1141,7 +1141,7 @@ sub getAllAttribsFromSiteTab {
         if ($attribute eq "MASTER")
         {
             $masterset = 1;
-            $result .= "SITEMASTER=" . $value . "\n";
+            $result .= "SITEMASTER='" . $value . "'\n";
             $result .= "export SITEMASTER\n";
            
             #if noderes.master for each node exists, the following value will be replaced.
@@ -1168,9 +1168,9 @@ sub enablesshbetweennodes
 
    my $enablessh=xCAT::TableUtils->enablessh($node); 
    if ($enablessh == 1) {
-       $result = "YES";
+       $result = "'YES'";
    } else {
-       $result = "NO";
+       $result = "'NO'";
    }      
    
    return $result;
@@ -1346,7 +1346,7 @@ sub getMonItems
     my %mon_conf = xCAT_monitoring::monitorctrl->getNodeConfData($node);
     foreach (keys(%mon_conf))
     {
-        $result .= "$_=" . $mon_conf{$_} . "\n";
+        $result .= "$_='" . $mon_conf{$_} . "'\n";
         $result .= "export $_\n";
     }
 
@@ -1408,7 +1408,7 @@ sub getImageitems_for_node
                 $ospkglist = $ref1->{'pkglist'};
                 if ($ref1->{'pkgdir'})
                 {
-                    $result .= "OSPKGDIR=" . $ref1->{'pkgdir'} . "\n";
+                    $result .= "OSPKGDIR='" . $ref1->{'pkgdir'} . "'\n";
                     $result .= "export OSPKGDIR\n";
                 }
             }
