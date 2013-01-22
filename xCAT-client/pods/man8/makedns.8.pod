@@ -12,19 +12,23 @@ B<makedns> [-e|--external] [I<-d>|I<--delete> I<noderange>]
 
 =head1 DESCRIPTION
 
-B<makedns> configures a DNS server on the local machine from the /etc/hosts file entries if no I<noderange> specified.  It also uses the following
-attributes set in the B<site> table as default values:  B<domain>, B<forwarders>, B<nameservers>.
-The B<net> and B<mask> attributes in the B<networks> table will also be used.  Only entries in
-/etc/hosts or the hosts specified by I<noderange> that are part of a network listed in the B<networks> table will be added to DNS.
+B<makedns> configures a DNS server on the system you run it on, which is typically the xCAT management node.
 
-B<makedns> can only handle hostnames from a single domain, normally a private domain just for the cluster.  The
-typical cluster set up is for site.domain to be set to the cluster domain, site.nameservers to be set to the
-cluster-facing IP address of the management node, and site.forwarders to be set to the IP address of one or more
-nameservers at your site that can resolve names outside of your cluster.  With this set up, all nodes ask the
-management node to resolve names, and if it is a name that the MN DNS does not know about, it will ask the outside
-world.
+The list of nodes to include comes from either the B<noderange> provided on the command line or the entries in the local /etc/hosts files. 
 
-By default, B<makedns> sets up named service and updates the DNS records on the mamagement node, but if -e flag is specified, it also has the flexibility to update the DNS records to an external DNS server which is listed in the /etc/resolv.conf on the management node if this external DNS server can recognize xcat key as authentication.
+There are several bits of information that must be included in the xCAT database before running this command.
+
+You must set the B<forwarders> attributes in the xCAT B<site> definition. 
+
+The B<forwarders> value should be set to the IP address of one or more nameservers at your site that can resolve names outside of your cluster.  With this set up, all nodes ask the local nameserver to resolve names, and if it is a name that the MN DNS does not know about, it will try the forwarder names.
+
+An xCAT B<network> definition must be defined for each network used in the cluster.  The B<net> and B<mask> attributes will be used by the B<makedns> command.
+
+A network B<domain> and B<nameservers> values must be provided either in the B<network> definiton corresponding to the node or in the B<site> definition.
+
+Only entries in /etc/hosts or the hosts specified by B<noderange> that have a corresponding xCAT network definition will be added to DNS.
+
+By default, B<makedns> sets up the B<named> service and updates the DNS records on the local system (mamagement node). If the -e flag is specified, it will also update the DNS records on any external DNS server that is listed in the /etc/resolv.conf on the management node. (Assuming the external DNS server can recognize the xCAT key as authentication.)
 
 For more information on Cluster Name Resolution:
 https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Cluster_Name_Resolution
