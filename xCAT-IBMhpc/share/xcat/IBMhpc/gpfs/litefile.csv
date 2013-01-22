@@ -1,4 +1,4 @@
 #image,file,options,comments,disable
-"ALL","/var/mmfs/","persistent","for GPFS",
+"ALL","/var/mmfs/","tmpfs","for GPFS",
 "ALL","/var/adm/ras/","persistent","for GPFS",
 "ALL","/gpfs/",,"for GPFS",
