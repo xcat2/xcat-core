@@ -81,10 +81,13 @@ sub include_file
 sub get_package_names {
    my $plist_file_list=shift;
    my %pkgnames=();
-   my @tmp_array=();
 
    my @plist_file_names = split ',', $plist_file_list;
    foreach my $plist_file_name ( @plist_file_names ) {
+
+       # this variable needs to be cleaned when loop the pkglist files
+       my @tmp_array=();
+
        if ($plist_file_name && -r $plist_file_name) {
            my $pkgfile;
            open($pkgfile,"<","$plist_file_name");
