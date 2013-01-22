@@ -137,7 +137,7 @@ for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://|grep -v
 		fi
 	fi
 	fi
-	#echo "<mac>$DRIVER|$dev|$MAC|$ADDRESS</mac>" >> /tmp/discopacket
+	echo "<mac>$DRIVER|$dev|$MAC|$ADDRESS</mac>" >> /tmp/discopacket
 	echo "<nic>" >> /tmp/discopacket
 	echo "	<devname>$dev</devname>" >> /tmp/discopacket
 	echo "	<driver>$DRIVER</driver>" >> /tmp/discopacket
