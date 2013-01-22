@@ -1603,7 +1603,7 @@ sub validate_node_entry{
             # Check if this chassis is CMM. If it is, must specify slotid
             if (exists $allcmmchassis{$node_entry{$_}}){
                 if (not exists $node_entry{"slotid"}){
-                    $errmsg .= "Specified CMM Chassis must be used with sloid";
+                    $errmsg .= "Specified CMM Chassis must be used with slotid";
                 }
             }else {
                 # If the specific chassis is not CMM chassis, but network is fsp
