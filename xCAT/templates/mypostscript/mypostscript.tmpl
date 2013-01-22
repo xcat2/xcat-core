@@ -5,22 +5,18 @@
 
 ## end of all attributes from the site table
 
-## One variable:
-## There is a complex loglic to get the value of variable, and 
-## if there is one subroutine in one module, 
-## mark it as the following syntax.
 
 ENABLESSHBETWEENNODES=#Subroutine:xCAT::Template::enablesshbetweennodes:$NODE#
 export ENABLESSHBETWEENNODES
 
-## tabdump(<TABLENAME>) is used to get all the information in the <TABLENAME> table 
-## The <TABLENAME> only could be non-"node key" table and two keys table, such as networks, passwd.
-## And <TABLENAME> also couldn't be log related tables.
-## The site table is used so frequent that the <TABLENAME> couldn't be the site table.
-## And if the key is the node, you should use #TABLE...# instead of tabdump().
-## We may put special characters in the comments attribute. 
-## So the comments attribute will be put as the last in the list,
-## and the parsing should be more carefull.   
+## tabdump(<TABLENAME>) is used to get all the information 
+## in the <TABLENAME> table 
+## The <TABLENAME> should only be non-"node key" table
+## and two keys table, such as networks, passwd.
+## <TABLENAME> should not be site, auditlog or eventlog.
+## if the key in the table is a node,
+##  you should use #TABLE...# instead of tabdump(). See #TABLE below.
+## tabdump (networks)
 tabdump(networks)
 
 NODE=$NODE
@@ -40,23 +36,11 @@ export MASTER
 
 NODEROUTENAMES=#TABLE:noderes:$NODE:routenames#
 export NODEROUTENAMES
-## examples:
-## NFSSERVER=9.114.34.108
-## export NFSSERVER
-## INSTALLNIC=mac
-## export INSTALLNIC
-## PRIMARYNIC=mac
-## export PRIMARYNIC
-
-## The number of the variables is uncertain. In some case, it will be blank.
-## Complex logic
-## The syntax will be #FLAG#.
 #ROUTES_VARS_EXPORT#
 
-## The details will be as follows or blank.
-## NODEROUTENAMES=$NODE_routenames
-## export NODEROUTENAMES
-## ...
+## This is the syntax to get the value of one attribute from the
+## <tablename> and its key is $NODE.
+## It doesn't support the cases where the table has 2 keys.
 
 ## osver, arch, profile export
 OSVER=#TABLE:nodetype:$NODE:os#
@@ -68,6 +52,7 @@ export PROFILE
 PROVMETHOD=#TABLE:nodetype:$NODE:provmethod#
 export PROVMETHOD
 
+## add current directory to the path
 
 PATH=`dirname $0`:$PATH
 export PATH
@@ -84,47 +69,25 @@ export NTYPE
 MACADDRESS=#TABLE:mac:$NODE:mac#
 export MACADDRESS
 
-## vlan related items. It may not be configured by the users. 
+## vlan related items. vlan may not be configured. 
 #VLAN_VARS_EXPORT#
 
-## the details of VLAN_VARS_EXPORT will be looked like:
-## VMNODE='YES'
-## export VMNODE
-## VLANID=vlan1...
-## export VLANID 
-## VLANHOSTNAME=..
-## ..
 
-## get monitoring server and other configuration data for monitoring setup on nodes
+## get monitoring server and other configuration data for monitoring setup on nodes. This may not be configured. 
 #MONITORING_VARS_EXPORT#
 
-## the details will be looked like as follows
-## MONSERVER=9.114.34.108
-## export MONSERVER
-## MONMASTER=9.114.34.108
-## export MONMASTER
 
 ## get the osimage related variables, such as ospkgdir, ospkgs ...
 #OSIMAGE_VARS_EXPORT#
-## examples:
-## OSPKGDIR=/install/rhels6.2/ppc64
-## export OSPKGDIR
-## OSPKGS='bash,nfs-utils,openssl,dhclient,kernel,openssh-server,openssh-clients,busybox,wget,rsyslog,dash,vim-minimal,ntp,rsyslog,rpm,rsync,ppc64-utils,iputils,dracut,dracut-network,e2fsprogs,bc,lsvpd,irqbalance,procps,yum'
-## export OSPKGS
 
 
 
 ## get the diskless networks information. There may be no information.
 #NETWORK_FOR_DISKLESS_EXPORT#
 
-## examples of NETWORK_FOR_DISKLESS_EXPORT
-## the details will be looked like:
-## NETMASK=255.255.255.0
-## export NETMASK
-## GATEWAY=9.114.34.108
-## 
 
-# NIC related attributes for the node for confignics postscript
+## NIC related attributes for the node for confignics postscript
+## There may be no information
 NICNODE=#TABLE:nics:$NODE:node#
 export NICNODE
 
@@ -148,18 +111,18 @@ export NICNETWORKS
 
 
 ##
-## Notice:  The following flag postscripts-start-here could not be deleted from the template!!!
+##The line postscripts-start-here must not be deleted. 
 # postscripts-start-here
 
 #INCLUDE_POSTSCRIPTS_LIST#
 
-## Notice:  The following flag postscripts-end-here could not be deleted from the template!!!
+##The line postscripts-end-here must not be deleted. 
 # postscripts-end-here
 
-## Notice:  The following flag postbootscripts-start-here could not be deleted from the template!!!
+## The line postbootscripts-start-here must not be deleted. 
 # postbootscripts-start-here
 
 #INCLUDE_POSTBOOTSCRIPTS_LIST#
 
-## Notice:  The following flag postbootscripts-end-here could not be deleted from the template!!!
+## The line postbootscripts-end-here must not be deleted. 
 # postbootscripts-end-here
