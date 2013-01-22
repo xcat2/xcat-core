@@ -2,6 +2,7 @@ Summary: Kit <<<INSERT_kitbasename_HERE>>> Component <<<INSERT_kitcomponent_base
 Name: <<<INSERT_kitcomponent_basename_HERE>>>
 Version: <<<INSERT_kitcomponent_version_HERE>>>
 Release: <<<INSERT_kitcomponent_release_HERE>>>
+Group: Applications/System
 License: EPL
 BuildArch: noarch
 Requires:   <<<INSERT_kitcomponent_ospkgdeps_HERE>>>,<<<INSERT_kitcomponent_kitpkgdeps_HERE>>>,<<<INSERT_kitcomponent_kitcompdeps_HERE>>>
