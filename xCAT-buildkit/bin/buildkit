@@ -1737,7 +1737,6 @@ sub build_kitcomp
         }
         if ( !$::NON_NATIVE_PKGS->{$comp->{kitcompname}}{$kcmetaname} ) {
             $cmd = "cd $tmpdir/..;mv $comp->{kitcompname} $comp->{basename}; tar -czf $rpmbuild_dir/SOURCES/$comp->{basename}.tar.gz $comp->{basename};mv $comp->{basename} $comp->{kitcompname}";   
-            $::HAVE_NON_NATIVE_PKGS = 1;
             if ( system($cmd) ) {
                 print "Error creating tarfile $rpmbuild_dir/SOURCES/$comp->{kitreponame}-$comp->{kitcompname}.tar from $sourcedir/*";
                 return 1;
@@ -1992,6 +1991,7 @@ sub create_kitconf
         foreach my $pkgfile (split(/,/, $kc->{non_native_pkgs})) {
           my ($key,$value) = split /:/,$pkgfile;
           if ("$key" =~ /EXTERNALPKGS/) {
+            $::HAVE_NON_NATIVE_PKGS = 1;
             my %current_entry;
             $current_entry{filename} = $value;
             $current_entry{kitcompname} = $kc->{kitcompname};

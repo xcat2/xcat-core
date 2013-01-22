@@ -33,5 +33,27 @@ fi
 # POE requires rsh to be running
   /bin/sed -i 's/disable.*/disable = no/g'  /etc/xinetd.d/rsh
   if [ -f "/proc/cmdline" ]; then
+     chkconfig xinetd on
      service xinetd restart
   fi
+
+#max locked memory
+if ! grep "max locked memory" /etc/security/limits.conf >/dev/null 2>&1 ; then
+    sed -i "/# End of file/d" /etc/security/limits.conf
+    echo "#max locked memory" >> /etc/security/limits.conf
+    echo "*               soft    memlock           unlimited" >> /etc/security/limits.conf
+    echo "*               hard    memlock           unlimited" >> /etc/security/limits.conf
+    echo "# End of file"  >> /etc/security/limits.conf
+fi
+
+#max nofile configuration
+if ! grep "max nofile" /etc/security/limits.conf >/dev/null 2>&1 ; then
+    sed -i "/# End of file/d" /etc/security/limits.conf
+    echo "#max nofile" >> /etc/security/limits.conf
+    echo "*               soft    nofile           4096" >> /etc/security/limits.conf
+    echo "*               hard    nofile           4096" >> /etc/security/limits.conf
+    echo "# End of file"  >> /etc/security/limits.conf
+fi
+
+
+

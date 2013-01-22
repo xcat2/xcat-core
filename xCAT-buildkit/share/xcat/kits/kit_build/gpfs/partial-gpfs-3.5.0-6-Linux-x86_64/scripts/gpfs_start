@@ -7,6 +7,5 @@
 # If you have any special network dependencies, you may want to add code
 # to check them first
 
-/usr/lpp/mmfs/bin/mmsdrrestore
 /usr/lpp/mmfs/bin/mmstartup
 
