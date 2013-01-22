@@ -343,7 +343,6 @@ if [ $PLTFRM == "Linux" ]
 then
 
     /sbin/service $ib_driver restart
-    sleep 10
     for nic in `echo "$goodnics" | tr "," "\n"`
     do     
         sleep 5
