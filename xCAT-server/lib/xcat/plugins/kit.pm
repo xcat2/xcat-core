@@ -915,7 +915,7 @@ sub addkit
 
         if($rc){
             my %rsp;
-            push@{ $rsp{data} }, "Failed to extract Kit $kit, (Maybe there was no space left?";
+            push@{ $rsp{data} }, "Failed to extract Kit $kit, (Maybe there was no space left?)";
             xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
