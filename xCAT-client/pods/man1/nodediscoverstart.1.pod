@@ -1,20 +1,20 @@
 =head1 NAME
 
-B<nodediscoverstart> - Start profiled nodes discovery.
+B<nodediscoverstart> - starts the node discovery process
 
 =head1 SYNOPSIS
 
-B<nodediscoverstart> [-h| --help │ -v │ --version]
+B<nodediscoverstart> [-h| --help | -v | --version]
 
-B<nodediscoverstart> networkprofile=<networkprofile> imageprofile=<imageprofile> hostnameformat=<hostnameformat> [hardwareprofile=<hardwareprofile>] [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>] [rank=rank]
+B<nodediscoverstart> networkprofile=<network-profile> imageprofile=<image-profile> hostnameformat=<nost-name-format> [hardwareprofile=<hardware-profile>] [groups=<node-groups>] [rack=<rack-name>] [chassis=<chassis-name>] [height=<rack-server-height>] [unit=<rack-server-unit-location>] [rank=rank-num]
 
 =head1 DESCRIPTION
 
-The B<nodediscoverstart> command starts profiled nodes discovery.
+The B<nodediscoverstart> command starts the node discovery process. All nodes discovered by this process will be associated with specified profiles and rack/chassis/unit locations.
 
-Once profiled nodes discovery started, admin can bootup nodes which want to be provisioned with PXE. These nodes will be able to discovered automatically. The nodes' settings like hostname and IP address will be assigned automatically according to specified profiles.
+You can PXE boot nodes that you want to provision. PXE booting nodes launches the node discovery process. During the node discovery process, nodes are discovered automatically. Node settings are assigned automatically according to the specified profiles
 
-After nodes discovered, the configuration files related with these nodes will be updated automatically. For example: /etc/hosts, dns configuration, dhcp configuration. And the kits node plugins will also be triggered automatically to update kit related configuration/services.
+After the nodes are discovered, their configuration files are updated automatically. Configuration files include the /etc/hosts service file, DNS configuration, and DHCP configuration. Kit plug-ins are automatically triggered to update kit related configurations and services.
 
 =head1 OPTIONS
 
@@ -26,58 +26,49 @@ B<-v|--version>
 
 Command Version.
 
-B<networkprofile=<networkprofile>>
+B<imageprofile=<image-profile>>
 
-The network profile name. If there is a group named "__NetworkProfile_netprofile", then "netprofile" is the network profile name. A network profile defines networks, nics, routes...etc for imported nodes.
+Sets the new image profile name used by the node, where <image-profile> is the new image profile.  An image profile defines the provisioning method, OS information, kit information, and provisioning parameters for a node. If the "__ImageProfile_imgprofile" group already exists in the nodehm table, then "imgprofile" is used as the image profile name.
 
-B<imageprofile=<imageprofile>>
+B<networkprofile=<network-profile>>
 
-The image profile name. If there is a group named "__ImageProfile_imgprofile", then "imgprofile" is the image profile name. A image profile defines provisioning method, os info, kit info, provisioning params...etc for imported nodes.
+Sets the new network profile name used by the node, where <network-profile> is the new network profile. A network profile defines the network, NIC, and routes for a node. If the "__NetworkProfile_netprofile" group already exists in the nodehm table, then "netprofile" is used as the network profile name.
 
-B<hardwareprofile=<hardwareprofile>>
+B<hardwareprofile=<hardware-profile>>
 
-The hardware profile name. If there is a group named "__HardwareProfile_hwprofile", then "hwprofile" is the hardware profile name. A harddware profile defines hardware management related info like: IPMI, HMC, CEC, CMM...etc for imported nodes.
+Sets the new hardware profile name used by the node, where <hardware-profile> is the new hardware management profile used by the node. If a "__HardwareProfile_hwprofile" group exists, then "hwprofile" is the hardware profile name. A hardware profile defines hardware management related information for imported nodes, including: IPMI, HMC, CEC, CMM.
 
-B<hostnameformat=<hostnameformat>>
+B<hostnameformat=<nost-name-format>>
 
-The hostname format for generating hostnames for nodes if the hostname for a node is specified as "__hostname__" in hostinfo file.
-Following hostname format types are supported:
+Sets the node name format for all nodes discovered, where <node-name-format> is a supported format. The two types of formats supported are prefix#NNNappendix and prefix#RRand#NNappendix, where wildcard #NNN and #NN are replaced by a system generated number that is based on the provisioning order. Wildcard #RR represents the rack number and stays constant.
 
-B<prefix#NNNappendix>
+For example, if the node name format is compute-#NN, the node name is generated as: compute-00, compute-01, ..., compute-99. If the node name format is blade#NNN-x64, the node name is generated as: blade001-x64, blade002-x64, ..., blade999-x64
 
-For example:
-    If hostname format is compute-#NN, then node's hostname will be generated automatically like: compute-00, compute-01, ...compute-99
-    If hostname format is blade#NNN-x64, then node's hostname will be generated automatically like: blade001-x64, blade002-x64, ..., blade999-x64
+For example, if the node name format is compute-#RR-#NN and the rack number is 2, the node name is generated as: compute-02-00, compute-02-01, ..., compute-02-99. If node name format is node-#NN-in-#RR and rack number is 1, the node name is generated as: node-00-in-01, node-01-in-01, ..., node-99-in-01
 
-B<prefix#RRand#NNappendix>
+B<groups=<node-groups>>
 
-For example:
-    If hostname format is compute-#RR-#NN, then nodes which placed in a rack which rack number is 2 will be generated with hostnames like: compute-02-00, compute-02-01, ..., compute-02-99. And nodes which placed in another rack wich rack number is 5 will be generated with hostnames like: compute-05-00, compute-05-01, ..., compute-05-99.
-    If hostname format is node-#NN-in-#RR, then hostnames for nodes in rack with rack number 1 will be: node-00-in-01, node-01-in-01, ..., node-99-in-01. And hostnames for nodes in rack with rack number 2 will be: node-00-in-02, node-01-in-02, ..., node-99-in-02.
+Sets the node groups that the imported node belongs to, where <node-group> is a comma-separated list of node groups.
 
-B<groups=<groups>>
+B<rack=<rack-name>> 
 
-The groups which the imported nodes will belong to.
-
-B<rack=<rack name>> 
-
-node location info. Specify the rack name which this node will be placed into. 
+Sets the rack name, where <rack-name> is the rack the node is located on or placed into.
  
-B<chasiss=<chassis name>>
+B<chasiss=<chassis-name>>
 
-node location info, for blade(or PureFlex) only. Specify the chasiss name which this blade will be placed into. This item can not be specified together with rack.
+Sets the chassis name, where <chassis-name> is the chassis that the Blade server or PureFlex sysstem is located. This option is used for the Blade server and PureFlex system only. You cannot specify this option with the rack option.
 
-B<height=<chassis name>>
+B<height=<rack-server-height>>
 
-node location info, for rack server only. Specify the server height number, in U. This item must be specified together with rack. If not specified, the default value is 1.
+Sets the height of a rack server, where <rack-server-height> is the server height. You must specify the this option with the rack option. If the rack option is not specified, the default value is 1.
 
-B<unit=<unit name>>
+B<unit=<rack-server-unit-location>>
 
-node location info, for rack server only. Specify the node's start unit number in rack, in U. This item must be specified together with rack. If not specified, the default value is 1.
+Sets the start unit value for the node, where <rack-server-unit-location> is the location of the starting rack. This option is for a rack server only. You must specify this option with the rack option. If the unit option is not specified, the default value is 1
 
-B<rank=<rank>>
+B<rank=<rank-num>>
 
-Defines the start number in hostname format. If hostname format specified like "compute#NNN" and rank is set to 5, then hostnames of discovered nodes will be named as: "compute005, compute006, ..."
+Specifies the starting rank number that is used in the node name format, where <rack-num> is a valid integer between 0 and 254. This option must be specified with nodenameformat option. For example, if your node name format is compute-#RR-#NN. The rack's number is 2 and rank is specified as 5, the node name is generated as follows: compute-02-05, compute-02-06, ..., compute-02-99.
 
 =head1 RETURN VALUE
 
@@ -86,6 +77,8 @@ Defines the start number in hostname format. If hostname format specified like "
 1  An error has occured.
 
 =head1 EXAMPLES
+
+To discover nodes using the default_cn network profile and the rhels6.3_packaged image profile, use the following command:
 
 nodediscoverstart networkprofile=default_cn imageprofile=rhels6.3_packaged hostnameformat=compute#NNN
 

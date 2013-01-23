@@ -1,16 +1,16 @@
 =head1 NAME
 
-B<nodediscoverstop> - Stop profiled nodes auto discover.
+B<nodediscoverstop> - stops the node discovery process.
 
 =head1 SYNOPSIS
 
-B<nodediscoverstop> [-h| --help │ -v │ --version]
+B<nodediscoverstop> [-h| --help | -v | --version]
 
 B<nodediscoverstop> 
 
 =head1 DESCRIPTION
 
-The B<nodediscoverstop> command stops profiled nodes discover and the new booted nodes will not be discovered as profiled nodes any more.
+The B<nodediscoverstop> stops the node discovery process. The node discovery process can discover nodes automatically. If this command is issued, any newly booted nodes can not be discovered any more.
 
 =head1 OPTIONS
 

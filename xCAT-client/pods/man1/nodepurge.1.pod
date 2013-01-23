@@ -1,18 +1,18 @@
 =head1 NAME
 
-B<nodepurge> - Remove nodes from database, also remove them from system configuration.
+B<nodepurge> - Removes nodes.
 
 =head1 SYNOPSIS
 
-B<nodepurge> [-h| --help │ -v │ --version]
+B<nodepurge> [-h| --help | -v | --version]
 
 B<nodepurge> <noderange>
 
 =head1 DESCRIPTION
 
-The B<nodepurge> command removes nodes records from database, and also remove relative configuration automatically.
+The B<nodepurge> automatically removes all nodes from the database and any related configurations used by the node.
 
-After nodes removed, the configuration files related with these nodes will be updated automatically. For example: /etc/hosts, dns configuration, dhcp configuration. And the kits node plugins will also be triggered automatically to update kit related configuration/services.
+After the nodes are removed, the configuration files related to these nodes are automatically updated, including the following files: /etc/hosts, DNS, DHCP. Any kits that are used by the nodes are triggered to automatically update kit configuration and services.
 
 =head1 OPTIONS
 
@@ -35,6 +35,8 @@ The nodes to be removed.
 1  An error has occured.
 
 =head1 EXAMPLES
+
+To remove nodes compute-000 and compute-001, use the following command:
 
 nodepurge compute-000,compute-001
 

@@ -4,9 +4,9 @@ B<nodeimport> - Create profiled nodes by importing hostinfo file.
 
 =head1 SYNOPSIS
 
-B<nodeimport> [-h| --help │ -v │ --version]
+B<nodeimport> [-h| --help | -v | --version]
 
-B<nodeimport> file=<hostinfo file> networkprofile=<networkprofile> imageprofile=<imageprofile> hostnameformat=<hostnameformat> [hardwareprofile=<hardwareprofile>] [groups=<groups>]
+B<nodeimport> file=<nostinfo-filename> networkprofile=<network-profile> imageprofile=<image-profile> hostnameformat=<node-name-format> [hardwareprofile=<hardware-profile>] [groups=<node-groups>]
 
 =head1 DESCRIPTION
 
@@ -24,43 +24,33 @@ B<-v|--version>
 
 Command Version.
 
-B<file=<hostinfo file>>
+B<file=<nodeinfo-filename>>
 
-The full path of the hostinfo file.
+Specifies the node information file, where <nodeinfo-filename> is the full path and file name of the node information file.
 
-B<networkprofile=<networkprofile>>
+B<imageprofile=<image-profile>>
 
-The network profile name. If there is a group named "__NetworkProfile_netprofile", then "netprofile" is the network profile name. A network profile defines networks, nics, routes...etc for imported nodes.
+Sets the new image profile name used by the node, where <image-profile> is the new image profile.  An image profile defines the provisioning method, OS information, kit information, and provisioning parameters for a node. If the "__ImageProfile_imgprofile" group already exists in the nodehm table, then "imgprofile" is used as the image profile name.
 
-B<imageprofile=<imageprofile>>
+B<networkprofile=<network-profile>>
 
-The image profile name. If there is a group named "__ImageProfile_imgprofile", then "imgprofile" is the image profile name. A image profile defines provisioning method, os info, kit info, provisioning params...etc for imported nodes.
+Sets the new network profile name used by the node, where <network-profile> is the new network profile. A network profile defines the network, NIC, and routes for a node. If the "__NetworkProfile_netprofile" group already exists in the nodehm table, then "netprofile" is used as the network profile name.
 
-B<hardwareprofile=<hardwareprofile>>
+B<hardwareprofile=<hardware-profile>>
 
-The hardware profile name. If there is a group named "__HardwareProfile_hwprofile", then "hwprofile" is the hardware profile name. A harddware profile defines hardware management related info like: IPMI, HMC, CEC, CMM...etc for imported nodes.
+Sets the new hardware profile name used by the node, where <hardware-profile> is the new hardware management profile used by the node. If a "__HardwareProfile_hwprofile" group exists, then "hwprofile" is the hardware profile name. A hardware profile defines hardware management related information for imported nodes, including: IPMI, HMC, CEC, CMM.
 
-B<hostnameformat=<hostnameformat>>
+B<hostnameformat=<nost-name-format>>
 
-The hostname format for generating hostnames for nodes if the hostname for a node is specified as "__hostname__" in hostinfo file.
-Following hostname format types are supported:
+Sets the node name format for all nodes discovered, where <node-name-format> is a supported format. The two types of formats supported are prefix#NNNappendix and prefix#RRand#NNappendix, where wildcard #NNN and #NN are replaced by a system generated number that is based on the provisioning order. Wildcard #RR represents the rack number and stays constant.
 
-B<prefix#NNNappendix>
+For example, if the node name format is compute-#NN, the node name is generated as: compute-00, compute-01, ... , compute-99. If the node name format is blade#NNN-x64, the node name is generated as: blade001-x64, blade002-x64, ... , blade999-x64
 
-For example: 
-    If hostname format is compute-#NN, then node's hostname will be generated automatically like: compute-00, compute-01, ...compute-99
-    If hostname format is blade#NNN-x64, then node's hostname will be generated automatically like: blade001-x64, blade002-x64, ..., blade999-x64
+For example, if the node name format is compute-#RR-#NN and the rack number is 2, the node name is generated as: compute-02-00, compute-02-01, ..., compute-02-99. If node name format is node-#NN-in-#RR and rack number is 1, the node name is generated as: node-00-in-01, node-01-in-01, ... , node-99-in-01
 
-B<prefix#RRand#NNappendix>
+B<groups=<node-groups>>
 
-For example:
-    If hostname format is compute-#RR-#NN, then nodes which placed in a rack which rack number is 2 will be generated with hostnames like: compute-02-00, compute-02-01, ..., compute-02-99. And nodes which placed in another rack wich rack number is 5 will be generated with hostnames like: compute-05-00, compute-05-01, ..., compute-05-99.
-    If hostname format is node-#NN-in-#RR, then hostnames for nodes in rack with rack number 1 will be: node-00-in-01, node-01-in-01, ..., node-99-in-01. And hostnames for nodes in rack with rack number 2 will be: node-00-in-02, node-01-in-02, ..., node-99-in-02.
-
-B<groups=<groups>>
-
-The groups which the imported nodes will belong to.
-
+Sets the node groups that the imported node belongs to, where <node-group> is a comma-separated list of node groups.
 
 =head1 RETURN VALUE
 
@@ -73,8 +63,10 @@ The groups which the imported nodes will belong to.
 
 =head1 EXAMPLES
 
-An example for importing profiled nodes.
-1. Run "tabdump nodegroups" to get all groups and find out which ones are avaiable profiles. Then run "lsdef -t group <groupname>" to get the detailed info for these profiles. like:
+To import nodes using a profile, follow the following steps:
+
+1. Find all node groups and profiles, run the following command "tabdump nodegroups". For detailed profile information run "lsdef -t group <groupname>". Example of detailed profile information:
+
   # tabdump nodegroup
   #groupname,grouptype,members,membergroups,wherevals,comments,disable
   "compute","static",,,,,
@@ -94,60 +86,80 @@ An example for importing profiled nodes.
       nictypes=eth0:Ethernet
       primarynic=eth0
 
-2. Prepare a hostinfo file looks like:
+2. Prepare a node information file. 
 
-# hostinfo begin
+  Example of a node information file, a blade and a rack server defined: 
+  # hostinfo begin
+  # This entry defines a blade.
+  __hostname__:
+     mac=b8:ac:6f:37:59:24
+     ip=192.168.1.20
+     chassis=chassis01
 
-__hostname__:
-   mac=b8:ac:6f:37:59:24
-   ip=192.168.1.20
-   chassis=chassis01
+  # This entry defines a rack server.
+  __hostname__:
+     mac=b8:ac:6f:37:59:25
+     ip=192.168.1.20
+     rack=rack01
+     height=1
+     unit=2
 
-__hostname__:
-   mac=b8:ac:6f:37:59:25
-   ip=192.168.1.20
-   rack=rack01
-   height=1
-   unit=2
+  # hostinfo end.
 
-# hostinfo end.
+  Another example of a node infomation file, a PureFlex X/P node defined:
+  # hostinfo begin
+  # To define a PureFlex P/X node, chassis and slot id must be specified.
+  # The chassis must be a PureFlex chassis.
+  __hostname__:
+     mac=b8:ac:6f:37:59:25
+     chassis=cmm01
+     slotid=1
+  # hostinfo end.
 
-Here, we are going to import 2 nodes, and about each line of this file:
-__hostname__:  - Mandatory item
-   Description: The hostname for the node. 
-       If you want to specify the hostname for this node, just write like: "compute-001:"
-       If you want the hostname auto generated from hostnameformat, just write like: "__hostname__:"
+The node information file includes the following items:
 
-mac=<mac str>  - Mandatory item
-  Description: Specify the node's provisioning nic's MAC address
+B<__hostname__:>  This is a mandatory item.
 
-ip=<ip str>  - Optional item
-   Description: Specify the node's provisioing IP address.
-                If not specify this item,  node's provisioning IP will be generated automatically according to NetworkProfile.
+Description: The name of the node, where __hostname__ is automatically generated by the node name format. You can also input a fixed node name, for example “compute-node”.
 
-rack=<rack name> - Optional item
-   Description: node location info. Specify the rack name which this node will be placed into.
-                If not specify this item, there will be no node location info set for this node.
-                this item must be specified together with height + unit.
- 
-chasiss=<chassis name> - Optional item
-   Description: node location info, for blade(or PureFlex) only. Specify the chasiss name which this blade will be placed into.
-                this item can not be specified together with rack.
+B<mac=<mac-address>>  This is a mandatory item.
 
-height=<chassis name> - Optional item
-   Description: node location info, for rack server only. Specify the server height number, in U.
-                this item must be specified together with rack and unit.
+Description: Specify the MAC address for the NIC used by the provisionging node, where <mac-address> is the NICs MAC address.
 
-unit=<unit name> - Optional item
-   Description: node location info, for rack server only. Specify the node's start unit number in rack, in U.
-                this item must be specified together with rack and height.
+B<slotid=<slot-id>>  This is a mandatory item while define a PureFlex node.
 
-3. Run nodeimport command:
+Description: The node position in the PureFlex Chassis.
+
+B<ip=<ip-address>> This is an optional item.
+
+Description: Specify the IP address used for provisioning a node, where <ip-address> is in the form xxx.xxx.xxx.xxx. If this item is not included, the IP address used to provision the node is generated automatically according to the Network Profile used by the node.
+
+B<rack=<rack-name>> This is an optional item. 
+
+Description: node location info. Specify the rack name which this node will be placed into. If not specify this item, there will be no node location info set for this node. this item must be specified together with height + unit.
+
+B<rack=<rack-name>> This is an optional item. 
+
+Description: node location info. Specify the rack name which this node will be placed into. If not specify this item, there will be no node location info set for this node. this item must be specified together with height + unit.
+
+B<chasiss=<chassis-name>> This is an optional item.
+
+Description: node location info, for blade(or PureFlex) only. Specify the chasiss name which this blade will be placed into. this item can not be specified together with rack.
+
+B<height=<chassis-height>> This is an optional item.
+
+Description: node location info, for rack server only. Specify the server height number, in U. this item must be specified together with rack and unit.
+
+B<unit=<rack-server-unit-location>> This is an optional item.
+
+Description: node location info, for rack server only. Specify the node's start unit number in rack, in U. this item must be specified together with rack and height.
+
+3. Import the nodes, by using the following commands. Note: If we want to import PureFlex X/P nodes, hardware profile must be set to a PureFlex hardware type.
   nodeimport file=/root/hostinfo.txt networkprofile=default_cn imageprofile=rhels6.3_packaged hostnameformat=compute-#NNN
 
-4. After node import succeeds, we'll get 2 nodes created, And node's configurations like dhcp, dns, /etc/hosts will be updated automatically too.
+4. After importing the nodes, the nodes are created and all configuration files used by the nodes are updated, including: /etc/hosts, DNS, DHCP.
 
-5. Reboot the nodes, they will be provisioned automatically.
+5. Reboot the nodes. After the nodes are booted they are provisioned automatically.
 
 =head1 SEE ALSO
 

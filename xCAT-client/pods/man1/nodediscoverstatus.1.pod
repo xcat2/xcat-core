@@ -1,16 +1,16 @@
 =head1 NAME
 
-B<nodediscoverstatus> -  Detect whether Profiled nodes discovery is running or not.
+B<nodediscoverstatus> - gets the node discovery process status 
 
 =head1 SYNOPSIS
 
-B<nodediscoverstatus> [-h| --help │ -v │ --version]
+B<nodediscoverstatus> [-h| --help | -v | --version]
 
 B<nodediscoverstatus> 
 
 =head1 DESCRIPTION
 
-The B<nodediscoverstatus> Detect whether Profiled nodes discovery is running or not.
+The B<nodediscoverstatus> command detects if the node discovery process is running.
 
 =head1 OPTIONS
 
@@ -29,6 +29,8 @@ Command Version.
 1  An error has occured.
 
 =head1 EXAMPLES
+
+To determine if there are some nodes discovered and the discovered nodes' status, enter the following command:
 
 nodediscoverstatus 
 

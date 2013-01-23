@@ -1,16 +1,16 @@
 =head1 NAME
 
-B<noderefresh> - Re-Call kit plugins for profiled nodes
+B<noderefresh> - Update nodes configurations by running associated kit plugins.
 
 =head1 SYNOPSIS
 
-B<noderefresh> [-h| --help │ -v │ --version]
+B<noderefresh> [-h| --help | -v | --version]
 
 B<noderefresh> <noderange>
 
 =head1 DESCRIPTION
 
-The B<noderefresh> command will just call kit plugins for profiled nodes, in-order to refresh node's related configurations/services.
+The B<noderefresh> command will update nodes settings, it will call all associated kit plug-in configurations and also services
 
 =head1 OPTIONS
 

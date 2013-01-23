@@ -1,22 +1,26 @@
 =head1 NAME
 
-B<nodechprofile> - Update node profiles for profiled nodes.
+B<nodechprofile> - updates a profile used by a node
 
 =head1 SYNOPSIS
 
-B<nodechprofile> [-h| --help │ -v │ --version]
+B<nodechprofile> [-h| --help | -v | --version]
 
-B<nodechprofile> <noderange> [imageprofile=<imageprofile>] [networkprofile=<networkprofile>] [hardwareprofile=<hardwareprofile>]
+B<nodechprofile> <noderange> [imageprofile=<image-profile>] [networkprofile=<network-profile>] [hardwareprofile=<hardware-profile>]
 
 =head1 DESCRIPTION
 
-The B<nodechprofile> command update following profiles for nodes: imageprofile, networkprofile and hardwareprofile. After profiles for nodes changed, the node's status will be changed to "defined", which means we must reinstall them.
+The B<nodechprofile> command updates the profiles used by a node, including: the image profile, network profile, and hardware management profile.
 
-Changing imageprofile will change node's os or provisioning related settings.
+If you update the image profile for a node, the operating system and provisioning settings for the node are updated.
 
-Changing networkprofile will change node's network settings. And, B<nodechprofile> will be able to update node's IP address automatically.
+If you update the network profile, the IP address and network settings for the node are updated.
 
-Changing hardwareprofile will change node's hardware settings: BMC, FSP...etc.
+If you update the hardware management profile, the hardware settings for the node are updated.
+
+After nodes' hardware profile or image profile are updated, the status for each node is changed to "defined". A node with a "defined" status must be reinstalled
+
+After nodes' network profile updated, the status for nodes is not changed. You'll need to run B<noderegenips> to re-generate the nodes' IP address and nodes' status may also be updated at this stage.
 
 =head1 OPTIONS
 
@@ -32,17 +36,17 @@ B<noderange>
 
 The nodes to be removed.
 
-B<imageprofile=<imageprofile>>
+B<imageprofile=<image-profile>>
 
-The new image profile name. If there is a group named "__ImageProfile_imgprofile", then "imgprofile" is the image profile name. A image profile defines provisioning method, os info, kit info, provisioning params...etc for nodes.
+Sets the new image profile name used by the node, where <image-profile> is the new image profile.  An image profile defines the provisioning method, OS information, kit information, and provisioning parameters for a node. If the "__ImageProfile_imgprofile" group already exists in the nodehm table, then "imgprofile" is used as the image profile name. 
 
-B<networkprofile=<networkprofile>>
+B<networkprofile=<network-profile>>
 
-The network profile name. If there is a group named "__NetworkProfile_netprofile", then "netprofile" is the network profile name. A network profile defines networks, nics, routes...etc for nodes.
+Sets the new network profile name used by the node, where <network-profile> is the new network profile. A network profile defines the network, NIC, and routes for a node. If the "__NetworkProfile_netprofile" group already exists in the nodehm table, then "netprofile" is used as the network profile name. 
 
-B<hardwareprofile=<hardwareprofile>>
+B<hardwareprofile=<hardware-profile>>
 
-The hardware profile name. If there is a group named "__HardwareProfile_hwprofile", then "hwprofile" is the hardware profile name. A harddware profile defines hardware management related info like: IPMI, HMC, CEC, CMM...etc for nodes.
+Sets the new hardware profile name used by the node, where <hardware-profile> is the new hardware management profile used by the node. If a "__HardwareProfile_hwprofile" group exists, then "hwprofile" is the hardware profile name. A hardware profile defines hardware management related information for imported nodes, including: IPMI, HMC, CEC, CMM.
 
 =head1 RETURN VALUE
 
@@ -52,7 +56,11 @@ The hardware profile name. If there is a group named "__HardwareProfile_hwprofil
 
 =head1 EXAMPLES
 
+To change the image profile to rhels6.3_packaged for compute nodes compute-000 and compute-001, use the following command:
+
 nodechprofile compute-000,compute-001 imageprofile=rhels6.3_packaged
+
+To change all of the profiles for compute node compute-000, enter the following command:
 
 nodechprofile compute-000 imageprofile=rhels6.3_packaged networkprofile=default_cn hardwareprofile=default_ipmi
 

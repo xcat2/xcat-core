@@ -1,18 +1,18 @@
 =head1 NAME
 
-B<nodechmac> - Update a profiled node's provisioning NIC's MAC address.
+B<nodechmac> - Updates the MAC address for a node.
 
 =head1 SYNOPSIS
 
-B<nodechmac> [-h| --help │ -v │ --version]
+B<nodechmac> [-h| --help | -v | --version]
 
-B<nodechmac> <node> mac=<mac>
+B<nodechmac> <node-name> mac=<mac-address>
 
 =head1 DESCRIPTION
 
-The B<nodechmac> command is for changing a node's provisioning NIC's MAC.
+The B<nodechmac> command changes the MAC address for provisioned node’s network interface.
 
-This command can be used for following use case: The hardware of a node has some problems and this node will be replaced with a new one. However, Admin wants to apply the old node's configurations to the new one. For example: keep the old hostname, network settings...etc.
+You can use this command to keep an existing node configuration. For example, if an existing node has hardware problems, the replacement node can use the old configurations. By using the nodechmac command, the node name and network settings of the old node can be used by the new node.
 
 =head1 OPTIONS
 
@@ -24,13 +24,13 @@ B<-v|--version>
 
 Command Version.
 
-B<node>
+B<node-name>
 
-The node name.
+Specifies the name of the node you want to update, where <node-name> is the node that is updated.
 
-B<mac=<mac>>
+B<mac=<mac-address>
 
-The provisioning NIC's MAC address of the new node.
+Sets the new MAC address for the NIC used by the provisioning node, where <mac-address> is the NICs new MAC address.
 
 =head1 RETURN VALUE
 
@@ -40,6 +40,7 @@ The provisioning NIC's MAC address of the new node.
 
 =head1 EXAMPLES
 
+You can update the MAC address for a node, by using the following command:
 nodechmac compute-000 mac=2F:3C:88:98:7E:01
 
 =head1 SEE ALSO

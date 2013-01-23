@@ -1,16 +1,16 @@
 =head1 NAME
 
-B<nodeaddunmged> - Create a un-managed node with hostname and ip address specified.
+B<nodeaddunmged> - Create a unmanaged node.
 
 =head1 SYNOPSIS
 
-B<nodeaddunmged> [-h| --help │ -v │ --version]
+B<nodeaddunmged> [-h| --help | -v | --version]
 
-B<nodeaddunmged> hostname=<hostname> ip=<ip>
+B<nodeaddunmged> hostname=<node-name> ip=<ip-address>
 
 =head1 DESCRIPTION
 
-The B<nodeaddunmged> command will add nodes into group __Unmanaged. And we just need to specify hostname and IP for this node.
+The B<nodeaddunmged> command adds an unmanaged node to the __Unmanaged group. You can specify the node name and IP address of the node.
 
 =head1 OPTIONS
 
@@ -22,13 +22,13 @@ B<-v|--version>
 
 Command Version.
 
-B<hostname=<hostname>>
+B<hostname=<node-name>>
 
-The hostname of the unmanaged node.
+Sets the name of the new unmanaged node, where <node-name> is the name of the node.
 
-B<ip=<ip>>
+B<ip=<ip-address>>
 
-The IP address of the unmanaged node.
+Sets the IP address of the unmanaged node, where <ip-address> is the IP address of the new node in the form xxx.xxx.xxx.xxx
 
 =head1 RETURN VALUE
 
@@ -38,6 +38,7 @@ The IP address of the unmanaged node.
 
 =head1 EXAMPLES
 
+To add an unmanaged node, use the following command:
 nodeaddunmged hostname=unmanaged01 ip=192.168.1.100
 
 =head1 SEE ALSO

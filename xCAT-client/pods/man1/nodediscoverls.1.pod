@@ -1,16 +1,16 @@
 =head1 NAME
 
-B<nodediscoverls> -  List all discovered profiled nodes
+B<nodediscoverls> -  List all discovered nodes
 
 =head1 SYNOPSIS
 
-B<nodediscoverls> [-h| --help │ -v │ --version]
+B<nodediscoverls> [-h| --help | -v | --version]
 
 B<nodediscoverls> 
 
 =head1 DESCRIPTION
 
-The B<nodediscoverls> List all discovered profiled nodes at current discover period.
+The B<nodediscoverls> command lists all discovered nodes that use a profile in the current node discovery process
 
 =head1 OPTIONS
 
@@ -29,6 +29,8 @@ Command Version.
 1  An error has occured.
 
 =head1 EXAMPLES
+
+You can get a list of all discovered nodes, by using the following command:
 
 nodediscoverls
 
