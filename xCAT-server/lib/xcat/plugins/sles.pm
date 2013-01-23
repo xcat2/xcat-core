@@ -107,13 +107,18 @@ sub mknetboot
         if ($ent && $ent->{provmethod}
             && (($ent->{provmethod} eq 'install') || ($ent->{provmethod} eq 'netboot') || ($ent->{provmethod} eq 'statelite')))
         {
-            $callback->(
-                        {
-                         warning => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated. They should continue to work in this release, but have not been tested as carefully, and some new functions are not available with these options.  For full function and support, use \"nodeset <noderange> osimage=<osimage_name>\" instead."],
-                        }
-                        );
-        # Do not print this warning message multiple times
-        last;
+            my @ents = xCAT::TableUtils->get_site_attribute("disablenodesetwarning");
+            my $site_ent = $ents[0];
+            if (!defined($site_ent) || ($site_ent =~ /no/i) || ($site_ent =~ /0/))
+            {
+                $callback->(
+                            {
+                             warning => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated. They should continue to work in this release, but have not been tested as carefully, and some new functions are not available with these options.  For full function and support, use \"nodeset <noderange> osimage=<osimage_name>\" instead."],
+                           }
+                            );
+                # Do not print this warning message multiple times
+                last;
+            }
         }
     }
     foreach my $node (@nodes)
@@ -717,13 +722,18 @@ sub mkinstall
         if ($ent && $ent->{provmethod}
             && (($ent->{provmethod} eq 'install') || ($ent->{provmethod} eq 'netboot') || ($ent->{provmethod} eq 'statelite')))
         {
-            $callback->(
-                        { 
-                         warning => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated. They should continue to work in this release, but have not been tested as carefully, and some new functions are not available with these options.  For full function and support, use \"nodeset <noderange> osimage=<osimage_name>\" instead."],
-                        }
-                        );
-        # Do not print this warning message multiple times
-        last;
+            my @ents = xCAT::TableUtils->get_site_attribute("disablenodesetwarning");
+            my $site_ent = $ents[0];
+            if (!defined($site_ent) || ($site_ent =~ /no/i) || ($site_ent =~ /0/))
+            {
+                $callback->(
+                           { 
+                             warning => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated. They should continue to work in this release, but have not been tested as carefully, and some new functions are not available with these options.  For full function and support, use \"nodeset <noderange> osimage=<osimage_name>\" instead."],
+                           }
+                           );
+                # Do not print this warning message multiple times
+                last;
+            }
         }
     }
 
