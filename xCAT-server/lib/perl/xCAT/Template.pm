@@ -859,16 +859,19 @@ sub subvars_for_mypostscript {
   my %dump_results;
   #First load input into memory..
   while (<$inh>) {
-      $t_inc.=$_;
+      my $line = $_;      
+      if ($line !~/^##/ ) {
+          $t_inc.=$line;
+      }
 
-      if( $_ =~ /#TABLE:([^:]+):([^:]+):([^#]+)#/ ) {
+      if( $line =~ /#TABLE:([^:]+):([^:]+):([^#]+)#/ ) {
            my $tabname=$1;
            my $key=$2;
            my $attrib = $3;
            $table{$tabname}{$key}{$attrib} = 1;
       }
-
-     if( $_ =~ /^tabdump\(([\w]+)\)/) {
+  
+     if( $line =~ /^tabdump\(([\w]+)\)/) {
            my $tabname = $1;
            if( $tabname !~ /^(auditlog|bootparams|chain|deps|domain|eventlog|firmware|hypervisor|iscsi|kvm_nodedata|mac|nics|ipmi|mp|ppc|ppcdirect|site|websrv|zvm|statelite|rack|hosts|prodkey|switch|node)/) {
                push @tabs, $tabname;
