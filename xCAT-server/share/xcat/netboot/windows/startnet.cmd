@@ -8,10 +8,11 @@ echo [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\TCPIP6\Parameters] >>
 echo "Dhcpv6DUID"=hex:00,04,%uuid:~0,2%,%uuid:~2,2%,%uuid:~4,2%,%uuid:~6,2%,%uuid:~9,2%,%uuid:~11,2%,%uuid:~14,2%,%uuid:~16,2%,%uuid:~19,2%,%uuid:~21,2%,%uuid:~24,2%,%uuid:~26,2%,%uuid:~28,2%,%uuid:~30,2%,%uuid:~32,2%,%uuid:~34,2% >> duiduuid.reg
 echo. >> duiduuid.reg
 regedit /s duiduuid.reg
-for /f "delims=" %a in ('wmic cdrom get drive ^| find ":") do @set optdrive=%a
-if [%optdrive%] == [] GOTO :netboot
-if not exist %optdrive%:\dvdboot.cmd GOTO :netboot
-%optdrive%:\dvdboot.cmd
+for /f "delims=" %%a in ('wmic cdrom get drive ^| find ":"') do set optdrive=%%a
+if not defined optdrive GOTO :netboot
+set optdrive=%optdrive: =%
+if not exist %optdrive%\dvdboot.cmd GOTO :netboot
+call %optdrive%\dvdboot.cmd
 goto :end
 :netboot
 wpeinit

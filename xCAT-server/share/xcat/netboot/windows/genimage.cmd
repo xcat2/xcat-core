@@ -57,8 +57,8 @@ copy %defdrive%\WinPE_%SUFFIX%\mount\Windows\Boot\EFI\bootmgfw.efi %defdrive%\Wi
 copy %defdrive%\WinPE_%SUFFIX%\mount\Windows\Boot\EFI\bootmgr.efi %defdrive%\WinPE_%SUFFIX%\media\Boot\bootmgr.efi
 copy %defdrive%\WinPE_%SUFFIX%\mount\Windows\Boot\PXE\bootmgr.exe %defdrive%\WinPE_%SUFFIX%\media\
 mkdir %defdrive%\WinPE_%SUFFIX%\media\dvd
-copy %oscdimg%\etfsboot.com %defdrive%\WinPE_%SUFFIX%\media\dvd
-copy %oscdimg%\efisys_noprompt.bin %defdrive%\WinPE_%SUFFIX%\media\dvd
+copy "%oscdimg%\etfsboot.com" %defdrive%\WinPE_%SUFFIX%\media\dvd
+copy "%oscdimg%\efisys_noprompt.bin" %defdrive%\WinPE_%SUFFIX%\media\dvd
 rem for /r %defdrive%\drivers %%d in (*.inf) do dism /image:%defdrive%\WinPE_%SUFFIX%\mount /add-driver /driver:%%d 
 if exist %defdrive%\drivers dism /image:%defdrive%\WinPE_%SUFFIX%\mount /add-driver /driver:%defdrive%\drivers /recurse
 dism /Unmount-Wim /commit /mountdir:%defdrive%\WinPE_%SUFFIX%\mount
