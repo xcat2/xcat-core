@@ -116,6 +116,9 @@ sub enumerate_lcds {
     } else {
        my @array =  split(/\n/, $data);
        foreach my $a (@array) {
+            if ($a !~ /:\s*\d/) {
+                next;
+            }
             my @t = split(/:/, $a);
             my $name = $t[0];
             $data = $t[1];
