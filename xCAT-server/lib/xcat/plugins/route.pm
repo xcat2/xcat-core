@@ -28,6 +28,15 @@ use Getopt::Long;
 use xCAT::NodeRange;
 use Data::Dumper;
 use xCAT::NodeRange;
+use IO::File;
+use File::Copy;
+use Sys::Hostname;
+
+
+my $xcat_config_start="# xCAT_CONFIG_START";
+my $xcat_config_end="# xCAT_CONFIG_END";
+
+
 
 1;
 
@@ -61,7 +70,6 @@ sub handled_commands
 #-------------------------------------------------------
 sub preprocess_request
 {
-
     my $request  = shift;
     my $callback = shift;
     my $sub_req  = shift;
@@ -399,7 +407,7 @@ sub process_makeroutes {
 
 	    if ($remote) { #to the nodes
 		my $nodes_tmp=$route_hash->{nodes};
-		print "nodes=@$nodes_tmp, remote=$remote, delete=$delete\n";
+		#print "nodes=@$nodes_tmp, remote=$remote, delete=$delete\n";
 		my $op="add";
 		if ($delete)  { $op="delete"; }
 		my $output = xCAT::Utils->runxcmd(
@@ -415,10 +423,10 @@ sub process_makeroutes {
 		$callback->($rsp);
 	    } else { #local on mn or sn
 		if ($delete)  {
-		    delete_route($callback, $route_hash->{net}, $route_hash->{mask}, $gw_ip, $gw_name);
+		    delete_route($callback, $route_hash->{net}, $route_hash->{mask}, $gw_ip, $gw_name, $route_hash->{ifname});
 		} 
 		else {
-		    set_route($callback, $route_hash->{net}, $route_hash->{mask}, $gw_ip, $gw_name);
+		    set_route($callback, $route_hash->{net}, $route_hash->{mask}, $gw_ip, $gw_name,$route_hash->{ifname});
 		}
 	    }
 	}
@@ -473,7 +481,6 @@ sub process_ipforward {
     } else {
 	xCAT::NetworkUtils->setup_ip_forwarding(1);
     }
-
 }
 
 
@@ -548,6 +555,11 @@ sub set_route {
     my $mask = shift;
     my $gw_ip = shift;
     my $gw=shift;
+    my $ifname=shift;
+
+    my $host=hostname();
+
+    #print "set_route get called\n";
 
     my $result;
     if (!route_exists($net, $mask, $gw_ip, $gw)) {
@@ -559,18 +571,60 @@ sub set_route {
 	    $cmd="route add -net $net -netmask $mask $gw_ip";
 	}
 	#print "cmd=$cmd\n";
+	my $rsp={};
+	$rsp->{data}->[0]= "$host: Adding temporary route: $cmd";
+	$callback->($rsp);
+
 	$result=`$cmd 2>&1`;
 	if ($? != 0) {
 	    my $rsp={};
-	    $rsp->{error}->[0]= "$cmd\nerror code=$?, result=$result\n";
+	    $rsp->{error}->[0]= "$host: $cmd\nerror code=$?, result=$result\n";
 	    $callback->($rsp);
-	    return 1;
-	} else {
-	    #TODO: set per permanent route
-	}
+	    #return 1;
+	} 
+    } else {
+	my $rsp={};
+	$rsp->{data}->[0]= "$host: The temporary route already exists for $net.";
+	$callback->($rsp);
     }
+
+    #handle persistent routes
+    if (xCAT::Utils->isLinux()) { #Linux
+	my $os = xCAT::Utils->osver();
+	#print "os=$os  $net, $mask, $gw_ip, $gw, $ifname\n";
+	if ($os =~ /sles/) { #sles
+	    addPersistentRoute_Sles($callback, $net, $mask, $gw_ip, $gw, $ifname);
+	} elsif ($os =~ /ubuntu/) { #ubuntu or Debian?
+	    #my $filename="/etc/network/interfaces";
+	    #my @output=getConfig($filename);
+	    #Example:
+	    #auto eth0
+	    #iface eth0 inet static
+	    #	address 192.168.1.2
+	    #	netmask 255.255.255.0
+	    #	gateway 192.168.1.254
+	    #	up route add -net 192.168.2.0 netmask 255.255.255.0 gw 192.168.2.1
+	    #	down route del -net 192.168.2.0 netmask 255.255.255.0 gw 192.168.2.1		   
+	    my $rsp={};
+	    $rsp->{data}->[0]= "$host: Adding persistent route on Ubuntu is not supported yet.";
+	    $callback->($rsp);
+	    
+	}
+	elsif ($os =~ /rh|fedora|centos/) { #RH, Ferdora, CentOS
+	    addPersistentRoute_RH($callback, $net, $mask, $gw_ip, $gw, $ifname);
+	} 	
+    } else { #AIX
+	# chdev -l inet0 -a route=net,-hopcount,0,,0,192.168.1.1
+	# chdev -l inet0 -a route=net, -hopcount,255.255.255.128,,,,,192.168.3.155,192.168.2.1
+	# lsattr -El inet0 -a route
+	my $rsp={};
+	$rsp->{data}->[0]= "$host: Adding persistent route on AIX is not supported yet.";
+	$callback->($rsp);
+    }
+    
     return 0;
 }
+
 
 # deletes the route with given parameters
 sub delete_route {
@@ -579,6 +633,11 @@ sub delete_route {
     my $mask = shift;
     my $gw_ip = shift;
     my $gw=shift;
+    my $ifname=shift;
+
+    my $host=hostname();
+
+    #print "delete_route get called\n";
 
     my $result;
     if (route_exists($net, $mask, $gw_ip, $gw)) {
@@ -590,17 +649,353 @@ sub delete_route {
 	    $cmd="route delete -net $net -netmask $mask $gw_ip";
 	}
 	#print "cmd=$cmd\n";
+	my $rsp={};
+	$rsp->{data}->[0]= "$host: Removin the temporary route: $cmd";
+	$callback->($rsp);
+
 	$result=`$cmd 2>&1`;
 	if ($? != 0) {
 	    my $rsp={};
-	    $rsp->{error}->[0]= "$cmd\nerror code=$?, result=$result\n";
+	    $rsp->{error}->[0]= "$host: $cmd\nerror code=$?, result=$result\n";
 	    $callback->($rsp);
-	    return 1;
-	} else {
-	    #TODO: delete route permanently
 	}
+    } else {
+	my $rsp={};
+	$rsp->{data}->[0]= "$host: The temporary route does not exist for $net.";
+	$callback->($rsp);
+
+    }
+
+    #handle persistent route
+    if (xCAT::Utils->isLinux()) { #Linux
+	my $os = xCAT::Utils->osver();
+	if ($os =~ /sles/) { #sles
+	    deletePersistentRoute_Sles($callback, $net, $mask, $gw_ip, $gw, $ifname);
+	} elsif ($os =~ /ubuntu/) { #ubuntu or Debian?
+	    #my $filename="/etc/network/interfaces";
+	    #my @output=getConfig($filename);
+	    #Example:
+	    #auto eth0
+	    #iface eth0 inet static
+	    #	address 192.168.1.2
+	    #	netmask 255.255.255.0
+	    #	gateway 192.168.1.254
+	    #	up route add -net 192.168.2.0 netmask 255.255.255.0 gw 192.168.2.1
+	    #	down route del -net 192.168.2.0 netmask 255.255.255.0 gw 192.168.2.1		   
+	    my $rsp={};
+	    $rsp->{data}->[0]= "$host: Removing persistent route on Ubuntu is not supported yet.";
+	    $callback->($rsp);
+	}
+	elsif ($os =~ /rh|fedora|centos/) { #RH, Ferdora 
+	    deletePersistentRoute_RH($callback, $net, $mask, $gw_ip, $gw, $ifname);
+	} 	
+    } else { #AIX
+	# chdev -l inet0 -a delroute=net,-hopcount,0,,0,192.168.1.1
+	# chdev -l inet0 -a delroute=net,-hopcount,255.255.255.128,,,,,192.168.3.128,192.168.2.1
+	my $rsp={};
+	$rsp->{data}->[0]= "$host: Removing persistent route on AIX is not supported yet.";
+	$callback->($rsp);
+    }
+
+    return 0;
+}
+
+
+#set the given route to the configuration file  
+sub setConfig {
+    my $filename=shift;
+    my $new_conf_block=shift;
+    #print "filename=$filename\n";
+
+    my $new_config=join("\n", @$new_conf_block);
+    my $last_char = substr $new_config,-1,1;
+    if ($last_char ne "\n") { $new_config .= "\n"; }
+
+    my $filename_tmp = "$filename.$$";
+    open (OUTFILE, '>', $filename_tmp);
+    my $found=0;
+    if (-f $filename) {
+	open (INFILE,  '<', $filename);
+	my $inblock=0;
+	while (<INFILE>) { 
+	    my $line=$_;
+	    if (!$inblock) {
+		print OUTFILE $line;
+	    }
+	    if ($line =~ /$xcat_config_start/) {
+		$found=1;
+		$inblock=1;
+		print OUTFILE $new_config; 
+	    } elsif ($line =~ /$xcat_config_end/) {
+		$inblock=0;
+		print OUTFILE "$xcat_config_end\n";
+	    }
+	}
+    }
+    if (!$found) {
+	print OUTFILE "$xcat_config_start\n";
+	print OUTFILE $new_config;  
+	print OUTFILE "$xcat_config_end\n";
+    } 
+    close (INFILE);
+    close (OUTFILE);
+    copy($filename_tmp, $filename);
+    unlink($filename_tmp);
+}
+  
+#gets the xCAT configurations from the given file
+sub getConfig {
+    my $filename=shift;
+    my @output=();
+    if (-f $filename) { 
+	open(FILE, "<", $filename);
+	my $xcatconf = 0;
+	my $first=0;
+	while (<FILE>) {
+	    chomp;
+	    if (/$xcat_config_start/) {
+		$xcatconf = 1;
+		$first=1;
+	    }
+	    elsif (/$xcat_config_end/) {
+		$xcatconf = 0;
+	    }
+	    if ($first) {
+		$first=0;
+		next;
+	    }
+	    
+	    if ($xcatconf) {
+		push @output, $_;
+	    }
+	}
+    }
+    return @output;
+}
+
+#add the routes to the /etc/sysconfig/network/routes file
+#The format is: destination  gateway  mask  ifname
+sub addPersistentRoute_Sles {
+    my $callback=shift;
+    my $net=shift;
+    my $mask=shift;
+    my $gw_ip=shift;
+    my $gw=shift;
+    my $ifname=shift;
+
+    my $host=hostname();
+    
+    my $filename="/etc/sysconfig/network/routes";
+    my @output=getConfig($filename);
+    #print "old output=" . join("\n", @output) . "\n";
+    my $hasConfiged=0;
+    if (@output && (@output > 0)) {
+	$hasConfiged=checkConfig_Sles($net, $mask, $gw_ip, $gw, \@output);
+    }
+    #print "hasConfiged=$hasConfiged\n";
+    my $new_config="$net $gw_ip $mask $ifname\n";
+    if (!$hasConfiged) {
+	push(@output, $new_config);
+	#print "new output=" . join("\n", @output) . "\n";
+	#Add the route to the configuration file
+        #the format is: destination  gateway  mask  ifname
+	setConfig($filename, \@output);
+
+	chomp($new_config);
+	my $rsp={};
+	$rsp->{data}->[0]= "$host: Added persistent route \"$new_config\" to $filename.";
+	$callback->($rsp);
+    } else {
+	chomp($new_config);
+	my $rsp={};
+	$rsp->{data}->[0]= "$host: Persistent route \"$new_config\" already exists in $filename.";
+	$callback->($rsp);
+    }
+}
+
+#remove the routes from the /etc/sysconfig/network/routes file
+sub deletePersistentRoute_Sles {
+    my $callback=shift;
+    my $net=shift;
+    my $mask=shift;
+    my $gw_ip=shift;
+    my $gw=shift;
+    my $ifname=shift;
+    
+    my $host=hostname();
+
+    my $filename="/etc/sysconfig/network/routes";
+    my @output=getConfig($filename);
+    #print "old output=" . join("\n", @output) . "\n";
+    my @new_output=();
+    my $bigfound=0;
+    foreach my $tmp_conf (@output) {
+	my $found = checkConfig_Sles($net, $mask, $gw_ip, $gw, [$tmp_conf]); 
+	if (!$found) {
+	    push(@new_output, $tmp_conf);
+	} else {
+	    $bigfound=1;
+	}
+    }
+    #print "new output=" . join("\n", @new_output) . "\n";
+    #set the new configuration to the configuration file
+    setConfig($filename, \@new_output);
+    if ($bigfound) {
+	my $rsp={};
+	$rsp->{data}->[0]= "$host: Removed persistent route \"$net $gw_ip $mask $ifname\" from $filename.";
+	$callback->($rsp);
+    } else {
+	my $rsp={};
+	$rsp->{data}->[0]= "$host: Persistent route \"$net $gw_ip $mask $ifname\" does not exist in $filename.";
+	$callback->($rsp);
+    }
+}
+
+
+
+#check if the route is in the SLES network configuration file
+sub checkConfig_Sles {
+    my $net = shift;
+    my $mask = shift;
+    my $gw_ip = shift;
+    my $gw=shift;
+    my $output=shift;
+
+    foreach my $line (@$output) {
+	my @a=split(' ', $line);
+	my ($net1,$mask1,$gw1);
+	if (@a>0) { 
+	    $net1=$a[0];
+	    if ($net1 eq '-') { $net1=$net;}
+	}
+	if (@a>1) { 
+	    $gw1=$a[1];
+	    if ($gw1 eq '-') { $gw1=$gw_ip; }
+	}
+	if (@a>2) { 
+	    $mask1=$a[2];
+	    if ($mask1 eq '-') { $mask1=$mask;}
+	}
+
+	#print "net=$net1,$net mask=$mask1,$mask gw=$gw1,$gw_ip\n";
+	if (($net1 && $net1 eq $net) && ($mask1 && $mask1 eq $mask) && (($gw1 && $gw1 eq $gw) || ($gw1 && $gw1 eq $gw_ip)))  {
+	    return 1;
+	}    
     }
     return 0;
 }
+
+#add the routes to the /etc/sysconfig/static-routes file
+#The format is: any net 172.16.0.0 netmask 255.240.0.0 gw 192.168.0.1 eth0
+sub addPersistentRoute_RH {
+    my $callback=shift;
+    my $net=shift;
+    my $mask=shift;
+    my $gw_ip=shift;
+    my $gw=shift;
+    my $ifname=shift;
+
+    my $host=hostname();
+    
+    my $filename="/etc/sysconfig/static-routes";
+    my @output=getConfig($filename);
+    #print "old output=" . join("\n", @output) . "\n";
+    my $hasConfiged=0;
+    if (@output && (@output > 0)) {
+	$hasConfiged=checkConfig_RH($net, $mask, $gw_ip, $gw, \@output);
+    }
+    #print "hasConfiged=$hasConfiged\n";
+    my $new_config="any net $net netmask $mask gw $gw_ip $ifname\n";
+    if (!$hasConfiged) {
+	push(@output, $new_config);
+	#print "new output=" . join("\n", @output) . "\n";
+	#Add the route to the configuration file
+        #the format is: destination  gateway  mask  ifname
+	setConfig($filename, \@output);
+	
+	chomp($new_config);
+	my $rsp={};
+	$rsp->{data}->[0]= "$host: Added persistent route \"$new_config\" to $filename.";
+	$callback->($rsp);
+    } else {
+	chomp($new_config);
+	my $rsp={};
+	$rsp->{data}->[0]= "$host: Persistent route \"$new_config\" already exists in $filename.";
+	$callback->($rsp);
+    }
+}
+
+#remove the routes from the /etc/sysconfig/static-routes file
+sub deletePersistentRoute_RH {
+    my $callback=shift;
+    my $net=shift;
+    my $mask=shift;
+    my $gw_ip=shift;
+    my $gw=shift;
+    my $ifname=shift;
+
+    my $host=hostname();
+    
+    my $filename="/etc/sysconfig/static-routes";
+    my @output=getConfig($filename);
+    #print "old output=" . join("\n", @output) . "\n";
+    my @new_output=();
+    my $bigfound=0;
+    foreach my $tmp_conf (@output) {
+	my $found = checkConfig_RH($net, $mask, $gw_ip, $gw, [$tmp_conf]); 
+	if (!$found) {
+	    push(@new_output, $tmp_conf);
+	} else {
+	    $bigfound=1;
+	}
+    }
+    #print "new output=" . join("\n", @new_output) . "\n";
+    #set the new configuration to the configuration file
+    setConfig($filename, \@new_output);
+    if ($bigfound) {
+	my $rsp={};
+	$rsp->{data}->[0]= "$host: Removed persistent route \"any net $net netmask $mask gw $gw_ip $ifname\" from $filename.";
+	$callback->($rsp);
+    } else {
+	my $rsp={};
+	$rsp->{data}->[0]= "$host: Persistent route \"any net $net netmask $mask gw $gw_ip $ifname\" does not exist in $filename.";
+	$callback->($rsp);
+    }
+}
+
+sub checkConfig_RH {
+    my $net = shift;
+    my $mask = shift;
+    my $gw_ip = shift;
+    my $gw=shift;
+    my $output=shift;
+
+    foreach my $line (@$output) {
+	my @a=split(' ', $line);
+        #The format is: any net 172.16.0.0 netmask 255.240.0.0 gw 192.168.0.1 eth0
+	my ($net1,$mask1,$gw1);
+	if (@a>2) { 
+	    $net1=$a[2];
+	    if ($net1 eq '-') { $net1=$net;}
+	}
+	if (@a>4) { 
+	    $mask1=$a[4];
+	    if ($mask1 eq '-') { $mask1=$mask;}
+	}
+	if (@a>6) { 
+	    $gw1=$a[6];
+	    if ($gw1 eq '-') { $gw1=$gw_ip; }
+	}
+
+	#print "net=$net1,$net mask=$mask1,$mask gw=$gw1,$gw_ip\n";
+	if (($net1 && $net1 eq $net) && ($mask1 && $mask1 eq $mask) && (($gw1 && $gw1 eq $gw) || ($gw1 && $gw1 eq $gw_ip)))  {
+	    return 1;
+	}    
+    }
+    return 0;
+}
+
+
+	
 
 

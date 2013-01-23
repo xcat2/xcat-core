@@ -75,42 +75,186 @@ route_exists()
     echo $ret
 }
 
-result=$(route_exists $net $mask $gw)
-if [ "$result" = "0" ]; then
-    if [ "$op" = "add" ]; then
+add_persistent_route() 
+{
+    net=$1;
+    mask=$2;
+    gw=$3;
+    if [ -n "$4" ]; then
+	ifname=$4
+    fi
+
+    xcat_config_start="# xCAT_CONFIG_START";
+    xcat_config_end="# xCAT_CONFIG_END";
+
+    if [ "$(uname -s)" = "Linux" ]; then
+	#determine the os name
+	OS_name="something"
+	if [ -f /etc/redhat-release ]
+	then
+            OS_name="redhat"  #it can be RedHatFerdora or CentOS
+	elif [ -f /etc/SuSE-release ]
+	then
+            OS_name="sles"
+	fi
+
+	case $OS_name in
+	    sles)
+		#echo "sles"
+		filename="/etc/sysconfig/network/routes";
+		route="$net $gw $mask $ifname";
+		if [ -f $filename ]; then
+		    grep "$route" $filename
+		    if [ $? -ne 0 ]; then #route does not exist
+			grep "$xcat_config_start" $filename
+			if [ $? -ne 0 ]; then #no xCAT section
+			    echo $xcat_config_start >> $filename
+			    echo $route >> $filename
+			    echo $xcat_config_end >> $filename
+			else
+			    sed -i -e s/"$xcat_config_end"/"$route\n$xcat_config_end"/g $filename
+			fi
+			echo "Persistent route \"$route\" added in $filename."
+		    else 
+			echo "Persistent route \"$route\" already exists in $filename."
+		    fi
+		else
+		    #echo "got here"
+		    echo "$xcat_config_start" > $filename
+		    echo "$route" >> $filename
+		    echo "$xcat_config_end" >> $filename
+		    echo "Route \"$route\" added in $filename."
+		fi
+
+		;;
+	    ubuntu*)
+		echo "Adding persistent route on Ubuntu is not supported yet."
+		;;
+	    redhat)
+		#echo "rh/fedora/centos"
+		filename="/etc/sysconfig/static-routes";
+		route="any net $net netmask $mask gw $gw $ifname";
+		if [ -f $filename ]; then
+		    grep "$route" $filename
+		    if [ $? -ne 0 ]; then #route does not exist
+			grep "$xcat_config_start" $filename
+			if [ $? -ne 0 ]; then #no xCAT section
+			    echo $xcat_config_start >> $filename
+			    echo $route >> $filename
+			    echo $xcat_config_end >> $filename
+			else
+			    sed -i -e s/"$xcat_config_end"/"$route\n$xcat_config_end"/g $filename
+			fi
+			echo "Persistent route \"$route\" added in $filename."
+		    else 
+			echo "Persistent route \"$route\" already exists in $filename."
+		    fi
+		else
+		    #echo "got here"
+		    echo "$xcat_config_start" > $filename
+		    echo "$route" >> $filename
+		    echo "$xcat_config_end" >> $filename
+		    echo "Persistent route \"$route\" added in $filename."
+		fi
+		;;
+	esac
+    else #AIX
+	echo "Adding persistent route on AIX is not supported yet."
+    fi
+}
+
+rm_persistent_route() 
+{
+    net=$1;
+    mask=$2;
+    gw=$3;
+    if [ -n "$4" ]; then
+	ifname=$4
+    fi
+
+    if [ "$(uname -s)" = "Linux" ]; then
+	#determine the os name
+	OS_name="something"
+	if [ -f /etc/redhat-release ]
+	then
+            OS_name="redhat"  #it can be RedHatFerdora or CentOS
+	elif [ -f /etc/SuSE-release ]
+	then
+            OS_name="sles"
+	fi
+
+	case $OS_name in
+	    sles)
+		#echo "sles"
+		filename="/etc/sysconfig/network/routes";
+		route="$net $gw $mask $ifname";
+		if [ -f $filename ]; then
+		    sed -i -e s/"$route"//g $filename
+		fi
+		echo "Persistent route \"$route\" removed from $filename."
+		;;
+	    ubuntu*)
+		echo "Removing persistent route on Ubuntu is not supported yet."
+		;;
+	    redhat)
+		#echo "rh/fedora/centos"
+		filename="/etc/sysconfig/static-routes";
+		route="any net $net netmask $mask gw $gw $ifname";
+		if [ -f $filename ]; then
+		    sed -i -e s/"$route"//g $filename
+		fi
+		echo "Persistent route \"$route\" removed from $filename."
+		;;
+	esac
+    else #AIX
+	echo "Removing persistent route on AIX is not supported yet."
+    fi
+}
+   
+
+
+if [ "$op" = "add" ]; then
+    result=$(route_exists $net $mask $gw)
+    if [ "$result" = "0" ]; then
 	if [ "$(uname -s)" = "Linux" ]; then
 	    cmd="route add -net $net netmask $mask gw $gw"
 	else 
 	    cmd="route add -net $net -netmask $mask $gw"
 	fi
-	echo "$cmd"
+	echo "Adding temporary route: $cmd"
 	result=`$cmd 2>&1`
 	code=$?
 	if [ $code -ne 0 ]; then
 	    logger -t xCAT -p local4.err "$cmd\nerror code=$code, result=$result."
 	    echo "  error code=$code, result=$result."
-	    exit 1;
+	    #exit 1;
 	fi
     else
-	echo "The route ($net $mask $gw) does not exist."
-    fi
-else
-    if [ "$op" = "delete" ]; then
+	echo "The temporary route ($net $mask $gw) already exists."
+    fi  
+  
+    #add persistent route
+    add_persistent_route $net $mask $gw $ifname
+elif [ "$op" = "delete" ]; then
+    result=$(route_exists $net $mask $gw)
+    if [ "$result" = "1" ]; then
 	if [ "$(uname -s)" = "Linux" ]; then
 	    cmd="route delete -net $net netmask $mask gw $gw"
 	else 
 	    cmd="route delete -net $net -netmask $mask $gw"
 	fi
-	echo "$cmd"
+	echo "Removing temporary route: $cmd"
 	result=`$cmd 2>&1`
 	code=$?
 	if [ $code -ne 0 ]; then
 	    logger -t xCAT  -p local4.err "$cmd\nerror code=$code, result=$result."
 	    echo "  error code=$code, result=$result."
-	    exit 1;
 	fi
     else
-	echo "The route ($net $mask $gw) already exists."
+	echo "The temporary route ($net $mask $gw) does not exist."
     fi
+	
+    #remove the persistent route
+    rm_persistent_route $net $mask $gw $ifname
 fi
 exit 0
