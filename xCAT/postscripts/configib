@@ -19,7 +19,7 @@
 
 #This is the number of ports for each ib adpator.
 portnum=1
-if [ -n "NIC_IBAPORTS" ]; then
+if [ -n "$NIC_IBAPORTS" ]; then
     portnum=$NIC_IBAPORTS
 fi
 
