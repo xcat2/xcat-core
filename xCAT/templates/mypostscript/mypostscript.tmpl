@@ -22,6 +22,9 @@ tabdump(networks)
 NODE=$NODE
 export NODE
 
+## This is the syntax to get the value of one attribute from the
+## <tablename> and its key is $NODE.
+## It doesn't support the cases where the table has 2 keys.
 
 ## nfsserver,installnic,primarynic,routenames from the noderes tab
 NFSSERVER=#TABLE:noderes:$NODE:nfsserver#
@@ -38,9 +41,6 @@ NODEROUTENAMES=#TABLE:noderes:$NODE:routenames#
 export NODEROUTENAMES
 #ROUTES_VARS_EXPORT#
 
-## This is the syntax to get the value of one attribute from the
-## <tablename> and its key is $NODE.
-## It doesn't support the cases where the table has 2 keys.
 
 ## osver, arch, profile export
 OSVER=#TABLE:nodetype:$NODE:os#
@@ -105,6 +105,7 @@ export NICCUSTOMSCRIPTS
 
 NICNETWORKS=#TABLE:nics:$NODE:nicnetworks#
 export NICNETWORKS
+
 
 
 ##
