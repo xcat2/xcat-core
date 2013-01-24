@@ -4,9 +4,9 @@ B<pasu> - run the ASU to many nodes in parallel
 
 =head1 SYNOPSIS
 
-B<pasu> [B<-V>] [B<-d>] [B<-n>] [B<-i> I<hostname-suffix>] [B<-l> I<user>] [B<-p> I<passwd>] [B<-f> I<fanout>] I<noderange> I<command>
+B<pasu> [B<-V>] [B<-d>] [B<-n>] [B<-l> I<user>] [B<-p> I<passwd>] [B<-f> I<fanout>] I<noderange> I<command>
 
-B<pasu> [B<-V>] [B<-d>] [B<-n>] [B<-i> I<hostname-suffix>] [B<-l> I<user>] [B<-p> I<passwd>] [B<-f> I<fanout>] B<-b> I<batchfile> I<noderange>
+B<pasu> [B<-V>] [B<-d>] [B<-n>] [B<-l> I<user>] [B<-p> I<passwd>] [B<-f> I<fanout>] B<-b> I<batchfile> I<noderange>
 
 B<pasu> [B<-h> | B<--help>]
 
@@ -17,11 +17,6 @@ that ASU connects from the xCAT management node to the IMM (BMC) of each node to
 see all of the ASU settings available on the node, use the "show all" command.  To query or set multiple values,
 use the B<-b> (batch) option.  To group similar output from multiple nodes, use L<xcoll(1)|xcoll.1>.
 
-Current Limitation:  The pasu command currently only queries the node names from the xCAT DB, but ASU really
-needs to connect to the IMM of the node.  You can make this work by defining hostnames for your IMMs that are of
-the form:  <nodename>-imm .  Then use the B<-i imm> flag and pasu will add "-imm" to each nodename before contacting
-it.  Or you can use the B<-n> option and give the list of IMM hostnames or IP addresses explicitly.
-
 Before running B<pasu>, you must install the ASU RPM from IBM.  You can download it from the IBM Fix Central site.
 You also must configure the IMMs properly according to xCAT documentation.  Run "B<rpower> I<noderange> B<stat>"
 to confirm that the IMMs are configured properly.
@@ -30,25 +25,20 @@ to confirm that the IMMs are configured properly.
 
 =over 10
 
-=item B<-i|--interface> I<suffix>
-
-A suffix to add to each nodename before connecting to it.  Currently use this to change the nodename into the
-IMM name.
-
 =item B<-n|--nonodecheck>
 
 Do not send the noderange to xcatd to expand it into a list of nodes.  Use the noderange exactly as it is specified
-to pasu.  In this case, the noderange must be a simple list of comma-separated node names.
+to pasu.  In this case, the noderange must be a simple list of comma-separated hostnames of the IMMs.
 
 =item B<-l|--loginname> I<username>
 
 The username to use to connect to the IMMs.  If not specified, the row in the xCAT B<passwd> table with key "ipmi"
-will be used to get the username.  Currently B<pasu> does not use the table value ipmi.username.
+will be used to get the username.
 
 =item B<-p|--passwd> I<passwd>
 
 The password to use to connect to the IMMs.  If not specified, the row in the xCAT passwd table with key "ipmi"
-will be used to get the password.  Currently B<pasu> does not use the table value ipmi.password.
+will be used to get the password.
 
 =item B<-f|--fanout>
 
@@ -94,7 +84,7 @@ Display usage message.
 
 To display the Com1ActiveAfterBoot setting on 2 nodes:
 
- pasu -n node1,node2 show DevicesandIOPorts.Com1ActiveAfterBoot
+ pasu node1,node2 show DevicesandIOPorts.Com1ActiveAfterBoot
 
 Output is similar to:
 
@@ -103,9 +93,9 @@ Output is similar to:
 
 =item 2.
 
-To display the Com1ActiveAfterBoot setting on all compute nodes (and the IMMs have hostnames like <node>-imm):
+To display the Com1ActiveAfterBoot setting on all compute nodes:
 
- pasu -i imm compute show DevicesandIOPorts.Com1ActiveAfterBoot | xcoll
+ pasu compute show DevicesandIOPorts.Com1ActiveAfterBoot | xcoll
 
 Output is similar to:
 
@@ -116,7 +106,7 @@ Output is similar to:
 
 =item 3.
 
-To set several settings on all compute nodes (and the IMMs have hostnames like <node>-imm), create a batch file
+To set several settings on all compute nodes, create a batch file
 called (for example) asu-settings with contents:
 
  set DevicesandIOPorts.Com1ActiveAfterBoot Enable
@@ -126,7 +116,7 @@ called (for example) asu-settings with contents:
 
 Then run:
 
- pasu -i imm -b asu-settings compute | xcoll
+ pasu -b asu-settings compute | xcoll
 
 Output is similar to:
 
@@ -164,7 +154,7 @@ called (for example) asu-show with contents:
 
 Then run:
 
- pasu -i imm -b asu-show compute | xcoll
+ pasu -b asu-show compute | xcoll
 
 Output is similar to:
 

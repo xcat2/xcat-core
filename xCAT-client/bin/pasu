@@ -13,7 +13,7 @@ use lib "$::XCATROOT/lib/perl";
 use IO::Socket::SSL;
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
-#use Data::Dumper;
+use Data::Dumper;
 use IO::Handle;
 use IO::Select;
 use xCAT::Utils;
@@ -63,20 +63,33 @@ my @nodes=();
 
 #print "fanout=$fanout, username=$username, noderange=$noderange\n";
 
+my $nodeattrs;
 if ($::NONODECHECK) {
   @nodes=split(/,/, $noderange);
 }
-else {          # contact xcatd to expand noderange
-  @nodes = expandnoderange();
+else {          # contact xcatd to expand noderange and get ipmi attrs
+  # do not need to do this call, because getting the ipmi atts will also give us a list of nodes
+  #@nodes = expandnoderange($noderange);
+
+  # this is reference to a hash, each key is the nodename and the value is a reference to a hash of attr values
+  $nodeattrs = getipmiattrs($noderange);
+  #print Dumper($nodeattrs);
+  #foreach my $k (keys(%$nodeattrs)) {
+  #  print "$k:\n";
+  #  my $subhash = $nodeattrs->{$k};
+  #  foreach my $k2 (keys(%$subhash)) { print "  $k2=", $subhash->{$k2}, "\n"; }
+  #}
+  #exit;
+  @nodes = keys(%$nodeattrs);
 }
 
+my ($defaultuser, $defaultpw);
 if (!defined($username) || !defined($passwd)) {
-  my ($user, $pw) = getcredentials();
-  if (!defined($username)) { $username = $user; }
-  if (!defined($passwd)) { $passwd = $pw; }
+  ($defaultuser, $defaultpw) = getdefaultcredentials();
+  #if (!defined($username)) { $username = $user; }
+  #if (!defined($passwd)) { $passwd = $pw; }
+  if ($::VERBOSE) { print "default username=$defaultuser, passwd=$defaultpw\n"; }
 }
-
-if ($::VERBOSE) { print "username=$username, passwd=$passwd\n"; }
 
 my $children = 0;
 my $inputs = new IO::Select;
@@ -99,24 +112,44 @@ if ($interface) {
 while (scalar(@retries)) {
   @nodes = @retries;
   @retries = ();
-foreach (@nodes) {
-  my $node=$_;
-  while ($children > $pasumaxp) { processoutput($inputs); }
-  my $child;
-  $children++;
-  #asunode(\$child,$node,$username,$passwd,@ARGV[1 .. $#ARGV]);
-  asunode(\$child,$node,$username,$passwd,$batchfile,@ARGV);     # child is the fd of the child process
-  $inputs->add($child);
-  $nodehdl{$child} = $node;
-  #sleep 3;
-}
-while ($inputs->count) {
-  processoutput($inputs);
-}
-while (processoutput($inputs)) {};
-while (wait != -1) {
-  yield;
-}
+  foreach (@nodes) {
+    my $node=$_;
+    my $ipmiattrs = $nodeattrs->{$node};
+    my $bmc = $ipmiattrs->{bmc};
+    if (!defined($bmc)) {
+      print "$node: the ipmi.bmc attribute is not defined, skipping.\n";
+      next;
+    }
+
+    # if we have already forked the max # of simultaneous processes, wait till 1 finishes
+    while ($children > $pasumaxp) { processoutput($inputs); }
+
+    # fork anothe process
+    my $child;
+    $children++;
+    # precedence on the username and password is: cli option, ipmi table, passwd table
+    my ($user, $pw);
+    if (defined($username)) { $user = $username; }      # cli option
+    elsif (defined($ipmiattrs->{username})) { $user = $ipmiattrs->{username}; }
+    else { $user = $defaultuser; }
+    if (defined($passwd)) { $pw = $passwd; }      # cli option
+    elsif (defined($ipmiattrs->{password})) { $pw = $ipmiattrs->{password}; }
+    else { $pw = $defaultpw; }
+    if ($::VERBOSE) { print "For node $node using bmc=$bmc, user=$user, pw=$pw\n"; }
+    #asunode(\$child,$node,$username,$passwd,@ARGV[1 .. $#ARGV]);
+    asunode(\$child,$node,$bmc,$user,$pw,$batchfile,@ARGV);     # child is the fd of the child process
+    $inputs->add($child);
+    $nodehdl{$child} = $node;
+  }
+
+  # quiesce everything
+  while ($inputs->count) {
+    processoutput($inputs);
+  }
+  while (processoutput($inputs)) {};
+  while (wait != -1) {
+    yield;
+  }
 }
 
 my $exitcode=0;
@@ -181,6 +214,7 @@ sub processoutput { #This way, one arbiter handles output, no interrupting
 sub asunode {
   my $out = shift;          # this is a reference to the child file descriptor
   my $node = shift;
+  my $bmc = shift;
   my $username = shift;
   my $passwd = shift;
   my $batchfile = shift;
@@ -190,7 +224,7 @@ sub asunode {
   } else {
     foreach my $a (@_) { $args .= ' ' . xCAT::Utils->quote($a); }
   }
-  my $cmd = "$::asucmd $args --host $node --user $username --password $passwd 2>&1 |";
+  my $cmd = "$::asucmd $args --host $bmc --user $username --password $passwd 2>&1 |";
   if ($::VERBOSE) { print "forking $cmd\n"; }
   my $pid = open($$out, $cmd);
   $pids{$pid} = $node;
@@ -198,6 +232,7 @@ sub asunode {
 
 # Contact xcatd to expand the noderange into a list of nodes
 sub expandnoderange {
+  my $noderange = shift @_;
   my @nodes;
   my @user = getpwuid($>);
   my $homedir=$user[7];
@@ -244,8 +279,58 @@ sub expandnoderange {
   return @nodes;
 }
 
+# Contact xcatd to get from the ipmi table for this list of nodes: bmc, username, password
+sub getipmiattrs {
+  my $noderange = shift @_;
+  my $nodeattrs;        # this will be a reference to a hash
+  my @user = getpwuid($>);
+  my $homedir=$user[7];
+  my $client = IO::Socket::SSL->new(
+                PeerAddr=>$xcathost,
+                SSL_key_file=>$homedir."/.xcat/client-cred.pem",
+                SSL_cert_file=>$homedir."/.xcat/client-cred.pem",
+                SSL_ca_file => $homedir."/.xcat/ca.pem",
+                SSL_use_cert => 1,
+                #SSL_verify_mode => 1,
+             );
+  die "Connection failure: $!\n" unless ($client);
+  my %cmdref = (command => 'getNodesAttribs', noderange => $noderange, table => 'ipmi');
+  push (@{$cmdref{attr}}, qw(bmc username password));
+  $SIG{ALRM} = sub { die "No response getting ipmi attributes" };
+  alarm(15);
+  my $msg = XMLout(\%cmdref,RootName=>'xcatrequest', NoAttr=>1, KeyAttr => []);
+  if ($ENV{XCATXMLTRACE}) { print $msg; }
+  print $client $msg;
+  alarm(15);
+  my $response="";
+  while (<$client>) {
+    alarm(0);
+    $response .= $_;
+    if ($response =~ m/<\/xcatresponse>/) {
+      if ($ENV{XCATXMLTRACE}) { print $response; }
+      my $rsp=XMLin($response, ForceArray => ['node']);
+      $response='';
+      if ($rsp->{warning}) {
+        printf "Warning: ".$rsp->{warning}."\n";
+      }
+      if ($rsp->{error}) {
+        die ("ERROR: ".$rsp->{error}."\n");
+      } elsif ($rsp->{node}) {
+        #print Dumper($rsp->{node});
+        $nodeattrs=$rsp->{node};         # this is reference to a hash, each key is the nodename and the value is a reference to a hash of attr values
+      }
+      if ($rsp->{serverdone}) {
+        last;
+      }
+    }
+  }
+  close($client);
+  #if ($::VERBOSE) { print 'Nodes:', join(',',$nodeattrs), "\n"; }
+  return $nodeattrs;
+}
+
 # Contact xcatd to get the default user/pw for ipmi in the xcat passwd table
-sub getcredentials {
+sub getdefaultcredentials {
   my @data;
   my @user = getpwuid($>);
   my $homedir=$user[7];
