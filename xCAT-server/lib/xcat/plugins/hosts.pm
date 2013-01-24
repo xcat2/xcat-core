@@ -70,8 +70,7 @@ sub addnode
     my $idx        = 0;
     my $foundone   = 0;
 
-	# if this ip was already added then just see if the entry 
-
+	# if this ip was already added then just update the entry 
     while ($idx <= $#hosts)
     {
 
@@ -410,7 +409,7 @@ sub writeout
         Globals:
 
         Example:
-                my $rc = &donics($node, $callback);
+                my $rc = &donics(\@nodes, $callback);
 
         Comments:
                 none
@@ -429,7 +428,8 @@ sub donics
 
     foreach my $node (@nodelist)
     {
-        my %nichash;
+		my $nich;
+		my %nicindex;
 
         # get the nic info
         my $et =
@@ -452,9 +452,10 @@ sub donics
             next;
         }
 
+		# gather nics info
 		# delimiter could be ":" or "!"  
-        #  old $et->{nicips} looks like "eth0:ip1,eth1:ip2,bmc:ip3..."
-		# OR new $et->{nicips} looks like "eth0!ip1,eth1!ip2,bmc!ip3..."
+		# new  $et->{nicips} looks like 
+		#		"eth0!11.10.1.1,eth1!60.0.0.5|60.0.0.250..."
         my @nicandiplist = split(',', $et->{'nicips'});
         foreach (@nicandiplist)
         {
@@ -466,8 +467,25 @@ sub donics
 			} else {
             	($nicname, $nicip) = split(':', $_);
 			}
-            $nichash{$nicname}{nicip} = $nicip;
-        }
+
+			$nicindex{$nicname}=0;
+
+			if (!$nicip) {
+				next;
+			}
+
+			if ( $nicip =~ /\|/) {
+				my @ips = split( /\|/, $nicip);
+				foreach my $ip (@ips) {
+					$nich->{$nicname}->{nicip}->[$nicindex{$nicname}] = $ip;
+					$nicindex{$nicname}++;
+				}
+			} else {
+				$nich->{$nicname}->{nicip}->[$nicindex{$nicname}] = $nicip;
+				$nicindex{$nicname}++;
+			}
+		}
+
         my @nicandsufx = split(',', $et->{'nichostnamesuffixes'});
         foreach (@nicandsufx)
         {
@@ -477,8 +495,23 @@ sub donics
 			} else {
             	($nicname, $nicsufx) = split(':', $_);
 			}
-            $nichash{$nicname}{nicsufx} = $nicsufx;
+
+            if (!$nicsufx) {
+                next;
+            }
+
+            if ( $nicsufx =~ /\|/) {
+                my @sufs = split( /\|/, $nicsufx);
+				my $index=0;
+                foreach my $suf (@sufs) {
+                    $nich->{$nicname}->{nicsufx}->[$index] = $suf;
+					$index++;
+                }
+            } else {
+                $nich->{$nicname}->{nicsufx}->[0] = $nicsufx;
+            }
         }
+
         my @nicandnetwrk = split(',', $et->{'nicnetworks'});
         foreach (@nicandnetwrk)
         {
@@ -488,40 +521,65 @@ sub donics
 			} else {
             	($nicname, $netwrk) = split(':', $_);
 			}
-            $nichash{$nicname}{netwrk} = $netwrk;
-        }
+            if (!$netwrk) {
+                next;
+            }
 
-        foreach my $nic (keys %nichash)
-        {
+            if ( $netwrk =~ /\|/) {
+                my @nets = split( /\|/, $netwrk);
+                my $index=0;
+                foreach my $net (@nets) {
+                    $nich->{$nicname}->{netwrk}->[$index] = $net;
+                    $index++;
+                }
+            } else {
+                $nich->{$nicname}->{netwrk}->[0] = $netwrk;
+            }
+        }
+		# end gather nics info
+
+		# add or delete nic entries in the hosts file
+		foreach my $nic (keys %{$nich}) {
             # make sure we have the short hostname
             my $shorthost;
             ($shorthost = $node) =~ s/\..*$//;
 
-            # construct hostname for nic
-            my $nichostname = "$shorthost$nichash{$nic}{nicsufx}";
+			for (my $i = 0; $i < $nicindex{$nic}; $i++ ){
 
-            # get domain from network def
-			my $nt = $nettab->getAttribs({ netname => "$nichash{$nic}{netwrk}"}, 'domain');
+				my $nicip = $nich->{$nic}->{nicip}->[$i];
+				my $nicsuffix = $nich->{$nic}->{nicsufx}->[$i];
+				my $nicnetworks = $nich->{$nic}->{netwrk}->[$i];
 
-			# look up the domain as a check or if it's not provided
-			my ($nicdomain, $netn) = &getIPdomain($nichash{$nic}{nicip}, $callback);
-			if ($nt->{domain}) {
-				if($nichash{$nic}{netwrk} ne $netn) {
-					my $rsp;
-					push @{$rsp->{data}}, "The xCAT network name listed for \'$nichostname\' is \'$nichash{$nic}{netwrk}\' however the nic IP address \'$nichash{$nic}{nicip}\' seems to be in the \'$netn\' network.\nIf there is an error then makes corrections to the database definitions and re-run this command.\n"; 
-					xCAT::MsgUtils->message("W", $rsp, $callback);
+				if (!$nicip) {
+					next;
 				}
-				$nicdomain = $nt->{domain};
-			}
 
-            if ($::DELNODE)
-            {
-                delnode $nichostname, $nichash{$nic}{nicip}, '', $nicdomain;
-            }
-            else
-            {
-                addnode $nichostname, $nichash{$nic}{nicip}, '', $nicdomain, 1;
-            }
+            	# construct hostname for nic
+            	my $nichostname = "$shorthost$nicsuffix";
+
+            	# get domain from network def
+				my $nt = $nettab->getAttribs({ netname => "nicnetworks"}, 'domain');
+
+				# look up the domain as a check or if it's not provided
+				my ($nicdomain, $netn) = &getIPdomain($nicip, $callback);
+				if ($nt->{domain}) {
+					if($nicnetworks ne $netn) {
+						my $rsp;
+						push @{$rsp->{data}}, "The xCAT network name listed for \'$nichostname\' is \'$nicnetworks\' however the nic IP address \'$nicip\' seems to be in the \'$netn\' network.\nIf there is an error then makes corrections to the database definitions and re-run this command.\n"; 
+						xCAT::MsgUtils->message("W", $rsp, $callback);
+					}
+					$nicdomain = $nt->{domain};
+				}
+
+            	if ($::DELNODE)
+            	{
+                	delnode $nichostname, $nicip, '', $nicdomain;
+            	}
+            	else
+            	{
+                	addnode $nichostname, $nicip, '', $nicdomain, 1;
+				}
+            } # end for each index
         }    # end for each nic
     }    # end for each node
 
