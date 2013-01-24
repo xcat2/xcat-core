@@ -1640,11 +1640,28 @@ sub addkitcomp
                 return 1;
             }
 
-            if ( $os{$osimage}{serverrole} and ($os{$osimage}{serverrole} ne $kitcomps{$kitcomp}{serverroles}) ) {
-                my %rsp;
-                push@{ $rsp{data} }, "osimage $osimage doesn't fit to kit component $kitcomp with attribute serverrole";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
-                return 1;
+            if ( $os{$osimage}{serverrole} ) {
+                my $match = 0;
+                my @os_serverroles = split /,/, $os{$osimage}{serverrole};
+                my @kitcomp_serverroles = split /,/, $kitcomps{$kitcomp}{serverroles};
+                foreach my $os_serverrole (@os_serverroles) {
+                    foreach my $kitcomp_serverrole (@kitcomp_serverroles) {
+                        if ( $os_serverrole eq $kitcomp_serverrole ) {
+                            $match = 1;
+                            last;
+                        }
+                    }
+
+                    if ( $match ) {
+                        last;
+                    }
+                }
+                if ( !$match ) {
+                    my %rsp;
+                    push@{ $rsp{data} }, "osimage $osimage doesn't fit to kit component $kitcomp with attribute serverrole";
+                    xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                    return 1;
+                }
             }
 
             if ( $kitcomptable and $kitcomptable->{'kitcompdeps'} ) {
@@ -2681,11 +2698,28 @@ sub chkkitcomp
             return 1;
         }
 
-        if ( $os{$osimage}{serverrole} and ($os{$osimage}{serverrole} ne $kitcomps{$kitcomp}{serverroles}) ) {
-            my %rsp;
-            push@{ $rsp{data} }, "kit component $kitcomp doesn't fit to osimage $osimage with attribute serverrole";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
-            return 1;
+        if ( $os{$osimage}{serverrole} ) {
+            my $match = 0;
+            my @os_serverroles = split /,/, $os{$osimage}{serverrole};
+            my @kitcomp_serverroles = split /,/, $kitcomps{$kitcomp}{serverroles};
+            foreach my $os_serverrole (@os_serverroles) {
+                foreach my $kitcomp_serverrole (@kitcomp_serverroles) {
+                    if ( $os_serverrole eq $kitcomp_serverrole ) {
+                        $match = 1;
+                        last;
+                    }
+                }
+
+                if ( $match ) {
+                    last;
+                }
+            }
+            if ( !$match ) {
+                my %rsp;
+                push@{ $rsp{data} }, "osimage $osimage doesn't fit to kit component $kitcomp with attribute serverrole";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                return 1;
+            }
         }
 
         # Check if this kit component's dependencies are in the kitcomponent list.
