@@ -22,6 +22,10 @@ tabdump(networks)
 NODE=$NODE
 export NODE
 
+# get GROUP list
+GROUP=#TABLE:nodelist:$NODE:groups#
+export GROUP 
+
 ## This is the syntax to get the value of one attribute from the
 ## <tablename> and its key is $NODE.
 ## It doesn't support the cases where the table has 2 keys.
