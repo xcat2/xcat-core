@@ -105,10 +105,10 @@ else  # assume Linux
         echo 'export PATH=$PATH:/usr/lpp/mmfs/bin' > $gpfsprofile.sh
         echo 'setenv PATH $PATH:/usr/lpp/mmfs/bin' > $gpfsprofile.csh
         # Turn off LANG support since we did not install other msg catalogs
-        echo 'export LC_CTYPE=POSIX' > $gpfsprofile.sh
-        echo 'setenv LC_CTYPE POSIX' > $gpfsprofile.csh
-        echo 'export LC_ALL=POSIX' > $gpfsprofile.sh
-        echo 'setenv LC_ALL POSIX' > $gpfsprofile.csh
+        echo 'export LC_CTYPE=POSIX' >> $gpfsprofile.sh
+        echo 'setenv LC_CTYPE POSIX' >> $gpfsprofile.csh
+        echo 'export LC_ALL=POSIX' >> $gpfsprofile.sh
+        echo 'setenv LC_ALL POSIX' >> $gpfsprofile.csh
         chmod 744 $gpfsprofile.sh
         chmod 744 $gpfsprofile.csh
     fi
