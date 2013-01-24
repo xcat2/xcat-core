@@ -281,8 +281,8 @@ sub windows_account_data {
 	if ($passtab) {
 		my $passent = $passtab->getAttribs({key=>"system",username=>"Administrator"},['password']);
 		if ($passent and $passent->{password}) {
-			$useraccountxml="<AdministratorPassword>\n<Value>".$passent->{password}."</Value>\n<PlainText>true</PlainText>\n</AdministratorPassword>\n";
-			$useraccountxml.="<!-- Plaintext=false would only protect against the most cursory over the shoulder glance, this implementation opts not to even give the illusion of privacy by only doing plaintext. -->\n";
+			$useraccountxml="<AdministratorPassword>\r\n<Value>".$passent->{password}."</Value>\r\n<PlainText>true</PlainText>\r\n</AdministratorPassword>\r\n";
+			$useraccountxml.="<!-- Plaintext=false would only protect against the most cursory over the shoulder glance, this implementation opts not to even give the illusion of privacy by only doing plaintext. -->\r\n";
 			$localadminenabled=1;
 		}
 	}

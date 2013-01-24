@@ -84,10 +84,7 @@
 	        <FirstLogonCommands>
             </FirstLogonCommands>
             <UserAccounts>
-                <AdministratorPassword>
-                    <Value>#TABLE:passwd:key=system,username=Administrator:password#</Value>
-                    <PlainText>true</PlainText>
-                </AdministratorPassword>
+		#WINACCOUNTDATA#
             </UserAccounts>
         </component>
     </settings>
