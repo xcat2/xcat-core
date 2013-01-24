@@ -178,7 +178,7 @@ sub runcmd {
 	my $rc = $? >> 8;
 	if ($rc) {
 		system("logger -t xcat -p local4.err 'confignics: command $cmd failed with rc $rc: " . join('',@output) . "'");
-		my $errout= "confignics: command $cmd failed with rc $rc.";
+		my $errout= "confignics: command $cmd failed with rc $rc.\n";
                 print $errout;
 		exit $rc;
 	}

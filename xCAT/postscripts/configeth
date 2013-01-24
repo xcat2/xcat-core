@@ -177,7 +177,7 @@ sub runcmd {
 	if ($rc) {
 		system("logger -t xcat -p local4.err 'configeth: command $cmd failed with rc $rc: " . join('',@output) . "'");
 		my $errout= "configeth: command $cmd failed with rc $rc.";
-                echo $errout;
+                `echo $errout`;
 		exit $rc;
 	}
 }
