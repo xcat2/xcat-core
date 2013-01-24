@@ -469,6 +469,7 @@ sub setup_ip_forwarding
 	`grep "net.ipv4.ip_forward" $conf_file`;
         if ($? == 0) {
 	    `sed -i "s/^net.ipv4.ip_forward = .*/net.ipv4.ip_forward = $enable/" $conf_file`;
+            `sed -i "s/^#net.ipv4.ip_forward *= *.*/net.ipv4.ip_forward = $enable/" $conf_file`; #debian/ubuntu have different default format
  	} else {
 	    `echo "net.ipv4.ip_forward = $enable" >> $conf_file`;
 	}
