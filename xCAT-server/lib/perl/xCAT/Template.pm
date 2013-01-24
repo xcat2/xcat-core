@@ -265,12 +265,10 @@ sub subvars {
 sub windows_disable_null_admin { 
 #in the event where windows_account_data has not set an administrator user, we explicitly disable the administrator user 
 	unless ($localadminenabled) {
-		return '
-                <RunSynchronousCommand wcm:action=\"add\">
-                       <Order>100</Order>
-                       <Path>cmd /c %systemroot%\system32\net.exe user Administrator /active:no</Path>
-               </RunSynchronousCommand>
-';
+		return "<RunSynchronousCommand wcm:action=\"add\">\r
+                       <Order>100</Order>\r
+                       <Path>cmd /c %systemroot%\\system32\\net.exe user Administrator /active:no</Path>\r
+               </RunSynchronousCommand>";
 	}
 	return "";
 }
