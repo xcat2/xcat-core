@@ -1324,7 +1324,7 @@ sub gen_new_hostinfo_string{
         $hostinfo_dict{$item}{"chain"} = 'osimage='.$provmethod;
         if (exists $netprofileattr{"bmc"}){ # Update BMC records.
             $hostinfo_dict{$item}{"mgt"} = "ipmi";
-            $hostinfo_dict{$item}{"chain"} = 'runcmd=bmcsetup,osimage='.$provmethod;
+            $hostinfo_dict{$item}{"chain"} = "runcmd=bmcsetup,osimage=$provmethod:reboot4deploy";
 
             if (exists $ipshash{"bmc"}){
                 $hostinfo_dict{$item}{"bmc"} = $ipshash{"bmc"};
