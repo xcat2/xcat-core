@@ -909,6 +909,9 @@ sub subvars_for_mypostscript {
   # get the net', 'mask', 'gateway' from networks table
   my $nets = getNetworks(); 
 
+  # For AIX, get the password and cryptmethod for system root
+  my $aixrootpasswdvars = getAIXPasswdVars();
+
   #%image_hash is used to store the attributes in linuximage and osimage tabs
   my %image_hash;
   getLinuximage(\%image_hash);
@@ -1075,6 +1078,7 @@ sub subvars_for_mypostscript {
   $inc =~ s/#TABLE:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3)/eg; 
   $inc =~ s/#ROUTES_VARS_EXPORT#/$route_vars/eg; 
   $inc =~ s/#VLAN_VARS_EXPORT#/$vlan_vars/eg; 
+  $inc =~ s/#AIX_ROOT_PW_VARS_EXPORT#/$aixrootpasswdvars/eg; 
   $inc =~ s/#MONITORING_VARS_EXPORT#/$mon_vars/eg; 
   $inc =~ s/#OSIMAGE_VARS_EXPORT#/$osimage_vars/eg; 
   $inc =~ s/#NETWORK_FOR_DISKLESS_EXPORT#/$diskless_net_vars/eg; 
@@ -1310,7 +1314,26 @@ sub getVlanItems_t
    return $result;
 }
 
+sub getAIXPasswdVars
+{
+     my $result;
+     if ($^O =~ /^aix/i)  {
+         require xCAT::PPCdb;
+         my $et = xCAT::PPCdb::get_usr_passwd('system', 'root');
+         if ($et and defined($et->{'password'}))
+         {
+              $result .= "ROOTPW=" . $et->{'password'} . "\n";
+              $result .= "export ROOTPW\n";
+         }
+         if ($et and defined($et->{'cryptmethod'}))
+         {
+              $result .= "CRYPTMETHOD=" . $et->{'cryptmethod'} . "\n";
+              $result .= "export CRYPTMETHOD\n";
+          }
 
+     }
+     return $result;
+}
 
 
 sub getVlanItems
