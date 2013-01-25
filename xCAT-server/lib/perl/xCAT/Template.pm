@@ -1093,9 +1093,9 @@ sub subvars_for_mypostscript {
   foreach $line ( @lines ) {
       if( $line =~ /^([^#]+)=[\s]*$/ ) {
          my $key=$1; 
-          #$inc  =~  s/$key=([\s\n]+)/$key=''\n/g;
-          $inc  =~  s/$key=([\s\n]+)//g;
-          $inc  =~  s/export $key//g;
+          $inc  =~  s/$key=([\s\n]+)/$key=''\n/g;
+          #$inc  =~  s/$key=([\s\n]+)//g;
+          #$inc  =~  s/export $key//g;
       } 
   } 
 
