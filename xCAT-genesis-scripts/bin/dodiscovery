@@ -138,43 +138,43 @@ for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://|grep -v
 	fi
 	fi
 	echo "<mac>$DRIVER|$dev|$MAC|$ADDRESS</mac>" >> /tmp/discopacket
-########echo "<nic>" >> /tmp/discopacket
-########echo "	<devname>$dev</devname>" >> /tmp/discopacket
-########echo "	<driver>$DRIVER</driver>" >> /tmp/discopacket
-########if [ ! -z "$ADDRESS" ]; then
-########	echo "	<ip4address>$ADDRESS</ip4address>" >> /tmp/discopacket
-########fi
-########echo "	<hwaddr>$MAC</hwaddr>" >> /tmp/discopacket
-########if [ ! -z "$PCI_SLOT" ]; then
-########	echo "	<pcidev>$PCI_SLOT</pcidev>" >> /tmp/discopacket
-########fi
-########if [ ! -z "$SLOTNAME" ]; then 
-########	echo "	<location>$SLOTNAME</location>" >> /tmp/discopacket
-########fi
-########if [ ! -z "$ONBOARDINDEX" ]; then 
-########	echo "	<onboardeth>$ONBOARDINDEX</onboardeth>" >> /tmp/discopacket
-########fi
-########if [ ! -z "$FIRMDESC" ]; then
-########	echo "	<firmdesc>$FIRMDESC</firmdesc>" >> /tmp/discopacket
-########fi
-########myswitch=`lldptool -n -i $dev -t -V sysName|grep -v 'System Name TLV'|sed -e 's/^	*//'`
-########if [ ! -z "$myswitch" -a "$myswitch" != "Agent instance for device not found" ]; then
-########	echo "	<switchname>$myswitch</switchname>" >> /tmp/discopacket
-########fi
-########for switchaddr in `lldptool -i $dev -n -t -V mngAddr|grep IP|sed -e 's/.*:.//'`; do
-########	if [ "$switchaddr" = "Agent instance for device not found" ]; then break; fi
-########	echo "	<switchaddr>$switchaddr</switchaddr>" >> /tmp/discopacket
-########done
-########myswitchdesc=`lldptool -n -i $dev -t -V sysDesc|grep -v 'System Description TLV'|sed -e 's/^	*//'`
-########if [ ! -z "$myswitchdesc" -a "$myswitchdesc" != "Agent instance for device not found" ]; then	
-########	echo "	<switchdesc>$myswitchdesc</switchdesc>" >> /tmp/discopacket
-########fi
-########myport=`lldptool -n -i $dev -t -V portDesc|grep -v 'Port Description TLV'|sed -e 's/^	*//'`
-########if [ ! -z "$myport" -a "$myswitchdesc" != "Agent instance for device not found" ]; then	
-########	echo "	<switchport>$myport</switchport>" >> /tmp/discopacket
-########fi
-########	
-########echo "</nic>" >> /tmp/discopacket
+        echo "<nic>" >> /tmp/discopacket
+        echo "	<devname>$dev</devname>" >> /tmp/discopacket
+        echo "	<driver>$DRIVER</driver>" >> /tmp/discopacket
+        if [ ! -z "$ADDRESS" ]; then
+        	echo "	<ip4address>$ADDRESS</ip4address>" >> /tmp/discopacket
+        fi
+        echo "	<hwaddr>$MAC</hwaddr>" >> /tmp/discopacket
+        if [ ! -z "$PCI_SLOT" ]; then
+        	echo "	<pcidev>$PCI_SLOT</pcidev>" >> /tmp/discopacket
+        fi
+        if [ ! -z "$SLOTNAME" ]; then 
+        	echo "	<location>$SLOTNAME</location>" >> /tmp/discopacket
+        fi
+        if [ ! -z "$ONBOARDINDEX" ]; then 
+        	echo "	<onboardeth>$ONBOARDINDEX</onboardeth>" >> /tmp/discopacket
+        fi
+        if [ ! -z "$FIRMDESC" ]; then
+        	echo "	<firmdesc>$FIRMDESC</firmdesc>" >> /tmp/discopacket
+        fi
+        myswitch=`lldptool -n -i $dev -t -V sysName|grep -v 'System Name TLV'|sed -e 's/^	*//'`
+        if [ ! -z "$myswitch" -a "$myswitch" != "Agent instance for device not found" ]; then
+        	echo "	<switchname>$myswitch</switchname>" >> /tmp/discopacket
+        fi
+        for switchaddr in `lldptool -i $dev -n -t -V mngAddr|grep IP|sed -e 's/.*:.//'`; do
+        	if [ "$switchaddr" = "Agent instance for device not found" ]; then break; fi
+        	echo "	<switchaddr>$switchaddr</switchaddr>" >> /tmp/discopacket
+        done
+        myswitchdesc=`lldptool -n -i $dev -t -V sysDesc|grep -v 'System Description TLV'|sed -e 's/^	*//'`
+        if [ ! -z "$myswitchdesc" -a "$myswitchdesc" != "Agent instance for device not found" ]; then	
+        	echo "	<switchdesc>$myswitchdesc</switchdesc>" >> /tmp/discopacket
+        fi
+        myport=`lldptool -n -i $dev -t -V portDesc|grep -v 'Port Description TLV'|sed -e 's/^	*//'`
+        if [ ! -z "$myport" -a "$myswitchdesc" != "Agent instance for device not found" ]; then	
+        	echo "	<switchport>$myport</switchport>" >> /tmp/discopacket
+        fi
+        	
+        echo "</nic>" >> /tmp/discopacket
 done
 echo "<xcatpubkey>$PUBKEY</xcatpubkey>" >> /tmp/discopacket #this is not secure to use by itself, switch sourced pubkey for security
 echo "<sha512sig>" >> /tmp/discopacket
@@ -190,13 +190,14 @@ cat /tmp/discopacket |while read line; do
 done
 mv /tmp/discopacket.new /tmp/discopacket
 
-
+rm -f /tmp/discopacket.gz
+gzip -9 /tmp/discopacket
 while [ ! -r /restart ]; do
 	if [ ! -z "$XCATMASTER" ]; then
-		(cat /tmp/discopacket | udpcat.awk $XCATMASTER $XCATPORT ) &
+		(cat /tmp/discopacket.gz | udpcat.awk $XCATMASTER $XCATPORT ) &
 	fi
 	for dhcps in `grep dhcp-server /var/lib/dhclient/dhclient.leases|awk '{print $4}'|sed -s 's/;//'`; do
-		(cat /tmp/discopacket | udpcat.awk $dhcps $XCATPORT ) &
+		(cat /tmp/discopacket.gz | udpcat.awk $dhcps $XCATPORT ) &
 	done
 	#cat /tmp/discopacket
 	sleep 5

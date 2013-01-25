@@ -31,6 +31,7 @@ use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
 use xCAT::xcatd;
+use IO::Uncompress::Gunzip qw/gunzip/;
 use File::Path;
 use Time::HiRes qw(sleep);
 use Thread qw(yield);
@@ -560,6 +561,12 @@ sleep 0.05;
         $data=$packets{$pkey}->[1];
         $peerhost=gethostbyaddr($client,AF_INET);
         $peerhost .="\n";
+	if ($data =~ /^\037\213/) {  #per rfc 1952, these two bytes are gzip, and they are invalid for 
+					#xcatrequest xml, so go ahead and decompress it
+		my $bigdata; 
+		gunzip \$data => \$bigdata; 
+		$data = $bigdata 
+	}
         my $req = eval { XMLin($data, SuppressEmpty=>undef,ForceArray=>1) };
         if ($req and $req->{command} and ($req->{command}->[0] eq "findme")) {
           $req->{'_xcat_clienthost'}=gethostbyaddr($client,AF_INET);
