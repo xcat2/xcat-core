@@ -2269,14 +2269,24 @@ sub get_allips_in_range
     my $startip = shift;
     my $endip = shift;
     my $increment = shift;
-    my @iplist;
+    my @iplist = ();
+    my $tmpip;
 
     my $startipnum = xCAT::NetworkUtils->ip_to_int($startip);
     my $endipnum = xCAT::NetworkUtils->ip_to_int($endip);
-    while ($startipnum <= $endipnum){
-        my $ip = xCAT::NetworkUtils->int_to_ip($startipnum);
-        $startipnum += $increment;
-        push (@iplist, $ip);
+
+    if ($increment > 0){
+        while ($startipnum <= $endipnum){
+            $tmpip = xCAT::NetworkUtils->int_to_ip($startipnum);
+            $startipnum += $increment;
+            push (@iplist, $tmpip);
+        }
+    }elsif($increment < 0){
+        while ($endipnum >= $startipnum){
+            $tmpip = xCAT::NetworkUtils->int_to_ip($endipnum);
+            $endipnum += $increment;
+            push (@iplist, $tmpip);
+        }
     }
     return \@iplist;
 }

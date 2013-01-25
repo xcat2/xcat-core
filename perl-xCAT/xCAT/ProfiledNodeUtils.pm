@@ -269,7 +269,7 @@ sub get_nodes_nic_attrs{
     my $nodes = shift;
 
     my $nicstab = xCAT::Table->new( 'nics');
-    my $entry = $nicstab->getNodesAttribs($nodes, ['nictypes', 'nichostnamesuffixes', 'niccustomscripts', 'nicnetworks']);
+    my $entry = $nicstab->getNodesAttribs($nodes, ['nictypes', 'nichostnamesuffixes', 'niccustomscripts', 'nicnetworks', 'nicips']);
 
     my %nicsattrs;
     my @nicattrslist;

@@ -62,6 +62,7 @@ sub handled_commands {
         nodeimport => 'profilednodes',
         nodepurge => 'profilednodes',
         nodechprofile => 'profilednodes',
+        noderegenips => 'profilednodes',
         noderefresh =>  'profilednodes',
         nodediscoverstart => 'profilednodes',
         nodediscoverstop => 'profilednodes',
@@ -115,6 +116,7 @@ sub process_request {
                 'nodeimport' => 'import nodes',
                 'nodepurge' => 'remove nodes',
                 'nodechprofile' => 'change profiles',
+                'noderegenips' => 'regenerate node nic IPs',
                 'nodeaddunmged' => 'add devices',
                 'nodechmac' => 'change MAC address'
             );  
@@ -131,6 +133,8 @@ sub process_request {
     	nodepurge();
     } elsif ($command eq "nodechprofile"){
     	nodechprofile();
+    } elsif ($command eq "noderegenips"){
+        noderegenips();
     } elsif ($command eq "noderefresh"){
     	noderefresh();
     } elsif ($command eq "nodediscoverstart"){
@@ -161,6 +165,7 @@ sub process_request {
 #-----------------------------------------------------
 
 sub parse_args{
+    %args_dict = ();
     foreach my $arg (@ARGV){
         my @argarray = split(/=/,$arg);
         my $arglen = @argarray;
@@ -551,8 +556,6 @@ Usage:
         my @groups;
         my $attrshashref = $nodeshash{$_}[0];
         my %attrshash = %$attrshashref;
-        # Update node's status to defined
-        $updatenodeshash{$_}{'status'} = 'defined';
         # Update node's groups (profiles) info.
         if ($attrshash{'groups'}){
             @groups = split(/,/, $attrshash{'groups'});
@@ -564,9 +567,13 @@ Usage:
             }
             if(exists $args_dict{'hardwareprofile'}){
                 $groupsref = replace_item_in_array(\@groups, "HardwareProfile", $args_dict{'hardwareprofile'});
+                # Update node's status to defined
+                $updatenodeshash{$_}{'status'} = 'defined';
             }
             if(exists $args_dict{'imageprofile'}){
                 $groupsref = replace_item_in_array(\@groups, "ImageProfile", $args_dict{'imageprofile'});
+                # Update node's status to defined
+                $updatenodeshash{$_}{'status'} = 'defined';
             }
             $updatenodeshash{$_}{'groups'} = join (',', @$groupsref);
         }
@@ -578,18 +585,190 @@ Usage:
     $nodetab->setNodesAttribs(\%updatenodeshash);
     $nodetab->close();
     
-    # call plugins
-    setrsp_progress("Configuring nodes...");
-    my $retref = xCAT::Utils->runxcmd({command=>["kitnodeupdate"], node=>$nodes, sequential=>[1]}, $request_command, 0, 2);
-    my $retstrref = parse_runxcmd_ret($retref);
-    if ($::RUNCMD_RC != 0){
-        setrsp_progress("Warning: failed to call kit commands.");
+    # Call plugins.
+    if(exists $args_dict{'hardwareprofile'} || exists $args_dict{'imageprofile'}){
+        setrsp_progress("Configuring nodes...");
+        my $retref = xCAT::Utils->runxcmd({command=>["kitnodeupdate"], node=>$nodes, sequential=>[1]}, $request_command, 0, 2);
+        my $retstrref = parse_runxcmd_ret($retref);
+        if ($::RUNCMD_RC != 0){
+            setrsp_progress("Warning: failed to call kit commands.");
+        }
     }
 
     setrsp_progress("Updated the image/network/hardware profiles used by nodes.");
     setrsp_success($nodes);
 }
 
+#------------------------------------------------------
+
+=head3 noderegenips
+
+  Description: Re-generate IPs automatically for specified nodes.
+               All these nodes must be in same networkprofile.
+               If no nics specified, then re-generate IP all nics in the networkprofile.
+
+=cut
+#-----------------------------------------------------
+sub noderegenips
+{
+    my $nodes   = $request->{node};
+    my $helpmsg = "noderegenips: Regenerate nodes IP addresses.
+Usage:
+\tnoderegenips <noderange> [nics=<eth0,eth1...>] 
+\tnoderegenips [-h|--help]
+\tnoderegenips {-v|--version}";
+    if (! $nodes){
+        setrsp_infostr($helpmsg);
+        return;
+    }
+    my @enabledparams = ('nics');
+    my $ret = validate_args($helpmsg, \@enabledparams);
+    if (! $ret){
+        return;
+    }
+
+    my @updateNics = ();
+    my @removedNics = ();
+    my $netProfileName = '';
+    my $netProfileNicsRef;
+    my %freeIPsHash = ();
+    # nicipsAttr and ipAttr are for storing node's nicips and ip attribute
+    my %nicipsAttr = ();
+    my %ipAttr = ();
+    my $installnic = '';
+    xCAT::MsgUtils->message('S', "Start running noderegenips.");
+    #1. Validate all nodes have same network profile.  networkprofile.
+    my $nodesProfilesRef = xCAT::ProfiledNodeUtils->get_nodes_profiles($nodes);
+    foreach my $node (keys %$nodesProfilesRef){
+        unless( $nodesProfilesRef->{$node}->{NetworkProfile} ){
+            setrsp_errormsg("Node $node does not have a network profile.");
+            return;
+        }
+        unless( $netProfileName ){
+            $netProfileName = "__NetworkProfile_".$nodesProfilesRef->{$node}->{NetworkProfile};
+            next;
+        }
+        if ("__NetworkProfile_".$nodesProfilesRef->{$node}->{NetworkProfile} ne $netProfileName){
+            setrsp_errormsg("Node $node has a different network profile with other nodes.");
+            return;
+        }
+    }
+    #2. Get network profile nics settings. 
+    $netProfileNicsRef = xCAT::ProfiledNodeUtils->get_nodes_nic_attrs([$netProfileName]);
+    my $nicsref = $netProfileNicsRef->{$netProfileName};
+    my @nicslist = keys %$nicsref;
+    #3. validate specified nics 
+    if(exists $args_dict{'nics'}){
+        @updateNics = split(",", $args_dict{'nics'});
+    }
+    foreach (@updateNics){
+        unless ($netProfileNicsRef->{$netProfileName}->{$_}){
+            # We want to remove this nic from these nodes.
+            push(@removedNics, $_);
+        }
+    }
+    unless (@updateNics){
+        @updateNics = @nicslist;
+    }
+    # get install nic for these nodes.
+    my $restab = xCAT::Table->new('noderes');
+    my $installnicattr = $restab->getNodeAttribs($netProfileName, ['installnic']);
+    $installnic = $installnicattr->{'installnic'};
+
+    #4. get all node's current database nics settings.
+    my $nodesNicsRef = xCAT::ProfiledNodeUtils->get_nodes_nic_attrs($nodes);
+
+    my $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('ipmi', 'bmc');
+    %allbmcips = %$recordsref;
+    $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('hosts', 'ip');
+    %allinstallips = %$recordsref;
+    $recordsref = xCAT::NetworkUtils->get_all_nicips(1);
+    %allips = %$recordsref;
+    $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('ppc', 'hcp');
+    my %allfspips = %$recordsref;
+    %allips = (%allips, %allbmcips, %allinstallips, %allfspips);
+
+    #5. free currently used IPs for all nodes. 
+    foreach my $node (@$nodes){
+        foreach my $nicname (@updateNics){
+            my $nicip = $nodesNicsRef->{$node}->{$nicname}->{"ip"};
+            if ($nicip){
+                delete($allips{$nicip});
+            }
+        }
+    }
+
+    #6. Generate new free IPs for each network.
+    my @allknownips = keys %allips;
+    foreach my $updnic (@updateNics){
+        #No need generate for removed nics.
+        unless (grep {$_ eq $updnic} @removedNics){
+            my $netname = $netProfileNicsRef->{$netProfileName}->{$updnic}->{"network"};
+            $freeIPsHash{$updnic} = xCAT::ProfiledNodeUtils->get_allocable_staticips_innet($netname, \@allknownips);
+        }
+    }
+    
+    #7. Assign new free IPs for nodes and generate nicips and hosts attribute.
+    foreach my $node (@$nodes){
+        foreach my $nicname (@nicslist){
+            # Remove records from nicips for removed nics.
+            if (grep {$_ eq $nicname} @removedNics){
+                next;
+            }
+
+            unless (grep {$_ eq $nicname} @updateNics){
+                # if the nic not specified, just keep the old IP&NIC record in nics table.
+                my $oldip = $nodesNicsRef->{$node}->{$nicname}->{"ip"};
+                $nicipsAttr{$node}{nicips} .= $nicname."!".$oldip.",";
+            }else{
+                my $ipsref = $freeIPsHash{$nicname};
+                my $nextip = shift @$ipsref;
+                unless ($nextip){
+                    setrsp_errormsg("There are no more IP addresses available in the static network range for nic $nicname.");
+                    return;
+                }
+                $nicipsAttr{$node}{nicips} .= $nicname."!".$nextip.",";
+                if ($installnic eq $nicname){
+                    $ipAttr{$node}{ip} = $nextip;
+                }
+            }
+        }
+    }
+
+    #8. Update database.
+    setrsp_progress("Updating database records...");
+    my $nicstab = xCAT::Table->new('nics',-create=>1);
+    $nicstab->setNodesAttribs(\%nicipsAttr);
+    $nicstab->close();
+
+    #9. If provisioning NIC ip changed for nodes, reconfig boot settings and unset node's status.
+    if ( grep {$_ eq $installnic} @updateNics){
+        my $hoststab = xCAT::Table->new('hosts', -create=>1);
+        $hoststab->setNodesAttribs(\%ipAttr);
+        $hoststab->close();
+
+        #Get node's provmethod. 
+        my $nodetypetab = xCAT::Table->new('nodetype');
+        my $firstnode = $nodes->[0];
+        my $records = $nodetypetab->getNodeAttribs($firstnode, ['node', 'provmethod']);
+        my $imgname = $records->{provmethod};
+        my $retref = xCAT::Utils->runxcmd({command=>["nodeset"], node=>$nodes, arg=>["osimage=$imgname"], sequential=>[1]}, $request_command, 0, 2);
+        my $retstrref = parse_runxcmd_ret($retref);
+        if ($::RUNCMD_RC != 0){
+            setrsp_progress("Warning: failed to call command nodeset.");
+        }
+    }
+
+    #10. Call plugins.
+    my $retref = xCAT::Utils->runxcmd({command=>["kitnoderefresh"], node=>$nodes, sequential=>[1]}, $request_command, 0, 2);
+    my $retstrref = parse_runxcmd_ret($retref);
+    if ($::RUNCMD_RC != 0){
+        setrsp_progress("Warning: failed to call kit commands.");
+    }
+
+    setrsp_progress("Re-generated node's IPs for specified nics.");
+    setrsp_success($nodes);
+}
 
 #-------------------------------------------------------
 
@@ -1053,15 +1232,18 @@ Usage:
 #-------------------------------------------------------
 sub findme{
     xCAT::MsgUtils->message('S', "Profield nodes discover: Start.\n");
+    # re-initalize the global variable
+    %args_dict = ();
     # Read DB to confirm the discover is started. 
-    my @sitevalues = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
-    if (! $sitevalues[0]){
+    my $sitetab = xCAT::Table->new('site');
+    my $sitevaluesstr = $sitetab->getAttribs({'key'=>'__PCMDiscover'},('value'))->{'value'};
+    unless ($sitevaluesstr){
         setrsp_errormsg("Profiled nodes discovery not started yet.");
         return;
     }
 
     # We store node profiles in site table, key is "__PCMDiscover"
-    my @profilerecords = split(',', $sitevalues[0]);
+    my @profilerecords = split(',', $sitevaluesstr);
     foreach (@profilerecords){
         if ($_){
             my ($profilename, $profilevalue) = split(':', $_);
@@ -1143,7 +1325,7 @@ sub findme{
             }
         }
 
-        my $sitetab = xCAT::Table->new('site',-create=>1);
+        $sitetab = xCAT::Table->new('site',-create=>1);
         $sitetab->setAttribs({"key" => "__PCMDiscover"}, {"value" => "$valuestr"});
         $sitetab->close();
     }
@@ -1443,7 +1625,7 @@ sub validate_node_entries{
     my @chassislist = keys %allchassis;
     my $chassisrackref = xCAT::ProfiledNodeUtils->get_racks_for_chassises(\@chassislist);
 
-    foreach my $attr (keys %::profiledNodeAttrs){
+    foreach my $attr (@::profiledNodeObjNames){
         my $errmsg = validate_node_entry($attr, $::profiledNodeAttrs{$attr});
         # Check whether specified IP is in our prov network, static range.
         if ($::profiledNodeAttrs{$attr}->{'ip'}){
