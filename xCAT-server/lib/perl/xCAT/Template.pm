@@ -290,7 +290,18 @@ sub windows_account_data {
 	unless ($::XCATSITEVALS{directoryprovider} eq "activedirectory" and $::XCATSITEVALS{domain}) {
 		return $useraccountxml;
 	}
-	$useraccountxml.="<DomainAccounts><DomainAccountList>\n<DomainAccount wcm:action=\"add\">\n<Group>Administrators</Group>\n<Name>Domain Admins</Name>\n</DomainAccount>\n<Domain>".$::XCATSITEVALS{domain}."</Domain>\n</DomainAccountList>\n</DomainAccounts>\n";
+	my $domain;
+        my $doment;
+	my $domaintab = xCAT::Table->new('domain',-create=>0);
+	if ($domaintab) {
+           $doment = $domaintab->getNodeAttribs($node,['authdomain'],prefetchcache=>1);
+	}
+	if ($doment and $doment->{authdomain}) {
+		$domain = $doment->{authdomain};
+	} else {
+		$domain = $::XCATSITEVALS{domain};
+	}
+	$useraccountxml.="<DomainAccounts><DomainAccountList>\n<DomainAccount wcm:action=\"add\">\n<Group>Administrators</Group>\n<Name>Domain Admins</Name>\n</DomainAccount>\n<Domain>".$domain."</Domain>\n</DomainAccountList>\n</DomainAccounts>\n";
 		return $useraccountxml;
 }
 #this will examine table data, decide *if* a Microsoft-Windows-UnattendedJoin is warranted
@@ -304,16 +315,31 @@ sub windows_join_data {
 	}
 	#we are still here, meaning configuration has a domain and activedirectory set, probably want to join..
 	#TODO: provide a per-node 'disable' so that non-AD could be mixed into a nominally AD environment
-	my $adinfo = machinepassword(wantref=>1); #TODO: needs rearranging in non prejoin case
 	my $prejoin =1; 
 	if (defined $::XCATSITEVALS{prejoinactivedirectory} and not  $::XCATSITEVALS{prejoinactivedirectory} ) {
 		$prejoin = 0;
 	}
-	my $componentxml = '<component name="Microsoft-Windows-UnattendedJoin" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'."\n<Identification>\n<JoinDomain>".$adinfo->{domain}."</JoinDomain>\n";
-	if ($adinfo->{ou}) {
-		$componentxml .= "<MachineObjectOU>".$adinfo->{ou}."</MachineObjectOU>\n";
+	my $domain;
+        my $doment;
+	my $domaintab = xCAT::Table->new('domain',-create=>0);
+	if ($domaintab) {
+           $doment = $domaintab->getNodeAttribs($node,['ou','authdomain'],prefetchcache=>1);
+	}
+	my $ou;
+	if ($doment and $doment->{ou}) {
+		$ou = $doment->{ou};
+	}
+	if ($doment and $doment->{authdomain}) {
+		$domain = $doment->{authdomain};
+	} else {
+		$domain = $::XCATSITEVALS{domain};
+	}
+	my $componentxml = '<component name="Microsoft-Windows-UnattendedJoin" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'."\n<Identification>\n<JoinDomain>".$domain."</JoinDomain>\n";
+	if ($ou) {
+		$componentxml .= "<MachineObjectOU>".$ou."</MachineObjectOU>\n";
 	}
 	if ($prejoin) {
+		my $adinfo = machinepassword(wantref=>1); #TODO: needs rearranging in non prejoin case
 		#a note, MS is incorrect when they document unsecure join as " UnsecureJoin is performed, by using a null session with a pre-existing account. This means there is no authentication to the domain controller when configuring the machine account; it is done anonymously".
 		#the more informative bit is http://technet.microsoft.com/en-us/library/cc730845%28v=ws.10%29.aspx which says of 'securejoin': this method is actually less secure because the credentials reside in the ImageUnattend.xml file in plain text.  
 		#xCAT is generating a one-time password that is kept as limited as is feasible for the deployment strategy
@@ -322,7 +348,22 @@ sub windows_join_data {
 		$componentxml .= "<MachinePassword>".$adinfo->{password}."</MachinePassword>\n<UnsecureJoin>true</UnsecureJoin>\n";
 	} else { #this is the pass-through credentials case, currrently inaccessible until TODO, this must be used 
 		#with care as used incorrectly, an LDAP manager account is at high risk of compromise
-		$componentxml .= "<Credentials><Domain>".$adinfo->{domain}."</Domain>\n<Username>".$adinfo->{adminuser}."</Username>\n<Password>".$adinfo->{adminpass}."</Password>\n</Credentials>\n";
+        	my $passtab = xCAT::Table->new('passwd',-create=>0);
+	        unless ($passtab) { sendmsg([1,"Error authenticating to Active Directory"],$node); return; }
+		my @adpents = $passtab->getAttribs({key=>'activedirectory'},['username','password','authdomain']);
+		my $adpent;
+		my $username;
+		my $password;
+		foreach $adpent (@adpents) {
+			if ($adpent and $adpent->{authdomain} and $adpent->{authdomain} ne $domain) { next; }
+			if ($adpent and $adpent->{username} and $adpent->{password}) {
+				$username = $adpent->{username};
+				$password = $adpent->{password};
+				last;
+			}
+		}
+		unless ($username and $password) { die "Missing active directory admin auth data from passwd table" }
+		$componentxml .= "<Credentials><Domain>".$domain."</Domain>\n<Username>".$username."</Username>\n<Password>".$password."</Password>\n</Credentials>\n";
 	}
 	$componentxml .= "</Identification>\n</component>\n";
 		
@@ -407,25 +448,30 @@ sub machinepassword {
     $ENV{HOME}='/etc/xcat';
     $ENV{LDAPRC}='ad.ldaprc';
     my $ou;
+    my $domain;
     if ($domaintab) {
-        my $ouent = $domaintab->getNodeAttribs('node','ou');
+        my $ouent = $domaintab->getNodeAttribs($node,['ou','authdomain'],prefetchcache=>1);
         if ($ouent and $ouent->{ou}) {
             $ou = $ouent->{ou};
         }
+        if ($ouent and $ouent->{authdomain}) {
+		$domain = $ouent->{authdomain};
+	}
     }
     $passdata->{ou}=$ou;
     #my $sitetab = xCAT::Table->new('site');
     #unless ($sitetab) {
     #    return "ERROR: unable to open site table"; 
     #}
-    my $domain;
     #(my $et) = $sitetab->getAttribs({key=>"domain"},'value');
+    unless ($domain) {
     my @domains =  xCAT::TableUtils->get_site_attribute("domain");
     my $tmp = $domains[0];
     if (defined($tmp)) {
         $domain = $tmp;
     } else {
-        return "ERROR: no domain set in site table";
+        return "ERROR: no domain set in site table or in domain.authdomain for $node";
+    }
     }
     $passdata->{domain}=$domain;
     my $realm = uc($domain);
@@ -435,8 +481,19 @@ sub machinepassword {
     unless ($loggedrealms{$realm}) {
         my $passtab = xCAT::Table->new('passwd',-create=>0);
         unless ($passtab) { sendmsg([1,"Error authenticating to Active Directory"],$node); return; }
-        (my $adpent) = $passtab->getAttribs({key=>'activedirectory'},['username','password']);
-        unless ($adpent and $adpent->{username} and $adpent->{password}) {
+	my @adpents = $passtab->getAttribs({key=>'activedirectory'},['username','password','authdomain']);
+	my $adpent;
+	my $username;
+	my $password;
+	foreach $adpent (@adpents) {
+		if ($adpent and $adpent->{authdomain} and $adpent->{authdomain} ne $domain) { next; }
+		if ($adpent and $adpent->{username} and $adpent->{password}) {
+			$username = $adpent->{username};
+			$password = $adpent->{password};
+			last;
+		}
+	}
+	unless ($username and $password) {
             return "ERROR: activedirectory entry missing from passwd table";
         }
         my $err = xCAT::ADUtils::krb_login(username=>$adpent->{username},password=>$adpent->{password},realm=>$realm);
@@ -448,7 +505,7 @@ sub machinepassword {
     #my $server = $sitetab->getAttribs({key=>'directoryserver'},['value']);
     my $server;
     my @servers = xCAT::TableUtils->get_site_attribute("directoryserver");
-    $tmp = $servers[0];
+    my $tmp = $servers[0];
     if (defined($tmp)) {
         $server = $tmp;
     } else {
