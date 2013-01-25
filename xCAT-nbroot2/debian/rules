@@ -30,6 +30,7 @@ build:
 	dracut -m "xcat base" -f /tmp/xcatgenesis.tmp.rfs
 	(cd $(buildroot)/opt/xcat/share/xcat/netboot/genesis/$(DEB_BUILD_GNU_CPU)/fs/ && zcat /tmp/xcatgenesis.tmp.rfs|cpio -dumi)
 	cp /boot/vmlinuz-`uname -r` $(buildroot)/opt/xcat/share/xcat/netboot/genesis/$(DEB_BUILD_GNU_CPU)/kernel
+	chmod a+r $(buildroot)/opt/xcat/share/xcat/netboot/genesis/$(DEB_BUILD_GNU_CPU)/kernel
 
 clean:
 	dh_testdir
