@@ -642,7 +642,7 @@ sub getPreOSpkgsList {
         while (<$pkglistfp>)
         {
             my $line = xCAT::CFMUtils->trim($_);
-            if (($line =~ /^#/) || ($line =~ /^\s*$/ ))
+            if (($line =~ /^#/) || ($line =~ /^\s*$/ ) || ($line =~ /^@/))
             { #comment line or blank line
                 next;
             } else
