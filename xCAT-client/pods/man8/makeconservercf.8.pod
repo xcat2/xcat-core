@@ -72,6 +72,29 @@ Display usage message.
 
 1 An error has occurred.
 
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To create conserver configuration for all the nodes.
+
+ makeconservercf
+
+=item 2.
+
+To create conserver configuration for nodes node01-node10.
+
+ makeconservercf node01-node10
+
+=item 3.
+
+To remove conserver configuration for node01.
+
+ makeconservercf -d node01
+
+=back
 
 =head1 SEE ALSO
 
