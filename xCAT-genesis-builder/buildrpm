@@ -19,8 +19,14 @@ fi
 mkdir -p /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/fs 
 
 # run dracut
-echo Creating the initramfs in /tmp/xcatgenesis.$$.rfs using dracut ...
-dracut -m "xcat base" -f /tmp/xcatgenesis.$$.rfs
+if [ "$HOSTOS" = "mcp" ]; then
+	KPATH=`/bin/ls -d /root/mcp/mcproot/lib/modules/*`
+	KERNELVERSION=`basename $KPATH`
+	echo Creating the initramfs in /tmp/xcatgenesis.$$.rfs using dracut and kernel $KERNELVERSION ...
+else
+	echo Creating the initramfs in /tmp/xcatgenesis.$$.rfs using dracut ...
+fi
+dracut -m "xcat base" -f /tmp/xcatgenesis.$$.rfs $KERNELVERSION
 
 echo Expanding the initramfs into /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/fs ...
 cd /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/fs 
