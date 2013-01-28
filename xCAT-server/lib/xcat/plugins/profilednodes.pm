@@ -1236,7 +1236,11 @@ sub findme{
     %args_dict = ();
     # Read DB to confirm the discover is started. 
     my $sitetab = xCAT::Table->new('site');
-    my $sitevaluesstr = $sitetab->getAttribs({'key'=>'__PCMDiscover'},('value'))->{'value'};
+    my $stabent =  $sitetab->getAttribs({'key'=>'__PCMDiscover'},('value'));
+    my $sitevaluesstr;
+    if (ref $stabent) { 
+       $sitevaluesstr = $stabent->{'value'};
+    }
     unless ($sitevaluesstr){
         setrsp_errormsg("Profiled nodes discovery not started yet.");
         return;
