@@ -193,6 +193,7 @@ sub subvars {
   $inc =~ s/#WINADJOIN#/windows_join_data()/eg;
   $inc =~ s/#WINACCOUNTDATA#/windows_account_data()/eg;
   $inc =~ s/#WINDISABLENULLADMIN#/windows_disable_null_admin()/eg;
+  $inc =~ s/#MANAGEDADDRESSMODE#/managed_address_mode()/eg;
   $inc =~ s/#HOSTNAME#/$node/g;
 
   my $nrtab = xCAT::Table->new("noderes");
@@ -381,6 +382,9 @@ sub get_win_prodkey {
 	return ""; #in the event that we have no specified key and no KMS key, then try with no key, user may have used some other mechanism 
 } 
 
+sub managed_address_mode {
+	return $::XCATSITEVALS{managedaddressmode};
+}
 sub esxipv6setup {
  if ($::XCATSITEVALS{managedaddressmode} ne "autoula") { return ""; } # blank unless autoula
 	my $hoststab;
