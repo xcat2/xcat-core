@@ -116,7 +116,7 @@ sub dodiscover {
             # receive untill there is none
             ########################################
             while ($waitforsocket->can_read(0)) {
-                my $peer = $args{'socket'}->recv($slppacket,1400,0);
+                my $peer = $args{'socket'}->recv($slppacket,3000,0);
                 push @peerarray, $peer;
                 push @pkgarray, $slppacket;
             }
