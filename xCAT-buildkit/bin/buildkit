@@ -111,7 +111,12 @@ $::deploy_dir = $::build_dir; #kitname appended by validate_bldkitconf routine
                value_desc=>'Must be: empty string or relative path string',
                mandatory=>0,
                base_dir=>'other_files',
-               cp_to_kitconfig=>2} }, # 2 = rename with KIT_KITNAME_ on cp
+               cp_to_kitconfig=>2}, # 2 = rename with KIT_KITNAME_ on cp
+              kitlicense=> {
+               description=>'The Kit license string to be built into all kitcomponent packages.',
+               value_desc=>'any string',
+               mandatory=>1,
+               cp_to_kitconfig=>0} },
     kitrepo => {kitrepoid => {
                description=>'The Kit Package Repository ID.  (e.g., rhels-6.2-x86_64)',
                value_desc=>'Must be: Generic Name String, unique in kit',
@@ -1835,6 +1840,7 @@ sub gen_kitcomp_spec
         s/<<<INSERT_kitcomponent_basename_HERE>>>/$comp->{basename}/;
         s/<<<INSERT_kitcomponent_version_HERE>>>/$comp->{version}/;
         s/<<<INSERT_kitcomponent_release_HERE>>>/$comp->{release}/;
+        s/<<<INSERT_kit_license_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{kitlicense}/;
         s/<<<INSERT_kitcomponent_ospkgdeps_HERE>>>/$comp->{ospkgdeps}/;
         s/<<<INSERT_kitcomponent_kitpkgdeps_HERE>>>/$comp->{kitpkgdeps}/;
         s/<<<INSERT_kitcomponent_kitcompdeps_HERE>>>/$comp->{kitcompdeps}/;
