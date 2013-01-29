@@ -103,6 +103,11 @@ my %guestidmap = (
     "sles10.*" => "sles10_",
     "win2k8" => "winLonghorn",
     "win2k8r2" => "windows7Server",
+	"win2012" => "windows8Server",
+	"hyperv2012" => "windows8Server",
+	"esix5.*" => "vmkernel5",
+	"esix4.*" => "vmkernel",
+	"win8" => "windows8_",
     "win7" => "windows7_",
     "win2k3" => "winNetStandard",
     "imagex" => "winNetStandard",
@@ -2930,7 +2935,7 @@ sub getguestid {
     my $nodearch = $tablecfg{nodetype}->{$node}->[0]->{arch};
     foreach (keys %guestidmap) {
         if (defined($nodeos) and $nodeos =~ /$_/) {
-            if ($nodearch eq 'x86_64') {
+            if ($nodearch eq 'x86_64' and $_ !~ /vmkernel/) {
                 $nodeos=$guestidmap{$_}."64Guest";
             } else {
                 $nodeos=$guestidmap{$_};
