@@ -768,6 +768,7 @@ $SIG{TERM} = $SIG{INT} = sub {
    }
    if ($pid_MON) {
       kill 2, $pid_MON;
+      kill 12, $pid_MON;
    }
    xCAT::Table::shut_dbworker;
    if ($dbmaster) {
