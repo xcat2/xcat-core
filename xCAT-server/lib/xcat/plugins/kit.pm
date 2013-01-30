@@ -303,7 +303,7 @@ sub assign_to_osimage
 
     (my $kitcomptable) = $tabs->{kitcomponent}->getAttribs({kitcompname=> $kitcomp}, 'kitname', 'kitreponame', 'basename', 'kitpkgdeps', 'exlist', 'genimage_postinstall','postbootscripts', 'driverpacks');
     (my $osimagetable) = $tabs->{osimage}->getAttribs({imagename=> $osimage}, 'provmethod', 'osarch', 'postbootscripts', 'kitcomponents');
-    (my $linuximagetable) = $tabs->{linuximage}->getAttribs({imagename=> $osimage}, 'rootimgdir', 'exlist', 'postintall', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
+    (my $linuximagetable) = $tabs->{linuximage}->getAttribs({imagename=> $osimage}, 'rootimgdir', 'exlist', 'postinstall', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
 
     # Reading installdir.
     my $installdir = xCAT::TableUtils->getInstallDir();
