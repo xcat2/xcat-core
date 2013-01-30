@@ -45,7 +45,7 @@ my $MAC = $ENV{MACADDRESS};
 my $inst_nic = '';
 
 # determine which ethernet nic is the installnic. 
-if ($installnic =~ /(e(n|th)d+)$/ ) {
+if ($installnic =~ /(e(n|th)\d+)$/ ) {
      $inst_nic = $1;
 } elsif ($installnic eq "mac") {
     # determine nic from mac. Get all NICs and their mac addresses from ifconfig
