@@ -269,6 +269,9 @@ sub get_filepath_by_url { #at the end of the day, the libvirt storage api gives 
     my $create = $args{create};
     my $force = $args{force};
     my $format = $args{format};
+    if ($url =~ /^lvm:/) {
+	$format = 'raw';
+    }
     unless ($format) {
         $format = 'qcow2';
     }
@@ -1610,7 +1613,7 @@ sub chvm {
             } elsif ($suffix =~ /vd/) {
                 $bus='virtio';
             }
-            my $xml = "<disk type='file' device='disk'><driver name='qemu' type='$format'/><source file='$_'/><target dev='$suffix' bus='$bus'/></disk>";
+            my $xml = "<disk type='file' device='disk'><driver name='qemu' type='$format' cache='none'/><source file='$_'/><target dev='$suffix' bus='$bus'/></disk>";
             if ($currstate eq 'on') { #attempt live attach
               eval {
               $dom->attach_device($xml);
