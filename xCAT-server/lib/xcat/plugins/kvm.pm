@@ -514,6 +514,8 @@ sub build_diskstruct {
                     $tdiskhash->{device}='disk';
                     $tdiskhash->{driver}->{name}='qemu';
                     $tdiskhash->{driver}->{type}=$disks{$_}->{format};
+                    $tdiskhash->{driver}->{cache}="none"; #in this scenario, making a brand new vm, there is not much the hypervisor cache can do for us that the 
+								#guest cannot do for itself
                     $tdiskhash->{source}->{file}=$_;
                     $tdiskhash->{target}->{dev} = $disks{$_}->{device};
                     if ($disks{$_} =~ /^vd/) {
@@ -1489,6 +1491,8 @@ sub rmvm {
         my @purgedisks = $deadman->findnodes("/domain/devices/disk/source");
         my $disk;
         foreach $disk (@purgedisks) {
+	    my $disktype = $disk->parentNode()->getAttribute("device");
+	    if ($disktype eq "cdrom") { next; }
             my $file = $disk->getAttribute("file");
             my $vol = $hypconn->get_storage_volume_by_path($file);
             if ($vol) {
@@ -1613,6 +1617,7 @@ sub chvm {
             } elsif ($suffix =~ /vd/) {
                 $bus='virtio';
             }
+	    #when creating a new disk not cloned from anything, disable cache as copy on write content similarity is a lost cause...
             my $xml = "<disk type='file' device='disk'><driver name='qemu' type='$format' cache='none'/><source file='$_'/><target dev='$suffix' bus='$bus'/></disk>";
             if ($currstate eq 'on') { #attempt live attach
               eval {
@@ -2101,6 +2106,12 @@ sub clone_vm_from_master {
         }
         my $newfilename=$newvol->get_path();
         $disk->findnodes("./source")->[0]->setAttribute("file"=>$newfilename);
+	if (not $detach) {  #if we are a copied image, enable writethrough cache in order to reduce trips out to disk
+		 #but if the format is not qcow2, still leave it at 'none'
+		my $type = $disk->findnodes("./driver")->[0]->getAttribute("type");
+		if ($type eq "qcow2") { $disk->findnodes("./driver")->[0]->setAttribute("cache"=>"writethrough"); }
+	}
+		
     }
     my $textxml=$newnodexml->toString();
     $updatetable->{kvm_nodedata}->{$node}->{xml}=$textxml;
