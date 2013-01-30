@@ -2286,8 +2286,9 @@ sub getNodeAttribs
             my $exp = substr($datum->{$attrib}, 1);
             chop $exp;
             my @parts = split('/', $exp, 2);
-            $node =~ s/$parts[0]/$parts[1]/;
-            $datum->{$attrib} = $node;
+	    my $retval = $node;
+            $retval =~ s/$parts[0]/$parts[1]/;
+            $datum->{$attrib} = $retval;
         }
         elsif ($datum->{$attrib} =~ /^\|.*\|.*\|$/)
         {
