@@ -1077,6 +1077,10 @@ sub getrvidparms_imm2 {
 	my $rsp = shift;
 	my $sessdata = shift;
     #wvid should be a possiblity, time to do the http...
+    $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0; #TODO: for standalone IMMs, automate CSR retrieval and granting at setup itme
+					    #for flex, grab the CA from each CMM and store in a way accessible to this command
+					    #for now, accept the MITM risk no worse than http, the intent being feature parity
+					    #with http: for envs with https only, like Flex
     my $browser = LWP::UserAgent->new();
 	if ($sessdata->{ipmisession}->{bmc} =~ /^fe80/ and $sessdata->{ipmisession}->{bmc} =~ /%/) {
         xCAT::SvrUtils::sendmsg ([1,"wvid not supported with IPv6 LLA addressing mode"],$callback,$sessdata->{node},%allerrornodes);
@@ -1088,10 +1092,6 @@ sub getrvidparms_imm2 {
     my $message = "user=".$sessdata->{ipmisession}->{userid}."&password=".$sessdata->{ipmisession}->{password}."&SessionTimeout=1200";
     $browser->cookie_jar({});
     my $httpport=443;
-    $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0; #TODO: for standalone IMMs, automate CSR retrieval and granting at setup itme
-					    #for flex, grab the CA from each CMM and store in a way accessible to this command
-					    #for now, accept the MITM risk no worse than http, the intent being feature parity
-					    #with http: for envs with https only, like Flex
     my $baseurl = "https://$host/";
     my $response = $browser->request(POST $baseurl."data/login",Referer=>"https://$host/designs/imm/index.php",'Content-Type'=>"application/x-www-form-urlencoded",Content=>$message);
     if ($response->code == 500) {
