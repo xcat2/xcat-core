@@ -130,29 +130,41 @@ for ($i=0; $i < (scalar @nic_ips) ; $i++ ) {
     elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /sles|suse/i)) || (-f "/etc/SuSE-release")) { 
         # Write the info to the ifcfg file
         my $dir = "/etc/sysconfig/network";
-        if (!open(FILE, ">$dir/ifcfg-$specific_nic")) { system("logger -t xcat -p local4.err 'configeth: cannot open $dir/ifcfg-$specific_nic.'"); exit 1; }
-        # Not sure what is really REQUIRED from below -- copied the eth file from
-        # the system
-        print FILE "DEVICE=\'$specific_nic\'\n";
-        print FILE "BOOTPROTO=\'static\'\n";
-        print FILE "BROADCAST=\'\'\n";
-        print FILE "ETHTOOL_OPTIONS=\'\'\n";
-        print FILE "IPADDR=\'".$nic_ips[$i]."\'\n";
-        print FILE "MTU=\'\'\n";
-        print FILE "NAME=\'\'\n";
-        print FILE "NETMASK=\'".$netmask."\'\n";
-        print FILE "NETWORK=\'".$subnet."\'\n";
-        print FILE "REMOTE_IPADDR=\'\'\n";
-        print FILE "STARTMODE=\'onboot\'\n";
-        print FILE "UNIQUE=\'\'\n";
-        print FILE "USERCONTROL=\'no\'\n";
-        print FILE "_nm_name=\'static-0\'\n";
+
+        if ($i == 0 ) {
+            if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat -p local4.err 'configeth: cannot open $dir/ifcfg-$nic.'"); exit 1; }
+            # Not sure what is really REQUIRED from below -- copied the eth file from
+            # the system
+            print FILE "DEVICE=\'$nic\'\n";
+            print FILE "BOOTPROTO=\'static\'\n";
+            print FILE "BROADCAST=\'\'\n";
+            print FILE "ETHTOOL_OPTIONS=\'\'\n";
+            print FILE "IPADDR=\'".$nic_ips[$i]."\'\n";
+            print FILE "MTU=\'\'\n";
+            print FILE "NAME=\'\'\n";
+            print FILE "NETMASK=\'".$netmask."\'\n";
+            print FILE "NETWORK=\'".$subnet."\'\n";
+            print FILE "REMOTE_IPADDR=\'\'\n";
+            print FILE "STARTMODE=\'onboot\'\n";
+            print FILE "UNIQUE=\'\'\n";
+            print FILE "USERCONTROL=\'no\'\n";
+            print FILE "_nm_name=\'static-0\'\n";
         
+        } else {
+            # on suse/sles the ip alias info goes into the same file as the base ip info.
+            # create the file once then loop through all additional ips
+            if (!open(FILE, ">>$dir/ifcfg-$nic")) { system("logger -t xcat -p local4.err 'configeth: cannot open $dir/ifcfg-$nic for appending ip alias info'"); exit 1; }
+                
+            print FILE "IPADDR_$i=\'".$nic_ips[$i]."\'\n";
+            print FILE "NETMASK_$i=\'".$netmask."\'\n";
+            print FILE "NETWORK_$i=\'".$subnet."\'\n";
+            print FILE "LABEL_$i=\'".$i."\'\n";
+        }
         close FILE;
         runcmd("ifup $nic");
     }
     else {
-        # Write the info to the ifcfg file
+        # Write the info to the ifcfg file for redhat 
         my $dir = "/etc/sysconfig/network-scripts";
         if (!open(FILE, ">$dir/ifcfg-$specific_nic")) { system("logger -t xcat -p local4.err 'configeth: cannot open $dir/ifcfg-$specific_nic.'"); exit 1; }
         print FILE "DEVICE=$specific_nic\n";
@@ -177,7 +189,7 @@ sub runcmd {
 	if ($rc) {
 		system("logger -t xcat -p local4.err 'configeth: command $cmd failed with rc $rc: " . join('',@output) . "'");
 		my $errout= "configeth: command $cmd failed with rc $rc.";
-                `echo $errout`;
+                echo $errout;
 		exit $rc;
 	}
 }
