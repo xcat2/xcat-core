@@ -93,12 +93,15 @@ sub process_request {
     $command = $request->{command}->[0];
     $args = $request->{arg};
 
-    # There is no need to acquire lock for command nodediscoverstatus and nodediscoverls.
+    # There is no need to acquire lock for command nodediscoverstatus, nodediscoverls and noderegenips.
     if ($command eq "nodediscoverstatus"){
         nodediscoverstatus();
         return;
     } elsif ($command eq "nodediscoverls"){
         nodediscoverls();
+        return;
+    } elsif ($command eq "noderegenips"){
+        noderegenips();
         return;
     }
 
@@ -116,7 +119,6 @@ sub process_request {
                 'nodeimport' => 'import nodes',
                 'nodepurge' => 'remove nodes',
                 'nodechprofile' => 'change profiles',
-                'noderegenips' => 'regenerate node nic IPs',
                 'nodeaddunmged' => 'add devices',
                 'nodechmac' => 'change MAC address'
             );  
@@ -133,8 +135,6 @@ sub process_request {
     	nodepurge();
     } elsif ($command eq "nodechprofile"){
     	nodechprofile();
-    } elsif ($command eq "noderegenips"){
-        noderegenips();
     } elsif ($command eq "noderefresh"){
     	noderefresh();
     } elsif ($command eq "nodediscoverstart"){
@@ -544,38 +544,91 @@ Usage:
     }
 
     xCAT::MsgUtils->message('S', "Update nodes' profile settings.");
-    my %updated_groups;
     # Get current templates for all nodes.
     setrsp_progress("Getting all node groups from the database...");
     my %groupdict;
     my $nodelstab = xCAT::Table->new('nodelist');
     my $nodeshashref = $nodelstab->getNodesAttribs($nodes, ['groups']);
-    my %nodeshash = %$nodeshashref;
     my %updatenodeshash;
-    foreach (keys %nodeshash){
-        my @groups;
-        my $attrshashref = $nodeshash{$_}[0];
-        my %attrshash = %$attrshashref;
-        # Update node's groups (profiles) info.
-        if ($attrshash{'groups'}){
-            @groups = split(/,/, $attrshash{'groups'});
 
-            my $groupsref = [];
-            # Replace the old template name with new specified ones in args_dict
-            if(exists $args_dict{'networkprofile'}){
-                $groupsref = replace_item_in_array(\@groups, "NetworkProfile", $args_dict{'networkprofile'});
+    my $changeflag = 0;
+    my %nodeoldprofiles = ();
+    my %nodecurrprofiles = ();
+    foreach (@$nodes){
+        # Get each node's profiles.
+        my $groupsstr = $nodeshashref->{$_}->[0]->{'groups'};
+        unless ($groupsstr){
+            setrsp_errormsg("node $_ does not have any profiles, can not change its profiles.");
+            return;
+        }
+        my @groups = split(/,/, $groupsstr);
+        foreach my $group (@groups){
+            if ($group =~ /__ImageProfile/){
+                $nodecurrprofiles{'imageprofile'} = $group;
+            }elsif ($group =~ /__NetworkProfile/){
+                $nodecurrprofiles{'networkprofile'} = $group;
+            }elsif ($group =~ /__HardwareProfile/){
+                $nodecurrprofiles{'hardwareprofile'} = $group;
+            }else{
+                $nodecurrprofiles{'groups'} .= $group.",";
             }
-            if(exists $args_dict{'hardwareprofile'}){
-                $groupsref = replace_item_in_array(\@groups, "HardwareProfile", $args_dict{'hardwareprofile'});
-                # Update node's status to defined
+        }
+        # initialize node old profiles.
+        unless (%nodeoldprofiles){
+            $nodeoldprofiles{'imageprofile'} = $nodecurrprofiles{'imageprofile'};
+            $nodeoldprofiles{'networkprofile'} = $nodecurrprofiles{'networkprofile'};
+            $nodeoldprofiles{'hardwareprofile'} = $nodecurrprofiles{'hardwareprofile'};
+        }
+        # Make sure whether all nodes having same profiles.
+        if($nodeoldprofiles{'imageprofile'} ne $nodecurrprofiles{'imageprofile'}){
+            setrsp_errormsg("node $_ does not have same imageprofile with other nodes.");
+            return;
+        } elsif ($nodeoldprofiles{'hardwareprofile'} ne $nodecurrprofiles{'hardwareprofile'}){
+            setrsp_errormsg("node $_ does not have same hardwareprofile with other nodes.");
+            return;
+        } elsif ($nodeoldprofiles{'networkprofile'} ne $nodecurrprofiles{'networkprofile'}){
+            setrsp_errormsg("node $_ does not have same networkprofile with other nodes.");
+            return;
+        }
+
+        # Replace the old profiles name with new specified ones in args_dict
+        if ($nodecurrprofiles{'groups'}){
+            $updatenodeshash{$_}{'groups'} = $nodecurrprofiles{'groups'};
+        }
+
+        if(exists $args_dict{'networkprofile'}){
+            $updatenodeshash{$_}{'groups'} .= $args_dict{'networkprofile'}.",";
+            if ($args_dict{'networkprofile'} ne $nodeoldprofiles{'networkprofile'}){
+                $changeflag = 1;
+            }else{
+                xCAT::MsgUtils->message('S', "Specified networkprofile is same with current value, ignore.");
+                delete($args_dict{'networkprofile'});
+            }
+        }
+        if(exists $args_dict{'hardwareprofile'}){
+            $updatenodeshash{$_}{'groups'} .= $args_dict{'hardwareprofile'}.",";
+            if ($args_dict{'hardwareprofile'} ne $nodeoldprofiles{'hardwareprofile'}){
                 $updatenodeshash{$_}{'status'} = 'defined';
+                $changeflag = 1;
+            }else{
+                xCAT::MsgUtils->message('S', "Specified hardwareprofile is same with current value, ignore.");
+                delete($args_dict{'hardwareprofile'});
             }
-            if(exists $args_dict{'imageprofile'}){
-                $groupsref = replace_item_in_array(\@groups, "ImageProfile", $args_dict{'imageprofile'});
-                # Update node's status to defined
+        }
+        if(exists $args_dict{'imageprofile'}){
+            $updatenodeshash{$_}{'groups'} .= $args_dict{'imageprofile'}.",";
+            if ($args_dict{'imageprofile'} ne $nodeoldprofiles{'imageprofile'}){
                 $updatenodeshash{$_}{'status'} = 'defined';
+                $changeflag = 1;
+            }else{
+                xCAT::MsgUtils->message('S', "Specified imageprofile is same with current value, ignore.");
+                delete($args_dict{'networkprofile'});
             }
-            $updatenodeshash{$_}{'groups'} = join (',', @$groupsref);
+        }
+        # make sure there are something changed, otherwise we should quit without any changes.
+        unless ($changeflag){
+            setrsp_errormsg("No profile changes detect.");
+            return;
         }
     }
     
@@ -584,17 +637,29 @@ Usage:
     my $nodetab = xCAT::Table->new('nodelist',-create=>1);
     $nodetab->setNodesAttribs(\%updatenodeshash);
     $nodetab->close();
-    
-    # Call plugins.
+
+    my $retref;
+    my $retstrref;
+    # Call update plugins first.
     if(exists $args_dict{'hardwareprofile'} || exists $args_dict{'imageprofile'}){
         setrsp_progress("Configuring nodes...");
-        my $retref = xCAT::Utils->runxcmd({command=>["kitnodeupdate"], node=>$nodes, sequential=>[1]}, $request_command, 0, 2);
-        my $retstrref = parse_runxcmd_ret($retref);
+        $retref = xCAT::Utils->runxcmd({command=>["kitnodeupdate"], node=>$nodes, sequential=>[1]}, $request_command, 0, 2);
+        $retstrref = parse_runxcmd_ret($retref);
         if ($::RUNCMD_RC != 0){
             setrsp_progress("Warning: failed to call kit commands.");
         }
     }
 
+    # If network profile specified. Need re-generate IPs for all nodess again.
+    if(exists $args_dict{'networkprofile'}){
+        setrsp_progress("Regenerate IP addresses for nodes...");
+        $retref = xCAT::Utils->runxcmd({command=>["noderegenips"], node=>$nodes, sequential=>[1]}, $request_command, 0, 2);
+        $retstrref = parse_runxcmd_ret($retref);
+        if ($::RUNCMD_RC != 0){
+            setrsp_progress("Warning: failed to generate IPs for nodes.");
+        }
+    }
+    
     setrsp_progress("Updated the image/network/hardware profiles used by nodes.");
     setrsp_success($nodes);
 }
@@ -1380,33 +1445,6 @@ sub findme{
     my $nodelstab = xCAT::Table->new('nodelist',-create=>1);
     $nodelstab->setNodeAttribs($nodelist[0],{groups=>$nodegroupstr.",__PCMDiscover"});
     $nodelstab->close();
-}
-
-#-------------------------------------------------------
-
-=head3  replace_item_in_array
-
-    Description : Replace an item in a list with new value. This item should match specified pattern.
-    Arguments   : arrayref - the list.
-                  pattern - the pattern which the old item must match.
-                  newitem - the updated value.
-=cut
-
-#-------------------------------------------------------
-sub replace_item_in_array{
-    my $arrayref = shift;
-    my $pattern = shift;
-    my $newitem = shift;
-
-    my @newarray;
-    foreach (@$arrayref){
-        if ($_ =~ /__$pattern/){
-            next;
-        }
-        push (@newarray, $_);
-    }
-    push(@newarray, $newitem);
-    return \@newarray;
 }
 
 #-------------------------------------------------------

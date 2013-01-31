@@ -182,6 +182,11 @@ sub process_request {
         log_cmd_return($retref);
     }
     elsif ($command eq 'kitnoderefresh'){
+        # This is due to once update nicips table, we need remove node's records first and then re-create by run make* commands.
+        setrsp_progress("Remove nodes entries from system configuration files first.");
+        $retref = xCAT::Utils->runxcmd({command=>["kitnoderemove"], node=>$nodelist}, $request_command, 0, 2);
+        log_cmd_return($retref);
+
         setrsp_progress("Updating hosts entries");
         $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodelist}, $request_command, 0, 2);
         log_cmd_return($retref);
