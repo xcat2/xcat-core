@@ -30,6 +30,7 @@ Start by filling out the L<networks(5)|networks.5> table properly.
 =item 2.
 
 Then use the B<makedhcp -n> option to create a new dhcp configuration file.
+You can set the site table, dhcplease attribute to the lease time for the dhcp client. The default value is 43200. 
 
 =item 3.
 
