@@ -1526,6 +1526,24 @@ sub copycd
             $distname = "ol$1.$2";
         }
     }
+    elsif ($desc =~ /^Red Hat Enterprise Linux (\d)\.(\d)/)
+    {
+	my $edition;
+	my $version = "$1.$2";
+	if (-d "$mntpath/Server") {
+		$edition = "s";
+	} elsif (-d "$mntpath/Client") {
+		$edition = "c";
+	} elsif (-d "$mntpath/Workstation") {
+		$edition = "w";
+	} elsif (-d "$mntpath/ComputeNode") {
+		$edition = "cn";
+	}
+        unless ($distname)
+        {
+            $distname = "rhel$edition$version";
+        }
+    }
     elsif ($desc =~ /^Final$/)
     {
         unless ($distname)
