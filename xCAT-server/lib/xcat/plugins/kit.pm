@@ -1014,6 +1014,21 @@ sub addkit
             return 1;
         }
 
+        # Check if the kitcomponent is existing
+        my @kitcomps = $tabs{kitcomponent}->getAllAttribs( 'kitcompname' );
+        foreach my $kitcomp (@kitcomps) {
+            if ( $kitcomp->{kitcompname} ) {
+                foreach my $kitcompid (keys %kitcomphash) {
+                    if ( $kitcomphash{$kitcompid}{kitcompname} and $kitcomphash{$kitcompid}{kitcompname} =~ /$kitcomp->{kitcompname}/ ) {
+                        my %rsp;
+                        push@{ $rsp{data} }, "Failed to add kitcomponent $kitcomp->{kitcompname} because it is already existing";
+                        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                        return 1;
+                    }
+                }
+            }
+        }
+
         my %rsp;
         push@{ $rsp{data} }, "Adding Kit $kithash{kitname}";
         xCAT::MsgUtils->message( "I", \%rsp, $callback );
