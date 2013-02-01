@@ -3163,6 +3163,7 @@ sub create_storage_devs {
     unless ($globaldisktype) { $globaldisktype='ide'; }
     #number of devices is the larger of the specified sizes (TODO: masters) or storage pools to span
     my $numdevs = (scalar @storelocs > scalar @sizes ? scalar @storelocs : scalar @sizes);
+	my $controllertype='scsi';
     while ($numdevs-- > 0) {
         my $storeloc = shift @storelocs;
         unless (scalar @storelocs) { @storelocs = ($storeloc); } #allow reuse of one cfg specified pool for multiple devs
@@ -3176,7 +3177,7 @@ sub create_storage_devs {
         if ($disktype eq 'ide' and $args{idefull}) {
             xCAT::SvrUtils::sendmsg([1,"VM is at capacity for IDE devices, a drive was not added"], $output_handler,$node);
             return;
-        } elsif ($disktype eq 'scsi' and $args{scsifull}) {
+        } elsif (($disktype eq 'scsi' or $disktype eq 'sas' or $disktype eq 'pvscsi') and $args{scsifull}) {
             xCAT::SvrUtils::sendmsg([1,"SCSI Controller at capacity, a drive was not added"], $output_handler,$node);
             return;
         }
@@ -3223,6 +3224,7 @@ sub create_storage_devs {
 			}
             $usedideunits{$unitnum}=1;
         } else {
+			$controllertype=$disktype;
             $controllerkey = $scsicontrollerkey;
 	    $unitnum = 0;
             while ($usedscsiunits{$unitnum}) {
@@ -3245,10 +3247,23 @@ sub create_storage_devs {
     #It *seems* that IDE controllers are not subject to require creation, so we skip it
    if ($havescsidevs and not $havescsicontroller) { #need controllers to attach the disks to
        foreach(0..$scsicontrollerkey) {
+	   	   if ($controllertype eq 'scsi') {
            $dev=VirtualLsiLogicController->new(key => $_,
                                                device => \@{$disktocont{$_}},
                                                sharedBus => VirtualSCSISharing->new('noSharing'),
                                                busNumber => $_);
+		  } elsif ($controllertype eq 'sas') {
+           $dev=VirtualLsiLogicSASController->new(key => $_,
+                                               device => \@{$disktocont{$_}},
+                                               sharedBus => VirtualSCSISharing->new('noSharing'),
+                                               busNumber => $_);
+		  } elsif ($controllertype eq 'pvscsi') {
+           $dev=ParaVirtualSCSIController->new(key => $_,
+                                               device => \@{$disktocont{$_}},
+                                               sharedBus => VirtualSCSISharing->new('noSharing'),
+                                               busNumber => $_);
+		  }
+		  	
            push @devs,VirtualDeviceConfigSpec->new(device => $dev,
                                                operation =>  VirtualDeviceConfigSpecOperation->new('add'));
                                                 
