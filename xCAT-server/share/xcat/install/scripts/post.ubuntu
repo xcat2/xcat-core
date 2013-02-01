@@ -177,8 +177,6 @@ if [[ -r /boot/grub/menu.lst ]]; then
 sed -i 's/^serial/#serial/' /boot/grub/menu.lst
 sed -i 's/^terminal/#terminal/' /boot/grub/menu.lst
 elif [[ -r /boot/grub/grub.cfg ]] ; then
-sed -i 's/\(GRUB_CMDLINE_LINUX=\).*/\1\"console=tty0\ console=ttyS#TABLE:nodehm:THISNODE:serialport#,#TABLE:nodehm:THISNODE:serialspeed#\"/' /etc/default/grub
-sed -i 's/\(GRUB_CMDLINE_LINUX_DEFAULT=\).*/\1""/g' /etc/default/grub
 update-grub
 fi
 sed -i 's/\(deb.*security.*\)/#\1/' /etc/apt/sources.list
