@@ -121,11 +121,19 @@ for ($i=0; $i < (scalar @nic_ips) ; $i++ ) {
     }
 
     if ($^O =~ /^aix/i) {
-            if ($ipaddr =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/) {
-                runcmd("chdev -l '$specific_nic' -a netaddr=$nic_ips[$i] -a netmask=$netmask -a state='up'");
-    #        } else { #ipv6
-    #            runcmd("autoconf6 -6i en$nic_num");
+        if ($i == 0) {
+            if ($nic_ips[$i] =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/) {
+                runcmd("chdev -l '$nic' -a netaddr=$nic_ips[$i] -a netmask=$netmask -a state='up'");
+    #       } else { #ipv6
+    #           runcmd("autoconf6 -6i en$nic_num");
             }
+        } else {
+            if ($nic_ips[$i] =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/) {
+                runcmd("chdev -l '$nic' -a alias4=$nic_ips[$i],$netmask");
+    #       } else { #ipv6
+    #           runcmd("autoconf6 -6i en$nic_num");
+            }
+        }
     }
     elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /sles|suse/i)) || (-f "/etc/SuSE-release")) { 
         # Write the info to the ifcfg file
@@ -152,7 +160,7 @@ for ($i=0; $i < (scalar @nic_ips) ; $i++ ) {
         
         } else {
             # on suse/sles the ip alias info goes into the same file as the base ip info.
-            # create the file once then loop through all additional ips
+            # open ifconfig-eth file and append additional info.
             if (!open(FILE, ">>$dir/ifcfg-$nic")) { system("logger -t xcat -p local4.err 'configeth: cannot open $dir/ifcfg-$nic for appending ip alias info'"); exit 1; }
                 
             print FILE "IPADDR_$i=\'".$nic_ips[$i]."\'\n";
