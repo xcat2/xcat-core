@@ -197,6 +197,7 @@ sub get_storage_pool_by_url {
             unless ($path =~ /^\//) {
 		$path = '/'.$path;
 	    }
+	    $path =~ s/\/\z//; #delete trailing / if table specifies, a perfectly understable 'mistake'
 	    my $checkpath = $pool->findnodes("/pool/target/path/text()")->[0]->data;
 	    if ($checkpath eq $path) {
 		last;
