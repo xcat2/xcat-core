@@ -310,8 +310,14 @@ sub mkinstall
                      next;
         } 
 
-        my $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/windows", $profile, $os, $arch);
-        if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/windows", $profile, $os, $arch); }
+	my $custmplpath = "$installroot/custom/install/windows";
+	my $tmplpath = "$::XCATROOT/share/xcat/install/windows";
+	if ($os =~ /^hyperv/) { 
+		$custmplpath = "$installroot/custom/install/hyperv";
+		$tmplpath = "$::XCATROOT/share/xcat/install/hyperv";
+	}
+        my $tmplfile=xCAT::SvrUtils::get_tmpl_file_name($custmplpath, $profile, $os, $arch);
+        if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name($tmplpath, $profile, $os, $arch); }
         unless ( -r "$tmplfile")
         {
             $callback->(

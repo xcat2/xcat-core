@@ -562,6 +562,10 @@ sub  update_tables_with_templates
 	$osname="windows";
 	$ostype="Windows";
         $imagetype="windows";
+    } elsif ($osver =~ /^hyperv/) {
+	$osname="hyperv";
+	$ostype="Windows";
+        $imagetype="windows";
     } else {
 	until (-r  "$::XCATROOT/share/xcat/install/$osname/" or not $osname) {
 	    chop($osname);
