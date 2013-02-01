@@ -1556,8 +1556,15 @@ sub update_osdistro_table
 
     my $ostype="Linux";  #like Linux, Windows
     if (($osver =~ /^win/) || ($osver =~ /^imagex/)) {
-        $osver="windows";
+	if ($osver =~ /^win\d/) {
+		$osver =~ s/^win/windows/;
+	} elsif ($osver =~ /^imagex/) {
+        	$osver="windows";
+	}
         $ostype="Windows";
+    }
+    if ($osver =~ /hyperv/) {
+	$ostype = "Windows";
     }
 
 
