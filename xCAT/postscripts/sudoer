@@ -1,0 +1,56 @@
+#!/bin/sh 
+# IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
+#------------------------------------------------------------------------------
+#
+# Setup a sudoer named xcat and copy the xCAT public SSH key in its 
+# authorized_keys file. Only applies to Linux.
+#
+#------------------------------------------------------------------------------
+
+# Configuration for the sudoer
+SUDOER="xcat"
+SUDOERPW="rootpw"
+PRIV="$SUDOER ALL=(ALL) NOPASSWD: ALL"
+SEED=`date "+%s"`
+ENCRYPT=`perl -e "print crypt($SUDOERPW, $SEED)"`
+
+# Create sudoer
+/usr/sbin/userdel $SUDOER
+/usr/sbin/useradd -p $ENCRYPT -m $SUDOER
+echo "$PRIV" >> /etc/sudoers
+if [ -e "/etc/redhat-release" ]; then
+    echo "Defaults:$SUDOER !requiretty" >> /etc/sudoers
+fi
+
+# Find sudoer home
+HOME=`egrep "^$SUDOER:" /etc/passwd | cut -f6 -d :`
+
+# Create the SSH directory in sudoer's home
+mkdir -p $HOME/.ssh/
+sleep 1
+
+rm -rf $HOME/.ssh/authorized_keys
+
+#-----------------
+# Retrieve DSA key
+#-----------------
+KEY=`cat /xcatpost/hostkeys/ssh_host_rsa_key.pub`
+
+# Put key in authorized_keys file
+echo -e $KEY >> $HOME/.ssh/authorized_keys
+
+
+#-----------------
+# Retrieve RSA key
+#-----------------
+KEY=`cat /xcatpost/hostkeys/ssh_host_dsa_key.pub`
+
+# Put key in authorized_keys file
+echo -e $KEY >> $HOME/.ssh/authorized_keys
+chmod 0644 $HOME/.ssh/authorized_keys
+chown $SUDOER:users $HOME/.ssh/authorized_keys
+
+
+# Restart the SSHD for syncfiles postscript to do the sync work
+logger -t xCAT -p local4.info "Restarting SSHD"
+service sshd restart
