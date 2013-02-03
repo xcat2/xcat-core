@@ -1,4 +1,4 @@
-# IBM(c) 2012 EPL license http://www.eclipse.org/legal/epl-v10.html
+# IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 #-------------------------------------------------------
 
 =head1
@@ -331,9 +331,10 @@ sub isZvmNode {
 
     Description : Get the hardware configuration file path (SUSE only)
                   e.g. /etc/sysconfig/hardwarehwcfg-qeth-bus-ccw-0.0.0600
-    Arguments   : Node
+    Arguments   :   User (root or non-root)
+                    Node
     Returns     : Hardware configuration file path
-    Example     : my $hwcfg = xCAT::zvmUtils->getHwcfg($node);
+    Example     : my $hwcfg = xCAT::zvmUtils->getHwcfg($user, $node);
     
 =cut
 
@@ -341,10 +342,15 @@ sub isZvmNode {
 sub getHwcfg {
 
     # Get inputs
-    my ( $class, $node ) = @_;
+    my ( $class, $user, $node ) = @_;
 
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+    
     # Get OS
-    my $os = xCAT::zvmUtils->getOs($node);
+    my $os = xCAT::zvmUtils->getOs($user, $node);
 
     # Get network configuration file path
     my $out;
@@ -352,7 +358,7 @@ sub getHwcfg {
 
     # If it is SUSE - hwcfg-qeth file is in /etc/sysconfig/hardware
     if ( $os =~ m/SUSE/i ) {
-        $out = `ssh -o ConnectTimeout=5 $node "ls /etc/sysconfig/hardware/hwcfg-qeth*"`;
+        $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo ls /etc/sysconfig/hardware/hwcfg-qeth*"`;
         @parms = split( '\n', $out );
         return ( $parms[0] );
     }
@@ -394,9 +400,10 @@ sub getIp {
     Description : Get the network configuration file path of a given node
                     * Red Hat - /etc/sysconfig/network-scripts/ifcfg-eth
                     * SUSE    - /etc/sysconfig/network/ifcfg-qeth
-    Arguments   : Node
+    Arguments   :   User (root or non-root)
+                    Node
     Returns     : Network configuration file path
-    Example     : my $ifcfg = xCAT::zvmUtils->getIfcfg($node);
+    Example     : my $ifcfg = xCAT::zvmUtils->getIfcfg($user, $node);
     
 =cut
 
@@ -404,10 +411,15 @@ sub getIp {
 sub getIfcfg {
 
     # Get inputs
-    my ( $class, $node ) = @_;
+    my ( $class, $user, $node ) = @_;
+    
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
 
     # Get OS
-    my $os = xCAT::zvmUtils->getOs($node);
+    my $os = xCAT::zvmUtils->getOs($user, $node);
 
     # Get network configuration file path
     my $out;
@@ -415,14 +427,14 @@ sub getIfcfg {
 
     # If it is Red Hat - ifcfg-qeth file is in /etc/sysconfig/network-scripts
     if ( $os =~ m/Red Hat/i ) {
-        $out = `ssh -o ConnectTimeout=5 $node "ls /etc/sysconfig/network-scripts/ifcfg-eth*"`;
+        $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo ls /etc/sysconfig/network-scripts/ifcfg-eth*"`;
         @parms = split( '\n', $out );
         return ( $parms[0] );
     }
 
     # If it is SUSE - ifcfg-qeth file is in /etc/sysconfig/network
     elsif ( $os =~ m/SUSE/i ) {
-        $out = `ssh -o ConnectTimeout=5 $node "ls /etc/sysconfig/network/ifcfg-qeth*"`;
+        $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo ls /etc/sysconfig/network/ifcfg-qeth*"`;
         @parms = split( '\n', $out );
         return ( $parms[0] );
     }
@@ -436,10 +448,11 @@ sub getIfcfg {
 =head3   getIfcfgByNic
 
     Description : Get the network configuration file path of a given node
-    Arguments   :   Node
+    Arguments   :   User (root or non-root)
+                    Node
                     NIC address
     Returns     : Network configuration file path
-    Example     : my $ifcfg = xCAT::zvmUtils->getIfcfgByNic($node, $nic);
+    Example     : my $ifcfg = xCAT::zvmUtils->getIfcfgByNic($user, $node, $nic);
     
 =cut
 
@@ -447,10 +460,15 @@ sub getIfcfg {
 sub getIfcfgByNic {
 
     # Get inputs
-    my ( $class, $node, $nic ) = @_;
+    my ( $class, $user, $node, $nic ) = @_;
 
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+    
     # Get OS
-    my $os = xCAT::zvmUtils->getOs($node);
+    my $os = xCAT::zvmUtils->getOs($user, $node);
 
     # Get network configuration file path
     my $out;
@@ -458,14 +476,14 @@ sub getIfcfgByNic {
 
     # If it is Red Hat - ifcfg-qeth file is in /etc/sysconfig/network-scripts
     if ( $os =~ m/Red Hat/i ) {
-        $out   = `ssh -o ConnectTimeout=5 $node "ls /etc/sysconfig/network-scripts/ifcfg-eth*"`;
+        $out   = `ssh -o ConnectTimeout=5 $user\@$node "$sudo ls /etc/sysconfig/network-scripts/ifcfg-eth*"`;
         @parms = split( '\n', $out );
 
         # Go through each line
         foreach (@parms) {
 
             # If the network file contains the NIC address
-            $out = `ssh -o ConnectTimeout=5 $node "cat $_" | grep "$nic"`;
+            $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo cat $_" | grep "$nic"`;
             if ($out) {
 
                 # Return network file path
@@ -476,7 +494,7 @@ sub getIfcfgByNic {
 
     # If it is SLES 10 - ifcfg-qeth file is in /etc/sysconfig/network
     elsif ( $os =~ m/SUSE Linux Enterprise Server 10/i ) {
-        $out = `ssh -o ConnectTimeout=5 $node "ls /etc/sysconfig/network/ifcfg-qeth*" | grep -i "$nic"`;
+        $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo ls /etc/sysconfig/network/ifcfg-qeth*" | grep -i "$nic"`;
         @parms = split( '\n', $out );
         return ( $parms[0] );
     }
@@ -485,14 +503,14 @@ sub getIfcfgByNic {
     elsif ( $os =~ m/SUSE Linux Enterprise Server 11/i ) {
 
         # Get a list of ifcfg-eth files found
-        $out = `ssh -o ConnectTimeout=5 $node "ls /etc/sysconfig/network/ifcfg-eth*"`;
+        $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo ls /etc/sysconfig/network/ifcfg-eth*"`;
         my @file = split( '\n', $out );
 
         # Go through each ifcfg-eth file
         foreach (@file) {
 
             # If the network file contains the NIC address
-            $out = `ssh -o ConnectTimeout=5 $node "cat $_" | grep -i "$nic"`;
+            $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo cat $_" | grep -i "$nic"`;
             if ($out) {
 
                 # Return ifcfg-eth file path
@@ -510,11 +528,12 @@ sub getIfcfgByNic {
 =head3   sendFile
 
     Description : SCP a file to a given node
-    Arguments   :   Node
+    Arguments   :   User (root or non-root)
+                    Node
                     Source file
                     Target file
     Returns     : Nothing
-    Example     : xCAT::zvmUtils->sendFile($node, $srcFile, $trgtFile);
+    Example     : xCAT::zvmUtils->sendFile($user, $node, $srcFile, $trgtFile);
     
 =cut
 
@@ -522,13 +541,13 @@ sub getIfcfgByNic {
 sub sendFile {
 
     # Get inputs
-    my ( $class, $node, $srcFile, $trgtFile ) = @_;
+    my ( $class, $user, $node, $srcFile, $trgtFile ) = @_;
 
     # Create destination string
-    my $dest = "root@" . $node;
+    my $dest = "$user\@$node";
 
     # SCP directory entry file over to HCP
-    my $out = `scp $srcFile $dest:$trgtFile`;
+    my $out = `/usr/bin/scp $srcFile $dest:$trgtFile`;
 
     return;
 }
@@ -538,9 +557,10 @@ sub sendFile {
 =head3   getRootDeviceAddr
 
     Description : Get the root device address of a given node
-    Arguments   : Node
+    Arguments   :   User (root or non-root)
+                    Node
     Returns     : Root device address
-    Example     : my $deviceAddr = xCAT::zvmUtils->getRootDeviceAddr($node);
+    Example     : my $deviceAddr = xCAT::zvmUtils->getRootDeviceAddr($user, $node);
     
 =cut
 
@@ -548,17 +568,17 @@ sub sendFile {
 sub getRootDeviceAddr {
 
     # Get inputs
-    my ( $class, $node ) = @_;
+    my ( $class, $user, $node ) = @_;
 
     # Get the root device node
     # LVM is not supported
-    my $out = `ssh $node  "mount" | grep "/ type" | sed 's/1//'`;
+    my $out = `ssh $user\@$node  "mount" | grep "/ type" | sed 's/1//'`;
     my @parms = split( " ", $out );
     @parms = split( "/", xCAT::zvmUtils->trimStr( $parms[0] ) );
     my $devNode = $parms[0];
 
     # Get disk address
-    $out = `ssh $node "cat /proc/dasd/devices" | grep "$devNode" | sed 's/(ECKD)//' | sed 's/(FBA )//' | sed 's/0.0.//'`;
+    $out = `ssh $user\@$node "cat /proc/dasd/devices" | grep "$devNode" | sed 's/(ECKD)//' | sed 's/(FBA )//' | sed 's/0.0.//'`;
     @parms = split( " ", $out );
     return ( $parms[0] );
 }
@@ -568,10 +588,12 @@ sub getRootDeviceAddr {
 =head3   disableEnableDisk
 
     Description : Disable/enable a disk for a given node
-    Arguments   :   Device address
+    Arguments   :   User (root or non-root)
+                    Node
+                    Device address
                     Option (-d|-e)
     Returns     : Nothing
-    Example     : my $out = xCAT::zvmUtils->disableEnableDisk($callback, $node, $option, $devAddr);
+    Example     : my $out = xCAT::zvmUtils->disableEnableDisk($callback, $user, $node, $option, $devAddr);
     
 =cut
 
@@ -579,12 +601,17 @@ sub getRootDeviceAddr {
 sub disableEnableDisk {
 
     # Get inputs
-    my ( $class, $callback, $node, $option, $devAddr ) = @_;
+    my ( $class, $user, $node, $option, $devAddr ) = @_;
+    
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
 
     # Disable/enable disk
     my $out;
     if ( $option eq "-d" || $option eq "-e" ) {
-        $out = `ssh $node "chccwdev $option $devAddr"`;
+        $out = `ssh $user\@$node "$sudo /sbin/chccwdev $option $devAddr"`;
     }
 
     return ($out);
@@ -595,9 +622,10 @@ sub disableEnableDisk {
 =head3   getMdisks
 
     Description : Get the MDISK statements in the user entry of a given node
-    Arguments   : Node
+    Arguments   :   User (root or non-root)
+                    Node
     Returns     : MDISK statements
-    Example     : my @mdisks = xCAT::zvmUtils->getMdisks($callback, $node);
+    Example     : my @mdisks = xCAT::zvmUtils->getMdisks($callback, $user, $node);
     
 =cut
 
@@ -605,20 +633,25 @@ sub disableEnableDisk {
 sub getMdisks {
 
     # Get inputs
-    my ( $class, $callback, $node ) = @_;
+    my ( $class, $callback, $user, $node ) = @_;
 
     # Directory where executables are
     my $dir = '/opt/zhcp/bin';
 
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+    
     # Get HCP
     my @propNames = ( 'hcp', 'userid' );
     my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
-    my $hcp      = $propVals->{'hcp'};
+    my $hcp = $propVals->{'hcp'};
 
     # Get node userID
     my $userId = $propVals->{'userid'};
 
-    my $out = `ssh $hcp "$dir/getuserentry $userId" | grep "MDISK"`;
+    my $out = `ssh $user\@$hcp "$sudo $dir/getuserentry $userId" | grep "MDISK"`;
 
     # Get MDISK statements
     my @lines = split( '\n', $out );
@@ -638,9 +671,10 @@ sub getMdisks {
 =head3   getDedicates
 
     Description : Get the DEDICATE statements in the user entry of a given node
-    Arguments   : Node
+    Arguments   :   User (root or non-root)
+                    Node
     Returns     : DEDICATE statements
-    Example     : my @dedicates = xCAT::zvmUtils->getDedicates($callback, $node);
+    Example     : my @dedicates = xCAT::zvmUtils->getDedicates($callback, $user, $node);
     
 =cut
 
@@ -648,20 +682,25 @@ sub getMdisks {
 sub getDedicates {
 
     # Get inputs
-    my ( $class, $callback, $node ) = @_;
+    my ( $class, $user, $callback, $node ) = @_;
+
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
 
     # Directory where executables are
     my $dir = '/opt/zhcp/bin';
-
-    # Get HCP
+    
+    # Get zHCP
     my @propNames = ( 'hcp', 'userid' );
     my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
-    my $hcp      = $propVals->{'hcp'};
+    my $hcp = $propVals->{'hcp'};
 
     # Get node userID
     my $userId = $propVals->{'userid'};
 
-    my $out = `ssh $hcp "$dir/getuserentry $userId" | grep "DEDICATE"`;
+    my $out = `ssh $user\@$hcp "$sudo $dir/getuserentry $userId" | grep "DEDICATE"`;
 
     # Get DEDICATE statements
     my @lines = split( '\n', $out );
@@ -682,10 +721,11 @@ sub getDedicates {
 
     Description : Get the user entry of a given node without MDISK statments, 
                   and save it to a file
-    Arguments   :   Node
+    Arguments   :   User (root or non-root)
+                    Node
                     File name to save user entry under
     Returns     : Nothing
-    Example     : my $out = xCAT::zvmUtils->getUserEntryWODisk($callback, $node, $file);
+    Example     : my $out = xCAT::zvmUtils->getUserEntryWODisk($callback, $user, $node, $file);
     
 =cut
 
@@ -693,11 +733,16 @@ sub getDedicates {
 sub getUserEntryWODisk {
 
     # Get inputs
-    my ( $class, $callback, $node, $file ) = @_;
+    my ( $class, $callback, $user, $node, $file ) = @_;
+    
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
 
     # Directory where executables are
     my $dir = '/opt/zhcp/bin';
-
+        
     # Get node properties from 'zvm' table
     my @propNames = ( 'hcp', 'userid' );
     my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
@@ -716,7 +761,7 @@ sub getUserEntryWODisk {
         return;
     }
 
-    my $out = `ssh $hcp "$dir/smcli Image_Query_DM -T $userId" | sed '\$d' | grep -v "MDISK"`;
+    my $out = `ssh $user\@$hcp "$sudo $dir/smcli Image_Query_DM -T $userId" | sed '\$d' | grep -v "MDISK"`;
 
     # Create a file to save output
     open( DIRENTRY, ">$file" );
@@ -783,7 +828,7 @@ sub checkOutput {
     foreach (@outLn) {
 
         # If output contains 'Failed', return -1
-        if ( $_ =~ m/Failed/i ) {
+        if ( $_ =~ m/Failed/i || $_ =~ m/Error/i ) {
             return -1;
         }
     }
@@ -796,19 +841,25 @@ sub checkOutput {
 =head3   getDeviceNode
 
     Description : Get the device node for a given address
-    Arguments   :   Node
+    Arguments   :   User (root or non-root)
+                    Node
                     Disk address
     Returns     : Device node
-    Example     : my $devNode = xCAT::zvmUtils->getDeviceNode($node, $tgtAddr);
+    Example     : my $devNode = xCAT::zvmUtils->getDeviceNode($user, $node, $tgtAddr);
     
 =cut
 
 #-------------------------------------------------------
 sub getDeviceNode {
-    my ( $class, $node, $tgtAddr ) = @_;
+    my ( $class, $user, $node, $tgtAddr ) = @_;
 
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+    
     # Determine device node
-    my $out = `ssh $node "cat /proc/dasd/devices" | grep ".$tgtAddr("`;
+    my $out = `ssh $user\@$node "$sudo cat /proc/dasd/devices" | grep ".$tgtAddr("`;
     my @words = split( ' ', $out );
     my $tgtDevNode;
 
@@ -829,20 +880,26 @@ sub getDeviceNode {
 =head3   isAddressUsed
 
     Description : Check if a given address is used
-    Arguments   :   Node
+    Arguments   :   User (root or non-root)
+                    Node
                     Disk address
     Returns     :  0  Address used
                   -1  Address not used
-    Example     : my $ans = xCAT::zvmUtils->isAddressUsed($node, $address);
+    Example     : my $ans = xCAT::zvmUtils->isAddressUsed($user, $node, $address);
     
 =cut
 
 #-------------------------------------------------------
 sub isAddressUsed {
-    my ( $class, $node, $address ) = @_;
+    my ( $class, $user, $node, $address ) = @_;
+
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
 
     # Search for disk address
-    my $out = `ssh -o ConnectTimeout=5 $node "vmcp q v dasd" | grep "DASD $address"`;
+    my $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /sbin/vmcp q v dasd" | grep "DASD $address"`;
     if ($out) {
         return 0;
     }
@@ -855,40 +912,46 @@ sub isAddressUsed {
 =head3   getMacID
 
     Description : Get the MACID from /opt/zhcp/conf/next_macid on the HCP
-    Arguments   : HCP node
+    Arguments   :   User (root or non-root)
+                    zHCP
     Returns     : MACID
-    Example     : my $macId = xCAT::zvmUtils->getMacID($hcp);
+    Example     : my $macId = xCAT::zvmUtils->getMacID($user, $hcp);
     
 =cut
 
 #-------------------------------------------------------
 sub getMacID {
-    my ( $class, $hcp ) = @_;
+    my ( $class, $user, $hcp ) = @_;
 
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+    
     # Check /opt/zhcp/conf directory on HCP
-    my $out = `ssh -o ConnectTimeout=5 $hcp "test -d /opt/zhcp/conf && echo 'Directory exists'"`;
+    my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo test -d /opt/zhcp/conf && echo 'Directory exists'"`;
     if ( $out =~ m/Directory exists/i ) {
 
         # Check next_macid file
-        $out = `ssh -o ConnectTimeout=5 $hcp "test -e /opt/zhcp/conf/next_macid && echo 'File exists'"`;
+        $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo test -e /opt/zhcp/conf/next_macid && echo 'File exists'"`;
         if ( $out =~ m/File exists/i ) {
 
             # Do nothing
         } else {
 
             # Create next_macid file
-            $out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFF0' > /opt/zhcp/conf/next_macid"`;
+            $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo echo 'FFFFF0' > /opt/zhcp/conf/next_macid"`;
         }
     } else {
 
         # Create /opt/zhcp/conf directory
         # Create next_mac - Contains next MAC address to use
-        $out = `ssh -o ConnectTimeout=5 $hcp "mkdir /opt/zhcp/conf"`;
-        $out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFF0' > /opt/zhcp/conf/next_macid"`;
+        $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo mkdir /opt/zhcp/conf"`;
+        $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo echo 'FFFFF0' > /opt/zhcp/conf/next_macid"`;
     }
 
     # Read /opt/zhcp/conf/next_macid file
-    $out = `ssh -o ConnectTimeout=5 $hcp "cat /opt/zhcp/conf/next_macid"`;
+    $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo cat /opt/zhcp/conf/next_macid"`;
     my $macId = xCAT::zvmUtils->trimStr($out);
 
     return $macId;
@@ -899,40 +962,48 @@ sub getMacID {
 =head3   generateMacId
 
     Description : Generate a new MACID 
-    Arguments   : zHCP node
+    Arguments   :   User (root or non-root)
+                    zHCP
     Returns     : Nothing
-    Example     : my $macId = xCAT::zvmUtils->generateMacId($hcp);
+    Example     : my $macId = xCAT::zvmUtils->generateMacId($user, $hcp);
     
 =cut
 
 #-------------------------------------------------------
 sub generateMacId {
-    my ( $class, $hcp ) = @_;
+    my ( $class, $user, $hcp ) = @_;
+    
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
 
     # Check /opt/zhcp/conf directory on HCP
-    my $out = `ssh -o ConnectTimeout=5 $hcp "test -d /opt/zhcp/conf && echo 'Directory exists'"`;
+    my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo test -d /opt/zhcp/conf && echo 'Directory exists'"`;
     if ( $out =~ m/Directory exists/i ) {
 
         # Check next_macid file
-        $out = `ssh -o ConnectTimeout=5 $hcp "test -e /opt/zhcp/conf/next_macid && echo 'File exists'"`;
+        $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo test -e /opt/zhcp/conf/next_macid && echo 'File exists'"`;
         if ( $out =~ m/File exists/i ) {
 
             # Do nothing
         } else {
 
             # Create next_macid file
-            $out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFF0' > /opt/zhcp/conf/next_macid"`;
+            $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo echo 'FFFFF0' > /opt/zhcp/conf/next_macid"`;
+            $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /bin/chmod 666 /opt/zhcp/conf/next_macid"`;
         }
     } else {
 
         # Create /opt/zhcp/conf directory
         # Create next_mac - Contains next MAC address to use
-        $out = `ssh -o ConnectTimeout=5 $hcp "mkdir /opt/zhcp/conf"`;
-        $out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFF0' > /opt/zhcp/conf/next_macid"`;
+        $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo mkdir /opt/zhcp/conf"`;
+        $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo echo 'FFFFF0' > /opt/zhcp/conf/next_macid"`;
+        $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /bin/chmod 666 /opt/zhcp/conf/next_macid"`;
     }
 
     # Read /opt/zhcp/conf/next_macid file
-    $out = `ssh -o ConnectTimeout=5 $hcp "cat /opt/zhcp/conf/next_macid"`;
+    $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo cat /opt/zhcp/conf/next_macid"`;
     my $macId = xCAT::zvmUtils->trimStr($out);
     my $int;
 
@@ -949,7 +1020,7 @@ sub generateMacId {
         $macId = sprintf( "%X", $macId );
 
         # Save new MACID
-        $out = `ssh -o ConnectTimeout=5 $hcp "echo $macId > /opt/zhcp/conf/next_macid"`;
+        $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo echo $macId > /opt/zhcp/conf/next_macid"`;
     }
 
     return;
@@ -960,17 +1031,23 @@ sub generateMacId {
 =head3   createMacAddr
 
     Description : Create a MAC address using the HCP MAC prefix and a given MAC suffix
-    Arguments   :   Node
+    Arguments   :   User (root or non-root)
+                    Node
                     MAC suffix
     Returns     : MAC address
-    Example     : my $mac = xCAT::zvmUtils->createMacAddr($node, $suffix);
+    Example     : my $mac = xCAT::zvmUtils->createMacAddr($user, $node, $suffix);
     
 =cut
 
 #-------------------------------------------------------
 sub createMacAddr {
-    my ( $class, $node, $suffix ) = @_;
-
+    my ( $class, $user, $node, $suffix ) = @_;
+    
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+    
     # Get node properties from 'zvm' table
     my @propNames = ('hcp');
     my $propVals  = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
@@ -983,7 +1060,7 @@ sub createMacAddr {
 
     # Get HCP MAC address
     # Get the first MAC address found
-    my $out   = `ssh -o ConnectTimeout=5 $hcp "vmcp q v nic" | grep "MAC:"`;
+    my $out   = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /sbin/vmcp q v nic" | grep "MAC:"`;
     my @lines = split( "\n", $out );
     my @vars  = split( " ", $lines[0] );
 
@@ -1017,9 +1094,10 @@ sub createMacAddr {
 =head3   getOs
 
     Description : Get the operating system of a given node
-    Arguments   : Node
+    Arguments   :   User (root or non-root)
+                    Node
     Returns     : Operating system name
-    Example     : my $osName = xCAT::zvmUtils->getOs($node);
+    Example     : my $osName = xCAT::zvmUtils->getOs($user, $node);
     
 =cut
 
@@ -1027,10 +1105,15 @@ sub createMacAddr {
 sub getOs {
 
     # Get inputs
-    my ( $class, $node ) = @_;
+    my ( $class, $user, $node ) = @_;
+    
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
 
     # Get operating system
-    my $out = `ssh -o ConnectTimeout=10 $node "cat /etc/*release"`;
+    my $out = `ssh -o ConnectTimeout=10 $user\@$node "$sudo cat /etc/*release" | egrep -v "LSB_VERSION"`;
     my @results = split( '\n', $out );
     return ( xCAT::zvmUtils->trimStr( $results[0] ) );
 }
@@ -1040,9 +1123,10 @@ sub getOs {
 =head3   getArch
 
     Description : Get the architecture of a given node
-    Arguments   : Node
+    Arguments   :   User (root or non-root)
+                    Node
     Returns     : Architecture of node
-    Example     : my $arch = xCAT::zvmUtils->getArch($node);
+    Example     : my $arch = xCAT::zvmUtils->getArch($user, $node);
     
 =cut
 
@@ -1050,10 +1134,15 @@ sub getOs {
 sub getArch {
 
     # Get inputs
-    my ( $class, $node ) = @_;
+    my ( $class, $user, $node ) = @_;
+    
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
 
     # Get host using VMCP
-    my $arch = `ssh $node "uname -p"`;
+    my $arch = `ssh $user\@$node "$sudo uname -p"`;
 
     return ( xCAT::zvmUtils->trimStr($arch) );
 }
@@ -1063,9 +1152,10 @@ sub getArch {
 =head3   getUserProfile
 
     Description : Get the user profile
-    Arguments   : Profile name
+    Arguments   :   User (root or non-root)
+                    Profile name
     Returns     : User profile
-    Example     : my $profile = xCAT::zvmUtils->getUserProfile($hcp, $name);
+    Example     : my $profile = xCAT::zvmUtils->getUserProfile($user, $hcp, $name);
     
 =cut
 
@@ -1073,48 +1163,53 @@ sub getArch {
 sub getUserProfile {
 
     # Get inputs
-    my ( $class, $hcp, $profile ) = @_;
+    my ( $class, $user, $hcp, $profile ) = @_;
+    
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
 
     # Set directory where executables are on zHCP
     my $hcpDir = "/opt/zhcp/bin";
-
+        
     my $out;
 
     # Set directory for cache
     my $cache = '/var/opt/zhcp/cache';
     # If the cache directory does not exist
-    if (!(`ssh $hcp "test -d $cache && echo Exists"`)) {
+    if (!(`ssh $user\@$hcp "$sudo test -d $cache && echo Exists"`)) {
         # Create cache directory
-        $out = `ssh $hcp "mkdir -p $cache"`;
+        $out = `ssh $user\@$hcp "$sudo mkdir -p $cache"`;
     }
 
     # Set output file name
     my $file = "$cache/$profile.profile";
 
     # If a cache for the user profile exists
-    if (`ssh $hcp "ls $file"`) {
+    if (`ssh $user\@$hcp "$sudo ls $file"`) {
 
         # Get current Epoch
         my $curTime = time();
 
         # Get time of last change as seconds since Epoch
-        my $fileTime = xCAT::zvmUtils->trimStr(`ssh $hcp "stat -c %Z $file"`);
+        my $fileTime = xCAT::zvmUtils->trimStr(`ssh $user\@$hcp "$sudo stat -c %Z $file"`);
 
         # If the current time is greater than 5 minutes of the file timestamp
         my $interval = 300;    # 300 seconds = 5 minutes * 60 seconds/minute
         if ( $curTime > $fileTime + $interval ) {
 
             # Get user profiles and save it in a file
-            $out = `ssh $hcp "$hcpDir/smcli Profile_Query_DM -T $profile > $file"`;
+            $out = `ssh $user\@$hcp "$sudo $hcpDir/smcli Profile_Query_DM -T $profile > $file"`;
         }
     } else {
 
         # Get user profiles and save it in a file
-        $out = `ssh $hcp "$hcpDir/smcli Profile_Query_DM -T $profile > $file"`;
+        $out = `ssh $user\@$hcp "$sudo $hcpDir/smcli Profile_Query_DM -T $profile > $file"`;
     }
 
     # Return the file contents
-    $out = `ssh $hcp "cat $file"`;
+    $out = `ssh $user\@$hcp "$sudo cat $file"`;
     return $out;
 }
 
@@ -1143,9 +1238,10 @@ sub inArray {
 =head3   getOsVersion
 
     Description : Get the operating system of a given node
-    Arguments   : Node
+    Arguments   :   User (root or non-root)
+                    Node
     Returns     : Operating system name
-    Example     : my $os = xCAT::zvmUtils->getOsVersion($node);
+    Example     : my $os = xCAT::zvmUtils->getOsVersion($user, $node);
     
 =cut
 
@@ -1153,23 +1249,32 @@ sub inArray {
 sub getOsVersion {
     
     # Get inputs
-    my ( $class, $node ) = @_;
+    my ( $class, $user, $node ) = @_;
+    
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
 
     my $os = '';
     my $version = '';
 
     # Get operating system
-    my $release = `ssh -o ConnectTimeout=2 $node "cat /etc/*release"`;
+    my $release = `ssh -o ConnectTimeout=2 $user\@$node "$sudo cat /etc/*release"`;
     my @lines = split('\n', $release);
-    if (grep(/SLES|Enterprise Server/, @lines)) {
+    if (grep(/SUSE Linux Enterprise Server/, @lines)) {
         $os = 'sles';
-        $version = $lines[0];
+        $version = `echo "$release" | grep "VERSION ="`;
+        $version =~ s/\s*$//;
+        $version =~ s/^\s*//;
         $version =~ tr/\.//;
         $version =~ s/[^0-9]*([0-9]+).*/$1/;
         $os = $os . $version;
         
         # Append service level
-        $version = `echo "$release" | grep "LEVEL"`;
+        $version = `echo "$release" | grep "LEVEL ="`;
+        $version =~ s/\s*$//;
+        $version =~ s/^\s*//;
         $version =~ tr/\.//;
         $version =~ s/[^0-9]*([0-9]+).*/$1/;
         $os = $os . 'sp' . $version;
@@ -1189,26 +1294,32 @@ sub getOsVersion {
 =head3   getZfcpInfo
 
     Description : Get the zFCP device info
-    Arguments   : Node
+    Arguments   :   User (root or non-root)
+                    Node
     Returns     : zFCP device info
-    Example     : my $info = xCAT::zvmUtils->getZfcpInfo($node);
+    Example     : my $info = xCAT::zvmUtils->getZfcpInfo($user, $node);
     
 =cut
 
 #-------------------------------------------------------
 sub getZfcpInfo {
     # Get inputs
-    my ( $class, $node ) = @_;
+    my ( $class, $user, $node ) = @_;
+    
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
     
     # Get zFCP device info
-    my $info = `ssh -o ConnectTimeout=2 $node "lszfcp -D"`;
+    my $info = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /sbin/lszfcp -D"`;
     my @zfcp = split("\n", $info);
-    if (!$info || $info =~ m/No zfcp support/i) {
+    if (!$info || $info =~ m/No zfcp support/i || $info =~ m/No fcp devices found/i) {
         return;
     }
     
     # Get SCSI device and their attributes
-    my $scsi = `ssh -o ConnectTimeout=2 $node "lsscsi"`;
+    my $scsi = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /usr/bin/lsscsi"`;
     $info = "";
         
     my @args;
@@ -1238,7 +1349,7 @@ sub getZfcpInfo {
         chomp($tmp);
         
         # Find the size in MiB
-        $size = `ssh -o ConnectTimeout=2 $node "sg_readcap $tmp" | egrep -i "Device size:"`;
+        $size = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /usr/bin/sg_readcap $tmp" | egrep -i "Device size:"`;
         $size =~ s/Device size: //g;
         @args = split(",", $size);
         $size = xCAT::zvmUtils->trimStr($args[1]);
@@ -1281,4 +1392,728 @@ sub isHypervisor {
     }
 
     return 0;
+}
+
+#-------------------------------------------------------
+
+=head3   getSudoer
+
+    Description : Retrieve sudoer user name
+    Arguments   : Node
+    Returns     :   Sudoer user name
+                    Sudo keyword
+    Example     : my ($sudoer, $sudo) = xCAT::zvmUtils->getSudoer();
+    
+=cut
+
+#-------------------------------------------------------
+sub getSudoer {
+    # Get inputs
+    my ( $class ) = @_;
+    
+    # Use sudo or not on zHCP
+    my @propNames = ('username');
+    my $propVals = xCAT::zvmUtils->getTabPropsByKey( 'passwd', 'key', 'sudoer', @propNames );
+    my $sudo = "sudo";
+    my $user = $propVals->{'username'};
+    
+    if (!$user) {
+        $user = "root";
+    }
+    
+    if ($user eq "root") {
+        $sudo = "";
+    }
+    
+    return ($user, $sudo);
+}
+
+#-------------------------------------------------------
+
+=head3   getFreeAddress
+
+    Description : Get a free(unused) virtual address
+    Arguments   :   User (root or non-root)
+                    Node
+                    Type (vmcp or non-vmcp)
+    Returns     : vdev  An address which is free to use
+                  -1    No free address is left
+    Example     : my $vdev = xCAT::zvmUtils->getFreeAddress($user, $node, $type);
+    
+=cut
+
+#-------------------------------------------------------
+sub getFreeAddress {
+    my ( $class, $user, $node, $type ) = @_;
+    
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+    
+    # Although 0000 maybe is free, we do not use it
+    my $freeAddress = 1;
+    my $freeAddressHex = sprintf('%04X', $freeAddress);
+    
+    # All device type names in VM, do not contain CPU
+    my $deviceTypesVm = 'CONS|CTCA|DASD|FCP|GRAF|LINE|MSGD|OSA|PRT|PUN|RDR|SWCH|TAPE';
+    # All device type names in user directory, do not contain CPU
+    my $deviceTypesUserDir = 'CONSOLE|MDISK|NICDEF|SPOOL|RDEVICE'; 
+
+    # Search for all address that is in use
+    my $allUsedAddr;
+    if ($type eq 'vmcp') {
+        # When the node is up, vmcp can be used
+        $allUsedAddr = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /sbin/vmcp q v all | awk '$1 ~/^($deviceTypesVm)/ {print $2}' | sort"`;
+    } else {
+        # When the node is down, use zHCP to get its user directory entry
+        # Get HCP
+        my @propNames = ( 'hcp', 'userid' );
+        my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
+        my $hcp = $propVals->{'hcp'};
+
+        # Get node userID
+        my $userId = $propVals->{'userid'};
+        
+        # Get user directory entry
+        my $userDirEntry = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $userId"'`;
+        
+        # Get profile if user directory entry include a profile
+        if ($userDirEntry =~ "INCLUDE ") {
+            my $profileName = `cat $userDirEntry | awk '$1 ~/^(INCLUDE)/ {print $2}`;    
+            $profileName = xCAT::zvmUtils->trimStr($profileName);        
+            $userDirEntry .= `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $profileName"`;
+        }
+        
+        # Get all defined device address
+        $allUsedAddr = `cat $allUsedAddr | awk '$1 ~/^($deviceTypesUserDir)/ {print $2}' | sort`;
+        # Get all linked device address
+        $allUsedAddr .= `cat $allUsedAddr | awk '$1 ~/^(LINK)/ {print $4}' | sort`;
+    }
+    
+    # Loop to get the lowest free address
+    while ($freeAddress < 65536 && $allUsedAddr =~ $freeAddressHex) {
+        $freeAddress++;
+        $freeAddressHex = sprintf('%04X', $freeAddress);
+    }   
+    
+    if ($freeAddress < 65536) {
+        return $freeAddressHex;
+    }
+
+    return -1;
+}
+
+#-------------------------------------------------------
+
+=head3   getUsedCpuTime
+
+    Description : Get used CPU time of instance
+    Arguments   :   User (root or non-root)
+                    zHCP (to query on)
+                    node
+    Returns     : In nanoseconds for used CPU time
+    Example     : my $out = xCAT::zvmUtils->getUsedCpuTime($hcp, $node);
+    
+=cut
+
+#-------------------------------------------------------
+sub getUsedCpuTime {
+    my ( $class, $user, $hcp , $node ) = @_;
+
+    # Directory where executables are
+    my $dir = '/opt/zhcp/bin';
+    
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+    
+    my $userId = xCAT::zvmCPUtils->getUserId($user, $node);
+    
+    # Call IUO function to query CPU used time
+    my $time = `ssh $user\@$hcp "$sudo $dir/smcli Image_Performance_Query -T $userId -c 1" | egrep -i "Used CPU time:"`;
+    $time =~ s/^Used CPU time:(.*)/$1/;
+    $time =~ s/"//g;
+    $time =~ s/^\s+//;
+    $time =~ s/\s+$//;
+    if (!$time) {
+    	$time = 0;
+    }
+    
+    # Not found, return 0
+    return $time;
+}
+
+
+#-------------------------------------------------------
+
+=head3   getUpTime
+
+    Description : Get running time of an instance
+    Arguments   :   User (root or non-root)
+                    Node
+    Returns     : Running time
+    Example     : my $out = xCAT::zvmUtils->getUpTime($user, $node);
+    
+=cut
+
+#-------------------------------------------------------
+sub getUpTime {
+    my ( $class, $user, $node ) = @_;
+    
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+ 
+    my $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo uptime"`;
+    $out = xCAT::zvmUtils->trimStr($out);
+    $out =~ /.*up +(?:(\d+) days?,? +)?(\d+):(\d+),.*/;
+    my $uptime;
+    
+    if (!$1 && !$2) {
+        # Special case for less than 1 hour, will display X min
+        $out =~ /.*up +(\d+) min,.*/;
+        $uptime = "0 days $3 min";
+    } elsif (!$1) {
+        # Special case for less than 1 day, will display X hr X min
+        $uptime = "0 days $2 hr $3 min";
+    } else {
+        $uptime = "$1 days $2 hr $3 min";
+    }
+    
+    return ($uptime);
+}
+
+#-------------------------------------------------------
+
+=head3   getSizeFromByte
+
+    Description : Return disk size (G or M) from given bytes
+    Arguments   : Bytes
+    Returns     : Size string
+    Example     : my $out = xCAT::zvmUtils->getSizeFromByte($bytes);
+    
+=cut
+
+#-------------------------------------------------------
+sub getSizeFromByte {
+    my ( $class, $bytes ) = @_;
+
+    my $size = ($bytes)/(1024*1024);
+    if ($size > (1024*5)) {
+        $size = ($size / 1024);
+        # If the size > 5G, will use G to represent 
+        $size = sprintf("%.1f",$size);
+        $size = $size . 'G';
+    } else {
+        # If the size < 5G, will use M to represent
+        $size = sprintf("%d",$size);
+        $size = $size . 'M';
+    }
+
+    return ($size);
+}
+
+
+#-------------------------------------------------------
+
+=head3   getSizeFromCyl
+
+    Description : Return disk size (G or M) from given cylinders
+    Arguments   : Node
+    Returns     : Size string
+    Example     : my $out = xCAT::zvmUtils->getSizeFromCyl($cyl);
+    
+=cut
+
+#-------------------------------------------------------
+sub getSizeFromCyl {
+    my ($class, $cyl) = @_;
+
+    my $bytes = ($cyl * 737280);
+    my $size = xCAT::zvmUtils->getSizeFromByte($bytes);
+
+    return ($size);
+}
+
+#-------------------------------------------------------
+
+=head3   getSizeFromPage
+
+    Description : Return disk size (G or M) from given pages
+    Arguments   : Page
+    Returns     : Size string
+    Example     : my $out = xCAT::zvmUtils->getSizeFromPage($page);
+    
+=cut
+
+#-------------------------------------------------------
+sub getSizeFromPage {
+    my ( $class, $page ) = @_;
+
+    my $bytes = ($page * 4096);
+    my $size = xCAT::zvmUtils->getSizeFromByte($bytes);
+
+    return ($size);
+}
+
+
+#-------------------------------------------------------
+
+=head3   getLparCpuTotal
+
+    Description : Get total count of logical CPUs in the LPAR
+    Arguments   :   User (root or non-root)
+                    zHCP
+    Returns     : Total CPU count
+    Example     : my $out = xCAT::zvmCPUtils->getLparCpuTotal($user, $hcp);
+    
+=cut
+
+#-------------------------------------------------------
+sub getLparCpuTotal {
+    my ($class, $user, $hcp) = @_;
+    
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+
+    my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo cat /proc/sysinfo" | grep "LPAR CPUs Total"`;
+
+    my @results = split(' ', $out);
+    return ($results[3]);
+}
+
+#-------------------------------------------------------
+
+=head3   getLparCpuUsed
+
+    Description : Get count of used logical CPUs in the LPAR
+    Arguments   :   User (root or non-root)
+                    zHCP
+    Returns     : Used CPU count
+    Example     : my $out = xCAT::zvmCPUtils->getLparCpuUsed($user, $hcp);
+    
+=cut
+
+#-------------------------------------------------------
+sub getLparCpuUsed {
+    my ($class, $user, $hcp) = @_;
+
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+    
+    my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo cat /proc/sysinfo" | grep "LPAR CPUs Configured"`;
+
+    my @results = split(' ', $out);
+    return ($results[3]);
+}
+
+#-------------------------------------------------------
+
+=head3   getCecModel
+
+    Description : Get the model of this CEC (LPAR)
+    Arguments   :   User (root or non-root)
+                    zHCP
+    Returns     : Model of this CEC
+    Example     : my $out = xCAT::zvmCPUtils->getCecModel($user, $hcp);
+    
+=cut
+
+#-------------------------------------------------------
+sub getCecModel {
+    my ($class, $user, $hcp) = @_;
+
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+
+    my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo cat /proc/sysinfo" | grep "^Type:"`;
+    my @results = split(' ', $out);
+
+    return ($results[1]);
+}
+
+#-------------------------------------------------------
+
+=head3   getCecVendor
+
+    Description : Get the vendor of this CEC (LPAR)
+    Arguments   :   User (root or non-root)
+                    zHCP
+    Returns     : Vendor of this CEC
+    Example     : my $out = xCAT::zvmCPUtils->getCecVendor($user, $hcp);
+    
+=cut
+
+#-------------------------------------------------------
+sub getCecVendor {
+    my ( $class, $user, $hcp ) = @_;
+
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+
+    my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo cat /proc/sysinfo" | grep "Manufacturer"`;
+    my @results = split(' ', $out);
+
+    return ($results[1]);
+}
+
+#-------------------------------------------------------
+
+=head3   getHypervisorInfo
+
+    Description : Get the info(name & version) for this hypervisor
+    Arguments   :   User (root or non-root)
+                    zHCP
+    Returns     : Name & version of this hypervisor
+    Example     : my $out = xCAT::zvmCPUtils->getHypervisorInfo($user, $hcp);
+    
+=cut
+
+#-------------------------------------------------------
+sub getHypervisorInfo {
+    my ($class, $user, $hcp) = @_;
+
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+    
+    my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo cat /proc/sysinfo" | grep "VM00 Control Program"`;
+    my @results = split(' ', $out);
+
+    my $str = "$results[3] $results[4]";
+
+    return ($str);
+}
+
+#-------------------------------------------------------
+
+=head3   getLparMemoryTotal
+
+    Description : Get the total physical memory of this LPAR
+    Arguments   :   User (root or non-root)
+                    zHCP
+    Returns     : Total physical memory 
+    Example     : my $out = xCAT::zvmCPUtils->getLparMemoryTotal($user, $hcp);
+    
+=cut
+
+#-------------------------------------------------------
+sub getLparMemoryTotal {
+    my ($class, $user, $hcp) = @_;
+
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+    
+    my $out = `ssh $user\@$hcp "$sudo /opt/zhcp/bin/smcli System_Info_Query" | grep "real storage"`;
+    my @results = split(' ', $out);
+
+    return ($results[5]);
+}
+
+#-------------------------------------------------------
+
+=head3   getLparMemoryOffline
+
+    Description : Get the offline physical memory of this LPAR
+    Arguments   :   User (root or non-root)
+                    zHCP
+    Returns     : Offline physical memory 
+    Example     : my $out = xCAT::zvmCPUtils->getLparMemoryOffline($user, $hcp);
+    
+=cut
+
+#-------------------------------------------------------
+sub getLparMemoryOffline {
+    my ($class, $user, $hcp) = @_;
+
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+    
+    my $out = `ssh $user\@$hcp "$sudo /opt/zhcp/bin/smcli System_Info_Query" | grep "real storage"`;
+    my @results = split(' ', $out);
+
+    return ($results[14]);
+}
+
+#-------------------------------------------------------
+
+=head3   getLparMemoryUsed
+
+    Description : Get the used physical memory of this LPAR
+    Arguments   :   User (root or non-root)
+                    zHCP
+    Returns     : Used physical memory 
+    Example     : my $out = xCAT::zvmCPUtils->getLparMemoryUsed($user, $hcp);
+    
+=cut
+
+#-------------------------------------------------------
+sub getLparMemoryUsed {
+    my ($class, $user, $hcp) = @_;
+
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+    
+    my $out = `ssh $user\@$hcp "$sudo /opt/zhcp/bin/smcli System_Performance_Info_Query " | grep "Used memory pages:"`;
+    my @results = split(':', $out);
+    
+    my $page = xCAT::zvmUtils->trimStr( $results[1] );
+    my $size = xCAT::zvmUtils->getSizeFromPage( $page );
+    
+    return ($size);
+}
+
+#-------------------------------------------------------
+
+=head3   getDiskPoolUsed
+
+    Description : Get the used size of specified disk pool 
+    Arguments   :   User (root or non-root)
+                    zHCP
+                    Disk pool
+    Returns     : Used size of specified disk pool 
+    Example     : my $out = xCAT::zvmCPUtils->getDiskPoolUsed($user, $hcp, $diskpool);
+    
+=cut
+
+#-------------------------------------------------------
+sub getDiskPoolUsed {
+    my ($class, $user, $hcp, $diskpool) = @_;
+
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+    
+    my $hcpUserId = xCAT::zvmCPUtils->getUserId($user, $hcp);
+
+    my $out = `ssh $user\@$hcp "$sudo /opt/zhcp/bin/smcli Image_Volume_Space_Query_DM -q 3 -e 3 -n $diskpool -T $hcpUserId"`;
+    my @lines = split('\n', $out);
+    my @results;
+    my $used = 0;
+
+    foreach (@lines) {
+        @results = split(' ', $_);
+        if ($results[1] =~ '^9336') {
+            # Change the format from blocks (512 byte) to cylinder (737280)
+            my $cyls = ($results[3] * 512)/(737280);
+            $used += $cyls;
+        } elsif ($results[1] =~ '^3390') {
+            $used += $results[3];
+        }
+    }
+    
+    return ($used);
+}
+
+#-------------------------------------------------------
+
+=head3   getDiskPoolFree
+
+    Description : Get the free size of specified disk pool 
+    Arguments   :   User (root or non-root)
+                    zHCP 
+                    Disk pool
+    Returns     : Free size of specified disk pool 
+    Example     : my $out = xCAT::zvmCPUtils->getDiskPoolFree($user, $hcp, $diskpool);
+    
+=cut
+
+#-------------------------------------------------------
+sub getDiskPoolFree {
+    my ($class, $user, $hcp, $diskpool) = @_;
+    
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+
+    my $hcpUserId = xCAT::zvmCPUtils->getUserId($user, $hcp);
+
+    my $out = `ssh $user\@$hcp "$sudo /opt/zhcp/bin/smcli Image_Volume_Space_Query_DM -q 2 -e 3 -n $diskpool -T $hcpUserId"`;
+    my @lines = split('\n', $out);
+    my @results;
+    my $free = 0;
+
+    foreach (@lines) {
+        @results = split(' ', $_);
+        if ($results[1] =~ '^9336') {
+            # Change the format from blocks (512 byte) to cylinder (737280)
+            my $cyls = ( $results[3] * 512 ) / ( 737280 );
+            $free += $cyls;
+        } elsif ($results[1] =~ '^3390') {
+            $free += $results[3];
+        }
+    }
+    
+    return ($free);
+}
+
+#-------------------------------------------------------
+
+=head3   getMaxMemory
+
+    Description : Get the max memory of a given node
+    Arguments   :   User (root or non-root)
+                    zHCP 
+                    Node
+    Returns     : Max memory
+    Example     : my $maxMemory = xCAT::zvmCPUtils->getMaxMemory($user, $hcp, $node);
+    
+=cut
+
+#-------------------------------------------------------
+sub getMaxMemory {
+    my ($class, $user, $hcp , $node) = @_;
+
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+
+    my $userId = xCAT::zvmCPUtils->getUserId( $user, $node );
+
+    # Query the maximum memory allowed in user directory entry
+    my $out = `ssh $user\@$hcp "$sudo /opt/zhcp/bin/smcli Image_Definition_Query_DM -T $userId -k STORAGE_MAXIMUM"`;
+    my @results = split('=', $out);
+
+    return ($results[1]);
+}
+
+#-------------------------------------------------------
+
+=head3   smapi4xcat
+
+    Description : Verify if SMAPI EXEC (xCAT_Commands_IUO) exists
+    Arguments   :   User (root or non-root)
+                    zHCP
+    Returns     :   0  EXEC not found
+                    1  EXEC found
+    Example     : my $out = xCAT::zvmUtils->smapi4xcat($user, $hcp);
+    
+=cut
+
+#-------------------------------------------------------
+sub smapi4xcat {
+    my ( $class, $user, $hcp ) = @_;
+    
+    # Directory where executables are
+    my $dir = '/opt/zhcp/bin';
+    
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+    
+    # Get zHCP user ID
+    my $hcpUserId = xCAT::zvmCPUtils->getUserId($user, $hcp);
+    $hcpUserId =~ tr/a-z/A-Z/;
+    
+    # Check SMAPI level
+    # Levels 621 and greater support SMAPI EXEC
+    my $out = `ssh $user\@$hcp "$sudo $dir/smcli Query_API_Functional_Level -T $hcpUserId"`;
+    $out = xCAT::zvmUtils->trimStr($out);
+    if ( !($out =~ m/V6.2/i || $out =~ m/V6.1/i || $out =~ m/V5.4/i) ) {
+    	return 1;
+    }
+    
+    # Check if SMAPI EXEC exists
+    # EXEC found if RC = 8 and RS = 3002
+    $out = `ssh $user\@$hcp "$sudo $dir/smcli xCAT_Commands_IUO -T $hcpUserId -c ''"`;
+    $out = xCAT::zvmUtils->trimStr($out);
+    if ( $out =~ m/Return Code: 8/i && $out =~ m/Reason Code: 3002/i ) {
+        return 1;
+    } 
+
+    return 0;
+}
+
+#-------------------------------------------------------
+
+=head3   generateUserEntryFile
+
+    Description : Generate a user entry file without Mdisk
+    Arguments   :   UserId
+                    Password
+                    Memory
+                    Privilege
+                    Profile
+                    Cpu
+    Returns     : If successful, return file path. Otherwise, return -1
+    Example     : my $out = xCAT::zvmUtils->generateUserEntryFile($userId, $password, $memorySize, $privilege, $profileName, $cpuCount);
+    
+=cut
+
+#-------------------------------------------------------
+sub generateUserEntryFile {
+    my ( $class, $userId, $password, $memorySize, $privilege, $profileName, $cpuCount ) = @_;
+
+    # If a file of this name already exists, just override it
+    my $file = "/tmp/$userId.txt";
+    my $content = "USER $userId $password $memorySize $memorySize $privilege\nINCLUDE $profileName\nCPU 00 BASE\n";
+    
+    # Add additional CPUs
+    my $i;
+    for ( $i = 1; $i < $cpuCount; $i++ ) {
+        $content = $content.sprintf("CPU %02X\n", $i)
+    }
+    
+    unless (open(FILE, ">$file")) {
+        return -1;
+    }
+    
+    print FILE $content;    
+    close(FILE);
+      
+    return $file;    
+}
+
+#-------------------------------------------------------
+
+=head3   querySSI
+
+    Description : Obtain the SSI and system status
+    Arguments   :   User (root or non-root)
+                    zHCP
+    Returns     : SSI cluster name
+    Example     : my $out = xCAT::zvmUtils->querySSI($user, $hcp);
+    
+=cut
+
+#-------------------------------------------------------
+sub querySSI {
+    my ( $class, $user, $hcp ) = @_;
+    
+    # Directory where executables are
+    my $dir = '/opt/zhcp/bin';
+    
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+    
+    my $ssi = `ssh -o ConnectTimeout=10 $user\@$hcp "$sudo $dir/smcli SSI_Query" | egrep -i "ssi_name"`;
+    $ssi =~ s/ssi_name = //;
+    $ssi =~ s/\s*$//;
+    $ssi =~ s/^\s*//;
+    
+    return $ssi;
 }
