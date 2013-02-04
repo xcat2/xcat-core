@@ -2473,7 +2473,7 @@ sub kit_addpkgs
                  && ($non_native_kitreponame ne '')) {
               my $fromfile = $rpmdir."/".$non_native_filename;
               if ( system("ls $fromfile > /dev/null") ){
-                print  "The product package file $ext_filename could not be read from the package directory $rpmdir. \n";
+                print  "The product package file $non_native_filename could not be read from the package directory $rpmdir. \n";
                 system ("rm -Rf /tmp/buildkit_workdir");
                 return 1;
               }
