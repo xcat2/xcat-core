@@ -967,7 +967,7 @@ sub changeVM {
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
     
-    # addzfcp [pool] [device address] [loaddev (0 or 1)] [size] [tag (optional)] [wwpn (optional)] [lun (optional)]
+    # addzfcp [pool] [device address (or auto)] [loaddev (0 or 1)] [size] [tag (optional)] [wwpn (optional)] [lun (optional)]
     elsif ( $args->[0] eq "--addzfcp" ) {
         # Find a free disk in the pool
         # zFCP devices are contained in /var/opt/zhcp/zfcp/<pool-name>.conf
@@ -1004,6 +1004,7 @@ sub changeVM {
         my $tag = $args->[5];
         
         # Check if WWPN and LUN are given
+        # WWPN can be given as a semi-colon separated list
         my $wwpn;
         my $lun;
         my $useWwpnLun = 0;
@@ -1036,14 +1037,16 @@ sub changeVM {
         }
 
         my $sizeFound = "*";
+        my $range = "";
         my @info;
+        my @tmp;
             
         # Find a suitable pair of WWPN and LUN in device pool based on requested size
         # Sample pool configuration file:
-        #   #status,wwpn,lun,size,owner,channel,tag
-        #     used,1000000000000000,2000000000000110,8g,ihost1,1a23,$root_device$
-        #     free,1000000000000000,2000000000000111,,,,
-        #     free,1230000000000000,2000000000000112,,,,
+        #   #status,wwpn,lun,size,range,owner,channel,tag
+        #     used,1000000000000000,2000000000000110,8g,3B00-3B3F,ihost1,1a23,$root_device$
+        #     free,1000000000000000,2000000000000111,,3B00-3B3F,,,
+        #     free,1230000000000000,2000000000000112,,3B00-3B3F,,,
         if (!$useWwpnLun) {
             my @devices = split("\n", `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$pool.conf" | egrep -i free`);            
             $sizeFound = 0;
@@ -1065,36 +1068,105 @@ sub changeVM {
                 # Find optimal disk based on requested size
                 if ($sizeFound && $info[3] >= $size && $info[3] < $sizeFound) {
                     $sizeFound = $info[3];
-                    $wwpn = $info[1];
+                    $wwpn = $info[1];                    
                     $lun = $info[2];
+                    $range = $info[4];
                 } elsif (!$sizeFound && $info[3] >= $size) {
                     $sizeFound = $info[3];
                     $wwpn = $info[1];
-                    $lun = $info[2];            
+                    $lun = $info[2];   
+                    $range = $info[4];       
                 }
             }
         }
         
+        # If there are multiple paths, take the 1st one
+        # Handle multi-pathing in postscript because autoyast/kickstart does not support it.
+        if ($wwpn =~ m/;/i) {
+            @tmp = split(';', $wwpn);
+            $wwpn = xCAT::zvmUtils->trimStr($tmp[0]);
+        }
+        
+        # Do not continue if no devices can be found
         if (!$wwpn && !$lun) {
             xCAT::zvmUtils->printLn($callback, "$node: (Error) A suitable device could not be found");
             return;
         }
         xCAT::zvmUtils->printLn($callback, "$node: Using device with WWPN/LUN of $wwpn/$lun");
         
+        # Find a free FCP device based on the given range
+        my @ranges;
+        my $min;
+        my $max;
+        if ($device =~ m/auto/i) {
+        	if ($device =~ m/,/i) {
+        		@ranges = split(';', $range);
+        	} else {
+        		push(@ranges, $range);
+        	}
+        	
+        	# Find a free FCP device channel
+        	$out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_WWPN_Query -T $hcpUserId" | egrep -i "FCP device number|Status"`;
+            my @devices = split( "\n", $out );
+            my $status;
+            my $found = 0;
+            my $i;
+            for ($i = 0; $i < @devices; $i++) {
+                # Extract the device number and status
+                $device = $devices[$i];
+                $device =~ s/^FCP device number:(.*)/$1/;
+                $device =~ s/^\s+//;
+                $device =~ s/\s+$//;
+                        
+                $i++;
+                $status = $devices[$i];
+                $status =~ s/^Status:(.*)/$1/;
+                $status =~ s/^\s+//;
+                $status =~ s/\s+$//;                    
+                        
+                # Only look at free FCP devices
+                if ($status =~ m/free/i) {                    
+                    # If the device number is within the specified range, exit out of loop
+                    # Range: 3B00-3C00;4B00-4C00
+                    foreach (@ranges) {
+	                    ($min, $max) = split('-', $_);
+	                    if (hex($device) >= hex($min) && hex($device) <= hex($max)) {
+	                    	$found = 1;
+	                        last;
+	                    }
+	                }
+                }
+                
+                # Break out of loop if FCP device channel is found
+                if ($found) {
+                	last;
+                }
+            }
+            
+            # Do not continue if no FCP channel is found
+	        if (!$found) {
+	            xCAT::zvmUtils->printLn($callback, "$node: (Error) A suitable FCP device channel could not be found");
+	            return;
+	        }
+        }
+        
         # Make sure channel has a length of 4 
         while (length($device) < 4) {
             $device = "0" . $device;
         }
-                        
+        
         # Get user directory entry
         my $userEntry = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $userId" | sed '\$d'`;
         
-        # Find DEDICATE statement in the entry
+        # Find DEDICATE statement in the entry (dedicate one if one does not exist)
         my $dedicate = `echo "$userEntry" | egrep -i "DEDICATE $device"`;
         if (!$dedicate) {
-            xCAT::zvmUtils->printLn( $callback, "$node: (Error) No dedicated device found" );
-            return;
-        }                
+        	$out = `chvm $node --dedicatedevice $device $device 0`;
+            xCAT::zvmUtils->printLn($callback, "$node: $out");
+            if (xCAT::zvmUtils->checkOutput( $callback, $out ) == -1) {
+                return;
+            }
+        }
                 
         # Configure FCP inside node (if online)
         my $ping = `pping $node`;
@@ -1743,9 +1815,9 @@ sub changeVM {
                 # Mark WWPN and LUN as free and delete owner/channel
                 $pool = xCAT::zvmUtils->replaceStr( $_, ".conf", "" );
                 
-                # Update entry: status,wwpn,lun,size,owner,channel,tag
+                # Update entry: status,wwpn,lun,size,range,owner,channel,tag
                 my @info = split(',', $tmp);   
-                $update = "free,$wwpn,$lun,$info[3],,,";
+                $update = "free,$info[1],$lun,$info[3],$info[4],,";
                 $expression = "'s#" . $tmp . "#" .$update . "#i'";
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e $expression $::ZFCPPOOL/$pool.conf"`;
                 
@@ -5986,10 +6058,10 @@ sub changeHypervisor {
         $out .= `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Virtual_Network_Vswitch_Create -T $hcpUserId $argStr"`;
     }
     
-    # addzfcp2pool [pool] [status] [wwpn] [lun] [size] [owner (optional)]
+    # addzfcp2pool [pool] [status] [wwpn] [lun] [size] [range] [owner (optional)]
     elsif ( $args->[0] eq "--addzfcp2pool" ) {
         # zFCP disk pool located on zHCP at /var/opt/zhcp/zfcp/{pool}.conf 
-        # Entries contain: status,wwpn,lun,size,owner,channel,tag
+        # Entries contain: status,wwpn,lun,size,range,owner,channel,tag
         my $pool = $args->[1];
         my $status = $args->[2];
         my $wwpn = $args->[3];
@@ -5997,7 +6069,7 @@ sub changeHypervisor {
         my $size = $args->[5];
         
         my $argsSize = @{$args};
-        if ($argsSize < 6 || $argsSize > 7) {
+        if ($argsSize < 6 || $argsSize > 8) {
             xCAT::zvmUtils->printLn( $callback, "$node: (Error) Wrong number of parameters" );
             return;
         }
@@ -6014,10 +6086,14 @@ sub changeHypervisor {
         $wwpn = xCAT::zvmUtils->replaceStr($wwpn, "0x", "");
         $lun = xCAT::zvmUtils->replaceStr($lun, "0x", "");
         
-        # Optional parameter
+        # Optional parameters
+        my $range = "";
         my $owner = "";
-        if ($argsSize == 7) {
-            $owner = $args->[6];
+        if ($argsSize > 6) {
+            $range = $args->[6];
+        }
+        if ($argsSize > 7) {
+            $owner = $args->[7];
         }
 
         # Find disk pool (create one if non-existent)
@@ -6028,8 +6104,16 @@ sub changeHypervisor {
         
         if (!(`ssh $::SUDOER\@$hcp "$::SUDO test -e $::ZFCPPOOL/$pool.conf && echo Exists"`)) {                
             # Create pool configuration file 
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO echo '#status,wwpn,lun,size,owner,channel,tag' > $::ZFCPPOOL/$pool.conf"`;
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO echo '#status,wwpn,lun,size,range,owner,channel,tag' > $::ZFCPPOOL/$pool.conf"`;
             xCAT::zvmUtils->printLn( $callback, "$node: New zFCP device pool $pool created" );
+        }
+        
+        # Change the file owner if using a sudoer 
+        if ($::SUDOER ne "root") {
+        	my $priv = xCAT::zvmUtils->trimStr(`ssh $::SUDOER\@$hcp "$::SUDO stat -c \"%G:%U\" /var/opt/zhcp"`);
+        	if (!($priv =~ m/$::SUDOER:users/i)) {
+                `ssh $::SUDOER\@$hcp "$::SUDO chown -R $::SUDOER:users /var/opt/zhcp"`;
+        	}
         }
 
         # Do not update if the LUN already exists
@@ -6039,7 +6123,7 @@ sub changeHypervisor {
         }
         
         # Update file with given WWPN, LUN, size, and owner
-        $out = `ssh $::SUDOER\@$hcp "$::SUDO echo \"$status,$wwpn,$lun,$size,$owner,,\" >> $::ZFCPPOOL/$pool.conf"`;
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO echo \"$status,$wwpn,$lun,$size,$range,$owner,,\" >> $::ZFCPPOOL/$pool.conf"`;
         xCAT::zvmUtils->printLn( $callback, "$node: Adding zFCP device to $pool pool... Done" );
         $out = "";
     }
@@ -6112,13 +6196,16 @@ sub changeHypervisor {
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }    
     
-    # removezfcpfrompool [pool] [lun]
+    # removezfcpfrompool [pool] [lun] [wwpn (optional)]
     elsif ( $args->[0] eq "--removezfcpfrompool" ) {
         my $pool = $args->[1];
         my $lun = $args->[2];
         
+        my $wwpn;
         my $argsSize = @{$args};
-        if ($argsSize != 3) {
+        if ($argsSize == 4) {
+        	$wwpn = $args->[3];
+        } elsif ($argsSize > 4) {
             xCAT::zvmUtils->printLn( $callback, "$node: (Error) Wrong number of parameters" );
             return;
         }
@@ -6130,26 +6217,41 @@ sub changeHypervisor {
             push(@luns, $lun);
         }
         
-        # Find disk pool (create one if non-existent)
+        # Find disk pool
         if (!(`ssh $::SUDOER\@$hcp "$::SUDO test -e $::ZFCPPOOL/$pool.conf && echo Exists"`)) {                
             xCAT::zvmUtils->printLn( $callback, "$node: (Error) zFCP pool does not exist" );
             return;
         }
             
         # Go through each LUN
+        my $entry;
+        my @args;
         foreach (@luns) {
             # Make sure WWPN and LUN do not have 0x prefix
-            $_ = xCAT::zvmUtils->replaceStr($_, "0x", "");
+            $_ = xCAT::zvmUtils->replaceStr($_, "0x", "");            
             
+            # Entry should contain: status, wwpn, lun, size, range, owner, channel, tag
+            $entry =  xCAT::zvmUtils->trimStr(`ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$pool.conf" | grep $_`);
             # Do not update if LUN does not exists
-            if (!(`ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$pool.conf" | grep $_`)) {
+            if (!$entry) {
                 xCAT::zvmUtils->printLn( $callback, "$node: (Error) zFCP device $_ does not exists" );
                 return;
             }
             
+            # Do not update if WWPN/LUN combo does not exists
+            @args = split(',', $entry);
+            if ($wwpn && !($args[1] =~ m/$wwpn/i)) {
+            	xCAT::zvmUtils->printLn( $callback, "$node: (Error) zFCP device $wwpn/$_ does not exists" );
+                return;
+            }
+            
             # Update file with given WWPN, LUN, size, and owner
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e /$_/d $::ZFCPPOOL/$pool.conf"`;
-            xCAT::zvmUtils->printLn( $callback, "$node: Removing zFCP device $_ from $pool pool... Done" );
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e /$entry/d $::ZFCPPOOL/$pool.conf"`;
+            if ($wwpn) {
+                xCAT::zvmUtils->printLn( $callback, "$node: Removing zFCP device $wwpn/$_ from $pool pool... Done" );
+            } else {
+            	xCAT::zvmUtils->printLn( $callback, "$node: Removing zFCP device $_ from $pool pool... Done" );
+            }
         }
         $out = "";
     }
@@ -6421,20 +6523,58 @@ sub inventoryHypervisor {
         }
             
         # Display the status of real FCP Adapter devices using System_WWPN_Query
+        my @devices;
+        my $i;
+        my $devNo;
+        my $status;
         if ($space eq "active" || $space eq "free" || $space eq "offline") {
         	if ($details) {
-        		$str = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_WWPN_Query -T $hcpUserId"`;
+        		$out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_WWPN_Query -T $hcpUserId"`;
+        		
+        		@devices = split( "\n", $out );                
+                for ($i = 0; $i < @devices; $i++) {
+                    # Extract the device number and status
+                    $devNo = $devices[$i];
+                    $devNo =~ s/^FCP device number:(.*)/$1/;
+                    $devNo =~ s/^\s+//;
+                    $devNo =~ s/\s+$//;
+                    
+                    $status = $devices[$i + 1];
+                    $status =~ s/^Status:(.*)/$1/;
+                    $status =~ s/^\s+//;
+                    $status =~ s/\s+$//;                    
+                        
+                    # Only print out devices matching query
+                    if ($status =~ m/$space/i) {
+                        $str .= "$devices[$i]\n";
+                        $str .= "$devices[$i + 1]\n";
+                        $str .= "$devices[$i + 2]\n";
+                        $str .= "$devices[$i + 3]\n";
+                        $str .= "$devices[$i + 4]\n";
+                        $i = $i + 4;
+                    }
+                }
         	} else {
-        		$out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_WWPN_Query -T $hcpUserId" | egrep -i "FCP device number"`;
+        		$out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_WWPN_Query -T $hcpUserId" | egrep -i "FCP device number|Status"`;
             
-	            my @devices = split( "\n", $out );
-	            foreach (@devices) {
-	                # Extract the device number
-	                $_ =~ s/^FCP device number:(.*)/$1/;
-	                $_ =~ s/^\s+//;
-	                $_ =~ s/\s+$//;
-	                
-	                $str .= "$_\n";
+	            @devices = split( "\n", $out );
+	            for ($i = 0; $i < @devices; $i++) {
+	                # Extract the device number and status
+	                $devNo = $devices[$i];
+	                $devNo =~ s/^FCP device number:(.*)/$1/;
+	                $devNo =~ s/^\s+//;
+	                $devNo =~ s/\s+$//;
+	                    
+	                $i++;
+	                $status = $devices[$i];
+	                $status =~ s/^Status:(.*)/$1/;
+	                $status =~ s/^\s+//;
+	                $status =~ s/\s+$//;                    
+	                    
+	                # Only print out devices matching query
+	                if ($status =~ m/$space/i) {
+	                    $str .= "$devNo\n";
+	                }
 	            }
         	}
         } else {
