@@ -302,7 +302,7 @@ sub windows_account_data {
 	} else {
 		$domain = $::XCATSITEVALS{domain};
 	}
-	$useraccountxml.="<DomainAccounts><DomainAccountList>\n<DomainAccount wcm:action=\"add\">\n<Group>Administrators</Group>\n<Name>Domain Admins</Name>\n</DomainAccount>\n<Domain>".$domain."</Domain>\n</DomainAccountList>\n</DomainAccounts>\n";
+	$useraccountxml.="<DomainAccounts><DomainAccountList>\r\n<DomainAccount wcm:action=\"add\">\r\n<Group>Administrators</Group>\r\n<Name>Domain Admins</Name>\r\n</DomainAccount>\r\n<Domain>".$domain."</Domain>\r\n</DomainAccountList>\r\n</DomainAccounts>\r\n";
 		return $useraccountxml;
 }
 #this will examine table data, decide *if* a Microsoft-Windows-UnattendedJoin is warranted
@@ -335,7 +335,7 @@ sub windows_join_data {
 	} else {
 		$domain = $::XCATSITEVALS{domain};
 	}
-	my $componentxml = '<component name="Microsoft-Windows-UnattendedJoin" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'."\n<Identification>\n<JoinDomain>".$domain."</JoinDomain>\n";
+	my $componentxml = '<component name="Microsoft-Windows-UnattendedJoin" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'."\r\n<Identification>\r\n<JoinDomain>".$domain."</JoinDomain>\r\n";
 	if ($ou) {
 		$componentxml .= "<MachineObjectOU>".$ou."</MachineObjectOU>\n";
 	}
@@ -364,9 +364,9 @@ sub windows_join_data {
 			}
 		}
 		unless ($username and $password) { die "Missing active directory admin auth data from passwd table" }
-		$componentxml .= "<Credentials><Domain>".$domain."</Domain>\n<Username>".$username."</Username>\n<Password>".$password."</Password>\n</Credentials>\n";
+		$componentxml .= "<Credentials><Domain>".$domain."</Domain>\r\n<Username>".$username."</Username>\r\n<Password>".$password."</Password>\r\n</Credentials>\r\n";
 	}
-	$componentxml .= "</Identification>\n</component>\n";
+	$componentxml .= "</Identification>\r\n</component>\r\n";
 		
 }
 sub get_win_prodkey {
