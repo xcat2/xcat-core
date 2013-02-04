@@ -375,8 +375,8 @@ if [ ! -x /xcatpost/mypostscript ]; then
 /xcatpost/getpostscript.awk version2 > /dev/null 
 max_retries=1
 postfix=1
-download_mypostscript $SIP $node $max_retries $postfix $TFTPDIR 
 
+download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR 
 MYCONT=`grep MASTER /xcatpost/mypostscript`
 #echo "MYCONT=$MYCONT"
 #if getpostscript.awk fails, the postscript will fall into infinit loop
@@ -401,7 +401,7 @@ while [ -z "$MYCONT" ]; do
     /xcatpost/getpostscript.awk version2 > /dev/null
     max_retries=1
     postfix=1
-    download_mypostscript $SIP $node $max_retries $postfix $TFTPDIR
+    download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR 
  
     MYCONT=`grep MASTER /xcatpost/mypostscript`
     if [ ! -z "$MYCONT" ]; then
