@@ -16,6 +16,7 @@ use Socket;
 use xCAT::MsgUtils;
 use Data::Dumper;
 use Getopt::Long;
+my $globaltftpdir = "/tftpboot";
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 use File::Path;
@@ -43,6 +44,8 @@ sub process_request
     my $path     = undef;
     my $installroot;
     $installroot = xCAT::TableUtils->getInstallDir();
+    my $tftpdir = xCAT::TableUtils->get_site_attribute("tftpdir");
+    if ($tftpdir) { $globaltftpdir = $tftpdir; }
     if ($request->{command}->[0] eq 'copycd')
     {
         return copycd($request, $callback, $doreq);
@@ -214,7 +217,7 @@ sub mkinstall
     my $callback = shift;
     my $doreq    = shift;
     my @nodes    = @{$request->{node}};
-    my $tftpdir="/tftpboot";
+    my $tftpdir=$globaltftpdir;
     my $node;
     my $ostab = xCAT::Table->new('nodetype');
     my %doneimgs;
@@ -372,7 +375,7 @@ sub mkinstall
 		# create the node-specific post script DEPRECATED, don't do
 		#mkpath "/install/postscripts/";
 		#xCAT::Postage->writescript($node, "/install/postscripts/".$node, "install", $callback);
-        if (! -r "/tftpboot/Boot/pxeboot.0" ) {
+        if (! -r "$tftpdir/Boot/pxeboot.0" ) {
            $callback->(
             {error => [ "The Windows netboot image is not created, consult documentation on how to add Windows deployment support to xCAT"],errorcode=>[1]
             });
@@ -450,14 +453,15 @@ sub mkinstall
         } else {
             mkwinlinks($node,undef);
         }
-        foreach (getips($node)) {
-            unlink "/tftpboot/Boot/BCD.$_";
-            if ($arch =~ /64/) {
-                link "/tftpboot/Boot/BCD.64","/tftpboot/Boot/BCD.$_";
-            } else {
-                link "/tftpboot/Boot/BCD.32","/tftpboot/Boot/BCD.$_";
-            }
-        }
+	#since we are manipulating the 'filename' more precisely, no longer any reason to make per node BCD links
+      # foreach (getips($node)) { #This should be deprecated, probably 
+      #     unlink "$tftpdir/Boot/BCD.$_";
+      #     if ($arch =~ /64/) {
+      #         link "$tftpdir/Boot/BCD.64","$tftpdir/Boot/BCD.$_";
+      #     } else {
+      #         link "$tftpdir/Boot/BCD.32","$tftpdir/Boot/BCD.$_";
+      #     }
+      # }
     }
 }
 sub getips { #TODO: all the possible ip addresses
