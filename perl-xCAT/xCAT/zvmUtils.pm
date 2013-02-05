@@ -2117,3 +2117,33 @@ sub querySSI {
     
     return $ssi;
 }
+
+#-------------------------------------------------------
+
+=head3   rExecute
+
+    Description : Execute a remote command
+    Arguments   :   User (root or non-root)
+                    Node
+    Returns     : Output returned from executing command
+    Example     : my $out = xCAT::zvmUtils->rExecute($user, $node, $cmd);
+    
+=cut
+
+#-------------------------------------------------------
+sub rExecute {
+	my ( $class, $user, $node, $cmd ) = @_;
+	
+	my $out;
+	my $sudo = "sudo";
+    if ($user eq "root") {
+    	# Just execute the command if root        
+        $out = `ssh $user\@$node "$cmd"`;
+        return $out;
+    }
+    
+	# Encapsulate command in single quotes
+	$cmd = "'" . $cmd . "'";	
+	$out = `ssh $user\@$node "$sudo sh -c $cmd"`;
+	return $out;
+}

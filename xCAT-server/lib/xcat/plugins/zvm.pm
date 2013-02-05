@@ -1082,6 +1082,7 @@ sub changeVM {
         
         # If there are multiple paths, take the 1st one
         # Handle multi-pathing in postscript because autoyast/kickstart does not support it.
+        my $origWwpn = $wwpn;
         if ($wwpn =~ m/;/i) {
             @tmp = split(';', $wwpn);
             $wwpn = xCAT::zvmUtils->trimStr($tmp[0]);
@@ -1233,12 +1234,12 @@ sub changeVM {
             }
             
             # Entry order: status,wwpn,lun,size,owner,channel,tag
-            my $update = "used,$wwpn,$lun,$info[3],$info[4],$node,$device,$tag";
+            my $update = "used,$info[1],$lun,$info[3],$info[4],$node,$device,$tag";
             my $expression = "'s#" . $select . "#" .$update . "#i'";
             $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e $expression $::ZFCPPOOL/$pool.conf"`;
         } else {
             # Insert device entry into file
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO echo \"used,$wwpn,$lun,$size,,$node,$device,$tag\" >> $::ZFCPPOOL/$pool.conf"`;
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO echo \"used,$origWwpn,$lun,$size,,$node,$device,$tag\" >> $::ZFCPPOOL/$pool.conf"`;
         }
         
         xCAT::zvmUtils->printLn($callback, "$node: Adding FCP device... Done");
@@ -1538,13 +1539,13 @@ sub changeVM {
         my $mode  = $args->[3];
         
         # Dedicate device to directory entry
-        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Device_Dedicate_DM -T $userId -v $vaddr -r $raddr -o $mode"`;
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Device_Dedicate_DM -T $userId -v $vaddr -r $raddr -R $mode"`;
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
         
         # Dedicate device to active configuration
         my $ping = `pping $node`;
         if (!($ping =~ m/noping/i)) {
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Device_Dedicate -T $userId -v $vaddr -r $raddr -o $mode"`;
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Device_Dedicate -T $userId -v $vaddr -r $raddr -R $mode"`;
             xCAT::zvmUtils->printLn( $callback, "$node: $out" );
         }
         
