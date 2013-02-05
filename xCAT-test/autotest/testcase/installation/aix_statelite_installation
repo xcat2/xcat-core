@@ -27,9 +27,9 @@ check:rc==0
 cmd:chmod -R 777 /mydata/rw
 check:rc==0
 cmd:chmod 755 /etc/exports
-cmd:cat /etc/exports|grep nodedata; if [ "$?" -ne "0" ]; then echo "/nodedata -vers=4,sec=sys:none,anon=0,rw " >> /etc/exports; fi
+cmd:cat /etc/exports|grep nodedata; if [ "$?" -ne "0" ]; then echo "/nodedata -vers=3:4,sec=sys:none,anon=0,rw " >> /etc/exports; fi
 check:rc==0
-cmd:cat /etc/exports|grep mydata; if [ "$?" -ne "0" ]; then echo "/mydata -vers=4,sec=sys:none,anon=0,rw " >> /etc/exports; fi
+cmd:cat /etc/exports|grep mydata; if [ "$?" -ne "0" ]; then echo "/mydata -vers=3:4,sec=sys:none,anon=0,rw " >> /etc/exports; fi
 check:rc==0
 cmd:exportfs -a
 check:rc==0
