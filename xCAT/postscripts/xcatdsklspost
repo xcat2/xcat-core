@@ -90,7 +90,7 @@ download_mypostscript()
         TFTPDIR="/tftpboot"
     fi
     #max_retries=2
-    #retry=0
+    retry=0
     rc=1
  
 
@@ -375,8 +375,8 @@ if [ ! -x /xcatpost/mypostscript ]; then
 /xcatpost/getpostscript.awk version2 > /dev/null 
 max_retries=1
 postfix=1
-
 download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR 
+
 MYCONT=`grep MASTER /xcatpost/mypostscript`
 #echo "MYCONT=$MYCONT"
 #if getpostscript.awk fails, the postscript will fall into infinit loop
