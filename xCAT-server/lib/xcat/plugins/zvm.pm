@@ -1162,13 +1162,14 @@ sub changeVM {
         my $dedicate = `echo "$userEntry" | egrep -i "DEDICATE $device"`;
         if (!$dedicate) {
         	$out = `chvm $node --dedicatedevice $device $device 0`;
-            xCAT::zvmUtils->printLn($callback, "$node: $out");
+            xCAT::zvmUtils->printLn($callback, "$out");
             if (xCAT::zvmUtils->checkOutput( $callback, $out ) == -1) {
                 return;
             }
         }
                 
         # Configure FCP inside node (if online)
+        my $cmd;
         my $ping = `pping $node`;
         if (!($ping =~ m/noping/i)) {
            
@@ -1181,8 +1182,8 @@ sub changeVM {
             
             # Set WWPN and LUN in sysfs
             $device = lc($device);
-            $out .= `ssh $::SUDOER\@$node "echo 0x$wwpn > /sys/bus/ccw/drivers/zfcp/0.0.$device/port_add"`;
-            $out .= `ssh $::SUDOER\@$node "echo 0x$lun > /sys/bus/ccw/drivers/zfcp/0.0.$device/0x$wwpn/unit_add"`;
+            $out = xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo 0x$wwpn > /sys/bus/ccw/drivers/zfcp/0.0.$device/port_add");
+            $out = xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo 0x$lun > /sys/bus/ccw/drivers/zfcp/0.0.$device/0x$wwpn/unit_add");
             
             # Get source node OS
             my $os = xCAT::zvmUtils->getOsVersion($::SUDOER, $node);
@@ -1193,24 +1194,27 @@ sub changeVM {
             #   SLES 11: /etc/udev/rules.d/51-zfcp*
             my $tmp;
             if ( $os =~ m/sles10/i ) {
-                $out = `ssh $::SUDOER\@$node "zfcp_host_configure 0.0.$device 1"`;
-                $out = `ssh $::SUDOER\@$node "zfcp_disk_configure 0.0.$device $wwpn $lun 1"`;
-                xCAT::zvmUtils->printLn($callback, "$node: $out");
+                $out = `ssh $::SUDOER\@$node "$::SUDO zfcp_host_configure 0.0.$device 1"`;
+                $out = `ssh $::SUDOER\@$node "$::SUDO zfcp_disk_configure 0.0.$device $wwpn $lun 1"`;
+                if ($out) {
+                    xCAT::zvmUtils->printLn($callback, "$node: $out");
+                }
                 
-                $out = `ssh $::SUDOER\@$node "echo 0x$wwpn:0x$lun >> /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-0.0.$device"`;
+                $out = xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo 0x$wwpn:0x$lun >> /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-0.0.$device");
             } elsif ( $os =~ m/sles11/i ) {   
-                $out = `ssh $::SUDOER\@$node "zfcp_disk_configure 0.0.$device $wwpn $lun 1"`;
-                xCAT::zvmUtils->printLn($callback, "$node: $out");
+                $out = `ssh $::SUDOER\@$node "$::SUDO zfcp_disk_configure 0.0.$device $wwpn $lun 1"`;
+                if ($out) {
+                    xCAT::zvmUtils->printLn($callback, "$node: $out");
+                }
                 
                 $tmp = "'ACTION==\"add\", KERNEL==\"rport-*\", ATTR{port_name}==\"0x$wwpn\", SUBSYSTEMS==\"ccw\", KERNELS==\"0.0.$device\", ATTR{[ccw/0.0.$device]0x$wwpn/unit_add}=\"0x$lun\"'";
                 $tmp = xCAT::zvmUtils->replaceStr($tmp, '"', '\\"');
-                $out = `ssh $::SUDOER\@$node "echo $tmp >> /etc/udev/rules.d/51-zfcp-0.0.$device.rules"`;
+                $out = xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo $tmp >> /etc/udev/rules.d/51-zfcp-0.0.$device.rules");
             } elsif ( $os =~ m/rhel/i ) {
-                $tmp = "'" . "0.0.$device 0x$wwpn 0x$lun" . "'";
-                $out = `ssh $::SUDOER\@$node "echo $tmp >> /etc/zfcp.conf"`;
+                $out = xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo \"0.0.$device 0x$wwpn 0x$lun\" >> /etc/zfcp.conf");
                 
                 if ($os =~ m/rhel6/i) {
-                    $out = `ssh $::SUDOER\@$node "echo add > /sys/bus/ccw/devices/0.0.$device/uevent"`;
+                	$out = xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo add > /sys/bus/ccw/devices/0.0.$device/uevent");
                 }
             }
             
@@ -1229,12 +1233,12 @@ sub changeVM {
             }
             
             # Entry order: status,wwpn,lun,size,owner,channel,tag
-            my $update = "used,$wwpn,$lun,$info[3],$node,$device,$tag";
+            my $update = "used,$wwpn,$lun,$info[3],$info[4],$node,$device,$tag";
             my $expression = "'s#" . $select . "#" .$update . "#i'";
             $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e $expression $::ZFCPPOOL/$pool.conf"`;
         } else {
             # Insert device entry into file
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO echo \"used,$wwpn,$lun,$size,$node,$device,$tag\" >> $::ZFCPPOOL/$pool.conf"`;
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO echo \"used,$wwpn,$lun,$size,,$node,$device,$tag\" >> $::ZFCPPOOL/$pool.conf"`;
         }
         
         xCAT::zvmUtils->printLn($callback, "$node: Adding FCP device... Done");
@@ -1817,7 +1821,7 @@ sub changeVM {
                 
                 # Update entry: status,wwpn,lun,size,range,owner,channel,tag
                 my @info = split(',', $tmp);   
-                $update = "free,$info[1],$lun,$info[3],$info[4],,";
+                $update = "free,$info[1],$lun,$info[3],$info[4],,,";
                 $expression = "'s#" . $tmp . "#" .$update . "#i'";
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e $expression $::ZFCPPOOL/$pool.conf"`;
                 
@@ -1830,7 +1834,8 @@ sub changeVM {
         if (!($ping =~ m/noping/i)) {
             # Delete WWPN and LUN from sysfs
             $device = lc($device);
-            $out = `ssh $::SUDOER\@$node "echo 0x$lun > /sys/bus/ccw/drivers/zfcp/0.0.$device/0x$wwpn/unit_remove"`;
+            # unit_remove does not exist on SLES 10!
+            $out = xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo 0x$lun > /sys/bus/ccw/drivers/zfcp/0.0.$device/0x$wwpn/unit_remove");
             
             # Get source node OS
             my $os = xCAT::zvmUtils->getOsVersion($::SUDOER, $node);
@@ -1841,13 +1846,13 @@ sub changeVM {
             #   SLES 11: /etc/udev/rules.d/51-zfcp*
             if ( $os =~ m/sles10/i ) {
                 $expression = "/$lun/d";
-                $out = `ssh $::SUDOER\@$node "sed --in-place -e $expression /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-0.0.$device"`;
+                $out = `ssh $::SUDOER\@$node "$::SUDO sed --in-place -e $expression /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-0.0.$device"`;
             } elsif ( $os =~ m/sles11/i ) {
                 $expression = "/$lun/d";
-                $out = `ssh $::SUDOER\@$node "sed --in-place -e $expression /etc/udev/rules.d/51-zfcp-0.0.$device.rules"`;
+                $out = `ssh $::SUDOER\@$node "$::SUDO sed --in-place -e $expression /etc/udev/rules.d/51-zfcp-0.0.$device.rules"`;
             } elsif ( $os =~ m/rhel/i ) {
                 $expression = "/$lun/d";
-                $out = `ssh $::SUDOER\@$node "sed --in-place -e $expression /etc/zfcp.conf"`;
+                $out = `ssh $::SUDOER\@$node "$::SUDO sed --in-place -e $expression /etc/zfcp.conf"`;
             }
             
             xCAT::zvmUtils->printLn($callback, "$node: De-configuring FCP device on host... Done");
@@ -5667,9 +5672,9 @@ sub updateNode {
             } else {
 
                 # Create repository
-                $out = `ssh $::SUDOER\@$node "echo [$version] >> /etc/yum.repos.d/file.repo"`;
-                $out = `ssh $::SUDOER\@$node "echo baseurl=$path >> /etc/yum.repos.d/file.repo"`;
-                $out = `ssh $::SUDOER\@$node "echo enabled=1 >> /etc/yum.repos.d/file.repo"`;
+                $out =  xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo [$version] >> /etc/yum.repos.d/file.repo");
+                $out =  xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo baseurl=$path >> /etc/yum.repos.d/file.repo");
+                $out =  xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo enabled=1 >> /etc/yum.repos.d/file.repo");
 
                 # Send over release key
                 my $key = "$installDir/$version/s390x/RPM-GPG-KEY-redhat-release";
@@ -7073,7 +7078,7 @@ sub eventLog {
     }
     
     # Just set the logging options
-    if ($options) {        
+    if ($options) {
         $out = `echo -e \"$options\" > /tmp/$node.tracing`;
         $out = `ssh $::SUDOER\@$node "rm -rf $srcLog"`;
         $out = `cat /tmp/$node.tracing | ssh $::SUDOER\@$node "cat > /tmp/$node.tracing"`;
