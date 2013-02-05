@@ -590,8 +590,10 @@ sub assign_to_osimage
         # Checking if the kit deployparams have been written in the generated kit deployparams file.
         my @l;
         foreach my $content ( @contents ) {
+            chomp $content;
             my $matched = 0;
             foreach my $line ( @lines ) {
+                chomp $line;
                 if ( $line =~ /$content/ ) {
                     $matched = 1;
                     last;
@@ -599,7 +601,7 @@ sub assign_to_osimage
             }
 
             unless ( $matched ) {
-                push @l, $content;
+                push @l, $content . "\n";
             }
         }
 
@@ -1013,6 +1015,7 @@ sub addkit
             xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
+
 
         # Check if the kitcomponent is existing
         my @kitcomps = $tabs{kitcomponent}->getAllAttribs( 'kitcompname' );
@@ -1765,7 +1768,7 @@ sub addkitcomp
                 push@{ $rsp{data} }, "$kitcomp kit component is already in osimage $osimage";
                 xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 $catched = 1;
-            } 
+            }
         }
 
         # No matching kitcomponent name in osimage.kitcomponents, now checking their basenames.
@@ -1796,7 +1799,7 @@ sub addkitcomp
                         my %rsp;
                         push@{ $rsp{data} }, "Upgrading kit component $oskitcomp to $kitcomp";
                         xCAT::MsgUtils->message( "I", \%rsp, $callback );
-                        my $ret = xCAT::Utils->runxcmd({ command => ['rmkitcomp'], arg => ['-f','-u','-i',$osimage, $kitcomp] }, $request_command, -2, 1);
+                        my $ret = xCAT::Utils->runxcmd({ command => ['rmkitcomp'], arg => ['-f','-u','-i',$osimage, $oskitcomp] }, $request_command, -2, 1);
                         if ( !$ret ) {
                             my %rsp;
                             push@{ $rsp{data} }, "Failed to remove kit component $kitcomp from $osimage";
@@ -2084,6 +2087,7 @@ sub rmkitcomp
                 my $match = 0;
                 my @kitcompscripts = split( ',', $kitcomps{$kitcomponent}{genimage_postinstall} );
                 foreach my $line ( @postbootlines ) {
+                    chomp $line;
                     foreach my $kitcompscript ( @kitcompscripts ) {
                         if ( grep(/$kitcompscript/, $line) ) {
                             $match = 1;
@@ -2091,7 +2095,7 @@ sub rmkitcomp
                     }
 
                     if ( !$match ) {
-                        push @newlines, $line;
+                        push @newlines, $line."\n";
                     }
                 }
 
@@ -2139,6 +2143,7 @@ sub rmkitcomp
 
                     my @kitcompscripts = split( ',', $kitcomps{$kitcomponent}{genimage_postinstall} );
                     foreach my $line ( @postinstalllines ) {
+                        chomp $line;
                         my $match = 0;
                         foreach my $kitcompscript ( @kitcompscripts ) {
 
@@ -2148,7 +2153,7 @@ sub rmkitcomp
                             }
                         }
                         if ( !$match ) {
-                            push @newlines, $line;
+                            push @newlines, $line."\n";
                         }
                     }
 
@@ -2223,10 +2228,11 @@ sub rmkitcomp
 
                 my @newlines = ();
                 foreach my $line ( @lines ) {
+                    chomp $line;
                     if ( $line =~ /^#INCLUDE:$kitdir\/other_files\/$exlistfile#$/ ) {
                         next;
                     }
-                    push @newlines, $line;
+                    push @newlines, $line . "\n";
                 }
                 if (open(NEWEXLIST, ">", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist")) {
                     print NEWEXLIST @newlines;
@@ -2272,10 +2278,11 @@ sub rmkitcomp
 
                     my @newlines = ();
                     foreach my $line ( @lines ) {
+                        chomp $line;
                         if ( $line =~ /^$kitreponame\/$basename$/ ) {
                             next;
                         }
-                        push @newlines, $line;
+                        push @newlines, $line . "\n";
                     }
 
                     if (open(NEWOTHERPKGLIST, ">", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist")) {
@@ -2433,8 +2440,10 @@ sub rmkitcomp
 
                     my @newcontents = ();
                     foreach my $line ( @lines ) {
+                        chomp $line;
                         my $found = 0;
                         foreach my $content ( @contents ) {
+                            chomp $content;
                             if ( $line =~ /$content/ ) {
                                 $found = 1;
                                 last;
@@ -2442,7 +2451,7 @@ sub rmkitcomp
                         }
 
                         unless ( $found ) {
-                            push @newcontents, $line;
+                            push @newcontents, $line . "\n";
                         }
                     }
 
