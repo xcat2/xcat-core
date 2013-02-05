@@ -6108,8 +6108,8 @@ sub changeHypervisor {
         }
         
         if (!(`ssh $::SUDOER\@$hcp "$::SUDO test -e $::ZFCPPOOL/$pool.conf && echo Exists"`)) {                
-            # Create pool configuration file 
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO echo '#status,wwpn,lun,size,range,owner,channel,tag' > $::ZFCPPOOL/$pool.conf"`;
+            # Create pool configuration file
+            $out = xCAT::zvmUtils->rExecute($::SUDOER, $hcp, "echo '#status,wwpn,lun,size,range,owner,channel,tag' > $::ZFCPPOOL/$pool.conf");
             xCAT::zvmUtils->printLn( $callback, "$node: New zFCP device pool $pool created" );
         }
         
@@ -6128,7 +6128,9 @@ sub changeHypervisor {
         }
         
         # Update file with given WWPN, LUN, size, and owner
-        $out = `ssh $::SUDOER\@$hcp "$::SUDO echo \"$status,$wwpn,$lun,$size,$range,$owner,,\" >> $::ZFCPPOOL/$pool.conf"`;
+        my $entry = "'" . "$status,$wwpn,$lun,$size,$range,$owner,," . "'";
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO echo $entry >> $::ZFCPPOOL/$pool.conf"`;
+        xCAT::zvmUtils->printLn( $callback, "ssh $::SUDOER\@$hcp \"$::SUDO echo \"$status,$wwpn,$lun,$size,$range,$owner,,\" >> $::ZFCPPOOL/$pool.conf");
         xCAT::zvmUtils->printLn( $callback, "$node: Adding zFCP device to $pool pool... Done" );
         $out = "";
     }
@@ -6251,7 +6253,7 @@ sub changeHypervisor {
             }
             
             # Update file with given WWPN, LUN, size, and owner
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e /$entry/d $::ZFCPPOOL/$pool.conf"`;
+            $out = xCAT::zvmUtils->rExecute($::SUDOER, $hcp, "sed --in-place -e /$entry/d $::ZFCPPOOL/$pool.conf");
             if ($wwpn) {
                 xCAT::zvmUtils->printLn( $callback, "$node: Removing zFCP device $wwpn/$_ from $pool pool... Done" );
             } else {
