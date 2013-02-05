@@ -1,6 +1,6 @@
 =head1 Name
 
-B<rinv> - remote hardware inventory
+B<rinv> - Remote hardware inventory
 
 =head1 B<Synopsis>
 
@@ -27,6 +27,32 @@ B<rinv> I<noderange> {B<mtm>|B<serial>|B<mac>|B<bios>|B<diag>|B<mprom>|B<mparom>
 =head2 VMware specific:
 
 B<rinv> I<noderange> [B<-t>]
+
+=head2 zVM specific:
+
+B<rinv> I<noderange> [B<config>|B<all>]
+
+B<rinv> I<noderange> [B<--diskpoolspace>]
+
+B<rinv> I<noderange> [B<--diskpool> I<pool> I<space (all, free, or used)>]
+
+B<rinv> I<noderange> [B<--fcpdevices> I<state (active, free, or offline)> I<details (optional)>]
+
+B<rinv> I<noderange> [B<--diskpoolnames>]
+
+B<rinv> I<noderange> [B<--networknames>]
+
+B<rinv> I<noderange> [B<--network> I<name>]
+
+B<rinv> I<noderange> [B<--ssi>]
+
+B<rinv> I<noderange> [B<--smapilevel>]
+
+B<rinv> I<noderange> [B<--wwpn>]
+
+B<rinv> I<noderange> [B<--zfcppool> I<pool> I<space (free or used)>]
+
+B<rinv> I<noderange> [B<--zfcppoolnames>]
 
 =head1 B<Description>
 
@@ -112,6 +138,52 @@ Print version.
 
 Set the values in the vm table to what vCenter has for the indicated nodes.
 
+B<zVM specific :>
+
+=item B<--diskpoolspace>
+
+Calculates the total size of every known storage pool. 
+
+=item B<--diskpool> I<pool> I<space (all, free, or used)>
+
+Lists the storage devices (ECKD and FBA) contained in a disk pool.
+
+=item B<--fcpdevices> I<state (active, free, or offline)> I<details (optional)>
+
+Lists the FCP device channels that are active, free, or offline.
+
+=item B<--diskpoolnames>
+
+Lists the known disk pool names. 
+
+=item B<--networknames>
+
+Lists the known network names.
+
+=item B<--network> I<name>
+
+Shows the configuration of a given network device.
+
+=item B<--ssi>
+
+Obtain the SSI and system status.
+
+=item B<--smapilevel>
+
+Obtain the SMAPI level installed on a given hypervisor.
+
+=item B<--wwpn>
+
+Query all FCPs on a z/VM system and return a list of WWPNs.
+
+=item B<--zfcppool> I<pool> I<space (free or used)>
+
+List the SCSI/FCP devices contained in a zFCP pool.
+
+=item B<--zfcppoolnames>
+
+List the known zFCP pool names.
+
 =back
 
 =head1 B<Examples>
@@ -182,6 +254,89 @@ To retrieve information about a VMware node vm1, enter:
  vm1: Hard disk 1 (d0): 9000 MB @ [nfs_192.168.68.21_vol_rc1storage_vmware] vm1_3/vm1.vmdk
  vm1: Hard disk 2 (d4): 64000 MB @ [nfs_192.168.68.21_vol_rc1storage_vmware] vm1_3/vm1_5.vmdk
 
+B<zVM specific :>
+
+=item * 
+
+To list the defined network names available for a given node:
+
+ rinv pokdev61 --getnetworknames
+
+Output is similar to:
+
+ pokdev61: LAN:QDIO SYSTEM GLAN1
+ pokdev61: LAN:HIPERS SYSTEM GLAN2
+ pokdev61: LAN:QDIO SYSTEM GLAN3
+ pokdev61: VSWITCH SYSTEM VLANTST1
+ pokdev61: VSWITCH SYSTEM VLANTST2
+ pokdev61: VSWITCH SYSTEM VSW1
+ pokdev61: VSWITCH SYSTEM VSW2
+ pokdev61: VSWITCH SYSTEM VSW3
+
+=item * 
+
+To list the configuration for a given network:
+
+ rinv pokdev61 --getnetwork GLAN1
+
+Output is similar to:
+ 
+ pokdev61: LAN SYSTEM GLAN1        Type: QDIO    Connected: 1    Maxconn: INFINITE
+ pokdev61:   PERSISTENT  UNRESTRICTED  IP                        Accounting: OFF
+ pokdev61:   IPTimeout: 5                 MAC Protection: Unspecified
+ pokdev61:   Isolation Status: OFF
+
+=item * 
+
+To list the disk pool names available:
+
+ rinv pokdev61 --diskpoolnames
+ 
+Output is similar to:
+
+ pokdev61: POOL1
+ pokdev61: POOL2
+ pokdev61: POOL3
+
+=item * 
+
+List the configuration for a given disk pool:
+
+ rinv pokdev61 --diskpool POOL1 free
+
+Output is similar to:
+ 
+ pokdev61: #VolID DevType StartAddr Size
+ pokdev61: EMC2C4 3390-09 0001 10016
+ pokdev61: EMC2C5 3390-09 0001 10016
+
+
+=item *
+
+List the known zFCP pool names.
+
+ rinv pokdev61 --zfcppoolnames
+ 
+Output is similar to:
+
+ pokdev61: zfcp1
+ pokdev61: zfcp2
+ pokdev61: zfcp3
+
+=item *
+
+List the SCSI/FCP devices contained in a given zFCP pool:
+
+ rinv pokdev61 --zfcppool zfcp1
+  
+Output is similar to:
+
+ pokdev61: #status,wwpn,lun,size,range,owner,channel,tag
+ pokdev61: used,500507630613c411,4014402f00000000,2g,3B40-3B7F,ihost13,3b77,
+ pokdev61: used,500507630613c411,4014403200000000,8192M,3B40-3B7F,ihost13,3b77,replace_root_device
+ pokdev61: free,500507630613c411,4014403300000000,8g,3B40-3B7F,,,
+ pokdev61: free,5005076306138411,4014403100000000,2g,3B40-3B7F,,,
+ pokdev61: free,500507630613c411;5005076306138411,4014403000000000,2G,3B40-3B7F,,,
 
 =back
 
