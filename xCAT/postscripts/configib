@@ -1,4 +1,4 @@
-#!/bin/sh  
+#!/bin/sh 
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 # xCAT post script for configuring ib adaptors.
@@ -183,7 +183,7 @@ do
        index=$((index+1))
        eval netline=\$NETWORKS_LINE$index
        if [[ -n "$netline" ]]; then
-	   for tmp in `echo "$netline" | tr "\|\|" "\n"`
+	   for tmp in `echo "$netline" | tr "\|" "\n"`
 	   do
 	       key=`echo "$tmp" | awk -F"=" '{print $1}'`;
 	       case $key in
@@ -355,5 +355,3 @@ then
         fi
     done
 fi
-
-
