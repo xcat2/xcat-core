@@ -324,10 +324,10 @@ function initSelectPlatform() {
     selectPlatform.append(info);
 
     var hwList = $('<ol>Platforms available:</ol>');
-    hwList.append('<li><input type="radio" name="platform" disabled="true" id="idataplex"><label>iDataPlex</label></input></li>');
-    hwList.append('<li><input type="radio" name="platform" disabled="true" id="blade"><span  style="color:gray;"> BladeCenter</span></input></li>');
-    hwList.append('<li><input type="radio" name="platform" id="ih"> System p hardware (P7 IH)</input></li>');
-    hwList.append('<li><input type="radio" name="platform" id="nonih"> System p hardware (Non P7 IH)</input></li>');
+    hwList.append('<li><input type="radio" name="platform" id="idataplex" disabled>iDataPlex</input></li>');
+    hwList.append('<li><input type="radio" name="platform" id="blade" disabled>BladeCenter</input></li>');
+    hwList.append('<li><input type="radio" name="platform" id="ih">System p hardware (P7 IH)</input></li>');
+    hwList.append('<li><input type="radio" name="platform" id="nonih">System p hardware (Non P7 IH)</input></li>');
 
     hwList.find('li').css('padding', '2px 10px');
     selectPlatform.append(hwList);

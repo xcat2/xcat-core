@@ -28,6 +28,9 @@ function loadXcatMon() {
 function loadXcatMonSetting(data) {
     var apps = ""; // Contains the xcatmon config
     var rsp = data.rsp;
+    if (!rsp.length)
+    	return;
+    
     var apps_flag = 0;
     var ping; // xcatmon ping interval
     var ping_flag = 0;
@@ -196,10 +199,18 @@ function loadXcatMonSetting(data) {
 
     // Save datatable
     dTable = $('#' + xcatMonTableId).dataTable({
-        'iDisplayLength' : 50,
-        'bLengthChange' : false,
-        "sScrollX" : "100%",
-        "bAutoWidth" : true
+    	'iDisplayLength': 50,
+        'bLengthChange': false,
+        "bScrollCollapse": true,
+        "sScrollY": "400px",
+        "sScrollX": "110%",
+        "bAutoWidth": true,
+        "oLanguage": {
+            "oPaginate": {
+              "sNext": "",
+              "sPrevious": ""
+            }
+        }
     });
 
     // Create action bar

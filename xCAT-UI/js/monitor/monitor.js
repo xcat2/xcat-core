@@ -66,7 +66,6 @@ function loadMonitorPage() {
             statusHash['rmcmon'] = 'Off';
             statusHash['rmcevent'] = 'Off';
             statusHash['gangliamon'] = 'Off';
-            statusHash['pcpmon'] = 'Off';
             if (data.rsp[0]) {
                 var tempArray = data.rsp[0].split(';');
                 var position = 0;
@@ -144,12 +143,6 @@ function loadMonitorPage() {
             gangliaMon.append($('<td>A scalable distributed monitoring system for high-performance computing systems such as clusters and Grids.</td>'));
             monTableBody.append(gangliaMon);
             
-            var pcpMon = $('<tr></tr>');
-            pcpMon.append($('<td><a href="#" name="pcpmon">PCP</a></td>'));
-            pcpMon.append($('<td></td>').append(statusButtonHash['pcpmon']));
-            pcpMon.append($('<td>Not yet supported</td>'));
-            monTableBody.append(pcpMon);
-            
             // Do not word wrap
             monTableBody.find('td:nth-child(1)').css('white-space', 'nowrap');
             monTableBody.find('td:nth-child(3)').css({
@@ -166,85 +159,7 @@ function loadMonitorPage() {
                 loadMonitorTab($(this).attr('name'));
             });
         }
-    });
-    
-    // Create resources tab
-    var resrcForm = $('<div class="form"></div>');
-
-    // Create info bar
-    var resrcInfoBar = createInfoBar('Select a platform to view its current resources.');
-    resrcForm.append(resrcInfoBar);
-
-    // Create radio buttons for platforms
-    var hwList = $('<ol>Platforms available:</ol>');
-    var esx = $('<li><input type="radio" name="hw" value="esx" checked/>ESX</li>');
-    var kvm = $('<li><input type="radio" name="hw" value="kvm"/>KVM</li>');
-    var zvm = $('<li><input type="radio" name="hw" value="zvm"/>z\/VM</li>');
-    var ipmi = $('<li><input type="radio" name="hw" value="ipmi"/>iDataPlex</li>');
-    var blade = $('<li><input type="radio" name="hw" value="blade"/>BladeCenter</li>');
-    var hmc = $('<li><input type="radio" name="hw" value="hmc"/>System p</li>');
-    
-    hwList.append(esx);
-    hwList.append(kvm);
-    hwList.append(zvm);
-    hwList.append(blade);
-    hwList.append(ipmi);
-    hwList.append(hmc);
-    
-    resrcForm.append(hwList);
-
-    var okBtn = createButton('Ok');
-    okBtn.bind('click', function(event) {
-        // Get hardware that was selected
-        var hw = $(this).parent().find('input[name="hw"]:checked').val();
-
-        // Generate new tab ID
-        var newTabId = hw + 'ResourceTab';
-        if (!$('#' + newTabId).length) {
-            // Create loader
-            var loader = $('<center></center>').append(createLoader(hw + 'ResourceLoader'));
-
-            // Create an instance of the plugin
-            var plugin = null;
-            var displayName = "";
-            switch (hw) {
-                case "kvm":
-                    plugin = new kvmPlugin();
-                    displayName = "KVM";
-                    break;
-                case "esx":
-                    plugin = new esxPlugin();
-                    displayName = "ESX";
-                    break;
-                case "blade":
-                    plugin = new bladePlugin();
-                    displayName = "BladeCenter";
-                    break;
-                case "hmc":
-                    plugin = new hmcPlugin();
-                    displayName = "System p";
-                    break;
-                case "ipmi":
-                    plugin = new ipmiPlugin();
-                    displayName = "iDataPlex";
-                    break;
-                case "zvm":
-                    plugin = new zvmPlugin();
-                    displayName = "z\/VM";
-                    break;
-            }
-            
-            // Add resource tab and load resources
-            tab.add(newTabId, displayName, loader, true);
-            plugin.loadResources();
-        }
-
-        // Select tab
-        tab.select(newTabId);
-    });
-    
-    resrcForm.append(okBtn);
-    tab.add('resourceTab', 'Resources', resrcForm, false);
+    }); 
 }
 
 /**
@@ -276,9 +191,6 @@ function loadMonitorTab(name) {
         case 'rmcevent':
             tab.add(name, 'RMC Event', '', true);
             loadRmcEvent();
-            break;
-        case 'pcpmon':
-            loadUnfinish(name, tab);
             break;
     }
 

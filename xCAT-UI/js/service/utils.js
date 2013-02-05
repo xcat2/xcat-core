@@ -33,18 +33,16 @@ function getNodesShown(tableId) {
  * @param col Column to find string under
  * @return The row index containing the search string
  */
-function findRow(str, table, col){
-    var dTable, rows;
-    
+function findRow(str, table, col){    
     // Get datatable
-    dTable = $(table).dataTable();
-    rows = dTable.fnGetData();
+    var dTable = $(table).dataTable();
+    var rows = dTable.fnGetData();
     
     // Loop through each row
     for (var i in rows) {
         // If the column contains the search string
         if (rows[i][col].indexOf(str) > -1) {
-            return i;
+            return parseInt(i);
         }
     }
     

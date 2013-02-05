@@ -41,10 +41,15 @@ if (isset($_GET["cmd"])) {
     }
 
     // If no $args are given, set $args_array to NULL
+    // Separators used are: | or ;
     $args_array = array();
     if ($args) {
         // If $args contains multiple arguments, split it into an array
-        if (strpos($args,";")) {
+        if (strpos($args, "|")) {
+            // Split the arguments into an array
+            $args_array = array();
+            $args_array = explode("|", $args);
+        } else if (strpos($args, ";")) {
             // Split the arguments into an array
             $args_array = array();
             $args_array = explode(";", $args);
@@ -59,7 +64,11 @@ if (isset($_GET["cmd"])) {
         $opts = $_GET["opts"];
 
         // If $args contains multiple arguments, split it into an array
-        if (strpos($opts,";")) {
+        if (strpos($opts, "|")) {
+            // Split the arguments into an array
+            $opts_array = array();
+            $opts_array = explode("|", $opts);
+        } if (strpos($opts, ";")) {
             // Split the arguments into an array
             $opts_array = array();
             $opts_array = explode(";", $opts);

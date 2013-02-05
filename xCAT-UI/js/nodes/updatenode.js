@@ -41,13 +41,12 @@ function loadUpdatenodePage(tgtNodes) {
         newTabId = 'updatenodeTab' + inst;
     }
     
-    // Create updatenode form
+    // Create rscan form
     var updatenodeForm = $('<div class="form"></div>');
-
+    
     // Create status bar
     var statBarId = 'updatenodeStatusBar' + inst;
     var statusBar = createStatusBar(statBarId).hide();
-    updatenodeForm.append(statusBar);
 
     // Create loader
     var loader = createLoader('updatenodeLoader');
@@ -55,19 +54,35 @@ function loadUpdatenodePage(tgtNodes) {
 
     // Create info bar
     var infoBar = createInfoBar('Update nodes in an xCAT environment');
-    updatenodeForm.append(infoBar);
+    updatenodeForm.append(statusBar, infoBar);
+    
+	// Create VM fieldset
+    var vmFS = $('<fieldset></fieldset>');
+    var vmLegend = $('<legend>Virtual Machine</legend>');
+    vmFS.append(vmLegend);
+    updatenodeForm.append(vmFS);
+    
+    var vmAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+    vmFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
+    vmFS.append(vmAttr);
+    
+	// Create options fieldset
+    var optionsFS = $('<fieldset></fieldset>');
+    var optionsLegend = $('<legend>Options</legend>');
+    optionsFS.append(optionsLegend);
+    updatenodeForm.append(optionsFS);
+    
+    var optionsAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+    optionsFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/setting.png" style="width: 70px;"></img></div>'));
+    optionsFS.append(optionsAttr);
     
     // Create target node or group input
-    var tgt = $('<div><label for="target">Target node range:</label><input type="text" name="target" value="' + tgtNodes + '" title="The node or node range to update"/></div>');
-    updatenodeForm.append(tgt);
+    var tgt = $('<div><label>Target node range:</label><input type="text" name="target" value="' + tgtNodes + '" title="The node or node range to update"/></div>');
+    vmAttr.append(tgt);
 
-    // Create options
-    var options = $('<div></div>');
-    var optionsLabel = $('<label>Options:</label>');    
+    // Create options   
     var optionsList = $('<ul></ul>');
-    options.append(optionsLabel);
-    options.append(optionsList);
-    updatenodeForm.append(options);
+    optionsAttr.append(optionsList);
         
     // Create update all software checkbox (only AIX)
     if (osHash['AIX']) {
@@ -78,7 +93,7 @@ function loadUpdatenodePage(tgtNodes) {
         updateAllOption.append('Install or update all software contained in the source directory');
         
         // Create source directory input
-        var allSwScrDirectory = $('<li><label for="allSwSrcDirectory" style="vertical-align: middle">Source directory:</label><input type="text" id="allSwSrcDirectory" name="allSwSrcDirectory"/></li>');
+        var allSwScrDirectory = $('<li><label style="vertical-align: middle">Source directory:</label><input type="text" id="allSwSrcDirectory" name="allSwSrcDirectory"/></li>');
         // Browse server directory and files
         var allSWSrcDirBrowse = createButton('Browse');
         allSWSrcDirBrowse.serverBrowser({
@@ -125,7 +140,7 @@ function loadUpdatenodePage(tgtNodes) {
     updateOption.append('Update existing software');
         
     // Create source directory input
-    var scrDirectory = $('<li><label for="srcDirectory" style="vertical-align: middle">Source directory:</label><input type="text" id="srcDirectory" name="srcDirectory" title="You must give the source directory containing the updated software packages"/></li>');
+    var scrDirectory = $('<li><label style="vertical-align: middle">Source directory:</label><input type="text" id="srcDirectory" name="srcDirectory" title="You must give the source directory containing the updated software packages"/></li>');
     // Browse server directory and files
     var srcDirBrowse = createButton('Browse');
     srcDirBrowse.serverBrowser({
@@ -155,22 +170,22 @@ function loadUpdatenodePage(tgtNodes) {
     optionsList.append(scrDirectory);
     
     // Create other packages input
-    var otherPkgs = $('<li><label for="otherpkgs" style="vertical-align: middle">otherpkgs:</label><input type="text" id="otherpkgs" name="otherpkgs"/></li>');
+    var otherPkgs = $('<li><label style="vertical-align: middle">otherpkgs:</label><input type="text" id="otherpkgs" name="otherpkgs"/></li>');
     otherPkgs.hide();
     optionsList.append(otherPkgs);
     
     // Create RPM flags input (only AIX)
-    var aixRpmFlags = $('<li><label for="rpm_flags">rpm_flags:</label><input type="text" name="rpm_flags"/></li>');
+    var aixRpmFlags = $('<li><label>rpm_flags:</label><input type="text" name="rpm_flags"/></li>');
     aixRpmFlags.hide();
     optionsList.append(aixRpmFlags);
     
     // Create installp flags input (only AIX)
-    var aixInstallPFlags = $('<li><label for="installp_flags">installp_flags:</label><input type="text" name="installp_flags"/></li>');
+    var aixInstallPFlags = $('<li><label>installp_flags:</label><input type="text" name="installp_flags"/></li>');
     aixInstallPFlags.hide();
     optionsList.append(aixInstallPFlags);
     
     // Create emgr flags input (only AIX)
-    var aixEmgrFlags = $('<li><label for="emgr_flags">emgr_flags:</label><input type="text" name="emgr_flags"/></li>');
+    var aixEmgrFlags = $('<li><label>emgr_flags:</label><input type="text" name="emgr_flags"/></li>');
     aixEmgrFlags.hide();
     optionsList.append(aixEmgrFlags);
     
@@ -201,7 +216,7 @@ function loadUpdatenodePage(tgtNodes) {
     optionsList.append(postOption);
     postOption.append(postChkBox);
     postOption.append('Run postscripts');
-    var postscripts = $('<li><label for="postscripts" style="vertical-align: middle">Postscripts:</label><input type="text" id="postscripts" name="postscripts" title="You must give the postscript(s) to run"/></li>');
+    var postscripts = $('<li><label style="vertical-align: middle">Postscripts:</label><input type="text" id="postscripts" name="postscripts" title="You must give the postscript(s) to run"/></li>');
     postscripts.hide();
     optionsList.append(postscripts);
     
@@ -225,7 +240,7 @@ function loadUpdatenodePage(tgtNodes) {
         osOption.append('Update the operating system');
         
         var os = $('<li></li>').hide();
-        var osLabel = $('<label for="os">Operating system:</label>');
+        var osLabel = $('<label>Operating system:</label>');
         var osInput = $('<input type="text" name="os" title="You must give the operating system to upgrade to, e.g. rhel5.5"/>');
         osInput.one('focus', function(){
             var tmp = $.cookie('osvers');
@@ -268,10 +283,14 @@ function loadUpdatenodePage(tgtNodes) {
     /**
      * Ok
      */
-    var okBtn = createButton('Ok');
-    okBtn.bind('click', function(event) {
-        // Remove any warning messages
-        $(this).parent().parent().find('.ui-state-error').remove();
+    var updateBtn = createButton('Update');
+    updateBtn.css({
+    	'width': '80px',
+    	'display': 'block'
+    });
+    updateBtn.bind('click', function(event) {
+    	// Remove any warning messages
+    	$(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
         var ready = true;
         
         // Generate arguments
@@ -371,10 +390,10 @@ function loadUpdatenodePage(tgtNodes) {
         } else {
             // Show warning message
             var warn = createWarnBar('You are missing some values');
-            warn.prependTo($(this).parent().parent());
+            warn.prependTo($(this).parents('.ui-tabs-panel'));
         }
     });
-    updatenodeForm.append(okBtn);
+    updatenodeForm.append(updateBtn);
 
     // Append to discover tab
     tab.add(newTabId, 'Update', updatenodeForm, true);

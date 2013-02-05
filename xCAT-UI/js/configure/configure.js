@@ -68,11 +68,14 @@ function loadConfigPage() {
     // Add the update tab
     tab.add('updateTab', 'Update', '', false);
     
+    // Add the self-service tab
+    tab.add('usersTab', 'Users', '', false);
+    
     // Add the discover tab
     tab.add('discoverTab', 'Discover', '', false);
     
     // Add the self-service tab
-    tab.add('serviceTab', 'Service', '', false);
+    tab.add('serviceTab', 'Service', '', false);    
 
     // Get list of tables and their descriptions
     $.ajax({
@@ -88,9 +91,23 @@ function loadConfigPage() {
         success : loadTableNames
     });
 
-    loadUpdatePage();
-    loadDiscoverPage();
-    loadServicePage();
+    // Do not load everything at once
+    // Load when tab is shown
+    tab.object().bind('tabsshow', function(event, ui) {
+    	if ($(ui.panel).children().length) {
+    		return;
+    	}
+    	
+        if (ui.index == 1) {        	
+        	loadUpdatePage();
+        } else if (ui.index == 2) {
+        	loadUserPage();
+        } else if (ui.index == 3) {
+        	loadDiscoverPage();
+        } else if (ui.index == 4) {
+        	loadServicePage();
+        } 
+    });
 }
 
 /**
@@ -113,7 +130,7 @@ function loadTableNames(data) {
     // Create info bar
     var infoBar = createInfoBar('Select a table to view or edit.');
     tablesDIV.append(infoBar);
-
+    
     // Create a list for the tables
     var list = $('<ul></ul>');
     // Loop through each table
@@ -254,11 +271,19 @@ function loadTable(data) {
     }
 
     // Turn table into datatable
-    var dTable = $('#' + id + 'Datatable').dataTable({
+    var dTable = $('#' + id + 'Datatable').dataTable({        
         'iDisplayLength': 50,
         'bLengthChange': false,
-        "sScrollX": "100%",
-        "bAutoWidth": true
+        "bScrollCollapse": true,
+        "sScrollY": "400px",
+        "sScrollX": "110%",
+        "bAutoWidth": true,
+        "oLanguage": {
+            "oPaginate": {
+              "sNext": "",
+              "sPrevious": ""
+            }
+        }
     });
 
     /**
@@ -486,3 +511,46 @@ function deleteRow(obj) {
 String.prototype.count = function(c) {
     return (this.length - this.replace(new RegExp(c, 'g'), '').length)/c.length;
 };
+
+/**
+ * Update dialog
+ * 
+ * @param data HTTP request data
+ */
+function updatePanel(data) {
+    var dialogId = data.msg;
+    var infoMsg;
+
+    // Create info message
+    if (jQuery.isArray(data.rsp)) {
+        infoMsg = '';
+        for (var i in data.rsp) {
+            infoMsg += data.rsp[i] + '</br>';
+        }
+    } else {
+        infoMsg = data.rsp;
+    }
+    
+    // Create info bar with close button
+    var infoBar = $('<div class="ui-state-highlight ui-corner-all"></div>').css('margin', '5px 0px');
+    var icon = $('<span class="ui-icon ui-icon-info"></span>').css({
+        'display': 'inline-block',
+        'margin': '10px 5px'
+    });
+    
+    // Create close button to close info bar
+    var close = $('<span class="ui-icon ui-icon-close"></span>').css({
+        'display': 'inline-block',
+        'float': 'right'
+    }).click(function() {
+        $(this).parent().remove();
+    });
+    
+    var msg = $('<pre>' + infoMsg + '</pre>').css({
+        'display': 'inline-block',
+        'width': '85%'
+    });
+    
+    infoBar.append(icon, msg, close);    
+    infoBar.prependTo($('#' + dialogId));
+}

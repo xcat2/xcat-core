@@ -18,18 +18,6 @@ var kvmPlugin = function() {
 kvmPlugin.prototype.loadConfigPage = function(tabId) {    
     var configAccordion = $('<div id="kvmConfigAccordion"></div>');
     
-    // Create accordion panel for user
-    var userSection = $('<div id="kvmConfigUser"></div>');
-    var userLnk = $('<h3><a href="#">Users</a></h3>').click(function () {
-        // Do not load panel again if it is already loaded
-        if ($('#kvmConfigUser').find('.dataTables_wrapper').length)
-            return;
-        else
-            $('#kvmConfigUser').append(createLoader(''));
-
-        loadUserPanel('kvmConfigUser');
-    });
-    
     // Create accordion panel for profiles
     var profileSection = $('<div id="kvmConfigProfile"></div>');
     var profileLnk = $('<h3><a href="#">Profiles</a></h3>').click(function () {
@@ -39,6 +27,14 @@ kvmPlugin.prototype.loadConfigPage = function(tabId) {
         else
             $('#kvmConfigProfile').append(createLoader(''));
 
+        // Wipe panel clean
+        $('#kvmConfigProfile').empty();
+
+        // Add info bar
+        $('#kvmConfigProfile').append(createInfoBar('Not yet supported'));
+        
+        // Resize accordion
+        configAccordion.accordion('resize');
     });
     
     // Create accordion panel for images
@@ -65,11 +61,11 @@ kvmPlugin.prototype.loadConfigPage = function(tabId) {
         queryGroups('kvmConfigGroups');
     });
         
-    configAccordion.append(userLnk, userSection, profileLnk, profileSection, imgLnk, imgSection, groupsLnk, groupsSection);
+    configAccordion.append(profileLnk, profileSection, imgLnk, imgSection, groupsLnk, groupsSection);
     $('#' + tabId).append(configAccordion);
     configAccordion.accordion();
     
-    userLnk.trigger('click');
+    profileLnk.trigger('click');
 };
 
 /**

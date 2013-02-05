@@ -67,7 +67,10 @@ function createNodesDatatable(group, outId) {
             // Sort headers
             var sorted = new Array();
             for ( var key in headers) {
-                sorted.push(key);
+            	// Do not put in status or comments
+            	if (key.indexOf("status") < 0 && key.indexOf("usercomment") < 0) {
+            		sorted.push(key);
+            	}
             }
             sorted.sort();
     
@@ -103,7 +106,23 @@ function createNodesDatatable(group, outId) {
             }
     
             $('#' + outId).append(dTable.object());
-            $('#' + dTableId).dataTable();
+            $('#' + dTableId).dataTable({
+            	'iDisplayLength': 50,
+                'bLengthChange': false,
+                "bScrollCollapse": true,
+                "sScrollY": "400px",
+                "sScrollX": "110%",
+                "bAutoWidth": true,
+                "oLanguage": {
+                    "oPaginate": {
+                      "sNext": "",
+                      "sPrevious": ""
+                    }
+                }
+            });
+            
+            // Fix table styling
+            $('#' + dTableId + '_wrapper .dataTables_filter label').css('width', '250px');
         } // End of function(data)
     });
 }
@@ -121,7 +140,7 @@ function createProvisionExisting(plugin, inst) {
 
     // Create group input
     var group = $('<div></div>');
-    var groupLabel = $('<label for="provType">Group:</label>');
+    var groupLabel = $('<label>Group:</label>');
     group.append(groupLabel);
 
     // Turn on auto complete for group
@@ -159,7 +178,7 @@ function createProvisionExisting(plugin, inst) {
 
     // Create node input
     var node = $('<div></div>');
-    var nodeLabel = $('<label for="nodeName">Nodes:</label>');
+    var nodeLabel = $('<label>Nodes:</label>');
     var nodeDatatable = $('<div class="indent" id="' + dTableDivId + '"><p>Select a group to view its nodes</p></div>');
     node.append(nodeLabel);
     node.append(nodeDatatable);
@@ -167,7 +186,7 @@ function createProvisionExisting(plugin, inst) {
 
     // Create boot method drop down
     var method = $('<div></div>');
-    var methodLabel = $('<label for="method">Boot method:</label>');
+    var methodLabel = $('<label>Boot method:</label>');
     var methodSelect = $('<select id="bootMethod" name="bootMethod"></select>');
     methodSelect.append('<option value="boot">boot</option>'
         + '<option value="install">install</option>'
@@ -181,7 +200,7 @@ function createProvisionExisting(plugin, inst) {
 
     // Create boot type drop down
     var type = $('<div></div>');
-    var typeLabel = $('<label for="type">Boot type:</label>');
+    var typeLabel = $('<label>Boot type:</label>');
     var typeSelect = $('<select id="bootType" name="bootType"></select>');
     typeSelect.append('<option value="pxe">pxe</option>'
         + '<option value="iscsiboot">yaboot</option>'
@@ -193,7 +212,7 @@ function createProvisionExisting(plugin, inst) {
 
     // Create operating system input
     var os = $('<div></div>');
-    var osLabel = $('<label for="os">Operating system:</label>');
+    var osLabel = $('<label>Operating system:</label>');
     var osInput = $('<input type="text" name="os"/>');
     osInput.one('focus', function() {
         var tmp = $.cookie('osvers');        
@@ -210,7 +229,7 @@ function createProvisionExisting(plugin, inst) {
 
     // Create architecture input
     var arch = $('<div></div>');
-    var archLabel = $('<label for="arch">Architecture:</label>');
+    var archLabel = $('<label>Architecture:</label>');
     var archInput = $('<input type="text" name="arch"/>');
     archInput.one('focus', function() {
         var tmp = $.cookie('osarchs');
@@ -227,7 +246,7 @@ function createProvisionExisting(plugin, inst) {
 
     // Create profile input
     var profile = $('<div></div>');
-    var profileLabel = $('<label for="profile">Profile:</label>');
+    var profileLabel = $('<label>Profile:</label>');
     var profileInput = $('<input type="text" name="profile"/>');
     profileInput.one('focus', function() {
         var tmp = $.cookie('profiles');
@@ -266,12 +285,12 @@ function createProvisionNew(plugin, inst) {
     var provNew = $('<div></div>');
 
     // Create node input
-    var nodeName = $('<div><label for="nodeName">Node:</label><input type="text" name="nodeName"/></div>');
+    var nodeName = $('<div><label>Node:</label><input type="text" name="nodeName"/></div>');
     provNew.append(nodeName);
 
     // Create group input
     var group = $('<div></div>');
-    var groupLabel = $('<label for="group">Group:</label>');
+    var groupLabel = $('<label>Group:</label>');
     var groupInput = $('<input type="text" name="group"/>');
     groupInput.one('focus', function() {
         var groupNames = $.cookie('groups');
@@ -288,7 +307,7 @@ function createProvisionNew(plugin, inst) {
 
     // Create boot method drop down
     var method = $('<div></div>');
-    var methodLabel = $('<label for="method">Boot method:</label>');
+    var methodLabel = $('<label>Boot method:</label>');
     var methodSelect = $('<select id="bootMethod" name="bootMethod"></select>');
     methodSelect.append('<option value="boot">boot</option>'
         + '<option value="install">install</option>'
@@ -302,7 +321,7 @@ function createProvisionNew(plugin, inst) {
 
     // Create boot type drop down
     var type = $('<div></div>');
-    var typeLabel = $('<label for="type">Boot type:</label>');
+    var typeLabel = $('<label>Boot type:</label>');
     var typeSelect = $('<select id="bootType" name="bootType"></select>');
     typeSelect.append('<option value="install">pxe</option>'
         + '<option value="iscsiboot">yaboot</option>'
@@ -314,7 +333,7 @@ function createProvisionNew(plugin, inst) {
 
     // Create operating system input
     var os = $('<div></div>');
-    var osLabel = $('<label for="os">Operating system:</label>');
+    var osLabel = $('<label>Operating system:</label>');
     var osInput = $('<input type="text" name="os"/>');
     osInput.one('focus', function() {
         var tmp = $.cookie('osvers');
@@ -331,7 +350,7 @@ function createProvisionNew(plugin, inst) {
 
     // Create architecture input
     var arch = $('<div></div>');
-    var archLabel = $('<label for="arch">Architecture:</label>');
+    var archLabel = $('<label>Architecture:</label>');
     var archInput = $('<input type="text" name="arch"/>');
     archInput.one('focus', function() {
         var tmp = $.cookie('osarchs');
@@ -348,7 +367,7 @@ function createProvisionNew(plugin, inst) {
 
     // Create profile input
     var profile = $('<div></div>');
-    var profileLabel = $('<label for="profile">Profile:</label>');
+    var profileLabel = $('<label>Profile:</label>');
     var profileInput = $('<input type="text" name="profile"/>');
     profileInput.one('focus', function() {
         var tmp = $.cookie('profiles');

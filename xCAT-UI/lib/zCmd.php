@@ -45,7 +45,12 @@ if (isset($_GET["cmd"])) {
     }
 
     // If $args contains multiple arguments, split it into an array
-    if (strpos($args,";")) {
+    // Separators used are: | or ;
+	if (strpos($args, "|")) {
+        // Split the arguments into an array
+        $arr = array();
+        $arr = explode("|", $args);
+    } else if (strpos($args, ";")) {
         // Split the arguments into an array
         $arr = array();
         $arr = explode(";", $args);

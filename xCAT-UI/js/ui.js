@@ -44,16 +44,6 @@ Tab.prototype.init = function() {
         }
         
         $.cookie('tabindex_history', order);
-        
-        // Find any datatable within the tab
-        var dTables = $(ui.panel).find('.dataTables_wrapper');
-        if(dTables.length) {
-            // Adjust column sizes for each datatable found
-            for (var i = 0; i < dTables.length; i++) {
-                var tableId = dTables.eq(i).attr('id').replace('_wrapper', '');
-                adjustColumnSize(tableId);
-            }
-        }
     });
 
     // Remove dummy tab
@@ -577,6 +567,7 @@ function initPage() {
         includeJs("js/configure/update.js");
         includeJs("js/configure/discover.js");
         includeJs("js/configure/service.js");
+        includeJs("js/configure/users.js");
         headers.eq(1).css(style);
         loadConfigPage();
     } else if (page == 'provision.php') {
@@ -601,6 +592,7 @@ function initPage() {
         includeJs("js/nodes/updatenode.js");
         includeJs("js/nodes/physical.js");
         includeJs("js/nodes/mtm.js");
+        includeJs("js/nodes/rscan.js");
         headers.eq(0).css(style);
         loadNodesPage();
     }
@@ -966,14 +958,8 @@ function changePassword() {
  * @param tableId Table ID
  */
 function adjustColumnSize(tableId) {
-    var cols = $('#' + tableId).find('tbody tr:eq(0) td');
-    // If the column size is zero, wait until table is initialized
-    if (cols.eq(1).outerWidth()) {
-        for (var i in cols) {
-            var headers = $('#' + tableId + '_wrapper .dataTables_scrollHead .datatable thead tr th').eq(i);
-            headers.css('width', cols.eq(i).outerWidth());
-        }
-    }
+	var dTable = $('#' + tableId).dataTable();
+	dTable.fnAdjustColumnSizing();
 }
 
 /**
@@ -1044,7 +1030,7 @@ function getNodesChecked(datatableId) {
     for (var i in nodes) {
         var tgtNode = nodes.eq(i).attr('name');
         
-        if (tgtNode){
+        if (tgtNode) {
             tgts += tgtNode;
             
             // Add a comma at the end
@@ -1060,7 +1046,7 @@ function getNodesChecked(datatableId) {
 /**
  * Check if return message contains errors
  * 
- * @param msg Return message
+ * @param msg  Return message
  * @return 0  If return message contains no errors
  *        -1  If return message contains errors
  */
@@ -1069,5 +1055,20 @@ function containErrors(msg) {
     	return -1;
     } else {
     	return 0;
+    }
+}
+
+/**
+ * Check if a value is an integer
+ *
+ * @param value  Value to be checked
+ * @returns true   If value is an integer
+            false  If value is not an integer
+ */
+function isInteger(value){
+    if ((parseFloat(value) == parseInt(value)) && !isNaN(value)) {
+        return true;
+    } else {
+        return false;
     }
 }

@@ -19,18 +19,6 @@ var esxPlugin = function() {
  */
 esxPlugin.prototype.loadConfigPage = function(tabId) {    
     var configAccordion = $('<div id="esxConfigAccordion"></div>');
-        
-    // Create accordion panel for user
-    var userSection = $('<div id="esxConfigUser"></div>');
-    var userLnk = $('<h3><a href="#">Users</a></h3>').click(function () {
-        // Do not load panel again if it is already loaded
-        if ($('#esxConfigUser').find('.dataTables_wrapper').length)
-            return;
-        else
-            $('#esxConfigUser').append(createLoader(''));
-
-        loadUserPanel('esxConfigUser');
-    });
     
     // Create accordion panel for profiles
     var profileSection = $('<div id="esxConfigProfile"></div>');
@@ -41,6 +29,14 @@ esxPlugin.prototype.loadConfigPage = function(tabId) {
         else
             $('#esxConfigProfile').append(createLoader(''));
 
+        // Wipe panel clean
+        $('#esxConfigProfile').empty();
+
+        // Add info bar
+        $('#esxConfigProfile').append(createInfoBar('Not yet supported'));
+        
+        // Resize accordion
+        configAccordion.accordion('resize');
     });
     
     // Create accordion panel for images
@@ -67,11 +63,11 @@ esxPlugin.prototype.loadConfigPage = function(tabId) {
         queryGroups('esxConfigGroups');
     });
         
-    configAccordion.append(userLnk, userSection, profileLnk, profileSection, imgLnk, imgSection, groupsLnk, groupsSection);
+    configAccordion.append(profileLnk, profileSection, imgLnk, imgSection, groupsLnk, groupsSection);
     $('#' + tabId).append(configAccordion);
     configAccordion.accordion();
     
-    userLnk.trigger('click');
+    profileLnk.trigger('click');
 };
 
 /**

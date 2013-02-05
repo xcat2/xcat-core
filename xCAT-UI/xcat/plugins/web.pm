@@ -66,7 +66,7 @@ sub process_request {
         'getdefaultuserentry' => \&web_getdefaultuserentry,
         'getzdiskinfo'        => \&web_getzdiskinfo,
         'passwd'              => \&web_passwd,
-        'updateuser'          => \&web_updateuser,
+        'policy'              => \&web_policy,
         'deleteuser'          => \&web_deleteuser,
         'mkzprofile'          => \&web_mkzprofile,
         'rmzprofile'          => \&web_rmzprofile,
@@ -2280,35 +2280,32 @@ sub web_passwd() {
     my ( $request, $callback, $sub_req ) = @_;
 
     # Get current and new passwords
-    my $user        = $request->{arg}->[1];
-    my $newPassword = $request->{arg}->[2];
+    my $user = $request->{arg}->[1];
+    my $password = $request->{arg}->[2];
 
     # Generate encrypted password
     my $random    = rand(10000000);
-    my $encrypted = `perl -e "print crypt($newPassword, $random)"`;
+    my $encrypted = `perl -e "print crypt($password, $random)"`;
 
     # Save in xCAT passwd table
     `chtab username=$user passwd.key=xcat passwd.password=$encrypted`;
 
-    my $info = "Password successfully changed";
+    my $info = "User password successfully updated";
     $callback->( { info => $info } );
     return;
 }
 
-sub web_updateuser() {
+sub web_policy() {
     my ( $request, $callback, $sub_req ) = @_;
 
     # Get user attributes
     my $priority = $request->{arg}->[1];
-    my $user     = $request->{arg}->[2];
-    my $password = $request->{arg}->[3];
-    my $maxVM    = $request->{arg}->[4];
+    my $args = $request->{arg}->[2];
 
     # Save in xCAT passwd and policy tables
-    `chtab username=$user passwd.key=xcat passwd.password=$password`;
-`chtab name=$user policy.priority=$priority policy.rule=allow policy.comments="max-vm:$maxVM"`;
+    my $out = `chtab priority=$priority $args`;
 
-    my $info = "User successfully updated";
+    my $info = "User policy successfully updated";
     $callback->( { info => $info } );
     return;
 }
@@ -2473,7 +2470,7 @@ sub web_rmgroup() {
     $callback->( { info => $info } );
 }
 
-sub web_framesetup {
+sub web_framesetup() {
     my ( $request, $callback, $sub_req ) = @_;
     my $adminpasswd = $request->{arg}->[1];
     my $generalpasswd = $request->{arg}->[2];
@@ -2487,9 +2484,8 @@ sub web_framesetup {
         sleep(10);
         #run makehosts
         xCAT::Utils->runcmd('makehosts bpa', -1, 1);
-        $callback->( { info => 'Configure FRAMEs DHCP, DNS finished.' } );
-    }
-    elsif ($configphase == 2){
+        $callback->( { info => 'FRAMEs DHCP, DNS configured.' } );
+    } elsif ($configphase == 2){
         #run chtab command
         xCAT::Utils->runcmd('chtab key=bpa,username=HMC passwd.password=' . $hmcpasswd, -1, 1);
         xCAT::Utils->runcmd('chtab key=bpa,username=admin passwd.password=' . $adminpasswd, -1, 1);
@@ -2502,13 +2498,11 @@ sub web_framesetup {
         xCAT::Utils->runcmd('rspconfig frame admin_passwd=admin,' . $adminpasswd, -1, 1);
         xCAT::Utils->runcmd('rspconfig frame HMC_passwd=,' . $hmcpasswd, -1, 1);
 
-        $callback->( { info => 'Create hardware connection and configure password finished.' } );
-    }
-    else{
+        $callback->( { info => 'Hardware connection and configure password created.' } );
     }
 }
 
-sub web_cecsetup{
+sub web_cecsetup() {
     my ( $request, $callback, $sub_req ) = @_;
     my $adminpasswd = $request->{arg}->[1];
     my $generalpasswd = $request->{arg}->[2];
@@ -2517,28 +2511,25 @@ sub web_cecsetup{
     my @tempnode = 'bpa';
 
     if ($configphase == 1){
-        #run makedhcp
+        # Run makedhcp
         xCAT::Utils->runcmd('makedhcp fsp', -1, 1);
         sleep(10);
-        #run makehosts
+        # Run makehosts
         xCAT::Utils->runcmd('makehosts fsp', -1, 1);
-        $callback->( { info => 'Configure CEC DHCP, DNS finished.' } );
-    }
-    elsif ($configphase == 2){
-        #run chtab command
+        $callback->( { info => 'CEC DHCP, DNS configured.' } );
+    } elsif ($configphase == 2){
+        # Run chtab command
         xCAT::Utils->runcmd('chtab key=fsp,username=HMC passwd.password=' . $hmcpasswd, -1, 1);
         xCAT::Utils->runcmd('chtab key=fsp,username=admin passwd.password=' . $adminpasswd, -1, 1);
         xCAT::Utils->runcmd('chtab key=fsp,username=general passwd.password=' . $generalpasswd, -1, 1);
-        #run mkhwconn
+        # Run mkhwconn
         xCAT::Utils->runcmd('mkhwconn cec -t', -1, 1);
-        #run rspconfig
+        # Run rspconfig
         xCAT::Utils->runcmd('rspconfig cec general_passwd=general,' . $generalpasswd, -1, 1);
         xCAT::Utils->runcmd('rspconfig cec admin_passwd=admin,' . $adminpasswd, -1, 1);
         xCAT::Utils->runcmd('rspconfig cec HMC_passwd=,' . $hmcpasswd, -1, 1);
 
-        $callback->( { info => 'Create hardware connection and configure password finished.' } );
-    }
-    else{
+        $callback->( { info => 'Hardware connection and configure password created.' } );
     }
 }
 

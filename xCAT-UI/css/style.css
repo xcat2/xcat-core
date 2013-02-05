@@ -234,7 +234,6 @@ span.ui-icon-info {
 
 .tab .ui-icon-close {
 	float: left;
-	margin: 0.4em 0.2em 0 0;
 	cursor: pointer;
 }
 
@@ -386,6 +385,7 @@ legend {
 	display: block;
 	float: right;
 	text-align: right;
+	margin: 5px 0px;
 }
 
 .tab input,select {
@@ -417,6 +417,11 @@ legend {
 	display: inline-table;
 }
 
+.dataTables_filter label {
+	display: inline;
+	vertical-align: middle;
+}
+
 .datatable th,td {
 	font: 12px sans-serif;
 	padding: 5px 0px;
@@ -429,6 +434,20 @@ legend {
 .datatable th {
 	font: bold 12px sans-serif;
 	border-width: 0px;
+}
+
+.form .datatable th,td {
+    font: 12px sans-serif;
+    padding: 5px 0px;
+    white-space: nowrap; /* Do not use word wrap */
+    vertical-align: middle;
+    text-align: center;
+    min-width: 30px;
+}
+
+.form .datatable th {
+    font: bold 12px sans-serif;
+    border-width: 0px;
 }
 
 /*** Row color (odd) ***/
@@ -496,7 +515,6 @@ legend {
 	text-align: left;
 	cursor: pointer;
 	color: black;
-	font-family: Verdana, Geneva, Arial, Helvetica, sans-serif;
 	font-size: 12px;
 }
 
@@ -537,7 +555,7 @@ legend {
 	color: #424242;
 	line-height: 1.5;
 	vertical-align: middle;
-	width: 120px;
+	width: 140px;
 	padding: 0px 0px 0px 20px;
 	display: inline-block;
 }
@@ -572,6 +590,41 @@ legend {
 .form textarea {
 	width: 350px;
 	height: 150px;
+}
+
+.form table {
+	border-width: 1px;
+	border-spacing: 0px;
+	border-style: solid;
+	border-color: #BDBDBD;
+	border-collapse: collapse;
+}
+
+.form th {
+	font: bold 12px sans-serif;
+	padding: 10px;
+	border-width: 1px;
+	border-style: solid;
+	vertical-align: middle;
+	text-align: center;
+}
+
+.form td {
+	font: 12px sans-serif;
+	padding: 5px 15px;
+	border-width: 1px;
+	border-style: solid;
+	border-color: #BDBDBD;
+	vertical-align: middle;
+}
+
+.form table a {
+	color: blue;
+}
+
+/*--- Datatable header and body ---*/
+.form .dataTables_wrapper div {
+	margin: 0px;
 }
 
 table a {

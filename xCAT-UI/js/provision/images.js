@@ -194,12 +194,17 @@ function loadImages(data) {
 
     // Turn table into a datatable
     var myDataTable = $('#' + imgTableId).dataTable({
-        'iDisplayLength': 50,
+    	'iDisplayLength': 50,
         'bLengthChange': false,
-        "sScrollX": "100%",
+        "bScrollCollapse": true,
+        "sScrollY": "400px",
+        "sScrollX": "110%",
         "bAutoWidth": true,
-        "fnInitComplete": function() {
-            adjustColumnSize(imgTableId);
+        "oLanguage": {
+            "oPaginate": {
+              "sNext": "",
+              "sPrevious": ""
+            }
         }
     });
     
@@ -209,7 +214,7 @@ function loadImages(data) {
     });
     
     // Actions
-    var actionBar = $('<div class="actionBar"></div>').css("width", "370px");
+    var actionBar = $('<div class="actionBar"></div>').css("width", "450px");
     var advancedLnk = '<a>Advanced</a>';
     var advancedMenu = createMenu([copyCDLnk, generateLnk]);
 

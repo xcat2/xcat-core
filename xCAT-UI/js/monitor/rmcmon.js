@@ -617,11 +617,19 @@ function showEventLog(data) {
     }
 
     eventDiv.append(eventTable.object());
-    $('#lsEventTable').dataTable({
-        'iDisplayLength' : 50,
-        'bLengthChange' : false,
-        "sScrollX" : "100%",
-        "bAutoWidth" : true
+    $('#lsEventTable').dataTable({        
+        'iDisplayLength': 50,
+        'bLengthChange': false,
+        "bScrollCollapse": true,
+        "sScrollY": "400px",
+        "sScrollX": "110%",
+        "bAutoWidth": true,
+        "oLanguage": {
+            "oPaginate": {
+              "sNext": "",
+              "sPrevious": ""
+            }
+        }
     });
 
     // Add the configure button

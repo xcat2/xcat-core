@@ -172,9 +172,9 @@ function loadServiceProvisionPage(tabId) {
 
     // Create radio buttons for platforms
     var hwList = $('<ol>Platforms available:</ol>');
-    var esx = $('<li><input type="radio" name="hw" value="esx" checked/>ESX</li>');
-    var kvm = $('<li><input type="radio" name="hw" value="kvm"/>KVM</li>');
-    var zvm = $('<li><input type="radio" name="hw" value="zvm"/>z\/VM</li>');
+    var esx = $('<li><input type="radio" name="hw" value="esx" disabled/>ESX</li>');
+    var kvm = $('<li><input type="radio" name="hw" value="kvm" disabled/>KVM</li>');
+    var zvm = $('<li><input type="radio" name="hw" value="zvm" checked/>z\/VM</li>');
     
     hwList.append(esx);
     hwList.append(kvm);
@@ -459,9 +459,18 @@ function loadNodesTable(data) {
         
     // Turn table into a datatable
     $('#' + nodesDTId).dataTable({
-        'iDisplayLength': 50,
+    	'iDisplayLength': 50,
         'bLengthChange': false,
-        "sScrollX": "100%"
+        "bScrollCollapse": true,
+        "sScrollY": "400px",
+        "sScrollX": "110%",
+        "bAutoWidth": true,
+        "oLanguage": {
+            "oPaginate": {
+              "sNext": "",
+              "sPrevious": ""
+            }
+        }
     });
     
     // Set datatable header class to add color

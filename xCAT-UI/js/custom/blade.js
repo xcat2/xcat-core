@@ -584,7 +584,7 @@ function createBladeProvisionExisting(inst) {
     
     // Create group input
     var group = $('<div></div>');
-    var groupLabel = $('<label for="provType">Group:</label>');
+    var groupLabel = $('<label>Group:</label>');
     group.append(groupLabel);
 
     // Turn on auto complete for group
@@ -622,7 +622,7 @@ function createBladeProvisionExisting(inst) {
 
     // Create node input
     var node = $('<div></div>');
-    var nodeLabel = $('<label for="nodeName">Nodes:</label>');
+    var nodeLabel = $('<label>Nodes:</label>');
     var nodeDatatable = $('<div id="' + dTableDivId + '" style="display: inline-block; max-width: 800px;"><p>Select a group to view its nodes</p></div>');
     node.append(nodeLabel);
     node.append(nodeDatatable);
@@ -630,7 +630,7 @@ function createBladeProvisionExisting(inst) {
 
     // Create boot method drop down
     var method = $('<div></div>');
-    var methodLabel = $('<label for="method">Boot method:</label>');
+    var methodLabel = $('<label>Boot method:</label>');
     var methodSelect = $('<select id="bootMethod" name="bootMethod"></select>');
     methodSelect.append('<option value=""></option>'
         + '<option value="boot">boot</option>'
@@ -645,7 +645,7 @@ function createBladeProvisionExisting(inst) {
     
     // Create operating system input
     var os = $('<div></div>');
-    var osLabel = $('<label for="os">Operating system:</label>');
+    var osLabel = $('<label>Operating system:</label>');
     var osInput = $('<input type="text" name="os"/>');
     osInput.one('focus', function() {
         var tmp = $.cookie('osvers');        
@@ -662,7 +662,7 @@ function createBladeProvisionExisting(inst) {
 
     // Create architecture input
     var arch = $('<div></div>');
-    var archLabel = $('<label for="arch">Architecture:</label>');
+    var archLabel = $('<label>Architecture:</label>');
     var archInput = $('<input type="text" name="arch"/>');
     archInput.one('focus', function() {
         var tmp = $.cookie('osarchs');
@@ -679,7 +679,7 @@ function createBladeProvisionExisting(inst) {
 
     // Create profile input
     var profile = $('<div></div>');
-    var profileLabel = $('<label for="profile">Profile:</label>');
+    var profileLabel = $('<label>Profile:</label>');
     var profileInput = $('<input type="text" name="profile"/>');
     profileInput.one('focus', function() {
         var tmp = $.cookie('profiles');

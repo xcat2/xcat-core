@@ -38,7 +38,7 @@ function getZfcpDataTable() {
  * @param table Data table object
  */
 function setZfcpDataTable(table) {
-	zfcpDatatable = table;
+    zfcpDatatable = table;
 }
 
 /**
@@ -74,6 +74,9 @@ function loadHcpInfo(data) {
     
     // Get user directory entry
     var userEntry = data.rsp;
+    if (!userEntry.length)
+        return;
+    
     if (userEntry[0].indexOf('Failed') < 0) {
         if (hcp) {
             // If there is no cookie for the disk pool names
@@ -140,64 +143,8 @@ function loadHcpInfo(data) {
                 $(this).remove();
             },
             width: 400,
-            buttons: {
-                "Reset": function(){
-                    $(this).dialog("close");    
-                    
-                    // Reset SMAPI
-                    $.ajax( {
-                        url : 'lib/cmd.php',
-                        dataType : 'json',
-                        data : {
-                            cmd : 'chvm',
-                            tgt : hcp,
-                            args : '--resetsmapi',
-                            msg : 'group=' + group + ';hcp=' + hcp
-                        },
-                
-                        /**
-                         * Refresh group tab
-                         * 
-                         * @param data
-                         *            Data from HTTP request
-                         * @return Nothing
-                         */
-                        success : function(data) {                            
-                            var args = data.msg.split(';');
-                            
-                            // Get group
-                            var group = args[0].replace('group=', '');
-                            
-                            // Clear nodes division
-                            $('#nodes').children().remove();
-                            // Create loader
-                            var loader = $('<center></center>').append(createLoader());
-            
-                            // Create a tab for this group
-                            var tab = new Tab();
-                            setNodesTab(tab);
-                            tab.init();
-                            $('#nodes').append(tab.object());
-                            tab.add('nodesTab', 'Nodes', loader, false);
-            
-                            // Get nodes within selected group
-                            $.ajax( {
-                                url : 'lib/cmd.php',
-                                dataType : 'json',
-                                data : {
-                                    cmd : 'lsdef',
-                                    tgt : '',
-                                    args : group,
-                                    msg : group
-                                },
-            
-                                success : loadNodes
-                            });
-                        } // End of function
-                    });
-                },
-        
-                "Ignore": function() {
+            buttons: {        
+                "Ok": function() {
                     $(this).dialog("close");
                 }
             }
@@ -377,31 +324,31 @@ function updateZProvisionNewStatus(data) {
      * (2) Create user entry
      */
     if (lastCmd == 'nodeadd') {
-    	if (rsp.length) {
+        if (rsp.length) {
             $('#' + loaderId).hide();
             $('#' + statBarId).find('div').append('<pre>(Error) Failed to create node definition</pre>');
         } else {
-        	$('#' + statBarId).find('div').append('<pre>Node definition created for ' + node + '</pre>');
+            $('#' + statBarId).find('div').append('<pre>Node definition created for ' + node + '</pre>');
             
-	        // Write ajax response to status bar
-	        var prg = writeRsp(rsp, '');    
-	        $('#' + statBarId).find('div').append(prg);
-	        
-	        // Create user entry
-	        var userEntry = $('#' + tabId + ' textarea').val();
-	        $.ajax( {
-	            url : 'lib/zCmd.php',
-	            dataType : 'json',
-	            data : {
-	                cmd : 'mkvm',
-	                tgt : node,
-	                args : '',
-	                att : userEntry,
-	                msg : 'cmd=mkvm;out=' + out2Id
-	            },
-	
-	            success : updateZProvisionNewStatus
-	        });
+            // Write ajax response to status bar
+            var prg = writeRsp(rsp, '');    
+            $('#' + statBarId).find('div').append(prg);
+            
+            // Create user entry
+            var userEntry = $('#' + tabId + ' textarea').val();
+            $.ajax( {
+                url : 'lib/zCmd.php',
+                dataType : 'json',
+                data : {
+                    cmd : 'mkvm',
+                    tgt : node,
+                    args : '',
+                    att : userEntry,
+                    msg : 'cmd=mkvm;out=' + out2Id
+                },
+    
+                success : updateZProvisionNewStatus
+            });
         }
     }
     
@@ -409,11 +356,11 @@ function updateZProvisionNewStatus(data) {
      * (3) Update /etc/hosts
      */
     else if (lastCmd == 'mkvm') {
-    	// Write ajax response to status bar
+        // Write ajax response to status bar
         var prg = writeRsp(rsp, '');    
         $('#' + statBarId).find('div').append(prg);
         
-    	// If there was an error, quit
+        // If there was an error, quit
         if (containErrors(prg.html())) {
             $('#' + loaderId).hide();
         } else {
@@ -515,7 +462,7 @@ function updateZProvisionNewStatus(data) {
             var zfcpRows = $('#' + tabId + ' table:eq(1):visible tbody tr');
             $.cookie('zfcp2add' + out2Id, zfcpRows.length);
             if (zfcpRows.length > 0) {
-            	for ( var i = 0; i < zfcpRows.length; i++) {
+                for ( var i = 0; i < zfcpRows.length; i++) {
                     var diskArgs = zfcpRows.eq(i).find('td');
                     var address = diskArgs.eq(1).find('input').val();
                     var size = diskArgs.eq(2).find('input').val();
@@ -527,9 +474,9 @@ function updateZProvisionNewStatus(data) {
                     // This is either true or false
                     var loaddev = diskArgs.eq(7).find('input').attr('checked');
                     if (loaddev) {
-                    	loaddev = "1";
+                        loaddev = "1";
                     } else {
-                    	loaddev = "0";
+                        loaddev = "0";
                     }                   
                     
                     // Create ajax arguments
@@ -559,9 +506,7 @@ function updateZProvisionNewStatus(data) {
             }
             
             // Done if no disks to add
-            var zfcp2add = $.cookie('zfcp2add' + out2Id);
-            var zfcp2add = $.cookie('zfcp2add' + out2Id);
-            if (disks2add < 1 && zfcp2add < 1) {
+            if (diskRows.length < 1 && zfcpRows.length < 1) {
                 $('#' + loaderId).hide();
             }
         }
@@ -579,30 +524,30 @@ function updateZProvisionNewStatus(data) {
         if (containErrors(prg.html())) {
             $('#' + loaderId).hide();
         } else {
-        	// Set cookie for number of disks
+            // Set cookie for number of disks
             // One less disk to add
-        	var disks2add = $.cookie('disks2add' + out2Id);
-        	if (lastCmd == 'chvm-disk') {
-	            if (disks2add > 0) {
-	            	disks2add--;            
-	            	$.cookie('disks2add' + out2Id, disks2add);
-	            }
-        	}
+            var disks2add = $.cookie('disks2add' + out2Id);
+            if (lastCmd == 'chvm-disk') {
+                if (disks2add > 0) {
+                    disks2add--;            
+                    $.cookie('disks2add' + out2Id, disks2add);
+                }
+            }
             
-        	var zfcp2add = $.cookie('zfcp2add' + out2Id);
-        	if (lastCmd == 'chvm-zfcp') {	            
-	            if (zfcp2add > 0) {
-	            	zfcp2add--;
-	            	$.cookie('zfcp2add' + out2Id, zfcp2add);
-	            }
-        	}
+            var zfcp2add = $.cookie('zfcp2add' + out2Id);
+            if (lastCmd == 'chvm-zfcp') {                
+                if (zfcp2add > 0) {
+                    zfcp2add--;
+                    $.cookie('zfcp2add' + out2Id, zfcp2add);
+                }
+            }
             
-        	// Only set operating system if there are no more disks to add
+            // Only set operating system if there are no more disks to add
             if (zfcp2add < 1 && disks2add < 1) {                
                 // If an operating system image is given
-            	var osImage = $('#' + tabId + ' select[name=os]:visible').val();
+                var osImage = $('#' + tabId + ' select[name=os]:visible').val();
                 if (osImage) {
-                	// Get operating system, architecture, provision method, and profile
+                    // Get operating system, architecture, provision method, and profile
                     var tmp = osImage.split('-');
                     var os = tmp[0];
                     var arch = tmp[1];
@@ -990,8 +935,12 @@ function updateZCloneStatus(data) {
  * @param data Data from HTTP request
  */
 function getZResources(data) {
+    var tabId = 'zvmResourceTab';
+    var info = createInfoBar('Manage storage and networks');
+    $('#' + tabId).append(info);
+    
     // Do not continue if there is no output
-    if (data.rsp) {
+    if (data.rsp.length) {
         // Push hardware control points into an array
         var node, hcp;
         var hcpHash = new Object();
@@ -1013,7 +962,6 @@ function getZResources(data) {
         $.cookie('hcp', hcps);
                         
         // Delete loader
-        var tabId = 'zvmResourceTab';
         $('#' + tabId).find('img[src="images/loader.gif"]').remove();
         
         // Create accordion panel for disk
@@ -1196,13 +1144,13 @@ function openAddProcDialog(node) {
     // Create info bar
     var info = createInfoBar('Add a temporary processor to this virtual server.');
     addProcForm.append(info);
-    addProcForm.append('<div><label for="procNode">Node:</label><input type="text" readonly="readonly" id="procNode" name="procNode" value="' + node + '"/></div>');
-    addProcForm.append('<div><label for="procAddress">Processor address:</label><input type="text" id="procAddress" name="procAddress"/></div>');
+    addProcForm.append('<div><label>Node:</label><input type="text" readonly="readonly" id="procNode" name="procNode" value="' + node + '"/></div>');
+    addProcForm.append('<div><label>Processor address:</label><input type="text" id="procAddress" name="procAddress"/></div>');
     
     // Create drop down for processor type
     var procType = $('<div></div>');
-    procType.append('<label for="procType">Processor type:</label>');
-    var typeSelect = $('<select id="procType" name="procType"></select>');
+    procType.append('<label>Processor type:</label>');
+    var typeSelect = $('<select name="procType"></select>');
     typeSelect.append('<option>CP</option>'
         + '<option>IFL</option>'
         + '<option>ZAAP</option>'
@@ -1284,14 +1232,14 @@ function openAddDiskDialog(node, hcp) {
     // Create info bar
     var info = createInfoBar('Add a ECKD|3390 or FBA|9336 disk to this virtual server.');
     addDiskForm.append(info);
-    addDiskForm.append('<div><label for="diskNode">Node:</label><input type="text" readonly="readonly" id="diskNode" name="diskNode" value="' + node + '"/></div>');
-    addDiskForm.append('<div><label for="diskType">Disk type:</label><select id="diskType" name="diskType"><option value="3390">3390</option><option value="9336">9336</option></select></div>');
-    addDiskForm.append('<div><label for="diskAddress">Disk address:</label><input type="text" id="diskAddress" name="diskAddress"/></div>');
-    addDiskForm.append('<div><label for="diskSize">Disk size:</label><input type="text" id="diskSize" name="diskSize"/></div>');
+    addDiskForm.append('<div><label>Node:</label><input type="text" readonly="readonly" id="diskNode" name="diskNode" value="' + node + '"/></div>');
+    addDiskForm.append('<div><label>Disk type:</label><select id="diskType" name="diskType"><option value="3390">3390</option><option value="9336">9336</option></select></div>');
+    addDiskForm.append('<div><label>Disk address:</label><input type="text" id="diskAddress" name="diskAddress"/></div>');
+    addDiskForm.append('<div><label>Disk size:</label><input type="text" id="diskSize" name="diskSize"/></div>');
     
     // Create drop down for disk pool
     var diskPool = $('<div></div>');
-    diskPool.append('<label for="diskPool">Disk pool:</label>');
+    diskPool.append('<label>Disk pool:</label>');
     var poolSelect = $('<select id="diskPool" name="diskPool"></select>');
     for ( var i = 0; i < pools.length; i++) {
         poolSelect.append('<option>' + pools[i] + '</option>');
@@ -1301,7 +1249,7 @@ function openAddDiskDialog(node, hcp) {
 
     // Create drop down for disk mode
     var diskMode = $('<div></div>');
-    diskMode.append('<label for="diskMode">Disk mode:</label>');
+    diskMode.append('<label>Disk mode:</label>');
     var modeSelect = $('<select id="diskMode" name="diskMode"></select>');
     modeSelect.append('<option>R</option>'
         + '<option>RR</option>'
@@ -1314,7 +1262,7 @@ function openAddDiskDialog(node, hcp) {
     diskMode.append(modeSelect);
     addDiskForm.append(diskMode);
 
-    addDiskForm.append('<div><label for="diskPassword">Disk password:</label><input type="password" id="diskPassword" name="diskPassword"/></div>');
+    addDiskForm.append('<div><label>Disk password:</label><input type="password" id="diskPassword" name="diskPassword"/></div>');
 
     // Open dialog to add disk
     addDiskForm.dialog({
@@ -1411,8 +1359,9 @@ function openAddDiskDialog(node, hcp) {
  * 
  * @param node Node to add disk to
  * @param hcp Hardware control point of node
+ * @param zvm The z/VM system of node
  */
-function openAddZfcpDialog(node, hcp) {
+function openAddZfcpDialog(node, hcp, zvm) {
     // Get list of disk pools
     var cookie = $.cookie(hcp + 'zfcppools');
     var pools = cookie.split(',');
@@ -1422,15 +1371,15 @@ function openAddZfcpDialog(node, hcp) {
     // Create info bar
     var info = createInfoBar('Add a SCSI|FCP disk to this virtual server.');
     addZfcpForm.append(info);
-    addZfcpForm.append('<div><label for="diskNode">Node:</label><input type="text" readonly="readonly" name="diskNode" value="' + node + '"/></div>');
-    addZfcpForm.append('<div><label for="diskAddress">Disk address:</label><input type="text" name="diskAddress"/></div>');
-    addZfcpForm.append('<div><label for="diskLoaddev">LOADDEV:</label><input type="checkbox" name="diskLoaddev"/></div>');
-    addZfcpForm.append('<div><label for="diskSize">Disk size:</label><input type="text" name="diskSize"/></div>');
+    addZfcpForm.append('<div><label>Node:</label><input type="text" readonly="readonly" name="diskNode" value="' + node + '"/></div>');
+    addZfcpForm.append('<div><label>Disk address:</label><input type="text" name="diskAddress"/></div>');
+    addZfcpForm.append('<div><label>LOADDEV:</label><input type="checkbox" name="diskLoaddev"/></div>');
+    addZfcpForm.append('<div><label>Disk size:</label><input type="text" name="diskSize"/></div>');
     
     // Create drop down for disk pool
     var diskPool = $('<div></div>');
-    diskPool.append('<label for="diskPool">Disk pool:</label>');
-    var poolSelect = $('<select id="diskPool" name="diskPool"></select>');
+    diskPool.append('<label>Disk pool:</label>');
+    var poolSelect = $('<select name="diskPool"></select>');
     for ( var i = 0; i < pools.length; i++) {
         poolSelect.append('<option>' + pools[i] + '</option>');
     }
@@ -1438,7 +1387,7 @@ function openAddZfcpDialog(node, hcp) {
     addZfcpForm.append(diskPool);
 
     // Tag to identify where device will be used
-    addZfcpForm.append('<div><label for="diskTag">Disk tag:</label><input type="text" name="diskTag"/></div>');
+    addZfcpForm.append('<div><label>Disk tag:</label><input type="text" name="diskTag"/></div>');
 
     // Create advanced link to set advanced zFCP properties
     var advancedLnk = $('<div><label><a style="color: blue; cursor: pointer;">Advanced</a></label></div>');
@@ -1446,9 +1395,17 @@ function openAddZfcpDialog(node, hcp) {
     var advanced = $('<div style="margin-left: 20px;"></div>').hide();
     addZfcpForm.append(advanced);
     
-    var portName = $('<div><label for="diskPortName">Port name:</label><input type="text" name="diskPortName"/></div>');
-    var unitNo = $('<div><label for="diskUnitNo">Unit number:</label><input type="text" name="diskUnitNo"/></div>');
+    var portName = $('<div><label>Port name:</label><input type="text" name="diskPortName"/></div>');
+    var unitNo = $('<div><label>Unit number:</label><input type="text" name="diskUnitNo"/></div>');
     advanced.append(portName, unitNo);
+    
+    var wwpns = $.cookie(zvm + 'wwpns');
+    if (wwpns) {
+        // Turn on auto complete
+        portName.find('input').autocomplete({
+            source: wwpns.split(',')
+        });
+    }
     
     // Toggle port name and unit number when clicking on advanced link
     advancedLnk.click(function() {
@@ -1483,14 +1440,14 @@ function openAddZfcpDialog(node, hcp) {
                     var warn = createWarnBar('Please provide a value for each missing field.');
                     warn.prependTo($(this));
                 } else {
-                	if (loaddev.attr('checked')) {
-                		loaddev = 1;
-                	} else {
-                		loaddev = 0;
-                	}
+                    if (loaddev.attr('checked')) {
+                        loaddev = 1;
+                    } else {
+                        loaddev = 0;
+                    }
 
-                	var args = '--addzfcp;' + pool + ';' + address + ';' + loaddev + ';' + size;
-                	
+                    var args = '--addzfcp;' + pool + ';' + address + ';' + loaddev + ';' + size;
+                    
                     if (tag && tag != "null") {
                         args += ';' + tag;
                     } if (portName && tag != "null") {
@@ -1524,6 +1481,589 @@ function openAddZfcpDialog(node, hcp) {
                     
                     // Close dialog
                     $(this).dialog( "close" );
+                }
+            },
+            "Cancel": function() {
+                $(this).dialog( "close" );
+            }
+        }
+    });
+}
+
+/**
+ * Create dedicate device dialog
+ * 
+ * @param node Node to dedicate device to
+ * @param hcp Hardware control point of node
+ */
+function openDedicateDeviceDialog(node, hcp) {    
+    // Create form to add disk
+    var dedicateForm = $('<div class="form"></div>');
+    // Create info bar
+    var info = createInfoBar('Add a dedicated device to the configuration');
+    dedicateForm.append(info);
+    
+    dedicateForm.append('<div><label>Node:</label><input type="text" readonly="readonly" name="diskNode" value="' + node + '"/></div>');
+    dedicateForm.append('<div><label>Virtual device address:</label><input type="text" name="virtualAddress"/></div>');
+    dedicateForm.append('<div><label>Real device address:</label><input type="test" name="realAddress"/></div>');
+    dedicateForm.append('<div><label>Mode:</label><select name="mode">' + 
+            '<option value="0">Read-write</option>' +
+            '<option value="1">Read-only</option>' +
+        '</select>');
+        
+    // Open dialog to add dedicated device
+    dedicateForm.dialog({
+        title:'Add dedicated device',
+        modal: true,
+        close: function(){
+            $(this).remove();
+        },
+        width: 400,
+        buttons: {
+            "Ok": function(){
+                // Remove any warning messages
+                $(this).find('.ui-state-error').remove();
+                
+                // Get inputs
+                var node = $(this).find('input[name=diskNode]').val();
+                var vAddress = $(this).find('input[name=virtualAddress]').val();
+                var rAddress = $(this).find('input[name=realAddress]').val()
+                var mode = $(this).find('select[name=mode]').val();
+                
+                // If inputs are not complete, show warning message
+                if (!node || !vAddress || !rAddress || !mode) {
+                    var warn = createWarnBar('Please provide a value for each missing field.');
+                    warn.prependTo($(this));
+                } else {
+                    var args = '--dedicatedevice;' + vAddress + ';' + rAddress + ';' + mode;
+                                        
+                    // Add zFCP device
+                    $.ajax( {
+                        url : 'lib/cmd.php',
+                        dataType : 'json',
+                        data : {
+                            cmd : 'chvm',
+                            tgt : node,
+                            args : args,
+                            msg : node
+                        },
+
+                        success : updateZNodeStatus
+                    });
+
+                    // Increment node process
+                    incrementNodeProcess(node);
+
+                    // Show loader
+                    var statusId = node + 'StatusBar';
+                    var statusBarLoaderId = node + 'StatusBarLoader';
+                    $('#' + statusBarLoaderId).show();
+                    $('#' + statusId).show();
+                    
+                    // Close dialog
+                    $(this).dialog( "close" );
+                }
+            },
+            "Cancel": function() {
+                $(this).dialog( "close" );
+            }
+        }
+    });
+}
+
+/**
+ * Create add ECKD to system dialog
+ * 
+ * @param hcp Hardware control point of node
+ */
+function openAddEckd2SystemDialog(hcp) {
+    var dialogId = 'zvmAddEckd2System';
+    
+    // Create form to add disk
+    var addE2SForm = $('<div id="' + dialogId + '" class="form"></div>');
+    
+    // Create info bar
+    var info = createInfoBar('Dynamically add an ECKD disk to a running z/VM system.');
+    addE2SForm.append(info);
+    addE2SForm.append('<div><label>Device number:</label><input type="text" name="devNum" value="" maxlength="4" /></div>');
+
+    // Open dialog to add disk
+    addE2SForm.dialog({
+        title:'Add ECKD to system',
+        modal: true,
+        close: function(){
+            $(this).remove();
+        },
+        width: 400,
+        buttons: {
+            "Ok": function(){
+                // Remove any warning messages
+                $(this).find('.ui-state-error').remove();
+                
+                // Get inputs
+                var devnum = $(this).find('input[name=devNum]').val();
+                
+                // If inputs are not complete, show warning message
+                if (!devnum) {
+                    var warn = createWarnBar('Please provide a value for each missing field.');
+                    warn.prependTo($(this));
+                } else {
+                    // Change dialog buttons
+                    $(this).dialog('option', 'buttons', {
+                        'Close': function() {$(this).dialog("close");}
+                    });
+                    
+                    $.ajax( {
+                        url : 'lib/cmd.php',
+                        dataType : 'json',
+                        data : {
+                            cmd : 'chhypervisor',
+                            tgt : hcp,
+                            args : "--addeckd;" + devnum,
+                            msg : dialogId
+                        },
+
+                        success : updateResourceDialog
+                    });
+
+                }
+            },
+            "Cancel": function() {
+                $(this).dialog( "close" );
+            }
+        }
+    });
+}
+
+/**
+ * Create add page or spool dialog
+ * 
+ * @param hcp Hardware control point of node
+ */
+function openAddPageSpoolDialog(hcp) {
+    var dialogId = 'zvmAddPageSpool';
+    
+    // Create form to add disk
+    var addPageSpoolForm = $('<div id="' + dialogId + '" class="form"></div>');
+    
+    // Create info bar
+    var info = createInfoBar('Indicate a full-pack minidisk is to be shared by the users of many real and virtual systems.');
+    addPageSpoolForm.append(info);
+    
+    var diskFS = $('<fieldset><legend>Disk</legend></fieldset>');
+    addPageSpoolForm.append(diskFS);    
+    var diskAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+    diskFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/hdd.png"></img></div>'));
+    diskFS.append(diskAttr);
+    
+    diskAttr.append('<div><label>Volume address:</label><input type="text" name="volAddr" value="" maxlength="4"/></div>');
+    diskAttr.append('<div><label>Volume label:</label><input type="text" name="volLabel" value="" maxlength="6"/></div>');
+    diskAttr.append('<div><label>Volume use:</label><select name="volUse"><option value="PAGE">Page</option><option value="SPOOL">Spool</option></select></div>');
+    
+    var optionFS = $('<fieldset><legend>Optional</legend></fieldset>')
+    addPageSpoolForm.append(optionFS);
+    var optionAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+    optionFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/setting.png" style="width: 70px;"></img></div>'));
+    optionFS.append(optionAttr);
+    
+    optionAttr.append('<div><label style="width: 150px;">System config name:</label><input type="text" name="systemConfigName" value="" maxlength="8"/></div>');
+    optionAttr.append('<div><label style="width: 150px;">System config type:</label><input type="text" name="systemConfigType" value="" maxlength="8"/></div>');
+    optionAttr.append('<div><label style="width: 150px;">Parm disk owner:</label><input type="text" name="parmDiskOwner" value="" maxlength="8"/></div>');
+    optionAttr.append('<div><label style="width: 150px;">Parm disk number:</label><input type="text" name="parmDiskNumber" value="" maxlength="4"/></div>');
+    optionAttr.append('<div><label style="width: 150px;">Parm disk password:</label><input type="text" name="parmDiskPass" value="" maxlength="8"/></div>');
+    
+    // Open dialog to add disk
+    addPageSpoolForm.dialog({
+        title:'Add page or spool',
+        modal: true,
+        close: function(){
+            $(this).remove();
+        },
+        width: 500,
+        buttons: {
+            "Ok": function(){
+                // Remove any warning messages
+                $(this).find('.ui-state-error').remove();
+                
+                var volAddr = $(this).find('input[name=volAddr]').val();
+                var volLabel = $(this).find('input[name=volLabel]').val();
+                var volUse = $(this).find('select[name=volUse]').val();
+                var systemConfigName = $(this).find('input[name=systemConfigName]').val();
+                var systemConfigType = $(this).find('input[name=systemConfigType]').val();
+                var parmDiskOwner = $(this).find('input[name=parmDiskOwner]').val();
+                var parmDiskNumber = $(this).find('input[name=parmDiskNumber]').val();
+                var parmDiskPass = $(this).find('input[name=parmDiskPass]').val();
+                
+                // If inputs are not complete, show warning message
+                if (!volAddr || !volLabel || !volUse) {
+                    var warn = createWarnBar('Please provide a value for each missing field.');
+                    warn.prependTo($(this));
+                } else {
+                    // Change dialog buttons
+                    $(this).dialog('option', 'buttons', {
+                        'Close': function() {$(this).dialog("close");}
+                    });
+                    
+                    var pageSpoolArgs = volAddr + ";" + volLabel + ";" + volUse + ";";
+                    if (systemConfigName) {
+                        pageSpoolArgs += systemConfigName + ";";
+                    } if (systemConfigType) {
+                        pageSpoolArgs += systemConfigType + ";";
+                    } if (parmDiskOwner) {
+                        pageSpoolArgs += parmDiskOwner + ";";
+                    } if (parmDiskNumber) {
+                        pageSpoolArgs += parmDiskNumber + ";";
+                    } if (parmDiskPass) {
+                        pageSpoolArgs += parmDiskPass + ";";
+                    }
+                    
+                    $.ajax( {
+                        url : 'lib/cmd.php',
+                        dataType : 'json',
+                        data : {
+                            cmd : 'chvm',
+                            tgt : hcp,
+                            args : '--addpagespool;' + pageSpoolArgs,
+                            msg : dialogId
+                        },
+
+                        success : updateResourceDialog
+                    });
+
+                }
+            },
+            "Cancel": function() {
+                $(this).dialog( "close" );
+            }
+        }
+    });
+}
+
+/**
+ * Open dialog to share disk
+ * 
+ * @param disks2share Disks selected in table
+ */
+function openShareDiskDialog(disks2share) {
+    // Create form to share disk
+    var dialogId = 'zvmShareDisk';
+    var shareDiskForm = $('<div id="' + dialogId + '" class="form"></div>');
+    
+    // Create info bar
+    var info = createInfoBar('Indicate a full-pack minidisk is to be shared by the users of many real and virtual systems.');
+    shareDiskForm.append(info);
+
+    var hcp = $('<div><label>Hardware control point:</label></div>');
+    var hcpSelect = $('<select name="hcp"></select>');
+    hcp.append(hcpSelect);
+    // Set region input based on those selected on table (if any)
+    var volAddr = $('<div><label>Volume addresses:</label><input type="text" name="volAddr" value="' + disks2share + '"/></div>');
+    var shareEnable = $('<div><label>Share enable:</label><select name="shareEnable"><option value="ON">On</option><option value="OFF">Off</option></select></div>');
+    shareDiskForm.append(hcp, volAddr, shareEnable);
+    
+    // Create a array for hardware control points
+    var hcps = new Array();
+    if ($.cookie('hcp').indexOf(',') > -1)
+        hcps = $.cookie('hcp').split(',');
+    else
+        hcps.push($.cookie('hcp'));
+    
+    // Append options for hardware control points
+    for (var i in hcps) {
+        hcpSelect.append($('<option value="' + hcps[i] + '">' + hcps[i] + '</option>'));
+    }
+        
+    // Open dialog to delete disk
+    shareDiskForm.dialog({
+        title:'Share disk',
+        modal: true,
+        close: function(){
+            $(this).remove();
+        },
+        width: 500,
+        buttons: {
+            "Ok": function(){
+                // Remove any warning messages
+                $(this).find('.ui-state-error').remove();
+                
+                // Get inputs
+                var hcp = $(this).find('select[name=hcp]').val();
+                var volAddr = $(this).find('input[name=volAddr]').val();
+                var shareEnable = $(this).find('select[name=shareEnable]').val();
+                                
+                // If inputs are not complete, show warning message
+                if (!volAddr || !shareEnable) {
+                    var warn = createWarnBar('Please provide a value for each missing field.');
+                    warn.prependTo($(this));
+                } else {
+                    // Change dialog buttons
+                    $(this).dialog('option', 'buttons', {
+                        'Close': function() {$(this).dialog("close");}
+                    });
+                    
+                    // Remove disk from pool
+                    $.ajax( {
+                        url : 'lib/cmd.php',
+                        dataType : 'json',
+                        data : {
+                            cmd : 'chvm',
+                            tgt : hcp,
+                            args : "--sharevolume;" + volAddr + ";" + shareEnable,
+                            msg : dialogId
+                        },
+    
+                        success : updateResourceDialog
+                    });
+                }
+            },
+            "Cancel": function() {
+                $(this).dialog( "close" );
+            }
+        }
+    });
+}
+
+/**
+ * Create add SCSI 2 system dialog
+ * 
+ * @param hcp Hardware control point of node
+ */
+function openAddScsi2SystemDialog(hcp) {
+    var dialogId = 'zvmAddScsi2System';
+    
+    // Create form to add disk
+    var addS2SForm = $('<div id="' + dialogId + '" class="form"></div>');
+    
+    // Create info bar
+    var info = createInfoBar('Dynamically add an SCSI disk to a running z/VM system.');
+    addS2SForm.append(info);
+        
+    var devNum = $('<div><label>FCP device:</label><input type="text" name="devNum" maxlength="4"/></div>');
+    var devPathLabel = $('<label>Device paths:</label>');
+    var devPathCount = 1;
+    var pathDiv = $('<div class="devPath" style="margin-left:125px;"></div>');
+    
+    var devPathDiv = $('<div id="devPathArray"></div>');
+    var devPathTable = $('<table style="margin-left:140px;"></table>');
+    var devPathHeader = $('<thead class="ui-widget-header"> <th></th><th>FCP Device</th> <th>WWPN</th> <th>LUN</th></thead>');
+    // Adjust header width
+    devPathHeader.find('th').css( {
+        'width' : '120px'
+    });
+    devPathHeader.find('th').eq(0).css( {
+        'width' : '20px'
+    });
+    var devPathBody = $('<tbody></tbody>');
+    var devPathFooter = $('<tfoot></tfoot>');
+    
+    // Create a row
+    var devPathRow = $('<tr class="devPath"></tr>');
+
+    // Add blank column (remove button replacement)
+    devPathRow.append('<td style="padding: 0px;"></td>');
+
+    // Create FCP device number input
+    var fcpDevNum = $('<td><input type="text" style="width: 100px;" name="fcpDevNum" maxlength="4" title="The FCP device number"/></td>');
+    devPathRow.append(fcpDevNum);
+    
+    // Create FCP WWPN input
+    var fcpWwpn = $('<td><input type="text" style="width: 100px;" name="fcpWwpn" maxlength="16" title="The FCP world wide port number"/></td>');
+    devPathRow.append(fcpWwpn);
+    
+    var wwpns = "";
+    if ($.cookie('zvms')) {
+        zvms = $.cookie('zvms').split(',');
+        var zvm;
+        for (var i in zvms) {
+            var args = zvms[i].split(':');
+            var zvm = args[0].toLowerCase();
+            var iHcp = args[1];
+            
+            wwpns += "," + $.cookie(zvm + 'wwpns');
+        }
+        
+        wwpns = wwpns.replace(',,', ',');
+        fcpWwpn.find('input').autocomplete({
+            source: wwpns.split(',')
+        });
+    }
+    
+    // Create FCP LUN input
+    var fcpLun = $('<td><input type="text" style="width: 100px;" name="fcpLun" maxlength="16" title="The FCP logical unit number"/></td>');
+    devPathRow.append(fcpLun);
+        
+    devPathBody.append(devPathRow);
+    
+    var addDevPathLink = $('<a>Add path</a>');
+    addDevPathLink.bind('click', function(event){
+        devPathCount = devPathCount + 1;
+        // Create a row
+        var devPathRow = $('<tr></tr>');
+
+        // Add remove button
+        var removeBtn = $('<span class="ui-icon ui-icon-close"></span>').css({
+            "float": "left",
+            "cursor": "pointer"
+        });
+        var col = $('<td></td>').append(removeBtn);
+        removeBtn.bind('click', function(event) {
+            $(this).parent().parent().remove();
+        });
+        devPathRow.append(col);
+        
+        // Create FCP device number input
+        var fcpDevNum = $('<td><input type="text" style="width: 100px;" name="fcpDevNum" maxlength="4" title="The FCP device number"/></td>');
+        devPathRow.append(fcpDevNum);
+        
+        // Create FCP WWPN input
+        var fcpWwpn = $('<td><input type="text" style="width: 100px;" name="fcpWwpn" maxlength="16" title="The FCP world wide port number"/></td>');
+        devPathRow.append(fcpWwpn);
+        fcpWwpn.find('input').autocomplete({
+            source: wwpns.split(',')
+        });
+
+        // Create FCP LUN input
+        var fcpLun = $('<td><input type="text" style="width: 100px;" name="fcpLun" maxlength="16" title="The FCP logical unit number"/></td>');
+        devPathRow.append(fcpLun);
+
+        devPathBody.append(devPathRow);
+    });
+    devPathFooter.append(addDevPathLink);
+    devPathTable.append(devPathHeader);
+    devPathTable.append(devPathBody);
+    devPathTable.append(devPathFooter);
+    devPathDiv.append(devPathLabel);
+    devPathDiv.append(devPathTable);
+    
+    var option = $('<div><label>Option:</label><select name="option"><option selected value="1">Add a new SCSI disk</option><option value="2">Add new paths to an existing SCSI disk</option><option value="3">Delete paths from an existing SCSI disk</option></select></div>');
+    var persist = $('<div><label>Persist:</label><select name="persist"><option selected value="no">No</option><option value="yes">Yes</option></select></div>');
+    addS2SForm.append(devNum, devPathDiv, option, persist);
+    
+    addS2SForm.find('div input[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.7,
+        predelay: 800,
+        events: {
+            def:     "mouseover,mouseout",
+            input:   "mouseover,mouseout",
+            widget:  "focus mouseover,blur mouseout",
+            tooltip: "mouseover,mouseout"
+        }
+    });
+
+    // Open dialog to add disk
+    addS2SForm.dialog({
+        title:'Add SCSI to running system',
+        modal: true,
+        close: function(){
+            $(this).remove();
+        },
+        width: 675,
+        buttons: {
+            "Ok": function(){
+                // Remove any warning messages
+                $(this).find('.ui-state-error').remove();
+                
+                var num = $(this).find('input[name=devNum]').val();
+                var pathArray = "";
+                $('.devPath').each(function(index) {
+                    pathArray += $(this).find('input[name=fcpDevNum]').val() +  ' ';
+                    pathArray += $(this).find('input[name=fcpWwpn]').val() +  ' ';
+                    pathArray += $(this).find('input[name=fcpLun]').val() +  '; ';
+                });
+                path_Array = pathArray + "'";
+                var option = $(this).find('select[name=option]').val();
+                var persist = $(this).find('select[name=persist]').val();
+                
+                // If inputs are not complete, show warning message
+                if (!num || !pathArray || !option || !persist) {
+                    var warn = createWarnBar('Please provide a value for each missing field.');
+                    warn.prependTo($(this));
+                } else {
+                    // Change dialog buttons
+                    $(this).dialog('option', 'buttons', {
+                        'Close': function() {$(this).dialog("close");}
+                    });
+                    
+                    $.ajax( {
+                        url : 'lib/cmd.php',
+                        dataType : 'json',
+                        data : {
+                            cmd : 'chhypervisor',
+                            tgt : hcp,
+                            args : "--addscsi|" + num + "|" + pathArray + "|" + option + "|" + persist,
+                            msg : dialogId
+                        },
+
+                        success : updateResourceDialog
+                    });
+
+                }
+            },
+            "Cancel": function() {
+                $(this).dialog( "close" );
+            }
+        }
+    });
+}
+
+/**
+ * Delete a real SCSI disk
+ * 
+ * @param hcp Hardware control point of node
+ */
+function openRemoveScsiDialog(hcp) {
+    var dialogId = 'zvmRemoveScsiDialog';
+    // Create form to add disk
+    var removeScsiForm = $('<div id="' + dialogId + '" class="form"></div>');
+    // Create info bar
+    var info = createInfoBar('Delete a real SCSI disk');
+    removeScsiForm.append(info);
+    removeScsiForm.append('<div><label>Device number:</label><input type="text" name="devNum" value="" maxlength="4" /></div>');
+    removeScsiForm.append('<div><label>Persist:</label><select name="persist"><option value="NO">Yes</option><option value="YES>Yes</option></div>');
+    
+    // Open dialog to add disk
+    removeScsiForm.dialog({
+        title:'Delete a real SCSI disk',
+        modal: true,
+        close: function(){
+            $(this).remove();
+        },
+        width: 400,
+        buttons: {
+            "Ok": function(){
+                // Remove any warning messages
+                $(this).find('.ui-state-error').remove();
+                
+                // Get inputs
+                var devnum = $(this).find('input[name=devNum]').val();
+                var persist = $(this).find('select[name=persist]').val();
+                
+                // If inputs are not complete, show warning message
+                if (!devnum) {
+                    var warn = createWarnBar('Please provide a value for each missing field.');
+                    warn.prependTo($(this));
+                } else {
+                    // Change dialog buttons
+                    $(this).dialog('option', 'buttons', {
+                        'Close': function() {$(this).dialog("close");}
+                    });
+                    
+                    $.ajax( {
+                        url : 'lib/cmd.php',
+                        dataType : 'json',
+                        data : {
+                            cmd : 'chhypervisor',
+                            tgt : hcp,
+                            args : "--removescsi;" + devnum + ";" + persist,
+                            msg : dialogId
+                        },
+
+                        success : updateResourceDialog
+                    });
+
                 } // End of else
             },
             "Cancel": function() {
@@ -1548,12 +2088,12 @@ function openAddNicDialog(node, hcp) {
     // Create info bar
     var info = createInfoBar('Add a NIC to this virtual server.');
     addNicForm.append(info);
-    addNicForm.append('<div><label for="nicNode">Node:</label><input type="text" readonly="readonly" id="nicNode" name="nicNode" value="' + node + '"/></div>');
-    addNicForm.append('<div><label for="nicAddress">NIC address:</label><input type="text" id="nicAddress" name="nicAddress"/></div>');
+    addNicForm.append('<div><label>Node:</label><input type="text" readonly="readonly" id="nicNode" name="nicNode" value="' + node + '"/></div>');
+    addNicForm.append('<div><label>NIC address:</label><input type="text" id="nicAddress" name="nicAddress"/></div>');
     
     // Create drop down for NIC types
     var nicType = $('<div></div>');
-    nicType.append('<label for="nicType">NIC type:</label>');
+    nicType.append('<label>NIC type:</label>');
     var nicTypeSelect = $('<select id="nicType" name="nicType"></select>');
     nicTypeSelect.append('<option></option>'
         + '<option>QDIO</option>'
@@ -1564,8 +2104,8 @@ function openAddNicDialog(node, hcp) {
         
     // Create drop down for network types
     var networkType = $('<div></div>');
-    networkType.append('<label for="nicNetworkType">Network type:</label>');
-    var networkTypeSelect = $('<select id="nicNetworkType" name="nicNetworkType"></select>');
+    networkType.append('<label>Network type:</label>');
+    var networkTypeSelect = $('<select name="nicNetworkType"></select>');
     networkTypeSelect.append('<option></option>'
         + '<option>Guest LAN</option>'
         + '<option>Virtual Switch</option>'
@@ -1592,19 +2132,19 @@ function openAddNicDialog(node, hcp) {
     // Hide network name drop downs until the NIC type and network type is selected
     // QDIO Guest LAN drop down
     var guestLanQdio = $('<div></div>').hide();
-    guestLanQdio.append('<label for="nicLanQdioName">Guest LAN name:</label>');
+    guestLanQdio.append('<label>Guest LAN name:</label>');
     guestLanQdio.append(gLansQdioSelect);
     addNicForm.append(guestLanQdio);
     
     // HIPERS Guest LAN drop down
     var guestLanHipers = $('<div></div>').hide();
-    guestLanHipers.append('<label for="nicLanHipersName">Guest LAN name:</label>');
+    guestLanHipers.append('<label>Guest LAN name:</label>');
     guestLanHipers.append(gLansHipersSelect);
     addNicForm.append(guestLanHipers);
     
     // VSWITCH drop down
     var vswitch = $('<div></div>').hide();
-    vswitch.append('<label for="nicVSwitchName">VSWITCH name:</label>');
+    vswitch.append('<label>VSWITCH name:</label>');
     vswitch.append(vswitchSelect);
     addNicForm.append(vswitch);
     
@@ -1779,6 +2319,324 @@ function openAddNicDialog(node, hcp) {
 }
 
 /**
+ * Create add vSwitch/VLAN dialog
+ * 
+ * @param hcp Hardware control point of node
+ */
+function openAddVswitchVlanDialog(hcp) {
+    var dialogId = 'zvmAddVswitchVlan';
+    
+    // Create form to add disk
+    var addVswitchForm = $('<div id="' + dialogId + '" class="form"></div>');
+    
+	// Create info bar
+    var info = createInfoBar('Create a virtual switch or virtual network LAN.');
+    
+    var netFS = $('<fieldset></fieldset>');
+    var netLegend = $('<legend>Network</legend>');
+    netFS.append(netLegend);
+    
+    var typeFS = $('<fieldset></fieldset>').hide();
+    var typeLegend = $('<legend>Network</legend>');
+    typeFS.append(typeLegend);
+    
+    addVswitchForm.append(info, netFS, typeFS);
+    var netAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+    netFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/network.png"></img></div>'));
+    netFS.append(netAttr);
+    
+    var networkTypeDiv = $('<div><label>Network Type:</label>');
+    var networkType = $('<select name="networkType">' +
+    		'<option></option>' +
+    		'<option value="vswitch">vSwitch</option>' +
+    		'<option value="vlan">VLAN</option>' +
+		'</select></div>');
+    networkTypeDiv.append(networkType)
+    netAttr.append(networkTypeDiv);
+    
+    var hcp = $('<div><label>Hardware control point:</label></div>');
+    var hcpSelect = $('<select name="hcp"></select>');
+    hcp.append(hcpSelect);
+    netAttr.append(hcp);
+
+    var typeAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+    typeFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/preferences_network.png"></img></div>'));
+    typeFS.append(typeAttr);
+    
+    // Create vSwitch parameters
+    var vswitchOptions = $('<div name=vswitchOptions style="height:300px;"></div>').hide();
+    vswitchOptions.append($('<div><label>Switch name:</label><input type="text" name="switchName"/></div>'));
+    vswitchOptions.append($('<div><label>Device address:</label><input type="text" name="deviceAddress"/></div>'));
+    vswitchOptions.append($('<div><label>Port name:</label><input type="text" name="portName"/></div>'));
+    vswitchOptions.append($('<div><label>Controller name:</label><input type="text" name="controllerName"/></div>'));
+    vswitchOptions.append($('<div><label>Connection:</label><select name="connection">' + 
+    		'<option></option>' +
+    		'<option value="0">Unspecified</option>' +
+    		'<option value="1">Activate real device connection</option>' +
+    		'<option value="2">Do not activate real device connection</option>' +
+    	'</select></div>'));
+    vswitchOptions.append($('<div><label>QDIO buffer size:</label><input type="text" name="queueMemoryLimit" maxlength="1" /></div>'));
+    vswitchOptions.append($('<div><label>Routing:</label><select name="routingValue">' +
+    		'<option></option>' +
+    		'<option value="0">Unspecified</option>' +
+    		'<option value="1">NONROUTER</option>' +
+    		'<option value="2">PRIROUTER</option>' +
+		'</select></div>'));
+    vswitchOptions.append($('<div><label>Transport:</label><select name="transportType">' +
+    		'<option></option>' +
+    		'<option value="0">Unspecified</option>' +
+    		'<option value="1">IP</option>' +
+    		'<option value="2">ETHERNET</option>' +
+		'</select></div>'));
+    vswitchOptions.append($('<div><label>VLAN ID:</label><input type="text" name="vlanId"/></div>'));
+    vswitchOptions.append($('<div><label>Port type:</label><select name="portType">' +
+    		'<option></option>' +
+    		'<option value="0">Unspecified</option>' +
+    		'<option value="1">ACCESS</option>' +
+    		'<option value="2">TRUNK</option>' +
+		'</select></div>'));
+    vswitchOptions.append($('<div><label>Update sysconfig:</label><select name="updateSysConfig">' +
+    		'<option></option>' +
+    		'<option value="0">Unspecified</option>' +
+    		'<option value="1">Create virtual switch</option>' +
+    		'<option value="2">Create virtual switch and add definition to system configuration</option>' +
+    		'<option value="3">Add virtual switch definition to system configuration</option>' +
+    	'</select></div>'));
+    vswitchOptions.append($('<div><label>GVRP:</label><select name="gvrp">' +
+    		'<option></option>' +
+    		'<option value="0">Unspecified</option>' +
+    		'<option value="1">GVRP</option>' +
+    		'<option value="2">NOGVRP</option>' +
+		'</select></div>'));
+    vswitchOptions.append($('<div><label>Native VLAN ID:</label><input type="text" name="nativeVlanId"/></div>'));
+    
+    // Create VLAN parameters
+    var vlanOptions = $('<div name=vlanOptions></div>').hide();
+    vlanOptions.append($('<div><label>Name:</label><input type="text" name="vlanName"/></div>'));
+    vlanOptions.append($('<div><label>Owner:</label><input type="text" name="vlanOwner"/></div>'));
+    vlanOptions.append($('<div><label>Type:</label><select name="vlanType">' + 
+            '<option value="1">Unrestricted HiperSockets NIC</option>' + 
+            '<option value="2">Unrestricted QDIO NIC</option>' +
+            '<option value="3">Restricted HiperSockets NIC</option>' +
+            '<option value="4">Restricted QDIO NIC</option>' +
+        '</select></div>'));
+    vlanOptions.append($('<div><label>Transport:</label><select name="vlanTransport">' + 
+            '<option value="0">Unspecified</option>' +
+            '<option value="1">IP</option>' +
+            '<option value="2">Ethernet</option>' +
+        '</select></div>'));
+    
+    typeAttr.append(vswitchOptions, vlanOptions);
+
+    // Create a array for hardware control points
+    var hcps = new Array();
+    if ($.cookie('hcp').indexOf(',') > -1)
+        hcps = $.cookie('hcp').split(',');
+    else
+        hcps.push($.cookie('hcp'));
+    
+    // Append options for hardware control points
+    for (var i in hcps) {
+        hcpSelect.append($('<option value="' + hcps[i] + '">' + hcps[i] + '</option>'));
+    }
+            
+    networkType.change(function() {
+    	typeFS.show();
+        if ($(this).val() == "vswitch") {
+        	typeFS.find("legend").text("vSwitch");
+        	vswitchOptions.show();
+        	vlanOptions.hide();
+        } else if ($(this).val() == "vlan") {
+        	typeFS.find("legend").text("VLAN");
+        	vswitchOptions.hide();
+        	vlanOptions.show();
+        } else {
+        	typeFS.find("legend").text("");
+        	vswitchOptions.hide();
+        	vlanOptions.hide();
+        	typeFS.hide();
+        }          
+    });
+    
+    // Open dialog to add vSwitch or VLAN
+    addVswitchForm.dialog({
+        title:'Add vSwitch or VLAN',
+        modal: true,
+        close: function() {
+            $(this).remove();
+        },
+        width: 750,
+        buttons: {
+            "Ok": function(){
+                // Remove any warning messages
+                $(this).find('.ui-state-error').remove();
+                
+                var networkType = $(this).find('select[name=networkType]').val();
+                if (networkType == "vswitch"){  
+                    var networkArgs = "--addvswitch;";
+                    var hcp = $(this).find('select[name=hcp]').val();
+                    var switchName = $(this).find('input[name=switchName]').val();
+                    var deviceAddress = $(this).find('input[name=deviceAddress]').val();
+                    var portName = $(this).find('input[name=switchName]').val();
+                    var controllerName = $(this).find('input[name=controllerName]').val();
+                    var connection = $(this).find('select[name=connection]').val();
+                    var queueMemoryLimit = $(this).find('input[name=queueMemoryLimit]').val();
+                    var routingValue = $(this).find('select[name=routingValue]').val();
+                    var transportType = $(this).find('select[name=transportType]').val();
+                    var vlanId = $(this).find('input[name=vlanId]').val();
+                    var portType = $(this).find('select[name=portType]').val();
+                    var updateSysConfig = $(this).find('select[name=updateSysConfig]').val();
+                    var gvrp = $(this).find('select[name=gvrp]').val();
+                    var nativeVlanId = $(this).find('input[name=nativeVlanId]').val();
+                    
+                    if (switchName)
+                        networkArgs += ";" + switchName;
+                    if (deviceAddress)
+                        networkArgs += ";" + deviceAddress;                    
+                    if (portName)
+                        networkArgs += ";" + portName;
+                    if (controllerName)
+                        networkArgs += ";" + controllerName;                   
+                    if (connection)
+                        networkArgs += ";" + connection;                    
+                    if (queueMemoryLimit)
+                        networkArgs += ";" + queueMemoryLimit;                   
+                    if (routingValue)
+                        networkArgs += ";" + routingValue;                   
+                    if (transportType)
+                        networkArgs += ";" + transportType;                   
+                    if (vlanId)
+                        networkArgs += ";" + vlanId;                    
+                    if (portType) 
+                        networkArgs += ";" + portType;                    
+                    if (updateSysConfig) 
+                        networkArgs += ";" + updateSysConfig;                    
+                    if (gvrp) 
+                        networkArgs += ";" + gvrpValue;                    
+                    if (nativeVlanId) 
+                        networkArgs += ";" + nativeVlanId;
+                                        
+                    // Change dialog buttons
+                    $(this).dialog('option', 'buttons', {
+                        'Close': function() {$(this).dialog("close");}
+                    });
+                    
+                    $.ajax( {
+                        url : 'lib/cmd.php',
+                        dataType : 'json',
+                        data : {
+                            cmd : 'chhypervisor',
+                            tgt : hcp,
+                            args : networkArgs,
+                            msg : dialogId
+                        },
+
+                        success : updateResourceDialog
+                    });
+                } else if (networkType == "vlan") {
+                    var networkArgs = "--addvlan;";
+                    var hcp = $(this).find('select[name=hcp]').val();
+                    var vlanName = $(this).find('input[name=vlanName]').val();
+                    var vlanOwner = $(this).find('input[name=vlanOwner]').val();
+                    var vlanType = $(this).find('select[name=vlanType]').val();
+                    var vlanTransport = $(this).find('select[name=vlanTransport]').val();
+                    
+                    if (!vlanName || !vlanOwner || !vlanType || !vlanTransport) {
+                        var warn = createWarnBar('Please provide a value for each missing field.');
+                        warn.prependTo($(this));
+                    } else {
+                        networkArgs += ";" + vlanName;
+                        networkArgs += ";" + vlanOwner;
+                        networkArgs += ";" + vlanType;
+                        networkArgs += ";" + vlanTransport;
+                        
+                        // Change dialog buttons
+                        $(this).dialog('option', 'buttons', {
+                            'Close': function() {$(this).dialog("close");}
+                        });
+                        $.ajax( {
+                            url : 'lib/cmd.php',
+                            dataType : 'json',
+                            data : {
+                                cmd : 'chhypervisor',
+                                tgt : hcp,
+                                args : networkArgs,
+                                msg : dialogId
+                            },
+
+                            success : updateResourceDialog
+                        });
+                    }
+                }  // End of else if
+            },
+            "Cancel": function() {
+                $(this).dialog( "close" );
+            }
+        }
+    });
+}
+
+/**
+ * Open dialog to delete network
+ * 
+ * @param node type name for removing network
+ */
+function openRemoveVswitchVlanDialog(networkList) {
+    var names = '';
+    for (var i in networkList) {
+        var networkArgs = networkList[i].split(';');
+        networkArgs[2] = jQuery.trim(networkArgs[2]);
+        names += networkArgs[2] + ', ';
+    }    
+    names = names.substring(0, names.length - 2);  // Delete last two characters
+    
+    var confirmDialog = $('<div><p>Are you sure you want to remove ' + names + '?</p></div>');                   
+    confirmDialog.dialog({
+        title: "Confirm",
+        modal: true,
+        width: 400,
+        buttons: {
+            "Ok": function() {
+                for (var i in networkList) {
+                    var networkArgs = networkList[i].split(';');
+                    var node = networkArgs[0];
+                    var type = networkArgs[1];
+                    var name = jQuery.trim(networkArgs[2]);
+                
+                    if (type.toLowerCase() == "vswitch") {
+                        $.ajax( {
+                            url : 'lib/cmd.php',
+                            dataType : 'json',
+                            data : {
+                                cmd : 'chhypervisor',
+                                tgt : node,
+                                args : '--removevswitch;' + name,
+                                msg : ''
+                            }
+                        });
+                    } else if (type.toLowerCase() == "vlan") {
+                        $.ajax( {
+                            url : 'lib/cmd.php',
+                            dataType : 'json',
+                            data : {
+                                cmd : 'chhypervisor',
+                                tgt : node,
+                                args : '--removevlan;' + name + ';' + owner,
+                                msg : ''
+                            }
+                        });
+                    }   
+                }
+                $(this).dialog("close");
+            },
+            "Cancel": function() {
+                $(this).dialog("close");
+            }
+        }
+    });
+}
+
+/**
  * Remove processor
  * 
  * @param node Node where processor is attached
@@ -1901,7 +2759,7 @@ function removeNic(node, nic) {
  * @param data Data from HTTP request
  */
 function setNetworkCookies(data) {
-    if (data.rsp) {
+    if (data.rsp.length) {
         var node = data.msg;
         var networks = data.rsp[0].split(node + ': ');
         
@@ -1918,7 +2776,7 @@ function setNetworkCookies(data) {
  * @param data HTTP request data
  */
 function getDiskPool(data) {
-    if (data.rsp) {
+    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1) {
         var hcp = data.msg;
         var pools = data.rsp[0].split(hcp + ': ');
 
@@ -1965,7 +2823,7 @@ function getDiskPool(data) {
  * @param data HTTP request data
  */
 function getZfcpPool(data) {
-    if (data.rsp.length) {
+    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1) {
         var hcp = data.msg;
         var pools = data.rsp[0].split(hcp + ': ');
 
@@ -1990,8 +2848,8 @@ function getZfcpPool(data) {
             } // End of if
         } // End of for
     } else {
-    	// Load empty table
-    	loadZfcpPoolTable(null);
+        // Load empty table
+        loadZfcpPoolTable(null);
     }
 }
 
@@ -2001,7 +2859,7 @@ function getZfcpPool(data) {
  * @param data HTTP request data
  */
 function getNetwork(data) {
-    if (data.rsp) {
+    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1) {
         var hcp = data.msg;
         var networks = data.rsp[0].split(hcp + ': ');
 
@@ -2038,6 +2896,11 @@ function loadDiskPoolTable(data) {
     var panelId = 'zvmDiskResource';
     $('#' + panelId).find('img[src="images/loader.gif"]').remove();
     
+    // Do not continue if the call failed
+    if (!data.rsp.length && data.rsp[0].indexOf("Failed") > 0) {
+        return;
+    }
+    
     var args = data.msg.split(';');
     var hcp = args[0].replace('hcp=', '');
     var pool = args[1].replace('pool=', '');
@@ -2066,7 +2929,19 @@ function loadDiskPoolTable(data) {
         $('#' + panelId).append(table.object());
 
         // Turn into datatable
-        dTable = $('#' + tableId).dataTable();
+        dTable = $('#' + tableId).dataTable({
+            'iDisplayLength': 50,
+            "bScrollCollapse": true,
+            "sScrollY": "400px",
+            "sScrollX": "110%",
+            "bAutoWidth": true,
+            "oLanguage": {
+                "oPaginate": {
+                  "sNext": "",
+                  "sPrevious": ""
+                }
+            }
+        });
         setDiskDataTable(dTable);
     }
 
@@ -2122,18 +2997,41 @@ function loadDiskPoolTable(data) {
 
                     success : getDiskPool
                 });
-            }
+            }    
         });
         
+        // Add ECKD to system
+        var addEckdLnk = $('<a>Add ECKD</a>');
+        addEckdLnk.bind('click', function(event){
+            openAddEckd2SystemDialog(hcp);
+        });
+        
+        // Add Page or Spool
+        var addPageSpoolLnk = $('<a>Add page/spool</a>')
+        addPageSpoolLnk.bind('click', function(event){
+            openAddPageSpoolDialog(hcp);
+        });
+        
+        // Indicate disk is to be shared with various users
+        var shareLnk = $('<a>Share disk</a>');
+        shareLnk.bind('click', function(event){
+            var disks = getNodesChecked(tableId);
+            openShareDiskDialog(disks);
+        });
+        
+        // Advanced menu
+        var advancedLnk = '<a>Advanced</a>';
+        var advancedMenu = createMenu([addEckdLnk, addPageSpoolLnk, shareLnk]);
+        
         // Create action bar
-        var actionBar = $('<div id="zvmResourceActions" class="actionBar"></div>').css("width", "400px");
+        var actionBar = $('<div id="zvmResourceActions" class="actionBar"></div>').css("width", "450px");
         
         // Create an action menu
-        var actionsMenu = createMenu([addLnk, removeLnk, refreshLnk]);
+        var actionsMenu = createMenu([addLnk, removeLnk, refreshLnk, [advancedLnk, advancedMenu]]);
         actionsMenu.superfish();
         actionsMenu.css('display', 'inline-block');
         actionBar.append(actionsMenu);
-        
+                
         // Set correct theme for action menu
         actionsMenu.find('li').hover(function() {
             setMenu2Theme($(this));
@@ -2166,13 +3064,16 @@ function loadZfcpPoolTable(data) {
     var panelId = 'zfcpResource';
     $('#' + panelId).find('img[src="images/loader.gif"]').remove();
     
-    var args, hcp, pool, tmp;
-    if (data) {
-        args = data.msg.split(';');
-        hcp = args[0].replace('hcp=', '');
-        pool = args[1].replace('pool=', '');
-        tmp = data.rsp[0].split(hcp + ': ');
+    // Do not continue if the call failed
+    if (!data.rsp.length && data.rsp[0].indexOf("Failed") > 0) {
+        return;
     }
+    
+    var args, hcp, pool, tmp;
+    args = data.msg.split(';');
+    hcp = args[0].replace('hcp=', '');
+    pool = args[1].replace('pool=', '');
+    tmp = data.rsp[0].split(hcp + ': ');
 
     // Resource tab ID    
     var info = $('#' + panelId).find('.ui-state-highlight');
@@ -2189,25 +3090,36 @@ function loadZfcpPoolTable(data) {
         // Create a datatable        
         var table = new DataTable(tableId);
         // Resource headers: status, WWPN, LUN, size, owner, channel, tag
-        table.init( [ '<input type="checkbox" onclick="selectAllDisk(event, $(this))">', 'zHCP', 'Pool', 'Status', 'Port name', 'Unit number', 'Size', 'Owner', 'Channel', 'Tag' ]);
+        table.init( [ '<input type="checkbox" onclick="selectAllDisk(event, $(this))">', 'zHCP', 'Pool', 'Status', 'Port name', 'Unit number', 'Size', 'Range', 'Owner', 'Channel', 'Tag' ]);
 
         // Append datatable to panel
         $('#' + panelId).append(table.object());
 
         // Turn into datatable
         dTable = $('#' + tableId).dataTable({
-            "sScrollX": "100%",
-            "bAutoWidth": true
+            'iDisplayLength': 50,
+            "bScrollCollapse": true,
+            "sScrollY": "400px",
+            "sScrollX": "110%",
+            "bAutoWidth": true,
+            "oLanguage": {
+                "oPaginate": {
+                  "sNext": "",
+                  "sPrevious": ""
+                }
+            }
         });
         setZfcpDataTable(dTable);
     }
 
     if (data) {
         // Skip index 0 and 1 because it contains nothing
+    	var key = "";
         for ( var i = 2; i < tmp.length; i++) {
             tmp[i] = jQuery.trim(tmp[i]);
             var diskAttrs = tmp[i].split(',');
-            dTable.fnAddData( [ '<input type="checkbox" name="' + pool + '-' + diskAttrs[2] + '"/>', hcp, pool, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3], diskAttrs[4], diskAttrs[5], diskAttrs[6] ]);
+            var key = hcp + '-' + pool + '-' + diskAttrs[2];
+            dTable.fnAddData( [ '<input type="checkbox" name="' + key + '"/>', hcp, pool, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3], diskAttrs[4], diskAttrs[5], diskAttrs[6], diskAttrs[7] ]);
         }
     }
     
@@ -2259,15 +3171,31 @@ function loadZfcpPoolTable(data) {
             }    
         });
         
+        // Add SCSI to system
+        var addScsiLnk = $('<a>Add SCSI</a>');
+        addScsiLnk.bind('click', function(event){
+            openAddScsi2SystemDialog(hcp);
+        });
+        
+        // Remove SCSI
+        var removeScsiLnk = $('<a>Remove SCSI</a>');
+        removeScsiLnk.bind('click', function(event){
+            openRemoveScsiDialog(hcp);
+        });
+        
+        // Advanced menu
+        var advancedLnk = '<a>Advanced</a>';
+        var advancedMenu = createMenu([addScsiLnk, removeScsiLnk]);
+        
         // Create action bar
-        var actionBar = $('<div id="zFcpResourceActions" class="actionBar"></div>').css("width", "400px");
+        var actionBar = $('<div id="zFcpResourceActions" class="actionBar"></div>').css("width", "450px");
         
         // Create an action menu
-        var actionsMenu = createMenu([addLnk, removeLnk, refreshLnk]);
+        var actionsMenu = createMenu([addLnk, removeLnk, refreshLnk, [advancedLnk, advancedMenu]]);
         actionsMenu.superfish();
         actionsMenu.css('display', 'inline-block');
         actionBar.append(actionsMenu);
-        
+                
         // Set correct theme for action menu
         actionsMenu.find('li').hover(function() {
             setMenu2Theme($(this));
@@ -2521,19 +3449,20 @@ function openRemoveZfcpFromPoolDialog(devices2remove) {
     
     // Verify disks are in the same zFCP pool
     var devices = devices2remove.split(',');
-    var tmp, tgtPool;
+    var tmp, tgtPool, tgtHcp;
     var tgtUnitNo = "";
     for (var i in devices) {
-    	tmp = devices[i].split('-');
-    	
-    	if (tgtPool && tmp[0] != tgtPool) {
-    		openDialog("warn", "Please select devices in the same zFCP");
+        tmp = devices[i].split('-');
+        
+        if (tgtPool && tmp[1] != tgtPool) {
+            openDialog("warn", "Please select devices in the same zFCP");
             return;
-    	} else {
-    		tgtPool = tmp[0];
-    	}
-    	
-        tgtUnitNo += tmp[1] + ",";
+        } else {
+            tgtPool = tmp[1];
+        }
+        
+        tgtHcp = tmp[0];  // Assume it is just one zHCP. Otherwise, this cannot be done on multiple zHCPs.
+        tgtUnitNo += tmp[2] + ",";
     }
     
     // Strip out last comma
@@ -2563,6 +3492,7 @@ function openRemoveZfcpFromPoolDialog(devices2remove) {
     for (var i in hcps) {
         hcpSelect.append($('<option value="' + hcps[i] + '">' + hcps[i] + '</option>'));
     }
+    hcpSelect.val(tgtHcp);
 
     // Open dialog to delete device
     deleteDiskForm.dialog({
@@ -2628,14 +3558,15 @@ function openAddZfcp2PoolDialog() {
     
     var pool = $('<div><label>zFCP pool:</label><input type="text" name="zfcpPool"/></div>');
     var status = $('<div><label>Status:</label><select name="zfcpStatus">'
-    		+ '<option value="free">free</option>'
-    		+ '<option value="used">used</option>'
+            + '<option value="free">free</option>'
+            + '<option value="used">used</option>'
         + '</select></div>');
     var portName = $('<div><label>Port name:</label><input type="text" name="zfcpPortName"/></div>');
     var unitNo = $('<div><label>Unit number:</label><input type="text" name="zfcpUnitNo"/></div>');
     var size = $('<div><label>Size:</label><input type="text" name="zfcpSize"/></div>');
+    var range = $('<div><label>Range:</label><input type="text" name="zfcpRange"/></div>');
     var owner = $('<div><label>Owner:</label><input type="text" name="zfcpOwner"/></div>');
-    addDiskForm.append(hcp, pool, status, portName, unitNo, size, owner);
+    addDiskForm.append(hcp, pool, status, portName, unitNo, size, range, owner);
 
     // Create a array for hardware control points
     var hcps = new Array();
@@ -2645,6 +3576,7 @@ function openAddZfcp2PoolDialog() {
         hcps.push($.cookie('hcp'));
     }
     
+    hcpSelect.append($('<option value=""></option>'));
     for (var i in hcps) {
         hcpSelect.append($('<option value="' + hcps[i] + '">' + hcps[i] + '</option>'));
     }
@@ -2668,11 +3600,12 @@ function openAddZfcp2PoolDialog() {
                 var tgtPortName = $(this).find('input[name=zfcpPortName]').val();
                 var tgtUnitNo = $(this).find('input[name=zfcpUnitNo]').val();
                 var tgtSize = $(this).find('input[name=zfcpSize]').val();
+                var tgtRange = $(this).find('input[name=zfcpRange]').val();
                 
                 // Device owner is optional
                 var tgtOwner = "";
                 if ($(this).find('input[name=zfcpOwner]').val()) {
-                	tgtOwner = $(this).find('input[name=zfcpOwner]').val();
+                    tgtOwner = $(this).find('input[name=zfcpOwner]').val();
                 }                
                                 
                 // If inputs are not complete, show warning message
@@ -2691,7 +3624,7 @@ function openAddZfcp2PoolDialog() {
                         data : {
                             cmd : 'chvm',
                             tgt : tgtHcp,
-                            args : '--addzfcp2pool;' + tgtPool + ';' + tgtStatus + ';' + tgtPortName + ';' + tgtUnitNo + ';' + tgtSize + ';' + tgtOwner,
+                            args : '--addzfcp2pool|' + tgtPool + '|' + tgtStatus + '|"' + tgtPortName + '"|' + tgtUnitNo + '|' + tgtSize + "| " + tgtRange + '|' + tgtOwner,
                             msg : dialogId
                         },
     
@@ -2764,7 +3697,7 @@ function selectAllDisk(event, obj) {
     // Handle datatable scroll
     tableObj = obj.parents('.dataTables_scroll');
     if (tableObj.length) {
-    	tableObj.find(' :checkbox').attr('checked', status);
+        tableObj.find(' :checkbox').attr('checked', status);
     }
     
     event.stopPropagation();
@@ -2786,7 +3719,7 @@ function loadNetworkTable(data) {
     var name = args[2].replace('network=', '');
     var tmp = data.rsp[0].split(hcp + ': ');
 
-    // Resource tab ID    
+    // Resource tab ID
     var info = $('#' + panelId).find('.ui-state-highlight');
     // If there is no info bar
     if (!info.length) {
@@ -2801,13 +3734,25 @@ function loadNetworkTable(data) {
         // Create table
         var tableId = 'zNetworkDataTable';
         var table = new DataTable(tableId);
-        table.init( [ 'HCP', 'Type', 'Name', 'Details' ]);
+        table.init( [ '<input type="checkbox" onclick="selectAllDisk(event, $(this))">', 'HCP', 'Type', 'Name', 'Details' ]);
 
         // Append datatable to tab
         $('#' + panelId).append(table.object());
 
         // Turn into datatable
-        dTable = $('#' + tableId).dataTable();
+        dTable = $('#' + tableId).dataTable({
+            'iDisplayLength': 50,
+            "bScrollCollapse": true,
+            "sScrollY": "400px",
+            "sScrollX": "110%",
+            "bAutoWidth": true,
+            "oLanguage": {
+                "oPaginate": {
+                  "sNext": "",
+                  "sPrevious": ""
+                }
+            }
+        });
         setNetworkDataTable(dTable);
 
         // Set the column width
@@ -2825,7 +3770,84 @@ function loadNetworkTable(data) {
     }
     details += '</pre>';
     
-    dTable.fnAddData([ '<pre>' + hcp + '</pre>', '<pre>' + type + '</pre>', '<pre>' + name + '</pre>', details ]);
+    dTable.fnAddData([ '<input type="checkbox" name="' + hcp + ';' + type + ';' + name + '"/>', '<pre>' + hcp + '</pre>', '<pre>' + type + '</pre>', '<pre>' + name + '</pre>', details ]);
+    
+    // Create actions menu
+    if (!$('#networkResourceActions').length) {
+        // Empty filter area
+        $('#' + tableId + '_length').empty();
+        
+        // Add Vswitch/Vlan
+        var addLnk = $('<a>Add</a>');
+        addLnk.bind('click', function(event){
+            openAddVswitchVlanDialog();
+        });
+        
+        // Remove Vswitch/Vlan
+        var removeLnk = $('<a>Remove</a>');
+        removeLnk.bind('click', function(event){
+            var networkList = getNodesChecked(tableId).split(',');
+            if (networkList) {
+                openRemoveVswitchVlanDialog(networkList);
+            }
+        });
+        
+        // Refresh table
+        var refreshLnk = $('<a>Refresh</a>');
+        refreshLnk.bind('click', function(event){
+            $('#zvmNetworkResource').empty().append(createLoader(''));
+            setNetworkDataTable('');
+            
+            // Create a array for hardware control points
+            var hcps = new Array();
+            if ($.cookie('hcp').indexOf(',') > -1)
+                hcps = $.cookie('hcp').split(',');
+            else
+                hcps.push($.cookie('hcp'));
+            
+            // Query networks
+            for (var i in hcps) {
+                $.ajax( {
+                    url : 'lib/cmd.php',
+                    dataType : 'json',
+                    data : {
+                        cmd : 'lsvm',
+                        tgt : hcps[i],
+                        args : '--getnetworknames',
+                        msg : hcps[i]
+                    },
+
+                    success : getNetwork
+                });
+            }    
+        });
+        
+        // Create action bar
+        var actionBar = $('<div id="networkResourceActions" class="actionBar"></div>').css("width", "450px");
+        
+        // Create an action menu
+        var actionsMenu = createMenu([addLnk, removeLnk, refreshLnk]);
+        actionsMenu.superfish();
+        actionsMenu.css('display', 'inline-block');
+        actionBar.append(actionsMenu);
+                
+        // Set correct theme for action menu
+        actionsMenu.find('li').hover(function() {
+            setMenu2Theme($(this));
+        }, function() {
+            setMenu2Normal($(this));
+        });
+        
+        // Create a division to hold actions menu
+        var menuDiv = $('<div id="' + tableId + '_menuDiv" class="menuDiv"></div>');
+        $('#' + tableId + '_length').prepend(menuDiv);
+        $('#' + tableId + '_length').css({
+            'padding': '0px',
+            'width': '500px'
+        });
+        $('#' + tableId + '_filter').css('padding', '10px');
+        menuDiv.append(actionBar);
+    }
     
     // Resize accordion
     $('#zvmResourceAccordion').accordion('resize');
@@ -2925,7 +3947,7 @@ function createZProvisionExisting(inst) {
         
     // Create group input
     var group = $('<div></div>');
-    var groupLabel = $('<label for="provType">Group:</label>');
+    var groupLabel = $('<label>Group:</label>');
     group.append(groupLabel);
     
     // Turn on auto complete for group
@@ -2962,28 +3984,27 @@ function createZProvisionExisting(inst) {
 
     // Create node input
     var node = $('<div></div>');
-    var nodeLabel = $('<label for="nodeName">Nodes:</label>');
+    var nodeLabel = $('<label>Nodes:</label>');
     var nodeDatatable = $('<div class="indent" id="zNodesDatatableDIV' + inst + '" style="display: inline-block; max-width: 800px;"><p>Select a group to view its nodes</p></div>');
     node.append(nodeLabel);
     node.append(nodeDatatable);
     vmAttr.append(node);
-    
+        
     // Create operating system image input
     var os = $('<div></div>');
-    var osLabel = $('<label for="os">Operating system image:</label>');
-    var osInput = $('<input type="text" name="os" title="You must give the operating system to install on this node or node range, e.g. rhel5.5-s390x-install-compute"/>');
-    // Get image names on focus
-    osInput.one('focus', function(){
-        var imageNames = $.cookie('imagenames');
-        if (imageNames) {
-            // Turn on auto complete
-            $(this).autocomplete({
-                source: imageNames.split(',')
-            });
+    var osLabel = $('<label>Operating system image:</label>');
+    var osSelect = $('<select name="os"></select>');
+    osSelect.append($('<option value=""></option>'));
+    
+    var imageNames = $.cookie('imagenames').split(',');
+    if (imageNames) {
+        imageNames.sort();
+        for (var i in imageNames) {
+            osSelect.append($('<option value="' + imageNames[i] + '">' + imageNames[i] + '</option>'));
         }
-    });
+    }
     os.append(osLabel);
-    os.append(osInput);
+    os.append(osSelect);
     osAttr.append(os);
     
     // Create boot method drop down
@@ -3040,7 +4061,7 @@ function createZProvisionExisting(inst) {
         }
         
         // Check operating system image
-        var os = $('#' + thisTabId + ' input[name=os]:visible');
+        var os = $('#' + thisTabId + ' select[name=os]:visible');
         if (!os.val()) {
             errMsg += 'You need to select a operating system image.';
             os.css('border', 'solid #FF0000 1px');
@@ -3067,7 +4088,7 @@ function createZProvisionExisting(inst) {
             selects.attr('disabled', 'disabled');
                         
             // Get operating system image
-            var osImage = $('#' + thisTabId + ' input[name=os]:visible').val();
+            var osImage = $('#' + thisTabId + ' select[name=os]:visible').val();
             var tmp = osImage.split('-');
             var os = tmp[0];
             var arch = tmp[1];
@@ -3171,7 +4192,7 @@ function createZProvisionNew(inst) {
 
     // Create hardware control point input
     var hcpDiv = $('<div></div>');
-    var hcpLabel = $('<label for="hcp">Hardware control point:</label>');
+    var hcpLabel = $('<label>Hardware control point:</label>');
     var hcpInput = $('<input type="text" name="hcp" title="You must give the System z hardware control point (zHCP) responsible for managing the node(s)"/>');
     hcpInput.blur(function() {
         if ($(this).val()) {
@@ -3233,16 +4254,16 @@ function createZProvisionNew(inst) {
 
     // Create operating system image input
     var os = $('<div></div>');
-    var osLabel = $('<label for="os">Operating system image:</label>');
+    var osLabel = $('<label>Operating system image:</label>');
     var osSelect = $('<select name="os"></select>');
     osSelect.append($('<option value=""></option>'));
     
     var imageNames = $.cookie('imagenames').split(',');
     if (imageNames) {
-    	imageNames.sort();
-    	for (var i in imageNames) {
-    		osSelect.append($('<option value="' + imageNames[i] + '">' + imageNames[i] + '</option>'));
-    	}
+        imageNames.sort();
+        for (var i in imageNames) {
+            osSelect.append($('<option value="' + imageNames[i] + '">' + imageNames[i] + '</option>'));
+        }
     }
     os.append(osLabel);
     os.append(osSelect);
@@ -3392,7 +4413,7 @@ function createZProvisionNew(inst) {
         var diskPool = $('<td></td>');
         var diskPoolSelect = $('<select></select>');
         for (var i in definedPools) {
-        	diskPoolSelect.append('<option value="' + definedPools[i] + '">' + definedPools[i] + '</option>');
+            diskPoolSelect.append('<option value="' + definedPools[i] + '">' + definedPools[i] + '</option>');
         }
         diskPool.append(diskPoolSelect);
         diskRow.append(diskPool);
@@ -3482,7 +4503,7 @@ function createZProvisionNew(inst) {
         var zfcpPool = $('<td></td>');
         var zfcpPoolSelect = $('<select name="zfcpPool"></select>');
         for (var i in definedPools) {
-        	zfcpPoolSelect.append('<option value="' + definedPools[i] + '">' + definedPools[i] + '</option>');
+            zfcpPoolSelect.append('<option value="' + definedPools[i] + '">' + definedPools[i] + '</option>');
         }
         zfcpPool.append(zfcpPoolSelect);
         zfcpRow.append(zfcpPool);
@@ -3568,7 +4589,7 @@ function createZProvisionNew(inst) {
             // Do not check some inputs
             if (!inputs.eq(i).val() 
                 && inputs.eq(i).attr('type') != 'password'
-            	&& inputs.eq(i).attr('name') != 'zfcpTag'
+                && inputs.eq(i).attr('name') != 'zfcpTag'
                 && inputs.eq(i).attr('name') != 'zfcpPortName'
                 && inputs.eq(i).attr('name') != 'zfcpUnitNo') {
                 inputs.eq(i).css('border', 'solid #FF0000 1px');
@@ -3581,10 +4602,10 @@ function createZProvisionNew(inst) {
         var selects = $('#' + thisTabId + ' select:visible');
         for ( var i = 0; i < selects.length; i++) {
             if (!selects.eq(i).val() && selects.eq(i).attr('name') != 'os') {
-            	selects.eq(i).css('border', 'solid #FF0000 1px');
+                selects.eq(i).css('border', 'solid #FF0000 1px');
                 ready = false;
             } else {
-            	selects.eq(i).css('border', 'solid #BDBDBD 1px');
+                selects.eq(i).css('border', 'solid #BDBDBD 1px');
             }
         }
 
@@ -3813,21 +4834,62 @@ function createZProvisionNew(inst) {
 }
 
 /**
+ * Load WWPNs
+ */
+function loadWwpns() {
+    if (!$.cookie('zvms')) {
+        return;
+    }
+    
+    // Retrieve WWPNs found on z/VM system
+    var zvms = $.cookie('zvms').split(',');
+    for (var i in zvms) {
+        args = zvms[i].split(':');
+        zvm = args[0].toLowerCase();
+        hcp = args[1];
+        
+        if (!$.cookie(zvm + 'wwpns')) {        
+            $.ajax({
+                url : 'lib/cmd.php',
+                dataType : 'json',
+                data : {
+                    cmd : 'rinv',
+                    tgt : zvm,
+                    args : '--wwpn',
+                    msg : zvm
+                },
+    
+                success : function(data) {
+                    setWwpnCookies(data);
+                }
+            });    
+        }
+    }
+}
+
+/**
  * Load zVMs into column (service page)
  * 
  * @param col Table column where OS images will be placed
  */
 function loadzVMs(col) {
     // Get group names and description and append to group column
-    var groupNames = $.cookie('srv_zvms').split(',');
-    var radio, zvmBlock, args, zvm, hcp;
-    for (var i in groupNames) {
-        args = groupNames[i].split(':');
+    if (!$.cookie('zvms')) {
+        var infoBar = createInfoBar('No selectable z/VM available');
+        col.append(infoBar);
+        return;
+    }
+    
+    var zNames = $.cookie('zvms').split(',');
+    
+    var radio, zBlock, args, zvm, hcp;
+    for (var i in zNames) {
+        args = zNames[i].split(':');
         zvm = args[0];
         hcp = args[1];
         
         // Create block for each group
-        zvmBlock = $('<div class="ui-state-default"></div>').css({
+        zBlock = $('<div class="ui-state-default"></div>').css({
             'border': '1px solid',
             'max-width': '200px',
             'margin': '5px auto',
@@ -3842,13 +4904,13 @@ function loadzVMs(col) {
             $(this).attr('class', 'ui-state-active');
         });
         radio = $('<input type="radio" name="hcp" value="' + hcp + '"/>').css('display', 'none');
-        zvmBlock.append(radio, $('<span style="font-weight: normal;"><b>' + zvm + '</b> managed by ' + hcp + '</span>'));
-        zvmBlock.children('span').css({
+        zBlock.append(radio, $('<span style="font-weight: normal;"><b>' + zvm + '</b> managed by ' + hcp + '</span>'));
+        zBlock.children('span').css({
             'display': 'block',
             'margin': '5px',
             'text-align': 'left'
         });
-        col.append(zvmBlock);
+        col.append(zBlock);
     }
 }
 
@@ -3859,7 +4921,14 @@ function loadzVMs(col) {
  */
 function loadSrvGroups(col) {
     // Get group names and description and append to group column
+    if (!$.cookie('srv_groups')) {
+        var infoBar = createInfoBar('No selectable group available');
+        col.append(infoBar);
+        return;
+    }
+    
     var groupNames = $.cookie('srv_groups').split(',');
+        
     var groupBlock, radio, args, name, ip, hostname, desc;
     for (var i in groupNames) {
         args = groupNames[i].split(':');
@@ -3900,8 +4969,15 @@ function loadSrvGroups(col) {
  * @param col Table column where OS images will be placed
  */
 function loadOSImages(col) {
-    // Get group names and description and append to group column
+    // Get group names and description and append to group column    
+    if (!$.cookie('srv_imagenames')) {
+        var infoBar = createInfoBar('No selectable image available');
+        col.append(infoBar);
+        return;
+    }
+    
     var imgNames = $.cookie('srv_imagenames').split(',');
+    
     var imgBlock, radio, args, name, desc;
     for (var i in imgNames) {
         args = imgNames[i].split(':');
@@ -3940,16 +5016,19 @@ function loadOSImages(col) {
  * @param data Data from HTTP request
  */
 function setzVMCookies(data) {
-    if (data.rsp) {
+    if (data.rsp[0].length) {
         var zvms = new Array();
-        for ( var i = 0; i < data.rsp.length; i++) {
-            zvms.push(data.rsp[i]);
+        var hosts = data.rsp[0].split("\n");
+        for ( var i = 0; i < hosts.length; i++) {
+            if (hosts[i] != null && hosts[i] != "") {
+                zvms.push(hosts[i]);
+            }
         }
         
         // Set cookie to expire in 60 minutes
         var exDate = new Date();
         exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
-        $.cookie('srv_zvms', zvms, { expires: exDate });
+        $.cookie('zvms', zvms, { expires: exDate });
     }
 }
 
@@ -3959,7 +5038,7 @@ function setzVMCookies(data) {
  * @param data Data from HTTP request
  */
 function setDiskPoolCookies(data) {
-    if (data.rsp) {
+    if (data.rsp[0].length) {
         var node = data.msg;
         var pools = data.rsp[0].split(node + ': ');
         for (var i in pools) {
@@ -3979,7 +5058,7 @@ function setDiskPoolCookies(data) {
  * @param data Data from HTTP request
  */
 function setZfcpPoolCookies(data) {
-    if (data.rsp) {
+    if (data.rsp[0].length) {
         var node = data.msg;
         var pools = data.rsp[0].split(node + ': ');
         for (var i in pools) {
@@ -3990,6 +5069,26 @@ function setZfcpPoolCookies(data) {
         var exDate = new Date();
         exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
         $.cookie(node + 'zfcppools', pools, { expires: exDate });
+    }
+}
+
+/**
+ * Set a cookie for WWPNs of z/VM system 
+ * 
+ * @param data Data from HTTP request
+ */
+function setWwpnCookies(data) {
+    if (data.rsp[0].length) {
+        var zvm = data.msg;
+        var wwpns = data.rsp[0].split(zvm + ': ');
+        for (var i in wwpns) {
+            wwpns[i] = jQuery.trim(wwpns[i]);
+        }
+        
+        // Set cookie to expire in 60 minutes
+        var exDate = new Date();
+        exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
+        $.cookie(zvm + 'wwpns', wwpns, { expires: exDate });
     }
 }
 
@@ -4014,7 +5113,7 @@ function createzVM(tabId, group, hcp, img, owner) {
  * @param panelId Panel ID
  */
 function queryProfiles(panelId) {
-    $.ajax( {
+    $.ajax({
         url : 'lib/cmd.php',
         dataType : 'json',
         data : {
@@ -4072,12 +5171,20 @@ function configProfilePanel(panelId) {
     $('#' + tableId).dataTable({
         'iDisplayLength': 50,
         'bLengthChange': false,
-        "sScrollX": "100%",
-        "bAutoWidth": true
+        "bScrollCollapse": true,
+        "sScrollY": "400px",
+        "sScrollX": "110%",
+        "bAutoWidth": true,
+        "oLanguage": {
+            "oPaginate": {
+              "sNext": "",
+              "sPrevious": ""
+            }
+        }
     });
     
     // Create action bar
-    var actionBar = $('<div class="actionBar"></div>').css("width", "400px");
+    var actionBar = $('<div class="actionBar"></div>').css("width", "450px");
     
     // Create a profile
     var createLnk = $('<a>Create</a>');

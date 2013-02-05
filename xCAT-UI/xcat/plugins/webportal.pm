@@ -693,6 +693,7 @@ sub clonezlinux {
     println( $callback, "hosts table, DHCP, and DNS updated" );
 
     # Clone virtual machine    
+    sleep(5); # Time needed to update /etc/hosts
     $out = `mkvm $node $src_node pool=$disk_pool`;
     println( $callback, "$out" );
     if ( $out =~ m/Error/i || $out =~ m/Failed/i ) {

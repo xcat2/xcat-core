@@ -18,18 +18,6 @@ var zvmPlugin = function() {
  */
 zvmPlugin.prototype.loadConfigPage = function(tabId) {    
     var configAccordion = $('<div id="zvmConfigAccordion"></div>');
-        
-    // Create accordion panel for user
-    var userSection = $('<div id="zvmConfigUser"></div>');
-    var userLnk = $('<h3><a href="#">Users</a></h3>').click(function () {
-        // Do not load panel again if it is already loaded
-        if ($('#zvmConfigUser').find('.dataTables_wrapper').length)
-            return;
-        else
-            $('#zvmConfigUser').append(createLoader(''));
-
-        loadUserPanel('zvmConfigUser');
-    });
     
     // Create accordion panel for profiles
     var profileSection = $('<div id="zvmConfigProfile"></div>');
@@ -67,11 +55,11 @@ zvmPlugin.prototype.loadConfigPage = function(tabId) {
         queryGroups('zvmConfigGroups');
     });
         
-    configAccordion.append(userLnk, userSection, profileLnk, profileSection, imgLnk, imgSection, groupsLnk, groupsSection);
+    configAccordion.append(profileLnk, profileSection, imgLnk, imgSection, groupsLnk, groupsSection);
     $('#' + tabId).append(configAccordion);
     configAccordion.accordion();
     
-    userLnk.trigger('click');
+    profileLnk.trigger('click');
 };
 
 /**
@@ -145,14 +133,14 @@ zvmPlugin.prototype.loadServiceProvisionPage = function(tabId) {
         var img = $('#select-table tbody tr:eq(0) td:eq(2) input[name="image"]:checked').val();
         var owner = $.cookie('xcat_username');
         
-        if(!hcp || !group || !img) {
+        if (!hcp || !group || !img) {
             // Show warning message
             var warn = createWarnBar('You need to select an option for each column');
             warn.prependTo($(this).parent());
         } else {
             // Begin by creating VM
             createzVM(tabId, group, hcp, img, owner);
-        }        
+        }
     });
     provForm.append(provisionBtn);
     
@@ -161,7 +149,7 @@ zvmPlugin.prototype.loadServiceProvisionPage = function(tabId) {
     loadOSImages(imageCol);
     
     // Get zVM host names
-    if (!$.cookie('srv_zvm')){
+    if (!$.cookie('zvm')){
         $.ajax( {
             url : 'lib/srv_cmd.php',
             dataType : 'json',
@@ -208,23 +196,26 @@ zvmPlugin.prototype.loadServiceInventory = function(data) {
     // Get node inventory
     var inv = data.rsp[0].split(node + ':');
 
-    // Create array of property keys
-    var keys = new Array('userId', 'host', 'os', 'arch', 'hcp', 'priv', 'memory', 'proc', 'disk', 'zfcp', 'nic');
+    // Create array of property keys (VM)
+    var keys = new Array('userId', 'host', 'os', 'arch', 'uptime', 'cpuusedtime', 'hcp', 'priv', 'memory', 'maxmemory', 'proc', 'disk', 'zfcp', 'nic');
 
-    // Create hash table for property names
+    // Create hash table for property names (VM)
     var attrNames = new Object();
     attrNames['userId'] = 'z/VM UserID:';
     attrNames['host'] = 'z/VM Host:';
     attrNames['os'] = 'Operating System:';
     attrNames['arch'] = 'Architecture:';
+    attrNames['uptime'] = 'Uptime:';
+    attrNames['cpuusedtime'] = 'CPU Used Time:';
     attrNames['hcp'] = 'HCP:';
     attrNames['priv'] = 'Privileges:';
     attrNames['memory'] = 'Total Memory:';
+    attrNames['maxmemory'] = 'Max Memory:';
     attrNames['proc'] = 'Processors:';
     attrNames['disk'] = 'Disks:';
     attrNames['zfcp'] = 'zFCP:';
     attrNames['nic'] = 'NICs:';
-
+    
     // Create hash table for node attributes
     var attrs = getAttrs(keys, attrNames, inv);
 
@@ -308,7 +299,7 @@ zvmPlugin.prototype.loadServiceInventory = function(data) {
          */
         if (keys[k] == 'priv') {
             // Create a label - Property name
-            label = $('<label>' + attrNames[keys[k]].replace(':', '') + '</label>');
+            label = $('<label><b>' + attrNames[keys[k]].replace(':', '') + '</b></label>');
             item.append(label);
 
             // Loop through each line
@@ -339,7 +330,7 @@ zvmPlugin.prototype.loadServiceInventory = function(data) {
          */
         else if (keys[k] == 'memory') {
             // Create a label - Property name
-            label = $('<label>' + attrNames[keys[k]].replace(':', '') + '</label>');
+            label = $('<label><b>' + attrNames[keys[k]].replace(':', '') + '</b></label>');
             item.append(label);
 
             // Loop through each value line
@@ -467,7 +458,7 @@ zvmPlugin.prototype.loadServiceInventory = function(data) {
          */
         else if (keys[k] == 'zfcp') {
             // Create a label - Property name
-            label = $('<label>' + attrNames[keys[k]].replace(':', '') + '</label>');
+            label = $('<label><b>' + attrNames[keys[k]].replace(':', '') + '</b></label>');
             item.append(label);
 
             // Create a table to hold NIC data
@@ -553,6 +544,11 @@ zvmPlugin.prototype.loadServiceInventory = function(data) {
             nicTable.append(nicBody);
             item.append(nicTable);
         }
+        
+        // Ignore any fields not in key
+        else {
+            continue;
+        }
 
         oList.append(item);
     }
@@ -623,14 +619,14 @@ zvmPlugin.prototype.loadClonePage = function(node) {
         vmFS.append(vmAttr);
         
         // Create hardware fieldset
-        var hwFS = $('<fieldset></fieldset>');
-        var hwLegend = $('<legend>Hardware</legend>');
-        hwFS.append(hwLegend);
-        cloneForm.append(hwFS);
+        var storageFS = $('<fieldset></fieldset>');
+        var storageLegend = $('<legend>Storage</legend>');
+        storageFS.append(storageLegend);
+        cloneForm.append(storageFS);
         
-        var hwAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
-        hwFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/hardware.png"></img></div>'));
-        hwFS.append(hwAttr);
+        var storageAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+        storageFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/hdd.png"></img></div>'));
+        storageFS.append(storageAttr);
         
         vmAttr.append('<div><label>Target node range:</label><input type="text" id="tgtNode" name="tgtNode" title="You must give a node or a node range. A node range must be given as: node1-node9 or node[1-9]."/></div>');
         vmAttr.append('<div><label>Target user ID range:</label><input type="text" id="tgtUserId" name="tgtUserId" title="You must give a user ID or a user ID range. A user ID range must be given as: user1-user9 or user[1-9]."/></div>');
@@ -639,7 +635,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 
         // Create group input
         var group = $('<div></div>');
-        var groupLabel = $('<label for="group">Group:</label>');
+        var groupLabel = $('<label>Group:</label>');
         var groupInput = $('<input type="text" id="newGroup" name="newGroup" title="You must give the group where the new node(s) will be placed under."/>');
         groupInput.one('focus', function(){
             var groupNames = $.cookie('groups');
@@ -684,9 +680,9 @@ zvmPlugin.prototype.loadClonePage = function(node) {
         });
         poolDiv.append(poolLabel);
         poolDiv.append(poolInput);
-        hwAttr.append(poolDiv);
+        storageAttr.append(poolDiv);
 
-        hwAttr.append('<div><label>Disk password:</label><input type="password" id="diskPw" name="diskPw" title="The password that will be used for accessing the disk. This input is optional."/></div>');
+        storageAttr.append('<div><label>Disk password:</label><input type="password" id="diskPw" name="diskPw" title="The password that will be used for accessing the disk. This input is optional."/></div>');
 
         // Generate tooltips
         cloneForm.find('div input[title]').tooltip({
@@ -708,8 +704,8 @@ zvmPlugin.prototype.loadClonePage = function(node) {
          */
         var cloneBtn = createButton('Clone');
         cloneBtn.bind('click', function(event) {
-            // Remove any warning messages
-            $(this).parent().parent().find('.ui-state-error').remove();
+        	// Remove any warning messages
+        	$(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
             
             var ready = true;
             var errMsg = '';
@@ -952,7 +948,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
  */
 zvmPlugin.prototype.loadInventory = function(data) {
     var args = data.msg.split(',');
-
+    
     // Get tab ID
     var tabId = args[0].replace('out=', '');
     // Get node
@@ -963,16 +959,19 @@ zvmPlugin.prototype.loadInventory = function(data) {
     
     // Check for error
     var error = false;
-    if (data.rsp[0].indexOf('Error') > -1) {
+    if (data.rsp.length && data.rsp[0].indexOf('Error') > -1) {
         error = true;
         
         var warn = createWarnBar(data.rsp[0]);
         $('#' + tabId).append(warn);        
     }
     
-    // Get node inventory
-    var inv = data.rsp[0].split(node + ':');  
-
+    // Determine the node type
+    if (data.rsp.length && data.rsp[0].indexOf('Hypervisor OS:') > -1) {
+        loadHypervisorInventory(data);
+        return;
+    }
+    
     // Create status bar
     var statBarId = node + 'StatusBar';
     var statBar = createStatusBar(statBarId);
@@ -981,31 +980,8 @@ zvmPlugin.prototype.loadInventory = function(data) {
     var loader = createLoader(node + 'StatusBarLoader').hide();
     statBar.find('div').append(loader);
     statBar.hide();
-
-    // Create array of property keys
-    var keys = new Array('userId', 'host', 'os', 'arch', 'hcp', 'priv', 'memory', 'proc', 'disk', 'zfcp', 'nic');
-
-    // Create hash table for property names
-    var attrNames = new Object();
-    attrNames['userId'] = 'z/VM UserID:';
-    attrNames['host'] = 'z/VM Host:';
-    attrNames['os'] = 'Operating System:';
-    attrNames['arch'] = 'Architecture:';
-    attrNames['hcp'] = 'HCP:';
-    attrNames['priv'] = 'Privileges:';
-    attrNames['memory'] = 'Total Memory:';
-    attrNames['proc'] = 'Processors:';
-    attrNames['disk'] = 'Disks:';
-    attrNames['zfcp'] = 'zFCP:';
-    attrNames['nic'] = 'NICs:';
-
-    // Create hash table for node attributes
-    var attrs;
-    if (!error) {
-        attrs = getAttrs(keys, attrNames, inv);
-    }
     
-    // Create division to hold user entry
+	// Create division to hold user entry
     var ueDivId = node + 'UserEntry';
     var ueDiv = $('<div class="userEntry" id="' + ueDivId + '"></div>');
 
@@ -1060,6 +1036,40 @@ zvmPlugin.prototype.loadInventory = function(data) {
     $('#' + tabId).append(toggleLnkDiv);
     $('#' + tabId).append(ueDiv);
     $('#' + tabId).append(invDiv);
+    
+    // Do not load inventory if no inventory is returned
+    if (data.rsp.length && data.rsp[0].indexOf('z/VM UserID:') > -1) {
+        // Do nothing
+    } else {
+        return;
+    }
+
+    // Create array of property keys (VM)
+    var keys = new Array('userId', 'host', 'os', 'arch', 'uptime', 'cpuusedtime', 'hcp', 'priv', 'memory', 'maxmemory', 'proc', 'disk', 'zfcp', 'nic');
+
+    // Create hash table for property names (VM)
+    var attrNames = new Object();
+    attrNames['userId'] = 'z/VM UserID:';
+    attrNames['host'] = 'z/VM Host:';
+    attrNames['os'] = 'Operating System:';
+    attrNames['arch'] = 'Architecture:';
+    attrNames['uptime'] = 'Uptime:';
+    attrNames['cpuusedtime'] = 'CPU Used Time:';
+    attrNames['hcp'] = 'HCP:';
+    attrNames['priv'] = 'Privileges:';
+    attrNames['memory'] = 'Total Memory:';
+    attrNames['maxmemory'] = 'Max Memory:';
+    attrNames['proc'] = 'Processors:';
+    attrNames['disk'] = 'Disks:';
+    attrNames['zfcp'] = 'zFCP:';
+    attrNames['nic'] = 'NICs:';
+    
+    // Create hash table for node attributes
+    var inv = data.rsp[0].split(node + ':');  
+    var attrs;
+    if (!error) {
+        attrs = getAttrs(keys, attrNames, inv);
+    }
 
     // Do not continue if error
     if (error) {
@@ -1076,7 +1086,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
     var item, label, args;
 
     // Loop through each property
-    for (var k = 0; k < 5; k++) {
+    for (var k = 0; k < 6; k++) {
         // Create a list item for each property
         item = $('<li></li>');
         
@@ -1107,7 +1117,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 
     // Loop through each property
     var label;
-    for (k = 5; k < keys.length; k++) {
+    for (k = 6; k < keys.length; k++) {
         // Create a list item
         item = $('<li></li>');
 
@@ -1120,7 +1130,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
          */
         if (keys[k] == 'priv') {
             // Create a label - Property name
-            label = $('<label>' + attrNames[keys[k]].replace(':', '') + '</label>');
+            label = $('<label><b>' + attrNames[keys[k]].replace(':', '') + '</b></label>');
             item.append(label);
             
             // Loop through each line
@@ -1151,7 +1161,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
          */
         else if (keys[k] == 'memory') {
             // Create a label - Property name
-            label = $('<label>' + attrNames[keys[k]].replace(':', '') + '</label>');
+            label = $('<label><b>' + attrNames[keys[k]].replace(':', '') + '</b></label>');
             item.append(label);
 
             // Loop through each value line
@@ -1170,7 +1180,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
          */
         else if (keys[k] == 'proc') {
             // Create a label - Property name
-            label = $('<label>' + attrNames[keys[k]].replace(':', '') + '</label>');
+            label = $('<label><b>' + attrNames[keys[k]].replace(':', '') + '</b></label>');
             item.append(label);
 
             // Create a table to hold processor data
@@ -1267,7 +1277,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
             /**
              * Add processor
              */
-            var addProcLink = $('<a>Add temporary processor</a>');
+            var addProcLink = $('<a>+ Add temporary processor</a>');
             addProcLink.bind('click', function(event) {
                 openAddProcDialog(node);
             });
@@ -1282,7 +1292,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
          */
         else if (keys[k] == 'disk') {
             // Create a label - Property name
-            label = $('<label>' + attrNames[keys[k]].replace(':', '') + '</label>');
+            label = $('<label><b>' + attrNames[keys[k]].replace(':', '') + '</b></label>');
             item.append(label);
 
             // Create a table to hold disk (DASD) data
@@ -1357,7 +1367,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
             /**
              * Add disk
              */
-            var addDasdLink = $('<a>Add disk</a>');
+            var addDasdLink = $('<a>+ Add disk</a>');
             addDasdLink.bind('click', function(event) {
                 var hcp = attrs['hcp'][0].split('.');
                 openAddDiskDialog(node, hcp[0]);
@@ -1373,7 +1383,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
          */
         else if (keys[k] == 'zfcp') {
             // Create a label - Property name
-            label = $('<label>' + attrNames[keys[k]].replace(':', '') + '</label>');
+            label = $('<label><b>' + attrNames[keys[k]].replace(':', '') + '</b></label>');
             item.append(label);
 
             // Create a table to hold NIC data
@@ -1449,14 +1459,25 @@ zvmPlugin.prototype.loadInventory = function(data) {
             zfcpTable.append(zfcpBody);
 
             /**
+             * Add dedicated device
+             */
+            var dedicateDeviceLink = $('<a>+ Add dedicated device</a>').css('display', 'block');
+            dedicateDeviceLink.bind('click', function(event) {
+                var hcp = attrs['hcp'][0].split('.');
+                openDedicateDeviceDialog(node, hcp[0]);
+            });
+            
+            /**
              * Add zFCP device
              */
-            var addZfcpLink = $('<a>Add zFCP</a>');
+            var addZfcpLink = $('<a>+ Add zFCP</a>').css('display', 'block');
             addZfcpLink.bind('click', function(event) {
                 var hcp = attrs['hcp'][0].split('.');
-                openAddZfcpDialog(node, hcp[0]);
+                var zvm = attrs['host'][0].toLowerCase();
+                openAddZfcpDialog(node, hcp[0], zvm);
             });
-            zfcpFooter.append(addZfcpLink);
+            
+            zfcpFooter.append(dedicateDeviceLink, addZfcpLink);
             zfcpTable.append(zfcpFooter);
 
             item.append(zfcpTable);
@@ -1467,7 +1488,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
          */
         else if (keys[k] == 'nic') {
             // Create a label - Property name
-            label = $('<label>' + attrNames[keys[k]].replace(':', '') + '</label>');
+            label = $('<label><b>' + attrNames[keys[k]].replace(':', '') + '</b></label>');
             item.append(label);
 
             // Create a table to hold NIC data
@@ -1545,7 +1566,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
             /**
              * Add NIC
              */
-            var addNicLink = $('<a>Add NIC</a>');
+            var addNicLink = $('<a>+ Add NIC</a>');
             addNicLink.bind('click', function(event) {
                 var hcp = attrs['hcp'][0].split('.');
                 openAddNicDialog(node, hcp[0]);
@@ -1554,6 +1575,11 @@ zvmPlugin.prototype.loadInventory = function(data) {
             nicTable.append(nicFooter);
 
             item.append(nicTable);
+        } 
+        
+        // Ignore any fields not in key
+        else {
+            continue;
         }
 
         oList.append(item);
@@ -1562,6 +1588,148 @@ zvmPlugin.prototype.loadInventory = function(data) {
     // Append inventory to division
     fieldSet.append(oList);
     invDiv.append(fieldSet);
+};
+
+/**
+ * Load hypervisor inventory
+ * 
+ * @param data Data from HTTP request
+ */
+function loadHypervisorInventory(data) {
+    var args = data.msg.split(',');
+    
+    // Get tab ID
+    var tabId = args[0].replace('out=', '');
+    // Get node
+    var node = args[1].replace('node=', '');
+    
+    // Remove loader
+    $('#' + tabId).find('img').remove();
+    
+    // Check for error
+    var error = false;
+    if (data.rsp.length && data.rsp[0].indexOf('Error') > -1) {
+        error = true;
+        
+        var warn = createWarnBar(data.rsp[0]);
+        $('#' + tabId).append(warn);        
+    }
+    
+    // Get node inventory
+    var inv = data.rsp[0].split(node + ':');  
+
+    // Create status bar
+    var statBarId = node + 'StatusBar';
+    var statBar = createStatusBar(statBarId);
+
+    // Add loader to status bar and hide it
+    var loader = createLoader(node + 'StatusBarLoader').hide();
+    statBar.find('div').append(loader);
+    statBar.hide();
+        
+    // Create array of property keys (z/VM hypervisor)
+    var keys = new Array('host', 'hcp', 'arch', 'cecvendor', 'cecmodel', 'hypos', 'hypname', 'lparcputotal', 'lparcpuused', 'lparmemorytotal', 'lparmemoryused', 'lparmemoryoffline');
+
+    // Create hash table for property names (z/VM hypervisor)
+    var attrNames = new Object();
+    attrNames['host'] = 'z/VM Host:';
+    attrNames['hcp'] = 'zHCP:';
+    attrNames['arch'] = 'Architecture:';
+    attrNames['cecvendor'] = 'CEC Vendor:';
+    attrNames['cecmodel'] = 'CEC Model:';
+    attrNames['hypos'] = 'Hypervisor OS:';
+    attrNames['hypname'] = 'Hypervisor Name:';    
+    attrNames['lparcputotal'] = 'LPAR CPU Total:';
+    attrNames['lparcpuused'] = 'LPAR CPU Used:';
+    attrNames['lparmemorytotal'] = 'LPAR Memory Total:';
+    attrNames['lparmemoryused'] = 'LPAR Memory Used:';
+    attrNames['lparmemoryoffline'] = 'LPAR Memory Offline:';
+
+    // Remove loader
+    $('#' + tabId).find('img').remove();
+
+    // Create hash table for node attributes
+    var attrs;
+    if (!error) {
+        attrs = getAttrs(keys, attrNames, inv);
+    }
+    
+    // Create division to hold inventory
+    var invDivId = node + 'Inventory';
+    var invDiv = $('<div class="inventory" id="' + invDivId + '"></div>');
+
+    // Append to tab
+    $('#' + tabId).append(statBar);
+    $('#' + tabId).append(invDiv);
+
+    // Do not continue if error
+    if (error) {
+        return;
+    }
+        
+    /**
+     * General info section
+     */
+    var fieldSet = $('<fieldset></fieldset>');
+    var legend = $('<legend>General</legend>');
+    fieldSet.append(legend);
+    var oList = $('<ol></ol>');
+    var item, label, args;
+
+    // Loop through each property
+    for (var k = 0; k < 7; k++) {
+        // Create a list item for each property
+        item = $('<li></li>');
+        
+        // Create a label - Property name
+        label = $('<label>' + attrNames[keys[k]] + '</label>');
+        item.append(label);
+        
+        for (var l = 0; l < attrs[keys[k]].length; l++) {
+            // Create a input - Property value(s)
+            // Handle each property uniquely
+            item.append(attrs[keys[k]][l]);
+        }
+
+        oList.append(item);
+    }
+    // Append to inventory form
+    fieldSet.append(oList);
+    invDiv.append(fieldSet);
+    
+    /**
+     * Hardware info section
+     */
+    var hwList, hwItem;
+    fieldSet = $('<fieldset></fieldset>');
+    legend = $('<legend>Hardware</legent>');
+    fieldSet.append(legend);
+    oList = $('<ol></ol>');
+
+    // Loop through each property
+    var label;
+    for (k = 7; k < keys.length; k++) {
+        // Create a list item for each property
+        item = $('<li></li>');
+        
+        // Create a label - Property name
+        label = $('<label>' + attrNames[keys[k]] + '</label>');
+        item.append(label);
+        
+        for (var l = 0; l < attrs[keys[k]].length; l++) {
+            // Create a input - Property value(s)
+            // Handle each property uniquely
+            item.append(attrs[keys[k]][l]);
+        }
+
+        oList.append(item);
+    }
+    // Append to inventory form
+    fieldSet.append(oList);
+    invDiv.append(fieldSet);
+    
+    // Append to inventory form
+    $('#' + tabId).append(invDiv);
 };
 
 /**
@@ -1702,10 +1870,10 @@ zvmPlugin.prototype.addNode = function() {
     type.append(typeLabel);
     type.append(typeSelect);
     addNodeForm.append(type);
-        
+    
     addNodeForm.append('<div><label>Node range *:</label><input type="text" name="node"/></div>');
     addNodeForm.append('<div><label>User ID range *:</label><input type="text" name="userId"/></div>');
-    addNodeForm.append('<div><label>Hardware control point *:</label><input type="text" name="hcp"/></div>');
+    addNodeForm.append('<div><label>zHCP *:</label><input type="text" name="hcp"/></div>');
     addNodeForm.append('<div><label>Groups *:</label><input type="text" name="groups"/></div>');
     addNodeForm.append('<div><label>Operating system *:</label><input type="text" name="os"/></div>');
     addNodeForm.append('<div><label>IP address range:</label><input name="ip" type="text"></div>');
@@ -1719,11 +1887,11 @@ zvmPlugin.prototype.addNode = function() {
     typeSelect.change(function(){
         var selected = $(this).val();
         if (selected == 'host') {
-        	addNodeForm.find('input[name=userId]').parent().toggle();
-        	addNodeForm.find('input[name=os]').parent().toggle();
+            addNodeForm.find('input[name=userId]').parent().toggle();
+            addNodeForm.find('input[name=os]').parent().toggle();
         } else {
-        	addNodeForm.find('input[name=userId]').parent().toggle();
-        	addNodeForm.find('input[name=os]').parent().toggle();
+            addNodeForm.find('input[name=userId]').parent().toggle();
+            addNodeForm.find('input[name=os]').parent().toggle();
         }
     });
     
@@ -1749,17 +1917,17 @@ zvmPlugin.prototype.addNode = function() {
                 
                 // Check required fields
                 if (type == 'host') {
-                	if (!nodeRange || !os || !group || !hcp) {
+                    if (!nodeRange || !os || !group || !hcp) {
                         var warn = createWarnBar('Please provide a value for each missing field!');
                         warn.prependTo($(this));
                         return;
-                	}
+                    }
                 } else {
-                	if (!nodeRange || !userIdRange || !group || !hcp) {
+                    if (!nodeRange || !userIdRange || !group || !hcp) {
                         var warn = createWarnBar('Please provide a value for each missing field!');
                         warn.prependTo($(this));
                         return;
-                	}
+                    }
                 }
                 
                 // Check node range and user ID range
@@ -1876,13 +2044,13 @@ zvmPlugin.prototype.addNode = function() {
                 
                             var args = "";
                             if (type == 'host') {
-                            	args = node + ';zvm.hcp=' + hcp
-	                                + ';nodehm.mgt=zvm;hypervisor.type=zvm;groups=' + group
-	                                + ';nodetype.os=' + os;
+                                args = node + ';zvm.hcp=' + hcp
+                                    + ';nodehm.mgt=zvm;hypervisor.type=zvm;groups=' + group
+                                    + ';nodetype.os=' + os;
                             } else {
-                            	args = node + ';zvm.hcp=' + hcp
-	                                + ';zvm.userid=' + userId
-	                                + ';nodehm.mgt=zvm' + ';groups=' + group;
+                                args = node + ';zvm.hcp=' + hcp
+                                    + ';zvm.userid=' + userId
+                                    + ';nodehm.mgt=zvm' + ';groups=' + group;
                             }                            
                             
                             if (ipRange != "" && ipRange != null) {
@@ -1952,16 +2120,16 @@ zvmPlugin.prototype.addNode = function() {
                                 }
                             });
                         }
-                    } else {                        
+                    } else {
                         var args = "";
                         if (type == 'host') {
-                        	args = nodeRange + ';zvm.hcp=' + hcp
+                            args = nodeRange + ';zvm.hcp=' + hcp
                                 + ';nodehm.mgt=zvm;hypervisor.type=zvm;groups=' + group
                                 + ';nodetype.os=' + os;
                         } else {
-                        	args = nodeRange + ';zvm.hcp=' + hcp
-	                            + ';zvm.userid=' + userIdRange
-	                            + ';nodehm.mgt=zvm' + ';groups=' + group;
+                            args = nodeRange + ';zvm.hcp=' + hcp
+                                + ';zvm.userid=' + userIdRange
+                                + ';nodehm.mgt=zvm' + ';groups=' + group;
                         } 
                         
                         if (ipRange)
@@ -2029,4 +2197,465 @@ zvmPlugin.prototype.addNode = function() {
             }
         }
     });
+};
+
+/**
+ * Migrate page
+ * 
+ * @param tgtNode  Targets to migrate
+ */
+zvmPlugin.prototype.loadMigratePage = function(tgtNode) {
+    var hosts = $.cookie('zvms').split(',');
+    var radio, zvmBlock, args;
+    var zvms = new Array();
+    var hcp = new Object();
+    
+    // Create a drop-down for z/VM destinations 
+    var destSelect = $('<select name="dest"></select>')
+    destSelect.append($('<option></option>'));
+    for (var i in hosts) {
+        args = hosts[i].split(':');
+        hcp[args[0]] = args[1];
+        zvms.push(args[0]);
+        
+        destSelect.append($('<option>' + args[0] + '</option>'));
+    }
+        
+    // Get nodes tab
+    var tab = getNodesTab();
+
+    // Generate new tab ID
+    var inst = 0;
+    var newTabId = 'migrateTab' + inst;
+    while ($('#' + newTabId).length) {
+        // If one already exists, generate another one
+        inst = inst + 1;
+        newTabId = 'migrateTab' + inst;
+    }
+
+    // Open new tab
+    // Create remote script form
+    var migrateForm = $('<div class="form"></div>');
+
+    // Create status bar
+    var barId = 'migrateStatusBar' + inst;
+    var statBar = createStatusBar(barId);
+    statBar.hide();
+    migrateForm.append(statBar);
+
+    // Create loader
+    var loader = createLoader('migrateLoader' + inst);
+    statBar.find('div').append(loader);
+
+    // Create info bar
+    var infoBar = createInfoBar('Migrate, test relocation eligibility, or cancel the relocation of the specified virtual machine, while it continues to run, to the specified system within the z/VM SSI cluster.');
+    migrateForm.append(infoBar);
+
+    // Virtual machine label
+    var vmFS = $('<fieldset><legend>Virtual Machine</legend></fieldset>');
+    migrateForm.append(vmFS);
+    
+    var vmAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+    vmFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
+    vmFS.append(vmAttr);
+    
+    // Target node or group
+    var tgt = $('<div><label>Target node range:</label><input type="text" name="target" value="' + tgtNode + '" title="The node or node range to migrate, test, or cancel relocation"/></div>');
+    vmAttr.append(tgt);
+    
+    // Destination
+    var dest = $('<div><label>Destination:</label></div>');
+    var destInput = $('<input type="text" name="dest" title="The z/VM SSI cluster name of the destination system to which the specified virtual machine will be relocated"/>');
+    destInput.autocomplete({
+        source: zvms
+    });
+    
+    // Create a drop-down if there are known z/VMs
+    if (zvms.length) {
+    	dest.append(destSelect);
+    } else {
+    	dest.append(destInput);
+    }
+    vmAttr.append(dest);
+    
+    // Action Parameter
+    var actionparam = $('<div><label>Action:</label><select name="action"><option value=""></option><option value="MOVE">Move</option><option value="TEST">Test</option><option value="CANCEL">Cancel</option></select></div>');
+    vmAttr.append(actionparam);
+    
+    // Parameters label
+    var optionalFS = $('<fieldset><legend>Optional</legend></fieldset>').css('margin-top', '20px');
+    migrateForm.append(optionalFS);
+    
+    var optAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+    optionalFS.append($('<div style="display: inline-table; vertical-align: middle; width: 70px;"><img src="images/provision/setting.png" style="width: 90%;"></img></div>'));
+    optionalFS.append(optAttr);
+    
+    // Immediate Parameter
+    var immediateparam = $('<div><label>Immediate:</label><select name="immediate"><option value="NO">No (default)</option><option value="YES">Yes</option></select></div>');
+    optAttr.append(immediateparam);
+    immediateparam.change(function() {
+        if ($('#' + newTabId + ' select[name=immediate]').val() == 'yes') {
+            $('#' + newTabId + ' input[name=maxQuiesce]').val('0'); 
+        } else { 
+            $('#' + newTabId + ' input[name=maxQuiesce]').val('10'); 
+        }
+    });
+    
+    // Max total
+    var maxTotalParam = $('<div><label>Max total time:</label><input type="text" name="maxTotal" value="0" title="The maximum total time in seconds that the command issuer is willing to wait for the entire relocation (0 indicates no limit)"/></div>');
+    optAttr.append(maxTotalParam);
+    
+    // Max quiesce
+    var maxQuiesceParam = $('<div><label>Max quiesce time:</label><input type="text" name="maxQuiesce" value="10" title="The maximum quiesce time (in seconds) a virtual machine may be stopped during a relocation attempt (0 indicates no limit)"/></div>');
+    optAttr.append(maxQuiesceParam);
+    
+    // Force parameter
+    var forceParam = $('<div style="width: 500px;"><label>Force:</label><input type="checkbox" name="force" value="ARCHITECTURE" style="margin-left:10px">Architecture</input><input type="checkbox" name="force" value="DOMAIN" style="margin-left:10px">Domain</input><input type="checkbox" name="force" value="STORAGE" style="margin-left:10px">Storage</input></div>');
+    optAttr.append(forceParam);
+    
+    // Generate tooltips
+    migrateForm.find('div input[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.7,
+        predelay: 800,
+        events : {
+            def : "mouseover,mouseout",
+            input : "mouseover,mouseout",
+            widget : "focus mouseover,blur mouseout",
+            tooltip : "mouseover,mouseout"
+        }
+    });
+
+    /**
+     * Run
+     */
+    var runBtn = createButton('Run');
+    runBtn.click(function() {
+        // Remove any warning messages
+        $(this).parent().parent().find('.ui-state-error').remove();
+        
+        var tgt = $('#' + newTabId + ' input[name=target]');
+        
+        // Drop-down box exists if z/VM systems are known
+        // Otherwise, only input box exists
+        var dest = $('#' + newTabId + ' select[name=dest]');
+        if (!dest.length) {
+        	dest = $('#' + newTabId + ' input[name=dest]');
+        }
+        
+        var action = $('#' + newTabId + ' select[name=action]');
+        var immediate = $('#' + newTabId + ' select[name=immediate]');
+        var maxTotal = $('#' + newTabId + ' input[name=maxTotal]');
+        var maxQuiesce = $('#' + newTabId + ' input[name=maxQuiesce]');
+        var tgts = $('#' + newTabId + ' input[name=target]');
+        
+        // Change borders color back to normal
+        var inputs = $('#' + newTabId + ' input').css('border', 'solid #BDBDBD 1px');
+        var inputs = $('#' + newTabId + ' select').css('border', 'solid #BDBDBD 1px');
+                
+        // Check if required arguments are given
+        var message = "";
+        if (!isInteger(maxTotal.val())) {
+            message += "Max total time must be an integer. ";
+            maxTotal.css('border', 'solid #FF0000 1px');
+        } if (!isInteger(maxQuiesce.val())) {
+            message += "Max quiesce time must be an integer. ";
+            maxQuiesce.css('border', 'solid #FF0000 1px');
+        } if (!tgt.val()) {
+            message += "Target must be specified. ";
+            tgt.css('border', 'solid #FF0000 1px');
+        } if (!dest.val()) {
+            message += "Destination must be specified. ";
+            dest.css('border', 'solid #FF0000 1px');
+        } if (!action.val()) {
+            message += "Action must be specified. ";
+            action.css('border', 'solid #FF0000 1px');
+        }
+        
+        // Show warning message
+        if (message) {
+            var warn = createWarnBar(message);
+            warn.prependTo($(this).parent().parent());
+            return;
+        }
+        
+        var args = "destination=" + dest.val() + ";action=" + action.val() + ";immediate=" + immediate.val() + ";";
+        
+        // Append max total argument. Specified <= 0 to accomodate negative values.
+        if (maxTotal.val() <= 0) { 
+            args = args + "max_total=NOLIMIT;"; 
+        } else { 
+            args = args + "max_total=" + maxTotal.val() + ";";
+        }
+        
+        // Append max quiesce argument. Specified <= 0 to accomodate negative values.
+        if (maxQuiesce.val() <= 0) { 
+            args = args + "max_quiesce=NOLIMIT;"; 
+        } else { 
+            args = args + "'max_quiesce=" + maxQuiesce.val() + "';"; 
+        }
+        
+        // Append force argument
+        if ($("input[name=force]:checked").length > 0) {
+            args = args + "'force="
+            $("input[name=force]:checked").each(function() {
+                args = args + $(this).val() + ' ';
+            });
+            args = args + "';";
+        } else {
+            args = args + ";";
+        }
+        
+        var statBarId = 'migrateStatusBar' + inst;
+        $('#' + statBarId).show();
+
+        // Disable all fields
+        $('#' + newTabId + ' input').attr('disabled', 'true');
+        $('#' + newTabId + ' select').attr('disabled', 'true');
+        
+        // Disable buttons
+        $('#' + newTabId + ' button').attr('disabled', 'true');
+        
+        // Run migrate
+        $.ajax( {
+            url : 'lib/cmd.php',
+            dataType : 'json',
+            data : {
+                cmd : 'rmigrate',
+                tgt : tgts.val(),
+                args : args,
+                msg : 'out=migrateStatusBar' + inst + ';cmd=rmigrate;tgt=' + tgts.val()
+            },
+
+            success : updateStatusBar
+        });
+    });
+    migrateForm.append(runBtn);
+
+    // Append to discover tab
+    tab.add(newTabId, 'Migrate', migrateForm, true);
+
+    // Select new tab
+    tab.select(newTabId);
+};
+
+/**
+ * Load event log configuration page
+ * 
+ * @param node Source node to clone
+ */
+zvmPlugin.prototype.loadLogPage = function(node) {
+    // Get nodes tab
+    var tab = getNodesTab();
+    var newTabId = node + 'LogsTab';
+
+    // If there is no existing clone tab
+    if (!$('#' + newTabId).length) {
+        // Get table headers
+        var tableId = $('#' + node).parents('table').attr('id');
+        var headers = $('#' + tableId).parents('.dataTables_scroll').find('.dataTables_scrollHead thead tr:eq(0) th');
+        var cols = new Array();
+        for ( var i = 0; i < headers.length; i++) {
+            var col = headers.eq(i).text();
+            cols.push(col);
+        }
+
+        // Get hardware control point column
+        var hcpCol = $.inArray('hcp', cols);
+
+        // Get hardware control point
+        var nodeRow = $('#' + node).parent().parent();
+        var datatable = $('#' + getNodesTableId()).dataTable();
+        var rowPos = datatable.fnGetPosition(nodeRow.get(0));
+        var aData = datatable.fnGetData(rowPos);
+        var hcp = aData[hcpCol];
+
+        // Create status bar and hide it
+        var statBarId = node + 'CloneStatusBar';
+        var statBar = createStatusBar(statBarId).hide();
+
+        // Create info bar
+        var infoBar = createInfoBar('Retrieve, clear, or set options for event logs.');
+
+        // Create clone form
+        var logForm = $('<div class="form"></div>');
+        logForm.append(statBar);
+        logForm.append(infoBar);
+        
+        // Create VM fieldset
+        var vmFS = $('<fieldset></fieldset>');
+        var vmLegend = $('<legend>Virtual Machine</legend>');
+        vmFS.append(vmLegend);
+        logForm.append(vmFS);
+        
+        var vmAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+        vmFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
+        vmFS.append(vmAttr);
+        
+        // Create logs fieldset
+        var logFS = $('<fieldset></fieldset>');
+        var logLegend = $('<legend>Logs</legend>');
+        logFS.append(logLegend);
+        logForm.append(logFS);
+        
+        var logAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+        logFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/nodes/log.png"></img></div>'));
+        logFS.append(logAttr);
+        
+        vmAttr.append('<div><label>Target node range:</label><input type="text" id="tgtNode" name="tgtNode" value="' + node + '" title="You must give a node or a node range. A node range must be given as: node1-node9 or node[1-9]."/></div>');
+        logAttr.append('<div><label>Source log:</label><input type="text" name="srcLog" title="The log file to retrieve, clear, or set."/></div>');
+        
+        var optsLabel = $('<label>Options:</label>');    
+        var optsList = $('<ul></ul>');
+        logAttr.append(optsLabel);
+        logAttr.append(optsList);
+        
+        // Create retrieve log checkbox
+        var retrieveChkBox = $('<li><input type="checkbox" name="s"/></li>');
+        optsList.append(retrieveChkBox);
+        retrieveChkBox.append('Retrieve log');
+        
+        // Create log destination input
+        var tgtLog = $('<li><label>Log destination:</label><input type="text" name="tgtLog"/></li>');
+        tgtLog.hide();
+        optsList.append(tgtLog);
+        
+        // Create set log checkbox
+        var setChkBox = $('<li><input type="checkbox" name="o"/></li>');
+        optsList.append(setChkBox);
+        setChkBox.append('Set options');
+        
+        // Create log options input
+        var logOpt = $('<li><label>Log options:</label><input type="text" name="logOpt"/></li>');
+        logOpt.hide();
+        optsList.append(logOpt);
+        
+        // Create clear log checkbox
+        var clearChkBox = $('<li><input type="checkbox" name="c"/></li>');
+        optsList.append(clearChkBox);
+        clearChkBox.append('Clear log');
+        
+        retrieveChkBox.bind('click', function(event) {
+        	tgtLog.toggle();
+        });
+        
+        setChkBox.bind('click', function(event) {
+        	logOpt.toggle();
+        });
+
+        // Generate tooltips
+        logForm.find('div input[title]').tooltip({
+            position : "center right",
+            offset : [ -2, 10 ],
+            effect : "fade",
+            opacity : 0.7,
+            predelay: 800,
+            events : {
+                def : "mouseover,mouseout",
+                input : "mouseover,mouseout",
+                widget : "focus mouseover,blur mouseout",
+                tooltip : "mouseover,mouseout"
+            }
+        });
+        
+        /**
+         * Run node
+         */
+        var runBtn = createButton('Run');
+        runBtn.bind('click', function(event) {
+            // Remove any warning messages
+            $(this).parent().parent().find('.ui-state-error').remove();
+            
+            var ready = true;
+            var errMsg = '';
+
+            // Verify required inputs are provided
+            var inputs = $('#' + newTabId + ' input');
+            for ( var i = 0; i < inputs.length; i++) {
+                if (!inputs.eq(i).val()
+                    && inputs.eq(i).attr('name') != 'tgtLog'
+                    && inputs.eq(i).attr('name') != 'logOpt') {
+                    inputs.eq(i).css('border', 'solid #FF0000 1px');
+                    ready = false;
+                } else {
+                    inputs.eq(i).css('border', 'solid #BDBDBD 1px');
+                }
+            }
+
+            // Write error message
+            if (!ready) {
+                errMsg = errMsg + 'Please provide a value for each missing field.<br>';
+            }
+
+            var tgts = $('#' + newTabId + ' input[name=tgtNode]').val();
+            var srcLog = $('#' + newTabId + ' input[name=srcLog]').val();
+            
+            var chkBoxes = $("#" + newTabId + " input[type='checkbox']:checked");
+            var optStr = '-s;' + srcLog + ';';
+            var opt;
+            for ( var i = 0; i < chkBoxes.length; i++) {
+                opt = chkBoxes.eq(i).attr('name');
+                optStr += '-' + opt;
+                
+                // If it is the retrieve log
+                if (opt == 's') {
+                    // Append log destination
+                    optStr += ';' + $('#' + newTabId + ' input[name=tgtLog]').val();
+                }
+                
+                // If it is set options
+                if (opt == 'o') {
+                    // Append options
+                    optStr += ';' + $('#' + newTabId + ' input[name=logOpt]').val();
+                }
+                
+                // Append ; to end of string
+                if (i < (chkBoxes.length - 1)) {
+                    optStr += ';';
+                }
+            }
+
+            // If a value is given for every input
+            if (ready) {
+                // Disable all inputs
+                var inputs = $('#' + newTabId + ' input');
+                inputs.attr('disabled', 'disabled');
+                
+                /**
+                 * (1) Retrieve, clear, or set options for event logs
+                 */
+                $.ajax( {
+                    url : 'lib/cmd.php',
+                    dataType : 'json',
+                    data : {
+                        cmd : 'reventlog',
+                        tgt : tgts,
+                        args : optStr,
+                        msg : 'out=' + statBarId + ';cmd=reventlog;tgt=' + tgts
+                    },
+
+                    success : updateStatusBar
+                });
+
+                // Create loader
+                $('#' + statBarId).find('div').append(createLoader());
+                $('#' + statBarId).show();
+
+                // Disable run button
+                $(this).attr('disabled', 'true');
+            } else {
+                // Show warning message
+                var warn = createWarnBar(errMsg);
+                warn.prependTo($(this).parent().parent());
+            }
+        });
+        logForm.append(runBtn);
+
+        // Add clone tab
+        tab.add(newTabId, 'Logs', logForm, true);
+    }
+
+    tab.select(newTabId);
 };

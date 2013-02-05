@@ -14,19 +14,20 @@ EEE;
 ?>
 
 <script type="text/javascript">
-window.onload=function() {
-    var nodepath = $('#nodepath').val();
+window.onload=function() {    
     includeJs("js/jquery/jquery.jqplot.min.js");
     includeJs("js/jquery/jqplot.dateAxisRenderer.min.js");
     includeJs("js/jquery/jqplot.dateAxisRenderer.min.js");
     includeJs("js/monitor/gangliamon.js");
+
+    var nodePath = $('#nodepath').val();
     $.ajax({
         url : 'lib/cmd.php',
         dataType : 'json',
         data : {
             cmd : 'webrun',
             tgt : '',
-            args : 'gangliashow;' + nodepath + ';hour;_summary_',
+            args : 'gangliashow;' + nodePath + ';hour;_summary_',
             msg : ''
         },
         
@@ -38,31 +39,31 @@ window.onload=function() {
 };
 
 function drawNodesummary(summaryString){
-    var nodename = $('#nodename').val();
+    var nodeName = $('#nodename').val();
     var nodeData = new Object();
     var metricArray = summaryString.split(';');
-    var metricname = '';
+    var metricName = '';
     var valueArray = '';
     var position = 0;
     var tempLength = 0;
     for (var index = 0; index < metricArray.length; index++){
         position = metricArray[index].indexOf(':');
 
-        metricname = metricArray[index].substr(0, position);
-        nodeData[metricname] = new Array();
+        metricName = metricArray[index].substr(0, position);
+        nodeData[metricName] = new Array();
         valueArray = metricArray[index].substr(position + 1).split(',');
         tempLength = valueArray.length;
 
         for (var i = 0; i < tempLength; i++){
-            nodeData[metricname].push(Number(valueArray[i]));
+            nodeData[metricName].push(Number(valueArray[i]));
         }
     }
     
-    drawLoadFlot('ganglianodeload', nodename, nodeData['load_one'], nodeData['cpu_num']);
-    drawCpuFlot('ganglianodecpu', nodename, nodeData['cpu_idle']);
-    drawMemFlot('ganglianodemem', nodename, nodeData['mem_free'], nodeData['mem_total']);
-    drawDiskFlot('ganglianodedisk', nodename, nodeData['disk_free'], nodeData['disk_total']);
-    drawNetworkFlot('ganglianodenetwork', nodename, nodeData['bytes_in'], nodeData['bytes_out']);
+    drawLoadFlot('ganglianodeload', nodeName, nodeData['load_one'], nodeData['cpu_num']);
+    drawCpuFlot('ganglianodecpu', nodeName, nodeData['cpu_idle']);
+    drawMemFlot('ganglianodemem', nodeName, nodeData['mem_free'], nodeData['mem_total']);
+    drawDiskFlot('ganglianodedisk', nodeName, nodeData['disk_free'], nodeData['disk_total']);
+    drawNetworkFlot('ganglianodenetwork', nodeName, nodeData['bytes_in'], nodeData['bytes_out']);
 }
 </script>
 

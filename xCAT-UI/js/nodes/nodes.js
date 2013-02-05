@@ -349,7 +349,7 @@ function drawNodesArea(targetgroup, cmdargs, message){
  */
 function mkAddNodeLink() {
     // Create link to add nodes
-    var addNodeLink = $('<a title="Add a node or a node range to xCAT">+ Add Node</a>');
+    var addNodeLink = $('<a title="Add a node or a node range to xCAT">+ Add node</a>');
     addNodeLink.click(function() {
         // Create info bar
         var info = createInfoBar('Select the hardware management for the new node range');
@@ -357,8 +357,8 @@ function mkAddNodeLink() {
         // Create form to add node
         var addNodeForm = $('<div class="form"></div>');
         addNodeForm.append(info);
-        addNodeForm.append('<div><label for="mgt">Hardware management:</label>'
-            + '<select id="mgt" name="mgt">'
+        addNodeForm.append('<div><label>Hardware management:</label>'
+            + '<select name="mgt">'
                 + '<option value="esx">ESX</option>'
                 + '<option value="kvm">KVM</option>'
                 + '<option value="zvm">z\/VM</option>'
@@ -736,6 +736,40 @@ function loadNodes(data) {
             loadScriptPage(tgtNodes);
         }
     });
+    
+    // Migrate VM
+    var migrateLnk = $('<a>Migrate</a>');
+    migrateLnk.click(function() {
+    	var tgtNodes = getNodesChecked(nodesTableId).split(',');
+        for (var i in tgtNodes) {
+            var mgt = getNodeAttr(tgtNodes[i], 'mgt');
+
+            // Create an instance of the plugin
+            var plugin;
+            switch(mgt) {
+                case "blade":
+                    plugin = new bladePlugin();
+                    break;
+                case "fsp":
+                    plugin = new fspPlugin();
+                    break;
+                case "hmc":
+                    plugin = new hmcPlugin();
+                    break;
+                case "ipmi":
+                    plugin = new ipmiPlugin();
+                    break;
+                case "ivm":
+                    plugin = new ivmPlugin();
+                    break;
+                case "zvm":
+                    plugin = new zvmPlugin();
+                    break;
+            }
+            
+            plugin.loadMigratePage(tgtNodes[i]);
+        }
+    });
 
     // Update
     var updateLnk = $('<a>Update</a>');
@@ -801,17 +835,60 @@ function loadNodes(data) {
         }
     });
     
+    // Scan
+    var rscanLnk = $('<a>Scan</a>');
+    rscanLnk.bind('click', function(event){
+        var tgtNodes = getNodesChecked(nodesTableId);
+        if (tgtNodes) {
+            loadRscanPage(tgtNodes);
+        }
+    });
+    
+    // Event log
+    var logLnk = $('<a>Event log</a>');
+    logLnk.click(function() {
+        var tgtNodes = getNodesChecked(nodesTableId).split(',');
+        for (var i in tgtNodes) {
+            var mgt = getNodeAttr(tgtNodes[i], 'mgt');
+
+            // Create an instance of the plugin
+            var plugin;
+            switch(mgt) {
+                case "blade":
+                    plugin = new bladePlugin();
+                    break;
+                case "fsp":
+                    plugin = new fspPlugin();
+                    break;
+                case "hmc":
+                    plugin = new hmcPlugin();
+                    break;
+                case "ipmi":
+                    plugin = new ipmiPlugin();
+                    break;        
+                case "ivm":
+                    plugin = new ivmPlugin();
+                    break;
+                case "zvm":
+                    plugin = new zvmPlugin();
+                    break;
+            }
+            
+            plugin.loadLogPage(tgtNodes[i]);
+        }
+    });
+    
     // Actions
     var actionsLnk = '<a>Actions</a>';
-    var actsMenu = createMenu([cloneLnk, deleteLnk, monitorOnLnk, monitorOffLnk, powerOnLnk, powerOffLnk, scriptLnk]);
+    var actsMenu = createMenu([cloneLnk, deleteLnk, migrateLnk, monitorOnLnk, monitorOffLnk, powerOnLnk, powerOffLnk, scriptLnk]);
 
     // Configurations
     var configLnk = '<a>Configuration</a>';
-    var configMenu = createMenu([unlockLnk, updateLnk, editProps, installMonLnk]);
+    var configMenu = createMenu([editProps, logLnk, installMonLnk, rscanLnk, unlockLnk, updateLnk]);
 
     // Provision
     var provLnk = '<a>Provision</a>';
-    var provMenu = createMenu([boot2NetworkLnk, setBootStateLnk, rcons, provisionLnk]);
+    var provMenu = createMenu([boot2NetworkLnk, rcons, setBootStateLnk, provisionLnk]);
 
     // Create an action menu
     var actionsMenu = createMenu([ [ actionsLnk, actsMenu ], [ configLnk, configMenu ],  [ provLnk, provMenu ] ]);
@@ -833,10 +910,15 @@ function loadNodes(data) {
     var nodesDatatable = $('#' + nodesTableId).dataTable({
         'iDisplayLength': 50,
         'bLengthChange': false,
-        "sScrollX": "100%",
+        "bScrollCollapse": true,
+        "sScrollY": "400px",
+        "sScrollX": "110%",
         "bAutoWidth": true,
-        "fnInitComplete": function() {
-            adjustColumnSize(nodesTableId);
+        "oLanguage": {
+            "oPaginate": {
+              "sNext": "",
+              "sPrevious": ""
+            }
         }
     });
     
@@ -933,7 +1015,7 @@ function loadNodes(data) {
      */
     // Do not make 1st, 2nd, 3rd, 4th, 5th, or 6th column editable
     $('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5),td:nth-child(6))').editable(
-        function(value, settings) {        
+        function(value, settings) {     
             // If users did not make changes, return the value directly
             // jeditable saves the old value in this.revert
             if ($(this).attr('revert') == value){
@@ -1438,7 +1520,7 @@ function loadPowerStatus(data) {
         rowPos = findRow(node, '#' + nodesTableId, 1);
 
         // Update the power status column
-        dTable.fnUpdate(status, rowPos, 3, false);
+        dTable.fnUpdate(status, rowPos, 3);
     }
     
     // Hide power loader
@@ -1627,23 +1709,33 @@ function loadUnlockPage(tgtNodes) {
         newTabId = 'unlockTab' + instance;
     }
 
-    var unlockForm = $('<div class="form"></div>');
-
     // Create status bar, hide on load
     var statBarId = 'unlockStatusBar' + instance;
-    var statusBar = createStatusBar(statBarId).hide();
-    unlockForm.append(statusBar);
+    var statBar = createStatusBar(statBarId).hide();
 
     // Create loader
     var loader = createLoader('');
-    statusBar.find('div').append(loader);
+    statBar.find('div').append(loader);
 
     // Create info bar
     var infoBar = createInfoBar('Give the root password for this node range to setup its SSH keys.');
-    unlockForm.append(infoBar);
+    
+    // Create unlock form
+    var unlockForm = $('<div class="form"></div>');
+    unlockForm.append(statBar, infoBar);
+    
+    // Create VM fieldset
+    var vmFS = $('<fieldset></fieldset>');
+    var vmLegend = $('<legend>Virtual Machine</legend>');
+    vmFS.append(vmLegend);
+    unlockForm.append(vmFS);
+    
+    var vmAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+    vmFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
+    vmFS.append(vmAttr);
 
-    unlockForm.append('<div><label>Target node range:</label><input type="text" id="node" name="node" readonly="readonly" value="' + tgtNodes + '" title="The node or node range to unlock"/></div>');
-    unlockForm.append('<div><label>Password:</label><input type="password" id="password" name="password" title="The root password to unlock this node"/></div>');
+    vmAttr.append('<div><label>Target node range:</label><input type="text" id="node" name="node" readonly="readonly" value="' + tgtNodes + '" title="The node or node range to unlock"/></div>');
+    vmAttr.append('<div><label>Password:</label><input type="password" id="password" name="password" title="The root password to unlock this node"/></div>');
 
     // Generate tooltips
     unlockForm.find('div input[title]').tooltip({
@@ -1663,11 +1755,15 @@ function loadUnlockPage(tgtNodes) {
     /**
      * Ok
      */
-    var okBtn = createButton('Ok');
-    okBtn.click(function() {
-        // Remove any warning messages
-        $(this).parent().parent().find('.ui-state-error').remove();
-        
+    var unlockBtn = createButton('Unlock');
+    unlockBtn.css({
+    	'width': '80px',
+    	'display': 'block'
+    });
+    unlockBtn.click(function() {
+    	// Remove any warning messages
+    	$(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
+    	
         // If a password is given
         var password = $('#' + newTabId + ' input[name=password]').css('border', 'solid #BDBDBD 1px');
         if (password.val()) {
@@ -1686,7 +1782,7 @@ function loadUnlockPage(tgtNodes) {
             });
     
             // Show status bar
-            statusBar.show();
+            statBar.show();
     
             // Disable all inputs and Ok button
             $('#' + newTabId + ' input').attr('disabled', 'disabled');
@@ -1694,12 +1790,12 @@ function loadUnlockPage(tgtNodes) {
         } else {
             // Show warning message
             var warn = createWarnBar('You are missing some values!');
-            warn.prependTo($(this).parent().parent());
+            warn.prependTo($(this).parents('.ui-tabs-panel'));
             password.css('border', 'solid #FF0000 1px');
         }
     });
 
-    unlockForm.append(okBtn);
+    unlockForm.append(unlockBtn);
     tab.add(newTabId, 'Unlock', unlockForm, true);
     tab.select(newTabId);
 }
@@ -1722,37 +1818,51 @@ function loadScriptPage(tgtNodes) {
         newTabId = 'scriptTab' + inst;
     }
 
-    // Open new tab
     // Create remote script form
     var scriptForm = $('<div class="form"></div>');
-
-    // Create status bar
+    
+	// Create status bar
     var barId = 'scriptStatusBar' + inst;
     var statBar = createStatusBar(barId);
     statBar.hide();
-    scriptForm.append(statBar);
-
-    // Create loader
     var loader = createLoader('scriptLoader' + inst);
     statBar.find('div').append(loader);
 
     // Create info bar
     var infoBar = createInfoBar('Load a script to run against this node range.');
-    scriptForm.append(infoBar);
-
+    scriptForm.append(statBar, infoBar);
+    
+    // Create VM fieldset
+    var vmFS = $('<fieldset></fieldset>');
+    var vmLegend = $('<legend>Virtual Machine</legend>');
+    vmFS.append(vmLegend);
+    scriptForm.append(vmFS);
+    
+    var vmAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+    vmFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
+    vmFS.append(vmAttr);
+    
+    // Create logs fieldset
+    var scriptFS = $('<fieldset></fieldset>');
+    var scriptLegend = $('<legend>Script</legend>');
+    scriptFS.append(scriptLegend);
+    scriptForm.append(scriptFS);
+    
+    var scriptAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+    scriptFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/nodes/script.png"></img></div>'));
+    scriptFS.append(scriptAttr);
+        
     // Target node or group
-    var tgt = $('<div><label for="target">Target node range:</label><input type="text" name="target" value="' + tgtNodes + '" title="The node or node range to run a given script against"/></div>');
-    scriptForm.append(tgt);
+    var tgt = $('<div><label>Target node range:</label><input type="text" name="target" value="' + tgtNodes + '" title="The node or node range to run a given script against"/></div>');
+    vmAttr.append(tgt);
 
     // Upload file
     var upload = $('<form action="lib/upload.php" method="post" enctype="multipart/form-data"></form>');
-    var label = $('<label for="file">Remote file:</label>');
+    var label = $('<label>Remote file:</label>');
     var file = $('<input type="file" name="file" id="file"/>');
     var subBtn = createButton('Load');
-    upload.append(label);
-    upload.append(file);
-    upload.append(subBtn);
-    scriptForm.append(upload);
+    upload.append(label, file, subBtn);
+    scriptAttr.append(upload);
     
     // Generate tooltips
     scriptForm.find('div input[title]').tooltip({
@@ -1771,7 +1881,7 @@ function loadScriptPage(tgtNodes) {
 
     // Script
     var script = $('<div><label>Script:</label><textarea/>');
-    scriptForm.append(script);
+    scriptAttr.append(script);
 
     // Ajax form options
     var options = {
@@ -1784,10 +1894,13 @@ function loadScriptPage(tgtNodes) {
      * Run
      */
     var runBtn = createButton('Run');
-    runBtn.click(function() {
-        // Remove any warning messages
-        $(this).parent().parent().find('.ui-state-error').remove();
-        
+    runBtn.css({
+    	'width': '80px'
+    });
+    runBtn.click(function() { 
+    	// Remove any warning messages
+    	$(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
+    	
         // Get script to run
         var textarea = $('#' + newTabId + ' textarea').css('border', 'solid #BDBDBD 1px');
         
@@ -1798,7 +1911,7 @@ function loadScriptPage(tgtNodes) {
         } else {
             // Show warning message
             var warn = createWarnBar('You are missing some values');
-            warn.prependTo($(this).parent().parent());
+            warn.prependTo($(this).parents('.ui-tabs-panel'));
             textarea.css('border', 'solid #FF0000 1px');
         }
     });
@@ -1868,15 +1981,6 @@ function loadDeletePage(tgtNodes) {
         newTabId = 'deleteTab' + inst;
     }
 
-    // Create status bar, hide on load
-    var statBarId = 'deleteStatusBar' + inst;
-    var statBar = createStatusBar(statBarId).hide();
-
-    // Create loader
-    var loader = createLoader('');
-    statBar.find('div').append(loader);
-    statBar.hide();
-
     // Create target nodes string
     var tgtNodesStr = '';
     var nodes = tgtNodes.split(',');
@@ -1904,12 +2008,30 @@ function loadDeletePage(tgtNodes) {
 
     // Create delete form
     var deleteForm = $('<div class="form"></div>');
-    deleteForm.append(statBar);
+    
+	// Create status bar, hide on load
+    var statBarId = 'deleteStatusBar' + inst;
+    var statBar = createStatusBar(statBarId).hide();
+
+    // Create loader
+    var loader = createLoader('');
+    statBar.find('div').append(loader);
+    statBar.hide();    
     deleteForm.append(statBar);
     
+    // Create confirm fieldset
+    var confirmFS = $('<fieldset></fieldset>');
+    var confirmLegend = $('<legend>Confirm</legend>');
+    confirmFS.append(confirmLegend);
+    deleteForm.append(confirmFS);
+    
+    var confirmAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+    confirmFS.append($('<div style="display: inline-table; vertical-align: middle; margin-right: 10px;"><img src="images/nodes/remove.png"></img></div>'));
+    confirmFS.append(confirmAttr);
+    
     // Confirm delete
-    var instr = $('<p>Are you sure you want to delete ' + tgtNodesStr + '?</p>').css('word-wrap', 'break-word');
-    deleteForm.append(instr);
+    var instr = $('<p>Are you sure you want to delete <b>' + tgtNodesStr + '</b>?</p>').css('word-wrap', 'break-word');
+    confirmAttr.append(instr);
 
     /**
      * Delete
@@ -1945,8 +2067,7 @@ function loadDeletePage(tgtNodes) {
         myTab.remove($(this).parent().parent().attr('id'));
     });
 
-    deleteForm.append(deleteBtn);
-    deleteForm.append(cancelBtn);
+    deleteForm.append(deleteBtn, cancelBtn);
     myTab.add(newTabId, 'Delete', deleteForm, true);
 
     myTab.select(newTabId);
@@ -1998,6 +2119,8 @@ function updateStatusBar(data) {
                 dTable.fnDeleteRow(rowPos);
             }
         }
+        
+        adjustColumnSize(nodesTableId);
     } else if (cmd == 'xdsh') {
         // Hide loader
         $('#' + statBarId).find('img').hide();
@@ -2025,7 +2148,7 @@ function updateStatusBar(data) {
         $('#' + statBarId).find('img').hide();
         
         // Write ajax response to status bar
-        var prg = writeRsp(rsp, '[A-Za-z0-9._-]+:');    
+        var prg = writeRsp(rsp, '');    
         $('#' + statBarId).find('div').append(prg);    
     }
 }
@@ -2037,9 +2160,9 @@ function updateStatusBar(data) {
  */
 function updatePowerStatus(data) {
     // Hide power loader
-    var powerCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
+	var powerCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
     powerCol.find('img').hide();
-    
+
     // Get datatable
     var dTable = $('#' + nodesTableId).dataTable();
 
@@ -2260,7 +2383,7 @@ function findRow(str, table, col){
     for (var i in rows) {
         // If the column contains the search string
         if (rows[i][col].indexOf(str) > -1) {
-            return i;
+            return parseInt(i);
         }
     }
     
@@ -3146,6 +3269,25 @@ function advancedLoad(group){
             });     
         }
     } // End of for
+    
+    // Retrieve z/VM hypervisors and their zHCPs
+    if (!$.cookie('zvms')) {
+        $.ajax( {
+            url : 'lib/cmd.php',
+            dataType : 'json',
+            data : {
+                cmd : 'webportal',
+                tgt : '',
+                args : 'lszvm',
+                msg : ''
+            },
+
+            success : function(data) {
+                setzVMCookies(data);
+                loadWwpns();
+            }
+        });
+    }
 }
 
 /**

@@ -8,7 +8,6 @@ function loadUpdatePage() {
     statusDiv.hide();
 
     $('#updateTab').append(statusDiv);
-    $('#updateTab').append('<br/>');
     $('#updateTab').append(repositoryDiv);
     $('#updateTab').append(rpmDiv);
 
