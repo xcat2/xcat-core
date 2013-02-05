@@ -6,21 +6,24 @@
 # Then run this script.  The optional 1st arg should be mcp if you are building against mcp.
 HOSTOS="$1"
 DIR=`dirname $0`
-DIR=`realpath $DIR`
+#DIR=`realpath $DIR`
+DIR=`readlink -f $DIR`
 
 # get the input files for dracut in the right place
 DRACUTMODDIR=/usr/share/dracut/modules.d/97xcat
 mkdir -p $DRACUTMODDIR
 cp $DIR/* $DRACUTMODDIR
 if [ "$HOSTOS" = "mcp" ]; then
-	mv -f $DRACUTMODDIR/install.$HOSTOS $DRACUTMODDIR/install
-	mv -f $DRACUTMODDIR/installkernel.$HOSTOS $DRACUTMODDIR/installkernel
+	sed -i 's/\(mkfs.btrfs\|lldpad\|lldptool\)//' $DRACUTMODDIR/install
+	sed -i 's/btrfs//' $DRACUTMODDIR/installkernel
+	#mv -f $DRACUTMODDIR/install.$HOSTOS $DRACUTMODDIR/install
+	#mv -f $DRACUTMODDIR/installkernel.$HOSTOS $DRACUTMODDIR/installkernel
 fi
 mkdir -p /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/fs 
 
 # run dracut
 if [ "$HOSTOS" = "mcp" ]; then
-	KPATH=`/bin/ls -d /root/mcp/mcproot/lib/modules/*`
+	KPATH=`/bin/ls -d /lib/modules/*.x86_64`
 	KERNELVERSION=`basename $KPATH`
 	echo Creating the initramfs in /tmp/xcatgenesis.$$.rfs using dracut and kernel $KERNELVERSION ...
 else
@@ -35,7 +38,7 @@ zcat /tmp/xcatgenesis.$$.rfs|cpio -dumi
 # add the kernel
 if [ "$HOSTOS" = "mcp" ]; then
 	echo Adding kernel /boot/vmlinuz-* ...
-	cp /boot/vmlinuz-* /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/kernel
+	cp /boot/vmlinuz-*.x86_64 /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/kernel
 else
 	echo Adding kernel /boot/vmlinuz-`uname -r` ...
 	cp /boot/vmlinuz-`uname -r` /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/kernel
