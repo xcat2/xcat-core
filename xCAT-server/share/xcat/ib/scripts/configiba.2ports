@@ -85,10 +85,16 @@ else
           num0=`expr $num \* 2`
           num1=`expr $num0 + 1`
           `rmdev -d -l ib$num0 >/dev/null 2>&1`
+          `rmdev -d -l iba$num0 >/dev/null 2>&1`
           `rmdev -d -l ib$num1 >/dev/null 2>&1`
+          `rmdev -d -l iba$num1 >/dev/null 2>&1`
           `rmdev -d -l ml$num >/dev/null 2>&1`
           num=`expr $num + 1`
     done
+    
+    `rmdev -dl icm >/dev/null 2>&1`  
+    mkdev -c management -s infiniband -t icm
+    cfgmgr
     
     ib_number=`lsdev -Cc adapter |grep iba |wc -l`
     loop_number=`expr $ib_number \* 2` 
@@ -109,8 +115,10 @@ do
     if [ $NODE ]
     then
         hostname="$NODE-$nic"
+        shortname=$NODE;
     else
         hostname="$HOST-$nic"
+        shortname=$HOST;
     fi
     `ifconfig $nic up`
     if [ $PLTFRM == "Linux" ]
@@ -180,19 +188,19 @@ GATEWAY=$gateway" > $dir/ifcfg-$nic
             fi
         elif [ $PLTFRM == "AIX" ]
         then
-            lsdev -C | grep icm | grep Available
-            if [ $? -ne 0 ]
-            then
-                mkdev -c management -s infiniband -t icm
-                if [ $? -ne 0 ]
-                then
-                    mkdev -l icm
-                    if [ $? -ne 0 ]
-                    then
-                        exit $?
-                    fi
-                fi
-            fi
+            #lsdev -C | grep icm | grep Available
+            #if [ $? -ne 0 ]
+            #then
+            #    mkdev -c management -s infiniband -t icm
+            #    if [ $? -ne 0 ]
+            #    then
+            #        mkdev -l icm
+            #        if [ $? -ne 0 ]
+            #        then
+            #            exit $?
+            #        fi
+            #    fi
+            #fi
 
             #Configure the IB interfaces.  Customize the port num.
 
@@ -204,6 +212,7 @@ GATEWAY=$gateway" > $dir/ifcfg-$nic
             else
                 port=2
             fi
+            chdev -l $ib_adapter -a hostname=$shortname
             mkiba -a $ip -i $nic -A $ib_adapter -p $port -P -1 -S up -m $netmask
         fi
     fi
