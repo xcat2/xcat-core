@@ -24,4 +24,4 @@ if grep console=ttyS /proc/cmdline > /dev/null; then
 	while :; do sleep 1; screen -x console < /dev/tty1 > /dev/tty1 2>&1; clear; done &
 fi
 while :; do screen -ln < /dev/tty2 > /dev/tty2 2>&1; done &
-while :; do screen -ln doxcat; done 
+while :; do screen -L -ln doxcat; done 

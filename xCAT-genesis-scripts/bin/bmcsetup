@@ -95,11 +95,19 @@ elif [ "$IPMIMFG" == "47488" ]; then
 fi
 echo -n "Auto detecting LAN channel..."
 
-for LANCHAN in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do 
-   if ipmitool channel info $LANCHAN 2> /dev/null | grep 802.3 > /dev/null 2>&1 && ipmitool raw 0xc 2 $LANCHAN 5 0 0 > /dev/null 2>&1; 
-     then break; 
-   fi; 
-   echo -n "."
+while [ -z "$LANCHAN" ]; do 
+	for TLANCHAN in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do 
+	   if ipmitool channel info $TLANCHAN 2> /dev/null | grep 802.3 > /dev/null 2>&1 && ipmitool raw 0xc 2 $TLANCHAN 5 0 0 > /dev/null 2>&1; 
+	   then 
+		LANCHAN=$TLANCHAN
+	        break; 
+	    fi; 
+	    echo -n "."
+	done
+	if [ -z "$LANCHAN" ]; then
+		echo "Unable to detect lan channel, retrying in 10 seconds";
+		sleep 10
+	fi
 done
 echo "Detected LAN channel $LANCHAN"
         
