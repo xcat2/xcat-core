@@ -400,7 +400,7 @@ sub get_files{
 	    @arr = ("$installroot/custom/install", "$xcatroot/share/xcat/install");
 
 	    #get .tmpl file
-	    if ((! $attrs->{template}) || (! -r $attrs->{template})) {
+	    if (! $attrs->{template}) {
 		my $template = look_for_file('tmpl', $callback, $attrs, @arr);
 		unless($template){
 			$callback->({error=>["Couldn't find install template for $imagename"],errorcode=>[1]});
@@ -423,7 +423,7 @@ sub get_files{
 	    if($provmethod =~ /netboot/){
 		@arr = ("$installroot/custom/netboot", "$xcatroot/share/xcat/netboot");
 		#get .pkglist file
-		if ((! $attrs->{pkglist}) || (! -f $attrs->{pkglist})) {
+		if (! $attrs->{pkglist}) {
 		    # we need to get the .pkglist for this one!
 		    my $temp = look_for_file('pkglist', $callback, $attrs, @arr);
 		    unless($temp){
@@ -466,7 +466,7 @@ sub get_files{
 	    } elsif ($provmethod =~ /statelite/) {
 		@arr = ("$installroot/custom/netboot", "$xcatroot/share/xcat/netboot");
 		#get .pkglist file
-		if ((! $attrs->{pkglist}) || (! -f $attrs->{pkglist})) {
+		if (! $attrs->{pkglist})  {
 		    # we need to get the .pkglist for this one!
 		    my $temp = look_for_file('pkglist', $callback, $attrs, @arr);
 		    unless($temp){
@@ -652,13 +652,16 @@ sub make_bundle {
     
     # these are the only files we copy in.  (unless you have extras)
     for my $a ("kernel", "template", "ramdisk", "rootimg", "pkglist", "synclists", "otherpkglist", "postinstall", "exlist"){
-	my $fn=$attribs->{$a};
-	if($fn) {
-	    $callback->({data => ["$fn"]});
-	    if (-r $fn) {
-		system("cp $fn $tpath");
-	    } else {
-		$callback->({error=>["Couldn't find file $fn for $imagename. Skip."],errorcode=>[1]});
+	my $filenames=$attribs->{$a};
+	if($filenames) {
+	    my @file_array=split(',', $filenames);
+	    foreach my $fn (@file_array) {
+		$callback->({data => ["$fn"]});
+		if (-r $fn) {
+		    system("cp $fn $tpath");
+		} else {
+		    $callback->({error=>["Couldn't find file $fn for $imagename. Skip."],errorcode=>[1]});
+		}
 	    }
 	}
     }
@@ -873,7 +876,7 @@ sub change_profile {
     
     for my $a ("template", "pkglist", "synclists", "otherpkglist", "postinstall", "exlist")   {
 	if ($data->{$a}) {
-	    my $fn=basename($data->{$a});
+ 	    my $fn=basename($data->{$a});
 	    my $oldfn=$fn;
 	    $fn =~ s/^([^\.]+)\.(.*)$/$new_profile.$2/;
 	    move("$srcdir/$oldfn", "$srcdir/$fn");
@@ -1253,19 +1256,22 @@ sub make_files {
     #        };
 	
     for my $a ("kernel", "template", "ramdisk", "rootimg", "rootimgtree", "litefile", "pkglist", "synclists", "otherpkglist", "postinstall", "exlist") {
-	my $fn=$data->{$a};
-	if($fn) {
-	    $callback->({data => ["$fn"]});
-	    my $basename=basename($fn);
-	    my $dirname=dirname($fn);
-	    if (! -r $dirname) {
-		mkpath("$dirname", { verbose => 1, mode => 0755 });
-	    } 
-	    if (-r $fn) {
-		$callback->( {data => ["  Moving old $fn to $fn.ORIG."]});
-		move("$fn", "$fn.ORIG");
+	my $filenames=$data->{$a};
+	if($filenames) {
+	    my @file_array=split(',', $filenames);
+	    foreach my $fn (@file_array) {
+		$callback->({data => ["$fn"]});
+		my $basename=basename($fn);
+		my $dirname=dirname($fn);
+		if (! -r $dirname) {
+		    mkpath("$dirname", { verbose => 1, mode => 0755 });
+		} 
+		if (-r $fn) {
+		    $callback->( {data => ["  Moving old $fn to $fn.ORIG."]});
+		    move("$fn", "$fn.ORIG");
+		}
+		move("$imgdir/$basename",$fn);
 	    }
-	    move("$imgdir/$basename",$fn);
 	}
     }
 
