@@ -372,7 +372,10 @@ sub windows_join_data {
 sub get_win_prodkey {
 	my $osvariant = shift;
 	my $keytab = xCAT::Table->new("prodkey",-create=>0);
-	my $keyent = $keytab->getAttribs({product=>$osvariant},"key");
+	my $keyent;
+	if ($keytab) {
+	   $keyent = $keytab->getAttribs({product=>$osvariant},"key");
+	}
 	if ($keyent) { 
 		return "<ProductKey><WillShowUI>OnError</WillShowUI><Key>".$keyent->{key}."</Key></ProductKey>";
 	}
