@@ -40,7 +40,7 @@ cmd:cat /etc/exports | grep $$CN
 check:output=~autotest_bosinst_data
 check:output=~spot/autotest/usr
 check:output=~xcataixscript
-check:output=~xCATaix71CN.bnd
+check:output=~xCATaixCN71.bnd
 check:output=~autotest_lpp_source
 cmd:rnetboot $$CN
 check:rc==0
