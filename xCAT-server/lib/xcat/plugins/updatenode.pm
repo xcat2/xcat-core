@@ -1192,10 +1192,10 @@ sub updatenoderunps
             my $runpscmd;
             if ($::SETSERVER){
                $runpscmd  =
-                    "$installdir/postscripts/xcatdsklspost $mode -M $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4";
+                    "$installdir/postscripts/xcatdsklspost $mode -M $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c ";
             } else {
                $runpscmd  =
-                    "$installdir/postscripts/xcatdsklspost $mode -m $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4"
+                    "$installdir/postscripts/xcatdsklspost $mode -m $snkey  '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c"
             }
             # if non-root userid ask xdsh to use sudo
             if (defined($::USER)){ # non-root user 
