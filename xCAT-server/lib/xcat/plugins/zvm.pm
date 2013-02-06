@@ -6191,7 +6191,7 @@ sub changeHypervisor {
         my $owner = $args->[2];
         
         # Delete a virtual network
-        $out = `ssh $hcp "$::DIR/smcli Virtual_Network_Lan_Delete -T $hcpUserId -n $name -o $owner"`;
+        $out = `ssh $hcp "$::DIR/smcli Virtual_Network_LAN_Delete -T $hcpUserId -n $name -o $owner"`;
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
     
