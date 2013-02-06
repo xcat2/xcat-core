@@ -34,9 +34,9 @@ B<rinv> I<noderange> [B<config>|B<all>]
 
 B<rinv> I<noderange> [B<--diskpoolspace>]
 
-B<rinv> I<noderange> [B<--diskpool> I<pool> I<space (all, free, or used)>]
+B<rinv> I<noderange> [B<--diskpool> I<pool> I<space>]
 
-B<rinv> I<noderange> [B<--fcpdevices> I<state (active, free, or offline)> I<details (optional)>]
+B<rinv> I<noderange> [B<--fcpdevices> I<state> I<details>]
 
 B<rinv> I<noderange> [B<--diskpoolnames>]
 
@@ -50,7 +50,7 @@ B<rinv> I<noderange> [B<--smapilevel>]
 
 B<rinv> I<noderange> [B<--wwpn>]
 
-B<rinv> I<noderange> [B<--zfcppool> I<pool> I<space (free or used)>]
+B<rinv> I<noderange> [B<--zfcppool> I<pool> I<space>]
 
 B<rinv> I<noderange> [B<--zfcppoolnames>]
 
@@ -140,17 +140,19 @@ Set the values in the vm table to what vCenter has for the indicated nodes.
 
 B<zVM specific :>
 
+=over 2
+
 =item B<--diskpoolspace>
 
 Calculates the total size of every known storage pool. 
 
-=item B<--diskpool> I<pool> I<space (all, free, or used)>
+=item B<--diskpool> I<pool> I<space>
 
-Lists the storage devices (ECKD and FBA) contained in a disk pool.
+Lists the storage devices (ECKD and FBA) contained in a disk pool. Space can be: all, free, or used.
 
-=item B<--fcpdevices> I<state (active, free, or offline)> I<details (optional)>
+=item B<--fcpdevices> I<state> I<details>
 
-Lists the FCP device channels that are active, free, or offline.
+Lists the FCP device channels that are active, free, or offline. State can be: active, free, or offline.
 
 =item B<--diskpoolnames>
 
@@ -176,13 +178,15 @@ Obtain the SMAPI level installed on a given hypervisor.
 
 Query all FCPs on a z/VM system and return a list of WWPNs.
 
-=item B<--zfcppool> I<pool> I<space (free or used)>
+=item B<--zfcppool> I<pool> I<space>
 
-List the SCSI/FCP devices contained in a zFCP pool.
+List the SCSI/FCP devices contained in a zFCP pool. Space can be: free or used.
 
 =item B<--zfcppoolnames>
 
 List the known zFCP pool names.
+
+=back
 
 =back
 
@@ -332,11 +336,11 @@ List the SCSI/FCP devices contained in a given zFCP pool:
 Output is similar to:
 
  pokdev61: #status,wwpn,lun,size,range,owner,channel,tag
- pokdev61: used,500507630613c411,4014402f00000000,2g,3B40-3B7F,ihost13,3b77,
- pokdev61: used,500507630613c411,4014403200000000,8192M,3B40-3B7F,ihost13,3b77,replace_root_device
- pokdev61: free,500507630613c411,4014403300000000,8g,3B40-3B7F,,,
- pokdev61: free,5005076306138411,4014403100000000,2g,3B40-3B7F,,,
- pokdev61: free,500507630613c411;5005076306138411,4014403000000000,2G,3B40-3B7F,,,
+ pokdev61: used,500512345678c411,4014412100000000,2g,3B40-3B7F,ihost13,3b77,
+ pokdev61: used,500512345678c411,4014412200000000,8192M,3B40-3B7F,ihost13,3b77,replace_root_device
+ pokdev61: free,500512345678c411,4014412300000000,8g,3B40-3B7F,,,
+ pokdev61: free,5005123456789411,4014412400000000,2g,3B40-3B7F,,,
+ pokdev61: free,5005123456789411;5005123456789411,4014412600000000,2G,3B40-3B7F,,,
 
 =back
 

@@ -28,17 +28,17 @@ B<chvm> I<noderange> [B<-a> I<size>] [B<-d> I<disk>] [B<-p> I<disk>] [B<--resize
 
 =head2 zVM specific:
 
-B<chvm> I<noderange> [B<--add3390> I<disk_pool> I<device_address (or auto)> I<size (G, M, or cylinders)> I<mode> I<read_password (optional)> I<write_password (optional)> I<multi_password (optional)>]
+B<chvm> I<noderange> [B<--add3390> I<disk_pool> I<device_address> I<size> I<mode> I<read_password> I<write_password> I<multi_password>]
 
 B<chvm> I<noderange> [B<--add3390active> I<device_address> I<mode>]
 
-B<chvm> I<noderange> [B<--add9336> I<disk_pool> I<device_address (or auto)> I<size (G, M, or blocks)> I<mode> I<read_password (optional)> I<write_password (optional)> I<multi_password (optional)>]
+B<chvm> I<noderange> [B<--add9336> I<disk_pool> I<device_address> I<size> I<mode> I<read_password> I<write_password> I<multi_password>]
 
 B<chvm> I<noderange> [B<--adddisk2pool> I<function> I<region> I<volume> I<group>]
 
 B<chvm> I<noderange> [B<--addnic> I<device_address> I<type> I<device_count>]
 
-B<chvm> I<noderange> [B<--addpagespool> I<volume_address> I<volume_label> I<volume_use> I<system_config_name (optional)> I<system_config_type (optional)> I<parm_disk_owner (optional)> I<parm_disk_number (optional)> I<parm_disk_password (optional)>]
+B<chvm> I<noderange> [B<--addpagespool> I<volume_address> I<volume_label> I<volume_use> I<system_config_name> I<system_config_type> I<parm_disk_owner> I<parm_disk_number> I<parm_disk_password>]
 
 B<chvm> I<noderange> [B<--addprocessor> I<device_address>]
 
@@ -46,7 +46,7 @@ B<chvm> I<noderange> [B<--addprocessoractive> I<device_address> I<type>]
 
 B<chvm> I<noderange> [B<--addvdisk> I<device_address> I<size>]
 
-B<chvm> I<noderange> [B<--addzfcp> I<pool> I<device_address (or auto)> I<loaddev (0 or 1)> I<size> I<tag (optional)> I<wwpn (optional)> I<lun (optional)>]
+B<chvm> I<noderange> [B<--addzfcp> I<pool> I<device_address> I<loaddev> I<size> I<tag> I<wwpn> I<lun>]
 
 B<chvm> I<noderange> [B<--connectnic2guestlan> I<device_address> I<lan> I<owner>]
 
@@ -54,7 +54,7 @@ B<chvm> I<noderange> [B<--connectnic2vswitch> I<device_address> I<vswitch>]
 
 B<chvm> I<noderange> [B<--copydisk> I<target_address> I<source_node> I<source_address>]
 
-B<chvm> I<noderange> [B<--dedicatedevice> I<virtual_device> I<real_device> I<mode (0 or 1)>]
+B<chvm> I<noderange> [B<--dedicatedevice> I<virtual_device> I<real_device> I<mode>]
 
 B<chvm> I<noderange> [B<--deleteipl>]
 
@@ -76,7 +76,7 @@ B<chvm> I<noderange> [B<--removeloaddev> I<wwpn> I<lun>]
 
 B<chvm> I<noderange> [B<--removezfcp> I<device_address> I<wwpn> I<lun>]
 
-B<chvm> I<noderange> [B<--replacevs> I<directory_entry (optional)>]
+B<chvm> I<noderange> [B<--replacevs> I<directory_entry>]
 
 B<chvm> I<noderange> [B<--setipl> I<ipl_target> I<load_parms> I<parms>]
 
@@ -84,7 +84,7 @@ B<chvm> I<noderange> [B<--setpassword> I<password>]
 
 B<chvm> I<noderange> [B<--setloaddev> I<wwpn> I<lun>]
 
-B<chvm> I<noderange> [B<--sharevolume> I<volume_address> I<share_enable (YES or NO)>]
+B<chvm> I<noderange> [B<--sharevolume> I<volume_address> I<share_enable>]
 
 B<chvm> I<noderange> [B<--undedicatedevice> I<device_address>]
 
@@ -218,17 +218,17 @@ Change the size of the Hard disk.  The disk can never be set to less than it's c
 
 =over 10
 
-=item B<--add3390> I<disk_pool> I<device_address (or auto)> I<size (G, M, or cylinders)> I<mode> I<read_password (optional)> I<write_password (optional)> I<multi_password (optional)>
+=item B<--add3390> I<disk_pool> I<device_address> I<size> I<mode> I<read_password> I<write_password> I<multi_password>
 
-Adds a 3390 (ECKD) disk to a virtual machine's directory entry. The size of the disk can be specified in GB, MB, or the number of cylinders.
+Adds a 3390 (ECKD) disk to a virtual machine's directory entry. The device address can be automatically assigned by specifying 'auto'. The size of the disk can be specified in GB, MB, or the number of cylinders.
 
 =item B<--add3390active> I<device_address> I<mode>
 
 Adds a 3390 (ECKD) disk that is defined in a virtual machine's directory entry to that virtual server's active configuration.
 
-=item B<--add9336> I<disk_pool> I<device_address (or auto)> I<size (G, M, or blocks)> I<mode> I<read_password (optional)> I<write_password (optional)> I<multi_password (optional)>
+=item B<--add9336> I<disk_pool> I<device_address> I<size> I<mode> I<read_password> I<write_password> I<multi_password>
 
-Adds a 9336 (FBA) disk to a virtual machine's directory entry. The size of the disk can be specified in GB, MB, or the number of blocks.
+Adds a 9336 (FBA) disk to a virtual machine's directory entry. The device address can be automatically assigned by specifying 'auto'. The size of the disk can be specified in GB, MB, or the number of blocks.
 
 =item B<--adddisk2pool> I<function> I<region> I<volume> I<group>
 
@@ -238,7 +238,7 @@ Add a disk to a disk pool defined in the EXTENT CONTROL. Function type can be ei
 
 Adds a network adapter to a virtual machine's directory entry (case sensitive).
 
-=item B<--addpagespool> I<volume_addr> I<volume_label> I<volume_use> I<system_config_name (optional)> I<system_config_type (optional)> I<parm_disk_owner (optional)> I<parm_disk_number (optional)> I<parm_disk_password (optional)>
+=item B<--addpagespool> I<volume_addr> I<volume_label> I<volume_use> I<system_config_name> I<system_config_type> I<parm_disk_owner> I<parm_disk_number> I<parm_disk_password>
 
 Add a full volume page or spool disk to the virtual machine.
 
@@ -254,9 +254,16 @@ Adds a virtual processor to a virtual machine's active configuration (case sensi
 
 Adds a v-disk to a virtual machine's directory entry.
 
-=item B<--addzfcp> I<pool> I<device_address (or auto)> I<loaddev (0 or 1)> I<size> I<tag (optional)> I<wwpn (optional)> I<lun (optional)>
+=item B<--addzfcp> I<pool> I<device_address> I<loaddev> I<size> I<tag> I<wwpn> I<lun>
 
-Add a zFCP device to a device pool defined in xCAT. The device must have been carved up in the storage controller and configured with a WWPN/LUN before it can be added to the xCAT storage pool. z/VM does not have the ability to communicate directly with the storage controller to carve up disks dynamically.
+Add a zFCP device to a device pool defined in xCAT. The device must have been 
+carved up in the storage controller and configured with a WWPN/LUN before it can 
+be added to the xCAT storage pool. z/VM does not have the ability to communicate 
+directly with the storage controller to carve up disks dynamically. xCAT will 
+find the a zFCP device in the specified pool that meets the size required, if 
+the WWPN and LUN are not given. The device address can be automatically assigned 
+by specifying 'auto'. The WWPN/LUN can be set as the LOADDEV in the directory
+entry if (1) is specified as the 'loaddev'.
 
 =item B<--connectnic2guestlan> I<device_address> I<lan> I<owner>
 
@@ -270,7 +277,7 @@ Connects a given network adapter to a VSwitch.
 
 Copy a disk attached to a given virtual server.
 
-=item B<--dedicatedevice> I<virtual_device> I<real_device> I<mode (0 or 1)>
+=item B<--dedicatedevice> I<virtual_device> I<real_device> I<mode>
 
 Adds a dedicated device to a virtual machine's directory entry.
 
@@ -314,7 +321,7 @@ Removes the LOADDEV statement from a virtual machines's directory entry.
 
 Removes a given SCSI/FCP device belonging to the virtual machine.
 
-=item B<--replacevs> I<directory_entry (optional)>
+=item B<--replacevs> I<directory_entry>
 
 Replaces a virtual machine's directory entry. The directory entry can be echoed into stdin or a text file.
 
