@@ -1,19 +1,26 @@
 #!/bin/sh
 
 # 
-# Sample script to accept licenses for the IBM vacpp and xlf compilers
+# Sample script to accept licenses for the IBM xlf compilers
 # For Linux:
 #    Assumes all compiler software has been installed
 
 OS=`uname`
 if [ $OS != "AIX" ]; then
-    xlf_script=`find /opt/ibmcmp/xlf -name new_install -print`
+    cd $installroot/
+    xlf_script=`find opt/ibmcmp/xlf -name new_install -print`
 
-    #  Being run from a stateful install postscript or stateless postbootscript.
-   if [ -n "$xlf_script" ] ; then
-       echo 1 | $xlf_script
+    if [ -n $installroot ]; then
+        #  Being run from a stateful install postscript or stateless postbootscript.
+        if [ -n "$xlf_script" ] ; then
+            echo 1 | chroot $installroot /$xlf_script
+        fi
+    else
+        #  Being run from a stateful install postscript postbootscript.
+        if [ -n "$xlf_script" ] ; then
+           echo 1 | $xlf_script
+        fi
     fi
-
 fi  
 
 
