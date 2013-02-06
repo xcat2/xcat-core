@@ -172,7 +172,7 @@ Obtain the SSI and system status.
 
 =item B<--smapilevel>
 
-Obtain the SMAPI level installed on a given hypervisor.
+Obtain the SMAPI level installed on the z/VM system.
 
 =item B<--wwpn>
 

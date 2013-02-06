@@ -841,6 +841,11 @@ sub changeVM {
         my $blks    = $args->[3];
         my $mode    = $args->[4];
         
+        # If the user specifies auto as the device address, then find a free device address
+        if ($addr eq "auto") {
+            $addr = xCAT::zvmUtils->getFreeAddress($::SUDOER, $node, "smapi");
+        }
+        
         my $readPw  = "''";
         if ($args->[5]) {
             $readPw = $args->[5];
@@ -1269,7 +1274,7 @@ sub changeVM {
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
-    # connectnic2vswitch [address] [VSwitch]
+    # connectnic2vswitch [address] [vSwitch]
     elsif ( $args->[0] eq "--connectnic2vswitch" ) {
         my $addr    = $args->[1];
         my $vswitch = $args->[2];
@@ -6636,7 +6641,7 @@ sub inventoryHypervisor {
     
     # ssi
     elsif ( $args->[0] eq "--ssi" ) {      
-        $str = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli SSI_Query -T $hcpUserId"`;
+        $str = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli SSI_Query"`;
     }
     
     # smapilevel
