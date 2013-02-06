@@ -844,6 +844,11 @@ sub change_profile {
     my $new_profile=shift;
     my $srcdir=shift;
 
+    my $old_profile= $data->{profile};
+    if ($old_profile eq $new_profile) { 
+	return $data; #do nothing if old profile is the same as the new one. 
+    }
+
     $data->{profile}=$new_profile;
     my $installdir = xCAT::TableUtils->getInstallDir();
     unless($installdir){
@@ -871,16 +876,42 @@ sub change_profile {
       elsif ($os =~ /sles.*/) { $platform = "sles"; }
       elsif ($os =~ /SL.*/) { $platform = "SL"; }
       elsif ($os =~ /win/)  {$platform = "windows"; }
+      elsif ($os =~ /ubuntu*/) {$platform = "ubuntu"; }
     }
 
     
     for my $a ("template", "pkglist", "synclists", "otherpkglist", "postinstall", "exlist")   {
-	if ($data->{$a}) {
- 	    my $fn=basename($data->{$a});
-	    my $oldfn=$fn;
-	    $fn =~ s/^([^\.]+)\.(.*)$/$new_profile.$2/;
-	    move("$srcdir/$oldfn", "$srcdir/$fn");
-	    $data->{$a}= "$installdir/custom/$prov/$platform/$fn";
+	my $filenames=$data->{$a};
+	if($filenames) {
+	    my @file_array=split(',', $filenames);
+	    my @new_file_array=();
+	    foreach my $old (@file_array) {
+		my $oldfn=basename($old);
+		my $olddir=dirname($old);		
+		my $newfn;
+		my $newdir;
+                #if source file is from /opt/xcat/share..., 
+		#then copy it to /install/custom... directory. 
+                #Otherwise, copy the file in the same directory
+		if ($olddir =~ /$::XCATROOT\/share\/xcat/) {
+		    $newdir="$installdir/custom/$prov/$platform";
+		} else {
+		    $newdir=$olddir;
+		}
+                #if the file name contains the old profile name, 
+                #replace it with the new profile name.
+                #Otherwise prefix the old file name with the new profile name. 
+		if ($oldfn =~ /$old_profile/) {
+		    $newfn=$oldfn;
+		    $newfn =~ s/$old_profile/$new_profile/;
+		} else {
+		    $newfn="$new_profile.$oldfn";
+		}
+	
+		move("$srcdir/$oldfn", "$srcdir/$newfn");
+		push (@new_file_array, "$newdir/$newfn");
+	    }
+	    $data->{$a}= join(',', @new_file_array);
 	}
     }
 
