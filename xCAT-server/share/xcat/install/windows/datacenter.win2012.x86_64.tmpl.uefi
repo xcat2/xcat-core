@@ -55,8 +55,6 @@
             </ImageInstall>
             <UserData>
                 <AcceptEula>true</AcceptEula>
-                <FullName>xCAT USER</FullName>
-                <Organization>xCAT</Organization>
             	#WINPRODKEY:win2012.datacenter#
             </UserData>
         </component>
