@@ -122,25 +122,25 @@ function loadMonitorPage() {
             var xcatMon = $('<tr></tr>');
             xcatMon.append($('<td><a href="#" name="xcatmon">xCAT</a></td>'));
             xcatMon.append($('<td></td>').append(statusButtonHash['xcatmon']));
-            xcatMon.append($('<td>Provides node status monitoring using fping on AIX and nmap on Linux. It also provides application status monitoring. The status and the appstatus columns of the nodelist table will be updated periodically  with the latest status values for the nodes.</td>'));
+            xcatMon.append($('<td>xCAT provides node status monitoring using fping on AIX and nmapon Linux. It also provides application status monitoring. The status and the appstatus columns of the nodelist table will be updated periodically with the latest status values for the nodes.</td>'));
             monTableBody.append(xcatMon);
             
             var rmcMon = $('<tr></tr>');
             rmcMon.append($('<td><a href="#" name="rmcmon">RMC</a></td>'));
             rmcMon.append($('<td></td>').append(statusButtonHash['rmcmon']));
-            rmcMon.append($('<td>IBM\'s Resource Monitoring and Control (RMC) subsystem is our recommended software for monitoring xCAT clusters. It\'s is part of the IBM\'s Reliable Scalable Cluster Technology (RSCT) that provides a comprehensive clustering environment for AIX and Linux.</td>'));
+            rmcMon.append($('<td>Resource Monitoring and Control (RMC) is a generalized framework for managing, monitoring and manipulating resources, such as physical or logical system entities. RMC is utilized as a communication mechanism for reporting service events to the Hardware Management Console (HMC).</td>'));
             monTableBody.append(rmcMon);
             
             var rmcEvent = $('<tr></tr>');
             rmcEvent.append($('<td><a href="#" name="rmcevent">RMC Event</a></td>'));
             rmcEvent.append($('<td></td>').append(statusButtonHash['rmcevent']));
-            rmcEvent.append($('<td>Listing event monitoring information recorded by the RSCT Event Response resource manager in the audit log. Creating and removing a condition/response association.</td>'));
+            rmcEvent.append($('<td>Shows a list of events recorded by the RSCT Event Response resource manager in the audit log.</td>'));
             monTableBody.append(rmcEvent);
 
             var gangliaMon = $('<tr></tr>');
             gangliaMon.append($('<td><a href="#" name="gangliamon">Ganglia</a></td>'));
             gangliaMon.append($('<td></td>').append(statusButtonHash['gangliamon']));
-            gangliaMon.append($('<td>A scalable distributed monitoring system for high-performance computing systems such as clusters and Grids.</td>'));
+            gangliaMon.append($('<td>Ganglia is a scalable distributed monitoring system for high-performance computing systems such as clusters and Grids.</td>'));
             monTableBody.append(gangliaMon);
             
             // Do not word wrap
