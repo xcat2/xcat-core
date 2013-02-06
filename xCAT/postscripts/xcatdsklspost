@@ -170,7 +170,12 @@ else
       fi
       if [ $ARGNUM -gt 8 ]; then
         if [ $9 = "--nfsv4" ]; then
-          NFSV4=$10
+          NFSV4=${10}
+        fi 
+      fi
+      if [ $ARGNUM -gt 10 ]; then
+        if [ $11 = "-c" ]; then
+          CFLAG=${11}
         fi 
       fi
       ;;
@@ -191,8 +196,9 @@ if [ ! `uname` = Linux ]; then
    cp /xcatmnt/xcataixpost /xcatpost
    umount /xcatmnt
    rmdir /xcatmnt
-  logger -t xCAT -p local4.err "Running xcataixpost $*";
-  exec /xcatpost/xcataixpost $*
+  logger -t xCAT -p local4.err "Running xcataixpost $*"
+ # echo "/xcatpost/xcataixpost $1 $2 $3 '"$4"' $5 $6 $7 $8 $9 ${10} ${11}"
+  exec /xcatpost/xcataixpost $1 $2 $3 '"$4"' $5 $6 $7 $8 $9 ${10} ${11}
   exit
 fi
 
