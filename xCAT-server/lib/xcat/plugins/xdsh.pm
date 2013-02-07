@@ -101,10 +101,6 @@ sub preprocess_request
             my @cmd = split(/ /, $value); # split off args, if any
             $::dshexecute = $cmd[0];      # This is the executable file 
         }
-        if ($var eq "DSH_ENVIRONMENT")      # from xdsh -E flag
-        {
-            $::dshenvfile = $value;       # Name of file with env variables 
-        }
     }
     # if xdcp need to make sure request has full path to input files 
     if ($command eq "xdcp") {
@@ -158,9 +154,8 @@ sub preprocess_request
         if (@snodes)    # service nodes
         {
 
-            # if xdcp and not pull function or xdsh -e or xdsh -E
-            if ((($command eq "xdcp") && ($::dcppull == 0)) or (($::dshexecute)
-                        or ($::dshenvfile)))
+            # if xdcp and not pull function or xdsh -e
+            if ((($command eq "xdcp") && ($::dcppull == 0)) or ($::dshexecute))
             {
 
                 # get the directory on the servicenode to put the  files in
@@ -186,7 +181,7 @@ sub preprocess_request
                   {
                      return;
                   }
-                } else {  # xdsh -e  or -E
+                } else {  # xdsh -e
                    $rc =
                     &process_servicenodes_xdsh($req, $cb, $sub_req, \@snodes,
                                         \@snoderange, $synfiledir);
@@ -709,12 +704,10 @@ sub process_servicenodes_xdcp
 #-------------------------------------------------------
 
 =head3  process_servicenodes_xdsh
-  Build the xdsh command to sync the -e file or the -E file 
-  to the servicenodes.
-  The executable (-e) or the environment file (-E) 
-  must be copied into /var/xcat/syncfiles (SNsyncfiledir attribute), and then
-  the command modified so that the xdsh running on the SN will use the file
-  from /var/xcat/syncfiles (default) for the compute nodes.
+  Build the xdsh command to send the -e file 
+  The executable must be copied into /var/xcat/syncfiles, and then
+  the command modified so that the xdsh running on the SN will cp the file
+  from /var/xcat/syncfiles to the compute node /tmp directory and run it.
   Return an array of servicenodes that do not have errors 
   Returns error code:
   if  = 0,  good return continue to process the
@@ -739,52 +732,30 @@ sub process_servicenodes_xdsh
     $::RUNCMD_RC = 0;
     my $cmd = $req->{command}->[0];
 
-    # if xdsh -e <executable> command or xdsh -E <environment file>
-    #   service nodes first need
-    #   to be rsync with the executable or environment file to the $synfiledir
-    if (($::dshexecute) or ($::dshenvfile)) 
+    # if xdsh -e <executable> command, service nodes first need
+    #   to be rsync with the executable file to the $synfiledir
+    if ($::dshexecute)
     {
-        if (defined($::dshexecute) && (!-f $::dshexecute))
+        if (!-f $::dshexecute)
         {    # -e file  does not exist,  quit
             my $rsp = {};
             $rsp->{error}->[0] = "File:$::dshexecute does not exist.";
             xCAT::MsgUtils->message("E", $rsp, $callback, 1);
             return (1);    # process no service nodes
         }
-        if (defined($::dshenvfile) && (!-f $::dshenvfile))
-        {    # -E file  does not exist,  quit
-            my $rsp = {};
-            $rsp->{error}->[0] = "File:$::dshenvfile does not exist.";
-            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-            return (1);    # process no service nodes
-        }
 
-        # xdcp (-F) the executable from the xdsh -e and/or 
-        # xdcp (-F)  the environment file from the xdsh -E
-        # to the service node 
+        # xdcp the executable from the xdsh -e to the service node first
         # change noderange to the service nodes
         # sync to each SN and check for error
         # if error do not add to good_SN array, add to bad_SN
-        
-        # /.../excutable -> $syncdir/..../executable
-        # /.../envfile ->  $syncdir/...../envfile 
+
         # build a tmp syncfile with
         # $::dshexecute -> $synfiledir . $::dshexecute
-        # $::dshenvfile -> $synfiledir . $::dshenvfile
         my $tmpsyncfile = POSIX::tmpnam . ".dsh";
-        # if -E option
-        my $envfile;
-        my $execfile;
+        my $destination=$synfiledir . $::dshexecute;
         open(TMPFILE, "> $tmpsyncfile")
                   or die "can not open file $tmpsyncfile";
-        if (defined($::dshenvfile)) {
-           $envfile=$synfiledir . $::dshenvfile;
-           print TMPFILE "$::dshenvfile -> $envfile\n";
-        } 
-        if (defined($::dshexecute)) {
-           $execfile=$synfiledir . $::dshexecute;
-           print TMPFILE "$::dshexecute -> $execfile\n";
-        } 
+                print TMPFILE "$::dshexecute -> $destination\n";
         close TMPFILE;
         chmod 0755, $tmpsyncfile;
 
@@ -844,7 +815,7 @@ sub process_servicenodes_xdsh
         # remove the tmp syncfile
         `/bin/rm $tmpsyncfile`;
 
-    }    # end  xdsh -e or -E
+    }    # end  xdsh -E
 
     # report bad service nodes]
     if (@::bad_SN)
