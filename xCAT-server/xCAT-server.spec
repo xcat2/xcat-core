@@ -237,7 +237,6 @@ rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/sles
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/suse
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/syslinux
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/ubuntu
-rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/windows
 
 rm $RPM_BUILD_ROOT/%{prefix}/sbin/stopstartxcatd
 rm $RPM_BUILD_ROOT/%{prefix}/sbin/rshell_api
