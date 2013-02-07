@@ -15,15 +15,9 @@
             <DiskConfiguration>
                 <WillShowUI>OnError</WillShowUI>
                 <Disk>
-                    <DiskID>0</DiskID>
+                    <DiskID>==INSTALLTODISK==</DiskID>
                     <WillWipeDisk>true</WillWipeDisk>
-                    <CreatePartitions>
-                        <CreatePartition>
-                            <Order>1</Order>
-                            <Type>Primary</Type>
-                            <Extend>true</Extend>
-                        </CreatePartition>
-                    </CreatePartitions>
+		    ==BOOTPARTITIONS==
                 </Disk>
             </DiskConfiguration>
             <DynamicUpdate>
@@ -32,8 +26,8 @@
             <ImageInstall>
                 <OSImage>
                     <InstallTo>
-                        <DiskID>0</DiskID>
-                        <PartitionID>1</PartitionID>
+                        <DiskID>==INSTALLTODISK==</DiskID>
+                        <PartitionID>==INSTALLTOPART==</PartitionID>
                     </InstallTo>
                     <InstallFrom>
                         <MetaData wcm:action="add">
@@ -52,7 +46,7 @@
         <component name="Microsoft-Windows-PnpCustomizationsNonWinPE" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <DriverPaths>
                 <PathAndCredentials wcm:action="add" wcm:keyValue="1">
-                    <Path>I:\drivers\#TABLE:nodetype:$NODE:os#\#TABLE:nodetype:$NODE:arch#</Path>
+                    <Path>==INSTALLSHARE==\drivers\#TABLE:nodetype:$NODE:os#\#TABLE:nodetype:$NODE:arch#</Path>
                 </PathAndCredentials>
             </DriverPaths>
         </component>
