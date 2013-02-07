@@ -336,13 +336,13 @@ sub mkinstall
 
         #Call the Template class to do substitution to produce an unattend.xml file in the autoinst dir
         my $tmperr;
-	unless (-r "$installdir/utils/windows/fixupunattend.vbs" and stat("$::XCATROOT/share/xcat/netboot/windows/fixupunattend.vbs")->mtime < stat("$installdir/utils/windows/fixupunattend.vbs")) {
-		mkpath("$installdir/utils/windows/");
-		copy("$::XCATROOT/share/xcat/netboot/windows/fixupunattend.vbs","$installdir/utils/windows/fixupunattend.vbs");
+	unless (-r "$installroot/utils/windows/fixupunattend.vbs" and stat("$::XCATROOT/share/xcat/netboot/windows/fixupunattend.vbs")->mtime < stat("$installroot/utils/windows/fixupunattend.vbs")) {
+		mkpath("$installroot/utils/windows/");
+		copy("$::XCATROOT/share/xcat/netboot/windows/fixupunattend.vbs","$installroot/utils/windows/fixupunattend.vbs");
 	}
-	unless (-r "$installdir/utils/windows/detectefi.exe" and stat("$::XCATROOT/share/xcat/netboot/windows/detectefi.exe")->mtime < stat("$installdir/utils/windows/detectefi.exe")) {
-		mkpath("$installdir/utils/windows/");
-		copy("$::XCATROOT/share/xcat/netboot/windows/detectefi.exe","$installdir/utils/windows/detectefi.exe");
+	unless (-r "$installroot/utils/windows/detectefi.exe" and stat("$::XCATROOT/share/xcat/netboot/windows/detectefi.exe")->mtime < stat("$installroot/utils/windows/detectefi.exe")) {
+		mkpath("$installroot/utils/windows/");
+		copy("$::XCATROOT/share/xcat/netboot/windows/detectefi.exe","$installroot/utils/windows/detectefi.exe");
 	}
         if (-r "$tmplfile")
         {
