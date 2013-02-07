@@ -215,6 +215,7 @@ sub parse_args_xdsh
         xCAT::MsgUtils->message("E", $msg);
         exit 1;
     }
+
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
     Getopt::Long::Configure("bundling");
@@ -349,6 +350,15 @@ sub parse_args_xdsh
         }
         $ENV{'DSHEXECUTE'} = $executescript;    # execute script 
     }
+    # -E <env file> option if not already exported
+     
+    if ($options{environment})
+    {  
+      if (!($ENV{'DSH_ENVIRONMENT'})) { # env  variable first 
+        $ENV{'DSH_ENVIRONMENT'} = $options{environment};    # env file 
+      }
+    }
+
 
     # find out who is the current user running xdsh
     #my $current_userid = getlogin(); # does not work for su
@@ -516,15 +526,15 @@ sub parse_args_xdsh
 #-----------------------------------------------------------------------------
 sub parse_args_xdcp
 {
-    # if not parms input error out
+
+    my %options = ();
+    # test to see if any parameters were entered
     my $arraysize=@ARGV;
     if ($arraysize ==0) {
         my $msg= "No parameters were supplied on the xdcp command. Run xdcp -h";
         xCAT::MsgUtils->message("E", $msg);
         exit 1;
     }
-
-    my %options = ();
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
     Getopt::Long::Configure("bundling");
