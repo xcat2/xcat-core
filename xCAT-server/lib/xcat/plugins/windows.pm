@@ -1,5 +1,6 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_plugin::windows;
+use strict;
 BEGIN
 {
   $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
@@ -83,6 +84,7 @@ sub mkimage {
     unless (-d "$installroot/autoinst") {
         mkpath "$installroot/autoinst";
     }
+    my $ent;
     foreach $node (@nodes) {
         $ent = $oshash->{$node}->[0];
         unless ($ent->{arch} and $ent->{profile})
@@ -155,6 +157,7 @@ sub winshell {
     my $oshash = $ostab->getNodesAttribs(\@nodes,['profile','arch']);
     my $vpdtab = xCAT::Table->new('vpd');
     my $vpdhash = $vpdtab->getNodesAttribs(\@nodes,['uuid']);
+    my $shandle;
     foreach $node (@nodes) {
         open($shandle,">","$installroot/autoinst/$node.cmd");
         print $shandle $script;
@@ -296,6 +299,7 @@ sub mkinstall
                            open($bootmgr,">$tftpdir/bootm32.exe");
                            binmode($origmgr);
                            binmode($bootmgr);
+		           my @data = <$origmgr>;
                            foreach (@data) {
                                s/(\\.B.o.o.t.\\.B.)C(.)D/${1}3${2}2/; # 16 bit encoding... cheat
                                print $bootmgr $_;
@@ -521,9 +525,10 @@ sub copycd
         #If they say to call it something other than win<something>, give up?
         return;
     }
+    my $darch;
     if (-d $mntpath . "/sources/6.0.6000.16386_amd64" and -r $mntpath . "/sources/install.wim")
     {
-        $darch = x86_64;
+        $darch = "x86_64";
         unless ($distname) {
             $distname = "win2k8";
         }
