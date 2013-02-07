@@ -1034,28 +1034,6 @@ sub fork_fanout_dsh
 
         if ($$options{'environment'})
         {
-            # if we are on a servicenode need to get the environment file
-            # from the SNsyncfiledir, not local
-            if (xCAT::Utils->isServiceNode()) {
-              my $newenvfile;
-              my $synfiledir = "/var/xcat/syncfiles"; #default
-
-              # get the directory on the servicenode to and add to filepath 
-              my @syndir= xCAT::TableUtils->get_site_attribute("SNsyncfiledir");
-              if ($syndir[0])
-              {
-                $synfiledir = $syndir[0];
-              }
-              $newenvfile = $synfiledir;
-              $newenvfile .= $$options{'environment'};
-              $$options{'environment'} =  $newenvfile;
-            }
-            if (!(-e $$options{'environment'}))
-            {
-              my $rsp={};
-               $rsp->{error}->[0] = "File $$options{'environment'} does not exist";
-               xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-            }
             push @dsh_command,
               "$$options{'pre-command'} . $$options{'environment'} ; $$options{'command'}$$options{'post-command'}";
         }
@@ -1185,13 +1163,13 @@ sub fork_fanout_dsh
             if ($$options{'execute'})
             {
                 # first build the scp command to copy the file to execute
-                # down to the node into /tmp/*.dsh 
+                # down to the node into /tmp/*.dsh
                 my $rsp = {};
                 $rsp->{data}->[0] = "TRACE: Execute option specified.";
                 $dsh_trace && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
 
                 my %exe_rcp_config = ();
-                $tmp_cmd_file = POSIX::tmpnam . ".dsh"; 
+                $tmp_cmd_file = POSIX::tmpnam . ".dsh";
 
                 my ($exe_cmd, @args) = @{$$options{'execute'}};
                 my $chmod_cmd = "";
