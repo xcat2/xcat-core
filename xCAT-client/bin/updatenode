@@ -95,7 +95,6 @@ if (
                 'P|scripts:s'      => \$::RERUNPS,
                 'k|security'       => \$::SECURITY,
                 'o|os:s'      	   => \$::OS,
-                'fanout=i'         => \$::fanout,
     )
   ) {
     &updatenode_usage();
