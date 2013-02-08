@@ -19,9 +19,7 @@ dim notefi
 notefi=1
 if filesys.FileExists(drvletter&"\utils\windows\detectefi.exe") then
 	notefi = myshell.run(drvletter&"\utils\windows\detectefi.exe",1,true)
-	WScript.Echo(notefi)
 end if
-WScript.Echo(notefi)
 srcfilename = WScript.Arguments.Item(0)
 dstfilename = WScript.Arguments.Item(1)
 Set srcfile = filesys.OpenTextFile(srcfilename,1)
