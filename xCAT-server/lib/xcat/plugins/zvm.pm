@@ -1217,7 +1217,7 @@ sub changeVM {
                 }
                 
                 $out = xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo 0x$wwpn:0x$lun >> /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-0.0.$device");
-            } elsif ( $os =~ m/sles11/i ) {   
+            } elsif ( $os =~ m/sles11/i ) {
                 $out = `ssh $::SUDOER\@$node "$::SUDO zfcp_disk_configure 0.0.$device $wwpn $lun 1"`;
                 if ($out) {
                     xCAT::zvmUtils->printLn($callback, "$node: $out");
@@ -1225,7 +1225,7 @@ sub changeVM {
                 
                 $tmp = "'ACTION==\"add\", KERNEL==\"rport-*\", ATTR{port_name}==\"0x$wwpn\", SUBSYSTEMS==\"ccw\", KERNELS==\"0.0.$device\", ATTR{[ccw/0.0.$device]0x$wwpn/unit_add}=\"0x$lun\"'";
                 $tmp = xCAT::zvmUtils->replaceStr($tmp, '"', '\\"');
-                $out = xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo $tmp >> /etc/udev/rules.d/51-zfcp-0.0.$device.rules");
+                $out = `ssh $::SUDOER\@$node "echo $tmp | $::SUDO tee -a /etc/udev/rules.d/51-zfcp-0.0.$device.rules"`;
             } elsif ( $os =~ m/rhel/i ) {
                 $out = xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo \"0.0.$device 0x$wwpn 0x$lun\" >> /etc/zfcp.conf");
                 
