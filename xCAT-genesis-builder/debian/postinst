@@ -1,5 +1,5 @@
 #!/bin/sh
-# postinst script for xcat-genesis
+# postinst script for xcat-genesis-base
 #
 # see: dh_installdeb(1)
 
@@ -20,13 +20,13 @@ set -e
 
 case "$1" in
     configure)
-      if [ -f /tmp/xCAT-genesis_upgrade.tmp ];then
-        if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
-	    . /etc/profile.d/xcat.sh
-	    mknb x86_64
-	fi
-        rm /tmp/xCAT-genesis_upgrade.tmp
-      fi
+    if [ -f "/tmp/xCATgenesisbase_update.tmp" ]; then
+        if [ -f "/proc/cmdline" ]; then
+            . /etc/profile.d/xcat.sh
+            tarch=`uname -m`
+            mknb %{tarch}
+        fi
+    fi
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

@@ -1,5 +1,5 @@
 #!/bin/sh
-# prerm script for xCAT-nbroot2
+# prerm script for xcat-genesis-base
 #
 # see: dh_installdeb(1)
 
@@ -18,10 +18,11 @@ set -e
 
 
 case "$1" in
-    upgrade)
-	touch /tmp/xCAT-genesis_upgrade.tmp
-    ;;
     remove|deconfigure)
+    ;;
+
+    upgrade)
+    touch /tmp/xCATgenesisbase_update.tmp
     ;;
 
     failed-upgrade)
