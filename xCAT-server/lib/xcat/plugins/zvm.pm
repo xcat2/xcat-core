@@ -138,6 +138,9 @@ sub process_request {
     # Directory where executables are on zHCP
     $::DIR = "/opt/zhcp/bin";
     
+    # Directory where system config is on zHCP
+    $::SYSCONF = "/opt/zhcp/conf";
+    
     # Directory where zFCP disk pools are on zHCP
     $::ZFCPPOOL = "/var/opt/zhcp/zfcp";
     
@@ -2874,71 +2877,80 @@ sub makeVM {
         $macId = xCAT::zvmUtils->replaceStr( $macId, ":", "" );
         $macId = substr( $macId, 6 );
     } else {
+    	my $prefix;
+    	if (`ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO test -f $::SYSCONF/userprefix && echo Exists"`) {
+            $prefix = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO cat $::SYSCONF/userprefix"`;
+            $prefix =~ s/\s*$//;
+            $prefix =~ s/^\s*//;
+        }
     	                
         # Get zHCP MAC address
         # The MAC address prefix is the same for all network devices
-        $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "/sbin/modprobe vmcp"`;
-        $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO /sbin/vmcp q v nic" | grep "MAC:"`;
-        if ($out) {
-            @lines = split( "\n", $out );
-            @words = split( " ", $lines[0] );
-
-            # Extract MAC prefix
-            my $prefix = $words[1];
-            $prefix = xCAT::zvmUtils->replaceStr( $prefix, "-", "" );
-            $prefix = substr( $prefix, 0, 6 );
-
-            # Generate MAC address
-            my $mac;
-            while ($generateNew) {
-                    
-                # If no MACID is found, get one
-                $macId = xCAT::zvmUtils->getMacID($::SUDOER, $hcp);
-                if ( !$macId ) {
-                    xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not generate MACID" );
-                    return;
-                }
-
-                # Create MAC address
-                $mac = $prefix . $macId;
-                        
-                # If length is less than 12, append a zero
-                if ( length($mac) != 12 ) {
-                    $mac = "0" . $mac;
-                }
-        
-                # Format MAC address
-                $mac =
-                    substr( $mac, 0, 2 ) . ":"
-                  . substr( $mac, 2,  2 ) . ":"
-                  . substr( $mac, 4,  2 ) . ":"
-                  . substr( $mac, 6,  2 ) . ":"
-                  . substr( $mac, 8,  2 ) . ":"
-                  . substr( $mac, 10, 2 );
-                    
-                # Check 'mac' table for MAC address
-                my $tab = xCAT::Table->new( 'mac', -create => 1, -autocommit => 0 );
-                my @entries = $tab->getAllAttribsWhere( "mac = '" . $mac . "'", 'node' );
-                    
-                # If MAC address exists
-                if (@entries) {
-                    # Generate new MACID
-                    $out = xCAT::zvmUtils->generateMacId($::SUDOER, $hcp);
-                    $generateNew = 1;
-                } else {
-                    $generateNew = 0;
-                        
-                    # Save MAC address in 'mac' table
-                    xCAT::zvmUtils->setNodeProp( 'mac', $node, 'mac', $mac );
-                        
-                    # Generate new MACID
-                    $out = xCAT::zvmUtils->generateMacId($::SUDOER, $hcp);
-                }
-            } # End of while ($generateNew)
-        } else {
-            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not find the MAC address of the zHCP" );
-            xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Verify that the node's zHCP($hcp) is correct, the node is online, and the SSH keys are setup for the zHCP" );
+        if (!$prefix) {
+	        $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "/sbin/modprobe vmcp"`;
+	        $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO /sbin/vmcp q v nic" | grep "MAC:"`;
+	        if ($out) {
+	            @lines = split( "\n", $out );
+	            @words = split( " ", $lines[0] );
+	
+	            # Extract MAC prefix
+	            $prefix = $words[1];
+	            $prefix = xCAT::zvmUtils->replaceStr( $prefix, "-", "" );
+	            $prefix = substr( $prefix, 0, 6 );
+	        } else {
+	            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not find the MAC address of the zHCP" );
+	            xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Verify that the node's zHCP($hcp) is correct, the node is online, and the SSH keys are setup for the zHCP" );
+	            return;
+	        }
         }
+        
+        # Generate MAC address
+        my $mac;
+        while ($generateNew) {
+                    
+            # If no MACID is found, get one
+            $macId = xCAT::zvmUtils->getMacID($::SUDOER, $hcp);
+            if ( !$macId ) {
+                xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not generate MACID" );
+                return;
+            }
+
+            # Create MAC address
+            $mac = $prefix . $macId;
+                        
+            # If length is less than 12, append a zero
+            if ( length($mac) != 12 ) {
+                $mac = "0" . $mac;
+            }
+        
+            # Format MAC address
+            $mac =
+                substr( $mac, 0, 2 ) . ":"
+              . substr( $mac, 2,  2 ) . ":"
+              . substr( $mac, 4,  2 ) . ":"
+              . substr( $mac, 6,  2 ) . ":"
+              . substr( $mac, 8,  2 ) . ":"
+              . substr( $mac, 10, 2 );
+                    
+            # Check 'mac' table for MAC address
+            my $tab = xCAT::Table->new( 'mac', -create => 1, -autocommit => 0 );
+            my @entries = $tab->getAllAttribsWhere( "mac = '" . $mac . "'", 'node' );
+                    
+            # If MAC address exists
+            if (@entries) {
+                # Generate new MACID
+                $out = xCAT::zvmUtils->generateMacId($::SUDOER, $hcp);
+                $generateNew = 1;
+            } else {
+                $generateNew = 0;
+                        
+                # Save MAC address in 'mac' table
+                xCAT::zvmUtils->setNodeProp( 'mac', $node, 'mac', $mac );
+                    
+                # Generate new MACID
+                $out = xCAT::zvmUtils->generateMacId($::SUDOER, $hcp);
+            }
+        } # End of while ($generateNew)
     }
 
     # Create virtual server

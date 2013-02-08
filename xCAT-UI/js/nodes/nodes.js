@@ -418,24 +418,24 @@ function mkAddNodeLink() {
                     
                     var plugin;
                     switch(mgt) {
-                        case "kvm":
-                            plugin = new kvmPlugin();
-                            break;
-                        case "esx":
-                            plugin = new esxPlugin();
-                            break;
-                        case "blade":
-                            plugin = new bladePlugin();
-                            break;
-                        case "hmc":
-                            plugin = new hmcPlugin();
-                            break;
-                        case "ipmi":
-                            plugin = new ipmiPlugin();
-                            break;
-                        case "zvm":
-                            plugin = new zvmPlugin();
-                            break;
+	                    case "kvm":
+	                        plugin = new kvmPlugin();
+	                        break;
+	                    case "esx":
+	                        plugin = new esxPlugin();
+	                        break;
+	                    case "blade":
+	                        plugin = new bladePlugin();
+	                        break;
+	                    case "hmc":
+	                        plugin = new hmcPlugin();
+	                        break;
+	                    case "ipmi":
+	                        plugin = new ipmiPlugin();
+	                        break;
+	                    case "zvm":
+	                        plugin = new zvmPlugin();
+	                        break;
                     }
                     
                     plugin.addNode();
@@ -686,24 +686,15 @@ function loadNodes(data) {
             // Create an instance of the plugin
             var plugin;
             switch(mgt) {
-                case "blade":
-                    plugin = new bladePlugin();
-                    break;
-                case "fsp":
-                    plugin = new fspPlugin();
-                    break;
-                case "hmc":
-                    plugin = new hmcPlugin();
-                    break;
-                case "ipmi":
-                    plugin = new ipmiPlugin();
-                    break;        
-                case "ivm":
-                    plugin = new ivmPlugin();
-                    break;
-                case "zvm":
-                    plugin = new zvmPlugin();
-                    break;
+	            case "kvm":
+	                plugin = new kvmPlugin();
+	                break;
+	            case "esx":
+	                plugin = new esxPlugin();
+	                break;
+	            case "zvm":
+	                plugin = new zvmPlugin();
+	                break;
             }
             
             plugin.loadClonePage(tgtNodes[i]);
@@ -741,34 +732,35 @@ function loadNodes(data) {
     var migrateLnk = $('<a>Migrate</a>');
     migrateLnk.click(function() {
     	var tgtNodes = getNodesChecked(nodesTableId).split(',');
+    	var mgt = "", tmp = "";
         for (var i in tgtNodes) {
-            var mgt = getNodeAttr(tgtNodes[i], 'mgt');
-
-            // Create an instance of the plugin
-            var plugin;
-            switch(mgt) {
-                case "blade":
-                    plugin = new bladePlugin();
-                    break;
-                case "fsp":
-                    plugin = new fspPlugin();
-                    break;
-                case "hmc":
-                    plugin = new hmcPlugin();
-                    break;
-                case "ipmi":
-                    plugin = new ipmiPlugin();
-                    break;
-                case "ivm":
-                    plugin = new ivmPlugin();
-                    break;
-                case "zvm":
-                    plugin = new zvmPlugin();
-                    break;
+        	tmp = getNodeAttr(tgtNodes[i], 'mgt');
+            if (!mgt) {
+            	mgt = tmp
+            } else {
+            	if (tmp != mgt) {
+            		openDialog('warn', "You can pick only one type (mgt) of node to migrate!");
+            		return;
+            	}
             }
-            
-            plugin.loadMigratePage(tgtNodes[i]);
         }
+        
+	    // Create an instance of the plugin
+        var plugin;
+        switch(mgt) {
+            // Only hypervisors support migration
+            case "kvm":
+                plugin = new kvmPlugin();
+                break;
+            case "esx":
+                plugin = new esxPlugin();
+                break;
+            case "zvm":
+                plugin = new zvmPlugin();
+                break;
+        }
+        
+        plugin.loadMigratePage(tgtNodes);
     });
 
     // Update
@@ -854,24 +846,24 @@ function loadNodes(data) {
             // Create an instance of the plugin
             var plugin;
             switch(mgt) {
-                case "blade":
-                    plugin = new bladePlugin();
-                    break;
-                case "fsp":
-                    plugin = new fspPlugin();
-                    break;
-                case "hmc":
-                    plugin = new hmcPlugin();
-                    break;
-                case "ipmi":
-                    plugin = new ipmiPlugin();
-                    break;        
-                case "ivm":
-                    plugin = new ivmPlugin();
-                    break;
-                case "zvm":
-                    plugin = new zvmPlugin();
-                    break;
+	            case "kvm":
+	                plugin = new kvmPlugin();
+	                break;
+	            case "esx":
+	                plugin = new esxPlugin();
+	                break;
+	            case "blade":
+	                plugin = new bladePlugin();
+	                break;
+	            case "hmc":
+	                plugin = new hmcPlugin();
+	                break;
+	            case "ipmi":
+	                plugin = new ipmiPlugin();
+	                break;
+	            case "zvm":
+	                plugin = new zvmPlugin();
+	                break;
             }
             
             plugin.loadLogPage(tgtNodes[i]);
@@ -1635,24 +1627,24 @@ function loadNode(e) {
     // Create an instance of the plugin
     var plugin;
     switch(mgt) {
-        case "blade":
-            plugin = new bladePlugin();
-            break;
-        case "fsp":
-            plugin = new fspPlugin();
-            break;
-        case "hmc":
-            plugin = new hmcPlugin();
-            break;
-        case "ipmi":
-            plugin = new ipmiPlugin();
-            break;        
-        case "ivm":
-            plugin = new ivmPlugin();
-            break;
-        case "zvm":
-            plugin = new zvmPlugin();
-            break;
+	    case "kvm":
+	        plugin = new kvmPlugin();
+	        break;
+	    case "esx":
+	        plugin = new esxPlugin();
+	        break;
+	    case "blade":
+	        plugin = new bladePlugin();
+	        break;
+	    case "hmc":
+	        plugin = new hmcPlugin();
+	        break;
+	    case "ipmi":
+	        plugin = new ipmiPlugin();
+	        break;
+	    case "zvm":
+	        plugin = new zvmPlugin();
+	        break;
     }
 
     // Get tab area where a new tab will be inserted

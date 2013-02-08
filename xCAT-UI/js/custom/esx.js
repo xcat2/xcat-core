@@ -71,6 +71,15 @@ esxPlugin.prototype.loadConfigPage = function(tabId) {
 };
 
 /**
+ * Migrate node
+ * 
+ * @param node Node to migrate
+ */
+esxPlugin.prototype.loadMigratePage = function(node) {
+    openDialog('info', 'Not yet supported');
+};
+
+/**
  * Clone node (service page)
  * 
  * @param node Node to clone
