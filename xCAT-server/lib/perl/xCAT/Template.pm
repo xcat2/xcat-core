@@ -337,7 +337,7 @@ sub windows_join_data {
 	}
 	my $componentxml = '<component name="Microsoft-Windows-UnattendedJoin" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'."\r\n<Identification>\r\n<JoinDomain>".$domain."</JoinDomain>\r\n";
 	if ($ou) {
-		$componentxml .= "<MachineObjectOU>".$ou."</MachineObjectOU>\n";
+		$componentxml .= "<MachineObjectOU>".$ou."</MachineObjectOU>\r\n";
 	}
 	if ($prejoin) {
 		my $adinfo = machinepassword(wantref=>1); #TODO: needs rearranging in non prejoin case
