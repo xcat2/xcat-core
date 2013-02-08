@@ -1,11 +1,11 @@
-Source: xcat-genesis-scripts
+Source: xcat-genesis-scripts-amd64
 Section: admin
 Priority: extra
 Maintainer: root <root@unknown>
 Build-Depends: debhelper (>= 8.0.0)
 Standards-Version: 3.9.2
 
-Package: xcat-genesis-scripts
+Package: xcat-genesis-scripts-amd64
 Architecture: all
 Depends: xcat-genesis-base-amd64
 Description: xCAT genesis 
