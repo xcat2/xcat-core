@@ -779,7 +779,7 @@ function updateZNodeStatus(data) {
     var statBarId = node + 'StatusBar';
     
     // Write ajax response to status bar
-    var prg = writeRsp(rsp, '[A-Za-z0-9._-]+:');    
+    var prg = writeRsp(rsp, node + ': ');    
     $('#' + statBarId).find('div').append(prg);    
 }
 

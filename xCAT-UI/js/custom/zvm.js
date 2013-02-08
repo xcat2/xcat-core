@@ -953,6 +953,8 @@ zvmPlugin.prototype.loadInventory = function(data) {
     var tabId = args[0].replace('out=', '');
     // Get node
     var node = args[1].replace('node=', '');
+    // Clear any existing cookie
+    $.cookie(node + 'processes', null);
     
     // Remove loader
     $('#' + tabId).find('img').remove();

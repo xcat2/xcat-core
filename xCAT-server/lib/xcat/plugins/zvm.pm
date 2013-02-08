@@ -1210,22 +1210,50 @@ sub changeVM {
             #   SLES 11: /etc/udev/rules.d/51-zfcp*
             my $tmp;
             if ( $os =~ m/sles10/i ) {
-                $out = `ssh $::SUDOER\@$node "$::SUDO zfcp_host_configure 0.0.$device 1"`;
-                $out = `ssh $::SUDOER\@$node "$::SUDO zfcp_disk_configure 0.0.$device $wwpn $lun 1"`;
+                $out = `ssh $::SUDOER\@$node "$::SUDO /sbin/zfcp_host_configure 0.0.$device 1"`;
+                if ($out) {
+                    xCAT::zvmUtils->printLn($callback, "$node: $out");
+                }
+                
+                $out = `ssh $::SUDOER\@$node "$::SUDO /sbin/zfcp_disk_configure 0.0.$device $wwpn $lun 1"`;
                 if ($out) {
                     xCAT::zvmUtils->printLn($callback, "$node: $out");
                 }
                 
                 $out = xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo 0x$wwpn:0x$lun >> /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-0.0.$device");
             } elsif ( $os =~ m/sles11/i ) {
-                $out = `ssh $::SUDOER\@$node "$::SUDO zfcp_disk_configure 0.0.$device $wwpn $lun 1"`;
+            	$out = `ssh $::SUDOER\@$node "$::SUDO /sbin/zfcp_host_configure 0.0.$device 1"`;
                 if ($out) {
                     xCAT::zvmUtils->printLn($callback, "$node: $out");
                 }
                 
-                $tmp = "'ACTION==\"add\", KERNEL==\"rport-*\", ATTR{port_name}==\"0x$wwpn\", SUBSYSTEMS==\"ccw\", KERNELS==\"0.0.$device\", ATTR{[ccw/0.0.$device]0x$wwpn/unit_add}=\"0x$lun\"'";
-                $tmp = xCAT::zvmUtils->replaceStr($tmp, '"', '\\"');
-                $out = `ssh $::SUDOER\@$node "echo $tmp | $::SUDO tee -a /etc/udev/rules.d/51-zfcp-0.0.$device.rules"`;
+                $out = `ssh $::SUDOER\@$node "$::SUDO /sbin/zfcp_disk_configure 0.0.$device $wwpn $lun 1"`;
+                if ($out) {
+                    xCAT::zvmUtils->printLn($callback, "$node: $out");
+                }
+
+                # Configure zFCP device to be persistent                
+                $out = `ssh $::SUDOER\@$node "$::SUDO touch /etc/udev/rules.d/51-zfcp-0.0.$device.rules"`;
+                
+                # Check if the file already contains the zFCP channel
+                $out = `ssh $::SUDOER\@$node "$::SUDO cat /etc/udev/rules.d/51-zfcp-0.0.$device.rules" | egrep -i "ccw/0.0.$device]online"`;
+                if (!$out) {                
+	                $tmp = "'ACTION==\"add\", SUBSYSTEM==\"ccw\", KERNEL==\"0.0.$device\", IMPORT{program}=\"collect 0.0.$device \%k 0.0.$device zfcp\"'";
+	                $tmp = xCAT::zvmUtils->replaceStr($tmp, '"', '\\"');
+	                $out = `ssh $::SUDOER\@$node "echo $tmp | $::SUDO tee -a /etc/udev/rules.d/51-zfcp-0.0.$device.rules"`;
+	                
+	                $tmp = "'ACTION==\"add\", SUBSYSTEM==\"drivers\", KERNEL==\"zfcp\", IMPORT{program}=\"collect 0.0.$device \%k 0.0.$device zfcp\"'";
+	                $tmp = xCAT::zvmUtils->replaceStr($tmp, '"', '\\"');
+	                $out = `ssh $::SUDOER\@$node "echo $tmp | $::SUDO tee -a /etc/udev/rules.d/51-zfcp-0.0.$device.rules"`;
+	                
+	                $tmp = "'ACTION==\"add\", ENV{COLLECT_0.0.$device}==\"0\", ATTR{[ccw/0.0.$device]online}=\"1\"'";
+	                $tmp = xCAT::zvmUtils->replaceStr($tmp, '"', '\\"');
+	                $out = `ssh $::SUDOER\@$node "echo $tmp | $::SUDO tee -a /etc/udev/rules.d/51-zfcp-0.0.$device.rules"`;
+                }
+                
+	            $tmp = "'ACTION==\"add\", KERNEL==\"rport-*\", ATTR{port_name}==\"0x$wwpn\", SUBSYSTEMS==\"ccw\", KERNELS==\"0.0.$device\", ATTR{[ccw/0.0.$device]0x$wwpn/unit_add}=\"0x$lun\"'";
+	            $tmp = xCAT::zvmUtils->replaceStr($tmp, '"', '\\"');
+	            $out = `ssh $::SUDOER\@$node "echo $tmp | $::SUDO tee -a /etc/udev/rules.d/51-zfcp-0.0.$device.rules"`;
             } elsif ( $os =~ m/rhel/i ) {
                 $out = xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo \"0.0.$device 0x$wwpn 0x$lun\" >> /etc/zfcp.conf");
                 
