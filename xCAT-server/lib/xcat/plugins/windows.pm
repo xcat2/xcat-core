@@ -13,6 +13,7 @@ use xCAT::Table;
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::SvrUtils;
+use File::stat;
 use Socket;
 use xCAT::MsgUtils;
 use Data::Dumper;
@@ -339,24 +340,22 @@ sub mkinstall
 
         #Call the Template class to do substitution to produce an unattend.xml file in the autoinst dir
         my $tmperr;
+	unless (-r "$installdir/utils/windows/fixupunattend.vbs" and stat("$::XCATROOT/share/xcat/netboot/windows/fixupunattend.vbs")->mtime < stat("$installdir/utils/windows/fixupunattend.vbs")) {
+		mkpath("$installdir/utils/windows/");
+		copy("$::XCATROOT/share/xcat/netboot/windows/fixupunattend.vbs","$installdir/utils/windows/fixupunattend.vbs");
+	}
+	unless (-r "$installdir/utils/windows/detectefi.exe" and stat("$::XCATROOT/share/xcat/netboot/windows/detectefi.exe")->mtime < stat("$installdir/utils/windows/detectefi.exe")) {
+		mkpath("$installdir/utils/windows/");
+		copy("$::XCATROOT/share/xcat/netboot/windows/detectefi.exe","$installdir/utils/windows/detectefi.exe");
+	}
         if (-r "$tmplfile")
         {
             $tmperr =
               xCAT::Template->subvars(
                          $tmplfile,
-                         "$installroot/autoinst/$node",
+                         "$installroot/autoinst/$node.xml",
                          $node,
                          0
-                         );
-        }
-        if (-r "$tmplfile.uefi")
-        {
-            $tmperr =
-              xCAT::Template->subvars(
-                         $tmplfile.".uefi",
-                         "$installroot/autoinst/$node.uefi",
-                         $node,
-                         0, undef,undef,reusemachinepass=>1,
                          );
         }
         
@@ -425,17 +424,13 @@ sub mkinstall
 		copy("$::XCATROOT/share/xcat/netboot/detectefi.exe","$installroot/utils/detectefi.exe");
 	}
         open($shandle,">","$installroot/autoinst/$node.cmd");
-	print $shandle "set UNATTEND=$node\r\n";
-	if (-f "$installroot/utils/detectefi.exe") {
-		print $shandle "i:\\utils\\detectefi.exe\r\n";
-		print $shandle "if NOT ERRORLEVEL 1 set UNATTEND=$node.uefi\r\n";
-	}
+	print $shandle "i:\\utils\\windows\\fixupunattend.vbs $node.xml x:\\unattend.xml\r\n";
 		
         if ($sspeed) {
             $sport++;
-            print $shandle "i:\\$os\\$arch\\setup /unattend:i:\\autoinst\\%UNATTEND% /emsport:COM$sport /emsbaudrate:$sspeed /noreboot\r\n";
+            print $shandle "i:\\$os\\$arch\\setup /unattend:x:\\unattend.xml /emsport:COM$sport /emsbaudrate:$sspeed /noreboot\r\n";
         } else {
-            print $shandle "i:\\$os\\$arch\\setup /unattend:i:\\autoinst\\%UNATTEND% /noreboot\r\n";
+            print $shandle "i:\\$os\\$arch\\setup /unattend:x:\\unattend.xml /noreboot\r\n";
         }
         #print $shandle "i:\\postscripts\
         print $shandle 'reg load HKLM\csystem c:\windows\system32\config\system'."\r\n"; #copy installer DUID to system before boot

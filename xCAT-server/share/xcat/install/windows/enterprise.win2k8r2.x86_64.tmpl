@@ -15,15 +15,9 @@
             <DiskConfiguration>
                 <WillShowUI>OnError</WillShowUI>
                 <Disk>
-                    <DiskID>0</DiskID>
+                    <DiskID>==INSTALLTODISK==</DiskID>
                     <WillWipeDisk>true</WillWipeDisk>
-                    <CreatePartitions>
-                        <CreatePartition>
-                            <Order>1</Order>
-                            <Type>Primary</Type>
-                            <Extend>true</Extend>
-                        </CreatePartition>
-                    </CreatePartitions>
+		    ==BOOTPARTITIONS==
                 </Disk>
             </DiskConfiguration>
             <DynamicUpdate>
@@ -32,8 +26,8 @@
             <ImageInstall>
                 <OSImage>
                     <InstallTo>
-                        <DiskID>0</DiskID>
-                        <PartitionID>1</PartitionID>
+                        <DiskID>==INSTALLTODISK==</DiskID>
+                        <PartitionID>INSTALLTOPART==</PartitionID>
                     </InstallTo>
                     <InstallFrom>
                         <MetaData wcm:action="add">
@@ -47,6 +41,7 @@
                 <AcceptEula>true</AcceptEula>
                 <FullName>xCAT USER</FullName>
                 <Organization>xCAT</Organization>
+            	#WINPRODKEY:win2k8r2.enterprise#
             </UserData>
         </component>
     </settings>
@@ -54,7 +49,7 @@
         <component name="Microsoft-Windows-PnpCustomizationsNonWinPE" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <DriverPaths>
                 <PathAndCredentials wcm:action="add" wcm:keyValue="1">
-                    <Path>I:\drivers\#TABLE:nodetype:$NODE:os#\#TABLE:nodetype:$NODE:arch#</Path>
+                    <Path>==INSTALLSHARE==\drivers\#TABLE:nodetype:$NODE:os#\#TABLE:nodetype:$NODE:arch#</Path>
                 </PathAndCredentials>
             </DriverPaths>
         </component>
@@ -75,10 +70,7 @@
 	        <FirstLogonCommands>
             </FirstLogonCommands>
             <UserAccounts>
-                <AdministratorPassword>
-                    <Value>#TABLE:passwd:key=system,username=Administrator:password#</Value>
-                    <PlainText>true</PlainText>
-                </AdministratorPassword>
+		#WINACCOUNTDATA#
             </UserAccounts>
         </component>
     </settings>
@@ -92,6 +84,7 @@
         </component>
     </settings>
     <settings pass="specialize">
+        #WINADJOIN#
         <component name="Microsoft-Windows-TerminalServices-LocalSessionManager" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <fDenyTSConnections>false</fDenyTSConnections>
         </component>
@@ -108,14 +101,15 @@
             </FirewallGroups>
         </component>
         <component name="Microsoft-Windows-Deployment" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+		<RunSynchronous>
+		#WINDISABLENULLADMIN#
+		</RunSynchronous>
         </component>
         <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <ComputerName>#TABLE:nodelist:$NODE:node#</ComputerName>
             <TimeZone>#WINTIMEZONE#</TimeZone>
-            <ProductKey>#TABLE:prodkey:$NODE,product=win2k8r2.enterprise:key#</ProductKey>
         </component>
     </settings>
     <settings pass="auditSystem">
     </settings>
-    <cpi:offlineImage cpi:source="wim:i:/win2k8r2/x86_64/sources/install.wim#Windows Server 2008 R2 SERVERENTERPRISE" xmlns:cpi="urn:schemas-microsoft-com:cpi" />
 </unattend>

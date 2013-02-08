@@ -36,5 +36,6 @@ Do Until srcfile.AtEndOfStream
 		fline = Replace(fline,"==BOOTPARTITIONS==","<CreatePartitions><CreatePartition><Order>1</Order><Type>Primary</Type><Extend>true</Extend></CreatePartition></CreatePartitions>")
 		fline = Replace(fline,"==INSTALLTOPART==","1")
 	end if
+	fline = Replace(fline,"==INSTALLTODISK==","0")
         dstfile.WriteLine(Replace(fline,"==INSTALLSHARE==",drvletter))
 Loop

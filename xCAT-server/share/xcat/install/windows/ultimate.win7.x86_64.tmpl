@@ -12,14 +12,8 @@
         <component name="Microsoft-Windows-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <DiskConfiguration>
                 <Disk wcm:action="add">
-                    <CreatePartitions>
-                        <CreatePartition wcm:action="add">
-                            <Order>1</Order>
-                            <Type>Primary</Type>
-                            <Extend>true</Extend>
-                        </CreatePartition>
-                    </CreatePartitions>
-                    <DiskID>0</DiskID>
+		    ==BOOTPARTITIONS==
+                    <DiskID>==INSTALLTODISK==</DiskID>
                     <WillWipeDisk>true</WillWipeDisk>
                 </Disk>
                 <WillShowUI>OnError</WillShowUI>
@@ -33,30 +27,19 @@
                         </MetaData>
                     </InstallFrom>
                     <InstallTo>
-                        <DiskID>0</DiskID>
-                        <PartitionID>1</PartitionID>
+                        <DiskID>==INSTALLTODISK==</DiskID>
+                        <PartitionID>==INSTALLTOPART==</PartitionID>
                     </InstallTo>
                 </OSImage>
             </ImageInstall>
             <UserData>
                 <AcceptEula>true</AcceptEula>
-                <FullName>xCAT USER</FullName>
-                <Organization>xCAT</Organization>
-                <ProductKey>
-                    <Key>#TABLE:prodkey:$NODE,product=win7.ultimate:key#</Key>
-                    <WillShowUI>OnError</WillShowUI>
-                </ProductKey>
+            	#WINPRODKEY:win7.ultimate#
             </UserData>
         </component>
     </settings>
     <settings pass="specialize">
-        <component name="Microsoft-Windows-UnattendedJoin" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-            <Identification>
-               <JoinDomain>#TABLE:site:key=domain:value#</JoinDomain>
-	       <MachinePassword>#MACHINEPASSWORD#</MachinePassword>
-               <UnsecureJoin>true</UnsecureJoin>
-	    </Identification>
-        </component>
+        #WINADJOIN#
         <component name="Microsoft-Windows-Security-SPP-UX" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <SkipAutoActivation>true</SkipAutoActivation>
         </component>
@@ -72,6 +55,11 @@
                 </FirewallGroup>
             </FirewallGroups>
         </component>
+        <component name="Microsoft-Windows-Deployment" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+		<RunSynchronous>
+		#WINDISABLENULLADMIN#
+		</RunSynchronous>
+        </component>
         <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <ComputerName>#TABLE:nodelist:$NODE:node#</ComputerName>
             <TimeZone>#WINTIMEZONE#</TimeZone>
@@ -81,7 +69,7 @@
         <component name="Microsoft-Windows-PnpCustomizationsNonWinPE" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <DriverPaths>
                 <PathAndCredentials wcm:action="add" wcm:keyValue="1">
-                    <Path>i:\drivers\win7\x86_64</Path>
+                    <Path>==INSTALLSHARE==\drivers\win7\x86_64</Path>
                 </PathAndCredentials>
             </DriverPaths>
         </component>
@@ -95,17 +83,8 @@
 
             </OOBE>
             <UserAccounts>
-                <DomainAccounts>
-			<DomainAccountList wcm:action="add">
-				<DomainAccount wcm:action="add">
-					<Group>Administrators</Group>
-					<Name>Domain Admins</Name>
-				</DomainAccount>
-				<Domain>#TABLE:site:key=domain:value#</Domain>
-			</DomainAccountList>
-                </DomainAccounts>
+		#WINACCOUNTDATA#
             </UserAccounts>
         </component>
     </settings>
-    <cpi:offlineImage cpi:source="wim://172.16.0.1/install/win7/x86_64/sources/install.wim#Windows 7 ULTIMATE" xmlns:cpi="urn:schemas-microsoft-com:cpi" />
 </unattend>
