@@ -424,13 +424,14 @@ sub mkinstall
 		copy("$::XCATROOT/share/xcat/netboot/detectefi.exe","$installroot/utils/detectefi.exe");
 	}
         open($shandle,">","$installroot/autoinst/$node.cmd");
-	print $shandle "i:\\utils\\windows\\fixupunattend.vbs $node.xml x:\\unattend.xml\r\n";
+	print $shandle 'for /f "tokens=2 delims= " %%i in ('."'net use ^| find ".'"install"'."') do set instdrv=%%i\r\n";
+	print $shandle "%instdrv%\\utils\\windows\\fixupunattend.vbs %instdrv%\\autoinst\\$node.xml x:\\unattend.xml\r\n";
 		
         if ($sspeed) {
             $sport++;
-            print $shandle "i:\\$os\\$arch\\setup /unattend:x:\\unattend.xml /emsport:COM$sport /emsbaudrate:$sspeed /noreboot\r\n";
+            print $shandle "%instdrv%\\$os\\$arch\\setup /unattend:x:\\unattend.xml /emsport:COM$sport /emsbaudrate:$sspeed /noreboot\r\n";
         } else {
-            print $shandle "i:\\$os\\$arch\\setup /unattend:x:\\unattend.xml /noreboot\r\n";
+            print $shandle "%instdrv%\\$os\\$arch\\setup /unattend:x:\\unattend.xml /noreboot\r\n";
         }
         #print $shandle "i:\\postscripts\
         print $shandle 'reg load HKLM\csystem c:\windows\system32\config\system'."\r\n"; #copy installer DUID to system before boot
@@ -441,10 +442,10 @@ sub mkinstall
         print $shandle "IF %PROCESSOR_ARCHITECTURE%==x64 GOTO x64\r\n";
         print $shandle "IF %PROCESSOR_ARCHITECTURE%==x86 GOTO x86\r\n";
         print $shandle ":x86\r\n";
-        print $shandle "i:\\postscripts\\upflagx86 %XCATD% 3002 next\r\n";
+        print $shandle "%instdrv%\\postscripts\\upflagx86 %XCATD% 3002 next\r\n";
         print $shandle "GOTO END\r\n";
         print $shandle ":x64\r\n";
-        print $shandle "i:\\postscripts\\upflagx64 %XCATD% 3002 next\r\n";
+        print $shandle "%instdrv%\\postscripts\\upflagx64 %XCATD% 3002 next\r\n";
         print $shandle ":END\r\n";
         close($shandle);
         if ($vpdhash->{$node}) {
