@@ -1108,6 +1108,8 @@ sub changeVM {
         my $min;
         my $max;
         if ($device =~ m/auto/i) {
+        	my %usedDevices = xCAT::zvmUtils->getUsedFcpDevices($::SUDOER, $hcp);
+        	
         	if ($device =~ m/,/i) {
         		@ranges = split(';', $range);
         	} else {
@@ -1141,7 +1143,12 @@ sub changeVM {
 	                    ($min, $max) = split('-', $_);
 	                    if (hex($device) >= hex($min) && hex($device) <= hex($max)) {
 	                    	$found = 1;
-	                        last;
+	                    	$device = uc($device);
+	                    		
+	                        # Used found zFCP channel if not in use or allocated                    	
+	                    	if (!$usedDevices{$device}) {
+	                           last;
+	                    	}
 	                    }
 	                }
                 }

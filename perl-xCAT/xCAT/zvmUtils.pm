@@ -2125,6 +2125,7 @@ sub querySSI {
     Description : Execute a remote command
     Arguments   :   User (root or non-root)
                     Node
+                    Command to execute
     Returns     : Output returned from executing command
     Example     : my $out = xCAT::zvmUtils->rExecute($user, $node, $cmd);
     
@@ -2146,4 +2147,51 @@ sub rExecute {
 	$cmd = "'" . $cmd . "'";	
 	$out = `ssh $user\@$node "$sudo sh -c $cmd"`;
 	return $out;
+}
+
+#-------------------------------------------------------
+
+=head3   getUsedFcpDevices
+
+    Description : Get a list of used FCP devices in the zFCP pools
+    Arguments   :   User (root or non-root)
+                    zHCP
+    Returns     : List of known FCP devices
+    Example     : my %devices = xCAT::zvmUtils->getUsedFcpDevices($user, $zhcp);
+    
+=cut
+
+#-------------------------------------------------------
+sub getUsedFcpDevices {
+	my ( $class, $user, $hcp ) = @_;
+	
+    # Directory where zFCP pools are
+    my $pool = "/var/opt/zhcp/zfcp";
+    
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+	
+	# Grep the pools for used or allocated zFCP devices
+	my %usedDevices;
+	my @args;
+	my @devices = split("\n", `ssh $user\@$hcp "$sudo cat $pool/*.conf" | egrep -i "used|allocated"`);
+	foreach (@devices) {
+		@args = split(",", $_);
+		
+		# Sample pool configuration file:
+        #   #status,wwpn,lun,size,range,owner,channel,tag
+        #     used,1000000000000000,2000000000000110,8g,3B00-3B3F,ihost1,1a23,$root_device$
+        #     free,1000000000000000,2000000000000111,,3B00-3B3F,,,
+        #     free,1230000000000000,2000000000000112,,3B00-3B3F,,,
+        $args[6] = xCAT::zvmUtils->trimStr($args[6]);
+        
+        # Push used or allocated devices into hash 
+        if ($args[6]) {
+        	$usedDevices{uc($args[6])} = 1;
+        }
+	}
+	
+	return %usedDevices;
 }
