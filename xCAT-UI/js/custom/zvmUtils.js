@@ -779,7 +779,7 @@ function updateZNodeStatus(data) {
     var statBarId = node + 'StatusBar';
     
     // Write ajax response to status bar
-    var prg = writeRsp(rsp, '[A-Za-z0-9._-]+:');    
+    var prg = writeRsp(rsp, node + ': ');    
     $('#' + statBarId).find('div').append(prg);    
 }
 
@@ -1993,7 +1993,7 @@ function openAddScsi2SystemDialog(hcp) {
                         data : {
                             cmd : 'chhypervisor',
                             tgt : hcp,
-                            args : "--addscsi|" + num + "|" + pathArray + "|" + option + "|" + persist,
+                            args : "--addscsi||" + num + "||" + pathArray + "||" + option + "||" + persist,
                             msg : dialogId
                         },
 
@@ -2707,7 +2707,7 @@ function removeZfcp(node, address, wwpn, lun) {
         data : {
             cmd : 'chvm',
             tgt : node,
-            args : '--removezfcp;' + address + ';' + wwpn + ';' + lun,
+            args : '--removezfcp||' + address + '||' + wwpn + '||' + lun,
             msg : node
         },
 
@@ -3624,7 +3624,7 @@ function openAddZfcp2PoolDialog() {
                         data : {
                             cmd : 'chvm',
                             tgt : tgtHcp,
-                            args : '--addzfcp2pool|' + tgtPool + '|' + tgtStatus + '|"' + tgtPortName + '"|' + tgtUnitNo + '|' + tgtSize + "| " + tgtRange + '|' + tgtOwner,
+                            args : '--addzfcp2pool||' + tgtPool + '||' + tgtStatus + '||"' + tgtPortName + '"||' + tgtUnitNo + '||' + tgtSize + '||' + tgtRange + '||' + tgtOwner,
                             msg : dialogId
                         },
     

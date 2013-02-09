@@ -138,6 +138,9 @@ sub process_request {
     # Directory where executables are on zHCP
     $::DIR = "/opt/zhcp/bin";
     
+    # Directory where system config is on zHCP
+    $::SYSCONF = "/opt/zhcp/conf";
+    
     # Directory where zFCP disk pools are on zHCP
     $::ZFCPPOOL = "/var/opt/zhcp/zfcp";
     
@@ -1105,6 +1108,8 @@ sub changeVM {
         my $min;
         my $max;
         if ($device =~ m/auto/i) {
+        	my %usedDevices = xCAT::zvmUtils->getUsedFcpDevices($::SUDOER, $hcp);
+        	
         	if ($device =~ m/,/i) {
         		@ranges = split(';', $range);
         	} else {
@@ -1138,7 +1143,12 @@ sub changeVM {
 	                    ($min, $max) = split('-', $_);
 	                    if (hex($device) >= hex($min) && hex($device) <= hex($max)) {
 	                    	$found = 1;
-	                        last;
+	                    	$device = uc($device);
+	                    		
+	                        # Used found zFCP channel if not in use or allocated                    	
+	                    	if (!$usedDevices{$device}) {
+	                           last;
+	                    	}
 	                    }
 	                }
                 }
@@ -1200,22 +1210,50 @@ sub changeVM {
             #   SLES 11: /etc/udev/rules.d/51-zfcp*
             my $tmp;
             if ( $os =~ m/sles10/i ) {
-                $out = `ssh $::SUDOER\@$node "$::SUDO zfcp_host_configure 0.0.$device 1"`;
-                $out = `ssh $::SUDOER\@$node "$::SUDO zfcp_disk_configure 0.0.$device $wwpn $lun 1"`;
+                $out = `ssh $::SUDOER\@$node "$::SUDO /sbin/zfcp_host_configure 0.0.$device 1"`;
+                if ($out) {
+                    xCAT::zvmUtils->printLn($callback, "$node: $out");
+                }
+                
+                $out = `ssh $::SUDOER\@$node "$::SUDO /sbin/zfcp_disk_configure 0.0.$device $wwpn $lun 1"`;
                 if ($out) {
                     xCAT::zvmUtils->printLn($callback, "$node: $out");
                 }
                 
                 $out = xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo 0x$wwpn:0x$lun >> /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-0.0.$device");
-            } elsif ( $os =~ m/sles11/i ) {   
-                $out = `ssh $::SUDOER\@$node "$::SUDO zfcp_disk_configure 0.0.$device $wwpn $lun 1"`;
+            } elsif ( $os =~ m/sles11/i ) {
+            	$out = `ssh $::SUDOER\@$node "$::SUDO /sbin/zfcp_host_configure 0.0.$device 1"`;
                 if ($out) {
                     xCAT::zvmUtils->printLn($callback, "$node: $out");
                 }
                 
-                $tmp = "'ACTION==\"add\", KERNEL==\"rport-*\", ATTR{port_name}==\"0x$wwpn\", SUBSYSTEMS==\"ccw\", KERNELS==\"0.0.$device\", ATTR{[ccw/0.0.$device]0x$wwpn/unit_add}=\"0x$lun\"'";
-                $tmp = xCAT::zvmUtils->replaceStr($tmp, '"', '\\"');
-                $out = xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo $tmp >> /etc/udev/rules.d/51-zfcp-0.0.$device.rules");
+                $out = `ssh $::SUDOER\@$node "$::SUDO /sbin/zfcp_disk_configure 0.0.$device $wwpn $lun 1"`;
+                if ($out) {
+                    xCAT::zvmUtils->printLn($callback, "$node: $out");
+                }
+
+                # Configure zFCP device to be persistent                
+                $out = `ssh $::SUDOER\@$node "$::SUDO touch /etc/udev/rules.d/51-zfcp-0.0.$device.rules"`;
+                
+                # Check if the file already contains the zFCP channel
+                $out = `ssh $::SUDOER\@$node "$::SUDO cat /etc/udev/rules.d/51-zfcp-0.0.$device.rules" | egrep -i "ccw/0.0.$device]online"`;
+                if (!$out) {                
+	                $tmp = "'ACTION==\"add\", SUBSYSTEM==\"ccw\", KERNEL==\"0.0.$device\", IMPORT{program}=\"collect 0.0.$device \%k 0.0.$device zfcp\"'";
+	                $tmp = xCAT::zvmUtils->replaceStr($tmp, '"', '\\"');
+	                $out = `ssh $::SUDOER\@$node "echo $tmp | $::SUDO tee -a /etc/udev/rules.d/51-zfcp-0.0.$device.rules"`;
+	                
+	                $tmp = "'ACTION==\"add\", SUBSYSTEM==\"drivers\", KERNEL==\"zfcp\", IMPORT{program}=\"collect 0.0.$device \%k 0.0.$device zfcp\"'";
+	                $tmp = xCAT::zvmUtils->replaceStr($tmp, '"', '\\"');
+	                $out = `ssh $::SUDOER\@$node "echo $tmp | $::SUDO tee -a /etc/udev/rules.d/51-zfcp-0.0.$device.rules"`;
+	                
+	                $tmp = "'ACTION==\"add\", ENV{COLLECT_0.0.$device}==\"0\", ATTR{[ccw/0.0.$device]online}=\"1\"'";
+	                $tmp = xCAT::zvmUtils->replaceStr($tmp, '"', '\\"');
+	                $out = `ssh $::SUDOER\@$node "echo $tmp | $::SUDO tee -a /etc/udev/rules.d/51-zfcp-0.0.$device.rules"`;
+                }
+                
+	            $tmp = "'ACTION==\"add\", KERNEL==\"rport-*\", ATTR{port_name}==\"0x$wwpn\", SUBSYSTEMS==\"ccw\", KERNELS==\"0.0.$device\", ATTR{[ccw/0.0.$device]0x$wwpn/unit_add}=\"0x$lun\"'";
+	            $tmp = xCAT::zvmUtils->replaceStr($tmp, '"', '\\"');
+	            $out = `ssh $::SUDOER\@$node "echo $tmp | $::SUDO tee -a /etc/udev/rules.d/51-zfcp-0.0.$device.rules"`;
             } elsif ( $os =~ m/rhel/i ) {
                 $out = xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo \"0.0.$device 0x$wwpn 0x$lun\" >> /etc/zfcp.conf");
                 
@@ -2874,71 +2912,80 @@ sub makeVM {
         $macId = xCAT::zvmUtils->replaceStr( $macId, ":", "" );
         $macId = substr( $macId, 6 );
     } else {
+    	my $prefix;
+    	if (`ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO test -f $::SYSCONF/userprefix && echo Exists"`) {
+            $prefix = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO cat $::SYSCONF/userprefix"`;
+            $prefix =~ s/\s*$//;
+            $prefix =~ s/^\s*//;
+        }
     	                
         # Get zHCP MAC address
         # The MAC address prefix is the same for all network devices
-        $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "/sbin/modprobe vmcp"`;
-        $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO /sbin/vmcp q v nic" | grep "MAC:"`;
-        if ($out) {
-            @lines = split( "\n", $out );
-            @words = split( " ", $lines[0] );
-
-            # Extract MAC prefix
-            my $prefix = $words[1];
-            $prefix = xCAT::zvmUtils->replaceStr( $prefix, "-", "" );
-            $prefix = substr( $prefix, 0, 6 );
-
-            # Generate MAC address
-            my $mac;
-            while ($generateNew) {
-                    
-                # If no MACID is found, get one
-                $macId = xCAT::zvmUtils->getMacID($::SUDOER, $hcp);
-                if ( !$macId ) {
-                    xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not generate MACID" );
-                    return;
-                }
-
-                # Create MAC address
-                $mac = $prefix . $macId;
-                        
-                # If length is less than 12, append a zero
-                if ( length($mac) != 12 ) {
-                    $mac = "0" . $mac;
-                }
-        
-                # Format MAC address
-                $mac =
-                    substr( $mac, 0, 2 ) . ":"
-                  . substr( $mac, 2,  2 ) . ":"
-                  . substr( $mac, 4,  2 ) . ":"
-                  . substr( $mac, 6,  2 ) . ":"
-                  . substr( $mac, 8,  2 ) . ":"
-                  . substr( $mac, 10, 2 );
-                    
-                # Check 'mac' table for MAC address
-                my $tab = xCAT::Table->new( 'mac', -create => 1, -autocommit => 0 );
-                my @entries = $tab->getAllAttribsWhere( "mac = '" . $mac . "'", 'node' );
-                    
-                # If MAC address exists
-                if (@entries) {
-                    # Generate new MACID
-                    $out = xCAT::zvmUtils->generateMacId($::SUDOER, $hcp);
-                    $generateNew = 1;
-                } else {
-                    $generateNew = 0;
-                        
-                    # Save MAC address in 'mac' table
-                    xCAT::zvmUtils->setNodeProp( 'mac', $node, 'mac', $mac );
-                        
-                    # Generate new MACID
-                    $out = xCAT::zvmUtils->generateMacId($::SUDOER, $hcp);
-                }
-            } # End of while ($generateNew)
-        } else {
-            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not find the MAC address of the zHCP" );
-            xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Verify that the node's zHCP($hcp) is correct, the node is online, and the SSH keys are setup for the zHCP" );
+        if (!$prefix) {
+	        $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "/sbin/modprobe vmcp"`;
+	        $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO /sbin/vmcp q v nic" | grep "MAC:"`;
+	        if ($out) {
+	            @lines = split( "\n", $out );
+	            @words = split( " ", $lines[0] );
+	
+	            # Extract MAC prefix
+	            $prefix = $words[1];
+	            $prefix = xCAT::zvmUtils->replaceStr( $prefix, "-", "" );
+	            $prefix = substr( $prefix, 0, 6 );
+	        } else {
+	            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not find the MAC address of the zHCP" );
+	            xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Verify that the node's zHCP($hcp) is correct, the node is online, and the SSH keys are setup for the zHCP" );
+	            return;
+	        }
         }
+        
+        # Generate MAC address
+        my $mac;
+        while ($generateNew) {
+                    
+            # If no MACID is found, get one
+            $macId = xCAT::zvmUtils->getMacID($::SUDOER, $hcp);
+            if ( !$macId ) {
+                xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not generate MACID" );
+                return;
+            }
+
+            # Create MAC address
+            $mac = $prefix . $macId;
+                        
+            # If length is less than 12, append a zero
+            if ( length($mac) != 12 ) {
+                $mac = "0" . $mac;
+            }
+        
+            # Format MAC address
+            $mac =
+                substr( $mac, 0, 2 ) . ":"
+              . substr( $mac, 2,  2 ) . ":"
+              . substr( $mac, 4,  2 ) . ":"
+              . substr( $mac, 6,  2 ) . ":"
+              . substr( $mac, 8,  2 ) . ":"
+              . substr( $mac, 10, 2 );
+                    
+            # Check 'mac' table for MAC address
+            my $tab = xCAT::Table->new( 'mac', -create => 1, -autocommit => 0 );
+            my @entries = $tab->getAllAttribsWhere( "mac = '" . $mac . "'", 'node' );
+                    
+            # If MAC address exists
+            if (@entries) {
+                # Generate new MACID
+                $out = xCAT::zvmUtils->generateMacId($::SUDOER, $hcp);
+                $generateNew = 1;
+            } else {
+                $generateNew = 0;
+                        
+                # Save MAC address in 'mac' table
+                xCAT::zvmUtils->setNodeProp( 'mac', $node, 'mac', $mac );
+                    
+                # Generate new MACID
+                $out = xCAT::zvmUtils->generateMacId($::SUDOER, $hcp);
+            }
+        } # End of while ($generateNew)
     }
 
     # Create virtual server

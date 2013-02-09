@@ -676,21 +676,21 @@ function writeRsp(rsp, pattern) {
  * @param msg Message to show
  */
 function openDialog(type, msg) {
-    var msgDialog; 
+    var msgDialog = $('<div></div>');
+    var title = "";
     if (type == "warn") {
         // Create warning message 
-        msgDialog = $('<div class="ui-state-error ui-corner-all">'
-                + '<p><span class="ui-icon ui-icon-alert"></span>' + msg + '</p>'
-            + '</div>');
+    	msgDialog.append(createWarnBar(msg));
+    	title = "Warning";
     } else {
         // Create info message
-        msgDialog = $('<div class="ui-state-highlight ui-corner-all">' 
-                + '<p><span class="ui-icon ui-icon-info"></span>' + msg + '</p>'
-            +'</div>');
+    	msgDialog.append(createInfoBar(msg));
+    	title = "Info";
     }
     
     // Open dialog
     msgDialog.dialog({
+    	title: title,
         modal: true,
         close: function(){
             $(this).remove();

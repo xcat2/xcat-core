@@ -323,7 +323,7 @@ function openCreateUserDialog(data) {
                     data : {
                         cmd : 'webrun',
                         tgt : '',
-                        args : 'policy|' + priority + '|' + args,
+                        args : 'policy||' + priority + '||' + args,
                         msg : dialogId
                     },
                     
@@ -337,7 +337,7 @@ function openCreateUserDialog(data) {
 	                    data : {
 	                        cmd : 'webrun',
 	                        tgt : '',
-	                        args : 'passwd|' + usrName + '|' + password,
+	                        args : 'passwd||' + usrName + '||' + password,
 	                        msg : dialogId
 	                    },
 	                    
@@ -455,7 +455,7 @@ function openDeleteUserDialog(users) {
                     data : {
                         cmd : 'webrun',
                         tgt : '',
-                        args : 'deleteuser|' + users,
+                        args : 'deleteuser||' + users,
                         msg : dialogId
                     },
                     success : updatePanel

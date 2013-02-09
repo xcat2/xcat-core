@@ -858,18 +858,15 @@ function loadNode(e) {
                 // Create an instance of the plugin
                 var plugin;
                 switch (mgt) {
-                case "blade":
-                    plugin = new bladePlugin();
-                    break;
-                case "hmc":
-                    plugin = new hmcPlugin();
-                    break;
-                case "ipmi":
-                    plugin = new ipmiPlugin();
-                    break;
-                case "zvm":
-                    plugin = new zvmPlugin();
-                    break;
+	                case "kvm":
+	                    plugin = new kvmPlugin();
+	                    break;
+	                case "esx":
+	                    plugin = new esxPlugin();
+	                    break;
+	                case "zvm":
+	                    plugin = new zvmPlugin();
+	                    break;
                 }
 
                 // Select tab
@@ -1317,18 +1314,15 @@ function cloneNode(tgtNodes) {
         // Create an instance of the plugin
         var plugin;
         switch (hw) {
-        case "blade":
-            plugin = new bladePlugin();
-            break;
-        case "hmc":
-            plugin = new hmcPlugin();
-            break;
-        case "ipmi":
-            plugin = new ipmiPlugin();
-            break;
-        case "zvm":
-            plugin = new zvmPlugin();                
-            break;
+	        case "kvm":
+	            plugin = new kvmPlugin();
+	            break;
+	        case "esx":
+	            plugin = new esxPlugin();
+	            break;
+	        case "zvm":
+	            plugin = new zvmPlugin();
+	            break;
         }
 
         // Clone node

@@ -953,6 +953,8 @@ zvmPlugin.prototype.loadInventory = function(data) {
     var tabId = args[0].replace('out=', '');
     // Get node
     var node = args[1].replace('node=', '');
+    // Clear any existing cookie
+    $.cookie(node + 'processes', null);
     
     // Remove loader
     $('#' + tabId).find('img').remove();
@@ -2394,18 +2396,16 @@ zvmPlugin.prototype.loadMigratePage = function(tgtNode) {
         if (maxQuiesce.val() <= 0) { 
             args = args + "max_quiesce=NOLIMIT;"; 
         } else { 
-            args = args + "'max_quiesce=" + maxQuiesce.val() + "';"; 
+            args = args + "max_quiesce=" + maxQuiesce.val() + ";"; 
         }
         
         // Append force argument
         if ($("input[name=force]:checked").length > 0) {
             args = args + "'force="
             $("input[name=force]:checked").each(function() {
-                args = args + $(this).val() + ' ';
+                args += $(this).val() + ' ';
             });
-            args = args + "';";
-        } else {
-            args = args + ";";
+            args += "';";
         }
         
         var statBarId = 'migrateStatusBar' + inst;

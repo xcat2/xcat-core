@@ -69,6 +69,15 @@ kvmPlugin.prototype.loadConfigPage = function(tabId) {
 };
 
 /**
+ * Migrate node
+ * 
+ * @param node Node to migrate
+ */
+kvmPlugin.prototype.loadMigratePage = function(node) {
+    openDialog('info', 'Not yet supported');
+};
+
+/**
  * Clone node (service page)
  * 
  * @param node Node to clone
