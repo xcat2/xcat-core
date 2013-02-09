@@ -1,145 +1,190 @@
-#!/bin/sh
+#!/bin/bash
 # Update GSA Ubuntu Repositories or create a local repository
 #
 # Author: Leonardo Tonetto (tonetto@linux.vnet.ibm.com)
 # Revisor: Arif Ali (aali@ocf.co.uk)
 #
-# After running this script, add the following line to
-# /etc/apt/sources.list for local repository
-# deb file://<core_repo_path>/xcat-core/ maverick main
-# deb file://<dep_repo_path>/xcat-dep/ maverick main
 # 
+# Getting Started:
+#  - Check out the xcat-core svn repository (either the trunk or a branch) into
+#    a dir called <rel>/src/xcat-core, where <rel> is the same as the release dir it will be
+#    uploaded to in sourceforge (e.g. devel, or 2.3).
+#  - You probably also want to put root's pub key from the build machine onto sourceforge for
+#    the upload user listed below, so you don't have to keep entering pw's.  You can do this
+#    at https://sourceforge.net/account/ssh
+#  - make sure reprepro is installed on the build machine
+#  - Run this script from the local svn repository you just created.  It will create the other directories that are needed.
 
+# Usage:  attr=value attr=value ... ./build-ubunturepo { -c | -d }
+#               PROMOTE=1 - if the attribute "PROMOTE" is specified, means an official dot release.  This does not
+#                                       actually build xcat, just uploads the most recent snap build to https://sourceforge.net/projects/xcat/files/xcat/ .
+#                                       If not specified, a snap build is assumed, which uploads to https://sourceforge.net/projects/xcat/files/yum/
+#                                       or https://sourceforge.net/projects/xcat/files/aix/.
+#               PREGA=1 - use this option with PROMOTE=1 on a branch that already has a released dot release, but this build is
+#                                       a GA candidate build, not to be released yet.  This will result in the tarball being uploaded to
+#                                       https://sourceforge.net/projects/xcat/files/yum/ or https://sourceforge.net/projects/xcat/files/aix/
+#                                       (but the tarball file name will be like a released tarball, not a snap build).  When you are ready to
+#                                       release this build, use PROMOTE=1 without PREGA
+#               BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in prep for a release.
+#               UP=0 or UP=1 - override the default upload behavior
+#
+# For the dependency packages 1. please run the build-debs-all in xcat-dep svn first( there is usage detail in that script)
+#                             2. run ./build-ubunturepo -d
+#
+############################
+printusage()
+{
+    printf "Usage: %s {-c | -d} \n" $(basename $0) >&2
+    echo "    -c : Build the xcat core packages and create the repo"
+    echo "    -d : Create the xcat dep repo. Building the xcat dep packages can refer \"build-debs-all\" from svn"
+}
 # For the purpose of getting the distribution name
 . /etc/lsb-release
 
 # Supported distributions
-dists="maverick natty oneiric precise "
+dists="maverick natty oneiric precise"
 
-a_flag=            # automatic flag - only update if repo was updated
 c_flag=            # xcat-core (trunk-delvel) path
 d_flag=            # xcat-dep (trunk) path
-u_flag=            # gsa user-id
-p_flag=            # gsa passwd
-local_flag=        # build the repository localy
+r_flag=            #genesis base rpm package path
 
-while getopts 'c:d:u:p:l:a' OPTION
+while getopts 'cdr:' OPTION
 do
     case $OPTION in
 	c)    c_flag=1
-	        xcat_core_path="$OPTARG"
 	        ;;
 	d)    d_flag=1
-	        xcat_dep_path="$OPTARG"
 	        ;;
-	u)    u_flag=1
-	        gsa_id="$OPTARG"
-	        ;;
-	p)    p_flag=1
-	        gsa_passwd="$OPTARG"
-	        ;;
-	l)    local_flag=1
-	        local_repo_path="$OPTARG"
-	        ;;
-	a)    a_flag=1
-	        ;;
-
-	?) printf "Usage: %s -c <core_trunk_path> [-d <dep_trunk_path>] { -l <local-repo_path> | [-u <gsa_id> -p <gsa_passwd>] } [-a]\n" $(basename $0) >&2
-	    echo "-a        Automatic: update only if there's any update on repo"
+        r)    r_flag=1
+                genesis_rpm_path="$OPTARG"
+                ;;
+	?)  printusage 
 	    exit 2
 	    ;;
     esac
 done
 shift $(($OPTIND - 1))
 
-if [ -z "$c_flag" -a -z "$d_flag" ]
-then
-    printf "Usage: %s -c <core_trunk_path> [-d <dep_trunk_path>] { -l <local-repo_path> | [-u <gsa_id> -p <gsa_passwd>] } [-a]\n" $(basename $0) >&2
-    echo "-a        Automatic: update only if there's any update on repo"
-    exit 2
-fi
-if [ ! -d $xcat_core_path ]
-then
-    printf "%s: No such directory\n" "$xcat_core_path" >&2
+if [ -z "$c_flag" -a -z "$d_flag" ];then
+    printusage
     exit 2
 fi
 
-if [ "$d_flag" ]
-then
-    if [ ! -d $xcat_dep_path ]
-    then
-	printf "%s: No such directory\n" "$xcat_dep_path" >&2
-	exit 2
-    fi
+if [ "$c_flag" -a "$d_flag" ];then
+    printusage
+    exit 2
 fi
 
-if [ "$local_flag" ]
-then
-    repo_xcat_core_path=$local_repo_path"/xcat-core"
-    repo_xcat_dep_path=$local_repo_path"/xcat-dep"
+uploader="bp-sawyers"
+# Find where this script is located to set some build variables
+old_pwd=`pwd`
+cd `dirname $0`
+curdir=`pwd`
+
+#define the dep source code path, core build target path and dep build target path
+local_core_repo_path="$curdir/../../xcat-core"
+xcat_dep_path="$curdir/../../../xcat-dep/src/xcat-dep"
+local_dep_repo_path="$curdir/../../../xcat-dep/xcat-dep"
+
+#define the url used for creating the source list file
+#define the upload dir used for uploading packages
+sf_repo_url="https://sourceforge.net/projects/xcat/files/ubuntu"
+sf_dir="/home/frs/project/x/xc/xcat"
+
+if [ "$PROMOTE" = 1 ]; then
+    upload_dir="xcat-core"
+    tar_name="xcat-core-$ver.tar.bz2"
 else
-    if [ -z "$u_flag" ]
-    then
-	if [ "$p_flag" ]
-	then
-	    printf "Usage: %s -c <core_trunk_path> [-d <dep_trunk_path>] { -l <local-repo_path> | [-u <gsa_id> -p <gsa_passwd>] } [-a]\n" $(basename $0) >&2
-	    echo "-a        Automatic: update only if there's any update on repo"
-	    exit 2
-	fi
-	echo -n "GSA id: "
-	read gsa_id
-	echo -n "GSA password: "
-	stty -echo; read gsa_passwd; stty echo;
-	echo ""; echo "";
-    fi
-
-    repo_xcat_core_path="`pwd`/gsa-repo_temp/xcat-core"
-    repo_xcat_dep_path="`pwd`/gsa-repo_temp/xcat-dep"
+    upload_dir="core-snap"
+    tar_name="core-debs-snap.tar.bz2"
 fi
 
-if [ "$a_flag" ]
+if [ "$c_flag" ]
 then
-    touch svcupdate.trace
-    SVCUP='svcupdate.trace'
-    svn update $xcat_core_path 1> $SVCUP 2>&1
-    if ! grep 'Tree is up to date' $SVCUP
-    then
-	update_core=1
-    else
-	update_core=
+    # strip the /src/xcat-core from the end of the dir to get the next dir up and use as the release
+    if [ -z "$REL" ]; then
+        t=${curdir%/src/xcat-core}
+        REL=`basename $t`
     fi
-    rm -f $SVCUP
-else
-    update_core=1
-fi
-if [ "$c_flag" -a "$update_core" ]
-then
+
+    #get the version
+    echo "svn --quiet update Version"
+    svn --quiet up Version
+    ver=`cat Version`
+    short_ver=`cat Version|cut -d. -f 1,2`
+    short_short_ver=`cat Version|cut -d. -f 1`
+
+    #TODO: define the core path and tarball name
+    tarball_name="core-debs-snap.tar.bz2"
+
+    #update the code from svn
+    svn_up_log="../coresvnup"
+    echo "svn update > $svn_up_log"
+    svn update > $svn_up_log
+
+    #makesure the code change status
+    code_change=0
+    if ! grep -q 'At revision' $svn_up_log;then
+        code_change=1
+    fi
+
+    if [ $code_change == 0 -a "$UP" != 1 ]; then
+        echo "Nothing new detected"
+        exit 0
+    fi
     echo "###############################"
     echo "# Building xcat-core packages #"
     echo "###############################"
 
-    CMD_PATH=`pwd`
-    cd $xcat_core_path
-    ./build-debs-all "snap" "Nightly_Builds"
+    #the package type:  local | snap | alpha
+    #the build introduce stirng
+    pkg_type="snap"
+    build_string="Snap_Build"
+    cur_date=`date +%Y%m%d`
+    pkg_version="${short_ver}-${pkg_type}${cur_date}"
+    
+    if [ ! -d ../../debs ];then
+        mkdir -p "../../debs"
+    fi
+    packages="xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT-UI xCAT xCATsn xCAT-test"
+
+    for file in `echo $packages`
+    do
+        file_low=`echo $file | tr '[A-Z]' '[a-z]'`
+        if grep -q $file $svn_up_log || [ "$BUILDALL" == 1 ]; then
+            rm -f ../../debs/${file_low}_*.deb
+            #only for genesis package
+            rm -f ../../debs/${file_low}-amd64_*.deb
+            cd $file
+            dch -v $pkg_version -b -c debian/changelog $build_string
+            dpkg-buildpackage
+            rc=$?
+            if [ $rc -gt 0 ]; then
+                echo "Error: $file build package failed exit code $rc"
+            fi
+            cd -
+            find $file -maxdepth 3 -type d -name "${file_low}*" | grep debian | xargs rm -rf
+            find $file -maxdepth 3 -type f -name "files" | grep debian | xargs rm -rf
+            mv ${file_low}* ../../debs/
+        fi
+    done
+
+    find ../../debs/* ! -name *.deb | xargs rm -f
 
     echo "#################################"
     echo "# Creating xcat-core repository #"
     echo "#################################"
 
-    if [ -d $repo_xcat_core_path ]; then
-    	rm -rf $repo_xcat_core_path
+    #clean the repo directory
+    if [ -e $local_core_repo_path ]; then
+    	rm -rf $local_core_repo_path
     fi
-    mkdir -p $repo_xcat_core_path/conf
-
-    find . -iname '*.deb' -exec mv {} $repo_xcat_core_path \;
-
-    rm -rf debs/
-    cd $CMD_PATH
-
-    rm -rf $repo_xcat_core_path/conf/distributions
+    mkdir -p $local_core_repo_path
+    cd $local_core_repo_path
+    mkdir conf
 
     for dist in $dists; do
-       cat << __EOF__ >> $repo_xcat_core_path/conf/distributions
+       cat << __EOF__ >> conf/distributions
 Origin: xCAT internal repository
 Label: xcat-core bazaar repository
 Codename: $dist
@@ -150,73 +195,92 @@ Description: Repository automatically genereted conf
 __EOF__
      done
 
-    cat << __EOF__ > $repo_xcat_core_path/conf/options
+    cat << __EOF__ > conf/options
 verbose
 basedir .
 __EOF__
 
+    #import the deb packages into the repo
     for dist in $dists; do
-      for file in `ls $repo_xcat_core_path/*.deb`; do
-	reprepro -b $repo_xcat_core_path includedeb $dist $file;
+      for file in `ls ../debs/*.deb`; do
+	reprepro -b ./ includedeb $dist $file;
       done
     done
 
-    mv $xcat_core_path/latest_version $repo_xcat_core_path/xcat-core_latest-build
-
-    cat << '__EOF__' > $repo_xcat_core_path/mklocalrepo.sh
+    #create the mklocalrepo script
+    cat << __EOF__ > mklocalrepo.sh
 . /etc/lsb-release
 cd `dirname $0`
 echo deb file://"`pwd`" $DISTRIB_CODENAME main > /etc/apt/sources.list.d/xcat-core.list
 __EOF__
 
-    chmod 775 $repo_xcat_core_path/mklocalrepo.sh
-    rm -rf $repo_xcat_core_path/*.deb
+    chmod 775 mklocalrepo.sh
 
-    if [ -z "$local_flag" ]
-    then
-	echo "###############################"
-	echo "# Updating GSA xcat-core repo #"
-	echo "###############################"
-	lftp -e "mirror -R --delete-first $repo_xcat_core_path /projects/i/ipl-xcat/ubuntu/; exit;" -u $gsa_id,$gsa_passwd -p 22 sftp://ausgsa.ibm.com
-    fi   ### if [ -z "$local_flag" ]
-fi    ### if [ "$a_flag" ]
+    #create the xcat-core.list file 
+    echo "deb ${sf_repo_url}/${REL}/${upload_dir}/ precise main" > xcat-core.list
 
-if [ "$a_flag" -a "$d_flag" ]
-then
-    touch svcupdate.trace
-    SVCUP='svcupdate.trace'
-    svn update $xcat_dep_path 1> $SVCUP 2>&1
-    if ! grep 'Tree is up to date' $SVCUP
-    then
-	update_dep=1
-    else
-	update_dep=
+    cd ../
+    if ! grep xcat /etc/group ; then
+        groupadd xcat
+    fi     
+
+    chgrp -R xcat xcat-core
+    chmod -R g+w xcat-core
+
+    #build the tar ball
+    tar -hjcf $tar_name xcat-core
+    chgrp xcat $tar_name
+    chmod g+w $tar_name
+
+    if [ ! -e core-snap ]; then
+        ln -s xcat-core core-snap
     fi
-    rm -f $SVCUP
-else
-    update_dep=1
+
+    # Decide whether to upload or not
+    if [ "$UP" != 1 ]; then
+        echo "No need to upload"
+        cd $old_pwd
+        exit 0
+    fi
+
+    #upload the deb packages
+    if [ "$REL" = "devel" -o "$PREGA" != 1 ]; then
+        i=0
+        echo "Uploading RPMs from $upload_dir to ${sf_dir}/ubuntu/${REL}/ ..."
+        while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $upload_dir ${uploader},xcat@web.sourceforge.net:${sf_dir}/ubuntu/${REL}/
+        do : ; done
+    fi
+
+    #upload the tar ball
+    if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
+        echo "";
+    else
+        i=0
+        echo "Uploading $tar_name to ${sf_dir}/ubuntu/${REL}/ ..."
+        while [ $((i+=1)) -le 5 ] && ! rsync -v $tar_name ${uploader},xcat@web.sourceforge.net:${sf_dir}/ubuntu/${REL}/
+        do : ; done
+    fi
+    
+    cd $old_pwd   
 fi
-if [ "$d_flag" -a "$update_dep" ]
+
+if [ "$d_flag" ]
 then
-    echo "##############################"
-    echo "# Building xcat-dep packages #"
-    echo "##############################"
-
-    CMD_PATH=`pwd`
-    cd $xcat_dep_path
-    ./build-debs-all "snap" "Nightly_Builds"
-
     echo "################################"
     echo "# Creating xcat-dep repository #"
     echo "################################"
-    rm -rf $repo_xcat_dep_path
-    mkdir -p $repo_xcat_dep_path/conf
-    find $xcat_dep_path -iname '*.deb' -exec cp {} $repo_xcat_dep_path \;
 
-    rm -rf $repo_xcat_core_path/conf/distributions
+    #clean all old files
+    if [ -e $local_dep_repo_path ];then
+        rm -rf $local_dep_repo_path
+    fi
+    mkdir -p $local_dep_repo_path
+    cd $local_dep_repo_path
+    mkdir conf
 
+    #create the conf/distributions file
     for dist in $dists; do
-    cat << __EOF__ >> $repo_xcat_dep_path/conf/distributions
+        cat << __EOF__ >> conf/distributions
 Origin: xCAT internal repository
 Label: xcat-dep bazaar repository
 Codename: $dist
@@ -225,40 +289,55 @@ Components: main
 Description: Repository automatically genereted conf 
 
 __EOF__
-done
+    done
 
-    cat << __EOF__ > $repo_xcat_dep_path/conf/options
+    cat << __EOF__ > conf/options
 verbose
 basedir .
 __EOF__
 
     for dist in $dists; do
-      for file in `ls $repo_xcat_dep_path/*.deb`; do
-	reprepro -b $repo_xcat_dep_path includedeb $dist $file;
+      for file in `ls ../debs/*.deb`; do
+	reprepro -b ./ includedeb $dist $file;
       done
     done
 
-    cat << '__EOF__' > $repo_xcat_dep_path/mklocalrepo.sh
+    cat << '__EOF__' > mklocalrepo.sh
 . /etc/lsb-release
 cd `dirname $0`
 echo deb file://"`pwd`" $DISTRIB_CODENAME main > /etc/apt/sources.list.d/xcat-dep.list
 __EOF__
 
-    chmod 775 $repo_xcat_dep_path/mklocalrepo.sh
-    rm -rf $repo_xcat_dep_path/*.deb
+    chmod 775 mklocalrepo.sh
 
-    if [ -z "$local_flag" ]
-    then
-	echo "##############################"
-	echo "# Updating GSA xcat-dep repo #"
-	echo "##############################"
-	lftp -e "mirror -R --delete-first $repo_xcat_dep_path /projects/i/ipl-xcat/ubuntu/; exit;" -u $gsa_id,$gsa_passwd -p 22 sftp://ausgsa.ibm.com
-    fi   ### if [ -z "$local_flag" ]
-fi   ### if [ "$d_flag" -a "$a_flag"]
+    echo ""deb ${sf_repo_url}/xcat-dep/ precise main"" > xcat-dep.list
 
-if [ -z "$local_flag" ]                 # delete the temp repo after upload is done
-then
-    rm -rf ./gsa-repo_temp
+    cd ..
+    if ! grep xcat /etc/group ; then
+        groupadd xcat
+    fi
+
+    chgrp -R xcat xcat-dep
+    chmod -R g+w xcat-dep
+
+    #create the tar ball
+    dep_tar_name=xcat-dep-ubuntu.tar.bz
+    tar -hjcf $dep_tar_name xcat-dep
+    chgrp xcat $dep_tar_name
+    chmod g+w $dep_tar_name
+
+    if [ "$UP" != 1 ];then
+        echo "No need to upload the dep packages"
+        cd $old_pwd
+        exit 0
+    fi
+
+    #upload the dep packages
+    i=0
+    echo "Uploading debs from xcat-dep to ${sf_dir}/ubuntu/xcat-dep/ ..."
+    while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete xcat-dep ${uploader},xcat@web.sourceforge.net:${sf_dir}/ubuntu/
+         do : ; done
+    #upload the tarball
+    cd $old_pwd
 fi
-
 exit 0
