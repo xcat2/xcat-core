@@ -128,7 +128,7 @@ then
         code_change=1
     fi
 
-    if [ $code_change == 0 -a "$UP" != 1 ]; then
+    if [ $code_change == 0 -a "$UP" != 1 -a "$BUILDALL" != 1 ]; then
         echo "Nothing new detected"
         exit 0
     fi
@@ -217,7 +217,7 @@ __EOF__
     chmod 775 mklocalrepo.sh
 
     #create the xcat-core.list file 
-    echo "deb ${sf_repo_url}/${REL}/${upload_dir}/ precise main" > xcat-core.list
+    #echo "deb ${sf_repo_url}/${REL}/${upload_dir}/ precise main" > xcat-core.list
 
     cd ../
     if ! grep xcat /etc/group ; then
@@ -310,7 +310,7 @@ __EOF__
 
     chmod 775 mklocalrepo.sh
 
-    echo ""deb ${sf_repo_url}/xcat-dep/ precise main"" > xcat-dep.list
+    #echo ""deb ${sf_repo_url}/xcat-dep/ precise main"" > xcat-dep.list
 
     cd ..
     if ! grep xcat /etc/group ; then
