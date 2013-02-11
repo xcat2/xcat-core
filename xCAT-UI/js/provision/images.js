@@ -364,17 +364,32 @@ function openAddImageDialog() {
     
     // Create info bar
     var info = createInfoBar('Provide the following attributes for the image. The image name will be generated based on the attributes you will give.');
-    addImageForm.append(info);
+    
+    var imageFS = $('<fieldset></fieldset>');
+    var imageLegend = $('<legend>Image</legend>');
+    imageFS.append(imageLegend);
+    var imageAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+    imageFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/operating_system.png"></img></div>'));
+    imageFS.append(imageAttr);
+    
+    var optionFS = $('<fieldset></fieldset>');
+    var optionLegend = $('<legend>Options</legend>');
+    optionFS.append(optionLegend);
+    var optionAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+    optionFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/setting.png" style="width: 70px;"></img></div>'));
+    optionFS.append(optionAttr);
+    
+    addImageForm.append(info, imageFS, optionFS);
     
     // Create inputs for image attributes
-    var imageName = $('<div><label>Image name:</label><input type="text" name="imagename" disabled="disabled"/></div>');
-    var imageType = $('<div><label>Image type:</label><input type="text" name="imagetype"/></div>');
-    var architecture = $('<div><label>OS architecture:</label><input type="text" name="osarch"/></div>');
-    var osName = $('<div><label>OS name:</label><input type="text" name="osname"/></div>');
-    var osVersion = $('<div><label>OS version:</label><input type="text" name="osvers"/></div>');    
-    var profile = $('<div><label>Profile:</label><input type="text" name="profile"/></div>');
+    var imageName = $('<div><label>Image name:</label><input type="text" name="imagename" disabled="disabled" title="The name of this xCAT OS image definition"/></div>');
+    var imageType = $('<div><label>Image type:</label><input type="text" name="imagetype" value="linux" title="The type of operating system image this definition represents"/></div>');
+    var architecture = $('<div><label>OS architecture:</label><input type="text" name="osarch" title="The hardware architecture of this image. Valid values: x86_64, x86, ia64, ppc64, and s390x."/></div>');
+    var osName = $('<div><label>OS name:</label><input type="text" name="osname" value="Linux" title="Operating system name"/></div>');
+    var osVersion = $('<div><label>OS version:</label><input type="text" name="osvers" title="The operating system deployed on this node. Valid values: rhel*, centos*, fedora*, sles* (where * is the version #)."/></div>');    
+    var profile = $('<div><label>Profile:</label><input type="text" name="profile" title="The node usage category"/></div>');
     var provisionMethod = $('<div><label>Provision method:</label></div>');
-    var provisionSelect = $('<select name="provmethod">'
+    var provisionSelect = $('<select name="provmethod" title="The provisioning method for node deployment">'
             + '<option value=""></option>'
             + '<option value="install">install</option>'
             + '<option value="netboot">netboot</option>'
@@ -383,32 +398,8 @@ function openAddImageDialog() {
     provisionMethod.append(provisionSelect);
     
     // Create inputs for optional attributes
-    var exList = $('<div><label>Exclusion list:</label></div>');
-    var exListInput = $('<input type="text" name="exlist"/>');
-    exList.append(exListInput);
-    exListInput.serverBrowser({
-        onSelect : function(path) {
-            $('#addImage input[name="exlist"]').val(path);
-        },
-        onLoad : function() {
-            return $('#addImage input[name="exlist"]').val();
-        },
-        knownPaths : [{
-            text : 'Install',
-            image : 'desktop.png',
-            path : '/install'
-        }],
-        imageUrl : 'images/serverbrowser/',
-        systemImageUrl : 'images/serverbrowser/',
-        handlerUrl : 'lib/getpath.php',
-        title : 'Browse',
-        requestMethod : 'POST',
-        width : '500',
-        height : '300',
-        basePath : '/install' // Limit user to only install directory
-    });
     var otherpkgDirectory = $('<div><label>Other package directory:</label></div>');
-    var otherpkgDirectoryInput = $('<input type="text" name="otherpkgdir"/>');
+    var otherpkgDirectoryInput = $('<input type="text" name="otherpkgdir" title="The base directory where the non-distro packages are stored"/>');
     otherpkgDirectory.append(otherpkgDirectoryInput);
     otherpkgDirectoryInput.serverBrowser({
         onSelect : function(path) {
@@ -432,7 +423,7 @@ function openAddImageDialog() {
         basePath : '/install' // Limit user to only install directory
     });
     var packageDirectory = $('<div><label>Package directory:</label></div>');
-    var packageDirectoryInput = $('<input type="text" name="pkgdir"/>');
+    var packageDirectoryInput = $('<input type="text" name="pkgdir" title="The name of the directory where the distro packages are stored"/>');
     packageDirectory.append(packageDirectoryInput);
     packageDirectoryInput.serverBrowser({
         onSelect : function(path) {
@@ -456,7 +447,7 @@ function openAddImageDialog() {
         basePath : '/install' // Limit user to only install directory
     });
     var packageList = $('<div><label>Package list:</label></div>');
-    var packageListInput = $('<input type="text" name="pkglist"/>');
+    var packageListInput = $('<input type="text" name="pkglist" title="The fully qualified name of the file that stores the distro packages list that will be included in the image"/>');
     packageList.append(packageListInput);
     packageListInput.serverBrowser({
         onSelect : function(path) {
@@ -479,32 +470,8 @@ function openAddImageDialog() {
         height : '300',
         basePath : '/install' // Limit user to only install directory
     });
-    var postInstall = $('<div><label>Post install script:</label></div>');
-    var postInstallInput = $('<input type="text" name="postinstall"/>');
-    postInstall.append(postInstallInput);
-    postInstallInput.serverBrowser({
-        onSelect : function(path) {
-            $('#addImage input[name="postinstall"]').val(path);
-        },
-        onLoad : function() {
-            return $('#addImage input[name="postinstall"]').val();
-        },
-        knownPaths : [{
-            text : 'Install',
-            image : 'desktop.png',
-            path : '/install'
-        }],
-        imageUrl : 'images/serverbrowser/',
-        systemImageUrl : 'images/serverbrowser/',
-        handlerUrl : 'lib/getpath.php',
-        title : 'Browse',
-        requestMethod : 'POST',
-        width : '500',
-        height : '300',
-        basePath : '/install' // Limit user to only install directory
-    });
     var template = $('<div><label>Template:</label></div>');
-    var templateInput = $('<input type="text" name="template"/>');
+    var templateInput = $('<input type="text" name="template" title="The fully qualified name of the template file that is used to create the kickstart or autoyast file for diskful installation"/>');
     template.append(templateInput);
     templateInput.serverBrowser({
         onSelect : function(path) {
@@ -528,9 +495,30 @@ function openAddImageDialog() {
         basePath : '/install' // Limit user to only install directory
     });
         
-    addImageForm.append(imageName, imageType, architecture, osName, osVersion, profile, provisionMethod,
-            exList, otherpkgDirectory, packageDirectory, packageList, postInstall, template);
+    imageAttr.append(imageName, imageType, architecture, osName, osVersion, profile, provisionMethod);
+    optionAttr.append(otherpkgDirectory, packageDirectory, packageList, template);
         
+	// Generate tooltips
+    addImageForm.find('div input[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
+    });
+    
     // Open dialog to add image
     addImageForm.dialog({
         title:'Add image',
@@ -538,7 +526,8 @@ function openAddImageDialog() {
         close: function(){
             $(this).remove();
         },
-        width: 400,
+        beight: 400,
+        width: 600,
         buttons: {
             "Ok": function(){
                 // Remove any warning messages
@@ -553,11 +542,9 @@ function openAddImageDialog() {
                 var provisionMethod = $(this).find('select[name="provmethod"]');
                 
                 // Get optional image attributes
-                var exList = $(this).find('input[name="exlist"]');
                 var otherpkgDirectory = $(this).find('input[name="otherpkgdir"]');
                 var pkgDirectory = $(this).find('input[name="pkgdir"]');
                 var pkgList = $(this).find('input[name="pkglist"]');
-                var postInstall = $(this).find('input[name="postinstall"]');
                 var template = $(this).find('input[name="template"]');
                 
                 // Check that image attributes are provided before continuing
@@ -595,16 +582,12 @@ function openAddImageDialog() {
                         'provmethod=' + provisionMethod.val();
                     
                     // Get optional attributes
-                    if (exList.val())
-                        args += ';exlist=' + exList.val();
                     if (otherpkgDirectory.val())
                         args += ';otherpkgdir=' + otherpkgDirectory.val();
                     if (pkgDirectory.val())
                         args += ';pkgdir=' + pkgDirectory.val();
                     if (pkgList.val())
                         args += ';pkglist=' + pkgList.val();
-                    if (postInstall.val())
-                        args += ';postinstall=' + postInstall.val();
                     if (template.val())
                         args += ';template=' + template.val();
                     
@@ -1059,8 +1042,8 @@ function openEditImagePage(tgtImage) {
         // There is an element called groups that will override the defaults for the groups attribute.
         // Hence, the input must have use CSS to override the float and width.
         
-        // Split attributes into 3 per row
-        if (attrIndex > 0 && !(attrIndex % 3)) {
+        // Split attributes into 2 per row
+        if (attrIndex > 0 && !(attrIndex % 2)) {
             div.css('display', 'inline-block');
         }
         
@@ -1303,15 +1286,15 @@ function openCopyCdDialog() {
     // Create Linux ISO input
     var iso = $('<div></div>');
     var isoLabel = $('<label> Linux ISO/DVD:</label>').css('vertical-align', 'middle');
-    var isoInput = $('<input type="text" id="iso" name="iso"/>').css('width', '300px');
+    var isoInput = $('<input type="text" id="iso" name="iso" title="The fully qualified name of the disk image file"/>').css('width', '300px');
     iso.append(isoLabel);
     iso.append(isoInput);
     copyLinuxForm.append(iso);
     
     // Create architecture input
-    copyLinuxForm.append('<div><label>Architecture:</label><input type="text" id="arch" name="arch"/></div>');
+    copyLinuxForm.append('<div><label>Architecture:</label><input type="text" id="arch" name="arch" title="The hardware architecture of this node. Valid values: x86_64, x86, ia64, ppc64, and s390x."/></div>');
     // Create distribution input
-    copyLinuxForm.append('<div><label>Distribution:</label><input type="text" id="distro" name="distro"/></div>');
+    copyLinuxForm.append('<div><label>Distribution:</label><input type="text" id="distro" name="distro" title="The operating system name. Valid values: rhel*, centos*, fedora*, sles* (where * is the version #)."/></div>');
             
     /**
      * Browse
@@ -1340,6 +1323,27 @@ function openCopyCdDialog() {
         width : '500',
         height : '300',
         basePath : '/install' // Limit user to only install directory
+    });
+    
+	// Generate tooltips
+    copyLinuxForm.find('div input[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
     });
     
     // Open dialog to copy CD

@@ -224,15 +224,15 @@ function openCreateUserDialog(data) {
     
     createUserForm.append(info, userFS, optionFS);
     
-    userAttr.append($('<div><label>Priority:</label><input type="text" name="priority" disabled="disabled" value="' + priority + '"/></div>'));
-    userAttr.append($('<div><label>User name:</label><input type="text" name="name"/></div>'));
-    userAttr.append($('<div><label>Password:</label><input name="password" type="password"></div>'));
-    userAttr.append($('<div><label>Confirm password:</label><input name="confirm_password" type="password"></div>'));
-    optionAttr.append($('<div><label>Host:</label><input type="text" name="host"/></div>'));
-    optionAttr.append($('<div><label>Commands:</label><input type="text" name="commands"/></div>'));
-    optionAttr.append($('<div><label>Parameters:</label><input type="text" name="parameters"/></div>'));
-    optionAttr.append($('<div><label>Node Range:</label><input type="text" name="nodeRange"/></div>'));
-    optionAttr.append($('<div><label>Rule:</label><select name="rule">' +
+    userAttr.append($('<div><label>Priority:</label><input type="text" name="priority" disabled="disabled" value="' + priority + '" title="The priority value for this user"/></div>'));
+    userAttr.append($('<div><label>User name:</label><input type="text" name="name" title="The user name to log into xCAT with"/></div>'));
+    userAttr.append($('<div><label>Password:</label><input name="password" type="password" title="The user password that will be used to log into xCAT"></div>'));
+    userAttr.append($('<div><label>Confirm password:</label><input name="confirm_password" type="password" title="The user password that will be used to log into xCAT"></div>'));
+    optionAttr.append($('<div><label>Host:</label><input type="text" name="host" title="The host from which users may issue the commands specified by this rule. By default, it is all hosts."/></div>'));
+    optionAttr.append($('<div><label>Commands:</label><input type="text" name="commands" title="The list of commands that this rule applies to. By default, it is all commands."/></div>'));
+    optionAttr.append($('<div><label>Parameters:</label><input type="text" name="parameters" title="A regular expression that matches the command parameters (everything except the noderange) that this rule applies to. By default, it is all parameters."/></div>'));
+    optionAttr.append($('<div><label>Node Range:</label><input type="text" name="nodeRange" title="The node range that this rule applies to. By default, it is all nodes."/></div>'));
+    optionAttr.append($('<div><label>Rule:</label><select name="rule" title="Specifies how this rule should be applied. Valid values are: allow, accept, trusted, and deny.">' +
     		'<option value="allow">Allow</option>' +
     		'<option value="accept">Accept</option>' +
     		'<option value="trusted">Trusted</option>' +
@@ -243,11 +243,32 @@ function openCreateUserDialog(data) {
     optionAttr.append(rootPrivilege);
     rootPrivilege.append(accessCheckbox);
     
-    optionAttr.append($('<div><label>Comments:</label><input type="text" name="comments" style="width: 250px;"/></div>'));
-    optionAttr.append($('<div><label>Disable:</label><select name="disable">' + 
+    optionAttr.append($('<div><label>Comments:</label><input type="text" name="comments" style="width: 250px;" title="Any user written notes"/></div>'));
+    optionAttr.append($('<div><label>Disable:</label><select name="disable" title="Set to yes to disable the user">' + 
     		'<option value="">No</option>' + 
     		'<option value="yes">Yes</option>' +
 		'</select></div>'));
+    
+	// Generate tooltips
+    createUserForm.find('div input[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
+    });
     
     // Open dialog to add disk
     createUserForm.dialog({

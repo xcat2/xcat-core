@@ -490,6 +490,7 @@ function initPage() {
     includeJs("js/jquery/jquery.jqplot.min.js");
     includeJs("js/jquery/jqplot.pieRenderer.min.js");
     includeJs("js/jquery/jqplot.dateAxisRenderer.min.js");
+    includeJs("js/jquery/jquery.topzindex.min.js");
     
     // Page plugins
     includeJs("js/configure/configure.js");    
@@ -586,7 +587,6 @@ function initPage() {
         loadHelpPage();
     } else {
         // Load nodes page by default
-        includeJs("js/jquery/jquery.topzindex.min.js");
         includeJs("js/nodes/nodeset.js");
         includeJs("js/nodes/rnetboot.js");
         includeJs("js/nodes/updatenode.js");

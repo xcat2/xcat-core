@@ -149,7 +149,7 @@ zvmPlugin.prototype.loadServiceProvisionPage = function(tabId) {
     loadOSImages(imageCol);
     
     // Get zVM host names
-    if (!$.cookie('zvm')){
+    if (!$.cookie('zvms')){
         $.ajax( {
             url : 'lib/srv_cmd.php',
             dataType : 'json',
@@ -1866,20 +1866,20 @@ zvmPlugin.prototype.addNode = function() {
     // Create provision type drop down
     var type = $('<div></div>');
     var typeLabel = $('<label>Type:</label>');
-    var typeSelect = $('<select type="text" name="type"></select>');
+    var typeSelect = $('<select type="text" name="type" title="The type of node"></select>');
     typeSelect.append('<option value="vm" selected="selected">VM</option>');
     typeSelect.append('<option value="host">Host</option>');
     type.append(typeLabel);
     type.append(typeSelect);
     addNodeForm.append(type);
     
-    addNodeForm.append('<div><label>Node range *:</label><input type="text" name="node"/></div>');
-    addNodeForm.append('<div><label>User ID range *:</label><input type="text" name="userId"/></div>');
-    addNodeForm.append('<div><label>zHCP *:</label><input type="text" name="hcp"/></div>');
-    addNodeForm.append('<div><label>Groups *:</label><input type="text" name="groups"/></div>');
-    addNodeForm.append('<div><label>Operating system *:</label><input type="text" name="os"/></div>');
-    addNodeForm.append('<div><label>IP address range:</label><input name="ip" type="text"></div>');
-    addNodeForm.append('<div><label>Hostname range:</label><input name="hostname" type="text"></div>');
+    addNodeForm.append('<div><label>Node range *:</label><input type="text" name="node" title="The node or node range to add into xCAT. A node range must be given as: node1-node9 or node[1-9]."/></div>');
+    addNodeForm.append('<div><label>User ID range *:</label><input type="text" name="userId" title="The user ID or a user ID range. A user ID range must be given as: user1-user9 or user[1-9]."/></div>');
+    addNodeForm.append('<div><label>zHCP *:</label><input type="text" name="hcp" title="The System z hardware control point (zHCP) responsible for managing the node(s)"/></div>');
+    addNodeForm.append('<div><label>Groups *:</label><input type="text" name="groups" title="The group where the new node(s) will be placed under"/></div>');
+    addNodeForm.append('<div><label>Operating system *:</label><input type="text" name="os" title="The z/VM operating system version, e.g. zvm6.1."/></div>');
+    addNodeForm.append('<div><label>IP address range:</label><input name="ip" type="text" title="The IP address range for the node(s). An IP address range must be given in the following format: 192.168.0.1-192.168.9."></div>');
+    addNodeForm.append('<div><label>Hostname range:</label><input name="hostname" type="text" title="The hostname range for the node(s). A hostname range must be given in the following format: ihost1.sourceforge.net-ihost9.sourceforge.net."></div>');
     addNodeForm.append('<div><label>* required</label></div>');
     
     // OS field only required for hosts
@@ -1894,6 +1894,27 @@ zvmPlugin.prototype.addNode = function() {
         } else {
             addNodeForm.find('input[name=userId]').parent().toggle();
             addNodeForm.find('input[name=os]').parent().toggle();
+        }
+    });
+    
+	// Generate tooltips
+    addNodeForm.find('div input[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
         }
     });
     
@@ -2213,7 +2234,7 @@ zvmPlugin.prototype.loadMigratePage = function(tgtNode) {
     var hcp = new Object();
     
     // Create a drop-down for z/VM destinations 
-    var destSelect = $('<select name="dest"></select>')
+    var destSelect = $('<select name="dest" title="The z/VM SSI cluster name of the destination system to which the specified virtual machine will be relocated."></select>')
     destSelect.append($('<option></option>'));
     for (var i in hosts) {
         args = hosts[i].split(':');
@@ -2281,7 +2302,12 @@ zvmPlugin.prototype.loadMigratePage = function(tgtNode) {
     vmAttr.append(dest);
     
     // Action Parameter
-    var actionparam = $('<div><label>Action:</label><select name="action"><option value=""></option><option value="MOVE">Move</option><option value="TEST">Test</option><option value="CANCEL">Cancel</option></select></div>');
+    var actionparam = $('<div><label>Action:</label><select name="action" title="Initiate a VMRELOCATE of the virtual machine. Test the specified virtual machine and determine if it is eligible to be relocated. Stop the relocation of the specified virtual machine.">' + 
+    		'<option value=""></option>' +
+    		'<option value="MOVE">Move</option>' +
+    		'<option value="TEST">Test</option>' +
+    		'<option value="CANCEL">Cancel</option>' +
+    	'</select></div>');
     vmAttr.append(actionparam);
     
     // Parameters label
@@ -2293,7 +2319,10 @@ zvmPlugin.prototype.loadMigratePage = function(tgtNode) {
     optionalFS.append(optAttr);
     
     // Immediate Parameter
-    var immediateparam = $('<div><label>Immediate:</label><select name="immediate"><option value="NO">No (default)</option><option value="YES">Yes</option></select></div>');
+    var immediateparam = $('<div><label>Immediate:</label><select name="immediate" title="Select No to specify immediate processing (default). Select Yes to specify the VMRELOCATE command will do one early pass through virtual machine storage and then go directly to the quiesce stage. The defaults for both max_total and max_quiesce are NOLIMIT when immediate=YES is specified.">' + 
+    		'<option value="NO">No (default)</option>' +
+    		'<option value="YES">Yes</option>' +
+    	'</select></div>');
     optAttr.append(immediateparam);
     immediateparam.change(function() {
         if ($('#' + newTabId + ' select[name=immediate]').val() == 'yes') {
@@ -2316,7 +2345,7 @@ zvmPlugin.prototype.loadMigratePage = function(tgtNode) {
     optAttr.append(forceParam);
     
     // Generate tooltips
-    migrateForm.find('div input[title]').tooltip({
+    migrateForm.find('div input[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
         effect: "fade",

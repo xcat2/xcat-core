@@ -60,7 +60,7 @@ function loadServicePage(tabId) {
                 title = 'z/VM';
                 
                 // Get zVM host names
-                if (!$.cookie('srv_zvm')){
+                if (!$.cookie('zvms')){
                     $.ajax( {
                         url : 'lib/srv_cmd.php',
                         dataType : 'json',
@@ -349,23 +349,44 @@ function imageDialog() {
     var info = createInfoBar('Provide the following attributes for the image. The image name will be generated based on the attributes you will give.');
     imageForm.append(info);
         
-    var imageName = $('<div><label>Image name:</label><input type="text" name="imagename" disabled="disabled"/></div>');
-    var selectable = $('<div><label>Selectable:</label><input type="checkbox" name="selectable"/></div>');
-    var imageType = $('<div><label>Image type:</label><input type="text" name="imagetype" value="linux"/></div>');
-    var architecture = $('<div><label>OS architecture:</label><input type="text" name="osarch"/></div>');
-    var osName = $('<div><label>OS name:</label><input type="text" name="osname" value="Linux"/></div>');
-    var osVersion = $('<div><label>OS version:</label><input type="text" name="osvers"/></div>');    
-    var profile = $('<div><label>Profile:</label><input type="text" name="profile"/></div>');
+    var imageName = $('<div><label>Image name:</label><input type="text" name="imagename" disabled="disabled" title="The name of the image"/></div>');
+    var selectable = $('<div><label>Selectable:</label><input type="checkbox" name="selectable" title="Select if you want this image to appear on the self service portal"/></div>');
+    var imageType = $('<div><label>Image type:</label><input type="text" name="imagetype" value="linux" title="The type of operating system image this definition represents"/></div>');
+    var architecture = $('<div><label>OS architecture:</label><input type="text" name="osarch" title="The hardware architecture of this node. Valid values: x86_64, ppc64, x86, ia64, and s390x."/></div>');
+    var osName = $('<div><label>OS name:</label><input type="text" name="osname" value="Linux" title="Operating system name"/></div>');
+    var osVersion = $('<div><label>OS version:</label><input type="text" name="osvers" title="The Linux operating system deployed on this node. Valid values: rhel*, centos*, fedora*, and sles* (where * is the version #)."/></div>');    
+    var profile = $('<div><label>Profile:</label><input type="text" name="profile" title="The node usage category"/></div>');
     var provisionMethod = $('<div><label>Provision method:</label></div>');
-    var provisionSelect = $('<select name="provmethod">'
+    var provisionSelect = $('<select name="provmethod" title="The provisioning method for node deployment">'
             + '<option value=""></option>'
             + '<option value="install">install</option>'
             + '<option value="netboot">netboot</option>'
             + '<option value="statelite">statelite</option>'
         + '</select>');
     provisionMethod.append(provisionSelect);
-    var comments = $('<div><label>Description:</label><input type="text" name="comments"/></div>');
+    var comments = $('<div><label>Description:</label><input type="text" name="comments" title="Any user-written notes"/></div>');
     imageForm.append(imageName, selectable, imageType, architecture, osName, osVersion, profile, provisionMethod, comments);
+    
+	// Generate tooltips
+    imageForm.find('div input[title],textarea[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
+    });
     
     // Open dialog to add image
     imageForm.dialog({
@@ -474,22 +495,22 @@ function editImageDialog(iName, iSelectable, iOsVersion, iOsArch, iOsName, iType
     var info = createInfoBar('Provide the following attributes for the image. The image name will be generated based on the attributes you will give.');
     imageForm.append(info);
         
-    var imageName = $('<div><label>Image name:</label><input type="text" name="imagename" disabled="disabled"/></div>');
-    var selectable = $('<div><label>Selectable:</label><input type="checkbox" name="selectable"/></div>');
-    var imageType = $('<div><label>Image type:</label><input type="text" name="imagetype" value="linux"/></div>');
-    var architecture = $('<div><label>OS architecture:</label><input type="text" name="osarch"/></div>');
-    var osName = $('<div><label>OS name:</label><input type="text" name="osname"/></div>');
-    var osVersion = $('<div><label>OS version:</label><input type="text" name="osvers"/></div>');    
-    var profile = $('<div><label>Profile:</label><input type="text" name="profile"/></div>');
+    var imageName = $('<div><label>Image name:</label><input type="text" name="imagename" disabled="disabled" title="The name of the image"/></div>');
+    var selectable = $('<div><label>Selectable:</label><input type="checkbox" name="selectable" title="Select if you want this image to appear on the self service portal"/></div>');
+    var imageType = $('<div><label>Image type:</label><input type="text" name="imagetype" value="linux" title="The type of operating system image this definition represents"/></div>');
+    var architecture = $('<div><label>OS architecture:</label><input type="text" name="osarch" title="The hardware architecture of this node. Valid values: x86_64, ppc64, x86, ia64, and s390x."/></div>');
+    var osName = $('<div><label>OS name:</label><input type="text" name="osname" value="Linux" title="Operating system name"/></div>');
+    var osVersion = $('<div><label>OS version:</label><input type="text" name="osvers" title="The Linux operating system deployed on this node. Valid values: rhel*, centos*, fedora*, and sles* (where * is the version #)."/></div>');    
+    var profile = $('<div><label>Profile:</label><input type="text" name="profile" title="The node usage category"/></div>');
     var provisionMethod = $('<div><label>Provision method:</label></div>');
-    var provisionSelect = $('<select name="provmethod">'
+    var provisionSelect = $('<select name="provmethod" title="The provisioning method for node deployment">'
             + '<option value=""></option>'
             + '<option value="install">install</option>'
             + '<option value="netboot">netboot</option>'
             + '<option value="statelite">statelite</option>'
         + '</select>');
     provisionMethod.append(provisionSelect);
-    var comments = $('<div><label>Description:</label><input type="text" name="comments"/></div>');
+    var comments = $('<div><label>Description:</label><input type="text" name="comments" title="Any user-written notes"/></div>');
     imageForm.append(imageName, selectable, imageType, architecture, osName, osVersion, profile, provisionMethod, comments);
     
     // Fill in image attributes
@@ -504,6 +525,27 @@ function editImageDialog(iName, iSelectable, iOsVersion, iOsArch, iOsName, iType
     if (iSelectable == "yes")
         imageForm.find('input[name="selectable"]').attr('checked', 'checked');
         
+	// Generate tooltips
+    imageForm.find('div input[title],textarea[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
+    });
+    
     // Open dialog to add image
     imageForm.dialog({
         title:'Edit image',
@@ -860,13 +902,34 @@ function groupDialog() {
     var info = createInfoBar('Provide the following attributes for the group.');
     groupForm.append(info);
         
-    var group = $('<div><label>Group:</label><input type="text" name="group"/></div>');
-    var selectable = $('<div><label>Selectable:</label><input type="checkbox" name="selectable"/></div>');
-    var ip = $('<div><label>IP:</label><input type="text" name="ip"/></div>');
-    var hostnames = $('<div><label>Hostnames:</label><input type="text" name="hostnames"/></div>');
-    var network = $('<div><label>Network:</label><input type="text" name="network"/></div>');
-    var comments = $('<div><label>Description:</label><input type="text" name="comments"/></div>');
+    var group = $('<div><label>Group:</label><input type="text" name="group" title="The group name"/></div>');
+    var selectable = $('<div><label>Selectable:</label><input type="checkbox" name="selectable" title="Select if you want this group to appear on the self service portal"/></div>');
+    var ip = $('<div><label>IP:</label><input type="text" name="ip" title="The IP address of the nodes, usually given as a regular expression, e.g. |ihost(\d+)|10.1.1.($1+0)|"/></div>');
+    var hostnames = $('<div><label>Hostnames:</label><input type="text" name="hostnames" title="The hostname of the nodes, usually given as a regular expression, e.g. |(.*)|($1).sourceforge.net|"/></div>');
+    var network = $('<div><label>Network:</label><input type="text" name="network" title="The groups network and its subnet mask, e.g. 10.1.1.0/24"/></div>');
+    var comments = $('<div><label>Description:</label><input type="text" name="comments" title="A description of the group"/></div>');
     groupForm.append(group, selectable, ip, hostnames, network, comments);
+    
+	// Generate tooltips
+    groupForm.find('div input[title],textarea[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
+    });
     
     // Open dialog to add image
     groupForm.dialog({
@@ -963,12 +1026,12 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iNetwork, iCommen
     var info = createInfoBar('Provide the following attributes for the group.');
     groupForm.append(info);
         
-    var group = $('<div><label>Group:</label><input type="text" name="group"/></div>');
-    var selectable = $('<div><label>Selectable:</label><input type="checkbox" name="selectable"/></div>');
-    var ip = $('<div><label>IP:</label><input type="text" name="ip"/></div>');
-    var hostnames = $('<div><label>Hostnames:</label><input type="text" name="hostnames"/></div>');
-    var network = $('<div><label>Network:</label><input type="text" name="network"/></div>');
-    var comments = $('<div><label>Description:</label><input type="text" name="comments"/></div>');
+    var group = $('<div><label>Group:</label><input type="text" name="group" title="The group name"/></div>');
+    var selectable = $('<div><label>Selectable:</label><input type="checkbox" name="selectable" title="Select if you want this group to appear on the self service portal"/></div>');
+    var ip = $('<div><label>IP:</label><input type="text" name="ip" title="The IP address for the group, usually given as a regular expression, e.g. |ihost(\d+)|10.1.1.($1+0)|"/></div>');
+    var hostnames = $('<div><label>Hostnames:</label><input type="text" name="hostnames" title="The hostname for the group, usually given as a regular expression, e.g. |(.*)|($1).sourceforge.net|"/></div>');
+    var network = $('<div><label>Network:</label><input type="text" name="network" title="The groups network and its subnet mask, e.g. 10.1.1.0/24"/></div>');
+    var comments = $('<div><label>Description:</label><input type="text" name="comments" title="A description of the group"/></div>');
     groupForm.append(group, selectable, ip, hostnames, network, comments);
     
     // Fill in group attributes
@@ -979,6 +1042,27 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iNetwork, iCommen
     groupForm.find('input[name="comments"]').val(iComments);
     if (iSelectable == "yes")
         groupForm.find('input[name="selectable"]').attr('checked', 'checked');
+    
+	// Generate tooltips
+    groupForm.find('div input[title],textarea[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
+    });
     
     // Open dialog to add image
     groupForm.dialog({

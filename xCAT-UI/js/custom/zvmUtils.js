@@ -1035,7 +1035,7 @@ function getZResources(data) {
                     success : getZfcpPool
                 });
             }
-        });        
+        });
         
         // Create accordion panel for network
         var networkSection = $('<div id="zvmNetworkResource"></div>');
@@ -1078,7 +1078,7 @@ function getZResources(data) {
         // Append accordion to tab
         $('#' + tabId).append(resourcesAccordion);
         resourcesAccordion.accordion();        
-        diskLnk.trigger('click');
+        networkLnk.trigger('click');
     }
 }
 
@@ -1144,13 +1144,13 @@ function openAddProcDialog(node) {
     // Create info bar
     var info = createInfoBar('Add a temporary processor to this virtual server.');
     addProcForm.append(info);
-    addProcForm.append('<div><label>Node:</label><input type="text" readonly="readonly" id="procNode" name="procNode" value="' + node + '"/></div>');
-    addProcForm.append('<div><label>Processor address:</label><input type="text" id="procAddress" name="procAddress"/></div>');
+    addProcForm.append('<div><label>Node:</label><input type="text" readonly="readonly" id="procNode" name="procNode" value="' + node + '" title="The node name"/></div>');
+    addProcForm.append('<div><label>Processor address:</label><input type="text" id="procAddress" name="procAddress" title="The processor address. The processor address can be any value from 0 to 3F."/></div>');
     
     // Create drop down for processor type
     var procType = $('<div></div>');
     procType.append('<label>Processor type:</label>');
-    var typeSelect = $('<select name="procType"></select>');
+    var typeSelect = $('<select name="procType" title="The type of virtual CPU being defined"></select>');
     typeSelect.append('<option>CP</option>'
         + '<option>IFL</option>'
         + '<option>ZAAP</option>'
@@ -1158,6 +1158,27 @@ function openAddProcDialog(node) {
     );
     procType.append(typeSelect);
     addProcForm.append(procType);
+    
+	// Generate tooltips
+    addProcForm.find('div input[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
+    });
     
     // Open dialog to add processor
     addProcForm.dialog({
@@ -1232,15 +1253,15 @@ function openAddDiskDialog(node, hcp) {
     // Create info bar
     var info = createInfoBar('Add a ECKD|3390 or FBA|9336 disk to this virtual server.');
     addDiskForm.append(info);
-    addDiskForm.append('<div><label>Node:</label><input type="text" readonly="readonly" id="diskNode" name="diskNode" value="' + node + '"/></div>');
-    addDiskForm.append('<div><label>Disk type:</label><select id="diskType" name="diskType"><option value="3390">3390</option><option value="9336">9336</option></select></div>');
-    addDiskForm.append('<div><label>Disk address:</label><input type="text" id="diskAddress" name="diskAddress"/></div>');
-    addDiskForm.append('<div><label>Disk size:</label><input type="text" id="diskSize" name="diskSize"/></div>');
+    addDiskForm.append('<div><label>Node:</label><input type="text" readonly="readonly" name="diskNode" value="' + node + '" title="The node name"/></div>');
+    addDiskForm.append('<div><label>Disk type:</label><select name="diskType" title="The device type of the volume to which the disk is assigned"><option value="3390">3390</option><option value="9336">9336</option></select></div>');
+    addDiskForm.append('<div><label>Disk address:</label><input type="text" name="diskAddress" title="The virtual device address of the disk to be added"/></div>');
+    addDiskForm.append('<div><label>Disk size:</label><input type="text" name="diskSize" title="The size of the disk to be added. The size can be in G, M, or number of blocks or cylinders. For example, 6G, 6144M, or 10016."/></div>');
     
     // Create drop down for disk pool
     var diskPool = $('<div></div>');
     diskPool.append('<label>Disk pool:</label>');
-    var poolSelect = $('<select id="diskPool" name="diskPool"></select>');
+    var poolSelect = $('<select id="diskPool" name="diskPool" title="The pool where the new disk is to be found"></select>');
     for ( var i = 0; i < pools.length; i++) {
         poolSelect.append('<option>' + pools[i] + '</option>');
     }
@@ -1250,7 +1271,7 @@ function openAddDiskDialog(node, hcp) {
     // Create drop down for disk mode
     var diskMode = $('<div></div>');
     diskMode.append('<label>Disk mode:</label>');
-    var modeSelect = $('<select id="diskMode" name="diskMode"></select>');
+    var modeSelect = $('<select id="diskMode" name="diskMode" title="The access mode for the disk"></select>');
     modeSelect.append('<option>R</option>'
         + '<option>RR</option>'
         + '<option>W</option>'
@@ -1262,8 +1283,29 @@ function openAddDiskDialog(node, hcp) {
     diskMode.append(modeSelect);
     addDiskForm.append(diskMode);
 
-    addDiskForm.append('<div><label>Disk password:</label><input type="password" id="diskPassword" name="diskPassword"/></div>');
+    addDiskForm.append('<div><label>Disk password:</label><input type="password" id="diskPassword" name="diskPassword" title="Optional. Defines the read, write, and multi password that will be used for accessing the disk."/></div>');
 
+	// Generate tooltips
+    addDiskForm.find('div input[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
+    });
+    
     // Open dialog to add disk
     addDiskForm.dialog({
         title:'Add disk',
@@ -1371,15 +1413,15 @@ function openAddZfcpDialog(node, hcp, zvm) {
     // Create info bar
     var info = createInfoBar('Add a SCSI|FCP disk to this virtual server.');
     addZfcpForm.append(info);
-    addZfcpForm.append('<div><label>Node:</label><input type="text" readonly="readonly" name="diskNode" value="' + node + '"/></div>');
-    addZfcpForm.append('<div><label>Disk address:</label><input type="text" name="diskAddress"/></div>');
-    addZfcpForm.append('<div><label>LOADDEV:</label><input type="checkbox" name="diskLoaddev"/></div>');
-    addZfcpForm.append('<div><label>Disk size:</label><input type="text" name="diskSize"/></div>');
+    addZfcpForm.append('<div><label>Node:</label><input type="text" readonly="readonly" name="diskNode" value="' + node + '" title="The node name"/></div>');
+    addZfcpForm.append('<div><label>Disk address:</label><input type="text" name="diskAddress" title="The virtual address of the dedicated FCP device channel"/></div>');
+    addZfcpForm.append('<div><label>LOADDEV:</label><input type="checkbox" name="diskLoaddev" title="Set the SCSI disk as the device to be loaded on IPL"/></div>');
+    addZfcpForm.append('<div><label>Disk size:</label><input type="text" name="diskSize" title="The size of the disk to be added. The size can be in G or M. For example, 2G or 2048M."/></div>');
     
     // Create drop down for disk pool
     var diskPool = $('<div></div>');
     diskPool.append('<label>Disk pool:</label>');
-    var poolSelect = $('<select name="diskPool"></select>');
+    var poolSelect = $('<select name="diskPool" title="The pool where the new disk is to be found"></select>');
     for ( var i = 0; i < pools.length; i++) {
         poolSelect.append('<option>' + pools[i] + '</option>');
     }
@@ -1387,7 +1429,7 @@ function openAddZfcpDialog(node, hcp, zvm) {
     addZfcpForm.append(diskPool);
 
     // Tag to identify where device will be used
-    addZfcpForm.append('<div><label>Disk tag:</label><input type="text" name="diskTag"/></div>');
+    addZfcpForm.append('<div><label>Disk tag:</label><input type="text" name="diskTag" title="The tag specified in the autoyast or kickstart template, defining how the SCSI disk is to be used."/></div>');
 
     // Create advanced link to set advanced zFCP properties
     var advancedLnk = $('<div><label><a style="color: blue; cursor: pointer;">Advanced</a></label></div>');
@@ -1395,8 +1437,8 @@ function openAddZfcpDialog(node, hcp, zvm) {
     var advanced = $('<div style="margin-left: 20px;"></div>').hide();
     addZfcpForm.append(advanced);
     
-    var portName = $('<div><label>Port name:</label><input type="text" name="diskPortName"/></div>');
-    var unitNo = $('<div><label>Unit number:</label><input type="text" name="diskUnitNo"/></div>');
+    var portName = $('<div><label>Port name:</label><input type="text" name="diskPortName" title="The hexadecimal digits designating the 8-byte fibre channel port name of the FCP-I/O device"/></div>');
+    var unitNo = $('<div><label>Unit number:</label><input type="text" name="diskUnitNo" title="The hexadecimal digits representing the 8-byte logical unit number of the FCP-I/O device"/></div>');
     advanced.append(portName, unitNo);
     
     var wwpns = $.cookie(zvm + 'wwpns');
@@ -1410,6 +1452,27 @@ function openAddZfcpDialog(node, hcp, zvm) {
     // Toggle port name and unit number when clicking on advanced link
     advancedLnk.click(function() {
         advanced.toggle();
+    });
+    
+	// Generate tooltips
+    addZfcpForm.find('div input[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
     });
     
     // Open dialog to add disk
@@ -1503,13 +1566,34 @@ function openDedicateDeviceDialog(node, hcp) {
     var info = createInfoBar('Add a dedicated device to the configuration');
     dedicateForm.append(info);
     
-    dedicateForm.append('<div><label>Node:</label><input type="text" readonly="readonly" name="diskNode" value="' + node + '"/></div>');
-    dedicateForm.append('<div><label>Virtual device address:</label><input type="text" name="virtualAddress"/></div>');
-    dedicateForm.append('<div><label>Real device address:</label><input type="test" name="realAddress"/></div>');
-    dedicateForm.append('<div><label>Mode:</label><select name="mode">' + 
+    dedicateForm.append('<div><label>Node:</label><input type="text" readonly="readonly" name="diskNode" value="' + node + '" title="The node name"/></div>');
+    dedicateForm.append('<div><label>Virtual device address:</label><input type="text" name="virtualAddress" title=" The virtual device number of the device"/></div>');
+    dedicateForm.append('<div><label>Real device address:</label><input type="test" name="realAddress" title=" A real device number to be dedicated or attached to the specified virtual machine"/></div>');
+    dedicateForm.append('<div><label>Mode:</label><select name="mode" title="Specifies if the virtual device is to be in read-only or read-write mode">' + 
             '<option value="0">Read-write</option>' +
             '<option value="1">Read-only</option>' +
         '</select>');
+    
+	// Generate tooltips
+    dedicateForm.find('div input[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
+    });
         
     // Open dialog to add dedicated device
     dedicateForm.dialog({
@@ -1585,8 +1669,29 @@ function openAddEckd2SystemDialog(hcp) {
     // Create info bar
     var info = createInfoBar('Dynamically add an ECKD disk to a running z/VM system.');
     addE2SForm.append(info);
-    addE2SForm.append('<div><label>Device number:</label><input type="text" name="devNum" value="" maxlength="4" /></div>');
+    addE2SForm.append('<div><label>Device number:</label><input type="text" name="devNum" value="" maxlength="4" title="The disk device number"/></div>');
 
+	// Generate tooltips
+    addE2SForm.find('div input[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
+    });
+    
     // Open dialog to add disk
     addE2SForm.dialog({
         title:'Add ECKD to system',
@@ -1656,21 +1761,30 @@ function openAddPageSpoolDialog(hcp) {
     diskFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/hdd.png"></img></div>'));
     diskFS.append(diskAttr);
     
-    diskAttr.append('<div><label>Volume address:</label><input type="text" name="volAddr" value="" maxlength="4"/></div>');
-    diskAttr.append('<div><label>Volume label:</label><input type="text" name="volLabel" value="" maxlength="6"/></div>');
-    diskAttr.append('<div><label>Volume use:</label><select name="volUse"><option value="PAGE">Page</option><option value="SPOOL">Spool</option></select></div>');
+    diskAttr.append('<div><label>Volume address:</label><input type="text" name="volAddr" value="" maxlength="4" title="The real address of the volume to be used for page or spool space"/></div>');
+    diskAttr.append('<div><label>Volume label:</label><input type="text" name="volLabel" value="" maxlength="6" title="The name to be associated with the newly formatted volume"/></div>');
+    diskAttr.append('<div><label>Volume use:</label><select name="volUse" title="Specifies that the volume is to be formatted and used as a page or spool volume"><option value="PAGE">Page</option><option value="SPOOL">Spool</option></select></div>');
     
-    var optionFS = $('<fieldset><legend>Optional</legend></fieldset>')
-    addPageSpoolForm.append(optionFS);
-    var optionAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
-    optionFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/setting.png" style="width: 70px;"></img></div>'));
-    optionFS.append(optionAttr);
-    
-    optionAttr.append('<div><label style="width: 150px;">System config name:</label><input type="text" name="systemConfigName" value="" maxlength="8"/></div>');
-    optionAttr.append('<div><label style="width: 150px;">System config type:</label><input type="text" name="systemConfigType" value="" maxlength="8"/></div>');
-    optionAttr.append('<div><label style="width: 150px;">Parm disk owner:</label><input type="text" name="parmDiskOwner" value="" maxlength="8"/></div>');
-    optionAttr.append('<div><label style="width: 150px;">Parm disk number:</label><input type="text" name="parmDiskNumber" value="" maxlength="4"/></div>');
-    optionAttr.append('<div><label style="width: 150px;">Parm disk password:</label><input type="text" name="parmDiskPass" value="" maxlength="8"/></div>');
+	// Generate tooltips
+    addPageSpoolForm.find('div input[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
+    });
     
     // Open dialog to add disk
     addPageSpoolForm.dialog({
@@ -1688,11 +1802,6 @@ function openAddPageSpoolDialog(hcp) {
                 var volAddr = $(this).find('input[name=volAddr]').val();
                 var volLabel = $(this).find('input[name=volLabel]').val();
                 var volUse = $(this).find('select[name=volUse]').val();
-                var systemConfigName = $(this).find('input[name=systemConfigName]').val();
-                var systemConfigType = $(this).find('input[name=systemConfigType]').val();
-                var parmDiskOwner = $(this).find('input[name=parmDiskOwner]').val();
-                var parmDiskNumber = $(this).find('input[name=parmDiskNumber]').val();
-                var parmDiskPass = $(this).find('input[name=parmDiskPass]').val();
                 
                 // If inputs are not complete, show warning message
                 if (!volAddr || !volLabel || !volUse) {
@@ -1705,18 +1814,7 @@ function openAddPageSpoolDialog(hcp) {
                     });
                     
                     var pageSpoolArgs = volAddr + ";" + volLabel + ";" + volUse + ";";
-                    if (systemConfigName) {
-                        pageSpoolArgs += systemConfigName + ";";
-                    } if (systemConfigType) {
-                        pageSpoolArgs += systemConfigType + ";";
-                    } if (parmDiskOwner) {
-                        pageSpoolArgs += parmDiskOwner + ";";
-                    } if (parmDiskNumber) {
-                        pageSpoolArgs += parmDiskNumber + ";";
-                    } if (parmDiskPass) {
-                        pageSpoolArgs += parmDiskPass + ";";
-                    }
-                    
+                                        
                     $.ajax( {
                         url : 'lib/cmd.php',
                         dataType : 'json',
@@ -1754,11 +1852,11 @@ function openShareDiskDialog(disks2share) {
     shareDiskForm.append(info);
 
     var hcp = $('<div><label>Hardware control point:</label></div>');
-    var hcpSelect = $('<select name="hcp"></select>');
+    var hcpSelect = $('<select name="hcp" title="The System z hardware control point (zHCP) responsible for managing the z/VM system"></select>');
     hcp.append(hcpSelect);
     // Set region input based on those selected on table (if any)
-    var volAddr = $('<div><label>Volume addresses:</label><input type="text" name="volAddr" value="' + disks2share + '"/></div>');
-    var shareEnable = $('<div><label>Share enable:</label><select name="shareEnable"><option value="ON">On</option><option value="OFF">Off</option></select></div>');
+    var volAddr = $('<div><label>Volume addresses:</label><input type="text" name="volAddr" value="' + disks2share + '" title="The real device number of the volume to be shared"/></div>');
+    var shareEnable = $('<div><label>Share enable:</label><select name="shareEnable" title="Turns sharing of the specified full-pack minidisk on or off"><option value="ON">On</option><option value="OFF">Off</option></select></div>');
     shareDiskForm.append(hcp, volAddr, shareEnable);
     
     // Create a array for hardware control points
@@ -1772,6 +1870,27 @@ function openShareDiskDialog(disks2share) {
     for (var i in hcps) {
         hcpSelect.append($('<option value="' + hcps[i] + '">' + hcps[i] + '</option>'));
     }
+    
+	// Generate tooltips
+    shareDiskForm.find('div input[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
+    });
         
     // Open dialog to delete disk
     shareDiskForm.dialog({
@@ -1838,7 +1957,7 @@ function openAddScsi2SystemDialog(hcp) {
     var info = createInfoBar('Dynamically add an SCSI disk to a running z/VM system.');
     addS2SForm.append(info);
         
-    var devNum = $('<div><label>FCP device:</label><input type="text" name="devNum" maxlength="4"/></div>');
+    var devNum = $('<div><label>FCP device:</label><input type="text" name="devNum" maxlength="4" title="The SCSI disk device number"/></div>');
     var devPathLabel = $('<label>Device paths:</label>');
     var devPathCount = 1;
     var pathDiv = $('<div class="devPath" style="margin-left:125px;"></div>');
@@ -1894,7 +2013,7 @@ function openAddScsi2SystemDialog(hcp) {
         
     devPathBody.append(devPathRow);
     
-    var addDevPathLink = $('<a>Add path</a>');
+    var addDevPathLink = $('<a>+ Add path</a>');
     addDevPathLink.bind('click', function(event){
         devPathCount = devPathCount + 1;
         // Create a row
@@ -1916,17 +2035,38 @@ function openAddScsi2SystemDialog(hcp) {
         devPathRow.append(fcpDevNum);
         
         // Create FCP WWPN input
-        var fcpWwpn = $('<td><input type="text" style="width: 100px;" name="fcpWwpn" maxlength="16" title="The FCP world wide port number"/></td>');
+        var fcpWwpn = $('<td><input type="text" style="width: 100px;" name="fcpWwpn" maxlength="16" title="The world wide port number"/></td>');
         devPathRow.append(fcpWwpn);
         fcpWwpn.find('input').autocomplete({
             source: wwpns.split(',')
         });
 
         // Create FCP LUN input
-        var fcpLun = $('<td><input type="text" style="width: 100px;" name="fcpLun" maxlength="16" title="The FCP logical unit number"/></td>');
+        var fcpLun = $('<td><input type="text" style="width: 100px;" name="fcpLun" maxlength="16" title="The logical unit number"/></td>');
         devPathRow.append(fcpLun);
 
         devPathBody.append(devPathRow);
+        
+    	// Generate tooltips
+        addS2SForm.find('div input[title],select[title]').tooltip({
+            position: "center right",
+            offset: [-2, 10],
+            effect: "fade",
+            opacity: 0.8,
+            delay: 0,
+            predelay: 800,
+            events: {
+                  def:     "mouseover,mouseout",
+                  input:   "mouseover,mouseout",
+                  widget:  "focus mouseover,blur mouseout",
+                  tooltip: "mouseover,mouseout"
+            },
+
+            // Change z index to show tooltip in front
+            onBeforeShow: function() {
+                this.getTip().css('z-index', $.topZIndex());
+            }
+        });
     });
     devPathFooter.append(addDevPathLink);
     devPathTable.append(devPathHeader);
@@ -1935,9 +2075,37 @@ function openAddScsi2SystemDialog(hcp) {
     devPathDiv.append(devPathLabel);
     devPathDiv.append(devPathTable);
     
-    var option = $('<div><label>Option:</label><select name="option"><option selected value="1">Add a new SCSI disk</option><option value="2">Add new paths to an existing SCSI disk</option><option value="3">Delete paths from an existing SCSI disk</option></select></div>');
-    var persist = $('<div><label>Persist:</label><select name="persist"><option selected value="no">No</option><option value="yes">Yes</option></select></div>');
+    var option = $('<div><label>Option:</label><select name="option" title="The action to perform">' +
+    		'<option selected value="1">Add a new SCSI disk</option>' +
+    		'<option value="2">Add new paths to an existing SCSI disk</option>' +
+    		'<option value="3">Delete paths from an existing SCSI disk</option>' +
+    	'</select></div>');
+    var persist = $('<div><label>Persist:</label><select name="persist" title="Specifies that the SCSI device is to be updated on the active system configuration or both the active and permanent system configurations">' +
+    		'<option selected value="no">No</option>' +
+    		'<option value="yes">Yes</option>' +
+		'</select></div>');
     addS2SForm.append(devNum, devPathDiv, option, persist);
+    
+	// Generate tooltips
+    addS2SForm.find('div input[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
+    });
     
     addS2SForm.find('div input[title]').tooltip({
         position: "center right",
@@ -2021,8 +2189,32 @@ function openRemoveScsiDialog(hcp) {
     // Create info bar
     var info = createInfoBar('Delete a real SCSI disk');
     removeScsiForm.append(info);
-    removeScsiForm.append('<div><label>Device number:</label><input type="text" name="devNum" value="" maxlength="4" /></div>');
-    removeScsiForm.append('<div><label>Persist:</label><select name="persist"><option value="NO">Yes</option><option value="YES>Yes</option></div>');
+    removeScsiForm.append('<div><label>Device number:</label><input type="text" name="devNum" value="" maxlength="4" title="The SCSI disk device number"/></div>');
+    removeScsiForm.append('<div><label>Persist:</label><select name="persist" title="Specifies that the SCSI device is to be updated on the active system configuration or both the active and permanent system configurations">' +
+    		'<option value="NO">No</option>' +
+    		'<option value="YES>Yes</option>' +
+    	'</select></div>');
+    
+	// Generate tooltips
+    removeScsiForm.find('div input[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
+    });
     
     // Open dialog to add disk
     removeScsiForm.dialog({
@@ -2088,13 +2280,13 @@ function openAddNicDialog(node, hcp) {
     // Create info bar
     var info = createInfoBar('Add a NIC to this virtual server.');
     addNicForm.append(info);
-    addNicForm.append('<div><label>Node:</label><input type="text" readonly="readonly" id="nicNode" name="nicNode" value="' + node + '"/></div>');
-    addNicForm.append('<div><label>NIC address:</label><input type="text" id="nicAddress" name="nicAddress"/></div>');
+    addNicForm.append('<div><label>Node:</label><input type="text" readonly="readonly" id="nicNode" name="nicNode" value="' + node + '" title="The node name"/></div>');
+    addNicForm.append('<div><label>NIC address:</label><input type="text" id="nicAddress" name="nicAddress" title="The virtual device address for the new adapter"/></div>');
     
     // Create drop down for NIC types
     var nicType = $('<div></div>');
     nicType.append('<label>NIC type:</label>');
-    var nicTypeSelect = $('<select id="nicType" name="nicType"></select>');
+    var nicTypeSelect = $('<select id="nicType" name="nicType" title="The adapter type"></select>');
     nicTypeSelect.append('<option></option>'
         + '<option>QDIO</option>'
         + '<option>HiperSockets</option>'
@@ -2105,7 +2297,7 @@ function openAddNicDialog(node, hcp) {
     // Create drop down for network types
     var networkType = $('<div></div>');
     networkType.append('<label>Network type:</label>');
-    var networkTypeSelect = $('<select name="nicNetworkType"></select>');
+    var networkTypeSelect = $('<select name="nicNetworkType" title="The network type"></select>');
     networkTypeSelect.append('<option></option>'
         + '<option>Guest LAN</option>'
         + '<option>Virtual Switch</option>'
@@ -2114,9 +2306,9 @@ function openAddNicDialog(node, hcp) {
     addNicForm.append(networkType);
             
     // Create drop down for network names
-    var gLansQdioSelect = $('<select id="nicLanQdioName" name="nicLanQdioName"></select>');
-    var gLansHipersSelect = $('<select id="nicLanHipersName" name="nicLanHipersName"></select>');
-    var vswitchSelect = $('<select id="nicVSwitchName" name="nicVSwitchName"></select>');
+    var gLansQdioSelect = $('<select id="nicLanQdioName" name="nicLanQdioName" title="The name of the guest LAN segment"></select>');
+    var gLansHipersSelect = $('<select id="nicLanHipersName" name="nicLanHipersName" title="The name of the guest LAN segment"></select>');
+    var vswitchSelect = $('<select id="nicVSwitchName" name="nicVSwitchName" title="The name of the virtual switch segment"></select>');
     for ( var i = 0; i < networks.length; i++) {
         var network = networks[i].split(' ');
         var networkOption = $('<option>' + network[1] + ' ' + network[2] + '</option>');
@@ -2211,6 +2403,27 @@ function openAddNicDialog(node, hcp) {
                 var warn = createWarnBar('The selected choices are not valid.');
                 warn.prependTo($(this).parent().parent());
             }
+        }
+    });
+    
+	// Generate tooltips
+    addNicForm.find('div input[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
         }
     });
     
@@ -2354,10 +2567,10 @@ function openAddVswitchVlanDialog(hcp) {
     networkTypeDiv.append(networkType)
     netAttr.append(networkTypeDiv);
     
-    var hcp = $('<div><label>Hardware control point:</label></div>');
-    var hcpSelect = $('<select name="hcp"></select>');
-    hcp.append(hcpSelect);
-    netAttr.append(hcp);
+    var system = $('<div><label>z/VM system:</label></div>');
+    var systemSelect = $('<select name="hcp" title="The System z hardware control point (zHCP) responsible for managing the z/VM system"></select>');
+    system.append(systemSelect);
+    netAttr.append(system);
 
     var typeAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
     typeFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/preferences_network.png"></img></div>'));
@@ -2365,79 +2578,108 @@ function openAddVswitchVlanDialog(hcp) {
     
     // Create vSwitch parameters
     var vswitchOptions = $('<div name=vswitchOptions style="height:300px;"></div>').hide();
-    vswitchOptions.append($('<div><label>Switch name:</label><input type="text" name="switchName"/></div>'));
-    vswitchOptions.append($('<div><label>Device address:</label><input type="text" name="deviceAddress"/></div>'));
-    vswitchOptions.append($('<div><label>Port name:</label><input type="text" name="portName"/></div>'));
-    vswitchOptions.append($('<div><label>Controller name:</label><input type="text" name="controllerName"/></div>'));
-    vswitchOptions.append($('<div><label>Connection:</label><select name="connection">' + 
+    vswitchOptions.append($('<div><label>Switch name:</label><input type="text" name="switchName" title="The name of the virtual switch segment"/></div>'));
+    vswitchOptions.append($('<div><label>Device address:</label><input type="text" name="deviceAddress" title="The real device address of a real OSA-Express QDIO device used to create the switch to the virtual adapter"/></div>'));
+    vswitchOptions.append($('<div><label>Port name:</label><input type="text" name="portName" title="The name used to identify the OSA Expanded adapter"/></div>'));
+    vswitchOptions.append($('<div><label>Controller name:</label><input type="text" name="controllerName" title="The userid controlling the real device"/></div>'));
+    vswitchOptions.append($('<div><label>Connection:</label><select name="connection" title="The real device connection">' + 
     		'<option></option>' +
     		'<option value="0">Unspecified</option>' +
     		'<option value="1">Activate real device connection</option>' +
     		'<option value="2">Do not activate real device connection</option>' +
     	'</select></div>'));
-    vswitchOptions.append($('<div><label>QDIO buffer size:</label><input type="text" name="queueMemoryLimit" maxlength="1" /></div>'));
-    vswitchOptions.append($('<div><label>Routing:</label><select name="routingValue">' +
+    vswitchOptions.append($('<div><label>QDIO buffer size:</label><input type="text" name="queueMemoryLimit" maxlength="1" title="A number between 1 and 8 specifying the QDIO buffer size in megabytes. If unspecified, the default is 8."/></div>'));
+    vswitchOptions.append($('<div><label>Routing:</label><select name="routingValue" title="Specifies whether the OSA-Express QDIO device will act as a router to the virtual switch">' +
     		'<option></option>' +
     		'<option value="0">Unspecified</option>' +
     		'<option value="1">NONROUTER</option>' +
     		'<option value="2">PRIROUTER</option>' +
 		'</select></div>'));
-    vswitchOptions.append($('<div><label>Transport:</label><select name="transportType">' +
+    vswitchOptions.append($('<div><label>Transport:</label><select name="transportType" title="Specifies the transport mechanism to be used for the virtual switch">' +
     		'<option></option>' +
     		'<option value="0">Unspecified</option>' +
     		'<option value="1">IP</option>' +
     		'<option value="2">ETHERNET</option>' +
 		'</select></div>'));
-    vswitchOptions.append($('<div><label>VLAN ID:</label><input type="text" name="vlanId"/></div>'));
-    vswitchOptions.append($('<div><label>Port type:</label><select name="portType">' +
+    vswitchOptions.append($('<div><label>VLAN ID:</label><input type="text" name="vlanId" title="Specifies the VLAN ID"/></div>'));
+    vswitchOptions.append($('<div><label>Port type:</label><select name="portType" title="Specifies the port type">' +
     		'<option></option>' +
     		'<option value="0">Unspecified</option>' +
     		'<option value="1">ACCESS</option>' +
     		'<option value="2">TRUNK</option>' +
 		'</select></div>'));
-    vswitchOptions.append($('<div><label>Update sysconfig:</label><select name="updateSysConfig">' +
+    vswitchOptions.append($('<div><label>Update sysconfig:</label><select name="updateSysConfig" title="Specifies whether to add the virtual switch definition to the system configuration file">' +
     		'<option></option>' +
     		'<option value="0">Unspecified</option>' +
     		'<option value="1">Create virtual switch</option>' +
     		'<option value="2">Create virtual switch and add definition to system configuration</option>' +
     		'<option value="3">Add virtual switch definition to system configuration</option>' +
     	'</select></div>'));
-    vswitchOptions.append($('<div><label>GVRP:</label><select name="gvrp">' +
+    vswitchOptions.append($('<div><label>GVRP:</label><select name="gvrp" title="GVRP will run only on 802.1Q trunk ports and is used primarily to prune traffic from VLANs that does not need to be passed between trunking switches">' +
     		'<option></option>' +
     		'<option value="0">Unspecified</option>' +
     		'<option value="1">GVRP</option>' +
     		'<option value="2">NOGVRP</option>' +
 		'</select></div>'));
-    vswitchOptions.append($('<div><label>Native VLAN ID:</label><input type="text" name="nativeVlanId"/></div>'));
+    vswitchOptions.append($('<div><label>Native VLAN ID:</label><input type="text" name="nativeVlanId" title="The native VLAN ID"/></div>'));
     
     // Create VLAN parameters
     var vlanOptions = $('<div name=vlanOptions></div>').hide();
-    vlanOptions.append($('<div><label>Name:</label><input type="text" name="vlanName"/></div>'));
-    vlanOptions.append($('<div><label>Owner:</label><input type="text" name="vlanOwner"/></div>'));
-    vlanOptions.append($('<div><label>Type:</label><select name="vlanType">' + 
+    vlanOptions.append($('<div><label>Name:</label><input type="text" name="vlanName" title="The name of the guest LAN segment to be created"/></div>'));
+    vlanOptions.append($('<div><label>Owner:</label><input type="text" name="vlanOwner" title="The virtual image owning the guest LAN segment to be created"/></div>'));
+    vlanOptions.append($('<div><label>Type:</label><select name="vlanType" title="The type of guest LAN segment">' + 
             '<option value="1">Unrestricted HiperSockets NIC</option>' + 
             '<option value="2">Unrestricted QDIO NIC</option>' +
             '<option value="3">Restricted HiperSockets NIC</option>' +
             '<option value="4">Restricted QDIO NIC</option>' +
         '</select></div>'));
-    vlanOptions.append($('<div><label>Transport:</label><select name="vlanTransport">' + 
+    vlanOptions.append($('<div><label>Transport:</label><select name="vlanTransport" title="The transport mechanism to be used for guest LANs and virtual switches">' + 
             '<option value="0">Unspecified</option>' +
             '<option value="1">IP</option>' +
             '<option value="2">Ethernet</option>' +
         '</select></div>'));
     
     typeAttr.append(vswitchOptions, vlanOptions);
-
-    // Create a array for hardware control points
-    var hcps = new Array();
-    if ($.cookie('hcp').indexOf(',') > -1)
-        hcps = $.cookie('hcp').split(',');
-    else
-        hcps.push($.cookie('hcp'));
     
-    // Append options for hardware control points
-    for (var i in hcps) {
-        hcpSelect.append($('<option value="' + hcps[i] + '">' + hcps[i] + '</option>'));
+    // Get zVM host names
+    if (!$.cookie('zvms')) {
+        $.ajax({
+            url : 'lib/cmd.php',
+            dataType : 'json',
+            async: false,
+            data : {
+                cmd : 'webportal',
+                tgt : '',
+                args : 'lszvm',
+                msg : ''
+            },
+
+            success : function(data) {
+                setzVMCookies(data);
+            }
+        });
+    }
+    
+    var zvms = $.cookie('zvms').split(',');
+    var hcp2zvm = new Object();
+    var args, zvm, iHcp, tmp;
+    for (var i in zvms) {
+        args = zvms[i].split(':');
+        zvm = args[0].toLowerCase();
+        
+        if (args[1].indexOf('.') != -1) {
+        	tmp = args[1].split('.');
+        	iHcp = tmp[0];
+        } else {
+        	iHcp = args[1];
+        }
+        
+        hcp2zvm[iHcp] = zvm;
+    }
+    
+    // Append options for z/VM system
+    for (var hcp in hcp2zvm) {
+    	systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
     }
             
     networkType.change(function() {
@@ -2456,6 +2698,27 @@ function openAddVswitchVlanDialog(hcp) {
         	vlanOptions.hide();
         	typeFS.hide();
         }          
+    });
+    
+	// Generate tooltips
+    addVswitchForm.find('div input[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
     });
     
     // Open dialog to add vSwitch or VLAN
@@ -2490,38 +2753,39 @@ function openAddVswitchVlanDialog(hcp) {
                     var nativeVlanId = $(this).find('input[name=nativeVlanId]').val();
                     
                     if (switchName)
-                        networkArgs += ";" + switchName;
+                        networkArgs += switchName + ";";
                     if (deviceAddress)
-                        networkArgs += ";" + deviceAddress;                    
+                        networkArgs += deviceAddress + ";";                    
                     if (portName)
-                        networkArgs += ";" + portName;
+                        networkArgs += portName + ";";
                     if (controllerName)
-                        networkArgs += ";" + controllerName;                   
+                        networkArgs += controllerName + ";";                  
                     if (connection)
-                        networkArgs += ";" + connection;                    
+                        networkArgs += connection + ";";                   
                     if (queueMemoryLimit)
-                        networkArgs += ";" + queueMemoryLimit;                   
+                        networkArgs += queueMemoryLimit + ";";                 
                     if (routingValue)
-                        networkArgs += ";" + routingValue;                   
+                        networkArgs += routingValue + ";";                 
                     if (transportType)
-                        networkArgs += ";" + transportType;                   
+                        networkArgs += transportType + ";";                   
                     if (vlanId)
-                        networkArgs += ";" + vlanId;                    
+                        networkArgs += vlanId + ";";                    
                     if (portType) 
-                        networkArgs += ";" + portType;                    
+                        networkArgs += portType + ";";                   
                     if (updateSysConfig) 
-                        networkArgs += ";" + updateSysConfig;                    
+                        networkArgs += updateSysConfig + ";";          
                     if (gvrp) 
-                        networkArgs += ";" + gvrpValue;                    
+                        networkArgs += gvrpValue + ";";
                     if (nativeVlanId) 
-                        networkArgs += ";" + nativeVlanId;
+                        networkArgs += nativeVlanId + ";";
+                    networkArgs = networkArgs.substring(0, networkArgs.length - 1);
                                         
                     // Change dialog buttons
                     $(this).dialog('option', 'buttons', {
                         'Close': function() {$(this).dialog("close");}
                     });
                     
-                    $.ajax( {
+                    $.ajax({
                         url : 'lib/cmd.php',
                         dataType : 'json',
                         data : {
@@ -2545,16 +2809,16 @@ function openAddVswitchVlanDialog(hcp) {
                         var warn = createWarnBar('Please provide a value for each missing field.');
                         warn.prependTo($(this));
                     } else {
-                        networkArgs += ";" + vlanName;
-                        networkArgs += ";" + vlanOwner;
-                        networkArgs += ";" + vlanType;
-                        networkArgs += ";" + vlanTransport;
+                        networkArgs += vlanName + ";";
+                        networkArgs += vlanOwner + ";";
+                        networkArgs += vlanType + ";";
+                        networkArgs += vlanTransport;
                         
                         // Change dialog buttons
                         $(this).dialog('option', 'buttons', {
                             'Close': function() {$(this).dialog("close");}
                         });
-                        $.ajax( {
+                        $.ajax({
                             url : 'lib/cmd.php',
                             dataType : 'json',
                             data : {
@@ -2602,9 +2866,10 @@ function openRemoveVswitchVlanDialog(networkList) {
                     var node = networkArgs[0];
                     var type = networkArgs[1];
                     var name = jQuery.trim(networkArgs[2]);
+                    var owner = networkArgs[3];
                 
-                    if (type.toLowerCase() == "vswitch") {
-                        $.ajax( {
+                    if (type.indexOf("VSWITCH") != -1) {
+                        $.ajax({
                             url : 'lib/cmd.php',
                             dataType : 'json',
                             data : {
@@ -2612,10 +2877,26 @@ function openRemoveVswitchVlanDialog(networkList) {
                                 tgt : node,
                                 args : '--removevswitch;' + name,
                                 msg : ''
+                            },
+                            
+                            success: function(data) {
+                                var infoMsg;
+
+                                // Create info message
+                                if (jQuery.isArray(data.rsp)) {
+                                    infoMsg = '';
+                                    for (var i in data.rsp) {
+                                        infoMsg += data.rsp[i] + '</br>';
+                                    }
+                                } else {
+                                    infoMsg = data.rsp;
+                                }
+                                
+                            	openDialog("info", infoMsg);
                             }
                         });
-                    } else if (type.toLowerCase() == "vlan") {
-                        $.ajax( {
+                    } else if (type.indexOf("LAN") != -1) {
+                        $.ajax({
                             url : 'lib/cmd.php',
                             dataType : 'json',
                             data : {
@@ -2623,6 +2904,22 @@ function openRemoveVswitchVlanDialog(networkList) {
                                 tgt : node,
                                 args : '--removevlan;' + name + ';' + owner,
                                 msg : ''
+                            },
+                            
+                            success: function(data) {
+                            	var infoMsg;
+
+                                // Create info message
+                                if (jQuery.isArray(data.rsp)) {
+                                    infoMsg = '';
+                                    for (var i in data.rsp) {
+                                        infoMsg += data.rsp[i] + '</br>';
+                                    }
+                                } else {
+                                    infoMsg = data.rsp;
+                                }
+                                
+                            	openDialog("info", infoMsg);
                             }
                         });
                     }   
@@ -2828,7 +3125,7 @@ function getZfcpPool(data) {
         var pools = data.rsp[0].split(hcp + ': ');
 
         // Get contents of each disk pool
-        for ( var i in pools) {
+        for (var i in pools) {
             if (pools[i]) {
                 pools[i] = jQuery.trim(pools[i]);
                       
@@ -2923,7 +3220,7 @@ function loadDiskPoolTable(data) {
         // Create a datatable        
         var table = new DataTable(tableId);
         // Resource headers: volume ID, device type, start address, and size
-        table.init( [ '<input type="checkbox" onclick="selectAllDisk(event, $(this))">', 'zHCP', 'Pool', 'Status', 'Region', 'Device type', 'Starting address', 'Size' ]);
+        table.init( [ '<input type="checkbox" onclick="selectAllDisk(event, $(this))">', 'zHCP', 'Pool', 'Status', 'Volume', 'Device type', 'Starting address', 'Size' ]);
 
         // Append datatable to panel
         $('#' + panelId).append(table.object());
@@ -2946,14 +3243,14 @@ function loadDiskPoolTable(data) {
     }
 
     // Skip index 0 and 1 because it contains nothing
-    for ( var i = 2; i < tmp.length; i++) {
+    for (var i = 2; i < tmp.length; i++) {
         tmp[i] = jQuery.trim(tmp[i]);
         var diskAttrs = tmp[i].split(' ');
         dTable.fnAddData( [ '<input type="checkbox" name="' + diskAttrs[0] + '"/>', hcp, pool, stat, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3] ]);
     }
     
     // Create actions menu
-    if (!$('#zvmResourceActions').length) {
+    if (!$('#zvmDiskResourceActions').length) {
         // Empty filter area
         $('#' + tableId + '_length').empty();
         
@@ -3024,7 +3321,7 @@ function loadDiskPoolTable(data) {
         var advancedMenu = createMenu([addEckdLnk, addPageSpoolLnk, shareLnk]);
         
         // Create action bar
-        var actionBar = $('<div id="zvmResourceActions" class="actionBar"></div>').css("width", "450px");
+        var actionBar = $('<div id="zvmDiskResourceActions" class="actionBar"></div>').css("width", "450px");
         
         // Create an action menu
         var actionsMenu = createMenu([addLnk, removeLnk, refreshLnk, [advancedLnk, advancedMenu]]);
@@ -3232,7 +3529,7 @@ function openRemoveDiskFromPoolDialog(disks2remove) {
     var info = createInfoBar('Remove a disk from a disk pool defined in the EXTENT CONTROL.');
     deleteDiskForm.append(info);
     var action = $('<div><label>Action:</label></div>');
-    var actionSelect = $('<select name="action">'
+    var actionSelect = $('<select name="action" title="The action to perform">'
             + '<option value=""></option>'
             + '<option value="1">Remove region</option>'
             + '<option value="2">Remove region from group</option>'
@@ -3242,12 +3539,12 @@ function openRemoveDiskFromPoolDialog(disks2remove) {
     action.append(actionSelect);
     
     var hcp = $('<div><label>Hardware control point:</label></div>');
-    var hcpSelect = $('<select name="hcp"></select>');
+    var hcpSelect = $('<select name="hcp" title="The System z hardware control point (zHCP) responsible for managing the z/VM system"></select>');
     hcp.append(hcpSelect);
     
     // Set region input based on those selected on table (if any)
-    var region = $('<div><label>Region name:</label><input type="text" name="region" value="' + disks2remove + '"/></div>');
-    var group = $('<div><label>Group name:</label><input type="text" name="group"/></div>');
+    var region = $('<div><label>Volume name:</label><input type="text" name="region" value="' + disks2remove + '" title="The DASD volume label"/></div>');
+    var group = $('<div><label>Group name:</label><input type="text" name="group" title="The name of the group from which the volume will be removed"/></div>');
     deleteDiskForm.append(action, hcp, region, group);
 
     // Create a array for hardware control points
@@ -3274,6 +3571,27 @@ function openRemoveDiskFromPoolDialog(disks2remove) {
             region.hide();
             group.show();
         }        
+    });
+    
+	// Generate tooltips
+    deleteDiskForm.find('div input[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
     });
         
     // Open dialog to delete disk
@@ -3344,7 +3662,7 @@ function openAddDisk2PoolDialog() {
     var info = createInfoBar('Add a disk to a disk pool defined in the EXTENT CONTROL. The disk has to already be attached to SYSTEM.');
     addDiskForm.append(info);
     var action = $('<div><label>Action:</label></div>');
-    var actionSelect = $('<select name="action">'
+    var actionSelect = $('<select name="action" title="The action to perform">'
             + '<option value=""></option>'
             + '<option value="4">Define region and add to group</option>'
             + '<option value="5">Add existing region to group</option>'
@@ -3352,12 +3670,11 @@ function openAddDisk2PoolDialog() {
     action.append(actionSelect);
     
     var hcp = $('<div><label>Hardware control point:</label></div>');
-    var hcpSelect = $('<select name="hcp"></select>');
+    var hcpSelect = $('<select name="hcp" title="The System z hardware control point (zHCP) responsible for managing the z/VM system"></select>');
     hcp.append(hcpSelect);
-    var region = $('<div><label>Region name:</label><input type="text" name="region"/></div>');
-    var volume = $('<div><label>Volume name:</label><input type="text" name="volume"/></div>');
-    var group = $('<div><label>Group name:</label><input type="text" name="group"/></div>');
-    addDiskForm.append(action, hcp, region, volume, group);
+    var volume = $('<div><label>Volume name:</label><input type="text" name="volume" title="The DASD volume label"/></div>');
+    var group = $('<div><label>Group name:</label><input type="text" name="group" title="The name of the group to which the volume is assigned"/></div>');
+    addDiskForm.append(action, hcp, volume, group);
 
     // Create a array for hardware control points
     var hcps = new Array();
@@ -3378,6 +3695,27 @@ function openAddDisk2PoolDialog() {
             volume.hide();
         }            
     });
+    
+	// Generate tooltips
+    addDiskForm.find('div input[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
+    });
         
     // Open dialog to add disk
     addDiskForm.dialog({
@@ -3395,12 +3733,11 @@ function openAddDisk2PoolDialog() {
                 // Get inputs
                 var action = $(this).find('select[name=action]').val();
                 var hcp = $(this).find('select[name=hcp]').val();
-                var region = $(this).find('input[name=region]').val();
                 var volume = $(this).find('input[name=volume]').val();
                 var group = $(this).find('input[name=group]').val();
                                 
                 // If inputs are not complete, show warning message
-                if (!action || !hcp || !region || !group) {
+                if (!action || !hcp || !group) {
                     var warn = createWarnBar('Please provide a value for each missing field.');
                     warn.prependTo($(this));
                 } else {
@@ -3411,9 +3748,9 @@ function openAddDisk2PoolDialog() {
                     
                     var args;
                     if (action == '4')
-                        args = region + ';' + volume + ';' + group;
+                        args = volume + ';' + volume + ';' + group;
                     else
-                        args = region + ';' + group;
+                        args = volume + ';' + group;
                     
                     // Add disk to pool
                     $.ajax( {
@@ -3473,12 +3810,13 @@ function openRemoveZfcpFromPoolDialog(devices2remove) {
     deleteDiskForm.append(info);
         
     var hcp = $('<div><label>Hardware control point:</label></div>');
-    var hcpSelect = $('<select name="hcp"></select>');
+    var hcpSelect = $('<select name="hcp" title="The System z hardware control point (zHCP) responsible for managing the z/VM system"></select>');
     hcp.append(hcpSelect);
     
-    var pool = $('<div><label>zFCP pool:</label><input type="text" name="zfcpPool" value="' + tgtPool + '"/></div>');
-    var unitNo = $('<div><label>Unit number:</label><input type="text" name="unitNo" value="' + tgtUnitNo + '"/></div>');
-    deleteDiskForm.append(hcp, pool, unitNo);
+    var pool = $('<div><label>zFCP pool:</label><input type="text" name="zfcpPool" value="' + tgtPool + '" title="The pool where the disk resides"/></div>');
+    var unitNo = $('<div><label>Unit number:</label><input type="text" name="zfcpUnitNo" value="' + tgtUnitNo + '" title="The hexadecimal digits representing the 8-byte logical unit number of the FCP-I/O device"/></div>');
+    var portName = $('<div><label>Port name:</label><input type="text" name="zfcpPortName" title="Optional. The hexadecimal digits designating the 8-byte fibre channel port name of the FCP-I/O device"/></div>');
+    deleteDiskForm.append(hcp, pool, unitNo, portName);
 
     // Create a array for hardware control points
     var hcps = new Array();
@@ -3494,6 +3832,27 @@ function openRemoveZfcpFromPoolDialog(devices2remove) {
     }
     hcpSelect.val(tgtHcp);
 
+	// Generate tooltips
+    deleteDiskForm.find('div input[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
+    });
+    
     // Open dialog to delete device
     deleteDiskForm.dialog({
         title:'Delete device from pool',
@@ -3509,7 +3868,8 @@ function openRemoveZfcpFromPoolDialog(devices2remove) {
                 
                 var hcp = $(this).find('select[name=hcp]').val();
                 var pool = $(this).find('input[name=zfcpPool]').val();
-                var unitNo = $(this).find('input[name=unitNo]').val();
+                var unitNo = $(this).find('input[name=zfcpUnitNo]').val();
+                var portName = $(this).find('input[name=zfcpPortName]').val();
                                 
                 // If inputs are not complete, show warning message
                 if (!hcp || !pool || !unitNo) {
@@ -3521,13 +3881,17 @@ function openRemoveZfcpFromPoolDialog(devices2remove) {
                         'Close': function() {$(this).dialog("close");}
                     });
                     
-                    $.ajax( {
+                    var args = '--removezfcpfrompool;' + pool + ';' + unitNo;
+                    if (portName) {
+                    	args += ';' + portName;
+                    }
+                    $.ajax({
                         url : 'lib/cmd.php',
                         dataType : 'json',
                         data : {
                             cmd : 'chvm',
                             tgt : hcp,
-                            args : '--removezfcpfrompool;' + pool + ';' + unitNo,
+                            args : args,
                             msg : dialogId
                         },
     
@@ -3553,19 +3917,19 @@ function openAddZfcp2PoolDialog() {
     addDiskForm.append(info);
     
     var hcp = $('<div><label>Hardware control point:</label></div>');
-    var hcpSelect = $('<select name="hcp"></select>');
+    var hcpSelect = $('<select name="hcp" title="The System z hardware control point (zHCP) responsible for managing the z/VM system"></select>');
     hcp.append(hcpSelect);
     
-    var pool = $('<div><label>zFCP pool:</label><input type="text" name="zfcpPool"/></div>');
-    var status = $('<div><label>Status:</label><select name="zfcpStatus">'
+    var pool = $('<div><label>zFCP pool:</label><input type="text" name="zfcpPool" title="The pool where the disk is to be assigned"/></div>');
+    var status = $('<div><label>Status:</label><select name="zfcpStatus" title="The status of the SCSI disk">'
             + '<option value="free">free</option>'
             + '<option value="used">used</option>'
         + '</select></div>');
-    var portName = $('<div><label>Port name:</label><input type="text" name="zfcpPortName"/></div>');
-    var unitNo = $('<div><label>Unit number:</label><input type="text" name="zfcpUnitNo"/></div>');
-    var size = $('<div><label>Size:</label><input type="text" name="zfcpSize"/></div>');
-    var range = $('<div><label>Range:</label><input type="text" name="zfcpRange"/></div>');
-    var owner = $('<div><label>Owner:</label><input type="text" name="zfcpOwner"/></div>');
+    var portName = $('<div><label>Port name:</label><input type="text" name="zfcpPortName" title="The hexadecimal digits designating the 8-byte fibre channel port name of the FCP-I/O device"/></div>');
+    var unitNo = $('<div><label>Unit number:</label><input type="text" name="zfcpUnitNo" title="The hexadecimal digits representing the 8-byte logical unit number of the FCP-I/O device"/></div>');
+    var size = $('<div><label>Size:</label><input type="text" name="zfcpSize" title="The size of the disk to be added. The size can be in G or M. For example, 2G or 2048M."/></div>');
+    var range = $('<div><label>Range:</label><input type="text" name="zfcpRange" title="The range of the dedicated FCP device channels where this device can be connected to"/></div>');
+    var owner = $('<div><label>Owner:</label><input type="text" name="zfcpOwner" title="Optional. The node that currently owns this SCSI device."/></div>');
     addDiskForm.append(hcp, pool, status, portName, unitNo, size, range, owner);
 
     // Create a array for hardware control points
@@ -3581,6 +3945,27 @@ function openAddZfcp2PoolDialog() {
         hcpSelect.append($('<option value="' + hcps[i] + '">' + hcps[i] + '</option>'));
     }
         
+	// Generate tooltips
+    addDiskForm.find('div input[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
+    });
+    
     // Open dialog to add disk
     addDiskForm.dialog({
         title:'Add device to pool',
@@ -3713,12 +4098,48 @@ function loadNetworkTable(data) {
     var panelId = 'zvmNetworkResource';
     $('#' + panelId).find('img[src="images/loader.gif"]').remove();
     
+    // Get zVM host names
+    if (!$.cookie('zvms')) {
+        $.ajax({
+            url : 'lib/cmd.php',
+            dataType : 'json',
+            async: false,
+            data : {
+                cmd : 'webportal',
+                tgt : '',
+                args : 'lszvm',
+                msg : ''
+            },
+
+            success : function(data) {
+                setzVMCookies(data);
+            }
+        });
+    }
+    
+    var zvms = $.cookie('zvms').split(',');
+    var hcp2zvm = new Object();
+    var args, zvm, iHcp, tmp;
+    for (var i in zvms) {
+        args = zvms[i].split(':');
+        zvm = args[0].toLowerCase();
+        
+        if (args[1].indexOf('.') != -1) {
+        	tmp = args[1].split('.');
+        	iHcp = tmp[0];
+        } else {
+        	iHcp = args[1];
+        }
+        
+        hcp2zvm[iHcp] = zvm;
+    }
+    
     var args = data.msg.split(';');
     var hcp = args[0].replace('hcp=', '');
     var type = args[1].replace('type=', '');
-    var name = args[2].replace('network=', '');
-    var tmp = data.rsp[0].split(hcp + ': ');
-
+    var name = jQuery.trim(args[2].replace('network=', ''));
+    tmp = data.rsp[0].split(hcp + ': ');
+    
     // Resource tab ID
     var info = $('#' + panelId).find('.ui-state-highlight');
     // If there is no info bar
@@ -3734,7 +4155,7 @@ function loadNetworkTable(data) {
         // Create table
         var tableId = 'zNetworkDataTable';
         var table = new DataTable(tableId);
-        table.init( [ '<input type="checkbox" onclick="selectAllDisk(event, $(this))">', 'HCP', 'Type', 'Name', 'Details' ]);
+        table.init( [ '<input type="checkbox" onclick="selectAllDisk(event, $(this))">', 'z/VM', 'Type', 'Name', 'Layer', 'Owner', 'Controller', 'Details' ]);
 
         // Append datatable to tab
         $('#' + panelId).append(table.object());
@@ -3770,7 +4191,28 @@ function loadNetworkTable(data) {
     }
     details += '</pre>';
     
-    dTable.fnAddData([ '<input type="checkbox" name="' + hcp + ';' + type + ';' + name + '"/>', '<pre>' + hcp + '</pre>', '<pre>' + type + '</pre>', '<pre>' + name + '</pre>', details ]);
+    // Determine the OSI layer
+    var layer = "3";
+    if (details.indexOf("ETHERNET") != -1) {
+    	layer = "2";
+    }
+    
+    // Find the vSwitch/VLAN owner
+    var regex = /(LAN|VSWITCH) (.*?)(?:\s|$)/g;
+    var owner = "";
+    var match = "";
+    owner = regex.exec(details)[2];
+            
+    // Find the vSwitch controller
+    regex = /(?:^|\s)Controller: (.*?)(?:\s|$)/g;    
+    var controllers = "";
+    match = "";
+    while (match = regex.exec(details)) {
+    	controllers += match[1] + ",";
+    }
+    controllers = controllers.substring(0, controllers.length - 1);  // Delete last two characters
+        
+    dTable.fnAddData(['<input type="checkbox" name="' + hcp2zvm[hcp] + ';' + type + ';' + name + ';' + owner + '"/>', '<pre>' + hcp2zvm[hcp] + '</pre>', '<pre>' + type + '</pre>', '<pre>' + name + '</pre>', '<pre>' + layer + '</pre>', '<pre>' + owner + '</pre>', '<pre>' + controllers + '</pre>', details]);
     
     // Create actions menu
     if (!$('#networkResourceActions').length) {
@@ -3957,7 +4399,7 @@ function createZProvisionExisting(inst) {
         var tmp = groupNames.split(',');
         
         // Create drop down for groups        
-        var groupSelect = $('<select></select>');
+        var groupSelect = $('<select title="The group name where the node is to be found"></select>');
         groupSelect.append('<option></option>');
         for (var i in tmp) {
             // Add group into drop down
@@ -3993,7 +4435,7 @@ function createZProvisionExisting(inst) {
     // Create operating system image input
     var os = $('<div></div>');
     var osLabel = $('<label>Operating system image:</label>');
-    var osSelect = $('<select name="os"></select>');
+    var osSelect = $('<select name="os" title="The operating system image to be installed on this node"></select>');
     osSelect.append($('<option value=""></option>'));
     
     var imageNames = $.cookie('imagenames').split(',');
@@ -4010,7 +4452,7 @@ function createZProvisionExisting(inst) {
     // Create boot method drop down
     var bootMethod = $('<div></div>');
     var methoddLabel = $('<label>Boot method:</label>');
-    var methodSelect = $('<select name="bootMethod"></select>');
+    var methodSelect = $('<select name="bootMethod" title="The method for node deployment"></select>');
     methodSelect.append('<option value="boot">boot</option>'
         + '<option value="install">install</option>'
         + '<option value="iscsiboot">iscsiboot</option>'
@@ -4022,7 +4464,7 @@ function createZProvisionExisting(inst) {
     osAttr.append(bootMethod);
     
     // Generate tooltips
-    provExisting.find('div input[title]').tooltip({
+    provExisting.find('div input[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
         effect: "fade",        
@@ -4255,7 +4697,7 @@ function createZProvisionNew(inst) {
     // Create operating system image input
     var os = $('<div></div>');
     var osLabel = $('<label>Operating system image:</label>');
-    var osSelect = $('<select name="os"></select>');
+    var osSelect = $('<select name="os" title="The operating system image to be installed on this node"></select>');
     osSelect.append($('<option value=""></option>'));
     
     var imageNames = $.cookie('imagenames').split(',');
@@ -4333,7 +4775,7 @@ function createZProvisionNew(inst) {
             });
         }
     });
-    var userEntry = $('<div><label style="vertical-align: top;">Directory entry:</label><textarea/></textarea></div>');
+    var userEntry = $('<div><label style="vertical-align: top;">Directory entry:</label><textarea title="The directory entry to be defined for the virtual machine"/></textarea></div>');
     userEntry.append($('<span></span>').append(defaultChkbox, 'Use default'));
     hwAttr.append(userEntry);
 
@@ -4380,7 +4822,7 @@ function createZProvisionNew(inst) {
 
         // Create disk type drop down
         var diskType = $('<td></td>');
-        var diskTypeSelect = $('<select></select>');
+        var diskTypeSelect = $('<select title="The device type of the volume to which the disk is assigned"></select>');
         diskTypeSelect.append('<option value="3390">3390</option>'
             + '<option value="9336">9336</option>'
         );
@@ -4397,7 +4839,7 @@ function createZProvisionNew(inst) {
         
         // Create disk mode input
         var diskMode = $('<td></td>');
-        var diskModeSelect = $('<select></select>');
+        var diskModeSelect = $('<select title="The access mode for the disk"></select>');
         diskModeSelect.append('<option value="R">R</option>'
             + '<option value="RR">RR</option>'
             + '<option value="W">W</option>'
@@ -4411,7 +4853,7 @@ function createZProvisionNew(inst) {
         
         // Create disk pool drop down
         var diskPool = $('<td></td>');
-        var diskPoolSelect = $('<select></select>');
+        var diskPoolSelect = $('<select title="The pool where the disk is to be found"></select>');
         for (var i in definedPools) {
             diskPoolSelect.append('<option value="' + definedPools[i] + '">' + definedPools[i] + '</option>');
         }
@@ -4419,13 +4861,13 @@ function createZProvisionNew(inst) {
         diskRow.append(diskPool);
 
         // Create disk password input
-        var diskPw = $('<td><input type="password" title="You must give the password that will be used for accessing the disk"/></td>');
+        var diskPw = $('<td><input type="password" title="Optional. The read, write, and multi password that will be used for accessing the disk."/></td>');
         diskRow.append(diskPw);
 
         diskBody.append(diskRow);
         
         // Generate tooltips
-        diskBody.find('td input[title]').tooltip({
+        diskBody.find('td input[title],select[title]').tooltip({
             position: "top right",
             offset: [-4, 4],
             effect: "fade",
@@ -4501,7 +4943,7 @@ function createZProvisionNew(inst) {
         
         // Create zFCP pool drop down
         var zfcpPool = $('<td></td>');
-        var zfcpPoolSelect = $('<select name="zfcpPool"></select>');
+        var zfcpPoolSelect = $('<select name="zfcpPool" title="The pool where the new disk is to be found"></select>');
         for (var i in definedPools) {
             zfcpPoolSelect.append('<option value="' + definedPools[i] + '">' + definedPools[i] + '</option>');
         }
@@ -4521,13 +4963,13 @@ function createZProvisionNew(inst) {
         zfcpRow.append(zfcpUnitNo);
         
         // Create LOADDEV checkbox
-        var zfcpLoaddev = $('<td><input type="radio" name="zfcpLoaddev" title="Optional. You can specify this device as to be loaded as a result of a guest IPL from SCSI disk."/></td>');
+        var zfcpLoaddev = $('<td><input type="radio" name="zfcpLoaddev" title="Optional. Set the SCSI disk as the device to be loaded on IPL"/></td>');
         zfcpRow.append(zfcpLoaddev);
 
         zfcpBody.append(zfcpRow);
         
         // Generate tooltips
-        zfcpBody.find('td input[title]').tooltip({
+        zfcpBody.find('td input[title],select[title]').tooltip({
             position: "top right",
             offset: [-4, 4],
             effect: "fade",
@@ -4552,7 +4994,7 @@ function createZProvisionNew(inst) {
     hwAttr.append(zfcpDiv);
     
     // Generate tooltips
-    provNew.find('div input[title]').tooltip({
+    provNew.find('div input[title],select[title],textarea[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
         effect: "fade",
@@ -5368,7 +5810,7 @@ function profileDialog() {
     profileForm.append(info);
     
     // Insert profiles into select
-    var profileSelect = $('<select name="profile"></select>');
+    var profileSelect = $('<select name="profile" title="The image profile to set defaults for"></select>');
     var profiles = $.cookie('profiles').split(',');
     profiles.push('default'); // Add default profile
     for (var i in profiles) {
@@ -5378,10 +5820,31 @@ function profileDialog() {
     }
     
     profileForm.append($('<div><label>Profile:</label></div>').append(profileSelect));
-    profileForm.append('<div><label>Disk pool:</label><input type="text" name="disk_pool"/></div>');
-    profileForm.append('<div><label>Disk size (ECKD):</label><input type="text" name="disk_size_eckd"/></div>');
-    profileForm.append('<div><label style="vertical-align: top;">Directory entry:</label><textarea name="directory_entry"/></div>');
-        
+    profileForm.append('<div><label>Disk pool:</label><input type="text" name="disk_pool" title="The disk pool where xCAT will obtain disk(s) from for node installations"/></div>');
+    profileForm.append('<div><label>Disk size (ECKD):</label><input type="text" name="disk_size_eckd" title="The default size of the disk, which can be given as G, M, or number of cylinders."/></div>');
+    profileForm.append('<div><label style="vertical-align: top;">Directory entry:</label><textarea name="directory_entry" title="The default directory entry for a node. The default user ID must be set to LXUSR."/></div>');
+    
+	// Generate tooltips
+    profileForm.find('div input[title],textarea[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
+    });
+    
     // Open dialog to add processor
     profileForm.dialog({
         title:'Configure profile',
@@ -5522,7 +5985,7 @@ function editProfileDialog(profile, pool, size, entry) {
     profileForm.append(info);
     
     // Insert profiles into select
-    var profileSelect = $('<select name="profile"></select>');
+    var profileSelect = $('<select name="profile" title="The image profile to set defaults for"></select>');
     var profiles = $.cookie('profiles').split(',');
     profiles.push('default'); // Add default profile
     for (var i in profiles) {
@@ -5532,15 +5995,36 @@ function editProfileDialog(profile, pool, size, entry) {
     }
     
     profileForm.append($('<div><label>Profile:</label></div>').append(profileSelect));
-    profileForm.append('<div><label>Disk pool:</label><input type="text" name="disk_pool"/></div>');
-    profileForm.append('<div><label>Disk size (ECKD):</label><input type="text" name="disk_size_eckd"/></div>');
-    profileForm.append('<div><label style="vertical-align: top;">Directory entry:</label><textarea name="directory_entry"/></div>');
+    profileForm.append('<div><label>Disk pool:</label><input type="text" name="disk_pool" title="The disk pool where xCAT will obtain disk(s) from for node installations"/></div>');
+    profileForm.append('<div><label>Disk size (ECKD):</label><input type="text" name="disk_size_eckd" title="The default size of the disk, which can be given as G, M, or number of cylinders."/></div>');
+    profileForm.append('<div><label style="vertical-align: top;">Directory entry:</label><textarea name="directory_entry" title="The default directory entry for a node. The default user ID must be set to LXUSR."/></div>');
         
     // Insert profile values
     profileSelect.val(profile);
     profileForm.find('input[name=disk_pool]').val(pool);
     profileForm.find('input[name=disk_size_eckd]').val(size);
     profileForm.find('textarea[name=directory_entry]').val(entry);
+    
+	// Generate tooltips
+    profileForm.find('div input[title],textarea[title],select[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        },
+
+        // Change z index to show tooltip in front
+        onBeforeShow: function() {
+            this.getTip().css('z-index', $.topZIndex());
+        }
+    });
     
     // Open dialog to add processor
     profileForm.dialog({
