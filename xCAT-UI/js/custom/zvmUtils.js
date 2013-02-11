@@ -1666,9 +1666,25 @@ function openAddEckd2SystemDialog(hcp) {
     // Create form to add disk
     var addE2SForm = $('<div id="' + dialogId + '" class="form"></div>');
     
+    // Obtain mapping for zHCP to zVM system
+    var hcp2zvm = new Object();
+    hcp2zvm = getHcpZvmHash();
+    
+    var system = $('<div><label>z/VM system:</label></div>');
+    var systemSelect = $('<select name="system" title="The z/VM system name"></select>');
+    system.append(systemSelect);
+    
+    // Append options for hardware control points
+    systemSelect.append($('<option value=""></option>'));
+    for (var hcp in hcp2zvm) {
+    	systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
+    }
+    
     // Create info bar
     var info = createInfoBar('Dynamically add an ECKD disk to a running z/VM system.');
     addE2SForm.append(info);
+
+    addE2SForm.append(system);    
     addE2SForm.append('<div><label>Device number:</label><input type="text" name="devNum" value="" maxlength="4" title="The disk device number"/></div>');
 
 	// Generate tooltips
@@ -1699,17 +1715,17 @@ function openAddEckd2SystemDialog(hcp) {
         close: function(){
             $(this).remove();
         },
-        width: 400,
+        width: 420,
         buttons: {
             "Ok": function(){
                 // Remove any warning messages
                 $(this).find('.ui-state-error').remove();
                 
-                // Get inputs
+                var system = $(this).find('select[name=system]').val();
                 var devnum = $(this).find('input[name=devNum]').val();
                 
                 // If inputs are not complete, show warning message
-                if (!devnum) {
+                if (!system || !devnum) {
                     var warn = createWarnBar('Please provide a value for each missing field.');
                     warn.prependTo($(this));
                 } else {
@@ -1723,7 +1739,7 @@ function openAddEckd2SystemDialog(hcp) {
                         dataType : 'json',
                         data : {
                             cmd : 'chhypervisor',
-                            tgt : hcp,
+                            tgt : system,
                             args : "--addeckd;" + devnum,
                             msg : dialogId
                         },
@@ -1747,9 +1763,21 @@ function openAddEckd2SystemDialog(hcp) {
  */
 function openAddPageSpoolDialog(hcp) {
     var dialogId = 'zvmAddPageSpool';
-    
+            
     // Create form to add disk
     var addPageSpoolForm = $('<div id="' + dialogId + '" class="form"></div>');
+    
+    // Obtain mapping for zHCP to zVM system
+    var hcp2zvm = new Object();
+    hcp2zvm = getHcpZvmHash();
+    
+    var system = $('<div><label>z/VM system:</label></div>');
+    var systemSelect = $('<select name="system" title="The z/VM system name"></select>');
+    system.append(systemSelect);
+    // Append options for hardware control points
+    for (var hcp in hcp2zvm) {
+    	systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
+    }
     
     // Create info bar
     var info = createInfoBar('Indicate a full-pack minidisk is to be shared by the users of many real and virtual systems.');
@@ -1761,6 +1789,7 @@ function openAddPageSpoolDialog(hcp) {
     diskFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/hdd.png"></img></div>'));
     diskFS.append(diskAttr);
     
+    diskAttr.append(system);
     diskAttr.append('<div><label>Volume address:</label><input type="text" name="volAddr" value="" maxlength="4" title="The real address of the volume to be used for page or spool space"/></div>');
     diskAttr.append('<div><label>Volume label:</label><input type="text" name="volLabel" value="" maxlength="6" title="The name to be associated with the newly formatted volume"/></div>');
     diskAttr.append('<div><label>Volume use:</label><select name="volUse" title="Specifies that the volume is to be formatted and used as a page or spool volume"><option value="PAGE">Page</option><option value="SPOOL">Spool</option></select></div>');
@@ -1799,12 +1828,13 @@ function openAddPageSpoolDialog(hcp) {
                 // Remove any warning messages
                 $(this).find('.ui-state-error').remove();
                 
+                var system = $(this).find('select[name=system]').val();
                 var volAddr = $(this).find('input[name=volAddr]').val();
                 var volLabel = $(this).find('input[name=volLabel]').val();
                 var volUse = $(this).find('select[name=volUse]').val();
                 
                 // If inputs are not complete, show warning message
-                if (!volAddr || !volLabel || !volUse) {
+                if (!system || !volAddr || !volLabel || !volUse) {
                     var warn = createWarnBar('Please provide a value for each missing field.');
                     warn.prependTo($(this));
                 } else {
@@ -1813,14 +1843,14 @@ function openAddPageSpoolDialog(hcp) {
                         'Close': function() {$(this).dialog("close");}
                     });
                     
-                    var pageSpoolArgs = volAddr + ";" + volLabel + ";" + volUse + ";";
+                    var pageSpoolArgs = volAddr + ";" + volLabel + ";" + volUse;
                                         
                     $.ajax( {
                         url : 'lib/cmd.php',
                         dataType : 'json',
                         data : {
                             cmd : 'chvm',
-                            tgt : hcp,
+                            tgt : system,
                             args : '--addpagespool;' + pageSpoolArgs,
                             msg : dialogId
                         },
@@ -1851,26 +1881,12 @@ function openShareDiskDialog(disks2share) {
     var info = createInfoBar('Indicate a full-pack minidisk is to be shared by the users of many real and virtual systems.');
     shareDiskForm.append(info);
 
-    var hcp = $('<div><label>Hardware control point:</label></div>');
-    var hcpSelect = $('<select name="hcp" title="The System z hardware control point (zHCP) responsible for managing the z/VM system"></select>');
-    hcp.append(hcpSelect);
     // Set region input based on those selected on table (if any)
+    var node = $('<div><label>Node:</label><input type="text" name="node" title="The node name"/></div>');
     var volAddr = $('<div><label>Volume addresses:</label><input type="text" name="volAddr" value="' + disks2share + '" title="The real device number of the volume to be shared"/></div>');
     var shareEnable = $('<div><label>Share enable:</label><select name="shareEnable" title="Turns sharing of the specified full-pack minidisk on or off"><option value="ON">On</option><option value="OFF">Off</option></select></div>');
-    shareDiskForm.append(hcp, volAddr, shareEnable);
-    
-    // Create a array for hardware control points
-    var hcps = new Array();
-    if ($.cookie('hcp').indexOf(',') > -1)
-        hcps = $.cookie('hcp').split(',');
-    else
-        hcps.push($.cookie('hcp'));
-    
-    // Append options for hardware control points
-    for (var i in hcps) {
-        hcpSelect.append($('<option value="' + hcps[i] + '">' + hcps[i] + '</option>'));
-    }
-    
+    shareDiskForm.append(node, volAddr, shareEnable);
+        
 	// Generate tooltips
     shareDiskForm.find('div input[title],select[title]').tooltip({
         position: "center right",
@@ -1906,12 +1922,12 @@ function openShareDiskDialog(disks2share) {
                 $(this).find('.ui-state-error').remove();
                 
                 // Get inputs
-                var hcp = $(this).find('select[name=hcp]').val();
+                var node = $(this).find('input[name=node]').val();
                 var volAddr = $(this).find('input[name=volAddr]').val();
                 var shareEnable = $(this).find('select[name=shareEnable]').val();
                                 
                 // If inputs are not complete, show warning message
-                if (!volAddr || !shareEnable) {
+                if (!node || !volAddr || !shareEnable) {
                     var warn = createWarnBar('Please provide a value for each missing field.');
                     warn.prependTo($(this));
                 } else {
@@ -1926,7 +1942,7 @@ function openShareDiskDialog(disks2share) {
                         dataType : 'json',
                         data : {
                             cmd : 'chvm',
-                            tgt : hcp,
+                            tgt : node,
                             args : "--sharevolume;" + volAddr + ";" + shareEnable,
                             msg : dialogId
                         },
@@ -1953,9 +1969,23 @@ function openAddScsi2SystemDialog(hcp) {
     // Create form to add disk
     var addS2SForm = $('<div id="' + dialogId + '" class="form"></div>');
     
+    // Obtain mapping for zHCP to zVM system
+    var hcp2zvm = new Object();
+    hcp2zvm = getHcpZvmHash();
+    
     // Create info bar
     var info = createInfoBar('Dynamically add an SCSI disk to a running z/VM system.');
     addS2SForm.append(info);
+    
+    var system = $('<div><label>z/VM system:</label></div>');
+    var systemSelect = $('<select name="system" title="The z/VM system name"></select>');
+    system.append(systemSelect);
+    
+    // Append options for hardware control points
+    systemSelect.append($('<option value=""></option>'));
+    for (var hcp in hcp2zvm) {
+    	systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
+    }
         
     var devNum = $('<div><label>FCP device:</label><input type="text" name="devNum" maxlength="4" title="The SCSI disk device number"/></div>');
     var devPathLabel = $('<label>Device paths:</label>');
@@ -2084,7 +2114,7 @@ function openAddScsi2SystemDialog(hcp) {
     		'<option selected value="no">No</option>' +
     		'<option value="yes">Yes</option>' +
 		'</select></div>');
-    addS2SForm.append(devNum, devPathDiv, option, persist);
+    addS2SForm.append(system, devNum, devPathDiv, option, persist);
     
 	// Generate tooltips
     addS2SForm.find('div input[title],select[title]').tooltip({
@@ -2134,6 +2164,7 @@ function openAddScsi2SystemDialog(hcp) {
                 // Remove any warning messages
                 $(this).find('.ui-state-error').remove();
                 
+                var system = $(this).find('input[name=system]').val();
                 var num = $(this).find('input[name=devNum]').val();
                 var pathArray = "";
                 $('.devPath').each(function(index) {
@@ -2146,7 +2177,7 @@ function openAddScsi2SystemDialog(hcp) {
                 var persist = $(this).find('select[name=persist]').val();
                 
                 // If inputs are not complete, show warning message
-                if (!num || !pathArray || !option || !persist) {
+                if (!system || !num || !pathArray || !option || !persist) {
                     var warn = createWarnBar('Please provide a value for each missing field.');
                     warn.prependTo($(this));
                 } else {
@@ -2160,7 +2191,7 @@ function openAddScsi2SystemDialog(hcp) {
                         dataType : 'json',
                         data : {
                             cmd : 'chhypervisor',
-                            tgt : hcp,
+                            tgt : system,
                             args : "--addscsi||" + num + "||" + pathArray + "||" + option + "||" + persist,
                             msg : dialogId
                         },
@@ -2186,9 +2217,24 @@ function openRemoveScsiDialog(hcp) {
     var dialogId = 'zvmRemoveScsiDialog';
     // Create form to add disk
     var removeScsiForm = $('<div id="' + dialogId + '" class="form"></div>');
+    
+	// Obtain mapping for zHCP to zVM system
+    var hcp2zvm = new Object();
+    hcp2zvm = getHcpZvmHash();
+    
+    var system = $('<div><label>z/VM system:</label></div>');
+    var systemSelect = $('<select name="system" title="The z/VM system name"></select>');
+    system.append(systemSelect);
+    
+    // Append options for hardware control points
+    systemSelect.append($('<option value=""></option>'));
+    for (var hcp in hcp2zvm) {
+    	systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
+    }
+    
     // Create info bar
     var info = createInfoBar('Delete a real SCSI disk');
-    removeScsiForm.append(info);
+    removeScsiForm.append(info, system);
     removeScsiForm.append('<div><label>Device number:</label><input type="text" name="devNum" value="" maxlength="4" title="The SCSI disk device number"/></div>');
     removeScsiForm.append('<div><label>Persist:</label><select name="persist" title="Specifies that the SCSI device is to be updated on the active system configuration or both the active and permanent system configurations">' +
     		'<option value="NO">No</option>' +
@@ -2230,11 +2276,12 @@ function openRemoveScsiDialog(hcp) {
                 $(this).find('.ui-state-error').remove();
                 
                 // Get inputs
+                var system = $(this).find('input[name=system]').val();
                 var devnum = $(this).find('input[name=devNum]').val();
                 var persist = $(this).find('select[name=persist]').val();
                 
                 // If inputs are not complete, show warning message
-                if (!devnum) {
+                if (!system || !devnum) {
                     var warn = createWarnBar('Please provide a value for each missing field.');
                     warn.prependTo($(this));
                 } else {
@@ -2248,7 +2295,7 @@ function openRemoveScsiDialog(hcp) {
                         dataType : 'json',
                         data : {
                             cmd : 'chhypervisor',
-                            tgt : hcp,
+                            tgt : system,
                             args : "--removescsi;" + devnum + ";" + persist,
                             msg : dialogId
                         },
@@ -2735,7 +2782,7 @@ function openAddVswitchVlanDialog(hcp) {
                 $(this).find('.ui-state-error').remove();
                 
                 var networkType = $(this).find('select[name=networkType]').val();
-                if (networkType == "vswitch"){  
+                if (networkType == "vswitch") {  
                     var networkArgs = "--addvswitch;";
                     var hcp = $(this).find('select[name=hcp]').val();
                     var switchName = $(this).find('input[name=switchName]').val();
@@ -3198,6 +3245,10 @@ function loadDiskPoolTable(data) {
         return;
     }
     
+    // Obtain mapping for zHCP to zVM system
+    var hcp2zvm = new Object();
+    hcp2zvm = getHcpZvmHash();
+    
     var args = data.msg.split(';');
     var hcp = args[0].replace('hcp=', '');
     var pool = args[1].replace('pool=', '');
@@ -3220,7 +3271,7 @@ function loadDiskPoolTable(data) {
         // Create a datatable        
         var table = new DataTable(tableId);
         // Resource headers: volume ID, device type, start address, and size
-        table.init( [ '<input type="checkbox" onclick="selectAllDisk(event, $(this))">', 'zHCP', 'Pool', 'Status', 'Volume', 'Device type', 'Starting address', 'Size' ]);
+        table.init( [ '<input type="checkbox" onclick="selectAllDisk(event, $(this))">', 'z/VM', 'Pool', 'Status', 'Volume', 'Device type', 'Starting address', 'Size' ]);
 
         // Append datatable to panel
         $('#' + panelId).append(table.object());
@@ -3241,12 +3292,12 @@ function loadDiskPoolTable(data) {
         });
         setDiskDataTable(dTable);
     }
-
+    
     // Skip index 0 and 1 because it contains nothing
     for (var i = 2; i < tmp.length; i++) {
         tmp[i] = jQuery.trim(tmp[i]);
         var diskAttrs = tmp[i].split(' ');
-        dTable.fnAddData( [ '<input type="checkbox" name="' + diskAttrs[0] + '"/>', hcp, pool, stat, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3] ]);
+        dTable.fnAddData( [ '<input type="checkbox" name="' + hcp + ";" + diskAttrs[0] + '"/>', hcp2zvm[hcp], pool, stat, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3] ]);
     }
     
     // Create actions menu
@@ -3366,6 +3417,10 @@ function loadZfcpPoolTable(data) {
         return;
     }
     
+    // Obtain mapping for zHCP to zVM system
+    var hcp2zvm = new Object();
+    hcp2zvm = getHcpZvmHash();
+    
     var args, hcp, pool, tmp;
     args = data.msg.split(';');
     hcp = args[0].replace('hcp=', '');
@@ -3387,7 +3442,7 @@ function loadZfcpPoolTable(data) {
         // Create a datatable        
         var table = new DataTable(tableId);
         // Resource headers: status, WWPN, LUN, size, owner, channel, tag
-        table.init( [ '<input type="checkbox" onclick="selectAllDisk(event, $(this))">', 'zHCP', 'Pool', 'Status', 'Port name', 'Unit number', 'Size', 'Range', 'Owner', 'Channel', 'Tag' ]);
+        table.init( [ '<input type="checkbox" onclick="selectAllDisk(event, $(this))">', 'z/VM', 'Pool', 'Status', 'Port name', 'Unit number', 'Size', 'Range', 'Owner', 'Channel', 'Tag' ]);
 
         // Append datatable to panel
         $('#' + panelId).append(table.object());
@@ -3416,7 +3471,7 @@ function loadZfcpPoolTable(data) {
             tmp[i] = jQuery.trim(tmp[i]);
             var diskAttrs = tmp[i].split(',');
             var key = hcp + '-' + pool + '-' + diskAttrs[2];
-            dTable.fnAddData( [ '<input type="checkbox" name="' + key + '"/>', hcp, pool, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3], diskAttrs[4], diskAttrs[5], diskAttrs[6], diskAttrs[7] ]);
+            dTable.fnAddData( [ '<input type="checkbox" name="' + key + '"/>', hcp2zvm[hcp], pool, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3], diskAttrs[4], diskAttrs[5], diskAttrs[6], diskAttrs[7] ]);
         }
     }
     
@@ -3525,6 +3580,14 @@ function openRemoveDiskFromPoolDialog(disks2remove) {
     var dialogId = 'zvmDeleteDiskFromPool';
     var deleteDiskForm = $('<div id="' + dialogId + '" class="form"></div>');
     
+	// Obtain mapping for zHCP to zVM system
+    var hcp2zvm = new Object();
+    hcp2zvm = getHcpZvmHash();
+    
+    var args = disks2remove.split(';');
+    var tgtHcp = args[0];
+    var tgtVol = args[1];
+    
     // Create info bar
     var info = createInfoBar('Remove a disk from a disk pool defined in the EXTENT CONTROL.');
     deleteDiskForm.append(info);
@@ -3538,26 +3601,21 @@ function openRemoveDiskFromPoolDialog(disks2remove) {
         + '</select>');
     action.append(actionSelect);
     
-    var hcp = $('<div><label>Hardware control point:</label></div>');
-    var hcpSelect = $('<select name="hcp" title="The System z hardware control point (zHCP) responsible for managing the z/VM system"></select>');
+    var hcp = $('<div><label>z/VM system:</label></div>');
+    var hcpSelect = $('<select name="hcp" title="The z/VM system name"></select>');
     hcp.append(hcpSelect);
     
     // Set region input based on those selected on table (if any)
-    var region = $('<div><label>Volume name:</label><input type="text" name="region" value="' + disks2remove + '" title="The DASD volume label"/></div>');
+    var region = $('<div><label>Volume name:</label><input type="text" name="region" value="' + tgtVol + '" title="The DASD volume label"/></div>');
     var group = $('<div><label>Group name:</label><input type="text" name="group" title="The name of the group from which the volume will be removed"/></div>');
     deleteDiskForm.append(action, hcp, region, group);
-
-    // Create a array for hardware control points
-    var hcps = new Array();
-    if ($.cookie('hcp').indexOf(',') > -1)
-        hcps = $.cookie('hcp').split(',');
-    else
-        hcps.push($.cookie('hcp'));
     
     // Append options for hardware control points
-    for (var i in hcps) {
-        hcpSelect.append($('<option value="' + hcps[i] + '">' + hcps[i] + '</option>'));
+    hcpSelect.append($('<option value=""></option>'));
+    for (var hcp in hcp2zvm) {
+    	hcpSelect.append($('<option value="' + hcp + '">' + hcp2zvm[hcp] + '</option>'));
     }
+    hcpSelect.val(tgtHcp);
             
     actionSelect.change(function() {
         if ($(this).val() == '1' || $(this).val() == '3') {
@@ -3658,6 +3716,11 @@ function openAddDisk2PoolDialog() {
     // Create form to add disk to pool
     var dialogId = 'zvmAddDisk2Pool';
     var addDiskForm = $('<div id="' + dialogId + '" class="form"></div>');
+    
+    // Obtain mapping for zHCP to zVM system
+    var hcp2zvm = new Object();
+    hcp2zvm = getHcpZvmHash();
+        
     // Create info bar
     var info = createInfoBar('Add a disk to a disk pool defined in the EXTENT CONTROL. The disk has to already be attached to SYSTEM.');
     addDiskForm.append(info);
@@ -3669,23 +3732,17 @@ function openAddDisk2PoolDialog() {
         + '</select>');
     action.append(actionSelect);
     
-    var hcp = $('<div><label>Hardware control point:</label></div>');
-    var hcpSelect = $('<select name="hcp" title="The System z hardware control point (zHCP) responsible for managing the z/VM system"></select>');
+    var hcp = $('<div><label>z/VM system:</label></div>');
+    var hcpSelect = $('<select name="hcp" title="The z/VM system name"></select>');
     hcp.append(hcpSelect);
     var volume = $('<div><label>Volume name:</label><input type="text" name="volume" title="The DASD volume label"/></div>');
     var group = $('<div><label>Group name:</label><input type="text" name="group" title="The name of the group to which the volume is assigned"/></div>');
     addDiskForm.append(action, hcp, volume, group);
-
-    // Create a array for hardware control points
-    var hcps = new Array();
-    if ($.cookie('hcp').indexOf(',') > -1)
-        hcps = $.cookie('hcp').split(',');
-    else
-        hcps.push($.cookie('hcp'));
     
     // Append options for hardware control points
-    for (var i in hcps) {
-        hcpSelect.append($('<option value="' + hcps[i] + '">' + hcps[i] + '</option>'));
+    hcpSelect.append($('<option value=""></option>'));
+    for (var hcp in hcp2zvm) {
+    	hcpSelect.append($('<option value="' + hcp + '">' + hcp2zvm[hcp] + '</option>'));
     }
             
     actionSelect.change(function() {
@@ -3784,6 +3841,10 @@ function openRemoveZfcpFromPoolDialog(devices2remove) {
     var dialogId = 'zvmDeleteZfcpFromPool';
     var deleteDiskForm = $('<div id="' + dialogId + '" class="form"></div>');
     
+    // Obtain mapping for zHCP to zVM system
+    var hcp2zvm = new Object();
+    hcp2zvm = getHcpZvmHash();
+    
     // Verify disks are in the same zFCP pool
     var devices = devices2remove.split(',');
     var tmp, tgtPool, tgtHcp;
@@ -3809,8 +3870,8 @@ function openRemoveZfcpFromPoolDialog(devices2remove) {
     var info = createInfoBar('Remove a zFCP device that is defined in a zFCP pool.');
     deleteDiskForm.append(info);
         
-    var hcp = $('<div><label>Hardware control point:</label></div>');
-    var hcpSelect = $('<select name="hcp" title="The System z hardware control point (zHCP) responsible for managing the z/VM system"></select>');
+    var hcp = $('<div><label>z/VM system:</label></div>');
+    var hcpSelect = $('<select name="hcp" title="The z/VM system name"></select>');
     hcp.append(hcpSelect);
     
     var pool = $('<div><label>zFCP pool:</label><input type="text" name="zfcpPool" value="' + tgtPool + '" title="The pool where the disk resides"/></div>');
@@ -3818,17 +3879,10 @@ function openRemoveZfcpFromPoolDialog(devices2remove) {
     var portName = $('<div><label>Port name:</label><input type="text" name="zfcpPortName" title="Optional. The hexadecimal digits designating the 8-byte fibre channel port name of the FCP-I/O device"/></div>');
     deleteDiskForm.append(hcp, pool, unitNo, portName);
 
-    // Create a array for hardware control points
-    var hcps = new Array();
-    if ($.cookie('hcp').indexOf(',') > -1) {
-        hcps = $.cookie('hcp').split(',');
-    } else {
-        hcps.push($.cookie('hcp'));
-    }
-    
     // Append options for hardware control points
-    for (var i in hcps) {
-        hcpSelect.append($('<option value="' + hcps[i] + '">' + hcps[i] + '</option>'));
+    hcpSelect.append($('<option value=""></option>'));
+    for (var hcp in hcp2zvm) {
+    	hcpSelect.append($('<option value="' + hcp + '">' + hcp2zvm[hcp] + '</option>'));
     }
     hcpSelect.val(tgtHcp);
 
@@ -3916,8 +3970,12 @@ function openAddZfcp2PoolDialog() {
     var info = createInfoBar('Add a device to a zFCP pool defined in xCAT.');
     addDiskForm.append(info);
     
-    var hcp = $('<div><label>Hardware control point:</label></div>');
-    var hcpSelect = $('<select name="hcp" title="The System z hardware control point (zHCP) responsible for managing the z/VM system"></select>');
+    // Obtain mapping for zHCP to zVM system
+    var hcp2zvm = new Object();
+    hcp2zvm = getHcpZvmHash();
+    
+    var hcp = $('<div><label>z/VM system:</label></div>');
+    var hcpSelect = $('<select name="hcp" title="The z/VM system name"></select>');
     hcp.append(hcpSelect);
     
     var pool = $('<div><label>zFCP pool:</label><input type="text" name="zfcpPool" title="The pool where the disk is to be assigned"/></div>');
@@ -3933,16 +3991,10 @@ function openAddZfcp2PoolDialog() {
     addDiskForm.append(hcp, pool, status, portName, unitNo, size, range, owner);
 
     // Create a array for hardware control points
-    var hcps = new Array();
-    if ($.cookie('hcp').indexOf(',') > -1) {
-        hcps = $.cookie('hcp').split(',');
-    } else {
-        hcps.push($.cookie('hcp'));
-    }
-    
-    hcpSelect.append($('<option value=""></option>'));
-    for (var i in hcps) {
-        hcpSelect.append($('<option value="' + hcps[i] + '">' + hcps[i] + '</option>'));
+    hcpSelect.append($('<option value=""></option>'));    
+    // Append options for hardware control points
+    for (var hcp in hcp2zvm) {
+    	hcpSelect.append($('<option value="' + hcp + '">' + hcp2zvm[hcp] + '</option>'));
     }
         
 	// Generate tooltips
@@ -6094,4 +6146,49 @@ function editProfileDialog(profile, pool, size, entry) {
             }
         }
     });
+}
+
+/**
+ * Get a hash map containing the zHCP to z/VM system mapping
+ * 
+ * @returns Hash map containing the zHCP to z/VM system mapping
+ */
+function getHcpZvmHash() {
+	// Get zVM host names
+    if (!$.cookie('zvms')) {
+        $.ajax({
+            url : 'lib/cmd.php',
+            dataType : 'json',
+            async: false,
+            data : {
+                cmd : 'webportal',
+                tgt : '',
+                args : 'lszvm',
+                msg : ''
+            },
+
+            success : function(data) {
+                setzVMCookies(data);
+            }
+        });
+    }
+    
+    var zvms = $.cookie('zvms').split(',');
+    var hcp2zvm = new Object();
+    var args, zvm, iHcp, tmp;
+    for (var i in zvms) {
+        args = zvms[i].split(':');
+        zvm = args[0].toLowerCase();
+        
+        if (args[1].indexOf('.') != -1) {
+        	tmp = args[1].split('.');
+        	iHcp = tmp[0];
+        } else {
+        	iHcp = args[1];
+        }
+        
+        hcp2zvm[iHcp] = zvm;
+    }
+    
+    return hcp2zvm;
 }
