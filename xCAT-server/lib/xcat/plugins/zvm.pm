@@ -4479,10 +4479,14 @@ sub nodeSet {
         }
 
         # Get host IP and hostname from /etc/hosts
-        $out = `cat /etc/hosts | grep "$node "`;
+        $out = `cat /etc/hosts | egrep -i "$node |$node."`;
         my @words    = split( ' ', $out );
         my $hostIP   = $words[0];
         my $hostname = $words[2];
+	    if (!($hostname =~ m/./i)) {
+	        $hostname = $words[1];
+	    }
+        
         if ( !$hostIP || !$hostname ) {
             xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing IP for $node in /etc/hosts" );
             xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Verify that the nodes IP address is specified in the hosts table and then run makehosts" );
@@ -5603,10 +5607,14 @@ sub updateNode {
     my $installDir = $entries[0];
 
     # Get host IP and hostname from /etc/hosts
-    my $out      = `cat /etc/hosts | grep $node`;
+    my $out      = `cat /etc/hosts | egrep -i "$node |$node."`;
     my @words    = split( ' ', $out );
     my $hostIP   = $words[0];
     my $hostname = $words[2];
+    if (!($hostname =~ m/./i)) {
+    	$hostname = $words[1];
+    }
+    
     if ( !$hostIP || !$hostname ) {
         xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing IP for $node in /etc/hosts" );
         xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Verify that the node's IP address is specified in the hosts table and then run makehosts" );

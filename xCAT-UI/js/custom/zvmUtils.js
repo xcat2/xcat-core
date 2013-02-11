@@ -2794,7 +2794,7 @@ function openAddVswitchVlanDialog(hcp) {
                     var hcp = $(this).find('select[name=hcp]').val();
                     var switchName = $(this).find('input[name=switchName]').val();
                     var deviceAddress = $(this).find('input[name=deviceAddress]').val();
-                    var portName = $(this).find('input[name=switchName]').val();
+                    var portName = $(this).find('input[name=portName]').val();
                     var controllerName = $(this).find('input[name=controllerName]').val();
                     var connection = $(this).find('select[name=connection]').val();
                     var queueMemoryLimit = $(this).find('input[name=queueMemoryLimit]').val();
@@ -2829,7 +2829,7 @@ function openAddVswitchVlanDialog(hcp) {
                     if (updateSysConfig) 
                         networkArgs += updateSysConfig + ";";          
                     if (gvrp) 
-                        networkArgs += gvrpValue + ";";
+                        networkArgs += gvrp + ";";
                     if (nativeVlanId) 
                         networkArgs += nativeVlanId + ";";
                     networkArgs = networkArgs.substring(0, networkArgs.length - 1);

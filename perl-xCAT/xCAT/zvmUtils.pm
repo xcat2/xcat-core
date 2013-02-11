@@ -387,7 +387,7 @@ sub getIp {
     # Get IP address
     # You need the extra space in the pattern,
     # else it will confuse gpok2 with gpok21
-    my $out   = `cat /etc/hosts | grep "$node "`;
+    my $out   = `cat /etc/hosts | egrep -i "$node | $node."`;
     my @parms = split( ' ', $out );
 
     return $parms[0];
