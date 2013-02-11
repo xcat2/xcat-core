@@ -293,7 +293,7 @@ if (-f $scriptname)
       my $PSTMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" $scriptname`;
       `echo "$PSTMP" > $scriptname`;
       #remove all the postscripts
-      my $TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" $scriptname`;
+      my $TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" $scriptname`;
       `echo "$TMP" > $scriptname`;
       `echo "# postscripts-start-here" >> $scriptname`;
       #add requested postscripts in
@@ -302,9 +302,9 @@ if (-f $scriptname)
     }
 
     # use the run_ps subroutine to run the postscripts
-    my $TMP1=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\\(.*\\)/run_ps \\1/;s/run_ps *#/#/;s/run_ps *\$//" $scriptname`;
+    my $TMP1=`sed "/# postscripts-start-here/,/# postscripts-end-here/ s/\\(.*\\)/run_ps \\1/;s/run_ps *#/#/;s/run_ps *\$//" $scriptname`;
     `echo "$TMP1" > $scriptname`;
-    my $TMP2=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\\(.*\\)/run_ps \\1/;s/run_ps *#/#/;s/run_ps *\$//" $scriptname`;
+    my $TMP2=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ s/\\(.*\\)/run_ps \\1/;s/run_ps *#/#/;s/run_ps *\$//" $scriptname`;
     `echo "
 # subroutine used to run postscripts
 run_ps () {
