@@ -6183,7 +6183,6 @@ sub changeHypervisor {
         # Update file with given WWPN, LUN, size, and owner
         my $entry = "'" . "$status,$wwpn,$lun,$size,$range,$owner,," . "'";
         $out = `ssh $::SUDOER\@$hcp "$::SUDO echo $entry >> $::ZFCPPOOL/$pool.conf"`;
-        xCAT::zvmUtils->printLn( $callback, "ssh $::SUDOER\@$hcp \"$::SUDO echo \"$status,$wwpn,$lun,$size,$range,$owner,,\" >> $::ZFCPPOOL/$pool.conf");
         xCAT::zvmUtils->printLn( $callback, "$node: Adding zFCP device to $pool pool... Done" );
         $out = "";
     }
