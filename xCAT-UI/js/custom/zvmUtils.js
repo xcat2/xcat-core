@@ -1877,13 +1877,20 @@ function openShareDiskDialog(disks2share) {
     var dialogId = 'zvmShareDisk';
     var shareDiskForm = $('<div id="' + dialogId + '" class="form"></div>');
     
+    var args = disks2share.split(';');
+    var tgtHcp = args[0];
+    var tgtVol = args[1];
+    
+    if (!tgtVol || tgtVol == "undefined")
+    	tgtVol = "";
+    
     // Create info bar
     var info = createInfoBar('Indicate a full-pack minidisk is to be shared by the users of many real and virtual systems.');
     shareDiskForm.append(info);
 
     // Set region input based on those selected on table (if any)
     var node = $('<div><label>Node:</label><input type="text" name="node" title="The node name"/></div>');
-    var volAddr = $('<div><label>Volume addresses:</label><input type="text" name="volAddr" value="' + disks2share + '" title="The real device number of the volume to be shared"/></div>');
+    var volAddr = $('<div><label>Volume addresses:</label><input type="text" name="volAddr" value="' + tgtVol + '" title="The real device number of the volume to be shared"/></div>');
     var shareEnable = $('<div><label>Share enable:</label><select name="shareEnable" title="Turns sharing of the specified full-pack minidisk on or off"><option value="ON">On</option><option value="OFF">Off</option></select></div>');
     shareDiskForm.append(node, volAddr, shareEnable);
         
