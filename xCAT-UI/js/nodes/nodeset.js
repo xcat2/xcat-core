@@ -72,7 +72,7 @@ function loadNodesetPage(tgtNodes) {
     // Create boot method drop down
     var method = $('<div></div>');
     var methodLabel = $('<label>Boot method:</label>');
-    var methodSelect = $('<select id="bootMethod" name="bootMethod"></select>');
+    var methodSelect = $('<select id="bootMethod" name="bootMethod" title="The method for node deployment"></select>');
     methodSelect.append('<option value="boot">boot</option>'
         + '<option value="install">install</option>'
         + '<option value="iscsiboot">iscsiboot</option>'
@@ -86,7 +86,7 @@ function loadNodesetPage(tgtNodes) {
     // Create boot type drop down
     var type = $('<div></div>');
     var typeLabel = $('<label>Boot type:</label>');
-    var typeSelect = $('<select id="bootType" name="bootType"></select>');
+    var typeSelect = $('<select id="bootType" name="bootType" title="The type of network booting to use for this node"></select>');
     typeSelect.append('<option value="zvm">zvm</option>'
         + '<option value="install">pxe</option>'
         + '<option value="iscsiboot">yaboot</option>'
@@ -147,7 +147,7 @@ function loadNodesetPage(tgtNodes) {
     imageAttr.append(profile);
 
     // Generate tooltips
-    nodesetForm.find('div input[title]').tooltip({
+    nodesetForm.find('div input[title],select').tooltip({
         position: "center right",
         offset: [-2, 10],
         effect: "fade",

@@ -28,9 +28,9 @@ B<mkvm> I<noderange> [B<-s>|B<--size> I<disksize>] [B<--mem> I<memsize>] [B<--cp
 
 =head2 For zVM:
 
-B<mkvm> I<noderange> I<directory_entry_file_path>
+B<mkvm> I<noderange> [I<directory_entry_file_path>]
 
-B<mkvm> I<noderange> I<source_virtual_machine> B<pool=> I<disk_pool>
+B<mkvm> I<noderange> [I<source_virtual_machine>] [B<pool=> I<disk_pool>]
 
 =head1 DESCRIPTION
 

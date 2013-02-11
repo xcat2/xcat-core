@@ -241,7 +241,7 @@ function loadServiceProvisionPage(tabId) {
                 title = 'z/VM';
                 
                 // Get zVM host names
-                if (!$.cookie('srv_zvm')){
+                if (!$.cookie('zvms')){
                     $.ajax( {
                         url : 'lib/srv_cmd.php',
                         dataType : 'json',

@@ -1856,8 +1856,12 @@ function loadScriptPage(tgtNodes) {
     upload.append(label, file, subBtn);
     scriptAttr.append(upload);
     
+    // Script
+    var script = $('<div><label>Script:</label><textarea title="The code to run against the node range"/>');
+    scriptAttr.append(script);
+    
     // Generate tooltips
-    scriptForm.find('div input[title]').tooltip({
+    scriptForm.find('div input[title],textarea').tooltip({
         position: "center right",
         offset: [-2, 10],
         effect: "fade",
@@ -1870,10 +1874,6 @@ function loadScriptPage(tgtNodes) {
             tooltip : "mouseover,mouseout"
         }
     });
-
-    // Script
-    var script = $('<div><label>Script:</label><textarea/>');
-    scriptAttr.append(script);
 
     // Ajax form options
     var options = {
@@ -2950,7 +2950,7 @@ function openSetAttrsDialog() {
             $(this).remove();
         },
         height: 400,
-        width: 700,
+        width: 800,
         buttons: {
             "Save": function() {
                 // Remove any warning messages
