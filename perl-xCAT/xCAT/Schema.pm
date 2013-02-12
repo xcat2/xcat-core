@@ -261,7 +261,7 @@ virtsd => {
 },
 
 storage => {
-	cols => [qw(node osvolume)],
+	cols => [qw(node osvolume comments disable)],
 	keys => [qw(node)],
 	table_descr => "Node storage resources",
 	descriptions => {
