@@ -6037,7 +6037,6 @@ sub changeHypervisor {
         
         # Add an ECKD disk to a running z/VM system
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_Disk_Add -T $hcpUserId -k $devNo"`;
-        $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
         
     # addscsi [dev_no] [dev_path] [option] [persist]
@@ -6107,17 +6106,22 @@ sub changeHypervisor {
         $out .= `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Virtual_Network_LAN_Create -T $hcpUserId -n $name -o $owner -t $type -p $transport"`;
     }
     
-    # addvswitch [name] [osa_dev_addr] [osa_exp_adapter] [controller] [connect (0, 1, or 2)] [memory_queue] [router] [transport] [vlan_id] [port_type] [update] [gvrp] [native_vlan]
+    # addvswitch [name] [osa_dev_addr] [port_name] [controller] [connect (0, 1, or 2)] [memory_queue] [router] [transport] [vlan_id] [port_type] [update] [gvrp] [native_vlan]
     elsif ( $args->[0] eq "--addvswitch" ) {
         my $i;
         my $argStr = "";
         
         my $argsSize = @{$args};
+        if ($argsSize < 5) {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Wrong number of parameters" );
+            return;
+        }
+        
         my @options = ("", "-n", "-r", "-a", "-i", "-c", "-q", "-e", "-t", "-v", "-p", "-u", "-G", "-V");
         foreach $i ( 1 .. $argsSize ) {
             if ( $args->[$i] ) {
                 # Prepend options prefix to argument
-                $argStr .= "$options[$i] $args->[$i] "; 
+                $argStr .= "$options[$i] $args->[$i] ";
             }
         }
 
@@ -6167,19 +6171,19 @@ sub changeHypervisor {
             # Create pool directory
             $out = `ssh $::SUDOER\@$hcp "$::SUDO mkdir -p $::ZFCPPOOL"`;
         }
-        
-        if (!(`ssh $::SUDOER\@$hcp "$::SUDO test -e $::ZFCPPOOL/$pool.conf && echo Exists"`)) {                
-            # Create pool configuration file
-            $out = xCAT::zvmUtils->rExecute($::SUDOER, $hcp, "echo '#status,wwpn,lun,size,range,owner,channel,tag' > $::ZFCPPOOL/$pool.conf");
-            xCAT::zvmUtils->printLn( $callback, "$node: New zFCP device pool $pool created" );
-        }
-        
+                
         # Change the file owner if using a sudoer 
         if ($::SUDOER ne "root") {
         	my $priv = xCAT::zvmUtils->trimStr(`ssh $::SUDOER\@$hcp "$::SUDO stat -c \"%G:%U\" /var/opt/zhcp"`);
         	if (!($priv =~ m/$::SUDOER:users/i)) {
                 `ssh $::SUDOER\@$hcp "$::SUDO chown -R $::SUDOER:users /var/opt/zhcp"`;
         	}
+        }
+        
+        if (!(`ssh $::SUDOER\@$hcp "$::SUDO test -e $::ZFCPPOOL/$pool.conf && echo Exists"`)) {                
+            # Create pool configuration file
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO echo '#status,wwpn,lun,size,range,owner,channel,tag' > $::ZFCPPOOL/$pool.conf"`;
+            xCAT::zvmUtils->printLn( $callback, "$node: New zFCP device pool $pool created" );
         }
 
         # Do not update if the LUN already exists
@@ -6241,7 +6245,6 @@ sub changeHypervisor {
         
         # Delete a real SCSI disk
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_SCSI_Disk_Delete -T $hcpUserId -k $devNo -k $persist"`;
-        $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
     
     # removevlan [name] [owner]
@@ -6251,7 +6254,6 @@ sub changeHypervisor {
         
         # Delete a virtual network
         $out = `ssh $hcp "$::DIR/smcli Virtual_Network_LAN_Delete -T $hcpUserId -n $name -o $owner"`;
-        $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
     
     # removevswitch [name]
@@ -6260,7 +6262,6 @@ sub changeHypervisor {
         
         # Delete a VSWITCH
         $out = `ssh $hcp "$::DIR/smcli Virtual_Network_Vswitch_Delete -T $hcpUserId -n $name"`;
-        $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }    
     
     # removezfcpfrompool [pool] [lun] [wwpn (optional)]
