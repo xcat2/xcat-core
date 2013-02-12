@@ -125,8 +125,8 @@ Enable the B<subroutine calling trace> for all the subroutines in the xcatd and 
 
 =item 2
 
-Enable the B<subroutine calling trace> for the subroutines configured in the /opt/xcat/share/xcat/tools/tracelevel0
-  B<xcatdebug> -f enable -c /opt/xcat/share/xcat/tools/tracelevel0
+Enable the B<subroutine calling trace> for the subroutines configured in the /opt/xcat/share/xcat/samples/tracelevel0
+  B<xcatdebug> -f enable -c /opt/xcat/share/xcat/samples/tracelevel0
 
 =item 3
 
@@ -146,7 +146,7 @@ Enable the B<commented trace log>
 =item 6
 
 Enable both the B<subroutine calling trace> and B<commented trace log>
-  B<xcatdebug> -f enable -c /opt/xcat/share/xcat/tools/tracelevel0 -d enable
+  B<xcatdebug> -f enable -c /opt/xcat/share/xcat/samples/tracelevel0 -d enable
 
 
 =back
