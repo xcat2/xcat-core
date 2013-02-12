@@ -6026,7 +6026,7 @@ sub changeHypervisor {
     }
     
     # addeckd [dev_no]
-    if ( $args->[0] eq "--addeckd" ) {
+    elsif ( $args->[0] eq "--addeckd" ) {
         my $argsSize = @{$args};
         if ($argsSize != 2) {
             xCAT::zvmUtils->printLn( $callback, "$node: (Error) Wrong number of parameters" );

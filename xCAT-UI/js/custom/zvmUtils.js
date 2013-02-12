@@ -1725,29 +1725,41 @@ function openAddEckd2SystemDialog(hcp) {
                 var devnum = $(this).find('input[name=devNum]').val();
                 
                 // If inputs are not complete, show warning message
-                if (!system || !devnum) {
-                    var warn = createWarnBar('Please provide a value for each missing field.');
-                    warn.prependTo($(this));
-                } else {
-                    // Change dialog buttons
-                    $(this).dialog('option', 'buttons', {
-                        'Close': function() {$(this).dialog("close");}
-                    });
-                    
-                    $.ajax( {
-                        url : 'lib/cmd.php',
-                        dataType : 'json',
-                        data : {
-                            cmd : 'chhypervisor',
-                            tgt : system,
-                            args : "--addeckd;" + devnum,
-                            msg : dialogId
-                        },
-
-                        success : updateResourceDialog
-                    });
-
+                var ready = true;
+                var args = new Array('select[name=system]', 'input[name=devNum]');
+                for (var i in args) {
+                    if (!$(this).find(args[i]).val()) {
+                    	$(this).find(args[i]).css('border', 'solid #FF0000 1px');
+                        ready = false;
+                    } else {
+                    	$(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
+                    }
                 }
+                
+                if (!ready) {
+                    // Show warning message
+                    var warn = createWarnBar('Please provide a value for each required field.');
+                    warn.prependTo($(this));
+                    return;
+                }
+                
+                // Change dialog buttons
+                $(this).dialog('option', 'buttons', {
+                    'Close': function() {$(this).dialog("close");}
+                });
+                
+                $.ajax( {
+                    url : 'lib/cmd.php',
+                    dataType : 'json',
+                    data : {
+                        cmd : 'chhypervisor',
+                        tgt : system,
+                        args : "--addeckd;" + devnum,
+                        msg : dialogId
+                    },
+
+                    success : updateResourceDialog
+                });
             },
             "Cancel": function() {
                 $(this).dialog( "close" );
@@ -1775,6 +1787,7 @@ function openAddPageSpoolDialog(hcp) {
     var systemSelect = $('<select name="system" title="The z/VM system name"></select>');
     system.append(systemSelect);
     // Append options for hardware control points
+    systemSelect.append($('<option value=""></option>'));
     for (var hcp in hcp2zvm) {
     	systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
     }
@@ -1834,31 +1847,43 @@ function openAddPageSpoolDialog(hcp) {
                 var volUse = $(this).find('select[name=volUse]').val();
                 
                 // If inputs are not complete, show warning message
-                if (!system || !volAddr || !volLabel || !volUse) {
-                    var warn = createWarnBar('Please provide a value for each missing field.');
-                    warn.prependTo($(this));
-                } else {
-                    // Change dialog buttons
-                    $(this).dialog('option', 'buttons', {
-                        'Close': function() {$(this).dialog("close");}
-                    });
-                    
-                    var pageSpoolArgs = volAddr + ";" + volLabel + ";" + volUse;
-                                        
-                    $.ajax( {
-                        url : 'lib/cmd.php',
-                        dataType : 'json',
-                        data : {
-                            cmd : 'chvm',
-                            tgt : system,
-                            args : '--addpagespool;' + pageSpoolArgs,
-                            msg : dialogId
-                        },
-
-                        success : updateResourceDialog
-                    });
-
+                var ready = true;
+                var args = new Array('select[name=system]', 'input[name=volAddr]', 'input[name=volLabel]', 'select[name=volUse]');
+                for (var i in args) {
+                    if (!$(this).find(args[i]).val()) {
+                    	$(this).find(args[i]).css('border', 'solid #FF0000 1px');
+                        ready = false;
+                    } else {
+                    	$(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
+                    }
                 }
+                
+                if (!ready) {
+                    // Show warning message
+                    var warn = createWarnBar('Please provide a value for each required field.');
+                    warn.prependTo($(this));
+                    return;
+                }
+               
+                // Change dialog buttons
+                $(this).dialog('option', 'buttons', {
+                    'Close': function() {$(this).dialog("close");}
+                });
+                
+                var pageSpoolArgs = volAddr + ";" + volLabel + ";" + volUse;
+                                    
+                $.ajax( {
+                    url : 'lib/cmd.php',
+                    dataType : 'json',
+                    data : {
+                        cmd : 'chvm',
+                        tgt : system,
+                        args : '--addpagespool;' + pageSpoolArgs,
+                        msg : dialogId
+                    },
+
+                    success : updateResourceDialog
+                });
             },
             "Cancel": function() {
                 $(this).dialog( "close" );
@@ -1932,31 +1957,44 @@ function openShareDiskDialog(disks2share) {
                 var node = $(this).find('input[name=node]').val();
                 var volAddr = $(this).find('input[name=volAddr]').val();
                 var shareEnable = $(this).find('select[name=shareEnable]').val();
-                                
+                      
                 // If inputs are not complete, show warning message
-                if (!node || !volAddr || !shareEnable) {
-                    var warn = createWarnBar('Please provide a value for each missing field.');
-                    warn.prependTo($(this));
-                } else {
-                    // Change dialog buttons
-                    $(this).dialog('option', 'buttons', {
-                        'Close': function() {$(this).dialog("close");}
-                    });
-                    
-                    // Remove disk from pool
-                    $.ajax( {
-                        url : 'lib/cmd.php',
-                        dataType : 'json',
-                        data : {
-                            cmd : 'chvm',
-                            tgt : node,
-                            args : "--sharevolume;" + volAddr + ";" + shareEnable,
-                            msg : dialogId
-                        },
-    
-                        success : updateResourceDialog
-                    });
+                var ready = true;
+                var args = new Array('input[name=node]', 'input[name=volAddr]', 'select[name=shareEnable]');
+                for (var i in args) {
+                    if (!$(this).find(args[i]).val()) {
+                    	$(this).find(args[i]).css('border', 'solid #FF0000 1px');
+                        ready = false;
+                    } else {
+                    	$(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
+                    }
                 }
+                
+                if (!ready) {
+                    // Show warning message
+                    var warn = createWarnBar('Please provide a value for each required field.');
+                    warn.prependTo($(this));
+                    return;
+                }
+                
+                // Change dialog buttons
+                $(this).dialog('option', 'buttons', {
+                    'Close': function() {$(this).dialog("close");}
+                });
+                
+                // Remove disk from pool
+                $.ajax( {
+                    url : 'lib/cmd.php',
+                    dataType : 'json',
+                    data : {
+                        cmd : 'chvm',
+                        tgt : node,
+                        args : "--sharevolume;" + volAddr + ";" + shareEnable,
+                        msg : dialogId
+                    },
+
+                    success : updateResourceDialog
+                });
             },
             "Cancel": function() {
                 $(this).dialog( "close" );
@@ -3343,7 +3381,8 @@ function loadDiskPoolTable(data) {
     for (var i = 2; i < tmp.length; i++) {
         tmp[i] = jQuery.trim(tmp[i]);
         var diskAttrs = tmp[i].split(' ');
-        dTable.fnAddData( [ '<input type="checkbox" name="' + hcp2zvm[hcp] + ";" + diskAttrs[0] + '"/>', hcp2zvm[hcp], pool, stat, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3] ]);
+        var key = hcp2zvm[hcp] + "-" + pool + "-" + diskAttrs[0];
+        dTable.fnAddData( [ '<input type="checkbox" name="' + key + '"/>', hcp2zvm[hcp], pool, stat, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3] ]);
     }
     
     // Create actions menu
@@ -3630,9 +3669,10 @@ function openRemoveDiskFromPoolDialog(disks2remove) {
     var hcp2zvm = new Object();
     hcp2zvm = getHcpZvmHash();
     
-    var args = disks2remove.split(';');
+    var args = disks2remove.split('-');
     var tgtHcp = args[0];
-    var tgtVol = args[1];
+    var tgtPool = args[1];
+    var tgtVol = args[2];
     
     // Create info bar
     var info = createInfoBar('Remove a disk from a disk pool defined in the EXTENT CONTROL.');
@@ -3653,7 +3693,7 @@ function openRemoveDiskFromPoolDialog(disks2remove) {
     
     // Set region input based on those selected on table (if any)
     var region = $('<div><label>Volume name:</label><input type="text" name="region" value="' + tgtVol + '" title="The DASD volume label"/></div>');
-    var group = $('<div><label>Group name:</label><input type="text" name="group" title="The name of the group from which the volume will be removed"/></div>');
+    var group = $('<div><label>Group name:</label><input type="text" name="group" value="' + tgtPool + '" title="The name of the group from which the volume will be removed"/></div>');
     deleteDiskForm.append(action, system, region, group);
     
     // Append options for hardware control points
@@ -3718,35 +3758,48 @@ function openRemoveDiskFromPoolDialog(disks2remove) {
                 var group = $(this).find('input[name=group]').val();
                                 
                 // If inputs are not complete, show warning message
-                if (!action || !system) {
-                    var warn = createWarnBar('Please provide a value for each missing field.');
-                    warn.prependTo($(this));
-                } else {
-                    // Change dialog buttons
-                    $(this).dialog('option', 'buttons', {
-                        'Close': function() {$(this).dialog("close");}
-                    });
-                    
-                    var args;
-                    if (action == '2' || action == '7')
-                        args = region + ';' + group;
-                    else
-                        args = group;
-                    
-                    // Remove disk from pool
-                    $.ajax( {
-                        url : 'lib/cmd.php',
-                        dataType : 'json',
-                        data : {
-                            cmd : 'chhypervisor',
-                            tgt : system,
-                            args : '--removediskfrompool;' + action + ';' + args,
-                            msg : dialogId
-                        },
-    
-                        success : updateResourceDialog
-                    });
+                var ready = true;
+                var args = new Array('select[name=system]', 'select[name=action]', 'input[name=region]', 'input[name=group]');
+                for (var i in args) {
+                    if (!$(this).find(args[i]).val()) {
+                    	$(this).find(args[i]).css('border', 'solid #FF0000 1px');
+                        ready = false;
+                    } else {
+                    	$(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
+                    }
                 }
+                
+                if (!ready) {
+                    // Show warning message
+                    var warn = createWarnBar('Please provide a value for each required field.');
+                    warn.prependTo($(this));
+                    return;
+                }
+                
+                // Change dialog buttons
+                $(this).dialog('option', 'buttons', {
+                    'Close': function() {$(this).dialog("close");}
+                });
+                
+                var args;
+                if (action == '2' || action == '7')
+                    args = region + ';' + group;
+                else
+                    args = group;
+                
+                // Remove disk from pool
+                $.ajax( {
+                    url : 'lib/cmd.php',
+                    dataType : 'json',
+                    data : {
+                        cmd : 'chhypervisor',
+                        tgt : system,
+                        args : '--removediskfrompool;' + action + ';' + args,
+                        msg : dialogId
+                    },
+
+                    success : updateResourceDialog
+                });
             },
             "Cancel": function() {
                 $(this).dialog( "close" );
@@ -3790,14 +3843,6 @@ function openAddDisk2PoolDialog() {
     for (var hcp in hcp2zvm) {
     	systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
     }
-            
-    actionSelect.change(function() {
-        if ($(this).val() == '4') {
-            volume.show();
-        } else if ($(this).val() == '5') {
-            volume.hide();
-        }            
-    });
     
 	// Generate tooltips
     addDiskForm.find('div input[title],select[title]').tooltip({
@@ -3840,35 +3885,48 @@ function openAddDisk2PoolDialog() {
                 var group = $(this).find('input[name=group]').val();
                                 
                 // If inputs are not complete, show warning message
-                if (!action || !system || !group) {
-                    var warn = createWarnBar('Please provide a value for each missing field.');
-                    warn.prependTo($(this));
-                } else {
-                    // Change dialog buttons
-                    $(this).dialog('option', 'buttons', {
-                        'Close': function() {$(this).dialog("close");}
-                    });
-                    
-                    var args;
-                    if (action == '4')
-                        args = volume + ';' + volume + ';' + group;
-                    else
-                        args = volume + ';' + group;
-                    
-                    // Add disk to pool
-                    $.ajax( {
-                        url : 'lib/cmd.php',
-                        dataType : 'json',
-                        data : {
-                            cmd : 'chhypervisor',
-                            tgt : system,
-                            args : '--adddisk2pool;' + action + ';' + args,
-                            msg : dialogId
-                        },
-    
-                        success : updateResourceDialog
-                    });
+                var ready = true;
+                var args = new Array('select[name=system]', 'select[name=action]', 'input[name=volume]', 'input[name=group]');
+                for (var i in args) {
+                    if (!$(this).find(args[i]).val()) {
+                    	$(this).find(args[i]).css('border', 'solid #FF0000 1px');
+                        ready = false;
+                    } else {
+                    	$(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
+                    }
                 }
+                
+                if (!ready) {
+                    // Show warning message
+                    var warn = createWarnBar('Please provide a value for each required field.');
+                    warn.prependTo($(this));
+                    return;
+                }
+                
+                // Change dialog buttons
+                $(this).dialog('option', 'buttons', {
+                    'Close': function() {$(this).dialog("close");}
+                });
+                
+                var args;
+                if (action == '4')
+                    args = volume + ';' + volume + ';' + group;
+                else
+                    args = volume + ';' + group;
+                
+                // Add disk to pool
+                $.ajax( {
+                    url : 'lib/cmd.php',
+                    dataType : 'json',
+                    data : {
+                        cmd : 'chhypervisor',
+                        tgt : system,
+                        args : '--adddisk2pool;' + action + ';' + args,
+                        msg : dialogId
+                    },
+
+                    success : updateResourceDialog
+                });
             },
             "Cancel": function() {
                 $(this).dialog( "close" );
