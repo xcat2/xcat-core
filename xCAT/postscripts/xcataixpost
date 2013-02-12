@@ -4,13 +4,14 @@
 #
 #   xCAT post script for AIX nodes
 #
-#               This script is run from the /etc/inittab file on both
-#               diskless and diskfull AIX nodes
+#  This script is run from the /etc/inittab file on both
+#  diskless and diskfull AIX nodes as  setup by xcataixscript
 #
-#               It is also run by the updatenode cmd ( -c 1) for -P
-#                updatenode cmd ( -c 5)   for -k
-#                 moncfg command (-c 3)
-#               Install no arguments ( see aixinstall.pm)
+#  It is run by the updatenode cmd -P by calling xcatdsklspost 1 -m/-M  (mode 1)
+#  updatenode cmd -k  by calling xcatdsklspost 5 (mode 5)  
+#  moncfg command (-c 3)
+#  For full install called from aixinstall.pm plugin with no parameters
+#     
 #####################################################
 
 # if AIX - make sure we include perl 5.8.2 in INC path.
@@ -26,7 +27,6 @@ my $useSocketSSL=eval { require IO::Socket::SSL; };
 use Getopt::Long;
 use XML::Simple;
 
-sleep int(rand(10));
 
 # since we don't have syslog set up yet we'll
 # just save msgs in a local log file
@@ -39,7 +39,7 @@ $::NOERROR=0;   # used to control whether to display an error
 $::sdate = `/bin/date`;
 chomp $::sdate;
 my $logfile = $logdir . "/xcat.log";
-`logger -t xcat -p local4.info $logfile`;
+`logger -t xcat -p local4.info "my logfile is $logfile"`;
 
 # this log should not contain much so it might be ok to let it grow?
 # at least we'll have the errors preserved
@@ -47,7 +47,7 @@ open(LOGFILE,">>",$logfile);
 $::LOG_FILE = \*LOGFILE;
 
 unless ($useSocketSSL) {
-    print "$::sdate  xcataixpost: Error: cannot load necessary library IO::Socket::SSL.\n";
+    `logger -t xcat -p local4.info "xcataixpost: Error: cannot load necessary library IO::Socket::SSL."`;
     print $::LOG_FILE "$::sdate  xcataixpost: Error: cannot load necessary library IO::Socket::SSL.\n";
 
     exit 1;
@@ -56,7 +56,9 @@ unless ($useSocketSSL) {
 #
 # Process the command line...
 #
-#  the -c means redo the copy of scripts from the server
+#  the -c means get a fresh copy of the postscripts from the server
+# -m means we are updating the node
+# -M means we are updating the service node /etc/xcatinfo file 
 my $idir;     
 my $nfsv4;
 Getopt::Long::Configure("no_pass_through");
@@ -69,8 +71,16 @@ if (!GetOptions('copy|c' => \$::opt_c,
  'nfsv4=s'=> \$nfsv4))
 {    # Gather options
         exit 1;
-}
+} 
+my $mode;
+if (@ARGV<1) {   # not running updatenode
 
+  sleep int(rand(10));  # installing don't hit daemon with too many requests
+} else {
+
+ $mode= $ARGV[0];
+  `logger -t xcat -p local4.info "$::sdate xcataixpost: Running mode=$mode"`;
+}
 my $TFTPDIR=$::opt_tftpdir;
 
 # get hostname
@@ -82,18 +92,17 @@ my $servnode;
 
 # create new xcatinfo file if -M value is provided
 if ($::opt_M) {
-	if(-f "/etc/xcatinfo") {
-		# backup the old file - or remove ???
-		my $cpcmd = "cp /etc/xcatinfo /etc/xcatinfo.orig 2>/dev/null";
-		if (&runcmd($cpcmd) != 0) {
-			print "$::sdate xcataixpost: Could not copy /etc/xcatinfo file.\n";
-			print $::LOG_FILE "$::sdate xcataixpost: Could not copy /etc/xcatinfo file.\n";
-		}
-	}
+  if(-f "/etc/xcatinfo") {
+ 	 my $cpcmd = "cp /etc/xcatinfo /etc/xcatinfo.orig 2>/dev/null";
+	 if (&runcmd($cpcmd) != 0) {
+ 	    `logger -t xcat -p local4.info "$::sdate xcataixpost: Could not copy /etc/xcatinfo file."`;
+	    print $::LOG_FILE "$::sdate xcataixpost: Could not copy /etc/xcatinfo file.\n";
+	 }
+  }
 
-	# put the new server in the file
-	my $xcatinfo="/etc/xcatinfo";
-	open(XCATINFO,">",$xcatinfo);
+   # put the new server in the file
+   my $xcatinfo="/etc/xcatinfo";
+   open(XCATINFO,">",$xcatinfo);
 	print XCATINFO "XCATSERVER=$::opt_M\n";
 	close(XCATINFO);
 }
@@ -139,7 +148,7 @@ if (!$foundxcatinfo) {
 			}
 		}
 	} else {
-		print "$::sdate  xcataixpost: Could not find /etc/niminfo file.\n";
+		`logger -t xcat -p local4.info "$::sdate  xcataixpost: Could not find /etc/niminfo file."`;
 		print $::LOG_FILE "$::sdate  xcataixpost: Could not find /etc/niminfo file.\n";
 	}
 }
@@ -157,7 +166,7 @@ if ($servnode) {
 }
 
 unless ($servnode) {
-    print "$::sdate  xcataixpost: Could not determine server name.\n";
+   `logger -t xcat -p local4.info " $::sdate  xcataixpost: Could not determine server name."`;
 	print $::LOG_FILE "$::sdate  xcataixpost: Could not determine server name.\n";
     exit 0;
 }
@@ -165,14 +174,14 @@ unless ($servnode) {
 # create the xcatpost dir
 my $cmd = "mkdir -p /xcatpost";
 if (&runcmd($cmd) != 0) {
-	print "$::sdate xcataixpost: Could not create the /xcatpost directory.\n";
+	`logger -t xcat -p local4.info "$::sdate xcataixpost: Could not create the /xcatpost directory."`;
 	print $::LOG_FILE "$::sdate xcataixpost: Could not create the /xcatpost directory.\n";
 }
 
 # request the xCAT postscript for this particular node
 my $scriptname = "/xcatpost/myxcatpost_" . $::shorthost;
 if (&getmypost != 0) {
-    print "$::sdate xcataixpost: Could not get the xCAT post script for this node.\n";
+    `logger -t xcat -p local4.info "$::sdate xcataixpost: Could not get the xCAT post script for this node."`;
     print $::LOG_FILE "$::sdate xcataixpost: Could not get the xCAT post script for this node.\n";
 }
 
@@ -214,7 +223,7 @@ if ( !(-f "/xcatpost/xcataixpost") || $::opt_c ) {
 	    $mcmd = "mkdir -p /xcatmnt; mount $servnode:$installdir/postscripts /xcatmnt";
         }
 	if (&runcmd($mcmd) != 0) {
-    	print "$::sdate xcataixpost: Could not mount $installdir/postscripts from $servnode.\n";
+    	`logger -t xcat -p local4.info "$::sdate xcataixpost: Could not mount $installdir/postscripts from $servnode."`;
     	print $::LOG_FILE "$::sdate xcataixpost: Could not mount $installdir/postscripts from $servnode.\n";
 	}
 
@@ -236,7 +245,7 @@ if ( !(-f "/xcatpost/xcataixpost") || $::opt_c ) {
 
 	my $ucmd = "umount /xcatmnt; rmdir /xcatmnt";
 	if (&runcmd($ucmd) != 0) {
-    	print "$::sdate xcataixpost: Could not unmount $installdir.\n";
+    	`logger -t xcat -p local4.info "$::sdate xcataixpost: Could not unmount $installdir."`;
     	print $::LOG_FILE "$::sdate xcataixpost: Could not unmount $installdir/postscripts.\n";
 	}
 
@@ -245,7 +254,7 @@ if ( !(-f "/xcatpost/xcataixpost") || $::opt_c ) {
 # make sure all are executable
 my $chcmd = "chmod +x /xcatpost/*";
 if (&runcmd($chcmd) != 0) {
-	print "$::sdate xcataixpost: Could not change /xcatpost file permissions.\n";
+	`logger -t xcat -p local4.info "$::sdate xcataixpost: Could not change /xcatpost file permissions."`;
 	print $::LOG_FILE "$::sdate xcataixpost: Could not change /xcatpost file permissions.\n";
 }
 # set TZ only on install
@@ -284,13 +293,14 @@ if (-f $scriptname)
         `echo "$TMP" > $scriptname`;
       }
     }
-
-    if (@ARGV>1) {
+    my $lengtharg1= length ($ARGV[1]);
+    if ((@ARGV>1) && ($lengtharg1 != 0)) {  # no postscript list
       my $scripts=$ARGV[1];
+    	`logger -t xcat -p local4.info "$::sdate xcataixpost: ARGV > 1."`;
       my $POSTS=join('\n', split(',', $scripts));
       #print "scripts=$scripts\n";
       #remove all the postbootscripts
-      my $PSTMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" $scriptname`;
+      my $PSTMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" $scriptname`;
       `echo "$PSTMP" > $scriptname`;
       #remove all the postscripts
       my $TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" $scriptname`;
@@ -299,6 +309,8 @@ if (-f $scriptname)
       #add requested postscripts in
       `echo "$POSTS" | tr "," "\n" >> $scriptname`;
       `echo "# postscripts-end-here" >> $scriptname`;
+    } else {
+    	`logger -t xcat -p local4.info "$::sdate xcataixpost: ARGV not > 1."`;
     }
 
     # use the run_ps subroutine to run the postscripts
@@ -331,11 +343,11 @@ run_ps () {
     print $::outref;
     print $::LOG_FILE "$::sdate  xcataixpost: outref = $::outref\n";
 } else {
-	print "$::sdate  xcataixpost: Could not find post script for $::shorthost.\n";
+	`logger -t xcat -p local4.info "$::sdate  xcataixpost: Could not find post script for $::shorthost."`;
 	print $::LOG_FILE "$::sdate  xcataixpost: Could not find post script for $::shorthost.\n";
 }
 
-if (@ARGV<1) {
+if (@ARGV<1) {   # not running updatenode
   my $update=1;
   if (-f $scriptname) {
       my $CNS=`grep NODESTATUS= $scriptname`;
@@ -345,13 +357,13 @@ if (@ARGV<1) {
       my $keywd="installstatus";
       my $state="booted";
       if (&updateflag($keywd, $state) != 0) {
-	  print "$::sdate xcataixpost: Failed to update the xCAT server.\n";
+	  `logger -t xcat -p local4.info "$::sdate xcataixpost: Failed to update the xCAT server."`;
 	  print $::LOG_FILE "$::sdate xcataixpost: Failed to update the xCAT server..\n";
       }
   }
 } else {
-  #called by updatenode, infrom user it is done
-  print "returned from postscript\n";
+  #called by updatenode, tell  user it is done
+ `logger -t xcat -p local4.info "xcataixpost finished running postscripts"`;
   print $::LOG_FILE "$::sdate  xcataixpost: returned from postscript.\n";
 }
 
@@ -382,7 +394,7 @@ if ($nodesetstat eq 'standalone') {
         # ok - remove the entry
         my $rmitab_cmd = 'rmitab "xcat"  > /dev/null 2>&1';
         if (&runcmd($rmitab_cmd) != 0) {
-            print "$::sdate xcataixpost: Could not remove xcataixpost from /etc/inittab.\n";
+             `logger -t xcat -p local4.info  "$::sdate xcataixpost: Could not remove xcataixpost from /etc/inittab."`;
             print $::LOG_FILE "$::sdate xcataixpost: Could not remove xcataixpost from /etc/inittab.\n";
         }
     }
@@ -411,7 +423,7 @@ if ($nodesetstat eq 'diskless') {
             # so that it will not be present in the subsequent reboots
             my $keywd = "basecustremv";
             if (&updateflag($keywd, $hostn) != 0) {
-                print "$::sdate xcataixpost: Failed to update the xCAT server.\n";
+                 `logger -t xcat -p local4.info "$::sdate xcataixpost: Failed to update the xCAT server."`;
                 print $::LOG_FILE "$::sdate xcataixpost: Failed to update the xCAT server.\n";
             }
         }
@@ -445,13 +457,13 @@ sub  getmypost_orig {
     );
 
 	unless ($remote) {
-        print "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
+         `logger -t xcat -p local4.info  "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'"`;
         print $::LOG_FILE "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
         return 1;
     }
 
 	if (!open(POSTSCRIPT, ">$scriptname") ) {
-        print "$::sdate  xcataixpost: Could not open $scriptname.\n";
+         `logger -t xcat -p local4.info  "$::sdate  xcataixpost: Could not open $scriptname."`;
         print $::LOG_FILE "$::sdate  xcataixpost: Could not open $scriptname.\n"
 ;
         close $remote;
@@ -517,7 +529,7 @@ sub  getmypost {
     );
 
 	unless ($remote) {
-        print "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
+         `logger -t xcat -p local4.info  "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'"`;
         print $::LOG_FILE "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
         return 1;
     }
@@ -554,7 +566,7 @@ sub  getmypost {
     # `wget -N --waitretry=10 --random-wait -T 60 http://$servnode$TFTPDIR/mypostscripts/mypostscript.$::shorthost  -P /xcatpost 2>> /tmp/wget.log;  mv /xcatpost/mypostscript.$::shorthost $scriptname`;
 
     if(!( -f $scriptname)) {
-        print "$::sdate  xcataixpost: Cold not get the $scriptname from $TFTPDIR/mypostscripts/ on \'$servnode\'\n";
+         `logger -t xcat -p local4.info  "$::sdate  xcataixpost: Cold not get the $scriptname from $TFTPDIR/mypostscripts/ on \'$servnode\'"`;
         print $::LOG_FILE "$::sdate  xcataixpost: could not get the $scriptname from /$servnode$TFTPDIR/mypostscripts/ on \'$servnode\'\n";
         return 1;
 
@@ -562,7 +574,7 @@ sub  getmypost {
 
     my $content;
     if (!open($content, "<", $scriptname) ) {
-        print "$::sdate  xcataixpost: Could not open $scriptname.\n";
+         `logger -t xcat -p local4.info  "$::sdate  xcataixpost: Could not open $scriptname."`;
         print $::LOG_FILE "$::sdate  xcataixpost: Could not open $scriptname.\n";
         close $content;
         return 1;
