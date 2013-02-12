@@ -260,6 +260,18 @@ virtsd => {
         }
 },
 
+storage => {
+	cols => [qw(node osvolume)],
+	keys => [qw(node)],
+	table_descr => "Node storage resources",
+	descriptions => {
+		'node' => 'The node name',
+		osvolume => "Specification of what storage to place the node OS image onto.  Examples include:
+				localdisk (Install to first non-FC attached disk)
+				usbdisk (Install to first USB mass storage deice seen)
+				wwn=0x50000393c813840c (Install to storage device with given WWN)",
+		}
+	},
 websrv => { 
     cols => [qw(node port username password comments disable)],
     keys => [qw(node)],
