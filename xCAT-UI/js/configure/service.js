@@ -62,7 +62,7 @@ function loadServicePage(tabId) {
                 // Get zVM host names
                 if (!$.cookie('zvms')){
                     $.ajax( {
-                        url : 'lib/srv_cmd.php',
+                        url : 'lib/cmd.php',
                         dataType : 'json',
                         data : {
                             cmd : 'webportal',
@@ -487,8 +487,15 @@ function imageDialog() {
  * @param iComments Image description
  */
 function editImageDialog(iName, iSelectable, iOsVersion, iOsArch, iOsName, iType, iProfile, iMethod, iComments) {
-    // Create form to add profile
-    var dialogId = 'editImage';
+	var inst = 0;
+    var dialogId = 'editImage' + inst;
+    while ($('#' + dialogId).length) {
+        // If one already exists, generate another one
+        inst = inst + 1;
+        dialogId = 'editImage' + inst;
+    }
+	
+	// Create form to add profile
     var imageForm = $('<div id="' + dialogId + '" class="form"></div>');
     
     // Create info bar
@@ -529,7 +536,7 @@ function editImageDialog(iName, iSelectable, iOsVersion, iOsArch, iOsName, iType
     imageForm.find('div input[title],textarea[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
-        effect: "fade",
+        effect: "toggle",
         opacity: 0.8,
         delay: 0,
         predelay: 800,
@@ -1019,7 +1026,7 @@ function groupDialog() {
  */
 function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iNetwork, iComments) {
     // Create form to add profile
-    var dialogId = 'createGroup';
+    var dialogId = 'createGroup-' + iGroup;
     var groupForm = $('<div id="' + dialogId + '" class="form"></div>');
     
     // Create info bar
@@ -1047,7 +1054,7 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iNetwork, iCommen
     groupForm.find('div input[title],textarea[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
-        effect: "fade",
+        effect: "toggle",
         opacity: 0.8,
         delay: 0,
         predelay: 800,

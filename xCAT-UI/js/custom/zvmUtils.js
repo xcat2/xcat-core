@@ -6191,7 +6191,7 @@ function editProfileDialog(profile, pool, size, entry) {
     profileForm.find('div input[title],textarea[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
-        effect: "fade",
+        effect: "toggle",
         opacity: 0.8,
         delay: 0,
         predelay: 800,
