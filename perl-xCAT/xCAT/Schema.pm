@@ -269,7 +269,10 @@ storage => {
 		osvolume => "Specification of what storage to place the node OS image onto.  Examples include:
 				localdisk (Install to first non-FC attached disk)
 				usbdisk (Install to first USB mass storage deice seen)
-				wwn=0x50000393c813840c (Install to storage device with given WWN)",
+				wwn=0x50000393c813840c (Install to storage device with given WWN) 
+				WARNING: This is as yet unimplemented by the stock OS deployment templates
+				WARNING: SAS SAN devices may be considered to be 'localdisk' class.
+				The default behavior if unspecified is presumed to be 'localdisk'",
 		}
 	},
 websrv => { 
