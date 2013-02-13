@@ -5839,7 +5839,7 @@ function configProfilePanel(panelId) {
     deleteLnk.click(function() {
         var profiles = getNodesChecked(tableId);
         if (profiles) {
-            openDeleteProfileDialog(profiles);
+        	deleteProfileDialog(profiles);
         }
     });
     
@@ -6238,6 +6238,10 @@ function editProfileDialog(profile, pool, size, entry) {
                             $(this).dialog('close');
                         }
                     });
+                    
+                    // A newline at the end of directory entry is needed
+                    entry = entry.replace(/^\s+|\s+$/g, '');
+                    entry += '\n';
                     
                     // Write file to /var/tmp
                     $.ajax({
