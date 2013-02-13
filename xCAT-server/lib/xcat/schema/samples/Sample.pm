@@ -12,6 +12,8 @@ package xCAT_schema::Sample;
 #      jobid, status, node, jobstatus are the sample column names. 
 #      Change them to your like. Please make sure all table names start with "x_".
 #      Each table must have a 'disable' and comments column.
+#      Table names and attributes must be lower case, no case sensitivity is 
+#      supported.
 #      Please do not use SQL reserved words for your table names and column names.
 #      Use this site to check the reserved words: 
 #         http://www.petefreitag.com/tools/sql_reserved_words_checker/  
