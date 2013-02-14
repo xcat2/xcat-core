@@ -682,7 +682,7 @@ sub getMdisks {
 sub getDedicates {
 
     # Get inputs
-    my ( $class, $user, $callback, $node ) = @_;
+    my ( $class, $callback, $user, $node ) = @_;
 
     my $sudo = "sudo";
     if ($user eq "root") {
@@ -697,18 +697,18 @@ sub getDedicates {
     my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
     my $hcp = $propVals->{'hcp'};
 
-    # Get node userID
+    # Get node userId
     my $userId = $propVals->{'userid'};
 
-    my $out = `ssh $user\@$hcp "$sudo $dir/getuserentry $userId" | grep "DEDICATE"`;
-
+    my $out = `ssh $user\@$hcp "$sudo $dir/smcli Image_Query_DM -T $userId" | egrep -i "DEDICATE"`;
+    
     # Get DEDICATE statements
     my @lines = split( '\n', $out );
     my @dedicates;
     foreach (@lines) {
         $_ = xCAT::zvmUtils->trimStr($_);
 
-        # Save MDISK statements
+        # Save statements
         push( @dedicates, $_ );
     }
 

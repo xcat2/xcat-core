@@ -1054,7 +1054,7 @@ sub changeVM {
         #   #status,wwpn,lun,size,range,owner,channel,tag
         #     used,1000000000000000,2000000000000110,8g,3B00-3B3F,ihost1,1a23,$root_device$
         #     free,1000000000000000,2000000000000111,,3B00-3B3F,,,
-        #     free,1230000000000000,2000000000000112,,3B00-3B3F,,,
+        #     free,1230000000000000;4560000000000000,2000000000000112,,3B00-3B3F,,,
         if (!$useWwpnLun) {
             my @devices = split("\n", `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$pool.conf" | egrep -i free`);            
             $sizeFound = 0;
@@ -1165,7 +1165,14 @@ sub changeVM {
 	            return;
 	        }
         }
-        
+
+        # If there are multiple devices (multipathing), take the 1st one
+        my $origDevice = $device;
+        if ($device =~ m/;/i) {
+            @tmp = split(';', $device);
+            $device = xCAT::zvmUtils->trimStr($tmp[0]);
+        }
+                
         # Make sure channel has a length of 4 
         while (length($device) < 4) {
             $device = "0" . $device;
@@ -1282,7 +1289,7 @@ sub changeVM {
             $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e $expression $::ZFCPPOOL/$pool.conf"`;
         } else {
             # Insert device entry into file
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO echo \"used,$origWwpn,$lun,$size,,$node,$device,$tag\" >> $::ZFCPPOOL/$pool.conf"`;
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO echo \"used,$origWwpn,$lun,$size,,$node,$origDevice,$tag\" >> $::ZFCPPOOL/$pool.conf"`;
         }
         
         xCAT::zvmUtils->printLn($callback, "$node: Adding FCP device... Done");
@@ -4849,7 +4856,7 @@ sub nodeSet {
             my $entry;
             my $zfcpSection = "";
             foreach (@pools) {
-                $entry = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$_" | egrep -i $userId`;
+                $entry = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$_" | egrep -i ",$node,"`;
                 chomp($entry);
                 if (!$entry) {
                     next;
@@ -4858,12 +4865,23 @@ sub nodeSet {
                 # Go through each zFCP device
                 my @device = split('\n', $entry);
                 foreach (@device) {                        
-                    # Each entry contains: status,wwpn,lun,size,owner,channel,tag
+                    # Each entry contains: status,wwpn,lun,size,range,owner,channel,tag
                     @tmp = split(',', $_);
                     my $wwpn = $tmp[1];
                     my $lun = $tmp[2];
-                    my $device = $tmp[5];
-                    my $tag = $tmp[6];
+                    my $device = $tmp[6];
+                    my $tag = $tmp[7];
+                    
+                    # If multiple WWPNs or device channels are specified (multipathing), just take the 1st one
+                    if ($wwpn =~ m/;/i) {
+                        @tmp = split(';', $wwpn);
+                        $wwpn = xCAT::zvmUtils->trimStr($tmp[0]);
+                    }
+                    
+			        if ($device =~ m/;/i) {
+			            @tmp = split(';', $device);
+			            $device = xCAT::zvmUtils->trimStr($tmp[0]);
+			        }
                                   
                     # Make sure WWPN and LUN do not have 0x prefix
                     $wwpn = xCAT::zvmUtils->replaceStr($wwpn, "0x", "");
@@ -5055,7 +5073,7 @@ END
             my $entry;
             my $zfcpSection = "";
             foreach (@pools) {
-                $entry = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$_" | egrep -i $userId`;
+                $entry = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$_" | egrep -i ",$node,"`;
                 chomp($entry);
                 if (!$entry) {
                     next;
@@ -5064,12 +5082,23 @@ END
                 # Go through each zFCP device
                 my @device = split('\n', $entry);
                 foreach (@device) {             
-                    # Each entry contains: status,wwpn,lun,size,owner,channel,tag
+                    # Each entry contains: status,wwpn,lun,size,range,owner,channel,tag
                     @tmp = split(',', $_);
                     my $wwpn = $tmp[1];
                     my $lun = $tmp[2];
-                    my $device = $tmp[5];
-                    my $tag = $tmp[6];
+                    my $device = $tmp[6];
+                    my $tag = $tmp[7];
+                                        
+                    # If multiple WWPNs or device channels are specified (multipathing), just take the 1st one
+                    if ($wwpn =~ m/;/i) {
+                        @tmp = split(';', $wwpn);
+                        $wwpn = xCAT::zvmUtils->trimStr($tmp[0]);
+                    }
+                    
+                    if ($device =~ m/;/i) {
+                        @tmp = split(';', $device);
+                        $device = xCAT::zvmUtils->trimStr($tmp[0]);
+                    }
                                   
                     # Make sure WWPN and LUN do not have 0x prefix
                     $wwpn = xCAT::zvmUtils->replaceStr($wwpn, "0x", "");
@@ -5162,7 +5191,11 @@ END
             
             # Concat dedicated devices and DASD together
             if ($devices) {
-                $dasd = $dasd . "," . $devices;
+            	if ($dasd) {
+                    $dasd = $dasd . "," . $devices;
+            	} else {
+            		$dasd = $devices;
+            	}
             }
 
             # Create parmfile -- Limited to 80 characters/line, maximum of 11 lines
@@ -6650,6 +6683,68 @@ sub inventoryHypervisor {
         }
     }
     
+    # luns [fcp_device] (supported only on z/VM 6.2)
+    elsif ( $args->[0] eq "--luns" ) {
+    	# Find the LUNs accessible thru given zFCP device
+        my $fcp  = lc($args->[1]);
+        my $argsSize = @{$args};
+        if ($argsSize < 2) {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Wrong number of parameters" );
+            return;
+        }
+         
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_FCP_Free_Query -T $hcpUserId -k fcp_dev=$fcp" | egrep -i "FCP device number:|World wide port number:|Logical unit number:|Number of bytes residing on the logical unit:"`;
+    
+        my @wwpns = split( "\n", $out );
+        my %map;
+        
+        my $wwpn = "";
+        my $lun = "";
+        my $size = "";
+        foreach (@wwpns) {
+            # Extract the device number
+            if ($_ =~ "World wide port number:") {
+                $_ =~ s/^\s+World wide port number:(.*)/$1/;
+                $_ =~ s/^\s+//;
+                $_ =~ s/\s+$//;
+                $wwpn = $_;
+                 
+                if (!scalar($map{$wwpn})) {
+                	$map{$wwpn} = {};
+                }                
+            } elsif ($_ =~ "Logical unit number:") {
+            	$_ =~ s/^\s+Logical unit number:(.*)/$1/;
+                $_ =~ s/^\s+//;
+                $_ =~ s/\s+$//;
+                $lun = $_;
+                
+                $map{$wwpn}{$lun} = "";
+            } elsif ($_ =~ "Number of bytes residing on the logical unit:") {
+                $_ =~ s/^\s+Number of bytes residing on the logical unit:(.*)/$1/;
+                $_ =~ s/^\s+//;
+                $_ =~ s/\s+$//;
+                $size = $_;
+                
+                $map{$wwpn}{$lun} = $size;
+            }
+        }
+        
+        xCAT::zvmUtils->printLn($callback, "#status,wwpn,lun,size,range,owner,channel,tag");
+        foreach $wwpn (sort keys %map) {
+            foreach $lun (sort keys %{$map{$wwpn}}) {
+            	# status, wwpn, lun, size, range, owner, channel, tag
+            	$size = sprintf("%.1f", $map{$wwpn}{$lun}/1073741824);  # Convert size to GB
+            	
+            	if ($size > 0) {
+            		$size .= "G";
+            	   xCAT::zvmUtils->printLn($callback, "unknown,$wwpn,$lun,$size,,,,"); 
+            	}
+            }
+        }
+        
+        $str = "";
+    }
+    
     # networknames
     elsif ( $args->[0] eq "--networknames" || $args->[0] eq "--getnetworknames" ) {
         $str = xCAT::zvmCPUtils->getNetworkNames($::SUDOER, $hcp);
@@ -6771,20 +6866,29 @@ sub inventoryHypervisor {
         $str = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Virtual_Network_Vswitch_Query_Stats -T $hcpUserId $argStr"`;
     }
     
-    # wwpn
-    elsif ( $args->[0] eq "--wwpn" ) {     
-        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_WWPN_Query -T $hcpUserId" | egrep -i "Physical world wide port number"`;
+    # wwpn [fcp_device] (supported only on z/VM 6.2)
+    elsif ( $args->[0] eq "--wwpns" ) {
+    	my $fcp  = lc($args->[1]);
+    	my $argsSize = @{$args};
+        if ($argsSize < 2) {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Wrong number of parameters" );
+            return;
+        }
+    	 
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_FCP_Free_Query -T $hcpUserId -k fcp_dev=$fcp" | egrep -i "World wide port number:"`;
     
         my @wwpns = split( "\n", $out );
         my %uniqueWwpns;
         foreach (@wwpns) {
             # Extract the device number
-            $_ =~ s/^\s+Physical world wide port number:(.*)/$1/;
-            $_ =~ s/^\s+//;
-            $_ =~ s/\s+$//;
-         
-            # Save only unique WWPNs   
-            $uniqueWwpns{$_} = 1;
+	        if ($_ =~ "World wide port number:") {
+	            $_ =~ s/^\s+World wide port number:(.*)/$1/;
+	            $_ =~ s/^\s+//;
+	            $_ =~ s/\s+$//;
+	         
+	            # Save only unique WWPNs   
+	            $uniqueWwpns{$_} = 1;
+            }
         }
         
         my $wwpn;

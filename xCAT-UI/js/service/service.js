@@ -114,47 +114,45 @@ function loadServicePage() {
         }
     });    
     
+	// Get OS image names
+    $.ajax({
+        url : 'lib/srv_cmd.php',
+        dataType : 'json',
+        async : true,
+        data : {
+            cmd : 'tabdump',
+            tgt : '',
+            args : 'osimage',
+            msg : ''
+        },
+
+        success : function(data) {
+            setOSImageCookies(data);
+        }
+    });
+        
+    // Get contents of hosts table
+    $.ajax({
+        url : 'lib/srv_cmd.php',
+        dataType : 'json',
+        async : true,
+        data : {
+            cmd : 'tabdump',
+            tgt : '',
+            args : 'hosts',
+            msg : ''
+        },
+
+        success : function(data) {
+            setGroupCookies(data);        
+        }
+    });
+    
     var provTabId = 'provisionTab';
     serviceTabs.add(provTabId, 'Provision', '', false);
     loadServiceProvisionPage(provTabId);
 
     serviceTabs.select(manageTabId);
-    
-    // Get OS image names
-    if (!$.cookie('srv_imagenames')){
-        $.ajax( {
-            url : 'lib/srv_cmd.php',
-            dataType : 'json',
-            data : {
-                cmd : 'tabdump',
-                tgt : '',
-                args : 'osimage',
-                msg : ''
-            },
-
-            success : function(data) {
-                setOSImageCookies(data);
-            }
-        });
-    }
-        
-    // Get contents of hosts table
-    if (!$.cookie('srv_groups')) {
-        $.ajax( {
-            url : 'lib/srv_cmd.php',
-            dataType : 'json',
-            data : {
-                cmd : 'tabdump',
-                tgt : '',
-                args : 'hosts',
-                msg : ''
-            },
-
-            success : function(data) {
-                setGroupCookies(data);        
-            }
-        });
-    }
 }
 
 /**

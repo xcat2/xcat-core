@@ -3276,7 +3276,6 @@ function advancedLoad(group){
 
             success : function(data) {
                 setzVMCookies(data);
-                loadWwpns();
             }
         });
     }
