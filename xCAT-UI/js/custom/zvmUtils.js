@@ -1501,14 +1501,14 @@ function openAddZfcpDialog(node, hcp, zvm) {
                         loaddev = 0;
                     }
 
-                    var args = '--addzfcp;' + pool + ';' + address + ';' + loaddev + ';' + size;
+                    var args = '--addzfcp||' + pool + '||' + address + '||' + loaddev + '||' + size;
                     
                     if (tag && tag != "null") {
-                        args += ';' + tag;
+                        args += '||' + tag;
                     } if (portName && tag != "null") {
-                        args += ';' + portName;
+                        args += '||' + portName;
                     } if (unitNo && tag != "null") {
-                        args += ';' + unitNo;
+                        args += '||' + unitNo;
                     }
                     
                     // Add zFCP device

@@ -1054,7 +1054,7 @@ sub changeVM {
         #   #status,wwpn,lun,size,range,owner,channel,tag
         #     used,1000000000000000,2000000000000110,8g,3B00-3B3F,ihost1,1a23,$root_device$
         #     free,1000000000000000,2000000000000111,,3B00-3B3F,,,
-        #     free,1230000000000000,2000000000000112,,3B00-3B3F,,,
+        #     free,1230000000000000;4560000000000000,2000000000000112,,3B00-3B3F,,,
         if (!$useWwpnLun) {
             my @devices = split("\n", `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$pool.conf" | egrep -i free`);            
             $sizeFound = 0;
@@ -1165,7 +1165,14 @@ sub changeVM {
 	            return;
 	        }
         }
-        
+
+        # If there are multiple devices (multipathing), take the 1st one
+        my $origDevice = $device;
+        if ($device =~ m/;/i) {
+            @tmp = split(';', $device);
+            $device = xCAT::zvmUtils->trimStr($tmp[0]);
+        }
+                
         # Make sure channel has a length of 4 
         while (length($device) < 4) {
             $device = "0" . $device;
@@ -1282,7 +1289,7 @@ sub changeVM {
             $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e $expression $::ZFCPPOOL/$pool.conf"`;
         } else {
             # Insert device entry into file
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO echo \"used,$origWwpn,$lun,$size,,$node,$device,$tag\" >> $::ZFCPPOOL/$pool.conf"`;
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO echo \"used,$origWwpn,$lun,$size,,$node,$origDevice,$tag\" >> $::ZFCPPOOL/$pool.conf"`;
         }
         
         xCAT::zvmUtils->printLn($callback, "$node: Adding FCP device... Done");
@@ -4849,7 +4856,7 @@ sub nodeSet {
             my $entry;
             my $zfcpSection = "";
             foreach (@pools) {
-                $entry = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$_" | egrep -i $userId`;
+                $entry = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$_" | egrep -i ",$node,"`;
                 chomp($entry);
                 if (!$entry) {
                     next;
@@ -4858,12 +4865,23 @@ sub nodeSet {
                 # Go through each zFCP device
                 my @device = split('\n', $entry);
                 foreach (@device) {                        
-                    # Each entry contains: status,wwpn,lun,size,owner,channel,tag
+                    # Each entry contains: status,wwpn,lun,size,range,owner,channel,tag
                     @tmp = split(',', $_);
                     my $wwpn = $tmp[1];
                     my $lun = $tmp[2];
-                    my $device = $tmp[5];
-                    my $tag = $tmp[6];
+                    my $device = $tmp[6];
+                    my $tag = $tmp[7];
+                    
+                    # If multiple WWPNs or device channels are specified (multipathing), just take the 1st one
+                    if ($wwpn =~ m/;/i) {
+                        @tmp = split(';', $wwpn);
+                        $wwpn = xCAT::zvmUtils->trimStr($tmp[0]);
+                    }
+                    
+			        if ($device =~ m/;/i) {
+			            @tmp = split(';', $device);
+			            $device = xCAT::zvmUtils->trimStr($tmp[0]);
+			        }
                                   
                     # Make sure WWPN and LUN do not have 0x prefix
                     $wwpn = xCAT::zvmUtils->replaceStr($wwpn, "0x", "");
@@ -5055,7 +5073,7 @@ END
             my $entry;
             my $zfcpSection = "";
             foreach (@pools) {
-                $entry = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$_" | egrep -i $userId`;
+                $entry = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$_" | egrep -i ",$node,"`;
                 chomp($entry);
                 if (!$entry) {
                     next;
@@ -5064,12 +5082,23 @@ END
                 # Go through each zFCP device
                 my @device = split('\n', $entry);
                 foreach (@device) {             
-                    # Each entry contains: status,wwpn,lun,size,owner,channel,tag
+                    # Each entry contains: status,wwpn,lun,size,range,owner,channel,tag
                     @tmp = split(',', $_);
                     my $wwpn = $tmp[1];
                     my $lun = $tmp[2];
-                    my $device = $tmp[5];
-                    my $tag = $tmp[6];
+                    my $device = $tmp[6];
+                    my $tag = $tmp[7];
+                                        
+                    # If multiple WWPNs or device channels are specified (multipathing), just take the 1st one
+                    if ($wwpn =~ m/;/i) {
+                        @tmp = split(';', $wwpn);
+                        $wwpn = xCAT::zvmUtils->trimStr($tmp[0]);
+                    }
+                    
+                    if ($device =~ m/;/i) {
+                        @tmp = split(';', $device);
+                        $device = xCAT::zvmUtils->trimStr($tmp[0]);
+                    }
                                   
                     # Make sure WWPN and LUN do not have 0x prefix
                     $wwpn = xCAT::zvmUtils->replaceStr($wwpn, "0x", "");
@@ -5162,7 +5191,11 @@ END
             
             # Concat dedicated devices and DASD together
             if ($devices) {
-                $dasd = $dasd . "," . $devices;
+            	if ($dasd) {
+                    $dasd = $dasd . "," . $devices;
+            	} else {
+            		$dasd = $devices;
+            	}
             }
 
             # Create parmfile -- Limited to 80 characters/line, maximum of 11 lines
