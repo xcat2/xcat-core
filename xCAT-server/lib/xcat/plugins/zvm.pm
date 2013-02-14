@@ -4397,9 +4397,44 @@ sub nodeSet {
     }
     # Capitalize user ID
     $userId =~ tr/a-z/A-Z/;
+    
+    my $action = $args->[0];
+    
+    # Handle case where osimage is specified
+    my $os;
+    my $arch;
+    my $profile;
+    my $provMethod;    
+    my $osImg = $args->[0];
+    if ($osImg =~ m/osimage=/i) {
+    	$osImg =~ s/osimage=//;
+        $osImg =~ s/^\s+//;
+        $osImg =~ s/\s+$//;
+                
+        @propNames = ('profile', 'provmethod', 'osvers', 'osarch');
+        $propVals = xCAT::zvmUtils->getTabPropsByKey( 'osimage', 'imagename', $osImg, @propNames );
+        
+        # Update nodetype table with os, arch, and profile based on osimage
+        if ( !$propVals->{'profile'} || !$propVals->{'provmethod'} || !$propVals->{'osvers'} || !$propVals->{'osarch'} ) {
+	        # Exit
+	        xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing profile, provmethod, osvers, or osarch for osimage" );
+	        xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Provide profile, provmethod, osvers, and osarch in the osimage definition" );
+	        return;
+	    }
+        
+        # Update nodetype table with osimage attributes for node
+        my %propHash = (
+            'os'      => $propVals->{'osvers'},
+            'arch'    => $propVals->{'osarch'},
+            'profile' => $propVals->{'profile'},
+            'provmethod' => $propVals->{'provmethod'}
+        );
+        xCAT::zvmUtils->setNodeProps( 'nodetype', $node, \%propHash );
+        $action = $propVals->{'provmethod'};
+    }
 
     # Get install directory and domain from site table
-    my @entries =  xCAT::TableUtils->get_site_attribute("installdir");
+    my @entries = xCAT::TableUtils->get_site_attribute("installdir");
     my $installDir = $entries[0];
     @entries = xCAT::TableUtils->get_site_attribute("domain");
     my $domain = $entries[0];
@@ -4412,9 +4447,9 @@ sub nodeSet {
     @propNames = ( 'os', 'arch', 'profile' );
     $propVals = xCAT::zvmUtils->getNodeProps( 'nodetype', $node, @propNames );
 
-    my $os      = $propVals->{'os'};
-    my $arch    = $propVals->{'arch'};
-    my $profile = $propVals->{'profile'};
+    $os      = $propVals->{'os'};
+    $arch    = $propVals->{'arch'};
+    $profile = $propVals->{'profile'};
 
     # If no OS, arch, or profile is found
     if ( !$os || !$arch || !$profile ) {
@@ -4425,7 +4460,6 @@ sub nodeSet {
     }
 
     # Get action
-    my $action = $args->[0];
     my $out;
     if ( $action eq "install" ) {
 
