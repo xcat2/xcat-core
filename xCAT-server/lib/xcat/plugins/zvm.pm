@@ -685,9 +685,9 @@ sub removeVM {
         
         @luns = split("\n", `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$_" | egrep -i $node`);
         foreach (@luns) {
-            # Update entry: status,wwpn,lun,size,owner,channel,tag
+            # Update entry: status,wwpn,lun,size,range,owner,channel,tag
             my @info = split(',', $_);   
-            $update = "free,$info[1],$info[2],$info[3],,,";
+            $update = "free,$info[1],$info[2],$info[3],$info[4],,";
             $expression = "'s#" . $_ . "#" .$update . "#i'";
             $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e $expression $::ZFCPPOOL/$pool.conf"`;
         }
@@ -4869,7 +4869,7 @@ sub nodeSet {
                     @tmp = split(',', $_);
                     my $wwpn = $tmp[1];
                     my $lun = $tmp[2];
-                    my $device = $tmp[6];
+                    my $device = lc($tmp[6]);
                     my $tag = $tmp[7];
                     
                     # If multiple WWPNs or device channels are specified (multipathing), just take the 1st one
@@ -5086,7 +5086,7 @@ END
                     @tmp = split(',', $_);
                     my $wwpn = $tmp[1];
                     my $lun = $tmp[2];
-                    my $device = $tmp[6];
+                    my $device = lc($tmp[6]);
                     my $tag = $tmp[7];
                                         
                     # If multiple WWPNs or device channels are specified (multipathing), just take the 1st one
