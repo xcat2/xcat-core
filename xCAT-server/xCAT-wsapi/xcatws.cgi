@@ -209,8 +209,8 @@ sub extractData {
     }
 }
 
-my $userName;
-my $password;
+my $userName=http('userName');
+my $password=http('password');
 
 sub handleRequest {
     if (defined $queryhash{'userName'}) {
