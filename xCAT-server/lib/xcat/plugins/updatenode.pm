@@ -363,7 +363,7 @@ sub preprocess_updatenode
         {    # MN in the nodelist
             my $rsp = {};
             $rsp->{error}->[0] =
-              "You must not run -K option against the Management Node:$mname.";
+              "You must not run -k option against the Management Node:$mname.";
             xCAT::MsgUtils->message("E", $rsp, $callback, 1);
             return;
         }
@@ -1022,7 +1022,7 @@ sub updatenode
         {    # MN in the nodelist
             my $rsp = {};
             $rsp->{error}->[0] =
-              "You must not run -K option against the Management Node:$mname.";
+              "You must not run -k option against the Management Node:$mname.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
