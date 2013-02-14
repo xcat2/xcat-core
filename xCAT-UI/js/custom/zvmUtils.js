@@ -1440,15 +1440,7 @@ function openAddZfcpDialog(node, hcp, zvm) {
     var portName = $('<div><label>Port name:</label><input type="text" name="diskPortName" title="The hexadecimal digits designating the 8-byte fibre channel port name of the FCP-I/O device"/></div>');
     var unitNo = $('<div><label>Unit number:</label><input type="text" name="diskUnitNo" title="The hexadecimal digits representing the 8-byte logical unit number of the FCP-I/O device"/></div>');
     advanced.append(portName, unitNo);
-    
-    var wwpns = $.cookie(zvm + 'wwpns');
-    if (wwpns) {
-        // Turn on auto complete
-        portName.find('input').autocomplete({
-            source: wwpns.split(',')
-        });
-    }
-    
+        
     // Toggle port name and unit number when clicking on advanced link
     advancedLnk.click(function() {
         advanced.toggle();
@@ -2064,7 +2056,6 @@ function openAddScsi2SystemDialog(hcp) {
     var fcpWwpn = $('<td><input type="text" style="width: 100px;" name="fcpWwpn" maxlength="16" title="The FCP world wide port number"/></td>');
     devPathRow.append(fcpWwpn);
     
-    var wwpns = "";
     if ($.cookie('zvms')) {
         zvms = $.cookie('zvms').split(',');
         var zvm;
@@ -2072,14 +2063,7 @@ function openAddScsi2SystemDialog(hcp) {
             var args = zvms[i].split(':');
             var zvm = args[0].toLowerCase();
             var iHcp = args[1];
-            
-            wwpns += "," + $.cookie(zvm + 'wwpns');
         }
-        
-        wwpns = wwpns.replace(',,', ',');
-        fcpWwpn.find('input').autocomplete({
-            source: wwpns.split(',')
-        });
     }
     
     // Create FCP LUN input
@@ -2112,9 +2096,6 @@ function openAddScsi2SystemDialog(hcp) {
         // Create FCP WWPN input
         var fcpWwpn = $('<td><input type="text" style="width: 100px;" name="fcpWwpn" maxlength="16" title="The world wide port number"/></td>');
         devPathRow.append(fcpWwpn);
-        fcpWwpn.find('input').autocomplete({
-            source: wwpns.split(',')
-        });
 
         // Create FCP LUN input
         var fcpLun = $('<td><input type="text" style="width: 100px;" name="fcpLun" maxlength="16" title="The logical unit number"/></td>');
@@ -5458,40 +5439,6 @@ function createZProvisionNew(inst) {
 }
 
 /**
- * Load WWPNs
- */
-function loadWwpns() {
-    if (!$.cookie('zvms')) {
-        return;
-    }
-    
-    // Retrieve WWPNs found on z/VM system
-    var zvms = $.cookie('zvms').split(',');
-    for (var i in zvms) {
-        args = zvms[i].split(':');
-        zvm = args[0].toLowerCase();
-        hcp = args[1];
-        
-        if (!$.cookie(zvm + 'wwpns')) {        
-            $.ajax({
-                url : 'lib/cmd.php',
-                dataType : 'json',
-                data : {
-                    cmd : 'rinv',
-                    tgt : zvm,
-                    args : '--wwpn',
-                    msg : zvm
-                },
-    
-                success : function(data) {
-                    setWwpnCookies(data);
-                }
-            });    
-        }
-    }
-}
-
-/**
  * Load zVMs into column (service page)
  * 
  * @param col Table column where OS images will be placed
@@ -5693,26 +5640,6 @@ function setZfcpPoolCookies(data) {
         var exDate = new Date();
         exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
         $.cookie(node + 'zfcppools', pools, { expires: exDate });
-    }
-}
-
-/**
- * Set a cookie for WWPNs of z/VM system 
- * 
- * @param data Data from HTTP request
- */
-function setWwpnCookies(data) {
-    if (data.rsp[0].length) {
-        var zvm = data.msg;
-        var wwpns = data.rsp[0].split(zvm + ': ');
-        for (var i in wwpns) {
-            wwpns[i] = jQuery.trim(wwpns[i]);
-        }
-        
-        // Set cookie to expire in 60 minutes
-        var exDate = new Date();
-        exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
-        $.cookie(zvm + 'wwpns', wwpns, { expires: exDate });
     }
 }
 

@@ -6650,6 +6650,68 @@ sub inventoryHypervisor {
         }
     }
     
+    # luns [fcp_device] (supported only on z/VM 6.2)
+    elsif ( $args->[0] eq "--luns" ) {
+    	# Find the LUNs accessible thru given zFCP device
+        my $fcp  = lc($args->[1]);
+        my $argsSize = @{$args};
+        if ($argsSize < 2) {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Wrong number of parameters" );
+            return;
+        }
+         
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_FCP_Free_Query -T $hcpUserId -k fcp_dev=$fcp" | egrep -i "FCP device number:|World wide port number:|Logical unit number:|Number of bytes residing on the logical unit:"`;
+    
+        my @wwpns = split( "\n", $out );
+        my %map;
+        
+        my $wwpn = "";
+        my $lun = "";
+        my $size = "";
+        foreach (@wwpns) {
+            # Extract the device number
+            if ($_ =~ "World wide port number:") {
+                $_ =~ s/^\s+World wide port number:(.*)/$1/;
+                $_ =~ s/^\s+//;
+                $_ =~ s/\s+$//;
+                $wwpn = $_;
+                 
+                if (!scalar($map{$wwpn})) {
+                	$map{$wwpn} = {};
+                }                
+            } elsif ($_ =~ "Logical unit number:") {
+            	$_ =~ s/^\s+Logical unit number:(.*)/$1/;
+                $_ =~ s/^\s+//;
+                $_ =~ s/\s+$//;
+                $lun = $_;
+                
+                $map{$wwpn}{$lun} = "";
+            } elsif ($_ =~ "Number of bytes residing on the logical unit:") {
+                $_ =~ s/^\s+Number of bytes residing on the logical unit:(.*)/$1/;
+                $_ =~ s/^\s+//;
+                $_ =~ s/\s+$//;
+                $size = $_;
+                
+                $map{$wwpn}{$lun} = $size;
+            }
+        }
+        
+        xCAT::zvmUtils->printLn($callback, "#status,wwpn,lun,size,range,owner,channel,tag");
+        foreach $wwpn (sort keys %map) {
+            foreach $lun (sort keys %{$map{$wwpn}}) {
+            	# status, wwpn, lun, size, range, owner, channel, tag
+            	$size = sprintf("%.1f", $map{$wwpn}{$lun}/1073741824);  # Convert size to GB
+            	
+            	if ($size > 0) {
+            		$size .= "G";
+            	   xCAT::zvmUtils->printLn($callback, "unknown,$wwpn,$lun,$size,,,,"); 
+            	}
+            }
+        }
+        
+        $str = "";
+    }
+    
     # networknames
     elsif ( $args->[0] eq "--networknames" || $args->[0] eq "--getnetworknames" ) {
         $str = xCAT::zvmCPUtils->getNetworkNames($::SUDOER, $hcp);
@@ -6771,20 +6833,29 @@ sub inventoryHypervisor {
         $str = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Virtual_Network_Vswitch_Query_Stats -T $hcpUserId $argStr"`;
     }
     
-    # wwpn
-    elsif ( $args->[0] eq "--wwpn" ) {     
-        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_WWPN_Query -T $hcpUserId" | egrep -i "Physical world wide port number"`;
+    # wwpn [fcp_device] (supported only on z/VM 6.2)
+    elsif ( $args->[0] eq "--wwpns" ) {
+    	my $fcp  = lc($args->[1]);
+    	my $argsSize = @{$args};
+        if ($argsSize < 2) {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Wrong number of parameters" );
+            return;
+        }
+    	 
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_FCP_Free_Query -T $hcpUserId -k fcp_dev=$fcp" | egrep -i "World wide port number:"`;
     
         my @wwpns = split( "\n", $out );
         my %uniqueWwpns;
         foreach (@wwpns) {
             # Extract the device number
-            $_ =~ s/^\s+Physical world wide port number:(.*)/$1/;
-            $_ =~ s/^\s+//;
-            $_ =~ s/\s+$//;
-         
-            # Save only unique WWPNs   
-            $uniqueWwpns{$_} = 1;
+	        if ($_ =~ "World wide port number:") {
+	            $_ =~ s/^\s+World wide port number:(.*)/$1/;
+	            $_ =~ s/^\s+//;
+	            $_ =~ s/\s+$//;
+	         
+	            # Save only unique WWPNs   
+	            $uniqueWwpns{$_} = 1;
+            }
         }
         
         my $wwpn;
