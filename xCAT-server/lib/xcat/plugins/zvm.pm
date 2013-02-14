@@ -687,7 +687,7 @@ sub removeVM {
         foreach (@luns) {
             # Update entry: status,wwpn,lun,size,range,owner,channel,tag
             my @info = split(',', $_);   
-            $update = "free,$info[1],$info[2],$info[3],$info[4],,";
+            $update = "free,$info[1],$info[2],$info[3],$info[4],,,";
             $expression = "'s#" . $_ . "#" .$update . "#i'";
             $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e $expression $::ZFCPPOOL/$pool.conf"`;
         }
