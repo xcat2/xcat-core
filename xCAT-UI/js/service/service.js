@@ -1676,7 +1676,7 @@ function getMonitorMetrics(node) {
             var node, status;
 
             // Get the ganglia status
-            for ( var i in ganglia) {
+            for (var i in ganglia) {
                 // ganglia[0] = nodeName and ganglia[1] = state
                 node = jQuery.trim(ganglia[i][0]);
                 status = jQuery.trim(ganglia[i][1]);

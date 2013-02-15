@@ -516,8 +516,8 @@ zvmPlugin.prototype.loadServiceInventory = function(data) {
             var nicVDev, nicType, nicPortName, nicNumOfDevs, nicLanName;
 
             // Loop through each NIC (Data contained in 2 lines)
-            for (l = 0; l < attrs[keys[k]].length; l = l + 2) {
-                if (attrs[keys[k]][l]) {
+            for (l = 0; l < attrs[keys[k]].length; l++) {
+            	if (attrs[keys[k]][l].indexOf('Adapter') != -1) {
                     args = attrs[keys[k]][l].split(' ');
     
                     // Get NIC virtual device, type, port name, and number of devices
@@ -1530,8 +1530,8 @@ zvmPlugin.prototype.loadInventory = function(data) {
             var nicVDev, nicType, nicPortName, nicNumOfDevs, nicLanName;
 
             // Loop through each NIC (Data contained in 2 lines)
-            for (l = 0; l < attrs[keys[k]].length; l = l + 2) {
-                if (attrs[keys[k]][l]) {
+            for (l = 0; l < attrs[keys[k]].length; l++) {
+                if (attrs[keys[k]][l].indexOf('Adapter') != -1) {
                     args = attrs[keys[k]][l].split(' ');
     
                     // Get NIC virtual device, type, port name, and number of devices
