@@ -190,7 +190,7 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/aixinstall.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/slpdiscover.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/remoteimmsetup.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/IMMUtils.pm
-rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/RShellAPI.pm
+#rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/RShellAPI.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/bmcconfig.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/bpa.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/esx.pm
@@ -203,6 +203,7 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/pxe.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/toolscenter.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/windows.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xcat2nim.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/rhevm.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xnba.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/IPMI.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/SSHInteract.pm
