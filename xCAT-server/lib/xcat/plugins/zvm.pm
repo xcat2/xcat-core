@@ -2919,31 +2919,19 @@ sub makeVM {
         $macId = xCAT::zvmUtils->replaceStr( $macId, ":", "" );
         $macId = substr( $macId, 6 );
     } else {
-    	my $prefix;
-    	if (`ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO test -f $::SYSCONF/userprefix && echo Exists"`) {
-            $prefix = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO cat $::SYSCONF/userprefix"`;
-            $prefix =~ s/\s*$//;
-            $prefix =~ s/^\s*//;
-        }
+    	$out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "/sbin/modprobe vmcp"`;
+    	
+    	my $prefix = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO /sbin/vmcp q vmlan" | egrep -i "USER Prefix:"`;
+        $prefix =~ s/(.*?)USER Prefix:(.*)/$2/;
+        $prefix =~ s/^\s+//;
+        $prefix =~ s/\s+$//;
     	                
         # Get zHCP MAC address
         # The MAC address prefix is the same for all network devices
         if (!$prefix) {
-	        $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "/sbin/modprobe vmcp"`;
-	        $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO /sbin/vmcp q v nic" | grep "MAC:"`;
-	        if ($out) {
-	            @lines = split( "\n", $out );
-	            @words = split( " ", $lines[0] );
-	
-	            # Extract MAC prefix
-	            $prefix = $words[1];
-	            $prefix = xCAT::zvmUtils->replaceStr( $prefix, "-", "" );
-	            $prefix = substr( $prefix, 0, 6 );
-	        } else {
-	            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not find the MAC address of the zHCP" );
-	            xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Verify that the node's zHCP($hcp) is correct, the node is online, and the SSH keys are setup for the zHCP" );
-	            return;
-	        }
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not find the MAC address of the zHCP" );
+            xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Verify that the node's zHCP($hcp) is correct, the node is online, and the SSH keys are setup for the zHCP" );
+            return;
         }
         
         # Generate MAC address
