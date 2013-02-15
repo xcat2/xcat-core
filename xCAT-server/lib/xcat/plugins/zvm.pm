@@ -2921,17 +2921,24 @@ sub makeVM {
     } else {
     	$out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "/sbin/modprobe vmcp"`;
     	
+    	# Get USER Prefix
     	my $prefix = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO /sbin/vmcp q vmlan" | egrep -i "USER Prefix:"`;
         $prefix =~ s/(.*?)USER Prefix:(.*)/$2/;
         $prefix =~ s/^\s+//;
         $prefix =~ s/\s+$//;
     	                
-        # Get zHCP MAC address
-        # The MAC address prefix is the same for all network devices
+        # Get MACADDR Prefix instead if USER Prefix is not defined
         if (!$prefix) {
-            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not find the MAC address of the zHCP" );
-            xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Verify that the node's zHCP($hcp) is correct, the node is online, and the SSH keys are setup for the zHCP" );
-            return;
+	        $prefix = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO /sbin/vmcp q vmlan" | egrep -i "MACADDR Prefix:"`;
+            $prefix =~ s/(.*?)MACADDR Prefix:(.*)/$2/;
+            $prefix =~ s/^\s+//;
+            $prefix =~ s/\s+$//;
+        
+	        if (!$prefix) {
+	            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not find the MACADDR/USER prefix of the z/VM system" );
+	            xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Verify that the node's zHCP($hcp) is correct, the node is online, and the SSH keys are setup for the zHCP" );
+	            return;
+	        }
         }
         
         # Generate MAC address
