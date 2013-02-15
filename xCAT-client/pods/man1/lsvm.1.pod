@@ -50,8 +50,8 @@ Note: Only the virtual machine which is in power on state can be listed by lsvm 
 
 Show the directory entry for a given virtual machine.
 
-=head1 OPTIONS
 
+=head1 OPTIONS
 
 B<-h>          
 

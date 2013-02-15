@@ -467,51 +467,51 @@ Output is similar to:
 
 1. To adds a 3390 (ECKD) disk to a virtual machine's directory entry:
 
- chvm gpok3 --add3390 POOL1 0101 2G MR
+  chvm gpok3 --add3390 POOL1 0101 2G MR
   
 Output is similar to:
   
- gpok3: Adding disk 0101 to LNX3... Done
+  gpok3: Adding disk 0101 to LNX3... Done
   
 2. To add a network adapter to a virtual machine's directory entry:
 
- chvm gpok3 --addnic 0600 QDIO 3
+  chvm gpok3 --addnic 0600 QDIO 3
   
 Output is similar to:
   
- gpok3: Adding NIC 0900 to LNX3... Done
+  gpok3: Adding NIC 0900 to LNX3... Done
 
 3. To connects a given network adapter to a GuestLAN:
 
- chvm gpok3 --connectnic2guestlan 0600 GLAN1 LN1OWNR
+  chvm gpok3 --connectnic2guestlan 0600 GLAN1 LN1OWNR
   
 Output is similar to:
   
- gpok3: Connecting NIC 0600 to GuestLan GLAN1 on LN1OWNR... Done
+  gpok3: Connecting NIC 0600 to GuestLan GLAN1 on LN1OWNR... Done
  
-4. To connects a given network adapter to a VSwitch:
+4. To connects a given network adapter to a vSwitch:
  
- chvm gpok3 --connectnic2vswitch 0600 VSW1
+  chvm gpok3 --connectnic2vswitch 0600 VSW1
  
 Output is similar to:
 
- gpok3: Connecting NIC 0600 to vSwitch VSW1 on LNX3... Done
+  gpok3: Connecting NIC 0600 to vSwitch VSW1 on LNX3... Done
 
 5. To removes a minidisk from a virtual machine's directory entry:
 
- chvm gpok3 --removedisk 0101
+  chvm gpok3 --removedisk 0101
  
 Output is similar to:
 
- gpok3: Removing disk 0101 on LNX3... Done
+  gpok3: Removing disk 0101 on LNX3... Done
 
 6. To Removes a network adapter from a virtual machine's directory entry:
 
- chvm gpok3 --removenic 0700
+  chvm gpok3 --removenic 0700
  
 Output is similar to:
 
- gpok3: Removing NIC 0700 on LNX3... Done
+  gpok3: Removing NIC 0700 on LNX3... Done
 
 7. To replaces a virtual machine's directory entry:
 
@@ -519,9 +519,8 @@ Output is similar to:
 
 Output is similar to:
 
- gpok3: Replacing user entry of LNX3... Done
+  gpok3: Replacing user entry of LNX3... Done
  
-
 =head1 FILES
 
 /opt/xcat/bin/chvm

@@ -48,7 +48,7 @@ B<rinv> I<noderange> [B<--ssi>]
 
 B<rinv> I<noderange> [B<--smapilevel>]
 
-B<rinv> I<noderange> [B<--wwpn>]
+B<rinv> I<noderange> [B<--wwpns> I<fcp_channel>]
 
 B<rinv> I<noderange> [B<--zfcppool> I<pool> I<space>]
 
@@ -174,9 +174,9 @@ Obtain the SSI and system status.
 
 Obtain the SMAPI level installed on the z/VM system.
 
-=item B<--wwpn>
+=item B<--wwpns> I<fcp_channel>
 
-Query all FCPs on a z/VM system and return a list of WWPNs.
+Query a given FCP device channel on a z/VM system and return a list of WWPNs.
 
 =item B<--zfcppool> I<pool> I<space>
 
