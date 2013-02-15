@@ -254,9 +254,9 @@ To deactivate the host 'host1', enter:
 
 =item 1.
 To add a disk to a disk pool defined in the EXTENT CONTROL, enter:
-  
+
  chhypervisor pokdev61 --adddisk2pool 4 DM1234 DM1234 POOL1
-   
+ 
 =item 2.
 To add a zFCP device to a device pool defined in xCAT, enter:
 
@@ -266,12 +266,12 @@ To add a zFCP device to a device pool defined in xCAT, enter:
 To remove a region from a group in the EXTENT CONTROL, enter:
 
  chhypervisor pokdev61 --removediskfrompool 2 DM1234 POOL1
- 
+  
 =item 4.
 To remove a zFCP device from a device pool defined in xCAT, enter:
 
  chhypervisor pokdev61 --removezfcpfrompool zfcp1 4012345600000000 500501234567C890
- 
+  
 =item 5.
 To execute a SMAPI function (Image_Query_DM), enter:
 
