@@ -38,7 +38,9 @@ case "$1" in
     shalocate=`find / -name "SHA.pm"`
     shalocate=${shalocate%SHA.pm}
     cd $shalocate
-    ln -s SHA.pm SHA1.pm
+    if [ ! -e SHA1.pm ];then
+        ln -s SHA.pm SHA1.pm
+    fi
     cd -
     ;;
 
