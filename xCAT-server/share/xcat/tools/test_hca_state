@@ -1,0 +1,149 @@
+#!/bin/bash
+
+#
+# 2012.08.19 Brian Elliott Finley <bfinley@us.ibm.com>
+#   - created
+# 2013.02.17 Brian Elliott Finley <bfinley@us.ibm.com>
+#   - added --help output
+#
+
+NR=$1
+
+offer_help() {
+
+    PROGNAME=$(basename $0)
+
+    # At some point, source a file for this info for the whole suite
+    VERSION=3.2.17
+
+    cat <<EOF
+$PROGNAME (part of the BEF_Scripts for xCAT) v$VERSION
+
+Usage: $PROGNAME NODERANGE | xcoll
+
+    --help  Display this help output.
+
+EOF
+
+    cat <<'EOF'
+Purpose:  
+
+    This tool provides a quick and easily repeatable method of
+    validating key InfiniBand adapter (HCA) and node based InfiniBand
+    settings across an entire cluster.  
+    
+    Having consistent OFED settings, and even HCA firmware, can be very
+    important for a properly functioning InfiniBand fabric.  This tool
+    can help you confirm that your nodes are using the settings you
+    want, and if any nodes have settings descrepancies.
+
+
+Example output:
+
+    In the output below, note the following discrepancies for the node
+    storage1 (as compared with all of the other nodes): "rate",
+    "PortRcvErrors", and "IB HCA FW Active".  Looks like that guy may
+    need a restart of the OFED stack to engage his newly installed
+    firmware. ;-)
+
+    [root]# test_hca_state compute,storage | xcoll
+    ====================================
+    storage1
+    ====================================
+    OFED: MLNX_OFED_LINUX-1.5.3-4.0.22.3 (OFED-1.5.3-4.0.22):
+    mlx4_0/1:
+     phys state:     5: LinkUp
+     rate:       40 Gb/sec (4X FDR10)
+    PCI: Gen3
+    SymbolErrorCounter: 0
+    PortRcvErrors: 31
+    IB HCA FW Installed: 2.11.500
+    IB HCA FW Active:    2.10.2372
+    mlx4_core set_4k_mtu: 0
+    mlx4_core log_num_mtt: 20
+    mlx4_core log_mtts_per_seg: 7
+    IPoIB Mode: connected
+    IPoIB MTU:  65520
+    IPoIB recv_queue_size: 8192
+    IPoIB send_queue_size: 8192
+    
+    ====================================
+    compute,storage2,storage3,storage4
+    ====================================
+    OFED: MLNX_OFED_LINUX-1.5.3-4.0.22.3 (OFED-1.5.3-4.0.22):
+    mlx4_0/1:
+     phys state:     5: LinkUp
+     rate:       56 Gb/sec (4X FDR)
+    PCI: Gen3
+    SymbolErrorCounter: 0
+    PortRcvErrors: 0
+    IB HCA FW Installed: 2.11.500
+    IB HCA FW Active:    2.11.500
+    mlx4_core set_4k_mtu: 0
+    mlx4_core log_num_mtt: 20
+    mlx4_core log_mtts_per_seg: 7
+    IPoIB Mode: connected
+    IPoIB MTU:  65520
+    IPoIB recv_queue_size: 8192
+    IPoIB send_queue_size: 8192
+
+EOF
+}
+
+if [ -z $NR ]; then
+    offer_help
+    echo "Suggestion:  Try specifying a NODERANGE"
+    echo
+    exit 1
+fi
+
+case "$NR" in
+    #
+    # Match -h, -help, --help
+    #
+    -h*|--h*)
+        offer_help
+        exit 0
+    ;;
+esac
+
+
+xdsh $NR -t3 ' 
+echo -n "OFED: " ; ofed_info | head -n 1
+ibstatus | grep -B7 InfiniBand | egrep "(phys state|rate|device)" | perl -pi -e "s/^\s+/ /; s|Infiniband device .(.*). port (\d+).*|\$1/\$2:|;"
+HCA_PCI_ID=$(lspci | egrep "Network controller.*Mellanox" | sed "s/ .*//")
+PCI_SPEED=$(lspci -vvvxxx -s $HCA_PCI_ID | egrep "^70: " | perl -pi -e "s/^70: [0-9]+ [0-9]+ (\d+).*/\$1/")
+echo -n "PCI: "
+if [ "$PCI_SPEED" == 83 ]; then
+    echo -n Gen3
+elif [ "$PCI_SPEED" == 82 ]; then
+    echo -n Gen2
+else
+    echo -n Dunno
+fi
+echo
+
+perfquery | egrep "(PortRcvErrors|SymbolErrorCounter)" | perl -pi -e "s/\.+/ /g"
+
+for HCA in $( lspci -xxxvvv | grep Net | grep Mell | sed "'s/ .*//'" )
+do
+  echo -n "IB HCA FW Installed: " ; mstflint -d $HCA q | grep FW | sed "'s/.*: *//'"
+done
+for CA in $( ibstat -l )
+do
+  ibstat $CA | grep -q InfiniBand && ibstat $CA | grep Firmware | sed "'s/.*: *//'" | xargs echo "IB HCA FW Active:   "
+done
+
+# mlx4_core
+MODULE=mlx4_core
+MLX4_CORE_PARAMS="set_4k_mtu log_num_mtt log_mtts_per_seg"
+for param in $MLX4_CORE_PARAMS
+do
+  echo -n "mlx4_core $param: " ; cat /sys/module/$MODULE/parameters/$param
+done
+
+echo -n "IPoIB Mode: " ; cat /sys/class/net/ib0/mode
+echo -n "IPoIB MTU:  " ; cat /sys/class/net/ib0/mtu 
+file=recv_queue_size ; echo -n "IPoIB $file: " ; cat /sys/module/ib_ipoib/parameters/$file
+file=send_queue_size ; echo -n "IPoIB $file: " ; cat /sys/module/ib_ipoib/parameters/$file
+' | perl -pi -e 's/(ssh: connect to host) \S+ (.*)/$1 $2/'
