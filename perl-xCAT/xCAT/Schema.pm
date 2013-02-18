@@ -886,7 +886,7 @@ site => {
    "                failed nodes for any xCAT commands. See the 'noderange' manpage for\n".
    "                details on supported formats.\n\n".
    " forwarders:  The DNS servers at your site that can provide names outside of the\n".
-   "              cluster. The makedns command will configuire the DNS on the management\n".
+   "              cluster. The makedns command will configure the DNS on the management\n".
    "              node to forward requests it does not know to these servers.\n".
    "              Note that the DNS servers on the service nodes will ignore this value\n".
    "              and always be configured to forward requests to the management node.\n\n".
