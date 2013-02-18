@@ -14,7 +14,8 @@ DRACUTMODDIR=/usr/share/dracut/modules.d/97xcat
 mkdir -p $DRACUTMODDIR
 cp $DIR/* $DRACUTMODDIR
 if [ "$HOSTOS" = "mcp" ]; then
-	sed -i 's/\(mkfs.btrfs\|lldpad\|lldptool\)//' $DRACUTMODDIR/install
+	sed -i 's/mkfs.btrfs//' $DRACUTMODDIR/install
+	sed -i 's/\/etc\/redhat-release/\/etc\/base-release \/etc\/system-release/' $DRACUTMODDIR/install
 	sed -i 's/btrfs//' $DRACUTMODDIR/installkernel
 	#mv -f $DRACUTMODDIR/install.$HOSTOS $DRACUTMODDIR/install
 	#mv -f $DRACUTMODDIR/installkernel.$HOSTOS $DRACUTMODDIR/installkernel
