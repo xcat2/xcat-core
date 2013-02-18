@@ -548,7 +548,11 @@ sleep 0.05;
              xCAT::MsgUtils->message("S","xcatd: Something absolutely ludicrous happpened, xCAT developers think this message is impossible to see, post if you see it, fork bomb averted");
              exit(1); 
          }
-        until ($select->can_read(5)) { if ($quit) { last; }; yield; } #Wait for data
+        until ($select->can_read(5)) {  #Wait for data
+            if ($quit) { last; }; 
+            populate_site_hash();
+            yield; 
+        } 
 	while ($select->can_read(0)) { #Pull all buffer data that can be pulled
 	   $part = $socket->recv($data,1500);
            ($sport,$client) = sockaddr_in($part);
