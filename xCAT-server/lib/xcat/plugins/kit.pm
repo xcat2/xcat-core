@@ -2611,15 +2611,15 @@ sub chkkitcomp
     # Verify if the kitcomponents fitting to the osimage or not.
     my %os;
     my $osdistrotable;
-    (my $osimagetable) = $tabs{osimage}->getAttribs({imagename=> $osimage}, 'osdistroname', 'serverrole', 'kitcomponents');
+    (my $osimagetable) = $tabs{osimage}->getAttribs({imagename=> $osimage}, 'osdistroname', 'serverrole', 'kitcomponents', 'osname', 'osvers', 'osarch');
     if ( $osimagetable and $osimagetable->{'osdistroname'}){
         ($osdistrotable) = $tabs{osdistro}->getAttribs({osdistroname=> $osimagetable->{'osdistroname'}}, 'basename', 'majorversion', 'minorversion', 'arch', 'type');
         if ( !$osdistrotable or !$osdistrotable->{basename} ) {
             my %rsp;
-            push@{ $rsp{data} }, "$osdistroname osdistro does not exist";
+            push @{ $rsp{data} }, "$osdistroname osdistro does not exist";
             xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
-        }
+        } 
 
         # Read basename,majorversion,minorversion,arch,type, from osdistro table
         $os{$osimage}{basename} = lc($osdistrotable->{basename});
@@ -2631,11 +2631,31 @@ sub chkkitcomp
         # Read serverrole from osimage.
         $os{$osimage}{serverrole} = lc($osimagetable->{'serverrole'});
 
-    } else {
+    } elsif ( !$osimagetable or !$osimagetable->{'osname'} ) {
         my %rsp;
-        push@{ $rsp{data} }, "$osimage osimage does not exist or not saticified";
+        push@{ $rsp{data} }, "osimage $osimage does not contains a valid 'osname' attribute";
         xCAT::MsgUtils->message( "E", \%rsp, $callback );
         return 1;
+
+    } elsif ( !$osimagetable->{'osvers'} ) {
+        my %rsp;
+        push@{ $rsp{data} }, "osimage $osimage does not contains a valid 'osvers' attribute";
+        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+        return 1;
+    } elsif ( !$osimagetable->{'osarch'} ) {
+        my %rsp;
+        push@{ $rsp{data} }, "osimage $osimage does not contains a valid 'osarch' attribute";
+        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+        return 1;
+    } else {
+        $os{$osimage}{type} = lc($osimagetable->{'osname'});
+        $os{$osimage}{arch} = lc($osimagetable->{'osarch'});
+        $os{$osimage}{serverrole} = lc($osimagetable->{'serverrole'});
+ 
+        my ($basename, $majorversion, $minorversion) = $osimagetable->{'osvers'} =~ /^(\D+)(\d+)\W+(\d+)/;
+        $os{$osimage}{basename} = lc($basename);
+        $os{$osimage}{majorversion} = lc($majorversion);
+        $os{$osimage}{minorversion} = lc($minorversion);
     }
 
     my @kitcompnames;
