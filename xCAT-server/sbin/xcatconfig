@@ -44,6 +44,17 @@ $::INSTALLDIR = "/install";
 # Default TFTP dir location
 $::TFTPDIR = "/tftpboot";
 
+ my $arraysize=@ARGV;
+ if ($arraysize ==0) {
+     my $msg= "No parameters were supplied on the xcatconfig command. Run xcatconfig -h" ;
+     xCAT::MsgUtils->message("E", $msg);
+     exit 1;
+ }
+
+Getopt::Long::Configure("posix_default");
+Getopt::Long::Configure("no_gnu_compat");
+Getopt::Long::Configure("bundling");
+
 # parse the options
 if (
     !GetOptions(
@@ -67,20 +78,6 @@ if (
     exit(1);
 }
 
-if (   (!$::HELP)
-    && (!$::FORCE)
-    && (!$::INITIALINSTALL)
-    && (!$::UPDATEINSTALL)
-    && (!$::genSSHRootKeys)
-    && (!$::genSSHNodeHostKeys)
-    && (!$::genCredentials)
-    && (!$::setupMNinDB)
-    && (!$::initDB)
-    && (!$::VERSION))
-{
-    &usage;
-    exit(1);
-}
 
 # display the usage if -h or --help is specified
 if ($::HELP)
@@ -2122,7 +2119,7 @@ sub setupMNinDB
       my $chtabcmds;
       #  add to the servicenode table 
       $chtabcmds =
-           "$::XCATROOT/sbin/chtab node=__mgmtnode servicenode.tftpserver=no;";
+           "$::XCATROOT/sbin/chtab node=__mgmtnode servicenode.comments=initbyxcatconfig;";
       my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
       if ($::RUNCMD_RC != 0)
       {
