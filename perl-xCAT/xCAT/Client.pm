@@ -433,7 +433,8 @@ sub plugin_command {
               $usesiteglobal = 1;
             }
             foreach (@nodes) { #Specified a specific plugin, not a table lookup
-              $handler_hash{$sent->{value}}->{$_} = 1;
+              #$handler_hash{$sent->{value}}->{$_} = 1;
+              $handler_hash{$::XCATSITEVALS{$sitekey}}->{$_} = 1;
             }
           }
       } elsif ($hdlspec =~ /:/) { #Specificed a table lookup path for plugin name
