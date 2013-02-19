@@ -2116,21 +2116,38 @@ sub setupMNinDB
    my $output = xCAT::Utils->runcmd("$cmds", -1);
    if ($::RUNCMD_RC != 0)  # no management node defined 
    {
-      my $chtabcmds;
-      #  add to the servicenode table 
-      $chtabcmds =
-           "$::XCATROOT/sbin/chtab node=__mgmtnode servicenode.comments=initbyxcatconfig;";
-      my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
-      if ($::RUNCMD_RC != 0)
-      {
+     #  add to the servicenode table 
+     my $chtabcmds;
+     if (xCAT::Utils->isLinux()) {
+       # always setup tftp
+       $chtabcmds= 
+        "$::XCATROOT/sbin/chtab node=__mgmtnode servicenode.tftpserver=yes ";
+       # check setting of site.vsftp to see if we want to setup ftp
+       $cmds="XCATBYPASS=Y $::XCATROOT/sbin/tabdump site | grep vsftp";
+       $output = xCAT::Utils->runcmd("$cmds", -1);
+       if ($::RUNCMD_RC == 0){  # vsftp  defined 
+          # check the setting to see if we want ftp
+          my @vals = split(',', $output);
+          if ($vals[1] && ($vals[1] !~ /0|NO|No|no|N|n/ )) { # setup ftp
+              $chtabcmds .= " servicenode.ftpserver=yes ";
+          }
+       }
+     } else { # AIX, don't define any services just add the MN node
+       $chtabcmds =
+           "$::XCATROOT/sbin/chtab node=__mgmtnode servicenode.ftpserver=no;";
+     } 
+       
+     my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
+     if ($::RUNCMD_RC != 0)
+     {
          xCAT::MsgUtils->message('E', "Could not add $mnname to the servicenode table.");
-      }
-      else
-      {
+     }
+     else
+     {
            verbose("Added $mnname to the servicenode table table.");
-      }
+     }
       
-   } else { # it was already correct in the servicenode table
+   } else { # it was already defined in the servicenode table
          xCAT::MsgUtils->message('I', "$mnname was already defined in the servicenode table.");
            
    }
