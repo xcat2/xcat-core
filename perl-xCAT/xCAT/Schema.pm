@@ -2089,6 +2089,13 @@ my @nodeattrs = (
 				access_tabentry => 'nics.node=attr:node',
 		},
 ######################
+#  storage table     #
+######################
+                {attr_name => 'osvolume',
+                 tabentry => 'storge.osvolume',
+                 access_tabentry => 'storage.node=attr:node',
+                },
+######################
 #  vm table          #
 ######################
              {attr_name => 'vmmanager',
