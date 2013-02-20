@@ -311,6 +311,7 @@ sub parse_xdcp_cmd
                    'T|trace'          => \$options{'trace'},
                    'V|version'        => \$options{'version'},
                    'nodestatus|nodestatus' => \$options{'nodestatus'},
+                   'sudo|sudo' => \$options{'sudo'},
                    'X:s'              => \$options{'ignore_env'}
        )
      )
