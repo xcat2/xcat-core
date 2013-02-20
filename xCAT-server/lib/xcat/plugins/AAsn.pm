@@ -488,54 +488,37 @@ sub setup_CONS
     my ($nodename) = @_;
     my $rc = 0;
 
-    # read DB for nodeinfo
-    my $master;
-    my $os;
-    my $arch;
     my $cmd;
-    my $retdata = xCAT::ServiceNodeUtils->readSNInfo($nodename);
-    if ($retdata->{'arch'})
-    {    # no error
-        $master = $retdata->{'master'};
-        $os     = $retdata->{'os'};
-        $arch   = $retdata->{'arch'};
-
-        # make the consever 8 configuration file
-        my $cmdref;
-        $cmdref->{command}->[0] = "makeconservercf";
-        $cmdref->{arg}->[0]     = "-l";
-        $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
-        $cmdref->{svboot}->[0]  = "yes";
-        no strict "refs";
-        my $modname = "conserver";
-        ${"xCAT_plugin::" . $modname . "::"}{process_request}
+    my $cmdref;
+    $cmdref->{command}->[0] = "makeconservercf";
+    $cmdref->{arg}->[0]     = "-l";
+    $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
+    $cmdref->{svboot}->[0]  = "yes";
+    no strict "refs";
+    my $modname = "conserver";
+    ${"xCAT_plugin::" . $modname . "::"}{process_request}
           ->($cmdref, \&xCAT::Client::handle_response);
 
-        # start conserver. conserver needs 2 CA files to start
-        my $ca_file1 = "/etc/xcat/ca/ca-cert.pem";
-        my $ca_file2 = "/etc/xcat/cert/server-cred.pem";
-        if (!-e $ca_file1)
-        {
-            print
-              "conserver cannot be started because the file $ca_file1 cannot be found\n";
-        }
-        elsif (!-e $ca_file2)
-        {
-            print
-              "conserver cannot be started because the file $ca_file2 cannot be found\n";
-        }
-        else
-        {
-            my $rc = xCAT::Utils->startService("conserver");
-            if ($rc != 0)
-            {
-                return 1;
-            }
-        }
+    # start conserver. conserver needs 2 CA files to start
+    my $ca_file1 = "/etc/xcat/ca/ca-cert.pem";
+    my $ca_file2 = "/etc/xcat/cert/server-cred.pem";
+    if (!-e $ca_file1)
+    {
+        print
+        "conserver cannot be started because the file $ca_file1 cannot be found\n";
+    }
+    elsif (!-e $ca_file2)
+    {
+        print
+          "conserver cannot be started because the file $ca_file2 cannot be found\n";
     }
     else
-    {    # error reading Db
-        $rc = 1;
+    {
+        my $rc = xCAT::Utils->startService("conserver");
+        if ($rc != 0)
+        {
+            return 1;
+        }
     }
     return $rc;
 }
