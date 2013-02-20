@@ -77,37 +77,31 @@ sub init_plugin
 
     my $rc = 0;
 
-    if ((xCAT::Utils->isServiceNode()) && ( -s "/etc/xcat/cfgloc"))
+    #On the Servicenodes or the Management node
+    if (((xCAT::Utils->isServiceNode()) && ( -s "/etc/xcat/cfgloc"))
+           || (xCAT::Utils->isMN()))
     {
         my @nodeinfo   = xCAT::NetworkUtils->determinehostname;
         my $nodename   = pop @nodeinfo;                    # get hostname
         my @nodeipaddr = @nodeinfo;                        # get ip addresses
         my $service;
-
-        if (xCAT::Utils->isLinux())
+        # if a linux servicenode
+        if ((xCAT::Utils->isLinux())&& (xCAT::Utils->isServiceNode()))
         {
 
             # service needed on Linux Service Node
             $service = "setupInstallloc";
-            $rc      = &setupInstallloc($nodename);
-            if ($rc == 0)
-            {
-                xCAT::Utils->update_xCATSN($service);
-            }
+            &setupInstallloc($nodename);
             $service = "ssh";
 
-            $rc = &setup_SSH();    # setup SSH
-            if ($rc == 0)
-            {
-                xCAT::Utils->update_xCATSN($service);
-            }
+            &setup_SSH();    # setup SSH
 
         }
 
         # read the service node table
         # for a list of all functions to setup for this service node
         #
-        my @servicelist = xCAT::ServiceNodeUtils->isServiceReq($nodename, \@nodeipaddr);
+        my $servicelist = xCAT::ServiceNodeUtils->isServiceReq($nodename, \@nodeipaddr);
         my $service;
         if ($::RUNCMD_RC == 0)
         {
@@ -116,50 +110,25 @@ sub init_plugin
 
 
                 $service = "ftpserver";
-                if (grep(/$service/, @servicelist))
+                if ($servicelist->{$service} == 1)
                 {
-
-                    # make sure ftpserver not tftpserver
-                    my $match = 0;
-                    foreach my $service (@servicelist)
-                    {
-                        if ($service eq "ftpserver")
-                        {
-                            $match = 1;
-                        }
-                    }
-                    if ($match == 1)
-                    {    # it was ftpserver
-                        $rc = &setup_FTP();    # setup vsftpd
-                        if ($rc == 0)
-                        {
-                            xCAT::Utils->update_xCATSN($service);
-                        }
-                    }
-
+                     &setup_FTP();    # setup vsftpd
                 }
 
                 $service = "ldapserver";
-                if (grep(/$service/, @servicelist))
+                if ($servicelist->{$service} == 1)
                 {
-
-                    $rc = &setup_LDAP();    # setup LDAP
-                    if ($rc == 0)
-                    {
-                        xCAT::Utils->update_xCATSN($service);
-                    }
-
+                    &setup_LDAP();    # setup LDAP
                 }
 
                 $service = "tftpserver";
-                if (grep(/$service/, @servicelist))
+                if ($servicelist->{$service} == 1)
                 {
-
-                    $rc = &setup_TFTP($nodename, $doreq);    # setup TFTP
-                    if ($rc == 0)
-                    {
-                        xCAT::Utils->update_xCATSN($service);
-                    }
+                 if (xCAT::Utils->isServiceNode()) { # service node
+                     &setup_TFTP($nodename, $doreq);    # setup TFTP
+                 } else { # management node
+                    &enable_TFTPhpa();
+                 }
 
                 }
 
@@ -168,95 +137,59 @@ sub init_plugin
             # setup these services for AIX or Linux
             #
             $service = "conserver";
-            if (grep(/$service/, @servicelist))
+            if ($servicelist->{$service} == 1)
             {
                 if (xCAT::Utils->isLinux())
                 {    #run only the following only on Linux
 
-                    $rc = &setup_CONS($nodename);    # setup conserver
-                    if ($rc == 0)
-                    {
-                        xCAT::Utils->update_xCATSN($service);
-                    }
+                     &setup_CONS($nodename);    # setup conserver
                 } else { #AIX
-                   $rc = xCAT::Utils->setupAIXconserver();
+                    $rc=xCAT::Utils->setupAIXconserver();
             
                 }
             }
             $service = "nameserver";
-            if (grep(/$service/, @servicelist))
+            if ($servicelist->{$service} == 1)
             {
 
-                $rc = &setup_DNS();    # setup DNS
-                if ($rc == 0)
-                {
-                    xCAT::Utils->update_xCATSN($service);
-                }
+                &setup_DNS();    # setup DNS
 
             }
             $service = "nfsserver";
-            if (grep(/$service/, @servicelist))
+            if ($servicelist->{$service} == 1)
             {
 
-                $rc = &setup_NFS($nodename);    # setup NFS
-                if ($rc == 0)
-                {
-                    xCAT::Utils->update_xCATSN($service);
-                }
+                 &setup_NFS($nodename);    # setup NFS
 
                 # The nfsserver field in servicenode table
                 # will also setup http service for Linux
                 if (xCAT::Utils->isLinux())
                 {
-                    $rc = &setup_HTTP($nodename);    # setup HTTP
-                    if ($rc == 0)
-                    {
-                        xCAT::Utils->update_xCATSN('http');
-                    }
+                     &setup_HTTP($nodename);    # setup HTTP
                 }
 
             }
-	    my $service = "ipforward";
-  	    if (grep(/$service/, @servicelist))
-	    {
-	    
-	      $rc =  xCAT::NetworkUtils->setup_ip_forwarding(1);    # enable ip forwarding
-	      if ($rc == 0)
-	      {
-	    	xCAT::Utils->update_xCATSN($service);
-	      }
-	    }
+	         my $service = "ipforward";
+            if ($servicelist->{$service} == 1)
+	         {
+	           # enable ip forwarding 
+	            xCAT::NetworkUtils->setup_ip_forwarding(1); 
+	         }
 
             #
-            # setup dhcp only on Linux and last
+            # setup dhcp only on Linux and do it last
             #
             if (xCAT::Utils->isLinux())
             {
                 my $service = "dhcpserver";
-                if (grep(/$service/, @servicelist))
+                if ($servicelist->{$service} == 1)
                 {
 
-                    $rc = &setup_DHCP($nodename);    # setup DHCP
-                    if ($rc == 0)
-                    {
-                        xCAT::Utils->update_xCATSN($service);
-                    }
+                    &setup_DHCP($nodename);    # setup DHCP
 
                 }
             }
 
-            # done now in setupntp postinstall script, but may change
-            #$service = "ntpserver";
-            #if (grep(/$service/, @servicelist))
-            #{
-
-            # $rc = &setup_NTPsn($nodename);    # setup NTP on SN
-            # if ($rc == 0)
-            # {
-            #     xCAT::Utils->update_xCATSN($service);
-            # }
-
-            #}
         }
         else
         {    # error from servicenode tbl read
@@ -264,21 +197,6 @@ sub init_plugin
                                 "AAsn.pm:Error reading the servicenode table.");
         }
 
-    }
-    else     # management node
-    {
-
-        # $rc = &setup_NTPmn();  # setup NTP on the Management Node
-        if (xCAT::Utils->isLinux())
-        {
-            my @tmp = xCAT::TableUtils->get_site_attribute("vsftp");   
-		    if ($tmp[0] && ($tmp[0] !~ /0|NO|No|no|N|n/ )) {         
-                print "\n";    # make OK prints look better.  Only need to do this for the 1st service.
-                $rc = &setup_FTP();    # setup FTP
-            }
-            #enable the tftp-hpa for MN
-            $rc = enable_TFTPhpa();
-        }
     }
     return $rc;
 }
@@ -1142,7 +1060,7 @@ sub setup_SSH
 
 =head3 setup_TFTP 
 
-    Sets up TFTP services (using atftp) 
+    Sets up TFTP services  
 
 =cut
 
