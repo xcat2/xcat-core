@@ -109,20 +109,17 @@ sub init_plugin
             {    #run only the following only on Linux
 
 
-                $service = "ftpserver";
-                if ($servicelist->{$service} == 1)
+                if ($servicelist->{"ftpserver"} == 1)
                 {
                      &setup_FTP();    # setup vsftpd
                 }
 
-                $service = "ldapserver";
-                if ($servicelist->{$service} == 1)
+                if ($servicelist->{"ldapserver"} == 1)
                 {
                     &setup_LDAP();    # setup LDAP
                 }
 
-                $service = "tftpserver";
-                if ($servicelist->{$service} == 1)
+                if ($servicelist->{"tftpserver"} == 1)
                 {
                  if (xCAT::Utils->isServiceNode()) { # service node
                      &setup_TFTP($nodename, $doreq);    # setup TFTP
@@ -136,8 +133,7 @@ sub init_plugin
             #
             # setup these services for AIX or Linux
             #
-            $service = "conserver";
-            if ($servicelist->{$service} == 1)
+            if ($servicelist->{"conserver"} == 1)
             {
                 if (xCAT::Utils->isLinux())
                 {    #run only the following only on Linux
@@ -148,15 +144,13 @@ sub init_plugin
             
                 }
             }
-            $service = "nameserver";
-            if ($servicelist->{$service} == 1)
+            if ($servicelist->{"nameserver"} == 1)
             {
 
                 &setup_DNS();    # setup DNS
 
             }
-            $service = "nfsserver";
-            if ($servicelist->{$service} == 1)
+            if ($servicelist->{"nfsserver"} == 1)
             {
 
                  &setup_NFS($nodename);    # setup NFS
@@ -169,8 +163,7 @@ sub init_plugin
                 }
 
             }
-	         my $service = "ipforward";
-            if ($servicelist->{$service} == 1)
+            if ($servicelist->{"ipforward"} == 1)
 	         {
 	           # enable ip forwarding 
 	            xCAT::NetworkUtils->setup_ip_forwarding(1); 
@@ -181,8 +174,7 @@ sub init_plugin
             #
             if (xCAT::Utils->isLinux())
             {
-                my $service = "dhcpserver";
-                if ($servicelist->{$service} == 1)
+                if ($servicelist->{"dhcpserver"} == 1)
                 {
 
                     &setup_DHCP($nodename);    # setup DHCP
@@ -540,15 +532,6 @@ sub setup_DHCP
     my $snonly = 0;
     # read the disjointdhcps attribute to determine if we will setup
     # dhcp for all nodes or just for the nodes service by this service node
-    #my $sitetab = xCAT::Table->new('site');
-    #if ($sitetab)
-    #{
-    #    my $href;
-    #    ($href) = $sitetab->getAttribs({key => 'disjointdhcps'}, 'value');
-    #    if ($href and $href->{value}) {
-    #        $snonly=$href->{value};
-    #    }
-    #}
     my @hs = xCAT::TableUtils->get_site_attribute("disjointdhcps");
     my $tmp = $hs[0];
     if(defined($tmp)) {
