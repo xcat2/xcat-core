@@ -2092,7 +2092,7 @@ my @nodeattrs = (
 #  storage table     #
 ######################
                 {attr_name => 'osvolume',
-                 tabentry => 'storge.osvolume',
+                 tabentry => 'storage.osvolume',
                  access_tabentry => 'storage.node=attr:node',
                 },
 ######################
