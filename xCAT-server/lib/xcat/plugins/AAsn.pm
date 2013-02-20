@@ -520,7 +520,8 @@ sub setup_CONS
 =head3 setup_DHCP 
 
     Sets up DHCP services  
-
+    If on the Management node, just check if running and if not start it.
+    On Service nodes do full setup based on site.disjointdhcps setting
 =cut
 
 #-----------------------------------------------------------------------------
@@ -530,6 +531,19 @@ sub setup_DHCP
     my $rc = 0;
     my $cmd;
     my $snonly = 0;
+    # if on the MN check to see if dhcpd is running, and start it if not.
+    if (xCAT::Utils->isMN()) { # on the MN
+        my @output = xCAT::Utils->runcmd("service dhcpd status", -1);
+        if ($::RUNCMD_RC != 0)  { # not running
+          $rc = xCAT::Utils->startService("dhcpd");
+          if ($rc != 0)
+          {
+            return 1;
+          }
+        }
+        return 0;
+    }
+
     # read the disjointdhcps attribute to determine if we will setup
     # dhcp for all nodes or just for the nodes service by this service node
     my @hs = xCAT::TableUtils->get_site_attribute("disjointdhcps");
