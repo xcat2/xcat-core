@@ -815,7 +815,7 @@ sub fork_fanout_dcp
         my @dcp_command;
         my $rsyncfile;
 
-        if (!$$target_properties{'localhost'})
+        if (!$$target_properties{'localhost'})  # this is to a remote host
         {
             my $target_type = $$target_properties{'type'};
 
@@ -869,21 +869,25 @@ sub fork_fanout_dcp
             my $localhost=0;   # this is from the MN to another node 
             @dcp_command =
               $remoteshell->remote_copy_command(\%rcp_config, $remote_copy);
+            # add sudo  for non-root users
+            if ($$options{'sudo'}) {
+                  unshift (@dcp_command,'sudo'); 
+            }
 
         }
         else  # this is the local host ( running on the Management Node)
         {
             if ($$options{'destDir_srcFile'}{$user_target})
             {
-            my $target_type = $$target_properties{'type'};
+             my $target_type = $$target_properties{'type'};
 
-            my %rcp_config = ();
+             my %rcp_config = ();
 
-            my $remote_copy;
-            my $rsh_extension = 'RSH';
+             my $remote_copy;
+             my $rsh_extension = 'RSH';
 
-            if ($target_type eq 'node')
-            {
+             if ($target_type eq 'node')
+             {
                 $remote_copy =
                      $$options{'node-rcp'}{$$target_properties{'context'}}
                   || $$target_properties{'remote-copy'};
@@ -891,10 +895,10 @@ sub fork_fanout_dcp
                 ($remote_copy =~ /\/rsync$/) && ($rsh_extension = 'RSYNC');
                 $rcp_config{'options'} =
                   $$options{'node-options'}{$$target_properties{'context'}};
-            }
+             }
 
-            $rcp_config{'preserve'}  = $$options{'preserve'};
-            $rcp_config{'recursive'} = $$options{'recursive'};
+             $rcp_config{'preserve'}  = $$options{'preserve'};
+             $rcp_config{'recursive'} = $$options{'recursive'};
 
 
              $rcp_config{'src-file'}  = $$options{'source'};
@@ -905,20 +909,19 @@ sub fork_fanout_dcp
              $rcp_config{'destDir_srcFile'} =
                   $$options{'destDir_srcFile'}{$user_target};
 
-            #eval "require RemoteShell::$rsh_extension";
-            eval "require xCAT::$rsh_extension";
-            my $remoteshell = "xCAT::$rsh_extension";
-            # HERE: Build the dcp command based on the arguments
-            my $localhost=1;   # this is on the MN to the MN
-            @dcp_command =
+             eval "require xCAT::$rsh_extension";
+             my $remoteshell = "xCAT::$rsh_extension";
+             # HERE: Build the dcp command based on the arguments
+             my $localhost=1;   # this is on the MN to the MN
+             @dcp_command =
               $remoteshell->remote_copy_command(\%rcp_config, $remote_copy,$localhost);
                 
-            }
-            else    # just a copy not a sync
-            {
+             }
+             else    # just a copy not a sync
+             {
                 @dcp_command =
                   ('/bin/cp', '-r', $$options{'source'}, $$options{'target'});
-            }
+             }
         }
 
         my $rsp = {};
@@ -4238,7 +4241,7 @@ sub usage_dcp
 {
     ### usage message
     my $usagemsg1 = " xdcp -h \n xdcp -q\n xdcp -V \n xdcp <noderange>\n";
-    my $usagemsg2 = "      [-B bypass] [-c] [-f fanout] [-l user_ID]\n";
+    my $usagemsg2 = "      [-B bypass] [-c] [-f fanout] [-l user_ID] [--sudo]\n";
     my $usagemsg3 =
       "      [-m] [-o options] [-p] [-P] [-q] [-Q] [-r node_remote_copy]\n";
     my $usagemsg4 =
@@ -4347,7 +4350,8 @@ sub parse_and_run_dcp
                     'T|trace'          => \$options{'trace'},
                     'V|version'        => \$options{'version'},
                     'devicetype=s'     => \$options{'devicetype'},
-                    'nodestatus|nodestatus' => \$options{'nodestatus'},            
+                    'nodestatus|nodestatus' => \$options{'nodestatus'},        
+                    'sudo|sudo' => \$options{'sudo'},            
                     'X:s'              => \$options{'ignore_env'}
         )
       )
