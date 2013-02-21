@@ -675,18 +675,18 @@ sub tabdb
 	my $field = shift;
    my $blankok = shift;
    
-   
-   if( %::GLOBAL_TAB_HASH && defined( $::GLOBAL_TAB_HASH{$table}) && defined( $::GLOBAL_TAB_HASH{$table}{$key}) ) {
+
+   if( defined( %::GLOBAL_TAB_HASH) && defined( $::GLOBAL_TAB_HASH{$table} ) ) {
+        if( !defined( $::GLOBAL_TAB_HASH{$table}{$key}) ) {
+            return "''";   
+        }
+            
         if( defined($::GLOBAL_TAB_HASH{$table}{$key}{$field}) ) {
              return "'".$::GLOBAL_TAB_HASH{$table}{$key}{$field}."'";
         } else {
-             my $msg;
-             if( $field !~ /^(routenames)$/) {
-             #if( $blankok != 1) {
-                 #$msg="\necho \"Warning! The $table.$field was NOT got. Please Check the node defintion and the template file mypostscript.tmpl. If the attribute will be used in your scripts, you need to define it on the Management Node firstly. If the attribute will not be used, you can ignore this message\"";
-             }
-             return $msg;
+            return "''";   
         }
+       
    }
 
     my $tabh = xCAT::Table->new($table);
@@ -863,9 +863,9 @@ my $profile;
 my $arch;
 my $provmethod;
 my $mn;
-%::GLOBAL_TAB_HASH = ();
-%::GLOBAL_SN_HASH = ();
-%::GLOBAL_TABDUMP_HASH = ();
+%::GLOBAL_TAB_HASH;
+%::GLOBAL_SN_HASH;
+%::GLOBAL_TABDUMP_HASH;
 
 sub subvars_for_mypostscript { 
   my $self         = shift;
@@ -1154,22 +1154,13 @@ sub subvars_for_mypostscript {
   $inc =~ s/tabdump\(([\w]+)\)/tabdump($1)/eg;
   $inc =~ s/#Subroutine:([^:]+)::([^:]+)::([^:]+):([^#]+)#/subroutine($1,$2,$3,$4)/eg;
 
-  #$inc =~ s/^([^#]+)=[\s]*export $1//eg;
-  #remove the variable which equal blank.
-  my @lines = split("\n", $inc);  
-  my $line;
-  foreach $line ( @lines ) {
-      if( $line =~ /^([^#]+)=[\s]*$/ ) {
-         my $key=$1; 
-          $inc  =~  s/$key=([\s\n]+)/$key=''\n/g;
-          #$inc  =~  s/$key=([\s\n]+)//g;
-          #$inc  =~  s/export $key//g;
-      } 
-  } 
-
   print $script $inc;    
   close($script_fp{$node});
   }
+  
+  undef(%::GLOBAL_TAB_HASH);
+  undef(%::GLOBAL_SN_HASH);
+  undef(%::GLOBAL_TABDUMP_HASH);
   return 0;
 }
 
@@ -1771,7 +1762,7 @@ sub  collect_all_attribs_for_tables_in_template
            
             my $ent;
             my $bynode=0;
-            if ($key eq "THISNODE" or $key eq '$NODE') {
+            #if ($key eq "THISNODE" or $key eq '$NODE') {
                 if( $tabname =~ /^noderes$/ ) {
                     @attribs = (@attribs, "netboot", "tftpdir"); ## add the attribs which will be needed in other place.
                 } 
@@ -1808,7 +1799,7 @@ sub  collect_all_attribs_for_tables_in_template
                                    }
 
                               }
-                         }
+                         } else { 
 
                          # for noderes.nfsserver and  noderes.tftpserver    
                          if( defined($::GLOBAL_TAB_HASH{noderes}) && defined ($::GLOBAL_TAB_HASH{noderes}{$node} )
@@ -1819,13 +1810,19 @@ sub  collect_all_attribs_for_tables_in_template
                                     if(!defined ($::GLOBAL_TAB_HASH{noderes}{$node}{tftpserver}) ) {
                                         $::GLOBAL_TAB_HASH{noderes}{$node}{tftpserver} = $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster};
                                     }
+                         } else {
+                              foreach my $attrib (@attribs) {
+                                  $::GLOBAL_TAB_HASH{$tabname}{$node}{$attrib} = '';
+                              } 
                          }
+
+                         } 
 
                   }
    
             } 
             $tabh->close;
-        }     
+        #}     
     }
    
   }
