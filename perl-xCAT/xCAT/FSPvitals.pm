@@ -116,7 +116,7 @@ sub enumerate_lcds {
     } else {
        my @array =  split(/\n/, $data);
        foreach my $a (@array) {
-            if ($a !~ /:\s*\d/) {
+            if ($a !~ /:\s?[^\s]*\s?[0|1]/) {
                 next;
             }
             my @t = split(/:/, $a);
