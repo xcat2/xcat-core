@@ -108,6 +108,11 @@ if [ $OSPKGDIR == $default_pkgdir ]; then
             OSPKGDIR="$OSPKGDIR/Server"
         fi
     fi
+    if ( pmatch "$OSVER" "sles*" ); then
+        OSPKGDIR="$OSPKGDIR/1"
+    elif ( pmatch "$OSVER" "SL5*" ); then
+        OSPKGDIR="$OSPKGDIR/SL"
+    fi
 fi
 
 
