@@ -813,9 +813,18 @@ sub mkinitrd_dracut {
         xdie "the mode: $mode is not supported by genimage";
     }
 
-    system("chroot $rootimg_dir dracut -f /tmp/initrd.$$.gz $kernelver");
+    my $additional_options=undef;
+    if($rootlimit)
+    {
+	open(my $ETC_CMDLINE,">","$rootimg_dir/tmp/cmdline");
+	print $ETC_CMDLINE qq{rootlimit=$rootlimit\n};
+	close $ETC_CMDLINE;
+	$additional_options= qq{--include /tmp/cmdline /etc/cmdline};
+    }
+
+    system("chroot $rootimg_dir dracut $additional_options -f /tmp/initrd.$$.gz $kernelver");
     print "the initial ramdisk for $mode is generated successfully.\n";
-    move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd-$mode.gz");
+    move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd-$mode.gz"); 
 }
 
 sub mkinitrd {
