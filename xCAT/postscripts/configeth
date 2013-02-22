@@ -28,10 +28,16 @@ my $netmask ='';
 my $ipaddr = '';
 my $nic_num = '';
 my $subnet = '';
+my $gateway = ''; # this is only used for ipv6, ipv4 gateway is assigned by dhcp
+my $ipv4nic = 0;
 my $nic_net = '';
 my $net_name = '';
-my @nic_nets = (); # array of networks for this nic
-my @nic_ips =();   # array of ipaddresses for this nic
+my @nic_nets_all = (); # array of all networks for this nic
+my @nic_nets4 = (); # array of ipv4 networks for this nic
+my @nic_nets6 = (); # array of ipv6 networks for this nic
+my @nic_ips_all =();   # array of all ip addresses for this nic
+my @nic_ips4 =();   # array of ipv4 addresses for this nic
+my @nic_ips6 =();   # array of ipv6 addresses for this nic
 my @networks = (); # array of all networks from networks table.
                    # { network_name, subnet, netmask }
 
@@ -52,7 +58,9 @@ while ( $cnt <= $net_cnt ) {
     $subnet = $1;
     $net_info =~ /mask=([^\|]*)\|\|/;
     $netmask = $1;
-    push @{ $networks[$cnt-1] }, ($net_name, $subnet, $netmask);
+    $net_info =~ /gateway=([^\|]*)\|\|/;
+    $gateway = $1;
+    push @{ $networks[$cnt-1] }, ($net_name, $subnet, $netmask, $gateway);
     $cnt +=1; 
 }
 
@@ -67,11 +75,35 @@ foreach my $nic_networks (split(/,/,$nicnetworks)) {
         @net = split(/:/,$nic_networks);
     }
     if ($net[0] eq $nic) {
-        @nic_nets = split(/\|/,$net[1]);
+        @nic_nets_all = split(/\|/,$net[1]);
         last;
     }
 }
 
+# Put all ipv4 nets into nic_nets4,
+# put all ipv6 nets into nic_nets6.
+my $i = 0;
+for ($i=0; $i < (scalar @nic_nets_all) ; $i++ ) {
+    # The network name itself does not indicate ipv4 or ipv6
+    # should use the subnet to determine.
+    # Do not use foreach (@networks), needs to keep the order of nets and ips
+    my $net = $nic_nets_all[$i];
+    foreach my $netinfo (@networks)
+    {
+        if ($netinfo->[0] eq $net)
+        {
+            if ($netinfo->[1] =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
+            {
+                push @nic_nets4, $net;
+            } elsif ($netinfo->[1] =~ /:/) {
+                push @nic_nets6, $net;
+            } else {
+                system("logger -t xcat -p local4.err  'The subnet $net is not valid.'");
+            }
+            last;
+        }
+    }
+}
 # get all nic ipaddress from $nicips: i.e. eth0:1.0.0.1|2.0.0.1,eth1:1.1.1.1
 # Then get all ips for this specific nic, i.e. eth0.
 foreach my $ips (split(/,/,$nicips)) {
@@ -82,12 +114,29 @@ foreach my $ips (split(/,/,$nicips)) {
         @ip = split(/:/,$ips);
     }
     if ($ip[0] eq $nic ) {
-        @nic_ips = split(/\|/,$ip[1]);
+        @nic_ips_all = split(/\|/,$ip[1]);
     }
 }
 
-my $i;
-for ($i=0; $i < (scalar @nic_ips) ; $i++ ) {
+# Put all ipv4 addresses in @nic_ips4,
+# put all ipv6 addresses in @nic_ips6.
+# Do not use forach, needs to keep the order of networks and ips
+for ($i=0; $i < (scalar @nic_ips_all) ; $i++ ) {
+    my $ip = $nic_ips_all[$i];
+    # ipv4 address
+    if ($ip =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/) {
+        push @nic_ips4, $ip;
+    } elsif ($ip =~ /:/) { # ipv6
+        push @nic_ips6, $ip;
+    } else {
+        system("logger -t xcat -p local4.err  'configeth: The ip address $ip is not valid.'");
+    }
+}
+
+for ($i=0; $i < (scalar @nic_ips4) ; $i++ ) {
+
+    # ipv6 configuration needs to know if this nic as ipv4 configured
+    $ipv4nic = 1;
 
     # Time to create the interfaces.
     # loop through the nic networks, find the matching networks to get the
@@ -103,7 +152,7 @@ for ($i=0; $i < (scalar @nic_ips) ; $i++ ) {
     $netmask = "";
     $net_name = "";
     while ( $cnt < $net_cnt ) {
-        if ( $networks[$cnt][0] eq $nic_nets[$i] ) {
+        if ( $networks[$cnt][0] eq $nic_nets4[$i] ) {
         
             $subnet = $networks[$cnt][1];
             $netmask = $networks[$cnt][2];
@@ -122,14 +171,14 @@ for ($i=0; $i < (scalar @nic_ips) ; $i++ ) {
 
     if ($^O =~ /^aix/i) {
         if ($i == 0) {
-            if ($nic_ips[$i] =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/) {
-                runcmd("chdev -l '$nic' -a netaddr=$nic_ips[$i] -a netmask=$netmask -a state='up'");
+            if ($nic_ips4[$i] =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/) {
+                runcmd("chdev -l '$nic' -a netaddr=$nic_ips4[$i] -a netmask=$netmask -a state='up'");
     #       } else { #ipv6
     #           runcmd("autoconf6 -6i en$nic_num");
             }
         } else {
-            if ($nic_ips[$i] =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/) {
-                runcmd("chdev -l '$nic' -a alias4=$nic_ips[$i],$netmask");
+            if ($nic_ips4[$i] =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/) {
+                runcmd("chdev -l '$nic' -a alias4=$nic_ips4[$i],$netmask");
     #       } else { #ipv6
     #           runcmd("autoconf6 -6i en$nic_num");
             }
@@ -147,7 +196,7 @@ for ($i=0; $i < (scalar @nic_ips) ; $i++ ) {
             print FILE "BOOTPROTO=\'static\'\n";
             print FILE "BROADCAST=\'\'\n";
             print FILE "ETHTOOL_OPTIONS=\'\'\n";
-            print FILE "IPADDR=\'".$nic_ips[$i]."\'\n";
+            print FILE "IPADDR=\'".$nic_ips4[$i]."\'\n";
             print FILE "MTU=\'\'\n";
             print FILE "NAME=\'\'\n";
             print FILE "NETMASK=\'".$netmask."\'\n";
@@ -163,7 +212,7 @@ for ($i=0; $i < (scalar @nic_ips) ; $i++ ) {
             # open ifconfig-eth file and append additional info.
             if (!open(FILE, ">>$dir/ifcfg-$nic")) { system("logger -t xcat -p local4.err 'configeth: cannot open $dir/ifcfg-$nic for appending ip alias info'"); exit 1; }
                 
-            print FILE "IPADDR_$i=\'".$nic_ips[$i]."\'\n";
+            print FILE "IPADDR_$i=\'".$nic_ips4[$i]."\'\n";
             print FILE "NETMASK_$i=\'".$netmask."\'\n";
             print FILE "NETWORK_$i=\'".$subnet."\'\n";
             print FILE "LABEL_$i=\'".$i."\'\n";
@@ -177,7 +226,7 @@ for ($i=0; $i < (scalar @nic_ips) ; $i++ ) {
         if (!open(FILE, ">$dir/ifcfg-$specific_nic")) { system("logger -t xcat -p local4.err 'configeth: cannot open $dir/ifcfg-$specific_nic.'"); exit 1; }
         print FILE "DEVICE=$specific_nic\n";
         print FILE "BOOTPROTO=none\n";
-        print FILE "IPADDR=$nic_ips[$i]\n";
+        print FILE "IPADDR=$nic_ips4[$i]\n";
         print FILE "NETMASK=$netmask\n";
         #if (defined($gateway)) { print FILE "GATEWAY=$gateway\n"; }
         print FILE "ONBOOT=yes\n";
@@ -186,6 +235,123 @@ for ($i=0; $i < (scalar @nic_ips) ; $i++ ) {
         runcmd("$dir/ifup $specific_nic");
     }
 #    system("logger -t xcat -p local4.info 'configeth: successfully configured $specific_nic.'");
+}
+
+
+# ipv6 configuration
+# ipv6 address does not use the nic alias like eth0:1,
+# should use the main nic like eth0
+my $configured = 0;
+for ($i=0; $i < (scalar @nic_ips6) ; $i++ )
+{
+    # Get the network information: netname, subnet, netmask
+    my $found = 0;
+    my $subnet;
+    my $prefixlen;
+    my $ipv6gateway;
+    my $ip6addr = $nic_ips6[$i];
+    my $net = $nic_nets6[$i];
+    foreach my $netinfo (@networks)
+    {
+        if ($netinfo->[0] eq $net)
+        { 
+            $found = 1;
+            $subnet = $netinfo->[1];
+            $prefixlen = $netinfo->[2];
+            $ipv6gateway = $netinfo->[3];
+        }
+        # Remove the postfix like /64 from subnet
+        if ($subnet && ($subnet =~ /\//)) {
+            $subnet =~ s/\/.*$//;
+        }
+
+        # Remove the "/" from prefixlen
+        if ($prefixlen && ($prefixlen =~ /^\//))
+        {
+            $prefixlen =~ s/^\///;
+        }
+    }
+    if ($found == 0)
+    {
+        system("logger -t xcat -p local4.err 'configeth: Could not find network entry for ip address $ip6addr'");
+        next;
+    }
+
+    if ($^O =~ /^aix/i) {
+        if (!$configured)
+        {
+            runcmd("chdev -l en0 -a netaddr6=$ip6addr -a prefixlen=$prefixlen -a state=up");
+            $configured = 1;
+        } else {
+            runcmd("chdev -l en0 -a alias6=$ip6addr/$prefixlen");
+        }
+    } elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /sles|suse/i)) || (-f "/etc/SuSE-release")) {
+        my $dir = "/etc/sysconfig/network";
+        # If there are only ipv6 addresses on this nic,
+        # needs to flush the ifcfg-$nic file when configuring the first ipv6 addr,
+        # to avoid duplicate entries when run confignics/configeth multiple times.
+        if (!$ipv4nic && !$configured)
+        {
+            if (!open(FILE, ">$dir/ifcfg-$nic")) {
+                system("logger -t xcat -p local4.err 'configeth: cannot open $dir/ifcfg-$nic.'");
+                exit 1;
+            }
+            print FILE "DEVICE=$nic\n";
+            print FILE "BOOTPROTO=static\n";
+            print FILE "STARTMODE=onboot\n";
+        } else {
+            if (!open(FILE, ">>$dir/ifcfg-$nic")) {
+                system("logger -t xcat -p local4.err 'configeth: cannot open $dir/ifcfg-$nic.'");
+                exit 1;
+            }
+        }
+        # Use the label=ipv6$i in ifcfg-ethx file, like ipv60, ipv61
+        print FILE "LABEL_ipv6$i=ipv6$i\n";
+        print FILE "IPADDR_ipv6$i=$ip6addr\n";
+        print FILE "PREFIXLEN_ipv6$i=$prefixlen\n";
+        close FILE;
+        if ($ipv6gateway && $ipv6gateway !~ /xcatmaster/) {
+            # Do not add duplicate entries
+            `grep -E "default\\s+$ipv6gateway\\s+" /etc/sysconfig/network/routes 2>&1 1>/dev/null`;
+            if ($? != 0) {
+            `echo "default $ipv6gateway - -" >> /etc/sysconfig/network/routes`;
+            }
+        }
+        runcmd("ifup $nic");
+    } else {
+        # Ubuntu TODO
+        my $dir = "/etc/sysconfig/network-scripts";
+        # If there are only ipv6 addresses on this nic,
+        # needs to flush the ifcfg-$nic file when configuring the first ipv6 addr,
+        # to avoid duplicate entries when run confignics/configeth multiple times.
+        if (!$ipv4nic && !$configured)
+        {
+            if (!open(FILE, ">$dir/ifcfg-$nic")) { 
+                system("logger -t xcat -p local4.err 'configeth: cannot open $dir/ifcfg-$nic.'"); 
+                exit 1;
+            }
+            print FILE "DEVICE=$nic\n";
+            print FILE "BOOTPROTO=static\n";
+            print FILE "ONBOOT=yes\n";
+        } else {
+            if (!open(FILE, ">>$dir/ifcfg-$nic")) { 
+                system("logger -t xcat -p local4.err 'configeth: cannot open $dir/ifcfg-$nic.'"); 
+                exit 1;
+            }
+        }
+        if (!$configured) {
+            print FILE "IPV6INIT=yes\n";
+            print FILE "IPV6ADDR=$ip6addr/$prefixlen\n";
+            $configured = 1;
+        } else {
+            print FILE "IPV6ADDR_SECONDARIES=$ip6addr/$prefixlen\n";
+        }
+        if ($ipv6gateway && $ipv6gateway !~ /xcatmaster/) {
+            print FILE "IPV6_DEFAULTGW=$ipv6gateway\n";
+        }
+        close FILE;
+        runcmd("$dir/ifup $nic");
+    }
 }
 exit 0;
 
@@ -197,7 +363,7 @@ sub runcmd {
 	if ($rc) {
 		system("logger -t xcat -p local4.err 'configeth: command $cmd failed with rc $rc: " . join('',@output) . "'");
 		my $errout= "configeth: command $cmd failed with rc $rc.";
-                echo $errout;
+                `echo $errout`;
 		exit $rc;
 	}
 }
