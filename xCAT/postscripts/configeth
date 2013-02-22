@@ -350,7 +350,7 @@ for ($i=0; $i < (scalar @nic_ips6) ; $i++ )
             print FILE "IPV6_DEFAULTGW=$ipv6gateway\n";
         }
         close FILE;
-        runcmd("$dir/ifup $nic");
+        runcmd("$dir/ifup-ipv6 $nic");
     }
 }
 exit 0;
