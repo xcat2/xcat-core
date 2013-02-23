@@ -1549,6 +1549,10 @@ sub changeVM {
             # Sleep 2 seconds to let the system settle
             sleep(2);
 
+            # Automatically create a partition using the entire disk
+            xCAT::zvmUtils->printLn( $callback, "$tgtNode: Creating a partition using the entire disk ($tgtDevNode)" );
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/fdasd -a /dev/$tgtDevNode"`;
+            
             # Copy source disk to target disk (4096 block size)
             xCAT::zvmUtils->printLn( $callback, "$tgtNode: Copying source disk ($srcDevNode) to target disk ($tgtDevNode)" );
             $out = `ssh $::SUDOER\@$hcp "$::SUDO /bin/dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=4096"`;
@@ -1686,6 +1690,10 @@ sub changeVM {
                 xCAT::zvmUtils->printLn( $callback, "$tgtNode: $out" );
                 return;
             }
+            
+            # Automatically create a partition using the entire disk
+            xCAT::zvmUtils->printLn( $callback, "$tgtNode: Creating a partition using the entire disk ($tgtDevNode)" );
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/fdasd -a /dev/$tgtDevNode"`;
 
             # Sleep 2 seconds to let the system settle
             sleep(2);
@@ -4111,7 +4119,7 @@ sub clone {
             # Only ECKD disks need to be formated
             if ($tgtDiskType eq '3390') {
                 xCAT::zvmUtils->printLn( $callback, "$tgtNode: Formating target disk ($tgtAddr)" );
-                $out = `ssh $::SUDOER\@$hcp "$::SUDO dasdfmt -b 4096 -y -f /dev/$tgtDevNode"`;
+                $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/dasdfmt -b 4096 -y -f /dev/$tgtDevNode"`;
 
                 # Check for errors
                 $rc = xCAT::zvmUtils->checkOutput( $callback, $out );
@@ -4126,7 +4134,11 @@ sub clone {
     
                 # Sleep 2 seconds to let the system settle
                 sleep(2);
-            
+                            
+                # Automatically create a partition using the entire disk
+                xCAT::zvmUtils->printLn( $callback, "$tgtNode: Creating a partition using the entire disk ($tgtDevNode)" );
+                $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/fdasd -a /dev/$tgtDevNode"`;
+                
                 # Copy source disk to target disk
                 xCAT::zvmUtils->printLn( $callback, "$tgtNode: Copying source disk ($srcAddr) to target disk ($tgtAddr)" );
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO /bin/dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=4096"`;
@@ -4149,6 +4161,13 @@ EOM"`;
             $rc = xCAT::zvmUtils->checkOutput( $callback, $out );
             if ( $rc == -1 ) {
                 xCAT::zvmUtils->printLn( $callback, "$tgtNode: $out" );
+                
+                # Disable disks
+                $out = xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-d", $tgtAddr );
+
+                # Detatch disks from zHCP
+                $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp det $tgtAddr"`;
+
                 return;
             }
 
@@ -4170,11 +4189,11 @@ EOM"`;
             my $cloneMntPt = "/mnt/$tgtUserId";
             
             # Disk can contain more than 1 partition. Find the right one (not swap)
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO /usr/bin/file -s /dev/$tgtDevNode*" | grep -v swap | grep -o '$tgtDevNode\[0-9\]'`;
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO /usr/bin/file -s /dev/$tgtDevNode*" | grep -v swap | grep -o "$tgtDevNode\[0-9\]"`;
             my @tgtDevNodes = split( "\n", $out );
             my $iTgtDevNode = 0;
             $tgtDevNode = xCAT::zvmUtils->trimStr($tgtDevNodes[$iTgtDevNode]);
-
+            
             xCAT::zvmUtils->printLn( $callback, "$tgtNode: Mounting /dev/$tgtDevNode to $cloneMntPt" );
 
             # Check the disk is mounted
