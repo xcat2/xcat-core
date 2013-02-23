@@ -592,6 +592,7 @@ sub _execute_dsh
                         xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
                         $rsp = {};
                         push @{$rsp->{error}}, @{$error_buffers{$user_target}};
+                        $rsp->{NoErrorPrefix} = 1;
                         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK,0);
                     }
                 }
@@ -607,6 +608,7 @@ sub _execute_dsh
                     xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
                     $rsp = {};
                     push @{$rsp->{error}}, @{$error_buffers{$user_target}};
+                    $rsp->{NoErrorPrefix} = 1;
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK,0);
 
                 }
