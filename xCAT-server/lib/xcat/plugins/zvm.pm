@@ -1555,7 +1555,7 @@ sub changeVM {
             
             # Copy source disk to target disk (4096 block size)
             xCAT::zvmUtils->printLn( $callback, "$tgtNode: Copying source disk ($srcDevNode) to target disk ($tgtDevNode)" );
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO /bin/dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=4096"`;
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO /bin/dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=4096 oflag=sync"`;
 
             # Disable disks
             $out = xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-d", $tgtLinkAddr );
@@ -4134,19 +4134,19 @@ sub clone {
     
                 # Sleep 2 seconds to let the system settle
                 sleep(2);
-                            
+                
                 # Automatically create a partition using the entire disk
                 xCAT::zvmUtils->printLn( $callback, "$tgtNode: Creating a partition using the entire disk ($tgtDevNode)" );
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/fdasd -a /dev/$tgtDevNode"`;
                 
                 # Copy source disk to target disk
                 xCAT::zvmUtils->printLn( $callback, "$tgtNode: Copying source disk ($srcAddr) to target disk ($tgtAddr)" );
-                $out = `ssh $::SUDOER\@$hcp "$::SUDO /bin/dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=4096"`;
+                $out = `ssh $::SUDOER\@$hcp "$::SUDO /bin/dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=4096 oflag=sync"`;
             } else {
                 # Copy source disk to target disk
                 # Block size = 512
                 xCAT::zvmUtils->printLn( $callback, "$tgtNode: Copying source disk ($srcAddr) to target disk ($tgtAddr)" );
-                $out = `ssh $::SUDOER\@$hcp "$::SUDO /bin/dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=512"`;
+                $out = `ssh $::SUDOER\@$hcp "$::SUDO /bin/dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=512 oflag=sync"`;
                 
                 # Force Linux to re-read partition table
                 xCAT::zvmUtils->printLn( $callback, "$tgtNode: Forcing Linux to re-read partition table" );
@@ -4340,10 +4340,10 @@ EOM"`;
             $out = `ssh $::SUDOER\@$hcp "$::SUDO rm -f $cloneMntPt/etc/ssh/ssh_host_*"`;
 
             # Flush disk
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO sync"`;
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO /bin/sync"`;
 
             # Unmount disk
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO umount $cloneMntPt"`;
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO /bin/umount $cloneMntPt"`;
 
             # Remove mount point
             $out = `ssh $::SUDOER\@$hcp "$::SUDO rm -rf $cloneMntPt"`;
