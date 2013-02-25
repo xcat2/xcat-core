@@ -3202,6 +3202,11 @@ sub cloneVM {
     my $sourceId = $propVals->{'userid'};
     # Capitalize user ID
     $sourceId =~ tr/a-z/A-Z/;
+    
+    # Get operating system, e.g. sles11sp2 or rhel6.2
+    @propNames = ( 'os' );
+    $propVals = xCAT::zvmUtils->getNodeProps( 'nodetype', $sourceNode, @propNames );
+    my $srcOs = $propVals->{'os'};
 
     foreach (@nodes) {
         xCAT::zvmUtils->printLn( $callback, "$_: Cloning $sourceNode" );
@@ -3221,6 +3226,12 @@ sub cloneVM {
         # Exit if missing source user ID
         if ( !$sourceId ) {
             xCAT::zvmUtils->printLn( $callback, "$_: (Error) Missing source user ID" );
+            return;
+        }
+        
+        # Exit if missing source operating system
+        if ( !$srcOs ) {
+            xCAT::zvmUtils->printLn( $callback, "$_: (Error) Missing source operating system" );
             return;
         }
 
@@ -3286,11 +3297,8 @@ sub cloneVM {
     my @words;
     my $addr;
     my $type;
-    my $srcMultiPw;
     my $linkAddr;
-
-    # Load vmcp module
-    xCAT::zvmCPUtils->loadVmcp($::SUDOER, $sourceNode);
+    my $i;
 
     # Hash table of source disk addresses
     # $srcLinkAddr[$addr] = $linkAddr
@@ -3300,15 +3308,19 @@ sub cloneVM {
     # Hash table of source disk type
     # $srcLinkAddr[$addr] = $type
     my %srcDiskType;
-
     my @srcDisks = xCAT::zvmUtils->getMdisks( $callback, $::SUDOER, $sourceNode );
+        
+    # Get details about source disks
+    # Output is similar to:
+    #   MDISK=VDEV=0100 DEVTYPE=3390 START=0001 COUNT=10016 VOLID=EMC2C4 MODE=MR        
+    $out = `ssh $::SUDOER\@$srcHcp "$::SUDO $::DIR/smcli Image_Definition_Query_DM -T $sourceId -k MDISK"`;
+    my $srcDiskDet = xCAT::zvmUtils->trimStr($out);
     foreach (@srcDisks) {
 
         # Get disk address
         @words      = split( ' ', $_ );
         $addr       = $words[1];
         $type       = $words[2];
-        $srcMultiPw = $words[9];
 
         # Add 0 in front if address length is less than 4
         while (length($addr) < 4) {
@@ -3320,10 +3332,19 @@ sub cloneVM {
 
         # Get disk size (cylinders or blocks)
         # ECKD or FBA disk
-        if ( $type eq '3390' || $type eq '9336' ) {
-            $out                = `ssh -o ConnectTimeout=5 $::SUDOER\@$sourceNode "/sbin/vmcp q v dasd" | grep "DASD $addr"`;
-            @words              = split( ' ', $out );
-            $srcDiskSize{$addr} = xCAT::zvmUtils->trimStr( $words[5] );
+        if ( $type eq '3390' || $type eq '9336' ) {                
+		    my @lines = split( '\n', $srcDiskDet );
+		    
+		    # Loop through each line
+		    for ( $i = 0 ; $i < @lines ; $i++ ) {		                
+		        $lines[$i] =~ s/MDISK=//g;
+		        
+		        # Extract NIC address
+		        @words = ($lines[$i] =~ m/=(\S+)/g);
+		        my $srcDiskAddr = $words[0];
+
+                $srcDiskSize{$srcDiskAddr} = $words[3];
+		    }
         }
 
         # If source disk is not linked
@@ -3352,7 +3373,7 @@ sub cloneVM {
             foreach (@nodes) {
                 xCAT::zvmUtils->printLn( $callback, "$_: Linking source disk ($addr) as ($linkAddr)" );
             }
-            $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$srcHcp "$::SUDO /sbin/vmcp link $sourceId $addr $linkAddr RR $srcMultiPw"`;
+            $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$srcHcp "$::SUDO /sbin/vmcp link $sourceId $addr $linkAddr RR"`;
 
             if ( $out =~ m/not linked/i ) {
                 # Do nothing
@@ -3385,13 +3406,17 @@ sub cloneVM {
     
     # Get the NICDEF address of the network on the source node
     my @tmp;
-    my $i;
-    my $hcpNicAddr = '';
+    my $srcNicAddr = '';
     my $hcpNetName = '';
 
     # Find the NIC address
     xCAT::zvmCPUtils->loadVmcp($::SUDOER, $sourceNode);
-    $out = `ssh $::SUDOER\@$sourceNode "/sbin/vmcp q v nic"`;
+    $out = `ssh $::SUDOER\@$srcHcp "$::SUDO $::DIR/smcli Image_Definition_Query_DM -T $sourceId -k NICDEF"`;
+    # Output is similar to:
+    #   NICDEF_PROFILE=VDEV=0800 TYPE=QDIO LAN=SYSTEM SWITCHNAME=VSW2
+    #   NICDEF=VDEV=0900 TYPE=QDIO DEVICES=3 LAN=SYSTEM SWITCHNAME=GLAN1
+    #   NICDEF=VDEV=0A00 TYPE=QDIO DEVICES=3 LAN=SYSTEM SWITCHNAME=VSW2
+    
     my @lines = split( '\n', $out );
     
     # Loop through each line
@@ -3400,48 +3425,47 @@ sub cloneVM {
         # Loop through each network name
         foreach (@hcpNets) {
             # If the network is found
-            if ( $lines[$i] =~ m/ $_/i ) {
+            if ( $lines[$i] =~ m/SWITCHNAME=$_/i ) {
                 # Save network name
                 $hcpNetName = $_;
                 
-                # Get NIC address
-                $line       = xCAT::zvmUtils->trimStr( $lines[ $i - 1 ] );
-                @words      = split( ' ', $line );
-                @tmp        = split( /\./, $words[1] );
-                $hcpNicAddr = $tmp[0];
+                $lines[$i] =~ s/NICDEF_PROFILE=//g;
+                $lines[$i] =~ s/NICDEF=//g;
+                
+                # Extract NIC address
+                @words = ($lines[$i] =~ m/=(\S+)/g);
+                $srcNicAddr = $words[0];
+                
+                # Grab only the 1st match    
                 last;
             }
         }
     }
-        
+            
     # If no network name is found, exit
-    if (!$hcpNetName || !$hcpNicAddr) {
+    if (!$hcpNetName || !$srcNicAddr) {
         #*** Detatch source disks ***
         for $addr ( keys %srcLinkAddr ) {
             $linkAddr = $srcLinkAddr{$addr};
     
             # Disable and detatch source disk
             $out = xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $srcHcp, "-d", $linkAddr );
-            $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$srcHcp "$::SUDO /sbin/vmcp det $linkAddr"`;
+            $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$srcHcp "$::SUDO /sbin/vmcp det $linkAddr"`;            
+            foreach (@nodes) {
+                xCAT::zvmUtils->printLn( $callback, "$_: Detatching source disk ($addr) at ($linkAddr)" );
+            }
         }
         
         foreach (@nodes) {
             xCAT::zvmUtils->printLn( $callback, "$_: (Error) No suitable network device found in user directory entry" );
             xCAT::zvmUtils->printLn( $callback, "$_: (Solution) Verify that the node has one of the following network devices: @hcpNets" );
-            xCAT::zvmUtils->printLn( $callback, "$_: Detatching source disk ($addr) at ($linkAddr)" );
         }
         
         return;
     }
 
-    # Get VSwitch of source node (if any)
-    my @srcVswitch = xCAT::zvmCPUtils->getVswitchId($::SUDOER, $sourceNode);
-
-    # Get device address that is the root partition (/)
-    my $srcRootPartAddr = xCAT::zvmUtils->getRootDeviceAddr($::SUDOER, $sourceNode);
-
-    # Get source node OS
-    my $srcOs = xCAT::zvmUtils->getOs($::SUDOER, $sourceNode);
+    # Get vSwitch of source node (if any)
+    my @srcVswitch = xCAT::zvmCPUtils->getVswitchId($::SUDOER, $srcHcp);
 
     # Get source MAC address in 'mac' table
     my $srcMac;
@@ -3452,35 +3476,7 @@ sub cloneVM {
         # Get MAC address
         $srcMac = $propVals->{'mac'};
     }
-
-    # Get network configuration file
-    # Location of this file depends on the OS
-    my $srcIfcfg = xCAT::zvmUtils->getIfcfgByNic( $::SUDOER, $sourceNode, "0.0." . $hcpNicAddr );
-    if (!$srcIfcfg) {
-        
-        #*** Detatch source disks ***
-        for $addr ( keys %srcLinkAddr ) {
-            $linkAddr = $srcLinkAddr{$addr};
     
-            # Disable and detatch source disk
-            $out = xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $srcHcp, "-d", $linkAddr );
-            $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$srcHcp "$::SUDO /sbin/vmcp det $linkAddr"`;
-        }
-        
-        foreach (@nodes) {
-            xCAT::zvmUtils->printLn( $callback, "$_: (Error) No suitable network configuration file found in Linux directory" );
-            xCAT::zvmUtils->printLn( $callback, "$_: Detatching source disk ($addr) at ($linkAddr)" );
-        }
-        
-        return;
-    }
-    
-    # Get source hardware configuration (SUSE only)
-    my $srcHwcfg = '';
-    if ( $srcOs =~ m/SUSE/i ) {
-        $srcHwcfg = xCAT::zvmUtils->getHwcfg($::SUDOER, $sourceNode);
-    }
-
     # Get user entry of source node
     my $srcUserEntry = "/tmp/$sourceNode.txt";
     $out = `rm $srcUserEntry`;
@@ -3493,8 +3489,10 @@ sub cloneVM {
     if ( $out =~ m/USER $sourceId/i ) {
 
         # Turn off source node
-        $out = `ssh -o ConnectTimeout=10 $sourceNode "shutdown -h now"`;
-        sleep(90);    # Wait 1.5 minutes before logging user off
+        if (`pping $sourceNode` =~ m/ ping/i) {
+            $out = `ssh -o ConnectTimeout=10 $sourceNode "shutdown -h now"`;
+            sleep(90);    # Wait 1.5 minutes before logging user off
+        }
         
         $out = `ssh $::SUDOER\@$srcHcp "$::SUDO $::DIR/smcli Image_Deactivate -T $sourceId -f IMMED"`;
         foreach (@nodes) {
@@ -3516,8 +3514,7 @@ sub cloneVM {
             elsif ( $pid == 0 ) {
                 clone(
                     $callback, $_, $args, \@srcDisks, \%srcLinkAddr, \%srcDiskSize, \%srcDiskType, 
-                    $hcpNicAddr, $hcpNetName, \@srcVswitch, $srcOs, $srcMac, $srcRootPartAddr, $srcIfcfg, 
-                    $srcHwcfg
+                    $srcNicAddr, $hcpNetName, \@srcVswitch, $srcOs, $srcMac
                 );
 
                 # Exit process
@@ -3568,12 +3565,6 @@ sub cloneVM {
         }
     }
 
-    # Turn back on source node
-    $out = `ssh $::SUDOER\@$srcHcp "$::SUDO $::DIR/smcli Image_Activate -T $sourceId"`;
-    foreach (@nodes) {
-        xCAT::zvmUtils->printLn( $callback, "$_: $out" );
-    }
-
     #*** Done ***
     foreach (@nodes) {
         xCAT::zvmUtils->printLn( $callback, "$_: Done" );
@@ -3603,8 +3594,7 @@ sub cloneVM {
                     Path to hardware configuration file (SUSE only)
     Returns     : Nothing
     Example     : clone($callback, $_, $args, \@srcDisks, \%srcLinkAddr, \%srcDiskSize, 
-                    $hcpNicAddr, $hcpNetName, \@srcVswitch, $srcOs, $srcMac, 
-                    $srcRootPartAddr, $srcIfcfg, $srcHwcfg);
+                    $srcNicAddr, $hcpNetName, \@srcVswitch, $srcOs, $srcMac);
     
 =cut
 
@@ -3614,7 +3604,7 @@ sub clone {
     # Get inputs
     my (
         $callback, $tgtNode, $args, $srcDisksRef, $srcLinkAddrRef, $srcDiskSizeRef, $srcDiskTypeRef, 
-        $hcpNicAddr, $hcpNetName, $srcVswitchRef, $srcOs, $srcMac, $srcRootPartAddr, $srcIfcfg, $srcHwcfg
+        $srcNicAddr, $hcpNetName, $srcVswitchRef, $srcOs, $srcMac
       )
       = @_;
 
@@ -3847,7 +3837,6 @@ sub clone {
     my $type;
     my $mode;
     my $cyl;
-    my $srcMultiPw;
     foreach (@srcDisks) {
 
         # Get disk address
@@ -3856,7 +3845,6 @@ sub clone {
         push( @tgtDisks, $addr );
         $type       = $words[2];
         $mode       = $words[6];
-        $srcMultiPw = $words[9];
         
         # Add 0 in front if address length is less than 4
         while (length($addr) < 4) {
@@ -3879,7 +3867,7 @@ sub clone {
                     xCAT::zvmUtils->printLn( $callback, "$tgtNode: Trying again ($try) to add minidisk ($addr)" );
                 }
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw"`;
-
+                
                 # Check output
                 $rc = xCAT::zvmUtils->checkOutput( $callback, $out );
                 if ( $rc == -1 ) {
@@ -4182,87 +4170,97 @@ EOM"`;
         # Determine target device node (it might have changed)
         $tgtDevNode = xCAT::zvmUtils->getDeviceNode($::SUDOER, $hcp, $tgtAddr);
 
-        # Get disk address that is the root partition (/)
-        if ( $_ eq $srcRootPartAddr ) {
-
-            # Mount target disk
-            my $cloneMntPt = "/mnt/$tgtUserId";
+        # Mount device and check if it is the root partition
+        # If it is, then modify the network configuration
+        
+        # Mount target disk
+        my $cloneMntPt = "/mnt/$tgtUserId";
             
-            # Disk can contain more than 1 partition. Find the right one (not swap)
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO /usr/bin/file -s /dev/$tgtDevNode*" | grep -v swap | grep -o "$tgtDevNode\[0-9\]"`;
-            my @tgtDevNodes = split( "\n", $out );
-            my $iTgtDevNode = 0;
-            $tgtDevNode = xCAT::zvmUtils->trimStr($tgtDevNodes[$iTgtDevNode]);
+        # Disk can contain more than 1 partition. Find the right one (not swap)
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO /usr/bin/file -s /dev/$tgtDevNode*" | grep -v swap | grep -o "$tgtDevNode\[0-9\]"`;
+        my @tgtDevNodes = split( "\n", $out );
+        my $iTgtDevNode = 0;
+        $tgtDevNode = xCAT::zvmUtils->trimStr($tgtDevNodes[$iTgtDevNode]);
             
-            xCAT::zvmUtils->printLn( $callback, "$tgtNode: Mounting /dev/$tgtDevNode to $cloneMntPt" );
+        xCAT::zvmUtils->printLn( $callback, "$tgtNode: Mounting /dev/$tgtDevNode to $cloneMntPt" );
 
-            # Check the disk is mounted
-            $try = 5;
-            while ( !(`ssh $::SUDOER\@$hcp "$::SUDO ls $cloneMntPt/etc/"`) && $try > 0 ) {
-                $out = `ssh $::SUDOER\@$hcp "$::SUDO mkdir -p $cloneMntPt"`;
-                $out = `ssh $::SUDOER\@$hcp "$::SUDO mount /dev/$tgtDevNode $cloneMntPt"`;
+        # Check the disk is mounted
+        $try = 5;
+        while ( !(`ssh $::SUDOER\@$hcp "$::SUDO ls $cloneMntPt"`) && $try > 0 ) {
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO mkdir -p $cloneMntPt"`;
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO mount /dev/$tgtDevNode $cloneMntPt"`;
 
-                # If more than 1 partition, try other partitions
-                if (@tgtDevNodes > 1 && $iTgtDevNode < @tgtDevNodes) {
-                    $iTgtDevNode++;
-                    $tgtDevNode = xCAT::zvmUtils->trimStr($tgtDevNodes[$iTgtDevNode]);
-                }
+            # If more than 1 partition, try other partitions
+            if (@tgtDevNodes > 1 && $iTgtDevNode < @tgtDevNodes) {
+                $iTgtDevNode++;
+                $tgtDevNode = xCAT::zvmUtils->trimStr($tgtDevNodes[$iTgtDevNode]);
+            }
                 
-                # Wait before trying again
-                sleep(10);
-                $try = $try - 1;
-            }
-
-            # If the disk is not mounted
-            if ( !(`ssh $::SUDOER\@$hcp "$::SUDO ls $cloneMntPt/etc/"`) ) {
-                xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Could not mount /dev/$tgtDevNode" );
-
-                # Flush disk
-                $out = `ssh $::SUDOER\@$hcp "$::SUDO sync"`;
-
-                # Unmount disk
-                $out = `ssh $::SUDOER\@$hcp "$::SUDO umount $cloneMntPt"`;
-
-                # Remove mount point
-                $out = `ssh $::SUDOER\@$hcp "$::SUDO rm -rf $cloneMntPt"`;
-
-                # Disable disks
-                $out = xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-d", $tgtAddr );
-
-                # Detatch disks from HCP
-                $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp det $tgtAddr"`;
-
-                return;
-            }
-
+            # Wait before trying again
+            sleep(10);
+            $try = $try - 1;
+        }
+        
+        if (!(`ssh $::SUDOER\@$hcp "$::SUDO ls $cloneMntPt"`)) {
+        	xCAT::zvmUtils->printLn( $callback, "$tgtNode: Failed to mount /dev/$tgtDevNode. Skipping device." );
+        }
+        
+        # Is this the root partition?
+        if (`ssh $::SUDOER\@$hcp "$::SUDO test -d $cloneMntPt/etc && echo Exists"`) {
             #*** Set network configuration ***
             # Set hostname
             xCAT::zvmUtils->printLn( $callback, "$tgtNode: Setting network configuration" );
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e "s/$sourceNode/$tgtNode/i" $cloneMntPt/etc/HOSTNAME"`;
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e \"s/$sourceNode/$tgtNode/i\" $cloneMntPt/etc/HOSTNAME"`;
 
             # If Red Hat - Set hostname in /etc/sysconfig/network
-            if ( $srcOs =~ m/Red Hat/i ) {
-                $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e "s/$sourceNode/$tgtNode/i" $cloneMntPt/etc/sysconfig/network"`;
+            if ( $srcOs =~ m/rhel/i ) {
+                $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e \"s/$sourceNode/$tgtNode/i\" $cloneMntPt/etc/sysconfig/network"`;
             }
-
-            # Get network configuration file
-            # Location of this file depends on the OS
-            my $ifcfgPath = $cloneMntPt;
-            $ifcfgPath .= $srcIfcfg;
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e "s/$sourceNode/$tgtNode/i" \ -e "s/$sourceIp/$targetIp/i" $cloneMntPt/etc/hosts"`;
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e "s/$sourceIp/$targetIp/i" \ -e "s/$sourceNode/$tgtNode/i" $ifcfgPath"`;
 
             # Get network layer
             my $layer = xCAT::zvmCPUtils->getNetworkLayer( $::SUDOER, $hcp, $hcpNetName );
+
+            # Get network configuration file
+            # Location of this file depends on the OS
+            my $srcIfcfg = '';
+                        
+            # If it is Red Hat - ifcfg-qeth file is in /etc/sysconfig/network-scripts
+            my @files;
+		    if ( $srcOs =~ m/rhel/i ) {
+		        $out   = `ssh $::SUDOER\@$hcp "$::SUDO grep -H -r $srcNicAddr $cloneMntPt/etc/sysconfig/network-scripts"`;
+		        @files = split('\n', $out);
+		        @words = split( ':', $files[0] );
+                $srcIfcfg = $words[0];
+		    }
+		
+		    # If it is SLES 10 - ifcfg-qeth file is in /etc/sysconfig/network
+		    elsif ( $srcOs =~ m/sles10/i ) {
+		        $out   = `ssh $::SUDOER\@$hcp "$::SUDO grep -H -r $srcNicAddr $cloneMntPt/etc/sysconfig/network/ifcfg-qeth*"`;
+                @files = split('\n', $out);
+                @words = split( ':', $files[0] );
+                $srcIfcfg = $words[0];
+		    }
+		
+		    # If it is SLES 11 - ifcfg-qeth file is in /etc/sysconfig/network
+		    elsif ( $srcOs =~ m/sles11/i ) {		
+		        $out   = `ssh $::SUDOER\@$hcp "$::SUDO grep -H -r $srcNicAddr $cloneMntPt/etc/sysconfig/network/ifcfg-eth*"`;
+                @files = split('\n', $out);
+                @words = split( ':', $files[0] );
+                $srcIfcfg = $words[0];
+		    }
+		    
+            my $ifcfgPath = $srcIfcfg;
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e \"s/$sourceNode/$tgtNode/i\" \ -e \"s/$sourceIp/$targetIp/i\" $cloneMntPt/etc/hosts"`;
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e \"s/$sourceIp/$targetIp/i\" \ -e \"s/$sourceNode/$tgtNode/i\" $ifcfgPath"`;
             
             # Set MAC address
             my $networkFile = $tgtNode . "NetworkConfig";
             my $config;
-            if ( $srcOs =~ m/Red Hat/i ) {
+            if ( $srcOs =~ m/rhel/i ) {
 
                 # Red Hat only
                 $config = `ssh $::SUDOER\@$hcp "$::SUDO cat $ifcfgPath" | grep -v "MACADDR"`;
-                $config .= "MACADDR='$targetMac'\n";
+                $config .= "MACADDR='" . $targetMac . "'\n";
             } else {
 
                 # SUSE only
@@ -4270,7 +4268,7 @@ EOM"`;
                                 
                 # Set to MAC address (only for layer 2)
                 if ( $layer == 2 ) {
-                    $config .= "LLADDR='$targetMac'\n";
+                    $config .= "LLADDR='" . $targetMac . "'\n";
                     $config .= "UNIQUE=''\n";
                 }
             }
@@ -4278,7 +4276,7 @@ EOM"`;
             # Write network configuration
             # You cannot SCP file over to mount point as sudo, so you have to copy file to zHCP 
             # and move it to mount point
-            $out = `echo -e \"$config\" > /tmp/$networkFile`;
+            $out = `echo -e "$config" > /tmp/$networkFile`;
             $out = `ssh $::SUDOER\@$hcp "$::SUDO rm -rf $ifcfgPath"`;
             $out = `cat /tmp/$networkFile | ssh $::SUDOER\@$hcp "$::SUDO cat > /tmp/$networkFile"`;
             $out = `ssh $::SUDOER\@$hcp "$::SUDO mv /tmp/$networkFile $ifcfgPath"`;
@@ -4286,46 +4284,17 @@ EOM"`;
 
             # Set to hardware configuration (only for layer 2)
             if ( $layer == 2 ) {
-
-                #*** Red Hat ***
-                if ( $srcOs =~ m/Red Hat/i ) {
-                    my $srcMac;
-
-                    # Get source MAC address in 'mac' table
-                    @propNames = ('mac');
-                    $propVals = xCAT::zvmUtils->getNodeProps( 'mac', $sourceNode, @propNames );
-                    if ($propVals) {
-
-                        # Get MAC address
-                        $srcMac = $propVals->{'mac'};
-                    }
-                    else {
-                        xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Could not find MAC address of $sourceNode" );
-
-                        # Unmount disk
-                        $out = `ssh $::SUDOER\@$hcp "$::SUDO umount $cloneMntPt"`;
-
-                        # Disable disks
-                        $out = xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-d", $tgtAddr );
-
-                        # Detatch disks from HCP
-                        $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp det $tgtAddr"`;
-
-                        return;
-                    }
-
+                if ( $srcOs =~ m/rhel/i && $srcMac ) {
+                	#*** Red Hat Linux ***
+                	
                     # Set MAC address
-                    $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e "s/$srcMac/$targetMac/i" $ifcfgPath"`;
-                }
-
-                #*** SUSE ***
-                else {
+                    $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e \"s/$srcMac/$targetMac/i\" $ifcfgPath"`;
+                } else {
+                	#*** SuSE Linux ***
 
                     # Get hardware configuration
-                    my $hwcfgPath = $cloneMntPt;
-
-                    # Set layer 2 support
-                    $hwcfgPath .= $srcHwcfg;
+                    # hwcfg-qeth file is in /etc/sysconfig/hardware
+                    my $hwcfgPath = $cloneMntPt . "/etc/sysconfig/hardware/hwcfg-qeth-bus-ccw-0.0.$srcNicAddr";
                     my $hardwareFile = $tgtNode . "HardwareConfig";
                     $out = `ssh $::SUDOER\@$hcp "$::SUDO cat $hwcfgPath" | grep -v "QETH_LAYER2_SUPPORT" > /tmp/$hardwareFile`;
                     $out = `echo "QETH_LAYER2_SUPPORT='1'" >> /tmp/$hardwareFile`;
@@ -4338,16 +4307,16 @@ EOM"`;
 
             # Remove old SSH keys
             $out = `ssh $::SUDOER\@$hcp "$::SUDO rm -f $cloneMntPt/etc/ssh/ssh_host_*"`;
-
-            # Flush disk
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO /bin/sync"`;
-
-            # Unmount disk
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO /bin/umount $cloneMntPt"`;
-
-            # Remove mount point
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO rm -rf $cloneMntPt"`;
         }
+        
+        # Flush disk
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO /bin/sync"`;
+
+        # Unmount disk
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO /bin/umount $cloneMntPt"`;
+
+        # Remove mount point
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO rm -rf $cloneMntPt"`;
 
         # Disable disks
         $out = xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-d", $tgtAddr );
@@ -4358,8 +4327,11 @@ EOM"`;
         sleep(5);
     }    # End of foreach (@tgtDisks)
 
-    # Update DHCP
-    $out = `makedhcp -a`;
+    # Update DHCP (only if it is running)
+    $out = `service dhcpd status`;
+    if (!($out =~ m/unused/i || $out =~ m/stopped/i)) {
+        $out = `makedhcp -a`;
+    }
 
     # Power on target virtual server
     xCAT::zvmUtils->printLn( $callback, "$tgtNode: Powering on" );
