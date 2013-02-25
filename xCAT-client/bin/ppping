@@ -45,7 +45,7 @@ if(!GetOptions(
       'V|verbose'  => \$::VERBOSE,
       'H|hierarchical' => \$::HIERARCHY,
       'q|quiet' => \$::QUIET,
-      'interface=s' => \$interface))
+      'i|interface=s' => \$interface))
 {
   print "$USAGE";
   exit 1;
