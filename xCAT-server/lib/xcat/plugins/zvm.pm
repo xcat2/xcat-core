@@ -3207,6 +3207,28 @@ sub cloneVM {
     @propNames = ( 'os' );
     $propVals = xCAT::zvmUtils->getNodeProps( 'nodetype', $sourceNode, @propNames );
     my $srcOs = $propVals->{'os'};
+    
+    # Set IP address
+    my $sourceIp = xCAT::zvmUtils->getIp($sourceNode);
+    
+    # Get networks in 'networks' table
+    my $netEntries = xCAT::zvmUtils->getAllTabEntries('networks');
+    my $srcNetwork = "";
+    my $srcMask;
+    foreach (@$netEntries) {
+        # Get source network and mask
+        $srcNetwork = $_->{'net'};
+        $srcMask = $_->{'mask'};
+                
+        # If the host IP address is in this subnet, return
+        if (xCAT::NetworkUtils->ishostinsubnet($sourceIp, $srcMask, $srcNetwork)) {
+    
+            # Exit loop
+            last;
+        } else {
+            $srcNetwork = "";
+        }
+    }
 
     foreach (@nodes) {
         xCAT::zvmUtils->printLn( $callback, "$_: Cloning $sourceNode" );
@@ -3232,6 +3254,12 @@ sub cloneVM {
         # Exit if missing source operating system
         if ( !$srcOs ) {
             xCAT::zvmUtils->printLn( $callback, "$_: (Error) Missing source operating system" );
+            return;
+        }
+        
+        # Exit if missing source operating system
+        if ( !$sourceIp || !$srcNetwork || !$srcMask ) {
+            xCAT::zvmUtils->printLn( $callback, "$_: (Error) Missing source IP, network, or mask" );
             return;
         }
 
@@ -3441,7 +3469,7 @@ sub cloneVM {
             }
         }
     }
-            
+    
     # If no network name is found, exit
     if (!$hcpNetName || !$srcNicAddr) {
         #*** Detatch source disks ***
@@ -3514,7 +3542,7 @@ sub cloneVM {
             elsif ( $pid == 0 ) {
                 clone(
                     $callback, $_, $args, \@srcDisks, \%srcLinkAddr, \%srcDiskSize, \%srcDiskType, 
-                    $srcNicAddr, $hcpNetName, \@srcVswitch, $srcOs, $srcMac
+                    $srcNicAddr, $hcpNetName, \@srcVswitch, $srcOs, $srcMac, $netEntries, $sourceIp, $srcNetwork, $srcMask
                 );
 
                 # Exit process
@@ -3594,7 +3622,8 @@ sub cloneVM {
                     Path to hardware configuration file (SUSE only)
     Returns     : Nothing
     Example     : clone($callback, $_, $args, \@srcDisks, \%srcLinkAddr, \%srcDiskSize, 
-                    $srcNicAddr, $hcpNetName, \@srcVswitch, $srcOs, $srcMac);
+                    $srcNicAddr, $hcpNetName, \@srcVswitch, $srcOs, $srcMac, $netEntries, 
+                    $sourceIp, $srcNetwork, $srcMask);
     
 =cut
 
@@ -3604,7 +3633,7 @@ sub clone {
     # Get inputs
     my (
         $callback, $tgtNode, $args, $srcDisksRef, $srcLinkAddrRef, $srcDiskSizeRef, $srcDiskTypeRef, 
-        $srcNicAddr, $hcpNetName, $srcVswitchRef, $srcOs, $srcMac
+        $srcNicAddr, $hcpNetName, $srcVswitchRef, $srcOs, $srcMac, $netEntries, $sourceIp, $srcNetwork, $srcMask
       )
       = @_;
 
@@ -3657,7 +3686,7 @@ sub clone {
         xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Solution) Set the source and target HCP appropriately in the zvm table" );
         return;
     }
-
+    
     # Get target IP from /etc/hosts
     `makehosts`;
     sleep(5);
@@ -3699,9 +3728,6 @@ sub clone {
     if ($inputs{"pw"}) {
         $tgtPw = $inputs{"pw"};
     }
-
-    # Set IP address
-    my $sourceIp = xCAT::zvmUtils->getIp($sourceNode);
 
     # Save user directory entry as /tmp/hostname.txt, e.g. /tmp/gpok3.txt
     # The source user entry is retrieved in cloneVM()
@@ -4162,6 +4188,10 @@ EOM"`;
             # Sleep 2 seconds to let the system settle
             sleep(2);
         }
+        
+        # Re-scan partition table
+        `ssh $::SUDOER\@$hcp "$::SUDO /usr/sbin/partprobe /dev/$tgtDevNode"`;  # SLES
+        `ssh $::SUDOER\@$hcp "$::SUDO /sbin/partprobe /dev/$tgtDevNode"`;  # RHEL
 
         # Disable and enable target disk
         $out = xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-d", $tgtAddr );
@@ -4250,8 +4280,33 @@ EOM"`;
 		    }
 		    
             my $ifcfgPath = $srcIfcfg;
+            
+            # Change IP, network, and mask	
+	        # Go through each network
+	        my $tgtNetwork = "";
+	        my $tgtMask;
+	        foreach (@$netEntries) {
+	
+	            # Get network and mask
+	            $tgtNetwork = $_->{'net'};
+	            $tgtMask = $_->{'mask'};
+	            
+	            # If the host IP address is in this subnet, return
+	            if (xCAT::NetworkUtils->ishostinsubnet($targetIp, $tgtMask, $tgtNetwork)) {
+	
+	                # Exit loop
+	                last;
+	            } else {
+	                $tgtNetwork = "";
+	            }
+	        }
+                
             $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e \"s/$sourceNode/$tgtNode/i\" \ -e \"s/$sourceIp/$targetIp/i\" $cloneMntPt/etc/hosts"`;
             $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e \"s/$sourceIp/$targetIp/i\" \ -e \"s/$sourceNode/$tgtNode/i\" $ifcfgPath"`;
+            
+            if ($tgtNetwork && $tgtMask) {
+            	$out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e \"s/$srcNetwork/$tgtNetwork/i\" \ -e \"s/$srcMask/$tgtMask/i\" $ifcfgPath"`;
+            }
             
             # Set MAC address
             my $networkFile = $tgtNode . "NetworkConfig";
