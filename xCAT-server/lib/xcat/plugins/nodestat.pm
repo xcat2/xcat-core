@@ -667,6 +667,7 @@ sub process_request_nmap {
           }
           $currnode=$tmpnode;
 	  $currnode =~ s/:$//;
+	  $currnode =~ s/\n$//;
 	  
 
           my $nip;
