@@ -3230,6 +3230,8 @@ sub cloneVM {
         }
     }
 
+    xCAT::zvmUtils->printSyslog("cloneVM: srcHcp=$srcHcp sourceId=$sourceId srcOs=$srcOs srcNetwork=$srcNetwork srcMask=$srcMask");
+
     foreach (@nodes) {
         xCAT::zvmUtils->printLn( $callback, "$_: Cloning $sourceNode" );
 
@@ -3318,6 +3320,8 @@ sub cloneVM {
             # Generate new MACID
             $out = xCAT::zvmUtils->generateMacId($::SUDOER, $tgtHcp);
         }
+        
+        xCAT::zvmUtils->printSyslog("cloneVM: tgtHcp=$tgtHcp tgtId=$tgtId targetMac=$targetMac macId=$macId");
     }
 
     #*** Link source disks ***
@@ -3342,6 +3346,7 @@ sub cloneVM {
     # Output is similar to:
     #   MDISK=VDEV=0100 DEVTYPE=3390 START=0001 COUNT=10016 VOLID=EMC2C4 MODE=MR        
     $out = `ssh $::SUDOER\@$srcHcp "$::SUDO $::DIR/smcli Image_Definition_Query_DM -T $sourceId -k MDISK"`;
+    xCAT::zvmUtils->printSyslog("cloneVM: $out");
     my $srcDiskDet = xCAT::zvmUtils->trimStr($out);
     foreach (@srcDisks) {
 
@@ -3372,6 +3377,7 @@ sub cloneVM {
 		        my $srcDiskAddr = $words[0];
 
                 $srcDiskSize{$srcDiskAddr} = $words[3];
+                xCAT::zvmUtils->printSyslog("cloneVM: addr=$addr type=$type srcDiskAddr=$srcDiskAddr srcDiskSize=$words[3]");
 		    }
         }
 
@@ -3440,6 +3446,7 @@ sub cloneVM {
     # Find the NIC address
     xCAT::zvmCPUtils->loadVmcp($::SUDOER, $sourceNode);
     $out = `ssh $::SUDOER\@$srcHcp "$::SUDO $::DIR/smcli Image_Definition_Query_DM -T $sourceId -k NICDEF"`;
+    xCAT::zvmUtils->printSyslog("cloneVM: Image_Definition_Query_DM=$out");
     # Output is similar to:
     #   NICDEF_PROFILE=VDEV=0800 TYPE=QDIO LAN=SYSTEM SWITCHNAME=VSW2
     #   NICDEF=VDEV=0900 TYPE=QDIO DEVICES=3 LAN=SYSTEM SWITCHNAME=GLAN1
@@ -3463,6 +3470,7 @@ sub cloneVM {
                 # Extract NIC address
                 @words = ($lines[$i] =~ m/=(\S+)/g);
                 $srcNicAddr = $words[0];
+                xCAT::zvmUtils->printSyslog("cloneVM: hcpNetName=$hcpNetName srcNicAddr=$srcNicAddr");
                 
                 # Grab only the 1st match    
                 last;
@@ -3696,6 +3704,7 @@ sub clone {
         xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Solution) Verify that the node's IP address is specified in the hosts table and then run makehosts" );
         return;
     }
+    xCAT::zvmUtils->printSyslog("clone: hcp=$hcp tgtUserId=$tgtUserId targetIp=$targetIp");
 
     my $out;
     my @lines;
@@ -3721,6 +3730,7 @@ sub clone {
         xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Missing disk pool. Please specify one." );
         return;
     }
+    xCAT::zvmUtils->printSyslog("clone: pool=$pool");
 
     # Get multi password
     # It is Ok not have a password
@@ -3811,6 +3821,7 @@ sub clone {
             xCAT::zvmUtils->printLn( $callback, "$tgtNode: Trying again ($try) to create user directory entry" );
         }
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Create_DM -T $tgtUserId -f $userEntry"`;
+        xCAT::zvmUtils->printSyslog("clone: Image_Create_DM=$out");
 
         # Check if user entry is created
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $tgtUserId" | sed '\$d'`;
@@ -3893,6 +3904,7 @@ sub clone {
                     xCAT::zvmUtils->printLn( $callback, "$tgtNode: Trying again ($try) to add minidisk ($addr)" );
                 }
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw"`;
+                xCAT::zvmUtils->printSyslog("clone: smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw");
                 
                 # Check output
                 $rc = xCAT::zvmUtils->checkOutput( $callback, $out );
@@ -3934,6 +3946,7 @@ sub clone {
                     xCAT::zvmUtils->printLn( $callback, "$tgtNode: Trying again ($try) to add minidisk ($addr)" );
                 }
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 9336 -a AUTOG -r $pool -u 1 -z $blks -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw"`;
+                xCAT::zvmUtils->printSyslog("clone: smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 9336 -a AUTOG -r $pool -u 1 -z $blks -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw");
 
                 # Check output
                 $rc = xCAT::zvmUtils->checkOutput( $callback, $out );
@@ -3967,6 +3980,7 @@ sub clone {
 
         # Get disks within user entry
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $tgtUserId" | sed '\$d' | grep "MDISK"`;
+        xCAT::zvmUtils->printSyslog("clone: $out");
         @disks = split( '\n', $out );
         xCAT::zvmUtils->printLn( $callback, "$tgtNode: Disks added (" . @tgtDisks . "). Disks in user entry (" . @disks . ")" );
 
@@ -4060,6 +4074,7 @@ sub clone {
             xCAT::zvmUtils->printLn( $callback, "$tgtNode: Copying source disk ($srcAddr) to target disk ($tgtAddr) using FLASHCOPY" );
             if (xCAT::zvmUtils->smapi4xcat($::SUDOER, $hcp)) {
                  $out = xCAT::zvmCPUtils->smapiFlashCopy($::SUDOER, $hcp, $sourceId, $srcAddr, $tgtUserId, $tgtAddr);
+                 xCAT::zvmUtils->printSyslog("clone: smapiFlashCopy=$out");
                  
                  # Exit if flashcopy completed successfully
                  # Otherwsie, try CP FLASHCOPY
@@ -4095,6 +4110,7 @@ sub clone {
         
                     # Flashcopy source disk
                     $out = xCAT::zvmCPUtils->flashCopy( $::SUDOER, $hcp, $srcAddr, $tgtAddr );
+                    xCAT::zvmUtils->printSyslog("clone: flashCopy=$out");
                     $rc = xCAT::zvmUtils->checkOutput( $callback, $out );
                     if ( $rc == -1 ) {
                         xCAT::zvmUtils->printLn( $callback, "$tgtNode: $out" );
@@ -4134,6 +4150,7 @@ sub clone {
             if ($tgtDiskType eq '3390') {
                 xCAT::zvmUtils->printLn( $callback, "$tgtNode: Formating target disk ($tgtAddr)" );
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/dasdfmt -b 4096 -y -f /dev/$tgtDevNode"`;
+                xCAT::zvmUtils->printSyslog("clone: dasdfmt -b 4096 -y -f /dev/$tgtDevNode");
 
                 # Check for errors
                 $rc = xCAT::zvmUtils->checkOutput( $callback, $out );
@@ -4152,15 +4169,21 @@ sub clone {
                 # Automatically create a partition using the entire disk
                 xCAT::zvmUtils->printLn( $callback, "$tgtNode: Creating a partition using the entire disk ($tgtDevNode)" );
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/fdasd -a /dev/$tgtDevNode"`;
+                xCAT::zvmUtils->printSyslog("clone: /sbin/fdasd -a /dev/$tgtDevNode");
+                xCAT::zvmUtils->printSyslog("clone: $out");
                 
                 # Copy source disk to target disk
                 xCAT::zvmUtils->printLn( $callback, "$tgtNode: Copying source disk ($srcAddr) to target disk ($tgtAddr)" );
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO /bin/dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=4096 oflag=sync"`;
+                xCAT::zvmUtils->printSyslog("clone: dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=4096 oflag=sync");
+                xCAT::zvmUtils->printSyslog("clone: $out");
             } else {
                 # Copy source disk to target disk
                 # Block size = 512
                 xCAT::zvmUtils->printLn( $callback, "$tgtNode: Copying source disk ($srcAddr) to target disk ($tgtAddr)" );
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO /bin/dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=512 oflag=sync"`;
+                xCAT::zvmUtils->printSyslog("clone: dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=512 oflag=sync");
+                xCAT::zvmUtils->printSyslog("clone: $out");
                 
                 # Force Linux to re-read partition table
                 xCAT::zvmUtils->printLn( $callback, "$tgtNode: Forcing Linux to re-read partition table" );
@@ -4190,8 +4213,12 @@ EOM"`;
         }
         
         # Re-scan partition table
-        `ssh $::SUDOER\@$hcp "$::SUDO /usr/sbin/partprobe /dev/$tgtDevNode"`;  # SLES
-        `ssh $::SUDOER\@$hcp "$::SUDO /sbin/partprobe /dev/$tgtDevNode"`;  # RHEL
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO /usr/sbin/partprobe /dev/$tgtDevNode"`;  # SLES
+        xCAT::zvmUtils->printSyslog("clone: /usr/sbin/partprobe /dev/$tgtDevNode");
+        xCAT::zvmUtils->printSyslog("clone: $out");
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/partprobe /dev/$tgtDevNode"`;  # RHEL
+        xCAT::zvmUtils->printSyslog("clone: /sbin/partprobe /dev/$tgtDevNode");
+        xCAT::zvmUtils->printSyslog("clone: $out");
 
         # Disable and enable target disk
         $out = xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-d", $tgtAddr );
@@ -4207,7 +4234,13 @@ EOM"`;
         my $cloneMntPt = "/mnt/$tgtUserId";
             
         # Disk can contain more than 1 partition. Find the right one (not swap)
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO /usr/bin/file -s /dev/$tgtDevNode*"`;
+        xCAT::zvmUtils->printSyslog("clone: file -s /dev/$tgtDevNode*");
+        xCAT::zvmUtils->printSyslog("clone: $out");
         $out = `ssh $::SUDOER\@$hcp "$::SUDO /usr/bin/file -s /dev/$tgtDevNode*" | grep -v swap | grep -o "$tgtDevNode\[0-9\]"`;
+        
+        xCAT::zvmUtils->printSyslog("clone: file -s /dev/$tgtDevNode* | grep -v swap | grep -o $tgtDevNode [0-9]");
+        xCAT::zvmUtils->printSyslog("clone: $out");
         my @tgtDevNodes = split( "\n", $out );
         my $iTgtDevNode = 0;
         $tgtDevNode = xCAT::zvmUtils->trimStr($tgtDevNodes[$iTgtDevNode]);
@@ -4219,6 +4252,7 @@ EOM"`;
         while ( !(`ssh $::SUDOER\@$hcp "$::SUDO ls $cloneMntPt"`) && $try > 0 ) {
             $out = `ssh $::SUDOER\@$hcp "$::SUDO mkdir -p $cloneMntPt"`;
             $out = `ssh $::SUDOER\@$hcp "$::SUDO mount /dev/$tgtDevNode $cloneMntPt"`;
+            xCAT::zvmUtils->printSyslog("clone: mount /dev/$tgtDevNode $cloneMntPt");
 
             # If more than 1 partition, try other partitions
             if (@tgtDevNodes > 1 && $iTgtDevNode < @tgtDevNodes) {
@@ -4241,14 +4275,17 @@ EOM"`;
             # Set hostname
             xCAT::zvmUtils->printLn( $callback, "$tgtNode: Setting network configuration" );
             $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e \"s/$sourceNode/$tgtNode/i\" $cloneMntPt/etc/HOSTNAME"`;
+            xCAT::zvmUtils->printSyslog("clone: sed --in-place -e s/$sourceNode/$tgtNode/i $cloneMntPt/etc/HOSTNAME");
 
             # If Red Hat - Set hostname in /etc/sysconfig/network
             if ( $srcOs =~ m/rhel/i ) {
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e \"s/$sourceNode/$tgtNode/i\" $cloneMntPt/etc/sysconfig/network"`;
+                xCAT::zvmUtils->printSyslog("clone: sed --in-place -e s/$sourceNode/$tgtNode/i $cloneMntPt/etc/sysconfig/network");
             }
 
             # Get network layer
             my $layer = xCAT::zvmCPUtils->getNetworkLayer( $::SUDOER, $hcp, $hcpNetName );
+            xCAT::zvmUtils->printSyslog("clone: hcp=$hcp hcpNetName=$hcpNetName layer=$layer");
 
             # Get network configuration file
             # Location of this file depends on the OS
@@ -4258,6 +4295,8 @@ EOM"`;
             my @files;
 		    if ( $srcOs =~ m/rhel/i ) {
 		        $out   = `ssh $::SUDOER\@$hcp "$::SUDO grep -H -r $srcNicAddr $cloneMntPt/etc/sysconfig/network-scripts"`;
+		        xCAT::zvmUtils->printSyslog("clone: grep -H -r $srcNicAddr $cloneMntPt/etc/sysconfig/network-scripts");
+		        xCAT::zvmUtils->printSyslog("clone: $out");
 		        @files = split('\n', $out);
 		        @words = split( ':', $files[0] );
                 $srcIfcfg = $words[0];
@@ -4266,6 +4305,8 @@ EOM"`;
 		    # If it is SLES 10 - ifcfg-qeth file is in /etc/sysconfig/network
 		    elsif ( $srcOs =~ m/sles10/i ) {
 		        $out   = `ssh $::SUDOER\@$hcp "$::SUDO grep -H -r $srcNicAddr $cloneMntPt/etc/sysconfig/network/ifcfg-qeth*"`;
+		        xCAT::zvmUtils->printSyslog("clone: grep -H -r $srcNicAddr $cloneMntPt/etc/sysconfig/network/ifcfg-qeth*");
+		        xCAT::zvmUtils->printSyslog("clone: $out");
                 @files = split('\n', $out);
                 @words = split( ':', $files[0] );
                 $srcIfcfg = $words[0];
@@ -4274,6 +4315,8 @@ EOM"`;
 		    # If it is SLES 11 - ifcfg-qeth file is in /etc/sysconfig/network
 		    elsif ( $srcOs =~ m/sles11/i ) {		
 		        $out   = `ssh $::SUDOER\@$hcp "$::SUDO grep -H -r $srcNicAddr $cloneMntPt/etc/sysconfig/network/ifcfg-eth*"`;
+		        xCAT::zvmUtils->printSyslog("clone: grep -H -r $srcNicAddr $cloneMntPt/etc/sysconfig/network/ifcfg-eth*");
+		        xCAT::zvmUtils->printSyslog("clone: $out");
                 @files = split('\n', $out);
                 @words = split( ':', $files[0] );
                 $srcIfcfg = $words[0];
@@ -4303,9 +4346,12 @@ EOM"`;
                 
             $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e \"s/$sourceNode/$tgtNode/i\" \ -e \"s/$sourceIp/$targetIp/i\" $cloneMntPt/etc/hosts"`;
             $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e \"s/$sourceIp/$targetIp/i\" \ -e \"s/$sourceNode/$tgtNode/i\" $ifcfgPath"`;
+            xCAT::zvmUtils->printSyslog("clone: sed --in-place -e s/$sourceNode/$tgtNode/i \ -e s/$sourceIp/$targetIp/i $cloneMntPt/etc/hosts");
+            xCAT::zvmUtils->printSyslog("clone: sed --in-place -e s/$sourceIp/$targetIp/i \ -e s/$sourceNode/$tgtNode/i $ifcfgPath");
             
             if ($tgtNetwork && $tgtMask) {
             	$out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e \"s/$srcNetwork/$tgtNetwork/i\" \ -e \"s/$srcMask/$tgtMask/i\" $ifcfgPath"`;
+                xCAT::zvmUtils->printSyslog("clone: sed --in-place -e s/$srcNetwork/$tgtNetwork/i \ -e s/$srcMask/$tgtMask/i $ifcfgPath");
             }
             
             # Set MAC address
@@ -4327,6 +4373,7 @@ EOM"`;
                     $config .= "UNIQUE=''\n";
                 }
             }
+            xCAT::zvmUtils->printSyslog("clone: $config");
 
             # Write network configuration
             # You cannot SCP file over to mount point as sudo, so you have to copy file to zHCP 
@@ -4344,12 +4391,14 @@ EOM"`;
                 	
                     # Set MAC address
                     $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e \"s/$srcMac/$targetMac/i\" $ifcfgPath"`;
+                    xCAT::zvmUtils->printSyslog("clone: sed --in-place -e s/$srcMac/$targetMac/i $ifcfgPath");                   
                 } else {
                 	#*** SuSE Linux ***
 
                     # Get hardware configuration
                     # hwcfg-qeth file is in /etc/sysconfig/hardware
                     my $hwcfgPath = $cloneMntPt . "/etc/sysconfig/hardware/hwcfg-qeth-bus-ccw-0.0.$srcNicAddr";
+                    xCAT::zvmUtils->printSyslog("clone: hwcfgPath=$hwcfgPath");
                     my $hardwareFile = $tgtNode . "HardwareConfig";
                     $out = `ssh $::SUDOER\@$hcp "$::SUDO cat $hwcfgPath" | grep -v "QETH_LAYER2_SUPPORT" > /tmp/$hardwareFile`;
                     $out = `echo "QETH_LAYER2_SUPPORT='1'" >> /tmp/$hardwareFile`;
