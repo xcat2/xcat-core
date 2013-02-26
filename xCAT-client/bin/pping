@@ -28,12 +28,15 @@ my $USAGE="Usage: pping [-i|--interface interfaces] noderange
        pping -v|--version\n"; 
 
 my $interface;
+# Parse the options
+require Getopt::Long;
+Getopt::Long::Configure ("bundling");
 if(!GetOptions(
       'f|use_fping'     => \$::USE_FPING,
       'h|help'     => \$::HELP,
       'v|version'  => \$::VERSION,
       'X|noexpand'  => \$::NOEXPAND,
-      'interface=s' => \$interface))
+      'i|interface=s' => \$interface))
 	{
 		print "$USAGE";
 		exit 1;
