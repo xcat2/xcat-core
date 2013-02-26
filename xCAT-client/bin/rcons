@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh
 
 # Provide serial console access to nodes
 
@@ -104,6 +104,24 @@ else
     if [ -z "$CONS" ]; then
 	echo "Error: nodehm.mgt or nodehm.cons for node $1 not setup."
 	exit 1;
+    fi
+    
+    #check if conserver is local host
+    result=`ping -c1 $CONSERVER 2>&1`
+    if [ $? -eq 0 ]; then
+        index1=`expr index "$result" "\("`
+        index2=`expr index "$result" "\)"`
+        pos=`expr $index1 + 1`
+        length=`expr $index2 - $index1`
+        length=`expr $length - 1`
+        cons_ip=`expr substr "$result" $pos $length`
+        ifconfig |grep "$cons_ip"
+        if [ $? -eq 0 ]; then
+           CONSERVER=""
+        fi
+    else 
+	echo "Error: conserver $CONSERVER is not reachable."
+        exit 1;
     fi
     #echo "CONS=$CONS CONSERVER=$CONSERVER"
 
