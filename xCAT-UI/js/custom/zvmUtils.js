@@ -5569,8 +5569,65 @@ function loadOSImages(col) {
             $(this).children('input:radio').attr('checked', 'checked');
             $(this).parents('td').find('div').attr('class', 'ui-state-default');
             $(this).attr('class', 'ui-state-active');
+            
+            $('#select-table tbody tr:eq(0) td:eq(3) input[name="master"]').attr('checked', '');
+            $('#select-table tbody tr:eq(0) td:eq(3) input[name="master"]').parents('td').find('div').attr('class', 'ui-state-default');
         });
         radio = $('<input type="radio" name="image" value="' + name + '"/>').css('display', 'none');
+        imgBlock.append(radio, $('<span style="font-weight: normal;"><b>' + name + '</b>: ' + desc + '</span>'));
+        imgBlock.children('span').css({
+            'display': 'block',
+            'margin': '5px',
+            'text-align': 'left'
+        });
+        col.append(imgBlock);
+    }
+}
+
+/**
+ * Load golden images into column
+ * 
+ * @param col Table column where master copies will be placed
+ */
+function loadGoldenImages(col) {
+    // Get group names and description and append to group column    
+    if (!$.cookie('srv_goldenimages')) {
+        var infoBar = createInfoBar('No selectable master copies available');
+        col.append(infoBar);
+        return;
+    }
+    
+    var imgNames = $.cookie('srv_goldenimages').split(',');
+    
+    var imgBlock, radio, args, name, desc;
+    for (var i in imgNames) {
+        args = imgNames[i].split(':');
+        name = args[0];
+        desc = args[1];
+        
+        // Create block for each image
+        imgBlock = $('<div class="ui-state-default"></div>').css({
+            'border': '1px solid',
+            'max-width': '200px',
+            'margin': '5px auto',
+            'padding': '5px',
+            'display': 'block', 
+            'vertical-align': 'middle',
+            'cursor': 'pointer',
+            'white-space': 'normal'
+        }).click(function(){
+            $(this).children('input:radio').attr('checked', 'checked');
+            $(this).parents('td').find('div').attr('class', 'ui-state-default');
+            $(this).attr('class', 'ui-state-active');
+            
+            // Un-select zVM and image
+            $('#select-table tbody tr:eq(0) td:eq(2) input[name="image"]').attr('checked', '');
+            $('#select-table tbody tr:eq(0) td:eq(2) input[name="image"]').parents('td').find('div').attr('class', 'ui-state-default');
+            
+            $('#select-table tbody tr:eq(0) td:eq(0) input[name="hcp"]').attr('checked', '');
+            $('#select-table tbody tr:eq(0) td:eq(0) input[name="hcp"]').parents('td').find('div').attr('class', 'ui-state-default');
+        });
+        radio = $('<input type="radio" name="master" value="' + name + '"/>').css('display', 'none');
         imgBlock.append(radio, $('<span style="font-weight: normal;"><b>' + name + '</b>: ' + desc + '</span>'));
         imgBlock.children('span').css({
             'display': 'block',
@@ -5600,6 +5657,28 @@ function setzVMCookies(data) {
         var exDate = new Date();
         exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
         $.cookie('zvms', zvms, { expires: exDate });
+    }
+}
+
+/**
+ * Set a cookie for master copies (service page)
+ * 
+ * @param data Data from HTTP request
+ */
+function setGoldenImagesCookies(data) {
+    if (data.rsp[0].length) {
+        var copies = new Array();
+        var tmp = data.rsp[0].split(",");
+        for ( var i = 0; i < tmp.length; i++) {
+            if (tmp[i] != null && tmp[i] != "") {
+            	copies.push(tmp[i]);
+            }
+        }
+        
+        // Set cookie to expire in 60 minutes
+        var exDate = new Date();
+        exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
+        $.cookie('srv_goldenimages', copies, { expires: exDate });
     }
 }
 

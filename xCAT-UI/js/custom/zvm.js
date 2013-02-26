@@ -33,7 +33,7 @@ zvmPlugin.prototype.loadConfigPage = function(tabId) {
     
     // Create accordion panel for images
     var imgSection = $('<div id="zvmConfigImages"></div>');
-    var imgLnk = $('<h3><a href="#">Images</a></h3>').click(function () {
+    var imgLnk = $('<h3><a href="#">Templates</a></h3>').click(function () {
         // Do not load panel again if it is already loaded
         if ($('#zvmConfigImages').find('.dataTables_wrapper').length)
             return;
@@ -67,7 +67,7 @@ zvmPlugin.prototype.loadConfigPage = function(tabId) {
  * 
  * @param node Node to clone
  */
-zvmPlugin.prototype.serviceClone = function(node) {    
+zvmPlugin.prototype.serviceClone = function(node) {
     var owner = $.cookie('xcat_username');
     var group = getUserNodeAttr(node, 'groups');
     
@@ -95,7 +95,7 @@ zvmPlugin.prototype.loadServiceProvisionPage = function(tabId) {
     
     // Create provision table
     var provTable = $('<table id="select-table" style="margin: 10px;"></table');
-    var provHeader = $('<thead class="ui-widget-header"> <th>zVM</th> <th>Group</th> <th>Image</th></thead>');
+    var provHeader = $('<thead class="ui-widget-header"> <th>zVM</th> <th>Group</th> <th>Template</th> <th>Image</th></thead>');
     var provBody = $('<tbody></tbody>');
     var provFooter = $('<tfoot></tfoot>');
     provTable.append(provHeader, provBody, provFooter);
@@ -108,16 +108,18 @@ zvmPlugin.prototype.loadServiceProvisionPage = function(tabId) {
     // Create row to contain selections
     var provRow = $('<tr></tr>');
     provBody.append(provRow);
-    // Create columns for zVM, group, and image
+    // Create columns for zVM, group, template, and image
     var zvmCol = $('<td style="vertical-align: top;"></td>');
     provRow.append(zvmCol);
     var groupCol = $('<td style="vertical-align: top;"></td>');
     provRow.append(groupCol);
-    var imageCol = $('<td style="vertical-align: top;"></td>');
-    provRow.append(imageCol);
+    var tmplCol = $('<td style="vertical-align: top;"></td>');
+    provRow.append(tmplCol);
+    var imgCol = $('<td style="vertical-align: top;"></td>');
+    provRow.append(imgCol);
         
     provRow.children('td').css({
-        'min-width': '250px'
+        'min-width': '200px'
     });
     
     /**
@@ -130,23 +132,38 @@ zvmPlugin.prototype.loadServiceProvisionPage = function(tabId) {
         
         var hcp = $('#select-table tbody tr:eq(0) td:eq(0) input[name="hcp"]:checked').val();
         var group = $('#select-table tbody tr:eq(0) td:eq(1) input[name="group"]:checked').val();
-        var img = $('#select-table tbody tr:eq(0) td:eq(2) input[name="image"]:checked').val();
+        var tmpl = $('#select-table tbody tr:eq(0) td:eq(2) input[name="image"]:checked').val();
+        var img = $('#select-table tbody tr:eq(0) td:eq(3) input[name="master"]:checked').val();
         var owner = $.cookie('xcat_username');
         
-        if (!hcp || !group || !img) {
+        if (img && !group) {
+        	// Show warning message
+            var warn = createWarnBar('You need to select a group');
+            warn.prependTo($(this).parent());
+        } else if (!img && (!hcp || !group || !tmpl)) {
             // Show warning message
-            var warn = createWarnBar('You need to select an option for each column');
+            var warn = createWarnBar('You need to select a zHCP, group, and image');
             warn.prependTo($(this).parent());
         } else {
-            // Begin by creating VM
-            createzVM(tabId, group, hcp, img, owner);
+        	if (img) {
+        		// Begin by clonning VM
+        		
+        	    // Submit request to clone VM
+        	    // webportal clonezlinux [src node] [group] [owner]
+        	    var iframe = createIFrame('lib/srv_cmd.php?cmd=webportal&tgt=&args=clonezlinux;' + img + ';' + group + ';' + owner + '&msg=&opts=flush');
+        	    iframe.prependTo($('#zvmProvisionTab'));
+        	} else {
+        		// Begin by creating VM
+        		createzVM(tabId, group, hcp, tmpl, owner);
+        	}
         }
     });
     provForm.append(provisionBtn);
     
-    // Load zVMs, groups, and images into their respective columns
+    // Load zVMs, groups, template, and image into their respective columns
     loadSrvGroups(groupCol);
-    loadOSImages(imageCol);
+    loadOSImages(tmplCol);
+    loadGoldenImages(imgCol);
     
     // Get zVM host names
     if (!$.cookie('zvms')){

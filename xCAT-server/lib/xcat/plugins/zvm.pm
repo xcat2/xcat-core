@@ -4793,20 +4793,16 @@ sub nodeSet {
 
         @propNames = ( 'nfsserver', 'xcatmaster' );
         $propVals = xCAT::zvmUtils->getNodeProps( 'noderes', $node, @propNames );
-        my $nfs = $propVals->{'nfsserver'};
+        my $repo = $propVals->{'nfsserver'};  # Repository containing Linux ISO
         my $xcatmaster = $propVals->{'xcatmaster'};
             
         # Use noderes.xcatmaster instead of site.master if it is given
         if ( $xcatmaster ) {
             $master = $xcatmaster;
         }
-    
-        if ( !$nfs ) {
-            $nfs = $master;
-        }
-        
+
         # Combine NFS server and installation directory, e.g. 10.0.0.1/install
-        $nfs .= $installDir;
+        my $nfs = $master . $installDir;
 
         # Get broadcast address of NIC
         my $ifcfg = xCAT::zvmUtils->getIfcfgByNic( $::SUDOER, $hcp, $readChannel );
@@ -5025,6 +5021,10 @@ END
             #   Install=ftp://10.0.0.1/sles10.2/s390x/1/
             #   UseVNC=1  VNCPassword=12345678
             #   InstNetDev=osa OsaInterface=qdio OsaMedium=eth Manual=0
+            if (!$repo) {
+	            $repo = "http://$nfs/$os/s390x/1/";
+	        }
+        
             my $ay = "http://$nfs/custom/install/sles/" . $node . "." . $profile . ".tmpl";
 
             $parms = $parmHeader . "\n";
@@ -5041,7 +5041,7 @@ END
 
             $parms = $parms . "ReadChannel=$readChannel WriteChannel=$writeChannel DataChannel=$dataChannel\n";
             $parms = $parms . "Nameserver=$nameserver Portname=$portName Portno=0\n";
-            $parms = $parms . "Install=http://$nfs/$os/s390x/1/\n";
+            $parms = $parms . "Install=$repo\n";
             $parms = $parms . "UseVNC=1 VNCPassword=12345678\n";
             $parms = $parms . "InstNetDev=$instNetDev OsaInterface=$osaInterface OsaMedium=$osaMedium Manual=0\n";
 
@@ -5136,9 +5136,12 @@ END
             $out = `sed --in-place -e "/%post/r $postScript" $customTmpl`;
 
             # Edit template
-            my $url = "http://$nfs/$os/s390x/";
+            if (!$repo) {
+                $repo = "http://$nfs/$os/s390x/";
+            }
+            
             $out =
-`sed --in-place -e "s,replace_url,$url,g" \ -e "s,replace_ip,$hostIP,g" \ -e "s,replace_netmask,$mask,g" \ -e "s,replace_gateway,$gateway,g" \ -e "s,replace_nameserver,$nameserver,g" \ -e "s,replace_hostname,$hostname,g" \ -e "s,replace_rootpw,$passwd,g" \ -e "s,replace_master,$master,g" \ -e "s,replace_install_dir,$installDir,g" $customTmpl`;
+`sed --in-place -e "s,replace_url,$repo,g" \ -e "s,replace_ip,$hostIP,g" \ -e "s,replace_netmask,$mask,g" \ -e "s,replace_gateway,$gateway,g" \ -e "s,replace_nameserver,$nameserver,g" \ -e "s,replace_hostname,$hostname,g" \ -e "s,replace_rootpw,$passwd,g" \ -e "s,replace_master,$master,g" \ -e "s,replace_install_dir,$installDir,g" $customTmpl`;
 
             # Attach SCSI FCP devices (if any)
             # Go through each pool
