@@ -1,0 +1,6 @@
+. /tmp/post-install/variables.txt
+
+echo "Updating hostname to $HOSTNAME"
+sed -i "s/HOSTNAME=.*/HOSTNAME=$HOSTNAME/g" /etc/sysconfig/network
+
+hostname $HOSTNAME
