@@ -26,6 +26,7 @@ Getopt::Long::Configure("pass_through");
 
 my $verbose = 0;
 my $installroot = "/install";
+my $sysclone_home = $installroot . "/sysclone";
 
 sub handled_commands {
     return { "imgcapture" => "imgcapture" };
@@ -45,7 +46,7 @@ sub process_request {
     @ARGV = @{$request->{arg}} if (defined $request->{arg});
     my $argc = scalar @ARGV;
 
-    my $usage = "Usage: imgcapture <node> [-p | --profile <profile>] [-o|--osimage <osimage>] [-i <nodebootif>] [-n <nodenetdrivers>] [-V | --verbose] \n imgcapture [-h|--help] \n imgcapture [-v|--version]";
+    my $usage = "Usage: imgcapture <node> -t|--type diskless [-p | --profile <profile>] [-o|--osimage <osimage>] [-i <nodebootif>] [-n <nodenetdrivers>] [-V | --verbose] \n imgcapture <node> -t|--type sysclone -o|--osimage <osimage> [-V | --verbose] \n imgcapture [-h|--help] \n imgcapture [-v|--version]";
 
     my $os;
     my $arch;
@@ -55,6 +56,7 @@ sub process_request {
     my $osimg;
     my $help;
     my $version;
+    my $type;
 
     GetOptions(
         "profile|p=s" => \$profile,
@@ -63,7 +65,8 @@ sub process_request {
         'osimage|o=s' => \$osimg,
         "help|h" => \$help,
         "version|v" => \$version,
-        "verbose|V" => \$verbose
+        "verbose|V" => \$verbose,
+        "type|t=s" => \$type
     );
 
     if ( defined( $ARGV[0] )) {
@@ -95,6 +98,56 @@ sub process_request {
         return 0;
     }
 
+    if(($type =~ /sysclone/) && (!$osimg)){
+        my $rsp = {};
+        push @{$rsp->{data}}, "You must specify osimage name if you are using \"sysclone\".";
+        push @{$rsp->{data}}, $usage;
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;    
+    }
+    # sysclone
+    unless($type =~ /diskless/)
+    {
+        my $shortname = xCAT::InstUtils->myxCATname();
+
+        my $rc;
+        $rc  = sysclone_configserver($shortname, $callback, $doreq);
+        if($rc){
+            my $rsp = {};
+            $rsp->{data}->[0] = qq{Can not configure Imager Server on $shortname.};
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+        
+        $rc = sysclone_prepclient($node, $shortname, $osimg, $callback, $doreq);
+        if($rc){
+            my $rsp = {};
+            $rsp->{data}->[0] = qq{Can not prepare Golden Client on $node.};
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+        
+        $rc = sysclone_getimg($node, $shortname, $osimg, $callback, $doreq);
+        if($rc){
+            my $rsp = {};
+            $rsp->{data}->[0] = qq{Can not get image $osimg from $node.};
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+
+        $rc = sysclone_createosimgdef($node, $shortname, $osimg, $callback, $doreq);
+        if($rc){
+            my $rsp = {};
+            $rsp->{data}->[0] = qq{Can not create osimage definition for $osimg on $shortname.};
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+
+
+        
+        return;
+    }
+
     my $nodetypetab = xCAT::Table->new("nodetype");
     my $ref_nodetype = $nodetypetab->getNodeAttribs($node, ['os','arch','profile']);
     $os = $ref_nodetype->{os};
@@ -116,7 +169,7 @@ sub process_request {
             # the osimage table doesn't exist
             my $rsp = {};
             $rsp->{data}->[0] = qq{Cannot open the osimage table};
-            $xCAT::MsgUtils->message("E", $rsp, $callback);
+            xCAT::MsgUtils->message("E", $rsp, $callback);
             return;
         }
 
@@ -125,7 +178,7 @@ sub process_request {
             # the linuximage table doesn't exist
             my $rsp = {};
             $rsp->{data}->[0] = qq{Cannot open the linuximage table};
-            $xCAT::MsgUtils->message("E", $rsp, $callback);
+            xCAT::MsgUtils->message("E", $rsp, $callback);
             return;
         }
 
@@ -405,4 +458,283 @@ sub getplatform {
     return $platform;
 }
 
+sub sysclone_configserver{
+    my ($server, $callback, $subreq) = @_;
+    
+    # check if systemimager is installed on the imager server
+    my $rsp = {};
+    $rsp->{data}->[0] = qq{Checking if systemimager packages are installed on $server.};
+    xCAT::MsgUtils->message("D", $rsp, $callback);
+    
+    my $cmd = "rpm -qa|grep systemimager-server";
+    my $output = xCAT::Utils->runcmd("$cmd", -1);    
+    if($verbose) {
+        my $rsp = {};
+        $rsp->{data}->[0] = qq{the output of $cmd on $server is:};
+        push @{$rsp->{data}}, $output;
+        xCAT::MsgUtils->message("D", $rsp, $callback);
+    }
+
+    if($::RUNCMD_RC != 0) { #failed
+        my $rsp = {};
+        $rsp->{data}->[0] = qq{systemimager-server is not installed on the $server.};
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+    # update /etc/systemimager/systemimager.conf
+    my $rc = `sed -i "s/\\/var\\/lib\\/systemimager/\\/install\\/sysclone/g" /etc/systemimager/systemimager.conf`;
+    if (!(-e $sysclone_home))
+    {
+        mkpath($sysclone_home);
+    }
+
+    my $sysclone_images = $sysclone_home . "/images";
+    if (!(-e $sysclone_images))
+    {
+        mkpath($sysclone_images);
+    }
+
+    my $sysclone_scripts = $sysclone_home . "/scripts";
+    if (!(-e $sysclone_scripts))
+    {
+        mkpath($sysclone_scripts);
+    }
+
+    my $sysclone_overrides = $sysclone_home . "/overrides";
+    if (!(-e $sysclone_overrides))
+    {
+        mkpath($sysclone_overrides);
+    }
+
+    # update /etc/systemimager/rsync_stubs/10header to generate new /etc/systemimager/rsyncd.conf
+    my $rc = `sed -i "s/\\/var\\/lib\\/systemimager/\\/install\\/sysclone/g" /etc/systemimager/rsync_stubs/10header`;
+    $rc = `export PERL5LIB=/usr/lib/perl5/site_perl/;LANG=C si_mkrsyncd_conf`;
+    
+    return 0;
+}
+
+sub sysclone_prepclient {
+    my ($node, $server, $osimage, $callback, $subreq) = @_;
+    
+    # check if systemimager is installed on the golden client
+    my $rsp = {};
+    $rsp->{data}->[0] = qq{Checking if systemimager packages are installed on $node.};
+    xCAT::MsgUtils->message("D", $rsp, $callback);
+    
+    my $cmd = "rpm -qa|grep systemimager-client";
+    my $output = xCAT::Utils->runxcmd({command => ["xdsh"], node => [$node], arg =>[$cmd]}, $subreq, 0, 1);
+    if($verbose) {
+        my $rsp = {};
+        $rsp->{data}->[0] = qq{the output of $cmd on $node is:};
+        foreach my $o (@$output) {
+            push @{$rsp->{data}}, $o;
+        }
+        xCAT::MsgUtils->message("D", $rsp, $callback);
+    }
+
+    if($::RUNCMD_RC != 0) { #failed
+        my $rsp = {};
+        $rsp->{data}->[0] = qq{systemimager-client is not installed on the $node.};
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+    # prepare golden client
+    my $rsp = {};
+    $rsp->{data}->[0] = qq{Preparing osimage $osimage on $node.};
+    xCAT::MsgUtils->message("D", $rsp, $callback);
+    
+    my $cmd = "export PERL5LIB=/usr/lib/perl5/site_perl/;LANG=C si_prepareclient --server $server --my-modules --yes";
+    my $output = xCAT::Utils->runxcmd(
+                                            {
+                                            command => ["xdsh"], 
+                                            node => [$node], 
+                                            arg =>["-s", $cmd]
+                                            }, 
+                                            $subreq, 0, 1);
+    if($verbose) {
+        my $rsp = {};
+        $rsp->{data}->[0] = qq{the output of $cmd on $node is:};
+        foreach my $o (@$output) {
+            push @{$rsp->{data}}, $o;
+        }
+        xCAT::MsgUtils->message("D", $rsp, $callback);
+    }
+
+    if($::RUNCMD_RC != 0) { #failed
+        my $rsp = {};
+        $rsp->{data}->[0] = qq{$cmd failed on the $node.};
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+    # fix systemimager bug
+    $cmd  = qq{sed -i 's/p_name=\"(v1)\"/p_name=\"-\"/' /etc/systemimager/autoinstallscript.conf};
+    $output = xCAT::Utils->runxcmd(
+                                            {
+                                            command => ["xdsh"], 
+                                            node => [$node], 
+                                            arg =>[$cmd]
+                                            }, 
+                                            $subreq, 0, 1);
+                                            
+    return 0;
+}
+
+sub sysclone_getimg{
+    my ($node, $server, $osimage, $callback, $subreq) = @_;
+
+    my $rsp = {};
+    $rsp->{data}->[0] = qq{Getting osimage "$osimage" from $node to $server.};
+    xCAT::MsgUtils->message("D", $rsp, $callback);
+
+    my $cmd = "export PERL5LIB=/usr/lib/perl5/site_perl/;";
+    $cmd .= "LANG=C si_getimage -golden-client $node -image $osimage -ip-assignment dhcp -post-install reboot -quiet -update-script YES";
+    my $output = xCAT::Utils->runcmd($cmd, -1);
+    if($verbose) {
+        my $rsp = {};
+        $rsp->{data}->[0] = qq{the output of $cmd on $server is:};
+        if(ref $output){
+            foreach my $o (@$output) {
+                push @{$rsp->{data}}, $o;
+            }
+        } else {
+            @{$rsp->{data}} = ($output);
+        }
+        xCAT::MsgUtils->message("D", $rsp, $callback);
+    }
+
+    if($::RUNCMD_RC != 0) { #failed
+        my $rsp = {};
+        $rsp->{data}->[0] = qq{$cmd failed on the $server.};
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+    return 0;
+}
+
+sub sysclone_createosimgdef{
+    my ($node, $server, $osimage, $callback, $subreq) = @_;
+    my $createnew = 0;
+    my %osimgdef;
+
+    my $osimgtab  = xCAT::Table->new('osimage');
+    my $entry = ($osimgtab->getAllAttribsWhere("imagename = '$osimage'", 'ALL' ))[0];
+     if($entry){
+        my $rsp = {};
+        $rsp->{data}->[0] = qq{Using the existing osimage "$osimage" defined on $server.};
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+        return 0;
+     }
+    
+    # try to see if we can get the osimage def from golden client.
+    my $nttab  = xCAT::Table->new('nodetype');
+    if (!$nttab){
+        my $rsp = {};
+        $rsp->{data}->[0] = qq{Can not open nodebype table.};
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+    my @nodes = ($node);
+    my $nthash = $nttab->getNodesAttribs(\@nodes, ['node', 'provmethod']);
+    my $tmp = $nthash->{$node}->[0];
+    if (($tmp) && ($tmp->{provmethod})){
+
+        my %objtype;
+        my $oldimg = $tmp->{provmethod};
+
+        # see if osimage exists
+        $objtype{$oldimg} = 'osimage';
+        my %imagedef = xCAT::DBobjUtils->getobjdefs(\%objtype, $callback);
+        if (!($imagedef{$oldimg}{osvers})){ # just select one attribute for test
+            # create new one
+            $createnew = 1;
+        }else{
+            # based on the existing one
+            $osimgdef{$osimage} = $imagedef{$oldimg};
+
+            # only update a few attributes which are meanless for sysclone
+            $osimgdef{$osimage}{provmethod} = "sysclone";
+            $osimgdef{$osimage}{template} = "";
+        }
+    } else {
+        $createnew = 1;
+    }
+
+    if($createnew){
+        my $file = $sysclone_home . "/images/" . $osimage. "/etc/systemimager/boot/ARCH";
+        my $cmd = "cat $file";
+        my $output = xCAT::Utils->runcmd($cmd, -1);
+        chomp $output;
+        my $arch = $output;
+        my $osver = getOsVersion($node);
+        my $platform = getplatform($osver);
+
+        # create a baic one
+        $osimgdef{$osimage}{objtype} = "osimage";
+        $osimgdef{$osimage}{provmethod} = "sysclone";
+        $osimgdef{$osimage}{profile} = "compute";  # use compute?
+        $osimgdef{$osimage}{imagetype} = "Linux";
+        $osimgdef{$osimage}{osarch} = $arch;
+        $osimgdef{$osimage}{osname} = "Linux";
+        $osimgdef{$osimage}{osvers} =  $osver;
+        $osimgdef{$osimage}{osdistroname} =  "$osver-$arch";
+        #$osimgdef{$osimage}{pkgdir} =  "/install/$osver/$arch";
+        #$osimgdef{$osimage}{otherpkgdir} =  "/install/post/otherpkgs/$osver/$arch";
+    }
+
+    if (xCAT::DBobjUtils->setobjdefs(\%osimgdef) != 0)
+    {
+        my $rsp;
+        $rsp->{data}->[0] = "Could not create xCAT definition for $osimage.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+    my $rsp = {};
+    $rsp->{data}->[0] = qq{The osimage definition for $osimage was created.};
+    xCAT::MsgUtils->message("D", $rsp, $callback);
+
+    return 0;    
+}
+
+sub getOsVersion {
+    my ($node) = @_;
+
+    my $os = '';
+    my $version = '';
+
+    # Get operating system
+    my $release = `ssh -o ConnectTimeout=2 $node "cat /etc/*release"`;
+    my @lines = split('\n', $release);
+    if (grep(/SLES|Enterprise Server/, @lines)) {
+        $os = 'sles';
+        $version = $lines[0];
+        $version =~ tr/\.//;
+        $version =~ s/[^0-9]*([0-9]+).*/$1/;
+        $os = $os . $version;
+        
+        # Append service level
+        $version = `echo "$release" | grep "LEVEL"`;
+        $version =~ tr/\.//;
+        $version =~ s/[^0-9]*([0-9]+).*/$1/;
+        $os = $os . 'sp' . $version;
+    } elsif (grep(/Red Hat/, @lines)) {
+        $os = "rh";
+        $version = $lines[0];
+        $version =~ s/[^0-9]*([0-9.]+).*/$1/;
+        if    ($lines[0] =~ /AS/)     { $os = 'rhas' }
+        elsif ($lines[0] =~ /ES/)     { $os = 'rhes' }
+        elsif ($lines[0] =~ /WS/)     { $os = 'rhws' }
+        elsif ($lines[0] =~ /Server/) { $os = 'rhels' }
+        elsif ($lines[0] =~ /Client/) { $os = 'rhel' }
+        #elsif (-f "/etc/fedora-release") { $os = 'rhfc' }
+        $os = $os . $version;
+    }
+
+    return $os;
+}
 1;
