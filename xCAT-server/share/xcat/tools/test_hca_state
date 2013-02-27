@@ -7,6 +7,18 @@
 #   - added --help output
 #
 
+#
+# As per Nate Rini <nate@ucar.edu>:
+#
+#   The following (Red Hat) rpms include the version of pciutils (aka
+#   lspci) that can read gen3 correctly.
+#       
+#       pciutils-3.1.10-2.el6.x86_64.rpm 
+#       pciutils-libs-3.1.10-2.el6.x86_64.rpm
+#       
+#   This may impact the "PCI:" speed test performed by this script.
+#
+
 NR=$1
 
 offer_help() {
@@ -14,7 +26,7 @@ offer_help() {
     PROGNAME=$(basename $0)
 
     # At some point, source a file for this info for the whole suite
-    VERSION=3.2.17
+    VERSION=3.2.27
 
     cat <<EOF
 $PROGNAME (part of the BEF_Scripts for xCAT) v$VERSION
