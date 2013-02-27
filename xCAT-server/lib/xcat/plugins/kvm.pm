@@ -1148,7 +1148,14 @@ sub makedom {
     $graphics->setAttribute("listen",'0.0.0.0');
     $xml = $parseddom->toString();
     my $errstr;
-    eval { $dom=$hypconn->create_domain($xml); };
+    eval { 
+	if ($::XCATSITEVALS{persistkvmguests}) {
+		$dom=$hypconn->define_domain($xml); 
+		$dom->create()
+	} else {
+		$dom=$hypconn->create_domain($xml); 
+	}
+    };
     if ($@) { $errstr = $@; }
     if (ref $errstr) {
        $errstr = ":".$errstr->{message};
@@ -1501,6 +1508,11 @@ sub rmvm {
             }
         }
     }
+    eval { #try to fetch the domain by name even after it has been destroyed, if it is still there it needs an 'undefine'
+       $dom = $hypconn->get_domain_by_name($node);
+       $dom->undefine();
+    };
+	
     $updatetable->{kvm_nodedata}->{'!*XCATNODESTODELETE*!'}->{$node}=1;
 }
 sub chvm {
@@ -2192,8 +2204,8 @@ sub mkvm {
         }
     }
     #print "force=$force\n";
-    if ($mastername or $disksize) {
        my @return;
+    if ($mastername or $disksize) {
 	eval {
 	@return = createstorage($diskname,$mastername,$disksize,$confdata->{vm}->{$node}->[0],$force);
 	};
@@ -2210,13 +2222,18 @@ sub mkvm {
              $xml = build_xmldesc($node,cpus=>$cpucount,memory=>$memory);
              $updatetable->{kvm_nodedata}->{$node}->{xml}=$xml;
          }
-         return @return;
     }
-    unless ($confdata->{kvmnodedata}->{$node} and $confdata->{kvmnodedata}->{$node}->[0] and $confdata->{kvmnodedata}->{$node}->[0]->{xml}) {
          my $xml;
+    if ($confdata->{kvmnodedata}->{$node} and $confdata->{kvmnodedata}->{$node}->[0] and $confdata->{kvmnodedata}->{$node}->[0]->{xml}) {
+    	$xml = $confdata->{kvmnodedata}->{$node}->[0]->{xml};
+    } else { # ($confdata->{kvmnodedata}->{$node} and $confdata->{kvmnodedata}->{$node}->[0] and $confdata->{kvmnodedata}->{$node}->[0]->{xml}) {
          $xml = build_xmldesc($node,cpus=>$cpucount,memory=>$memory);
          $updatetable->{kvm_nodedata}->{$node}->{xml}=$xml;
     }
+	 if ($::XCATSITEVALS{persistkvmguests}) {
+	 	$hypconn->define_domain($xml);
+	}
+         return @return;
  } else {
      if ($mastername or $disksize) {
          return 1,"Requested initialization of storage, but vm.storage has no value for node";
@@ -2255,6 +2272,8 @@ sub power {
 #this worked before I started doing the offline xml store because every rpower on tried to rebuild
             ($dom,$errstr) = makedom($node,$cdloc);
             if ($errstr) { return (1,$errstr); }
+        } elsif (not $dom->is_active()) {
+		$dom->create();
         } else {
           $retstring .= "$status_noop";
         }
@@ -2262,7 +2281,9 @@ sub power {
         if ($dom) {
             my $newxml=$dom->get_xml_description();
             $updatetable->{kvm_nodedata}->{$node}->{xml}=$newxml;
-            $dom->destroy();
+	    if ($dom->is_active()) { 
+            	$dom->destroy();
+	    }
             undef $dom;
         } else { $retstring .= "$status_noop"; }
     } elsif ($subcommand eq 'softoff') {
@@ -2280,6 +2301,7 @@ sub power {
             if ($newxml) { #need to destroy and repower..
                 $updatetable->{kvm_nodedata}->{$node}->{xml}=$newxml;
                 $dom->destroy();
+		$dom->undefine();
                 undef $dom;
                 if ($use_xhrm) {
                     xhrm_satisfy($node,$hyp);
