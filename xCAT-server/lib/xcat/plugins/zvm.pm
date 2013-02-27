@@ -3369,7 +3369,7 @@ sub cloneVM {
 		    my @lines = split( '\n', $srcDiskDet );
 		    
 		    # Loop through each line
-		    for ( $i = 0 ; $i < @lines ; $i++ ) {		                
+		    for ( $i = 0 ; $i < @lines ; $i++ ) {
 		        $lines[$i] =~ s/MDISK=//g;
 		        
 		        # Extract NIC address
@@ -7033,7 +7033,7 @@ sub inventoryHypervisor {
         if ($space eq "all" || !$space) {
             $str = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$pool.conf"`;
         } else {
-            $str = "#status,wwpn,lun,size,owner,channel,tag\n";
+            $str = "#status,wwpn,lun,size,range,owner,channel,tag\n";
             $str .= `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$pool.conf" | egrep -i $space`;
         }
     }
