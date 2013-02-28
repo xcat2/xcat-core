@@ -506,7 +506,7 @@ sub getIfcfgByNic {
         foreach (@parms) {
 
             # If the network file contains the NIC address
-            $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo cat $_" | grep "$nic"`;
+            $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo cat $_" | egrep -i "$nic"`;
             if ($out) {
 
                 # Return network file path
@@ -2052,15 +2052,15 @@ sub smapi4xcat {
     
     # Check SMAPI level
     # Levels 621 and greater support SMAPI EXEC
-#    my $out = `ssh $user\@$hcp "$sudo $dir/smcli Query_API_Functional_Level -T $hcpUserId"`;
-#    $out = xCAT::zvmUtils->trimStr($out);
-#    if ( !($out =~ m/V6.2/i || $out =~ m/V6.1/i || $out =~ m/V5.4/i) ) {
-#    	return 1;
-#    }
+    my $out = `ssh $user\@$hcp "$sudo $dir/smcli Query_API_Functional_Level -T $hcpUserId"`;
+    $out = xCAT::zvmUtils->trimStr($out);
+    if ( !($out =~ m/V6.2/i || $out =~ m/V6.1/i || $out =~ m/V5.4/i) ) {
+    	return 1;
+    }
     
     # Check if SMAPI EXEC exists
     # EXEC found if RC = 8 and RS = 3002
-    my $out = `ssh $user\@$hcp "$sudo $dir/smcli xCAT_Commands_IUO -T $hcpUserId -c ''"`;
+    $out = `ssh $user\@$hcp "$sudo $dir/smcli xCAT_Commands_IUO -T $hcpUserId -c ''"`;
     $out = xCAT::zvmUtils->trimStr($out);
     if ( $out =~ m/Return Code: 8/i && $out =~ m/Reason Code: 3002/i ) {
         return 1;
