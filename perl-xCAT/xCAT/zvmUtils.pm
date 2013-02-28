@@ -294,6 +294,29 @@ sub printLn {
 
 #-------------------------------------------------------
 
+=head3   printSyslog
+
+    Description : Print a string to syslog
+    Arguments   : String
+    Returns     : Nothing
+    Example     : xCAT::zvmUtils->printSyslog($str);
+    
+=cut
+
+#-------------------------------------------------------
+sub printSyslog {
+
+    # Get inputs
+    my ( $class, $str ) = @_;
+
+    # Print string
+    xCAT::MsgUtils->message( "S", $str );
+
+    return;
+}
+
+#-------------------------------------------------------
+
 =head3   isZvmNode
 
     Description : Determines if a given node is in the 'zvm' table
