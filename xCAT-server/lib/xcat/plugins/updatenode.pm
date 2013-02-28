@@ -224,6 +224,8 @@ sub preprocess_updatenode
                     'P|scripts:s'   => \$::RERUNPS,
                     'k|security'    => \$::SECURITY,
                     'o|os:s'        => \$::OS,
+                    'fanout=i'      => \$::fanout,
+
         )
       )
     {
@@ -361,7 +363,7 @@ sub preprocess_updatenode
         {    # MN in the nodelist
             my $rsp = {};
             $rsp->{error}->[0] =
-              "You must not run -K option against the Management Node:$mname.";
+              "You must not run -k option against the Management Node:$mname.";
             xCAT::MsgUtils->message("E", $rsp, $callback, 1);
             return;
         }
@@ -925,12 +927,14 @@ sub updatenode
                     'v|version'     => \$::VERSION,
                     'V|verbose'     => \$::VERBOSE,
                     'F|sync'        => \$::FILESYNC,
+                    'l|user:s'      => \$::USER,
                     'f|snsync'      => \$::SNFILESYNC,
                     'S|sw'          => \$::SWMAINTENANCE,
                     's|sn'          => \$::SETSERVER,
                     'P|scripts:s'   => \$::RERUNPS,
                     'k|security'    => \$::SECURITY,
                     'o|os:s'        => \$::OS,
+                    'fanout=i'      => \$::fanout,
         )
       )
     {
@@ -1018,7 +1022,7 @@ sub updatenode
         {    # MN in the nodelist
             my $rsp = {};
             $rsp->{error}->[0] =
-              "You must not run -K option against the Management Node:$mname.";
+              "You must not run -k option against the Management Node:$mname.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
@@ -1133,6 +1137,7 @@ sub updatenode
 
 #-----------------------------------------------------------------------------
 sub updatenoderunps
+
 {
     my $request       = shift;
     my $subreq        = shift;
@@ -1168,11 +1173,15 @@ sub updatenoderunps
 
         # it's possible that the nodes could have diff server names
         # do all the nodes for a particular server at once
+
         foreach my $snkey (keys %servernodes)
         {
             my $nodestring = join(',', @{$servernodes{$snkey}});
             my $args;
             my $mode;
+
+            #now build the actual updatenode command
+           
             if (   $request->{rerunps4security}
                 && $request->{rerunps4security}->[0] eq "yes")
             {
@@ -1192,35 +1201,25 @@ sub updatenoderunps
             my $runpscmd;
             if ($::SETSERVER){
                $runpscmd  =
-                    "$installdir/postscripts/xcatdsklspost $mode -M $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c ";
+                    "$installdir/postscripts/xcatdsklspost $mode -M $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c";
             } else {
                $runpscmd  =
-                    "$installdir/postscripts/xcatdsklspost $mode -m $snkey  '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c"
+                    "$installdir/postscripts/xcatdsklspost $mode -m $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c"
             }
-            # if non-root userid ask xdsh to use sudo
-            if (defined($::USER)){ # non-root user 
-              $args1 = [
-               "--nodestatus",
-               "--sudo",
-               "-s",
-               "-v",
-               "-e",
-               "$runpscmd"
-              ];
-            } else {   # running as root
-              $args1 = [
-               "--nodestatus",
-               "-s",
-               "-v",
-               "-e",
-               "$runpscmd"
-              ];
-           }
-            # if -l username input
-            if (defined($::USER)){ # need to add the -l username
-              unshift(@$args1, "$::USER");
-              unshift(@$args1, "-l");
+            push @$args1,"--nodestatus"; # return nodestatus
+            if (defined($::fanout))  {  # fanout
+             push @$args1,"-f" ;
+             push @$args1,$::fanout;
             }
+            if (defined($::USER))  {  # -l contains sudo user
+             push @$args1,"--sudo" ;
+             push @$args1,"-l" ;
+             push @$args1,"$::USER" ;
+            }
+            push @$args1,"-s";  # streaming
+            push @$args1,"-v";  # streaming
+            push @$args1,"-e";  # execute 
+            push @$args1,"$runpscmd"; # the command 
 
 
             if ($::VERBOSE)
@@ -1331,33 +1330,39 @@ sub updatenodesyncfiles
         foreach my $synclist (keys %syncfile_node)
         {
             $numberofsynclists++; 
+            my $args;
+            my $env;
+            if ($request->{FileSyncing}->[0] ne "yes") {  # sync SN only
+              push @$args,"-s" ;
+              $env = ["DSH_RSYNC_FILE=$synclist", "RSYNCSNONLY=1"];
+            } else {
+              $env = ["DSH_RSYNC_FILE=$synclist"];
+            }
+            push @$args,"--nodestatus" ;
+            if (defined($::fanout))  {  # fanout
+             push @$args,"-f" ;
+             push @$args,$::fanout;
+            }
+          #  if (defined($::USER))  {  # -l contains sudo (TODO SUPPORT?)
+          #   push @$args,"--sudo" ;
+          #   push @$args,"-l" ;
+          #   push @$args,"$::USER" ;
+          #  }
+            push @$args,"-F" ;
+            push @$args,"$synclist" ;
+            my $nodestring = join(',', @{$syncfile_node{$synclist}});
+
             if ($::VERBOSE)
             {
                 my $rsp = {};
-                if ($request->{FileSyncing}->[0] eq "yes")
-                {    # sync nodes
-                    $rsp->{data}->[0] =
-                      "  $localhostname: Internal call command: xdcp ". join(" ",@{$syncfile_node{$synclist}})." -F $synclist";
-                }
-                else
-                {    # sync SN
-                    $rsp->{data}->[0] =
-                      "  $localhostname: Internal call command: xdcp ".join(" ",@{$syncfile_node{$synclist}})." -s -F $synclist";
-                }
+                $rsp->{data}->[0] =
+                  "  $localhostname: Internal call command: xdcp $nodestring " . join(' ', @$args);
                 $callback->($rsp);
             }
-            my $args;
-            my $env;
-            if ($request->{FileSyncing}->[0] eq "yes")
-            {        # sync nodes
-                $args = ["--nodestatus","-F", "$synclist"];
-                $env = ["DSH_RSYNC_FILE=$synclist"];
-            }
-            else
-            {        # sync SN only
-                $args = ["-s", "--nodestatus","-F", "$synclist"];
-                $env = ["DSH_RSYNC_FILE=$synclist", "RSYNCSNONLY=1"];
-            }
+
+            $CALLBACK = $callback;
+
+
            $output =
              xCAT::Utils->runxcmd(
                    {
@@ -1521,30 +1526,24 @@ sub updatenodesoftware
                 $cmd =
                   "$installdir/postscripts/xcatdsklspost 2 -m $snkey 'ospkgs,otherpkgs' --tftp $tftpdir";
             }
+    
             # build xdsh command
-            if (defined($::USER)){ # non-root user 
-              $args1 = [
-                    "--nodestatus",
-                    "--sudo",
-                    "-s",
-                    "-v",
-                    "-e",
-                    "$cmd"
-                    ];
-            } else {  # root
-              $args1 = [
-                    "--nodestatus",
-                    "-s",
-                    "-v",
-                    "-e",
-                    "$cmd"
-                    ];
+            push @$args1,"--nodestatus"; # return nodestatus
+            if (defined($::fanout))  {  # fanout
+             push @$args1,"-f" ;
+             push @$args1,$::fanout;
             }
-            # if -l username input
-            if (defined($::USER)){ # need to add the -l username
-              unshift(@$args1, "$::USER");
-              unshift(@$args1, "-l");
+            if (defined($::USER))  {  # -l contains sudo user
+             push @$args1,"--sudo" ;
+             push @$args1,"-l" ;
+             push @$args1,"$::USER" ;
             }
+            push @$args1,"-s";  # streaming
+            push @$args1,"-v";  # streaming
+            push @$args1,"-e";  # execute 
+            push @$args1,"$cmd"; # the command 
+
+
 
             if ($::VERBOSE)
             {
@@ -2558,12 +2557,18 @@ sub updateAIXsoftware
                     }
                     else
                     {    # if server is remote then use xdsh
+                       my $args;
+                       if (defined($::fanout))  {  # fanout input
+                          push @$args,"-f" ;
+                          push @$args,$::fanout;
+                       }
+                       push @$args,"$chmcmd";
                         my $output =
                           xCAT::Utils->runxcmd(
                                                {
                                                 command => ["xdsh"],
                                                 node    => [$serv],
-                                                arg     => [$chmcmd]
+                                                arg     => $args
                                                },
                                                $subreq, -1, 1
                                                );
@@ -2598,10 +2603,16 @@ sub updateAIXsoftware
                         push @{$rsp->{data}}, "Running command: $mcmd\n";
                         xCAT::MsgUtils->message("I", $rsp, $callback);
                     }
+                    my $args;
+                    if (defined($::fanout))  {  # fanout input
+                       push @$args,"-f" ;
+                       push @$args,$::fanout;
+                    }
+                    push @$args,"$mcmd";
 
                     my $output =
                       xCAT::Utils->runxcmd(
-                        {command => ["xdsh"], node => \@nodes, arg => [$mcmd]},
+                        {command => ["xdsh"], node => \@nodes, arg => $args},
                         $subreq, -1, 1);
 
                     if ($::RUNCMD_RC != 0)
@@ -2695,20 +2706,21 @@ sub updateAIXsoftware
                 #		installp - UNLESS the flags don't need filesets
                 if ($noinstallp == 0)
                 {
-
                     if ($::VERBOSE)
                     {
                         my $rsp;
                         push @{$rsp->{data}}, "Running: xdsh -s -v  \'$inpcmd\'.\n";
                         xCAT::MsgUtils->message("I", $rsp, $callback);
                     }
-
-                   my  $args1 = [
-                        "--nodestatus",
-                        "-s",
-                        "-v",
-                        "$inpcmd"
-                   ];
+                   my $args1;
+                   push @$args1,"--nodestatus";
+                   push @$args1,"-s";
+                   push @$args1,"-v";
+                   if (defined($::fanout))  {  # fanout input
+                       push @$args1,"-f" ;
+                       push @$args1,$::fanout;
+                   }
+                   push @$args1,"$inpcmd";
 
                    $subreq->(
                            {
@@ -2734,12 +2746,18 @@ sub updateAIXsoftware
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
 
+                 my $args;
+                 if (defined($::fanout))  {  # fanout input
+                   push @$args,"-f" ;
+                   push @$args,$::fanout;
+                 }
+                 push @$args,"$upcmd";
                 my $output =
                   xCAT::Utils->runxcmd(
                                        {
                                         command => ["xdsh"],
                                         node    => \@nodes,
-                                        arg     => [$upcmd]
+                                        arg     => $args
                                        },
                                        $subreq, -1, 1
                                        );
@@ -2805,13 +2823,19 @@ sub updateAIXsoftware
                     push @{$rsp->{data}}, "Running: \'$emgrcmd\'.\n";
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
+                 my $args;
+                 if (defined($::fanout))  {  # fanout input
+                   push @$args,"-f" ;
+                   push @$args,$::fanout;
+                 }
+                 push @$args,"$emgrcmd";
 
                 my $output =
                   xCAT::Utils->runxcmd(
                                        {
                                         command => ["xdsh"],
                                         node    => \@nodes,
-                                        arg     => [$emgrcmd]
+                                        arg     => $args
                                        },
                                        $subreq, -1, 1
                                        );
@@ -2906,12 +2930,15 @@ sub updateAIXsoftware
                         xCAT::MsgUtils->message("I", $rsp, $callback);
                     }
                    # install the rpms
-                   my  $args1 = [
-                        "--nodestatus",
-                        "-s",
-                        "-v",
-                        "$rcmd"
-                   ];
+                   my $args1;
+                   push @$args1,"--nodestatus";
+                   push @$args1,"-s";
+                   push @$args1,"-v";
+                   if (defined($::fanout))  {  # fanout input
+                       push @$args1,"-f" ;
+                       push @$args1,$::fanout;
+                   }
+                   push @$args1,"$rcmd";
 
                    $subreq->(
                            {
@@ -2938,12 +2965,18 @@ sub updateAIXsoftware
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
 
+                 my $args1;
+                 if (defined($::fanout))  {  # fanout input
+                       push @$args1,"-f" ;
+                       push @$args1,$::fanout;
+                 }
+                 push @$args1,"$ucmd";
                 my $output =
                   xCAT::Utils->runxcmd(
                                        {
                                         command => ["xdsh"],
                                         node    => \@nodes,
-                                        arg     => [$ucmd]
+                                        arg     => $args1
                                        },
                                        $subreq, -1, 1
                                        );
