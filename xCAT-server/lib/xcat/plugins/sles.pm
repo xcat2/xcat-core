@@ -887,8 +887,13 @@ sub mkinstall
         
         #To support multiple paths for osimage.pkgdir. We require the first value of osimage.pkgdir
         # should be the os base pkgdir.
+        my $tmppkgdir=$pkgdir;
         my @srcdirs = split(",", $pkgdir);
         $pkgdir = $srcdirs[0];
+        if( $pkgdir =~/^($installroot\/$os\/$arch)$/) {
+            $srcdirs[0]="$pkgdir/1";
+            $tmppkgdir=join(",", @srcdirs);
+        }
 
         #Call the Template class to do substitution to produce a kickstart file in the autoinst dir
         my $tmperr;
@@ -900,8 +905,8 @@ sub mkinstall
                          "$installroot/autoinst/$node",
                          $node,
 		         $pkglistfile,
-		         $pkgdir,
-                 undef,
+		         $tmppkgdir,
+                 $os,
                  $partfile
                          );
         }
