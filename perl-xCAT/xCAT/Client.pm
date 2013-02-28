@@ -433,7 +433,7 @@ sub plugin_command {
               $usesiteglobal = 1;
             }
             foreach (@nodes) { #Specified a specific plugin, not a table lookup
-              $handler_hash{$sent->{value}}->{$_} = 1;
+              $handler_hash{$::XCATSITEVALS{$sitekey}}->{$_} = 1;
             }
           }
       } elsif ($hdlspec =~ /:/) { #Specificed a table lookup path for plugin name
@@ -998,7 +998,7 @@ sub handle_response {
   }
 #print "in handle_response\n";
   # Handle errors
-  if ($rsp->{errorcode}) {
+  if (defined($rsp->{errorcode})) {
     if (ref($rsp->{errorcode}) eq 'ARRAY') {
       foreach my $ecode (@{$rsp->{errorcode}}) { 
         $xCAT::Client::EXITCODE |= $ecode;
@@ -1012,22 +1012,38 @@ sub handle_response {
 #print "printing error\n";
     if (ref($rsp->{error}) eq 'ARRAY') {
       foreach my $text (@{$rsp->{error}}) {
-        print STDERR "Error: $text\n";
+        if ($rsp->{NoErrorPrefix}) {
+          print STDERR "$text\n";
+        } else {
+          print STDERR "Error: $text\n";
+        }
       }
     }
     else {
-      print ("Error: ".$rsp->{error}."\n");
+      if ($rsp->{NoErrorPrefix}) {
+           print STDERR ($rsp->{error}."\n");
+      } else {
+          print STDERR ("Error: ".$rsp->{error}."\n");
+      }
     }
   }
   if ($rsp->{warning}) {
 #print "printing warning\n";
     if (ref($rsp->{warning}) eq 'ARRAY') {
       foreach my $text (@{$rsp->{warning}}) {
-        print STDERR "Warning: $text\n";
+        if ($rsp->{NoWarnPrefix}) {
+          print STDERR "$text\n";
+        } else {
+          print STDERR "Warning: $text\n";
+        }
       }
     }
     else {
-      print ("Warning: ".$rsp->{warning}."\n");
+        if ($rsp->{NoWarnPrefix}) {
+           print STDERR ($rsp->{warning}."\n");
+        } else {
+           print STDERR ("Warning: ".$rsp->{warning}."\n");
+        }
     }
   }
   if ($rsp->{info}) {
