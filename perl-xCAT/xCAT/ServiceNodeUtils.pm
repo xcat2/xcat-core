@@ -28,7 +28,7 @@ use strict;
   Input: service nodename
   Output: Masternode, OS and ARCH
   Example:
-    xCAT::ServiceNodeUtils->readSNInfo;
+    my $retdata = xCAT::ServiceNodeUtils->readSNInfo;
 =cut
 
 #-----------------------------------------------------------------------------
@@ -81,18 +81,18 @@ sub readSNInfo
 
   Checks the service node table in the database to see 
   if input Service should be setup on the
-  input service node
+  input service node or Management Node (used by AAsn.pm)
 
   Input:servicenodename,ipaddres(s) and hostnames of service node
   Output:
-        array of services to setup  for this service node
+        hash of services to setup  for this service node
     Globals:
         $::RUNCMD_RC = 0; good
         $::RUNCMD_RC = 1; error 
     Error:
         none
     Example:
-      @servicestosetup=xCAT::ServiceNodeUtils->isServiceReq($servicenodename, @serviceip) { blah; }
+      $servicestosetup=xCAT::ServiceNodeUtils->isServiceReq($servicenodename, @serviceip) { blah; }
 
 =cut
 
@@ -131,8 +131,10 @@ sub isServiceReq
         return;    # do not setup anything
     }
 
-    my @process_service_list = ();
+    # determine if this is being run for the Management Node
+    my $mname = xCAT::Utils->noderangecontainsMn($servicenodename);
 
+    my $servicehash;
     # read all the nodes from the table, for each service
     foreach my $service (@services)
     {
@@ -152,18 +154,36 @@ sub isServiceReq
                              # value 1 or yes  then we setup the service
                         if (($value eq "1") || ($value eq "YES"))
                         {
-                            push @process_service_list,
-                              $service;    # found service to setup
+                            $servicehash->{$service} = "1";
+                        } else {
+                            $servicehash->{$service} = "0";
                         }
                     }
+                    last; 
                 }
-            }
+            }  
         }
+
+    }
+    # if the ftpserver attribute is not defined in the service node table 
+    # and we are on
+    # the Linux management node, we need to look at site.vsftp
+    # if the tftpserver attribute is not defined, then we default it 1
+    if (($mname) && (xCAT::Utils->isLinux())) {
+      if (!exists($servicehash->{'ftpserver'})) { 
+        my @tmp = xCAT::TableUtils->get_site_attribute("vsftp");
+        if ($tmp[0] && ($tmp[0] !~ /0|NO|No|no|N|n/ )) {
+           $servicehash->{'ftpserver'} = 1;
+        }
+      }
+      if (!exists($servicehash->{'tftpserver'})) { 
+           $servicehash->{'tftpserver'} = 1;
+      }
     }
     $servicenodetab->close;
 
     $::RUNCMD_RC = 0;
-    return @process_service_list;
+    return $servicehash;
 
 }
 
