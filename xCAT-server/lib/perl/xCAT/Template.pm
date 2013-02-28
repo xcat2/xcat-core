@@ -106,6 +106,31 @@ sub subvars {
   #replace the env with the right value so that correct include files can be found
   $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
 
+  #support multiple paths of osimage in rh/sles diskfull installation
+  my @pkgdirs;
+  if ( defined($media_dir) ) {
+      @pkgdirs = split(",", $media_dir);
+      my $source;
+      my $c = 0;
+      foreach my $pkgdir(@pkgdirs) {
+          if( $platform =~ /^(rh|SL)$/ ) { 
+              $source .=  "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n";
+          } elsif ($platform =~ /^(sles|suse)/) {
+              my $http = "http://#TABLE:noderes:\$NODE:nfsserver#$pkgdir";
+              $source .=  "         <listentry>
+           <media_url>$http</media_url>
+           <product>SuSE-Linux-pkg$c</product>
+           <product_dir>/</product_dir>
+           <ask_on_error config:type=\"boolean\">false</ask_on_error> <!-- available since openSUSE 11.0 -->
+           <name>SuSE-Linux-pkg$c</name> <!-- available since openSUSE 11.1/SLES11 (bnc#433981) -->
+         </listentry>";
+          }
+          $c++;
+      }
+
+      $inc =~ s/#INSTALL_SOURCES#/$source/g;
+  }
+
   if ($pkglistfile) {
       #substitute the tag #INCLUDE_DEFAULT_PKGLIST# with package file name (for full install of  rh, centos,SL, esx fedora)
       $inc =~ s/#INCLUDE_DEFAULT_PKGLIST#/#INCLUDE:$pkglistfile#/g;
