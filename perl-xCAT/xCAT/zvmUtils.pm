@@ -483,7 +483,7 @@ sub getIfcfgByNic {
         foreach (@parms) {
 
             # If the network file contains the NIC address
-            $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo cat $_" | grep "$nic"`;
+            $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo cat $_" | egrep -i "$nic"`;
             if ($out) {
 
                 # Return network file path
