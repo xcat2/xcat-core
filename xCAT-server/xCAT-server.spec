@@ -70,6 +70,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/install
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ca
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/samples
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/rollupdate
@@ -114,6 +115,7 @@ cp share/xcat/ca/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/ca
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/xcat/ca/*
 
 cp share/xcat/scripts/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
+cp share/xcat/samples/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/samples
 cp -r share/xcat/tools/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
 cp share/xcat/rollupdate/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/rollupdate
 cp share/xcat/installp_bundles/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/installp_bundles
