@@ -1146,7 +1146,7 @@ ions.\n";
    		if ($::RUNCMD_RC  != 0)
    		{
    			my $rsp;
-   			$rsp->{data}->[0] = "$::msgstr Could not create a NIM definition for \'$group\'.\n";
+   			$rsp->{data}->[0] = "$::msgstr Error running command \'$cmd\'.\n";
 			if ($::verbose)
    			{
 				$rsp->{data}->[1] = "$output";
