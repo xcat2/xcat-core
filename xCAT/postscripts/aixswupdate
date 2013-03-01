@@ -1,0 +1,680 @@
+#!/usr/bin/env perl -w
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#####################################################
+#
+#   xCAT post script for AIX nodes
+#
+#   This script is used to update software on AIX
+#		standalone systems.
+#		- it is executed by the updatenode command
+#
+#####################################################
+
+use File::Basename;
+use Getopt::Long;
+
+# MAIN
+#
+# Process the command line...
+#
+Getopt::Long::Configure("no_pass_through");
+Getopt::Long::Configure("bundling");
+$Getopt::Long::ignorecase = 0;
+if (
+    !GetOptions(
+              'f=s'      => \$::FILENAME,       # software list file name (full)
+              's=s'      => \$::SERVER,
+              'i=s'      => \$::INSTP_FLAGS,    # installp flags
+              'r=s'      => \$::RPM_FLAGS,      # RPM flags
+              'e=s'      => \$::EMGR_FLAGS,     # emgr flags
+              'n|nfsv4'  => \$::NFSV4,
+              'd|altsrc' => \$::ALTSRC,
+              'a|all'    => \$::ALLSW
+    )
+  )
+{                                         # Gather options
+    exit 1;
+}
+
+#
+# set the name of this nodes server
+#
+my $servnode;
+if ($::SERVER)
+{
+    $servnode = $::SERVER;
+}
+elsif (-f "/etc/xcatinfo")
+{
+    my $cmd = "/bin/cat /etc/xcatinfo | /bin/grep 'XCATSERVER'";
+    &runcmd($cmd);
+    my $SNline = $::outref;
+    my $junk;
+    ($junk, $servnode) = split(/=/, $SNline);
+    chomp $servnode;
+    $servnode =~ s/^\s*//;
+}
+elsif ($ENV{'MASTER'})
+{
+    $servnode = $ENV{'MASTER'};
+}
+else
+{
+
+    # error no server provided
+    print "aixswupdate: Could not determine the xCAT server for this node.\n";
+    exit 1;
+}
+
+# pick a local mount point
+my $localsrc = "/xcatswmnt";
+
+#ex. FILENAME -> /install/nim/lpp_source/71H_image_lpp_source/pkglist.$img
+#		mntdir -> /install/nim/lpp_source/71H_image_lpp_source
+my $mntdir   = dirname($::FILENAME);
+my $file     = basename($::FILENAME);
+my $listfile = "$localsrc/$file";
+
+#
+#	mount the package source directory
+#
+my $mtcmd;
+if ($::NFSV4)
+{
+    $mtcmd =
+      qq~/bin/mkdir -m 644 -p $localsrc; /usr/sbin/mount -o vers=4 $servnode:$mntdir $localsrc~;
+}
+else
+{
+    $mtcmd =
+      qq~/bin/mkdir -m 644 -p $localsrc; /usr/sbin/mount $servnode:$mntdir $localsrc~;
+}
+
+$rc = &runcmd($mtcmd);
+if ($rc != 0)
+{
+    print
+      "aixswupdate: Could not mount $mntdir source directory from $servnode.\n";
+    exit 1;
+}
+
+# if the software list file exists then try to install the software
+if (-f $listfile)
+{
+
+    # copy the file contents into a list
+    unless (open(LISTFILE, "<$listfile"))
+    {
+
+        # error
+    }
+    my @pkglist = <LISTFILE>;
+    close(LISTFILE);
+
+    if (scalar(@pkglist))
+    {
+
+        # sort the list into diff packaging types
+        my ($instpfile, $emgrfile, $rpmstring) = &processpkglist(\@pkglist);
+
+        #  installp
+        if (-f $instpfile)
+        {
+            my $rc = &do_installp($instpfile, $::INSTP_FLAGS, $localsrc);
+            if ($rc != 0)
+            {
+                print "One or more errors from the installp command.\n";
+            }
+        }
+
+        #  updtvpkg
+        my $upcmd = qq~/usr/sbin/updtvpkg~;
+        my $rc    = &runcmd($upcmd);
+        if ($rc != 0)
+        {
+            print "Could not run updtvpkg.\n";
+        }
+
+        # rpm
+        if ($rpmstring)
+        {
+            my $rc = &do_rpms($rpmstring, $::RPM_FLAGS, $localsrc);
+            if ($rc != 0)
+            {
+                print "One or more errors from the rpm command.\n";
+            }
+        }
+
+        # emgr
+        if (-f $emgrfile)
+        {
+            my $rc = &do_emgr($emgrfile, $::EMGR_FLAGS, $localsrc);
+            if ($rc != 0)
+            {
+                print "One or more errors from the emgr command.\n";
+            }
+        }
+
+        # clean up tmp files
+        my $rmcmd = qq~/bin/rmdir -R $emgrfile $instpfile~;
+
+        # unmount source dir
+        my $umtcmd = qq~/usr/sbin/umount /xcatswmnt~;
+        $rc = &runcmd($umtcmd);
+        if ($rc != 0)
+        {
+
+            # "Could not unmount source directory.\n";
+        }
+    }
+
+}
+else
+{
+
+    # return error
+    print "aixswupdate: Cannot locate software list file: $::FILENAME\n";
+    exit 1;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   do_rpms
+
+    This subroutine is used to install a list of rpm packages
+
+    Arguments:
+    Returns:
+        0 - ok
+        1 - error
+    Example:
+        my $rc = &do_rpm($rpmstring, $rpmflags, $localsrc);
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub do_rpms
+{
+    my $rpmstring = shift;
+    my $rpmflag   = shift;
+    my $localsrc  = shift;
+
+    # set flags
+    my $rflags;
+    if ($rpmflag)
+    {
+        $rflags = $rpmflag;
+    }
+    else
+    {
+
+        # default
+        $rflags = qq~ -Uvh --replacepkgs ~;
+    }
+
+    # if a specific dir was provided then use it
+    # otherwise use the emgr dir in the lpp src
+    my $dir;
+    if ($::ALTSRC)
+    {
+        $dir = "$localsrc";
+    }
+    else
+    {
+        $dir = "$localsrc/RPMS/ppc";
+    }
+
+    my $pkg_string = "";
+    if ($::ALLSW)
+    {
+        $pkg_string = " *.rpm   ";
+    }
+    else
+    {
+        $pkg_string = $rpmstring;
+    }
+
+    # - need to test rpms to make sure all will install
+    #   - add test to rpm cmd if not included in rpm_flags
+    #
+    my @doinstall   = split /\s+/, $pkg_string;
+    my @dontinstall = ();
+
+    if (   ($rflags =~ /\-i/)
+        || ($rflags =~ /install /)
+        || ($rflags =~ /U/)
+        || ($rflags =~ /update /))
+    {
+
+        # if so then do test
+        @doinstall = ();
+
+        my $flags;
+
+        # if the flags don't include test then add it
+        if (!($rflags =~ /\-test/))
+        {
+            $flags = " $rflags  --test ";
+        }
+
+        $rpmcmd = qq~cd $dir; /usr/bin/rpm $flags $pkg_string ~;
+        my $rc = &runcmd($rpmcmd);
+        my @outpt = split /\n/, $::outref;
+        my @badrpms;
+
+        foreach my $line (@outpt)
+        {
+            chomp $line;
+            $line =~ s/^\s+//;    #remove leading spaces
+            my ($first, $second, $rest) = split /\s+/, $line;
+            chomp $first;
+            if ($first eq 'package')
+            {
+                push @badrpms, $second;
+            }
+        }
+
+        my @origrpms = split /\s+/, $pkg_string;
+        foreach my $sr (@origrpms)
+        {
+            if ($sr)
+            {
+                my $r = $sr;
+                $r =~ s/\*$//g;
+                my $found = 0;
+                foreach my $b (@badrpms)
+                {
+                    if ($r =~ /$b/)
+                    {
+                        push @dontinstall, $r;
+                        $found++;
+                        last;
+                    }
+                }
+
+                if (!$found)
+                {
+                    push @doinstall, $sr;
+                }
+            }
+        }
+
+        if (scalar(@doinstall))
+        {
+            $pkg_string = join(' ', @doinstall);
+
+        }
+        else
+        {
+            $pkg_string = "";
+        }
+    }
+
+    if (scalar(@doinstall))
+    {
+        if ($pkg_string)
+        {
+            $rpmcmd = qq~cd $dir; /usr/bin/rpm $rflags $pkg_string ~;
+        }
+        else
+        {
+            $rpmcmd = qq~/usr/bin/rpm $rflags ~;
+        }
+
+        my $rc = &runcmd($rpmcmd);
+        print "$::outref\n";
+        if ($rc != 0)
+        {
+
+            # "error from rpm.\n";
+            return 1;
+        }
+    }
+
+    if (scalar(@dontinstall))
+    {
+        print
+          "The following RPM packages were already installed and were not reinstalled:\n";
+        my @rpms;
+        foreach my $rpm (@dontinstall)
+        {
+            print "$rpm\n";
+        }
+        print "\n\n";
+    }
+    return 0;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   do_emgr
+
+    This subroutine is used to install a list of emgr packages
+
+    Arguments:
+    Returns:
+        0 - ok
+        1 - error
+    Example:
+        my $rc = &do_emgr($emgrfile, $emgrflags, $localsrc);
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub do_emgr
+{
+    my $emgrfile = shift;
+    my $emgrflag = shift;
+    my $localsrc = shift;
+
+    # set flags
+    my $eflags;
+    if ($emgrflag)
+    {
+        $eflags = $emgrflag;
+    }
+
+    # if a specific dir was provided then use it
+    # otherwise use the emgr dir in the lpp src
+    my $dir;
+    if ($::ALTSRC)
+    {
+        $dir = "$localsrc";
+    }
+    else
+    {
+        $dir = "$localsrc/emgr/ppc";
+    }
+
+    my $emgrcmd = qq~cd $dir; /usr/sbin/emgr~;
+
+    if ($eflags)
+    {
+        $emgrcmd .= qq~ $eflags ~;
+    }
+
+    if ($emgrfile)
+    {
+        $emgrcmd .= qq~ -f $emgrfile ~;
+    }
+
+    my $rc = &runcmd($emgrcmd);
+    print "$::outref\n";
+    if ($rc != 0)
+    {
+
+        # "error from emgr.\n";
+        return 1;
+    }
+    return 0;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   do_installp
+
+    This subroutine is used to install a list of installp packages
+
+    Arguments:
+    Returns:
+		0 - ok
+		1 - error
+    Example:
+        my $rc = &do_installp($instpfile, $instpflags, $localsrc);
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub do_installp
+{
+    my $instpfile = shift;
+    my $instpflag = shift;
+    my $localsrc  = shift;
+
+    # set flags
+    my $iflags;
+    if ($instpflag)
+    {
+        $iflags = $instpflag;
+    }
+    else
+    {
+
+        # use default
+        $iflags = " -abgQXY ";
+    }
+
+    # put together the installp command
+    my $inpcmd = qq~/usr/sbin/installp ~;
+
+    # these installp flags can be used with -d
+    if ($iflags =~ /l|L|i|A|a/)
+    {
+
+        # if a specific dir was provided then use it
+        # otherwise use the installp dir in the lpp src
+        if ($::ALTSRC)
+        {
+            $inpcmd .= qq~ -d $localsrc ~;
+        }
+        else
+        {
+            $inpcmd .= qq~ -d $localsrc/installp/ppc ~;
+        }
+    }
+
+    $inpcmd .= qq~$iflags ~;
+
+    # don't provide a list of filesets with these flags
+    if ($iflags !~ /C|L|l/)
+    {
+        if ($::ALLSW)
+        {
+
+            # we want all sw installed
+            $inpcmd .= qq~ all ~;
+        }
+        else
+        {
+
+            # install what is in the tmp file
+            $inpcmd .= qq~ -f $instpfile ~;
+        }
+    }
+
+    my $rc = &runcmd($inpcmd);
+    print "$::outref\n";
+    if ($rc != 0)
+    {
+
+        # "error from installp.\n";
+        return 1;
+    }
+    return 0;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   processpkglist
+
+    This subroutine is used to sort a list of software package names into
+	separate lists for each software packaging tool.
+
+    Arguments:
+    Returns:
+		- name of installp list file
+		- name of emgr list file
+		- ptr to list of rpms
+	Example:
+		my ($instpfile, $emgrfile, $rpmstring) = &processpkglist(\@pkglist);
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub processpkglist
+{
+    my $pkg = shift;
+
+    my @pkglist = @$pkg;
+
+    # process the package list
+    #   - split into rpm, emgr, and installp
+    my @rpm_pkgs;
+    my @emgr_pkgs;
+    my @installp_pkgs;
+
+    my $emgrfile;
+    my $instpfile;
+    my $rpmstring;
+
+    # separate into lists for each type of software
+    if (scalar(@pkglist))
+    {
+        foreach my $p (@pkglist)
+        {
+            next if ($p =~ /^\s*$/ || $p =~ /^\s*#/);
+            chomp $p;
+
+            if (($p =~ /\.rpm/) || ($p =~ /^R:/))
+            {
+                my ($junk, $pname);
+                if ($p =~ /:/)
+                {
+
+                    # remove leading prefix - if any
+                    ($junk, $pname) = split(/:/, $p);
+                }
+                else
+                {
+                    $pname = $p;
+                }
+                push @rpm_pkgs, $pname;
+            }
+            elsif (($p =~ /epkg\.Z/) || ($p =~ /^E:/))
+            {
+                my ($junk, $pname);
+                if ($p =~ /:/)
+                {
+                    ($junk, $pname) = split(/:/, $p);
+                }
+                else
+                {
+                    $pname = $p;
+                }
+                push @emgr_pkgs, $pname;
+            }
+            else
+            {
+                my ($junk, $pname);
+                if ($p =~ /:/)
+                {
+                    ($junk, $pname) = split(/:/, $p);
+                }
+                else
+                {
+                    $pname = $p;
+                }
+                push @installp_pkgs, $pname;
+            }
+        }
+    }    # end - separate into lists
+
+    #
+    # create tmp file for containing a list of software for
+    #	installp and emgr
+    #
+    # tmp file for installp
+    #
+
+    my $random_number      = int(rand(1000000));
+    my $installp_file_name = "installp_file-" . $random_number;
+    chomp $installp_file_name;
+
+    if (scalar(@installp_pkgs))
+    {
+        if (!open(INSTPFILE, ">/tmp/$installp_file_name"))
+        {
+
+            # error "Could not open $installp_file_name.\n";
+            $instpfile = "";
+        }
+        else
+        {
+            foreach (@installp_pkgs)
+            {
+                print INSTPFILE $_ . "\n";
+            }
+            close(INSTPFILE);
+            $instpfile = qq~/tmp/$installp_file_name~;
+        }
+    }
+    else
+    {
+        $instpfile = "";
+    }
+
+    #
+    # create tmp file for interim fix packages
+    #
+    my $emgr_file_name = "emgr_file-" . $random_number;
+    chomp $emgr_file_name;
+    if (scalar(@emgr_pkgs))
+    {
+        if (!open(EMGRFILE, ">/tmp/$emgr_file_name"))
+        {
+
+            # error "Could not open $emgr_file_name.\n";
+            $emgrfile = "";
+        }
+        else
+        {
+            foreach (@emgr_pkgs)
+            {
+
+                #    print EMGRFILE "./$_" . "\n";
+                print EMGRFILE "$_" . "\n";
+            }
+            close(EMGRFILE);
+            $emgrfile = qq~/tmp/$emgr_file_name~;
+        }
+    }
+    else
+    {
+        $emgrfile = "";
+    }
+
+    # put rpm list in a string
+    if (scalar(@rpm_pkgs))
+    {
+        foreach my $pkg (@rpm_pkgs)
+        {
+            $rpmstring .= " $pkg";
+        }
+    }
+    else
+    {
+        $rpmstring = "";
+    }
+
+    return ($instpfile, $emgrfile, $rpmstring);
+}
+
+#
+# run the command
+#
+sub runcmd
+{
+    my ($cmd) = @_;
+    my $rc = 0;
+    $cmd .= ' 2>&1';
+    $::outref = `$cmd`;
+    if ($?)
+    {
+        $rc = $? >> 8;
+        if ($rc > 0)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
