@@ -22,6 +22,18 @@ do
     gw=`echo $route_string |cut -d',' -f3`
     ifname=`echo $route_string |cut -d',' -f4`
 
+    # remove the suffix /64 from ipv6 net
+    if echo $net | grep "/" 2>&1 1>/dev/null
+    then
+        net=`echo $net | awk -F'/' '{print $1}'`
+    fi
+
+    # remove the prefix "/" from ipv6 mask
+    if echo $mask | grep "/" 2>&1 1>/dev/null
+    then
+        mask=`echo $mask | awk -F'/' '{print $2}'`
+    fi
+
     cmd="routeop add $net $mask $gw $ifname"
     result=`$cmd 2>&1`
     echo $result

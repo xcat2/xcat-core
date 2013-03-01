@@ -405,6 +405,19 @@ sub process_makeroutes {
 	    my ($gw_name, $gw_ip)=xCAT::NetworkUtils->gethostnameandip($route_hash->{gateway});
 	    push(@sns, $gw_name);
 
+        if ($route_hash->{net} =~ /:/) {
+            # Remove the subnet postfix like /64
+            if ($route_hash->{net} =~ /\//) {
+                $route_hash->{net} =~ s/\/.*$//;
+            }
+            # Remove the "/" from the ipv6 prefixlength
+            if ($route_hash->{mask}) {
+                if ($route_hash->{mask} =~ /\//) {
+                    $route_hash->{mask} =~ s/^\///;
+                }
+            }
+        }
+
 	    if ($remote) { #to the nodes
 		my $nodes_tmp=$route_hash->{nodes};
 		#print "nodes=@$nodes_tmp, remote=$remote, delete=$delete\n";
@@ -414,7 +427,7 @@ sub process_makeroutes {
 		    {
 			command => ["xdsh"], 
 			node => $nodes_tmp, 
-			arg => ["-e", "/$installdir/postscripts/routeop $op " . $route_hash->{net} . " " . $route_hash->{mask} . " $gw_ip"],
+			arg => ["-e", "/$installdir/postscripts/routeop $op " . $route_hash->{net} . " " . $route_hash->{mask} . " $gw_ip" . " $route_hash->{ifname}"],
 			_xcatpreprocessed => [1],
 		    }, 
 		    $sub_req, -1, 1);
@@ -505,46 +518,63 @@ sub route_exists {
     my $gw=shift;
 
     my $islinux=xCAT::Utils->isLinux();
-    my $result;
-    $result=`netstat -nr|grep $net`;
-    if ($? == 0) {
-	if ($result) {
-            my @b=split('\n', $result);
-	    foreach my $tmp (@b) {
-		chomp($tmp);
-		my @a=split(' ', $tmp);
-		if ($islinux) { #Linux
-		    if (@a >= 3) {
-			my $net1=$a[0];
-			my $mask1=$a[2];
-			my $gw1=$a[1];
-			if (($net1 eq $net) && ($mask1 eq $mask) && (($gw1 eq $gw) || ($gw1 eq $gw_ip)))  {
-			    return 1;
-			}
-		    }
-		} 
-		else { #AIX
-		    if (@a >= 2) {
-			my $tmp1=$a[0];
-			my $gw1=$a[1];
 
-                        #now convert $mask to bits
-			$net =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
-			my $netnum = ($1<<24)+($2<<16)+($3<<8)+$4;
-                        my $bits=32;
-			while (($netnum % 2) == 0) {
-			    $bits--;
-			    $netnum=$netnum>>1;
-			}
-			my $tmp2="$net/$bits";
-			if (($tmp1 eq $tmp2) && (($gw1 eq $gw) || ($gw1 eq $gw_ip)))  {
-			    return 1;
-			}
-		    }
-		}
-	    }
-	}
-    } 
+    # ipv6 net
+    if ($net =~ /:/) {
+        if ($islinux) {
+            my $result = `ip -6 route show $net/$mask`;
+            # ip -6 route show will return nothing if the route does not exist
+            if (!$result || ($? != 0))
+            {
+                return 0;
+            } else {
+                return 1;
+            }
+        } else { # AIX
+            # TODO
+        }
+    } else {
+         my $result;
+         $result=`netstat -nr|grep $net`;
+         if ($? == 0) {
+             if ($result) {
+                 my @b=split('\n', $result);
+                 foreach my $tmp (@b) {
+                     chomp($tmp);
+                     my @a=split(' ', $tmp);
+                     if ($islinux) { #Linux
+                         if (@a >= 3) {
+                             my $net1=$a[0];
+                             my $mask1=$a[2];
+                             my $gw1=$a[1];
+                             if (($net1 eq $net) && ($mask1 eq $mask) && (($gw1 eq $gw) || ($gw1 eq $gw_ip)))  {
+                                 return 1;
+                             }
+                         }
+                     } 
+                     else { #AIX
+                         if (@a >= 2) {
+                             my $tmp1=$a[0];
+                             my $gw1=$a[1];
+
+                             #now convert $mask to bits
+                             $net =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
+                             my $netnum = ($1<<24)+($2<<16)+($3<<8)+$4;
+                             my $bits=32;
+                             while (($netnum % 2) == 0) {
+                                 $bits--;
+                                 $netnum=$netnum>>1;
+                             }
+                             my $tmp2="$net/$bits";
+                             if (($tmp1 eq $tmp2) && (($gw1 eq $gw) || ($gw1 eq $gw_ip)))  {
+                                 return 1;
+                             }
+                         } # end if (@a >= 2)
+                     } #end else linux/aix
+                 } # end foreach
+             } # end if ($result)
+        } # end if ($? == 0 
+    } # end else ipv4/ipv6
     return 0;
 }
 
@@ -564,12 +594,21 @@ sub set_route {
     my $result;
     if (!route_exists($net, $mask, $gw_ip, $gw)) {
 	#set temporay route
-        my $cmd;
-	if (xCAT::Utils->isLinux()) {
-	    $cmd="route add -net $net netmask $mask gw $gw_ip";
-	} else {
-	    $cmd="route add -net $net -netmask $mask $gw_ip";
-	}
+    my $cmd;
+    # ipv6 network
+    if ($net =~ /:/) {
+	    if (xCAT::Utils->isLinux()) {
+	        $cmd="ip -6 route add $net/$mask via $gw_ip";
+	    } else {
+            # AIX TODO
+	    }
+    } else {
+	    if (xCAT::Utils->isLinux()) {
+	        $cmd="route add -net $net netmask $mask gw $gw_ip";
+	    } else {
+	        $cmd="route add -net $net -netmask $mask $gw_ip";
+	    }
+    }    
 	#print "cmd=$cmd\n";
 	my $rsp={};
 	$rsp->{data}->[0]= "$host: Adding temporary route: $cmd";
@@ -642,15 +681,23 @@ sub delete_route {
     my $result;
     if (route_exists($net, $mask, $gw_ip, $gw)) {
 	#delete  route temporarily
-        my $cmd;
-	if (xCAT::Utils->isLinux()) {
-	    $cmd="route delete -net $net netmask $mask gw $gw_ip";
-	} else {
-	    $cmd="route delete -net $net -netmask $mask $gw_ip";
-	}
+    my $cmd;
+    if ($net =~ /:/) {
+        if (xCAT::Utils->isLinux()) {
+            $cmd = "ip -6 route delete $net/$mask via $gw_ip";
+        } else {
+            # AIX TODO
+        }
+    } else {
+	    if (xCAT::Utils->isLinux()) {
+	        $cmd="route delete -net $net netmask $mask gw $gw_ip";
+	    } else {
+	        $cmd="route delete -net $net -netmask $mask $gw_ip";
+	    }
+    }
 	#print "cmd=$cmd\n";
 	my $rsp={};
-	$rsp->{data}->[0]= "$host: Removin the temporary route: $cmd";
+	$rsp->{data}->[0]= "$host: Removing the temporary route: $cmd";
 	$callback->($rsp);
 
 	$result=`$cmd 2>&1`;
@@ -661,7 +708,11 @@ sub delete_route {
 	}
     } else {
 	my $rsp={};
-	$rsp->{data}->[0]= "$host: The temporary route does not exist for $net.";
+    if ($net =~ /:/) {
+	    $rsp->{data}->[0]= "$host: The temporary route does not exist for $net/$mask.";
+    } else {
+	    $rsp->{data}->[0]= "$host: The temporary route does not exist for $net.";
+    }
 	$callback->($rsp);
 
     }
@@ -793,7 +844,12 @@ sub addPersistentRoute_Sles {
 	$hasConfiged=checkConfig_Sles($net, $mask, $gw_ip, $gw, \@output);
     }
     #print "hasConfiged=$hasConfiged\n";
-    my $new_config="$net $gw_ip $mask $ifname\n";
+    my $new_config;
+    if ($net =~ /:/) {
+        $new_config = "$net/$mask $gw_ip - -\n";
+    } else {
+        $new_config="$net $gw_ip $mask $ifname\n";
+    }
     if (!$hasConfiged) {
 	push(@output, $new_config);
 	#print "new output=" . join("\n", @output) . "\n";
@@ -842,11 +898,19 @@ sub deletePersistentRoute_Sles {
     setConfig($filename, \@new_output);
     if ($bigfound) {
 	my $rsp={};
-	$rsp->{data}->[0]= "$host: Removed persistent route \"$net $gw_ip $mask $ifname\" from $filename.";
+        if ($net =~ /:/) {
+            $rsp->{data}->[0]= "$host: Removed persistent route \"$net/$mask $gw_ip\" from $filename.";
+        } else {
+    	    $rsp->{data}->[0]= "$host: Removed persistent route \"$net $gw_ip $mask $ifname\" from $filename.";
+        }
 	$callback->($rsp);
     } else {
 	my $rsp={};
-	$rsp->{data}->[0]= "$host: Persistent route \"$net $gw_ip $mask $ifname\" does not exist in $filename.";
+        if ($net =~ /:/) {
+	    $rsp->{data}->[0]= "$host: Persistent route \"$net/$mask $gw_ip\" does not exist in $filename.";
+        } else {
+	    $rsp->{data}->[0]= "$host: Persistent route \"$net $gw_ip $mask $ifname\" does not exist in $filename.";
+        }
 	$callback->($rsp);
     }
 }
@@ -861,21 +925,35 @@ sub checkConfig_Sles {
     my $gw=shift;
     my $output=shift;
 
+    # ipv4 format: 192.168.0.0 207.68.156.51 255.255.0.0 eth1
+    # ipv6 format: fd59::/64 fd57:faaf:e1ab:336:21a:64ff:fe01:1 - -
     foreach my $line (@$output) {
 	my @a=split(' ', $line);
 	my ($net1,$mask1,$gw1);
-	if (@a>0) { 
-	    $net1=$a[0];
-	    if ($net1 eq '-') { $net1=$net;}
-	}
-	if (@a>1) { 
-	    $gw1=$a[1];
-	    if ($gw1 eq '-') { $gw1=$gw_ip; }
-	}
-	if (@a>2) { 
-	    $mask1=$a[2];
-	    if ($mask1 eq '-') { $mask1=$mask;}
-	}
+        if ($net =~ /:/) {
+            if (@a>0) {
+                my $ipv6net = $a[0];
+                ($net1,$mask1) = split("/",$ipv6net);
+            }
+	    if (@a>1) { 
+	        $gw1=$a[1];
+	        if ($gw1 eq '-') { $gw1=$gw_ip; }
+            }
+
+	} else {
+	    if (@a>0) { 
+	       $net1=$a[0];
+	       if ($net1 eq '-') { $net1=$net;}
+	   }
+	    if (@a>1) { 
+	        $gw1=$a[1];
+	        if ($gw1 eq '-') { $gw1=$gw_ip; }
+	    }
+	    if (@a>2) { 
+	        $mask1=$a[2];
+	        if ($mask1 eq '-') { $mask1=$mask;}
+	    }
+       }
 
 	#print "net=$net1,$net mask=$mask1,$mask gw=$gw1,$gw_ip\n";
 	if (($net1 && $net1 eq $net) && ($mask1 && $mask1 eq $mask) && (($gw1 && $gw1 eq $gw) || ($gw1 && $gw1 eq $gw_ip)))  {
@@ -897,7 +975,13 @@ sub addPersistentRoute_RH {
 
     my $host=hostname();
     
-    my $filename="/etc/sysconfig/static-routes";
+    my $filename;
+    # ipv6
+    if ($net =~ /:/) {
+        $filename="/etc/sysconfig/static-routes-ipv6";
+    } else {
+        $filename="/etc/sysconfig/static-routes";
+    }
     my @output=getConfig($filename);
     #print "old output=" . join("\n", @output) . "\n";
     my $hasConfiged=0;
@@ -905,7 +989,20 @@ sub addPersistentRoute_RH {
 	$hasConfiged=checkConfig_RH($net, $mask, $gw_ip, $gw, \@output);
     }
     #print "hasConfiged=$hasConfiged\n";
-    my $new_config="any net $net netmask $mask gw $gw_ip $ifname\n";
+    my $new_config;
+    if ($net =~ /:/) {
+        # ifname is required for ipv6 routing
+        if (!$ifname) {
+	        my $rsp={};
+	        $rsp->{data}->[0]= "$host: Could not add persistent route for ipv6 network $net/$mask, the ifname is required in the routes table.";
+	        $callback->($rsp);
+            return;
+        }
+
+        $new_config="$ifname $net/$mask $gw_ip";
+    } else {
+        $new_config="any net $net netmask $mask gw $gw_ip $ifname\n";
+    }
     if (!$hasConfiged) {
 	push(@output, $new_config);
 	#print "new output=" . join("\n", @output) . "\n";
@@ -936,7 +1033,13 @@ sub deletePersistentRoute_RH {
 
     my $host=hostname();
     
-    my $filename="/etc/sysconfig/static-routes";
+    my $filename;
+    # ipv6
+    if ($net =~ /:/) {
+        $filename="/etc/sysconfig/static-routes-ipv6";
+    } else {
+        $filename="/etc/sysconfig/static-routes";
+    }
     my @output=getConfig($filename);
     #print "old output=" . join("\n", @output) . "\n";
     my @new_output=();
@@ -954,11 +1057,19 @@ sub deletePersistentRoute_RH {
     setConfig($filename, \@new_output);
     if ($bigfound) {
 	my $rsp={};
-	$rsp->{data}->[0]= "$host: Removed persistent route \"any net $net netmask $mask gw $gw_ip $ifname\" from $filename.";
+    if ($net =~ /:/) {
+        $rsp->{data}->[0]= "$host: Removed persistent route \"$ifname $net/$mask $gw_ip\" from $filename.";
+    } else {
+        $rsp->{data}->[0]= "$host: Removed persistent route \"any net $net netmask $mask gw $gw_ip $ifname\" from $filename.";
+    }
 	$callback->($rsp);
     } else {
 	my $rsp={};
-	$rsp->{data}->[0]= "$host: Persistent route \"any net $net netmask $mask gw $gw_ip $ifname\" does not exist in $filename.";
+    if ($net =~ /:/) {
+	    $rsp->{data}->[0]= "$host: Persistent route \"$ifname $net/$mask $gw_ip\" does not exist in $filename.";
+    } else {
+	    $rsp->{data}->[0]= "$host: Persistent route \"any net $net netmask $mask gw $gw_ip $ifname\" does not exist in $filename.";
+    }
 	$callback->($rsp);
     }
 }
@@ -972,20 +1083,31 @@ sub checkConfig_RH {
 
     foreach my $line (@$output) {
 	my @a=split(' ', $line);
-        #The format is: any net 172.16.0.0 netmask 255.240.0.0 gw 192.168.0.1 eth0
+    #The format is: any net 172.16.0.0 netmask 255.240.0.0 gw 192.168.0.1 eth0
+    # ipv6 format: eth1 fd60::/64 fd57::214:5eff:fe15:1
 	my ($net1,$mask1,$gw1);
-	if (@a>2) { 
-	    $net1=$a[2];
-	    if ($net1 eq '-') { $net1=$net;}
-	}
-	if (@a>4) { 
-	    $mask1=$a[4];
-	    if ($mask1 eq '-') { $mask1=$mask;}
-	}
-	if (@a>6) { 
-	    $gw1=$a[6];
-	    if ($gw1 eq '-') { $gw1=$gw_ip; }
-	}
+    if ($net =~ /:/) {
+        if (@a>1) {
+            my $ipv6net = $a[1];
+            ($net1,$mask1) = split("/",$ipv6net);
+        }
+        if (@a>2) {
+            $gw1 = $a[2];
+        }
+    } else {
+	    if (@a>2) { 
+	        $net1=$a[2];
+	        if ($net1 eq '-') { $net1=$net;}
+	    }
+	    if (@a>4) { 
+	        $mask1=$a[4];
+	        if ($mask1 eq '-') { $mask1=$mask;}
+    	}
+    	if (@a>6) { 
+	        $gw1=$a[6];
+	        if ($gw1 eq '-') { $gw1=$gw_ip; }
+	    }
+    }
 
 	#print "net=$net1,$net mask=$mask1,$mask gw=$gw1,$gw_ip\n";
 	if (($net1 && $net1 eq $net) && ($mask1 && $mask1 eq $mask) && (($gw1 && $gw1 eq $gw) || ($gw1 && $gw1 eq $gw_ip)))  {
