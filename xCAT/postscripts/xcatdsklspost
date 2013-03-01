@@ -341,7 +341,7 @@ fi # finish the postscripts download
 
 rm -rf /xcatpost/mypostscript
 
-node=`hostname`
+node=`hostname --short`
 max_retries=2
 postfix=0
 download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR 
