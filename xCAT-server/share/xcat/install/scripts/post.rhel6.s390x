@@ -122,8 +122,8 @@ chmod 755 /xcatpost/mypostscript.post
 
 # Create post init
 cat >/etc/init.d/xcatpostinit1 << 'EOF'
-# Install directory variable set by nodeset
-$INSTALLDIR/postscripts/xcatpostinit1
+# Copy the contents of /install/postscripts/xcatpostinit1 here
+replace_xcatpostinit1
 EOF
 # Change permissions
 chmod 755 /etc/init.d/xcatpostinit1
@@ -131,8 +131,9 @@ chmod 755 /etc/init.d/xcatpostinit1
 # Create post install
 mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
-# Install directory variable set by nodeset
-$INSTALLDIR/postscripts/xcatinstallpost
+# Copy the contents of /install/postscripts/xcatinstallpost here
+replace_xcatinstallpost
+
 if [ -f /xcatpost/mypostscript.post ]; then
     RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript.post |cut -d= -f2`
 fi
@@ -144,12 +145,6 @@ EOF
 chmod 755 /opt/xcat/xcatinstallpost
 
 chkconfig xcatpostinit1 on
-
-# Create the dskls post 
-cat >/opt/xcat/xcatdsklspost << 'EOF'
-#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatdsklspost#
-EOF
-chmod 755 /opt/xcat/xcatdsklspost
 
 # Only run preboot scripts here
 TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /xcatpost/mypostscript`

@@ -12,11 +12,6 @@ echo "LLADDR='replace_lladdr'" >> /tmp/ifcfg-replace_device
 echo "UNIQUE=''" >> /tmp/ifcfg-replace_device
 cat /tmp/ifcfg-replace_device > /etc/sysconfig/network/ifcfg-replace_device
 
-# Set layer = 2
-cat /etc/sysconfig/hardware/hwcfg-replace_device | grep -v "QETH_LAYER2_SUPPORT" > /tmp/hwcfg-replace_device
-echo "QETH_LAYER2_SUPPORT='1'" >> /tmp/hwcfg-replace_device
-cat /tmp/hwcfg-replace_device > /etc/sysconfig/hardware/hwcfg-replace_device
-
 # Get node hostname
 HOSTNAME=$(hostname -s)
 
@@ -137,8 +132,8 @@ chmod 755 /tmp/mypostscript.post
 
 # Create post init
 cat >/etc/init.d/xcatpostinit1 << 'EOF'
-# Install directory variable is set by nodeset
-$INSTALLDIR/postscripts/xcatpostinit1
+# Copy the contents of /install/postscripts/xcatpostinit1 here
+replace_xcatpostinit1
 EOF
 # Change permissions
 chmod 755 /etc/init.d/xcatpostinit1
@@ -149,8 +144,9 @@ ln -s /etc/init.d/xcatpostinit1 /etc/init.d/rc5.d/S84xcatpostinit1
 # Create post install 
 mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
-# Install directory variable is set by nodeset
-$INSTALLDIR/postscripts/xcatinstallpost
+# Copy the contents of /install/postscripts/xcatinstallpost here
+replace_xcatinstallpost
+
 if [ -f /xcatpost/mypostscript.post ]; then
     RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript.post |cut -d= -f2`
 fi
