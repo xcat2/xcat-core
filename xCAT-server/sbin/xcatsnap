@@ -227,7 +227,7 @@ sub snap_it {
         @Commands_array = (
             "uname -a","ifconfig -a","netstat -in","netstat -rn","env",
             "reventlog -a","lsmod","/sbin/lspci","lssrc -a","rpm -qa",
-            "ls $installdir",
+            "ls $installdir","/usr/bin/crontab -l",
             "find /tftpboot -size -32k","ls -lR $xcatroot",
             "arp -a","ps -edlf","ps -aux","ulimit -a","df -k",
             "cat /etc/issue","lsxcatd -a");
