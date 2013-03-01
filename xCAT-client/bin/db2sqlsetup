@@ -1228,7 +1228,7 @@ sub updateDBM
     my $rc = 0;
 
     # su to xcatdb to update the DBM 
-    $cmd = "db2 -tvf  /opt/xcat/share/xcat/tools/updateDBM.sql ";
+    $cmd = "db2 -tvf  /opt/xcat/share/xcat/scripts/updateDBM.sql ";
     $rc  = &rundb2cmd($cmd);
     if ($rc != 0)
     {
@@ -1263,9 +1263,9 @@ sub createxcatdb
     #('/var/lib/db2 /ts16')  BUFFERPOOL BP16K;
     #Create tablespace xcattbs32k pagesize 32k managed by system using
     #  ('/var/lib/db2 /ts32')  BUFFERPOOL BP32K;
-    my $createdb       = "/opt/xcat/share/xcat/tools/createdb.sql";
-    my $createdborg = "/opt/xcat/share/xcat/tools/createdb.sql.org";
-    my $createdbtmp = "/opt/xcat/share/xcat/tools/createdb.sql.tmp";
+    my $createdb       = "/opt/xcat/share/xcat/scripts/createdb.sql";
+    my $createdborg = "/opt/xcat/share/xcat/scripts/createdb.sql.org";
+    my $createdbtmp = "/opt/xcat/share/xcat/scripts/createdb.sql.tmp";
     my $cmd;
     my $message;
     if (!(-e $createdborg)) {
@@ -1317,7 +1317,7 @@ sub createxcatdb
 
 
     # su to xcatdb to create the database
-    $cmd = "db2 -tvf  /opt/xcat/share/xcat/tools/createdb.sql ";
+    $cmd = "db2 -tvf  /opt/xcat/share/xcat/scripts/createdb.sql ";
     $rc  = &rundb2cmd($cmd);
     if ($rc != 0)
     {
@@ -1419,7 +1419,7 @@ sub db2reboot
          my $message = "DB2 /etc/init reboot file already setup";
          xCAT::MsgUtils->message("I", "$message");
       } else {
-        $cmd = "cp /opt/xcat/share/xcat/tools/xcatfmcd.conf /etc/init/xcatfmcd.conf";
+        $cmd = "cp /opt/xcat/share/xcat/scripts/xcatfmcd.conf /etc/init/xcatfmcd.conf";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {
