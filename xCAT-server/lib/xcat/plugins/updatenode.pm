@@ -2274,7 +2274,7 @@ sub updateAIXsoftware
 
     my %bndloc;
 
-    # get the server name for each node - as known by node
+    # get the server name for each node - as known by the node
     my $noderestab  = xCAT::Table->new('noderes');
     my $xcatmasters =
       $noderestab->getNodesAttribs(\@noderange, ['node', 'xcatmaster']);
@@ -2283,7 +2283,9 @@ sub updateAIXsoftware
     my $nimprime = xCAT::InstUtils->getnimprime();
     chomp $nimprime;
 
-    # if it's not the xcatmaster then default to the NIM primary
+	#
+	# get a list of servers and a hash of the servers name for each node
+	#
     my %server;
     my @servers;
     foreach my $node (@noderange)
@@ -2294,6 +2296,7 @@ sub updateAIXsoftware
         }
         else
         {
+			# if it's not the xcatmaster then default to the NIM primary
             $server{$node} = $nimprime;
         }
 
@@ -2304,777 +2307,285 @@ sub updateAIXsoftware
     }
     $noderestab->close;
 
-    # sort nodes by image name so we can do bunch at a time
-    my %nodeoslist;
-    foreach my $node (@noderange)
-    {
-        push(@{$nodeoslist{$nodeupdateinfo{$node}{imagename}}}, $node);
-    }
+	#  need to sort nodes by osimage AND server 
+	#	- each aixswupdate call should go to all nodes with the same server
+	#		and osimage
+
+	my %nodeoslist;
+	foreach my $node (@noderange) {
+		my $server = $server{$node};
+		my $osimage = $nodeupdateinfo{$node}{imagename};
+		push(@{$nodeoslist{$server}{$osimage}}, $node);
+	}
 
     my $error = 0;
-    my @installp_files;    # list of tmp installp files created
-    my @emgr_files;        # list of tmp emgr file created
 
-    foreach my $img (keys %imagedefs)
-    {
+	# process nodes - all that have same serv and osimage go at once
+	foreach my $serv (keys %nodeoslist) {   # for each server
 
-        # set the location of the software
-        my $pkgdir = "";
-        if ($::ALTSRC)
-        {
-            $pkgdir = $::ALTSRC;
-        }
-        else
-        {
-            $pkgdir = $imagedefs{$img}{lpp_loc};
-        }
+		foreach my $img (keys %{$nodeoslist{$serv}} ) { # for each osimage
 
-        my $noinstp = 0;
-        my $noemgr  = 0;
-
-        chomp $img;
-        if ($img)
-        {
-            my @nodes = @{$nodeoslist{$img}};
-
-            # process the package list
-            #   - split into rpm, emgr, and installp
-            #   - remove leading prefix - if any
-            my @rpm_pkgs;
-            my @emgr_pkgs;
-            my @installp_pkgs;
-            @pkglist = split(/,/, $imagedefs{$img}{pkglist});
-
-            if (scalar(@pkglist))
-            {
-                foreach my $p (@pkglist)
-                {
-                    if (($p =~ /\.rpm/) || ($p =~ /^R:/))
-                    {
-                        my ($junk, $pname);
-                        if ($p =~ /:/)
-                        {
-                            ($junk, $pname) = split(/:/, $p);
-                        }
-                        else
-                        {
-                            $pname = $p;
-                        }
-                        push @rpm_pkgs, $pname;
-                    }
-                    elsif (($p =~ /epkg\.Z/) || ($p =~ /^E:/))
-                    {
-
-                        my ($junk, $pname);
-                        if ($p =~ /:/)
-                        {
-                            ($junk, $pname) = split(/:/, $p);
-                        }
-                        else
-                        {
-                            $pname = $p;
-                        }
-                        push @emgr_pkgs, $pname;
-
-                    }
-                    else
-                    {
-                        my ($junk, $pname);
-                        if ($p =~ /:/)
-                        {
-                            ($junk, $pname) = split(/:/, $p);
-                        }
-                        else
-                        {
-                            $pname = $p;
-                        }
-                        push @installp_pkgs, $pname;
-                    }
-                }
+			my @nodes = @{$nodeoslist{$serv}{$img}};
+			if ( !scalar(@nodes)){
+                next;
             }
 
-            my $thisdate = `date +%s`;
-
-            #
-            # create tmp file for installp filesets
-            #
-            my $installp_file_name = "installp_file-" . $thisdate;
-            chomp $installp_file_name;
-
-            my $noinstallp = 0;
-            if (scalar(@installp_pkgs))
-            {
-                if ($pkgdir)
-                {
-                    if (!open(INSTPFILE, ">/tmp/$installp_file_name"))
-                    {
-                        my $rsp;
-                        push @{$rsp->{data}},
-                          "Could not open $installp_file_name.\n";
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
-                        $error++;
-                        $noinstp = 1;
-                    }
-                    else
-                    {
-
-                        foreach (@installp_pkgs)
-                        {
-                            print INSTPFILE $_ . "\n";
-                        }
-                        close(INSTPFILE);
-
-                        # add new file to list so it can be removed later
-                        push @installp_files, $installp_file_name;
-
-                        # copy file to each lpp_source, make sure it's
-                        #	 all readable and export the dir
-
-                        if ((-e "/tmp/$installp_file_name"))
-                        {
-                            my $icmd =
-                              qq~cp /tmp/$installp_file_name $pkgdir; chmod 444 /$pkgdir/$installp_file_name~;
-                            my $output = xCAT::Utils->runcmd("$icmd", -1);
-                            if ($::RUNCMD_RC != 0)
-                            {
-                                my $rsp;
-                                push @{$rsp->{data}},
-                                  "Could not copy /tmp/$installp_file_name.\n";
-                                push @{$rsp->{data}}, "$output\n";
-                                xCAT::MsgUtils->message("E", $rsp, $callback);
-                                $error++;
-                                $noinstp = 1;
-                            }
-                        }
-                    }
-                }
-            }    # end installp tmp file
-
-            #
-            # create tmp file for interim fix packages
-            #
-            my $emgr_file_name = "emgr_file-" . $thisdate;
-            chomp $emgr_file_name;
-            if (scalar(@emgr_pkgs))
-            {
-                if ($pkgdir)
-                {
-                    if (!open(EMGRFILE, ">/tmp/$emgr_file_name"))
-                    {
-                        my $rsp;
-                        push @{$rsp->{data}},
-                          "Could not open $emgr_file_name.\n";
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
-                        $error++;
-                        $noemgr = 1;
-                    }
-                    else
-                    {
-
-                        foreach (@emgr_pkgs)
-                        {
-                            print EMGRFILE "./$_" . "\n";
-                        }
-                        close(EMGRFILE);
-
-                        # add new file to list so it can be removed later
-                        push @emgr_files, $emgr_file_name;
-
-                        # copy file to each package directory, make sure it's
-                        #	all readable and export ed
-                        if ((-e "/tmp/$emgr_file_name"))
-                        {
-                            my $icmd =
-                              qq~cp /tmp/$emgr_file_name $pkgdir; chmod 444 $pkgdir/$emgr_file_name~;
-                            my $output = xCAT::Utils->runcmd("$icmd", -1);
-                            if ($::RUNCMD_RC != 0)
-                            {
-                                my $rsp;
-                                push @{$rsp->{data}},
-                                  "Could not copy /tmp/$emgr_file_name.\n";
-                                push @{$rsp->{data}}, "$output\n";
-                                xCAT::MsgUtils->message("E", $rsp, $callback);
-                                $error++;
-                                $noemgr = 1;
-                            }
-                        }
-                    }
-                }
-            }    # end emgr tmp file
-
-            # make sure pkg dir is exported
-            if (scalar(@pkglist))
-            {
-                my $ecmd;
-                my @nfsv4 =
-                  xCAT::TableUtils->get_site_attribute("useNFSv4onAIX");
-                if ($nfsv4[0] && ($nfsv4[0] =~ /1|Yes|yes|YES|Y|y/))
-                {
-                    $ecmd = qq~exportfs -i -o vers=4 $pkgdir~;
-                }
-                else
-                {
-                    $ecmd = qq~exportfs -i $pkgdir~;
-                }
-                my $output = xCAT::Utils->runcmd("$ecmd", -1);
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Could not export $pkgdir.\n";
-                    push @{$rsp->{data}}, "$output\n";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    $error++;
-                    next;
-                }
-            }
-
-            #
-            # install sw on nodes
-            #
-            # $serv is the name of the nodes server as known by the node
-
-            if (scalar(@pkglist))
-            {
-                foreach my $serv (@servers)
-                {
-
-                    # make sure the permissions are correct in the lpp_source
-                    my $chmcmd = qq~/bin/chmod -R +r $pkgdir~;
-
-                    # if server is me then just do chmod
-                    if (xCAT::InstUtils->is_me($serv))
-                    {
-                        my @result = xCAT::Utils->runcmd("$chmcmd", -1);
-                        if ($::RUNCMD_RC != 0)
-                        {
-                            my $rsp;
-                            push @{$rsp->{data}},
-                              "Could not set permissions for $pkgdir.\n";
-                            xCAT::MsgUtils->message("E", $rsp, $callback);
-                            return 1;
-                        }
-
-                    }
-                    else
-                    {    # if server is remote then use xdsh
-                       my $args;
-                       if (defined($::fanout))  {  # fanout input
-                          push @$args,"-f" ;
-                          push @$args,$::fanout;
-                       }
-                       push @$args,"$chmcmd";
-                        my $output =
-                          xCAT::Utils->runxcmd(
-                                               {
-                                                command => ["xdsh"],
-                                                node    => [$serv],
-                                                arg     => $args
-                                               },
-                                               $subreq, -1, 1
-                                               );
-                        if ($::RUNCMD_RC != 0)
-                        {
-                            my $rsp;
-                            push @{$rsp->{data}},
-                              "Could not set permissions for $pkgdir.\n";
-                            xCAT::MsgUtils->message("E", $rsp, $callback);
-                            return 1;
-                        }
-                    }
-
-                    # mount source dir to node
-                    my $mcmd;
-                    my @nfsv4 =
-                      xCAT::TableUtils->get_site_attribute("useNFSv4onAIX");
-                    if ($nfsv4[0] && ($nfsv4[0] =~ /1|Yes|yes|YES|Y|y/))
-                    {
-                        $mcmd =
-                          qq~mkdir -m 644 -p /xcatmnt; mount -o vers=4 $serv:$pkgdir /xcatmnt~;
-                    }
-                    else
-                    {
-                        $mcmd =
-                          qq~mkdir -m 644 -p /xcatmnt; mount $serv:$pkgdir /xcatmnt~;
-                    }
-
-                    if ($::VERBOSE)
-                    {
-                        my $rsp;
-                        push @{$rsp->{data}}, "Running command: $mcmd\n";
-                        xCAT::MsgUtils->message("I", $rsp, $callback);
-                    }
-                    my $args;
-                    if (defined($::fanout))  {  # fanout input
-                       push @$args,"-f" ;
-                       push @$args,$::fanout;
-                    }
-                    push @$args,"$mcmd";
-
-                    my $output =
-                      xCAT::Utils->runxcmd(
-                        {command => ["xdsh"], node => \@nodes, arg => $args},
-                        $subreq, -1, 1);
-
-                    if ($::RUNCMD_RC != 0)
-                    {
-                        my $rsp;
-                        push @{$rsp->{data}},
-                          "Could not mount $pkgdir on nodes.\n";
-                        foreach my $o (@$output)
-                        {
-                            push @{$rsp->{data}}, "$o";
-                        }
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
-                        $error++;
-                        next;
-                    }
-                }
-            }
-
-            # do installp first
-            # if we have installp filesets or other installp flags
-            # we may just get flags!
-            if (
-                (
-                    (scalar(@installp_pkgs))
-                 || $::ALLSW
-                 || ($imagedefs{$img}{installp_flags})
-                )
-                && !$noinstp
-              )
-            {
-
-                # - use installp with file
-                # set flags
-                my $flags;
-                if ($imagedefs{$img}{installp_flags})
-                {
-                    $flags = " " . $imagedefs{$img}{installp_flags};
-                }
-                else
-                {
-                    $flags = " -agQX ";
-                }
-
-                # put together the installp command
-                my $inpcmd = qq~/usr/sbin/installp ~;
-
-                # these installp flags can be used with -d
-                if ($flags =~ /l|L|i|A|a/)
-                {
-
-                    # if a specific dir was provided then use it
-                    # otherwise use the installp dir in the lpp src
-                    if ($::ALTSRC)
-                    {
-                        $inpcmd .= qq~-d /xcatmnt ~;
-                    }
-                    else
-                    {
-                        $inpcmd .= qq~-d /xcatmnt/installp/ppc ~;
-                    }
-                }
-
-                $inpcmd .= qq~$flags ~;
-
-                # don't provide a list of filesets with these flags
-                if ($flags !~ /C|L|l/)
-                {
-
-                    if ($::ALLSW)
-                    {
-
-                        # we want all sw installed
-                        $inpcmd .= qq~ all~;
-                    }
-                    elsif (scalar(@installp_pkgs) == 0)
-                    {
-
-                        # there is no sw to install
-                        $noinstallp = 1;
-                    }
-                    else
-                    {
-
-                        # install what is in installp_pkgs
-                        $inpcmd .= qq~-f /xcatmnt/$installp_file_name~;
-                    }
-                }
-
-                #  - could just have installp flags by mistake -ugh!
-                #	- but don't have fileset to install - so don't run
-                #		installp - UNLESS the flags don't need filesets
-                if ($noinstallp == 0)
-                {
-                    if ($::VERBOSE)
-                    {
-                        my $rsp;
-                        push @{$rsp->{data}}, "Running: xdsh -s -v  \'$inpcmd\'.\n";
-                        xCAT::MsgUtils->message("I", $rsp, $callback);
-                    }
-                   my $args1;
-                   push @$args1,"--nodestatus";
-                   push @$args1,"-s";
-                   push @$args1,"-v";
-                   if (defined($::fanout))  {  # fanout input
-                       push @$args1,"-f" ;
-                       push @$args1,$::fanout;
-                   }
-                   push @$args1,"$inpcmd";
-
-                   $subreq->(
-                           {
-                            command           => ["xdsh"],
-                            node              => \@nodes,
-                            arg               => $args1,
-                            _xcatpreprocessed => [1]
-                           },
-                           \&getdata2
-                         );
-
-                }
-
-                #
-                # - run updtvpkg to make sure installp software
-                #       is registered with rpm
-                #
-                my $upcmd = qq~/usr/sbin/updtvpkg~;
-                if ($::VERBOSE)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Running command: $upcmd\n";
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                }
-
-                 my $args;
-                 if (defined($::fanout))  {  # fanout input
-                   push @$args,"-f" ;
-                   push @$args,$::fanout;
-                 }
-                 push @$args,"$upcmd";
-                my $output =
-                  xCAT::Utils->runxcmd(
-                                       {
-                                        command => ["xdsh"],
-                                        node    => \@nodes,
-                                        arg     => $args
-                                       },
-                                       $subreq, -1, 1
-                                       );
-
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Could not run updtvpkg.\n";
-                    foreach my $o (@$output)
-                    {
-                        push @{$rsp->{data}}, "$o";
-                    }
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    $error++;
-                }
-            }
-
-            #
-            # do any interim fixes using emgr
-            #
-
-            # if we have epkgs or emgr flags
-            # we may just get flags!
-            if (
-                (
-                    (scalar(@emgr_pkgs))
-                 || $::ALLSW
-                 || ($imagedefs{$img}{emgr_flags})
-                )
-                && !$noemgr
-              )
-            {
-
-                # if a specific dir was provided then use it
-                # otherwise use the rpm dir in the lpp src
-                my $dir;
-                if ($::ALTSRC)
-                {
-                    $dir = "/xcatmnt";
-                }
-                else
-                {
-                    $dir = "/xcatmnt/emgr/ppc";
-                }
-
-                my $emgrcmd = qq~cd $dir; /usr/sbin/emgr~;
-
-                if ($imagedefs{$img}{emgr_flags})
-                {
-                    $emgrcmd .= qq~ $imagedefs{$img}{emgr_flags}~;
-                }
-
-                if ((scalar(@emgr_pkgs)) || $::ALLSW)
-                {
-
-                    # call emgr with -f filename
-                    $emgrcmd .= qq~ -f /xcatmnt/$emgr_file_name~;
-                }
-
-                if ($::VERBOSE)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Running: \'$emgrcmd\'.\n";
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                }
-                 my $args;
-                 if (defined($::fanout))  {  # fanout input
-                   push @$args,"-f" ;
-                   push @$args,$::fanout;
-                 }
-                 push @$args,"$emgrcmd";
-
-                my $output =
-                  xCAT::Utils->runxcmd(
-                                       {
-                                        command => ["xdsh"],
-                                        node    => \@nodes,
-                                        arg     => $args
-                                       },
-                                       $subreq, -1, 1
-                                       );
-
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Could not run emgr command.\n";
-                    foreach my $o (@$output)
-                    {
-                        push @{$rsp->{data}}, "$o";
-                    }
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                    $error++;
-                }
-                elsif ($::VERBOSE)
-                {
-                    my $rsp;
-                    foreach my $o (@$output)
-                    {
-                        push @{$rsp->{data}}, "$o";
-                    }
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                }
-            }
-
-            #
-            # do RPMs
-            #
-
-            if (scalar(@rpm_pkgs) || $::ALLSW || ($imagedefs{$img}{rpm_flags}))
-            {
-
-                # don't do rpms if these installp flags were specified
-                # check this ??????!!!!! - this check doesn't seem necessary?
-                #if ($imagedefs{$img}{installp_flags} !~ /C|L|l/)
-                if (1)
-                {
-
-                    # set flags
-                    my $flags;
-                    if ($imagedefs{$img}{rpm_flags})
-                    {
-                        $flags = " " . $imagedefs{$img}{rpm_flags};
-                    }
-                    else
-                    {
-
-                        # use --replacepkgs so cmd won't fail if one is
-                        #	already installed
-                        $flags = " -Uvh --replacepkgs ";
-                    }
-
-                    # if a specific dir was provided then use it
-                    # otherwise use the rpm dir in the lpp src
-                    my $dir;
-                    if ($::ALTSRC)
-                    {
-                        $dir = "/xcatmnt";
-                    }
-                    else
-                    {
-                        $dir = "/xcatmnt/RPMS/ppc";
-                    }
-                    my $pkg_string = "";
-                    if ($::ALLSW)
-                    {
-                        $pkg_string = " *.rpm	";
-                    }
-                    else
-                    {
-                        foreach my $pkg (@rpm_pkgs)
-                        {
-                            $pkg_string .= " $pkg";
-                        }
-                    }
-
-                    my $rcmd;
-                    if (scalar(@rpm_pkgs))
-                    {
-                        $rcmd = qq~cd $dir; /usr/bin/rpm $flags $pkg_string ~;
-                    }
-                    else
-                    {
-                        $rcmd = qq~/usr/bin/rpm $flags ~;
-                    }
-
-                    if ($::VERBOSE)
-                    {
-                        my $rsp;
-                        push @{$rsp->{data}}, "Running: \'$rcmd\'.\n";
-                        xCAT::MsgUtils->message("I", $rsp, $callback);
-                    }
-                   # install the rpms
-                   my $args1;
-                   push @$args1,"--nodestatus";
-                   push @$args1,"-s";
-                   push @$args1,"-v";
-                   if (defined($::fanout))  {  # fanout input
-                       push @$args1,"-f" ;
-                       push @$args1,$::fanout;
-                   }
-                   push @$args1,"$rcmd";
-
-                   $subreq->(
-                           {
-                            command           => ["xdsh"],
-                            node              => \@nodes,
-                            arg               => $args1,
-                            _xcatpreprocessed => [1]
-                           },
-                           \&getdata2
-                         );
-
-
-                }
-            }
-
-            # unmount the src dir -
-            if (scalar(@pkglist))
-            {
-                my $ucmd = qq~umount -f /xcatmnt~;
-                if ($::VERBOSE)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Running command: $ucmd\n";
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                }
-
-                 my $args1;
-                 if (defined($::fanout))  {  # fanout input
-                       push @$args1,"-f" ;
-                       push @$args1,$::fanout;
-                 }
-                 push @$args1,"$ucmd";
-                my $output =
-                  xCAT::Utils->runxcmd(
-                                       {
-                                        command => ["xdsh"],
-                                        node    => \@nodes,
-                                        arg     => $args1
-                                       },
-                                       $subreq, -1, 1
-                                       );
-
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Could not umount.\n";
-                    foreach my $o (@$output)
-                    {
-                        push @{$rsp->{data}}, "$o";
-                    }
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    next;
-                }
-            }
-        }
-    }
-
-    # clean up files copied to lpp_source locations and
-    #	unexport the lpp locations
-    foreach my $img (keys %imagedefs)
-    {
-
-        chomp $img;
-
-        my $pkgdir;
-        if ($::ALTSRC)
-        {
-            $pkgdir = $::ALTSRC;
-        }
-        else
-        {
-            $pkgdir = $imagedefs{$img}{lpp_loc};
-        }
-
-        if (scalar(@pkglist))
-        {
-
-            # remove tmp installp files
-            foreach my $file (@installp_files)
-            {
-                my $rcmd;
-                $rcmd = qq~rm -f $pkgdir/$file; rm -f /tmp/$file~;
-                my $output = xCAT::Utils->runcmd("$rcmd", -1);
-
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}},
-                      "Could not remove $imagedefs{$img}{lpp_loc}/$file.\n";
-                    if ($::VERBOSE)
-                    {
-                        push @{$rsp->{data}}, "$output\n";
-                    }
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    next;
-                }
-            }
-
-            # remove tmp emgr files
-            foreach my $file (@emgr_files)
-            {
-                my $rcmd;
-                $rcmd = qq~rm -f $pkgdir/$file; rm -f /tmp/$file~;
-                my $output = xCAT::Utils->runcmd("$rcmd", -1);
-
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}},
-                      "Could not remove $imagedefs{$img}{lpp_loc}/$file.\n";
-                    if ($::VERBOSE)
-                    {
-                        push @{$rsp->{data}}, "$output\n";
-                    }
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    next;
-                }
-            }
-
-            # unexport lpp dirs
-            my $ucmd = qq~exportfs -u -F $pkgdir~;
-            my $output = xCAT::Utils->runcmd("$ucmd", -1);
+        	# set the location of the software
+        	my $pkgdir = "";
+        	if ($::ALTSRC)
+        	{
+            	$pkgdir = $::ALTSRC;
+        	}
+        	else
+        	{
+            	$pkgdir = $imagedefs{$img}{lpp_loc};
+        	}
+
+			# check for pkg dir
+			if ( ! -d $pkgdir ) {
+				my $rsp;
+				push @{$rsp->{data}}, "The source directory $pkgdir does not exist.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				$error++;
+				next;
+			}
+
+			# create a file in the pkgdir and add the pkg list to it
+			#  the pkgdir is mounted and the pkglist file will be available 
+			#	on the node.
+			#
+			# create a unique name
+			my $thisdate = `date +%s`;
+			my $pkglist_file_name = qq~pkglist_file.$thisdate~;			
+           	chomp $pkglist_file_name;
+
+			@pkglist = split(/,/, $imagedefs{$img}{pkglist});
+
+           	if (!scalar(@pkglist))
+           	{
+				my $rsp;
+				push @{$rsp->{data}}, "There is no list of packages for nodes: @nodes.\n";		
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				$error++;
+				next;
+			}
+			
+            #  make sure the permissions are correct on pkgdir
+            # - we are running on MN
+            my $chmcmd = qq~/bin/chmod -R +r $pkgdir~;
+            my @result = xCAT::Utils->runcmd("$chmcmd", -1);
             if ($::RUNCMD_RC != 0)
             {
                 my $rsp;
-                push @{$rsp->{data}}, "Could not unexport $pkgdir.\n";
-                if ($::VERBOSE)
-                {
-                    push @{$rsp->{data}}, "$output\n";
-                }
+                push @{$rsp->{data}},
+                    "Could not set permissions for $pkgdir.\n";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
-                $error++;
-                next;
+				$error++;
+				next;
             }
-        }
-    }
+
+			# create a pkglist file in the pkgdir on MN
+			my $pkglist_file= qq~$pkgdir/$pkglist_file_name~;
+
+           	if (!open(PKGLISTFILE, ">$pkglist_file"))
+           	{
+               	my $rsp;
+               	push @{$rsp->{data}}, "Could not open $pkglist_file_name.\n";
+               	xCAT::MsgUtils->message("E", $rsp, $callback);
+				$error++;
+				next;
+			}
+			else
+           	{
+               	foreach (@pkglist)
+               	{
+                   	print PKGLISTFILE $_ . "\n";
+               	}
+               	close(PKGLISTFILE);
+			}
+
+# ndebug
+# ??? has the whole pkgdir been copied to the SN yet???
+
+			if (!xCAT::InstUtils->is_me($serv)) {
+				# cp file to SN 
+				# has pkgdir already been copied.             
+				my $rcpcmd = "$::XCATROOT/bin/xdcp $serv $pkglist_file $pkgdir ";
+				my $output = xCAT::Utils->runcmd("$rcpcmd", -1);
+				if ($::RUNCMD_RC != 0)
+				{
+					my $rsp;
+					push @{$rsp->{data}}, "Could not copy $pkglist_file to $serv.\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					$error++;
+					next;
+				}
+			}
+
+			# export the pkgdir on the server
+			my $ecmd;
+			my @nfsv4 = xCAT::TableUtils->get_site_attribute("useNFSv4onAIX");
+			if ($nfsv4[0] && ($nfsv4[0] =~ /1|Yes|yes|YES|Y|y/))
+			{
+				$ecmd = qq~exportfs -i -o vers=4 $pkgdir~;
+			}
+			else
+			{
+				$ecmd = qq~exportfs -i $pkgdir~;
+			}
+
+			if (!xCAT::InstUtils->is_me($serv)) {
+				my $output = xCAT::Utils->runxcmd(
+					{
+						command => ["xdsh"],
+						node    => [$serv],	
+						arg     => [$ecmd]
+					},
+					$subreq, -1, 1
+					);
+				if ($::RUNCMD_RC != 0)
+				{
+					my $rsp;
+					push @{$rsp->{data}}, "Could not export $pkgdir on $serv.\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					$error++;
+                    next;
+				}
+			} else {
+				my $output = xCAT::Utils->runcmd("$ecmd", -1);
+				if ($::RUNCMD_RC != 0)
+				{
+					my $rsp;
+					push @{$rsp->{data}}, "Could not export $pkgdir on $serv.\n";
+					push @{$rsp->{data}}, "$output\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					$error++;
+					next;
+				}
+			}
+
+			#
+           	# call aixswupdate to install sw on the nodes
+           	#
+
+			# put together the cmd string
+           	my $installcmd = qq~/install/postscripts/aixswupdate -f $pkglist_file ~;
+
+			# $serv is the name of the nodes server as known by the node
+			$installcmd .= qq~ -s $serv ~;
+		
+			if ($::ALLSW) {
+				$installcmd .= qq~ -a ~;
+			}
+
+			if ($::ALTSRC) {
+				$installcmd .= qq~ -d ~;
+			}
+
+			if ($::NFSV4) {
+				$installcmd .= qq~ -n ~;
+			}
+
+			# add installp flags
+			if ( $imagedefs{$img}{installp_flags} ) {
+				$installcmd .= qq~ -i $imagedefs{$img}{installp_flags} ~;
+			}
+			# add rpm flags
+			if ( $imagedefs{$img}{rpm_flags} ) {
+               	$installcmd .= qq~ -r $imagedefs{$img}{rpm_flags} ~;
+           	}
+			# add emgr flags
+           	if ( $imagedefs{$img}{emgr_flags} ) {
+               	$installcmd .= qq~ -e $imagedefs{$img}{emgr_flags} ~;
+           	}
+
+			my $args1;
+			push @$args1,"--nodestatus";
+			push @$args1,"-s";
+			push @$args1,"-v";
+			push @$args1,"-e";
+			if (defined($::fanout))  {  # fanout input
+				push @$args1,"-f" ;
+				push @$args1,$::fanout;
+			}
+			push @$args1,"$installcmd";
+
+			$subreq->(
+				{
+					command           => ["xdsh"],
+					node              => \@nodes,
+					arg               => $args1,
+					_xcatpreprocessed => [1]
+				},
+				\&getdata2
+				);
+
+			# remove pkglist_file from MN - local
+			my $rcmd = qq~/bin/rm -f $pkglist_file~;
+            my $output = xCAT::Utils->runcmd("$rcmd", -1);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not remove $pkglist_file.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+            }
+
+
+			# if not $serv then remove pkglist_file from $serv
+			if (!xCAT::InstUtils->is_me($serv)) {
+				my $output = xCAT::Utils->runxcmd(
+                      	{
+                       		command => ["xdsh"],
+                       		node    => [$serv],
+                          	arg     => [$rcmd]
+                       	},
+                       	$subreq, -1, 1
+                        );
+				if ($::RUNCMD_RC != 0)
+				{
+					my $rsp;
+					push @{$rsp->{data}}, "Could not remove $pkglist_file on $serv.\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					$error++;
+				}
+			}
+
+			# unexport pkgdir
+			my $ucmd = qq~exportfs -u -F $pkgdir~;
+			if (xCAT::InstUtils->is_me($serv)) {
+                my $ucmd = qq~exportfs -u -F $pkgdir~;
+                my $output = xCAT::Utils->runcmd("$ucmd", -1);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Could not unexport $pkgdir.\n";
+                    if ($::VERBOSE)
+                    {
+                        push @{$rsp->{data}}, "$output\n";
+                	}
+                	xCAT::MsgUtils->message("E", $rsp, $callback);
+					$error++;
+				}
+			} else {
+				# unexport dirs on SNs
+				my $output = xCAT::Utils->runxcmd(
+                        {
+                            command => ["xdsh"],
+                            node    => [$serv],
+                            arg     => [$ucmd]
+                        },
+                        $subreq, -1, 1
+                        );
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Could not unexport $pkgdir on $serv.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+					$error++;
+                }
+			}
+		} # for each osimage
+	} # for each server 
 
     if ($error)
     {
@@ -3088,7 +2599,7 @@ sub updateAIXsoftware
     {
         my $rsp;
         push @{$rsp->{data}},
-          "Cluster node software update commands have completed successfully.\n";
+          "Cluster node software update commands have completed.\n";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
     return 0;
