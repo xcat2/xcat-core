@@ -156,8 +156,8 @@ sub process_request {
        return;
    }
 
-   my $tftpdir = "$tftproot/xcat/netboot/$osver/$arch/$profile";
-   my @filestoremove = ("$imagedir/rootimg.gz", "$imagedir/kernel", "$imagedir/initrd.gz", "$tftpdir/initrd.gz", "$tftpdir/kernel");
+
+   my @filestoremove = ("$imagedir/rootimg.gz", "$imagedir/kernel", "$imagedir/initrd-stateless.gz", "$imagedir/initrd-statelite.gz");
 
    #some rpms like atftp mount the rootimg/proc to /proc, we need to make sure rootimg/proc is free of junk 
    `umount -l $imagedir/rootimg/proc 2>&1 1>/dev/null`;
@@ -175,6 +175,16 @@ sub process_request {
            $callback->({info=>["Removing file $fremove"]});
            unlink("$fremove");
       }
+   }
+
+   #remove image files under tftpdir
+   my $tftpdir = "$tftproot/xcat/netboot/$osver/$arch/$profile";
+   if ($imagename) {
+       $tftpdir = "$tftproot/xcat/osimage/$imagename";
+   }
+   if (-d "$tftpdir") {
+       $callback->({info=>["Removing directory $tftpdir"]});
+       rmtree "$tftpdir";
    }
 
    $callback->({info=>["Image files have been removed successfully from this management node."]});
