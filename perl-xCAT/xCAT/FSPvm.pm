@@ -202,8 +202,11 @@ sub chvm_parse_args {
   
     
     # pending memory interleaving mode  (1- interleaved, 2- non-interleaved)
-    # non-interleaved mode means the memory cannot be shared across the processors in an octant.
-    # interleaved means the memory can be shared.
+    # non-interleaved mode: Memory allocations are only interleaved across the two 
+    #                       memory controllers on a local chip in the octant
+    # interleaved mode:     Memory allocations are interleaved evenly across all eight
+    #                       memory controllers in the octant
+    # Note: A octant with partition value 2-5 can not be set with memory interleaving = 1. 
     if( exists($opt{m}) ) {
         if( $opt{m} =~ /^interleaved$/ || $opt{m} =~ /^1$/ ) {
 	    $opt{m} = 1;
@@ -238,6 +241,9 @@ sub chvm_parse_args {
 		if( grep(/^$subelems[1]$/, @ratio ) != 1) {
 	            return(usage( "Invalid octant configuration value in $elem.\n For Power 775, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of chvm." ));
 		}
+                if( $opt{m} == 1 && $subelems[1] > 1 ) {
+	            return(usage("Need to specify \"-m 2\" when specifying an octant configuration value greater than 1. Error!"));
+                }
 		if( exists($octant_cfg{$subelems[0]}) && $octant_cfg{$subelems[0]} == $subelems[1] ) {
 	            return(usage("In the octant configuration rule, same octant with different octant configuration value. Error!"));	
 		}
@@ -249,6 +255,9 @@ sub chvm_parse_args {
 	        if( $left < 0 || $left > 7 || $right < 0 || $right > 7) {
 		       return(usage("Octant ID only could be 0 to 7 in the octant configuration rule $elem"));
 		}
+                if( $opt{m} == 1 && $subelems[1] > 1 ) {
+	            return(usage("Need to specify \"-m 2\" when specifying an octant configuration value greater than 1. Error!"));
+                }
                 if($left == $right) {
 		   if( grep(/^$subelems[1]$/, @ratio ) != 1) {
 	               return(usage( "Invalid octant configuration value in $elem.\n For Power 775, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of chvm." ));
