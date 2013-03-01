@@ -4909,6 +4909,8 @@ sub nodeSet {
         my $pkglist;
         my $patterns = '';
         my $packages = '';
+        my $postBoot = "$installDir/postscripts/xcatinstallpost";
+        my $postInit = "$installDir/postscripts/xcatpostinit1";
         if ( $os =~ m/sles/i ) {
 
             # Create directory in FTP root (/install) to hold template
@@ -4953,9 +4955,17 @@ sub nodeSet {
             
             # Add appropriate software packages or patterns
             $out = `sed --in-place -e "s,replace_software_packages,$packages,g" \ -e "s,replace_software_patterns,$patterns,g" $customTmpl`;
-                        
+            
             # Copy postscript into template
-            $out = `sed --in-place -e "/<scripts>/r $postScript" $customTmpl`;
+            $out = `sed --in-place -e "/<scripts>/r $postScript" $customTmpl`;            
+            
+            # Copy the contents of /install/postscripts/xcatpostinit1
+            $out = `sed --in-place -e "/replace_xcatpostinit1/r $postInit" $customTmpl`;
+            $out = `sed --in-place -e "s,replace_xcatpostinit1,,g" $customTmpl`;
+                        
+            # Copy the contents of /install/postscripts/xcatinstallpost
+            $out = `sed --in-place -e "/replace_xcatinstallpost/r $postBoot" $customTmpl`;
+            $out = `sed --in-place -e "s,replace_xcatinstallpost,,g" $customTmpl`;
 
             # Edit template
             my $device;
@@ -5187,6 +5197,14 @@ END
                                                         
             # Copy postscript into template
             $out = `sed --in-place -e "/%post/r $postScript" $customTmpl`;
+            
+            # Copy the contents of /install/postscripts/xcatpostinit1
+            $out = `sed --in-place -e "/replace_xcatpostinit1/r $postInit" $customTmpl`;
+            $out = `sed --in-place -e "s,replace_xcatpostinit1,,g" $customTmpl`;
+            
+            # Copy the contents of /install/postscripts/xcatinstallpost
+            $out = `sed --in-place -e "/replace_xcatinstallpost/r $postBoot" $customTmpl`;
+            $out = `sed --in-place -e "s,replace_xcatinstallpost,,g" $customTmpl`;
 
             # Edit template
             if (!$repo) {

@@ -133,8 +133,8 @@ chmod 755 /tmp/mypostscript.post
 
 # Create post init
 cat >/etc/init.d/xcatpostinit1 << 'EOF'
-# Install directory variable is set by nodeset
-$INSTALLDIR/postscripts/xcatpostinit1
+# Copy the contents of /install/postscripts/xcatpostinit1 here
+replace_xcatpostinit1
 EOF
 # Change permissions
 chmod 755 /etc/init.d/xcatpostinit1
@@ -145,8 +145,9 @@ ln -s /etc/init.d/xcatpostinit1 /etc/init.d/rc5.d/S84xcatpostinit1
 # Create post install 
 mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
-# Install directory variable is set by nodeset
-$INSTALLDIR/postscripts/xcatinstallpost
+# Copy the contents of /install/postscripts/xcatinstallpost here
+replace_xcatinstallpost
+
 if [ -f /xcatpost/mypostscript.post ]; then
     RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript.post |cut -d= -f2`
 fi
