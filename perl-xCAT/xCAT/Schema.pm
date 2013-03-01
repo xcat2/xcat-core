@@ -269,10 +269,7 @@ storage => {
 		osvolume => "Specification of what storage to place the node OS image onto.  Examples include:
 				localdisk (Install to first non-FC attached disk)
 				usbdisk (Install to first USB mass storage deice seen)
-				wwn=0x50000393c813840c (Install to storage device with given WWN) 
-				WARNING: This is as yet unimplemented by the stock OS deployment templates
-				WARNING: SAS SAN devices may be considered to be 'localdisk' class.
-				The default behavior if unspecified is presumed to be 'localdisk'",
+				wwn=0x50000393c813840c (Install to storage device with given WWN)",
 		}
 	},
 websrv => { 
@@ -889,7 +886,7 @@ site => {
    "                failed nodes for any xCAT commands. See the 'noderange' manpage for\n".
    "                details on supported formats.\n\n".
    " forwarders:  The DNS servers at your site that can provide names outside of the\n".
-   "              cluster. The makedns command will configuire the DNS on the management\n".
+   "              cluster. The makedns command will configure the DNS on the management\n".
    "              node to forward requests it does not know to these servers.\n".
    "              Note that the DNS servers on the service nodes will ignore this value\n".
    "              and always be configured to forward requests to the management node.\n\n".
@@ -1038,6 +1035,8 @@ site => {
    "                      and node requests, e.g. to get postscripts. Default is 64.\n\n".
    " xcatdport:  The port used by the xcatd daemon for client/server communication.\n\n".
    " xcatiport:  The port used by xcatd to receive install status updates from nodes.\n\n",
+   " xcatsslversion:  The ssl version by xcatd. Default is SSLv3.\n\n",
+   " xcatsslciphers:  The ssl cipher by xcatd. Default is 3DES.\n\n",
   value => 'The value of the attribute specified in the "key" column.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
