@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<chvm> - Changes HMC-, IVM-, and zVM-managed partition profiles or virtual machines. For Power 775, chvm could be used to change the octant configuration values for generating LPARs; change the I/O slots assignment to LPARs within the same CEC.
+B<chvm> - Changes HMC-, IVM-, and zVM-managed partition profiles or virtual machines. For Power 775, chvm is used to change the octant configuration values for generating LPARs, set the octant memory interleaving value and change the I/O slots assignment to LPARs within the same CEC.
 
 =head1 SYNOPSIS
 
@@ -14,7 +14,7 @@ B<chvm> [B<-V>| B<--verbose>] I<noderange> [B<-p> I<profile>]
 
 B<chvm> [B<-V>| B<--verbose>] I<noderange> I<attr>=I<val> [I<attr>=I<val>...]
 
-=head2 PPC (using Direct FSP Management) specific:
+=head2 PPC (using Direct FSP Management for Power 775) specific:
 
 B<chvm> I<noderange> [B<-p> I<profile>]
 
@@ -84,13 +84,75 @@ The chvm command modifies the partition profile for the partitions specified in 
 
 This command also supports to change specific partition attributes by specifying one or more "attribute equals value" pairs in command line directly, without whole partition profile.
 
-=head2 PPC (using Direct FSP Management) specific:
+=head2 PPC (using Direct FSP Management for Power 775) specific:
 
-chvm could be used to change the octant configuration values for generating LPARs. chvm is designed to set the Octant configure value to split the CPU and memory for partitions, and set Octant Memory interleaving value. The chvm will only set the pending attributes value. After chvm, the CEC needs to be rebooted manually for the pending values to be enabled. Before reboot the cec, the administrator can use chvm to change the partition plan. If the the partition needs I/O slots, the administrator should use chvm to assign the I/O slots. 
+The chvm command is used to set the Power 775 pending octant partition configuration value, the pending memory interleave value, and also is used to assign the I/O slots to an lpar within the CEC.
 
-chvm is also designed to assign the I/O slots to the new LPAR. Both the current IO owning lpar and the new IO owning lpar must be powered off before an IO assignment. Otherwise, if the I/O slot is belonged to an Lpar and the LPAR is power on, the command will return an error when trying to assign that slot to a different lpar. 
+The octant configuration value specifies one of five preset configurations. Each configuration specifies the number of lpars per octant and the percentage of CPUs and memory assigned to those lpars. The configuration values include:
 
-The administrator should use lsvm to get the profile content, and then edit the content, and add the node name with ":" manually before the I/O which will be assigned to the node. And then the profile can be piped into the chvm command, or changed with the -p flag.
+=over
+
+=over
+
+=item B<1> - One partition with all cpus and memory of the octant
+
+=item B<2> - Two partitions with a 50/50 split of cpus and memory
+
+=item B<3> - Three partitions with a 25/25/50 split of cpus and memory
+
+=item B<4> - Four partitions with a 25/25/25/25 split of cpus and memory
+
+=item B<5> - Two partitions with a 25/75 split of cpus and memory
+
+=back
+
+=back
+
+The memory interleaving value specifies how the memory is accessed within the octant and can be one of two values:
+
+=over
+
+=over
+
+=item B<1> - interleaved or 8MC mode
+
+Memory allocations are interleaved evenly across all eight memory controllers in the octant. This is the default value if -m is not specified. A value of 1 must NOT be specified if the octant is to be partitioned, i.e. have an octant configuration value of 2-5.
+
+=item B<2> - non-interleaved or 2MC mode
+
+Memory allocations are only interleaved across the two memory controllers on a local chip in the octant. A value of 2 MUST be specified if the octant is to be partitioned, i.e. have an octant configuration value of 2-5.
+
+=back
+
+=back
+
+If octants in the same CEC are to have different memory interleaving values then they must be configured in separate chvm commands. For example, if octant zero is to have an octant configuration of 2 and octant one through seven are to have an octant configuration of 1 and a memory interleave value of 1 then the two commands would be:
+
+chvm lpar1,lpar2 -i 1 -m 2 -r 0:2
+
+chvm lpar3-lpar9 -i 5 -m 1 -r 1-7:1
+
+The lsvm command can be used to verify the pending octant configurations are correct for the CEC.
+
+To activate the pending configuration the CEC needs to be manually rebooted.
+
+Once the CEC has the correct active configuration, the chvm command can then be used to assign I/O slots to new partitions in the CEC. Once again, the lsvm command can be used to display the current I/O slot assignments of the CEC. Before running the chvm command to update I/O slot assignments, ensure that both the current I/O owning lpar and the new I/O owning lpar are powered off. Otherwise, the chvm will return an error.
+
+The lsvm command output can be redirected to a file. This file can then be edited to include only the current sixteen I/O slot assignments. A sample of some of the output is:
+
+    1: 537/U78A9.001.0123456-P1-C9/0x21010219/2/1
+    1: 514/U78A9.001.0123456-P1-C17/0x21010202/2/1
+    1: 568/U78A9.001.0123456-P1-C2/0x21010238/2/1
+    1: 561/U78A9.001.0123456-P1-C3/0x21010231/2/1
+
+The number, as in the above example,  or text before the ":" indicates the lpar id of the node or the node name. To change the I/O slot assignment, change this value to the new lpar id or node name, for example, 5 for lpar id 5 or use the node name "lpar5". For example:
+
+    1: 537/U78A9.001.0123456-P1-C9/0x21010219/2/1
+    1: 514/U78A9.001.0123456-P1-C17/0x21010202/2/1
+    5: 568/U78A9.001.0123456-P1-C2/0x21010238/2/1
+    5: 561/U78A9.001.0123456-P1-C3/0x21010231/2/1
+
+This file can then be piped into the chvm command, or specified with the -p flag.
 
 =head2 VMware/KVM specific:
 
@@ -134,33 +196,39 @@ Verbose output.
 
 =back
 
-=head2 PPC (using Direct FSP Management) specific:
+=head2 PPC (using Direct FSP Management for Power 775) specific:
 
 =over 10
 
 =item B<-i>
 
-Starting numeric id of the newly created partitions. For Power 775 using Direct FSP Management, the id value only could be B<1>, B<5>, B<9>, B<13>, B<17>, B<21>, B<25> and B<29>.
+Starting numeric id of the first lpar in the octant.  Valid id values are B<1>, B<5>, B<9>, B<13>, B<17>, B<21>, B<25> and B<29>. These values correspond to the first lpar id in each of the eight octants. 
 
 =item B<-m>     
 
-memory interleaving. The setting value only could be B<1> or B<2>. B<2> means B<non-interleaved> mode (also 2MC mode), the memory cannot be shared across the processors in an octant. B<1> means B<interleaved> mode (also 8MC mode) , the memory can be shared. The default value is B<1> .
+1 - interleaved or 8MC mode
+
+2 - non-interleaved or 2MC mode
+
+See interleaving description above for more information.
 
 =item B<-r>    
 
-partition rule.
+Octant partition configuration rule. The rule specifies the octant and the octant configuration value. 
 
-If all the octants configuration value are same in one CEC,  it will be  " B<-r>  B<0-7>:I<value>" .
+The format is " B<-r> B<octant_number:value>"
+
+Multiple octants can be specified in the same rule: " B<-r> B<0-7>:I<value>"
 
 If the octants use the different configuration value in one cec, it will be "B<-r> B<0>:I<value1>,B<1>:I<value2>,...B<7>:I<value7>", or "B<-r> B<0>:I<value1>,B<1-7>:I<value2>" and so on.
 
-The octants configuration value for one Octant could be  B<1>, B<2>, B<3>, B<4>, B<5>. The meanings of the octants configuration value  are as following:
+The octant configuration value specifies one of five preset configurations (B<1>, B<2>, B<3>, B<4>, B<5>). Each configuration specifies the number of lpars per octant and the percentage of CPUs and memory assigned to those lpars. The configuration values include:
 
- 1 -- 1 partition with all cpus and memory of the octant
- 2 -- 2 partitions with a 50/50 split of cpus and memory
- 3 -- 3 partitions with a 25/25/50 split of cpus and memory
- 4 -- 4 partitions with a 25/25/25/25 split of cpus and memory
- 5 -- 2 partitions with a 25/75 split of cpus and memory
+ 1 - One partition with all cpus and memory of the octant
+ 2 - Two partitions with a 50/50 split of cpus and memory
+ 3 - Three partitions with a 25/25/50 split of cpus and memory
+ 4 - Four partitions with a 25/25/25/25 split of cpus and memory
+ 5 - Two partitions with a 25/75 split of cpus and memory
 
 =item B<-p> I<profile>
 
@@ -338,9 +406,9 @@ Output is similar to:
 
  lpar4: Success
 
-=head2 PPC (using Direct FSP Management) specific:
+=head2 PPC (using Direct FSP Management for Power 775) specific:
 
-1. For Power 775, to create a new partition lpar1 on the first octant of the cec cec01, lpar1 will use all the cpu and memory of the octant 0, enter: 
+1. For Power 775, to create a new partition lpar1 on the first octant of CEC cec01, lpar1 will use all the cpu and memory of the octant 0, enter: 
 
  mkdef -t node -o lpar1 mgt=fsp groups=all parent=cec01   nodetype=lpar   hcp=cec01
 
@@ -353,7 +421,7 @@ Output is similar to:
  lpar1: Success
  cec01: Please reboot the CEC cec1 firstly, and then use chvm to assign the I/O slots to the LPARs
 
-2. For Power 775, to create new partitions lpar1-lpar8 on the whole cec cec01, each LPAR will use all the cpu and memory of each octant, enter:
+2. For Power 775, to create new partitions lpar1-lpar8 on the whole CEC cec01, each LPAR will use all the cpu and memory of each octant, enter:
 
  mkdef -t node -o lpar1-lpar8 nodetype=lpar  mgt=fsp groups=all parent=cec01  hcp=cec01
 
@@ -373,18 +441,21 @@ Output is similar to:
  lpar8: Success
  cec01: Please reboot the CEC cec1 firstly, and then use chvm to assign the I/O slots to the LPARs
 
-3. For Power 775 cec1, to create new partitions lpar1-lpar9, the lpar1 will use 25% CPU and 25% memory of the first octant, and lpar2 will use the left CPU and memory of the first octant. lpar3-lpar9 will use all the cpu and memory of each octant, enter:
+3. For Power 775 cec1, to create new partitions lpar1-lpar9, where lpar1 will use 25% CPU and memory resource and lpar2 will use the remaining 75% resources of octant 0 and lpar3-lpar9 will use all the cpu and memory of octants 2-7, enter:
 
  mkdef -t node -o lpar1-lpar9 mgt=fsp groups=all parent=cec1   nodetype=lpar   hcp=cec1
 
 then:
 
- chvm lpar1-lpar9 -i 1 -m 1  -r 0:5,1-7:1
+ chvm lpar1-lpar2 -i 1 -m 2  -r 0:5
+ chvm lpar3-lpar9 -i 5 -m 1  -r 1-7:1
 
 Output is similar to: 
 
  lpar1: Success
  lpar2: Success
+ cec1: Please reboot the CEC cec1 firstly, and then use chvm to assign the I/O slots to the LPARs
+
  lpar3: Success
  lpar4: Success
  lpar5: Success
