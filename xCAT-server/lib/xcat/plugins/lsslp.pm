@@ -51,12 +51,14 @@ use constant {
     SERVICE_IVM      => "integrated-virtualization-manager",
     SERVICE_MM       => "management-module",
     SERVICE_CMM      => "chassis-management-module",
+    SERVICE_IMM2     => "integrated-management-module2",
     SERVICE_RSA      => "remote-supervisor-adapter",
     SERVICE_RSA2     => "remote-supervisor-adapter-2",
     #SLP_CONF         => "/usr/local/etc/slp.conf",
     #SLPTOOL          => "/usr/local/bin/slptool",
     TYPE_MM          => "mm",
     TYPE_CMM         => "cmm",
+    TYPE_IMM2        => "imm2",
     TYPE_RSA         => "rsa",
     TYPE_BPA         => "bpa",
     TYPE_HMC         => "hmc",
@@ -83,6 +85,7 @@ my %service_slp = (
     @{[ SERVICE_IVM    ]} => TYPE_IVM,
     @{[ SERVICE_MM     ]} => TYPE_MM,
     @{[ SERVICE_CMM    ]} => TYPE_CMM,
+    @{[ SERVICE_IMM2   ]} => TYPE_IMM2,
     @{[ SERVICE_RSA    ]} => TYPE_RSA,
     @{[ SERVICE_RSA2   ]} => TYPE_RSA
 );
@@ -154,6 +157,7 @@ my %globalhwtype = (
     frame => $::NODETYPE_FRAME,
     cec   => $::NODETYPE_CEC,
     cmm   => $::NODETYPE_CMM,
+    imm2   => $::NODETYPE_IMM2,
 );
 my %globalnodetype = (
     fsp   => $::NODETYPE_PPC,
@@ -174,6 +178,7 @@ my %globalmgt = (
     ivm   => "ivm",
     rsa   => "blade",
     cmm   => "blade",
+    imm2  => "blade",
     hmc   => "hmc",
 );
 my %globalid = (
@@ -241,6 +246,7 @@ sub parse_args {
         FRAME => HARDWARE_SERVICE.":".SERVICE_FRAME,
         RSA   => HARDWARE_SERVICE.":".SERVICE_RSA.":",
         CMM   => HARDWARE_SERVICE.":".SERVICE_CMM,
+        IMM2  => HARDWARE_SERVICE.":".SERVICE_IMM2,
         MM    => HARDWARE_SERVICE.":".SERVICE_MM.":"
     );
     #############################################
@@ -992,12 +998,13 @@ sub parse_responses {
         ###########################################
         my %atthash;
         if (( $type eq SERVICE_RSA ) or ( $type eq SERVICE_RSA2 ) or
-            ( $type eq SERVICE_MM )) {
+            ( $type eq SERVICE_MM ) or ( $type eq SERVICE_IMM2 )) {
             $atthash{type} = $service_slp{$type};
             $atthash{mtm} = ${$attributes->{'enclosure-machinetype-model'}}[0];
             $atthash{serial} = ${$attributes->{'enclosure-serial-number'}}[0];
             $atthash{slot} = int(${$attributes->{'slot'}}[0]);
-            $atthash{ip} = ${$attributes->{'ip-address'}}[0];
+            if ( $type eq SERVICE_IMM2 ) { $atthash{ip} = ${$attributes->{'ipv4-address'}}[0]; }
+            else { $atthash{ip} = ${$attributes->{'ip-address'}}[0]; }
             $atthash{mac} = $rsp;
             $atthash{hostname} = get_host_from_url($request, $attributes);
             $atthash{otherinterfaces} = ${$attributes->{'ip-address'}}[0];
@@ -1049,7 +1056,66 @@ sub parse_responses {
             trace( $request, "Discover node $atthash{hostname}: type is $atthash{type},\
 			mtm is $atthash{mtm},sn is $atthash{serial},  ip is $atthash{ip},\
 			mac is $atthash{mac}, otherinterfaces is $atthash{otherinterfaces}" );
-        }else {
+        }elsif (($type eq SERVICE_FSP) && (${$attributes->{'machinetype-model'}}[0] =~ /^7895|8236/ )) {
+            #begin to define fsp and bpa
+            my %tmphash;
+            $tmphash{type} = ($type eq SERVICE_BPA) ? TYPE_BPA : TYPE_FSP;
+            $tmphash{mtm} = ${$attributes->{'machinetype-model'}}[0];
+            $tmphash{serial} = ${$attributes->{'serial-number'}}[0];
+            $tmphash{ip} = ${$searchmacs{$rsp}}{peername};
+            my $loc = ($tmphash{ip} =~ ${$attributes->{'ip-address'}}[0]) ? 0:1; #every entry has two ip-addresses
+            $tmphash{side} = (int(${$attributes->{'slot'}}[0]) == 0) ? 'B-'.$loc:'A-'.$loc;
+            $tmphash{mac} = $rsp;
+            $tmphash{parent} =  'Server-'.$tmphash{mtm}.'-SN'.$tmphash{serial};
+            $tmphash{hostname} = $tmphash{ip};
+            $tmphash{otherinterfaces} = ${$searchmacs{$rsp}}{peername};
+            $tmphash{bpcmtm} = ${$attributes->{'bpc-machinetype-model'}}[0];
+            $tmphash{bpcsn} = ${$attributes->{'bpc-serial-number'}}[0];
+            $tmphash{fid} = int(${$attributes->{'frame-number'}}[0]);
+            $tmphash{cid} = int(${$attributes->{'cage-number'}}[0]);
+            $outhash{$tmphash{ip}} = \%tmphash;
+            $$length = length( $tmphash{ip}) if ( length( $tmphash{ip} ) > $$length );
+            trace( $request, "Discover node $tmphash{hostname}:type is $tmphash{type}, mtm is $tmphash{mtm}, \
+			sn is $tmphash{serial}, side is $tmphash{side},parent is $tmphash{parent},ip is $tmphash{ip}, \
+			cec id is $tmphash{cid} , frame id is $tmphash{fid},mac is $tmphash{mac}, \
+			otherinterfaces is $tmphash{otherinterfaces}" );
+            
+            #####################################################################
+            #define another side to fix the issue that the result is imcomplete
+            #####################################################################
+            my %tmphash1;
+            $tmphash1{ip} = (${$searchmacs{$rsp}}{peername} =~ ${$attributes->{'ip-address'}}[0])?${$attributes->{'ip-address'}}[1]:${$attributes->{'ip-address'}}[0]; 
+            unless ($outhash{$tmphash1{ip}}) {
+                my $validflag = 1;
+                foreach (@invalidiplist){
+                    if ( $tmphash1{ip} =~ /^($_)/ ){
+                        $validflag = 0;
+                        last;
+                    }
+                }    
+                if ($validflag == 1) {
+                    $tmphash1{type} = ($type eq SERVICE_BPA) ? TYPE_BPA : TYPE_FSP;
+                    $tmphash1{mtm} = ${$attributes->{'machinetype-model'}}[0];
+                    $tmphash1{serial} = ${$attributes->{'serial-number'}}[0];
+                    my $loc = ($tmphash1{ip} =~ ${$attributes->{'ip-address'}}[0]) ? 0:1; #every entry has two ip-addresses
+                    $tmphash1{side} = (int(${$attributes->{'slot'}}[0]) == 0) ? 'B-'.$loc:'A-'.$loc;
+                    $tmphash1{mac} = xCAT::SLP::get_mac_for_addr($tmphash1{ip});
+                    $tmphash1{parent} =  'Server-'.$tmphash1{mtm}.'-SN'.$tmphash1{serial};
+                    $tmphash1{hostname} = $tmphash1{ip};
+                    $tmphash1{otherinterfaces} = ${$searchmacs{$rsp}}{peername};
+                    $tmphash1{bpcmtm} = ${$attributes->{'bpc-machinetype-model'}}[0];
+                    $tmphash1{bpcsn} = ${$attributes->{'bpc-serial-number'}}[0];
+                    $tmphash1{fid} = int(${$attributes->{'frame-number'}}[0]);
+                    $tmphash1{cid} = int(${$attributes->{'cage-number'}}[0]);
+                    $outhash{$tmphash1{ip}} = \%tmphash1;
+                    $$length = length( $tmphash1{ip}) if ( length( $tmphash1{ip} ) > $$length );
+                    trace( $request, "Discover another node $tmphash1{hostname}:type is $tmphash1{type}, mtm is $tmphash1{mtm}, \
+			        sn is $tmphash1{serial}, side is $tmphash1{side},parent is $tmphash1{parent},ip is $tmphash1{ip}, \
+			        cec id is $tmphash1{cid} , frame id is $tmphash1{fid},mac is $tmphash1{mac}, \
+			        otherinterfaces is $tmphash1{otherinterfaces}" );
+                }
+	}
+        }else  {
             #begin to define fsp and bpa
             my %tmphash;
             $tmphash{type} = ($type eq SERVICE_BPA) ? TYPE_BPA : TYPE_FSP;
@@ -1149,8 +1215,6 @@ sub parse_responses {
 				bpcmtm to ${$outhash{$name}}{bpcmtm}, bpcsn to ${$outhash{$name}}{bpcsn}");
             }
 
-        }
-    }
 
     ###########################################################
     # find frame's hostname first, then use find the cec's parent
@@ -1212,7 +1276,8 @@ sub parse_responses {
 
     trace( $request, "\n\n\nBegin to find fsp/bpa's hostname and parent");
     foreach my $h ( keys %outhash ) {
-        if(${$outhash{$h}}{type} eq TYPE_FSP or ${$outhash{$h}}{type} eq TYPE_BPA) {
+	# Added a skip if processing Flex blades
+        if(((${$outhash{$h}}{type} eq TYPE_FSP) && ${$outhash{$h}}{mtm} !~ /^7895|8236/ ) or ${$outhash{$h}}{type} eq TYPE_BPA) {
             $newhostname = $::OLD_DATA_CACHE{${$outhash{$h}}{type}."*".${$outhash{$h}}{mtm}.'*'.${$outhash{$h}}{serial}.'*'.${$outhash{$h}}{side}};
             if ($newhostname){
                 ${$outhash{$h}}{hostname} = $newhostname ;
@@ -1240,6 +1305,9 @@ sub parse_responses {
             }
 		}
     }	
+
+        } # end - process fsp and bpa
+    } # end process responses loop
 
     ##########################################################
     # If there is -n flag, skip the matched nodes
