@@ -337,6 +337,12 @@ if ( ! $arg ) {
    exit (0);
 }
 
+my $debianflag = 0;
+my $tempstring = xCAT::BuildKitUtils->osver();
+if ( $tempstring =~ /debian/ || $tempstring =~ /ubuntu/ ){
+    $debianflag = 1;
+}
+
 while ($arg) {
     my $command = $arg;
     $command =~ tr/A-Z/a-z/;   # convert to lowercase
@@ -1520,9 +1526,16 @@ sub comppkgname
   #  my $repo = shift;  
 
  my $pkgname = $comp->{basename};
-    $pkgname .= '-'.$comp->{version};
-    $pkgname .= '-'.$comp->{release};
-    $pkgname .= '.noarch.rpm';
+    if ($debianflag) {
+        $pkgname .= '_'.$comp->{version};
+        $pkgname .= '-'.$comp->{release};
+        $pkgname .= '_all.deb';
+    }
+    else{
+        $pkgname .= '-'.$comp->{version};
+        $pkgname .= '-'.$comp->{release};
+        $pkgname .= '.noarch.rpm';
+    }
   #  $pkgname .= '-'.$repo->{osmajorversion};
   #  if (defined($repo->{osminorversion})) {
   #    $pkgname .= '.'.$repo->{osminorversion};
