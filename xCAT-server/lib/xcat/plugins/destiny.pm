@@ -312,7 +312,7 @@ sub setdestiny {
 		if ($ntent and $ntent->{arch}) {
 		    $nstates{$_} .= "-".$ntent->{arch};
 		} else { $errored =1; $callback->({error=>"nodetype.arch not defined for $_"}); }
-		if ($tempstate ne "winshell") {
+		if (($tempstate ne "winshell") && ($tempstate ne "sysclone")) {
 		    if ($ntent and $ntent->{profile}) {
 			$nstates{$_} .= "-".$ntent->{profile};
 		    } else { $errored =1; $callback->({error=>"nodetype.profile not defined for $_"}); }
