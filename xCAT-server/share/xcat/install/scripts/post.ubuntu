@@ -90,6 +90,8 @@ do
                 touch /opt/xcat/xcatinfo
             fi
             echo "XCATSERVER=$i" > /opt/xcat/xcatinfo
+            NODE=#TABLE:nodelist:THISNODE:node#
+            echo "NODE=$NODE" >> /opt/xcat/xcatinfo
 	    break
 	fi
 	RAND=$(perl -e 'print int(rand(5)). "\n"')

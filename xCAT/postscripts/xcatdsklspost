@@ -1,4 +1,4 @@
-#!/bin/sh  
+#!/bin/sh
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #####################################################
 #
@@ -341,10 +341,44 @@ fi # finish the postscripts download
 
 rm -rf /xcatpost/mypostscript
 
-node=`hostname --short`
+#get node name 
+if [ -f /opt/xcat/xcatinfo ]; then
+    node=`grep 'NODE' /opt/xcat/xcatinfo |cut -d= -f2`
+fi
+
+#try dhcp
+if [ -z "$node" ]; then
+    #try the dhcp , this is used for initial boot. 
+    #find out the ip address of the node for the management nic
+    NIPS=`grep -h -i fixed-address /var/lib/dhclient/dhclient*eth*.leases 2> /dev/null|awk '{print $2}'|sed -e 's/;//'`
+    if [ -z "$NIPS" ]; then
+        NIPS=`grep -h -i fixed-address /var/lib/dhclient/dhclient*hf*.leases 2> /dev/null|awk '{print $2}'|sed -e 's/;//'`
+        if [ -z "$NIPS" ]; then
+            NIPS=`grep -h -i IPADDR /var/lib/dhcpcd/*.info 2> /dev/null|awk -F= '{print $2}'|sed -e s/\'//g`
+        fi
+    fi
+    NIP=`echo $NIPS|awk '{printf $NF}' | tail -n 1` #Pick one for wget
+    if [ -n "$NIP" ]; then
+	#relsove the name of the node from ip address
+	node=`host $NIP | awk {'print $5'} | sed '$s/\.$//'`
+    fi
+fi
+
+if [ -z "$node" ]; then
+    node=`hostname`
+fi
+
+#try the short name first
+node_short=`echo $node |awk -F. {'print $1'}`
 max_retries=2
 postfix=0
-download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR 
+download_mypostscript $SIP $node_short $postfix $max_retries $TFTPDIR 
+if [ $? -ne 0 ]; then
+    if [ "$node" != "node_short" ]; then
+	download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR
+    fi
+fi
+
 
 
 
@@ -383,6 +417,11 @@ if [ ! -x /xcatpost/mypostscript ]; then
 max_retries=1
 postfix=1
 download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR 
+if [ $? -ne 0 ]; then
+    if [ "$node" != "node_short" ]; then
+	download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR
+    fi
+fi
 
 MYCONT=`grep MASTER /xcatpost/mypostscript`
 #echo "MYCONT=$MYCONT"
@@ -409,7 +448,11 @@ while [ -z "$MYCONT" ]; do
     max_retries=1
     postfix=1
     download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR 
- 
+    if [ $? -ne 0 ]; then
+	if [ "$node" != "node_short" ]; then
+	    download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR
+	fi
+    fi 
     MYCONT=`grep MASTER /xcatpost/mypostscript`
     if [ ! -z "$MYCONT" ]; then
         break;
@@ -435,7 +478,21 @@ if [ -n "$new_ms" ]; then
 	echo "XCATSERVER=$new_ms" >> /opt/xcat/xcatinfo
     fi
 fi
-    
+
+#save the NODE into xcatinfo
+new_node=`grep '^NODE=' /xcatpost/mypostscript |cut -d= -f2`
+if [ -n "$new_node" ]; then
+    if [ ! -f /opt/xcat/xcatinfo ]; then
+	mkdir -p /opt/xcat
+	touch /opt/xcat/xcatinfo
+    fi
+    grep '^NODE=' /opt/xcat/xcatinfo 2>&1 > /dev/null
+    if [ $? -eq 0 ]; then
+	sed -i "s/NODE=.*/NODE=$new_node/" /opt/xcat/xcatinfo
+    else
+	echo "NODE=$new_node" >> /opt/xcat/xcatinfo
+    fi
+fi    
 
 # when called by the updatenode command
 #modify the UPDATENODE flag to 1 
