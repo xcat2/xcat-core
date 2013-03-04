@@ -40,6 +40,7 @@ sub handled_commands
             copycd    => "anaconda",
             mknetboot => "nodetype:os=(ol.*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
             mkinstall => "nodetype:os=(esxi4.1)|(esx[34].*)|(ol.*)|(centos.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
+            mksysclone => "nodetype:os=(esxi4.1)|(esx[34].*)|(ol.*)|(centos.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
             mkstatelite => "nodetype:os=(esx[34].*)|(ol.*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
 	
             };
@@ -129,6 +130,10 @@ sub process_request
 	$request->{command}->[0] eq 'mkstatelite')
     {
         return mknetboot($request, $callback, $doreq);
+    }
+    elsif ($request->{command}->[0] eq 'mksysclone')
+    {
+        return mksysclone($request, $callback, $doreq);
     }
 }
 
@@ -1436,6 +1441,441 @@ sub mkinstall
     #}
 }
 
+sub mksysclone
+{
+    my $request  = shift;
+    my $callback = shift;
+    my $doreq    = shift;
+    my @nodes    = @{$request->{node}};
+    my $linuximagetab;
+    my $osimagetab;
+    my %img_hash=();
+
+    my $installroot;
+    my $globaltftpdir;
+    $installroot = "/install";
+    $globaltftpdir = "/tftpboot";
+
+    my @ents = xCAT::TableUtils->get_site_attribute("installdir");
+    my $site_ent = $ents[0];
+    if( defined($site_ent) )    
+    {
+        $installroot = $site_ent;
+    }
+    @ents = xCAT::TableUtils->get_site_attribute("tftpdir");
+    $site_ent = $ents[0];
+    if( defined($site_ent) )    
+    {
+        $globaltftpdir = $site_ent;
+    }
+
+    my $node;
+    my $ostab = xCAT::Table->new('nodetype');
+    my %donetftp;
+    my $restab = xCAT::Table->new('noderes');
+    my $bptab  = xCAT::Table->new('bootparams',-create=>1);
+    my $hmtab  = xCAT::Table->new('nodehm');
+    my %osents = %{$ostab->getNodesAttribs(\@nodes, ['profile', 'os', 'arch', 'provmethod'])};
+    my %rents =
+              %{$restab->getNodesAttribs(\@nodes,
+                                     ['xcatmaster', 'nfsserver', 'tftpdir', 'primarynic', 'installnic'])};
+    my %hents = 
+              %{$hmtab->getNodesAttribs(\@nodes,
+                                     ['serialport', 'serialspeed', 'serialflow'])};
+    require xCAT::Template;
+
+    # Warning message for nodeset <noderange> install/netboot/statelite
+    foreach my $knode (keys %osents)
+    {
+        my $ent = $osents{$knode}->[0];
+        if ($ent && $ent->{provmethod}
+            && (($ent->{provmethod} eq 'install') || ($ent->{provmethod} eq 'netboot') || ($ent->{provmethod} eq 'statelite')))
+        {
+            my @ents = xCAT::TableUtils->get_site_attribute("disablenodesetwarning");
+            my $site_ent = $ents[0];
+            if (!defined($site_ent) || ($site_ent =~ /no/i) || ($site_ent =~ /0/))
+            {
+                $callback->(
+                            {
+                             warning => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated. They should continue to work in this release, but have not been tested as carefully, and some new functions are not available with these options.  For full function and support, use \"nodeset <noderange> osimage=<osimage_name>\" instead."],
+                            }
+                            );
+                # Do not print this warning message multiple times
+                last;
+            }
+       }
+    }
+
+    # copy postscripts
+    my $script1 = "efibootmgr";
+    my $script2 = "updatenetwork";
+    my $pspath = "$installroot/sysclone/scripts/post-install/";
+    my $clusterfile = "$installroot/sysclone/scripts/cluster.txt";
+    
+    mkpath("$pspath");
+    copy("$installroot/postscripts/$script1","$pspath/15all.$script1");
+    copy("$installroot/postscripts/$script2","$pspath/16all.$script2");
+    copy("$installroot/postscripts/runxcatpost","$pspath/17all.runxcatpost");
+
+    unless (-r "$pspath/10all.fix_swap_uuids")
+    {
+        mkpath("$pspath");
+        copy("/var/lib/systemimager/scripts/post-install/10all.fix_swap_uuids","$pspath");
+    }
+
+    unless (-r "$pspath/95all.monitord_rebooted")
+    {
+        mkpath("$pspath");
+        copy("/var/lib/systemimager/scripts/post-install/95all.monitord_rebooted","$pspath");
+    }
+
+    # copy hosts
+    copy("/etc/hosts","$installroot/sysclone/scripts/");
+    
+    foreach $node (@nodes)
+    {
+        my $os;
+        my $tftpdir;
+        my $arch;
+        my $profile;
+        my $tmplfile;
+        my $pkglistfile;
+        my $imagename; # set it if running of 'nodeset osimage=xxx'
+        my $platform;
+        my $xcatmaster;
+        my $instserver;
+        my $partfile;
+        my $netdrivers;
+        my $driverupdatesrc;
+
+        my $ient = $rents{$node}->[0];
+        if ($ient and $ient->{xcatmaster})
+        {
+            $xcatmaster = $ient->{xcatmaster};
+        } else {
+            $xcatmaster = '!myipfn!';
+        }
+
+        my $osinst;
+        if ($rents{$node}->[0] and $rents{$node}->[0]->{tftpdir}) {
+		$tftpdir = $rents{$node}->[0]->{tftpdir};
+        } else {
+		$tftpdir = $globaltftpdir;
+        }
+        my $ent = $osents{$node}->[0]; #$ostab->getNodeAttribs($node, ['profile', 'os', 'arch']);
+        if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite') and ($ent->{provmethod} ne 'sysclone')) {
+	    $imagename=$ent->{provmethod};
+	    #print "imagename=$imagename\n";
+	    if (!exists($img_hash{$imagename})) {
+		if (!$osimagetab) {
+		    $osimagetab=xCAT::Table->new('osimage', -create=>1);
+		}
+		(my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
+		if ($ref) {
+		    $img_hash{$imagename}->{osver}=$ref->{'osvers'};
+		    $img_hash{$imagename}->{osarch}=$ref->{'osarch'};
+		    $img_hash{$imagename}->{profile}=$ref->{'profile'};
+		    $img_hash{$imagename}->{provmethod}=$ref->{'provmethod'}; #sysclone
+		    if (!$linuximagetab) {
+			$linuximagetab=xCAT::Table->new('linuximage', -create=>1);
+		    }
+		    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkgdir', 'pkglist', 'partitionfile', 'driverupdatesrc', 'netdrivers');
+		    if ($ref1) {
+			if ($ref1->{'template'}) {
+			    $img_hash{$imagename}->{template}=$ref1->{'template'};
+			}
+			if ($ref1->{'pkgdir'}) {
+			    $img_hash{$imagename}->{pkgdir}=$ref1->{'pkgdir'};
+			}
+			if ($ref1->{'pkglist'}) {
+			    $img_hash{$imagename}->{pkglist}=$ref1->{'pkglist'};
+			}
+			if ($ref1->{'partitionfile'}) {
+			    $img_hash{$imagename}->{partitionfile} = $ref1->{'partitionfile'};
+			}
+			if ($ref1->{'driverupdatesrc'}) {
+			    $img_hash{$imagename}->{driverupdatesrc}=$ref1->{'driverupdatesrc'};
+			}
+			if ($ref1->{'netdrivers'}) {
+			    $img_hash{$imagename}->{netdrivers}=$ref1->{'netdrivers'};
+			}
+		    }
+
+		    # template is meanless for sysclone, so comment it out.
+		    # if the install template wasn't found, then lets look for it in the default locations.
+#		    unless($img_hash{$imagename}->{template}){
+#	                my $pltfrm=xCAT_plugin::anaconda::getplatform($ref->{'osvers'});
+#	    		my $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/$pltfrm", 
+#		 			$ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
+#	    		if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/$pltfrm", 
+#		 			$ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
+#					 }
+#			# if we managed to find it, put it in the hash:
+#			if($tmplfile){
+#			    $img_hash{$imagename}->{template}=$tmplfile;
+#			}
+#		    }
+
+                  #if the install pkglist wasn't found, then lets look for it in the default locations
+		    unless($img_hash{$imagename}->{pkglist}){
+	                my $pltfrm=xCAT_plugin::anaconda::getplatform($ref->{'osvers'});
+	    		my $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$installroot/custom/install/$pltfrm", 
+		 			$ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
+	    		if (! $pkglistfile) { $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$::XCATROOT/share/xcat/install/$pltfrm", 
+		 			$ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
+					 }
+			# if we managed to find it, put it in the hash:
+			if($pkglistfile){
+			    $img_hash{$imagename}->{pkglist}=$pkglistfile;
+			}
+		    }
+		} else {
+		    $callback->(
+			{error     => ["The os image $imagename does not exists on the osimage table for $node"],
+			 errorcode => [1]});
+		    next;
+		}
+	    }
+	    my $ph=$img_hash{$imagename};
+	    $os = $ph->{osver};
+	    $arch  = $ph->{osarch};
+	    $profile = $ph->{profile};
+          $partfile = $ph->{partitionfile};
+	    $platform=xCAT_plugin::anaconda::getplatform($os);
+	
+	    #$tmplfile=$ph->{template};
+	    $pkglistfile=$ph->{pkglist};
+
+	    $netdrivers = $ph->{netdrivers};
+	    $driverupdatesrc = $ph->{driverupdatesrc};
+	}
+	else {
+	    $os = $ent->{os};
+	    $arch    = $ent->{arch};
+	    $profile = $ent->{profile};
+	    $platform=xCAT_plugin::anaconda::getplatform($os);
+	    my $genos = $os;
+	    $genos =~ s/\..*//;
+	    if ($genos =~ /rh.*(\d+)\z/)
+	    {
+		unless (-r "$installroot/custom/install/$platform/$profile.$genos.$arch.tmpl"
+			or -r "/install/custom/install/$platform/$profile.$genos.tmpl"
+			or -r "$::XCATROOT/share/xcat/install/$platform/$profile.$genos.$arch.tmpl"
+			or -r "$::XCATROOT/share/xcat/install/$platform/$profile.$genos.tmpl")
+		{
+		    $genos = "rhel$1";
+		}
+	    }
+	    
+#	    $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/$platform", $profile, $os, $arch, $genos);
+#	    if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/$platform", $profile, $os, $arch, $genos); }
+
+#	    $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$installroot/custom/install/$platform", $profile, $os, $arch, $genos);
+#	    if (! $pkglistfile) { $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$::XCATROOT/share/xcat/install/$platform", $profile, $os, $arch, $genos); }
+
+        #get the partition file from the linuximage table
+        my $imgname = "$os-$arch-install-$profile";
+
+        if ( ! $linuximagetab ) {
+            $linuximagetab = xCAT::Table->new('linuximage');
+        }
+
+        if ( $linuximagetab ) {
+            (my $ref1) = $linuximagetab->getAttribs({imagename => $imgname}, 'partitionfile');
+            if ( $ref1 and $ref1->{'partitionfile'}){
+                $partfile = $ref1->{'partitionfile'};
+            }
+        }
+        #can not find the linux osiamge object, tell users to run "nodeset <nr> osimage=***"
+        else {
+                $callback->(
+                     { error => [qq{ Cannot find the linux image called "$imgname", maybe you need to use the "nodeset <nr> osimage=<your_image_name>" command to set the boot state}], errorcode => [1] }
+            );
+        }
+	}
+
+        my @missingparms;
+        unless ($os) {
+	    if ($imagename) { push @missingparms,"osimage.osvers";  }
+            else { push @missingparms,"nodetype.os";}
+        }
+        unless ($arch) {
+	    if ($imagename) { push @missingparms,"osimage.osarch";  }
+            else { push @missingparms,"nodetype.arch";}
+        }
+      
+        # copy kernel and initrd from image dir to /tftpboot
+        my $kernpath;
+        my $initrdpath;
+        my $ramdisk_size = 200000;
+	 
+        if (
+            -r "$installroot/sysclone/images/$imagename/etc/systemimager/boot/kernel"
+            and $kernpath = "$installroot/sysclone/images/$imagename/etc/systemimager/boot/kernel"
+            and -r "$installroot/sysclone/images/$imagename/etc/systemimager/boot/initrd.img"
+            and $initrdpath = "$installroot/sysclone/images/$imagename/etc/systemimager/boot/initrd.img"
+        )
+        {
+            #TODO: driver slipstream, targetted for network.
+            # Copy the install resource to /tftpboot and check to only copy once
+            my $docopy = 0;
+            my $tftppath;
+            my $rtftppath; # the relative tftp path without /tftpboot/
+            if ($imagename) {
+                $tftppath = "$tftpdir/xcat/osimage/$imagename";
+                $rtftppath = "xcat/osimage/$imagename";
+                unless ($donetftp{$imagename}) {
+                    $docopy = 1;
+                    $donetftp{$imagename} = 1;
+                }
+            } else {
+                $tftppath = "/$tftpdir/xcat/$os/$arch/$profile";
+                $rtftppath = "xcat/$os/$arch/$profile";
+                unless ($donetftp{"$os|$arch|$profile|$tftpdir"}) {
+                    $docopy = 1;
+                    $donetftp{"$os|$arch|$profile|$tftpdir"} = 1;
+                }
+            }
+            
+            if ($docopy) {
+                mkpath("$tftppath");
+                copy($kernpath,"$tftppath/vmlinuz");
+                copy($initrdpath,"$tftppath/initrd.img");
+                &insert_dd($callback, $os, $arch, "$tftppath/initrd.img", $driverupdatesrc, $netdrivers);
+            }
+
+            #We have a shot...
+            my $ent    = $rents{$node}->[0];
+            my $sent = $hents{$node}->[0];
+            $instserver = $xcatmaster;
+            if ($ent and $ent->{nfsserver}) {
+	    	$instserver=$ent->{nfsserver};
+	    }
+
+            my $kcmdline =
+                "ramdisk_size=$ramdisk_size";
+            my $ksdev = "";
+            if ($ent->{installnic})
+            {
+                if ($ent->{installnic} eq "mac")
+                {
+                    my $mactab = xCAT::Table->new("mac");
+                    my $macref = $mactab->getNodeAttribs($node, ['mac']);
+                    $ksdev = $macref->{mac};
+                }
+                else
+                {
+                    $ksdev = $ent->{installnic};
+                }
+            }
+            elsif ($ent->{primarynic})
+            {
+                if ($ent->{primarynic} eq "mac")
+                {
+                    my $mactab = xCAT::Table->new("mac");
+                    my $macref = $mactab->getNodeAttribs($node, ['mac']);
+                    $ksdev = $macref->{mac};
+                }
+                else
+                {
+                    $ksdev = $ent->{primarynic};
+                }
+            }
+            else
+            {
+                $ksdev = "bootif"; #if not specified, fall back to bootif
+            }
+            if ($ksdev eq "")
+            {
+                $callback->(
+                        {
+                         error => ["No MAC address defined for " . $node],
+                         errorcode => [1]
+                        }
+                        );
+             }
+             $kcmdline .= " ksdevice=" . $ksdev;
+
+            #TODO: dd=<url> for driver disks
+            if (defined($sent->{serialport}))
+            {
+                unless ($sent->{serialspeed})
+                {
+                    $callback->(
+                        {
+                         error => [
+                             "serialport defined, but no serialspeed for $node in nodehm table"
+                         ],
+                         errorcode => [1]
+                        }
+                        );
+                    next;
+                }
+		#go cmdline if serial console is requested, the shiny ansi is just impractical
+                $kcmdline .=
+                    " cmdline console=tty0 console=ttyS"
+                  . $sent->{serialport} . ","
+                  . $sent->{serialspeed};
+                if ($sent->{serialflow} =~ /(hard|cts|ctsrts)/)
+                {
+                    $kcmdline .= "n8r";
+                }
+            }
+            #$kcmdline .= " noipv6";
+            # add the addkcmdline attribute  to the end
+            # of the command, if it exists
+            #my $addkcmd   = $addkcmdhash->{$node}->[0];
+            # add the extra addkcmd command info, if in the table
+            #if ($addkcmd->{'addkcmdline'}) {
+            #        $kcmdline .= " ";
+            #        $kcmdline .= $addkcmd->{'addkcmdline'};
+            #}
+            my $k;
+            my $i;
+            $k = "$rtftppath/vmlinuz";
+            $i = "$rtftppath/initrd.img";
+
+            $bptab->setNodeAttribs(
+                $node,
+                {
+                    kernel   => $k,
+                    initrd   => $i,
+                    kcmdline => $kcmdline
+                }
+            );
+        }
+        else
+        {
+            $callback->(
+                    {
+                     error => ["Kernel and initrd not found in $installroot/sysclone/images/$imagename"],
+                     errorcode => [1]
+                    }
+                    );
+        }
+
+        # assign nodes to an image
+        if (-r "$clusterfile")
+        {
+            my $cmd = qq{cat $clusterfile | grep "$node"};
+            my $out = xCAT::Utils->runcmd($cmd, -1);
+             if ($::RUNCMD_RC == 0)
+             {
+                my $out = `sed -i /$node./d $clusterfile`;
+             }
+        }
+
+        my $cmd =qq{echo "$node:compute:$imagename:" >> $clusterfile};
+        my $out = xCAT::Utils->runcmd($cmd, -1);
+
+        unless (-r "$installroot/sysclone/images/$imagename/opt/xcat/xcatdsklspost")
+        {
+            mkpath("$installroot/sysclone/images/$imagename/opt/xcat/");
+            copy("$installroot/postscripts/xcatdsklspost","$installroot/sysclone/images/$imagename/opt/xcat/");
+        }
+
+    }
+}
 sub copycd
 {
     my $request  = shift;
