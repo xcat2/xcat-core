@@ -277,7 +277,7 @@ sub processArgs
     }
     
     # -t node is the default value
-    if (!$::opt_t && !$::opt_a && ($::command eq "lsdef"))
+    if (!$::opt_t && !$::opt_a && !$::opt_h && ($::command eq "lsdef"))
     {
         $::opt_t = 'node';
     }
