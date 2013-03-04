@@ -99,7 +99,7 @@ cd /xcatpost
 #gunzip xcatpost.tar.gz
 #tar -xvf xcatpost.tar
 #/xcatpost/#TABLE:nodelist:THISNODE:node#
-export PATH=/xcatpost:$PATH
+export PATH=$PATH:/xcatpost
 
 #save the postboot scripts to /var/tmp/mypostscript.post
 #

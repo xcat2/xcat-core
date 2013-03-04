@@ -97,7 +97,7 @@ do
     sleep $RAND
 done
 
-PATH=/xcatpost:$PATH
+PATH=$PATH:/xcatpost
 export PATH
 
 # use the run_ps subroutine to run the postscripts

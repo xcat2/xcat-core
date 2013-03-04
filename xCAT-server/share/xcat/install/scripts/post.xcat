@@ -103,7 +103,7 @@ cd /xcatpost
 #gunzip xcatpost.tar.gz
 #tar -xvf xcatpost.tar
 #/xcatpost/#TABLE:nodelist:THISNODE:node#
-export PATH=/xcatpost:$PATH
+export PATH=$PATH:/xcatpost
 
 # use the run_ps subroutine to run the postscripts
 TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`

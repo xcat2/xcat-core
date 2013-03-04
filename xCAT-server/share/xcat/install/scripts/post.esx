@@ -40,7 +40,7 @@ ifconfig
 cat /etc/resolv.conf
 mount $MASTER_IP:/install/postscripts /xcatpost
 cd /xcatpost
-export PATH=/xcatpost:$PATH
+export PATH=$PATH:/xcatpost
 export NODE=#TABLE:nodelist:THISNODE:node#
 export OSVER=#TABLE:nodetype:THISNODE:os#
 export ARCH=#TABLE:nodetype:THISNODE:arch#

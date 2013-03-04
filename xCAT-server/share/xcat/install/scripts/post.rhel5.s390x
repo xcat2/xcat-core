@@ -90,7 +90,7 @@ do
 done
 
 cd /xcatpost
-export PATH=/xcatpost:$PATH
+export PATH=$PATH:/xcatpost
 
 # Use the run_ps subroutine to run the postscripts
 TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
