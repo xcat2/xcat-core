@@ -1293,7 +1293,7 @@ sub createScripts {
 		# Do not set default route for DHCP interface
 		if(!$script && !($interfaces{$i}{'bootproto'} eq 'dhcp')) {
 			$script .= <<END;
-echo "default - 0.0.0.0 $interfaces{$i}{'device'}" > /etc/sysconfig/network/routes
+echo "default $interfaces{$i}{'gateway'} - -" > /etc/sysconfig/network/routes
 END
 			last;
 		}
