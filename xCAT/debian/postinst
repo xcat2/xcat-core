@@ -24,7 +24,7 @@ case "$1" in
          mkdir -p /var/run/xcat
 	 cp -f /opt/xcat/share/xcat/scripts/xHRM /install/postscripts/
 	. /etc/profile.d/xcat.sh
-	if [ -f /tmp/xCAT_upgrade ]
+	if [ -f /tmp/xCAT_upgrade.tmp ]
 	then
             if [ -r "/tmp/xcat/installservice.pid" ]; then
                 mv /tmp/xcat/installservice.pid /var/run/xcat/installservice.pid
@@ -36,7 +36,7 @@ case "$1" in
                 mv /tmp/xcat/mainservice.pid /var/run/xcat/mainservice.pid
             fi
 	    xcatconfig -u
-	    rm /tmp/xCAT_upgrade
+	    rm /tmp/xCAT_upgrade.tmp
 	else
 	    xcatconfig -i -d -s
 	fi
