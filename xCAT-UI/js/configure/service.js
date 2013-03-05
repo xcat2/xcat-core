@@ -731,7 +731,7 @@ function configGroupPanel(data) {
     // Create table
     var tableId = panelId + 'Datatable';
     var table = new DataTable(tableId);
-    table.init(['<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'Name', 'Selectable', 'IP', 'Hostname', 'Network', 'Description']);
+    table.init(['<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'Name', 'Selectable', 'IP', 'Hostname', 'Description']);
 
     // Insert groups into table
     var nodePos = 0;
@@ -787,12 +787,6 @@ function configGroupPanel(data) {
                     desc = jQuery.trim(desc);
                 }
                 
-                // Save network
-                if (tmp[j].indexOf('network:') > -1) {
-                    network = tmp[j].replace('network:', '');
-                    network = jQuery.trim(network);
-                }
-                
                 // Is the group selectable?
                 if (tmp[j].indexOf('selectable:') > -1) {
                     selectable = tmp[j].replace('selectable:', '');
@@ -802,7 +796,7 @@ function configGroupPanel(data) {
         }
         
         // Columns are: name, selectable, network, and description
-        var cols = new Array(name, selectable, ip, hostname, network, desc);
+        var cols = new Array(name, selectable, ip, hostname, desc);
 
         // Add remove button where id = user name
         cols.unshift('<input type="checkbox" name="' + name + '"/>');
@@ -851,10 +845,9 @@ function configGroupPanel(data) {
                 var selectable = cols.eq(2).text();                
                 var ip = cols.eq(3).text();
                 var hostnames = cols.eq(4).text();
-                var network = cols.eq(5).text();
-                var description = cols.eq(6).text();
+                var description = cols.eq(5).text();
                 
-                editGroupDialog(group, selectable, ip, hostnames, network, description);
+                editGroupDialog(group, selectable, ip, hostnames, description);
             }
         }
     });
@@ -913,9 +906,10 @@ function groupDialog() {
     var selectable = $('<div><label>Selectable:</label><input type="checkbox" name="selectable" title="Select if you want this group to appear on the self service portal"/></div>');
     var ip = $('<div><label>IP:</label><input type="text" name="ip" title="The IP address of the nodes, usually given as a regular expression, e.g. |ihost(\d+)|10.1.1.($1+0)|"/></div>');
     var hostnames = $('<div><label>Hostnames:</label><input type="text" name="hostnames" title="The hostname of the nodes, usually given as a regular expression, e.g. |(.*)|($1).sourceforge.net|"/></div>');
-    var network = $('<div><label>Network:</label><input type="text" name="network" title="The groups network and its subnet mask, e.g. 10.1.1.0/24"/></div>');
     var comments = $('<div><label>Description:</label><input type="text" name="comments" title="A description of the group"/></div>');
-    groupForm.append(group, selectable, ip, hostnames, network, comments);
+    var ipPool = $('<div><label style="vertical-align: top;">IP pool:</label><textarea name="ip_pool" title="A pool of node names, IP addresses, and hostnames that can be chosen from for a newly provisioned virtual machine. An entry in the pool could be: ihost12,10.1.2.12,ihost12.endicott.ibm.com. A newline separates each entry."/></div>');
+    
+    groupForm.append(group, selectable, ip, hostnames, comments, ipPool);
     
 	// Generate tooltips
     groupForm.find('div input[title],textarea[title],select[title]').tooltip({
@@ -945,7 +939,7 @@ function groupDialog() {
         close: function(){
             $(this).remove();
         },
-        width: 400,
+        width: 600,
         buttons: {
             "Ok": function() {
                 // Remove any warning messages
@@ -956,12 +950,12 @@ function groupDialog() {
                 var selectable = $(this).find('input[name="selectable"]');
                 var ip = $(this).find('input[name="ip"]');
                 var hostnames = $(this).find('input[name="hostnames"]');
-                var network = $(this).find('input[name="network"]');
                 var comments = $(this).find('input[name="comments"]');
+                var ipPool = $(this).find('textarea[name=ip_pool]').val();
                                 
                 // Check that group attributes are provided before continuing
                 var ready = 1;
-                var inputs = new Array(group, ip, hostnames, network);
+                var inputs = new Array(group, ip, hostnames);
                 for (var i in inputs) {
                     if (!inputs[i].val()) {
                         inputs[i].css('border-color', 'red');
@@ -980,6 +974,10 @@ function groupDialog() {
                         'Close': function() {$(this).dialog("close");}
                     });
                     
+                    // A newline at the end of IP pool is needed
+                    ipPool = ipPool.replace(/^\s+|\s+$/g, '');
+                    ipPool += '\n';
+                    
                     // Set default description
                     if (!comments.val())
                         comments.val('No description');
@@ -988,12 +986,12 @@ function groupDialog() {
                     var args = "updategroup;" + group.val() + ";'" + ip.val() + "';'" + hostnames.val() + "';";
                         
                     if (selectable.attr("checked"))
-                        args += "'description:" + comments.val() + "|network:" + network.val() + "|selectable:yes";
+                        args += "'description:" + comments.val() + "|selectable:yes";
                     else
-                        args += "'description:" + comments.val() + "|network:" + network.val() + "|selectable:no";
+                        args += "'description:" + comments.val() + "|selectable:no";
                                                             
                     // Add image to xCAT
-                    $.ajax( {
+                    $.ajax({
                         url : 'lib/cmd.php',
                         dataType : 'json',
                         data : {
@@ -1004,6 +1002,37 @@ function groupDialog() {
                         },
     
                         success : updatePanel
+                    });
+                    
+                    // Write IP pool file to /var/tmp
+                    $.ajax({
+                        url : 'lib/cmd.php',
+                        dataType : 'json',
+                        data : {
+                            cmd : 'write',
+                            tgt : '/var/tmp/' + group.val() + '.pool',
+                            args : '',
+                            cont : ipPool,
+                            msg : dialogId + ';' + group.val()
+                        },
+
+                        success : function(data) {
+                            var args = data.msg.split(';');
+                                                        
+                            // Create profile in xCAT
+                            $.ajax({
+                                url : 'lib/cmd.php',
+                                dataType : 'json',
+                                data : {
+                                    cmd : 'webrun',
+                                    tgt : '',
+                                    args : 'mkippool;' + args[1],
+                                    msg : args[0]
+                                },
+                                
+                                success: updatePanel
+                            });
+                        }
                     });
                 }
             },
@@ -1021,10 +1050,9 @@ function groupDialog() {
  * @param iSelectable Is group selectable from the service page
  * @param iIp Group IP regex
  * @param iHostnames Group hostnames regex
- * @param iNetwork Group network, e.g. 10.1.2.0/24
  * @param iComments Group description
  */
-function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iNetwork, iComments) {
+function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iComments) {
     // Create form to add profile
     var dialogId = 'createGroup-' + iGroup;
     var groupForm = $('<div id="' + dialogId + '" class="form"></div>');
@@ -1037,15 +1065,32 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iNetwork, iCommen
     var selectable = $('<div><label>Selectable:</label><input type="checkbox" name="selectable" title="Select if you want this group to appear on the self service portal"/></div>');
     var ip = $('<div><label>IP:</label><input type="text" name="ip" title="The IP address for the group, usually given as a regular expression, e.g. |ihost(\d+)|10.1.1.($1+0)|"/></div>');
     var hostnames = $('<div><label>Hostnames:</label><input type="text" name="hostnames" title="The hostname for the group, usually given as a regular expression, e.g. |(.*)|($1).sourceforge.net|"/></div>');
-    var network = $('<div><label>Network:</label><input type="text" name="network" title="The groups network and its subnet mask, e.g. 10.1.1.0/24"/></div>');
     var comments = $('<div><label>Description:</label><input type="text" name="comments" title="A description of the group"/></div>');
-    groupForm.append(group, selectable, ip, hostnames, network, comments);
+    var ipPool = $('<div><label style="vertical-align: top;">IP pool:</label><textarea name="ip_pool" title="A pool of node names, IP addresses, and hostnames that can be chosen from for a newly provisioned virtual machine."/></div>');
+    
+    groupForm.append(group, selectable, ip, hostnames, comments, ipPool);
+    
+	// Query IP pool based on group name
+    $.ajax({
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'webrun',
+            tgt : '',
+            args : 'lsippool;' + iGroup,
+            msg : dialogId
+        },
+
+        success : function(data) {
+        	// Populate textarea with IP pool entries
+        	$('#' + data.msg).find('textarea[name="ip_pool"]').val(data.rsp[0]);
+        }
+    });
     
     // Fill in group attributes
     groupForm.find('input[name="group"]').val(iGroup);
     groupForm.find('input[name="ip"]').val(iIp);
     groupForm.find('input[name="hostnames"]').val(iHostnames);
-    groupForm.find('input[name="network"]').val(iNetwork);
     groupForm.find('input[name="comments"]').val(iComments);
     if (iSelectable == "yes")
         groupForm.find('input[name="selectable"]').attr('checked', 'checked');
@@ -1078,7 +1123,7 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iNetwork, iCommen
         close: function(){
             $(this).remove();
         },
-        width: 400,
+        width: 600,
         buttons: {
             "Ok": function() {
                 // Remove any warning messages
@@ -1089,12 +1134,12 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iNetwork, iCommen
                 var selectable = $(this).find('input[name="selectable"]');
                 var ip = $(this).find('input[name="ip"]');
                 var hostnames = $(this).find('input[name="hostnames"]');
-                var network = $(this).find('input[name="network"]');
                 var comments = $(this).find('input[name="comments"]');
+                var ipPool = $(this).find('textarea[name=ip_pool]').val();
                                 
                 // Check that group attributes are provided before continuing
                 var ready = 1;
-                var inputs = new Array(group, ip, hostnames, network);
+                var inputs = new Array(group, ip, hostnames);
                 for (var i in inputs) {
                     if (!inputs[i].val()) {
                         inputs[i].css('border-color', 'red');
@@ -1113,6 +1158,10 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iNetwork, iCommen
                         'Close': function() {$(this).dialog("close");}
                     });
                     
+                    // A newline at the end of IP pool is needed
+                    ipPool = ipPool.replace(/^\s+|\s+$/g, '');
+                    ipPool += '\n';
+                    
                     // Set default description
                     if (!comments.val())
                         comments.val('No description');
@@ -1121,9 +1170,9 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iNetwork, iCommen
                     var args = "updategroup;" + group.val() + ";'" + ip.val() + "';'" + hostnames.val() + "';";
                         
                     if (selectable.attr("checked"))
-                        args += "'description:" + comments.val() + "|network:" + network.val() + "|selectable:yes";
+                        args += "'description:" + comments.val() + "|selectable:yes";
                     else
-                        args += "'description:" + comments.val() + "|network:" + network.val() + "|selectable:no";
+                        args += "'description:" + comments.val() + "|selectable:no";
                                                             
                     // Add image to xCAT
                     $.ajax( {
@@ -1137,6 +1186,37 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iNetwork, iCommen
                         },
     
                         success : updatePanel
+                    });
+                    
+                    // Write IP pool file to /var/tmp
+                    $.ajax({
+                        url : 'lib/cmd.php',
+                        dataType : 'json',
+                        data : {
+                            cmd : 'write',
+                            tgt : '/var/tmp/' + group.val() + '.pool',
+                            args : '',
+                            cont : ipPool,
+                            msg : dialogId + ';' + group.val()
+                        },
+
+                        success : function(data) {
+                            var args = data.msg.split(';');
+                                                        
+                            // Create profile in xCAT
+                            $.ajax({
+                                url : 'lib/cmd.php',
+                                dataType : 'json',
+                                data : {
+                                    cmd : 'webrun',
+                                    tgt : '',
+                                    args : 'mkippool;' + args[1],
+                                    msg : args[0]
+                                },
+                                
+                                success: updatePanel
+                            });
+                        }
                     });
                 }
             },

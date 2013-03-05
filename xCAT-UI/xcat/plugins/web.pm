@@ -70,6 +70,9 @@ sub process_request {
         'deleteuser'          => \&web_deleteuser,
         'mkzprofile'          => \&web_mkzprofile,
         'rmzprofile'          => \&web_rmzprofile,
+        'mkippool'            => \&web_mkippool,
+        'rmippool'            => \&web_rmippool,
+        'lsippool'            => \&web_lsippool,
         'updateosimage'       => \&web_updateosimage,
         'rmosimage'           => \&web_rmosimage,
         'updategroup'         => \&web_updategroup,
@@ -2369,6 +2372,7 @@ sub web_mkzprofile() {
     `echo "$var=$size" >> /var/opt/xcat/profiles/$profile.conf`;
 
     # Move directory entry into /var/opt/xcat/profiles from /var/tmp
+    `mkdir -p /var/opt/xcat/profiles`;
     `mv /var/tmp/$profile.direct /var/opt/xcat/profiles`;
 
     my $info = "Profile successfully created/updated";
@@ -2392,6 +2396,60 @@ sub web_rmzprofile() {
 
     my $info = "Profile successfully deleted";
     $callback->( { info => $info } );
+}
+
+sub web_mkippool() {
+
+    # Create group IP pool
+    my ( $request, $callback, $sub_req ) = @_;
+
+    # Get profile
+    my $group = $request->{arg}->[1];
+
+    # Move directory entry into /var/opt/xcat/ippool from /var/tmp
+    `mkdir -p /var/opt/xcat/ippool`;
+    `mv /var/tmp/$group.pool /var/opt/xcat/ippool`;
+
+    my $info = "IP pool successfully created/updated";
+    $callback->( { info => $info } );
+}
+
+sub web_rmippool() {
+
+    # Delete group IP pool
+    my ( $request, $callback, $sub_req ) = @_;
+
+    # Get profile
+    my $group  = $request->{arg}->[1];
+    my @groups = split( ',', $group );
+
+    # Delete IP pool under /var/opt/xcat/ippool
+    foreach (@groups) {
+        `rm -rf /var/opt/xcat/ippool/$_.pool`;
+    }
+
+    my $info = "IP pool successfully deleted";
+    $callback->( { info => $info } );
+}
+
+sub web_lsippool() {
+
+    # List IP pool
+    my ( $request, $callback, $sub_req ) = @_;
+
+    # Get profile
+    my $group  = $request->{arg}->[1];
+    
+    # IP pool contained in /var/opt/xcat/ippool where a file exists per group
+    my $entries;
+    if ( !(`test -e /var/opt/xcat/ippool/$group.pool && echo Exists`) ) {
+        $entries = "No IP pool found!";
+    } else {
+    	# List IP pool under /var/opt/xcat/ippool   
+        $entries = `cat /var/opt/xcat/ippool/$group.pool`;
+    }
+    
+    $callback->( { info => $entries } );
 }
 
 sub web_updateosimage() {
@@ -2464,6 +2522,7 @@ sub web_rmgroup() {
     # Delete user from xCAT passwd and policy tables
     foreach (@names) {
         `chtab -d node=$_ hosts`;
+        `rm -rf /var/opt/xcat/ippool/$_.pool`;
     }
 
     my $info = "Group successfully deleted";

@@ -848,7 +848,7 @@ sub findfreenode {
     my $ipaddr;
     my $hostname;
     
-    my $out = `cat /var/opt/xcat/ippool/$group.pool | sed 1d`;
+    my $out = `cat /var/opt/xcat/ippool/$group.pool | grep -v "#"`;
     my @entries = split( /\n/, $out );
     if (@entries < 1) {
     	return;
