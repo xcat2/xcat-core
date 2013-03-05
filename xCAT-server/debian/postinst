@@ -31,6 +31,7 @@ case "$1" in
 	    if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
 		/etc/init.d/xcatd reload
 	    fi
+            rm /tmp/xCAT-server_upgrade.tmp
 	fi
 	ln -sf /opt/xcat/sbin/xcatd /usr/sbin/xcatd
     #SHA1 has been get rid of after Squeeze released. Its functionality is also provided by Digest::SHA (which is in core).
