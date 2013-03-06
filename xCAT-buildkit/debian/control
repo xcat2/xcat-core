@@ -7,5 +7,5 @@ Standards-Version: 3.7.2
 
 Package: xcat-buildkit
 Architecture: all
-Depends: dpkg-dev, devscripts
+Depends: dpkg-dev, devscripts, debhelper
 Description: xCAT-buildkit provides the buildkit tool and sample kit files to build an xCAT kit.
