@@ -140,8 +140,20 @@ then
 else
     for nic in `echo "$NIC_IBNICS" | tr "," "\n"`
     do     
-    `rmdev -d -l $nic >/dev/null 2>&1`
+        num=${nic##ib}   #this assumes that all the nics starts with 'ib'
+        if [ "$portnum" == "1" ]; then 
+            iba_num=$num
+            ib_adapter="iba$iba_num"
+        else
+            iba_num=`expr $num / 2`
+            ib_adapter="iba$iba_num"
+	fi
+	`rmdev -d -l $nic >/dev/null 2>&1`
+	`rmdev -d -l $ib_adapter >/dev/null 2>&1`
     done
+    `rmdev -dl icm >/dev/null 2>&1`  
+    mkdev -c management -s infiniband -t icm
+    cfgmgr
 fi
 
 
@@ -397,19 +409,19 @@ IPADDR=$nicip" > $dir/ifcfg-$nic:$ipindex
            chdev -l $nic -a state=detach 2>&1
            chdev -l $nic -a netaddr=$nicip -a netmask=$netmask -a state=up 2>&1
            else #assume it is ib*
-               lsdev -C | grep icm | grep Available
-               if [ $? -ne 0 ]
-               then
-                   mkdev -c management -s infiniband -t icm
-                   if [ $? -ne 0 ]
-                   then
-                       mkdev -l icm
-                       if [ $? -ne 0 ]
-                       then
-                           exit $?
-                       fi
-                   fi
-                fi
+               #lsdev -C | grep icm | grep Available
+               #if [ $? -ne 0 ]
+               #then
+               #    mkdev -c management -s infiniband -t icm
+               #    if [ $? -ne 0 ]
+               #    then
+               #        mkdev -l icm
+               #        if [ $? -ne 0 ]
+               #        then
+               #            exit $?
+               #        fi
+               #    fi
+               # fi
        
                #Configure the IB interfaces.  Customize the port num.
                num=${nic##ib}   #this assumes that all the nics starts with 'ib'
@@ -427,6 +439,12 @@ IPADDR=$nicip" > $dir/ifcfg-$nic:$ipindex
                        port=2
                    fi
                fi
+	       if [ $NODE ]; then
+		   shortname=$NODE
+	       else
+		   shortname=`hostname -s`
+	       fi
+	       chdev -l $ib_adapter -a hostname=$shortname
                mkiba -a $nicip -i $nic -A $ib_adapter -p $port -P -1 -S up -m $netmask
            fi # end assume it is ib*
        fi # end if AIX
