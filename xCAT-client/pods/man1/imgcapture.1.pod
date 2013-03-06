@@ -126,4 +126,4 @@ imgcapture node1 -t sysclone -o img1
 
 =head1 SEE ALSO
 
-L<genimage(1)|genimage.1>, L<imgimport(1)|imgimport.1>, L<imgexport(1)|imgexport.1>, L<packimage(1)|packimage.1>, L<liteimg(1)|liteimg.1>, L<nodeset(1)|nodeset.1>
+L<genimage(1)|genimage.1>, L<imgimport(1)|imgimport.1>, L<imgexport(1)|imgexport.1>, L<packimage(1)|packimage.1>, L<liteimg(1)|liteimg.1>, L<nodeset(8)|nodeset.8>
