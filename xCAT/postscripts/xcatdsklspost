@@ -346,18 +346,12 @@ if [ -f /opt/xcat/xcatinfo ]; then
     node=`grep 'NODE' /opt/xcat/xcatinfo |cut -d= -f2`
 fi
 
-#try dhcp
+#try to get the node ip address that connects to the server.
+#then resolve the name of the ip
 if [ -z "$node" ]; then
-    #try the dhcp , this is used for initial boot. 
     #find out the ip address of the node for the management nic
-    NIPS=`grep -h -i fixed-address /var/lib/dhclient/dhclient*eth*.leases 2> /dev/null|awk '{print $2}'|sed -e 's/;//'`
-    if [ -z "$NIPS" ]; then
-        NIPS=`grep -h -i fixed-address /var/lib/dhclient/dhclient*hf*.leases 2> /dev/null|awk '{print $2}'|sed -e 's/;//'`
-        if [ -z "$NIPS" ]; then
-            NIPS=`grep -h -i IPADDR /var/lib/dhcpcd/*.info 2> /dev/null|awk -F= '{print $2}'|sed -e s/\'//g`
-        fi
-    fi
-    NIP=`echo $NIPS|awk '{printf $NF}' | tail -n 1` #Pick one for wget
+    NIP=`ip route get $SIP | head -n 1 | sed 's/^.*src//g' | awk {'print $1'}
+`
     if [ -n "$NIP" ]; then
 	#relsove the name of the node from ip address
 	node=`host $NIP | awk {'print $5'} | sed '$s/\.$//'`
