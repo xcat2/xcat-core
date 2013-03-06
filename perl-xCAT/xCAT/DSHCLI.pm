@@ -839,6 +839,7 @@ sub fork_fanout_dcp
 
             $rcp_config{'preserve'}  = $$options{'preserve'};
             $rcp_config{'recursive'} = $$options{'recursive'};
+            $rcp_config{'sudo'} = $$options{'sudo'};
 
             if ($$options{'pull'})
             {
@@ -4598,8 +4599,8 @@ sub parse_and_run_dcp
                 close FILE;
                 # now put the original syncfile on the queue to sync to the SN's
                 $rc =
-                &parse_rsync_input_file_on_MN(\@nodelist, \%options, $tmpsyncfile,
-                        $::SYNCSN, $synfiledir,$nodesyncfiledir);
+                &parse_rsync_input_file_on_MN(\@nodelist, \%options,$tmpsyncfile,
+                   $::SYNCSN, $synfiledir,$nodesyncfiledir);
                 # cleanup
                 my $cmd = "rm $tmpsyncfile";
                 my @output = xCAT::Utils->runcmd($cmd, 0);

@@ -98,13 +98,21 @@ sub remote_copy_command
         {
             if (-e ("/usr/bin/rsync")) {
              if (($usersh == 0) || ($localhost == 1)) { # using ssh, or local 
+               if ($$config{'sudo'}){
+                $sync_opt = '--rsync-path=sudo /usr/bin/rsync ';
+               } else {
                 $sync_opt = '--rsync-path /usr/bin/rsync ';
+               }
              } else {
                 $sync_opt = '--rsh /bin/rsh --rsync-path /usr/bin/rsync ';
              }
             } else {
              if (($usersh == 0) || ($localhost == 1)) { # using ssh, or local
-                $sync_opt = '--rsync-path /usr/local/bin/rsync ';
+               if ($$config{'sudo'}){
+                $sync_opt = '--rsync-path=sudo /usr/local/bin/rsync  ';
+               } else {
+                $sync_opt = '--rsync-path=/usr/local/bin/rsync ';
+               }
              } else {
                 $sync_opt = '--rsh /bin/rsh --rsync-path /usr/local/bin/rsync ';
              }
@@ -112,7 +120,11 @@ sub remote_copy_command
         }
         else #linux
         {
+          if ($$config{'sudo'}) {
+            $sync_opt = '--rsync-path=\'sudo /usr/bin/rsync\' ';
+          } else {
             $sync_opt = '--rsync-path /usr/bin/rsync ';
+          }
         }
         # if only syncing the service node or
         # (no postscripts and no append lines)  then do not
