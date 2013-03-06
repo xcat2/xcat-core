@@ -90,6 +90,8 @@ do
                 touch /opt/xcat/xcatinfo
             fi
             echo "XCATSERVER=$i" > /opt/xcat/xcatinfo
+            NODE=#TABLE:nodelist:THISNODE:node#
+            echo "NODE=$NODE" >> /opt/xcat/xcatinfo
 	    break
 	fi
 	RAND=$(perl -e 'print int(rand(5)). "\n"')
@@ -99,7 +101,7 @@ cd /xcatpost
 #gunzip xcatpost.tar.gz
 #tar -xvf xcatpost.tar
 #/xcatpost/#TABLE:nodelist:THISNODE:node#
-export PATH=/xcatpost:$PATH
+export PATH=$PATH:/xcatpost
 
 #save the postboot scripts to /var/tmp/mypostscript.post
 #

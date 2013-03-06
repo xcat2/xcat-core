@@ -82,7 +82,9 @@ do
             touch /opt/xcat/xcatinfo
         fi
         echo "XCATSERVER=$i" > /opt/xcat/xcatinfo
-        echo "REBOOT=TRUE" >> /opt/xcat/xcatinfo    
+        echo "REBOOT=TRUE" >> /opt/xcat/xcatinfo   
+        NODE=#TABLE:nodelist:THISNODE:node#
+        echo "NODE=$NODE" >> /opt/xcat/xcatinfo
         break
     fi
     RAND=$(perl -e 'print int(rand(5)). "\n"')
@@ -90,7 +92,7 @@ do
 done
 
 cd /xcatpost
-export PATH=/xcatpost:$PATH
+export PATH=$PATH:/xcatpost
 
 # Use the run_ps subroutine to run the postscripts
 TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
