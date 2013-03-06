@@ -810,6 +810,9 @@ sub kit_cleanrepo
     if ( -d "$::workdir/tmp" ) {
         system("rm -Rf $::workdir/tmp ");
     }
+    if ( -d "$::workdir/debbuild" ){
+        system("rm -Rf $::workdir/debbuild");
+    }
 
     return 0;
 }
@@ -911,6 +914,9 @@ sub kit_cleantar
     if ( -d "$::workdir/tmp" ) {
         system("rm -Rf $::workdir/tmp ");
     }
+    if ( -d "$::workdir/debbuild" ){
+        system("rm -Rf $::workdir/debbuild");
+    }
     
 
 }
@@ -943,6 +949,9 @@ sub kit_cleanall
     }
     if ( -d "$::workdir/tmp" ) {
         system("rm -Rf $::workdir/tmp ");
+    }
+    if ( -d "$::workdir/debbuild" ){
+        system("rm -Rf $::workdir/debbuild");
     }
 
 }
@@ -2172,7 +2181,7 @@ sub create_kitconf
             }
           }
         }
-        # Handle special attrs
+        # Handle special attrs, these 3 attributes did not defined in the buildkit.conf, special cases.
         if ( $s eq 'kitrepo' ) {
             $::kit_config->{$s}{entries}[$li]->{kitreponame} = 
                     $se->{kitreponame};
