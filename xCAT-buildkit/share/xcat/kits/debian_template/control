@@ -1,0 +1,11 @@
+Source: <<<INSERT_kitcomponent_basename_HERE>>>
+Section: admin
+Priority: extra
+Maintainer: xcatkit <root@ubuntu>
+Build-Depends: debhelper (>= 5)
+Standards-Version: 3.7.2
+
+Package: <<<INSERT_kitcomponent_basename_HERE>>>
+Architecture: all
+Depends: <<<INSERT_kitcomponent_ospkgdeps_HERE>>>,<<<INSERT_kitcomponent_kitpkgdeps_HERE>>>,<<<INSERT_kitcomponent_kitcompdeps_HERE>>>
+Description: <<<INSERT_kitcomponent_desc_HERE>>>
