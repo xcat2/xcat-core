@@ -344,7 +344,7 @@ sub assign_to_osimage
                         if (open(FILE, ">", "$installdir/postscripts/KIT_$osimage.postbootscripts")) {
                             print FILE "#!/bin/sh\n\n";
                             close(FILE);
-                            chmod(755,"$installdir/postscripts/KIT_$osimage.postbootscripts");
+                            chmod(0755,"$installdir/postscripts/KIT_$osimage.postbootscripts");
                         }
                     }
 
