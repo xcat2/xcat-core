@@ -671,12 +671,13 @@ unless ($dracutmode) { #in dracut mode, we delegate all this activity
     }
 }
 
-if ($dracutmode) {
+#if ($dracutmode) {
     # modify etc/rc.sysinit, prevent remounting
     # TODO: need to find one way to prevent remounting
-    my $SYSINITFILE;
-    my $TMPSYSINITFILE;
+
     if (-f "$rootimg_dir/etc/rc.sysinit") {
+        my $SYSINITFILE;
+        my $TMPSYSINITFILE;
         # backup etc/rc.sysinit file before modifing it
         system("cp -a $rootimg_dir/etc/rc.sysinit $rootimg_dir/etc/rc.sysinit.backup");
         open($SYSINITFILE, "$rootimg_dir/etc/rc.sysinit");
@@ -696,7 +697,7 @@ if ($dracutmode) {
         close($TMPSYSINITFILE);
         cp("/tmp/rc.sysinit.tmp", "$rootimg_dir/etc/rc.sysinit");
     }
-}
+#}
 
 # before mkinitrd, run depmod to generate modules.dep 
 system("chroot $rootimg_dir depmod $kernelver");
