@@ -1343,11 +1343,11 @@ sub updatenodesyncfiles
              push @$args,"-f" ;
              push @$args,$::fanout;
             }
-          #  if (defined($::USER))  {  # -l contains sudo (TODO SUPPORT?)
-          #   push @$args,"--sudo" ;
-          #   push @$args,"-l" ;
-          #   push @$args,"$::USER" ;
-          #  }
+            if (defined($::USER))  {  # -l must sudo
+             push @$args,"--sudo" ;
+             push @$args,"-l" ;
+             push @$args,"$::USER" ;
+            }
             push @$args,"-F" ;
             push @$args,"$synclist" ;
             my $nodestring = join(',', @{$syncfile_node{$synclist}});
