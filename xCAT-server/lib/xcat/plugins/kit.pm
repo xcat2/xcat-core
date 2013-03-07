@@ -480,6 +480,11 @@ sub assign_to_osimage
                 my $otherpkgdir = $linuximagetable->{otherpkgdir};
                 my $kitrepodir = $kitrepotable->{kitrepodir};
 
+                # Create otherpkgdir if it doesn't exist
+                unless ( -d "$otherpkgdir" ) {
+                    mkpath("$otherpkgdir");
+                }
+
                 # Create symlink if doesn't exist
                 unless ( -d "$otherpkgdir/$kitcomptable->{kitreponame}" ) {
                     system("ln -sf $kitrepodir $otherpkgdir/$kitcomptable->{kitreponame} ");
