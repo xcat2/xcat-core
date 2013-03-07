@@ -12,6 +12,7 @@ clean:
 
 install:
 	pwd
+	dh_install
 
 binary-indep: build install
 	dh_installchangelogs
