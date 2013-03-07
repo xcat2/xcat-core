@@ -113,9 +113,9 @@ if (($::USER) && ($::SECURITY))
      xCAT::MsgUtils->message("E", $msg);
      exit 1;
 }
-if (($::USER) && (($::FILESYNC) || ($::SNFILESYNC)))
+if (($::USER) && ($::SNFILESYNC))
 {
-     my $msg = "-l option is not allowed with -F or -f options.";
+     my $msg = "-l option is not allowed with -f options.";
      xCAT::MsgUtils->message("E", $msg);
      exit 1;
 }
