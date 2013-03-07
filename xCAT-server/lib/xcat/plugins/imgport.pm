@@ -28,6 +28,7 @@ use File::Copy;
 use File::Path qw/mkpath/;
 use File::Basename;
 use xCAT::NodeRange;
+use xCAT::Schema;
 use Cwd;
 my $requestcommand;
 $::VERBOSE = 0;
@@ -194,6 +195,7 @@ sub get_image_info {
 	my $node = shift;
 	my @extra = @_;
 	my $errors = 0;
+	my $attrs;
 	
 	my $ostab = new xCAT::Table('osimage', -create=>1);
 	unless($ostab){
@@ -203,43 +205,45 @@ sub get_image_info {
 		return 0;
 	}
 	
-	(my $attrs) = $ostab->getAttribs({imagename => $imagename}, 'profile', 'imagetype', 'provmethod', 'osname', 'osvers', 'osdistro', 'osarch', 'synclists');
-	if (!$attrs) {
+	#(my $attrs) = $ostab->getAttribs({imagename => $imagename}, 'profile', 'imagetype', 'provmethod', 'osname', 'osvers', 'osdistro', 'osarch', 'synclists');
+	(my $attrs0) = $ostab->getAttribs({imagename => $imagename},\@{$xCAT::Schema::tabspec{osimage}->{cols}});
+	if (!$attrs0) {
 		$callback->({error=>["Cannot find image \'$imagename\' from the osimage table."],errorcode=>[1]});
 		return 0;
 	}
 
-	unless($attrs->{provmethod}){
+	unless($attrs0->{provmethod}){
 		$callback->({error=>["The 'provmethod' field is not set for \'$imagename\' in the osimage table."],errorcode=>[1]});
 		$errors++;
 	}
 
-	unless($attrs->{profile}){
+	unless($attrs0->{profile}){
 		$callback->({error=>["The 'profile' field is not set for \'$imagename\' in the osimage table."],errorcode=>[1]});
 		$errors++;
 	}
 
-	unless($attrs->{osvers}){
+	unless($attrs0->{osvers}){
 		$callback->({error=>["The 'osvers' field is not set for \'$imagename\' in the osimage table."],errorcode=>[1]});
 		$errors++;
 	}
 
-	unless($attrs->{osarch}){
+	unless($attrs0->{osarch}){
 		$callback->({error=>["The 'osarch' field is not set for \'$imagename\' in the osimage table."],errorcode=>[1]});
 		$errors++;
 	}
 
-	unless($attrs->{provmethod} =~ /install|netboot|statelite/){
-		$callback->({error=>["Exporting images with 'provemethod' " . $attrs->{provmethod} . " is not supported. Hint: install, netboot, or statelite"],errorcode=>[1]});
+	unless($attrs0->{provmethod} =~ /install|netboot|statelite/){
+		$callback->({error=>["Exporting images with 'provemethod' " . $attrs0->{provmethod} . " is not supported. Hint: install, netboot, or statelite"],errorcode=>[1]});
 		$errors++;
 	}
 
-	$attrs->{imagename} = $imagename;
+	#$attrs->{imagename} = $imagename;
 
 	if($errors){
 		return 0;
 	}
-
+	
+        $attrs->{osimage}=$attrs0;
 
 	my $linuximagetab = new xCAT::Table('linuximage', -create=>1);
 	unless($linuximagetab){
@@ -250,15 +254,17 @@ sub get_image_info {
 	}
 	
         #from linuximage table
-	(my $attrs1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'exlist', 'postinstall', 'rootimgdir', 'nodebootif', 'otherifce', 'netdrivers', 'kernelver', 'permission');
+	#(my $attrs1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'exlist', 'postinstall', 'rootimgdir', 'nodebootif', 'otherifce', 'netdrivers', 'kernelver', 'permission');
+	(my $attrs1) = $linuximagetab->getAttribs({imagename => $imagename},\@{$xCAT::Schema::tabspec{linuximage}->{cols}});
 	if (!$attrs1) {
 		$callback->({error=>["Cannot find image \'$imagename\' from the linuximage table."],errorcode=>[1]});
 		return 0;
 	}
         #merge attrs with attrs1    
-	foreach (keys %$attrs1) {
-	    $attrs->{$_} = $attrs1->{$_};
-	}
+	#foreach (keys %$attrs1) {
+	#    $attrs->{$_} = $attrs1->{$_};
+	#}
+	$attrs->{linuximage}=$attrs1;
 
 	$attrs = get_files($imagename, $callback, $attrs);
 	if($#extra > -1){
@@ -390,8 +396,8 @@ sub get_files{
 		$installroot = '/install';
 	}
 
-	my $provmethod = $attrs->{provmethod};
-	my $osvers = $attrs->{osvers};
+	my $provmethod = $attrs->{osimage}->{provmethod};
+	my $osvers = $attrs->{osimage}->{osvers};
 
 
 	# here's the case for the install.  All we need at first is the 
@@ -400,14 +406,14 @@ sub get_files{
 	    @arr = ("$installroot/custom/install", "$xcatroot/share/xcat/install");
 
 	    #get .tmpl file
-	    if (! $attrs->{template}) {
+	    if (! $attrs->{linuximage}->{template}) {
 		my $template = look_for_file('tmpl', $callback, $attrs, @arr);
 		unless($template){
 			$callback->({error=>["Couldn't find install template for $imagename"],errorcode=>[1]});
 			$errors++;
 		}else{
 			$callback->( {data => ["$template"]});
-			$attrs->{template} = $template;
+			$attrs->{linuximage}->{template} = $template;
 		}
 	    }
 	    $attrs->{media} = "required";
@@ -423,14 +429,14 @@ sub get_files{
 	    if($provmethod =~ /netboot/){
 		@arr = ("$installroot/custom/netboot", "$xcatroot/share/xcat/netboot");
 		#get .pkglist file
-		if (! $attrs->{pkglist}) {
+		if (! $attrs->{linuximage}->{pkglist}) {
 		    # we need to get the .pkglist for this one!
 		    my $temp = look_for_file('pkglist', $callback, $attrs, @arr);
 		    unless($temp){
 			$callback->({error=>["Couldn't find pkglist file for $imagename"],errorcode=>[1]});
 			$errors++;
 		    }else{
-			$attrs->{pkglist} = $temp;
+			$attrs->{linuximage}->{pkglist} = $temp;
 		    }
 		}
 		
@@ -466,14 +472,14 @@ sub get_files{
 	    } elsif ($provmethod =~ /statelite/) {
 		@arr = ("$installroot/custom/netboot", "$xcatroot/share/xcat/netboot");
 		#get .pkglist file
-		if (! $attrs->{pkglist})  {
+		if (! $attrs->{linuximage}->{pkglist})  {
 		    # we need to get the .pkglist for this one!
 		    my $temp = look_for_file('pkglist', $callback, $attrs, @arr);
 		    unless($temp){
 			$callback->({error=>["Couldn't find pkglist file for $imagename"],errorcode=>[1]});
 			$errors++;
 		    }else{
-			$attrs->{pkglist} = $temp;
+			$attrs->{linuximage}->{pkglist} = $temp;
 		    }
 		}
 		
@@ -520,9 +526,9 @@ sub look_for_file {
     my @dirs = @_;
     my $r_file = '';
     
-    my $profile = $attrs->{profile};
-    my $arch = $attrs->{osarch};
-    my $distname = $attrs->{osvers};
+    my $profile = $attrs->{osimage}->{profile};
+    my $arch = $attrs->{osimage}->{osarch};
+    my $distname = $attrs->{osimage}->{osvers};
     
     
     # go through the directories and look for the file.  We hopefully will find it...
@@ -585,9 +591,9 @@ sub make_bundle {
     
 
     #for statelite
-    if ($attribs->{provmethod} eq 'statelite') {
+    if ($attribs->{osimage}->{provmethod} eq 'statelite') {
 	#copy the rootimgdir over
-	my $rootimgdir=$attribs->{rootimgdir};
+	my $rootimgdir=$attribs->{linuximage}->{rootimgdir};
 	if ($rootimgdir) {
 	    $callback->({data=>["Packing root image. It will take a while"]});
 	    system("cd $rootimgdir; find rootimg |cpio -H newc -o | gzip -c - > $tpath/rootimgtree.gz");
@@ -641,6 +647,8 @@ sub make_bundle {
 	$attribs->{'litefile'} = "$rootimgdir/litefile.csv";
    }
 
+    #print Dumper($attribs);
+
     # make manifest.xml file.  So easy!  This is why we like XML.  I didn't like
     # the idea at first though.
     my $xml = new XML::Simple(RootName =>'xcatimage');	
@@ -651,7 +659,7 @@ sub make_bundle {
     
     
     # these are the only files we copy in.  (unless you have extras)
-    for my $a ("kernel", "template", "ramdisk", "rootimg", "pkglist", "synclists", "otherpkglist", "postinstall", "exlist"){
+    for my $a ("kernel", "ramdisk", "rootimg"){
 	my $filenames=$attribs->{$a};
 	if($filenames) {
 	    my @file_array=split(',', $filenames);
@@ -665,6 +673,37 @@ sub make_bundle {
 	    }
 	}
     }
+
+    for my $a ("template", "pkglist", "otherpkglist", "postinstall", "exlist"){
+	my $filenames=$attribs->{linuximage}->{$a};
+	if($filenames) {
+	    my @file_array=split(',', $filenames);
+	    foreach my $fn (@file_array) {
+		$callback->({data => ["$fn"]});
+		if (-r $fn) {
+		    system("cp $fn $tpath");
+		} else {
+		    $callback->({error=>["Couldn't find file $fn for $imagename. Skip."],errorcode=>[1]});
+		}
+	    }
+	}
+    }
+
+    for my $a ("synclists"){
+	my $filenames=$attribs->{osimage}->{$a};
+	if($filenames) {
+	    my @file_array=split(',', $filenames);
+	    foreach my $fn (@file_array) {
+		$callback->({data => ["$fn"]});
+		if (-r $fn) {
+		    system("cp $fn $tpath");
+		} else {
+		    $callback->({error=>["Couldn't find file $fn for $imagename. Skip."],errorcode=>[1]});
+		}
+	    }
+	}
+    }
+
         
     # extra files get copied in the extra directory.
     if($attribs->{extra}){
@@ -822,8 +861,8 @@ sub extract_bundle {
 	}
 	
 	
-	my $osimage = $data->{imagename};	
-	$callback->({data=>["Successfully imported the image."]});
+	my $osimage = $data->{osimage}->{imagename};	
+	$callback->({data=>["Successfully imported the image $osimage."]});
 	
     }
     
@@ -844,31 +883,31 @@ sub change_profile {
     my $new_profile=shift;
     my $srcdir=shift;
 
-    my $old_profile= $data->{profile};
+    my $old_profile= $data->{osimage}->{profile};
     if ($old_profile eq $new_profile) { 
 	return $data; #do nothing if old profile is the same as the new one. 
     }
 
-    $data->{profile}=$new_profile;
+    $data->{osimage}->{profile}=$new_profile;
     my $installdir = xCAT::TableUtils->getInstallDir();
     unless($installdir){
 	$installdir = '/install';
     }
-    if ($data->{rootimgdir}) {
-	$data->{rootimgdir}="$installdir/netboot/" . $data->{osvers} . "/" . $data->{osarch} . "/$new_profile";
+    if ($data->{linuximage}->{rootimgdir}) {
+	$data->{linuximage}->{rootimgdir}="$installdir/netboot/" . $data->{osimage}->{osvers} . "/" . $data->{osimage}->{osarch} . "/$new_profile";
     
 	for my $a ("kernel", "ramdisk", "rootimg", "rootimgtree", "litefile") {
 	    if ($data->{$a}) {
 		my $fn=basename($data->{$a});
-		$data->{$a}=$data->{rootimgdir} . "/$fn";
+		$data->{$a}=$data->{linuximage}->{rootimgdir} . "/$fn";
 	    }
 	}
     }
 
     my $prov="netboot";
-    if ($data->{provmethod} eq "install") { $prov = "install"; }
+    if ($data->{osimage}->{provmethod} eq "install") { $prov = "install"; }
     my $platform;
-    my $os=$data->{osvers};
+    my $os=$data->{osimage}->{osvers};
     if ($os) {
       if ($os =~ /rh.*/)    { $platform = "rh"; }
       elsif ($os =~ /centos.*/) { $platform = "centos"; }
@@ -881,7 +920,10 @@ sub change_profile {
 
     
     for my $a ("template", "pkglist", "synclists", "otherpkglist", "postinstall", "exlist")   {
-	my $filenames=$data->{$a};
+	my $filenames=$data->{linuximage}->{$a};
+	if ($a eq "synclists") { 
+	    $filenames=$data->{osimage}->{$a}; 
+	}
 	if($filenames) {
 	    my @file_array=split(',', $filenames);
 	    my @new_file_array=();
@@ -911,12 +953,19 @@ sub change_profile {
 		move("$srcdir/$oldfn", "$srcdir/$newfn");
 		push (@new_file_array, "$newdir/$newfn");
 	    }
-	    $data->{$a}= join(',', @new_file_array);
+	    if ($a eq "synclists") {
+		$data->{osimage}->{$a}= join(',', @new_file_array);
+	    } else {
+		$data->{linuximage}->{$a}= join(',', @new_file_array);
+	    }
 	}
     }
 
     #change the image name
-    $data->{imagename}=$data->{osvers} . "-" . $data->{osarch} . "-" . $data->{provmethod} . "-$new_profile";
+    my $new_imgname=$data->{osimage}->{osvers} . "-" . $data->{osimage}->{osarch} . "-" . $data->{osimage}->{provmethod} . "-$new_profile";
+    $data->{osimage}->{imagename}=$new_imgname;
+    $data->{linuximage}->{imagename}=$new_imgname;
+
 
     return $data;
 }
@@ -930,8 +979,8 @@ sub check_media {
 	unless( $data->{'media'}) {
 		$rc = 1;
 	}elsif($data->{media} eq 'required'){
-		my $os = $data->{osvers};
-		my $arch = $data->{osarch};
+		my $os = $data->{osimage}->{osvers};
+		my $arch = $data->{osimage}->{osarch};
 		my $installroot = xCAT::TableUtils->getInstallDir();
 		unless($installroot){
 			$installroot = '/install';
@@ -1036,7 +1085,7 @@ sub set_config {
 	my $ostab = xCAT::Table->new('osimage',-create => 1,-autocommit => 0);
 	my $linuxtab = xCAT::Table->new('linuximage',-create => 1,-autocommit => 0);
 	my %keyhash;
-	my $osimage = $data->{imagename};
+	my $osimage = $data->{osimage}->{imagename};
 
 	unless($ostab){
 		$callback->(
@@ -1055,65 +1104,19 @@ sub set_config {
 	$callback->({data=>["Adding $osimage"]}) if $::VERBOSE;
 
 	# now we make a quick hash of what we want to put into this 
-	$keyhash{provmethod} = $data->{provmethod};
-	$keyhash{profile} = $data->{profile};
-	$keyhash{osvers} = $data->{osvers};
-	$keyhash{osarch} = $data->{osarch};
-        if ($data->{imagetype}) {
-	    $keyhash{imagetype} = $data->{imagetype};
-	};
-        if ($data->{osname}) {
-	    $keyhash{osname} = $data->{osname};
-	};
-        if ($data->{osdistro}) {
-	    $keyhash{osdistro} = $data->{osdistro};
-	};
-        if ($data->{synclists}) {
-	    $keyhash{synclists} = $data->{synclists};
-	};
+	my $hash_tmp=$data->{osimage};
+	foreach my $key (keys %$hash_tmp) {
+	    $keyhash{$key}=$hash_tmp->{$key};
+	}
         $ostab->setAttribs({imagename => $osimage }, \%keyhash );
         $ostab->commit;
 
 	%keyhash=();
-        if ($data->{template}) {
-	    $keyhash{template} = $data->{template};
-	};
-        if ($data->{pkglist}) {
-	    $keyhash{pkglist} = $data->{pkglist};
-	};
-        if ($data->{pkgdir}) {
-	    $keyhash{pkgdir} = $data->{pkgdir};
-	};
-        if ($data->{otherpkglist}) {
-	    $keyhash{otherpkglist} = $data->{otherpkglist};
-	};
-        if ($data->{otherpkgdir}) {
-	    $keyhash{otherpkgdir} = $data->{otherpkgdir};
-	};
-        if ($data->{exlist}) {
-	    $keyhash{exlist} = $data->{exlist};
-	};
-        if ($data->{postinstall}) {
-	    $keyhash{postinstall} = $data->{postinstall};
-	};
-        if ($data->{rootimgdir}) {
-	    $keyhash{rootimgdir} = $data->{rootimgdir};
-	};
-        if ($data->{netdrivers}) {
-	    $keyhash{netdrivers} = $data->{netdrivers};
-	};
-        if ($data->{kernelver}) {
-	    $keyhash{kernelver} = $data->{kernelver};
-	};
-        if ($data->{permission}) {
-	    $keyhash{permission} = $data->{permission};
-	};
-        if ($data->{nodebootif}) {
-	    $keyhash{nodebootif} = $data->{nodebootif};
-	};
-        if ($data->{otherifce}) {
-	    $keyhash{otherifce} = $data->{otherifce};
-	};
+	my $hash_tmp1=$data->{linuximage};
+	foreach my $key (keys %$hash_tmp1) {
+	    $keyhash{$key}=$hash_tmp1->{$key};
+	}
+
         $linuxtab->setAttribs({imagename => $osimage }, \%keyhash );
         $linuxtab->commit;
 
@@ -1127,49 +1130,49 @@ sub verify_manifest {
 	my $errors = 0;
 
 	# first make sure that the stuff is defined!
-	unless($data->{imagename}){
+	unless($data->{osimage}->{imagename}){
 		$callback->({error=>["The 'imagename' field is not defined in manifest.xml."],errorcode=>[1]});
 		$errors++;
 	}
-	unless($data->{provmethod}){
+	unless($data->{osimage}->{provmethod}){
 		$callback->({error=>["The 'provmethod' field is not defined in manifest.xml."],errorcode=>[1]});
 		$errors++;
 	}
 
-	unless($data->{profile}){
+	unless($data->{osimage}->{profile}){
 		$callback->({error=>["The 'profile' field is not defined in manifest.xml."],errorcode=>[1]});
 		$errors++;
 	}
 
-	unless($data->{osvers}){
+	unless($data->{osimage}->{osvers}){
 		$callback->({error=>["The 'osvers' field is not defined in manifest.xml."],errorcode=>[1]});
 		$errors++;
 	}
 
-	unless($data->{osarch}){
+	unless($data->{osimage}->{osarch}){
 		$callback->({error=>["The 'osarch' field is not defined in manifest.xml."],errorcode=>[1]});
 		$errors++;
 	}
 
-	unless($data->{provmethod} =~ /install|netboot|statelite/){
-		$callback->({error=>["Importing images with 'provemethod' " . $data->{provmethod} . " is not supported. Hint: install, netboot, or statelite"],errorcode=>[1]});
+	unless($data->{osimage}->{provmethod} =~ /install|netboot|statelite/){
+		$callback->({error=>["Importing images with 'provemethod' " . $data->{osimage}->{provmethod} . " is not supported. Hint: install, netboot, or statelite"],errorcode=>[1]});
 		$errors++;
 	}
 
 	# if the install method is used, then we need to have certain files in place.
-	if($data->{provmethod} =~ /install/){
+	if($data->{osimage}->{provmethod} =~ /install/){
 		# we need to get the template for this one!
-		unless($data->{template}){
+		unless($data->{linuximage}->{template}){
 			$callback->({error=>["The 'osarch' field is not defined in manifest.xml."],errorcode=>[1]});
 			$errors++;
 		}
 		#$attrs->{media} = "required"; (need to do something to verify media!
 
-	}elsif($data->{osvers} =~ /esx/){
+	}elsif($data->{osimage}->{osvers} =~ /esx/){
 		$callback->({info => ['this is an esx image']});
 		# do nothing for ESX
 		1;
-	}elsif($data->{provmethod} =~ /netboot/){
+	}elsif($data->{osimage}->{provmethod} =~ /netboot/){
 		unless($data->{ramdisk}){
 			$callback->({error=>["The 'ramdisk' field is not defined in manifest.xml."],errorcode=>[1]});
 			$errors++;
@@ -1183,7 +1186,7 @@ sub verify_manifest {
 			$errors++;
 		}
 	
-	}elsif($data->{provmethod} =~ /statelite/){
+	}elsif($data->{osimage}->{provmethod} =~ /statelite/){
 		unless($data->{kernel}){
 			$callback->({error=>["The 'kernel' field is not defined in manifest.xml."],errorcode=>[1]});
 			$errors++;
@@ -1211,9 +1214,9 @@ sub make_files {
     my $data = shift;
     my $imgdir = shift;
     my $callback = shift;
-    my $os = $data->{osvers};
-    my $arch = $data->{osarch};
-    my $profile = $data->{profile};
+    my $os = $data->{osimage}->{osvers};
+    my $arch = $data->{osimage}->{osarch};
+    my $profile = $data->{osimage}->{profile};
     my $installroot = xCAT::TableUtils->getInstallDir();
     unless($installroot){
 	$installroot = '/install';
@@ -1221,31 +1224,43 @@ sub make_files {
     
     # you'll get a hash like this for install:
     #$VAR1 = { 
-    #          'provmethod' => 'install',
-    #          'profile' => 'all',
-    #          'template' => '/opt/xcat/share/xcat/install/centos/all.tmpl',
-    #          'pkglist' => '/opt/xcat/share/xcat/install/centos/all.pkglist',
-    #          'otherpkglist' => '/opt/xcat/share/xcat/install/centos/all.othetpkgs.pkglist',
-    #          'synclists' => '/opt/xcat/share/xcat/install/centos/all.othetpkgs.synclist',
-    #          'imagename' => 'Default_Stateful',
-    #          'osarch' => 'x86_64',
+    #          osimage=> {
+    #              'imagename' => 'Default_Stateful',
+    #              'provmethod' => 'install',
+    #              'profile' => 'all',
+    #              'osarch' => 'x86_64',
+    #              'osvers' => 'centos5.4'
+    #              'synclists' => '/opt/xcat/share/xcat/install/centos/all.othetpkgs.synclist',
+    #          }
+    #          linuxiage=> {
+    #              'template' => '/opt/xcat/share/xcat/install/centos/all.tmpl',
+    #              'pkglist' => '/opt/xcat/share/xcat/install/centos/all.pkglist',
+    #              'otherpkglist' => '/opt/xcat/share/xcat/install/centos/all.othetpkgs.pkglist',
+    #              'imagename' => 'Default_Stateful',
+    #          }
     #          'media' => 'required',
-    #          'osvers' => 'centos5.4'
     #        };
     
     # data will look something like this for netboot:
     #$VAR1 = { 
-    #          'provmethod' => 'netboot',
-    #          'profile' => 'compute',
     #          'ramdisk' => '/install/netboot/centos5.4/x86_64/compute/initrd-stateless.gz',
+    #          'rootimg' => '/install/netboot/centos5.4/x86_64/compute/rootimg.gz'
     #          'kernel' => '/install/netboot/centos5.4/x86_64/compute/kernel',
-    #          'imagename' => 'Default_Stateless_1265981465',
-    #          'osarch' => 'x86_64',
-    #          'pkglist' => '/opt/xcat/share/xcat/install/centos/compute.pkglist',
-    #          'otherpkglist' => '/opt/xcat/share/xcat/install/centos/compute.othetpkgs.pkglist',
-    #          'synclists' => '/opt/xcat/share/xcat/install/centos/compute.othetpkgs.synclist',
-    #          'exlist' => '/opt/xcat/share/xcat/install/centos/compute.exlist',
-    #          'postinstall' => '/opt/xcat/share/xcat/install/centos/compute.postinstall',
+    #          osimage=> {
+    #              'imagename' => 'Default_Stateless_1265981465',
+    #              'osvers' => 'centos5.4',
+    #              'osarch' => 'x86_64',
+    #              'provmethod' => 'netboot',
+    #              'profile' => 'compute',
+    #              'synclists' => '/opt/xcat/share/xcat/install/centos/compute.othetpkgs.synclist',
+    #          }
+    #          linuximage=> {
+    #              'imagename' => 'Default_Stateless_1265981465',
+    #              'pkglist' => '/opt/xcat/share/xcat/install/centos/compute.pkglist',
+    #              'otherpkglist' => '/opt/xcat/share/xcat/install/centos/compute.othetpkgs.pkglist',
+    #              'exlist' => '/opt/xcat/share/xcat/install/centos/compute.exlist',
+    #              'postinstall' => '/opt/xcat/share/xcat/install/centos/compute.postinstall',
+    #          }
     #          'extra' => [
     #                     { 
     #                       'dest' => '/install/custom/netboot/centos',
@@ -1256,22 +1271,28 @@ sub make_files {
     #                       'src' => '/opt/xcat/share/xcat/netboot/centos/compute.exlist'
     #                     }
     #                   ],
-    #          'osvers' => 'centos5.4',
-    #          'rootimg' => '/install/netboot/centos5.4/x86_64/compute/rootimg.gz'
     #        };
     # data will look something like this for statelite:
     #$VAR1 = { 
-    #          'provmethod' => 'statelite',
-    #          'profile' => 'compute',
     #          'ramdisk' => '/install/netboot/centos5.4/x86_64/compute/initrd-statelite.gz',
     #          'kernel' => '/install/netboot/centos5.4/x86_64/compute/kernel',
-    #          'imagename' => 'Default_Stateless_1265981465',
-    #          'osarch' => 'x86_64',
-    #          'pkglist' => '/opt/xcat/share/xcat/install/centos/compute.pkglist',
-    #          'otherpkglist' => '/opt/xcat/share/xcat/install/centos/compute.othetpkgs.pkglist',
-    #          'synclists' => '/opt/xcat/share/xcat/install/centos/compute.othetpkgs.synclist',
-    #          'exlist' => '/opt/xcat/share/xcat/install/centos/compute.exlist',
-    #          'postinstall' => '/opt/xcat/share/xcat/install/centos/compute.postinstall',
+    #          'rootimgtree' => '/install/netboot/centos5.4/x86_64/compute/rootimg/rootimgtree.gz'
+    #          osimage=> {
+    #              'osvers' => 'centos5.4',
+    #              'osarch' => 'x86_64',
+    #              'imagename' => 'Default_Stateless_1265981465',
+    #              'provmethod' => 'statelite',
+    #              'profile' => 'compute',
+    #               'synclists' => '/opt/xcat/share/xcat/install/centos/compute.othetpkgs.synclist',
+    #          }
+    #          linuximage=> {
+    #              'imagename' => 'Default_Stateless_1265981465',
+    #              'pkglist' => '/opt/xcat/share/xcat/install/centos/compute.pkglist',
+    #              'otherpkglist' => '/opt/xcat/share/xcat/install/centos/compute.othetpkgs.pkglist',
+
+    #              'exlist' => '/opt/xcat/share/xcat/install/centos/compute.exlist',
+    #              'postinstall' => '/opt/xcat/share/xcat/install/centos/compute.postinstall',
+    #          }
     #          'extra' => [
     #                     { 
     #                       'dest' => '/install/custom/netboot/centos',
@@ -1282,12 +1303,35 @@ sub make_files {
     #                       'src' => '/opt/xcat/share/xcat/netboot/centos/compute.exlist'
     #                     }
     #                   ],
-    #          'osvers' => 'centos5.4',
-    #          'rootimgtree' => '/install/netboot/centos5.4/x86_64/compute/rootimg/rootimgtree.gz'
     #        };
 	
-    for my $a ("kernel", "template", "ramdisk", "rootimg", "rootimgtree", "litefile", "pkglist", "synclists", "otherpkglist", "postinstall", "exlist") {
+    for my $a ("kernel", "ramdisk", "rootimg", "rootimgtree", "litefile") {
 	my $filenames=$data->{$a};
+	if($filenames) {
+	    my @file_array=split(',', $filenames);
+	    foreach my $fn (@file_array) {
+		$callback->({data => ["$fn"]});
+		my $basename=basename($fn);
+		my $dirname=dirname($fn);
+		if (! -r $dirname) {
+		    mkpath("$dirname", { verbose => 1, mode => 0755 });
+		} 
+		if (-r $fn) {
+		    $callback->( {data => ["  Moving old $fn to $fn.ORIG."]});
+		    move("$fn", "$fn.ORIG");
+		}
+		move("$imgdir/$basename",$fn);
+	    }
+	}
+    }
+
+    for my $a ("template", "pkglist", "synclists", "otherpkglist", "postinstall", "exlist") {
+	my $filenames;
+	if ($a eq "synclists") {
+	     $filenames=$data->{osimage}->{$a};
+	} else {
+	    $filenames=$data->{linuximage}->{$a};
+	}
 	if($filenames) {
 	    my @file_array=split(',', $filenames);
 	    foreach my $fn (@file_array) {
@@ -1345,7 +1389,7 @@ sub make_files {
 
     
     #litefile table for statelite
-    if ($data->{provmethod} eq 'statelite') {
+    if ($data->{osimage}->{provmethod} eq 'statelite') {
 	$callback->( {data => ["Updating the litefile table."]});
 	my $fn=$data->{litefile};
 	if (!$fn) {
@@ -1368,7 +1412,7 @@ sub make_files {
 	    my @tmp=split('"', $line);
 	    my %keyhash;
 	    my %updates;
-	    $keyhash{image}=$data->{imagename};
+	    $keyhash{image}=$data->{osimage}->{imagename};
 	    $keyhash{file}=$tmp[3];
 	    $updates{options}=$tmp[5];
 	    $lftab->setAttribs(\%keyhash, \%updates );
