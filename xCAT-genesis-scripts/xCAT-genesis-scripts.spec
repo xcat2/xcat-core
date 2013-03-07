@@ -1,4 +1,3 @@
-%define version	2.8
 %ifarch i386 i586 i686 x86
 %define tarch x86
 %endif
@@ -24,7 +23,7 @@ Provides: xCAT-genesis-%{tarch}
 
 
 Name:	 %{name}
-Version: %{version}
+Version: %(cat Version)
 Group: System/Utilities
 License: EPL
 Vendor: IBM Corp
