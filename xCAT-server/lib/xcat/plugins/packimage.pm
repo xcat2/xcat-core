@@ -179,6 +179,13 @@ sub process_request {
     system("mkdir -p $rootimg_dir/xcatpost");
     system("cp -r $installroot/postscripts/* $rootimg_dir/xcatpost/");
 
+    #put the image name and timestamp into diskless image when it is packed.
+    `echo IMAGENAME="'$imagename'" > $rootimg_dir/opt/xcat/xcatinfo`;
+    
+    my $timestamp = `date`;
+    chomp $timestamp;
+    `echo TIMESTAMP="'$timestamp'" >> $rootimg_dir/opt/xcat/xcatinfo`;
+
 
     # before generating rootimg.gz or rootimg.sfs, need to switch the rootimg to stateless mode if necessary
     my $rootimg_status = 0; # 0 means stateless mode, while 1 means statelite mode
