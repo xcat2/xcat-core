@@ -719,7 +719,7 @@ sub mknetboot
             $useifname=1;
             $kcmdline .= "ifname=".$reshash->{$node}->[0]->{primarynic}.":";
         }else{
-	    if($arch=~ /ppc/)
+	    if($osver =~ /rhels5/ and $arch=~ /ppc/)
 	    {
      		$usemac=1;	
 	    }
