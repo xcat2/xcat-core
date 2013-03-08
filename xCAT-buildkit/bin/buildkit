@@ -337,6 +337,12 @@ if ( ! $arg ) {
    exit (0);
 }
 
+my $debianflag = 0;
+my $tempstring = xCAT::BuildKitUtils->osver();
+if ( $tempstring =~ /debian/ || $tempstring =~ /ubuntu/ ){
+    $debianflag = 1;
+}
+
 while ($arg) {
     my $command = $arg;
     $command =~ tr/A-Z/a-z/;   # convert to lowercase
@@ -688,30 +694,49 @@ sub kit_buildrepo1
     }
     
     # Build kitcomponent metapackages
-    foreach my  $kc (@{$::bldkit_config->{kitcomponent}{entries}}) {
-        # Check if this kitcomponent is in the requested repo 
-        if ($repoid ne $kc->{kitrepoid}) { next; }
-        
-        # Check if already built
-        my $rpm = "$repodir/".&comppkgname($kc);
-        if (-r $rpm) { next; }
-
-        # Build it
-        if ($::VERBOSE) { print "building kitcomponent metapackage for $kc->{basename} \n";}
-        if (&build_kitcomp($kc)) { 
-            print "Error building kitcomponent metapackage for $kc->{basename} \n";
+    if ( $debianflag ){
+        foreach my $kc (@{$::bldkit_config->{kitcomponent}{entries}}) {
+            if ($repoid ne $kc->{kitrepoid}) { next; }
+            my $debname = "$repodir/".&comppkgname($kc);
+            if (-r $debname) { next; }
+            if ($::VERBOSE) { print "building kitcomponent metapackage for $kc->{basename} \n";}
+            if (&build_kitcomp_debian($kc)) {
+                print "Error building kitcomponent metapackage for $kc->{basename} \n";
+                return 1;
+            }
+        }
+        if ( system("dpkg-scanpackages $repodir > $repodir/Packages") ) {
+            print "Error building the repository meta-data with the dpkg-scanpackages command \n";
             return 1;
         }
     }
+    else{
+        foreach my  $kc (@{$::bldkit_config->{kitcomponent}{entries}}) {
+            # Check if this kitcomponent is in the requested repo 
+            if ($repoid ne $kc->{kitrepoid}) { next; }
+        
+            # Check if already built
+            my $rpm = "$repodir/".&comppkgname($kc);
+            if (-r $rpm) { next; }
 
-    # run createrepo
-    if ( system("createrepo $repodir") ) {
-        print "Error building the repository meta-data with the createrepo command \n";
-        return 1;
+            # Build it
+            if ($::VERBOSE) { print "building kitcomponent metapackage for $kc->{basename} \n";}
+            if (&build_kitcomp($kc)) { 
+                print "Error building kitcomponent metapackage for $kc->{basename} \n";
+                return 1;
+            }
+        }
+
+        # run createrepo
+        if ( system("createrepo $repodir") ) {
+            print "Error building the repository meta-data with the createrepo command \n";
+            return 1;
+        }
     }
-
     return 0;
 }
+
+
 
 #-----------------------------------------------------------------------------
 
@@ -784,6 +809,9 @@ sub kit_cleanrepo
     }
     if ( -d "$::workdir/tmp" ) {
         system("rm -Rf $::workdir/tmp ");
+    }
+    if ( -d "$::workdir/debbuild" ){
+        system("rm -Rf $::workdir/debbuild");
     }
 
     return 0;
@@ -886,6 +914,9 @@ sub kit_cleantar
     if ( -d "$::workdir/tmp" ) {
         system("rm -Rf $::workdir/tmp ");
     }
+    if ( -d "$::workdir/debbuild" ){
+        system("rm -Rf $::workdir/debbuild");
+    }
     
 
 }
@@ -918,6 +949,9 @@ sub kit_cleanall
     }
     if ( -d "$::workdir/tmp" ) {
         system("rm -Rf $::workdir/tmp ");
+    }
+    if ( -d "$::workdir/debbuild" ){
+        system("rm -Rf $::workdir/debbuild");
     }
 
 }
@@ -967,6 +1001,9 @@ sub edit_bldkitconf
         s/<<<INSERT_osminorversion_HERE>>>/$osminorversion/;
         s/<<<INSERT_osarch_HERE>>>/$osarch/;
         s/<<<INSERT_kitcomponent_basename_HERE>>>/$kitcomponent_basename/;
+        if ($debianflag){
+            s/(filename=.*?)\-(.*)\.noarch\.rpm/$1_$2_all.deb/;
+        }
     }
 
     # Write the buildkit.conf back out
@@ -1230,6 +1267,12 @@ sub validate_bldkitconf
         # Make sure all kitcomponent kitrepoids are defined
         my $found = 0;
         my %repo;
+        if ($debianflag){
+            if ($kc->{basename} =~ /_/){
+                print "Kit Component basename can not contaion underscore.\n";
+                return 1;
+            }
+        }
         foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
             if ($kc->{kitrepoid} eq $kr->{kitrepoid}) { 
                 $found = 1;
@@ -1520,9 +1563,16 @@ sub comppkgname
   #  my $repo = shift;  
 
  my $pkgname = $comp->{basename};
-    $pkgname .= '-'.$comp->{version};
-    $pkgname .= '-'.$comp->{release};
-    $pkgname .= '.noarch.rpm';
+    if ($debianflag) {
+        $pkgname .= '_'.$comp->{version};
+        $pkgname .= '-'.$comp->{release};
+        $pkgname .= '_all.deb';
+    }
+    else{
+        $pkgname .= '-'.$comp->{version};
+        $pkgname .= '-'.$comp->{release};
+        $pkgname .= '.noarch.rpm';
+    }
   #  $pkgname .= '-'.$repo->{osmajorversion};
   #  if (defined($repo->{osminorversion})) {
   #    $pkgname .= '.'.$repo->{osminorversion};
@@ -1888,6 +1938,159 @@ sub gen_kitcomp_spec
     return 0;
 }
 
+#-----------------------------------------------------------------------------
+
+=head3   build_kitcomp_debian 
+
+
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub build_kitcomp_debian{
+    my $comp = shift;
+    my %repo;
+    my $debbuilddir = $::workdir."/debbuild/".$comp->{kitcompname};
+    
+    # find the kitrepo hash for this component
+    foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
+        if ($comp->{kitrepoid} eq $kr->{kitrepoid}) { 
+            %repo = %{$kr}; 
+            last;                    
+        }
+    }
+
+    #run the dpkg-buildpackage command
+    my $curdir = $::workdir;
+    my $cmd = "rm -Rf $debbuilddir";
+    system($cmd);
+    mkpath($debbuilddir);
+
+    #Create debian directory for this kit component
+    if ( &gen_kitcomp_debdir($comp,\%repo) ) { return 1; }
+
+    my $kcmetaname = comppkgname($comp);
+    my $compversion = $comp->{version} . "-" . $comp->{release};
+    my $buildstring = "Kit component build package.";
+    my $debianbuildcmd = "cd $debbuilddir;dch -v $compversion -b -c debian/changelog $buildstring;dpkg-buildpackage -uc -us";
+    if ( !$::NON_NATIVE_PKGS->{$comp->{kitcompname}}{$kcmetaname} ) {
+        if ( system($debianbuildcmd) ) {
+            print "Error running \"dpkg-buildpackage -uc -us\" command for kit component $comp->{kitcompname} meta package\n";
+            return 1;
+        }
+        my $repodir = $::build_dir."/kit_repodir/".$repo{kitreponame};
+        my @builtdebs = `find $::workdir/debbuild -name *.deb`;
+        foreach my $deb (@builtdebs) {
+            chomp($deb);
+            if ( system ("cp -fp $deb $repodir") ) {
+                print "Error copying package $deb to build repo directory $repodir \n";
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3   gen_kitcomp_debdir
+
+
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub gen_kitcomp_debdir{
+    my $comp = shift;
+    my $repo = shift;
+    my $scriptdir = $::workdir."/scripts/";
+    my $combuilddir = $::workdir."/debbuild/".$comp->{kitcompname};
+
+    #copy the debian dir template to the build path
+    mkpath("$combuilddir/debian");
+    my $cmd = "cp -Rf " . $::XCATSHARE . "/kits/debian_template/* $combuilddir/debian/";
+    system($cmd);
+
+    my $kitname = $::bldkit_config->{kit}{entries}[0]->{basename};
+    my $kitcompname = $comp->{kitcompname};
+    my $upgradeflag = $comp->{basename} . ".tmp";
+
+    my ($prescript,$postscript,$preupscript,$postupscript,$preunscript,$postunscript,$nonnativepkgs) = '';
+    if (defined($comp->{preinstall})) {
+        $prescript = &load_script("$scriptdir$comp->{preinstall}"); 
+    }
+    if (defined($comp->{postinstall})) {
+        $postscript = &load_script("$scriptdir$comp->{postinstall}"); 
+    }
+    if (defined($comp->{preupgrade})) {
+        $preupscript = &load_script("$scriptdir$comp->{preupgrade}");
+    }
+    if (defined($comp->{postupgrade})) {
+        $postupscript = &load_script("$scriptdir$comp->{postupgrade}");
+    }
+    if (defined($comp->{preuninstall})) {
+        $preunscript = &load_script("$scriptdir$comp->{preuninstall}"); 
+    }
+    if (defined($comp->{postuninstall})) {
+        $postunscript = &load_script("$scriptdir$comp->{postuninstall}"); 
+    }
+    if (defined($comp->{non_native_pkgs})) {
+        $nonnativepkgs = '\n';
+        $nonnativepkgs .= "mkdir -p \$RPM_BUILD_ROOT/opt/xcat/kits/$kitname/$kitcompname \n";
+        $nonnativepkgs .= "cp -a * \$RPM_BUILD_ROOT/opt/xcat/kits/$kitname/$kitcompname  \n";
+    }
+
+    #replace all special sub string in all files under debian
+    unless (opendir(DH, "${combuilddir}/debian/")){
+        print "Can not open the xCAT Kit Component debian dir: ${combuilddir}/debian/";
+        return 1;
+    }
+    
+    foreach (readdir(DH)){
+        my $file = "${combuilddir}/debian/$_";
+        if ( -d $file){
+            next;
+        }
+
+        unless ( open ( FH, "<", $file )){
+            print "Error attempting to open the xCAT Kit Component debian template file $file.\n";
+            close(DH);
+            return 1;
+        }
+
+        if ($::VERBOSE){
+            print "Reading the xCAT Kit Component debian template file $file. \n";
+        }
+        my @lines = <FH>;
+        close(FH);
+        for(@lines) {
+            chomp;
+            s/<<<INSERT_kitcomponent_basename_HERE>>>/$comp->{basename}/;
+            s/<<<INSERT_kitcomponent_ospkgdeps_HERE>>>/$comp->{ospkgdeps}/;
+            s/<<<INSERT_kitcomponent_kitpkgdeps_HERE>>>/$comp->{kitpkgdeps}/;
+            s/<<<INSERT_kitcomponent_kitcompdeps_HERE>>>/$comp->{kitcompdeps}/;
+            s/<<<INSERT_kitcomponent_desc_HERE>>>/$comp->{description}/;
+            s/<<<INSERT_kitcomponent_upgrade_flag_HERE>>>/$upgradeflag/;
+            s/<<<INSERT_kitcomponent_preinstall_script_HERE>>>/$prescript/;
+            s/<<<INSERT_kitcomponent_postinstall_script_HERE>>>/$postscript/;
+            s/<<<INSERT_kitcomponent_preupgrade_script_HERE>>>/$preupscript/;
+            s/<<<INSERT_kitcomponent_postupgrade_script_HERE>>>/$postupscript/;
+            s/<<<INSERT_kitcomponent_preuninstall_script_HERE>>>/$preunscript/;
+            s/<<<INSERT_kitcomponent_postuninstall_script_HERE>>>/$postunscript/;
+        }
+        my $joined_lines = join("\n", @lines);
+        @lines = split(/\\n/,$joined_lines);
+        
+        open (FH, ">", $file);
+        if ($::VERBOSE){
+            print "Created kitcomponent build file under debian dir $file";
+        }
+        print FH @lines;
+        close(FH);
+    }
+    closedir(DH);
+    return 0;
+}
 
 #-----------------------------------------------------------------------------
 
@@ -1978,7 +2181,7 @@ sub create_kitconf
             }
           }
         }
-        # Handle special attrs
+        # Handle special attrs, these 3 attributes did not defined in the buildkit.conf, special cases.
         if ( $s eq 'kitrepo' ) {
             $::kit_config->{$s}{entries}[$li]->{kitreponame} = 
                     $se->{kitreponame};
