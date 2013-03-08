@@ -1,0 +1,7 @@
+share/man/man1/* opt/xcat/share/man/man1/
+share/doc/man1/* opt/xcat/share/doc/man1/
+share/xcat/kits/kit_template/* opt/xcat/share/xcat/kits/kit_template/
+share/xcat/kits/debian_template/* opt/xcat/share/xcat/kits/debian_template/
+lib/perl/xCAT/* opt/xcat/lib/perl/xCAT/
+bin/* opt/xcat/bin/
+LICENSE.html opt/xcat/share/doc/packages/xCAT-buildkit/

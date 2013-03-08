@@ -1,0 +1,7 @@
+opt/xcat/share/xcat/kits/kit_template
+opt/xcat/share/xcat/kits/debian_template
+opt/xcat/bin
+opt/xcat/lib/perl/xCAT
+opt/xcat/share/man/man1
+opt/xcat/share/doc/man1
+opt/xcat/share/doc/packages/xCAT-buildkit
