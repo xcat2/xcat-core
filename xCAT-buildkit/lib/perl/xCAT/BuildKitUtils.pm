@@ -633,6 +633,20 @@ sub osver
             }
         }
     }
+    elsif (-f "/etc/debian_version") #possible debian
+    {
+        if (open($relfile, "<", "/etc/issue")){
+            $line = <$relfile>;
+            if ( $line =~ /debian.*/i){
+                $os = "debian";
+                my $relfile1;
+                open($relfile1, "<", "/etc/debian_version");
+                $ver = <$relfile1>;
+                close($relfile1);
+            }
+            close($relfile);
+        }
+    }
     $os = "$os" . "," . "$ver";
     return ($os);
 }
