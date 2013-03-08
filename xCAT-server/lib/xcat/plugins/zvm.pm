@@ -4177,14 +4177,26 @@ sub clone {
                                 
                 # Copy source disk to target disk
                 xCAT::zvmUtils->printLn( $callback, "$tgtNode: Copying source disk ($srcAddr) to target disk ($tgtAddr)" );
-                $out = `ssh $::SUDOER\@$hcp "$::SUDO /bin/dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=4096 oflag=sync"`;
+                $out = `ssh $::SUDOER\@$hcp "$::SUDO /bin/dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=4096 oflag=sync && $::SUDO echo $?"`;
+                $out = xCAT::zvmUtils->trimStr($out);
+                if (int($out) != 0) {
+                	# If $? is not 0 then there was an error during Linux dd
+                	$out = "(Error) Failed to copy /dev/$srcDevNode";
+                }
+                
                 xCAT::zvmUtils->printSyslog("clone() dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=4096 oflag=sync");
                 xCAT::zvmUtils->printSyslog("clone() $out");
             } else {
                 # Copy source disk to target disk
                 # Block size = 512
                 xCAT::zvmUtils->printLn( $callback, "$tgtNode: Copying source disk ($srcAddr) to target disk ($tgtAddr)" );
-                $out = `ssh $::SUDOER\@$hcp "$::SUDO /bin/dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=512 oflag=sync"`;
+                $out = `ssh $::SUDOER\@$hcp "$::SUDO /bin/dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=512 oflag=sync && $::SUDO echo $?"`;
+                $out = xCAT::zvmUtils->trimStr($out);
+                if (int($out) != 0) {
+                    # If $? is not 0 then there was an error during Linux dd
+                    $out = "(Error) Failed to copy /dev/$srcDevNode";
+                }
+                
                 xCAT::zvmUtils->printSyslog("clone() dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=512 oflag=sync");
                 xCAT::zvmUtils->printSyslog("clone() $out");
                 
