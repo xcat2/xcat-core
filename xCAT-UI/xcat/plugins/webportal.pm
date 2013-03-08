@@ -40,7 +40,8 @@ sub process_request {
         'clonezlinux' => \&clonezlinux,
         'genhostip'   => \&genhostip,
         'getmaxvm'    => \&getmaxvm,
-        'getuserprivilege' => \&getuserprivilege
+        'getuserprivilege' => \&getuserprivilege,
+        'lsgoldenimages' => \&lsgoldenimages
     );
 
     # Check if the request is authorized
@@ -214,12 +215,13 @@ sub provzlinux {
 
     # Create VM
     # e.g. webportal provzlinux [group] [hcp] [image]
-    my ($node, $ip, $base_digit) = gennodename( $callback, $group );
-    if (!$base_digit) {
-        println( $callback, "(Error) Failed to generate node name" );
+    # my ($node, $ip, $base_digit) = gennodename( $callback, $group );
+    my ($node, $ip, $hostname) = findfreenode( $callback, $group );
+    if (!$node) {
+        println( $callback, "Unable to find a free node, IP, and hostname for $group from the IP pool" );
         return;
     }
-    
+        
     my $userid = $node;
 
     # Set node definitions
@@ -231,9 +233,9 @@ sub provzlinux {
         $out = `mkdef -t node -o $node userid=$userid hcp=$hcp mgt=zvm groups=$group,all`;
     }    
     println( $callback, "$out" );
-
+    
     # Set nodetype definitions
-    $out = `chtab node=$node noderes.netboot=zvm nodetype.nodetype=osi nodetype.provmethod=install nodetype.os=$os nodetype.arch=$arch nodetype.profile=$profile nodetype.comments="owner:$owner"`;
+    $out = `chtab node=$node hosts.ip=$ip hosts.hostnames=$hostname noderes.netboot=zvm nodetype.nodetype=osi nodetype.provmethod=install nodetype.os=$os nodetype.arch=$arch nodetype.profile=$profile nodetype.comments="owner:$owner"`;
 
     # Create user directory entry replacing LXUSR with user ID
     # Use /opt/zhcp/conf/default.direct on zHCP as the template
@@ -673,7 +675,13 @@ sub clonezlinux {
         
     # Create VM
     # e.g. webportal provzlinux [group] [hcp] [image]
-    my ($node, $ip, $base_digit) = gennodename( $callback, $group );
+    # my ($node, $ip, $base_digit) = gennodename( $callback, $group );
+    my ($node, $ip, $hostname) = findfreenode( $callback, $group );
+    if (!$node) {
+    	println( $callback, "Unable to find a free node, IP, and hostname for $group from the IP pool" );
+        return;	
+    }
+    
     my $userid = $node;
         
     # Set node definitions
@@ -681,7 +689,7 @@ sub clonezlinux {
     println( $callback, "$out" );
 
     # Set nodetype definitions
-    $out = `chtab node=$node noderes.netboot=zvm nodetype.nodetype=osi nodetype.provmethod=install nodetype.os=$os nodetype.arch=$arch nodetype.profile=$profile nodetype.comments="owner:$owner"`;
+    $out = `chtab node=$node hosts.ip=$ip hosts.hostnames=$hostname noderes.netboot=zvm nodetype.nodetype=osi nodetype.provmethod=install nodetype.os=$os nodetype.arch=$arch nodetype.profile=$profile nodetype.comments="owner:$owner"`;
 
     # Update hosts table and DNS
     sleep(5); # Time needed to update /etc/hosts
@@ -715,8 +723,9 @@ sub genhostip {
     my ( $request, $callback, $sub_req ) = @_;
     my $group = $request->{arg}->[1];
     
-    my ($node, $ip, $base_digit) = gennodename( $callback, $group );
-    println( $callback, "$node: $ip" );
+    # my ($node, $ip, $base_digit) = gennodename( $callback, $group );
+    my ($node, $ip, $hostname) = findfreenode( $callback, $group );
+    println( $callback, "$node: $ip, $hostname" );
 }
 
 sub getmaxvm {
@@ -780,5 +789,87 @@ sub getuserprivilege {
     }
     
     $callback->( { data => "Privilege: $privilege" } );
+}
+
+sub lsgoldenimages {
+    my ( $request, $callback, $sub_req ) = @_;
+    
+    # Find the golden image that can be cloned by searching nodetype table for nodetype.provmethod=clone
+    my $clones = "";
+    my $comments = "";
+    my $description = "";
+    my @args;
+    
+    # Look in 'policy' table
+    my $tab = xCAT::Table->new( 'nodetype', -create => 1, -autocommit => 0 );
+    my @results = $tab->getAllAttribsWhere( "provmethod='clone'", 'node', 'comments' );
+    foreach (@results) {
+        if ($_->{'node'}) {
+        	$clones .= $_->{'node'} . ": ";
+        	
+        	$comments = $_->{'comments'};
+        	@args = split(';', $comments);
+        	foreach (@args) {
+        		if ($_ =~ m/description:/i) {
+        			$description = $_;
+        			$description =~ s/description://g;
+        			$description =~ s/\s*$//;    # Trim right
+                    $description =~ s/^\s*//;    # Trim left
+        		} else {
+        			$description = "No comments";
+        		}
+        	}
+        	
+        	$clones .= $description . ",";
+        }
+    }
+    
+    # Delete last comma
+    $clones = substr($clones, 0, -1);
+        
+    $callback->( { data => $clones } );
+}
+
+sub findfreenode {
+	# Generate node name based on given group
+	my ( $callback, $group ) = @_;
+    
+    # IP pool contained in /var/opt/xcat/ippool where a file exists per group
+    if ( !(`test -e /var/opt/xcat/ippool/$group.pool && echo Exists`) ) {
+        return;
+    }
+    
+    # IP pool group format: node, IP, hostname
+    # It would look similar to:
+    #   ihost10,10.1.136.10,ihost10.endicott.ibm.com
+    #   ihost11,10.1.136.11,ihost11.endicott.ibm.com
+    #   ihost12,10.1.136.12,ihost12.endicott.ibm.com
+    my $node;
+    my $ipaddr;
+    my $hostname;
+    
+    my $out = `cat /var/opt/xcat/ippool/$group.pool | grep -v "#"`;
+    my @entries = split( /\n/, $out );
+    if (@entries < 1) {
+    	return;
+    }
+    
+    my $found = 0;
+    foreach(@entries) {
+    	# Grab the 1st free entry found
+    	($node, $ipaddr, $hostname) = split(/,/, $_);
+    	if ($node && $ipaddr && $hostname) {
+    		
+    		# Check against xCAT tables, /etc/hosts, and ping to see if hostname is already used
+		    if (`nodels $node` || `cat /etc/hosts | grep "$ipaddr "` || !(`ping -c 4 $ipaddr` =~ m/100% packet loss/)) {        
+		        next;
+		    } else {
+		    	$found = 1;
+		    	return ($node, $ipaddr, $hostname);
+		    }
+    	}
+    }
+
+    return;
 }
 1;

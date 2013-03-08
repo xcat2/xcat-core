@@ -239,22 +239,38 @@ function loadServiceProvisionPage(tabId) {
                 title = 'z/VM';
                 
                 // Get zVM host names
-                if (!$.cookie('zvms')){
-                    $.ajax( {
-                        url : 'lib/srv_cmd.php',
-                        dataType : 'json',
-                        data : {
-                            cmd : 'webportal',
-                            tgt : '',
-                            args : 'lszvm',
-                            msg : ''
-                        },
+                $.ajax({
+                    url : 'lib/srv_cmd.php',
+                    dataType : 'json',
+                    async : false,
+                    data : {
+                        cmd : 'webportal',
+                        tgt : '',
+                        args : 'lszvm',
+                        msg : ''
+                    },
 
-                        success : function(data) {
-                            setzVMCookies(data);
-                        }
-                    });
-                }
+                    success : function(data) {
+                        setzVMCookies(data);
+                    }
+                });
+                
+                // Get master copies for clone
+                $.ajax({
+                    url : 'lib/srv_cmd.php',
+                    dataType : 'json',
+                    async : false,
+                    data : {
+                        cmd : 'webportal',
+                        tgt : '',
+                        args : 'lsgoldenimages',
+                        msg : ''
+                    },
+
+                    success : function(data) {
+                        setGoldenImagesCookies(data);
+                    }
+                });
                 
                 break;
             }
@@ -1077,11 +1093,27 @@ function setUserNodes(data) {
             // where column names are: node, os, arch, profile, provmethod, supportedarchs, nodetype, comments, disable
             var cols = data.rsp[i].split(',');
             var node = cols[0].replace(new RegExp('"', 'g'), '');
-            var owner = cols[7].replace(new RegExp('"', 'g'), '');
-            owner = owner.replace('owner:', '');
             
-            if (owner == userName) {
-                usrNodes.push(node);
+            // Comments can contain the owner and description
+            var comments = new Array();
+            if (cols[7].indexOf(';') > -1) {
+            	comments = cols[7].replace(new RegExp('"', 'g'), '').split(';');
+            } else {
+            	comments.push(cols[7].replace(new RegExp('"', 'g'), ''));
+            }
+            
+            // Extract the owner
+            var owner;
+            for (var j in comments) {
+            	if (comments[j].indexOf('owner:') > -1) {
+            		owner = comments[j].replace('owner:', '');
+            		
+            		if (owner == userName) {
+                        usrNodes.push(node);
+                    }
+            		
+            		break;
+            	}
             }
         } // End of for
         

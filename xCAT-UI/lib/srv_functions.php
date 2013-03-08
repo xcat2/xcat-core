@@ -91,7 +91,7 @@ function submit_request($req, $skipVerify, $opts_array){
         syslog(LOG_INFO, "Sending request: $cmd $nr");
         stream_set_blocking($fp, 0);    // Set as non-blocking
         fwrite($fp,$req->asXML());        // Send XML to xcatd
-        set_time_limit(900);            // Set 15 minutes timeout (for long running requests) 
+        set_time_limit(3600);            // Set 15 minutes timeout (for long running requests) 
                                         // The default is 30 seconds which is too short for some requests
         
         // Turn on output buffering
