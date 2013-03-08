@@ -138,20 +138,32 @@ then
     `rm -f $dir/ifcfg-$nic:*` 2>&1 1>/dev/null
     done
 else
-    for nic in `echo "$NIC_IBNICS" | tr "," "\n"`
-    do     
-        num=${nic##ib}   #this assumes that all the nics starts with 'ib'
-        if [ "$portnum" == "1" ]; then 
-            iba_num=$num
-            ib_adapter="iba$iba_num"
-        else
-            iba_num=`expr $num / 2`
-            ib_adapter="iba$iba_num"
-	fi
-	`rmdev -d -l $nic >/dev/null 2>&1`
-	`rmdev -d -l $ib_adapter >/dev/null 2>&1`
+    loop_number=`lsdev | grep "IP over Infiniband Network Interface" | wc -l`
+    num=0
+    while [ $num -lt $loop_number ]
+    do
+	 if [ "$portnum" == "2" ]; then 
+             num0=`expr $num \* 2`
+             num1=`expr $num0 + 1`
+             `rmdev -d -l ib$num0 >/dev/null 2>&1`
+             `rmdev -d -l ib$num1 >/dev/null 2>&1`
+             `rmdev -d -l ml$num >/dev/null 2>&1`
+             num=`expr $num + 1`
+	 else
+             `rmdev -d -l ib$num >/dev/null 2>&1`
+             n=`expr $num % 2`
+             if [ $n == 1 ]
+             then
+		 mlnum=`expr $num / 2`
+		 `rmdev -d -l ml$mlnum >/dev/null 2>&1`
+             fi
+             num=`expr $num + 1`
+	 fi
     done
+    
     `rmdev -dl icm >/dev/null 2>&1`  
+
+    #restart the managers
     mkdev -c management -s infiniband -t icm
     cfgmgr
 fi
