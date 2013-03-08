@@ -1,0 +1,3 @@
+./etc/ opt/xcat/share/xcat/netboot/genesis/x86_64/fs
+./bin/ opt/xcat/share/xcat/netboot/genesis/x86_64/fs
+./sbin/ opt/xcat/share/xcat/netboot/genesis/x86_64/fs
