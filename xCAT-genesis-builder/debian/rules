@@ -9,19 +9,8 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-export DH_COMPAT=5
-
-export buildroot=$(PWD)/debian/xcat-genesis-$(DEB_BUILD_ARCH)
-
 build:
-	mkdir -p /usr/share/dracut/modules.d/97xcat
-	cp -r * /usr/share/dracut/modules.d/97xcat
-	rm -rf /usr/share/dracut/modules.d/97xcat/debian
-	mv /usr/share/dracut/modules.d/97xcat/install.ubuntu /usr/share/dracut/modules.d/97xcat/install
-	mkdir -p $(buildroot)/opt/xcat/share/xcat/netboot/genesis/$(DEB_BUILD_GNU_CPU)/fs 
-	dracut -m "xcat base" -f /tmp/xcatgenesis.tmp.rfs
-	(cd $(buildroot)/opt/xcat/share/xcat/netboot/genesis/$(DEB_BUILD_GNU_CPU)/fs/ && zcat /tmp/xcatgenesis.tmp.rfs|cpio -dumi)
-	cp /boot/vmlinuz-`uname -r` $(buildroot)/opt/xcat/share/xcat/netboot/genesis/$(DEB_BUILD_GNU_CPU)/kernel
+	pwd
 
 clean:
 	dh_testdir
@@ -33,44 +22,18 @@ install:
 	dh_testdir
 	dh_testroot
 	dh_installdirs
-#	dh_install -X".svn"
-#	dh_link
-
-
-# Build architecture-independent files here.
-binary-indep: build install
-# We have nothing to do by default.
-
-# Build architecture-dependent files here.
-binary-arch:
-	dh_testdir
-	dh_testroot
-	dh_installchangelogs 
-	dh_installdocs
-#	dh_installexamples
-#	dh_install -X".svn"
-#	dh_installmenu
-#	dh_installdebconf	
-#	dh_installlogrotate
-#	dh_installemacsen
-#	dh_installpam
-#	dh_installmime
-#	dh_python
-#	dh_installinit
-#	dh_installcron
-#	dh_installinfo
-	dh_installman
-#	dh_link
-#	dh_strip
+	dh_install
 	dh_compress
-#	dh_fixperms
-	dh_perl
-	dh_makeshlibs
 	dh_installdeb
-	dh_shlibdeps
 	dh_gencontrol
 	dh_md5sums
 	dh_builddeb
+
+# Build architecture-independent files here.
+binary-indep: build install
+
+binary-arch:
+	pwd
 
 binary: binary-indep binary-arch
 .PHONY: build clean binary-indep binary-arch binary install configure
