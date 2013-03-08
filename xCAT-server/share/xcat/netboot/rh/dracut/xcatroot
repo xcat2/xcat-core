@@ -3,6 +3,8 @@ NEWROOT=$3
 RWDIR=.statelite
 XCATMASTER=$XCAT
 
+. /lib/dracut-lib.sh
+rootlimit="$(getarg rootlimit=)"
 if [ ! -z "$imgurl" ]; then
 	if [ xhttp = x${imgurl%%:*} ]; then
 		NFS=0
@@ -41,7 +43,12 @@ if [ -r /rootimg.sfs ]; then
   mount --move /rw $NEWROOT/rw
 elif [ -r /rootimg.gz ]; then
   echo Setting up RAM-root tmpfs.
-  mount -t tmpfs -o mode=755 rootfs $NEWROOT
+  if [ -z $rootlimit ];then
+    mount -t tmpfs -o mode=755 rootfs $NEWROOT
+  else
+    mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
+  fi
+
   cd $NEWROOT
   echo -n "Extracting root filesystem:"
   if [ -x /bin/cpio ]; then
@@ -52,7 +59,13 @@ elif [ -r /rootimg.gz ]; then
   echo Done
 elif [ -r /rootimg-statelite.gz ]; then
   echo Setting up RAM-root tmpfs for statelite mode.
-  mount -t tmpfs -o mode=755 rootfs $NEWROOT
+ 
+  if [ -z $rootlimit];then
+    mount -t tmpfs -o mode=755 rootfs $NEWROOT
+  else
+    mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
+  fi
+
   cd $NEWROOT
   echo -n "Extracting root filesystem:"
   if [ -x /bin/cpio ]; then
