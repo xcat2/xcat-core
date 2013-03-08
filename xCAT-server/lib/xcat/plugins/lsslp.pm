@@ -1056,7 +1056,7 @@ sub parse_responses {
             trace( $request, "Discover node $atthash{hostname}: type is $atthash{type},\
 			mtm is $atthash{mtm},sn is $atthash{serial},  ip is $atthash{ip},\
 			mac is $atthash{mac}, otherinterfaces is $atthash{otherinterfaces}" );
-        }elsif (($type eq SERVICE_FSP) && (${$attributes->{'machinetype-model'}}[0] =~ /^7895|8236/ )) {
+        }elsif (($type eq SERVICE_FSP) && (${$attributes->{'machinetype-model'}}[0] =~ /^7895|1457/ )) {
             #begin to define fsp and bpa
             my %tmphash;
             $tmphash{type} = ($type eq SERVICE_BPA) ? TYPE_BPA : TYPE_FSP;
@@ -1277,7 +1277,7 @@ sub parse_responses {
     trace( $request, "\n\n\nBegin to find fsp/bpa's hostname and parent");
     foreach my $h ( keys %outhash ) {
 	# Added a skip if processing Flex blades
-        if(((${$outhash{$h}}{type} eq TYPE_FSP) && ${$outhash{$h}}{mtm} !~ /^7895|8236/ ) or ${$outhash{$h}}{type} eq TYPE_BPA) {
+        if(((${$outhash{$h}}{type} eq TYPE_FSP) && ${$outhash{$h}}{mtm} !~ /^7895|1457/ ) or ${$outhash{$h}}{type} eq TYPE_BPA) {
             $newhostname = $::OLD_DATA_CACHE{${$outhash{$h}}{type}."*".${$outhash{$h}}{mtm}.'*'.${$outhash{$h}}{serial}.'*'.${$outhash{$h}}{side}};
             if ($newhostname){
                 ${$outhash{$h}}{hostname} = $newhostname ;
