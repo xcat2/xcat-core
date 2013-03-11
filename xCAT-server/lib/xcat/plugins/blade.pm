@@ -4561,11 +4561,11 @@ sub get_blades_for_mpa {
   my %blades_hash = ();
   my $mptab = xCAT::Table->new('mp');
   my $ppctab = xCAT::Table->new('ppc');
-  my @attribs = qw(id pprofile parent hcp);
+  my @attribs = qw(id nodetype parent hcp);
   if (!defined($mptab) or !defined($ppctab)) {
     return undef;
   }
-  my @nodearray = $mptab->getAttribs({mpa=>$mpa,nodetype=>"blade"}, qw(node));
+  my @nodearray = $mptab->getAttribs({mpa=>$mpa}, qw(node));
   my @blades = ();
   my $nodesattrs;
   if (!(@nodearray)) {
@@ -4583,12 +4583,11 @@ sub get_blades_for_mpa {
       my $att = $nodesattrs->{$node}->[0];
       if (!defined($att)) {
           next;
-      } elsif ($att and $att->{parent} and ($att->{parent} ne $mpa)) {
+      } elsif (!defined($att->{parent}) or ($att->{parent} ne $mpa) or !defined($att->{nodetype}) or ($att->{nodetype} ne "blade")) {
           next;
       }
       my $request;
-      my $nodetype = "blade";
-      my $hcp_ip = xCAT::FSPUtils::getIPaddress($request, $nodetype, $att->{hcp});
+      my $hcp_ip = xCAT::FSPUtils::getIPaddress($request, $att->{nodetype}, $att->{hcp});
       if (!defined($hcp_ip) or ($hcp_ip == -3)) {
           next;
       }
