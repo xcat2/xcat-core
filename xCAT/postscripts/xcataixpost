@@ -82,54 +82,54 @@ if (@ARGV<1) {   # not running updatenode
   `logger -t xcat -p local4.info "$::sdate xcataixpost: Running mode=$mode"`;
 }
 my $TFTPDIR=$::opt_tftpdir;
-
-# get hostname
-$::shorthost = `hostname -s`;
-chomp $::shorthost;
-
-my $foundxcatinfo=0;
 my $servnode;
 
 # create new xcatinfo file if -M value is provided
 if ($::opt_M) {
-  if(-f "/etc/xcatinfo") {
- 	 my $cpcmd = "cp /etc/xcatinfo /etc/xcatinfo.orig 2>/dev/null";
-	 if (&runcmd($cpcmd) != 0) {
- 	    `logger -t xcat -p local4.info "$::sdate xcataixpost: Could not copy /etc/xcatinfo file."`;
-	    print $::LOG_FILE "$::sdate xcataixpost: Could not copy /etc/xcatinfo file.\n";
-	 }
-  }
+	if(-f "/etc/xcatinfo") {
+		# backup the old file - or remove ???
+		my $cpcmd = "cp /etc/xcatinfo /etc/xcatinfo.orig 2>/dev/null";
+		if (&runcmd($cpcmd) != 0) {
+			`logger -t xcat -p local4.info "$::sdate xcataixpost: Could not copy /etc/xcatinfo file."`;
+			print $::LOG_FILE "$::sdate xcataixpost: Could not copy /etc/xcatinfo file.\n";
+		}
+	}
 
-   # put the new server in the file
-   my $xcatinfo="/etc/xcatinfo";
-   open(XCATINFO,">",$xcatinfo);
+	# put the new server in the file
+	my $xcatinfo="/etc/xcatinfo";
+	open(XCATINFO,">",$xcatinfo);
 	print XCATINFO "XCATSERVER=$::opt_M\n";
 	close(XCATINFO);
+
+	chomp $::opt_M;
+	$servnode = $::opt_M;
+	$servnode =~ s/^\s*//;
 }
 
-if (-f "/etc/xcatinfo") {
-	# if this file exists assume it has the correct server name
-	my $cmd = "cat /etc/xcatinfo | grep 'XCATSERVER'";
-	&runcmd($cmd);
-	my $SNline = $::outref;
-	my $junk;
-	($junk, $servnode) =  split(/=/, $SNline);
-	chomp $servnode; 
+if ($::opt_m) {
+	chomp $::opt_m;
+	$servnode = $::opt_m;
 	$servnode =~ s/^\s*//;
-	if ($servnode) {
-		$foundxcatinfo=1;
-	}
-} 
+}
 
-if (!$foundxcatinfo) {
-	# get the name of my service node (NIM master) from the /etc/niminfo file
-	if (-f "/etc/niminfo") {
+unless ($servnode) {
 
+	if (-f "/etc/xcatinfo") {
+		# if this file exists assume it has the correct server name
+		my $cmd = "cat /etc/xcatinfo | grep 'XCATSERVER'";
+		&runcmd($cmd);
+		my $SNline = $::outref;
+		my $junk;
+		($junk, $servnode) =  split(/=/, $SNline);
+		chomp $servnode; 
+		$servnode =~ s/^\s*//;
+	} elsif (-f "/etc/niminfo") {
+		# get the name of my service node (NIM master) from /etc/niminfo
 		my $cmd = "cat /etc/niminfo | grep 'NIM_NAME'";
 		&runcmd($cmd);
 		my $line = $::outref;
 		my $junk;
-                my $myname;
+		my $myname;
 		($junk, $myname) =  split(/=/, $line);
 		chomp $myname;
 		if ($myname ne "master") {
@@ -147,28 +147,22 @@ if (!$foundxcatinfo) {
 				close(XCATINFO);
 			}
 		}
-	} else {
-		`logger -t xcat -p local4.info "$::sdate  xcataixpost: Could not find /etc/niminfo file."`;
-		print $::LOG_FILE "$::sdate  xcataixpost: Could not find /etc/niminfo file.\n";
 	}
 }
 
-# do ping test on server and use -m value if provides
-if ($servnode) {
-	my $pcmd = "ping -c 2 -w 2 $servnode";
-	if (&runcmd($pcmd) != 0) {
-		$servnode = "";
-		if ($::opt_m) {
-			chomp $::opt_m;
-			$servnode = $::opt_m;
-		}
-	} 
+unless ($servnode) {
+	`logger -t xcat -p local4.info " $::sdate  xcataixpost: Could not determine server name."`;
+    print $::LOG_FILE "$::sdate  xcataixpost: Could not determine server name.\n
+";
+    exit 1;
 }
 
-unless ($servnode) {
-   `logger -t xcat -p local4.info " $::sdate  xcataixpost: Could not determine server name."`;
-	print $::LOG_FILE "$::sdate  xcataixpost: Could not determine server name.\n";
-    exit 0;
+# get the xCAT hostname for this node
+my $xcatname = &getxcatname($servnode);
+if (!$xcatname) {
+    print "$::sdate  xcataixpost: Could not determine xCAT node name.\n";
+    print $::LOG_FILE "$::sdate  xcataixpost: Could not determine xCAT node name.\n";
+    exit 1;
 }
 
 # create the xcatpost dir
@@ -179,7 +173,7 @@ if (&runcmd($cmd) != 0) {
 }
 
 # request the xCAT postscript for this particular node
-my $scriptname = "/xcatpost/myxcatpost_" . $::shorthost;
+my $scriptname = "/xcatpost/myxcatpost_" . $xcatname;
 if (&getmypost != 0) {
     `logger -t xcat -p local4.info "$::sdate xcataixpost: Could not get the xCAT post script for this node."`;
     print $::LOG_FILE "$::sdate xcataixpost: Could not get the xCAT post script for this node.\n";
@@ -343,8 +337,8 @@ run_ps () {
     print $::outref;
     print $::LOG_FILE "$::sdate  xcataixpost: outref = $::outref\n";
 } else {
-	`logger -t xcat -p local4.info "$::sdate  xcataixpost: Could not find post script for $::shorthost."`;
-	print $::LOG_FILE "$::sdate  xcataixpost: Could not find post script for $::shorthost.\n";
+	`logger -t xcat -p local4.info "$::sdate  xcataixpost: Could not find post script for $xcatname."`;
+	print $::LOG_FILE "$::sdate  xcataixpost: Could not find post script for $xcatname.\n";
 }
 
 if (@ARGV<1) {   # not running updatenode
@@ -562,14 +556,13 @@ sub  getmypost {
         $TFTPDIR="/tftpboot";
     }
 
-    `mkdir -p /xcatpost; cd /xcatpost; tftp -o $scriptname $servnode $TFTPDIR/mypostscripts/mypostscript.$::shorthost.tmp`;
-    # `wget -N --waitretry=10 --random-wait -T 60 http://$servnode$TFTPDIR/mypostscripts/mypostscript.$::shorthost  -P /xcatpost 2>> /tmp/wget.log;  mv /xcatpost/mypostscript.$::shorthost $scriptname`;
+    `mkdir -p /xcatpost; cd /xcatpost; tftp -o $scriptname $servnode $TFTPDIR/mypostscripts/mypostscript.$xcatname.tmp`;
+    # `wget -N --waitretry=10 --random-wait -T 60 http://$servnode$TFTPDIR/mypostscripts/mypostscript.$xcatname  -P /xcatpost 2>> /tmp/wget.log;  mv /xcatpost/mypostscript.$xcatname $scriptname`;
 
     if(!( -f $scriptname)) {
          `logger -t xcat -p local4.info  "$::sdate  xcataixpost: Cold not get the $scriptname from $TFTPDIR/mypostscripts/ on \'$servnode\'"`;
         print $::LOG_FILE "$::sdate  xcataixpost: could not get the $scriptname from /$servnode$TFTPDIR/mypostscripts/ on \'$servnode\'\n";
         return 1;
-
     }
 
     my $content;
@@ -597,11 +590,7 @@ sub  getmypost {
     
     close $content;
     return 0;
-
 }
-
-
-
 
 ############################################################
 #
@@ -678,4 +667,48 @@ sub runcmd
         }
     }
  return $rc;
+}
+
+############################################################
+#
+#   getxcatname
+#     determines the name of this node as it is know by xCAT
+#
+############################################################
+sub getxcatname
+{
+	my $serv=shift;
+
+	my $xcatname;
+
+	#  find out what interface we use to contact the server
+	my $tcmd=qq~/bin/traceroute $serv~;
+	if (&runcmd($tcmd) != 0) {
+		print "$::sdate xcataixpost: Could not run traceroute.\n";
+		print $::LOG_FILE "$::sdate xcataixpost: Could not run traceroute\n";
+		return undef;
+	}
+
+	my $NIP;
+	my @lines = ( split(/\n/, $::outref));
+	foreach my $l (@lines)
+	{
+		if ($l =~ /^source should be/) {
+			my ($n1, $n2, $n3, $nip) = split(/\s+/, $l);
+			chomp $l;
+			$l =~ s/^\s+//;
+			$NIP=$nip;
+		}
+	}
+
+	# if not found 
+	if (!$NIP) {
+		$xcatname=hostname();
+		$xcatname =~ s/\..*//;
+	} else {
+		my $hostname=gethostbyaddr(inet_aton($NIP), AF_INET);
+		# get the short hostname for the interface
+		($xcatname = $hostname) =~ s/\..*//;
+	}
+	return $xcatname;
 }
