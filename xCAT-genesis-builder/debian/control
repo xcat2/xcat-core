@@ -8,6 +8,8 @@ Standards-Version: 3.7.2
 Package: xcat-genesis-base-amd64
 Architecture: all
 Depends: 
+Replaces: xcat-genesis-amd64
+Breaks: xcat-genesis-amd64
 Description: xCAT Genesis netboot image
  xCAT genesis (Genesis Enhanced Netboot Environment for System Information
  and Servicing) is a small, embedded-like environment for xCAT's use in
