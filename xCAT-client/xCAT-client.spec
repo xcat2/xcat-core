@@ -298,7 +298,7 @@ if ! egrep XCATROOT /etc/environment > /dev/null 2>&1 ; then
 echo "
 # xCAT setup
 XCATROOT=$RPM_INSTALL_PREFIX0
-PATH=\$XCATROOT/bin:\$XCATROOT/sbin:$PATH
+PATH=\$XCATROOT/bin:\$XCATROOT/sbin:\$XCATROOT/share/xcat/tools:$PATH
 MANPATH=\$XCATROOT/share/man:\$MANPATH
 " >> /etc/environment
 fi
@@ -307,7 +307,7 @@ if ! egrep XCATROOT /etc/profile  > /dev/null 2>&1 ; then
 echo "
 # xCAT setup
 XCATROOT=$RPM_INSTALL_PREFIX0
-PATH=\$XCATROOT/bin:\$XCATROOT/sbin:$PATH
+PATH=\$XCATROOT/bin:\$XCATROOT/sbin:\$XCATROOT/share/xcat/tools:$PATH
 MANPATH=\$XCATROOT/share/man:\$MANPATH
 export XCATROOT PATH MANPATH
 " >>/etc/profile
