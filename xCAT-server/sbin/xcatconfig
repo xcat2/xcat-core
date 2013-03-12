@@ -231,14 +231,14 @@ if ($::INITIALINSTALL || $::FORCE || $::genSSHRootKeys)
 #
 #	Update /etc/profile on AIX
 #
-if ($::INITIALINSTALL)
+if (($::INITIALINSTALL) ||($::UPDATEINSTALL))
 {
     my $profname = "/etc/profile";
     if ($::osname eq 'AIX')
     {
         my $cmd = qq~cat $profname | grep "XCATROOT"~;
         my $outref = xCAT::Utils->runcmd("$cmd", -1);
-        if ($::RUNCMD_RC != 0)
+        if ($::RUNCMD_RC != 0)  # no xcat paths in the /etc/profile
         {
 
             # make back up file
@@ -251,12 +251,25 @@ if ($::INITIALINSTALL)
 
             # add xCAT paths
             my $eccmd =
-              qq~echo '# xCAT setup\nXCATROOT=$::XCATROOT\nPATH=\$XCATROOT/bin:\$XCATROOT/sbin:\$PATH\nMANPATH=\$XCATROOT/share/man:\$MANPATH\nexport XCATROOT PATH MANPATH' >>$profname~;
+              qq~echo '# xCAT setup\nXCATROOT=$::XCATROOT\nPATH=\$XCATROOT/bin:\$XCATROOT/sbin:\$XCATROOT/share/xcat/tools:\$PATH\nMANPATH=\$XCATROOT/share/man:\$MANPATH\nexport XCATROOT PATH MANPATH' >>$profname~;
             $outref = xCAT::Utils->runcmd("$eccmd", 0);
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message('E', "Could not update $profname.");
             }
+        } else {  # xcat path is there, maybe  need to add /share/xcat/tools
+           my $cmd = qq~cat $profname | grep "/share/xcat/tools"~;
+           my $outref = xCAT::Utils->runcmd("$cmd", -1);
+           if ($::RUNCMD_RC != 0)  # no tools paths in the /etc/profile
+           {
+            my $eccmd =
+              qq~echo 'PATH=\$XCATROOT/share/xcat/tools:\$PATH\nexport MANPATH' >>$profname~;
+             $outref = xCAT::Utils->runcmd("$eccmd", 0);
+             if ($::RUNCMD_RC != 0)
+             {
+                xCAT::MsgUtils->message('E', "Could not update $profname.");
+             }
+           }
         }
     }
 }
