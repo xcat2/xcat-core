@@ -86,7 +86,17 @@ my $servnode;
 
 # create new xcatinfo file if -M value is provided
 if ($::opt_M) {
+	my $myname;
 	if(-f "/etc/xcatinfo") {
+		# get the node name from the original file
+		my $cmd = "cat /etc/xcatinfo | grep 'NODE'";
+        &runcmd($cmd);
+        my $SNline = $::outref;
+        my $junk;
+        ($junk, $myname) =  split(/=/, $SNline);
+        chomp $myname;
+        $myname =~ s/^\s*//;		
+
 		# backup the old file - or remove ???
 		my $cpcmd = "cp /etc/xcatinfo /etc/xcatinfo.orig 2>/dev/null";
 		if (&runcmd($cpcmd) != 0) {
@@ -95,15 +105,17 @@ if ($::opt_M) {
 		}
 	}
 
+	chomp $::opt_M;
+    $servnode = $::opt_M;
+    $servnode =~ s/^\s*//;
+
 	# put the new server in the file
 	my $xcatinfo="/etc/xcatinfo";
 	open(XCATINFO,">",$xcatinfo);
-	print XCATINFO "XCATSERVER=$::opt_M\n";
+	print XCATINFO "XCATSERVER=$servnode\n";
+	# use the NODE name from the existing xcatinfo file
+	print XCATINFO "NODE=$myname\n";
 	close(XCATINFO);
-
-	chomp $::opt_M;
-	$servnode = $::opt_M;
-	$servnode =~ s/^\s*//;
 }
 
 if ($::opt_m) {
@@ -128,9 +140,7 @@ unless ($servnode) {
 		my $cmd = "cat /etc/niminfo | grep 'NIM_NAME'";
 		&runcmd($cmd);
 		my $line = $::outref;
-		my $junk;
-		my $myname;
-		($junk, $myname) =  split(/=/, $line);
+		my ($junk, $myname) =  split(/=/, $line);
 		chomp $myname;
 		if ($myname ne "master") {
 			$cmd = "cat /etc/niminfo | grep 'NIM_MASTER_HOSTNAME'";
@@ -144,6 +154,7 @@ unless ($servnode) {
 				my $xcatinfo="/etc/xcatinfo";
 				open(XCATINFO,">",$xcatinfo);
 				print XCATINFO "XCATSERVER=$servnode\n";
+				print XCATINFO "NODE=$myname\n";
 				close(XCATINFO);
 			}
 		}
@@ -680,35 +691,54 @@ sub getxcatname
 	my $serv=shift;
 
 	my $xcatname;
+	my $node;
 
-	#  find out what interface we use to contact the server
-	my $tcmd=qq~/bin/traceroute $serv~;
-	if (&runcmd($tcmd) != 0) {
-		print "$::sdate xcataixpost: Could not run traceroute.\n";
-		print $::LOG_FILE "$::sdate xcataixpost: Could not run traceroute\n";
-		return undef;
-	}
+	# check the /etc/xcatinfo first
+	if (-f "/etc/xcatinfo") {
+        # if this file exists assume it has the correct xcat node name
+        my $cmd = "cat /etc/xcatinfo | grep 'NODE'";
+        &runcmd($cmd);
+        my $SNline = $::outref;
+		my $junk;
+        ($junk, $node) =  split(/=/, $SNline);
+    } 
 
-	my $NIP;
-	my @lines = ( split(/\n/, $::outref));
-	foreach my $l (@lines)
-	{
-		if ($l =~ /^source should be/) {
-			my ($n1, $n2, $n3, $nip) = split(/\s+/, $l);
-			chomp $l;
-			$l =~ s/^\s+//;
-			$NIP=$nip;
+	if (!$node) {
+
+		#  find out what interface we use to contact the server
+		my $tcmd=qq~/bin/traceroute $serv~;
+		if (&runcmd($tcmd) != 0) {
+			print "$::sdate xcataixpost: Could not run traceroute.\n";
+			print $::LOG_FILE "$::sdate xcataixpost: Could not run traceroute\n";
+			return undef;
+		}
+
+		my $NIP;
+		my @lines = ( split(/\n/, $::outref));
+		foreach my $l (@lines)
+		{
+			if ($l =~ /^source should be/) {
+				my ($n1, $n2, $n3, $nip) = split(/\s+/, $l);
+				chomp $nip;
+				$NIP=$nip;
+			}
+		}
+
+		if (!$NIP) {
+			# if not found then use the primary hostname of this node
+			$node=hostname();
+		} else {
+			# otherwise just get the hostname from the ip
+			$node=gethostbyaddr(inet_aton($NIP), AF_INET);
 		}
 	}
 
-	# if not found 
-	if (!$NIP) {
-		$xcatname=hostname();
-		$xcatname =~ s/\..*//;
+	if ($node) {
+		# make sure we have the short hostname
+		chomp $node;
+		($xcatname=$node) =~ s/\..*//;
+		return $xcatname;
 	} else {
-		my $hostname=gethostbyaddr(inet_aton($NIP), AF_INET);
-		# get the short hostname for the interface
-		($xcatname = $hostname) =~ s/\..*//;
+		return undef;
 	}
-	return $xcatname;
 }
