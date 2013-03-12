@@ -67,7 +67,7 @@ sub handled_commands {
     rbootseq => 'nodehm:mgt',
     reventlog => 'nodehm:mgt=blade|fsp',
     switchblade => 'nodehm:mgt',
-    renergy => 'nodehm:mgt',
+    renergy => 'nodehm:mgt=blade|fsp|ipmi',
     lsflexnode => 'blade',
     mkflexnode => 'blade',
     rmflexnode => 'blade',
@@ -2277,6 +2277,12 @@ my $savingstatus_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.6";    #bladeDetailsP
 my $dsavingstatus_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.7";    #bladeDetailsDynamicPowerSaver
 my $dsperformance_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.8";    #bladeDetailsDynamicPowerFavorPerformanceOverPower
 
+# New attributes which supported by CMM
+#".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.9"; #bladeDetailsPowerControl
+#".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.10"; #bladeDetailsPcapMin
+#".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.11"; #bladeDetailsPcapGuaranteedMin
+#".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.12"; #bladeDetailsPcapMax
+
 # The meaning of obj fuelGaugePowerManagementPolicySetting
 my %pdpolicymap = (
     '0' => "redundantWithoutPerformanceImpact",
@@ -2301,10 +2307,8 @@ my %capabilitymap = (
 
 # The valid attributes the renergy command can support
 # 1 for readonly; 2 for write; 3 readwrite
+
 my %mm_valid_items = (
-    'all' => 1,
-    'pd1all' => 1,
-    'pd2all' => 1,
     'pd1status' => 1,
     'pd2status' => 1,
     'pd1policy' => 1,
@@ -2327,8 +2331,45 @@ my %mm_valid_items = (
     'ambienttemp' => 1,
     'mmtemp' => 1,
 );
+
+my %cmm_valid_items = (
+    'powerstatus' => 1,
+    'powerpolicy' => 1,
+    'powermodule' => 1,
+    'avaiablepower' => 1,
+    'reservedpower' => 1,
+    'remainpower' => 1,
+    'inusedpower' => 1,
+    'availableDC' => 1,
+    'averageAC' => 1,
+    'thermaloutput' => 1,
+    'ambienttemp' => 1,
+    'mmtemp' => 1,
+);
+
+my %pd1_valid_items = (
+    'pd1status' => 1,
+    'pd1policy' => 1,
+    'pd1powermodule1' => 1,
+    'pd1powermodule2' => 1,
+    'pd1avaiablepower' => 1,
+    'pd1reservedpower' => 1,
+    'pd1remainpower' => 1,
+    'pd1inusedpower' => 1,
+);
+
+my %pd2_valid_items = (
+    'pd2status' => 1,
+    'pd2policy' => 1,
+    'pd2powermodule1' => 1,
+    'pd2powermodule2' => 1,
+    'pd2avaiablepower' => 1,
+    'pd2reservedpower' => 1,
+    'pd2remainpower' => 1,
+    'pd2inusedpower' => 1,
+);
+
 my %blade_valid_items = (
-    'all' => 1,
     'averageDC' => 1,
     'cappingmaxmin' => 0,
     'cappingmax' => 0,
@@ -2343,6 +2384,20 @@ my %blade_valid_items = (
     'dsavingstatus' => 3,
 );
 
+my %flex_blade_valid_items = (
+    'averageDC' => 1,
+    'cappingmaxmin' => 1,
+    'cappingmax' => 1,
+    'cappingmin' => 1,
+    'capability' => 1,
+    'cappingvalue' => 1,
+    'cappingwatt' => 2,
+    'cappingperc' => 2,
+    'CPUspeed' => 1,
+    'maxCPUspeed' => 1,
+    'savingstatus' => 3,
+    'dsavingstatus' => 3,
+);
 
 # use the slot number of serverblade to get the powerdomain number
 # and the bay number in the powerdomain
@@ -2381,6 +2436,9 @@ sub getpdbayinfo {
             $pdnum = 1;
             $pdbay = $slot + 17;
         } 
+    } elsif ($bc_type =~ /^7893$/) { # for flex
+        $pdnum = 1;
+        $pdbay = $slot + 24;
     } else { # for common blade center
         if ($slot < 7) {
             $pdnum = 1;
@@ -2410,6 +2468,7 @@ sub renergy {
     my $bc_type = ""; 
     
     #check the validity of all the attributes
+    
     my @readlist = ();
     my %writelist = ();
     my @r4wlist = ();
@@ -2417,58 +2476,99 @@ sub renergy {
         if (!$item) {
             next;
         }
+        my $readpath = ();
+        my $checkpath = ();
         if ($item =~ /^all$/) {
             if ($mpa eq $node) {
                 #handle the mm itself
-                push @readlist, ('pd1status','pd2status','pd1policy','pd2policy',
-                    'pd1powermodule1','pd1powermodule2','pd2powermodule1',
-                    'pd2powermodule2','pd1avaiablepower','pd2avaiablepower',
-                    'pd1reservedpower','pd2reservedpower','pd1remainpower',
-                    'pd2remainpower','pd1inusedpower','pd2inusedpower',
-                    'availableDC','averageAC','thermaloutput','ambienttemp',
-                    'mmtemp');
+                if ($mptype eq "cmm") {
+                    $readpath = \%cmm_valid_items;
+                } else { # Assume it's AMM
+                    $readpath = \%mm_valid_items;
+                }
             } else {
-                push @readlist, ('averageDC','capability','cappingvalue','CPUspeed','maxCPUspeed','savingstatus','dsavingstatus');
+                if ($mptype eq "cmm") {
+                    $readpath = \%flex_blade_valid_items;
+                } else { # Assume it's AMM
+                    $readpath = \%blade_valid_items;
+                }
             }
         } elsif ($item =~ /^pd1all$/) {
-            push @readlist, ('pd1status','pd1policy','pd1powermodule1',
-                'pd1powermodule2','pd1avaiablepower','pd1reservedpower',
-                'pd1remainpower','pd1inusedpower');
+            if ($mpa ne $node) {
+                return (1, "pd1all is NOT available for flex or blade center server.");
+            }
+            if ($mptype eq "cmm") { # It only works for AMM
+                return (1, "pd1all is NOT available for flex chassis.");
+            }
+            $readpath = \%pd1_valid_items;
         } elsif ($item =~ /^pd2all$/) {
-            push @readlist, ('pd2status','pd2policy','pd2powermodule1',
-                'pd2powermodule2','pd2avaiablepower','pd2reservedpower',
-                'pd2remainpower','pd2inusedpower');
+            if ($mpa ne $node) {
+                return (1, "pd2all is NOT available for flex or blade center server.");
+            }
+            if ($mptype eq "cmm") { # It only works for AMM
+                return (1, "pd2all is NOT available for flex chassis.");
+            }
+            $readpath = \%pd2_valid_items;
         } elsif ($item =~ /^cappingmaxmin$/) {
             push @readlist, ('cappingmin','cappingmax');
         } elsif ($item =~ /(.*)=(.*)/) {
             my $name = $1;
             my $value = $2;
             if ($mpa eq $node) {
-                if ($mm_valid_items{$name} < 2) {
-                    return (1, "$name is NOT writable.");
+                if ($mptype eq "cmm") {
+                    $checkpath = \%cmm_valid_items;
+                } else {
+                    $checkpath = \%mm_valid_items;
                 }
             } else {
-                if ($blade_valid_items{$name} < 2) {
-                    return (1, "$name is NOT writable.");
+                if ($mptype eq "cmm") {
+                    $checkpath = \%flex_blade_valid_items;
+                } else {
+                    $checkpath = \%blade_valid_items;
                 }
             }
+            
+            if ($checkpath->{$name} < 2) {
+                return (1, "$name is NOT writable.");
+            }
+                
             $writelist{$name} = $value;
-            #if ($name eq "cappingwatt" || $name eq "cappingperc") {
-            #    push @r4wlist, ('cappingmin','cappingmax');
-            #}
+            if ($name eq "cappingwatt" || $name eq "cappingperc") {
+                push @r4wlist, ('cappingmin','cappingmax');
+            }
         } else {
             if ($mpa eq $node) {
-                if ($mm_valid_items{$item} != 1 && $mm_valid_items{$item} != 3) {
-                    return (1, "$item is NOT a valid attribute.");
+                if ($mptype eq "cmm") {
+                    $checkpath = \%cmm_valid_items;
+                } else {
+                    $checkpath = \%mm_valid_items;
                 }
             } else {
-                if ($blade_valid_items{$item} != 1 && $blade_valid_items{$item} != 3) {
-                    return (1, "$item is NOT a valid attribute.");
+                if ($mptype eq "cmm") {
+                    $checkpath = \%flex_blade_valid_items;
+                } else {
+                    $checkpath = \%blade_valid_items;
                 }
             }
+
+            if ($checkpath->{$item} != 1 && $checkpath->{$item} != 3) {
+                return (1, "$item is NOT a valid attribute.");
+            }
+
             push @readlist, $item;
         }
+
+        # Handle the attribute equals 'all', 'pd1all', 'pd2all'
+        if ($readpath) {
+            foreach (keys %$readpath) {
+                if ($readpath->{$_} == 1 || $readpath->{$_} == 3) {
+                    if (/^cappingmaxmin$/) { next;}
+                    push @readlist, $_;
+                }
+            }
+        }
     }
+
 
     # does not support to read and write in one command
     if ( @readlist && %writelist ) {
@@ -2496,15 +2596,15 @@ sub renergy {
     my @output = ();
     foreach my $item (sort(@readlist)) {
         my $oid = "";
-        if ($item eq "pd1status") {
+        if ($item =~ /^(pd1status|powerstatus)$/) {
             $oid = $pdstatus_oid.".1";
         } elsif ($item eq "pd2status") {
             $oid = $pdstatus_oid.".2";
-        } elsif ($item eq "pd1policy") {
+        } elsif ($item =~ /^(pd1policy|powerpolicy)$/) {
             $oid = $pdpolicy_oid.".1";
         } elsif ($item eq "pd2policy") {
             $oid = $pdpolicy_oid.".2";
-        } elsif ($item eq "pd1powermodule1") {
+        } elsif ($item =~ /^(pd1powermodule1|powermodule)$/) {
             $oid = $pdmodule1_oid.".1";
         } elsif ($item eq "pd2powermodule1") {
             $oid = $pdmodule1_oid.".2";
@@ -2512,19 +2612,19 @@ sub renergy {
             $oid = $pdmodule2_oid.".1";
         } elsif ($item eq "pd2powermodule2") {
             $oid = $pdmodule2_oid.".2";
-        } elsif ($item eq "pd1avaiablepower") {
+        } elsif ($item =~ /^(pd1avaiablepower|avaiablepower)$/) {
             $oid = $pdavailablepower_oid.".1";
         } elsif ($item eq "pd2avaiablepower") {
             $oid = $pdavailablepower_oid.".2";
-        } elsif ($item eq "pd1reservedpower") {
+        } elsif ($item =~ /^(pd1reservedpower|reservedpower)$/) {
             $oid = $pdreservepower_oid.".1";
         } elsif ($item eq "pd2reservedpower") {
             $oid = $pdreservepower_oid.".2";
-        } elsif ($item eq "pd1remainpower") {
+        } elsif ($item =~ /^(pd1remainpower|remainpower)$/) {
             $oid = $pdremainpower_oid.".1";
         } elsif ($item eq "pd2remainpower") {
             $oid = $pdremainpower_oid.".2";
-        } elsif ($item eq "pd1inusedpower") {
+        } elsif ($item =~ /^(pd1inusedpower|inusedpower)$/) {
             $oid = $pdinused_oid.".1";
         } elsif ($item eq "pd2inusedpower") {
             $oid = $pdinused_oid.".2";
@@ -2585,7 +2685,7 @@ sub renergy {
             if ($data ne "" 
                 && $data ne "NOSUCHINSTANCE"
                 && $data ne "notApplicable" ) {
-                if ($item =~ /pd[1|2]policy/) {
+                if ($item =~ /^(pd1|pd2|power)policy$/) {
                     push @output, "$item: $pdpolicymap{$data}";
                 } elsif ($item eq "capability") {
                     push @output, "$item: $capabilitymap{$data}";
@@ -2834,6 +2934,8 @@ sub renergy {
                     }
                 }
             }
+        } else {
+            return (1, "$item is NOT a valid attribute..");
         }
 
         push @output, "$item: Set operation succeeded.";
@@ -3690,8 +3792,8 @@ sub preprocess_request {
 
   #parse the arguments for commands
   if ($command eq "getmacs") {
-    my (@mpnodes, @fspnodes, @nohandle);
-    filter_nodes($request, \@mpnodes, \@fspnodes, \@nohandle);
+    my (@mpnodes, @nohandle);
+    xCAT::Utils->filter_nodes($request, \@mpnodes, undef, undef, \@nohandle);
     if (@nohandle) {
         $callback->({data=>"Cannot figure out plugin for nodes:@nohandle"});
     }
@@ -3728,12 +3830,22 @@ sub preprocess_request {
         $request = {};
         return;
     }
-  #} elsif ($command eq "rspconfig") {
+    my (@mpnodes, @nohandle);
+    xCAT::Utils->filter_nodes($request, \@mpnodes, undef, undef, \@nohandle);
+    if (@nohandle) {
+        $callback->({data=>"Error: Cannot figure out plugin for nodes:@nohandle"});
+    }
+    if (@mpnodes) {
+      $noderange = \@mpnodes;
+    } else {
+      $request = {};
+      return;
+    }
   } elsif ($command =~  /^(rspconfig|rvitals)$/) {
     # All the nodes with mgt=blade or mgt=fsp will get here
     # filter out the nodes for blade.pm 
-    my (@mpnodes, @fspnodes, @nohandle);
-    filter_nodes($request, \@mpnodes, \@fspnodes, \@nohandle);
+    my (@mpnodes, @nohandle);
+    xCAT::Utils->filter_nodes($request, \@mpnodes, undef, undef, \@nohandle);
     if (@nohandle) {
         $callback->({data=>"Cannot figure out plugin for nodes:@nohandle"});
     }
@@ -3767,10 +3879,19 @@ sub preprocess_request {
       return [];
   }
 
+  my %mpatype = ();
   foreach my $node (@$noderange) {
     my $ent=$mptabhash->{$node}->[0]; #$mptab->getNodeAttribs($node,['mpa', 'id']);
-    if (defined($ent->{mpa})) { push @{$mpa_hash{$ent->{mpa}}{nodes}}, $node;}
-    elsif ($indiscover) {
+    my $mpaent;
+    if (defined($ent->{mpa})) { 
+        push @{$mpa_hash{$ent->{mpa}}{nodes}}, $node;
+        unless ($mpatype{$ent->{mpa}}) {
+            my $mpaent = $mptab->getNodeAttribs($ent->{mpa},['nodetype']);
+            if ($mpaent && $mpaent->{'nodetype'}) {
+                $mpatype{$ent->{mpa}} = $mpaent->{'nodetype'};
+            }
+        }
+    } elsif ($indiscover) {
 	next;
     } else {
         $callback->({data=>["no mpa defined for node $node"]});
@@ -3779,7 +3900,7 @@ sub preprocess_request {
     }
     if (defined($ent->{id})) { push @{$mpa_hash{$ent->{mpa}}{ids}}, $ent->{id};}
     else { push @{$mpa_hash{$ent->{mpa}}{ids}}, "";} 
-    if (defined($ent->{nodetype})) { push @{$mpa_hash{$ent->{mpa}}{nodetype}}, $ent->{nodetype};}
+    if (defined($mpatype{$ent->{mpa}})) { push @{$mpa_hash{$ent->{mpa}}{nodetype}}, $mpatype{$ent->{mpa}};}
     else { push @{$mpa_hash{$ent->{mpa}}{nodetype}}, "mm";}
   }
 
@@ -3811,94 +3932,6 @@ sub preprocess_request {
   return \@requests;
 }
 
-##########################################################################
-# Fliter the nodes that are NGP ppc blade node or common fsp node
-# For rspconfig network, the NGP ppc blade will be included in the group of mp, othewise in the fsp group
-# For getmacs -D, the NGP ppc blade will be included in the group of common fsp, otherwise in the mp group
-##########################################################################
-sub filter_nodes{
-    my ($req, $mpnodes, $fspnodes, $nohandle) = @_;
-
-    my (@nodes,@args,$cmd);
-    if (defined($req->{'node'})) {
-      @nodes = @{$req->{'node'}};
-    } else {
-      return 1;
-    }
-    if (defined($req->{'command'})) {
-      $cmd = $req->{'command'}->[0];
-    }
-    if (defined($req->{'arg'})) {
-      @args = @{$req->{'arg'}};
-    }
-    # get the nodes in the mp table
-    my $mptabhash;
-    my $mptab = xCAT::Table->new("mp");
-    if ($mptab) {
-        $mptabhash = $mptab->getNodesAttribs(\@nodes, ['mpa','nodetype']);
-    }
-
-    # get the parent of the service processor
-    # for the NGP ppc blade, the ppc.parent is the mpa
-    my $ppctabhash;
-    my $ppctab = xCAT::Table->new("ppc");
-    if ($ppctab) {
-        $ppctabhash = $ppctab->getNodesAttribs(\@nodes,['nodetype']);
-    }
-
-    my (@mp, @ngpfsp, @commonfsp, @unknow);
-    my %fspparent;
-    # Get the parent for each node
-    foreach (@nodes) {
-      if (defined ($mptabhash->{$_}->[0]->{'mpa'})) {
-        if (defined ($ppctabhash->{$_}->[0]->{'nodetype'}) && ($ppctabhash->{$_}->[0]->{'nodetype'} eq "blade")) {
-          push @ngpfsp, $_;
-          next;
-        }
-        else {
-          # Non NGP power blade
-          push @mp, $_;
-          next;
-        }
-      } elsif (defined ($ppctabhash->{$_}->[0]->{'nodetype'})) { 
-        # otherwise, this is a general power node
-        push @commonfsp, $_;
-      } else {
-        push @unknow, $_;
-      }
-    }
-
-    push @{$mpnodes}, @mp;
-    push @{$fspnodes}, @commonfsp;
-    if (@args && ($cmd eq "rspconfig")) {
-      if (!(grep /^(cec_off_policy|pending_power_on_side)/, @args))  {
-          push @{$mpnodes}, @ngpfsp;
-      } else {
-          push @{$fspnodes}, @ngpfsp;
-      }
-    } elsif($cmd eq "getmacs") {
-      if (@args && (grep /^-D$/,@args)) {
-        push @{$fspnodes}, @ngpfsp;
-      } else { 
-        push @{$mpnodes}, @ngpfsp;
-      }
-    } elsif ($cmd eq "rvitals") {
-        if (@args && (grep /^lcds$/,@args)) {
-            push @{$fspnodes},@ngpfsp;
-        } else {
-            push @{$mpnodes}, @ngpfsp;
-        }
-    } else {
-      push @{$fspnodes}, @ngpfsp;
-    }
-
-    push @{$nohandle}, @unknow;
-
-    ## TRACE_LINE print "Nodes filter: nodetype [commp:@mp,ngpp:@ngpfsp,comfsp:@commonfsp]. mpnodes [@{$mpnodes}], fspnodes [@{$fspnodes}]\n";
-    return 0;
-}
-
-
 sub build_more_info{
   my $noderange=shift;
   my $callback=shift;
@@ -3912,16 +3945,24 @@ sub build_more_info{
   my %mpa_hash=();
   my $mptabhash = $mptab->getNodesAttribs($noderange,['mpa','id','nodetype']);
 
+  my %mpatype = ();
   foreach my $node (@$noderange) {
     my $ent=$mptabhash->{$node}->[0]; #$mptab->getNodeAttribs($node,['mpa', 'id']);
-    if (defined($ent->{mpa})) { push @{$mpa_hash{$ent->{mpa}}{nodes}}, $node;}
-    else {
+    if (defined($ent->{mpa})) { 
+        push @{$mpa_hash{$ent->{mpa}}{nodes}}, $node;
+        unless ($mpatype{$ent->{mpa}}) {
+            my $mpaent = $mptab->getNodeAttribs($ent->{mpa},['nodetype']);
+            if ($mpaent && $mpaent->{'nodetype'}) {
+                $mpatype{$ent->{mpa}} = $mpaent->{'nodetype'};
+            }
+        }
+    } else {
         $callback->({data=>["no mpa defined for node $node"]});
         return @moreinfo;;
     }
     if (defined($ent->{id})) { push @{$mpa_hash{$ent->{mpa}}{ids}}, $ent->{id};}
     else { push @{$mpa_hash{$ent->{mpa}}{ids}}, "";} 
-    if (defined($ent->{nodetype})) { push @{$mpa_hash{$ent->{mpa}}{nodetype}}, $ent->{nodetype};}
+    if (defined($mpatype{$ent->{mpa}})) { push @{$mpa_hash{$ent->{mpa}}{nodetype}}, $mpatype{$ent->{mpa}};}
     else { push @{$mpa_hash{$ent->{mpa}}{nodetype}}, "mm";} 
   }
 

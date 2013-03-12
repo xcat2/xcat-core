@@ -3507,7 +3507,6 @@ sub got_sel {
         if ($sessdata->{bmcnum} !=1) {
 		$text .= " on BMC ".$sessdata->{bmcnum};
 	}
-
         if ($sessdata->{auxloginfo} and $sessdata->{auxloginfo}->{$entry}) {
              $text.=" with additional data:";
              if ($sessdata->{fullsel} || ( $sessdata->{numevents}
@@ -4433,7 +4432,8 @@ sub renergy {
     my $sessdata = shift;
     my @subcommands = @{$sessdata->{extraargs}};
     unless ($iem_support) {
-        return (1,"Command unsupported without IBM::EnergyManager installed");
+        xCAT::SvrUtils::sendmsg("Command unsupported without IBM::EnergyManager installed",$callback,$sessdata->{node});
+        return;
     }
     my @directives=();
     foreach (@subcommands) {
@@ -5829,8 +5829,12 @@ sub preprocess_request {
 	$chunksize=$::XCATSITEVALS{syspowermaxnodes};
         $delayincrement=$::XCATSITEVALS{syspowerinterval};
       }
+  } elsif ($command eq "renergy") {
+      # filter out the nodes which should be handled by ipmi.pm
+      my (@bmcnodes, @nohandle);
+      xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
+      $realnoderange = \@bmcnodes;
   }
-
 
   if (!$realnoderange) {
     $usage_string=xCAT::Usage->getUsage($command);
