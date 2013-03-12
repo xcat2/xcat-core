@@ -286,8 +286,14 @@ sub printLn {
 
     # Print string
     my $rsp;
+    my $type = "I";
+    if ($str =~ m/error/i) {  # Set to print error if the string contains error
+    	$type = "E";
+    }
+    
     $rsp->{data}->[0] = "$str";
-    xCAT::MsgUtils->message( "I", $rsp, $callback );
+    xCAT::MsgUtils->message( $type, $rsp, $callback );
+    # xCAT::MsgUtils->message( "S", $str );  # Print to syslog
 
     return;
 }
