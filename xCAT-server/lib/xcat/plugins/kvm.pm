@@ -2300,8 +2300,9 @@ sub power {
             unless ($newxml) { $newxml=$oldxml; } #TODO: remove this when the 'else' line can be sanely filled out
             if ($newxml) { #need to destroy and repower..
                 $updatetable->{kvm_nodedata}->{$node}->{xml}=$newxml;
+		my $persist = $dom->is_persistent();
                 $dom->destroy();
-		$dom->undefine();
+		if ($persist) { $dom->undefine(); }
                 undef $dom;
                 if ($use_xhrm) {
                     xhrm_satisfy($node,$hyp);
