@@ -89,8 +89,6 @@ do
 
         echo "XCATSERVER=$i" > /opt/xcat/xcatinfo
         echo "REBOOT=TRUE" >> /opt/xcat/xcatinfo
-        NODE=#TABLE:nodelist:THISNODE:node#
-        echo "NODE=$NODE" >> /opt/xcat/xcatinfo
         break
     fi
 

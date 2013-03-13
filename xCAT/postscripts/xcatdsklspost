@@ -341,38 +341,47 @@ fi # finish the postscripts download
 
 rm -rf /xcatpost/mypostscript
 
-#get node name 
-if [ -f /opt/xcat/xcatinfo ]; then
-    node=`grep 'NODE' /opt/xcat/xcatinfo |cut -d= -f2`
-fi
-
+#get node name and download the mypostscript.$node file
 #try to get the node ip address that connects to the server.
 #then resolve the name of the ip
-if [ -z "$node" ]; then
-    #find out the ip address of the node for the management nic
-    NIP=`ip route get $SIP | head -n 1 | sed 's/^.*src//g' | awk {'print $1'}
-`
-    if [ -n "$NIP" ]; then
-	#relsove the name of the node from ip address
-	node=`host $NIP | awk {'print $5'} | sed '$s/\.$//'`
+NIP=`ip route get $SIP | head -n 1 | sed 's/^.*src//g' | awk {'print $1'}`
+if [ $? -eq 0 ] && [ -n "$NIP" ]; then
+    #relsove the name of the node from ip address
+    result=`getent hosts $NIP`
+    if [ $? -eq 0 ]; then
+	node1=`echo $result | awk {'print $2'}`
+	node2=`echo $result | awk {'print $3'}`
+	if [ ${#node1} -gt ${#node2} ]; then 
+	    node=$node1 
+	    node_short=$node2
+	else
+	    node=$node2 
+	    node_short=$node1
+	fi	
+	if [ -z "$node_short" ]; then
+	    node_short=`echo $node |awk -F. {'print $1'}`
+	fi
+    else 
+	if [ -z "$node" ]; then
+	    node=`hostname`
+	    node_short=`hostname -s`
+	fi
     fi
-fi
-
-if [ -z "$node" ]; then
+else
     node=`hostname`
+    node_short=`hostname -s`
 fi
-
-#try the short name first
-node_short=`echo $node |awk -F. {'print $1'}`
+    
 max_retries=2
 postfix=0
-download_mypostscript $SIP $node_short $postfix $max_retries $TFTPDIR 
-if [ $? -ne 0 ]; then
-    if [ "$node" != "node_short" ]; then
-	download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR
+if [ -n "$node_short" ]; then 
+    download_mypostscript $SIP $node_short $postfix $max_retries $TFTPDIR 
+    if [ $? -ne 0 ]; then
+	if [ "$node" != "$node_short" ]; then
+	    download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR
+	fi
     fi
 fi
-
 
 
 
@@ -410,10 +419,12 @@ if [ ! -x /xcatpost/mypostscript ]; then
 /xcatpost/getpostscript.awk version2 > /dev/null 
 max_retries=1
 postfix=1
-download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR 
-if [ $? -ne 0 ]; then
-    if [ "$node" != "node_short" ]; then
-	download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR
+if [ -n "$node_short" ]; then
+    download_mypostscript $SIP $node_short $postfix $max_retries $TFTPDIR 
+    if [ $? -ne 0 ]; then
+	if [ "$node" != "node_short" ]; then
+	    download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR
+	fi
     fi
 fi
 
@@ -443,7 +454,7 @@ while [ -z "$MYCONT" ]; do
     postfix=1
     download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR 
     if [ $? -ne 0 ]; then
-	if [ "$node" != "node_short" ]; then
+	if [ "$node" != "$node_short" ]; then
 	    download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR
 	fi
     fi 
@@ -473,20 +484,6 @@ if [ -n "$new_ms" ]; then
     fi
 fi
 
-#save the NODE into xcatinfo
-new_node=`grep '^NODE=' /xcatpost/mypostscript |cut -d= -f2`
-if [ -n "$new_node" ]; then
-    if [ ! -f /opt/xcat/xcatinfo ]; then
-	mkdir -p /opt/xcat
-	touch /opt/xcat/xcatinfo
-    fi
-    grep '^NODE=' /opt/xcat/xcatinfo 2>&1 > /dev/null
-    if [ $? -eq 0 ]; then
-	sed -i "s/NODE=.*/NODE=$new_node/" /opt/xcat/xcatinfo
-    else
-	echo "NODE=$new_node" >> /opt/xcat/xcatinfo
-    fi
-fi    
 
 # when called by the updatenode command
 #modify the UPDATENODE flag to 1 
@@ -540,7 +537,6 @@ if ( pmatch $POSTSCRIPTS  "*start-here*" ); then
     #remove all the postbootscripts 
     TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" /xcatpost/mypostscript`
     echo "$TMP" > /xcatpost/mypostscript
-    
   fi
   if ( pmatch $POSTSCRIPTS  "*postbootscripts-start-here" ); then
     #remove all the postscripts 
