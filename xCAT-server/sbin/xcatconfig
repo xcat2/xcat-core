@@ -686,6 +686,16 @@ sub genSSHRootKeys
                                         "Added updates to the $cfgfile file.");
             }
         }
+        if ( -e "/etc/debian_version" ){
+            my $out = `/bin/cat $cfgfile | grep 'HashKnownHosts'`;
+            if ( $out ){
+                `/bin/sed -e 's/.*HashKnownHosts.*/HashKnownHosts no/' $cfgfile > tempcfg;mv -f tempcfg $cfgfile`;
+            }
+            else{
+                `/bin/echo HashKnownHosts no >> $cfgfile`;
+            }
+            `chmod  600 $cfgfile`;
+        }
     }
     else
     {
@@ -701,6 +711,11 @@ sub genSSHRootKeys
         else
         {
             xCAT::MsgUtils->message('I', "Added updates to the $cfgfile file.");
+        }
+        #debian or ubuntu, the HashKnownHosts default is yes, change it
+        if ( -e "/etc/debian_version" ){
+           $cmd = "/bin/echo HashKnownHosts no >> $cfgfile";
+           xCAT::Utils->runcmd("$cmd", 0);
         }
     }
 
