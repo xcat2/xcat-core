@@ -1,12 +1,8 @@
 #!/usr/bin/perl
 use strict;
-use SNMP;
 use Socket;
 use Data::Dumper;
 use Getopt::Long;
-$SNMP::debugging = 1;
-$SNMP::verbose = 1;
-$SNMP::best_guess = 1;
 # each 0 is four bits: 0000 0000
 # thus its broken down: 
 # - ports 1-8 are in the first hex number 
@@ -427,6 +423,7 @@ sub show{
 # we want to put this port on this new vlan, here is how we do it:
 # connect to switch to see:
 
+
 my $help =0;
 $::DEBUG = 0;
 GetOptions(
@@ -437,6 +434,11 @@ GetOptions(
 if($help){
 	displayHelp(0);
 }
+
+require SNMP;
+$SNMP::debugging = 1;
+$SNMP::verbose = 1;
+$SNMP::best_guess = 1;
 
 if($::DEBUG){
 	print "verbose is set to on!\n";

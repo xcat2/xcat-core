@@ -459,5 +459,11 @@ if [ "$OSNAME" != "AIX" -a "$REL" = "devel" -a "$PROMOTE" != 1 -a -z "$EMBED" ];
 	i=0
 	while [ $((i+=1)) -le 5 ] && ! rsync $verboseflag -r opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man7 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
 	do : ; done
+
+	# extract and upload the tools readme
+	rpm2cpio ../$XCATCORE/xCAT-server-*.$NOARCH.rpm | cpio -id ./opt/xcat/share/xcat/tools/README.html
+	i=0
+	while [ $((i+=1)) -le 5 ] && ! rsync $verboseflag opt/xcat/share/xcat/tools/README.html $UPLOADUSER,xcat@web.sourceforge.net:htdocs/tools/
+	do : ; done
 	cd ..
 fi

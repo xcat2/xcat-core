@@ -60,6 +60,9 @@ xCAT-server provides the core server and configuration management components of 
 
 %setup -q -n xCAT-server
 %build
+# build the tools readme files from the --help output of all of the tools
+./build-readme
+
 %install
 rm -rf $RPM_BUILD_ROOT
 #cp foo bar

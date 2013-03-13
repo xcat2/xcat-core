@@ -21,7 +21,6 @@ use lib "$::XCATROOT/lib/perl";
 use strict;
 use warnings;
 use Getopt::Long;
-use xCAT::NetworkUtils;
 
 if (
     !GetOptions("h|help"  => \$::HELP,
@@ -38,6 +37,8 @@ if ($::HELP)
     exit 0;
 }
 
+require xCAT::NetworkUtils;
+
 if ($::MACADDR)
 {
     my $linklocal =  xCAT::NetworkUtils->linklocaladdr($::MACADDR);
@@ -46,8 +47,7 @@ if ($::MACADDR)
 
 sub usage
 {
-    print "Mac to IPv6 link local address utility.\n";
-    print "Usage:\n";
-    print "\t mac2linklocal -m <mac_address>\n";
+    print "Usage:  mac2linklocal -m <mac_address>\n\n";
+    print "Determines the IPv6 link local address that is appropriate for a NIC, based on its MAC.\n";
     return;
 }
