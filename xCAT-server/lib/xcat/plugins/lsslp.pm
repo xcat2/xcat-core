@@ -16,6 +16,7 @@ use xCAT::PPCdb;
 use xCAT::NodeRange;
 use xCAT::Utils;
 
+my $option_s;
 
 #require xCAT::MacMap;
 require xCAT_plugin::blade;
@@ -311,6 +312,7 @@ sub parse_args {
         if ( !exists( $services{$opt{s}} )) {
             return(usage( "Invalid service: $opt{s}" ));
         }
+	    $option_s = $opt{s};
         $globalopt{service} = $services{$opt{s}};
     }
     #############################################
@@ -1029,7 +1031,10 @@ sub parse_responses {
             trace( $request, "Discover node $atthash{hostname}: type is $atthash{type},\
 			mtm is $atthash{mtm},sn is $atthash{serial},  ip is $atthash{ip},\
 			mac is $atthash{mac}, otherinterfaces is $atthash{otherinterfaces}" );
-        }elsif (($type eq SERVICE_FSP) && (${$attributes->{'machinetype-model'}}[0] =~ /^7895|8236/ )) {
+        }elsif (($type eq SERVICE_FSP) && (${$attributes->{'machinetype-model'}}[0] =~ /^7895|1457/ )) {
+            # Skip this entry if "-s CEC" was specified - we do not list FSP entries for Flex when only CECs were requested
+	    next unless ($option_s ne "CEC");  
+
             #begin to define fsp and bpa
             my %tmphash;
             $tmphash{type} = ($type eq SERVICE_BPA) ? TYPE_BPA : TYPE_FSP;
@@ -1041,6 +1046,7 @@ sub parse_responses {
             $tmphash{mac} = $rsp;
             $tmphash{parent} =  'Server-'.$tmphash{mtm}.'-SN'.$tmphash{serial};
             $tmphash{hostname} = $tmphash{ip};
+            $tmphash{url} =  ${$searchmacs{$rsp}}{payload};
             $tmphash{otherinterfaces} = ${$searchmacs{$rsp}}{peername};
             $tmphash{bpcmtm} = ${$attributes->{'bpc-machinetype-model'}}[0];
             $tmphash{bpcsn} = ${$attributes->{'bpc-serial-number'}}[0];
@@ -1202,7 +1208,7 @@ sub parse_responses {
             $newhostname = $::OLD_DATA_CACHE{"frame*".${$outhash{$h}}{mtm}."*".${$outhash{$h}}{serial}};
             if ($newhostname) {
                 ${$outhash{$h}}{hostname} = $newhostname ;
-				trace ( $request, "$h find hostname $newhostname");
+				trace ( $request, "$h found hostname $newhostname");
                 push  @matchnode, $h;
             }
         }
@@ -1224,7 +1230,7 @@ sub parse_responses {
             $parent = $existing_node if ($existing_node);
         }
         ${$outhash{$h}}{parent} = $parent;
-		trace( $request, "$h find parent $parent") if ($parent); 
+		trace( $request, "$h found parent $parent") if ($parent); 
     }
 
     trace( $request, "\n\n\nBegin to find cec hostname");
@@ -1232,7 +1238,7 @@ sub parse_responses {
         if(${$outhash{$h}}{type} eq TYPE_CEC) {
             my $newhostname1 = $::OLD_DATA_CACHE{"cec*".${$outhash{$h}}{mtm}.'*'.${$outhash{$h}}{serial}};
             if ($newhostname1) {
-                trace( $request, "$h find hostname $newhostname1 with mtms");
+                trace( $request, "$h found hostname $newhostname1 with mtms");
                 ${$outhash{$h}}{hostname} = $newhostname1;
                 push  @matchnode, $h;
             }
@@ -1241,7 +1247,7 @@ sub parse_responses {
             my $newhostname2 = $::OLD_DATA_CACHE{"cec*".$tp.'*'.${$outhash{$h}}{cid}};
             if ($newhostname2) {
                 ${$outhash{$h}}{hostname} = $newhostname2;
-                trace( $request, "$h find hostname $newhostname2 with parent and id");
+                trace( $request, "$h found hostname $newhostname2 with parent and id");
                 push  @matchnode, $h;
             }
         }
@@ -1250,16 +1256,16 @@ sub parse_responses {
     trace( $request, "\n\n\nBegin to find fsp/bpa's hostname and parent");
     foreach my $h ( keys %outhash ) {
 	# Added a skip if processing Flex blades
-        if(((${$outhash{$h}}{type} eq TYPE_FSP) && ${$outhash{$h}}{mtm} !~ /^7895|8236/ ) or ${$outhash{$h}}{type} eq TYPE_BPA) {
+        if(((${$outhash{$h}}{type} eq TYPE_FSP) && ${$outhash{$h}}{mtm} !~ /^7895|1457/ ) or ${$outhash{$h}}{type} eq TYPE_BPA) {
             $newhostname = $::OLD_DATA_CACHE{${$outhash{$h}}{type}."*".${$outhash{$h}}{mtm}.'*'.${$outhash{$h}}{serial}.'*'.${$outhash{$h}}{side}};
             if ($newhostname){
                 ${$outhash{$h}}{hostname} = $newhostname ;
-                trace( $request, "$h find hostname $newhostname");
+                trace( $request, "$h found hostname $newhostname");
                 push  @matchnode, $h;
             }
             my $ptmp = ${$outhash{$h}}{parent};
             ${$outhash{$h}}{parent} = ${$outhash{$ptmp}}{hostname};
-			trace( $request, "$h find parent ${$outhash{$ptmp}}{hostname}");
+			trace( $request, "$h found parent ${$outhash{$ptmp}}{hostname}");
             #check if fsp/bpa's ip is valid
             my $vip = check_ip(${$outhash{$h}}{ip});
             unless ( $vip )   { #which means the ip is a valid one
