@@ -17,7 +17,6 @@ BEGIN
 }
 
 use lib "$::XCATROOT/lib/perl";
-use xCAT::Utils;
 use Getopt::Long;
 
 use strict;
@@ -48,6 +47,9 @@ if ($help) {
     print "\n";
     exit 0;
 }
+
+require xCAT::Utils;
+
 # check to see if running DB2
 my $DBname = xCAT::Utils->get_DBName;
 if ($DBname ne "DB2") {

@@ -153,6 +153,11 @@ OS diskful/diskfree deployment.
 All of the cluster configuration information is in the xCAT database.  See L<xcatdb(5)|xcatdb.5> for
 descriptions of every table in the database.
 
+=head1 XCAT ADDITIONAL TOOLS
+
+Some additional tools have been contributed to xCAT.  You can read about them at http://xcat.sourceforge.net/tools/README.html
+or in /opt/xcat/share/xcat/tools/README.txt on your xCAT management node.
+
 =head1 XCAT COMMANDS
 
 What follows is a short description of each xCAT command.  To get more information about a particular

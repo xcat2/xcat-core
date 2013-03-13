@@ -13,10 +13,31 @@ BEGIN
 }
 
 use lib "$::XCATROOT/lib/perl";
-use xCAT::Utils;
-use xCAT::TableUtils;
 use strict;
 use Socket; # for name resolution
+use Getopt::Long;
+
+my $help;
+GetOptions('h|help' => \$help);
+if ($help) {
+    print <<'EOS';
+Usage: rmblade [-h|--help]
+
+Response to SNMP for monsetting to remove blade from xCAT when trap is recieved.
+Pipe the MM IP address and blade slot number into this cmd.
+
+Example: 
+ 1.  user removes a blade from the chassis
+ 2.  snmp trap setup to point here
+ 3.  this script removes the blade configuration from xCAT
+ 4.  so if blade is placed in new slot or back in then xCAT goes 
+     through rediscover process again.
+EOS
+    exit 0;
+}
+
+require xCAT::Utils;
+require xCAT::TableUtils;
 
 my $ip='';
 my $mm='';
@@ -30,6 +51,7 @@ open(FILE,">>$log") or die "Can't open log!!!";
 my $date = `date`;
 chomp($date);
 print FILE "====================  $date  ============================\n";
+
 sub rmblade {
 	my $blade = shift;
 	my $hex = ip2hex($blade);
@@ -55,12 +77,13 @@ sub ip2hex {
 	my $packed_ip = gethostbyname($node);
 	if(defined $packed_ip){
 		$ip = inet_ntoa($packed_ip);	
-print FILE "IP that was removed is $ip\n";
+	print FILE "IP that was removed is $ip\n";
 		@quad = split('\.', $ip);
 		$hex = sprintf("%02X%02X%02X%02X", @quad);
 	}
 	return $hex;
 }
+
 foreach (<>){
 	if(/ip=UDP/){
 		$ip = $_;

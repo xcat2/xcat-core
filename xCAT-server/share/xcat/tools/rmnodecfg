@@ -10,10 +10,27 @@ BEGIN
 }
 
 use lib "$::XCATROOT/lib/perl";
-use xCAT::Utils;
-use xCAT::TableUtils;
 use strict;
 use Socket;
+
+use Getopt::Long;
+
+my $help;
+GetOptions('h|help' => \$help);
+if ($help) {
+    print <<'EOS';
+Usage: rmnodecfg [-h|--help] <noderange>
+
+Removes the configuration of a node so that the next time you reboot 
+it, it forces it to go through the discovery process.
+This does not remove it completely from xCAT.  You may want to do this
+command before running noderm to completely purge the system of the node
+EOS
+    exit 0;
+}
+
+require xCAT::Utils;
+require xCAT::TableUtils;
 
 my $blades = shift;
 if(! $blades) {
