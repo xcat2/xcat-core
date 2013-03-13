@@ -1666,7 +1666,7 @@ sub mount_chroot {
    mkdir("$rootimage_dir/mnt/pkgdir");
    mkdir("$rootimage_dir/mnt/otherpkgdir");
    system("mount -o bind /dev $rootimage_dir/dev");
-   system("mount -o bind /proc $rootimage_dir/proc");
+#   system("mount -o bind /proc $rootimage_dir/proc");
    system("mount -o bind /sys $rootimage_dir/sys");
    system("mount -o bind $pkgdir $rootimage_dir/mnt/pkgdir");
    if ($otherpkgdir){
@@ -1677,7 +1677,7 @@ sub mount_chroot {
 sub umount_chroot {
    my $rootimage_dir = shift;
    system("umount $rootimage_dir/dev");
-   system("umount $rootimage_dir/proc");
+#   system("umount $rootimage_dir/proc");
    system("umount $rootimage_dir/sys");
    system("umount $rootimage_dir/mnt/pkgdir");
    system("umount $rootimage_dir/mnt/otherpkgdir");
