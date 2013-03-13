@@ -689,11 +689,12 @@ sub genSSHRootKeys
         if ( -e "/etc/debian_version" ){
             my $out = `/bin/cat $cfgfile | grep 'HashKnownHosts'`;
             if ( $out ){
-                `/bin/sed -e 's/.*HashKnownHosts.*/HashKnownHosts no/' $cfgfile > tempcfg;mv -f tempcfg $cfgfile`
+                `/bin/sed -e 's/.*HashKnownHosts.*/HashKnownHosts no/' $cfgfile > tempcfg;mv -f tempcfg $cfgfile`;
             }
             else{
                 `/bin/echo HashKnownHosts no >> $cfgfile`;
             }
+            `chmod  600 $cfgfile`;
         }
     }
     else
