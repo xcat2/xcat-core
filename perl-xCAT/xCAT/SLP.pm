@@ -394,9 +394,11 @@ sub send_service_request_single {
 			$ipnum= $ipnum | (2**(32-$maskbits))-1;
 			my $bcastn = pack("N",$ipnum);
 			my $bcastaddr = sockaddr_in(427,$bcastn);
+			$socket->sockopt(SO_BROADCAST, 1) or die("sockopt: $!\n");
+			$socket->send($packet,0,$bcastaddr);
 			setsockopt($socket,0,IP_MULTICAST_IF,$ipn);
 			$socket->send($packet,0,$ipv4sockaddr);
-			$socket->send($packet,0,$bcastaddr);
+
 		}
 	}
 }
