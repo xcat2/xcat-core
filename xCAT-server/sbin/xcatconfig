@@ -687,7 +687,7 @@ sub genSSHRootKeys
             }
         }
         if ( -e "/etc/debian_version" ){
-            $out = `/bin/cat $cfgfile | grep 'HashKnownHosts'`;
+            my $out = `/bin/cat $cfgfile | grep 'HashKnownHosts'`;
             if ( $out ){
                 `/bin/sed -e 's/.*HashKnownHosts.*/HashKnownHosts no/' $cfgfile > tempcfg;mv -f tempcfg $cfgfile`
             }
