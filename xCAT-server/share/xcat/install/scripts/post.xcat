@@ -125,11 +125,12 @@ chkconfig --add xcatpostinit1
 TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /xcatpost/mypostscript`
 echo "$TMP" > /xcatpost/mypostscript
 
-/xcatpost/mypostscript
+
 export NODE=#TABLE:nodelist:THISNODE:node#
 export OSVER=#TABLE:nodetype:THISNODE:os#
 export ARCH=#TABLE:nodetype:THISNODE:arch#
 addsiteyum
+/xcatpost/mypostscript
 sed -i 's/^serial/#serial/' /boot/grub/grub.conf
 sed -i 's/^terminal/#terminal/' /boot/grub/grub.conf
 updateflag.awk $MASTER 3002
