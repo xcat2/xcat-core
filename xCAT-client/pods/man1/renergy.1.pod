@@ -44,7 +44,7 @@ B<BladeCenter specific :>
 
 =over 2
 
-B<For Management Modules as the target:>
+B<For Management Modules:>
 
 =over 4
 
@@ -58,7 +58,7 @@ B<renergy> I<noderange> [-V] { all | pd1all | pd2all | [pd1status]
 
 =back
 
-B<For a blades as the target:>
+B<For a blade server nodes:>
 
 =over 4
 
@@ -67,11 +67,43 @@ B<renergy> I<noderange> [-V] { all | [averageDC]
 [savingstatus] [dsavingstatus] }
 
 B<renergy> I<noderange> [-V] { savingstatus={on | off} 
- | dsavingstatus={on-norm | on-maxp | off} }
+| dsavingstatus={on-norm | on-maxp | off} }
 
 =back
 
 =back
+
+B<Flex specific :>
+
+=over 2
+
+B<For Flex Management Modules:>
+
+=over 4
+
+B<renergy> I<noderange> [-V] { all | [powerstatus]
+[powerpolicy] [powermodule] [avaiablepower] [reservedpower]
+[remainpower] [inusedpower] [availableDC] [averageAC]
+[thermaloutput] [ambienttemp] [mmtemp] }
+
+=back
+
+B<For Flex node (power and x86):>
+
+=over 4
+
+B<renergy> I<noderange> [-V] { all | [averageDC]
+[capability] [cappingvalue] [cappingmaxmin] [cappingmax] 
+[cappingmin] [CPUspeed] [maxCPUspeed]
+[savingstatus] [dsavingstatus] }
+
+B<renergy> I<noderange> [-V] { cappingwatt=watt | cappingperc=percentage 
+| savingstatus={on | off} | dsavingstatus={on-norm | on-maxp | off} }
+
+=back
+
+=back
+
 
 B<iDataPlex specific :>
 
@@ -273,10 +305,20 @@ enabled, phase 2 or higher
 dynamicPowerMeasurementWithPowerCapping: the module with power meter capability, 
 both measurement and capping enabled, phase 2 or higher
 
+=item B<cappingmax>
+
+Query the maximum of power capping value
+which can be set for a CEC or blade server. (Unit is watt)
+
 =item B<cappingmaxmin>
 
 Query the maximum and minimum of power capping value 
 which can be set for a CEC or blade server. (Unit is watt) 
+
+=item B<cappingmin>
+
+Query the minimum of power capping value
+which can be set for a CEC or blade server. (Unit is watt)
 
 =item B<cappingperc>=B<percentage>
 
@@ -414,36 +456,39 @@ Query the maximum processor frequency. (Unit is MHz)
 Query the current temperature of management module. 
 (Unit is centigrade)
 
-=item B<pd1status>
+=item B<pd1status | powerstatus>
 
 Query the status of power domain 1 for blade management 
 module node.
 
-=item B<pd1policy>
+Note: for the attribute without the leading 'pd1' which 
+means there's only one power doamin in the chassis.
+
+=item B<pd1policy | powerpolicy>
 
 Query the power management policy of power domain 1. 
 
-=item B<pd1powermodule1>
+=item B<pd1powermodule1 | powermodule>
 
 Query the First Power Module capacity in power domain 1.
 
-=item B<pd1powermodule2>
+=item B<pd1powermodule2 | powermodule>
 
 Query the Second Power Module capacity in power domain 1.
 
-=item B<pd1avaiablepower>
+=item B<pd1avaiablepower | avaiablepower>
 
 Query the total available power in power domain 1.
 
-=item B<pd1reservedpower>
+=item B<pd1reservedpower | reservedpower>
 
 Query the power that has been reserved for power domain 1.
 
-=item B<pd1remainpower>
+=item B<pd1remainpower | remainpower>
 
 Query the remaining power available in power domain 1.
 
-=item B<pd1inusedpower>
+=item B<pd1inusedpower | inusedpower>
 
 Query the total power being used in power domain 1.
 
