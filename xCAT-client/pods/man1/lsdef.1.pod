@@ -4,11 +4,12 @@ B<lsdef> - Use this command to list xCAT data object definitions.
 
 =head1 SYNOPSIS
 
-B<lsdef> [B<-h>|B<--help>] [B<-t> I<object-types>]
+B<lsdef> [B<-h>|B<--help>] [B<-t> I<object-types>] [B<-i> I<attr-list>]
 
 B<lsdef> [B<-V>|B<--verbose>] [B<-l>|B<--long>] [B<-s>|B<--short>] [B<-a>|B<--all>] [B<-S>] 
 [B<-t> I<object-types>] [B<-o> I<object-names>] [B<-z>|B<--stanza>] [B<-i> I<attr-list>]
-[B<-c>|B<--compress>] [B<--osimage>][[B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<noderange>]
+[B<-c>|B<--compress>] [B<--osimage>] [B<--nics>] [[B<-w> I<attr>==I<val>]
+[B<-w> I<attr>=~I<val>] ...] [I<noderange>]
 
 
 =head1 DESCRIPTION
@@ -65,6 +66,10 @@ A set of comma delimited object names.
 =item B<--osimage>
 
 Show all the osimage information for the node.
+
+=item B<--nics>
+
+Show the nics configuration information for the node.
 
 =item B<-t> I<object-types>
 
@@ -210,6 +215,12 @@ To display the description for some specific attributes that could be used
 when defining an xCAT node.
 
  lsdef -t node -h -i profile,pprofile
+
+=item 17.
+
+To display the nics configuration information for node cn1.
+
+ lsdef cn1 --nics
 
 =back
 

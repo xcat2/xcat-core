@@ -40,6 +40,8 @@ $Getopt::Long::ignorecase = 0;
 
 %::WhereHash;     # hash of attr=val from "-w" option
 @::AttrList;      # list of attrs from "-i" option
+%::NicsAttrHash;  # hash of nics attributes specified with "-i" option
+                  # e.g. $::NicsAttrHash{'nicips'} = ("eth0","eth1");
 
 # object type lists
 @::clobjtypes;      # list of object types derived from the command line.
@@ -266,6 +268,7 @@ sub processArgs
                     'nocache'  => \$::opt_nc,
                     'S'        => \$::opt_S,
                     'osimage'  => \$::opt_osimg,
+                    'nics'  => \$::opt_nics,
         )
       )
     {
@@ -329,6 +332,19 @@ sub processArgs
         $rsp->{data}->[0] = "The flags \'-l'\ and \'-s'\ cannot be used together.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 2;
+    }
+
+    # -i and --nics cannot be used together
+    if ($::opt_nics && $::opt_i) {
+        my $rsp;
+        $rsp->{data}->[0] = "The flags \'-i'\ and \'--nics'\ cannot be used together.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 2;
+    }
+
+    # --nics is the equivalent of -i nicips,nichostnamesuffixes...
+    if ($::opt_nics) {
+        $::opt_i="nicips,nichostnamesuffixes,nictypes,niccustomscripts,nicnetworks,nicaliases";
     }
 
     # -i and -s cannot be used together
@@ -619,6 +635,11 @@ sub processArgs
                 @dispattrs = split(/,/, $::opt_i);
                 foreach my $dattr (@dispattrs)
                 {
+                    # lsdef -t node -h -i nicips.eth0
+                    if($dattr =~ /^(nic\w+)\.\w+$/)
+                    {
+                        $dattr = $1;
+                    }
                     $dispattrhash{$dattr} = 1;
                 }
             }
@@ -909,6 +930,16 @@ sub processArgs
     if ($::opt_i)
     {
         @::AttrList = split(',', $::opt_i);
+        # nicips.<nic> should be changed to nicips
+        my $i = 0;
+        for ($i=0; $i < (scalar @::AttrList) ; $i++ )
+        {
+            if($::AttrList[$i] =~ /^(nic\w+)\.(\w+)$/)
+            {
+                $::AttrList[$i] = $1; 
+                push @{$::NicsAttrHash{$::AttrList[$i]}}, $2;
+            }
+        }
     }
 
     return 0;
@@ -3123,18 +3154,49 @@ sub defls
                                 }
                                 else
                                 {
-
-                                    # since they asked for this attr
-                                    #   show it even if not set
-                                    if (!$::opt_c)
+                                    # nics attributes, like nicips, nichostnamesuffix.
+                                    if ($showattr =~ /^nic/)
                                     {
-                                        push (@{$rsp_info->{data}}, "    $showattr=$attrval");
-                                    } 
+                                        my $nicval = "$showattr=$attrval";
+                                        my $nicnames;
+                                        if (defined($::NicsAttrHash{$showattr}))
+                                        {
+                                            $nicnames = join(',', @{$::NicsAttrHash{$showattr}});
+                                        }
+                                        my $nicsstr;
+                                        if ($nicnames)
+                                        {
+                                            $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval, $nicnames);
+                                        }
+                                        else
+                                        {
+                                            $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval);
+                                        }
+                                        # Compress mode, format the output
+                                        if ($::opt_c)
+                                        {
+                                            $nicsstr =~ s/^\s+/$obj: /;
+                                            $nicsstr =~ s/\n\s+/\n$obj: /g;
+                                        }
+                                        if ($nicsstr)
+                                        {
+                                            push (@{$rsp_info->{data}}, "$nicsstr");
+                                        }
+                                    }
                                     else
                                     {
-                                        push (@{$rsp_info->{data}}, "$obj: $showattr=$attrval");
+                                        # since they asked for this attr
+                                        #   show it even if not set
+                                        if (!$::opt_c)
+                                        {
+                                            push (@{$rsp_info->{data}}, "    $showattr=$attrval");
+                                        } 
+                                        else
+                                        {
+                                            push (@{$rsp_info->{data}}, "$obj: $showattr=$attrval");
 
-                                    } 
+                                        } 
+                                    }
                                 }
                             }
                         }
@@ -3156,7 +3218,20 @@ sub defls
                                 # don't print unless set
                                 if ( (defined($attrval)) && ($attrval ne '') )
                                 {
-                                    push (@{$rsp_info->{data}}, "    $showattr=$attrval");
+                                    # nics attributes, like nicips, nichostnamesuffix.
+                                    if ($showattr =~ /^nic/)
+                                    {
+                                        my $nicval = "$showattr=$attrval";
+                                        my $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval);
+                                        if ($nicsstr)
+                                        {
+                                            push (@{$rsp_info->{data}}, "$nicsstr");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        push (@{$rsp_info->{data}}, "    $showattr=$attrval");
+                                    }
                                 }
                             }
                         }
@@ -3801,6 +3876,7 @@ sub initialize_variables
     %::objfilehash = ();
     %::WhereHash = ();
     @::AttrList = ();
+    %::NicsAttrHash = ();
     @::clobjtypes = ();
     @::fileobjtypes = ();
     @::clobjnames = ();
