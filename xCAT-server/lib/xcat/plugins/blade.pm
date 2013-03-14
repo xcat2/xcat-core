@@ -362,15 +362,36 @@ sub eventlog { #Tried various optimizations, but MM seems not to do bulk-request
   #TODO: try retrieving 5 at a time, then 1 at a time when that stops working
   @ARGV=@_;
   my $force;
-  GetOptions(
-	"f" => \$force,
-	);
-  my $cmd=shift @ARGV;
+  #GetOptions(
+  #	"f" => \$force,
+  #	);
+  my $cmd = undef;
+  my $order = undef;
+  my $arg = shift @ARGV;
+  while ($arg) {
+      if ($arg eq "all" or $arg eq "clear" or $arg =~/^\d+$/) {
+          if (defined($cmd)) {
+              return(1, "reventlog $cmd $arg invalid");
+          }
+          $cmd = $arg;
+      } elsif ($arg =~ /^-s$/) {
+          $order = 1;
+      } elsif ($arg =~ /^-f$/) {
+          $force = 1;
+      } else {
+          return(1, "unsupported command reventlog $arg");
+      }
+      $arg = shift @ARGV;
+  }
+
   my $data;
   my @output;
   my $oid = $eventlogoid;
   unless ($cmd) {
    $cmd='all';
+  }
+  if (defined($force) and $cmd ne "clear") {
+      return(1, "option \"-f\" can only work with \"clear\"");
   }
   if ($cmd eq 'all') {
     $cmd=65535; #no MM has this many logs possible, should be a good number
@@ -413,15 +434,29 @@ sub eventlog { #Tried various optimizations, but MM seems not to do bulk-request
         $matchstring="^(?!NODE).*";
       }
       if ($source =~ m/$matchstring$/i) { #MM guys changed their minds on capitalization
-        $numentries++;
-        unshift @output,"$sev:$date $time $text"; #unshift to get it in a sane order
+        if (defined($order)) {
+            $numentries++;
+            push @output, "$sev:$date $time $text";
+        } else {
+            unshift @output,"$sev:$date $time $text"; #unshift to get it in a sane order
+            if ($#output >= $requestednumber) {
+                pop @output;
+            }
+        }
       } else {
           foreach (@moreslots) {
             #$matchstring=sprintf("BLADE_%02d",$_);
             $matchstring=sprintf("NODE_%02d",$_);
             if ($source =~ m/$matchstring$/i) { #MM guys changed their minds on capitalization
-                $numentries++;
-                unshift @output,"$sev:$date $time $text"; #unshift to get it in a sane order
+                if (defined($order)) {
+                    $numentries++;
+                    push @output, "$sev:$date $time $text";
+                } else {
+                    unshift @output,"$sev:$date $time $text"; #unshift to get it in a sane order
+                    if ($#output >= $requestednumber) {
+                        pop @output;
+                    }
+                }
             }
           }
       }
