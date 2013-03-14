@@ -99,6 +99,7 @@ Example output:
     IPoIB recv_queue_size: 8192
     IPoIB send_queue_size: 8192
 
+Author:  Brian Finley
 EOF
 }
 

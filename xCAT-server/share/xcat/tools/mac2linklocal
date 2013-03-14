@@ -48,6 +48,7 @@ if ($::MACADDR)
 sub usage
 {
     print "Usage:  mac2linklocal -m <mac_address>\n\n";
-    print "Determines the IPv6 link local address that is appropriate for a NIC, based on its MAC.\n";
+    print "Determines the IPv6 link local address that is appropriate for a NIC, based on its MAC.\n\n";
+    print "Author:  Li, Guang Cheng\n";
     return;
 }
