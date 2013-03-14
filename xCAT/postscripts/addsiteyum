@@ -9,10 +9,16 @@ do
    if [ ! -r "$i" ]; then
       continue
    fi
-   rm -rf /etc/yum.repos.d/*
    TARGFILE=`basename $i`
    TARGFILE=`echo $TARGFILE|sed -e s/.tmpl$/.repo/`
    sed -e s!#INSTSERVER#!$MASTER! $i > /etc/yum.repos.d/$TARGFILE
+
+   # disable the internet repos which are created by addsiteyum
+   if [ -r "/etc/yum.repos.d/CentOS-Base.repo" ]; then
+       TMP=`sed -e '/enabled/d' /etc/yum.repos.d/CentOS-Base.repo | sed -e '/^gpgkey/i enabled=0'`
+       echo "$TMP" > /etc/yum.repos.d/CentOS-Base.repo
+   fi
+   
 done
 
 exit 0
