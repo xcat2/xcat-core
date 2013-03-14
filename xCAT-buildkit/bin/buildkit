@@ -1970,6 +1970,29 @@ sub build_kitcomp_debian{
     if ( &gen_kitcomp_debdir($comp,\%repo) ) { return 1; }
 
     my $kcmetaname = comppkgname($comp);
+
+    if (defined($comp->{non_native_pkgs}) ) {
+        my $sourcedir = $::workdir."/source_packages";
+
+        if ($comp->{non_native_pkgs} =~ /EXTERNALPKGS/) {
+            $::NON_NATIVE_PKGS->{$comp->{kitcompname}}{$kcmetaname} = 1;
+        }
+        foreach my $pkgfile (split(/,/, $comp->{non_native_pkgs})) {
+            my $pkg_file;
+            my ($key,$value) = split /:/,$pkgfile;
+            if ("$key" =~ /EXTERNALPKGS/) {
+                next;
+            } else {
+                $pkg_file = $key;
+            }
+
+            $cmd = "cp -p $sourcedir/$pkg_file $debbuilddir";
+            if ( system($cmd) ) {
+                print "Error copying non-native package file $sourcedir/$pkg_file to debbuilddir\n";
+                return 1;
+            }
+        }
+    }
     my $compversion = $comp->{version} . "-" . $comp->{release};
     my $buildstring = "Kit component build package.";
     my $debianbuildcmd = "cd $debbuilddir;dch -v $compversion -b -c debian/changelog $buildstring;dpkg-buildpackage -uc -us";
@@ -1979,7 +2002,7 @@ sub build_kitcomp_debian{
             return 1;
         }
         my $repodir = $::build_dir."/kit_repodir/".$repo{kitreponame};
-        my @builtdebs = `find $::workdir/debbuild -name *.deb`;
+        my @builtdebs = `find $::workdir/debbuild -maxdepth 1 -name *.deb`;
         foreach my $deb (@builtdebs) {
             chomp($deb);
             if ( system ("cp -fp $deb $repodir") ) {
@@ -2053,13 +2076,13 @@ sub gen_kitcomp_debdir{
         }
 
         unless ( open ( FH, "<", $file )){
-            print "Error attempting to open the xCAT Kit Component debian template file $file.\n";
+            print "Error attempting to open the xCAT Kit Component ${kitcompname}'s debian template file $file.\n";
             close(DH);
             return 1;
         }
 
         if ($::VERBOSE){
-            print "Reading the xCAT Kit Component debian template file $file. \n";
+            print "Reading the xCAT Kit Component ${kitcompname}'s debian template file $file. \n";
         }
         my @lines = <FH>;
         close(FH);
@@ -2083,12 +2106,37 @@ sub gen_kitcomp_debdir{
         
         open (FH, ">", $file);
         if ($::VERBOSE){
-            print "Created kitcomponent build file under debian dir $file";
+            print "Created kitcomponent ${kitcompname}'s build file under debian dir $file";
         }
         print FH @lines;
         close(FH);
     }
     closedir(DH);
+
+    if (defined($comp->{non_native_pkgs})) {
+        unless (open (FH, ">", "${combuilddir}/debian/dir")) {
+            print "Error attempting to open the xCAT Kit Component ${kitcompname}'s debian file dir.\n";
+            return 1;
+        }
+        print FH "opt/xcat/kits/$kitname/$kitcompname/";
+        close (FH);
+
+        unless ( open (FH, ">", "${combuilddir}/debian/install") ){
+            print "Error attempting to open the xCAT Kit Component ${kitcompname}'s debian file dir.\n";
+            return 1;
+        }
+        foreach my $pkgfile (split(/,/, $comp->{non_native_pkgs})) {
+            my $pkgname = '';
+            my ($key,$value) = split /:/,$pkgfile;
+            if ("$key" =~ /EXTERNALPKGS/) {
+                $pkgname = $value;
+            } else {
+                $pkgname = $key;
+            }
+            print FH "$pkgname opt/xcat/kits/$kitname/$kitcompname/ \n";
+        }
+        close(FH);
+    }
     return 0;
 }
 
@@ -2211,18 +2259,21 @@ sub create_kitconf
     # Handle non_native_pkgs
     foreach my $kc (@{$::bldkit_config->{kitcomponent}{entries}}) {
       if ($kc->{non_native_pkgs} =~ /EXTERNALPKGS/) {
+        my @nativefiles;
         foreach my $pkgfile (split(/,/, $kc->{non_native_pkgs})) {
           my ($key,$value) = split /:/,$pkgfile;
           if ("$key" =~ /EXTERNALPKGS/) {
             $::HAVE_NON_NATIVE_PKGS = 1;
-            my %current_entry;
-            $current_entry{filename} = $value;
-            $current_entry{kitcompname} = $kc->{kitcompname};
-            $current_entry{basename} = $kc->{basename};
-            $current_entry{kitreponame} = $kc->{kitreponame};
-            push ( @{ $::kit_config->{NONNATIVEPKGS}{'entries'} }, {%current_entry});
+            push (@nativefiles, $value);
           }
         }
+        
+        my %current_entry;
+        $current_entry{filename} = join ',', @nativefiles;
+        $current_entry{kitcompname} = $kc->{kitcompname};
+        $current_entry{basename} = $kc->{basename};
+        $current_entry{kitreponame} = $kc->{kitreponame};
+        push ( @{ $::kit_config->{NONNATIVEPKGS}{'entries'} }, {%current_entry});
       }
     }
 
@@ -2376,15 +2427,24 @@ sub create_builddir
             }
         }
         mkpath("$::deploy_dir/tmp/");
-        my $cmd = "cp -fRp $::workdir/tmp/$comp.spec $::deploy_dir/tmp/$comp.spec";
-        if ( system("$cmd") ) {
-            print "Error copying kitcomponent spec $::workdir/tmp/$kitrepo-$comp.spec to build directory $::deploy_dir \n";
-            return 1;
+        if ( $debianflag ) {
+            my $cmd = "cp -fRP $::workdir/debbuild/$comp $::deploy_dir/tmp/$comp";
+            if ( system("$cmd") ) {
+                print "Error copying kitcomponent meta debian build file $::workdir/debbuild/$comp to build directory $::deploy_dir \n";
+                return 1;
+            }
         }
-        $cmd = "cp -fRp $::workdir/tmp/$comp $::deploy_dir/tmp/$comp";
-        if ( system("$cmd") ) {
-            print "Error copying kitcomponent meta rpm build file $::workdir/tmp/$kitrepo-$comp to build directory $::deploy_dir \n";
-            return 1;
+        else{
+            my $cmd = "cp -fRp $::workdir/tmp/$comp.spec $::deploy_dir/tmp/$comp.spec";
+            if ( system("$cmd") ) {
+                print "Error copying kitcomponent spec $::workdir/tmp/$kitrepo-$comp.spec to build directory $::deploy_dir \n";
+                return 1;
+            }
+            $cmd = "cp -fRp $::workdir/tmp/$comp $::deploy_dir/tmp/$comp";
+            if ( system("$cmd") ) {
+                print "Error copying kitcomponent meta rpm build file $::workdir/tmp/$kitrepo-$comp to build directory $::deploy_dir \n";
+                return 1;
+            }
         }
     }
     
@@ -2693,13 +2753,7 @@ sub kit_addpkgs
                 && ($non_native_kitcompname ne '') 
                 && ($non_native_basename ne '') 
                 && ($non_native_kitreponame ne '')) {
-                my $fromfile = $rpmdir."/".$non_native_filename;
-                if ( system("ls $fromfile > /dev/null") ){
-                  print  "The product package file $non_native_filename could not be read from the package directory $rpmdir. \n";
-                  system ("rm -Rf /tmp/buildkit_workdir");
-                  return 1;
-                }
-
+                #find out the useful dir
                 my $tdir = $tmpdir."/".$kitname."/tmp/";
                 my $source_dir = "$tdir/$non_native_kitcompname";
                 my $spec = "$tdir/$non_native_kitcompname.spec";
@@ -2710,60 +2764,88 @@ sub kit_addpkgs
                   return 1;
                 }
 
-                if (!-r "$spec") {
-                  print "Error open kitcomponent rpm build spec $tdir/$non_native_kitcompname.spec \n";
-                  # Cleanup
-                  system ("rm -Rf /tmp/buildkit_workdir");
-                  return 1;
+                #copy the nan_native_pkgs to the source dir
+                foreach my $tepmfilename (split(/,/, $non_native_filename)){
+                    #the $non_native_filename may contains several pkgs, can check and copy at the same time
+                    my $fromfile = $rpmdir."/".$tepmfilename;
+                    if ( system("ls $fromfile > /dev/null") ){
+                      print  "The product package file $non_native_filename could not be read from the package directory $rpmdir. \n";
+                      system ("rm -Rf /tmp/buildkit_workdir");
+                      return 1;
+                    }
+                    if (system("cp -fp $fromfile $tdir/$non_native_kitcompname")) {
+                      print "Error copying package file $fromfile to $tdir/$non_native_kitcompname \n";
+                      # Cleanup
+                      system ("rm -Rf /tmp/buildkit_workdir");
+                      return 1;
+                    }
                 }
-                if (system("cp -fp $fromfile $tdir/$non_native_kitcompname")) {
-                  print "Error copying package file $fromfile to $tdir/$non_native_kitcompname \n";
-                  # Cleanup
-                  system ("rm -Rf /tmp/buildkit_workdir");
-                  return 1;
+                #for debian/ubuntu
+                my $repodir = $tmpdir . "/".$kitname."/repos/".$non_native_kitreponame;
+                if ( $debianflag ){
+                    my $debbuildcmd = "cd $source_dir;dpkg-buildpackage -uc -us";
+                    if ( system($debbuildcmd) ){
+                        print "error running debian build cmd for kit component $non_native_basename meta package.\n";
+                        return 1;
+                    }
+                    my @debs = `find $tdir -maxdepth 1 -name *.deb`;
+                    foreach my $debname (@debs){
+                        chomp($debname);
+                        if ( system("mv -f $debname $repodir") ){
+                            print "Error copying package $debname to build repo directory $repodir. \n";
+                            return 1;
+                        }
+                    }
                 }
-                my $rpmbuild_dir = $tmpdir."/".$kitname."/rpmbuild";
-                my $cmd = "rm -Rf $rpmbuild_dir";
-                system($cmd);
+                else{
+                    if (!-r "$spec") {
+                      print "Error open kitcomponent rpm build spec $tdir/$non_native_kitcompname.spec \n";
+                      # Cleanup
+                      system ("rm -Rf /tmp/buildkit_workdir");
+                      return 1;
+                    }
+                    my $rpmbuild_dir = $tmpdir."/".$kitname."/rpmbuild";
+                    my $cmd = "rm -Rf $rpmbuild_dir";
+                    system($cmd);
 
-                my $avoiderr = $rpmbuild_dir."/BUILDROOT/";
-                mkpath($avoiderr);
-                $avoiderr = $rpmbuild_dir."/BUILD/";
-                mkpath($avoiderr);
-                $avoiderr = $rpmbuild_dir."/SRPMS/";
-                mkpath($avoiderr);
-                $avoiderr = $rpmbuild_dir."/RPMS/noarch/";
-                mkpath($avoiderr);
-             
-                unless ( open( SF, "<", $spec ) ) {
-                  print  "Error attempting to open spec $spec of kitcomponent $non_native_basename. \n";
-                  return 1;
-                }
+                    my $avoiderr = $rpmbuild_dir."/BUILDROOT/";
+                    mkpath($avoiderr);
+                    $avoiderr = $rpmbuild_dir."/BUILD/";
+                    mkpath($avoiderr);
+                    $avoiderr = $rpmbuild_dir."/SRPMS/";
+                    mkpath($avoiderr);
+                    $avoiderr = $rpmbuild_dir."/RPMS/noarch/";
+                    mkpath($avoiderr);
+              
+                    unless ( open( SF, "<", $spec ) ) {
+                      print  "Error attempting to open spec $spec of kitcomponent $non_native_basename. \n";
+                      return 1;
+                    }
 
-                mkpath("$rpmbuild_dir/SOURCES");
-                $cmd = "cd $source_dir/..;mv $non_native_kitcompname $non_native_basename; tar -czf $rpmbuild_dir/SOURCES/$non_native_basename.tar.gz $non_native_basename;mv $non_native_basename $non_native_kitcompname;";
-                if ( system($cmd) ) {
-                  print "Error creating tarfile $rpmbuild_dir/SOURCES/$non_native_basename.tar from $source_dir/*";
-                  return 1;
-                }
-                my $rpmbuild_cmd = "rpmbuild --define \"_topdir $rpmbuild_dir\" -ba $spec";
-                if (!$::VERBOSE) {
-                  $rpmbuild_cmd .= ' --quiet ';
-                }
-                if ( system($rpmbuild_cmd) ) {
-                  print "Error running rpmbuild command for kit component $non_native_basename meta package\n";
-                  return 1;
-                }
+                    mkpath("$rpmbuild_dir/SOURCES");
+                    $cmd = "cd $source_dir/..;mv $non_native_kitcompname $non_native_basename; tar -czf $rpmbuild_dir/SOURCES/$non_native_basename.tar.gz $non_native_basename;mv $non_native_basename $non_native_kitcompname;";
+                    if ( system($cmd) ) {
+                      print "Error creating tarfile $rpmbuild_dir/SOURCES/$non_native_basename.tar from $source_dir/*";
+                      return 1;
+                    }
+                    my $rpmbuild_cmd = "rpmbuild --define \"_topdir $rpmbuild_dir\" -ba $spec";
+                    if (!$::VERBOSE) {
+                      $rpmbuild_cmd .= ' --quiet ';
+                    }
+                    if ( system($rpmbuild_cmd) ) {
+                      print "Error running rpmbuild command for kit component $non_native_basename meta package\n";
+                      return 1;
+                    }
 
-                # Copy the built meta rpm to repo
-                my $repodir = $tmpdir."/".$kitname."/repos/".$non_native_kitreponame;
-                my @built_rpms = `find $rpmbuild_dir/RPMS -name *.rpm`;
-                foreach my $rpm (@built_rpms) {
-                  chomp($rpm);
-                  if ( system ("cp -fp $rpm $repodir") ) {
-                    print "Error copying rpm $rpm to build repo directory $repodir \n";
-                    return 1;
-                  }
+                    # Copy the built meta rpm to repo
+                    my @built_rpms = `find $rpmbuild_dir/RPMS -name *.rpm`;
+                    foreach my $rpm (@built_rpms) {
+                      chomp($rpm);
+                      if ( system ("cp -fp $rpm $repodir") ) {
+                        print "Error copying rpm $rpm to build repo directory $repodir \n";
+                        return 1;
+                      }
+                    }
                 }
                 $create_repodata_list{$repodir}=1;
               } 
@@ -2786,13 +2868,22 @@ sub kit_addpkgs
     # Clean up RPMBUILD and tmp in kit directory
     my $cmd = "rm -Rf $tmpdir/$kitname/tmp";
     system("$cmd");
-    $cmd = "rm -Rf $tmpdir/$kitname/rpmbuild";
-    system("$cmd");
+    unless ( $debianflag ){
+        $cmd = "rm -Rf $tmpdir/$kitname/rpmbuild";
+        system("$cmd");
+    }
 
     # Run createrepo for each updated directory
     foreach my $repo (keys(%create_repodata_list)) {
-      if (system("createrepo $repo")) {
-        print "Error running createrpo command for $repo \n";
+      my $createrepocmd = '';
+      if ( $debianflag ){
+          $createrepocmd = "cd $repo;dpkg-scanpackages . > Packages";
+      }
+      else{
+          $createrepocmd = "createrepo $repo";
+      }
+      if (system( $createrepocmd )) {
+        print "Error running $createrepocmd. \n";
         # Cleanup
         system ("rm -Rf /tmp/buildkit_workdir");
         return 1;
