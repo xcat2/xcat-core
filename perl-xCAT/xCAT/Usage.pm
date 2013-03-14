@@ -60,7 +60,7 @@ my %usage = (
   BMC specific:
       rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|lcds|summary|all}",
     "reventlog" => 
-"Usage: reventlog <noderange> [all|clear|<number of entries to retrieve>] [-V|--verbose]
+"Usage: reventlog <noderange> [all [-s]|clear|<number of entries to retrieve> [-s]] [-V|--verbose]
        reventlog [-h|--help|-v|--version]",
     "rinv" => 
 "Usage: 

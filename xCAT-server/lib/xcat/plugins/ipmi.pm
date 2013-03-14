@@ -3246,6 +3246,7 @@ sub readauxentry {
 sub eventlog {
     my $sessdata = shift;
 	my $subcommand = $sessdata->{subcommand};
+        my $cmdargv = $sessdata->{extraargs};
     unless ($sessdata) { die "not fixed yet" }
 
 	my $netfun = 0x0a;
@@ -3265,6 +3266,23 @@ sub eventlog {
 
 #device id needed here
 	$rc=0;
+#reventlog <node> [[all] [-s] | <num> [-s]| clear]
+        $subcommand = undef;
+        my $arg = shift(@$cmdargv);
+        while ($arg) {
+            if ($arg eq "all" or $arg eq "clear" or $arg =~ /^\d+$/) {
+                if (defined($subcommand)) {
+                    return(1,"revenglog $subcommand $arg invalid");
+                }
+                $subcommand = $arg;
+            } elsif ($arg =~ /^-s$/) {
+                $sessdata->{sort}=1;
+            } else {
+                return(1,"unsupported command eventlog $arg");
+            } 
+            $arg = shift(@$cmdargv);
+        }        
+
    unless (defined($subcommand)) {
       $subcommand = 'all';
    }
@@ -3272,6 +3290,9 @@ sub eventlog {
          $sessdata->{fullsel}=1;
 	}
 	elsif($subcommand eq "clear") {
+            if (exists($sessdata->{sort})) {
+                return(1,"option \"first\" can not work with $subcommand");
+            }
 	}
 	elsif($subcommand =~ /^\d+$/) {
         $sessdata->{numevents} = $subcommand;
@@ -3280,6 +3301,7 @@ sub eventlog {
 	else {
 		return(1,"unsupported command eventlog $subcommand");
 	}
+        $sessdata->{subcommand} = $subcommand;
     $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x48,data=>[],callback=>\&eventlog_with_time,callback_args=>$sessdata);
 }
 sub eventlog_with_time {
@@ -3348,7 +3370,11 @@ sub eventlog_with_selinfo {
     }
     $sessdata->{selentries} = [];
     $sessdata->{selentry}=0;
-    $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x43,data=>[0,0,0x00,0x00,0x00,0xFF],callback=>\&got_sel,callback_args=>$sessdata);
+    if (exists($sessdata->{sort})) {
+        $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x43,data=>[0,0,0xFF,0xFF,0x00,0xFF],callback=>\&got_sel,callback_args=>$sessdata);
+    } else {
+        $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x43,data=>[0,0,0x00,0x00,0x00,0xFF],callback=>\&got_sel,callback_args=>$sessdata);
+    }
 }
 sub got_sel {
     if (check_rsp_errors(@_)) {
@@ -3363,10 +3389,20 @@ sub got_sel {
 		#}
 
 
-	my $next_rec_ls = $returnd[1];
-	my $next_rec_ms = $returnd[2];
+	my $next_rec_ls;
+	my $next_rec_ms;
 	my @sel_data = @returnd[3..19];
-
+        if (exists($sessdata->{sort})) {
+            $next_rec_ls = $sel_data[0] - 1;
+            $next_rec_ms = $sel_data[1];
+            if (($next_rec_ls < 0) && ($next_rec_ms > 0)) {
+                $next_rec_ls += 256;
+                $next_rec_ms -= 1;
+            }
+        } else {
+            $next_rec_ls = $returnd[1];
+            $next_rec_ms = $returnd[2];
+        }
 		$sessdata->{selentry}+=1;
         if ($debug) {
 			print $sessdata->{selentry}.": ";
@@ -3389,7 +3425,8 @@ sub got_sel {
             } else {
 			    push(@{$sessdata->{selentries}},$text);
             }
-			if($next_rec_ms == 0xFF && $next_rec_ls == 0xFF) {
+			if(($next_rec_ms == 0xFF && $next_rec_ls == 0xFF) or 
+                           ($next_rec_ms == 0x0 && $next_rec_ls == 0x0)) {
 				sendsel($sessdata);
                 return;
 			}
@@ -3531,7 +3568,8 @@ sub got_sel {
             }
         }
 
-		if($next_rec_ms == 0xFF && $next_rec_ls == 0xFF) {
+		if(($next_rec_ms == 0xFF && $next_rec_ls == 0xFF) or 
+                   ($next_rec_ms == 0x0 && $next_rec_ls == 0x0)) {
 				sendsel($sessdata);
                 return;
 		}
