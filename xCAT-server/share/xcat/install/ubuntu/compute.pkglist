@@ -1,0 +1,5 @@
+openssh-server
+ntp
+gawk
+nfs-common
+snmpd
