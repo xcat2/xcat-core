@@ -346,7 +346,8 @@ sub displayHelp{
 	print "requires xCAT 2.0, Switch configured with SNMP sets, and only tested on SMC8648T\n";
 	print "nodesw -h|--help\n";
 	print "nodesw [-v] <noderange> vlan <vlan number>\n";
-	print "nodesw [-v] <noderange> show\n";
+	print "nodesw [-v] <noderange> show\n\n";
+	print "Author:  Vallard Benincosa\n";
 	exit $ec;
 }
 

@@ -149,7 +149,8 @@ sub usage {
   print "  --nfspath <NFS server path>\n";
   print "  --profilename <profile name>\n";
   print "  --help\n\n";
-  print "Updates IBM system x server hardware using IBM Bootable Media Creator.\n";
+  print "Updates IBM system x server hardware using IBM Bootable Media Creator.\n\n";
+  print "Author:  Jim Turner\n";
 }
 
 

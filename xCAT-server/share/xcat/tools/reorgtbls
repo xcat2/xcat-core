@@ -45,6 +45,7 @@ if ($help) {
     print
       "\t--t -comma delimitated list of tables.\n             Without this flag it reorgs all tables in the xcatdb database .\n";
     print "\n";
+    print "Author:  Lissa Valletta\n";
     exit 0;
 }
 

@@ -32,6 +32,8 @@ Example:
  3.  this script removes the blade configuration from xCAT
  4.  so if blade is placed in new slot or back in then xCAT goes 
      through rediscover process again.
+
+Author:  Jarrod Johnson
 EOS
     exit 0;
 }
