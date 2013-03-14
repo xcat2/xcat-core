@@ -156,14 +156,20 @@ if (-f $listfile)
         }
 
         # clean up tmp files
-        my $rmcmd = qq~/bin/rmdir -R $emgrfile $instpfile~;
+        my $rmcmd = qq~/bin/rm -R $emgrfile $instpfile~;
+		print "Running: \'$rmcmd\'\n";
+		$rc = &runcmd($rmcmd);
+        if ($rc != 0)
+        {
+			# "Could not remove  $emgrfile and $instpfile.\n";
+		}
 
         # unmount source dir
         my $umtcmd = qq~/usr/sbin/umount /xcatswmnt~;
+		print "Running: \'$umtcmd\'\n";
         $rc = &runcmd($umtcmd);
         if ($rc != 0)
         {
-
             # "Could not unmount source directory.\n";
         }
     }
@@ -321,6 +327,8 @@ sub do_rpms
             $rpmcmd = qq~/usr/bin/rpm $rflags ~;
         }
 
+		print "Running: \'$rpmcmd\'\n";
+
         my $rc = &runcmd($rpmcmd);
         print "$::outref\n";
         if ($rc != 0)
@@ -397,6 +405,8 @@ sub do_emgr
     {
         $emgrcmd .= qq~ -f $emgrfile ~;
     }
+
+	print "Running: \'$emgrcmd\'\n";
 
     my $rc = &runcmd($emgrcmd);
     print "$::outref\n";
@@ -481,6 +491,8 @@ sub do_installp
             $inpcmd .= qq~ -f $instpfile ~;
         }
     }
+
+	print "Running: \'$inpcmd\'\n";
 
     my $rc = &runcmd($inpcmd);
     print "$::outref\n";
