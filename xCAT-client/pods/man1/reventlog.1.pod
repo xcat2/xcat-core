@@ -4,7 +4,7 @@ B<reventlog> - retrieve or clear remote hardware event logs
 
 =head1 B<Synopsis>
 
-B<reventlog> I<noderange> {I<number-of-entries>|B<all>|B<clear>}
+B<reventlog> I<noderange> {I<number-of-entries [-s]>|B<all [-s]>|B<clear>}
 
 B<reventlog> [B<-h>|B<--help>|B<-v>|B<--version>]
 
@@ -25,6 +25,10 @@ Retrieve the specified number of entries from the nodes' service processors.
 =item B<all>
 
 Retrieve all entries.
+
+=item B<-s>
+
+To sort the entries from latest (always the last entry in event DB) to oldest (always the first entry in event DB). If B<number-of-entries> specified, the latest B<number-of-entries> events will be output in the order of latest to oldest.
 
 =item B<clear>
 
