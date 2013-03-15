@@ -40,7 +40,7 @@ my $confdata; #a reference to serve as a common pointer betweer VMCommon functio
 my $libvirtsupport;
 $libvirtsupport = eval { 
     require Sys::Virt; 
-    if (Sys::Virt->VERSION < "0.2.0") {
+    if (Sys::Virt->VERSION =~ /^0\.[10]\./) {
         die;
     }
     1;
@@ -176,6 +176,7 @@ sub get_storage_pool_by_url {
     push @currpools,$virtconn->list_defined_storage_pools();
     my $poolobj;
     my $pool;
+    my $islvm=0;
     foreach my $poolo (@currpools) {
         $poolobj = $poolo;
         $pool = $parser->parse_string($poolobj->get_xml_description()); #XMLin($poolobj->get_xml_description());
@@ -206,6 +207,7 @@ sub get_storage_pool_by_url {
 	    my $vgname = $1;
 	    my $checkname = $pool->findnodes("/pool/name/text()")->[0]->data;
 	    if ($checkname eq $vgname) {
+		$islvm=1;
 	    	last;
 	    }
         } elsif ($pool->findnodes('/pool/name/text()')->[0]->data eq $url) { #$pool->{name} eq $url) {
@@ -216,7 +218,7 @@ sub get_storage_pool_by_url {
     if ($pool) { 
         my $inf=$poolobj->get_info();
         if ($inf->{state} == 0) { #Sys::Virt::StoragePool::STATE_INACTIVE) { #if pool is currently inactive, bring it up
-            $poolobj->build();
+            unless ($islvm) { $poolobj->build(); } #if lvm and defined, it's almost certainly been built
             $poolobj->create();
         }
 	eval { #we *try* to do this, but various things may interfere.
@@ -226,7 +228,13 @@ sub get_storage_pool_by_url {
         return $poolobj; 
     }
     $poolobj = $virtconn->define_storage_pool(build_pool_xml($url,$mounthost));
-    $poolobj->build();
+    eval { $poolobj->build(); };
+    if ($@) { 
+    	my $error = $@;
+	unless ($error =~ /vgcreate.*exit status 3/ or $error =~ /pvcreate.*exit status 5/) { 
+		die $@;
+	}
+    }
     $poolobj->create();
     eval { #wrap in eval, not likely to fail here, but calling it at all may be superfluous anyway
     	$poolobj->refresh();
