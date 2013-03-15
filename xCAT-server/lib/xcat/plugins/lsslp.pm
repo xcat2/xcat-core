@@ -523,6 +523,7 @@ sub invoke_dodiscover {
    $arg{Retry} = $maxt;
    $arg{Count} = $globalopt{C} if($globalopt{C});
    $arg{Time} = $globalopt{T} if($globalopt{T});
+   $arg{nomsg} = 1 if($globalopt{z} or $globalopt{x});
    $arg{reqcallback} = $request->{callback} if($request->{callback});
     my ($searchmacsref,$sendcount,$rsp) = xCAT::SLP::dodiscover(%arg);
 
@@ -1713,7 +1714,7 @@ sub process_request {
 	    $min = "more than 2";
     }	
     #my $start1 = Time::HiRes::gettimeofday();
-    send_msg( \%request, 0, "$sendcount requests with $rspc responses.  Now processing responses.  This will take $min minutes...");
+    send_msg( \%request, 0, "$sendcount requests with $rspc responses.  Now processing responses.  This will take $min minutes...") unless ($globalopt{x} or $globalopt{z});
     format_output( \%request, $searchmacsref);
     #my $elapsed1 = Time::HiRes::gettimeofday() - $start1;
     #send_msg( \%request, 0, "$num nodes takes $elapsed1");
