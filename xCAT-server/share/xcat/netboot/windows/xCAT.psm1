@@ -48,6 +48,10 @@ Function Select-xCATClientCert ($sender, $targetHost, $localCertificates, $remot
 Function Connect-xCAT { 
 	Param(
 		$mgtServer,
+		$mgtServerPort=3001,
 		$mgtServerAltName=$mgtServer
 	)
+	$script:xcatconnection = New-Object Net.Sockets.TcpClient($mgtServer,$mgtServerPort)
+	$script:verifycallback = Get-Content Function:\Appve-xCATCert
+	$script:xcatstream = $script:xcatconnection
 }
