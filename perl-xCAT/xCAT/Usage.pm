@@ -261,7 +261,7 @@ my %usage = (
        rmvm [-p] [-f]",
     "lsslp" =>
 "Usage: lsslp [-h|--help|-v|--version]
-       lsslp [<noderange>][-V|--verbose][-i ip[,ip..]][-w][-r|-x|-z][-n][-I][-s FRAME|CEC|MM|IVM|RSA|HMC|CMM]
+       lsslp [<noderange>][-V|--verbose][-i ip[,ip..]][-w][-r|-x|-z][-n][-I][-s FRAME|CEC|MM|IVM|RSA|HMC|CMM|IMM2|FSP]
              [-t tries][--vpdtable][-C counts][-T timeout][--flexdiscover]",
   "rflash" =>
 "Usage: 
