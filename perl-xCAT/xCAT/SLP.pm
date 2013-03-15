@@ -91,7 +91,7 @@ sub dodiscover {
         }
     }
     my $printinfo = join(",", @printip);  
-    send_message($args{reqcallback}, 0, "Sending SLP request on interfaces: $printinfo ...") if ($args{reqcallback});
+    send_message($args{reqcallback}, 0, "Sending SLP request on interfaces: $printinfo ...") if ($args{reqcallback} and !$args{nomsg} );
 	foreach my $srvtype (@srvtypes) {
 		send_service_request_single(%args,ifacemap=>$interfaces,SrvType=>$srvtype);
 	}
@@ -170,12 +170,12 @@ sub dodiscover {
                 $interval = time() -  $startinterval;
                 if ($args{Time} and $args{Count}) {
                     if ($rspcount >= $args{Count} or $interval >= $args{Time}) {
-                        send_message($args{reqcallback}, 0, "Received $rspcount1 responses.") if ($args{reqcallback});
+                    send_message($args{reqcallback}, 0, "Received $rspcount1 responses.") if ($args{reqcallback}  and !$args{nomsg});
                         last;
                     }
                 }
             if ($sendcount > $retrytime and $rspcount1 == 0) {
-                send_message($args{reqcallback}, 0, "Received $rspcount1 responses.") if ($args{reqcallback});
+                send_message($args{reqcallback}, 0, "Received $rspcount1 responses.") if ($args{reqcallback} and !$args{nomsg});
                 last;
             }
             #########################
@@ -184,8 +184,8 @@ sub dodiscover {
                 if ( $interval >  $retryinterval){#* (2**$sendcount))) { #double time
                     $sendcount++;
                     $startinterval = time();
-                send_message($args{reqcallback}, 0, "Received $rspcount1 responses.") if ($args{reqcallback});  
-                send_message($args{reqcallback}, 0, "Sending SLP request on interfaces: $printinfo ...") if ($args{reqcallback});
+                send_message($args{reqcallback}, 0, "Received $rspcount1 responses.") if ($args{reqcallback} and !$args{nomsg});  
+                send_message($args{reqcallback}, 0, "Sending SLP request on interfaces: $printinfo ...") if ($args{reqcallback} and !$args{nomsg});
 		    	    foreach my $srvtype (@srvtypes) {
 		    	    	send_service_request_single(%args,ifacemap=>$interfaces,SrvType=>$srvtype);
 		    	    }
