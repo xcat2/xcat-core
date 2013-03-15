@@ -1195,6 +1195,8 @@ sub parse_responses {
 				bpcmtm to ${$outhash{$name}}{bpcmtm}, bpcsn to ${$outhash{$name}}{bpcsn}");
             }
 
+        }
+    }
 
     ###########################################################
     # find frame's hostname first, then use find the cec's parent
@@ -1257,7 +1259,7 @@ sub parse_responses {
     trace( $request, "\n\n\nBegin to find fsp/bpa's hostname and parent");
     foreach my $h ( keys %outhash ) {
 	# Added a skip if processing Flex blades
-        if(((${$outhash{$h}}{type} eq TYPE_FSP) && ${$outhash{$h}}{mtm} !~ /^7895|1457/ ) or ${$outhash{$h}}{type} eq TYPE_BPA) {
+        if(${$outhash{$h}}{type} eq TYPE_FSP or ${$outhash{$h}}{type} eq TYPE_BPA) {
             $newhostname = $::OLD_DATA_CACHE{${$outhash{$h}}{type}."*".${$outhash{$h}}{mtm}.'*'.${$outhash{$h}}{serial}.'*'.${$outhash{$h}}{side}};
             if ($newhostname){
                 ${$outhash{$h}}{hostname} = $newhostname ;
@@ -1265,7 +1267,7 @@ sub parse_responses {
                 push  @matchnode, $h;
             }
             my $ptmp = ${$outhash{$h}}{parent};
-            ${$outhash{$h}}{parent} = ${$outhash{$ptmp}}{hostname};
+            ${$outhash{$h}}{parent} = ${$outhash{$ptmp}}{hostname} unless((${$outhash{$h}}{type} eq TYPE_FSP) && ${$outhash{$h}}{mtm} =~ /^7895|1457/ );
 			trace( $request, "$h found parent ${$outhash{$ptmp}}{hostname}");
             #check if fsp/bpa's ip is valid
             my $vip = check_ip(${$outhash{$h}}{ip});
@@ -1282,8 +1284,6 @@ sub parse_responses {
                 ${$outhash{$child}}{fid} = ${$outhash{$h}}{fid};
                 ${$outhash{$child}}{cid} = ${$outhash{$h}}{cid};
 		        trace( $request, "child is $child, fid is ${$outhash{$child}}{fid}, cid is ${$outhash{$child}}{cid}");
-            }
-		}
     }	
 
         } # end - process fsp and bpa
@@ -1325,7 +1325,9 @@ sub parse_responses {
         }
         send_msg ( $request, 0, "These nodes defined in database but can't be discovered: $notdisnode  \n");
     }
-
+    foreach my $no(keys %outhash) {
+	    delete $outhash{$no} unless ( ${$outhash{$no}}{hostname} );
+    }		
     return \%outhash;
 }
 ##########################################################################
