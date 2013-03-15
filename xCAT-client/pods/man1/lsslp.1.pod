@@ -9,7 +9,7 @@ I<lsslp [-h| --help]>
 I<lsslp [-v| --version]>
 
 
-I<lsslp [noderange] [-V] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s CEC|FRAME|MM|IVM|RSA|HMC|CMM][-t tries][-I][-C counts][-T timeout][--vpdtable]>
+I<lsslp [noderange] [-V] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s CEC|FRAME|MM|IVM|RSA|HMC|CMM|IMM2|FSP][-t tries][-I][-C counts][-T timeout][--vpdtable]>
 
 
 =head1 DESCRIPTION
