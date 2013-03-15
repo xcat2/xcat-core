@@ -236,7 +236,7 @@ sub powercmd {
 	    if($action =~ /^lowpower$/) { $action = "cec_on_low_power"; }
         #if($action =~ /^cycle$/) {$action = "cec_reboot";}
         if($action =~ /^cycle$/) {$action = "reset";}
-	    if($action !~ /^cec_on_autostart$/ && $action !~ /^cec_off$/ &&  $action !~ /^cec_on_low_power$/ && $action !~ /^onstandby$/ && $action !~ /^reboot_service_processor$/ && $action !~ /^reset$/) {
+	    if($action !~ /^cec_on_autostart$/ && $action !~ /^cec_off$/ &&  $action !~ /^cec_on_low_power$/ && $action !~ /^onstandby$/ && $action !~ /^reboot_service_processor$/ && $action !~ /^reset$/ && $action !~ /^sms$/) {
 	        push @output, [$node_name, "\'$action\' command not supported for $$d[4]", -1 ];
 		    return (\@output);
 	    }	
