@@ -58,4 +58,22 @@ Function Connect-xCAT {
 	$script:xcatstream = $script:xcatconnection.GetStream()
 	$script:securexCATStream = New-Object System.Net.Security.SSLStream($script:xcatstream,$false,$script:verifycallback)
 	$script:securexCATStream.AuthenticateAsClient($mgtServerAltName)
+	$script:xcatwriter = New-Object System.IO.StreamWriter($script:securexCATStream)
+	$script:xcatreader = New-Object System.IO.StreamReader($script:securexCATStream)
+}
+
+Function Get-Power {
+	Param(
+		$nodeRange
+	)
+	$data = "<xcatrequest>`n`t<command>rpower</command>`n`t<arg>stat</arg>`n`t<noderange>$nodeRange</noderange>`n</xcatrequest>`n"
+	$script:xcatwriter.WriteLine($data)
+	$script:xcatwriter.Flush()
+	$response=""
+	$lastline=""
+	while (! $lastline.Contains("</xcatresponse>")) {
+		$lastline = $script:xcatreader.ReadLine()
+		$response = $response + $lastline
+	}
+	write-host $response
 }
