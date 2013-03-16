@@ -63,19 +63,48 @@ Function Connect-xCAT {
 	$script:xcatreader = New-Object System.IO.StreamReader($script:securexCATStream)
 }
 
-Function Get-Power {
+Function Get-NodePower {
 	Param(
 		$nodeRange
 	)
-	Connect-xCAT
-	$data = "<xcatrequest>`n`t<command>rpower</command>`n`t<arg>stat</arg>`n`t<noderange>$nodeRange</noderange>`n</xcatrequest>`n"
-	$script:xcatwriter.WriteLine($data)
-	$script:xcatwriter.Flush()
-	$response=""
-	$lastline=""
-	while (! $lastline.Contains("</xcatresponse>") -and $script:xcatreader) {
-		$lastline = $script:xcatreader.ReadLine()
-		$response = $response + $lastline
-	}
-	write-host $response
+	$xcatrequest=@{'command'='rpower';'noderange'=$nodeRange;'args'=@('stat')}
+	Send-xCATCommand($xcatrequest)
 }
+Function Get-NodeVitals {
+	Param(
+		$nodeRange,
+		$vitalTypes="all"
+	)
+	$xcatrequest=@{'command'='rvitals';'noderange'=$nodeRange;'args'=@($vitalTypes)}
+	Send-xCATCommand($xcatrequest)
+}
+Function Send-xCATCommand {
+	Param(
+		$xcatRequest
+	)
+	Connect-xCAT
+	$requestxml = "<xcatrequest>`n`t<command>"+$xcatRequest.command+"</command>`n"
+	if ($xcatRequest.noderange) {
+		$requestxml = $requestxml + "`t<noderange>"+$xcatRequest.noderange+"</noderange>`n"
+	}
+        foreach ($arg in $xcatRequest.args) {
+		$requestxml = $requestxml + "`t<arg>"+$arg+"</arg>`n"
+	}
+	$requestxml = $requestxml + "</xcatrequest>`n"
+	$script:xcatwriter.WriteLine($requestxml)
+	$script:xcatwriter.Flush()
+	$serverdone=0
+	while (! $serverdone -and $script:xcatreader) {
+		$responsexml=""
+		$lastline=""
+		while ($lastline -ne $null -and ! $lastline.Contains("</xcatresponse>") -and $script:xcatreader) {
+			$lastline = $script:xcatreader.ReadLine()
+			$responsexml = $responsexml + $lastline
+		}
+		[xml]$response = $responsexml
+		$response.xcatresponse.node.name
+		$response.xcatresponse.node.data
+		if ($response.xcatresponse.serverdone -ne $null) { $serverdone=1 }
+	}
+}
+
