@@ -101,8 +101,11 @@ Function Get-NodePower {
 	$xcatrequest=@{'command'='rpower';'noderange'=$nodeRange;'args'=@('stat')}
 	Send-xCATCommand($xcatrequest)
 }
-Function Merge-xCATData {
+Function Merge-xCATData { #xcoll attempt
 	$groupeddata=$input|Group-Object -Property "node"
+	foreach ($nodedata in $groupeddata) {
+		 New-MergedxCATData $nodedata.Group
+	}
 	
 }
 Function Set-NodePower {
@@ -191,15 +194,19 @@ Function Send-xCATCommand {
 
 Function New-MergedxCATData { #takes an arbitrary number of nodeData objects and spits out one
 	Param(
-		[parameter(ValueFromRemainingArguments=$true)] $nodeData
+		$nodeData
 	)
-	$myprops = @{}
-	$myprops.Data=@()
-	$myprops.Node = $nodeData[0].Node
+	$myobj = @{}
+	$myobj.dataObjects=@()
+	$myobj.NodeRange = $nodeData[0].Node
 	foreach ($data in $nodeData) {
-		$myprops.DataObjects += $data|select-object -ExcludeProperty Node *
+		$rangedata = $data|select-object -ExcludeProperty Node *
+		$rangedata.PSObject.TypeNames.RemoveAt(0)
+		$myobj.dataObjects = $myobj.dataObjects  + $rangedata
 	}
-	write-host $myprops
+	$newobj = New-Object -TypeName PSObject -Prop $myobj
+	$newobj.PSObject.TypeNames.Insert(0,'xCATNodeRangeData')
+	return $newobj
 }
 Function New-xCATDataFromXmlElement {
 	Param(
