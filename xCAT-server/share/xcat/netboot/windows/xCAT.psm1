@@ -63,26 +63,75 @@ Function Connect-xCAT {
 	$script:xcatreader = New-Object System.IO.StreamReader($script:securexCATStream)
 }
 
+Function Get-NodeInventory {
+	Param(
+		[parameter(ValueFromPipeLine=$true)] $nodeRange,
+		[parameter(ValueFromRemainingArguments=$true)] $inventoryType
+	)
+	$pipednr=@($input)
+	if ($pipednr)  { $nodeRange = $pipednr }
+	$xcatrequest=@{'command'='rinv';'noderange'=$nodeRange;'args'=@($inventoryType)}
+	Send-xCATCommand($xcatrequest)
+}
+Function Get-NodeBeacon {
+	Param(
+		[parameter(ValueFromPipeLine=$true)] $nodeRange
+	)
+	$pipednr=@($input)
+	if ($pipednr)  { $nodeRange = $pipednr }
+	$xcatrequest=@{'command'='rbeacon';'noderange'=$nodeRange;'args'=@('stat')}
+	Send-xCATCommand($xcatrequest)
+}
+Function Set-NodeBeacon {
+	Param(
+		[parameter(ValueFromPipeLine=$true)] $nodeRange,
+		$newBeaconState
+	)
+	$pipednr=@($input)
+	if ($pipednr)  { $nodeRange = $pipednr }
+	$xcatrequest=@{'command'='rbeacon';'noderange'=$nodeRange;'args'=@($newBeaconState)}
+	Send-xCATCommand($xcatrequest)
+}
 Function Get-NodePower {
 	Param(
-		$nodeRange
+		[parameter(Position=0,ValueFromPipeLine=$true)] $nodeRange
 	)
+	$pipednr=@($input)
+	if ($pipednr)  { $nodeRange = $pipednr }
 	$xcatrequest=@{'command'='rpower';'noderange'=$nodeRange;'args'=@('stat')}
+	Send-xCATCommand($xcatrequest)
+}
+Function Merge-xCATData {
+	$groupeddata=$input|Group-Object -Property "node"
+	
+}
+Function Set-NodePower {
+	Param(
+		[parameter(ValueFromPipeLine=$true)] $nodeRange,
+		[parameter(HelpMessage="The power action to perform (on/off/boot/reset)")] $powerState="stat"
+	)
+	$pipednr=@($input)
+	if ($pipednr)  { $nodeRange = $pipednr }
+	$xcatrequest=@{'command'='rpower';'noderange'=$nodeRange;'args'=@($powerState)}
 	Send-xCATCommand($xcatrequest)
 }
 Function Get-Nodes {
 	Param(
-		[parameter(Position=0)] $nodeRange,
-		[parameter(ValueFromRemainingArguments=$true)] $tabcols
+		[parameter(Position=0,ValueFromPipeLine=$true)] $nodeRange,
+		[parameter(ValueFromRemainingArguments=$true)] $tableAndColumn
 	)
-	$xcatrequest=@{'command'='nodels';'noderange'=$nodeRange;'args'=@($tabcols)}
+	$pipednr=@($input)
+	if ($pipednr)  { $nodeRange = $pipednr }
+	$xcatrequest=@{'command'='nodels';'noderange'=$nodeRange;'args'=@($tableAndColumn)}
 	Send-xCATCommand($xcatrequest)
 }
 Function Get-NodeVitals {
 	Param(
-		[parameter(Position=0)] $nodeRange,
+		[parameter(Position=0,ValueFromPipeLine=$true)] $nodeRange,
 		[parameter(ValueFromRemainingArguments=$true)] $vitalTypes="all"
 	)
+	$pipednr=@($input)
+	if ($pipednr)  { $nodeRange = $pipednr }
 	$xcatrequest=@{'command'='rvitals';'noderange'=$nodeRange;'args'=@($vitalTypes)}
 	Send-xCATCommand($xcatrequest)
 }
@@ -93,10 +142,21 @@ Function Send-xCATCommand {
 	Connect-xCAT
 	$requestxml = "<xcatrequest>`n`t<command>"+$xcatRequest.command+"</command>`n"
 	if ($xcatRequest.noderange) {
+		if ($xcatRequest.noderange.PSObject.TypeNames[0] -eq "xCATNodeData") {
+			$xcatRequest.noderange =  $xcatRequest.noderange.Node
+		}
 		if ($xcatRequest.noderange -is [System.Array]) { #powershell wants to arrayify commas because it can't make up its mind 
 								 #whether it's a scripting language or a shell language, try to undo the 
 								 #damage
-			$xcatRequest.noderange=[string]::Join(",",$xcatRequest.noderange);
+			$nrparts=@()
+			foreach ($nr in $xcatRequest.noderange) {
+				if ($nr -is [System.String]) {
+					$nrparts += $nr
+				} elseif ($nr.PSObject.TypeNames[0] -eq "xCATNodeData") {
+					$nrparts += $nr.Node
+				}
+			}
+			$xcatRequest.noderange=[string]::Join(",",$nrparts);
 		}
 		$requestxml = $requestxml + "`t<noderange>"+$xcatRequest.noderange+"</noderange>`n"
 	}
@@ -129,7 +189,19 @@ Function Send-xCATCommand {
 	}
 }
 
-Function New-xCATDataFromXmlElement  {
+Function New-MergedxCATData { #takes an arbitrary number of nodeData objects and spits out one
+	Param(
+		[parameter(ValueFromRemainingArguments=$true)] $nodeData
+	)
+	$myprops = @{}
+	$myprops.Data=@()
+	$myprops.Node = $nodeData[0].Node
+	foreach ($data in $nodeData) {
+		$myprops.DataObjects += $data|select-object -ExcludeProperty Node *
+	}
+	write-host $myprops
+}
+Function New-xCATDataFromXmlElement {
 	Param(
 		$xmlElement,
 		$NodeRangeHint
@@ -153,7 +225,12 @@ Function New-xCATDataFromXmlElement  {
 	$myobj.PSObject.TypeNames.Insert(0,'xCATNodeData')
 	return $myobj
 }
-
+New-Alias -name rpower -value Set-NodePower
+New-Alias -name rvitals -value Get-Nodevitals
+New-Alias -name rinv -value Get-NodeInventory
+New-Alias -name rbeacon -value Set-NodeBeacon
+New-Alias -name nodels -value Get-Nodes
+Export-ModuleMember -function *-* -Alias *
 
 		
 		
