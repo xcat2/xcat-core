@@ -1,5 +1,5 @@
 #first define 
-start:Linux_sn_installation_flat_x86_64
+start:Linux_sn_installation_flat_x86_64_redhat
 os:Linux
 cmd:makedns 
 check:rc==0
@@ -27,9 +27,9 @@ cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install
 check:rc==0
 cmd:mkdir -p /install/post/otherpkgs/rhels6.3/x86_64/xcat/
 check:rc==0
-cmd:cp -rf /xcat-core /install/post/otherpkgs/rhels6.3/x86_64/xcat/
+cmd:cp -rf /xcat-core /install/post/otherpkgs/__GETNODEATTR($$CN,os)__/x86_64/xcat/
 check:rc==0
-cmd:createrepo /install/post/otherpkgs/rhels6.3/x86_64/xcat/xcat-core
+cmd:createrepo /install/post/otherpkgs/__GETNODEATTR($$CN,os)__/x86_64/xcat/xcat-core
 check:rc==0
 cmd:for i in mysql-server mysql mysql-bench mysql-devel mysql-connector-odbc; do  cat /opt/xcat/share/xcat/install/rh/service.rhels6.x86_64.pkglist|grep "$i$";if [ $? -ne 0 ] ; then echo "$i" >> /opt/xcat/share/xcat/install/rh/service.rhels6.x86_64.pkglist; fi done
 cmd:chtab node=service postscripts.postscripts="servicenode,odbcsetup"
