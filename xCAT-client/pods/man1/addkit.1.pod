@@ -6,6 +6,8 @@ B<addkit> - Install a kit on the xCAT management node
 
 B<addkit> [-h|--help]
 
+B<addkit> [-i|--inspection] <kitlist>
+
 B<addkit> [-V|--verbose] [-p|--path <path>] <kitlist>
 
 =head1 DESCRIPTION
@@ -21,6 +23,10 @@ Display usage message.
 B<-V|--verbose>
 
 Verbose mode.
+
+B<-i|--inspection>
+
+Show the summary of the given kits
 
 B<-p|--path <path>>
 
@@ -62,6 +68,16 @@ Output is similar to:
 
 Kit /kit/kit-test1.tar.bz2 was successfully added.
 
+4. To read the general infomration of the kit, without adding the kits to xCAT DB
+
+addkit -i kit-test1.tar.bz2
+
+Output is similar to:
+
+kitname=xlc-12.1.0.0-Linux
+description=XLC12 for Linux
+version=12.1.0.0
+ostype=Linux
 
 =head1 SEE ALSO
 
