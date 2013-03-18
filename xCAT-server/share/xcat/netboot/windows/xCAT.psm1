@@ -1,13 +1,43 @@
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 # This function specifically validates that the peer we are talking to is signed by the xCAT blessed CA and no other CA
+Function Import-xCATConfig ($credentialPackage) {
+	$shell = New-Object -com shell.application
+	(Get-Location).Path+"\$credentialPackage"
+	$credpkg = $shell.namespace((Get-Location).Path+"\$credentialPackage")
+	$credpkg
+	$randname = [System.IO.Path]::GetRandomFileName()
+	Push-Location
+	mkdir $env:temp+"\"+$randname
+	Set-Location $env:temp+"\"+$randname
+	$tmpdir = $shell.namespace((Get-Location).Path)
+	$tmpdir
+	$tmpdir.CopyHere($credpkg.items(),0x14)
+	if (!(Test-Path HKCU:\Software\xCAT)) {
+		mkdir HKCU:\Software\xCAT
+	}
+	if (Test-Path xcat.cfg) {
+		$cfgdata=Get-Content xcat.cfg 
+		$keyvalue = $cfgdata.Split("=")
+		$servername = $keyvalue[1]
+		Set-ItemProperty HKCU:\Software\xCAT servername $servername
+	}
+	if (Test-Path ca.pem) {
+		ImportxCATCA ca.pem
+	}
+	if (Test-Path user.pfx) {
+		SetxCATClientCertificate user.pfx
+	}
+	Pop-Location
+}
 Function VerifyxCATCert ($sender, $cert, $chain, $polerrs) {
 	if ($polerrs -ne "None" -and $polerrs -ne "RemoteCertificateChainErrors") { return $false } #if the overall policy suggests rejection, go with it
 	#why do we tolerate RemoteCertificateChainErrors?  Because we are going to check specifically for the CA configured for this xCAT installation
 	#we chose not to add xCAT's CA to the root store, as that implies the OS should trust xCAT's CA for non-xCAT related things.  That is madness.
 	#Of course, that's the madness typical with x509, but we need not propogate the badness...
 	#we are measuring something more specific than 'did any old CA sign this', we specifically want to assue the signer CA is xCAT's 
+	$mythumb=Get-ItemProperty HKCU:\Software\xCAT
         foreach ($cert in $chain.chainElements) {
-		if ($script:xcatcacert.thumbprint.Equals($cert.Certificate.thumbprint)) {
+		if ($mythumb.cacertthumb.Equals($cert.Certificate.thumbprint)) {
 			return $true
 		}
         }
@@ -18,25 +48,28 @@ Function VerifyxCATCert ($sender, $cert, $chain, $polerrs) {
 #It's not trusted by system policy, but our overidden verify function will find it.  Too bad MS doesn't allow us custom store names under the user
 #repository for whatever reason.  We'll just 'import' it every session from file, which is harmless to do multiple times
 #this isn't quite as innocuous as the openssl mechanisms to do this sort of thing, but it's as close as I could figure to get
-Function Import-xCATCA ( $certpath ) {
-	$script:xcatcacert=Import-Certificate -FilePath $certpath -CertStoreLocation Cert:\CurrentUser\My
+Function ImportxCATCA ( $certpath ) {
+	$xcatcacert=Import-Certificate -FilePath $certpath -CertStoreLocation Cert:\CurrentUser\My
+	Set-ItemProperty HKCU:\Software\xCAT cacertthumb $xcatcacert.thumbprint
 }
 
 #this removes the xCAT CA from trust store, if user wishes to explicitly remove xCAT key post deploy
 #A good idea for appliances that want to not show weird stuff.  The consequences of not calling it are harmless: a useless extra public cert
 #in admin's x509 cert store
-Function Remove-xCATCA ( $certpath ) {
-	Import-xCATCA($certpath) #this seems insane, but it's easiest way to make sure we have the correct path
-	rm $script:xcatcacert.PSPath
+Function RemovexCATCA {
+	$mythumb=Get-ItemProperty HKCU:\Software\xCAT
+	rm cert:\CurrentUser\My\$mythumb.cacertthumb
 }
 
 #specify a client certificate to use in pfx format
-Function Set-xCATClientCertificate ( $pfxPath ) {
-	$script:xcatclientcert=Import-pfxCertificate $pfxPath -certStoreLocation cert:\currentuser\my
+Function SetxCATClientCertificate ( $pfxPath ) {
+	$xcatclientcert=Import-pfxCertificate $pfxPath -certStoreLocation cert:\currentuser\my
+	Set-ItemProperty HKCU:\Software\xCAT usercertthumb $xcatclientcert.thumbprint
 }
-Function Remove-xCATClientCertificate( $pfxPath ) {
-	Set-xCATClientCertificate($pfxpath)
-	rm cert:\currentuser\my\$script:xcatclientcert.thumbprint
+Function RemovexCATClientCertificate {
+	SetxCATClientCertificate($pfxpath)
+	$mythumb=Get-ItemProperty HKCU:\Software\xCAT
+	rm cert:\currentuser\my\$mythumb.usercertthumb
 }
 
 #key here is that we might have two certificates:
@@ -44,23 +77,43 @@ Function Remove-xCATClientCertificate( $pfxPath ) {
 #-one intended to identify the user to do things like 'rpower'
 #however, user will just have to control it by calling Set-xCATClientCertificate on the file for now
 #TODO: if user wants password protected PFX file, we probably would want to import it once and retain thumb across sessions...
-Function Select-xCATClientCert ($sender, $targetHost, $localCertificates, $remoteCertificate,$acceptableIssuers) {
-	$script:xcatclientcert
+Function SelectxCATClientCert ($sender, $targetHost, $localCertificates, $remoteCertificate,$acceptableIssuers) {
+	$mythumb=(Get-ItemProperty HKCU:\Software\xCAT).usercertthumb
+	Get-Item cert:\CurrentUser\My\$mythumb
+}
+Function Set-xCATServer {
+	Param(
+		[Parameter(Mandatory=$true)] $xCATServer
+	)
+	Set-ItemProperty HKCU:\Software\xCAT serveraddress $xCATServer
 }
 Function Connect-xCAT { 
 	Param(
-		$mgtServer=$xcathost,
+		$mgtServer,
 		$mgtServerPort=3001,
-		$mgtServerAltName=$mgtServer
+		$mgtServerAltName
 	)
+	if (! $mgtServer) {
+		$mgtServer=(Get-ItemProperty HKCU:\Software\xCAT).serveraddress
+		if (! $mgtServer) {
+			$mgtServer=(Get-ItemProperty HKCU:\Software\xCAT).servername
+		}
+	}
+	if (! $mgtServerAltName) {
+		$mgtServerAltName=(Get-ItemProperty HKCU:\Software\xCAT).servername
+	}
 	$script:xcatconnection = New-Object Net.Sockets.TcpClient($mgtServer,$mgtServerPort)
+	if (! $script:xcatconnection) { 
+		return $false
+	}
 	$verifycallback = Get-Content Function:\VerifyxCATCert
-	$certselect = Get-Content Function:\Select-xCATClientCert
+	$certselect = Get-Content Function:\SelectxCATClientCert
 	$script:xcatstream = $script:xcatconnection.GetStream()
 	$script:securexCATStream = New-Object System.Net.Security.SSLStream($script:xcatstream,$false,$verifycallback,$certselect)
 	$script:securexCATStream.AuthenticateAsClient($mgtServerAltName)
 	$script:xcatwriter = New-Object System.IO.StreamWriter($script:securexCATStream)
 	$script:xcatreader = New-Object System.IO.StreamReader($script:securexCATStream)
+	$true
 }
 
 Function Get-NodeInventory {
@@ -119,7 +172,10 @@ Function Merge-xCATData { #xcoll attempt
 		$findata = $findata |select-object -excludeproperty NodeRangeHint,stringcontent *
 		$mobjname = 'MergedxCATSimpleNodeData'
 		foreach ($do in $findata.dataObjects) {
-			if ($do.description) {
+			if ($do.ErrorData) {
+				$mobjname='MergedxCATNodeErrorData'
+				break
+			} elseif ($do.description) {
 				$mobjname='MergedxCATNodeData'
 				break
 			}
@@ -166,7 +222,7 @@ Function Send-xCATCommand {
 	Param(
 		$xcatRequest
 	)
-	Connect-xCAT
+	if (!(Connect-xCAT)) { return }
 	$requestxml = "<xcatrequest>`n`t<command>"+$xcatRequest.command+"</command>`n"
 	if ($xcatRequest.noderange) {
 		if ($xcatRequest.noderange.PSObject.TypeNames[0] -eq "xCATNodeData") {
@@ -234,6 +290,7 @@ Function NewMergedxCATData { #takes an arbitrary number of nodeData objects and 
 	foreach ($data in $nodeData) {
 		$rangedata = $data|select-object -ExcludeProperty Node,NodeRangeHint *
 		foreach ($dataseg in $rangedata) {
+			if ($dataseg.ErrorData) { $myobj.stringcontent += "ERROR: "+$dataseg.ErrorData }
 			$myobj.stringcontent += $dataseg.Description+": "+$dataseg.Data+"`n"
 		}
 		$myobj.dataObjects = $myobj.dataObjects  + $rangedata
@@ -265,6 +322,7 @@ Function NewxCATDataFromXmlElement {
 		$myprops.Data=""
 	}
 	if ($xmlElement.error) {
+		$objname = 'xCATNodeErrorData'
 		$errstr= $xmlElement.name + ": " + $xmlElement.error
 		Write-Error $errstr
 		$myprops.ErrorData=$xmlElement.error
