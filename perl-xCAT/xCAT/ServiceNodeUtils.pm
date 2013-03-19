@@ -131,8 +131,12 @@ sub isServiceReq
         return;    # do not setup anything
     }
 
-    # determine if this is being run for the Management Node
-    my $mname = xCAT::Utils->noderangecontainsMn($servicenodename);
+    # Are we on the MN 
+    my $mname;
+    if (xCAT::Utils->isMN()) {
+      my @nodeinfo = xCAT::NetworkUtils->determinehostname;
+       $mname   = pop @nodeinfo;                    # get hostname
+    }
 
     my $servicehash;
     # read all the nodes from the table, for each service
