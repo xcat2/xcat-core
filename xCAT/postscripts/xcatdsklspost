@@ -344,7 +344,12 @@ rm -rf /xcatpost/mypostscript
 #get node name and download the mypostscript.$node file
 #try to get the node ip address that connects to the server.
 #then resolve the name of the ip
-NIP=`ip route get $SIP | head -n 1 | sed 's/^.*src//g' | awk {'print $1'}`
+real_SIP=`getent hosts $SIP |awk {'print $1'}` 
+if [ $? -ne 0 ]; then 
+    real_SIP=$SIP
+fi
+
+NIP=`ip route get $real_SIP | head -n 1 | sed 's/^.*src//g' | awk {'print $1'}`
 if [ $? -eq 0 ] && [ -n "$NIP" ]; then
     #relsove the name of the node from ip address
     result=`getent hosts $NIP`
@@ -375,12 +380,13 @@ fi
 max_retries=2
 postfix=0
 if [ -n "$node_short" ]; then 
-    download_mypostscript $SIP $node_short $postfix $max_retries $TFTPDIR 
-    if [ $? -ne 0 ]; then
-	if [ "$node" != "$node_short" ]; then
-	    download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR
-	fi
-    fi
+    download_mypostscript $SIP $node_short $postfix $max_retries $TFTPDIR
+    #disable trying the long node name for now 
+    #if [ $? -ne 0 ]; then
+    #	if [ "$node" != "$node_short" ]; then
+    #	    download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR
+    #	fi
+    #fi
 fi
 
 
