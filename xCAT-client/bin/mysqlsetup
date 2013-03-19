@@ -53,6 +53,7 @@ $::command = "$0 $args";
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
 $::installdir             = "/usr/local/mysql";  # current release of xcat-mysql
+$::debianflag = 0;
 
 #$::installdir="/opt/xcat/mysql";  # next release of xcat-mysql
 
@@ -141,6 +142,9 @@ else
     $::osname = 'Linux';
 }
 
+if ( -e "/etc/debian_version" ){
+    $::debianflag = 1;
+}
 # determine whether redhat or sles
 $::linuxos = xCAT::Utils->osver();
 
@@ -148,6 +152,9 @@ $::linuxos = xCAT::Utils->osver();
 # check to see if mysql is installed
 #
 my $cmd = "rpm -qa | grep mysql";
+if ( $::debianflag ){
+    $cmd = "dpkg -l | grep mysql-server";
+}
 xCAT::Utils->runcmd($cmd, 0);
 if ($::RUNCMD_RC != 0)
 {
@@ -869,12 +876,15 @@ sub mysqlstart
     }
 
     # make sure running
-    $cmd = "ps -ef | grep mysqld";
+    $cmd = "ps -ef | grep mysqld | grep -v grep";
     my $i;
     for ($i = 0 ; $i < 12 ; $i++)
     {
         my @output = xCAT::Utils->runcmd($cmd, 0);
         my $mysqlcheck = "--datadir";    # see if really running
+        if ( $::debianflag ){
+            $mysqlcheck = "mysqld";
+        }
         if (grep(/$mysqlcheck/, @output))
         {
             sleep 10;  # give a few extra seconds to be sure
@@ -959,6 +969,9 @@ sub mysqlreboot
         else
         {    # sles
             $cmd = "chkconfig mysql on";
+            if ( $::debianflag ){
+                $cmd = "update-rc.d mysql defaults";
+            }
         }
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
