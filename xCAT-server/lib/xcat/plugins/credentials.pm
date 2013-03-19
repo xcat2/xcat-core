@@ -137,19 +137,23 @@ sub process_request
           $tfilename = "$root/.xcat/client-cred.pem";
 
        } elsif (/ssh_dsa_hostkey/) {
-          unless (-r "/etc/xcat/hostkeys/ssh_host_dsa_key") {
+	  if (-r "/etc/xcat/hostkeys/$client/ssh_host_dsa_key") {
+	  	$tfilename="/etc/xcat/hostkeys/$client/ssh_host_rsa_key";
+	  } elsif (-r "/etc/xcat/hostkeys/ssh_host_dsa_key") {
+	  	$tfilename="/etc/xcat/hostkeys/ssh_host_dsa_key";
+	  } else {
              push @{$rsp->{'error'}},"Unable to read private DSA key from /etc/xcat/hostkeys";
              next;
           }
-          $tfilename="/etc/xcat/hostkeys/ssh_host_dsa_key";
-
        } elsif (/ssh_rsa_hostkey/) {
-          unless (-r "/etc/xcat/hostkeys/ssh_host_rsa_key") {
+          if (-r "/etc/xcat/hostkeys/$client/ssh_host_rsa_key") {
+	  	 $tfilename="/etc/xcat/hostkeys/$client/ssh_host_rsa_key";
+	  } elsif (-r "/etc/xcat/hostkeys/ssh_host_rsa_key") {   
+	  	 $tfilename="/etc/xcat/hostkeys/ssh_host_rsa_key";
+	  } else {
              push @{$rsp->{'error'}},"Unable to read private RSA key from /etc/xcat/hostkeys";
              next;
           }
-          $tfilename="/etc/xcat/hostkeys/ssh_host_rsa_key";
-
        } elsif (/xcat_cfgloc/) {
           unless (-r "/etc/xcat/cfgloc") {
             push @{$rsp->{'error'}},"Unable to read xCAT database location";
