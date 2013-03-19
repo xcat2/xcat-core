@@ -5,7 +5,6 @@
 cmdline
 
 lang en_US
-langsupport en_US
 network --bootproto dhcp
 
 #
@@ -94,11 +93,6 @@ text
 #
 firewall --disabled
 
-#
-# mouse selection
-#
-#mouse genericps/2 --emulthree
-mouse none
 
 #
 # Select a zone
@@ -153,7 +147,7 @@ reboot
 #
 #end of section
 #
-%packages --resolvedeps
+%packages
 #INCLUDE_DEFAULT_PKGLIST#
 
 %pre
@@ -181,6 +175,6 @@ remove_qla
 remove_lpfc
 echo "All qla modules removed"
 sleep 10
-#INCLUDE:../scripts/pre.rh#
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.rh#
 %post
-#INCLUDE:../scripts/post.rh#
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.rh#
