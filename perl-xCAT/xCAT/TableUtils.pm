@@ -19,6 +19,7 @@ if ($^O =~ /^aix/i) {
 use lib "$::XCATROOT/lib/perl";
 use strict;
 require xCAT::Table;
+use File::Path;
 #-----------------------------------------------------------------------
 
 =head3
