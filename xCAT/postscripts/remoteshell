@@ -77,6 +77,10 @@ if [ $? -ne 0 ]; then
         chmod 600 /etc/ssh/ssh_host_dsa_key
         if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_dsa_key > /dev/null 2>&1 ; then
                 rm /etc/ssh/ssh_host_dsa_key
+	else
+		ssh-keygen -y -f /etc/ssh/ssh_host_dsa_key > /etc/ssh/ssh_host_dsa_key.pub
+		chmod 644 /etc/ssh/ssh_host_dsa_key.pub
+		chown root /etc/ssh/ssh_host_dsa_key.pub
         fi
 else 
 	#the message received is an error, so parse it
@@ -104,6 +108,10 @@ if [ $? -ne 0 ]; then
 	chmod 600 /etc/ssh/ssh_host_rsa_key
 	if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_rsa_key > /dev/null 2>&1 ; then
    		rm /etc/ssh/ssh_host_rsa_key
+	else
+		ssh-keygen -y -f /etc/ssh/ssh_host_rsa_key > /etc/ssh/ssh_host_rsa_key.pub
+		chmod 644 /etc/ssh/ssh_host_rsa_key.pub
+		chown root /etc/ssh/ssh_host_rsa_key.pub
 	fi
 else
 	#This is an error message
