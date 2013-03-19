@@ -24,7 +24,7 @@ function makenoarch {
 	else	# linux
 		echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm $EMBEDTXT..."
 		tar --exclude .svn -czf $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz $RPMNAME
-		rm -f $RPMROOT/SRPMS/xCAT-server-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
+		rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
 		rpmbuild $QUIET -ta $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz
 		RC=$?
 	fi
