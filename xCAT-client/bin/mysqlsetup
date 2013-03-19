@@ -807,6 +807,17 @@ sub initmysqldb
         }
     }    # end AIX only
 
+    #on debian/ubuntu should comment the bind-adress line in my.cnf
+    if ( $::debianflag ){
+        $cmd = "sed 's/\\(^\\s*bind.*\\)/#\\1/' /etc/mysql/my.cnf > /tmp/my.cnf; mv -f /tmp/my.cnf /etc/mysql/my.cnf;chmod 644 /etc/mysql/my.cnf";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message("E", " comment the bind-address line in /etc/mysql/my.cfg failed: $cmd.");
+            exit(1);
+        }
+    }
+
     # Create the MySQL data directory and initialize the grant tables
     # if not already setup
     my $cmd2 =
