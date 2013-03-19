@@ -651,6 +651,7 @@ sub genreq {
 
     my $url = "https://".$rhevm->{name}.":8443".$api;
     my $request = HTTP::Request->new($method, $url, $header, $content);
+    $request->protocol('HTTP/1.1');
 
     return $request;
 }
