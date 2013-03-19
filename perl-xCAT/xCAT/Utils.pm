@@ -1334,7 +1334,6 @@ sub runxcmd_output
     if (defined($resp->{error}))
     {
         push @$::xcmd_outref, @{$resp->{error}};
-        $::RUNCMD_RC = 1;
     }
     if (defined($resp->{errorcode}))
     {
@@ -1386,7 +1385,6 @@ sub runxcmd_output2
     if (defined($resp->{error}))
     {
         push  @{$::xcmd_outref_hash->{error}},  @{$resp->{error}};
-        $::RUNCMD_RC = 1;
     }
     if (defined($resp->{errorcode}))
     {
