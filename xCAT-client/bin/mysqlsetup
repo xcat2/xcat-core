@@ -1425,6 +1425,9 @@ sub setupODBC
     #
     # for all OS need unixODBC rpm
     my $cmd = "rpm -qa | grep unixODBC";
+    if ( $::debianflag ){
+        $cmd = "dpkg -l | grep unixodbc";
+    }
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
@@ -1443,6 +1446,16 @@ sub setupODBC
         {
             my $message =
               "\nxcat-connector-odbc is not installed.  It should be first obtained from the xcat dependency tarballs and installed before running this command. If on Linux, install from the OS CDs.";
+            xCAT::MsgUtils->message("E", " $cmd failed. $message");
+            exit(1);
+        }
+    }
+    elsif ( $::debianflag ){
+        $cmd = "dpkg -l | grep libmyodbc";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            my $message = "\nlibmyodbc is not installed.";
             xCAT::MsgUtils->message("E", " $cmd failed. $message");
             exit(1);
         }
@@ -1518,6 +1531,12 @@ sub setupODBC
         $odbcinstfile = "/etc/odbcinst.ini";
         $odbcfile     = "/etc/odbc.ini";
         $cmd          = "rpm -ql mysql-connector-odbc | grep libmyodbc..so";
+        @rpmoutput    = xCAT::Utils->runcmd($cmd, 0);
+    }
+    elsif ( $::debianflag ){
+        $odbcinstfile = "/etc/odbcinst.ini";
+        $odbcfile     = "/etc/odbc.ini";
+        $cmd          = "dpkg -L libmyodbc | grep libmyodbc.so";
         @rpmoutput    = xCAT::Utils->runcmd($cmd, 0);
     }
     else
