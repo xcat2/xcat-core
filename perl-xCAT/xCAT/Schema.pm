@@ -61,7 +61,7 @@ statelite => {
 #seriously evaluate wider support of multi-domain environments, will leave them 
 #commented rather than tempt people to try with an expectation that it could work.
 domain => {
-    cols => [qw(node ou authdomain comments disable)],
+    cols => [qw(node ou authdomain adminuser adminpassword comments disable)],
     keys => ['node'],
     table_desc => 'Mapping of nodes to domain attributes',
     descriptions => {
@@ -70,6 +70,8 @@ domain => {
 # the above column is unimplemented by anything, so leave it out for this pass
         ou => 'For an LDAP described machine account (i.e. Active Directory), the orginaztional unit to place the system.  If not set, defaults to cn=Computers,dc=your,dc=domain',
 	authdomain => 'If a node should participate in an AD domain or Kerberos realm distinct from domain indicated in site, this field can be used to specify that',
+	adminuser => 'Allow a node specific indication of Administrative user.  Most will want to just use passwd table to indicate this once rather than by node.',
+	adminpassword => 'Allow a node specific indication of Administrative user password for the domain.  Most will want to ignore this in favor of passwd table.',
 		comments => 'Any user-written notes.',
 		disable => "Set to 'yes' or '1' to comment out this row.",      
 	},
@@ -2091,6 +2093,32 @@ my @nodeattrs = (
 				tabentry => 'nics.nicaliases',
 				access_tabentry => 'nics.node=attr:node',
 		},
+######################
+#  prodkey table     #
+######################
+                {attr_name => 'productkey',
+                 tabentry => 'prodkey.key',
+                 access_tabentry => 'prodkey.node=attr:node',
+                },
+######################
+#  domain table     #
+######################
+                {attr_name => 'ou',
+                 tabentry => 'domain.ou',
+                 access_tabentry => 'domain.node=attr:node',
+                },
+                {attr_name => 'domainadminuser',
+                 tabentry => 'domain.adminuser',
+                 access_tabentry => 'domain.node=attr:node',
+                },
+                {attr_name => 'domainadminpassword',
+                 tabentry => 'domain.adminpassword',
+                 access_tabentry => 'domain.node=attr:node',
+                },
+                {attr_name => 'authdomain',
+                 tabentry => 'domain.authdomain',
+                 access_tabentry => 'domain.node=attr:node',
+                },
 ######################
 #  storage table     #
 ######################
