@@ -2592,4 +2592,88 @@ sub judge_node
       
     return $flag;            
 }
+
+
+#-------------------------------------------------------------------------------
+
+=head3   expandnicsattr
+    Expand the nics related attributes into the readable format,
+    for example, the nicsips=eth0!1.1.1.1|2.1.1.1,eth1!3.1.1.1|4.1.1.1
+    expanded format:
+    nicsips.eth0=1.1.1.1|2.1.1.1
+    nicsips.eth1=3.1.1.1|4.1.1.1
+
+    Arguments:
+        nicsattr value, like niccsips=eth0!1.1.1.1|2.1.1.1,eth1!3.1.1.1|4.1.1.1 
+        nicnames: only return the value for specific nics, like "eth0,eth1"
+    Returns:
+        expanded format, like:
+        nicsips.eth0=1.1.1.1|2.1.1.1
+        nicsips.eth1=3.1.1.1|4.1.1.1
+    Error:
+        none
+
+    Example:
+        my $nicsstr = xCAT::DBobjUtils->expandnicsattr($attrval);
+
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub expandnicsattr()
+{
+    my $nicstr = shift;
+    if (($nicstr) && ($nicstr =~ /xCAT::/))
+    {
+        $nicstr = shift;
+    }
+    my $nicnames = shift;
+
+    my $ret; 
+
+    $nicstr =~ /^(.*?)=(.*?)$/;
+
+    #Attribute: nicips, nichostnamesuffix, etc.
+    my $nicattr = $1;
+
+    # Value: eth0!1.1.1.1|2.1.1.1,eth1!3.1.1.1|4.1.1.1
+    my $nicval=$2;
+
+    # $nicarr[0]: eth0!1.1.1.1|2.1.1.1
+    # $nicarr[1]: eth1!3.1.1.1|4.1.1.1 
+    my @nicarr = split(/,/, $nicval);
+    
+    foreach my $nicentry (@nicarr)
+    {
+        #nicentry: eth0!1.1.1.1|2.1.1.1
+        # $nicv[0]: eth0
+        # $nicv[1]: 1.1.1.1|2.1.1.1
+        my @nicv = split(/!/, $nicentry);
+
+        # only return nic* attr for these specific nics
+        if ($nicnames)
+        {
+            my @nics = split(/,/, $nicnames);
+            if ($nicv[0])
+            {
+                # Do not need to return the nic attr for this nic
+                if (!grep(/^$nicv[0]$/, @nics))
+                {
+                    next;
+                }
+            }
+        }
+
+        # ignore the line that does not have nicname or value
+        if ($nicv[0] && $nicv[1])
+        {
+            $ret .= "    $nicattr.$nicv[0]=$nicv[1]\n";
+        }
+    }
+
+    chomp($ret);
+    return $ret;
+
+}
 1;
