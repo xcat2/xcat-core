@@ -315,6 +315,9 @@ sub printSyslog {
     # Get inputs
     my ( $class, $str ) = @_;
 
+    # Prepend where this message came from
+    $str = $class . "  " . $str;
+
     # Print string
     xCAT::MsgUtils->message( "S", $str );
 

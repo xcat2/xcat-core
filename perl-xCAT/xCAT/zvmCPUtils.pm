@@ -658,16 +658,18 @@ sub purgeReader {
         $sudo = "";
     }
     
+    xCAT::zvmUtils->printSyslog("sudoer:$user zHCP:$hcp sudo:$sudo");
+    
     my $out;
     if (xCAT::zvmUtils->smapi4xcat($user, $hcp)) {
         # Use SMAPI EXEC to purge reader
         my $cmd = '\"' . "CMD=PURGE $userId RDR ALL" . '\"';
         $out = `ssh $user\@$hcp "$sudo $dir/smcli xCAT_Commands_IUO -T $userId -c $cmd"`;
-        xCAT::zvmUtils->printSyslog("purgeReader- ssh $user\@$hcp $sudo $dir/smcli xCAT_Commands_IUO -T $userId -c $cmd");
+        xCAT::zvmUtils->printSyslog("smcli xCAT_Commands_IUO -T $userId -c $cmd");
     } else {
         # Purge reader using CP
         $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /sbin/vmcp purge $userId rdr all"`;
-        xCAT::zvmUtils->printSyslog("purgeReader- ssh -o ConnectTimeout=5 $user\@$hcp $sudo /sbin/vmcp purge $userId rdr all");
+        xCAT::zvmUtils->printSyslog("/sbin/vmcp purge $userId rdr all");
     }
 
     $out = xCAT::zvmUtils->trimStr($out);
@@ -699,16 +701,18 @@ sub sendCPCmd {
         $sudo = "";
     }
     
+    xCAT::zvmUtils->printSyslog("sudoer:$user zHCP:$hcp sudo:$sudo");
+    
     my $out;
     if (xCAT::zvmUtils->smapi4xcat($user, $hcp)) {
         # Use SMAPI EXEC to send command
         $cmd = '\"' . "CMD=SEND CP $userId " . uc($cmd) . '\"';
         $out = `ssh $user\@$hcp "$sudo $dir/smcli xCAT_Commands_IUO -T $userId -c $cmd"`;
-        xCAT::zvmUtils->printSyslog("sendCPCmd- ssh $user\@$hcp $sudo $dir/smcli xCAT_Commands_IUO -T $userId -c $cmd");
+        xCAT::zvmUtils->printSyslog("smcli xCAT_Commands_IUO -T $userId -c $cmd");
     } else {
         # Send CP command to given user
         $out = `ssh $user\@$hcp "$sudo /sbin/vmcp send cp $userId $cmd"`;
-        xCAT::zvmUtils->printSyslog("sendCPCmd- ssh $user\@$hcp $sudo /sbin/vmcp send cp $userId $cmd");
+        xCAT::zvmUtils->printSyslog("/sbin/vmcp send cp $userId $cmd");
     }
 
     $out = xCAT::zvmUtils->trimStr($out);
