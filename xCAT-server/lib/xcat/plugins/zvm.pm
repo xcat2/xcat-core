@@ -660,14 +660,16 @@ sub removeVM {
     }
     # Capitalize user ID
     $userId =~ tr/a-z/A-Z/;
+    
+    xCAT::zvmUtils->printSyslog("sudoer:$::SUDOER zHCP:$hcp sudo:$::SUDO");
 
     # Power off user ID
     my $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Deactivate -T $userId -f IMMED"`;
-    xCAT::zvmUtils->printSyslog("removeVM- ssh $::SUDOER\@$hcp$::SUDO $::DIR/smcli Image_Deactivate -T $userId -f IMMED");
+    xCAT::zvmUtils->printSyslog("smcli Image_Deactivate -T $userId -f IMMED");
 
     # Delete user entry
     $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Delete_DM -T $userId -e 1"`;
-    xCAT::zvmUtils->printSyslog("removeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Delete_DM -T $userId -e 1");
+    xCAT::zvmUtils->printSyslog("smcli Image_Delete_DM -T $userId -e 1");
     xCAT::zvmUtils->printLn( $callback, "$node: $out" );
     
     # Check for errors
@@ -765,6 +767,8 @@ sub changeVM {
     my $hcpUserId = xCAT::zvmCPUtils->getUserId($::SUDOER, $hcp);
     $hcpUserId =~ tr/a-z/A-Z/;
 
+    xCAT::zvmUtils->printSyslog("sudoer:$::SUDOER zHCP:$hcp sudo:$::SUDO");
+
     # Output string
     my $out = "";
 
@@ -822,13 +826,13 @@ sub changeVM {
         
         # Add to directory entry
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $readPw -W $writePw -M $multiPw"`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $readPw -W $writePw -M $multiPw");
+        xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create_DM -T $userId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $readPw -W $writePw -M $multiPw");
         
         # Add to active configuration
         my $ping = `pping $node`;
         if (!($ping =~ m/noping/i)) {
             $out .= `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode"`;
-            xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode");
+            xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create -T $userId -v $addr -m $mode");
         }
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
@@ -839,7 +843,7 @@ sub changeVM {
         my $mode = $args->[2];
 
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode"`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode");
+        xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create -T $userId -v $addr -m $mode");
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
@@ -891,13 +895,13 @@ sub changeVM {
         }
 
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t 9336 -a AUTOG -r $pool -u 2 -z $blks -m $mode -f 1 -R $readPw -W $writePw -M $multiPw"`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t 9336 -a AUTOG -r $pool -u 2 -z $blks -m $mode -f 1 -R $readPw -W $writePw -M $multiPw");
+        xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create_DM -T $userId -v $addr -t 9336 -a AUTOG -r $pool -u 2 -z $blks -m $mode -f 1 -R $readPw -W $writePw -M $multiPw");
         
         # Add to active configuration
         my $ping = `pping $node`;
         if (!($ping =~ m/noping/i)) {
             $out .= `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode"`;
-            xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode");
+            xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create -T $userId -v $addr -m $mode");
         }
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
@@ -935,7 +939,7 @@ sub changeVM {
 
         # Add to directory entry
         $out .= `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Virtual_Network_Adapter_Create_DM -T $userId -v $addr -a $type -n $devcount"`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Virtual_Network_Adapter_Create_DM -T $userId -v $addr -a $type -n $devcount");
+        xCAT::zvmUtils->printSyslog("smcli Virtual_Network_Adapter_Create_DM -T $userId -v $addr -a $type -n $devcount");
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
     
@@ -954,7 +958,7 @@ sub changeVM {
 
         # Add a full volume page or spool disk to the system
         $out .= `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Page_or_Spool_Volume_Add -T $userId $argStr"`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Page_or_Spool_Volume_Add -T $userId $argStr");
+        xCAT::zvmUtils->printSyslog("smcli Page_or_Spool_Volume_Add -T $userId $argStr");
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
@@ -963,7 +967,7 @@ sub changeVM {
         my $addr = $args->[1];
 
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_CPU_Define_DM -T $userId -v $addr -b 0 -d 1 -y 0"`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_CPU_Define_DM -T $userId -v $addr -b 0 -d 1 -y 0");
+        xCAT::zvmUtils->printSyslog("smcli Image_CPU_Define_DM -T $userId -v $addr -b 0 -d 1 -y 0");
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
@@ -1129,7 +1133,7 @@ sub changeVM {
         	
         	# Find a free FCP device channel
         	$out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_WWPN_Query -T $hcpUserId" | egrep -i "FCP device number|Status"`;
-            xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli System_WWPN_Query -T $hcpUserId | egrep -i FCP device number|Status");
+            xCAT::zvmUtils->printSyslog("smcli System_WWPN_Query -T $hcpUserId | egrep -i FCP device number|Status");
             my @devices = split( "\n", $out );
             my $status;
             my $found = 0;
@@ -1192,7 +1196,7 @@ sub changeVM {
         
         # Get user directory entry
         my $userEntry = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $userId" | sed '\$d'`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Query_DM -T $userId | sed '\$d'");
+        xCAT::zvmUtils->printSyslog("smcli Image_Query_DM -T $userId | sed '\$d'");
         
         # Find DEDICATE statement in the entry (dedicate one if one does not exist)
         my $dedicate = `echo "$userEntry" | egrep -i "DEDICATE $device"`;
@@ -1326,11 +1330,11 @@ sub changeVM {
         my $ping = `pping $node`;
         if (!($ping =~ m/noping/i)) {
             $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Virtual_Network_Adapter_Connect_LAN -T $userId -v $addr -l $lan -o $owner"`;
-            xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Virtual_Network_Adapter_Connect_LAN -T $userId -v $addr -l $lan -o $owner");
+            xCAT::zvmUtils->printSyslog("smcli Virtual_Network_Adapter_Connect_LAN -T $userId -v $addr -l $lan -o $owner");
         }
         
         $out .= `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Virtual_Network_Adapter_Connect_LAN_DM -T $userId -v $addr -n $lan -o $owner"`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Virtual_Network_Adapter_Connect_LAN_DM -T $userId -v $addr -n $lan -o $owner");
+        xCAT::zvmUtils->printSyslog("smcli Virtual_Network_Adapter_Connect_LAN_DM -T $userId -v $addr -n $lan -o $owner");
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
@@ -1345,13 +1349,13 @@ sub changeVM {
 
         # Connect to VSwitch in directory entry
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Virtual_Network_Adapter_Connect_Vswitch_DM -T $userId -v $addr -n $vswitch"`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Virtual_Network_Adapter_Connect_Vswitch_DM -T $userId -v $addr -n $vswitch");
+        xCAT::zvmUtils->printSyslog("smcli Virtual_Network_Adapter_Connect_Vswitch_DM -T $userId -v $addr -n $vswitch");
         
         # Connect to VSwitch in active configuration
         my $ping = `pping $node`;
         if (!($ping =~ m/noping/i)) {
             $out .= `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Virtual_Network_Adapter_Connect_Vswitch -T $userId -v $addr -n $vswitch"`;
-            xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Virtual_Network_Adapter_Connect_Vswitch -T $userId -v $addr -n $vswitch");
+            xCAT::zvmUtils->printSyslog("smcli Virtual_Network_Adapter_Connect_Vswitch -T $userId -v $addr -n $vswitch");
         }
         
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
@@ -1611,14 +1615,14 @@ sub changeVM {
         
         # Dedicate device to directory entry
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Device_Dedicate_DM -T $userId -v $vaddr -r $raddr -R $mode"`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Device_Dedicate_DM -T $userId -v $vaddr -r $raddr -R $mode");
+        xCAT::zvmUtils->printSyslog("smcli Image_Device_Dedicate_DM -T $userId -v $vaddr -r $raddr -R $mode");
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
         
         # Dedicate device to active configuration
         my $ping = `pping $node`;
         if (!($ping =~ m/noping/i)) {
             $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Device_Dedicate -T $userId -v $vaddr -r $raddr -R $mode"`;
-            xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Device_Dedicate -T $userId -v $vaddr -r $raddr -R $mode");
+            xCAT::zvmUtils->printSyslog("smcli Image_Device_Dedicate -T $userId -v $vaddr -r $raddr -R $mode");
             xCAT::zvmUtils->printLn( $callback, "$node: $out" );
         }
         
@@ -1628,7 +1632,7 @@ sub changeVM {
     # deleteipl
     elsif ( $args->[0] eq "--deleteipl" ) {
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_IPL_Delete_DM -T $userId"`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_IPL_Delete_DM -T $userId");
+        xCAT::zvmUtils->printSyslog("smcli Image_IPL_Delete_DM -T $userId");
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
@@ -1742,7 +1746,7 @@ sub changeVM {
         my $addr = $args->[1];
 
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Virtual_Network_Adapter_Disconnect_DM -T $userId -v $addr"`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Virtual_Network_Adapter_Disconnect_DM -T $userId -v $addr");
+        xCAT::zvmUtils->printSyslog("smcli Virtual_Network_Adapter_Disconnect_DM -T $userId -v $addr");
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
     
@@ -1778,7 +1782,7 @@ sub changeVM {
 
         # Remove from user directory entry
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Delete_DM -T $userId -v $addr -e 0"`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Disk_Delete_DM -T $userId -v $addr -e 0");
+        xCAT::zvmUtils->printSyslog("smcli Image_Disk_Delete_DM -T $userId -v $addr -e 0");
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
@@ -1794,7 +1798,7 @@ sub changeVM {
 
         # Remove from user directory entry
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Virtual_Network_Adapter_Delete_DM -T $userId -v $addr"`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Virtual_Network_Adapter_Delete_DM -T $userId -v $addr");
+        xCAT::zvmUtils->printSyslog("smcli Virtual_Network_Adapter_Delete_DM -T $userId -v $addr");
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
@@ -1804,7 +1808,7 @@ sub changeVM {
         
         # Remove from user directory entry
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_CPU_Delete_DM -T $userId -v $addr"`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_CPU_Delete_DM -T $userId -v $addr");
+        xCAT::zvmUtils->printSyslog("smcli Image_CPU_Delete_DM -T $userId -v $addr");
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
     
@@ -1823,7 +1827,7 @@ sub changeVM {
         my $updateEntry = 0;
         my $userEntryFile = "/tmp/$node.txt";
         my $userEntry = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $userId" | sed '\$d'`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Query_DM -T $userId | sed '\$d'");
+        xCAT::zvmUtils->printSyslog("smcli Image_Query_DM -T $userId | sed '\$d'");
         chomp($userEntry);
         if (!$wwpn && !$lun) {
             # If no WWPN or LUN is provided, delete all LOADDEV statements
@@ -1964,15 +1968,15 @@ sub changeVM {
                 
                 # Lock image
                 `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Lock_DM -T $userId"`;
-                xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Lock_DM -T $userId");
+                xCAT::zvmUtils->printSyslog("smcli Image_Lock_DM -T $userId");
                 
                 # Replace user directory entry
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Replace_DM -T $userId -f $file"`;
-                xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Replace_DM -T $userId -f $file");
+                xCAT::zvmUtils->printSyslog("smcli Image_Replace_DM -T $userId -f $file");
                 
                 # Unlock image
                 `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Unlock_DM -T $userId"`;
-                xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Unlock_DM -T $userId");
+                xCAT::zvmUtils->printSyslog("smcli Image_Unlock_DM -T $userId");
                 
                 # Delete file on xCAT and zHCP
                 `rm -rf $file`;
@@ -2000,15 +2004,15 @@ sub changeVM {
             
             # Lock image
             `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Lock_DM -T $userId"`;
-            xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Lock_DM -T $userId");
+            xCAT::zvmUtils->printSyslog("smcli Image_Lock_DM -T $userId");
             
             # Replace user directory entry
             $out = `ssh $::SUDOER\@$hcp "cat $file | $::SUDO $::DIR/smcli Image_Replace_DM -T $userId -s"`;
-            xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp cat $file | $::SUDO $::DIR/smcli Image_Replace_DM -T $userId -s");
+            xCAT::zvmUtils->printSyslog("ssh $::SUDOER\@$hcp cat $file | $::SUDO $::DIR/smcli Image_Replace_DM -T $userId -s");
             
             # Unlock image
             `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Unlock_DM -T $userId"`;
-            xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Unlock_DM -T $userId");
+            xCAT::zvmUtils->printSyslog("smcli Image_Unlock_DM -T $userId");
             
             # Delete created file on zHCP
             `ssh $::SUDOER\@$hcp "rm -rf $file"`;
@@ -2042,7 +2046,7 @@ sub changeVM {
         }
 
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_IPL_Set_DM -T $userId -s $trgt -l $loadparms -p $parms"`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_IPL_Set_DM -T $userId -s $trgt -l $loadparms -p $parms");
+        xCAT::zvmUtils->printSyslog("smcli Image_IPL_Set_DM -T $userId -s $trgt -l $loadparms -p $parms");
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
@@ -2051,7 +2055,7 @@ sub changeVM {
         my $pw = $args->[1];
 
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Password_Set_DM -T $userId -p $pw"`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Password_Set_DM -T $userId -p $pw");
+        xCAT::zvmUtils->printSyslog("smcli Image_Password_Set_DM -T $userId -p $pw");
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
     
@@ -2073,7 +2077,7 @@ sub changeVM {
                 
         # Get user directory entry
         my $userEntry = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $userId" | sed '\$d'`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Query_DM -T $userId | sed '\$d'");
+        xCAT::zvmUtils->printSyslog("smcli Image_Query_DM -T $userId | sed '\$d'");
         
         # Delete old directory entry file
         my $userEntryFile = "/tmp/$node.txt";
@@ -2134,14 +2138,14 @@ sub changeVM {
 
         # Undedicate device in directory entry
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Device_Undedicate_DM -T $userId -v $vaddr"`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Device_Undedicate_DM -T $userId -v $vaddr");
+        xCAT::zvmUtils->printSyslog("smcli Image_Device_Undedicate_DM -T $userId -v $vaddr");
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
         
         # Undedicate device in active configuration
         my $ping = `pping $node`;
         if (!($ping =~ m/noping/i)) {
             $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Device_Undedicate -T $userId -v $vaddr"`;
-            xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Device_Undedicate -T $userId -v $vaddr");
+            xCAT::zvmUtils->printSyslog("smcli Image_Device_Undedicate -T $userId -v $vaddr");
             xCAT::zvmUtils->printLn( $callback, "$node: $out" );
         }
         
@@ -2155,7 +2159,7 @@ sub changeVM {
 
         # Add disk to running system
         $out .= `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Volume_Share -T $userId -k img_vol_addr=$volAddr -k share_enable=$share"`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Volume_Share -T $userId -k img_vol_addr=$volAddr -k share_enable=$share");
+        xCAT::zvmUtils->printSyslog("smcli Image_Volume_Share -T $userId -k img_vol_addr=$volAddr -k share_enable=$share");
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
     
@@ -2173,7 +2177,7 @@ sub changeVM {
                        
         # Get current CPU count and address
         my $proc = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Definition_Query_DM -T $userId -k CPU" | grep CPU=`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Definition_Query_DM -T $userId -k CPU | grep CPU=");
+        xCAT::zvmUtils->printSyslog("smcli Image_Definition_Query_DM -T $userId -k CPU | grep CPU=");
         while ( index( $proc, "CPUADDR" ) != -1) {
             my $position = index($proc, "CPUADDR");
             my $address = substr($proc, $position + 8, 2);
@@ -2188,17 +2192,17 @@ sub changeVM {
         # Add new CPUs
         if ( $cpuCount > @allCpu ) {
             $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Definition_Update_DM -T $userId -k CPU_MAXIMUM=COUNT=$cpuCount -k TYPE=ESA"`;
-            xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Definition_Update_DM -T $userId -k CPU_MAXIMUM=COUNT=$cpuCount -k TYPE=ESA");
+            xCAT::zvmUtils->printSyslog("smcli Image_Definition_Update_DM -T $userId -k CPU_MAXIMUM=COUNT=$cpuCount -k TYPE=ESA");
             while ( $count < $cpuCount - @allCpu ) {
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Definition_Update_DM -T $userId -k CPU=CPUADDR=$addrLeft[$count]"`;
-                xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Definition_Update_DM -T $userId -k CPU=CPUADDR=$addrLeft[$count]");
+                xCAT::zvmUtils->printSyslog("smcli Image_Definition_Update_DM -T $userId -k CPU=CPUADDR=$addrLeft[$count]");
                 $count++;
             }
         # Remove CPUs
         } else { 
             while ( $count <= @allCpu - $cpuCount ) {
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_CPU_Delete_DM -T $userId -v $allCpu[@allCpu-$count]"`;
-                xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_CPU_Delete_DM -T $userId -v $allCpu[@allCpu-$count]");
+                xCAT::zvmUtils->printSyslog("smcli Image_CPU_Delete_DM -T $userId -v $allCpu[@allCpu-$count]");
                 $count++;
             }
         }       
@@ -2219,11 +2223,11 @@ sub changeVM {
         
         # Set initial memory to 1M first, make this function able to increase/descrease the storage
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Definition_Update_DM -T $userId -k STORAGE_INITIAL=1M"`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Definition_Update_DM -T $userId -k STORAGE_INITIAL=1M");
+        xCAT::zvmUtils->printSyslog("smcli Image_Definition_Update_DM -T $userId -k STORAGE_INITIAL=1M");
         
         # Set both initial memory and maximum memory to be the same
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Definition_Update_DM -T $userId -k STORAGE_INITIAL=$size -k STORAGE_MAXIMUM=$size"`;
-        xCAT::zvmUtils->printSyslog("changeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Definition_Update_DM -T $userId -k STORAGE_INITIAL=$size -k STORAGE_MAXIMUM=$size");
+        xCAT::zvmUtils->printSyslog("smcli Image_Definition_Update_DM -T $userId -k STORAGE_INITIAL=$size -k STORAGE_MAXIMUM=$size");
         
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
         $out = "";
@@ -2279,20 +2283,22 @@ sub powerVM {
     # Capitalize user ID
     $userId =~ tr/a-z/A-Z/;
     
+    xCAT::zvmUtils->printSyslog("sudoer:$::SUDOER zHCP:$hcp sudo:$::SUDO");
+    
     # Output string
     my $out;
 
     # Power on virtual server
     if ( $args->[0] eq 'on' ) {
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Activate -T $userId"`;
-        xCAT::zvmUtils->printSyslog("powerVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Activate -T $userId");
+        xCAT::zvmUtils->printSyslog("smcli Image_Activate -T $userId");
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
     }
 
     # Power off virtual server
     elsif ( $args->[0] eq 'off' ) {
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Deactivate -T $userId -f IMMED"`;
-        xCAT::zvmUtils->printSyslog("powerVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Deactivate -T $userId -f IMMED");
+        xCAT::zvmUtils->printSyslog("smcli Image_Deactivate -T $userId -f IMMED");
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
     }
     
@@ -2302,7 +2308,7 @@ sub powerVM {
         sleep(90);    # Wait 1.5 minutes before logging user off
         
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Deactivate -T $userId -f IMMED"`;
-        xCAT::zvmUtils->printSyslog("powerVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Deactivate -T $userId -f IMMED");
+        xCAT::zvmUtils->printSyslog("smcli Image_Deactivate -T $userId -f IMMED");
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
     }
 
@@ -2324,7 +2330,7 @@ sub powerVM {
     elsif ( $args->[0] eq 'reset' ) {
 
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Deactivate -T $userId -f IMMED"`;
-        xCAT::zvmUtils->printSyslog("powerVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Deactivate -T $userId -f IMMED");
+        xCAT::zvmUtils->printSyslog("smcli Image_Deactivate -T $userId -f IMMED");
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
 
         # Wait for output
@@ -2333,7 +2339,7 @@ sub powerVM {
         }
 
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Activate -T $userId"`;
-        xCAT::zvmUtils->printSyslog("powerVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Activate -T $userId");
+        xCAT::zvmUtils->printSyslog("smcli Image_Activate -T $userId");
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
     }
     
@@ -2375,14 +2381,14 @@ sub powerVM {
     # Pause a virtual server
     elsif ( $args->[0] eq 'pause' ) {
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Pause -T $userId -k PAUSE=YES"`;
-        xCAT::zvmUtils->printSyslog("powerVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Pause -T $userId -k PAUSE=YES");
+        xCAT::zvmUtils->printSyslog("smcli Image_Pause -T $userId -k PAUSE=YES");
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
     }
     
     # Unpause a virtual server
     elsif ( $args->[0] eq 'unpause' ) {
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Pause -T $userId -k PAUSE=NO"`;
-        xCAT::zvmUtils->printSyslog("powerVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Pause -T $userId -k PAUSE=NO");
+        xCAT::zvmUtils->printSyslog("smcli Image_Pause -T $userId -k PAUSE=NO");
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
     }
 
@@ -2435,6 +2441,8 @@ sub scanVM {
     }
     # Capitalize user ID
     $userId =~ tr/a-z/A-Z/;
+    
+    xCAT::zvmUtils->printSyslog("sudoer:$::SUDOER zHCP:$hcp sudo:$::SUDO");
     
     # Exit if node is not a HCP
     if ( !( $hcp =~ m/$node/i ) ) {
@@ -2636,6 +2644,8 @@ sub inventoryVM {
     }
     # Capitalize user ID
     $userId =~ tr/a-z/A-Z/;   
+    
+    xCAT::zvmUtils->printSyslog("sudoer:$::SUDOER zHCP:$hcp sudo:$::SUDO");
 
     # Load VMCP module
     xCAT::zvmCPUtils->loadVmcp($::SUDOER, $node);
@@ -2781,6 +2791,8 @@ sub listVM {
     }
     # Capitalize user ID
     $userId =~ tr/a-z/A-Z/;
+    
+    xCAT::zvmUtils->printSyslog("sudoer:$::SUDOER zHCP:$hcp sudo:$::SUDO");
 
     my $out;
 
@@ -2813,7 +2825,7 @@ sub listVM {
         my $vdasd = $args->[1];
         
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Query -T $userId -k $vdasd"`;
-        xCAT::zvmUtils->printSyslog("listVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Disk_Query -T $userId -k $vdasd");
+        xCAT::zvmUtils->printSyslog("smcli Image_Disk_Query -T $userId -k $vdasd");
     }
 
     # Get zFCP disk pool configuration
@@ -2831,7 +2843,7 @@ sub listVM {
     # Get user entry
     elsif ( !$args->[0] ) {
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $userId" | sed '\$d'`;
-        xCAT::zvmUtils->printSyslog("listVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Query_DM -T $userId | sed '\$d'");
+        xCAT::zvmUtils->printSyslog("smcli Image_Query_DM -T $userId | sed '\$d'");
     } else {
         $out = "$node: (Error) Option not supported";
     }
@@ -2881,6 +2893,8 @@ sub makeVM {
     }
     # Capitalize user ID
     $userId =~ tr/a-z/A-Z/;
+    
+    xCAT::zvmUtils->printSyslog("sudoer:$::SUDOER zHCP:$hcp sudo:$::SUDO");
     
     # Find the number of arguments
     my $argsSize = @{$args};
@@ -3109,7 +3123,7 @@ sub makeVM {
 
         # Create virtual server
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Create_DM -T $userId -f $userEntry"`;
-        xCAT::zvmUtils->printSyslog("makeVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Create_DM -T $userId -f $userEntry");
+        xCAT::zvmUtils->printSyslog("smcli Image_Create_DM -T $userId -f $userEntry");
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
 
         # Check output
@@ -3182,7 +3196,7 @@ sub makeVM {
                 
         # Create virtual server
         $out = `ssh $::SUDOER\@$hcp "cat $file | $::SUDO $::DIR/smcli Image_Create_DM -T $userId -s"`;
-        xCAT::zvmUtils->printSyslog("makeVM- ssh $::SUDOER\@$hcp cat $file | $::SUDO $::DIR/smcli Image_Create_DM -T $userId -s");
+        xCAT::zvmUtils->printSyslog("ssh $::SUDOER\@$hcp cat $file | $::SUDO $::DIR/smcli Image_Create_DM -T $userId -s");
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
 
         # Check output
@@ -3284,7 +3298,8 @@ sub cloneVM {
         }
     }
 
-    xCAT::zvmUtils->printSyslog("cloneVM- srcHcp:$srcHcp sourceId:$sourceId srcOs:$srcOs srcNetwork:$srcNetwork srcMask:$srcMask");
+    xCAT::zvmUtils->printSyslog("sudoer:$::SUDOER zHCP:$srcHcp sudo:$::SUDO");
+    xCAT::zvmUtils->printSyslog("srcHcp:$srcHcp sourceId:$sourceId srcOs:$srcOs srcNetwork:$srcNetwork srcMask:$srcMask");
 
     foreach (@nodes) {
         xCAT::zvmUtils->printLn( $callback, "$_: Cloning $sourceNode" );
@@ -3375,7 +3390,7 @@ sub cloneVM {
             $out = xCAT::zvmUtils->generateMacId($::SUDOER, $tgtHcp);
         }
         
-        xCAT::zvmUtils->printSyslog("cloneVM- tgtHcp:$tgtHcp tgtId:$tgtId targetMac:$targetMac macId:$macId");
+        xCAT::zvmUtils->printSyslog("tgtHcp:$tgtHcp tgtId:$tgtId targetMac:$targetMac macId:$macId");
     }
 
     #*** Link source disks ***
@@ -3400,8 +3415,8 @@ sub cloneVM {
     # Output is similar to:
     #   MDISK=VDEV=0100 DEVTYPE=3390 START=0001 COUNT=10016 VOLID=EMC2C4 MODE=MR        
     $out = `ssh $::SUDOER\@$srcHcp "$::SUDO $::DIR/smcli Image_Definition_Query_DM -T $sourceId -k MDISK"`;
-    xCAT::zvmUtils->printSyslog("cloneVM- smcli Image_Definition_Query_DM -T $sourceId -k MDISK");
-    xCAT::zvmUtils->printSyslog("cloneVM- $out");
+    xCAT::zvmUtils->printSyslog("smcli Image_Definition_Query_DM -T $sourceId -k MDISK");
+    xCAT::zvmUtils->printSyslog("$out");
     my $srcDiskDet = xCAT::zvmUtils->trimStr($out);
     foreach (@srcDisks) {
 
@@ -3432,7 +3447,7 @@ sub cloneVM {
 		        my $srcDiskAddr = $words[0];
 
                 $srcDiskSize{$srcDiskAddr} = $words[3];
-                xCAT::zvmUtils->printSyslog("cloneVM- addr:$addr type:$type srcDiskAddr:$srcDiskAddr srcDiskSize:$words[3]");
+                xCAT::zvmUtils->printSyslog("addr:$addr type:$type srcDiskAddr:$srcDiskAddr srcDiskSize:$words[3]");
 		    }
         }
 
@@ -3501,8 +3516,8 @@ sub cloneVM {
     # Find the NIC address
     xCAT::zvmCPUtils->loadVmcp($::SUDOER, $sourceNode);
     $out = `ssh $::SUDOER\@$srcHcp "$::SUDO $::DIR/smcli Image_Definition_Query_DM -T $sourceId -k NICDEF"`;
-    xCAT::zvmUtils->printSyslog("cloneVM- smcli Image_Definition_Query_DM -T $sourceId -k NICDEF");
-    xCAT::zvmUtils->printSyslog("cloneVM- $out");
+    xCAT::zvmUtils->printSyslog("smcli Image_Definition_Query_DM -T $sourceId -k NICDEF");
+    xCAT::zvmUtils->printSyslog("$out");
     # Output is similar to:
     #   NICDEF_PROFILE=VDEV=0800 TYPE=QDIO LAN=SYSTEM SWITCHNAME=VSW2
     #   NICDEF=VDEV=0900 TYPE=QDIO DEVICES=3 LAN=SYSTEM SWITCHNAME=GLAN1
@@ -3526,7 +3541,7 @@ sub cloneVM {
                 # Extract NIC address
                 @words = ($lines[$i] =~ m/=(\S+)/g);
                 $srcNicAddr = $words[0];
-                xCAT::zvmUtils->printSyslog("cloneVM- hcpNetName:$hcpNetName srcNicAddr:$srcNicAddr");
+                xCAT::zvmUtils->printSyslog("hcpNetName:$hcpNetName srcNicAddr:$srcNicAddr");
                 
                 # Grab only the 1st match    
                 last;
@@ -3591,8 +3606,8 @@ sub cloneVM {
         }
         
         $out = `ssh $::SUDOER\@$srcHcp "$::SUDO $::DIR/smcli Image_Deactivate -T $sourceId -f IMMED"`;
-        xCAT::zvmUtils->printSyslog("cloneVM- smcli Image_Deactivate -T $sourceId -f IMMED");
-        xCAT::zvmUtils->printSyslog("cloneVM- $out");
+        xCAT::zvmUtils->printSyslog("smcli Image_Deactivate -T $sourceId -f IMMED");
+        xCAT::zvmUtils->printSyslog("$out");
 
         #*** Clone source node ***
         # Remove flashcopy lock (if any)
@@ -3763,7 +3778,7 @@ sub clone {
         xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Solution) Verify that the node's IP address is specified in the hosts table and then run makehosts" );
         return;
     }
-    xCAT::zvmUtils->printSyslog("clone- hcp:$hcp tgtUserId:$tgtUserId targetIp:$targetIp");
+    xCAT::zvmUtils->printSyslog("hcp:$hcp tgtUserId:$tgtUserId targetIp:$targetIp");
 
     my $out;
     my @lines;
@@ -3789,7 +3804,7 @@ sub clone {
         xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Missing disk pool. Please specify one." );
         return;
     }
-    xCAT::zvmUtils->printSyslog("clone- pool:$pool");
+    xCAT::zvmUtils->printSyslog("pool:$pool");
 
     # Get multi password
     # It is Ok not have a password
@@ -3880,13 +3895,13 @@ sub clone {
             xCAT::zvmUtils->printLn( $callback, "$tgtNode: Trying again ($try) to create user directory entry" );
         }
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Create_DM -T $tgtUserId -f $userEntry"`;
-        xCAT::zvmUtils->printSyslog("clone- smcli Image_Create_DM -T $tgtUserId -f $userEntry");
-        xCAT::zvmUtils->printSyslog("clone- $out");
+        xCAT::zvmUtils->printSyslog("smcli Image_Create_DM -T $tgtUserId -f $userEntry");
+        xCAT::zvmUtils->printSyslog("$out");
 
         # Check if user entry is created
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $tgtUserId" | sed '\$d'`;
-        xCAT::zvmUtils->printSyslog("clone- smcli Image_Query_DM -T $tgtUserId | sed '\$d'");
-        xCAT::zvmUtils->printSyslog("clone- $out");
+        xCAT::zvmUtils->printSyslog("smcli Image_Query_DM -T $tgtUserId | sed '\$d'");
+        xCAT::zvmUtils->printSyslog("$out");
         $rc  = xCAT::zvmUtils->checkOutput( $callback, $out );
 
         if ( $rc == -1 ) {
@@ -3966,8 +3981,8 @@ sub clone {
                     xCAT::zvmUtils->printLn( $callback, "$tgtNode: Trying again ($try) to add minidisk ($addr)" );
                 }
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw"`;
-                xCAT::zvmUtils->printSyslog("clone- smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw");
-                xCAT::zvmUtils->printSyslog("clone- $out");
+                xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw");
+                xCAT::zvmUtils->printSyslog("$out");
                 
                 # Check output
                 $rc = xCAT::zvmUtils->checkOutput( $callback, $out );
@@ -4009,8 +4024,8 @@ sub clone {
                     xCAT::zvmUtils->printLn( $callback, "$tgtNode: Trying again ($try) to add minidisk ($addr)" );
                 }
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 9336 -a AUTOG -r $pool -u 1 -z $blks -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw"`;
-                xCAT::zvmUtils->printSyslog("clone- smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 9336 -a AUTOG -r $pool -u 1 -z $blks -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw");
-                xCAT::zvmUtils->printSyslog("clone- $out");
+                xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 9336 -a AUTOG -r $pool -u 1 -z $blks -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw");
+                xCAT::zvmUtils->printSyslog("$out");
                 
                 # Check output
                 $rc = xCAT::zvmUtils->checkOutput( $callback, $out );
@@ -4044,8 +4059,8 @@ sub clone {
 
         # Get disks within user entry
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $tgtUserId" | sed '\$d' | grep "MDISK"`;
-        xCAT::zvmUtils->printSyslog("clone- smcli Image_Query_DM -T $tgtUserId | grep MDISK");
-        xCAT::zvmUtils->printSyslog("clone- $out");
+        xCAT::zvmUtils->printSyslog("smcli Image_Query_DM -T $tgtUserId | grep MDISK");
+        xCAT::zvmUtils->printSyslog("$out");
         @disks = split( '\n', $out );
         xCAT::zvmUtils->printLn( $callback, "$tgtNode: Disks added (" . @tgtDisks . "). Disks in user entry (" . @disks . ")" );
 
@@ -4139,7 +4154,7 @@ sub clone {
             xCAT::zvmUtils->printLn( $callback, "$tgtNode: Copying source disk ($srcAddr) to target disk ($tgtAddr) using FLASHCOPY" );
             if (xCAT::zvmUtils->smapi4xcat($::SUDOER, $hcp)) {
                  $out = xCAT::zvmCPUtils->smapiFlashCopy($::SUDOER, $hcp, $sourceId, $srcAddr, $tgtUserId, $tgtAddr);
-                 xCAT::zvmUtils->printSyslog("clone- smapiFlashCopy:$out");
+                 xCAT::zvmUtils->printSyslog("smapiFlashCopy:$out");
                  
                  # Exit if flashcopy completed successfully
                  # Otherwsie, try CP FLASHCOPY
@@ -4175,7 +4190,7 @@ sub clone {
         
                     # Flashcopy source disk
                     $out = xCAT::zvmCPUtils->flashCopy( $::SUDOER, $hcp, $srcAddr, $tgtAddr );
-                    xCAT::zvmUtils->printSyslog("clone- flashCopy:$out");
+                    xCAT::zvmUtils->printSyslog("flashCopy:$out");
                     $rc = xCAT::zvmUtils->checkOutput( $callback, $out );
                     if ( $rc == -1 ) {
                         xCAT::zvmUtils->printLn( $callback, "$tgtNode: $out" );
@@ -4215,7 +4230,7 @@ sub clone {
             if ($tgtDiskType eq '3390') {
                 xCAT::zvmUtils->printLn( $callback, "$tgtNode: Formating target disk ($tgtAddr)" );
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/dasdfmt -b 4096 -y -f /dev/$tgtDevNode"`;
-                xCAT::zvmUtils->printSyslog("clone- dasdfmt -b 4096 -y -f /dev/$tgtDevNode");
+                xCAT::zvmUtils->printSyslog("dasdfmt -b 4096 -y -f /dev/$tgtDevNode");
 
                 # Check for errors
                 $rc = xCAT::zvmUtils->checkOutput( $callback, $out );
@@ -4240,8 +4255,8 @@ sub clone {
                 	$out = "(Error) Failed to copy /dev/$srcDevNode";
                 }
                 
-                xCAT::zvmUtils->printSyslog("clone- dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=4096 oflag=sync");
-                xCAT::zvmUtils->printSyslog("clone- $out");
+                xCAT::zvmUtils->printSyslog("dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=4096 oflag=sync");
+                xCAT::zvmUtils->printSyslog("$out");
             } else {
                 # Copy source disk to target disk
                 # Block size = 512
@@ -4253,8 +4268,8 @@ sub clone {
                     $out = "(Error) Failed to copy /dev/$srcDevNode";
                 }
                 
-                xCAT::zvmUtils->printSyslog("clone- dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=512 oflag=sync");
-                xCAT::zvmUtils->printSyslog("clone- $out");
+                xCAT::zvmUtils->printSyslog("dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=512 oflag=sync");
+                xCAT::zvmUtils->printSyslog("$out");
                 
                 # Force Linux to re-read partition table
                 xCAT::zvmUtils->printLn( $callback, "$tgtNode: Forcing Linux to re-read partition table" );
@@ -4298,16 +4313,16 @@ EOM"`;
             
         # Disk can contain more than 1 partition. Find the right one (not swap)
         $out = `ssh $::SUDOER\@$hcp "$::SUDO /usr/bin/file -s /dev/$tgtDevNode*"`;
-        xCAT::zvmUtils->printSyslog("clone- file -s /dev/$tgtDevNode*");
-        xCAT::zvmUtils->printSyslog("clone- $out");
+        xCAT::zvmUtils->printSyslog("file -s /dev/$tgtDevNode*");
+        xCAT::zvmUtils->printSyslog("$out");
         
         $out = "";
         $try = 5;
         while (!$out && $try > 0) {
             $out = `ssh $::SUDOER\@$hcp "$::SUDO /usr/bin/file -s /dev/$tgtDevNode*" | grep -v swap | grep -o "$tgtDevNode\[1-9\]"`;
             $out = xCAT::zvmUtils->trimStr($out);
-            xCAT::zvmUtils->printSyslog("clone- file -s /dev/$tgtDevNode* | grep -v swap | grep -o $tgtDevNode\[0-9\]");
-            xCAT::zvmUtils->printSyslog("clone- $out");
+            xCAT::zvmUtils->printSyslog("file -s /dev/$tgtDevNode* | grep -v swap | grep -o $tgtDevNode\[0-9\]");
+            xCAT::zvmUtils->printSyslog("$out");
             
             # Wait before trying again
             sleep(5);
@@ -4325,7 +4340,7 @@ EOM"`;
         while ( !(`ssh $::SUDOER\@$hcp "$::SUDO ls $cloneMntPt"`) && $try > 0 ) {
             $out = `ssh $::SUDOER\@$hcp "$::SUDO mkdir -p $cloneMntPt"`;
             $out = `ssh $::SUDOER\@$hcp "$::SUDO mount /dev/$tgtDevNode $cloneMntPt"`;
-            xCAT::zvmUtils->printSyslog("clone- mount /dev/$tgtDevNode $cloneMntPt");
+            xCAT::zvmUtils->printSyslog("mount /dev/$tgtDevNode $cloneMntPt");
 
             # If more than 1 partition, try other partitions
             if (@tgtDevNodes > 1 && $iTgtDevNode < @tgtDevNodes) {
@@ -4348,17 +4363,17 @@ EOM"`;
             # Set hostname
             xCAT::zvmUtils->printLn( $callback, "$tgtNode: Setting network configuration" );
             $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e \"s/$sourceNode/$tgtNode/i\" $cloneMntPt/etc/HOSTNAME"`;
-            xCAT::zvmUtils->printSyslog("clone- sed --in-place -e s/$sourceNode/$tgtNode/i $cloneMntPt/etc/HOSTNAME");
+            xCAT::zvmUtils->printSyslog("sed --in-place -e s/$sourceNode/$tgtNode/i $cloneMntPt/etc/HOSTNAME");
 
             # If Red Hat - Set hostname in /etc/sysconfig/network
             if ( $srcOs =~ m/rhel/i ) {
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e \"s/$sourceNode/$tgtNode/i\" $cloneMntPt/etc/sysconfig/network"`;
-                xCAT::zvmUtils->printSyslog("clone- sed --in-place -e s/$sourceNode/$tgtNode/i $cloneMntPt/etc/sysconfig/network");
+                xCAT::zvmUtils->printSyslog("sed --in-place -e s/$sourceNode/$tgtNode/i $cloneMntPt/etc/sysconfig/network");
             }
 
             # Get network layer
             my $layer = xCAT::zvmCPUtils->getNetworkLayer( $::SUDOER, $hcp, $hcpNetName );
-            xCAT::zvmUtils->printSyslog("clone- hcp:$hcp hcpNetName:$hcpNetName layer:$layer");
+            xCAT::zvmUtils->printSyslog("hcp:$hcp hcpNetName:$hcpNetName layer:$layer");
 
             # Get network configuration file
             # Location of this file depends on the OS
@@ -4368,8 +4383,8 @@ EOM"`;
             my @files;
 		    if ( $srcOs =~ m/rhel/i ) {
 		        $out   = `ssh $::SUDOER\@$hcp "$::SUDO grep -H -i -r $srcNicAddr $cloneMntPt/etc/sysconfig/network-scripts"`;
-		        xCAT::zvmUtils->printSyslog("clone- grep -H -i -r $srcNicAddr $cloneMntPt/etc/sysconfig/network-scripts");
-		        xCAT::zvmUtils->printSyslog("clone- $out");
+		        xCAT::zvmUtils->printSyslog("grep -H -i -r $srcNicAddr $cloneMntPt/etc/sysconfig/network-scripts");
+		        xCAT::zvmUtils->printSyslog("$out");
 		        @files = split('\n', $out);
 		        @words = split( ':', $files[0] );
                 $srcIfcfg = $words[0];
@@ -4378,8 +4393,8 @@ EOM"`;
 		    # If it is SLES 10 - ifcfg-qeth file is in /etc/sysconfig/network
 		    elsif ( $srcOs =~ m/sles10/i ) {
 		        $out   = `ssh $::SUDOER\@$hcp "$::SUDO grep -H -i -r $srcNicAddr $cloneMntPt/etc/sysconfig/network/ifcfg-qeth*"`;
-		        xCAT::zvmUtils->printSyslog("clone- grep -H -i -r $srcNicAddr $cloneMntPt/etc/sysconfig/network/ifcfg-qeth*");
-		        xCAT::zvmUtils->printSyslog("clone- $out");
+		        xCAT::zvmUtils->printSyslog("grep -H -i -r $srcNicAddr $cloneMntPt/etc/sysconfig/network/ifcfg-qeth*");
+		        xCAT::zvmUtils->printSyslog("$out");
                 @files = split('\n', $out);
                 @words = split( ':', $files[0] );
                 $srcIfcfg = $words[0];
@@ -4388,8 +4403,8 @@ EOM"`;
 		    # If it is SLES 11 - ifcfg-qeth file is in /etc/sysconfig/network
 		    elsif ( $srcOs =~ m/sles11/i ) {		
 		        $out   = `ssh $::SUDOER\@$hcp "$::SUDO grep -H -i -r $srcNicAddr $cloneMntPt/etc/sysconfig/network/ifcfg-eth*"`;
-		        xCAT::zvmUtils->printSyslog("clone- grep -H -i -r $srcNicAddr $cloneMntPt/etc/sysconfig/network/ifcfg-eth*");
-		        xCAT::zvmUtils->printSyslog("clone- $out");
+		        xCAT::zvmUtils->printSyslog("grep -H -i -r $srcNicAddr $cloneMntPt/etc/sysconfig/network/ifcfg-eth*");
+		        xCAT::zvmUtils->printSyslog("$out");
                 @files = split('\n', $out);
                 @words = split( ':', $files[0] );
                 $srcIfcfg = $words[0];
@@ -4419,12 +4434,12 @@ EOM"`;
                 
             $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e \"s/$sourceNode/$tgtNode/i\" \ -e \"s/$sourceIp/$targetIp/i\" $cloneMntPt/etc/hosts"`;
             $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e \"s/$sourceIp/$targetIp/i\" \ -e \"s/$sourceNode/$tgtNode/i\" $ifcfgPath"`;
-            xCAT::zvmUtils->printSyslog("clone- sed --in-place -e s/$sourceNode/$tgtNode/i \ -e s/$sourceIp/$targetIp/i $cloneMntPt/etc/hosts");
-            xCAT::zvmUtils->printSyslog("clone- sed --in-place -e s/$sourceIp/$targetIp/i \ -e s/$sourceNode/$tgtNode/i $ifcfgPath");
+            xCAT::zvmUtils->printSyslog("sed --in-place -e s/$sourceNode/$tgtNode/i \ -e s/$sourceIp/$targetIp/i $cloneMntPt/etc/hosts");
+            xCAT::zvmUtils->printSyslog("sed --in-place -e s/$sourceIp/$targetIp/i \ -e s/$sourceNode/$tgtNode/i $ifcfgPath");
             
             if ($tgtNetwork && $tgtMask) {
             	$out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e \"s/$srcNetwork/$tgtNetwork/i\" \ -e \"s/$srcMask/$tgtMask/i\" $ifcfgPath"`;
-                xCAT::zvmUtils->printSyslog("clone- sed --in-place -e s/$srcNetwork/$tgtNetwork/i \ -e s/$srcMask/$tgtMask/i $ifcfgPath");
+                xCAT::zvmUtils->printSyslog("sed --in-place -e s/$srcNetwork/$tgtNetwork/i \ -e s/$srcMask/$tgtMask/i $ifcfgPath");
             }
             
             # Set MAC address
@@ -4446,7 +4461,7 @@ EOM"`;
                     $config .= "UNIQUE=''\n";
                 }
             }
-            xCAT::zvmUtils->printSyslog("clone- $config");
+            xCAT::zvmUtils->printSyslog("$config");
 
             # Write network configuration
             # You cannot SCP file over to mount point as sudo, so you have to copy file to zHCP 
@@ -4464,14 +4479,14 @@ EOM"`;
                 	
                     # Set MAC address
                     $out = `ssh $::SUDOER\@$hcp "$::SUDO sed --in-place -e \"s/$srcMac/$targetMac/i\" $ifcfgPath"`;
-                    xCAT::zvmUtils->printSyslog("clone- sed --in-place -e s/$srcMac/$targetMac/i $ifcfgPath");                   
+                    xCAT::zvmUtils->printSyslog("sed --in-place -e s/$srcMac/$targetMac/i $ifcfgPath");                   
                 } else {
                 	#*** SuSE Linux ***
 
                     # Get hardware configuration
                     # hwcfg-qeth file is in /etc/sysconfig/hardware
                     my $hwcfgPath = $cloneMntPt . "/etc/sysconfig/hardware/hwcfg-qeth-bus-ccw-0.0.$srcNicAddr";
-                    xCAT::zvmUtils->printSyslog("clone- hwcfgPath=$hwcfgPath");
+                    xCAT::zvmUtils->printSyslog("hwcfgPath=$hwcfgPath");
                     my $hardwareFile = $tgtNode . "HardwareConfig";
                     $out = `ssh $::SUDOER\@$hcp "$::SUDO cat $hwcfgPath" | grep -v "QETH_LAYER2_SUPPORT" > /tmp/$hardwareFile`;
                     $out = `echo "QETH_LAYER2_SUPPORT='1'" >> /tmp/$hardwareFile`;
@@ -4513,7 +4528,7 @@ EOM"`;
     # Power on target virtual server
     xCAT::zvmUtils->printLn( $callback, "$tgtNode: Powering on" );
     $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Activate -T $tgtUserId"`;
-    xCAT::zvmUtils->printSyslog("clone- smcli Image_Activate -T $tgtUserId");
+    xCAT::zvmUtils->printSyslog("smcli Image_Activate -T $tgtUserId");
 
     # Check for error
     $rc = xCAT::zvmUtils->checkOutput( $callback, $out );
@@ -4561,6 +4576,8 @@ sub nodeSet {
     }
     # Capitalize user ID
     $userId =~ tr/a-z/A-Z/;
+    
+    xCAT::zvmUtils->printSyslog("sudoer:$::SUDOER zHCP:$hcp sudo:$::SUDO");
     
     my $action = $args->[0];
     
@@ -4728,7 +4745,7 @@ sub nodeSet {
         
         # Search directory entry for network name
         my $userEntry = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $userId" | sed '\$d'`;
-        xCAT::zvmUtils->printSyslog("nodeSet- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Query_DM -T $userId | sed '\$d'");
+        xCAT::zvmUtils->printSyslog("smcli Image_Query_DM -T $userId | sed '\$d'");
         $out = `echo "$userEntry" | grep "NICDEF"`;
         my @lines = split( '\n', $out );
         
@@ -5798,6 +5815,8 @@ sub netBoot {
     }
     # Capitalize user ID
     $userId =~ tr/a-z/A-Z/;
+    
+    xCAT::zvmUtils->printSyslog("sudoer:$::SUDOER zHCP:$hcp sudo:$::SUDO");
 
     # Get IPL
     my @ipl = split( '=', $args->[0] );
@@ -5808,14 +5827,14 @@ sub netBoot {
 
     # Boot node
     my $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Activate -T $userId"`;
-    xCAT::zvmUtils->printSyslog("netBoot- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Activate -T $userId");
-    xCAT::zvmUtils->printSyslog("netBoot- $out");
+    xCAT::zvmUtils->printSyslog("smcli Image_Activate -T $userId");
+    xCAT::zvmUtils->printSyslog("$out");
     
     # IPL when virtual server is online
     sleep(5);
     $out = xCAT::zvmCPUtils->sendCPCmd( $::SUDOER, $hcp, $userId, "IPL $ipl[1]" );
-    xCAT::zvmUtils->printSyslog("netBoot- IPL $ipl[1]");
-    xCAT::zvmUtils->printSyslog("netBoot- $out");
+    xCAT::zvmUtils->printSyslog("IPL $ipl[1]");
+    xCAT::zvmUtils->printSyslog("$out");
     xCAT::zvmUtils->printLn( $callback, "$node: Booting from $ipl[1]... Done" );
 
     return;
@@ -6243,6 +6262,8 @@ sub changeHypervisor {
     my $hcpUserId = xCAT::zvmCPUtils->getUserId($::SUDOER, $hcp);
     $hcpUserId =~ tr/a-z/A-Z/;
     
+    xCAT::zvmUtils->printSyslog("sudoer:$::SUDOER zHCP:$hcp sudo:$::SUDO");
+    
     # Output string
     my $out = "";
         
@@ -6270,14 +6291,14 @@ sub changeHypervisor {
                 $volume = $args->[3];
                 $group  = $args->[4];
                 $tmp = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Volume_Space_Define_DM -T $hcpUserId -f $funct -g $_ -v $volume -p $group -y 0"`;
-                xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Volume_Space_Define_DM -T $hcpUserId -f $funct -g $_ -v $volume -p $group -y 0");
+                xCAT::zvmUtils->printSyslog("smcli Image_Volume_Space_Define_DM -T $hcpUserId -f $funct -g $_ -v $volume -p $group -y 0");
             }
             
             # Add existing region to group
             elsif($funct eq "5") {
                 $group = $args->[3];
                 $tmp = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Volume_Space_Define_DM -T $hcpUserId -f $funct -g $_ -p $group -y 0"`;
-                xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Volume_Space_Define_DM -T $hcpUserId -f $funct -g $_ -p $group -y 0");
+                xCAT::zvmUtils->printSyslog("smcli Image_Volume_Space_Define_DM -T $hcpUserId -f $funct -g $_ -p $group -y 0");
             }
             
             $out .= $tmp;
@@ -6296,7 +6317,7 @@ sub changeHypervisor {
         
         # Add an ECKD disk to a running z/VM system
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_Disk_Add -T $hcpUserId -k $devNo"`;
-        xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli System_Disk_Add -T $hcpUserId -k $devNo");
+        xCAT::zvmUtils->printSyslog("smcli System_Disk_Add -T $hcpUserId -k $devNo");
     }
         
     # addscsi [dev_no] [dev_path] [option] [persist]
@@ -6347,7 +6368,7 @@ sub changeHypervisor {
 
         # Add disk to running system
         $out .= `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_SCSI_Disk_Add -T $hcpUserId -k $devNo -k $devPath -k $option -k $persist"`;
-        xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli System_SCSI_Disk_Add -T $hcpUserId -k $devNo -k $devPath -k $option -k $persist");
+        xCAT::zvmUtils->printSyslog("smcli System_SCSI_Disk_Add -T $hcpUserId -k $devNo -k $devPath -k $option -k $persist");
     }
     
     # addvlan [name] [owner] [type] [transport]
@@ -6364,7 +6385,7 @@ sub changeHypervisor {
         }
 
         $out .= `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Virtual_Network_LAN_Create -T $hcpUserId -n $name -o $owner -t $type -p $transport"`;
-        xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Virtual_Network_LAN_Create -T $hcpUserId -n $name -o $owner -t $type -p $transport");
+        xCAT::zvmUtils->printSyslog("smcli Virtual_Network_LAN_Create -T $hcpUserId -n $name -o $owner -t $type -p $transport");
     }
     
     # addvswitch [name] [osa_dev_addr] [port_name] [controller] [connect (0, 1, or 2)] [memory_queue] [router] [transport] [vlan_id] [port_type] [update] [gvrp] [native_vlan]
@@ -6387,7 +6408,7 @@ sub changeHypervisor {
         }
 
         $out .= `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Virtual_Network_Vswitch_Create -T $hcpUserId $argStr"`;
-        xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Virtual_Network_Vswitch_Create -T $hcpUserId $argStr");
+        xCAT::zvmUtils->printSyslog("smcli Virtual_Network_Vswitch_Create -T $hcpUserId $argStr");
     }
     
     # addzfcp2pool [pool] [status] [wwpn] [lun] [size] [range] [owner (optional)]
@@ -6483,13 +6504,13 @@ sub changeHypervisor {
             if ($funct eq "2" || $funct eq "7") {
                 $group  = $args->[3];
                 $tmp = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Volume_Space_Remove_DM -T $hcpUserId -f $funct -r $_ -g $group"`;
-                xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Volume_Space_Remove_DM -T $hcpUserId -f $funct -r $_ -g $group");
+                xCAT::zvmUtils->printSyslog("smcli Image_Volume_Space_Remove_DM -T $hcpUserId -f $funct -r $_ -g $group");
             } 
             
             # Remove region | Remove region from all groups
             elsif ($funct eq "1" || $funct eq "3") {
                 $tmp = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Volume_Space_Remove_DM -T $hcpUserId -f $funct -r $_"`;
-                xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Volume_Space_Remove_DM -T $hcpUserId -f $funct -r $_");
+                xCAT::zvmUtils->printSyslog("smcli Image_Volume_Space_Remove_DM -T $hcpUserId -f $funct -r $_");
             }
             
             $out .= $tmp;
@@ -6509,7 +6530,7 @@ sub changeHypervisor {
         
         # Delete a real SCSI disk
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_SCSI_Disk_Delete -T $hcpUserId -k $devNo -k $persist"`;
-        xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli System_SCSI_Disk_Delete -T $hcpUserId -k $devNo -k $persist");
+        xCAT::zvmUtils->printSyslog("smcli System_SCSI_Disk_Delete -T $hcpUserId -k $devNo -k $persist");
     }
     
     # removevlan [name] [owner]
@@ -6519,7 +6540,7 @@ sub changeHypervisor {
         
         # Delete a virtual network
         $out = `ssh $hcp "$::DIR/smcli Virtual_Network_LAN_Delete -T $hcpUserId -n $name -o $owner"`;
-        xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $hcp $::DIR/smcli Virtual_Network_LAN_Delete -T $hcpUserId -n $name -o $owner");
+        xCAT::zvmUtils->printSyslog("ssh $hcp $::DIR/smcli Virtual_Network_LAN_Delete -T $hcpUserId -n $name -o $owner");
     }
     
     # removevswitch [name]
@@ -6528,7 +6549,7 @@ sub changeHypervisor {
         
         # Delete a VSWITCH
         $out = `ssh $hcp "$::DIR/smcli Virtual_Network_Vswitch_Delete -T $hcpUserId -n $name"`;
-        xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $hcp $::DIR/smcli Virtual_Network_Vswitch_Delete -T $hcpUserId -n $name");
+        xCAT::zvmUtils->printSyslog("ssh $hcp $::DIR/smcli Virtual_Network_Vswitch_Delete -T $hcpUserId -n $name");
     }    
     
     # removezfcpfrompool [pool] [lun] [wwpn (optional)]
@@ -6627,7 +6648,7 @@ sub changeHypervisor {
 
         # Pass arguments directly to smcli
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli $str"`;
-        xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli $str");
+        xCAT::zvmUtils->printSyslog("smcli $str");
     }
     
     # Otherwise, print out error
@@ -6679,6 +6700,8 @@ sub inventoryHypervisor {
         xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node zHCP" );
         return;
     }
+    
+    xCAT::zvmUtils->printSyslog("sudoer:$::SUDOER zHCP:$hcp sudo:$::SUDO");
     
     # Get the user Id of the zHCP
     my $hcpUserId = xCAT::zvmCPUtils->getUserId($::SUDOER, $hcp);
@@ -6772,7 +6795,7 @@ sub inventoryHypervisor {
             
             # Check whether disk pool is a valid pool     
             $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Volume_Space_Query_DM -q 1 -e 3 -n $pool -T $hcpUserId" | grep "Failed"`;
-            xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Image_Volume_Space_Query_DM -q 1 -e 3 -n $pool -T $hcpUserId");
+            xCAT::zvmUtils->printSyslog("smcli Image_Volume_Space_Query_DM -q 1 -e 3 -n $pool -T $hcpUserId");
             if ($out) {
                  xCAT::zvmUtils->printLn( $callback, "$node: Disk pool $pool does not exist" );
                  return;
@@ -6867,7 +6890,7 @@ sub inventoryHypervisor {
         if ($space eq "active" || $space eq "free" || $space eq "offline") {
         	if ($details) {
         		$out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_WWPN_Query -T $hcpUserId"`;
-        		xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli System_WWPN_Query -T $hcpUserId");
+        		xCAT::zvmUtils->printSyslog("smcli System_WWPN_Query -T $hcpUserId");
         		
         		@devices = split( "\n", $out );                
                 for ($i = 0; $i < @devices; $i++) {
@@ -6894,7 +6917,7 @@ sub inventoryHypervisor {
                 }
         	} else {
         		$out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_WWPN_Query -T $hcpUserId" | egrep -i "FCP device number|Status"`;
-                xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli System_WWPN_Query -T $hcpUserId | egrep -i FCP device number|Status");
+                xCAT::zvmUtils->printSyslog("smcli System_WWPN_Query -T $hcpUserId | egrep -i FCP device number|Status");
                 
 	            @devices = split( "\n", $out );
 	            for ($i = 0; $i < @devices; $i++) {
@@ -6932,7 +6955,7 @@ sub inventoryHypervisor {
         }
          
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_FCP_Free_Query -T $hcpUserId -k fcp_dev=$fcp" | egrep -i "FCP device number:|World wide port number:|Logical unit number:|Number of bytes residing on the logical unit:"`;
-        xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli System_FCP_Free_Query -T $hcpUserId -k fcp_dev=$fcp | egrep -i FCP device number:|World wide port number:|Logical unit number:|Number of bytes residing on the logical unit:");
+        xCAT::zvmUtils->printSyslog("smcli System_FCP_Free_Query -T $hcpUserId -k fcp_dev=$fcp | egrep -i FCP device number:|World wide port number:|Logical unit number:|Number of bytes residing on the logical unit:");
         
         my @wwpns = split( "\n", $out );
         my %map;
@@ -7000,7 +7023,7 @@ sub inventoryHypervisor {
         # This has not be completed!
         my $failedId = $args->[1];
         $str = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Response_Recovery -T $hcpUserId -k $failedId"`;
-        xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Response_Recovery -T $hcpUserId -k $failedId");
+        xCAT::zvmUtils->printSyslog("smcli Response_Recovery -T $hcpUserId -k $failedId");
     }
     
     # freefcp [fcp_dev]
@@ -7014,7 +7037,7 @@ sub inventoryHypervisor {
         my $fcp = "fcp_dev=" . $args->[1];
         
         $str = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_FCP_Free_Query -T $hcpUserId -k $fcp"`;
-        xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli System_FCP_Free_Query -T $hcpUserId -k $fcp");
+        xCAT::zvmUtils->printSyslog("smcli System_FCP_Free_Query -T $hcpUserId -k $fcp");
     }
     
     # scsidisk [dev_no]
@@ -7028,19 +7051,19 @@ sub inventoryHypervisor {
         my $devNo = "dev_num=" . $args->[1];
         
         $str = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_SCSI_Disk_Query -T $hcpUserId -k $devNo"`;
-        xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli System_SCSI_Disk_Query -T $hcpUserId -k $devNo");
+        xCAT::zvmUtils->printSyslog("smcli System_SCSI_Disk_Query -T $hcpUserId -k $devNo");
     }
     
     # ssi
     elsif ( $args->[0] eq "--ssi" ) {
         $str = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli SSI_Query"`;
-        xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli SSI_Query");
+        xCAT::zvmUtils->printSyslog("smcli SSI_Query");
     }
     
     # smapilevel
     elsif ( $args->[0] eq "--smapilevel" ) {
         $str = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Query_API_Functional_Level -T $hcpUserId"`;
-        xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Query_API_Functional_Level -T $hcpUserId");
+        xCAT::zvmUtils->printSyslog("smcli Query_API_Functional_Level -T $hcpUserId");
     }
     
     # systemdisk [dev_no]
@@ -7054,7 +7077,7 @@ sub inventoryHypervisor {
         my $devNo = "dev_num=" . $args->[1];
             
         $str = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_Disk_Query -T $hcpUserId -k $devNo"`;
-        xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli System_Disk_Query -T $hcpUserId -k $devNo");
+        xCAT::zvmUtils->printSyslog("smcli System_Disk_Query -T $hcpUserId -k $devNo");
     }
     
     # systemdiskaccessibility [dev_no]
@@ -7068,7 +7091,7 @@ sub inventoryHypervisor {
         my $devNo = "dev_num=" . $args->[1];
         
         $str = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_Disk_Accessibility -T $hcpUserId -k $devNo"`;
-        xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli System_Disk_Accessibility -T $hcpUserId -k $devNo");
+        xCAT::zvmUtils->printSyslog("smcli System_Disk_Accessibility -T $hcpUserId -k $devNo");
     }
     
     # vlanstats [vlan_id] [user_id] [device] [version]
@@ -7091,7 +7114,7 @@ sub inventoryHypervisor {
         }
         
         $str = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Virtual_Network_VLAN_Query_Stats -T $hcpUserId $argStr"`;
-        xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Virtual_Network_VLAN_Query_Stats -T $hcpUserId $argStr");
+        xCAT::zvmUtils->printSyslog("smcli Virtual_Network_VLAN_Query_Stats -T $hcpUserId $argStr");
     }
     
     # vswitchstats [name] [version]
@@ -7111,7 +7134,7 @@ sub inventoryHypervisor {
         }
         
         $str = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Virtual_Network_Vswitch_Query_Stats -T $hcpUserId $argStr"`;
-        xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli Virtual_Network_Vswitch_Query_Stats -T $hcpUserId $argStr");
+        xCAT::zvmUtils->printSyslog("smcli Virtual_Network_Vswitch_Query_Stats -T $hcpUserId $argStr");
     }
     
     # wwpn [fcp_device] (supported only on z/VM 6.2)
@@ -7124,7 +7147,7 @@ sub inventoryHypervisor {
         }
     	 
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_FCP_Free_Query -T $hcpUserId -k fcp_dev=$fcp" | egrep -i "World wide port number:"`;
-        xCAT::zvmUtils->printSyslog("changeHypervisor- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli System_FCP_Free_Query -T $hcpUserId -k fcp_dev=$fcp | egrep -i World wide port number:");
+        xCAT::zvmUtils->printSyslog("smcli System_FCP_Free_Query -T $hcpUserId -k fcp_dev=$fcp | egrep -i World wide port number:");
         
         my @wwpns = split( "\n", $out );
         my %uniqueWwpns;
@@ -7227,6 +7250,8 @@ sub migrateVM {
     # Capitalize user ID
     $userId =~ tr/a-z/A-Z/;
     
+    xCAT::zvmUtils->printSyslog("sudoer:$::SUDOER zHCP:$hcp sudo:$::SUDO");
+    
     # Get zHCP user ID
     my $hcpUserId = xCAT::zvmCPUtils->getUserId($::SUDOER, $hcp);
     $hcpUserId =~ tr/a-z/A-Z/;
@@ -7305,7 +7330,7 @@ sub migrateVM {
     
     # Begin migration
     $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli $migrateCmd"`;
-    xCAT::zvmUtils->printSyslog("migrateVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli $migrateCmd");
+    xCAT::zvmUtils->printSyslog("smcli $migrateCmd");
     xCAT::zvmUtils->printLn( $callback, "$node: $out" );
     
     # Check for errors on migration only
@@ -7317,7 +7342,7 @@ sub migrateVM {
         my $isMigrated = 0;
         while ($check > 0) {
             $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli VMRELOCATE_Status -T $hcpUserId" -k status_target=$userId`;
-            xCAT::zvmUtils->printSyslog("migrateVM- ssh $::SUDOER\@$hcp $::SUDO $::DIR/smcli VMRELOCATE_Status -T $hcpUserId -k status_target=$userId");
+            xCAT::zvmUtils->printSyslog("smcli VMRELOCATE_Status -T $hcpUserId -k status_target=$userId");
             if ( $out =~ m/No active relocations found/i ) {
                 $isMigrated = 1;
                 last;
