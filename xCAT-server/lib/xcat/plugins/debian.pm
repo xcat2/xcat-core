@@ -189,12 +189,21 @@ sub copycd
     GetOptions(
                'n=s' => \$distname,
                'a=s' => \$arch,
+               'p=s' => \$copypath,
                'm=s' => \$path,
+               'i'   => \$inspection,
+               'o'   => \$noosimage,
+               'w'    => \$nonoverwrite,
                );
     unless ($path)
     {
 
         #this plugin needs $path...
+        return;
+    }
+
+    if ( $copypath || $noosimage || $nonoverwrite ){
+        $callback->({info=> ["copycd on debian/ubuntu doesn't support -p, -o, -w options!"]});
         return;
     }
     
@@ -208,6 +217,13 @@ sub copycd
     my $line = <$dinfo>;
     chomp($line);
     my @line2 = split(/ /,$line);
+    close($dinfo);
+
+    #read the cd_type for the inspection
+    my $cdtype;
+    open($dinfo, $path . "/.disk/cd_type");
+    $cdtype = <$dinfo>;
+    chomp($line);
     close($dinfo);
 
     my $isnetinst = 0;
@@ -269,7 +285,7 @@ sub copycd
         {
             $arch = $darch;
         }
-        if ($arch and $arch ne $darch)
+        if ($arch and ($arch ne $darch) and ($arch ne $debarch))
         {
             $callback->(
                      {
@@ -280,6 +296,15 @@ sub copycd
                      );
             return;
         }
+    }
+    if ( $inspection ){
+        $callback->(
+                {
+                 info =>
+                   "DISTNAME:$distname\n"."ARCH:$debarch\n"."DISCTYPE:$cdtype\n"
+                }
+                );
+            return;
     }
     %{$request} = ();    #clear request we've got it.
 
