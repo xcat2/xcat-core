@@ -18,6 +18,10 @@ Attribute lines must take the form of Attribute=Value.
 
 =item *
 
+Attribute name might include the character dot ("."), like passwd.HMC and nicips.eth0.
+
+=item *
+
 Only one stanza can exist for each object name.
 
 =item *
