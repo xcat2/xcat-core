@@ -146,6 +146,12 @@ To create a entry (7.0) in the policy table for user admin1
 
  mkdef -t policy -o 7.0 name=admin1 rule=allow 
 
+=item 11.
+
+To create a node definition with nic attributes
+
+ mkdef -t node cn1 groups=all nicips.eth0="1.1.1.1|1.2.1.1" nicnetworks.eth0="net1|net2" nictypes.eth0="Ethernet" 
+
 =back
 
 

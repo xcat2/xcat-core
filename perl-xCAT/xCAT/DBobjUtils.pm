@@ -2676,4 +2676,81 @@ sub expandnicsattr()
     return $ret;
 
 }
+
+
+#-------------------------------------------------------------------------------
+
+=head3   collapsenicsattr
+    Collapse the nics related attributes into the database format,
+    for example, 
+    nicsips.eth0=1.1.1.1|2.1.1.1
+    nicsips.eth1=3.1.1.1|4.1.1.1
+    
+    the collapsed format:
+    nicsips=eth0!1.1.1.1|2.1.1.1,eth1!3.1.1.1|4.1.1.1
+    
+    The collapse will be done against the hash %::FILEATTRS or %::CLIATTRS,
+    remove the nicips.thx attributes from %::FILEATTRS or %::CLIATTRS,
+    add the collapsed info nicips into %::FILEATTRS or %::CLIATTRS.
+
+    Arguments:
+        $::FILEATTRS{$objname} or $::CLIATTRS{$objname}
+        $objname
+
+    Returns:
+        None, update %::FILEATTRS or %::CLIATTRS directly
+
+    Error:
+        none
+
+    Example:
+        xCAT::DBobjUtils->collapsenicsattr($nodeattrhash);
+
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub collapsenicsattr()
+{
+    my $nodeattrhash = shift;
+    if (($nodeattrhash) && ($nodeattrhash =~ /xCAT::/))
+    {
+        $nodeattrhash = shift;
+    }
+    my $objname = shift;
+
+    my %nicattrs = ();
+    foreach my $nodeattr (keys %{$nodeattrhash})
+    {       
+        # e.g nicips.eth0
+        # do not need to handle nic attributes without the postfix .ethx,
+        # it will be overwritten by the attributes with the postfix .ethx,
+        if ($nodeattr =~ /^(nic\w+)\.(\w+)$/)
+        {       
+           if ($1 && $2)
+           {       
+               # $nicattrs{nicips}{eth0} = "1.1.1.1|1.2.1.1"
+               $nicattrs{$1}{$2} = $nodeattrhash->{$nodeattr}; 
+
+               # remove nicips.eth0 from the %::FILEATTRS
+               delete $nodeattrhash->{$nodeattr};
+           }       
+        }       
+    }       
+    # $nicattrs{'nicips'}{'eth0'} = "1.1.1.1|1.2.1.1"
+    # $nicattrs{'nicips'}{'eth1'} = "2.1.1.1|2.2.1.1"
+    foreach my $nicattr (keys %nicattrs)
+    {       
+       my @tmparray = ();
+       foreach my $nicname (keys %{$nicattrs{$nicattr}})
+       {       
+           # eth0!1.1.1.1|1.2.1.1
+           push @tmparray, "$nicname!$nicattrs{$nicattr}{$nicname}";
+       }       
+       # eth0!1.1.1.1|1.2.1.1,eth1!2.1.1.1|2.2.1.1
+       $nodeattrhash->{$nicattr} = join(',', @tmparray);
+    }       
+}
+
 1;

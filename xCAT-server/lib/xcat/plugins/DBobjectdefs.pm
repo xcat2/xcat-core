@@ -445,6 +445,26 @@ sub processArgs
         }
     }
 
+    if ((!$::opt_t || $::opt_t eq 'node') && ($::command eq 'chdef') && ($::opt_m || $::opt_p))
+    {
+        my $nicattrs = 0;
+        foreach my $kattr (keys %::ATTRS)
+        {
+            if ($kattr =~ /^nic\w+\.\w+$/)
+            {
+                $nicattrs = 1;
+            }
+            last;
+        }
+        if ($nicattrs)
+        {
+            my $rsp;
+            $rsp->{data}->[0] = "chdef does not support to change the nic related attributes with -m or -p flag.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            return 3;
+        }
+    }
+
     # Check arguments for rmdef command
     # rmdef is very dangerous if wrong flag is specified
     # it may cause all the objects to be deleted, check the flags
@@ -1088,6 +1108,12 @@ sub defmk
             # set the attrs from the attr=val pairs
             foreach my $attr (keys %::ATTRS)
             {
+                my $attrorig = $attr;
+                # nicips.eth0 => nicips
+                if ($attr =~ /^(nic\w+)\.\w+$/)
+                {
+                    $attr = $1;
+                }
                 if (!grep(/^$attr$/, @list) && ($::objtype ne 'site') && ($::objtype ne 'monitoring'))
                 {
                     my $rsp;
@@ -1100,12 +1126,12 @@ sub defmk
                 }
                 else
                 {
-                    $::CLIATTRS{$objname}{$attr} = $::ATTRS{$attr};
+                    $::CLIATTRS{$objname}{$attrorig} = $::ATTRS{$attrorig};
                     if ($::verbose)
                     {
                         my $rsp;
                         $rsp->{data}->[0] = "\nFunction: defmk-->set the attrs for each object definition";
-                        $rsp->{data}->[1] = "defmk: objname=$objname, attr=$attr, value=$::ATTRS{$attr}";
+                        $rsp->{data}->[1] = "defmk: objname=$objname, attr=$attrorig, value=$::ATTRS{$attrorig}";
                         xCAT::MsgUtils->message("I", $rsp, $::callback);
                     }
                 }
@@ -1712,6 +1738,12 @@ sub defch
             # set the attrs from the attr=val pairs
             foreach my $attr (keys %::ATTRS)
             {
+                my $attrorig = $attr;
+                # nicips.eth0 => nicips
+                if ($attr =~ /^(nic\w+)\.\w+$/)
+                {
+                    $attr = $1;
+                }
                 if (!defined($list{$attr}) && ($::objtype ne 'site') && ($::objtype ne 'monitoring'))
                 {
                     my $rsp;
@@ -1724,7 +1756,7 @@ sub defch
                 }
                 else
                 {
-                    $::CLIATTRS{$objname}{$attr} = $::ATTRS{$attr};
+                    $::CLIATTRS{$objname}{$attrorig} = $::ATTRS{$attrorig};
                 }
             }
 
@@ -2305,6 +2337,13 @@ sub setFINALattrs
                 next;
             }
 
+            # special case for the nic* attributes
+            # merge nic*.eth0, nic*.eth1
+            if ($::FILEATTRS{$objname}{objtype} eq 'node')
+            {
+                xCAT::DBobjUtils->collapsenicsattr($::FILEATTRS{$objname}, $objname);
+            }
+
             my $datatype =
               $xCAT::Schema::defspec{$::FILEATTRS{$objname}{objtype}};
             my @list;
@@ -2350,6 +2389,58 @@ sub setFINALattrs
 
     foreach my $objname (@::clobjnames)
     {
+        # special case for the nic* attributes
+        # merge nic*.eth0, nic*.eth1
+        if ($::CLIATTRS{$objname}{objtype} eq 'node')
+        {
+            # Even if only the nicips.eth0 is specified with CLI,
+            # need to read the whole nicips attribute from the nics table,
+            # then merge the nicips.eth0 into the nicips attribute,
+            my %tmphash = ();
+            foreach my $nodeattr (keys %{$::CLIATTRS{$objname}})
+            {
+                if ($nodeattr =~ /^(nic\w+)\.\w+$/)
+                {
+                    my $tmpnicattr = $1;
+                    if (!defined($tmphash{$tmpnicattr}))
+                    {
+                        my $nicstable = xCAT::Table->new("nics", -create => 1, -autocommit => 0);
+                        if (!$nicstable) {
+                            my $rsp;
+                            $rsp->{data}->[0] = "Could not open the \'nics\' table.";
+                            xCAT::MsgUtils->message("E", $rsp, $::callback);
+                            return 1;
+                        } 
+                        my $nichash = $nicstable->getNodeAttribs($objname, [$tmpnicattr]);
+                        if ($nichash && $nichash->{$tmpnicattr})
+                        {
+                            $tmphash{$tmpnicattr} = $nichash->{$tmpnicattr};
+                        }
+                        $nicstable->close();
+                    }
+                }
+            }
+            # $tmphash{nicips} = "eth0!1.1.1.1|1.2.1.1,eth1!2.1.1.1|2.2.1.1"
+            foreach my $nicattr (keys %tmphash)
+            {
+                # eth0!1.1.1.1|1.2.1.1,eth1!2.1.1.1|2.2.1.1
+                my $nicval = $tmphash{$nicattr};
+                my @nicarray = split(/,/, $nicval);
+                foreach my $nicv (@nicarray)
+                {
+                    my @nica = split(/!/, $nicv);
+
+                    # put the additional nicips.eth1, nicips.eth2 into %::CLIATTRS
+                    if (!defined $::CLIATTRS{$objname}{"$nicattr.$nica[0]"})
+                    {
+                        $::CLIATTRS{$objname}{"$nicattr.$nica[0]"} = $nica[1];
+                    }
+                }
+            }
+
+            xCAT::DBobjUtils->collapsenicsattr($::CLIATTRS{$objname}, $objname);
+        }
+
         foreach my $attr (keys %{$::CLIATTRS{$objname}})
         {
 
