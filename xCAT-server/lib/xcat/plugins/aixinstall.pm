@@ -6033,7 +6033,7 @@ sub rmnimres
 	}
 
     # foreach attr in the image def
-    my $error;
+    my $error=0;
     foreach my $attr (sort(keys %{$imagedef{$osimage}}))
     {
         chomp $attr;
@@ -6105,7 +6105,6 @@ sub rmnimres
                     my $rsp;
                     push @{$rsp->{data}}, "The resource named \'$resname\' will not be removed.\n";
                     xCAT::MsgUtils->message("I", $rsp, $callback);
-					$error++;
                     next;
                 }
 
@@ -6159,7 +6158,6 @@ sub rmnimres
                     if ($loc)
                     {
                         my $cmd = qq~/usr/bin/rm -R $loc~;
-                        my $output = xCAT::Utils->runcmd("$cmd", -1);
 						$output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $targetsn,  $cmd, 0);
                     }
                 }
