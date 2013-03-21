@@ -1032,7 +1032,7 @@ sub parse_responses {
             trace( $request, "Discover node $atthash{hostname}: type is $atthash{type},\
 			mtm is $atthash{mtm},sn is $atthash{serial},  ip is $atthash{ip},\
 			mac is $atthash{mac}, otherinterfaces is $atthash{otherinterfaces}" );
-        }elsif (($type eq SERVICE_FSP) && (${$attributes->{'machinetype-model'}}[0] =~ /^7895|1457/ )) {
+        }elsif (($type eq SERVICE_FSP) && (${$attributes->{'machinetype-model'}}[0] =~ /^7895|1457|7954/ )) {
             # Skip this entry if "-s CEC" was specified - we do not list FSP entries for Flex when only CECs were requested
 	    next unless ($option_s ne "CEC");  
 
@@ -1267,7 +1267,7 @@ sub parse_responses {
                 push  @matchnode, $h;
             }
             my $ptmp = ${$outhash{$h}}{parent};
-            ${$outhash{$h}}{parent} = ${$outhash{$ptmp}}{hostname} unless((${$outhash{$h}}{type} eq TYPE_FSP) && ${$outhash{$h}}{mtm} =~ /^7895|1457/ );
+            ${$outhash{$h}}{parent} = ${$outhash{$ptmp}}{hostname} unless((${$outhash{$h}}{type} eq TYPE_FSP) && ${$outhash{$h}}{mtm} =~ /^7895|1457|7954/ );
 			trace( $request, "$h found parent ${$outhash{$ptmp}}{hostname}");
             #check if fsp/bpa's ip is valid
             my $vip = check_ip(${$outhash{$h}}{ip});
