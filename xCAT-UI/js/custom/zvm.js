@@ -2574,7 +2574,7 @@ zvmPlugin.prototype.loadLogPage = function(node) {
         setChkBox.append('Set options');
         
         // Create log options input
-        var logOpt = $('<li><label>Log options:</label><input type="text" name="logOpt"/></li>');
+        var logOpt = $('<li><label style="width: 80px; vertical-align: top;">Log options:</label><textarea name="logOpt"></textarea></li>');
         logOpt.hide();
         optsList.append(logOpt);
         
@@ -2654,7 +2654,7 @@ zvmPlugin.prototype.loadLogPage = function(node) {
                 // If it is set options
                 if (opt == 'o') {
                     // Append options
-                    optStr += ';' + $('#' + newTabId + ' input[name=logOpt]').val();
+                    optStr += ';' + $('#' + newTabId + ' textarea[name=logOpt]').val();
                 }
                 
                 // Append ; to end of string
