@@ -229,6 +229,15 @@ sub process_request
         return;
     }
 
+	# get site domain for backward compatibility
+	my $sitetab = xCAT::Table->new('site');
+	if ($sitetab) {
+		my $dom = $sitetab->getAttribs({key=>'domain'},'value');
+		if ($dom and $dom->{value}) {
+			$::sitedomain=$dom->{value};
+		}
+	}
+
     my $hoststab = xCAT::Table->new('hosts');
     my $domain;
     my $lockh;
@@ -296,6 +305,9 @@ sub process_request
 
 				my $netn;
                 ($domain, $netn) = &getIPdomain($linklocal, $callback);
+				if (!$domain) {
+					$domain=$::sitedomain;
+				}
 
                 if ($::DELNODE)
                 {
@@ -319,6 +331,9 @@ sub process_request
 
 				my $netn;
                 ($domain, $netn) = &getIPdomain($ref->{ip}, $callback);
+				if (!$domain) {
+                    $domain=$::sitedomain;
+                }
 
                 if ($::DELNODE)
                 {
@@ -359,6 +374,9 @@ sub process_request
 
 			my $netn;
            ($domain, $netn) = &getIPdomain($_->{ip});
+			if (!$domain) {
+                $domain=$::sitedomain;
+            }
 
             if (xCAT::NetworkUtils->isIpaddr($_->{ip}))
             {
@@ -557,18 +575,43 @@ sub donics
             	# construct hostname for nic
             	my $nichostname = "$shorthost$nicsuffix";
 
-            	# get domain from network def
-				my $nt = $nettab->getAttribs({ netname => "nicnetworks"}, 'domain');
+            	# get domain from network def provided by nic attr
 
+#ndebug
+
+				my $nt = $nettab->getAttribs({ netname => "$nicnetworks"}, 'domain');
 				# look up the domain as a check or if it's not provided
-				my ($nicdomain, $netn) = &getIPdomain($nicip, $callback);
-				if ($nt->{domain}) {
-					if($nicnetworks ne $netn) {
+				my ($ndomain, $netn) = &getIPdomain($nicip, $callback);
+
+				if ( $nt->{domain} && $ndomain ) {
+					# if they don't match we may have a problem.
+					if($nicnetworks ne $netn) {	
 						my $rsp;
-						push @{$rsp->{data}}, "The xCAT network name listed for \'$nichostname\' is \'$nicnetworks\' however the nic IP address \'$nicip\' seems to be in the \'$netn\' network.\nIf there is an error then makes corrections to the database definitions and re-run this command.\n"; 
+						push @{$rsp->{data}}, "The xCAT network name listed for
+\'$nichostname\' is \'$nicnetworks\' however the nic IP address \'$nicip\' seems to be in the \'$netn\' network.\nIf there is an error then makes corrections to the database definitions and re-run this command.\n";
 						xCAT::MsgUtils->message("W", $rsp, $callback);
 					}
-					$nicdomain = $nt->{domain};
+				}
+
+				# choose a domain
+				my $nicdomain;
+				if ( $ndomain ) {
+					# try the one based on the ip address first
+					$nicdomain=$ndomain;
+				} elsif ( $nt->{domain} ) {
+					# then try the one provides in the nics entry 
+					$nicdomain=$nt->{domain};
+				} else {
+					# try the site domain for backward compatibility
+					$nicdomain=$::sitedomain;
+				}
+
+# ndebug
+				if(!$nicdomain) {
+					my $rsp;
+					push @{$rsp->{data}}, "Could not find a domain name for $nic/$nicip.\n";
+					xCAT::MsgUtils->message("W", $rsp, $callback);
+					next;
 				}
 
             	if ($::DELNODE)
@@ -601,7 +644,7 @@ sub donics
 				callback
         Returns:
             domain and netname - ok
-            1 - error
+            undef - error
 
         Globals:
 
@@ -635,7 +678,7 @@ sub getIPdomain
     }
 
     # could not find the network domain for this IP address
-    return 1;
+    return undef;
 }
 
 1;
