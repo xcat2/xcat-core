@@ -6105,7 +6105,6 @@ sub rmnimres
                     my $rsp;
                     push @{$rsp->{data}}, "The resource named \'$resname\' will not be removed.\n";
                     xCAT::MsgUtils->message("I", $rsp, $callback);
-					$error++;
                     next;
                 }
 
