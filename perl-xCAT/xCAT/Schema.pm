@@ -1278,13 +1278,9 @@ nics => {
                     <nic1>!<network1>,<nic2>!<network2>, for example, eth0!10_0_0_0-255_255_0_0, ib0!11_0_0_0-255_255_0_0
                 If multiple ip addresses are associated with each NIC:
                     <nic1>!<network1>|<network2>,<nic2>!<network1>|<network2>, for example, eth0!10_0_0_0-255_255_0_0|fd55:faaf:e1ab:336::/64,ib0!11_0_0_0-255_255_0_0|2001:db8:1:0::/64. The xCAT object definition commands support to use nicnetworks.<nicname> as the sub attributes.',
-            nicaliases => 'NOT YET IMPLEMENTED. 
-			
-            Comma-separated list of aliases for each NIC.
-
-            Format: eth0!<alias>,eth1!<alias1>|<alias2>
-            For example: eth0!moe,eth1!larry|curly',
-			
+            nicaliases => 'Comma-separated list of aliases for each NIC. 
+            Format: eth0!<aliases>,eth1!<aliases1>|<aliases2>
+            For example: eth0!moe larry curly,eth1!tom|jerry',
             comments => 'Any user-written notes.',
             disable => "Set to 'yes' or '1' to comment out this row.",
         },
