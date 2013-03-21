@@ -1794,7 +1794,7 @@ sub  collect_all_attribs_for_tables_in_template
                 if( $tabname =~ /^noderes$/ ) {
                     @attribs = (@attribs, "netboot", "tftpdir"); ## add the attribs which will be needed in other place.
                 } 
-                $ent = $tabh->getNodesAttribs($nodes,@attribs);
+                $ent = $tabh->getNodesAttribs($nodes,@attribs); 
                 if ($ent) {
                     foreach my $node (@$nodes) {
                          if( $ent->{$node}->[0] ) {
@@ -1827,27 +1827,31 @@ sub  collect_all_attribs_for_tables_in_template
                                    }
 
                               }
-                         } else { 
-
-                         # for noderes.nfsserver and  noderes.tftpserver    
-                         if( defined($::GLOBAL_TAB_HASH{noderes}) && defined ($::GLOBAL_TAB_HASH{noderes}{$node} )
-                                                             && defined ($::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} ) ) {
-                                    if(!defined ($::GLOBAL_TAB_HASH{noderes}{$node}{nfsserver}) ) {
-                                        $::GLOBAL_TAB_HASH{noderes}{$node}{nfsserver} = $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster};
-                                    } 
-                                    if(!defined ($::GLOBAL_TAB_HASH{noderes}{$node}{tftpserver}) ) {
-                                        $::GLOBAL_TAB_HASH{noderes}{$node}{tftpserver} = $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster};
-                                    }
-                         } else {
-                              foreach my $attrib (@attribs) {
-                                  $::GLOBAL_TAB_HASH{$tabname}{$node}{$attrib} = '';
-                              } 
-                         }
-
                          } 
 
+                         # for noderes.nfsserver and  noderes.tftpserver    
+                         if( ! defined($::GLOBAL_TAB_HASH{noderes}) ||  !defined ($::GLOBAL_TAB_HASH{noderes}{$node} ) ||
+                                                            !defined ($::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} ) ) {
+                              $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} = $::XCATSITEVALS{master};
+                         } 
+                              
+                         if(!defined ($::GLOBAL_TAB_HASH{noderes}{$node}{nfsserver}) ) {
+                             $::GLOBAL_TAB_HASH{noderes}{$node}{nfsserver} = $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster};
+                         } 
+                         if(!defined ($::GLOBAL_TAB_HASH{noderes}{$node}{tftpserver}) ) {
+                             $::GLOBAL_TAB_HASH{noderes}{$node}{tftpserver} = $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster};
+                         }
+                         #if the values are not got, we will set them to ''; 
+                         foreach my $attrib (@attribs) {
+                             if( !defined($::GLOBAL_TAB_HASH{$tabname}) || !defined($::GLOBAL_TAB_HASH{$tabname}{$node}) ||  !defined($::GLOBAL_TAB_HASH{$tabname}{$node}{$attrib})) {
+                                   $::GLOBAL_TAB_HASH{$tabname}{$node}{$attrib} = '';
+                                  } 
+                         } 
+                        
+
+
                   }
-   
+
             } 
             $tabh->close;
         #}     
