@@ -2244,10 +2244,11 @@ sub web_graphinfo {
         }
     }
 
+    @missinfoarray = (@missinfoarray, @unsupportarray);
     foreach (@missinfoarray) {
         $missretstr = $missretstr . $_ . ':linux:other;';
     }
-
+    
     # Combine all information into a string
     my $retstr = $pretstr . $bladeretstr . $xretstr . $missretstr;
     if ($retstr) {
