@@ -263,17 +263,24 @@ virtsd => {
 },
 
 storage => {
-	cols => [qw(node osvolume comments disable)],
-	keys => [qw(node)],
-	table_descr => "Node storage resources",
-	descriptions => {
-		'node' => 'The node name',
-		osvolume => "Specification of what storage to place the node OS image onto.  Examples include:
-				localdisk (Install to first non-FC attached disk)
-				usbdisk (Install to first USB mass storage deice seen)
-				wwn=0x50000393c813840c (Install to storage device with given WWN)",
-		}
-	},
+    cols => [qw(node osvolume size state storagepool fcprange volumetag comments disable)],
+    keys => [qw(node)],
+    table_descr => 'Node storage resources',
+    descriptions => {
+        node => 'The node name',
+        osvolume => "Specification of what storage to place the node OS image onto.  Examples include:
+                localdisk (Install to first non-FC attached disk)
+                usbdisk (Install to first USB mass storage device seen)
+                wwn=0x50000393c813840c (Install to storage device with given WWN)",
+        size => 'Size of the volume. Examples include: 10G, 1024M.',
+        state => 'State of the volume. The valid values are: free, used, and allocated',
+        storagepool => 'Name of storage pool where the volume is assigned.',
+        fcprange => 'A range of acceptable fibre channels that the volume can use. Examples include: 3B00-3C00;4B00-4C00.',
+        volumetag => 'A specific tag used to identify the volume in the autoyast or kickstart template.',
+        comments => 'Any user-written notes.',
+        disable => "Set to 'yes' or '1' to comment out this row.",
+    }
+},
 websrv => { 
     cols => [qw(node port username password comments disable)],
     keys => [qw(node)],
