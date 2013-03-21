@@ -10,6 +10,7 @@ I:openssh.msg.en_US
 # RPMs
 R:popt*
 R:rsync*
+R:bash*
 
 # using Perl 5.10.1
 R:perl-Net_SSLeay.pm-1.30-3*
