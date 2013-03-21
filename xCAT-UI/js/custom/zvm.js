@@ -2587,7 +2587,7 @@ zvmPlugin.prototype.loadLogPage = function(node) {
         	tgtLog.toggle();
         });
         
-        setChkBox.bind('click', function(event) {
+        setChkBox.find('input').bind('click', function(event) {
         	logOpt.toggle();
         });
 
