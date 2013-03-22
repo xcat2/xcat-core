@@ -455,7 +455,7 @@ sub donics
                                    $node,
                                    [
                                     'nicips', 'nichostnamesuffixes',
-                                    'nicnetworks'
+                                    'nicnetworks', 'nicaliases'
                                    ]
                                    );
 
@@ -463,7 +463,6 @@ sub donics
             !(
                   $et->{nicips}
                && $et->{'nichostnamesuffixes'}
-               && $et->{'nicnetworks'}
             )
           )
         {
@@ -554,6 +553,32 @@ sub donics
                 $nich->{$nicname}->{netwrk}->[0] = $netwrk;
             }
         }
+		
+		my @nicandnicalias = split(',', $et->{'nicaliases'});
+        foreach (@nicandnicalias)
+        {
+            my ($nicname, $aliases);
+            if ($_  =~ /!/) {
+                ($nicname, $aliases) = split('!', $_);
+            } else {
+                ($nicname, $aliases) = split(':', $_);
+            }
+            if (!$aliases) {
+                next;
+            }
+
+            if ( $aliases =~ /\|/) {
+                my @names = split( /\|/, $aliases);
+                my $index=0;
+                foreach my $alias (@names) {
+                    $nich->{$nicname}->{nicaliases}->[$index] = $alias;
+                    $index++;
+                }
+            } else {
+                $nich->{$nicname}->{nicaliases}->[0] = $aliases;
+            }
+        }
+
 		# end gather nics info
 
 		# add or delete nic entries in the hosts file
@@ -567,6 +592,7 @@ sub donics
 				my $nicip = $nich->{$nic}->{nicip}->[$i];
 				my $nicsuffix = $nich->{$nic}->{nicsufx}->[$i];
 				my $nicnetworks = $nich->{$nic}->{netwrk}->[$i];
+				my $nicaliases = $nich->{$nic}->{nicaliases}->[$i];
 
 				if (!$nicip) {
 					next;
@@ -576,9 +602,6 @@ sub donics
             	my $nichostname = "$shorthost$nicsuffix";
 
             	# get domain from network def provided by nic attr
-
-#ndebug
-
 				my $nt = $nettab->getAttribs({ netname => "$nicnetworks"}, 'domain');
 				# look up the domain as a check or if it's not provided
 				my ($ndomain, $netn) = &getIPdomain($nicip, $callback);
@@ -606,7 +629,6 @@ sub donics
 					$nicdomain=$::sitedomain;
 				}
 
-# ndebug
 				if(!$nicdomain) {
 					my $rsp;
 					push @{$rsp->{data}}, "Could not find a domain name for $nic/$nicip.\n";
@@ -620,7 +642,7 @@ sub donics
             	}
             	else
             	{
-                	addnode $nichostname, $nicip, '', $nicdomain, 1;
+                	addnode $nichostname, $nicip, $nicaliases, $nicdomain, 1;
 				}
             } # end for each index
         }    # end for each nic
