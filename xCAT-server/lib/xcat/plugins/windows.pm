@@ -340,13 +340,19 @@ sub mkinstall
 
         #Call the Template class to do substitution to produce an unattend.xml file in the autoinst dir
         my $tmperr;
-	unless (-r "$installroot/utils/windows/fixupunattend.vbs" and stat("$::XCATROOT/share/xcat/netboot/windows/fixupunattend.vbs")->mtime < stat("$installroot/utils/windows/fixupunattend.vbs")) {
-		mkpath("$installroot/utils/windows/");
-		copy("$::XCATROOT/share/xcat/netboot/windows/fixupunattend.vbs","$installroot/utils/windows/fixupunattend.vbs");
-	}
-	unless (-r "$installroot/utils/windows/detectefi.exe" and stat("$::XCATROOT/share/xcat/netboot/windows/detectefi.exe")->mtime < stat("$installroot/utils/windows/detectefi.exe")) {
-		mkpath("$installroot/utils/windows/");
-		copy("$::XCATROOT/share/xcat/netboot/windows/detectefi.exe","$installroot/utils/windows/detectefi.exe");
+	my @utilfiles = (
+		"fixupunattend.vbs",
+		"detectefi.exe",
+		"xCAT.psd1",
+		"xCAT.psm1",
+		"xCAT.format.ps1xml",
+		"nextdestiny.ps1",
+	);
+	foreach my $utilfile (@utilfiles) {
+		unless (-r "$installroot/utils/windows/$utilfile" and stat("$::XCATROOT/share/xcat/netboot/windows/$utilfile")->mtime < stat("$installroot/utils/windows/$utilfile")) {
+			mkpath("$installroot/utils/windows/");
+			copy("$::XCATROOT/share/xcat/netboot/windows/$utilfile","$installroot/utils/windows/$utilfile");
+		}
 	}
         if (-r "$tmplfile")
         {
@@ -438,6 +444,7 @@ sub mkinstall
         print $shandle 'reg copy HKLM\system\CurrentControlSet\services\TCPIP6\parameters HKLM\csystem\ControlSet001\services\TCPIP6\parameters /f'."\r\n";
         print $shandle 'reg copy HKLM\system\CurrentControlSet\services\TCPIP6\parameters HKLM\csystem\ControlSet002\services\TCPIP6\parameters /f'."\r\n";
         print $shandle 'reg unload HKLM\csystem'."\r\n";
+	print $shandle "If EXIST X:\\Windows\\system32\\WindowsPowerShell GOTO PSH\r\n";
         print $shandle "IF %PROCESSOR_ARCHITECTURE%==AMD64 GOTO x64\r\n";
         print $shandle "IF %PROCESSOR_ARCHITECTURE%==x64 GOTO x64\r\n";
         print $shandle "IF %PROCESSOR_ARCHITECTURE%==x86 GOTO x86\r\n";
@@ -446,6 +453,12 @@ sub mkinstall
         print $shandle "GOTO END\r\n";
         print $shandle ":x64\r\n";
         print $shandle "%instdrv%\\postscripts\\upflagx64 %XCATD% 3002 next\r\n";
+        print $shandle "GOTO END\r\n";
+        print $shandle ":PSH\n";
+        print $shandle "mkdir x:\\windows\\system32\\WindowsPowerShell\\v1.0\\Modules\\xCAT\r\n";
+        print $shandle "copy %instdrv%\\utils\\windows\\xCAT.* x:\\windows\\system32\\WindowsPowerShell\\v1.0\\Modules\\xCAT\r\n";
+        print $shandle "powershell set-executionpolicy bypass CurrentUser\r\n";
+        print $shandle "powershell %instdrv%\\utils\\windows\\nextdestiny.ps1\r\n";
         print $shandle ":END\r\n";
         close($shandle);
         if ($vpdhash->{$node}) {
