@@ -471,9 +471,9 @@ sub mkinstall
         print $shandle ":x64\r\n";
         print $shandle "%instdrv%\\postscripts\\upflagx64 %XCATD% 3002 next\r\n";
         print $shandle "GOTO END\r\n";
-        print $shandle ":PSH\n";
-        print $shandle "set mastername=$xcatsslname\n";
-        print $shandle "set master=%XCATD%\n";
+        print $shandle ":PSH\r\n";
+        print $shandle "set mastername=$xcatsslname\r\n";
+        print $shandle "set master=%XCATD%\r\n";
         print $shandle "mkdir x:\\windows\\system32\\WindowsPowerShell\\v1.0\\Modules\\xCAT\r\n";
         print $shandle "copy %instdrv%\\utils\\windows\\xCAT.* x:\\windows\\system32\\WindowsPowerShell\\v1.0\\Modules\\xCAT\r\n";
         print $shandle "powershell set-executionpolicy bypass CurrentUser\r\n";
