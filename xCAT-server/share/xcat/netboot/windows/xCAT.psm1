@@ -1,35 +1,36 @@
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 # This function specifically validates that the peer we are talking to is signed by the xCAT blessed CA and no other CA
-Function Approve-xCATCert ($sender, $cert, $chain, $polerrs) {
-	if ($polerrs -ne "None") { return $false } #if the overall policy suggests rejection, go with it
-	#now, system policy suggests that everything is ok, but we want to be more picky, because we 
-	#are measuring something more specific than 'did any old CA sign this', we specifically want to assue the signer CA is xCAT's 
-	#TODO: perhaps ignore the RemoteCertificateChainErrors condition and chase a chain of our own creation
-	#that chain could live outside the user or system wide root to avoid giving xCAT the power to sign certs for things it shouldn't
+Function VerifyxCATCert ($sender, $cert, $chain, $polerrs) {
+	if ($polerrs -ne "None" -and $polerrs -ne "RemoteCertificateChainErrors") { return $false } #if the overall policy suggests rejection, go with it
+	#why do we tolerate RemoteCertificateChainErrors?  Because we are going to check specifically for the CA configured for this xCAT installation
+	#we chose not to add xCAT's CA to the root store, as that implies the OS should trust xCAT's CA for non-xCAT related things.  That is madness.
+	#Of course, that's the madness typical with x509, but we need not propogate the badness...
+	#we are measuring something more specific than 'did any old CA sign this', we specifically want to assue the signer CA is xCAT's 
         foreach ($cert in $chain.chainElements) {
-		if ($script:xcatcacert.thumbprint -eq $cert.Certificate.thumprint) {
+		if ($script:xcatcacert.thumbprint.Equals($cert.Certificate.thumbprint)) {
 			return $true
 		}
         }
 	return $false
 }
 
-#we import the xCAT certificate authority into the appropriate scope
-#we have to use localmachine in order to avoid interactive prompt, meaning we need admin for this one, besides
-#this means admin installs CA cert for everyone
-#TODO: use cert:\currentuser\root when not administrator to facilitate xCAT-client case, take the prompt once
+#we import the xCAT certificate authority into the appropriate scope.
+#It's not trusted by system policy, but our overidden verify function will find it.  Too bad MS doesn't allow us custom store names under the user
+#repository for whatever reason.  We'll just 'import' it every session from file, which is harmless to do multiple times
+#this isn't quite as innocuous as the openssl mechanisms to do this sort of thing, but it's as close as I could figure to get
 Function Import-xCATCA ( $certpath ) {
-	$script:xcatcacert=Import-Certificate -FilePath $certpath -CertStoreLocation Cert:\LocalMachine\root 
+	$script:xcatcacert=Import-Certificate -FilePath $certpath -CertStoreLocation Cert:\CurrentUser\My
 }
 
-#this removes the xCAT CA from trust store, if user wishes to explicitly distrust xCAT post deploy
+#this removes the xCAT CA from trust store, if user wishes to explicitly remove xCAT key post deploy
+#A good idea for appliances that want to not show weird stuff.  The consequences of not calling it are harmless: a useless extra public cert
+#in admin's x509 cert store
 Function Remove-xCATCA ( $certpath ) {
-	xCAT-Import-CA($certpath) #this seems insane, but it's easiest way to make sure we have the correct path
+	Import-xCATCA($certpath) #this seems insane, but it's easiest way to make sure we have the correct path
 	rm $script:xcatcacert.PSPath
 }
 
 #specify a client certificate to use in pfx format
-#we put this one in the user's store instead of system wide
 Function Set-xCATClientCertificate ( $pfxPath ) {
 	$script:xcatclientcert=Import-pfxCertificate $pfxPath -certStoreLocation cert:\currentuser\my
 }
@@ -41,7 +42,8 @@ Function Remove-xCATClientCertificate( $pfxPath ) {
 #key here is that we might have two certificates:
 #-one intended to identify the system that was deployed by xcat
 #-one intended to identify the user to do things like 'rpower'
-#TODO: argument to specify whether this is a human or machine.  Default would be human and machine invocation would be in scripts
+#however, user will just have to control it by calling Set-xCATClientCertificate on the file for now
+#TODO: if user wants password protected PFX file, we probably would want to import it once and retain thumb across sessions...
 Function Select-xCATClientCert ($sender, $targetHost, $localCertificates, $remoteCertificate,$acceptableIssuers) {
 	$script:xcatclientcert
 }
@@ -52,6 +54,8 @@ Function Connect-xCAT {
 		$mgtServerAltName=$mgtServer
 	)
 	$script:xcatconnection = New-Object Net.Sockets.TcpClient($mgtServer,$mgtServerPort)
-	$script:verifycallback = Get-Content Function:\Appve-xCATCert
-	$script:xcatstream = $script:xcatconnection
+	$script:verifycallback = Get-Content Function:\VerifyxCATCert
+	$script:xcatstream = $script:xcatconnection.GetStream()
+	$script:securexCATStream = New-Object System.Net.Security.SSLStream($script:xcatstream,$false,$script:verifycallback)
+	$script:securexCATStream.AuthenticateAsClient($mgtServerAltName)
 }
