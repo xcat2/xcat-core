@@ -35,7 +35,7 @@ Function Set-xCATClientCertificate ( $pfxPath ) {
 	$script:xcatclientcert=Import-pfxCertificate $pfxPath -certStoreLocation cert:\currentuser\my
 }
 Function Remove-xCATClientCertificate( $pfxPath ) {
-	xCAT-Set-Client-Certificate($pfxpath)
+	Set-xCATClientCertificate($pfxpath)
 	rm cert:\currentuser\my\$script:xcatclientcert.thumbprint
 }
 
@@ -49,14 +49,15 @@ Function Select-xCATClientCert ($sender, $targetHost, $localCertificates, $remot
 }
 Function Connect-xCAT { 
 	Param(
-		$mgtServer,
+		$mgtServer=$xcathost,
 		$mgtServerPort=3001,
 		$mgtServerAltName=$mgtServer
 	)
 	$script:xcatconnection = New-Object Net.Sockets.TcpClient($mgtServer,$mgtServerPort)
-	$script:verifycallback = Get-Content Function:\VerifyxCATCert
+	$verifycallback = Get-Content Function:\VerifyxCATCert
+	$certselect = Get-Content Function:\Select-xCATClientCert
 	$script:xcatstream = $script:xcatconnection.GetStream()
-	$script:securexCATStream = New-Object System.Net.Security.SSLStream($script:xcatstream,$false,$script:verifycallback)
+	$script:securexCATStream = New-Object System.Net.Security.SSLStream($script:xcatstream,$false,$verifycallback,$certselect)
 	$script:securexCATStream.AuthenticateAsClient($mgtServerAltName)
 	$script:xcatwriter = New-Object System.IO.StreamWriter($script:securexCATStream)
 	$script:xcatreader = New-Object System.IO.StreamReader($script:securexCATStream)
@@ -66,12 +67,13 @@ Function Get-Power {
 	Param(
 		$nodeRange
 	)
+	Connect-xCAT
 	$data = "<xcatrequest>`n`t<command>rpower</command>`n`t<arg>stat</arg>`n`t<noderange>$nodeRange</noderange>`n</xcatrequest>`n"
 	$script:xcatwriter.WriteLine($data)
 	$script:xcatwriter.Flush()
 	$response=""
 	$lastline=""
-	while (! $lastline.Contains("</xcatresponse>")) {
+	while (! $lastline.Contains("</xcatresponse>") -and $script:xcatreader) {
 		$lastline = $script:xcatreader.ReadLine()
 		$response = $response + $lastline
 	}
