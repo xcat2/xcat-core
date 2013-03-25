@@ -212,6 +212,18 @@ sub applyimagescript {
     :END
 ENDAPPLY
 }
+
+sub get_server_certname {
+        my @certdata = `openssl x509 -in /etc/xcat/cert/server-cert.pem -text -noout`;
+        foreach (@certdata) {
+                if (/Subject:/) {
+                        s/.*=//;
+                        return $_;
+                        last;
+                }
+        }
+}
+
 #Don't sweat os type as for mkimage it is always 'imagex' if it got here
 sub mkinstall
 {
@@ -234,6 +246,11 @@ sub mkinstall
         {error => [ "The Windows netboot image is not created, consult documentation on how to add Windows deployment support to xCAT"],errorcode=>[1]
         });
        return;
+    }
+    my $xcatsslname=get_server_certname();
+    unless (-r "$installroot/xcat/ca.pem" and stat("/etc/xcat/cert/ca.pem")->mtime <= stat("$installroot/xcat/ca.pem")->mtime) {
+    	mkpath("$installroot/xcat/");
+    	copy("/etc/xcat/cert/ca.pem","$installroot/xcat/ca.pem");
     }
     require xCAT::Template;
     foreach $node (@nodes)
@@ -349,7 +366,7 @@ sub mkinstall
 		"nextdestiny.ps1",
 	);
 	foreach my $utilfile (@utilfiles) {
-		unless (-r "$installroot/utils/windows/$utilfile" and stat("$::XCATROOT/share/xcat/netboot/windows/$utilfile")->mtime < stat("$installroot/utils/windows/$utilfile")) {
+		unless (-r "$installroot/utils/windows/$utilfile" and stat("$::XCATROOT/share/xcat/netboot/windows/$utilfile")->mtime <= stat("$installroot/utils/windows/$utilfile")->mtime) {
 			mkpath("$installroot/utils/windows/");
 			copy("$::XCATROOT/share/xcat/netboot/windows/$utilfile","$installroot/utils/windows/$utilfile");
 		}
@@ -455,6 +472,8 @@ sub mkinstall
         print $shandle "%instdrv%\\postscripts\\upflagx64 %XCATD% 3002 next\r\n";
         print $shandle "GOTO END\r\n";
         print $shandle ":PSH\n";
+        print $shandle "set mastername=$xcatsslname\n";
+        print $shandle "set master=%XCATD%\n";
         print $shandle "mkdir x:\\windows\\system32\\WindowsPowerShell\\v1.0\\Modules\\xCAT\r\n";
         print $shandle "copy %instdrv%\\utils\\windows\\xCAT.* x:\\windows\\system32\\WindowsPowerShell\\v1.0\\Modules\\xCAT\r\n";
         print $shandle "powershell set-executionpolicy bypass CurrentUser\r\n";
