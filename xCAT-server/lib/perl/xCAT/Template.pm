@@ -371,7 +371,7 @@ sub windows_dns_cfg {
 		$componentxml.="<IpAddress wcm:action=\"add\" wcm:keyValue=\"$idx\">$_</IpAddress>\r\n";
 		$idx+=1;
 	}
-	$componentxml .= "</Interface>\r\n</Interfaces>\r\n</component>\r\n";
+	$componentxml .= "</DNSServerSearchOrder>\r\n</Interface>\r\n</Interfaces>\r\n</component>\r\n";
 	return $componentxml;
 }
 #this will examine table data, decide *if* a Microsoft-Windows-UnattendedJoin is warranted
