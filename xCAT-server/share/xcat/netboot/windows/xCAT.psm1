@@ -109,7 +109,18 @@ Function Connect-xCAT {
 	$verifycallback = Get-Content Function:\VerifyxCATCert
 	$certselect = Get-Content Function:\SelectxCATClientCert
 	$script:xcatstream = $script:xcatconnection.GetStream()
-	$script:securexCATStream = New-Object System.Net.Security.SSLStream($script:xcatstream,$false,$verifycallback,$certselect)
+	$haveclientcert=0
+	if (Test-Path HKCU:\Software\xCAT) {
+		$xcreg=Get-ItemProperty HKCU:\Software\xCAT
+		if ($xcreg.usercertthumb) {
+			$haveclientcert=1
+		}
+	}
+	if ($haveclientcert) {
+		$script:securexCATStream = New-Object System.Net.Security.SSLStream($script:xcatstream,$false,$verifycallback,$certselect)
+	} else {
+		$script:securexCATStream = New-Object System.Net.Security.SSLStream($script:xcatstream,$false,$verifycallback)
+	}
 	$script:securexCATStream.AuthenticateAsClient($mgtServerAltName)
 	$script:xcatwriter = New-Object System.IO.StreamWriter($script:securexCATStream)
 	$script:xcatreader = New-Object System.IO.StreamReader($script:securexCATStream)
