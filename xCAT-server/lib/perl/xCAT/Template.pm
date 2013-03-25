@@ -342,6 +342,17 @@ sub windows_dns_cfg {
 	unless ($noderestab) { return ""; }
 	$noderesent = $noderestab->getNodeAttribs($node,['nameservers'],prefetchcache=>1);
 	unless ($noderesent and $noderesent->{nameservers}) { return ""; }
+	my $mac="==PRINIC==";
+	my $mactab = xCAT::Table->new('mac',-create=>0);
+	if ($mactab) {
+		my $macent = $mactab->getNodeAttribs($node,['mac'],prefetchcache=>1);
+		if ($macent and $macent->{mac}) {
+			$mac=$macent->{mac};
+			$mac=~ s/!.*//;
+			$mac=~ s/\|.*//;
+			$mac =~ s/:/-/g;
+		}
+	}
 	my $nameservers =  $noderesent->{nameservers};
 	
 	my $domaintab = xCAT::Table->new('domain',-create=>0);
@@ -354,7 +365,7 @@ sub windows_dns_cfg {
 		$domain = $::XCATSITEVALS{domain};
 	}
 	my $componentxml = '<component name="Microsoft-Windows-DNS-Client" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'."\r\n<DNSDomain>$domain</DNSDomain>\r\n".
-	"<Interfaces><Interface wcm:action=\"add\">\r\n<Identifier>==PRINIC==</Identifier>\r\n<DNSServerSearchOrder>\r\n";
+	"<Interfaces><Interface wcm:action=\"add\">\r\n<Identifier>$mac</Identifier>\r\n<DNSServerSearchOrder>\r\n";
 	my $idx=1;
 	foreach (split /,/,$nameservers) {
 		$componentxml.="<IpAddress wcm:action=\"add\" wcm:keyValue=\"$idx\">$_</IpAddress>\r\n";
