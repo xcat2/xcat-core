@@ -219,6 +219,7 @@ sub subvars {
   $inc =~ s/#WINTIMEZONE#/xCAT::TZUtils::get_wintimezone()/eg;
   $inc =~ s/#WINPRODKEY:([^#]+)#/get_win_prodkey($1)/eg;
   $inc =~ s/#WINADJOIN#/windows_join_data()/eg;
+  $inc =~ s/#WINDNSCFG#/windows_dns_cfg()/eg;
   $inc =~ s/#WINACCOUNTDATA#/windows_account_data()/eg;
   $inc =~ s/#WINDISABLENULLADMIN#/windows_disable_null_admin()/eg;
   $inc =~ s/#MANAGEDADDRESSMODE#/managed_address_mode()/eg;
@@ -332,6 +333,35 @@ sub windows_account_data {
 	}
 	$useraccountxml.="<DomainAccounts><DomainAccountList>\r\n<DomainAccount wcm:action=\"add\">\r\n<Group>Administrators</Group>\r\n<Name>Domain Admins</Name>\r\n</DomainAccount>\r\n<Domain>".$domain."</Domain>\r\n</DomainAccountList>\r\n</DomainAccounts>\r\n";
 		return $useraccountxml;
+}
+sub windows_dns_cfg {
+	my $domain;
+        my $doment;
+	my $noderesent;
+	my $noderestab = xCAT::Table->new("noderes",-create=>0);
+	unless ($noderestab) { return ""; }
+	$noderesent = $noderestab->getNodeAttribs($node,['nameservers'],prefetchcache=>1);
+	unless ($noderesent and $noderesent->{nameservers}) { return ""; }
+	my $nameservers =  $noderesent->{nameservers};
+	
+	my $domaintab = xCAT::Table->new('domain',-create=>0);
+	if ($domaintab) {
+           $doment = $domaintab->getNodeAttribs($node,['authdomain'],prefetchcache=>1);
+	}
+	if ($doment and $doment->{authdomain}) {
+		$domain = $doment->{authdomain};
+	} else {
+		$domain = $::XCATSITEVALS{domain};
+	}
+	my $componentxml = '<component name="Microsoft-Windows-DNS-Client" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'."\r\n<DNSDomain>$domain</DNSDomain>\r\n".
+	"<Interfaces><Interface wcm:action=\"add\">\r\n<Identifier>==PRINIC==</Identifier>\r\n<DNSServerSearchOrder>\r\n";
+	my $idx=1;
+	foreach (split /,/,$nameservers) {
+		$componentxml.="<IpAddress wcm:action=\"add\" wcm:keyValue=\"$idx\">$_</IpAddress>\r\n";
+		$idx+=1;
+	}
+	$componentxml .= "</Interface>\r\n</Interfaces>\r\n</component>\r\n";
+	return $componentxml;
 }
 #this will examine table data, decide *if* a Microsoft-Windows-UnattendedJoin is warranted
 #there are two variants in how to proceed:
