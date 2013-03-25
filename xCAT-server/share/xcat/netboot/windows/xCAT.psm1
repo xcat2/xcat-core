@@ -103,8 +103,32 @@ Function Get-NodePower {
 }
 Function Merge-xCATData { #xcoll attempt
 	$groupeddata=$input|Group-Object -Property "node"
+	$hashbyoutput=@{}
 	foreach ($nodedata in $groupeddata) {
-		 New-MergedxCATData $nodedata.Group
+		$gdata= NewMergedxCATData $nodedata.Group
+		if ($hashbyoutput.Contains($gdata.stringcontent)) {
+			$hashbyoutput.Get_Item($gdata.stringcontent).NodeList += $gdata.NodeList
+		} else {
+			$hashbyoutput.Add($gdata.stringcontent,$gdata)
+		}
+	}
+	$distinctoutput=$hashbyoutput.GetEnumerator()
+	foreach ($collateddata in $distinctoutput) {
+		$findata = $collateddata.Value
+		$findata.NodeRange=[string]::Join(",",$findata.NodeList)
+		$findata = $findata |select-object -excludeproperty NodeRangeHint,stringcontent *
+		$mobjname = 'MergedxCATSimpleNodeData'
+		foreach ($do in $findata.dataObjects) {
+			if ($do.description) {
+				$mobjname='MergedxCATNodeData'
+				break
+			}
+		}
+		foreach ($do in $findata.dataObjects) {
+			$do|Add-Member -MemberType NoteProperty -Name NodeRange -Value $findata.NodeRange
+			$do.PSObject.TypeNames.Insert(0,$mobjname)
+			$do
+		}
 	}
 	
 }
@@ -155,8 +179,10 @@ Function Send-xCATCommand {
 			foreach ($nr in $xcatRequest.noderange) {
 				if ($nr -is [System.String]) {
 					$nrparts += $nr
-				} elseif ($nr.PSObject.TypeNames[0] -eq "xCATNodeData") {
+				} elseif ($nr.PSObject.TypeNames[0] -like "xCAT*Node*Data") {
 					$nrparts += $nr.Node
+				} elseif ($nr.PSObject.TypeNames[0] -like "Merge*xCAT*Node*Data") {
+					$nrparts += $nr.NodeRange
 				}
 			}
 			$xcatRequest.noderange=[string]::Join(",",$nrparts);
@@ -184,7 +210,10 @@ Function Send-xCATCommand {
 		}
 		[xml]$response = $responsexml
 		foreach ($elem in $response.xcatresponse.node) {
-			New-xCATDataFromXmlElement $elem -NodeRangeHint $xcatRequest.noderange
+			NewxCATDataFromXmlElement $elem -NodeRangeHint $xcatRequest.noderange
+		}
+		foreach ($elem in $response.xcatresponse.error) {
+			Write-Error $elem
 		}
 		#$response.xcatresponse.node.name
 		#$response.xcatresponse.node.data
@@ -192,28 +221,34 @@ Function Send-xCATCommand {
 	}
 }
 
-Function New-MergedxCATData { #takes an arbitrary number of nodeData objects and spits out one
+Function NewMergedxCATData { #takes an arbitrary number of nodeData objects and spits out one
 	Param(
 		$nodeData
 	)
 	$myobj = @{}
 	$myobj.dataObjects=@()
-	$myobj.NodeRange = $nodeData[0].Node
+	$myobj.NodeList = @($nodeData[0].Node)
+	$myobj.NodeRangeHint = $nodeData[0].NodeRangeHint
+	$myobj.stringcontent = ""
+	$myobj.NodeRange = ""
 	foreach ($data in $nodeData) {
-		$rangedata = $data|select-object -ExcludeProperty Node *
-		$rangedata.PSObject.TypeNames.RemoveAt(0)
+		$rangedata = $data|select-object -ExcludeProperty Node,NodeRangeHint *
+		foreach ($dataseg in $rangedata) {
+			$myobj.stringcontent += $dataseg.Description+": "+$dataseg.Data+"`n"
+		}
 		$myobj.dataObjects = $myobj.dataObjects  + $rangedata
 	}
 	$newobj = New-Object -TypeName PSObject -Prop $myobj
-	$newobj.PSObject.TypeNames.Insert(0,'xCATNodeRangeData')
+	$newobj.PSObject.TypeNames.Insert(0,'TempxCATNodeRangeData')
 	return $newobj
 }
-Function New-xCATDataFromXmlElement {
+Function NewxCATDataFromXmlElement {
 	Param(
 		$xmlElement,
 		$NodeRangeHint
 	)
 	$myprops = @{}
+	$objname = 'xCATSimpleNodeData'
 	if ($NodeRangeHint) { #hypothetically, 'xcoll' implementation might find this handy
 		$myprops.NodeRangeHint=$NodeRangeHint
 	}
@@ -221,6 +256,7 @@ Function New-xCATDataFromXmlElement {
 		$myprops.Node=$xmlElement.name
 	}
 	if ($xmlElement.data.desc) {
+		$objname = 'xCATNodeData'
 		$myprops.Description=$xmlElement.data.desc
 	}
 	if ($xmlElement.data.contents) {
@@ -228,8 +264,13 @@ Function New-xCATDataFromXmlElement {
 	} else {
 		$myprops.Data=""
 	}
+	if ($xmlElement.error) {
+		$errstr= $xmlElement.name + ": " + $xmlElement.error
+		Write-Error $errstr
+		$myprops.ErrorData=$xmlElement.error
+	}
 	$myobj=New-Object -TypeName PSObject -Prop $myprops
-	$myobj.PSObject.TypeNames.Insert(0,'xCATNodeData')
+	$myobj.PSObject.TypeNames.Insert(0,$objname)
 	return $myobj
 }
 New-Alias -name rpower -value Set-NodePower
@@ -237,6 +278,7 @@ New-Alias -name rvitals -value Get-Nodevitals
 New-Alias -name rinv -value Get-NodeInventory
 New-Alias -name rbeacon -value Set-NodeBeacon
 New-Alias -name nodels -value Get-Nodes
+New-Alias -name xcoll -value Merge-xCATData
 Export-ModuleMember -function *-* -Alias *
 
 		
