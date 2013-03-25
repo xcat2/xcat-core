@@ -38,10 +38,10 @@ sub handled_commands
 {
     return {
             copycd    => "anaconda",
-            mknetboot => "nodetype:os=(ol.*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
-            mkinstall => "nodetype:os=(esxi4.1)|(esx[34].*)|(ol.*)|(centos.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
-            mksysclone => "nodetype:os=(esxi4.1)|(esx[34].*)|(ol.*)|(centos.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
-            mkstatelite => "nodetype:os=(esx[34].*)|(ol.*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
+            mknetboot => "nodetype:os=(^ol[0-9].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
+            mkinstall => "nodetype:os=(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
+            mksysclone => "nodetype:os=(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
+            mkstatelite => "nodetype:os=(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
 	
             };
 }
