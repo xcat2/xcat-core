@@ -70,10 +70,18 @@ Function Get-NodePower {
 	$xcatrequest=@{'command'='rpower';'noderange'=$nodeRange;'args'=@('stat')}
 	Send-xCATCommand($xcatrequest)
 }
+Function Get-Nodes {
+	Param(
+		[parameter(Position=0)] $nodeRange,
+		[parameter(ValueFromRemainingArguments=$true)] $tabcols
+	)
+	$xcatrequest=@{'command'='nodels';'noderange'=$nodeRange;'args'=@($tabcols)}
+	Send-xCATCommand($xcatrequest)
+}
 Function Get-NodeVitals {
 	Param(
-		$nodeRange,
-		$vitalTypes="all"
+		[parameter(Position=0)] $nodeRange,
+		[parameter(ValueFromRemainingArguments=$true)] $vitalTypes="all"
 	)
 	$xcatrequest=@{'command'='rvitals';'noderange'=$nodeRange;'args'=@($vitalTypes)}
 	Send-xCATCommand($xcatrequest)
@@ -85,10 +93,20 @@ Function Send-xCATCommand {
 	Connect-xCAT
 	$requestxml = "<xcatrequest>`n`t<command>"+$xcatRequest.command+"</command>`n"
 	if ($xcatRequest.noderange) {
+		if ($xcatRequest.noderange -is [System.Array]) { #powershell wants to arrayify commas because it can't make up its mind 
+								 #whether it's a scripting language or a shell language, try to undo the 
+								 #damage
+			$xcatRequest.noderange=[string]::Join(",",$xcatRequest.noderange);
+		}
 		$requestxml = $requestxml + "`t<noderange>"+$xcatRequest.noderange+"</noderange>`n"
 	}
         foreach ($arg in $xcatRequest.args) {
-		$requestxml = $requestxml + "`t<arg>"+$arg+"</arg>`n"
+		if ($arg) {
+			if ($arg -is [System.Array]) {
+				$arg=[string]::join(",",$arg);
+			}
+			$requestxml = $requestxml + "`t<arg>"+$arg+"</arg>`n"
+		}
 	}
 	$requestxml = $requestxml + "</xcatrequest>`n"
 	$script:xcatwriter.WriteLine($requestxml)
@@ -102,9 +120,41 @@ Function Send-xCATCommand {
 			$responsexml = $responsexml + $lastline
 		}
 		[xml]$response = $responsexml
-		$response.xcatresponse.node.name
-		$response.xcatresponse.node.data
+		foreach ($elem in $response.xcatresponse.node) {
+			New-xCATDataFromXmlElement $elem -NodeRangeHint $xcatRequest.noderange
+		}
+		#$response.xcatresponse.node.name
+		#$response.xcatresponse.node.data
 		if ($response.xcatresponse.serverdone -ne $null) { $serverdone=1 }
 	}
 }
+
+Function New-xCATDataFromXmlElement  {
+	Param(
+		$xmlElement,
+		$NodeRangeHint
+	)
+	$myprops = @{}
+	if ($NodeRangeHint) { #hypothetically, 'xcoll' implementation might find this handy
+		$myprops.NodeRangeHint=$NodeRangeHint
+	}
+	if ($xmlElement.name) {
+		$myprops.Node=$xmlElement.name
+	}
+	if ($xmlElement.data.desc) {
+		$myprops.Description=$xmlElement.data.desc
+	}
+	if ($xmlElement.data.contents) {
+		$myprops.Data=$xmlElement.data.contents
+	} else {
+		$myprops.Data=""
+	}
+	$myobj=New-Object -TypeName PSObject -Prop $myprops
+	$myobj.PSObject.TypeNames.Insert(0,'xCATNodeData')
+	return $myobj
+}
+
+
+		
+		
 
