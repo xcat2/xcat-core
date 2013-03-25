@@ -432,8 +432,10 @@ sub lcds {
          }
     }
             
-    if( $type =~ /lpar|blade/ ) {
+    if( $type eq "lpar" ) {
         $action = "query_lcds";
+    } elsif ($type eq "blade") {
+        $action = "pblade_query_lcds";
     } else {
         $action = "cec_query_lcds";
     } 

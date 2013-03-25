@@ -3277,7 +3277,7 @@ sub bladecmd {
     if (defined($vitals_info) and defined($vitals_info->{$currnode})) {
         my $attr = $vitals_info->{$currnode};
         my $fsp_api = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
-        my $cmd = "$fsp_api -a query_lcds -T 0 -t 0:$$attr[3]:$$attr[0]:$currnode: 2>&1";
+        my $cmd = "$fsp_api -a pblade_query_lcds -T 0 -t 0:$$attr[3]:$$attr[0]:$currnode: 2>&1";
         my $res = xCAT::Utils->runcmd($cmd, -1);
         if ($res !~ /error/i) {
             my @array = split(/\n/, $res);
