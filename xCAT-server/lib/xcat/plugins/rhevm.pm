@@ -734,6 +734,7 @@ sub send_req {
         if (grep (/<html>/, $response)) { # get a error message in the html
             $rc = 3; 
         }  elsif (grep (/<\?xml/, $response)) {
+	    $response =~ s/.*?</</ms;
             my $parser = XML::LibXML->new();
             my $doc = $parser->parse_string($response);
             if ($doc ) {
