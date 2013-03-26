@@ -364,7 +364,7 @@ sub windows_dns_cfg {
 	} else {
 		$domain = $::XCATSITEVALS{domain};
 	}
-	my $componentxml = '<component name="Microsoft-Windows-DNS-Client" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'."\r\n<DNSDomain>$domain</DNSDomain>\r\n".
+	my $componentxml = '<component name="Microsoft-Windows-DNS-Client" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'."\r\n<DNSDomain>$domain</DNSDomain>\r\n".
 	"<Interfaces><Interface wcm:action=\"add\">\r\n<Identifier>$mac</Identifier>\r\n<DNSServerSearchOrder>\r\n";
 	my $idx=1;
 	foreach (split /,/,$nameservers) {
