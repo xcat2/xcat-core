@@ -2066,7 +2066,8 @@ sub CheckVersion
 =head3  osver
         Returns the os and version of the System you are running on 
     Arguments:
-      none
+        $type: which type of os infor you want.  Supported values are:
+               all,os,version,release
     Returns:
         0 - ok
     Globals:
@@ -2083,9 +2084,16 @@ sub CheckVersion
 #-------------------------------------------------------------------------------
 sub osver
 {
+    my $type = shift;
+    if ($type =~ /xCAT::Utils/)
+    {
+        $type  = shift;
+    }
+
     my $osver = "unknown";
     my $os    = '';
     my $ver   = '';
+    my $rel   = '';
     my $line  = '';
     my @lines;
     my $relfile;
@@ -2096,14 +2104,31 @@ sub osver
         close($relfile);
         chomp($line);
         $os = "rh";
+        my $verrel=$line;
         $ver=$line;
-        $ver=~ tr/\.//;
-        $ver =~ s/[^0-9]*([0-9]+).*/$1/;
+        if ( $type ) {
+            $verrel =~ s/[^0-9]*([0-9.]+).*/$1/;
+            ($ver,$rel) = split /\./, $verrel;
+        } else {
+            $ver=~ tr/\.//;
+            $ver =~ s/[^0-9]*([0-9]+).*/$1/;
+        }
         if    ($line =~ /AS/)     { $os = 'rhas' }
         elsif ($line =~ /ES/)     { $os = 'rhes' }
         elsif ($line =~ /WS/)     { $os = 'rhws' }
-        elsif ($line =~ /Server/) { $os = 'rhserver' }
-        elsif ($line =~ /Client/) { $os = 'rhclient' }
+        elsif ($line =~ /Server/) { 
+            if ( $type ) {
+                $os = 'rhels';
+            } else {
+                $os = 'rhserver';
+            }
+        } elsif ($line =~ /Client/) { 
+            if ( $type ) {
+                $os = 'rhel';
+            } else {
+                $os = 'rhclient';
+            }
+        }
         elsif (-f "/etc/fedora-release") { $os = 'rhfc' }
     }
     elsif (-f "/etc/SuSE-release")
@@ -2117,6 +2142,10 @@ sub osver
         $ver = $lines[0];
         $ver =~ tr/\.//;
         $ver =~ s/[^0-9]*([0-9]+).*/$1/;
+
+        $rel = $lines[2];
+        $ver =~ tr/\.//;
+        $rel =~ s/[^0-9]*([0-9]+).*/$1/;
 
         #print "ver: $ver\n";
     }
@@ -2175,8 +2204,21 @@ sub osver
             close($relfile);
         }
     }
-    $os = "$os" . "$ver";
-    return ($os);
+    if ( $type and $type =~ /all/ ) {
+        if ( $rel ) {
+            return( "$os" . "," . "$ver" . ".$rel" );
+        } else {
+            return( "$os" . "," . "$ver" );
+        }
+    } elsif ( $type and $type =~ /os/ ) {
+        return( $os );
+    } elsif ( $type and $type =~ /version/ ) {
+        return( $ver );
+    } elsif ( $type and $type =~ /release/ ) {
+        return( $rel );
+    } else {
+        return ("$os" . "$ver");
+    }
 }
 
 #-----------------------------------------------------------------------------
