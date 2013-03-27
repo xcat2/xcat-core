@@ -2153,7 +2153,7 @@ sub getchildren
           $::RUNCMD_RC = 1; 
           return undef; 
         }
-        my @ps = $ppctab->getAllNodeAttribs(['node','parent','nodetype']);
+        my @ps = $ppctab->getAllNodeAttribs(['node','parent','nodetype','hcp']);
         foreach my $entry ( @ps ) {
             my $p = $entry->{parent};
             my $c = $entry->{node};
@@ -2164,12 +2164,18 @@ sub getchildren
                     # build hash of ppc.parent -> ppc.node 
                     push @{$PPCHASH{$p}}, $c;
                 }   
+                elsif ($t eq 'blade') {
+                    push @{$PPCHASH{$c}}, $entry->{hcp};
+                }
               } else { # go look in the nodetype table to find nodetype 
-                 my $type = getnodetype($c);
+                 my $type = getnodetype($c, "ppc");
                  if ( $type eq 'fsp' or $type eq 'bpa')
                  {
                      # build hash of ppc.parent -> ppc.node 
                       push @{$PPCHASH{$p}}, $c;
+                 }
+                 elsif ($type eq "blade") {
+                     push @{$PPCHASH{$c}}, $entry->{hcp};
                  }
               }
             }  # not $p and $c
