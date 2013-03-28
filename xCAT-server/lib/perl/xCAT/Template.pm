@@ -383,7 +383,7 @@ sub windows_join_data {
         my $doment;
 	my $domaintab = xCAT::Table->new('domain',-create=>0);
 	if ($domaintab) {
-           $doment = $domaintab->getNodeAttribs($node,['ou','type','authdomain'],prefetchcache=>1);
+           $doment = $domaintab->getNodeAttribs($node,['ou','type','authdomain','adminuser','adminpassword'],prefetchcache=>1);
 	}
 	unless ($::XCATSITEVALS{directoryprovider} eq "activedirectory" or ($doment and $doment->{type} eq "activedirectory")) {
 		return "";
@@ -418,22 +418,30 @@ sub windows_join_data {
 		$componentxml .= "<MachinePassword>".$adinfo->{password}."</MachinePassword>\n<UnsecureJoin>true</UnsecureJoin>\n";
 	} else { #this is the pass-through credentials case, currrently inaccessible until TODO, this must be used 
 		#with care as used incorrectly, an LDAP manager account is at high risk of compromise
-        	my $passtab = xCAT::Table->new('passwd',-create=>0);
-	        unless ($passtab) { sendmsg([1,"Error authenticating to Active Directory"],$node); return; }
-		my @adpents = $passtab->getAttribs({key=>'activedirectory'},['username','password','authdomain']);
-		my $adpent;
-		my $username;
-		my $password;
-		foreach $adpent (@adpents) {
-			if ($adpent and $adpent->{authdomain} and $adpent->{authdomain} ne $domain) { next; }
-			if ($adpent and $adpent->{username} and $adpent->{password}) {
-				$username = $adpent->{username};
-				$password = $adpent->{password};
-				last;
+		my $adminuser;
+		my $adminpass;
+		if ($doment and $doment->{adminuser}) {
+			$adminuser = $doment->{adminuser};
+		}
+		if ($doment and $doment->{adminpassword}) {
+			$adminpass = $doment->{adminpassword};
+		}
+		unless ($adminuser and $adminpass) {
+	        	my $passtab = xCAT::Table->new('passwd',-create=>0);
+		        unless ($passtab) { sendmsg([1,"Error authenticating to Active Directory"],$node); return; }
+			my @adpents = $passtab->getAttribs({key=>'activedirectory'},['username','password','authdomain']);
+			my $adpent;
+			foreach $adpent (@adpents) {
+				if ($adpent and $adpent->{authdomain} and $adpent->{authdomain} ne $domain) { next; }
+				if ($adpent and $adpent->{username} and $adpent->{password}) {
+					$adminuser = $adpent->{username};
+					$adminpass = $adpent->{password};
+					last;
+				}
 			}
 		}
-		unless ($username and $password) { die "Missing active directory admin auth data from passwd table" }
-		$componentxml .= "<Credentials><Domain>".$domain."</Domain>\r\n<Username>".$username."</Username>\r\n<Password>".$password."</Password>\r\n</Credentials>\r\n";
+		unless ($adminuser and $adminpass) { die "Missing active directory admin auth data from passwd table" }
+		$componentxml .= "<Credentials><Domain>".$domain."</Domain>\r\n<Username>".$adminuser."</Username>\r\n<Password>".$adminpass."</Password>\r\n</Credentials>\r\n";
 	}
 	$componentxml .= "</Identification>\r\n</component>\r\n";
 		
