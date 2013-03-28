@@ -3231,19 +3231,22 @@ sub filter_nodes{
             # common power node
             push @commonfsp, $_;
         } elsif (defined ($ipmitabhash->{$_}->[0]) && defined ($ipmitabhash->{$_}->[0]->{'bmc'})) { 
-            # common power node
+            # common bmc node
             push @commonbmc, $_;
         } else {
             push @unknow, $_;
         }
     }
 
-    push @{$mpnodes}, @mp;
+    push @{$mpnodes}, @mp;#blade.pm
     push @{$fspnodes}, @commonfsp;
     push @{$bmcnodes}, @commonbmc;
     if (@args && ($cmd eq "rspconfig")) {
         if (!(grep /^(cec_off_policy|pending_power_on_side)/, @args))  {
             push @{$mpnodes}, @ngpfsp;
+            if (grep /^(network=)/, @args) {
+                push @{$mpnodes}, @ngpbmc;
+            }    
         } else {
             push @{$fspnodes}, @ngpfsp;
         }
