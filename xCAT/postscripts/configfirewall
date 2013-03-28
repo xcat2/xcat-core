@@ -102,7 +102,12 @@ elsif (-f "/etc/SuSE-release")
         my $privintf = join(' ', @privates);
         
         # Configuration content
-        $conf .= "FW_DEV_EXT=\"$::opt_public\"\n";
+        # if the public and private interface is the same,
+        # do not set FW_DEV_EXT
+        if ($::opt_public ne $privintf)
+        {
+            $conf .= "FW_DEV_EXT=\"$::opt_public\"\n";
+        }
         $conf .= "FW_DEV_INT=\"$privintf\"\n";
         $conf .= "FW_MASQUERADE=\"yes\"\n";
         $conf .= "FW_PROTECT_FROM_INT=\"no\"\n";
