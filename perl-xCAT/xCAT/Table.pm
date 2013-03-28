@@ -2280,17 +2280,16 @@ sub getNodeAttribs
             #skip undefined values, save time
             next;
         }
-
         if ($datum->{$attrib} =~ /^\/[^\/]*\/[^\/]*\/$/)
         {
             my $exp = substr($datum->{$attrib}, 1);
             chop $exp;
             my @parts = split('/', $exp, 2);
-	    my $retval = $node;
+	         my $retval = $node;
             $retval =~ s/$parts[0]/$parts[1]/;
             $datum->{$attrib} = $retval;
         }
-        elsif ($datum->{$attrib} =~ /^\|.*\|.*\|$/)
+        elsif ($datum->{$attrib} =~ /^\|.*\|$/)
         {
 
             #Perform arithmetic and only arithmetic operations in bracketed issues on the right.
@@ -2300,6 +2299,14 @@ sub getNodeAttribs
             my $exp = substr($datum->{$attrib}, 1);
             chop $exp;
             my @parts = split('\|', $exp, 2);
+            my $arraySize = @parts;
+            if ($arraySize < 2) { # easy regx, generate lhs from node
+              my $lhs;
+              my @numbers = $node =~ m/[\D0]*(\d+)/g;
+              $lhs = '[\D0]*(\d+)' x scalar(@numbers);
+              $lhs .= '.*$';
+              unshift(@parts,$lhs);
+            }
             my $curr;
             my $next;
             my $prev;
