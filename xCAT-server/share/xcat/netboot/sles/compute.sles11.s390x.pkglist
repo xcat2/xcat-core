@@ -26,3 +26,4 @@ s390-32
 s390-tools
 mdadm
 udev
+ntp
