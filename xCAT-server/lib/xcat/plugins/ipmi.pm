@@ -5872,6 +5872,11 @@ sub preprocess_request {
       my (@bmcnodes, @nohandle);
       xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
       $realnoderange = \@bmcnodes;
+  } elsif ($command eq "rspconfig") {
+      # filter out the nodes which should be handled by ipmi.pm
+      my (@bmcnodes, @nohandle);
+      xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
+      $realnoderange = \@bmcnodes;
   }
 
   if (!$realnoderange) {
