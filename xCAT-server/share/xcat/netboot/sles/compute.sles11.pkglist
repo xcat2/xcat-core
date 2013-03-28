@@ -1,9 +1,9 @@
 aaa_base
 bash 
-nfs-utils
+#nfs-utils
 openssl
 dhcpcd 
-kernel
+#kernel
 openssh
 #procps
 psmisc
