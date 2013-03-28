@@ -19,3 +19,4 @@ wget
 vsftpd
 rsync
 timezone
+ntp

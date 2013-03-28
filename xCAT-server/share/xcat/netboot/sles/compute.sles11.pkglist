@@ -16,3 +16,4 @@ vim
 rsync
 timezone
 bc
+ntp

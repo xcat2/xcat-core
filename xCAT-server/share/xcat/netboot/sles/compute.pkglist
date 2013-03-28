@@ -10,3 +10,4 @@ resmgr
 wget
 rsync
 timezone
+ntp
