@@ -49,3 +49,4 @@ rsync
 powerpc-utils
 bc
 iputils
+ntp

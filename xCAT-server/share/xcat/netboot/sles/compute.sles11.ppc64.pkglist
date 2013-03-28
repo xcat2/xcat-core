@@ -18,3 +18,4 @@ iputils
 lsvpd
 irqbalance
 procps
+ntp
