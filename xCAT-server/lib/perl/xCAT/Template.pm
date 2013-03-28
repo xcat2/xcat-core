@@ -487,6 +487,8 @@ sub kickstartnetwork {
 		my $ulaaddr = autoulaaddress($suffix);
 		$hoststab->setNodeAttribs($node,{ip=>$ulaaddr});
 		$line .= $ulaaddr;
+	} elsif ($::XCATSITEVALS{managedaddressmode} =~ /static/)  {
+		return "#KSNET static unsupported";
 	} else {
 		$line .= "dhcp --device=$suffix";
 	}
