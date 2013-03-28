@@ -63,7 +63,7 @@ sub handled_commands {
     rinv => 'nodehm:mgt',
     rbeacon => 'nodehm:mgt=blade|fsp',
     rspreset => 'nodehm:mgt',
-    rspconfig => 'nodehm:mgt=blade|fsp', # Get into blade.pm for rspconfig if mgt equals blade or fsp
+    rspconfig => 'nodehm:mgt=blade|fsp|ipmi', # Get into blade.pm for rspconfig if mgt equals blade or fsp
     rbootseq => 'nodehm:mgt',
     reventlog => 'nodehm:mgt=blade|fsp',
     switchblade => 'nodehm:mgt',
@@ -1511,6 +1511,9 @@ sub rscan {
       } elsif (defined($telnetrscan{$_}{'1'}) && $telnetrscan{$_}{'1'}{'type'} eq "fsp") {
         # give the NGP ppc blade an internal specific name to identify 
         push @values, join( ",","ppcblade",$name,$_,"$type$model",$serial,$mpa,$telnetrscan{$_}{'1'}{'ip'});
+      } elsif (defined($telnetrscan{$_}{'0'}) && $telnetrscan{$_}{'0'}{'type'} eq "bmc") {
+        # give the NGP x blade an internal specific name to identify
+        push @values, join( ",","xblade",$name,$_,"$type$model",$serial,$mpa,$telnetrscan{$_}{'0'}{'ip'});
       } else {
         push @values, join( ",","blade",$name,$_,"$type$model",$serial,$mpa,"");
       }
@@ -1551,7 +1554,7 @@ sub rscan {
   if (!exists($opt{w}) && !exists($opt{u})) {
     return(0,$result);
   }
-  my @tabs = qw(mp nodehm nodelist nodetype vpd ppc);
+  my @tabs = qw(mp nodehm nodelist nodetype vpd ppc ipmi);
   my %db   = ();
 
   foreach (@tabs) {
@@ -1568,7 +1571,7 @@ sub rscan {
     my $id = $data[2];
     my $mtm= $data[3];
     my $serial = $data[4];
-    my $fspip = $data[6];
+    my $ip = $data[6];
 
     # ignore the blade server which status is 'Comm Error'
     if ($name =~ /Comm Error/) {
@@ -1591,7 +1594,7 @@ sub rscan {
             last;
           }
         }
-      } elsif ($type eq "blade" || $type eq "ppcblade") {
+      } elsif ($type eq "blade" || $type eq "ppcblade" || $type eq "xblade") {
         # for the blade server, using the mp.mpa and mp.id to match
         my @mplist = $db{mp}->getAllNodeAttribs(['node','mpa','id']);
         foreach (@mplist) {
@@ -1616,7 +1619,7 @@ sub rscan {
     my ($k1,$u1);
     $k1->{node} = $name;
     if ($type eq "ppcblade") {
-      #$u1->{hcp} = $fspip;
+      #$u1->{hcp} = $ip;
       $u1->{nodetype} = "blade";
       $u1->{id} = "1";
       $u1->{parent} = $mpa;
@@ -1631,18 +1634,23 @@ sub rscan {
     $u11->{id}   = $id;
     if ($type eq "ppcblade") {
       $u11->{nodetype} = "blade";
+    } elsif ($type eq "xblade") {
+      $u11->{nodetype}   = "blade";
     } else {
       $u11->{nodetype}   = $type;
     }
     $db{mp}->setAttribs($k11,$u11);
     $db{mp}{commit} = 1;
 
-
+    # Update the entry in nodehm table
     my ($k2,$u2);
     $k2->{node} = $name;
     if ($type eq "ppcblade") {
       $u2->{mgt}  = "fsp";
       $u2->{cons} = "fsp";
+    } elsif ($type eq "xblade") {
+      $u2->{mgt}  = "ipmi";
+      $u2->{cons} = "ipmi";
     } else {
       $u2->{mgt}  = "blade";
       if($type eq "blade"){
@@ -1652,10 +1660,11 @@ sub rscan {
     $db{nodehm}->setAttribs($k2,$u2);
     $db{nodehm}{commit} = 1;
 
+    # Update the entry in nodelist table
     my ($k3,$u3);
     $k3->{node}   = $name;
     my $append;
-    if ($type eq "ppcblade") {
+    if (($type eq "ppcblade") or ($type eq "xblade")){
         $append = "blade";
     } else {
         $append = $type;
@@ -1675,6 +1684,7 @@ sub rscan {
     $db{nodelist}->setAttribs($k3,$u3);
     $db{nodelist}{commit} = 1;
 
+    # Update the entry in nodetype table
     my ($k4, $u4);
     $k4->{node} = $name;
     if ($type eq "ppcblade"){
@@ -1687,12 +1697,19 @@ sub rscan {
     $db{nodetype}->setAttribs($k4,$u4);
     $db{nodetype}{commit} = 1;
 
+    # Update the entry in vpd table
     my ($k5, $u5);
     $k5->{node} = $name;
     $u5->{mtm} = $data[3];
     $u5->{serial} = $data[4];
     $db{vpd}->setAttribs($k5,$u5);
     $db{vpd}{commit} = 1;
+    # Update the entry in ipmi table for x blade
+    my ($k6, $u6);
+    $k6->{node} = $name;
+    $u6->{bmc} = $ip;
+    $db{ipmi}->setAttribs($k6,$u6);
+    $db{ipmi}{commit} = 1;
   }
   foreach ( @tabs ) {
     if ( exists( $db{$_}{commit} )) {
@@ -4237,12 +4254,22 @@ sub process_request {
     }
     $mpahash{$mpa}->{username} = $user;
     $mpahash{$mpa}->{password} = $pass;
+    my $nodehmtab  = xCAT::Table->new('nodehm');
+    my $hmdata = $nodehmtab->getNodesAttribs(\@nodes, ['node', 'mgt']);
     for (my $i=0; $i<@nodes; $i++) {
       my $node=$nodes[$i];;
       my $nodeid=$ids[$i];
       $mpahash{$mpa}->{nodes}->{$node}=$nodeid;
       my $mptype=$mptypes[$i];
       $mpahash{$mpa}->{nodetype}->{$node}=$mptype;
+        my $tmp1 = $hmdata->{$node}->[0];
+        if ($tmp1){
+            if ($tmp1->{mgt} =~ /ipmi/) {
+                $mpahash{$mpa}->{ipminodes}->{$node}=$nodeid;
+            
+            }
+        }
+        
     }
   }
   my @mpas = (keys %mpahash);
@@ -4288,6 +4315,8 @@ sub clicmds {
   my $node=shift;
   my $nodeid=shift;
   my %args=@_;
+  my $ipmiflag = 0;
+  $ipmiflag = 1 if ($node =~ s/--ipmi//);
   my $value;
   my @unhandled;
   my %handled = ();
@@ -4461,7 +4490,7 @@ sub clicmds {
   foreach (keys %handled) {
     if (/^snmpcfg/)     { $result = snmpcfg($t,$handled{$_},$user,$pass,$mm); }
     elsif (/^sshcfg$/)  { $result = sshcfg($t,$handled{$_},$user,$mm); }
-    elsif (/^network$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid); }
+    elsif (/^network$/) { $node .= "--ipmi" if($ipmiflag); $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid); $node =~ s/--ipmi//; }
     elsif (/^initnetwork$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid,1); $reset=1; }
     elsif (/^swnet/)   { $result = swnet($t,$_,$handled{$_}); }
     elsif (/^pd1|pd2$/) { $result = pd($t,$_,$handled{$_}); }
@@ -4586,6 +4615,7 @@ sub rscanfsp {
       $ifside = $1;
     }
   }
+  # for fsp
   foreach (@blade) {
     /blade\[(\d+)\]/;
     my $id = $1;
@@ -4612,7 +4642,28 @@ sub rscanfsp {
       }
     }
   }
-
+  # for bmc
+  foreach (@blade) {
+    /blade\[(\d+)\]/;
+    my $id = $1;
+    # get the hardware type, only get the fsp for PPC blade
+    @data = $t->cmd("info -T system:$_");
+    if ((! grep /(Product Name: IBM Flex System x)/, @data) and (! grep /Device Description: HX/, @data)){
+      next;
+    }
+    @data = $t->cmd("ifconfig -T system:$_");
+    my $side = "0";
+    foreach (@data) {
+        if (/eth(\d)/) {
+              $telnetrscan{$id}{$side}{'side'} = $side;
+              $telnetrscan{$id}{$side}{'type'} = "bmc";
+        }
+        if (/-i (\d+\.\d+\.\d+\.\d+)/ && defined($side)) {
+          $telnetrscan{$id}{$side}{'ip'} = $1;
+          ## TRACE_LINE print "rscanfsp found: blade[$id] - ip [$telnetrscan{$id}{$side}{'ip'}], type [$telnetrscan{$id}{$side}{'type'}], side [$telnetrscan{$id}{$side}{'side'}].\n";
+        }
+    }
+  }
   return [0];
 }
 
@@ -4818,6 +4869,8 @@ sub network {
   my $slot = shift;
   my $reset = shift;
 
+  my $ipmiflag = 0;
+  $ipmiflag = 1 if ($node =~ s/--ipmi//);
   my $cmd;
   if ($mpa eq $node) {
     # The network setting for the mm
@@ -4887,12 +4940,23 @@ sub network {
 		$ip = xCAT::NetworkUtils->getipaddr($node);
 	}
       } else {
-        my $ppctab = xCAT::Table->new( 'ppc' );
-        if ($ppctab) {
-          my $ppcent = $ppctab->getNodeAttribs($node,['hcp']);
-          if (defined($ppcent)) {
-            $ip = $ppcent->{hcp};
-          }
+      
+        if($ipmiflag) {
+            my $ipmitab = xCAT::Table->new( 'ipmi' );
+            if ($ipmitab) {
+              my $bmcip = $ipmitab->getNodeAttribs($node,['bmc']);
+              if (defined($bmcip)) {
+                $ip = $bmcip->{bmc};
+              }
+            }
+        } else {
+            my $ppctab = xCAT::Table->new( 'ppc' );
+            if ($ppctab) {
+              my $ppcent = $ppctab->getNodeAttribs($node,['hcp']);
+              if (defined($ppcent)) {
+                $ip = $ppcent->{hcp};
+              }
+            }
         }
         my %nethash = xCAT::DBobjUtils->getNetwkInfo([$ip]);
         my $gate = $nethash{$ip}{gateway};
@@ -5398,7 +5462,10 @@ sub dompa {
         $rc = 1;
         $args = [];
       } else {
+        my $ipmiflag = 0;
+        if($mpahash->{$mpa}->{ipminodes}->{$node}) {$node .= "--ipmi";};
         $result = clicmds($mpa,$user,$pass,$node,$slot,cmds=>\@exargs);
+        $node =~ s/--ipmi//;
         $rc |= @$result[0];
         $args = @$result[1];
       }
