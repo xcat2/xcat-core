@@ -63,7 +63,7 @@ sub handled_commands {
     rinv => 'nodehm:mgt',
     rbeacon => 'nodehm:mgt=blade|fsp',
     rspreset => 'nodehm:mgt',
-    rspconfig => 'nodehm:mgt=blade|fsp', # Get into blade.pm for rspconfig if mgt equals blade or fsp
+    rspconfig => 'nodehm:mgt=blade|fsp|ipmi', # Get into blade.pm for rspconfig if mgt equals blade or fsp
     rbootseq => 'nodehm:mgt',
     reventlog => 'nodehm:mgt=blade|fsp',
     switchblade => 'nodehm:mgt',
@@ -4254,12 +4254,22 @@ sub process_request {
     }
     $mpahash{$mpa}->{username} = $user;
     $mpahash{$mpa}->{password} = $pass;
+    my $nodehmtab  = xCAT::Table->new('nodehm');
+    my $hmdata = $nodehmtab->getNodesAttribs(\@nodes, ['node', 'mgt']);
     for (my $i=0; $i<@nodes; $i++) {
       my $node=$nodes[$i];;
       my $nodeid=$ids[$i];
       $mpahash{$mpa}->{nodes}->{$node}=$nodeid;
       my $mptype=$mptypes[$i];
       $mpahash{$mpa}->{nodetype}->{$node}=$mptype;
+        my $tmp1 = $hmdata->{$node}->[0];
+        if ($tmp1){
+            if ($tmp1->{mgt} =~ /ipmi/) {
+                $mpahash{$mpa}->{ipminodes}->{$node}=$nodeid;
+            
+            }
+        }
+        
     }
   }
   my @mpas = (keys %mpahash);
@@ -4305,6 +4315,8 @@ sub clicmds {
   my $node=shift;
   my $nodeid=shift;
   my %args=@_;
+  my $ipmiflag = 0;
+  $ipmiflag = 1 if ($node =~ s/--ipmi//);
   my $value;
   my @unhandled;
   my %handled = ();
@@ -4478,7 +4490,7 @@ sub clicmds {
   foreach (keys %handled) {
     if (/^snmpcfg/)     { $result = snmpcfg($t,$handled{$_},$user,$pass,$mm); }
     elsif (/^sshcfg$/)  { $result = sshcfg($t,$handled{$_},$user,$mm); }
-    elsif (/^network$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid); }
+    elsif (/^network$/) { $node .= "--ipmi" if($ipmiflag); $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid); $node =~ s/--ipmi//; }
     elsif (/^initnetwork$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid,1); $reset=1; }
     elsif (/^swnet/)   { $result = swnet($t,$_,$handled{$_}); }
     elsif (/^pd1|pd2$/) { $result = pd($t,$_,$handled{$_}); }
@@ -4857,6 +4869,8 @@ sub network {
   my $slot = shift;
   my $reset = shift;
 
+  my $ipmiflag = 0;
+  $ipmiflag = 1 if ($node =~ s/--ipmi//);
   my $cmd;
   if ($mpa eq $node) {
     # The network setting for the mm
@@ -4926,11 +4940,22 @@ sub network {
 		$ip = xCAT::NetworkUtils->getipaddr($node);
 	}
       } else {
-        my $ppctab = xCAT::Table->new( 'ppc' );
-        if ($ppctab) {
-          my $ppcent = $ppctab->getNodeAttribs($node,['hcp']);
-          if (defined($ppcent)) {
-            $ip = $ppcent->{hcp};
+      
+        if($ipmiflag) {
+            my $ipmitab = xCAT::Table->new( 'ipmi' );
+            if ($ipmitab) {
+              my $bmcip = $ipmitab->getNodeAttribs($node,['bmc']);
+              if (defined($bmcip)) {
+                $ip = $bmcip->{bmc};
+              }
+            }
+        } else {
+            my $ppctab = xCAT::Table->new( 'ppc' );
+            if ($ppctab) {
+              my $ppcent = $ppctab->getNodeAttribs($node,['hcp']);
+              if (defined($ppcent)) {
+                $ip = $ppcent->{hcp};
+              }
           }
         }
         my %nethash = xCAT::DBobjUtils->getNetwkInfo([$ip]);
@@ -5437,7 +5462,10 @@ sub dompa {
         $rc = 1;
         $args = [];
       } else {
+        my $ipmiflag = 0;
+        if($mpahash->{$mpa}->{ipminodes}->{$node}) {$node .= "--ipmi";};
         $result = clicmds($mpa,$user,$pass,$node,$slot,cmds=>\@exargs);
+        $node =~ s/--ipmi//;
         $rc |= @$result[0];
         $args = @$result[1];
       }
