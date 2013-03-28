@@ -3,7 +3,7 @@ bash
 #nfs-utils
 openssl
 dhcpcd 
-#kernel
+kernel-default
 openssh
 #procps
 psmisc
