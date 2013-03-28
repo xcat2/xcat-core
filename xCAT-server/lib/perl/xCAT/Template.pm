@@ -317,14 +317,14 @@ sub windows_account_data {
 		}
 	}
 			
-	unless ($::XCATSITEVALS{directoryprovider} eq "activedirectory") {
-		return $useraccountxml;
-	}
 	my $domain;
         my $doment;
 	my $domaintab = xCAT::Table->new('domain',-create=>0);
 	if ($domaintab) {
-           $doment = $domaintab->getNodeAttribs($node,['authdomain'],prefetchcache=>1);
+           $doment = $domaintab->getNodeAttribs($node,['authdomain','type'],prefetchcache=>1);
+	}
+	unless ($::XCATSITEVALS{directoryprovider} eq "activedirectory" or ($doment and $doment->{type} eq "activedirectory")) {
+		return $useraccountxml;
 	}
 	if ($doment and $doment->{authdomain}) {
 		$domain = $doment->{authdomain};
@@ -380,7 +380,12 @@ sub windows_dns_cfg {
 #-Provide domain administrator credentials, avoiding the SSL scenario.  This is by default forbidden as it is high risk for exposing sensitive credentials.
 # Also populate MachineObjectOU 
 sub windows_join_data {
-	unless ($::XCATSITEVALS{directoryprovider} eq "activedirectory") {
+        my $doment;
+	my $domaintab = xCAT::Table->new('domain',-create=>0);
+	if ($domaintab) {
+           $doment = $domaintab->getNodeAttribs($node,['ou','type','authdomain'],prefetchcache=>1);
+	}
+	unless ($::XCATSITEVALS{directoryprovider} eq "activedirectory" or ($doment and $doment->{type} eq "activedirectory")) {
 		return "";
 	}
 	#we are still here, meaning configuration has a domain and activedirectory set, probably want to join..
@@ -390,11 +395,6 @@ sub windows_join_data {
 		$prejoin = 0;
 	}
 	my $domain;
-        my $doment;
-	my $domaintab = xCAT::Table->new('domain',-create=>0);
-	if ($domaintab) {
-           $doment = $domaintab->getNodeAttribs($node,['ou','authdomain'],prefetchcache=>1);
-	}
 	my $ou;
 	if ($doment and $doment->{ou}) {
 		$ou = $doment->{ou};
