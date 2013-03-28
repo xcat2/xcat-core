@@ -458,18 +458,28 @@ sub managed_address_mode {
 	return $::XCATSITEVALS{managedaddressmode};
 }
 sub esxipv6setup {
- if ($::XCATSITEVALS{managedaddressmode} ne "autoula") { return ""; } # blank unless autoula
+ if (not $::XCATSITEVALS{managedaddressmode} or $::XCATSITEVALS{managedaddressmode} =~ /v4/) { return ""; } # blank line for ipv4 schemes
+ my $v6addr;
+ if ($::XCATSITEVALS{managedaddressmode} eq "autoula") { 
 	my $hoststab;
       my $mactab = xCAT::Table->new('mac',-create=>0);
-      my $ent = $mactab->getNodeAttribs($node,['mac']);
+      my $ent = $mactab->getNodeAttribs($node,['mac'],prefetchcache=>1);
       my $suffix = $ent->{mac};
       $suffix = lc($suffix);
       unless ($mactab) { die "mac table should always exist prior to template processing when doing autoula"; }
  #in autoula, because ESXi weasel doesn't seemingly grok IPv6 at all, we'll have to do it in %pre
 		unless ($hoststab) { $hoststab = xCAT::Table->new('hosts',-create=>1); }
-		my $ulaaddr = autoulaaddress($suffix);
-		$hoststab->setNodeAttribs($node,{ip=>$ulaaddr});
- return 'esxcfg-vmknic -i '.$ulaaddr.'/64 "Management Network"'."\n";
+		 $v6addr = autoulaaddress($suffix);
+		$hoststab->setNodeAttribs($node,{ip=>$v6addr});
+ } else {
+ 	my $hoststab = xCAT::Table->new('hosts',-create=>0);
+	unless ($hoststab) { die "unable to proceed, no hosts table to  read from" }
+	my $ent = $hoststab->getNodeAttribs($node,["ip"],prefetchcache=>1);
+	unless ($ent and $ent->{ip}) { die "no hosts table entry with viable IP in hosts table for $node" }
+	$v6addr = $ent->{ip};
+	unless ($v6addr =~ /:/) { die "incorrect format for static ipv6 in hosts table for $node" }
+ }
+ return 'esxcfg-vmknic -i '.$v6addr.'/64 "Management Network"'."#ESXISTATICV6\n";
 }
 
 sub kickstartnetwork {
