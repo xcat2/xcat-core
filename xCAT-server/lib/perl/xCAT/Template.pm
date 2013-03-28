@@ -317,7 +317,7 @@ sub windows_account_data {
 		}
 	}
 			
-	unless ($::XCATSITEVALS{directoryprovider} eq "activedirectory" and $::XCATSITEVALS{domain}) {
+	unless ($::XCATSITEVALS{directoryprovider} eq "activedirectory") {
 		return $useraccountxml;
 	}
 	my $domain;
@@ -380,7 +380,7 @@ sub windows_dns_cfg {
 #-Provide domain administrator credentials, avoiding the SSL scenario.  This is by default forbidden as it is high risk for exposing sensitive credentials.
 # Also populate MachineObjectOU 
 sub windows_join_data {
-	unless ($::XCATSITEVALS{directoryprovider} eq "activedirectory" and $::XCATSITEVALS{domain}) {
+	unless ($::XCATSITEVALS{directoryprovider} eq "activedirectory") {
 		return "";
 	}
 	#we are still here, meaning configuration has a domain and activedirectory set, probably want to join..
