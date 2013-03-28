@@ -8,7 +8,7 @@ vsftpd
 perl-IO-Socket-SSL
 perl-IO-Tty
 apache2
-nfs-utils
+nfs-client
 nfs-kernel-server
 dhcp
 bind
