@@ -6,7 +6,7 @@ use Getopt::Long;
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
 
-my @allowed_ports = ("22", "53", "80", "443", "873", "3001", "3002");
+my @allowed_ports = ("22", "53", "69", "80", "443", "873", "3001", "3002");
 
 if(scalar(@ARGV) == 0)
 {
@@ -128,6 +128,8 @@ elsif (-f "/etc/SuSE-release")
     system($cmd);
 
     # SuSEfirewall2_setup should be stared on reboot
+    $cmd = "chkconfig SuSEfirewall2_init on";
+    system($cmd);
     $cmd = "chkconfig SuSEfirewall2_setup on";
     system($cmd);
 }
