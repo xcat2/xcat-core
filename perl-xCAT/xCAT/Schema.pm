@@ -1337,7 +1337,7 @@ osdistroupdate => {
         },
 },
 kit => {
-        cols => [qw(kitname basename description version ostype isinternal kitdeployparams kitdir comments disable)], 
+        cols => [qw(kitname basename description version release ostype isinternal kitdeployparams kitdir comments disable)], 
         keys => [qw(kitname)],
         table_desc => 'This table stores all kits added to the xCAT cluster.',
         descriptions => {
@@ -1345,6 +1345,7 @@ kit => {
             basename => 'The kit base name',
             description => 'The Kit description.',
             version => 'The kit version',
+            release => 'The kit release',
             ostype => 'The kit OS type.  Linux or AIX.',
             isinternal => 'A flag to indicated if the Kit is internally used. When set to 1, the Kit is internal. If 0 or undefined, the kit is not internal.',
             kitdeployparams => 'The file containing the default deployment parameters for this Kit.  These parameters are added to the OS Image definition.s list of deployment parameters when one or more Kit Components from this Kit are added to the OS Image.',
@@ -3148,6 +3149,10 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
         },
         {attr_name => 'version',
                  tabentry => 'kit.version',
+                 access_tabentry => 'kit.kitname=attr:kitname',
+        },
+        {attr_name => 'release',
+                 tabentry => 'kit.release',
                  access_tabentry => 'kit.kitname=attr:kitname',
         },
         {attr_name => 'ostype',
