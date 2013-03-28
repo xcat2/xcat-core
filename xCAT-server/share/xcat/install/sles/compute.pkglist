@@ -1,5 +1,5 @@
 @base
 @x11
 openssl
-xntp
+ntp
 rsync

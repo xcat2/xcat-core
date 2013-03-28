@@ -1,6 +1,6 @@
 @base
 @x11
-xntp
+ntp
 rsync
 nmap
 perl-DBI
