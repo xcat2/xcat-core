@@ -23,7 +23,6 @@ BEGIN
 if ($^O =~ /^aix/i) {
 	unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
 }
-
 use lib "$::XCATROOT/lib/perl";
 use Storable qw(freeze thaw);
 use xCAT::Utils;
@@ -31,7 +30,16 @@ use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
 use xCAT::xcatd;
-use IO::Uncompress::Gunzip qw/gunzip/;
+my $IOCompress =1;
+my $os = xCAT::Utils->osver();
+my $arch = `uname -p`;
+# These do not have the IO::Uncompress rpm available
+if (($^O =~ /^aix/i) || ($os =~ /^sle[sc]10/) || (($os =~ /^rh.*5$/) && ($arch =~ /ppc64/))){ 
+ $IOCompress =0;
+}
+if ($IOCompress == 1 ) {
+   eval {require IO::Uncompress::Gunzip;}
+}
 use File::Path;
 use Time::HiRes qw(sleep);
 use Thread qw(yield);
@@ -565,12 +573,12 @@ sleep 0.05;
         $data=$packets{$pkey}->[1];
         $peerhost=gethostbyaddr($client,AF_INET);
         $peerhost .="\n";
-	if ($data =~ /^\037\213/) {  #per rfc 1952, these two bytes are gzip, and they are invalid for 
+        if ($data =~ /^\037\213/) {  #per rfc 1952, these two bytes are gzip, and they are invalid for 
 					#xcatrequest xml, so go ahead and decompress it
-		my $bigdata; 
-		gunzip \$data => \$bigdata; 
-		$data = $bigdata 
-	}
+   		my $bigdata; 
+	   	IO::Uncompress::Gunzip::gunzip(\$data,\$bigdata);  
+	   	$data = $bigdata 
+	     }
         my $req = eval { XMLin($data, SuppressEmpty=>undef,ForceArray=>1) };
         if ($req and $req->{command} and ($req->{command}->[0] eq "findme")) {
           $req->{'_xcat_clienthost'}=gethostbyaddr($client,AF_INET);
