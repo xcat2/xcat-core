@@ -1,0 +1,90 @@
+#!/bin/sh
+# IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+
+#-------------------------------------------------------------------------------
+#=head1  config_puppet_client
+#=head2  This command configure the puppet client on a xCAT node. 
+#        It is used by install_puppet_client on Ubuntu and puppet kit on RH.
+#=cut
+#-------------------------------------------------------------------------------
+
+echo "Configuring pupper client....."
+#check if the current node is also a puppet master
+ismaster=0
+if [ -f /etc/puppet/fileserver.conf ]; then
+   ismaster=1 
+fi
+
+#configure the puppet.conf file. 
+#the pupper server can be passed as an argument or as an environmental variable
+#the default is $SITEMASTER
+ARGNUM=$#;
+if [ $ARGNUM -gt 1 ]; then
+    if [ $2 = "-s" ]; then
+	puppet_server=$2
+    fi
+else
+    if [ -n "$PUPPETSERVER" ]; then
+	puppet_server=$PUPPETSERVER
+    fi
+fi
+if [ -z "$puppet_server" ]; then
+    puppet_server=$SITEMASTER
+fi
+
+echo "puppet_server=$puppet_server"
+
+confname="/etc/puppet/puppet.conf"
+if [ ! -f "$confname" ]; then
+    touch $confname
+else
+    cp -f $confname ${confname}.save
+    #remove the old configuration if any
+    sed -i "/# xcat-added-agent-section-start-here/,/# xcat-added-agent-section-end-here/ d" $confname
+    sed -i "/# xcat-added-main-section-start-here/,/# xcat-added-main-section-end-here/ d" $confname
+fi
+
+if [ $ismaster -ne 1 ]; then
+    grep "\[main\]" $confname
+    if [ $? -eq 0 ]; then
+	sed -i "/\[main\]/ a\
+            # xcat-added-main-section-end-here #" $confname	
+	sed -i "/\[main\]/ a\
+            certname = $NODE" $confname
+	sed -i "/\[main\]/ a\
+            # xcat-added-main-section-start-here #" $confname	
+    else
+	echo "[main]" >> $confname
+	echo "# xcat-added-main-section-start-here #" >> $confname
+	echo "   certname=$NODE" >> $confname
+	echo "# xcat-added-main-section-end-here #" >> $confname
+    fi
+fi
+
+grep "\[agent\]" $confname
+if [ $? -eq 0 ]; then
+    sed -i "/\[agent\]/ a\
+    # xcat-added-agent-section-end-here #" $confname
+    sed -i "/\[agent\]/ a\
+      server = $puppet_server" $confname
+    sed -i "/\[agent\]/ a\
+      pluginsync = true" $confname
+    sed -i "/\[agent\]/ a\
+    # xcat-added-agent-section-start-here #" $confname
+else
+    echo "   "  >> $confname
+    echo "[agent]" >> $confname
+    echo "# xcat-added-agent-section-start-here #" >> $confname
+    echo "  pluginsync = true" >> $confname
+    echo "  server = $puppet_server" >> $confname
+    echo "# xcat-added-agent-section-end-here #" >> $confname
+fi    
+
+exit 0
+
+
+
+
+
+

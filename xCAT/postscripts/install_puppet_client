@@ -1,0 +1,105 @@
+#!/bin/sh
+# IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+
+#-------------------------------------------------------------------------------
+#=head1  install_puppet_client
+#=head2  This command installs the puppet client on a xCAT node. It is used as 
+# a postscript on Ubuntu only. 
+#    usage:  
+#      1. use $PUPPETSERVER or $MASTER as the puppet server
+#            updatenode <noderange> -P "install_puppet_client"
+#      2. explicitly specify the puppet server
+#            updatenode <noderange> -P "install_puppet_client -s puppetservername"
+#=cut
+#-------------------------------------------------------------------------------
+
+
+#Figure out what os this node has
+if [ "$(uname -s)" = "Linux" ]; then
+    result=`cat /etc/*release* 2>&1`
+    echo $result|grep "Ubuntu" > /dev/null
+    if [ $? -eq 0 ]; then
+        os="Ubuntu"
+    else
+        echo $result | grep  "Red Hat" > /dev/null
+        if [ $? -eq 0 ]; then
+            os="RedHat"
+	else
+	    echo $result | grep  "SUSE" > /dev/null
+            if [ $? -eq 0 ]; then
+		os="Sles"
+	    fi
+        fi
+    fi
+fi
+
+if [ "$os" == "Ubuntu" ]; then
+    #cleanup the old installations
+    echo "Removing old puppet packages....."
+    apt-get -y autoremove puppet --purge
+
+    #check if the current node is also a puppet master
+    ismaster=0
+    if [ -f /etc/puppet/fileserver.conf ]; then
+	ismaster=1 
+    fi
+
+    #clean the all the configuration files if it is not a master
+    if [ $ismaster -ne 1 ]; then
+	rm -Rf /etc/puppet/*
+	rm -Rf /var/lib/puppet/*
+    fi
+       
+    echo "Adding new repositories....."
+    #get os release name
+    urelease="precise" #default release name
+    urelease=`cat /etc/lsb-release |grep DISTRIB_CODENAME |cut -d= -f2`
+    
+    #add ubuntu repositories from the net.
+    #We use us mirror, what about for the customers of other contires? 
+    echo "deb http://us.archive.ubuntu.com/ubuntu/ $urelease main" > /etc/apt/sources.list.d/os_remote.list
+    echo "deb http://us.archive.ubuntu.com/ubuntu/ ${urelease}-updates main" >> /etc/apt/sources.list.d/os_remote.list
+    echo "deb http://us.archive.ubuntu.com/ubuntu/ $urelease universe" >> /etc/apt/sources.list.d/os_remote.list
+    echo "deb http://us.archive.ubuntu.com/ubuntu/ ${urelease}-updates universe" >> /etc/apt/sources.list.d/os_remote.list
+    
+    #add the puppet lab repositories 
+    repname=puppetlabs-release-${urelease}.deb
+    wget -N --waitretry=10 --random-wait -T 60  http://apt.puppetlabs.com/$repname   -P /tmp 2>> /tmp/wget.log
+    rc=$?
+    if [ $rc -eq 0 ] && [ -f /tmp/$repname ]; then
+	dpkg -i /tmp/$repname
+	apt-get update
+    else 
+	echo "Cannot download  http://apt.puppetlabs.com/$repname"
+	exit 1
+    fi
+    rm /tmp/$repname 
+    
+    #refresh the repository
+    apt-get -y update
+
+    echo "Installing puppet client....."
+    #install puppet client
+    apt-get -y install puppet
+    
+    #configure the puppet agent configuration files
+    result=`dirname $0`
+    ${result}/config_puppet_client "$@" 
+    
+    #puppet agent -t --waitforcert 60&
+
+elif [ "$os" == "RedHat" ]; then
+    echo "Puppet client installation with xCAT on RedHat is through a kit. Please refer to ... for details.".
+else
+    echo "Puppet client by xCAT is not supported yet on this plateform."
+fi
+
+exit 0
+
+
+
+
+
+
+

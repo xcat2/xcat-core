@@ -1,0 +1,108 @@
+#!/bin/sh
+# IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+
+#-------------------------------------------------------------------------------
+#=head1  config_puppet_server
+#=head2  This command configures the puppet server on a xCAT server or node.
+#        It is used by install_puppet_server on Ubuntu and puppet kit on RH.
+#=cut
+#-------------------------------------------------------------------------------
+
+
+#Now configure the pupper server
+echo "Configuring pupper server....."
+#remove old certificate
+puppet cert clean --all
+
+echo "XCATROOT=$XCATROOT, PUPPETSERVER=$PUPPETSERVER"
+if [ -n "$XCATROOT" ]; then
+    xcatroot=$XCATROOT
+else
+    xcatroot="/opt/xcat"
+fi
+
+#use site.puppetserver or site.master as the puppet server certname 
+if [ -n "$PUPPETSERVER" ]; then 
+    node=$PUPPETSERVER
+else 
+    tmp=`XCATBYPASS=Y $xcatroot/bin/lsdef -t site clustersite  2>&1 |grep "puppetserver="` 
+    if [ $? -eq 0 ]; then
+	node=`echo $tmp|cut -d= -f2`
+    fi
+fi    
+if [ -z "$node" ]; then
+    if [ -n "$SITEMASTER" ]; then 
+	node=$SITEMASTER
+    else 
+	tmp=`XCATBYPASS=Y $xcatroot/bin/lsdef -t site clustersite  2>&1 |grep "master="`
+	if [ $? -eq 0 ]; then
+	    node=`echo $tmp|cut -d= -f2`
+	fi
+    fi
+fi
+if [ -z "$node" ]; then    
+    if [ -n "$NODE" ]; then
+	node=$NODE
+    else
+	node=`hostname -s`
+    fi
+fi
+
+echo "node=$node"
+
+#configure: we take default for most
+confname="/etc/puppet/puppet.conf"
+if [ ! -f "$confname" ]; then
+    cat > $confname  << EOT
+[main]
+logdir=/var/log/puppet
+vardir=/var/lib/puppet
+ssldir=/var/lib/puppet/ssl
+rundir=/var/run/puppet
+factpath=$vardir/lib/facter
+templatedir=$confdir/templates
+
+[master]
+# These are needed when the puppetmaster is run by passenger
+# and can safely be removed if webrick is used.
+ssl_client_header = SSL_CLIENT_S_DN
+ssl_client_verify_header = SSL_CLIENT_VERIFY
+EOT
+else
+    cp -f $confname ${confname}.save
+fi
+
+sed -i "/\[main\]/ a\
+    certname = $node" $confname
+sed -i "/\[main\]/ a\
+    server = $node" $confname    
+
+#create a site manifest site.pp on the master:
+cat > /etc/puppet/manifests/site.pp << EOT
+node default {
+  notify { 'I can connect!': }
+}
+EOT
+
+#automacally sign the nodes, TODO: add nodes one by one
+if [ -n "$DOMAIN" ]; then
+    domainnames=$DOMAIN
+else
+    tmp=`XCATBYPASS=Y $xcatroot/bin/lsdef -t site clustersite  2>&1 |grep "domain="`
+    if [ $? -ne 0 ]; then
+	domainnames="cluster.com" #default
+    else
+	domainnames=`echo $tmp| cut -d= -f2`
+    fi
+fi
+
+confname2="/etc/puppet/autosign.conf"
+if [ -f "$confname2" ]; then
+    cp -f $confname2 ${confname2}.save
+fi
+echo "*.$domainnames" > $confname2
+echo "*" >> $confname2  #now we have to use this because we use short node name instead of FQDN
+
+exit 0
+
