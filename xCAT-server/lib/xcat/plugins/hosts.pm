@@ -459,13 +459,8 @@ sub donics
                                    ]
                                    );
 
-        if (
-            !(
-                  $et->{nicips}
-               && $et->{'nichostnamesuffixes'}
-            )
-          )
-        {
+		# only require IP for nic
+        if ( !($et->{nicips}) ) {
             next;
         }
 
@@ -474,6 +469,7 @@ sub donics
 		# new  $et->{nicips} looks like 
 		#		"eth0!11.10.1.1,eth1!60.0.0.5|60.0.0.250..."
         my @nicandiplist = split(',', $et->{'nicips'});
+
         foreach (@nicandiplist)
         {
 			my ($nicname, $nicip);
@@ -504,6 +500,7 @@ sub donics
 		}
 
         my @nicandsufx = split(',', $et->{'nichostnamesuffixes'});
+
         foreach (@nicandsufx)
         {
 			my ($nicname, $nicsufx);
@@ -512,10 +509,6 @@ sub donics
 			} else {
             	($nicname, $nicsufx) = split(':', $_);
 			}
-
-            if (!$nicsufx) {
-                next;
-            }
 
             if ( $nicsufx =~ /\|/) {
                 my @sufs = split( /\|/, $nicsufx);
@@ -529,6 +522,18 @@ sub donics
             }
         }
 
+		# see if we need to fill in a default suffix
+		# nich has all the valid nics - ie. that have IPs provided!
+		foreach my $nic (keys %{$nich}) {
+			for (my $i = 0; $i < $nicindex{$nic}; $i++ ){
+				if (!$nich->{$nic}->{nicsufx}->[$i]) {
+					# then we have no suffix at all for this 
+					# so set a default
+					$nich->{$nic}->{nicsufx}->[$i] = "-$nic";
+				}
+			}
+		}
+
         my @nicandnetwrk = split(',', $et->{'nicnetworks'});
         foreach (@nicandnetwrk)
         {
@@ -538,6 +543,7 @@ sub donics
 			} else {
             	($nicname, $netwrk) = split(':', $_);
 			}
+
             if (!$netwrk) {
                 next;
             }
@@ -553,7 +559,7 @@ sub donics
                 $nich->{$nicname}->{netwrk}->[0] = $netwrk;
             }
         }
-		
+
 		my @nicandnicalias = split(',', $et->{'nicaliases'});
         foreach (@nicandnicalias)
         {
