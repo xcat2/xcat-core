@@ -130,6 +130,21 @@ else
     $::osname = 'Linux';
 }
 
+# if on rhel6, check to see if perl-IO-Compress-Zlib* is installed
+if (($::INITIALINSTALL) || ($::UPDATEINSTALL))
+{
+   my $os = xCAT::Utils->osver();
+   my $arch = `uname -p`;
+   if (($os =~ /^rh.*6$/) && ($arch =~ /^x86_64/)) { 
+      if (!(-e "/usr/lib64/perl5/IO/Uncompress/Gunzip.pm")) {
+            xCAT::MsgUtils->message('I', "perl-IO-Compress-Zlib* is not installed. If you try and use genesis discovery,  you will have fatal errors in the xcat daemon.\n Install  perl-IO-Compress-Zlib,perl-IO-Compress-Base rpms.");
+         
+      }
+
+   }
+}
+
+
 #
 # If the XCATPGPW environment variable is specified,
 # call pgsqlsetup command with -N flag to setup PostgreSQL database.
