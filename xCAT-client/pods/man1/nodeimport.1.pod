@@ -134,6 +134,10 @@ B<ip=<ip-address>> This is an optional item.
 
 Description: Specify the IP address used for provisioning a node, where <ip-address> is in the form xxx.xxx.xxx.xxx. If this item is not included, the IP address used to provision the node is generated automatically according to the Network Profile used by the node.
 
+B<nicips=<nics-ip>> This is an optional item.
+
+Description: Lists the IP address for each network interface configuration (NIC) used by the node, excluding the provisioning network, where <nics-ip> is in the form <nic1>!<nic-ip1>,<nic2>!<nic-ip2>,.... For example, if you have 2 network interfaces configured, the nicips attribute should list both network interfaces:  nicips=eth1!10.10.10.11,bmc!192.168.10.3. If the nicips attribute is not specified, the IP addresses are generated automatically according to the network profile.
+
 B<rack=<rack-name>> This is an optional item. 
 
 Description: node location info. Specify the rack name which this node will be placed into. If not specify this item, there will be no node location info set for this node. this item must be specified together with height + unit.
