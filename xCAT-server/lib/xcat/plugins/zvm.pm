@@ -4309,7 +4309,7 @@ EOM"`;
         # If it is, then modify the network configuration
         
         # Mount target disk
-        my $cloneMntPt = "/mnt/$tgtUserId";
+        my $cloneMntPt = "/mnt/$tgtUserId/$tgtDevNode";
             
         # Disk can contain more than 1 partition. Find the right one (not swap)
         $out = `ssh $::SUDOER\@$hcp "$::SUDO /usr/bin/file -s /dev/$tgtDevNode*"`;
