@@ -827,6 +827,8 @@ sub parse_nodeinfo_file
 
     my @lines = split /\n/, $filedata;
     my $obj_found = 0;
+    my $attr_found = 0;
+    my $null_obj;
     my ($objname, $append);
 
     foreach my $line (@lines){
@@ -835,6 +837,8 @@ sub parse_nodeinfo_file
 
         # The line ends with :
         if (grep(/:\s*$/, $line)){
+            $attr_found = 0;
+            $null_obj = $line;
             ($objname, $append) = split(/:/, $line);
             $objname =~ s/^\s*//;    # Remove any leading whitespace
             $objname =~ s/\s*$//;    # Remove any trailing whitespace
@@ -852,6 +856,7 @@ sub parse_nodeinfo_file
             if (! $obj_found){
                 return 0, "No node defined before line \'$line\'";
             }
+            $attr_found = 1;
 
             my $attr = $1;
             my $val  = $2;
@@ -875,6 +880,81 @@ sub parse_nodeinfo_file
             return 0, "Invalid Line \'$line\' found";
         }
     }
+    
+    # Defined object has no attributes
+    if (! $attr_found){
+        return 0, "Invalid Line \'$null_obj\' found";
+    }
+    
     return 1, "";
+}
+
+#-------------------------------------------------------------------------------
+=head3 check_nicips
+    Description: Check if the nicips defined in MAC file is correct
+                 format
+    Arguments: $installnic: the installnic defined in networkprofile 
+               $netprofileattrsref: the attributes of all nics in networkprofile
+               $freeipshash:  the hash of networks' staticrange
+               $nicips: the string of nicips defined in MAC file
+    Returns: ($retcode, $output, $errmsg).
+              $retcode = 1. Parse failed, there are some errors in nicips string. Detailed errors will be set in $errmsg.
+              $retcode = 0. Parse success, the format of nicips is OK..
+
+=cut
+#-------------------------------------------------------------------------------
+sub check_nicips{
+    my $class = shift;
+    my $installnic  = shift;
+    my $netprofileattrsref = shift;
+    my $freeipshash = shift;
+    my $othernics = shift;
+    
+    my $errmsg = "";
+    my %nics_hash = ();
+    my %netprofileattr = %$netprofileattrsref;
+    
+    foreach my $nic_ips (split(/,/, $othernics)) {
+        my @nic_and_ips = ();
+        my $nic = "";
+        my $nic_ip = "";
+        if($nic_ips =~ /!/ and $nic_ips !~ /!$/) {
+            @nic_and_ips = split(/!/, $nic_ips);
+            my $len = @nic_and_ips;
+            $nic = $nic_and_ips[0];
+            $nic_ip = $nic_and_ips[1];
+            
+            if (exists $nics_hash{$nic} or $len ne 2) {
+                $errmsg = "The specified nicips is incorrect. It must be formatted correctly, in the form: <nic1>!<nic-ip1>,<nic2>!<nic-ip2>,...";
+                return (1, "", $errmsg);
+            }
+            
+            # Check whether other interfaces contain provision nic
+            if ($nic eq $installnic) {
+                $errmsg = "The specified nicips cannot contain NICs used for provisioning.";
+                return (1, "", $errmsg);
+            }
+            
+            # Check whether this interface is defined in networkprofile
+            unless (exists $netprofileattr{$nic}){
+                $errmsg = "The specified nicips contains NICs that are not defined in the network profile.";
+                return (1, "", $errmsg);
+            }
+ 
+            # Check whether specified IP is in each network's static range
+            my $nicnetwork = $netprofileattr{$nic}{'network'};
+            my $freeipsref = $freeipshash->{$nicnetwork};
+            unless (grep{ $_ eq $nic_ip} @$freeipsref){
+                $errmsg = "Specified IP address $nic_ip not in static range of network $netprofileattr{$nic}{'network'}";
+                return (1, "", $errmsg);
+            }
+        }else {
+            $errmsg = "The specified nicips is incorrect. It must be formatted correctly, in the form: <nic1>!<nic-ip1>,<nic2>!<nic-ip2>,...";
+            return (1, "", $errmsg);
+        }
+        $nics_hash{$nic} = $nic_ip;
+    }
+    
+    return (0, \%nics_hash, "");
 }
 
