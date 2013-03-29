@@ -635,6 +635,9 @@ if ($dracutmode) {
 # before mkinitrd, run depmod to generate modules.dep 
 system("chroot $rootimg_dir depmod $kernelver");
 
+#delete the apt cache
+system("rm -rf $rootimg_dir/var/cache/apt/*");
+
 # for the genimage-enchement, need to create two initial ramdisks,
 # one is for stateless
 # the other one is for statelite
@@ -777,6 +780,7 @@ sub mkinitrd {
         mkpath("/tmp/xcatinitrd.$$/etc/udhcpc");
         mkpath("/tmp/xcatinitrd.$$/usr/share/udhcpc");
         mkpath("/tmp/xcatinitrd.$$/var/lib/dhclient");
+        mkpath("/tmp/xcatinitrd.$$/lib/modules/$kernelver");
 	my $inifile;
 
 # start writing to the init script.
@@ -861,6 +865,8 @@ EOS1
    print $inifile "mount -o mode=0755 -t tmpfs /dev /dev\n";
    print $inifile "mkdir /dev/pts\n";
    print $inifile "mount -t devpts -o gid=5,mode=620 /dev/pts /dev/pts\n";
+   print $inifile "mkdir /run\n";
+   print $inifile "mount -t tmpfs -o \"nosuid,size=20%,mode=0755\" tmpfs /run\n";
    print $inifile "mkdir /dev/shm\n";
    print $inifile "mkdir /dev/mapper\n";
    print $inifile "mknod /dev/null c 1 3\n";
@@ -893,34 +899,19 @@ EOS1
    }
       
       
-# Start udev on s390x
-if ($arch eq "s390x") {
-	print $inifile <<EOMS;
-# Start udev to find devices attached to node
-echo `/sbin/udevd --daemon`
-echo `/sbin/udevtrigger`
-echo `/sbin/udevsettle`
-sleep 1
-echo `/sbin/depmod`
+# Start udev
+print $inifile <<EOMS;
+PATH="\$PATH:/usr/sbin:/sbin"
+export PATH
 
-# Setup network scripts
-echo "NETWORKING=yes" > /etc/sysconfig/network
-
-echo "ONBOOT=yes" > /etc/sysconfig/network-scripts/ifcfg-$prinic
-echo "BOOTPROTO=dhcp" >> /etc/sysconfig/network-scripts/ifcfg-$prinic
-echo "DEVICE=$prinic" >> /etc/sysconfig/network-scripts/ifcfg-$prinic
-echo 'OPTIONS="layer2=1"' >> /etc/sysconfig/network-scripts/ifcfg-$prinic
-echo "SUBCHANNELS=$subchn" >> /etc/sysconfig/network-scripts/ifcfg-$prinic
-
-# Turn on network devices
-echo $subchn > /sys/bus/ccwgroup/drivers/qeth/group
-echo 1 > /sys/bus/ccwgroup/drivers/qeth/$readChn/layer2
-echo 1 > /sys/bus/ccwgroup/drivers/qeth/$readChn/online
-echo "alias $prinic qeth" >> /etc/modprobe.conf
-echo `ifup $prinic`
-sleep 4
+echo "Creating device nodes with udev"
+/sbin/udevd --daemon
+if [ -f "/sbin/udevadm" ]
+then
+    /sbin/udevadm trigger
+    /sbin/udevadm settle --timeout=10
+fi
 EOMS
-}
 
    print $inifile <<EOMS;
 # check and see if debug is specified on command line
@@ -970,7 +961,7 @@ fi
 export IFACE=\$IFACE
 
 netstart \$IFACE
-while ! ifconfig | grep inet; do
+while ! ifconfig | grep 'inet addr'; do
     echo -e "\${RED}Failed to acquire address, retrying \${RESET}"
     sleep 5
     netstart \$IFACE
@@ -1225,15 +1216,12 @@ EOMS
    print $inifile "  exit\n";
    print $inifile "fi\n";
    print $inifile "cd /\n";
-   print $inifile "cp /var/lib/dhclient/dhclient.leases \$NEWROOT/dev/.dhclient-\$IFACE.leases\n";
-   print $inifile "cp /var/lib/dhclient/dhclient.leases \$NEWROOT/var/lib/dhclient/dhclient-\$IFACE.leases\n";
-   print $inifile 'if [ -z "$SNAPSHOTSERVER" ]; then cp /etc/resolv.conf $NEWROOT/etc/resolv.conf; fi'."\n";
-   print $inifile "mknod \$NEWROOT/dev/console c 5 1\n";
-   print $inifile "cp /etc/hostname /sysroot/etc/hostname\n";
-   print $inifile "cp /etc/resolv.conf /sysroot/etc/resolv.conf\n";
-   print $inifile "cd \$NEWROOT\n";
-   print $inifile "pivot_root . old_root\n";
-   print $inifile "exec chroot . sh -c ' umount /old_root; exec /sbin/init 2' <dev/console >dev/console 2>&1";
+   print $inifile "cp /etc/hostname \$NEWROOT/etc/hostname\n";
+   print $inifile "cp /etc/resolv.conf \$NEWROOT/etc/resolv.conf\n";
+   print $inifile "mount --move /dev \$NEWROOT/dev \n";
+   print $inifile "mount --move /proc \$NEWROOT/proc \n";
+   print $inifile "mount --move /sys  \$NEWROOT/sys \n";
+   print $inifile "exec switch_root -c /dev/console \$NEWROOT /sbin/init";
    close($inifile);
 
    open($inifile,">"."/tmp/xcatinitrd.$$/bin/netstart");
@@ -1304,7 +1292,7 @@ EOF
      }
    }
    # add rsync for statelite
-   foreach ("bin/busybox","bin/bash", "sbin/mount.nfs", "usr/bin/rsync", "sbin/insmod") {
+   foreach ("bin/busybox","bin/bash", "sbin/mount.nfs", "usr/bin/rsync", "sbin/insmod", "sbin/udevd", "sbin/udevadm", "sbin/modprobe", "sbin/blkid", "sbin/depmod") {
       getlibs($_);
       push @filestoadd,$_;
    }
@@ -1353,6 +1341,10 @@ EOF
       }
    }
 
+    if ( -d "$rootimg_dir/lib/firmware/" ){
+        system("cp -r $rootimg_dir/lib/firmware/* /tmp/xcatinitrd.$$/lib/firmware");
+    }
+    system("chroot /tmp/xcatinitrd.$$/ depmod $kernelver");
 	# Copy udev and network scripts into initrd for s390x, which also works for other platforms
 	# udev
 	system("mkdir -p /tmp/xcatinitrd.$$/etc/udev");
@@ -1665,9 +1657,9 @@ sub mount_chroot {
    my $pkgdir = shift;
    mkdir("$rootimage_dir/mnt/pkgdir");
    mkdir("$rootimage_dir/mnt/otherpkgdir");
-   system("mount -o bind /dev $rootimage_dir/dev");
-#   system("mount -o bind /proc $rootimage_dir/proc");
-   system("mount -o bind /sys $rootimage_dir/sys");
+   #system("mount -o bind /dev $rootimage_dir/dev");
+   #system("mount -o bind /proc $rootimage_dir/proc");
+   #system("mount -o bind /sys $rootimage_dir/sys");
    system("mount -o bind $pkgdir $rootimage_dir/mnt/pkgdir");
    if ($otherpkgdir){
       system("mount -o bind $otherpkgdir $rootimage_dir/mnt/otherpkgdir");
@@ -1676,9 +1668,9 @@ sub mount_chroot {
 
 sub umount_chroot {
    my $rootimage_dir = shift;
-   system("umount $rootimage_dir/dev");
-#   system("umount $rootimage_dir/proc");
-   system("umount $rootimage_dir/sys");
+   #system("umount $rootimage_dir/dev");
+   #system("umount $rootimage_dir/proc");
+   #system("umount $rootimage_dir/sys");
    system("umount $rootimage_dir/mnt/pkgdir");
    system("umount $rootimage_dir/mnt/otherpkgdir");
    rmdir("$rootimage_dir/mnt/pkgdir");
