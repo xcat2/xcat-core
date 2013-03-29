@@ -1246,7 +1246,10 @@ function openAddProcDialog(node) {
 function openAddDiskDialog(node, hcp) {
     // Get list of disk pools
     var cookie = $.cookie(hcp + 'diskpools');
-    var pools = cookie.split(',');
+    var pools = new Array();
+    if (cookie) {
+    	pools = cookie.split(',');
+    }
     
     // Create form to add disk
     var addDiskForm = $('<div class="form"></div>');
@@ -1406,7 +1409,10 @@ function openAddDiskDialog(node, hcp) {
 function openAddZfcpDialog(node, hcp, zvm) {
     // Get list of disk pools
     var cookie = $.cookie(hcp + 'zfcppools');
-    var pools = cookie.split(',');
+    var pools = new Array();
+    if (cookie) {
+    	pools = cookie.split(',');
+    }
     
     // Create form to add disk
     var addZfcpForm = $('<div class="form"></div>');
@@ -2369,7 +2375,11 @@ function openRemoveScsiDialog(hcp) {
  */
 function openAddNicDialog(node, hcp) {
     // Get network names
-    var networks = $.cookie(hcp + 'networks').split(',');
+	var cookie = $.cookie(hcp + 'networks');
+    var networks = new Array();
+    if (cookie) {
+    	networks = cookie.split(',');
+    }
         
     // Create form to add NIC
     var addNicForm = $('<div class="form"></div>');
