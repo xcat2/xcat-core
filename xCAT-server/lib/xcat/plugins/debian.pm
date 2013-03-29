@@ -219,13 +219,6 @@ sub copycd
     my @line2 = split(/ /,$line);
     close($dinfo);
 
-    #read the cd_type for the inspection
-    my $cdtype;
-    open($dinfo, $path . "/.disk/cd_type");
-    $cdtype = <$dinfo>;
-    chomp($line);
-    close($dinfo);
-
     my $isnetinst = 0;
     my $prod = $line2[0];   # The product should be the first word
     my $ver = $line2[1];    # The version should be the second word
@@ -237,11 +230,13 @@ sub copycd
         return;
     }
 
+    my $discno = '';
     if ( $prod eq "Debian")
     {
         # Debian specific, the arch and version are in different places
         $darch = $line2[6]; 
         $ver = $line2[2];
+        $discno = $line2[8];
 
 	# For the purpose of copying the netinst cd before the main one
 	# So that we have the netboot images
@@ -257,6 +252,7 @@ sub copycd
 
         $distname="ubuntu".$ver;
 	$detdistname="ubuntu".$ver;
+        $discno = `cat $path/README.diskdefines | grep 'DISKNUM ' | awk '{print \$3}'`;
     }
     else
     {
@@ -301,7 +297,7 @@ sub copycd
         $callback->(
                 {
                  info =>
-                   "DISTNAME:$distname\n"."ARCH:$debarch\n"."DISCTYPE:$cdtype\n"
+                   "DISTNAME:$distname\n"."ARCH:$debarch\n"."DISCNO:$discno\n"
                 }
                 );
             return;
