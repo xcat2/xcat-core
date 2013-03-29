@@ -38,6 +38,7 @@ my %allracks;
 my %allchassis;
 # The array of all chassis which is special CMM 
 my %allcmmchassis;
+my %allothernics;
 
 # Define parameters for xcat requests.
 my $request;
@@ -1501,13 +1502,31 @@ sub gen_new_hostinfo_string{
             if ($netname){
                 $freeipsref = $freeipshash{$netname};
             }
+            
+            # Not generate IP if exists other nics
+            if (exists $allothernics{$item}->{$_}) {
+                my $avaiableip = $allothernics{$item}->{$_};
+                if (exists $allips{$avaiableip}){ 
+                    return 0, "The specified nicips IP address $avaiableip is already in use.";
+                }else{
+                    $ipshash{$_} = $avaiableip;
+                    $allips{$avaiableip} = 0;
+                    next;
+                }
+            }
+                
+            # If generated IP is already used, re-generate free ip 
             my $nextip = shift @$freeipsref;
+            while (exists $allips{$nextip}){
+                $nextip = shift @$freeipsref;
+            }
+            
             if (!$nextip){
                 return 0, "There are no more IP addresses available in the static network range of network $netname for interface $_";
             }else{
                 $ipshash{$_} = $nextip;
                 $allips{$nextip} = 0;
-            }
+            }    
         }
         # Generate IP address if no IP specified.
         if (! exists $hostinfo_dict{$item}{"ip"}) {
@@ -1659,9 +1678,28 @@ sub validate_node_entries{
         $rank = $args_dict{'rank'};
     }
 
-    my $provnet = xCAT::ProfiledNodeUtils->get_netprofile_provisionnet($args_dict{networkprofile});
-    my @allknownips = keys %allips;
-    my $freeprovipsref = xCAT::ProfiledNodeUtils->get_allocable_staticips_innet($provnet);
+    # Get all nics attribute in networkprofile
+    my $networkprofile = $args_dict{networkprofile};
+    my $netprofileattrsref = xCAT::ProfiledNodeUtils->get_nodes_nic_attrs([$networkprofile])->{$networkprofile};
+    my %netprofileattr = %$netprofileattrsref;
+    
+    # Get install nic and provision network
+    my $noderestab = xCAT::Table->new('noderes');
+    my $nodereshashref = $noderestab->getNodeAttribs($networkprofile, ['installnic']);
+    my %nodereshash = %$nodereshashref;
+    my $installnic = $nodereshash{'installnic'};
+    my $provnet = $netprofileattr{$installnic}{"network"};
+    $noderestab->close();
+    
+    # Get all nics' static range
+    my %freeipshash = ();
+    foreach (keys %netprofileattr){
+        my $netname = $netprofileattr{$_}{'network'};
+        if($netname and (! exists $freeipshash{$netname})) {
+            $freeipshash{$netname} = xCAT::ProfiledNodeUtils->get_allocable_staticips_innet($netname);
+        }
+    }
+    my $freeprovipsref = $freeipshash{$provnet};
  
     # get all chassis's rack info.
     my @chassislist = keys %allchassis;
@@ -1675,7 +1713,19 @@ sub validate_node_entries{
                 $errmsg .= "Specified IP address $::profiledNodeAttrs{$attr}->{'ip'} not in static range of provision network $provnet";
             }
         }
-
+        
+        # Check nicips
+        my $nic_and_ips;
+        if  ($::profiledNodeAttrs{$attr}->{'nicips'}) {
+            my ($ret, $othernicsref, $outputmsg) = xCAT::ProfiledNodeUtils->check_nicips($installnic, $netprofileattrsref, \%freeipshash,$::profiledNodeAttrs{$attr}->{'nicips'});
+            if ($ret) {
+                $errmsg .= $outputmsg;
+            }else {
+                $nic_and_ips = $othernicsref;
+            }
+            delete $::profiledNodeAttrs{$attr}->{'nicips'};
+        }
+        
         # Set rack info for blades too.
         if ($::profiledNodeAttrs{$attr}->{'chassis'}){
             $::profiledNodeAttrs{$attr}->{'rack'} = $chassisrackref->{$::profiledNodeAttrs{$attr}->{'chassis'}};
@@ -1688,7 +1738,8 @@ sub validate_node_entries{
             }
             next;
         }
-
+        
+        my $definedhostname = "";
         # We need generate hostnames for this entry.
         if ($attr =~ /^TMPHOSTS/)
         {
@@ -1736,11 +1787,18 @@ sub validate_node_entries{
 
                 $nexthostname = shift @$hostnamelistref;
             }
+            $definedhostname = $nexthostname;
             $hostinfo_dict{$nexthostname} = $::profiledNodeAttrs{$attr};
         } else{
+            $definedhostname = $attr;
             $hostinfo_dict{$attr} = $::profiledNodeAttrs{$attr};
         }
+        
+        if ($nic_and_ips){
+            $allothernics{$definedhostname} = $nic_and_ips;
+        }
     }
+    
     return (\%hostinfo_dict, \@invalid_records);
 }
 
@@ -1859,6 +1917,8 @@ sub validate_node_entry{
             if (!($node_entry{$_} =~ /^[1-9]\d*$/)){
                 $errmsg .= "Specified slotid $node_entry{$_} is invalid";
             }
+        }elsif ($_ eq "nicips"){
+            # Support Multi-Nic
         }else{
            $errmsg .= "Invalid attribute $_ specified\n";
         }
