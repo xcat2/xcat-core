@@ -1,0 +1,76 @@
+#!/bin/sh 
+# IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
+#-------------------------------------------------------------------------------
+#=head1  setup_openstack_repo
+#=head2  This command adds the OpenStack repository to the node. It is run 
+#        as a postscript.
+#        Usage:
+#        setup_openstack_repo 
+#        
+#=cut
+#-------------------------------------------------------------------------------
+
+pmatch ()
+{
+  case $1 in
+    $2) return 0;;  # zero return code means string matched by pattern
+  esac
+
+  return 1          # non-zero return code means string not matched by pattern
+}
+
+# is_lsb_ubuntu exit status indicates whether system appears to be Ubuntu.
+# Using required /etc/lsb-release file, instead of optional lsb_release command.
+is_lsb_ubuntu ()
+{
+    awk '
+        (match($0, "^[ \t]*DISTRIB_ID=") == 1) {    # A DISTRIB_ID line
+            id = substr($0, RLENGTH + 1)            # Save its value
+        }
+
+        END {
+            # Examine last DISTRIB_ID value to see if Ubuntu indicated
+
+            if (match(id, "^(Ubuntu|\"Ubuntu\")[ \t]*$") == 1) {
+                exit 0    # Ubuntu
+            }
+            exit 1        # Not Ubuntu
+        }
+
+    ' /etc/lsb-release >/dev/null 2>&1
+
+    # Routine exit status is exit status of the last command -- the awk script.
+    #
+    #   Note: if /etc/lsb-release does not exist, the exit status indicates
+    #         failure (not Ubuntu), which is the correct outcome.
+}
+
+if [ "$(uname -s)" = "Linux" ]; then
+    if ( pmatch "$OSVER" "ubuntu*" ) || ( is_lsb_ubuntu ); then
+        #add the OpenStack Folsom (2012.2.*) version for Ubunto 12.04.2 to the repository
+	urelease="precise" #default release name
+	urelease=`cat /etc/lsb-release |grep DISTRIB_CODENAME |cut -d= -f2`
+
+	echo "deb http://ubuntu-cloud.archive.canonical.com/ubuntu precise-updates/folsom main" >  /etc/apt/sources.list.d/folsom.list
+
+        #Refresh the repository
+	apt-get install ubuntu-cloud-keyring -y
+	apt-get update
+
+	echo "Added the OpenStack Folsom version for Ubunto 12.04.2 to the repository, Please modify this script if you need a different version."
+
+    elif ( pmatch "$OSVER" "rh*" ) || [ -f /etc/redhat-release ]; then
+	#use yum repository
+	echo "Redhat TODO".
+    else
+	echo "OpenStack deployment with xCAT is not supported on this platform yet.".
+    fi
+else
+    echo "OpenStack is not supported on this platform."
+fi
+
+
+
+
+
+
