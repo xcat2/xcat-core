@@ -1735,7 +1735,7 @@ sub changeVM {
         my $vsw = $args->[1];
 
         $out = xCAT::zvmCPUtils->grantVSwitch( $callback, $::SUDOER, $hcp, $userId, $vsw );
-        $out = xCAT::zvmUtils->appendHostname( $node, "Granting VSwitch ($_) access for $userId... $out" );
+        $out = xCAT::zvmUtils->appendHostname( $node, "Granting VSwitch ($vsw) access for $userId... $out" );
     }
 
     # disconnectnic [address]
