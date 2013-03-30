@@ -1671,24 +1671,28 @@ sub changeVM {
             # Link target disk
             xCAT::zvmUtils->printLn( $callback, "$tgtNode: Linking target disk ($tgtAddr) as ($tgtLinkAddr)" );
             $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO /sbin/vmcp link $tgtUserId $tgtAddr $tgtLinkAddr MR"`;
-
+            
             # If link fails
-            if ( $out =~ m/not linked/i ) {
+            if ( $out =~ m/not linked/i || $out =~ m/DASD $tgtLinkAddr forced R\/O/i ) {
+            	# Detatch link because only linked as R/O
+            	`ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO /sbin/vmcp det $tgtLinkAddr"`;
 
                 # Wait before trying again
                 sleep(5);
 
                 $try = $try - 1;
-            }
-            else {
+            } else {
                 last;
             }
         }    # End of while ( $try > 0 )
 
         # If target disk is not linked
-        if ( $out =~ m/not linked/i ) {
+        if ( $out =~ m/not linked/i || $out =~ m/DASD $tgtLinkAddr forced R\/O/i ) {                
             xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Failed to link target disk ($tgtAddr)" );
             xCAT::zvmUtils->printLn( $callback, "$tgtNode: Failed" );
+            
+            # Detatch link because only linked as R/O
+            `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp det $tgtLinkAddr"`;
 
             # Exit
             return;
@@ -1714,13 +1718,6 @@ sub changeVM {
                 xCAT::zvmUtils->printLn( $callback, "$tgtNode: $out" );
                 return;
             }
-            
-            # Automatically create a partition using the entire disk
-            xCAT::zvmUtils->printLn( $callback, "$tgtNode: Creating a partition using the entire disk ($tgtDevNode)" );
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/fdasd -a /dev/$tgtDevNode"`;
-
-            # Sleep 2 seconds to let the system settle
-            sleep(2);
         }
 
         # Disable disk
