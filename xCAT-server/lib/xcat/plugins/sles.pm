@@ -1553,6 +1553,11 @@ sub copycd
 	   if ($ret[0] != 0) {
 	       $callback->({data => "Error when updating the osimage tables: " . $ret[1]});
 	   }
+
+           my @ret=xCAT::SvrUtils->update_tables_with_mgt_image($distname, $arch, $path,$osdistroname);
+           if ($ret[0] != 0) {
+               $callback->({data => "Error when updating the osimage tables for management node " . $ret[1]});
+           }
            
 	   my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot",$path,$osdistroname);
 	   if ($ret[0] != 0) {

@@ -702,6 +702,174 @@ sub  update_tables_with_templates
 
 #-------------------------------------------------------------------------------
 
+=head3   update_tables_with_mgt_image
+       This function is called after copycds to generate a default osimage for management node
+         It will get all the possible templates from the default directories for the
+         management node's osver and osarch, and update the osimage table
+    Arguments:
+
+    Returns:
+        an array (retcode, errmsg). The first one is the return code. If 0, it means succesful.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub  update_tables_with_mgt_image
+{
+    my $osver = shift;  #like sle11, rhel5.3
+    if (($osver) && ($osver =~ /xCAT::SvrUtils/)) {
+        $osver = shift;
+    }
+    my $arch = shift;  #like ppc64, x86, x86_64
+    my $ospkgdir=shift;
+    my $osdistroname=shift;
+
+    my $osname=$osver;;  #like sles, rh, centos, windows
+    my $ostype="Linux";  #like Linux, Windows
+    my $imagetype="linux";
+    if (($osver =~ /^win/) || ($osver =~ /^imagex/)) {
+        $osname="windows";
+        $ostype="Windows";
+        $imagetype="windows";
+    } elsif ($osver =~ /^hyperv/) {
+        $osname="hyperv";
+        $ostype="Windows";
+        $imagetype="windows";
+    } else {
+        until (-r  "$::XCATROOT/share/xcat/install/$osname/" or not $osname) {
+            chop($osname);
+        }
+        unless ($osname) {
+            return (1, "Unable to find $::XCATROOT/share/xcat/install directory for $osver");
+        }
+    }
+
+    #for rhels5.1  genos=rhel5
+    my $genos = $osver;
+    $genos =~ s/\..*//;
+    if ($genos =~ /rh.*s(\d*)/) {
+        $genos = "rhel$1";
+    }
+
+
+    my $myosver = xCAT::Utils->osver("all");
+    $myosver =~ s/,//;
+    if ( $osver != $myosver ) {
+        return 0;
+    }
+
+    my $installroot = xCAT::TableUtils->getInstallDir();
+    my @installdirs = xCAT::TableUtils->get_site_attribute("installdir");
+    my $tmp = $installdirs[0];
+    if ( defined($tmp)) {
+       $installroot = $tmp;
+    }
+    my $cuspath="$installroot/custom/install/$osname";
+    my $defpath="$::XCATROOT/share/xcat/install/$osname";
+
+    #now get all the profile names for full installation
+    my %profiles=();
+    my @tmplfiles=glob($cuspath."/*.tmpl");
+    foreach (@tmplfiles) {
+        my $tmpf=basename($_);
+        #get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
+        $tmpf =~ /^([^\.]*)\..*$/;
+        $tmpf = $1;
+        #print "$tmpf\n";
+        $profiles{$tmpf}=1;
+    }
+    @tmplfiles=glob($defpath."/*.tmpl");
+    foreach (@tmplfiles) {
+        my $tmpf=basename($_);
+        #get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
+        $tmpf =~ /^([^\.]*)\..*$/;
+        $tmpf = $1;
+        if ( $tmpf = "compute" ) {
+            $profiles{$tmpf}=1;
+        }
+    }
+    #update the osimage and linuximage table
+    my $osimagetab;
+    my $linuximagetab;
+    foreach my $profile (keys %profiles) {
+        #print "profile=$profile\n";
+        #get template file
+        my $tmplfile=get_tmpl_file_name ($cuspath, $profile, $osver, $arch, $genos);
+        if (!$tmplfile) { $tmplfile=get_tmpl_file_name ($defpath, $profile, $osver, $arch, $genos);}
+        if (!$tmplfile) { next; }
+
+        #get otherpkgs.pkglist file
+        my $otherpkgsfile=get_otherpkgs_pkglist_file_name($cuspath, $profile, $osver, $arch);
+        if (!$otherpkgsfile) { $otherpkgsfile=get_otherpkgs_pkglist_file_name($defpath, $profile, $osver, $arch);}
+
+        #get synclist file
+        my $synclistfile=xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
+
+        #get the pkglist file
+        my $pkglistfile=get_pkglist_file_name($cuspath, $profile, $osver, $arch);
+        if (!$pkglistfile) { $pkglistfile=get_pkglist_file_name($defpath, $profile, $osver, $arch);}
+
+        #now update the db
+        if (!$osimagetab) {
+            $osimagetab=xCAT::Table->new('osimage',-create=>1);
+        }
+
+        if ($osimagetab) {
+            #check if the image is already in the table
+            if ($osimagetab) {
+                my $found=0;
+                my $tmp1=$osimagetab->getAllEntries();
+                if (defined($tmp1) && (@$tmp1 > 0)) {
+                    foreach my $rowdata(@$tmp1) {
+                        if (($osver eq $rowdata->{osvers}) && ($arch eq $rowdata->{osarch}) && ($rowdata->{provmethod} eq "install") && ($profile eq $rowdata->{profile})){
+                            $found=1;
+                            last;
+                        }
+                    }
+                }
+#               if ($found) { next; }
+
+                my $imagename=$osver . "-" . $arch . "-mgmtimage";
+                #TODO: check if there happen to be a row that has the same imagename but with different contents
+                #now we can wirte the info into db
+                my %key_col = (imagename=>$imagename);
+                my %tb_cols=(imagetype=>$imagetype,
+                             provmethod=>"install",
+                             profile=>$profile,
+                             osname=>$ostype,
+                             osvers=>$osver,
+                             osarch=>$arch,
+                             synclists=>$synclistfile,
+                             osdistroname=>$osdistroname);
+                $osimagetab->setAttribs(\%key_col, \%tb_cols);
+
+                if ($osname !~ /^win/) {
+                    if (!$linuximagetab) { $linuximagetab=xCAT::Table->new('linuximage',-create=>1); }
+                    if ($linuximagetab) {
+                        my %key_col = (imagename=>$imagename);
+                        my %tb_cols=(template=>$tmplfile,
+                                     pkgdir=>$ospkgdir,
+                                     pkglist=>$pkglistfile,
+                                     otherpkglist=>$otherpkgsfile,
+                                     otherpkgdir=>"$installroot/post/otherpkgs/$osver/$arch");
+                        $linuximagetab->setAttribs(\%key_col, \%tb_cols);
+
+                    } else {
+                        return (1, "Cannot open the linuximage table.");
+                    }
+                }
+            } else {
+                return (1, "Cannot open the osimage table.");
+            }
+        } 
+    }
+    if ($osimagetab) { $osimagetab->close(); }
+    if ($linuximagetab) { $linuximagetab->close(); }
+    return (0, "");
+}
+
+#-------------------------------------------------------------------------------
+
 =head3   update_tables_with_diskless_image
        This function is called after a diskless image is created by packimage.
     It'll writes the newimage info into the osimage and the linuximage tables.
