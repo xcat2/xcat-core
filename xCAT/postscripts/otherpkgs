@@ -641,8 +641,8 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 		    if [ $? -eq 0 ]; then  
 		        rc=0
 		        array_set_element repo_path $index $path
-		    else
-		        rm $REPOFILE
+		    #else
+		        #rm $REPOFILE
 		    fi
 	        elif [ $haszypper -eq 1 ]; then
                     #use zypper
@@ -692,7 +692,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
               RETURNVAL=$? 
         fi
         logger -p local4.info -t xcat "$result"
-        echo "result"
+        echo "$result"
     elif [ $haszypper -eq 1 ]; then
         echo "zypper --non-interactive update --auto-agree-with-license"
 	result=`zypper --non-interactive update --auto-agree-with-license 2>&1`
