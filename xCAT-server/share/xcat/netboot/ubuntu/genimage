@@ -55,6 +55,8 @@ my $pkglist;
 my $srcdir;
 my $destdir;
 my $srcdir_otherpkgs;
+my $otherpkgsdir_local;
+my $otherpkgsdir_internet;
 my $otherpkglist;
 my $postinstall_filename;
 my $rootimg_dir;
@@ -113,7 +115,17 @@ unless ($arch) {
 $srcdir="$installroot/$osver/$arch" unless ($srcdir);
 $updates{'pkgdir'} = $srcdir if ($tempfile);
 
-$srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch" unless ($srcdir_otherpkgs);
+if ($srcdir_otherpkgs){
+    my @tempdirarray = split /,/, $srcdir_otherpkgs;
+    foreach my $tempdir (@tempdirarray){
+        if ($tempdir =~ /^http.*/){
+            $otherpkgsdir_internet .= "deb " . $tempdir . "\n";
+        }
+        else{
+            $otherpkgsdir_local = $tempdir;
+        }
+    }
+}
 $updates{'otherpkgdir'} = $srcdir_otherpkgs if ($tempfile);
 
 $destdir="$installroot/netboot/$osver/$arch/$profile" unless ($destdir);
@@ -304,14 +316,32 @@ unless ($onlyinitrd) {
     }
 
     print("Mount /proc, /dev, /sys, pkgdir and otherpkgdir to the rootimg.\n");
-    mount_chroot($rootimg_dir, $srcdir_otherpkgs, $srcdir);
+    mount_chroot($rootimg_dir, $otherpkgsdir_local, $srcdir);
 
     # Add the local repo from MN temporarily for apt-get update/upgrade
     open($aptconfig,">","$rootimg_dir/etc/apt/sources.list");
     print $aptconfig "deb file:///mnt/pkgdir/ $dist main\n";
     close($aptconfig);
 
-   #Now let's handle extra packages
+    #add the other package directory to for apt-get install
+    open ($aptconfig,">","$rootimg_dir/etc/apt/sources.list.d/genimage.apt.list");
+    if ($otherpkgsdir_local){
+        print $aptconfig "deb file://$otherpkgsdir_local ./\n";
+    }
+    if ($otherpkgsdir_internet){
+        print $aptconfig $otherpkgsdir_internet;
+    }
+    close($aptconfig);
+
+    #backup the /etc/hosts & /etc/resolv.conf
+    move("$rootimg_dir/etc/hosts", "$rootimg_dir/etc/hosts.bak");
+    move("$rootimg_dir/etc/resolv.conf", "$rootimg_dir/etc/resolv.conf.bak");
+
+    #copy the mn's /etc/hosts & /etc/resolv.conf to the rootimage
+    copy("/etc/hosts", "$rootimg_dir/etc/hosts");
+    copy("/etc/resolv.conf", "$rootimg_dir/etc/resolv.conf");
+
+    #Now let's handle extra packages
     unless ($imagename) {
         $otherpkglist = imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "otherpkgs.pkglist");
         unless ($otherpkglist) { $otherpkglist=imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "otherpkgs.pkglist"); }
@@ -324,18 +354,15 @@ unless ($onlyinitrd) {
     my %extrapkgnames; 
 
     if (keys(%extra_hash) > 0) {
-      open($aptconfig,">","$rootimg_dir/etc/apt/sources.list.d/genimage.apt.list");
       my $index=1;
       foreach $pass (sort (keys(%extra_hash))) {
         foreach (keys(%{$extra_hash{$pass}})) {
             if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
-            print $aptconfig "deb file:///mnt/otherpkgdir/ ./";
             $index++;
             my $pa=$extra_hash{$pass}{$_};
             $extrapkgnames{$pass} .= " " . join(' ', @$pa);
         }
       }
-      close($aptconfig);
       $index--;
 
       foreach $pass (sort (keys(%extra_hash))) {
@@ -405,6 +432,9 @@ unless ($onlyinitrd) {
    open($aptconfig,">","$rootimg_dir/etc/apt/sources.list");
    print $aptconfig "deb http://$master$installroot/$osver/$arch/ $dist main\n";
    close($aptconfig);
+   
+   #recover the /etc/hosts & /etc/reslov.conf
+   `cd $rootimg_dir/etc/;mv -f hosts.bak hosts;mv -f resolv.conf.bak resolv.conf`;
 
    postscripts(); #run 'postscripts'
 }
