@@ -558,6 +558,7 @@ sub assign_to_osimage
     }
 
     # Adding kitdeployparams to a otherpkglist file in osimage
+    my @kitdeployparams;
     if ( $kittable and $kittable->{kitdeployparams} and $kittable->{kitdir} ) { 
 
         # Reading contents from kit.kitdeployparams file
@@ -567,6 +568,7 @@ sub assign_to_osimage
         if ( -e "$kitdir/other_files/$kitdeployfile" ) {
             if (open(KITDEPLOY, "<", "$kitdir/other_files/$kitdeployfile") ) {
                 @contents = <KITDEPLOY>;
+                @kitdeployparams = @contents;
                 close(KITDEPLOY);
                 if($::VERBOSE){
                     $callback->({data=>["\nReading kit deployparams from $kitdir/other_files/$kitdeployfile\n"]});
@@ -659,9 +661,19 @@ sub assign_to_osimage
             }
         }
         unless ( grep(/^$kitreponame\/$basename$/, @lines) ) {
-            if (open(NEWOTHERPKGLIST, ">>", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist")) {
+            if (open(NEWOTHERPKGLIST, ">", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist")) {
+                if ( $::noupgrade ) {
+                    push @lines, "#NEW_INSTALL_LIST#\n";
+                    foreach my $kitdeployparam ( @kitdeployparams ) {
+                         push @lines, "$kitdeployparam";
+                    }
+                    push @lines, "$kitreponame/$basename\n";
+                    print NEWOTHERPKGLIST @lines;
+                } else {
+                    print NEWOTHERPKGLIST "$kitreponame/$basename\n";
+                    print NEWOTHERPKGLIST @lines;
+                }
 
-                print NEWOTHERPKGLIST "$kitreponame/$basename\n";
                 close(NEWOTHERPKGLIST);
             }
         }
@@ -1444,7 +1456,7 @@ sub addkitcomp
         push@{ $rsp{data} }, "addkitcomp: assign kit component to osimage";
         push@{ $rsp{data} }, "Usage: ";
         push@{ $rsp{data} }, "\taddkitcomp [-h|--help]";
-        push@{ $rsp{data} }, "\taddkitcomp [-a|--adddeps] [-f|--force] [-V|--verbose] -i <osimage> <kitcompname_list>";
+        push@{ $rsp{data} }, "\taddkitcomp [-a|--adddeps] [-f|--force] [-n|--noupgrade] [-V|--verbose] -i <osimage> <kitcompname_list>";
         xCAT::MsgUtils->message( "I", \%rsp, $callback );
     };
 
@@ -1461,6 +1473,7 @@ sub addkitcomp
             'V|verbose' => \$::VERBOSE,
             'a|adddeps' => \$adddeps,
             'f|force' => \$force,
+            'n|noupgrade' => \$::noupgrade,
             'i=s' => \$osimage
     );
 
@@ -1800,7 +1813,7 @@ sub addkitcomp
 
                 if ( $kitcomptable->{'basename'} eq $oskitcomptable->{'basename'} ) {
                     my $rc = compare_version($oskitcomptable,$kitcomptable,'kitcompname', 'version', 'release');
-                    if ( $rc == 1 ) {
+                    if ( $rc == 1 and !$::noupgrade  ) {
                         my %rsp;
                         push@{ $rsp{data} }, "Upgrading kit component $oskitcomp to $kitcomp";
                         xCAT::MsgUtils->message( "I", \%rsp, $callback );
@@ -1817,7 +1830,7 @@ sub addkitcomp
                         push@{ $rsp{data} }, "Do nothing since kit component $oskitcomp in osimage $osimage has the same basename/version and release with kit component $kitcomp";
                         xCAT::MsgUtils->message( "I", \%rsp, $callback );
                         next;
-                    } else {
+                    } elsif ( !$::noupgrade ) {
                         my %rsp;
                         push@{ $rsp{data} }, "kit component $oskitcomp is already in osimage $osimage, and has a newer release/version than $kitcomp.  Downgrading kit component is not supported";
                         xCAT::MsgUtils->message( "E", \%rsp, $callback );
@@ -2282,12 +2295,26 @@ sub rmkitcomp
                     my $kitreponame = $kitcomps{$kitcomponent}{kitreponame};
 
                     my @newlines = ();
+                    my $num = 0;
+                    my $inlist = 0;
                     foreach my $line ( @lines ) {
                         chomp $line;
+                        
+                        if ( $line =~ /^#NEW_INSTALL_LIST#/ ) {
+                            $num = 1;
+                            $inlist = 1;
+                        }
                         if ( $line =~ /^$kitreponame\/$basename$/ ) {
+                            if ( $inlist ) {
+                                $num--;
+                                foreach ( 1..$num ) {
+                                    pop @newlines;
+                                }
+                            }
                             next;
                         }
                         push @newlines, $line . "\n";
+                        $num++;
                     }
 
                     if (open(NEWOTHERPKGLIST, ">", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist")) {
