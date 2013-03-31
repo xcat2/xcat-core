@@ -322,6 +322,7 @@ unless ($onlyinitrd) {
     }
     my %extrapkgnames; 
 
+    my %repohash;
     if (keys(%extra_hash) > 0) {
       open($yumconfig,">>","/tmp/genimage.$$.yum.conf");
       my $index=1;
@@ -329,6 +330,7 @@ unless ($onlyinitrd) {
         foreach (keys(%{$extra_hash{$pass}})) {
             if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
             print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs/$_\ngpgpcheck=0\n\n";
+            $repohash{$pass}{$index} = 1;
             $index++;
             my $pa=$extra_hash{$pass}{$_};
             $extrapkgnames{$pass} .= " " . join(' ', @$pa);
@@ -336,15 +338,22 @@ unless ($onlyinitrd) {
       }
       close($yumconfig);
       $index--;
-      $yumcmd = "yum $non_interactive -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
+      my $yumcmd_base = "yum $non_interactive -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
       foreach (0..$repnum) {
-          $yumcmd .= "--enablerepo=$osver-$arch-$_ ";
+          $yumcmd_base .= "--enablerepo=$osver-$arch-$_ ";
       }
-      for (1..$index) {
-          $yumcmd .= "--enablerepo=otherpkgs$_ ";
-      } 
+#      for (1..$index) {
+#          $yumcmd .= "--enablerepo=otherpkgs$_ ";
+#      } 
 
       foreach $pass (sort (keys(%extra_hash))) {
+          $yumcmd = $yumcmd_base;
+          foreach my $repo_index ( keys %{$repohash{$pass}} ) {
+              $yumcmd .= "--enablerepo=otherpkgs$repo_index ";
+          }
+
+          system("$yumcmd clean all");
+
           my $envlist;
           if(exists($extra_hash{$pass}{ENVLIST})){
               $envlist = join(' ', @{$extra_hash{$pass}{ENVLIST}});
