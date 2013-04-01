@@ -2136,9 +2136,26 @@ sub rmkitcomp
 
         my $otherpkgdir = $linuximagetable->{otherpkgdir};
         foreach my $kitcomponent (keys %kitcomps) {
+
             if ( $kitcomps{$kitcomponent}{kitreponame} ) {
                 if ( -d "$otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}" ) {
-                    system("rm -rf $otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}");
+
+                    # Check if this repo is used by other kitcomponent before removing the link
+                    my $match = 0;
+                    foreach my $osikitcomp ( @osikitcomps ) {
+                        next if ( $osikitcomp =~ /$kitcomponent/ );
+                        my $depkitrepodir;
+                        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $osikitcomp}, 'kitreponame');
+                        if ( $kitcomptable and $kitcomptable->{kitreponame} ) {
+                            $depkitrepodir = "$otherpkgdir/$kitcomptable->{kitreponame}";
+                        }
+                        if ( $depkitrepodir =~ /^$otherpkgdir\/$kitcomps{$kitcomponent}{kitreponame}$/) {
+                            $match = 1;
+                        }
+                    }
+                    if ( !$match ) {
+                        system("rm -rf $otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}");
+                    }
                 }
             }
         }
