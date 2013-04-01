@@ -56,6 +56,7 @@ sub delnode
 
 sub addnode
 {
+	my $callback = shift;
     my $node = shift;
     my $ip   = shift;
 
@@ -93,11 +94,11 @@ sub addnode
 					# at this point "othernames", if any is just a space
 					#	delimited list - so just add the node name to the list
 					$othernames .= " $node";
-					$hosts[$idx] = build_line($ip, $hnode, $domain, $othernames);
+					$hosts[$idx] = build_line($callback, $ip, $hnode, $domain, $othernames);
 				} else {
 					# otherwise just try to completely update the existing
 					#	entry
-                	$hosts[$idx] = build_line($ip, $node, $domain, $othernames);
+                	$hosts[$idx] = build_line($callback, $ip, $node, $domain, $othernames);
 				}
             }
             $foundone = 1;
@@ -106,12 +107,15 @@ sub addnode
     }
     if ($foundone) { return; }
 
-    my $line = build_line($ip, $node, $domain, $othernames);
-    push @hosts, $line;
+    my $line = build_line($callback, $ip, $node, $domain, $othernames);
+	if ($line) {
+    	push @hosts, $line;
+	}
 }
 
 sub build_line
 {
+	my $callback = shift;
     my $ip         = shift;
     my $node       = shift;
     my $domain     = shift;
@@ -147,24 +151,35 @@ sub build_line
     }
     unshift(@o_names, @n_names);
 
+	my $shortname;
     if ($node =~ m/\.$domain$/i)
     {
         $longname = $node;
-        $node =~ s/\.$domain$//;
+		($shortname = $node) =~ s/\.$domain$//;
     }
     elsif ($domain && !$longname)
     {
+		$shortname = $node;
         $longname = "$node.$domain";
     }
 
+    # if shortname contains a dot then we have a bad syntax for name
+	if ($shortname =~ /\./) {
+		my $rsp;
+		push @{$rsp->{data}}, "Invalid short hostname \'$shortname\'\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return undef;
+	}
+
     $othernames = join(' ', @o_names);
-    if    ($LONGNAME)        { return "$ip $longname $node $othernames\n"; }
-    elsif ($OTHERNAMESFIRST) { return "$ip $othernames $longname $node\n"; }
-    else { return "$ip $node $longname $othernames\n"; }
+    if    ($LONGNAME)        { return "$ip $longname $shortname $othernames\n"; }
+    elsif ($OTHERNAMESFIRST) { return "$ip $othernames $longname $shortname\n"; }
+    else { return "$ip $shortname $longname $othernames\n"; }
 }
 
 sub addotherinterfaces
 {
+	my $callback		= shift;
     my $node            = shift;
     my $otherinterfaces = shift;
     my $domain          = shift;
@@ -184,7 +199,7 @@ sub addotherinterfaces
             {
                 $itf = $node . $itf;
             }
-            addnode $itf, $ip, '', $domain;
+            addnode $callback, $itf, $ip, '', $domain;
         }
     }
 }
@@ -315,7 +330,7 @@ sub process_request
                 }
                 else
                 {
-                    addnode $node, $linklocal, $node, $domain;
+                    addnode $callback, $node, $linklocal, $node, $domain;
                 }
             }
         }
@@ -343,11 +358,11 @@ sub process_request
                 {
                     if (xCAT::NetworkUtils->isIpaddr($ref->{ip}))
                     {
-                        addnode $ref->{node}, $ref->{ip}, $ref->{hostnames}, $domain;
+                        addnode $callback, $ref->{node}, $ref->{ip}, $ref->{hostnames}, $domain;
                     }
                     if (defined($ref->{otherinterfaces}))
                     {
-                        addotherinterfaces $ref->{node}, $ref->{otherinterfaces}, $domain;
+                        addotherinterfaces $callback, $ref->{node}, $ref->{otherinterfaces}, $domain;
                     }
                 }
             }    #end foreach
@@ -380,11 +395,11 @@ sub process_request
 
             if (xCAT::NetworkUtils->isIpaddr($_->{ip}))
             {
-                addnode $_->{node}, $_->{ip}, $_->{hostnames}, $domain;
+                addnode $callback, $_->{node}, $_->{ip}, $_->{hostnames}, $domain;
             }
             if (defined($_->{otherinterfaces}))
             {
-                addotherinterfaces $_->{node}, $_->{otherinterfaces}, $domain;
+                addotherinterfaces $callback, $_->{node}, $_->{otherinterfaces}, $domain;
             }
         }
 
@@ -648,7 +663,7 @@ sub donics
             	}
             	else
             	{
-                	addnode $nichostname, $nicip, $nicaliases, $nicdomain, 1;
+                	addnode $callback, $nichostname, $nicip, $nicaliases, $nicdomain, 1;
 				}
             } # end for each index
         }    # end for each nic
