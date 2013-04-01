@@ -55,7 +55,7 @@ sub process_request {
   $request = shift;
   $callback = shift;
   $subreq = shift;
-  if (xCAT::Utils->isMN()) {
+  if (not $::XCATSITEVALS{disablecredcheck} and xCAT::Utils->isMN()) {
       my $result= xCAT::TableUtils->checkCredFiles($callback);
   }
   if ($request->{command}->[0] eq 'getdestiny') {
