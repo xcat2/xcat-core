@@ -1145,14 +1145,32 @@ sub addkit
             xCAT::MsgUtils->message( "I", \%rsp, $callback );
         }
 
-        $tabs{kit}->setAttribs({kitname => $kithash{kitname} }, \%kithash );
+        $rc = $tabs{kit}->setAttribs({kitname => $kithash{kitname} }, \%kithash );
+        if($rc){
+            my %rsp;
+            push@{ $rsp{data} }, "Failed to write kit object into xCAT DB";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            return 1;
+        }
 
         foreach my $kitrepoid (keys %kitrepohash) {
-            $tabs{kitrepo}->setAttribs({kitreponame => $kitrepohash{$kitrepoid}{kitreponame} }, \%{$kitrepohash{$kitrepoid}} );
+            $rc = $tabs{kitrepo}->setAttribs({kitreponame => $kitrepohash{$kitrepoid}{kitreponame} }, \%{$kitrepohash{$kitrepoid}} );
+            if($rc){
+                my %rsp;
+                push@{ $rsp{data} }, "Failed to write kitrepo $kitrepohash{$kitrepoid}{kitreponame} into xCAT DB";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                return 1;
+            }
         }
 
         foreach my $kitcompid (keys %kitcomphash) {
-            $tabs{kitcomponent}->setAttribs({kitcompname => $kitcomphash{$kitcompid}{kitcompname} }, \%{$kitcomphash{$kitcompid}} );
+            $rc = $tabs{kitcomponent}->setAttribs({kitcompname => $kitcomphash{$kitcompid}{kitcompname} }, \%{$kitcomphash{$kitcompid}} );
+            if($rc){
+                my %rsp;
+                push@{ $rsp{data} }, "Failed to write kitcomponent $kitcomphash{$kitcompid}{kitcompname} xCAT DB";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                return 1;
+            }
         }
 
         push @kitnames, $kithash{kitname};
