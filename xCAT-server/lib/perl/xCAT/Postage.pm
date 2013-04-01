@@ -656,16 +656,15 @@ sub makescript
     }
     
     # get postscripts for images
-    my $osimgname = $provmethod;
+    my $et2;
+    if($provmethod !~ /^install$|^netboot$|^statelite$/){ # using imagename
+      my $osimgname = $provmethod;
 
-    if($osimgname =~ /install|netboot|statelite/){
-        $osimgname = "$os-$arch-$provmethod-$profile";
-    }
-    my $et2 =
+      $et2 =
       $ostab->getAttribs({'imagename' => "$osimgname"}, ['postscripts', 'postbootscripts']);
-    $ps = $et2->{'postscripts'};
-    if ($ps)
-    {
+      $ps = $et2->{'postscripts'};
+      if ($ps)
+      {
         foreach my $n (split(/,/, $ps))
         {
             if (!exists($post_hash{$n}))
@@ -674,6 +673,7 @@ sub makescript
                 push @scriptd, $n . "\n";
             }
         }
+      }
     }
 
     # get postscripts for node specific
@@ -724,9 +724,10 @@ sub makescript
     }
 
     # get postbootscripts for image
-    my $ips = $et2->{'postbootscripts'};
-    if ($ips)
-    {
+    if($provmethod !~ /^install$|^netboot$|^statelite$/){ # using imagename
+      my $ips = $et2->{'postbootscripts'};
+      if ($ips)
+      {
         foreach my $n (split(/,/, $ips))
         {
             if (!exists($postboot_hash{$n}))
@@ -735,6 +736,7 @@ sub makescript
                 push @scriptd, $n . "\n";
             }
         }
+      }
     }
 
 
