@@ -210,6 +210,7 @@ Output is similar to:
   type    name                  id      type-model  serial-number  mpa        address
   cmm     AMM680520153          0       789392X     100048A        cmm01      cmm01
   blade   SN#YL10JH184067       1       789542X     10F752A        cmm01      12.0.0.9
+  xblade  SN#YL10JH184068       2       789542X     10F652A        cmm01      12.0.0.10
   blade   SN#YL10JH184079       3       789542X     10F697A        cmm01      12.0.0.11
 
 7. To update the NGP blade server:
