@@ -196,6 +196,8 @@ sub validate_args{
     my $help;
     my $ver;
 
+    my ($type, $uuid, $long);
+
     @ARGV = ();
     if($args) {
         @ARGV = @$args;
@@ -204,6 +206,9 @@ sub validate_args{
         'h|help' => \$help,
         'V|verbose' => \$::VERBOSE,
         'v|version' => \$ver,
+        't=s' => \$type,
+        'u=s' => \$uuid,
+        'l' => \$long,
     );
 
     if($help){
@@ -217,6 +222,11 @@ sub validate_args{
         setrsp_infostr($versionmsg);
         return 0;
     }
+
+    if ($type || $uuid || $long) {
+        # these args for general discovery, return directly
+        return;
+    }
     
     my $parseret = parse_args();
     if ($parseret){
@@ -229,10 +239,17 @@ sub validate_args{
     if($enabledparamsref){
         @enabledparams = @$enabledparamsref;
     }
+    
     foreach my $argname (keys %args_dict){
         if (! grep{ $_ eq $argname} @enabledparams){
+            if (defined $args_dict{'noderange'}) {
+                # This is a sequential discovery request, just return to make sequential to handle it
+                return 0;
+            } else {
             setrsp_errormsg("Illegal attribute $argname specified.");
+            setrsp_infostr($helpmsg);
             return 0;
+            }
         }
     }
 
@@ -243,7 +260,8 @@ sub validate_args{
     }
     foreach (@mandatoryparams){
         if(! exists($args_dict{$_})){
-            setrsp_errormsg("You must specify the $_ option.");
+            setrsp_errormsg("For profile discovery, the $_ option must be specified.");
+            setrsp_infostr($helpmsg);
             return 0;
         }
     }
@@ -1166,7 +1184,8 @@ Usage:
     xCAT::MsgUtils->message("Stopping profiled node's discover.");
     my $discover_running = xCAT::ProfiledNodeUtils->is_discover_started();
     if (! $discover_running){
-        setrsp_errormsg("Node discovery for all nodes using profiles is not started.");
+        # do nothing that make sequential discovery to handle the message
+        # setrsp_errormsg("Node discovery for all nodes using profiles is not started.");
         return;
     }
 
@@ -1215,7 +1234,8 @@ Usage:
     if($discover_running){
         setrsp_progress("Node discovery for all nodes using profiles is running");
     }else{
-        setrsp_progress("Node discovery for all nodes using profiles is not started");
+        # do nothing that make sequential discovery to handle the message
+        # setrsp_progress("Node discovery for all nodes using profiles is not started");
     }
 }
 
@@ -1244,7 +1264,8 @@ Usage:
     # Read DB to confirm the discover is started. 
     my $discover_running = xCAT::ProfiledNodeUtils->is_discover_started();
     if (! $discover_running){
-        setrsp_errormsg("Node discovery process is not running.");
+        # do nothing that make sequential discovery to handle the message
+        # setrsp_errormsg("Node discovery process is not running.");
         return;
     }
 
@@ -1297,7 +1318,6 @@ Usage:
 
 #-------------------------------------------------------
 sub findme{
-    xCAT::MsgUtils->message('S', "Profield nodes discover: Start.\n");
     # re-initalize the global variable
     %args_dict = ();
     # Read DB to confirm the discover is started. 
@@ -1308,9 +1328,11 @@ sub findme{
        $sitevaluesstr = $stabent->{'value'};
     }
     unless ($sitevaluesstr){
-        setrsp_errormsg("Profiled nodes discovery not started yet.");
+        #setrsp_errormsg("Profiled nodes discovery not started yet.");
         return;
     }
+    
+    xCAT::MsgUtils->message('S', "Profile Discovery: Start.\n");
 
     # We store node profiles in site table, key is "__PCMDiscover"
     my @profilerecords = split(',', $sitevaluesstr);
@@ -1434,6 +1456,7 @@ sub findme{
     xCAT::MsgUtils->message('S', "Call discovered request.\n");
     $request->{"command"} = ["discovered"];
     $request->{"node"} = \@nodelist;
+    $request->{discoverymethod} = ['profile'];
     $retref = xCAT::Utils->runxcmd($request, $request_command, 0, 2);
     $retstrref = parse_runxcmd_ret($retref);
 

@@ -4220,6 +4220,7 @@ sub process_request {
     #$doreq->(\%request);
     $request->{command}=['discovered'];
     $request->{noderange} = [$node];
+    $request->{discoverymethod} = ['blade'];
     $doreq->($request);
     %{$request}=(); #Clear request. it is done
     return 0;
