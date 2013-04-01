@@ -472,6 +472,42 @@ unless ($onlyinitrd) {
    }
 
    foreach $pass (sort (keys(%extra_hash))) {
+
+       my $index=1;
+       #remove the old repository for extra packages
+       if ($osver_host == 11) {
+           my $result=`zypper -R $rootimg_dir $non_interactive lr |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
+           if ($result =~ /\S/) {
+               system("zypper -R $rootimg_dir $non_interactive rr $result");
+           }
+       } else {
+           my $result=`zypper -R $rootimg_dir $non_interactive sl |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
+           if ($result =~ /\S/) {
+               system("zypper -R $rootimg_dir $non_interactive sd $result");
+           }
+       }
+
+       foreach (keys(%{$extra_hash{$pass}})) {
+           if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;}
+           if (-r "$srcdir_otherpkgs/$_/repodata/repomd.xml") {
+              if($osver_host == 11) {
+                  system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir_otherpkgs/$_  otherpkg$index");
+               } else {
+                    system("zypper -R $rootimg_dir $non_interactive sa file:$srcdir_otherpkgs/$_");
+               }
+           } else {
+               if($osver_host == 11) {
+                   system("zypper -R $rootimg_dir $non_interactive ar -t Plaindir file:$srcdir_otherpkgs/$_  otherpkg$index");
+               }else {
+                   system("zypper -R $rootimg_dir $non_interactive sa -t Plaindir file:$srcdir_otherpkgs/$_");
+               }
+           }
+            $index++;
+       }
+
+       # Refresh the zypper cache in case there is still old data out there
+       system("zypper -R $rootimg_dir $non_interactive  refresh");
+
        #remove the packages that are specified in the otherpkgs.list files with leading '-'
        my $envlist;
        if(exists $extra_hash{$pass}{ENVLIST}){
@@ -491,7 +527,7 @@ unless ($onlyinitrd) {
 
        #add extra packages in the list
        if ($extrapkgnames{$pass}) {
-           print "$envlist yumcmd $extrapkgnames{$pass}\n";
+           print "$envlist $yumcmd $extrapkgnames{$pass}\n";
            $rc = system("$envlist $yumcmd $extrapkgnames{$pass}");
            $rc = $rc >> 8;
            if (($rc) && ($rc != '104')) { 
