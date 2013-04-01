@@ -852,11 +852,15 @@ sub changeVM {
         my $pool    = $args->[1];
         my $addr    = $args->[2];
         my $blks    = $args->[3];
-        my $mode    = $args->[4];
         
         # If the user specifies auto as the device address, then find a free device address
         if ($addr eq "auto") {
             $addr = xCAT::zvmUtils->getFreeAddress($::SUDOER, $node, "smapi");
+        }
+        
+        my $mode = "MR";
+        if ($args->[4]) {
+            $mode = $args->[4];
         }
         
         my $readPw  = "''";
@@ -1031,7 +1035,7 @@ sub changeVM {
         my $wwpn;
         my $lun;
         my $useWwpnLun = 0;
-        if ($argsSize == 7) {
+        if ($argsSize == 8) {
             $useWwpnLun = 1;            
             $wwpn = $args->[6];
             $lun = $args->[7];
