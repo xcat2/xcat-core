@@ -1188,12 +1188,11 @@ sub subvars_for_mypostscript {
     $os = $et->{'os'};
     $arch = $et->{'arch'};
     $profile = $et->{'profile'};
+    my $osimgname;
 
-    
-    my $osimgname = $provmethod;
-    if($osimgname =~ /^(install|netboot|statelite)$/){
-         $osimgname = "$os-$arch-$provmethod-$profile";
-    }
+    if($provmethod !~ /^install$|^netboot$|^statelite$/){ # using imagename
+      $osimgname = $provmethod;
+    } 
              
     my $osimage_vars;
     $osimage_vars = getImageitems_for_node($node, \%image_hash, $nodesetstate);
