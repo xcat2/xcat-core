@@ -1494,15 +1494,9 @@ sub gen_new_hostinfo_string{
     # compose the stanza string for hostinfo file.
     my $hostsinfostr = "";
     foreach my $item (keys %hostinfo_dict){       
-        # Generate IPs for all interfaces.
+        # Generate IPs for other interfaces defined in MAC file.
         my %ipshash;
-        foreach (keys %netprofileattr){
-            my $netname = $netprofileattr{$_}{'network'};
-            my $freeipsref;
-            if ($netname){
-                $freeipsref = $freeipshash{$netname};
-            }
-            
+        foreach (keys %netprofileattr){            
             # Not generate IP if exists other nics
             if (exists $allothernics{$item}->{$_}) {
                 my $avaiableip = $allothernics{$item}->{$_};
@@ -1511,10 +1505,21 @@ sub gen_new_hostinfo_string{
                 }else{
                     $ipshash{$_} = $avaiableip;
                     $allips{$avaiableip} = 0;
-                    next;
                 }
             }
-                
+        }
+
+        # Generate IPs for not defined interfaces.
+        foreach (keys %netprofileattr){   
+            my $netname = $netprofileattr{$_}{'network'};
+            my $freeipsref;
+            if ($netname){
+                $freeipsref = $freeipshash{$netname};
+            }
+            
+            if (exists $allothernics{$item}->{$_}) {
+                next;
+            }
             # If generated IP is already used, re-generate free ip 
             my $nextip = shift @$freeipsref;
             while (exists $allips{$nextip}){
