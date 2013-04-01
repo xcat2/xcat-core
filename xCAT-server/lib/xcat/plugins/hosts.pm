@@ -151,7 +151,8 @@ sub build_line
     }
     unshift(@o_names, @n_names);
 
-	my $shortname;
+	my $shortname=$node;
+
     if ($node =~ m/\.$domain$/i)
     {
         $longname = $node;
@@ -166,7 +167,7 @@ sub build_line
     # if shortname contains a dot then we have a bad syntax for name
 	if ($shortname =~ /\./) {
 		my $rsp;
-		push @{$rsp->{data}}, "Invalid short hostname \'$shortname\'\n";
+		push @{$rsp->{data}}, "Invalid short node name \'$shortname\'. The short node name may not contain a dot. The short node name is considered to be anything preceeding the network domain name in the fully qualified node name \'$longname\'.\n";
 		xCAT::MsgUtils->message("E", $rsp, $callback);
 		return undef;
 	}
@@ -308,6 +309,7 @@ sub process_request
         {
             my $mactab = xCAT::Table->new("mac");
             my $machash = $mactab->getNodesAttribs($req->{node}, ['mac']);
+
             foreach my $node (keys %{$machash})
             {
 
@@ -320,8 +322,16 @@ sub process_request
 
 				my $netn;
                 ($domain, $netn) = &getIPdomain($linklocal, $callback);
+
 				if (!$domain) {
-					$domain=$::sitedomain;
+					if ($::sitedomain) {
+						$domain=$::sitedomain;
+					} else {
+						my $rsp;
+						push @{$rsp->{data}}, "No domain can be determined for node \'$node\'.  The domain of the xCAT node must be provided in an xCAT network definition or the xCAT site definition.\n";
+                    	xCAT::MsgUtils->message("W", $rsp, $callback);
+                    	next;
+					}
 				}
 
                 if ($::DELNODE)
@@ -346,8 +356,16 @@ sub process_request
 
 				my $netn;
                 ($domain, $netn) = &getIPdomain($ref->{ip}, $callback);
-				if (!$domain) {
-                    $domain=$::sitedomain;
+                if (!$domain) {
+                    if ($::sitedomain) {
+                        $domain=$::sitedomain;
+                    } else {
+                        my $rsp;
+                        push @{$rsp->{data}}, "No domain can be determined for node \'$ref->{node}\'. The domain of the xCAT node must be provided in an xCAT network definition or the xCAT site definition.\n";
+
+                        xCAT::MsgUtils->message("W", $rsp, $callback);
+                        next;
+                    }
                 }
 
                 if ($::DELNODE)
@@ -640,19 +658,17 @@ sub donics
 				# choose a domain
 				my $nicdomain;
 				if ( $ndomain ) {
-					# try the one based on the ip address first
+					# use the one based on the ip address 
 					$nicdomain=$ndomain;
 				} elsif ( $nt->{domain} ) {
-					# then try the one provides in the nics entry 
+					# then try the one provided in the nics entry 
 					$nicdomain=$nt->{domain};
-				} else {
+				} elsif ( $::sitedomain)  {
 					# try the site domain for backward compatibility
 					$nicdomain=$::sitedomain;
-				}
-
-				if(!$nicdomain) {
+				} else {
 					my $rsp;
-					push @{$rsp->{data}}, "Could not find a domain name for $nic/$nicip.\n";
+					push @{$rsp->{data}}, "No domain can be determined for the NIC IP value of \'$nicip\'. The network domains must be provided in an xCAT network definition or the xCAT site definition.\n";
 					xCAT::MsgUtils->message("W", $rsp, $callback);
 					next;
 				}
