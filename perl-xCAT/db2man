@@ -207,7 +207,7 @@ Another example is if node1 is to have IP address 10.0.0.1, node2 is to have IP 
 then this could be represented in the hosts table with the single row:
 
  #node,ip,hostnames,otherinterfaces,comments,disable
- "compute","|node(\d+)|10.0.0.($1+0)|",",,,
+ "compute","|node(\d+)|10.0.0.($1+0)|",,,,
 
 In this example, the regular expression in the ip attribute uses "|" to separate the 1st and 2nd part.  This means that
 xCAT will allow arithmetic operations in the 2nd part.  In the 1st part, "(\d+)", will match the number part of the node
