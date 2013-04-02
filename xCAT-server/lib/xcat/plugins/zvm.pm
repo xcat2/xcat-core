@@ -5174,7 +5174,7 @@ END
             #   UseVNC=1  VNCPassword=12345678
             #   InstNetDev=osa OsaInterface=qdio OsaMedium=eth Manual=0
             if (!$repo) {
-	            $repo = "http://$nfs/$os/s390x/1/";
+	            $repo = "http://$nfs/$os/s390x/1";
 	        }
         
             my $ay = "http://$nfs/custom/install/sles/" . $node . "." . $profile . ".tmpl";
@@ -5206,8 +5206,15 @@ END
             # Send kernel, parmfile, and initrd to reader to HCP
             $kernelFile = "/tmp/" . $node . "Kernel";
             $initFile   = "/tmp/" . $node . "Initrd";
-            $out        = `cp $installDir/$os/s390x/1/boot/s390x/vmrdr.ikr $kernelFile`;
-            $out        = `cp $installDir/$os/s390x/1/boot/s390x/initrd $initFile`;
+            
+            if ($repo) {
+                $out = `/usr/bin/wget $repo/boot/s390x/vmrdr.ikr -O $kernelFile --no-check-certificate`;
+                $out = `/usr/bin/wget $repo/boot/s390x/initrd -O $initFile --no-check-certificate`;
+            } else {
+                $out = `cp $installDir/$os/s390x/1/boot/s390x/vmrdr.ikr $kernelFile`;
+                $out = `cp $installDir/$os/s390x/1/boot/s390x/initrd $initFile`;
+            }
+
             xCAT::zvmUtils->sendFile( $::SUDOER, $hcp, $kernelFile, $kernelFile );
             xCAT::zvmUtils->sendFile( $::SUDOER, $hcp, $parmFile,   $parmFile );
             xCAT::zvmUtils->sendFile( $::SUDOER, $hcp, $initFile,   $initFile );
@@ -5297,7 +5304,7 @@ END
 
             # Edit template
             if (!$repo) {
-                $repo = "http://$nfs/$os/s390x/";
+                $repo = "http://$nfs/$os/s390x";
             }
             
             $out =
@@ -5480,8 +5487,15 @@ END
             $kernelFile = "/tmp/" . $node . "Kernel";
             $initFile   = "/tmp/" . $node . "Initrd";
 
-            $out = `cp $installDir/$os/s390x/images/kernel.img $kernelFile`;
-            $out = `cp $installDir/$os/s390x/images/initrd.img $initFile`;
+            # Copy over kernel, parmfile, conf, and initrd from remote repository
+            if ($repo) {
+                $out = `/usr/bin/wget $repo/images/kernel.img -O $kernelFile --no-check-certificate`;
+                $out = `/usr/bin/wget $repo/images/initrd.img -O $initFile --no-check-certificate`;
+            } else {
+                $out = `cp $installDir/$os/s390x/images/kernel.img $kernelFile`;
+                $out = `cp $installDir/$os/s390x/images/initrd.img $initFile`;
+            }
+            
             xCAT::zvmUtils->sendFile( $::SUDOER, $hcp, $kernelFile, $kernelFile );
             xCAT::zvmUtils->sendFile( $::SUDOER, $hcp, $parmFile,   $parmFile );
             xCAT::zvmUtils->sendFile( $::SUDOER, $hcp, $initFile,   $initFile );
