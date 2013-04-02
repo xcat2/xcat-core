@@ -99,7 +99,7 @@ sub mkhwconn_parse_args
             #my $nodetype_hash    = $nodetypetab->getNodeAttribs( $node,[qw(nodetype)]);
             my $node_parent_hash = $ppctab->getNodeAttribs( $node,[qw(parent)]);
             #$nodetype    = $nodetype_hash->{nodetype};
-            $nodetype = xCAT::DBobjUtils->getnodetype($node);
+            $nodetype = xCAT::DBobjUtils->getnodetype($node,"ppc");
             $node_parent = $node_parent_hash->{parent};
             if ( !$nodetype )
             {
@@ -107,7 +107,7 @@ sub mkhwconn_parse_args
                 next;
             } else
             {
-                unless ( $nodetype =~ /^(fsp|bpa|frame|cec|hmc)$/)
+                unless ( $nodetype =~ /^(blade|fsp|bpa|frame|cec|hmc)$/)
                 {
                      return ( usage("Node type is incorrect. \n"));
                 }
@@ -486,8 +486,9 @@ sub mkhwconn
             # Get IP address
             ############################
             my $cnode;
-            my $ntype = xCAT::DBobjUtils::getnodetype($node_name);
-            if ($ntype =~ /^(cec|frame)$/)
+            #my $ntype = xCAT::DBobjUtils::getnodetype($node_name);
+            my $ntype = $$d[4];
+            if ($ntype =~ /^(cec|frame|blade)$/)
             {
                 $cnode = xCAT::DBobjUtils::getchildren($node_name, $opt->{port});
             } else {
@@ -518,11 +519,16 @@ sub mkhwconn
                     next;
                 }
 
-                my ( undef,undef,$mtms,undef,$type) = @$d;
+                my ( undef,undef,$mtms,undef,$type,$bpa) = @$d;
                 my ($user, $passwd);
                 if ( exists $opt->{P})
                 {
                     ($user, $passwd) = ('HMC', $opt->{P});
+                }
+                elsif ($type eq "blade") {
+                    $user = "USERID";
+                    ($user, $passwd) = xCAT::PPCdb::credentials( $bpa, $type, $user);
+                    $type = "cec";
                 }
                 else
                 {
@@ -707,7 +713,7 @@ sub rmhwconn
             my $d = $node_hash->{$node_name};
 
             my ( undef,undef,undef,undef,$type) = @$d;
-
+            if ($type eq "blade") {$type = "cec";}
             ############################
             # Get IP address
             ############################
@@ -724,10 +730,19 @@ sub rmhwconn
 
             my @ips;
             foreach my $entry ( @$nodes_found ) {
-                if ( $entry =~ /$mtm\*$serial/)   {
-                    $entry =~ /ipaddr=(\d+\.\d+\.\d+\.\d+),/;
-                    push @ips, $1;
+                if ($entry =~ /type_model_serial_num=([^,]*),/) {
+                    my $match_mtm1 = $1;
+                    my $match_mtm2 = $match_mtm1;
+                    $match_mtm2 =~ s/\-//;
+                    if ($match_mtm1 =~ /$mtm\*$serial/ || $match_mtm2 =~ /$mtm\*$serial/) {
+                        $entry =~ /ipaddr=(\d+\.\d+\.\d+\.\d+),/;
+                        push @ips, $1;
+                    }
                 }
+            #if ( $entry =~ /$mtm\*$serial/)   {
+            #    $entry =~ /ipaddr=(\d+\.\d+\.\d+\.\d+),/;
+            #    push @ips, $1;
+            #}
             } 
             if (!@ips)
             {

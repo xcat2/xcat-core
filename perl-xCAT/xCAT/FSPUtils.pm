@@ -67,7 +67,7 @@ sub getHcpAttribs
 	}
     }
     
-    my @ps = $tabs->{ppc}->getAllNodeAttribs(['node','parent','nodetype']); 
+    my @ps = $tabs->{ppc}->getAllNodeAttribs(['node','parent','nodetype','hcp']); 
     for my $entry ( @ps ) {
         my $tmp_parent = $entry->{parent};
         my $tmp_node = $entry->{node};
@@ -75,6 +75,9 @@ sub getHcpAttribs
         if(defined($tmp_node) && defined($tmp_type) && ($tmp_type =~ /^(fsp|bpa)$/ && $tmp_parent) ) {
             push @{$ppchash{$tmp_parent}{children}}, $tmp_node;
 	    #push @{$ppchash{$tmp_parent}}, $tmp_node;
+        }
+        if (defined($tmp_node) && defiend($tmp_type) && ($tmp_type eq "blade") && defined($entry->{hcp})) {
+            push @{$ppchash{$tmp_node}{children}}, $entry->{hcp};
         }
 
 	#if(exists($ppchash{$tmp_node})) {
@@ -173,6 +176,8 @@ sub getIPaddress
 	    #the $nodetocheck is its' hcp. So set $nodetocheck to $parent variable. 
 	    #And then get the FSPs IPs for the CEC. 
             $parent = $nodetocheck;
+        } elsif ($type eq "blade") {
+            return $ppc->{$nodetocheck}->{children}->[0];
         } else {
             return undef;
         }
