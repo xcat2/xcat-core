@@ -2064,11 +2064,20 @@ sub copycd
 
 
     %{$request} = ();    #clear request we've got it.
+    my $disccopiedin=0;
+    my $osdistroname=$distname."-".$arch;
 
     my $defaultpath="$installroot/$distname/$arch";
     unless($path)
     {
         $path=$defaultpath;
+    }
+    if ($::XCATSITEVALS{osimagerequired}){
+	   my ($nohaveimages,$errstr) = xCAT::SvrUtils->update_tables_with_templates($distname, $arch,$path,$osdistroname,checkonly=>1);
+	   if ($nohaveimages) { 
+        	$callback->({error => "No Templates found to support $distname($arch)"});
+		return;
+	   }
     }
 
     #tranverse the directory structure of the os media and get the fingerprint     

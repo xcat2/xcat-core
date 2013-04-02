@@ -554,6 +554,7 @@ sub  update_tables_with_templates
     my $arch = shift;  #like ppc64, x86, x86_64
     my $ospkgdir=shift;      
     my $osdistroname=shift;
+    my %args = @_;
 
     my $osname=$osver;;  #like sles, rh, centos, windows
     my $ostype="Linux";  #like Linux, Windows
@@ -606,6 +607,11 @@ sub  update_tables_with_templates
     foreach (@tmplfiles) {
 	my $tmpf=basename($_); 
 	#get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
+	if ($tmpf =~ /[^\.]*\.([^\.]*)\.([^\.]*)\./) { # osver *and* arch specific, make sure they match
+		unless ($1 eq $osver and $2 eq $arch) { next; }
+	} elsif ($tmpf =~  /[^\.]*\.([^\.]*)\./) { #osver *or* arch specific, make sure one matches
+		unless ($1 eq $osver or $2 eq $arch) { next; }
+	}
 	$tmpf =~ /^([^\.]*)\..*$/;
 	$tmpf = $1;
 	#print "$tmpf\n";
@@ -615,6 +621,11 @@ sub  update_tables_with_templates
     foreach (@tmplfiles) {
 	my $tmpf=basename($_); 
 	#get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
+	if ($tmpf =~ /[^\.]*\.([^\.]*)\.([^\.]*)\./) { # osver *and* arch specific, make sure they match
+		unless ($1 eq $osver and $2 eq $arch) { next; }
+	} elsif ($tmpf =~  /[^\.]*\.([^\.]*)\./) { #osver *or* arch specific, make sure one matches
+		unless ($1 eq $osver or $2 eq $arch) { next; }
+	}
 	$tmpf =~ /^([^\.]*)\..*$/;
 	$tmpf = $1;
 	$profiles{$tmpf}=1;
@@ -623,6 +634,13 @@ sub  update_tables_with_templates
     #update the osimage and linuximage table
     my $osimagetab;
     my $linuximagetab;
+    if ($args{checkonly}) {
+    	if (keys %profiles) {
+		return (0,"");
+	} else {
+		return (1,"Missing template files");
+	}
+    }
     foreach my $profile (keys %profiles) {
 	#print "profile=$profile\n";
 	#get template file

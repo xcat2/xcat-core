@@ -4222,6 +4222,13 @@ sub copycd {
      }
 
     unless ($found) { return; } #not our media
+    if ($::XCATSITEVALS{osimagerequired}){
+          my $haveimages=xCAT::SvrUtils->update_tables_with_templates($distname, $arch,"","",checkonly=>1);
+          unless ($haveimages) { 
+               $callback->({error => "No Templates found to support $distname($arch)"});
+          }
+    }
+
 	xCAT::SvrUtils::sendmsg("Copying media to $installroot/$distname/$arch/", $output_handler);
     my $omask = umask 0022;
     mkpath("$installroot/$distname/$arch");
