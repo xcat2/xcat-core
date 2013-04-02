@@ -6,7 +6,7 @@ B<addkitcomp> - Assign kit components to osimage.
 
 B<addkitcomp> [-h|--help]
 
-B<addkitcomp> [-a|--adddeps] [-f|--force] [-V|--verbose] -i <osimage> <kitcompname_list>
+B<addkitcomp> [-a|--adddeps] [-f|--force] [-n|--noupgrade] [-V|--verbose] -i <osimage> <kitcompname_list>
 
 =head1 DESCRIPTION
 
@@ -33,6 +33,10 @@ Add kit component to osimage even if there is a mismatch in OS, version, arch, s
 B<-i <osimage>>
 
 osimage name that kit component is assigning to
+
+B<-n|--noupgrade>
+
+Allow multiple versions of kitcomponent to be installed into the osimage, instead of kitcomponent upgrade
 
 B<kitcompname_list>
 
@@ -74,6 +78,21 @@ Output is similar to:
 
 Assigning kit component comp-test1-1.0-1-rhels-6.2-ppc64 to osimage rhels6.2-ppc64-netboot-compute
 Kit components comp-test1-1.0-1-rhels-6.2-ppc64 were added to osimage rhels6.2-ppc64-netboot-compute successfully
+
+4. To assign a new version of kit component to osimage without upgrade.
+
+addkitcomp -n -i rhels6.2-ppc64-netboot-compute comp-test2-1.0-1-rhels-6.2-ppc64
+
+Output is similar to:
+
+Assigning kit component comp-test1-1.0-1-rhels-6.0-ppc64 to osimage rhels6.2-ppc64-netboot-compute
+Assigning kit component comp-test2-1.0-1-rhels-6.2-ppc64 to osimage rhels6.2-ppc64-netboot-compute
+Kit components comp-test2-1.0-1-rhels-6.2-ppc64 were added to osimage rhels6.2-ppc64-netboot-compute successfully
+
+The result will be:
+lsdef -t osimage rhels6.2-ppc64-netboot-compute -i kitcomponents
+Object name: rhels6.2-ppc64-netboot-compute
+kitcomponents=comp-test2-1.0-0-rhels-6.2-ppc64,comp-test2-1.0-1-rhels-6.2-ppc64
 
 
 =head1 SEE ALSO
