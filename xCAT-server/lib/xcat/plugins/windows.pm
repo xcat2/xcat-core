@@ -634,6 +634,14 @@ sub copycd
     {
         $path=$defaultpath;
     }
+    my $osdistroname=$distname."-".$arch;
+    if ($::XCATSITEVALS{osimagerequired}){
+	   my ($nohaveimages,$errstr) = xCAT::SvrUtils->update_tables_with_templates($distname, $arch,$path,$osdistroname,checkonly=>1);
+	   if ($nohaveimages) { 
+        	$callback->({error => "No Templates found to support $distname($arch)"});
+		return;
+	   }
+    }
 
     $callback->(
          {data => "Copying media to $path"});
@@ -718,7 +726,6 @@ sub copycd
     else
     {
         $callback->({data => "Media copy operation successful"});
-        my $osdistroname=$distname."-".$arch;
         my @ret=xCAT::SvrUtils->update_osdistro_table($distname,$arch,$path,$osdistroname);
         if ($ret[0] != 0) {
             $callback->({data => "Error when updating the osdistro tables: " . $ret[1]});

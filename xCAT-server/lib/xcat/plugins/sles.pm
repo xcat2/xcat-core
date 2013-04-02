@@ -1328,6 +1328,14 @@ sub copycd
     {
         $path=$defaultpath;
     }
+    my $osdistroname=$distname."-".$arch;
+    if ($::XCATSITEVALS{osimagerequired}){
+	   my ($nohaveimages,$errstr) = xCAT::SvrUtils->update_tables_with_templates($distname, $arch,$path,$osdistroname,checkonly=>1);
+	   if ($nohaveimages) { 
+        	$callback->({error => "No Templates found to support $distname($arch)"});
+		return;
+	   }
+    }
 
     my $ospkgpath= "$path/$discnumber";
   
@@ -1346,7 +1354,6 @@ sub copycd
     
     #check whether the os media has already been copied in
     my $disccopiedin=0;
-    my $osdistroname=$distname."-".$arch;
     my $tabosdistro=xCAT::Table->new('osdistro',-create=>1);
     if($tabosdistro)
     {
