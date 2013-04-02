@@ -3,7 +3,7 @@
 #TEST: UNCOMMENT the first line, and COMMENT OUT the second line.
 #BUILD: COMMENT OUT the first line, and UNCOMMENT the second line.
 #package xCAT_plugin::imageprofile;
-package xCAT_plugin::<<<buildkit_WILL_INSERT_kitname_HERE>>>_imageprofile;
+package xCAT_plugin::<<<buildkit_WILL_INSERT_modified_kitname_HERE>>>_imageprofile;
 
 use strict;
 use warnings;
@@ -128,14 +128,14 @@ sub handled_commands {
     #    kitimagepostdelete => 'imageprofile',
     #};
     return {
-        kitimagepregenerate => '<<<buildkit_WILL_INSERT_kitname_HERE>>>_imageprofile',
-        kitimagepostgenerate => '<<<buildkit_WILL_INSERT_kitname_HERE>>>_imageprofile',
-        kitimageprecopy => '<<<buildkit_WILL_INSERT_kitname_HERE>>>_imageprofile',
-        kitimagepostcopy => '<<<buildkit_WILL_INSERT_kitname_HERE>>>_imageprofile',
-        kitimagepreupdate => '<<<buildkit_WILL_INSERT_kitname_HERE>>>_imageprofile',
-        kitimagepostupdate => '<<<buildkit_WILL_INSERT_kitname_HERE>>>_imageprofile',
-        kitimagepredelete => '<<<buildkit_WILL_INSERT_kitname_HERE>>>_imageprofile',
-        kitimagepostdelete => '<<<buildkit_WILL_INSERT_kitname_HERE>>>_imageprofile',
+        kitimagepregenerate => '<<<buildkit_WILL_INSERT_modified_kitname_HERE>>>_imageprofile',
+        kitimagepostgenerate => '<<<buildkit_WILL_INSERT_modified_kitname_HERE>>>_imageprofile',
+        kitimageprecopy => '<<<buildkit_WILL_INSERT_modified_kitname_HERE>>>_imageprofile',
+        kitimagepostcopy => '<<<buildkit_WILL_INSERT_modified_kitname_HERE>>>_imageprofile',
+        kitimagepreupdate => '<<<buildkit_WILL_INSERT_modified_kitname_HERE>>>_imageprofile',
+        kitimagepostupdate => '<<<buildkit_WILL_INSERT_modified_kitname_HERE>>>_imageprofile',
+        kitimagepredelete => '<<<buildkit_WILL_INSERT_modified_kitname_HERE>>>_imageprofile',
+        kitimagepostdelete => '<<<buildkit_WILL_INSERT_modified_kitname_HERE>>>_imageprofile',
     };
 }
 

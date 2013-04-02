@@ -2840,8 +2840,9 @@ sub edit_plugin
     my $kitname = $::bldkit_config->{kit}{entries}[0]->{kitname};
     # convert dashes to underscore since the kitname is used as perl pkg names
     # in the plugin and this causes perl syntax errors
-    $kitname =~ s/\-/\_/g;
-    $kitname =~ s/\./\_/g;
+    my $mod_kitname = $kitname;
+    $mod_kitname =~ s/\-/\_/g;
+    $mod_kitname =~ s/\./\_/g;
 
     # read in the file
     my $PF;
@@ -2854,6 +2855,7 @@ sub edit_plugin
 
     for (@lines) {
         s/<<<buildkit_WILL_INSERT_kitname_HERE>>>/$kitname/g;
+        s/<<<buildkit_WILL_INSERT_modified_kitname_HERE>>>/$mod_kitname/g;
     }
 
     # Write the plugin back out

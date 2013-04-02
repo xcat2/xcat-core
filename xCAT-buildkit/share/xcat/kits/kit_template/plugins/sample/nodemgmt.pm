@@ -3,7 +3,7 @@
 #TEST: UNCOMMENT the first line, and COMMENT OUT the second line.
 #BUILD: COMMENT OUT the first line, and UNCOMMENT the second line.
 #package xCAT_plugin::nodemgmt;
-package xCAT_plugin::<<<buildkit_WILL_INSERT_kitname_HERE>>>_nodemgmt;
+package xCAT_plugin::<<<buildkit_WILL_INSERT_modified_kitname_HERE>>>_nodemgmt;
 
 use strict;
 use warnings;
@@ -113,10 +113,10 @@ sub handled_commands {
     #    kitnoderefresh => 'nodemgmt',
     #};
     return {
-        kitnodeadd => '<<<buildkit_WILL_INSERT_kitname_HERE>>>_nodemgmt',
-        kitnoderemove => '<<<buildkit_WILL_INSERT_kitname_HERE>>>_nodemgmt',
-        kitnodeupdate => '<<<buildkit_WILL_INSERT_kitname_HERE>>>_nodemgmt',
-        kitnoderefresh => '<<<buildkit_WILL_INSERT_kitname_HERE>>>_nodemgmt',
+        kitnodeadd => '<<<buildkit_WILL_INSERT_modified_kitname_HERE>>>_nodemgmt',
+        kitnoderemove => '<<<buildkit_WILL_INSERT_modified_kitname_HERE>>>_nodemgmt',
+        kitnodeupdate => '<<<buildkit_WILL_INSERT_modified_kitname_HERE>>>_nodemgmt',
+        kitnoderefresh => '<<<buildkit_WILL_INSERT_modified_kitname_HERE>>>_nodemgmt',
     };
 }
 
