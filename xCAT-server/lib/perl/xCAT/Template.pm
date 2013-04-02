@@ -218,6 +218,7 @@ sub subvars {
   $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
   $inc =~ s/#WINTIMEZONE#/xCAT::TZUtils::get_wintimezone()/eg;
   $inc =~ s/#WINPRODKEY:([^#]+)#/get_win_prodkey($1)/eg;
+  $inc =~ s/#WINNETCFG#/windows_net_cfg()/eg;
   $inc =~ s/#WINADJOIN#/windows_join_data()/eg;
   $inc =~ s/#WINDNSCFG#/windows_dns_cfg()/eg;
   $inc =~ s/#WINACCOUNTDATA#/windows_account_data()/eg;
@@ -333,6 +334,25 @@ sub windows_account_data {
 	}
 	$useraccountxml.="<DomainAccounts><DomainAccountList>\r\n<DomainAccount wcm:action=\"add\">\r\n<Group>Administrators</Group>\r\n<Name>Domain Admins</Name>\r\n</DomainAccount>\r\n<Domain>".$domain."</Domain>\r\n</DomainAccountList>\r\n</DomainAccounts>\r\n";
 		return $useraccountxml;
+}
+sub windows_net_cfg {
+	if ($::XCATSITEVALS{managedaddressmode} =~ /static/) { return "<!-- WINCFG Static not supported -->"; }
+	unless ($::XCATSITEVALS{managedaddressmode} =~ /autoula/) {
+		return ""; #windows default behavior
+	}
+	#autoula, 
+	my $hoststab;
+	my $mactab = xCAT::Table->new('mac',-create=>0);
+	unless ($mactab) { die "mac table should always exist prior to template processing when doing autoula"; }
+	my $ent = $mactab->getNodeAttribs($node,['mac'],prefetchcache=>1);
+	unless ($ent and $ent->{mac}) { die "missing mac data for $node"; }
+	my $suffix = $ent->{mac};
+	my $mac = $suffix;
+	$suffix = lc($suffix);
+	unless ($hoststab) { $hoststab = xCAT::Table->new('hosts',-create=>1); }
+	my $ulaaddr = autoulaaddress($suffix);
+	$hoststab->setNodeAttribs($node,{ip=>$ulaaddr});
+	return '<component name="Microsoft-Windows-TCPIP" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'."\r\n<Interfaces><Interface wcm:action=\"add\">\r\n<Identifier>$mac</Identifier>\r\n<UnicastIpAddresses>\r\n<IpAddress wcm:action=\"add\" wcm:keyValue=\"1\">$ulaaddr/64</IpAddress>\r\n</UnicastIpAddresses>\r\n</Interface>\r\n</Interfaces>\r\n</component>\r\n";
 }
 sub windows_dns_cfg {
 	my $domain;
@@ -495,7 +515,7 @@ sub kickstartnetwork {
 	my $hoststab;
       my $mactab = xCAT::Table->new('mac',-create=>0);
       unless ($mactab) { die "mac table should always exist prior to template processing when doing autoula"; }
-      my $ent = $mactab->getNodeAttribs($node,['mac']);
+      my $ent = $mactab->getNodeAttribs($node,['mac'],prefetchcache=>1);
       unless ($ent and $ent->{mac}) { die "missing mac data for $node"; }
       my $suffix = $ent->{mac};
       $suffix = lc($suffix);
