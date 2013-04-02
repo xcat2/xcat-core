@@ -1755,7 +1755,7 @@ sub changeVM {
     elsif ( $args->[0] eq "--purgerdr" ) {
         # Purge the reader of node
         $out = xCAT::zvmCPUtils->purgeReader($::SUDOER, $hcp, $userId);
-        $out = xCAT::zvmUtils->appendHostname( $node, "Purging reader contents of $userId... $out" );
+        $out = xCAT::zvmUtils->appendHostname( $node, "$out" );
     }
 
     # removediskfrompool [function] [region] [group]
