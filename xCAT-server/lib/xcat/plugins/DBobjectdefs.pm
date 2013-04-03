@@ -174,6 +174,182 @@ sub process_request
     $::callback->($rsp);
 }
 
+sub parse_attr_for_osimage{
+    my $command = shift;
+    my $attr_hash = shift;
+    if (!exists($attr_hash->{profile}) or !exists($attr_hash->{provmethod})) {
+        my $rsp;
+        $rsp->{data}->[0] = "The profile and provmethod are all need to be specified.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return -1;
+    } else {
+        my $tmp_profile = $attr_hash->{profile};
+        my $tmp_provmethod = $attr_hash->{provmethod};
+        if ($tmp_provmethod !~ /install|netboot|statelite/) {
+            my $rsp;
+            $rsp->{data}->[0] = "The provmethod: $tmp_provmethod is incorrect.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            return -1;
+        }
+        my ($tmp_imagetype, $tmp_arch, $tmp_osname,$tmp_ostype,$tmp_osvers);
+        if (!exists($attr_hash->{osarch})) {
+            $tmp_arch = `uname -m`;
+            chomp($tmp_arch);
+            $tmp_arch = "x86" if ($tmp_arch =~ /i.86$/);
+            $attr_hash->{osarch} = $tmp_arch;
+        } else {
+            $tmp_arch = $attr_hash->{osarch};
+        }
+        if (!exists($attr_hash->{osvers})) {
+            $tmp_osvers = xCAT::Utils->osver("all");
+            $tmp_osvers =~ s/,//;
+            $attr_hash->{osvers} = $tmp_osvers; 
+        } else {
+            $tmp_osvers =$attr_hash->{osvers};
+        }
+        $tmp_osname = $tmp_osvers;
+        $tmp_ostype="Linux";  #like Linux, Windows
+        $tmp_imagetype="linux";
+        my $prov_dir = ($tmp_provmethod eq "install") ? "install" : "netboot"; 
+        if (($tmp_osvers =~ /^win/) || ($tmp_osvers =~ /^imagex/)) {
+            $tmp_osname="windows";
+            $tmp_ostype="Windows";
+            $tmp_imagetype="windows";
+        } elsif ($tmp_osvers =~ /^hyperv/) {
+            $tmp_osname="hyperv";
+            $tmp_ostype="Windows";
+            $tmp_imagetype="windows";
+        } else {
+            until (-r  "$::XCATROOT/share/xcat/$prov_dir/$tmp_osname/" or not $tmp_osname) {
+                chop($tmp_osname);
+            }
+            unless ($tmp_osname) {
+                my $rsp;
+                $rsp->{data}->[0] = "Unable to find $::XCATROOT/share/xcat/$prov_dir directory for $tmp_osvers.";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                return -1;
+            }
+        }
+        #for rhels5.1  genos=rhel5
+        my $tmp_genos = $tmp_osvers;
+        $tmp_genos =~ s/\..*//;
+        if ($tmp_genos =~ /rh.*s(\d*)/) {
+            $tmp_genos = "rhel$1";
+        }             
+        if (exists($attr_hash->{imagetype}) && ($attr_hash->{imagetype} !~ /^$tmp_imagetype/i)) {
+            my $rsp;
+            $rsp->{data}->[0] = "The input imagetype:$attr_hash->{imagetype} not match $tmp_imagetype.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            return -1;
+        } elsif (!exists($attr_hash->{imagetype})) {
+            $attr_hash->{imagetype} = $tmp_imagetype;
+        }
+        if (exists($attr_hash->{osname}) && ($attr_hash->{osname} !~ /^$tmp_ostype/i)) {
+            my $rsp;
+            $rsp->{data}->[0] = "The input osname:$attr_hash->{osname} not match $tmp_ostype.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            return -1;
+        } elsif (!exists($attr_hash->{osname})) {
+            $attr_hash->{osname} = $tmp_ostype;
+        } 
+        if (!exists($attr_hash->{osdistroname})) {
+            $attr_hash->{osdistroname} = "$tmp_osvers-$tmp_arch";
+        }
+        if (!exists($attr_hash->{synclists}) || $command eq "chdef") {
+            my $tmp_synclist=xCAT::SvrUtils->getsynclistfile(undef, $tmp_osvers, $tmp_arch, $tmp_profile, "netboot");
+            if ($tmp_synclist) {
+                $attr_hash->{synclists} = $tmp_synclist;
+            }
+        }
+        my @non_win_attr = qw(pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir template);
+        if ($tmp_osname =~ /^win/) {
+            my @invalid_attr = ();
+            foreach (@non_win_attr) {
+                if (exists($attr_hash->{$_})) {
+                    push @invalid_attr, $_;
+                }
+            }
+            if ($#invalid_attr) {
+                my $rsp;
+                $rsp->{data}->[0] = "$tmp_osvers can not work with @invalid_attr.";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                return -1;
+            }
+        } else {
+            my $installroot = xCAT::TableUtils->getInstallDir();
+            my @installdirs = xCAT::TableUtils->get_site_attribute("installdir");
+            my $tmp = $installdirs[0];
+            if ( defined($tmp)) {
+                $installroot = $tmp;
+            }
+            my $cuspath="$installroot/custom/$prov_dir/$tmp_osname";
+            my $defpath="$::XCATROOT/share/xcat/$prov_dir/$tmp_osname";
+            if ($tmp_provmethod eq "install") {
+                $attr_hash->{exlist} = '';
+                $attr_hash->{postinstall} = '';
+                $attr_hash->{rootimgdir} = '';
+                if ((!exists($attr_hash->{template})) || ($command eq "chdef")) {
+                my $tmp_tmplfile = xCAT::SvrUtils->get_tmpl_file_name($cuspath, $tmp_profile, $tmp_osvers, $tmp_arch, $tmp_genos);
+                if (!$tmp_tmplfile) {
+                    $tmp_tmplfile = xCAT::SvrUtils->get_tmpl_file_name($defpath, $tmp_profile, $tmp_osvers, $tmp_arch, $tmp_genos);
+                } 
+                if ($tmp_tmplfile) {
+                    $attr_hash->{template} = $tmp_tmplfile;
+                }
+                }
+            }
+            if ($tmp_provmethod ne "install") {
+                $attr_hash->{template} = '';
+                if (!exists($attr_hash->{exlist})) {
+                    my $tmp_exlist = xCAT::SvrUtils->get_exlist_file_name($cuspath, $tmp_profile, $tmp_osvers, $tmp_arch);
+                    if (!$tmp_exlist) {
+                        $tmp_exlist = xCAT::SvrUtils->get_exlist_file_name($defpath, $tmp_profile, $tmp_osvers, $tmp_arch);
+                    }
+                    if ($tmp_exlist) {
+                        $attr_hash->{exlist} = $tmp_exlist;
+                    }
+                }
+                if (!exists($attr_hash->{postinstall})) {
+                    my $tmp_post = xCAT::SvrUtils->get_postinstall_file_name($cuspath, $tmp_profile, $tmp_osvers, $tmp_arch);
+                    if (!$tmp_post) {
+                        $tmp_post = xCAT::SvrUtils->get_postinstall_file_name($defpath, $tmp_profile, $tmp_osvers, $tmp_arch);
+                    }
+                    if ($tmp_post) {
+                        $attr_hash->{postinstall} = $tmp_post;
+                    }
+                }
+                if (!exists($attr_hash->{rootimgdir})) {
+                    $attr_hash->{rootimgdir}="$installroot/netboot/$tmp_osvers/$tmp_arch/$tmp_profile";
+                }
+            }
+            if (!exists($attr_hash->{pkglist})) {
+                my $tmp_pkglist = xCAT::SvrUtils->get_pkglist_file_name($cuspath, $tmp_profile, $tmp_osvers, $tmp_arch);
+                if (!$tmp_pkglist) {
+                    $tmp_pkglist = xCAT::SvrUtils->get_pkglist_file_name($defpath, $tmp_profile, $tmp_osvers, $tmp_arch);
+                }
+                if ($tmp_pkglist) {
+                    $attr_hash->{pkglist} = $tmp_pkglist;
+                }
+            }
+            if (!exists($attr_hash->{otherpkglist})) {
+                my $tmp_othpkglist = xCAT::SvrUtils->get_otherpkgs_pkglist_file_name($cuspath, $tmp_profile, $tmp_osvers, $tmp_arch);
+                if (!$tmp_othpkglist) {
+                    $tmp_othpkglist = xCAT::SvrUtils->get_otherpkgs_pkglist_file_name($defpath, $tmp_profile, $tmp_osvers, $tmp_arch);
+                }
+                if ($tmp_othpkglist) {
+                    $attr_hash->{otherpkglist} = $tmp_othpkglist;
+                }
+            }
+            if (!exists($attr_hash->{otherpkgdir})) {
+                $attr_hash->{otherpkgdir}="$installroot/post/otherpkgs/$tmp_osvers/$tmp_arch";
+            }
+            if (!exists($attr_hash->{pkgdir})) {
+                $attr_hash->{pkgdir}="$installroot/$tmp_osvers/$tmp_arch";
+            }
+        }
+    }
+    return 0;
+}
 #----------------------------------------------------------------------------
 
 =head3   processArgs
@@ -269,6 +445,7 @@ sub processArgs
                     'S'        => \$::opt_S,
                     'osimage'  => \$::opt_osimg,
                     'nics'  => \$::opt_nics,
+                    's'     => \$::opt_setattr,
         )
       )
     {
@@ -278,7 +455,9 @@ sub processArgs
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 2;
     }
-    
+    if (defined($::opt_setattr) && !$::opt_t) {
+        $::opt_t = 'osimage';
+    }
     # -t node is the default value
     if (!$::opt_t && !$::opt_a && !$::opt_h && ($::command eq "lsdef"))
     {
@@ -444,6 +623,12 @@ sub processArgs
 
         }
     }
+    if (defined($::opt_setattr) && ($::command eq 'mkdef')) {
+        my $rc = &parse_attr_for_osimage($::command, \%::ATTRS);
+        if ($rc) {
+            return $rc;
+        } 
+    } 
 
     if ((!$::opt_t || $::opt_t eq 'node') && ($::command eq 'chdef') && ($::opt_m || $::opt_p))
     {
@@ -531,6 +716,12 @@ sub processArgs
         # set @::fileobjtypes, @::fileobjnames, %::FILEATTRS
 
         $::objectsfrom_file = 1;
+        if (defined($::opt_setattr) && ($::command eq 'mkdef')) {
+            my $rc = &parse_attr_for_osimage($::command, \%::FILEATTRS);
+            if ($rc) {
+                return $rc;
+            }
+        } 
     }
 
     #
@@ -1017,6 +1208,8 @@ sub defmk
             return 0;
         } elsif ($rc == 3) {
             return 1;
+        } else {
+            return $rc;
         }
     }
 
@@ -1707,7 +1900,7 @@ sub defch
     }
 
     # set $objtype & fill in cmd line hash
-    if (%::ATTRS || ($::opt_t eq "group"))
+    if (%::ATTRS || ($::opt_t eq "group") || ($::opt_setattr))
     {
 
         # if attr=val on cmd line then could only have one type
@@ -1716,6 +1909,15 @@ sub defch
         #
         #  set cli attrs for each object definition
         #
+        my %attrhash;
+        my %tmp_objhash = ();
+        my @img_attrs = qw(imagetype provmethod profile osname osvers osarch);
+        if ($::opt_setattr) {
+            foreach my $obj (sort @::clobjnames) {
+                $tmp_objhash{$obj} = $::objtype;
+            } 
+            %attrhash = xCAT::DBobjUtils->getobjdefs(\%tmp_objhash, $::VERBOSE, \@img_attrs);
+        }
         foreach my $objname (@::clobjnames)
         {
 
@@ -1759,7 +1961,18 @@ sub defch
                     $::CLIATTRS{$objname}{$attrorig} = $::ATTRS{$attrorig};
                 }
             }
-
+            if ($::opt_setattr && exists($attrhash{$objname})) {
+                foreach my $tmp_attr (@img_attrs) {
+                    if (!exists($::CLIATTRS{$objname}{$tmp_attr}) && exists($attrhash{$objname}{$tmp_attr}) &&
+                                                                     defined($attrhash{$objname}{$tmp_attr})) {
+                        $::CLIATTRS{$objname}{$tmp_attr} = $attrhash{$objname}{$tmp_attr};
+                    }
+                }
+                my $rc = &parse_attr_for_osimage($::command, $::CLIATTRS{$objname});
+                if ($rc) {
+                    next;
+                }
+            }
         }
     }
 
