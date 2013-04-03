@@ -76,7 +76,7 @@ sub getHcpAttribs
             push @{$ppchash{$tmp_parent}{children}}, $tmp_node;
 	    #push @{$ppchash{$tmp_parent}}, $tmp_node;
         }
-        if (defined($tmp_node) && defiend($tmp_type) && ($tmp_type eq "blade") && defined($entry->{hcp})) {
+        if (defined($tmp_node) && defined($tmp_type) && ($tmp_type eq "blade") && defined($entry->{hcp})) {
             push @{$ppchash{$tmp_node}{children}}, $entry->{hcp};
         }
 
