@@ -465,7 +465,7 @@ sub makescript
                 if ($ref1->{'otherpkgdir'})
                 {
                     push @scriptd,
-                      "OTHERPKGDIR=" . $ref1->{'otherpkgdir'} . "\n";
+                      "OTHERPKGDIR='" . $ref1->{'otherpkgdir'} . "'\n";
                     push @scriptd, "export OTHERPKGDIR\n";
                 }
             }

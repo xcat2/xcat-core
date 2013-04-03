@@ -1606,7 +1606,7 @@ sub getImageitems_for_node
                 if ($ref1->{'otherpkgdir'})
                 {
                     $result .= 
-                      "OTHERPKGDIR=" . $ref1->{'otherpkgdir'} . "\n";
+                      "OTHERPKGDIR='" . $ref1->{'otherpkgdir'} . "'\n";
                     $result .=  "export OTHERPKGDIR\n";
                 }
             }
