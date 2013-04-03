@@ -3,20 +3,17 @@
 
 
 #-------------------------------------------------------------------------------
-#=head1  server.post
+#=head1  server.rpm_post
 #=head2  This command configures the puppet server on a xCAT server or node.
-#        It is used as a postbootscript for puppet kit.
+#        It is used as a post install script for puppet_server_kit.rpm
 #=cut
 #-------------------------------------------------------------------------------
-if [ "$NODESETSTATE" = "install" ]; then     
-    #prevent getting called during full install bootup  
-    #because the function will be called in the rpm %post section instead
-    exit 0
-else
+
+if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
     #Now configure the pupper server
     /xcatpost/config_puppet_server "$@"
-	
-    #restart puppet master
+    
+        #restart puppet master
     service puppetmaster stop
     kill $(ps auxww | grep puppet | grep master | grep -v grep | awk '{print $2}') 
     service puppetmaster start

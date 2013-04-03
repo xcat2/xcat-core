@@ -3,16 +3,13 @@
 
 
 #-------------------------------------------------------------------------------
-#=head1  client.post
+#=head1  client.rpm_post
 #=head2  This command configures the puppet client on a xCAT node. It is used 
-#        as a postbootscript for puppet kit. 
+#        as a post installation script for puppet_client_kit.rpm. 
 #=cut
 #-------------------------------------------------------------------------------
-if [ "$NODESETSTATE" = "install" ]; then     
-    #prevent getting called during full install bootup  
-    #because the function will be called in the rpm %post section instead
-    exit 0
-else
+
+if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
     #configure the puppet agent configuration files
     /xcatpost/config_puppet_client "$@" 
 fi
