@@ -1332,7 +1332,7 @@ sub copycd
     if ($::XCATSITEVALS{osimagerequired}){
 	   my ($nohaveimages,$errstr) = xCAT::SvrUtils->update_tables_with_templates($distname, $arch,$path,$osdistroname,checkonly=>1);
 	   if ($nohaveimages) { 
-        	$callback->({error => "No Templates found to support $distname($arch)",errorcode=>1});
+        	$callback->({error => "No Templates found to support $distname($arch)",errorcode=>2});
 		return;
 	   }
     }
