@@ -471,7 +471,18 @@ sub get_win_prodkey {
 	my $keytab = xCAT::Table->new("prodkey",-create=>0);
 	my $keyent;
 	if ($keytab) {
-	   $keyent = $keytab->getAttribs({product=>$osvariant},"key");
+	   my @keyents = $keytab->getNodeAttribs($node,[qw/product key/]);
+	   foreach my $tkey (@keyents) {
+		if ($tkey->{product} eq $osvariant) {
+		     $keyent = $tkey;
+		     last;
+		} elsif (not $tkey->{product}) {
+		     $keyent = $tkey;
+		}
+	   }
+	   unless ($keyent) {
+		$keyent = $keytab->getAttribs({product=>$osvariant},"key");
+	   }
 	}
 	if ($keyent) { 
 		return "<ProductKey><WillShowUI>OnError</WillShowUI><Key>".$keyent->{key}."</Key></ProductKey>";
