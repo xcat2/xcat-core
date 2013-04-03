@@ -1,4 +1,8 @@
 $command=@{'command'='nextdestiny'}
+if (!(Test-Path HKLM:\Software\Policies\Microsoft\SystemCertificates\AuthRoot)) {
+	mkdir HKLM:\Software\Policies\Microsoft\SystemCertificates\AuthRoot
+	Set-ItemProperty HKLM:\Software\Policies\Microsoft\SystemCertificates\AuthRoot DisableRootAutoUpdate 1
+}
 if (!(Test-Path HKCU:\Software\xCAT)) {
         mkdir HKCU:\Software\xCAT
 	$certstore = New-Object System.Security.Cryptography.X509Certificates.X509Store("My","CurrentUser")
