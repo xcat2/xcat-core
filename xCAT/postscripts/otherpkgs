@@ -236,7 +236,22 @@ if [ $? -eq 0 ]; then
     mounted=1 
 fi
 
-
+if [ -n "$OTHERPKGDIR" ]; then
+    OLDIFS=$IFS
+    IFS=$','
+    dir_array=($OTHERPKGDIR)
+    for dir in ${dir_array[@]}
+    do
+        dirtype=${dir:0:4}
+        if [ $dirtype = 'http' ]; then
+            OTHERPKGDIR_INTERNET="${OTHERPKGDIR_INTERNET}${dir} ,"
+        else
+            OTHERPKGDIR_LOCAL=$dir
+        fi
+    done
+    OTHERPKGDIR=$OTHERPKGDIR_LOCAL
+    IFS=$OLDIFS
+fi
 
 #OTHERPKGDIR is set only when the provmethod is the os image name
 #when it is not set, we need to figure it out here
@@ -246,6 +261,10 @@ if [ -z "$OTHERPKGDIR" ]; then
     else
         OTHERPKGDIR="$INSTALLDIR/post/otherpkgs/$OSVER/$ARCH"
     fi
+ 
+    if ( pmatch "$OSVER" "ubuntu*" ); then
+        OTHERPKGDIR=""
+    fi 
 else
     if [ $mounted -eq 0 ]; then
 	OTHERPKGDIR=${NFSSERVER}${OTHERPKGDIR}
@@ -626,14 +645,24 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
                 fi
 		elif [ $hasapt -eq 1 ] ; then
 		    REPOFILE="$repo_base/xCAT-otherpkgs$index.list"
-		    
-	            if [ $mounted -eq 0 ]; then
-		        type=http
-	            else
-		        type=file
-	            fi
-
-			echo "deb $type://$whole_path /"  > $REPOFILE
+		    if [ -n "$OTHERPKGDIR" ];then
+                        if [ $mounted -eq 0 ]; then
+		            type=http
+	                else
+		            type=file
+	                fi
+                        echo "deb $type://$whole_path ./"  > $REPOFILE
+                    fi
+                    if [ -n "$OTHERPKGDIR_INTERNET" ];then
+                        OLDIFS=$IFS
+                        IFS=$','
+                        urlarray=($OTHERPKGDIR_INTERNET)
+                        for url in ${urlarray[@]}
+                        do
+                            echo "deb "$url >> $REPOFILE
+                        done
+                        IFS=$OLDIFS
+                    fi
 		fi 
 	        if [ $hasyum -eq 1 ]; then 
 	            #use yum
@@ -701,15 +730,15 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         fi
         logger -p local4.info -t xcat "$result"
         echo "$result"
-	elif [ $hasapt -eq 1 ]; then
-		apt_get_update_if_repos_changed $REPOFILE
-		echo "apt-get -y upgrade"
-		result=`apt-get -y upgrade 2>&1`
-        	if [ $? -ne 0 ]; then
-                     RETURNVAL=$? 
-                fi
-		logger -p local4.info -t xcat "$result"
-		echo "$result"
+    elif [ $hasapt -eq 1 ]; then
+	apt_get_update_if_repos_changed $REPOFILE
+	echo "apt-get -y upgrade"
+	result=`apt-get -y upgrade 2>&1`
+       	if [ $? -ne 0 ]; then
+            RETURNVAL=$? 
+        fi
+	logger -p local4.info -t xcat "$result"
+	echo "$result"
     fi     
 
     #echo "repo_pkgs=$repo_pkgs,\nrepo_pkgs_preremove=$repo_pkgs_preremove,\nrepo_pkgs_postremove=$repo_pkgs_postremove"
@@ -794,7 +823,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     fi 
 
     #Handle the rest with rpm
-    if [ "$plain_pkgs" != "" ]; then 
+    if [ "$plain_pkgs" != "" -a -n "$OTHERPKGDIR" ]; then 
         echo "Warning: the packages $plain_pkgs could not be found in the repository, falling back to rpm command, did you forget to run createrepo?"
         logger -p local4.info -t xcat "Warning: the packages $plain_pkgs could not be found in the repository, falling back to rpm command, did you forget to run createrepo?"
         if [ $mounted -eq 0 ]; then
