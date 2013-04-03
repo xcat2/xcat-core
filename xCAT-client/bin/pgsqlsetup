@@ -68,12 +68,14 @@ $Getopt::Long::ignorecase = 0;
 $::installdir             = "/var/lib/pgsql";         # install location
 $::installdatadir         = "/var/lib/pgsql/data";    # install location
 $::pgcmddir               = "/usr/bin";               # pg cmds location 
+$::debiancfgdir           = "/etc/postgresql/9.1/main";
 my $INIT;
 my $SETUPODBC;
 my $NOSTART;
 my $SETUPPCM;
 my $HELP;
 my $VERSION;
+my $debianflag = 0;
 # parse the options
 if (
     !GetOptions(
@@ -135,6 +137,9 @@ else
     $::osname = 'Linux';
     # determine whether redhat or sles
     $::linuxos = xCAT::Utils->osver();
+    if ( -e "/etc/debian_version" ){
+        $debianflag = 1;
+    }
 }
 
 
@@ -142,11 +147,17 @@ else
 # check to see  if perl-DBD-Pg is installed
 #
 my $cmd = "rpm -qa | grep perl-DBD-Pg";
+if ($debianflag){
+    $cmd = "dpkg -l | grep libdbd-pg-perl";
+}
 my @output=xCAT::Utils->runcmd($cmd, 0);
 if ($::RUNCMD_RC != 0)
 {
     my $message =
       "\nperl-DBD-Pg is not installed.  If on AIX, it should be first obtained from the xcat dependency tarballs and installed before running this command.\n If on Linux, install from the OS CDs.";
+    if ($debianflag){
+        $message = "\nlibdb-pg-perl is not installed. Use apt-get to install it.";
+    }
     xCAT::MsgUtils->message("E", " $cmd failed. $message");
     exit(1);
 }
@@ -154,11 +165,17 @@ if ($::RUNCMD_RC != 0)
 # check to see if postgresql is installed
 #
 my $cmd = "rpm -qa | grep postgresql";
+if ($debianflag){
+    $cmd = "dpkg -l | grep postgresql | awk '{print \$2}'";
+}
 my @output=xCAT::Utils->runcmd($cmd, 0);
 if ($::RUNCMD_RC != 0)
 {
     my $message =
       "\nPostgreSQL is not installed.  If on AIX, it should be first obtained from the xcat dependency tarballs and installed before running this command.\n If on Linux, install from the OS CDs.";
+    if ($debianflag){
+        $message = "\npostgresql is not installed. Use apt-get to install it.";
+    }
     xCAT::MsgUtils->message("E", " $cmd failed. $message");
     exit(1);
 }
@@ -173,6 +190,20 @@ if  (grep(/postgresql9/, @output)) {  # postgresql 9.x
  $::pgcmddir        = "/usr/pgsql-9.$::postgres9/bin";      # pg cmds location 
 }
 
+if ($debianflag){
+    undef $::postgres9;
+    $::installdatadir = "/var/lib/postgresql/9.1/main";
+    $::pgcmddir = "/usr/lib/postgresql/9.1/bin";
+    for my $line (@output){
+        if ($line =~ /postgresql\-9/){
+            my $pgsqlver = substr $line, 11;
+            $::pgcmddir = "/usr/lib/postgresql/${pgsqlver}/bin";
+            $::installdatadir = "/var/lib/postgresql/${pgsqlver}/main";
+            $::debiancfgdir = "/etc/postgresql/${pgsqlver}/main";
+            last;
+        }
+    }
+}
 # check to see if  PostgreSQL  is running
 my $pgsqlrunning     = 0;
 my $xcatrunningpgsql = 0;
@@ -688,6 +719,9 @@ sub initpgdb
 
     my $hbafile = $::installdatadir;
     $hbafile .= "\/pg_hba.conf";
+    if ($debianflag){
+        $hbafile = $::debiancfgdir . "/pg_hba.conf";
+    }
     $cmd = "fgrep  $::MN $hbafile";
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)   # not already there
@@ -727,6 +761,9 @@ sub initpgdb
     # setup the postgresql.conf file
     my $pgconf = $::installdatadir;
     $pgconf .= "\/postgresql.conf";
+    if ($debianflag){
+        $pgconf = $::debiancfgdir . "/postgresql.conf";
+    }
     my $str = "\"setup by xCAT\"";
     $cmd = "fgrep $str $pgconf";
     my @output = xCAT::Utils->runcmd($cmd, -1);
@@ -866,9 +903,12 @@ sub pgreboot
     else    # linux
     {
         if (defined($::postgres9)) { # set to the postgresql ptf level
-          $cmd = "chkconfig postgresql-9.$::postgres9 on";
+            $cmd = "chkconfig postgresql-9.$::postgres9 on";
         } else {
-          $cmd = "chkconfig postgresql on";
+            $cmd = "chkconfig postgresql on";
+        }
+        if ($debianflag){
+            $cmd = "update-rc.d postgresql defaults";
         }
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
@@ -916,6 +956,9 @@ sub setupxcatdb
       $cmd = "/var/lib/pgsql/bin/psql -d $::dbname -U postgres";
     } else {  # Linux
        $cmd = "$::pgcmddir/psql -d $::dbname -U postgres";
+       if ($debianflag){
+           $cmd = "su - postgres -c '$::pgcmddir/psql -d $::dbname -U postgres'";
+       }
     }
     my $pgsql;
     my $timeout  = 10;    # sets Expect default timeout, 0 accepts immediately
@@ -1073,20 +1116,32 @@ sub setupODBC
     # for all OS need unixODBC rpm
     my $message;
     my $cmd = "rpm -qa | grep unixODBC";
+    if ($debianflag){
+        $cmd = "dpkg -l | grep unixodbc";
+    }
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)
     {
-         $message =
-          "unixODBC rpm is not installed. Install from the OS CDs.";
+        $message =
+         "unixODBC rpm is not installed. Install from the OS CDs.";
+        if ($debianflag){
+            $message = "unixodbc is not installed. Install it first.";
+        }
         xCAT::MsgUtils->message("E", "$message");
         exit(1);
     }
     $cmd = "rpm -qa | grep postgresql-odbc";
+    if ($debianflag){
+        $cmd = "dpkg -l | grep odbc-postgresql";
+    }
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)
     {
-         $message =
+        $message =
           "postgresql-odbc rpm  is not installed. Install from the OS CDs.";
+        if ($debianflag){
+            $message = "odbc-postgresql is not installed. Install it first.";
+        }
         xCAT::MsgUtils->message("E", " $message");
         exit(1);
     }
