@@ -317,7 +317,11 @@ IPADDR=$nicip" > $dir/ifcfg-$nic
                         echo "NETMASK=$netmask" >> $dir/ifcfg-$nic
                     fi
                    if [ -n "$gateway" ]; then
-                       echo "GATEWAY=$gateway" >> $dir/ifcfg-$nic
+                       # Do not add duplicate default gateway entry
+                       grep -E "default\\s+$gateway\\s+" /etc/sysconfig/network/routes 2>&1 1>/dev/null
+                       if [ $? -ne 0 ]; then
+                           echo "default $gateway - -" >> /etc/sysconfig/network/routes
+                       fi
                    fi
                else # not the first ip address
                    echo "LABEL_$ipindex=$ipindex
@@ -329,6 +333,13 @@ IPADDR_$ipindex=$nicip" >> $dir/ifcfg-$nic
                     else
                         echo "NETMASK_$ipindex=$netmask" >> $dir/ifcfg-$nic
                     fi
+                   if [ -n "$gateway" ]; then
+                       # Do not add duplicate default gateway entry
+                       grep -E "default\\s+$gateway\\s+" /etc/sysconfig/network/routes 2>&1 1>/dev/null
+                       if [ $? -ne 0 ]; then
+                           echo "default $gateway - -" >> /etc/sysconfig/network/routes
+                       fi
+                   fi
                 fi # end if [ $ipindex -eq 1 ]
             elif [ $OS_name == 'redhat' ]
             then
@@ -370,6 +381,9 @@ IPADDR=$nicip" > $dir/ifcfg-$nic
 IPV6ADDR=$nicip/$netmask" >> $dir/ifcfg-$nic
                        else
                            echo "IPV6ADDR_SECONDARIES=$nicip/$netmask" >> $dir/ifcfg-$nic
+                       fi
+                       if [ -n "$gateway" ]; then
+                           echo "IPV6_DEFAULTGW=$gateway" >> $dir/ifcfg-$nic
                        fi
                     else # ipv4 address
                         echo "DEVICE=$nic:$ipindex
