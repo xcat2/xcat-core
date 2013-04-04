@@ -2017,7 +2017,7 @@ function openAddScsi2SystemDialog(hcp) {
     hcp2zvm = getHcpZvmHash();
     
     // Create info bar
-    var info = createInfoBar('Dynamically add an SCSI disk to a running z/VM system.');
+    var info = createInfoBar('Dynamically add an SCSI disk to a running z/VM system as an EDEV.');
     addS2SForm.append(info);
     
     var system = $('<div><label>z/VM system:</label></div>');
@@ -2030,7 +2030,7 @@ function openAddScsi2SystemDialog(hcp) {
     	systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
     }
         
-    var devNo = $('<div><label>FCP device:</label><input type="text" name="devNo" maxlength="4" title="The SCSI disk device number"/></div>');
+    var devNo = $('<div><label>Device number:</label><input type="text" name="devNo" maxlength="4" title="The SCSI disk device number"/></div>');
     var devPathLabel = $('<label>Device paths:</label>');
     var devPathCount = 1;
     var pathDiv = $('<div class="devPath" style="margin-left:125px;"></div>');
@@ -3436,6 +3436,18 @@ function loadDiskPoolTable(data) {
             openAddPageSpoolDialog(hcp);
         });
         
+        // Add EDEV to system
+        var addEdevLnk = $('<a>Add EDEV</a>');
+        addEdevLnk.bind('click', function(event){
+            openAddScsi2SystemDialog(hcp);
+        });
+        
+        // Remove EDEV
+        var removeEdevLnk = $('<a>Remove EDEV</a>');
+        removeEdevLnk.bind('click', function(event){
+            openRemoveScsiDialog(hcp);
+        });
+                
         // Indicate disk is to be shared with various users
         var shareLnk = $('<a>Share disk</a>');
         shareLnk.bind('click', function(event){
@@ -3445,7 +3457,7 @@ function loadDiskPoolTable(data) {
         
         // Advanced menu
         var advancedLnk = '<a>Advanced</a>';
-        var advancedMenu = createMenu([addEckdLnk, addPageSpoolLnk, shareLnk]);
+        var advancedMenu = createMenu([addEckdLnk, addPageSpoolLnk, addEdevLnk, removeEdevLnk, shareLnk]);
         
         // Create action bar
         var actionBar = $('<div id="zvmDiskResourceActions" class="actionBar"></div>').css("width", "450px");
@@ -3598,28 +3610,12 @@ function loadZfcpPoolTable(data) {
                 });
             }    
         });
-        
-        // Add SCSI to system
-        var addScsiLnk = $('<a>Add SCSI</a>');
-        addScsiLnk.bind('click', function(event){
-            openAddScsi2SystemDialog(hcp);
-        });
-        
-        // Remove SCSI
-        var removeScsiLnk = $('<a>Remove SCSI</a>');
-        removeScsiLnk.bind('click', function(event){
-            openRemoveScsiDialog(hcp);
-        });
-        
-        // Advanced menu
-        var advancedLnk = '<a>Advanced</a>';
-        var advancedMenu = createMenu([addScsiLnk, removeScsiLnk]);
-        
+                
         // Create action bar
         var actionBar = $('<div id="zFcpResourceActions" class="actionBar"></div>').css("width", "450px");
         
         // Create an action menu
-        var actionsMenu = createMenu([addLnk, removeLnk, refreshLnk, [advancedLnk, advancedMenu]]);
+        var actionsMenu = createMenu([addLnk, removeLnk, refreshLnk]);
         actionsMenu.superfish();
         actionsMenu.css('display', 'inline-block');
         actionBar.append(actionsMenu);
