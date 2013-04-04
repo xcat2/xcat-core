@@ -2887,7 +2887,7 @@ sub forward_data {
       }
         $callback->($_);
       }
-    } else {
+    }
   }
   yield(); #Try to avoid useless iterations as much as possible
   return $rc;
