@@ -1233,7 +1233,7 @@ sub createRoutes {
 	#   <routes config:type="list">
 	#   <route>
 	#     <destination>default</destination>
-	#     <device>eth0</device>
+	#     <device>-</device>
 	#     <gateway>10.1.100.1</gateway>
 	#     <netmask>-</netmask>
 	#   </route>
@@ -1256,9 +1256,9 @@ sub createRoutes {
 			$xml .= <<END;	
   <route>
     <destination>$dest</destination>
-    <device>$interfaces{$i}{'device'}</device>
+    <device>-</device>
     <gateway>$interfaces{$i}{'gateway'}</gateway>
-    <netmask>$interfaces{$i}{'netmask'}</netmask>
+    <netmask>-</netmask>
   </route>
 END
 		}
