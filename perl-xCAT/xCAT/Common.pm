@@ -8,6 +8,7 @@ use File::stat;
 use File::Copy;
 use xCAT::Usage;
 use Thread qw/yield/;
+use Storabe qw/store_fd fd_retrieve/;
 
 BEGIN
 {
@@ -29,19 +30,18 @@ sub forward_data {
   my $rfh;
   my $rc = @ready_fds;
   foreach $rfh (@ready_fds) {
-    my $data;
-    if ($data = <$rfh>) {
-      while ($data !~ /ENDOFFREEZE6sK4ci/) {
-        $data .= <$rfh>;
-      }
+    my $responses;
+    eval {
+    	$responses = fd_retrieve($rfh);
+    };
+    if ($@ and $@ =~ /^Magic number checking on storable file/) { #this most likely means we ran over the end of available input
+      $fds->remove($rfh);
+      close($rfh);
+    } else {
       eval { print $rfh "ACK\n"; }; #Ignore ack loss due to child giving up and exiting, we don't actually explicitly care about the acks
-      my $responses=thaw($data);
       foreach (@$responses) {
         $callback->($_);
       }
-    } else {
-      $fds->remove($rfh);
-      close($rfh);
     }
   }
   yield(); #Try to avoid useless iterations as much as possible
@@ -62,8 +62,7 @@ sub send_data {
     foreach(@_) {
       my %output;
       if (ref($_) eq HASH) {
-          print $out freeze([$_]);
-          print $out "\nENDOFFREEZE6sK4ci\n";
+	  store_fd([$_],$out);
           yield();
           waitforack($out);
           next;
@@ -97,8 +96,7 @@ sub send_data {
       } else {
           $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
       }
-      print $out freeze([\%output]);
-      print $out "\nENDOFFREEZE6sK4ci\n";
+      store_fd([\%output],$out);
       yield();
       waitforack($out);
     }
