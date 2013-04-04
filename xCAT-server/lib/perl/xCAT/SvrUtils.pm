@@ -551,6 +551,8 @@ sub  update_tables_with_templates
     if (($osver) && ($osver =~ /xCAT::SvrUtils/)) {
 	$osver = shift;
     }
+    my $shortosver = $osver;
+    $shortosver =~ s/\..*//;
     my $arch = shift;  #like ppc64, x86, x86_64
     my $ospkgdir=shift;      
     my $osdistroname=shift;
@@ -608,9 +610,9 @@ sub  update_tables_with_templates
 	my $tmpf=basename($_); 
 	#get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
 	if ($tmpf =~ /[^\.]*\.([^\.]*)\.([^\.]*)\./) { # osver *and* arch specific, make sure they match
-		unless ($1 eq $osver and $2 eq $arch) { next; }
+		unless (($1 eq $osver or $1 eq $shortosver) and $2 eq $arch) { next; }
 	} elsif ($tmpf =~  /[^\.]*\.([^\.]*)\./) { #osver *or* arch specific, make sure one matches
-		unless ($1 eq $osver or $2 eq $arch) { next; }
+		unless ($1 eq $osver or $1 eq $shortosver or $2 eq $arch) { next; }
 	}
 	$tmpf =~ /^([^\.]*)\..*$/;
 	$tmpf = $1;
@@ -622,9 +624,9 @@ sub  update_tables_with_templates
 	my $tmpf=basename($_); 
 	#get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
 	if ($tmpf =~ /[^\.]*\.([^\.]*)\.([^\.]*)\./) { # osver *and* arch specific, make sure they match
-		unless ($1 eq $osver and $2 eq $arch) { next; }
+		unless (($1 eq $osver or $1 eq $shortosver) and $2 eq $arch) { next; }
 	} elsif ($tmpf =~  /[^\.]*\.([^\.]*)\./) { #osver *or* arch specific, make sure one matches
-		unless ($1 eq $osver or $2 eq $arch) { next; }
+		unless ($1 eq $osver or $1 eq $shortosver or $1 eq $arch) { next; }
 	}
 	$tmpf =~ /^([^\.]*)\..*$/;
 	$tmpf = $1;
