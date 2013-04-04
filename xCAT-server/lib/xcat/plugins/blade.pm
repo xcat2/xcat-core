@@ -38,7 +38,7 @@ use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
 #use Data::Dumper;
 use POSIX "WNOHANG";
-use Storable qw(freeze thaw);
+use Storable qw(freeze thaw store_fd fd_retrieve);
 use IO::Select;
 use IO::Handle;
 use Time::HiRes qw(gettimeofday sleep);
@@ -5353,18 +5353,18 @@ sub forward_data {
   my $rc = @ready_fds;
   foreach $rfh (@ready_fds) {
     my $data;
-    if ($data = <$rfh>) {
-      while ($data !~ /ENDOFFREEZE6sK4ci/) {
-        $data .= <$rfh>;
-      }
+    my $responses;
+    eval {
+    	$responses = fd_retrieve($rfh); 
+    };
+    if ($@ and $@ =~ /^Magic number checking on storable file/) { #this most likely means we ran over the end of available input
+      $fds->remove($rfh);
+      close($rfh);
+    } else {
       eval { print $rfh "ACK\n"; }; #Ignore ack loss due to child giving up and exiting, we don't actually explicitly care about the acks
-      my $responses=thaw($data);
       foreach (@$responses) {
         $callback->($_);
       }
-    } else {
-      $fds->remove($rfh);
-      close($rfh);
     }
   }
   yield; #Try to avoid useless iterations as much as possible
@@ -5396,8 +5396,7 @@ sub dompa {
                 error=>["Unable to perform http login to $mpa"],
                 errorcode=>['3']
           }]);
-          print $out freeze([\%outh]);
-          print $out "\nENDOFFREEZE6sK4ci\n";
+	  store_fd([\%outh],$out);
           yield;
           waitforack($out);
            %outh=();
@@ -5431,8 +5430,7 @@ sub dompa {
           foreach (@output) {
               (my $tag, my $text)=split /:/,$_,2;
               push (@{$outh{node}->[0]->{data}},{desc=>[$tag],contents=>[$text]});
-              print $out freeze([\%outh]);
-              print $out "\nENDOFFREEZE6sK4ci\n";
+	      store_fd([\%outh],$out);
                 yield;
               waitforack($out);
               %outh=();
@@ -5496,8 +5494,7 @@ sub dompa {
         #    $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
         #}
         
-        print $out freeze([\%output]);
-        print $out "\nENDOFFREEZE6sK4ci\n";
+	store_fd([\%output],$out);
         yield;
         waitforack($out);
       }
@@ -5547,8 +5544,7 @@ sub dompa {
      foreach (keys %{$mpahash{$mpa}->{nodes}}) {
         push (@{$err{node}},{name=>[$_],error=>["Cannot communicate with $mpa"],errorcode=>[1]});
      }
-     print $out freeze([\%err]);
-     print $out "\nENDOFFREEZE6sK4ci\n";
+     store_fd([\%err],$out);
      yield;
      waitforack($out);
      return 1,"General error establishing SNMP communication";
@@ -5680,8 +5676,7 @@ sub dompa {
             $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
         }
       }
-      print $out freeze([\%output]);
-      print $out "\nENDOFFREEZE6sK4ci\n";
+      store_fd([\%output],$out);
       yield;
       waitforack($out);
     }

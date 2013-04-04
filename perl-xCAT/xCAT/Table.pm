@@ -36,7 +36,7 @@
 package xCAT::Table;
 use xCAT::MsgUtils;
 use Sys::Syslog;
-use Storable qw/freeze thaw/;
+use Storable qw/freeze thaw store_fd fd_retrieve/;
 use IO::Socket;
 #use Data::Dumper;
 use POSIX qw/WNOHANG/;
@@ -92,8 +92,6 @@ sub dbc_call {
 sub dbc_submit {
     my $request = shift;
     $request->{'wantarray'} = wantarray();
-    my $data = freeze($request);
-    $data.= "\nENDOFFREEZEQFVyo4Cj6Q0v\n";
     my $clisock;
     my $tries=300;
     while($tries and !($clisock = IO::Socket::UNIX->new(Peer => $dbsockpath, Type => SOCK_STREAM, Timeout => 120) ) ) {
@@ -105,22 +103,20 @@ sub dbc_submit {
         use Carp qw/cluck/;
         cluck();
     }
-    print $clisock $data;
-    $data="";
+    store_fd($request,$clisock);
+    #print $clisock $data;
+    my $data="";
     my $lastline="";
-    while (read($clisock,$lastline,32768)) { #$lastline ne "ENDOFFREEZEQFVyo4Cj6Q0j\n" and $lastline ne "*XCATBUGDETECTED*76e9b54341\n") { #index($lastline,"ENDOFFREEZEQFVyo4Cj6Q0j") < 0) {
-#        $lastline = <$clisock>;
-	    $data .= $lastline;
-    }
+    my $retdata = fd_retrieve($clisock);
     close($clisock);
-    if ($lastline =~  m/\*XCATBUGDETECTED\*76e9b54341\n\z/) { #if it was an error
+    if (ref $retdata eq "SCALAR") { #bug detected
         #in the midst of the operation, die like it used to die
         my $err;
-        $data =~ /\*XCATBUGDETECTED\*:(.*):\*XCATBUGDETECTED\*/s;
+        $$retdata =~ /\*XCATBUGDETECTED\*:(.*):\*XCATBUGDETECTED\*/s;
         $err = $1;
         die $err;
     }
-    my @returndata = @{thaw($data)};
+    my @returndata = @{$retdata};
     if (wantarray) {
         return @returndata;
     } else {
@@ -201,8 +197,7 @@ sub init_dbworker {
                             xCAT::MsgUtils->message("S","xcatd: possible BUG encountered by xCAT DB worker ".$err);
                             if ($currcon) {
                                 eval { #avoid hang by allowin client to die too
-                                    print $currcon "*XCATBUGDETECTED*:$err:*XCATBUGDETECTED*\n";
-                                    print $currcon "*XCATBUGDETECTED*76e9b54341\n";
+                                    store_fd("*XCATBUGDETECTED*:$err:*XCATBUGDETECTED*\n",$currcon);
         			    $clientset->remove($currcon);
 			            close($currcon);
                                 };
@@ -230,13 +225,14 @@ sub handle_dbc_conn {
     my $client = shift;
     my $clientset = shift;
     my $data;
-    if ($data = <$client>) {
-	my $lastline;
-        while ($lastline ne "ENDOFFREEZEQFVyo4Cj6Q0v\n") { #$data !~ /ENDOFFREEZEQFVyo4Cj6Q0v/) {
-	    $lastline = <$client>;
-            $data .= $lastline;
-        }
-        my $request = thaw($data);
+    my $request;
+    eval { 
+	$request = fd_retrieve($client);
+    };
+    if ($@ and $@ =~ /^Magic number checking on storable file/) { #this most likely means we ran over the end of available input
+        $clientset->remove($client);
+        close($client);
+    } elsif ($request) {
         my $response;
         my @returndata;
         if ($request->{'wantarray'}) {
@@ -244,12 +240,7 @@ sub handle_dbc_conn {
         } else {
             @returndata = (scalar(handle_dbc_request($request)));
         }
-        $response = freeze(\@returndata);
-    #    $response .= "\nENDOFFREEZEQFVyo4Cj6Q0j\n";
-        print $client $response;
-        $clientset->remove($client);
-        close($client);
-    } else { #Connection terminated, clean up
+	store_fd(\@returndata,$client);
         $clientset->remove($client);
         close($client);
     }

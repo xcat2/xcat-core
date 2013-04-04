@@ -50,7 +50,7 @@ use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
 use Data::Dumper;
 use POSIX "WNOHANG";
-use Storable qw(freeze thaw);
+use Storable qw(freeze thaw store_fd fd_retrieve);
 use IO::Select;
 use IO::Handle;
 use Time::HiRes qw(gettimeofday sleep);
@@ -2857,12 +2857,15 @@ sub forward_data {
   my $rc = @ready_fds;
   foreach $rfh (@ready_fds) {
     my $data;
-    if ($data = <$rfh>) {
-      while ($data !~ /ENDOFFREEZE6sK4ci/) {
-        $data .= <$rfh>;
-      }
+    my $responses;
+    eval {
+    	$responses = fd_retrieve($rfh);
+    };
+    if ($@ and $@ =~ /^Magic number checking on storable file/) { #this most likely means we ran over the end of available input
+      $fds->remove($rfh);
+      close($rfh);
+    } else {
       eval { print $rfh "ACK\n"; }; #ignore failures to send inter-process ack
-      my $responses=thaw($data);
       foreach (@$responses) {
         #save the nodes that has errors and the ones that has no-op for use by the node status monitoring
         my $no_op=0;
@@ -2885,9 +2888,6 @@ sub forward_data {
         $callback->($_);
       }
     } else {
-      $fds->remove($rfh);
-      close($rfh);
-    }
   }
   yield(); #Try to avoid useless iterations as much as possible
   return $rc;
@@ -2926,8 +2926,7 @@ sub dohyp {
      foreach (keys %{$hyphash{$hyp}->{nodes}}) {
         push (@{$err{node}},{name=>[$_],error=>["Cannot communicate via libvirt to $hyp"],errorcode=>[1]});
      }
-     print $out freeze([\%err]);
-     print $out "\nENDOFFREEZE6sK4ci\n";
+     store_fd([\%err],$out);
      yield();
      waitforack($out);
      %err=(node=>[]);
@@ -2935,8 +2934,7 @@ sub dohyp {
      foreach (keys %{$hyphash{$hyp}->{nodes}}) {
         push (@{$err{node}},{name=>[$_],error=>["Forcibly relocating VM from $hyp"],errorcode=>[1]});
      }
-     	print $out freeze([\%err]);
-     	print $out "\nENDOFFREEZE6sK4ci\n";
+     	store_fd([\%err],$out);
      } else {
      	return 1,"General error establishing libvirt communication";
      }
@@ -2947,8 +2945,7 @@ sub dohyp {
     foreach(@output) {
       my %output;
       if (ref($_)) {
-          print $out freeze([$_]);
-          print $out "\nENDOFFREEZE6sK4ci\n";
+	  store_fd([$_],$out);
           yield();
           waitforack($out);
           next;
@@ -2973,8 +2970,7 @@ sub dohyp {
       } else {
          $output{node}->[0]->{error} = $text;
       }
-      print $out freeze([\%output]);
-      print $out "\nENDOFFREEZE6sK4ci\n";
+      store_fd([\%output],$out);
       yield();
       waitforack($out);
     }
