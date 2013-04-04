@@ -24,7 +24,7 @@ if ($^O =~ /^aix/i) {
 	unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
 }
 use lib "$::XCATROOT/lib/perl";
-use Storable qw(freeze thaw);
+use Storable qw(freeze thaw store_fd fd_retrieve);
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
@@ -679,7 +679,7 @@ sub scan_plugins {
     }
     ${"xCAT_plugin::".$modname."::"}{init_plugin}->(\&do_request);
   }
-  if ($serialdest) { print $serialdest freeze(\%cmd_handlers); };
+  if ($serialdest) { store_fd(\%cmd_handlers,$serialdest); }; #print $serialdest freeze(\%cmd_handlers); };
 }
 
 my $pid_init;
@@ -693,14 +693,9 @@ if (socketpair($readpipe, $writepipe,AF_UNIX,SOCK_STREAM,PF_UNSPEC)) {
 if (defined $pid_init) {
 	if ($pid_init) { #parent, just sit and wait..
 		close($writepipe);
-		my $serialized_handlers="";
-		while ($serialized_handlers !~ /xCATINITDoneWithHandlersNow/) {
-			$serialized_handlers.=<$readpipe>;
-		}
-	        %cmd_handlers=%{thaw($serialized_handlers)};	
+		%cmd_handlers = %{fd_retrieve($readpipe)};
  	} else {
 		scan_plugins($writepipe);
-		print $writepipe "\nxCATINITDoneWithHandlersNow\n";
 		exit(0);
 	}
 } else {
@@ -1458,8 +1453,7 @@ sub dispatch_callback {
    my $rsp = {%$rspo}; # deep copy
    delete $rsp->{serverdone};
    unless (%$rsp) { return; }
-   print $dispatch_parentfd freeze($rsp);
-   print $dispatch_parentfd "\nENDOFFREEZE6sK6xa\n";
+   store_fd($rsp,$dispatch_parentfd);
    yield; #This has to happen before next line could possibly work anyway
    my $parselect = new IO::Select;
    $parselect->add($dispatch_parentfd);
@@ -1498,16 +1492,16 @@ sub relay_dispatch {
    if ($@) { undef $@; return 0; }
    foreach my $rin (@ready_ins) {
       my $data;
-      if ($data = <$rin>) {
-         while ($data !~ /ENDOFFREEZE6sK6xa/) {
-            $data .= <$rin>;
-         }
-         my $response = thaw($data);
-         print $rin "dfin\n";
-         $dispatch_cb->($response);
-      } else {
+      my $response;
+      eval { 
+	$response = fd_retrieve($rin);
+      };
+      if ($@ and $@ =~ /^Magic number checking on storable file/) { #this most likely means we ran over the end of available input
          $fds->remove($rin);
          close($rin);
+      } else {
+      	print $rin "dfin\n";
+	$dispatch_cb->($response);
       }
    }
    yield; #At this point, explicitly yield to other processes.  If children will have more data, this process would otherwise uselessly loop on data that never will be.  If children are all done, still no harm in waiting a short bit for a timeslice to come back
@@ -1739,14 +1733,12 @@ sub convey_response {
     return;
   }
   unless ($resp) { return; }
-  $resp = freeze($resp);
   $pipeexpected=1;
   #$resp = XMLout($resp,KeyAttr=>[], NoAttr=>1,RootName=>'xcatresponse');
   #sanitize the response, to avoid being killed by non-printable bytes
   #$resp =~ tr/\011-\177/?/c;
   #seeing if using utf-8 offloads potential issues to client terminal, it didn't
-  print $parent_fd $resp;
-  print $parent_fd "\nENDOFFREEZE6sK6xa\n";
+  store_fd($resp,$parent_fd);
   yield; #parent must get timeslice anyway before an ack could possibly return
   my $parsel = new IO::Select;
   $parsel->add($parent_fd);
@@ -2034,26 +2026,15 @@ sub relay_fds { #Relays file descriptors from pipes to children to the SSL socke
   foreach $rfh (@readyset) { #go through each child, extract a complete, atomic message
     my $line;
     my $resp;
-    while ($line = <$rfh>) { #Will break on complete </xcatresponse> messages, avoid interleave
-	$resp .= $line;
-	if ($line =~ /ENDOFFREEZE6sK6xa\n/) {
-		print $rfh "nfin\n"; #ok, ack the data (superfluous, but svn revision history shows an oddity with killed processes and assuming that was legit... for now)
-					#ack before doing the real work to allow child to get back to work
-		$resp = thaw($resp);
-		push @$replyqueue,$resp;
-		last;
-      }
-      if ($@ and $@ =~ /PIPE/) {
-          $goneclient=1;
-          print "Piped while writing to client\n";
-          last;
-      }
-    }                       
-    unless ($line) { 
-#      print $rfh "nfin\n"; #Notify convey_response message done
-#    } else {
-      $fds->remove($rfh);      
-      close($rfh);             
+    eval {
+    	$resp = fd_retrieve($rfh);
+    };
+    if ($@ and $@ =~ /^Magic number checking on storable file/) { #this most likely means we ran over the end of available input
+    	$fds->remove($rfh);
+	close($rfh);
+    } else {
+	push @$replyqueue,$resp;
+	print $rfh "nfin\n";
     }
   }
    foreach my $rin ($clientselect->can_read(0)) {
