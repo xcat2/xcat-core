@@ -8,7 +8,7 @@ use File::stat;
 use File::Copy;
 use xCAT::Usage;
 use Thread qw/yield/;
-use Storabe qw/store_fd fd_retrieve/;
+use Storable qw/store_fd fd_retrieve/;
 
 BEGIN
 {
