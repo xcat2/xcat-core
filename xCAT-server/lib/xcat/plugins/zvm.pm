@@ -1296,7 +1296,7 @@ sub changeVM {
         # Mark WWPN and LUN as used and set the owner/channel
         # This config file keeps track of the owner of each device, which is useful in nodeset
         $size = $size . "M";
-        my $select = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$pool.conf" | grep $lun`;
+        my $select = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$pool.conf" | egrep -i $wwpn | egrep -i $lun`;
         chomp($select);
         if ($select) {
             @info = split(',', $select);
@@ -1902,7 +1902,7 @@ sub changeVM {
         my $pool;
         my $tmp;
         foreach (@pools) {
-            $tmp = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$_" | egrep -i $lun`;
+            $tmp = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$_" | egrep -i $wwpn | egrep -i $lun`;
             chomp($tmp);
             if ($tmp) {
                 # Mark WWPN and LUN as free and delete owner/channel
