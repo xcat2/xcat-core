@@ -1063,6 +1063,11 @@ sub setup_TFTP
 
     # read DB for nodeinfo
     my $retdata = xCAT::ServiceNodeUtils->readSNInfo($nodename);
+    if (not ref $retdata)
+    {    # error
+        xCAT::MsgUtils->message("S", " Error reading service node arch.");
+        return 1;
+    }
     $master = $retdata->{'master'};
     $os     = $retdata->{'os'};
     $arch   = $retdata->{'arch'};
