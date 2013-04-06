@@ -163,6 +163,7 @@ sub process_request {
 	    #$doreq->(\%request);
 	    $req->{command}=['discovered'];
 	    $req->{noderange} = [$node];
+	    $req->{discoverymethod} = ['switch'];
 	    $doreq->($req); 
 	    %{$req}=();#Clear req structure, it's done..
 	    undef $mactab;
