@@ -50,7 +50,7 @@ sub findme {
             return;
         }
         # update the discoverydata table to have an undefined node
-        $request->{method}->[0] = 'undef';
+        $request->{discoverymethod}->[0] = 'undef';
         xCAT::DiscoveryUtils->update_discovery_data($request);
         return;
     }
@@ -105,9 +105,13 @@ sub findme {
         }
     }
 
+    my @allnodes;
     unless ($node) {
         # get a free node
-        $node = getfreenodes($param{'noderange'});
+        @allnodes = getfreenodes($param{'noderange'}, "all");
+        if (@allnodes) {
+            $node = $allnodes[0];
+        }
     }
 
     if ($node) {
@@ -138,10 +142,9 @@ sub findme {
 
         # set the host ip and bmc if needed
         unless ($skiphostip) {
-            my $hostip = getfreeips($param{'hostiprange'});
+            my $hostip = getfreeips($param{'hostiprange'}, \@allnodes, "host");
             unless ($hostip) {
-                xCAT::MsgUtils->message("S", "Discovery Error: No free host ip.");
-                nodediscoverstop($callback, undef, 1);
+                nodediscoverstop($callback, undef, "host ips");
                 return;
             }
             $hosttab->setNodeAttribs($node, {ip => $hostip});
@@ -150,10 +153,9 @@ sub findme {
 
         my $bmcname;
         unless ($skipbmcip) {
-            my $bmcip = getfreeips($param{'bmciprange'});
+            my $bmcip = getfreeips($param{'bmciprange'}, \@allnodes, "bmc");
             unless ($bmcip) {
-                xCAT::MsgUtils->message("S", "Discovery Error: No free bmc ip.");
-                nodediscoverstop($callback, undef, 1);
+                nodediscoverstop($callback, undef, "bmc ips");
                 return;
             }
             $bmcname = $node."-bmc";
@@ -245,13 +247,25 @@ sub findme {
         %{$request}=();#Clear req structure, it's done..
         undef $mactab;
     } else {
-        #
-        xCAT::MsgUtils->message("S", "Discovery Error: No free node name.");
-        nodediscoverstop($callback, undef, 1);
+        nodediscoverstop($callback, undef, "node names");
         return;
     }
 
     xCAT::MsgUtils->message("S", "Sequential Discovery: Done");
+}
+
+=head3 displayver 
+    Display the version information
+=cut
+
+sub displayver {
+    my $callback = shift;
+    
+    my $version = xCAT::Utils->Version();
+    
+    my $rsp;
+    push @{$rsp->{data}}, $version;
+    xCAT::MsgUtils->message("I", $rsp, $callback);
 }
 
 =head3 nodediscoverstart 
@@ -271,12 +285,14 @@ sub nodediscoverstart {
             xCAT::MsgUtils->message("E", $rsp, $cb, 1);
         }
 
-        my $usageinfo = "nodediscoverstart: Start sequential nodes discovery.
+        my $usageinfo = "nodediscoverstart: Start a discovery process: Sequential or Profile.
 Usage: 
-\tnodediscoverstart noderange=<noderange> hostiprange=<imageprofile> bmciprange=<bmciprange> [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>]
-\tnodediscoverstart [-h|--help] 
-\tnodediscoverstart {-v|--version}    
-    ";
+    Common:
+        nodediscoverstart [-h|--help|-v|--version|-V|--verbose] 
+    Sequential Discovery:
+        nodediscoverstart noderange=<noderange> [hostiprange=<imageprofile>] [bmciprange=<bmciprange>] [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>]
+    Profile Discovery:
+        nodediscoverstart networkprofile=<networkprofile> imageprofile=<imageprofile> hostnameformat=<hostnameformat> [hardwareprofile=<hardwareprofile>] [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>]";
         $rsp = ();
         push @{$rsp->{data}}, $usageinfo;
         xCAT::MsgUtils->message("I", $rsp, $cb);
@@ -312,7 +328,7 @@ Usage:
     }
 
     if ($ver) {
-        # just return to make profile discovery to handle it
+        &displayver($callback);
         return;
     }
 
@@ -322,12 +338,11 @@ Usage:
         $orgargs{$name} = $value;
     }
 
-    # Todo: Check the noderage=has been specified which is the flag that this is for sequential discovery
-    
+    # Check the noderage=has been specified which is the flag that this is for sequential discovery
     # Otherwise try to check the whether the networkprofile || hardwareprofile || imageprofile 
     # has been passed, if yes, return to profile discovery
     unless (defined ($orgargs{noderange}) ) {
-        if (defined ($orgargs{networkprofile}) || defined($orgargs{hardwareprofile}) || defined($orgargs{imageprofile})) {
+        if (defined ($orgargs{networkprofile}) || defined($orgargs{hostnameformat}) || defined($orgargs{imageprofile})) {
             # just return that make profile-based discovery to handle it
             return;
         } else {
@@ -335,8 +350,6 @@ Usage:
             return;
         }
     }
-
-    xCAT::MsgUtils->message("S", "Sequential Discovery: Start");
 
     my %param;    # The valid parameters
     my $textparam; # The valid parameters in 'name=value,name=value...' format
@@ -392,11 +405,12 @@ Usage:
 
     # Calculate the available node name and IPs
     my @freenodes = getfreenodes($param{'noderange'}, "all");
-    my @freehostips = getfreeips($param{'hostiprange'}, "all");
-    my @freebmcips = getfreeips($param{'bmciprange'}, "all");
+    my @freehostips = getfreeips($param{'hostiprange'}, \@freenodes, "host", "all");
+    my @freebmcips = getfreeips($param{'bmciprange'}, \@freenodes, "bmc", "all");
 
+    #xCAT::MsgUtils->message("S", "Sequential Discovery: Start");
     my $rsp;
-    push @{$rsp->{data}}, "Sequential node discovery started:";
+    push @{$rsp->{data}}, "Sequential Discovery: Started:";
     push @{$rsp->{data}}, "    Number of free node names: ".($#freenodes+1);
     if ($param{'hostiprange'}) {
         if (@freehostips) {
@@ -413,6 +427,66 @@ Usage:
         }
     }
     xCAT::MsgUtils->message("I", $rsp, $callback);
+    if ($::VERBOSE) {
+        # dispaly the free nodes
+        my $hoststb = xCAT::Table->new('hosts');
+        if ($hoststb) {
+            my $prehostip = $hoststb->getNodesAttribs(\@freenodes, ['ip']);
+            my %prehostips;
+            foreach (keys %$prehostip) {
+                if (defined($prehostip->{$_}->[0]->{'ip'})) {
+                    $prehostips{$prehostip->{$_}->[0]->{'ip'}} = 1;
+                }
+            }
+            my @freebmcs;
+            foreach (@freenodes) {
+                push @freebmcs, $_.'-bmc';
+            }
+            my $prebmcip = $hoststb->getNodesAttribs(\@freebmcs, ['ip']);
+            my %prebmcips;
+            foreach (keys %$prebmcip) {
+                if (defined($prebmcip->{$_}->[0]->{'ip'})) {
+                    $prebmcips{$prebmcip->{$_}->[0]->{'ip'}} = 1;
+                }
+            }
+
+        
+            my $vrsp;
+            push @{$vrsp->{data}}, "\n====================Free Nodes===================";
+            push @{$vrsp->{data}}, sprintf("%-20s%-20s%-20s", "NODE", "HOST IP", "BMC IP");
+    
+            my $index = 0;
+            foreach (@freenodes) {
+                my $hostip;
+                my $bmcip;
+                if (defined ($prehostip->{$_}->[0]) && $prehostip->{$_}->[0]->{'ip'}) {
+                    $hostip = $prehostip->{$_}->[0]->{'ip'};
+                } else {
+                    while (($hostip = shift @freehostips)) {
+                        if (!defined($prehostips{$hostip})) { last;}
+                    }
+                    unless ($hostip) {
+                        $hostip = "--no free--";
+                    }
+                }
+
+                if (defined ($prebmcip->{$_."-bmc"}->[0]) && $prebmcip->{$_."-bmc"}->[0]->{'ip'}) {
+                    $bmcip = $prebmcip->{$_."-bmc"}->[0]->{'ip'};
+                } else {
+                    while (($bmcip = shift @freebmcips)) {
+                        if (!defined($prebmcips{$bmcip})) { last;}
+                    }
+                    unless ($bmcip) {
+                        $bmcip = "--no free--";
+                    }
+                }
+                
+                push @{$vrsp->{data}}, sprintf("%-20s%-20s%-20s", $_, $hostip, $bmcip);
+                $index++;
+            }
+            xCAT::MsgUtils->message("I", $vrsp, $callback);
+        }
+    }
 }
 
 
@@ -434,10 +508,9 @@ sub nodediscoverstop {
             xCAT::MsgUtils->message("E", $rsp, $cb, 1);
         }
 
-        my $usageinfo = "nodediscoverstop: Stop the sequential discovery.
+        my $usageinfo = "nodediscoverstop: Stop the running discovery: Sequential and Profile.
 Usage: 
-\tnodediscoverstop [-h|--help] [-v | --version]    
-    ";
+  nodediscoverstop [-h|--help|-v|--version]    ";
         $rsp = ();
         push @{$rsp->{data}}, $usageinfo;
         xCAT::MsgUtils->message("I", $rsp, $cb);
@@ -456,12 +529,11 @@ Usage:
     }
 
     if ($help) {
-        #$usage->($callback);
-        # just return to make profile discovery to handle it
+        $usage->($callback);
         return;
     }
     if ($ver) {
-        # just return to make profile discovery to handle it
+        &displayver($callback);
         return;
     }
 
@@ -506,16 +578,9 @@ Usage:
     xCAT::MsgUtils->message("I", $rsp, $callback);
 
     if ($auto) {
-        xCAT::MsgUtils->message("S", "Sequential Discovery: Auto Stopped. Run \'nodediscoverls -t seq\' to display the discovery result.");
+        xCAT::MsgUtils->message("S", "Sequential Discovery: Auto Stopped because all $auto in the specified range have been assigned to discovered nodes. Run \'nodediscoverls -t seq\' to display the discovery result.");
     } else {
-        xCAT::MsgUtils->message("S", "Sequential Discovery: Stop");
-    }
-
-    # Clean the entries which discovery method is 'sequential' from the discoverdata table
-    unless ($auto) {
-        my $distab = xCAT::Table->new("discoverydata");
-        $distab->delEntries({method => 'sequential'});
-        $distab->commit();
+        xCAT::MsgUtils->message("S", "Sequential Discovery: Stoped.");
     }
 
     # Remove the site.__SEQDiscover
@@ -543,11 +608,10 @@ sub nodediscoverls {
 
         my $usageinfo = "nodediscoverls: list the discovered nodes.
 Usage: 
-\tnodediscoverls
-\tnodediscoverls [-h|--help] 
-\tnodediscoverls [-v | --version]    
-\tnodediscoverls [-t seq|profile|switch|blade|undef|all] [-l] 
-\tnodediscoverls [-u uuid] [-l]
+    nodediscoverls
+    nodediscoverls [-h|--help|-v|--version] 
+    nodediscoverls [-t seq|profile|switch|blade|undef|all] [-l] 
+    nodediscoverls [-u uuid] [-l]
     ";
         $rsp = ();
         push @{$rsp->{data}}, $usageinfo;
@@ -574,7 +638,7 @@ Usage:
         return;
     }
     if ($ver) {
-        # just return to make profile discovery to handle it
+        &displayver($callback);
         return;
     }
 
@@ -680,10 +744,9 @@ sub nodediscoverstatus {
             xCAT::MsgUtils->message("E", $rsp, $cb, 1);
         }
 
-        my $usageinfo = "nodediscoverstatus: Display the discovered status.
+        my $usageinfo = "nodediscoverstatus: Display the discovery process status.
 Usage: 
-\tnodediscoverstatus [-h|--help] [-v | --version]    
-    ";
+    nodediscoverstatus [-h|--help|-v|--version]     ";
         $rsp = ();
         push @{$rsp->{data}}, $usageinfo;
         xCAT::MsgUtils->message("I", $rsp, $cb);
@@ -702,12 +765,11 @@ Usage:
     }
 
     if ($help) {
-        #$usage->($callback);
-        # just return to make profile discovery to handle it
+        $usage->($callback);
         return;
     }
     if ($ver) {
-        # just return to make profile discovery to handle it
+        &displayver($callback);
         return;
     }
 
@@ -813,9 +875,12 @@ sub getfreenodes () {
 =cut
 sub getfreeips () {
     my $iprange = shift;
+    my $freenode = shift;
+    my $type = shift;   # type: host, bmc
     my $all = shift;
 
     my @freeips;
+    my %predefips;   # to have the ip which assigned to a node which in $freenode
 
     # get all used ip from hosts table
     my $hoststb = xCAT::Table->new('hosts');
@@ -823,10 +888,41 @@ sub getfreeips () {
         xCAT::MsgUtils->message("S", "Discovery Error: Could not open table: hosts.");
     }
 
-    my @hostsent = $hoststb->getAllAttribs('ip');
+    if ($type eq "bmc") {
+
+        # Find the bmc ip which defined in the ipmi.bmc as an ip address instead of name as 'node-bmc'
+        #my $ipmitab = xCAT::Table->new('ipmi');
+        #if ($ipmitab) {
+        #    my $ipmient = $ipmitab->getNodeAttribs($freenode, ['bmc']);
+        #    foreach (@$freenode) {
+        #        if (defined($ipmient->{$_}) && ($ipmient->{$_}->{'bmc'} =~ /\d+\.\d+\.\d+\.\d+/)) {
+        #            $predefips{$ipmient->{$_}->{'bmc'}} = 1;
+        #        }
+        #    }
+        #}
+        
+        # replace the $freenode with the bmc name as 'node-bmc' format
+        my @freebmc;
+        foreach (@$freenode) {
+            push @freebmc, $_.'-bmc';
+        }
+        $freenode = \@freebmc;
+    }
+
+    my $freenodeent = $hoststb->getNodesAttribs($freenode, ['ip']);
+
+    foreach (@$freenode) {
+        if (defined($freenodeent->{$_}->[0]) && $freenodeent->{$_}->[0]->{'ip'}){
+            $predefips{$freenodeent->{$_}->[0]->{'ip'}} = 1;
+        }
+    }
+
+    my @hostsent = $hoststb->getAllAttribs('node', 'ip');
     my %usedips = ();
     foreach my $host (@hostsent) {
-        $usedips{$host->{'ip'}} = 1;
+        if (defined ($host->{'ip'}) && !$predefips{$host->{'ip'}}) {
+            $usedips{$host->{'ip'}} = 1;
+        }
     }
 
     if ($iprange =~ /(\d+\.\d+\.\d+\.\d+)-(\d+\.\d+\.\d+\.\d+)/) {
@@ -842,7 +938,7 @@ sub getfreeips () {
             }
             $startnum++;
         }
-    } else {
+    } elsif ($iprange) {
         # use the noderange to expand the range
         my @ips = noderange($iprange, 0);
         foreach my $ip (@ips) {
@@ -851,6 +947,8 @@ sub getfreeips () {
                 unless ($all) {last;}
             }
         }
+    } else {
+        # only find the ip which mapping to the node
     }
 
     unless (@freeips) {
