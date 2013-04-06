@@ -68,7 +68,7 @@ sub handled_commands {
         nodediscoverstart => 'profilednodes',
         nodediscoverstop => 'profilednodes',
         nodediscoverls => 'profilednodes',
-        nodediscoverstatus => 'profilednodes',
+        #nodediscoverstatus => 'profilednodes',
         nodeaddunmged => 'profilednodes',
         nodechmac => 'profilednodes',
         findme => 'profilednodes',
@@ -193,10 +193,9 @@ sub validate_args{
     my $enabledparamsref = shift;
     my $mandatoryparamsref = shift;
 
-    my $help;
-    my $ver;
-
-    my ($type, $uuid, $long);
+    # The -h -v are handled by seqdiscovery.pm
+    # -t -u -l only works for nodediscoverls, and them only handled by seqdiscovery.pm
+    my ($help, $ver, $type, $uuid, $long);
 
     @ARGV = ();
     if($args) {
@@ -204,7 +203,6 @@ sub validate_args{
     }
     GetOptions(
         'h|help' => \$help,
-        'V|verbose' => \$::VERBOSE,
         'v|version' => \$ver,
         't=s' => \$type,
         'u=s' => \$uuid,
@@ -212,20 +210,18 @@ sub validate_args{
     );
 
     if($help){
-        setrsp_infostr($helpmsg);
+        # just return to make sequential discovery to handle it
         return 0;
     }
 
     if($ver){
-        my $version = xCAT::Utils->Version();
-        my $versionmsg = "$command : $version";
-        setrsp_infostr($versionmsg);
+        # just return to make sequential discovery to handle it
         return 0;
     }
 
     if ($type || $uuid || $long) {
         # these args for general discovery, return directly
-        return;
+        return 0;
     }
     
     my $parseret = parse_args();
@@ -234,6 +230,39 @@ sub validate_args{
         return 0;
     }
 
+    # If specified the nodrange= arg, we asume that the sequential discovery will be started
+    if (defined $args_dict{'noderange'}) {
+        # This is a sequential discovery request, just return to make sequential to handle it
+        return 0;
+    }
+
+    # Mandatory arguments.
+    my @mandatoryparams = ();
+    if ($mandatoryparamsref){
+        @mandatoryparams = @$mandatoryparamsref;
+    }
+    my $profiledis;
+    foreach (@mandatoryparams){
+        if (exists($args_dict{$_})) {
+            # this is for profile discovery
+            $profiledis = 1;
+            last;
+        }
+    }
+    unless ($profiledis) {
+        # Not see the nodrange and 'networkprofile', 'imageprofile', 'hostnameformat'
+        # return to make sequential discovery to display help message
+        return 0;
+    }
+    
+    foreach (@mandatoryparams){
+        if(! exists($args_dict{$_})){
+            setrsp_errormsg("For profile discovery, the $_ option must be specified.");
+            setrsp_infostr($helpmsg);
+            return 0;
+        }
+    }
+    
     # Make sure the specified parameters are valid ones.
     my @enabledparams = ();
     if($enabledparamsref){
@@ -242,29 +271,13 @@ sub validate_args{
     
     foreach my $argname (keys %args_dict){
         if (! grep{ $_ eq $argname} @enabledparams){
-            if (defined $args_dict{'noderange'}) {
-                # This is a sequential discovery request, just return to make sequential to handle it
-                return 0;
-            } else {
             setrsp_errormsg("Illegal attribute $argname specified.");
             setrsp_infostr($helpmsg);
             return 0;
-            }
         }
     }
 
-    # Mandatory arguments.
-    my @mandatoryparams = ();
-    if ($mandatoryparamsref){
-        @mandatoryparams = @$mandatoryparamsref;
-    }
-    foreach (@mandatoryparams){
-        if(! exists($args_dict{$_})){
-            setrsp_errormsg("For profile discovery, the $_ option must be specified.");
-            setrsp_infostr($helpmsg);
-            return 0;
-        }
-    }
+
 
     return 1;
 }
@@ -1211,7 +1224,8 @@ Usage:
 
 =head3  nodediscoverstatus
 
-    Description : Detect whether Profiled nodes discovery is running or not.
+    Description :  This function is obsoleted that the status will be displayed by sequential discovery
+                       Detect whether Profiled nodes discovery is running or not.
     Arguments   : N/A
 
 =cut
