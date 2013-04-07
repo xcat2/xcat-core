@@ -213,11 +213,14 @@ ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/cfghost
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/cfgve
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/lsve
 ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/rmosdistro
+ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/lskit
 ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/addkit
 ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/rmkit
+ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/lskitcomp
 ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/addkitcomp
 ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/rmkitcomp
 ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/chkkitcomp
+ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/lskitdeployparam
 ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/lskmodules
 ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/nodeimport
 ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/nodediscoverstart
