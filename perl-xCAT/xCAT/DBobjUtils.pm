@@ -2736,8 +2736,13 @@ sub collapsenicsattr()
         {       
            if ($1 && $2)
            {       
-               # $nicattrs{nicips}{eth0} = "1.1.1.1|1.2.1.1"
-               $nicattrs{$1}{$2} = $nodeattrhash->{$nodeattr}; 
+               # chdef <noderange> nicips.eth2= to remove the definition for eth2
+               # in this case, the $nodeattrhash->{'nicips.eth0'} is blank
+               if ($nodeattrhash->{$nodeattr})
+               {
+                   # $nicattrs{nicips}{eth0} = "1.1.1.1|1.2.1.1"
+                   $nicattrs{$1}{$2} = $nodeattrhash->{$nodeattr}; 
+               }
 
                # remove nicips.eth0 from the %::FILEATTRS
                delete $nodeattrhash->{$nodeattr};
