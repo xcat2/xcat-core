@@ -804,7 +804,7 @@ sub  update_tables_with_mgt_image
         #get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
         $tmpf =~ /^([^\.]*)\..*$/;
         $tmpf = $1;
-        if ( $tmpf = "compute" ) {
+        if ( $tmpf eq "compute" ) {
             $profiles{$tmpf}=1;
         }
     }
