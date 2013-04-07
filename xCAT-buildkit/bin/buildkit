@@ -333,12 +333,24 @@ if ($::HELP)
     exit(0);
 }
 
+my $debianflag = 0;
+my $tempstring = xCAT::BuildKitUtils->osver();
+if ( $tempstring =~ /debian/ || $tempstring =~ /ubuntu/ ){
+    $debianflag = 1;
+}
+
 # display the version statement if -v or --version is specified
 if ($::VERSION)
 {
-    if ( system("rpm -q --qf \"%{NAME}:  %{VERSION}-%{RELEASE} \n\" xCAT-buildkit") ) {
+    my $versioncmd = "rpm -q --qf \"%{NAME}:  %{VERSION}-%{RELEASE} \n\" xCAT-buildkit";
+    my $message = "Error quering xCAT-buildkit rpm.  Version info is not available. \n";
+    if ( $debianflag ){
+        $versioncmd = "dpkg-query --show -f='\${PackageSpec}: \${Version}\n' xcat-buildkit";
+        $message = "Error quering xcat-buildkit pakcage. Version info is not available. \n";
+    }
+    if ( system($versioncmd) ) {
         # non-zero return from system call
-        print "Error quering xCAT-buildkit rpm.  Version info is not available. \n";
+        print $message;
         exit 1;
      }        
     exit 0;
@@ -348,12 +360,6 @@ my $arg=shift(@ARGV);
 if ( ! $arg ) {
    &usage;
    exit (0);
-}
-
-my $debianflag = 0;
-my $tempstring = xCAT::BuildKitUtils->osver();
-if ( $tempstring =~ /debian/ || $tempstring =~ /ubuntu/ ){
-    $debianflag = 1;
 }
 
 while ($arg) {
