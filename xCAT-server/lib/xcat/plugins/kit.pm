@@ -36,11 +36,14 @@ Return list of commands handled by this plugin
 sub handled_commands
 {
     return {
+            lskit  => "kit",
             addkit => "kit",
             rmkit => "kit",
+            lskitcomp  => "kit",
             addkitcomp => "kit",
             rmkitcomp => "kit",
             chkkitcomp => "kit",
+            lskitdeployparam  => "kit",
 	   };
 }
 
@@ -59,6 +62,8 @@ sub process_request
     my $request  = shift;
     my $callback = shift;
     my $request_command = shift;
+    $::CALLBACK = $callback;
+    $::args     = $request->{arg};
 
     my $lock;
     my $locked = xCAT::Utils->is_locked("kit", 1);
@@ -81,16 +86,22 @@ sub process_request
     my $command  = $request->{command}->[0];
     my $rc;
 
-    if ($command eq "addkit"){
+    if ($command eq "lskit"){
+        $rc = lskit($request, $callback, $request_command);
+    } elsif ($command eq "addkit"){
         $rc = addkit($request, $callback, $request_command);
     } elsif ($command eq "rmkit"){
         $rc = rmkit($request, $callback, $request_command);
+    } elsif ($command eq "lskitcomp"){
+        $rc = lskitcomp($request, $callback, $request_command);
     } elsif ($command eq "addkitcomp"){
         $rc = addkitcomp($request, $callback, $request_command);
     } elsif ($command eq "rmkitcomp"){
         $rc = rmkitcomp($request, $callback, $request_command);
     } elsif ($command eq "chkkitcomp"){
         $rc = chkkitcomp($request, $callback, $request_command);
+    } elsif ($command eq "lskitdeployparam"){
+        $rc = lskitdeployparam($request, $callback, $request_command);
     } else{
         $callback->({error=>["Error: $command not found in this module."],errorcode=>[1]});
         xCAT::Utils->release_lock($lock, 1);
@@ -2851,6 +2862,1268 @@ sub chkkitcomp
     xCAT::MsgUtils->message( "I", \%rsp, $callback );
 
     return;
+}
+
+#----------------------------------------------------------------------------
+
+=head3  lskit_usage
+
+        Display the lskit usage
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub lskit_usage {
+    my $rsp;
+    push @{ $rsp->{data} },
+      "\nUsage: lskit - List info for one or more kits.\n";
+    push @{ $rsp->{data} },
+      "  lskit [-V|--verbose] [-x|--xml|--XML] [-K|--kitattr kitattr_names] [-R|--repoattr repoattr_names] [-C|--compattr compattr_names] [kit_names]\n ";
+    push @{ $rsp->{data} }, "  lskit [-h|--help|-?] \n";
+    push @{ $rsp->{data} },
+      "  lskit [-v|--version]  \n ";
+    xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+    return 0;
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3  lskitcomp_usage
+
+        Display the lskitcomp usage
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub lskitcomp_usage {
+    my $rsp;
+    push @{ $rsp->{data} },
+      "\nUsage: lskitcomp - List info for one or more kit components.\n";
+    push @{ $rsp->{data} },
+      "  lskitcomp [-V|--verbose] [-x|--xml|--XML] [-C|--compattr compattr_names] [-O|--osdistro os_distro] [-S|--serverrole server_role] [kitcomp_names]\n ";
+    push @{ $rsp->{data} }, "  lskitcomp [-h|--help|-?] \n";
+    push @{ $rsp->{data} },
+      "  lskitcomp [-v|--version]  \n ";
+    xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+    return 0;
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3  lskitdeployparam_usage
+
+        Display the lskitdeployparam usage
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub lskitdeployparam_usage {
+    my $rsp;
+    push @{ $rsp->{data} },
+      "\nUsage: lskitdeployparam - List the kit deployment parameters for either one or more kits, or one or more kit components.\n";
+    push @{ $rsp->{data} },
+      "  lskitdeployparam [-V|--verbose] [-x|--xml|--XML] [-k|--kitname kit_names] [-c|--compname comp_names]\n ";
+    push @{ $rsp->{data} }, "  lskitdeployparam [-h|--help|-?] \n";
+    push @{ $rsp->{data} },
+      "  lskitdeployparam [-v|--version]  \n ";
+    xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+    return 0;
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3  create_version_response
+
+        Create a response containing the command name and version
+=cut
+
+#-----------------------------------------------------------------------------
+sub create_version_response {
+    my $rsp;
+    my $version = xCAT::Utils->Version();
+    push @{ $rsp->{data} }, "$::command - $version\n";
+    xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3  create_error_response
+
+        Create a response containing a single error message
+        Arguments:  error message
+=cut
+
+#-----------------------------------------------------------------------------
+sub create_error_response {
+    my $error_msg = shift;
+    my $rsp;
+    push @{ $rsp->{data} }, $error_msg;
+    xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3   lskit_processargs
+
+        Process the lskit command line
+        Returns:
+                0 - OK
+                1 - just print version
+                2 - just print help
+                3 - error
+=cut
+
+#-----------------------------------------------------------------------------
+sub lskit_processargs {
+
+    if ( defined( @{$::args} ) ) {
+        @ARGV = @{$::args};
+    }
+
+    # parse the options
+    # options can be bundled up like -vV, flag unsupported options
+    Getopt::Long::Configure( "bundling", "no_ignore_case", "no_pass_through" );
+    my $getopt_success = Getopt::Long::GetOptions(
+                              'help|h|?'  => \$::opt_h,
+                              'kitattr|K=s' => \$::opt_K,
+                              'repoattr|R=s' => \$::opt_R,
+                              'compattr|C=s' => \$::opt_C,
+                              'verbose|V' => \$::opt_V,
+                              'version|v' => \$::opt_v,
+                              'xml|XML|x' => \$::opt_x,
+    );
+
+    if (!$getopt_success) {
+        return 3;
+    }
+
+    # Option -h for Help
+    if ( defined($::opt_h) ) {
+        return 2;
+    }
+
+    # Option -v for version
+    if ( defined($::opt_v) ) {
+        create_version_response();
+        return 1;    # no usage - just exit
+    }
+
+    # Option -V for verbose output
+    if ( defined($::opt_V) ) {
+        $::VERBOSE = 1;
+    }
+
+    # Option -K for kit attributes
+    if ( defined($::opt_K) ) {
+        $::kitattrs = split_comma_delim_str($::opt_K);
+        ensure_kitname_attr_in_list($::kitattrs);
+        if (check_attr_names_exist('kit', $::kitattrs) != 0) {
+            return 3;
+        } 
+    }
+
+    # Option -R for kit repo attributes
+    if ( defined($::opt_R) ) {
+        $::kitrepoattrs = split_comma_delim_str($::opt_R);
+        ensure_kitname_attr_in_list($::kitrepoattrs);
+        if (check_attr_names_exist('kitrepo', $::kitrepoattrs) != 0) {
+            return 3;
+        }
+    }
+
+    # Option -C for kit component attributes
+    if ( defined($::opt_C)) {
+        $::kitcompattrs = split_comma_delim_str($::opt_C);
+        ensure_kitname_attr_in_list($::kitcompattrs);
+        if (check_attr_names_exist('kitcomponent', $::kitcompattrs) != 0) {
+            return 3;
+        }
+    }
+
+    # Kit names
+    my $kitnames_str = shift(@ARGV);
+    if ( defined($kitnames_str) ) {
+        my @tmp = split(/,/, $kitnames_str);
+        $::kitnames = \@tmp;
+        if (check_attr_values_exist('kit', 'kitname', 'kit names', $::kitnames) != 0) {
+            return 3;
+        }
+    }
+
+    # Other attributes are not allowed
+    my $more_input = shift(@ARGV);
+    if ( defined($more_input) ) {
+        create_error_response("Invalid input: $more_input \n");
+        return 3;
+    } 
+
+    return 0;
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3   lskitcomp_processargs
+
+        Process the lskitcomp command line
+        Returns:
+                0 - OK
+                1 - just print version
+                2 - just print help
+                3 - error
+=cut
+
+#-----------------------------------------------------------------------------
+sub lskitcomp_processargs {
+
+    if ( defined( @{$::args} ) ) {
+        @ARGV = @{$::args};
+    }
+
+    # parse the options
+    # options can be bundled up like -vV, flag unsupported options
+    Getopt::Long::Configure( "bundling", "no_ignore_case", "no_pass_through" );
+    my $getopt_success = Getopt::Long::GetOptions(
+                              'help|h|?'  => \$::opt_h,
+                              'compattr|C=s' => \$::opt_C,
+                              'osdistro|O=s' => \$::opt_O,
+                              'serverrole|S=s' => \$::opt_S,
+                              'verbose|V' => \$::opt_V,
+                              'version|v' => \$::opt_v,
+                              'xml|XML|x' => \$::opt_x,
+    );
+
+    if (!$getopt_success) {
+        return 3;
+    }
+
+    # Option -h for Help
+    if ( defined($::opt_h) ) {
+        return 2;
+    }
+
+    # Option -v for version
+    if ( defined($::opt_v) ) {
+        create_version_response();
+        return 1;    # no usage - just exit
+    }
+
+    # Option -V for verbose output
+    if ( defined($::opt_V) ) {
+        $::VERBOSE = 1;
+    }
+
+    # Option -C for kit component attributes
+    if ( defined($::opt_C) ) {
+        $::kitcompattrs = split_comma_delim_str($::opt_C);
+        ensure_kitname_attr_in_list($::kitcompattrs);
+        if (check_attr_names_exist('kitcomponent', $::kitcompattrs) != 0) {
+            return 3;
+        }
+    }
+
+    # Option -O for osdistro name
+    $::osdistroname = $::opt_O;
+    if ( defined($::osdistroname) ) {
+        if (check_attr_values_exist('osdistro', 'osdistroname', 'os distro', [$::osdistroname]) != 0) {
+            return 3;
+        }
+    }
+
+    # Option -S for server role
+    $::serverrole = $::opt_S;
+
+    # Kit component names
+    my $kitcompnames_str = shift(@ARGV);
+    if ( defined($kitcompnames_str) ) {
+        my @tmp = split(/,/, $kitcompnames_str);
+        $::kitcompnames = \@tmp;
+        if (check_attr_values_exist('kitcomponent', 'kitcompname', 'kit component names', $::kitcompnames) != 0) {
+            return 3;
+        }
+    }
+
+    # Other attributes are not allowed
+    my $more_input = shift(@ARGV);
+    if ( defined($more_input) ) {
+        create_error_response("Invalid input: $more_input \n");
+        return 3;
+    } 
+
+    return 0;
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3   lskitdeployparam_processargs
+
+        Process the lskitdeployparam command line
+        Returns:
+                0 - OK
+                1 - just print version
+                2 - just print help
+                3 - error
+=cut
+
+#-----------------------------------------------------------------------------
+sub lskitdeployparam_processargs {
+
+    if ( defined( @{$::args} ) ) {
+        @ARGV = @{$::args};
+    }
+
+    # parse the options
+    # options can be bundled up like -vV, flag unsupported options
+    Getopt::Long::Configure( "bundling", "no_ignore_case", "no_pass_through" );
+    my $getopt_success = Getopt::Long::GetOptions(
+                              'help|h|?'  => \$::opt_h,
+                              'kitname|k=s' => \$::opt_k,
+                              'compname|c=s' => \$::opt_c,
+                              'verbose|V' => \$::opt_V,
+                              'version|v' => \$::opt_v,
+                              'xml|XML|x' => \$::opt_x,
+    );
+
+    if (!$getopt_success) {
+        return 3;
+    }
+
+    # Option -h for Help
+    if ( defined($::opt_h) ) {
+        return 2;
+    }
+
+    # Option -v for version
+    if ( defined($::opt_v) ) {
+        create_version_response();
+        return 1;    # no usage - just exit
+    }
+
+    # Option -V for verbose output
+    if ( defined($::opt_V) ) {
+        $::VERBOSE = 1;
+    }
+
+    # Ensure -k and -c option not used together
+    if (defined($::opt_k) && defined($::opt_c)) {
+        create_error_response("The -k and -c options cannot be used together.");
+        return 3;
+    }
+
+    # Ensure -k or -c option are specified
+    if (!defined($::opt_k) && !defined($::opt_c)) {
+        create_error_response("The -k or -c option must be specified.");
+        return 3;
+    }
+
+    # Option -k for kit names
+    if ( defined($::opt_k) ) {
+        $::kitnames = split_comma_delim_str($::opt_k);
+        if (check_attr_values_exist('kit', 'kitname', 'kit names', $::kitnames) != 0) {
+            return 3;
+        }
+    }
+
+    # Option -c for kitocmponent names
+    if ( defined($::opt_c) ) {
+        $::kitcompnames = split_comma_delim_str($::opt_c);
+        if (check_attr_values_exist('kitcomponent', 'kitcompname', 'kit component names', $::kitcompnames) != 0) {
+            return 3;
+        }
+    }
+
+    # Other attributes are not allowed
+    my $more_input = shift(@ARGV);
+    if ( defined($more_input) ) {
+        create_error_response("Invalid input: $more_input \n");
+        return 3;
+    } 
+
+    return 0;
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3  split_comma_delim_str
+
+        Split comma-delimited list of strings into an array.
+
+        Arguments: comma-delimited string
+        Returns:   Returns list of strings (ref)
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub split_comma_delim_str {
+    my $input_str = shift;
+
+    my @result = split(/,/, $input_str);
+    return \@result;
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3  ensure_kitname_attr_in_list
+
+        Checks if 'kitname' attribute is in specified attribute list.
+        If not, then add it.
+
+        Arguments: list of attribute names (ref)
+=cut
+
+#-----------------------------------------------------------------------------
+sub ensure_kitname_attr_in_list {
+    my $attrs = shift;
+
+    if (defined($attrs)) {
+        if (! grep(/^kitname$/, @$attrs)) {
+            push(@$attrs, "kitname");
+        }
+    }
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3  check_attr_names_exist
+
+        Check if list of DB attribute names exist in a table 
+        Arguments:  a table name
+                    a list of attribute names to check (ref)
+        Returns:
+                0 - OK
+                1 - error
+=cut
+
+#-----------------------------------------------------------------------------
+sub check_attr_names_exist {
+
+    my $tablename = shift;
+    my $attrs = shift;
+    my @badattrs = ();
+
+    if (defined($attrs)) {
+        my $schema = xCAT::Table->getTableSchema($tablename);
+        my @cols = @{$schema->{cols}};
+        foreach my $attr (@{$attrs}) {
+            if (! grep {$_ eq $attr} @cols ) {
+                push(@badattrs, $attr);
+            }
+        }
+    }
+
+    if (scalar @badattrs > 0) {
+        my $error = sprintf("The following %s attributes are not valid: %s.", 
+            $tablename, join(",",@badattrs));
+        create_error_response($error);
+        return 1;
+    }
+    return 0;
+}
+
+#----------------------------------------------------------------------------
+
+=head3  check_attr_values_exist
+
+        Check if a list of DB attribute values exist
+        Arguments:  
+                table name
+                table attribute
+                table attribute desc (e.g. kit names), this string is added to error message
+                list of values to check (ref)
+        Returns:
+                0 - OK
+                1 - error
+=cut
+
+#-----------------------------------------------------------------------------
+sub check_attr_values_exist {
+
+    my $tablename = shift;
+    my $tableattr = shift;
+    my $tableattr_desc = shift;
+    my $values_to_check = shift;
+    my @badvalues = ();
+
+    my $filter_stmt = db_build_filter_stmt({$tableattr => $values_to_check});
+    my $rows = db_get_table_rows($tablename, [$tableattr], $filter_stmt);
+
+    my @values_in_DB = map {$_->{$tableattr}} @$rows;
+    foreach my $value_to_check (@{$values_to_check}) {
+        if (! grep {$_ eq $value_to_check} @values_in_DB ) {
+            push(@badvalues, $value_to_check);
+        }
+    }
+
+    if (scalar @badvalues > 0) {
+        my $error;
+        if ($tableattr_desc =~ /s$/) {
+            $error = sprintf("The following %s are not valid: %s.", $tableattr_desc, join(",",@badvalues));
+        } else {
+            $error = sprintf("The following %s is not valid: %s.", $tableattr_desc, join(",",@badvalues));
+        }
+        create_error_response($error);
+        return 1;
+    }
+
+    return 0;
+}
+
+
+
+#----------------------------------------------------------------------------
+
+=head3  lskit
+
+        Support for listing kits
+        Returns:
+                0 - OK
+                1 - help
+                2 - error
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub lskit {
+
+    my $rc = 0;
+
+    # process the command line
+    # 0=success, 1=version, 2=help, 3=error
+    $rc = lskit_processargs(@_);
+    if ( $rc != 0 ) {
+       if ( $rc != 1) {
+           lskit_usage(@_);
+       } 
+       return ( $rc - 1 );
+    }
+
+    # Prepare the hash tables to pass to the output routines
+    my $kit_hash = get_kit_hash($::kitnames, $::kitattrs);
+    my $kitrepo_hash = get_kitrepo_hash($::kitnames, $::kitrepoattrs);
+    my $kitcomp_hash = get_kitcomp_hash($::kitnames, $::kitcompattrs);
+
+    # Now display the output
+    my @kitnames = keys(%$kit_hash);
+    if (scalar @kitnames == 0) {
+        my $rsp = {};
+        push @{ $rsp->{data} }, "No kits were found.";
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        return 0;
+    }
+
+    if (defined($::opt_x)) {
+        create_lskit_xml_response($kit_hash, $kitrepo_hash, $kitcomp_hash);
+    } else {
+        create_lskit_stanza_response($kit_hash, $kitrepo_hash, $kitcomp_hash);
+    }
+    return 0;
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3  lskitcomp
+
+        Support for listing kit components
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - help
+                2 - error
+=cut
+
+#-----------------------------------------------------------------------------
+
+
+sub lskitcomp {
+
+    my $rc = 0;
+
+    # process the command line
+    # 0=success, 1=version, 2=help, 3=error
+    $rc = lskitcomp_processargs(@_);
+    if ( $rc != 0 ) {
+       if ( $rc != 1) {
+           lskitcomp_usage(@_);
+       } 
+       return ( $rc - 1 );
+    }
+
+    # Get the list of kitcomponents to display
+
+    ## Build the initial kitcomponent list, filtering the kitcomponents whose:
+    ##    - name matches one of the user-specified names
+    ##    - AND, reponame refers to a repo that is compatible with the user-specified osdistro
+
+    my $compat_kitreponames = undef;
+    if (defined($::osdistroname)) {
+        $compat_kitreponames = get_compat_kitreponames($::osdistroname);
+    }
+    my $kitcomps = get_kitcomp_list($::kitcompnames, $compat_kitreponames, $::kitcompattrs);
+
+
+    ## Filter the kitcomponent list by user-specified server role
+    if (defined($::serverrole)) {
+        my @tmplist = ();
+        foreach my $kitcomp (@$kitcomps) {
+            if (defined($kitcomp->{serverroles})) {
+                my @serverroles = split(/,/, $kitcomp->{serverroles});
+                if (grep {$_ eq $::serverrole } @serverroles) {
+                    push(@tmplist, $kitcomp);
+                }
+            } else {
+                # If kit component doesn't have server roles, it means
+                # it supports any server role.
+                push(@tmplist, $kitcomp);
+            }
+        }
+        @$kitcomps = @tmplist;
+    }
+    
+
+    # Check if kit component list is empty
+
+    if (scalar(@$kitcomps) == 0) {
+        my $rsp = {};
+        push @{ $rsp->{data} }, "No kit components were found.";
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        return 0;
+    }
+
+
+    # Prepare the hash tables to pass to the output routines
+
+    ## Kit hash table
+    my @kitnames = map {$_->{kitname}} @$kitcomps;
+    my $kit_hash = get_kit_hash(\@kitnames, ['kitname']);
+    
+    ## Kit component hash table
+    my $kitcomp_hash = create_hash_from_table_rows($kitcomps, 'kitname');
+
+
+    ## Now display the output
+
+    if (defined($::opt_x)) {
+        create_lskit_xml_response($kit_hash, {}, $kitcomp_hash);
+    } else {
+        create_lskit_stanza_response($kit_hash, {}, $kitcomp_hash);
+    }
+    return 0;
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3  lskitdeployparam
+
+        Support for listing kit deployment parameters
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - help
+                2 - error
+=cut
+
+#-----------------------------------------------------------------------------
+
+
+sub lskitdeployparam {
+
+    my $rc = 0;
+
+    # process the command line
+    # 0=success, 1=version, 2=help, 3=error
+    $rc = lskitdeployparam_processargs(@_);
+    if ( $rc != 0 ) {
+       if ( $rc != 1) {
+           lskitdeployparam_usage(@_);
+       } 
+       return ( $rc - 1 );
+    }
+
+    # Get the kit deployment parameter files to read
+
+    ## First get the list of kits
+    my $kitnames = undef;
+    if (defined($::kitnames)) {
+        $kitnames = $::kitnames;
+    } elsif (defined $::kitcompnames) {
+        my $kitcomps = get_kitcomp_list($::kitcompnames, undef, ['kitname','kitcompname']);
+        my @tmp = map {$_->{kitname}} @$kitcomps;
+        $kitnames = \@tmp;
+    } else {
+        # unreachable code
+    }
+
+    ## Then get the kit deployment parameter file for each kit
+    my $kits = get_kit_list($kitnames, ['kitname','kitdir','kitdeployparams']);
+
+    # Read the kit deployment parameter files. The format is:
+    #        #ENV:KIT_KIT1_PARAM1=value11#
+    #        #ENV:KIT_KIT1_PARAM2=value12#
+    #        #ENV:KIT_KIT2_PARAM1=value21#
+    my $deployparam_hash = {};
+    foreach my $kit (@$kits) {
+        my $deployparam_file = $kit->{kitdir}."/other_files/".$kit->{kitdeployparams};
+
+        if (defined($deployparam_file)) {
+            open(my $fh, "<", $deployparam_file) || die sprintf("Failed to open file %s because: %s", $deployparam_file, $!);
+            
+            while (<$fh>) {
+                chomp $_;
+                if ($_ =~ /^#ENV:.+=.+#$/) {
+                    my $tmp = $_;
+                    $tmp =~ s/^#ENV://;
+                    $tmp =~ s/#$//;
+                    (my $name, my $value) = split(/=/, $tmp);
+                    $deployparam_hash->{$name} = $value;
+                }
+            }
+            close($fh);
+        }
+    }
+
+    # Now display the output
+
+    my $rsp = {};
+
+    if (defined($::opt_x)) {
+        # Output XML format
+        foreach my $deployparam_key (sort(keys(%$deployparam_hash))) {
+            my $output_hash = {"kitdeployparam" => {"name" => "", "value" => ""}};
+            $output_hash->{kitdeployparam}->{name} = $deployparam_key;
+            $output_hash->{kitdeployparam}->{value} = $deployparam_hash->{$deployparam_key};
+            push @{ $rsp->{data} }, $output_hash;
+        }
+    } else {
+        # Output Stanza format
+        foreach my $deployparam_key (sort(keys(%$deployparam_hash))) {
+            my $output = "kitdeployparam:\n";
+            $output .= sprintf("    name=%s\n", $deployparam_key);
+            $output .= sprintf("    value=%s\n", $deployparam_hash->{$deployparam_key});
+            push @{ $rsp->{data} }, $output;
+        }
+    }
+
+    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+
+    return 0
+}
+
+
+1;
+#----------------------------------------------------------------------------
+
+=head3  get_kit_hash
+
+        Returns a hash table containing kit entries indexed by kit name.
+        Arguments: 
+            list of kit names (ref)
+            list of kit attribute names (ref)
+        Returns: hash table (ref)
+           { kitname1 => [{kitname1,basename1,...}],
+             kitname2 => [{kitname2,basename2,...}],
+             ...
+           }
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub get_kit_hash {
+
+    my $tablename = 'kit';
+    my $kitnames = shift;
+    my $kitattrs = shift;
+
+    my $filter_hash = {};
+    if (defined($kitnames)) {
+        $filter_hash->{kitname} = $kitnames;
+    }
+
+    my $filter_stmt = undef;
+    if (scalar(keys(%$filter_hash)) > 0) {
+        $filter_stmt = db_build_filter_stmt($filter_hash);
+    }
+
+    my $rows = db_get_table_rows($tablename, $kitattrs, $filter_stmt);
+
+    return create_hash_from_table_rows($rows, 'kitname');
+}
+
+#----------------------------------------------------------------------------
+
+=head3  get_kitrepo_hash
+
+        Returns a hash table containing lists of kit repository entries 
+        indexed by kit name.
+        Arguments: 
+            list of kit names (ref)
+            list of kit repo attribute names (ref)
+        Returns: hash table (ref)
+           { kitname1 => [{kitrepo11,...},{kitrepo12,...}],
+             kitname2 => [{kitrepo21,...},{kitrepo22,...}],
+             ...
+           }
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub get_kitrepo_hash {
+
+    my $tablename = 'kitrepo';
+    my $kitnames = shift;
+    my $kitrepoattrs = shift;
+
+    my $filter_hash = {};
+    if (defined($kitnames)) {
+        $filter_hash->{kitname} = $kitnames;
+    }
+
+    my $filter_stmt = undef;
+    if (scalar(keys(%$filter_hash)) > 0) {
+        $filter_stmt = db_build_filter_stmt($filter_hash);
+    }
+    my $rows = db_get_table_rows($tablename, $kitrepoattrs, $filter_stmt);
+
+    return create_hash_from_table_rows($rows, 'kitname');
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3  get_kitcomp_hash
+
+        Returns a hash table containing lists of kit component entries 
+        indexed by kit name.
+        Arguments: 
+            list of kit names (ref)
+            list of kit component attribute names (ref)
+        Returns: hash table (ref)
+           { kitname1 => [{kitcomp11,...},{kitcomp12,...}], 
+             kitname2 => [{kitcomp21,...},{kitcomp22,...}],
+             ...
+           }
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub get_kitcomp_hash {
+
+    my $tablename = 'kitcomponent';
+    my $kitnames = shift;
+    my $kitcompattrs = shift;
+
+    my $filter_hash = {};
+    if (defined($kitnames)) {
+        $filter_hash->{kitname} = $kitnames;
+    }
+
+    my $filter_stmt = undef;
+    if (scalar(keys(%$filter_hash)) > 0) {
+        $filter_stmt = db_build_filter_stmt($filter_hash);
+    }
+    my $rows = db_get_table_rows($tablename, $kitcompattrs, $filter_stmt);
+
+    return create_hash_from_table_rows($rows, 'kitname');
+
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3  get_kit_list
+
+        Returns a list of kit, filtering the kits by:
+          - kit name
+
+        Arguments:
+               list of kit attributes to query (ref)
+               list of kit names for filtering  (ref)
+
+        Returns a list of kit(ref)
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub get_kit_list {
+
+    my $kitnames = shift;
+    my $kitattrs = shift;
+
+    my $filter_hash = {};
+
+    if (defined($kitnames)) {
+        $filter_hash->{kitname} = $kitnames;
+    }
+
+    my $filter_stmt = undef;
+    if (scalar(keys(%$filter_hash)) > 0) {
+        $filter_stmt = db_build_filter_stmt($filter_hash);
+    }
+    return db_get_table_rows('kit', $kitattrs, $filter_stmt);
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3  get_kitcomp_list
+
+        Returns a list of kit components, filtering the kit components by:
+          - kit component name
+          - kit repository name
+
+        Arguments:
+               list of kit component names for filtering  (ref)
+               list of kit repo names for filtering (ref)
+               list of kit component attributes to query (ref)
+
+        Returns a list of kit components (ref)
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub get_kitcomp_list {
+
+    my $kitcompnames = shift;
+    my $kitreponames = shift;
+    my $kitcompattrs = shift;
+
+    my $filter_hash = {};
+
+    if (defined($kitcompnames)) {
+        $filter_hash->{kitcompname} = $kitcompnames;
+    }
+
+    if (defined($kitreponames)) {
+        $filter_hash->{kitreponame} = $kitreponames;
+    }
+
+    my $filter_stmt = undef;
+    if (scalar(keys(%$filter_hash)) > 0) {
+        $filter_stmt = db_build_filter_stmt($filter_hash);
+    }
+    return db_get_table_rows('kitcomponent', $kitcompattrs, $filter_stmt);
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3  get_compat_kitreponames
+
+        Returns a list of kitreponames which are compatible with the specified
+        osdistroname.
+
+        Arguments:
+             osdistroname
+
+        Returns:
+             List of kitreponames (ref)
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub get_compat_kitreponames {
+
+    my $osdistroname = shift;
+    my @compat_kitrepos = ();
+
+    ## Get the osdistro info
+    my $filter_stmt = db_build_filter_stmt({'osdistroname' => [$osdistroname]});
+    my $osdistros = db_get_table_rows('osdistro',  undef, $filter_stmt);
+    my $osdistro = $osdistros->[0];
+    #print Dumper($osdistro);
+
+    ## Get the kitrepos, which are compatible with the osdistro info
+    my $kitrepos = db_get_table_rows('kitrepo',  undef, undef);
+
+    foreach my $kitrepo (@$kitrepos) {
+        ## To check if kitrepo is compatible with an osdistro, the following 4 things
+        ## must be true:
+        ##     1) The kitrepo basename must be same as or compatible with osdistro basename.
+        ##     2) The kitrepo major verison must be same as osdistro major version.
+        ##     3) The kitrepo minor version must either:
+        ##           - Be same as osdistro minor version
+        ##           - OR, be empty which matches any osdistro minor version
+        ##     4) The kitrepo arch must be same as osdistro arch.
+        if (defined($kitrepo->{osbasename})) {
+            my @kitrepo_compat_basenames = ();
+            if (defined($kitrepo->{compat_osbasenames})) {
+                @kitrepo_compat_basenames = split(/,/, $kitrepo->{compat_osbasenames});
+            }
+            if ($kitrepo->{osbasename} ne $osdistro->{basename} && 
+                    ! grep {$_ eq $osdistro->{basename}} @kitrepo_compat_basenames ) {
+                next;
+            }
+        }
+        if (defined($kitrepo->{osmajorversion}) && $kitrepo->{osmajorversion} ne $osdistro->{majorversion}) {
+            next;
+        }
+        if (defined($kitrepo->{osminorversion}) && $kitrepo->{osminorversion} ne $osdistro->{minorversion}) {
+            next;
+        }
+        if (defined($kitrepo->{osarch}) && $kitrepo->{osarch} ne $osdistro->{arch}) {
+            next;
+        }
+
+        push(@compat_kitrepos, $kitrepo);
+    }
+    #print Dumper(@compat_kitrepos);
+
+    my @compat_kitreponames = map {$_->{kitreponame}} @compat_kitrepos;
+    return \@compat_kitreponames;
+
+}
+
+#----------------------------------------------------------------------------
+
+=head3  db_build_filter_stmt
+
+        Returns a SQL 'where' statement which is used to filter the
+        result of a kit, kit repository or kit component query.
+        
+        Arguments: 
+             hash table
+                 - each entry represents a filter
+                 - each entry has a key <keyN>, and a list of values <valuesN>.
+                 - each entry is added to 'where' stmt as follows:
+                      <key1> in (comma-separated list of <values1>)
+                      <key2> in (comma-separated list of <values2>)
+                      ...
+        Returns: string containing SQL 'where' statement
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub db_build_filter_stmt {
+
+    my $filter_hash = shift;
+    my $filter_stmt = "";
+
+    for my $filter_key (keys(%$filter_hash)) {
+        my $filter_values = $filter_hash->{$filter_key};
+        my $values_str = join ",", map {'\''.$_.'\''} @$filter_values;
+        if ($filter_stmt eq "") {
+            $filter_stmt = sprintf("%s in (%s)", $filter_key, $values_str);
+        } else {
+            $filter_stmt .= sprintf(" AND %s in (%s)", $filter_key, $values_str);
+        }
+    }
+
+    return $filter_stmt;
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3  db_get_table_rows
+
+        Returns a list of table rows.  Each table row is a hash table.
+
+        Arguments: 
+               table name
+               attribute list
+               where statement
+
+        Returns: list of table rows (ref)
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub db_get_table_rows {
+
+    my $tablename = shift;
+    my $attrs = shift;
+    my $filter_stmt = shift;
+
+    if (!defined($attrs)) {
+        @{$attrs} = ();
+        my $schema = xCAT::Table->getTableSchema($tablename);
+        foreach my $c (@{$schema->{cols}}) {
+            push @{$attrs}, $c;
+        }
+    }
+
+    my $table = xCAT::Table->new($tablename);
+    my @table_rows = ();
+    if (defined($filter_stmt)) {
+        if (length($filter_stmt) > 0) {
+            @table_rows = $table->getAllAttribsWhere($filter_stmt, @{$attrs});
+        }
+    } else {
+        @table_rows = $table->getAllAttribs(@{$attrs});
+    }
+
+    return \@table_rows;
+}
+
+#----------------------------------------------------------------------------
+
+=head3  create_hash_from_table_rows
+
+        Returns a hash table containing table rows indexed by specified
+        table attribute.
+        Arguments: 
+               list of table rows (each row is a hash table)
+               table attribute
+        Returns: hash table (ref)
+            { kitname1 => [row11,row12,...}],
+              kitname2 => [row21,row22,...}],
+              ...
+            }
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub create_hash_from_table_rows {
+
+    my $table_rows = shift;
+    my $table_attr = shift;
+
+    my $result = {};
+    foreach my $row (@$table_rows) {
+        my $hash_key = $row->{$table_attr};
+        if (! defined($result->{$hash_key})) {
+            $result->{$hash_key} = [];
+        }
+        push(@{$result->{$hash_key}}, $row);
+    }
+
+    return $result;
+
+}
+
+#----------------------------------------------------------------------------
+
+=head3  create_lskit_xml_response
+
+        Prepare a response that returns the kit, kit repository, and 
+        kit component info in XML format.
+
+        Arguments:
+               kit hash table
+               kit repo hash table
+               kit component hash table
+
+               Note: Hash tables are created by create_hash_from_table_rows()
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub create_lskit_xml_response {
+
+    my $kit_hash = shift;
+    my $kitrepo_hash = shift;
+    my $kitcomp_hash = shift;
+
+    my $rsp = {};
+
+    for my $kitname (sort(keys(%$kit_hash))) {
+        my $output_hash = {"kitinfo" => {"kit" => [], "kitrepo" => [], "kitcomponent" => [] } };
+
+        # Kit info
+        if (defined($kit_hash->{$kitname})) {
+            my $kit = $kit_hash->{$kitname}->[0];
+            push(@{$output_hash->{kitinfo}->{kit}}, $kit);
+        }
+
+        # Kit repository info
+        if (defined($kitrepo_hash->{$kitname})) {
+            for my $kitrepo (@{$kitrepo_hash->{$kitname}}) {
+                push(@{$output_hash->{kitinfo}->{kitrepo}}, $kitrepo);
+            }
+        } 
+
+        # Kit component info
+        if (defined($kitcomp_hash->{$kitname})) {
+            for my $kitcomp (@{$kitcomp_hash->{$kitname}}) {
+                push(@{$output_hash->{kitinfo}->{kitcomp}}, $kitcomp);
+            }
+        }
+
+        push @{ $rsp->{data} }, $output_hash;
+    }
+
+    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3  create_lskit_stanza_response
+
+        Prepare a response that returns the kit, kit repository, and 
+        kit component info in stanza-like format.
+
+        Arguments:
+               kit hash table
+               kit repo hash table
+               kit component hash table
+               Note: Hash tables are created by create_hash_from_table_rows()
+=cut
+
+#-----------------------------------------------------------------------------
+sub create_lskit_stanza_response {
+
+    my $kit_hash = shift;
+    my $kitrepo_hash = shift;
+    my $kitcomp_hash = shift;
+
+    my $rsp = {};
+    my $count = 0;
+
+    for my $kitname (sort(keys(%$kit_hash))) {
+        my $output .= "\n----------------------------------------------------\n";
+
+        # Kit info
+        if (defined($kit_hash->{$kitname})) {
+            my $kit = $kit_hash->{$kitname}->[0];
+            $output .= "kit:\n";
+            for my $kit_attr (sort(keys(%$kit))) {
+                $output .= sprintf("    %s=%s\n", $kit_attr, $kit->{$kit_attr});
+            }
+            $output .= "\n";
+        }
+
+        # Kit repository info
+        if (defined($kitrepo_hash->{$kitname})) {
+            for my $kitrepo (@{$kitrepo_hash->{$kitname}}) {
+                $output .= "kitrepo:\n";
+                for my $kitrepo_attr (sort(keys(%$kitrepo))) {
+                    $output .= sprintf("    %s=%s\n", $kitrepo_attr, $kitrepo->{$kitrepo_attr});
+                }
+                $output .= "\n";
+            }
+        } 
+
+        # Kit component info
+        if (defined($kitcomp_hash->{$kitname})) {
+            for my $kitcomp (@{$kitcomp_hash->{$kitname}}) {
+                $output .= "kitcomponent:\n";
+                for my $kitcomp_attr (sort(keys(%$kitcomp))) {
+                    $output .= sprintf("    %s=%s\n", $kitcomp_attr, $kitcomp->{$kitcomp_attr});
+                }
+                $output .= "\n";
+            }
+        }
+
+
+        push @{ $rsp->{data} }, $output;
+    }
+
+    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+
 }
 
 1;

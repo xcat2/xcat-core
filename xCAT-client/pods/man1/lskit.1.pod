@@ -1,0 +1,151 @@
+=head1 NAME
+
+B<lskit> - list info for one or more kits
+
+
+=head1 SYNOPSIS
+
+B<lskit> [B<-V> | B<--verbose>] 
+      [B<-x> | B<--xml> | B<--XML>]
+      [B<-K> | B<--kitattr> I<kitattr_names>]
+      [B<-R> | B<--repoattr> I<repoattr_names>]
+      [B<-C> | B<--compattr> I<compattr_names>]
+      [kit_names]
+
+B<lskit> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
+
+
+=head1 DESCRIPTION
+
+The B<lskit> command is used to list info for one or more kits. A kit is a special kind of package that is used to install a software product on one or more nodes in an xCAT cluster.
+
+The B<lskit> command outputs the following info for each kit: the kit's basic info, the kit's repositories, and the kit's components.  The command outputs the info in two formats: human-readable format (default), and XML format.  Use the -x option to view the info in XML format.
+
+Input to the command can specify any number or combination of the input options.
+
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-K|--kitattr> I<kitattr_names>
+
+where I<kitattr_names> is a comma-delimited list of kit attribute names. The names correspond to attribute names in the B<kit> table. The B<lskit> command will only display the specified kit attributes.
+
+
+=item B<-R|--repoattr> I<repoattr_names>
+
+where I<repoattr_names> is a comma-delimited list of kit repository attribute names. The names correspond to attribute names in the B<kitrepo> table. The B<lskit> command will only display the specified kit repository attributes.
+
+
+=item B<-C|--compattr> I<compattr_names>
+
+where I<compattr_names> is a comma-delimited list of kit component attribute names. The names correspond to attribute names in the B<kitcomponent> table. The B<lskit> command will only display the specified kit component attributes.
+
+
+=item I<kit_names>
+
+is a comma-delimited list of kit names. The B<lskit> command will only display the kits matching these names.
+
+
+=item B<-x|--xml|--XML>
+
+Return the output with XML tags.  The data is returned as:
+  <data>
+    <kitinfo>
+       ...
+    </kitinfo>
+  </data>
+  ...
+  <data>
+    <kitinfo>
+       ...
+    </kitinfo>
+  </data>
+
+Each <kitinfo> tag contains info for one kit.  The info inside <kitinfo> is structured as follows:
+  The <kit> sub-tag contains the kit's basic info.
+  The <kitrepo> sub-tags store info about the kit's repositories.
+  The <kitcomponent> sub-tags store info about the kit's components.
+
+The data inside <kitinfo> is returned as:
+  <kitinfo>
+     <kit>
+       ...
+     </kit>
+
+     <kitrepo>
+       ...
+     </kitrepo>
+     ...
+
+     <kitcomponent>
+       ...
+     </kitcomponent>
+     ...
+  </kitinfo>
+
+
+=item B<-V|--verbose>
+
+Display additional progress and error messages. 
+
+=item B<-v|--version>
+
+Command Version.
+
+=item B<-?|-h|--help>
+
+Display usage message.
+
+=back
+
+
+=head1 RETURN VALUE
+
+=over 3
+
+=item 0
+
+The command completed successfully.
+
+=item 1
+
+An error has occurred.
+
+=back
+
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To list all kits, enter:
+
+  lskit
+
+=item 2.
+
+To list the kit "kit-test1-1.0-Linux", enter:
+
+  lskit kit-test1-1.0-Linux
+
+=item 3.
+
+To list the kit "kit-test1-1.0-Linux" for selected attributes, enter:
+
+  lskit -K basename,desc -R kitreponame -C kitcompname kit-test1-1.0-Linux
+
+=back
+
+
+=head1 FILES
+
+/opt/xcat/bin/lskit
+
+=head1 SEE ALSO
+
+L<lskitcomp(1)|lskitcomp.1>, L<lskitdeployparam(1)|lskitdeployparam.1>, L<addkit(1)|addkit.1>, L<rmkit(1)|rmkit.1>, L<addkitcomp(1)|addkitcomp.1>, L<rmkitcomp(1)|rmkitcomp.1>
+
