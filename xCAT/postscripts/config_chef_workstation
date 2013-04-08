@@ -101,5 +101,5 @@ then
     echo $errmsg
     exit 1
 fi
-knife cookbook list
+
 exit 0
