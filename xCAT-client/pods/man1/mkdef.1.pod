@@ -9,6 +9,7 @@ B<mkdef> [B<-h>|B<--help>] [B<-t> I<object-types>]
 B<mkdef> [B<-V>|B<--verbose>] [B<-t> I<object-types>] [B<-o> I<object-names>]
 [B<-z>|B<--stanza>] [B<-d>|B<--dynamic>] [B<-f>|B<--force>]
 [[B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<noderange>] [I<attr>=I<val> [I<attr>=I<val...>]]
+      [B<-u> B<provmethod>=<I<install>|I<netboot>|I<statelite>> B<profile>=<xxx> [I<attr>=I<value>]]
 
 
 =head1 DESCRIPTION
@@ -69,6 +70,12 @@ Note: if the "val" fields includes spaces or any other characters that will be p
 =item B<-z|--stanza>
 
 Indicates that the file being piped to the command is in stanza format.  See the xcatstanzafile man page for details on using xCAT stanza files.
+
+=item B<-u>
+
+This option only works for objtype B<osimage>.
+
+Fill in the osimage attribute automatically when define osimage. The I<provmethod> and I<profile> must be specified. If osvers or osarch is not specified, the corresponding value of the management node will be used.
 
 =back
 
@@ -151,6 +158,12 @@ To create a entry (7.0) in the policy table for user admin1
 To create a node definition with nic attributes
 
  mkdef -t node cn1 groups=all nicips.eth0="1.1.1.1|1.2.1.1" nicnetworks.eth0="net1|net2" nictypes.eth0="Ethernet" 
+
+=item 12.
+
+To create an osimage definition and fill in attributes automatically.
+
+ mkdef redhat6img -u profile=compute provmethod=statelite
 
 =back
 
