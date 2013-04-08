@@ -79,7 +79,7 @@ sub findme {
             last;
         }
     }
-    
+
     unless ($mac) {
         xCAT::MsgUtils->message("S", "Discovery Error: Could not find the mac of the $ip.");
         return;
@@ -917,7 +917,7 @@ sub getfreeips () {
         }
     }
 
-    my @hostsent = $hoststb->getAllAttribs('node', 'ip');
+    my @hostsent = $hoststb->getAllNodeAttribs(['node', 'ip']);
     my %usedips = ();
     foreach my $host (@hostsent) {
         if (defined ($host->{'ip'}) && !$predefips{$host->{'ip'}}) {
