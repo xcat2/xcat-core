@@ -512,6 +512,7 @@ sub grant_tcrequests {
 		$udpcontext->{clientfudge}+=1; #adjust forecast for being busy
 		$availableslots-=1;
 		$udpcontext->{socket}->send("resourcerequest: ok\n",$requestors->{$rkey}->{sockaddr});
+		delete ($requestors->{$rkey}); #we acknoweldged, assume consumer got it, they'll do retry if they failed
 	}
 }
 
@@ -591,6 +592,7 @@ sleep 0.05;
   my $actualpid=$$;
   until ($quit) {
     eval { 
+        my $tcclients; # hash reference to store traffic control requests
 	while (1) {	
          unless ($actualpid == $$) { #This really should be impossible now...
              xCAT::MsgUtils->message("S","xcatd: Something absolutely ludicrous happpened, xCAT developers think this message is impossible to see, post if you see it, fork bomb averted");
@@ -615,7 +617,6 @@ sleep 0.05;
 	   }
 	 }
 	}
-      my $tcclients; # hash reference to store traffic control requests
       foreach my $pkey (keys %packets) {
         if ($inet6support) { 
         ($sport,$client) = Socket6::unpack_sockaddr_in6($packets{$pkey}->[0]);
