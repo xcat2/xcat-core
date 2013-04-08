@@ -227,9 +227,16 @@ rm_persistent_route()
 		    route1="$net $gw $mask";
         fi
 		if [ -f $filename ]; then
-		    sed -i -e s/"$route1"//g $filename
-		fi
-		echo "Persistent route \"$route\" removed from $filename."
+            grep "$route" $filename 2>&1 1>/dev/null
+            if [ $? -ne 0 ]; then # Does not exist in file
+                echo "Persistent route \"$route\" does not exist in $filename."
+            else
+		        sed -i -e s/"$route1"//g $filename
+                echo "Persistent route \"$route\" removed from $filename."
+            fi
+        else
+            echo "Persistent route file $filename does not exist."
+        fi
 		;;
 	    ubuntu*)
 		echo "Removing persistent route on Ubuntu is not supported yet."
@@ -249,9 +256,16 @@ rm_persistent_route()
 		    route1="any net $net netmask $mask gw $gw $ifname";
         fi
 		if [ -f $filename ]; then
-		    sed -i -e s/"$route"//g $filename
-		fi
-		echo "Persistent route \"$route1\" removed from $filename."
+            grep "$route" $filename 2>&1 1>/dev/null
+            if [ $? -ne 0 ]; then # Does not exist in file
+                echo "Persistent route \"$route1\" does not exist in $filename."
+            else
+		        sed -i -e s/"$route"//g $filename
+                echo "Persistent route \"$route1\" removed from $filename."
+            fi
+        else
+            echo "Persistent route file $filename does not exist."
+        fi
 		;;
 	esac
     else #AIX
