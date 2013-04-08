@@ -271,6 +271,63 @@ sub process_request {
     $chaintab->close();
   }
 
+  # Update the switch port information if the 'updateswitch' flag is added in the request.
+  # 'updateswitch' is default added for sequential discovery
+  if ($request->{'updateswitch'} && $macstring) {
+      my $firstmac;
+  
+      # Get the mac which defined as the management nic
+      my @macents = split (/\|/, $macstring);
+      foreach my $macent (@macents) {
+          my ($mac, $host) = split (/!/, $macent);
+          unless ($firstmac) {
+              $firstmac = $mac;
+          }
+          if ($host eq $node) {
+              $firstmac = $mac;
+              last;
+          }
+      }
+  
+      # search the management nic and record the switch informaiton
+      foreach my $nic (@{$request->{nic}}) {
+          if (defined ($nic->{'hwaddr'}) && $nic->{'hwaddr'}->[0] =~ /$firstmac/i ) {
+              if (defined ($nic->{'switchname'}) && defined ($nic->{'switchaddr'})) {
+                  # update the switch to switches table
+                  my $switchestab = xCAT::Table->new('switches');
+                  if ($switchestab) {
+                      $switchestab->setAttribs({switch=>$nic->{'switchname'}->[0]}, {comments=>$nic->{'switchdesc'}->[0]});
+                      $switchestab->close();
+                  }
+                  # update the ip of switch to hosts table
+                  my $hosttab = xCAT::Table->new('hosts');
+                  if ($hosttab) {
+                      $hosttab->setNodeAttribs($nic->{'switchname'}->[0], {ip => $nic->{'switchaddr'}->[0]});
+                      $hosttab->commit();
+                  }
+  
+                  # add the switch as a node to xcat db
+                  my $nltab = xCAT::Table->new('nodelist');
+                  if ($nltab) {
+                      $nltab->setNodeAttribs($nic->{'switchname'}->[0], {groups=>"all,switch"});
+                      $nltab->commit();
+                  }
+  
+                  if (defined ($nic->{'switchport'})) {
+                      # update the switch table
+                      my $switchtab = xCAT::Table->new('switch');
+                      if ($switchtab) {
+                          $switchtab->setNodeAttribs($node, {switch=>$nic->{'switchname'}->[0], port=>$nic->{'switchport'}->[0]});
+                          $switchtab->close();
+                      }
+                  }
+              }
+          }
+      }
+  }
+  
+  #Update the discoverydata table to indicate the successful discovery
+  xCAT::DiscoveryUtils->update_discovery_data($request);
 
   my $restartstring = "restart";
   if (scalar @forcenics > 0) {
@@ -282,70 +339,12 @@ sub process_request {
           PeerPort => '3001',
           Timeout => '1',
           Proto => 'tcp'
-    );
-    unless ($sock) { syslog("err","Failed to notify $ip that it's actually $node."); return; } #Give up if the node won't hear of it.
-    print $sock $restartstring;
-    close($sock);
+  );
+  unless ($sock) { syslog("err","Failed to notify $ip that it's actually $node."); return; } #Give up if the node won't hear of it.
+  print $sock $restartstring;
+  close($sock);
 
-    # Update the switch port information if the 'updateswitch' flag is added in the request.
-    # 'updateswitch' is default added for sequential discovery
-    if ($request->{'updateswitch'} && $macstring) {
-        my $firstmac;
-
-        # Get the mac which defined as the management nic
-        my @macents = split (/\|/, $macstring);
-        foreach my $macent (@macents) {
-            my ($mac, $host) = split (/!/, $macent);
-            unless ($firstmac) {
-                $firstmac = $mac;
-            }
-            if ($host eq $node) {
-                $firstmac = $mac;
-                last;
-            }
-        }
-
-        # search the management nic and record the switch informaiton
-        foreach my $nic (@{$request->{nic}}) {
-            if (defined ($nic->{'hwaddr'}) && $nic->{'hwaddr'}->[0] =~ /$firstmac/i ) {
-                if (defined ($nic->{'switchname'}) && defined ($nic->{'switchaddr'})) {
-                    # update the switch to switches table
-                    my $switchestab = xCAT::Table->new('switches');
-                    if ($switchestab) {
-                        $switchestab->setAttribs({switch=>$nic->{'switchname'}->[0]}, {comments=>$nic->{'switchdesc'}->[0]});
-                        $switchestab->close();
-                    }
-                    # update the ip of switch to hosts table
-                    my $hosttab = xCAT::Table->new('hosts');
-                    if ($hosttab) {
-                        $hosttab->setNodeAttribs($nic->{'switchname'}->[0], {ip => $nic->{'switchaddr'}->[0]});
-                        $hosttab->commit();
-                    }
-
-                    # add the switch as a node to xcat db
-                    my $nltab = xCAT::Table->new('nodelist');
-                    if ($nltab) {
-                        $nltab->setNodeAttribs($nic->{'switchname'}->[0], {groups=>"all,switch"});
-                        $nltab->commit();
-                    }
-
-                    if (defined ($nic->{'switchport'})) {
-                        # update the switch table
-                        my $switchtab = xCAT::Table->new('switch');
-                        if ($switchtab) {
-                            $switchtab->setNodeAttribs($node, {switch=>$nic->{'switchname'}->[0], port=>$nic->{'switchport'}->[0]});
-                            $switchtab->close();
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    #Update the discoverydata table to indicate the successful discovery
-    xCAT::DiscoveryUtils->update_discovery_data($request);
-    
-    syslog("info","$node has been discovered");
+  syslog("info","$node has been discovered");
 }
 
 1;
