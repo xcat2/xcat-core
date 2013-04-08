@@ -618,10 +618,22 @@ sleep 0.05;
 	 }
 	}
       foreach my $pkey (keys %packets) {
+	my $saddr = $packets{$pkey}->[0];
+	my $clientn;
+	my $clientip;
         if ($inet6support) { 
-        ($sport,$client) = Socket6::unpack_sockaddr_in6($packets{$pkey}->[0]);
+		($client,$sport) = Socket6::getnameinfo($saddr);
+		($clientip,$sport) = Socket6::getnameinfo($saddr,Socket6::NI_NUMERICHOST());
+		if ($clientip =~ /::ffff:.*\..*\./) {
+			$clientip =~ s/^::ffff://; 
+		}
+		if ($client =~ /::ffff:.*\..*\./) {
+			$client =~ s/^::ffff://; 
+		}
 	} else {
-        ($sport,$client) = sockaddr_in($packets{$pkey}->[0]);
+        	($sport,$clientn) = sockaddr_in($saddr);
+		$clientip = inet_ntoa($clientn);
+		$client=gethostbyaddr($clientn,AF_INET);
 	}
         $data=$packets{$pkey}->[1];
         if ($data =~ /^\037\213/) {  #per rfc 1952, these two bytes are gzip, and they are invalid for 
@@ -633,10 +645,10 @@ sleep 0.05;
 	     if ($data =~ /^<xcat/) { #xml format
         my $req = eval { XMLin($data, SuppressEmpty=>undef,ForceArray=>1) };
         if ($req and $req->{command} and ($req->{command}->[0] eq "findme" and $sport < 1000)) { #only consider priveleged port requests to start with
-          $req->{'_xcat_clienthost'}=gethostbyaddr($client,AF_INET);
-          $req->{'_xcat_clientip'}=inet_ntoa($client);
+          $req->{'_xcat_clienthost'}=$client;
+          $req->{'_xcat_clientip'}=$clientip;
           $req->{'_xcat_clientport'}=$sport;
-          if (defined($cmd_handlers{"findme"}) and xCAT::NetworkUtils->nodeonmynet(inet_ntoa($client))) { #only discover from ips that appear to be on a managed network
+          if (defined($cmd_handlers{"findme"}) and xCAT::NetworkUtils->nodeonmynet($clientip)) { #only discover from ips that appear to be on a managed network
             xCAT::MsgUtils->message("S","xcatd: Processing discovery request from ".$req->{'_xcat_clientip'});
             $req->{cacheonly}->[0] = 1;
             plugin_command($req,undef,\&build_response);
@@ -645,7 +657,7 @@ sleep 0.05;
                 plugin_command($req,undef,\&build_response);
 	    }
           } else {
-            xCAT::MsgUtils->message("S","xcatd: Skipping discovery from ".inet_ntoa($client)." because we either have no discovery plugins or the client address does not match an IP network that xCAT is managing");
+            xCAT::MsgUtils->message("S","xcatd: Skipping discovery from ".$client." because we either have no discovery plugins or the client address does not match an IP network that xCAT is managing");
 	  }
         }
 	} else { # for *now*, we'll do a tiny YAML subset
