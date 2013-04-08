@@ -93,6 +93,8 @@ sub start {
     return 0;
   }
   elsif (defined($pid)) { #child process
+  my $progname = \$0;
+  $$progname = "xcatd: monitoring";
     my $localhostname=hostname();
     
     if ($isMonServer) { #only start monitoring on monservers.
