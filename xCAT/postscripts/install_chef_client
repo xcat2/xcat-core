@@ -1,0 +1,125 @@
+#!/bin/sh -vx
+# IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
+#####################################################
+#=head1  install_chef_client
+#=head2  This command installs the chef client on a xCAT node(only for Ubuntu). It is used as
+# a postscript on Ubuntu only.
+#    usage:
+#      1. Setup the chef client using updatenode
+#            updatenode <noderange> -P "install_chef_client"
+#      2. Setup chef client during os provisioning
+#            chef <noderange> -p postscripts=install_chef_client
+#      3. Download chef client RPM from non-default repository
+#            updatenode <noderange> -P "install_chef_client -r http://mn/install/chef/chef_11.4.0-1.ubuntu.11.04_amd64.deb -s chefservername"
+#=cut
+#####################################################
+
+cat /etc/*release | grep "Ubuntu" > /dev/null
+if [ $? != 0 ]; then
+    echo "chef script only runs on ubuntu currently."
+    exit 1
+fi
+
+os="ubuntu"
+
+#if [ $ARCH != "x86_64" ]; then
+#    echo "chef script only runs on x86_64 currently."
+#    exit -1;
+#fi
+
+# For the URL to download chef:
+# -r flag takes precedence
+# then the environment variable CHEF_URL
+# then the default internet location
+ARGNUM=$#;
+if [ $ARGNUM -gt 1 ]; then
+    if [ $1 = "-r" ]; then
+        chefurl=$2
+    fi
+    if [ $1 = "-s" ]; then
+        chefserver=$2
+    fi
+    if [ $ARGNUM -gt 3 ]; then
+        if [ $3 = "-r" ]; then
+            chefurl=$4
+        fi
+        if [ $3 = "-s" ]; then
+            chefserver=$4
+        fi
+    fi
+
+fi
+
+if [ -z "$chefserver" ]
+then
+    if [ -n "$CHEFSERVER" ]
+    then
+        chefserver=$CHEFSERVER
+    fi
+    if [ -z "$chefserver" ]
+    then
+        chefserver=$SITEMASTER
+    fi
+fi
+
+
+
+if [ "$chefurl" == "" ]; then
+    if [ "$CHEF_URL" != "" ]; then
+        chefurl=$CHEF_URL
+    else
+       arch=`uname -i`
+       osmv=`cat /etc/*release | grep DISTRIB_RELEASE |cut -d= -f2`
+       #https://www.opscode.com/chef/download?v=latest&prerelease=false&p=ubuntu&pv=12.04&m=x86_64
+       chefurl="https://www.opscode.com/chef/download?v=latest&prerelease=false&p=$os&pv=$osmv&m=$arch";
+    fi
+fi
+
+if [ "$os" == "ubuntu" ]; then
+    #remove the old chef-server and the configuration files
+    apt-get -y autoremove --purge chef
+    rm -rf /etc/chef
+    rm -rf /root/.chef
+
+    #add the internet Ubuntu repositories
+    #urelease="precise" #default release name
+    urelease=`cat /etc/lsb-release |grep DISTRIB_CODENAME |cut -d= -f2`
+
+    
+    hostname=`hostname -f`
+    ##hostname="10.1.0.82"
+
+    #add the public source
+    ubuntusource="deb http://us.archive.ubuntu.com/ubuntu/ $urelease main\n
+deb http://us.archive.ubuntu.com/ubuntu/ ${urelease}-updates main\n
+deb http://us.archive.ubuntu.com/ubuntu/ $urelease universe\n
+deb http://us.archive.ubuntu.com/ubuntu/ ${urelease}-updates universe\n
+"
+    echo -e $ubuntusource >> /etc/apt/sources.list
+
+    # download the chef-server deb packages
+    #wget https://opscode-omnitruck-release.s3.amazonaws.com/ubuntu/12.04/x86_64/chef-server_11.0.6-1.ubuntu.12.04_amd64.deb
+    rm -rf /tmp/chef.deb 
+    wget -N --waitretry=10 --random-wait -T 60  $chefurl   -O /tmp/chef.deb
+    rc=$?
+    if [ $rc -eq 0 ] && [ -f /tmp/chef.deb ]; then
+        # install it
+        dpkg -i /tmp/chef.deb
+    else 
+        echo "Cannot download $chef"
+        exit 1
+    fi   
+
+    apt-get -y update
+
+    # install rake git
+    apt-get install -y rake git
+
+fi
+
+#configure the chef configuration file
+result=`dirname $0`
+${result}/config_chef_client -s $chefserver 
+
+
+

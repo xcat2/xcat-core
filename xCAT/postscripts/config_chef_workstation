@@ -1,0 +1,105 @@
+#!/bin/sh 
+# IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+
+#-------------------------------------------------------------------------------
+#=head1  config_chef_workstation
+#=head2  This command configures the chef workstation on a xCAT node.
+#        It is used by install_chef_workstation on Ubuntu and chef kit on RH.
+#=cut
+#-------------------------------------------------------------------------------
+
+node=`hostname`
+
+# Who is the chef server?
+# -s takes precedence
+# then site.chefserver
+# then site.master
+ARGNUM=$#;
+if [ $ARGNUM -gt 1 ]; then
+    if [ $1 = "-s" ]; then
+        chefserver=$2
+    fi
+fi
+
+if [ -z "$chefserver" ]
+then
+    if [ -n "$CHEFSERVER" ]
+    then
+        chefserver=$CHEFSERVER
+    fi
+    if [ -z "$chefserver" ]
+    then
+        chefserver=$SITEMASTER
+    fi
+fi
+
+if [ -z "$chefserver" ]
+then
+    # No chef server defined, using localhost is the only choice
+    uselocalhost=1
+fi
+
+localip=`getent hosts \`hostname\` | awk '{print $1}'`
+serverip=`getent hosts $chefserver | awk '{print $1}'`
+
+if [ "$localip" = "$serverip" ]
+then
+    uselocalhost=1
+fi
+
+# check if the current node is also a chef master
+# if yes, use this node as the chef server
+if [ -f /etc/chef-server/admin.pem ]; then
+    uselocalhost=1
+fi
+
+homedir=$HOME
+# In prereboot, the HOME is /tmp
+# assume root
+if [ "$homedir" = "/tmp" ] || [ -z "$homedir" ]
+then
+    homedir=/root
+fi
+# Reconfigure the ~/.chef
+rm -rf $homedir/.chef.bak >/dev/null 2>&1
+mv $homedir/.chef $homedir/.chef.bak >/dev/null 2>&1
+mkdir $homedir/.chef
+
+if [ $uselocalhost = 1  ]
+then
+    chefserver=$localip
+    client_key='/etc/chef-server/admin.pem'
+    validation_key='/etc/chef-server/chef-validator.pem'
+else
+    # Remote chef-server
+    scp $chefserver:/etc/chef-server/admin.pem $homedir/.chef 2>&1 1>/dev/null
+    scp $chefserver:/etc/chef-server/chef-validator.pem $homedir/.chef 2>&1 1>/dev/null
+    if [ ! -e "$homedir/.chef/admin.pem" ] || [ ! -e "$homedir/.chef/chef-validator.pem" ]
+    then
+        errmsg="Could not get the chef keys from chef server $chefserver"
+        logger -t xcat -p local4.err $errmsg
+        echo $errmsg
+        exit 1
+    fi
+fi
+
+echo -e "log_level                :info
+log_location             STDOUT
+node_name                'admin'
+client_key               '$client_key'
+validation_client_name   'chef-validator'
+validation_key           '$validation_key'
+chef_server_url          'https://$chefserver'" > $homedir/.chef/knife.rb
+
+# Verify the configuration
+knife client list
+if [ $? -ne 0 ]
+then
+    errmsg="Failed to onfigure chef worktation on $node"
+    logger -t xcat -p local4.err $errmsg
+    echo $errmsg
+    exit 1
+fi
+knife cookbook list
+exit 0
