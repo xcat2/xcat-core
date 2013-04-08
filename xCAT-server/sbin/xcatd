@@ -511,7 +511,7 @@ sub grant_tcrequests {
 		unless ($availableslots > 0) { next; } # no slots, ignore requests for now
 		$udpcontext->{clientfudge}+=1; #adjust forecast for being busy
 		$availableslots-=1;
-		$udpcontext->{socket}->send("resourcerequest: ok",$requestors->{$rkey}->{sockaddr});
+		$udpcontext->{socket}->send("resourcerequest: ok\n",$requestors->{$rkey}->{sockaddr});
 	}
 }
 
