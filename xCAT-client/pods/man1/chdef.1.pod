@@ -11,6 +11,7 @@ B<chdef> [B<-t> I<object-types>] [B<-o> I<object-names>] [B<-n> I<new-name>] [I<
 B<chdef> [B<-V>|B<--verbose>] [B<-t> I<object-types>] [B<-o> I<object-names>]
 [B<-d>|B<--dynamic>] [B<-p>|B<--plus>] [B<-m>|B<--minus>] [B<-z>|B<--stanza>]
 [[B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<noderange>] [I<attr>=I<val> [I<attr>=I<val...>]]
+      [B<-u> B<provmethod>=<I<install>|I<netboot>|I<statelite>> B<profile>=<xxx> [I<attr>=I<value>]]
 
 =head1 DESCRIPTION
 
@@ -79,6 +80,12 @@ Note: the operator !~ will be parsed by shell, if you want to use !~ in the sele
 =item B<-z|--stanza>
 
 Indicates that the file being piped to the command is in stanza format. See the xcatstanzafile man page for details on using xCAT stanza files.
+
+=item B<-u>
+
+This option only works for objtype B<osimage>.
+
+Updating the osimage attribute automatically. If osvers or osarch is not specified, the corresponding value of the management node will be used.
 
 =back
 
@@ -160,11 +167,18 @@ To change the policy table for policy number 7.0 for admin1
 
  chdef -t policy -o 7.0 name=admin1 rule=allow 
 
-=item 11.
+=item 12.
 
 To change the node nic attributes
 
  chdef -t node -o cn1 nicips.eth0="1.1.1.1|1.2.1.1" nicnetworks.eth0="net1|net2" nictypes.eth0="Ethernet" 
+
+
+=item 13.
+
+To update an osimage definition.
+
+ chdef redhat6img -u provmethod=install
 
 =back
 
