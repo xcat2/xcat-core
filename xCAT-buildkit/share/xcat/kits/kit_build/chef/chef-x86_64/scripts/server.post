@@ -1,0 +1,23 @@
+#!/bin/sh
+# IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+
+#-------------------------------------------------------------------------------
+#=head1  server.post
+#=head2  This command configures the chef server on a xCAT server or node.
+#        It is used as a post install script for chef_server_kit.rpm
+#=cut
+#-------------------------------------------------------------------------------
+if [ "$NODESETSTATE" = "install" ]; then     
+    #prevent getting called during full install bootup  
+    #because the function will be called in the rpm %post section instead
+    exit 0
+else
+    if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
+        #Now configure the chef server
+	    /xcatpost/config_chef_server 
+    fi
+fi
+
+exit 0
+

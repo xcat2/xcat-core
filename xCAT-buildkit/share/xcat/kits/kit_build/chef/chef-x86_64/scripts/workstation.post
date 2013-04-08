@@ -1,0 +1,28 @@
+#!/bin/sh 
+# IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+
+#-------------------------------------------------------------------------------
+#=head1  workstation.post
+#=head2  This command configures the chef workstation on a xCAT node. It is used 
+#        as a post installation script for chef_workstation_kit.rpm. 
+#=cut
+#-------------------------------------------------------------------------------
+if [ "$NODESETSTATE" = "install" ]; then     
+    #prevent getting called during full install bootup  
+    #because the function will be called in the rpm %post section instead
+    exit 0
+else
+    if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
+        #configure the chef workstation configuration files
+	    /xcatpost/config_chef_workstation "$@" 
+    fi
+fi
+
+exit 0
+
+
+
+
+
+
