@@ -223,8 +223,13 @@ rm_persistent_route()
             route="$net/$mask $gw - -";
             route1="$net\/$mask $gw - -";
         else
-		    route="$net $gw $mask";
-		    route1="$net $gw $mask";
+            if [ -n "$ifname" ]; then
+		        route="$net $gw $mask $ifname";
+		        route1="$net $gw $mask $ifname";
+            else
+                route="$net $gw $mask";
+                route1="$net $gw $mask";
+            fi
         fi
 		if [ -f $filename ]; then
             grep "$route" $filename 2>&1 1>/dev/null
