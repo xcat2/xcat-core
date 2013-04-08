@@ -252,9 +252,9 @@ sub parse_attr_for_osimage{
         } elsif (!exists($attr_hash->{osname})) {
             $attr_hash->{osname} = $tmp_ostype;
         } 
-        if (!exists($attr_hash->{osdistroname})) {
+        #if (!exists($attr_hash->{osdistroname})) {
             $attr_hash->{osdistroname} = "$tmp_osvers-$tmp_arch";
-        }
+        #}
         if (!exists($attr_hash->{synclists}) || $command eq "chdef") {
             my $tmp_synclist=xCAT::SvrUtils->getsynclistfile(undef, $tmp_osvers, $tmp_arch, $tmp_profile, "netboot");
             if ($tmp_synclist) {
@@ -445,7 +445,7 @@ sub processArgs
                     'S'        => \$::opt_S,
                     'osimage'  => \$::opt_osimg,
                     'nics'  => \$::opt_nics,
-                    's'     => \$::opt_setattr,
+                    'u'     => \$::opt_setattr,
         )
       )
     {
@@ -455,8 +455,23 @@ sub processArgs
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 2;
     }
-    if (defined($::opt_setattr) && !$::opt_t) {
-        $::opt_t = 'osimage';
+
+    if (defined($::opt_setattr) && ($::command ne "chdef") && ($::command ne "mkdef")) {
+        my $rsp;
+        $rsp->{data}->[0]="Option \'-u\' can not work with $::command.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 2;
+    }
+
+    if (defined($::opt_setattr)) {
+        if (!$::opt_t && !$::filedata) {
+            $::opt_t = 'osimage';
+        } elsif ($::opt_t ne "osimage") {
+            my $rsp;
+            $rsp->{data}->[0]="Option \'-u\' only work for objtype \'osimage\'.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            return 2;
+        }
     }
     # -t node is the default value
     if (!$::opt_t && !$::opt_a && !$::opt_h && ($::command eq "lsdef"))
@@ -623,12 +638,6 @@ sub processArgs
 
         }
     }
-    if (defined($::opt_setattr) && ($::command eq 'mkdef')) {
-        my $rc = &parse_attr_for_osimage($::command, \%::ATTRS);
-        if ($rc) {
-            return $rc;
-        } 
-    } 
 
     if ((!$::opt_t || $::opt_t eq 'node') && ($::command eq 'chdef') && ($::opt_m || $::opt_p))
     {
@@ -716,12 +725,6 @@ sub processArgs
         # set @::fileobjtypes, @::fileobjnames, %::FILEATTRS
 
         $::objectsfrom_file = 1;
-        if (defined($::opt_setattr) && ($::command eq 'mkdef')) {
-            my $rc = &parse_attr_for_osimage($::command, \%::FILEATTRS);
-            if ($rc) {
-                return $rc;
-            }
-        } 
     }
 
     #
@@ -1208,8 +1211,6 @@ sub defmk
             return 0;
         } elsif ($rc == 3) {
             return 1;
-        } else {
-            return $rc;
         }
     }
 
@@ -1663,6 +1664,13 @@ sub defmk
         # Only dynamic groups should be in nodegroup table
         # Do not try to add static group into the nodegroup table
         # performance!!!!
+        if (defined($::opt_setattr) && $type eq "osimage") {
+            my $rc = &parse_attr_for_osimage($::command, $::FINALATTRS{$obj});
+            if ($rc) {
+                $error = $rc;
+                next;
+            } 
+        } 
 
     } # end of each obj
 
@@ -1888,6 +1896,13 @@ sub defch
         &defch_usage;
         return 1;
     }
+    
+    if ($::opt_t eq "osimage" && $::opt_setattr && ($::opt_p || $::opt_m)) {
+        my $rsp;
+        $rsp->{data}->[0] = "Cannot use \'-u\' with \'-p\' or \'-m\'.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 1;
+    }
 
     # check to make sure we have a list of objects to work with
     if (!@::allobjnames)
@@ -1900,7 +1915,7 @@ sub defch
     }
 
     # set $objtype & fill in cmd line hash
-    if (%::ATTRS || ($::opt_t eq "group") || ($::opt_setattr))
+    if (%::ATTRS || ($::opt_t eq "group"))
     {
 
         # if attr=val on cmd line then could only have one type
@@ -1909,15 +1924,6 @@ sub defch
         #
         #  set cli attrs for each object definition
         #
-        my %attrhash;
-        my %tmp_objhash = ();
-        my @img_attrs = qw(imagetype provmethod profile osname osvers osarch);
-        if ($::opt_setattr) {
-            foreach my $obj (sort @::clobjnames) {
-                $tmp_objhash{$obj} = $::objtype;
-            } 
-            %attrhash = xCAT::DBobjUtils->getobjdefs(\%tmp_objhash, $::VERBOSE, \@img_attrs);
-        }
         foreach my $objname (@::clobjnames)
         {
 
@@ -1959,18 +1965,6 @@ sub defch
                 else
                 {
                     $::CLIATTRS{$objname}{$attrorig} = $::ATTRS{$attrorig};
-                }
-            }
-            if ($::opt_setattr && exists($attrhash{$objname})) {
-                foreach my $tmp_attr (@img_attrs) {
-                    if (!exists($::CLIATTRS{$objname}{$tmp_attr}) && exists($attrhash{$objname}{$tmp_attr}) &&
-                                                                     defined($attrhash{$objname}{$tmp_attr})) {
-                        $::CLIATTRS{$objname}{$tmp_attr} = $attrhash{$objname}{$tmp_attr};
-                    }
-                }
-                my $rc = &parse_attr_for_osimage($::command, $::CLIATTRS{$objname});
-                if ($rc) {
-                    next;
                 }
             }
         }
@@ -2022,7 +2016,12 @@ sub defch
 
         my $isDefined = 0;
         my $type      = $::FINALATTRS{$obj}{objtype};
-
+        my %attrhash;
+        my @img_attrs = qw(imagetype provmethod profile osname osvers osarch);
+        if ($::opt_setattr && $type eq "osimage") {
+            my %tmp_objhash = ();
+            %attrhash = xCAT::DBobjUtils->getobjdefs({$obj=>$type}, $::VERBOSE, \@img_attrs);
+        }
         # check to make sure we have type
         if (!$type)
         {
@@ -2392,6 +2391,19 @@ sub defch
             }    # end - if group is defined
 
         }    # end - if group type
+        if ($type eq 'osimage' && !$::opt_m && !$::opt_p && $::opt_setattr && exists($attrhash{$obj})) {
+            foreach my $tmp_attr (@img_attrs) {
+                if (!exists($::FINALATTRS{$obj}{$tmp_attr}) && exists($attrhash{$obj}{$tmp_attr}) &&
+                                                                 defined($attrhash{$obj}{$tmp_attr})) {
+                    $::FINALATTRS{$obj}{$tmp_attr} = $attrhash{$obj}{$tmp_attr};
+                }
+            }
+            my $rc = &parse_attr_for_osimage($::command, $::FINALATTRS{$obj});
+
+            if ($rc) {
+                next;
+            }
+        }
 
         # Removed the code to handle the nodegroup table with chdef -t node groups=xxx
         # Only dynamic groups should be in nodegroup table
@@ -3997,10 +4009,12 @@ sub defmk_usage
     $rsp->{data}->[3] =
       "      [-d | --dynamic] [-w attr==val [-w attr=~val] ...]";
     $rsp->{data}->[4] =
-      "      [-f | --force] [noderange] [attr=val [attr=val...]]\n";
-    $rsp->{data}->[5] =
+      "      [-f | --force] [noderange] [attr=val [attr=val...]]";
+    $rsp->{data}->[5] = 
+      "      [-u provmethod=<install|netboot|statelite> profile=<xxx> [attr=value]]\n";
+    $rsp->{data}->[6] =
       "\nThe following data object types are supported by xCAT.\n";
-    my $n = 6;
+    my $n = 7;
 
     foreach my $t (sort(keys %{xCAT::Schema::defspec}))
     {
@@ -4046,9 +4060,11 @@ sub defch_usage
       "    [-z | --stanza] [-m | --minus] [-p | --plus]";
     $rsp->{data}->[5] =
       "    [-w attr==val [-w attr=~val] ... ] [noderange] [attr=val [attr=val...]]\n";
-    $rsp->{data}->[6] =
+    $rsp->{data}->[6] = 
+      "    [-u [provmethod=<install|netboot|statelite>]|[profile=<xxx>]|[attr=value]]";
+    $rsp->{data}->[7] =
       "\nThe following data object types are supported by xCAT.\n";
-    my $n = 7;
+    my $n = 8;
 
     foreach my $t (sort(keys %{xCAT::Schema::defspec}))
     {
