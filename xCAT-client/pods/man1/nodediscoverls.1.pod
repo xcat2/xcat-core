@@ -1,16 +1,27 @@
 =head1 NAME
 
-B<nodediscoverls> -  List all discovered nodes
+B<nodediscoverls> -  List the discovered nodes
 
 =head1 SYNOPSIS
 
-B<nodediscoverls> [-h| --help | -v | --version]
-
 B<nodediscoverls> 
+
+B<nodediscoverls> [-t seq|profile|switch|blade|undef|all] [-l] 
+
+B<nodediscoverls> [-u uuid] [-l]
+
+B<nodediscoverls> [-h| --help | -v | --version]
 
 =head1 DESCRIPTION
 
-The B<nodediscoverls> command lists all discovered nodes that use a profile in the current node discovery process
+The B<nodediscoverls> command lists the discovered nodes.
+
+The B<nodediscoverls> command lists the discovered nodes which discovered by the current running discovery process.
+Or it lists all the discovered nodes if no discovery process is running.
+
+Flag B<-t> can be used to list the nodes which discovered by the specific type.
+
+With B<-l>, the long format information of the discovered nodes will be displayed.
 
 =head1 OPTIONS
 
@@ -22,6 +33,34 @@ B<-v|--version>
 
 Command Version.
 
+B<-t seq|profile|switch|blade|undef|all>
+
+Display the nodes which discovered by the specific type.
+
+=over 2
+
+seq     - Sequential discovery.
+
+profile - Profile discovery.
+
+switch  - Switch discovery.
+
+blade   - Blade discovery.
+
+undef   - The discovery request has not been handled by xCAT.
+
+all     - All discovered nodes.
+
+=back
+
+B<-l>
+
+Display the detail information of the discovered nodes.
+
+B<-u uuid>
+
+Display the discovered node which uuid equals B<uuid>.
+
 =head1 RETURN VALUE
 
 0  The command completed successfully.
@@ -30,9 +69,67 @@ Command Version.
 
 =head1 EXAMPLES
 
-You can get a list of all discovered nodes, by using the following command:
+=item 1
 
-nodediscoverls
+Display the discovered nodes when sequential discovery is running:
+
+B<nodediscoverls>
+
+ UUID                                    NODE                METHOD         MTM       SERIAL
+ 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB2    distest1            sequential     786310X   1052EF2
+ 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB3    distest2            sequential     786310X   1052EF3
+
+=item 2
+
+Display the nodes which have sent out discovery request but were not defined:
+
+B<nodediscoverls> -t undef
+
+ UUID                                    NODE                METHOD         MTM       SERIAL
+ 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB0    undef               undef          786310X   1052EF0
+ 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB1    undef               undef          786310X   1052EF1
+
+=item 3
+
+Display all the discovered nodes:
+
+B<nodediscoverls> -t all
+
+ UUID                                    NODE                METHOD         MTM       SERIAL
+ 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB0    undef               undef          786310X   1052EF0
+ 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB1    undef               undef          786310X   1052EF1
+ 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB2    distest1            sequential     786310X   1052EF2
+ 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB3    distest2            sequential     786310X   1052EF3
+
+=item 4
+
+Display the discovered node which uuid is B<51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB2> with detail information:
+
+B<nodediscoverls> -u 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB2 -l
+
+ Object uuid: 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB2
+    node=distest1
+    method=sequential
+    discoverytime=03-31-2013 17:05:12
+    arch=x86_64
+    cpucount=32
+    cputype=Intel(R) Xeon(R) CPU E5-2690 0 @ 2.90GHz
+    memory=198460852
+    mtm=786310X
+    serial=1052EF2
+    nicdriver=eth0!be2net,eth1!be2net
+    nicipv4=eth0!10.0.0.212/8
+    nichwaddr=eth0!34:40:B5:BE:DB:B0,eth1!34:40:B5:BE:DB:B4
+    nicpci=eth0!0000:0c:00.0,eth1!0000:0c:00.1
+    nicloc=eth0!Onboard Ethernet 1,eth1!Onboard Ethernet 2
+    niconboard=eth0!1,eth1!2
+    nicfirm=eth0!ServerEngines BE3 Controller,eth1!ServerEngines BE3 Controller
+    switchname=eth0!c909f06sw01
+    switchaddr=eth0!192.168.70.120
+    switchdesc=eth0!IBM Flex System Fabric EN4093 10Gb Scalable Switch, flash image: version 7.2.6, boot image: version 7.2.6
+    switchport=eth0!INTA2
+
+
 
 =head1 SEE ALSO
 
