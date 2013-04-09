@@ -6,11 +6,55 @@ B<nodediscoverstart> - starts the node discovery process
 
 B<nodediscoverstart> [-h| --help | -v | --version]
 
+B<Sequential Discovery Specific:>
+
+=over 2
+
+B<nodediscoverstart> noderange=<noderange> [hostiprange=<imageprofile>] [bmciprange=<bmciprange>] [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>]
+
+=back
+
+B<Profile Discovery Specific:>
+
+=over 2
+
 B<nodediscoverstart> networkprofile=<network-profile> imageprofile=<image-profile> hostnameformat=<nost-name-format> [hardwareprofile=<hardware-profile>] [groups=<node-groups>] [rack=<rack-name>] [chassis=<chassis-name>] [height=<rack-server-height>] [unit=<rack-server-unit-location>] [rank=rank-num]
+
+=back
 
 =head1 DESCRIPTION
 
-The B<nodediscoverstart> command starts the node discovery process. All nodes discovered by this process will be associated with specified profiles and rack/chassis/unit locations.
+The B<nodediscoverstart> command starts the node discovery process. 
+
+The B<Sequential Discovery> and B<Profile Discovery> can NOT be run parallelly. 
+
+B<Sequential Discovery Specific:>
+
+=over 2
+
+The B<Sequential Discovery> is the simplest discovery approach that only specifying the B<noderange>, B<hostiprange> and B<bmciprange> could start the discovery process. 
+
+I<noderange> argument must be specified to start the B<Sequential Discovery>.
+
+If you want to predefine host ip and bmc ip for the nodes, the arguments B<hostiprange> and B<bmciprange> could be ignored.
+
+A free node name from the noderange will be assigned to a new discovered node. If the free node has the host ip or bmc ip predefined, the predefined ip will be used, otherwise a free host ip or bmc ip will be selected from the hostiprange or bmciprange.
+
+Using the '-V' to display the free node names, ips list.
+
+=back
+
+B<Profile Discovery Specific:>
+
+=over 2
+
+The B<Profile Discovery> is the PCM associated discovery approach.
+
+I<networkprofile>, I<imageprofile>, I<hostnameformat> arguments must be specified to start the B<Profile Discovery>.
+
+All nodes discovered by this process will be associated with specified profiles and rack/chassis/unit locations.
+
+=back
 
 You can PXE boot nodes that you want to provision. PXE booting nodes launches the node discovery process. During the node discovery process, nodes are discovered automatically. Node settings are assigned automatically according to the specified profiles
 
@@ -25,6 +69,22 @@ Display usage message.
 B<-v|--version>
 
 Command Version.
+
+B<-V|--verbose>
+
+Display the free node names and host/bmc ips.
+
+B<noderange=<noderange>>
+
+The mandatory argument to start the B<Sequential Discovery>. The valid format is xCAT B<noderange>. e.g. node[01-10].
+
+B<hostiprange=<ip range>>
+
+The ip range which will be assigned to the host of new discovered node. The format could be: B<start_ip-end_ip> or B<noderange>. e.g. 192.168.0.1-192.168.0.10 or 192.168.0.[1-10].
+
+B<bmciprange=<ip range>>
+
+The ip range which will be assigned to the bmc of new discovered node. The format could be: B<start_ip-end_ip> or B<noderange>. e.g. 192.168.1.1-192.168.1.10 or 192.168.1.[1-10].
 
 B<imageprofile=<image-profile>>
 
@@ -78,9 +138,27 @@ Specifies the starting rank number that is used in the node name format, where <
 
 =head1 EXAMPLES
 
-To discover nodes using the default_cn network profile and the rhels6.3_packaged image profile, use the following command:
+=item 1
 
-nodediscoverstart networkprofile=default_cn imageprofile=rhels6.3_packaged hostnameformat=compute#NNN
+B<Sequential Discovery>: To discover nodes with noderange and host/bmc ip range:
+
+B<nodediscoverstart> noderange=n[1-10] hostiprange='172.20.101.1-172.20.101.10' bmciprange='172.20.102.1-172.20.102.10' -V
+
+ Sequential Discovery: Started:
+    Number of free node names: 10
+    Number of free host ips: 10
+    Number of free bmc ips: 10
+ ------------------------------------Free Nodes------------------------------------
+ NODE                HOST IP             BMC IP
+ n01                 172.20.101.1        172.20.102.1
+ n02                 172.20.101.2        172.20.102.2
+ ...                 ...                 ...
+
+=item 2
+
+B<Profile Discovery>: To discover nodes using the default_cn network profile and the rhels6.3_packaged image profile, use the following command:
+
+B<nodediscoverstart> networkprofile=default_cn imageprofile=rhels6.3_packaged hostnameformat=compute#NNN
 
 =head1 SEE ALSO
 
