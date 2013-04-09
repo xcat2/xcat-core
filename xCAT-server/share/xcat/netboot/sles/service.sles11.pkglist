@@ -9,7 +9,7 @@ rpm
 bind
 bind-utils
 ksh
-#nfs-utils
+nfs-kernel-server
 dhcp
 dhcpcd
 dhcp-client
