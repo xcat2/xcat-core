@@ -1,4 +1,4 @@
-#!/bin/sh  
+#!/bin/sh 
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 
@@ -15,7 +15,7 @@
 #=cut
 #-------------------------------------------------------------------------------
 
-sudo chef-server-ctl reconfigure
+/usr/bin/chef-server-ctl reconfigure
 if [ $? -ne 0 ]
 then
     errmsg="Failed to run chef-server-ctl reconfigure on $node"
