@@ -1679,7 +1679,14 @@ sub readFileInput
 
             $look_for_colon = 0;    # ok - we have a colon
 
-            ($objectname, $junk2) = split(/:/, $l);
+            # Remove any trailing whitespace
+            $l =~ s/\s*$//;
+
+            # IPv6 network names could be something like fd59::/64
+            # Use all the characters before the last ":" as the object name
+            # .* means greedy regular expression
+            $l =~ /^(.*):(.*?)$/;
+            ($objectname, $junk2) = ($1, $2);
 
             # if $junk2 is defined or there's an = 
             if ($junk2 || grep(/=/, $objectname))
