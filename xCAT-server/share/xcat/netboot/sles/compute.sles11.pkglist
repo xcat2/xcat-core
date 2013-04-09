@@ -1,6 +1,6 @@
 aaa_base
 bash 
-#nfs-utils
+nfs-kernel-server
 openssl
 dhcpcd 
 kernel-default
