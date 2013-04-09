@@ -976,6 +976,9 @@ sub kit_cleanall
 {
 
     print "running buildkit cleanall... \n";
+
+    &kit_cleantar;
+
     if ( -d $::build_dir ) {
         if ( system("rm -Rf $::build_dir/* ") ) {
             print "Error removing contents of $::build_dir \n";
@@ -993,6 +996,7 @@ sub kit_cleanall
         system("rm -Rf $::workdir/debbuild");
     }
 
+    return 0;
 }
 
 #-----------------------------------------------------------------------------
@@ -1945,7 +1949,7 @@ sub update_kitcomp_kitpkgdeps
         if ( $d_short eq $d ) {
             # no version-release comparisons specified for this kitpkgdep
             # do we have an rpm file in the repo?
-            my $cmd = "rpm -q --qf \"%{NAME} >= %{VERSION}-%{RELEASE},\" -p $repodir/$d-*.rpm 2>/dev/null";
+            my $cmd = "rpm -q --qf \"%{NAME} >= %{VERSION}-%{RELEASE},\" -p $repodir/$d\[0-9\]-*.rpm 2>/dev/null";
             if ($::VERBOSE) {
                print "running rpm query to get version-release info: \n $cmd \n";
             }
