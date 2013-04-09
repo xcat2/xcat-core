@@ -1005,6 +1005,10 @@ sub parse_responses {
             $atthash{otherinterfaces} = ${$attributes->{'ipv4-address'}}[0];
             $outhash{'Server-'.$atthash{mtm}.'-SN'.$atthash{serial}} = \%atthash;
             $$length = length( $atthash{ip}) if ( length( $atthash{ip} ) > $$length );
+            if (exists($::OLD_DATA_CACHE{"mp*".$atthash{mtm}."*".$atthash{serial}})){
+                $atthash{hostname} = $::OLD_DATA_CACHE{"mp*".$atthash{mtm}."*".$atthash{serial}};
+                push  @matchnode,'Server-'.$atthash{mtm}.'-SN'.$atthash{serial};
+            }
             trace( $request, "Discover node $atthash{hostname}: type is $atthash{type}, \
 			mtm is $atthash{mtm}, sn is $atthash{serial}, side is $atthash{side}, \
 			ip is $atthash{ip}, mac is $atthash{mac}, mname is $atthash{mname},\
