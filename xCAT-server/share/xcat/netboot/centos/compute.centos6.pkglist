@@ -5,11 +5,9 @@ dhclient
 kernel 
 openssh-server 
 openssh-clients
-busybox-anaconda
 wget
 rsync
 dracut-network
-lsvpd
 irqbalance
 procps
 rpm
