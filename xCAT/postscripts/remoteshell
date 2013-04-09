@@ -7,6 +7,14 @@ if [ -e /etc/xCATMN ]; then
 	logger -t xcat -p local4.info "remoteshell:Running on the Management Node ,  exiting "
    exit 0
 fi
+# if -p input, do special PCM setup 
+if [ -n "$1" ]; then
+ if [ $1 = "-p" ]; then 
+    SETUPFORPCM=1
+ fi
+fi
+
+
 #  Linux or if AIX call aixremoteshell -d 
 if [ "$(uname -s)" = "AIX" ]; then
    ./aixremoteshell -d 2>&1 
@@ -21,7 +29,9 @@ then
 	sed -i 's/^KeyRegenerationInterval .*$/KeyRegenerationInterval 0/' /etc/ssh/sshd_config
 	sed -i 's/\(.*MaxStartups.*\)/#\1/' /etc/ssh/sshd_config
 	echo "MaxStartups 1024" >>/etc/ssh/sshd_config
-	#echo "PasswordAuthentication no" >>/etc/ssh/sshd_config
+    if [ "$SETUPFORPCM" = "1" ];then
+     echo "PasswordAuthentication yes" >>/etc/ssh/sshd_config
+    fi
 fi
 
 if [ -r /etc/ssh/sshd_config ]
