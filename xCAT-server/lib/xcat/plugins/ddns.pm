@@ -226,6 +226,9 @@ sub process_request {
             return;
         }
     }
+    if ($::XCATSITEVALS{externaldns}) {
+    	$external=1;
+    }
 
     if ($help)
     {
@@ -506,67 +509,70 @@ sub process_request {
                 my @nservers = split /[ ,]/,$site_entry;
                 $ctx->{dnsupdaters} = \@nservers;
         }
-        if ($zapfiles) { #here, we unlink all the existing files to start fresh
-            if (xCAT::Utils->isAIX())
-            {
-                system("/usr/bin/stopsrc -s $service");
-            }
-            else
-            {
-                system("service $service stop"); #named may otherwise hold on to stale journal filehandles
-            }
-            my $conf = get_conf();
-            unlink $conf;
-            my $DBDir = get_dbdir();
-            foreach (<$DBDir/db.*>) {
-                unlink $_;
-            }
-        }
-        #We manipulate local namedconf
-        $ctx->{dbdir} = get_dbdir();
-        $ctx->{zonesdir} = get_zonesdir();
-        chmod 0775, $ctx->{dbdir}; # assure dynamic dns can actually execute against the directory
+	unless ($external) {
+	        if ($zapfiles) { #here, we unlink all the existing files to start fresh
+	            if (xCAT::Utils->isAIX())
+	            {
+	                system("/usr/bin/stopsrc -s $service");
+	            }
+	            else
+	            {
+	                system("service $service stop"); #named may otherwise hold on to stale journal filehandles
+	            }
+	            my $conf = get_conf();
+	            unlink $conf;
+	            my $DBDir = get_dbdir();
+	            foreach (<$DBDir/db.*>) {
+	                unlink $_;
+	            }
+	        }
+	        #We manipulate local namedconf
+	        $ctx->{dbdir} = get_dbdir();
+	        $ctx->{zonesdir} = get_zonesdir();
+	        chmod 0775, $ctx->{dbdir}; # assure dynamic dns can actually execute against the directory
 
-        update_namedconf($ctx); 
-        update_zones($ctx);
+	        update_namedconf($ctx); 
+	        update_zones($ctx);
 
-        # check if named is active before update dns records.
-        if (xCAT::Utils->isAIX())
-        {
-            my $cmd = "/usr/bin/lssrc -s $service |grep active";
-            my @output=xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {
-                system("/usr/bin/startsrc -s $service");
-                xCAT::SvrUtils::sendmsg("Starting named complete", $callback);
-            }
-        }
-        else
-        {
-            my $cmd = "service $service status|grep running";
-            my @output=xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {
-                system("service $service start");
-                xCAT::SvrUtils::sendmsg("Starting named complete", $callback);
-            }
-        }
+	        # check if named is active before update dns records.
+	        if (xCAT::Utils->isAIX())
+	        {
+	            my $cmd = "/usr/bin/lssrc -s $service |grep active";
+	            my @output=xCAT::Utils->runcmd($cmd, 0);
+	            if ($::RUNCMD_RC != 0)
+	            {
+	                system("/usr/bin/startsrc -s $service");
+	                xCAT::SvrUtils::sendmsg("Starting named complete", $callback);
+	            }
+	        }
+	        else
+	        {
+	            my $cmd = "service $service status|grep running";
+	            my @output=xCAT::Utils->runcmd($cmd, 0);
+	            if ($::RUNCMD_RC != 0)
+	            {
+	                system("service $service start");
+	                xCAT::SvrUtils::sendmsg("Starting named complete", $callback);
+	            }
+	        }
         
-        if ($ctx->{restartneeded}) {
-            xCAT::SvrUtils::sendmsg("Restarting $service", $callback);
-
-        if (xCAT::Utils->isAIX())
-        {
-            system("/usr/bin/stopsrc -s $service");
-            system("/usr/bin/startsrc -s $service");
-        }
-        else
-        {
-            system("service $service stop");
-            system("service $service start");
-        }
-            xCAT::SvrUtils::sendmsg("Restarting named complete", $callback);
-        }
+	        if ($ctx->{restartneeded}) {
+	            xCAT::SvrUtils::sendmsg("Restarting $service", $callback);
+	
+	        if (xCAT::Utils->isAIX())
+	        {
+	            system("/usr/bin/stopsrc -s $service");
+	            system("/usr/bin/startsrc -s $service");
+	        }
+	        else
+	        {
+	            system("service $service stop");
+	            system("service $service start");
+	        }
+	            xCAT::SvrUtils::sendmsg("Restarting named complete", $callback);
+		}
+	        
+	}
     } else {
         unless ($ctx->{privkey}) {
             xCAT::SvrUtils::sendmsg([1,"Unable to update DNS due to lack of credentials in passwd to communicate with remote server"], $callback);

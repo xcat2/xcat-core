@@ -525,11 +525,13 @@ sub addnode
 
             print $omshell "create\n";
             print $omshell "close\n";
-            unless (grep /#definition for host $node aka host $hostname/, @dhcpconf)
-            {
-                push @dhcpconf,
-                     "#definition for host $node aka host $hostname can be found in the dhcpd.leases file (typically /var/lib/dhcpd/dhcpd.leases)\n";
-            }
+    	    unless ($::XCATSITEVALS{externaldhcpservers}) { 
+	            unless (grep /#definition for host $node aka host $hostname/, @dhcpconf)
+	            {
+	                push @dhcpconf,
+	                     "#definition for host $node aka host $hostname can be found in the dhcpd.leases file (typically /var/lib/dhcpd/dhcpd.leases)\n";
+            	}
+	    }
         }
         $count = $count + 2;
     }
@@ -982,7 +984,8 @@ sub process_request
    my $dhcplockfd;
    open($dhcplockfd,">","/tmp/xcat/dhcplock");
    flock($dhcplockfd,LOCK_EX);
-   if (grep /^-n$/, @{$req->{arg}})
+   if ($::XCATSITEVALS{externaldhcpservers}) { #do nothing if remote dhcpservers at this point
+   } elsif (grep /^-n$/, @{$req->{arg}})
     {
         if (-e $dhcpconffile)
         {
@@ -1388,9 +1391,15 @@ sub process_request
             print $omshell "key "
                 . $ent->{username} . " \""
                 . $ent->{password} . "\"\n";
+	    if ($::XCATSITEVALS{externaldhcpservers}) {
+	    	print $omshell "server $::XCATSITEVALS{externaldhcpservers}\n";
+	    }
             print $omshell "connect\n";
             if ($usingipv6) {
                 open($omshell6, "|/usr/bin/omshell > /dev/null");
+	    	if ($::XCATSITEVALS{externaldhcpservers}) {
+		    	print $omshell "server $::XCATSITEVALS{externaldhcpservers}\n";
+		    }
                 print $omshell6 "port 7912\n";
                 print $omshell6 "key "
                     . $ent->{username} . " \""
@@ -1472,7 +1481,7 @@ sub process_request
         }
     }
     writeout();
-    if ($restartdhcp) {
+    if (not $::XCATSITEVALS{externaldhcpservers} and $restartdhcp) {
         if ( $^O eq 'aix')
         {
             restart_dhcpd_aix();
@@ -1626,6 +1635,7 @@ sub putmyselffirst {
 }
 sub addnet6
 {
+    if ($::XCATSITEVALS{externaldhcpservers}) { return; }
     my $netentry = shift;
     my $net = $netentry->{net};
     my $iface = $netentry->{iface};
@@ -1719,6 +1729,7 @@ sub addnet6
 }
 sub addnet
 {
+    if ($::XCATSITEVALS{externaldhcpservers}) { return; }
     my $net  = shift;
     my $mask = shift;
     my $nic;
@@ -2130,6 +2141,7 @@ sub gen_aix_net
 
 sub addnic
 {
+    if ($::XCATSITEVALS{externaldhcpservers}) { return; }
     my $nic        = shift;
     my $conf       = shift;
     my $firstindex = 0;
@@ -2167,6 +2179,7 @@ sub addnic
 
 sub writeout
 {
+    if ($::XCATSITEVALS{externaldhcpservers}) { return; }
 
 	# add the new entries to the dhcp config file
     my $targ;
@@ -2220,6 +2233,7 @@ sub writeout
 }
 
 sub newconfig6 {
+    if ($::XCATSITEVALS{externaldhcpservers}) { return; }
     #phase 1, basic working
     #phase 2, ddns too, evaluate other stuff from dhcpv4 as applicable
     push @dhcp6conf, "#xCAT generated dhcp configuration\n";
@@ -2256,6 +2270,7 @@ sub newconfig6 {
 
 sub newconfig
 {
+    if ($::XCATSITEVALS{externaldhcpservers}) { return; }
     return newconfig_aix() if ( $^O eq 'aix');
 
     # This function puts a standard header in and enough to make omapi work.
