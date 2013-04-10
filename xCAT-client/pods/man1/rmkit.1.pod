@@ -57,7 +57,7 @@ Kit kit-test1-1.0-Linux,kit-test2-1.0-Linux was successfully removed.
 
 =head1 SEE ALSO
 
-L<addkit(1)|addkit.1>, L<addkitcomp(1)|addkitcomp.1>, L<rmkitcomp(1)|rmkitcomp.1>, L<chkkitcomp(1)|chkkitcomp.1>
+L<lskit(1)|lskit.1>, L<addkit(1)|addkit.1>, L<addkitcomp(1)|addkitcomp.1>, L<rmkitcomp(1)|rmkitcomp.1>, L<chkkitcomp(1)|chkkitcomp.1>
 
 
 ~

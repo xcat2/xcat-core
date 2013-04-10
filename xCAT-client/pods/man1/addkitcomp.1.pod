@@ -97,6 +97,6 @@ kitcomponents=comp-test2-1.0-0-rhels-6.2-ppc64,comp-test2-1.0-1-rhels-6.2-ppc64
 
 =head1 SEE ALSO
 
-L<addkit(1)|addkit.1>, L<rmkit(1)|rmkit.1>, L<rmkitcomp(1)|rmkitcomp.1>, L<chkkitcomp(1)|chkkitcomp.1>
+L<lskit(1)|lskit.1>, L<addkit(1)|addkit.1>, L<rmkit(1)|rmkit.1>, L<rmkitcomp(1)|rmkitcomp.1>, L<chkkitcomp(1)|chkkitcomp.1>
 
 
