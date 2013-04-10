@@ -108,6 +108,8 @@ if dmidecode|grep IPMI > /dev/null; then
 	modprobe ipmi_si
 	modprobe ipmi_devintf
 fi
+DEVICE=$bootnic
+export DEVICE
 XCATPORT=3001
 export XCATPORT
 for parm in `cat /proc/cmdline`; do
@@ -117,6 +119,7 @@ for parm in `cat /proc/cmdline`; do
                 XCATPORT=`echo $parm|awk -F= '{print $2}'|awk -F: '{print $2}'`
         fi
 done
+export XCATMASTER
 if [ "$destiny" != "discover" ]; then #we aren't discoverying, we probably can and should get a cert
 	/bin/getcert $XCATMASTER:$XCATPORT
 fi
@@ -159,6 +162,10 @@ while :; do
 		reboot -f
 	elif [ "$dest" = "install" -o "$dest" = "netboot" ]; then
 		reboot -f
+	elif [ "$dest" = sysclone ]; then
+                /bin/dosysclone
+                destiny=''
+                dest='' 
 	elif [ "$dest" = standby ]; then
 		destiny=''
 		dest=''
