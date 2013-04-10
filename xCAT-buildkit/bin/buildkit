@@ -108,6 +108,26 @@ $::base_repodir = $::build_dir."/kit_repodir";
                value_desc=>'Must be: OS Type String',
                mandatory=>1,
                cp_to_kitconfig=>1},
+              osbasename => {
+               description=>'The kit OS basename',
+               value_desc=>'Must be: Generic Name String',
+               mandatory=>0,
+               cp_to_kitconfig=>0},
+              osmajorversion => {
+               description=>'The kit OS majorversion',
+               value_desc=>'Must be: Generic Name String',
+               mandatory=>0,
+               cp_to_kitconfig=>0},
+              osminorversion => {
+               description=>'The kit OS minorversion',
+               value_desc=>'Must be: Generic Name String',
+               mandatory=>0,
+               cp_to_kitconfig=>0},
+              osarch => {
+               description=>'The kit OS architecture',
+               value_desc=>'Must be: Generic Name String',
+               mandatory=>0,
+               cp_to_kitconfig=>0},
               isinternal=> {
                description=>'Flag to say if this Kit is used for internal use only.  It is only used for information purposes.',
                value_desc=>'Must be: empty string or boolean string',
@@ -931,7 +951,8 @@ sub kit_cleantar
         $kitfilename = $::bldkit_config->{kit}{entries}[0]->{kittarfilename};
         $kitfilename =~ s/tar\.bz2\s*$//;
     }
-    my $tarfile = `find $::current_dir -name $kitfilename.*tar.bz2`;
+    my $findcmd = "find $::current_dir -name \"$kitfilename.\*tar.bz2\"";
+    my $tarfile = `$findcmd`;
     chomp ($tarfile);
     if ( -r $tarfile ) {
         if ( system("rm -f $tarfile ") ) {
@@ -1228,7 +1249,28 @@ sub validate_bldkitconf
     if (defined($::bldkit_config->{kit}{entries}[0]->{release})) {
         $full_kitname .= '-'.$::bldkit_config->{kit}{entries}[0]->{release};
     }
-    $full_kitname .= '-'.$::bldkit_config->{kit}{entries}[0]->{ostype};
+    my $short_kitname = $full_kitname;
+    if (defined($::bldkit_config->{kit}{entries}[0]->{osbasename})) {
+        $full_kitname .= '-'.$::bldkit_config->{kit}{entries}[0]->{osbasename};
+    }
+    if (defined($::bldkit_config->{kit}{entries}[0]->{osmajorversion})) {
+      if ( ! defined($::bldkit_config->{kit}{entries}[0]->{osbasename})) {
+        print "Error:  Kit osmajorversion attribute was specified but Kit osbasename was not set. \n";
+        return 1;
+      }
+      $full_kitname .= '-'.$::bldkit_config->{kit}{entries}[0]->{osmajorversion};
+    }
+    if (defined($::bldkit_config->{kit}{entries}[0]->{osminorversion})) {
+      if ( ( ! defined($::bldkit_config->{kit}{entries}[0]->{osbasename})) || 
+           ( ! defined($::bldkit_config->{kit}{entries}[0]->{osmajorversion}))) {
+        print "Error:  Kit osminorversion attribute was specified but either Kit osbasename or Kit osmajorversion were not set. \n";
+        return 1;
+      }
+      $full_kitname .= '-'.$::bldkit_config->{kit}{entries}[0]->{osminorversion};
+    }
+    if (defined($::bldkit_config->{kit}{entries}[0]->{osarch})) {
+        $full_kitname .= '-'.$::bldkit_config->{kit}{entries}[0]->{osarch};
+    }
     $::bldkit_config->{kit}{entries}[0]->{kitname} = $full_kitname;
     $::deploy_dir .= "/".$full_kitname;
 
@@ -1315,11 +1357,31 @@ sub validate_bldkitconf
    
     #  Kitrepo checks
     foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
-        my $reponame = $full_kitname;
-        $reponame .= '_'.$kr->{osbasename};
+        my $reponame = $short_kitname;
+        if ((defined($::bldkit_config->{kit}{entries}[0]->{osbasename})) && 
+            ($::bldkit_config->{kit}{entries}[0]->{osbasename} ne
+                $kr->{osbasename} ) ) {
+            print "Warning:  Kit osbasename is set to \"$::bldkit_config->{kit}{entries}[0]->{osbasename}\", but this does not match kitrepo $kr->{kitrepoid} osbasename \"$kr->{osbasename}\".  Processing will continue, but verify that you do not have an error in your buildkit configuration file. \n";
+        }
+        $reponame .= '-'.$kr->{osbasename};
+        if ( (defined($::bldkit_config->{kit}{entries}[0]->{osmajorversion})) &&  
+             ($::bldkit_config->{kit}{entries}[0]->{osmajorversion} ne
+                $kr->{osmajorversion} ) ) {
+           print "Warning:  Kit osmajorversion is set to \"$::bldkit_config->{kit}{entries}[0]->{osmajorversion}\", but this does not match kitrepo $kr->{kitrepoid} osmajorversion \"$kr->{osmajorversion}\".  Processing will continue, but verify that you do not have an error in your buildkit configuration file. \n";
+        } 
         $reponame .= '-'.$kr->{osmajorversion};
         if (defined($kr->{osminorversion})){
+          if ( (defined($::bldkit_config->{kit}{entries}[0]->{osminorversion})) &&
+              ($::bldkit_config->{kit}{entries}[0]->{osminorversion} ne
+                  $kr->{osminorversion} ) ) {
+             print "Warning:  Kit osminorversion is set to \"$::bldkit_config->{kit}{entries}[0]->{osminorversion}\", but this does not match kitrepo $kr->{kitrepoid} osminorversion \"$kr->{osminorversion}\".  Processing will continue, but verify that you do not have an error in your buildkit configuration file. \n";
+          } 
           $reponame .= '.'.$kr->{osminorversion};
+        }
+        if ( (defined($::bldkit_config->{kit}{entries}[0]->{osarch})) &&
+             ($::bldkit_config->{kit}{entries}[0]->{osarch} ne
+                $kr->{osarch} ) ) {
+           print "Warning:  Kit osarch is set to \"$::bldkit_config->{kit}{entries}[0]->{osarch}\", but this does not match kitrepo $kr->{kitrepoid} osarch \"$kr->{osarch}\".  Processing will continue, but verify that you do not have an error in your buildkit configuration file. \n";
         }
         $reponame .= '-'.$kr->{osarch};
         $kr->{kitreponame} = $reponame;
@@ -1949,7 +2011,7 @@ sub update_kitcomp_kitpkgdeps
         if ( $d_short eq $d ) {
             # no version-release comparisons specified for this kitpkgdep
             # do we have an rpm file in the repo?
-            my $cmd = "rpm -q --qf \"%{NAME} >= %{VERSION}-%{RELEASE},\" -p $repodir/$d\[0-9\]-*.rpm 2>/dev/null";
+            my $cmd = "rpm -q --qf \"%{NAME} >= %{VERSION}-%{RELEASE},\" -p $repodir/$d-\[0-9\]\*.rpm 2>/dev/null";
             if ($::VERBOSE) {
                print "running rpm query to get version-release info: \n $cmd \n";
             }
@@ -2927,6 +2989,9 @@ sub kit_addpkgs
          return &NEW_kit_addpkgs($tmpdir_base,$tmpdir);
     }
 
+    ###  OLD KITS BUILT PRIOR TO xCAT 2.8.1 
+    ###    this code will eventually become obsolete and should be removed
+    ###    do not update
     if (defined($::KITVERSION) || defined($::KITRELEASE)) {
         print "kitversion and kitrelease substitution is not supported for this incomplete kit.  Run \"buildkit addpkgs\" without the \"-k|--kitversion\" and \"-r| --kitrelease\" options. \n";
         exit 1;
