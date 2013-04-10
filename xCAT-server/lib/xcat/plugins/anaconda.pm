@@ -1482,6 +1482,16 @@ sub mksysclone
     my %hents = 
               %{$hmtab->getNodesAttribs(\@nodes,
                                      ['serialport', 'serialspeed', 'serialflow'])};
+    my @entries =  xCAT::TableUtils->get_site_attribute("xcatdport");
+    my $port_entry = $entries[0];
+    my $xcatdport="3001";
+    if ( defined($port_entry)) {
+       $xcatdport = $port_entry;
+    }
+
+    my @entries =  xCAT::TableUtils->get_site_attribute("master");
+    my $master_entry = $entries[0];
+
     require xCAT::Template;
 
     # Warning message for nodeset <noderange> install/netboot/statelite
@@ -1553,7 +1563,7 @@ sub mksysclone
         {
             $xcatmaster = $ient->{xcatmaster};
         } else {
-            $xcatmaster = '!myipfn!';
+            $xcatmaster = $master_entry;
         }
 
         my $osinst;
@@ -1710,47 +1720,15 @@ sub mksysclone
         my $ramdisk_size = 200000;
 	 
         if (
-            -r "$installroot/sysclone/images/$imagename/etc/systemimager/boot/kernel"
-            and $kernpath = "$installroot/sysclone/images/$imagename/etc/systemimager/boot/kernel"
-            and -r "$installroot/sysclone/images/$imagename/etc/systemimager/boot/initrd.img"
-            and $initrdpath = "$installroot/sysclone/images/$imagename/etc/systemimager/boot/initrd.img"
+            -r "$tftpdir/xcat/genesis.kernel.$arch"
+            and $kernpath = "$tftpdir/xcat/genesis.kernel.$arch"
+            and -r "$tftpdir/xcat/genesis.fs.$arch.lzma"
+            and $initrdpath = "$tftpdir/xcat/genesis.fs.$arch.lzma"
         )
         {
-            #TODO: driver slipstream, targetted for network.
-            # Copy the install resource to /tftpboot and check to only copy once
-            my $docopy = 0;
-            my $tftppath;
-            my $rtftppath; # the relative tftp path without /tftpboot/
-            if ($imagename) {
-                $tftppath = "$tftpdir/xcat/osimage/$imagename";
-                $rtftppath = "xcat/osimage/$imagename";
-                unless ($donetftp{$imagename}) {
-                    $docopy = 1;
-                    $donetftp{$imagename} = 1;
-                }
-            } else {
-                $tftppath = "/$tftpdir/xcat/$os/$arch/$profile";
-                $rtftppath = "xcat/$os/$arch/$profile";
-                unless ($donetftp{"$os|$arch|$profile|$tftpdir"}) {
-                    $docopy = 1;
-                    $donetftp{"$os|$arch|$profile|$tftpdir"} = 1;
-                }
-            }
-            
-            if ($docopy) {
-                mkpath("$tftppath");
-                copy($kernpath,"$tftppath/vmlinuz");
-                copy($initrdpath,"$tftppath/initrd.img");
-                &insert_dd($callback, $os, $arch, "$tftppath/initrd.img", $driverupdatesrc, $netdrivers);
-            }
-
             #We have a shot...
             my $ent    = $rents{$node}->[0];
             my $sent = $hents{$node}->[0];
-            $instserver = $xcatmaster;
-            if ($ent and $ent->{nfsserver}) {
-	    	$instserver=$ent->{nfsserver};
-	    }
 
             my $kcmdline =
                 "ramdisk_size=$ramdisk_size";
@@ -1821,6 +1799,8 @@ sub mksysclone
                     $kcmdline .= "n8r";
                 }
             }
+
+            $kcmdline .= " xcatd=$xcatmaster:$xcatdport";
             #$kcmdline .= " noipv6";
             # add the addkcmdline attribute  to the end
             # of the command, if it exists
@@ -1832,8 +1812,8 @@ sub mksysclone
             #}
             my $k;
             my $i;
-            $k = "$rtftppath/vmlinuz";
-            $i = "$rtftppath/initrd.img";
+            $k = "xcat/genesis.kernel.$arch";
+            $i = "xcat/genesis.fs.$arch.lzma";
 
             $bptab->setNodeAttribs(
                 $node,
@@ -1848,7 +1828,7 @@ sub mksysclone
         {
             $callback->(
                     {
-                     error => ["Kernel and initrd not found in $installroot/sysclone/images/$imagename"],
+                     error => ["Kernel and initrd not found in $tftpdir/xcat"],
                      errorcode => [1]
                     }
                     );
