@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh -vx 
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 
@@ -14,7 +14,8 @@
 #            chef <noderange> -p postscripts=config_chef_server
 #=cut
 #-------------------------------------------------------------------------------
-
+HOME='/root/'
+export HOME
 /usr/bin/chef-server-ctl reconfigure
 if [ $? -ne 0 ]
 then
