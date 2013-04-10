@@ -50,4 +50,4 @@ Kit components comp-test1-1.0-1-rhels-6.2-ppc64 fit to osimage rhels6.2-ppc64-ne
 
 =head1 SEE ALSO
 
-L<addkit(1)|addkit.1>, L<rmkit(1)|rmkit.1>, L<addkitcomp(1)|addkitcomp.1>, L<rmkitcomp(1)|rmkitcomp.1>
+L<lskit(1)|lskit.1>, L<addkit(1)|addkit.1>, L<rmkit(1)|rmkit.1>, L<addkitcomp(1)|addkitcomp.1>, L<rmkitcomp(1)|rmkitcomp.1>
