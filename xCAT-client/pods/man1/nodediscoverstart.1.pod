@@ -138,6 +138,8 @@ Specifies the starting rank number that is used in the node name format, where <
 
 =head1 EXAMPLES
 
+=over 3
+
 =item 1
 
 B<Sequential Discovery>: To discover nodes with noderange and host/bmc ip range:
@@ -159,6 +161,8 @@ B<nodediscoverstart> noderange=n[1-10] hostiprange='172.20.101.1-172.20.101.10' 
 B<Profile Discovery>: To discover nodes using the default_cn network profile and the rhels6.3_packaged image profile, use the following command:
 
 B<nodediscoverstart> networkprofile=default_cn imageprofile=rhels6.3_packaged hostnameformat=compute#NNN
+
+=back
 
 =head1 SEE ALSO
 
