@@ -104,7 +104,7 @@ if ($interface) {
 }
 foreach (@nodes) {
   my $node=$_;
-  while ($children > $pshmaxp) { processoutput($inputs); }
+  while ($children >= $pshmaxp) { processoutput($inputs); }
   my $child;
   $children++;
   sshnode(\$child,$node,$username,@ARGV[1 .. $#ARGV]);
