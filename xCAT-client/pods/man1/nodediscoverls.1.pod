@@ -69,6 +69,8 @@ Display the discovered node which uuid equals B<uuid>.
 
 =head1 EXAMPLES
 
+=over 3
+
 =item 1
 
 Display the discovered nodes when sequential discovery is running:
@@ -129,7 +131,7 @@ B<nodediscoverls> -u 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB2 -l
     switchdesc=eth0!IBM Flex System Fabric EN4093 10Gb Scalable Switch, flash image: version 7.2.6, boot image: version 7.2.6
     switchport=eth0!INTA2
 
-
+=back
 
 =head1 SEE ALSO
 
