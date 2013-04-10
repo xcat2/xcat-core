@@ -1843,7 +1843,13 @@ sub setupLinuxexports
     {
 
         # restart nfs
-        my $cmd = "/sbin/service nfs restart";
+        my $cmd;
+        my $os = xCAT::Utils->osver();
+        if ($os =~ /sles/) {
+           $cmd = "/sbin/service nfsserver restart";
+        } else {
+           $cmd = "/sbin/service nfs restart";
+        }
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
@@ -1854,7 +1860,11 @@ sub setupLinuxexports
             xCAT::MsgUtils->message('I', "NFS has been restarted.");
         }
 
-        $cmd = "/sbin/chkconfig nfs on";
+        if ($os =~ /sles/) {
+          $cmd = "/sbin/chkconfig nfsserver on";
+        } else {
+          $cmd = "/sbin/chkconfig nfs on";
+        }  
         $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
