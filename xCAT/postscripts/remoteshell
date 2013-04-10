@@ -7,6 +7,14 @@ if [ -e /etc/xCATMN ]; then
 	logger -t xcat -p local4.info "remoteshell:Running on the Management Node ,  exiting "
    exit 0
 fi
+# if -p input, do special PCM setup 
+if [ -n "$1" ]; then
+ if [ $1 = "-p" ]; then 
+    SETUPFORPCM=1
+ fi
+fi
+
+
 #  Linux or if AIX call aixremoteshell -d 
 if [ "$(uname -s)" = "AIX" ]; then
    ./aixremoteshell -d 2>&1 
@@ -21,7 +29,9 @@ then
 	sed -i 's/^KeyRegenerationInterval .*$/KeyRegenerationInterval 0/' /etc/ssh/sshd_config
 	sed -i 's/\(.*MaxStartups.*\)/#\1/' /etc/ssh/sshd_config
 	echo "MaxStartups 1024" >>/etc/ssh/sshd_config
-	#echo "PasswordAuthentication no" >>/etc/ssh/sshd_config
+    if [ "$SETUPFORPCM" = "1" ];then
+     echo "PasswordAuthentication yes" >>/etc/ssh/sshd_config
+    fi
 fi
 
 if [ -r /etc/ssh/sshd_config ]
@@ -77,6 +87,10 @@ if [ $? -ne 0 ]; then
         chmod 600 /etc/ssh/ssh_host_dsa_key
         if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_dsa_key > /dev/null 2>&1 ; then
                 rm /etc/ssh/ssh_host_dsa_key
+	else
+		ssh-keygen -y -f /etc/ssh/ssh_host_dsa_key > /etc/ssh/ssh_host_dsa_key.pub
+		chmod 644 /etc/ssh/ssh_host_dsa_key.pub
+		chown root /etc/ssh/ssh_host_dsa_key.pub
         fi
 else 
 	#the message received is an error, so parse it
@@ -104,6 +118,10 @@ if [ $? -ne 0 ]; then
 	chmod 600 /etc/ssh/ssh_host_rsa_key
 	if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_rsa_key > /dev/null 2>&1 ; then
    		rm /etc/ssh/ssh_host_rsa_key
+	else
+		ssh-keygen -y -f /etc/ssh/ssh_host_rsa_key > /etc/ssh/ssh_host_rsa_key.pub
+		chmod 644 /etc/ssh/ssh_host_rsa_key.pub
+		chown root /etc/ssh/ssh_host_rsa_key.pub
 	fi
 else
 	#This is an error message
