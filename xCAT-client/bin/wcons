@@ -2,6 +2,9 @@
 #A placeholder wcons, a fuller port from 1.3 is needed
 use Getopt::Long qw(:config getopt_compat pass_through);
 use File::Basename;
+BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
+use lib "$::XCATROOT/lib/perl";
+use xCAT::Client;
 #use Data::Dumper;
 use strict;
 unless ($ENV{DISPLAY}) {
@@ -18,6 +21,11 @@ GetOptions(
    'tile|t:i' => \$tilefact,
    #'font|f=s' => \$font
 );
+my $noderange = $ARGV[$#ARGV];
+my %noderangeref = (command => 'noderange', noderange => $noderange);
+my %conserverref = (command => 'nodels', noderange => $noderange, arg => ['nodehm.conserver']);
+
+
 unless ($ARGV[$#ARGV]) {
    print "Usage: wcons <options> <noderange>\n";
    exit 1;
