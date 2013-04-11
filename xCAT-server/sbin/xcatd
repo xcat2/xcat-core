@@ -517,6 +517,8 @@ sub grant_tcrequests {
 }
 
 sub do_discovery_process {
+	$SIG{TERM} = 'DEFAULT';
+	$SIG{INT} = 'DEFAULT';
 	my %args =@_;
 	my $broker = $args{broker};
 	my $quit=0;
