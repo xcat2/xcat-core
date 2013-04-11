@@ -94,10 +94,11 @@ B<For Flex node (power and x86):>
 
 B<renergy> I<noderange> [-V] { all | [averageDC]
 [capability] [cappingvalue] [cappingmaxmin] [cappingmax] 
-[cappingmin] [CPUspeed] [maxCPUspeed]
+[cappingmin] [cappingGmin] [CPUspeed] [maxCPUspeed]
 [savingstatus] [dsavingstatus] }
 
-B<renergy> I<noderange> [-V] { cappingwatt=watt | cappingperc=percentage 
+B<renergy> I<noderange> [-V] { cappingstatus={on | off}
+| cappingwatt=watt | cappingperc=percentage 
 | savingstatus={on | off} | dsavingstatus={on-norm | on-maxp | off} }
 
 =back
@@ -305,20 +306,21 @@ enabled, phase 2 or higher
 dynamicPowerMeasurementWithPowerCapping: the module with power meter capability, 
 both measurement and capping enabled, phase 2 or higher
 
+=item B<cappingGmin>
+
+Query the Guaranteed Minimum power capping value in watts.
+
 =item B<cappingmax>
 
-Query the maximum of power capping value
-which can be set for a CEC or blade server. (Unit is watt)
+Query the Maximum of power capping value in watts.
 
 =item B<cappingmaxmin>
 
-Query the maximum and minimum of power capping value 
-which can be set for a CEC or blade server. (Unit is watt) 
+Query the Maximum and Minimum of power capping value in watts.
 
 =item B<cappingmin>
 
-Query the minimum of power capping value
-which can be set for a CEC or blade server. (Unit is watt)
+Query the Minimum of power capping value in watts.
 
 =item B<cappingperc>=B<percentage>
 
