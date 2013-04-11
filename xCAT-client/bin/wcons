@@ -27,8 +27,6 @@ my @nodes;
 my %conservers;
 sub getconserver {
 	my $rsp = shift;
-	use Data::Dumper;
-	print Dumper($rsp);
 	foreach (@{$rsp->{node}}) {
 		my $node = $_->{name};
 		if (ref $node) { $node = $node->[0]; }
