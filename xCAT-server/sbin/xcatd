@@ -590,12 +590,14 @@ sub do_udp_service { #This function opens up a UDP port
   my $udppidfile;
   my $retry=1;
   my $socket;
+  my $discopid = $args{discopid};
   $SIG{USR2} = sub { 
 	if ($socket) {
 		#only clear out pid file when we still have socket.
       		unlink("/var/run/xcat/udpservice.pid"); close($socket); $quit=1; $socket=0;
        		xCAT::MsgUtils->message("S","xcatd udp service $$ quiescing");
 	}
+	kill(15,$discopid);
 	};
 	if ($inet6support) {
 	  $socket = IO::Socket::INET6->new(LocalPort => $port,
@@ -913,7 +915,7 @@ unless ($pid_UDP) {
   	xexit(0);
   }
   close($udpbroker);
-  do_udp_service(discoctl=>$discoctl);
+  do_udp_service(discoctl=>$discoctl,discopid=>$pid_disco);
   xexit(0);
 }
 close($sslctl);
