@@ -216,6 +216,7 @@ sub process_request
 
     my $HELP;
     my $REMOVE;
+	my $DELNODE;
 
     # parse the options
     if ($req && $req->{arg}) { @ARGV = @{$req->{arg}}; }
@@ -226,7 +227,7 @@ sub process_request
         !GetOptions(
                     'h|help'                 => \$HELP,
                     'n'                      => \$REMOVE,
-                    'd'                      => \$::DELNODE,
+                    'd'                      => \$DELNODE,
                     'o|othernamesfirst'      => \$OTHERNAMESFIRST,
                     'a|adddomaintohostnames' => \$ADDNAMES,
                     'm|mactolinklocal'       => \$MACTOLINKLOCAL,
@@ -334,7 +335,7 @@ sub process_request
 					}
 				}
 
-                if ($::DELNODE)
+                if ($DELNODE)
                 {
                     delnode $node, $linklocal, $node, $domain;
                 }
@@ -368,7 +369,7 @@ sub process_request
                     }
                 }
 
-                if ($::DELNODE)
+                if ($DELNODE)
                 {
                     delnode $ref->{node}, $ref->{ip}, $ref->{hostnames}, $domain;
                 }
@@ -387,11 +388,11 @@ sub process_request
         }    # end else
 
         # do the other node nics - if any
-        &donics($req->{node}, $callback);
+        &donics($req->{node}, $callback, $DELNODE);
     }
     else
     {
-        if ($::DELNODE)
+        if ($DELNODE)
         {
             return;
         }
@@ -422,7 +423,7 @@ sub process_request
         }
 
         # also do nics table
-        &donics(\@allnodes, $callback);
+        &donics(\@allnodes, $callback, $DELNODE);
     }
 
     writeout();
@@ -460,7 +461,7 @@ sub writeout
         Globals:
 
         Example:
-                my $rc = &donics(\@nodes, $callback);
+                my $rc = &donics(\@nodes, $callback, $DELNODE);
 
         Comments:
                 none
@@ -471,6 +472,7 @@ sub donics
 {
     my $nodes    = shift;
     my $callback = shift;
+	my $delnode	 = shift;
 
     my @nodelist = @{$nodes};
 
@@ -673,7 +675,7 @@ sub donics
 					next;
 				}
 
-            	if ($::DELNODE)
+            	if ($delnode)
             	{
                 	delnode $nichostname, $nicip, '', $nicdomain;
             	}
