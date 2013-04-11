@@ -22,27 +22,31 @@ GetOptions(
    #'font|f=s' => \$font
 );
 my $noderange = $ARGV[$#ARGV];
-my %noderangeref = (command => 'noderange', noderange => $noderange);
 my %conserverref = (command => 'nodels', noderange => $noderange, arg => ['nodehm.conserver']);
+my @nodes;
+my %conservers;
+sub getconserver {
+	my $rsp = shift;
+	use Data::Dumper;
+	print Dumper($rsp);
+	foreach (@{$rsp->{node}}) {
+		my $node = $_->{name};
+		if (ref $node) { $node = $node->[0]; }
+		push @nodes,$node;
+		if ($_->{data}->[0]->{contents}) {
+   			$conservers{$node}=$_->{data}->[0]->{contents};
+			if (ref $conservers{$node}) { $conservers{$node} = $conservers{$node}->[0] };
+		}
+	}
+}
+xCAT::Client::submit_request(\%conserverref,\&getconserver);
 
 
 unless ($ARGV[$#ARGV]) {
    print "Usage: wcons <options> <noderange>\n";
    exit 1;
 }
-my $nodes=`nodels $ARGV[$#ARGV]`;
-unless ($nodes) {
-   exit 1;
-}
-my $conservers=`nodels $ARGV[$#ARGV] nodehm.conserver`;
 pop @ARGV;
-my @conservers=split /\n/,$conservers;
-my %conservers;
-foreach (@conservers) {
-   (my $nd,my $col,my $val) = split /:/,$_,3;
-   $conservers{$nd}=$val;
-}
-my @nodes = split /\n/,$nodes;
 foreach (@nodes) {
    if ($conservers{$_}) {
       next;
