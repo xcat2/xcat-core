@@ -2330,10 +2330,23 @@ my $dsavingstatus_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.7";    #bladeDetails
 my $dsperformance_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.8";    #bladeDetailsDynamicPowerFavorPerformanceOverPower
 
 # New attributes which supported by CMM
-#".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.9"; #bladeDetailsPowerControl
-#".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.10"; #bladeDetailsPcapMin
-#".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.11"; #bladeDetailsPcapGuaranteedMin
-#".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.12"; #bladeDetailsPcapMax
+my $PowerControl_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.9"; #bladeDetailsPowerControl
+my $PowerPcapMin_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.10"; #bladeDetailsPcapMin
+my $PowerPcapGMin_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.11"; #bladeDetailsPcapGuaranteedMin
+my $PowerPcapMax_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.12"; #bladeDetailsPcapMax
+
+# New table used to control the power management
+#my $powerPcapMin =".1.3.6.1.4.1.2.3.51.2.22.31.6.1.10";    # componentPowerDetailsPcapMin
+#my $powerPcapGMin = ".1.3.6.1.4.1.2.3.51.2.22.31.6.1.11";    # componentPowerDetailsPcapGuaranteedMin
+#my $powerPcapMax = ".1.3.6.1.4.1.2.3.51.2.22.31.6.1.12";    # componentPowerDetailsPcapMax
+
+#my $powerPcapSet = ".1.3.6.1.4.1.2.3.51.2.22.31.6.1.3"; # componentPowerDetailsMaxPowerConfig
+#my $powerControl = ".1.3.6.1.4.1.2.3.51.2.22.31.6.1.9"; # componentPowerDetailsPowerControl
+#my $powersavingstatus_oid = ".1.3.6.1.4.1.2.3.51.2.22.31.6.1.6";    #componentPowerDetailsPowerSaverMode
+#my $powerdsavingstatus_oid = ".1.3.6.1.4.1.2.3.51.2.22.31.6.1.7";    #componentPowerDetailsDynamicPowerSaver
+#my $powerdsperformance_oid = ".1.3.6.1.4.1.2.3.51.2.22.31.6.1.8";    #componentPowerDetailsDynamicPowerFavorPerformanceOverPower
+
+
 
 # The meaning of obj fuelGaugePowerManagementPolicySetting
 my %pdpolicymap = (
@@ -2353,7 +2366,7 @@ my %capabilitymap = (
     '3' => "dynamicPowerManagement",
     '4' => "dynamicPowerMeasurement1",
     '5' => "dynamicPowerMeasurement2",
-    '6' => "dynamicPowerMeasurement2",
+    '6' => "dynamicPowerMeasurementWithPowerCapping",
     '255' => "notApplicable",
 );
 
@@ -2441,12 +2454,14 @@ my %flex_blade_valid_items = (
     'cappingmaxmin' => 1,
     'cappingmax' => 1,
     'cappingmin' => 1,
+    'cappingGmin' => 1,
     'capability' => 1,
     'cappingvalue' => 1,
     'cappingwatt' => 2,
     'cappingperc' => 2,
     'CPUspeed' => 1,
     'maxCPUspeed' => 1,
+    'cappingstatus' => 3,
     'savingstatus' => 3,
     'dsavingstatus' => 3,
 );
@@ -2503,7 +2518,6 @@ sub getpdbayinfo {
 
     return ($pdnum, $pdbay);
 }
-
 
 # command to hand the renergy request
 sub renergy {
@@ -2698,30 +2712,26 @@ sub renergy {
             $pdnum++;
             $oid =~ s/pdnum/$pdnum/;
             $oid = $oid.".".$pdbay;
-        } elsif ($item eq "cappingmax") {
-            my ($pdnum, $pdbay) = getpdbayinfo($bc_type, $slot);
-            $oid = $maxallocpower_oid;
-            $pdnum++;
-            $oid =~ s/pdnum/$pdnum/;
-            $oid = $oid.".".$pdbay;
-        } elsif ($item eq "cappingmin") {
-            my ($pdnum, $pdbay) = getpdbayinfo($bc_type, $slot);
-            $oid = $minallocpower_oid;
-            $pdnum++;
-            $oid =~ s/pdnum/$pdnum/;
-            $oid = $oid.".".$pdbay;
-        } elsif ($item eq "capability") {
+        }  elsif ($item eq "capability") {
             my ($pdnum, $pdbay) = getpdbayinfo($bc_type, $slot);
             $oid = $powercapability_oid;
             $pdnum++;
             $oid =~ s/pdnum/$pdnum/;
             $oid = $oid.".".$pdbay;
+        } elsif ($item eq "cappingmax") {
+            $oid = $PowerPcapMax_oid.".".$slot;
+        } elsif ($item eq "cappingmin") {
+            $oid = $PowerPcapMin_oid.".".$slot;
+        } elsif ($item eq "cappingGmin") {
+            $oid = $PowerPcapGMin_oid.".".$slot;
         } elsif ($item eq "cappingvalue") {
             $oid = $powercapping_oid.".".$slot;
         } elsif ($item eq "CPUspeed") {
             $oid = $effCPU_oid.".".$slot;
         } elsif ($item eq "maxCPUspeed") {
             $oid = $maxCPU_oid.".".$slot;
+        } elsif ($item eq "cappingstatus") {
+            $oid = $PowerControl_oid.".".$slot;
         } elsif ($item eq "savingstatus") {
             $oid = $savingstatus_oid.".".$slot;
         } elsif ($item eq "dsavingstatus") {
@@ -2741,23 +2751,34 @@ sub renergy {
                     push @output, "$item: $pdpolicymap{$data}";
                 } elsif ($item eq "capability") {
                     push @output, "$item: $capabilitymap{$data}";
-                } elsif ($item =~/cappingvalue|averageDC|cappingmax|cappingmin/) {
+                } elsif ($item =~/cappingvalue|averageDC|cappingmax|cappingmin|cappingGmin/) {
                     if ($item eq "cappingvalue" && $data eq "0") {
                         push @output,"$item: na";
                     } else {
                         my $bladewidth = $session->get([$bladewidth_oid.".$slot"]);
                         if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
-                        $data =~ s/W$//;
+                        $data =~ s/[^\d]*$//;
                         foreach (1..$bladewidth-1) {
                             $oid =~ /(\d+)$/;
                             my $next = $1+$_;
                             $oid =~ s/(\d+)$/$next/;
                             my $nextdata=$session->get([$oid]);
                             if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
-                            $nextdata =~ s/W$//;
+                            $nextdata =~ s/[^\d]*$//;
                             $data += $nextdata;
                         }
                         push @output, "$item: $data"."W";
+                    }
+                } elsif ($item eq "cappingstatus") {
+                    if ($data eq "2" || $data eq "5" || $data eq "10") {
+                        # 1 all off; 2 cap; 
+                        # 4 staticsaving; 5 cap + staticsaving; 
+                        # 9 dynamicsaving; 10 cap + dynamicsaving;
+                        push @output,"$item: on";
+                    } elsif ($data eq "0" || $data eq "1" || $data eq "3" || $data eq "4" || $data eq "9") {
+                        push @output, "$item: off";
+                    } else {
+                        push @output,"$item: na";
                     }
                 } elsif ($item eq "savingstatus") {
                     if ($data eq "0") {
@@ -2801,42 +2822,140 @@ sub renergy {
     foreach my $item (keys %writelist) {
         my $oid = "";
         my $svalue;
+        my $cvalue;
 
         my $capmax;
         my $capmin;
-        if ($item eq "cappingwatt" || $item eq "cappingperc") {
-            if (0) {
-            foreach my $i (@setneed) {
-                if ($i =~ /^cappingmax: (\d*)W/) {
-                    $capmax = $1;
-                } elsif ($i =~ /^cappingmin: (\d*)W/) {
-                    $capmin = $1;
-                }
+         if ($item eq "cappingstatus") {
+            if ($writelist{$item} eq "on") {
+                $cvalue = "1";
+            } elsif ($writelist{$item} eq "off") {
+                $cvalue = "0";
+            } else {
+                return (1, "The setting value should be on|off.");
             }
-
-            if (! (defined ($capmax) && defined ($capmin))) {
-                return (1, "Cannot get the value of cappingmin or cappingmax.");
-            }
-
-            if ($item eq "cappingwatt" && ($writelist{$item} > $capmax || $writelist{$item} < $capmin)) {
-                return (1, "The set value should be in the range $capmin - $capmax.");
-            }
-
-            if ($item eq "cappingperc") {
-                if ($writelist{$item} > 100 || $writelist{$item} < 0) {
-                    return (1, "The percentage value should be in the range 0 - 100");
-                }
-                $writelist{$item} = int (($capmax-$capmin)*$writelist{$item}/100 + $capmin);
-            }
-            }
-
-            my $data = $session->set(new SNMP::Varbind([$powercapping_oid, $slot, $writelist{$item} ,'INTEGER']));
-            unless ($data) { return (1,$session->{ErrorStr}); }
-
-            my $ndata=$session->get([$powercapping_oid.".".$slot]);
+            # Get the power control value
+            my $cdata = $session->get([$PowerControl_oid.".".$slot]);
             if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
-            if ($ndata ne $writelist{$item}) {
+
+            # 1 all off; 2 cap; 
+            # 4 staticsaving; 5 cap + staticsaving; 
+            # 9 dynamicsaving; 10 cap + dynamicsaving;
+
+            if ($cvalue eq "1") {
+                # to enable capping
+                if ($cdata eq "2" || $cdata eq "5" || $cdata eq "10") {
+                    return (0, "Power capping has been enabled.");
+                } elsif ($cdata eq "0" || $cdata eq "1") {
+                    $cvalue = "2";
+                } elsif ($cdata eq "4") {
+                    $cvalue = "5";
+                } elsif ($cdata eq "9") {
+                    $cvalue = "10";
+                } else {
+                    return (1, "Encountered error to turn on capping.");
+                }
+            } else {
+                # to disable capping
+                if ($cdata eq "1" || $cdata eq "4" || $cdata eq "9") {
+                    return (0, "Power capping has been disabled.");
+                } elsif ($cdata eq "2") {
+                    $cvalue = "1";
+                } elsif ($cdata eq "5") {
+                    $cvalue = "4";
+                } elsif ($cdata eq "10") {
+                    $cvalue = "9";
+                } else {
+                    return (1, "Encountered error to turn off capping.");
+                }
+            }
+            
+            my $data = $session->set(new SNMP::Varbind([$PowerControl_oid, $slot, $cvalue ,'INTEGER']));
+            unless ($data) { return (1,$session->{ErrorStr}); }
+            
+            my $rdata=$session->get([$PowerControl_oid.".".$slot]);
+            if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+            if ($rdata ne $cvalue) {
                 return (1, "$item: set operation failed.");
+            }
+         } elsif ($item eq "cappingwatt" || $item eq "cappingperc") {
+            my $bladewidth = $session->get([$bladewidth_oid.".$slot"]);
+            if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+            if ($bladewidth == 1) {
+               foreach my $i (@setneed) {
+                   if ($i =~ /^cappingmax: (\d*)W/) {
+                       $capmax = $1;
+                   } elsif ($i =~ /^cappingmin: (\d*)W/) {
+                       $capmin = $1;
+                   }
+               }
+   
+               if (! (defined ($capmax) && defined ($capmin))) {
+                   return (1, "Cannot get the value of cappingmin or cappingmax.");
+               }
+   
+               if ($item eq "cappingwatt" && ($writelist{$item} > $capmax || $writelist{$item} < $capmin)) {
+                   return (1, "The set value should be in the range $capmin - $capmax.");
+               }
+   
+               if ($item eq "cappingperc") {
+                   if ($writelist{$item} > 100 || $writelist{$item} < 0) {
+                       return (1, "The percentage value should be in the range 0 - 100");
+                   }
+                   $writelist{$item} = int (($capmax-$capmin)*$writelist{$item}/100 + $capmin);
+               }
+   
+               my $data = $session->set(new SNMP::Varbind([$powercapping_oid, $slot, $writelist{$item} ,'INTEGER']));
+               unless ($data) { return (1,$session->{ErrorStr}); }
+   
+               my $ndata=$session->get([$powercapping_oid.".".$slot]);
+               if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+               if ($ndata ne $writelist{$item}) {
+                   return (1, "$item: set operation failed.");
+               }
+            } elsif ($bladewidth == 2) {
+                # for double wide blade, the capping needs to be set for the two slots one by one
+                # base on the min/max of the slots to know the rate of how many set to slot1 and how many set to slot2
+                my $min1 = $session->get([$PowerPcapMin_oid.".".$slot]);
+                if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+                my $min2 = $session->get([$PowerPcapMin_oid.".".($slot+1)]);
+                if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+                my $max1 = $session->get([$PowerPcapMax_oid.".".$slot]);
+                if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+                my $max2 = $session->get([$PowerPcapMax_oid.".".($slot+1)]);
+                if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+
+                my ($cv1, $cv2);
+                if ($item eq "cappingperc") {
+                   if ($writelist{$item} > 100 || $writelist{$item} < 0) {
+                       return (1, "The percentage value should be in the range 0 - 100");
+                   }
+                   $cv1 = int (($max1-$min1)*$writelist{$item}/100 + $min1);
+                   $cv2 = int (($max2-$min2)*$writelist{$item}/100 + $min2);
+               } elsif ($item eq "cappingwatt") {
+                   if (($min1 + $min2)>$writelist{$item} || ($max1+$max2)< $writelist{$item}) {
+                       return (1, "The set value should be in the range ".($min1 + $min2)." - ".($max1+$max2).".");
+                   } elsif (($max1 + $max2) == $writelist{$item}) {
+                       $cv1 = $max1;
+                       $cv2 = $max2;
+                   } elsif (($min1 + $min2) == $writelist{$item}) {
+                       $cv1 = $min1;
+                       $cv2 = $min2;
+                   } else {
+                       my $x1 = ($max1+$min1)/2;
+                       my $x2 = ($max2+$min2)/2;
+                       # cv1/cv2 = $x1/$x2; cv1+cv2=$writelist{$item}
+                       $cv1 = int ($writelist{$item}*$x1/($x1+$x2));
+                       $cv2 = $writelist{$item} - $cv1;
+                   }
+               }
+               my $data = $session->set(new SNMP::Varbind([$powercapping_oid, $slot, $cv1 ,'INTEGER']));
+               unless ($data) { return (1,$session->{ErrorStr}); }
+
+               $data = $session->set(new SNMP::Varbind([$powercapping_oid, ($slot+1), $cv2 ,'INTEGER']));
+               unless ($data) { return (1,$session->{ErrorStr}); }
+            } else {
+                return (1, "Don't know the wide of the blade.");
             }
         } elsif ($item eq "savingstatus") {
             if ($writelist{$item} eq "on") {
