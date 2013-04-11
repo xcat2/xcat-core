@@ -521,6 +521,7 @@ sub do_discovery_process {
 	my $broker = $args{broker};
 	my $quit=0;
 	my $vintage = time();
+   	$dispatch_requests=0;
         populate_site_hash();
 	while (not $quit) {
            	if ((time()-$vintage)> 15) { populate_site_hash(); } #site table reread every 15 second
