@@ -79,7 +79,7 @@ sub findme {
             last;
         }
     }
-
+    
     unless ($mac) {
         xCAT::MsgUtils->message("S", "Discovery Error: Could not find the mac of the $ip.");
         return;
@@ -127,17 +127,15 @@ sub findme {
         if ($hostip->{'ip'}) {
             $skiphostip = 1;
         }
-        
+
+        my $bmcip = $hosttab->getNodeAttribs($node."-bmc", ['ip']);
+        if ($bmcip->{'ip'}) {
+            $skipbmcip = 1;
+        }
+
         my $ipmitab = xCAT::Table->new('ipmi');
         unless ($ipmitab) {
             xCAT::MsgUtils->message("S", "Discovery Error: Could not open table: ipmi.");
-        }
-        my $ipmibmc = $ipmitab->getNodeAttribs($node, ['bmc']);
-        if ($ipmibmc->{'bmc'}) {
-            $skipbmcip = 1;
-            unless ($ipmibmc->{'bmc'} =~ /\d+\.\d+\.\d+\.\d+/) {
-                push @newhosts, $ipmibmc->{'bmc'};
-            }
         }
 
         # set the host ip and bmc if needed
@@ -151,22 +149,19 @@ sub findme {
             $hosttab->commit();
         }
 
-        my $bmcname;
+        my $bmcname = $node."-bmc";
+        push @newhosts, $bmcname;
         unless ($skipbmcip) {
             my $bmcip = getfreeips($param{'bmciprange'}, \@allnodes, "bmc");
             unless ($bmcip) {
                 nodediscoverstop($callback, undef, "bmc ips");
                 return;
             }
-            $bmcname = $node."-bmc";
             $hosttab->setNodeAttribs($bmcname, {ip => $bmcip});
             $hosttab->commit();
-
-            # set the bmc to the ipmi table
-            $ipmitab->setNodeAttribs($node, {bmc => $bmcname});
-
-            push @newhosts, $bmcname;
         }
+        # set the bmc to the ipmi table
+        $ipmitab->setNodeAttribs($node, {bmc => $bmcname});
 
         # update the host ip pair to /etc/hosts, it's necessary for discovered and makedhcp commands
         if (@newhosts) {
@@ -292,7 +287,7 @@ Usage:
     Sequential Discovery:
         nodediscoverstart noderange=<noderange> [hostiprange=<imageprofile>] [bmciprange=<bmciprange>] [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>]
     Profile Discovery:
-        nodediscoverstart networkprofile=<networkprofile> imageprofile=<imageprofile> hostnameformat=<hostnameformat> [hardwareprofile=<hardwareprofile>] [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>]";
+        nodediscoverstart networkprofile=<networkprofile> imageprofile=<imageprofile> hostnameformat=<hostnameformat> [hardwareprofile=<hardwareprofile>] [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>] [rank=rank-num]";
         $rsp = ();
         push @{$rsp->{data}}, $usageinfo;
         xCAT::MsgUtils->message("I", $rsp, $cb);
@@ -376,7 +371,7 @@ Usage:
     my @PCMdiscover = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
     if ($PCMdiscover[0]) {
         my $rsp;
-        push @{$rsp->{data}}, "Sequentail Discovery cannot run together with Profile-based discovery";
+        push @{$rsp->{data}}, "Sequentail Discovery cannot be run together with Profile-based discovery";
         xCAT::MsgUtils->message("E", $rsp, $callback, 1);
         return;
     }
@@ -542,6 +537,7 @@ Usage:
     my @PCMDiscover = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
     if ($PCMDiscover[0]) {
         # return directly that profile discover will cover it
+        return;
     } elsif (!$SEQDiscover[0]) {
         # Neither of profile nor sequential was running
         my $rsp;
@@ -782,8 +778,9 @@ Usage:
         push @{$rsp->{data}}, "    The parameters used for discovery: ".$SEQDiscover[0];
         xCAT::MsgUtils->message("I", $rsp, $callback);
     } elsif ($PCMDiscover[0]) {
-        # return directly that Profile discover to cover the output
-        return;
+        my $rsp;
+        push @{$rsp->{data}}, "Node discovery for all nodes using profiles is running";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
     } else {
         my $rsp;
         push @{$rsp->{data}}, "Sequential Discovery is stopped.";
