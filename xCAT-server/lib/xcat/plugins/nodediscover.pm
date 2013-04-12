@@ -283,7 +283,7 @@ sub process_request {
           unless ($firstmac) {
               $firstmac = $mac;
           }
-          if ($host eq $node) {
+          if (!$host || $host eq $node) {
               $firstmac = $mac;
               last;
           }
