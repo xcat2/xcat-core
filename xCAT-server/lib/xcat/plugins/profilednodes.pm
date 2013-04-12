@@ -241,18 +241,21 @@ sub validate_args{
     if ($mandatoryparamsref){
         @mandatoryparams = @$mandatoryparamsref;
     }
-    my $profiledis;
-    foreach (@mandatoryparams){
-        if (exists($args_dict{$_})) {
-            # this is for profile discovery
-            $profiledis = 1;
-            last;
+
+    if (@mandatoryparams) {
+        my $profiledis;
+        foreach (@mandatoryparams){
+            if (exists($args_dict{$_})) {
+                # this is for profile discovery
+                $profiledis = 1;
+                last;
+            }
         }
-    }
-    unless ($profiledis) {
-        # Not see the nodrange and 'networkprofile', 'imageprofile', 'hostnameformat'
-        # return to make sequential discovery to display help message
-        return 0;
+        unless ($profiledis) {
+            # Not see the nodrange and 'networkprofile', 'imageprofile', 'hostnameformat'
+            # return to make sequential discovery to display help message
+            return 0;
+        }
     }
     
     foreach (@mandatoryparams){
@@ -1133,6 +1136,13 @@ Usage:
             setrsp_errormsg("Specified height $args_dict{'height'} is invalid.");
             return;
         }
+    }
+
+    # Check the running of sequential discovery
+    my @PCMdiscover = xCAT::TableUtils->get_site_attribute("__SEQDiscover");
+    if ($PCMdiscover[0]) {
+        setrsp_errormsg("Profile Discovery cannot be run together with Sequential discovery.");
+        return;
     }
 
     # Read DB to confirm the discover is not started yet. 
