@@ -30,6 +30,7 @@ then
 	sed -i 's/\(.*MaxStartups.*\)/#\1/' /etc/ssh/sshd_config
 	echo "MaxStartups 1024" >>/etc/ssh/sshd_config
     if [ "$SETUPFORPCM" = "1" ];then
+	 sed -i 's/\(.*PasswordAuthentication.*\)/#\1/' /etc/ssh/sshd_config
      echo "PasswordAuthentication yes" >>/etc/ssh/sshd_config
     fi
 fi
