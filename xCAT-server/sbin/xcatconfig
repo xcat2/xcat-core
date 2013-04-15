@@ -442,7 +442,9 @@ if ($::INITIALINSTALL || $::FORCE)
      if (-f "/etc/redhat-release")
      {
          my $rc=xCAT::Utils->isSELINUX();
-         if ($rc != 0)
+         # rc 0 means SELinux is enabled
+         # rc 1 means SELinux is not enabled
+         if ($rc == 0)
          {
              xCAT::MsgUtils->message('W', "SELINUX is not disabled, disabling it now...");
              # Disable selinux for running system
