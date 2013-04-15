@@ -863,7 +863,7 @@ sub pgstart
         while ($retries < 30) {
           $retries++;
           my @status=xCAT::Utils->runcmd($cmd, -1);
-          if (grep(/running/, @status)) {
+          if (grep(/[r|R]unning/, @status)) {
             $pgstarted=1;
             last;
           }
