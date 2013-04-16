@@ -1963,7 +1963,7 @@ sub build_kitcomp
         print "Error running rpmbuild command for kit component $comp->{kitcompname} meta package\n";
         return 1;
     }
-    my @built_rpms = `find $rpmbuild_dir/RPMS -name *.rpm`;
+    my @built_rpms = `find $rpmbuild_dir/RPMS -name "*.rpm"`;
     foreach my $rpm (@built_rpms) {
         chomp($rpm);
         if ( system ("cp -fp $rpm $repodir") ) {
@@ -2210,7 +2210,7 @@ sub build_kitcomp_debian{
             return 1;
         }
         my $repodir = $::base_repodir."/".$repo{kitreponame};
-        my @builtdebs = `find $::workdir/debbuild -maxdepth 1 -name *.deb`;
+        my @builtdebs = `find $::workdir/debbuild -maxdepth 1 -name "*.deb"`;
         foreach my $deb (@builtdebs) {
             chomp($deb);
             if ( system ("cp -fp $deb $repodir") ) {
@@ -3153,7 +3153,7 @@ sub kit_addpkgs
                         print "error running debian build cmd for kit component $non_native_basename meta package.\n";
                         return 1;
                     }
-                    my @debs = `find $tdir -maxdepth 1 -name *.deb`;
+                    my @debs = `find $tdir -maxdepth 1 -name "*.deb"`;
                     foreach my $debname (@debs){
                         chomp($debname);
                         if ( system("mv -f $debname $repodir") ){
@@ -3203,7 +3203,7 @@ sub kit_addpkgs
                     }
 
                     # Copy the built meta rpm to repo
-                    my @built_rpms = `find $rpmbuild_dir/RPMS -name *.rpm`;
+                    my @built_rpms = `find $rpmbuild_dir/RPMS -name "*.rpm"`;
                     foreach my $rpm (@built_rpms) {
                       chomp($rpm);
                       if ( system ("cp -fp $rpm $repodir") ) {
