@@ -47,6 +47,10 @@ function loadImagesPage() {
 function loadImages(data) {
     // Data returned
     var rsp = data.rsp;
+    if (rsp[0].indexOf('Could not find any object definitions') > -1) {
+    	rsp = new Array();
+    }
+    
     // Image attributes hash
     var attrs = new Object();
     // Image attributes
