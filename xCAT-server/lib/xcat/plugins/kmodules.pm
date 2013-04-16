@@ -303,34 +303,36 @@ sub lskmodules {
     }
 
     # Get the list of kernel modules in each rpm/img file
+    my @modlist;
     foreach my $source (@sources) {
-        my @modlist;
         if ( $source =~ /^dud:/ ) {
            $source =~ s/^dud://;
-           @modlist = &mods_in_img($source);
+           push (@modlist, &mods_in_img($source) );
         } else {
            $source =~ s/^rpm://;
-           @modlist = &mods_in_rpm($source);
+           push (@modlist, &mods_in_rpm($source) );
         }
-
-        # Return the module list for this rpm/img file
-        my $rsp;
-        foreach my $mn (@modlist) {
-           if ($::opt_x) {
-               my %data_entry;
-               $data_entry{module}->{name}=$mn->{name};
-               $data_entry{module}->{description}=$mn->{description};
-               push @{ $rsp->{data} }, \%data_entry;
-           } else {
-               push @{ $rsp->{data} }, $mn->{name}.': '.$mn->{description};
-           }
-        }
-        #xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
-        if ( $rsp ) { 
-            $::CALLBACK->($rsp);
-        }
-
     }
+
+    @modlist = &remove_duplicate_mods(\@modlist);
+
+    # Return the module list for this rpm/img file
+    my $rsp;
+    foreach my $mn (@modlist) {
+       if ($::opt_x) {
+           my %data_entry;
+           $data_entry{module}->{name}=$mn->{name};
+           $data_entry{module}->{description}=$mn->{description};
+           push @{ $rsp->{data} }, \%data_entry;
+       } else {
+           push @{ $rsp->{data} }, $mn->{name}.': '.$mn->{description};
+       }
+    }
+    #xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+    if ( $rsp ) { 
+        $::CALLBACK->($rsp);
+    }
+
 
     return $rc;
 }
@@ -665,6 +667,51 @@ sub mods_in_img {
   rmtree($mnt_path);
 
   return @modlist;
+}
+
+
+
+#----------------------------------------------------------------------------
+
+=head3  remove_duplicate_mods
+
+        return array of unique module names/descriptions hashes from input array
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - error
+        Globals:
+
+        Error:
+
+        Example:
+
+        Comments:
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub remove_duplicate_mods {
+
+  my $modlist = shift;
+
+  my %unique_names;
+  my @return_list;
+
+  foreach my $mn (@$modlist) {
+      if ( defined($unique_names{$mn->{name}}) ) { next;}
+      $unique_names{$mn->{name}} = $mn->{description};
+  }
+  
+  foreach my $un (sort keys(%unique_names)) {
+      my %mod;
+      $mod{name} = $un;
+      $mod{description} = $unique_names{$un};
+      push (@return_list, \%mod);
+  }
+
+  return @return_list;
 }
 
 1;
