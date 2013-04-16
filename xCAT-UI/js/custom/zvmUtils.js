@@ -3233,6 +3233,9 @@ function getDiskPool(data) {
                 });
             } // End of if
         } // End of for
+    } else {
+    	// Load empty table
+    	loadDiskPoolTable();
     }
 }
 
@@ -3268,7 +3271,7 @@ function getZfcpPool(data) {
         } // End of for
     } else {
         // Load empty table
-        loadZfcpPoolTable(null);
+        loadZfcpPoolTable();
     }
 }
 
@@ -3315,20 +3318,29 @@ function loadDiskPoolTable(data) {
     var panelId = 'zvmDiskResource';
     $('#' + panelId).find('img[src="images/loader.gif"]').remove();
     
-    // Do not continue if the call failed
-    if (!data.rsp.length && data.rsp[0].indexOf("Failed") > 0) {
-        return;
-    }
-    
-    // Obtain mapping for zHCP to zVM system
     var hcp2zvm = new Object();
-    hcp2zvm = getHcpZvmHash();
-    
-    var args = data.msg.split(';');
-    var hcp = args[0].replace('hcp=', '');
-    var pool = args[1].replace('pool=', '');
-    var stat = args[2].replace('stat=', '');
-    var tmp = data.rsp[0].split(hcp + ': ');
+    var args, hcp, pool, stat, tmp;
+    if (data) {
+	    // Do not continue if the call failed
+	    if (!data.rsp.length && data.rsp[0].indexOf("Failed") > 0) {
+	        return;
+	    }
+	    
+	    // Obtain mapping for zHCP to zVM system	    
+	    hcp2zvm = getHcpZvmHash();
+	    
+	    args = data.msg.split(';');
+	    hcp = args[0].replace('hcp=', '');
+	    pool = args[1].replace('pool=', '');
+	    stat = args[2].replace('stat=', '');
+	    tmp = data.rsp[0].split(hcp + ': ');
+    } else {
+    	// Provide empty values so the table will be generated
+    	hcp = '';
+    	pool = '';
+    	stat = '';
+    	tmp = new Array();
+    }
 
     // Resource tab ID    
     var info = $('#' + panelId).find('.ui-state-highlight');
@@ -3500,20 +3512,27 @@ function loadZfcpPoolTable(data) {
     var panelId = 'zfcpResource';
     $('#' + panelId).find('img[src="images/loader.gif"]').remove();
     
-    // Do not continue if the call failed
-    if (!data.rsp.length && data.rsp[0].indexOf("Failed") > 0) {
-        return;
-    }
-    
-    // Obtain mapping for zHCP to zVM system
     var hcp2zvm = new Object();
-    hcp2zvm = getHcpZvmHash();
-    
     var args, hcp, pool, tmp;
-    args = data.msg.split(';');
-    hcp = args[0].replace('hcp=', '');
-    pool = args[1].replace('pool=', '');
-    tmp = data.rsp[0].split(hcp + ': ');
+    if (data) {
+	    // Do not continue if the call failed
+	    if (!data.rsp.length && data.rsp[0].indexOf("Failed") > 0) {
+	        return;
+	    }
+	    
+	    // Obtain mapping for zHCP to zVM system	    
+	    hcp2zvm = getHcpZvmHash();
+	    	    
+	    args = data.msg.split(';');
+	    hcp = args[0].replace('hcp=', '');
+	    pool = args[1].replace('pool=', '');
+	    tmp = data.rsp[0].split(hcp + ': ');
+    } else {
+    	// Provide empty values so the table will be generated
+    	hcp = '';
+    	pool = ''
+    	tmp = new Array();
+    }
 
     // Resource tab ID    
     var info = $('#' + panelId).find('.ui-state-highlight');
