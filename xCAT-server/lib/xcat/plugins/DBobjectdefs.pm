@@ -2536,6 +2536,9 @@ sub setFINALattrs
 
     my $error = 0;
 
+    # set the final hash based on the info from the file hash and cmd line hash
+    @::finalTypeList = ();
+
     # set the final hash based on the info from the input file
     if (@::fileobjnames)
     {
@@ -2598,6 +2601,15 @@ sub setFINALattrs
                 {
                     $::FINALATTRS{$objname}{$attr} =
                       $::FILEATTRS{$objname}{$attr};
+                    if ($attr eq 'objtype')
+                    {
+                        if (!grep(/^$::FINALATTRS{$objname}{objtype}$/, @::finalTypeList))
+                        {
+                            my $type = $::FINALATTRS{$objname}{objtype};
+                            chomp $type;
+                            push @::finalTypeList, $type;
+                        }
+                    }
                 }
 
             }
@@ -2608,9 +2620,6 @@ sub setFINALattrs
             }
         }
     }
-
-    # set the final hash based on the info from the cmd line hash
-    @::finalTypeList = ();
 
     foreach my $objname (@::clobjnames)
     {
