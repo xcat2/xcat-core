@@ -1,7 +1,7 @@
 #first define 
 start:Linux_sn_installation_flat_x86_64_redhat
 os:Linux
-cmd:makedns 
+cmd:makedns -n 
 check:rc==0
 cmd:chdef $$SN groups=service,all
 check:rc==0

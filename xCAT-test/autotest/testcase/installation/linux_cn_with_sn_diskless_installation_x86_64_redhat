@@ -1,6 +1,6 @@
 start:linux_cn_with_sn_diskless_installation_flat_x86_64_redhat
 os:Linux
-cmd:makedns
+cmd:makedns -n
 check:rc==0
 cmd:sleep 10
 cmd:service named restart
