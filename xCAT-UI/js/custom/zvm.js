@@ -2559,7 +2559,7 @@ zvmPlugin.prototype.loadLogPage = function(node) {
         logAttr.append(optsList);
         
         // Create retrieve log checkbox
-        var retrieveChkBox = $('<li><input type="checkbox" name="s"/></li>');
+        var retrieveChkBox = $('<li><input type="checkbox" name="t"/></li>');
         optsList.append(retrieveChkBox);
         retrieveChkBox.append('Retrieve log');
         
@@ -2646,7 +2646,7 @@ zvmPlugin.prototype.loadLogPage = function(node) {
                 optStr += '-' + opt;
                 
                 // If it is the retrieve log
-                if (opt == 's') {
+                if (opt == 't') {
                     // Append log destination
                     optStr += ';' + $('#' + newTabId + ' input[name=tgtLog]').val();
                 }
