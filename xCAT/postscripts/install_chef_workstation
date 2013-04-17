@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh 
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 #####################################################
 #=head1  install_chef_client
@@ -63,27 +63,8 @@ then
     fi
 fi
 
-if [ -z "$chefserver" ]; then
-    if [ -f /etc/chef-server/admin.pem -a -f /etc/chef-server/chef-validator.pem ]; then
-        echo "the current node is also a chef server" 
-        if [ -f /opt/chef-server/embedded/bin/knife ]; then
-            if [ ! -f /usr/bin/knife ]; then
-                ln -s  /opt/chef-server/embedded/bin/knife /usr/bin/knife             
-            fi
-        fi
-   fi
-    
-   if [ -f /usr/bin/knife ]; then
-        #configure the chef configuration file
-        result=`dirname $0`
-        ${result}/config_chef_workstation 
-        exit 0;
-   fi 
-
-fi
-
-if [ $chefurl != "" ]; then
-    if [ "$CHEF_URL" != "" ]; then
+if [ -z "$chefurl" ]; then
+    if [ -n "$CHEF_URL" ]; then
         chefurl=$CHEF_URL
     else
        arch=`uname -i`
