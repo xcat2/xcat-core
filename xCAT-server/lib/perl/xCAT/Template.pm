@@ -484,7 +484,7 @@ sub get_win_prodkey {
 		$keyent = $keytab->getAttribs({product=>$osvariant},"key");
 	   }
 	}
-	if ($keyent) { 
+	if ($keyent and $keyent->{key}) { 
 		return "<ProductKey><WillShowUI>OnError</WillShowUI><Key>".$keyent->{key}."</Key></ProductKey>";
 	}
 	if ($xCAT::WinUtils::kmskeymap{$osvariant}) {
