@@ -4187,13 +4187,15 @@ sub clicmds {
   my $curraddr = $mpa;
   if ($args{curraddr}) {
 	$curraddr = $args{curraddr};
-  } elsif (defined($handled{'initnetwork'})) {
+  } elsif (defined($handled{'initnetwork'}) or defined($handled{'USERID'})) {
     # get the IP of mpa from the hosts.otherinterfaces
     my $hoststab = xCAT::Table->new('hosts');
     if ($hoststab) {
       my $hostdata = $hoststab->getNodeAttribs($node, ['otherinterfaces']);
       if (!$hostdata->{'otherinterfaces'}) {
-         return ([1,\@unhandled,"Cannot find the temporary IP from the hosts.otherinterfaces"]);
+         if (!defined($handled{'USERID'})) {
+             return ([1,\@unhandled,"Cannot find the temporary IP from the hosts.otherinterfaces"]);
+         }
       } else {
       	$curraddr = $hostdata->{'otherinterfaces'};
       }
@@ -4307,6 +4309,14 @@ sub clicmds {
     elsif (/^userpassword$/) {$result = passwd($t, $mpa, $1, $handled{$_}, $promote_pass, $mm);}
     if (!defined($result)) {next;}
     push @data, "$_: @$result";
+    if (/^initnetwork$/) {
+        if (!@$result[0]) {
+            my $hoststab = xCAT::Table->new('hosts');
+            if ($hoststab) {
+                $hoststab->setNodeAttribs($mpa, {otherinterfaces=>''});
+            }
+        }
+    }
     $Rc |= shift(@$result);
     push @cfgtext,@$result;
   }
