@@ -706,7 +706,7 @@ else
 	    result=`rm /etc/yum.repos.d/local-repository.repo 2>&1`
         fi
         rm /etc/yum.repos.d/$OSVER-path*.repo >/dev/null 2>&1
-        result=`rm /etc/yum.repos.d/xCAT*.repo 2>&1`
+        result=`rm /etc/yum.repos.d/xCAT-$OSVER-path*.repo 2>&1`
         
     fi
 
