@@ -4,6 +4,7 @@ package xCAT_plugin::fsp;
 use strict;
 use xCAT::PPC;
 use xCAT::DBobjUtils;
+use xCAT::Utils;
 use xCAT_plugin::hmc;
 
 ##########################################################################
@@ -72,13 +73,12 @@ sub preprocess_request {
         my $callback = $arg2;
         getmulcon($node,$callback);
         return [];
-    }    
-    #if ($arg1->{command}->[0] eq "rspconfig") { 
-    if ($arg1->{command}->[0] =~ /rspconfig|rvitals/) { 
+    }
+    if ($arg1->{command}->[0] =~ /rspconfig|rvitals|getmacs|renergy/) { 
         # All the nodes with mgt=blade or mgt=fsp will get here
         # filter out the nodes for fsp.pm
-        my (@mpnodes, @fspnodes, @nohandle);
-        filter_nodes($arg1, \@mpnodes, \@fspnodes, \@nohandle);
+        my (@fspnodes, @nohandle);
+        xCAT::Utils->filter_nodes($arg1, undef, \@fspnodes, undef, \@nohandle);
         if (@fspnodes) {
             $arg1->{noderange} = \@fspnodes;
         } else {
@@ -86,15 +86,6 @@ sub preprocess_request {
         }
     }
 
-    if ($arg1->{command}->[0] eq "getmacs") {
-        my (@mpnodes, @fspnodes, @nohandle);
-        filter_nodes($arg1, \@mpnodes, \@fspnodes, \@nohandle);
-        if (@fspnodes) {
-            $arg1->{noderange} = \@fspnodes;
-        } else {
-            return [];
-        }
-    }
     xCAT::PPC::preprocess_request(__PACKAGE__,@_);
 }
 
@@ -103,92 +94,6 @@ sub preprocess_request {
 ##########################################################################
 sub process_request {
     xCAT::PPC::process_request(__PACKAGE__,@_);
-}
-
-##########################################################################
-# Fliter the nodes that are NGP ppc blade node or common fsp node
-# For rspconfig network, the NGP ppc blade will be included in the group of mp, othewise in the fsp group
-# For getmacs -D, the NGP ppc blade will be included in the group of common fsp, otherwise in the mp group
-##########################################################################
-sub filter_nodes{
-    my ($req, $mpnodes, $fspnodes, $nohandle) = @_;
-
-    my (@nodes,@args,$cmd);
-    if (defined($req->{'node'})) {
-      @nodes = @{$req->{'node'}};
-    } else {
-      return 1;
-    }
-    if (defined($req->{'command'})) {
-      $cmd = $req->{'command'}->[0];
-    }
-    if (defined($req->{'arg'})) {
-      @args = @{$req->{'arg'}};
-    }
-    # get the nodes in the mp table
-    my $mptabhash;
-    my $mptab = xCAT::Table->new("mp");
-    if ($mptab) {
-        $mptabhash = $mptab->getNodesAttribs(\@nodes, ['mpa','nodetype']);
-    }
-
-    # get the parent of the service processor
-    # for the NGP ppc blade, the ppc.parent is the mpa
-    my $ppctabhash;
-    my $ppctab = xCAT::Table->new("ppc");
-    if ($ppctab) {
-        $ppctabhash = $ppctab->getNodesAttribs(\@nodes,['nodetype']);
-    }
-    my (@mp, @ngpfsp, @commonfsp, @unknow);
-    my %fspparent;
-    # Get the parent for each node
-    foreach (@nodes) {
-      if (defined ($mptabhash->{$_}->[0]->{'mpa'})) {
-        if (defined ($ppctabhash->{$_}->[0]->{'nodetype'}) && ($ppctabhash->{$_}->[0]->{'nodetype'} eq "blade")) {
-          push @ngpfsp, $_;
-          next;
-        }
-        else {
-          # Non NGP power blade
-          push @mp, $_;
-          next;
-        }
-      } elsif (defined ($ppctabhash->{$_}->[0]->{'nodetype'})) {
-        # otherwise, this is a general power node
-        push @commonfsp, $_;
-      } else {
-        push @unknow, $_;
-      }
-    }
-
-    push @{$mpnodes}, @mp;
-    push @{$fspnodes}, @commonfsp;
-    if (@args && ($cmd eq "rspconfig")) {
-      if (!(grep /^(cec_off_policy|pending_power_on_side)/, @args)) {
-        push @{$mpnodes}, @ngpfsp;
-      } else {
-        push @{$fspnodes}, @ngpfsp;
-      }
-    } elsif($cmd eq "getmacs") {
-      if (@args && (grep /^-D$/,@args)) {
-        push @{$fspnodes}, @ngpfsp;
-      } else {
-        push @{$mpnodes}, @ngpfsp;
-      }
-    } elsif ($cmd eq "rvitals") {
-      if (@args && (grep /^lcds$/,@args)) {
-          push @{$fspnodes}, @ngpfsp;
-      } else {
-          push @{$mpnodes},@ngpfsp;
-      }
-    } else {
-      push @{$fspnodes}, @ngpfsp;
-    }
-
-    push @{$nohandle}, @unknow;
-
-    ## TRACE_LINE print "Nodes filter: nodetype [commp:@mp,ngpp:@ngpfsp,comfsp:@commonfsp]. mpnodes [@{$mpnodes}], fspnodes [@{$fspnodes}]\n";
-    return 0;
 }
 
 ##########################################################################

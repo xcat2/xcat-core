@@ -6439,5 +6439,123 @@ sub pingNodeStatus {
  
   return %status;
 }
+=head3  filter_nodes
+##########################################################################
+# Fliter the nodes to  specific groups
+# For specific command, figure out the node lists which should be handled by blade.pm, fsp.pm or ipmi.pm
+# mp group: the nodes will be handled by blade.pm
+# fsp group: the nodes will be handled by fsp.pm
+# bmc group: the nodes will be handled by ipmi.pm
+# For rspconfig network, the NGP ppc blade will be included in the group of mp, othewise in the fsp group
+# For getmacs -D, the NGP ppc blade will be included in the group of common fsp, otherwise in the mp group
+# For renergy command, NGP blade will be moved to mp group
+##########################################################################
+=cut
+
+sub filter_nodes{
+    my ($class, $req, $mpnodes, $fspnodes, $bmcnodes, $nohandle) = @_;
+
+    my (@nodes,@args,$cmd);
+    if (defined($req->{'node'})) {
+      @nodes = @{$req->{'node'}};
+    } else {
+      return 1;
+    }
+    if (defined($req->{'command'})) {
+      $cmd = $req->{'command'}->[0];
+    }
+    if (defined($req->{'arg'})) {
+      @args = @{$req->{'arg'}};
+    }
+    # get the nodes in the mp table
+    my $mptabhash;
+    my $mptab = xCAT::Table->new("mp");
+    if ($mptab) {
+        $mptabhash = $mptab->getNodesAttribs(\@nodes, ['mpa','nodetype']);
+    }
+
+    # get the nodes in the ppc table
+    my $ppctabhash;
+    my $ppctab = xCAT::Table->new("ppc");
+    if ($ppctab) {
+        $ppctabhash = $ppctab->getNodesAttribs(\@nodes,['hcp']);
+    }
+
+    # get the nodes in the ipmi table
+    my $ipmitabhash;
+    my $ipmitab = xCAT::Table->new("ipmi");
+    if ($ipmitab) {
+        $ipmitabhash = $ipmitab->getNodesAttribs(\@nodes,['bmc']);
+    }
+
+    my (@mp, @ngpfsp, @ngpbmc, @commonfsp, @commonbmc, @unknow);
+
+    # if existing in both 'mpa' and 'ppc', a ngp power blade
+    # if existing in both 'mpa' and 'ipmi', a ngp x86 blade
+    # if only in 'ppc', a common power node
+    # if only in 'ipmi', a common x86 node
+    foreach (@nodes) {
+        if (defined ($mptabhash->{$_}->[0]) && defined ($mptabhash->{$_}->[0]->{'mpa'})) {
+            if (defined ($ppctabhash->{$_}->[0]) && defined ($ppctabhash->{$_}->[0]->{'hcp'})) {
+              # flex power node
+              push @ngpfsp, $_;
+              next;
+            } elsif (defined ($ipmitabhash->{$_}->[0]) && defined ($ipmitabhash->{$_}->[0]->{'bmc'})) {
+              # flex x86 node
+              push @ngpbmc, $_;
+              next;
+            } 
+            else {
+              # Non flex blade, but blade node
+              push @mp, $_;
+              next;
+            }
+        } elsif (defined ($ppctabhash->{$_}->[0]) && defined ($ppctabhash->{$_}->[0]->{'hcp'})) { 
+            # common power node
+            push @commonfsp, $_;
+        } elsif (defined ($ipmitabhash->{$_}->[0]) && defined ($ipmitabhash->{$_}->[0]->{'bmc'})) { 
+            # common bmc node
+            push @commonbmc, $_;
+        } else {
+            push @unknow, $_;
+        }
+    }
+
+    push @{$mpnodes}, @mp;#blade.pm
+    push @{$fspnodes}, @commonfsp;
+    push @{$bmcnodes}, @commonbmc;
+    if (@args && ($cmd eq "rspconfig")) {
+        if (!(grep /^(cec_off_policy|pending_power_on_side)/, @args))  {
+            push @{$mpnodes}, @ngpfsp;
+            if (grep /^(network=)/, @args) {
+                push @{$mpnodes}, @ngpbmc;
+            }    
+        } else {
+            push @{$fspnodes}, @ngpfsp;
+        }
+    } elsif($cmd eq "getmacs") {
+        if (@args && (grep /^-D$/,@args)) {
+          push @{$fspnodes}, @ngpfsp;
+        } else { 
+          push @{$mpnodes}, @ngpfsp;
+        }
+    } elsif ($cmd eq "rvitals") {
+        if (@args && (grep /^lcds$/,@args)) {
+            push @{$fspnodes},@ngpfsp;
+        } else {
+            push @{$mpnodes}, @ngpfsp;
+        }
+    } elsif ($cmd eq "renergy") {
+        push @{$mpnodes}, @ngpbmc;
+        push @{$mpnodes}, @ngpfsp;
+    } else {
+      push @{$fspnodes}, @ngpfsp;
+    }
+
+    push @{$nohandle}, @unknow;
+
+    ## TRACE_LINE print "Nodes filter: nodetype [commp:@mp,ngpp:@ngpfsp,comfsp:@commonfsp]. mpnodes [@{$mpnodes}], fspnodes [@{$fspnodes}], bmcnodes [@{$bmcnodes}]\n";
+    return 0;
+}
 
 1;

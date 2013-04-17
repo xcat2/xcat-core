@@ -317,10 +317,24 @@ my %usage = (
     renergy noderange [-V] { all | { [savingstatus] [dsavingstatus] [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed] [syssbpower] [sysIPLtime] [fsavingstatus] [ffoMin] [ffoVmin] [ffoTurbo] [ffoNorm] [ffovalue] } }
     renergy noderange [-V] { {savingstatus}={on | off} | {dsavingstatus}={on-norm | on-maxp | off} | {fsavingstatus}={on | off} | {ffovalue}=MHZ | {cappingstatus}={on | off} | {cappingwatt}=watt | {cappingperc}=percentage }
 
-    Blade specific :
-    renergy noderange [-V] { all | pd1all | pd2all | { [pd1status] [pd2status] [pd1policy] [pd2policy] [pd1powermodule1] [pd1powermodule2] [pd2powermodule1] [pd2powermodule2] [pd1avaiablepower] [pd2avaiablepower] [pd1reservedpower] [pd2reservedpower] [pd1remainpower] [pd2remainpower] [pd1inusedpower] [pd2inusedpower] [availableDC] [averageAC] [thermaloutput] [ambienttemp] [mmtemp] } }
-    renergy noderange [-V] { all | { [averageDC] [capability] [cappingvalue] [CPUspeed] [maxCPUspeed] [savingstatus] [dsavingstatus] } }
-    renergy noderange [-V] { {savingstatus}={on | off} | {dsavingstatus}={on-norm | on-maxp | off} }",
+    BladeCenter specific :
+      For Management Modules:
+        renergy noderange [-V] { all | pd1all | pd2all | [pd1status] [pd2status] [pd1policy] [pd2policy] [pd1powermodule1] [pd1powermodule2] [pd2powermodule1] [pd2powermodule2] [pd1avaiablepower] [pd2avaiablepower] [pd1reservedpower] [pd2reservedpower] [pd1remainpower] [pd2remainpower] [pd1inusedpower] [pd2inusedpower] [availableDC] [averageAC] [thermaloutput] [ambienttemp] [mmtemp] }
+      For a blade server nodes:
+        renergy noderange [-V] { all | [averageDC] [capability] [cappingvalue] [CPUspeed] [maxCPUspeed] [savingstatus] [dsavingstatus] }
+        renergy noderange [-V] { savingstatus={on | off} | dsavingstatus={on-norm | on-maxp | off} }
+ 
+    Flex specific :
+      For Flex Management Modules:
+        renergy noderange [-V] { all | [powerstatus] [powerpolicy] [powermodule] [avaiablepower] [reservedpower] [remainpower] [inusedpower] [availableDC] [averageAC] [thermaloutput] [ambienttemp] [mmtemp] }
+ 
+      For Flex node (power and x86):
+        renergy noderange [-V] { all | [averageDC] [capability] [cappingvalue] [cappingmaxmin] [cappingmax] [cappingmin] [cappingGmin] [CPUspeed] [maxCPUspeed] [savingstatus] [dsavingstatus] }
+        renergy noderange [-V] { cappingstatus={on | off} | cappingwatt=watt | cappingperc=percentage | savingstatus={on | off} | dsavingstatus={on-norm | on-maxp | off} }
+ 
+    iDataPlex specific :
+      renergy noderange [-V] [ { cappingmaxmin | cappingmax | cappingmin } ] [cappingstatus] [cappingvalue] [relhistogram]
+      renergy noderange [-V] { cappingstatus={on | enable | off | disable} | {cappingwatt|cappingvalue}=watt }",
   "updatenode" =>
 "Usage:
     updatenode [-h|--help|-v|--version]
