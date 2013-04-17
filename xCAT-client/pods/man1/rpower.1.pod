@@ -36,6 +36,10 @@ B<rpower> I<noderange> [B<rackstandby>|B<exit_rackstandby>|B<stat>|B<state>|B<re
 
 B<rpower> I<noderange> [B<on>|B<off>|B<stat>|B<state>|B<reset>|B<boot>|B<of>|B<sms>]
 
+=head2 Blade (using Direct FSP Management) specific:
+
+B<rpower> I<noderange> [B<on>|B<onstandby>|B<off>|B<stat>|B<state>|B<sms>]
+
 =head2 Blade specific:
 
 B<rpower> I<noderange> [B<cycle>|B<softoff>] 
