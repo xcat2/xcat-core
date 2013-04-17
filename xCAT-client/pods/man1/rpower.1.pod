@@ -34,7 +34,7 @@ B<rpower> I<noderange> [B<on>|B<off>|B<stat>|B<state>|B<reset>|B<boot>|B<of>|B<s
 
 =head2 Blade (using Direct FSP Management) specific:
 
-B<rpower> I<noderange> [B<on>|B<off>|B<cycle>]
+B<rpower> I<noderange> [B<on>|B<onstandby>|B<off>|B<cycle>|B<sms>]
 
 =head2 Blade specific:
 
