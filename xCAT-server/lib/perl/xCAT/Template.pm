@@ -796,7 +796,7 @@ sub tabdb
    my $blankok = shift;
    
 
-   if( defined( %::GLOBAL_TAB_HASH) && defined( $::GLOBAL_TAB_HASH{$table} ) ) {
+   if( %::GLOBAL_TAB_HASH && defined( $::GLOBAL_TAB_HASH{$table} ) ) {
         if( !defined( $::GLOBAL_TAB_HASH{$table}{$key}) ) {
             return "''";   
         }
