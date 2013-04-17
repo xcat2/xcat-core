@@ -36,6 +36,8 @@ my %allinstallips;
 my %allnicips;
 my %allracks;
 my %allchassis;
+my %allswitches;
+
 # The array of all chassis which is special CMM 
 my %allcmmchassis;
 my %allothernics;
@@ -362,6 +364,10 @@ Usage:
     $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('ppc', 'hcp');
     my %allfspips = %$recordsref;
 
+    # Get all switches name
+    $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('switches', 'switch');
+    %allswitches = %$recordsref;
+
     # MAC records looks like: "01:02:03:04:05:0E!node5│01:02:03:05:0F!node6-eth1". We want to get the real mac addres.
     foreach (keys %allmacs){
         my @hostentries = split(/\|/, $_);
@@ -401,6 +407,7 @@ Usage:
         return;
     }
 
+    my $mac_addr_mode = 0;
     # Parse and validate the hostinfo string. The real hostnames will be generated here.
     xCAT::MsgUtils->message('S', "Parsing hostinfo string and validate it.");
     my ($hostinfo_dict_ref, $invalid_records_ref) = validate_node_entries();
@@ -415,6 +422,23 @@ Usage:
         setrsp_progress("Failed to validate node information file.");
         setrsp_errormsg("Cannot find node records in node information file.");
         return;
+    }
+
+    # if user specified the switch, we need to add a new item into switch table
+    my @nodelist = keys %hostinfo_dict;
+    foreach my $mynode (@nodelist)
+    {
+        if(defined($hostinfo_dict{$mynode}{'mac'}))
+        {
+            $mac_addr_mode = 1;
+        }
+        # cannot mix switch discovery with mac import
+        if(($mac_addr_mode ==1) && (defined($hostinfo_dict{$mynode}{'switch'})))
+        {
+            setrsp_progress("Failed to validate node information file.");
+            setrsp_errormsg("Cannot define mac import node in switch discovery hostinfo file.");
+            return;
+        }
     }
 
     # Create the real hostinfo string in stanza file format.
@@ -440,9 +464,8 @@ Usage:
         }
     }
 
-    my @nodelist = keys %hostinfo_dict;
     setrsp_progress("Configuring nodes...");
-    $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>\@nodelist, sequential=>[1]}, $request_command, 0, 2);
+    $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>\@nodelist, sequential=>[1], macflag=>[$mac_addr_mode]}, $request_command, 0, 2);
     $retstrref = parse_runxcmd_ret($retref);
     if ($::RUNCMD_RC != 0){
         $warnstr .= "Warning: failed to run command kitnodeadd.";
@@ -1879,7 +1902,7 @@ sub validate_node_entry{
     }
     # Must specify either MAC or switch + port.
     if (exists $node_entry{"mac"} || 
-        exists $node_entry{"switch"} && exists $node_entry{"port"}){
+        exists $node_entry{"switch"} && exists $node_entry{"switchport"}){
     } else{
         $errmsg .= "MAC address, switch and port is not specified. You must specify the MAC address or switch and port.\n";
     }
@@ -1914,7 +1937,17 @@ sub validate_node_entry{
             }
         }elsif ($_ eq "switch"){
             #TODO: xCAT switch discovery enhance: verify whether switch exists.
-        }elsif ($_ eq "port"){
+            if (! exists $allswitches{$node_entry{$_}}){
+                $errmsg .= "Specified switch $node_entry{$_} is not defined\n";
+            }
+        }elsif ($_ eq "switchport"){
+            if (! exists $node_entry{"switchport"}){
+                $errmsg .= "Specified switch must be used with port.\n";
+            }
+            # Not a valid number.
+            if (!($node_entry{$_} =~ /^\d+$/)){
+                $errmsg .= "Specified port $node_entry{$_} is invalid\n";
+            }
         }elsif ($_ eq "rack"){
             if (! exists $allracks{$node_entry{$_}}){
                 $errmsg .= "Specified rack $node_entry{$_} is not defined\n";
