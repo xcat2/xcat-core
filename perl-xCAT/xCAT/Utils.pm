@@ -117,6 +117,38 @@ This program module file, is a set of utilities used by xCAT commands.
 
 #-------------------------------------------------------------
 
+=head3   clroptionvars
+
+	- use this routine to clear GetOptions global option variables
+		before calling GetOptions.
+
+	- this may be needed because a "command" may be called twice
+		from the same process - and global options may have been
+		set the first time through. (ex. from a plugin using runxcmd() )
+
+	- should really avoid global vars but this provides a quick fix
+		for now
+
+		ex.  my $rc = xCAT::Utils->clroptionvars($::opt1, $::opt2 ...)
+
+=cut
+
+#-------------------------------------------------------
+sub clroptionvars
+{
+	# skip the class arg and set the rest to undef
+	my $skippedclass=0;
+	foreach (@_) {
+		if ($skippedclass) {
+			$_ = undef;
+		}
+		$skippedclass=1;
+	}
+	return 0;
+}
+
+#-------------------------------------------------------------
+
 =head3 genUUID
     Returns an RFC 4122 compliant UUIDv4 or UUIDv1
     Arguments:
