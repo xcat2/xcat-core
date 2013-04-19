@@ -707,19 +707,54 @@ sub send_req {
 
     print $connect $request;
     $response = "";
-    while (1) {
+    my $retry;
+    my $ischunked;
+    my $firstnum;
+    while ($retry++ < 10) {
+        unless ($IOsel->can_read(2)) {
+            next;
+        }
         my $readbytes;
-        $IOsel->can_read(0.5);
-        do { $readbytes=sysread($connect,$response,65535,length($response)); } while ($readbytes);
-        if ($response) {
-            #return $response;
-            last;
-        } else {
-            if (not defined $readbytes and $! == EAGAIN) { next; }
-            $rc = 2;
-            last;
+        my $res = "";
+        do { $readbytes=sysread($connect,$res,65535,length($res)); } while ($readbytes);
+        if ($res) {
+            my @part = split (/\r\n/, $res);
+            for my $data (@part) {
+              # for chunk formated data, check the last chunk to finish
+              if ($data =~ /Transfer-Encoding: (\S+)/) {
+                if ($1 eq "chunked") {
+                  $ischunked = 1;
+                }
+              }
+              if ($ischunked && $data =~ /^([\dabcdefABCDEF]+)$/) {
+                if ($1 eq 0) {
+                  # last chunk
+                  goto FINISH;
+                }else {
+                  # continue to get the rest chunks
+                  $retry = 0;
+                  next;
+                }
+              } else {
+                # put all data together
+                $response .= $data;
+              }
+           }
+        }
+        unless ($ischunked) {
+            # for non chunk data, just read once
+            if ($response) {
+                last;
+            } else {
+                if (not defined $readbytes and $! == EAGAIN) { next; }
+                $rc = 2;
+                last;
+            }
         }
     }
+
+FINISH: 
+    if ($retry >= 10 ) {$rc = 3;}
 
     if ($verbose) {
         my $rsp;
