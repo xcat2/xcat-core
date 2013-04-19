@@ -1420,12 +1420,6 @@ sub isnetdriver {
       }
    }
 }
-      	
-
-
-
-
-
 
 sub postscripts {
    generic_post();
@@ -1445,18 +1439,6 @@ sub postscripts {
 }
 
 
-sub using_systemd {
-    my $os = shift;
-    if ($os =~ /fedora(\d+)/) {
-        if ($1 >= 15) {
-          return 1;
-        }
-    }
-
-    return 0;
-}
-
-
 sub generic_post { #This function is meant to leave the image in a state approximating a normal install
    my $cfgfile;
    unlink("$rootimg_dir/dev/null");
@@ -1467,14 +1449,12 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    print $cfgfile "proc    /proc    proc     defaults       0 0\n";
    print $cfgfile "sysfs   /sys     sysfs    defaults       0 0\n";
 
-   if (!&using_systemd($osver)) {
-      if ($tmplimit) {
-         print $cfgfile "tmpfs   /tmp     tmpfs    defaults,size=$tmplimit       0 2\n";
-         print $cfgfile "tmpfs   /var/tmp     tmpfs    defaults,size=$tmplimit       0 2\n";
-      } else {
-         print $cfgfile "tmpfs   /tmp     tmpfs    defaults,size=10m             0 2\n";
-         print $cfgfile "tmpfs   /var/tmp     tmpfs    defaults,size=10m       0 2\n";
-      }
+   if ($tmplimit) {
+      print $cfgfile "tmpfs   /tmp     tmpfs    defaults,size=$tmplimit       0 2\n";
+      print $cfgfile "tmpfs   /var/tmp     tmpfs    defaults,size=$tmplimit       0 2\n";
+   } else {
+      print $cfgfile "tmpfs   /tmp     tmpfs    defaults,size=10m             0 2\n";
+      print $cfgfile "tmpfs   /var/tmp     tmpfs    defaults,size=10m       0 2\n";
    }
 
    my $rootfs_name=$profile."_".$arch;
@@ -1528,44 +1508,31 @@ sub generic_post { #This function is meant to leave the image in a state approxi
        symlink  "/etc/init.d/networking","$rootimg_dir/etc/rc3.d/S10networking";
    }
    
-   # gettyset is not found on s390x
-   if ($arch ne "s390x") {
-      if (!&using_systemd($osver)) {
-         open($cfgfile,">","$rootimg_dir/etc/init.d/gettyset");
-         print $cfgfile "#!/bin/bash\n"; 
-         print $cfgfile "for i in `cat /proc/cmdline`; do\n"; 
-         print $cfgfile '  KEY=`echo $i|cut -d= -f 1`'."\n";
-         print $cfgfile "  if [ \"\$KEY\" == \"console\" -a \"\$i\" != \"console=tty0\" ]; then\n";
-         print $cfgfile "    VALUE=`echo \$i | cut -d= -f 2`\n"; 
-         print $cfgfile "     COTTY=`echo \$VALUE|cut -d, -f 1`\n";
-         print $cfgfile "     COSPEED=`echo \$VALUE|cut -d, -f 2|cut -dn -f 1`\n";
-         print $cfgfile "     if echo \$VALUE | grep n8r; then\n";
-         print $cfgfile "        FLOWFLAG=\"-h\"\n";
-         print $cfgfile "     fi\n";
-         print $cfgfile "     if [ -x /sbin/initctl ]; then\n";	# Upstart style
-         print $cfgfile "        initctl emit --no-wait fedora.serial-console-available \$COTTY \$COSPEED\n";
-         print $cfgfile "     else\n";
-         print $cfgfile "       echo xco:2345:respawn:/sbin/agetty \$FLOWFLAG \$COTTY \$COSPEED xterm >> /etc/inittab\n";
-         print $cfgfile "        init q\n";
-         print $cfgfile "     fi\n";
-         print $cfgfile "  fi\n";
-         print $cfgfile "done\n";
+   # setup the ttyS configure file
+   open($cfgfile, ">", "$rootimg_dir/etc/init/ttyS.conf");
+   print $cfgfile "start on stopped rc RUNLEVEL=[2345] and ";
+   print $cfgfile "(not-container or container container CONTAINER=lxc or container CONTAINER=lxc-libvirt) \n";
+   print $cfgfile "stop on runlevel [!2345] \n";
+   print $cfgfile "respawn \n";
+   print $cfgfile "script\n";
+   print $cfgfile "    for i in `cat /proc/cmdline`; do\n";
+   print $cfgfile "        KEY=`echo \$i|cut -d= -f 1` \n";
+   print $cfgfile "        if [ \"\$KEY\" == \"console\" -a \"\$i\" != \"console=tty0\" ]; then \n";
+   print $cfgfile "            VALUE=`echo \$i | cut -d= -f 2` \n";
+   print $cfgfile "            COTTY=`echo \$VALUE|cut -d, -f 1` \n";
+   print $cfgfile "            COSPEED=`echo \$VALUE|cut -d, -f 2|cut -dn -f 1` \n";
+   print $cfgfile "            exec /sbin/getty -L \$COSPEED \$COTTY vt102 \n";
+   print $cfgfile "            break \n";
+   print $cfgfile "        fi \n";
+   print $cfgfile "    done\n";
+   print $cfgfile "end script\n";
 
-         close($cfgfile);
-
-         #the ubuntu default run level is 2
-         chmod(0755,"$rootimg_dir/etc/init.d/gettyset");
-         system("cd $rootimg_dir/etc/rc2.d; ln -sf ../init.d/gettyset S60gettyset");
-      }
-		
-      copy("$installroot/postscripts/xcatpostinit", "$rootimg_dir/etc/init.d/xcatpostinit");
-      #the ubuntu default run level is 2
-      chmod(0755, "$rootimg_dir/etc/init.d/xcatpostinit");
-      system("cd $rootimg_dir/etc/rc2.d; ln -sf ../init.d/xcatpostinit S61xcatpostinit");
-
-      #change the /bin/sh link to /bin/bash
-      system("cd $rootimg_dir/bin/; ln -sf bash sh");
-   }
+   copy("$installroot/postscripts/xcatpostinit", "$rootimg_dir/etc/init.d/xcatpostinit");
+   #the ubuntu default run level is 2
+   chmod(0755, "$rootimg_dir/etc/init.d/xcatpostinit");
+   system("cd $rootimg_dir/etc/rc2.d; ln -sf ../init.d/xcatpostinit S61xcatpostinit");
+   #change the /bin/sh link to /bin/bash
+   system("cd $rootimg_dir/bin/; ln -sf bash sh");
 } 
 
 
