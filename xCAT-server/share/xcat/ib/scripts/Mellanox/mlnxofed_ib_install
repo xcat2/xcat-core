@@ -1,4 +1,4 @@
-#!/bin/sh  
+#!/bin/sh
 #
 #
 # Sample script to customize options for Mellonax OFED IB support
@@ -42,9 +42,9 @@ if [ $OS != "AIX" ]; then
         #download_dir=`echo $OFED_DIR | cut -d '/' -f3-`
         #wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=5 ftp://$SITEMASTER/$download_dir/ 2> /tmp/wget.log
         download_dir=$OFED_DIR
-        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=6 --reject "index.html*"  --no-parent http://$SITEMASTER$download_dir/ 2> /tmp/wget.log
-        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=6 --reject "index.html*"  --no-parent http://$SITEMASTER$download_dir/.mlnx 2>> /tmp/wget.log
-        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=6 --reject "index.html*"  --no-parent http://$SITEMASTER$download_dir/.supported_kernels 2>> /tmp/wget.log
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=6 --reject "index.html*"  --no-parent http://$MASTER$download_dir/ 2> /tmp/wget.log
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=6 --reject "index.html*"  --no-parent http://$MASTER$download_dir/.mlnx 2>> /tmp/wget.log
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=6 --reject "index.html*"  --no-parent http://$MASTER$download_dir/.supported_kernels 2>> /tmp/wget.log
         #rpm -Uvh --force libibverbs-devel*.rpm 
         perl -x mlnxofedinstall --without-32bit --force
         rm -Rf /tmp/ofed
