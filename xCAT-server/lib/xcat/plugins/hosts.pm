@@ -205,6 +205,60 @@ sub addotherinterfaces
     }
 }
 
+sub add_hosts_content {
+	my %args = @_;
+	my $nodelist = $args{nodelist};
+	my $callback = $args{callback};
+	my $DELNODE = $args{delnode};
+	my $domain = $args{domain};
+    	my $hoststab = xCAT::Table->new('hosts',-create=>0);
+            my $hostscache;
+	    if ($hoststab) {
+             $hostscache =
+              $hoststab->getNodesAttribs($nodelist,
+                                       [qw(ip node hostnames otherinterfaces)]);
+			       }
+            foreach (@{$nodelist})
+            {
+
+                my $ref = $hostscache->{$_}->[0];
+
+				my $netn;
+                ($domain, $netn) = &getIPdomain($ref->{ip}, $callback);
+                if (!$domain) {
+                    if ($::sitedomain) {
+                        $domain=$::sitedomain;
+                    } elsif ($::XCATSITEVALS{domain}) {
+                        $domain=$::XCATSITEVALS{domain};
+                    } else {
+                        my $rsp;
+                        push @{$rsp->{data}}, "No domain can be determined for node \'$ref->{node}\'. The domain of the xCAT node must be provided in an xCAT network definition or the xCAT site definition.\n";
+
+                        xCAT::MsgUtils->message("W", $rsp, $callback);
+                        next;
+                    }
+                }
+
+                if ($DELNODE)
+                {
+                    delnode $ref->{node}, $ref->{ip}, $ref->{hostnames}, $domain;
+                }
+                else
+                {
+                    if (xCAT::NetworkUtils->isIpaddr($ref->{ip}))
+                    {
+                        addnode $callback, $ref->{node}, $ref->{ip}, $ref->{hostnames}, $domain;
+                    }
+                    if (defined($ref->{otherinterfaces}))
+                    {
+                        addotherinterfaces $callback, $ref->{node}, $ref->{otherinterfaces}, $domain;
+                    }
+                }
+            }    #end foreach
+	    if ($args{hostsref}) {
+	    	@{$args{hostsref}} = @hosts;
+	    }
+	  }
 sub process_request
 {
     Getopt::Long::Configure("bundling");
@@ -213,6 +267,8 @@ sub process_request
 
     my $req      = shift;
     my $callback = shift;
+    my $dr = shift;
+    my %extraargs = @_;
 
     my $HELP;
     my $REMOVE;
@@ -327,6 +383,8 @@ sub process_request
 				if (!$domain) {
 					if ($::sitedomain) {
 						$domain=$::sitedomain;
+                    			} elsif ($::XCATSITEVALS{domain}) {
+                        			$domain=$::XCATSITEVALS{domain};
 					} else {
 						my $rsp;
 						push @{$rsp->{data}}, "No domain can be determined for node \'$node\'.  The domain of the xCAT node must be provided in an xCAT network definition or the xCAT site definition.\n";
@@ -347,44 +405,7 @@ sub process_request
         }
         else
         {
-            my $hostscache =
-              $hoststab->getNodesAttribs($req->{node},
-                                       [qw(ip node hostnames otherinterfaces)]);
-            foreach (@{$req->{node}})
-            {
-
-                my $ref = $hostscache->{$_}->[0];
-
-				my $netn;
-                ($domain, $netn) = &getIPdomain($ref->{ip}, $callback);
-                if (!$domain) {
-                    if ($::sitedomain) {
-                        $domain=$::sitedomain;
-                    } else {
-                        my $rsp;
-                        push @{$rsp->{data}}, "No domain can be determined for node \'$ref->{node}\'. The domain of the xCAT node must be provided in an xCAT network definition or the xCAT site definition.\n";
-
-                        xCAT::MsgUtils->message("W", $rsp, $callback);
-                        next;
-                    }
-                }
-
-                if ($DELNODE)
-                {
-                    delnode $ref->{node}, $ref->{ip}, $ref->{hostnames}, $domain;
-                }
-                else
-                {
-                    if (xCAT::NetworkUtils->isIpaddr($ref->{ip}))
-                    {
-                        addnode $callback, $ref->{node}, $ref->{ip}, $ref->{hostnames}, $domain;
-                    }
-                    if (defined($ref->{otherinterfaces}))
-                    {
-                        addotherinterfaces $callback, $ref->{node}, $ref->{otherinterfaces}, $domain;
-                    }
-                }
-            }    #end foreach
+		add_hosts_content(nodelist=>$req->{node},callback=>$callback,delnode=>$DELNODE,domain=>$domain);
         }    # end else
 
         # do the other node nics - if any
@@ -411,6 +432,9 @@ sub process_request
 			if (!$domain) {
                 $domain=$::sitedomain;
             }
+			if (!$domain) {
+                $domain=$::XCATSITEVALS{domain};
+	    }
 
             if (xCAT::NetworkUtils->isIpaddr($_->{ip}))
             {
@@ -668,6 +692,8 @@ sub donics
 				} elsif ( $::sitedomain)  {
 					# try the site domain for backward compatibility
 					$nicdomain=$::sitedomain;
+                		} elsif ($::XCATSITEVALS{domain}) {
+                        		$nicdomain=$::XCATSITEVALS{domain};
 				} else {
 					my $rsp;
 					push @{$rsp->{data}}, "No domain can be determined for the NIC IP value of \'$nicip\'. The network domains must be provided in an xCAT network definition or the xCAT site definition.\n";
