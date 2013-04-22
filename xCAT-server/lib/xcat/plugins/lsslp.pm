@@ -954,6 +954,7 @@ sub parse_responses {
     my %outhash;
     my $host;
     my @matchnode;
+    my @cmmnodes;
     my %searchmacs = %$searchmacsref;
 
    #get networks information for defining HMC
@@ -1036,6 +1037,7 @@ sub parse_responses {
                 $atthash{hostname} = $::OLD_DATA_CACHE{"mp*".$atthash{mtm}."*".$atthash{serial}};
                 push  @matchnode,'Server-'.$atthash{mtm}.'-SN'.$atthash{serial};
             }
+            push @cmmnodes, 'Server-'.$atthash{mtm}.'-SN'.$atthash{serial};
             trace( $request, "Discover node $atthash{hostname}: type is $atthash{type}, \
 			mtm is $atthash{mtm}, sn is $atthash{serial}, side is $atthash{side}, \
 			ip is $atthash{ip}, mac is $atthash{mac}, mname is $atthash{mname},\
@@ -1317,8 +1319,23 @@ sub parse_responses {
 		        trace( $request, "child is $child, fid is ${$outhash{$child}}{fid}, cid is ${$outhash{$child}}{cid}");
     }	
 
-        } # end - process fsp and bpa
-    } # end process responses loop
+        } 
+    } 
+    
+    
+	trace( $request, "\n\n\nBegin to find cmm hostname in switch table");
+    $macmap = xCAT::MacMap->new();
+	$macmap->refresh_table();
+    foreach my $cmmnode (@cmmnodes) {
+        my $macvalue = ${$outhash{$cmmnode}}{mac};
+        my $hostn = $macmap->find_mac($macvalue, 1);
+        if ($hostn) {
+            ${$outhash{$cmmnode}}{hostname} = $hostn;
+            trace($request, "cmmnode $cmmnode find hostname $hostn");
+        }    
+    }
+    
+    
 
     ##########################################################
     # If there is -n flag, skip the matched nodes
