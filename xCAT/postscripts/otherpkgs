@@ -424,7 +424,7 @@ if ( pmatch "$OSVER" "sles11*" && [ $haszypper -eq 1 ] ); then
     old_repo=`zypper lr |grep -e "^[0-9]" | cut -f2 -d '|'`
     for x in $old_repo
     do
-        if ( ( pmatch "$x" "xCAT-$OSVER-path*" ) || ( pmatch "$x" "$OSVER-path*" ) ); then
+        if ( ( pmatch "$x" "xCAT-$OSVER*" ) || ( pmatch "$x" "$OSVER-path*" ) || ( pmatch "$x" "xcat-otherpkgs*" ) ); then
              result=`zypper rr "$x"`
         fi
     done
@@ -495,6 +495,7 @@ elif ( pmatch "$OSVER" "rhel*" && [ $hasyum -eq 1 ] ); then
     fi
     rm /etc/yum.repos.d/$OSVER-path*.repo >/dev/null 2>&1
     result=`rm /etc/yum.repos.d/xCAT-$OSVER-path*.repo 2>&1`
+    result=`rm /etc/yum.repos.d/xCAT-otherpkgs*.repo 2>&1`
 
     result=`yum clean all`
 
