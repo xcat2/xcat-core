@@ -385,13 +385,21 @@ sub setdestiny {
 		$xcatdport = $port_entry;
 	    }
 	    if (-r "$tftpdir/xcat/genesis.kernel.$arch") {
-		if (-r "$tftpdir/xcat/genesis.fs.$arch.lzma") {
+		my $bestsuffix="lzma";
+		my $othersuffix="gz";
+		if (-r "$tftpdir/xcat/genesis.fs.$arch.lzma" and -r "$tftpdir/xcat/genesis.fs.$arch.gz") {
+			if (-C "$tftpdir/xcat/genesis.fs.$arch.lzma" > -C "$tftpdir/xcat/genesis.fs.$arch.gz") { #here, lzma is older for whatever reason
+				$bestsuffix="gz";
+				$othersuffix="lzma";
+			}
+		}
+		if (-r "$tftpdir/xcat/genesis.fs.$arch.$bestsuffix") {
 		    $bootparms->setNodeAttribs($_,{kernel => "xcat/genesis.kernel.$arch",
-						   initrd => "xcat/genesis.fs.$arch.lzma",
+						   initrd => "xcat/genesis.fs.$arch.$bestsuffix",
 						   kcmdline => $kcmdline."xcatd=$master:$xcatdport destiny=$state"});
 		} else {
 		    $bootparms->setNodeAttribs($_,{kernel => "xcat/genesis.kernel.$arch",
-						   initrd => "xcat/genesis.fs.$arch.gz",
+						   initrd => "xcat/genesis.fs.$arch.$othersuffix",
 						   kcmdline => $kcmdline."xcatd=$master:$xcatdport destiny=$state"});
 		}
 	    } else {  #'legacy' environment
