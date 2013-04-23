@@ -6,9 +6,9 @@ B<genimage> - Generates a stateless image to be used for a diskless install.
 
 B<genimage>
 
-B<genimage>  B<-o> I<osver> [B<-a> I<arch>] B<-p> I<profile> B<-i> I<nodebootif> B<-n> I<nodenetdrivers> [B<--onlyinitrd>]  [B<-r> I<otherifaces>] [B<-k> I<kernelver>] [B<-g> I<krpmver>] [B<-m> I<statelite>] [B<-l> I<rootlimitsize>] [B<--permission> I<permission>] [B<--interactive>]
+B<genimage>  B<-o> I<osver> [B<-a> I<arch>] B<-p> I<profile> B<-i> I<nodebootif> B<-n> I<nodenetdrivers> [B<--onlyinitrd>]  [B<-r> I<otherifaces>] [B<-k> I<kernelver>] [B<-g> I<krpmver>] [B<-m> I<statelite>] [B<-l> I<rootlimitsize>] [B<--permission> I<permission>] [B<--interactive>] [B<--dryrun>]
 
-B<genimage> [B<-o> I<osver>] [B<-a> I<arch>] [B<-p> I<profile>] [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<--onlyinitrd>] [B<-r> I<otherifaces>] [B<-k> I<kernelver>] [B<-g> I<krpmver>] [B<-m> I<statelite>] [B<-l> I<rootlimitsize>] [B<--permission> I<permission>] [B<--interactive>] I<imagename>
+B<genimage> [B<-o> I<osver>] [B<-a> I<arch>] [B<-p> I<profile>] [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<--onlyinitrd>] [B<-r> I<otherifaces>] [B<-k> I<kernelver>] [B<-g> I<krpmver>] [B<-m> I<statelite>] [B<-l> I<rootlimitsize>] [B<--permission> I<permission>] [B<--interactive>] [B<--dryrun>] I<imagename>
 
 
 B<genimage> [B<-h> | B<--help> | B<-v> | B<--version>]
@@ -142,6 +142,11 @@ This flag is for Ubuntu, Debian and Fedora12 only. Use this flag to specify if y
 
 This flag allows the user to answer questions from yum/zypper command when installing rpms into the image. If it is not specified, '-y' will be passed to the yum command and '--non-interactive --no-gpg-checks' will be passed to the zypper command as default answers. 
 
+=item B<--dryrun>
+
+This flag shows the underlying call to the os specific genimage function. The user can copy and the paste the output to run the command on another machine that does not have xCAT installed.
+
+
 =item B<-t> I<tmplimit>
 
 (Deprecated) This flag allows the user to setup the /tmp and the /var/tmp file system sizes. This flag is no longer supported. You can overwrite any file system size using the .postinstall script where you can create a new /etc/fstab file. 
@@ -211,6 +216,11 @@ x86_64 and place it in the
 To regenerate the initrd for a fedora8 image for a compute node architecture x86_64 and place it in the /install/netboot/fedora8/x86_64/compute/rootimg directory:  change directory to /opt/xcat/share/xcat/netboot/fedora and run:
 
   genimage --onlyinitrd -i eth0 -n tg3,bnx2 -o fedora8 -p compute
+
+=item 10
+
+  genimage --dryrun  myimagename
+
 
 =back
 
