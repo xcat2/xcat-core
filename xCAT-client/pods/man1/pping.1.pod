@@ -5,7 +5,7 @@ B<pping> - parallel ping the nodes.
 
 =head1 SYNOPSIS
 
-B<pping> [B<-i>|B<--interface> I<interfaces>] I<noderange>
+B<pping> [B<-i>|B<--interface> I<interfaces>] [B<-f>|B<--use_fping>] I<noderange>
 
 B<pping> [B<-h>|B<--help>]
 
@@ -31,6 +31,10 @@ The following name resolution convention is assumed:  an interface is reachable 
 the ib2 interface on node3 has a hostname of node3-ib2.
 
 If more than one interface is specified, each interface will be combined with the nodenames as described above and will be pinged in turn.
+
+=item B<-f>|B<--use_fping>
+
+Use fping instead of nmap
 
 =item B<-h>|B<--help>
 
