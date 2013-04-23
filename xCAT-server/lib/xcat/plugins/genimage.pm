@@ -67,6 +67,7 @@ sub process_request {
    my $interactive;
    my $onlyinitrd;
    my $tempfile;
+   my $dryrun;
 
    GetOptions(
        'a=s' => \$arch,
@@ -85,6 +86,7 @@ sub process_request {
        'interactive' => \$interactive,
        'onlyinitrd' => \$onlyinitrd,
        'tempfile=s' => \$tempfile,
+       'dryrun' => \$dryrun, 
        );
 
    my $osimagetab;
@@ -298,7 +300,9 @@ sub process_request {
    if ($otherpkglist) { $cmd .= " --otherpkglist $otherpkglist"; }  
    if ($postinstall_filename)  { $cmd .= " --postinstall $postinstall_filename"; }
    if ($destdir) { $cmd .= " --rootimgdir $destdir"; } 
-   if ($tempfile) { $cmd .= " --tempfile $tempfile"; } 
+   if ($tempfile) { 
+       if (!$dryrun) { $cmd .= " --tempfile $tempfile"; } 
+   }
    if ($driverupdatesrc) { $cmd .= " --driverupdatesrc $driverupdatesrc"; }
 
    if ($imagename) {
@@ -337,6 +341,10 @@ sub process_request {
        $callback->({error=>["NO temp file provided to store the genimage command."]});
        return;
    }
+
+   #it only shows the underlying  command without actually running the command
+   if ($dryrun) { return; }
+
    
    if ($interactive) {
        return; #back to the client, client will run 
