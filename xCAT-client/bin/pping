@@ -22,8 +22,7 @@ use IO::Handle;
 use IO::Select;
 use Getopt::Long;
 
-my $USAGE="Usage: pping [-i|--interface interfaces] noderange
-       pping -f|--use_fping
+my $USAGE="Usage: pping [-i|--interface interfaces][-f|--use_fping] noderange
        pping -h|--help
        pping -v|--version\n"; 
 
