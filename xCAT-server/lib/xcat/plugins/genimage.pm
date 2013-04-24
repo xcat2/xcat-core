@@ -301,6 +301,12 @@ sub process_request {
    if ($tempfile) { $cmd .= " --tempfile $tempfile"; } 
    if ($driverupdatesrc) { $cmd .= " --driverupdatesrc $driverupdatesrc"; }
 
+   if($osfamily eq "sles") {
+       my @entries =  xCAT::TableUtils->get_site_attribute("timezone");
+       my $tz = $entries[0];
+       if($tz) { $cmd .= " --timezone $tz"; }
+   }
+
    if ($imagename) {
        $cmd.= " $imagename";
    }
