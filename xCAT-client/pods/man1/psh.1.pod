@@ -4,7 +4,7 @@ psh - parallel remote shell
 
 =head1 B<Synopsis>
 
-B<psh> [B<-i> I<interface>] [B<-f> I<fanout>] [B<-l> I<user>] I<noderange> I<command>
+B<psh> [B<-i> I<interface>] [B<-f> I<fanout>] [B<-l> I<user>] [B<--nonodecheck>] I<noderange> I<command>
 
 B<psh> {B<-h>|B<--help>|B<-v>|B<--version>}
 
@@ -41,6 +41,12 @@ rently  executing  remote shell processes.
 
 Log into the nodes as the specified username.  The default is to use the same username as you
 are running the psh command as.
+
+=item B<--nonodecheck>
+
+Do not contact the xCAT daemon to resolve the given noderange to a list of node names.  When
+using this option, the noderange you specify must be a comma-separated list of hostnames.  This
+allows you to run psh without xcatd or the xCAT-server package installed.
 
 =item B<noderange>
 
