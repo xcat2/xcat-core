@@ -105,7 +105,7 @@ then
         sed -i "/options ib_ehca lock_hcalls/d" /etc/modprobe.conf
         echo 'options ib_ehca lock_hcalls=0' >> /etc/modprobe.conf
     fi
-    /sbin/chkconfig --level 2345 $ib_driver on
+    /sbin/chkconfig --level 2345 $ib_driver on > /dev/null 2>&1
     /sbin/service $ib_driver restart
     sysctl -p
 fi
