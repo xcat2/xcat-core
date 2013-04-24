@@ -47,7 +47,7 @@ then
         echo 'options ib_ehca nr_ports=1' >> /etc/modprobe.conf
         echo 'options ib_ehca lock_hcalls=0' >> /etc/modprobe.conf 
     fi
-    /sbin/chkconfig --level 2345 $ib_driver on
+    /sbin/chkconfig --level 2345 $ib_driver on  > /dev/null 2>&1
     /sbin/service $ib_driver restart
     sysctl -p
 
@@ -88,6 +88,7 @@ else
     while [ $num -lt $loop_number ]
     do
           `rmdev -d -l ib$num >/dev/null 2>&1`
+          `rmdev -d -l iba$num >/dev/null 2>&1`
           n=`expr $num % 2`
           if [ $n == 1 ]
           then
@@ -96,7 +97,9 @@ else
           fi
           num=`expr $num + 1`
     done
-    
+    `rmdev -dl icm >/dev/null 2>&1`  
+    mkdev -c management -s infiniband -t icm
+    cfgmgr
     loop_number=`lsdev -Cc adapter |grep iba |wc -l`
 
 fi
@@ -116,8 +119,10 @@ do
     if [ $NODE ]
     then
         hostname="$NODE-$nic"
+        shortname=$NODE
     else
         hostname="$HOST-$nic"
+        shortname=$HOST
     fi
     `ifconfig $nic up`
     if [ $PLTFRM == "Linux" ]
@@ -172,24 +177,25 @@ GATEWAY=$gateway" > $dir/ifcfg-$nic
             fi
         elif [ $PLTFRM == "AIX" ]
         then
-            lsdev -C | grep icm | grep Available
-            if [ $? -ne 0 ]
-            then
-                mkdev -c management -s infiniband -t icm
-                if [ $? -ne 0 ]
-                then
-                    mkdev -l icm
-                    if [ $? -ne 0 ]
-                    then
-                        exit $?
-                    fi
-                fi
-            fi
+            #lsdev -C | grep icm | grep Available
+            #if [ $? -ne 0 ]
+            #then
+            #    mkdev -c management -s infiniband -t icm
+            #    if [ $? -ne 0 ]
+            #    then
+            #        mkdev -l icm
+            #        if [ $? -ne 0 ]
+            #        then
+            #            exit $?
+            #        fi
+            #    fi
+            #fi
 
             #Configure the IB interfaces.  Customize the port num.
             iba_num=$num
             ib_adapter="iba$iba_num"
             port=1
+            chdev -l $ib_adapter -a hostname=$shortname
             mkiba -a $ip -i $nic -A $ib_adapter -p $port -P -1 -S up -m $netmask
         fi
     fi
