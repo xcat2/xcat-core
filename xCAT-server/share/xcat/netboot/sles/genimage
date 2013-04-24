@@ -59,7 +59,7 @@ my $permission; #the permission works only for statelite mode currently
 my $krpmver;
 my $tempfile;
 my $prompt;
-
+my $timezone; #the TIMEZONE of the stateless and statelite node
 
 sub xdie {
    system("rm -rf /tmp/xcatinitrd.$$");
@@ -95,6 +95,7 @@ GetOptions(
    'g=s' => \$krpmver,
    'permission=s' => \$permission,
    'kerneldir=s' => \$kerneldir,   
+   'timezone=s'  => \$timezone,   
    'tempfile=s' =>\$tempfile, #internal flag
    'pkglist=s' => \$pkglist,   #internal flag
    'srcdir=s' => \$srcdir,   #internal flag
@@ -1403,7 +1404,7 @@ END
         }
     }
 
-   if ($arch =~ /x86_64/) {
+   if ($arch =~ /64/) {
       push @filestoadd,"lib64/libnss_dns.so.2";
       push @filestoadd,"lib64/libnss_files.so.2";
    }
@@ -1539,6 +1540,15 @@ sub postscripts { # TODO: customized postscripts
 
 sub generic_post { # This function is meant to leave the image in a state approximating a normal install
     my $cfgfile;
+
+    #modify /etc/sysconfig/clock in the image:HWCLOCK="--local", TIMEZONE=site:timezone
+    if ($timezone) {
+        system("sed  -i '".'s!\(TIMEZONE=\).*!\1'."\"$timezone\"!"."' $rootimg_dir/etc/sysconfig/clock");
+        system("chroot $rootimg_dir zic -l $timezone");
+    }
+
+    system("sed  -i 's!\\(HWCLOCK=\\).*!\\1\"--localtime\"!' $rootimg_dir/etc/sysconfig/clock");
+
 
     unlink("$rootimg_dir/dev/null");
     system("mknod $rootimg_dir/dev/null c 1 3");
