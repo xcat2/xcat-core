@@ -17,7 +17,7 @@ use xCAT::Table;
 use xCAT::Utils;
 use xCAT::MsgUtils;
 use Getopt::Long;
-use Data::Dumper;
+#use Data::Dumper;
 use File::Basename;
 use File::Path;
 
@@ -2516,20 +2516,59 @@ sub rmkitcomp
                         }
                     }
 
+                    # Check if each deploy parameter is used by other kitcomponent.
+                    my @otherlines = ();
+                    foreach my $osikitcomp ( @osikitcomps ) {
+                        next if ( exists($kitcomps{$osikitcomp}{name}) );
+
+                        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname=> $osikitcomp}, 'kitname');
+                        if ( $kitcomptable and $kitcomptable->{kitname} ) {
+                            (my $kittable) = $tabs{kit}->getAttribs({kitname=> $kitcomptable->{kitname}},  'kitdir', 'kitdeployparams');
+                            if ( $kittable and $kittable->{kitdeployparams} and $kittable->{kitdir} ) {
+                                my @otherdeployparams;
+                                my $deployparam_file = $kittable->{kitdir}."/other_files/".$kittable->{kitdeployparams};
+                                if ( -e "$deployparam_file" ) {
+                                    if (open(OTHERDEPLOYPARAM, "<", "$deployparam_file" )) {
+                                        @otherdeployparams = <OTHERDEPLOYPARAM>;
+                                        close(OTHERDEPLOYPARAM);
+                                    }
+                                }
+                                foreach ( @otherdeployparams ) {
+                                    push @otherlines, $_;
+                                }
+                             }
+                        }
+                    }
+
+
                     my @newcontents = ();
                     foreach my $line ( @lines ) {
                         chomp $line;
                         my $found = 0;
-                        foreach my $content ( @contents ) {
-                            chomp $content;
-                            if ( $line =~ /$content/ ) {
+
+                        #check if the parameter is used by other kitcomponent
+                        foreach my $otherline ( @otherlines ) {
+                            chomp $otherline;
+                            if ( $line =~ /$otherline/ ) {
                                 $found = 1;
                                 last;
                             }
                         }
 
-                        unless ( $found ) {
+                        if ( $found ) {
                             push @newcontents, $line . "\n";
+                        } else {
+                            foreach my $content ( @contents ) {
+                                chomp $content;
+                                if ( $line =~ /$content/ ) {
+                                    $found = 1;
+                                    last;
+                                }
+                            }
+
+                            unless ( $found ) {
+                                push @newcontents, $line . "\n";
+                            }
                         }
                     }
 
