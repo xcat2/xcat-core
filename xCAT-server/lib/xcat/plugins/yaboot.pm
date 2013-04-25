@@ -10,6 +10,7 @@ use xCAT::MsgUtils;
 use File::Path;
 use Socket;
 use Getopt::Long;
+use xCAT::Table;
 
 my $request;
 my %breaknetbootnodes;
@@ -89,6 +90,7 @@ sub setstate {
   my %machash = %{shift()};
   my $tftpdir = shift;
   my %nrhash = %{shift()};
+  my $linuximghash = shift();
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
   if ($kern->{kcmdline} =~ /!myipfn!/) {
       my $ipfn = xCAT::NetworkUtils->my_ip_facing($node);
@@ -130,6 +132,16 @@ sub setstate {
   if ($kern->{addkcmdline}) {
       $kern->{kcmdline} .= " ".$kern->{addkcmdline};
   }
+  
+  if($linuximghash and $linuximghash->{'addkcmdline'})
+  {
+      unless($linuximghash->{'boottarget'}) 
+      {
+          $kern->{kcmdline} .= " ".$linuximghash->{'addkcmdline'};
+      } 
+  }
+   
+
   my $pcfg;
   unless (-d "$tftpdir/etc") {
      mkpath("$tftpdir/etc");
@@ -507,7 +519,9 @@ sub process_request {
   my $nrtab=xCAT::Table->new('noderes',-create=>1);
   my $nrhash=$nrtab->getNodesAttribs(\@nodes,['servicenode']);
   my $typetab=xCAT::Table->new('nodetype',-create=>1);
-  my $typehash=$typetab->getNodesAttribs(\@nodes,['os']);
+  my $typehash=$typetab->getNodesAttribs(\@nodes,['os','provmethod']);
+  my $linuximgtab=xCAT::Table->new('linuximage',-create=>1);
+
   my $rc;
   my $errstr;
 
@@ -524,7 +538,14 @@ sub process_request {
       $response{node}->[0]->{data}->[0]= getstate($_,$tftpdir);
       $callback->(\%response);
     } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
-      ($rc,$errstr) = setstate($_,$bphash,$chainhash,$machash,$tftpdir,$nrhash);
+      my $ent = $typehash->{$_}->[0]; 
+      my $osimgname = $ent->{'provmethod'};
+      my $linuximghash=undef;
+      unless($osimgname =~ /^(install|netboot|statelite)$/){
+        $linuximghash = $linuximgtab->getAttribs({imagename => $osimgname}, 'boottarget', 'addkcmdline');
+      }      
+
+      ($rc,$errstr) = setstate($_,$bphash,$chainhash,$machash,$tftpdir,$nrhash,$linuximghash);
       if ($rc) {
         $response{node}->[0]->{errorcode}->[0]= $rc;
         $response{node}->[0]->{errorc}->[0]= $errstr;

@@ -97,9 +97,11 @@ sub setstate {
   my %machash = %{shift()};
   my %iscsihash = %{shift()};
   my $tftpdir = shift;
+  my %linuximghash = %{shift()};
+  my $imgaddkcmdline=($linuximghash{'boottarget'})? undef:$linuximghash{'addkcmdline'};
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
   unless ($addkcmdlinehandled->{$node}) { #Tag to let us know the plugin had a special syntax implemented for addkcmdline
-    if ($kern->{addkcmdline}) {
+    if ($kern->{addkcmdline} or ($imgaddkcmdline)) {
 
 #Implement the kcmdline append here for
 #most generic, least code duplication
@@ -115,7 +117,7 @@ sub setstate {
 #I dislike spaces, tabs are cleaner, I'm too tired to change all the xCAT code.
 #I give in.
 
-    my $kcmdlinehack = $kern->{addkcmdline};
+    my $kcmdlinehack = ($imgaddkcmdline)?$kern->{addkcmdline}." ".$imgaddkcmdline : $kern->{addkcmdline};
 
     while ($kcmdlinehack =~ /#NODEATTRIB:([^:#]+):([^:#]+)#/) {
         my $natab = xCAT::Table->new($1);
@@ -143,7 +145,6 @@ sub setstate {
 
     #$kern->{kcmdline} .= " ".$kern->{addkcmdline};
     $kern->{kcmdline} .= " ".$kcmdlinehack;
-
 ###hack end
 
     }
@@ -516,6 +517,10 @@ sub process_request {
   if ($iscsitab) {
       %iscsihash = %{$iscsitab->getNodesAttribs(\@nodes,[qw(server target)])};
   }
+  my $typetab=xCAT::Table->new('nodetype',-create=>1);
+  my $typehash=$typetab->getNodesAttribs(\@nodes,['provmethod']);
+  my $linuximgtab=xCAT::Table->new('linuximage',-create=>1);
+
   my %machash = %{$mactab->getNodesAttribs(\@nodes,[qw(mac)])};
   foreach (@nodes) {
     my $tftpdir;
@@ -533,7 +538,13 @@ sub process_request {
     } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
       my $rc;
       my $errstr;
-      ($rc,$errstr) = setstate($_,\%bphash,\%chainhash,\%machash,\%iscsihash,$tftpdir);
+      my $ent = $typehash->{$_}->[0];
+      my $osimgname = $ent->{'provmethod'};
+      my $linuximghash=undef;
+      unless($osimgname =~ /^(install|netboot|statelite)$/){
+        $linuximghash = $linuximgtab->getAttribs({imagename => $osimgname}, 'boottarget', 'addkcmdline');
+      }
+      ($rc,$errstr) = setstate($_,\%bphash,\%chainhash,\%machash,\%iscsihash,$tftpdir,$linuximghash);
       #currently, it seems setstate doesn't return error codes...
       #if ($rc) {
       #  $response{node}->[0]->{errorcode}->[0]= $rc;

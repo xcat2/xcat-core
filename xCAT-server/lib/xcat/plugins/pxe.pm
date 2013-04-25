@@ -86,8 +86,11 @@ sub setstate {
   my %machash = %{shift()};
   my %nthash = %{shift()};
   my $tftpdir = shift;
+  my %linuximghash = %{shift()};
+  my $imgaddkcmdline=($linuximghash{'boottarget'})? undef:$linuximghash{'addkcmdline'};
+
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
-  if (not $addkcmdlinehandled->{$node} and $kern->{addkcmdline}) {
+  if (not $addkcmdlinehandled->{$node} and ($kern->{addkcmdline} or  ($imgaddkcmdline))) {
 
 #Implement the kcmdline append here for
 #most generic, least code duplication
@@ -103,7 +106,8 @@ sub setstate {
 #I dislike spaces, tabs are cleaner, I'm too tired to change all the xCAT code.
 #I give in.
 
-    my $kcmdlinehack = $kern->{addkcmdline};
+    my $kcmdlinehack = ($imgaddkcmdline)?$kern->{addkcmdline}." ".$imgaddkcmdline : $kern->{addkcmdline};
+
 
     while ($kcmdlinehack =~ /#NODEATTRIB:([^:#]+):([^:#]+)#/) {
         my $natab = xCAT::Table->new($1);
@@ -130,6 +134,7 @@ sub setstate {
     }
 
     #$kern->{kcmdline} .= " ".$kern->{addkcmdline};
+
     $kern->{kcmdline} .= " ".$kcmdlinehack;
 
 ###hack end
@@ -484,11 +489,12 @@ sub process_request {
   my $mactab = xCAT::Table->new('mac'); #to get all the hostnames
   my $typetab = xCAT::Table->new('nodetype');
   my $restab = xCAT::Table->new('noderes');
+  my $linuximgtab=xCAT::Table->new('linuximage',-create=>1);
   my %nrhash =  %{$restab->getNodesAttribs(\@nodes,[qw(tftpdir)])};
   my %bphash = %{$bptab->getNodesAttribs(\@nodes,[qw(kernel initrd kcmdline addkcmdline)])};
   my %chainhash = %{$chaintab->getNodesAttribs(\@nodes,[qw(currstate)])};
   my %machash = %{$mactab->getNodesAttribs(\@nodes,[qw(mac)])};
-  my %nthash = %{$typetab->getNodesAttribs(\@nodes,[qw(os)])};
+  my %nthash = %{$typetab->getNodesAttribs(\@nodes,[qw(os provmethod)])};
   foreach (@nodes) {
     my %response;
     my $tftpdir;
@@ -502,7 +508,13 @@ sub process_request {
       $response{node}->[0]->{data}->[0]= getstate($_,$tftpdir);
       $callback->(\%response);
     } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
-      ($rc,$errstr) = setstate($_,\%bphash,\%chainhash,\%machash,\%nthash,$tftpdir);
+      my $ent = $nthash{$_}->[0];
+      my $osimgname = $ent->{'provmethod'};
+      my $linuximghash=undef;
+      unless($osimgname =~ /^(install|netboot|statelite)$/){
+        $linuximghash = $linuximgtab->getAttribs({imagename => $osimgname}, 'boottarget', 'addkcmdline');
+      }
+      ($rc,$errstr) = setstate($_,\%bphash,\%chainhash,\%machash,\%nthash,$tftpdir,$linuximghash);
       if ($rc) {
         $response{node}->[0]->{errorcode}->[0]= $rc;
         $response{node}->[0]->{errorc}->[0]= $errstr;
