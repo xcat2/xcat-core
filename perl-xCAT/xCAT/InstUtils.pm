@@ -893,12 +893,12 @@ sub dolitesetup
     	}
 	}
 
-	if (-e $litetreetab) {
-		my $rc = xCAT::Utils->runcmd("rm $litetreetab", -1);
+	if (-e $litetreetable) {
+		my $rc = xCAT::Utils->runcmd("rm $litetreetable", -1);
 		if ($::RUNCMD_RC != 0)
     	{
         	my $rsp;
-        	push @{$rsp->{data}}, "Could not remove existing $litetreetab file.";
+        	push @{$rsp->{data}}, "Could not remove existing $litetreetable file.";
         	xCAT::MsgUtils->message("E", $rsp, $callback);
         	return 1;
     	}
