@@ -3475,7 +3475,7 @@ function loadDiskPoolTable(data) {
         var actionBar = $('<div id="zvmDiskResourceActions" class="actionBar"></div>').css("width", "450px");
         
         // Create an action menu
-        var actionsMenu = createMenu([addLnk, removeLnk, refreshLnk, [advancedLnk, advancedMenu]]);
+        var actionsMenu = createMenu([refreshLnk, addLnk, removeLnk, [advancedLnk, advancedMenu]]);
         actionsMenu.superfish();
         actionsMenu.css('display', 'inline-block');
         actionBar.append(actionsMenu);
@@ -3675,11 +3675,24 @@ function openRemoveDiskFromPoolDialog(disks2remove) {
     var hcp2zvm = new Object();
     hcp2zvm = getHcpZvmHash();
     
-    var args = disks2remove.split('-');
-    var tgtHcp = args[0];
-    var tgtPool = args[1];
-    var tgtVol = args[2];
+    var disks = new Array();
+    if (disks2remove.indexOf(',') > -1)
+    	disks = disks2remove.split(',');
+    else
+    	disks.push(disks2remove);
     
+    // Pick the last zHCP and pool it finds
+    var args, tgtHcp = "", tgtPool = "", tgtVol = "";
+    for (var i in disks) {
+    	args = disks[i].split('-');
+        tgtHcp = args[0];
+        tgtPool = args[1];
+        tgtVol += args[2] + ',';
+    }
+    
+	// Strip out last comma
+    tgtVol = tgtVol.slice(0, -1);
+        
     // Create info bar
     var info = createInfoBar('Remove a disk from a disk pool defined in the EXTENT CONTROL.');
     deleteDiskForm.append(info);

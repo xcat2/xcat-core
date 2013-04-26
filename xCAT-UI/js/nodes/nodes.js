@@ -2023,22 +2023,30 @@ function loadDeletePage(tgtNodes) {
     
     // Confirm delete
     var instr = $('<p>Are you sure you want to delete <b>' + tgtNodesStr + '</b>?</p>').css('word-wrap', 'break-word');
+    var dbOnly = $('<div><input type="checkbox" name="db-only"/>Only delete entries in database</div>');
     confirmAttr.append(instr);
+    confirmAttr.append(dbOnly);
 
     /**
      * Delete
      */
     var deleteBtn = createButton('Delete');
     deleteBtn.click(function() {
+    	var cmd = "rmvm";
+    	// Only delete entries in database if checked
+    	if ($("#" + newTabId + " input[name='db-only']").attr('checked')) {
+    		cmd = "noderm";
+    	}
+    	
         // Delete the virtual server
         $.ajax( {
             url : 'lib/cmd.php',
             dataType : 'json',
             data : {
-                cmd : 'rmvm',
+                cmd : cmd,
                 tgt : tgtNodes,
                 args : '',
-                msg : 'out=' + statBarId + ';cmd=rmvm;tgt=' + tgtNodes
+                msg : 'out=' + statBarId + ';cmd=' + cmd + ';tgt=' + tgtNodes
             },
 
             success : updateStatusBar
@@ -2135,6 +2143,13 @@ function updateStatusBar(data) {
         
         // Enable buttons
         $('#' + statBarId).parent().find('button').removeAttr('disabled');
+    } else if (cmd == 'noderm') {
+        // Hide loader
+        $('#' + statBarId).find('img').hide();
+        
+        // Write ajax response to status bar
+        var prg = $('<pre>Entries deleted in database</pre>');   
+        $('#' + statBarId).find('div').append(prg);    
     } else {
         // Hide loader
         $('#' + statBarId).find('img').hide();
