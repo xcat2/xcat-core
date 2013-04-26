@@ -2137,7 +2137,11 @@ sub create_builddir
         
         foreach my $plugin (<$::workdir/plugins/*.pm>){
             my $plugin_base = basename($plugin);
-            my $to_plugin = $plugin_dir."/".$kitname."_".$plugin_base;
+            my $mod_kitname = $kitname;
+            $mod_kitname =~ s/\-/\_/g;
+            $mod_kitname =~ s/\./\_/g;
+            my $to_plugin = $plugin_dir."/".$mod_kitname."_".$plugin_base;
+
             if ( system("cp -fp $plugin $to_plugin") ) {
                 # non-zero return from system call
                 print "Error copying plugin file $plugin to build directory $plugin_dir \n";
@@ -2294,6 +2298,11 @@ sub edit_plugin
 {
     my $file = shift; 
     my $kitname = $::bldkit_config->{kit}{entries}[0]->{kitname};
+    # convert dashes to underscore since the kitname is used as perl pkg names
+    # in the plugin and this causes perl syntax errors
+    my $mod_kitname = $kitname;
+    $mod_kitname =~ s/\-/\_/g;
+    $mod_kitname =~ s/\./\_/g;
 
     # read in the file
     my $PF;
@@ -2306,6 +2315,7 @@ sub edit_plugin
 
     for (@lines) {
         s/<<<buildkit_WILL_INSERT_kitname_HERE>>>/$kitname/g;
+        s/<<<buildkit_WILL_INSERT_modified_kitname_HERE>>>/$mod_kitname/g;
     }
 
     # Write the plugin back out
