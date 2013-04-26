@@ -1022,7 +1022,7 @@ site => {
    " useNmapfromMN:  When set to yes, nodestat command should obtain the node status\n".
    "                 using nmap (if available) from the management node instead of the\n".
    "                 service node. This will improve the performance in a flat network.\n\n".
-   " useSSHonAIX:  (yes/1 or no/0). If yes, ssh/scp will be setup and used. If no,\n".
+   " useSSHonAIX:  (yes/1 or no/0). If yes, ssh/scp will be setup and used. If no, rsh/rcp.  The support for rsh/rcp is deprecated.\n".
    " usexhrm:  Have xCAT run its xHRM script when booting up KVM guests to set the\n".
    "           virtual network bridge up correctly. See\n".
    "           https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Virtualization_with_KVM#Setting_up_a_network_bridge\n\n".
