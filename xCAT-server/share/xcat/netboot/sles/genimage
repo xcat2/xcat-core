@@ -425,7 +425,7 @@ unless ($onlyinitrd) {
                    print "Cannot find the kernel package with the versioin $krpmver.\n";
                    exit 1;
                  }
-                 my $kernelname = "$kern=".$krpmver;
+                 my $kernelname = "$kern-".$krpmver;
                  push @npa, $kernelname;
                }
              } else {
