@@ -6303,14 +6303,19 @@ sub changeHypervisor {
             
             # Define region as full volume and add to group
             if ($funct eq "4") {
-                $volume = $args->[3];
+                $volume = $args->[3];                
+                # In case multiple regions/volumes are specified, just use the same name
+                if (scalar(@regions) > 1) {
+                    $volume = $_;
+                }
+                
                 $group  = $args->[4];
                 $tmp = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Volume_Space_Define_DM -T $hcpUserId -f $funct -g $_ -v $volume -p $group -y 0"`;
                 xCAT::zvmUtils->printSyslog("smcli Image_Volume_Space_Define_DM -T $hcpUserId -f $funct -g $_ -v $volume -p $group -y 0");
             }
             
             # Add existing region to group
-            elsif($funct eq "5") {
+            elsif ($funct eq "5") {
                 $group = $args->[3];
                 $tmp = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Volume_Space_Define_DM -T $hcpUserId -f $funct -g $_ -p $group -y 0"`;
                 xCAT::zvmUtils->printSyslog("smcli Image_Volume_Space_Define_DM -T $hcpUserId -f $funct -g $_ -p $group -y 0");
