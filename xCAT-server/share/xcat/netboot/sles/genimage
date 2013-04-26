@@ -425,7 +425,7 @@ unless ($onlyinitrd) {
                    print "Cannot find the kernel package with the versioin $krpmver.\n";
                    exit 1;
                  }
-                 my $kernelname = "$kern=".$krpmver;
+                 my $kernelname = "$kern-".$krpmver;
                  push @npa, $kernelname;
                }
              } else {
@@ -1548,6 +1548,7 @@ sub generic_post { # This function is meant to leave the image in a state approx
     }
 
     system("sed  -i 's!\\(HWCLOCK=\\).*!\\1\"--localtime\"!' $rootimg_dir/etc/sysconfig/clock");
+
 
     unlink("$rootimg_dir/dev/null");
     system("mknod $rootimg_dir/dev/null c 1 3");
