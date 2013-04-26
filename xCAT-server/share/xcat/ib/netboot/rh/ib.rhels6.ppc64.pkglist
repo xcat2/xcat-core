@@ -5,3 +5,4 @@ tcl
 tk
 tcsh
 libgcc.ppc
+gcc-gfortran
