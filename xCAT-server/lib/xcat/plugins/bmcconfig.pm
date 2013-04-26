@@ -136,6 +136,7 @@ sub process_request  {
      $callback->({error=>["Invalid table configuration for bmcconfig"],errorcode=>[1]});
      return 1;
   }
+  my $bmcport_counter=0;
   foreach my $sbmc (split /,/,$bmc) {
 	  (my $ip,my $mask,my $gw) = net_parms($sbmc);
 	  unless ($ip and $mask and $username and $password) {
@@ -149,12 +150,23 @@ sub process_request  {
 	  }
 	  my $response={bmcip=>$ip,netmask=>$mask,gateway=>$gw,username=>$username,password=>$password};
 	  if (defined $bmcport) {
-	      $response->{bmcport}=$bmcport;
+	      if ($bmcport =~ /,/) {
+	      	my @sbmcport = (split /,/,$bmcport);
+		$response->{bmcport}=$sbmcport[$bmcport_counter];
+	      } else {
+	      	$response->{bmcport}=$bmcport;
+	      }
 	  }
 	  if (defined $tmphash->{$node}->[0]->{taggedvlan}) {
+	      if ($tmphash->{$node}->[0]->{taggedvlan} =~ /,/) {
+	      		my @staggedvlan = (split /,/,$tmphash->{$node}->[0]->{taggedvlan});
+			$response->{taggedvlan}=$staggedvlan[$bmcport_counter];
+	       } else {
 	      $response->{taggedvlan}=$tmphash->{$node}->[0]->{taggedvlan};
+	      }
 	  }
   	$callback->($response);
+	$bmcport_counter += 1;
   }
   if ($gennedpassword) { # save generated password
     $ipmitable->setNodeAttribs($node,{password=>$password});
