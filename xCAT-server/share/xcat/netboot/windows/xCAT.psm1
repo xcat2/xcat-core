@@ -35,8 +35,9 @@ Function VerifyxCATCert ($sender, $cert, $chain, $polerrs) {
 	#we chose not to add xCAT's CA to the root store, as that implies the OS should trust xCAT's CA for non-xCAT related things.  That is madness.
 	#Of course, that's the madness typical with x509, but we need not propogate the badness...
 	#we are measuring something more specific than 'did any old CA sign this', we specifically want to assue the signer CA is xCAT's 
-	$mythumb=Get-ItemProperty HKCU:\Software\xCAT
-	if (!$mythumb) {
+	if (Test-Path HKCU:\Software\xCAT) {
+		$mythumb=Get-ItemProperty HKCU:\Software\xCAT
+	} else {
 		$mythumb=Get-ItemProperty HKLM:\Software\xCAT
 	}
         foreach ($cert in $chain.chainElements) {
@@ -89,13 +90,14 @@ Function RemovexCATClientCertificate {
 #however, user will just have to control it by calling Set-xCATClientCertificate on the file for now
 #TODO: if user wants password protected PFX file, we probably would want to import it once and retain thumb across sessions...
 Function SelectxCATClientCert ($sender, $targetHost, $localCertificates, $remoteCertificate,$acceptableIssuers) {
-	$myreg = Get-ItemProperty HKCU:\Software\xCAT
-	if (!$myreg) { #in this case, we might be operating in system context for install instrumentation
+	if (!(Test-Path HKCU:\Software\xCAT)) { #in this case, we might be operating in system context for install instrumentation
 		$myreg=Get-ItemProperty HKLM:\Software\xCAT
 		if ($myreg) { #confirmed that we have a machine level authentication setup to fall back upon
-			Get-Item cert:\LocalMachine\xCAT\$myreg.usercertthumb
+			$mycertthumb=$myreg.usercertthumb
+			Get-Item cert:\LocalMachine\xCAT\$mycertthumb
 		}
 	} else {
+		$myreg = Get-ItemProperty HKCU:\Software\xCAT
 		$mythumb=(Get-ItemProperty HKCU:\Software\xCAT).usercertthumb
 		Get-Item cert:\CurrentUser\My\$mythumb
 	}
@@ -113,22 +115,26 @@ Function Connect-xCAT {
 		$mgtServerAltName
 	)
 	if (! $mgtServer) {
-		$mgtServer=(Get-ItemProperty HKCU:\Software\xCAT).serveraddress
-		if (! $mgtServer) {
-			$mgtServer=(Get-ItemProperty HKCU:\Software\xCAT).servername
-		}
-		if (! $mgtServer) {
-			$mgtServer=(Get-ItemProperty HKLM:\Software\xCAT).serveraddress
-		}
-		if (! $mgtServer) {
-			$mgtServer=(Get-ItemProperty HKLM:\Software\xCAT).servername
+		if (Test-Path HKCU:\Software\xCAT) {
+			$mgtServer=(Get-ItemProperty HKCU:\Software\xCAT).serveraddress
+			if (! $mgtServer) {
+				$mgtServer=(Get-ItemProperty HKCU:\Software\xCAT).servername
+			}
+		} else {
+			if (! $mgtServer) {
+				$mgtServer=(Get-ItemProperty HKLM:\Software\xCAT).serveraddress
+			}
+			if (! $mgtServer) {
+				$mgtServer=(Get-ItemProperty HKLM:\Software\xCAT).servername
+			}
 		}
 	}
 	if (! $mgtServerAltName) {
-		$mgtServerAltName=(Get-ItemProperty HKCU:\Software\xCAT).servername
-	}
-	if (! $mgtServerAltName) {
-		$mgtServerAltName=(Get-ItemProperty HKLM:\Software\xCAT).servername
+		if (Test-Path HKCU:\Software\xCAT) {
+			$mgtServerAltName=(Get-ItemProperty HKCU:\Software\xCAT).servername
+		} elseif (Test-Path HKLM:\Software\xCAT) { #node reporting command
+			$mgtServerAltName=(Get-ItemProperty HKLM:\Software\xCAT).servername
+		}
 	}
 	$script:xcatconnection = New-Object Net.Sockets.TcpClient($mgtServer,$mgtServerPort)
 	if (! $script:xcatconnection) { 
