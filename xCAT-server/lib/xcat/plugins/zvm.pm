@@ -2298,8 +2298,8 @@ sub powerVM {
 
     # Power off virtual server
     elsif ( $args->[0] eq 'off' ) {
-        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Deactivate -T $userId -f IMMED"`;
-        xCAT::zvmUtils->printSyslog("smcli Image_Deactivate -T $userId -f IMMED");
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Deactivate -T $userId"`;
+        xCAT::zvmUtils->printSyslog("smcli Image_Deactivate -T $userId");
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
     }
     
@@ -2308,8 +2308,8 @@ sub powerVM {
         $out = `ssh -o ConnectTimeout=10 $::SUDOER\@$node "shutdown -h now"`;
         sleep(90);    # Wait 1.5 minutes before logging user off
         
-        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Deactivate -T $userId -f IMMED"`;
-        xCAT::zvmUtils->printSyslog("smcli Image_Deactivate -T $userId -f IMMED");
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Deactivate -T $userId"`;
+        xCAT::zvmUtils->printSyslog("smcli Image_Deactivate -T $userId");
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
     }
 
@@ -2330,8 +2330,8 @@ sub powerVM {
     # Reset a virtual server
     elsif ( $args->[0] eq 'reset' ) {
 
-        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Deactivate -T $userId -f IMMED"`;
-        xCAT::zvmUtils->printSyslog("smcli Image_Deactivate -T $userId -f IMMED");
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Deactivate -T $userId"`;
+        xCAT::zvmUtils->printSyslog("smcli Image_Deactivate -T $userId");
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
 
         # Wait for output
@@ -3606,8 +3606,8 @@ sub cloneVM {
 	        }
         }
         
-        $out = `ssh $::SUDOER\@$srcHcp "$::SUDO $::DIR/smcli Image_Deactivate -T $sourceId -f IMMED"`;
-        xCAT::zvmUtils->printSyslog("smcli Image_Deactivate -T $sourceId -f IMMED");
+        $out = `ssh $::SUDOER\@$srcHcp "$::SUDO $::DIR/smcli Image_Deactivate -T $sourceId"`;
+        xCAT::zvmUtils->printSyslog("smcli Image_Deactivate -T $sourceId");
         xCAT::zvmUtils->printSyslog("$out");
 
         #*** Clone source node ***
@@ -6310,7 +6310,7 @@ sub changeHypervisor {
             }
             
             # Add existing region to group
-            elsif($funct eq "5") {
+            elsif ($funct eq "5") {
                 $group = $args->[3];
                 $tmp = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Volume_Space_Define_DM -T $hcpUserId -f $funct -g $_ -p $group -y 0"`;
                 xCAT::zvmUtils->printSyslog("smcli Image_Volume_Space_Define_DM -T $hcpUserId -f $funct -g $_ -p $group -y 0");
