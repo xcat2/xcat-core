@@ -2644,7 +2644,11 @@ sub create_builddir
         
         foreach my $plugin (<$::workdir/plugins/*.pm>){
             my $plugin_base = basename($plugin);
-            my $to_plugin = $plugin_dir."/".$kitname."_".$plugin_base;
+            my $mod_kitname = $kitname;
+            $mod_kitname =~ s/\-/\_/g;
+            $mod_kitname =~ s/\./\_/g;
+            my $to_plugin = $plugin_dir."/".$mod_kitname."_".$plugin_base;
+
             if ( system("cp -fp $plugin $to_plugin") ) {
                 # non-zero return from system call
                 print "Error copying plugin file $plugin to build directory $plugin_dir \n";
