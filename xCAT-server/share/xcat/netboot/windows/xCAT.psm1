@@ -36,6 +36,9 @@ Function VerifyxCATCert ($sender, $cert, $chain, $polerrs) {
 	#Of course, that's the madness typical with x509, but we need not propogate the badness...
 	#we are measuring something more specific than 'did any old CA sign this', we specifically want to assue the signer CA is xCAT's 
 	$mythumb=Get-ItemProperty HKCU:\Software\xCAT
+	if (!$mythumb) {
+		$mythumb=Get-ItemProperty HKLM:\Software\xCAT
+	}
         foreach ($cert in $chain.chainElements) {
 		if ($mythumb.cacertthumb.Equals($cert.Certificate.thumbprint)) {
 			return $true
@@ -49,7 +52,10 @@ Function VerifyxCATCert ($sender, $cert, $chain, $polerrs) {
 #repository for whatever reason.  We'll just 'import' it every session from file, which is harmless to do multiple times
 #this isn't quite as innocuous as the openssl mechanisms to do this sort of thing, but it's as close as I could figure to get
 Function ImportxCATCA ( $certpath ) {
-	$xcatcacert=Import-Certificate -FilePath $certpath -CertStoreLocation Cert:\CurrentUser\My
+	$xcatstore = New-Object System.Security.Cryptography.X509Certificates.X509Store("xCAT","CurrentUser")
+	$cacert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($certpath)
+	$xcatstore.Open([System.Security.Cryptography.X509Certificates.OpenFlags]'Readwrite')
+	$xcatstore.Add($xcatcacert)
 	Set-ItemProperty HKCU:\Software\xCAT cacertthumb $xcatcacert.thumbprint
 }
 
@@ -63,12 +69,17 @@ Function RemovexCATCA {
 
 #specify a client certificate to use in pfx format
 Function SetxCATClientCertificate ( $pfxPath ) {
-	$xcatclientcert=Import-pfxCertificate $pfxPath -certStoreLocation cert:\currentuser\my
+	$xcatstore = New-Object System.Security.Cryptography.X509Certificates.X509Store("xCAT","CurrentUser")
+	$xcatclientcert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($pfxpath)
+	$xcatstore.Add($xcatclientcert)
 	Set-ItemProperty HKCU:\Software\xCAT usercertthumb $xcatclientcert.thumbprint
 }
 Function RemovexCATClientCertificate {
 	SetxCATClientCertificate($pfxpath)
 	$mythumb=Get-ItemProperty HKCU:\Software\xCAT
+	if (!$mythumb) {
+		$mythumb=Get-ItemProperty HKLM:\Software\xCAT
+	}
 	rm cert:\currentuser\my\$mythumb.usercertthumb
 }
 
@@ -78,8 +89,16 @@ Function RemovexCATClientCertificate {
 #however, user will just have to control it by calling Set-xCATClientCertificate on the file for now
 #TODO: if user wants password protected PFX file, we probably would want to import it once and retain thumb across sessions...
 Function SelectxCATClientCert ($sender, $targetHost, $localCertificates, $remoteCertificate,$acceptableIssuers) {
-	$mythumb=(Get-ItemProperty HKCU:\Software\xCAT).usercertthumb
-	Get-Item cert:\CurrentUser\My\$mythumb
+	$myreg = Get-ItemProperty HKCU:\Software\xCAT
+	if (!$myreg) { #in this case, we might be operating in system context for install instrumentation
+		$myreg=Get-ItemProperty HKLM:\Software\xCAT
+		if ($myreg) { #confirmed that we have a machine level authentication setup to fall back upon
+			Get-Item cert:\LocalMachine\xCAT\$myreg.usercertthumb
+		}
+	} else {
+		$mythumb=(Get-ItemProperty HKCU:\Software\xCAT).usercertthumb
+		Get-Item cert:\CurrentUser\My\$mythumb
+	}
 }
 Function Set-xCATServer {
 	Param(
@@ -98,9 +117,18 @@ Function Connect-xCAT {
 		if (! $mgtServer) {
 			$mgtServer=(Get-ItemProperty HKCU:\Software\xCAT).servername
 		}
+		if (! $mgtServer) {
+			$mgtServer=(Get-ItemProperty HKLM:\Software\xCAT).serveraddress
+		}
+		if (! $mgtServer) {
+			$mgtServer=(Get-ItemProperty HKLM:\Software\xCAT).servername
+		}
 	}
 	if (! $mgtServerAltName) {
 		$mgtServerAltName=(Get-ItemProperty HKCU:\Software\xCAT).servername
+	}
+	if (! $mgtServerAltName) {
+		$mgtServerAltName=(Get-ItemProperty HKLM:\Software\xCAT).servername
 	}
 	$script:xcatconnection = New-Object Net.Sockets.TcpClient($mgtServer,$mgtServerPort)
 	if (! $script:xcatconnection) { 
@@ -112,6 +140,11 @@ Function Connect-xCAT {
 	$haveclientcert=0
 	if (Test-Path HKCU:\Software\xCAT) {
 		$xcreg=Get-ItemProperty HKCU:\Software\xCAT
+		if ($xcreg.usercertthumb) {
+			$haveclientcert=1
+		}
+	} elseif (Test-Path HKLM:\Software\xCAT) { #intended for localsystem context for node->xCAT calls
+		$xcreg=Get-ItemProperty HKLM:\Software\xCAT
 		if ($xcreg.usercertthumb) {
 			$haveclientcert=1
 		}
