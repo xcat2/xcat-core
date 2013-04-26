@@ -86,7 +86,9 @@ sub setstate {
   my %machash = %{shift()};
   my %nthash = %{shift()};
   my $tftpdir = shift;
-  my %linuximghash = %{shift()};
+  my %linuximghash = ();
+  my $linuximghashref = shift;
+  if (ref $linuximghashref) { %linuximghash = %{$linuximghashref}; }
   my $imgaddkcmdline=($linuximghash{'boottarget'})? undef:$linuximghash{'addkcmdline'};
 
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
