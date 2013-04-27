@@ -15,7 +15,7 @@ SYNCLIST="${MNTDIR}/$SL/litefile" 	# the list of files to sync
 TREEMOUNT="${MNTDIR}/$SL/mnt"  	# where I mount all the trees.
 TMPFS="${MNTDIR}/$SL/tmpfs"
 DEFAULT="${MNTDIR}/.default"
-LOCAL="${MNTDIR}/.sllocal"
+LOCAL="${MNTDIR}/.sllocal/localmnt"
 LOG="${MNTDIR}/${SL}/statelite.log"
 ELIST=[]    # entry list, each entry will contain the type and the path
 declare -a CLIST 
