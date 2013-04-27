@@ -6,7 +6,7 @@ B<nodeimport> - Create profiled nodes by importing hostinfo file.
 
 B<nodeimport> [-h| --help | -v | --version]
 
-B<nodeimport> file=<nostinfo-filename> networkprofile=<network-profile> imageprofile=<image-profile> hostnameformat=<node-name-format> [hardwareprofile=<hardware-profile>] [groups=<node-groups>]
+B<nodeimport> file=<hostinfo-filename> networkprofile=<network-profile> imageprofile=<image-profile> hostnameformat=<node-name-format> [hardwareprofile=<hardware-profile>] [groups=<node-groups>]
 
 =head1 DESCRIPTION
 
@@ -40,7 +40,7 @@ B<hardwareprofile=<hardware-profile>>
 
 Sets the new hardware profile name used by the node, where <hardware-profile> is the new hardware management profile used by the node. If a "__HardwareProfile_hwprofile" group exists, then "hwprofile" is the hardware profile name. A hardware profile defines hardware management related information for imported nodes, including: IPMI, HMC, CEC, CMM.
 
-B<hostnameformat=<nost-name-format>>
+B<hostnameformat=<host-name-format>>
 
 Sets the node name format for all nodes discovered, where <node-name-format> is a supported format. The two types of formats supported are prefix#NNNappendix and prefix#RRand#NNappendix, where wildcard #NNN and #NN are replaced by a system generated number that is based on the provisioning order. Wildcard #RR represents the rack number and stays constant.
 
