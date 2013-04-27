@@ -1849,6 +1849,14 @@ sub boot_network {
                 $state = $newstate[$state];
                 }
             ],
+            # For some old firmware, does not output "----"
+            [qr/BOOTP/=>
+                sub {
+                nc_msg ($verbose, $msg[$state]);
+                $rconsole->clear_accum();
+                $state = $newstate[$state];
+                }
+            ],
             [qr/]/=>
                 sub {
                 nc_msg($verbose, "Unexpected prompt\n");
@@ -1917,7 +1925,28 @@ sub Boot {
         #],
         [qr/BOOTP/=>      #-ex
             sub {
-                nc_msg($verbose, "# Network boot proceeding, exiting.\n");
+                nc_msg($verbose, "# Network boot proceeding - matched BOOTP, exiting.\n");
+                $rconsole->clear_accum();
+            }
+        ],
+        # Welcome to AIX - some old firmware does not output BOOTP or ----
+        [qr/Welcome/=>      #-ex
+            sub {
+                nc_msg($verbose, "# Network boot proceeding - matched Welcome, exiting.\n");
+                $rconsole->clear_accum();
+            }
+        ],
+        # tftp file download - some old firmware does not output BOOTP or ----
+        [qr/FILE/=>      #-ex
+            sub {
+                nc_msg($verbose, "# Network boot proceeding - matched FILE.\n");
+                $rconsole->clear_accum();
+            }
+        ],
+        # some old firmware does not output BOOTP or ----
+        [qr/Elapsed/=>      #-ex
+            sub {
+                nc_msg($verbose, "# Network boot proceeding - matched Elapsed, exiting.\n");
                 $rconsole->clear_accum();
             }
         ],
@@ -3148,12 +3177,12 @@ sub lparnetbootexp
                     }
                 ],
             );
-        return [1] if ($rc eq 1);
-        }
-        nc_msg($verbose, "# bootp sent over network.\n");
-        $rc = Boot($rconsole, $node, $verbose);#, @expect_out);
-        unless ($rc eq 0) {
-            nc_msg($verbose, "Can't boot here. \n");
+            return [1] if ($rc eq 1);
+            nc_msg($verbose, "# bootp sent over network.\n");
+            $rc = Boot($rconsole, $node, $verbose);#, @expect_out);
+            unless ($rc eq 0) {
+                nc_msg($verbose, "Can't boot here. \n");
+            }
         }
     }
 
