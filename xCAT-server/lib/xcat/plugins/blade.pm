@@ -1577,6 +1577,13 @@ sub rscan {
     if ($name =~ /Comm Error/) {
       next;
     }
+    if ($data[1] =~ /\(\s*([^\s]*)\s*\)/) {
+        $name = $1;
+    } elsif ($data[1] =~ /^\s*([^s]*)\s*$/) {
+        $name = $1;
+        $name =~ s/ /_/;
+        $name =~ tr/A-Z/a-z/;
+    }
 
     if (exists($opt{u})) {
       ## TRACE_LINE print "Rscan: orig_name [$name]\n";
@@ -1825,7 +1832,18 @@ sub rscan_stanza {
     if ($data[1] =~ /Comm Error/) {
       next;
     }
-    $result .= "$data[1]:\n\tobjtype=node\n";
+    my $objname;
+    if ($data[1] =~ /\(\s*([^\s]*)\s*\)/) {
+        $objname = $1;
+    } elsif ($data[1] =~ /^\s*([^s]*)\s*$/) {
+        $objname = $1;
+        $objname =~ s/ /_/;
+        $objname =~ tr/A-Z/a-z/;
+    } else {
+        $objname = $data[1];
+    }
+
+    $result .= "$objname:\n\tobjtype=node\n";
 
     foreach ( @rscan_attribs ) {
         my $d = $data[$i++];
