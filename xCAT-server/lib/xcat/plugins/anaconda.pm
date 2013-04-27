@@ -842,7 +842,11 @@ sub mknetboot
 
         # add the cmdline parameters for handling the local disk for stateless
         if ($cfgpart eq "yes") {
-            $kcmdline .= " PARTITION";
+            if ($statelite) {
+                $kcmdline .= " PARTITION_RH"
+            } else {
+                $kcmdline .= " PARTITION_DOMOUNT_RH"
+            }
         }
 
         # add the addkcmdline attribute  to the end
