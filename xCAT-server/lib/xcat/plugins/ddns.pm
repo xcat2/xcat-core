@@ -540,28 +540,6 @@ sub process_request {
 
 	        update_namedconf($ctx); 
 	        update_zones($ctx);
-
-	        # check if named is active before update dns records.
-	        if (xCAT::Utils->isAIX())
-	        {
-	            my $cmd = "/usr/bin/lssrc -s $service |grep active";
-	            my @output=xCAT::Utils->runcmd($cmd, 0);
-	            if ($::RUNCMD_RC != 0)
-	            {
-	                system("/usr/bin/startsrc -s $service");
-	                xCAT::SvrUtils::sendmsg("Starting named complete", $callback);
-	            }
-	        }
-	        else
-	        {
-	            my $cmd = "service $service status|grep running";
-	            my @output=xCAT::Utils->runcmd($cmd, 0);
-	            if ($::RUNCMD_RC != 0)
-	            {
-	                system("service $service start");
-	                xCAT::SvrUtils::sendmsg("Starting named complete", $callback);
-	            }
-	        }
         
 	        if ($ctx->{restartneeded}) {
 	            xCAT::SvrUtils::sendmsg("Restarting $service", $callback);
@@ -585,6 +563,29 @@ sub process_request {
             xCAT::SvrUtils::sendmsg([1,"Unable to update DNS due to lack of credentials in passwd to communicate with remote server"], $callback);
         }
     }
+
+    # check if named is active before update dns records.
+    if (xCAT::Utils->isAIX())
+    {
+        my $cmd = "/usr/bin/lssrc -s $service |grep active";
+        my @output=xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            system("/usr/bin/startsrc -s $service");
+            xCAT::SvrUtils::sendmsg("Starting named complete", $callback);
+        }
+    }
+    else
+    {
+        my $cmd = "service $service status|grep running";
+        my @output=xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            system("service $service start");
+            xCAT::SvrUtils::sendmsg("Starting named complete", $callback);
+        }
+    }
+        
     #now we stick to Net::DNS style updates, with TSIG if possible.  TODO: kerberized (i.e. Windows) DNS server support, maybe needing to use nsupdate -g....
     if ($external)
     {
