@@ -654,6 +654,8 @@ if ($tempfile) {
 # this is where tmpfs will be created.
 
 mkpath "$rootimg_dir/.statelite";  # create place for NFS mounts.	
+mkpath "$rootimg_dir/.sllocal/localmnt";  # create place for localdisk mount
+mkpath "$rootimg_dir/.sllocal/log";  # create place for localdisk log
 
 # this script will get the directories.	
 # TODO: the file is re-copied in liteimg.pm
