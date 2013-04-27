@@ -21,7 +21,6 @@ Getopt::Long::Configure("pass_through");
 
 my $cmdname = "liteimg";
 my $statedir = ".statelite";
-my $lddir = ".sllocal";
 my $verbose = "0";
 sub handled_commands {
 	return {
@@ -556,12 +555,6 @@ sub liteMe {
     }
     unless ( -d "$rootimg_dir/$statedir/tmpfs" ) {
         xCAT::Utils->runcmd("mkdir -p $rootimg_dir/$statedir/tmpfs", 0, 1);
-    }
-
-    # ceate the dir for local disk mount point
-    unless (-d "$rootimg_dir/$lddir") {
-        $callback->({info=>["creating $rootimg_dir/$lddir"]});
-        xCAT::Utils->runcmd("mkdir -p $rootimg_dir/$lddir", 0, 1);
     }
 
     foreach my $line (keys %{$hashNewRef}) {
