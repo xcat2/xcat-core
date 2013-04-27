@@ -738,6 +738,8 @@ if ($tempfile) {
 
 
 mkpath "$rootimg_dir/.statelite"; # create place for NFS mounts;
+mkpath "$rootimg_dir/.sllocal/localmnt";  # create place for localdisk mount
+mkpath "$rootimg_dir/.sllocal/log";  # create place for localdisk log
 
 mkpath "$rootimg_dir/root/.ssh"; # create place for NFS mounts for ssh; #TODO is necessary?
 
@@ -1251,7 +1253,6 @@ fi
     done 
 
     # try to configure the local disk
-    echo "Get to enable localdisk"
     \$NEWROOT/etc/init.d/localdisk
 
     # do all the mounts:
@@ -1344,6 +1345,7 @@ EOMS
    }
 
    print $inifile "cd /\n";
+   print $inifile "\$NEWROOT/etc/init.d/localdisk\n"; # to run the localdisk
    print $inifile "mkdir \$NEWROOT/var/lib/dhcpcd/\n";	#neccessary for SLES11, not sure for SLES10
    print $inifile "cp /var/lib/dhcpcd/* \$NEWROOT/var/lib/dhcpcd/\n";
    print $inifile "cp /etc/resolv.conf \$NEWROOT/etc/\n";
@@ -1394,7 +1396,7 @@ END
         }
         
     }else {
-        foreach ("sbin/ifconfig","usr/bin/clear","usr/bin/touch","usr/bin/grep","bin/cpio","bin/sleep","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed","sbin/udevd", "usr/bin/readlink") {
+        foreach ("sbin/ifconfig","usr/bin/clear","usr/bin/touch","usr/bin/grep","usr/bin/egrep","bin/cpio","bin/sleep","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed","sbin/udevd", "usr/bin/readlink", "usr/bin/expr", "usr/sbin/parted", "sbin/mke2fs", "sbin/mkswap", "sbin/swapon", "bin/chmod", "usr/bin/bc") {
             getlibs($_); 
             push @filestoadd,$_;
         }
@@ -1548,7 +1550,6 @@ sub generic_post { # This function is meant to leave the image in a state approx
     }
 
     system("sed  -i 's!\\(HWCLOCK=\\).*!\\1\"--localtime\"!' $rootimg_dir/etc/sysconfig/clock");
-
 
     unlink("$rootimg_dir/dev/null");
     system("mknod $rootimg_dir/dev/null c 1 3");
