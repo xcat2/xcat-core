@@ -1507,7 +1507,7 @@ sub mksysclone
     }
 
     # copy postscripts
-    my $script1 = "efibootmgr";
+    my $script1 = "configefi";
     my $script2 = "updatenetwork";
     my $pspath = "$installroot/sysclone/scripts/post-install/";
     my $clusterfile = "$installroot/sysclone/scripts/cluster.txt";
