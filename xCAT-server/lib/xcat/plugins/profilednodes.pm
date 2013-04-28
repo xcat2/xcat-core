@@ -973,6 +973,17 @@ Usage:
         setrsp_progress("Warning: failed to update /etc/hosts for unmanaged node.");
     }
 
+    $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>[$args_dict{"hostname"}]}, $request_command, 0, 2);
+    $retstrref = parse_runxcmd_ret($retref);
+    if ($::RUNCMD_RC != 0){
+        setrsp_progress("Warning: failed to update dns for unmanaged node.");
+    }
+
+    $retref = xCAT::Utils->runxcmd({command=>["makedhcp"], node=>[$args_dict{"hostname"}]}, $request_command, 0, 2);
+    $retstrref = parse_runxcmd_ret($retref);
+    if ($::RUNCMD_RC != 0){
+        setrsp_progress("Warning: failed to update dhcp for unmanaged node.");
+    }
     setrsp_infostr("Created unmanaged node.");
 }
 
