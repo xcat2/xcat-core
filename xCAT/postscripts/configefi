@@ -1,0 +1,2 @@
+echo "Setting Boot Manager for the next boot."
+efibootmgr -c -l \\EFI\\redhat\\grub.efi -L Linux
