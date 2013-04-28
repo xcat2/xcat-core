@@ -1541,7 +1541,7 @@ sub rscan {
     }
     foreach (@values ){
       my @data = split /,/;
-      if ($data[0] eq "ppcblade") {
+      if ($data[0] eq "ppcblade" or $data[0] eq "xblade") {
         $data[0] = "blade";
       }
       my $i = 0;
@@ -1740,7 +1740,7 @@ sub rscan_xml {
     my $i = 0;
     my $type = $data[0];
     my $origtype = $type;
-    if ($type eq "ppcblade") {
+    if ($type eq "ppcblade" or $type eq "xblade") {
       $type = "blade";
     }
     # ignore the blade server which status is 'Comm Error'
@@ -1770,6 +1770,8 @@ sub rscan_xml {
         } elsif ( /^mgt$/ ) {
             if ($origtype eq "ppcblade") {
               $d = "fsp";
+            } elsif ($origtype eq "xblade") {
+              $d = "ipmi";
             } else {
               $d = "blade";
             }
@@ -1778,13 +1780,15 @@ sub rscan_xml {
               $d = "blade";
             } elsif ($origtype eq "ppcblade"){
               $d = "fsp";
+            } elsif ($origtype eq "xblade") {
+              $d = "ipmi";
             } else {
               $ignore = 1;
             }
         } elsif ( /^mpa$/ ) {
               $d = $mpa;
         } elsif ( /^hwtype$/ ) {
-            if ($origtype eq "ppcblade") {
+            if ($origtype eq "ppcblade" or $origtype eq "xblade") {
               $d = "blade";
             } else {
               $d = $type;
@@ -1794,6 +1798,10 @@ sub rscan_xml {
             if ($origtype eq "ppcblade") {
               $href->{Node}->{slotid} = $d;
               $d = "1";
+            }
+            elsif ($origtype eq "xblade") {
+              $href->{Node}->{slotid} = $d;
+              $ignore = 1;
             }
         } elsif (/^hcp/) {
             if ($origtype eq "ppcblade") {
@@ -1824,7 +1832,7 @@ sub rscan_stanza {
     my $i = 0; 
     my $type = $data[0];
     my $origtype = $type;
-    if ($type eq "ppcblade") {
+    if ($type eq "ppcblade" or $type eq "xblade") {
       $type = "blade";
     }
     # ignore the blade server which status is 'Comm Error'
@@ -1862,6 +1870,8 @@ sub rscan_stanza {
         } elsif ( /^mgt$/ ) {
             if ($origtype eq "ppcblade") {
               $d = "fsp";
+            } elsif ($origtype eq "xblade") {
+              $d = "ipmi";
             } else {
               $d = "blade"; 
             }
@@ -1870,13 +1880,15 @@ sub rscan_stanza {
               $d = "blade";
             } elsif ($origtype eq "ppcblade"){
               $d = "fsp";
+            } elsif ($origtype eq "xblade") {
+              $d = "ipmi";
             } else {
               $ignore = 1;
             }
         } elsif ( /^mpa$/ ) {
               $d = $mpa;
         } elsif ( /^hwtype$/ ) {
-            if ($origtype eq "ppcblade") {
+            if ($origtype eq "ppcblade" or $origtype eq "xblade") {
               $d = "blade";
             } else {
               $d = $type;
@@ -1886,6 +1898,10 @@ sub rscan_stanza {
             if ($origtype eq "ppcblade") {
               $result .= "\tslotid=$d\n";
               $d = "1";
+            }
+            elsif ($origtype eq "xblade") {
+              $result .= "\tslotid=$d\n";
+              $ignore = 1;
             }
         } elsif (/^hcp/) {
             if ($origtype eq "ppcblade") {
