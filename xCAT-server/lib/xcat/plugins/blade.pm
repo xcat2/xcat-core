@@ -2537,7 +2537,7 @@ sub getpdbayinfo {
         } 
     } elsif ($bc_type =~ /^7893$/) { # for flex
         $pdnum = 1;
-        $pdbay = $slot + 24;
+        $pdbay = $slot + 18;
     } else { # for common blade center
         if ($slot < 7) {
             $pdnum = 1;
