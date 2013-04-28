@@ -407,6 +407,7 @@ Usage:
     }
 
     my $mac_addr_mode = 0;
+    my $switch_mode = 0;
     # Parse and validate the hostinfo string. The real hostnames will be generated here.
     xCAT::MsgUtils->message('S', "Parsing hostinfo string and validate it.");
     my ($hostinfo_dict_ref, $invalid_records_ref) = validate_node_entries();
@@ -431,8 +432,12 @@ Usage:
         {
             $mac_addr_mode = 1;
         }
+        if(defined($hostinfo_dict{$mynode}{'switch'}))
+        {
+            $switch_mode = 1;
+        }
         # cannot mix switch discovery with mac import
-        if(($mac_addr_mode ==1) && (defined($hostinfo_dict{$mynode}{'switch'})))
+        if(($mac_addr_mode == 1) && ($switch_mode == 1))
         {
             setrsp_progress("Failed to validate node information file.");
             setrsp_errormsg("Cannot define mac import node in switch discovery hostinfo file.");
