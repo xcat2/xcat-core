@@ -79,12 +79,12 @@ function loadProvisionPage() {
 
     // Create radio buttons for platforms
     var hwList = $('<ol>Platforms available:</ol>');
-    var esx = $('<li><input type="radio" name="hw" value="esx" checked/>ESX</li>');
-    var kvm = $('<li><input type="radio" name="hw" value="kvm"/>KVM</li>');
-    var zvm = $('<li><input type="radio" name="hw" value="zvm"/>z\/VM</li>');
-    var ipmi = $('<li><input type="radio" name="hw" value="ipmi"/>iDataPlex</li>');
-    var blade = $('<li><input type="radio" name="hw" value="blade"/>BladeCenter</li>');
-    var hmc = $('<li><input type="radio" name="hw" value="hmc"/>System p</li>');
+    var esx = $('<li><input type="radio" name="hw" value="esx" disabled/>ESX</li>');
+    var kvm = $('<li><input type="radio" name="hw" value="kvm" disabled/>KVM</li>');
+    var zvm = $('<li><input type="radio" name="hw" value="zvm" checked/>z\/VM</li>');
+    var ipmi = $('<li><input type="radio" name="hw" value="ipmi" disabled/>iDataPlex</li>');
+    var blade = $('<li><input type="radio" name="hw" value="blade" disabled/>BladeCenter</li>');
+    var hmc = $('<li><input type="radio" name="hw" value="hmc" disabled/>System p</li>');
     
     hwList.append(esx);
     hwList.append(kvm);
@@ -155,27 +155,27 @@ function loadProvisionPage() {
     resrcPg.append(resrcInfoBar);
 
     // Create radio buttons for platforms
-    var hwList = $('<ol>Platforms available:</ol>');
-    var esx = $('<li><input type="radio" name="hw" value="esx" disabled/>ESX</li>');
-    var kvm = $('<li><input type="radio" name="hw" value="kvm" disabled/>KVM</li>');
-    var zvm = $('<li><input type="radio" name="hw" value="zvm" checked/>z\/VM</li>');
-    var ipmi = $('<li><input type="radio" name="hw" value="ipmi" disabled/>iDataPlex</li>');
-    var blade = $('<li><input type="radio" name="hw" value="blade" disabled/>BladeCenter</li>');
-    var hmc = $('<li><input type="radio" name="hw" value="hmc" disabled/>System p</li>');
+    var rsrcHwList = $('<ol>Platforms available:</ol>');
+    esx = $('<li><input type="radio" name="rsrcHw" value="esx" disabled/>ESX</li>');
+    kvm = $('<li><input type="radio" name="rsrcHw" value="kvm" disabled/>KVM</li>');
+    zvm = $('<li><input type="radio" name="rsrcHw" value="zvm" checked/>z\/VM</li>');
+    ipmi = $('<li><input type="radio" name="rsrcHw" value="ipmi" disabled/>iDataPlex</li>');
+    blade = $('<li><input type="radio" name="rsrcHw" value="blade" disabled/>BladeCenter</li>');
+    hmc = $('<li><input type="radio" name="rsrcHw" value="hmc" disabled/>System p</li>');
     
-    hwList.append(esx);
-    hwList.append(kvm);
-    hwList.append(zvm);
-    hwList.append(blade);
-    hwList.append(ipmi);
-    hwList.append(hmc);
+    rsrcHwList.append(esx);
+    rsrcHwList.append(kvm);
+    rsrcHwList.append(zvm);
+    rsrcHwList.append(blade);
+    rsrcHwList.append(ipmi);
+    rsrcHwList.append(hmc);
     
-    resrcPg.append(hwList);
+    resrcPg.append(rsrcHwList);
 
     var okBtn = createButton('Ok');
     okBtn.bind('click', function(event) {
         // Get hardware that was selected
-        var hw = $(this).parent().find('input[name="hw"]:checked').val();
+        var hw = $(this).parent().find('input[name="rsrcHw"]:checked').val();
 
         // Generate new tab ID
         var newTabId = hw + 'ResourceTab';

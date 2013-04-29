@@ -2109,18 +2109,6 @@ function updateStatusBar(data) {
         if (prg.html().indexOf('Error') > -1) {
             failed = true;
         }
-
-        // Update data table
-        var rowPos;
-        for (var i in tgts) {
-            if (!failed) {
-                // Get row containing the node link and delete it
-                rowPos = findRow(tgts[i], '#' + nodesTableId, 1);
-                dTable.fnDeleteRow(rowPos);
-            }
-        }
-        
-        adjustColumnSize(nodesTableId);
     } else if (cmd == 'xdsh') {
         // Hide loader
         $('#' + statBarId).find('img').hide();
