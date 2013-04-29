@@ -217,7 +217,7 @@ hmcPlugin.prototype.addNode = function() {
                         addHmcNode();
                     },
                     'Cancel' : function() {
-                        $('#addHmc').dialog('close');
+                        $('#addHmc').dialog('destroy').remove();
                     }
                 });
             } else {
@@ -227,7 +227,7 @@ hmcPlugin.prototype.addNode = function() {
                 // Change dialog buttons
                 $('#addHmc').dialog('option', 'buttons', {
                     'Cancel' : function() {
-                        $('#addHmc').dialog('close');
+                        $('#addHmc').dialog('destroy').remove();
                     }
                 });
 
@@ -295,7 +295,7 @@ function addHmcNode() {
             msg : ''
         },
         success : function(data) {
-            $('#addHmc').dialog('close');
+            $('#addHmc').dialog('destroy').remove();
         }
     });
 }
@@ -349,7 +349,7 @@ function drawHmcSelector(hmcs) {
                         addPNode();
                     },
                     'Cancel' : function() {
-                        $('#addHmc').dialog('close');
+                        $('#addHmc').dialog('destroy').remove();
                     }
                 });
             }
@@ -466,7 +466,7 @@ function addPNode() {
         },
         success : function(data) {
             // Refresh the area on the right side
-            $('#addHmc').dialog('close');
+            $('#addHmc').dialog('destroy').remove();
             $('.selectgroup').trigger('click');
         }
     });

@@ -6098,7 +6098,7 @@ function profileDialog() {
                     // Change dialog buttons
                     $('#' + dialogId).dialog('option', 'buttons', {
                         'Close':function(){
-                            $(this).dialog('close');
+                            $(this).dialog('destroy').remove();
                         }
                     });
                     
@@ -6279,7 +6279,7 @@ function editProfileDialog(profile, pool, size, entry) {
                     // Change dialog buttons
                     $('#' + dialogId).dialog('option', 'buttons', {
                         'Close':function(){
-                            $(this).dialog('close');
+                            $(this).dialog('destroy').remove();
                         }
                     });
                     

@@ -544,7 +544,7 @@ kvmPlugin.prototype.addNode = function() {
         close: function(){$(this).remove();},
         buttons: {
             "OK" : function(){addKvmNode();},
-            "Cancel": function(){$(this).dialog('close');}
+            "Cancel": function(){$(this).dialog('destroy').remove();}
         }
     });
 };
@@ -583,7 +583,7 @@ function addKvmNode(){
     // Change dialog buttons
     $('#addKvm').dialog('option', 'buttons', {
         'Close':function(){
-            $('#addKvm').dialog('close');
+            $('#addKvm').dialog('destroy').remove();
         }
     });
     

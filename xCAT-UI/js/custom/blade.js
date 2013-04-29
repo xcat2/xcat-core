@@ -367,7 +367,7 @@ function addAmmNode(){
             $('#addBladeCenter').prepend(createInfoBar('AMM node was successfully added'));
             $('#addBladeCenter').dialog("option", "buttons", {
                 "Close" : function() {
-                    $('#addBladeCenter').dialog('close');
+                    $('#addBladeCenter').dialog('destroy').remove();
                 }
             });
         }
@@ -547,7 +547,7 @@ function addMmScanNode(){
             msg : ''
         },
         success : function(data){
-            $('#addBladeCenter').dialog('close');
+            $('#addBladeCenter').dialog('destroy').remove();
         }
     });
 }

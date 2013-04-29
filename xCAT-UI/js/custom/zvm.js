@@ -2035,12 +2035,12 @@ zvmPlugin.prototype.addNode = function() {
                                     
                 // If there are no errors
                 if (ready) {
-                    $('#addZvm').append(createLoader());
+                	$('#addZvm').append(createLoader());
                     
                     // Change dialog buttons
                     $('#addZvm').dialog('option', 'buttons', {
-                        'Close':function(){
-                            $('#addZvm').dialog('close');
+                        'Close':function() {
+                        	$('#addZvm').dialog('destroy').remove();
                         }
                     });
                     
@@ -2233,7 +2233,7 @@ zvmPlugin.prototype.addNode = function() {
                 }
             },
             "Cancel": function(){
-                $(this).dialog( "close" );
+            	$(this).dialog('destroy').remove();
             }
         }
     });

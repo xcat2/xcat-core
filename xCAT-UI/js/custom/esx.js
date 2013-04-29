@@ -546,10 +546,10 @@ esxPlugin.prototype.addNode = function() {
         title: 'Add node',
         modal: true,
         width: 400,
-        close: function(){$(this).remove();},
+        close: function() {$(this).remove();},
         buttons: {
-            "OK" : function(){addEsxNode();},
-            "Cancel": function(){$(this).dialog('close');}
+            "OK" : function() {addEsxNode();},
+            "Cancel": function() {$(this).dialog('destroy').remove();}
         }
     });
 };
@@ -587,8 +587,8 @@ function addEsxNode(){
     
     // Change dialog buttons
     $('#addEsx').dialog('option', 'buttons', {
-        'Close':function(){
-            $('#addEsx').dialog('close');
+        'Close':function() {
+            $('#addEsx').dialog('destroy').remove();
         }
     });
     
