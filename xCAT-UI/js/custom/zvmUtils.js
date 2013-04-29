@@ -5271,8 +5271,12 @@ function createZProvisionNew(inst) {
         var thisUserId = $('#' + thisTabId + ' input[name=userId]:visible');
         var pos = thisUserEntry.val().indexOf('USER ' + thisUserId.val().toUpperCase());
         if (pos < 0) {
-            errMsg = errMsg + 'The directory entry does not contain the correct user ID.<br>';
-            ready = false;
+        	
+        	pos = thisUserEntry.val().indexOf('IDENTITY ' + thisUserId.val().toUpperCase());
+            if (pos < 0) {
+            	errMsg = errMsg + 'The directory entry does not contain the correct user/identity ID.<br>';
+            	ready = false;
+            }
         }
 
         // If no operating system is specified, create only user entry

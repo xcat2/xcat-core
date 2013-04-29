@@ -68,21 +68,7 @@ function loadNodesetPage(tgtNodes) {
     // Create target node or group
     var tgt = $('<div><label>Target node range:</label><input type="text" name="target" value="' + tgtNodes + '" title="The node or node range to set the boot state for"/></div>');
     vmAttr.append(tgt);
-
-    // Create boot method drop down
-    var method = $('<div></div>');
-    var methodLabel = $('<label>Boot method:</label>');
-    var methodSelect = $('<select id="bootMethod" name="bootMethod" title="The method for node deployment"></select>');
-    methodSelect.append('<option value="boot">boot</option>'
-        + '<option value="install">install</option>'
-        + '<option value="iscsiboot">iscsiboot</option>'
-        + '<option value="netboot">netboot</option>'
-        + '<option value="statelite">statelite</option>'
-    );
-    method.append(methodLabel);
-    method.append(methodSelect);
-    imageAttr.append(method);
-
+    
     // Create boot type drop down
     var type = $('<div></div>');
     var typeLabel = $('<label>Boot type:</label>');
@@ -94,57 +80,23 @@ function loadNodesetPage(tgtNodes) {
     type.append(typeLabel);
     type.append(typeSelect);
     imageAttr.append(type);
-
-    // Create operating system input
+    
+    // Create operating system image input
     var os = $('<div></div>');
-    var osLabel = $('<label>Operating system:</label>');
-    var osInput = $('<input type="text" name="os" title="You must give the operating system of this node or node range, e.g. rhel5.5"/>');
-    osInput.one('focus', function(){
-        var tmp = $.cookie('osvers');
-        if (tmp) {
-            // Turn on auto complete
-            $(this).autocomplete({
-                source: tmp.split(',')
-            });
+    var osLabel = $('<label>Operating system image:</label>');
+    var osSelect = $('<select name="os" title="The operating system image to be installed on this node"></select>');
+    osSelect.append($('<option value=""></option>'));
+    
+    var imageNames = $.cookie('imagenames').split(',');
+    if (imageNames) {
+        imageNames.sort();
+        for (var i in imageNames) {
+            osSelect.append($('<option value="' + imageNames[i] + '">' + imageNames[i] + '</option>'));
         }
-    });
+    }
     os.append(osLabel);
-    os.append(osInput);
+    os.append(osSelect);
     imageAttr.append(os);
-
-    // Create architecture input
-    var arch = $('<div></div>');
-    var archLabel = $('<label>Architecture:</label>');
-    var archInput = $('<input type="text" name="arch" title="You must give the architecture of this node or node range, e.g. s390x"/>');
-    archInput.one('focus', function(){
-        var tmp = $.cookie('osarchs');
-        if (tmp) {
-            // Turn on auto complete
-            $(this).autocomplete({
-                source: tmp.split(',')
-            });
-        }
-    });
-    arch.append(archLabel);
-    arch.append(archInput);
-    imageAttr.append(arch);
-
-    // Create profiles input
-    var profile = $('<div></div>');
-    var profileLabel = $('<label>Profile:</label>');
-    var profileInput = $('<input type="text" name="profile" title="You must give the profile for this node or node range.  The typical default profile is: compute."/>');
-    profileInput.one('focus', function(){
-        tmp = $.cookie('profiles');
-        if (tmp) {
-            // Turn on auto complete
-            $(this).autocomplete({
-                source: tmp.split(',')
-            });
-        }
-    });
-    profile.append(profileLabel);
-    profile.append(profileInput);
-    imageAttr.append(profile);
 
     // Generate tooltips
     nodesetForm.find('div input[title],select').tooltip({
@@ -187,16 +139,11 @@ function loadNodesetPage(tgtNodes) {
 
         if (ready) {
             // Get nodes
-            var tgts = $('#' + tabId + ' input[name=target]').val();
-            // Get boot method
-            var method = $('#' + tabId + ' select[id=bootMethod]').val();
+            var tgts = $('#' + tabId + ' input[name=target]').val();            
             // Get boot type
             var type = $('#' + tabId + ' select[id=bootType]').val();
-
-            // Get OS, arch, and profile
-            var os = $('#' + tabId + ' input[name=os]').val();
-            var arch = $('#' + tabId + ' input[name=arch]').val();
-            var profile = $('#' + tabId + ' input[name=profile]').val();
+            // Get operating system image
+            var os = $('#' + tabId + ' select[name=os]').val();
 
             // Disable all inputs, selects, and Ok button
             inputs.attr('disabled', 'disabled');
@@ -212,10 +159,7 @@ function loadNodesetPage(tgtNodes) {
                 data : {
                     cmd : 'nodeadd',
                     tgt : '',
-                    args : tgts + ';noderes.netboot=' + type 
-                        + ';nodetype.os=' + os 
-                        + ';nodetype.arch=' + arch 
-                        + ';nodetype.profile=' + profile,
+                    args : tgts + ';noderes.netboot=' + type,
                     msg : 'cmd=nodeadd;inst=' + inst
                 },
 
@@ -259,8 +203,8 @@ function updateNodesetStatus(data) {
 
     // Get nodes
     var tgts = $('#' + tabId + ' input[name=target]').val();
-    // Get boot method
-    var method = $('#' + tabId + ' select[id=bootMethod]').val();
+	// Get operating system image
+    var os = $('#' + tabId + ' select[name=os]').val();
 
     /**
      * (2) Update /etc/hosts

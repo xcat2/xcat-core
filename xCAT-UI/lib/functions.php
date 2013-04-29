@@ -327,7 +327,7 @@ function isRootAcess() {
         }
     }
 
-    if (strcmp($_SESSION["username"], 'root') == 0) {
+    if (strcmp($_SESSION["username"], 'root') == 0 || strcmp($_SESSION["username"], 'admin') == 0) {
         $_SESSION["xcatpassvalid"] = 1;
     }
 
