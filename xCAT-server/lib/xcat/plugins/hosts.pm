@@ -222,9 +222,14 @@ sub add_hosts_content {
             {
 
                 my $ref = $hostscache->{$_}->[0];
+		my $nodename = $_;
+		my $ip = $ref->{ip};
+		if (not $ip) {
+			$ip = xCAT::NetworkUtils->getipaddr($nodename); #attempt lookup
+		} 
 
 				my $netn;
-                ($domain, $netn) = &getIPdomain($ref->{ip}, $callback);
+                ($domain, $netn) = &getIPdomain($ip, $callback);
                 if (!$domain) {
                     if ($::sitedomain) {
                         $domain=$::sitedomain;
@@ -232,7 +237,7 @@ sub add_hosts_content {
                         $domain=$::XCATSITEVALS{domain};
                     } else {
                         my $rsp;
-                        push @{$rsp->{data}}, "No domain can be determined for node \'$ref->{node}\'. The domain of the xCAT node must be provided in an xCAT network definition or the xCAT site definition.\n";
+                        push @{$rsp->{data}}, "No domain can be determined for node \'$nodename\'. The domain of the xCAT node must be provided in an xCAT network definition or the xCAT site definition.\n";
 
                         xCAT::MsgUtils->message("W", $rsp, $callback);
                         next;
@@ -241,17 +246,17 @@ sub add_hosts_content {
 
                 if ($DELNODE)
                 {
-                    delnode $ref->{node}, $ref->{ip}, $ref->{hostnames}, $domain;
+                    delnode $nodename, $ip, $ref->{hostnames}, $domain;
                 }
                 else
                 {
-                    if (xCAT::NetworkUtils->isIpaddr($ref->{ip}))
+                    if (xCAT::NetworkUtils->isIpaddr($ip))
                     {
-                        addnode $callback, $ref->{node}, $ref->{ip}, $ref->{hostnames}, $domain;
+                        addnode $callback, $nodename, $ip, $ref->{hostnames}, $domain;
                     }
                     if (defined($ref->{otherinterfaces}))
                     {
-                        addotherinterfaces $callback, $ref->{node}, $ref->{otherinterfaces}, $domain;
+                        addotherinterfaces $callback, $nodename, $ref->{otherinterfaces}, $domain;
                     }
                 }
             }    #end foreach
