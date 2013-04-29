@@ -914,7 +914,7 @@ function changePassword() {
                 // Change dialog buttons
                 $('#changePassword').dialog('option', 'buttons', {
                     'Close':function(){
-                        $('#changePassword').dialog('close');
+                        $('#changePassword').dialog('destroy').remove();
                     }
                 });
                 

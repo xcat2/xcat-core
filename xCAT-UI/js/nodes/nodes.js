@@ -400,7 +400,7 @@ function mkAddNodeLink() {
             });
             
             // Close dialog
-            addNodeForm.dialog('close');
+            addNodeForm.dialog('destroy').remove();
         });
         advanced.append(advancedLnk);
         addNodeForm.append(advanced);
@@ -410,9 +410,9 @@ function mkAddNodeLink() {
             modal: true,
             width: 400,
             title:'Add node',
-            close: function(){$(this).remove();},
+            close: function() {$(this).remove();},
             buttons: {
-                'Ok': function(){
+                'Ok': function() {
                     // Get hardware management
                     var mgt = $(this).find('select[name=mgt]').val();                    
                     
@@ -438,11 +438,11 @@ function mkAddNodeLink() {
 	                        break;
                     }
                     
+                    $(this).dialog('destroy').remove();
                     plugin.addNode();
-                    $(this).dialog('close');
                 },
                 'Cancel': function(){
-                    $(this).dialog('close');
+                	$(this).dialog('destroy').remove();
                 }
             }
         });
@@ -1346,7 +1346,7 @@ function addNodes2Table(data) {
     $('.node').bind('click', loadNode);
 
     // Close dialog for updating table
-    $('.ui-dialog-content').dialog('close');
+    $('.ui-dialog-content').dialog('destroy').remove();
     
     /**
      * Enable editable columns

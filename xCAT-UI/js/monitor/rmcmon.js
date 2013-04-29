@@ -828,10 +828,10 @@ function mkCondRespDia() {
                         }
                     });
                 }
-                $(this).dialog('close');
+                $(this).dialog('destroy').remove();
             },
             'Cancel' : function() {
-                $(this).dialog('close');
+                $(this).dialog('destroy').remove();
             }
         }
     });
@@ -920,7 +920,7 @@ function chCondScopeDia() {
                 });
             },
             'Cancel' : function() {
-                $(this).dialog('close');
+                $(this).dialog('destroy').remove();
             }
         }
     });
@@ -941,10 +941,10 @@ function mkResponseDia() {
         },
         buttons : {
             'Ok' : function() {
-                $(this).dialog('close');
+                $(this).dialog('destroy').remove();
             },
             'Cancel' : function() {
-                $(this).dialog('close');
+                $(this).dialog('destroy').remove();
             }
         }
     });
@@ -994,7 +994,7 @@ function startStopCondRespDia() {
         },
         buttons : {
             'Close' : function() {
-                $(this).dialog('close');
+                $(this).dialog('destroy').remove();
             }
         }
     });
@@ -1122,10 +1122,10 @@ function stopCondRespDia() {
                         $('#rmcEventStatus div').empty().append(data.rsp[0]);
                     }
                 });
-                $(this).dialog('close');
+                $(this).dialog('destroy').remove();
             },
             'Cancel' : function() {
-                $(this).dialog('close');
+                $(this).dialog('destroy').remove();
             }
         }
     });

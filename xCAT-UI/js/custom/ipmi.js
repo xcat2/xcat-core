@@ -207,7 +207,7 @@ ipmiPlugin.prototype.addNode = function() {
                 addIdataplex();
             },
             "Cancel" : function() {
-                $(this).dialog('close');
+                $(this).dialog('destroy').remove();
             }
         }
     });
@@ -247,7 +247,7 @@ function addIdataplex() {
     // Change dialog buttons
     $('#addIdplx').dialog('option', 'buttons', {
         'Close' : function() {
-            $('#addIdplx').dialog('close');
+            $('#addIdplx').dialog('destroy').remove();
         }
     });
 
