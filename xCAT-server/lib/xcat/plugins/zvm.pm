@@ -4946,13 +4946,16 @@ sub nodeSet {
         # Combine NFS server and installation directory, e.g. 10.0.0.1/install
         my $nfs = $master . $installDir;
 
-        # Get broadcast address of NIC
-        my $ifcfg = xCAT::zvmUtils->getIfcfgByNic( $::SUDOER, $hcp, $readChannel );
-        $out = `ssh $::SUDOER\@$hcp "$::SUDO cat $ifcfg" | grep "BROADCAST"`;
-        @words = split( '=', $out );
-        my $broadcast = $words[1];
-        $broadcast = xCAT::zvmUtils->trimStr($broadcast);
-        $broadcast =~ s;"|';;g;
+        # Get broadcast address        
+        @words = split(/\./, $hostIP);
+        my ($ipUnpack) = unpack("N", pack("C4", @words));
+        @words = split(/\./, $mask);
+        my ($maskUnpack) = unpack("N", pack( "C4", @words ));
+        
+		# Calculate broadcase address by inverting the netmask and do a logical or with network address
+		my $math = ( $ipUnpack & $maskUnpack ) + ( ~ $maskUnpack );
+		@words = unpack("C4", pack( "N", $math )) ;
+		my $broadcast = join(".", @words);
 
         # Load VMCP module on HCP
         $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "/sbin/modprobe vmcp"`;
@@ -6315,7 +6318,7 @@ sub changeHypervisor {
             }
             
             # Add existing region to group
-            elsif ($funct eq "5") {
+            elsif($funct eq "5") {
                 $group = $args->[3];
                 $tmp = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Volume_Space_Define_DM -T $hcpUserId -f $funct -g $_ -p $group -y 0"`;
                 xCAT::zvmUtils->printSyslog("smcli Image_Volume_Space_Define_DM -T $hcpUserId -f $funct -g $_ -p $group -y 0");
