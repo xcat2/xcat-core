@@ -88,21 +88,26 @@ if [ $PLTFRM == "Linux" ]
 then
     if [ -f "/etc/rdma/rdma.conf" ]
     then
-        sed -i "s/SDP_LOAD=yes/SDP_LOAD=no/g" /etc/rdma/rdma.conf
+        TMP1=`sed "s/SDP_LOAD=yes/SDP_LOAD=no/g" /etc/rdma/rdma.conf`
+	echo "$TMP1" > /etc/rdma/rdma.conf 
     elif [ -f "/etc/infiniband/openib.conf" ]
     then
-        sed -i "s/SDP_LOAD=yes/SDP_LOAD=no/g" /etc/infiniband/openib.conf
+        TMP1=`sed "s/SDP_LOAD=yes/SDP_LOAD=no/g" /etc/infiniband/openib.conf`
+	echo "$TMP1" > /etc/infiniband/openib.conf
     fi
 
     if [ -f "/etc/modprobe.conf" ]
     then
-    if [ "$portnum" == "1" ]; then
-            sed -i "/options ib_ehca nr_ports/d" /etc/modprobe.conf
+	if [ "$portnum" == "1" ]; then
+            TMP2=`sed "/options ib_ehca nr_ports/d" /etc/modprobe.conf`
+	    echo "$TMP2" > /etc/modprobe.conf
             echo 'options ib_ehca nr_ports=1' >> /etc/modprobe.conf
-    else
-            sed -i "/options ib_ehca nr_ports=1/d" /etc/modprobe.conf
-    fi
-        sed -i "/options ib_ehca lock_hcalls/d" /etc/modprobe.conf
+	else
+            TMP2=`sed "/options ib_ehca nr_ports=1/d" /etc/modprobe.conf`
+	    echo "$TMP2" > /etc/modprobe.conf
+	fi
+	TMP3=`sed "/options ib_ehca lock_hcalls/d" /etc/modprobe.conf`
+	echo "$TMP3" > /etc/modprobe.conf
         echo 'options ib_ehca lock_hcalls=0' >> /etc/modprobe.conf
     fi
     /sbin/chkconfig --level 2345 $ib_driver on > /dev/null 2>&1
@@ -283,8 +288,10 @@ do
        
            if [ -f /etc/sysctl.conf ]
            then
-               sed -i "/net.ipv4.conf.$nic.arp_filter=1/d" /etc/sysctl.conf 2>&1 1>/dev/null
-               sed -i "/net.ipv4.conf.$nic.arp_ignore=1/d" /etc/sysctl.conf 2>&1 1>/dev/null
+               TMP1=`sed "/net.ipv4.conf.$nic.arp_filter=1/d" /etc/sysctl.conf 2>&1 1>/dev/null`
+	       echo "$TMP1" > /etc/sysctl.conf
+               TMP2=`sed "/net.ipv4.conf.$nic.arp_ignore=1/d" /etc/sysctl.conf 2>&1 1>/dev/null`
+	       echo "$TMP2" > /etc/sysctl.conf
                cfg="net.ipv4.conf.$nic.arp_filter=1"
                grep "$cfg" /etc/sysctl.conf 2>&1 1>/dev/null
                if [ $? -ne 0 ]
