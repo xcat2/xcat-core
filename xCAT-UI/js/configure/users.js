@@ -169,7 +169,7 @@ function loadUserTable(data){
     });
     
     // Create an action menu
-    var actionsMenu = createMenu([createLnk, editLnk, deleteLnk, refreshLnk]);
+    var actionsMenu = createMenu([refreshLnk, createLnk, editLnk, deleteLnk]);
     actionsMenu.superfish();
     actionsMenu.css('display', 'inline-block');
     actionBar.append(actionsMenu);
@@ -226,8 +226,16 @@ function openCreateUserDialog(data) {
     
     userAttr.append($('<div><label>Priority:</label><input type="text" name="priority" disabled="disabled" value="' + priority + '" title="The priority value for this user"/></div>'));
     userAttr.append($('<div><label>User name:</label><input type="text" name="name" title="The user name to log into xCAT with"/></div>'));
+    var type = $('<div><label>Type:</label></div>');
+    var typeSelect = $('<select name="user_type" title="Specifies the type of user.">' +
+    		'<option value="guest">Guest</option>' +
+    		'<option value="admin">Administrator</option>' +    		
+		'</select>');
+    type.append(typeSelect);    
+    userAttr.append(type);
     userAttr.append($('<div><label>Password:</label><input name="password" type="password" title="The user password that will be used to log into xCAT"></div>'));
     userAttr.append($('<div><label>Confirm password:</label><input name="confirm_password" type="password" title="The user password that will be used to log into xCAT"></div>'));
+    
     optionAttr.append($('<div><label>Host:</label><input type="text" name="host" title="The host from which users may issue the commands specified by this rule. By default, it is all hosts."/></div>'));
     optionAttr.append($('<div><label>Commands:</label><input type="text" name="commands" title="The list of commands that this rule applies to. By default, it is all commands."/></div>'));
     optionAttr.append($('<div><label>Parameters:</label><input type="text" name="parameters" title="A regular expression that matches the command parameters (everything except the noderange) that this rule applies to. By default, it is all parameters."/></div>'));
@@ -238,10 +246,6 @@ function openCreateUserDialog(data) {
     		'<option value="trusted">Trusted</option>' +
     		'<option value="deny">Deny</option>' + 
 		'</select></div>'));
-    var rootPrivilege = $('<div><label>Root privilege:</label></div>');
-    var accessCheckbox = $('<input type="checkbox" name="rootprivilege"/>');
-    optionAttr.append(rootPrivilege);
-    rootPrivilege.append(accessCheckbox);
     
     optionAttr.append($('<div><label>Comments:</label><input type="text" name="comments" style="width: 250px;" title="Any user written notes"/></div>'));
     optionAttr.append($('<div><label>Disable:</label><select name="disable" title="Set to yes to disable the user">' + 
@@ -325,8 +329,13 @@ function openCreateUserDialog(data) {
                     args += ' policy.rule=' + rule;
                 } if (disable) {
                     args += ' policy.disable=' + disable;
-                } if (comments) {
+                } 
+                
+                // Handle cases where there are comments and no comments
+                if (comments) {
                     args += " policy.comments='" + comments + "'";
+                } else {
+                	args += " policy.comments=''";
                 }
                 
                 // Trim any extra spaces
@@ -376,13 +385,13 @@ function openCreateUserDialog(data) {
     });
     
     // Change comments if access checkbox is checked
-    accessCheckbox.click( function(){
+    typeSelect.change(function() {
     	var comments = createUserForm.find('input[name=comments]').val();
     	var tag = "privilege:root";
     	comments = jQuery.trim(comments);  
     	
     	// Append tag to comments
-    	if (accessCheckbox.is(':checked')) {  		
+    	if (typeSelect.val().indexOf("admin") > -1) {  		
     		if (comments && comments.charAt(comments.length - 1) != ";") {
     			comments += ";";
     		}
@@ -433,7 +442,7 @@ function openCreateUserDialog(data) {
         createUserForm.find('select[name=disable]').val(disable);
         
         if (comments.indexOf("privilege:root") > -1) {
-        	accessCheckbox.attr("checked", true);
+        	typeSelect.val("admin");
         }
     }
 }
