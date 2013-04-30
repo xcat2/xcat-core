@@ -8,7 +8,6 @@ d-i console-setup/ask_detect boolean false
 d-i console-setup/layoutcode string en
 
 ### Network Configuration
-d-i netcfg/choose_interface select #TABLE:noderes:$NODE:primarynic#
 
 d-i netcfg/get_hostname string unassigned-hostname
 d-i netcfg/get_domain string unassigned-domain
