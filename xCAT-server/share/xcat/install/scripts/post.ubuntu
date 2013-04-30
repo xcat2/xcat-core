@@ -3,7 +3,7 @@
 # Setup hostname
 #
 echo "post scripts" >/root/post.log
-export PRINIC=#TABLE:noderes:THISNODE:primarynic#
+export PRINIC=#TABLEBLANKOKAY:noderes:THISNODE:primarynic#
 if [ "$PRINIC" == "mac" ]
 then
     export PRINIC='#TABLE:mac:THISNODE:mac#'
