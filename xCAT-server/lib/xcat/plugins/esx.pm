@@ -4223,8 +4223,8 @@ sub copycd {
 
     unless ($found) { return; } #not our media
     if ($::XCATSITEVALS{osimagerequired}){
-          my $haveimages=xCAT::SvrUtils->update_tables_with_templates($distname, $arch,"","",checkonly=>1);
-          unless ($haveimages) { 
+          my ($nohaveimages,$errstr)=xCAT::SvrUtils->update_tables_with_templates($distname, $arch,"","",checkonly=>1);
+          if ($nohaveimages) { 
                $output_handler->({error => "No Templates found to support $distname($arch)",errorcode=>2});
           }
     }
