@@ -108,5 +108,5 @@ To list kit deployment parameters for kit component "comp-server-1.0-1-rhels-6-x
 
 =head1 SEE ALSO
 
-L<lskitcomp(1)|lskitcomp.1>, L<lskitdeployparam(1)|lskitdeployparam.1>, L<addkit(1)|addkit.1>, L<rmkit(1)|rmkit.1>, L<addkitcomp(1)|addkitcomp.1>, L<rmkitcomp(1)|rmkitcomp.1>
+L<lskit(1)|lskit.1>, L<lskitcomp(1)|lskitcomp.1>, L<addkit(1)|addkit.1>, L<rmkit(1)|rmkit.1>, L<addkitcomp(1)|addkitcomp.1>, L<rmkitcomp(1)|rmkitcomp.1>
 

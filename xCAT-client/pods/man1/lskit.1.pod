@@ -136,7 +136,7 @@ To list the kit "kit-test1-1.0-Linux", enter:
 
 To list the kit "kit-test1-1.0-Linux" for selected attributes, enter:
 
-  lskit -K basename,desc -R kitreponame -C kitcompname kit-test1-1.0-Linux
+  lskit -K basename,description -R kitreponame -C kitcompname kit-test1-1.0-Linux
 
 =back
 
