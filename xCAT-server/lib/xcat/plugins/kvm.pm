@@ -326,7 +326,7 @@ sub get_filepath_by_url { #at the end of the day, the libvirt storage api gives 
             #  4) qemu-img was so much more transparent and easy to figure out than this
             #  additionally, when mastering a powered down node, we should rebase the node to be a cow clone of the master it just spawned
         } else {
-            my $vol = $poolobj->create_volume("<volume><name>".$desiredname."</name><target><format type='$format'/></target><capacity>".getUnits($create,"G",1)."</capacity><allocation>0</allocation></volume>");
+            my $vol = $poolobj->create_volume("<volume><name>".$desiredname."</name><target><format type='$format'/></target><capacity>".getUnits($create,"G",1)."</capacity><allocation>1</allocation></volume>");
             if ($vol) { return $vol->get_path(); }
         }
     } else {
