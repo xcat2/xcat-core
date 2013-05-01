@@ -2298,7 +2298,7 @@ sub powerVM {
 
     # Power off virtual server
     elsif ( $args->[0] eq 'off' ) {
-        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Deactivate -T $userId"`;
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Deactivate -T $userId -f IMMED"`;
         xCAT::zvmUtils->printSyslog("smcli Image_Deactivate -T $userId");
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
     }
@@ -2306,7 +2306,7 @@ sub powerVM {
     # Power off virtual server (gracefully)
     elsif ( $args->[0] eq 'softoff' ) {
         $out = `ssh -o ConnectTimeout=10 $::SUDOER\@$node "shutdown -h now"`;
-        sleep(90);    # Wait 1.5 minutes before logging user off
+        sleep(15);    # Wait 15 seconds before logging user off
         
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Deactivate -T $userId"`;
         xCAT::zvmUtils->printSyslog("smcli Image_Deactivate -T $userId");
