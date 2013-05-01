@@ -1019,11 +1019,15 @@ sub fork_fanout_dsh
             }
         }
     }
-
+    # save the original exports,  we are going to add the unique node name below
+    my $origprecommand=$$options{'pre-command'};
     while (@$targets_waiting
            && (keys(%$targets_active) < $$options{'fanout'}))
     {
         my $user_target       = shift @$targets_waiting;
+        # now add export NODE=nodename to the pre-command;
+        my $exportnode="export NODE=$user_target;";
+        $$options{'pre-command'} = $exportnode . $origprecommand;
         my $target_properties = $$resolved_targets{$user_target};
         my @commands;
         my $localShell        =
@@ -1037,7 +1041,6 @@ sub fork_fanout_dsh
             $$options{'post-command'} = "";
             $dsh_cmd_background = 1;
         }
-
         if ($$options{'environment'})
         {
             # if we are on a servicenode need to get the environment file
