@@ -161,7 +161,16 @@ sub using_dracut
     return 0;
 }
 
-
+sub copyAndAddCustomizations {
+	my $source = shift;
+	my $dest = shift;
+	#first, it's simple, we copy...
+	copy($source,$dest);
+	#next, we apply xCAT customizations to enhance debian installer..
+	chdir("$::XCATROOT/share/xcat/install/debian/initoverlay");
+	system("find . |cpio -o -H newc | gzip -c - -9 >> $dest");
+}
+	
 sub copycd
 {
     xCAT::MsgUtils->message("S","Doing debian copycds");
@@ -720,7 +729,7 @@ sub mkinstall
             if ($docopy) {
                 mkpath("$tftppath");
                 copy($kernpath,"$tftppath/vmlinuz");
-                copy($initrdpath,"$tftppath/initrd.img");
+                copyAndAddCustomizations($initrdpath,"$tftppath/initrd.img");
             }
 
             #We have a shot...

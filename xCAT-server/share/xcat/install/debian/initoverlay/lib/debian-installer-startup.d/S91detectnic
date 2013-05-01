@@ -1,0 +1,9 @@
+BOOTMAC=`sed -e s/.*BOOTIF=/BOOTIF=/ /proc/cmdline|cut -f 1`
+if echo $BOOTMAC|grep BOOTIF= > /dev/null; then
+        BOOTMAC=`echo $BOOTMAC|sed -e s/BOOTIF=01-// -e s/-/:/g`
+        for dir in /sys/class/net/*; do
+                if grep -i $BOOTMAC $dir/address > /dev/null; then
+                        debconf-set netcfg/choose_interface `basename $dir`
+                fi
+        done
+fi
