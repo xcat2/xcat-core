@@ -33,7 +33,6 @@ my %Options = ('interactive',"yes",'warnings','','log',"yes",'dump',"yes");
 my @warnings;
 my $logfile = DEFAULT_LOG_FILE;
 my $now = localtime;
-my $help;
 
 #
 # print a warning and wait a bit if warnings are enabled
@@ -137,23 +136,6 @@ sub question {
   return $reply;
 }
 
-sub usage {
-  print "Usage: mktoolscenter\n";
-  print "  --ph <proxyhost>\n";
-  print "  --pp <proxyport>\n";
-  print "  --puser <proxyuser>\n";
-  print "  --ppw <proxypassword>\n";
-  print "  -l <logfile>\n";
-  print "  -s\n";
-  print "  --nfsserver <NFS server address>\n";
-  print "  --nfspath <NFS server path>\n";
-  print "  --profilename <profile name>\n";
-  print "  --help\n\n";
-  print "Updates IBM system x server hardware using IBM Bootable Media Creator.\n\n";
-  print "Author:  Jim Turner\n";
-}
-
-
 #
 # Begin main
 #
@@ -165,13 +147,20 @@ unless (GetOptions("s"=>\$surrogate, "l=s"=>\$logfile,
 	"ph=s"=>\$proxy{host}, "pp=i"=>\$proxy{port}, 
 	"puser=s"=>\$proxy{user}, "ppw=s"=>\$proxy{pw},
 	"nfsserver=s"=>\$nfsserver,"nfspath=s"=>\$nfspath,
-	"profilename=s"=>\$profilename, "help"=>\$help,
+	"profilename=s"=>\$profilename,
 )) {
-  usage();
+	printf "Usage:\n";
+	printf "--ph <proxyhost>\n";
+	printf "--pp <proxyport>\n";
+	printf "--puser <proxyuser>\n";
+	printf "--ppw <proxypassword>\n";
+	printf "-l <logfile>\n";
+	printf "-s\n";
+	printf "--nfsserver <NFS server address>\n";
+	printf "--nfspath <NFS server path>\n";
+	printf "--profilename <profile name>\n";
 	exit(1);
 }
-
-if ($help) { usage(); exit 0; }
 
 if (@ARGV > 0) {
         open(IN,"<",@ARGV[0]) || die "Cannot open input file @ARGV[0]";
@@ -444,7 +433,7 @@ export SEP_INSTALL_PATH=/tmp
 # UXSPI environment variable
 export UXLITE_CLEAN_INVFILE=1
 export UXSPI_CLEAN_INVFILE=1
-export UXSPI_BINARY_PATH=`find /toolscenter/uxspi -name '*uxspi*.anyos*bin' | sort | tail -n 1`
+export UXSPI_BINARY_PATH=`find /toolscenter/uxspi -name 'ibm_utl_uxspi*anyos*bin' | sort | tail -n 1`
 export UXSPI_GUI_CMD="xterm -geometry 168x58+5+5 +sb -e ${UXSPI_BINARY_PATH}"
 export UXSPI_TUI_CMD="${UXSPI_BINARY_PATH} update --tui --firmware -l ${UXSPI_BOOTABLE} --timeout=${UXSPI_TIMEOUT}"
 
@@ -570,6 +559,6 @@ if ($surrogate eq 1) {
     output("Error executing tar") ;
   }
   else {
-    output("To unpack it tar -zxf surrogate.tgz -C $instroot/netboot");
+    output("To unpack it tar -zxf surrogate.tgz -C /");
   }
 }
