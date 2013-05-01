@@ -1090,16 +1090,23 @@ sub createMacAddr {
         return -1;
     }
 
-    # Get HCP MAC address
-    # Get the first MAC address found
-    my $out   = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /sbin/vmcp q v nic" | grep "MAC:"`;
-    my @lines = split( "\n", $out );
-    my @vars  = split( " ", $lines[0] );
-
-    # Extract MAC prefix
-    my $prefix = $vars[1];
-    $prefix = xCAT::zvmUtils->replaceStr( $prefix, "-", "" );
-    $prefix = substr( $prefix, 0, 6 );
+    # Get USER Prefix
+    my $prefix = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /sbin/vmcp q vmlan" | egrep -i "USER Prefix:"`;
+    $prefix =~ s/(.*?)USER Prefix:(.*)/$2/;
+    $prefix =~ s/^\s+//;
+    $prefix =~ s/\s+$//;
+                        
+    # Get MACADDR Prefix instead if USER Prefix is not defined
+    if (!$prefix) {
+        $prefix = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /sbin/vmcp q vmlan" | egrep -i "MACADDR Prefix:"`;
+        $prefix =~ s/(.*?)MACADDR Prefix:(.*)/$2/;
+        $prefix =~ s/^\s+//;
+        $prefix =~ s/\s+$//;
+        
+        if (!$prefix) {
+            return -1;
+        }
+    }
 
     # Generate MAC address of source node
     my $mac = $prefix . $suffix;
