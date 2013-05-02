@@ -1,0 +1,6 @@
+XCATD=`sed -e s/.*xcatd=/xcatd=/ /proc/cmdline|cut -d ' ' -f 1`
+if echo $XCATD|grep xcatd= > /dev/null; then
+        XCATD=`echo $XCATD|sed -e s/xcatd=//`
+	echo -n $XCATD > /tmp/xcatserver
+	debconf-set mirror/http/hostname $XCATD
+fi

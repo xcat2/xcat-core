@@ -18,7 +18,6 @@ d-i netcfg/wireless_wep string
 
 d-i mirror/country string manual
 d-i mirror/protocol string http
-d-i mirror/http/hostname string #TABLE:noderes:$NODE:nfsserver#
 d-i mirror/http/directory string /install/#TABLE:nodetype:$NODE:os#/#TABLE:nodetype:$NODE:arch#
 d-i mirror/http/proxy string
 
@@ -101,13 +100,13 @@ xserver-xorg xserver-xorg/config/monitor/mode-list \
   select 1024x768 @ 60 Hz
 
 
-d-i preseed/early_command string wget http://#TABLE:noderes:$NODE:nfsserver#/install/autoinst/#TABLE:nodelist:THISNODE:node#.pre; \
-     chmod u+x #TABLE:nodelist:THISNODE:node#.pre; \
-     ./#TABLE:nodelist:THISNODE:node#.pre 
+d-i preseed/early_command string wget http://`cat /tmp/xcatserver`/install/autoinst/#HOSTNAME#.pre; \
+     chmod u+x #HOSTNAME#.pre; \
+     ./#HOSTNAME#.pre 
 
-d-i preseed/late_command string wget http://#TABLE:noderes:$NODE:nfsserver#/install/autoinst/#TABLE:nodelist:THISNODE:node#.post; \
-     chmod u+x #TABLE:nodelist:THISNODE:node#.post; \
-     cp ./#TABLE:nodelist:THISNODE:node#.post /target/root/post.script; \
+d-i preseed/late_command string wget http://`cat /tmp/xcatserver`/install/autoinst/#HOSTNAME#.post; \
+     chmod u+x #HOSTNAME#.post; \
+     cp ./#HOSTNAME#.post /target/root/post.script; \
      mount -o bind /proc /target/proc -t proc; \
      mount -o bind /dev /target/dev; \
      mount -o bind /dev/pts /target/dev/pts -t devpts; \
