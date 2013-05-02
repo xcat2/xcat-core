@@ -313,6 +313,7 @@ do
                then
                    # Write the info to the ifcfg file
                    echo "DEVICE=$nic
+NM_CONTROLLED=no
 BOOTPROTO=static
 STARTMODE=onboot
 IPADDR=$nicip" > $dir/ifcfg-$nic
@@ -355,7 +356,8 @@ IPADDR_$ipindex=$nicip" >> $dir/ifcfg-$nic
                then
                    # Write the info to the ifcfg file
                    echo "DEVICE=$nic
-BOOTPROTO=static
+NM_CONTROLLED=no
+BOOTPROTO=none
 ONBOOT=yes
 IPADDR=$nicip" > $dir/ifcfg-$nic
                     # ipv6
@@ -394,7 +396,8 @@ IPV6ADDR=$nicip/$netmask" >> $dir/ifcfg-$nic
                        fi
                     else # ipv4 address
                         echo "DEVICE=$nic:$ipindex
-BOOTPROTO=static
+NM_CONTROLLED=no
+BOOTPROTO=none
 ONBOOT=yes
 IPADDR=$nicip" > $dir/ifcfg-$nic:$ipindex
                         if [[ "$OSVER" == rhels6* ]]

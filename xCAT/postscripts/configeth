@@ -194,6 +194,7 @@ for ($i=0; $i < (scalar @nic_ips4) ; $i++ ) {
             # the system
             print FILE "DEVICE=\'$nic\'\n";
             print FILE "BOOTPROTO=\'static\'\n";
+            print FILE "NM_CONTROLLED=\'no\'\n";
             print FILE "BROADCAST=\'\'\n";
             print FILE "ETHTOOL_OPTIONS=\'\'\n";
             print FILE "IPADDR=\'".$nic_ips4[$i]."\'\n";
@@ -226,6 +227,7 @@ for ($i=0; $i < (scalar @nic_ips4) ; $i++ ) {
         if (!open(FILE, ">$dir/ifcfg-$specific_nic")) { system("logger -t xcat -p local4.err 'configeth: cannot open $dir/ifcfg-$specific_nic.'"); exit 1; }
         print FILE "DEVICE=$specific_nic\n";
         print FILE "BOOTPROTO=none\n";
+        print FILE "NM_CONTROLLED=no\n";
         print FILE "IPADDR=$nic_ips4[$i]\n";
         print FILE "NETMASK=$netmask\n";
         #if (defined($gateway)) { print FILE "GATEWAY=$gateway\n"; }
@@ -298,6 +300,7 @@ for ($i=0; $i < (scalar @nic_ips6) ; $i++ )
             }
             print FILE "DEVICE=$nic\n";
             print FILE "BOOTPROTO=static\n";
+            print FILE "NM_CONTROLLED=no\n";
             print FILE "STARTMODE=onboot\n";
         } else {
             if (!open(FILE, ">>$dir/ifcfg-$nic")) {
@@ -331,7 +334,8 @@ for ($i=0; $i < (scalar @nic_ips6) ; $i++ )
                 exit 1;
             }
             print FILE "DEVICE=$nic\n";
-            print FILE "BOOTPROTO=static\n";
+            print FILE "BOOTPROTO=none\n";
+            print FILE "NM_CONTROLLED=no\n";
             print FILE "ONBOOT=yes\n";
         } else {
             if (!open(FILE, ">>$dir/ifcfg-$nic")) { 
