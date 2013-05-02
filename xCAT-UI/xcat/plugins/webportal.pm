@@ -233,7 +233,7 @@ sub provzlinux {
         $out = `mkdef -t node -o $node userid=$userid hcp=$hcp mgt=zvm groups=$group`;
     } else {
         # Put node in all group
-        $out = `mkdef -t node -o $node userid=$userid hcp=$hcp mgt=zvm groups=$group,all`;
+        $out = `mkdef -t node -o $node userid=$userid hcp=$hcp mgt=zvm groups=$group`;
     }    
     println( $callback, "$out" );
     
