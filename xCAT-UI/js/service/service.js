@@ -539,7 +539,7 @@ function loadNodesTable(data) {
     // Power softoff
     var powerSoftoffLnk = $('<a>Shutdown</a>');
     powerSoftoffLnk.click(function() {
-        var tgtNodes = getNodesChecked(nodesTableId);
+        var tgtNodes = getNodesChecked(nodesDTId);
         if (tgtNodes) {
             powerNode(tgtNodes, 'softoff');
         }
