@@ -4,62 +4,76 @@ B<nodediscoverls> -  List the discovered nodes
 
 =head1 SYNOPSIS
 
-B<nodediscoverls> 
+B<nodediscoverls> [B<-t seq>|B<profile>|B<switch>|B<blade>|B<undef>|B<all>] [B<-l>] 
 
-B<nodediscoverls> [-t seq|profile|switch|blade|undef|all] [-l] 
+B<nodediscoverls> [B<-u uuid>] [B<-l>]
 
-B<nodediscoverls> [-u uuid] [-l]
-
-B<nodediscoverls> [-h| --help | -v | --version]
+B<nodediscoverls> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 =head1 DESCRIPTION
 
-The B<nodediscoverls> command lists the discovered nodes.
+The B<nodediscoverls> command lists nodes that have recently been discovered.  If discovery
+is currently in progress (i.e. B<nodediscoverstart> has been run, but B<nodediscoverstop> has not been),
+then B<nodediscoverls> will list the nodes that have been discovered so far in this session.
+If discovery is not currently in progress, B<nodediscoverls> will list all of the nodes that were
+discovered in the last discovery session.
 
-The B<nodediscoverls> command lists the discovered nodes which discovered by the current running discovery process.
-Or it lists all the discovered nodes if no discovery process is running.
-
-Flag B<-t> can be used to list the nodes which discovered by the specific type.
-
-With B<-l>, the long format information of the discovered nodes will be displayed.
+You can use the B<-t> option to limit the output to just the nodes that were discovered in a
+particular method of discovery.
 
 =head1 OPTIONS
 
-B<-h|--help>
+=over 10
 
-Display usage message.
+=item B<-t seq|profile|switch|blade|undef|all>
 
-B<-v|--version>
+Display the nodes that have been discovered by the specified discovery method:
 
-Command Version.
+=over 3
 
-B<-t seq|profile|switch|blade|undef|all>
+=item *
 
-Display the nodes which discovered by the specific type.
+B<seq> - Sequential discovery (started via nodediscoverstart noderange=<noderange> ...).
 
-=over 2
+=item *
 
-seq     - Sequential discovery.
+B<profile> - Profile discovery (started via nodediscoverstart networkprofile=<network-profile> ...).
 
-profile - Profile discovery.
+=item *
 
-switch  - Switch discovery.
+B<switch> - Switch-based discovery (used when the switch and switches tables are filled in).
 
-blade   - Blade discovery.
+=item *
 
-undef   - The discovery request has not been handled by xCAT.
+B<blade> - Blade discovery (used for IBM Flex blades).
 
-all     - All discovered nodes.
+=item *
+
+B<undef> - Display the nodes that were in the discovery pool, but for which xCAT has not yet received a discovery request.
+
+=item *
+
+B<all> - All discovered nodes.
 
 =back
 
-B<-l>
+=item B<-l>
 
-Display the detail information of the discovered nodes.
+Display more detailed information about the discovered nodes.
 
-B<-u uuid>
+=item B<-u uuid>
 
-Display the discovered node which uuid equals B<uuid>.
+Display the discovered node that has this uuid.
+
+=item B<-h|--help>
+
+Display usage message.
+
+=item B<-v|--version>
+
+Command version.
+
+=back
 
 =head1 RETURN VALUE
 
@@ -83,7 +97,7 @@ B<nodediscoverls>
 
 =item 2
 
-Display the nodes which have sent out discovery request but were not defined:
+Display the nodes that were in the discovery pool, but for which xCAT has not yet received a discovery request:
 
 B<nodediscoverls> -t undef
 
@@ -105,7 +119,7 @@ B<nodediscoverls> -t all
 
 =item 4
 
-Display the discovered node which uuid is B<51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB2> with detail information:
+Display the discovered node whose uuid is B<51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB2>, with detailed information:
 
 B<nodediscoverls> -u 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB2 -l
 

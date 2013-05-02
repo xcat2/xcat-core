@@ -4,13 +4,13 @@ B<nodediscoverstart> - starts the node discovery process
 
 =head1 SYNOPSIS
 
-B<nodediscoverstart> [-h| --help | -v | --version]
+B<nodediscoverstart> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 B<Sequential Discovery Specific:>
 
 =over 2
 
-B<nodediscoverstart> noderange=<noderange> [hostiprange=<imageprofile>] [bmciprange=<bmciprange>] [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>]
+B<nodediscoverstart> B<noderange=>I<noderange> [B<hostiprange=>I<imageprofile>] [B<bmciprange=>I<bmciprange>] [B<groups=>I<groups>] [B<rack=>I<rack>] [B<chassis=>I<chassis>] [B<height=>I<height>] [B<unit=>I<unit>] [B<-V|--verbose>]
 
 =back
 
@@ -18,29 +18,24 @@ B<Profile Discovery Specific:>
 
 =over 2
 
-B<nodediscoverstart> networkprofile=<network-profile> imageprofile=<image-profile> hostnameformat=<nost-name-format> [hardwareprofile=<hardware-profile>] [groups=<node-groups>] [rack=<rack-name>] [chassis=<chassis-name>] [height=<rack-server-height>] [unit=<rack-server-unit-location>] [rank=rank-num]
+B<nodediscoverstart> B<networkprofile=>I<network-profile> B<imageprofile=>I<image-profile> B<hostnameformat=>I<nost-name-format> [B<hardwareprofile=>I<hardware-profile>] [B<groups=>I<node-groups>] [B<rack=>I<rack-name>] [B<chassis=>I<chassis-name>] [B<height=>I<rack-server-height>] [B<unit=>I<rack-server-unit-location>] [B<rank=>I<rank-num>]
 
 =back
 
 =head1 DESCRIPTION
 
-The B<nodediscoverstart> command starts the node discovery process. 
-
-The B<Sequential Discovery> and B<Profile Discovery> can NOT be run parallelly. 
+The B<nodediscoverstart> command starts either the B<Sequential Discovery> or B<Profile Discovery> process.  They can not both be
+running at the same time.
 
 B<Sequential Discovery Specific:>
 
 =over 2
 
-The B<Sequential Discovery> is the simplest discovery approach that only specifying the B<noderange>, B<hostiprange> and B<bmciprange> could start the discovery process. 
-
-I<noderange> argument must be specified to start the B<Sequential Discovery>.
-
-If you want to predefine host ip and bmc ip for the nodes, the arguments B<hostiprange> and B<bmciprange> could be ignored.
-
-A free node name from the noderange will be assigned to a new discovered node. If the free node has the host ip or bmc ip predefined, the predefined ip will be used, otherwise a free host ip or bmc ip will be selected from the hostiprange or bmciprange.
-
-Using the '-V' to display the free node names, ips list.
+This is the simplest discovery approach.  You only need to specify the B<noderange>, B<hostiprange> and B<bmciprange> that should be
+given to nodes that are discovered.  (If you pre-define the nodes (via nodeadd or mkdef) and specify their host and BMC IP addresses,
+then you only need to specify the B<noderange> to the B<nodediscoverstart> command.)  Once you have run B<nodediscoverstart>, then
+physically power on the nodes in the sequence that you want them to receive the node names and IPs, waiting a short time (e.g. 30 seconds)
+between each node.
 
 =back
 
@@ -48,87 +43,92 @@ B<Profile Discovery Specific:>
 
 =over 2
 
-The B<Profile Discovery> is the PCM associated discovery approach.
-
-I<networkprofile>, I<imageprofile>, I<hostnameformat> arguments must be specified to start the B<Profile Discovery>.
-
+This is the PCM discovery approach.  I<networkprofile>, I<imageprofile>, I<hostnameformat> arguments must be specified to start the B<Profile Discovery>.
 All nodes discovered by this process will be associated with specified profiles and rack/chassis/unit locations.
+
+When the nodes are discovered, PCM updates the affected configuration files on the management node automatically. Configuration files include the /etc/hosts service file, DNS configuration, and DHCP configuration. Kit plug-ins are automatically triggered to update kit related configurations and services.
 
 =back
 
-You can PXE boot nodes that you want to provision. PXE booting nodes launches the node discovery process. During the node discovery process, nodes are discovered automatically. Node settings are assigned automatically according to the specified profiles
-
-After the nodes are discovered, their configuration files are updated automatically. Configuration files include the /etc/hosts service file, DNS configuration, and DHCP configuration. Kit plug-ins are automatically triggered to update kit related configurations and services.
+When you power on the nodes, they PXE boot and DHCP/TFTP/HTTP on the management node give each node the xCAT genesis boot image,
+which inventories the node hardware and sends data to the management node.  There, either the sequential discovery process or the
+profile discovery process assigns node attributes and defines the node in the the database.
 
 =head1 OPTIONS
 
-B<-h|--help>
+=over 10
 
-Display usage message.
+=item B<noderange=>I<noderange>
 
-B<-v|--version>
+The set of node names that should be given to nodes that are discovered via the B<Sequential Discovery> method.
+This argument is required to B<Sequential Discovery>. Any valid xCAT B<noderange> is allowed, e.g. node[01-10].
 
-Command Version.
+=item B<hostiprange=>I<ip range>
 
-B<-V|--verbose>
+The ip range which will be assigned to the host of new discovered nodes in the B<Sequential Discovery> method. The format can be: I<start_ip>B<->I<end_ip> or I<noderange>, e.g. 192.168.0.1-192.168.0.10 or 192.168.0.[1-10].
 
-Display the free node names and host/bmc ips.
+=item B<bmciprange=>I<ip range>
 
-B<noderange=<noderange>>
+The ip range which will be assigned to the bmc of new discovered nodes in the B<Sequential Discovery> method. The format can be: I<start_ip>B<->I<end_ip> or I<noderange>, e.g. 192.168.1.1-192.168.1.10 or 192.168.1.[1-10].
 
-The mandatory argument to start the B<Sequential Discovery>. The valid format is xCAT B<noderange>. e.g. node[01-10].
+=item B<imageprofile=>I<image-profile>
 
-B<hostiprange=<ip range>>
+Sets the new image profile name used by the discovered nodes in the B<Profile Discovery> method.  An image profile defines the provisioning method, OS information, kit information, and provisioning parameters for a node. If the "__ImageProfile_imgprofile" group already exists in the nodehm table, then "imgprofile" is used as the image profile name.
 
-The ip range which will be assigned to the host of new discovered node. The format could be: B<start_ip-end_ip> or B<noderange>. e.g. 192.168.0.1-192.168.0.10 or 192.168.0.[1-10].
+=item B<networkprofile=>I<network-profile>
 
-B<bmciprange=<ip range>>
+Sets the new network profile name used by the discovered nodes in the B<Profile Discovery> method. A network profile defines the network, NIC, and routes for a node. If the "__NetworkProfile_netprofile" group already exists in the nodehm table, then "netprofile" is used as the network profile name.
 
-The ip range which will be assigned to the bmc of new discovered node. The format could be: B<start_ip-end_ip> or B<noderange>. e.g. 192.168.1.1-192.168.1.10 or 192.168.1.[1-10].
+=item B<hardwareprofile=>I<hardware-profile>
 
-B<imageprofile=<image-profile>>
+Sets the new hardware profile name used by the discovered nodes in the B<Profile Discovery> method. If a "__HardwareProfile_hwprofile" group exists, then "hwprofile" is the hardware profile name. A hardware profile defines hardware management related information for imported nodes, including: IPMI, HMC, CEC, CMM.
 
-Sets the new image profile name used by the node, where <image-profile> is the new image profile.  An image profile defines the provisioning method, OS information, kit information, and provisioning parameters for a node. If the "__ImageProfile_imgprofile" group already exists in the nodehm table, then "imgprofile" is used as the image profile name.
+=item B<hostnameformat=>I<nost-name-format>
 
-B<networkprofile=<network-profile>>
-
-Sets the new network profile name used by the node, where <network-profile> is the new network profile. A network profile defines the network, NIC, and routes for a node. If the "__NetworkProfile_netprofile" group already exists in the nodehm table, then "netprofile" is used as the network profile name.
-
-B<hardwareprofile=<hardware-profile>>
-
-Sets the new hardware profile name used by the node, where <hardware-profile> is the new hardware management profile used by the node. If a "__HardwareProfile_hwprofile" group exists, then "hwprofile" is the hardware profile name. A hardware profile defines hardware management related information for imported nodes, including: IPMI, HMC, CEC, CMM.
-
-B<hostnameformat=<nost-name-format>>
-
-Sets the node name format for all nodes discovered, where <node-name-format> is a supported format. The two types of formats supported are prefix#NNNappendix and prefix#RRand#NNappendix, where wildcard #NNN and #NN are replaced by a system generated number that is based on the provisioning order. Wildcard #RR represents the rack number and stays constant.
+Sets the node name format for all discovered nodes in the B<Profile Discovery> method. The two types of formats supported are prefix#NNNappendix and prefix#RRand#NNappendix, where wildcard #NNN and #NN are replaced by a system generated number that is based on the provisioning order. Wildcard #RR represents the rack number and stays constant.
 
 For example, if the node name format is compute-#NN, the node name is generated as: compute-00, compute-01, ..., compute-99. If the node name format is blade#NNN-x64, the node name is generated as: blade001-x64, blade002-x64, ..., blade999-x64
 
 For example, if the node name format is compute-#RR-#NN and the rack number is 2, the node name is generated as: compute-02-00, compute-02-01, ..., compute-02-99. If node name format is node-#NN-in-#RR and rack number is 1, the node name is generated as: node-00-in-01, node-01-in-01, ..., node-99-in-01
 
-B<groups=<node-groups>>
+=item B<groups=>I<node-groups>
 
-Sets the node groups that the imported node belongs to, where <node-group> is a comma-separated list of node groups.
+Sets the node groups that the discovered nodes should be put in for either the Sequential Discovery or Profile Discovery methods, where I<node-group> is a comma-separated list of node groups.
 
-B<rack=<rack-name>> 
+=item B<rack=>I<rack-name>>
 
-Sets the rack name, where <rack-name> is the rack the node is located on or placed into.
+Sets the rack name where the node is located for either the Sequential Discovery or Profile Discovery methods.
  
-B<chasiss=<chassis-name>>
+=item B<chasiss=>I<chassis-name>
 
-Sets the chassis name, where <chassis-name> is the chassis that the Blade server or PureFlex sysstem is located. This option is used for the Blade server and PureFlex system only. You cannot specify this option with the rack option.
+Sets the chassis name that the Blade server or PureFlex blade is located in, for either the Sequential Discovery or Profile Discovery methods. This option is used for the Blade server and PureFlex system only. You cannot specify this option with the rack option.
 
-B<height=<rack-server-height>>
+=item B<height=>I<rack-server-height>
 
-Sets the height of a rack server, where <rack-server-height> is the server height. You must specify the this option with the rack option. If the rack option is not specified, the default value is 1.
+Sets the height of a rack-mounted server in U units for either the Sequential Discovery or Profile Discovery methods. If the rack option is not specified, the default value is 1.
 
-B<unit=<rack-server-unit-location>>
+=item B<unit=>I<rack-server-unit-location>
 
-Sets the start unit value for the node, where <rack-server-unit-location> is the location of the starting rack. This option is for a rack server only. You must specify this option with the rack option. If the unit option is not specified, the default value is 1
+Sets the start unit value for the node in the rack, for either the Sequential Discovery or Profile Discovery methods. This option is for a rack server only. If the unit option is not specified, the default value is 1
 
-B<rank=<rank-num>>
+=item B<rank=>I<rank-num>
 
-Specifies the starting rank number that is used in the node name format, where <rack-num> is a valid integer between 0 and 254. This option must be specified with nodenameformat option. For example, if your node name format is compute-#RR-#NN. The rack's number is 2 and rank is specified as 5, the node name is generated as follows: compute-02-05, compute-02-06, ..., compute-02-99.
+Specifies the starting rank number that is used in the node name format, for the Profile Discovery method.  The rank number must be a valid integer between 0 and 254. This option must be specified with nodenameformat option. For example, if your node name format is compute-#RR-#NN. The rack's number is 2 and rank is specified as 5, the node name is generated as follows: compute-02-05, compute-02-06, ..., compute-02-99.
+
+=item B<-V|--verbose>
+
+Enumerates the free node names and host/bmc ips that are being specified in the ranges given.  Use this option
+with Sequential Discovery to ensure that you are specifying the ranges you intend.
+
+=item B<-h|--help>
+
+Display usage message.
+
+=item B<-v|--version>
+
+Command Version.
+
+=back
 
 =head1 RETURN VALUE
 
@@ -144,7 +144,7 @@ Specifies the starting rank number that is used in the node name format, where <
 
 B<Sequential Discovery>: To discover nodes with noderange and host/bmc ip range:
 
-B<nodediscoverstart> noderange=n[1-10] hostiprange='172.20.101.1-172.20.101.10' bmciprange='172.20.102.1-172.20.102.10' -V
+B<nodediscoverstart noderange=n[1-10] hostiprange='172.20.101.1-172.20.101.10' bmciprange='172.20.102.1-172.20.102.10' -V>
 
  Sequential Discovery: Started:
     Number of free node names: 10
@@ -160,7 +160,7 @@ B<nodediscoverstart> noderange=n[1-10] hostiprange='172.20.101.1-172.20.101.10' 
 
 B<Profile Discovery>: To discover nodes using the default_cn network profile and the rhels6.3_packaged image profile, use the following command:
 
-B<nodediscoverstart> networkprofile=default_cn imageprofile=rhels6.3_packaged hostnameformat=compute#NNN
+B<nodediscoverstart networkprofile=default_cn imageprofile=rhels6.3_packaged hostnameformat=compute#NNN>
 
 =back
 

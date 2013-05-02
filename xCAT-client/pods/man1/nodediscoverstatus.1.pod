@@ -4,13 +4,12 @@ B<nodediscoverstatus> - gets the node discovery process status
 
 =head1 SYNOPSIS
 
-B<nodediscoverstatus> [-h| --help | -v | --version]
-
-B<nodediscoverstatus> 
+B<nodediscoverstatus> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 =head1 DESCRIPTION
 
-The B<nodediscoverstatus> command detects if the node discovery process is running.
+The B<nodediscoverstatus> command detects if the sequential or profile node discovery process is currently running, i.e. B<nodediscoverstart>
+has been run, but B<nodediscoverstop> has not.
 
 =head1 OPTIONS
 
