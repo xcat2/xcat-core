@@ -4,13 +4,13 @@ B<nodediscoverstop> - stops the node discovery process.
 
 =head1 SYNOPSIS
 
-B<nodediscoverstop> [-h| --help | -v | --version]
-
-B<nodediscoverstop> 
+B<nodediscoverstop> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 =head1 DESCRIPTION
 
-The B<nodediscoverstop> stops the node discovery process. The node discovery process can discover nodes automatically. If this command is issued, any newly booted nodes can not be discovered any more.
+The B<nodediscoverstop> command stops the sequential or profile node discovery process.
+Once this command has been run, newly discovered nodes will not be assigned node names
+and attributes automatically via the sequential or profile discovery process.
 
 =head1 OPTIONS
 
