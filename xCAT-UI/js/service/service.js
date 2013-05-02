@@ -536,6 +536,15 @@ function loadNodesTable(data) {
         }
     });
     
+    // Power softoff
+    var powerSoftoffLnk = $('<a>Shutdown</a>');
+    powerSoftoffLnk.click(function() {
+        var tgtNodes = getNodesChecked(nodesTableId);
+        if (tgtNodes) {
+            powerNode(tgtNodes, 'softoff');
+        }
+    });
+    
     // Turn monitoring on
     var monitorOnLnk = $('<a>Monitor on</a>');
     monitorOnLnk.click(function() {
@@ -630,7 +639,7 @@ function loadNodesTable(data) {
         });    
     });
     
-    var actionMenu = createMenu([cloneLnk, deleteLnk, monitorOnLnk, monitorOffLnk, powerOnLnk, powerOffLnk, unlockLnk]);
+    var actionMenu = createMenu([cloneLnk, deleteLnk, monitorOnLnk, monitorOffLnk, powerOnLnk, powerOffLnk, powerSoftoffLnk, unlockLnk]);
     var menu = createMenu([[actionsLnk, actionMenu], refreshLnk]);
     menu.superfish();
     actionBar.append(menu);
@@ -1389,24 +1398,10 @@ function deleteNode(tgtNodes) {
         }
     }
     
-    // Confirm delete
-    var confirmMsg = $('<p>Are you sure you want to delete ' + tgtNodesStr + '?</p>').css({
-        'display': 'inline',
-        'margin': '5px',
-        'vertical-align': 'middle',
-        'word-wrap': 'break-word'
-    });
-    
-    var style = {
-        'display': 'inline-block',
-        'margin': '5px',
-        'vertical-align': 'middle'
-    };
-
+    // Confirm delete of node
     var dialog = $('<div></div>');
-    var icon = $('<span class="ui-icon ui-icon-alert"></span>').css(style);
-    dialog.append(icon);
-    dialog.append(confirmMsg);
+    var warn = createWarnBar('Are you sure you want to delete ' + tgtNodesStr + '?');
+    dialog.append(warn);
         
     // Open dialog
     dialog.dialog({

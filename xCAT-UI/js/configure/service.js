@@ -315,7 +315,7 @@ function configImagePanel(data) {
     });
     
     // Create an action menu
-    var actionsMenu = createMenu([createLnk, editLnk, deleteLnk, refreshLnk]);
+    var actionsMenu = createMenu([refreshLnk, createLnk, editLnk, deleteLnk]);
     actionsMenu.superfish();
     actionsMenu.css('display', 'inline-block');
     actionBar.append(actionsMenu);
@@ -868,7 +868,7 @@ function configGroupPanel(data) {
     });
     
     // Create an action menu
-    var actionsMenu = createMenu([createLnk, editLnk, deleteLnk, refreshLnk]);
+    var actionsMenu = createMenu([refreshLnk, createLnk, editLnk, deleteLnk]);
     actionsMenu.superfish();
     actionsMenu.css('display', 'inline-block');
     actionBar.append(actionsMenu);

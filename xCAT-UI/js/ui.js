@@ -324,7 +324,6 @@ function createStatusBar(barId) {
     var hide = $('<span class="ui-icon ui-icon-minus"></span>').css({
         'display': 'inline-block',
         'float': 'right',
-        'margin': '10px 5px',
         'cursor': 'pointer'
     }).click(function() {
         // Remove info box on-click

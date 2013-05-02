@@ -2305,8 +2305,10 @@ sub powerVM {
     
     # Power off virtual server (gracefully)
     elsif ( $args->[0] eq 'softoff' ) {
-        $out = `ssh -o ConnectTimeout=10 $::SUDOER\@$node "shutdown -h now"`;
-        sleep(15);    # Wait 15 seconds before logging user off
+    	if (`pping $node` !~ m/noping/i) {
+            $out = `ssh -o ConnectTimeout=10 $::SUDOER\@$node "shutdown -h now"`;
+            sleep(15);    # Wait 15 seconds before logging user off
+    	}
         
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Deactivate -T $userId"`;
         xCAT::zvmUtils->printSyslog("smcli Image_Deactivate -T $userId");
@@ -3960,6 +3962,9 @@ sub clone {
         push( @tgtDisks, $addr );
         $type       = $words[2];
         $mode       = $words[6];
+        if (!$mode) {
+        	$mode = "MR";
+        }
         
         # Add 0 in front if address length is less than 4
         while (length($addr) < 4) {
