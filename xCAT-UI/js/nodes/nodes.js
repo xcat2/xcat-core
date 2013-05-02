@@ -658,6 +658,15 @@ function loadNodes(data) {
         }
     });
     
+    // Power softoff
+    var powerSoftoffLnk = $('<a>Shutdown</a>');
+    powerSoftoffLnk.click(function() {
+        var tgtNodes = getNodesChecked(nodesTableId);
+        if (tgtNodes) {
+            powerNode(tgtNodes, 'softoff');
+        }
+    });
+    
     // Turn monitoring on
     var monitorOnLnk = $('<a>Monitor on</a>');
     monitorOnLnk.click(function() {
@@ -872,7 +881,7 @@ function loadNodes(data) {
     
     // Actions
     var actionsLnk = '<a>Actions</a>';
-    var actsMenu = createMenu([cloneLnk, deleteLnk, migrateLnk, monitorOnLnk, monitorOffLnk, powerOnLnk, powerOffLnk, scriptLnk]);
+    var actsMenu = createMenu([cloneLnk, deleteLnk, migrateLnk, monitorOnLnk, monitorOffLnk, powerOnLnk, powerOffLnk, scriptLnk, powerSoftoffLnk]);
 
     // Configurations
     var configLnk = '<a>Configuration</a>';

@@ -8,7 +8,7 @@ network --bootproto dhcp
 rootpw replace_rootpw
 firewall --disabled 
 authconfig --enableshadow --enablemd5
-selinux --enforcing
+selinux --disabled
 timezone --utc America/New_York
 bootloader --location=mbr
 reboot

@@ -137,6 +137,7 @@ sub provzlinux {
     my $disk_pool;
     my $eckd_size;
     my $fba_size;
+    my $profile_conf   = $profile;
     my $default_conf   = "/var/opt/xcat/profiles/$profile.conf";
     my $default_direct = "/var/opt/xcat/profiles/$profile.direct";
 
@@ -145,22 +146,24 @@ sub provzlinux {
         println( $callback, "$profile.direct does not exist.  Using default.direct to generate directory entry." );
         
         # Exit if default.direct does not exist
-        $default_direct = '/var/opt/xcat/profiles/default.direct';    
-        if ( !(`test -e /var/opt/xcat/profiles/default.direct && echo Exists`) ) {
-            println( $callback, '(Error) $default_direct does not exists' );
+        $default_direct = "/var/opt/xcat/profiles/default.direct";   
+        $default_conf = "/var/opt/xcat/profiles/default.conf"; 
+        $profile_conf = "default";
+        if ( !(`test -e $default_direct && echo Exists`) ) {
+            println( $callback, "(Error) $default_direct does not exists" );
             return;
         }
     }
 
     # Exit if default.conf does not exist
     if ( !(`test -e $default_conf && echo Exists`) ) {
-        println( $callback, '(Error) $default_conf does not exists' );
+        println( $callback, "(Error) $default_conf does not exists" );
         return;
     }
 
     # Exit if default.direct does not exist
     if ( !(`test -e $default_direct && echo Exists`) ) {
-        println( $callback, '(Error) $default_direct does not exists' );
+        println( $callback, "(Error) $default_direct does not exists" );
         return;
     }
 
@@ -171,9 +174,9 @@ sub provzlinux {
     # Configuration for virtual machines
     #    default_diskpool=POOL3
     #    default_eckd_size=10016
-    my $profile_diskpool_parm = $profile . "_diskpool";
-    my $profile_eckd_size_parm = $profile . "_eckd_size";
-    my $profile_fba_size_parm = $profile . "_fba_size";
+    my $profile_diskpool_parm = $profile_conf . "_diskpool";
+    my $profile_eckd_size_parm = $profile_conf . "_eckd_size";
+    my $profile_fba_size_parm = $profile_conf . "_fba_size";
     my $default_disk_pool;
     my $default_eckd_size;
     my $default_fba_size;
@@ -196,7 +199,7 @@ sub provzlinux {
     
     # Use default configuration if profile configuration does not exist
     if (!$disk_pool && (!$eckd_size || !$fba_size)) {
-        println( $callback, "(Error) $profile configuration for disk pool and size does not exist" );
+        println( $callback, "(Error) $profile_conf configuration for disk pool and size does not exist" );
         return;
     }
 

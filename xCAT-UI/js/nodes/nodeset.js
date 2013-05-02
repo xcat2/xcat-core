@@ -320,7 +320,7 @@ function updateNodesetStatus(data) {
             data : {
                 cmd : 'nodeset',
                 tgt : tgts,
-                args : method,
+                args : 'osimage=' + os,
                 msg : 'cmd=nodeset;inst=' + inst
             },
 
