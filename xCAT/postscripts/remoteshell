@@ -188,7 +188,7 @@ then
 	service ssh restart
     fi
 else
-    service sshd start
+    service sshd restart
 fi
 
 kill -9 $CREDPID
