@@ -1,4 +1,4 @@
-BOOTMAC=`sed -e s/.*BOOTIF=/BOOTIF=/ /proc/cmdline|cut -f 1`
+BOOTMAC=`sed -e s/.*BOOTIF=/BOOTIF=/ /proc/cmdline|cut -d ' ' -f 1`
 if echo $BOOTMAC|grep BOOTIF= > /dev/null; then
         BOOTMAC=`echo $BOOTMAC|sed -e s/BOOTIF=01-// -e s/-/:/g`
         for dir in /sys/class/net/*; do

@@ -768,7 +768,9 @@ sub mkinstall
                   . "/install/autoinst/"
                   . $node;
 	    #}
-	       
+	        
+	    $kcmdline .= " xcatd=".$instserver;
+	    $kcmdline .= " mirror/http/hostname=".$instserver;
             if ($maxmem) {
                 $kcmdline.=" mem=$maxmem";
             }
@@ -793,15 +795,10 @@ sub mkinstall
                     $ksdev = $ent->{primarynic};
                 }
             }
-            else{
-                $ksdev = "eth0";
-            }
             
-            if ($ksdev eq ""){
-                $callback->({error => ["No MAC address defined for " . $node],
-                             errorcode => [1]});
+            if ($ksdev){
+            	$kcmdline .= " netcfg/choose_interface=" . $ksdev;
             }
-            $kcmdline .= " netcfg/choose_interface=" . $ksdev;
 
             #TODO: dd=<url> for driver disks
             if (defined($sent->{serialport})){
@@ -816,7 +813,7 @@ sub mkinstall
                     $kcmdline .= "n8r";
                 }
             }
-            $kcmdline .= " noipv6";
+            #$kcmdline .= " noipv6";
             # add the addkcmdline attribute  to the end
             # of the command, if it exists
             #my $addkcmd   = $addkcmdhash->{$node}->[0];
