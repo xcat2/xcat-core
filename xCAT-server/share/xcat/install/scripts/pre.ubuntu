@@ -4,11 +4,17 @@ if [ ! -c /dev/vcs ]; then
     mknod /dev/vcs c 7 0
 fi
 
+while [ -z "$instdisk" ]; do
+VIRTDISKS=`ls /dev/vd*|wc -l`
+if [ $VIRTDISKS -gt 0 ]; then 
 for disk in /dev/vd*[^0-9]; do
 	if [ -z "$firstdirectdisk" ]; then firstdirectdisk=$disk; fi #remember first disk as a guess of medium resort
 	#no edd_id in debian installer, no edd hints supported
 done
+fi
 if [ -z "$firstdirectdisk" ]; then
+	SCSIDISKS=`ls /dev/sd*|wc -l`
+	if [ $SCSIDISKS -gt 0 ]; then 
 	for disk in /dev/sd*[^0-9]; do
 		currdriver=`udevadm info --attribute-walk --name $disk |grep DRIVERS|grep -v '""'|grep -v '"sd"'|head -n 1|sed -e 's/[^"]*"//' -e 's/"//'`
 		case "$currdriver" in
@@ -23,6 +29,7 @@ if [ -z "$firstdirectdisk" ]; then
 				;;
 		esac
 	done
+	fi
 fi
 if [ -z "$instdisk" ]; then
         if [ ! -z "$firstdirectdisk" ]; then
@@ -33,7 +40,9 @@ if [ -z "$instdisk" ]; then
                 instdisk=$firstdisk
         fi
 fi
-debconf-set partman-auto/disk "$instdisk"
+if [ ! -z "$instdisk" ]; then debconf-set partman-auto/disk "$instdisk"; fi
+sleep 0.1
+done &
 
 
 

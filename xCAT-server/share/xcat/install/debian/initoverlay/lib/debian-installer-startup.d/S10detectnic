@@ -4,6 +4,7 @@ if echo $BOOTMAC|grep BOOTIF= > /dev/null; then
         for dir in /sys/class/net/*; do
                 if grep -i $BOOTMAC $dir/address > /dev/null; then
                         debconf-set netcfg/choose_interface `basename $dir`
+			echo "d-i netcfg/choose_interface select `basename $dir`" >> /preseed.cfg
                 fi
         done
 fi
