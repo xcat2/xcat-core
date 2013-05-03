@@ -561,6 +561,7 @@ sub on_bmc_connect {
 				"snmpdest3",
 				"snmpdest4",
 				"community",
+				"textid",
 			);
 
 			my @coutput;
@@ -686,6 +687,17 @@ sub setnetinfo {
       }
       @cmd = (1,$channel_number,0x10,@clist);
    }
+	elsif ($subcommand eq "textid") {
+		if (1 or $sessdata->{isite}) { #if we have an IBM ITE system, we can go ahead and pursue this via vpd interface a la rinv
+			$sessdata->{do_textid}=1;
+			$sessdata->{set_textid}=$argument;
+			$sessdata->{currfruid}=0;
+    			$sessdata->{ipmisession}->subcmd(netfn=>0x2e,command=>0x51,data=>[0xd0,0x51,0,0x2,0x0,1,0,1,1,0],callback=>\&got_vpd_version,callback_args=>$sessdata);
+			return;
+		} else {
+			return(1,"unsupported command rspconfig $subcommand on this platform");
+		}
+	}
 	elsif($subcommand =~ m/snmpdest(\d+)/ ) {
 		my $dstip = $argument; #pop(@input);
         $dstip = inet_ntoa(inet_aton($dstip));
@@ -792,6 +804,17 @@ sub getnetinfo {
 	}
 	elsif ($subcommand eq "community") {
 		@cmd = (0x02,$channel_number,0x10,0x00,0x00);
+	}
+	elsif ($subcommand eq "textid") {
+		if (1 or $sessdata->{isite}) { #if we have an IBM ITE system, we can go ahead and pursue this via vpd interface a la rinv
+			$sessdata->{get_textid}=1;
+			$sessdata->{do_textid}=1;
+			$sessdata->{currfruid}=0;
+    			$sessdata->{ipmisession}->subcmd(netfn=>0x2e,command=>0x51,data=>[0xd0,0x51,0,0x2,0x0,1,0,1,1,0],callback=>\&got_vpd_version,callback_args=>$sessdata);
+			return;
+		} else {
+			return(1,"unsupported command rspconfig $subcommand on this platform");
+		}
 	}
 	else {
 		return(1,"unsupported command getnetinfo $subcommand");
@@ -2527,7 +2550,47 @@ sub got_vpd_version {
 	#	block 1, $blone+0x1d0: port type first 4 bits protocol, last 3 bits addressing
 	#	block 1, $blone+0x240: 64 bytes, up to 8 sets of addresses, mac is left aligned
 	#	block 1, $blone+0x300: if mac+wwn, grab wwn
+	if ($sessdata->{do_textid}) {
+        	$sessdata->{ipmisession}->subcmd(netfn=>0x2e,command=>0x51,data=>[0xd0,0x51,0,0xca,0x0,1,$sessdata->{currfruid},1,2,0],callback=>\&got_vpd_block2,callback_args=>$sessdata);
+	} else {
         $sessdata->{ipmisession}->subcmd(netfn=>0x2e,command=>0x51,data=>[0xd0,0x51,0,0xc8,0x0,1,$sessdata->{currfruid},1,2,0],callback=>\&got_vpd_block1,callback_args=>$sessdata);
+	}
+}
+sub got_vpd_block2 {
+    my $rsp = shift;
+    my $sessdata = shift;
+    unless ($rsp and not $rsp->{error} and $rsp->{code} == 0) { # if this should go wonky, jump ahead
+            	add_fruhash($sessdata);
+		return;
+    }
+    $sessdata->{vpdblock2offset}=$rsp->{data}->[5]<<8+$rsp->{data}->[6];
+    my $ptoffset = $sessdata->{vpdblock2offset} + 0xf0;
+    $sessdata->{textidoffset}=$ptoffset;
+    if ($sessdata->{get_textid}) {
+    	$sessdata->{ipmisession}->subcmd(netfn=>0x2e,command=>0x51,data=>[0xd0,0x51,0,$ptoffset&0xff,$ptoffset>>8,1,$sessdata->{currfruid},1,16,0],callback=>\&got_textid,callback_args=>$sessdata);
+    } elsif (defined $sessdata->{set_textid}) {
+    	my $name = $sessdata->{set_textid};
+	if ($name eq '*') { $name = $sessdata->{node}; }
+    	my @textid = unpack("C*",$name);
+	my $neededspaces = 16 - scalar(@textid);
+	push @textid,unpack("C*"," "x$neededspaces);
+    	$sessdata->{ipmisession}->subcmd(netfn=>0x2e,command=>0x51,data=>[0xd0,0x51,0,$ptoffset&0xff,$ptoffset>>8,1,$sessdata->{currfruid},2,16,0,@textid],callback=>\&set_textid,callback_args=>$sessdata);
+    }
+}
+sub set_textid {
+	my $rsp = shift;
+	my $sessdata = shift;
+	my $ptoffset =  $sessdata->{textidoffset};
+    	$sessdata->{ipmisession}->subcmd(netfn=>0x2e,command=>0x51,data=>[0xd0,0x51,0,$ptoffset&0xff,$ptoffset>>8,1,$sessdata->{currfruid},1,16,0],callback=>\&got_textid,callback_args=>$sessdata);
+}
+sub got_textid {
+	my $rsp = shift;
+	my $sessdata = shift;
+	my @data = @{$rsp->{data}};
+	@data = @data[5..20];
+	my $text = pack("C*",@data);
+	$text =~ s/\s*$//;
+        xCAT::SvrUtils::sendmsg("textid:".$text,$callback,$sessdata->{node});
 }
 sub got_vpd_block1 {
     my $rsp = shift;
@@ -5867,16 +5930,6 @@ sub preprocess_request {
 	$chunksize=$::XCATSITEVALS{syspowermaxnodes};
         $delayincrement=$::XCATSITEVALS{syspowerinterval};
       }
-  } elsif ($command eq "renergy") {
-      # filter out the nodes which should be handled by ipmi.pm
-      my (@bmcnodes, @nohandle);
-      xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
-      $realnoderange = \@bmcnodes;
-  } elsif ($command eq "rspconfig") {
-      # filter out the nodes which should be handled by ipmi.pm
-      my (@bmcnodes, @nohandle);
-      xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
-      $realnoderange = \@bmcnodes;
   }
 
   if (!$realnoderange) {
