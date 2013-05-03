@@ -84,26 +84,35 @@ function loadUserTable(data){
         // Add table rows
         // Start with the 2nd row (1st row is the headers)
         for (var i = 1; i < data.rsp.length; i++) {
-        	// Trim returned data
-        	data.rsp[i] = jQuery.trim(data.rsp[i]);
-        	// Split data into columns
-        	var cols = data.rsp[i].split(',');
-        	            
+            // Split into columns
+            var cols = data.rsp[i].split(',');
+
             // Go through each column
-        	// Column names are: priority, name, host, commands, noderange, parameters, time, rule, comments, disable
             for (var j = 0; j < cols.length; j++) {
+
+                // If the column is not complete
+                if (cols[j].count('"') == 1) {
+                    while (cols[j].count('"') != 2) {
+                        // Merge this column with the adjacent one
+                        cols[j] = cols[j] + "," + cols[j + 1];
+
+                        // Remove merged row
+                        cols.splice(j + 1, 1);
+                    }
+                }
+
                 // Replace quote
-                cols[j] = cols[j].replace(/"/g, '');
+                cols[j] = cols[j].replace(new RegExp('"', 'g'), '');
             }
             
             // Set the highest priority
             priority = cols[0];
             if (priority > topPriority)
                 topPriority = priority;
-            
+
             // Add check box where name = user name
             cols.unshift('<input type="checkbox" name="' + cols[0] + '"/>');
-            
+
             // Add row
             table.add(cols);
         }

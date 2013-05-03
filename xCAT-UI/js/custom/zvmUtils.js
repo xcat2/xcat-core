@@ -5898,7 +5898,7 @@ function configProfilePanel(panelId) {
     });
     
     // Create an action menu
-    var actionsMenu = createMenu([createLnk, editLnk, deleteLnk, refreshLnk]);
+    var actionsMenu = createMenu([refreshLnk, createLnk, editLnk, deleteLnk]);
     actionsMenu.superfish();
     actionsMenu.css('display', 'inline-block');
     actionBar.append(actionsMenu);
