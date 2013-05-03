@@ -3,4 +3,5 @@ if echo $XCATD|grep xcatd= > /dev/null; then
         XCATD=`echo $XCATD|sed -e s/xcatd=//`
 	echo -n $XCATD > /tmp/xcatserver
 	debconf-set mirror/http/hostname $XCATD
+	echo "d-i mirror/http/hostname string $XCATD" >> /preseed.cfg
 fi
