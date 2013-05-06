@@ -5,7 +5,8 @@
 #=head2  This command adds the OpenStack repository to the node. It is run 
 #        as a postscript.
 #        Usage:
-#        setup_openstack_repo 
+#        For OpenStack Grizzly: setup_openstack_repo
+#        For other OpenStack versions: setup_openstack_repo folsom 
 #        
 #=cut
 #-------------------------------------------------------------------------------
@@ -47,21 +48,24 @@ is_lsb_ubuntu ()
 
 if [ "$(uname -s)" = "Linux" ]; then
     if ( pmatch "$OSVER" "ubuntu*" ) || ( is_lsb_ubuntu ); then
-        #add the OpenStack Folsom (2012.2.*) version for Ubunto 12.04.2 to the repository
 	urelease="precise" #default release name
 	urelease=`cat /etc/lsb-release |grep DISTRIB_CODENAME |cut -d= -f2`
 
-	echo "deb http://ubuntu-cloud.archive.canonical.com/ubuntu precise-updates/folsom main" >  /etc/apt/sources.list.d/folsom.list
+        opsrelease="grizzly"
+        if [[ -n "$1" ]]; then
+	    opsrelease=$1
+	fi	
+	echo "deb http://ubuntu-cloud.archive.canonical.com/ubuntu ${urelease}-updates/${opsrelease} main" >  /etc/apt/sources.list.d/${opsrelease}.list
 
         #Refresh the repository
 	apt-get install ubuntu-cloud-keyring -y
 	apt-get update
 
-	echo "Added the OpenStack Folsom version for Ubunto 12.04.2 to the repository, Please modify this script if you need a different version."
+	echo "Added the OpenStack ${opsrelease} version for Ubunto ${urelease} release to the repository, Please modify this script if you need a different version."
 
     elif ( pmatch "$OSVER" "rh*" ) || [ -f /etc/redhat-release ]; then
 	#use yum repository
-	echo "Redhat TODO".
+	echo "Redhat. Please refer to http://sourceforge.net/apps/mediawiki/xcat/index.php?title=Deploying_OpenStack for how to setup OpenStack repository for RedHat".
     else
 	echo "OpenStack deployment with xCAT is not supported on this platform yet.".
     fi
