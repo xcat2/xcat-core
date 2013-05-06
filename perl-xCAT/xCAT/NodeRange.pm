@@ -189,12 +189,13 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
         @allnodeset = $nodelist->getAllAttribs('node','groups');
         %allnodehash = map { $_->{node} => 1 } @allnodeset;
     }
-	my $verify = (scalar(@_) == 1 ? shift : 1);
+	my $verify = (scalar(@_) >= 1 ? shift : 1);
+	my %args = @_;
         my @nodes= ();
     #TODO: these env vars need to get passed by the client to xcatd
 	my $nprefix=(defined ($ENV{'XCAT_NODE_PREFIX'}) ? $ENV{'XCAT_NODE_PREFIX'} : 'node');
 	my $nsuffix=(defined ($ENV{'XCAT_NODE_SUFFIX'}) ? $ENV{'XCAT_NODE_SUFFIX'} : '');
-	if ($allnodehash{$atom}) {		#The atom is a plain old nodename
+	if (not $args{genericrange} and $allnodehash{$atom}) {		#The atom is a plain old nodename
 		return ($atom);
 	}
     if ($atom =~ /^\(.*\)$/) {     # handle parentheses by recursively calling noderange()
@@ -208,6 +209,7 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
      }
 
     # Try to match groups?
+	unless ($args{genericrange}) {
         unless ($grptab) {
            $grptab = xCAT::Table->new('nodegroup');
         }
@@ -269,6 +271,7 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
         }
      }
   }
+	}
 
     if ($atom =~ m/[=~]/) { #TODO: this is the clunky, slow code path to acheive the goal.  It also is the easiest to write, strange coincidence.  Aggregating multiples would be nice
         my @nodes;
@@ -287,7 +290,7 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
     }
 	if ($atom =~ m/^[0-9]+\z/) {    # if only numbers, then add the prefix
 		my $nodename=$nprefix.$atom.$nsuffix;
-		return expandatom($nodename,$verify);
+		return expandatom($nodename,$verify,%args);
 	}
 	my $nodelen=@nodes;
 	if ($nodelen > 0) {
@@ -322,12 +325,12 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
 			$subrange=$subrange."$start$subelem" . ($morebrackets?'':$ending) . "$subop";
 		}
 		foreach (split /,/,$subrange) {
-			my @newnodes=expandatom($_, ($morebrackets?0:$verify));
+			my @newnodes=expandatom($_, ($morebrackets?0:$verify),genericrange=>$morebrackets);
 			if (!$morebrackets) { push @nodes,@newnodes; }
 			else {
 				# for each of the new nodes, add the 2nd brackets and then expand
 				foreach my $n (@newnodes) {
-					push @nodes, expandatom("$n$ending", $verify);
+					push @nodes, expandatom("$n$ending", $verify,%args);
 				}
 			}
 		}
@@ -349,7 +352,7 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
 			$suf=$nsuffix;
 		}
 		foreach ("$startnum".."$endnum") {
-			my @addnodes=expandatom($pref.$_.$suf,$verify);
+			my @addnodes=expandatom($pref.$_.$suf,$verify,%args);
 			@nodes=(@nodes,@addnodes);
 		}
 		return (@nodes);
@@ -376,7 +379,7 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
         $right=$2;
       }
       if ($left eq $right) { #if they said node1-node1 for some strange reason
-		return expandatom($left,$verify);
+		return expandatom($left,$verify,%args);
       }
       my @leftarr=split(/(\d+)/,$left);
       my @rightarr=split(/(\d+)/,$right);
@@ -413,7 +416,7 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
               }
             }
             foreach ($leftarr[$idx]..$rightarr[$idx]) {
-              my @addnodes=expandatom($prefix.$_.$luffix,$verify);
+              my @addnodes=expandatom($prefix.$_.$luffix,$verify,%args);
               push @nodes,@addnodes;
             }
             return (@nodes); #the return has been built, return, exiting loop and all
