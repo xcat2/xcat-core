@@ -3244,7 +3244,7 @@ sub filter_nodes{
     if (@args && ($cmd eq "rspconfig")) {
         if (!(grep /^(cec_off_policy|pending_power_on_side)/, @args))  {
             push @{$mpnodes}, @ngpfsp;
-            if (grep /^(network=)/, @args) {
+            if (grep /^(network=|textid)/, @args) {
                 push @{$mpnodes}, @ngpbmc;
             }    
         } else {
