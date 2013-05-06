@@ -4658,7 +4658,7 @@ sub clicmds {
     if((/^updateBMC$/ or ($cmm_modified)) and !($bmc_modified)) {
         unless (defined($handled{updateBMC}) and $handled{updateBMC} =~ /(0|n|no)/i) {
         if (defined($handled{updateBMC}) and !$cmm_modified) {
-            $result = passwd($t, $mpa, $1, "=".$handled{USERID}, $promote_pass, $mm);
+            $result = passwd($t, $mpa, "USERID", "=".$handled{USERID}, $promote_pass, $mm);
             $cmm_modified = 1;
         }
         verbose_message("start update password for all BMCs.");
@@ -4903,8 +4903,8 @@ sub updateBMC {
         my @mpents = $mptab->getAllNodeAttribs(['node','mpa','id']);
         foreach (@mpents) {
             my $node = $_->{node};
-            my $arch = $nttab->getNodeAttribs($node, ['arch']);
-            if ($_->{mpa} and $_->{id} and defined($arch) and $arch->{arch} !~ /ppc/)  {
+            my $nodetype = $nttab->getNodeAttribs($node, ['nodetype']);
+            if ($_->{mpa} and ($_->{mpa} eq $mpa) and $_->{id} and defined($nodetype) and $nodetype->{nodetype} =~ /mp/)  {
                 xCAT::IMMUtils::setupIMM($node,skipbmcidcheck=>1,skipnetconfig=>1,cliusername=>$user,clipassword=>$pass,callback=>$CALLBACK);
             }
         } 
