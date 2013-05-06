@@ -518,7 +518,7 @@ sub esxipv6setup {
 	$v6addr = $ent->{ip};
 	unless ($v6addr =~ /:/) { die "incorrect format for static ipv6 in hosts table for $node" }
  }
- return 'esxcfg-vmknic -i '.$v6addr.'/64 "Management Network"'."#ESXISTATICV6\n";
+ return 'esxcfg-vmknic -i '.$v6addr.'/64 "Management Network"'." #ESXISTATICV6\n";
 }
 
 sub kickstartnetwork {
