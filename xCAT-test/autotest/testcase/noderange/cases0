@@ -15,7 +15,6 @@ check:rc==0
 check:output=~testnode01
 check:output=~testnode02
 cmd:rmdef -t node -o nrtestgrp
-cmd:rmdef -t group -o nrtestgrp
 check:rc==0
 end
 
@@ -197,8 +196,6 @@ check:output=~nrtestnode1
 check:output!~nrtestnode2
 check:output!~nrtestnode3
 cmd:rmdef -t node -o nrtestnode1-nrtestnode3
-check:rc==0
-cmd:rmdef -t group -o group1,group2
 check:rc==0
 end
 
