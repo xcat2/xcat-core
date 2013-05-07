@@ -228,9 +228,15 @@ sub findme {
                 $nltab->setNodeAttribs($bmcname, {groups=>$param{'groups'}.",bmc"});
             }
         } else {
-            $nltab->setNodeAttribs($node, {groups=>"all"});
+            my $nlent = $nltab->getNodeAttribs($node,['groups']);
+            if (!$nlent || !$nlent->{'groups'}) {
+                $nltab->setNodeAttribs($node, {groups=>"all"});
+            }
             if ($bmcname) {
-                $nltab->setNodeAttribs($bmcname, {groups=>"all,bmc"});
+                $nlent = $nltab->getNodeAttribs($bmcname,['groups']);
+                if (!$nlent || !$nlent->{'groups'}) {
+                    $nltab->setNodeAttribs($bmcname, {groups=>"all,bmc"});
+                }
             }
         }
 
