@@ -4663,7 +4663,7 @@ sub clicmds {
         }
         verbose_message("start update password for all BMCs.");
         my $start = Time::HiRes::gettimeofday();
-        updateBMC($mpa,$user,$promote_pass);
+        updateBMC($mpa,$user,$handled{USERID});
         verbose_message("Finish update password for all BMCs.");
         my $slp = Time::HiRes::gettimeofday() - $start;
         my $msg = sprintf("The main process time slp: %.3f sec", $slp);
@@ -4897,18 +4897,26 @@ sub updateBMC {
     my $mpa = shift;
     my $user = shift;
     my $pass = shift;
+    my @nodes = ();
     my $mptab = xCAT::Table->new('mp');
-    my $nttab = xCAT::Table->new('nodetype');
     if ($mptab) {
         my @mpents = $mptab->getAllNodeAttribs(['node','mpa','id']);
         foreach (@mpents) {
             my $node = $_->{node};
-            my $nodetype = $nttab->getNodeAttribs($node, ['nodetype']);
-            if ($_->{mpa} and ($_->{mpa} eq $mpa) and $_->{id} and defined($nodetype) and $nodetype->{nodetype} =~ /mp/)  {
-                xCAT::IMMUtils::setupIMM($node,skipbmcidcheck=>1,skipnetconfig=>1,cliusername=>$user,clipassword=>$pass,callback=>$CALLBACK);
+            if (defined($_->{mpa}) and ($_->{mpa} eq $mpa) and defined($_->{id}) and ($_->{id} ne '0')) {
+                push @nodes, $node;
             }
-        } 
-    } 
+        }
+    }
+    my $ipmitab = xCAT::Table->new('ipmi');
+    if ($ipmitab) {
+        my $ipmihash = $ipmitab->getNodesAttribs(\@nodes, ['bmc']);
+        foreach (@nodes) {
+            if (defined($ipmihash->{$_}->[0]) && defined ($ipmihash->{$_}->[0]->{'bmc'})) {
+                xCAT::IMMUtils::setupIMM($_,skipbmcidcheck=>1,skipnetconfig=>1,cliusername=>$user,clipassword=>$pass,callback=>$CALLBACK);
+            }  
+        }
+    }
     return ;
 }
 
