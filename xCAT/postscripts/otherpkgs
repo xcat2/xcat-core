@@ -236,7 +236,22 @@ if [ $? -eq 0 ]; then
     mounted=1 
 fi
 
-
+if [ -n "$OTHERPKGDIR" ]; then
+    OLDIFS=$IFS
+    IFS=$','
+    dir_array=($OTHERPKGDIR)
+    for dir in ${dir_array[@]}
+    do
+        dirtype=${dir:0:4}
+        if [ $dirtype = 'http' ]; then
+            OTHERPKGDIR_INTERNET="${OTHERPKGDIR_INTERNET}${dir} ,"
+        else
+            OTHERPKGDIR_LOCAL=$dir
+        fi
+    done
+    OTHERPKGDIR=$OTHERPKGDIR_LOCAL
+    IFS=$OLDIFS
+fi
 
 #OTHERPKGDIR is set only when the provmethod is the os image name
 #when it is not set, we need to figure it out here
@@ -246,11 +261,117 @@ if [ -z "$OTHERPKGDIR" ]; then
     else
         OTHERPKGDIR="$INSTALLDIR/post/otherpkgs/$OSVER/$ARCH"
     fi
+ 
+    if ( pmatch "$OSVER" "ubuntu*" ); then
+        OTHERPKGDIR=""
+    fi 
 else
     if [ $mounted -eq 0 ]; then
 	OTHERPKGDIR=${NFSSERVER}${OTHERPKGDIR}
     fi
 fi
+
+#########################
+##start collecting the repositories for os 
+if [ -z "$OSPKGDIR" ]; then
+    OSPKGDIR="$INSTALLDIR/$OSVER/$ARCH"
+fi
+    
+if [ "$KERNELDIR" != "" ]; then 
+    OSPKGDIR="$OSPKGDIR,$KERNELDIR"
+fi
+
+    OIFS=$IFS
+    IFS=$','
+    if ( pmatch "$OSVER" "ubuntu*" ); then
+        IFS=$(printf ',')
+    fi
+
+    array_ospkgdirs=($OSPKGDIR)   
+    IFS=$OIFS
+    array_empty os_path
+    index=0
+    for dir in  ${array_ospkgdirs[@]}  
+    do
+         
+        default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
+        OSPKGDIR="$OSPKGDIR" 
+        if [ $mounted -eq 0 ]; then
+            #OSPKGDIR="$OSPKGDIR" 
+            ospkgdir="$NFSSERVER$dir"
+        else 
+            ospkgdir="$dir"
+        fi
+        
+        # for the os base pkg dir(default_pkgdir) , there are some special cases.
+        # (1)for rhels6, there is one repodata in the os base dir; so keep it here, and handle the other cases below
+        # (2)for sles, we should specified the baseurl should be ./install/sles11/ppc64/1
+        # (3)for SL5, we should append the /SL
+        # (4) for other os, we just keep it here.
+        # For other pkg paths, we just keep it here.
+        if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
+            if ( pmatch "$OSVER" "sles*" ); then
+                OSPKGDIR="$OSPKGDIR/1"
+                ospkgdir="$ospkgdir/1"
+            elif ( pmatch "$OSVER" "SL5*" ); then
+                OSPKGDIR="$OSPKGDIR/SL"
+                ospkgdir="$ospkgdir/SL"
+            fi
+        fi
+        array_set_element os_path $index $ospkgdir
+         
+        if ( pmatch "$OSVER" "rhel*" ); then
+            #default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
+            if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
+          
+                if ( pmatch "$OSVER" "rhels6*" ); then
+                   if [ $ARCH == "ppc64" ]; then
+                       ospkgdir_ok="$ospkgdir/Server"
+                       index=$(expr $index + 1)          
+                       array_set_element os_path $index $ospkgdir_ok
+                   fi               
+ 
+                   if [ $ARCH == "x86_64" ]; then
+                        for arg in "Server" "ScalableFileSystem" "HighAvailability" "ResilientStorage" "LoadBalancer" 
+                        do
+                            ospkgdir_ok="$ospkgdir/$arg"
+                            index=$(expr $index + 1)          
+                            array_set_element os_path $index $ospkgdir_ok
+                        done
+                    fi               
+
+                elif ( pmatch "$OSVER" "rhels5*" ); then
+                     # for rhels5, the repodata is in ./Server, ./Cluster, ./CusterStorage, not in ./
+                     ospkgdir_ok="$ospkgdir/Server"
+                     array_set_element os_path $index $ospkgdir_ok
+               
+                     if [ $ARCH == "x86_64" ]; then
+                         for arg in "Cluster" "ClusterStorage"
+                         do
+                             ospkgdir_ok="$ospkgdir/$arg"
+                             index=$(expr $index + 1)          
+                             array_set_element os_path $index $ospkgdir_ok
+                         done
+                     fi   # x86_64
+                fi # if...elif..fi
+             fi  # eq default_pkgdir
+          fi    # match rhel*
+
+          index=$(expr $index + 1)          
+            
+    done    
+
+#fi
+
+
+if [ "$SDKDIR" != "" ]; then 
+    if [ $mounted -eq 0 ]; then
+        SDKDIR="$NFSSERVER/$SDKDIR"
+    fi
+fi
+
+##end collecting the repositories for os 
+#########################
 
 echo NFSSERVER=$NFSSERVER
 logger -p local4.info -t xcat "NFSSERVER=$NFSSERVER"
@@ -297,6 +418,115 @@ else
     fi
 fi
 
+###########
+##start generating the os pkg repositories
+if ( pmatch "$OSVER" "sles11*" && [ $haszypper -eq 1 ] ); then
+    old_repo=`zypper lr |grep -e "^[0-9]" | cut -f2 -d '|'`
+    for x in $old_repo
+    do
+        if ( ( pmatch "$x" "xCAT-$OSVER*" ) || ( pmatch "$x" "$OSVER-path*" ) || ( pmatch "$x" "xcat-otherpkgs*" ) ); then
+             result=`zypper rr "$x"`
+        fi
+    done
+    result=`zypper --non-interactive refresh 2>&1`
+
+    SUM=$(array_get_size os_path)
+    i=0
+   
+    if [ $SUM -eq 0 ]; then 
+
+        if [ $mounted -eq 0 ]; then
+	    path="http://$OSPKGDIR"
+        else
+            path="file://$OSPKGDIR"
+        fi
+        result=`zypper ar $path xCAT-$OSVER 2>&1`
+        if [ $? -ne 0 ]; then 
+	    if ( ! pmatch "$result" "*exists*" ); then 
+	        logger -t xcat -p local4.info "ospkgs: zypper ar $path xCAT-$OSVER\n    $result"
+	        echo "ospkgs: zypper ar $path xCAT-$OSVER"
+	        echo "    $result"
+	    fi
+        fi
+    else 
+        while [ $i -lt $SUM ]; do 
+            OSPKGDIR=$(array_get_element os_path $i)
+            if [ $mounted -eq 0 ]; then
+                path="http://$OSPKGDIR"
+            else
+                path="file://$OSPKGDIR"
+            fi
+            result=`zypper ar $path xCAT-$OSVER-"path$i"  2>&1`
+            if [ $? -ne 0 ]; then 
+	        if ( ! pmatch "$result" "*exists*" ); then 
+	            logger -t xcat -p local4.info "ospkgs: zypper ar $path xCAT-$OSVER-path$i\n    $result"
+	            echo "ospkgs: zypper ar $path xCAT-$OSVER-path$i"
+	            echo "    $result"
+	        fi
+            fi
+           
+            i=$((i+1)) 
+        done
+    fi
+
+    if [ "$SDKDIR" != "" ]; then
+        if [ $mounted -eq 0 ]; then
+	    SDKDIR="http://$SDKDIR"
+        else
+            SDKDIR="file://$SDKDIR"
+        fi
+        result=`zypper ar $SDKDIR xCAT-$OSVER-sdk 2>&1`
+        if [ $? -ne 0 ]; then 
+	    if ( ! pmatch "$result" "*exists*" ); then 
+		logger -t xcat -p local4.info "ospkgs: zypper ar $SDKDIR xCAT-$OSVER-sdk\n    $result"
+		echo "ospkgs: zypper ar $SDKDIR xCAT-$OSVER-sdk"
+		echo "    $result"
+	    fi
+	fi
+    fi
+    
+    result=`zypper --non-interactive --no-gpg-checks refresh 2>&1` 
+
+elif ( pmatch "$OSVER" "rhel*" && [ $hasyum -eq 1 ] ); then 
+    #remove old repo
+    mkdir -p /etc/yum.repos.d
+    if [ -r "/etc/yum.repos.d/local-repository.repo" ]; then
+        result=`rm /etc/yum.repos.d/local-repository.repo 2>&1`
+    fi
+    rm /etc/yum.repos.d/$OSVER-path*.repo >/dev/null 2>&1
+    result=`rm /etc/yum.repos.d/xCAT-$OSVER-path*.repo 2>&1`
+    result=`rm /etc/yum.repos.d/xCAT-otherpkgs*.repo 2>&1`
+
+    result=`yum clean all`
+
+    SUM=$(array_get_size os_path)
+    i=0
+  
+      while [ $i -lt $SUM ]; do 
+           REPOFILE="/etc/yum.repos.d/xCAT-$OSVER-path$i.repo"
+           OSPKGDIR=$(array_get_element os_path $i)
+
+
+           if [ ! -f $REPOFILE ]; then
+	       echo "[xCAT-$OSVER-path$i]" > $REPOFILE
+	       echo "name=xCAT-$OSVER-path$i" >> $REPOFILE
+	       if [ $mounted -eq 0 ]; then
+	           echo "baseurl=http://$OSPKGDIR" >> $REPOFILE
+	       else
+	           echo "baseurl=file://$OSPKGDIR" >> $REPOFILE
+	       fi
+	       echo "enabled=1" >> $REPOFILE
+	       echo "gpgcheck=0" >> $REPOFILE
+           fi
+           i=$((i+1)) 
+      done  
+fi
+
+##end generating the os pkg repositories
+###########
+
+
+###########
 
 # To support the #NEW_INSTALL_LIST# entry in otherpkgs.pkglist files,
 # multiple lists of packages are provided to this script in the form:
@@ -419,14 +649,24 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
                 fi
 		elif [ $hasapt -eq 1 ] ; then
 		    REPOFILE="$repo_base/xCAT-otherpkgs$index.list"
-		    
-	            if [ $mounted -eq 0 ]; then
-		        type=http
-	            else
-		        type=file
-	            fi
-
-			echo "deb $type://$whole_path /"  > $REPOFILE
+		    if [ -n "$OTHERPKGDIR" ];then
+                        if [ $mounted -eq 0 ]; then
+		            type=http
+	                else
+		            type=file
+	                fi
+                        echo "deb $type://$whole_path ./"  > $REPOFILE
+                    fi
+                    if [ -n "$OTHERPKGDIR_INTERNET" ];then
+                        OLDIFS=$IFS
+                        IFS=$','
+                        urlarray=($OTHERPKGDIR_INTERNET)
+                        for url in ${urlarray[@]}
+                        do
+                            echo "deb "$url >> $REPOFILE
+                        done
+                        IFS=$OLDIFS
+                    fi
 		fi 
 	        if [ $hasyum -eq 1 ]; then 
 	            #use yum
@@ -434,8 +674,8 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 		    if [ $? -eq 0 ]; then  
 		        rc=0
 		        array_set_element repo_path $index $path
-		    else
-		        rm $REPOFILE
+		    #else
+		        #rm $REPOFILE
 		    fi
 	        elif [ $haszypper -eq 1 ]; then
                     #use zypper
@@ -485,7 +725,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
               RETURNVAL=$? 
         fi
         logger -p local4.info -t xcat "$result"
-        echo "result"
+        echo "$result"
     elif [ $haszypper -eq 1 ]; then
         echo "zypper --non-interactive update --auto-agree-with-license"
 	result=`zypper --non-interactive update --auto-agree-with-license 2>&1`
@@ -494,15 +734,15 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         fi
         logger -p local4.info -t xcat "$result"
         echo "$result"
-	elif [ $hasapt -eq 1 ]; then
-		apt_get_update_if_repos_changed $REPOFILE
-		echo "apt-get -y upgrade"
-		result=`apt-get -y upgrade 2>&1`
-        	if [ $? -ne 0 ]; then
-                     RETURNVAL=$? 
-                fi
-		logger -p local4.info -t xcat "$result"
-		echo "$result"
+    elif [ $hasapt -eq 1 ]; then
+	apt_get_update_if_repos_changed $REPOFILE
+	echo "apt-get -y upgrade"
+	result=`apt-get -y upgrade 2>&1`
+       	if [ $? -ne 0 ]; then
+            RETURNVAL=$? 
+        fi
+	logger -p local4.info -t xcat "$result"
+	echo "$result"
     fi     
 
     #echo "repo_pkgs=$repo_pkgs,\nrepo_pkgs_preremove=$repo_pkgs_preremove,\nrepo_pkgs_postremove=$repo_pkgs_postremove"
@@ -587,7 +827,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     fi 
 
     #Handle the rest with rpm
-    if [ "$plain_pkgs" != "" ]; then 
+    if [ "$plain_pkgs" != "" -a -n "$OTHERPKGDIR" ]; then 
         echo "Warning: the packages $plain_pkgs could not be found in the repository, falling back to rpm command, did you forget to run createrepo?"
         logger -p local4.info -t xcat "Warning: the packages $plain_pkgs could not be found in the repository, falling back to rpm command, did you forget to run createrepo?"
         if [ $mounted -eq 0 ]; then
