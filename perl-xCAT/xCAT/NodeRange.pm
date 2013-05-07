@@ -190,11 +190,12 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
         %allnodehash = map { $_->{node} => 1 } @allnodeset;
     }
 	my $verify = (scalar(@_) == 1 ? shift : 1);
+  #print "atom=$atom, verify=$verify\n";
         my @nodes= ();
     #TODO: these env vars need to get passed by the client to xcatd
 	my $nprefix=(defined ($ENV{'XCAT_NODE_PREFIX'}) ? $ENV{'XCAT_NODE_PREFIX'} : 'node');
 	my $nsuffix=(defined ($ENV{'XCAT_NODE_SUFFIX'}) ? $ENV{'XCAT_NODE_SUFFIX'} : '');
-	if ($allnodehash{$atom}) {		#The atom is a plain old nodename
+	if ($verify && $allnodehash{$atom}) {		#The atom is a plain old nodename
 		return ($atom);
 	}
     if ($atom =~ /^\(.*\)$/) {     # handle parentheses by recursively calling noderange()
@@ -208,6 +209,7 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
      }
 
     # Try to match groups?
+    if ($verify) {
         unless ($grptab) {
            $grptab = xCAT::Table->new('nodegroup');
         }
@@ -269,6 +271,7 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
         }
      }
   }
+}
 
     if ($atom =~ m/[=~]/) { #TODO: this is the clunky, slow code path to acheive the goal.  It also is the easiest to write, strange coincidence.  Aggregating multiples would be nice
         my @nodes;
