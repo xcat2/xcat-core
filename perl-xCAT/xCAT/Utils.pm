@@ -3244,12 +3244,14 @@ sub filter_nodes{
     if (@args && ($cmd eq "rspconfig")) {
         if (!(grep /^(cec_off_policy|pending_power_on_side)/, @args))  {
             push @{$mpnodes}, @ngpfsp;
-            if (grep /^(network=|textid)/, @args) {
-                push @{$mpnodes}, @ngpbmc;
-            }    
         } else {
             push @{$fspnodes}, @ngpfsp;
         }
+        if (grep /^(network|textid)/, @args) {
+            push @{$mpnodes}, @ngpbmc;
+        } else {
+            push @{$bmcnodes}, @ngpbmc;
+        } 
     } elsif($cmd eq "getmacs") {
         if (@args && (grep /^-D$/,@args)) {
           push @{$fspnodes}, @ngpfsp;
@@ -3263,7 +3265,11 @@ sub filter_nodes{
             push @{$mpnodes}, @ngpfsp;
         }
     } elsif ($cmd eq "renergy") {
-        push @{$mpnodes}, @ngpbmc;
+        if (grep /^(relhistogram)/, @args) {
+            push @{$bmcnodes}, @ngpbmc;
+        } else {
+            push @{$mpnodes}, @ngpbmc;
+        }
         push @{$mpnodes}, @ngpfsp;
     } else {
       push @{$fspnodes}, @ngpfsp;
