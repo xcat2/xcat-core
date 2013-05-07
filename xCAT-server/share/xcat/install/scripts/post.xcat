@@ -98,12 +98,13 @@ do
 	sleep $RAND
 done
 echo "INSTALLDIR=$INSTALLDIR" >> /opt/xcat/xcatinfo
+
 #echo "REBOOT=TRUE" >> /opt/xcat/xcatinfo
 cd /xcatpost
 #gunzip xcatpost.tar.gz
 #tar -xvf xcatpost.tar
 #/xcatpost/#TABLE:nodelist:THISNODE:node#
-export PATH=/xcatpost:$PATH
+export PATH=$PATH:/xcatpost
 
 # use the run_ps subroutine to run the postscripts
 TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
@@ -184,10 +185,10 @@ chmod 755 /opt/xcat/xcatdsklspost
 TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /xcatpost/mypostscript`
 echo "$TMP" > /xcatpost/mypostscript
 
-/xcatpost/mypostscript
 export NODE=#TABLE:nodelist:THISNODE:node#
 export ARCH=#TABLE:nodetype:THISNODE:arch#
 addsiteyum
+/xcatpost/mypostscript
 sed -i 's/^serial/#serial/' /boot/grub/grub.conf
 sed -i 's/^terminal/#terminal/' /boot/grub/grub.conf
 if [ -z "$NODESTATUS" ] || [ "$NODESTATUS" != "0" -a   "$NODESTATUS" != "N"  -a  "$NODESTATUS" != "n" ]; then
