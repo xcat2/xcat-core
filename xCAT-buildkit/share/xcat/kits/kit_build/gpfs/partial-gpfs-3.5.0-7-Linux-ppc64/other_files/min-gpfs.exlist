@@ -1,5 +1,0 @@
-# Exclude list for building a minimal diskless image
-
-./usr/lpp/mmfs/include*
-./usr/lpp/mmfs/samples*
-./usr/lpp/mmfs/src*
