@@ -71,7 +71,13 @@ sub findme {
     if (defined $request->{nodetype} and $request->{nodetype}->[0] eq 'virtual') {
         return;
     }
-    my $arptable = `/sbin/arp -n`;
+    my $arptable;
+    if ( -e "/etc/debian_version") {
+        $arptable = `/usr/sbin/arp -n`;
+    }
+    else{ 
+        $arptable = `/sbin/arp -n`;
+    }
     my @arpents = split /\n/,$arptable;
     foreach  (@arpents) {
         if (m/^($ip)\s+\S+\s+(\S+)\s/) {
