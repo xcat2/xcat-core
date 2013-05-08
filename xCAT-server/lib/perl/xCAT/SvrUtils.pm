@@ -1121,7 +1121,12 @@ sub get_mac_by_arp ()
             if ( xCAT::Utils->isAIX() ) {
                 $output = `/usr/sbin/arp -a`;
             } else {
-                $output = `/sbin/arp -n`;
+                if ( -e "/etc/debian_version" ) {
+                    $output = `/usr/sbin/arp -n`;
+                }
+                else {
+                    $output = `/sbin/arp -n`;
+                }
             }
 
             my ($ip, $mac);
