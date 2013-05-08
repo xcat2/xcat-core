@@ -1437,7 +1437,13 @@ sub findme{
     my $ip = $request->{'_xcat_clientip'};
     xCAT::MsgUtils->message('S', "Profield nodes discover: _xcat_clientip is $ip.\n");
     my $mac = '';
-    my $arptable = `/sbin/arp -n`;
+    my $arptable;
+    if ( -e "/etc/debian_version" ){
+        $arptable = `/usr/sbin/arp -n`;
+    }
+    else {
+        $arptable = `/sbin/arp -n`;
+    }
     my @arpents = split /\n/,$arptable;
     foreach  (@arpents) {
         if (m/^($ip)\s+\S+\s+(\S+)\s/) {
