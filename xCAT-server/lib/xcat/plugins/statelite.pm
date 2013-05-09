@@ -318,8 +318,10 @@ sub process_request {
                     }
                 } else {
                     if ($tmpc[0] =~ m/link/) {
+                        if ($tmpc[1] != "/etc/mtab") {
                         $callback->({error=>[qq{Based on the option of $f, $fc should not use "link"-based options}], errorcode=>[1]});
                         return;
+                        }
                     }
                 }
                 if ( ($tmp[0] =~ m{persistent}) and ($tmpc[0] !~ m{persistent}) ) {
@@ -767,6 +769,9 @@ sub liteItem {
         # 1.  copy original contents if they exist to .default directory
         # 2.  remove file
         # 3.  create symbolic link to .statelite
+        if ($entry[1] == "/etc/mtab") {
+            $isChild = 0;
+        }
 
         if ($isChild == 0) {
             #check if the file has been moved to .default by its parent or by last liteimg, if yes, then do nothing
