@@ -229,7 +229,7 @@ chomp $::root;
 #
 #
 if (xCAT::Utils->isMN()) {
-  if ($::FORCE || $::genSSHNodeHostKeys || $::INITIALINSTALL || $::UPDATEINSTALL )
+  if ($::FORCE || $::genSSHNodeHostKeys || $::INITIALINSTALL )
   {
       &genSSHNodeHostKey;
   }
