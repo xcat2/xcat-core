@@ -4296,13 +4296,7 @@ sub process_request {
     $invreq{command} = ['rinv'];
     my $mac;
     my $ip = $request->{'_xcat_clientip'};
-    my $arptable;
-    if ( -e "/etc/debian_version" ) {
-        $arptable = `/usr/sbin/arp -n`;
-    }
-    else{
-        $arptable = `/sbin/arp -n`;
-    }
+    my $arptable = `/sbin/arp -n`;
     my @arpents = split /\n/,$arptable;
     foreach  (@arpents) {
       if (m/^($ip)\s+\S+\s+(\S+)\s/) {
