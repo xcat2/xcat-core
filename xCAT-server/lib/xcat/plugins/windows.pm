@@ -461,6 +461,12 @@ sub mkinstall
         print $shandle 'reg copy HKLM\system\CurrentControlSet\services\TCPIP6\parameters HKLM\csystem\ControlSet001\services\TCPIP6\parameters /f'."\r\n";
         print $shandle 'reg copy HKLM\system\CurrentControlSet\services\TCPIP6\parameters HKLM\csystem\ControlSet002\services\TCPIP6\parameters /f'."\r\n";
         print $shandle 'reg unload HKLM\csystem'."\r\n";
+	print $shandle "If EXIST %instdrv%\\winpostscripts GOTO wps\r\n";
+	print $shandle "goto up\r\n";
+	print $shandle ":wps\r\n";
+	print $shandle "mkdir c:\\xcatpost\r\n";
+	print $shandle "xcopy %instdrv%\\winpostscripts c:\\xcatpost\r\n";
+	print $shandle ":up\r\n";
 	print $shandle "If EXIST X:\\Windows\\system32\\WindowsPowerShell GOTO PSH\r\n";
         print $shandle "IF %PROCESSOR_ARCHITECTURE%==AMD64 GOTO x64\r\n";
         print $shandle "IF %PROCESSOR_ARCHITECTURE%==x64 GOTO x64\r\n";
