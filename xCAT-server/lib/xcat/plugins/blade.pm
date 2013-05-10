@@ -4742,7 +4742,7 @@ sub passwd {
             } elsif ($res =~ /The hdwr_svr daemon is not currently running/i) {
                 return ([1, "Update password for 'hdwr_svr' failed because the 'hdwr_svr' daemon is not currently running. Please recreate the connections between blades and hdwr_svr."]);
             }
-            my $hws_cmd = "$fsp_api -a reset_hws_pw -u $user -p $oldpass -P $pass -T 0 -t 0:$$att[3]:$$att[0]:$node_name: 2>&1";
+            my $hws_cmd = "$fsp_api -a reset_hws_pw -u HMC -p $oldpass -P $pass -T 0 -t 0:$$att[3]:$$att[0]:$node_name: 2>&1";
             #print "===>set_hws_cmd=$hws_cmd\n";
 
             $res = xCAT::Utils->runcmd($hws_cmd, -1);
