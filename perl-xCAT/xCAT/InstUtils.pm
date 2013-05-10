@@ -1132,6 +1132,10 @@ sub dolitesetup
         # $file could be full path file name or dir name
         # ex. /foo/bar/  or /etc/lppcfg
         my ($node, $option, $file) = split (/\|/, $line);
+
+		if (!$file) {
+			next;
+		}
         
         # ex. .../inst_root/foo/bar/  or .../inst_root/etc/lppcfg
         my $instrootfile = $instrootloc . $file;
