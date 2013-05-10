@@ -690,7 +690,7 @@ sub process_request {
 		my $mac;
 		my $ip = $request->{'_xcat_clientip'};
 		my $arptable;
-                if ( -e "/etc/debian_version") {
+                if ( -x "/usr/sbin/arp") {
                     $arptable = `/usr/sbin/arp -n`;
                 }
                 else{

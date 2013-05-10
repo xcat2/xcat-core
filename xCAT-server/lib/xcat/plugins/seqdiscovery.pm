@@ -72,7 +72,7 @@ sub findme {
         return;
     }
     my $arptable;
-    if ( -e "/etc/debian_version") {
+    if ( -x "/usr/sbin/arp") {
         $arptable = `/usr/sbin/arp -n`;
     }
     else{ 

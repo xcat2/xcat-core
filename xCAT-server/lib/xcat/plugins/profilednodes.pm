@@ -1438,7 +1438,7 @@ sub findme{
     xCAT::MsgUtils->message('S', "Profield nodes discover: _xcat_clientip is $ip.\n");
     my $mac = '';
     my $arptable;
-    if ( -e "/etc/debian_version" ){
+    if ( -x "/usr/sbin/arp" ){
         $arptable = `/usr/sbin/arp -n`;
     }
     else {
