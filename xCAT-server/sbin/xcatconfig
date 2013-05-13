@@ -229,7 +229,7 @@ chomp $::root;
 #
 #
 if (xCAT::Utils->isMN()) {
-  if ($::FORCE || $::genSSHNodeHostKeys || $::INITIALINSTALL || $::UPDATEINSTALL )
+  if ($::FORCE || $::genSSHNodeHostKeys || $::INITIALINSTALL )
   {
       &genSSHNodeHostKey;
   }
@@ -845,12 +845,10 @@ sub genSSHNodeHostKey
 
     my $hostkey  = "$::INSTALLDIR/postscripts/hostkeys/ssh_host_rsa_key";
     my $hostkey2 = "/etc/xcat/hostkeys/ssh_host_rsa_key";
-    if ((!-r $hostkey) && (!-r $hostkey2))   # if they do not exist
-    {
 
-        #create directories /etc/xcat/hostkeys and /install/postscripts/hostkeys
-        if (!-d "$::INSTALLDIR/postscripts/hostkeys") # dir for public keys
-        {
+    #create directories /etc/xcat/hostkeys and /install/postscripts/hostkeys
+    if (!-d "$::INSTALLDIR/postscripts/hostkeys") # dir for public keys
+    {
             my $cmd = "/bin/mkdir -m 755 -p $::INSTALLDIR/postscripts/hostkeys";
             my $outref = xCAT::Utils->runcmd("$cmd", 0);
             if ($::RUNCMD_RC != 0)
@@ -860,9 +858,9 @@ sub genSSHNodeHostKey
                      "Could not create $::INSTALLDIR/postscripts/hostkeys directory."
                      );
             }
-        }
-        if (!-d "/etc/xcat/hostkeys")    # directory for public/private keys
-        {
+    }
+    if (!-d "/etc/xcat/hostkeys")    # directory for public/private keys
+    {
             my $cmd = "/bin/mkdir -p /etc/xcat/hostkeys";
             my $outref = xCAT::Utils->runcmd("$cmd", 0);
             if ($::RUNCMD_RC != 0)
@@ -870,11 +868,11 @@ sub genSSHNodeHostKey
                 xCAT::MsgUtils->message('E',
                               "Could not create /etc/xcat/hostkeys directory.");
             }
-        }
+    }
 
-        # remove the old keys
-        if (-r $hostkey)
-        {
+    # remove the old keys
+    if (-r $hostkey)
+    {
             my $cmd = "/bin/rm $::INSTALLDIR/postscripts/hostkeys/ssh_host*";
             my $outref = xCAT::Utils->runcmd("$cmd", -1);
             if ($::RUNCMD_RC != 0)
@@ -884,11 +882,11 @@ sub genSSHNodeHostKey
                     "Could not remove ssh keys from $::INSTALLDIR/postscripts/hostkeys directory. They may not exist."
                     );
             }
-        }
+    }
 
-        # remove the old keys
-        if (-r $hostkey2)
-        {
+    # remove the old keys
+    if (-r $hostkey2)
+    {
             my $cmd = "/bin/rm /etc/xcat/hostkeys/ssh_host*";
             my $outref = xCAT::Utils->runcmd("$cmd", -1);
             if ($::RUNCMD_RC != 0)
@@ -898,134 +896,52 @@ sub genSSHNodeHostKey
                     "Could not remove ssh keys from /etc/xcat/hostkeys directory. They may not exist."
                     );
             }
-        }
+    }
 
-        #
-        # generate new hostkeys
-        #
-        xCAT::MsgUtils->message('I', "Generating new node hostkeys...");
-        xCAT::MsgUtils->message('I', "Generating SSH1 RSA Key...");
-        my $cmd =
+    #
+    # generate new hostkeys
+    #
+    xCAT::MsgUtils->message('I', "Generating new node hostkeys...");
+    xCAT::MsgUtils->message('I', "Generating SSH1 RSA Key...");
+    my $cmd =
           "/usr/bin/ssh-keygen -t rsa1 -f /etc/xcat/hostkeys/ssh_host_key -C '' -N ''";
-        my $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
+    my $outref = xCAT::Utils->runcmd("$cmd", 0);
+    if ($::RUNCMD_RC != 0)
+    {
             xCAT::MsgUtils->message('E', "Could not generate SSH1 RSA key.");
-        }
+    }
 
-        xCAT::MsgUtils->message('I', "Generating SSH2 RSA Key...");
-        $cmd =
+    xCAT::MsgUtils->message('I', "Generating SSH2 RSA Key...");
+    $cmd =
           "/usr/bin/ssh-keygen -t rsa -f /etc/xcat/hostkeys/ssh_host_rsa_key -C '' -N ''";
-        $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message('E', "Could not generate SSH2 RSA key.");
-        }
+    $outref = xCAT::Utils->runcmd("$cmd", 0);
+    if ($::RUNCMD_RC != 0)
+    {
+          xCAT::MsgUtils->message('E', "Could not generate SSH2 RSA key.");
+    }
 
-        xCAT::MsgUtils->message('I', "Generating SSH2 DSA Key...");
-        $cmd =
+    xCAT::MsgUtils->message('I', "Generating SSH2 DSA Key...");
+    $cmd =
           "/usr/bin/ssh-keygen -t dsa -f /etc/xcat/hostkeys/ssh_host_dsa_key -C '' -N ''";
         $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
+    if ($::RUNCMD_RC != 0)
+    {
             xCAT::MsgUtils->message('E', "Could not generate SSH2 DSA key.");
-        }
+    }
 
-        # copy the public keys to install directory
-        $cmd =
+    # copy the public keys to install directory
+    $cmd =
           "/bin/cp /etc/xcat/hostkeys/*.pub $::INSTALLDIR/postscripts/hostkeys/.";
-        $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
+    $outref = xCAT::Utils->runcmd("$cmd", 0);
+    if ($::RUNCMD_RC != 0)
+    {
             xCAT::MsgUtils->message('E', "$cmd not successful.");
-        }
-        else
-        {
-            verbose("$cmd is successful");
-        }
     }
     else
-    {    # keys exist  and not a request to regenerate
-          # so if private keys are in /install ( some migration)
-          # move old hostkeys keys if they exist in /install, to the
-          # new directory /etc/xcat/hostkeys & remove private keys from /install
-        if (-f "$::INSTALLDIR/postscripts/hostkeys/ssh_host_rsa_key")
-        {
-
-            # copy all keys to /etc/xcat/hostkeys directory
-            my $cmd =
-              "/bin/cp -p $::INSTALLDIR/postscripts/hostkeys/* /etc/xcat/hostkeys/.";
-            my $outref = xCAT::Utils->runcmd("$cmd", 0);
-            if ($::RUNCMD_RC != 0)
-            {
-                xCAT::MsgUtils->message('E', "$cmd not successful.");
-            }
-
-            # remove private keys from install dir, leave the public keys
-            if (-f "$::INSTALLDIR/postscripts/hostkeys/ssh_host_dsa_key")
-            {
-                my $cmd =
-                  "/bin/rm $::INSTALLDIR/postscripts/hostkeys/ssh_host_dsa_key";
-                my $outref = xCAT::Utils->runcmd("$cmd", 0);
-                if ($::RUNCMD_RC != 0)
-                {
-                    xCAT::MsgUtils->message('E', "$cmd not successful.");
-                }
-            }
-            if (-f "$::INSTALLDIR/postscripts/hostkeys/ssh_host_key")
-            {
-                my $cmd = "/bin/rm $::INSTALLDIR/postscripts/hostkeys/ssh_host_key";
-                my $outref = xCAT::Utils->runcmd("$cmd", 0);
-                if ($::RUNCMD_RC != 0)
-                {
-                    xCAT::MsgUtils->message('E', "$cmd not successful.");
-                }
-            }
-            if (-f "$::INSTALLDIR/postscripts/hostkeys/ssh_host_rsa_key")
-            {
-                my $cmd =
-                  "/bin/rm $::INSTALLDIR/postscripts/hostkeys/ssh_host_rsa_key";
-                my $outref = xCAT::Utils->runcmd("$cmd", 0);
-                if ($::RUNCMD_RC != 0)
-                {
-                    xCAT::MsgUtils->message('E', "$cmd not successful.");
-                }
-            }
-        }
-
-        # so if no public key in  /install/postscripts/hostkeys
-        # copy the /etc/xcat/hostkeys
-        # public keys to /install/postscripts/hostkeys
-        if (!(-f "$::INSTALLDIR/postscripts/hostkeys/ssh_host_rsa_key.pub"))
-        {
-
-            # rm any files
-            my $cmd = "/bin/rm $::INSTALLDIR/postscripts/hostkeys/*";
-            my $outref = xCAT::Utils->runcmd("$cmd", -1);
-            if ($::RUNCMD_RC != 0)
-            {
-                xCAT::MsgUtils->message('E',
-                                   "$cmd not successful. Files may not exist.");
-            }
-            else
-            {
-                verbose("$cmd is successful");
-            }
-
-            # copy the public keys to install directory
-            $cmd =
-              "/bin/cp /etc/xcat/hostkeys/*.pub $::INSTALLDIR/postscripts/hostkeys/.";
-            $outref = xCAT::Utils->runcmd("$cmd", 0);
-            if ($::RUNCMD_RC != 0)
-            {
-                xCAT::MsgUtils->message('E', "$cmd not successful.");
-            }
-            else
-            {
-                verbose("$cmd is successful");
-            }
-        }
+    {
+            verbose("$cmd is successful");
     }
+
 }
 
 # is_lsb_ubuntu return value indicates whether system appears to be Ubuntu.
@@ -1414,6 +1330,8 @@ sub initDB
           "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$MNname policy.rule=trusted;";
         $chtabcmds .=
               "$::XCATROOT/sbin/chtab priority=2.3 policy.commands=lsxcatd policy.rule=allow;";
+            $chtabcmds .=
+              "$::XCATROOT/sbin/chtab priority=2.1 policy.commands=remoteimmsetup policy.rule=allow;";
         my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
         if ($::RUNCMD_RC != 0)
         {
