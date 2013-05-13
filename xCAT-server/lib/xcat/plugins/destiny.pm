@@ -90,7 +90,10 @@ sub setdestiny {
     $chaintab = xCAT::Table->new('chain',-create=>1);
     my @nodes=@{$req->{node}};
     my $state = $req->{arg}->[0];
+    my $reststates;
+    ($state, $reststates) = split (/,/, $state, 2);
     my %nstates;
+    my %fstates;
     if ($state eq "enact") {
 	my $nodetypetab = xCAT::Table->new('nodetype',-create=>1);
 	my %nodestates;
@@ -461,6 +464,9 @@ sub setdestiny {
 	    $lstate = $nstates{$_};
 	} 
 	$chaintab->setNodeAttribs($_,{currstate=>$lstate});
+        if ($reststates) {
+           $chaintab->setNodeAttribs($_,{currchain=>$reststates});
+        }
     }
     return getdestiny($flag + 1);
 }
