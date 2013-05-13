@@ -14,7 +14,6 @@ export DH_COMPAT=5
 
 build:
 	dh_testdir
-	./modifyUtils `cat ../Version` `svn info | grep Revision | cut -d" " -f 2`
 	./db2man
 
 clean:
@@ -49,6 +48,7 @@ binary-arch: build install
 	chmod 644 `pwd`/debian/perl-xcat/opt/xcat/share/doc/man5/*
 	chmod 644 `pwd`/debian/perl-xcat/opt/xcat/share/man/man7/*
 	chmod 644 `pwd`/debian/perl-xcat/opt/xcat/share/doc/man7/*
+	./modifyUtils `cat ../Version` `svn info | grep Revision | cut -d" " -f 2`
 #	dh_installmenu
 #	dh_installdebconf	
 #	dh_installlogrotate
