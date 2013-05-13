@@ -136,6 +136,7 @@ pmatch ()
 
   return 1          # non-zero return code means string not matched by pattern
 }
+# Main 
 # parse the arguments
 ARGNUM=$#;
 if [ -z $1 ]; then
@@ -183,6 +184,7 @@ else
   esac
 fi
 
+ 
 # If on AIX node
 if [ ! `uname` = Linux ]; then
    #Get a new copy of xcataixpost on the node
@@ -491,11 +493,25 @@ if [ -n "$new_ms" ]; then
 fi
 
 
-# when called by the updatenode command
+# when called by the updatenode command  MODE=1,2
+# the nodename is passed in by xdsh in the NODE environment variable by xdsh.
+
 #modify the UPDATENODE flag to 1 
+# put NODE in /opt/xcat/xcatinfo
 if [ "$MODE" = "1" ] || [ "$MODE" = "2" ]; then
   TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1/g' /xcatpost/mypostscript`;
   echo "$TMP" > /xcatpost/mypostscript;
+  if [ ! -f /opt/xcat/xcatinfo ]; then
+	mkdir -p /opt/xcat
+	touch /opt/xcat/xcatinfo
+  fi
+  grep 'NODE' /opt/xcat/xcatinfo 2>&1 > /dev/null
+  if [ $? -eq 0 ]; then
+	sed -i "s/NODE=.*/NODE=$NODE/" /opt/xcat/xcatinfo
+  else
+	echo "NODE=$NODE" >> /opt/xcat/xcatinfo
+  fi
+#echo "xcatdsklspost:my nodename in the database is $NODE"
 fi
 if [ "$MODE" = "5" ]; then
   TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1\nUPDATESECURITY=1\nexport UPDATESECURITY/g' /xcatpost/mypostscript`;
