@@ -37,6 +37,7 @@ my %allnicips;
 my %allracks;
 my %allchassis;
 my %allswitches;
+
 # The array of all chassis which is special CMM 
 my %allcmmchassis;
 my %allothernics;
@@ -1436,7 +1437,13 @@ sub findme{
     my $ip = $request->{'_xcat_clientip'};
     xCAT::MsgUtils->message('S', "Profield nodes discover: _xcat_clientip is $ip.\n");
     my $mac = '';
-    my $arptable = `/sbin/arp -n`;
+    my $arptable;
+    if ( -x "/usr/sbin/arp" ){
+        $arptable = `/usr/sbin/arp -n`;
+    }
+    else {
+        $arptable = `/sbin/arp -n`;
+    }
     my @arpents = split /\n/,$arptable;
     foreach  (@arpents) {
         if (m/^($ip)\s+\S+\s+(\S+)\s/) {
