@@ -1,10 +1,15 @@
 #! /bin/sh
 
 MNTDIR="/sysroot"
+LOCAL="/.sllocal/localmnt"
+LOGDIR="/.sllocal/log"
 
-PARTLOG=/tmp/partlog
-PARTFILE=/tmp/partition
-SCRIPTFILE=/tmp/partscript
+LOG=${MNTDIR}/${LOGDIR}/localdisk.log
+PARTLOG=${MNTDIR}/${LOGDIR}/partlog
+PARTFILE=${MNTDIR}/${LOGDIR}/partition
+SCRIPTFILE=${MNTDIR}/${LOGDIR}/partscript
+LITEFILE=${MNTDIR}/${LOGDIR}/litefile
+DONEFLAG=${MNTDIR}/${LOGDIR}/DONE
 
 disk=0
 localspace=0
@@ -14,11 +19,29 @@ partnum=0
 isscript=0
 isformat=0
 
+# Create a tmpfs for log (this is necessary for nfs-based statelite)
+mount -t tmpfs rw ${MNTDIR}/$LOGDIR
+
 # Get the xCAT server from kernel parameter
 for i in `cat /proc/cmdline`; do
     KEY=`echo $i | awk -F= '{print $1}'`
+    echo "kernel parameter key is: $KEY" >>$LOG
     if [ x"$KEY" = x"XCAT" ]; then
         XCATSERVER=`echo $i | awk -F= '{print $2}'`
+    elif [ x"$KEY" = x"PARTITION_DOMOUNT_SLES" ]; then
+        DOPART="yes"
+        DOMOUNT="yes"
+        OS="sles"
+    elif [ x"$KEY" = x"PARTITION_DOMOUNT_RH" ]; then
+        DOPART="yes"
+        DOMOUNT="yes"
+        OS="rh"
+    elif [ x"$KEY" = x"PARTITION_SLES" ]; then
+        DOPART="yes"
+        OS="sles"
+    elif [ x"$KEY" = x"PARTITION_RH" ]; then
+        DOPART="yes"
+        OS="rh"
     elif [ x"$KEY" = x"PARTITION" ]; then
         DOPART="yes"
     fi
@@ -26,20 +49,25 @@ done
 
 if [ x"$DOPART" != x"yes" ]; then
     # do nothing
-    echo "local disk: do nothing"
+    echo "localdisk: do nothing." >>$LOG
     exit 0
 fi
+echo "Run localdisk configuration" >>$LOG
+echo "Run localdisk configuration"
 
 if [ x$XCATSERVER = x ]; then
-    echo "Error: Cannot find the xCAT server to configure local disk."
+    echo "Error: Cannot find the xCAT server to configure local disk." >>$LOG
+    echo "Error to configure localdisk"
     exit 1
 fi
+
+echo "DEBUG: XCATSERVER=[$XCATSERVER]; DOPART=[$DOPART]; DOMOUNT=[$DOMOUNT]; OS=[$OS]" >>$LOG
 
 xCATCmd () {
 # $1 is the xCAT server
 # $2 is the command
-    arch=`uname -m`
-    if [ x$arch = x"ppc64" ]; then
+    ARCH=`uname -m`
+    if [ x$ARCH = x"ppc64" -a x$OS = x"rh" ]; then
         echo "<xcatrequest>\n<command>${2}</command>\n</xcatrequest>" | /usr/sbin/chroot ${MNTDIR} /usr/bin/openssl s_client -quiet -connect ${1} -rand /bin/nice 2>/dev/null
     else
         echo "<xcatrequest>\n<command>${2}</command>\n</xcatrequest>" | LD_LIBRARY_PATH=${MNTDIR}/lib64:${MNTDIR}/usr/lib64 ${MNTDIR}/usr/bin/openssl s_client -quiet -connect ${1} -rand /bin/nice 2>/dev/null
@@ -47,6 +75,7 @@ xCATCmd () {
 }
 
 doconfigure () {
+    echo "DEBUG: enable=[$enable]; enablepart=[$enablepart]; disk=[$disk]; localspace=[$localspace]; swapspace=[$swapspace]; dev=[$dev]; parts=[$parts]; clear=[$clear];" >>$LOG
     # run the configure script
     if [ $isscript -eq 1 ]; then
         # run the script
@@ -63,11 +92,13 @@ doconfigure () {
             return
         fi
         if [ ! -r $dev ]; then
-            echo "Error: Cannot find the device $dev"
+            echo "Error: Cannot find the device $dev" >>$LOG
+            echo "Error to configure localdisk"
             exit 1
         fi
         if [ ! -r "/sbin/parted" -a ! "/usr/sbin/parted" ]; then
-            echo "Error: Cannot get parted command to do the partitioning for local disk"
+            echo "Error: Cannot get parted command to do the partitioning for local disk" >>$LOG
+            echo "Error to configure localdisk"
             exit 1
         fi
 
@@ -95,6 +126,7 @@ doconfigure () {
                 if [ x$devname = x"$dev" ]; then
                     #create the label
                     `parted -s $dev mklabel msdos`
+                    echo "parted -s $dev mklabel msdos" >>$LOG
                 fi
             fi
         done <  $PARTLOG
@@ -103,8 +135,8 @@ doconfigure () {
         
         partinfo=`parted -lsm`
         # Verbose message
-        echo "Original partition list"
-        echo $partinfo
+        echo "Original partition list" >>$LOG
+        echo $partinfo >>$LOG
         
         getpart=0
         while read PLINE
@@ -119,11 +151,11 @@ doconfigure () {
             if [ x"$name" = x"$dev" ]; then
                 getpart=1
                 localdisksize=`echo $PLINE | awk -F: '{print $2}'`
-                echo "localdisk: $localdisk - $localdisksize"
+                echo "localdisk: $localdisk - $localdisksize" >>$LOG
             elif [  $getpart -eq 1 -a x$name != "x" -a x$name != x"Error" ]; then
                 if [ x$clear != x ]; then
                     `parted $dev rm $name >/dev/null`
-                    echo "Remove the partion $name"
+                    echo "parted $dev rm $name" >>$LOG
                     sleep 1
                 else
                     partnum=`expr $partnum + 1`
@@ -132,7 +164,8 @@ doconfigure () {
         done < $PARTLOG 
 
         if [ $getpart -eq 0 ]; then
-            echo "Error: Cannot get partition information for $dev"
+            echo "Error: Cannot get partition information for $dev" >>$LOG
+            echo "Error to configure localdisk"
             exit 1
         fi
 
@@ -147,6 +180,7 @@ doconfigure () {
                 end=`echo $part |awk -F- '{print $2}'`
                 echo "Create partition $start - $end"
                 `parted -s $dev mkpart primary $start $end > /dev/null`
+                echo "parted -s $dev mkpart primary $start $end" >>$LOG
                 sleep 1
             else
                 # should be a number which is the percentage of the total
@@ -158,7 +192,8 @@ doconfigure () {
                 start=$endpoint$ldunit
                 endpoint=`expr $endpoint + $partsize`
                 end=$endpoint$ldunit
-                echo "Create partition $start - $end: $fstype"
+                echo "Create partition $start - $end: $fstype" >>$LOG
+                echo "parted -s $dev mkpart primary $start $end" >>$LOG
                 `parted -s $dev mkpart primary $start $end > /dev/null`
                 sleep 1
             fi
@@ -169,7 +204,8 @@ doconfigure () {
             fi
             partnum=`expr $partnum + 1`
             partdev=$dev$partnum
-            echo "Create filesystem $fstype on $partdev"
+            echo "Create filesystem $fstype on $partdev" >>$LOG
+            echo "mke2fs -q $partdev -t $fstype" >>$LOG
             `mke2fs -q $partdev -t $fstype > /dev/null`
             sleep 1
         done
@@ -177,12 +213,15 @@ doconfigure () {
         if [ x$fstype = x ]; then
             fstype=ext3
         fi
-        echo "Mount $dev to /.sllocal with $fstype"
-        `mount -t $fstype $dev $MNTDIR/.sllocal`
+        echo "Mount $dev to $LOCAL with $fstype" >>$LOG
+        echo "mount -t $fstype $dev $MNTDIR$LOCAL" >>$LOG
+        `mount -t $fstype $dev $MNTDIR$LOCAL`
     elif [ $swapspace -eq 1 ]; then
-        echo "Create swap on $dev"
+        echo "Create swap on $dev" >>$LOG
+        echo "  mkswap $dev" >>$LOG
         `mkswap $dev > /dev/null`
         echo "Enable swap on $dev"
+        echo "  swapon $dev" >>$LOG
         `swapon $dev`
     fi
 }
@@ -200,7 +239,8 @@ while [ ! -s $PARTFILE ]; do
     # the file is empty, we should retry several times
     RETRY=$(( $RETRY+1 ))
     if [ $RETRY -eq $MAX_RETRIES ]; then
-        echo "Error: Cannot get the partition configuration file from xCAT server."
+        echo "Error: Cannot get the partition configuration file from xCAT server." >>$LOG
+        echo "Error to configure localdisk"
         exit 1
     fi
 
@@ -222,7 +262,8 @@ do
         # the format of first line should be: type=script|format
         key=`echo \$firstline |awk -F= '{print \$1}'`
         if [ x$key != x"type" ]; then
-            echo "Error: Cannot recognize the format of the parition configuration file."
+            echo "Error: Cannot recognize the format of the parition configuration file." >>$LOG
+            echo "Error to configure localdisk"
             exit 1
         fi
         value=`echo \$firstline |awk -F= '{print \$2}'`
@@ -284,3 +325,74 @@ do
 done <  $PARTFILE
 doconfigure
 
+# exit when no DOMOUNT set
+if [ x$DOMOUNT = x ]; then
+    touch "$DONEFLAG"
+    exit 0
+fi
+
+# read configure info from litefile table
+xCATCmd $XCATSERVER litefile \
+	| sed  -e 's/<[^>]*>//g' \
+	| egrep -v '^ *$' 	\
+	| sed -e 's/^ *//' \
+	| awk -F: '{print $2}' \
+	| sed -e 's/^ *//' \
+	> $LITEFILE
+
+MAX_RETRIES=15
+RETRY=0
+while [ ! -s $LITEFILE ]; do
+    # the file is empty, we should retry several times
+    RETRY=$(( $RETRY+1 ))
+    if [ $RETRY -eq $MAX_RETRIES ]; then
+        echo "Error: Cannot get the partition configuration file from xCAT server." >>$LOG
+        echo "Error to configure localdisk"
+        exit 1
+    fi
+
+    SLI=$(( $RANDOM%50 ))
+    sleep $SLI
+
+    xCATCmd $XCATSERVER litefile \
+	| sed  -e 's/<[^>]*>//g' \
+	| egrep -v '^ *$' 	\
+	| sed -e 's/^ *//' \
+	| awk -F: '{print $2}' \
+	| sed -e 's/^ *//' \
+	> $LITEFILE
+done
+
+while read TYPE FPATH
+do
+    if [ x$TYPE = x"localdisk" ]; then
+        dir=`echo $FPATH | egrep '\/$'`
+        if [ x$dir = x ]; then
+            # it's a file
+            if [ ! -f ${MNTDIR}${FPATH} ]; then
+                touch ${MNTDIR}${FPATH}
+                echo "touch ${MNTDIR}${FPATH}" >>$LOG
+            fi 
+            if [ ! -f ${MNTDIR}${LOCAL}${FPATH} ]; then
+                touch ${MNTDIR}${LOCAL}${FPATH}
+                echo "touch ${MNTDIR}${LOCAL}${FPATH}" >>$LOG
+            fi 
+        else
+            # it's a dir
+            if [ ! -d ${MNTDIR}${FPATH} ]; then
+                mkdir -p ${MNTDIR}${FPATH}
+                echo "mkdir -p ${MNTDIR}${FPATH}" >>$LOG
+            fi
+            if [ ! -d ${MNTDIR}${LOCAL}${FPATH} ]; then
+                mkdir -p ${MNTDIR}${LOCAL}${FPATH}
+                echo "mkdir -p ${MNTDIR}${LOCAL}${FPATH}" >>$LOG
+            fi
+        fi
+
+        # do the mount
+        echo "mount --bind ${MNTDIR}${LOCAL}${FPATH} ${MNTDIR}${FPATH}" >>$LOG
+        mount --bind ${MNTDIR}${LOCAL}${FPATH} ${MNTDIR}${FPATH}>>$LOG 2>&1
+    fi
+done < $LITEFILE
+
+touch "$DONEFLAG"
