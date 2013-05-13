@@ -1510,6 +1510,7 @@ foreach my $tabname (keys(%xCAT::ExtTab::ext_tabspec)) {
   kitcomponent => { attrs => [], attrhash => {}, objkey => 'kitcompname' },
   rack => { attrs => [], attrhash => {}, objkey => 'rackname' },
   osdistro=> { attrs => [], attrhash => {}, objkey => 'osdistroname' },
+  osdistroupdate=> { attrs => [], attrhash => {}, objkey => 'osupdatename' },
 );
 
 
@@ -3177,6 +3178,35 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
         },
 );
 
+#############################
+#  osdistroupdate object #
+#############################
+@{$defspec{osdistroupdate}->{'attrs'}} = (
+        {attr_name => 'osupdatename',
+                tabentry => 'osdistroupdate.osupdatename',
+                access_tabentry => 'osdistroupdate.osupdatename=attr:osupdatename',
+        },
+        {attr_name => 'osdistroname',
+                tabentry => 'osdistroupdate.osdistroname',
+                access_tabentry => 'osdistroupdate.osupdatename=attr:osupdatename',
+        },
+        {attr_name => 'dirpath',
+                tabentry => 'osdistroupdate.dirpath',
+                access_tabentry => 'osdistroupdate.osupdatename=attr:osupdatename',
+        },
+        {attr_name => 'downloadtime',
+                tabentry => 'osdistroupdate.downloadtime',
+                access_tabentry => 'osdistroupdate.osupdatename=attr:osupdatename',
+        },
+	{attr_name => 'usercomment',
+               tabentry => 'osdistroupdate.comments',
+                access_tabentry => 'osdistroupdate.osupdatename=attr:osupdatename',
+        },
+);
+
+#############################
+#  kit object #
+#############################
 #############################
 #  kit object #
 #############################
