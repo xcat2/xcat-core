@@ -1,0 +1,42 @@
+#!/bin/sh
+
+#set -x
+
+#################################################################################
+#   Load functions and variables
+#
+. /etc/init.d/functions
+#
+################################################################################
+
+#################################################################################
+#
+#   main
+#
+{
+
+ping_test
+
+get_scripts_directory
+
+if [ ! -z $HOSTNAME ]; then
+    logmsg
+    logmsg "This hosts name is: $HOSTNAME"
+fi
+
+run_pre_install_scripts
+
+choose_autoinstall_script
+
+write_variables
+beep
+
+run_autoinstall_script
+
+} 2>&1 | send_monitor_stdout
+
+#
+#################################################################################
+
+exit 0
+
