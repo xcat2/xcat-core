@@ -21,7 +21,6 @@ Getopt::Long::Configure("pass_through");
 
 my $cmdname = "liteimg";
 my $statedir = ".statelite";
-my $lddir = ".sllocal";
 my $verbose = "0";
 sub handled_commands {
 	return {
@@ -319,8 +318,10 @@ sub process_request {
                     }
                 } else {
                     if ($tmpc[0] =~ m/link/) {
+                        if ($tmpc[1] != "/etc/mtab") {
                         $callback->({error=>[qq{Based on the option of $f, $fc should not use "link"-based options}], errorcode=>[1]});
                         return;
+                        }
                     }
                 }
                 if ( ($tmp[0] =~ m{persistent}) and ($tmpc[0] !~ m{persistent}) ) {
@@ -558,12 +559,6 @@ sub liteMe {
         xCAT::Utils->runcmd("mkdir -p $rootimg_dir/$statedir/tmpfs", 0, 1);
     }
 
-    # ceate the dir for local disk mount point
-    unless (-d "$rootimg_dir/$lddir") {
-        $callback->({info=>["creating $rootimg_dir/$lddir"]});
-        xCAT::Utils->runcmd("mkdir -p $rootimg_dir/$lddir", 0, 1);
-    }
-
     foreach my $line (keys %{$hashNewRef}) {
         liteItem($rootimg_dir, $line, 0, $callback);
         if($hashNewRef->{$line}) { # there're children 
@@ -774,6 +769,9 @@ sub liteItem {
         # 1.  copy original contents if they exist to .default directory
         # 2.  remove file
         # 3.  create symbolic link to .statelite
+        if ($entry[1] == "/etc/mtab") {
+            $isChild = 0;
+        }
 
         if ($isChild == 0) {
             #check if the file has been moved to .default by its parent or by last liteimg, if yes, then do nothing
