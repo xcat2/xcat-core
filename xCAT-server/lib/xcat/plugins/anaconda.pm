@@ -1804,7 +1804,7 @@ sub mksysclone
                 }
             }
 
-            $kcmdline .= " xcatd=$xcatmaster:$xcatdport";
+            $kcmdline .= " xcatd=$xcatmaster:$xcatdport SCRIPTNAME=$imagename";
             #$kcmdline .= " noipv6";
             # add the addkcmdline attribute  to the end
             # of the command, if it exists
