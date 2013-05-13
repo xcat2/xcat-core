@@ -617,7 +617,11 @@ sub mknetboot
         }
         # add the cmdline parameters for handling the local disk for stateless
         if ($cfgpart eq "yes") {
-            $kcmdline .= " PARTITION";
+            if ($statelite) {
+                $kcmdline .= " PARTITION_SLES";
+            } else {
+                $kcmdline .= " PARTITION_DOMOUNT_SLES";
+            }
         }
 
         my $initrdstr = "$rtftppath/initrd-stateless.gz";
