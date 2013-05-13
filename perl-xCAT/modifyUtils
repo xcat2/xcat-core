@@ -30,5 +30,10 @@ then
 	sed -e s/"#XCATVERSIONSUBHERE"/". '$VER'"/ -e s/"#XCATSVNBUILDSUBHERE"/". ' (${SVNREF}built $BUILDDATE)'"/ xCAT/Version.pm >xCAT/Version.pm.new
 	mv xCAT/Version.pm.new xCAT/Version.pm
 else
-	sed -i -e s/"#XCATVERSIONSUBHERE"/". '$VER'"/ -e s/"#XCATSVNBUILDSUBHERE"/". ' (${SVNREF}built $BUILDDATE)'"/ xCAT/Version.pm
+        if [ -f "/etc/debian_version" ];then
+            FILENAME="debian/perl-xcat/opt/xcat/lib/perl/xCAT/Version.pm"
+        else
+            FILENAME="xCAT/Version.pm"
+        fi
+	sed -i -e s/"#XCATVERSIONSUBHERE"/". '$VER'"/ -e s/"#XCATSVNBUILDSUBHERE"/". ' (${SVNREF}built $BUILDDATE)'"/ $FILENAME
 fi
