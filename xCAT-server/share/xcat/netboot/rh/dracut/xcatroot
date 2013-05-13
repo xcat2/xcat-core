@@ -56,6 +56,7 @@ elif [ -r /rootimg.gz ]; then
   else
     gzip -cd /rootimg.gz |cpio -idum
   fi
+  $NEWROOT/etc/init.d/localdisk
   echo Done
 elif [ -r /rootimg-statelite.gz ]; then
   echo Setting up RAM-root tmpfs for statelite mode.
