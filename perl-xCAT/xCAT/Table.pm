@@ -70,7 +70,7 @@ require xCAT::NotifHandler;
 
 my $dbworkerpid; #The process id of the database worker
 my $dbworkersocket;
-my $dbsockpath = "/tmp/xcat/dbworker.sock.".$$;
+my $dbsockpath = "/var/run/xcat/dbworker.sock.".$$;
 my $exitdbthread;
 my $dbobjsforhandle;
 my $intendedpid;
