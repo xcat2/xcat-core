@@ -91,6 +91,8 @@ sub setdestiny {
     my @nodes=@{$req->{node}};
     my $state = $req->{arg}->[0];
     my $reststates;
+
+    # to support the case that the state could be runimage=xxx,runimage=yyy,osimage=xxx
     ($state, $reststates) = split (/,/, $state, 2);
     my %nstates;
     my %fstates;
@@ -464,6 +466,8 @@ sub setdestiny {
 	    $lstate = $nstates{$_};
 	} 
 	$chaintab->setNodeAttribs($_,{currstate=>$lstate});
+        # if there are multiple actions in the state argument, set the rest of states (shift out the first one) 
+        # to chain.currchain so that the rest ones could be used by nextdestiny command
         if ($reststates) {
            $chaintab->setNodeAttribs($_,{currchain=>$reststates});
         }
