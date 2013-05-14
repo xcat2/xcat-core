@@ -1679,7 +1679,9 @@ sub addnet6
     #posix timezone rfc 4833/tzdb timezone
     #phase 3 will include whatever is required to do Netboot6.  That might be in the october timeframe for lack of implementations to test
     #boot url/param (rfc 59070)
-    push @netent, "    option domain-name \"".$netcfgs{$net}->{domain}."\";\n";
+    my $netdomain = $netcfgs{$net}->{domain};
+    unless ($netdomain) { $netdomain = $site_domain; }
+    push @netent, "    option domain-name \"".$netdomain."\";\n";
 	#  add domain-search
 	# We want something like "option domain-search "foo.com", "bar.com";"
 	my $domainstring = qq~"$netcfgs{$net}->{domain}"~;
@@ -1709,7 +1711,7 @@ sub addnet6
             push @netent, "    ddns-domainname \"".$ddnsdomain."\";\n";
             push @netent, "    zone $ddnsdomain. {\n";
         } else {
-			push @netent, "    zone $netcfgs{$net}->{domain}. {\n";
+			push @netent, "    zone $netdomain. {\n";
         }
     push @netent, "       primary $ddnserver; key xcat_key; \n";
     push @netent, "    }\n";
