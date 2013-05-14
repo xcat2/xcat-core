@@ -422,11 +422,6 @@ sub ishostinsubnet {
     if ($ip =~ /:/) {#ipv6
         $numbits=128;
     }
-    # IPv6 subnet with netmask postfix like /64
-    if ($subnet && ($subnet =~ /\//))
-    {
-        $subnet =~ s/\/.*$//;
-    }
     if ($mask) {
 	if ($mask =~ /\//) {
 	    $mask =~ s/^\///;
@@ -441,6 +436,10 @@ sub ishostinsubnet {
         } else {
             die "ishostinsubnet must either be called with a netmask or CIDR /bits notation";
         }
+    }
+    if ($subnet && ($subnet =~ /\//)) #remove CIDR suffix from subnet
+    {
+        $subnet =~ s/\/.*$//;
     }
     $ip = getipaddr($ip,GetNumber=>1);
     $subnet = getipaddr($subnet,GetNumber=>1);
