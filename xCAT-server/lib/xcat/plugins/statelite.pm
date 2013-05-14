@@ -318,9 +318,12 @@ sub process_request {
                     }
                 } else {
                     if ($tmpc[0] =~ m/link/) {
+                        # The /etc/mtab is a specific file which can only be handled by link option.
+                        # It need to be existed in rootimage and during the runing of statelite, 
+                        # and after running of statelite, it need to be linked to /proc/mount
                         if ($tmpc[1] != "/etc/mtab") {
-                        $callback->({error=>[qq{Based on the option of $f, $fc should not use "link"-based options}], errorcode=>[1]});
-                        return;
+                            $callback->({error=>[qq{Based on the option of $f, $fc should not use "link"-based options}], errorcode=>[1]});
+                            return;
                         }
                     }
                 }
@@ -769,6 +772,9 @@ sub liteItem {
         # 1.  copy original contents if they exist to .default directory
         # 2.  remove file
         # 3.  create symbolic link to .statelite
+
+        # the /etc/mtab should be handled every time even the parent /etc/ has been handled.
+        # if adding /etc/ to litefile, only tmpfs should be used. 
         if ($entry[1] == "/etc/mtab") {
             $isChild = 0;
         }
