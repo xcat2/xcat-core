@@ -2141,7 +2141,9 @@ sub defch
 
             #  get the @memberlist for static group
             #    - if provided - to use below
-            if ($grptype eq 'static')
+            #  if the static group is not defined in the nodegroup table
+            #  the grptype will be undef
+            if(!$grptype || ($grptype eq 'static'))
             {
 
                 # check for bad cmd line options
