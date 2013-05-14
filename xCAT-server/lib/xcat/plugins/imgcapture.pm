@@ -544,7 +544,7 @@ sub sysclone_prepclient {
     $rsp->{data}->[0] = qq{Preparing osimage $osimage on $node.};
     xCAT::MsgUtils->message("D", $rsp, $callback);
     
-    my $cmd = "export PERL5LIB=/usr/lib/perl5/site_perl/;LANG=C si_prepareclient --server $server --my-modules --yes";
+    my $cmd = "export PERL5LIB=/usr/lib/perl5/site_perl/;LANG=C si_prepareclient --server $server --no-uyok --yes";
     my $output = xCAT::Utils->runxcmd(
                                             {
                                             command => ["xdsh"], 
