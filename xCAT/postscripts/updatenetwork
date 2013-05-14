@@ -1,6 +1,17 @@
+#!/bin/bash
 . /tmp/post-install/variables.txt
 
 echo "Updating hostname to $HOSTNAME"
 sed -i "s/HOSTNAME=.*/HOSTNAME=$HOSTNAME/g" /etc/sysconfig/network
 
 hostname $HOSTNAME
+
+echo "Old ifcfg-$DEVICE is:"
+cat /etc/sysconfig/network-scripts/ifcfg-$DEVICE
+
+HWADDR=`ifconfig $DEVICE|grep HWaddr|awk '{print $5}'`
+sed -i "s/HWADDR=.*/HWADDR="$HWADDR"/g" /etc/sysconfig/network-scripts/ifcfg-$DEVICE
+sed -i "s/UUID=.*//g" /etc/sysconfig/network-scripts/ifcfg-$DEVICE
+
+echo "New ifcfg-$DEVICE is:"
+cat /etc/sysconfig/network-scripts/ifcfg-$DEVICE
