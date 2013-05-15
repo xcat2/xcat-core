@@ -636,13 +636,13 @@ sub clonezlinux {
 
     # Exit if default.conf does not exist
     if ( !(`test -e $default_conf && echo Exists`) ) {
-        println( $callback, '(Error) $default_conf does not exists' );
+        println( $callback, "(Error) $default_conf does not exists" );
         return;
     }
 
     # Exit if default.direct does not exist
     if ( !(`test -e $default_direct && echo Exists`) ) {
-        println( $callback, '(Error) $default_direct does not exists' );
+        println( $callback, "(Error) $default_direct does not exists" );
         return;
     }
 

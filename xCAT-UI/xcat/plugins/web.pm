@@ -2365,6 +2365,7 @@ sub web_mkzprofile() {
     my $size    = $request->{arg}->[3];
 
     # Create profile under /var/opt/xcat/profiles
+    `mkdir -p /var/opt/xcat/profiles`;
     my $var = "";
 `echo "# Configuration for virtual machines" > /var/opt/xcat/profiles/$profile.conf`;
     $var = $profile . "_diskpool";
@@ -2372,8 +2373,7 @@ sub web_mkzprofile() {
     $var = $profile . "_eckd_size";
     `echo "$var=$size" >> /var/opt/xcat/profiles/$profile.conf`;
 
-    # Move directory entry into /var/opt/xcat/profiles from /var/tmp
-    `mkdir -p /var/opt/xcat/profiles`;
+    # Move directory entry into /var/opt/xcat/profiles from /var/tmp    
     `mv /var/tmp/$profile.direct /var/opt/xcat/profiles`;
 
     my $info = "Profile successfully created/updated";
