@@ -95,6 +95,7 @@ my $bladexistsoid = '1.3.6.1.4.1.2.3.51.2.22.1.5.1.1.3'; #bladeExists
 my $bladeserialoid = '1.3.6.1.4.1.2.3.51.2.2.21.4.1.1.6'; #bladeHardwareVpdSerialNumber
 my $blademtmoid = '1.3.6.1.4.1.2.3.51.2.2.21.4.1.1.7'; #bladeHardwareVpdMachineType
 my $bladeuuidoid = '1.3.6.1.4.1.2.3.51.2.2.21.4.1.1.8'; #bladeHardwareVpdUuid
+my $componentuuidoid = '.1.3.6.1.4.1.2.3.51.2.2.23.1.1.1.13'; #componentInventoryUUID
 my $bladempveroid = '1.3.6.1.4.1.2.3.51.2.2.21.5.3.1.7'; #bladeSysMgmtProcVpdRevision
 my $bladempaveroid = '1.3.6.1.4.1.2.3.51.2.2.21.3.1.1.4';#mmMainApplVpdRevisonNumber
 my $bladempabuildidoid = '1.3.6.1.4.1.2.3.51.2.2.21.3.1.1.3';#mmMainApplVpdBuildId
@@ -2164,6 +2165,9 @@ sub inv {
     if ($item =~ /^uuid/ or $item =~ /^guid/) {
       if ($mptype eq 'cmm') {
           $data=$session->get(['.1.3.6.1.4.1.2.3.51.2.2.21.2.1.1.6', '1']);
+      } elsif ($slot =~ /^(.*):(.*)\z/) {
+	my $idx = "1.1.3.$1.3.$2"; #1.1 means chassis 1, 3.<bay> means blade <bay>, 3.<index> is the offset into the slot
+        $data=$session->get([$componentuuidoid,$idx]);
       } else {
           $data=$session->get([$bladeuuidoid,$slot]);
       }
@@ -2189,7 +2193,7 @@ sub inv {
       $updatehash{serial}=$data;
     }
 
-    if ($item =~ /^mac/) {
+    if ($item =~ /^mac/ and $slot !~ /:/) {
       foreach (0..3) {
         $data=$session->get([$macoids[$_],$slot]);
         if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
@@ -3618,7 +3622,7 @@ sub bladecmd {
   my @args = @_;
   my $error;
 
-  if ($slot > 0) {
+  if ($slot > 0 and not $slot =~ /:/) {
     my $tmp = $session->get([$bladexistsoid.".$slot"]);
     if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
     unless ($tmp eq 1) { return (1,"Target bay empty"); }
