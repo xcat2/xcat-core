@@ -227,6 +227,7 @@ ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/nodediscoverstart
 ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/nodediscoverstop
 ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/nodediscoverls
 ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/nodediscoverstatus
+ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/nodediscoverdef
 ln -sf ../bin/xcatclientnnr  $RPM_BUILD_ROOT/%{prefix}/bin/nodeaddunmged
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/nodepurge
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/nodechprofile
