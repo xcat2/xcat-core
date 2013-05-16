@@ -90,12 +90,7 @@ sub setdestiny {
     $chaintab = xCAT::Table->new('chain',-create=>1);
     my @nodes=@{$req->{node}};
     my $state = $req->{arg}->[0];
-    my $reststates;
-
-    # to support the case that the state could be runimage=xxx,runimage=yyy,osimage=xxx
-    ($state, $reststates) = split (/,/, $state, 2);
     my %nstates;
-    my %fstates;
     if ($state eq "enact") {
 	my $nodetypetab = xCAT::Table->new('nodetype',-create=>1);
 	my %nodestates;
@@ -282,8 +277,10 @@ sub setdestiny {
 	#print Dumper($req);
 	# if precreatemypostscripts=1, create each mypostscript for each node
 	# otherwise, create it during installation /updatenode
+        my $notmpfiles=0; # create tmp files if precreate=0
+        my $nofiles=0; # create files, do not return array
 	require xCAT::Postage;
-	xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq); 
+	xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq,$notmpfiles,$nofiles); 
        
         my %state_hash1; 
 	foreach my $tmpnode (keys(%state_hash)) {
@@ -466,11 +463,6 @@ sub setdestiny {
 	    $lstate = $nstates{$_};
 	} 
 	$chaintab->setNodeAttribs($_,{currstate=>$lstate});
-        # if there are multiple actions in the state argument, set the rest of states (shift out the first one) 
-        # to chain.currchain so that the rest ones could be used by nextdestiny command
-        if ($reststates) {
-           $chaintab->setNodeAttribs($_,{currchain=>$reststates});
-        }
     }
     return getdestiny($flag + 1);
 }

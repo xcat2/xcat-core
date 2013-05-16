@@ -55,9 +55,6 @@ sub process_request
     # do your processing here
     # return info
     
-    if($command eq 'postage'){
-        return postage($nodes, $callback);
-    }
 
     my $client;
     if ($::XCATSITEVALS{nodeauthentication}) { #if requiring node authentication, this request will have a certificate associated with it, use it instead of name resolution
@@ -83,51 +80,36 @@ sub process_request
     require xCAT::Postage;
     my $args = $request->{arg};
     my @scriptcontents;
+    my $version =0;
+    #  make the mypostscript.<nodename> file 
+    # or the mypostscript.<nodename>.tmp file if precreatemypostscripts=0
+    # right now @scriptcontents is null 
+    @scriptcontents = xCAT::Postage::makescript([$client],$state,$callback);
     if( defined($args) && grep(/version2/, @$args)) {
-        @scriptcontents = xCAT::Postage::makescript([$client],$state,$callback);  # the new method, use the template
-    } else {
-        #print "client:$client\n";
-        @scriptcontents = xCAT::Postage::makescript($client,$state,$callback); # the original method
+        $version =2 
     }
-    if (scalar(@scriptcontents)) {
+    # for version=2, we do not return the created mypostscript file.
+    # xcatdsklspost  must wget
+    # If not version=2, then we return the mypostscript file buffer.
+    if ($version != 2) {    
+        my $filename="mypostscript.$client";
+        my $cmd;
+        if (!(-e $filename)) {
+            $filename="mypostscript.$client.tmp";
+        }
+        $cmd="cat /tftpboot/mypostscripts/$filename";
+        @scriptcontents = xCAT::Utils->runcmd($cmd,0);
+        if ($::RUNCMD_RC != 0)
+        {
+            my $rsp = {};
+            $rsp->{error}->[0] = "Command: $cmd failed.";
+            xCAT::MsgUtils->message("S", $rsp, $::CALLBACK);
+        }
+ 
+       `logger -t xCAT -p local4.info "getpostscript: sending data"` ;
        $rsp->{data} = \@scriptcontents;
+       $callback->($rsp);
     }
-    $callback->($rsp);
+    return 0;
 }
 
-sub postage {
-    my $nodes = shift;
-    my $callback = shift;
-    require xCAT::Postage;
-    foreach my $node (@$nodes){
-        my @scriptcontents = xCAT::Postage::makescript($node,'postscripts',$callback);
-        my $ps = 0;
-        my $pbs = 0;
-        foreach(@scriptcontents){
-            chomp($_);
-            if($_ =~ "postscripts-start-here"){
-                $ps = 1;
-                next;
-              
-            }
-            if($_ =~ "postscripts-end-here"){
-                $ps = 0;
-                next;
-            }
-            if($_ =~ "postbootscripts-start-here"){
-                $pbs = 1;
-                next;
-            }
-            if($_ =~ "postbootscripts-end-here"){
-                $pbs = 0;
-                next;
-            }
-            if($ps eq 1){ 
-                $callback->({info => ["$node: postscript: $_"]});
-            }
-            if($pbs eq 1){
-                $callback->({info => ["$node: postbootscript: $_"]});
-            }
-        }
-    }  
-}
