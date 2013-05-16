@@ -485,7 +485,6 @@ sub mknetboot
 
         # create the node-specific post scripts
         #mkpath "/install/postscripts/";
-        #xCAT::Postage->writescript($node,"/install/postscripts/".$node, "netboot", $callback);
 
         # Copy the boot resource to /tftpboot and check to only copy once
         my $docopy = 0;

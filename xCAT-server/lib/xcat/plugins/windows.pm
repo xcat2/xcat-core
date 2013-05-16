@@ -400,7 +400,6 @@ sub mkinstall
 	
 		# create the node-specific post script DEPRECATED, don't do
 		#mkpath "/install/postscripts/";
-		#xCAT::Postage->writescript($node, "/install/postscripts/".$node, "install", $callback);
         if (! -r "$tftpdir/Boot/pxeboot.0" ) {
            $callback->(
             {error => [ "The Windows netboot image is not created, consult documentation on how to add Windows deployment support to xCAT"],errorcode=>[1]

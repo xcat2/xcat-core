@@ -933,7 +933,6 @@ sub mkinstall
 	
 		# create the node-specific post script DEPRECATED, don't do
 		#mkpath "/install/postscripts/";
-		#xCAT::Postage->writescript($node, "/install/postscripts/".$node, "install", $callback);
 
         if (
             (
