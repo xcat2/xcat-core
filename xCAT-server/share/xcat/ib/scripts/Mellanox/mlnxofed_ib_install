@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh 
 #
 #
 # Sample script to customize options for Mellonax OFED IB support
@@ -11,26 +11,72 @@
 #    - For diskless images:
 #        - Copy the packages to the images.
 #        - Install IB rpms
+#
+#
+#usage:
+#      Copy the xCAT mlnxofed_ib_install script file to postscripts directory: 
+#      cp /opt/xcat/share/xcat/ib/scripts/Mellanox/mlnxofed_ib_install /install/postscripts/mlnxofed_ib_install
+#   1. install the ofed driver for diskfull node
+#      1.1 set the postscript as one postbootscripts for the node
+#        chdef xcat01 -p postbootscripts=mlnxofed_ib_install,configiba
+#      1.2  copy the pkglist to the custom directory: 
+#         cp /opt/xcat/share/xcat/install/<ostype>/compute.<osver>.<arch>.pkglist /install/custom/install/<ostype>/compute.<osver>.<arch>.pkglist
+#         Edit your /install/custom/install/<ostype>/compute.<osver>.<arch>.pkglist and add: 
+#             #INCLUDE:/opt/xcat/share/xcat/ib/netboot/<ostype>/ib.<osver>.<arch>.pkglist#
+#      1.3 Make sure the related osimage use the customized pkglist. 
+#         lsdef -t osimage -o  <osver>-<arch>-install-compute
+#        if not, change it:
+#          chdef  -t osimage -o <osver>-<arch>-install-compute pkglist=/install/custom/install/<ostype>/compute.<osver>.<arch>.pkglist
+#      1.4 do the diskfull installation
+#   2. install the ofed driver for diskless images:
+#      2.1 copy the pkglist to the custom directory: 
+#            cp /opt/xcat/share/xcat/netboot/<ostype>/compute.<osver>.<arch>.pkglist /install/custom/netboot/<ostype>/compute.<osver>.<arch>.pkglist
+#         Edit your /install/custom/netboot/<ostype>/<profile>.pkglist and add: 
+#          #INCLUDE:/opt/xcat/share/xcat/ib/netboot/<ostype>/ib.<osver>.<arch>.pkglist#
+#       2.2 Add to postinstall scripts
+#       Edit your /install/custom/netboot/<ostype>/<profile>.postinstall and add: 
+#          installroot=$1 ofeddir=/install/post/otherpkgs/<osver>/<arch>/ofed/ NODESETSTATE=genimage /install/postscripts/mlnxofed_ib_install
+#       2.3 Make sure the related osimage use the customized pkglist and customized compute.postinsall 
+#          lsdef -t osimage -o  <osver>-<arch>-netboot-compute
+#       if not, change it:
+#           chdef  -t osimage -o <osver>-<arch>-netboot-compute pkglist=/install/custom/netboot/<ostype>/compute.<osver>.<arch>.pkglist postinstall=/install/custom/netboot/<ostype>/<profile>.postinstall
+#       2.4 run genimage
+#       genimage <osver>-<arch>-netboot-compute
+#    You can get more info from
+#     https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Managing_the_Mellanox_Infiniband_Network#Configure_IB_interfaces_during_Node_installation
+#
 
 OS=`uname`
 #installroot='/install/netboot/sles11.1/x86_64/compute/rootimg'
 INSTALL_DIR='/install'
-#OFED_DIR='/install/post/otherpkgs/sles11.1/x86_64/ofed/'
-OFED_DIR=$ofeddir
 
-if [ -z "$OFED_DIR" ]; then
-   # try to default
-   OFED_DIR=$INSTALL_DIR/post/otherpkgs/$OSVER/$ARCH/ofed
+#use arg for the OFED_DIR if defined,
+ARGNUM=$#
+if [ $ARGNUM -gt 1 ]; then
+    if [ $1 = "-s" ]; then
+        OFED_DIR=$2
+    fi
 fi
 
+#if arg is not defined, check ofeddir environment variable,
+if [ -z "$OFED_DIR" ]; then
+   OFED_DIR=$ofeddir
+   #if ofeddir is not defined, use default.
+   if [ -z "$OFED_DIR" ]; then
+       # try to default
+       OFED_DIR=$INSTALL_DIR/post/otherpkgs/$OSVER/$ARCH/ofed
+   fi
+fi
 
+# $mlnxofed_options is an environment variable passed to the mlnxofed_ib_install script. By default mlnxofed_option is '--without-32bit --force'
+if [ -z "$mlnxofed_options" ]; then
+   mlnxofed_options="--without-32bit --force"
+fi 
 
 if [ $NODESETSTATE != "genimage" ]; then
    # running as a postscript in a full-disk install or AIX diskless install
    installroot=""
 fi
-
-
 
 if [ $OS != "AIX" ]; then
     if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
@@ -42,11 +88,13 @@ if [ $OS != "AIX" ]; then
         #download_dir=`echo $OFED_DIR | cut -d '/' -f3-`
         #wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=5 ftp://$SITEMASTER/$download_dir/ 2> /tmp/wget.log
         download_dir=$OFED_DIR
-        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=6 --reject "index.html*"  --no-parent http://$MASTER$download_dir/ 2> /tmp/wget.log
-        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=6 --reject "index.html*"  --no-parent http://$MASTER$download_dir/.mlnx 2>> /tmp/wget.log
-        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=6 --reject "index.html*"  --no-parent http://$MASTER$download_dir/.supported_kernels 2>> /tmp/wget.log
+        num=`echo $download_dir | awk -F"/" '{if($NF==""){print NF-2}else{print NF-1}}'`
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=$num --reject "index.html*"  --no-parent http://$MASTER$download_dir/ 2> /tmp/wget.log
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=$num --reject "index.html*"  --no-parent http://$MASTER$download_dir/.mlnx 2>> /tmp/wget.log
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=$num --reject "index.html*"  --no-parent http://$MASTER$download_dir/.supported_kernels 2>> /tmp/wget.log
         #rpm -Uvh --force libibverbs-devel*.rpm 
-        perl -x mlnxofedinstall --without-32bit --force
+        #perl -x mlnxofedinstall --without-32bit --force
+        perl -x mlnxofedinstall $mlnxofed_options
         rm -Rf /tmp/ofed
     fi
 
@@ -55,7 +103,7 @@ if [ $OS != "AIX" ]; then
     # Assume we are on the same machine
         if [[ $OS == sles* ]] || [[ $OS == suse* ]] || [[ -f /etc/SuSE-release ]]; then
             mkdir $installroot/tmp/ofed_install
-            cp -r $OFED_DIR $installroot/tmp/ofed_install/
+            cp -r $OFED_DIR/ $installroot/tmp/ofed_install/
             #mount -t devtmpfs  /dev $installroot/dev/
             #mount -t sysfs  /sys $installroot/sys
             #mount -t proc /proc $installroot/proc
@@ -63,15 +111,17 @@ if [ $OS != "AIX" ]; then
             mount --bind  /sys $installroot/sys
             mount --bind /proc $installroot/proc
             chroot $installroot rpm -e --noscripts --allmatches mlnx-ofa_kernel-kmp-default 2>/dev/null 
-            chroot $installroot perl -x /tmp/ofed_install/ofed/mlnxofedinstall --without-32bit --force
+            #chroot $installroot perl -x /tmp/ofed_install/ofed/mlnxofedinstall --without-32bit --force
+            chroot $installroot perl -x /tmp/ofed_install/mlnxofedinstall $mlnxofed_options
             rm -rf $installroot/tmp/ofed_install
             umount $installroot/dev/
             umount $installroot/sys
             umount $installroot/proc
         else
             mkdir $installroot/tmp/ofed_install
-            cp -r $OFED_DIR $installroot/tmp/ofed_install/ 
-            chroot $installroot perl -x /tmp/ofed_install/ofed/mlnxofedinstall --without-32bit --force
+            cp -r $OFED_DIR/ $installroot/tmp/ofed_install/ 
+            #chroot $installroot perl -x /tmp/ofed_install/ofed/mlnxofedinstall --without-32bit --force
+            chroot $installroot perl -x /tmp/ofed_install/mlnxofedinstall $mlnxofed_options
             rm -rf $installroot/tmp/ofed_install
         fi
 
