@@ -7,6 +7,7 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 
 use strict;
+use IPC::Open2;
 use xCAT::Table;
 use Data::Dumper;
 use MIME::Base64;
@@ -118,6 +119,122 @@ sub ipIsDynamic {
 sub handled_commands
 {
     return {makedhcp => "dhcp",};
+}
+
+sub listnode
+{
+    my $node  = shift;
+    my $callback  = shift;
+    my $lines;
+    my $ipaddr = "";
+    my $hwaddr;
+    my $nname;
+    my $rsp;
+    my ($OMOUT,$OMIN,$OMOUT6,$OMIN6);
+
+    my $usingipv6;
+    my $omapiuser;
+    my $omapikey;
+    # Collect the omapi user and key from the passwd table
+    my $pwtab = xCAT::Table->new("passwd");
+    my @pws = $pwtab->getAllAttribs('key','username','password','cryptmethod','authdomain','comments','disable');
+    foreach (@pws) {
+        if ($_->{key} =~ "omapi") { #omapi key
+            $omapiuser = $_->{username};
+            $omapikey = $_->{password};
+        }
+     }
+    # Look through the networks table for networks with IPv6 format for address 
+    my $nettab = xCAT::Table->new("networks");
+    my @vnets = $nettab->getAllAttribs('net','mgtifname','mask','dynamicrange','nameservers','ddnsdomain', 'domain');
+    foreach (@vnets) {
+        if ($_->{net} =~ /:/) { #IPv6 detected
+            $usingipv6=1;
+        }
+     }
+
+    # open ipv4 omshell file handles
+    open2($OMOUT,$OMIN,"/usr/bin/omshell ");
+
+    print $OMIN "key "
+     . $omapiuser . " \""
+     . $omapikey . "\"\n";
+    print $OMIN "connect\n";
+    print $OMIN "new host\n";
+    print $OMIN "set name = \"$node\"\n";
+    print $OMIN "open\n";
+    print $OMIN "close\n";
+    close ($OMIN);
+    my $name = 0;
+    while (<$OMOUT>) {     # now read the output of sort(1)
+	chomp $_;
+        if ($_ =~ $node) {
+                if ($name) {
+			$nname = $_;
+			$nname =~ s/name = //;
+			$nname =~ s/"//g;
+                }
+                $name =1;
+                }
+        if ($_ =~ 'hardware-address') {
+		$hwaddr = $_;
+        }
+        elsif ($_ =~ 'ip-address') {
+                my ($ipname,$ip) = split /= /,$_;
+                chomp($ip);
+                my ($p1, $p2, $p3, $p4) = split(/\:/, $ip);
+                my $dp1 = hex($p1);
+                my $dp2 = hex($p2);
+                my $dp3 = hex($p3);
+                my $dp4 = hex($p4);
+		$ipaddr = "ip-address = $dp1.$dp2.$dp3.$dp4";
+        }
+    }
+    if ($ipaddr) { 
+	push @{$rsp->{data}}, "$nname: $ipaddr, $hwaddr";
+	xCAT::MsgUtils->message("I", $rsp, $callback);
+    }
+    close ($OMOUT);
+
+    if ($usingipv6) {
+         open2($OMOUT6,$OMIN6,"/usr/bin/omshell ");
+         print $OMOUT6 "port 7912\n";
+         print $OMOUT6 "connect\n";
+         print $OMIN6 "key "
+          . $omapiuser . " \""
+          . $omapikey . "\"\n";
+         print $OMIN6 "connect\n";
+         print $OMIN6 "new host\n";
+         print $OMIN6 "set name = \"$node\"\n";
+         print $OMIN6 "open\n";
+         print $OMIN6 "close\n";
+         close ($OMIN6);
+         $name = 0;
+         $ipaddr = "";
+         while (<$OMOUT6>) {     # now read the output of sort(1)
+	     chomp $_;
+             if ($_ =~ $node) {
+                if ($name) {
+			$nname = $_;
+			$nname =~ s/name = //;
+			$nname =~ s/"//g;
+                }
+                $name =1;
+                }
+             if ($_ =~ 'hardware-address') {
+		$hwaddr = $_;
+             }
+             elsif ($_ =~ 'ip-address') {
+                my ($ipname,$ipaddr) = split /= /,$_;
+                chomp($ipaddr);
+             }
+         }
+         if ($ipaddr) { 
+	     push @{$rsp->{data}}, "$nname: $ipaddr, $hwaddr";
+	     xCAT::MsgUtils->message("I", $rsp, $callback);
+         }
+     close ($OMOUT6);
+     }
 }
 
 sub delnode
@@ -693,26 +810,65 @@ sub delnode_aix
 sub preprocess_request
 {
     my $req = shift;
-    $callback = shift;
+    my $callback = shift;
+    my $rc       = 0;
     my $localonly;
-    #Exit if the packet has been preprocessed
+    
+    Getopt::Long::Configure("bundling");
+    $Getopt::Long::ignorecase = 0;
+    Getopt::Long::Configure("no_pass_through");
+
+    # Exit if the packet has been preprocessed
     if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
 
-    if (ref $req->{arg}) {
-        @ARGV       = @{$req->{arg}};
-        GetOptions('l' => \$localonly);
+    # Save the arguements in ARGV for GetOptions
+    if ($req && $req->{arg}) { @ARGV = @{$req->{arg}}; }
+    else { @ARGV = (); }
+
+    # define usage statement
+    my $usage="Usage: makedhcp -n\n\tmakedhcp -a\n\tmakedhcp -a -d\n\tmakedhcp -d noderange\n\tmakedhcp <noderange> [-s statements]\n\tmakedhcp -q\n\tmakedhcp [-h|--help]";
+
+    # Parse the options for makedhcp 
+    if (!GetOptions(
+                     'h|help'    => \$::opt_h,
+                     'a'  => \$::opt_a,
+                     'd'  => \$::opt_d,
+                     'l|localonly'  => \$localonly,
+                     'n'  => \$::opt_n,
+                     'r'  => \$::opt_r,
+                     's'  => \$::opt_r,
+                     'q'  => \$::opt_q
+                   )) 
+    {
+        # If the arguements do not pass GetOptions then issue error message and return 
+        my $rsp = {};
+        $rsp->{data}->[0] = $usage;
+        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+        return 1;
     }
 
-   if(grep /-h/,@{$req->{arg}}) {
-        my $usage="Usage: makedhcp -n\n\tmakedhcp -a\n\tmakedhcp -a -d\n\tmakedhcp -d noderange\n\tmakedhcp <noderange> [-s statements]\n\tmakedhcp [-h|--help]";
-        $callback->({data => [$usage]});
-        return;
-    }  
-    
+    # display the usage if -h
+    if ($::opt_h)
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] = $usage;
+        xCAT::MsgUtils->message("I", $rsp, $callback, 1);
+        return 0;
+    }
+
+    # check to see if -q is listed with any other options which is not allowed
+    if ($::opt_q and ($::opt_a || $::opt_d || $::opt_n || $::opt_r || $::opt_l || $::opt_s)) {
+        my $rsp = {};
+        $rsp->{data}->[0] = "The -q option cannot be used with other options.";
+        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+        return 1;
+     }
+
     unless (($req->{arg} and (@{$req->{arg}}>0)) or $req->{node})
     {
-	my $usage="Usage: makedhcp -n\n\tmakedhcp -a\n\tmakedhcp -a -d\n\tmakedhcp -d noderange\n\tmakedhcp <noderange> [-s statements]\n\tmakedhcp [-h|--help]";
-        $callback->({data => [$usage]});
+        my $rsp = {};
+        $rsp->{data}->[0] = $usage;
+        xCAT::MsgUtils->message("I", $rsp, $callback, 1);
         return;
     }
 
@@ -727,12 +883,15 @@ sub preprocess_request
     my $hasHierarchy=0;
 
     my @nodes=();
-    if (! grep /-n/,@{$req->{arg}}) {
+    # if the network option is specified
+    if (!$::opt_n) {
 	if ($req->{node}) {
 	    @nodes=@{$req->{node}};
 	}
-	elsif(grep /-a/,@{$req->{arg}}) {
-	    if (grep /-d$/, @{$req->{arg}})
+        # if option all 
+	elsif($::opt_a) {
+	    # if option delete - Delete all node entries, that were added by xCAT, from the DHCP server configuration.
+	    if ($::opt_d)
 	    {
 			my $nodelist = xCAT::Table->new('nodelist');
 			my @entries  = ($nodelist->getAllNodeAttribs([qw(node)]));
@@ -741,6 +900,7 @@ sub preprocess_request
 		    	push @nodes, $_->{node};
 			}
 	    }
+	    # Delete not specified so only add - Define all nodes to the DHCP server
 	    else
 	    {
 			my $mactab  = xCAT::Table->new('mac');
@@ -785,8 +945,7 @@ sub preprocess_request
 	}
 	}
 
-
-    if (($snonly == 1) && (! grep /-n/,@{$req->{arg}})) {
+    if (($snonly == 1) && (!$::opt_n)) {
         if (@nodes > 0) {
 	    my $sn_hash =xCAT::ServiceNodeUtils->getSNformattedhash(\@nodes,"xcat","MN"); 
 	    if ($localonly) {
@@ -816,7 +975,7 @@ sub preprocess_request
 		}
 	    }
 	}
-    } elsif (@nodes > 0 or grep /-n/,@{$req->{arg}}) { #send the request to every dhservers
+    } elsif (@nodes > 0 or $::opt_n) { #send the request to every dhservers
         $req->{'node'}=\@nodes;
        	@requests = ({%$req});    #Start with a straight copy to reflect local instance
 	unless ($localonly) {
@@ -862,6 +1021,13 @@ sub process_request
     my $req = shift;
     $callback = shift;
     #print Dumper($req);
+    if ($::opt_q)
+        {
+        foreach my $node ( @{$req->{node}} ) {
+                listnode($node,$callback);
+         }
+    return;
+    }
 
     #if current node is a servicenode, make sure that it is also a dhcpserver
     my $isok=1;
@@ -982,7 +1148,7 @@ sub process_request
    my $dhcplockfd;
    open($dhcplockfd,">","/tmp/xcat/dhcplock");
    flock($dhcplockfd,LOCK_EX);
-   if (grep /^-n$/, @{$req->{arg}})
+   if ($::opt_n)
     {
         if (-e $dhcpconffile)
         {
@@ -1265,9 +1431,9 @@ sub process_request
         $req->{node} = \@validnodes;
     }
 	
-    if ((!$req->{node}) && (grep /^-a$/, @{$req->{arg}}))
+    if ((!$req->{node}) && ($::opt_a))
     {
-        if (grep /-d$/, @{$req->{arg}}) #delete all entries
+        if ($::opt_d) #delete all entries
         {
             $req->{node} = [];
             my $nodelist = xCAT::Table->new('nodelist');
@@ -1422,7 +1588,7 @@ sub process_request
         $vpdhash = $vpdtab->getNodesAttribs($req->{node},['uuid']);
         foreach (@{$req->{node}})
         {
-            if (grep /^-d$/, @{$req->{arg}})
+            if ($::opt_d)
             {
                 if ( $^O eq 'aix')
                 {
