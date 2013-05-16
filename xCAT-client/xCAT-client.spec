@@ -207,7 +207,6 @@ ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/xCATWorld
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/makeroutes
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/snmove
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/lsxcatd
-ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/postage
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/slpdiscover
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/cfghost
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/cfgve
