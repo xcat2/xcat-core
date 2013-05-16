@@ -765,6 +765,7 @@ sub getcons {
       my $tpasswd; 
       if ($confdata->{vm}->{$node}->[0]->{vidpassword}) {
 	$tpasswd=$confdata->{vm}->{$node}->[0]->{vidpassword};
+      	$graphicsnode->removeAttribute("passwdValidTo");
       } else {
       $tpasswd=genpassword(16);
       my $validto=POSIX::strftime("%Y-%m-%dT%H:%M:%S",gmtime(time()+60));
