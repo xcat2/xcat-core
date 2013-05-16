@@ -4,7 +4,7 @@ B<nodediscoverls> -  List the discovered nodes
 
 =head1 SYNOPSIS
 
-B<nodediscoverls> [B<-t seq>|B<profile>|B<switch>|B<blade>|B<undef>|B<all>] [B<-l>] 
+B<nodediscoverls> [B<-t seq>|B<profile>|B<switch>|B<blade>|B<manual>|B<undef>|B<all>] [B<-l>] 
 
 B<nodediscoverls> [B<-u uuid>] [B<-l>]
 
@@ -25,7 +25,7 @@ particular method of discovery.
 
 =over 10
 
-=item B<-t seq|profile|switch|blade|undef|all>
+=item B<-t seq|profile|switch|blade|manual|undef|all>
 
 Display the nodes that have been discovered by the specified discovery method:
 
@@ -46,6 +46,10 @@ B<switch> - Switch-based discovery (used when the switch and switches tables are
 =item *
 
 B<blade> - Blade discovery (used for IBM Flex blades).
+
+=item *
+
+B<manual> - Manually discovery (used when defining node by nodediscoverdef command).
 
 =item *
 
@@ -149,4 +153,4 @@ B<nodediscoverls> -u 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB2 -l
 
 =head1 SEE ALSO
 
-L<nodediscoverstart(1)|nodediscoverstart.1>, L<nodediscoverstatus(1)|nodediscoverstatus.1>, L<nodediscoverstop(1)|nodediscoverstop.1>
+L<nodediscoverstart(1)|nodediscoverstart.1>, L<nodediscoverstatus(1)|nodediscoverstatus.1>, L<nodediscoverstop(1)|nodediscoverstop.1>, L<nodediscoverdef(1)|nodediscoverdef.1>
