@@ -17,6 +17,8 @@ BEGIN
 
 use strict;
 use Getopt::Long;
+use XML::Simple;
+$XML::Simple::PREFERRED_PARSER='XML::Parser';
 
 use lib "$::XCATROOT/lib/perl";
 use xCAT::NodeRange;
@@ -24,6 +26,7 @@ use xCAT::Table;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
 use xCAT::DiscoveryUtils;
+use xCAT::NodeRange qw/noderange/;
 
 use Time::HiRes qw(gettimeofday sleep);
 
@@ -34,6 +37,7 @@ sub handled_commands {
         nodediscoverstop => 'seqdiscovery',
         nodediscoverls => 'seqdiscovery',
         nodediscoverstatus => 'seqdiscovery',
+        nodediscoverdef => 'seqdiscovery',
     }
 }
 
@@ -75,7 +79,7 @@ sub findme {
     if ( -x "/usr/sbin/arp") {
         $arptable = `/usr/sbin/arp -n`;
     }
-    else{ 
+    else{
         $arptable = `/sbin/arp -n`;
     }
     my @arpents = split /\n/,$arptable;
@@ -618,7 +622,7 @@ sub nodediscoverls {
 Usage: 
     nodediscoverls
     nodediscoverls [-h|--help|-v|--version] 
-    nodediscoverls [-t seq|profile|switch|blade|undef|all] [-l] 
+    nodediscoverls [-t seq|profile|switch|blade|manual|undef|all] [-l] 
     nodediscoverls [-u uuid] [-l]
     ";
         $rsp = ();
@@ -651,15 +655,16 @@ Usage:
     }
 
     # If the type is specified, display the corresponding type of nodes
+    my @SEQDiscover;
     if ($type) {
-        if ($type !~ /^(seq|profile|switch|blade|undef|all)$/) {
+        if ($type !~ /^(seq|profile|switch|blade|manual|undef|all)$/) {
             $usage->($callback, "The discovery type \'$type\' is not supported.");
             return;
         }
     } elsif ($uuid) {
     } else {
         # Check the running of sequential discovery
-        my @SEQDiscover = xCAT::TableUtils->get_site_attribute("__SEQDiscover");
+        @SEQDiscover = xCAT::TableUtils->get_site_attribute("__SEQDiscover");
         if  ($SEQDiscover[0]) {
             $type = "seq";
         } else {
@@ -719,7 +724,7 @@ Usage:
     }
 
     my $rsp;
-    if ($type eq "sequential") {
+    if ($SEQDiscover[0] && $type eq "sequential") {
         push @{$rsp->{data}}, "Discovered $discoverednum node.";
     }
     if (@discoverednodes) {
@@ -802,6 +807,223 @@ Usage:
 
 }
 
+=head3 nodediscoverdef
+  Define the undefined entry from the discoverydata table to a specific node
+  Or clean the discoverydata table
+=cut
+sub nodediscoverdef {
+    my $callback = shift;
+    my $subreq = shift;
+    my $args = shift;
+
+    # The subroutine used to display the usage message
+    my $usage = sub {
+        my $cb = shift;
+        my $msg = shift;
+
+        my $rsp;
+        if ($msg) {
+            push @{$rsp->{data}}, $msg;
+            xCAT::MsgUtils->message("E", $rsp, $cb, 1);
+        }
+
+        my $usageinfo = "nodediscoverdef: Define the undefined discovery request, or clean the discovery entries in the discoverydata table (Which can be displayed by nodediscoverls command).
+Usage: 
+    nodediscoverdef -u uuid -n node
+    nodediscoverdef -r -u uuid
+    nodediscoverdef -r -t {seq|profile|switch|blade|manual|undef|all}
+    nodediscoverdef [-h|--help|-v|--version]";
+        $rsp = ();
+        push @{$rsp->{data}}, $usageinfo;
+        xCAT::MsgUtils->message("I", $rsp, $cb);
+    };
+
+    # Parse arguments
+    if ($args) {    
+        @ARGV = @$args;
+    }
+    my ($type, $uuid, $node, $remove, $help, $ver); 
+    if (!GetOptions(
+        'u=s' => \$uuid,
+        'n=s' => \$node,
+        't=s' => \$type,
+        'r' => \$remove,
+        'h|help' => \$help,
+        'V|verbose' => \$::VERBOSE,
+        'v|version' => \$ver)) {
+        $usage->($callback);
+        return;
+    }
+
+    if ($help) {
+        $usage->($callback);
+        return;
+    }
+    if ($ver) {
+        &displayver($callback);
+        return;
+    }
+
+    # open the discoverydata table for the subsequent using
+    my $distab = xCAT::Table->new("discoverydata");
+    unless ($distab) {
+        xCAT::MsgUtils->message("S", "Discovery Error: Could not open table: discoverydata.");
+        return;
+    }
+    
+    if ($remove) {
+        # handle the -r to remove the entries from discoverydata table
+        if (!($uuid || $type) || $node) {
+            $usage->($callback);
+            return;
+        }
+        if ($uuid && $type) {
+            $usage->($callback);
+            return;
+        }
+        
+        if ($uuid) {
+            # handle the -r -u <uuid>
+            my @disdata = $distab->getAllAttribsWhere("uuid='$uuid'", 'method');
+            unless (@disdata) {
+                xCAT::MsgUtils->message("E", {data=>["Cannot find discovery entry with uuid equals [$uuid]."]}, $callback);
+                return;
+            }
+            
+            $distab->delEntries({uuid => $uuid});
+            $distab->commit();
+        } elsif ($type) {
+            # handle the -r -t <...>
+            if ($type !~ /^(seq|profile|switch|blade|manual|undef|all)$/) {
+                $usage->($callback, "The discovery type \'$type\' is not supported.");
+                return;
+            }
+            
+            if ($type eq "all") {
+                # remove all the entries from discoverydata table
+                # there's no subroutine to remove all the entries from a table, so just make code to work around
+
+                # get all the entries first
+                my @disdata = $distab->getAllAttribs('uuid', 'method');
+                my %methodlist;
+                foreach my $ent (@disdata) {
+                    if ($ent->{'method'}) {
+                        # if the entry has 'method' att set, classify them and remove at once
+                        $methodlist{$ent->{'method'}} = 1;
+                    } else {
+                        # if 'method' is not set, remove the entry directly
+                        $distab->delEntries({uuid => $ent->{'uuid'}});
+                    }
+                }
+
+                # remove entries which have method att been set
+                foreach my $_ (keys %methodlist) {
+                    $distab->delEntries({method => $_});
+                }
+                $distab->commit();
+            } else {
+                # remove the specific type of discovery entries
+                if ($type =~ /^seq/) {
+                    $type = "sequential";
+                }
+                $distab->delEntries({method => $type});
+                $distab->commit();
+            }
+        }
+        xCAT::MsgUtils->message("I", {data=>["Removing discovery entries finished."]}, $callback);
+    } elsif ($uuid) {
+        # define the undefined entry to a node
+        if (!$node) {
+            $usage->($callback);
+            return;
+        }
+
+        # make sure the node is valid. 
+        my @validnode = noderange($node);
+        if ($#validnode != 0) {
+            xCAT::MsgUtils->message("E", {data=>["The node [$node] should be a valid xCAT node."]}, $callback);
+            return;
+        }
+        $node = $validnode[0];
+
+        # to define the a request to a node, reuse the 'discovered' command to update the node
+        # so the procedure will be that regenerate the request base on the attributes which stored in the discoverydata table
+
+        # get all the attributes for the entry from the discoverydata table
+        my @disattrs = ('uuid', 'node', 'method', 'discoverytime', 'arch', 'cpucount', 'cputype', 'memory', 'mtm', 'serial', 'nicdriver', 'nicipv4', 'nichwaddr', 'nicpci', 'nicloc', 'niconboard', 'nicfirm', 'switchname', 'switchaddr', 'switchdesc', 'switchport', 'otherdata');
+        my @disdata = $distab->getAllAttribsWhere("uuid='$uuid'", @disattrs);
+        unless (@disdata) {
+            xCAT::MsgUtils->message("E", {data=>["Cannot find discovery entry with uuid equals $uuid"]}, $callback);
+            return;
+        }
+
+        # generate the request which is used to define the node
+        my $request;
+        my $ent = @disdata[0];
+        my $interfaces;
+        my $otherdata;
+        foreach my $key (keys %$ent) {
+            if ($key =~ /(nicdriver|nicfirm|nicipv4|nichwaddr|nicpci|nicloc|niconboard|switchaddr|switchname|switchport)/) {
+                # these entries are formatted as: eth0!xxx,eth1!xxx. split it and generate the request as eth0 {...}, eth1 {...}
+                my @ifs = split (/,/, $ent->{$key});
+                foreach (@ifs) {
+                    my ($if, $value) = split('!', $_);
+                    my $origname = $key;
+                    if ($key eq "nicdriver") {
+                        $origname = "driver";
+                    } elsif ($key eq "nicfirm") {
+                        $origname = "firmdesc";
+                    } elsif ($key eq "nicipv4") {
+                        $origname = "ip4address";
+                    } elsif ($key eq "nichwaddr") {
+                        $origname = "hwaddr";
+                    } elsif ($key eq "nicpci") {
+                        $origname = "pcidev";
+                    } elsif ($key eq "nicloc") {
+                        $origname = "location";
+                    } elsif ($key eq "niconboard") {
+                        $origname = "onboardeth";
+                    } 
+                    push @{$interfaces->{$if}->{$origname}}, $value;
+                }
+            } elsif ($key eq "otherdata") {
+                # this entry is just keep as is, so translate to hash is enough
+                $otherdata = eval { XMLin($ent->{$key}, SuppressEmpty=>undef,ForceArray=>1) };
+            } elsif ($key eq "switchdesc") {
+                # just ingore the switchdesc, since it include ','
+            }else {
+                # for general attrs which just have one first level
+                $request->{$key} = [$ent->{$key}];
+            }
+        }
+
+        # add the interface part to the request hash
+        if ($interfaces) {
+            foreach (keys %$interfaces) {
+                $interfaces->{$_}->{'devname'} = [$_];
+                push @{$request->{nic}}, $interfaces->{$_};
+            }
+        }
+
+        # add the untouched part to the request hash
+        if ($otherdata) {
+            foreach (keys %$otherdata) {
+                $request->{$_} = $otherdata->{$_};
+            }
+        }
+
+        # call the 'discovered' command to update the request to a node
+        $request->{command}=['discovered'];
+        $request->{node} = [$node];
+        $request->{discoverymethod} = ['manual'];
+        $request->{updateswitch} = ['yes'];
+        $subreq->($request);
+        xCAT::MsgUtils->message("I", {data=>["Defined [$uuid] to node $node."]}, $callback);
+    } else {
+        $usage->($callback);
+        return;
+    }
+}
 
 sub process_request {
     my $request = shift;
@@ -821,6 +1043,8 @@ sub process_request {
         nodediscoverls($callback, $args);
     } elsif ($command eq "nodediscoverstatus") {
         nodediscoverstatus($callback, $args);
+    } elsif ($command eq "nodediscoverdef") {
+        nodediscoverdef($callback, $subreq, $args);
     }
 }
 
