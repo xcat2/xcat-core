@@ -80,34 +80,26 @@ sub process_request
     my $args = $request->{arg};
     my @scriptcontents;
     my $version =0;
-    #  make the mypostscript.<nodename> file 
-    # or the mypostscript.<nodename>.tmp file if precreatemypostscripts=0
-    # right now @scriptcontents is null 
-    @scriptcontents = xCAT::Postage::makescript([$client],$state,$callback);
     if( defined($args) && grep(/version2/, @$args)) {
         $version =2 
     }
-    # for version=2, we do not return the created mypostscript file.
-    # xcatdsklspost  must wget
-    # If not version=2, then we return the mypostscript file buffer.
+    my $notmpfiles;
+    my $nofiles; 
+    # If not version=2, then we return the mypostscript file  in an array.
     if ($version != 2) {    
-        my $filename="mypostscript.$client";
-        my $cmd;
-        if (!(-e $filename)) {
-            $filename="mypostscript.$client.tmp";
-        }
-        $cmd="cat /tftpboot/mypostscripts/$filename";
-        @scriptcontents = xCAT::Utils->runcmd($cmd,0);
-        if ($::RUNCMD_RC != 0)
-        {
-            my $rsp = {};
-            $rsp->{error}->[0] = "Command: $cmd failed.";
-            xCAT::MsgUtils->message("S", $rsp, $::CALLBACK);
-        }
- 
+      $notmpfiles=0;  # does not matter not making files
+      $nofiles=1; # do not create /tftpboot/mypostscript/mypostscript.<nodename>
+      @scriptcontents = xCAT::Postage::makescript([$client],$state,$callback,$notmpfiles,$nofiles);
        `logger -t xCAT -p local4.info "getpostscript: sending data"` ;
        $rsp->{data} = \@scriptcontents;
        $callback->($rsp);
+    } else {  # version 2, make files, do not return array
+       #  make the mypostscript.<nodename> file 
+       # or the mypostscript.<nodename>.tmp file if precreatemypostscripts=0
+       # xcatdsklspost will wget the file
+       $notmpfiles=0;
+       $nofiles=0;
+       xCAT::Postage::makescript([$client],$state,$callback,$notmpfiles,$nofiles);
     }
     return 0;
 }
