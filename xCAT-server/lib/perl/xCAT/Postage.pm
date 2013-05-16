@@ -164,9 +164,18 @@ sub makescript {
   my $notmpfiles     = shift;
   my $nofiles     = shift;
   $tmplerr=undef; #clear tmplerr since we are starting fresh
-  my %namedargs = @_; #further expansion of this function will be named arguments, should have happened sooner.
- 
-  my $installroot; 
+
+  #
+  # check if nofiles = 1 , then there should be only one node input
+  # 
+  my $arraySize = @$nodes;
+  if ((defined($nofiles)) && ($nofiles == 1) && ($arraySize > 1)) { 
+        my $rsp;
+        $rsp->{data}->[0]= "makescript called with nofiles=$nofiles, but more than one node input. This is a software error.";
+        xCAT::MsgUtils->message("SE", $rsp, $callback,1);
+        return ;
+  } 
+  my $installroot="/install";   # set default 
   my @entries =  xCAT::TableUtils->get_site_attribute("installdir"); 
   if($entries[0]) {
        $installroot = $entries[0];
@@ -180,7 +189,7 @@ sub makescript {
   unless ( -r "$tmpl") {
          my $rsp;
          $rsp->{data}->[0]= "site.precreatemypostscripts is set to 1 or yes. No mypostscript template exists in directory /install/postscripts or $::XCATROOT/share/xcat/templates/mypostscript/mypostscript.tmpl.\n";
-         xCAT::MsgUtils->message("E", $rsp, $callback,1);
+         xCAT::MsgUtils->message("SE", $rsp, $callback,1);
          return ;
   }
 
