@@ -113,7 +113,12 @@ sub create_mypostscript_or_not {
 	
 
     Arguments:
-       hostname 
+       array of nodes
+       notmpfiles - ignore the settings in site precreatepostscripts and
+                   only create mypostscript.<nodename>.  Do no use the .tmp
+                   extension
+       nofiles -  do not create mypostscript.<nodename> files, return the file
+                  contents in an array.
     Returns:
     Globals:
         %::GLOBAL_TAB_HASH: in subvars_for_mypostscript(),
