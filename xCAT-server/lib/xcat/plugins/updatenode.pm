@@ -21,6 +21,7 @@ use xCAT::ServiceNodeUtils;
 use xCAT::NetworkUtils;
 use xCAT::InstUtils;
 use xCAT::CFMUtils;
+use xCAT::Postage;
 use Getopt::Long;
 use xCAT::GlobalDef;
 use Sys::Hostname;
@@ -894,9 +895,13 @@ sub updatenode
 
     }
 
-    #if precreatemypostscripts=1, create each mypostscript for each node
-    require xCAT::Postage;
-    xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq);
+    #create each /tftpboot/mypostscript/mypostscript.<nodename> for each node
+    # This first removes the old one if precreatemypostscripts =0 or undefined
+    # call create files but no tmp files
+    my $notmpfiles=1;
+    my $nofiles=0;
+    #my $nofiles=1;
+   my $mypostscriptfile= xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq,$notmpfiles,$nofiles);
 
     # convert the hashes back to the way they were passed in
     my $flatreq = xCAT::InstUtils->restore_request($request, $callback);
@@ -1121,6 +1126,28 @@ sub updatenode
             xCAT::TableUtils->setUpdateStatus(\@::FAILEDNODES, $stat);
                       
 	 }
+    #  if site.precreatemypostscripts = not 1 or yes or undefined,
+    # remove all the
+    # node files in the noderange in  /tftpboot/mypostscripts
+     my $removeentries=0;
+     my @entries = 
+         xCAT::TableUtils->get_site_attribute("precreatemypostscripts");
+     if ($entries[0] ) {  # not 1 or yes and defined
+       $entries[0] =~ tr/a-z/A-Z/;
+       if ($entries[0] !~ /^(1|YES)$/ ) {
+         $removeentries=1; 
+       }
+     } else {  # or not defined
+         $removeentries=1; 
+     }
+ 
+     if ($removeentries ==1) { 
+         my $tftpdir = xCAT::TableUtils::getTftpDir();
+         foreach my $n (@$nodes ) {
+               unlink("$tftpdir/mypostscripts/mypostscript.$n");
+         }
+     }
+
     return 0;
 }
 

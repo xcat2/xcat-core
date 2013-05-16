@@ -47,24 +47,28 @@ download_postscripts()
     fi
     max_retries=5
     retry=0
-    rc=1 
+    rc=1  # this is a fail return 
     while [ 0 -eq 0 ]; do
 	
-        #wget -N --waitretry=10 --random-wait -T 60 http://$server$INSTALLDIR/postscripts.tgz  -P /xcatpost 2> /tmp/wget.log
-        #rc=$?
-        
-	#if [ $rc -eq 0 ]; then
-	#    return 0;
-        #else 
-            wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$server$INSTALLDIR/postscripts/ -P /xcatpost 2> /tmp/wget.log
-            rc=$?
-        
-	   if [ $rc -eq 0 ]; then
-	       return 0;
+       export LANG=C; wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$server$INSTALLDIR/postscripts/ -P /xcatpost 2> /tmp/wget.log
+         rc=$?
+         if [ $rc -eq 0 ]; then   
+           # return from wget was 0 but some OS do not return errors, so we
+           # have additional checks for
+           # failed: Connection httpd not running
+           # 404: Not Found  - if directory does not exist
+           grep -i "failed: Connection " /tmp/wget.log 
+           rc1=$?
+           grep -i "404: Not Found" /tmp/wget.log 
+           rc2=$?
+           # check to see no errors at all, grep returns 1
+           if [ $rc1 -eq 1 ] && [ $rc2 -eq 1 ]; then   
+              return 0 
            fi
-        #fi
+         fi
 
 	retry=$(($retry+1))
+        logger -t xCAT -p local4.err "download_postscripts retry $retry"
 	if [ $retry -eq $max_retries ]; then
             break
 	fi
@@ -80,46 +84,33 @@ download_mypostscript()
 {
     server=$1
     node=$2
-    postfix=$3
-    max_retries=$4
-    TFTPDIR=$5
+    max_retries=$3
+    TFTPDIR=$4
     if [ -z $server ]; then
 	return 1;
     fi
     if [ -z "$TFTPDIR" ]; then
         TFTPDIR="/tftpboot"
     fi
-    #max_retries=2
     retry=0
     rc=1
  
 
-    #node=`hostname`
     while [ 0 -eq 0 ]; do
-        if [ $postfix -eq 0 ]; then	
-            wget -N --waitretry=10 --random-wait -T 60 http://$server$TFTPDIR/mypostscripts/mypostscript.$node  -P /xcatpost 2>> /tmp/wget.log
-            rc=$?
-            if [ $rc -eq 0 ]; then
+        wget -N --waitretry=10 --random-wait -T 60 http://$server$TFTPDIR/mypostscripts/mypostscript.$node  -P /xcatpost 2>> /tmp/wget.log
+        rc=$?
+        # if no error and the file  was downloaded
+        if [ $rc -eq 0 ] && [ -f /xcatpost/mypostscript.$node ]; then
                 mv /xcatpost/mypostscript.$node /xcatpost/mypostscript
 	        return 0;
-            fi
-
-        elif [ $postfix -eq 1 ];then
-            wget -N --waitretry=10 --random-wait -T 60 http://$server$TFTPDIR/mypostscripts/mypostscript.$node.tmp  -P /xcatpost 2>> /tmp/wget.log
-            rc=$?
-            if [ $rc -eq 0 ]; then
-                mv /xcatpost/mypostscript.$node.tmp /xcatpost/mypostscript
-	        return 0;
-            fi
         fi
+
         
 	retry=$(($retry+1))
 	if [ $retry -eq $max_retries ]; then
             break
 	fi
 
-	#SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*5)}')
-        #sleep $SLI
     done
     return $rc
 }
@@ -152,7 +143,7 @@ else
         else
           if [ $2 = "-M" ]; then
             P_SIP=$3
-            new_ms=$P_SIP
+            new_ms=$P_SIP    # -M means we will update xcatinfo file XCATSERVER
           fi
         fi
       fi
@@ -248,21 +239,40 @@ if [ "$MODE" = "4" ]; then # for statelite mode
         logger -t xCAT -p local4.err "xcatdsklspost:xCAT management server IP can't be determined.\nexiting...";
         exit;
     fi
-else # for common mode
-    downloaded=0;
-    #try the -m if it is specified, -m is passed in the updatenode command
-    if [ $downloaded -eq 0 ]; then
-        if [ "XX$P_SIP" != "XX" ]; then
-            SIP=$P_SIP
-    	     download_postscripts $SIP
-            if [ $? -eq 0 ]; then 
-                downloaded=1
-            fi
-        fi
-    fi 
 
-    #open the xcatinfo file to look for the master if it is not set
+
+else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
+     # non-Statelite MODE
+
+    downloaded=0;  #  have not downloaded the postscripts
+    # try the -m/-M input (P_SIP) if it is specified,
+    # -m/-M is passed in the updatenode command
+    # and is the address of the xcatmaster for this node.  Using -M just means
+    # also update the XCATSERVER in the /etc/xcat/xcatinfo file with this 
+    # address
+    if [ -n "$P_SIP" ]; then   # passed in with updatenode on -M/-m
+        SIP=$P_SIP
+        download_postscripts $SIP
+        if [ $? -eq 0 ]; then 
+             downloaded=1
+        fi
+    fi
+    # if the download failed then, if not updatenode 
+    # open the xcatinfo file to look for an XCATSERVER address to try
+    # if the address if not the same as the one on the -m/M flag then
+    # try it
     if [ $downloaded -eq 0 ]; then
+
+        # if this is an updatenode call, then stop trying and 
+        # return an error
+        if [ "$MODE" = "1" ] || [ "$MODE" = "2" ] || [ "$MODE" = "5" ]; then # updatenode 
+            hn=`hostname`
+            echo "Cannot download the postscripts from $SIP  for $hn check /tmp/wget.log on the node."
+            logger -t xCAT -p local4.err "xcatdsklspost:Cannot download the postscripts from the xCAT server $SIP for node $hn check /tmp/wget.log on the node."
+            exit  
+        fi
+
+        # if not updatenode, then look in xcatinfo for the xcatmaster
 	if [ -f /opt/xcat/xcatinfo ]; then
             SIP=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2`
             if [ -n "$SIP" ]; then
@@ -274,8 +284,10 @@ else # for common mode
 	fi
     fi
 
-    # Try the host in XCAT= kernel parameter
+    # download postscripts has not worked yet 
     if [ $downloaded -eq 0 ]; then
+
+         # for the non-updatenode calls try the host in the XCAT kernel param.
          for i in `cat /proc/cmdline`; do
              KEY=`echo $i | awk -F= '{print $1}'`
              if [ "$KEY" =  "XCAT" ]; then
@@ -292,7 +304,7 @@ else # for common mode
           done
     fi
 
-    
+    # download poscripts has not worked yet 
     #try the dhcp server, this is used for initial boot for the node.
     if [ $downloaded -eq 0 ]; then
         #setup $OSVER ,for SLES11
@@ -330,7 +342,7 @@ else # for common mode
         fi
     fi
     
-    #no hope, now let's get out of here.
+    #no hope to download postscripts, now let's get out of here.
     if [ $downloaded -eq 0 ]; then
         hn=`hostname`
         echo "Cannot download the postscripts from the xCAT server for node $hn"
@@ -340,20 +352,25 @@ else # for common mode
 
 fi # finish the postscripts download
 
-
+# remove the current mypostscript file
 rm -rf /xcatpost/mypostscript
 
-#get node name and download the mypostscript.$node file
-#try to get the node ip address that connects to the server.
-#then resolve the name of the ip
-real_SIP=`getent hosts $SIP |awk {'print $1'}` 
-if [ $? -ne 0 ]; then 
+# if NODE is exported ( updatenode call or from kernel parameter)
+# use it as the nodename to get the mypostscript file. 
+if [ -n "$NODE" ]; then
+ node_short=$NODE
+else
+  #get node name and download the mypostscript.$node file
+  #try to get the node ip address that connects to the server.
+  #then resolve the name of the ip
+  real_SIP=`getent hosts $SIP |awk {'print $1'}` 
+  if [ $? -ne 0 ]; then 
     real_SIP=$SIP
-fi
+  fi
 
-NIP=`ip route get $real_SIP | head -n 1 | sed 's/^.*src//g' | awk {'print $1'}`
-if [ $? -eq 0 ] && [ -n "$NIP" ]; then
-    #relsove the name of the node from ip address
+ NIP=`ip route get $real_SIP | head -n 1 | sed 's/^.*src//g' | awk {'print $1'}`
+ if [ $? -eq 0 ] && [ -n "$NIP" ]; then
+    #resolve the name of the node from ip address
     result=`getent hosts $NIP`
     if [ $? -eq 0 ]; then
 	node1=`echo $result | awk {'print $2'}`
@@ -374,15 +391,15 @@ if [ $? -eq 0 ] && [ -n "$NIP" ]; then
 	    node_short=`hostname -s`
 	fi
     fi
-else
+  else
     node=`hostname`
     node_short=`hostname -s`
+  fi
 fi
     
 max_retries=2
-postfix=0
 if [ -n "$node_short" ]; then 
-    download_mypostscript $SIP $node_short $postfix $max_retries $TFTPDIR
+    download_mypostscript $SIP $node_short $max_retries $TFTPDIR
     #disable trying the long node name for now 
     #if [ $? -ne 0 ]; then
     #	if [ "$node" != "$node_short" ]; then
@@ -392,7 +409,7 @@ if [ -n "$node_short" ]; then
 fi
 
 
-
+# on reboot and shutdown, make sure /ro and /rw are not stuck mounted
 if grep 'rw /rw tmpfs ' /proc/mounts  >/dev/null 2>&1; then
     touch /var/lock/subsys/xcatmounts
     echo '#!/bin/bash' > /etc/rc6.d/K10xcatmounts
@@ -402,9 +419,6 @@ if grep 'rw /rw tmpfs ' /proc/mounts  >/dev/null 2>&1; then
     ln -sf /etc/rc6.d/K10xcatmounts /etc/rc0.d/K10xcatmounts
 fi
 
-#if [ -f /xcatpost/postscripts.tgz ]; then
-#    tar xzf /xcatpost/postscripts.tgz -C /xcatpost/ 2>/dev/null 
-#fi
 
 chmod +x /xcatpost/*; 
 
@@ -419,60 +433,32 @@ if [ -x /usr/bin/openssl ]; then
      export USEOPENSSLFORXCAT
 fi
 
-# if the mypostscript isn't got by download_mypostscript, we assume that it wasn't generated.
-# So generate it firstly.
+# if download of postscript failed, 
+# probably  the /tftpboot/mypostcript/mypostscript.<nodename> does not exist.
+# We need to call getpostscript.awk .
+
 if [ ! -x /xcatpost/mypostscript ]; then
-
-#/xcatpost/getpostscript.awk | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /xcatpost/mypostscript; 
-/xcatpost/getpostscript.awk version2 > /dev/null 
-max_retries=1
-postfix=1
-if [ -n "$node_short" ]; then
-    download_mypostscript $SIP $node_short $postfix $max_retries $TFTPDIR 
-    if [ $? -ne 0 ]; then
-	if [ "$node" != "node_short" ]; then
-	    download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR
-	fi
-    fi
-fi
-
-MYCONT=`grep MASTER /xcatpost/mypostscript`
-#echo "MYCONT=$MYCONT"
-#if getpostscript.awk fails, the postscript will fall into infinit loop
-#so one retry_number is added to avoid sunc a condition
-MAX_RETRIES=10
-RETRY=0
-while [ -z "$MYCONT" ]; do
+  /xcatpost/getpostscript.awk | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /xcatpost/mypostscript;
+ MYCONT=`grep MASTER /xcatpost/mypostscript`
+ MAX_RETRIES=10
+ RETRY=0
+ while [ -z "$MYCONT" ]; do
     RETRY=$(($RETRY+1))
     if [ $RETRY -eq $MAX_RETRIES ]
     then
-#        break
-    	 echo "xcatdsklspost: failed to getpostscript from $XCATSERVER"
-	 logger -t xcat -p local4.err "xcatdsklspost: failed to getpostscript from $XCATSERVER"
-         exit 1
+        break
     fi
 
-    #SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
-    #SLI=$((10 + $SLI))
-    #sleep $SLI
-    
-    #/xcatpost/getpostscript.awk | egrep  '<data>'  | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /xcatpost/mypostscript;
-    /xcatpost/getpostscript.awk version2 > /dev/null
-    max_retries=1
-    postfix=1
-    download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR 
-    if [ $? -ne 0 ]; then
-	if [ "$node" != "$node_short" ]; then
-	    download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR
-	fi
-    fi 
+    SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
+    SLI=$((10 + $SLI))
+    sleep $SLI
+    /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /xcatpost/mypostscript;
     MYCONT=`grep MASTER /xcatpost/mypostscript`
     if [ ! -z "$MYCONT" ]; then
         break;
     fi
-done
-
-fi
+ done
+fi 
 
 #save the MASTER into the xcatinfo file for node deployment case, 
 #for updatenode case, only save it when -M is specified
@@ -611,7 +597,7 @@ if ( pmatch $POSTSCRIPTS  "*start-here*" ); then
 # check to see if input postscript list is not empty. If there is a list
 # remove the built postscripts and only add the ones for the list.
 else
-   if [ "XX$POSTSCRIPTS" != "XX" ]; then
+   if [ -n "$POSTSCRIPTS" ]; then
     #remove all the postbootscripts, and replace with list provided 
     TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" /xcatpost/mypostscript`
     echo "$TMP" > /xcatpost/mypostscript

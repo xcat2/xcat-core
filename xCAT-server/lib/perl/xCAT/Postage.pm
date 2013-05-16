@@ -14,6 +14,7 @@ use xCAT::MsgUtils;
 use xCAT::NodeRange;
 use xCAT::Utils;
 use xCAT::TableUtils;
+use xCAT::Template;
 use xCAT::SvrUtils;
 #use Data::Dumper;
 use File::Basename;
@@ -93,213 +94,311 @@ sub writescript
     chmod 0755, $scriptfile;
 }
  
+#----------------------------------------------------------------------------
+
+=head3  create_mypostscript_or_not 
+
+        
+     checks the site table precreatemypostscripts attribute.
+     if 1, then
+        creates all the /tftpboot/mypostscripts/mypostscript.<nodename> for
+        all nodes in the input noderange
+     if 0 then
+        removes all files in /tftpboot/mypostscripts/*
+
+     xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq);
+
+
+=cut
+
+#-----------------------------------------------------------------------------
 
 sub create_mypostscript_or_not {
   my $request = shift;
   my $callback = shift;
   my $subreq = shift;
+  my $notmpfiles = shift;
+  my $nofiles = shift;
   my $nodes  = $request->{node};
+  # require xCAT::Postage;
 
   my $tftpdir = xCAT::TableUtils::getTftpDir();
-    #if precreatemypostscripts=1, create each mypostscript for each node
+
+  #if precreatemypostscripts=1  
+  # then create each mypostscript for each node in the node range in
+  # /tftpboot/mypostscript/mypostscript.<nodename>
+  #if precreatemypostscripts=0, then
+  # remove all the files for the input noderange.
+  # if called by updatenode, then recreate them. updatenode will remove at the
+  # end of the command
+
   my @entries =  xCAT::TableUtils->get_site_attribute("precreatemypostscripts");
   if ($entries[0] ) {
         $entries[0] =~ tr/a-z/A-Z/;
         if ($entries[0] =~ /^(1|YES)$/ ) { 
-            require xCAT::Postage;
             my $state;
             if ($request->{scripttype}) { $state = $request->{scripttype}->[0];}
-            xCAT::Postage::makescript($nodes, $state, $callback);   
+            xCAT::Postage::makescript($nodes, $state, $callback,$notmpfiles,$nofiles);   
         }
   } else {
        #if the site.precreatemypostscripts=0, we will remove the mypostscript.$n
        foreach my $n (@$nodes ) {
                unlink("$tftpdir/mypostscripts/mypostscript.$n");
-       }  
+       } 
+       # if called by updatenode, then recreate the files but no tmp extension
+       # no matter what the setting of site.precreatepostscripts
+       # if called by destiny.pm,  then just remove them and leave
+        
+       if ((defined($notmpfiles) && ($notmpfiles ==1)) && 
+        (defined($nofiles) && ($nofiles ==0 ))) {  # this is for updatenode
+            my $state;
+            if ($request->{scripttype}) { $state = $request->{scripttype}->[0];}
+            xCAT::Postage::makescript($nodes, $state, $callback,$notmpfiles,$nofiles);   
+       } 
     }
 
 
 }
 
 
+#-----------------------------------------------------------------------------
 
+=head3 makescript 
+ 
+	create the  mypostscript file for each node in the noderange, according to 
+   the template file  mypostscript.tmpl. The template file is 
+   /opt/xcat/share/xcat/templates/mypostscript/mypostscript.tmpl by default.
+   user also can copy it to /install/postscripts/, and customize it there.
+   The mypostscript.tmpl is for all the images.
 
+   If success, there is a mypostscript.$nodename for each node in the $tftpdir/mypostscripts/      	
+	
 
-#----------------------------------------------------------------------------
-
-=head3   makescript
-
-        Determine the contents of a node-specific post script for an xCAT node
-
-        Arguments:
-        Returns:
-        Globals:
-        Error:
-        Example:
-
-    xCAT::Postage->makescript($node, $nodesetstate, $callback);
-
-        Comments:
+    Arguments:
+       hostname 
+    Returns:
+    Globals:
+        %::GLOBAL_TAB_HASH: in subvars_for_mypostscript(),
+          it will read mypostscript.tmpl and 
+           see what db attrs will be needed.
+           The  %::GLOBAL_TAB_HASH will store all
+           the db attrs needed. And the format of value setting looks like:
+           $::GLOBAL_TAB_HASH{$tabname}{$key}{$attrib} = $value;
+           %::GLOBAL_SN_HASH: getservicenode() will 
+           get all the nodes in the servicenode table. And the 
+           result will store in the %::GLOBAL_SN_HASH. The format:
+           $::GLOBAL_SN_HASH{$servicenod1} = 1;
+                        
+    Error:
+        none
+    Example:
+         
+    Comments:
+        none
 
 =cut
 
 #-----------------------------------------------------------------------------
-sub makescript
-{
-    my $node         = shift;
-    my $nodesetstate = shift;    # install or netboot
-    my $callback     = shift;
+  my $tmplerr;
+  my $table;
+  my $key;
+  my $field;
+  my $idir;
+  my $node;
+  my $os;
+  my $profile;
+  my $arch;
+  my $provmethod;
+  my $mn;
+%::GLOBAL_TAB_HASH;
+%::GLOBAL_SN_HASH;
+%::GLOBAL_TABDUMP_HASH;
 
-    #create the mypostscript for each node once according to the template
-    if(ref($node) eq "ARRAY") {
-        require xCAT::Template;   
-        xCAT::Template->subvars_for_mypostscript($node, $nodesetstate, $callback);    
-        return;
-    }
-
-
-    my @scriptd;
-    my ($master, $ps, $os, $arch, $profile);
-
-    my $noderestab = xCAT::Table->new('noderes');
-    my $nodelisttab = xCAT::Table->new('nodelist');
-    my $typetab    = xCAT::Table->new('nodetype');
-    my $posttab    = xCAT::Table->new('postscripts');
-    my $ostab    = xCAT::Table->new('osimage');
-
-    my %rsp;
-    my $rsp;
-    my $master;
-    unless ($noderestab and $typetab and $posttab and $nodelisttab)
-    {
-        push @{$rsp->{data}},
-          "Unable to open site or noderes or nodetype or postscripts or nodelist table";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return undef;
-
-    }
-    unless ($ostab){
-        push @{$rsp->{data}},
-          "Unable to open osimage table";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return undef;
-    }
-
-    # read all attributes for the site table and write an export
-    # for them in the post install file
-    my $attribute;
-    my $value;
-    my $masterset = 0; 
-    foreach (keys(%::XCATSITEVALS))    # export the attribute
-    {
-        $attribute = $_;
-        $attribute =~ tr/a-z/A-Z/;
-        $value = $::XCATSITEVALS{$_};
-        if ($attribute eq "MASTER")
-        {
-            $masterset = 1;
-            push @scriptd, "SITEMASTER=" . $value . "\n";
-            push @scriptd, "export SITEMASTER\n";
-
-            # if node has service node as master then override site master
-            my $et = $noderestab->getNodeAttribs($node, ['xcatmaster'],prefetchcache=>1);
-            if ($et and defined($et->{'xcatmaster'}))
-            {
-                $value = $et->{'xcatmaster'};
-            }
-            else
-            {
-                my $sitemaster_value = $value;
-                $value = xCAT::NetworkUtils->my_ip_facing($node);
-                if ($value eq "0")
-                {
-                    $value = $sitemaster_value;
-                }
-            }
-            push @scriptd, "$attribute=" . $value . "\n";
-            push @scriptd, "export $attribute\n";
-
-        }
-        else
-        {    # not Master attribute
-            push @scriptd, "$attribute='" . $value . "'\n";
-            push @scriptd, "export $attribute\n";
-        }
-    }    # end site table attributes
-
-
-    # read the nodes groups
-    my $groups= 
-      $nodelisttab->getNodeAttribs($node, ['groups']);
+sub makescript { 
+  my $nodes        = shift;
+  my $nodesetstate    = shift;
+  my $callback     = shift;
+  my $notmpfiles     = shift;
+  my $nofiles     = shift;
+  $tmplerr=undef; #clear tmplerr since we are starting fresh
+  my %namedargs = @_; #further expansion of this function will be named arguments, should have happened sooner.
+ 
+  my $installroot; 
+  my @entries =  xCAT::TableUtils->get_site_attribute("installdir"); 
+  if($entries[0]) {
+       $installroot = $entries[0];
+  }
+  my $tmpl="$installroot/postscripts/mypostscript.tmpl";
     
-    push @scriptd, "GROUP=$groups->{groups}\n";
-    push @scriptd, "export GROUP\n";
+  unless ( -r $tmpl) {
+       $tmpl="$::XCATROOT/share/xcat/templates/mypostscript/mypostscript.tmpl";
+  }
+    
+  unless ( -r "$tmpl") {
+         my $rsp;
+         $rsp->{data}->[0]= "site.precreatemypostscripts is set to 1 or yes. No mypostscript template exists in directory /install/postscripts or $::XCATROOT/share/xcat/templates/mypostscript/mypostscript.tmpl.\n";
+         xCAT::MsgUtils->message("E", $rsp, $callback,1);
+         return ;
+  }
 
-    # read the sshbetweennodes attribute and process
-    my $enablessh=xCAT::TableUtils->enablessh($node); 
-    if ($enablessh == 1) {
-        push @scriptd, "ENABLESSHBETWEENNODES=YES\n";
-        push @scriptd, "export ENABLESSHBETWEENNODES\n";
-    } else {
-        push @scriptd, "ENABLESSHBETWEENNODES=NO\n";
-        push @scriptd, "export ENABLESSHBETWEENNODES\n";
-    }      
+  my $outh;
+  my $inh;
+  $idir = dirname($tmpl);
+  open($inh,"<",$tmpl);
+  unless ($inh) {
+     my $rsp;
+     $rsp->{errorcode}->[0]=1;
+     $rsp->{error}->[0]="Unable to open $tmpl, aborting\n";
+     $callback->($rsp);
+     return;
+  }
 
-    #$masterset =1; ###REMOVE
-    if ($masterset == 0)
-    {
-        my %rsp;
-        push @{$rsp->{data}}, "Unable to identify master for $node.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return undef;
+  $mn = xCAT::Utils->noderangecontainsMn(@$nodes);
 
+  my $inc;
+  my $t_inc;
+  my %table;
+  my @tabs;
+  my %dump_results;
+  #First load input into memory..
+  while (<$inh>) {
+      my $line = $_;      
+      if ($line !~/^##/ ) {
+          $t_inc.=$line;
+      }
+
+      if( $line =~ /#TABLE:([^:]+):([^:]+):([^#]+)#/ ) {
+           my $tabname=$1;
+           my $key=$2;
+           my $attrib = $3;
+           $table{$tabname}{$key}{$attrib} = 1;
+      }
+  
+     if( $line =~ /^tabdump\(([\w]+)\)/) {
+           my $tabname = $1;
+           if( $tabname !~ /^(auditlog|bootparams|chain|deps|domain|eventlog|firmware|hypervisor|iscsi|kvm_nodedata|mac|nics|ipmi|mp|ppc|ppcdirect|site|websrv|zvm|statelite|rack|hosts|prodkey|switch|node)/) {
+               push @tabs, $tabname;
+           }
+     }
+
+  }
+
+  close($inh);
+
+    
+
+  ##
+  #   $Tabname_hash{$key}{$attrib}=value
+  #   for example: $MAC_hash{cn001}{mac}=9a:ca:be:a9:ad:02
+  #
+  #
+  #%::GLOBAL_TAB_HASH = ();
+  my $rc = collect_all_attribs_for_tables_in_template(\%table, $nodes, $callback);
+  if($rc == -1) {
+     #return;
+  }
+
+  #print Dumper(\%::GLOBAL_TAB_HASH);
+
+  #print Dumper(\@tabs); 
+  dump_all_attribs_in_tabs(\@tabs,\%::GLOBAL_TABDUMP_HASH, $callback);
+  #print Dumper(\%::GLOBAL_TABDUMP_HASH);
+
+  my %script_fp;    
+  my $allattribsfromsitetable;
+
+  # read all attributes for the site table and write an export   
+  # only run this function once for one command with noderange
+  $allattribsfromsitetable = getAllAttribsFromSiteTab();
+
+  # get the net', 'mask', 'gateway' from networks table
+  my $nets = getNetworks(); 
+
+  # For AIX, get the password and cryptmethod for system root
+  my $aixrootpasswdvars = getAIXPasswdVars();
+
+  #%image_hash is used to store the attributes in linuximage and osimage tabs
+  my %image_hash;
+  getLinuximage(\%image_hash);
+
+  # get postscript and postscript
+  my $script_hash = xCAT::Postage::getScripts($nodes, \%image_hash);
+
+  my $tftpdir = xCAT::TableUtils::getTftpDir();
+
+  getservicenode();
+  #print Dumper(\%::GLOBAL_SN_HASH);
+  #
+  my $scriptdir = "$tftpdir/mypostscripts/";
+  if( ! (-d $scriptdir )) {
+      mkdir($scriptdir,0777);
+  }
+  # if $notmpfiles not set or precreatemypostscripts=0 or not defined
+  # then create the mypostscript.<namename> file with a .tmp extension
+  my $postfix;  
+  if ((!defined($notmpfiles)) || ($notmpfiles == 0)) {
+    my @entries =xCAT::TableUtils->get_site_attribute("precreatemypostscripts");
+    if ($entries[0] ) {  # not 1 or yes
+      $entries[0] =~ tr/a-z/A-Z/;
+      if ($entries[0] !~ /^(1|YES)$/ ) {
+          $postfix="tmp";
+      }   
+    } else {  # or not defined
+      $postfix="tmp";
     }
+  }
 
-    push @scriptd, "NODE=$node\n";
-    push @scriptd, "export NODE\n";
+  foreach my $n (@$nodes ) {
+      $node = $n; 
+      $inc = $t_inc;
+      my $script;
+      my $scriptfile; 
+      if( defined( $postfix ) ) {
+          $scriptfile = "$tftpdir/mypostscripts/mypostscript.$node.tmp";
+      } else { 
+          $scriptfile = "$tftpdir/mypostscripts/mypostscript.$node";
+      }
+      #mkpath(dirname($scriptfile));
+      open($script, ">$scriptfile");
 
-    my $et =
-      $typetab->getNodeAttribs($node, ['os', 'arch', 'profile', 'provmethod'],prefetchcache=>1);
-    if ($^O =~ /^linux/i)
-    {
-        unless ($et and $et->{'os'} and $et->{'arch'})
-        {
-            my %rsp;
-            push @{$rsp->{data}},
-              "No os or arch setting in nodetype table for $node.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            #return undef;
-        }
-    }
+      unless ($script)
+      {
+         my $rsp;
+         push @{$rsp->{data}}, "Could not open $scriptfile for writing.\n";
+         xCAT::MsgUtils->message("E", $rsp, $callback);
+         return 1;
+      }
+      $script_fp{$node}=$script;
+      `/bin/chmod ugo+x $scriptfile`;  
+      
+      ##attributes from site tab
+      #
+      #my $master = $attribsfromnoderes->{$node}->{xcatmaster};
+      my $master;
+      my $noderesent;
+      if( defined( $::GLOBAL_TAB_HASH{noderes}) && defined( $::GLOBAL_TAB_HASH{noderes}{$node}) ) {
+          $master = $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster};
+          $noderesent = $::GLOBAL_TAB_HASH{noderes}{$node};
+      }
+     
+      if( !defined($master) ) {
+          $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} = $::XCATSITEVALS{master};
+      } 
+       
+      #get the node type, service node or compute node
+      my $nodetype = getNodeType($node);
 
-    my $noderesent =
-      $noderestab->getNodeAttribs($node,
-                                  ['nfsserver', 'installnic', 'primarynic','routenames'],prefetchcache=>1);
-    if ($noderesent and defined($noderesent->{'nfsserver'}))
-    {
-        push @scriptd, "NFSSERVER=" . $noderesent->{'nfsserver'} . "\n";
-        push @scriptd, "export NFSSERVER\n";
-    }
-    if ($noderesent and defined($noderesent->{'installnic'}))
-    {
-        push @scriptd, "INSTALLNIC=" . $noderesent->{'installnic'} . "\n";
-        push @scriptd, "export INSTALLNIC\n";
-    }
-    if ($noderesent and defined($noderesent->{'primarynic'}))
-    {
-        push @scriptd, "PRIMARYNIC=" . $noderesent->{'primarynic'} . "\n";
-        push @scriptd, "export PRIMARYNIC\n";
-    }
-
-    #routes 
-    if ($noderesent and defined($noderesent->{'routenames'}))
-    {
-	my $rn=$noderesent->{'routenames'};
-	my @rn_a=split(',', $rn);
+      #print Dumper($noderesent);
+      #routes 
+      my $route_vars;
+      if ($noderesent and defined($noderesent->{'routenames'}))
+      {
+  	my $rn=$noderesent->{'routenames'};
+  	my @rn_a=split(',', $rn);
 	my $routestab = xCAT::Table->new('routes');
 	if ((@rn_a > 0) && ($routestab)) {
-	    push @scriptd, "NODEROUTENAMES=$rn\n";
-	    push @scriptd, "export NODEROUTENAMES\n";
+	    $route_vars .= "NODEROUTENAMES=$rn\n";
+	    $route_vars .= "export NODEROUTENAMES\n";
 	    foreach my $route_name (@rn_a) {
 		my $routesent = $routestab->getAttribs({routename => $route_name}, 'net', 'mask', 'gateway', 'ifname');
 		if ($routesent and defined($routesent->{net}) and defined($routesent->{mask})) {
@@ -312,102 +411,330 @@ sub makescript
 		    if (defined($routesent->{ifname})) {
 			$val .= $routesent->{ifname};
 		    }
-		    push @scriptd, "$val\n";
-		    push @scriptd, "export ROUTE_$route_name\n";
+		    $route_vars .=  "$val\n";
+		    $route_vars .= "export ROUTE_$route_name\n";
 		}
 	    }
 	}
     }
 
-    my $os;
-    my $profile;
-    my $arch;
-    my $provmethod = $et->{'provmethod'};
-    if ($et->{'os'})
-    {
-        $os = $et->{'os'};
-        push @scriptd, "OSVER=" . $et->{'os'} . "\n";
-        push @scriptd, "export OSVER\n";
-    }
-    if ($et->{'arch'})
-    {
-        $arch = $et->{'arch'};
-        push @scriptd, "ARCH=" . $et->{'arch'} . "\n";
-        push @scriptd, "export ARCH\n";
-    }
-    if ($et->{'profile'})
-    {
-        $profile = $et->{'profile'};
-        push @scriptd, "PROFILE=" . $et->{'profile'} . "\n";
-        push @scriptd, "export PROFILE\n";
-    }
-    push @scriptd, 'PATH=`dirname $0`:$PATH' . "\n";
-    push @scriptd, "export PATH\n";
+    #NODESETSTATE
 
-    # add the root passwd, if any, for AIX nodes
-    # get it from the system/root entry in the passwd table
-    # !!!!!  it must be an unencrypted value for AIX!!!!
-    # - user will have to reset if this is a security issue
-    $os =~ s/\s*$//;
-    #$os =~ tr/A-Z/a-z/;    # Convert to lowercase
-    if ($os eq "aix" || $os eq "AIX")
-    {
-    #   my $passwdtab = xCAT::Table->new('passwd');
-    #   unless ($passwdtab)
-    #   {
-    #       my $rsp;
-    #       push @{$rsp->{data}}, "Unable to open passwd table.";
-    #       xCAT::MsgUtils->message("E", $rsp, $callback);
-    #   }
+    ### vlan related item
+    #  for #VLAN_VARS_EXPORT#
+    my $vlan_vars;
+    $vlan_vars = getVlanItems($node);
 
-    #   if ($passwdtab)
-    #   {
-    #       my $et =
-    #         $passwdtab->getAttribs({key => 'system', username => 'root'},
-    #                                'password', 'cryptmethod');
-        {
-            require xCAT::PPCdb;
-            my $et = xCAT::PPCdb::get_usr_passwd('system', 'root');
-            if ($et and defined($et->{'password'}))
-            {
-                push @scriptd, "ROOTPW=" . $et->{'password'} . "\n";
-                push @scriptd, "export ROOTPW\n";
-            }
-            if ($et and defined($et->{'cryptmethod'}))
-            {
-                push @scriptd, "CRYPTMETHOD=" . $et->{'cryptmethod'} . "\n";
-                push @scriptd, "export CRYPTMETHOD\n";
-            }
-        }
-    }
+    ## get monitoring server and other configuration data for monitoring setup on nodes
+    # for #MONITORING_VARS_EXPORT#
+    my $mon_vars;
+    $mon_vars = getMonItems($node);    
 
+
+    #print "nodesetstate:$nodesetstate\n";
+    ## OSPKGDIR export
+    #  for #OSIMAGE_VARS_EXPORT# 
     if (!$nodesetstate) { $nodesetstate = getnodesetstate($node); }
-    push @scriptd, "NODESETSTATE='" . $nodesetstate . "'\n";
-    push @scriptd, "export NODESETSTATE\n";
+    #print "nodesetstate:$nodesetstate\n";
+   
+    #my $et = $typehash->{$node};
+    my $et = $::GLOBAL_TAB_HASH{nodetype}{$node}; 
+    $provmethod = $et->{'provmethod'};
+    $os = $et->{'os'};
+    $arch = $et->{'arch'};
+    $profile = $et->{'profile'};
+    my $osimgname;
 
-    # set the UPDATENODE flag in the script, the default it 0, that means not in the updatenode process, xcatdsklspost and xcataixpost will set it to 1 in updatenode case
-    push @scriptd, "UPDATENODE=0\n";
-    push @scriptd, "export UPDATENODE\n";
+    if($provmethod !~ /^install$|^netboot$|^statelite$/){ # using imagename
+      $osimgname = $provmethod;
+    } 
+             
+    my $osimage_vars;
+    $osimage_vars = getImageitems_for_node($node, \%image_hash, $nodesetstate);
+     
+    ## network
+    # for #NETWORK_FOR_DISKLESS_EXPORT#
+    #
+    my $diskless_net_vars;
+    my $setbootfromnet = 0;
+    $diskless_net_vars = getDisklessNet($nets, \$setbootfromnet, $image_hash{$osimgname}{provmethod}); 
+    
+    ## postscripts
+    # for #INCLUDE_POSTSCRIPTS_LIST# 
+    #
+    #
 
-    # see if this is a service or compute node?
-    if (xCAT::Utils->isSN($node))
+    my $postscripts;
+    $postscripts = getPostScripts($node, $osimgname, $script_hash, $setbootfromnet, $nodesetstate, $arch);
+
+    ## postbootscripts
+    # for #INCLUDE_POSTBOOTSCRIPTS_LIST#
+    my $postbootscripts;
+    $postbootscripts = getPostbootScripts($node, $osimgname, $script_hash);
+
+
+
+
+  #ok, now do everything else..
+  #$inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
+  #$inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
+  #$inc =~ s/#NODE#/$node/eg;
+  $inc =~ s/\$NODE/$node/eg;
+  $inc =~ s/#SITE_TABLE_ALL_ATTRIBS_EXPORT#/$allattribsfromsitetable/eg; 
+  #$inc =~ s/#TABLE:([^:]+):([^:]+):([^:]+):BLANKOKAY#/tabdb($1,$2,$3,1)/eg; 
+  $inc =~ s/#TABLE:([^:]+):([^:]+):([^#]+)#/xCAT::Template::tabdb($1,$2,$3)/eg; 
+  $inc =~ s/#ROUTES_VARS_EXPORT#/$route_vars/eg; 
+  $inc =~ s/#VLAN_VARS_EXPORT#/$vlan_vars/eg; 
+  $inc =~ s/#AIX_ROOT_PW_VARS_EXPORT#/$aixrootpasswdvars/eg; 
+  $inc =~ s/#MONITORING_VARS_EXPORT#/$mon_vars/eg; 
+  $inc =~ s/#OSIMAGE_VARS_EXPORT#/$osimage_vars/eg; 
+  $inc =~ s/#NETWORK_FOR_DISKLESS_EXPORT#/$diskless_net_vars/eg; 
+  $inc =~ s/#INCLUDE_POSTSCRIPTS_LIST#/$postscripts/eg; 
+  $inc =~ s/#INCLUDE_POSTBOOTSCRIPTS_LIST#/$postbootscripts/eg; 
+  
+  #$inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
+  $inc =~ s/\$NTYPE/$nodetype/eg;
+  $inc =~ s/tabdump\(([\w]+)\)/tabdump($1)/eg;
+  $inc =~ s/#Subroutine:([^:]+)::([^:]+)::([^:]+):([^#]+)#/runsubroutine($1,$2,$3,$4)/eg;
+ 
+  if ((!defined($nofiles)) || ($nofiles == 0)) { # create file
+    print $script $inc;    
+    close($script_fp{$node});
+  } 
+     
+} #end foreach node
+  
+  undef(%::GLOBAL_TAB_HASH);
+  undef(%::GLOBAL_SN_HASH);
+  undef(%::GLOBAL_TABDUMP_HASH);
+  if ((defined($nofiles)) &&($nofiles == 1)){ # return array
+    return \$inc;
+  } else {  # files were created
+    return 0;
+  }
+}
+
+sub getservicenode
+{
+    # reads all nodes from the service node table
+    my $servicenodetab = xCAT::Table->new('servicenode');
+    unless ($servicenodetab)    # no  servicenode table
     {
-        push @scriptd, "NTYPE=service\n";
+        xCAT::MsgUtils->message('I', "Unable to open servicenode table.\n");
+        return undef;
+
+    }
+    my @nodes = $servicenodetab->getAllNodeAttribs(['tftpserver'],undef,prefetchcache=>1); 
+    $servicenodetab->close;
+    foreach my $n (@nodes)
+    {
+        my $node = $n->{node};
+        $::GLOBAL_SN_HASH{$node}=1
+    }
+
+    return 0; 
+}
+
+sub getAllAttribsFromSiteTab {
+    
+    my $result;
+    
+    # all attributes for the site table are in  %::XCATSITEVALS, so write an export
+    # for them in the mypostscript file
+    my $attribute;
+    my $value;
+    my $masterset = 0;
+    foreach (keys(%::XCATSITEVALS))    # export the attribute
+    {
+        $attribute = $_;
+        $attribute =~ tr/a-z/A-Z/;
+        $value = $::XCATSITEVALS{$_};
+        if ($attribute eq "MASTER")
+        {
+            $masterset = 1;
+            $result .= "SITEMASTER='" . $value . "'\n";
+            $result .= "export SITEMASTER\n";
+           
+            #if noderes.master for each node exists, the following value will be replaced.
+            #$result .= "$attribute=" . $value . "\n";
+            #$result .= "export $attribute\n";
+
+        }
+        else
+        {    # not Master attribute
+            $result .= "$attribute='" . $value . "'\n";
+            $result .= "export $attribute\n";
+        }
+    }    # end site table attributes
+
+    return $result;
+}
+
+
+###
+#  This runs all the command defined in the template file that is being
+#  used  to create the mypostscript file
+#  For example
+#  ENABLESSHBETWEENNODES=#Subroutine:xCAT::Template::enablesshbetweennodes:$NODE#
+sub runsubroutine
+{
+   my $prefix          = shift;
+   my $module          = shift;
+   my $subroutine_name = shift;
+   my $key = shift;  
+   my $result;   
+   
+   if ($key eq "THISNODE" or $key eq '$NODE') {
+      $key=$node;  
+   }
+   my $function = join("::",$prefix,$module,$subroutine_name);
+   
+   {
+       no strict 'refs';
+       $result=$function->($key); 
+       use strict;
+   }
+
+   return $result;
+}
+
+
+sub getNodeType
+{
+
+    my $node   = shift;
+    my $result;
+   
+    if ( $node =~ /^$mn$/) {
+        $result="MN";
+        return $result;
+    }
+    # see if this is a service or compute node?
+    if ($::GLOBAL_SN_HASH{$node} == 1)
+    {
+        $result="service";
     }
     else
     {
-        push @scriptd, "NTYPE=compute\n";
+        $result="compute";
     }
-    push @scriptd, "export NTYPE\n";
 
-    my $mactab = xCAT::Table->new("mac", -create => 0);
-    my $tmp = $mactab->getNodeAttribs($node, ['mac'],prefetchcache=>1);
-    if (defined($tmp) && ($tmp))
-    {
-        my $mac = $tmp->{mac};
-        push @scriptd, "MACADDRESS='" . $mac . "'\n";
-        push @scriptd, "export MACADDRESS\n";
+    return $result;
+}
+
+
+sub getVlanItems_t
+{
+
+    my $node = shift;
+    my $result;
+
+    #get vlan related items
+    my $vlan;
+    my $swtab = xCAT::Table->new("switch", -create => 0);
+    if ($swtab) {
+	my $tmp = $swtab->getNodeAttribs($node, ['vlan'],prefetchcache=>1);
+	if (defined($tmp) && ($tmp) && $tmp->{vlan})
+	{
+	    $vlan = $tmp->{vlan};
+	    $result .= "VLANID='" . $vlan . "'\n";
+	    $result .= "export VLANID\n";
+	} else {
+	    my $vmtab = xCAT::Table->new("vm", -create => 0);
+	    if ($vmtab) {
+		my $tmp1 = $vmtab->getNodeAttribs($node, ['nics'],prefetchcache=>1);
+		if (defined($tmp1) && ($tmp1) && $tmp1->{nics})
+		{
+		    $result .= "VMNODE='YES'\n";
+		    $result .= "export VMNODE\n";
+		    
+		    my @nics=split(',', $tmp1->{nics});
+		    foreach my $nic (@nics) {
+			if ($nic =~ /^vl([\d]+)$/) {
+			    $vlan = $1;
+			    $result .= "VLANID='" . $vlan . "'\n";
+			    $result .= "export VLANID\n";
+			    last;
+			}
+		    }
+		}
+	    }
+	}
+	
+	if ($vlan) {
+	    my $nwtab=xCAT::Table->new("networks", -create =>0);
+	    if ($nwtab) {
+		my $sent = $nwtab->getAttribs({vlanid=>"$vlan"},'net','mask');
+		my $subnet;
+		my $netmask;
+		if ($sent and ($sent->{net})) {
+		    $subnet=$sent->{net};
+		    $netmask=$sent->{mask};
+		} 
+		if (($subnet) && ($netmask)) {
+		    my $hoststab = xCAT::Table->new("hosts", -create => 0);
+		    if ($hoststab) {
+			my $tmp = $hoststab->getNodeAttribs($node, ['otherinterfaces'],prefetchcache=>1);
+			if (defined($tmp) && ($tmp) && $tmp->{otherinterfaces})
+			{
+			    my $otherinterfaces = $tmp->{otherinterfaces};
+			    my @itf_pairs=split(/,/, $otherinterfaces);
+			    foreach (@itf_pairs) {
+				my ($name,$ip)=split(/:/, $_);
+				if(xCAT::NetworkUtils->ishostinsubnet($ip, $netmask, $subnet)) {
+				    if ($name =~ /^-/ ) {
+					$name = $node.$name;
+				    }
+				    $result .= "VLANHOSTNAME='" . $name . "'\n";
+				    $result .= "export VLANHOSTNAME\n";
+				    $result .= "VLANIP='" . $ip . "'\n";
+				    $result .= "export VLANIP\n";
+				    $result .= "VLANSUBNET='" . $subnet . "'\n";
+				    $result .= "export VLANSUBNET\n";
+				    $result .= "VLANNETMASK='" . $netmask . "'\n";
+				    $result .= "export VLANNETMASK\n";
+				    last;
+				}
+			    }	    
+			}
+		    }
+		}
+	    }
+	}
     }
+
+
+
+   return $result;
+}
+
+sub getAIXPasswdVars
+{
+     my $result;
+     if ($^O =~ /^aix/i)  {
+         require xCAT::PPCdb;
+         my $et = xCAT::PPCdb::get_usr_passwd('system', 'root');
+         if ($et and defined($et->{'password'}))
+         {
+              $result .= "ROOTPW=" . $et->{'password'} . "\n";
+              $result .= "export ROOTPW\n";
+         }
+         if ($et and defined($et->{'cryptmethod'}))
+         {
+              $result .= "CRYPTMETHOD=" . $et->{'cryptmethod'} . "\n";
+              $result .= "export CRYPTMETHOD\n";
+          }
+
+     }
+     return $result;
+}
+
+
+sub getVlanItems
+{
+
+    my $node = shift;
+    my $result;
 
     #get vlan related items
     my $module_name="xCAT_plugin::vlan";
@@ -418,19 +745,63 @@ sub makescript
 	    my @tmp_scriptd=${$module_name."::"}{getNodeVlanConfData}->($node);
 	    #print Dumper(@tmp_scriptd);
 	    if (@tmp_scriptd > 0) {
-		@scriptd=(@scriptd,@tmp_scriptd);
+		$result = join(" ", @tmp_scriptd);
 	    }
 	}  
     }
 
 
+   return $result;
+}
+
+
+sub getMonItems
+{
+
+    my $node = shift;
+    my $result;
+
     #get monitoring server and other configuration data for monitoring setup on nodes
     my %mon_conf = xCAT_monitoring::monitorctrl->getNodeConfData($node);
     foreach (keys(%mon_conf))
     {
-        push @scriptd, "$_=" . $mon_conf{$_} . "\n";
-        push @scriptd, "export $_\n";
+        $result .= "$_='" . $mon_conf{$_} . "'\n";
+        $result .= "export $_\n";
     }
+
+
+
+    return $result;
+}
+
+sub getLinuximage
+{
+   
+    my $image_hash  = shift;
+    my $linuximagetab = xCAT::Table->new('linuximage', -create => 1);   
+
+    my @et2 = $linuximagetab->getAllAttribs('imagename', 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir' );
+    if( @et2 ) {
+          foreach my $tmp_et2 (@et2) {
+               my $imagename= $tmp_et2->{imagename};
+               $image_hash->{$imagename}->{pkglist}= $tmp_et2->{pkglist};
+               $image_hash->{$imagename}->{pkgdir} = $tmp_et2->{pkgdir}; 
+               $image_hash->{$imagename}->{otherpkglist} = $tmp_et2->{otherpkglist}; 
+               $image_hash->{$imagename}->{otherpkgdir} = $tmp_et2->{otherpkgdir}; 
+          }
+    }
+
+
+}
+
+sub getImageitems_for_node
+{
+
+    my $node = shift;
+    my $image_hash = shift;
+    my $nodesetstate = shift;
+  
+    my $result;
 
     #get packge names for extra rpms
     my $pkglist;
@@ -443,11 +814,12 @@ sub makescript
     {
 
         #this is the case where image from the osimage table is used
-        my $linuximagetab = xCAT::Table->new('linuximage', -create => 1);
-        (my $ref1) =
-          $linuximagetab->getAttribs({imagename => $provmethod},
-                                     'pkglist', 'pkgdir', 'otherpkglist',
-                                     'otherpkgdir', 'kerneldir');
+        #my $linuximagetab = xCAT::Table->new('linuximage', -create => 1);
+        #(my $ref1) =
+        #  $linuximagetab->getAttribs({imagename => $provmethod},
+        #                             'pkglist', 'pkgdir', 'otherpkglist',
+        #                             'otherpkgdir');
+        my $ref1 = $image_hash->{$provmethod};
         if ($ref1)
         {
             if ($ref1->{'pkglist'})
@@ -455,8 +827,8 @@ sub makescript
                 $ospkglist = $ref1->{'pkglist'};
                 if ($ref1->{'pkgdir'})
                 {
-                    push @scriptd, "OSPKGDIR=" . $ref1->{'pkgdir'} . "\n";
-                    push @scriptd, "export OSPKGDIR\n";
+                    $result .= "OSPKGDIR='" . $ref1->{'pkgdir'} . "'\n";
+                    $result .= "export OSPKGDIR\n";
                 }
             }
             if ($ref1->{'otherpkglist'})
@@ -464,15 +836,10 @@ sub makescript
                 $pkglist = $ref1->{'otherpkglist'};
                 if ($ref1->{'otherpkgdir'})
                 {
-                    push @scriptd,
+                    $result .= 
                       "OTHERPKGDIR='" . $ref1->{'otherpkgdir'} . "'\n";
-                    push @scriptd, "export OTHERPKGDIR\n";
+                    $result .=  "export OTHERPKGDIR\n";
                 }
-            }
-            if ($ref1->{'kerneldir'})
-            {
-                push @scriptd, "KERNELDIR=" . $ref1->{'kerneldir'} . "\n";
-                push @scriptd, "export KERNELDIR\n";
             }
         }
     }
@@ -527,24 +894,25 @@ sub makescript
     }
     #print "pkglist=$pkglist\n";
     #print "ospkglist=$ospkglist\n";
+    require xCAT::Postage;
     if ($ospkglist)
     {
-        my $pkgtext = get_pkglist_tex($ospkglist);
-        my ($envlist,$pkgtext) = get_envlist($pkgtext);
+        my $pkgtext = xCAT::Postage::get_pkglist_tex($ospkglist);
+        my ($envlist,$pkgtext) = xCAT::Postage::get_envlist($pkgtext);
         if ($envlist) {
-            push @scriptd, "ENVLIST='".$envlist."'\n";
-            push @scriptd, "export ENVLIST\n";
+           $result .= "ENVLIST='".$envlist."'\n";
+           $result .= "export ENVLIST\n";
         }
         if ($pkgtext)
         {
-            push @scriptd, "OSPKGS='".$pkgtext."'\n";
-            push @scriptd, "export OSPKGS\n";
+            $result .= "OSPKGS='".$pkgtext."'\n";
+            $result .= "export OSPKGS\n";
         }
     }
 
     if ($pkglist)
     {
-        my $pkgtext = get_pkglist_tex($pkglist);
+        my $pkgtext = xCAT::Postage::get_pkglist_tex($pkglist);
         if ($pkgtext)
         {
             my @sublists = split('#NEW_INSTALL_LIST#', $pkgtext);
@@ -553,21 +921,22 @@ sub makescript
             {
                 $sl_index++;
                 my $tmp = $_;
-                my ($envlist, $tmp) = get_envlist($tmp);
+                my ($envlist, $tmp) = xCAT::Postage::get_envlist($tmp);
                 if ($envlist) {
-                    push @scriptd, "ENVLIST$sl_index='".$envlist."'\n";
-                    push @scriptd, "export ENVLIST$sl_index\n";
+                    $result .= "ENVLIST$sl_index='".$envlist."'\n";
+                    $result .= "export ENVLIST$sl_index\n";
                 }
-                push @scriptd, "OTHERPKGS$sl_index='".$tmp."'\n";
-                push @scriptd, "export OTHERPKGS$sl_index\n";
+                $result .= "OTHERPKGS$sl_index='".$tmp."'\n";
+                $result .= "export OTHERPKGS$sl_index\n";
             }
             if ($sl_index > 0)
             {
-                push @scriptd, "OTHERPKGS_INDEX=$sl_index\n";
-                push @scriptd, "export OTHERPKGS_INDEX\n";
+                $result .= "OTHERPKGS_INDEX=$sl_index\n";
+                $result .= "export OTHERPKGS_INDEX\n";
             }
         }
     }
+
 
     # SLES sdk
     if ($os =~ /sles.*/)
@@ -576,8 +945,8 @@ sub makescript
         my $sdkdir = "$installdir/$os/$arch/sdk1";
         if (-e "$sdkdir")
         {
-            push @scriptd, "SDKDIR='" . $sdkdir . "'\n";
-            push @scriptd, "export SDKDIR\n";
+            $result .= "SDKDIR='" . $sdkdir . "'\n";
+            $result .= "export SDKDIR\n";
         }
     }
 
@@ -588,20 +957,24 @@ sub makescript
         && ($provmethod ne "netboot")
         && ($provmethod ne "statelite"))
     {
-        my $osimagetab = xCAT::Table->new('osimage', -create => 1);
-        if ($osimagetab)
-        {
-            (my $ref) =
-              $osimagetab->getAttribs(
-                                      {imagename => $provmethod}, 'osvers',
-                                      'osarch',     'profile',
-                                      'provmethod', 'synclists'
-                                      );
+        #my $osimagetab = xCAT::Table->new('osimage', -create => 1);
+        #if ($osimagetab)
+        #{
+        #    (my $ref) =
+        #      $osimagetab->getAttribs(
+        #                              {imagename => $provmethod}, 'osvers',
+        #                              'osarch',     'profile',
+        #                              'provmethod', 'synclists'
+        #                              );
+            my $ref = $image_hash->{$provmethod}; 
             if ($ref)
             {
                 $syncfile = $ref->{'synclists'};
+         #       if($ref->{'provmethod'}) {
+#                    $provmethod = $ref->{'provmethod'};
+         #       }
             }
-        }
+        #}
     }
     if (!$syncfile)
     {
@@ -614,12 +987,35 @@ sub makescript
     }
     if (!$syncfile)
     {
-        push @scriptd, "NOSYNCFILES=1\n";
-        push @scriptd, "export NOSYNCFILES\n";
+        $result .= "NOSYNCFILES=1\n";
+        $result .= "export NOSYNCFILES\n";
     }
 
+    return $result;
+}
+
+sub getNetworks
+{
+    my $nettab = xCAT::Table->new('networks');
+    unless ($nettab) { 
+        xCAT::MsgUtils->message("E", "Unable to open networks table");
+        return undef 
+    }
+    my @nets = $nettab->getAllAttribs('net', 'mask', 'gateway');
+         
+    return \@nets;
+}
+
+
+sub getDisklessNet()
+{
+    my $nets = shift;
+    my $setbootfromnet = shift;
+    my $provmethod = shift;
+   
+    my $result;
     my $isdiskless     = 0;
-    my $setbootfromnet = 0;
+    my $bootfromnet = 0;
     if (($arch eq "ppc64") || ($os =~ /aix.*/i))
     {
 
@@ -631,6 +1027,7 @@ sub makescript
         {
             $isdiskless = 1;
         }
+        
         if (   ($os =~ /aix.*/i)
             && ($provmethod)
             && ($provmethod ne "install")
@@ -656,8 +1053,8 @@ sub makescript
         }
 
         if ($isdiskless)
-        {
-            (my $ip, my $mask, my $gw) = net_parms($node);
+        {    
+            (my $ip, my $mask, my $gw) = xCAT::Postage::net_parms($node, $nets); 
             if (!$ip || !$mask || !$gw)
             {
                 xCAT::MsgUtils->message(
@@ -667,199 +1064,184 @@ sub makescript
             }
             else
             {
-                $setbootfromnet = 1;
-                push @scriptd, "NETMASK=$mask\n";
-                push @scriptd, "export NETMASK\n";
-                push @scriptd, "GATEWAY=$gw\n";
-                push @scriptd, "export GATEWAY\n";
+                $bootfromnet = 1;
+                $result .= "NETMASK=$mask\n";
+                $result .= "export NETMASK\n";
+                $result .= "GATEWAY=$gw\n";
+                $result .= "export GATEWAY\n";
             }
         }
     }
-    ###Please do not remove or modify this line of code!!! xcatdsklspost depends on it
-    push @scriptd, "# postscripts-start-here\n";
+    $$setbootfromnet = $bootfromnet;    
 
-    my %post_hash = ();    #used to reduce duplicates
-    
-    # get the xcatdefaults entry in the postscripts table
-    my $et        =
-      $posttab->getAttribs({node => "xcatdefaults"},
-                           'postscripts', 'postbootscripts');
-    my $defscripts = $et->{'postscripts'};
-    if ($defscripts)
-    {
-        push @scriptd, "# defaults-postscripts-start-here\n";
+    return $result;
 
-        foreach my $n (split(/,/, $defscripts))
-        {
-            if (!exists($post_hash{$n}))
-            {
-                $post_hash{$n} = 1;
-                push @scriptd, $n . "\n";
-            }
-        }
-        push @scriptd, "# defaults-postscripts-end-here\n";
-    }
-    
-    # get postscripts for images
-    my $et2;
-    if($provmethod !~ /^install$|^netboot$|^statelite$/){ # using imagename
-    
-      my $osimgname = $provmethod;
-
-      $et2 =
-      $ostab->getAttribs({'imagename' => "$osimgname"}, ['postscripts', 'postbootscripts']);
-      $ps = $et2->{'postscripts'};
-      if ($ps)
-      {
-        push @scriptd, "# osimage-postscripts-start-here\n";
-
-        foreach my $n (split(/,/, $ps))
-        {
-            if (!exists($post_hash{$n}))
-            {
-                $post_hash{$n} = 1;
-                push @scriptd, $n . "\n";
-            }
-        }
-        push @scriptd, "# osimage-postscripts-end-here\n";
-      }
-    }
-
-    # get postscripts for node specific
-    my $et1 =
-      $posttab->getNodeAttribs($node, ['postscripts', 'postbootscripts'],prefetchcache=>1);
-    $ps = $et1->{'postscripts'};
-    if ($ps)
-    {
-        push @scriptd, "# node-postscripts-start-here\n";
-        foreach my $n (split(/,/, $ps))
-        {
-            if (!exists($post_hash{$n}))
-            {
-                $post_hash{$n} = 1;
-                push @scriptd, $n . "\n";
-            }
-        }
-        push @scriptd, "# node-postscripts-end-here\n";
-    }
-
-    if ($setbootfromnet)
-    {
-      if (!exists($post_hash{setbootfromnet}))
-	   {
-	    $post_hash{setbootfromnet} = 1;
-	    push @scriptd, "setbootfromnet\n";
-   	}
-    }
-
-    # add setbootfromdisk if the nodesetstate is install and arch is ppc64
-    if (($nodesetstate) && ($nodesetstate eq "install") && ($arch eq "ppc64"))
-    {
-	if (!exists($post_hash{setbootfromdisk}))
-	{
-	    $post_hash{setbootfromdisk} = 1;
-	    push @scriptd, "setbootfromdisk\n";
-	}
-    }
-
-    ###Please do not remove or modify this line of code!!! xcatdsklspost depends on it
-    push @scriptd, "# postscripts-end-here\n";
-
-    ###Please do not remove or modify this line of code!!! xcatdsklspost depends on it
-    push @scriptd, "# postbootscripts-start-here\n";
-
-    my %postboot_hash = ();                         #used to reduce duplicates
-    my $defscripts    = $et->{'postbootscripts'};
-    if ($defscripts)
-    {
-        push @scriptd, "# defaults-postbootscripts-start-here\n";
-        foreach my $n (split(/,/, $defscripts))
-        {
-            if (!exists($postboot_hash{$n}))
-            {
-                $postboot_hash{$n} = 1;
-                push @scriptd, $n . "\n";
-            }
-        }
-        push @scriptd, "# defaults-postbootscripts-end-here\n";
-    }
-
-    # get postbootscripts for image
-    if($provmethod !~ /^install$|^netboot$|^statelite$/){ # using imagename
-      my $ips = $et2->{'postbootscripts'};
-      if ($ips)
-      {
-        my @xcatscripts;
-        my @kitscripts;
-        my @userscripts;
-        push @scriptd, "# osimage-postbootscripts-start-here\n";
-        foreach my $n (split(/,/, $ips))
-        {
-            if ( $n =~ /^BASEXCAT_/ )
-            {
-                push @xcatscripts, $n. "\n";
-            }
-            elsif ( $n =~ /^KIT_/ )
-            {
-                push @kitscripts, $n. "\n";
-            }
-            else
-            {
-                push @userscripts, $n. "\n";
-            }
-        }
-        foreach my $n (@xcatscripts)
-        {
-            if (!exists($postboot_hash{$n}))
-            {
-                $postboot_hash{$n} = 1;
-                push @scriptd, $n;
-            }
-        }
-
-        foreach my $n (@kitscripts)
-        {
-            if (!exists($postboot_hash{$n}))
-            {
-                $postboot_hash{$n} = 1;
-                push @scriptd, $n;
-            }
-        }
-        foreach my $n (@userscripts)
-        {
-            if (!exists($postboot_hash{$n}))
-            {
-                $postboot_hash{$n} = 1;
-                push @scriptd, $n;
-            }
-        }
-        push @scriptd, "# osimage-postbootscripts-end-here\n";
-      }
-    }
-
-
-    # get postscripts
-    $ps = $et1->{'postbootscripts'};
-    if ($ps)
-    {
-        push @scriptd, "# node-postbootscripts-start-here\n";
-        foreach my $n (split(/,/, $ps))
-        {
-            if (!exists($postboot_hash{$n}))
-            {
-                $postboot_hash{$n} = 1;
-                push @scriptd, $n . "\n";
-            }
-        }
-        push @scriptd, "# node-postbootscripts-end-here\n";
-    }
-
-    ###Please do not remove or modify this line of code!!! xcatdsklspost depends on it
-    push @scriptd, "# postbootscripts-end-here\n";
-
-    return @scriptd;
 }
 
+sub  collect_all_attribs_for_tables_in_template
+{
+  my $table = shift;
+  my $nodes = shift;
+  my $callback = shift;
+  my $blankok;
+  if(defined($table) ) {
+       foreach my $tabname (keys %$table) {
+            my $key_hash = $table->{$tabname};
+            my @keys = keys %$key_hash;
+            my $key = $keys[0];
+            my $attrib_hash = $table->{$tabname}->{$key};
+            my @attribs = keys %$attrib_hash;
+            my $tabh = xCAT::Table->new($tabname);
+            unless ($tabh) {
+                xCAT::MsgUtils->message(
+                    'E',
+                    "Unable to open the table: $table."
+                    );
+                return;
+            }
+           
+            my $ent;
+            my $bynode=0;
+            #if ($key eq "THISNODE" or $key eq '$NODE') {
+                if( $tabname =~ /^noderes$/ ) {
+                    @attribs = (@attribs, "netboot", "tftpdir"); ## add the attribs which will be needed in other place.
+                } 
+                $ent = $tabh->getNodesAttribs($nodes,@attribs); 
+                if ($ent) {
+                    foreach my $node (@$nodes) {
+                         if( $ent->{$node}->[0] ) {
+                              foreach my $attrib (@attribs) {
+                                  $::GLOBAL_TAB_HASH{$tabname}{$node}{$attrib} = $ent->{$node}->[0]->{$attrib};
+                                  
+                                  #for noderes.xcatmaster
+                                  if ($tabname =~ /^noderes$/ && $attrib =~ /^xcatmaster$/ && ! exists($::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster}))
+                                  {
+                                      my $value;
+                                      $value = xCAT::NetworkUtils->my_ip_facing($node);
+                                      if ($value eq "0")
+                                      {
+                                         undef($value);
+                                      }
+                                      $::GLOBAL_TAB_HASH{$tabname}{$node}{$attrib} = $value;
+                                  }
+
+                                  # for nodetype.os and nodetype.arch
+                                  if ($^O =~ /^linux/i  && $tabname =~ /^nodetype$/ && ($attrib =~ /^(os|arch)$/))
+                                  {
+                                       unless ( $::GLOBAL_TAB_HASH{nodetype}{$node}{'os'} or $::GLOBAL_TAB_HASH{nodetype}{$node}{'arch'})
+                                       {
+                                            my $rsp;
+                                            push @{$rsp->{data}},
+                                                             "No os or arch setting in nodetype table for $node.\n";
+                                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                                            return -1;
+                                       }
+                                   }
+
+                              }
+                         } 
+
+                         # for noderes.nfsserver and  noderes.tftpserver    
+                         if( ! defined($::GLOBAL_TAB_HASH{noderes}) ||  !defined ($::GLOBAL_TAB_HASH{noderes}{$node} ) ||
+                                                            !defined ($::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} ) ) {
+                              $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} = $::XCATSITEVALS{master};
+                         } 
+                              
+                         if(!defined ($::GLOBAL_TAB_HASH{noderes}{$node}{nfsserver}) ) {
+                             $::GLOBAL_TAB_HASH{noderes}{$node}{nfsserver} = $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster};
+                         } 
+                         if(!defined ($::GLOBAL_TAB_HASH{noderes}{$node}{tftpserver}) ) {
+                             $::GLOBAL_TAB_HASH{noderes}{$node}{tftpserver} = $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster};
+                         }
+                         #if the values are not got, we will set them to ''; 
+                         foreach my $attrib (@attribs) {
+                             if( !defined($::GLOBAL_TAB_HASH{$tabname}) || !defined($::GLOBAL_TAB_HASH{$tabname}{$node}) ||  !defined($::GLOBAL_TAB_HASH{$tabname}{$node}{$attrib})) {
+                                   $::GLOBAL_TAB_HASH{$tabname}{$node}{$attrib} = '';
+                                  } 
+                         } 
+                        
+
+
+                  }
+
+            } 
+            $tabh->close;
+        #}     
+    }
+   
+  }
+
+
+}
+
+sub dump_all_attribs_in_tabs 
+{
+   my $tabs     = shift;
+   my $result   = shift;
+   my $callback = shift;   
+
+   my $rsp;
+   my $tab;
+   foreach $tab (@$tabs) {
+       my $ptab = xCAT::Table->new("$tab"); 
+       unless ($ptab) {
+           push @{$rsp->{data}},
+              "Unable to open $tab table";
+           xCAT::MsgUtils->message("E", $rsp, $callback);
+           return undef;
+       }
+
+
+       my $tabdetails = xCAT::Table->getTableSchema($tab);
+       my $cols = $tabdetails->{cols};
+  
+       my $recs = $ptab->getAllEntries();  
+       my $sum = @$recs;
+       $tab =~ tr/a-z/A-Z/;
+       my $res = "$tab"."_LINES=$sum\n";  
+       $res .= "export $tab"."_LINES\n";
+       my $num = 0;
+       my $rec;
+       foreach $rec (@$recs) {
+           my $attrib;
+           $num++;  
+           my $values;       
+           my $t; 
+           foreach $attrib (@$cols) {
+               my $val = $rec->{$attrib};
+               # We use "||" as the delimiter of the attribute=value pair in each line.
+               # Uses could put special characters in the comments attribute.
+               # So we put the comments attribute as the last in the list.
+               # The parsing could consider everything after "comments=" as the comments value, regardless of whether or not it had "||" in it.
+               if( $attrib =~ /^comments$/) {
+                   $t = $val;   
+               } else {
+                   $values .="$attrib=$val||";
+                   if( $attrib =~ /^disable$/) {
+                       $values .="comments=$t";   
+                   }
+               }                 
+           } 
+           $values="$tab"."_LINE$num=\'$values\'\n";
+           $values .="export $tab"."_LINE$num\n";
+           $res .= $values;     
+       }
+       $tab =~ tr/A-Z/a-z/;
+       $result->{$tab} = $res;
+   }  
+
+}
+
+sub tabdump
+{
+    my $tab =shift;
+    my $value= $::GLOBAL_TABDUMP_HASH{$tab};
+
+    return $value;
+}
+
+
+1;
 #----------------------------------------------------------------------------
 
 =head3   get_envlist
