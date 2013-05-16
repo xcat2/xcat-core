@@ -31,69 +31,7 @@ This program module file is a set of utilities to support xCAT post scripts.
 
 =cut
 
-#-------------------------------------------------------------------------------
-
 #----------------------------------------------------------------------------
-
-=head3   writescript
-
-        Create a node-specific post script for an xCAT node
-
-        Arguments:
-        Returns:
-        Globals:
-        Error:
-        Example:
-
-    xCAT::Postage->writescript($node, "/install/postscripts/" . $node, $state,$callback);
-
-        Comments:
-
-=cut
-
-#-----------------------------------------------------------------------------
-
-sub writescript
-{
-    if (scalar(@_) eq 5) { shift; }    #Discard self
-    my $node         = shift;
-    my $scriptfile   = shift;
-    my $nodesetstate = shift;          # install or netboot
-    my $callback     = shift;
-    my $rsp;
-    my $requires;
-    my $script;
-    open($script, ">", $scriptfile);
-
-    unless ($scriptfile)
-    {
-        my %rsp;
-        push @{$rsp->{data}}, "Could not open $scriptfile for writing.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return 1;
-    }
-
-    #Some common variables...
-    my @scriptcontents = makescript($node, $nodesetstate, $callback);
-    if (!defined(@scriptcontents))
-    {
-        my %rsp;
-        push @{$rsp->{data}},
-          "Could not create node post script file for node \'$node\'.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return 1;
-    }
-    else
-    {
-        foreach (@scriptcontents)
-        {
-            print $script $_;
-        }
-    }
-    close($script);
-    chmod 0755, $scriptfile;
-}
- 
 #----------------------------------------------------------------------------
 
 =head3  create_mypostscript_or_not 
