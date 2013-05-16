@@ -179,11 +179,31 @@ if (ref($request) eq 'HASH') { # the request is an array, not pure XML
   if ($ENV{XCATHOST}) {
     $xcathost=$ENV{XCATHOST};
   }
+  my %connargs=();
+  if ($xcathost =~ s/%([^\]]*)//) {
+      $connargs{PeerScope} = $1;
+  }
+  $connargs{PeerAddr} = $xcathost;
+  $connargs{Timeout} = 15;
+  if ($connargs{PeerScope} and $connargs{PeerScope} =~ /[a-zA-Z]/) { #non-numeric, need to translate...
+	my @ipdata = `ip link`;
+	use Data::Dumper;
+	print Dumper(\@ipdata);
+	@ipdata = grep(/[^@]$connargs{PeerScope}(:|@)/,@ipdata);
+	print Dumper(\@ipdata);
+	if (scalar(@ipdata) != 1) {
+		print STDERR "Unable to identify scope ".$connargs{PeerScope}."\n";
+		exit(1);
+	}
+	$connargs{PeerScope} = $ipdata[0];
+	$connargs{PeerScope} =~ s/:.*//;
+   }
+		
+	
   my $pclient;
   if ($inet6support) {
      $pclient = IO::Socket::INET6->new(
-    PeerAddr => $xcathost,
-    Timeout => 15,
+	%connargs,
     );
   } else {
      $pclient = IO::Socket::INET->new(
