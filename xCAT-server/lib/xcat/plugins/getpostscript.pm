@@ -27,7 +27,6 @@ sub handled_commands
 {
     return { 
                'getpostscript' => "getpostscript",
-               'postage' => "getpostscript"
            };
 }
 
