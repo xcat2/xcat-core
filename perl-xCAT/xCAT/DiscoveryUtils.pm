@@ -39,7 +39,7 @@ sub update_discovery_data {
     $disdata{'discoverytime'} = $currtime;
 
     foreach my $attr (keys %$request) {
-        if ($attr =~ /^(command|discoverymethod|_xcat|cacheonly|noderange|environment)/) {
+        if ($attr =~ /^(command|discoverymethod|_xcat|cacheonly|noderange|environment|method|discoverytime|updateswitch)/) {
             next;
         } elsif ($attr =~ /^(node|uuid|arch|cpucount|cputype|memory|mtm|serial)$/) {
             $disdata{$attr} = $request->{$attr}->[0];
