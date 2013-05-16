@@ -681,7 +681,6 @@ sub mkinstall
 
         # create the node-specific post scripts
         #mkpath "$installroot/postscripts/";
-        #xCAT::Postage->writescript($node,"$installroot/postscripts/".$node, "install", $callback);
         my $kernpath;
         my $initrdpath;
         my $maxmem;
