@@ -901,7 +901,7 @@ sub updatenode
     my $notmpfiles=1;
     my $nofiles=0;
     #my $nofiles=1;
-   my $mypostscriptfile= xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq,$notmpfiles,$nofiles);
+    xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq,$notmpfiles,$nofiles);
 
     # convert the hashes back to the way they were passed in
     my $flatreq = xCAT::InstUtils->restore_request($request, $callback);
