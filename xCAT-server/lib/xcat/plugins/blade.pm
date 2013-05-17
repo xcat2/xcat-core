@@ -1698,7 +1698,7 @@ sub rscan {
       $u4->{nodetype} = "ppc,osi";
     } elsif ($type eq "blade") {
       $u4->{nodetype} = "mp,osi";
-    } elsif ($type eq "mm" || $type eq "cmm") {
+    } elsif ($type eq "mm" || $type eq "cmm" || $type eq "xblade") {
       $u4->{nodetype} = "mp";
     }
     $db{nodetype}->setAttribs($k4,$u4);
@@ -1712,11 +1712,13 @@ sub rscan {
     $db{vpd}->setAttribs($k5,$u5);
     $db{vpd}{commit} = 1;
     # Update the entry in ipmi table for x blade
-    my ($k6, $u6);
-    $k6->{node} = $name;
-    $u6->{bmc} = $ip;
-    $db{ipmi}->setAttribs($k6,$u6);
-    $db{ipmi}{commit} = 1;
+    if ($type eq "xblade") {
+        my ($k6, $u6);
+        $k6->{node} = $name;
+        $u6->{bmc} = $ip;
+        $db{ipmi}->setAttribs($k6,$u6);
+        $db{ipmi}{commit} = 1;
+    }
   }
   foreach ( @tabs ) {
     if ( exists( $db{$_}{commit} )) {
