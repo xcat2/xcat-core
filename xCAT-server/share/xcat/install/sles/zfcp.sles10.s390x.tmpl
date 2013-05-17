@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE profile>
-<profile xmlns="http://www.suse.com/1.0/yast2ns" xmlns:config="http://www.suse.com/1.0/configns">  
+<profile xmlns="http://www.suse.com/1.0/yast2ns" xmlns:config="http://www.suse.com/1.0/configns">
+
   <general>
     <mode>
       <confirm config:type="boolean">false</confirm>
@@ -292,7 +293,18 @@
     <!-- Root partition and swap space -->
     <drive>
       <device>replace_root_device</device>
+      <initialize config:type="boolean">true</initialize>
       <partitions config:type="list">
+        <partition>
+          <create config:type="boolean">true</create>
+          <filesystem config:type="symbol">swap</filesystem>
+          <format config:type="boolean">true</format>
+          <mount>swap</mount>
+          <mountby config:type="symbol">path</mountby>
+          <partition_id config:type="integer">130</partition_id>
+          <partition_nr config:type="integer">1</partition_nr>
+          <size>auto</size>
+        </partition>
         <partition>
           <create config:type="boolean">true</create>
           <filesystem config:type="symbol">ext3</filesystem>
@@ -300,25 +312,14 @@
           <mount>/</mount>
           <mountby config:type="symbol">path</mountby>
           <partition_id config:type="integer">131</partition_id>
-          <partition_nr config:type="integer">1</partition_nr>
+          <partition_nr config:type="integer">2</partition_nr>
           <size>max</size>
-        </partition>
-        <partition>
-          <create config:type="boolean">true</create>
-          <filesystem config:type="symbol">swap</filesystem>
-          <format config:type="boolean">true</format>
-          <mount>swap</mount>
-          <mountby config:type="symbol">path</mountby>
-          <partition_id config:type="integer">131</partition_id>
-          <partition_nr config:type="integer">1</partition_nr>
-          <partition_type>primary</partition_type>
-          <size>auto</size>
         </partition>
       </partitions>
       <use>all</use>
     </drive>
   </partitioning>
-    
+
   
   <proxy>
     <enabled config:type="boolean">false</enabled>
@@ -369,7 +370,7 @@
       replace_software_packages
     </packages>
   </software>
-    
+  
   
   <!-- Time zone -->
   <timezone>
