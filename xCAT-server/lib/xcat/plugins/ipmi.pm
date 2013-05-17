@@ -23,6 +23,7 @@ use POSIX qw(ceil floor);
 use Storable qw(nstore_fd retrieve_fd thaw freeze);
 use xCAT::Utils;
 use xCAT::TableUtils;
+use xCAT::IMMUtils;
 use xCAT::ServiceNodeUtils;
 use xCAT::SvrUtils;
 use xCAT::Usage;
@@ -6042,6 +6043,24 @@ sub process_request {
         }
     	while (xCAT::IPMI->waitforrsp()) { yield };
         return;
+    }
+    if ($request->{command}->[0] eq "rspconfig") {
+        my $updatepasswd = 0;
+        my $index = 0;
+        foreach (@{$request->{arg}}) {
+            if ($_ =~ /^USERID=\*$/) {
+                 $updatepasswd = 1;
+                 last;
+            }
+            $index++;
+        }
+        if ($updatepasswd) {
+            splice(@{$request->{arg}}, $index, 1);
+            @exargs=($request->{arg});
+            foreach (@donargs) {
+                xCAT::IMMUtils::setupIMM($_->[0],curraddr=>$_->[1],skipbmcidcheck=>1,skipnetconfig=>1,cliusername=>$_->[2],clipassword=>$_->[3],callback=>$callback);
+            }
+       }
     }
 
   #get new node status
