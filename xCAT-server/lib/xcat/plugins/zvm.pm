@@ -5122,6 +5122,11 @@ sub nodeSet {
                     while (length($device) < 4) {
                         $device = "0" . $device;
                     }
+                    
+                    # zFCP variables must be in lower-case or AutoYast would get confused
+                    $device = lc($device);
+                    $wwpn = lc($wwpn);
+                    $lun = lc($lun);
         
                     # Find tag in template and attach SCSI device associated with it
                     $out = `sed --in-place -e "s#$tag#/dev/disk/by-path/ccw-0.0.$device-zfcp-0x$wwpn:0x$lun#i" $customTmpl`;
@@ -5361,6 +5366,11 @@ END
                     while (length($device) < 4) {
                         $device = "0" . $device;
                     }
+
+                    # zFCP variables must be in lower-case or AutoYast would get confused.
+                    $device = lc($device);
+                    $wwpn = lc($wwpn);
+                    $lun = lc($lun);
 
                     # Create zfcp section
                     $zfcpSection = "zfcp --devnum 0.0.$device --wwpn 0x$wwpn --fcplun 0x$lun" . '\n';
