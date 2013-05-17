@@ -1,5 +1,5 @@
 Dim filesys, srcfile, srcfilename, fline,  dstfilename, dstfile, myshell, netuse
-Dim tmpstr, elems
+Dim tmpstr, elems, instdrv
 Set myshell = WScript.createObject("WScript.Shell")
 Set netuse = myshell.Exec("net use")
 Dim drvletter
@@ -13,6 +13,10 @@ Do While Not netuse.StdOut.AtEndOfStream
 		drvletter=elems(1)
 	End If
 Loop
+instdrv = myshell.ExpandEnvironmentStrings ( "%INSTALLTO%" )
+if InStr(instdrv,"%INSTALLTO%") Then
+	instdrv = "0"
+End If
 	
 Set filesys = CreateObject("Scripting.FileSystemObject")
 dim notefi
@@ -34,6 +38,6 @@ Do Until srcfile.AtEndOfStream
 		fline = Replace(fline,"==BOOTPARTITIONS==","<CreatePartitions><CreatePartition><Order>1</Order><Type>Primary</Type><Extend>true</Extend></CreatePartition></CreatePartitions>")
 		fline = Replace(fline,"==INSTALLTOPART==","1")
 	end if
-	fline = Replace(fline,"==INSTALLTODISK==","0")
+	fline = Replace(fline,"==INSTALLTODISK==",instdrv)
         dstfile.WriteLine(Replace(fline,"==INSTALLSHARE==",drvletter))
 Loop
