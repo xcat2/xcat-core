@@ -180,7 +180,7 @@ if (ref($request) eq 'HASH') { # the request is an array, not pure XML
     $xcathost=$ENV{XCATHOST};
   }
   my %connargs=();
-  if ($xcathost =~ s/%([^\]]*)//) {
+  if ($xcathost =~ s/%([^\]|:]*)//) {
       $connargs{PeerScope} = $1;
   }
   $connargs{PeerAddr} = $xcathost;
