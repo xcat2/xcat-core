@@ -709,8 +709,19 @@ sub pping_hostnames
     my ($class, @hostnames) = @_;
 
     my $hostname_list = join ",", @hostnames;
+    # read site table, usefping attribute
+    # if set then run pping -f to use fping
+    # this fixes a broken nmap in Redhat 6.2 with ip alias (3512)
+    my $cmd="$::XCATROOT/bin/pping $hostname_list";  # default
+    my @usefping=xCAT::Utils->get_site_attribute("usefping");
+    if ((defined($usefping[0])) && ($usefping[0] eq "1")) {
+       $cmd = "$::XCATROOT/bin/pping -f  $hostname_list";
+    }
+    #my $rsp={};
+    #$rsp->{data}->[0] = "running command $cmd";
+    #xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     my @output =
-      xCAT::Utils->runcmd("$::XCATROOT/bin/pping $hostname_list", -1);
+      xCAT::Utils->runcmd($cmd, -1);
       if ($::RUNCMD_RC !=0) {
         my $rsp={};
         $rsp->{data}->[0] = "Error from pping";
