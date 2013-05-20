@@ -64,12 +64,18 @@ else
         `logger -t xcat -p local4.info $msg`;
         &setupmysqlodbc;
     }
-    else
-    {
+    else {
+      if ($dbname eq "PG")
+      {
+        $msg = "odbcsetup:Setting up ODBC for PostgreSQL";
+        `logger -t xcat -p local4.info $msg`;
+        &setupPGodbc;
+      } else {
         $msg =
-          "odbcsetup:cfgloc file does not contain MySQL or DB2,  will not setup ODBC.";
+          "odbcsetup:cfgloc file does not contain MySQL, DB2 or PG,  will not setup ODBC.";
         `logger -t xcat -p local4.err  $msg`;
         exit 1;
+      }
     }
 }
 
@@ -128,6 +134,30 @@ sub setupmysqlodbc
     my $rc = 0;
     my $cmd;
     $cmd = "$::XCATROOT/bin/mysqlsetup -o";
+    $msg = "odbcsetup: Running Client ODBC setup. \"$cmd\"\n";
+    `logger -t xcat -p local4.info $msg`;
+
+    $rc = &runcmd($cmd);
+
+    $msg = "odbcsetup: Client ODBC setup finished.\n";
+    `logger -t xcat -p local4.info $msg`;
+
+    return $rc;
+
+}
+
+#####################################################
+#
+# setupPGodbc
+#     runs the pgsqlsetup script and sets up the ODBC on the Client
+#
+#####################################################
+sub setupPGodbc
+{
+    my $msg;
+    my $rc = 0;
+    my $cmd;
+    $cmd = "$::XCATROOT/bin/pgsqlsetup -o";
     $msg = "odbcsetup: Running Client ODBC setup. \"$cmd\"\n";
     `logger -t xcat -p local4.info $msg`;
 
