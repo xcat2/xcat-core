@@ -1533,7 +1533,7 @@ sub process_request
             }
         }
 
-        @ARGV       = @{$req->{arg}};
+        if ($req && $req->{arg}) { @ARGV       = @{$req->{arg}}; } else { @ARGV=(); }
         $statements = "";
         GetOptions('s|statements=s' => \$statements);
 
