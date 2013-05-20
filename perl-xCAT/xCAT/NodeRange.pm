@@ -180,7 +180,14 @@ sub nodesbycriteria {
    return \%critnodes;
 }
 
-sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels5.3)
+# Expand one part of the noderange from the noderange() function.  Initially, one part means the
+# substring between commas in the noderange.  But expandatom also calls itself recursively to
+# further expand some parts.
+# Input args:
+#  - atom to expand
+#  - verify: whether or not to require that the resulting nodenames exist in the nodelist table
+#  - options: genericrange - a purely syntactical expansion of the range, not using the db at all, e.g not expanding group names
+sub expandatom {
 	my $atom = shift;
     if ($recurselevel > 4096) { die "NodeRange seems to be hung on evaluating $atom, recursion limit hit"; } 
     unless (scalar(@allnodeset) and (($allnodesetstamp+5) > time())) { #Build a cache of all nodes, some corner cases will perform worse, but by and large it will do better.  We could do tests to see where the breaking points are, and predict how many atoms we have to evaluate to mitigate, for now, implement the strategy that keeps performance from going completely off the rails
@@ -190,26 +197,27 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
         %allnodehash = map { $_->{node} => 1 } @allnodeset;
     }
 	my $verify = (scalar(@_) >= 1 ? shift : 1);
-  my %args = @_;
+  my %options = @_;      # additional options
         my @nodes= ();
     #TODO: these env vars need to get passed by the client to xcatd
 	my $nprefix=(defined ($ENV{'XCAT_NODE_PREFIX'}) ? $ENV{'XCAT_NODE_PREFIX'} : 'node');
 	my $nsuffix=(defined ($ENV{'XCAT_NODE_SUFFIX'}) ? $ENV{'XCAT_NODE_SUFFIX'} : '');
-	if (not $args{genericrange} and  $allnodehash{$atom}) {		#The atom is a plain old nodename
+
+	if (not $options{genericrange} and  $allnodehash{$atom}) {		#The atom is a plain old nodename
 		return ($atom);
 	}
     if ($atom =~ /^\(.*\)$/) {     # handle parentheses by recursively calling noderange()
       $atom =~ s/^\((.*)\)$/$1/;
       $recurselevel++;
-      return noderange($atom);
+      return noderange($atom,$verify,1,%options);
     }
     if ($atom =~ /@/) {
           $recurselevel++;
-          return noderange($atom);
+          return noderange($atom,$verify,1,%options);
      }
 
     # Try to match groups?
-    unless ($args{genericrange}) {
+    unless ($options{genericrange}) {
         unless ($grptab) {
            $grptab = xCAT::Table->new('nodegroup');
         }
@@ -273,6 +281,7 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
   }
 }
 
+    # node selection based on db attribute values (nodetype.os==rhels5.3)
     if ($atom =~ m/[=~]/) { #TODO: this is the clunky, slow code path to acheive the goal.  It also is the easiest to write, strange coincidence.  Aggregating multiples would be nice
         my @nodes;
         foreach (@allnodeset) {
@@ -290,7 +299,7 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
     }
 	if ($atom =~ m/^[0-9]+\z/) {    # if only numbers, then add the prefix
 		my $nodename=$nprefix.$atom.$nsuffix;
-		return expandatom($nodename,$verify,%args);
+		return expandatom($nodename,$verify,%options);
 	}
 	my $nodelen=@nodes;
 	if ($nodelen > 0) {
@@ -298,7 +307,7 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
 	}
 
 	if ($atom =~ m/^\//) { # A regular expression
-        unless ($verify) { # If not in verify mode, regex makes zero possible sense
+        if ($verify==0 or $options{genericrange}) { # If not in verify mode, regex makes zero possible sense
           return ($atom);
         }
 		#TODO: check against all groups
@@ -312,25 +321,29 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
 	}
 
 	if ($atom =~ m/(.+?)\[(.+?)\](.*)/) { # square bracket range
-		# if there are more than 1 [], we picked off just the 1st.  if there is another, we will process it later
-		my @subelems = split(/([\,\-\:])/,$2);
+		# if there is more than 1 set of [], we picked off just the 1st.  If there more sets of [], we will expand
+    # the 1st set and create a new set of atom by concatenating each result in the 1st expandsion with the rest
+    # of the brackets.  Then call expandatom() recursively on each new atom.
+		my @subelems = split(/([\,\-\:])/,$2);    # $2 is the range inside the 1st set of brackets
 		my $subrange="";
-        my $subelem;
-        my $start = $1;
-        my $ending = $3;
-        my $morebrackets = $ending =~ /\[.+?\]/;	# if there are more brackets, we have to expand just the 1st part, then add the 2nd part later
-		while (scalar @subelems) {
-            my $subelem = shift @subelems;
+    my $subelem;
+    my $start = $1;   # the text before the 1st set of brackets
+    my $ending = $3;    # the text after the 1st set of brackets (could contain more brackets)
+    my $morebrackets = $ending =~ /\[.+?\]/;	# if there are more brackets, we have to expand just the 1st part, then add the 2nd part later
+		while (scalar @subelems) {    # this while loop turns something like a[1-3] into a1-a3 because another section of expand atom knows how to expand that
+      my $subelem = shift @subelems;
 			my $subop=shift @subelems;
 			$subrange=$subrange."$start$subelem" . ($morebrackets?'':$ending) . "$subop";
 		}
-		foreach (split /,/,$subrange) {
-			my @newnodes=expandatom($_, ($morebrackets?0:$verify), genericrange=>$morebrackets);
+		foreach (split /,/,$subrange) {   # this foreach is in case there were commas inside the brackets originally, e.g.: a[1,3,5]b[1-2]
+      # this expandatom just expands the part of the noderange that contains the 1st set of brackets
+      # e.g. if noderange is a[1-2]b[1-2] it will create newnodes of a1 and a2
+			my @newnodes=expandatom($_, ($morebrackets?0:$verify), genericrange=>($morebrackets||$options{genericrange}));
 			if (!$morebrackets) { push @nodes,@newnodes; }
 			else {
-				# for each of the new nodes, add the 2nd brackets and then expand
+				# for each of the new nodes (prefixes), add the rest of the brackets and then expand recursively
 				foreach my $n (@newnodes) {
-					push @nodes, expandatom("$n$ending", $verify, %args);
+					push @nodes, expandatom("$n$ending", $verify, %options);
 				}
 			}
 		}
@@ -352,7 +365,7 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
 			$suf=$nsuffix;
 		}
 		foreach ("$startnum".."$endnum") {
-			my @addnodes=expandatom($pref.$_.$suf,$verify,%args);
+			my @addnodes=expandatom($pref.$_.$suf,$verify,%options);
 			@nodes=(@nodes,@addnodes);
 		}
 		return (@nodes);
@@ -379,7 +392,7 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
         $right=$2;
       }
       if ($left eq $right) { #if they said node1-node1 for some strange reason
-		return expandatom($left,$verify,%args);
+		return expandatom($left,$verify,%options);
       }
       my @leftarr=split(/(\d+)/,$left);
       my @rightarr=split(/(\d+)/,$right);
@@ -416,7 +429,7 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
               }
             }
             foreach ($leftarr[$idx]..$rightarr[$idx]) {
-              my @addnodes=expandatom($prefix.$_.$luffix,$verify,%args);
+              my @addnodes=expandatom($prefix.$_.$luffix,$verify,%options);
               push @nodes,@addnodes;
             }
             return (@nodes); #the return has been built, return, exiting loop and all
@@ -464,7 +477,7 @@ sub retain_cache { #A semi private operation to be used *ONLY* in the interestin
         %allgrphash=();
     }
 }
-sub extnoderange { #An extended noderange function.  Needed as the more straightforward function return format too simple for this.
+sub extnoderange { #An extended noderange function.  Needed by the GUI as the more straightforward function return format too simple for this.
     my $range = shift;
     my $namedopts = shift;
     my $verify=1;
@@ -490,7 +503,7 @@ sub extnoderange { #An extended noderange function.  Needed as the more straight
     return $return;
 }
 sub abbreviate_noderange { 
-    #takes a list of nodes or a string and abbreviates
+    #takes a list of nodes or a string and reduces it by replacing a list of nodes that make up a group with the group name itself
     my $nodes=shift;
     my %grouphash;
     my %sizedgroups;
@@ -536,16 +549,20 @@ sub abbreviate_noderange {
     return (join ',',keys %targetelems,keys %nodesleft);
 }
 
+# Expand the given noderange
+# Input args:
+#  - noderange to expand
+#  - verify: whether or not to require that the resulting nodenames exist in the nodelist table
+#  - exsitenode: whether or not to honor site.excludenodes to automatically exclude those nodes from all noderanges
+#  - options: genericrange - a purely syntactical expansion of the range, not using the db at all, e.g not expanding group names
 sub noderange {
   $missingnodes=[];
   #We for now just do left to right operations
   my $range=shift;
   $range =~ s/['"]//g;
   my $verify = (scalar(@_) >= 1 ? shift : 1);
-
-  #excludenodes attribute in site table,
-  #these nodes should be excluded for any xCAT commands
-  my $exsitenode = (scalar(@_) >= 1 ? shift : 1);
+  my $exsitenode = (scalar(@_) >= 1 ? shift : 1);   # if 1, honor site.excludenodes
+  my %options = @_;      # additional options
 
   unless ($nodelist) { 
     $nodelist =xCAT::Table->new('nodelist',-create =>1); 
@@ -580,7 +597,7 @@ sub noderange {
           my $newrange = $1;
           chomp($newrange);
           $recurselevel++;
-          my @filenodes = noderange($newrange);
+          my @filenodes = noderange($newrange,$verify,$exsitenode,%options);
           foreach (@filenodes) {
             $nodes{$_}=1;
           }
@@ -590,7 +607,7 @@ sub noderange {
       next;
     }
 
-    my %newset = map { $_ =>1 } expandatom($atom,$verify);    # expand the atom and make each entry in the resulting array a key in newset
+    my %newset = map { $_ =>1 } expandatom($atom,$verify,%options);    # expand the atom and make each entry in the resulting array a key in newset
 
     if ($op =~ /@/) {       # compute the intersection of the current atom and the node list we have received before this
       foreach (keys %nodes) {
@@ -617,7 +634,7 @@ sub noderange {
         my $badnoderange = 0;
         my @badnodes = ();
 	if ($::XCATSITEVALS{excludenodes}) {
-                @badnodes = noderange($::XCATSITEVALS{excludenodes}, 1, 0);
+                @badnodes = noderange($::XCATSITEVALS{excludenodes}, 1, 0, %options);
                 foreach my $bnode (@badnodes) {
                     if (!$delnodes{$bnode}) {
                         $delnodes{$bnode} = 1;

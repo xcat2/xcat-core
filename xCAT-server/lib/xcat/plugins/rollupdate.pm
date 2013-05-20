@@ -14,7 +14,6 @@ BEGIN
 }
 
 require xCAT::NodeRange;
-require xCAT::NameRange;
 require xCAT::Table;
 require xCAT::Utils;
 require xCAT::TableUtils;
@@ -583,7 +582,8 @@ sub rollupdate {
         }
 
         foreach my $mgline ( @{ $::FILEATTRS{'mapgroups'} } ) {
-            my @ugnamelist = xCAT::NameRange::namerange( $mgline, 0 );
+            #my @ugnamelist = xCAT::NameRange::namerange( $mgline, 0 );
+            my @ugnamelist = xCAT::NodeRange::noderange( $mgline, 0, 1, genericrange=>1 );
             foreach my $ugname (@ugnamelist) {
                 @{ $updategroup{$ugname} } = xCAT::NodeRange::noderange($ugname);
                 if ( xCAT::NodeRange::nodesmissed() ) {
@@ -1756,7 +1756,8 @@ sub create_LL_mutex_resources {
             my @ugnames;
             foreach my $mxpart ( @mxparts ) {
                 my $mxindex2 = $mxindex;
-                my @ugnamelist = xCAT::NameRange::namerange( $mxpart, 0 );
+                #my @ugnamelist = xCAT::NameRange::namerange( $mxpart, 0 );
+                my @ugnamelist = xCAT::NodeRange::noderange( $mxpart, 0, 1, genericrange=>1 );
                 foreach my $ugname (@ugnamelist) {
                     $::MUTEX[$mxindex2][$mxpi] = $ugname;
                     $mxindex2++;
@@ -1780,7 +1781,8 @@ sub create_LL_mutex_resources {
         foreach my $mxnodegrp_range ( @{ $::FILEATTRS{'nodegroup_mutex'} } ) {
             my $mx_count = $::FILEATTRS{'nodegroup_mutex_count'}[$fileattrs_index];
 
-            foreach my $mxnodegroup ( xCAT::NameRange::namerange( $mxnodegrp_range, 0 ) ) {
+            #foreach my $mxnodegroup ( xCAT::NameRange::namerange( $mxnodegrp_range, 0 ) ) {
+            foreach my $mxnodegroup ( xCAT::NodeRange::noderange( $mxnodegrp_range, 0, 1, genericrange=>1 ) ) {
               my $mxpi = 0;
 mxnode_loop:  foreach my $mxnode ( xCAT::NodeRange::noderange($mxnodegroup) ) {
                 foreach my $ugname ( keys %{$updategroup} ) {
