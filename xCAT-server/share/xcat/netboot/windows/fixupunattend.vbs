@@ -15,11 +15,11 @@ Do While Not netuse.StdOut.AtEndOfStream
 Loop
 instdrv = myshell.ExpandEnvironmentStrings ( "%INSTALLTO%" )
 if InStr(instdrv,"%INSTALLTO%") Then
-	Set myenv=wshShell.Environment("User")
+	Set myenv=myshell.Environment("User")
 	instdrv = myenv("INSTALLTO")
 End If
 if instdrv = "" Then
-	Set myenv=wshShell.Environment("System")
+	Set myenv=myshell.Environment("System")
 	instdrv = myenv("INSTALLTO")
 End If
 if instdrv = "" Then
