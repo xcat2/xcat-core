@@ -769,7 +769,7 @@ sub mkinstall
 	    #}
 	        
 	    $kcmdline .= " xcatd=".$instserver;
-#	    $kcmdline .= " mirror/http/hostname=".$instserver;
+	    $kcmdline .= " mirror/http/hostname=".$instserver;
             if ($maxmem) {
                 $kcmdline.=" mem=$maxmem";
             }
