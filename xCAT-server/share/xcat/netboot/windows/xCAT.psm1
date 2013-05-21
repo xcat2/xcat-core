@@ -3,9 +3,9 @@
 Function Import-xCATConfig ($credentialPackage) {
 	$shell = New-Object -com shell.application
     $credentialPackage = $credentialPackage -replace '^\.\\',''
-    if (-not $credentialPackage -match '\\') {
+    if (-not ($credentialPackage -match '\\')) {
         $mypath = Get-Location
-        $credentialPackage = $mypath.Path + $credentialPackage
+        $credentialPackage = $mypath.Path + "\"+ $credentialPackage
     }
 	$credpkg = $shell.namespace($credentialPackage)
 	$randname = [System.IO.Path]::GetRandomFileName()
@@ -13,7 +13,6 @@ Function Import-xCATConfig ($credentialPackage) {
 	mkdir $env:temp+"\"+$randname
 	Set-Location $env:temp+"\"+$randname
 	$tmpdir = $shell.namespace((Get-Location).Path)
-	$tmpdir
 	$tmpdir.CopyHere($credpkg.items(),0x14)
 	if (!(Test-Path HKCU:\Software\xCAT)) {
 		mkdir HKCU:\Software\xCAT
@@ -57,15 +56,15 @@ Function VerifyxCATCert ($sender, $cert, $chain, $polerrs) {
 #this isn't quite as innocuous as the openssl mechanisms to do this sort of thing, but it's as close as I could figure to get
 Function ImportxCATCA ( $certpath ) {
 	$xcatstore = New-Object System.Security.Cryptography.X509Certificates.X509Store("xCAT","CurrentUser")
-    $certpath -replace '^\.\\',''
-    if (-not $certpath -match '\\') { 
+    $certpath = $certpath -replace '^\.\\',''
+    if (-not ($certpath -match '\\')) { 
         $mypath=Get-Location
-        $certpath = $mypath.Path + $certpath
+        $certpath = $mypath.Path + "\" + $certpath
     }
 	$cacert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($certpath)
 	$xcatstore.Open([System.Security.Cryptography.X509Certificates.OpenFlags]'Readwrite')
-	$xcatstore.Add($xcatcacert)
-	Set-ItemProperty HKCU:\Software\xCAT cacertthumb $xcatcacert.thumbprint
+	$xcatstore.Add($cacert)
+	Set-ItemProperty HKCU:\Software\xCAT cacertthumb $cacert.thumbprint
 }
 
 #this removes the xCAT CA from trust store, if user wishes to explicitly remove xCAT key post deploy
@@ -73,18 +72,19 @@ Function ImportxCATCA ( $certpath ) {
 #in admin's x509 cert store
 Function RemovexCATCA {
 	$mythumb=Get-ItemProperty HKCU:\Software\xCAT
-	rm cert:\CurrentUser\My\$mythumb.cacertthumb
+	rm cert:\CurrentUser\xCAT\$mythumb.cacertthumb
 }
 
 #specify a client certificate to use in pfx format
 Function SetxCATClientCertificate ( $pfxPath ) {
     $pfxPath = $pfxPath -replace '^\.\\',''
-    if (-not $pxfPath -match '\\') { 
+    if (-not ($pxfPath -match '\\')) { 
         $mypath=Get-Location
-        $pfxPath = $mypath.Path + $pfxPath
+        $pfxPath = $mypath.Path + "\" + $pfxPath
     }
         
 	$xcatstore = New-Object System.Security.Cryptography.X509Certificates.X509Store("xCAT","CurrentUser")
+	$xcatstore.Open([System.Security.Cryptography.X509Certificates.OpenFlags]'Readwrite')
 	$xcatclientcert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($pfxpath)
 	$xcatstore.Add($xcatclientcert)
 	Set-ItemProperty HKCU:\Software\xCAT usercertthumb $xcatclientcert.thumbprint
@@ -113,7 +113,7 @@ Function SelectxCATClientCert ($sender, $targetHost, $localCertificates, $remote
 	} else {
 		$myreg = Get-ItemProperty HKCU:\Software\xCAT
 		$mythumb=(Get-ItemProperty HKCU:\Software\xCAT).usercertthumb
-		Get-Item cert:\CurrentUser\My\$mythumb
+		Get-Item cert:\CurrentUser\xCAT\$mythumb
 	}
 }
 Function Set-xCATServer {
@@ -122,7 +122,7 @@ Function Set-xCATServer {
 	)
 	Set-ItemProperty HKCU:\Software\xCAT serveraddress $xCATServer
 }
-Function Connect-xCAT { 
+Function ConnectxCAT { 
 	Param(
 		$mgtServer,
 		$mgtServerPort=3001,
@@ -286,7 +286,7 @@ Function Send-xCATCommand {
 	Param(
 		$xcatRequest
 	)
-	if (!(Connect-xCAT)) { return }
+	if (!(ConnectxCAT)) { return }
 	$requestxml = "<xcatrequest>`n`t<command>"+$xcatRequest.command+"</command>`n"
 	if ($xcatRequest.noderange) {
 		if ($xcatRequest.noderange.PSObject.TypeNames[0] -eq "xCATNodeData") {
