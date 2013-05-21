@@ -38,6 +38,7 @@ my @alldomains;
 my $omshell;
 my $omshell6; #separate session to DHCPv6 instance of dhcp
 my $statements;    #Hold custom statements to be slipped into host declarations
+my $localonly;     # flag for running only on local server - needs to be global
 my $callback;
 my $restartdhcp;
 my $restartdhcp6;
@@ -809,12 +810,15 @@ sub delnode_aix
     }
 }
 
-sub preprocess_request
+############################################################
+# check_options will process the options for makedhcp and 
+# give a usage error for any invalid options 
+############################################################
+sub check_options
 {
     my $req = shift;
     my $callback = shift;
     my $rc       = 0;
-    my $localonly;
     
     Getopt::Long::Configure("bundling");
     $Getopt::Long::ignorecase = 0;
@@ -838,7 +842,7 @@ sub preprocess_request
                      'l|localonly'  => \$localonly,
                      'n'  => \$::opt_n,
                      'r'  => \$::opt_r,
-                     's'  => \$::opt_r,
+                     's'  => \$statements,  # $statements is declared globally 
                      'q'  => \$::opt_q
                    )) 
     {
@@ -859,7 +863,7 @@ sub preprocess_request
     }
 
     # check to see if -q is listed with any other options which is not allowed
-    if ($::opt_q and ($::opt_a || $::opt_d || $::opt_n || $::opt_r || $::opt_l || $::opt_s)) {
+    if ($::opt_q and ($::opt_a || $::opt_d || $::opt_n || $::opt_r || $::opt_l || $statements)) {
         my $rsp = {};
         $rsp->{data}->[0] = "The -q option cannot be used with other options.";
         xCAT::MsgUtils->message("E", $rsp, $callback, 1);
@@ -873,7 +877,15 @@ sub preprocess_request
         xCAT::MsgUtils->message("I", $rsp, $callback, 1);
         return;
     }
+}
 
+sub preprocess_request
+{
+    my $req = shift;
+    my $callback = shift;
+    my $rc       = 0;
+    
+    check_options($req,$callback);
   
     my $snonly=0;
     my @entries =  xCAT::TableUtils->get_site_attribute("disjointdhcps");
@@ -1024,6 +1036,10 @@ sub process_request
     $callback = shift;
 			my $rsp;
     #print Dumper($req);
+
+    # Check options again in case we are called from plugin and options have not been processed
+    check_options($req,$callback);
+
     if ($::opt_q)
         {
         foreach my $node ( @{$req->{node}} ) {
@@ -1536,10 +1552,6 @@ sub process_request
                 }
             }
         }
-
-        if ($req && $req->{arg}) { @ARGV       = @{$req->{arg}}; } else { @ARGV=(); }
-        $statements = "";
-        GetOptions('s|statements=s' => \$statements);
 
         if ($^O ne 'aix')
         {
