@@ -402,7 +402,3 @@ New-Alias -name rbeacon -value Set-NodeBeacon
 New-Alias -name nodels -value Get-Nodes
 New-Alias -name xcoll -value Merge-xCATData
 Export-ModuleMember -function *-* -Alias *
-
-		
-		
-
