@@ -460,7 +460,8 @@ sub makescript {
   undef(%::GLOBAL_SN_HASH);
   undef(%::GLOBAL_TABDUMP_HASH);
   if ((defined($nofiles)) &&($nofiles == 1)){ # return array
-    return \$inc;
+   my @scriptd = grep { /\S/ } split(/\n/,$inc);
+   return @scriptd;
   } else {  # files were created
     return 0;
   }
