@@ -2,9 +2,12 @@
 # This function specifically validates that the peer we are talking to is signed by the xCAT blessed CA and no other CA
 Function Import-xCATConfig ($credentialPackage) {
 	$shell = New-Object -com shell.application
-	(Get-Location).Path+"\$credentialPackage"
-	$credpkg = $shell.namespace((Get-Location).Path+"\$credentialPackage")
-	$credpkg
+    $credentialPackage = $credentialPackage -replace '^\.\\',''
+    if (-not $credentialPackage -match '\\') {
+        $mypath = Get-Location
+        $credentialPackage = $mypath.Path + $credentialPackage
+    }
+	$credpkg = $shell.namespace($credentialPackage)
 	$randname = [System.IO.Path]::GetRandomFileName()
 	Push-Location
 	mkdir $env:temp+"\"+$randname
@@ -54,6 +57,11 @@ Function VerifyxCATCert ($sender, $cert, $chain, $polerrs) {
 #this isn't quite as innocuous as the openssl mechanisms to do this sort of thing, but it's as close as I could figure to get
 Function ImportxCATCA ( $certpath ) {
 	$xcatstore = New-Object System.Security.Cryptography.X509Certificates.X509Store("xCAT","CurrentUser")
+    $certpath -replace '^\.\\',''
+    if (-not $certpath -match '\\') { 
+        $mypath=Get-Location
+        $certpath = $mypath.Path + $certpath
+    }
 	$cacert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($certpath)
 	$xcatstore.Open([System.Security.Cryptography.X509Certificates.OpenFlags]'Readwrite')
 	$xcatstore.Add($xcatcacert)
@@ -70,6 +78,12 @@ Function RemovexCATCA {
 
 #specify a client certificate to use in pfx format
 Function SetxCATClientCertificate ( $pfxPath ) {
+    $pfxPath = $pfxPath -replace '^\.\\',''
+    if (-not $pxfPath -match '\\') { 
+        $mypath=Get-Location
+        $pfxPath = $mypath.Path + $pfxPath
+    }
+        
 	$xcatstore = New-Object System.Security.Cryptography.X509Certificates.X509Store("xCAT","CurrentUser")
 	$xcatclientcert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($pfxpath)
 	$xcatstore.Add($xcatclientcert)
