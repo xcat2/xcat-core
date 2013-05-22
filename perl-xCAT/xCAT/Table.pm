@@ -2902,10 +2902,14 @@ sub getAllNodeAttribs
 		$self->{nrcache}->{$data->{$nodekey}}->{tstamp} = time();
 	    }
             @nodes = @{$self->{nrcache}->{$data->{$nodekey}}->{value}};    #expand node entry, to make groups expand
-            unless (@nodes) { #in the event of an entry not in nodelist, use entry value verbatim
-                @nodes = ($data->{$nodekey});
-            }
+
+            #If node not in nodelist do not add to the hash (SF 3580)
+            #unless (@nodes) { #in the event of an entry not in nodelist, use entry value verbatim
+            #    @nodes = ($data->{$nodekey});
+            #}  end SF 3580
+
             #my $localhash = $self->getNodesAttribs(\@nodes,$attribq); #NOTE:  This is stupid, rebuilds the cache for every entry, FIXME
+
             foreach (@nodes)
             {
                 if ($donenodes{$_}) { next; }
