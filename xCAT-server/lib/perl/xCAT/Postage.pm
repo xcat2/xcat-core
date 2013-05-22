@@ -74,12 +74,18 @@ sub create_mypostscript_or_not {
   if ($entries[0] ) {
         $entries[0] =~ tr/a-z/A-Z/;
         if ($entries[0] =~ /^(1|YES)$/ ) { 
+            #if the site.precreatemypostscripts=1,
+            # we will remove the mypostscript.$n.tmp files for the noderange 
+            foreach my $n (@$nodes ) {
+               unlink("$tftpdir/mypostscripts/mypostscript.$n.tmp");
+            } 
             my $state;
             if ($request->{scripttype}) { $state = $request->{scripttype}->[0];}
             xCAT::Postage::makescript($nodes, $state, $callback,$notmpfiles,$nofiles);   
         }
   } else {
-       #if the site.precreatemypostscripts=0, we will remove the mypostscript.$n
+       #if the site.precreatemypostscripts=0,we will remove the mypostscript.$n
+       # files for this noderange 
        foreach my $n (@$nodes ) {
                unlink("$tftpdir/mypostscripts/mypostscript.$n");
        } 
