@@ -199,6 +199,44 @@ Function Get-NodeBeacon {
 	$xcatrequest=@{'command'='rbeacon';'noderange'=$nodeRange;'args'=@('stat')}
 	Send-xCATCommand($xcatrequest)
 }
+Function Get-NodeBoot {
+    Param(
+        [parameter(ValueFromPipeLine=$true)] $nodeRange
+    )
+    $pipednr=@($input)
+    if ($pipednr) { $nodeRange = $pipednr }
+    $xcatrequest=@{'command'='rsetboot';'noderange'=$nodeRange;'args'=@('stat')}
+    Send-xCATCommand($xcatrequest)
+}
+Function Get-NodeDeploy {
+    Param(
+        [parameter(ValueFromPipeLine=$true)] $nodeRange
+    )
+    $pipednr=@($input)
+    if ($pipednr) { $nodeRange = $pipednr }
+    $xcatrequest=@{'command'='nodeset';'noderange'=$nodeRange;'args'=@('stat')}
+    Send-xCATCommand($xcatrequest)
+}
+Function Set-NodeDeploy {
+    Param(
+        [parameter(ValueFromPipeLine=$true)] $nodeRange,
+        $deployAction
+    )
+    $pipednr=@($input)
+    if ($pipednr) { $nodeRange = $pipednr }
+    $xcatrequest=@{'command'='nodeset';'noderange'=$nodeRange;'args'=@($deployAction)}
+    Send-xCATCommand($xcatrequest)
+}
+Function Set-NodeBoot {
+    Param(
+        [parameter(ValueFromPipeLine=$true)] $nodeRange,
+        $bootDevice
+    )
+    $pipednr=@($input)
+    if ($pipednr) { $nodeRange = $pipednr }
+    $xcatrequest=@{'command'='rsetboot';'noderange'=$nodeRange;'args'=@($bootDevice)}
+    Send-xCATCommand($xcatrequest)
+}
 Function Set-NodeBeacon {
 	Param(
 		[parameter(ValueFromPipeLine=$true)] $nodeRange,
@@ -376,15 +414,21 @@ Function NewxCATDataFromXmlElement {
 	if ($xmlElement.name) {
 		$myprops.Node=$xmlElement.name
 	}
-	if ($xmlElement.data.desc) {
-		$objname = 'xCATNodeData'
-		$myprops.Description=$xmlElement.data.desc
-	}
-	if ($xmlElement.data.contents) {
-		$myprops.Data=$xmlElement.data.contents
-	} else {
-		$myprops.Data=""
-	}
+    if ($xmlElement.data) {
+        if ($xmlElement.data.GetType().Name -eq "String") {
+            $myprops.Data=$xmlElement.data
+        } else {
+        	if ($xmlElement.data.desc) {
+        		$objname = 'xCATNodeData'
+        		$myprops.Description=$xmlElement.data.desc
+        	}
+        	if ($xmlElement.data.contents) {
+        		$myprops.Data=$xmlElement.data.contents
+        	} else {
+        		$myprops.Data=""
+    	    }
+        }
+    }
 	if ($xmlElement.error) {
 		$objname = 'xCATNodeErrorData'
 		$errstr= $xmlElement.name + ": " + $xmlElement.error
@@ -395,6 +439,8 @@ Function NewxCATDataFromXmlElement {
 	$myobj.PSObject.TypeNames.Insert(0,$objname)
 	return $myobj
 }
+New-Alias -name rsetboot -value Set-NodeBoot
+New-Alias -name nodeset -value Set-NodeDeploy
 New-Alias -name rpower -value Set-NodePower
 New-Alias -name rvitals -value Get-Nodevitals
 New-Alias -name rinv -value Get-NodeInventory
