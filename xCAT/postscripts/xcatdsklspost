@@ -398,14 +398,15 @@ else
 fi
     
 max_retries=2
+# try short hostname first
 if [ -n "$node_short" ]; then 
     download_mypostscript $SIP $node_short $max_retries $TFTPDIR
-    #disable trying the long node name for now 
-    #if [ $? -ne 0 ]; then
-    #	if [ "$node" != "$node_short" ]; then
-    #	    download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR
-    #	fi
-    #fi
+    if [ $? -ne 0 ]; then
+        # try long hostname 
+    	if [ "$node" != "$node_short" ]; then
+    	    download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR
+    	fi
+    fi
 fi
 
 
