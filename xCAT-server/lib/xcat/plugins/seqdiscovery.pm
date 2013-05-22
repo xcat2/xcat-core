@@ -41,6 +41,9 @@ sub handled_commands {
     }
 }
 
+=head3 findme 
+    Handle the request form node to map and define the request to a node
+=cut
 sub findme {
     my $request = shift;
     my $callback = shift;
@@ -82,6 +85,7 @@ sub findme {
     else{
         $arptable = `/sbin/arp -n`;
     }
+
     my @arpents = split /\n/,$arptable;
     foreach  (@arpents) {
         if (m/^($ip)\s+\S+\s+(\S+)\s/) {
@@ -127,20 +131,23 @@ sub findme {
     if ($node) {
         my $skiphostip;
         my $skipbmcip;
-        my @newhosts = ($node);
         # check the host ip and bmc 
         my $hosttab = xCAT::Table->new('hosts');
         unless ($hosttab) {
             xCAT::MsgUtils->message("S", "Discovery Error: Could not open table: hosts.");
         }
-        my $hostip = $hosttab->getNodeAttribs($node, ['ip']);
-        if ($hostip->{'ip'}) {
-            $skiphostip = 1;
+        my $hostip = getpredefips([$node], "host");
+        foreach (keys %$hostip) {
+            if ($hostip->{$_} eq "$node") {
+                $skiphostip = 1;
+            }
         }
 
-        my $bmcip = $hosttab->getNodeAttribs($node."-bmc", ['ip']);
-        if ($bmcip->{'ip'}) {
-            $skipbmcip = 1;
+        my $bmcip = getpredefips([$node], "bmc");
+        foreach (keys %$bmcip) {
+            if ($bmcip->{$_} eq "$node-bmc") {
+                $skipbmcip = 1;
+            }
         }
 
         my $ipmitab = xCAT::Table->new('ipmi');
@@ -148,7 +155,7 @@ sub findme {
             xCAT::MsgUtils->message("S", "Discovery Error: Could not open table: ipmi.");
         }
 
-        # set the host ip and bmc if needed
+        # set the host ip if the node does not have
         unless ($skiphostip) {
             my $hostip = getfreeips($param{'hostiprange'}, \@allnodes, "host");
             unless ($hostip) {
@@ -159,8 +166,8 @@ sub findme {
             $hosttab->commit();
         }
 
+        # set the bmc ip if the node does not have
         my $bmcname = $node."-bmc";
-        push @newhosts, $bmcname;
         unless ($skipbmcip) {
             my $bmcip = getfreeips($param{'bmciprange'}, \@allnodes, "bmc");
             unless ($bmcip) {
@@ -169,11 +176,13 @@ sub findme {
             }
             $hosttab->setNodeAttribs($bmcname, {ip => $bmcip});
             $hosttab->commit();
+
+            # set the bmc to the ipmi table
+            $ipmitab->setNodeAttribs($node, {bmc => $bmcname});
         }
-        # set the bmc to the ipmi table
-        $ipmitab->setNodeAttribs($node, {bmc => $bmcname});
 
         # update the host ip pair to /etc/hosts, it's necessary for discovered and makedhcp commands
+        my @newhosts = ($node, $node."-bmc");
         if (@newhosts) {
             my $req;
             $req->{command}=['makehosts'];
@@ -234,15 +243,16 @@ sub findme {
         }
         if (defined ($param{'groups'})) {
             $nltab->setNodeAttribs($node, {groups=>$param{'groups'}});
-            if ($bmcname) {
+            unless ($skipbmcip) {
                 $nltab->setNodeAttribs($bmcname, {groups=>$param{'groups'}.",bmc"});
             }
         } else {
+            # just set the groups attribute when there was no groups value was set
             my $nlent = $nltab->getNodeAttribs($node,['groups']);
             if (!$nlent || !$nlent->{'groups'}) {
                 $nltab->setNodeAttribs($node, {groups=>"all"});
             }
-            if ($bmcname) {
+            unless ($skipbmcip) {
                 $nlent = $nltab->getNodeAttribs($bmcname,['groups']);
                 if (!$nlent || !$nlent->{'groups'}) {
                     $nltab->setNodeAttribs($bmcname, {groups=>"all,bmc"});
@@ -250,6 +260,17 @@ sub findme {
             }
         }
 
+        # set the mgt for the node
+        my $hmtab = xCAT::Table->new('nodehm');
+        unless ($hmtab) {
+            xCAT::MsgUtils->message("S", "Discovery Error: Could not open table: nodehm.");
+        }
+        my $hment = $hmtab->getNodeAttribs($node,['mgt']);
+        if (!$hment || !$hment->{'mgt'}) {
+            $hmtab->setNodeAttribs($node, {mgt=>"ipmi"});
+        }
+
+        # call the discovered command to update the discovery request to a node
         $request->{command}=['discovered'];
         $request->{noderange} = [$node];
         $request->{discoverymethod} = ['sequential'];
@@ -440,63 +461,58 @@ Usage:
     xCAT::MsgUtils->message("I", $rsp, $callback);
     if ($::VERBOSE) {
         # dispaly the free nodes
-        my $hoststb = xCAT::Table->new('hosts');
-        if ($hoststb) {
-            my $prehostip = $hoststb->getNodesAttribs(\@freenodes, ['ip']);
-            my %prehostips;
-            foreach (keys %$prehostip) {
-                if (defined($prehostip->{$_}->[0]->{'ip'})) {
-                    $prehostips{$prehostip->{$_}->[0]->{'ip'}} = 1;
-                }
-            }
-            my @freebmcs;
-            foreach (@freenodes) {
-                push @freebmcs, $_.'-bmc';
-            }
-            my $prebmcip = $hoststb->getNodesAttribs(\@freebmcs, ['ip']);
-            my %prebmcips;
-            foreach (keys %$prebmcip) {
-                if (defined($prebmcip->{$_}->[0]->{'ip'})) {
-                    $prebmcips{$prebmcip->{$_}->[0]->{'ip'}} = 1;
-                }
-            }
-
         
-            my $vrsp;
-            push @{$vrsp->{data}}, "\n====================Free Nodes===================";
-            push @{$vrsp->{data}}, sprintf("%-20s%-20s%-20s", "NODE", "HOST IP", "BMC IP");
-    
-            my $index = 0;
-            foreach (@freenodes) {
-                my $hostip;
-                my $bmcip;
-                if (defined ($prehostip->{$_}->[0]) && $prehostip->{$_}->[0]->{'ip'}) {
-                    $hostip = $prehostip->{$_}->[0]->{'ip'};
-                } else {
-                    while (($hostip = shift @freehostips)) {
-                        if (!defined($prehostips{$hostip})) { last;}
-                    }
-                    unless ($hostip) {
-                        $hostip = "--no free--";
-                    }
-                }
-
-                if (defined ($prebmcip->{$_."-bmc"}->[0]) && $prebmcip->{$_."-bmc"}->[0]->{'ip'}) {
-                    $bmcip = $prebmcip->{$_."-bmc"}->[0]->{'ip'};
-                } else {
-                    while (($bmcip = shift @freebmcips)) {
-                        if (!defined($prebmcips{$bmcip})) { last;}
-                    }
-                    unless ($bmcip) {
-                        $bmcip = "--no free--";
-                    }
-                }
-                
-                push @{$vrsp->{data}}, sprintf("%-20s%-20s%-20s", $_, $hostip, $bmcip);
-                $index++;
-            }
-            xCAT::MsgUtils->message("I", $vrsp, $callback);
+        # get predefined host ip
+        my %prehostips;
+        my $prehosts = getpredefips(\@freenodes, "host");   #pre{ip} = nodename
+        foreach (keys %$prehosts) {
+            $prehostips{$prehosts->{$_}} = $_;   #pre{nodename} = ip
         }
+
+        # get predefined bmc ip
+        my %prebmcips;
+        my $prebmcs = getpredefips(\@freenodes, "bmc"); #pre{ip} = bmcname
+        foreach (keys %$prebmcs) {
+            $prebmcips{$prebmcs->{$_}} = $_;   #pre{bmcname} = ip
+        }
+                
+        my $vrsp;
+        push @{$vrsp->{data}}, "\n====================Free Nodes===================";
+        push @{$vrsp->{data}}, sprintf("%-20s%-20s%-20s", "NODE", "HOST IP", "BMC IP");
+
+        my $index = 0;
+        foreach (@freenodes) {
+            my $hostip;
+            my $bmcip;
+            # if predefined, use it; otherwise pop out one from the free ip list
+            if (defined ($prehostips{$_})) {
+                $hostip = $prehostips{$_};
+            } else {
+                while (($hostip = shift @freehostips)) {
+                    if (!defined($prehosts->{$hostip})) { last;}
+                }
+                unless ($hostip) {
+                    $hostip = "--no free--";
+                }
+            }
+
+            # if predefined, use it; otherwise pop out one from the free ip list
+            if (defined ($prebmcips{$_."-bmc"})) {
+                $bmcip = $prebmcips{$_."-bmc"};
+            } else {
+                while (($bmcip = shift @freebmcips)) {
+                    if (!defined($prebmcs->{$bmcip})) { last;}
+                }
+                unless ($bmcip) {
+                    $bmcip = "--no free--";
+                }
+            }
+            
+            push @{$vrsp->{data}}, sprintf("%-20s%-20s%-20s", $_, $hostip, $bmcip);
+            $index++;
+        }
+        xCAT::MsgUtils->message("I", $vrsp, $callback);
+        
     }
 }
 
@@ -1075,6 +1091,7 @@ sub getfreenodes () {
         return;
     }
 
+    # if mac address has been set, the node is not free
     my $nlent = $nltb->getNodesAttribs(\@nodes,['groups']);
     my $macent = $mactb->getNodesAttribs(\@nodes,['mac']);
     foreach my $node (@nodes) {
@@ -1100,65 +1117,156 @@ sub getfreenodes () {
     }
 }
 
+=head3 getpredefips
+ Get the nodes which have ip predefined
+ arg1 - a refenrece to the array of nodes 
+ arg2 - type: host, bmc
+
+ return: hash {ip} = node
+=cut
+sub getpredefips {
+    my $freenode = shift;
+    my $type = shift;   # type: host, bmc
+
+    my $hoststb = xCAT::Table->new('hosts');
+    unless ($hoststb) {
+        xCAT::MsgUtils->message("S", "Discovery Error: Could not open table: hosts.");
+    }
+    
+    my %predefips;   # to have the ip which prefined to the nodes
+    if ($type eq "bmc") {
+        # Find the bmc ip which defined in the ipmi.bmc as an ip address instead of name as 'node-bmc'
+        my $ipmitab = xCAT::Table->new('ipmi');
+        if ($ipmitab) {
+            my $ipmient = $ipmitab->getNodesAttribs($freenode, ['bmc']);
+            foreach (@$freenode) {
+                if (defined($ipmient->{$_}->[0]->{'bmc'}) && ($ipmient->{$_}->[0]->{'bmc'} =~ /\d+\.\d+\.\d+\.\d+/)) {
+                    $predefips{$ipmient->{$_}->[0]->{'bmc'}} = $_."-bmc";
+                }
+            }
+        }
+        
+        # get the node list of the bmc as 'node-bmc' format
+        my @freebmc;
+        foreach (@$freenode) {
+            push @freebmc, $_.'-bmc';
+        }
+
+        # get the predefined bmcs which ip has been set in the hosts.ip
+        my $freenodeent = $hoststb->getNodesAttribs(\@freebmc, ['ip']);
+        foreach (@freebmc) {
+            my $nodeip = xCAT::NetworkUtils->getipaddr($_);
+            if ($nodeip) {
+                $predefips{$nodeip} = $_;
+            } else {
+                if (defined($freenodeent->{$_}->[0]) && $freenodeent->{$_}->[0]->{'ip'}){
+                    $predefips{$freenodeent->{$_}->[0]->{'ip'}} = $_;
+                }
+            }
+        }
+
+        # get the predefined bmcs which bmc has been set in the hosts.otherinterfaces
+        $freenodeent = $hoststb->getNodesAttribs($freenode, ['otherinterfaces']);
+        foreach (@$freenode) {
+            # for bmc node, search the hosts.otherinterface to see whether there's perdefined ip for bmc
+            my $bmcip = getbmcip_otherinterfaces($_, $freenodeent->{$_}->[0]->{'otherinterfaces'});
+            if ($bmcip) {
+                $predefips{$bmcip} = $_."-bmc";
+            }
+        }
+    } elsif ($type eq "host") {
+        # get the predefined node which ip has been set in the hosts.ip
+        my $freenodeent = $hoststb->getNodesAttribs($freenode, ['ip']);
+        
+        foreach (@$freenode) {
+            my $nodeip = xCAT::NetworkUtils->getipaddr($_);
+            if ($nodeip) {
+                $predefips{$nodeip} = $_;
+            } else {
+                if (defined($freenodeent->{$_}->[0]) && $freenodeent->{$_}->[0]->{'ip'}){
+                    $predefips{$freenodeent->{$_}->[0]->{'ip'}} = $_;
+                }
+            }
+        }
+    }
+
+    return \%predefips;
+}
 
 =head3 getfreeips 
  Get the free ips base on the user specified ip range
  arg1 - the ip range. Two format are suported: 192.168.1.1-192.168.2.50; 192.168.[1-2].[10-100]
- arg2 - "all': return all the free nodes; otherwise just return one.
+ arg2 - all the free nodes
+ arg3 - type: host, bmc
+ arg4 - "all': return free ips for all the free nodes; otherwise just return the first one.
+
+ return: array of all free ips or one ip base on the arg4
 =cut
-sub getfreeips () {
+sub getfreeips {
     my $iprange = shift;
     my $freenode = shift;
     my $type = shift;   # type: host, bmc
     my $all = shift;
 
     my @freeips;
-    my %predefips;   # to have the ip which assigned to a node which in $freenode
+    my %predefips;   # to have the ip which prefined to the nodes
 
-    # get all used ip from hosts table
     my $hoststb = xCAT::Table->new('hosts');
     unless ($hoststb) {
         xCAT::MsgUtils->message("S", "Discovery Error: Could not open table: hosts.");
     }
 
-    if ($type eq "bmc") {
-
-        # Find the bmc ip which defined in the ipmi.bmc as an ip address instead of name as 'node-bmc'
-        #my $ipmitab = xCAT::Table->new('ipmi');
-        #if ($ipmitab) {
-        #    my $ipmient = $ipmitab->getNodeAttribs($freenode, ['bmc']);
-        #    foreach (@$freenode) {
-        #        if (defined($ipmient->{$_}) && ($ipmient->{$_}->{'bmc'} =~ /\d+\.\d+\.\d+\.\d+/)) {
-        #            $predefips{$ipmient->{$_}->{'bmc'}} = 1;
-        #        }
-        #    }
-        #}
-        
-        # replace the $freenode with the bmc name as 'node-bmc' format
-        my @freebmc;
-        foreach (@$freenode) {
-            push @freebmc, $_.'-bmc';
-        }
-        $freenode = \@freebmc;
-    }
-
-    my $freenodeent = $hoststb->getNodesAttribs($freenode, ['ip']);
-
-    foreach (@$freenode) {
-        if (defined($freenodeent->{$_}->[0]) && $freenodeent->{$_}->[0]->{'ip'}){
-            $predefips{$freenodeent->{$_}->[0]->{'ip'}} = 1;
-        }
-    }
-
-    my @hostsent = $hoststb->getAllNodeAttribs(['node', 'ip']);
+    my @freebmc;
     my %usedips = ();
-    foreach my $host (@hostsent) {
-        if (defined ($host->{'ip'}) && !$predefips{$host->{'ip'}}) {
-            $usedips{$host->{'ip'}} = 1;
+    if ($type eq "bmc") {
+        # get the host ip for all predefind nodes from $freenode
+        %predefips = %{getpredefips($freenode, "bmc")};
+
+        # get all the used ips, the predefined ip should be ignored
+        my @hostsent = $hoststb->getAllNodeAttribs(['node', 'ip', 'otherinterfaces']);
+        foreach my $host (@hostsent) {
+            # handle the case that node-bmc has an entry in the hosts table
+            my $nodeip = xCAT::NetworkUtils->getipaddr($_);
+            if ($nodeip) {
+                unless ($predefips{$nodeip}) {
+                    $usedips{$nodeip} = 1;
+                }
+            } else {
+                if (defined ($host->{'ip'}) && !$predefips{$host->{'ip'}}) {
+                    $usedips{$host->{'ip'}} = 1;
+                }
+            }
+            # handle the case that the bmc<->ip mapping is specified in hosts.otherinterfaces
+            if (defined($host->{'otherinterfaces'})) {
+                my $bmcip = getbmcip_otherinterfaces($host, $host->{'otherinterfaces'});
+                unless ($predefips{$bmcip}) {
+                    $usedips{$bmcip} = 1;
+                }
+            }
+        }
+    } elsif ($type eq "host") {
+        # get the bmc ip for all predefind nodes from $freenode
+        %predefips = %{getpredefips($freenode, "host")};
+
+        # get all the used ips, the predefined ip should be ignored
+        my @hostsent = $hoststb->getAllNodeAttribs(['node', 'ip']);
+        foreach my $host (@hostsent) {
+            my $nodeip = xCAT::NetworkUtils->getipaddr($_);
+            if ($nodeip) {
+                unless ($predefips{$nodeip}) {
+                    $usedips{$nodeip} = 1;
+                }
+            } else {
+                if (defined ($host->{'ip'}) && !$predefips{$host->{'ip'}}) {
+                    $usedips{$host->{'ip'}} = 1;
+                }
+            }
         }
     }
 
+    # to calculate the free IP. free ip = 'ip in the range' - 'used ip'
     if ($iprange =~ /(\d+\.\d+\.\d+\.\d+)-(\d+\.\d+\.\d+\.\d+)/) {
+        # if ip range format is 192.168.1.0-192.168.1.200
         my ($startip, $endip) = ($1, $2);
         my $startnum = xCAT::NetworkUtils->ip_to_int($startip);
         my $endnum = xCAT::NetworkUtils->ip_to_int($endip);
@@ -1193,6 +1301,41 @@ sub getfreeips () {
     } else {
         return $freeips[0];
     }
+}
+
+=head3 getbmcip_otherinterfaces 
+ Parse the value in the hosts.otherinterfaces
+ arg1 - node
+ arg2 - value in the hosts.otherinterfaces
+
+ return: the ip of the node <node>-bmc
+=cut
+sub getbmcip_otherinterfaces
+{
+    my $node            = shift;
+    my $otherinterfaces = shift;
+
+    my @itf_pairs = split(/,/, $otherinterfaces);
+    foreach (@itf_pairs)
+    {
+        my ($itf, $ip); 
+        if ($_  =~ /!/) {
+        	($itf, $ip) = split(/!/, $_);
+        } else {
+        	($itf, $ip) = split(/:/, $_);
+        }
+
+        if ($itf =~ /^-/)
+        {
+            $itf = $node . $itf;
+        }
+
+        if ($itf eq "$node-bmc") {
+            return xCAT::NetworkUtils->getipaddr($ip);
+        }
+    }
+
+    return;
 }
 
 1;
