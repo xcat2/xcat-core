@@ -57,9 +57,9 @@ download_postscripts()
            # have additional checks for
            # failed: Connection httpd not running
            # 404: Not Found  - if directory does not exist
-           grep -i "failed: Connection " /tmp/wget.log 
+           grep -i -E "... failed: Connection refused.$" /tmp/wget.log 
            rc1=$?
-           grep -i "404: Not Found" /tmp/wget.log 
+           grep -i -E "ERROR 404: Not Found.$" /tmp/wget.log 
            rc2=$?
            # check to see no errors at all, grep returns 1
            if [ $rc1 -eq 1 ] && [ $rc2 -eq 1 ]; then   
