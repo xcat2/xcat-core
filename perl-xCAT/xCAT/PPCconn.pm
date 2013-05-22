@@ -488,6 +488,9 @@ sub mkhwconn
             my $ntype = $$d[4];
             if ($ntype =~ /^(cec|frame|blade)$/)
             {
+                if ($ntype eq "blade") {
+                    delete $opt->{port};
+                }
                 $cnode = xCAT::DBobjUtils::getchildren($node_name, $opt->{port});
             } else {
                 $cnode = $node_name;
