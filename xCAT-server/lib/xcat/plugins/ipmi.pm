@@ -6055,11 +6055,16 @@ sub process_request {
             $index++;
         }
         if ($updatepasswd) {
-            splice(@{$request->{arg}}, $index, 1);
-            @exargs=($request->{arg});
-            foreach (@donargs) {
-                xCAT::IMMUtils::setupIMM($_->[0],curraddr=>$_->[1],skipbmcidcheck=>1,skipnetconfig=>1,cliusername=>$_->[2],clipassword=>$_->[3],callback=>$callback);
-            }
+           splice(@{$request->{arg}}, $index, 1);
+           @exargs=@{$request->{arg}};
+           foreach (@donargs) {
+               my $cliuser = $authdata->{$_->[0]}->{cliusername};
+               my $clipass = $authdata->{$_->[0]}->{clipassword};
+               xCAT::IMMUtils::setupIMM($_->[0],curraddr=>$_->[1],skipbmcidcheck=>1,skipnetconfig=>1,cliusername=>$cliuser,clipassword=>$clipass,callback=>$callback);
+           }
+           if ($#exargs == -1) {
+               return;
+           }     
        }
     }
 

@@ -77,6 +77,14 @@ sub setupIMM {
 					Prompt=>'/> $/');};
         my $errmsg = $@;
         if ($errmsg) {
+            if ($errmsg =~ /Login Failed/) {
+                $errmsg = "Login failed";
+            } elsif ($errmsg =~ /Incorrect Password/) {
+                $errmsg = "Incorrect Password";
+            } else {
+                $errmsg = "Failed";
+            }
+            sendmsg(":$errmsg", $callback, $node);
             exit(0);
         }
 	if ($ssh and $ssh->atprompt) { #we are in and good to issue commands
@@ -97,6 +105,7 @@ sub setupIMM {
 		$ssh->close();
 		$ipmitab->setNodeAttribs($node,{bmcid=>$nodedata->{macaddress}});
 	}
+        sendmsg(":Succeeded", $callback,$node);
 	exit(0);
 }
 
