@@ -37,6 +37,7 @@ my %allnicips;
 my %allracks;
 my %allchassis;
 my %allswitches;
+my %all_switchports;
 
 # The array of all chassis which is special CMM 
 my %allcmmchassis;
@@ -367,6 +368,10 @@ Usage:
     # Get all switches name
     $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('switches', 'switch');
     %allswitches = %$recordsref;
+
+    # Get all switches_switchport
+    $recordsref = xCAT::ProfiledNodeUtils->get_db_switchports();
+    %all_switchports = %$recordsref;
 
     # MAC records looks like: "01:02:03:04:05:0E!node5│01:02:03:05:0F!node6-eth1". We want to get the real mac addres.
     foreach (keys %allmacs){
@@ -1964,6 +1969,14 @@ sub validate_node_entry{
             # Not a valid number.
             if (!($node_entry{$_} =~ /^\d+$/)){
                 $errmsg .= "Specified port $node_entry{$_} is invalid\n";
+            }
+            # now, we need to check "swith_switchport" string list to avoid duplicate config
+            my $switch_port = $node_entry{'switch'} . "_" . $node_entry{$_};
+            if (exists $all_switchports{$switch_port}){
+                $errmsg .= "Specified switch port $node_entry{$_} already exists in the database or in the nodeinfo file. You must use a new switch port.\n";
+            }else{
+            # after checking, add this one into all_switchports 
+            $all_switchports{$switch_port} = 0;
             }
         }elsif ($_ eq "rack"){
             if (! exists $allracks{$node_entry{$_}}){
