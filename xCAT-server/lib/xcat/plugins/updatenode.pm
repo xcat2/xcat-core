@@ -860,9 +860,24 @@ sub updatenode
     @::FAILEDNODES=();
     #print Dumper($request);
     my $nodes         = $request->{node};
+    # $request->{status}= "yes";  for testing
+    my $requeststatus;
+    if (defined($request->{status})) {
+       $requeststatus         = $request->{status};
+    }
     my $localhostname = hostname();
-
-    #xCAT::TableUtils->setUpdateStatus($nodes,$::STATUS_SYNCING);
+    
+    # if status return requested
+    my $numberofnodes;
+    # This is an internal call from another plugin requesting status
+    # currently this is not displayed is only returned and not displayed
+    # by updatenode. 
+    if (defined($requeststatus) && ($requeststatus eq "yes")) {  
+      $numberofnodes = @$nodes;
+      my $rsp = {};
+      $rsp->{status}->[0] = "TOTAL NODES: $numberofnodes";
+      $callback->($rsp); 
+    }
     # in a mixed cluster we could potentially have both AIX and Linux
     #	nodes provided on the command line ????
     my ($rc, $AIXnodes, $Linuxnodes) = xCAT::InstUtils->getOSnodes($nodes);
@@ -1096,19 +1111,6 @@ sub updatenode
         }
     }
 
-    # finish clean up the tarred  postscript file
-    #if (-e "$postscripts.tgz") {
-
-    #   my $cmd="rm $postscripts.tgz"; #print "cmd:$cmd\n";
-    #   xCAT::Utils->runcmd($cmd, 0);
-    #   my $rsp = {};
-    #   if ($::RUNCMD_RC != 0)
-    #   {
-    #       $rsp->{data}->[0] = "$cmd failed.\n";
-    #       xCAT::MsgUtils->message("E", $rsp, $callback);
-    #   }
-
-    #}
     # update the node status, this is done when -F -S -P are run
     # make sure the nodes only appear in one array good or bad 
     &cleanstatusarrays;  
@@ -1126,6 +1128,28 @@ sub updatenode
             xCAT::TableUtils->setUpdateStatus(\@::FAILEDNODES, $stat);
                       
 	 }
+    # internal call request for status, not output to CLI
+    if (defined($requeststatus) && ($requeststatus eq "yes")) {  
+       foreach my $n (@::SUCCESSFULLNODES) {
+        my $rsp = {};
+        $rsp->{status}->[0] = "$n: SUCCEEDED";
+        $callback->($rsp); 
+       }
+       foreach my $n (@::FAILEDNODES) {
+        my $rsp = {};
+        $rsp->{status}->[0] = "$n: FAILED";
+        $callback->($rsp); 
+       }
+      
+       my $numberofgoodnodes = 0;
+       my $numberofbadnodes = 0;
+       $numberofgoodnodes = @::SUCCESSFULLNODES;
+       $numberofbadnodes = @::FAILEDNODES;
+       my $rsp = {};
+        $rsp->{status}->[0] = "TOTAL NODES: $numberofnodes, SUCCEEDED: $numberofgoodnodes, FAILED: $numberofbadnodes";
+        $callback->($rsp); 
+    
+    }
     #  if site.precreatemypostscripts = not 1 or yes or undefined,
     # remove all the
     # node files in the noderange in  /tftpboot/mypostscripts
