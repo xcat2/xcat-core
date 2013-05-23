@@ -5012,7 +5012,7 @@ sub passwd {
   } else {
     return ([1, "Update password for $user in 'mpa' table failed"]);
   }
-  return ([0, "Success"]);
+  return ([0, "Succeeded"]);
 }
 
 

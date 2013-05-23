@@ -67,18 +67,26 @@ sub setupIMM {
 	
 	#ok, with all ip addresses in hand, time to enable IPMI and set all the ip addresses (still static only, TODO: dhcp
 	my $ssh;
-        eval {$ssh = new xCAT::SSHInteract(-username=>$args{cliusername},
-					-password=>$args{clipassword},
-					-host=>$sship,
-					-nokeycheck=>1,
-					-output_record_separator=>"\r",
-					Timeout=>15,
-					Errmode=>'return',
-					Prompt=>'/> $/');};
-        my $errmsg = $@;
-        if ($errmsg) {
-            exit(0);
+    eval {$ssh = new xCAT::SSHInteract(-username=>$args{cliusername},
+				-password=>$args{clipassword},
+				-host=>$sship,
+				-nokeycheck=>1,
+				-output_record_separator=>"\r",
+				Timeout=>15,
+				Errmode=>'return',
+				Prompt=>'/> $/');};
+    my $errmsg = $@;
+    if ($errmsg) {
+        if ($errmsg =~ /Login Failed/) {
+            $errmsg = "Login failed";
+        } elsif ($errmsg =~ /Incorrect Password/) {
+            $errmsg = "Incorrect Password";
+        } else {
+            $errmsg = "Failed";
         }
+        sendmsg(":$errmsg", $callback, $node);
+        exit(0);
+    }
 	if ($ssh and $ssh->atprompt) { #we are in and good to issue commands
 		$ssh->cmd("accseccfg -pe 0 -rc 0 -ci 0 -lf 0 -lp 0"); #disable the more insane password rules, this isn't by and large a human used interface
 		$ssh->cmd("users -1 -n ".$ipmiauthmap->{$node}->{username}." -p ".$ipmiauthmap->{$node}->{password}." -a super"); #this gets ipmi going
@@ -97,6 +105,7 @@ sub setupIMM {
 		$ssh->close();
 		$ipmitab->setNodeAttribs($node,{bmcid=>$nodedata->{macaddress}});
 	}
+    sendmsg(":Succeeded", $callback,$node);
 	exit(0);
 }
 
