@@ -86,157 +86,158 @@ sub preprocess_request
 
     if ($command eq "ipforward") {
         my $nodes=$request->{node};
-	my @sns=();
-	if ($nodes) {
-	    @sns=@$nodes;
-	}
-	#print "sns=@sns\n";
-	my @requests=();
-	foreach (@sns) {
-	    my $reqcopy = {%$request};
-	    $reqcopy->{'node'}=[];
-	    $reqcopy->{'_xcatdest'}=$_;
-	    $reqcopy->{_xcatpreprocessed}->[0] = 1;
-	    push @requests, $reqcopy;
-	}
-	return \@requests;
+        my @sns=();
+        if ($nodes) {
+            @sns=@$nodes;
+        }
+        #print "sns=@sns\n";
+        my @requests=();
+        foreach (@sns) {
+             my $reqcopy = {%$request};
+             $reqcopy->{'node'}=[];
+             $reqcopy->{'_xcatdest'}=$_;
+             $reqcopy->{_xcatpreprocessed}->[0] = 1;
+             push @requests, $reqcopy;
+        }
+        return \@requests;
     } else {
-	# parse the options
-	@ARGV=();
-	if ($args) {
-	    @ARGV=@{$args};
-	}
-	Getopt::Long::Configure("bundling");
-	Getopt::Long::Configure("no_pass_through");
+        # parse the options
+        @ARGV=();
+        if ($args) {
+            @ARGV=@{$args};
+        }
+        Getopt::Long::Configure("bundling");
+        Getopt::Long::Configure("no_pass_through");
 	
-	my $routelist_in;
-	my $delete=0;
-	if(!GetOptions(
-		'h|help'     => \$::HELP,
-		'v|version'  => \$::VERSION,
-		'r|routename=s'  => \$routelist_in,
-		'd|delete'  => \$delete,
-	   ))
-	{
-	    &usage($callback);
-	    return 1;
-	}
+        my $routelist_in;
+        my $delete=0;
+        if(!GetOptions(
+            'h|help'     => \$::HELP,
+            'v|version'  => \$::VERSION,
+            'r|routename=s'  => \$routelist_in,
+            'd|delete'  => \$delete,
+        ))
+        {
+            &usage($callback);
+            return 1;
+        }
 	
-	# display the usage if -h or --help is specified
-	if ($::HELP) {
-	    &usage($callback);
-	    return 0;
-	}
-	
-	
-	# display the version statement if -v or --verison is specified
-	if ($::VERSION)
-	{
-	    my $rsp={};
-	    $rsp->{data}->[0]= xCAT::Utils->Version();
-	    $callback->($rsp);
-	    return 0;
-	}
+        # display the usage if -h or --help is specified
+        if ($::HELP) {
+            &usage($callback);
+            return 0;
+        }
+
+        # display the version statement if -v or --verison is specified
+        if ($::VERSION)
+        {
+            my $rsp={};
+            $rsp->{data}->[0]= xCAT::Utils->Version();
+            $callback->($rsp);
+            return 0;
+        }
 
         #make sure the input routes are in the routes table.
-	if ($routelist_in) {
-	    my %all_routes=();
-	    my $routestab=xCAT::Table->new("routes", -create =>1);
-	    if ($routestab) {
-		my @tmp1=$routestab->getAllAttribs(('routename', 'net'));
-		if (@tmp1 > 0) {
-		    foreach(@tmp1) {
-			$all_routes{$_->{routename}} = $_;
-			$_->{process} = 0;
-		    }
-		}
-	    }
+        if ($routelist_in) {
+            my %all_routes=();
+            my $routestab=xCAT::Table->new("routes", -create =>1);
+            if ($routestab) {
+                my @tmp1=$routestab->getAllAttribs(('routename', 'net'));
+                if (@tmp1 > 0) {
+                    foreach(@tmp1) {
+                        $all_routes{$_->{routename}} = $_;
+                        $_->{process} = 0;
+                    }
+                }
+            }
 	    
-	    my @badroutes=();
-	    foreach(split(',', $routelist_in)) {
-		if (!exists($all_routes{$_})) {
-		    push(@badroutes, $_);
-		} 
-	    }
-	    if (@badroutes>0) {
-		my $rsp={};
-		my $badroutes_s=join(',', @badroutes);
-		if (@badroutes==1) {
-		    $rsp->{error}->[0]= "The route $badroutes_s is not defined in the routes table.";
-		} else {
-		    $rsp->{error}->[0]= "The routes $badroutes_s are not defined in the routes table.";
-		}
-		$callback->($rsp);
-		return 1;
-	    }
-	} 
+            my @badroutes=();
+            foreach(split(',', $routelist_in)) {
+                if (!exists($all_routes{$_})) {
+                    push(@badroutes, $_);
+                } 
+            }
+            if (@badroutes>0) {
+                my $rsp={};
+                my $badroutes_s=join(',', @badroutes);
+                if (@badroutes==1) {
+                    $rsp->{error}->[0]= "The route $badroutes_s is not defined in the routes table.";
+                }
+                else {
+                    $rsp->{error}->[0]= "The routes $badroutes_s are not defined in the routes table.";
+                }
+                $callback->($rsp);
+                return 1;
+            }
+        } 
 
-	if (@ARGV == 0) { #no noderange is specifiled, assume it is on the mn
-	    my $reqcopy = {%$request};
-	    $reqcopy->{_xcatpreprocessed}->[0] = 1;
-	    if ($routelist_in) {
-		$reqcopy->{routelist}->[0]=$routelist_in;
-	    }
-	    if ($delete) {
-		$reqcopy->{delete}->[0]=1;
-	    }
-	    return [$reqcopy];
-	} else { #noderange is specified, 
-	    my $ret=[];
-	    my $nr=$ARGV[0];
-	    my @noderange = xCAT::NodeRange::noderange($nr, 1);
-	    my @missednodes=xCAT::NodeRange::nodesmissed();
-	    if (@missednodes > 0) {
-		my $rsp={};
-		$rsp->{error}->[0]= "Invalide nodes in noderange: " . join(',', @missednodes);
-		$callback->($rsp);
-		return 1;
-	    }
-	    my @servicenodes=xCAT::ServiceNodeUtils->getSNList();
+        if (@ARGV == 0) { #no noderange is specifiled, assume it is on the mn
+            my $reqcopy = {%$request};
+            $reqcopy->{_xcatpreprocessed}->[0] = 1;
+            if ($routelist_in) {
+                $reqcopy->{routelist}->[0]=$routelist_in;
+            }
+            if ($delete) {
+                $reqcopy->{delete}->[0]=1;
+            }
+            return [$reqcopy];
+        }
+        else { #noderange is specified, 
+            my $ret=[];
+            my $nr=$ARGV[0];
+            my @noderange = xCAT::NodeRange::noderange($nr, 1);
+            my @missednodes=xCAT::NodeRange::nodesmissed();
+            if (@missednodes > 0) {
+                my $rsp={};
+                $rsp->{error}->[0]= "Invalide nodes in noderange: " . join(',', @missednodes);
+                $callback->($rsp);
+                return 1;
+            }
+            my @servicenodes=xCAT::ServiceNodeUtils->getSNList();
 
             #print "noderange=@noderange, missednodes=@missednodes, servicenodes=@servicenodes\n"; 
 
-	    #pick out the service nodes from the node list
-	    foreach my $sn (@servicenodes) {
-		if (grep /^$sn$/, @noderange) {
-		    @noderange=grep(!/^$sn$/, @noderange);
-		    my $reqcopy = {%$request};
-		    $reqcopy->{_xcatpreprocessed}->[0] = 1;
-		    $reqcopy->{'_xcatdest'}	= $sn;	
-		    $reqcopy->{node} = [$sn];
-		    if ($routelist_in) {
-			$reqcopy->{routelist}->[0]=$routelist_in;
-		    }
-		    if ($delete) {
-			$reqcopy->{delete}->[0]=1;
-		    }
-		    push(@$ret, $reqcopy);
-		}
-	    }
+            #pick out the service nodes from the node list
+            foreach my $sn (@servicenodes) {
+                if (grep /^$sn$/, @noderange) {
+                    @noderange=grep(!/^$sn$/, @noderange);
+                    my $reqcopy = {%$request};
+                    $reqcopy->{_xcatpreprocessed}->[0] = 1;
+                    $reqcopy->{'_xcatdest'}	= $sn;	
+                    $reqcopy->{node} = [$sn];
+                    if ($routelist_in) {
+                        $reqcopy->{routelist}->[0]=$routelist_in;
+                    }
+                    if ($delete) {
+                        $reqcopy->{delete}->[0]=1;
+                    }
+                    push(@$ret, $reqcopy);
+                }
+            }
       
             #now find out the service nodes for each node and 
             #send the request to the service node
-	    my $sn_hash = xCAT::ServiceNodeUtils->get_ServiceNode(\@noderange, "xcat", "MN");
-    
-	    # build each request for each service node
-	    foreach my $sn (keys %$sn_hash)
-	    {
-		my $reqcopy = {%$request};
-		$reqcopy->{node} = $sn_hash->{$sn};
-		$reqcopy->{'_xcatdest'} = $sn;
-		$reqcopy->{_xcatpreprocessed}->[0] = 1;
-		$reqcopy->{remote}->[0] = 1;
-		if ($routelist_in) {
-		    $reqcopy->{routelist}->[0]=$routelist_in;
-		}
-		if ($delete) {
-		    $reqcopy->{delete}->[0]=1;
-		}
-		push(@$ret, $reqcopy);
-	    }
+            my $sn_hash = xCAT::ServiceNodeUtils->get_ServiceNode(\@noderange, "xcat", "MN");
+   
+            # build each request for each service node
+            foreach my $sn (keys %$sn_hash)
+            {
+                my $reqcopy = {%$request};
+                $reqcopy->{node} = $sn_hash->{$sn};
+                $reqcopy->{'_xcatdest'} = $sn;
+                $reqcopy->{_xcatpreprocessed}->[0] = 1;
+                $reqcopy->{remote}->[0] = 1;
+                if ($routelist_in) {
+                    $reqcopy->{routelist}->[0]=$routelist_in;
+                }
+                if ($delete) {
+                    $reqcopy->{delete}->[0]=1;
+                }
+                push(@$ret, $reqcopy);
+            }
 
-	    return $ret;
-	}
+            return $ret;
+        }
     }
 }
 
