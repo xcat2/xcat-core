@@ -19,6 +19,61 @@ if [ -n "$5" ]; then
     ifname=$5
 fi
 
+function debianpreconf(){
+    #create the config sub dir
+    if [ ! -d "/etc/network/interfaces.d" ];then
+        mkdir -p "/etc/network/interfaces.d"
+    fi
+    #search xcat flag
+    XCATFLAG=`grep "#XCAT_CONFIG" /etc/network/interfaces`
+    if [ -n "$XCATFLAG" ];then
+        return
+    fi
+
+    #back up the old interface configure
+    if [ ! -e "/etc/network/interfaces.bak" ];then
+        mv /etc/network/interfaces /etc/network/interfaces.bak
+    fi
+
+    #create the new config file
+    echo "#XCAT_CONFIG" > /etc/network/interfaces
+    echo "source /etc/network/interfaces.d/*" >> /etc/network/interfaces
+
+    CONFFILE=''
+
+    #read the backfile
+    cat /etc/network/interfaces.bak | while read LINE
+    do
+        if [ ! "$LINE" ];then
+            continue
+        fi
+        FIRSTCHAR=${LINE:0:1}
+        if [ $FIRSTCHAR = '#' ];then
+            continue
+        fi
+
+        CONFTYPE=`echo $LINE | cut -d" " -f1`
+        if [ $CONFTYPE = 'auto' -o $CONFTYPE = 'allow-hotplug' ];then
+            LINE=${LINE#$CONFTYPE}
+            for NICNAME in $LINE; do
+                echo "$CONFTYPE $NICNAME" > "/etc/network/interfaces.d/$NICNAME"
+            done
+        elif [ $CONFTYPE = 'iface' -o $CONFTYPE = 'mapping' ];then
+            #find out the nic name, should think about the eth0:1
+            NICNAME=`echo $LINE | cut -d" " -f 2 | cut -d":" -f 1`
+            CONFFILE="/etc/network/interfaces.d/$NICNAME"
+            if [ ! -e $CONFFILE ];then
+                echo "auto $NICNAME" > $CONFFILE
+            fi
+
+            #write lines into the conffile
+            echo $LINE >> $CONFFILE
+        else
+            echo $LINE >> $CONFFILE
+        fi
+
+    done
+}
 
 route_exists()
 {
@@ -28,7 +83,7 @@ route_exists()
     ret=0
 
     if [ -n "$4" ]; then
-	ifname=$4
+        ifname=$4
     fi
 
     os_type=$(uname -s)
@@ -93,7 +148,7 @@ add_persistent_route()
     mask=$2;
     gw=$3;
     if [ -n "$4" ]; then
-    ifname=$4
+        ifname=$4
     fi
 
     xcat_config_start="# xCAT_CONFIG_START";
@@ -104,10 +159,12 @@ add_persistent_route()
     OS_name="something"
     if [ -f /etc/redhat-release ]
     then
-            OS_name="redhat"  #it can be RedHatFerdora or CentOS
+        OS_name="redhat"  #it can be RedHatFerdora or CentOS
     elif [ -f /etc/SuSE-release ]
     then
-            OS_name="sles"
+        OS_name="sles"
+    else
+        OS_name="debian"
     fi
 
     case $OS_name in
@@ -147,8 +204,65 @@ add_persistent_route()
         fi
 
         ;;
-        ubuntu*)
-        echo "Adding persistent route on Ubuntu is not supported yet."
+        debian)
+            debianpreconf
+            matchstr=""
+            v6flag=0
+            #on debian/ubuntu need the network device name
+            if [ ! $ifname ];then
+                ifname=`netstat -nr | grep "$net" | awk '{print $8}'`
+            fi
+            filename="/etc/network/interfaces.d/$ifname"
+
+            echo $net | grep : 2>&1 1>/dev/null
+            #ipv6
+            if [ $? -eq 0 ];then
+                matchstr="$net/$mask gw $gw"
+                v6flag=1
+            else
+                matchstr="net $net netmask $mask gw $gw"
+            fi
+
+            grep "$matchstr" $filename 2>&1 1>/dev/null
+            if [ $? -ne 0 ];then
+                foundflag=0
+                tempfile="/etc/network/interfaces.d/tmp"
+                while read LINE
+                do
+                    echo $LINE | grep "iface" 2>&1 1>/dev/null
+                    if [ $? -eq 0 -a $foundflag -eq 1 ];then
+                        foundflag=0
+                        if [ $v6flag -eq 1 ];then
+                            echo "  up route -A inet6 add $net/$mask gw $gw" >> $tempfile
+                            echo "  down route -A inet6 del $net/$mask gw $gw" >> $tempfile
+                        else
+                            echo "  up route add -net $net netmask $mask gw $gw" >> $tempfile
+                            echo "  down route del -net $net netmask $mask gw $gw" >> $tempfile
+                        fi
+                    fi
+                    echo $LINE | grep "iface $ifname " 2>&1 1>/dev/null
+                    #this is the last line of the device
+                    if [ $? -eq 0 ];then
+                        foundflag=1
+                    fi
+
+                    echo $LINE >> $tempfile
+                done < $filename
+                #the insert place is the last line of the config file
+                if [ $foundflag -eq 1 ];then
+                    if [ $v6flag -eq 1 ];then
+                        echo "  up route -A inet6 add $net/$mask gw $gw" >> $tempfile
+                        echo "  down route -A inet6 del $net/$mask gw $gw" >> $tempfile
+                    else
+                        echo "  up route add -net $net netmask $mask gw $gw" >> $tempfile
+                        echo "  down route del -net $net netmask $mask gw $gw" >> $tempfile
+                    fi 
+                fi
+                mv -f $tempfile $filename
+                echo "Persistent route \"$matchstr\" added in $filename."
+            else
+                echo "Persisten route \"$match\" already exists in $filename"
+            fi
         ;;
         redhat)
         #echo "rh/fedora/centos"
@@ -199,7 +313,7 @@ rm_persistent_route()
     mask=$2;
     gw=$3;
     if [ -n "$4" ]; then
-    ifname=$4
+        ifname=$4
     fi
 
     if [ "$(uname -s)" = "Linux" ]; then
@@ -207,10 +321,12 @@ rm_persistent_route()
     OS_name="something"
     if [ -f /etc/redhat-release ]
     then
-            OS_name="redhat"  #it can be RedHatFerdora or CentOS
+        OS_name="redhat"  #it can be RedHatFerdora or CentOS
     elif [ -f /etc/SuSE-release ]
     then
-            OS_name="sles"
+        OS_name="sles"
+    else
+        OS_name="debian"
     fi
 
     case $OS_name in
@@ -243,8 +359,32 @@ rm_persistent_route()
             echo "Persistent route file $filename does not exist."
         fi
         ;;
-        ubuntu*)
-        echo "Removing persistent route on Ubuntu is not supported yet."
+        debian)
+            debianpreconf
+            matchstr=""
+            v6flag=0
+            #on debian/ubuntu need the network device name
+            if [ ! $ifname ];then
+                ifname=`netstat -nr | grep "$net" | awk '{print $8}'`
+            fi
+            filename="/etc/network/interfaces.d/$ifname"
+
+            echo $net | grep : 2>&1 1>/dev/null
+            #ipv6
+            if [ $? -eq 0 ];then
+                matchstr="$net/$mask gw $gw"
+                v6flag=1
+            else
+                matchstr="net $net netmask $mask gw $gw"
+            fi
+
+            grep "$matchstr" $filename
+            if [ $? -eq 0 ];then
+                sed -i -e "/$matchstr/d" $filename
+                echo "Persistent route \"$matchstr\" removed from $filename."
+            else
+                echo "Persistent route \"$matchstr\" does not exist in $filename."
+            fi
         ;;
         redhat)
         #echo "rh/fedora/centos"
