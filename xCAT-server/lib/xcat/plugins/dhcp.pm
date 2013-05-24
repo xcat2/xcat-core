@@ -842,7 +842,7 @@ sub check_options
                      'l|localonly'  => \$localonly,
                      'n'  => \$::opt_n,
                      'r'  => \$::opt_r,
-                     's'  => \$statements,  # $statements is declared globally 
+                     's=s'  => \$statements,  # $statements is declared globally 
                      'q'  => \$::opt_q
                    )) 
     {
