@@ -30,6 +30,7 @@ use Data::Dumper;
 use xCAT::NodeRange;
 use IO::File;
 use File::Copy;
+use File::Path;
 use Sys::Hostname;
 
 
@@ -321,7 +322,6 @@ sub process_makeroutes {
             my $nrtab=xCAT::Table->new("noderes", -create =>1);
             my $nrhash = $nrtab->getNodesAttribs($nodes, ['routenames']) ;
             foreach(@$nodes) {
-		my @badroutes=();
                 my $node=$_;
                 my $rn;
                 my $ent=$nrhash->{$node}->[0];
@@ -643,20 +643,8 @@ sub set_route {
         #print "os=$os  $net, $mask, $gw_ip, $gw, $ifname\n";
         if ($os =~ /sles/) { #sles
             addPersistentRoute_Sles($callback, $net, $mask, $gw_ip, $gw, $ifname);
-	} elsif ($os =~ /ubuntu/) { #ubuntu or Debian?
-            #my $filename="/etc/network/interfaces";
-            #my @output=getConfig($filename);
-            #Example:
-            #auto eth0
-            #iface eth0 inet static
-            #   address 192.168.1.2
-            #   netmask 255.255.255.0
-            #   gateway 192.168.1.254
-            #   up route add -net 192.168.2.0 netmask 255.255.255.0 gw 192.168.2.1
-            #   down route del -net 192.168.2.0 netmask 255.255.255.0 gw 192.168.2.1
-            my $rsp={};
-            $rsp->{data}->[0]= "$host: Adding persistent route on Ubuntu is not supported yet.";
-            $callback->($rsp);
+        } elsif ($os =~ /ubuntu|debian/) { #ubuntu or Debian?
+            addPersistentRoute_Debian($callback, $net, $mask, $gw_ip, $gw, $ifname);
         }
         elsif ($os =~ /rh|fedora|centos/) { #RH, Ferdora, CentOS
             addPersistentRoute_RH($callback, $net, $mask, $gw_ip, $gw, $ifname);
@@ -732,19 +720,7 @@ sub delete_route {
         if ($os =~ /sles/) { #sles
             deletePersistentRoute_Sles($callback, $net, $mask, $gw_ip, $gw, $ifname);
         } elsif ($os =~ /ubuntu/) { #ubuntu or Debian?
-            #my $filename="/etc/network/interfaces";
-            #my @output=getConfig($filename);
-            #Example:
-            #auto eth0
-            #iface eth0 inet static
-            #   address 192.168.1.2
-            #   netmask 255.255.255.0
-            #   gateway 192.168.1.254
-            #   up route add -net 192.168.2.0 netmask 255.255.255.0 gw 192.168.2.1
-            #   down route del -net 192.168.2.0 netmask 255.255.255.0 gw 192.168.2.1           
-            my $rsp={};
-            $rsp->{data}->[0]= "$host: Removing persistent route on Ubuntu is not supported yet.";
-            $callback->($rsp);
+            deletePersistentRoute_Debian($callback, $net, $mask, $gw_ip, $gw, $ifname);
         }
         elsif ($os =~ /rh|fedora|centos/) { #RH, Ferdora 
             deletePersistentRoute_RH($callback, $net, $mask, $gw_ip, $gw, $ifname);
@@ -1128,6 +1104,180 @@ sub checkConfig_RH {
 }
 
 
-	
+sub addPersistentRoute_Debian{
+    my $callback = shift;
+    my $net = shift;
+    my $mask = shift;
+    my $gw_ip = shift;
+    my $gw_name = shift;
+    my $ifname = shift;
+    my $host=hostname();
+    my $conf_file = "/etc/network/interfaces.d/$ifname";
+    my $cmd = '';
+    my $route_conf = '';
+
+    preParse_Debian();
+
+    #ipv6
+    if ( $net =~ /:/){
+        $cmd = "grep \"$net/$mask gw $gw_ip\" $conf_file";
+        $route_conf = "  up route -A inet6 add $net/$mask gw $gw_ip \n  down route -A inet6 del $net/$mask gw $gw_ip \n";
+    }
+    else { #ipv4
+        $cmd = "grep \"-net $net netmask $mask gw $gw_ip\" $conf_file";
+        $route_conf = "  up route add -net $net netmask $mask gw $gw_ip \n  down route del -net $net netmask $mask gw $gw_ip \n";
+    }
+
+    #fine the corresponding config in the config file
+    my @returninfo = `$cmd`;
+    if ( @returninfo ){
+        my $rsp={};
+        $rsp->{data}->[0]= "$host: Persistent route \"$returninfo[0]\" already exists in $conf_file.";
+        callback->($rsp);
+        return;
+    }
+
+    #add the configuration to the config file
+    my $readyflag = 0;
+    open(FH, "<", $conf_file);
+    my @content = <FH>;
+    close(FH);
+
+    #read each line of the file and find the insert place
+    open(FH, ">", $conf_file);
+    foreach my $line ( @content ){
+        #add the route line at the end of this dev part
+        if (( $readyflag == 1 ) && ( $line =~ /iface|modprobe/ )){
+            $readyflag = 0;
+            print FH $route_conf;
+        }
+
+        if ( $line =~ /iface $ifname/ ){
+            $readyflag = 1;
+        }
+        
+        print FH $line;
+    }
+    
+    #the dev is the last one, add the route at the end of the file
+    if ( $readyflag == 1 ){
+        print FH $route_conf;
+    }
+    
+    close(FH);
+}
+
+sub deletePersistentRoute_Debian{
+    my $callback=shift;
+    my $net=shift;
+    my $mask=shift;
+    my $gw_ip=shift;
+    my $gw=shift;
+    my $ifname=shift;
+
+    my $host=hostname();
+    my $conf_file = "/etc/network/interfaces.d/$ifname";
+    my $match = "";
+    my $modflag = 0;
+
+    preParse_Debian();
+    #ipv6
+    if ( $net =~ /:/){
+        $match = "$net/$mask gw $gw_ip";
+    }
+    else {
+        $match = "net $net netmask $mask gw $gw_ip";
+    }
+
+    open(FH, "<", $conf_file);
+    my @lines = <FH>;
+    close(FH);
+
+    open(FH, ">", $conf_file);
+    foreach my $line ( @lines ){
+        #match the route config, jump to next line
+        if ( $line =~ /$match/ ){
+            $modflag = 1;
+        }
+        else{
+            print FH $line;
+        }
+    }
+    close(FH);
+
+    my $rsp = {};
+    if ( $modflag ){
+        $rsp->{data}->[0]= "$host: Removed persistent route \"$match\" from $conf_file.";
+    }
+    else{
+        $rsp->{data}->[0]= "$host: Persistent route \"$match\" does not exist in $conf_file.";
+    }
+
+    $callback->($rsp);
+    
+}
+
+sub preParse_Debian{
+    my $configfile;
+    
+    open(FH, "<", "/etc/network/interfaces");
+    my @lines = <FH>;
+    close(FH);
+
+    if ($lines[0] =~ /XCAT_CONFIG/i){
+        return;
+    }
+
+    unless ( -e "/etc/network/interfaces.bak" ){
+        copy ("/etc/network/interfaces", "/etc/network/interfaces.bak");
+    }
+
+    unless ( -d "/etc/network/interfaces.d" ){
+        mkpath( "/etc/network/interfaces.d" );
+    }
+    
+    open(FH, ">", "/etc/network/interfaces");
+    print FH "#XCAT_CONFIG\n";
+    print FH "source /etc/network/interfaces.d/* \n";
+    close(FH);
+
+    foreach my $line ( @lines ){
+        if ( $line =~ /^\s*$/){
+            next;
+        }
+
+        if ( $line =~ /^#.*/ ){
+            next;
+        }
+        
+        my @attr = split /\s+/, $line;
+        if ( $attr[0] =~ /auto|allow-hotplug/){
+            my $i = 1;
+            while ( $i < @attr ){
+                open(SFH, ">", "/etc/network/interfaces.d/$attr[$i]");
+                print SFH "$attr[0] $attr[$i]\n";
+                close(SFH);
+                print FH "source /etc/network/interfaces.d/$attr[$i] \n";
+                $i = $i + 1;
+            }
+        }
+        elsif ($attr[0] =~ /mapping|iface/){
+            $configfile = "/etc/network/interfaces.d/$attr[1]";
+            open(SFH, ">>", $configfile);
+            unless ( -e $configfile){
+                print SFH "auto $attr[1] \n";
+            }
+            print SFH $line;
+            close(SFH);
+        }
+        else{
+            open(SFH, ">>", $configfile);
+            print SFH $line;
+            close(SFH);
+        }
+    }
+
+    return;
+}
 
 
