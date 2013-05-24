@@ -67,7 +67,11 @@ sub process_request {
     my $request_command = shift;
     my $command = $request->{command}->[0];
     my $argsref = $request->{arg};
-    
+    my $macflag = 1;
+    if(exists($request->{macflag}))
+    {
+        $macflag = $request->{macflag}->[0];
+    }
     my $nodelist = $request->{node};
     my $retref;
     my $rsp;
@@ -82,9 +86,12 @@ sub process_request {
         $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist}, $request_command, 0, 2);
         log_cmd_return($retref);
 
-        setrsp_progress("Update DHCP entries");
-        $retref = xCAT::Utils->runxcmd({command=>["makedhcp"], node=>$nodelist}, $request_command, 0, 2);
-        log_cmd_return($retref);
+        if($macflag)
+        {
+            setrsp_progress("Update DHCP entries");
+            $retref = xCAT::Utils->runxcmd({command=>["makedhcp"], node=>$nodelist}, $request_command, 0, 2);
+            log_cmd_return($retref);
+        }
 
         setrsp_progress("Update known hosts");
         $retref = xCAT::Utils->runxcmd({command=>["makeknownhosts"], node=>$nodelist}, $request_command, 0, 2);
@@ -96,24 +103,26 @@ sub process_request {
         my $chainstr = $chainref->{'chain'};
         my @chainarray = split(",", $chainstr);
 
-        if ($chainarray[0]){
-            setrsp_progress("Update nodes' boot settings");
-            $retref = xCAT::Utils->runxcmd({command=>["nodeset"], node=>$nodelist, arg=>[$chainarray[0]]}, $request_command, 0, 2);
-            log_cmd_return($retref);
+        if($macflag)
+        {
+            if ($chainarray[0]){
+                setrsp_progress("Update nodes' boot settings");
+                $retref = xCAT::Utils->runxcmd({command=>["nodeset"], node=>$nodelist, arg=>[$chainarray[0]]}, $request_command, 0, 2);
+                log_cmd_return($retref);
+            }
         }
-
         my $isfsp = xCAT::ProfiledNodeUtils->is_fsp_node([$firstnode]);
         if ($isfsp) {
             setrsp_progress("Updating FSP's IP address");
             $retref = xCAT::Utils->runxcmd({command=>["rspconfig"], node=>$nodelist, arg=>['network=*']}, $request_command, 0, 2);
             log_cmd_return($retref);
-            
+
             my $cmmref = xCAT::ProfiledNodeUtils->get_nodes_cmm($nodelist);
             my @cmmchassis = keys %$cmmref;
             setrsp_progress("Update node's some attributes through 'rscan -u'");
             $retref = xCAT::Utils->runxcmd({command=>["rscan"], node=>\@cmmchassis, arg=>['-u']}, $request_command, 0, 2);
             log_cmd_return($retref);
-                        
+
             setrsp_progress("Sets up connections for nodes to FSP");
             $retref = xCAT::Utils->runxcmd({command=>["mkhwconn"], node=>$nodelist, arg=>['-t']}, $request_command, 0, 2);
             log_cmd_return($retref);

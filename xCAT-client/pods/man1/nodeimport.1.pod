@@ -6,11 +6,11 @@ B<nodeimport> - Create profiled nodes by importing hostinfo file.
 
 B<nodeimport> [-h| --help | -v | --version]
 
-B<nodeimport> file=<nostinfo-filename> networkprofile=<network-profile> imageprofile=<image-profile> hostnameformat=<node-name-format> [hardwareprofile=<hardware-profile>] [groups=<node-groups>]
+B<nodeimport> file=<hostinfo-filename> networkprofile=<network-profile> imageprofile=<image-profile> hostnameformat=<node-name-format> [hardwareprofile=<hardware-profile>] [groups=<node-groups>]
 
 =head1 DESCRIPTION
 
-The B<nodeimport> command creates nodes by importing a hostinfo file which is following stanza format. In this hostinfo file, we can define node's hostname, ip, mac, and host location infomation like rack, chassis, start unit, server height...etc
+The B<nodeimport> command creates nodes by importing a hostinfo file which is following stanza format. In this hostinfo file, we can define node's hostname, ip, mac, switch name, switch port and host location infomation like rack, chassis, start unit, server height...etc
 
 After nodes imported, the configuration files related with these nodes will be updated automatically. For example: /etc/hosts, dns configuration, dhcp configuration. And the kits node plugins will also be triggered automatically to update kit related configuration/services.
 
@@ -40,7 +40,7 @@ B<hardwareprofile=<hardware-profile>>
 
 Sets the new hardware profile name used by the node, where <hardware-profile> is the new hardware management profile used by the node. If a "__HardwareProfile_hwprofile" group exists, then "hwprofile" is the hardware profile name. A hardware profile defines hardware management related information for imported nodes, including: IPMI, HMC, CEC, CMM.
 
-B<hostnameformat=<nost-name-format>>
+B<hostnameformat=<host-name-format>>
 
 Sets the node name format for all nodes discovered, where <node-name-format> is a supported format. The two types of formats supported are prefix#NNNappendix and prefix#RRand#NNappendix, where wildcard #NNN and #NN are replaced by a system generated number that is based on the provisioning order. Wildcard #RR represents the rack number and stays constant.
 
@@ -116,6 +116,13 @@ To import nodes using a profile, follow the following steps:
      slotid=1
   # hostinfo end.
 
+  Example of a node information file, a switch auto discovery node defined: 
+  # hostinfo begin
+  # This entry defines a blade.
+  __hostname__:
+     switch=myswitch 
+     switchport=9
+
 The node information file includes the following items:
 
 B<__hostname__:>  This is a mandatory item.
@@ -125,6 +132,14 @@ Description: The name of the node, where __hostname__ is automatically generated
 B<mac=<mac-address>>  This is a mandatory item.
 
 Description: Specify the MAC address for the NIC used by the provisionging node, where <mac-address> is the NICs MAC address.
+
+B<switch=<switch-name>>  This is a mandatory item, when define a switch auto discovery node.
+
+Description: Specify switch name that the provisionging node is connected, where <switch-name> is the switch name.
+
+B<switchport=<switch-port>>  This is a mandatory item, when define a switch auto discovery node.
+
+Description: Specify switch port that the provisionging node is connected, where <switch-port> is the connected port.
 
 B<slotid=<slot-id>>  This is a mandatory item while define a PureFlex node.
 

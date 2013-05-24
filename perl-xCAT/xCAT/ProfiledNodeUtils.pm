@@ -543,6 +543,29 @@ sub get_allnode_singleattrib_hash
 
 #-------------------------------------------------------------------------------
 
+=head3 get_db_swtichports
+      Description : Get all records of switch config from a table, then return a string list.
+      Arguments   : $tabname - the table name.
+      Returns     : Reference of the records hash.
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_db_switchports
+{
+    my $class = shift;
+    my $table = xCAT::Table->new("switch");
+    my @attribs = ("switch", "port");
+    my @entries = $table->getAllAttribs(@attribs);
+    my %allrecords;
+    foreach (@entries) 
+    {
+        $allrecords{$_->{'switch'} . "_" . $_->{'port'}} = 0;
+    }
+    return \%allrecords;
+}
+
+#-------------------------------------------------------------------------------
+
 =head3 is_discover_started
       Description : Judge whether profiled nodes discovering is running or not.
       Arguments   : NA
