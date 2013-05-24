@@ -108,7 +108,7 @@ sub preprocess_request
         }
         Getopt::Long::Configure("bundling");
         Getopt::Long::Configure("no_pass_through");
-	
+
         my $routelist_in;
         my $delete=0;
         if(!GetOptions(
@@ -121,7 +121,7 @@ sub preprocess_request
             &usage($callback);
             return 1;
         }
-	
+
         # display the usage if -h or --help is specified
         if ($::HELP) {
             &usage($callback);
@@ -150,7 +150,7 @@ sub preprocess_request
                     }
                 }
             }
-	    
+
             my @badroutes=();
             foreach(split(',', $routelist_in)) {
                 if (!exists($all_routes{$_})) {
@@ -203,7 +203,7 @@ sub preprocess_request
                     @noderange=grep(!/^$sn$/, @noderange);
                     my $reqcopy = {%$request};
                     $reqcopy->{_xcatpreprocessed}->[0] = 1;
-                    $reqcopy->{'_xcatdest'}	= $sn;	
+                    $reqcopy->{'_xcatdest'} = $sn;
                     $reqcopy->{node} = [$sn];
                     if ($routelist_in) {
                         $reqcopy->{routelist}->[0]=$routelist_in;
@@ -274,23 +274,23 @@ sub process_makeroutes {
 
     my $nodes;
     if (exists($request->{node})) {
-	$nodes=$request->{node};
+        $nodes=$request->{node};
     }
 
     my $delete=0;
     if (exists($request->{delete})) {
-	$delete=$request->{delete}->[0];
+        $delete=$request->{delete}->[0];
     }
 
     my $remote=0;
     if (exists($request->{remote})) {
-	$remote=$request->{remote}->[0];
+        $remote=$request->{remote}->[0];
     }
 
 
     my $routelist;
     if (exists($request->{routelist})) {
-	$routelist=$request->{routelist}->[0];
+        $routelist=$request->{routelist}->[0];
     }
 
 
@@ -298,102 +298,110 @@ sub process_makeroutes {
     my %all_routes=();
     my $routestab=xCAT::Table->new("routes", -create =>1);
     if ($routestab) {
-	my @tmp1=$routestab->getAllAttribs(('routename', 'net', 'mask', 'gateway', 'ifname'));
-	if (@tmp1 > 0) {
-	    foreach(@tmp1) {
-		$all_routes{$_->{routename}} = $_;
-		$_->{process} = 0;
-	    }
-	}
+        my @tmp1=$routestab->getAllAttribs(('routename', 'net', 'mask', 'gateway', 'ifname'));
+        if (@tmp1 > 0) {
+            foreach(@tmp1) {
+                $all_routes{$_->{routename}} = $_;
+                $_->{process} = 0;
+            }
+        }
     }
     
     if ($routelist) {
-	foreach(split(',', $routelist)) {
-	    $all_routes{$_}->{process}=1;
-	    if (($nodes) && ($remote)) {
-		$all_routes{$_}->{nodes}=$nodes;
-	    }
-	}
-    } else {
-	#get the routes for each nodes from the noderes table (for sn and cn) and site table (for mn)
-	if ($nodes) {
-	    my $nrtab=xCAT::Table->new("noderes", -create =>1);
-	    my $nrhash = $nrtab->getNodesAttribs($nodes, ['routenames']) ;
-	    foreach(@$nodes) {
+        foreach(split(',', $routelist)) {
+            $all_routes{$_}->{process}=1;
+            if (($nodes) && ($remote)) {
+                $all_routes{$_}->{nodes}=$nodes;
+            }
+        }
+    }
+    else {
+        #get the routes for each nodes from the noderes table (for sn and cn) and site table (for mn)
+        if ($nodes) {
+            my $nrtab=xCAT::Table->new("noderes", -create =>1);
+            my $nrhash = $nrtab->getNodesAttribs($nodes, ['routenames']) ;
+            foreach(@$nodes) {
 		my @badroutes=();
-		my $node=$_;
-		my $rn;
-		my $ent=$nrhash->{$node}->[0];
-		if (ref($ent) and defined $ent->{routenames}) {
-		    $rn = $ent->{routenames};
-		}
-		if ($rn) {
-		    my @a=split(',', $rn);
-		    my @badroutes=();
-		    foreach my $r (@a) {
-			if (! exists($all_routes{$r})) {
-			    push(@badroutes, $r);
-			} else {
-			    #print "got here...., remote=$remote\n";
-			    $all_routes{$r}->{process}=1;
-			    if ($remote) {
-				my $pa=$all_routes{$r}->{nodes};
-				if ($pa) {
-				    push(@$pa, $node);
-				} else {
-				    $all_routes{$r}->{nodes}=[$node];
-				}
-			    }
-			}
-		    }
-		    if (@badroutes > 0) {
-			my $badroutes_s=join(',', @badroutes);
-			my $rsp={};
-			if (@badroutes==1) {
-			    $rsp->{error}->[0]= "The route $badroutes_s is not defined in the routes table. Please check noderes.routenames for node $node.";
-			} else {
-			    $rsp->{error}->[0]= "The routes $badroutes_s are not defined in the routes table. Please check noderes.routenames for node $node.";
-			}
-			$callback->($rsp);
-			return 1;
-		    }
-		} else {
-		    my $rsp={};
-		    $rsp->{data}->[0]= "No routes defined in noderes.routenames for node $node, skiping $node.";
-		    $callback->($rsp);
-		}
-	    }
-	}
-	else { #this is mn, get the routes from the site table
-	    my @mnroutes = xCAT::TableUtils->get_site_attribute("mnroutenames");
-	    if ($mnroutes[0]) {
-		my @a=split(',', $mnroutes[0]);
-		my @badroutes=();
-		foreach my $r (@a) {
-		    if (! exists($all_routes{$r})) {
-			push(@badroutes, $r);
-		    } else {
-			$all_routes{$r}->{process}=1;
-		    }
-		}
-		if (@badroutes > 0) {
-		    my $badroutes_s=join(',', @badroutes);
-		    my $rsp={};
-		    if (@badroutes==1) {
-			$rsp->{error}->[0]= "The route $badroutes_s is not defined in the routes table. Please check site.mnroutenames for the management node.";
-		    } else {
-			$rsp->{error}->[0]= "The routes $badroutes_s are not defined in the routes table. Please check site.mnroutenames for the management node.";
-		    }
-		    $callback->($rsp);
-		    return 1;
-		}
-	    } else {
-		my $rsp={};
-		$rsp->{data}->[0]= "No routes defined in the site.mnroutenames for the management node.";
-		$callback->($rsp);
-		return 1;
-	    }
-	}
+                my $node=$_;
+                my $rn;
+                my $ent=$nrhash->{$node}->[0];
+                if (ref($ent) and defined $ent->{routenames}) {
+                    $rn = $ent->{routenames};
+                }
+                if ($rn) {
+                    my @a=split(',', $rn);
+                    my @badroutes=();
+                    foreach my $r (@a) {
+                        if (! exists($all_routes{$r})) {
+                            push(@badroutes, $r);
+                        }
+                        else {
+                            #print "got here...., remote=$remote\n";
+                            $all_routes{$r}->{process}=1;
+                            if ($remote) {
+                                my $pa=$all_routes{$r}->{nodes};
+                                if ($pa) {
+                                    push(@$pa, $node);
+                                }
+                                else {
+                                    $all_routes{$r}->{nodes}=[$node];
+                                }
+                            }
+                        }
+                    }
+                    if (@badroutes > 0) {
+                        my $badroutes_s=join(',', @badroutes);
+                        my $rsp={};
+                        if (@badroutes==1) {
+                            $rsp->{error}->[0]= "The route $badroutes_s is not defined in the routes table. Please check noderes.routenames for node $node.";
+                        }
+                        else {
+                            $rsp->{error}->[0]= "The routes $badroutes_s are not defined in the routes table. Please check noderes.routenames for node $node.";
+                        }
+                        $callback->($rsp);
+                        return 1;
+                    }
+                }
+                else {
+                    my $rsp={};
+                    $rsp->{data}->[0]= "No routes defined in noderes.routenames for node $node, skiping $node.";
+                    $callback->($rsp);
+                }
+            }
+        }
+        else { #this is mn, get the routes from the site table
+            my @mnroutes = xCAT::TableUtils->get_site_attribute("mnroutenames");
+            if ($mnroutes[0]) {
+                my @a=split(',', $mnroutes[0]);
+                my @badroutes=();
+                foreach my $r (@a) {
+                    if (! exists($all_routes{$r})) {
+                        push(@badroutes, $r);
+                    }
+                    else {
+                        $all_routes{$r}->{process}=1;
+                    }
+                }
+                if (@badroutes > 0) {
+                    my $badroutes_s=join(',', @badroutes);
+                    my $rsp={};
+                    if (@badroutes==1) {
+                        $rsp->{error}->[0]= "The route $badroutes_s is not defined in the routes table. Please check site.mnroutenames for the management node.";
+                    }
+                    else {
+                        $rsp->{error}->[0]= "The routes $badroutes_s are not defined in the routes table. Please check site.mnroutenames for the management node.";
+                    }
+                    $callback->($rsp);
+                    return 1;
+                }
+            }
+            else {
+                my $rsp={};
+                $rsp->{data}->[0]= "No routes defined in the site.mnroutenames for the management node.";
+                $callback->($rsp);
+                return 1;
+            }
+        }
     }
 
     #print Dumper(%all_routes); 
@@ -402,48 +410,49 @@ sub process_makeroutes {
     my @sns=(); 
     my $installdir = xCAT::TableUtils->getInstallDir();
     while (my ($routename, $route_hash) = each(%all_routes)) {
-	if ($route_hash->{process}) {
-	    my ($gw_name, $gw_ip)=xCAT::NetworkUtils->gethostnameandip($route_hash->{gateway});
-	    push(@sns, $gw_name);
+        if ($route_hash->{process}) {
+            my ($gw_name, $gw_ip)=xCAT::NetworkUtils->gethostnameandip($route_hash->{gateway});
+            push(@sns, $gw_name);
 
-        if ($route_hash->{net} =~ /:/) {
-            # Remove the subnet postfix like /64
-            if ($route_hash->{net} =~ /\//) {
-                $route_hash->{net} =~ s/\/.*$//;
+            if ($route_hash->{net} =~ /:/) {
+                # Remove the subnet postfix like /64
+                if ($route_hash->{net} =~ /\//) {
+                    $route_hash->{net} =~ s/\/.*$//;
+                }
+                # Remove the "/" from the ipv6 prefixlength
+                if ($route_hash->{mask}) {
+                    if ($route_hash->{mask} =~ /\//) {
+                        $route_hash->{mask} =~ s/^\///;
+                    }
+                }
             }
-            # Remove the "/" from the ipv6 prefixlength
-            if ($route_hash->{mask}) {
-                if ($route_hash->{mask} =~ /\//) {
-                    $route_hash->{mask} =~ s/^\///;
+
+            if ($remote) { #to the nodes
+                my $nodes_tmp=$route_hash->{nodes};
+                #print "nodes=@$nodes_tmp, remote=$remote, delete=$delete\n";
+                my $op="add";
+                if ($delete)  { $op="delete"; }
+                my $output = xCAT::Utils->runxcmd(
+                                        {
+                                            command => ["xdsh"], 
+                                            node => $nodes_tmp, 
+                                            arg => ["-e", "/$installdir/postscripts/routeop $op " . $route_hash->{net} . " " . $route_hash->{mask} . " $gw_ip" . " $route_hash->{ifname}"],
+                                            _xcatpreprocessed => [1],
+                                        }, 
+                                        $sub_req, -1, 1);
+                my $rsp={};
+                $rsp->{data}=$output;
+                $callback->($rsp);
+            }
+            else { #local on mn or sn
+                if ($delete)  {
+                    delete_route($callback, $route_hash->{net}, $route_hash->{mask}, $gw_ip, $gw_name, $route_hash->{ifname});
+                } 
+                else {
+                    set_route($callback, $route_hash->{net}, $route_hash->{mask}, $gw_ip, $gw_name,$route_hash->{ifname});
                 }
             }
         }
-
-	    if ($remote) { #to the nodes
-		my $nodes_tmp=$route_hash->{nodes};
-		#print "nodes=@$nodes_tmp, remote=$remote, delete=$delete\n";
-		my $op="add";
-		if ($delete)  { $op="delete"; }
-		my $output = xCAT::Utils->runxcmd(
-		    {
-			command => ["xdsh"], 
-			node => $nodes_tmp, 
-			arg => ["-e", "/$installdir/postscripts/routeop $op " . $route_hash->{net} . " " . $route_hash->{mask} . " $gw_ip" . " $route_hash->{ifname}"],
-			_xcatpreprocessed => [1],
-		    }, 
-		    $sub_req, -1, 1);
-		my $rsp={};
-		$rsp->{data}=$output;
-		$callback->($rsp);
-	    } else { #local on mn or sn
-		if ($delete)  {
-		    delete_route($callback, $route_hash->{net}, $route_hash->{mask}, $gw_ip, $gw_name, $route_hash->{ifname});
-		} 
-		else {
-		    set_route($callback, $route_hash->{net}, $route_hash->{mask}, $gw_ip, $gw_name,$route_hash->{ifname});
-		}
-	    }
-	}
     }
     
 
@@ -453,9 +462,9 @@ sub process_makeroutes {
     my %allSN_hash=();
     foreach(@allSN) {$allSN_hash{$_}=1;}
     foreach my $sn (@sns) {
-	if (exists($allSN_hash{$sn})) {
-	    $sn_hash{$sn}=1;
-	}
+        if (exists($allSN_hash{$sn})) {
+            $sn_hash{$sn}=1;
+        }
     }
 
     #update servicenode.ipforward 
@@ -464,17 +473,17 @@ sub process_makeroutes {
     my $value=1;
     if ($delete) {$value=0;}
     foreach my $sn (keys %sn_hash)  {
-	$valuehash{$sn} = { ipforward=>$value };
+        $valuehash{$sn} = { ipforward=>$value };
     }
     $sntab->setNodesAttribs(\%valuehash);
 
     #go to the service nodes to enable/disable ipforwarding
     my @nodes=keys(%sn_hash);
     $sub_req->({
-	command=>['ipforward'],
-	node=>\@nodes,
-	arg=>[$delete]}, 
-	       $callback);
+    command=>['ipforward'],
+    node=>\@nodes,
+    arg=>[$delete]}, 
+           $callback);
 
 
 }
@@ -487,13 +496,13 @@ sub process_ipforward {
 
     my $delete=0;
     if ($args) {
-	$delete = $args->[0];
+        $delete = $args->[0];
     }
     
     if ($delete) {
-	xCAT::NetworkUtils->setup_ip_forwarding(0);
+        xCAT::NetworkUtils->setup_ip_forwarding(0);
     } else {
-	xCAT::NetworkUtils->setup_ip_forwarding(1);
+        xCAT::NetworkUtils->setup_ip_forwarding(1);
     }
 }
 
@@ -594,72 +603,71 @@ sub set_route {
 
     my $result;
     if (!route_exists($net, $mask, $gw_ip, $gw)) {
-	#set temporay route
-    my $cmd;
-    # ipv6 network
-    if ($net =~ /:/) {
-	    if (xCAT::Utils->isLinux()) {
-	        $cmd="ip -6 route add $net/$mask via $gw_ip";
-	    } else {
-            # AIX TODO
-	    }
-    } else {
-	    if (xCAT::Utils->isLinux()) {
-	        $cmd="route add -net $net netmask $mask gw $gw_ip";
-	    } else {
-	        $cmd="route add -net $net -netmask $mask $gw_ip";
-	    }
-    }    
-	#print "cmd=$cmd\n";
-	my $rsp={};
-	$rsp->{data}->[0]= "$host: Adding temporary route: $cmd";
-	$callback->($rsp);
+        #set temporay route
+        my $cmd;
+        # ipv6 network
+        if ($net =~ /:/) {
+            if (xCAT::Utils->isLinux()) {
+                $cmd="ip -6 route add $net/$mask via $gw_ip";
+            } else {
+                # AIX TODO
+            }
+        } else {
+            if (xCAT::Utils->isLinux()) {
+                $cmd="route add -net $net netmask $mask gw $gw_ip";
+            } else {
+                $cmd="route add -net $net -netmask $mask $gw_ip";
+            }
+        }    
+        #print "cmd=$cmd\n";
+        my $rsp={};
+        $rsp->{data}->[0]= "$host: Adding temporary route: $cmd";
+        $callback->($rsp);
 
-	$result=`$cmd 2>&1`;
-	if ($? != 0) {
-	    my $rsp={};
-	    $rsp->{error}->[0]= "$host: $cmd\nerror code=$?, result=$result\n";
-	    $callback->($rsp);
-	    #return 1;
-	} 
+        $result=`$cmd 2>&1`;
+        if ($? != 0) {
+            my $rsp={};
+            $rsp->{error}->[0]= "$host: $cmd\nerror code=$?, result=$result\n";
+            $callback->($rsp);
+            #return 1;
+        } 
     } else {
-	my $rsp={};
-	$rsp->{data}->[0]= "$host: The temporary route already exists for $net.";
-	$callback->($rsp);
+        my $rsp={};
+        $rsp->{data}->[0]= "$host: The temporary route already exists for $net.";
+        $callback->($rsp);
     }
 
     #handle persistent routes
     if (xCAT::Utils->isLinux()) { #Linux
-	my $os = xCAT::Utils->osver();
-	#print "os=$os  $net, $mask, $gw_ip, $gw, $ifname\n";
-	if ($os =~ /sles/) { #sles
-	    addPersistentRoute_Sles($callback, $net, $mask, $gw_ip, $gw, $ifname);
+        my $os = xCAT::Utils->osver();
+        #print "os=$os  $net, $mask, $gw_ip, $gw, $ifname\n";
+        if ($os =~ /sles/) { #sles
+            addPersistentRoute_Sles($callback, $net, $mask, $gw_ip, $gw, $ifname);
 	} elsif ($os =~ /ubuntu/) { #ubuntu or Debian?
-	    #my $filename="/etc/network/interfaces";
-	    #my @output=getConfig($filename);
-	    #Example:
-	    #auto eth0
-	    #iface eth0 inet static
-	    #	address 192.168.1.2
-	    #	netmask 255.255.255.0
-	    #	gateway 192.168.1.254
-	    #	up route add -net 192.168.2.0 netmask 255.255.255.0 gw 192.168.2.1
-	    #	down route del -net 192.168.2.0 netmask 255.255.255.0 gw 192.168.2.1		   
-	    my $rsp={};
-	    $rsp->{data}->[0]= "$host: Adding persistent route on Ubuntu is not supported yet.";
-	    $callback->($rsp);
-	    
-	}
-	elsif ($os =~ /rh|fedora|centos/) { #RH, Ferdora, CentOS
-	    addPersistentRoute_RH($callback, $net, $mask, $gw_ip, $gw, $ifname);
-	} 	
+            #my $filename="/etc/network/interfaces";
+            #my @output=getConfig($filename);
+            #Example:
+            #auto eth0
+            #iface eth0 inet static
+            #   address 192.168.1.2
+            #   netmask 255.255.255.0
+            #   gateway 192.168.1.254
+            #   up route add -net 192.168.2.0 netmask 255.255.255.0 gw 192.168.2.1
+            #   down route del -net 192.168.2.0 netmask 255.255.255.0 gw 192.168.2.1
+            my $rsp={};
+            $rsp->{data}->[0]= "$host: Adding persistent route on Ubuntu is not supported yet.";
+            $callback->($rsp);
+        }
+        elsif ($os =~ /rh|fedora|centos/) { #RH, Ferdora, CentOS
+            addPersistentRoute_RH($callback, $net, $mask, $gw_ip, $gw, $ifname);
+        }   
     } else { #AIX
-	# chdev -l inet0 -a route=net,-hopcount,0,,0,192.168.1.1
-	# chdev -l inet0 -a route=net, -hopcount,255.255.255.128,,,,,192.168.3.155,192.168.2.1
-	# lsattr -El inet0 -a route
-	my $rsp={};
-	$rsp->{data}->[0]= "$host: Adding persistent route on AIX is not supported yet.";
-	$callback->($rsp);
+        # chdev -l inet0 -a route=net,-hopcount,0,,0,192.168.1.1
+        # chdev -l inet0 -a route=net, -hopcount,255.255.255.128,,,,,192.168.3.155,192.168.2.1
+        # lsattr -El inet0 -a route
+        my $rsp={};
+        $rsp->{data}->[0]= "$host: Adding persistent route on AIX is not supported yet.";
+        $callback->($rsp);
     }
     
     return 0;
@@ -681,72 +689,73 @@ sub delete_route {
 
     my $result;
     if (route_exists($net, $mask, $gw_ip, $gw)) {
-	#delete  route temporarily
-    my $cmd;
-    if ($net =~ /:/) {
-        if (xCAT::Utils->isLinux()) {
-            $cmd = "ip -6 route delete $net/$mask via $gw_ip";
+        #delete  route temporarily
+        my $cmd;
+        if ($net =~ /:/) {
+            if (xCAT::Utils->isLinux()) {
+                $cmd = "ip -6 route delete $net/$mask via $gw_ip";
+            } else {
+                # AIX TODO
+            }
         } else {
-            # AIX TODO
+            if (xCAT::Utils->isLinux()) {
+                $cmd="route delete -net $net netmask $mask gw $gw_ip";
+            } else {
+                $cmd="route delete -net $net -netmask $mask $gw_ip";
+            }
         }
-    } else {
-	    if (xCAT::Utils->isLinux()) {
-	        $cmd="route delete -net $net netmask $mask gw $gw_ip";
-	    } else {
-	        $cmd="route delete -net $net -netmask $mask $gw_ip";
-	    }
-    }
-	#print "cmd=$cmd\n";
-	my $rsp={};
-	$rsp->{data}->[0]= "$host: Removing the temporary route: $cmd";
-	$callback->($rsp);
+        #print "cmd=$cmd\n";
+        my $rsp={};
+        $rsp->{data}->[0]= "$host: Removing the temporary route: $cmd";
+        $callback->($rsp);
 
-	$result=`$cmd 2>&1`;
-	if ($? != 0) {
-	    my $rsp={};
-	    $rsp->{error}->[0]= "$host: $cmd\nerror code=$?, result=$result\n";
-	    $callback->($rsp);
-	}
-    } else {
-	my $rsp={};
-    if ($net =~ /:/) {
-	    $rsp->{data}->[0]= "$host: The temporary route does not exist for $net/$mask.";
-    } else {
-	    $rsp->{data}->[0]= "$host: The temporary route does not exist for $net.";
+        $result=`$cmd 2>&1`;
+        if ($? != 0) {
+            my $rsp={};
+            $rsp->{error}->[0]= "$host: $cmd\nerror code=$?, result=$result\n";
+            $callback->($rsp);
+        }
     }
-	$callback->($rsp);
-
+    else {
+        my $rsp={};
+        if ($net =~ /:/) {
+            $rsp->{data}->[0]= "$host: The temporary route does not exist for $net/$mask.";
+        } else {
+            $rsp->{data}->[0]= "$host: The temporary route does not exist for $net.";
+        }
+        $callback->($rsp);
     }
 
     #handle persistent route
     if (xCAT::Utils->isLinux()) { #Linux
-	my $os = xCAT::Utils->osver();
-	if ($os =~ /sles/) { #sles
-	    deletePersistentRoute_Sles($callback, $net, $mask, $gw_ip, $gw, $ifname);
-	} elsif ($os =~ /ubuntu/) { #ubuntu or Debian?
-	    #my $filename="/etc/network/interfaces";
-	    #my @output=getConfig($filename);
-	    #Example:
-	    #auto eth0
-	    #iface eth0 inet static
-	    #	address 192.168.1.2
-	    #	netmask 255.255.255.0
-	    #	gateway 192.168.1.254
-	    #	up route add -net 192.168.2.0 netmask 255.255.255.0 gw 192.168.2.1
-	    #	down route del -net 192.168.2.0 netmask 255.255.255.0 gw 192.168.2.1		   
-	    my $rsp={};
-	    $rsp->{data}->[0]= "$host: Removing persistent route on Ubuntu is not supported yet.";
-	    $callback->($rsp);
-	}
-	elsif ($os =~ /rh|fedora|centos/) { #RH, Ferdora 
-	    deletePersistentRoute_RH($callback, $net, $mask, $gw_ip, $gw, $ifname);
-	} 	
-    } else { #AIX
-	# chdev -l inet0 -a delroute=net,-hopcount,0,,0,192.168.1.1
-	# chdev -l inet0 -a delroute=net,-hopcount,255.255.255.128,,,,,192.168.3.128,192.168.2.1
-	my $rsp={};
-	$rsp->{data}->[0]= "$host: Removing persistent route on AIX is not supported yet.";
-	$callback->($rsp);
+        my $os = xCAT::Utils->osver();
+        if ($os =~ /sles/) { #sles
+            deletePersistentRoute_Sles($callback, $net, $mask, $gw_ip, $gw, $ifname);
+        } elsif ($os =~ /ubuntu/) { #ubuntu or Debian?
+            #my $filename="/etc/network/interfaces";
+            #my @output=getConfig($filename);
+            #Example:
+            #auto eth0
+            #iface eth0 inet static
+            #   address 192.168.1.2
+            #   netmask 255.255.255.0
+            #   gateway 192.168.1.254
+            #   up route add -net 192.168.2.0 netmask 255.255.255.0 gw 192.168.2.1
+            #   down route del -net 192.168.2.0 netmask 255.255.255.0 gw 192.168.2.1           
+            my $rsp={};
+            $rsp->{data}->[0]= "$host: Removing persistent route on Ubuntu is not supported yet.";
+            $callback->($rsp);
+        }
+        elsif ($os =~ /rh|fedora|centos/) { #RH, Ferdora 
+            deletePersistentRoute_RH($callback, $net, $mask, $gw_ip, $gw, $ifname);
+        }   
+    }
+    else { #AIX
+        # chdev -l inet0 -a delroute=net,-hopcount,0,,0,192.168.1.1
+        # chdev -l inet0 -a delroute=net,-hopcount,255.255.255.128,,,,,192.168.3.128,192.168.2.1
+        my $rsp={};
+        $rsp->{data}->[0]= "$host: Removing persistent route on AIX is not supported yet.";
+        $callback->($rsp);
     }
 
     return 0;
