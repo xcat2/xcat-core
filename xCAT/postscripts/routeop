@@ -46,41 +46,41 @@ route_exists()
     else
         result=`netstat -nr|grep $net`;
         if [ $? -eq 0 ] && [ -n "$result" ]; then
-	        for x in `echo "$result"|tr -s " " ","`
-       	        do
-	            if [ "$os_type" = "Linux" ]; then
-	     	        net1=`echo $x|cut -d',' -f1`
-		            gw1=`echo $x|cut -d',' -f2`
-		            mask1=`echo $x|cut -d',' -f3`
-		            if [ "$net" = "$net1" ] && [ "$mask" = "$mask1" ] && [ "$gw" = "$gw1" ]; then
-		                ret=1
-		                break
-		            fi
-	            else
-	        	    tmp1=`echo $x|cut -d',' -f1`
-		            gw1=`echo $x|cut -d',' -f2`
+            for x in `echo "$result"|tr -s " " ","`
+                do
+                if [ "$os_type" = "Linux" ]; then
+                    net1=`echo $x|cut -d',' -f1`
+                    gw1=`echo $x|cut -d',' -f2`
+                    mask1=`echo $x|cut -d',' -f3`
+                    if [ "$net" = "$net1" ] && [ "$mask" = "$mask1" ] && [ "$gw" = "$gw1" ]; then
+                        ret=1
+                        break
+                    fi
+                else
+                    tmp1=`echo $x|cut -d',' -f1`
+                    gw1=`echo $x|cut -d',' -f2`
 
-                    n1=`echo $net |cut -d'.' -f1`	        
-                    n2=`echo $net |cut -d'.' -f2`	        
-                    n3=`echo $net |cut -d'.' -f3`	        
+                    n1=`echo $net |cut -d'.' -f1`           
+                    n2=`echo $net |cut -d'.' -f2`           
+                    n3=`echo $net |cut -d'.' -f3`           
                     n4=`echo $net |cut -d'.' -f4`
 
-		            netnum="$(( ($n1 << 24) + ($n2 << 16) + ($n3 << 8) + $n4 ))"
+                    netnum="$(( ($n1 << 24) + ($n2 << 16) + ($n3 << 8) + $n4 ))"
                     bits=32
-		            while [ `expr $netnum % 2` -eq 0 ]
-		            do
-		                bits="$(( $bits - 1 ))"
-		                netnum="$(( $netnum >> 1 ))"
-		            done
+                    while [ `expr $netnum % 2` -eq 0 ]
+                    do
+                        bits="$(( $bits - 1 ))"
+                        netnum="$(( $netnum >> 1 ))"
+                    done
                 
                     tmp2="$net/$bits";
-		            #echo "$tmp2=$tmp2"
-		            if [ "$tmp1" = "$tmp2" ] && [ "$gw" = "$gw1" ]; then
-		                ret=1
-		                break
-		            fi
-	            fi
-	            done
+                    #echo "$tmp2=$tmp2"
+                    if [ "$tmp1" = "$tmp2" ] && [ "$gw" = "$gw1" ]; then
+                        ret=1
+                        break
+                    fi
+                fi
+                done
         fi
     fi
     
@@ -93,103 +93,103 @@ add_persistent_route()
     mask=$2;
     gw=$3;
     if [ -n "$4" ]; then
-	ifname=$4
+    ifname=$4
     fi
 
     xcat_config_start="# xCAT_CONFIG_START";
     xcat_config_end="# xCAT_CONFIG_END";
 
     if [ "$(uname -s)" = "Linux" ]; then
-	#determine the os name
-	OS_name="something"
-	if [ -f /etc/redhat-release ]
-	then
+    #determine the os name
+    OS_name="something"
+    if [ -f /etc/redhat-release ]
+    then
             OS_name="redhat"  #it can be RedHatFerdora or CentOS
-	elif [ -f /etc/SuSE-release ]
-	then
+    elif [ -f /etc/SuSE-release ]
+    then
             OS_name="sles"
-	fi
+    fi
 
-	case $OS_name in
-	    sles)
-		#echo "sles"
+    case $OS_name in
+        sles)
+        #echo "sles"
         # ipv6 net
-		filename="/etc/sysconfig/network/routes";
+        filename="/etc/sysconfig/network/routes";
         if echo $net | grep : 2>&1 1>/dev/null
         then
             route="$net/$mask $gw - -"
             route1="$net\/$mask $gw - -";
         else
-		    route="$net $gw $mask $ifname";
-		    route1="$net $gw $mask $ifname";
+            route="$net $gw $mask $ifname";
+            route1="$net $gw $mask $ifname";
         fi
-		if [ -f $filename ]; then
-		    grep "$route" $filename 2>&1 1>/dev/null
-		    if [ $? -ne 0 ]; then #route does not exist
-			grep "$xcat_config_start" $filename 2>&1 1>/dev/null
-			if [ $? -ne 0 ]; then #no xCAT section
-			    echo $xcat_config_start >> $filename
-			    echo $route >> $filename
-			    echo $xcat_config_end >> $filename
-			else
-			    sed -i -e s/"$xcat_config_end"/"$route1\n$xcat_config_end"/g $filename
-			fi
-			echo "Persistent route \"$route\" added in $filename."
-		    else 
-			echo "Persistent route \"$route\" already exists in $filename."
-		    fi
-		else
-		    #echo "got here"
-		    echo "$xcat_config_start" > $filename
-		    echo "$route" >> $filename
-		    echo "$xcat_config_end" >> $filename
-		    echo "Route \"$route\" added in $filename."
-		fi
+        if [ -f $filename ]; then
+            grep "$route" $filename 2>&1 1>/dev/null
+            if [ $? -ne 0 ]; then #route does not exist
+            grep "$xcat_config_start" $filename 2>&1 1>/dev/null
+            if [ $? -ne 0 ]; then #no xCAT section
+                echo $xcat_config_start >> $filename
+                echo $route >> $filename
+                echo $xcat_config_end >> $filename
+            else
+                sed -i -e s/"$xcat_config_end"/"$route1\n$xcat_config_end"/g $filename
+            fi
+            echo "Persistent route \"$route\" added in $filename."
+            else 
+            echo "Persistent route \"$route\" already exists in $filename."
+            fi
+        else
+            #echo "got here"
+            echo "$xcat_config_start" > $filename
+            echo "$route" >> $filename
+            echo "$xcat_config_end" >> $filename
+            echo "Route \"$route\" added in $filename."
+        fi
 
-		;;
-	    ubuntu*)
-		echo "Adding persistent route on Ubuntu is not supported yet."
-		;;
-	    redhat)
-		#echo "rh/fedora/centos"
+        ;;
+        ubuntu*)
+        echo "Adding persistent route on Ubuntu is not supported yet."
+        ;;
+        redhat)
+        #echo "rh/fedora/centos"
         # ipv6 net
         if echo $net | grep : 2>&1 1>/dev/null
         then
-		    filename="/etc/sysconfig/static-routes-ipv6";
-		    route="$ifname $net/$mask $gw";
+            filename="/etc/sysconfig/static-routes-ipv6";
+            route="$ifname $net/$mask $gw";
             # $net/mask does not work with sed cmd
-		    route1="$ifname $net\/$mask $gw";
+            route1="$ifname $net\/$mask $gw";
         else
-		    filename="/etc/sysconfig/static-routes";
-		    route="any net $net netmask $mask gw $gw $ifname";
-		    route1="any net $net netmask $mask gw $gw $ifname";
+            filename="/etc/sysconfig/static-routes";
+            route="any net $net netmask $mask gw $gw $ifname";
+            route1="any net $net netmask $mask gw $gw $ifname";
         fi
-		if [ -f $filename ]; then
-		    grep "$route" $filename 2>&1 1>/dev/null
-		    if [ $? -ne 0 ]; then #route does not exist
-		        grep "$xcat_config_start" $filename 2>&1 1>/dev/null
-		        if [ $? -ne 0 ]; then #no xCAT section
-		            echo $xcat_config_start >> $filename
-		            echo $route >> $filename
-		            echo $xcat_config_end >> $filename
-		        else
-		            sed -i -e s/"$xcat_config_end"/"$route1\n$xcat_config_end"/g $filename
-		        fi
-		        echo "Persistent route \"$route\" added in $filename."
-		    else 
-		        echo "Persistent route \"$route\" already exists in $filename."
-		    fi
-		else
-		        #echo "got here"
-		        echo "$xcat_config_start" > $filename
-		        echo "$route" >> $filename
-		        echo "$xcat_config_end" >> $filename
-		        echo "Persistent route \"$route\" added in $filename."
-	   fi
-	  ;;
-	esac
+        if [ -f $filename ]; then
+            grep "$route" $filename 2>&1 1>/dev/null
+            if [ $? -ne 0 ]; then #route does not exist
+                grep "$xcat_config_start" $filename 2>&1 1>/dev/null
+                if [ $? -ne 0 ]; then #no xCAT section
+                    echo $xcat_config_start >> $filename
+                    echo $route >> $filename
+                    echo $xcat_config_end >> $filename
+                else
+                    sed -i -e s/"$xcat_config_end"/"$route1\n$xcat_config_end"/g $filename
+                fi
+                echo "Persistent route \"$route\" added in $filename."
+            else 
+                echo "Persistent route \"$route\" already exists in $filename."
+            fi
+        else
+                #echo "got here"
+                echo "$xcat_config_start" > $filename
+                echo "$route" >> $filename
+                echo "$xcat_config_end" >> $filename
+                echo "Persistent route \"$route\" added in $filename."
+       fi
+      ;;
+    esac
     else #AIX
-	echo "Adding persistent route on AIX is not supported yet."
+    echo "Adding persistent route on AIX is not supported yet."
     fi
 }
 
@@ -199,24 +199,24 @@ rm_persistent_route()
     mask=$2;
     gw=$3;
     if [ -n "$4" ]; then
-	ifname=$4
+    ifname=$4
     fi
 
     if [ "$(uname -s)" = "Linux" ]; then
-	#determine the os name
-	OS_name="something"
-	if [ -f /etc/redhat-release ]
-	then
+    #determine the os name
+    OS_name="something"
+    if [ -f /etc/redhat-release ]
+    then
             OS_name="redhat"  #it can be RedHatFerdora or CentOS
-	elif [ -f /etc/SuSE-release ]
-	then
+    elif [ -f /etc/SuSE-release ]
+    then
             OS_name="sles"
-	fi
+    fi
 
-	case $OS_name in
-	    sles)
-		#echo "sles"
-		filename="/etc/sysconfig/network/routes";
+    case $OS_name in
+        sles)
+        #echo "sles"
+        filename="/etc/sysconfig/network/routes";
         # ipv6 net
         if echo $net | grep : 2>&1 1>/dev/null
         then
@@ -224,30 +224,30 @@ rm_persistent_route()
             route1="$net\/$mask $gw - -";
         else
             if [ -n "$ifname" ]; then
-		        route="$net $gw $mask $ifname";
-		        route1="$net $gw $mask $ifname";
+                route="$net $gw $mask $ifname";
+                route1="$net $gw $mask $ifname";
             else
                 route="$net $gw $mask";
                 route1="$net $gw $mask";
             fi
         fi
-		if [ -f $filename ]; then
+        if [ -f $filename ]; then
             grep "$route" $filename 2>&1 1>/dev/null
             if [ $? -ne 0 ]; then # Does not exist in file
                 echo "Persistent route \"$route\" does not exist in $filename."
             else
-		        sed -i -e s/"$route1"//g $filename
+                sed -i -e s/"$route1"//g $filename
                 echo "Persistent route \"$route\" removed from $filename."
             fi
         else
             echo "Persistent route file $filename does not exist."
         fi
-		;;
-	    ubuntu*)
-		echo "Removing persistent route on Ubuntu is not supported yet."
-		;;
-	    redhat)
-		#echo "rh/fedora/centos"
+        ;;
+        ubuntu*)
+        echo "Removing persistent route on Ubuntu is not supported yet."
+        ;;
+        redhat)
+        #echo "rh/fedora/centos"
         #ipv6
         if echo $net | grep : 2>&1 1>/dev/null
         then
@@ -256,25 +256,25 @@ rm_persistent_route()
             route="$ifname $net\/$mask $gw"
             route1="$ifname $net/$mask $gw"
         else
-		    filename="/etc/sysconfig/static-routes";
-		    route="any net $net netmask $mask gw $gw $ifname";
-		    route1="any net $net netmask $mask gw $gw $ifname";
+            filename="/etc/sysconfig/static-routes";
+            route="any net $net netmask $mask gw $gw $ifname";
+            route1="any net $net netmask $mask gw $gw $ifname";
         fi
-		if [ -f $filename ]; then
+        if [ -f $filename ]; then
             grep "$route" $filename 2>&1 1>/dev/null
             if [ $? -ne 0 ]; then # Does not exist in file
                 echo "Persistent route \"$route1\" does not exist in $filename."
             else
-		        sed -i -e s/"$route"//g $filename
+                sed -i -e s/"$route"//g $filename
                 echo "Persistent route \"$route1\" removed from $filename."
             fi
         else
             echo "Persistent route file $filename does not exist."
         fi
-		;;
-	esac
+        ;;
+    esac
     else #AIX
-	echo "Removing persistent route on AIX is not supported yet."
+    echo "Removing persistent route on AIX is not supported yet."
     fi
 }
    
@@ -286,34 +286,34 @@ if [ "$op" = "add" ]; then
         #ipv6
         if echo $net | grep : 2>&1 1>/dev/null
         then
-	        if [ "$(uname -s)" = "Linux" ]; then
-	            cmd="ip -6 route add $net/$mask via $gw"
-	        else 
+            if [ "$(uname -s)" = "Linux" ]; then
+                cmd="ip -6 route add $net/$mask via $gw"
+            else 
                 # AIX TODO 
-	            cmd="ip -6 route add $net/$mask via $gw"
-	        fi
-        else
-	        if [ "$(uname -s)" = "Linux" ]; then
-	            cmd="route add -net $net netmask $mask gw $gw"
-	        else 
-	            cmd="route add -net $net -netmask $mask $gw"
+                cmd="ip -6 route add $net/$mask via $gw"
             fi
-	    fi
-	    echo "Adding temporary route: $cmd"
-	    result=`$cmd 2>&1`
-	    code=$?
-	    if [ $code -ne 0 ]; then
-	        logger -t xCAT -p local4.err "$cmd\nerror code=$code, result=$result."
-	        echo "  error code=$code, result=$result."
-	        #exit 1;
-	    fi
+        else
+            if [ "$(uname -s)" = "Linux" ]; then
+                cmd="route add -net $net netmask $mask gw $gw"
+            else 
+                cmd="route add -net $net -netmask $mask $gw"
+            fi
+        fi
+        echo "Adding temporary route: $cmd"
+        result=`$cmd 2>&1`
+        code=$?
+        if [ $code -ne 0 ]; then
+            logger -t xCAT -p local4.err "$cmd\nerror code=$code, result=$result."
+            echo "  error code=$code, result=$result."
+            #exit 1;
+        fi
     else
         #ipv6
         if echo $net | grep : 2>&1 1>/dev/null
         then
             echo "The temporary route ($net/$mask $gw) already exists."
         else
-	        echo "The temporary route ($net $mask $gw) already exists."
+            echo "The temporary route ($net $mask $gw) already exists."
         fi
     fi  
   
@@ -322,34 +322,34 @@ if [ "$op" = "add" ]; then
 elif [ "$op" = "delete" ]; then
     result=$(route_exists $net $mask $gw)
     if [ "$result" = "1" ]; then
-    # ipv6
-    if echo $net | grep : 2>&1 1>/dev/null
-    then
-	    if [ "$(uname -s)" = "Linux" ]; then
-	        cmd="ip -6 route delete $net/$mask via $gw"
-	    else 
-            # AIX TODO
-	        cmd="ip -6 route delete $net/$mask via $gw"
-	    fi
-    else
-	    if [ "$(uname -s)" = "Linux" ]; then
-	        cmd="route delete -net $net netmask $mask gw $gw"
-	    else 
-	        cmd="route delete -net $net -netmask $mask $gw"
-	    fi
-    fi
+        # ipv6
+        if echo $net | grep : 2>&1 1>/dev/null
+        then
+            if [ "$(uname -s)" = "Linux" ]; then
+                cmd="ip -6 route delete $net/$mask via $gw"
+            else 
+                # AIX TODO
+                cmd="ip -6 route delete $net/$mask via $gw"
+            fi
+        else
+            if [ "$(uname -s)" = "Linux" ]; then
+                cmd="route delete -net $net netmask $mask gw $gw"
+            else 
+                cmd="route delete -net $net -netmask $mask $gw"
+            fi
+        fi
 
-	echo "Removing temporary route: $cmd"
-	result=`$cmd 2>&1`
-	code=$?
-	if [ $code -ne 0 ]; then
-	    logger -t xCAT  -p local4.err "$cmd\nerror code=$code, result=$result."
-	    echo "  error code=$code, result=$result."
-	fi
+        echo "Removing temporary route: $cmd"
+        result=`$cmd 2>&1`
+        code=$?
+        if [ $code -ne 0 ]; then
+            logger -t xCAT  -p local4.err "$cmd\nerror code=$code, result=$result."
+            echo "  error code=$code, result=$result."
+        fi
     else
-	echo "The temporary route ($net $mask $gw) does not exist."
+        echo "The temporary route ($net $mask $gw) does not exist."
     fi
-	
+    
     #remove the persistent route
     rm_persistent_route $net $mask $gw $ifname
 fi
