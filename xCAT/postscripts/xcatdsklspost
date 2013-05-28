@@ -244,6 +244,26 @@ if [ "$MODE" = "4" ]; then # for statelite mode
 else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
      # non-Statelite MODE
 
+     # If we have written the NODE info into the kernel command line,
+     # put in in xcatinfo
+     if [ ! -f /opt/xcat/xcatinfo ]; then
+        mkdir -p /opt/xcat
+        touch /opt/xcat/xcatinfo
+     fi
+     for i in `cat /proc/cmdline`; do
+        KEY=`echo $i | awk -F= '{print $1}'`
+        if [ "$KEY" =  "NODE" ]; then
+            NODE=`echo $i | awk -F= '{print $2}'`
+            break
+        fi
+     done
+     grep 'NODE' /opt/xcat/xcatinfo 2>&1 > /dev/null
+     if [ $? -eq 0 ]; then
+        sed -i "s/NODE=.*/NODE=$NODE/" /opt/xcat/xcatinfo
+     else
+        echo "NODE=$NODE" >> /opt/xcat/xcatinfo
+     fi
+
     downloaded=0;  #  have not downloaded the postscripts
     # try the -m/-M input (P_SIP) if it is specified,
     # -m/-M is passed in the updatenode command
