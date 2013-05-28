@@ -818,6 +818,7 @@ ppchcp => {
 servicenode => {
     cols => [qw(node nameserver dhcpserver tftpserver nfsserver conserver monserver ldapserver ntpserver ftpserver nimserver ipforward dhcpinterfaces comments disable)],
     keys => [qw(node)],
+    tablespace =>'XCATTBS16K',
     table_desc => 'List of all Service Nodes and services that will be set up on the Service Node.',
  descriptions => {
   node => 'The hostname of the service node as known by the Management Node.',
