@@ -553,6 +553,7 @@ sub mknetboot
               "imgurl=$httpmethod://$imgsrv/$rootimgdir/rootimg.$suffix ";
         }
         $kcmdline .= "XCAT=$xcatmaster:$xcatdport quiet ";
+        $kcmdline .= "NODE=$node ";
 
         # add the kernel-booting parameter: netdev=<eth0>, or BOOTIF=<mac>
         my $netdev = "";

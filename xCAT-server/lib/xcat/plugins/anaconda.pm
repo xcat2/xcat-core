@@ -608,7 +608,9 @@ sub mknetboot
                 );
             next;
         }
-        my $kcmdline; # add two more arguments: XCAT=xcatmaster:xcatport and ifname=<eth0>:<mac address>
+        my $kcmdline;
+        # add  more arguments: XCAT=xcatmaster:xcatport NODE=<nodename> 
+        #and ifname=<eth0>:<mac address>
 	    if($statelite){
             if ($rootfstype ne "ramdisk") {
 		        # get entry for nfs root if it exists:
@@ -700,6 +702,7 @@ sub mknetboot
             $kcmdline =
               "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg.$suffix ";
             $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
+            $kcmdline .= "NODE=$node ";
         }
 
         # add one parameter: ifname=<eth0>:<mac address>
