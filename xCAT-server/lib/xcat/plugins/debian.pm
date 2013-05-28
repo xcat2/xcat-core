@@ -1334,6 +1334,8 @@ sub mknetboot
 		$kcmdline .= $statemnt ." ";
 		$kcmdline .=
 			"XCAT=$xcatmaster:$xcatdport ";
+		$kcmdline .=
+			"NODE=$node ";
         # BEGIN service node
         my $isSV = xCAT::Utils->isServiceNode();
         my $res = xCAT::Utils->runcmd("hostname", 0);
