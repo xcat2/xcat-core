@@ -180,6 +180,28 @@ Function ConnectxCAT {
 	$true
 }
 
+Function Clear-NodeEventlog {
+	Param(
+		[parameter(ValueFromPipeLine=$true)] $nodeRange
+	)
+	$pipednr=@($input)
+	if ($pipednr)  { $nodeRange = $pipednr }
+	$xcatrequest=@{'command'='reventlog';'noderange'=$nodeRange;'args'=@('clear')}
+	Send-xCATCommand($xcatrequest)
+}
+Function Get-NodeEventlog {
+	Param(
+		[parameter(ValueFromPipeLine=$true)] $nodeRange,
+		[parameter(ValueFromRemainingArguments=$true)] $eventCount
+	)
+    if (-not $eventCount) {
+        $eventCount = "all"
+    }
+	$pipednr=@($input)
+	if ($pipednr)  { $nodeRange = $pipednr }
+	$xcatrequest=@{'command'='reventlog';'noderange'=$nodeRange;'args'=@($eventCount)}
+	Send-xCATCommand($xcatrequest)
+}
 Function Get-NodeInventory {
 	Param(
 		[parameter(ValueFromPipeLine=$true)] $nodeRange,
@@ -439,6 +461,7 @@ Function NewxCATDataFromXmlElement {
 	$myobj.PSObject.TypeNames.Insert(0,$objname)
 	return $myobj
 }
+New-Alias -name reventlog -value Get-NodeEventlog
 New-Alias -name rsetboot -value Set-NodeBoot
 New-Alias -name nodeset -value Set-NodeDeploy
 New-Alias -name rpower -value Set-NodePower
