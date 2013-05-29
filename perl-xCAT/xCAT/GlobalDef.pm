@@ -37,6 +37,7 @@ $::NODETYPE_MP="mp";
 $::STATUS_SYNCING="syncing";
 $::STATUS_OUT_OF_SYNC="out-of-sync";
 $::STATUS_SYNCED="synced";
+$::STATUS_FAILED="failed";
 
 
 # valid values for nodelist.status columns or other status 
