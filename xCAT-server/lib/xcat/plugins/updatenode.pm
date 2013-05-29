@@ -984,6 +984,12 @@ sub updatenode
             $::attrres{$attr} = $value;
         }
     }
+    # if not just using the -k flag, then set all nodes to syncing for the
+    # other updatenode options
+    if (!($::SECURITY)) {
+     my $stat="syncing";
+     xCAT::TableUtils->setUpdateStatus(\@$nodes, $stat);
+    }
 
     #
     #  handle file synchronization
@@ -1124,7 +1130,7 @@ sub updatenode
 	 if(@::FAILEDNODES)
 	 {
 	     
-            my $stat="out-of-sync";
+            my $stat="failed";
             xCAT::TableUtils->setUpdateStatus(\@::FAILEDNODES, $stat);
                       
 	 }
