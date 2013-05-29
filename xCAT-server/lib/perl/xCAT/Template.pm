@@ -355,6 +355,7 @@ sub windows_net_cfg {
 	my $suffix = $ent->{mac};
 	my $mac = $suffix;
 	$suffix = lc($suffix);
+    $mac =~ s/:/-/g;
 	unless ($hoststab) { $hoststab = xCAT::Table->new('hosts',-create=>1); }
 	my $ulaaddr = autoulaaddress($suffix);
 	$hoststab->setNodeAttribs($node,{ip=>$ulaaddr});
