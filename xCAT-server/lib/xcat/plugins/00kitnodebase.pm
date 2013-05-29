@@ -148,14 +148,6 @@ sub process_request {
         setrsp_progress("Update DHCP entries");
         $retref = xCAT::Utils->runxcmd({command=>["makedhcp"], node=>$nodelist, arg=>['-d']}, $request_command, 0, 2);
         log_cmd_return($retref);
-
-        setrsp_progress("Updating DNS entries");
-        $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist, arg=>['-d']}, $request_command, 0, 2);
-        log_cmd_return($retref);
-
-        setrsp_progress("Updating hosts entries");
-        $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodelist, arg=>['-d']}, $request_command, 0, 2);
-        log_cmd_return($retref);
     }
     elsif ($command eq 'kitnodeupdate'){
         setrsp_progress("Updating hosts entries");
