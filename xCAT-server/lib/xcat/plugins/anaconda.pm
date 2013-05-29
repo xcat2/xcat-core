@@ -1199,7 +1199,8 @@ sub mkinstall
 		            $pkglistfile,
                     $pkgdir,
                     $platform,
-                    $partfile
+                    $partfile,
+                    $os
                     );
         }
  
