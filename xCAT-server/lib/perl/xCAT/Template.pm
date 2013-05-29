@@ -115,14 +115,12 @@ sub subvars {
       my $c = 0; 
       foreach my $pkgdir(@pkgdirs) {
           # For rhels5.9, the os base repo should be url
-          # and the repo repository will be the additional.
-          if ( $c == 0 &&  $os =~ /^rhels5/) {
-              $source .=  "url --url http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n";
-              $c++;
-              next; 
-          }
-          if( $platform =~ /^(rh|SL)$/ ) { 
-              $source .=  "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n";
+          # and the repo repository will be the additional. So Corret it.
+          if( $platform =~ /^(rh|SL)$/ ) {
+              if ( $c == 0 ) {
+                  $source .=  "url --url http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n";
+              } else {
+                  $source .=  "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n";   }
           } elsif ($platform =~ /^(sles|suse)/) {
               my $http = "http://#TABLE:noderes:\$NODE:nfsserver#$pkgdir";
               $source .=  "         <listentry>
