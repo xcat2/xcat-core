@@ -52,6 +52,7 @@ sub subvars {
   my $media_dir = shift;
   my $platform=shift;
   my $partitionfile=shift;
+  my $os=shift;
   my %namedargs = @_; #further expansion of this function will be named arguments, should have happened sooner.
   unless ($namedargs{reusemachinepass}) {
 	$lastmachinepassdata->{password}="";
@@ -111,8 +112,15 @@ sub subvars {
   if ( defined($media_dir) ) {
       @pkgdirs = split(",", $media_dir);
       my $source;
-      my $c = 0;
+      my $c = 0; 
       foreach my $pkgdir(@pkgdirs) {
+          # For rhels5.9, the os base repo should be url
+          # and the repo repository will be the additional.
+          if ( $c == 0 &&  $os =~ /^rhels5/) {
+              $source .=  "url --url http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n";
+              $c++;
+              next; 
+          }
           if( $platform =~ /^(rh|SL)$/ ) { 
               $source .=  "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n";
           } elsif ($platform =~ /^(sles|suse)/) {
@@ -352,7 +360,7 @@ sub windows_net_cfg {
 	unless ($hoststab) { $hoststab = xCAT::Table->new('hosts',-create=>1); }
 	my $ulaaddr = autoulaaddress($suffix);
 	$hoststab->setNodeAttribs($node,{ip=>$ulaaddr});
-	return '<component name="Microsoft-Windows-TCPIP" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'."\r\n<Interfaces><Interface wcm:action=\"add\">\r\n<Identifier>$mac</Identifier>\r\n<UnicastIpAddresses>\r\n<IpAddress wcm:action=\"add\" wcm:keyValue=\"1\">$ulaaddr/64</IpAddress>\r\n</UnicastIpAddresses>\r\n</Interface>\r\n</Interfaces>\r\n</component>\r\n";
+	return '<component name="Microsoft-Windows-TCPIP" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'."\r\n<Interfaces><Interface wcm:action=\"add\">\r\n<Ipv4Settings><DhcpEnabled>false</DhcpEnabled></Ipv4Settings><Ipv6Settings><DhcpEnabled>false</DhcpEnabled></Ipv6Settings>\r\n<Identifier>$mac</Identifier>\r\n<UnicastIpAddresses>\r\n<IpAddress wcm:action=\"add\" wcm:keyValue=\"1\">$ulaaddr/64</IpAddress>\r\n</UnicastIpAddresses>\r\n</Interface>\r\n</Interfaces>\r\n</component>\r\n";
 }
 sub windows_dns_cfg {
 	my $domain;
