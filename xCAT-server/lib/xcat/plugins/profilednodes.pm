@@ -532,6 +532,12 @@ Usage:
         }
     }
 
+    setrsp_progress("Updating DNS entries");
+    $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodes, arg=>['-d']}, $request_command, 0, 2);
+
+    setrsp_progress("Updating hosts entries");
+    $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodes, arg=>['-d']}, $request_command, 0, 2);
+
     setrsp_progress("Removing nodes...");
     $retref = xCAT::Utils->runxcmd({command=>["noderm"], node=>$nodes}, $request_command, 0, 2);
     $retstrref = parse_runxcmd_ret($retref);
