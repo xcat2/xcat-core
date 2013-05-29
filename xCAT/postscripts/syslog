@@ -237,6 +237,12 @@ else
           echo "# xCAT settings" >> $conf_file
           echo "*.debug   /var/log/messages  rotate 1024K files 5" >> $conf_file
       fi
+    else
+      # enable the settings that will log to local files in syslog-ng
+      sed -i '/destination messages/s/^#*//'  $conf_file
+      sed -i '/destination(messages)/s/^#*//'  $conf_file
+      sed -i '/destination warn/s/^#*//'  $conf_file
+      sed -i '/destination(warn)/s/^#*//'  $conf_file
     fi
     
     #Ubuntu doesn't have sysconfig 
