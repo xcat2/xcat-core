@@ -1860,6 +1860,15 @@ sub mksysclone
         }
 
     }
+
+    # check systemimager-server-rsyncd to make sure it's running.
+    my $out = xCAT::Utils->runcmd("service systemimager-server-rsyncd status", -1);
+     if ($::RUNCMD_RC != 0)  { # not running
+         my $rc = xCAT::Utils->startService("systemimager-server-rsyncd");
+         if ($rc != 0) {
+            return 1;
+         }
+     }   
 }
 sub copycd
 {
