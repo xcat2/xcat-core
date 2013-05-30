@@ -44,7 +44,7 @@ cmd:liteimg -p compute -a __GETNODEATTR($$CNWITHSN,arch)__ -o  __GETNODEATTR($$C
 check:rc==0
 cmd:xdsh $$SN df|grep /install;if [ $? -eq 0 ] ;then xdsh $$SN umount /install;fi
 check:rc==0
-cmd:prsync /install rhsn:/
+cmd:prsync /install $$SN:/
 check:rc==0
 cmd:nodeset $$CNWITHSN osimage=__GETNODEATTR($$CNWITHSN,os)__-__GETNODEATTR($$CNWITHSN,arch)__-statelite-compute
 check:rc==0
