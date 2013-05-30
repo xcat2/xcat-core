@@ -4322,9 +4322,114 @@ sub got_data_to_process_from_iem {
     $sessdata->{iemdatacallback}->($sessdata);
 }
 
+sub gotchassis { #get chassis status command
+    my $rsp = shift;
+    my $sessdata = shift;
+    unless (check_rsp_errors($rsp,$sessdata)) {
+        my @data = @{$rsp->{data}};
+        my $powerstat;
+        if ($data[0] & 1) { 
+            $powerstat="on";
+        } else {
+            $powerstat="off";
+        }
+		xCAT::SvrUtils::sendmsg("Power Status: $powerstat",$callback,$sessdata->{node},%allerrornodes);
+        if ($data[0] & 0b10) {
+            $powerstat="true";
+        } else {
+            $powerstat="false";
+        }
+		xCAT::SvrUtils::sendmsg("Power Overload: $powerstat",$callback,$sessdata->{node},%allerrornodes);
+        if ($data[0] & 0b100) {
+            $powerstat="active";
+        } else {
+            $powerstat="inactive";
+        }
+		xCAT::SvrUtils::sendmsg("Power Interlock: $powerstat",$callback,$sessdata->{node},%allerrornodes);
+        if ($data[0] & 0b1000) {
+            $sessdata->{healthsummary} &= 2; #set to critical state
+            $powerstat="true";
+        } else {
+            $powerstat="false";
+        }
+		xCAT::SvrUtils::sendmsg("Power Fault: $powerstat",$callback,$sessdata->{node},%allerrornodes);
+        if ($data[0] & 0b10000) {
+            $sessdata->{healthsummary} &= 2; #set to critical state
+            $powerstat="true";
+        } else {
+            $powerstat="false";
+        }
+		xCAT::SvrUtils::sendmsg("Power Control Fault: $powerstat",$callback,$sessdata->{node},%allerrornodes);
+        my $powpolicy = ($data[0] & 0b1100000) >> 5;
+        my %powpolicies = ( 0 => "Always off", 1 => "Last State", 2 => "Always on", 3 => "Unknown" );
+		xCAT::SvrUtils::sendmsg("Power Restore Policy: ".$powpolicies{$powpolicy},$callback,$sessdata->{node},%allerrornodes);
+        my @lastevents;
+        if ($data[1] & 0b1) {
+            push @lastevents,"AC failed";
+        }
+        if ($data[1] & 0b10) {
+            $sessdata->{healthsummary} &= 2; #set to critical state
+            push @lastevents,"Power overload";
+        }
+        if ($data[1] & 0b100) {
+            $sessdata->{healthsummary} &= 1; #set to critical state
+            push @lastevents,"Interlock activated";
+        }
+        if ($data[1] & 0b1000) {
+            $sessdata->{healthsummary} &= 2; #set to critical state
+            push @lastevents,"Power Fault";
+        }
+        if ($data[1] & 0b10000) {
+            push @lastevents,"By Request";
+        }
+        my $lastevent = join(",",@lastevents);
+		xCAT::SvrUtils::sendmsg("Last Power Event: $lastevent",$callback,$sessdata->{node},%allerrornodes);
+        if ($data[2] & 0b1) {
+            $sessdata->{healthsummary} &= 1; #set to warn state
+            $powerstat = "active";
+        } else {
+            $powerstat = "inactive";
+        }
+		xCAT::SvrUtils::sendmsg("Chassis intrusion: $powerstat",$callback,$sessdata->{node},%allerrornodes);
+        if ($data[2] & 0b10) {
+            $powerstat = "active";
+        } else { 
+            $powerstat = "inactive";
+        }
+		xCAT::SvrUtils::sendmsg("Front Panel Lockout: $powerstat",$callback,$sessdata->{node},%allerrornodes);
+        if ($data[2] & 0b100) { # drive fault
+            $sessdata->{healthsummary} &= 2; #set to critical state
+            $powerstat = "true";
+        } else { 
+            $powerstat = "false";
+        }
+		xCAT::SvrUtils::sendmsg("Drive Fault: $powerstat",$callback,$sessdata->{node},%allerrornodes);
+        if ($data[2] & 0b1000) { # fan fault
+            $sessdata->{healthsummary} &= 1; #set to warn state
+            $powerstat = "true";
+        } else { 
+            $powerstat = "false";
+        }
+		xCAT::SvrUtils::sendmsg("Cooling Fault: $powerstat",$callback,$sessdata->{node},%allerrornodes);
+        if ($data[2] & 0b1000000) { #can look at light status
+            my $idstat = ($data[2] & 0b110000) >> 4;
+            my %idstats = ( 0 => "off", 1 => "on", 2 => "on", 3 => "unknown" );
+            xCAT::SvrUtils::sendmsg("Identify Light: ".$idstats{$idstat},$callback,$sessdata->{node},%allerrornodes);
+        }
+    }
+            #$sessdata->{powerstatprefix}="Power Status: ";
+    if ($sessdata->{sensorstoread} and scalar @{$sessdata->{sensorstoread}}) {
+        $sessdata->{currsdr} = shift @{$sessdata->{sensorstoread}};
+        readsensor($sessdata); #next sensor
+    }
+}
+sub readchassis {
+    my $sessdata = shift;
+    $sessdata->{ipmisession}->subcmd(netfn=>0x0,command=>0x1,data=>[],callback=>\&gotchassis,callback_args=>$sessdata);
+    
+}
 sub checkleds {
     my $sessdata = shift;
-	my $netfun = 0xe8; #really 0x3a
 	my @cmd;
 	my @returnd = ();
 	my $error;
@@ -4559,6 +4664,7 @@ sub renergy_withiem {
 }
 sub vitals {
     my $sessdata = shift;
+    $sessdata->{healthsummary} = 0; #0 means healthy for now
     my %sdr_hash = %{$sessdata->{sdr_hash}};
     my @textfilters;
     foreach (@{$sessdata->{extraargs}}) {
@@ -4585,6 +4691,8 @@ sub vitals {
 	if(grep { $_ eq "all"} @textfilters) {
 	  $sensor_filters{1}=1; #,0x02,0x03,0x04); rather than filtering, unfiltered results
       $sensor_filters{energy}=1;
+      $sensor_filters{chassis}=1;
+      $sensor_filters{leds}=1;
       $doall=1;
 	}
 	if(grep /temp/,@textfilters) {
@@ -4610,6 +4718,9 @@ sub vitals {
 	if(grep /led/,@textfilters) {
         $sensor_filters{leds}=1;
 	}
+	if(grep /chassis/,@textfilters) {
+        $sensor_filters{chassis}=1;
+	}
 	unless (keys %sensor_filters) {
         xCAT::SvrUtils::sendmsg([1,"Unrecognized rvitals arguments ".join(" ",@{$sessdata->{extraargs}})],$callback,$sessdata->{node},%allerrornodes);;
 	}
@@ -4634,7 +4745,7 @@ sub vitals {
 		#($rc,@cleds) = checkleds();
         #push @output,@cleds;
     }
-    if ($sensor_filters{powerstate}) {
+    if ($sensor_filters{powerstate} and not $sensor_filters{chassis}) {
         push @{$sessdata->{sensorstoread}},"powerstat";
 		#($rc,$text) = power("stat");
 		#$text = sprintf($format,"Power Status:",$text,"");
@@ -4650,6 +4761,9 @@ sub vitals {
         #($rc,@energies)=readenergy();
         #push @output,@energies;
 	}
+    if ($sensor_filters{chassis}) {
+        unshift  @{$sessdata->{sensorstoread}},"chassis";
+    }
     if (scalar @{$sessdata->{sensorstoread}}) {
         $sessdata->{currsdr} = shift @{$sessdata->{sensorstoread}};
         readsensor($sessdata); #and we are off
@@ -4699,6 +4813,9 @@ sub readsensor {
             $sessdata->{powerstatprefix}="Power Status: ";
             $sessdata->{subcommand}="stat";
             power($sessdata);
+            return;
+        } elsif ($sessdata->{currsdr} eq "chassis") {
+            readchassis($sessdata);
             return;
         } elsif ($sessdata->{currsdr} eq "energy") {
             readenergy($sessdata);
