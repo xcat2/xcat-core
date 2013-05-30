@@ -984,8 +984,8 @@ sub updatenode
             $::attrres{$attr} = $value;
         }
     }
-    # if not just using the -k flag, then set all nodes to syncing for the
-    # other updatenode options
+    # if not just using the -k flag, then set all nodes to syncing in 
+    # nodelist updatestatus  for the other updatenode options
     if (!($::SECURITY)) {
      my $stat="syncing";
      xCAT::TableUtils->setUpdateStatus(\@$nodes, $stat);
@@ -1697,10 +1697,11 @@ sub getdata
                 {
                     push @{$rsp->{$type}}, "$output";
                 }
-            }
-            if (($output !~ (/Error loading module/)) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_successful/) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_failed/))
-            {
+            } else{  # for non -k option then get the rest of the output
+              if (($output !~ (/Error loading module/)) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_successful/) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_failed/))
+              {
                 push @{$rsp->{$type}}, "$output";
+              }
             }
         }
     }
