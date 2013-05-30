@@ -612,6 +612,10 @@ sub sysclone_getimg{
         return 1;
     }
 
+    # use reboot in genesis
+    my $masterscript = $sysclone_home . "/scripts" . "/$osimage.master";
+    my $rc = `sed -i "s/shutdown -r now/reboot -f/g" $masterscript`;
+
     return 0;
 }
 
