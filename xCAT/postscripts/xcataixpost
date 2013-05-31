@@ -428,61 +428,109 @@ close($::LOG_FILE);
 exit 0;
 
 #####################################################
-#
-#   getmypost
-#               Get the xCAT post script info for this node
-#					and write it to a file 
+# This routine downloads the mypostscript from /tftpboot/mypostscripts
+# First try and tftp the file
+# If that does not get it, then connect to getpostscript.pm to send the
+# data
+# input xcatname - nodename as in the database
+# scriptname is /xcatpost/mypostscript_<xcatname>
 #
 #####################################################
-sub  getmypost_orig {
-	
-	my $port = "3001";
 
-	# open a socket to request credentials
-    my $remote = IO::Socket::SSL->new(
+sub getmypost {
+	my $xcatname=shift;
+	my $scriptname=shift;
+
+    # If the tftpdir is not /tftpboot, 
+    # should use the -s flag to specify the tftpdir.
+    # using gettab to get the tftpdir from MN/SN is not efficient
+    # and has problem with sending multiple commands through one socket connection
+    if( !defined($TFTPDIR) ) {
+        $TFTPDIR="/tftpboot";
+    }
+
+       
+
+    # try  to get the file with tftp first 
+    &runcmd("tftp -o $scriptname $servnode $TFTPDIR/mypostscripts/mypostscript.$xcatname");
+    if (-f $scriptname) {  # got the file
+         `logger -t xcat -p local4.info  "$::sdate  xcataixpost: tftp got $scriptname."`;
+
+      my $content;
+      if (!open($content, "<", $scriptname) ) {
+         `logger -t xcat -p local4.info  "$::sdate  xcataixpost: Could not open $scriptname."`;
+        print $::LOG_FILE "$::sdate  xcataixpost: Could not open $scriptname.\n";
+        close $content;
+        return 1;
+      }
+      while (<$content>) {
+        my $line = $_; 
+        $line =~ s/^\s+//; 
+	     if ($line =~ /=/) {
+	       my ($attr, $val) = $line =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
+          if( defined( $attr ) ) {
+	         if ($attr eq 'ROOTPW') {
+	           $::ROOTPW=$val;
+	         }
+	         if ($attr eq 'CRYPTMETHOD') {
+	           $::CRYPTMETHOD=$val;
+	         }
+          }
+        }
+      } # end while 
+      close $content;
+    
+  }
+
+  # if could not get the file, then ask for the data
+
+  if(!( -f $scriptname)) {
+      my $port = "3001";
+	   # open a socket to request credentials
+      my $remote = IO::Socket::SSL->new(
         PeerAddr => $servnode,
         PeerPort  => $port,
         Proto    => 'tcp',
-    );
+      );
+      # get ready to create the file
+	  if (!open(POSTSCRIPT, ">$scriptname") ) {
+      `logger -t xcat -p local4.info  "$::sdate  xcataixpost: Could not open $scriptname."`;
+       print $::LOG_FILE "$::sdate  xcataixpost: Could not open $scriptname.\n"
+;
+       close $remote;
+       return 1;
+     }
+     # setup the perl library path for xcat-dep packages
+     # this is necessary for AIX 5.3V/61H and beyond
+     # but does not hurt old AIX versions
+     print POSTSCRIPT "PERL5LIB='/usr/opt/perl5/lib/5.8.2:/usr/opt/perl5/lib/5.8.2/aix-thread-multi:/usr/opt/perl5/lib/site_perl/5.8.2:/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi'\n";
+     print POSTSCRIPT "export PERL5LIB\n";
+    
 
-	unless ($remote) {
+	  unless ($remote) {
          `logger -t xcat -p local4.info  "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'"`;
         print $::LOG_FILE "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
         return 1;
-    }
+     }
 
-	if (!open(POSTSCRIPT, ">$scriptname") ) {
-         `logger -t xcat -p local4.info  "$::sdate  xcataixpost: Could not open $scriptname."`;
-        print $::LOG_FILE "$::sdate  xcataixpost: Could not open $scriptname.\n"
-;
-        close $remote;
-        return 1;
-    }
-    # setup the perl library path for xcat-dep packages
-    # this is necessary for AIX 5.3V/61H and beyond
-    # but does not hurt old AIX versions
-    print POSTSCRIPT "PERL5LIB='/usr/opt/perl5/lib/5.8.2:/usr/opt/perl5/lib/5.8.2/aix-thread-multi:/usr/opt/perl5/lib/site_perl/5.8.2:/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi'\n";
-    print POSTSCRIPT "export PERL5LIB\n";
-    
+     # request must be in XML format
+     print $remote "<xcatrequest>\n";
+     print $remote "   <command>getpostscript</command>\n";
+     print $remote "</xcatrequest>\n";
 
-	# request must be in XML format
-    print $remote "<xcatrequest>\n";
-    print $remote "   <command>getpostscript</command>\n";
-    print $remote "</xcatrequest>\n";
-
-	# get reponse in XML format
-	my $response='';
-	my $rsp;
-	while (<$remote>) {
-		$response .= $_;
-		if ($response =~ m/<\/xcatresponse>/) {
-			$rsp = eval { XMLin($response,SuppressEmpty=>undef,ForceArray=>1) };
-
-			if ($rsp->{serverdone}) {
-				last;			
-			}
-
-			foreach my $line (@{$rsp->{data}}) {
+     `logger -t xcat -p local4.info  "$::sdate  xcataixpost: calling getpostscript to get the data"`;
+     # get reponse in XML format
+     my $response='';
+     my $rsp;
+     while (<$remote>) {
+   	    $response .= $_;
+	    if ($response =~ m/<\/xcatresponse>/) {
+		   $rsp = eval { XMLin($response,SuppressEmpty=>undef,ForceArray=>1) };
+		   if ($rsp->{serverdone}) {
+			  last;			
+		   }
+           # now create the mypostscript* files from the sent data 
+		   foreach my $line (@{$rsp->{data}}) {
 				$line =~ s/^\s+//; 
 				if ($line =~ /=/) {
 					my ($attr, $val) = $line =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
@@ -497,95 +545,17 @@ sub  getmypost_orig {
 					next;
 				}
 				print POSTSCRIPT "$line";
-			}
-			$response='';
-		}
-    }
-	
+		   }
+	   	   $response='';
+
+	    }
+     }  # end while
+
 	close(POSTSCRIPT);
     close $remote;
-    return 0;
-}
+  }
 
-sub  getmypost {
-	my $xcatname=shift;
-	my $scriptname=shift;
-
-    my $port = "3001";
-	# open a socket to request credentials
-    my $remote = IO::Socket::SSL->new(
-        PeerAddr => $servnode,
-        PeerPort  => $port,
-        Proto    => 'tcp',
-    );
-
-	unless ($remote) {
-         `logger -t xcat -p local4.info  "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'"`;
-        print $::LOG_FILE "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
-        return 1;
-    }
-
-    # request must be in XML format
-    print $remote "<xcatrequest>\n";
-    print $remote "   <command>getpostscript</command>\n";
-    print $remote "   <arg>version2</arg>\n";
-    print $remote "</xcatrequest>\n";
-
-    # get reponse in XML format
-    my $response='';
-    my $rsp;
-    while (<$remote>) {
-	$response .= $_;
-	if ($response =~ m/<\/xcatresponse>/) {
-		$rsp = eval { XMLin($response,SuppressEmpty=>undef,ForceArray=>1) };
-		if ($rsp->{serverdone}) {
-			last;			
-		}
-	}
-    }
-    close $remote;
-
-    # If the tftpdir is not /tftpboot, 
-    # should use the -s flag to specify the tftpdir.
-    # using gettab to get the tftpdir from MN/SN is not efficient
-    # and has problem with sending multiple commands through one socket connection
-    if( !defined($TFTPDIR) ) {
-        $TFTPDIR="/tftpboot";
-    }
-
-    `mkdir -p /xcatpost; cd /xcatpost; tftp -o $scriptname $servnode $TFTPDIR/mypostscripts/mypostscript.$xcatname.tmp`;
-
-    if(!( -f $scriptname)) {
-         `logger -t xcat -p local4.info  "$::sdate  xcataixpost: Cold not get the $scriptname from $TFTPDIR/mypostscripts/ on \'$servnode\'"`;
-        print $::LOG_FILE "$::sdate  xcataixpost: could not get the $scriptname from /$servnode$TFTPDIR/mypostscripts/ on \'$servnode\'\n";
-        return 1;
-    }
-
-    my $content;
-    if (!open($content, "<", $scriptname) ) {
-         `logger -t xcat -p local4.info  "$::sdate  xcataixpost: Could not open $scriptname."`;
-        print $::LOG_FILE "$::sdate  xcataixpost: Could not open $scriptname.\n";
-        close $content;
-        return 1;
-    }
-    while (<$content>) {
-        my $line = $_; 
-        $line =~ s/^\s+//; 
-	if ($line =~ /=/) {
-	   my ($attr, $val) = $line =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
-           if( defined( $attr ) ) {
-	       if ($attr eq 'ROOTPW') {
-	           $::ROOTPW=$val;
-	       }
-	       if ($attr eq 'CRYPTMETHOD') {
-	           $::CRYPTMETHOD=$val;
-	       }
-           }
-        }
-    } 
-    
-    close $content;
-    return 0;
+  return 0;
 }
 
 ############################################################
@@ -680,7 +650,23 @@ sub getxcatname
 	my $scriptname;
 	my $xcatshort;
 	my $xcatlong;
+    # updatenode will input the nodename as an ENV variable NODE
+    # if we have this name, need not try anything else.
+    if ($ENV{NODE} ) {
+      $xcatname=$ENV{NODE};
 
+	  # put the nodename in /etc/xcatinfo  TODO, need logic not to 
+      # wipe out XCATSERVER or add multiple entries 
+
+     `logger -t xcat -p local4.info "$::sdate xcataixpost:name=$xcatname"`;
+      $scriptname = "/xcatpost/myxcatpost_" . $xcatname;
+      if (&getmypost($xcatname,$scriptname) == 0) {
+        $::XCATNAME=$xcatname;
+        $::SCRIPTNAME=$scriptname;
+      }
+      return 0;
+    }
+     
 	#  find out what interface we use to contact the server
 	my $NIP;
 	my $tcmd=qq~/bin/traceroute $servnode~;
