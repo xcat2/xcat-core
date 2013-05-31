@@ -175,7 +175,7 @@ sub subvars {
   if ( defined($media_dir) ) {
       @pkgdirs = split(",", $media_dir);
       my $source;
-      my $source_rh5;
+      my $source_in_pre;
       my $c = 0; 
       my @argskeys = keys( %namedargs );
       my $redhat5 = grep /^rhels5/, @argskeys;   
@@ -185,18 +185,18 @@ sub subvars {
           if( $redhat5 > 0 ) {
               # After some tests, if we put the repo in  pre scripts in the kickstart like for rhels6.x
               if ( $c == 0 ) {
-                  $source_rh5 .=  "url --url http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n";
+                  $source .=  "url --url http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n";
               } else {
-                  $source_rh5 .=  "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n";   
+                  $source .=  "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n";   
               }
               $c++;
               next;
           }
           if( $platform =~ /^(rh|SL)$/ ) {
               if ( $c == 0 ) {
-                  $source .=  "echo 'url --url http://'\$nextserver'/$pkgdir' >> /tmp/repos";
+                  $source_in_pre .=  "echo 'url --url http://'\$nextserver'/$pkgdir' >> /tmp/repos";
               } else {
-                  $source .=  "\necho 'repo --name=pkg$c --baseurl=http://'\$nextserver'/$pkgdir' >> /tmp/repos";   }
+                  $source_in_pre .=  "\necho 'repo --name=pkg$c --baseurl=http://'\$nextserver'/$pkgdir' >> /tmp/repos";   }
           } elsif ($platform =~ /^(sles|suse)/) {
               my $http = "http://#TABLE:noderes:\$NODE:nfsserver#$pkgdir";
               $source .=  "         <listentry>
@@ -211,7 +211,7 @@ sub subvars {
       }
 
       $inc =~ s/#INSTALL_SOURCES#/$source/g;
-      $inc =~ s/#INSTALL_SOURCES_RH5#/$source_rh5/g;
+      $inc =~ s/#INSTALL_SOURCES_IN_PRE#/$source_in_pre/g;
   }
 
 
