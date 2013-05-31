@@ -1,20 +1,39 @@
 #!/usr/bin/env perl 
 use strict;
-use Getopt::Long;
+
+BEGIN
+{
+    $::XCATROOT =
+        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
+      : -d '/opt/xcat'   ? '/opt/xcat'
+      : '/usr';
+}
+
+use lib "$::XCATROOT/lib/perl";
 use File::Basename;
+use Getopt::Long;
+use xCAT::Table;
+use xCAT::NodeRange;
+
 sub usage {
     print basename($0)." usage:\n";
-    print " ".basename($0)." [-o|--osver [-p|--profile] [-a|--arch] [-c|--console] <noderange>\n"
+    print " ".basename($0)." [-o|--osver] [-p|--profile] [-a|--arch] [-O|--osimage] [-c|--console] <noderange>\n"
 }
+
+
 
 my $OSVER;
 my $PROFILE;
 my $ARCH;
 my $CONSOLE;
+my $OSIMAGE;
+
+Getopt::Long::Configure("bundling");
 unless (GetOptions(
     'o|osver=s' => \$OSVER,
     'p|profile=s' => \$PROFILE,
     'a|arch=s' => \$ARCH,
+    'O|osimage=s' => \$OSIMAGE,
     'c|console' => \$CONSOLE
     )) {
     usage;
@@ -31,30 +50,106 @@ if ($arraysize == 0) {
     usage;
     exit 1;
 }
+
 my $noderange=@ARGV[0];
+my $rc=0;
+my %pnhash;
+my @allnodes;
+#use Data::Dumper;
 
-my $nodechline = "";
-if ($OSVER) {
-    $nodechline = "nodetype.os=$OSVER";
-}
-if ($PROFILE) {
-    $nodechline .= " nodetype.profile=$PROFILE";
-}
-if ($ARCH) {
-    $nodechline .= " nodetype.arch=$ARCH";
+sub checkoption{
+    my $optstring=shift;
+    if($OSVER) {print 'warning: "'.$optstring.'" specified, "[-o|--osver] '.$OSVER."\" ignored\n"};
+    if($PROFILE) {print 'warning: "'.$optstring.'" specified, "[-p|--profile] '.$PROFILE."\" ignored\n"};
+    if($ARCH) {print 'warning: "'.$optstring.'" specified, "[-a|--arch] '.$OSVER."\" ignored\n"};
 }
 
-my $rc;
-if ($nodechline) {
-    $rc=system("nodech $noderange $nodechline");
+
+if($OSIMAGE){
+   &checkoption("[-O|--osimage] $OSIMAGE");   
+   $rc=system("nodeset $noderange osimage=$OSIMAGE");
+   if ($rc) { die "nodeset failure" };
+}else
+{
+   @allnodes=noderange($noderange); 
+   foreach(@allnodes){
+      my $tab=xCAT::Table->new("nodetype");
+      my $nthash=$tab->getNodeAttribs($_,['provmethod']);
+      $tab->close();
+      if(defined($nthash) and defined($nthash->{'provmethod'}))
+      {
+        push(@{$pnhash{$nthash->{'provmethod'}}},$_);
+      }
+      else
+      {
+        push(@{$pnhash{'BLANK###'}},$_);
+      }
+   }
+
+   
+   foreach  my $key (keys %pnhash)
+   {
+      my $rclocal=0;
+      my $nodes=join(',',@{$pnhash{$key}});
+      if($key =~ /^(install|netboot|statelite)$/)
+      { 
+         my $nodechline = "";
+         if ($OSVER) {
+            $nodechline = "nodetype.os=$OSVER";
+         }
+         if ($PROFILE) {
+            $nodechline .= " nodetype.profile=$PROFILE";
+         }
+         if ($ARCH) {
+            $nodechline .= " nodetype.arch=$ARCH";
+         }
+         if ($nodechline) {
+            $rclocal=system("nodech $nodes $nodechline");
+            if ($rclocal) { 
+               print "nodech failure\n";
+               $rc=$rclocal;
+            }
+         }
+
+         unless($rc){ 
+            $rclocal=system("nodeset $nodes $key");
+            if ($rclocal) { 
+               print "nodeset $nodes failure\n";
+               $rc=$rclocal;
+            }
+         }
+      }
+      elsif($key eq 'BLANK###')
+      {
+         print "nodetype.provmethod must be specified for nodes: $nodes\n";
+         $rc=1;
+      } 
+      else
+      {   
+         &checkoption("nodetype.provmethod=$key");   
+         $rclocal=system("nodeset $nodes osimage");
+         if ($rclocal) { 
+            print "nodeset $nodes failure\n";
+            $rc=$rclocal;
+         }
+      }
+      
+   }
 }
-if ($rc) { die "nodech failure" };
-$rc=system("nodeset $noderange install");
-if ($rc) { die "nodeset failure" };
+
+if($rc){
+  die "nodeset failure";
+}
+
+
 $rc=system("rpower $noderange boot");
 if ($rc) { die "rpower failure" };
+
 if (basename($0) =~ /rinstall/) {
     if ($CONSOLE) {
+        if(scalar @allnodes ne 1){
+	   die "rinstall [-c|--console] will only work if there is only one node in the noderange. See winstall(8) for consoles on multiple systems";
+        }
         exec("rcons $noderange");
     }
 } elsif (basename($0) =~ /winstall/) {
