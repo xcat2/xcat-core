@@ -52,7 +52,6 @@ sub subvars {
   my $media_dir = shift;
   my $platform=shift;
   my $partitionfile=shift;
-  my $os=shift;
   my %namedargs = @_; #further expansion of this function will be named arguments, should have happened sooner.
   unless ($namedargs{reusemachinepass}) {
 	$lastmachinepassdata->{password}="";
@@ -106,36 +105,6 @@ sub subvars {
 
   #replace the env with the right value so that correct include files can be found
   $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
-
-  #support multiple paths of osimage in rh/sles diskfull installation
-  my @pkgdirs;
-  if ( defined($media_dir) ) {
-      @pkgdirs = split(",", $media_dir);
-      my $source;
-      my $c = 0; 
-      foreach my $pkgdir(@pkgdirs) {
-          # For rhels5.9, the os base repo should be url
-          # and the repo repository will be the additional. So Corret it.
-          if( $platform =~ /^(rh|SL)$/ ) {
-              if ( $c == 0 ) {
-                  $source .=  "url --url http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n";
-              } else {
-                  $source .=  "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n";   }
-          } elsif ($platform =~ /^(sles|suse)/) {
-              my $http = "http://#TABLE:noderes:\$NODE:nfsserver#$pkgdir";
-              $source .=  "         <listentry>
-           <media_url>$http</media_url>
-           <product>SuSE-Linux-pkg$c</product>
-           <product_dir>/</product_dir>
-           <ask_on_error config:type=\"boolean\">false</ask_on_error> <!-- available since openSUSE 11.0 -->
-           <name>SuSE-Linux-pkg$c</name> <!-- available since openSUSE 11.1/SLES11 (bnc#433981) -->
-         </listentry>";
-          }
-          $c++;
-      }
-
-      $inc =~ s/#INSTALL_SOURCES#/$source/g;
-  }
 
   if ($pkglistfile) {
       #substitute the tag #INCLUDE_DEFAULT_PKGLIST# with package file name (for full install of  rh, centos,SL, esx fedora)
@@ -200,6 +169,53 @@ sub subvars {
       $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
     }
   }
+
+  #support multiple paths of osimage in rh/sles diskfull installation
+  my @pkgdirs;
+  if ( defined($media_dir) ) {
+      @pkgdirs = split(",", $media_dir);
+      my $source;
+      my $source_in_pre;
+      my $c = 0; 
+      my @argskeys = keys( %namedargs );
+      my $redhat5 = grep /^rhels5/, @argskeys;   
+      foreach my $pkgdir(@pkgdirs) {
+          # For rhels5.9, the os base repo should be url
+          # and the repo repository will be the additional. So Corret it.
+          if( $redhat5 > 0 ) {
+              # After some tests, if we put the repo in  pre scripts in the kickstart like for rhels6.x
+              if ( $c == 0 ) {
+                  $source .=  "url --url http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n";
+              } else {
+                  $source .=  "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n";   
+              }
+              $c++;
+              next;
+          }
+          if( $platform =~ /^(rh|SL)$/ ) {
+              if ( $c == 0 ) {
+                  $source_in_pre .=  "echo 'url --url http://'\$nextserver'/$pkgdir' >> /tmp/repos";
+              } else {
+                  $source_in_pre .=  "\necho 'repo --name=pkg$c --baseurl=http://'\$nextserver'/$pkgdir' >> /tmp/repos";   }
+          } elsif ($platform =~ /^(sles|suse)/) {
+              my $http = "http://#TABLE:noderes:\$NODE:nfsserver#$pkgdir";
+              $source .=  "         <listentry>
+           <media_url>$http</media_url>
+           <product>SuSE-Linux-pkg$c</product>
+           <product_dir>/</product_dir>
+           <ask_on_error config:type=\"boolean\">false</ask_on_error> <!-- available since openSUSE 11.0 -->
+           <name>SuSE-Linux-pkg$c</name> <!-- available since openSUSE 11.1/SLES11 (bnc#433981) -->
+         </listentry>";
+          }
+          $c++;
+      }
+
+      $inc =~ s/#INSTALL_SOURCES#/$source/g;
+      $inc =~ s/#INSTALL_SOURCES_IN_PRE#/$source_in_pre/g;
+  }
+
+
+
 
   #Support hierarchical include
   $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
