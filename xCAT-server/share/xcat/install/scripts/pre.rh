@@ -196,5 +196,5 @@ echo "part / --size 1 --grow --ondisk $instdisk --fstype $FSTYPE" >> /tmp/partit
 cat /proc/cmdline
 
 export nextserver=`cat /proc/cmdline | grep http | head -n 1 | cut -d / -f 3 | cut -d : -f 1`
-#INSTALL_SOURCES#
+#INSTALL_SOURCES_IN_PRE#
 
