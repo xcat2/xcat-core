@@ -177,26 +177,17 @@ sub subvars {
       my $source;
       my $source_in_pre;
       my $c = 0; 
-      my @argskeys = keys( %namedargs );
-      my $redhat5 = grep /^rhels5/, @argskeys;   
       foreach my $pkgdir(@pkgdirs) {
-          # For rhels5.9, the os base repo should be url
-          # and the repo repository will be the additional. So Corret it.
-          if( $redhat5 > 0 ) {
-              # After some tests, if we put the repo in  pre scripts in the kickstart like for rhels6.x
-              if ( $c == 0 ) {
-                  $source .=  "url --url http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n";
-              } else {
-                  $source .=  "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n";   
-              }
-              $c++;
-              next;
-          }
           if( $platform =~ /^(rh|SL)$/ ) {
               if ( $c == 0 ) {
+                  # After some tests, if we put the repo in  pre scripts in the kickstart like for rhels6.x
+                  # the rhels5.9 will not be installed successfully. So put in kickstart directly.
                   $source_in_pre .=  "echo 'url --url http://'\$nextserver'/$pkgdir' >> /tmp/repos";
+                  $source .=  "url --url http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n"; #For rhels5.9
               } else {
-                  $source_in_pre .=  "\necho 'repo --name=pkg$c --baseurl=http://'\$nextserver'/$pkgdir' >> /tmp/repos";   }
+                  $source_in_pre .=  "\necho 'repo --name=pkg$c --baseurl=http://'\$nextserver'/$pkgdir' >> /tmp/repos";  
+                  $source .=  "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n";  #for rhels5.9
+              }
           } elsif ($platform =~ /^(sles|suse)/) {
               my $http = "http://#TABLE:noderes:\$NODE:nfsserver#$pkgdir";
               $source .=  "         <listentry>
