@@ -5,23 +5,23 @@ B<buildkit> - build a product Kit to package software for installation in an xCA
 
 =head1 SYNOPSIS
 
-B<buildkit> [B<-V> | B<--verbose>] B<create> I<kit_basename>
+B<buildkit> [B<-V> | B<--verbose>] B<create> I<kit_basename> [B<-w> | B<--workdir> I<directory>]
 
-B<buildkit> [B<-V> | B<--verbose>] B<chkconfig>
+B<buildkit> [B<-V> | B<--verbose>] B<chkconfig> [B<-w> | B<--workdir> I<directory>]
 
-B<buildkit> [B<-V> | B<--verbose>] B<listrepo>
+B<buildkit> [B<-V> | B<--verbose>] B<listrepo> [B<-w> | B<--workdir> I<directory>]
 
-B<buildkit> [B<-V> | B<--verbose>] B<buildrepo> {I<repo_name> | B<all>}
+B<buildkit> [B<-V> | B<--verbose>] B<buildrepo> {I<repo_name> | B<all>} [B<-w> | B<--workdir> I<directory>]
 
-B<buildkit> [B<-V> | B<--verbose>] B<cleanrepo> {I<repo_name> | B<all>}
+B<buildkit> [B<-V> | B<--verbose>] B<cleanrepo> {I<repo_name> | B<all>} [B<-w> | B<--workdir> I<directory>]
 
-B<buildkit> [B<-V> | B<--verbose>] B<buildtar>
+B<buildkit> [B<-V> | B<--verbose>] B<buildtar> [B<-w> | B<--workdir> I<directory>]
 
-B<buildkit> [B<-V> | B<--verbose>] B<cleantar>
+B<buildkit> [B<-V> | B<--verbose>] B<cleantar> [B<-w> | B<--workdir> I<directory>]
 
-B<buildkit> [B<-V> | B<--verbose>] B<cleanall>
+B<buildkit> [B<-V> | B<--verbose>] B<cleanall> [B<-w> | B<--workdir> I<directory>]
 
-B<buildkit> [B<-V> | B<--verbose>] B<addpkgs> I<kit_tarfile> {B<-p> | B<--pkgdir>} {B<-k> | B<--kitversion> I<version>} {B<-r> | B<--kitrelease> I<release>} I<package_directory>
+B<buildkit> [B<-V> | B<--verbose>] B<addpkgs> I<kit_tarfile> {B<-p> | B<--pkgdir>} {B<-k> | B<--kitversion> I<version>} {B<-r> | B<--kitrelease> I<release>} I<package_directory> [B<-w> | B<--workdir> I<directory>]
 
 B<command> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
 
@@ -95,9 +95,21 @@ Build the kit tar file:
 
 =over 10
 
+=item B<-h |--help>
+
+Display usage message.
+
+=item B<-V |--verbose>
+
+Verbose mode.
+
 =item B<-v|--version>
 
 Command Version.
+
+=item B<-w|--workdir>
+
+The location to perform the buildkit subcommand.
 
 =back
 
@@ -187,6 +199,12 @@ To clean up a kit repository directory after build failures on a RHELS 6.3 serve
 To clean up all kit build files, including a previously built kit tar file, run
 
    buildkit cleanall
+
+=item 4.
+
+To create the sample kit in the working directory /home/foobar instead of the current working directory.
+
+   buildkit create mykit -w /home/foobar
 
 =back
 
