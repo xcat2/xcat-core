@@ -208,20 +208,20 @@ sub subvars {
   }
 
   #ok, now do everything else..
-  $inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
-  $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
-  $inc =~ s/#MACHINEPASSWORD#/machinepassword()/eg;
   $inc =~ s/#TABLE:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3)/eg;
   $inc =~ s/#TABLEBLANKOKAY:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3,'1')/eg;
-  $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
-  $inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
-  $inc =~ s/#KICKSTARTNET#/kickstartnetwork()/eg;
-  $inc =~ s/#ESXIPV6SETUP#/esxipv6setup()/eg;
   $inc =~ s/#INCLUDE_NOP:([^#^\n]+)#/includefile($1,1,0)/eg;
   $inc =~ s/#INCLUDE_PKGLIST:([^#^\n]+)#/includefile($1,0,1)/eg;
   $inc =~ s/#INCLUDE_PTRNLIST:([^#^\n]+)#/includefile($1,0,2)/eg;
   $inc =~ s/#INCLUDE_RMPKGLIST:([^#^\n]+)#/includefile($1,0,3)/eg;
   $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
+  $inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
+  $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
+  $inc =~ s/#MACHINEPASSWORD#/machinepassword()/eg;
+  $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
+  $inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
+  $inc =~ s/#KICKSTARTNET#/kickstartnetwork()/eg;
+  $inc =~ s/#ESXIPV6SETUP#/esxipv6setup()/eg;
   $inc =~ s/#WINTIMEZONE#/xCAT::TZUtils::get_wintimezone()/eg;
   $inc =~ s/#WINPRODKEY:([^#]+)#/get_win_prodkey($1)/eg;
   $inc =~ s/#WINNETCFG#/windows_net_cfg()/eg;
