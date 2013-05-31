@@ -17,6 +17,7 @@
         -v                - Provide the version info.
         command           - Several commands are supported. See the list below.
         -V                - Verbose mode. Outputs additional debug messages.
+	    -w		  - Name of working directory to use when creating kit
 
     Supported commands:
      create <kit basename> - creates a new Kit with the specified basename
@@ -61,8 +62,6 @@ if ($^O =~ /^aix/i) {
 use lib "$::XCATROOT/lib/perl";
 require xCAT::BuildKitUtils;
 use Getopt::Long;
-use Expect;
-use Socket;
 use strict;
 use Cwd;
 use Cwd 'abs_path';
@@ -77,11 +76,13 @@ $::progname = "buildkit";
 $::buildkit_conf = "buildkit.conf";
 $::kit_conf = "kit.conf";
 $::current_dir = cwd();
-$::workdir = $::current_dir;
-$::full_buildkit_conf = $::workdir."/".$::buildkit_conf;
-$::build_dir = $::workdir."/build";
-$::deploy_dir = $::build_dir; #kitname appended by validate_bldkitconf routine
-$::base_repodir = $::build_dir."/kit_repodir";
+
+# this code will build a kit using framework 1.
+$::KITFRAMEWORK ="1";
+
+# this code is compatible with other kits that are at framework 0 or 1.
+$::COMPATIBLE_KITFRAMEWORKS = "0,1";
+
 %::buildkit_def = ( 
      kit => { basename => {
                description=>'The kit base name (e.g., kit-lsf)',
@@ -148,7 +149,19 @@ $::base_repodir = $::build_dir."/kit_repodir";
                description=>'The filename to use for the generated kit.',
                value_desc=>'any string',
                mandatory=>0,
-               cp_to_kitconfig=>0} },
+               cp_to_kitconfig=>0}, 
+              vendor=> {
+               description=>'The Vendor value to use when building the rpms.',
+               value_desc=>'any string',
+               cp_to_kitconfig=>0},
+              packager=> {
+               description=>'The Packager value to use when building the rpms.',
+               value_desc=>'any string',
+               cp_to_kitconfig=>0},
+              url=> {
+               description=>'The URL value to use when building the rpms.',
+               value_desc=>'any string',
+               cp_to_kitconfig=>0}},
     kitrepo => {kitrepoid => {
                description=>'The Kit Package Repository ID.  (e.g., rhels-6.2-x86_64)',
                value_desc=>'Must be: Generic Name String, unique in kit',
@@ -330,6 +343,9 @@ $::command = "$0 $args";
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
 
+
+# ndebug
+
 # parse the options
 if (
     !GetOptions(
@@ -339,6 +355,7 @@ if (
                 'p|pkgdir=s'   => \$::PKGDIR,
                 'k|kitversion=s' => \$::KITVERSION,
                 'r|kitrelease=s' => \$::KITRELEASE,
+                'w|workdir=s'	=> \$::WORKDIR,
     )
   )
 {
@@ -366,13 +383,17 @@ if ($::VERSION)
     my $message = "Error quering xCAT-buildkit rpm.  Version info is not available. \n";
     if ( $debianflag ){
         $versioncmd = "dpkg-query --show -f='\${PackageSpec}: \${Version}\n' xcat-buildkit";
-        $message = "Error quering xcat-buildkit pakcage. Version info is not available. \n";
+        $message = "Error quering xcat-buildkit package. Version info is not available. \n";
     }
     if ( system($versioncmd) ) {
         # non-zero return from system call
         print $message;
         exit 1;
-     }        
+    }        
+    # add framework info to output
+    print "\tkitframework = $::KITFRAMEWORK\n";
+    print "\tcompatible_frameworks = $::COMPATIBLE_KITFRAMEWORKS\n";
+
     exit 0;
 }
 
@@ -381,6 +402,24 @@ if ( ! $arg ) {
    &usage;
    exit (0);
 }
+
+# set workdir 
+if ($::WORKDIR) {
+	$::workdir = $::WORKDIR;
+	if (! -d $::workdir) {
+		if ( system("/usr/bin/mkdir -p $::workdir") ) {
+			print "ERROR: Could not create working directory $::workdir\n";
+			exit 1;
+		}
+	}
+} else {
+	$::workdir = $::current_dir;
+}
+
+$::full_buildkit_conf = $::workdir."/".$::buildkit_conf;
+$::build_dir = $::workdir."/build";
+$::deploy_dir = $::build_dir; #kitname appended by validate_bldkitconf routine
+$::base_repodir = $::build_dir."/kit_repodir";
 
 while ($arg) {
     my $command = $arg;
@@ -926,8 +965,9 @@ sub kit_buildtar
          print "Error building tarfile $tarfile \n";
          return 1;
     }
-    system("mv $tarfile $::current_dir");
-    print "Kit tar file $kitfilename successfully built \n";
+
+    system("mv $tarfile $::workdir");
+    print "Kit tar file $::workdir/$kitfilename successfully built. \n";
     return 0;
     
 }
@@ -2099,7 +2139,6 @@ sub gen_kitcomp_spec
         $files = "/opt/xcat/kits";
     }
 
-
     for (@lines) {
         chomp;
         s/<<<INSERT_kitbasename_HERE>>>/$kitname/;
@@ -2107,6 +2146,9 @@ sub gen_kitcomp_spec
         s/<<<INSERT_kitcomponent_version_HERE>>>/$comp->{version}/;
         s/<<<INSERT_kitcomponent_release_HERE>>>/$comp->{release}/;
         s/<<<INSERT_kit_license_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{kitlicense}/;
+        s/<<<INSERT_vendor_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{vendor}/;
+        s/<<<INSERT_packager_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{packager}/;
+        s/<<<INSERT_url_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{url}/;
         s/<<<INSERT_kitcomponent_ospkgdeps_HERE>>>/$comp->{ospkgdeps}/;
         s/<<<INSERT_kitcomponent_kitpkgdeps_HERE>>>/$comp->{kitpkgdeps}/;
         s/<<<INSERT_kitcomponent_kitcompdeps_HERE>>>/$comp->{kitcompdeps}/;
@@ -2507,8 +2549,9 @@ sub create_kitconf
     }
     $lines[$li++] = "   xCAT_version =  $xCAT_buildkit_version \n";
     $lines[$li++] = "   build_date =  ".localtime()."\n"; 
-    $lines[$li++] = "   kitframework =  1 \n"; 
-    $lines[$li++] = "   compatible_kitframeworks =  0,1 \n"; 
+    $lines[$li++] = "   kitframework =  $::KITFRAMEWORK \n";
+    $lines[$li++] = "   compatible_kitframeworks =  $::COMPATIBLE_KITFRAMEWORKS \n";
+
     foreach my $s ('kit','kitrepo','kitcomponent','EXTERNALPKG', 'NONNATIVEPKGS') {
       foreach my $se (@{$::kit_config->{$s}{entries}}) {
         $lines[$li++] = "$s: \n";
@@ -3062,6 +3105,7 @@ sub kit_addpkgs
            $attr =~ tr/A-Z/a-z/;    # Convert to lowercase
            $val  =~ s/^\s*//;
            $val  =~ s/\s*$//;
+
 
            if ($section eq 'kit') {
                if ( $attr eq 'basename' ) { $kitbasename = $val; }
