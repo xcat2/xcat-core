@@ -191,3 +191,10 @@ echo "part swap --recommended --ondisk $instdisk" >> /tmp/partitioning
 echo "part / --size 1 --grow --ondisk $instdisk --fstype $FSTYPE" >> /tmp/partitioning
 	
 #XCA_PARTITION_SCRIPT#
+
+# The following code is to generate the repository for the installation
+cat /proc/cmdline
+
+export nextserver=`cat /proc/cmdline | grep http | head -n 1 | cut -d / -f 3 | cut -d : -f 1`
+#INSTALL_SOURCES#
+
