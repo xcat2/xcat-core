@@ -458,6 +458,7 @@ sub makescript {
   if ((!defined($nofiles)) || ($nofiles == 0)) { # create file
     print $script $inc;    
     close($script_fp{$node});
+    # TODO remove the blank lines
   } 
      
 } #end foreach node
@@ -467,7 +468,12 @@ sub makescript {
   undef(%::GLOBAL_TABDUMP_HASH);
   if ((defined($nofiles)) &&($nofiles == 1)){ # return array
    my @scriptd = grep { /\S/ } split(/\n/,$inc);
-   return @scriptd;
+   my @goodscriptd;
+   foreach my $line (@scriptd){
+     $line = $line . "\n";   # add new line
+     push @goodscriptd, $line; 
+   }
+   return @goodscriptd;
   } else {  # files were created
     return 0;
   }
