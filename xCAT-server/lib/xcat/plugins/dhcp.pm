@@ -770,7 +770,7 @@ sub addnode_aix
     my $netmask;
     for ($i = 0; $i < scalar(@dhcpconf); $i++)
     {
-        if ( $dhcpconf[$i] ~= / ([\d\.]+)\/(\d+) ip configuration end/)
+        if ( $dhcpconf[$i] =~ / ([\d\.]+)\/(\d+) ip configuration end/)
         {
             if (xCAT::NetworkUtils::isInSameSubnet( $ip, $1, $2, 1))
             {
