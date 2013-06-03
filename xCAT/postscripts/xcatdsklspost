@@ -226,7 +226,7 @@ if [ "$MODE" = "4" ]; then # for statelite mode
     done
 
     if [ -f /opt/xcat/xcatinfo ]; then
-        SIP=`cut -d= -f2 /opt/xcat/xcatinfo`;
+        SIP=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2`
         if [ -n "$SIP" ]; then
             download_postscripts $SIP
             if [ $? -eq 0 ]; then
