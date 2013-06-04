@@ -895,7 +895,7 @@ sub check_options
      }
 
     # check to see if -n is listed with any other options which is not allowed
-    if ($::opt_n and ($::opt_a || $::opt_d || $::opt_n || $::opt_r || $::opt_l || $statements)) {
+    if ($::opt_n and ($::opt_a || $::opt_d || $::opt_q || $::opt_r || $::opt_l || $statements)) {
         my $rsp = {};
         $rsp->{data}->[0] = "The -n option cannot be used with other options.";
         xCAT::MsgUtils->message("E", $rsp, $callback, 1);
@@ -997,8 +997,8 @@ sub preprocess_request
 			push @{$rsp->{data}}, "AIX nodes with a nodetype of \'osi\' will not be added to the dhcp configuration file.  This is handled by NIM.\n";
 			xCAT::MsgUtils->message("I", $rsp, $callback);
 		}
-	}  # OS is AIX processing
-	}  # !$::opt_n processing
+	}
+	}
 
     # If service node and not -n option
     if (($snonly == 1) && (!$::opt_n)) {
