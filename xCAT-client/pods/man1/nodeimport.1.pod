@@ -157,10 +157,6 @@ B<rack=<rack-name>> This is an optional item.
 
 Description: node location info. Specify the rack name which this node will be placed into. If not specify this item, there will be no node location info set for this node. this item must be specified together with height + unit.
 
-B<rack=<rack-name>> This is an optional item. 
-
-Description: node location info. Specify the rack name which this node will be placed into. If not specify this item, there will be no node location info set for this node. this item must be specified together with height + unit.
-
 B<chasiss=<chassis-name>> This is an optional item.
 
 Description: node location info, for blade(or PureFlex) only. Specify the chasiss name which this blade will be placed into. this item can not be specified together with rack.

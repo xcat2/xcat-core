@@ -1597,13 +1597,7 @@ sub gen_new_hostinfo_string{
         foreach (keys %netprofileattr){            
             # Not generate IP if exists other nics
             if (exists $allothernics{$item}->{$_}) {
-                my $avaiableip = $allothernics{$item}->{$_};
-                if (exists $allips{$avaiableip}){ 
-                    return 0, "The specified nicips IP address $avaiableip is already in use.";
-                }else{
-                    $ipshash{$_} = $avaiableip;
-                    $allips{$avaiableip} = 0;
-                }
+                $ipshash{$_} = $allothernics{$item}->{$_};
             }
         }
 
@@ -2039,7 +2033,25 @@ sub validate_node_entry{
                 $errmsg .= "Specified slotid $node_entry{$_} is invalid";
             }
         }elsif ($_ eq "nicips"){
-            # Support Multi-Nic
+            # Check Multi-Nic's ip
+            my $othernics = $node_entry{$_};
+            foreach my $nic_ips (split(/,/, $othernics)) {
+                my @nic_and_ips = ();
+                my $nic = "";
+                my $nic_ip = "";
+                if($nic_ips =~ /!/ and $nic_ips !~ /!$/) {
+                    @nic_and_ips = split(/!/, $nic_ips);
+                    $nic_ip = $nic_and_ips[1];
+                    if (exists $allips{$node_entry{$_}}){
+                        $errmsg .= "IP address $nic_ip already exists in the database or in the nodeinfo file.\n";
+                    }elsif((xCAT::NetworkUtils->validate_ip($nic_ip))[0]->[0] ){
+                        $errmsg .= "IP address $nic_ip is invalid. You must use a valid IP address.\n";
+                    }else {
+                        #push the IP into allips list.
+                        $allips{$nic_ip} = 0;
+                    }
+                }
+            } 
         }else{
            $errmsg .= "Invalid attribute $_ specified\n";
         }
