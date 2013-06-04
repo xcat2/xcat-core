@@ -1550,10 +1550,10 @@ sub chvm {
     GetOptions(
         "a=s"=>\@addsizes,
         "d=s"=>\@derefdisks,
-        "mem=s"=>\$memory,
-	"optical|cdrom=s"=>\$cdrom,
+        "mem|memory=s"=>\$memory,
+	"optical|dvd|cdrom=s"=>\$cdrom,
 	"eject"=>\$eject,
-        "cpus=s" => \$cpucount,
+        "cpus|cpu=s" => \$cpucount,
         "p=s"=>\@purge,
         "resize=s%" => \%resize,
         );
