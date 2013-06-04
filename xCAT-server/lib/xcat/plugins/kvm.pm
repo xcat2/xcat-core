@@ -1786,6 +1786,10 @@ sub chvm {
 			if ($@ =~ /cannot set memory higher/) {
 				xCAT::SvrUtils::sendmsg([1,"Unable to increase memory beyond current capacity (requires VM to be powered down to change)"],$callback,$node);
 			}
+		} else {
+			if ($confdata->{vm}->{$node}->[0]->{memory} and $confdata->{vm}->{$node}->[0]->{memory} != $memory) {
+				$updatetable->{vm}->{$node}->{memory}=$memory;
+			}
 		}
          	$vmxml=$dom->get_xml_description();
 		if ($vmxml) {
@@ -1803,6 +1807,9 @@ sub chvm {
                 foreach (@currmem) {
                     $_->setData(getUnits($memory,"M",1024));
                 }
+		if ($confdata->{vm}->{$node}->[0]->{memory} and $confdata->{vm}->{$node}->[0]->{memory} != $memory) {
+			$updatetable->{vm}->{$node}->{memory}=$memory;
+		}
 
             }
             $vmxml=$parsed->toString;
