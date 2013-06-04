@@ -868,6 +868,14 @@ sub check_options
         return 1;
      }
 
+    # check to see if -n is listed with any other options which is not allowed
+    if ($::opt_n and ($::opt_a || $::opt_d || $::opt_q || $::opt_r || $::opt_l || $statements)) {
+        my $rsp = {};
+        $rsp->{data}->[0] = "The -n option cannot be used with other options.";
+        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+        return 1;
+     }
+
     unless (($req->{arg} and (@{$req->{arg}}>0)) or $req->{node})
     {
         my $rsp = {};
