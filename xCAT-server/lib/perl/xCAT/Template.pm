@@ -197,6 +197,7 @@ sub subvars {
            <ask_on_error config:type=\"boolean\">false</ask_on_error> <!-- available since openSUSE 11.0 -->
            <name>SuSE-Linux-pkg$c</name> <!-- available since openSUSE 11.1/SLES11 (bnc#433981) -->
          </listentry>";
+           $source_in_pre .="<listentry><media_url>http://'\$nextserver'$pkgdir</media_url><product>SuSE-Linux-pkg$c</product><product_dir>/</product_dir><ask_on_error config:type=\"boolean\">false</ask_on_error><name>SuSE-Linux-pkg$c</name></listentry>";
           }
           $c++;
       }
