@@ -414,7 +414,7 @@ sub process_request
         }    # end else
 
         # do the other node nics - if any
-        &donics($req->{node}, $callback, $DELNODE);
+        &donics(nodes=>$req->{node}, callback=>$callback, delnode=>$DELNODE);
     }
     else
     {
@@ -452,7 +452,7 @@ sub process_request
         }
 
         # also do nics table
-        &donics(\@allnodes, $callback, $DELNODE);
+        &donics(nodes=>\@allnodes, callback=>$callback, delnode=>$DELNODE);
     }
 
     writeout();
@@ -490,7 +490,7 @@ sub writeout
         Globals:
 
         Example:
-                my $rc = &donics(\@nodes, $callback, $DELNODE);
+                my $rc = &donics(nodes=>\@allnodes, callback=>$callback, delnode=>$DELNODE);
 
         Comments:
                 none
@@ -499,9 +499,10 @@ sub writeout
 #-------------------------------------------------------------------------------
 sub donics
 {
-    my $nodes    = shift;
-    my $callback = shift;
-	my $delnode	 = shift;
+    my %args = @_;
+    my $nodes = $args{nodes};
+    my $callback = $args{callback};
+    my $delnode = $args{delnode};
 
     my @nodelist = @{$nodes};
 
@@ -717,6 +718,10 @@ sub donics
             } # end for each index
         }    # end for each nic
     }    # end for each node
+
+    if ($args{hostsref}) {
+    	@{$args{hostsref}} = @hosts;
+    }
 
     $nettab->close;
     $nicstab->close;

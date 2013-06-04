@@ -305,7 +305,11 @@ sub process_request {
 		my $domain;
 	if ($request->{node}) { #leverage makehosts code to flesh out the options
 		require xCAT_plugin::hosts;
-		xCAT_plugin::hosts::add_hosts_content(nodelist=>$request->{node},callback=>$callback,hostsref=>\@contents);
+                my @content1;
+                my @content2;
+		xCAT_plugin::hosts::add_hosts_content(nodelist=>$request->{node},callback=>$callback,hostsref=>\@content1);
+		xCAT_plugin::hosts::donics(nodes=>$request->{node},callback=>$callback,hostsref=>\@content2);
+                @contents = (@content1, @content2);
 	} else {
 	        #legacy behavior, read from /etc/hosts
 	        my $hostsfile;
