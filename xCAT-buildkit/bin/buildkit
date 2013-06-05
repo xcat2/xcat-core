@@ -352,6 +352,7 @@ if (
                 'h|help'       => \$::HELP,
                 'v|version'    => \$::VERSION,
                 'V|verbose'    => \$::VERBOSE,
+                'n|noprerequisite'  => \$::NOPREREQUISITE,
                 'p|pkgdir=s'   => \$::PKGDIR,
                 'k|kitversion=s' => \$::KITVERSION,
                 'r|kitrelease=s' => \$::KITRELEASE,
@@ -1944,10 +1945,53 @@ sub build_kitcomp
     #   For any kitpkgdep that has an rpm file in the repo,
     #   specifically reference it's version-release
     if ( &update_kitcomp_kitpkgdeps($comp,$repodir) ) { return 1; }
- 
-    # Create spec file for this kit component
-    if ( &gen_kitcomp_spec($comp,\%repo) ) { return 1; }
 
+    if ( $::NOPREREQUISITE ) {
+        if ( $comp->{ospkgdeps} || $comp->{preinstall} || $comp->{preupgrade} || $comp->{preuninstall} ) {
+            if ( &gen_kitcomp_spec($comp,\%repo, 'PREREQUISITE') ) { return 1; }
+        
+            # run the rpmbuild command
+            my $curdir = $::workdir;
+            my $cmd = "rm -Rf $curdir/rpmbuild";
+            system($cmd);
+            my $avoiderr = $rpmbuild_dir."/BUILDROOT/prep_".$comp->{basename};
+            $avoiderr .= "-$comp->{version}-$comp->{release}.$repo{osarch}";
+            mkpath($avoiderr);
+            $avoiderr = $rpmbuild_dir."/BUILD/";
+            mkpath($avoiderr);
+            $avoiderr = $rpmbuild_dir."/SRPMS/";
+            mkpath($avoiderr);
+            $avoiderr = $rpmbuild_dir."/RPMS/noarch/";
+            mkpath($avoiderr);
+
+            # Read the kit component prerequisite rpm name
+
+            my $specfile = $::workdir."/tmp/$comp->{kitcompname}-prep.spec";
+            my $rpmbuild_cmd = "rpmbuild --define \"_topdir $rpmbuild_dir\" -ba $specfile";
+
+            if (!$::VERBOSE) {
+                $rpmbuild_cmd .= ' --quiet ';
+            }
+            if ( system($rpmbuild_cmd) ) {
+                print "Error running rpmbuild command for kit component $comp->{kitcompname} meta package\n";
+                return 1;
+            }
+            my @built_rpms = `find $rpmbuild_dir/RPMS -name "*.rpm"`;
+            foreach my $rpm (@built_rpms) {
+                chomp($rpm);
+                if ( system ("cp -fp $rpm $repodir") ) {
+                    print "Error copying rpm $rpm to build repo directory $repodir \n";
+                    return 1;
+                }
+            }
+
+        }
+
+        if ( &gen_kitcomp_spec($comp,\%repo, 'METARPM') ) { return 1; }
+    } else {
+        # Create spec file for this kit component
+        if ( &gen_kitcomp_spec($comp,\%repo, 'ALL') ) { return 1; }
+    }
 
     # run the rpmbuild command
     my $curdir = $::workdir;
@@ -2093,6 +2137,7 @@ sub gen_kitcomp_spec
 {
     my $comp = shift;
     my $repo = shift;
+    my $level = shift;
     my $scriptdir =  $::workdir."/scripts/";
     my $tmpdir =  $::workdir."/tmp/";
 
@@ -2114,63 +2159,130 @@ sub gen_kitcomp_spec
     my $kitcompname = $comp->{kitcompname};
 
     my ($prescript,$postscript,$preupscript,$postupscript,$preunscript,$postunscript,$nonnativepkgs,$sourcetar,$setup,$files) = ' ';
-    if (defined($comp->{preinstall})) {
-        $prescript = &load_script("$scriptdir$comp->{preinstall}"); 
-        $prescript = "if [ \"\$1\" = \"1\" ] ; then\n" . $prescript . "\nfi";}
-    if (defined($comp->{postinstall})) {
-        $postscript = &load_script("$scriptdir$comp->{postinstall}"); 
-        $postscript = "if [ \"\$1\" = \"1\" ] ; then\n" . $postscript . "\nfi"; }
-    if (defined($comp->{preupgrade})) {
-        $preupscript = &load_script("$scriptdir$comp->{preupgrade}");
-        $preupscript = "if [ \"\$1\" = \"2\" ] ; then\n" . $preupscript . "\nfi";}
-    if (defined($comp->{postupgrade})) {
-        $postupscript = &load_script("$scriptdir$comp->{postupgrade}");
-        $postupscript = "if [ \"\$1\" = \"2\" ] ; then\n" . $postupscript . "\nfi";}
-    if (defined($comp->{preuninstall})) {
-        $preunscript = &load_script("$scriptdir$comp->{preuninstall}"); }
-    if (defined($comp->{postuninstall})) {
-        $postunscript = &load_script("$scriptdir$comp->{postuninstall}"); }
-    if (defined($comp->{non_native_pkgs})) {
-        $nonnativepkgs = '\n';
-        $nonnativepkgs .= "mkdir -p \$RPM_BUILD_ROOT/opt/xcat/kits/$kitname/$kitcompname \n";
-        $nonnativepkgs .= "cp -a * \$RPM_BUILD_ROOT/opt/xcat/kits/$kitname/$kitcompname  \n";
-        $sourcetar = "Source: $comp->{basename}.tar.gz";
-        $setup = "\%setup -q -n $comp->{basename}";
-        $files = "/opt/xcat/kits";
+    if ( $level eq 'PREREQUISITE' || $level eq 'ALL' ) {
+        if (defined($comp->{preinstall})) {
+            $prescript = &load_script("$scriptdir$comp->{preinstall}"); 
+            $prescript = "if [ \"\$1\" = \"1\" ] ; then\n" . $prescript . "\nfi";}
+        if (defined($comp->{preupgrade})) {
+            $preupscript = &load_script("$scriptdir$comp->{preupgrade}");
+            $preupscript = "if [ \"\$1\" = \"2\" ] ; then\n" . $preupscript . "\nfi";}
+        if (defined($comp->{preuninstall})) {
+            $preunscript = &load_script("$scriptdir$comp->{preuninstall}"); }
+    }
+    if ( $level eq 'METARPM' || $level eq 'ALL' ) {
+        if (defined($comp->{postinstall})) {
+            $postscript = &load_script("$scriptdir$comp->{postinstall}"); 
+            $postscript = "if [ \"\$1\" = \"1\" ] ; then\n" . $postscript . "\nfi"; }
+        if (defined($comp->{postupgrade})) {
+            $postupscript = &load_script("$scriptdir$comp->{postupgrade}");
+            $postupscript = "if [ \"\$1\" = \"2\" ] ; then\n" . $postupscript . "\nfi";}
+        if (defined($comp->{postuninstall})) {
+            $postunscript = &load_script("$scriptdir$comp->{postuninstall}"); }
+        if (defined($comp->{non_native_pkgs})) {
+            $nonnativepkgs = '\n';
+            $nonnativepkgs .= "mkdir -p \$RPM_BUILD_ROOT/opt/xcat/kits/$kitname/$kitcompname \n";
+            $nonnativepkgs .= "cp -a * \$RPM_BUILD_ROOT/opt/xcat/kits/$kitname/$kitcompname  \n";
+            $sourcetar = "Source: $comp->{basename}.tar.gz";
+            $setup = "\%setup -q -n $comp->{basename}";
+            $files = "/opt/xcat/kits";
+        }
     }
 
-    for (@lines) {
-        chomp;
-        s/<<<INSERT_kitbasename_HERE>>>/$kitname/;
-        s/<<<INSERT_kitcomponent_basename_HERE>>>/$comp->{basename}/;
-        s/<<<INSERT_kitcomponent_version_HERE>>>/$comp->{version}/;
-        s/<<<INSERT_kitcomponent_release_HERE>>>/$comp->{release}/;
-        s/<<<INSERT_kit_license_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{kitlicense}/;
-        s/<<<INSERT_vendor_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{vendor}/;
-        s/<<<INSERT_packager_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{packager}/;
-        s/<<<INSERT_url_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{url}/;
-        s/<<<INSERT_kitcomponent_ospkgdeps_HERE>>>/$comp->{ospkgdeps}/;
-        s/<<<INSERT_kitcomponent_kitpkgdeps_HERE>>>/$comp->{kitpkgdeps}/;
-        s/<<<INSERT_kitcomponent_kitcompdeps_HERE>>>/$comp->{kitcompdeps}/;
-        s/<<<INSERT_kitcomponent_desc_HERE>>>/$comp->{description}/;
-        s/<<<INSERT_kitcomponent_non_native_pkgs_HERE>>>/$nonnativepkgs/;
-        s/<<<INSERT_kitcomponent_sourcetar_HERE>>>/$sourcetar/;
-        s/<<<INSERT_kitcomponent_setup_HERE>>>/$setup/;
-        s/<<<INSERT_kitcomponent_files_HERE>>>/$files/;
-        s/<<<INSERT_kitcomponent_preinstall_script_HERE>>>/$prescript/;
-        s/<<<INSERT_kitcomponent_postinstall_script_HERE>>>/$postscript/;
-        s/<<<INSERT_kitcomponent_preupgrade_script_HERE>>>/$preupscript/;
-        s/<<<INSERT_kitcomponent_postupgrade_script_HERE>>>/$postupscript/;
-        s/<<<INSERT_kitcomponent_preuninstall_script_HERE>>>/$preunscript/;
-        s/<<<INSERT_kitcomponent_postuninstall_script_HERE>>>/$postunscript/;
+
+    if ( $level eq 'ALL' ) {
+        for (@lines) {
+            chomp;
+            s/<<<INSERT_kitbasename_HERE>>>/$kitname/;
+            s/<<<INSERT_kitcomponent_basename_HERE>>>/$comp->{basename}/;
+            s/<<<INSERT_kitcomponent_version_HERE>>>/$comp->{version}/;
+            s/<<<INSERT_kitcomponent_release_HERE>>>/$comp->{release}/;
+            s/<<<INSERT_kit_license_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{kitlicense}/;
+            s/<<<INSERT_vendor_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{vendor}/;
+            s/<<<INSERT_packager_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{packager}/;
+            s/<<<INSERT_url_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{url}/;
+            s/<<<INSERT_kitcomponent_ospkgdeps_HERE>>>/$comp->{ospkgdeps}/;
+            s/<<<INSERT_kitcomponent_kitpkgdeps_HERE>>>/$comp->{kitpkgdeps}/;
+            s/<<<INSERT_kitcomponent_kitcompdeps_HERE>>>/$comp->{kitcompdeps}/;
+            s/<<<INSERT_kitcomponent_desc_HERE>>>/$comp->{description}/;
+            s/<<<INSERT_kitcomponent_non_native_pkgs_HERE>>>/$nonnativepkgs/;
+            s/<<<INSERT_kitcomponent_sourcetar_HERE>>>/$sourcetar/;
+            s/<<<INSERT_kitcomponent_setup_HERE>>>/$setup/;
+            s/<<<INSERT_kitcomponent_files_HERE>>>/$files/;
+            s/<<<INSERT_kitcomponent_preinstall_script_HERE>>>/$prescript/;
+            s/<<<INSERT_kitcomponent_postinstall_script_HERE>>>/$postscript/;
+            s/<<<INSERT_kitcomponent_preupgrade_script_HERE>>>/$preupscript/;
+            s/<<<INSERT_kitcomponent_postupgrade_script_HERE>>>/$postupscript/;
+            s/<<<INSERT_kitcomponent_preuninstall_script_HERE>>>/$preunscript/;
+            s/<<<INSERT_kitcomponent_postuninstall_script_HERE>>>/$postunscript/;
+        }
+    } elsif ( $level eq 'PREREQUISITE' ) {
+        for (@lines) {
+            chomp;
+            s/<<<INSERT_kitbasename_HERE>>>/$kitname/;
+            s/<<<INSERT_kitcomponent_basename_HERE>>>/prep_$comp->{basename}/;
+            s/<<<INSERT_kitcomponent_version_HERE>>>/$comp->{version}/;
+            s/<<<INSERT_kitcomponent_release_HERE>>>/$comp->{release}/;
+            s/<<<INSERT_kit_license_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{kitlicense}/;
+            s/<<<INSERT_vendor_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{vendor}/;
+            s/<<<INSERT_packager_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{packager}/;
+            s/<<<INSERT_url_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{url}/;
+            s/<<<INSERT_kitcomponent_ospkgdeps_HERE>>>/$comp->{ospkgdeps}/;
+            s/<<<INSERT_kitcomponent_kitpkgdeps_HERE>>>//;
+            s/<<<INSERT_kitcomponent_kitcompdeps_HERE>>>//;
+            s/<<<INSERT_kitcomponent_desc_HERE>>>/$comp->{description}/;
+            s/<<<INSERT_kitcomponent_non_native_pkgs_HERE>>>//;
+            s/<<<INSERT_kitcomponent_sourcetar_HERE>>>//;
+            s/<<<INSERT_kitcomponent_setup_HERE>>>//;
+            s/<<<INSERT_kitcomponent_files_HERE>>>//;
+            s/<<<INSERT_kitcomponent_preinstall_script_HERE>>>/$prescript/;
+            s/<<<INSERT_kitcomponent_postinstall_script_HERE>>>//;
+            s/<<<INSERT_kitcomponent_preupgrade_script_HERE>>>/$preupscript/;
+            s/<<<INSERT_kitcomponent_postupgrade_script_HERE>>>//;
+            s/<<<INSERT_kitcomponent_preuninstall_script_HERE>>>/$preunscript/;
+            s/<<<INSERT_kitcomponent_postuninstall_script_HERE>>>//;
+        }
+
+    } elsif ( $level eq 'METARPM' ) {
+        for (@lines) {
+            chomp;
+            s/<<<INSERT_kitbasename_HERE>>>/$kitname/;
+            s/<<<INSERT_kitcomponent_basename_HERE>>>/$comp->{basename}/;
+            s/<<<INSERT_kitcomponent_version_HERE>>>/$comp->{version}/;
+            s/<<<INSERT_kitcomponent_release_HERE>>>/$comp->{release}/;
+            s/<<<INSERT_kit_license_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{kitlicense}/;
+            s/<<<INSERT_vendor_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{vendor}/;
+            s/<<<INSERT_packager_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{packager}/;
+            s/<<<INSERT_url_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{url}/;
+            s/<<<INSERT_kitcomponent_ospkgdeps_HERE>>>//;
+            s/<<<INSERT_kitcomponent_kitpkgdeps_HERE>>>/$comp->{kitpkgdeps}/;
+            s/<<<INSERT_kitcomponent_kitcompdeps_HERE>>>/$comp->{kitcompdeps}/;
+            s/<<<INSERT_kitcomponent_desc_HERE>>>/$comp->{description}/;
+            s/<<<INSERT_kitcomponent_non_native_pkgs_HERE>>>/$nonnativepkgs/;
+            s/<<<INSERT_kitcomponent_sourcetar_HERE>>>/$sourcetar/;
+            s/<<<INSERT_kitcomponent_setup_HERE>>>/$setup/;
+            s/<<<INSERT_kitcomponent_files_HERE>>>/$files/;
+            s/<<<INSERT_kitcomponent_preinstall_script_HERE>>>//;
+            s/<<<INSERT_kitcomponent_postinstall_script_HERE>>>/$postscript/;
+            s/<<<INSERT_kitcomponent_preupgrade_script_HERE>>>//;
+            s/<<<INSERT_kitcomponent_postupgrade_script_HERE>>>/$postupscript/;
+            s/<<<INSERT_kitcomponent_preuninstall_script_HERE>>>//;
+            s/<<<INSERT_kitcomponent_postuninstall_script_HERE>>>/$postunscript/;
+        }
     }
 
     # Write the generated spec file 
     my $joined_lines = join("\n",@lines);
     @lines = split(/\\n/,$joined_lines);
     mkpath($tmpdir);
+    
+    my $fn;
     my $NSF;
-    unless ( open( $NSF, ">$tmpdir/$comp->{kitcompname}.spec" ) ) {
+    if ( $level eq 'PREREQUISITE' ) {
+        $fn = $comp->{kitcompname}."-prep.spec"
+    } else {
+        $fn = $comp->{kitcompname}.".spec"
+    }
+    unless ( open( $NSF, ">$tmpdir/$fn" ) ) {
         return 1;
     }
     if ($::VERBOSE) {
@@ -2496,6 +2608,10 @@ sub create_kitconf
                     $se->{kitcompname};
             $::kit_config->{$s}{entries}[$li]->{kitreponame} = 
                     $se->{kitreponame};
+            if ( $::NOPREREQUISITE and $se->{ospkgdeps} || $se->{preinstall} || $se->{preupgrade} || $se->{preuninstall} ) {
+                $::kit_config->{$s}{entries}[$li]->{prerequisite} = 
+                    "prep_" . $se->{basename};
+            }
         }
         $li++;
       }
@@ -3032,6 +3148,26 @@ sub kit_addpkgs
     my $tmp_kit_conf = `find $tmpdir_base -name kit.conf`;
     chomp($tmp_kit_conf);
     my $tmpdir = dirname($tmp_kit_conf);
+
+    # read in the file
+    my $CKF;
+    unless ( open( $CKF, "<", $tmp_kit_conf ) ) {
+        print  "The Kit configuration file $tmp_kit_conf could not be read or was not included in the kit tar file. \n";
+        # Cleanup
+        system ("rm -Rf /tmp/buildkit_workdir");
+        return 1;
+    }
+    my @lines = <$CKF>;
+    close $CKF;
+    foreach my $l (@lines) {
+        # skip blank and comment lines
+        if ( $l =~ /^\s*$/ || $l =~ /^\s*#/ ) {
+            next;
+        }
+        if ($l =~ /prerequisite/ ) {
+            $::NOPREREQUISITE = 1;
+        }
+    }
 
     ###  Check if this is a new partial kit built with xCAT 2.8.1 or newer
     if (-d "$tmpdir/build_input") {

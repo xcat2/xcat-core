@@ -312,7 +312,7 @@ sub assign_to_osimage
     my $callback = shift;
     my $tabs = shift;
 
-    (my $kitcomptable) = $tabs->{kitcomponent}->getAttribs({kitcompname=> $kitcomp}, 'kitname', 'kitreponame', 'basename', 'kitpkgdeps', 'exlist', 'genimage_postinstall','postbootscripts', 'driverpacks');
+    (my $kitcomptable) = $tabs->{kitcomponent}->getAttribs({kitcompname=> $kitcomp}, 'kitname', 'kitreponame', 'basename', 'kitpkgdeps', 'prerequisite', 'exlist', 'genimage_postinstall','postbootscripts', 'driverpacks');
     (my $osimagetable) = $tabs->{osimage}->getAttribs({imagename=> $osimage}, 'provmethod', 'osarch', 'postbootscripts', 'kitcomponents');
     (my $linuximagetable) = $tabs->{linuximage}->getAttribs({imagename=> $osimage}, 'rootimgdir', 'exlist', 'postinstall', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
 
@@ -673,6 +673,14 @@ sub assign_to_osimage
         }
         unless ( grep(/^$kitreponame\/$basename$/, @lines) ) {
             if (open(NEWOTHERPKGLIST, ">", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist")) {
+                if ( $kitcomptable and $kitcomptable->{prerequisite} ) {
+                    push @lines, "#NEW_INSTALL_LIST#\n";
+                    foreach my $kitdeployparam ( @kitdeployparams ) {
+                        push @lines, "$kitdeployparam";
+                    }
+                    push @lines, "$kitreponame/$kitcomptable->{prerequisite}\n";
+                    $::noupgrade = 1;
+                }
                 if ( $::noupgrade ) {
                     push @lines, "#NEW_INSTALL_LIST#\n";
                     foreach my $kitdeployparam ( @kitdeployparams ) {
