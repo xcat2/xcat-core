@@ -251,7 +251,7 @@ for rpmname in xCAT xCATsn; do
 			./makerpm $rpmname "$EMBED"
 			if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname"; fi
 		else
-			for arch in x86_64 i386 ppc64 s390x; do
+			for arch in x86_64 ppc64 s390x; do
 				./makerpm $rpmname $arch "$EMBED"
 				if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname-$arch"; fi
 			done
