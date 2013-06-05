@@ -187,8 +187,8 @@ if [ -f "/proc/cmdline" -a -f "/etc/xcat/genesis-scripts-updated" ]; then
   SHAREDTFTP=`/opt/xcat/sbin/tabdump site | grep sharedtftp | cut -d'"' -f 4`
   if [ "$SHAREDTFTP" != "1" ]; then
       . /etc/profile.d/xcat.sh
-      echo Running '"'mknb %{tarch}'"', triggered by the installation/update of xCAT-genesis-scripts-x86_64 ...
-      mknb %{tarch}
+      echo Running '"'mknb `uname -m`'"', triggered by the installation/update of xCAT-genesis-scripts-x86_64 ...
+      mknb `uname -m`
     fi
 fi
 %endif
