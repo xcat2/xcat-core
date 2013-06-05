@@ -1591,7 +1591,7 @@ sub gen_new_hostinfo_string{
 
     # compose the stanza string for hostinfo file.
     my $hostsinfostr = "";
-    foreach my $item (keys %hostinfo_dict){       
+    foreach my $item (sort(keys %hostinfo_dict)){       
         # Generate IPs for other interfaces defined in MAC file.
         my %ipshash;
         foreach (keys %netprofileattr){            
