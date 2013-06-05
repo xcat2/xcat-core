@@ -1020,14 +1020,12 @@ sub fork_fanout_dsh
         }
     }
     # save the original exports,  we are going to add the unique node name below
-    my $origprecommand=$$options{'pre-command'};
     while (@$targets_waiting
            && (keys(%$targets_active) < $$options{'fanout'}))
     {
         my $user_target       = shift @$targets_waiting;
         # now add export NODE=nodename to the pre-command;
-        my $exportnode="export NODE=$user_target;";
-        $$options{'pre-command'} = $exportnode . $origprecommand;
+        my $exportnode="export NODE=$user_target; ";
         my $target_properties = $$resolved_targets{$user_target};
         my @commands;
         my $localShell        =
@@ -1065,14 +1063,15 @@ sub fork_fanout_dsh
                $rsp->{error}->[0] = "File $$options{'environment'} does not exist";
                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             }
+            # build the xdsh command
             push @dsh_command,
-              "$$options{'pre-command'} . $$options{'environment'} ; $$options{'command'}$$options{'post-command'}";
+              "$exportnode$$options{'pre-command'} . $$options{'environment'} ; $$options{'command'}$$options{'post-command'}";
         }
 
         else
         {
             push @dsh_command,
-              "$$options{'pre-command'}$$options{'command'}$$options{'post-command'}";
+              "$exportnode$$options{'pre-command'}$$options{'command'}$$options{'post-command'}";
         }
 
         if ($$target_properties{'localhost'})
@@ -1140,7 +1139,7 @@ sub fork_fanout_dsh
             #eval "require RemoteShell::$rsh_extension";
             eval "require xCAT::$rsh_extension";
 
-            $rsh_config{'command'} = "$$options{'pre-command'}";
+            $rsh_config{'command'} = "$exportnode$$options{'pre-command'}";
             my $tmp_env_file;
             # for the -E flag here we build and copy the -E env variable
             # file to the nodes
