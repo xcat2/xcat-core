@@ -2010,7 +2010,9 @@ sub send_pending_responses {
                                 $blocks += 1;
                         }
                         foreach (0..$blocks) {
-                                syswrite($sock,$resp,4096,$_*4096);
+				do {
+                                	syswrite($sock,$resp,4096,$_*4096);
+				} while (($! == EAGAIN) or ($! == ECHILD));
                         }
 	      	};
 }
