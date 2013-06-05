@@ -18,6 +18,11 @@ BEGIN
     }
 }
 
+my $globalencode = "xml";
+my %supported_encodes = (
+    "xml" => 1,
+    "storable" => 1,
+);
 my $sslctl;
 my $udpctl;
 # if AIX - make sure we include perl 5.8.2 in INC path.
@@ -1958,6 +1963,33 @@ sub populate_site_hash {
     }
 }
 
+sub get_request {
+    my $sock = shift;
+    my $encode = shift;
+    my $request = shift;
+    if ($encode eq "xml") {
+        my $line = "";
+        while ($line !~ m/<\/xcatrequest>/) { 
+            my $flags=fcntl($sock,F_GETFL,0);
+            $flags |= O_NONBLOCK; #we want sysread to bail on us, select seems to be evil to us still..
+            fcntl($sock,F_SETFL,$flags);
+            my $bytesread;
+            do  { $bytesread=sysread($sock,$line,65536,length($line)) } while ($bytesread);
+            if (length($line)==0) {
+                if (not defined $bytesread and ($! == EAGAIN or $! == ECHILD)) { next; } # ECHILD makes no sense, but some platform does it
+                return undef;
+            }
+            $flags=fcntl($sock,F_GETFL,0);
+            $flags &= ~O_NONBLOCK; #now we want *print* to be blocking IO
+            fcntl($sock,F_SETFL,$flags);
+            $request .= $line;
+        }
+        return eval { XMLin($request, SuppressEmpty=>undef,ForceArray=>1) };
+    } elsif ($encode eq "storable") {
+        return fd_retrieve($sock);
+    }
+}
+
 
 sub service_connection {
   my $sock = shift;
@@ -1982,24 +2014,19 @@ sub service_connection {
     my $clientsel = new IO::Select;
     $clientsel->add($sock);
     while (1) {
-      $line="";
       unless ($clientsel->can_read(15)) { last; } #don't let an unresponsive client hold us up
-    	my $flags=fcntl($sock,F_GETFL,0);
-	    $flags |= O_NONBLOCK; #we want sysread to bail on us, select seems to be evil to us still..
-	    fcntl($sock,F_SETFL,$flags);
-      my $bytesread;
-      do  { $bytesread=sysread($sock,$line,65536,length($line)) } while ($bytesread);
-      if (length($line)==0) {
-	      if (not defined $bytesread and ($! == EAGAIN or $! == ECHILD)) { next; } # ECHILD makes no sense, but some platform does it
-	      last;
+      my $line = <$sock>; # grab one line, check for mode...
+      if ($line and $line =~ /^xcatencoding: (.*)\z/) {
+        unless ($supported_encodes{$1}) {
+            print $sock "Unsupported encoding $1\n";
+            last;
+        }
+        $globalencode=$1;
+        $line = "";
       }
-    	 $flags=fcntl($sock,F_GETFL,0);
-	    $flags &= ~O_NONBLOCK; #now we want *print* to be blocking IO
-	    fcntl($sock,F_SETFL,$flags);
-      $request .= $line;
-      #$req = eval { XMLin($request, ForceArray => [ 'attribute' , 'attributepair' ]) };
-      if ($line =~ m/<\/xcatrequest>/) {
-        $req = eval { XMLin($request, SuppressEmpty=>undef,ForceArray=>1) };
+      $req = get_request($sock,$globalencode,$line);
+      unless ($req) { next; }
+      { #TODO: find closing brace..
         #first change peername on 'becomeuser' tag if present and valid
         if (defined $req->{becomeuser}) {
             $peername=becomeuser($req->{becomeuser}->[0]->{username}->[0],
@@ -2175,21 +2202,11 @@ sub relay_fds { #Relays file descriptors from pipes to children to the SSL socke
    foreach my $rin ($clientselect->can_read(0)) {
       my $subselect = new IO::Select;
       $subselect->add($rin);
-      my $clientintr="";
       my $subdata;
-      while ($subselect->can_read(1)) {
-         if ($subdata=<$rin>) {
-            $clientintr.=$subdata;
-         } else {
-            $subselect->remove($rin);
-            close($rin);
-         }
-      }
-      chomp($clientintr);
+      my $clientintr = get_request($rin,$globalencode,"");
       unless ($clientintr) {
          next;
       }
-      $clientintr=XMLin($clientintr, SuppressEmpty=>undef,ForceArray=>1 );
       if ($clientintr->{abortcommand}->[0]) {
           $pipeexpected=1;
           print "Aborting...";
