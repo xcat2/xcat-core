@@ -209,7 +209,7 @@ then
 Origin: xCAT internal repository
 Label: xcat-core bazaar repository
 Codename: $dist
-Architectures: amd64 i386 
+Architectures: amd64 
 Components: main
 Description: Repository automatically genereted conf 
 SignWith: yes
@@ -307,7 +307,7 @@ then
 Origin: xCAT internal repository
 Label: xcat-dep bazaar repository
 Codename: $dist
-Architectures: i386 amd64 
+Architectures: amd64 
 Components: main
 Description: Repository automatically genereted conf 
 SignWith: yes
