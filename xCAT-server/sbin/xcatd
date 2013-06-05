@@ -1857,7 +1857,7 @@ sub service_connection {
       my $bytesread;
       do  { $bytesread=sysread($sock,$line,65536,length($line)) } while ($bytesread);
       if (length($line)==0) {
-	      if (not defined $bytesread and $! == EAGAIN) { next; } #
+	      if (not defined $bytesread and (($! == EAGAIN) or ($! == ECHILD))) { next; } #
 	      last;
       }
     	 $flags=fcntl($sock,F_GETFL,0);
