@@ -91,7 +91,7 @@ if($OSIMAGE){
 # then set the boot state of each node based on the nodetype.provmethod:
 # 1) if nodetype.provmethod = <osimage>, ignore any -p,-o,-a option, then call "nodeset ... osimage" 
 # 2) if nodetype.provmethod = [install/netboot/statelite], update the node attributes specified by -a,-p,-o options thru "nodech", call "nodeset ... [install/netboot/statelite]"
-# 3) if nodetype.provmethod is not set, complain and return 
+# 3) if nodetype.provmethod is not set, use 'install' as the default value
 
 # group the nodes according to the nodetype.provmethod
    @allnodes=noderange($noderange); 
@@ -105,7 +105,8 @@ if($OSIMAGE){
       }
       else
       {
-        push(@{$pnhash{'BLANK###'}},$_);
+        #if nodetype.provmethod is not specified,
+        push(@{$pnhash{'install'}},$_);
       }
    }
 
@@ -117,7 +118,7 @@ if($OSIMAGE){
       if($key =~ /^(install|netboot|statelite)$/)
       {
 
-      # nodetype.provmethod = [install|netboot|statelite]
+         # nodetype.provmethod = [install|netboot|statelite]
          my $nodechline = "";
          if ($OSVER) {
             $nodechline = "nodetype.os=$OSVER";
@@ -144,17 +145,10 @@ if($OSIMAGE){
             }
          }
       }
-      elsif($key eq 'BLANK###')
-      {
-
-      # nodetype.provmethod is not set
-         print "nodetype.provmethod must be specified for nodes: $nodes\n";
-         $rc=1;
-      } 
       else
       {   
 
-      # nodetype.provmethod = <osimage>
+         # nodetype.provmethod = <osimage>
          &checkoption("nodetype.provmethod=$key");   
          $rclocal=system("nodeset $nodes osimage");
          if ($rclocal) { 
@@ -169,6 +163,9 @@ if($OSIMAGE){
 if($rc){
   die "nodeset failure";
 }
+
+# call "rsetboot" to set the boot order of the nodehm.mgt=ipmi nodes,for others, assume user has set the correct boot order before "rinstall"
+system("rsetboot $noderange net");
 
 # call "rpower" to start the node provision process
 $rc=system("rpower $noderange boot");
