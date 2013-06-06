@@ -1,0 +1,4 @@
+#node,os,arch,profile,provmethod,supportedarchs,nodetype,comments,disable
+"p260",,,,,,"ppc,osi",,
+"p460",,,,,,"ppc,osi",,
+"p470",,,,,,"ppc,osi",,
