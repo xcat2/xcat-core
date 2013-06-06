@@ -2025,7 +2025,7 @@ sub service_connection {
         $line = "";
       }
       $req = get_request($sock,$globalencode,$line);
-      unless ($req) { next; }
+      unless ($req) { last; }
       { #TODO: find closing brace..
         #first change peername on 'becomeuser' tag if present and valid
         if (defined $req->{becomeuser}) {
