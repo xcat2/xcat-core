@@ -1376,7 +1376,7 @@ kitrepo => {
         },
 },
 kitcomponent => {
-        cols => [qw(kitcompname description kitname kitreponame basename version release serverroles kitpkgdeps driverpacks kitcompdeps postbootscripts genimage_postinstall exlist comments disable)], 
+        cols => [qw(kitcompname description kitname kitreponame basename version release serverroles kitpkgdeps prerequisite driverpacks kitcompdeps postbootscripts genimage_postinstall exlist comments disable)], 
         keys => [qw(kitcompname)],
         tablespace =>'XCATTBS16K',
         table_desc => 'This table stores all kit components added to the xCAT cluster.',
@@ -1390,6 +1390,7 @@ kitcomponent => {
             release => 'Kit Component release.',
             serverroles => 'The types of servers that this Kit Component can install on.  Valid types are: mgtnode, servicenode, compute',
             kitpkgdeps => 'Comma-separated list of packages that this kit component depends on.',
+            prerequisite => 'Prerequisite for this kit component, the prerequisite includes ospkgdeps,preinstall,preupgrade,preuninstall scripts',
             driverpacks => 'Comma-separated List of driver package names. These must be full names like: pkg1-1.0-1.x86_64.rpm.',
             kitcompdeps  => 'Comma-separated list of kit components that this kit component depends on.',
             postbootscripts  => 'Comma-separated list of postbootscripts that will run during the node boot.',

@@ -748,9 +748,19 @@ sub assign_to_osimage
                     last;
                 }
             }
+            if ( $line =~ /^-prep_$basename$/ ) {
+                $matched = 1;
+                $changed = 1;
+            }
             unless ( $matched ) {
                 push @l, "$line\n";
             }
+
+            my $lastline = pop @l;
+            while ( $lastline =~ /^#NEW_INSTALL_LIST#$/ ) {
+                $lastline = pop @l;
+            }
+            push @l, $lastline if ( $lastline );
         }
 
         if ( $changed ) {
@@ -1967,11 +1977,12 @@ sub rmkitcomp
     foreach my $kitcomponent (@kitcomponents) {
 
         # Check if it is a kitcompname or basename
-        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $kitcomponent}, 'kitname', 'kitpkgdeps', 'postbootscripts', 'genimage_postinstall', 'kitreponame', 'exlist', 'basename', 'driverpacks');
+        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $kitcomponent}, 'kitname', 'kitpkgdeps', 'prerequisite', 'postbootscripts', 'genimage_postinstall', 'kitreponame', 'exlist', 'basename', 'driverpacks');
         if ( $kitcomptable and $kitcomptable->{'kitname'}){
             $kitcomps{$kitcomponent}{name} = $kitcomponent;
             $kitcomps{$kitcomponent}{kitname} = $kitcomptable->{kitname};
             $kitcomps{$kitcomponent}{kitpkgdeps} = $kitcomptable->{kitpkgdeps};
+            $kitcomps{$kitcomponent}{prerequisite} = $kitcomptable->{prerequisite};
             $kitcomps{$kitcomponent}{basename} = $kitcomptable->{basename};
             $kitcomps{$kitcomponent}{exlist} = $kitcomptable->{exlist};
             $kitcomps{$kitcomponent}{postbootscripts} = $kitcomptable->{postbootscripts};
@@ -1989,9 +2000,10 @@ sub rmkitcomp
 
             my $highest = get_highest_version('kitcompname', 'version', 'release', @entries);
             $kitcomps{$highest}{name} = $highest;
-            (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $highest}, 'kitname', 'kitpkgdeps', 'postbootscripts', 'genimage_postinstall', 'kitreponame', 'exlist', 'basename', 'driverpacks');
+            (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $highest}, 'kitname', 'kitpkgdeps', 'prerequisite', 'postbootscripts', 'genimage_postinstall', 'kitreponame', 'exlist', 'basename', 'driverpacks');
             $kitcomps{$highest}{kitname} = $kitcomptable->{kitname};
             $kitcomps{$highest}{kitpkgdeps} = $kitcomptable->{kitpkgdeps};
+            $kitcomps{$highest}{prerequisite} = $kitcomptable->{prerequisite};
             $kitcomps{$highest}{basename} = $kitcomptable->{basename};
             $kitcomps{$highest}{exlist} = $kitcomptable->{exlist};
             $kitcomps{$highest}{postbootscripts} = $kitcomptable->{postbootscripts};
@@ -2358,6 +2370,17 @@ sub rmkitcomp
                             $num = 1;
                             $inlist = 1;
                         }
+                        if ( $kitcomps{$kitcomponent}{prerequisite} ) {
+                            if ( $line =~ /^$kitreponame\/prep_$basename$/ ) {
+                                if ( $inlist ) {
+                                    $num--;
+                                    foreach ( 1..$num ) {
+                                        pop @newlines;
+                                    }
+                                }
+                                next;
+                            }
+                        }
                         if ( $line =~ /^$kitreponame\/$basename$/ ) {
                             if ( $inlist ) {
                                 $num--;
@@ -2423,7 +2446,29 @@ sub rmkitcomp
                 push @kitpkgdeps, $basename;
 
                 my $update = 0;
+
+                #check if prerequisite rpm is already added to RMPKGS.otherpkgs.pkglist.
+                my $matched = 0;
+                foreach my $line ( @lines ) {
+                    chomp $line;
+                    if ( $line =~ /^-prep_$basename$/ ) {
+                        $matched = 1;
+                        last;
+                    }
+                }
+                unless ( $matched ) {
+                    # add the prerequisite rpm to #NEW_INSTALL_LIST# session
+                    # so they can be removed in a seperate command
+                    if ( $kitcomps{$kitcomponent}{prerequisite} ) {
+                        push @l, "#NEW_INSTALL_LIST#\n";
+                        push @l, "-prep_$basename\n";
+                    }
+                    $update = 1;
+                }
+
+                my $added_mark = 0;
                 foreach my $kitpkgdep ( @kitpkgdeps ) {
+                    next if ( $kitpkgdep =~ /^$/ );
                     my $matched = 0;
                     foreach my $line ( @lines ) {
                         chomp $line;
@@ -2434,11 +2479,22 @@ sub rmkitcomp
                     }
 
                     unless ( $matched ) {
-                        push @l, "-$kitpkgdep\n";
+                        # add the prerequisite rpm to #NEW_INSTALL_LIST# session 
+                        # so they can be removed in a seperate command
+                        if ( $kitcomps{$kitcomponent}{prerequisite} ) {
+                            if (!$added_mark) { 
+                                push @l, "#NEW_INSTALL_LIST#\n";
+                                $added_mark = 1;
+                            }
+                            push @l, "-$kitpkgdep\n";
+                        } else {
+                            unshift @l, "-$kitpkgdep\n";
+                        }
                         $update = 1;
                     }
 
                 }
+
 
                 if ( $update and open(RMPKGLIST, ">", "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist") ) {
                     print RMPKGLIST @l;
