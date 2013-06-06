@@ -352,7 +352,7 @@ if (
                 'h|help'       => \$::HELP,
                 'v|version'    => \$::VERSION,
                 'V|verbose'    => \$::VERBOSE,
-                'n|noprerequisite'  => \$::NOPREREQUISITE,
+                'n|noprerequisite'  => \$::PREREQUISITE,
                 'p|pkgdir=s'   => \$::PKGDIR,
                 'k|kitversion=s' => \$::KITVERSION,
                 'r|kitrelease=s' => \$::KITRELEASE,
@@ -1946,7 +1946,7 @@ sub build_kitcomp
     #   specifically reference it's version-release
     if ( &update_kitcomp_kitpkgdeps($comp,$repodir) ) { return 1; }
 
-    if ( $::NOPREREQUISITE ) {
+    if ( !$::PREREQUISITE ) {
         if ( $comp->{ospkgdeps} || $comp->{preinstall} || $comp->{preupgrade} || $comp->{preuninstall} ) {
             if ( &gen_kitcomp_spec($comp,\%repo, 'PREREQUISITE') ) { return 1; }
         
@@ -2608,7 +2608,7 @@ sub create_kitconf
                     $se->{kitcompname};
             $::kit_config->{$s}{entries}[$li]->{kitreponame} = 
                     $se->{kitreponame};
-            if ( $::NOPREREQUISITE and $se->{ospkgdeps} || $se->{preinstall} || $se->{preupgrade} || $se->{preuninstall} ) {
+            if ( !$::PREREQUISITE and ($se->{ospkgdeps} || $se->{preinstall} || $se->{preupgrade} || $se->{preuninstall}) ) {
                 $::kit_config->{$s}{entries}[$li]->{prerequisite} = 
                     "prep_" . $se->{basename};
             }
@@ -3165,7 +3165,7 @@ sub kit_addpkgs
             next;
         }
         if ($l =~ /prerequisite/ ) {
-            $::NOPREREQUISITE = 1;
+            $::PREREQUISITE = 1;
         }
     }
 
