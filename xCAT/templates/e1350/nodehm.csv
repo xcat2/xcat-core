@@ -1,5 +1,12 @@
-#node,power,mgt,cons,termserver,termport,conserver,serialspeed,serialflow,getmac,comments,disable
-"ipmi",,"ipmi",,,,,,,,,
-"blade",,"blade",,,,,,,,,
-"cyclades",,,"cyclades",,,,,,,,
-"mrv",,,"mrv",,,,,,,,
+#node,power,mgt,cons,termserver,termport,conserver,serialport,serialspeed,serialflow,getmac,comments,disable
+"ipmi",,"ipmi",,,,,,,,,,
+"blade",,"blade",,,,,,,,,,
+"cyclades",,,"cyclades",,,,,,,,,
+"mrv",,,"mrv",,,,,,,,,
+"x3250",,"ipmi","ipmi",,,,"0","115200",,,,
+"x3550",,"ipmi","ipmi",,,,"0","115200",,,,
+"x3650",,"ipmi","ipmi",,,,"0","115200",,,,
+"dx360",,"ipmi","ipmi",,,,"0","115200",,,,
+"x220",,"ipmi","ipmi",,,,"0","115200",,,,
+"x240",,"ipmi","ipmi",,,,"0","115200",,,,
+"x440",,"ipmi","ipmi",,,,"0","115200",,,,

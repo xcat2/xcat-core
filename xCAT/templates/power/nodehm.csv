@@ -1,0 +1,4 @@
+#node,power,mgt,cons,termserver,termport,conserver,serialport,serialspeed,serialflow,getmac,cmdmapping,comments,disable
+"p260",,"fsp","fsp",,,,,,,"blade",,,
+"p460",,"fsp","fsp",,,,,,,"blade",,,
+"p470",,"fsp","fsp",,,,,,,"blade",,,

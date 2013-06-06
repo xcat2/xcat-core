@@ -1,2 +1,9 @@
 #node,os,arch,profile,provmethod,supportedarchs,nodetype,comments,disable
 "compute",,,"compute",,
+"x3250",,,,,,"osi",,
+"x3550",,,,,,"osi",,
+"x3650",,,,,,"osi",,
+"dx360",,,,,,"osi",,
+"x220",,,,,,"mp",,
+"x240",,,,,,"mp",,
+"x440",,,,,,"mp",,
