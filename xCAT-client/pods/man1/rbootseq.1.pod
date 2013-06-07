@@ -25,7 +25,8 @@ in effect for these blades until set differently.
 
 For PPC (using Direct FSP Management) specific:
 
-B<rbootseq> sets the net or hfi device as the first boot device for the specified PPC LPARs. The net or hfi mac address is stored in the mac table. And B<rbootseq> requires that the network information is correct in networks table as for getmacs/rnetboot. 
+B<rbootseq> sets the ethernet (net) or hfi device as the first boot device for the specified PPC LPARs.
+The B<rbootseq> command requires that the ethernet or hfi mac address is stored in the mac table, and that the network information is correct in the networks table. 
 
 =head1 OPTIONS
 
@@ -49,7 +50,11 @@ The fourth hard disk.
 
 =item B<n>|B<net>|B<network>
 
-Boot over the network, using a PXE or BOOTP broadcast.
+Boot over the ethernet network, using a PXE or BOOTP broadcast.
+
+=item B<hfi>
+
+Boot p775 nodes over the HFI network, using BOOTP broadcast.
 
 =item B<iscsi>
 
