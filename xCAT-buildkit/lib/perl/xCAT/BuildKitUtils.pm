@@ -25,23 +25,11 @@ my $sha1support = eval {
 };
 use IPC::Open3;
 use IO::Select;
-use xCAT::GlobalDef;
-eval {
-  require xCAT::RemoteShellExp;
-};
 use warnings "all";
-require xCAT::InstUtils;
-#require xCAT::NetworkUtils;
-require xCAT::Schema;
-#require Data::Dumper;
-require xCAT::NodeRange;
-require xCAT::Version;
-require DBI;
 
 our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw(genpassword runcmd3);
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 =head1    xCAT::BuildKitUtils
 
@@ -290,205 +278,6 @@ sub close_delete_file
 }
 
 
-#-------------------------------------------------------------------------------
-=head3    runcmd3
-    Run the specified command with optional input and return stderr, stdout, and exit code
-
-    Arguments:
-        command=>[] - Array reference of command to run
-        input=>[] or string - Data to send to stdin of process like piping input
-    Returns:
-        { exitcode => number, output=> $string, errors => string }
-=cut
-sub runcmd3 { #a proper runcmd that indpendently returns stdout, stderr, pid and accepts a stdin
-    my %args = @_;
-    my @indata;
-    my $output;
-    my $errors;
-    if ($args{input}) {
-        if (ref $args{input}) { #array ref
-            @indata = @{$args{input}};
-        } else { #just a string
-            @indata=($args{input});
-        }
-    }
-    my @cmd;
-    if (ref $args{command}) {
-        @cmd = @{$args{command}};
-    } else {
-        @cmd = ($args{command});
-    }
-    my $cmdin;
-    my $cmdout;
-    my $cmderr = gensym;
-    my $cmdpid = open3($cmdin,$cmdout,$cmderr,@cmd);
-    my $cmdsel = IO::Select->new($cmdout,$cmderr);
-    foreach (@indata) {
-        print $cmdin $_;
-    }
-    close($cmdin);
-    my @handles;
-    while ($cmdsel->count()) {
-        @handles = $cmdsel->can_read();
-        foreach (@handles) {
-            my $line;
-            my $done = sysread $_,$line,180;
-            if ($done) {
-                if ($_ eq $cmdout) {
-                    $output .= $line;
-                } else {
-                    $errors .= $line;
-                }
-            } else {
-                $cmdsel->remove($_);
-                close($_);
-            }
-        }
-    }
-    waitpid($cmdpid,0);
-    my $exitcode = $? >> 8;
-    return { 'exitcode' => $exitcode, 'output' => $output, 'errors' => $errors }
-}
-
-#-------------------------------------------------------------------------------
-
-=head3    runcmd
-   Run the given cmd and return the output in an array (already chopped).
-   Alternately, if this function is used in a scalar context, the output
-   is joined into a single string with the newlines separating the lines.
-
-   Arguments:
-     command, exitcode, reference to output, streaming mode 
-   Returns:
-	   see below
-   Globals:
-	   $::RUNCMD_RC  , $::CALLBACK
-   Error:
-      Normally, if there is an error running the cmd,it will display the
-		error and exit with the cmds exit code, unless exitcode
-		is given one of the following values:
-            0:     display error msg, DO NOT exit on error, but set
-					$::RUNCMD_RC to the exit code.
-			-1:     DO NOT display error msg and DO NOT exit on error, but set
-				    $::RUNCMD_RC to the exit code.
-			-2:    DO the default behavior (display error msg and exit with cmds
-				exit code.
-             number > 0:    Display error msg and exit with the given code
-
-   Example:
-		my $outref = xCAT::BuildKitUtils->runcmd($cmd, -2, 1);
-                $::CALLBACK= your callback (required for streaming from plugins)
-		my $outref = xCAT::BuildKitUtils->runcmd($cmd,-2, 1, 1); streaming
-
-   Comments:
-		   If refoutput is true, then the output will be returned as a
-		   reference to an array for efficiency.
-
-
-=cut
-
-#-------------------------------------------------------------------------------
-sub runcmd
-
-{
-
-    my ($class, $cmd, $exitcode, $refoutput, $stream) = @_;
-    $::RUNCMD_RC = 0;
-    # redirect stderr to stdout
-    if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }   
-
-    my $outref = [];
-    if (!defined($stream) || (length($stream) == 0)) { # do not stream
-      @$outref = `$cmd`;
-    } else {  # streaming mode
-      my @cmd;
-      push @cmd,$cmd;
-      my $rsp    = {};
-      my $output;
-      my $errout;
-      open (PIPE, "$cmd |");
-      while (<PIPE>) {
-        if ($::CALLBACK){
-           $rsp->{data}->[0] = $_;
-           $::CALLBACK->($rsp);
-        } else {
-          xCAT::MsgUtils->message("D", "$_");
-        }
-        $output .= $_;
-      }
-      # store the return string
-      push  @$outref,$output;   
-    }
-
-    # now if not streaming process errors 
-    if (($?) && (!defined($stream)))
-    {
-        $::RUNCMD_RC = $? >> 8;
-        my $displayerror = 1;
-        my $rc;
-        if (defined($exitcode) && length($exitcode) && $exitcode != -2)
-        {
-            if ($exitcode > 0)
-            {
-                $rc = $exitcode;
-            }    # if not zero, exit with specified code
-            elsif ($exitcode <= 0)
-            {
-                $rc = '';    # if zero or negative, do not exit
-                if ($exitcode < 0) { $displayerror = 0; }
-            }
-        }
-        else
-        {
-            $rc = $::RUNCMD_RC;
-        }    # if exitcode not specified, use cmd exit code
-        if ($displayerror)
-        {
-            my $rsp    = {};
-            my $errmsg = '';
-            if (xCAT::BuildKitUtils->isLinux() && $::RUNCMD_RC == 139)
-            {
-                $errmsg = "Segmentation fault  $errmsg";
-            }
-            else
-            {
-                $errmsg = join('', @$outref);
-                chomp $errmsg;
-
-            }
-            if ($::CALLBACK)
-            {
-                $rsp->{data}->[0] =
-                  "Command failed: $cmd. Error message: $errmsg.\n";
-                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-
-            }
-            else
-            {
-                xCAT::MsgUtils->message("E",
-                             "Command failed: $cmd. Error message: $errmsg.\n");
-            }
-            $xCAT::BuildKitUtils::errno = 29;
-        }
-    }
-    if ($refoutput)
-    {
-        chomp(@$outref);
-        return $outref;
-    }
-    elsif (wantarray)
-    {
-        chomp(@$outref);
-        return @$outref;
-    }
-    else
-    {
-        my $line = join('', @$outref);
-        chomp $line;
-        return $line;
-    }
-
-}
 
 #-------------------------------------------------------------------------------
 
@@ -589,12 +378,9 @@ sub osver
         $ver = $lines[0];
         $ver =~ s/\.//;
         $ver =~ s/[^0-9]*([0-9]+).*/$1/;
-
-        #print "ver: $ver\n";
     }
     elsif (-f "/etc/UnitedLinux-release")
     {
-
         $os = "ul";
         open($relfile,"<","/etc/UnitedLinux-release");
         $ver = <$relfile>;
@@ -660,7 +446,7 @@ sub osver
         false on failure
         A reference for the lock being held.
 =cut
-
+#-----------------------------------------------------------------------------
 sub acquire_lock {
     my $lock_name = shift;
     use File::Path;
@@ -682,14 +468,13 @@ sub acquire_lock {
     Returns:
         false on failure, true on success
 =cut
-
+#-----------------------------------------------------------------------------
 sub release_lock {
     my $tlock = shift;
     unlink($tlock->{path});
     flock($tlock->{fd},LOCK_UN);
     close($tlock->{fd});
 }
-
 
 #-------------------------------------------------------------------------------
 
@@ -760,7 +545,5 @@ sub full_path
 
     return $fullpath;
 }
-
-
 
 1;
