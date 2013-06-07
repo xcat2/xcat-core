@@ -8,37 +8,6 @@
 
  xCAT/PCM Kit Build utilities
 
-    usage: buildkit [-h|-v] [command [-V]]
-
-    This tool is used to create and build a new Kit.
-
-    The options are:
-        -h                - Provide usage info.
-        -v                - Provide the version info.
-        command           - Several commands are supported. See the list below.
-        -V                - Verbose mode. Outputs additional debug messages.
-	    -w		  - Name of working directory to use when creating kit
-
-    Supported commands:
-     create <kit basename> - creates a new Kit with the specified basename
-     chkconfig             - checks the Kit build file
-     buildrepo <reponame>  - builds the specified Kit package repository 
-     buildrepo all         - builds all the Kit package repositories
-     listrepo              - lists the Kit package repositories in the Kit
-                             build file, and their build status
-     cleanrepo <reponame>  - deletes the build files for the specified Kit
-                             package repository
-     cleanrepo all         - deletes the build files for all Kit package 
-                             repositories
-     buildtar              - builds the Kit tarfile
-     cleantar              - deletes the Kit deployment directory and Kit
-     cleanall               - equivalent to buildkit cleanrepo all and
-                                            buildkit cleantar
-     addpkgs -p <packagedir> [-k|--kitversion <version>] [-r|--kitrelease <release>] <kit tarfile>
-                           - used by customer to add external product
-                             packages when they are not built into the 
-                             shipped kit tar file
-
 This script is designed to run on a non-xCAT system so that Kits can be
 built on any product build machine.
 
@@ -153,14 +122,17 @@ $::COMPATIBLE_KITFRAMEWORKS = "0,1";
               vendor=> {
                description=>'The Vendor value to use when building the rpms.',
                value_desc=>'any string',
+               mandatory=>0,
                cp_to_kitconfig=>0},
               packager=> {
                description=>'The Packager value to use when building the rpms.',
                value_desc=>'any string',
+               mandatory=>0,
                cp_to_kitconfig=>0},
               url=> {
                description=>'The URL value to use when building the rpms.',
                value_desc=>'any string',
+               mandatory=>0,
                cp_to_kitconfig=>0}},
     kitrepo => {kitrepoid => {
                description=>'The Kit Package Repository ID.  (e.g., rhels-6.2-x86_64)',
@@ -343,9 +315,6 @@ $::command = "$0 $args";
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
 
-
-# ndebug
-
 # parse the options
 if (
     !GetOptions(
@@ -356,7 +325,7 @@ if (
                 'p|pkgdir=s'   => \$::PKGDIR,
                 'k|kitversion=s' => \$::KITVERSION,
                 'r|kitrelease=s' => \$::KITRELEASE,
-                'w|workdir=s'	=> \$::WORKDIR,
+                'l|kitloc=s'	=> \$::KITLOC,
     )
   )
 {
@@ -404,15 +373,10 @@ if ( ! $arg ) {
    exit (0);
 }
 
-# set workdir 
-if ($::WORKDIR) {
-	$::workdir = $::WORKDIR;
-	if (! -d $::workdir) {
-		if ( system("/usr/bin/mkdir -p $::workdir") ) {
-			print "ERROR: Could not create working directory $::workdir\n";
-			exit 1;
-		}
-	}
+# set kit location
+if ($::KITLOC) {
+	$::workdir = $::KITLOC;
+    $::current_dir = $::workdir;
 } else {
 	$::workdir = $::current_dir;
 }
@@ -427,6 +391,10 @@ while ($arg) {
     $command =~ tr/A-Z/a-z/;   # convert to lowercase
     if ( $command eq 'create' ) { 
         $::KIT_CREATE=shift(@ARGV); 
+        if ($::KITLOC) {
+            $::workdir = dirname($::KITLOC);
+            $::current_dir = $::workdir;
+        }
         if ( ! $::KIT_CREATE ) {
           print "kit basename not specified for buildkit create command \n";
           &usage;
@@ -522,21 +490,34 @@ exit $rc;
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub usage
 {
-   print "  
-    usage: buildkit [-h|-v] [command [-V]]                                    
-                                                                              
-    This tool is used to create and build a new Kit.                          
-                                                                              
+   print "Usage:  
+    buildkit [-?│-h│--help] [-v│--version]
+
+    To build a new Kit
+
+    buildkit [-V│--verbose] <subcommand> [<kit_name>] [<repo_name>│all] 
+       [-l│--kitloc <directory>]
+
+    To add packages to an existing Kit.
+
+    buildkit [-V│--verbose] addpkgs <kit_tarfile> [-p│--pkgdir <package_direc-
+       tory>] [-k│--kitversion <version>] [-r│--kitrelease <release] 
+       [-l│--kitloc <kit location>]
+
+    This tool is used to build and manage a Kit package.                          
     The options are:                                                          
         -h         - Provide usage info.                                      
+        -k         - Kit version.
+        -l         - Location of kit files. (Including kit name.)
+        -p         - RPM package directory.
+        -r         - Kit release.
         -v         - Provide the version info.                                
         command    - Several commands are supported. See the list below.      
         -V         - Verbose mode. Outputs additional debug messages.         
                                                                               
-    Supported commands:                                                       
+    Supported subcommands:                                                       
      create <kit basename> - creates a new Kit with the specified basename    
      chkconfig             - checks the Kit build file                        
      listrepo              - lists the Kit package repositories in the Kit    
@@ -545,7 +526,7 @@ sub usage
      buildrepo all         - builds all the Kit package repositories      
      cleanrepo <reponame>  - deletes the build files for the specified Kit    
                              package repository                               
-     cleanrepo all         - deletes the build files for all Kit package      
+     cleanrepo  all        - deletes the build files for all Kit package      
                              repositories                                     
      buildtar              - builds the Kit tarfile                           
      cleantar              - deletes the Kit deployment directory and Kit     
@@ -556,8 +537,6 @@ sub usage
                            - add product package rpms to a shipped tarfile
                              named kitname.NEEDS_PRODUCT_PKGS.tar.bz2
      \n";
-
-
 }
 
 #-----------------------------------------------------------------------------
@@ -575,6 +554,7 @@ sub kit_create
 {
     # create Kit directory in pwd
     my $kitname=$::KIT_CREATE;
+
     my $kitdir=$::workdir."/$kitname";
     if ( -d $kitdir ) {
         print "Another directory alredy exists with the name $kitname in the current working directory.  Not able to create new Kit directory $kitdir. \n";
@@ -662,11 +642,8 @@ sub kit_buildrepo
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub kit_buildrepo1
-
 {
-
     my $rc = 0;
     my $repoid = shift;
     $repoid =~ s/\s+//g;
@@ -826,8 +803,6 @@ sub kit_buildrepo1
     return 0;
 }
 
-
-
 #-----------------------------------------------------------------------------
 
 =head3    kit_listrepo
@@ -837,9 +812,7 @@ sub kit_buildrepo1
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub kit_listrepo
-
 {
     # print "Kit Repository:  Status \n";
     foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
@@ -861,9 +834,7 @@ sub kit_listrepo
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub kit_cleanrepo
-
 {
     my $repoid = $::KIT_CLEANREPO;
     my $tmp_repoid = $repoid;
@@ -917,9 +888,7 @@ sub kit_cleanrepo
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub kit_buildtar
-
 {
     foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
         if (&validate_repo($kr)) {
@@ -967,10 +936,9 @@ sub kit_buildtar
          return 1;
     }
 
-    system("mv $tarfile $::workdir");
-    print "Kit tar file $::workdir/$kitfilename successfully built. \n";
+    system("mv $tarfile $::current_dir");
+    print "Kit tar file $::current_dir/$kitfilename successfully built. \n";
     return 0;
-    
 }
 
 #-----------------------------------------------------------------------------
@@ -982,11 +950,8 @@ sub kit_buildtar
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub kit_cleantar
-
 {
-
     my $kitfilename = $::bldkit_config->{kit}{entries}[0]->{kitname};
     if ( defined($::bldkit_config->{kit}{entries}[0]->{kittarfilename}) ) {
         $kitfilename = $::bldkit_config->{kit}{entries}[0]->{kittarfilename};
@@ -1018,10 +983,7 @@ sub kit_cleantar
     if ( -d "$::workdir/debbuild" ){
         system("rm -Rf $::workdir/debbuild");
     }
-    
-
 }
-
 
 #-----------------------------------------------------------------------------
 
@@ -1032,11 +994,8 @@ sub kit_cleantar
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub kit_cleanall
-
 {
-
     print "running buildkit cleanall... \n";
 
     &kit_cleantar;
@@ -1070,11 +1029,8 @@ sub kit_cleanall
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub edit_bldkitconf
-
 {
-
     my $bldkitconf = shift;
     my $kitname = shift;
 
@@ -1135,13 +1091,9 @@ sub edit_bldkitconf
 =cut
 
 #-----------------------------------------------------------------------------
-
-
 sub load_bldkitconf
-
 {
     my $bldkitconf = shift;
-
   
     # read in the buildkit.conf file
     my $CF;
@@ -1256,20 +1208,18 @@ sub load_bldkitconf
         foreach my $a (keys %{$::buildkit_def{$s}}) {
           if (( $::buildkit_def{$s}{$a}->{mandatory} ) &&
               ( ! defined ($se->{$a}) ) ) {
-            print "The \"$a\" mandadory attribute must be defined in the \"$s\" section of the Kit build file \n";
+            print "The \"$a\" mandatory attribute must be defined in the \"$s\" section of the Kit build file \n";
             return 1;
           }
         }
       }
     }
 
-use Data::Dumper;
+#use Data::Dumper;
 #print Dumper($::bldkit_config);
 
     return 0;
-
 }
-
 
 #-----------------------------------------------------------------------------
 
@@ -1280,9 +1230,7 @@ use Data::Dumper;
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub validate_bldkitconf
-
 {
     my $kitname = $::bldkit_config->{kit}{entries}[0]->{basename};
     my $full_kitname = $kitname;
@@ -1729,14 +1677,11 @@ sub validate_bldkitconf
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub comppkgname
-
 {
     my $comp = shift;
-  #  my $repo = shift;  
 
- my $pkgname = $comp->{basename};
+    my $pkgname = $comp->{basename};
     if ($debianflag) {
         $pkgname .= '_'.$comp->{version};
         $pkgname .= '-'.$comp->{release};
@@ -1747,16 +1692,8 @@ sub comppkgname
         $pkgname .= '-'.$comp->{release};
         $pkgname .= '.noarch.rpm';
     }
-  #  $pkgname .= '-'.$repo->{osmajorversion};
-  #  if (defined($repo->{osminorversion})) {
-  #    $pkgname .= '.'.$repo->{osminorversion};
-  #  }
-  #  $pkgname .= '-'.$repo->{osarch};
-  #  $pkgname .= '.rpm';
-
     return $pkgname;
 }
-
 
 #-----------------------------------------------------------------------------
 
@@ -1772,9 +1709,7 @@ sub comppkgname
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub validate_repo
-
 {
     my $repo = shift;
 
@@ -1811,10 +1746,8 @@ sub validate_repo
             }
         }
     }
-        
     return 0;
 }
-
 
 #-----------------------------------------------------------------------------
 
@@ -1830,9 +1763,7 @@ sub validate_repo
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub validate_os
-
 {
     my $repo = shift;
 
@@ -1851,7 +1782,6 @@ sub validate_os
     if (defined($repo->{compat_osbasenames})){
         $mismatch_msg .= " or the compatible OS distros: $repo->{compat_osbasenames} ";
     }
-
 
     my $compat_match = 0;
     if ($repo->{osbasename} ne $osbasename) {
@@ -1896,10 +1826,8 @@ sub validate_os
         }
         return 1;
     }
-    
     return 0;
 }
-
 
 #-----------------------------------------------------------------------------
 
@@ -1911,9 +1839,7 @@ sub validate_os
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub build_kitcomp
-
 {
     my $comp = shift;
     my %repo;
@@ -2007,7 +1933,6 @@ sub build_kitcomp
     $avoiderr = $rpmbuild_dir."/RPMS/noarch/";
     mkpath($avoiderr);
 
-
     # Read the kit component meta rpm name
  
     my $specfile = $::workdir."/tmp/$comp->{kitcompname}.spec";
@@ -2055,7 +1980,6 @@ sub build_kitcomp
             return 1;
         }
     }
-
     return 0;
 }
 
@@ -2079,9 +2003,7 @@ sub build_kitcomp
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub update_kitcomp_kitpkgdeps
-
 {
     my $comp = shift;
     my $repodir = shift;
@@ -2119,7 +2041,6 @@ sub update_kitcomp_kitpkgdeps
     return 0;
 }
 
-
 #-----------------------------------------------------------------------------
 
 =head3    gen_kitcomp_spec
@@ -2131,9 +2052,7 @@ sub update_kitcomp_kitpkgdeps
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub gen_kitcomp_spec
-
 {
     my $comp = shift;
     my $repo = shift;
@@ -2153,7 +2072,6 @@ sub gen_kitcomp_spec
     }
     my @lines = <$SF>;
     close $SF;
-
 
     my $kitname = $::bldkit_config->{kit}{entries}[0]->{basename};
     my $kitcompname = $comp->{kitcompname};
@@ -2179,7 +2097,7 @@ sub gen_kitcomp_spec
         if (defined($comp->{postuninstall})) {
             $postunscript = &load_script("$scriptdir$comp->{postuninstall}"); }
         if (defined($comp->{non_native_pkgs})) {
-            $nonnativepkgs = '\n';
+            $nonnativepkgs = "\n";
             $nonnativepkgs .= "mkdir -p \$RPM_BUILD_ROOT/opt/xcat/kits/$kitname/$kitcompname \n";
             $nonnativepkgs .= "cp -a * \$RPM_BUILD_ROOT/opt/xcat/kits/$kitname/$kitcompname  \n";
             $sourcetar = "Source: $comp->{basename}.tar.gz";
@@ -2188,6 +2106,31 @@ sub gen_kitcomp_spec
         }
     }
 
+    #  remove lines that correspond to optional tags that have no values
+    #     in this instance.   Adding lines to the spec file that have 
+    #     no values will cause a build error.
+    my @newlines;
+    foreach my $l (@lines) {
+        chomp;
+        # don't add vendor,packager,url to spec file unless we have a value
+        if ($l =~ /INSERT_vendor_HERE/) {
+            if (!$::bldkit_config->{kit}{entries}[0]->{vendor} ) {
+                next;
+            }
+        }
+        if ($l =~ /INSERT_packager_HERE/) {
+            if (!$::bldkit_config->{kit}{entries}[0]->{packager} ) {
+                next;
+            }
+        }
+        if ($l =~ /INSERT_url_HERE/) {
+            if (!$::bldkit_config->{kit}{entries}[0]->{url}) {
+                next;
+            }
+        }
+	push @newlines, $l;
+    }
+    @lines=@newlines;
 
     if ( $level eq 'ALL' ) {
         for (@lines) {
@@ -2271,8 +2214,6 @@ sub gen_kitcomp_spec
     }
 
     # Write the generated spec file 
-    my $joined_lines = join("\n",@lines);
-    @lines = split(/\\n/,$joined_lines);
     mkpath($tmpdir);
     
     my $fn;
@@ -2282,15 +2223,18 @@ sub gen_kitcomp_spec
     } else {
         $fn = $comp->{kitcompname}.".spec"
     }
-    unless ( open( $NSF, ">$tmpdir/$fn" ) ) {
+    unless ( open( $NSF, ">$tmpdir$fn" ) ) {
         return 1;
     }
     if ($::VERBOSE) {
-        print "Created kitcomponent spec file $tmpdir/$comp->{basename}.spec \n";
-    }
-    print $NSF @lines;
-    close($NSF);
+        print "Created kitcomponent spec file \'$tmpdir$fn\'\n";
 
+    }
+    foreach my $line (@lines) {
+        print $NSF $line,"\n";
+    }
+
+    close($NSF);
     return 0;
 }
 
@@ -2420,7 +2364,7 @@ sub gen_kitcomp_debdir{
         $postunscript = &load_script("$scriptdir$comp->{postuninstall}"); 
     }
     if (defined($comp->{non_native_pkgs})) {
-        $nonnativepkgs = '\n';
+        $nonnativepkgs = "\n";
         $nonnativepkgs .= "mkdir -p \$RPM_BUILD_ROOT/opt/xcat/kits/$kitname/$kitcompname \n";
         $nonnativepkgs .= "cp -a * \$RPM_BUILD_ROOT/opt/xcat/kits/$kitname/$kitcompname  \n";
     }
@@ -2513,9 +2457,7 @@ sub gen_kitcomp_debdir{
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub load_script
-
 {
     my $scriptname = shift;
     my $SF;
@@ -2529,7 +2471,7 @@ sub load_script
     my @lines = <$SF>;
     close $SF;
 
-    my $script_contents = join('\n', @lines);
+    my $script_contents = join('', @lines);
     return $script_contents;
 }
 
@@ -2544,11 +2486,8 @@ sub load_script
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub create_kitconf
-
 {
-
     # Build kit config file entries from buildkit config input
     my $kitname = $::bldkit_config->{kit}{entries}[0]->{kitname};
     foreach my $s (keys %{$::bldkit_config}) {
@@ -2693,9 +2632,7 @@ sub create_kitconf
     print $NCF @lines;
     close($NCF);
 
-
     return 0;
-
 }
 
 #-----------------------------------------------------------------------------
@@ -2708,11 +2645,8 @@ sub create_kitconf
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub cp_to_builddir
-
 {
-
     my $type = shift;
     my $files = shift;
     my $from_dir = shift;
@@ -2772,7 +2706,6 @@ sub cp_to_builddir
     }
     $copied_files =~ s/^\,//;
     return $copied_files;
-
 }
 
 #-----------------------------------------------------------------------------
@@ -2785,9 +2718,7 @@ sub cp_to_builddir
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub create_builddir
-
 {
     my $kitname = $::bldkit_config->{kit}{entries}[0]->{kitname};
 
@@ -2819,8 +2750,6 @@ sub create_builddir
             if (&edit_plugin($to_plugin)) { return 1;} 
         }
     }        
- 
-    
 
     # copy docs to build dir
     if ( -d "$::workdir/docs" ) {
@@ -2865,11 +2794,8 @@ sub create_builddir
             return 1;
         }
     }
-
     return 0;
-
 }
-
 
 #-----------------------------------------------------------------------------
 
@@ -2883,9 +2809,7 @@ sub create_builddir
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub create_PARTIAL_builddir
-
 {
     my $kitname = $::bldkit_config->{kit}{entries}[0]->{kitname};
 
@@ -2956,11 +2880,8 @@ sub create_PARTIAL_builddir
         }
     }
 
-
     return 0;
-
 }
-
 
 #-----------------------------------------------------------------------------
 
@@ -2973,9 +2894,7 @@ sub create_PARTIAL_builddir
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub edit_deployparams
-
 {
     my $file = shift; 
     my $validate_only = shift;
@@ -3043,11 +2962,8 @@ sub edit_deployparams
         print $NDF @lines;
         close($NDF);
     }
-
     return 0;
 }
-
-
 
 #-----------------------------------------------------------------------------
 
@@ -3059,9 +2975,7 @@ sub edit_deployparams
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub edit_plugin
-
 {
     my $file = shift; 
     my $kitname = $::bldkit_config->{kit}{entries}[0]->{kitname};
@@ -3099,7 +3013,6 @@ sub edit_plugin
     return 0;
 }
 
-
 #-----------------------------------------------------------------------------
 
 =head3    kit_addpkgs
@@ -3109,9 +3022,7 @@ sub edit_plugin
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub kit_addpkgs
-
 {
     # add RPM pkgs to an existing kit tarfile 
     my $kittarfile=$::KIT_ADDPKGS;
@@ -3120,14 +3031,20 @@ sub kit_addpkgs
     $kitbfname =~ s/.tar.bz2$//;
     $kitbfname =~ s/.NEED_PRODUCT_PKGS$//;
     my $tmpdir_base = "/tmp/buildkit_workdir/$kitbfname";
-    # Cleanup
-    system ("rm -Rf /tmp/buildkit_workdir/$kitbfname");
+
+    # Cleanup - should have been removed when last command ran
+    #            - but just in case
+    system ("rm -Rf /tmp/buildkit_workdir");
+
+    # the tar file may not be in the current dir
+    $kittarfile = "$::workdir/$kittarfile";
 
     if ( !(-r $kittarfile) ) {
         print  "The Kit tar file $kittarfile could not be read. \n";
         return 1;
     }
     $kittarfile = abs_path($kittarfile);
+
     if ( !(-d $rpmdir) ) {
         print  "The package directory $rpmdir could not be read. \n";
         return 1;
@@ -3159,6 +3076,7 @@ sub kit_addpkgs
     }
     my @lines = <$CKF>;
     close $CKF;
+
     foreach my $l (@lines) {
         # skip blank and comment lines
         if ( $l =~ /^\s*$/ || $l =~ /^\s*#/ ) {
@@ -3169,30 +3087,26 @@ sub kit_addpkgs
         }
     }
 
+    #
+    # check contents of kit.conf to make sure the framework
+    #       is compatible with this codes framework
+    if (&check_framework(\@lines)) {
+        return 1;
+    }
+
     ###  Check if this is a new partial kit built with xCAT 2.8.1 or newer
     if (-d "$tmpdir/build_input") {
          system ("mv $tmpdir/build_input $tmpdir_base");
          return &NEW_kit_addpkgs($tmpdir_base,$tmpdir);
     }
 
-    ###  OLD KITS BUILT PRIOR TO xCAT 2.8.1 
+    ###  OLD KITS BUILT PRIOR TO xCAT 2.8.1
     ###    this code will eventually become obsolete and should be removed
     ###    do not update
     if (defined($::KITVERSION) || defined($::KITRELEASE)) {
         print "kitversion and kitrelease substitution is not supported for this incomplete kit.  Run \"buildkit addpkgs\" without the \"-k|--kitversion\" and \"-r| --kitrelease\" options. \n";
         exit 1;
     }
-
-    # read in the file
-    my $CKF;
-    unless ( open( $CKF, "<", $tmp_kit_conf ) ) {
-        print  "The Kit configuration file $tmp_kit_conf could not be read or was not included in the kit tar file. \n";
-        # Cleanup
-        system ("rm -Rf /tmp/buildkit_workdir");
-        return 1;
-    }
-    my @lines = <$CKF>;
-    close $CKF;
 
     my $ext_filename = '';
     my $ext_reponames = '';
@@ -3408,7 +3322,6 @@ sub kit_addpkgs
         }
     }
 
-
     # Re-write kit.conf with EXTERNALPKG and NONNATIVEPKGS sections removed
     my $NCF;
     unless ( open( $NCF, ">$tmp_kit_conf" ) ) {
@@ -3453,12 +3366,9 @@ sub kit_addpkgs
     print "Kit tar file $new_tarfile successfully built \n";
   
     # Cleanup
-#    system ("rm -Rf /tmp/buildkit_workdir");
-
+    system ("rm -Rf /tmp/buildkit_workdir");
+    return 0;
 }
-
-
-
 
 #-----------------------------------------------------------------------------
 
@@ -3469,9 +3379,7 @@ sub kit_addpkgs
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub NEW_kit_addpkgs
-
 {
     # add RPM pkgs to an existing kit tarfile 
     my $tmpdir_base = shift;
@@ -3619,13 +3527,98 @@ sub NEW_kit_addpkgs
 
     # Build the full kit tar file
     my $buildtar_rc = &kit_buildtar;
+
+    # clean out the tmp dir
+    system ("rm -Rf /tmp/buildkit_workdir");
+
     if ($buildtar_rc) {
         print "Error building full kit tarfile \n";
         return 1;
     }
-
-
+    return 0;
 }
 
+#-----------------------------------------------------------------------------
 
+=head3    check_framework
 
+    Check the compatible frameworks of the kit to see if it is
+	compatible with the running code.
+
+    If one of the compatible frameworks of the kit matches one of the 
+        compatible frameworks of the running code then we're good.
+
+    NOTE:  compatible_kitframeworks are the kitframeworks that I can add
+        and kit frameworks that I can be added to. 
+
+    Returns:
+        0 - OK
+        1 - error
+
+    Example:
+        my $rc = &check_framework(\@lines);
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub check_framework
+{
+    my $lines = shift;
+
+    my @kitconflines = @$lines;
+
+    my $kitbasename;
+    my $kitcompat;
+    my $section = '';
+    foreach my $l (@kitconflines) {
+        # skip blank and comment lines
+        if ( $l =~ /^\s*$/ || $l =~ /^\s*#/ ) {
+            next;
+        }
+
+        if ( $l =~ /^\s*(\w+)\s*:/ ) {
+           $section = $1;
+           next;
+        }
+
+        if ( $l =~ /^\s*(\w+)\s*=\s*(.*)\s*/ ) {
+            my $attr = $1;
+            my $val  = $2;
+            $attr =~ s/^\s*//;       # Remove any leading whitespace
+            $attr =~ s/\s*$//;       # Remove any trailing whitespace
+            $attr =~ tr/A-Z/a-z/;    # Convert to lowercase
+            $val  =~ s/^\s*//;
+            $val  =~ s/\s*$//;
+
+            if ($section eq 'kitbuildinfo') {
+                if ( $attr eq 'compatible_kitframeworks' )   { 
+                    $kitcompat = $val;
+                }
+            }
+            if ($section eq 'kit') {
+                if ( $attr eq 'basename' ) { $kitbasename = $val; }
+            }
+        }
+    }
+
+    if (!$kitcompat) {
+        print "Warning: Could not determine the kit compatible framework values for \'$kitbasename\' from the kit.conf file. Continuing for now.\n"; 
+        return 0;
+    }
+
+    my @kit_compat_list = split (',', $kitcompat);
+    my @my_compat_list = split (',', $::COMPATIBLE_KITFRAMEWORKS);
+
+    foreach my $myfw (@my_compat_list) {
+        chomp $myfw;
+        foreach my $kitfw (@kit_compat_list) {
+            chomp $kitfw;
+
+            if ($myfw eq $kitfw) {
+                return 0;
+            }
+        }        
+    }
+    print "Error: The kit named \'$kitbasename\' is not compatible with this version of the buildkit command.  \'$kitbasename\' is compatible with \'$kitcompat\' and the buildkit command is compatible with \'$::COMPATIBLE_KITFRAMEWORKS\'\n";
+    return 1;
+}
