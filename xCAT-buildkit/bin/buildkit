@@ -1839,7 +1839,7 @@ sub gen_kitcomp_spec
     if (defined($comp->{postuninstall})) {
         $postunscript = &load_script("$scriptdir$comp->{postuninstall}"); }
     if (defined($comp->{non_native_pkgs})) {
-        $nonnativepkgs = '\n';
+        $nonnativepkgs = "\n";
         $nonnativepkgs .= "mkdir -p \$RPM_BUILD_ROOT/opt/xcat/kits/$kitname/$kitcompname \n";
         $nonnativepkgs .= "cp -a * \$RPM_BUILD_ROOT/opt/xcat/kits/$kitname/$kitcompname  \n";
         $sourcetar = "Source: $comp->{basename}.tar.gz";
@@ -1872,8 +1872,6 @@ sub gen_kitcomp_spec
     }
 
     # Write the generated spec file 
-    my $joined_lines = join("\n",@lines);
-    @lines = split(/\\n/,$joined_lines);
     mkpath($tmpdir);
     my $NSF;
     unless ( open( $NSF, ">$tmpdir/$comp->{kitcompname}.spec" ) ) {
@@ -1882,7 +1880,9 @@ sub gen_kitcomp_spec
     if ($::VERBOSE) {
         print "Created kitcomponent spec file $tmpdir/$comp->{basename}.spec \n";
     }
-    print $NSF @lines;
+    foreach my $line (@lines) {
+        print $NSF $line,"\n";
+    }
     close($NSF);
 
     return 0;
@@ -1916,7 +1916,7 @@ sub load_script
     my @lines = <$SF>;
     close $SF;
 
-    my $script_contents = join('\n', @lines);
+    my $script_contents = join('', @lines);
     return $script_contents;
 }
 
