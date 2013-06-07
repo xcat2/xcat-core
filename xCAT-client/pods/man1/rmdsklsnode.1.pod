@@ -12,19 +12,19 @@ B<rmdsklsnode [-V|--verbose] [-f|--force] [-r|--remdef] [-i image_name] [-p|--pr
 
 Use this command to remove all NIM client machine definitions that were created for the specified xCAT nodes.
 
-The xCAT node definitions will not be removed.
-
-The default is to assume that the NIM client names are the same as the xCAT node names.  If you had used the "-n" option when you created the NIM client definitions with the B<mkdsklsnode> command then the NIM machine names would be a combination of the xCAT node name and the osimage name used to initialize the NIM machine. To remove these definitions you must provide the name of the osimage that was used.
+The xCAT node definitions will not be removed. Use the xCAT B<rmdef> command to remove xCAT node definitions.
 
 If you are using xCAT service nodes the B<rmdsklsnode> command will automatically determine the correct server(s) for the node and remove the NIM definitions on that server(s).
 
-If the node you are trying to remove is currently running the B<rmdsklsnode> command will not remove the definitions.  You can use the "-f" option to shut down the node and remove the definition.  
+If the node you are trying to remove is currently running the B<rmdsklsnode> command will not remove the definitions.  You can use the "-f" option to shut down the node and remove the definition.
 
-You can also use the "-r" option to leave the node running but remove the NIM definitions. However, this will remove the NIM setup for this node and you will have to run mkdsklsnode again if you wish to boot the node. 
+B<Removing alternate NIM client definitions>
 
-B<Note:> Removing an alternate NIM client definition, created with "mkdsklsnode -n", will remove the entries for the node in the /etc/bootptab and /tftpboot files which means you will not be able to reboot the node without running mkdsklsnode again. If you want to clean up old NIM definitions and resources you should wait until you can bring the nodes down.  At that point you can remove the old NIM client defintions and old resource, then run mksklsnode, and boot the nodes.
+If you used the "-n" option when you created the NIM client definitions with the B<mkdsklsnode> command then the NIM client machine names would be a combination of the xCAT node name and the osimage name used to initialize the NIM machine. To remove these definitions you must provide the name of the osimage that was used using the "-i" option.
 
-Use the xCAT B<rmdef> command to remove xCAT node definitions.
+In most cases you would most likely want to remove the old client definitions without disturbing the nodes that you just booted with the new alternate client definition. The B<rmdsklsnode -r> option can be used to remove the old alternate client defintions without stopping the running node.
+
+However, if you have NIM dump resources assign to your nodes be aware that when the old NIM alternate client definitions are removed it will leave the nodes unable to produce a system dump.  This is a current limitation in the NIM support for alternate client definitions.  For this reason it is recommended that you wait to do this cleanup until right before you do your next upgrade.
 
 =head1 OPTIONS
 
@@ -58,7 +58,7 @@ te both the primary and backup service nodes.
 
 =item B<-r|--remdef>		
 
-Use this option to reset, deallocate, and remove NIM client definitions.  This option will not attempt to shut down running nodes. However, this will leave the node in a state unsupported by NIM.
+Use this option to reset, deallocate, and remove NIM client definitions.  This option will not attempt to shut down running nodes. This option should be used when remove alternate NIM client definitions that were created using B<mkdsklsnode -n>.
 
 =item B<-V |--verbose>
 
@@ -82,17 +82,26 @@ An error has occurred.
 
 =head1 EXAMPLES
 
-1) Remove the NIM machine definition for the xCAT node named "node01".
+1) Remove the NIM client definition for the xCAT node named "node01". Give verbose output.
 
-B<rmdsklsnode node01>
+B<rmdsklsnode -V node01>
 
-2) Remove the NIM client machine definition for xCAT node "node02" that was created with the mkdsklsnode -n option and the image "AIXdskls". (i.e. NIM client machine name "node02_AIXdskls".)
+2) Remove the NIM client definitions for all the xCAT nodes in the group "aixnod
+es". Attempt to shut down the nodes if they are running.
+
+B<rmdsklsnode -f aixnodes>
+
+3) Remove the NIM client machine definition for xCAT node "node02" that was created with the B<mkdsklsnode -n> option and the image "AIXdskls". (i.e. NIM client machine name "node02_AIXdskls".)
 
 B<rmdsklsnode -i AIXdskls node02>
 
-3) Remove the NIM client definitions for all the xCAT nodes in the group "aixnodes". Attempt to shut down the nodes if they are running.
+This assume that node02 is not currently running.
 
-B<rmdsklsnode -f aixnodes>
+4) Remove the old alternate client definition "node27_olddskls".
+
+B<rmdsklsnode -r -i olddskls node27>
+
+Assuming the node was booted using an new alternate NIM client definition then this will leave the node running.
 
 =head1 FILES
 
