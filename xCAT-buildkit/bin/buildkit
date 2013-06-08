@@ -3077,13 +3077,14 @@ sub kit_addpkgs
     my @lines = <$CKF>;
     close $CKF;
 
+    $::PREREQUISITE = 1;
     foreach my $l (@lines) {
         # skip blank and comment lines
         if ( $l =~ /^\s*$/ || $l =~ /^\s*#/ ) {
             next;
         }
         if ($l =~ /prerequisite/ ) {
-            $::PREREQUISITE = 1;
+            $::PREREQUISITE = 0;
         }
     }
 
