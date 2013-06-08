@@ -1,0 +1,285 @@
+#!/bin/sh
+# Make this the active xCAT EMS.
+#
+# CHANGE HISTORY:
+#
+# NAME:        active-mn 
+#
+# SYNTAX:       active-mn -i <nic> -v <virtual ip> [-m <netmask>]
+#
+# DESCRIPTION:  Make this node be the active xCAT MN.
+#
+# FLAGS:
+#               -i      the nic that the virtual ip address attaches to,
+#                       for AIX, it could be en0 or en1 or ...,
+#                       for Linux, it could be eth0:1 or eth1:2 or ...
+#               -v      virtual ip address
+#               -m      netmask for the virtual ip address,
+#                       default to 255.255.255.0
+#
+# DEPENDENCIES:
+#
+# CHANGE HISTORY:
+#
+# Date          Author  Vers.   Description
+# -----------------------------------------------------------------------------
+# 2011-12-08   JDW     1.0     Original
+# 2013-06-06   xCAT    1.1     Updated version to ship with xCAT
+
+SHAREDVG=sharedvg # For AIX, shared volumn group name
+SHAREDFS="/install /etc/xcat ~/.xcat" # Shared file systems
+DB2DIR=/db2database # DB2 only, the db2 database directory
+USEDFM=no # if DFM is being used
+USENTP=no # if NTP is being used
+POWER775=no # Power 775 cluster
+USETEAL=no # if TEAL is being used
+CHANGEHOSTNAME=no # set the hostname to the virtual ip address hostname
+
+
+xcatdb=`XCATBYPASS=1 /opt/xcat/bin/lsxcatd -d | cut -f 2 -d "=" 2>/dev/null`
+
+usage()
+{
+	cat << EOF
+Usage: $PROGNAME -i <nic> -v <virtual ip> [-m <netmask>] 
+
+EOF
+}
+
+runcmd()
+{
+    echo "Running command: $@"
+    $@
+}
+
+################################################################################
+
+PROGNAME=$(basename $0)
+
+while getopts ':fi:v:m:' opt
+do
+	case "$opt" in
+		f)      FAILOVER="true"
+			;;
+                i)      NIC=$OPTARG
+                        ;;
+                v)      VIP=$OPTARG
+                        ;;
+                m)      MASK=$OPTARG
+                        ;;
+		*)      usage
+			exit 1
+			;;
+	esac
+done
+
+# NIC is a required option
+if [ -z $NIC ]
+then
+    echo "Error: -i is a required option"
+    usage
+    exit 1
+fi
+# Virtual IP is a required option
+if [ -z $VIP ]
+then
+    echo "Error: -v is a required option"
+    usage
+    exit 1
+fi
+
+if [ -z $MASK ]
+then
+    MASK="255.255.255.0"
+fi
+
+##############################################################################
+
+# Changing IP addresses/aliases for the active mn
+
+# Use ping to check if Virtual IP is already up and running on another mn 
+# Important to avoid configuring virtual ip on both Primary and Standby concurrently
+
+ping -c 1 -w 10 $VIP 2>&1 1>/dev/null
+VIP_UP=$?
+if [ $VIP_UP -eq 0 ]
+then
+	echo "$PROGNAME: Aborted startup as virtual ip appears to be already active"
+	exit 2
+fi
+echo "Changing IP addreses/aliases...."
+if [ `uname` = "AIX" ]
+then
+    runcmd "ifconfig $NIC firstalias $VIP netmask $MASK up"
+else # Linux
+    runcmd "ifconfig $NIC $VIP netmask $MASK"
+fi
+
+# Optional, Set hostname to virtual ip hostname 
+if [ $CHANGEHOSTNAME = "yes" ]
+then
+    if [ `uname` = "AIX" ]
+    then
+        HOST_VIP=`host $VIP | awk -F ' ' '{print $1}'`
+    else # Linux
+        HOSTVIP=`getent hosts $VIP | awk -F ' ' '{print $2}'`
+    fi
+    runcmd "hostname ${HOST_VIP}"
+fi
+
+# Acquire shared storage and mount fiesystems
+if [ `uname` = "AIX" ]
+then
+    runcmd "varyonvg $SHAREDVG"
+fi
+
+for fs in $SHAREDFS
+do
+    runcmd "mount $fs"
+done
+
+#DB2 only
+if [ $xcatdb = "DB2" ]
+then
+    runcmd "mount $DB2DIR"
+fi
+
+# Start NFS
+echo "Export NFS filesystems and start NFS...."
+if [ `uname` = "AIX" ]
+then
+    runcmd "exportfs  -a"
+    runcmd "startsrc -g nfs"
+else
+    runcmd "exportfs -a"
+    runcmd "service nfs restart"
+fi
+
+if [ $USENTP = "yes" ]
+then
+    if [ `uname` = "AIX" ]
+    then
+        echo "Reconfiguring NTP...."
+        runcmd "stopsrc -s xntpd"
+        #cp /usr/local/cfg/ntp.conf.primary /etc/ntp.conf
+        runcmd "startsrc -s xntpd"
+    fi
+fi
+
+##############################################################################
+
+echo "Starting $xcatdb...."
+if [ `uname` = "AIX" ]
+then
+    if [ $xcatdb = "DB2" ]
+    then
+        runcmd "su - xcatdb -c \"db2start\""
+    elif [ $xcatdb = "mysql" ]
+    then
+        runcmd "startsrc -g mysql"
+    fi
+else # Linux
+    if [ $xcatdb != "SQLite" ]
+    then
+        runcmd "service $xcatdb start 2>&1 1>/dev/null"
+    fi
+fi
+    
+
+echo "Starting xCAT...."
+if [ `uname` = "AIX" ]
+then
+    runcmd "/opt/xcat/sbin/restartxcatd"
+else # Linux
+    runcmd "service xcatd restart"
+fi
+
+#echo "Start xCAT on the Service Nodes...."
+#xdsh service -t 30 "/opt/xcat/sbin/restartxcatd"
+
+if [ $USEDFM = "yes" ]
+then
+    echo "Starting Hardware Server...."
+    if [ `uname` = "AIX" ]
+    then
+        runcmd "startsrc -s hdwr_svr"
+    else # Linux
+        runcmd "service hdwr_svr start"
+    fi
+    # Create hardware connections definitions
+    runcmd "mkhwconn frame -t 2>&1 1>/dev/null"
+    runcmd "mkhwconn frame -t -T fnm 2>&1 1>/dev/null"
+    runcmd "mkhwconn cec -t"
+fi
+
+if [ POWER775 = "yes" ]
+then
+    echo "Starting CNM daemon...."
+    runcmd "chnwm -a"
+fi
+
+if [ USETEAL = "yes" ]
+then
+    echo "Starting Teal...."
+    if [ `uname` = "AIX" ]
+    then
+        runcmd "startsrc -s teal"
+    else # Linux
+        runcmd "service teal start"
+    fi
+fi
+
+##############################################################################
+
+# Re-make DHCP definitions
+echo "Making upto date DHCP configuration file...."
+runcmd "makedhcp -n"
+runcmd "makedhcp -a"
+
+#echo "Starting DHCP...."
+#Not necessary, makedhcp will take care of this
+#startsrc -s dhcpcd
+
+# Define Remote console definitions....
+# Make Console Server definitions
+runcmd "makeconservercf"
+
+#echo "Starting Console Server...."
+#not necessary, makeconservercf will start conserver
+#startsrc -s conserver
+
+# Restore latest version of NIM database
+# Required only if failing over from other EMS
+if [ `uname` = "AIX" ]
+then
+	DATE=$(date '+%Y-%m-%y-%T')
+	NIM_BACKUP="/tmp/nim-backup.${DATE}"
+
+	echo "Backing up NIM, just in case to ${NIM_BACKUP}...."
+	runcmd "/usr/lpp/bos.sysmgt/nim/methods/m_backup_db ${NIM_BACKUP}"
+	runcmd "nim -o unconfig master"
+
+	echo "Restoring NIM database from shared backup...."
+	# Find latest backup
+	NIM_BACKUP=$(find /install/nim-backup | sort | tail -1)
+
+	if [ -f "${NIM_BACKUP}" ]
+	then
+		runcmd "/usr/lpp/bos.sysmgt/nim/methods/m_restore_db ${NIM_BACKUP}"
+	else
+		echo "WARNING: No NIM backup file found!!"
+	fi
+	echo "Starting NIM...."
+	runcmd "startsrc -s nimesis"
+fi
+
+##############################################################################
+
+# Add CRON job entries for backup
+#echo "Adding Cron entries for backup...."
+#./cronEdit -a ./cron-root
+
+echo ""
+echo ""
+echo "This machine is set to active management node successfully, enjoy..."
+exit 0

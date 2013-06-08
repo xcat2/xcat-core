@@ -1,0 +1,274 @@
+#!/bin/sh
+# Make this the non-active xCAT management node, 
+# i.e. standby management node.
+#
+# CHANGE HISTORY:
+#
+# NAME:        deactive-mn
+#
+# SYNTAX:       deactive-mn -i <nic> -v <virtual ip> 
+#
+# DESCRIPTION:  Make this node be the standby xCAT MN.
+#
+# FLAGS:
+#               -i      the nic that the virtual ip address attaches to,
+#                       for AIX, it could be en0 or en1 or ...,
+#                       for Linux, it could be eth0:1 or eth1:2 or ...
+#               -v      virtual ip address
+#
+# DEPENDENCIES:
+#
+# CHANGE HISTORY:
+#
+# Date          Author  Vers.   Description
+# -----------------------------------------------------------------------------
+# 2011-12-08   JDW     1.0     Original
+# 2013-06-06   xCAT    1.1     Updated version to ship with xCAT
+SHAREDVG=sharedvg # For AIX, shared volumn group name
+SHAREDFS="/install /etc/xcat ~/.xcat" # Shared file systems
+DB2DIR=/db2database # DB2 only, the db2 database directory
+USETEAL=no # if TEAL is being used
+USEDFM=no # if DFM is being used
+POWER775=no # Power 775 cluster
+CHANGEHOSTNAME=no # change the hostname from virtual ip hostname to the original hostname
+
+xcatdb=`XCATBYPASS=1 /opt/xcat/bin/lsxcatd -d | cut -f 2 -d "=" 2>/dev/null`
+
+usage()
+{
+        cat << EOF
+Usage: $PROGNAME -i <nic> -v <virtual ip>
+
+EOF
+}
+
+runcmd()
+{
+    echo "Running command: $@"
+    $@
+}
+
+################################################################################
+
+PROGNAME=$(basename $0)
+
+while getopts ':i:v:m:' opt
+do
+        case "$opt" in
+                i)      NIC=$OPTARG
+                        ;;
+                v)      VIP=$OPTARG
+                        ;;
+                *)      usage
+                        exit 1
+                        ;;
+        esac
+done
+
+# NIC is a required option
+if [ -z $NIC ]
+then
+    echo "Error: -i is a required option"
+    usage
+    exit 1
+fi
+# Virtual IP is a required option
+if [ -z $VIP ]
+then
+    echo "Error: -v is a required option"
+    usage
+    exit 1
+fi
+
+##############################################################################
+
+#echo "Removing CRON job entries for backup...."
+#cronEdit -d /usr/local/cfg/cron.ems-root
+
+##############################################################################
+
+# Backup NIM if failing over to backup EMS
+if [ `uname` = "AIX" ]
+then
+	echo "Backing up NIM...."
+	backupFile=/install/nim-backup/nim.backup.$(date +%Y-%m-%d)
+	date
+	runcmd "/usr/lpp/bos.sysmgt/nim/methods/m_backup_db $backupFile"
+
+	echo "Stopping NIM...."
+	runcmd "stopsrc -s nimesis" 
+fi
+
+echo "Stopping Console Server...."
+if [ `uname` = "AIX" ]
+then
+    runcmd "stopsrc -s conserver"
+else # Linux
+    runcmd "service conserver stop"
+fi
+
+echo  "Stopping DHCP...."
+if [ `uname` = "AIX" ]
+then
+    runcmd "stopsrc -s dhcpcd"
+else # Linux
+    runcmd "service dhcpd stop"
+fi
+
+##############################################################################
+if [ USETEAL = "yes" ]
+then
+    if [ `uname` = "AIX" ]
+    then
+        echo "Stopping Teal...."
+        stopsrc -s teal
+        stopsrc -s teal_ll
+    else # Linux
+        service teal stop
+        service teal_ll stop
+    fi
+fi
+
+if [ POWER775 = "yes" ]
+then
+    echo "Stopping CNM daemon...."
+    chnwm -d
+fi
+
+if [ $USEDFM = "yes" ]
+then
+    echo "Stopping Hardware Server...."
+    if [ `uname` = "AIX" ]
+    then
+        stopsrc -s hdwr_svr
+    else # Linux
+        service hdwr_svr stop
+    fi
+fi
+
+#echo "Stop xCAT on the Service Nodes...."
+#xdsh service -t 30 "stopsrc -s xcatd"
+
+echo "Stopping xCAT...."
+if [ `uname` = "AIX" ]
+then
+    stopsrc -s xcatd
+else # Linux
+    service xcatd stop
+fi
+
+echo "Stopping database $xcatdb...."
+if [ `uname` = "AIX" ]
+then
+    if [ $xcatdb = "DB2" ]
+    then
+        runcmd "su - xcatdb -c \"db2 connect reset ; db2 force applications all ; db2 terminate ; db2stop force\""
+    elif [ $xcatdb = "mysql" ]
+    then
+        runcmd "stopsrc -g mysql"
+    fi
+else # Linux
+    if [ $xcatdb != "SQLite" ]
+    then
+        runcmd "service $xcatdb stop 2>&1 1>/dev/null"
+    fi
+fi
+
+##############################################################################
+
+# Kill nicely, wait a little time for processes to clean-up....
+for fs in $SHAREDFS $DB2DIR
+do
+	echo "Killing processes (nicely) accessing filesystem ${fs}...."
+        if [ `uname` = "AIX" ]
+        then
+	        runcmd "fuser -uxc -k ${fs}"
+        else # Linux
+            runcmd "fuser -u -k ${fs}"
+        fi
+done
+
+# AIX only, Linux has the -l flag could hanldle everything
+if [ `uname` = "AIX" ]
+then
+    sleep 20 
+    #  ....then kill nastily i.e. kill -9
+    for fs in $SHAREDFS
+    do
+    	    echo "Killing processes (kill -9) accessing filesystem ${fs}...."
+	    fuser -uxc -K 9 ${fs}
+    done
+fi
+
+
+##############################################################################
+
+echo "Re-configuring NTP...."
+if [ `uname` = "AIX" ]
+then
+    runcmd "stopsrc -s xntpd"
+    #cp /usr/local/cfg/ntp.conf.secondary /etc/ntp.conf
+    runcmd "startsrc -s xntpd"
+else # Linux
+    runcmd "service ntpd restart"
+fi
+
+echo "Un-exporting NFS filesystems and stop NFS...."
+if [ `uname` = "AIX" ]
+then
+    runcmd "exportfs  -ua"
+    runcmd "stopsrc -g nfs"
+else # Linux
+    runcmd "exportfs -ua"
+    runcmd "service nfs stop"
+fi
+
+echo "Unmounting shared filesystems ...."
+if [ `uname` = "AIX" ]
+then
+    for fs in $SHAREDFS
+    do
+        runcmd "umount $fs"
+    done
+else
+    for fs in $SHAREDFS
+    do
+        runcmd "umount -l $fs"
+    done
+fi
+
+
+
+if [ `uname` = "AIX" ]
+then
+    varyoffvg sharedvg
+fi
+
+if [ $CHANGEHOSTNAME = "yes" ]
+then
+    echo "Setting hostname...."
+    if [ `uname` = "AIX" ]
+    then
+        BOOT_HOSTNAME=$(lsattr -El inet0 -a hostname | awk '{print $2}')
+    else # Linux
+        BOOT_HOSTNAME=`grep HOSTNAME /etc/sysconfig/network | cut -f 2 -d "="`
+    fi
+    hostname ${BOOT_HOSTNAME}
+fi
+
+# Remove virtual ip addresses
+
+# Firstly determine the correct IP addresses for each interface
+echo "Removing IP Aliases...."
+if [ `uname` = "AIX" ]
+then
+    runcmd "ifconfig $NIC delete $VIP"
+else # Linux
+    runcmd "ifconfig $NIC 0.0.0.0 0.0.0.0"
+fi
+
+echo ""
+echo ""
+echo "This machine is set to standby management node successfully..."
+
+exit 0
