@@ -84,6 +84,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/netboot/sles
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/netboot/rh
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/scripts/Mellanox
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/devicetype
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/hamn
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/xdsh/Context
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/samples
@@ -120,6 +121,7 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/xcat/ca/*
 cp share/xcat/scripts/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
 cp share/xcat/samples/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/samples
 cp -r share/xcat/tools/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
+cp -r share/xcat/hamn/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/hamn
 cp share/xcat/rollupdate/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/rollupdate
 cp share/xcat/installp_bundles/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/installp_bundles
 cp share/xcat/image_data/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/image_data
