@@ -1,0 +1,151 @@
+#!/bin/sh
+#
+# NAME:		cronEdit
+#
+# SYNTAX:	cronEdit <-a|-d > <cron file>
+#
+# DESCRIPTION:	Edits crontab for current user to add/change/remove entries
+#		and re-initialise "cron", it works for both AIX and Linux
+#
+# FLAGS:	-a	Add / Change cron entries to root's crontab
+#		-d	Removes cron entries from root's crontab
+#
+# DEPENDENCIES:	None
+#
+# CHANGE HISTORY:
+#
+# Date		Author	Vers.  	Description
+# -----------------------------------------------------------------------------
+# 1996-12-30	JDW	1.0	Original
+# 2013-06-06	xCAT	1.1	Updated version to ship with xCAT
+
+usage()
+{
+	cat << EOF
+Usage: $PROGNAME <-a | -d> <cron file>
+
+EOF
+}
+
+##############################################################################
+
+AddCron()
+{
+
+crontab -l | awk -v "CronFile=$1" \
+	'BEGIN { FoundCronEntries="False" ;
+	         StartString=sprintf ("### START: Added by cronEdit from file: %s", CronFile) ;
+		 EndString=sprintf ("### END: Added by cronEdit from file: %s", CronFile)
+}
+{
+	# Reading existing roots crontab
+
+	if ( match ($0, StartString) > 0)
+	{
+		FoundCronEntries="True"
+		continue
+	}
+
+	if ( match ($0, EndString) > 0)
+	{
+		FoundCronEntries="False"
+		continue
+	}
+
+	if ( FoundCronEntries == "False")
+	{
+		print $0
+	}
+}
+END {
+	printf ("%s\n", StartString)
+	SystemString = sprintf ("cat %s", CronFile)
+	system (SystemString)
+	printf ("%s\n", EndString)
+
+}' > $CRONTEMP
+
+}
+
+##############################################################################
+
+DeleteCron()
+{
+
+crontab -l | awk -v "CronFile=$1" \
+	'BEGIN { FoundCronEntries="False" ;
+	         StartString=sprintf ("### START: Added by cronEdit from file: %s", CronFile) ;
+		 EndString=sprintf ("### END: Added by cronEdit from file: %s", CronFile)
+}
+{
+	# Reading existing roots crontab
+
+	if ( match ($0, StartString) > 0)
+	{
+		FoundCronEntries="True"
+		continue
+	}
+
+	if ( match ($0, EndString) > 0)
+	{
+		FoundCronEntries="False"
+		continue
+	}
+
+	if ( FoundCronEntries == "False")
+	{
+		print $0
+	}
+}' > $CRONTEMP
+
+}
+
+##############################################################################
+
+PROGNAME=`basename $0`
+CRONTEMP="/tmp/cron.tmp$$"
+# AIX
+if [ -e "/var/spool/cron/crontabs/$USER" ]
+then
+	CRONROOT="/var/spool/cron/crontabs/$USER"
+else
+	CRONROOT="/var/spool/cron"
+fi
+
+if [ $# -ne 2 ]
+then
+	usage 
+	exit 1
+fi
+
+while getopts ':a:d:' opt
+do
+	case "$opt" in
+		a)	AddCron "$OPTARG"
+			;;
+		d)	DeleteCron "$OPTARG"
+			;;
+		*)	usage
+			exit 2
+			;;
+	esac
+done
+
+# Now respawn cron if necessary......
+
+crontab -l | diff - $CRONTEMP 2>&1 > /dev/null
+
+if [ $? -ne 0 ]
+then
+	# Changes are required......
+	if [ `uname` = "AIX" ]
+	then
+		cp $CRONTEMP $CRONROOT
+		CRONPID=`ps -ef | grep "/usr/sbin/cron" | grep -v grep | awk '{ print $2 }'`
+		kill $CRONPID
+	else # Linux: common user could not read/write /var/spool/cron
+		crontab $CRONTEMP
+	fi
+fi
+
+exit 0
