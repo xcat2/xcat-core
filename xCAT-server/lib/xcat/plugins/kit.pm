@@ -23,6 +23,13 @@ use File::Path;
 
 my $kitconf = "kit.conf";
 
+# kit framework version for this xcat.
+$::KITFRAMEWORK ="1";
+
+# this code is compatible with other kits that are at framework 0 or 1.
+$::COMPATIBLE_KITFRAMEWORKS = "0,1";
+
+
 #-------------------------------------------------------
 
 =head3  handled_commands
@@ -982,6 +989,14 @@ sub addkit
             my %rsp;
             push@{ $rsp{data} }, "Could not open kit configuration file $kittmpdir/$kitconf";
             xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            return 1;
+        }
+
+
+        #
+        # check contents of kit.conf to make sure the framework
+        #       is compatible with this codes framework
+        if (&check_framework(\@lines)) {
             return 1;
         }
 
@@ -4231,3 +4246,89 @@ sub create_lskit_stanza_response {
 
 1;
 
+
+
+#-----------------------------------------------------------------------------
+
+=head3    check_framework
+
+    Check the compatible frameworks of the kit to see if it is
+        compatible with the running code.
+
+    If one of the compatible frameworks of the kit matches one of the
+        compatible frameworks of the running code then we're good.
+
+    NOTE:  compatible_kitframeworks are the kitframeworks that I can add
+        and kit frameworks that I can be added to.
+
+    Returns:
+        0 - OK
+        1 - error
+
+    Example:
+        my $rc = &check_framework(\@lines);
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub check_framework
+{
+    my $lines = shift;
+
+    my @kitconflines = @$lines;
+
+    my $kitbasename;
+    my $kitcompat;
+    my $section = '';
+    foreach my $l (@kitconflines) {
+        # skip blank and comment lines
+        if ( $l =~ /^\s*$/ || $l =~ /^\s*#/ ) {
+            next;
+        }
+
+        if ( $l =~ /^\s*(\w+)\s*:/ ) {
+           $section = $1;
+           next;
+        }
+
+        if ( $l =~ /^\s*(\w+)\s*=\s*(.*)\s*/ ) {
+            my $attr = $1;
+            my $val  = $2;
+            $attr =~ s/^\s*//;       # Remove any leading whitespace
+            $attr =~ s/\s*$//;       # Remove any trailing whitespace
+            $attr =~ tr/A-Z/a-z/;    # Convert to lowercase
+            $val  =~ s/^\s*//;
+            $val  =~ s/\s*$//;
+
+            if ($section eq 'kitbuildinfo') {
+                if ( $attr eq 'compatible_kitframeworks' )   {
+                    $kitcompat = $val;
+                }
+            }
+            if ($section eq 'kit') {
+                if ( $attr eq 'basename' ) { $kitbasename = $val; }
+            }
+        }
+    }
+
+    if (!$kitcompat) {
+        print "Warning: Could not determine the kit compatible framework values for \'$kitbasename\' from the kit.conf file. Continuing for now.\n";
+        return 0;
+    }
+
+    my @kit_compat_list = split (',', $kitcompat);
+    my @my_compat_list = split (',', $::COMPATIBLE_KITFRAMEWORKS);
+
+    foreach my $myfw (@my_compat_list) {
+        chomp $myfw;
+        foreach my $kitfw (@kit_compat_list) {
+            chomp $kitfw;
+
+            if ($myfw eq $kitfw) {
+                return 0;
+            }
+        }
+    }
+    print "Error: The kit named \'$kitbasename\' is not compatible with this version of the addkit command.  \'$kitbasename\' is compatible with \'$kitcompat\' and the addkit command is compatible with \'$::COMPATIBLE_KITFRAMEWORKS\'\n";
+    return 1;
+}
