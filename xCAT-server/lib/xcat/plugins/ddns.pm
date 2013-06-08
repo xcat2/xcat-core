@@ -283,11 +283,30 @@ sub process_request {
         xCAT::SvrUtils::sendmsg([0,"Warning:SELINUX is not disabled. The makedns command will not be able to generate a complete DNS setup. Disable SELINUX and run the command again."], $callback);
 
     }
+    my @entries =  xCAT::TableUtils->get_site_attribute("nameservers");
+    my $sitens = $entries[0];
+    unless ( defined($site_entry)) {
+        xCAT::SvrUtils::sendmsg([1,"nameservers not defined in site table"], $callback);
+        umask($oldmask);
+        return;
+    }
      
     my $networkstab = xCAT::Table->new('networks',-create=>0);
     unless ($networkstab) { xCAT::SvrUtils::sendmsg([1,'Unable to enumerate networks, try to run makenetworks'], $callback); }
 
-	my @networks = $networkstab->getAllAttribs('net','mask','ddnsdomain','domain','nameservers');
+    my @networks = $networkstab->getAllAttribs('net','mask','ddnsdomain','domain','nameservers');
+    # exclude the net if it is using an external dns server.
+    foreach (@networks)
+    {
+        if ($_ and $_->{nameservers})
+        {
+            my $myip = xCAT::NetworkUtils->my_ip_facing($_->{net});
+            unless (($_->{nameservers} eq $myip) || ($_->{nameservers} eq '<xcatmaster>') || ($_->{nameservers} eq $sitens))
+            {
+                $_ = undef;
+            }
+        }
+    }
 
 #    if ($request->{node}) { #we have a noderange to process
 #        @nodes = @{$request->{node}};
@@ -413,7 +432,7 @@ sub process_request {
             {
                 unless ($node =~ /localhost/)
                 {
-                    xCAT::SvrUtils::sendmsg(":Ignoring host $node in /etc/hosts, it does not belong to any nets defined in networks table.", $callback);
+                    xCAT::SvrUtils::sendmsg(":Ignoring host $node, it does not belong to any nets defined in networks table or the net it belongs to is configured to use an external nameserver.", $callback);
                 }    
             }
         }
