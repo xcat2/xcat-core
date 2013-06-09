@@ -90,6 +90,10 @@ sub setdestiny {
     $chaintab = xCAT::Table->new('chain',-create=>1);
     my @nodes=@{$req->{node}};
     my $state = $req->{arg}->[0];
+    my $reststates;
+
+    # to support the case that the state could be runimage=xxx,runimage=yyy,osimage=xxx
+    ($state, $reststates) = split (/,/, $state, 2);
     my %nstates;
     if ($state eq "enact") {
 	my $nodetypetab = xCAT::Table->new('nodetype',-create=>1);
@@ -410,6 +414,35 @@ sub setdestiny {
 					       kcmdline => $kcmdline."xcatd=$master:$xcatdport"});
 	    }
 	}
+        # try to check the existence of the image for runimage
+        my @runimgcmds;
+        if ($state =~ /^runimage/) {
+            push @runimgcmds, $state;
+        }
+        if ($reststates) {
+            my @rstates = split (/,/, $reststates);
+            foreach (@rstates) {
+                if (/^runimage/) {
+                    push @runimgcmds, $_;
+                }
+            }
+        }
+
+        foreach (@runimgcmds) {
+            my (undef, $path) = split (/=/, $_);
+            if ($path) {
+                if ($path =~ /\$/) {next;} # Ignore the path with including variable like $xcatmaster
+                my $cmd = "wget --spider --timeout 3 --tries=1 $path";
+                my @output = xCAT::Utils->runcmd("$cmd", -1);
+                unless (grep /^Remote file exists/, @output) {
+                    $callback->({error=>["Cannot get $path with wget. Could you confirm it's downloadable by wget?"],errorcode=>[1]});
+                    return;
+                }
+            } else {
+                $callback->({error=>"An image path should be specified to runnimage.",errorcode=>[1]});
+                return;
+            }
+        }
     } elsif ($state eq "offline") {
 	1;
     } elsif (!($state eq "boot")) { 
@@ -463,6 +496,11 @@ sub setdestiny {
 	    $lstate = $nstates{$_};
 	} 
 	$chaintab->setNodeAttribs($_,{currstate=>$lstate});
+        # if there are multiple actions in the state argument, set the rest of states (shift out the first one)
+        # to chain.currchain so that the rest ones could be used by nextdestiny command
+        if ($reststates) {
+           $chaintab->setNodeAttribs($_,{currchain=>$reststates});
+        }
     }
     return getdestiny($flag + 1);
 }
