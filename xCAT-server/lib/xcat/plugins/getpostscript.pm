@@ -87,7 +87,7 @@ sub process_request
     my $nofiles; 
     # If not version=2, then we return the mypostscript file  in an array.
     if ($version != 2) {    
-      $notmpfiles=0;  # does not matter not making files
+      $notmpfiles=1;  # no tmp files and no files 
       $nofiles=1; # do not create /tftpboot/mypostscript/mypostscript.<nodename>
       @scriptcontents = xCAT::Postage::makescript([$client],$state,$callback,$notmpfiles,$nofiles);
        `logger -t xCAT -p local4.info "getpostscript: sending data"` ;
