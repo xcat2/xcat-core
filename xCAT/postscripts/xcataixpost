@@ -183,8 +183,10 @@ if (-f $scriptname) {
     &runcmd($cmd);
     my $dline = $::outref;
     my ($junk, $installdir) =  split(/=/, $dline);
-	chomp $installdir;
-	$installdir =~ s/^(\'|\")(.*)(\"|\')$/$2/; # remove any surrounding quotes
+    if ($installdir) {
+    	chomp $installdir;
+	    $installdir =~ s/^(\'|\")(.*)(\"|\')$/$2/; # remove any surrounding quotes
+    }
     $cmd = "cat $scriptname | grep 'USENFSV4ONAIX='";
     &runcmd($cmd);
     $dline = $::outref;
@@ -282,7 +284,11 @@ if (-f $scriptname)
         `echo "$TMP" > $scriptname`;
       }
     }
-    my $lengtharg1= length ($ARGV[1]);
+    # see if any arguments and if there are script on the argument list
+    my $lengtharg1=0;
+    if (defined ($ARGV[1])) {
+      $lengtharg1= length ($ARGV[1]);
+    }
     if ((@ARGV>1) && ($lengtharg1 != 0)) {  # no postscript list
       my $scripts=$ARGV[1];
     	`logger -t xcat -p local4.info "$::sdate xcataixpost: ARGV > 1."`;
@@ -451,8 +457,9 @@ sub getmypost {
 
        
 
-    # try  to get the file with tftp first 
-    &runcmd("tftp -o $scriptname $servnode $TFTPDIR/mypostscripts/mypostscript.$xcatname");
+    # try  to get the file with tftp first it is normal the file is not available, do not report
+    # error 
+    `tftp -o $scriptname $servnode $TFTPDIR/mypostscripts/mypostscript.$xcatname 2>&1`;
     if (-f $scriptname) {  # got the file
          `logger -t xcat -p local4.info  "$::sdate  xcataixpost: tftp got $scriptname."`;
 
@@ -627,9 +634,14 @@ sub runcmd
         if ($rc > 0 && $logerr)
         {
              if ($::NOERROR == 0) {  # print the error message
+               if ($::outref) {
 		print "$::sdate  xcataixpost: run: $cmd - $::outref\n";
+                print $::LOG_FILE "$::sdate  xcataixpost: run: $cmd - $::outref\n";
+               } else {
+		print "$::sdate  xcataixpost: run: $cmd \n";
+                print $::LOG_FILE "$::sdate  xcataixpost: run: $cmd \n";
+               }
              }
-             print $::LOG_FILE "$::sdate  xcataixpost: run: $cmd - $::outref\n";
         }
     }
  return $rc;
