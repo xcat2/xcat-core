@@ -31,7 +31,7 @@ if ($^O =~ /^aix/i) {
 	unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
 }
 use lib "$::XCATROOT/lib/perl";
-use Storable qw(freeze thaw store_fd fd_retrieve);
+use Storable qw(freeze thaw nstore_fd store_fd fd_retrieve);
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
@@ -1208,7 +1208,7 @@ sub plugin_command {
       my $rsp = {errorcode=>1,error=>"Invalid nodes and/or groups in noderange: ".join(',',nodesmissed)};
      $rsp->{serverdone} = {};
       if ($sock) {
-        print $sock XMLout($rsp,RootName=>'xcatresponse' ,NoAttr=>1);
+        send_response($rsp,$sock);
       }
       return ($rsp);
     }
@@ -1359,7 +1359,7 @@ sub plugin_command {
       foreach (keys %unhandled_nodes) {
          push @{$xcatresponse->{xcatresponse}},{node=>[{name=>[$_],error=>["Unable to identify plugin for this command, check relevant tables: $queuelist"],errorcode=>[1]}]};
       }
-      print $sock XMLout($xcatresponse,KeepRoot=>1,NoAttr=>1);
+      send_response($xcatresponse,$sock);
    } else {
       foreach (keys %unhandled_nodes) {
          my $tabdesc = $queuelist;
@@ -1417,14 +1417,14 @@ sub plugin_command {
           if (ref $handler_hash{$_}) {
               foreach my $node (keys %{$handler_hash{$_}}) {
                 if ($sock) {
-                 print $sock XMLout({node=>[{name=>[$node],data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]}]},NoAttr=>1,RootName=>'xcatresponse');
+                 send_response({node=>[{name=>[$node],data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]}]},$sock);
                 } else {
                  $callback->({node=>[{name=>[$node],data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]}]});
                 }
               }
           } else {
               if ($sock) {
-               print $sock XMLout({data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]},NoAttr=>1,RootName=>'xcatresponse');
+               send_response({data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]},$sock);
               } else {
                $callback->({data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]});
               }
@@ -1523,14 +1523,14 @@ sub plugin_command {
       if (ref $handler_hash{$_}) {
           foreach my $node (keys %{$handler_hash{$_}}) {
             if ($sock) {
-             print $sock XMLout({node=>[{name=>[$node],data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]}]},NoAttr=>1,RootName=>'xcatresponse');
+             send_response({node=>[{name=>[$node],data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]}]},$sock);
             } else {
              $callback->({node=>[{name=>[$node],data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]}]});
             }
           }
       } else {
           if ($sock) {
-           print $sock XMLout({data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]},NoAttr=>1,RootName=>'xcatresponse');
+           send_response({data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]},$sock);
           } else {
            $callback->({data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]});
           }
@@ -1551,12 +1551,12 @@ sub plugin_command {
     relay_fds($check_fds,$xcatresponses{xcatresponse});
     if (time() > $nextxmittime) {
         $nextxmittime = time()+1;
-	send_pending_responses(\%xcatresponses,$sock);
+	    send_response(\%xcatresponses,$sock);
 	$xcatresponses{xcatresponse}=[];
     }
   }
   if (scalar(@{$xcatresponses{xcatresponse}})) {
-	send_pending_responses(\%xcatresponses,$sock);
+	send_response(\%xcatresponses,$sock);
 	$xcatresponses{xcatresponse}=[];
   }
   #while (relay_fds($check_fds,$sock)) {}
@@ -1575,7 +1575,7 @@ sub plugin_command {
       my $deadline = time()+5;
       while ($deadline > time()) { #sometimes can_write exits prematurely without waiting the whole time.....
 	      if ($clientpresence->can_write(5)) {
-	          print $sock XMLout(\%done,RootName => 'xcatresponse',NoAttr=>1); 
+              send_response(\%done,$sock);
 	          last;
 	      } 
       }
@@ -1843,7 +1843,7 @@ sub do_request {
        $resp{transid}=$req->{transid}->[0];
      }
      if ($sock) { 
-       print $sock XMLout(\%resp,RootName => 'xcatresponse',NoAttr=>1); 
+       send_response(\%resp,$sock);
      } else {
        return (\%resp);
      }
@@ -1854,7 +1854,7 @@ sub do_request {
        $resp{transid}=$req->{transid}->[0];
      }
      if ($sock) { 
-       print $sock XMLout(\%resp,RootName => 'xcatresponse',NoAttr=>1);
+       send_response(\%resp,$sock);
      } else {
        return (\%resp);
      }
@@ -1963,6 +1963,35 @@ sub populate_site_hash {
     }
 }
 
+sub send_response {
+    my $response = shift;
+    my $sock = shift;
+    my $encode = shift;
+    unless ($encode) { $encode = $globalencode; }
+    if ($encode eq "xml") {
+        my $xml;
+        if ($response->{xcatresponse}) { #it's an aggregate, keeproot
+            $xml = XMLout($response,KeyAttr=>[], NoAttr=>1,KeepRoot=>1);
+        } else {
+            $xml = XMLout($response,RootName => 'xcatresponse',NoAttr=>1);
+        }
+  		$xml =~ tr/\011-\177/?/c;
+      	eval {
+		    my $rsplen = length($xml);
+            my $blocks = int($rsplen/4096)-1;
+            if ($rsplen%4096) {
+                $blocks += 1;
+            }
+            foreach (0..$blocks) {
+                do {
+                    syswrite($sock,$xml,4096,$_*4096);
+                } while (($! == EAGAIN) or ($! == ECHILD));
+            }
+	    };
+    } elsif ($encode eq "storable") {
+        nstore_fd($response,$sock);
+    }
+}
 sub get_request {
     my $sock = shift;
     my $encode = shift;
@@ -2034,7 +2063,7 @@ sub service_connection {
             unless (defined $peername) {
                 my $resp={error=>["Authentication failure"],errorcode=>[1]};
                 $resp->{serverdone}={};
-                print $sock XMLout($resp,RootName => 'xcatresponse',NoAttr=>1);
+                send_response($resp,$sock);
                 return;
             }
             delete($req->{becomeuser}); #Remove it to keep it from view
@@ -2065,7 +2094,7 @@ sub service_connection {
                   $resp->{data}=["Unauthenticated"];
               }
               $resp->{serverdone}={};
-              print $sock XMLout($resp,RootName => 'xcatresponse',NoAttr=>1);
+              send_response($resp,$sock);
           } elsif ($cmd_handlers{$req->{command}->[0]}) {
             plugin_command($req,$sock,\&convey_response);
           } elsif ($req->{command}->[0] eq "noderange" and $req->{noderange}) {
@@ -2080,7 +2109,7 @@ sub service_connection {
             if ($req->{transid}) {
               $resp{transid}=$req->{transid}->[0];
             }
-            print $sock XMLout(\%resp,RootName => 'xcatresponse',NoAttr=>1);
+            send_response(\%resp,$sock);
             next;
           } elsif ($req->{command}->[0] eq "extnoderange" and $req->{noderange}) {  #This is intended for the UIs to build trees
             #as this would be part of a highly dynamic construct, it has a shortcut here to minimize server load
@@ -2090,7 +2119,7 @@ sub service_connection {
             }
             my %resp=%{extnoderange($req->{noderange}->[0],{intersectinggroups=>$subgroups})};
             $resp{serverdone}={};
-            print $sock XMLout(\%resp,RootName => 'xcatresponse',NoAttr=>1);
+            send_response(\%resp,$sock);
             next;
           } else {
             my %resp=(error=>"Unsupported request");
@@ -2099,7 +2128,7 @@ sub service_connection {
               $resp{transid}=$req->{transid}->[0];
             }
           xCAT::MsgUtils->message("S","Unsupported request: peername=$peername, peerhost=$peerhost,peerfqdn=$peerfqdn,peerport=$peerport, command=".$req->{command}->[0]);
-            print $sock XMLout(\%resp,RootName => 'xcatresponse',NoAttr=>1);
+            send_response(\%resp,$sock);
             next;
           }
         } else { 
@@ -2109,8 +2138,7 @@ sub service_connection {
             $resp{transid}=$req->{transid}->[0];
           }
           xCAT::MsgUtils->message("S","Permission denied for request: peername=$peername, peerhost=$peerhost,peerfqdn=$peerfqdn,peerport=$peerport command= ".$req->{command}->[0]);
-          my $response=XMLout(\%resp,RootName =>'xcatresponse',NoAttr => 1);
-          print $sock $response;
+          send_response(\%resp,$sock);
           next;
         }
       }
@@ -2121,7 +2149,7 @@ sub service_connection {
          xCAT::MsgUtils->message("S","xcatd: Unexpected client disconnect");
         if ($sock) {
             eval {
-                print $sock XMLout({error=>"Generic PIPE error occurred.  $@"},RootName=>'xcatresponse',NoAttr=>1);
+                send_response({error=>"Generic PIPE error occurred.  $@"},$sock);
             };
         }
     } elsif ($@ =~ /Client abort requested/) {
@@ -2131,7 +2159,7 @@ sub service_connection {
          xCAT::MsgUtils->message("S","xcatd: possible BUG encountered by xCAT TCP service: ".$@);
         if ($sock) {
             eval {
-                print $sock XMLout({error=>$errstr},RootName=>'xcatresponse',NoAttr=>1);
+                send_response({error=>$errstr},$sock);
             };
         }
     }
@@ -2143,7 +2171,7 @@ sub service_connection {
       #risk user missing data
       #without knowing it.  It's likely possible to rearchitect to change that, but as it stands it really
       #should be no longer possible to hit this condition.
-      print $sock,XMLout({error=>"A child jumped to where it should never ever be, this shouldn't be possible, please report this bug"});
+      send_response({error=>"A child jumped to where it should never ever be, this shouldn't be possible, please report this bug"},$sock);
   }
   $SIG{ALRM}= sub { xCAT::MsgUtils->message("S","$$ failed shutting down"); die;};
   alarm(10);
@@ -2156,26 +2184,6 @@ sub service_connection {
   }
 }
 
-sub send_pending_responses {
-	my $xcatresponse = shift;
-        my $sock = shift;
-  		my $resp = XMLout($xcatresponse,KeyAttr=>[], NoAttr=>1,KeepRoot=>1);
-		#sanitize the response, to avoid being killed by non-printable bytes
-  		$resp =~ tr/\011-\177/?/c;
-  		#seeing if using utf-8 offloads potential issues to client terminal, it didn't
-      		eval {
-			my $rsplen = length($resp);
-                        my $blocks = int($rsplen/4096)-1;
-                        if ($rsplen%4096) {
-                                $blocks += 1;
-                        }
-                        foreach (0..$blocks) {
-                                do {
-                                syswrite($sock,$resp,4096,$_*4096);
-                                } while (($! == EAGAIN) or ($! == ECHILD));
-                        }
-	      	};
-}
 sub relay_fds { #Relays file descriptors from pipes to children to the SSL socket
   my $fds = shift;
   my $replyqueue=shift;
