@@ -98,7 +98,7 @@ unless ($inet6support) {
 
 my $dispatch_requests = 1; # govern whether commands are dispatchable
 use IO::Socket;
-#use IO::Handle;
+use IO::Handle;
 use IO::Select;
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
@@ -1993,7 +1993,11 @@ sub send_response {
             }
 	    };
     } elsif ($encode eq "storable") {
+        if ($response->{xcatresponse}) {
+            $response = $response->{xcatresponse};
+        }
         nstore_fd($response,$sock);
+        $sock->flush(); #otherwise, the response might actually get deferred until after the close_notify, crazy huh?
     }
 }
 sub get_request {
@@ -2049,11 +2053,12 @@ sub service_connection {
     while (1) {
       unless ($clientsel->can_read(15)) { last; } #don't let an unresponsive client hold us up
       my $line = <$sock>; # grab one line, check for mode...
-      if ($line and $line =~ /^xcatencoding: (.*)\z/) {
+      if ($line and $line =~ /^xcatencoding: (.*)/) {
         unless ($supported_encodes{$1}) {
             print $sock "Unsupported encoding $1\n";
             last;
         }
+        print $sock "Encoding accepted\n";
         $globalencode=$1;
         $line = "";
       }

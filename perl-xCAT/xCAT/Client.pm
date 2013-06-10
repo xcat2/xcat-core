@@ -8,9 +8,11 @@ BEGIN
 
 # if AIX - make sure we include perl 5.8.2 in INC path.
 #       Needed to find perl dependencies shipped in deps tarball.
+use Storable qw/nstore_fd fd_retrieve/;
 if ($^O =~ /^aix/i) {
 	unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
 }
+use IO::Handle;
 
 my $inet6support;
 if ($^O =~ /^aix/i) {  # disable AIX IPV6  TODO fix
@@ -76,6 +78,23 @@ sub rspclean {
       }
 	}
 	return 0;
+}
+sub send_request {
+    my $request = shift;
+    my $sock = shift;
+    my $encode = shift;
+    if ($encode eq "xml") {
+        my $msg=XMLout($request,RootName=>'xcatrequest',NoAttr=>1,KeyAttr=>[]);
+        if ($ENV{XCATXMLTRACE}) { print $msg; }
+        if($ENV{XCATXMLWARNING}) {
+            validateXML($msg);
+        }
+        print $sock $msg;
+        $sock->flush();
+    } else {
+        nstore_fd($request,$sock);
+        $sock->flush();
+    }
 }
 #################################
 # submit_request will take an xCAT command and pass it to the xCAT
@@ -232,20 +251,23 @@ if (ref($request) eq 'HASH') { # the request is an array, not pure XML
 		);
   }
   my $msg;
+  my $encode = "storable";
+  my $straightprint=0;
+  if ($ENV{XCATXMLTRACE} or $ENV{XCATXMLWARNING}) { $encode="xml"; }
   if (ref($request) eq 'HASH') { # the request is an array, not pure XML
-    $msg=XMLout($request,RootName=>'xcatrequest',NoAttr=>1,KeyAttr=>[]);
+    print $client "xcatencoding: $encode\n";
+    my $encok=<$client>;
+    send_request($request,$client,$encode);
   } else { #XML
+    $straightprint=1;
     $msg=$request;
+    print $client $msg;
   }
-  if ($ENV{XCATXMLTRACE}) { print $msg; }
-  if($ENV{XCATXMLWARNING}) {
-    validateXML($msg);
-  }
-  $SIG{TERM} =  $SIG{INT} = sub { print $client XMLout({abortcommand=>1},RootName=>'xcatrequest',NoAttr=>1,KeyAttr=>[]); exit 0; };
-  print $client $msg;
+  $SIG{TERM} =  $SIG{INT} = sub { send_request({abortcommand=>1},$client,$encode); exit 0; };
   my $response;
   my $rsp;
   my $cleanexit=0;
+  if ($encode eq 'xml') {
   my $massresponse="<massresponse>";
   my $nextcoalescetime=time()+1;
   my $coalescenow=0;
@@ -298,6 +320,27 @@ if (ref($request) eq 'HASH') { # the request is an array, not pure XML
   if (not $cleanexit and $massresponse ne "<massresponse>") {
 	$massresponse .= "</massresponse>";
          $cleanexit = rspclean($massresponse,$callback);
+  }
+  } else { #storable encode
+    my $rsp;
+    eval { $rsp = fd_retrieve($client); };
+    while ($rsp) {
+     my @rsps;
+     if (ref $rsp eq 'ARRAY') {
+        @rsps = @$rsp;
+     } else {
+        @rsps = ($rsp);
+    }
+    foreach (@rsps) {
+     $callback->($_);
+     if ($_->{serverdone}) {
+         $cleanexit=1;
+         last;
+      }
+     }
+     $rsp = undef;
+     eval { $rsp = fd_retrieve($client); };
+    }
   }
   $massresponse="";
   unless ($cleanexit) {
