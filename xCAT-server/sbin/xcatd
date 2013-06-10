@@ -721,6 +721,7 @@ $dbmaster=xCAT::Table::init_dbworker;
 my $CHILDPID=0; #Global for reapers
 my %immediatechildren;
 sub generic_reaper {
+   local($!);
    while (($CHILDPID=waitpid(-1,WNOHANG)) > 0) {
       yield;
    }
@@ -728,6 +729,7 @@ sub generic_reaper {
 }
 
 sub ssl_reaper {
+   local($!);
    while (($CHILDPID=waitpid(-1,WNOHANG)) > 0) {
        if ($immediatechildren{$CHILDPID}) {
            delete $immediatechildren{$CHILDPID};
@@ -738,6 +740,7 @@ sub ssl_reaper {
 }
 
 sub dispatch_reaper {
+   local($!);
   while (($CHILDPID =waitpid(-1, WNOHANG)) > 0) { 
      if ($dispatched_children{$CHILDPID}) { 
         delete $dispatched_children{$CHILDPID}; 
@@ -748,6 +751,7 @@ sub dispatch_reaper {
 }
 
 sub plugin_reaper {
+   local($!);
    while (($CHILDPID = waitpid(-1, WNOHANG)) > 0) { 
       if ($plugin_children{$CHILDPID}) { 
          delete $plugin_children{$CHILDPID}; 
