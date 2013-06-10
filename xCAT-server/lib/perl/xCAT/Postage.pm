@@ -309,25 +309,6 @@ sub makescript {
   foreach my $n (@$nodes ) {
       $node = $n; 
       $inc = $t_inc;
-      my $script;
-      my $scriptfile; 
-      if( defined( $postfix ) ) {
-          $scriptfile = "$tftpdir/mypostscripts/mypostscript.$node.tmp";
-      } else { 
-          $scriptfile = "$tftpdir/mypostscripts/mypostscript.$node";
-      }
-      #mkpath(dirname($scriptfile));
-      open($script, ">$scriptfile");
-
-      unless ($script)
-      {
-         my $rsp;
-         push @{$rsp->{data}}, "Could not open $scriptfile for writing.\n";
-         xCAT::MsgUtils->message("E", $rsp, $callback);
-         return 1;
-      }
-      $script_fp{$node}=$script;
-      `/bin/chmod ugo+x $scriptfile`;  
       
       ##attributes from site tab
       #
@@ -454,10 +435,29 @@ sub makescript {
   $inc =~ s/\$NTYPE/$nodetype/eg;
   $inc =~ s/tabdump\(([\w]+)\)/tabdump($1)/eg;
   $inc =~ s/#Subroutine:([^:]+)::([^:]+)::([^:]+):([^#]+)#/runsubroutine($1,$2,$3,$4)/eg;
- 
-  if ((!defined($nofiles)) || ($nofiles == 0)) { # create file
-    print $script $inc;    
-    close($script_fp{$node});
+
+  # we will create a file in /tftboot/mypostscript/mypostscript_<nodename> 
+  if ((!defined($nofiles)) || ($nofiles == 0)) { #
+      my $script;
+      my $scriptfile; 
+      if( defined( $postfix ) ) {
+          $scriptfile = "$tftpdir/mypostscripts/mypostscript.$node.tmp";
+      } else { 
+          $scriptfile = "$tftpdir/mypostscripts/mypostscript.$node";
+      }
+      open($script, ">$scriptfile");
+
+      unless ($script)
+      {
+         my $rsp;
+         push @{$rsp->{data}}, "Could not open $scriptfile for writing.\n";
+         xCAT::MsgUtils->message("E", $rsp, $callback);
+         return 1;
+      }
+      $script_fp{$node}=$script;
+      `/bin/chmod ugo+x $scriptfile`;  
+      print $script $inc;    
+      close($script_fp{$node});
     # TODO remove the blank lines
   } 
      
@@ -466,6 +466,7 @@ sub makescript {
   undef(%::GLOBAL_TAB_HASH);
   undef(%::GLOBAL_SN_HASH);
   undef(%::GLOBAL_TABDUMP_HASH);
+  # if the request is for an array not a created file
   if ((defined($nofiles)) &&($nofiles == 1)){ # return array
    my @scriptd = grep { /\S/ } split(/\n/,$inc);
    my @goodscriptd;
