@@ -22,17 +22,29 @@ You will need to run the B<buildkit> command several times with different subcom
 
 By default the B<buildkit> subcommands will operate in the current working directory, (ie. look for files, create directories etc.).  You could specify a different location by using the "B<-l | --kitloc> I<directory>" option.
 
-The kit I<location> is the full path name of the directory that contains the kit files, including the kit basename. You would use the same location value for all the buildkit subcommands.
+The kit I<location> is the full path name of the directory that contains the kit files. You would use the same location value for all the buildkit subcommands.
 
 For example, to create a new kit named "prodkit" in the directory /home/mykits/ I<either> run:
+
+=over 4
+
+=item 1.
+
+If no location is provided then the command will create a subdirectory called "prodkit" in the current directory "/home/mykits" and the new kit files will be created there.
  
 B<cd /home/mykits>
 
 B<buildkit create prodkit> 
   
 or
+
+=item 2.
+
+If a location is provided then the Kit files will be created there. Note that the Kit name does not necessarily have to be the directory name where the kit files are located.
 	
 B<buidkit create prodkit -l /home/mykits/prodkit>
+
+=back
 	 
 In both cases the /home/mykits/prodkit directory is created and the inital files for the kit are created in that directory.
 	  
@@ -95,7 +107,6 @@ B<buildkit buildrepo all>
 Build the kit tar file:
 
 B<buildkit buildtar>
-
 
 =back
 
@@ -225,9 +236,9 @@ B<buildkit cleanall>
 
 =item 4.
 
-To create the sample kit located in /home/foobar/tstkit instead of the current working directory.
+To create a kit named "tstkit" located in /home/foobar/tstkit instead of the current working directory.
 
-B<buildkit create mykit -l /home/foobar/tstkit>
+B<buildkit create tstkit -l /home/foobar/tstkit>
 
 =back
 
