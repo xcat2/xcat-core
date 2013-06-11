@@ -555,7 +555,13 @@ sub kit_create
     # create Kit directory in pwd
     my $kitname=$::KIT_CREATE;
 
-    my $kitdir=$::workdir."/$kitname";
+    my $kitdir;
+    if ($::KITLOC ) {
+        $kitdir=$::KITLOC;
+    } else {
+        $kitdir=$::workdir."/$kitname";
+    }
+
     if ( -d $kitdir ) {
         print "Another directory alredy exists with the name $kitname in the current working directory.  Not able to create new Kit directory $kitdir. \n";
         exit 1;
