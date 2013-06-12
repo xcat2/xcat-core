@@ -187,11 +187,20 @@ sub findme {
                 nodediscoverstop($callback, undef, "bmc ips");
                 return;
             }
-            $hosttab->setNodeAttribs($bmcname, {ip => $bmcip});
+            # for auto created bmc, just add it to hosts.otherinterfaces instead of adding a new bmc node
+            my $otherif = $hosttab->getNodeAttribs($node, ['otherinterfaces']);
+            my $updateotherif;
+            if ($otherif && defined ($otherif->{'otherinterfaces'})) {
+                $updateotherif .= ",$bmcname:$bmcip";
+            } else {
+                $updateotherif = "$bmcname:$bmcip";
+            }
+            $hosttab->setNodeAttribs($node, {otherinterfaces => $updateotherif});
             $hosttab->commit();
 
             # set the bmc to the ipmi table
             $ipmitab->setNodeAttribs($node, {bmc => $bmcname});
+            $ipmitab->commit();
         }
 
         # update the host ip pair to /etc/hosts, it's necessary for discovered and makedhcp commands
@@ -256,20 +265,11 @@ sub findme {
         }
         if (defined ($param{'groups'})) {
             $nltab->setNodeAttribs($node, {groups=>$param{'groups'}});
-            unless ($skipbmcip) {
-                $nltab->setNodeAttribs($bmcname, {groups=>$param{'groups'}.",bmc"});
-            }
         } else {
             # just set the groups attribute when there was no groups value was set
             my $nlent = $nltab->getNodeAttribs($node,['groups']);
             if (!$nlent || !$nlent->{'groups'}) {
                 $nltab->setNodeAttribs($node, {groups=>"all"});
-            }
-            unless ($skipbmcip) {
-                $nlent = $nltab->getNodeAttribs($bmcname,['groups']);
-                if (!$nlent || !$nlent->{'groups'}) {
-                    $nltab->setNodeAttribs($bmcname, {groups=>"all,bmc"});
-                }
             }
         }
 
