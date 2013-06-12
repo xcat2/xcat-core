@@ -9,7 +9,7 @@
 #
 #  It is run by the updatenode cmd -P by calling xcatdsklspost 1 -m/-M  (mode 1)
 #  updatenode cmd -k  by calling xcatdsklspost 5 (mode 5)  
-#  moncfg command (-c 3)
+#  moncfg command (-c 3)  option c means refresh /xcatpost
 #  For full install called from aixinstall.pm plugin with no parameters
 #     
 #####################################################
@@ -304,8 +304,6 @@ if (-f $scriptname)
       #add requested postscripts in
       `echo "$POSTS" | tr "," "\n" >> $scriptname`;
       `echo "# postscripts-end-here" >> $scriptname`;
-    } else {
-    	`logger -t xcat -p local4.info "$::sdate xcataixpost: ARGV not > 1."`;
     }
 
     # use the run_ps subroutine to run the postscripts
@@ -335,8 +333,13 @@ run_ps () {
     chomp($nodesetstat);
     $ENV{PATH}="/xcatpost:$ENV{PATH}";
     &runcmd("cd /xcatpost;$scriptname");
-    print $::outref;
-    print $::LOG_FILE "$::sdate  xcataixpost: outref = $::outref\n";
+    if ($::outref) {
+        print "$::sdate  xcataixpost: run: $cmd - $::outref\n";
+        print $::LOG_FILE "$::sdate  xcataixpost: run: $cmd - $::outref\n";
+    } else {
+        print "$::sdate  xcataixpost: run: $cmd \n";
+        print $::LOG_FILE "$::sdate  xcataixpost: run: $cmd \n";
+    }
 } else {
 	`logger -t xcat -p local4.info "$::sdate  xcataixpost: Could not find post script for $xcatname."`;
 	print $::LOG_FILE "$::sdate  xcataixpost: Could not find post script for $xcatname.\n";
@@ -455,12 +458,14 @@ sub getmypost {
         $TFTPDIR="/tftpboot";
     }
 
+    # remove the  mypostscript file, so make sure we get a new one
        
+    &runcmd("rm -rf $scriptname");
 
     # try  to get the file with tftp first it is normal the file is not available, do not report
     # error 
     `tftp -o $scriptname $servnode $TFTPDIR/mypostscripts/mypostscript.$xcatname 2>&1`;
-    if (-f $scriptname) {  # got the file
+    if ((-e $scriptname) && (! (-z $scriptname))) {  # got the file and it is not empty
          `logger -t xcat -p local4.info  "$::sdate  xcataixpost: tftp got $scriptname."`;
 
       my $content;
@@ -488,6 +493,10 @@ sub getmypost {
       close $content;
     
   }
+  if (-z $scriptname) {  # file is empty ,  get rid of it
+    &runcmd("rm -rf $scriptname");
+  }
+ 
 
   # if could not get the file, then ask for the data
 
