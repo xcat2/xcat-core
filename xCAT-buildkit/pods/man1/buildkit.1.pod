@@ -8,11 +8,11 @@ B<buildkit> [B<-?>|B<-h>|B<--help>] [B<-v>|B<--version>]
 
 To build a new Kit
 
-B<buildkit> [B<-V>|B<--verbose]> I<subcommand> [I<kit_name>] [I<repo_name>|B<all>] [B<-l>|B<--kitloc> I<directory>] 
+B<buildkit> [B<-V>|B<--verbose]> I<subcommand> [I<kit_name>] [I<repo_name>|B<all>] [B<-l>|B<--kitloc> I<kit_location>] 
 
 To add packages to an existing Kit.
 
-B<buildkit> [B<-V>|B<--verbose>] I<addpkgs> I<kit_tarfile> [B<-p>|B<--pkgdir> I<package_directory>] [B<-k>|B<--kitversion> I<version>] [B<-r>|B<--kitrelease> I<release>] [B<-l>|B<--kitloc> I<directory>]
+B<buildkit> [B<-V>|B<--verbose>] I<addpkgs> I<kit_tarfile> [B<-p>|B<--pkgdir> I<package_directory>] [B<-k>|B<--kitversion> I<version>] [B<-r>|B<--kitrelease> I<release>] [B<-l>|B<--kitloc> I<kit_location>]
 
 =head1 DESCRIPTION
 
@@ -20,9 +20,9 @@ The B<buildkit> command provides a collection of utilities that may be used to p
 
 You will need to run the B<buildkit> command several times with different subcommands to step through the process of building a kit:
 
-By default the B<buildkit> subcommands will operate in the current working directory, (ie. look for files, create directories etc.).  You could specify a different location by using the "B<-l | --kitloc> I<directory>" option.
+By default the B<buildkit> subcommands will operate in the current working directory, (ie. look for files, create directories etc.).  You could specify a different location by using the "B<-l | --kitloc> I<kit_location>" option.
 
-The kit I<location> is the full path name of the directory that contains the kit files. You would use the same location value for all the buildkit subcommands.
+The I<kit_location> is the full path name of the directory that contains the kit files. You would use the same location value for all the buildkit subcommands.
 
 For example, to create a new kit named "prodkit" in the directory /home/mykits/ I<either> run:
 
@@ -122,9 +122,9 @@ Display usage message.
 
 Product version.
 
-=item B<-l|--kitloc>
+=item B<-l|--kitloc> I<kit_location>
 
-The location of the Kit (including the Kit name).
+The directory location of the Kit files.
 
 =item B<-r|--kitrelease> I<release>
 
@@ -158,19 +158,35 @@ Reads the buildkit.conf file, lists all Kit package repositories listed in the f
 
 =item  B<buildrepo> {I<repo_name> | B<all>}
 
-Reads the buildkit.conf file, and builds the specified Kit package repository.  The built packages are placed in the directory <kit location>/build/kit_repodir/I<repo_name>.  If B<all> is specified, all kit repositories are built.
+Reads the buildkit.conf file, and builds the specified Kit package repository.  The built packages are placed in the directory <kit_location>/build/kit_repodir/I<repo_name>.  If B<all> is specified, all kit repositories are built.
 
 =item  B<cleanrepo> {I<repo_name> | B<all>}
 
-Reads the buildkit.conf file, and deletes all the package files and package meta data files from the <kit location>/build/kit_repodir/I<repo_name> directory.  If B<all> is specified, all kit repository files are deleted.
+Reads the buildkit.conf file, and deletes all the package files and package meta data files from the <kit_location>/build/kit_repodir/I<repo_name> directory.  If B<all> is specified, all kit repository files are deleted.
 
 =item  B<buildtar> 
 
-Reads the buildkit.conf file, validates that all kit repositories have been built, and builds the Kit tar file <kit location>/I<kitname>.tar.bz2.
+Reads the buildkit.conf file, validates that all kit repositories have been built, and builds the Kit tar file <kit_location>/I<kitname>.tar.bz2.
 
 =item  B<cleantar> 
 
-Reads the buildkit.conf file, deletes the Kit tar <kit location>/I<kitname>.tar.bz2, and deletes all files in the build work directory <kit location>/build/I<kitname>.
+Reads the <kit_location>/buildkit.conf file and I<deletes> the following:
+
+=over 4
+
+- Kit tar files matching <kit_location>/I<kit_name*.tar.bz2>.
+
+- <kit_location>/build/I<kit_name>
+
+- <kit_location>/rpmbuild
+
+- <kit_location>/tmp
+
+- <kit_location>/debbuild 
+
+=back
+
+Caution:  Make sure you back up any tar files you would like to keep before running this subcommand.
 
 =item  B<cleanall>
 
@@ -180,7 +196,7 @@ Equivalent to running B<buildkit cleanrepo all> and B<buildkit cleantar>.
 
 I<kit_tarfile> {B<-p> | B<--pkgdir> I<package_directory>} [B<-k> | B<--kitversion> I<version>] [B<-r> | B<--kitrelease> I<release>]
 
-Add product package rpms to a previously built kit tar file.  This is used for partial product kits that are built and shipped separately from the product packages, and are identified with a I<kit_tarfile> name of I<kitname>.B<NEED_PRODUCT_PKGS.tar.bz2>. Optionally, change the kit release and version values when building the new kit tarfile.  If kitcomponent version and/or release values are defaulted to the kit values, those will also be changed and new kitcomponent rpms will be built.  If kit or kitcomponent scripts, plugins, or other files specify name, release, or version substitution strings, these will all be replaced with the new values when built into the new complete kit tarfile I<kit location>/I<new_kitname>.B<tar.bz2>.
+Add product package rpms to a previously built kit tar file.  This is used for partial product kits that are built and shipped separately from the product packages, and are identified with a I<kit_tarfile> name of I<kitname>.B<NEED_PRODUCT_PKGS.tar.bz2>. Optionally, change the kit release and version values when building the new kit tarfile.  If kitcomponent version and/or release values are defaulted to the kit values, those will also be changed and new kitcomponent rpms will be built.  If kit or kitcomponent scripts, plugins, or other files specify name, release, or version substitution strings, these will all be replaced with the new values when built into the new complete kit tarfile I<kit_location>/I<new_kitname>.B<tar.bz2>.
 
 =back
 
