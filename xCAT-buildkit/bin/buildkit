@@ -376,7 +376,7 @@ if ( ! $arg ) {
 # set kit location
 if ($::KITLOC) {
 	$::workdir = $::KITLOC;
-    $::current_dir = $::workdir;
+        $::current_dir = $::workdir;
 } else {
 	$::workdir = $::current_dir;
 }
@@ -554,7 +554,6 @@ sub kit_create
 {
     # create Kit directory in pwd
     my $kitname=$::KIT_CREATE;
-
     my $kitdir;
     if ($::KITLOC ) {
         $kitdir=$::KITLOC;
@@ -563,11 +562,11 @@ sub kit_create
     }
 
     if ( -d $kitdir ) {
-        print "Another directory alredy exists with the name $kitname in the current working directory.  Not able to create new Kit directory $kitdir. \n";
+        print "Another directory already exists with the name $kitdir.  Not able to create new Kit. \n";
         exit 1;
     }
     if ( ! mkdir($kitdir) ) {
-       print "Error creating Kit directory $kitdir.  Verify that the current user has write privileges in the current working directory. \n";
+       print "Error creating Kit directory $kitdir.  Verify that the current user has privileges to create the directory. \n";
        exit 1;
     }
 
@@ -648,8 +647,11 @@ sub kit_buildrepo
 =cut
 
 #-----------------------------------------------------------------------------
+
 sub kit_buildrepo1
+
 {
+
     my $rc = 0;
     my $repoid = shift;
     $repoid =~ s/\s+//g;
@@ -809,6 +811,8 @@ sub kit_buildrepo1
     return 0;
 }
 
+
+
 #-----------------------------------------------------------------------------
 
 =head3    kit_listrepo
@@ -818,7 +822,9 @@ sub kit_buildrepo1
 =cut
 
 #-----------------------------------------------------------------------------
+
 sub kit_listrepo
+
 {
     # print "Kit Repository:  Status \n";
     foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
@@ -840,7 +846,9 @@ sub kit_listrepo
 =cut
 
 #-----------------------------------------------------------------------------
+
 sub kit_cleanrepo
+
 {
     my $repoid = $::KIT_CLEANREPO;
     my $tmp_repoid = $repoid;
@@ -894,7 +902,9 @@ sub kit_cleanrepo
 =cut
 
 #-----------------------------------------------------------------------------
+
 sub kit_buildtar
+
 {
     foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
         if (&validate_repo($kr)) {
@@ -953,42 +963,59 @@ sub kit_buildtar
 	
    buildkit cleantar
 
+    Remove tar files from the kit location directory.
+
+    This removes all tar files - not just the last one created!
+
+    Also clean up several other files/dirs
+
 =cut
 
 #-----------------------------------------------------------------------------
 sub kit_cleantar
 {
-    my $kitfilename = $::bldkit_config->{kit}{entries}[0]->{kitname};
-    if ( defined($::bldkit_config->{kit}{entries}[0]->{kittarfilename}) ) {
-        $kitfilename = $::bldkit_config->{kit}{entries}[0]->{kittarfilename};
-        $kitfilename =~ s/tar\.bz2\s*$//;
-    }
-    my $findcmd = "find $::current_dir -name \"$kitfilename.\*tar.bz2\"";
-    my $tarfile = `$findcmd`;
-    chomp ($tarfile);
-    if ( -r $tarfile ) {
+    my $basename = $::bldkit_config->{kit}{entries}[0]->{basename};
+    my $rmfiles = "$basename\*tar.bz2";
+
+    my $tarfile = "$::workdir/$rmfiles";
+
+    if ( $rmfiles ) {
         if ( system("rm -f $tarfile ") ) {
-            print "Error removing kit tar file $tarfile \n";
+            print "Error removing kit tar files in $::workdir.\n";
         } else {
-            print "Kit tar file $tarfile has been successfully removed \n";
+            print "Kit tar files have been successfully removed from $::workdir.\n";
         }
     }
+
     if ( -d $::deploy_dir ) {
         if ( system("rm -Rf $::deploy_dir ") ) {
             print "Error removing contents of $::deploy_dir \n";
         } else {
-            print "All $::deploy_dir contents have been successfully removed \n";
+            print "Removed $::deploy_dir.\n";
         }
     }
     if ( -d "$::workdir/rpmbuild" ) {
-        system("rm -Rf $::workdir/rpmbuild ");
+        if ( system("rm -Rf $::workdir/rpmbuild ")) {
+          #  print "Error removing $::workdir/rpmbuild\n";
+        } else {
+            print "Removed $::workdir/rpmbuild\n";
+        }
     }
     if ( -d "$::workdir/tmp" ) {
-        system("rm -Rf $::workdir/tmp ");
+        if ( system("rm -Rf $::workdir/tmp ") ) {
+          #  print "Error removing $::workdir/tmp \n";
+        } else {
+            print "Removed $::workdir/tmp \n";
+        }
     }
     if ( -d "$::workdir/debbuild" ){
-        system("rm -Rf $::workdir/debbuild");
+        if ( system("rm -Rf $::workdir/debbuild")) {
+          #  print "Error removing $::workdir/debbuild.\n";
+        } else {
+            print "Removed $::workdir/debbuild\n";
+        }
     }
+	return;
 }
 
 #-----------------------------------------------------------------------------
@@ -1002,7 +1029,7 @@ sub kit_cleantar
 #-----------------------------------------------------------------------------
 sub kit_cleanall
 {
-    print "running buildkit cleanall... \n";
+    print "Running buildkit cleanall... \n";
 
     &kit_cleantar;
 
@@ -1789,6 +1816,7 @@ sub validate_os
         $mismatch_msg .= " or the compatible OS distros: $repo->{compat_osbasenames} ";
     }
 
+
     my $compat_match = 0;
     if ($repo->{osbasename} ne $osbasename) {
         if (defined($repo->{compat_osbasenames})){
@@ -2463,7 +2491,9 @@ sub gen_kitcomp_debdir{
 =cut
 
 #-----------------------------------------------------------------------------
+
 sub load_script
+
 {
     my $scriptname = shift;
     my $SF;
