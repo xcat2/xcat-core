@@ -1039,7 +1039,7 @@ sub preprocess_request
 	}   # list of nodes specified
     # if new specified or there are nodes
     } # end if service node only and NOT -n option
-    # if -n option or nodes were sepcified
+    # if -n option or nodes were specified
     elsif (@nodes > 0 or $::opt_n) { #send the request to every dhservers
         $req->{'node'}=\@nodes;
        	@requests = ({%$req});    #Start with a straight copy to reflect local instance
