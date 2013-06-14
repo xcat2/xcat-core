@@ -55,9 +55,9 @@ sub getans {
     }
 }
 my $cmdref={
-    command=>"getipmicons",
-    arg=>"text",
-    noderange=>$ARGV[0]
+    command=>["getipmicons"],
+    arg=>["text"],
+    noderange=>[$ARGV[0]]
 };
 xCAT::Client::submit_request($cmdref,\&getans);
 until ($username and $password and $bmc) {
