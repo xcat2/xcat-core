@@ -210,7 +210,7 @@ add_persistent_route()
             v6flag=0
             #on debian/ubuntu need the network device name
             if [ ! $ifname ];then
-                ifname=`netstat -nr | grep "$net" | awk '{print $8}'`
+                ifname=`netstat -nr | grep "$net" | awk '{print $8}' | head -1`
             fi
             filename="/etc/network/interfaces.d/$ifname"
 
