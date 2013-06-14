@@ -13,7 +13,9 @@ touch /tmp/killme.$parpid
 exec 2> /dev/null
 while ! grep 'resourcerequest: ok' /tmp/goahead.$parpid > /dev/null; do
 	(
-	  mypid=$BASHPID
+      exec 14<>/proc/self/stat
+      read mystat<&14
+      mypid=$(echo $mystat|cut -d " " -f 4)
 	  (sleep $(((RANDOM%60)+120)).$((RANDOM%50)); if [ -f /tmp/killme.$parpid ]; then kill -TERM $mypid; fi) &
 	  exec awk '{print $0 > "/tmp/goahead.'$parpid'";exit}' <&13
 	)	
