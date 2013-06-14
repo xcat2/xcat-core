@@ -13,12 +13,19 @@ touch /tmp/killme.$parpid
 exec 2> /dev/null
 while ! grep 'resourcerequest: ok' /tmp/goahead.$parpid > /dev/null; do
 	(
+      echo "resourcerequest: xcatd" >&13
       exec 14<>/proc/self/stat
       read mystat<&14
       mypid=$(echo $mystat|cut -d " " -f 4)
 	  (sleep $(((RANDOM%60)+120)).$((RANDOM%50)); if [ -f /tmp/killme.$parpid ]; then kill -TERM $mypid; fi) &
+      echo $! > /tmp/sleeperpid.$parpid
 	  exec awk '{print $0 > "/tmp/goahead.'$parpid'";exit}' <&13
 	)	
 done
+sleeper=$(cat /tmp/sleeperpid.$parpid)
+sleeper=$(ps -ef|awk "\$3==$sleeper"|awk '{print $2}')
+kill -TERM $sleeper
+rm /tmp/goahead.$parpid
+rm /tmp/sleeperpid.$parpid
 rm /tmp/killme.$parpid
 
