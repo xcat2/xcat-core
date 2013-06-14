@@ -214,6 +214,10 @@ add_persistent_route()
             fi
             filename="/etc/network/interfaces.d/$ifname"
 
+            if [ ! -f $filename ];then
+                echo "auto $ifname" > $filename
+                echo "iface $ifname inet dhcp" >> $filename
+            fi
             echo $net | grep : 2>&1 1>/dev/null
             #ipv6
             if [ $? -eq 0 ];then
@@ -445,7 +449,9 @@ if [ "$op" = "add" ]; then
         if [ $code -ne 0 ]; then
             logger -t xCAT -p local4.err "$cmd\nerror code=$code, result=$result."
             echo "  error code=$code, result=$result."
-            #exit 1;
+            if [ -f "/etc/debian_version" ];then
+                exit 1;
+            fi
         fi
     else
         #ipv6
