@@ -614,7 +614,10 @@ sub plugin_command {
         no strict  "refs";
 #       eval { #REMOVEEVALFORDEBUG
 #       if ($dispatch_requests) {
-                dispatch_request($req,$callback,$modname);
+        # backup the original req and recover it after the a run
+        my $org_req = {%$req};
+        dispatch_request($req,$callback,$modname);
+        $req = {%$org_req};
 #       } else {
 #          $SIG{CHLD}='DEFAULT';
 #          ${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
