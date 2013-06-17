@@ -21,11 +21,13 @@ use Thread qw(yield);
 my $interface;
 my $username;
 my $help;
+my $timeout=0; 
 Getopt::Long::Configure("require_order");
 Getopt::Long::Configure("no_pass_through");
 if (!GetOptions(
   "i|interface=s" => \$interface,
   'l|loginname=s' => \$username,
+  't|timeout=s' => \$timeout,
   'f|fanout=s' => \$fanout,
   "nonodecheck" => \$::NONODECHECK,  #does not check the noderange, in this case, noderange need to be a list of nodes.
   'h|help' => \$help,
@@ -102,6 +104,26 @@ if ($interface) {
     s/$/-$interface/;
   }
 }
+local $SIG{ALRM}= sub {
+  my @proclist = `ps -ef`;
+  my %ownedpids;
+  foreach (@proclist) {
+    m/\S+\s+(\S+)\s+(\S+)/;
+    $ownedpids{$2}=$1; #only recall one child per parent
+  }
+  foreach my $pid (keys %pids) {
+    my $node = $pids{$pid};
+    unless (defined $exitcodes{$node}) {
+      print stderr "$node: timeout exceeded\n";
+      if ($ownedpids{$pid}) {
+        kill 15,$ownedpids{$pid};
+      } else {
+        kill 15,$pid;
+      }
+    }
+  }
+};
+if ($timeout) { alarm($timeout); }
 foreach (@nodes) {
   my $node=$_;
   while ($children >= $pshmaxp) { processoutput($inputs); }
