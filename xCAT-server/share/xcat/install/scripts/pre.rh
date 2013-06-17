@@ -13,6 +13,24 @@ if [ -r /tmp/updates/etc/pki/tls/certs/ca-bundle.crt ]; then
         cp -f /tmp/updates/etc/pki/tls/certs/ca-bundle.crt /etc/pki/tls/certs/
 fi
 
+cat >/tmp/baz.py <<EOF
+#!/usr/bin/python
+import socket
+import sys
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect(('#XCATVAR:XCATMASTER#',#TABLE:site:key=xcatiport:value#))
+
+print sys.argv[1]
+response = sock.recv(100)
+if(response == "ready\n"):
+        sock.send(sys.argv[1]+"\n")
+        response = sock.recv(100)
+
+sock.close()
+EOF
+
+
 
 cat >/tmp/foo.py <<EOF
 #!/usr/bin/python
@@ -123,6 +141,14 @@ finally:
 EOF
 
 chmod 755 /tmp/foo.py
+chmod 755 /tmp/baz.py
+
+NODESTATUS=#TABLEBLANKOKAY:site:key=nodestatus:value#
+
+if [ -z "$NODESTATUS" ] || [ "$NODESTATUS" != "0" -a   "$NODESTATUS" != "N"  -a  "$NODESTATUS" != "n" ]; then
+   /tmp/baz.py "installstatus installing" &
+fi
+
 
 /tmp/foo.py >/foo.log 2>&1 &
 #time to ascertain fstype and PReP/UEFI/legacy

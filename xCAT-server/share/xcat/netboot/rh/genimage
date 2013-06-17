@@ -771,11 +771,19 @@ sub mkinitrd_dracut {
         $perm = (stat("$fullpath/$dracutdir/install.statelite"))[2];
         chmod($perm&07777, "$dracutmpath/install");
 
+        cp("$fullpath/$dracutdir/xcat-updateflag",$dracutmpath);
+        $perm = (stat("$fullpath/$dracutdir/xcat-updateflag"))[2];
+        chmod($perm&07777, "$dracutmpath/xcat-updateflag");
+
         cp("$fullpath/$dracutdir/xcat-prepivot.sh",$dracutmpath);
         $perm = (stat("$fullpath/$dracutdir/xcat-prepivot.sh"))[2];
         chmod($perm&07777, "$dracutmpath/xcat-prepivot.sh");
 
-        # update etc/dracut.conf
+        cp("$fullpath/$dracutdir/xcat-premount.sh",$dracutmpath);
+        $perm = (stat("$fullpath/$dracutdir/xcat-premount.sh"))[2];
+        chmod($perm&07777, "$dracutmpath/xcat-premount.sh");
+  
+        #update etc/dracut.conf
         open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
         if (-d glob("$rootimg_dir/usr/share/dracut/modules.d/[0-9]*fadump")){
             print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules fadump"\n};
@@ -794,6 +802,10 @@ sub mkinitrd_dracut {
         cp("$fullpath/$dracutdir/xcat-cmdline.sh","$dracutmpath/");
         $perm = (stat("$fullpath/$dracutdir/xcat-cmdline.sh"))[2];
         chmod($perm&07777, "$dracutmpath/xcat-cmdline.sh");
+
+        cp("$fullpath/$dracutdir/xcat-updateflag",$dracutmpath);
+        $perm = (stat("$fullpath/$dracutdir/xcat-updateflag"))[2];
+        chmod($perm&07777, "$dracutmpath/xcat-updateflag");
 
         if ($prinic) {
             my $optspec;
@@ -1051,6 +1063,7 @@ grep '\(debug\)' /proc/cmdline > /dev/null && export DEBUG=1
 # TODO: does "anaconda.busybox sh" support "set " ?
 
 PRINIC=$prinic
+NODESTATUS='y'
 
 for i in `cat /proc/cmdline`; do
     KEY=`echo \$i |awk -F= '{print \$1}'`
@@ -1063,6 +1076,14 @@ for i in `cat /proc/cmdline`; do
         VALUE=`echo \$i |awk -F= '{print \$2}'`
         # format: XCAT=xcatmaster:3001
         XCATSERVER=\$VALUE
+    elif [ "\$KEY" == 'XCATIPORT' ]; then
+        VALUE=`echo \$i |awk -F= '{print \$2}'`
+        # format: XCAT=xcatmaster:3001
+        XCATIPORT=\$VALUE
+    fi
+    #if "nonodestatus" specified,do not update the nodestatus 
+    if [ \$i == 'nonodestatus' ]; then
+       NODESTATUS='n'
     fi
 done
 
@@ -1091,6 +1112,18 @@ while ! ifconfig | grep inet; do
 done
 ifconfig lo 127.0.0.1
 ifconfig lo up
+
+XCATMASTER=`echo \$XCATSERVER|awk -F: '{print \$1}'`
+
+if [ -z \$XCATIPORT ]; then
+     XCATIPORT="3002"
+fi
+
+#update nodelist.nodestatus to "netbooting"
+if [ \$NODESTATUS != 'n' ]; then
+    /tmp/updateflag \$XCATMASTER \$XCATIPORT "installstatus netbooting"
+fi
+
 cd /
 for i in `cat /proc/cmdline`; do
    KEY=`echo \$i |awk -F= '{print \$1}'`
@@ -1136,6 +1169,10 @@ for i in `cat /proc/cmdline`; do
     fi
    fi
 done
+
+
+
+
 
 # show xCAT logo
 fancydisplay
@@ -1346,8 +1383,38 @@ EOMS
    open($inifile,">"."/tmp/xcatinitrd.$$/bin/netstart");
    print $inifile "#!/sbin/nash\n";
    close($inifile);
+
+   #/tmp/updateflag: a script to feedback node provision status to xcatd
+   system("mkdir -p /tmp/xcatinitrd.$$/tmp/");   
+   open($inifile, ">","/tmp/xcatinitrd.$$/tmp/updateflag");
+
+   print $inifile <<EOMS;
+#!/bin/sh
+if [ \$# -eq 3 ]; then                                                           
+   echo \$3 > /tmp/ncarg                                                         
+   nc  \$1 \$2 -w 60 -e /tmp/updateflag                                           
+else                                                                            
+   retrytimes=0                                                                 
+   cmd=""                                                                       
+   while [ "\$cmd" != "done" ]; do                                               
+         retrytimes=`expr \$retrytimes + 1`                                      
+         if [ \$retrytimes -eq 60 ]; then                                        
+            break;                                                              
+         fi                                                                     
+         read -t 60 cmd                                                         
+         if [ "\$cmd" == "ready" ]; then                                         
+             head -n 1 /tmp/ncarg                                               
+             rm -rf /tmp/ncarg                                                  
+         fi                                                                     
+   done                                                                         
+                                                                                
+fi
+EOMS
+   close($inifile);
+
    chmod(0755,"/tmp/xcatinitrd.$$/init");
    chmod(0755,"/tmp/xcatinitrd.$$/bin/netstart");
+   chmod(0755,"/tmp/xcatinitrd.$$/tmp/updateflag");
    @filestoadd=();
    foreach (@ndrivers) {
      if (-f "$customdir/$_") {

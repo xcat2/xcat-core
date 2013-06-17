@@ -64,7 +64,8 @@ sub mknetboot
     $installroot = "/install";
 
     my $xcatdport = "3001";
-
+    my $xcatiport = "3002";
+    my $nodestatus = "y";
     #if ($sitetab)
     #{
         #(my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
@@ -79,6 +80,17 @@ sub mknetboot
         if ( defined($t_entry) ) {
             $xcatdport = $t_entry;
         }
+        @entries =  xCAT::TableUtils->get_site_attribute("xcatiport");
+        $t_entry = $entries[0];
+        if ( defined($t_entry) ) {
+            $xcatiport = $t_entry;
+        }
+        @entries =  xCAT::TableUtils->get_site_attribute("nodestatus");
+        $t_entry = $entries[0];
+        if ( defined($t_entry) ) {
+            $nodestatus = $t_entry;
+        }
+
     #}
 
     my $ntents = $ostab->getNodesAttribs($req->{node}, ['os', 'arch', 'profile', 'provmethod']);
@@ -553,6 +565,13 @@ sub mknetboot
               "imgurl=$httpmethod://$imgsrv/$rootimgdir/rootimg.$suffix ";
         }
         $kcmdline .= "XCAT=$xcatmaster:$xcatdport quiet ";
+        
+        #if site.nodestatus="n", append "nonodestatus" to kcmdline 
+        #to inform the statelite/stateless node not to update the nodestatus during provision
+        if(($nodestatus eq "n") or ($nodestatus eq "N") or ($nodestatus eq "0")){
+           $kcmdline .= " nonodestatus ";
+        }
+
         $kcmdline .= "NODE=$node ";
 
         # add the kernel-booting parameter: netdev=<eth0>, or BOOTIF=<mac>

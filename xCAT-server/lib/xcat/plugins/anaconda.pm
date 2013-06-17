@@ -180,6 +180,8 @@ sub mknetboot
     my $installroot;
     $installroot = "/install";
     my $xcatdport = "3001";
+    my $xcatiport = "3002";
+    my $nodestatus = "y"; 
 
     #if ($sitetab)
     #{
@@ -190,12 +192,24 @@ sub mknetboot
     {
         $installroot = $site_ent;
     }
+    @ents = xCAT::TableUtils->get_site_attribute("nodestatus");
+    $site_ent = $ents[0];
+    if ( defined($site_ent) )
+    {
+        $nodestatus = $site_ent;
+    }
     #    ($ref) = $sitetab->getAttribs({key => 'xcatdport'}, 'value');
     @ents = xCAT::TableUtils->get_site_attribute("xcatdport");
     $site_ent = $ents[0];
     if ( defined($site_ent) )
     {
         $xcatdport = $site_ent;
+    }
+    @ents = xCAT::TableUtils->get_site_attribute("xcatiport");
+    $site_ent = $ents[0];
+    if ( defined($site_ent) )
+    {
+        $xcatiport = $site_ent;
     }
     #    ($ref) = $sitetab->getAttribs({key => 'tftpdir'}, 'value');
     @ents = xCAT::TableUtils->get_site_attribute("tftpdir");
@@ -679,8 +693,10 @@ sub mknetboot
                     } else {
                         $xcatmasterip = $xcatmaster;
                     }
-		    $kcmdline .=
-			    "XCAT=$xcatmasterip:$xcatdport ";
+
+                    $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
+
+
             if ($rootfstype ne "ramdisk") {
                 # BEGIN service node
                 my $isSV = xCAT::Utils->isServiceNode();
@@ -701,9 +717,14 @@ sub mknetboot
         else {
             $kcmdline =
               "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg.$suffix ";
-            $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
+              $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
             $kcmdline .= "NODE=$node ";
         }
+        #inform statelite/stateless node not to  update the nodestatus during provision 
+        if(($nodestatus eq "n") or ($nodestatus eq "N") or ($nodestatus eq "0")){
+           $kcmdline .= " nonodestatus ";
+        }
+
 
         # add one parameter: ifname=<eth0>:<mac address>
         # which is used for dracut
