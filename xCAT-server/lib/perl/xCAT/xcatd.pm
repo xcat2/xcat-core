@@ -121,8 +121,10 @@ sub validate {
       if ($rule->{rule} =~ /allow/i or $rule->{rule} =~ /accept/i or $rule->{rule} =~ /trusted/i) {
           $matchall=1;
       }
+      use xCAT::NodeRange;
+
       if (defined $request->{noderange}->[0]) {
-        my @tmpn=noderange($request->{noderange}->[0]);
+        my @tmpn= xCAT::NodeRange::noderange($request->{noderange}->[0]);
         $request->{node}=\@tmpn;
       }
       unless (defined $request->{node}) {
