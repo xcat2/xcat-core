@@ -696,7 +696,7 @@ Usage:
                 $changeflag = 1;
             }else{
                 xCAT::MsgUtils->message('S', "Specified imageprofile is same with current value, ignore.");
-                delete($args_dict{'networkprofile'});
+                delete($args_dict{'imageprofile'});
             }
         }
         # make sure there are something changed, otherwise we should quit without any changes.
@@ -848,6 +848,11 @@ Usage:
     }
     
     #7. Assign new free IPs for nodes and generate nicips and hosts attribute.
+    my %bmcipsAttr = {};
+    my %fspipsAttr = {};
+    my $provision_flag = 0;
+    my $bmc_flag = 0;
+    my $fsp_flag = 0;
     foreach my $node (@$nodes){
         foreach my $nicname (@nicslist){
             # Remove records from nicips for removed nics.
@@ -868,7 +873,14 @@ Usage:
                 }
                 $nicipsAttr{$node}{nicips} .= $nicname."!".$nextip.",";
                 if ($installnic eq $nicname){
+                    $provision_flag = 1;
                     $ipAttr{$node}{ip} = $nextip;
+                }elsif ($nicname eq 'bmc'){
+                    $bmc_flag = 1;
+                    $bmcipsAttr{$node}{"bmc"} = $nextip;
+                }elsif ($nicname eq 'fsp'){
+                    $fsp_flag = 1;
+                    $fspipsAttr{$node}{"hcp"} = $nextip;
                 }
             }
         }
@@ -879,30 +891,72 @@ Usage:
     my $nicstab = xCAT::Table->new('nics',-create=>1);
     $nicstab->setNodesAttribs(\%nicipsAttr);
     $nicstab->close();
-
-    #9. If provisioning NIC ip changed for nodes, reconfig boot settings and unset node's status.
-    if ( grep {$_ eq $installnic} @updateNics){
+    
+    # Update hosts table if provisioning NIC ip change
+    if ($provision_flag) {
         my $hoststab = xCAT::Table->new('hosts', -create=>1);
         $hoststab->setNodesAttribs(\%ipAttr);
         $hoststab->close();
-
+    }
+    # Update ipmi table if bmc NIC ip change
+    if ($bmc_flag) {
+        my $ipmitab = xCAT::Table->new('ipmi',-create=>1);
+        $ipmitab->setNodesAttribs(\%bmcipsAttr);
+        $ipmitab->close();
+    }
+    # Update ppc table if fsp NIC ip change
+    if ($fsp_flag) {
+        my $ppctab = xCAT::Table->new('ppc',-create=>1);
+        $ppctab->setNodesAttribs(\%fspipsAttr);
+        $ppctab->close();
+    }
+    
+    #9. If provisioning NIC ip or BMC ip changed for nodes, update chain table
+    # If FSP ip changed for nodes, push the new ip to fsp and establish hardware connection
+    my @kitcommands = ();
+    if ( $provision_flag or  $bmc_flag) {
         #Get node's provmethod. 
         my $nodetypetab = xCAT::Table->new('nodetype');
         my $firstnode = $nodes->[0];
         my $records = $nodetypetab->getNodeAttribs($firstnode, ['node', 'provmethod']);
         my $imgname = $records->{provmethod};
-        my $retref = xCAT::Utils->runxcmd({command=>["nodeset"], node=>$nodes, arg=>["osimage=$imgname"], sequential=>[1]}, $request_command, 0, 2);
+        
+        my $chainstr = "osimage=$imgname";
+        if ( $bmc_flag ) {
+           $chainstr = "runcmd=bmcsetup,osimage=$imgname:reboot4deploy";
+        }
+        
+        # Update chain table
+        my %chainAttr = {};
+        foreach my $node (@$nodes){
+            $chainAttr{$node}{'chain'} = $chainstr;
+        }
+        my $chaintab = xCAT::Table->new('chain', -create=>1);
+        $chaintab->setNodesAttribs(\%chainAttr);
+        $chaintab->close();
+        
+        # Remove all nodes information
+        push(@kitcommands, "kitnoderemove");
+        # Add all nodes information back
+        push(@kitcommands, "kitnodeadd");  
+        
+    } elsif ( $fsp_flag ) {
+        # Remove all nodes information
+        push(@kitcommands, "kitnoderemove");
+        # Add all nodes information back
+        push(@kitcommands, "kitnodeadd");
+    } else {
+        push(@kitcommands, "kitnoderefresh");
+    }    
+
+    #10. Call plugins.   
+    foreach my $command (@kitcommands) {
+        my $retref = xCAT::Utils->runxcmd({command=>[$command], node=>$nodes, sequential=>[1]}, $request_command, 0, 2);
         my $retstrref = parse_runxcmd_ret($retref);
         if ($::RUNCMD_RC != 0){
-            setrsp_progress("Warning: failed to call command nodeset.");
+            setrsp_progress("Warning: failed to call kit commands.");
+            last;
         }
-    }
-
-    #10. Call plugins.
-    my $retref = xCAT::Utils->runxcmd({command=>["kitnoderefresh"], node=>$nodes, sequential=>[1]}, $request_command, 0, 2);
-    my $retstrref = parse_runxcmd_ret($retref);
-    if ($::RUNCMD_RC != 0){
-        setrsp_progress("Warning: failed to call kit commands.");
     }
 
     setrsp_progress("Re-generated node's IPs for specified nics.");
