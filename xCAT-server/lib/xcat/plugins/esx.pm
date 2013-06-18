@@ -3079,9 +3079,13 @@ sub create_nic_devs {
            $pgname = $hyphash{$hyp}->{pgnames}->{$_};
         }
         s/.*://;
-        s/=(.*)$//;
+        my $hadspecmodel=0;
+        if (m/=/) {
+            $hadspecmodel=1;
+            s/=(.*)$//;
+        }
         my $tmpmodel=$model;
-        if ($1) { $tmpmodel=$1; }
+        if ($hadspecmodel) { $tmpmodel=$1; }
         my $netname = $_;
         my $backing = VirtualEthernetCardNetworkBackingInfo->new(
             network => $netmap->{$pgname},
