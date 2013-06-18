@@ -539,9 +539,16 @@ sub invoke_dodiscover {
 
 
     my %arg;
-   if ($globalopt{flexdiscover}) {
-       $arg{SrvTypes} = [ qw/service:management-hardware.IBM:chassis-management-module service:management-hardware.IBM:management-module service:management-hardware.IBM:integrated-management-module2/ ];
+   if ($globalopt{flexdiscover}) { #we do two SLP passes, one to hopefully catch the less numerous management modules reliably, a separate one to best-effort catch imms
+       $arg{SrvTypes} = [ qw/service:management-hardware.IBM:chassis-management-module service:management-hardware.IBM:management-module/ ];
        my ($searchmacsref,$sendcount,$rsp) = xCAT::SLP::dodiscover(SrvTypes=>$arg{SrvTypes},Callback=>\&bt_handle_new_slp_entity);
+       $arg{SrvTypes} = [ qw/service:management-hardware.IBM:integrated-management-module2/ ];
+       my  ($newsearchmacsref,$newsendcount,$newrsp) = xCAT::SLP::dodiscover(SrvTypes=>$arg{SrvTypes},Callback=>\&bt_handle_new_slp_entity);
+       foreach (keys %$newsearchmacsref) {
+        $searchmacsref{$_}=$newsearchmacsref->{$_};
+       }
+       $sendcount += $newsendcount;
+       $rsp+=$newrsp;
        return ($searchmacsref,$sendcount,$rsp);
    } 
    $arg{SrvTypes} = $services;
