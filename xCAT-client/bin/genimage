@@ -15,6 +15,7 @@ require xCAT::DSHCLI;
 require xCAT::Client;
 
 use xCAT::Utils;
+use xCAT::TableUtils;
 use File::Basename;
 
 $::XCATROOT = "/opt/xcat";
@@ -155,7 +156,8 @@ if ((!$imagename) && (!$profile) && (!$os) && (!$arch)) {
 
 
 # get the install directory
-my $installdir = `gettab key=installdir site.value`;
+my @entries = xCAT::TableUtils->get_site_attribute("installdir");
+my $installdir = $entries[0];
 chomp($installdir);
 # lots of error checking to make sure it exists.
 if($installdir eq ''){
