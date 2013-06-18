@@ -545,7 +545,7 @@ sub invoke_dodiscover {
        $arg{SrvTypes} = [ qw/service:management-hardware.IBM:integrated-management-module2/ ];
        my  ($newsearchmacsref,$newsendcount,$newrsp) = xCAT::SLP::dodiscover(SrvTypes=>$arg{SrvTypes},Callback=>\&bt_handle_new_slp_entity);
        foreach (keys %$newsearchmacsref) {
-        $searchmacsref{$_}=$newsearchmacsref->{$_};
+        $searchmacsref->{$_}=$newsearchmacsref->{$_};
        }
        $sendcount += $newsendcount;
        $rsp+=$newrsp;
