@@ -156,15 +156,16 @@ sub get_nodeset_state
     my %options=@_;
     my %gnopts;
     if ($options{prefetchcache}) { $gnopts{prefetchcache}=1; }
-
-
+    my $tab_hash; 
+    if ($options{global_tab_hash}) { $tab_hash = $options{global_tab_hash}; }
+ 
     my $state = "undefined";
     my $tftpdir;
     my $boottype;
-    if( %::GLOBAL_TAB_HASH && defined($::GLOBAL_TAB_HASH{noderes}) && defined($::GLOBAL_TAB_HASH{noderes}{$node}) ) {
-        $tftpdir = $::GLOBAL_TAB_HASH{noderes}{$node}{tftpdir};
-        $boottype = $::GLOBAL_TAB_HASH{noderes}{$node}{netboot};
-        
+    if( defined($tab_hash) && defined($tab_hash->{noderes}) && defined($tab_hash->{noderes}->{$node}) ) {
+        $tftpdir = $tab_hash->{noderes}->{$node}->{tftpdir};
+        $boottype = $tab_hash->{noderes}->{$node}->{netboot};
+
     } else {
         #get boot type (pxe, yaboot or aixinstall)  for the node
         my $noderestab = xCAT::Table->new('noderes', -create => 0);
