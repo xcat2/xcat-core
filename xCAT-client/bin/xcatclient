@@ -89,7 +89,9 @@ if ($arg ne "NO_NODE_RANGE") {
   $arg = join(',',@tempnr);
   $cmdref->{noderange}->[0]=$arg;
 }
-push (@{$cmdref->{arg}}, @ARGV);
+if (@ARGV) {
+    push (@{$cmdref->{arg}}, @ARGV);
+}
 foreach (keys %ENV) {
     if (/^XCAT_/) {
         $cmdref->{environment}->{$_} = $ENV{$_};
