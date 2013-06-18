@@ -625,10 +625,10 @@ Usage:
     my $nodeshashref = $nodelstab->getNodesAttribs($nodes, ['groups']);
     my %updatenodeshash;
 
-    my $changeflag = 0;
     my %nodeoldprofiles = ();
-    my %nodecurrprofiles = ();
     foreach (@$nodes){
+        my %nodecurrprofiles = ();
+        
         # Get each node's profiles.
         my $groupsstr = $nodeshashref->{$_}->[0]->{'groups'};
         unless ($groupsstr){
@@ -669,42 +669,55 @@ Usage:
         if ($nodecurrprofiles{'groups'}){
             $updatenodeshash{$_}{'groups'} = $nodecurrprofiles{'groups'};
         }
-
-        if(exists $args_dict{'networkprofile'}){
-            $updatenodeshash{$_}{'groups'} .= $args_dict{'networkprofile'}.",";
-            if ($args_dict{'networkprofile'} ne $nodeoldprofiles{'networkprofile'}){
-                $changeflag = 1;
-            }else{
-                xCAT::MsgUtils->message('S', "Specified networkprofile is same with current value, ignore.");
-                delete($args_dict{'networkprofile'});
-            }
-        }
-        if(exists $args_dict{'hardwareprofile'}){
-            $updatenodeshash{$_}{'groups'} .= $args_dict{'hardwareprofile'}.",";
-            if ($args_dict{'hardwareprofile'} ne $nodeoldprofiles{'hardwareprofile'}){
-                $updatenodeshash{$_}{'status'} = 'defined';
-                $changeflag = 1;
-            }else{
-                xCAT::MsgUtils->message('S', "Specified hardwareprofile is same with current value, ignore.");
-                delete($args_dict{'hardwareprofile'});
-            }
-        }
-        if(exists $args_dict{'imageprofile'}){
-            $updatenodeshash{$_}{'groups'} .= $args_dict{'imageprofile'}.",";
-            if ($args_dict{'imageprofile'} ne $nodeoldprofiles{'imageprofile'}){
-                $updatenodeshash{$_}{'status'} = 'defined';
-                $changeflag = 1;
-            }else{
-                xCAT::MsgUtils->message('S', "Specified imageprofile is same with current value, ignore.");
-                delete($args_dict{'imageprofile'});
-            }
-        }
-        # make sure there are something changed, otherwise we should quit without any changes.
-        unless ($changeflag){
-            setrsp_errormsg("No profile changes detect.");
-            return;
+    }
+    
+    # After checking, all nodes' profile should be same
+    # Get the new profile with specified ones in args_dict
+    my $changeflag = 0;
+    my $profile_groups;
+    my $profile_status;
+    if(exists $args_dict{'networkprofile'}){
+        $profile_groups .= $args_dict{'networkprofile'}.",";
+        if ($args_dict{'networkprofile'} ne $nodeoldprofiles{'networkprofile'}){
+            $changeflag = 1;
+        }else{
+            xCAT::MsgUtils->message('S', "Specified networkprofile is same with current value, ignore.");
+            delete($args_dict{'networkprofile'});
         }
     }
+    if(exists $args_dict{'hardwareprofile'}){
+        $profile_groups .= $args_dict{'hardwareprofile'}.",";
+        if ($args_dict{'hardwareprofile'} ne $nodeoldprofiles{'hardwareprofile'}){
+            $profile_status = 'defined';
+            $changeflag = 1;
+        }else{
+            xCAT::MsgUtils->message('S', "Specified hardwareprofile is same with current value, ignore.");
+            delete($args_dict{'hardwareprofile'});
+        }
+    }
+    if(exists $args_dict{'imageprofile'}){
+        $profile_groups .= $args_dict{'imageprofile'}.",";
+        if ($args_dict{'imageprofile'} ne $nodeoldprofiles{'imageprofile'}){
+            $profile_status = 'defined';
+            $changeflag = 1;
+        }else{
+            xCAT::MsgUtils->message('S', "Specified imageprofile is same with current value, ignore.");
+            delete($args_dict{'imageprofile'});
+        }
+    }
+    # make sure there are something changed, otherwise we should quit without any changes.
+    unless ($changeflag){
+        setrsp_errormsg("No profile changes detect.");
+        return;
+    }
+    
+    # Update nodes' attributes
+    foreach (@$nodes) {
+        $updatenodeshash{$_}{'groups'} .= $profile_groups;
+        if ($profile_status){
+            $updatenodeshash{$_}{'status'} = $profile_status;
+        }
+    }    
     
     #update DataBase.
     setrsp_progress("Updating database records...");
